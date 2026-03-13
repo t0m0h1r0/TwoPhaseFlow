@@ -1,0 +1,26 @@
+% paper/sections/08_time.tex
+\section{時間積分と移流スキーム}
+\label{sec:time}
+
+\subsection{移流項の処理：WENO5 と TVD-RK3}
+
+CLS 関数の移流および Navier--Stokes の対流項には，
+強い不連続（衝撃波や急峻な界面）を振動なく捉えるため，
+5次の \textbf{WENO (Weighted Essentially Non-Oscillatory)} スキーム \cite{JiangShu1996} を空間離散化に用いる．
+
+時間積分には 3次 TVD Runge--Kutta 法（Shu--Osher スキーム）を採用し，時間方向の精度と安定性を確保する．
+
+\subsection{粘性項の処理：Crank--Nicolson}
+
+粘性項は拡散数が大きくなると陽解法の安定条件が厳しくなるため，
+\textbf{Crank--Nicolson 法}による半陰的処理を行う．
+これにより粘性 CFL 条件の制約を受けずに計算を進めることが可能となる．
+
+\subsection{CFL 安定条件}
+
+時間刻み幅 $\Delta t$ は，対流，粘性，および表面張力（毛管波）に起因する制約の最小値に基づいて決定する．
+特に表面張力が支配的な場合，毛管波の位相速度に基づく制約：
+\begin{equation}
+  \Delta t_\sigma \approx \sqrt{\frac{(\rho_l+\rho_g)h^3}{2\pi\sigma}}
+\end{equation}
+が厳しくなるため注意が必要である．

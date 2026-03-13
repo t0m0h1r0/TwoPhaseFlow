@@ -1,0 +1,52 @@
+% paper/sections/03_levelset.tex
+\section{Conservative Level Set (CLS) 法による界面追跡}
+\label{sec:levelset}
+
+\subsection{Conservative Level Set 法の導入}
+
+従来の Level Set 法では符号付き距離関数 $\phi$ を直接移流させるが，
+数値拡散により質量（$\phi<0$ の領域体積）が保存されない問題があった．
+本稿では Olsson \& Kreiss \cite{OlssonKreiss2005} による \textbf{Conservative Level Set (CLS) 法}を採用する．
+
+CLS 法では，ヘヴィサイド関数形状を持つ界面関数 $\psi(\bm{x}, t)$ を保存形で移流させる：
+\begin{equation}
+  \pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0
+  \label{eq:cls_advect}
+\end{equation}
+ここで $\psi$ は気相で 0，液相で 1，界面近傍で滑らかに変化する関数であり，
+$\psi$ の等値面 $\psi=0.5$ を界面と定義する．
+この保存形方程式により，全体の質量 $\int \psi \, dV$ が高精度に保存される．
+
+\subsection{滑らか化ヘヴィサイド関数と距離関数との関係}
+
+CLS 変数 $\psi$ は，本来の符号付き距離関数 $\phi$ と以下の関係で結ばれている：
+\begin{tcolorbox}[defbox]
+\textbf{対応付け：}
+\begin{equation}
+  \psi(\phi) = H_\varepsilon(\phi) = \frac{1}{2}\left(1 + \tanh\left(\frac{\phi}{2\varepsilon}\right)\right)
+  \label{eq:heaviside_tanh}
+\end{equation}
+\end{tcolorbox}
+ここで $\varepsilon$ は界面の厚みを決定するパラメータである．
+曲率 $\kappa$ や法線ベクトルの計算には，滑らかで特異性のない $\phi$ の方が適しているため，
+必要に応じて $\psi$ から $\phi$ を逆算するか，後述の再初期化プロセスで整合性を保つ．
+
+\subsection{再初期化方程式（CLS 版）}
+\label{sec:reinit}
+
+移流方程式 \eqref{eq:cls_advect} を解くと，数値拡散や圧縮により界面プロファイルが崩れる．
+CLS 法では，$\psi$ の形状（厚み一定の遷移層）を維持するため，以下の再初期化（中間圧縮）ステップを行う：
+
+\begin{equation}
+ \pd{\psi}{\tau} + \bnabla\cdot\bigl(\psi(1-\psi)\hat{\bm n}\bigr) = \bnabla\cdot\bigl(\varepsilon\,\bnabla\psi\bigr)
+ \label{eq:cls_reinit_iso}
+\end{equation}
+ここで $\tau$ は仮想時間，$\hat{\bm n} = \bnabla\phi/|\bnabla\phi|$ は界面法線ベクトルである．
+右辺の人工粘性項と左辺の圧縮流束項が釣り合うことで，定常状態において理想的な tanh プロファイルが回復される．
+
+\subsection{質量保存性について}
+\label{sec:massconserv}
+
+CLS 法の最大の利点は，式\eqref{eq:cls_reinit_iso}が保存形 $\partial\psi/\partial\tau + \nabla\cdot\bm{F}=0$ で書かれているため，
+再初期化過程でも総質量 $\int \psi dV$ が保存される点にある（境界での流束がゼロの場合）．
+これにより，従来の Level Set 法で問題となっていた長時間のシミュレーションにおける気泡・液滴の消失や肥大化が大幅に抑制される．

@@ -1,0 +1,43 @@
+% paper/sections/00_abstract.tex
+\begin{titlepage}
+\begin{center}
+\vspace*{12mm}
+{\color{navy}\rule{\linewidth}{2pt}}\\[8pt]
+{\LARGE\bfseries 二次元気液混合流体の数値計算法（統合最終版）}\\[6pt]
+{\large\bfseries —— Conservative Level Set $\cdot$ CCD $\cdot$ WENO5 $\cdot$ Projection ——}\\[4pt]
+{\color{navy}\rule{\linewidth}{2pt}}\\[10pt]
+
+{\large
+\textbf{Numerical Methods for Two-Dimensional Gas--Liquid Two-Phase Flows}\\[4pt]
+\textit{From Basic Theory to Complete Algorithm}\\[3pt]
+\textit{Conservative Level Set $\cdot$ WENO5 $\cdot$ Coupled Compact Difference $\cdot$ Projection Method}
+}
+
+\vspace{14mm}
+\begin{tcolorbox}[defbox, width=0.88\textwidth]
+\small\centering
+\begin{tabular}{rl}
+界面追跡： & \textbf{Conservative Level Set 法}\,($\psi\equiv H_\varepsilon(\phi)$)\
+空間離散化： & CCD $\Ord{h^6}$（微分），WENO5（移流）\\
+             & Chu \& Fan, \textit{J. Comput. Phys.}, 1998\\[2pt]
+格子構造：   & コロケート格子 + Rhie--Chow 補正（面速度）\\[2pt]
+界面適合格子： & $\phi$ 連動グリッド密度関数による自動高解像度化\\[2pt]
+時間積分：   & 3次 TVD Runge--Kutta（対流・CLS）\
+             & Crank--Nicolson（粘性項，半陰的）\\[2pt]
+圧力求解：   & 変密度 Chorin Projection + BiCGSTAB\\[2pt]
+表面張力：   & CSF 法（balanced-force）
+\end{tabular}
+\end{tcolorbox}
+
+\vspace{10mm}
+{\small\color{darkgray}
+本稿は，Chu \& Fan (1998) の CCD スキーム係数をテイラー展開から厳密に再導出し，
+Sussman \textit{et al.} (1994) の手法を改良した Conservative Level Set 法と
+Projection 法を組み合わせた，気液二相流シミュレーションの完全定式化を教科書的に解説したものである．
+}
+\end{center}
+
+\vfill
+{\color{navy}\rule{\linewidth}{0.8pt}}\\[2pt]
+{\small\color{darkgray}対象読者：大学院生・研究者（計算流体力学の基礎知識を前提とする）}
+\end{titlepage}

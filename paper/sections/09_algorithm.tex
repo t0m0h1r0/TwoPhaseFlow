@@ -1,0 +1,15 @@
+% paper/sections/09_algorithm.tex
+\section{完全アルゴリズムフロー}
+\label{sec:algorithm}
+
+時刻 $t^n$ から $t^{n+1}$ への計算手順を以下に示す：
+
+\begin{enumerate}
+  \item \textbf{CLS 移流：} $\psi^n$ を式\eqref{eq:cls_advect}に従って移流させ，$\psi^*$ を得る（WENO5 + TVD-RK3）．
+  \item \textbf{再初期化：} $\psi^*$ に対して圧縮・拡散式\eqref{eq:cls_reinit_iso}を解き，形状を整えた $\psi^{n+1}$ を得る．
+  \item \textbf{物性・曲率更新：} $\psi^{n+1}$ から $\rho, \mu$ を更新し，$\phi$ を経由して $\kappa^{n+1}$ を計算する．
+  \item \textbf{予測速度計算 (Predictor)：} 圧力勾配以外の項（対流，粘性，重力，表面張力）を計算し，$\bu^*$ を求める．
+  \item \textbf{圧力求解 (PPE)：} $\bnabla\cdot\bu^*$ をソース項として変密度 PPE を解き，$p^{n+1}$ を決定する．
+  \item \textbf{速度補正 (Corrector)：} $p^{n+1}$ の勾配を用いて $\bu^*$ を修正し，非圧縮速度場 $\bu^{n+1}$ を得る．
+  \item \textbf{収束確認：} 質量保存誤差や発散の大きさをモニタリングする．
+\end{enumerate}

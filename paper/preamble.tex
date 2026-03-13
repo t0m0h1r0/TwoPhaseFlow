@@ -1,0 +1,154 @@
+% paper/preamble.tex
+\usepackage{fontspec}
+\usepackage{xeCJK}
+
+% -- Fonts (following additional.tex) --
+\setmainfont{Times New Roman}
+\setCJKmainfont{Hiragino Mincho ProN}
+
+% -- Math / Figures / Tables --
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{bm}
+\usepackage{booktabs, array, multirow, tabularx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable, theorems}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, backgrounds, calc, decorations.pathreplacing, matrix, patterns}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage{nicefrac}
+\usepackage{ragged2e}
+
+% -- Page layout --
+\geometry{top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt}
+\emergencystretch=2em
+\setlength{\hfuzz}{3pt}
+
+% -- Colors (Merged from A and B) --
+\definecolor{navy}{RGB}{0,40,90}
+\definecolor{blue2}{RGB}{0,80,160}
+\definecolor{midblue}{RGB}{0,90,170}
+\definecolor{lightblue}{RGB}{230,242,255}
+\definecolor{tblue}{RGB}{218,234,255}
+\definecolor{tgreen}{RGB}{215,255,225}
+\definecolor{tyellow}{RGB}{255,250,210}
+\definecolor{tred}{RGB}{255,225,220}
+\definecolor{darkgray}{RGB}{60,60,60}
+\definecolor{boxgray}{RGB}{245,245,245}
+\definecolor{green4}{RGB}{0,120,60}
+\definecolor{red2}{RGB}{160,0,0}
+\definecolor{orange2}{RGB}{200,90,0}
+\definecolor{torange}{RGB}{255,238,210}
+\definecolor{teal2}{RGB}{0,110,110}
+\definecolor{tteal}{RGB}{210,245,245}
+\definecolor{purple2}{RGB}{100,0,140}
+\definecolor{tpurple}{RGB}{240,220,255}
+\definecolor{brown2}{RGB}{120,60,0}
+\definecolor{tbrown}{RGB}{250,235,215}
+
+% -- tcolorbox styles (Preserving A's rich styling) --
+\tcbset{
+  mybox/.style={
+    enhanced, breakable,
+    colback=tblue, colframe=blue2,
+    toprule=0.8pt, bottomrule=0.8pt,
+    leftrule=0.8pt, rightrule=0.8pt,
+    fonttitle=\bfseries\small\color{white},
+    colbacktitle=navy,
+    attach boxed title to top left={yshift=-2mm, xshift=6mm},
+    boxed title style={sharp corners},
+    sharp corners=south,
+  },
+  derivbox/.style={
+    enhanced, breakable,
+    colback=boxgray, colframe=navy!40,
+    toprule=0.5pt, bottomrule=0.5pt,
+    leftrule=3pt, rightrule=0.5pt,
+    sharp corners,
+  },
+  resultbox/.style={
+    enhanced,
+    colback=tgreen, colframe=navy,
+    toprule=1pt, bottomrule=1pt,
+    leftrule=1pt, rightrule=1pt,
+    sharp corners,
+  },
+  warnbox/.style={
+    enhanced,
+    colback=tyellow, colframe=red2!70,
+    toprule=0.6pt, bottomrule=0.6pt,
+    leftrule=3pt, rightrule=0.6pt,
+    sharp corners,
+  },
+  algbox/.style={
+    enhanced, breakable,
+    colback=white, colframe=navy,
+    toprule=1pt, bottomrule=1pt,
+    leftrule=1pt, rightrule=1pt,
+    sharp corners,
+    fonttitle=\bfseries\small\color{white},
+    colbacktitle=navy,
+    attach boxed title to top left={yshift=-2mm, xshift=6mm},
+    boxed title style={sharp corners},
+  },
+  defbox/.style={
+    enhanced,
+    colback=boxgray, colframe=darkgray!50,
+    toprule=0.6pt, bottomrule=0.6pt,
+    leftrule=0.6pt, rightrule=0.6pt,
+    sharp corners,
+  },
+}
+
+% -- Header/Footer --
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{navy}二次元気液混合流体の数値計算法（統合版）}
+\fancyhead[R]{\small\color{navy!70}CLS + CCD + RC + PPE}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% -- Section headings --
+\titleformat{\section}{\large\bfseries\color{navy}}{\thesection.}{0.8em}{}[\color{blue2}\rule{\linewidth}{0.8pt}]
+\titleformat{\subsection}{\normalsize\bfseries\color{navy!80}}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{navy!60}}{\thesubsubsection}{0.8em}{}
+
+% -- Math macros --
+\newcommand{\jp}[1]{#1} % Compatibility wrapper for old macro
+\newcommand{\pd}[2]{\dfrac{\partial #1}{\partial #2}}
+\newcommand{\pdd}[2]{\dfrac{\partial^2 #1}{\partial #2^2}}
+\newcommand{\pdm}[3]{\dfrac{\partial^2 #1}{\partial #2\,\partial #3}}
+\newcommand{\bu}{\bm{u}}
+\newcommand{\bg}{\bm{g}}
+\newcommand{\bnabla}{\bm{\nabla}}
+\newcommand{\He}{H_\varepsilon}
+\newcommand{\de}{\delta_\varepsilon}
+\newcommand{\Ord}[1]{\mathcal{O}(#1)}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\fp}[1]{f^{(1)}_{#1}}
+\newcommand{\fpp}[1]{f^{(2)}_{#1}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+
+% -- Theorem environments --
+\newtheorem{remark}{Remark}
+\newtheorem{definition}{定義}
+\newtheorem{theorem}{定理}
+
+% -- Hyperlinks --
+\hypersetup{
+  colorlinks=true,
+  linkcolor=navy,
+  citecolor=navy,
+  urlcolor=blue2,
+  pdftitle={Two-Dimensional Gas-Liquid Two-Phase Flow Numerical Methods (Merged)},
+}

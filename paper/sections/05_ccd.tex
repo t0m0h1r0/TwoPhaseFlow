@@ -1,0 +1,59 @@
+% paper/sections/05_ccd.tex
+\section{結合コンパクト差分法（CCD 法）の厳密導出}
+\label{sec:CCD}
+
+\subsection{CCD スキームの定義}
+
+CCD 法は，関数値 $f$ とその一次微分 $f^{(1)}$，二次微分 $f^{(2)}$ を同時に連立して解くことで，
+3点ステンシルで $\Ord{h^6}$ 精度を実現する手法である．
+各内点 $i$ において，以下の2式が成立するように係数を定める：
+
+\begin{tcolorbox}[mybox, title={CCD スキームの2方程式}]
+\textbf{Equation-I}（一次微分の結合式）：
+\begin{equation}
+  \alpha_1\fp{i-1} + \fp{i} + \alpha_1\fp{i+1}
+  = \frac{a_1}{h}\bigl(f_{i+1}-f_{i-1}\bigr)
+  + b_1 h\bigl(\fpp{i+1}-\fpp{i-1}\bigr)
+  \label{eq:CCD_I}
+\end{equation}
+
+\textbf{Equation-II}（二次微分の結合式）：
+\begin{equation}
+  \beta_2\fpp{i-1} + \fpp{i} + \beta_2\fpp{i+1}
+  = \frac{a_2}{h^2}\bigl(f_{i-1}-2f_i+f_{i+1}\bigr)
+  + \frac{b_2}{h}\bigl(\fp{i+1}-\fp{i-1}\bigr)
+  \label{eq:CCD_II}
+\end{equation}
+\end{tcolorbox}
+
+\subsection{係数の導出}
+
+テイラー展開を用いた誤差解析（詳細略）により，$\Ord{h^6}$ 精度を達成する係数は一意に定まる．
+
+\begin{tcolorbox}[resultbox]
+\textbf{CCD 係数（$\Ord{h^6}$ 精度）：}
+\begin{equation}
+  \boxed{
+    \alpha_1 = \frac{7}{16},\quad
+    a_1 = \frac{15}{16},\quad
+    b_1 = \frac{1}{16}
+  }
+  \qquad
+  \boxed{
+    \beta_2 = -\frac{1}{8},\quad
+    a_2 = 3,\quad
+    b_2 = -\frac{9}{8}
+  }
+  \label{eq:coef_CCD}
+\end{equation}
+\end{tcolorbox}
+
+\subsection{境界条件}
+
+内点 CCD が隣接点を参照するため，境界点（$i=0, N$）には高次の片側スキームが必要である．
+内点より1次低い $\Ord{h^5}$ 精度で設計された境界スキームを用いる（詳細は Paper A 参照）．
+左境界 ($i=0$) の例：
+\begin{equation}
+  \fp{0} + \frac{3}{2}\fp{1} - \frac{3h}{2}\fpp{1}
+  = \frac{1}{h}\!\left(-\frac{23}{6}f_0 + \frac{21}{4}f_1 - \frac{3}{2}f_2 + \frac{1}{12}f_3\right)
+\end{equation}

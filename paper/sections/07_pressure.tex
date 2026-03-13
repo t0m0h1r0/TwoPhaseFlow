@@ -1,0 +1,27 @@
+% paper/sections/07_pressure.tex
+\section{圧力 Poisson 方程式の導出と離散化}
+\label{sec:pressure}
+
+\subsection{Projection 法}
+
+非圧縮条件 $\bnabla\cdot\bu = 0$ を満たすため，Chorin の Projection 法を用いる．
+まず，圧力項を除いた予測速度 $\bu^*$ を計算し，
+次に，$\bu^*$ の発散を打ち消すような圧力 $p^{n+1}$ を求める．
+
+\subsection{変密度圧力 Poisson 方程式 (PPE)}
+
+予測速度 $\bu^*$ に対して質量保存則を適用すると，以下の変密度 PPE が導かれる：
+\begin{equation}
+  \bnabla\cdot\!\left( \frac{1}{\rho^{n+1}} \bnabla p^{n+1} \right) = \frac{1}{\Delta t}\, \bnabla\cdot \bu^{\ast}
+  \label{eq:PPE_varrho}
+\end{equation}
+
+\subsection{離散化と求解}
+
+式\eqref{eq:PPE_varrho}は有限体積法（FVM）により離散化する．
+この際，左辺の圧力勾配流束と右辺の速度発散には，前章の Rhie--Chow 補正を適用した値を用いる．
+これにより，速度と圧力のカップリングが強化される．
+
+得られた線形方程式系 $\bm{A}\bm{x} = \bm{b}$ は，
+係数行列が非対称（変密度効果による）かつ疎行列であるため，
+BiCGSTAB 法（前処理付き）を用いて効率的に求解する．

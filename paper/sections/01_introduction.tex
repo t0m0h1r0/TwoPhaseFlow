@@ -1,0 +1,58 @@
+% paper/sections/01_introduction.tex
+\section{はじめに}
+\label{sec:intro}
+
+\subsection{気液二相流の数値計算における課題}
+
+気液二相流とは，気相（ガス）と液相（液体）が共存し，
+その間に明確な界面を形成しながら運動する流体現象である．
+気泡塔，核沸騰，波浪，噴霧燃焼など，工学・自然界に広く現れる流体現象である．
+
+この現象を数値的に扱う際には，以下の4つの本質的困難が存在する：
+
+\begin{enumerate}
+  \item \textbf{界面の捕捉}：密度・粘性が界面を挟んで不連続に変化する
+        （$\rho_l/\rho_g \approx 1000$，$\mu_l/\mu_g \approx 100$）ため，
+        界面位置を高精度かつ安定に追跡しなければならない．
+  \item \textbf{表面張力の正確な評価}：表面張力は界面の曲率（$\kappa$）に比例する体積力である．
+        曲率の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
+  \item \textbf{非圧縮条件の高精度維持}：速度場の発散をゼロに保つ
+        圧力場を毎ステップ正確に求解する必要がある．
+  \item \textbf{密度成層の安定処理}：重力と密度差による静水圧分布を
+        正確に扱わないと寄生流れ（parasitic currents）が発生する．
+\end{enumerate}
+
+\subsection{本稿のアプローチ}
+
+上記の困難を克服するため，本稿では以下の手法を組み合わせる：
+
+\begin{itemize}
+  \item \textbf{界面追跡：} \textbf{Conservative Level Set (CLS) 法} \cite{OlssonKreiss2005}
+        を採用する．従来の Level Set 法 \cite{Sussman1994} を改良し，
+        界面指標 $\psi$ を保存形で移流させることで質量保存性を向上させる．
+        滑らか化ヘヴィサイド関数によって物性値を界面近傍で連続的に補間し，
+        One-Fluid（単一流体）定式化を実現する．
+  \item \textbf{高精度空間微分：} 結合コンパクト差分法（CCD 法，Chu \& Fan \cite{ChuFan1998}）を用い，
+        一次微分・二次微分・混合偏微分をすべて $\Ord{h^6}$ 精度で統一的に評価する．
+        本稿では係数をテイラー展開から厳密に導出する．
+        また，移流項には \textbf{WENO5} スキーム \cite{JiangShu1996} を導入し，振動のない高解像度特性を得る．
+  \item \textbf{界面適合格子：} Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
+        界面近傍のみを自動的に高解像度化する非一様格子を生成する．
+  \item \textbf{格子構造：} チェッカーボード不安定を防ぐため
+        コロケート格子を採用し，改良された Rhie--Chow 型流束補正を適用する．
+  \item \textbf{時間積分：} 対流項と Level Set 移流には
+        3次 TVD Runge--Kutta を，粘性項には Crank--Nicolson 半陰的処理を用いる．
+  \item \textbf{圧力求解：} 変密度 Chorin Projection 法に基づいて圧力 Poisson 方程式を導き，
+        CCD で差分化した後 BiCGSTAB で反復求解する．
+\end{itemize}
+
+\subsection{本稿の構成}
+
+第\ref{sec:governing}章で支配方程式（One-Fluid Navier--Stokes + CLS）を導く．
+第\ref{sec:levelset}章で Conservative Level Set 法の詳細（移流・再初期化）を述べる．
+第\ref{sec:grid}章で界面適合非一様格子の構築法と座標変換を説明する．
+第\ref{sec:CCD}章が本稿の数学的核心であり，CCD スキームの係数をテイラー展開から完全に導出する．
+第\ref{sec:collocate}章でコロケート格子と Rhie--Chow 補正を述べる．
+第\ref{sec:pressure}章で圧力 Poisson 方程式を導出し CCD で差分化する．
+第\ref{sec:time}章で時間積分スキームを説明し，
+第\ref{sec:algorithm}章で完全アルゴリズムをまとめる．

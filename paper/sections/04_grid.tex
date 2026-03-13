@@ -1,0 +1,51 @@
+% paper/sections/04_grid.tex
+\section{界面適合非一様格子の構築}
+\label{sec:grid}
+
+\subsection{基本概念：なぜ非一様格子が必要か}
+
+気液界面では密度・粘性・圧力に急峻な勾配が存在する．
+一様格子では界面分解能を上げるためには全格子を細分化する必要があり，計算コストが増大する．
+Level Set 値に連動した非一様格子により，界面近傍のみ高解像度化し，遠方は粗い格子を保つ．
+
+\subsection{グリッド密度関数}
+
+Level Set 関数 $\phi$ の値に基づき，界面（$\phi=0$）近傍ほど高密度となる
+グリッド密度関数 $\omega(\phi)$ を定義する：
+\begin{equation}
+  \omega(\phi) = 1 + (\alpha - 1)\,\de^*(\phi),
+  \qquad
+  \de^*(\phi) = \frac{\de(\phi)}{\displaystyle\max_{\bm{x}}\,\de(\phi)}
+  \label{eq:density_func}
+\end{equation}
+ここで $\alpha > 1$ は界面近傍の格子密度倍率（典型値 $\alpha = 3\sim5$）である．
+
+\subsection{座標変換とメトリクス係数}
+
+一様な計算空間 $\xi \in [0, N_\xi]$ を物理空間 $x \in [x_L, x_R]$ に
+写像する非線形座標変換を導入する．
+メトリクス係数 $J_x = d\xi/dx$ は以下で与えられる：
+\begin{equation}
+  J_x(x) = \frac{\omega(\phi(x))}{I_\omega}\cdot\frac{N_\xi}{x_R - x_L},
+  \qquad
+  I_\omega = \frac{1}{x_R - x_L}\int_{x_L}^{x_R}\omega(\phi(x'))\,dx'
+  \label{eq:metrics}
+\end{equation}
+
+\subsection{偏微分の座標変換（厳密な導出）}
+\label{sec:coord_transform}
+
+一次微分の変換はチェーンルールより $\partial f/\partial x = J_x\,\partial f/\partial\xi$ である．
+二次微分の変換は，これを再び $x$ で微分することで得られる．
+積の微分則を正しく適用することが重要である：
+
+\begin{tcolorbox}[resultbox]
+\textbf{座標変換公式（厳密形）：}
+\begin{align}
+  \pd{f}{x} &= J_x\,\pd{f}{\xi}
+  \label{eq:transform_1st_correct}\\[6pt]
+  \pdd{f}{x} &= J_x^2\,\pdd{f}{\xi} + J_x\,\pd{J_x}{\xi}\,\pd{f}{\xi}
+  \label{eq:transform_2nd_correct}
+\end{align}
+\end{tcolorbox}
+$\partial J_x/\partial\xi$ 自体も後述の CCD 法を用いて高精度に評価する．

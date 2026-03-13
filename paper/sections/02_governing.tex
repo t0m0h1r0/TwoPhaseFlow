@@ -1,0 +1,89 @@
+% paper/sections/02_governing.tex
+\section{支配方程式系の導出}
+\label{sec:governing}
+
+\subsection{One-Fluid（単一流体）定式化の概念}
+
+気相・液相を別々の変数で扱う代わりに，
+界面近傍で物性値を滑らかに補間した \textbf{「一つの流体」として扱う}定式化を One-Fluid 法という．
+変密度・変粘性の単一 Navier--Stokes 方程式で全領域を記述できるため，
+界面の陰関数表現と自然に組み合わせられる．
+
+\subsection{非圧縮条件（連続の式）}
+
+気相・液相とも非圧縮性流体（$\rho = \text{const in each phase}$）を仮定する．
+One-Fluid 定式化では，界面が移流によって運ばれるだけで質量が生成・消滅しないから，
+速度場に対して以下の拘束条件が成立する：
+\begin{equation}
+  \bnabla \cdot \bu = 0
+  \label{eq:continuity}
+\end{equation}
+この式は各タイムステップで圧力場を通じて強制的に満たされる．
+
+\subsection{Navier--Stokes 方程式（One-Fluid + CSF）}
+
+Conservative Level Set 法では，界面指標関数 $\psi \in [0,1]$ を用いて物性値を補間する．
+\begin{align}
+ \rho(\psi)&=\rho_g+(\rho_l-\rho_g)\,\psi, & \mu(\psi)&=\mu_g+(\mu_l-\mu_g)\,\psi.
+\end{align}
+One-Fluid 定式化による運動方程式は以下の通りである：
+
+\begin{tcolorbox}[mybox, title={\jp{One-Fluid Navier--Stokes 方程式（次元形・CLS版）}}]
+\begin{equation}
+  \rho(\psi)\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  = -\bnabla p
+  + \bnabla\cdot\!\left[\mu(\psi)\!\left(\bnabla\bu + \bnabla\bu^T\right)\right]
+  + \rho(\psi)\,\bg
+  + \sigma\,\kappa\,\bnabla\psi
+  \label{eq:NS_dim}
+\end{equation}
+\end{tcolorbox}
+ここで $\kappa$ は界面曲率である．表面張力項 $\sigma\kappa\bnabla\psi$ は CSF モデルに基づき，圧力勾配と同様の体積力として記述される．
+
+\subsubsection{CSF 法（連続体表面力法）の導出}
+
+界面上の表面張力は本来面積力であるが，
+Brackbill \textit{et al.} \cite{Brackbill1992} の \textbf{CSF（Continuum Surface Force）法} では，
+これを体積力として全領域の方程式に組み込む．
+
+界面上の単位面積あたりの表面張力ベクトルは $\bm{F}_{\mathrm{surf}} = \sigma\kappa\hat{\bm{n}}$ である．
+これを界面からの距離に応じて分布させるためにデルタ関数 $\de(\phi)$ を掛け，
+$\bnabla\psi = \de(\phi)\bnabla\phi = \de(\phi)\hat{\bm{n}}$（ここで $|\bnabla\phi|=1$ を仮定）を用いると式\eqref{eq:NS_dim}の最終項を得る：
+\begin{equation}
+  \bm{F}_{\mathrm{CSF}} = \sigma\kappa\,\bnabla\psi
+\end{equation}
+
+\subsection{界面曲率の計算式}
+
+平均曲率 $\kappa$ は符号付き距離関数 $\phi$ の発散として定義される：
+\begin{equation}
+  \kappa(\phi) = -\bnabla\cdot\!\left(\frac{\bnabla\phi}{|\bnabla\phi|}\right)
+  \label{eq:curvature_def}
+\end{equation}
+2次元の場合にこれを展開すると，$\phi_x = \partial\phi/\partial x$ 等と略記して：
+\begin{tcolorbox}[mybox, title={\jp{2次元界面曲率（展開形）}}]
+\begin{equation}
+  \kappa = -\frac{
+    \phi_x^2\,\phi_{yy}
+    - 2\phi_x\phi_y\,\phi_{xy}
+    + \phi_y^2\,\phi_{xx}
+  }{\bigl(\phi_x^2 + \phi_y^2\bigr)^{3/2}}
+  \label{eq:curvature_2d}
+\end{equation}
+\end{tcolorbox}
+この計算には $\phi_{xx}$，$\phi_{yy}$，$\phi_{xy}$ という二階偏微分が必要であり，
+CCD 法を用いることで $\Ord{h^6}$ 精度の高精度評価が可能となる．
+
+\subsection{無次元化}
+
+参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ（$Re, Fr, We$ の定義は標準に従う）．
+\begin{tcolorbox}[mybox, title={\jp{無次元 Navier--Stokes 方程式}}]
+\begin{equation}
+  \rho\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  = -\bnabla p
+  + \frac{1}{Re}\,\bnabla\cdot\!\left[\mu\!\left(\bnabla\bu + \bnabla\bu^T\right)\right]
+  - \frac{\rho}{Fr^2}\hat{\bm{z}}
+  + \frac{\kappa\,\bnabla\psi}{We}
+  \label{eq:NS_dimless}
+\end{equation}
+\end{tcolorbox}

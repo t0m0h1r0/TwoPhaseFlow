@@ -1,0 +1,31 @@
+% paper/sections/06_collocate.tex
+\section{コロケート格子と Rhie--Chow 補正}
+\label{sec:collocate}
+
+\subsection{格子構造の選択}
+
+本稿では CCD の高精度を全変数で保つため，
+全変数（$p, \bu, \psi, \rho$ 等）を同一のセル中心に配置する\textbf{コロケート格子}を採用する．
+これにより，スタガード格子のような変数の補間操作が不要となり，CCD を統一的に適用できる．
+
+\subsection{Rhie--Chow 補正}
+
+コロケート格子では圧力のチェッカーボード不安定が生じる危険があるため，
+Rhie \& Chow \cite{RhieChow1983} の補正を導入する．
+セル界面（face）での流束 $u_f$ を評価する際，以下の圧力補正を加える：
+
+\begin{tcolorbox}[mybox, title={Rhie--Chow 補正（修正版）}]
+\begin{equation}
+ u_f = \bar{u}_f - D_f \left( \frac{p_N - p_P}{\delta x_f} \right)
+       + D_f \overline{\left(\pd{p}{x}\right)}_f
+ \label{eq:rc-face}
+\end{equation}
+\end{tcolorbox}
+
+ここで $\bar{u}_f$ はセル中心速度の平均，$p_N, p_P$ は隣接セル圧力である．
+係数 $D_f$ は，圧力 Poisson 方程式との整合性を保つため以下のように定める：
+\begin{equation}
+  D_f = \Delta t \left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f
+\end{equation}
+$(1/\rho)^{\mathrm{harm}}_f$ は密度の逆数の調和平均である．
+この第2項（直接差分）と第3項（平均勾配）の差分により，高周波の圧力振動成分のみが減衰され，物理的な圧力場が得られる．
