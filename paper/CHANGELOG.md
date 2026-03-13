@@ -1,4 +1,3 @@
-paper/CHANGELOG.md
 # Changelog
 
 ## Merged Version (Combined A & B)

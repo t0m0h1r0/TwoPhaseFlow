@@ -1,27 +1,40 @@
 % paper/sections/07_pressure.tex
-\section{圧力 Poisson 方程式の導出と離散化}
+\section{圧力 Poisson 方程式（PPE）の導出と離散化}
 \label{sec:pressure}
 
-\subsection{Projection 法}
+\subsection{Projection 法と PPE}
 
-非圧縮条件 $\bnabla\cdot\bu = 0$ を満たすため，Chorin の Projection 法 \cite{Chorin1968} を用いる．
-まず，圧力項を除いた予測速度 $\bu^*$ を計算し，
-次に，$\bu^*$ の発散を打ち消すような圧力 $p^{n+1}$ を求める．
-
-\subsection{変密度圧力 Poisson 方程式 (PPE)}
-
-予測速度 $\bu^*$ に対して質量保存則を適用すると，以下の変密度 PPE が導かれる：
+Chorin の Projection 法に基づき，中間予測速度 $\bu^*$ を求めた後，
+非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を満たすように圧力を補正する．
+変密度場における圧力 Poisson 方程式は以下となる：
 \begin{equation}
   \bnabla\cdot\!\left( \frac{1}{\rho^{n+1}} \bnabla p^{n+1} \right) = \frac{1}{\Delta t}\, \bnabla\cdot \bu^{\ast}
   \label{eq:PPE_varrho}
 \end{equation}
 
-\subsection{離散化と求解}
+\subsection{FVM による離散化}
 
-式\eqref{eq:PPE_varrho}は有限体積法（FVM）により離散化する．
-この際，左辺の圧力勾配流束と右辺の速度発散には，前章の Rhie--Chow 補正を適用した値を用いる．
-これにより，速度と圧力のカップリングが強化される．
+式\eqref{eq:PPE_varrho}は有限体積法（FVM）を用いて離散化する．
+界面でのフラックス計算には，前節の Rhie--Chow 補正と整合するよう，
+密度の調和平均を用いる．
 
-得られた線形方程式系 $\bm{A}\bm{x} = \bm{b}$ は，
-係数行列が非対称（変密度効果による）かつ疎行列であるため，
-BiCGSTAB 法 \cite{VanderVorst1992} （前処理付き）を用いて効率的に求解する．
+\begin{tcolorbox}[mybox, title={FVM 変密度 PPE（Rhie-Chow 整合）}]
+\begin{equation}
+  \frac{1}{h_x^2}\!\left[
+    \frac{p^{n+1}_{i+1,j}-p^{n+1}_{i,j}}{\tilde\rho_{i+1/2,j}}
+  - \frac{p^{n+1}_{i,j}-p^{n+1}_{i-1,j}}{\tilde\rho_{i-1/2,j}}
+  \right]
+  + \cdots
+  = \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
+  \label{eq:PPE_FVM}
+\end{equation}
+\end{tcolorbox}
+ここで $\tilde\rho_{i+1/2,j}$ は界面での調和平均密度である．
+得られた連立一次方程式は BiCGSTAB 法などで求解する．
+
+\subsection{境界条件}
+\begin{itemize}
+    \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）
+    \item \textbf{自由表面：} $p = p_{\mathrm{atm}}$（ディリクレ条件）
+    \item \textbf{全周ノイマンの場合：} 解の一意性を保つため，1点の圧力を固定するか平均値を0にする拘束を加える．
+\end{itemize}

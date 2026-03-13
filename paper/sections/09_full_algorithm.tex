@@ -2,14 +2,43 @@
 \section{完全アルゴリズムフロー}
 \label{sec:algorithm}
 
-時刻 $t^n$ から $t^{n+1}$ への計算手順を以下に示す：
+時刻 $t^n$ から $t^{n+1}$ への計算手順を以下にまとめる．
 
-\begin{enumerate}
-  \item \textbf{CLS 移流：} $\psi^n$ を式\eqref{eq:cls_advect}に従って移流させ，$\psi^*$ を得る（WENO5 + TVD-RK3）．
-  \item \textbf{再初期化：} $\psi^*$ に対して圧縮・拡散式\eqref{eq:cls_reinit_iso}を解き，形状を整えた $\psi^{n+1}$ を得る．
-  \item \textbf{物性・曲率更新：} $\psi^{n+1}$ から $\rho, \mu$ を更新し，$\phi$ を経由して $\kappa^{n+1}$ を計算する．
-  \item \textbf{予測速度計算 (Predictor)：} 圧力勾配以外の項（対流，粘性，重力，表面張力）を計算し，$\bu^*$ を求める．
-  \item \textbf{圧力求解 (PPE)：} $\bnabla\cdot\bu^*$ をソース項として変密度 PPE を解き，$p^{n+1}$ を決定する．
-  \item \textbf{速度補正 (Corrector)：} $p^{n+1}$ の勾配を用いて $\bu^*$ を修正し，非圧縮速度場 $\bu^{n+1}$ を得る．
-  \item \textbf{収束確認：} 質量保存誤差や発散の大きさをモニタリングする．
-\end{enumerate}
+\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の完全計算フロー}]
+
+\textbf{1. CLS 移流}（WENO5 + TVD-RK3）
+\[
+  \pd{\psi}{t} + \bnabla\cdot(\psi\bu^n) = 0 \;\longrightarrow\; \psi^*
+\]
+
+\textbf{2. 再初期化}（等方拡散方程式の積分）
+\[
+  \text{式}\eqref{eq:cls_reinit_iso} \text{ を解く} \;\longrightarrow\; \psi^{n+1}
+\]
+
+\textbf{3. グリッド・物性更新}
+\[
+  \psi^{n+1} \to \phi^{n+1} \to \omega(\phi), J_x, \rho^{n+1}, \mu^{n+1}
+\]
+
+\textbf{4. 曲率計算}（CCD 逐次適用）
+\[
+  \phi^{n+1} \to \text{CCD} \to \kappa^{n+1}
+\]
+
+\textbf{5. 運動量予測 (Predictor)}（Crank-Nicolson）
+\[
+  \bu^n, \text{対流(WENO)}, \text{拡散}, \text{外力} \;\longrightarrow\; \bu^*
+\]
+
+\textbf{6. 圧力 Poisson 求解}（変密度 FVM）
+\[
+  \bnabla\cdot\left(\frac{1}{\rho}\bnabla p^{n+1}\right) = \frac{\bnabla\cdot\bu^*}{\Delta t} \;\longrightarrow\; p^{n+1}
+\]
+
+\textbf{7. 速度補正}（CCD + Rhie-Chow）
+\[
+  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla p^{n+1}
+\]
+
+\end{tcolorbox}

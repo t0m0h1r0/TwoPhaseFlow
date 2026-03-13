@@ -1,26 +1,30 @@
 % paper/sections/08_time_integration.tex
-\section{時間積分と移流スキーム}
+\section{時間積分・移流スキームの高精度化}
 \label{sec:time}
 
-\subsection{移流項の処理：WENO5 と TVD-RK3}
+\subsection{WENO5 による移流}
+対流項および CLS の移流項には，5次精度の Weighted ENO (WENO5) スキーム \cite{JiangShu1996} を採用する．
+WENO5 は衝撃波のような不連続面付近でも振動を抑制しつつ高精度を維持できるため，
+気液界面の急峻な密度変化の移流に適している．
 
-CLS 関数の移流および Navier--Stokes の対流項には，
-強い不連続（衝撃波や急峻な界面）を振動なく捉えるため，
-5次の \textbf{WENO (Weighted Essentially Non-Oscillatory)} スキーム \cite{JiangShu1996} を空間離散化に用いる．
+\subsection{時間積分スキーム}
+\begin{itemize}
+    \item \textbf{移流・CLS：} 3次 TVD Runge--Kutta (Shu--Osher) 法を用いる．
+    \item \textbf{粘性項：} Crank--Nicolson 法による半陰的解法を用い，粘性拡散律速時の時間刻み制限を緩和する．
+\end{itemize}
 
-時間積分には 3次 TVD Runge--Kutta 法（Shu--Osher スキーム）を採用し，時間方向の精度と安定性を確保する．
+\subsection{再初期化の Godunov 型上流化}
+\label{sec:godunov}
+CLS 法の再初期化あるいは標準 Level Set の再初期化において，
+Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
+情報伝播方向 $s=\operatorname{sgn}(\phi_0)$ に応じた統一表現は以下の通りである：
 
-\subsection{粘性項の処理：Crank--Nicolson}
-
-粘性項は拡散数が大きくなると陽解法の安定条件が厳しくなるため，
-\textbf{Crank--Nicolson 法}による半陰的処理を行う．
-これにより粘性 CFL 条件の制約を受けずに計算を進めることが可能となる．
-
-\subsection{CFL 安定条件}
-
-時間刻み幅 $\Delta t$ は，対流，粘性，および表面張力（毛管波）に起因する制約の最小値に基づいて決定する．
-特に表面張力が支配的な場合，毛管波の位相速度に基づく制約：
 \begin{equation}
-  \Delta t_\sigma \approx \sqrt{\frac{(\rho_l+\rho_g)h^3}{2\pi\sigma}}
+ \norm{\bnabla\phi}^{\mathrm{uw}}_{i,j}=
+ \sqrt{G_x^2+G_y^2},\qquad G_x^2=\max(s\,D_x^-,0)^2+\min(s\,D_x^+,0)^2
 \end{equation}
-が厳しくなるため注意が必要である．
+ここで $D^\pm$ は前進・後退差分である．
+
+\subsection{安定性制約}
+時間刻み $\Delta t$ は，対流 CFL 条件，粘性 CFL 条件，および表面張力による毛管波制約の最小値によって決定される．
+特に表面張力が支配的な場合，毛管波制約 $\Delta t_\sigma \propto \sqrt{\Delta x^3}$ が厳しくなるため注意が必要である．

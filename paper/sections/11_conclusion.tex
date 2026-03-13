@@ -1,8 +1,17 @@
 % paper/sections/11_conclusion.tex
-\section{まとめ}
+\section{まとめと今後の課題}
 \label{sec:conclusion}
 
-本稿では，高密度比・高粘性比を持つ気液二相流の高精度シミュレーション手法について解説した．
-Conservative Level Set 法による質量保存性の向上，CCD 法による高精度微分，
-および Projection 法による堅牢な圧力速度結合を統合することで，
-微細な界面構造を含む複雑な流動現象を正確に捉えることが可能となる．
+本稿では，気液二相流の高精度シミュレーション手法として，
+Conservative Level Set 法，結合コンパクト差分法 (CCD)，WENO5 移流スキーム，
+および変密度 Projection 法を統合した完全な定式化を示した．
+
+特に以下の点が重要である：
+\begin{enumerate}
+    \item \textbf{質量保存性：} CLS 法の導入により，標準 Level Set 法の弱点を克服した．
+    \item \textbf{高次精度空間微分：} CCD 法の係数を厳密に導出し，曲率計算の精度を担保した．
+    \item \textbf{安定な圧力計算：} Rhie--Chow 補正（調和平均係数）と変密度 PPE の整合性を確保した．
+\end{enumerate}
+
+今後の課題として，3次元並列計算への実装拡張，適応的格子細分化 (AMR) との結合，
+および乱流モデルとの統合が挙げられる．

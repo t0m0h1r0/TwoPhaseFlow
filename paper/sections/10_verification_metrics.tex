@@ -1,11 +1,23 @@
 % paper/sections/10_verification_metrics.tex
-\section{計算精度の検証指標}
+\section{検証指標とベンチマーク}
 \label{sec:verification}
 
-実装の正確性を確認するための主要な検証項目は以下の通りである：
+数値計算の信頼性を確認するため，以下の指標を用いる．
 
-\begin{itemize}
-  \item \textbf{CCD 精度検証：} $f(x)=\sin x$ 等の既知関数に対し，格子精緻化により $\Ord{h^6}$ の収束率を確認する．
-  \item \textbf{静水圧テスト：} 表面張力と圧力勾配が釣り合う静止液滴問題において，寄生流れ（Spurious Currents）の大きさを評価する．Balanced-force 実装が正しければ，機械精度レベルに抑制される．
-  \item \textbf{質量保存性：} $\int \psi dV$ の時間変化を計測し，CLS 法の効果を確認する．
-\end{itemize}
+\begin{table}[h]
+\centering
+\caption{数値検証の指標と許容誤差}
+\label{tab:verification}
+\begin{tabular}{p{35mm}p{40mm}p{35mm}c}
+\toprule
+検証項目 & 理論値/解析解 & チェック方法 & 許容誤差 \\
+\midrule
+CCD 精度収束 & $\Ord{h^6}$ & $f=\sin x$ 格子精緻化 & スロープ確認\\
+Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 10^{-4}$\\
+体積保存 & $\int\psi\,dV = \text{const}$ & タイムステップごと積分 & $< 0.1\%$\\
+非圧縮性 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
+静水圧テスト & $p = \rho g z$ & 寄生流れの有無 & $< 10^{-12}$\\
+毛管波周波数 & 分散関係式 & 時系列 FFT 比較 & $< 1\%$\\
+\bottomrule
+\end{tabular}
+\end{table}

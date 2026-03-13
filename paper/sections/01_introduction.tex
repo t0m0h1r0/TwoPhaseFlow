@@ -24,35 +24,71 @@
 
 \subsection{本稿のアプローチ}
 
-上記の困難を克服するため，本稿では以下の手法を組み合わせる：
+上記の困難を克服するため，本稿では以下の手法を組み合わせる
+（図\ref{fig:ns_solvers}参照）：
 
 \begin{itemize}
   \item \textbf{界面追跡：} \textbf{Conservative Level Set (CLS) 法} \cite{OlssonKreiss2005}
-        を採用する．従来の Level Set 法 \cite{Sussman1994} を改良し，
-        界面指標 $\psi$ を保存形で移流させることで質量保存性を向上させる．
-        滑らか化ヘヴィサイド関数によって物性値を界面近傍で連続的に補間し，
-        One-Fluid（単一流体）定式化を実現する．
+        により，質量保存性に優れた界面追跡を行う．
+        標準的な Level Set 法の弱点である体積損失を抑制する．
+  \item \textbf{移流スキーム：} 移流項には \textbf{WENO5} \cite{JiangShu1996} を採用し，
+        衝撃波的な界面の急峻な変化を振動なく捉える．
   \item \textbf{高精度空間微分：} 結合コンパクト差分法（CCD 法，Chu \& Fan \cite{ChuFan1998}）を用い，
-        一次微分・二次微分・混合偏微分をすべて $\Ord{h^6}$ 精度で統一的に評価する．
-        本稿では係数をテイラー展開から厳密に導出する．
-        また，移流項には \textbf{WENO5} スキーム \cite{JiangShu1996} を導入し，振動のない高解像度特性を得る．
+        曲率計算などに必要な微分を $\Ord{h^6}$ 精度で評価する．
   \item \textbf{界面適合格子：} Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
         界面近傍のみを自動的に高解像度化する非一様格子を生成する．
   \item \textbf{格子構造：} チェッカーボード不安定を防ぐため
-        コロケート格子を採用し，改良された Rhie--Chow 型流束補正を適用する．
-  \item \textbf{時間積分：} 対流項と Level Set 移流には
+        コロケート格子を採用し，Rhie--Chow 型流束補正を適用する．
+  \item \textbf{時間積分：} 対流項と CLS 移流には
         3次 TVD Runge--Kutta を，粘性項には Crank--Nicolson 半陰的処理を用いる．
   \item \textbf{圧力求解：} 変密度 Chorin Projection 法に基づいて圧力 Poisson 方程式を導き，
-        CCD で差分化した後 BiCGSTAB で反復求解する．
+        FVM で差分化した後 BiCGSTAB で反復求解する．
 \end{itemize}
 
-\subsection{本稿の構成}
+%%% ── 図1：NS各項とソルバーの対応 ────────────────────────────
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm and 5mm,
+  nsterm/.style={draw=navy!70, fill=lightblue, rounded corners=4pt,
+                 font=\small\bfseries, inner sep=6pt,
+                 minimum width=26mm, minimum height=10mm, align=center},
+  solver/.style={draw=#1!70, fill=#1!10, rounded corners=4pt,
+                 font=\scriptsize, inner sep=5pt,
+                 minimum width=26mm, align=center},
+  solver/.default=navy,
+  subarr/.style={-Stealth, semithick, darkgray!60},
+]
 
-第\ref{sec:governing}章で支配方程式（One-Fluid Navier--Stokes + CLS）を導く．
-第\ref{sec:levelset}章で Conservative Level Set 法の詳細（移流・再初期化）を述べる．
-第\ref{sec:grid}章で界面適合非一様格子の構築法と座標変換を説明する．
-第\ref{sec:CCD}章が本稿の数学的核心であり，CCD スキームの係数をテイラー展開から完全に導出する．
-第\ref{sec:collocate}章でコロケート格子と Rhie--Chow 補正を述べる．
-第\ref{sec:pressure}章で圧力 Poisson 方程式を導出し CCD で差分化する．
-第\ref{sec:time}章で時間積分スキームを説明し，
-第\ref{sec:algorithm}章で完全アルゴリズムをまとめる．
+\node[font=\small\bfseries, text=navy] (hd1) at (0,0)
+  {NS 方程式の各項とソルバーの対応};
+
+%% ── NS 5項ボックス ──────────────────────────────────────────
+\node[nsterm, below=7mm of hd1, xshift=-57mm] (T1) {対流項};
+\node[nsterm, right=4mm of T1]  (T2) {圧力項};
+\node[nsterm, right=4mm of T2]  (T3) {粘性項};
+\node[nsterm, right=4mm of T3]  (T4) {重力項};
+\node[nsterm, right=4mm of T4]  (T5) {表面張力項};
+
+%% ── 各ソルバーボックス ──────────────────────────────────────
+\node[solver=orange2, below=5mm of T1] (S1)
+  {WENO5\\TVD-RK3\\陽的};
+\node[solver=midblue, below=5mm of T2] (S2)
+  {CCD $\to\bnabla p$\\FVM-PPE\\Projection法};
+\node[solver=teal2, below=5mm of T3] (S3)
+  {CCD（$\Ord{h^6}$）\\Crank-Nicolson\\半陰的};
+\node[solver=darkgray, below=5mm of T4] (S4)
+  {陽的\\(定数項)};
+\node[solver=red2, below=5mm of T5] (S5)
+  {Level Set $\to\kappa$\\CCD\\半陰的};
+
+\foreach \t/\s in {T1/S1, T2/S2, T3/S3, T4/S4, T5/S5}
+  \draw[subarr] (\t) -- (\s);
+
+\end{tikzpicture}
+\caption{NS 方程式の各項と対応ソルバーの概要．
+対流項は WENO5 + TVD-RK3 時間積分で陽的に処理し，
+圧力項は FVM ベース PPE を Projection 法で求解する．
+粘性項は CCD + Crank--Nicolson で半陰的に扱う．}
+\label{fig:ns_solvers}
+\end{figure}
