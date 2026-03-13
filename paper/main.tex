@@ -1,11 +1,9 @@
 % paper/main.tex
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
 
 \input{preamble}
 
 \begin{document}
-\RaggedRight
-
 \input{sections/00_abstract}
 
 \tableofcontents
@@ -18,9 +16,9 @@
 \input{sections/05_ccd}
 \input{sections/06_collocate}
 \input{sections/07_pressure}
-\input{sections/08_time}
-\input{sections/09_algorithm}
-\input{sections/10_verification}
+\input{sections/08_time_integration}
+\input{sections/09_full_algorithm}
+\input{sections/10_verification_metrics}
 \input{sections/11_conclusion}
 
 \bibliographystyle{plain}

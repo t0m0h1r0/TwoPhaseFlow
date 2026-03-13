@@ -1,4 +1,4 @@
-% paper/sections/10_verification.tex
+% paper/sections/10_verification_metrics.tex
 \section{計算精度の検証指標}
 \label{sec:verification}
 
@@ -9,12 +9,3 @@
   \item \textbf{静水圧テスト：} 表面張力と圧力勾配が釣り合う静止液滴問題において，寄生流れ（Spurious Currents）の大きさを評価する．Balanced-force 実装が正しければ，機械精度レベルに抑制される．
   \item \textbf{質量保存性：} $\int \psi dV$ の時間変化を計測し，CLS 法の効果を確認する．
 \end{itemize}
-
-% paper/sections/11_conclusion.tex
-\section{まとめ}
-\label{sec:conclusion}
-
-本稿では，高密度比・高粘性比を持つ気液二相流の高精度シミュレーション手法について解説した．
-Conservative Level Set 法による質量保存性の向上，CCD 法による高精度微分，
-および Projection 法による堅牢な圧力速度結合を統合することで，
-微細な界面構造を含む複雑な流動現象を正確に捉えることが可能となる．

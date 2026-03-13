@@ -4,7 +4,7 @@
 
 \subsection{Projection 法}
 
-非圧縮条件 $\bnabla\cdot\bu = 0$ を満たすため，Chorin の Projection 法を用いる．
+非圧縮条件 $\bnabla\cdot\bu = 0$ を満たすため，Chorin の Projection 法 \cite{Chorin1968} を用いる．
 まず，圧力項を除いた予測速度 $\bu^*$ を計算し，
 次に，$\bu^*$ の発散を打ち消すような圧力 $p^{n+1}$ を求める．
 
@@ -24,4 +24,4 @@
 
 得られた線形方程式系 $\bm{A}\bm{x} = \bm{b}$ は，
 係数行列が非対称（変密度効果による）かつ疎行列であるため，
-BiCGSTAB 法（前処理付き）を用いて効率的に求解する．
+BiCGSTAB 法 \cite{VanderVorst1992} （前処理付き）を用いて効率的に求解する．
