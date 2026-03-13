@@ -6,39 +6,59 @@
 
 \begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の完全計算フロー}]
 
-\textbf{1. CLS 移流}（WENO5 + TVD-RK3）
+\textbf{1. CLS 移流 (Advection)}
+WENO5 空間再構成と TVD-RK3 時間積分を用いて，界面指標 $\psi$ を移流させる．
 \[
-  \pd{\psi}{t} + \bnabla\cdot(\psi\bu^n) = 0 \;\longrightarrow\; \psi^*
+  \frac{\psi^* - \psi^n}{\Delta t} + \bnabla\cdot(\psi^n \bu^n) = 0 \quad \longrightarrow \quad \psi^*
 \]
 
-\textbf{2. 再初期化}（等方拡散方程式の積分）
+\textbf{2. 再初期化 (Reinitialization)}
+圧縮・拡散項を持つ再初期化方程式を仮想時間 $\tau$ ステップで解き，界面プロファイルを整形する．
 \[
-  \text{式}\eqref{eq:cls_reinit_iso} \text{ を解く} \;\longrightarrow\; \psi^{n+1}
+  \psi^* \xrightarrow{\text{solve Eq.}\eqref{eq:cls_reinit_iso}} \psi^{n+1}
 \]
 
-\textbf{3. グリッド・物性更新}
+\textbf{3. グリッド・物性更新 (Update Properties)}
+更新された $\psi^{n+1}$ に基づき，距離関数 $\phi$ および物性値を再計算する．
 \[
-  \psi^{n+1} \to \phi^{n+1} \to \omega(\phi), J_x, \rho^{n+1}, \mu^{n+1}
+  \phi^{n+1} = H_\varepsilon^{-1}(\psi^{n+1}), \quad
+  \rho^{n+1} = \rho(\phi^{n+1}), \quad
+  \mu^{n+1} = \mu(\phi^{n+1})
 \]
 
-\textbf{4. 曲率計算}（CCD 逐次適用）
+\textbf{4. 曲率計算 (Curvature)}
+CCD法を適用し， $\phi^{n+1}$ の二階微分から曲率を算出する．
 \[
-  \phi^{n+1} \to \text{CCD} \to \kappa^{n+1}
+  \bnabla \phi^{n+1} \xrightarrow{\text{CCD}} \nabla^2 \phi^{n+1}
+  \quad \Longrightarrow \quad
+  \kappa^{n+1} = -\frac{\phi_y^2\phi_{xx} - 2\phi_x\phi_y\phi_{xy} + \phi_x^2\phi_{yy}}{|\bnabla\phi|^3}
 \]
 
-\textbf{5. 運動量予測 (Predictor)}（Crank-Nicolson）
+\textbf{5. 運動量予測 (Predictor Step)}
+圧力勾配項を除いた運動量方程式を解き，予測速度場 $\bu^*$ を求める．
+粘性項には Crank-Nicolson 法（半陰的），移流項には WENO5 空間再構成を適用する．
 \[
-  \bu^n, \text{対流(WENO)}, \text{拡散}, \text{外力} \;\longrightarrow\; \bu^*
+  \frac{\bu^* - \bu^n}{\Delta t} =
+  -\left( \bu \cdot \bnabla \bu \right)^n_{\text{WENO}}
+  + \frac{1}{2 Re \rho^{n+1}} \bnabla \cdot \left[ \mu^{n+1} 2\bm{D}(\bu^* + \bu^n) \right]_{\text{CCD}}
+  + \bm{F}_{\text{ext}}
 \]
+ここで $\bm{D}(\bu) = \frac{1}{2}(\bnabla \bu + \bnabla \bu^T)$ は変形速度テンソルである．
 
-\textbf{6. 圧力 Poisson 求解}（変密度 FVM）
+\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)}
+非圧縮条件 $\bnabla \cdot \bu^{n+1} = 0$ を満たすための圧力場を求める．
+係数行列 $A$ は変密度 $\rho^{n+1}$ を含む非対称行列となる．
 \[
-  \bnabla\cdot\left(\frac{1}{\rho}\bnabla p^{n+1}\right) = \frac{\bnabla\cdot\bu^*}{\Delta t} \;\longrightarrow\; p^{n+1}
+  \bnabla_h \cdot \left( \frac{1}{\rho^{n+1}} \bnabla_h p^{n+1} \right)
+  = \frac{\bnabla_h \cdot \bu^*}{\Delta t}
 \]
+左辺および右辺の発散 $\bnabla_h \cdot$ は Rhie-Chow 補正を含む離散化を用いる．
 
-\textbf{7. 速度補正}（CCD + Rhie-Chow）
+\textbf{7. 速度補正 (Corrector Step)}
+圧力勾配を用いて予測速度を修正し，次ステップの速度場を得る．
 \[
-  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla p^{n+1}
+  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}} (\bnabla p^{n+1})_{\text{CCD}}
 \]
+セル界面の流束計算には，別途 Rhie-Chow 補正流束 $U_f$ を用いる．
 
 \end{tcolorbox}

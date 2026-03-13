@@ -20,5 +20,13 @@ Rhie--Chow 補正を導入する．
  u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left( \frac{p_N - p_P}{\delta x_f} \right) + \tilde\chi_f \left[ (\bnabla p)_f - \frac{p_N - p_P}{\delta x_f} \right]
  \label{eq:rc-face}
 \end{equation}
-ここで $(1/\rho)^{\mathrm{harm}}_f$ はセル界面における密度逆数の調和平均であり，
-PPE の離散化係数と整合する．これにより，変密度場でも安定した圧力速度結合が保証される．
+
+ここで $\left( 1/\rho \right)^{\mathrm{harm}}_f$ はセル界面における密度逆数の調和平均である．
+また，第2項の圧力勾配補正にかかる係数 $\tilde{\chi}_f$ は以下のように定義される：
+\begin{equation}
+  \tilde{\chi}_f \equiv \Delta t \left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f
+\end{equation}
+この $\tilde{\chi}_f$ を用いることで，式\eqref{eq:rc-face} の第2項と第3項の圧力差分項が相殺され，
+均一な圧力場（定数勾配場）において補正項がゼロになる整合性が保たれる．
+同時に，この係数設定により圧力 Poisson 方程式（PPE）の離散化係数と完全に一致し，
+変密度場においても数値的に安定した圧力速度結合が保証される．
