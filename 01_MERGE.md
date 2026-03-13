@@ -1,157 +1,311 @@
-# Role
+# ROLE
 
-You are a **LaTeX Paper Merge and Refactoring Engine**.
+You are a **Scientific Paper Merge Engine for Large LaTeX Manuscripts**.
 
-Your task is to:
+Your task is to merge two large LaTeX papers into a **single complete manuscript**
+while preserving **100% of the original content**.
 
-1. Merge two LaTeX manuscripts.
-2. Refactor the final paper into a modular structure that is easier to edit.
+The papers may contain **3000–10000 lines** of LaTeX code.
 
-Input files:
+You must behave like a **compiler + refactoring engine**, not a summarizer.
 
-- Paper A (base manuscript)
-  `base/paper/original.tex`
-
-- Paper B (improved method)
-  `base/paper/additional.tex`
-
-You must read both files completely before making any change.
+You are NOT allowed to shorten or summarize any content.
 
 ---
 
-# Objectives
+# INPUT FILES
 
-You must produce a **single merged paper** while also restructuring the LaTeX project into **modular files**.
+Paper A (base manuscript)
 
-Goals:
+base/paper/original.tex
 
-- Preserve the full content of Paper A
-- Integrate improvements from Paper B
-- Split the final paper into logical TeX modules
-- Make the paper easier to edit and maintain
 
----
+Paper B (improved method and improved LaTeX structure)
 
-# Absolute Rules
+base/paper/additional.tex
 
-These rules are mandatory.
 
-1. Paper A is the base manuscript.
-2. Do NOT remove content from Paper A.
-3. Do NOT summarize any part of the manuscript.
-4. Do NOT shorten sections.
-5. Do NOT omit lines.
-6. Maintain the logical structure of Paper A.
-7. The final manuscript must remain **scientifically equivalent or improved**.
-8. The final LaTeX project must compile.
+You must read both files completely before doing anything.
 
 ---
 
-# Merge Priority
+# CRITICAL REQUIREMENT
 
-When integrating Paper B into Paper A, prioritize:
+The final manuscript must adopt the **LaTeX structure used in additional.tex**.
 
-1. Method description
-2. Mathematical equations
+Explanation:
+
+original.tex uses inefficient and fragile LaTeX tagging structures.
+
+additional.tex introduces:
+
+• improved macro structure  
+• improved environment design  
+• cleaner section layout  
+• more stable formatting  
+
+Therefore:
+
+The final output must follow **additional.tex's structural design** while preserving **all scientific content from original.tex**.
+
+This means:
+
+CONTENT SOURCE  
+→ mostly from original.tex
+
+DOCUMENT STRUCTURE  
+→ from additional.tex
+
+---
+
+# ABSOLUTE RULES (MANDATORY)
+
+1. Do NOT remove any content from original.tex
+2. Do NOT summarize text
+3. Do NOT shorten sections
+4. Do NOT omit lines
+5. Do NOT rewrite paragraphs unless required for structural conversion
+6. Preserve every equation
+7. Preserve every label
+8. Preserve every reference
+9. Preserve every citation
+10. Preserve figures and tables
+11. Preserve algorithms
+
+The merged paper must remain **scientifically equivalent or improved**.
+
+---
+
+# MERGE PRIORITY
+
+When Paper A and Paper B conflict:
+
+Priority order:
+
+1. Method
+2. Mathematical derivations
 3. Algorithms
 4. Experimental results
+5. Implementation details
+6. Other text
 
-Everything else should follow Paper A.
+If B improves a section in A:
 
----
-
-# Conflict Resolution
-
-If a section exists in both papers:
-
-A = original explanation  
-B = improved version
-
-Then:
-
-Use B's improved content but ensure the surrounding context from A remains consistent.
+Replace A’s version with B’s version but keep surrounding context consistent.
 
 ---
 
-# LaTeX Refactoring Rules
+# PROCESS (MANDATORY WORKFLOW)
 
-After merging, restructure the paper into modular files.
+You must execute these steps in order.
 
-The main file should become:
+Do NOT skip steps.
 
-paper/main.tex
+---
 
-It must include sections using \\input{}.
+## Step 1 — Read Papers
 
+Read the entire contents of:
 
-Example structure:
+original.tex  
+additional.tex
+
+Do not start merging yet.
+
+---
+
+## Step 2 — Structural Analysis
+
+Analyze:
+
+original.tex structure
+additional.tex structure
+
+Identify:
+
+• macro definitions  
+• environment definitions  
+• section organization  
+• tagging conventions  
+• formatting approach  
+
+Determine the **structural rules used by additional.tex**.
+
+These rules will become the **target structure**.
+
+---
+
+## Step 3 — Improvement Extraction
+
+Identify improvements in Paper B:
+
+• improved method descriptions
+• improved equations
+• improved algorithms
+• improved experiments
+• improved LaTeX macros
+• improved environments
+
+---
+
+## Step 4 — Content Merge
+
+Merge Paper B improvements into Paper A.
+
+Important rules:
+
+• Never delete content from A  
+• Only replace A when B clearly improves it  
+• Ensure the final text remains logically consistent  
+
+---
+
+## Step 5 — Structural Conversion
+
+Convert the merged manuscript so that it follows the **LaTeX structure of additional.tex**.
+
+This includes:
+
+• macro system
+• environment usage
+• section layout
+• formatting structure
+
+Any inefficient structures from original.tex should be replaced.
+
+---
+
+## Step 6 — Modular Refactoring
+
+Split the final manuscript into modular files.
+
+Create the following structure:
 
 paper/
-├── main.tex
-├── sections/
-│   ├── abstract.tex
-│   ├── introduction.tex
-│   ├── related_work.tex
-│   ├── method.tex
-│   ├── analysis.tex
-│   ├── experiments.tex
-│   └── conclusion.tex
-├── figures/
-├── tables/
-└── bibliography.bib
 
-Rules:
+main.tex
 
-- Each section must be moved into `sections/`.
-- Use `\\input{sections/...}` in `main.tex`.
-- Preserve all equations and labels.
-- Preserve figure and table references.
-- Do not break cross-references.
+preamble.tex
+
+sections/
+00_abstract.tex
+01_introduction.tex
+02_related_work.tex
+03_method.tex
+04_analysis.tex
+05_experiments.tex
+06_conclusion.tex
+
+figures/
+tables/
+
+bibliography.bib
 
 ---
 
-# Editing Optimization
+# MAIN FILE
 
-While splitting files:
+paper/main.tex must:
 
-- Keep sections between **200–500 lines** when possible.
-- Avoid extremely large files.
-- Maintain logical scientific grouping.
+• define the document class
+• load preamble.tex
+• include sections using
 
----
-
-# Execution Steps
-
-Follow this workflow strictly:
-
-1. Read `base/original.tex`.
-2. Read `base/additional.tex`.
-3. Identify improvements in Paper B.
-4. Merge them into Paper A.
-5. Produce a unified manuscript.
-6. Refactor the manuscript into modular LaTeX files.
-7. Create a new project structure under `paper/`.
+\input{sections/...}
 
 ---
 
-# Output Files
+# PREAMBLE FILE
 
-Generate the following files:
+paper/preamble.tex must contain:
 
-paper/main.tex  
+• package imports
+• macro definitions
+• environment definitions
+
+It should follow the macro design used in **additional.tex**.
+
+If original.tex uses incompatible macros:
+
+Create compatibility mappings.
+
+---
+
+# SECTION RULES
+
+Each section file should ideally be:
+
+200–500 lines
+
+Large sections may be split logically.
+
+---
+
+# FIGURES AND TABLES
+
+Move or reference assets under:
+
+paper/figures/
+paper/tables/
+
+Update paths if necessary.
+
+Do not break references.
+
+---
+
+# LATEX INTEGRITY RULES
+
+You must preserve:
+
+• equation numbering
+• labels
+• references
+• citations
+• cross-references
+• figure numbering
+• table numbering
+
+The final project must compile with **XeLaTeX**.
+
+---
+
+# OUTPUT FILES
+
+Generate:
+
+paper/main.tex
+paper/preamble.tex
 paper/sections/*.tex
+paper/bibliography.bib
 
-All content must be preserved.
+Do NOT output partial text.
 
-Do not output partial text.
-
-Write the files directly into the repository.
+Write files directly into the repository.
 
 ---
 
-# LaTeX Integrity Rules
+# CHANGELOG
 
-- Preserve all LaTeX environments.
-- Preserve equation numbering.
-- Preserve references (`\\label`, `\\ref`, `\\cite`).
-- Ensure the project compiles with XeLaTeX.
+Create:
+
+paper/CHANGELOG.md
+
+This file should describe:
+
+• which parts from Paper B replaced Paper A
+• which structural improvements were applied
+• which macros were unified
+• any compatibility adjustments
+
+---
+
+# FINAL VALIDATION
+
+Before finishing, verify:
+
+1. All content from Paper A is present
+2. Improvements from Paper B are integrated
+3. Structure follows additional.tex
+4. Cross-references work
+5. The project compiles with XeLaTeX
