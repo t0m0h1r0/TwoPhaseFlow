@@ -19,7 +19,90 @@
 結果として，本来ならば滑らかな圧力場が得られるべき問題で，物理的に意味のないギザギザの圧力解が誤差として残り続けてしまう．これが圧力速度デカップリング問題の本質である．
 \end{tcolorbox}
 
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Projection 法の数学的基礎：Helmholtz 分解}
+\label{sec:helmholtz}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+Projection 法を理解するには，まず「速度場の分解」という数学的概念を把握する必要がある．
+
+\subsubsection{Helmholtz 分解定理}
+
+\textbf{Helmholtz 分解}（Helmholtz-Hodge 分解）は，任意のベクトル場を
+「\textbf{発散フリー成分}」と「\textbf{勾配成分（回転フリー）}」に一意分解できるという定理である：
+
+\begin{tcolorbox}[mybox, title={Helmholtz 分解定理}]
+任意の十分滑らかなベクトル場 $\bm{w}$ は，適当なスカラー場 $\phi$ を用いて
+\begin{equation}
+  \bm{w} = \underbrace{\bm{u}}_{\text{発散フリー：}\bnabla\cdot\bm{u}=0}
+           + \underbrace{\bnabla\phi}_{\text{勾配場（回転フリー）}}
+  \label{eq:helmholtz}
+\end{equation}
+と一意に分解できる（適切な境界条件の下で）．
+\end{tcolorbox}
+
+\subsubsection{Projection 法の幾何学的意味}
+
+Navier-Stokes 方程式を時間離散化すると，
+「圧力なし」の中間速度 $\bu^*$ が得られる．
+この $\bu^*$ は一般に $\bnabla\cdot\bu^* \neq 0$（非圧縮ではない）．
+
+\textbf{Projection 法のアイデア}：
+$\bu^*$ を Helmholtz 分解して発散フリー成分だけを取り出す（「射影する」）．
+\begin{equation}
+  \bu^* = \underbrace{\bu^{n+1}}_{\bnabla\cdot\bu^{n+1}=0}
+          + \underbrace{\bnabla\phi}_{\text{圧力から生じる補正}}
+  \label{eq:projection_decomp}
+\end{equation}
+ここで補正ポテンシャル $\phi$ が圧力 $p^{n+1}$（に比例する量）として同定される．
+
+\begin{tcolorbox}[defbox, title={Projection 法の直感的理解}]
+速度場 $\bu^*$ を「発散フリー速度の空間（Leray 空間）」に\textbf{直交射影}する操作が
+Projection 法の本質である．
+
+\vspace{0.5em}
+\textbf{アナロジー（ベクトルの射影）：}
+3次元空間のベクトル $\bm{v}$ を平面（$z=0$）に射影すると $\bm{v}_{xy} = (v_x, v_y, 0)$ が得られる．
+これと同じ発想で，「速度場の空間」において
+$\bu^*$ を「発散ゼロ面」に射影することが Projection 法である．
+
+\vspace{0.5em}
+\textbf{圧力の役割：}
+圧力勾配 $\bnabla p$ は「発散を生む成分」（=勾配場）を $\bu^*$ から取り除くポテンシャルである．
+Navier-Stokes 方程式において圧力が存在する物理的理由は，
+まさにこの「速度場を発散フリーに保つ」ことにある．
+\end{tcolorbox}
+
+\subsubsection{なぜ発散を取ると PPE が得られるのか：数学的論理}
+
+式 \eqref{eq:projection_decomp} の両辺に $\bnabla\cdot$ を作用させる：
+\begin{equation}
+  \bnabla\cdot\bu^*
+  = \underbrace{\bnabla\cdot\bu^{n+1}}_{=0 \text{（非圧縮条件）}}
+  + \bnabla^2\phi
+  \quad\Longrightarrow\quad
+  \bnabla^2\phi = \bnabla\cdot\bu^*
+  \label{eq:why_divergence}
+\end{equation}
+
+\begin{tcolorbox}[warnbox, title={「なぜ発散を取るのか」への直接的な答え}]
+発散を取る理由は，\textbf{非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$} を使って
+速度 $\bu^{n+1}$ を消去し，圧力 $\phi$（$\propto p$）だけの方程式を得るためである．
+
+\begin{center}
+\begin{tabular}{rcl}
+\textbf{発散前} & ： & $\bu^{n+1}$ と $\phi$ の2つの未知数が混在\\
+\textbf{発散後} & ： & $\bnabla\cdot\bu^{n+1}=0$ の代入で $\phi$ のみの Poisson 方程式\\
+\end{tabular}
+\end{center}
+
+変密度場では $\phi \propto \Delta t \, p/\rho$ と同定されることで，
+$\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第7章§\ref{sec:projection_derivation}）．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Rhie--Chow 補正による問題の解決}
+% ═══════════════════════════════════════════════════════════════════════════════
 この問題を解決するため，1983年に Rhie と Chow によって提案された補間法が広く用いられている．
 その本質は，セル中心の離散化運動量方程式を適切に補間して，セル界面（face）の速度を定義することにある．
 これにより，すべての格子点における圧力が速度の計算に寄与するようになり，デカップリングが抑制される．
@@ -107,7 +190,7 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
 
 \textbf{Step 2：圧力 Poisson 方程式との整合性}
 
-変密度非圧縮流体の圧力 Poisson 方程式（7.1節，式 \eqref{eq:PPE_varrho}）は，
+変密度非圧縮流体の圧力 Poisson 方程式（§\ref{sec:ppe}，式 \eqref{eq:PPE_varrho}）は，
 \begin{equation}
  \bnabla \cdot \left( \frac{1}{\rho} \bnabla p \right) = \frac{\bnabla \cdot \bu^*}{\Delta t}
 \end{equation}
@@ -167,4 +250,124 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
 
 \textbf{実装上の確認：} 静止液滴ベンチマーク（10章）において寄生流れ振幅が $O(h^4)$ 以上で
 収束することを確認すれば，Rhie-Chow 補正が CCD の高精度を損なっていないことが検証できる．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Balanced-Force 離散化：寄生流れ抑制のための実装要件}
+\label{sec:balanced_force}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，第2章（§\ref{box:balanced_force_ref}）で予告した
+\textbf{Balanced-Force 離散化条件}の詳細を述べる．
+これは寄生流れ（spurious currents，第1章§\ref{sec:failure_modes}）を
+抑制するための最も重要な実装要件である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{寄生流れの根本原因：離散化の不整合}
+% ─────────────────────────────────────────────────────────────────────────────
+
+静止液滴の平衡状態を考える．Navier-Stokes 方程式（式~\eqref{eq:NS_dimless_cls}）の
+運動量バランスは，圧力勾配と表面張力が釣り合う状態：
+\[
+  \bnabla p = \frac{\kappa\bnabla\psi}{We}
+\]
+を要求する．これが数値的に完全に満たされれば，速度場はゼロのままである．
+
+しかし，\textbf{$\bnabla p$ と $\kappa\bnabla\psi$ に異なる差分演算子を用いると}，
+離散レベルでの釣り合いが成立せず，人工的な速度（寄生流れ）が発生する．
+
+\begin{tcolorbox}[warnbox, title={Balanced-Force 条件：実装上の最重要事項}]
+\textbf{Balanced-Force 条件：}
+圧力勾配項 $-\bnabla p$ と表面張力項 $(\kappa\bnabla\psi)/We$ に，
+\textbf{完全に同一の離散差分演算子}を用いなければならない．
+
+本稿の実装では CCD 法による1次微分演算子 $D_x^{(1)}, D_y^{(1)}$（第4章）を用いる：
+\begin{align}
+  \text{圧力勾配：} & \quad
+    -D_x^{(1)} p_{i,j}, \quad -D_y^{(1)} p_{i,j}
+    \label{eq:balanced_pressure} \\
+  \text{表面張力：} & \quad
+    \frac{\kappa_{i,j}}{We} D_x^{(1)} \psi_{i,j}, \quad
+    \frac{\kappa_{i,j}}{We} D_y^{(1)} \psi_{i,j}
+    \label{eq:balanced_surface}
+\end{align}
+
+\textbf{守らなければならないこと：}
+\begin{enumerate}
+  \item 圧力勾配と表面張力の両方に\textbf{同一の演算子} $D_x^{(1)}, D_y^{(1)}$ を使う．
+        「圧力には2次中心差分，表面張力には CCD」という組み合わせは\textbf{不可}．
+  \item 曲率 $\kappa_{i,j}$ の計算に用いる $\phi$ の微分も，
+        同じ CCD 演算子 $D_x^{(1)}, D_y^{(1)}, D_x^{(2)}, D_y^{(2)}, D_{xy}^{(11)}$ で行う．
+  \item Rhie-Chow 補正（§\ref{sec:collocate}，式~\eqref{eq:rc-face}）の
+        $(\bnabla p)_f$ の計算にも CCD 演算子を用いる（$\overline{(\bnabla p)}_f$ の補間元）．
+\end{enumerate}
+
+\textbf{やってはいけないこと（実装バグの典型例）：}
+\begin{itemize}
+  \item 表面張力項の計算だけ別ルーティンで2次差分を使う．
+  \item 圧力 Poisson 方程式の係数行列と Rhie-Chow 係数で
+        異なる密度補間（算術平均 vs 調和平均）を混在させる（§\ref{sec:collocate} §6.2.2 参照）．
+  \item 再初期化直後と曲率計算のタイミングがずれて，$\psi$ と $\phi$ の整合性が失われる状態で
+        表面張力を計算する（§\ref{sec:curvature_stab} 参照）．
+\end{itemize}
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜ同一演算子が必要か：離散テイラー展開による確認}
+% ─────────────────────────────────────────────────────────────────────────────
+
+連続レベルでは $\bnabla p = \kappa\bnabla\psi/We$ の釣り合いが成立している静止液滴を，
+異なる差分演算子 $D^{(1)}_{\mathrm{low}}$（低次）と $D^{(1)}_{\mathrm{CCD}}$（CCD，高次）で
+計算した場合の離散誤差を見る．
+
+$f$ が解析関数のとき，各演算子の打ち切り誤差は：
+\begin{align}
+  D^{(1)}_{\mathrm{low}} f   &= f' + c_1 h^2 f''' + \Ord{h^4} \\
+  D^{(1)}_{\mathrm{CCD}} f   &= f' + c_2 h^6 f^{(7)} + \Ord{h^8}
+\end{align}
+
+圧力勾配と表面張力の離散差：
+\begin{align}
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{low}}\psi
+  &= \underbrace{\left(D^{(1)}_{\mathrm{CCD}} - D^{(1)}_{\mathrm{low}}\right)p}_{O(h^2) \text{ の不整合誤差}}
+  + \frac{\kappa}{We}\left(D^{(1)}_{\mathrm{CCD}} - D^{(1)}_{\mathrm{low}}\right)\psi
+\end{align}
+この $O(h^2)$ の不整合が\textbf{体積力として運動量方程式に残り，寄生流れを駆動する}．
+
+同一の演算子（CCD）を両方に用いると：
+\[
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{CCD}}\psi
+  = D^{(1)}_{\mathrm{CCD}}\!\left(p - \frac{\kappa\psi}{We}\right)
+  = D^{(1)}_{\mathrm{CCD}}(\text{const}) + O(h^6)
+\]
+となり，寄生流れは $O(h^6)$ まで抑制される（第10章の静止液滴ベンチマークで確認）．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Balanced-Force 実装の確認方法}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[algbox, title={静止液滴テスト：Balanced-Force の検証手順}]
+\begin{enumerate}
+  \item \textbf{初期条件：} 計算領域中央に半径 $R$ の円形液滴を置く．
+        速度 $\bm{u} = \bm{0}$，圧力は Young-Laplace 解 $p = \sigma\kappa = -\sigma/R$（液相内）．
+
+  \item \textbf{時間発展：} 数十タイムステップ計算する．
+        Balanced-Force が正しく実装されていれば，速度は機械精度レベル（$\sim 10^{-12}$）に
+        留まる（寄生流れが発生しない）．
+
+  \item \textbf{収束確認：} 格子幅 $h$ を変えながら最大速度振幅
+        \[
+          U_{\mathrm{max}}(h) = \|\bm{u}\|_{L^\infty}
+        \]
+        を測定し，$U_{\mathrm{max}}(h) = O(h^q)$（$q \ge 4$ 程度）の収束を確認する．
+        CCD + Balanced-Force では $q \approx 5$ 以上が得られる．
+
+  \item \textbf{失敗の兆候：} $U_{\mathrm{max}}$ が$O(1)$〜$O(10^{-2})$程度で収束しない場合，
+        以下を確認する：
+        \begin{itemize}
+          \item 圧力勾配と表面張力に同一の差分演算子を使っているか？
+          \item Rhie-Chow の密度係数と PPE の係数に同じ調和平均を使っているか？
+          \item 曲率計算と表面張力の計算タイミングが整合しているか？
+        \end{itemize}
+\end{enumerate}
 \end{tcolorbox}
