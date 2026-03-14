@@ -5,6 +5,7 @@
 **/*.log
 **/*.toc
 **/*.out
+**/*.pdf
 **/*.synctex.gz
 **/*.fls
 **/*.fdb_latexmk
