@@ -337,7 +337,45 @@ $\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる（
   \item 界面の法線方向に大きさ $\sigma\kappa$ の力を与える（Young-Laplace 則を再現），
   \item 全空間積分すると Young-Laplace のジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を再現する
 \end{itemize}
-ことが示せる．CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
+ことが示せる（以下の検証を参照）．CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={CSF モデルが Young-Laplace ジャンプ条件を再現することの検証}]
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が界面ジャンプ条件
+$[p]_\Gamma \equiv p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa$
+を再現することを，界面法線方向の積分によって示す．
+
+\textbf{設定：} 平衡状態（速度ゼロ）の静止液滴を考える．
+運動方程式（式 \eqref{eq:NS_onefluid}）より $\bnabla p = \sigma\kappa\bnabla\psi$ が成立する．
+
+\textbf{界面法線方向への積分：}
+界面を法線方向 $s$（液相側 $s \to -\infty$ から気相側 $s \to +\infty$ の方向）に沿って積分する：
+\[
+  p_{\text{gas}} - p_{\text{liq}}
+  = \int_{-\infty}^{+\infty} \frac{\partial p}{\partial s}\,ds
+  = \int_{-\infty}^{+\infty} \sigma\kappa\,\frac{\partial\psi}{\partial s}\,ds
+  = \sigma\kappa \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+\]
+（曲率 $\kappa$ は界面近傍で一定とみなせるため積分の外に出せる）
+
+\textbf{鍵となる積分：}
+$\psi$ は液相側で $\psi \to 0$，気相側で $\psi \to 1$ へと単調に変化するから：
+\[
+  \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+  = \psi\big|_{s=+\infty} - \psi\big|_{s=-\infty}
+  = 1 - 0 = 1
+\]
+
+\textbf{結論：}
+\[
+  \boxed{p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa \cdot 1 = \sigma\kappa}
+\]
+これにより，CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が Young-Laplace ジャンプ条件
+$[p]_\Gamma = \sigma\kappa$ を正確に再現することが示された．
+
+\textbf{注意：} この証明は $\psi$ が真の $H_\varepsilon$ プロファイルを保っている（再初期化が正常に機能している）
+ことを前提とする．$\psi$ のプロファイルが崩れると $\int|\nabla\psi|ds \neq 1$ となり，
+圧力ジャンプに誤差が生じる（これが再初期化の物理的重要性の一つである）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={【実装警告】Balanced-Force（力均衡）離散化：最重要}]

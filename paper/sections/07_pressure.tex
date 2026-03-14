@@ -366,7 +366,7 @@ $
 これにより，
 
 \begin{itemize}
-  \item 分割誤差がゼロ（各反復での圧力更新が全方向の残差を同時に低減）
+  \item 収束後の解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす（スウィープ実装の場合は $\mathcal{O}(\Delta\tau^2)$ 分割誤差が残るが，収束判定により実用上の精度を保証できる）
   \item 反復回数を収束判定で制御でき，過剰計算を避けられる
   \item 複雑な密度場・非直交格子への拡張が容易
 \end{itemize}
@@ -377,16 +377,32 @@ $
 \centering
 \caption{PPE 求解法の比較}
 \label{tab:ppe_methods}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \hline
-手法 & 精度 & 分割誤差 & 収束判定 \\
+手法 & 精度 & 分割誤差 & 収束判定 & 実装複雑度 \\
 \hline
-BiCGSTAB（FVM 離散化） & $\mathcal{O}(h^2)$ & なし & 反復回数/残差 \\
-ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$ & 固定スウィープ数 \\
-仮想時間陰解法 + CCD（本手法） & $\mathcal{O}(h^6)$ & なし & 残差駆動 \\
+BiCGSTAB（FVM 離散化） & $\mathcal{O}(h^2)$ & なし & 反復回数/残差 & 低 \\
+ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$ & 固定スウィープ数 & 中 \\
+仮想時間陰解法 + CCD（スウィープ実装）& $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$$^{\ast}$ & 残差駆動 & 中 \\
+仮想時間陰解法 + CCD（Krylov 実装） & $\mathcal{O}(h^6)$ & なし & 残差駆動 & 高 \\
 \hline
+\multicolumn{5}{l}{$^{\ast}$ 収束後（$\varepsilon^m < \varepsilon_\text{tol}$）の解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たすため実用上は許容範囲内．}
 \end{tabular}
 \end{table}
+
+\begin{tcolorbox}[warnbox, title={本稿実装の選択：スウィープ型の採用と分割誤差の扱い}]
+本稿では実装の簡便さから\textbf{スウィープ型}（$x$ 方向 Thomas 法 $\to$ $y$ 方向 Thomas 法）を採用する．
+この実装では式
+\[
+  \bigl(\mathbf{I}+\Delta\tau\mathcal{L}_x\bigr)\bigl(\mathbf{I}+\Delta\tau\mathcal{L}_y\bigr)
+  = \mathbf{I} + \Delta\tau\mathcal{L}_h + \Delta\tau^2\mathcal{L}_x\mathcal{L}_y
+\]
+に示すように $\mathcal{O}(\Delta\tau^2)$ の分割誤差が存在する．
+ただし，残差 $\varepsilon^m \equiv \|\mathcal{L}_h p^m - q_h\|_2 < \varepsilon_\text{tol}$ を収束判定に用いるため，
+\textbf{収束後の解は分割誤差によらず PPE を $\varepsilon_\text{tol}$ 精度で満たす}．
+分割誤差がゼロである Krylov 実装（Approach 2）は計算コストが増加するが，
+大規模問題や非常に厳しい収束判定が必要な場合に有利である．
+\end{tcolorbox}
 
 \subsubsection{収束判定と反復アルゴリズム}
 
