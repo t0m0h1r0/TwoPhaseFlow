@@ -46,26 +46,47 @@
 \end{align*}
 
 \textbf{4. 曲率計算 (Curvature)} \\
-$\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，公式 \eqref{eq:curvature_2d} に代入して曲率を求める．
+$\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，式 \eqref{eq:curvature_2d} に直接代入して曲率を求める．
 \begin{align*}
- (\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j} &= (D_x\phi, D_y\phi, D_{xx}\phi, D_{yy}\phi, D_{xy}\phi)_{i,j}^{n+1} \\
- \kappa^{n+1}_{i,j} &= \text{CurvatureFormula}(\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j}
+ (\phi_x)_{i,j} &= D_x^{(1)} \phi^{n+1}_{i,j}, \quad
+ (\phi_y)_{i,j} = D_y^{(1)} \phi^{n+1}_{i,j} \\
+ (\phi_{xx})_{i,j} &= D_x^{(2)} \phi^{n+1}_{i,j}, \quad
+ (\phi_{yy})_{i,j} = D_y^{(2)} \phi^{n+1}_{i,j}, \quad
+ (\phi_{xy})_{i,j} = D_{xy}^{(11)} \phi^{n+1}_{i,j}
 \end{align*}
+\begin{equation*}
+ \kappa^{n+1}_{i,j} = -\frac{(\phi_y)_{i,j}^2 (\phi_{xx})_{i,j}
+                              - 2(\phi_x)_{i,j}(\phi_y)_{i,j}(\phi_{xy})_{i,j}
+                              + (\phi_x)_{i,j}^2 (\phi_{yy})_{i,j}}
+                           {\max\!\bigl((\phi_x)_{i,j}^2 + (\phi_y)_{i,j}^2,\;
+                            \epsilon_{\text{norm}}^2\bigr)^{3/2}}
+\end{equation*}
 
 \textbf{5. 運動量予測 (Predictor Step)} \\
-圧力勾配項を除いた運動量方程式（Crank--Nicolson 形式）から，予測速度場 $\bm{u}^*$ を計算する．
-\begin{equation*}
- \rho^{n+1}_{i,j}\,\frac{\bm{u}^*_{i,j} - \bm{u}^n_{i,j}}{\Delta t}
- = -\rho^{n+1}_{i,j}\,\mathcal{C}_{\text{WENO}}(\bm{u}^n,\,\bm{u}^n)_{i,j}
-   + \frac{1}{2}\mathcal{L}_{\text{visc}}\!\left(\mu^{n+1}_{i,j},\,\bm{u}^*_{i,j} + \bm{u}^n_{i,j}\right)
-   + \bm{F}_{\text{ext}, i,j}^{n+1}
-\end{equation*}
-\begin{itemize}
-  \item 移流項 $\mathcal{C}_{\text{WENO}}$：WENO5 上流差分で評価（陽解法，時刻 $t^n$ の値を使用）
-  \item 粘性項 $\mathcal{L}_{\text{visc}}$：CCD 法で評価（Crank--Nicolson による陰解法，$\bm{u}^*$ と $\bm{u}^n$ の平均）
-  \item 外力項：$\bm{F}_{\text{ext}}^{n+1} = -(\rho^{n+1}/Fr^2)\,\hat{\bm{z}} + (\kappa^{n+1} \bnabla\psi^{n+1})/We$
-\end{itemize}
-粘性項が $\bm{u}^*$ を含むため，この式は $\bm{u}^*$ に関する\textbf{線形方程式系}（ブロック三重対角）になる．これをガウス消去法等で解くことで予測速度場が得られる．
+$x$成分と$y$成分それぞれについて，格子点 $(i,j)$ での離散式を以下に示す．
+
+\underline{$x$成分（$u^*_{i,j}$ を求める）：}
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(u^*_{i,j} - u^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[u^n_{i,j}\,D_x^{(1)} u^n_{i,j} + v^n_{i,j}\,D_y^{(1)} u^n_{i,j}\Bigr] \\
+  &\quad + \frac{1}{2}\Bigl[D_x^{(1)}\!\bigl(\mu^{n+1}(D_x^{(1)} u^* + D_y^{(1)} v^*)\bigr)
+                          + D_y^{(1)}\!\bigl(\mu^{n+1}(D_y^{(1)} u^* + D_x^{(1)} v^*)\bigr) \\
+  &\qquad\qquad    + D_x^{(1)}\!\bigl(\mu^{n+1}(D_x^{(1)} u^n + D_y^{(1)} v^n)\bigr)
+                          + D_y^{(1)}\!\bigl(\mu^{n+1}(D_y^{(1)} u^n + D_x^{(1)} v^n)\bigr)\Bigr]_{i,j} \\
+  &\quad + \frac{\kappa^{n+1}_{i,j}\,(D_x^{(1)}\psi^{n+1})_{i,j}}{We}
+\end{align*}
+
+\underline{$y$成分（$v^*_{i,j}$ を求める）：}
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(v^*_{i,j} - v^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[u^n_{i,j}\,D_x^{(1)} v^n_{i,j} + v^n_{i,j}\,D_y^{(1)} v^n_{i,j}\Bigr] \\
+  &\quad + \frac{1}{2}\Bigl[\text{（$x$成分と対称，$u \leftrightarrow v$，$x \leftrightarrow y$ と置換）}\Bigr]_{i,j} \\
+  &\quad - \frac{\rho^{n+1}_{i,j}}{Fr^2}
+         + \frac{\kappa^{n+1}_{i,j}\,(D_y^{(1)}\psi^{n+1})_{i,j}}{We}
+\end{align*}
+
+移流項（第1行）は陽解法（時刻 $t^n$ の値のみ），粘性項（第2--3行）は Crank--Nicolson（$\bm{u}^*$ と $\bm{u}^n$ の平均）で離散化する．
+$\bm{u}^*$ を含む粘性項のため，全格子点をまとめると $\bm{u}^* = (u^*, v^*)$ に関する\textbf{ブロック三重対角線形方程式系}が得られ，これをガウス消去法等で解く．
 
 \textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
 次ステップの速度場 $\bm{u}^{n+1}$ が非圧縮条件 $\text{Div}_h(\bm{u}^{n+1}) = 0$ を満たすように，圧力 $p^{n+1}$ を求める．
