@@ -77,6 +77,40 @@ Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 
   \item 1周期（$T = 1$）後に元の位置に戻ったときの形状誤差を測定
 \end{itemize}
 
+\begin{tcolorbox}[algbox, title={スロットデスクの符号付き距離関数（SDF）の解析的構築}]
+複雑形状の SDF を数式で与えるには，\textbf{CSG（Constructive Solid Geometry）}の考え方が有効である．
+基本形状の SDF を $\max$・$\min$ 演算で組み合わせて複合形状を表現できる．
+
+\textbf{必要な基本 SDF：}
+\begin{itemize}
+  \item \textbf{円盤}（中心 $(c_x, c_y)$，半径 $R$）：
+  \[
+    \phi_{\text{disk}}(x,y) = \sqrt{(x-c_x)^2 + (y-c_y)^2} - R
+    \quad (\phi < 0: \text{内部（液相）},\;\phi > 0: \text{外部（気相）})
+  \]
+  \item \textbf{無限矩形スロット}（幅 $2w$，$x$ 方向中心 $c_x$，深さ $d$，上端 $y_{\mathrm{top}}$）：
+  \[
+    \phi_{\text{slot}}(x,y) = -\min\!\bigl(\underbrace{w - |x - c_x|}_{\text{幅方向}},\;
+                                      \underbrace{y_{\mathrm{top}} - y}_{\text{深さ方向}}\bigr)
+  \]
+\end{itemize}
+
+\textbf{スロットデスクの SDF（CSG による「円盤から矩形を抜く」操作）：}
+\[
+  \phi_{\text{Zalesak}}(x,y) = \max\!\bigl(\phi_{\text{disk}}(x,y),\; -\phi_{\text{slot}}(x,y)\bigr)
+\]
+$\max$ 演算は「\textbf{差集合}（setdifference）」に対応する：$\phi_{\text{disk}} < 0$（円盤内部）かつ $\phi_{\text{slot}} > 0$（スロット外部）の領域が $\phi < 0$ となる．
+
+\textbf{本設定の具体値：}
+$c_x = 0.5,\; c_y = 0.75,\; R = 0.15$，スロット幅 $2w = 0.05$（$w = 0.025$），
+深さ $d = 0.25$（上端 $y_{\mathrm{top}} = c_y + R = 0.90$，下端 $y_{\mathrm{bot}} = y_{\mathrm{top}} - d = 0.65$）：
+\[
+  \phi_{\text{slot}}(x,y) = -\min\!\bigl(0.025 - |x - 0.5|,\; 0.90 - y\bigr)
+  \quad \text{ただし}\; y > 0.65 \text{（深さの下端より上）のみ有効}
+\]
+実装では $y \le 0.65$ の格子点では $\phi_{\text{slot}} \to +\infty$（スロット外）として処理する．
+\end{tcolorbox}
+
 \textbf{検証指標：}
 \begin{align}
   E_{\text{area}} &= \frac{|\Omega_{\psi>0.5}^{T=1}| - |\Omega_{\psi>0.5}^{T=0}|}{|\Omega_{\psi>0.5}^{T=0}|}

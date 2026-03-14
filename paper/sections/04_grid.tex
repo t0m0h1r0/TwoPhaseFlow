@@ -24,3 +24,46 @@ $\alpha > 1$ は界面近傍の格子密度倍率である．
 \end{align}
 \end{tcolorbox}
 ここで $J_x = d\xi/dx$ はメトリクス係数であり，CCD 法を用いて高精度に評価される．
+
+\subsection{格子点座標の生成アルゴリズム}
+\label{sec:grid_gen}
+
+メトリクス係数 $J_x = d\xi/dx$ を得るには，まず物理座標配列 $\{x_i\}$ を
+グリッド密度関数 $\omega(\phi)$ から生成する必要がある．
+以下に，台形公式を用いた累積和による具体的な手順を示す．
+
+\begin{tcolorbox}[algbox, title={1次元格子点生成アルゴリズム（台形則積分）}]
+\textbf{入力：} 格子数 $N$，領域長 $L$，初期水準集合値 $\{\phi^{(0)}_i\}$（一様格子上），密度倍率 $\alpha$
+
+\textbf{ステップ1：} 一様計算格子 $\xi_i = iL/(N-1)$（$i=0,1,\ldots,N-1$）を定義する．
+
+\textbf{ステップ2：} 各格子点で $\omega_i = \omega(\phi^{(0)}_i) = 1 + (\alpha-1)\delta_\varepsilon^*(\phi^{(0)}_i)$ を計算する．
+
+\textbf{ステップ3：} 台形則で累積積分し，物理座標の「未正規化」値を求める：
+\[
+  \tilde{x}_0 = 0, \qquad
+  \tilde{x}_{i+1} = \tilde{x}_i + \frac{\Delta\xi}{\omega_i},
+  \quad \Delta\xi = \frac{L}{N-1}
+\]
+
+\textbf{ステップ4：} $\tilde{x}_{N-1}$ で割って領域長 $L$ に正規化する：
+\[
+  x_i = L \cdot \frac{\tilde{x}_i}{\tilde{x}_{N-1}}
+\]
+
+\textbf{ステップ5：} メトリクス係数を差分で求める：
+\[
+  J_x\big|_i = \frac{d\xi}{dx}\bigg|_i \approx \frac{\xi_{i+1}-\xi_{i-1}}{x_{i+1}-x_{i-1}}
+  = \frac{2\Delta\xi}{x_{i+1}-x_{i-1}}
+  \quad (\text{境界は片側差分})
+\]
+
+\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$．
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={アルゴリズムの物理的直感}]
+$\omega(\phi) > 1$ となる界面近傍では $\Delta\tilde{x} = \Delta\xi/\omega < \Delta\xi$ となり，
+物理格子幅が細くなる（$\omega$ 倍の格子密度）．
+逆に界面から遠い領域（$\omega \approx 1$）では均一な格子幅が保たれる．
+正規化（ステップ4）により，格子の総長が常に $L$ に一致することが保証される．
+\end{tcolorbox}

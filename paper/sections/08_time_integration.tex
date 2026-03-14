@@ -99,6 +99,33 @@ $\beta_k$ が小さいほど，そのステンシルの範囲が滑らか（$\Ri
 不連続を含むステンシルでは $\beta_k$ が大きくなり，重みがほぼゼロになる．
 \end{tcolorbox}
 
+\begin{tcolorbox}[mybox, title={WENO5 の非線形重みの算出（Jiang--Shu 1996）}]
+\textbf{ステップ1：理想重み（5次精度凸結合の係数）：}
+\[
+  d_0 = \tfrac{1}{10},\quad d_1 = \tfrac{3}{5},\quad d_2 = \tfrac{3}{10}
+\]
+
+\textbf{ステップ2：$\alpha$ 重みを計算（$\beta_k$ を逆2乗でスケール）：}
+\[
+  \alpha_k = \frac{d_k}{(\varepsilon + \beta_k)^2}, \qquad k = 0,1,2
+\]
+ここで $\varepsilon = 10^{-6}$ は\textbf{ゼロ除算回避のための微小定数}である
+（$\beta_k = 0$ となる完全に平坦な領域で分母がゼロになるのを防ぐ）．
+
+\textbf{ステップ3：正規化して非線形重みを得る：}
+\[
+  \omega_k = \frac{\alpha_k}{\displaystyle\sum_{j=0}^{2}\alpha_j}, \qquad \sum_{k=0}^{2}\omega_k = 1
+\]
+
+\textbf{動作原理：}
+\begin{itemize}
+  \item \textbf{滑らかな領域}：$\beta_k \approx 0$ なので $\alpha_k \approx d_k/\varepsilon^2$，
+        よって $\omega_k \approx d_k$（理想重みに収束，5次精度を達成）
+  \item \textbf{不連続付近}：不連続を含むステンシルでは $\beta_k \gg 1$ となり $\alpha_k \approx 0$，
+        そのステンシルの寄与が自動的に除外される（振動抑制）
+\end{itemize}
+\end{tcolorbox}
+
 \begin{tcolorbox}[defbox, title={WENO5 の性質まとめ}]
 \begin{itemize}
   \item 滑らかな領域：5次精度（$O(h^5)$）の空間精度
@@ -160,20 +187,24 @@ Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
 
 時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
 
-\begin{tcolorbox}[mybox, title={時間刻みの3制約}]
+\begin{tcolorbox}[mybox, title={時間刻みの制約（CN 法採用時：2制約）}]
 \begin{align}
   &\text{\textbf{対流 CFL}：}\quad
   \Delta t_{\text{adv}} = \text{CFL}_{\max} \cdot \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
   \label{eq:dt_adv} \\[6pt]
-  &\text{\textbf{粘性 CFL}：}\quad
-  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
-  \quad \text{（陽的処理の場合のみ適用）}
-  \label{eq:dt_visc} \\[6pt]
   &\text{\textbf{毛管波制約}：}\quad
   \Delta t_\sigma = \sqrt{\frac{(\rho_l + \rho_g)\min(\Delta x, \Delta y)^3}{4\pi\sigma}}
   \label{eq:dt_sigma}
 \end{align}
-最終的な時間刻み：$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_{\text{visc}},\, \Delta t_\sigma)$
+\textbf{最終的な時間刻み：}$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_\sigma)$
+
+\medskip
+\textbf{粘性 CFL（参考値）：}
+\[
+  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
+  \quad \text{（陽的粘性処理のみ適用；CN 法採用時は不要）}
+\]
+CN 法（無条件安定）を粘性項に採用しているため，$\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={毛管波制約 $\Delta t_\sigma \propto \sqrt{\Delta x^3}$ が厳しい理由}]
