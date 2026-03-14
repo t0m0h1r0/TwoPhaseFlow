@@ -2,6 +2,82 @@
 \section{結合コンパクト差分法（CCD 法）の厳密導出}
 \label{sec:CCD}
 
+\subsection{なぜコンパクトスキームが必要か：精度と計算コストの観点}
+\label{sec:ccd_motivation}
+
+本章の CCD スキームを学ぶ前に，「なぜわざわざこのような複雑な手法が必要なのか」を
+理解しておくことが重要である．
+
+\subsubsection{中心差分との精度比較}
+
+最もシンプルな2次精度の中心差分（一次微分）は：
+\begin{equation}
+  f'_i \approx \frac{f_{i+1} - f_{i-1}}{2h} + \underbrace{\frac{h^2}{6}f^{(3)}_i}_{\text{打ち切り誤差}}
+  + O(h^4)
+  \label{eq:central2nd}
+\end{equation}
+4次精度まで拡張すると5点ステンシルが必要になる：
+\begin{equation}
+  f'_i \approx \frac{-f_{i+2}+8f_{i+1}-8f_{i-1}+f_{i+2}}{12h} + O(h^4)
+  \label{eq:central4th}
+\end{equation}
+しかし，\textbf{本稿の最重要計算である曲率 $\kappa$} は $\phi$ の \textbf{2階微分}を含み，
+その打ち切り誤差が表面張力項 $\sigma\kappa\nabla\psi$ を通じて速度場の誤差（寄生流れ）を
+直接引き起こす（1章・失敗例1参照）．したがって，曲率計算には可能な限り高精度の
+微分評価が必要である．
+
+\begin{tcolorbox}[defbox, title={精度次数と寄生流れの関係}]
+寄生流れの振幅は，曲率誤差 $E_\kappa$ に比例することが理論的に示される：
+\[
+  |\bm{u}_{\text{para}}| \propto \frac{\sigma}{\mu} E_\kappa = \frac{\sigma}{\mu} \cdot C \cdot h^{p-2}
+\]
+ここで $p$ は微分スキームの精度次数，$C$ は $O(1)$ の定数．
+$p=2$（2次中心差分）では誤差が格子幅 $h$ に依存せず残留してしまう（$h \to 0$ でゼロにならない）．
+$p=6$ の CCD 法では誤差が $h^4$ に比例するため，格子を細分化するにつれて急速に減衰する．
+\end{tcolorbox}
+
+\subsubsection{コンパクトスキームの発想}
+
+精度を上げるためにステンシル幅を広げると（例：4次精度 5点，6次精度 7点），
+境界処理が複雑になり，並列計算でのデータ通信も増大する．
+
+\textbf{コンパクトスキーム}は，\textbf{「ステンシル幅は狭いまま，精度だけ上げる」}ことを
+目指した手法である．その発想は：
+\begin{enumerate}
+  \item 求めたい微分値 $f'_i$ を\textbf{未知数として}方程式に組み込む（暗黙的定式化）
+  \item 隣接点の微分値 $f'_{i\pm1}$ も同時に未知数として連立する
+  \item 3点ステンシル（$i-1, i, i+1$）のまま，高精度の方程式系を作る
+\end{enumerate}
+代償として，全格子点の微分値を一括して求める連立方程式（三重対角行列）を解く必要があるが，
+Thomas 法で $O(N)$ のコストで解けるため，実用上の負担は小さい．
+
+\begin{tcolorbox}[mybox, title={精度次数・ステンシル幅・コストの比較}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\hline
+手法 & 精度 & ステンシル幅 & 求解コスト & 備考 \\
+\hline
+2次中心差分 & $O(h^2)$ & 3点 & $O(N)$（陽的） & 最シンプル \\
+4次中心差分 & $O(h^4)$ & 5点 & $O(N)$（陽的） & 境界処理が煩雑 \\
+4次コンパクト（Padé） & $O(h^4)$ & 3点 & $O(N)$（三重対角） & \cite{Lele1992} \\
+\textbf{CCD（本稿）} & $\bm{O(h^6)}$ & \textbf{3点} & $\bm{O(N)}$（ブロック Thomas） & \cite{ChuFan1998} \\
+\hline
+\end{tabular}
+\end{center}
+CCD 法は「3点ステンシルで $O(h^6)$」という優れたトレードオフを実現する．
+同等の精度を陽的中心差分で達成するには7点ステンシルが必要である．
+\end{tcolorbox}
+
+\subsubsection{CCD 法の核心的アイデア：微分の連立求解}
+
+CCD (Coupled Compact Difference) 法 \cite{ChuFan1998} の本質は，
+\textbf{一次微分 $f'$ と二次微分 $f''$ を同時に未知数として1つの線形系に組み込む}ことにある．
+
+通常のコンパクトスキームが $f'$ のみを連立するのに対し，CCD 法は $f'$ と $f''$ を同時に解く．
+この「2種類の微分の連立」により，係数決定の自由度が増し，同じ3点ステンシルで
+2次高い精度（$O(h^6)$）が実現できる（次節で厳密に導出する）．
+
 \subsection{CCD スキームの定義}
 
 CCD 法は，関数値 $f$ とその一次微分 $f^{(1)}$，二次微分 $f^{(2)}$ を同時に連立して解くことで，

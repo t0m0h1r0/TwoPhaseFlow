@@ -2,29 +2,144 @@
 \section{時間積分・移流スキームの高精度化}
 \label{sec:time}
 
-\subsection{WENO5 による移流}
+\subsection{WENO5 による移流：なぜ必要か}
+\label{sec:weno5}
+
 対流項および CLS の移流項には，5次精度の Weighted ENO (WENO5) スキーム \cite{JiangShu1996} を採用する．
-WENO5 は衝撃波のような不連続面付近でも振動を抑制しつつ高精度を維持できるため，
-気液界面の急峻な密度変化の移流に適している．
+
+\subsubsection{気液界面移流の困難}
+
+気液界面の移流は，数値スキームの設計において特殊な問題を提起する．
+$\psi$ は界面付近で 0 から 1 へと急激に変化するが，この勾配の強さは
+物理的実体（物性の不連続）を反映したものであって，数値拡散で
+「なだらかにして良い」ものではない．
+
+通常の線形スキーム（例：4次中心差分）は高精度だが，
+$\psi$ のような急峻なプロファイルを移流すると
+\textbf{Gibbs 振動}（負の $\psi$ や $\psi > 1$ の非物理的な値）が発生する．
+これが界面の「にじみ」（1章・失敗例4）の主な原因の一つである．
+
+\subsubsection{ENO・WENO の基本思想}
+
+\textbf{ENO（Essentially Non-Oscillatory）法}の思想は，「局所的な滑らかさを検出し，
+不連続（または急峻な勾配）を含まない滑らかな候補ステンシルを選んで使う」ことである．
+
+WENO 法はこれを改良し，複数のステンシルを\textbf{滑らかさ指標（smoothness indicator）
+に基づく重みで凸結合}する：
+\begin{equation}
+  \hat{f}^{\text{WENO}} = \sum_{k=0}^{r-1} \omega_k \, \hat{f}_k
+  \label{eq:weno_convex}
+\end{equation}
+ここで $\hat{f}_k$ は $k$ 番目の候補ステンシルからの数値フラックス，
+$\omega_k$ は滑らかさ指標 $\beta_k$ から導出される重みで，
+$\sum_k \omega_k = 1$，$\omega_k \ge 0$（凸結合）を満たす．
+
+\textbf{WENO5 の場合（5次精度，3つのステンシル）：}
+\begin{itemize}
+  \item 3つの3点ステンシル（それぞれ3次精度）を凸結合し，滑らかな領域では5次精度を達成
+  \item 不連続付近では，その不連続を含むステンシルの重みが自動的にゼロに近づき，
+        滑らかなステンシルのみが使われる（振動抑制）
+\end{itemize}
+
+\begin{tcolorbox}[mybox, title={WENO5 の滑らかさ指標（1次元 $x$ 方向，上流フラックス）}]
+格子点 $i$ における3つの候補ステンシルの滑らかさ指標 $\beta_k$ は：
+\begin{align}
+  \beta_0 &= \frac{13}{12}(f_{i-2}-2f_{i-1}+f_i)^2 + \frac{1}{4}(f_{i-2}-4f_{i-1}+3f_i)^2 \notag\\
+  \beta_1 &= \frac{13}{12}(f_{i-1}-2f_i+f_{i+1})^2 + \frac{1}{4}(f_{i-1}-f_{i+1})^2 \notag\\
+  \beta_2 &= \frac{13}{12}(f_i-2f_{i+1}+f_{i+2})^2 + \frac{1}{4}(3f_i-4f_{i+1}+f_{i+2})^2
+  \label{eq:weno5_beta}
+\end{align}
+$\beta_k$ が小さいほど，そのステンシルの範囲が滑らか（$\Rightarrow$ 高い重み $\omega_k$）．
+不連続を含むステンシルでは $\beta_k$ が大きくなり，重みがほぼゼロになる．
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={WENO5 の性質まとめ}]
+\begin{itemize}
+  \item 滑らかな領域：5次精度（$O(h^5)$）の空間精度
+  \item 不連続・急峻な勾配付近：重みにより振動を自動的に抑制（ENO 的挙動）
+  \item 保存形：フラックス形式で書けるため，離散的質量保存が成立
+  \item 移流方向の上流化：情報伝播方向を考慮した上流側ステンシルを優先
+\end{itemize}
+\end{tcolorbox}
 
 \subsection{時間積分スキーム}
-\begin{itemize}
-    \item \textbf{移流・CLS：} 3次 TVD Runge--Kutta (Shu--Osher) 法を用いる．
-    \item \textbf{粘性項：} Crank--Nicolson 法による半陰的解法を用い，粘性拡散律速時の時間刻み制限を緩和する．
-\end{itemize}
+\label{sec:time_int}
+
+\subsubsection{3次 TVD Runge--Kutta 法（移流・CLS）}
+
+CLS 移流および NS 方程式の対流項には，Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
+\begin{align}
+  q^{(1)} &= q^n + \Delta t \, \mathcal{L}(q^n) \notag\\
+  q^{(2)} &= \frac{3}{4}q^n + \frac{1}{4}q^{(1)} + \frac{1}{4}\Delta t\,\mathcal{L}(q^{(1)}) \notag\\
+  q^{n+1} &= \frac{1}{3}q^n + \frac{2}{3}q^{(2)} + \frac{2}{3}\Delta t\,\mathcal{L}(q^{(2)})
+  \label{eq:tvd_rk3}
+\end{align}
+ここで $\mathcal{L}(q)$ は空間演算子（WENO5 フラックスの発散）を表す．
+
+\begin{tcolorbox}[defbox, title={TVD の意味：全変動を増大させない}]
+TVD（Total Variation Diminishing）とは，数値解の全変動
+$TV(q) \equiv \sum_i |q_{i+1} - q_i|$ が時間的に増大しない性質を指す：
+$TV(q^{n+1}) \leq TV(q^n)$．
+これにより，$\psi$ のプロファイルに新たな振動が生成されることが防止され，
+界面のギザギザな数値ノイズが自然に抑制される．
+特に CLS 変数 $\psi \in [0,1]$ の範囲外への逸脱を防ぐ効果がある．
+\end{tcolorbox}
+
+\subsubsection{Crank--Nicolson 法（粘性項）}
+
+粘性項（2階空間微分を含む）は，純陽的処理では厳しい時間刻み制限（$\Delta t < O(h^2)$）を課す．
+これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する：
+\begin{equation}
+  \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
+  \label{eq:crank_nicolson}
+\end{equation}
+ここで $\mathcal{D}$ は粘性拡散演算子．CN 法は時間方向に2次精度（$O(\Delta t^2)$）かつ
+\textbf{無条件安定}（スペクトル半径の制約なし）であり，適度な $\Delta t$ での安定計算が可能となる．
 
 \subsection{再初期化の Godunov 型上流化}
 \label{sec:godunov}
+
 CLS 法の再初期化あるいは標準 Level Set の再初期化において，
 Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
 情報伝播方向 $s=\operatorname{sgn}(\phi_0)$ に応じた統一表現は以下の通りである：
-
 \begin{equation}
  \norm{\bnabla\phi}^{\mathrm{uw}}_{i,j}=
  \sqrt{G_x^2+G_y^2},\qquad G_x^2=\max(s\,D_x^-,0)^2+\min(s\,D_x^+,0)^2
+ \label{eq:godunov_upwind}
 \end{equation}
 ここで $D^\pm$ は前進・後退差分である．
 
-\subsection{安定性制約}
-時間刻み $\Delta t$ は，対流 CFL 条件，粘性 CFL 条件，および表面張力による毛管波制約の最小値によって決定される．
-特に表面張力が支配的な場合，毛管波制約 $\Delta t_\sigma \propto \sqrt{\Delta x^3}$ が厳しくなるため注意が必要である．
+\subsection{安定性制約（時間刻みの決定）}
+\label{sec:stability}
+
+時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
+
+\begin{tcolorbox}[mybox, title={時間刻みの3制約}]
+\begin{align}
+  &\text{\textbf{対流 CFL}：}\quad
+  \Delta t_{\text{adv}} = \text{CFL}_{\max} \cdot \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
+  \label{eq:dt_adv} \\[6pt]
+  &\text{\textbf{粘性 CFL}：}\quad
+  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
+  \quad \text{（陽的処理の場合のみ適用）}
+  \label{eq:dt_visc} \\[6pt]
+  &\text{\textbf{毛管波制約}：}\quad
+  \Delta t_\sigma = \sqrt{\frac{(\rho_l + \rho_g)\min(\Delta x, \Delta y)^3}{4\pi\sigma}}
+  \label{eq:dt_sigma}
+\end{align}
+最終的な時間刻み：$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_{\text{visc}},\, \Delta t_\sigma)$
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={毛管波制約 $\Delta t_\sigma \propto \sqrt{\Delta x^3}$ が厳しい理由}]
+表面張力が支配的な問題（$We \ll 1$，小液滴，毛管現象）では，
+毛管波（capillary wave）の位相速度が大きくなり CFL 条件が厳しくなる．
+特に $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性（格子を半分にすると $\approx 2.8$ 倍制約が厳しくなる）
+のため，高解像度計算では毛管波制約が支配的になることが多い．
+
+\textbf{対策：}
+\begin{itemize}
+  \item 表面張力の半陰的処理（Implicit Surface Tension）による制約の緩和
+  \item 問題によっては圧力 $p$ から $p + p_0$（静水圧 $p_0 = \rho g z$）を分離する
+        動的圧力（kinematic pressure）分割で寄生流れを抑制しつつ $\Delta t$ を拡大
+\end{itemize}
+\end{tcolorbox}

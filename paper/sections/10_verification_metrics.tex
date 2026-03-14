@@ -2,11 +2,15 @@
 \section{検証指標とベンチマーク}
 \label{sec:verification}
 
-数値計算の信頼性を確認するため，以下の指標を用いる．
+数値計算の信頼性を確認するため，以下の指標と段階的ベンチマークを用いる．
+検証は「単純な設定で理論解と一致するか」を確認するものであり，
+複雑なシミュレーションへの移行前に必ず実施すべき手順である．
+
+\subsection{定量的検証指標}
 
 \begin{table}[ht]
 \centering
-\caption{数値検証の指標と許容誤差}
+\caption{数値検証の指標と許容誤差（内部整合性チェック）}
 \label{tab:verification}
 \begin{tabular}{p{35mm}p{40mm}p{35mm}c}
 \toprule
@@ -21,3 +25,144 @@ Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{ベンチマークテスト群}
+\label{sec:benchmarks}
+
+以下に，二相流ソルバーの検証として標準的に用いられる4つのベンチマークを示す．
+これらは難易度の低い順に配置されており，各ステップで合格してから
+次のテストに進むことが推奨される．
+
+%%%  ── Benchmark 1 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク1：静止液滴とラプラス圧力（Stationary Droplet）}
+\label{sec:bench_droplet}
+
+\textbf{目的：} 表面張力の実装（CSF モデル）と，寄生流れ（parasitic currents）の定量評価．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 正方形領域 $[0,1]^2$，中心 $(0.5, 0.5)$ に半径 $R=0.25$ の静止液滴
+  \item 初期速度 $\bm{u} = \bm{0}$，密度比 $\rho_l/\rho_g = 1000$，$We = 1$，$Fr = \infty$（重力なし）
+  \item 時刻 $t = 0$ から $t = T_{\text{end}}$ まで時間発展させる
+\end{itemize}
+
+\textbf{期待される結果：}
+\begin{enumerate}
+  \item 液滴は静止を保つ：$\|\bm{u}(\cdot, t)\|_\infty \approx 0$（理想）
+  \item ラプラス圧力 $\Delta p = \sigma/R$ が内外圧差として正確に再現される
+  \item 寄生流れの振幅 $\|\bm{u}\|_\infty$ が $O(h^p)$（$p \ge 4$）で収束する
+\end{enumerate}
+
+\begin{tcolorbox}[warnbox, title={寄生流れ振幅の目安}]
+典型的な許容レベル：
+\begin{itemize}
+  \item 2次精度スキーム：$\|\bm{u}_{\text{para}}\| / ({\sigma/\mu}) \sim O(10^{-2})$（許容不可の場合が多い）
+  \item CCD（6次精度）+ Rhie-Chow 補正：$\|\bm{u}_{\text{para}}\| / ({\sigma/\mu}) \lesssim O(10^{-5})$（目標）
+\end{itemize}
+この値が大きい場合，曲率計算の精度不足または Rhie-Chow 補正の実装ミスが疑われる．
+\end{tcolorbox}
+
+%%%  ── Benchmark 2 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク2：Zalesak スロットデスク（界面追跡精度）}
+\label{sec:bench_zalesak}
+
+\textbf{目的：} CLS 移流スキームの界面形状保存能力と質量保存性の評価．
+剛体回転という純粋な移流問題で，流体力学を切り離して界面追跡のみをテストする \cite{Zalesak1979}．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0,1]^2$，中心 $(0.5, 0.75)$ に半径 $R=0.15$ の円盤
+  \item 円盤に縦長のスロット（幅 $0.05$，深さ $0.25$）を刻んだ形状（スロットデスク）
+  \item 速度場：原点 $(0.5, 0.5)$ 周りの剛体回転 $u = -2\pi(y-0.5)$，$v = 2\pi(x-0.5)$
+  \item 1周期（$T = 1$）後に元の位置に戻ったときの形状誤差を測定
+\end{itemize}
+
+\textbf{検証指標：}
+\begin{align}
+  E_{\text{area}} &= \frac{|\Omega_{\psi>0.5}^{T=1}| - |\Omega_{\psi>0.5}^{T=0}|}{|\Omega_{\psi>0.5}^{T=0}|}
+  \quad (\text{体積保存誤差，目標：} < 0.1\%) \\
+  E_{\text{shape}} &= \frac{1}{|\Omega|}\int_\Omega |\psi^{T=1} - \psi^{T=0}|\,dA
+  \quad (\text{形状誤差，$L^1$ ノルム})
+\end{align}
+
+\begin{tcolorbox}[defbox, title={スロットデスクが難しい理由}]
+スロットの鋭角な角（コーナー）と細い溝は，数値拡散の影響が最も現れやすい形状である．
+スロットが消えて丸くなったり，面積が減少したりする場合，移流スキームの数値拡散が過剰であることを示す．
+WENO5 + TVD-RK3 の組み合わせは，このテストにおいてスロット形状を良好に保持できることが知られている．
+\end{tcolorbox}
+
+%%%  ── Benchmark 3 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク3：Rayleigh--Taylor 不安定性}
+\label{sec:bench_rt}
+
+\textbf{目的：} 密度差・重力による界面変形の長時間シミュレーション能力の検証．
+理論的な線形成長率との比較および非線形段階での形状の定性的確認を行う．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0, \lambda] \times [0, 4\lambda]$（$\lambda$：擾乱波長），周期境界（$x$），
+        固定壁（$y$）
+  \item 上層（重流体 $\rho_l$）が下層（軽流体 $\rho_g$）の上に乗る不安定成層
+  \item 界面に微小正弦波擾乱 $y_0(x) = L_0 + A_0\sin(2\pi x/\lambda)$（$A_0 \ll \lambda$）を付与
+  \item $Fr = O(1)$，$We \gg 1$（表面張力なし，または非常に小さい）
+\end{itemize}
+
+\textbf{線形安定論との比較：}
+Rayleigh--Taylor 不安定の線形成長率は解析的に：
+\begin{equation}
+  \omega_{\text{RT}} = \sqrt{\frac{\rho_l - \rho_g}{\rho_l + \rho_g} \cdot \frac{g \cdot 2\pi}{\lambda}}
+  \quad (\text{表面張力なし})
+  \label{eq:rt_growth}
+\end{equation}
+初期の界面振幅の時間発展 $A(t) = A_0 e^{\omega_{\text{RT}} t}$ と数値解を比較し，
+成長率の相対誤差が $< 5\%$ であることを確認する．
+
+\textbf{非線形段階の定性的特徴（長時間計算）：}
+\begin{itemize}
+  \item キノコ状の「バブル（軽流体が上昇）」と「スパイク（重流体が下降）」の形成
+  \item バブルの合体と粗大化（coarsening）
+  \item スパイク先端のKelvin-Helmholtz 的巻き込み（Kelvin-Helmholtz instability との相互作用）
+\end{itemize}
+
+%%%  ── Benchmark 4 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク4：気泡上昇（Rising Bubble）}
+\label{sec:bench_bubble}
+
+\textbf{目的：} 表面張力・重力・粘性が同時に作用する現実的な問題での総合的検証．
+Hysing ら \cite{Hysing2009} の参照解（高解像度ベンチマーク）と比較する．
+
+\textbf{設定（ベンチマーク1 \cite{Hysing2009}）：}
+\begin{itemize}
+  \item 計算領域 $[0, 1] \times [0, 2]$，初期気泡：中心 $(0.5,\,0.5)$，半径 $R = 0.25$
+  \item $\rho_l / \rho_g = 10$，$\mu_l / \mu_g = 10$，$Re = 35$，$We = 10$（$Fr^2 = 1$）
+  \item 側面・底面：スリップ（$\partial u/\partial n = 0$，$v = 0$），上面：スリップ
+\end{itemize}
+
+\textbf{検証指標：}
+\begin{align}
+  V_c(t) &= \frac{\int_{\Omega_b} v \, dV}{|\Omega_b|}
+  \quad (\text{気泡重心の上昇速度}) \label{eq:bubble_vc} \\
+  C_{\mathrm{circ}}(t) &= \frac{\text{等面積円の周長}}{\text{実際の気泡周長}}
+  \quad (\text{真球度，= 1 で球形}) \label{eq:bubble_circ}
+\end{align}
+
+$t = 3$ における $V_c$ と $C_{\mathrm{circ}}$ の Hysing 参照解との相対誤差 $< 1\%$ を目標とする．
+
+\begin{tcolorbox}[defbox, title={4つのベンチマークの段階的関係}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{clll}
+\hline
+\# & テスト名 & 検証対象 & 難易度 \\
+\hline
+1 & 静止液滴 & CSF・曲率・寄生流れ & $\bullet\circ\circ\circ$ \\
+2 & Zalesak スロットデスク & WENO5 移流・質量保存 & $\bullet\bullet\circ\circ$ \\
+3 & Rayleigh-Taylor & 密度差・重力・線形安定論 & $\bullet\bullet\bullet\circ$ \\
+4 & 気泡上昇 & 全物理の結合・定量比較 & $\bullet\bullet\bullet\bullet$ \\
+\hline
+\end{tabular}
+\end{center}
+ベンチマーク4は，表面張力・粘性・重力・密度差・界面変形が全て同時に作用する
+最も現実的なテストである．ここで参照解と定量的に一致すれば，
+本ソルバーの全体的な正確性が確認されたとみなせる．
+\end{tcolorbox}

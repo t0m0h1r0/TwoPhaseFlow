@@ -312,6 +312,66 @@ $\phi$ の連続性を仮定すれば，$\phi_{xy}=\phi_{yx}$ である（Schwar
 この形式は，各微分項（$\phi_x, \phi_y, \phi_{xx}, \dots$）を有限差分で近似して代入することで，直接 $\kappa$ を計算できるため，数値実装に適している．
 \end{tcolorbox}
 
+\subsubsection{具体例：半径 $R$ の円の曲率検証}
+\label{sec:curvature_circle_example}
+
+曲率式 \eqref{eq:curvature_2d} が正しいことを，最も基本的な例である「円」で検証しよう．
+これは実装後の最初の動作確認（単体テスト）としても極めて重要である．
+
+\paragraph{設定：}
+原点を中心とする半径 $R$ の円を，符号付き距離関数
+\[
+  \phi(x,y) = \sqrt{x^2 + y^2} - R \equiv r - R
+  \quad \left(r \equiv \sqrt{x^2+y^2}\right)
+\]
+で表す（$\phi < 0$：円内部（液相），$\phi > 0$：円外部（気相），$\phi = 0$：界面）．
+
+\paragraph{微分の計算：}
+\begin{align}
+  \phi_x &= \frac{x}{r},\quad \phi_y = \frac{y}{r} \notag \\
+  \phi_{xx} &= \frac{r^2-x^2}{r^3} = \frac{y^2}{r^3},\quad
+  \phi_{yy} = \frac{x^2}{r^3},\quad
+  \phi_{xy} = -\frac{xy}{r^3}
+  \label{eq:circle_deriv}
+\end{align}
+
+\paragraph{式 \eqref{eq:curvature_2d} への代入：}
+
+まず分母を確認する：$\phi_x^2 + \phi_y^2 = x^2/r^2 + y^2/r^2 = 1$（真の符号付き距離関数の性質）．
+
+次に分子を計算する：
+\begin{align*}
+  &\phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} \\
+  &= \frac{y^2}{r^2}\cdot\frac{y^2}{r^3}
+     - 2\cdot\frac{x}{r}\cdot\frac{y}{r}\cdot\left(-\frac{xy}{r^3}\right)
+     + \frac{x^2}{r^2}\cdot\frac{x^2}{r^3} \\
+  &= \frac{y^4 + 2x^2y^2 + x^4}{r^5}
+   = \frac{(x^2+y^2)^2}{r^5} = \frac{r^4}{r^5} = \frac{1}{r}
+\end{align*}
+
+したがって：
+
+\begin{tcolorbox}[mybox, title={円の曲率（実装確認の基準値）}]
+\[
+  \kappa = -\frac{1/r}{1^{3/2}} = -\frac{1}{r}
+\]
+界面 $r = R$ 上では $\kappa = -1/R$．
+符号は「液滴（内が液相）の界面は凹凸の向きから $\kappa < 0$」という本稿の定義に一致する．
+\textbf{ラプラス圧力}（式 \eqref{eq:young-laplace}）は $[p] = \sigma|\kappa| = \sigma/R$ となり，
+液滴内部の圧力が外部より $\sigma/R$ だけ高いという Young-Laplace 則を正しく再現する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={実装確認テスト手順（曲率収束テスト）}]
+\begin{enumerate}
+  \item 計算領域 $[-2R, 2R]^2$ に，格子幅 $h = 2R/N$（$N = 16, 32, 64, \dots$）の一様格子を設定する．
+  \item 各格子点で $\phi_{i,j} = r_{i,j} - R$（解析値）を与え，CCD 法で微分を計算する．
+  \item 式 \eqref{eq:curvature_2d} で $\kappa_{i,j}$ を計算し，解析値 $-1/R$ との絶対誤差を求める：
+        \[E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty} \]
+  \item 格子を細分化するにつれ $E_\kappa(h) = O(h^6)$ で収束すれば，CCD の精度が確認できる．
+\end{enumerate}
+$h$ を半分にすると誤差が $1/64$ 倍（$\approx 1.6\%$）になるはずである．
+\end{tcolorbox}
+
 \subsubsection{曲率計算の数値的安定化}
 
 式 \eqref{eq:curvature_2d} は数学的には厳密だが，数値計算で直接使用するには注意が必要である．
