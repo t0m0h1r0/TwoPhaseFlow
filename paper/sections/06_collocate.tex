@@ -41,6 +41,28 @@
     $d_e \approx (\Delta t / \rho)_e$.
 \end{itemize}
 
+\begin{tcolorbox}[defbox, title={算術平均と調和平均：物理的連続性による使い分け}]
+Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちらを使うかは，
+その物理量が界面をまたいで\textbf{連続か不連続か}によって決まる．
+
+\begin{itemize}
+  \item \textbf{$\bar{u}_f$（速度）→ 算術平均 $= (u_P + u_E)/2$}\\
+    速度は界面での\textbf{運動学的接続条件}（no-slip 条件，式 \eqref{eq:jump_vel}）により，
+    気液界面をまたいでも物理的に\textbf{連続}である．
+    すなわち液側と気側の界面速度は等しいため，単純な線形補間（算術平均）が適切である．
+
+  \item \textbf{$d_f = \Delta t (1/\rho)_f^{\rm harm}$（密度係数）→ 調和平均}\\
+    密度 $\rho$ は界面で物理的に\textbf{不連続}（ステップ状の跳び）を持つ．
+    不連続な係数をもつ拡散型方程式 $\nabla\cdot(a\nabla p) = q$（$a = 1/\rho$）を
+    有限体積法で離散化すると，フラックスの連続性から自然に\textbf{調和平均}
+    $a_f = 2/(a_P^{-1}+a_E^{-1})$ が現れる（7章で詳述）．
+    同じ調和平均を Rhie--Chow 係数に使うことで，PPE との数値的整合性が保たれる．
+\end{itemize}
+
+\textbf{要点：}「界面をまたいで\textbf{連続}な量 $\Rightarrow$ 算術平均，
+\textbf{不連続}な係数 $\Rightarrow$ 調和平均」という原則で一貫している．
+\end{tcolorbox}
+
 \paragraph{補正項の働き}
 式 \eqref{eq:rc-concept} の第2項が Rhie-Chow 補正の核心である．
 この項は「\textbf{フェイス上で直接計算した圧力勾配}」と「\textbf{セル中心の圧力勾配を補間したもの}」との\textbf{差}に比例する．

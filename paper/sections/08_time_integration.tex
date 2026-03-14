@@ -19,6 +19,52 @@ $\psi$ のような急峻なプロファイルを移流すると
 \textbf{Gibbs 振動}（負の $\psi$ や $\psi > 1$ の非物理的な値）が発生する．
 これが界面の「にじみ」（1章・失敗例4）の主な原因の一つである．
 
+\subsubsection{Lax--Friedrichs フラックス分割：実装の核心}
+\label{sec:lf_splitting}
+
+WENO5 を CLS の移流方程式
+$\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$
+（保存形）に適用するには，まず移流フラックスを
+\textbf{上流方向に分割}する必要がある．
+本稿では数値安定性と実装の簡潔さのバランスに優れた
+\textbf{大域 Lax--Friedrichs（GLF）分割}を採用する：
+
+\begin{tcolorbox}[mybox, title={Lax--Friedrichs フラックス分割（$x$ 方向）}]
+$x$ 方向のフラックス $F(q) = u \cdot q$（$q = \psi$）を正負に分割する：
+\begin{equation}
+  F^+(q) = \frac{1}{2}(F + \alpha\, q), \qquad
+  F^-(q) = \frac{1}{2}(F - \alpha\, q)
+  \label{eq:lf_split}
+\end{equation}
+ここで $\alpha$ は波速の上界（数値粘性係数）：
+\begin{equation}
+  \alpha = \max_{i,j}\,|u_{i,j}^n|
+  \quad (\text{大域 LF；時刻 $t^n$ でのグリッド全体の最大速度})
+  \label{eq:alpha_glf}
+\end{equation}
+\textbf{正側フラックス $F^+$ は左側ステンシル（$i-2, \dots, i$）で WENO5 再構成，
+負側フラックス $F^-$ は右側ステンシル（$i+1, \dots, i+3$）で WENO5 再構成}し，
+セル界面 $i+1/2$ でのフラックスを：
+\begin{equation}
+  \hat{F}_{i+1/2} = \hat{F}^+_{i+1/2}(F^+_{i-2},\ldots,F^+_i)
+                  + \hat{F}^-_{i+1/2}(F^-_{i+1},\ldots,F^-_{i+3})
+  \label{eq:weno5_face_flux}
+\end{equation}
+で得る．$y$ 方向も同様（$v_{i,j}$ を用いて $G^{\pm}$ を構成）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={大域 LF vs 局所 LF}]
+\begin{itemize}
+  \item \textbf{大域 LF（本稿採用）：} $\alpha = \max_{\rm all}\,|u|$．
+    実装が単純で，$F^{\pm}$ のリコンパイルなしに全格子点で同一の $\alpha$ を使える．
+    ただし，低速領域で過剰な数値粘性が加わる可能性がある．
+  \item \textbf{局所 LF（Roe 的）：} $\alpha_i = \max(|u_i|, |u_{i+1}|)$ などセル局所値を使用．
+    数値粘性が適応的で精度が高いが，実装の手間が増す．
+\end{itemize}
+気液二相流では密度比が大きいため，界面近傍で波速が大きく変動する．
+大域 LF は界面付近の過剰粘性は大きいが，安定性の観点から推奨される．
+\end{tcolorbox}
+
 \subsubsection{ENO・WENO の基本思想}
 
 \textbf{ENO（Essentially Non-Oscillatory）法}の思想は，「局所的な滑らかさを検出し，

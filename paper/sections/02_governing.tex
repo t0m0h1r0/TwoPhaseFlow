@@ -198,6 +198,43 @@ $\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる（
 ことが示せる．CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
 \end{tcolorbox}
 
+\begin{tcolorbox}[warnbox, title={【実装警告】Balanced-Force（力均衡）離散化：最重要}]
+\label{box:balanced_force}
+理論上は $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ だが，\textbf{離散化段階で圧力勾配項 $-\bnabla p$ と
+表面張力項 $\sigma\kappa\bnabla\psi$ に異なる差分演算子を用いると，
+両者の数値的キャンセルが崩れ，強い寄生流れ（$\sim \sigma/\mu$）が発生する}（1章・失敗例1）．
+
+\textbf{問題の本質（離散レベル）：}
+
+静止液滴の平衡条件は，連続形では $\bnabla p = \sigma\kappa\bnabla\psi$ が成立するが，
+これを離散化すると
+\[
+  \underbrace{D_h[p]}_{\text{差分演算子 A}}
+  = \sigma\kappa\underbrace{D_h[\psi]}_{\text{差分演算子 B}}
+\]
+となる．\textbf{演算子 A と B が同一の格子点集合・同一の差分公式でない場合}，
+離散的に $\nabla p = \sigma\kappa\nabla\psi$ が成立せず，
+余分な速度 $\bu_{\text{para}} \neq 0$ が発生してしまう．
+
+\textbf{Balanced-Force 実装の原則：}
+\begin{enumerate}
+  \item \textbf{同一演算子の使用}：圧力勾配 $D_h[p]$ と表面張力勾配 $D_h[\psi]$ の
+        差分演算子（本稿では CCD の $D_x^{(1)}, D_y^{(1)}$）を完全に一致させる．
+  \item \textbf{曲率と $\bnabla\psi$ の同一離散化}：$\kappa$ の計算に使う $\phi$ の微分（CCD）と，
+        $\bnabla\psi$ の微分（CCD）が同一の格子点評価であること．
+  \item \textbf{検証必須}：実装後，必ず「静止液滴テスト」（10章・ベンチマーク1）を実行し，
+        寄生流れ振幅 $\|\bu_{\text{para}}\|_\infty$ が $\Ord{h^4}$ 以上で収束することを確認せよ．
+\end{enumerate}
+
+\textbf{実装上の具体的チェックリスト：}
+\begin{itemize}
+  \item Predictor の $x$ 方向表面張力：$\kappa^{n+1}_{i,j}\cdot (D_x^{(1)}\psi^{n+1})_{i,j}/We$
+        ← この $D_x^{(1)}$ と PPE 補正の $D_x^{(1)} p$ が\textbf{同一ルーチン}から来ているか？
+  \item CCD システムを $x$ 方向に解いたとき，$\psi^{n+1}$ の $f'_x$ と $p^{n+1}$ の $f'_x$ を
+        \textbf{同一スウィープ（同一境界条件処理）で計算している}か？
+\end{itemize}
+\end{tcolorbox}
+
 \subsection{無次元化 NS 方程式}
 \label{sec:nondim}
 

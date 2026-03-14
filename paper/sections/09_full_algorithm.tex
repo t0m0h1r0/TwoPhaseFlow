@@ -96,6 +96,30 @@ $x$成分と $y$成分の粘性項を比べると，$u \leftrightarrow v$ かつ
 移流項（第1行）は陽解法（時刻 $t^n$ の値のみ），粘性項（第2--3行）は Crank--Nicolson（$\bm{u}^*$ と $\bm{u}^n$ の平均）で離散化する．
 $\bm{u}^*$ を含む粘性項のため，全格子点をまとめると $\bm{u}^* = (u^*, v^*)$ に関する\textbf{ブロック三重対角線形方程式系}が得られ，これをガウス消去法等で解く．
 
+\begin{tcolorbox}[defbox, title={Crank--Nicolson 予測ステップの行列アセンブリ概要}]
+$x$ 成分の粘性項（等粘性 $\mu$ を定数と近似）を例に取る．
+Crank--Nicolson で半陰的に書くと：
+\[
+  \frac{\rho}{\Delta t}(u^*_i - u^n_i)
+  = \frac{\mu}{2}\bigl(u^*_{i-1} - 2u^*_i + u^*_{i+1}\bigr)
+  + \frac{\mu}{2}\bigl(u^n_{i-1} - 2u^n_i + u^n_{i+1}\bigr)
+  + \text{（対流・表面張力の陽的項）}
+\]
+$u^*$ について整理すると（$\lambda \equiv \mu\Delta t/(2\rho)$）：
+\[
+  -\lambda\,u^*_{i-1} + (1+2\lambda)\,u^*_i - \lambda\,u^*_{i+1}
+  = u^n_i + \lambda(u^n_{i-1}-2u^n_i+u^n_{i+1}) + \frac{\Delta t}{\rho}(\text{陽的項})_i
+\]
+全格子点 $i = 1, \ldots, N$ をまとめると，$u^*$ に関する三重対角線形系
+$\mathbf{M}_{\rm CN} \bm{u}^* = \bm{b}^n$ が得られる．
+$\mathbf{M}_{\rm CN}$ は対角優位な三重対角行列（$y$ 方向が加わると5対角）で，
+Thomas 法または TDMA で $O(N)$ コストで解ける．
+
+\textbf{2次元の場合：} $x$ 方向と $y$ 方向の粘性を同時に半陰的に扱うと
+ペンタダイアゴナル（5対角）系になる（ADI 法で2つの三重対角系に分割することも多い）．
+本稿では $x$，$y$ それぞれを順次 1D スイープする次元分離 ADI アプローチを推奨する．
+\end{tcolorbox}
+
 \textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
 $\bm{u}^{n+1}$ が非圧縮条件を離散的に満たすよう，圧力 $p^{n+1}$ を求める．
 離散 Poisson 方程式は各格子点 $(i,j)$ について以下の形式になる：

@@ -124,6 +124,38 @@ Rayleigh--Taylor 不安定の線形成長率は解析的に：
   \item スパイク先端のKelvin-Helmholtz 的巻き込み（Kelvin-Helmholtz instability との相互作用）
 \end{itemize}
 
+\begin{tcolorbox}[defbox, title={Rayleigh--Taylor ベンチマーク：具体的パラメータ（推奨設定）}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\hline
+パラメータ & 記号 & 推奨値 \\
+\hline
+擾乱波長 & $\lambda$ & $1.0$（基準長さ） \\
+計算領域 & $[0,\lambda]\times[0,4\lambda]$ & $[0,1]\times[0,4]$ \\
+初期界面位置 & $L_0$ & $2.0$（領域高さの $50\%$） \\
+初期擾乱振幅 & $A_0$ & $0.05\lambda = 0.05$（$\lambda$ の $5\%$） \\
+重流体密度 & $\rho_l$ & $3.0$（無次元） \\
+軽流体密度 & $\rho_g$ & $1.0$（無次元，Atwood 数 $At = 0.5$） \\
+粘性係数（両相） & $\mu_l = \mu_g$ & $0.01$（弱粘性，$Re = 100$ 相当） \\
+表面張力 & $\sigma$ & $0$（または $We \gg 10^3$） \\
+重力加速度 & $g$ & $1.0$（無次元，$Fr = 1$） \\
+初期速度場 & $\bm{u}$ & $\bm{0}$ \\
+メッシュ（標準） & $N_x \times N_y$ & $64 \times 256$（$\lambda / N_x = h = 1/64$） \\
+メッシュ（高解像度） & $N_x \times N_y$ & $128 \times 512$（収束確認用） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{理論線形成長率（上記パラメータの場合）：}
+\[
+  \omega_{\rm RT} = \sqrt{\frac{3-1}{3+1} \cdot \frac{1 \cdot 2\pi}{1}} = \sqrt{\pi} \approx 1.7725
+  \quad [\text{無次元時間}^{-1}]
+\]
+初期振幅が線形領域にある $A(t) < 0.1\lambda$ の間（$t \lesssim 1.5$）に成長率を測定し，
+数値解との相対誤差 $< 5\%$ を確認する．
+\end{tcolorbox}
+
 %%%  ── Benchmark 4 ──────────────────────────────────────────────
 \subsubsection{ベンチマーク4：気泡上昇（Rising Bubble）}
 \label{sec:bench_bubble}

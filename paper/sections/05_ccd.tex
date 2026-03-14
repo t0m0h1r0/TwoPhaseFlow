@@ -384,6 +384,59 @@ c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \lab
   \label{eq:bc_left}
 \end{equation}
 
+\subsubsection{実装：ゴーストセル法による境界処理}
+\label{sec:ccd_ghost}
+
+前節の境界スキームは数学的に精密だが，実装において別の選択肢として
+\textbf{ゴーストセル（ghost cell）法}がある．
+計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
+境界条件に応じた値を設定することで，
+内点スキーム（3点ステンシル）を境界近傍でもそのまま適用できる．
+
+\begin{tcolorbox}[defbox, title={ゴーストセルの設定規則}]
+左境界 $x = 0$（$i = 0$ が境界セル，$i = -1$ がゴーストセル）の例：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\hline
+境界条件 & ゴーストセル値 & 物理的意味 \\
+\hline
+Dirichlet（ノースリップ壁）: $u|_{\rm wall}=0$ &
+  $u_{-1} = -u_1$ &
+  鏡像反転（$u_{0} \approx 0$） \\
+Dirichlet（強制流入）: $u|_{\rm wall}=U_w$ &
+  $u_{-1} = 2U_w - u_1$ &
+  $u_{0} = (u_{-1}+u_1)/2 = U_w$ \\
+Neumann（流出・対称）: $\partial u/\partial x|_{\rm wall}=0$ &
+  $u_{-1} = u_1$ &
+  勾配ゼロ（偶関数的反射） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{境界セル $i=0$ の内点方程式（ゴーストセル利用版）：}
+\begin{equation}
+  \alpha_1 f'_{-1} + f'_0 + \alpha_1 f'_1
+  = \frac{a_1}{h}(f_1 - f_{-1}) + b_1 h(f''_1 - f''_{-1})
+  \label{eq:ccd_ghost_eq}
+\end{equation}
+ここで $f_{-1}$ および $f'_{-1}, f''_{-1}$ はゴーストセルの値（境界条件から設定）．
+これにより，内点と全く同じ係数行列 $\mathbf{A}, \mathbf{B}$ を境界でも使えるため，
+行列アセンブリのコードが統一できる利点がある．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={ゴーストセル法の注意点}]
+\begin{itemize}
+  \item ゴーストセルへの $f'_{-1}, f''_{-1}$ の設定方法が精度に影響する．
+    ノースリップ壁（$u = 0$）の場合，$f'$ は壁に対して\textbf{偶関数}的に
+    反射（$f'_{-1} = f'_1$），$f''$ は\textbf{奇関数}的（$f''_{-1} = -f''_1$）に設定する
+    ことで，壁上の $f' = 0$，$f'' \neq 0$ の滑らかな挙動が保たれる．
+  \item 流出境界では $f'_{-1} = f'_1$，$f''_{-1} = f''_1$ とするが，
+    圧力の全 Neumann 境界問題（零固有モード）については 7 章の対処法を参照すること．
+\end{itemize}
+\end{tcolorbox}
+
 \subsection{行列構造：ブロック三重対角システム}
 \label{sec:ccd_matrix}
 
