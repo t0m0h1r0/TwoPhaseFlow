@@ -70,10 +70,10 @@ f''_{i+1}-f''_{i-1} &= 2h f^{(3)}_i + \frac{2h^3}{6}f^{(5)}_i + \frac{2h^5}{120}
 LHS と RHS が恒等的に等しくなるように，各微分階数 $f^{(n)}_i$ の係数を比較する．
 \[ \text{LHS} - \text{RHS} = 0 \]
 \begin{align*}
-(1+2\alpha_1 - 2a_1)f'_i & \\
-+ \left(\alpha_1 - (\frac{a_1}{3} + 2b_1)\right)h^2 f^{(3)}_i & \\
-+ \left(\frac{\alpha_1}{12} - (\frac{a_1}{60} + \frac{b_1}{3})\right)h^4 f^{(5)}_i & \\
-+ \left(\frac{\alpha_1}{360} - (\frac{a_1}{2520} + \frac{b_1}{60})\right)h^6 f^{(7)}_i + \Ord{h^8} &= 0
+&(1+2\alpha_1 - 2a_1)f'_i \\
+&+ \left(\alpha_1 - \left(\frac{a_1}{3} + 2b_1\right)\right)h^2 f^{(3)}_i \\
+&+ \left(\frac{\alpha_1}{12} - \left(\frac{a_1}{60} + \frac{b_1}{3}\right)\right)h^4 f^{(5)}_i \\
+&+ \left(\frac{\alpha_1}{360} - \left(\frac{a_1}{2520} + \frac{b_1}{60}\right)\right)h^6 f^{(7)}_i + \Ord{h^8} = 0
 \end{align*}
 この等式が任意の関数 $f$ について成り立つためには，各項の係数がゼロでなければならない．
 最高の精度を得るために，できるだけ高次の項まで係数をゼロにしていく．
@@ -110,13 +110,25 @@ LHS と RHS が恒等的に等しくなるように，各微分階数 $f^{(n)}_i
 
 \subsection{Equation-II の係数導出}
 
-同様に Equation-II についても，$f^{(2)}_i$ を中心に展開を行う．
+Equation-II の係数（$\beta_2, a_2, b_2$）も，Equation-I と全く同様の手順で導出できる．
+ここでの導出は読者への演習問題とし，結果のみを以下に示す．
+
+\begin{tcolorbox}[checkboxtitle, title={読者への演習：Equation-II の係数導出}]
+Equation-II の両辺を点 $i$ の周りでテイラー展開し，$f''_i$ を中心に整理せよ．
+$h$ のべき乗の係数が両辺で等しくなるように未知係数 $\beta_2, a_2, b_2$ を決定し，
+本スキームが $\Ord{h^6}$ 精度を達成することを確認せよ．
+導出過程は Equation-I の場合と類似しているが，今回は偶数階の微分（$f^{(4)}_i, f^{(6)}_i, \dots$）の係数を消去していくことになる．
+
+\textbf{ヒント：} 展開・整理後に以下の連立方程式が得られるはずである．
 \begin{itemize}
-  \item $f^{(2)}_i$ の係数： $1 + 2\beta_2 = a_2 + 2b_2$
-  \item $f^{(4)}_i$ の係数 ($h^2$)： $\beta_2 = \frac{a_2}{12} + \frac{b_2}{3}$
-  \item $f^{(6)}_i$ の係数 ($h^4$)： $\frac{\beta_2}{12} = \frac{a_2}{360} + \frac{b_2}{60}$
+  \item $f^{(2)}_i$ の係数比較： $1 + 2\beta_2 = a_2 + 2b_2$
+  \item $f^{(4)}_i$ の係数消去： $\beta_2 = \frac{a_2}{12} + \frac{b_2}{3}$
+  \item $f^{(6)}_i$ の係数消去： $\frac{\beta_2}{12} = \frac{a_2}{360} + \frac{b_2}{60}$
 \end{itemize}
-これらを解くことで，以下の係数を得る．
+
+\vspace{1em}
+この連立方程式を解くと，以下の係数が一意に定まる．
+\end{tcolorbox}
 
 \begin{tcolorbox}[resultbox]
 \textbf{Equation-II 係数解：}

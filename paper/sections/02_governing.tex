@@ -36,75 +36,77 @@
 両者は $\psi = H_\varepsilon(\phi)$ の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，非線形方程式 $H_\varepsilon(\phi) - \psi = 0$ をニュートン法などの反復解法で数値的に解く必要がある．
 \end{tcolorbox}
 
-\subsection{無次元化 NS 方程式}
+\subsection{無次元化 NS 方程式：物理的意味と導出}
 \label{sec:nondim}
 
-本節では，次元を持つ Navier-Stokes 方程式から，その無次元形を段階的に導出する．このプロセスを理解することは，シミュレーション結果を物理的に解釈する上で不可欠である．
+Navier-Stokes 方程式は，様々な物理現象（慣性，粘性，重力，表面張力など）を内包している．
+しかし，次元を持つ方程式のままでは，特定の流れ場においてどの力が支配的であるかを直感的に判断するのは難しい．
+
+\begin{tcolorbox}[defbox, title={無次元化の目的：力のバランスを明らかにする}]
+無次元化の最も重要な目的は，方程式を普遍的な形に変形し，流れの挙動を支配する\textbf{力の相対的な重要性}を明らかにすることである．
+具体的には，方程式に現れる全ての力（圧力勾配力，粘性力，重力など）を，流れの\textbf{慣性力}を基準として正規化する．
+その結果，各項の係数として現れるのが\textbf{無次元数}（レイノルズ数など）であり，その大きさを見れば，どの物理現象が流れ場を支配しているかを定量的に評価できるのである．
+\end{tcolorbox}
+
+本節では，この物理的な動機に基づき，次元を持つ Navier-Stokes 方程式からその無次元形を段階的に導出する．
 
 \subsubsection{次元系の支配方程式}
-まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，非圧縮性流体の運動量保存則（Navier-Stokes 方程式）を記述する．
+まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，非圧縮性流体の運動量保存則を記述する．
 \begin{equation}
- \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
- =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]
- -\rho^*\bm{g}^* + \bm{f}_\sigma^*
+ \underbrace{\rho^* \pd{\bu^*}{t^*}}_{\text{時間変化}} + \underbrace{\rho^*(\bu^*\cdot\bnabla^*)\bu^*}_{\text{移流（慣性）}}
+ = \underbrace{-\bnabla^* p^*}_{\text{圧力勾配}} + \underbrace{\bnabla^*\cdot\bm{\tau}^*}_{\text{粘性}}
+ + \underbrace{\rho^*\bm{g}^*}_{\text{重力}} + \underbrace{\bm{f}_\sigma^*}_{\text{表面張力}}
  \label{eq:NS_dim}
 \end{equation}
-ここで，$\rho^*$ は密度，$\mu^*$ は粘性係数，$\bu^*$ は速度ベクトル，$p^*$ は圧力，$\bm{g}^*$ は重力加速度ベクトル，$\bm{f}_\sigma^*$ は表面張力項である．
+ここで $\bm{\tau}^* = \mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)$ は粘性応力テンソルである．
 
-\subsubsection{無次元化変数の導入}
-次に，参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ．これらを用いて，物理変数を以下のように無次元化する．
+\subsubsection{無次元化変数の導入と各項の変換}
+次に，参照量（液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$）を用いて各変数を無次元化する．
 \begin{align}
  \bm{x}^* &= L\bm{x} & \bu^* &= U\bu & t^* &= \frac{L}{U}t & p^* &= \rho_l U^2 p \\
  \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla
 \end{align}
-ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla$ は全て無次元量である．
-
-\subsubsection{各項の無次元化}
-これらの関係式を，方程式 \eqref{eq:NS_dim} の各項に代入し，変換していく．
-方程式全体を支配する代表的な力である「慣性力」のスケール $\rho_l U^2 / L$ が各項に現れることを確認しよう．
+これらの関係式を式 \eqref{eq:NS_dim} の各項に代入すると，全ての項が慣性力の代表スケール $\bm{[}\frac{\rho_l U^2}{L}\bm{]}$ を共通因子として持つ形に変形できる．
 
 \begin{itemize}
-    \item \textbf{非定常項（時間微分項）}:
-    \[ \rho^* \pd{\bu^*}{t^*} = (\rho_l\rho)\,\pd{(U\bu)}{\frac{L}{U}t} = \left[\frac{\rho_l U^2}{L}\right]\,\rho\,\pd{\bu}{t} \]
-
-    \item \textbf{移流項}:
-    \[ \rho^* (\bu^* \cdot \bnabla^*) \bu^* = (\rho_l\rho) \left( (U\bu) \cdot \left(\frac{1}{L}\bnabla\right) \right) (U\bu) = \left[\frac{\rho_l U^2}{L}\right] \rho(\bu\cdot\bnabla)\bu \]
+    \item \textbf{慣性項（左辺）}:
+    \[ \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right) = \bm{\left[\frac{\rho_l U^2}{L}\right]} \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \]
 
     \item \textbf{圧力勾配項}:
-    \[ \bnabla^* p^* = \left(\frac{1}{L}\bnabla\right) (\rho_l U^2 p) = \left[\frac{\rho_l U^2}{L}\right] \bnabla p \]
+    \[ -\bnabla^* p^* = -\left(\frac{1}{L}\bnabla\right) (\rho_l U^2 p) = \bm{\left[\frac{\rho_l U^2}{L}\right]} (-\bnabla p) \]
 
     \item \textbf{粘性項}:
-    \begin{align*}
-     \bnabla^*\cdot(\mu^*\bnabla^*\bu^*) &= \frac{1}{L}\bnabla\cdot\left( (\mu_l\mu) \frac{1}{L}\bnabla (U\bu) \right) \\
-     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot(\mu\bnabla\bu) = \left[\frac{\rho_l U^2}{L}\right]\underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re} \bnabla\cdot(\mu\bnabla\bu)
-    \end{align*}
-    ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
+    \[ \bnabla^*\cdot\bm{\tau}^* = \bm{\left[\frac{\rho_l U^2}{L}\right]} \underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re} \bnabla\cdot\!\left[\mu\,(\bnabla\bu+\bnabla\bu^T)\right] \]
 
     \item \textbf{重力項}:
-    （$\bm{g}^* = (0, -g, 0)$ の場合）
-    \[ \rho^* \bm{g}^* = (\rho_l\rho) (g\hat{\bm{z}}) = \left[\frac{\rho_l U^2}{L}\right] \underbrace{\left(\frac{gL}{U^2}\right)}_{=1/Fr^2} \rho \hat{\bm{z}} \]
-    ここで，フルード数 $Fr \equiv U/\sqrt{gL}$ が現れる．
+    \[ \rho^* \bm{g}^* = \bm{\left[\frac{\rho_l U^2}{L}\right]} \underbrace{\left(\frac{gL}{U^2}\right)}_{=1/Fr^2} \rho \hat{\bm{z}} \]
 
     \item \textbf{表面張力項}:
-    （CSFモデル $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を仮定）
-    \begin{align*}
-      \sigma\kappa^*\bnabla^*\psi &= \sigma \left(\frac{1}{L}\kappa\right) \left(\frac{1}{L}\bnabla\psi\right) = \frac{\sigma}{L^2}\kappa\bnabla\psi \\
-      &= \left[\frac{\rho_l U^2}{L}\right] \underbrace{\left(\frac{\sigma}{\rho_l U^2 L}\right)}_{=1/We} \kappa\bnabla\psi
-    \end{align*}
-    ここで，ウェーバー数 $We \equiv \rho_l U^2 L / \sigma$ が現れる．
+    \[ \bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi = \bm{\left[\frac{\rho_l U^2}{L}\right]} \underbrace{\left(\frac{\sigma}{\rho_l U^2 L}\right)}_{=1/We} \kappa\bnabla\psi \]
 \end{itemize}
 
 \subsubsection{無次元方程式の完成}
-全ての項を慣性力のスケール $[\rho_l U^2/L]$ で割り，整理することで，最終的な無次元Navier-Stokes方程式が得られる．
+上記の結果をまとめると，次元を持つ方程式は以下のように書き換えられる．
+\[
+\bm{\left[\frac{\rho_l U^2}{L}\right]} \rho(\psi)\!\left(\pd{\bu}{t}+\dots\right) = \bm{\left[\frac{\rho_l U^2}{L}\right]} \left( -\bnabla p + \frac{1}{Re}\bnabla\cdot\bm{\tau} - \frac{1}{Fr^2}\rho\hat{\bm{z}} + \frac{1}{We}\kappa\bnabla\psi \right)
+\]
+この方程式の両辺を共通の慣性力スケール $\bm{[\rho_l U^2/L]}$ で除算することで，最終的な無次元方程式が得られる．
+
 \begin{tcolorbox}[mybox, title={無次元 Navier--Stokes（CLS 版）}]
 \begin{equation}
- \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)
- =-\bnabla p+\frac{1}{Re}\,\bnabla\cdot\!\left[\mu\,(\bnabla\bu+\bnabla\bu^T)\right]
- -\frac{\rho}{Fr^2}\hat{\bm z}+\frac{\kappa\,\bnabla\psi}{We}
+ \underbrace{\rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)}_{\text{慣性力}}
+ = \underbrace{-\bnabla p}_{\text{圧力勾配力}} + \underbrace{\frac{1}{Re}\,\bnabla\cdot\!\left[\mu\,(\bnabla\bu+\bnabla\bu^T)\right]}_{\text{粘性力}}
+ + \underbrace{\frac{-\rho}{Fr^2}\hat{\bm z}}_{\text{重力}} + \underbrace{\frac{\kappa\,\bnabla\psi}{We}}_{\text{表面張力}}
  \label{eq:NS_dimless_cls}
 \end{equation}
 \end{tcolorbox}
-この方程式は，流体の挙動が $Re, Fr, We$ という3つの無次元パラメータによって支配されることを明示している．
+この方程式は，流れの慣性力を「1」としたとき，他の力がどれくらいの大きさで影響するかを直接的に示している．
+\begin{itemize}
+    \item \textbf{レイノルズ数 $Re \equiv \frac{\rho_l U L}{\mu_l}$}：慣性力と粘性力の比．$Re$ が大きいほど，流れは乱れやすい（粘性の影響が小さい）．
+    \item \textbf{フルード数 $Fr \equiv \frac{U}{\sqrt{gL}}$}：慣性力と重力の比．$Fr$ が大きいほど，重力の影響は相対的に小さい（例：高速な流れ）．
+    \item \textbf{ウェーバー数 $We \equiv \frac{\rho_l U^2 L}{\sigma}$}：慣性力と表面張力の比．$We$ が大きいほど，表面張力は慣性に負けて界面は分裂しやすい．
+\end{itemize}
+したがって，シミュレーションを行う際には，対象とする流れの $Re, Fr, We$ を正しく設定することが，現実の現象を再現する上で極めて重要となる．
 
 \subsection{曲率の計算}
 界面の曲率 $\kappa$ は，表面張力項を評価するために不可欠な幾何学量である．
@@ -165,7 +167,7 @@ $\phi$ の連続性を仮定すれば，$\phi_{xy}=\phi_{yx}$ である（Claira
 \begin{tcolorbox}[warnbox, title={実装上の重要事項：ゼロ除算の回避}]
 この問題を回避するため，分母の大きさに下限値を設けるのが一般的である．
 具体的には，小さな正の定数 $\epsilon_{\text{norm}}$（例：$10^{-8}$）を導入し，
-分母を $\max(\norm{\bnabla\phi}^2, \epsilon_{\text{norm}}^2)^{3/2}$ で置き換える．
+分母を $(\phi_x^2 + \phi_y^2 + \epsilon_{\text{norm}})^{3/2}$ で置き換える．
 \[ \kappa \approx -\frac{ \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} }{ \max\bigl(\phi_x^2 + \phi_y^2, \epsilon_{\text{norm}}^2\bigr)^{3/2} } \]
 この処理により，$\bnabla\phi$ がゼロになる点（特異点）での発散を防ぎ，計算のロバスト性を確保できる．
 さらに，計算された $\kappa$ に対して微小なガウシアンフィルタを適用し，格子スケールの数値ノイズを除去することも有効な手段である．

@@ -1,62 +1,65 @@
 % paper/sections/09_full_algorithm.tex
-\section{完全アルゴリズムフロー：離散形式}
+\section{アルゴリズムフローの厳密な擬似コード表現}
 \label{sec:algorithm}
 
-時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された疑似コード形式で以下にまとめる．
-添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
-$D_x(\cdot), D_y(\cdot)$ は指定されたスキーム（例：CCD）による空間微分オペレータとする．
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，プログラミング実装を意識した厳密な擬似コード形式で記述する．
 
-\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の離散計算フロー}]
+\paragraph{離散オペレータの定義}
+まず，離散的な微分オペレータを以下のように定義する．
+\begin{itemize}
+    \item $\nabla_h \cdot \bm{q}$: ベクトル場 $\bm{q}$ の発散．本稿では，移流項の計算にはWENO5を，それ以外（圧力方程式など）では中心差分（Rhie-Chow補間を含む）を用いる．
+    \item $\nabla_h s$: スカラー場 $s$ の勾配．CCD法または中心差分を用いる．
+    \item $\mathcal{L}_h(\bm{u}) \equiv \nabla_h \cdot \left[ \frac{\mu}{Re} (\nabla_h \bm{u} + (\nabla_h \bm{u})^T) \right]$: 粘性項（ラプラシアン）オペレータ．本稿では内部の微分計算にCCD法を適用する．
+\end{itemize}
 
-\textbf{1. CLS 移流 (Advection)} \\
-保存形レベルセット変数 $\psi^n$ を，速度場 $\bm{u}^n$ を用いて時間発展させる．
-ここでは3次のルンゲ=クッタ法（TVD-RK3）を用いる．
-\begin{align*}
-  \psi^{(1)} &= \psi^n - \Delta t \, \text{Div}_h(\psi^n \bm{u}^n) \\
-  \psi^{(2)} &= \frac{3}{4}\psi^n + \frac{1}{4}\psi^{(1)} - \frac{1}{4}\Delta t \, \text{Div}_h(\psi^{(1)} \bm{u}^n) \\
-  \psi^* &= \frac{1}{3}\psi^n + \frac{2}{3}\psi^{(2)} - \frac{2}{3}\Delta t \, \text{Div}_h(\psi^{(2)} \bm{u}^n)
-\end{align*}
-ここで $\text{Div}_h(\cdot)$ は5次精度WENOスキームで計算された発散オペレータを表す．
+\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の厳密計算フロー}]
 
-\textbf{2. 再初期化 (Reinitialization)} \\
-移流によって鈍化した界面プロファイル $\psi^*$ を整形する．
-式 \eqref{eq:cls_reinit_iso} で表される偏微分方程式を，仮想時間 $\tau$ について複数ステップ解く．
-\[ \psi^{n+1} = \text{Reinitialize}(\psi^*) \]
+\textbf{BEGIN Time Step} ($t^n \to t^{n+1}$)
 
-\textbf{3. グリッド・物性更新 (Update Properties)} \\
-更新された $\psi^{n+1}_{i,j}$ に基づき，各格子点での距離関数 $\phi$ および物理的物性値を再計算する．
-\begin{align*}
-  \phi^{n+1}_{i,j} &= H_\varepsilon^{-1}(\psi^{n+1}_{i,j}) \quad (\text{Newton法で解く}) \\
-  \rho^{n+1}_{i,j} &= \rho(\phi^{n+1}_{i,j}) \\
-  \mu^{n+1}_{i,j} &= \mu(\phi^{n+1}_{i,j})
-\end{align*}
+\begin{enumerate}
+    \item \textbf{CLS Advection (TVD-RK3):}
+    \begin{align*}
+      \bm{F}^{(0)} &:= -\nabla_h \cdot (\psi^n \bm{u}^n) \quad (\text{WENO5}) \\
+      \psi^{(1)} &:= \psi^n + \Delta t \, \bm{F}^{(0)} \\
+      \bm{F}^{(1)} &:= -\nabla_h \cdot (\psi^{(1)} \bm{u}^{n+1}) \quad (\text{WENO5}) \\
+      \psi^{(2)} &:= \frac{3}{4}\psi^n + \frac{1}{4}(\psi^{(1)} + \Delta t \, \bm{F}^{(1)}) \\
+      \bm{F}^{(2)} &:= -\nabla_h \cdot (\psi^{(2)} \bm{u}^{n+1}) \quad (\text{WENO5}) \\
+      \psi^* &:= \frac{1}{3}\psi^n + \frac{2}{3}(\psi^{(2)} + \Delta t \, \bm{F}^{(2)})
+    \end{align*}
 
-\textbf{4. 曲率計算 (Curvature)} \\
-$\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，公式 \eqref{eq:curvature_2d} に代入して曲率を求める．
-\begin{align*}
- (\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j} &= (D_x\phi, D_y\phi, D_{xx}\phi, D_{yy}\phi, D_{xy}\phi)_{i,j}^{n+1} \\
- \kappa^{n+1}_{i,j} &= \text{CurvatureFormula}(\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j}
-\end{align*}
+    \item \textbf{Reinitialization:} \\
+    偏微分方程式 \eqref{eq:cls_reinit_iso} を仮想時間 $\tau$ について複数ステップ解き，$\psi^*$ を整形して $\psi^{n+1}$ を得る．
+    \[ \psi^{n+1} \leftarrow \text{SolveReinitPDE}(\psi^*) \]
 
-\textbf{5. 運動量予測 (Predictor Step)} \\
-圧力勾配項を除いた運動量方程式から，予測速度場 $\bm{u}^*$ を計算する．
-\begin{align*}
- \frac{\bm{u}^*_{i,j} - \bm{u}^n_{i,j}}{\Delta t} = &- \text{Conv}(\bm{u}^n)_{i,j} \quad (\text{WENO5}) \\
- &+ \frac{1}{2\rho^{n+1}_{i,j}} \text{Diff}(\bm{u}^*_{i,j} + \bm{u}^n_{i,j}) \quad (\text{CCD, Crank-Nicolson}) \\
- &+ \bm{F}_{\text{ext}, i,j}^{n+1} \quad (\text{重力項，表面張力項など})
-\end{align*}
-この式は $\bm{u}^*$ に関する線形方程式系であり，これを解くことで予測速度場が得られる．
+    \item \textbf{Properties Update:} \\
+    FOR all grid points $(i,j)$ DO:
+    \begin{align*}
+        \phi^{n+1}_{i,j} &\leftarrow \text{Solve}[ H_\varepsilon(\phi) = \psi^{n+1}_{i,j} ] \quad (\text{Newton's method}) \\
+        \rho^{n+1}_{i,j} &\leftarrow \rho(\phi^{n+1}_{i,j}) \\
+        \mu^{n+1}_{i,j} &\leftarrow \mu(\phi^{n+1}_{i,j})
+    \end{align*}
+    END FOR
 
-\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
-次ステップの速度場 $\bm{u}^{n+1}$ が非圧縮条件 $\text{Div}_h(\bm{u}^{n+1}) = 0$ を満たすように，圧力 $p^{n+1}$ を求める．
-これは以下の形式の離散的な Poisson 方程式となる．
-\[ \text{Div}_h\left( \frac{1}{\rho^{n+1}} \text{Grad}_h(p^{n+1}) \right)_{i,j} = \frac{\text{Div}_h(\bm{u}^*_{i,j})}{\Delta t} \]
-ここで，$\text{Div}_h, \text{Grad}_h$ は Rhie-Chow 補間を内包した離散的な発散および勾配オペレータである．
-この大規模な疎行列方程式を反復法ソルバー（例：BiCGSTAB）で解き，$p^{n+1}$ を得る．
+    \item \textbf{Curvature Calculation:} \\
+    CCD法を用いて $\phi^{n+1}$ の各階微分 $D_x\phi, D_{xx}\phi, \dots$ を計算し，公式 \eqref{eq:curvature_2d} に代入して $\kappa^{n+1}$ を得る．
 
-\textbf{7. 速度補正 (Corrector Step)} \\
-得られた圧力勾配を用いて，予測速度場を補正し，最終的な速度場 $\bm{u}^{n+1}$ を得る．
-\[ \bm{u}^{n+1}_{i,j} = \bm{u}^*_{i,j} - \frac{\Delta t}{\rho^{n+1}_{i,j}} \text{Grad}_h(p^{n+1})_{i,j} \]
-この $\bm{u}^{n+1}$ は，離散的に非圧縮条件を満たす速度場となる．
+    \item \textbf{Predictor Step (Momentum Prediction):} \\
+    予測速度 $\bm{u}^*$ を求める．粘性項をCrank-Nicolson法で扱うため，以下の線形方程式系を解く．
+    \[ \left( \frac{\rho^{n+1}}{\Delta t} - \frac{1}{2}\mathcal{L}_h \right) \bm{u}^* = \left( \frac{\rho^{n+1}}{\Delta t} + \frac{1}{2}\mathcal{L}_h \right) \bm{u}^n - \rho^{n+1}\nabla_h \cdot (\bm{u}^n \bm{u}^n) + \bm{F}_{\text{ext}}^{n+1} \]
+    ここで $\bm{F}_{\text{ext}}^{n+1}$ は重力項と表面張力項 $\frac{\kappa^{n+1}}{We}\nabla_h\psi^{n+1}$ の和である．
+    この大規模な連立一次方程式を BiCGSTAB などの反復法ソルバーで解き，$\bm{u}^*$ を得る．
+
+    \item \textbf{Pressure Poisson Equation:} \\
+    次ステップの圧力 $p^{n+1}$ を求めるためのPoisson方程式を構築し，解く．
+    \[ \nabla_h \cdot \left( \frac{1}{\rho^{n+1}} \nabla_h p^{n+1} \right) = \frac{1}{\Delta t} \nabla_h \cdot \bm{u}^* \]
+    ここでオペレータ $\nabla_h, \nabla_h \cdot$ はRhie-Chow補間を内包する．
+    この線形方程式系を反復法ソルバーで解き，$p^{n+1}$ を得る．
+
+    \item \textbf{Corrector Step (Velocity Correction):} \\
+    圧力勾配を用いて速度場を補正し，非圧縮性を満たす最終的な速度場 $\bm{u}^{n+1}$ を得る．
+    \[ \bm{u}^{n+1} = \bm{u}^* - \frac{\Delta t}{\rho^{n+1}} \nabla_h p^{n+1} \]
+\end{enumerate}
+
+\textbf{END Time Step}
 
 \end{tcolorbox}
