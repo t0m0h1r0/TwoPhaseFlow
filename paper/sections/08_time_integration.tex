@@ -135,6 +135,54 @@ $\beta_k$ が小さいほど，そのステンシルの範囲が滑らか（$\Ri
 \end{itemize}
 \end{tcolorbox}
 
+\subsubsection{WENO5 再構成係数（実装に必須の係数表）}
+
+フラックス分割後，各候補ステンシルからの数値フラックス $\hat{f}^\pm_k$ を計算するための
+\textbf{再構成多項式の係数}を以下に示す．これがなければ WENO5 は実装できない．
+
+\begin{tcolorbox}[mybox, title={正側フラックス $\hat{F}^+$ の3候補ステンシル再構成係数}]
+Lax-Friedrichs 分割で得た正側フラックス値 $F^+_i$ を用いて，
+セル界面 $i+1/2$ での再構成値 $\hat{f}^+_k$ を以下の3つのステンシルで計算する：
+
+\begin{align}
+  \hat{f}^+_0 &= \frac{1}{3}F^+_{i-2} - \frac{7}{6}F^+_{i-1} + \frac{11}{6}F^+_i
+  \label{eq:weno5_rec0} \\[4pt]
+  \hat{f}^+_1 &= -\frac{1}{6}F^+_{i-1} + \frac{5}{6}F^+_i + \frac{1}{3}F^+_{i+1}
+  \label{eq:weno5_rec1} \\[4pt]
+  \hat{f}^+_2 &= \frac{1}{3}F^+_i + \frac{5}{6}F^+_{i+1} - \frac{1}{6}F^+_{i+2}
+  \label{eq:weno5_rec2}
+\end{align}
+
+\textbf{最終フラックス（非線形重み付き凸結合）：}
+\[
+  \hat{F}^+_{i+1/2} = \omega_0\,\hat{f}^+_0 + \omega_1\,\hat{f}^+_1 + \omega_2\,\hat{f}^+_2
+\]
+$\omega_k$ は式 \eqref{eq:weno5_beta} の $\beta_k$ から計算した非線形重み（前掲の tcolorbox 参照）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={負側フラックス $\hat{F}^-$ の再構成係数（ミラー対称）}]
+負側フラックス $F^-_i$ の再構成は，\textbf{正側のミラー像}（インデックスを逆転）として得られる：
+\begin{align}
+  \hat{f}^-_0 &= \frac{1}{3}F^-_{i+3} - \frac{7}{6}F^-_{i+2} + \frac{11}{6}F^-_{i+1}
+  \\[4pt]
+  \hat{f}^-_1 &= -\frac{1}{6}F^-_{i+2} + \frac{5}{6}F^-_{i+1} + \frac{1}{3}F^-_i
+  \\[4pt]
+  \hat{f}^-_2 &= \frac{1}{3}F^-_{i+1} + \frac{5}{6}F^-_i - \frac{1}{6}F^-_{i-1}
+\end{align}
+$\beta_k$ の計算には $F^-_{i+1}, F^-_i, F^-_{i-1}$ など\textbf{負側の値を正側と逆順}で代入する
+（Jiang \& Shu 1996 の論文を参照）．
+\[
+  \hat{F}^-_{i+1/2} = \omega_0\,\hat{f}^-_0 + \omega_1\,\hat{f}^-_1 + \omega_2\,\hat{f}^-_2
+\]
+\textbf{全体フラックス：} $\hat{F}_{i+1/2} = \hat{F}^+_{i+1/2} + \hat{F}^-_{i+1/2}$
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={係数の由来：Lagrange 補間による3次再構成}]
+各ステンシル $k$ の係数は，3点 Lagrange 補間で「セル平均値 $\Rightarrow$ セル界面値」を再構成する多項式の係数である（Jiang \& Shu 1996, Table 2.1 参照）．
+理想重み $d_0 = 1/10, d_1 = 3/5, d_2 = 3/10$ と組み合わせて使うと，
+$\hat{F}^+ = \sum_k d_k \hat{f}^+_k$ は $F^+$ についての5次精度補間値になる（滑らか領域）．
+\end{tcolorbox}
+
 \subsection{時間積分スキーム}
 \label{sec:time_int}
 
@@ -172,7 +220,28 @@ $TV(q^{n+1}) \leq TV(q^n)$．
 \subsection{再初期化の Godunov 型上流化}
 \label{sec:godunov}
 
-CLS 法の再初期化あるいは標準 Level Set の再初期化において，
+\subsubsection{どの再初期化に使うか：CLS vs. 標準 Level Set}
+
+Godunov 型上流化は\textbf{標準 Level Set 法（Sussman 再初期化）}において，
+Eikonal 方程式 $|\nabla\phi| = 1$ を求解するために用いられる．
+
+\begin{tcolorbox}[defbox, title={各再初期化方程式と上流化スキームの対応}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\hline
+再初期化手法 & 方程式 & 本節との関連 \\
+\hline
+\textbf{標準 LS：Sussman 法} & $\partial_\tau\phi + \text{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化を使用} \\
+\textbf{CLS 法} & $\partial_\tau\psi + \nabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用，下記参照} \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
+\subsubsection{標準 LS 再初期化への Godunov 上流化}
+
+標準 Level Set の再初期化において，
 Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
 情報伝播方向 $s=\operatorname{sgn}(\phi_0)$ に応じた統一表現は以下の通りである：
 \begin{equation}
@@ -181,6 +250,25 @@ Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
  \label{eq:godunov_upwind}
 \end{equation}
 ここで $D^\pm$ は前進・後退差分である．
+
+\subsubsection{CLS 再初期化における圧縮項の離散化}
+
+CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）の圧縮項
+$\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$
+は $\psi$ を「速度」$\psi(1-\psi)\hat{\bm{n}}$ で移流する保存則とみなせる．
+
+\begin{tcolorbox}[defbox, title={CLS 圧縮項の離散化方針}]
+CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
+\textbf{$\psi(1-\psi)$ を非線形「波速」とする1次移流}として解釈できる．
+よって，前節（\ref{sec:weno5}節）と同様の WENO5 フラックス分割法を適用できる：
+\begin{enumerate}
+  \item フラックス $F = \psi(1-\psi)\hat{n}_x$（$x$ 成分）を定義し，Lax-Friedrichs 分割を行う．
+  \item 波速の上界として $\alpha = \max|\psi(1-\psi)|_{i,j} \le 1/4$ を用いる．
+  \item WENO5 でセル界面フラックスを再構成し，発散を計算する．
+\end{enumerate}
+拡散項 $\nabla\cdot(\varepsilon\nabla\psi)$ は CCD 法で高精度に評価する（2階微分として）．
+仮想時間 $\tau$ の時間積分には TVD-RK3（式 \eqref{eq:tvd_rk3}）を使用する．
+\end{tcolorbox}
 
 \subsection{安定性制約（時間刻みの決定）}
 \label{sec:stability}

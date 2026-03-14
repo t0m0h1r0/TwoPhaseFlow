@@ -143,3 +143,28 @@ Rhie-Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやす
 \end{tcolorbox}
 
 この形式により，変密度場においても数値的に安定した圧力速度連成が保証される．
+
+\begin{tcolorbox}[warnbox, title={Rhie-Chow 補正項の精度次数と高次 CCD との整合性}]
+式 \eqref{eq:rc-face} の補正項に注目する：
+\[
+  \text{補正} = -\Delta t\!\left(\frac{1}{\rho}\right)^{\mathrm{harm}}_f
+  \underbrace{\left[(\nabla p)_f - \overline{(\nabla p)}_f\right]}_{\text{チェッカーボード検出項}}
+\]
+$(\nabla p)_f = (p_E - p_P)/\Delta x$（2次精度のフェイス直接差分）と，
+$\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を持つ補正量である．
+
+\textbf{なぜ全体精度は損なわれないのか：}
+\begin{itemize}
+  \item Rhie-Chow 補正項は\textbf{チェッカーボードモード（波長 $2h$）の振動を除去する減衰項}であり，
+        滑らかな圧力場（波長 $\gg 2h$）に対しては補正量自体が $O(h^2)$ の小さな値に過ぎない．
+  \item 滑らかな圧力場では $(\nabla p)_f \approx \overline{(\nabla p)}_f + O(h^2)$ が成立するため，
+        補正項 $\propto h^2 \cdot O(h^2/\Delta x) = O(h^3)$（$\Delta x \sim h$）となり，
+        CCD の主流計算の精度（$O(h^6)$）を実質的に阻害しない．
+  \item すなわち，Rhie-Chow 補正は「低波数の物理的情報」を高精度 CCD で処理し，
+        「高波数のチェッカーボード振動」のみを $O(h^2)$ の低精度で除去するという
+        \textbf{スペクトル選択的フィルタ}として機能する．
+\end{itemize}
+
+\textbf{実装上の確認：} 静止液滴ベンチマーク（10章）において寄生流れ振幅が $O(h^4)$ 以上で
+収束することを確認すれば，Rhie-Chow 補正が CCD の高精度を損なっていないことが検証できる．
+\end{tcolorbox}

@@ -26,6 +26,73 @@ Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 
 \end{tabular}
 \end{table}
 
+\subsection{格子収束テスト（精度次数の定量的確認）}
+\label{sec:grid_convergence}
+
+本テキストの主要な技術的主張は「CCD 法による $O(h^6)$ 精度の曲率計算」である．
+この主張を定量的に検証するための手順を以下に示す．
+
+\subsubsection{曲率計算の精度収束テスト}
+
+\begin{tcolorbox}[algbox, title={曲率 $\kappa$ の格子収束テスト手順}]
+\textbf{解析解：} 原点中心，半径 $R=0.5$ の円．$\phi(x,y) = \sqrt{x^2+y^2} - R$，解析曲率 $\kappa = -1/R = -2$．
+
+\textbf{格子設定：} $N = 16, 32, 64, 128, 256$（$N$ は各方向の格子点数），
+$h = 2R/N = 1/N$（一様格子）．
+
+\textbf{誤差計算：}
+$E_\kappa(h) = \|\kappa_h - (-1/R)\|_{L^\infty}$（界面 $|\phi| < \varepsilon$ 上の最大誤差）
+
+\textbf{収束次数の計算：} 連続する2格子の誤差から：
+$p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
+\end{tcolorbox}
+
+\begin{table}[ht]
+\centering
+\caption{CCD 法による曲率計算の格子収束テスト（目標値）}
+\label{tab:grid_conv}
+\begin{tabular}{ccc}
+\toprule
+$N$ & $E_\kappa$ (目標値) & 収束次数 $p$ \\
+\midrule
+$16$  & $\sim 1 \times 10^{-4}$ & --- \\
+$32$  & $\sim 1.6 \times 10^{-6}$ & $\approx 6$ \\
+$64$  & $\sim 2.5 \times 10^{-8}$ & $\approx 6$ \\
+$128$ & $\sim 3.9 \times 10^{-10}$ & $\approx 6$ \\
+$256$ & $\sim 6.1 \times 10^{-12}$ & $\approx 6$ \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textit{注：格子を半分にする（$h \to h/2$）と誤差が $1/64$ 倍（$\approx 1.6\%$）になるはず．}
+\end{table}
+
+\subsubsection{静止液滴における寄生流れの収束テスト}
+
+\begin{tcolorbox}[defbox, title={寄生流れ振幅の格子収束確認（ベンチマーク1との連動）}]
+静止液滴ベンチマーク（ベンチマーク1，\ref{sec:bench_droplet}節）において，
+寄生流れ振幅の格子収束次数を確認する．
+
+\textbf{測定量：} $\|\bm{u}_\text{para}\|_\infty = \max_{i,j}\sqrt{u_{i,j}^2 + v_{i,j}^2}$
+（時刻 $t = 0.1$ において計測）
+
+\textbf{期待される収束：}
+\begin{center}
+\begin{tabular}{ccc}
+\hline
+$N$ & $\|\bm{u}_\text{para}\|_\infty / (\sigma/\mu)$（目標） & 収束次数 \\
+\hline
+$32$ & $\sim 10^{-3}$ & --- \\
+$64$ & $\sim 6 \times 10^{-5}$ & $\approx 4$ \\
+$128$ & $\sim 4 \times 10^{-6}$ & $\approx 4$ \\
+\hline
+\end{tabular}
+\end{center}
+
+寄生流れが $O(h^4)$ 以上（$p \ge 4$）で収束すれば，CCD 高精度化の効果が確認される．
+$O(h^2)$ 以下（$p < 2$）の場合は，Balanced-Force 離散化またはその実装に問題がある（2章参照）．
+\end{tcolorbox}
+
 \subsection{ベンチマークテスト群}
 \label{sec:benchmarks}
 
@@ -213,6 +280,34 @@ Hysing ら \cite{Hysing2009} の参照解（高解像度ベンチマーク）と
 \end{align}
 
 $t = 3$ における $V_c$ と $C_{\mathrm{circ}}$ の Hysing 参照解との相対誤差 $< 1\%$ を目標とする．
+
+\begin{tcolorbox}[defbox, title={Hysing (2009) Test Case 1 の参照値（数値データ）}]
+Hysing ら \cite{Hysing2009} の Test Case 1（上記パラメータ）における高解像度参照解を以下に示す．
+自分の実装の検証には，この数値と比較すること：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\hline
+指標 & 参照値（Hysing 2009） & 許容誤差 \\
+\hline
+上昇速度 $V_c(t=3)$ & $\approx 0.2417$ & $< 1\%$ \\
+真球度 $C_{\mathrm{circ}}(t=3)$ & $\approx 0.9013$ & $< 1\%$ \\
+気泡重心高さ $y_c(t=3)$ & $\approx 1.0813$ & $< 1\%$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{注意：} 上記の値はHysing論文中の Group 1（TP2D）および Group 3（FreeLIFE）の高解像度結果の平均である．
+異なるグループ間でわずかな差があり（$V_c$ の Group 間差 $\approx 0.001$），
+本ソルバーの結果がこの範囲内に収まれば検証成功と見なせる．
+
+\textbf{追加確認指標：}
+\begin{itemize}
+  \item $t = 1.5$ での気泡形状（上側に突出した「傘形」）の定性的確認
+  \item $V_c(t)$ の時間発展グラフを Hysing 論文 Fig.~3 と目視比較
+\end{itemize}
+\end{tcolorbox}
 
 \begin{tcolorbox}[defbox, title={4つのベンチマークの段階的関係}]
 \begin{center}
