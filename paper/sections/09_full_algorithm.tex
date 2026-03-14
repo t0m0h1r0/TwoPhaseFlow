@@ -13,7 +13,7 @@
   \item $D_{xy}^{(11)}$：CCD 法による混合微分 $\partial^2/\partial x\partial y$
   \item $\mathcal{C}_{\text{WENO}}(\bu,\, q)$：速度 $\bu$ による WENO5 上流移流オペレータ
           $\displaystyle= u\,D_x^{(1)} q + v\,D_y^{(1)} q$ （保存形）
-  \item $\mathcal{L}_{\text{visc}}(\mu,\, \bu)$：CCD 法による粘性拡散オペレータ
+  \item $\mathcal{L}_{\text{visc}}(\mu,\, \bu)$：CCD 法による粘性拡散オペレータ\newline
           $\displaystyle= D_x^{(1)}\!\left[\mu(D_x^{(1)} u + D_y^{(1)} v)\right] + D_y^{(1)}\!\left[\mu(D_x^{(1)} v + D_y^{(1)} v)\right]$ （各速度成分に適用）
   \item CLS 移流の発散 $\text{Div}_h^{\psi}(\psi\bm{u})$：WENO5 フラックス分割法で計算したフェイスフラックスの和
           $\approx D_x^{(1)}(\psi u) + D_y^{(1)}(\psi v)$（保存形，詳細は3章）

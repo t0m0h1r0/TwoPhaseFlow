@@ -125,15 +125,15 @@ $Re, Fr, We$ の形の無次元係数に変換される：
 \subsubsection{無次元方程式の完成}
 
 前節で求めた各項の変換結果を，元の次元系方程式 \eqref{eq:NS_dim} に代入すると，共通因子 $[\rho_l U^2/L]$ が全ての項に現れる：
-\begin{equation}
- \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{\text{共通因子}} \!\!
- \rho\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)
- = - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \bnabla p
- + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{1}{Re}\,\bnabla\cdot\!\bigl[\mu(\bnabla\bu+\bnabla\bu^T)\bigr]
- - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{\rho}{Fr^2}\hat{\bm z}
- + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{\kappa\bnabla\psi}{We}
+\begin{align}
+ &\underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{\text{共通因子}} \!\!
+ \rho\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \notag \\
+ &= - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \bnabla p
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{1}{Re}\,\bnabla\cdot\!\bigl[\mu(\bnabla\bu+\bnabla\bu^T)\bigr]
+   - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{\rho}{Fr^2}\hat{\bm z}
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}  \frac{\kappa\bnabla\psi}{We}
  \label{eq:NS_assembled}
-\end{equation}
+\end{align}
 両辺を $[\rho_l U^2/L]$ で割ると，最終的な無次元Navier-Stokes方程式が得られる．
 \begin{tcolorbox}[mybox, title={無次元 Navier--Stokes（CLS 版）}]
 \begin{equation}
