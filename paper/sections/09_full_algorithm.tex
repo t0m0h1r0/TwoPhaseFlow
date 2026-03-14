@@ -1,64 +1,62 @@
 % paper/sections/09_full_algorithm.tex
-\section{完全アルゴリズムフロー}
+\section{完全アルゴリズムフロー：離散形式}
 \label{sec:algorithm}
 
-時刻 $t^n$ から $t^{n+1}$ への計算手順を以下にまとめる．
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された疑似コード形式で以下にまとめる．
+添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
+$D_x(\cdot), D_y(\cdot)$ は指定されたスキーム（例：CCD）による空間微分オペレータとする．
 
-\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の完全計算フロー}]
+\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の離散計算フロー}]
 
-\textbf{1. CLS 移流 (Advection)}
-WENO5 空間再構成と TVD-RK3 時間積分を用いて，界面指標 $\psi$ を移流させる．
-\[
-  \frac{\psi^* - \psi^n}{\Delta t} + \bnabla\cdot(\psi^n \bu^n) = 0 \quad \longrightarrow \quad \psi^*
-\]
+\textbf{1. CLS 移流 (Advection)} \\
+保存形レベルセット変数 $\psi^n$ を，速度場 $\bm{u}^n$ を用いて時間発展させる．
+ここでは3次のルンゲ=クッタ法（TVD-RK3）を用いる．
+\begin{align*}
+  \psi^{(1)} &= \psi^n - \Delta t \, \text{Div}_h(\psi^n \bm{u}^n) \\
+  \psi^{(2)} &= \frac{3}{4}\psi^n + \frac{1}{4}\psi^{(1)} - \frac{1}{4}\Delta t \, \text{Div}_h(\psi^{(1)} \bm{u}^n) \\
+  \psi^* &= \frac{1}{3}\psi^n + \frac{2}{3}\psi^{(2)} - \frac{2}{3}\Delta t \, \text{Div}_h(\psi^{(2)} \bm{u}^n)
+\end{align*}
+ここで $\text{Div}_h(\cdot)$ は5次精度WENOスキームで計算された発散オペレータを表す．
 
-\textbf{2. 再初期化 (Reinitialization)}
-圧縮・拡散項を持つ再初期化方程式を仮想時間 $\tau$ ステップで解き，界面プロファイルを整形する．
-\[
-  \psi^* \xrightarrow{\text{solve Eq.}\eqref{eq:cls_reinit_iso}} \psi^{n+1}
-\]
+\textbf{2. 再初期化 (Reinitialization)} \\
+移流によって鈍化した界面プロファイル $\psi^*$ を整形する．
+式 \eqref{eq:cls_reinit_iso} で表される偏微分方程式を，仮想時間 $\tau$ について複数ステップ解く．
+\[ \psi^{n+1} = \text{Reinitialize}(\psi^*) \]
 
-\textbf{3. グリッド・物性更新 (Update Properties)}
-更新された $\psi^{n+1}$ に基づき，距離関数 $\phi$ および物性値を再計算する．
-\[
-  \phi^{n+1} = H_\varepsilon^{-1}(\psi^{n+1}), \quad
-  \rho^{n+1} = \rho(\phi^{n+1}), \quad
-  \mu^{n+1} = \mu(\phi^{n+1})
-\]
+\textbf{3. グリッド・物性更新 (Update Properties)} \\
+更新された $\psi^{n+1}_{i,j}$ に基づき，各格子点での距離関数 $\phi$ および物理的物性値を再計算する．
+\begin{align*}
+  \phi^{n+1}_{i,j} &= H_\varepsilon^{-1}(\psi^{n+1}_{i,j}) \quad (\text{Newton法で解く}) \\
+  \rho^{n+1}_{i,j} &= \rho(\phi^{n+1}_{i,j}) \\
+  \mu^{n+1}_{i,j} &= \mu(\phi^{n+1}_{i,j})
+\end{align*}
 
-\textbf{4. 曲率計算 (Curvature)}
-CCD法を適用し， $\phi^{n+1}$ の二階微分から曲率を算出する．
-\[
-  \bnabla \phi^{n+1} \xrightarrow{\text{CCD}} \nabla^2 \phi^{n+1}
-  \quad \Longrightarrow \quad
-  \kappa^{n+1} = -\frac{\phi_y^2\phi_{xx} - 2\phi_x\phi_y\phi_{xy} + \phi_x^2\phi_{yy}}{|\bnabla\phi|^3}
-\]
+\textbf{4. 曲率計算 (Curvature)} \\
+$\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，公式 \eqref{eq:curvature_2d} に代入して曲率を求める．
+\begin{align*}
+ (\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j} &= (D_x\phi, D_y\phi, D_{xx}\phi, D_{yy}\phi, D_{xy}\phi)_{i,j}^{n+1} \\
+ \kappa^{n+1}_{i,j} &= \text{CurvatureFormula}(\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy})_{i,j}
+\end{align*}
 
-\textbf{5. 運動量予測 (Predictor Step)}
-圧力勾配項を除いた運動量方程式を解き，予測速度場 $\bu^*$ を求める．
-粘性項には Crank-Nicolson 法（半陰的），移流項には WENO5 空間再構成を適用する．
-\[
-  \frac{\bu^* - \bu^n}{\Delta t} =
-  -\left( \bu \cdot \bnabla \bu \right)^n_{\text{WENO}}
-  + \frac{1}{2 Re \rho^{n+1}} \bnabla \cdot \left[ \mu^{n+1} 2\bm{D}(\bu^* + \bu^n) \right]_{\text{CCD}}
-  + \bm{F}_{\text{ext}}
-\]
-ここで $\bm{D}(\bu) = \frac{1}{2}(\bnabla \bu + \bnabla \bu^T)$ は変形速度テンソルである．
+\textbf{5. 運動量予測 (Predictor Step)} \\
+圧力勾配項を除いた運動量方程式から，予測速度場 $\bm{u}^*$ を計算する．
+\begin{align*}
+ \frac{\bm{u}^*_{i,j} - \bm{u}^n_{i,j}}{\Delta t} = &- \text{Conv}(\bm{u}^n)_{i,j} \quad (\text{WENO5}) \\
+ &+ \frac{1}{2\rho^{n+1}_{i,j}} \text{Diff}(\bm{u}^*_{i,j} + \bm{u}^n_{i,j}) \quad (\text{CCD, Crank-Nicolson}) \\
+ &+ \bm{F}_{\text{ext}, i,j}^{n+1} \quad (\text{重力項，表面張力項など})
+\end{align*}
+この式は $\bm{u}^*$ に関する線形方程式系であり，これを解くことで予測速度場が得られる．
 
-\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)}
-非圧縮条件 $\bnabla \cdot \bu^{n+1} = 0$ を満たすための圧力場を求める．
-係数行列 $A$ は変密度 $\rho^{n+1}$ を含む非対称行列となる．
-\[
-  \bnabla_h \cdot \left( \frac{1}{\rho^{n+1}} \bnabla_h p^{n+1} \right)
-  = \frac{\bnabla_h \cdot \bu^*}{\Delta t}
-\]
-左辺および右辺の発散 $\bnabla_h \cdot$ は Rhie-Chow 補正を含む離散化を用いる．
+\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
+次ステップの速度場 $\bm{u}^{n+1}$ が非圧縮条件 $\text{Div}_h(\bm{u}^{n+1}) = 0$ を満たすように，圧力 $p^{n+1}$ を求める．
+これは以下の形式の離散的な Poisson 方程式となる．
+\[ \text{Div}_h\left( \frac{1}{\rho^{n+1}} \text{Grad}_h(p^{n+1}) \right)_{i,j} = \frac{\text{Div}_h(\bm{u}^*_{i,j})}{\Delta t} \]
+ここで，$\text{Div}_h, \text{Grad}_h$ は Rhie-Chow 補間を内包した離散的な発散および勾配オペレータである．
+この大規模な疎行列方程式を反復法ソルバー（例：BiCGSTAB）で解き，$p^{n+1}$ を得る．
 
-\textbf{7. 速度補正 (Corrector Step)}
-圧力勾配を用いて予測速度を修正し，次ステップの速度場を得る．
-\[
-  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}} (\bnabla p^{n+1})_{\text{CCD}}
-\]
-セル界面の流束計算には，別途 Rhie-Chow 補正流束 $U_f$ を用いる．
+\textbf{7. 速度補正 (Corrector Step)} \\
+得られた圧力勾配を用いて，予測速度場を補正し，最終的な速度場 $\bm{u}^{n+1}$ を得る．
+\[ \bm{u}^{n+1}_{i,j} = \bm{u}^*_{i,j} - \frac{\Delta t}{\rho^{n+1}_{i,j}} \text{Grad}_h(p^{n+1})_{i,j} \]
+この $\bm{u}^{n+1}$ は，離散的に非圧縮条件を満たす速度場となる．
 
 \end{tcolorbox}

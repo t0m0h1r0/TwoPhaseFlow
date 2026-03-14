@@ -1,32 +1,62 @@
 % paper/sections/06_collocate.tex
-\section{コロケート格子と Rhie--Chow 補正}
+\section{コロケート格子と圧力速度連成問題}
 \label{sec:collocate}
 
-\subsection{格子構造}
-本稿では全変数をセル中心に配置するコロケート格子を採用する．
-これにより CCD の高精度性を全変数に対して統一的に適用可能となるが，
-圧力と速度の結合においてチェッカーボード不安定が生じる可能性がある．
+\subsection{コロケート格子の利点と課題}
+本研究では，すべての物理量（速度 $\bu$, 圧力 $p$, レベルセット $\phi, \psi$）を同一の格子点（セル中心）に配置する\textbf{コロケート格子}（collocated grid）を採用する．この配置は，複雑な形状の境界を扱う際に実装が単純であり，高次精度スキーム（例えば本稿のCCD法）をすべての変数に統一的に適用できるという大きな利点を持つ．
 
-\subsection{Rhie--Chow 補正（修正版）}
+しかし，コロケート格子には特有の課題が存在する．それは，\textbf{圧力と速度の数値的な分離（decoupling）}に起因する，非物理的な振動解（チェッカーボードパターン）が発生しうることである．
 
-チェッカーボード不安定を抑制するため，セル界面（face）における流束計算に
-Rhie--Chow 補正を導入する．
-本稿では，変密度場における圧力 Poisson 方程式との整合性を考慮し，
-補正係数に密度の調和平均を用いる形式を採用する．
+\begin{tcolorbox}[defbox, title={なぜチェッカーボード問題が起きるのか？：1次元の例}]
+1次元の運動量方程式（$x$方向）を考えよう．セル $i$ における圧力勾配を単純な中心差分で近似すると，
+\[ \left(\pd{p}{x}\right)_i \approx \frac{p_{i+1} - p_{i-1}}{2\Delta x} \]
+この式からわかるように，セル $i$ の運動量は，隣接するセル $i+1$ と $i-1$ の圧力しか参照しない．セル $i$ 自身の圧力 $p_i$ は計算に寄与しないのである．
 
-\paragraph{面速度の定義}
-フェイス速度 $u_f$ は，ベースとなる補間速度 $\bar{u}_f$ に圧力勾配の補正項を加えて計算する：
+ここで，圧力場が `... +1, -1, +1, -1, +1, -1 ...` のような波長 $2\Delta x$ の激しい振動（チェッカーボード）を持つ場合を想像してみよう．
+このとき，どのセル $i$ で圧力勾配を計算しても，
+\[ \frac{p_{i+1} - p_{i-1}}{2\Delta x} = \frac{(+1) - (+1)}{2\Delta x} = 0 \quad \text{または} \quad \frac{(-1) - (-1)}{2\Delta x} = 0 \]
+となり，圧力勾配は常にゼロと評価されてしまう．つまり，\textbf{速度場はこのような高周波の圧力振動を全く「感知」できない}．
+結果として，本来ならば滑らかな圧力場が得られるべき問題で，物理的に意味のないギザギザの圧力解が誤差として残り続けてしまう．これが圧力速度デカップリング問題の本質である．
+\end{tcolorbox}
+
+\subsection{Rhie--Chow 補正による問題の解決}
+この問題を解決するため，1983年に Rhie と Chow によって提案された補間法が広く用いられている．
+その本質は，セル中心の離散化運動量方程式を適切に補間して，セル界面（face）の速度を定義することにある．
+これにより，すべての格子点における圧力が速度の計算に寄与するようになり，デカップリングが抑制される．
+
+\subsubsection{補正された界面速度の定義}
+本稿では，Chung (2002) に基づく変密度場に対応した形式を用いる．
+東側フェイス $e$ における $x$ 方向速度 $u_e$ は，隣接するセル中心 $P$ と $E$ の値を用いて以下のように定義される．
 \begin{equation}
- u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left( \frac{p_N - p_P}{\delta x_f} \right) + \tilde\chi_f \left[ (\bnabla p)_f - \frac{p_N - p_P}{\delta x_f} \right]
+ u_e = \overline{u_e} - d_e \left[ \left(\pd{p}{x}\right)_e - \overline{\left(\pd{p}{x}\right)_e} \right]
+ \label{eq:rc-concept}
+\end{equation}
+ここで，
+\begin{itemize}
+    \item $\overline{u_e}$: セル中心 $P, E$ の速度を線形補間した速度．$\overline{u_e} = (u_P+u_E)/2$．
+    \item $(\partial p/\partial x)_e$: フェイス $e$ での圧力勾配．単純な中心差分 $\frac{p_E-p_P}{\Delta x}$ で計算．
+    \item $\overline{(\partial p/\partial x)_e}$: セル中心 $P, E$ で評価された圧力勾配を線形補間したもの．
+    $\overline{(\partial p/\partial x)_e} = \frac{1}{2}\left[ \left(\frac{\partial p}{\partial x}\right)_P + \left(\frac{\partial p}{\partial x}\right)_E \right]$
+    \item $d_e$: 補間係数．運動量方程式から導かれ，時間刻み幅 $\Delta t$ と密度 $\rho$ に依存する．
+    $d_e \approx (\Delta t / \rho)_e$.
+\end{itemize}
+
+\paragraph{補正項の働き}
+式 \eqref{eq:rc-concept} の第2項が Rhie-Chow 補正の核心である．
+この項は「\textbf{フェイス上で直接計算した圧力勾配}」と「\textbf{セル中心の圧力勾配を補間したもの}」との\textbf{差}に比例する．
+\begin{itemize}
+    \item \textbf{滑らかな圧力場の場合}：
+    圧力場が滑らかであれば，2つの圧力勾配の評価方法はほぼ同じ値を与えるため，補正項は自然にゼロに近くなる．
+    \item \textbf{チェッカーボード圧力場の場合}：
+    圧力場がギザギザの場合，フェイスでの勾配 $(p_E-p_P)/\Delta x$ は大きな値を持つが，セル中心での勾配の平均 $\overline{(\partial p/\partial x)_e}$ はゼロに近くなる．
+    この差が大きな補正量となり，非物理的な振動を効果的に\textbf{減衰（damping）}させる働きをする．
+\end{itemize}
+
+\subsubsection{本研究における実装形式}
+最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の実装形式を用いる．
+\begin{equation}
+ u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p)_f - \overline{(\bnabla p)}_f \right]
  \label{eq:rc-face}
 \end{equation}
-
-ここで $\left( 1/\rho \right)^{\mathrm{harm}}_f$ はセル界面における密度逆数の調和平均である．
-また，第2項の圧力勾配補正にかかる係数 $\tilde{\chi}_f$ は以下のように定義される：
-\begin{equation}
-  \tilde{\chi}_f \equiv \Delta t \left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f
-\end{equation}
-この $\tilde{\chi}_f$ を用いることで，式\eqref{eq:rc-face} の第2項と第3項の圧力差分項が相殺され，
-均一な圧力場（定数勾配場）において補正項がゼロになる整合性が保たれる．
-同時に，この係数設定により圧力 Poisson 方程式（PPE）の離散化係数と完全に一致し，
-変密度場においても数値的に安定した圧力速度結合が保証される．
+ここで，$(\nabla p)_f$ はフェイスにおける圧力勾配の評価値，$\overline{(\nabla p)}_f$ はセル中心における圧力勾配の補間値であり，係数には密度の逆数の調和平均 $(1/\rho)_f^\mathrm{harm}$ が用いられる．
+この形式により，変密度場においても数値的に安定した圧力速度連成が保証される．
