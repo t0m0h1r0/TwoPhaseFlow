@@ -402,13 +402,13 @@ c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \lab
 \hline
 境界条件 & ゴーストセル値 & 物理的意味 \\
 \hline
-Dirichlet（ノースリップ壁）: $u|_{\rm wall}=0$ &
+Dirichlet（ノースリップ壁）: $u|_{\mathrm{wall}}=0$ &
   $u_{-1} = -u_1$ &
   鏡像反転（$u_{0} \approx 0$） \\
-Dirichlet（強制流入）: $u|_{\rm wall}=U_w$ &
+Dirichlet（強制流入）: $u|_{\mathrm{wall}}=U_w$ &
   $u_{-1} = 2U_w - u_1$ &
   $u_{0} = (u_{-1}+u_1)/2 = U_w$ \\
-Neumann（流出・対称）: $\partial u/\partial x|_{\rm wall}=0$ &
+Neumann（流出・対称）: $\partial u/\partial x|_{\mathrm{wall}}=0$ &
   $u_{-1} = u_1$ &
   勾配ゼロ（偶関数的反射） \\
 \hline
