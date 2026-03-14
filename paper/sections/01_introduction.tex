@@ -22,6 +22,57 @@
         正確に扱わないと寄生流れ（parasitic currents）が発生する．
 \end{enumerate}
 
+\subsection{二相流数値計算の典型的失敗例}
+\label{sec:failure_modes}
+
+上記の困難を軽視すると，計算は「動く」が物理的に意味のない結果を出力する．
+学部生が実装する際に最もよく遭遇する4つの失敗例を示す．
+
+\begin{tcolorbox}[warnbox, title={失敗例1：寄生流れ（Spurious Currents）}]
+\textbf{症状：} 静止しているはずの液滴が，界面に沿って渦状の速度場を持つ（\figref{fig:spurious_schematic} 参照）．速度の大きさは表面張力に比例して大きくなる．
+
+\textbf{原因：} 曲率 $\kappa$ の計算誤差が表面張力項 $\sigma\kappa\bnabla\psi$ に誤差を生じさせる．
+この誤差は圧力場と速度場を通じてフィードバックループを形成し，数値的な「流れ」として固定化する．
+具体的には，``圧力ジャンプ条件 $[p]=\sigma\kappa$'' を離散的に正確に満足しないために発生する．
+
+\textbf{本稿の対処：} CCD 法による高精度な$\kappa$計算（6次精度），
+および Rhie-Chow 補正による圧力-速度連成の改善によって抑制する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={失敗例2：質量損失（Mass Loss）}]
+\textbf{症状：} 時間が経つにつれて液滴が小さくなり，最終的に消える．
+
+\textbf{原因：} 標準的な Level Set 法では，移流方程式 $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
+保存形ではないため，数値積分誤差が体積損失として蓄積する．
+再初期化の不適切な実装も体積を変化させる．
+
+\textbf{本稿の対処：} Conservative Level Set 法（CLS）により，
+質量（体積）の離散的保存性を向上させる．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={失敗例3：圧力-速度のデカップリング（Checkerboard 不安定）}]
+\textbf{症状：} 圧力場が空間的に激しく振動し（チェッカーボードパターン），
+速度場が非物理的な振動を示す．
+
+\textbf{原因：} コロケート格子において，中心差分による圧力勾配の評価では
+隣り合う格子点の圧力が連立されないため（1つ飛びの点しか参照しない），
+高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する．
+
+\textbf{本稿の対処：} Rhie-Chow 型フラックス補正により，
+圧力と速度を適切に連成させる（6章参照）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={失敗例4：界面のにじみ（Interface Smearing）}]
+\textbf{症状：} 時間とともに界面が広がり，密度・粘性の遷移領域が厚くなっていく．
+
+\textbf{原因：} 移流スキームの数値拡散（numerical diffusion）により，
+界面指標 $\psi$ のプロファイルが徐々にぼやける．
+特に低次精度スキーム（1次風上差分など）では顕著．
+
+\textbf{本稿の対処：} WENO5 スキーム（5次精度の上流差分）と
+CLS 再初期化の定期的適用により，界面の鮮鋭さを維持する．
+\end{tcolorbox}
+
 \subsection{本稿のアプローチ}
 
 上記の困難を克服するため，本稿では以下の手法を組み合わせる

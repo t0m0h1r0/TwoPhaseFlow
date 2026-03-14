@@ -4,6 +4,34 @@
 
 \subsection{One-Fluid 定式化と非圧縮条件}
 
+\subsubsection{One-Fluid モデルの仮定}
+
+本稿では，気相と液相を「1つの流体」として統一的に記述する
+\textbf{One-Fluid（単一流体）定式化}を採用する．
+このアプローチは以下の物理的仮定に基づいている．
+
+\begin{tcolorbox}[defbox, title={One-Fluid モデルの基本仮定}]
+\begin{enumerate}
+  \item \textbf{非混合（immiscible）：} 気相と液相は混合せず，明確な界面が存在する．
+  \item \textbf{界面厚さは数値的：} 物理的な界面は厚さゼロだが，数値計算上はグリッド数セル分の厚みを持つ遷移層として表現する（CLS 変数 $\psi$ の役割）．
+  \item \textbf{速度の連続性：} 界面を挟んで速度は連続 $[\bm{u}]_\Gamma = 0$（スリップなし）．
+  \item \textbf{圧力のジャンプ条件（Young-Laplace 則）：} 界面での圧力は表面張力により不連続になる：
+        \begin{equation}
+          [p]_\Gamma \equiv p_\text{gas} - p_\text{liq} = \sigma\kappa
+          \label{eq:young-laplace}
+        \end{equation}
+        ここで $\sigma$ は表面張力係数，$\kappa$ は界面の平均曲率．
+\end{enumerate}
+\end{tcolorbox}
+
+仮定3・4は連続体レベルの条件であり，One-Fluid 定式化ではこれらを\textbf{暗黙的に}（界面での物性補間とCSFモデルによって）自動的に満足する形で離散化される．
+
+\paragraph{なぜ物性値を補間できるのか？}
+仮定1（非混合）と仮定2（数値的界面）から，界面近傍の各格子点には実際には気相または液相のどちらかが占有されているが，有限の界面幅の中では「どの割合で液相か」を $\psi$ で表現する．
+すなわち，$\psi\in[0,1]$ は「液相の体積分率」と解釈でき，加重平均による物性補間は有限体積的に整合している．
+
+\subsubsection{支配方程式（連続の式と運動量保存）}
+
 非圧縮条件は連続の式：
 \begin{equation}
   \bnabla \cdot \bu = 0
@@ -36,13 +64,74 @@
 両者は $\psi = H_\varepsilon(\phi)$ の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，非線形方程式 $H_\varepsilon(\phi) - \psi = 0$ をニュートン法などの反復解法で数値的に解く必要がある．
 \end{tcolorbox}
 
+\subsection{CSF（連続表面力）モデルによる表面張力の体積力化}
+\label{sec:csf}
+
+Navier-Stokes 方程式に表面張力項 $\bm{f}_\sigma^*$ を組み込む前に，
+その導出を示す必要がある．表面張力は本来「界面上の線力（3次元では面力）」だが，
+これをそのまま体積方程式に入れることはできない．
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル} \cite{Brackbill1992} は
+この問題を解決する標準的手法である．
+
+\subsubsection{物理的表面張力と界面のディラックデルタ}
+
+界面 $\Gamma$ 上に作用する表面張力は，単位面積あたり $\sigma\kappa\hat{\bm{n}}$ の法線力である．
+これを全空間で定義された体積力 $\bm{f}_\sigma$ として書くには，
+界面上だけ値を持つ\textbf{界面ディラックデルタ} $\delta_s$ を用いる：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
+  \label{eq:csf_dirac}
+\end{equation}
+$\delta_s$ は界面 $\Gamma$ 上では $+\infty$，それ以外では $0$ の一般化関数であり，
+$\int_\Omega \delta_s(\bm{x})\,dV = \int_\Gamma dS$（面積分）という性質を持つ．
+
+\subsubsection{CLSを用いた $\delta_s$ と $\hat{\bm{n}}$ の計算}
+
+解析的には $\delta_s$ は扱いにくいが，CLS 変数 $\psi = H_\varepsilon(\phi)$ を用いると
+\textbf{滑らかな近似}が得られる：
+\begin{align}
+  |\bnabla\psi| &= |H_\varepsilon'(\phi)|\,|\bnabla\phi|
+                 = \delta_\varepsilon(\phi)\,|\bnabla\phi|
+                 \approx \delta_\varepsilon(\phi)
+  \label{eq:csf_delta_psi}
+\end{align}
+最後の近似は $|\bnabla\phi|\approx 1$（符号付き距離関数の性質）による．
+すなわち，**$|\bnabla\psi|$ が界面ディラックデルタ $\delta_s$ の滑らかな近似**となる．
+
+一方，界面の外向き単位法線は：
+\begin{equation}
+  \hat{\bm{n}} = \frac{\bnabla\psi}{|\bnabla\psi|}
+  \label{eq:csf_normal}
+\end{equation}
+
+\subsubsection{CSF体積力の最終形：$\bm{f}_\sigma = \sigma\kappa\bnabla\psi$}
+
+式 \eqref{eq:csf_delta_psi} と \eqref{eq:csf_normal} を式 \eqref{eq:csf_dirac} に代入する：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\,\hat{\bm{n}}\,\delta_s
+  \approx \sigma\kappa\,\frac{\bnabla\psi}{|\bnabla\psi|}\,|\bnabla\psi|
+  = \boxed{\sigma\kappa\,\bnabla\psi}
+  \label{eq:csf_final}
+\end{equation}
+
+\begin{tcolorbox}[defbox, title={CSFモデルの物理的直感}]
+$\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる（界面から離れるとゼロに近づく）．
+したがって $\sigma\kappa\bnabla\psi$ は
+\begin{itemize}
+  \item 界面近傍でのみ作用し（$\delta_s$ の役割を $|\bnabla\psi|$ が担う），
+  \item 界面の法線方向に大きさ $\sigma\kappa$ の力を与える（Young-Laplace 則を再現），
+  \item 全空間積分すると Young-Laplace のジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を再現する
+\end{itemize}
+ことが示せる．CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
+\end{tcolorbox}
+
 \subsection{無次元化 NS 方程式}
 \label{sec:nondim}
 
 本節では，次元を持つ Navier-Stokes 方程式から，その無次元形を段階的に導出する．このプロセスを理解することは，シミュレーション結果を物理的に解釈する上で不可欠である．
 
 \subsubsection{次元系の支配方程式}
-まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，非圧縮性流体の運動量保存則（Navier-Stokes 方程式）を記述する．
+まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，非圧縮性流体の運動量保存則（Navier-Stokes 方程式）を記述する．表面張力項には前節の CSF 表現（式 \eqref{eq:csf_final}）を用いる．
 \begin{equation}
  \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
  =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]

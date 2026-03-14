@@ -2,11 +2,83 @@
 \section{圧力 Poisson 方程式（PPE）の導出と離散化}
 \label{sec:pressure}
 
-\subsection{Projection 法と PPE}
+\subsection{変密度 Projection 法の段階的導出}
+\label{sec:projection_derivation}
 
-Chorin の Projection 法に基づき，中間予測速度 $\bu^*$ を求めた後，
-非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を満たすように圧力を補正する．
-変密度場における圧力 Poisson 方程式は以下となる：
+Projection 法（Chorin, 1968）の本質は，Navier-Stokes 方程式を
+「\textbf{圧力なし予測}」と「\textbf{圧力による補正}」の2ステップに分解することにある．
+変密度場ではこの分解に特別な注意が必要であり，以下に丁寧に導出する．
+
+\subsubsection{Step 1：予測速度（Predictor）}
+
+時刻 $t^{n+1}$ の完全な NS 方程式（無次元形）は：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^{n+1} - \bu^n}{\Delta t}
+  = \underbrace{-\rho^{n+1}(\bu^n\cdot\bnabla)\bu^n
+    + \frac{1}{Re}\bnabla\cdot[\mu^{n+1}(\bnabla\bu^{n+1}+\bnabla^T\bu^{n+1})]
+    + \bm{F}_\text{ext}^{n+1}}_{\displaystyle \equiv \bm{R}^{n+1}}
+  - \bnabla p^{n+1}
+  \label{eq:NS_full}
+\end{equation}
+圧力勾配項を除いた右辺 $\bm{R}^{n+1}$ から\textbf{予測速度} $\bu^*$ を定義する：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^* - \bu^n}{\Delta t} = \bm{R}^{n+1}
+  \quad\Longrightarrow\quad
+  \bu^* = \bu^n + \frac{\Delta t}{\rho^{n+1}}\bm{R}^{n+1}
+  \label{eq:predictor}
+\end{equation}
+$\bu^*$ は一般に発散フリーではない（$\bnabla\cdot\bu^* \neq 0$）．
+
+\subsubsection{Step 2：圧力補正（Corrector）}
+
+式 \eqref{eq:NS_full} から式 \eqref{eq:predictor} を引くと，
+圧力と速度補正の関係が得られる：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^{n+1} - \bu^*}{\Delta t} = -\bnabla p^{n+1}
+  \quad\Longrightarrow\quad
+  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla p^{n+1}
+  \label{eq:corrector}
+\end{equation}
+
+\subsubsection{Step 3：発散フリー条件から PPE を導く}
+
+$\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
+式 \eqref{eq:corrector} の両辺に $\bnabla\cdot(\cdot)$ を作用させると：
+\begin{align}
+  \bnabla\cdot\bu^{n+1}
+  &= \bnabla\cdot\bu^* - \Delta t\,\bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla p^{n+1}\right) = 0
+  \notag \\
+  &\Longrightarrow\quad
+  \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla p^{n+1}\right)
+  = \frac{1}{\Delta t}\,\bnabla\cdot\bu^*
+  \label{eq:PPE_derivation}
+\end{align}
+
+\begin{tcolorbox}[mybox, title={変密度 Projection 法の骨格（まとめ）}]
+\begin{enumerate}
+  \item \textbf{Predictor}：$\bu^* = \bu^n + \dfrac{\Delta t}{\rho^{n+1}}\bm{R}^{n+1}$
+        \hfill（圧力なし，発散フリーでない速度）
+  \item \textbf{PPE 求解}：$\bnabla\cdot\!\left(\dfrac{1}{\rho^{n+1}}\bnabla p^{n+1}\right) = \dfrac{1}{\Delta t}\bnabla\cdot\bu^*$
+        \hfill（圧力を決定）
+  \item \textbf{Corrector}：$\bu^{n+1} = \bu^* - \dfrac{\Delta t}{\rho^{n+1}}\bnabla p^{n+1}$
+        \hfill（発散フリーに補正）
+\end{enumerate}
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={なぜ $\bnabla\cdot(1/\rho\,\bnabla p)$ の形が出るのか？}]
+一様密度（$\rho=\text{const}$）の場合，補正式 \eqref{eq:corrector} は
+$\bu^{n+1} = \bu^* - (\Delta t/\rho)\bnabla p$ となり，発散を取ると
+$\bnabla^2 p = \rho\,\bnabla\cdot\bu^*/\Delta t$ という標準的な Poisson 方程式になる．
+
+変密度場では密度が空間的に変化するため，$\bnabla\cdot(1/\rho\,\bnabla p)$ という
+\textbf{可変係数の拡散型演算子}が現れる（係数 $1/\rho$ が空間に依存）．
+この演算子の離散化に調和平均密度を使う理由は6章で説明した通りである．
+\end{tcolorbox}
+
+\subsection{Projection 法と PPE}
+\label{sec:ppe}
+
+以上の導出から得られる変密度 Pressure Poisson Equation（PPE）を改めて記す：
 \begin{equation}
   \bnabla\cdot\!\left( \frac{1}{\rho^{n+1}} \bnabla p^{n+1} \right) = \frac{1}{\Delta t}\, \bnabla\cdot \bu^{\ast}
   \label{eq:PPE_varrho}
