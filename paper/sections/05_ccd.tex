@@ -108,7 +108,67 @@ LHS と RHS が恒等的に等しくなるように，各微分階数 $f^{(n)}_i
 これらの係数を代入すると，$h^0, h^2, h^4$ の項はすべてゼロになり，最初のゼロでない誤差項は $h^6 f^{(7)}_i$ の係数となる．
 その係数（打ち切り誤差）は $TE = \frac{1}{840}h^6 f^{(7)}_i$ となり，本スキームが $\Ord{h^6}$ 精度を持つことが確認できる．
 
-\subsection{Equation-II の係数導出}
+\subsection{Equation-II の係数導出：厳密な代数的証明}
+
+Equation-I と全く同じ手順で，Equation-II \eqref{eq:CCD_II} の係数 $\beta_2, a_2, b_2$ を導出する．
+
+\subsubsection{テイラー展開の準備}
+
+Equation-II に現れる各項を，格子点 $i$ の周りでテイラー展開する．
+LHS に含まれる $f^{(2)}_{i\pm1}$，および RHS の $f'_{i\pm1}$ を展開する（$f_{i\pm1}$ の展開は前節と同じ）．
+\begin{align*}
+f^{(2)}_{i\pm1} &= f^{(2)}_i \pm h\,f^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i + \frac{h^4}{24}f^{(6)}_i \pm \cdots \\
+f'_{i\pm1} &= f'_i \pm h\,f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i \pm \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i \pm \cdots
+\end{align*}
+
+\subsubsection{式変形と誤差項の整理}
+
+\paragraph{LHS の整理:}
+奇数次の項は $\pm$ で相殺される（Equation-I と同様）．
+
+\begin{align*}
+\text{LHS} &= \beta_2 f^{(2)}_{i-1} + f^{(2)}_i + \beta_2 f^{(2)}_{i+1} \\
+           &= (1 + 2\beta_2)\,f^{(2)}_i + \beta_2\,h^2 f^{(4)}_i + \frac{\beta_2}{12}\,h^4 f^{(6)}_i + \Ord{h^6}
+\end{align*}
+
+\paragraph{RHS の整理:}
+
+まず，差分の組み合わせを計算する．
+\begin{align*}
+f_{i+1} - 2f_i + f_{i-1} &= h^2 f^{(2)}_i + \frac{h^4}{12}f^{(4)}_i + \frac{h^6}{360}f^{(6)}_i + \Ord{h^8} \\
+f'_{i+1} - f'_{i-1} &= 2h\,f^{(2)}_i + \frac{h^3}{3}f^{(4)}_i + \frac{h^5}{60}f^{(6)}_i + \Ord{h^7}
+\end{align*}
+
+\begin{tcolorbox}[warnbox, title={注意：第2差分と $f''$ の展開}]
+$f_{i+1} - 2f_i + f_{i-1}$ を展開すると $f^{(2)}_i$ が現れる（2次の中心差分）．
+同様に $f'_{i+1} - f'_{i-1}$ を展開すると，先頭項も $f^{(2)}_i$ である（$f'$ の1次中心差分 $\approx h f^{(2)}_i$）．
+これら2つの差分項が $f^{(2)}_i$ を「挟み撃ち」にすることで，高次精度が実現される．
+\end{tcolorbox}
+
+これらを RHS に代入する：
+\begin{align*}
+\text{RHS} &= \frac{a_2}{h^2}\!\left(h^2 f^{(2)}_i + \frac{h^4}{12}f^{(4)}_i + \frac{h^6}{360}f^{(6)}_i + \cdots\right)
+            + \frac{b_2}{h}\!\left(2h\,f^{(2)}_i + \frac{h^3}{3}f^{(4)}_i + \frac{h^5}{60}f^{(6)}_i + \cdots\right) \\
+           &= (a_2 + 2b_2)\,f^{(2)}_i
+            + \left(\frac{a_2}{12} + \frac{b_2}{3}\right)h^2 f^{(4)}_i
+            + \left(\frac{a_2}{360} + \frac{b_2}{60}\right)h^4 f^{(6)}_i + \Ord{h^6}
+\end{align*}
+
+\subsubsection{係数比較による連立方程式の導出}
+
+$\text{LHS} - \text{RHS} = 0$ として各微分次数の係数を比較する．
+
+\begin{tcolorbox}[defbox, title={導出された連立方程式}]
+\begin{align}
+ (1 + 2\beta_2) - (a_2 + 2b_2) &= 0 \label{eq:sys_II_1} \\
+ \beta_2 - \left(\frac{a_2}{12} + \frac{b_2}{3}\right) &= 0 \label{eq:sys_II_2} \\
+ \frac{\beta_2}{12} - \left(\frac{a_2}{360} + \frac{b_2}{60}\right) &= 0 \label{eq:sys_II_3}
+\end{align}
+\end{tcolorbox}
+
+Equation-I と同じ構造（3本の線形方程式，3つの未知数）であることがわかる．
+式 \eqref{eq:sys_II_3} を $12$ 倍すると $\frac{\beta_2}{1} = \frac{a_2}{30} + \frac{b_2}{5}$ となり，
+式 \eqref{eq:sys_II_2} との差から $a_2$ と $b_2$ の関係を消去して解くことができる．
 
 同様に Equation-II についても，$f^{(2)}_i$ を中心に展開を行う．
 \begin{itemize}

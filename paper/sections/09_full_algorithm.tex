@@ -2,9 +2,23 @@
 \section{完全アルゴリズムフロー：離散形式}
 \label{sec:algorithm}
 
-時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された疑似コード形式で以下にまとめる．
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
 添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
-$D_x(\cdot), D_y(\cdot)$ は指定されたスキーム（例：CCD）による空間微分オペレータとする．
+以下の離散化オペレータを用いる．
+
+\begin{tcolorbox}[defbox, title={離散化オペレータの定義}]
+\begin{itemize}
+  \item $D_x^{(1)}, D_y^{(1)}$：CCD 法による1次微分 $(\partial/\partial x,\, \partial/\partial y)$
+  \item $D_x^{(2)}, D_y^{(2)}$：CCD 法による2次微分 $(\partial^2/\partial x^2,\, \partial^2/\partial y^2)$
+  \item $D_{xy}^{(11)}$：CCD 法による混合微分 $\partial^2/\partial x\partial y$
+  \item $\mathcal{C}_{\text{WENO}}(\bu,\, q)$：速度 $\bu$ による WENO5 上流移流オペレータ
+          $\displaystyle= u\,D_x^{(1)} q + v\,D_y^{(1)} q$ （保存形）
+  \item $\mathcal{L}_{\text{visc}}(\mu,\, \bu)$：CCD 法による粘性拡散オペレータ
+          $\displaystyle= D_x^{(1)}\!\left[\mu(D_x^{(1)} u + D_y^{(1)} v)\right] + D_y^{(1)}\!\left[\mu(D_x^{(1)} v + D_y^{(1)} v)\right]$ （各速度成分に適用）
+  \item $\text{Div}_h(\bm{q})$：Rhie-Chow 補間を内包した離散発散 $D_x^{(1)} q_x + D_y^{(1)} q_y$
+  \item $\text{Grad}_h(p)$：$(D_x^{(1)} p,\; D_y^{(1)} p)$
+\end{itemize}
+\end{tcolorbox}
 
 \begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の離散計算フロー}]
 
@@ -39,13 +53,19 @@ $\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，公式 \eqref{eq
 \end{align*}
 
 \textbf{5. 運動量予測 (Predictor Step)} \\
-圧力勾配項を除いた運動量方程式から，予測速度場 $\bm{u}^*$ を計算する．
-\begin{align*}
- \frac{\bm{u}^*_{i,j} - \bm{u}^n_{i,j}}{\Delta t} = &- \text{Conv}(\bm{u}^n)_{i,j} \quad (\text{WENO5}) \\
- &+ \frac{1}{2\rho^{n+1}_{i,j}} \text{Diff}(\bm{u}^*_{i,j} + \bm{u}^n_{i,j}) \quad (\text{CCD, Crank-Nicolson}) \\
- &+ \bm{F}_{\text{ext}, i,j}^{n+1} \quad (\text{重力項，表面張力項など})
-\end{align*}
-この式は $\bm{u}^*$ に関する線形方程式系であり，これを解くことで予測速度場が得られる．
+圧力勾配項を除いた運動量方程式（Crank--Nicolson 形式）から，予測速度場 $\bm{u}^*$ を計算する．
+\begin{equation*}
+ \rho^{n+1}_{i,j}\,\frac{\bm{u}^*_{i,j} - \bm{u}^n_{i,j}}{\Delta t}
+ = -\rho^{n+1}_{i,j}\,\mathcal{C}_{\text{WENO}}(\bm{u}^n,\,\bm{u}^n)_{i,j}
+   + \frac{1}{2}\mathcal{L}_{\text{visc}}\!\left(\mu^{n+1}_{i,j},\,\bm{u}^*_{i,j} + \bm{u}^n_{i,j}\right)
+   + \bm{F}_{\text{ext}, i,j}^{n+1}
+\end{equation*}
+\begin{itemize}
+  \item 移流項 $\mathcal{C}_{\text{WENO}}$：WENO5 上流差分で評価（陽解法，時刻 $t^n$ の値を使用）
+  \item 粘性項 $\mathcal{L}_{\text{visc}}$：CCD 法で評価（Crank--Nicolson による陰解法，$\bm{u}^*$ と $\bm{u}^n$ の平均）
+  \item 外力項：$\bm{F}_{\text{ext}}^{n+1} = -(\rho^{n+1}/Fr^2)\,\hat{\bm{z}} + (\kappa^{n+1} \bnabla\psi^{n+1})/We$
+\end{itemize}
+粘性項が $\bm{u}^*$ を含むため，この式は $\bm{u}^*$ に関する\textbf{線形方程式系}（ブロック三重対角）になる．これをガウス消去法等で解くことで予測速度場が得られる．
 
 \textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
 次ステップの速度場 $\bm{u}^{n+1}$ が非圧縮条件 $\text{Div}_h(\bm{u}^{n+1}) = 0$ を満たすように，圧力 $p^{n+1}$ を求める．

@@ -58,5 +58,66 @@
  u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p)_f - \overline{(\bnabla p)}_f \right]
  \label{eq:rc-face}
 \end{equation}
-ここで，$(\nabla p)_f$ はフェイスにおける圧力勾配の評価値，$\overline{(\nabla p)}_f$ はセル中心における圧力勾配の補間値であり，係数には密度の逆数の調和平均 $(1/\rho)_f^\mathrm{harm}$ が用いられる．
+ここで，$(\nabla p)_f$ はフェイスにおける圧力勾配の評価値，$\overline{(\nabla p)}_f$ はセル中心における圧力勾配の補間値である．
+係数 $d_f \equiv \Delta t \,(1/\rho)_f^\mathrm{harm}$ に\textbf{密度の逆数の調和平均}を用いる理由を，以下で丁寧に説明する．
+
+\paragraph{なぜ調和平均か：変密度場における根拠}
+
+\textbf{Step 1：単純算術平均の何が問題か？}
+
+標準的な Rhie-Chow の補正係数は，運動量方程式の対角係数 $a_P \approx \rho_P V_P / \Delta t$ から $d_P = \Delta t / \rho_P$ と導かれる（$V_P$ はセル体積）．
+フェイス $f$ でセル $P$（液相）とセル $E$（気相）の間を補間する際に算術平均を用いると，
+
+\begin{equation}
+ \left(\frac{1}{\rho}\right)^{\mathrm{arith}}_f = \frac{1}{2}\left(\frac{1}{\rho_P} + \frac{1}{\rho_E}\right)
+\end{equation}
+
+気液二相流の典型的な密度比 $\rho_l/\rho_g = 1000$（例：水と空気）を代入すると，
+
+\begin{equation}
+ \left(\frac{1}{\rho}\right)^{\mathrm{arith}}_f
+ = \frac{1}{2}\!\left(\frac{1}{1000} + \frac{1}{1}\right)
+ \approx \frac{1}{2} \approx \frac{1}{2\rho_g}
+\end{equation}
+
+この値は気相密度のみで決まる $1/\rho_g$ の半分程度であり，液相の寄与がほぼ無視される．
+界面フェイスで $d_f \approx \Delta t / (2\rho_g)$ という巨大な補正係数が生じ，非物理的な速度振動を引き起こす．
+
+\textbf{Step 2：圧力 Poisson 方程式との整合性}
+
+変密度非圧縮流体の圧力 Poisson 方程式（6.3節，式 \eqref{eq:poisson}）は，
+\begin{equation}
+ \bnabla \cdot \left( \frac{1}{\rho} \bnabla p \right) = \frac{\bnabla \cdot \bu^*}{\Delta t}
+\end{equation}
+という形をとる．左辺を有限体積法で離散化すると，フェイス $f$ における係数として自然に
+\begin{equation}
+ \left(\frac{1}{\rho}\right)_f = \frac{2}{\rho_P + \rho_E} \equiv \left(\frac{1}{\rho}\right)^{\mathrm{harm}}_f
+\end{equation}
+が現れる（これは不連続な係数をもつ拡散方程式の標準的な離散化である）．
+Rhie-Chow 補正係数に\textbf{同じ調和平均を用いることで，速度補正と Poisson 方程式の係数が一致し，数値的に一貫した定式化}が得られる．
+
+\begin{tcolorbox}[defbox, title={調和平均と熱伝導の類比}]
+この状況は，異なる熱伝導率 $\lambda_P, \lambda_E$ を持つ2つのセル間の熱フラックス計算と全く同じ構造である．
+熱伝導方程式 $\bnabla \cdot (\lambda \bnabla T) = 0$ の界面フラックスを正しく評価するには，
+\[ \lambda_f = \frac{2\lambda_P \lambda_E}{\lambda_P + \lambda_E} \quad (\text{調和平均}) \]
+を用いなければならない（単純算術平均では界面の熱抵抗を過小評価する）．
+Rhie-Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやすさ（移動度）」とみなした場合の，全く同じ論理に基づいている．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={実装上の確認事項}]
+算術平均と調和平均の値の差は，\textbf{密度比が大きいほど顕著}になる：
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+流体系 & $\rho_l/\rho_g$ & $(1/\rho)^{\mathrm{arith}}_f \cdot \rho_g$ & $(1/\rho)^{\mathrm{harm}}_f \cdot \rho_g$ \\
+\hline
+水・水蒸気 & $10$ & $0.55$ & $0.18$ \\
+水・空気（常温） & $1000$ & $\approx 0.500$ & $\approx 0.002$ \\
+\hline
+\end{tabular}
+\end{center}
+密度比1000の場合，算術平均は調和平均の約250倍の値を与える．
+これほど大きな補正係数の差は，界面近傍の速度場に壊滅的な数値振動をもたらす．
+\end{tcolorbox}
+
 この形式により，変密度場においても数値的に安定した圧力速度連成が保証される．

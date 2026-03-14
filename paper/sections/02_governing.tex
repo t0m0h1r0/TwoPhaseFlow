@@ -106,6 +106,26 @@
 \end{tcolorbox}
 この方程式は，流体の挙動が $Re, Fr, We$ という3つの無次元パラメータによって支配されることを明示している．
 
+\begin{tcolorbox}[defbox, title={3つの無次元数の物理的意味：「力の比」として理解する}]
+無次元数は，\textbf{2種類の力（またはエネルギー）の比}として解釈すると直感的に理解しやすい．
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lccc}
+\hline
+無次元数 & 定義 & 力の比 & 大きいとき \\
+\hline
+Reynolds数 $Re$ & $\dfrac{\rho_l U L}{\mu_l}$ & $\dfrac{\text{慣性力}}{\text{粘性力}}$ & 乱流的，粘性の影響が小さい \\
+Froude数 $Fr$ & $\dfrac{U}{\sqrt{gL}}$ & $\sqrt{\dfrac{\text{慣性力}}{\text{重力}}}$ & 重力波が生じにくい（速い流れ） \\
+Weber数 $We$ & $\dfrac{\rho_l U^2 L}{\sigma}$ & $\dfrac{\text{慣性力}}{\text{表面張力}}$ & 液滴が変形・分裂しやすい \\
+\hline
+\end{tabular}
+\end{center}
+\textbf{例：} 水（$\rho_l=1000\,\mathrm{kg/m^3}$, $\mu_l=10^{-3}\,\mathrm{Pa\cdot s}$, $\sigma=0.073\,\mathrm{N/m}$）の落下液滴
+（$U=1\,\mathrm{m/s}$, $L=10^{-3}\,\mathrm{m}$）では，
+$Re=1000$，$Fr=10.1$，$We=13.7$ となる．
+$We > 1$ であるから，表面張力よりも慣性力が勝り，液滴は球形から変形しやすい状態にあると判断できる．
+\end{tcolorbox}
+
 \subsection{曲率の計算}
 界面の曲率 $\kappa$ は，表面張力項を評価するために不可欠な幾何学量である．
 本稿では，符号付き距離関数 $\phi$ から高精度に曲率を計算する．その定義は，法線ベクトル $\hat{\bm{n}}$ の発散として与えられる．
