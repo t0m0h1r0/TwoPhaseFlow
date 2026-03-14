@@ -2,6 +2,127 @@
 \section{はじめに}
 \label{sec:intro}
 
+\subsection{なぜ二相流は難しいのか：単相流との本質的違い}
+\label{sec:why_hard}
+
+数値流体力学（CFD）を学んだ読者は，まず単相流（空気のみ，水のみ）の
+Navier-Stokes 方程式を扱ってきたはずである．
+なぜ「2種類の流体が共存する」だけで，これほど困難が増すのか？
+その答えは一言でいえば \textbf{「界面の存在」} に尽きる．
+
+\begin{tcolorbox}[defbox, title={単相流と二相流の本質的違い}]
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\hline
+ & \textbf{単相流} & \textbf{気液二相流} \\
+\hline
+物性値 & 空間・時間一定 & 界面を挟んで \textbf{不連続に変化} \\
+密度 & 一様 $\rho$ & $\rho_l / \rho_g \approx 1000$（水/空気） \\
+粘性 & 一様 $\mu$ & $\mu_l / \mu_g \approx 100$ \\
+支配方程式 & 全領域で同一 & 各相で異なる方程式＋界面条件 \\
+力の項 & 体積力のみ & 体積力＋\textbf{界面の表面張力（線力）} \\
+幾何情報 & 不要 & 界面の位置・法線・\textbf{曲率} が必要 \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
+\subsubsection{問題の核心：界面上の不連続}
+
+図\ref{fig:density_jump}に示すように，
+気液界面を挟んで密度と粘性が急激に変化する．
+数値計算では有限の格子上で計算するため，この不連続を直接扱うことはできない．
+界面を格子内の有限厚さの遷移層として\textbf{滑らかに近似}することで計算可能にするが，
+その近似の仕方によって計算の安定性・精度・質量保存性が大きく変わる．
+
+\begin{tcolorbox}[defbox, title={界面付近で起きる4つの数値的困難の根源}]
+\begin{enumerate}
+  \item \textbf{密度・粘性のジャンプ}（$\rho_l/\rho_g \approx 1000$）：
+        圧力 Poisson 方程式の係数が格子点ごとに激しく変化するため，
+        行列が悪条件化し，反復ソルバーの収束が著しく悪化する．
+
+  \item \textbf{表面張力の特異性}：
+        表面張力 $\sigma\kappa\hat{\bm n}$ は本来「界面上の面力（2次元面力）」であり，
+        体積方程式（Navier-Stokes）に直接組み込めない．
+        デルタ関数的な集中力をどう離散化するかが精度を決定する（2章 CSF モデル）．
+
+  \item \textbf{界面追跡の数値誤差}：
+        界面の移流（対流）による数値拡散で界面が「にじみ」，
+        質量損失や曲率の誤計算が発生する（3章 CLS 法）．
+
+  \item \textbf{非圧縮条件と密度変化の競合}：
+        単相では圧力 Poisson 方程式（PPE）は一様係数のラプラシアン $\nabla^2 p = \cdots$ で
+        済むが，二相では可変係数 $\nabla\cdot(1/\rho\,\nabla p) = \cdots$ になり，
+        係数の不連続が数値振動（チェッカーボード）を誘発する（6・7章）．
+\end{enumerate}
+\end{tcolorbox}
+
+\subsubsection{数値拡散と界面の「にじみ」（Smearing）：視覚的理解}
+
+単純な1次精度の上流差分で界面を移流した場合，
+時間が経つにつれて界面が広がり（にじみ），
+密度・粘性の遷移幅が拡大していく．
+
+界面の鮮鋭さが失われると：
+\begin{itemize}
+  \item 曲率 $\kappa$ の計算精度が低下する
+  \item 密度の勾配が弱まり，表面張力が正確に評価できなくなる
+  \item 液相体積（質量）が徐々に減少する（質量損失）
+\end{itemize}
+
+本稿の WENO5 + CLS 再初期化は，このにじみを抑制するための中心的な手法である．
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  %% 左側：理想（物理的）界面
+  \begin{scope}[xshift=-45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.5) {（a）物理的界面（理想）};
+    % 液相領域
+    \fill[blue2!15] (-1.5,-2) rectangle (0,2);
+    % 気相領域
+    \fill[orange2!15] (0,-2) rectangle (1.5,2);
+    % 界面線
+    \draw[very thick, red2] (0,-2) -- (0,2);
+    % 密度プロファイル
+    \draw[thick, blue2] (-1.5,-1.5) -- (-0.05,-1.5)
+                        (0.05,-1.5) -- (1.5,-1.5) node[right, font=\scriptsize]{$\rho_g$};
+    \draw[dashed, red2, very thick] (0,-2) -- (0,-1.5);
+    \node[font=\scriptsize, blue2] at (-0.75,-1.2) {$\rho_l$};
+    \draw[<->, thick, darkgray] (-1.5,-1.8) -- (0,-1.8)
+          node[midway, below, font=\scriptsize]{液相 $\Omega_l$};
+    \draw[<->, thick, darkgray] (0,-1.8) -- (1.5,-1.8)
+          node[midway, below, font=\scriptsize]{気相 $\Omega_g$};
+    \node[font=\scriptsize, red2] at (0.4, 0) {界面 $\Gamma$};
+    \node[font=\scriptsize] at (-0.75, 1.0) {$\rho_l \approx 1000\rho_g$};
+    \node[font=\scriptsize] at (-0.75, 0.5) {$\mu_l \approx 100\mu_g$};
+  \end{scope}
+  %% 右側：数値的界面（遷移層）
+  \begin{scope}[xshift=45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.5) {（b）数値的界面（CLS 遷移層）};
+    % 背景
+    \fill[blue2!15] (-1.5,-2) rectangle (-0.4,2);
+    \fill[orange2!15] (0.4,-2) rectangle (1.5,2);
+    \fill[teal2!10] (-0.4,-2) rectangle (0.4,2);
+    % 密度プロファイル（滑らか）
+    \draw[very thick, teal2, domain=-1.5:1.5, samples=60]
+      plot (\x, {-1.5 + 0.7*(1/(1+exp(-5*\x)))});
+    % 界面厚さの矢印
+    \draw[<->, thick, red2] (-0.4, 1.5) -- (0.4, 1.5)
+          node[midway, above, font=\scriptsize, red2]{界面厚さ $\approx 2\varepsilon$};
+    \draw[dashed, gray] (-0.4,-2) -- (-0.4, 1.4);
+    \draw[dashed, gray] (0.4,-2) -- (0.4, 1.4);
+    \node[font=\scriptsize, teal2] at (0, 0.2) {$\psi = H_\varepsilon(\phi)$};
+    \node[font=\scriptsize, blue2] at (-1.0,-0.5) {$\psi\approx 1$};
+    \node[font=\scriptsize, orange2] at (1.0,-0.5) {$\psi\approx 0$};
+  \end{scope}
+\end{tikzpicture}
+\caption{気液界面における密度・粘性のジャンプ（左：物理的不連続，右：CLS 遷移層による数値表現）．
+CLS 変数 $\psi \in [0,1]$ は界面を厚さ $\approx 2\varepsilon$ の滑らかな遷移層として表現する．}
+\label{fig:density_jump}
+\end{figure}
+
 \subsection{気液二相流の数値計算における課題}
 
 気液二相流とは，気相（ガス）と液相（液体）が共存し，

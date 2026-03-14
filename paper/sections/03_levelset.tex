@@ -2,9 +2,130 @@
 \section{Conservative Level Set (CLS) 法による界面追跡}
 \label{sec:levelset}
 
+\subsection{標準 Level Set 法の問題点：なぜ CLS が必要か}
+\label{sec:why_cls}
+
+本章の CLS 法を理解するために，まず「標準 Level Set 法で何が起きるのか」を
+理解しておく必要がある．
+
+\subsubsection{標準 Level Set 法の移流と $|\bnabla\phi|\neq 1$ 問題}
+
+標準 Level Set 法では，符号付き距離関数 $\phi$ の移流方程式
+\begin{equation}
+  \pd{\phi}{t} + \bu\cdot\bnabla\phi = 0
+  \label{eq:ls_standard}
+\end{equation}
+を解く．この方程式は\textbf{非保存形}（発散形でない）であるため，
+数値積分の過程で $\int\phi\,dV$ の保存が保証されない．
+
+さらに，移流計算の数値誤差によって，$\phi$ が持つべき「符号付き距離関数」の性質
+\[
+  |\bnabla\phi| = 1 \quad \text{（Eikonal 条件）}
+\]
+が時間とともに崩れていく．
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.9]
+  % 左：初期状態（|∇φ|=1）
+  \begin{scope}[xshift=-40mm]
+    \node[font=\small\bfseries, text=navy] at (0,3.0) {初期：$|\bnabla\phi|=1$};
+    \foreach \r in {0.5,1.0,1.5,2.0,2.5}{
+      \draw[blue2!60, dashed] (0,0) circle (\r);
+    }
+    \draw[very thick, red2] (0,0) circle (1.5);
+    \node[font=\scriptsize, red2] at (1.8, 0) {$\phi=0$};
+    \node[font=\scriptsize, blue2] at (0.5, 0) {$\phi<0$};
+    \node[font=\scriptsize, blue2] at (-0.5, 0) {\small 等間隔};
+    \draw[->, thick, teal2] (0,0) -- (1.06,1.06)
+          node[right, font=\scriptsize]{$\bnabla\phi$};
+  \end{scope}
+  % 右：移流後（|∇φ|≠1）
+  \begin{scope}[xshift=40mm]
+    \node[font=\small\bfseries, text=navy] at (0,3.0) {移流後：$|\bnabla\phi|\neq 1$};
+    \draw[blue2!40, dashed] (0,0) ellipse (0.4 and 0.5);
+    \draw[blue2!40, dashed] (0,0) ellipse (0.8 and 1.1);
+    \draw[very thick, red2] (0,0) ellipse (1.3 and 1.5);
+    \draw[blue2!40, dashed] (0,0) ellipse (1.8 and 2.2);
+    \draw[blue2!40, dashed] (0,0) ellipse (2.3 and 2.5);
+    \node[font=\scriptsize, red2] at (1.6, 0) {$\phi=0$};
+    \node[font=\scriptsize, blue2] at (0, 0) {\small 不等間隔};
+    \draw[->, thick, red2] (0,0) -- (0.7, 1.2)
+          node[right, font=\scriptsize, red2]{$|\bnabla\phi|\neq 1$};
+    \node[font=\scriptsize, orange2] at (0,-2.2) {曲率誤差発生};
+  \end{scope}
+\end{tikzpicture}
+\caption{移流による $|\bnabla\phi|=1$ の崩れ（概念図）．
+左：初期状態では等値面が等間隔で $|\bnabla\phi|=1$．
+右：移流後は等値面の間隔が不均一になり，$|\bnabla\phi|\neq 1$ の領域が生じる．
+これが曲率誤計算と質量損失の原因となる．}
+\label{fig:eikonal_violation}
+\end{figure}
+
+\begin{tcolorbox}[warnbox, title={$|\bnabla\phi|\neq 1$ が壊滅的な理由}]
+$|\bnabla\phi|\neq 1$ になると，以下の連鎖的問題が発生する：
+
+\begin{enumerate}
+  \item \textbf{法線ベクトルの精度低下：}
+        $\hat{\bm n} = \bnabla\phi/|\bnabla\phi|$ の計算で，
+        $|\bnabla\phi|$ が 1 から大きく外れると，
+        法線方向が不正確になる．
+
+  \item \textbf{曲率の誤計算（致命的）：}
+        曲率 $\kappa = -\bnabla\cdot(\bnabla\phi/|\bnabla\phi|)$ の計算精度が
+        $|\bnabla\phi|$ の誤りに強く依存するため，
+        表面張力の計算が壊滅的に悪化し，寄生流れが生じる．
+
+  \item \textbf{質量損失：}
+        $|\bnabla\phi|$ が大きくなると界面が「外向きに広がり」，
+        液相体積が小さくなる（あるいは逆に大きくなる）．
+\end{enumerate}
+\end{tcolorbox}
+
+\subsubsection{標準 Level Set 法の「Sussman 再初期化」とその問題}
+
+この $|\bnabla\phi|\neq 1$ 問題を解決するため，標準 LS 法では
+「Sussman 再初期化」と呼ばれる操作を各タイムステップ後に行う：
+\begin{equation}
+  \pd{\phi}{\tau} + \operatorname{sgn}(\phi_0)\bigl(|\bnabla\phi| - 1\bigr) = 0
+  \label{eq:sussman_reinit}
+\end{equation}
+この方程式を仮想時間 $\tau$ に関して解き，$|\bnabla\phi|=1$ を回復させる．
+しかし，この操作は界面位置をわずかに移動させるため，
+\textbf{厳密な質量保存を保証しない}という根本問題が残る．
+
+\subsubsection{CLS 法の解決策：保存形への変換}
+
+Conservative Level Set (CLS) 法 \cite{OlssonKreiss2005} は，
+$\phi$ の代わりに，滑らかな\textbf{ヘヴィサイド関数} $\psi = H_\varepsilon(\phi) \in [0,1]$
+を輸送変数として採用することでこの問題を解決する．
+
+$\psi$ の移流方程式は\textbf{保存形（発散形）}：
+\begin{equation}
+  \pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0
+  \label{eq:cls_advection_intro}
+\end{equation}
+これにより $\int\psi\,dV =$ const（液相体積の離散的保存）が\textbf{自動的に保証}される．
+
+\begin{tcolorbox}[defbox, title={標準 LS 法 vs CLS 法：選択の根拠}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\hline
+ & \textbf{標準 LS 法} & \textbf{CLS 法（本稿）} \\
+\hline
+輸送変数 & 距離関数 $\phi$ & ヘヴィサイド関数 $\psi$ \\
+移流方程式 & 非保存形 $\partial_t\phi + \bu\cdot\bnabla\phi=0$ & 保存形 $\partial_t\psi+\bnabla\cdot(\psi\bu)=0$ \\
+質量保存 & 非保証（再初期化で誤差） & 離散的に保証 \\
+再初期化 & Sussman 法（界面を動かす） & 圧縮-拡散方程式（界面固定） \\
+幾何計算 & $\phi$ から直接 & $\psi\to\phi$ の逆変換が必要 \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
 \subsection{保存形移流方程式}
 
-標準的な Level Set 法では質量保存性が保証されない問題があるため，
 本稿では Conservative Level Set 法 \cite{OlssonKreiss2005} を採用する．
 界面指標として，滑らか化ヘヴィサイド関数に相当する $\psi(\bm{x}, t)$ を用いる．
 移流方程式は保存形で記述される：

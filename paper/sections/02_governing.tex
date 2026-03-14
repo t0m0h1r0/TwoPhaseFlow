@@ -2,6 +2,79 @@
 \section{支配方程式系と表面張力項}
 \label{sec:governing}
 
+\subsection{Two-Fluid から One-Fluid へ：統一支配方程式の導出}
+\label{sec:two_to_one}
+
+「なぜ2種類の流体を1つの方程式で記述できるのか？」
+これは One-Fluid 定式化を初めて学ぶ際に誰もが抱く正当な疑問である．
+本節では，まず各相の方程式を別々に書き，界面条件を経て統一形式に至る
+導出のロードマップを示す．
+
+\subsubsection{各相の支配方程式（Two-Fluid 形式）}
+
+液相（添字 $l$）と気相（添字 $g$）はそれぞれ，各相の占有する領域 $\Omega_l$，$\Omega_g$ で
+別々の Navier-Stokes 方程式に従う：
+\begin{align}
+  \bnabla\cdot\bu &= 0 \quad \text{（各相内部，非圧縮条件）}
+  \label{eq:cont_each} \\
+  \rho_k\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  &= -\bnabla p + \bnabla\cdot[\mu_k(\bnabla\bu+\bnabla\bu^T)] + \rho_k\bm{g}
+  \quad (k = l,\, g)
+  \label{eq:NS_each}
+\end{align}
+これら2組の方程式は，界面 $\Gamma(t)$ 上で以下の\textbf{接合条件（jump conditions）}で結ばれる：
+\begin{align}
+  [\bu]_\Gamma &= 0
+  \quad \text{（速度の連続性：スリップなし）}
+  \label{eq:jump_vel} \\
+  [-p\mathbf{I} + \mu(\bnabla\bu+\bnabla\bu^T)]\cdot\hat{\bm n}\big|_\Gamma &= \sigma\kappa\hat{\bm n}
+  \quad \text{（応力ジャンプ = 表面張力）}
+  \label{eq:jump_stress}
+\end{align}
+式 \eqref{eq:jump_stress} は\textbf{Young-Laplace 則}の力の形への表現であり，
+「界面を挟む法線応力の不連続が表面張力 $\sigma\kappa$ に等しい」ことを意味する．
+
+\subsubsection{Two-Fluid → One-Fluid への変換：δ関数による統合}
+
+Two-Fluid 形式は各相で別々の方程式を解く必要があり，
+界面の移動追跡（Front Tracking）を常に必要とするため，実装が非常に煩雑になる．
+
+\textbf{One-Fluid 定式化}は，全領域 $\Omega = \Omega_l \cup \Omega_g \cup \Gamma$ で
+\textbf{一つの方程式系}を成立させるアイデアである．
+鍵となるのは，界面上の表面張力（面力）を「界面上にのみ集中する体積力」として
+\textbf{界面デルタ関数 $\delta_s(\bm{x})$} を用いて表現することである：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm n}\,\delta_s(\bm{x})
+  \quad \text{（全空間で定義された体積力，界面以外でゼロ）}
+  \label{eq:csf_intro}
+\end{equation}
+また，物性値 $\rho, \mu$ を界面指標関数 $\psi \in [0,1]$ で補間する：
+\begin{equation}
+  \rho(\psi) = \rho_g + (\rho_l - \rho_g)\psi, \qquad
+  \mu(\psi) = \mu_g + (\mu_l - \mu_g)\psi
+  \label{eq:interp_intro}
+\end{equation}
+これにより，各相の方程式 \eqref{eq:NS_each} と界面条件 \eqref{eq:jump_stress} が
+\textbf{一本の方程式}に統合される：
+\begin{equation}
+  \rho(\psi)\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  = -\bnabla p + \bnabla\cdot[\mu(\psi)(\bnabla\bu+\bnabla\bu^T)]
+  + \rho(\psi)\bm{g} + \bm{f}_\sigma
+  \label{eq:NS_onefluid}
+\end{equation}
+
+\begin{tcolorbox}[defbox, title={One-Fluid 統合のポイント：何が「消えた」のか}]
+Two-Fluid 形式から One-Fluid 形式への変換で，以下の操作が行われている：
+\begin{enumerate}
+  \item 各相の\textbf{別々の方程式}（$k=l,g$）が\textbf{1本の方程式} \eqref{eq:NS_onefluid} に統合された．
+  \item 界面での\textbf{応力ジャンプ条件} \eqref{eq:jump_stress} が
+        右辺の\textbf{CSF 体積力項} $\bm{f}_\sigma$（CSF モデル，次節）として吸収された．
+  \item 界面の\textbf{速度連続条件} \eqref{eq:jump_vel} は，
+        全領域で同一の速度場 $\bu$ を解くことで自動的に満たされる．
+\end{enumerate}
+代償として，$\psi$ の時間発展方程式（3章，CLS 法）を別途解く必要がある．
+\end{tcolorbox}
+
 \subsection{One-Fluid 定式化と非圧縮条件}
 
 \subsubsection{One-Fluid モデルの仮定}
