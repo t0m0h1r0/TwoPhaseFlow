@@ -373,7 +373,10 @@ CLS 法は質量保存性と幾何精度の両立という点で，CFD 教科書
 \draw[cross] (s3.east) -- node[lbl, above]{$\rho,\mu$} (s5.west);
 \draw[cross] (s4.east) -- node[lbl, below]{$\kappa$} (s5.south west);
 %% 時間ループ矢印
-\draw[arr] (s7.east) -- ++(3mm,0) -- ++(0,52mm) -| node[lbl, near start, right]{\small $t^{n+1}$} (s1.east);
+\draw[arr]
+  (s7.east) -- ++(3mm,0)
+  |- node[lbl, near start, right]{\small $t^{n+1}$}
+  (s1.east);
 \end{tikzpicture}
 \caption{1タイムステップの処理フロー．左列が CLS 界面サブシステム，右列が流体力学サブシステムを担う．
 両者は物性値 $\rho, \mu$ と曲率 $\kappa$ を通じて結合している．}
