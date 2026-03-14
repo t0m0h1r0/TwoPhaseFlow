@@ -228,12 +228,12 @@ Eikonal 方程式 $|\nabla\phi| = 1$ を求解するために用いられる．
 \begin{tcolorbox}[defbox, title={各再初期化方程式と上流化スキームの対応}]
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lll}
+\begin{tabular}{p{30mm}p{55mm}p{38mm}}
 \hline
 再初期化手法 & 方程式 & 本節との関連 \\
 \hline
-\textbf{標準 LS：Sussman 法} & $\partial_\tau\phi + \text{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化を使用} \\
-\textbf{CLS 法} & $\partial_\tau\psi + \nabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用，下記参照} \\
+\textbf{標準 LS：Sussman 法} & \small$\partial_\tau\phi + \operatorname{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化} \\[4pt]
+\textbf{CLS 法} & \small$\partial_\tau\psi + \nabla\cdot(\psi(1{-}\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用（下記参照）} \\
 \hline
 \end{tabular}
 \end{center}
