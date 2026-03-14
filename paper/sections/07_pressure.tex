@@ -201,7 +201,7 @@ $
 
 という利点が得られる（表~\ref{tab:ppe_methods} 参照）．
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{PPE 求解法の比較}
 \label{tab:ppe_methods}
@@ -224,7 +224,7 @@ ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)
   = \bigl\|(\mathbf{I}+\Delta\tau\mathcal{L}_h)p^m - (p^{m-1}+\Delta\tau q_h)\bigr\|_2 \big/ \Delta\tau
   \label{eq:residual}
 \end{equation}
-$\varepsilon^m < \varepsilon_{\rm tol}$（例：$\varepsilon_{\rm tol} = 10^{-8}$）を満たした時点で収束とみなし，反復を終了する．
+$\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}} = 10^{-8}$）を満たした時点で収束とみなし，反復を終了する．
 
 \begin{tcolorbox}[mybox, title={PPE 仮想時間陰解法の反復アルゴリズム}]
 \begin{enumerate}
@@ -233,7 +233,7 @@ $\varepsilon^m < \varepsilon_{\rm tol}$（例：$\varepsilon_{\rm tol} = 10^{-8}
   \item \textbf{反復ループ（$m = 0, 1, 2, \dots$）：}
     \begin{enumerate}
       \item CCD ブロック Thomas 法で各行・各列の空間微分を計算し，$\mathcal{L}_h p^m$ を評価．
-      \item 残差 $\varepsilon^m = \|\mathcal{L}_h p^m - q_h\|_2$ を計算し，$\varepsilon^m < \varepsilon_{\rm tol}$ なら収束として終了．
+      \item 残差 $\varepsilon^m = \|\mathcal{L}_h p^m - q_h\|_2$ を計算し，$\varepsilon^m < \varepsilon_{\mathrm{tol}}$ なら収束として終了．
       \item 線形系~\eqref{eq:pseudo_linear} を解いて $p^{m+1}$ を更新．
     \end{enumerate}
   \item \textbf{出力：} 収束した $p^{m+1} = p^{n+1}$ を圧力補正に渡す．
