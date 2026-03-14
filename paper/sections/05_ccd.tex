@@ -308,6 +308,92 @@ c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \lab
   \label{eq:bc_left}
 \end{equation}
 
+\subsection{行列構造：ブロック三重対角システム}
+\label{sec:ccd_matrix}
+
+各格子点 $i$ での未知数ベクトルを $\bm{v}_i = [f'_i,\, f''_i]^\top \in \mathbb{R}^2$ とおく．
+格子点数 $N$（内点 $i = 1, \dots, N-2$，境界 $i=0, N-1$）全体の未知数を縦に並べたベクトルを
+$\bm{v} = [\bm{v}_0, \bm{v}_1, \dots, \bm{v}_{N-1}]^\top \in \mathbb{R}^{2N}$ とする．
+
+\subsubsection{内点のブロック係数行列}
+
+内点 $i$（$1 \le i \le N-2$）では，Equation-I \eqref{eq:CCD_I} と Equation-II \eqref{eq:CCD_II} をまとめると
+$\bm{v}_{i-1}, \bm{v}_i, \bm{v}_{i+1}$ をつなぐ $2\times2$ ブロック方程式が得られる：
+\begin{equation}
+  \mathbf{A}\,\bm{v}_{i-1} + \mathbf{B}\,\bm{v}_i + \mathbf{A}\,\bm{v}_{i+1} = \mathbf{r}_i
+  \label{eq:ccd_block}
+\end{equation}
+ここで係数ブロック $\mathbf{A}, \mathbf{B} \in \mathbb{R}^{2\times 2}$ と右辺 $\mathbf{r}_i \in \mathbb{R}^2$ は，
+Equation-I/II の各行を対応させることで読み取れる：
+
+\begin{tcolorbox}[defbox, title={内点のブロック係数行列}]
+\textbf{Equation-I の行（$f'$ に関する方程式）から：}
+\[
+  \underbrace{\begin{bmatrix} \alpha_1 & b_1 h \\ 0 & \beta_2 \end{bmatrix}}_{\mathbf{A}}
+  \bm{v}_{i-1}
+  +
+  \underbrace{\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}}_{\mathbf{B}}
+  \bm{v}_i
+  +
+  \underbrace{\begin{bmatrix} \alpha_1 & -b_1 h \\ 0 & \beta_2 \end{bmatrix}}_{\mathbf{A}^\top}
+  \bm{v}_{i+1}
+  = \mathbf{r}_i
+\]
+右辺ベクトル：
+\[
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{a_1}{h}(f_{i+1}-f_{i-1}) \\[8pt]
+    \dfrac{a_2}{h^2}(f_{i-1}-2f_i+f_{i+1}) + \dfrac{b_2}{h}(f'_{i+1}-f'_{i-1})\text{ の $f$ のみの項}
+  \end{bmatrix}
+\]
+（Equation-II の $f'_{i\pm1}$ を含む項は左辺のブロックに移項済み）
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={Equation-II における $f'_{i\pm 1}$ の扱い}]
+Equation-II \eqref{eq:CCD_II} の RHS には $b_2(f'_{i+1}-f'_{i-1})/h$ という
+\textbf{隣接格子点の $f'$} が現れる．
+これは未知数 $\bm{v}_{i\pm1}$ の第1成分であるため，RHS ではなく左辺ブロック $\mathbf{A}$ に組み込む必要がある．
+具体的には，第2行（Equation-II）の $\bm{v}_{i-1}$ ブロックに $[{-b_2/h},\ \beta_2]$，
+$\bm{v}_{i+1}$ ブロックに $[b_2/h,\ \beta_2]$ が入り，全体が対称なブロック三重対角構造になる．
+\end{tcolorbox}
+
+\subsubsection{全体行列の構造}
+
+$N$ 格子点全体をまとめると，以下のブロック三重対角行列が得られる：
+\begin{equation}
+  \underbrace{
+  \begin{bmatrix}
+    \mathbf{B}_0 & \mathbf{C}_0 & & & \\
+    \mathbf{A}_1 & \mathbf{B} & \mathbf{A}_1 & & \\
+    & \mathbf{A}_2 & \mathbf{B} & \mathbf{A}_2 & \\
+    & & \ddots & \ddots & \ddots \\
+    & & & \mathbf{A}_{N-2} & \mathbf{B} & \mathbf{C}_{N-1} \\
+    & & & & \mathbf{A}_{N-1} & \mathbf{B}_{N-1}
+  \end{bmatrix}
+  }_{\text{$2N \times 2N$ ブロック三重対角行列}}
+  \begin{bmatrix} \bm{v}_0 \\ \bm{v}_1 \\ \vdots \\ \bm{v}_{N-1} \end{bmatrix}
+  =
+  \begin{bmatrix} \mathbf{r}_0 \\ \mathbf{r}_1 \\ \vdots \\ \mathbf{r}_{N-1} \end{bmatrix}
+  \label{eq:ccd_global}
+\end{equation}
+ここで $\mathbf{B}_0, \mathbf{C}_0$（左境界）および $\mathbf{A}_{N-1}, \mathbf{B}_{N-1}$（右境界）は
+式 \eqref{eq:bc_left} から導かれる境界専用ブロックである．
+
+\begin{tcolorbox}[mybox, title={求解アルゴリズムとコスト}]
+式 \eqref{eq:ccd_global} のブロック三重対角システムは，\textbf{ブロック Thomas 法}（LU 分解のブロック版）で $O(N)$ の計算量で解ける．各ブロック操作は $2\times2$ 行列の逆行列・積であり，スカラー Thomas 法と比べてわずかに定数倍のコスト増加で済む．
+
+\textbf{計算手順の概要：}
+\begin{enumerate}
+  \item \textbf{前進消去（Forward Sweep）：} $i = 1, \dots, N-1$ に対して $\mathbf{A}_i \mathbf{B}_{i-1}^{-1}$ を用いて $\mathbf{A}_i$ を消去し，修正済み係数 $\tilde{\mathbf{B}}_i$ と右辺 $\tilde{\mathbf{r}}_i$ を更新する．
+  \item \textbf{後退代入（Backward Substitution）：} $i = N-1, \dots, 0$ の順に $\bm{v}_i$ を順次決定する．
+\end{enumerate}
+
+2方向（$x, y$）の CCD を行う場合，まず $x$ 方向に沿った全行に対してブロック Thomas 法を適用し，
+続いて $y$ 方向に沿った全列に対して同様の操作を行う（次元分離）．
+この処理で $f'_x, f''_x, f'_y, f''_y$ が一括して得られる．
+\end{tcolorbox}
+
 \subsection{非一様格子への拡張：座標変換法}
 \label{sec:ccd_metric}
 
