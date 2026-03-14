@@ -144,7 +144,7 @@ D_x^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!x}\! D_x
 = \frac{1}{\Delta t}\Bigl(D_x^{(1)} u^*_{i,j} + D_y^{(1)} v^*_{i,j}\Bigr)
 \end{equation*}
 ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho)$ の調和平均（6章，式 \eqref{eq:rc-face} 参照）であり，Rhie-Chow 補正項はこの係数に吸収されている．
-全格子点の未知数 $p^{n+1}_{i,j}$ を連立すると大規模方程式系になり，\textbf{仮想時間陰解法＋CCD}（7.6節）で解く．
+全格子点の未知数 $p^{n+1}_{i,j}$ を連立すると大規模方程式系になり，\textbf{仮想時間陰解法＋CCD}（§\ref{sec:ppe_pseudotime}）で解く．
 
 \textbf{7. 速度補正 (Corrector Step)} \\
 得られた圧力勾配を用いて予測速度場を補正し，最終速度場 $\bm{u}^{n+1}$ を得る．
