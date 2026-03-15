@@ -35,12 +35,14 @@ from __future__ import annotations
 import numpy as np
 from typing import List, TYPE_CHECKING
 
+from ..interfaces.ns_terms import INSTerm
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
 
-class ViscousTerm:
+class ViscousTerm(INSTerm):
     """Compute the viscous stress divergence.
 
     Parameters

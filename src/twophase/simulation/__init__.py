@@ -10,7 +10,7 @@ TwoPhaseSimulation、SimulationBuilder、および補助クラスを提供する
 の全インポートパスが機能する。
 
 推奨される構築方法:
-    - デフォルト: ``TwoPhaseSimulation(config)`` （後方互換）
+    - デフォルト: ``SimulationBuilder(config).build()``
     - カスタム:   ``SimulationBuilder(config).with_ppe_solver(...).build()``
 """
 

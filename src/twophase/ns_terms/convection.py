@@ -14,12 +14,14 @@ The result is an array of shape ``grid.shape`` for each velocity component.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..interfaces.ns_terms import INSTerm
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
 
-class ConvectionTerm:
+class ConvectionTerm(INSTerm):
     """Computes −(u·∇)u for all velocity components.
 
     Parameters

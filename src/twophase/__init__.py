@@ -7,13 +7,16 @@ Paper: see paper/sections/ for the full mathematical specification.
 
 Quick start::
 
-    from twophase import SimulationConfig, TwoPhaseSimulation
+    from twophase import SimulationConfig, SimulationBuilder
+    from twophase.config import GridConfig, FluidConfig, NumericsConfig
     import numpy as np
 
-    cfg = SimulationConfig(ndim=2, N=(64, 64), L=(1.0, 1.0),
-                           Re=50.0, Fr=1.0, We=10.0,
-                           rho_ratio=0.1, mu_ratio=0.1, t_end=0.5)
-    sim = TwoPhaseSimulation(cfg)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
+        fluid=FluidConfig(Re=50.0, Fr=1.0, We=10.0, rho_ratio=0.1, mu_ratio=0.1),
+        numerics=NumericsConfig(t_end=0.5),
+    )
+    sim = SimulationBuilder(cfg).build()
 
     X, Y = sim.grid.meshgrid()
     sim.psi.data[:] = 1.0 / (1.0 + np.exp(
@@ -24,6 +27,6 @@ Quick start::
 
 from .backend import Backend
 from .config import SimulationConfig
-from .simulation import TwoPhaseSimulation
+from .simulation import TwoPhaseSimulation, SimulationBuilder
 
-__all__ = ["Backend", "SimulationConfig", "TwoPhaseSimulation"]
+__all__ = ["Backend", "SimulationConfig", "TwoPhaseSimulation", "SimulationBuilder"]

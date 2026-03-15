@@ -26,11 +26,13 @@ consistent with the predictor in predictor.py which adds (dt/ρ̃) * F_body.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..interfaces.ns_terms import INSTerm
+
 if TYPE_CHECKING:
     from ..backend import Backend
 
 
-class GravityTerm:
+class GravityTerm(INSTerm):
     """Gravity acceleration −ẑ / Fr².
 
     Parameters

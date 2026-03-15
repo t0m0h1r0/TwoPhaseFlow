@@ -24,12 +24,14 @@ The predictor step then adds (Δt / ρ̃) * f_σ to the velocity.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..interfaces.ns_terms import INSTerm
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
 
-class SurfaceTensionTerm:
+class SurfaceTensionTerm(INSTerm):
     """CSF surface tension force κ ∇ψ / We.
 
     Parameters

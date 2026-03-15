@@ -30,6 +30,8 @@ from __future__ import annotations
 import numpy as np
 from typing import List, TYPE_CHECKING
 
+from ..interfaces.levelset import ILevelSetAdvection
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
@@ -39,7 +41,7 @@ _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
 _WENO_EPS = 1e-6   # avoidance of division by zero in WENO weights
 
 
-class LevelSetAdvection:
+class LevelSetAdvection(ILevelSetAdvection):
     """Advects ψ using WENO5 + TVD-RK3.
 
     Parameters
@@ -94,7 +96,7 @@ class LevelSetAdvection:
         alpha_global = max(alpha_global, 1e-14)
 
         for ax in range(ndim):
-            h = self._h[ax] if self._h is not None else 1.0
+            h = self._h[ax]
             div_f = self._weno5_divergence(psi, vel[ax], ax, alpha_global, h)
             result -= div_f   # −∂(uψ)/∂x in the non-conservative form
 
