@@ -173,14 +173,14 @@ class CheckpointManager:
         state: dict = {
             "step": sim.step,
             "time": sim.time,
-            "ndim": sim.config.ndim,
-            "N":    list(sim.config.N),
-            "L":    list(sim.config.L),
+            "ndim": sim.config.grid.ndim,
+            "N":    list(sim.config.grid.N),
+            "L":    list(sim.config.grid.L),
             "psi":      np.asarray(be.to_host(sim.psi.data)),
             "pressure": np.asarray(be.to_host(sim.pressure.data)),
         }
 
-        for ax in range(sim.config.ndim):
+        for ax in range(sim.config.grid.ndim):
             state[f"velocity_{ax}"] = np.asarray(be.to_host(sim.velocity[ax]))
 
         try:

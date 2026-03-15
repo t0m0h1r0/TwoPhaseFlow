@@ -32,6 +32,7 @@ from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
+    from ..core.grid import Grid
 
 # WENO5 ideal weights
 _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
@@ -44,11 +45,12 @@ class LevelSetAdvection:
     Parameters
     ----------
     backend : Backend
+    grid    : Grid — constructor-injected; eliminates temporal coupling from set_grid()
     """
 
-    def __init__(self, backend: "Backend"):
+    def __init__(self, backend: "Backend", grid: "Grid"):
         self.xp = backend.xp
-        self._h = None   # set by set_grid()
+        self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -78,10 +80,6 @@ class LevelSetAdvection:
 
         # Clamp to [0, 1] to suppress overshoots
         return xp.clip(q_new, 0.0, 1.0)
-
-    def set_grid(self, grid) -> None:
-        """Register the grid so that h is available for flux divergence."""
-        self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
     # ── RHS: −u·∇ψ via WENO5 ─────────────────────────────────────────────
 

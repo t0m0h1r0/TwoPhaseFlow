@@ -45,7 +45,7 @@ def make_setup(N=16, backend=None):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(bicgstab_tol=1e-12, bicgstab_maxiter=2000),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     return cfg, grid, ccd, backend
 
@@ -108,7 +108,7 @@ def test_divergence_free_projection(backend):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(bicgstab_tol=1e-12, bicgstab_maxiter=2000),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
 
     # 新しい統一 API: PPESolver(backend, config, grid)
@@ -156,7 +156,7 @@ def test_pseudotime_ppe_solve_uniform_density(backend):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(pseudo_tol=1e-10, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     solver = PPESolverPseudoTime(backend, cfg, grid)
 
@@ -189,7 +189,7 @@ def test_pseudotime_ppe_solve_variable_density(backend):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     solver = PPESolverPseudoTime(backend, cfg, grid)
 
@@ -218,7 +218,7 @@ def test_pseudotime_warm_start_no_convergence_warning(backend):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     solver = PPESolverPseudoTime(backend, cfg, grid)
 
@@ -250,7 +250,7 @@ def test_rhie_chow_divergence(backend):
     """チェッカーボード圧力場で Rhie-Chow 発散がセル中心発散と異なること。"""
     N = 16
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     rc = RhieChowInterpolator(backend, grid, ccd)
 

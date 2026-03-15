@@ -74,7 +74,7 @@ def test_reinit_eikonal_quality(backend):
     """
     N = 32
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
 
@@ -120,7 +120,7 @@ def test_curvature_circle(backend):
     N = 64
     R = 0.25
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
 
@@ -153,12 +153,11 @@ def test_cls_advection_volume_conservation(backend):
     """Rigid rotation of a circle: volume change < 2% over one revolution."""
     N = 32
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     xp = backend.xp
 
     eps = 1.5 / N
-    advect = LevelSetAdvection(backend)
-    advect.set_grid(grid)
+    advect = LevelSetAdvection(backend, grid)
 
     # Initial circle
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),

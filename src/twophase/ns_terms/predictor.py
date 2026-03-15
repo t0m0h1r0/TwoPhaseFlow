@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from ..config import SimulationConfig
+    from ..interfaces.ns_terms import INSTerm
 
 
 class Predictor:
@@ -70,10 +71,10 @@ class Predictor:
         backend: "Backend",
         config: "SimulationConfig",
         ccd: "CCDSolver",
-        convection: Optional[ConvectionTerm] = None,
-        viscous: Optional[ViscousTerm] = None,
-        gravity: Optional[GravityTerm] = None,
-        surface_tension: Optional[SurfaceTensionTerm] = None,
+        convection: Optional["INSTerm"] = None,
+        viscous: Optional["INSTerm"] = None,
+        gravity: Optional["INSTerm"] = None,
+        surface_tension: Optional["INSTerm"] = None,
     ):
         self.xp = backend.xp
         self.config = config

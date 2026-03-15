@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from ..backend import Backend
-    from ..config import SimulationConfig
+    from ..config import GridConfig
 
 
 class Grid:
@@ -44,24 +44,24 @@ class Grid:
     dJ_dxi : list[numpy.ndarray] — gradient of metric in ξ-space
     """
 
-    def __init__(self, config: "SimulationConfig", backend: "Backend"):
-        self.config = config
+    def __init__(self, grid_config: "GridConfig", backend: "Backend"):
+        self._gc = grid_config
         self.backend = backend
         self.xp = backend.xp
 
-        self.ndim = config.grid.ndim
-        self.N = tuple(config.grid.N)
-        self.L = tuple(config.grid.L)
+        self.ndim = grid_config.ndim
+        self.N = tuple(grid_config.N)
+        self.L = tuple(grid_config.L)
 
         # Build uniform grid (interface-fitted update happens separately)
         self.coords: list[np.ndarray] = []
         self.h: list[np.ndarray] = []
         for ax in range(self.ndim):
-            c = np.linspace(0.0, config.grid.L[ax], config.grid.N[ax] + 1)
+            c = np.linspace(0.0, grid_config.L[ax], grid_config.N[ax] + 1)
             self.coords.append(c)
             # h[ax] is length-N[ax] spacing (between consecutive nodes)
             # We store per-node spacing (averaged from both sides) for metrics
-            dx = np.full(config.grid.N[ax] + 1, config.grid.L[ax] / config.grid.N[ax])
+            dx = np.full(grid_config.N[ax] + 1, grid_config.L[ax] / grid_config.N[ax])
             self.h.append(dx)
 
         self.shape: tuple = tuple(n + 1 for n in self.N)
@@ -79,24 +79,23 @@ class Grid:
         """
         return np.meshgrid(*self.coords, indexing="ij")
 
-    def update_from_levelset(self, phi_data: np.ndarray) -> None:
+    def update_from_levelset(self, phi_data: np.ndarray, eps: float) -> None:
         """Rebuild interface-fitted grid given the signed-distance field φ.
 
-        Only active when ``config.alpha_grid > 1.0``.
+        Only active when ``grid_config.alpha_grid > 1.0``.
         Applies a minimum cell-width floor to avoid CCD ill-conditioning.
 
         Parameters
         ----------
         phi_data : array of shape ``self.shape``
+        eps      : interface half-width (ε = epsilon_factor * dx_min),
+                   computed by the caller (e.g. SimulationBuilder)
         """
-        alpha = self.config.grid.alpha_grid
+        alpha = self._gc.alpha_grid
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
-        eps = self.config.numerics.epsilon_factor * float(np.min([
-            self.config.grid.L[ax] / self.config.grid.N[ax] for ax in range(self.ndim)
-        ]))
-        dx_floor = self.config.grid.dx_min_floor
+        dx_floor = self._gc.dx_min_floor
 
         for ax in range(self.ndim):
             # 1-D marginal of φ along this axis (mean over other axes)
@@ -110,18 +109,18 @@ class Grid:
             # Enforce minimum cell width
             raw_dx = np.maximum(raw_dx, dx_floor)
             # Normalise so that sum(dx) = L[ax]
-            raw_dx = raw_dx * (self.config.grid.L[ax] / raw_dx.sum())
+            raw_dx = raw_dx * (self._gc.L[ax] / raw_dx.sum())
 
             # Integrate to get node coordinates
-            coords_ax = np.zeros(self.config.grid.N[ax] + 1)
+            coords_ax = np.zeros(self._gc.N[ax] + 1)
             coords_ax[1:] = np.cumsum(raw_dx[:-1])  # N cells → N+1 nodes
             # Rescale to exactly [0, L[ax]]
-            coords_ax = coords_ax * (self.config.grid.L[ax] / coords_ax[-1])
+            coords_ax = coords_ax * (self._gc.L[ax] / coords_ax[-1])
 
             self.coords[ax] = coords_ax
             # Per-node spacing (average of left and right cell widths)
             cell_dx = np.diff(coords_ax)
-            node_dx = np.empty(self.config.grid.N[ax] + 1)
+            node_dx = np.empty(self._gc.N[ax] + 1)
             node_dx[0] = cell_dx[0]
             node_dx[-1] = cell_dx[-1]
             node_dx[1:-1] = 0.5 * (cell_dx[:-1] + cell_dx[1:])
@@ -164,7 +163,7 @@ class Grid:
     @property
     def uniform(self) -> bool:
         """True when the grid is uniform (alpha_grid ≤ 1)."""
-        return self.config.grid.alpha_grid <= 1.0
+        return self._gc.alpha_grid <= 1.0
 
     def cell_volume(self) -> float:
         """Approximate uniform cell volume (product of mean spacings)."""

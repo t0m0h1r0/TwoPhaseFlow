@@ -39,6 +39,7 @@ from typing import Optional, Callable, TYPE_CHECKING
 from ..backend import Backend
 from ..config import SimulationConfig
 from ..core.field import ScalarField, VectorField
+from ..core.components import SimulationComponents
 from ..levelset.heaviside import update_properties
 
 
@@ -57,21 +58,7 @@ class TwoPhaseSimulation:
     @classmethod
     def _from_components(
         cls,
-        config: SimulationConfig,
-        backend,
-        grid,
-        eps: float,
-        ccd,
-        ls_advect,
-        ls_reinit,
-        curvature_calc,
-        predictor,
-        ppe_solver,
-        rhie_chow,
-        vel_corrector,
-        cfl_calc,
-        bc_handler,
-        diagnostics,
+        components: SimulationComponents,
     ) -> "TwoPhaseSimulation":
         """SimulationBuilder が生成したコンポーネントから TwoPhaseSimulation を組み立てる。
 
@@ -79,32 +66,33 @@ class TwoPhaseSimulation:
         外部からは SimulationBuilder を使用すること。
         """
         obj = cls.__new__(cls)
-        obj.config = config
-        obj.backend = backend
-        obj.grid = grid
-        obj.eps = eps
-        obj.ccd = ccd
+        c = components
+        obj.config  = c.config
+        obj.backend = c.backend
+        obj.grid    = c.grid
+        obj.eps     = c.eps
+        obj.ccd     = c.ccd
 
         # フィールドの初期化
-        obj.psi      = ScalarField(grid, backend)
-        obj.rho      = ScalarField(grid, backend)
-        obj.mu       = ScalarField(grid, backend)
-        obj.kappa    = ScalarField(grid, backend)
-        obj.pressure = ScalarField(grid, backend)
-        obj.velocity = VectorField(grid, backend)
-        obj.vel_star = VectorField(grid, backend)
+        obj.psi      = ScalarField(c.grid, c.backend)
+        obj.rho      = ScalarField(c.grid, c.backend)
+        obj.mu       = ScalarField(c.grid, c.backend)
+        obj.kappa    = ScalarField(c.grid, c.backend)
+        obj.pressure = ScalarField(c.grid, c.backend)
+        obj.velocity = VectorField(c.grid, c.backend)
+        obj.vel_star = VectorField(c.grid, c.backend)
 
         # サブモジュールの設定
-        obj.ls_advect      = ls_advect
-        obj.ls_reinit      = ls_reinit
-        obj.curvature_calc = curvature_calc
-        obj.predictor      = predictor
-        obj.ppe_solver     = ppe_solver
-        obj.rhie_chow      = rhie_chow
-        obj.vel_corrector  = vel_corrector
-        obj.cfl_calc       = cfl_calc
-        obj._bc_handler    = bc_handler
-        obj._diagnostics   = diagnostics
+        obj.ls_advect      = c.ls_advect
+        obj.ls_reinit      = c.ls_reinit
+        obj.curvature_calc = c.curvature_calc
+        obj.predictor      = c.predictor
+        obj.ppe_solver     = c.ppe_solver
+        obj.rhie_chow      = c.rhie_chow
+        obj.vel_corrector  = c.vel_corrector
+        obj.cfl_calc       = c.cfl_calc
+        obj._bc_handler    = c.bc_handler
+        obj._diagnostics   = c.diagnostics
 
         # 状態変数
         obj.time = 0.0
@@ -112,9 +100,9 @@ class TwoPhaseSimulation:
 
         # 無次元流体物性
         obj._rho_l = 1.0
-        obj._rho_g = config.fluid.rho_ratio
+        obj._rho_g = c.config.fluid.rho_ratio
         obj._mu_l  = 1.0
-        obj._mu_g  = config.fluid.mu_ratio
+        obj._mu_g  = c.config.fluid.mu_ratio
 
         return obj
 

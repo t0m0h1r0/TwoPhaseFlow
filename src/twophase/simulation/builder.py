@@ -38,6 +38,7 @@ from ..backend import Backend
 from ..config import SimulationConfig
 from ..core.grid import Grid
 from ..core.field import ScalarField, VectorField
+from ..core.components import SimulationComponents
 from ..ccd.ccd_solver import CCDSolver
 from ..levelset.advection import LevelSetAdvection
 from ..levelset.reinitialize import Reinitializer
@@ -128,7 +129,7 @@ class SimulationBuilder:
         config = self._config
         backend = Backend(use_gpu=config.use_gpu)
 
-        grid = Grid(config, backend)
+        grid = Grid(config.grid, backend)
         dx_min = min(
             config.grid.L[ax] / config.grid.N[ax]
             for ax in range(config.grid.ndim)
@@ -137,8 +138,7 @@ class SimulationBuilder:
         ccd = CCDSolver(grid, backend)
 
         # レベルセット演算子
-        ls_advect = LevelSetAdvection(backend)
-        ls_advect.set_grid(grid)
+        ls_advect = LevelSetAdvection(backend, grid)
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
@@ -165,19 +165,21 @@ class SimulationBuilder:
 
         # TwoPhaseSimulation のファクトリメソッドで組み立て
         return TwoPhaseSimulation._from_components(
-            config=config,
-            backend=backend,
-            grid=grid,
-            eps=eps,
-            ccd=ccd,
-            ls_advect=ls_advect,
-            ls_reinit=ls_reinit,
-            curvature_calc=curvature_calc,
-            predictor=predictor,
-            ppe_solver=ppe_solver,
-            rhie_chow=rhie_chow,
-            vel_corrector=vel_corrector,
-            cfl_calc=cfl_calc,
-            bc_handler=bc_handler,
-            diagnostics=diagnostics,
+            SimulationComponents(
+                config=config,
+                backend=backend,
+                grid=grid,
+                eps=eps,
+                ccd=ccd,
+                ls_advect=ls_advect,
+                ls_reinit=ls_reinit,
+                curvature_calc=curvature_calc,
+                predictor=predictor,
+                ppe_solver=ppe_solver,
+                rhie_chow=rhie_chow,
+                vel_corrector=vel_corrector,
+                cfl_calc=cfl_calc,
+                bc_handler=bc_handler,
+                diagnostics=diagnostics,
+            )
         )

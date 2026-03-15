@@ -39,7 +39,7 @@ def make_setup(N=16, backend=None):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         fluid=FluidConfig(Re=10., Fr=1., We=5.),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     return cfg, grid, ccd, backend
 
@@ -145,7 +145,7 @@ def test_surface_tension_localised(backend):
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         fluid=FluidConfig(We=1.0),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
 
@@ -180,7 +180,7 @@ def test_predictor_no_nan(backend):
         fluid=FluidConfig(Re=10., Fr=1., We=5.),
         numerics=NumericsConfig(cn_viscous=False),
     )
-    grid = Grid(cfg, backend)
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
     pred = Predictor(backend, cfg, ccd)

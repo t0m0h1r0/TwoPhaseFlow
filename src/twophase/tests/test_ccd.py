@@ -29,12 +29,12 @@ def backend():
 
 def make_grid_1d(N: int, backend):
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, 4), L=(1.0, 1.0)))
-    return Grid(cfg, backend)
+    return Grid(cfg.grid, backend)
 
 
 def make_grid_2d(N: int, backend):
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    return Grid(cfg, backend)
+    return Grid(cfg.grid, backend)
 
 
 # ── Test 1: O(h⁶) convergence for d1 ─────────────────────────────────────
