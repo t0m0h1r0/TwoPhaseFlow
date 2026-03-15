@@ -4,78 +4,27 @@
 
 \subsection{本稿の貢献のまとめ}
 
-本稿では，気液二相流の高精度数値シミュレーションのための完全な定式化を示した．
-採用した手法と，それが解決する具体的問題の対応を表\ref{tab:contributions}に整理する．
+本稿では気液二相流の高精度数値シミュレーションのための定式化を示した．技術的に重要な3点の貢献を以下にまとめる．
 
-\begin{center}
-\renewcommand{\arraystretch}{1.3}
-\captionsetup{hypcap=false}%
-\captionof{table}{各手法と解決する問題の対応（第\ref{sec:intro}章の失敗例と照合）}
-\label{tab:contributions}
-\begin{tabular}{p{42mm}p{38mm}l}
-\toprule
-解決する問題 & 採用手法 & 詳細 \\
-\midrule
-界面のにじみ・質量損失 & Conservative Level Set & 第\ref{sec:levelset}章 \\
-高精度微分（曲率計算） & CCD 法（$O(h^6)$） & 第\ref{sec:CCD}章 \\
-寄生流れの抑制 & CCD + CSF の整合的実装 & 第\ref{sec:governing}，\ref{sec:CCD}章 \\
-チェッカーボード不安定 & Rhie--Chow 補正 & 第\ref{sec:collocate}章 \\
-変密度 PPE の安定求解 & 調和平均 + 仮想時間法 & 第\ref{sec:collocate}，\ref{sec:pressure}章 \\
-移流の数値振動 & WENO5 + TVD-RK3 & 第\ref{sec:time}章 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-特に以下の3点が技術的に重要な貢献である：
-
-\begin{enumerate}
-  \item \textbf{質量保存性：}
-        CLS 法の導入により，標準 Level Set 法の根本的弱点（非保存形移流による質量損失）を克服した．
-        $\psi(1-\psi)$ 型の圧縮項と拡散項の競合が界面厚さを安定に維持し，
-        長時間計算でも $\int\psi\,dV \approx \text{const}$ が保たれる（第\ref{sec:verification}章）．
-
-  \item \textbf{高精度空間微分：}
-        CCD 法の係数を，テイラー展開による厳密な代数的手続きで導出した（第\ref{sec:CCD}章）．
-        $O(h^6)$ 精度の曲率計算は，表面張力項の寄生流れを大幅に抑制する．
-
-  \item \textbf{安定な圧力-速度連成：}
-        Rhie--Chow 補正における調和平均密度の採用と，変密度 PPE の導出を整合的に示した（第\ref{sec:collocate}，\ref{sec:pressure}章）．
-        特に密度比 $\rho_l/\rho_g = O(1000)$ の場合，算術平均と調和平均の差が250倍に達することを
-        定量的に示し，調和平均の必要性を明確にした（第\ref{sec:collocate}章）．
+\begin{enumerate}[noitemsep]
+  \item \textbf{質量保存性（第\ref{sec:levelset}章）：}
+        CLS 法の圧縮・拡散項競合により界面厚さを安定維持し，長時間計算でも $\int\psi\,dV \approx \text{const}$ を保つ．
+  \item \textbf{高精度空間微分（第\ref{sec:CCD}章）：}
+        CCD 法（$O(h^6)$）による曲率計算で表面張力項の寄生流れを大幅に抑制する．
+  \item \textbf{安定な圧力-速度連成（第\ref{sec:collocate}，\ref{sec:pressure}章）：}
+        Rhie--Chow 補正に調和平均密度を採用し，密度比 $O(1000)$ でも安定な変密度 PPE 求解を実現する．
 \end{enumerate}
 
-\clearpage
 \subsection{今後の課題}
 
-本稿で示した定式化は2次元の等温非圧縮流体を対象としている．
-実問題への適用に向けた主要な拡張方向を以下に示す．
+本稿の定式化（2次元・等温・非圧縮）の主要な拡張方向を示す．
 
-\begin{enumerate}
-  \item \textbf{3次元実装と並列化：}
-        3次元への拡張は概念的に直接的だが，CCD 法のブロック Thomas 法および
-        Rhie--Chow 補正のフェイスフラックス計算を3方向に拡張する必要がある．
-        大規模並列計算（MPI + OpenMP）での領域分割は，コンパクトスキームの
-        非局所性（境界メッセージ通信）への対応が実装上の主要課題となる．
-
-  \item \textbf{適応的格子細分化（AMR）との統合：}
-        界面近傍のみを動的に高解像度化する AMR（Adaptive Mesh Refinement）と
-        CLS 法を組み合わせることで，計算コストを大幅に削減できる．
-        ただし，粗・密格子の境界での CCD スキームの整合性が技術的課題となる．
-
-  \item \textbf{表面張力の陰的処理：}
-        毛管波制約（$\Delta t_\sigma \propto \sqrt{\Delta x^3}$，第\ref{sec:time}章）を除去するため，
-        表面張力項を陰的に扱う手法（Implicit Surface Tension）の導入により，
-        高表面張力問題での計算効率を向上させる．
-\end{enumerate}
-\begin{enumerate}[resume]
-  \item \textbf{相変化（蒸発・凝縮）の組み込み：}
-        沸騰・蒸発問題では，界面でのエネルギー方程式と質量フラックスの結合が必要となる．
-        CLS フレームワークは，界面での境界条件（Stefan 条件）の自然な実装を可能にする．
-
-  \item \textbf{乱流モデルとの統合：}
-        高 Reynolds 数流れでは，大渦シミュレーション（LES）または
-        RANS モデルとの結合が必要である．
-        変密度場での乱流モデリングは，特に気液界面近傍での渦粘性の扱いに課題がある．
+\begin{enumerate}[noitemsep]
+  \item \textbf{3次元実装と並列化：} CCD・Rhie--Chow の3方向拡張と MPI 非局所通信への対応．
+  \item \textbf{AMR との統合：} 界面近傍の動的細分化による計算コスト削減；粗・密格子境界での CCD 整合性が課題．
+  \item \textbf{表面張力の陰的処理：} Implicit Surface Tension により毛管波制約（$\Delta t_\sigma \propto \sqrt{\Delta x^3}$）を除去．
+  \item \textbf{相変化の組み込み：} Stefan 条件とエネルギー方程式の結合により沸騰・蒸発問題へ対応．
+  \item \textbf{乱流モデルとの統合：} LES/RANS との結合；界面近傍の渦粘性モデリングが主要課題．
 \end{enumerate}
 
 本稿の定式化が，気液二相流数値解析の研究・教育に貢献することを期待する．
