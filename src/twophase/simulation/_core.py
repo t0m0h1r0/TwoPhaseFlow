@@ -34,12 +34,13 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import Optional, Callable, List, TYPE_CHECKING
 
 from ..backend import Backend
 from ..config import SimulationConfig
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
+from ..core.flow_state import FlowState
 from ..levelset.heaviside import update_properties
 
 
@@ -150,68 +151,91 @@ class TwoPhaseSimulation:
             print(f"シミュレーション終了 t={self.time:.6f}, step={self.step}")
 
     def step_forward(self, dt: float) -> None:
-        """タイムステップ dt で 1 ステップ進める。"""
-        ndim = self.config.grid.ndim
+        """タイムステップ dt で 1 ステップ進める（§9.1 の 7 ステップアルゴリズム）。
 
-        # Step 1: CLS 移流 ──────────────────────────────────────────────
-        vel_components = [self.velocity[ax] for ax in range(ndim)]
-        psi_adv = self.ls_advect.advance(self.psi.data, vel_components, dt)
+        各物理ステップはプライベートメソッドに委譲する。
+        このメソッドはオーケストレーションのみを担う（SRP）。
+        """
+        # Steps 1–2: CLS 移流 + 再初期化
+        self._step_advect_reinit(dt)
 
-        # Step 2: 再初期化 ────────────────────────────────────────────────
-        psi_new = self.ls_reinit.reinitialize(psi_adv)
-        self.psi.data = psi_new
-
-        # Step 3: 物性更新 ────────────────────────────────────────────────
+        # Step 3: 物性更新（ρ̃, μ̃）
         self._update_properties()
 
-        # Step 4: 曲率更新 ────────────────────────────────────────────────
+        # Step 4: 曲率更新（κ）
         self._update_curvature()
 
-        # Step 5: 予測速度 u* ─────────────────────────────────────────────
-        vel_n = [self.velocity[ax] for ax in range(ndim)]
-        vel_star_list = self.predictor.compute(
-            vel_n,
-            self.rho.data,
-            self.mu.data,
-            self.kappa.data,
-            self.psi.data,
-            dt,
-        )
-        for ax in range(ndim):
-            self.vel_star[ax] = vel_star_list[ax]
+        # Step 5: 予測速度 u*
+        state = self._build_flow_state()
+        vel_star = self._step_predictor(state, dt)
 
-        # Step 6: PPE 求解 ─────────────────────────────────────────────────
-        div_rc = self.rhie_chow.face_velocity_divergence(
-            [self.vel_star[ax] for ax in range(ndim)],
-            self.pressure.data,
-            self.rho.data,
-            dt,
-        )
-        rhs_ppe = div_rc / dt
+        # Step 6: PPE 求解 → p^{n+1}
+        p_new = self._step_ppe(vel_star, dt)
 
-        p_new = self.ppe_solver.solve(
-            rhs_ppe,
-            self.rho.data,
-            dt,
-            p_init=self.pressure.data,
-        )
-        self.pressure.data = p_new
+        # Step 7: 速度修正 u^{n+1}
+        self._step_correct_velocity(vel_star, p_new, dt)
 
-        # Step 7: 速度修正 ────────────────────────────────────────────────
-        vel_new = self.vel_corrector.correct(
-            [self.vel_star[ax] for ax in range(ndim)],
-            self.pressure.data,
-            self.rho.data,
-            dt,
-        )
-        for ax in range(ndim):
-            self.velocity[ax] = vel_new[ax]
-
-        # 境界条件の適用
         self._bc_handler.apply(self.velocity)
-
         self.time += dt
         self.step += 1
+
+    # ── ステップ別プライベートメソッド ────────────────────────────────────────
+
+    def _build_flow_state(self) -> FlowState:
+        """現在のフィールドから FlowState を構築する。"""
+        ndim = self.config.grid.ndim
+        return FlowState(
+            velocity=[self.velocity[ax] for ax in range(ndim)],
+            psi=self.psi.data,
+            rho=self.rho.data,
+            mu=self.mu.data,
+            kappa=self.kappa.data,
+            pressure=self.pressure.data,
+        )
+
+    def _step_advect_reinit(self, dt: float) -> None:
+        """Step 1–2: CLS 移流（WENO5+TVD-RK3）→ 再初期化（疑似時間 PDE）。"""
+        ndim = self.config.grid.ndim
+        vel_components = [self.velocity[ax] for ax in range(ndim)]
+        psi_adv = self.ls_advect.advance(self.psi.data, vel_components, dt)
+        self.psi.data = self.ls_reinit.reinitialize(psi_adv)
+
+    def _step_predictor(self, state: FlowState, dt: float) -> List:
+        """Step 5: 予測速度 u* を計算し vel_star フィールドに格納する。
+
+        Returns
+        -------
+        vel_star : list of arrays  (u* の各速度成分)
+        """
+        ndim = self.config.grid.ndim
+        vel_star_list = self.predictor.compute(state, dt)
+        for ax in range(ndim):
+            self.vel_star[ax] = vel_star_list[ax]
+        return [self.vel_star[ax] for ax in range(ndim)]
+
+    def _step_ppe(self, vel_star: List, dt: float) -> object:
+        """Step 6: Rhie-Chow div → PPE 求解 → p^{n+1} を返す。
+
+        Returns
+        -------
+        p_new : pressure array at time n+1
+        """
+        ndim = self.config.grid.ndim
+        div_rc = self.rhie_chow.face_velocity_divergence(
+            vel_star, self.pressure.data, self.rho.data, dt,
+        )
+        p_new = self.ppe_solver.solve(
+            div_rc / dt, self.rho.data, dt, p_init=self.pressure.data,
+        )
+        self.pressure.data = p_new
+        return p_new
+
+    def _step_correct_velocity(self, vel_star: List, p_new: object, dt: float) -> None:
+        """Step 7: u* − (Δt/ρ̃)∇p → u^{n+1} を velocity フィールドに書き込む。"""
+        ndim = self.config.grid.ndim
+        vel_new = self.vel_corrector.correct(vel_star, p_new, self.rho.data, dt)
+        for ax in range(ndim):
+            self.velocity[ax] = vel_new[ax]
 
     # ── プライベートヘルパー ───────────────────────────────────────────────
 
