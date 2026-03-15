@@ -106,7 +106,7 @@ config/
   FluidConfig          ← 流体物性のみ
   NumericsConfig       ← 数値スキーム設定
   SolverConfig         ← PPEソルバー設定
-  SimulationConfig     ← 上記を集約（後方互換維持）
+  SimulationConfig     ← 上記4サブ設定 + use_gpu の純粋な合成
 
 io/
   HDF5Serializer       ← state dict の HDF5 I/O
@@ -119,9 +119,28 @@ io/
 1. `IPPESolver` を継承した新クラスを作成
 2. `solve(rhs, rho, dt, p_init=None)` を実装
 3. `pressure/ppe_solver_factory.py` に条件分岐を追加
-4. `SimulationConfig` に新しい `ppe_solver_type` を追加
+4. `SolverConfig` に新しい `ppe_solver_type` を追加
 
 → `TwoPhaseSimulation` 自体の変更は不要（OCP 準拠）
+
+---
+
+### SimulationConfig の使い方
+
+```python
+from twophase.config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
+from twophase.simulation.builder import SimulationBuilder
+
+cfg = SimulationConfig(
+    grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
+    fluid=FluidConfig(Re=100., Fr=1., We=10.),
+    numerics=NumericsConfig(t_end=2.0, cfl_number=0.3),
+    solver=SolverConfig(ppe_solver_type="bicgstab"),
+)
+sim = SimulationBuilder(cfg).build()
+```
+
+`TwoPhaseSimulation(cfg)` 直接呼び出しは廃止。構築は `SimulationBuilder` 経由のみ。
 
 ---
 

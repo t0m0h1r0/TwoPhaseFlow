@@ -37,7 +37,7 @@ Prohibited
 1. `twophase/interfaces/ppe_solver.py` の `IPPESolver` を継承する
 2. `solve(rhs, rho, dt, p_init=None)` を実装する
 3. `pressure/ppe_solver_factory.py` にエントリを追加する
-4. `SimulationConfig.ppe_solver_type` に新しい値を追加する
+4. `SolverConfig.ppe_solver_type` に新しい値を追加する
 
 `TwoPhaseSimulation` 自体を変更してはならない（OCP）。
 
@@ -64,7 +64,8 @@ Prohibited
 - 流体物性 → `FluidConfig` に追加する
 - 数値スキーム → `NumericsConfig` に追加する
 - ソルバー設定 → `SolverConfig` に追加する
-- `SimulationConfig` にも同フィールドを追加して後方互換を維持する
+
+`SimulationConfig` には直接フィールドを追加しない。サブ設定クラスが真実の源泉。
 
 ### レベルセット演算子の差し替え
 
@@ -79,7 +80,7 @@ Prohibited
 新しい Navier-Stokes 右辺項（例: 熱伝導項、磁場項）を追加する場合:
 
 1. `INSTerm` を継承したクラスを作成する
-2. `compute(vel, rho, mu, kappa, psi, ccd, dt) -> List` を実装する
+2. `compute(vel, rho, mu, kappa, psi, dt) -> List` を実装する（`ccd` はコンストラクタ注入）
 3. `SimulationBuilder` または `Predictor` のコンストラクタ引数で注入する
 
 `Predictor` 自体を変更してはならない（OCP）。

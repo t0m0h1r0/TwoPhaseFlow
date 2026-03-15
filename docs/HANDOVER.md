@@ -1,7 +1,63 @@
 # HANDOVER
 
-Last update: 2026-03-15 (3rd pass)
-Status: Architecture refinement applied — Predictor CCD injection / INSTerm signature / Builder DIP / dead code removal
+Last update: 2026-03-15 (backward compat removal)
+Status: All legacy compatibility code removed — SimulationConfig is now pure sub-config composition; SimulationBuilder is the sole construction path
+
+---
+
+# Recent Changes (2026-03-15) — Backward Compatibility Removal
+
+## 変更の目的
+
+後方互換のために残存していたコードをすべて削除し、設計を単純化した。
+
+## 修正ファイル
+
+### `src/twophase/config.py`
+- `SimulationConfig` のフラットフィールド（`ndim`, `N`, `L`, `Re`, `Fr`, `We` 等 19 フィールド）を完全削除。
+- `to_grid_config()` / `to_fluid_config()` / `to_numerics_config()` / `to_solver_config()` メソッドを削除。
+- `from_sub_configs()` クラスメソッドを削除。
+- `SimulationConfig` は `grid / fluid / numerics / solver / use_gpu` の 5 フィールドのみの純粋な合成に。
+
+### `src/twophase/simulation/_core.py`
+- `TwoPhaseSimulation.__init__(config)` を完全削除（`SimulationBuilder` が唯一の構築経路）。
+- `_from_components()` が内部ファクトリメソッドとして唯一残る。
+- `run()` / `step_forward()` 内の設定アクセスを `config.grid.*` / `config.numerics.*` 等に統一。
+
+### 全消費者ファイル（フラット config アクセスを修正）
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `simulation/builder.py` | `config.L[ax]` → `config.grid.L[ax]` 等 |
+| `simulation/boundary_condition.py` | `config.bc_type` → `config.numerics.bc_type` 等 |
+| `core/grid.py` | `config.ndim` → `config.grid.ndim` 等 |
+| `ns_terms/predictor.py` | `config.Re` → `config.fluid.Re` 等 |
+| `pressure/ppe_solver.py` | `config.bicgstab_tol` → `config.solver.bicgstab_tol` 等 |
+| `pressure/ppe_solver_pseudotime.py` | `config.pseudo_tol` → `config.solver.pseudo_tol` 等 |
+| `pressure/ppe_solver_factory.py` | `config.ppe_solver_type` → `config.solver.ppe_solver_type` |
+| `main.py` | フラットアクセス修正 + `TwoPhaseSimulation(cfg)` → `SimulationBuilder(cfg).build()` |
+| `configs/config_loader.py` | flat YAML キーを各サブ設定クラスに振り分けて構築 |
+| `io/checkpoint.py` | `sim.config.ndim` → `sim.config.grid.ndim` 等 |
+| `benchmarks/*.py` | サブ設定構文 + `SimulationBuilder` 使用に全更新 |
+| `tests/*.py` | `SimulationConfig(ndim=2, ...)` → `SimulationConfig(grid=GridConfig(...))` に全更新 |
+
+## 削減行数
+
+| 削除対象 | 削減量 |
+|---------|--------|
+| `SimulationConfig` フラット19フィールド | ~40行 |
+| `to_*_config()` × 4 メソッド | ~40行 |
+| `from_sub_configs()` | ~30行 |
+| `TwoPhaseSimulation.__init__()` | ~60行 |
+| 後方互換コメント・重複 docstring | ~20行 |
+| **合計** | **~190行** |
+
+## 検証
+
+```
+pytest src/twophase/tests
+→ 28 passed
+```
 
 ---
 
@@ -93,9 +149,7 @@ Python ≥ 3.9
 
 ### `src/twophase/config.py`
 - `GridConfig`, `FluidConfig`, `NumericsConfig`, `SolverConfig` の 4 サブ設定クラスを追加（SRP）。
-- `SimulationConfig.from_sub_configs()` で組み立て可能。
-- `SimulationConfig.to_*_config()` で各サブ設定に変換可能。
-- 全フィールドを維持し後方互換を保つ。
+- `SimulationConfig` をサブ設定の合成に変更（後方互換フィールドは後続パスで削除済み）。
 
 ### `src/twophase/levelset/reinitialize.py`
 - `IReinitializer` を実装。
