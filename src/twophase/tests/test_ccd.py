@@ -15,7 +15,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from twophase.backend import Backend
-from twophase.config import SimulationConfig
+from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 
@@ -28,12 +28,12 @@ def backend():
 
 
 def make_grid_1d(N: int, backend):
-    cfg = SimulationConfig(ndim=2, N=(N, 4), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, 4), L=(1.0, 1.0)))
     return Grid(cfg, backend)
 
 
 def make_grid_2d(N: int, backend):
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
     return Grid(cfg, backend)
 
 

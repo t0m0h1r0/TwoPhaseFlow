@@ -79,11 +79,11 @@ class Predictor:
         self.config = config
         self.ccd = ccd   # コンストラクタ注入
 
-        # 注入された依存関係を使用。省略時はデフォルト生成（後方互換）
+        # 注入された依存関係を使用。省略時はデフォルト生成
         self.convection   = convection    or ConvectionTerm(backend)
-        self.viscous      = viscous       or ViscousTerm(backend, config.Re, config.cn_viscous)
-        self.gravity      = gravity       or GravityTerm(backend, config.Fr, config.ndim)
-        self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.We)
+        self.viscous      = viscous       or ViscousTerm(backend, config.fluid.Re, config.numerics.cn_viscous)
+        self.gravity      = gravity       or GravityTerm(backend, config.fluid.Fr, config.grid.ndim)
+        self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.fluid.We)
 
     def compute(
         self,
@@ -121,11 +121,11 @@ class Predictor:
         # Multiply convection by ρ̃ (because it enters as ρ̃ a_conv = −ρ̃(u·∇)u)
         explicit_rhs = [
             rho * conv[c] + grav[c] + st[c]
-            for c in range(self.config.ndim)
+            for c in range(self.config.grid.ndim)
         ]
 
         # ── Viscous term (CN or explicit) ─────────────────────────────────
-        if self.config.cn_viscous:
+        if self.config.numerics.cn_viscous:
             vel_star = self.viscous.apply_cn_predictor(
                 vel_n, None, explicit_rhs, mu, rho, ccd, dt
             )
@@ -133,7 +133,7 @@ class Predictor:
             visc = self.viscous.compute_explicit(vel_n, mu, rho, ccd)
             vel_star = [
                 vel_n[c] + dt * (explicit_rhs[c] + rho * visc[c]) / rho
-                for c in range(self.config.ndim)
+                for c in range(self.config.grid.ndim)
             ]
 
         return vel_star

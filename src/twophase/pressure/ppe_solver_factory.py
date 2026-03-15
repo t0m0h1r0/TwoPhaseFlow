@@ -48,7 +48,7 @@ def create_ppe_solver(
     from .ppe_solver import PPESolver
     from .ppe_solver_pseudotime import PPESolverPseudoTime
 
-    solver_type = config.ppe_solver_type
+    solver_type = config.solver.ppe_solver_type
 
     if solver_type == "pseudotime":
         return PPESolverPseudoTime(backend, config, grid)

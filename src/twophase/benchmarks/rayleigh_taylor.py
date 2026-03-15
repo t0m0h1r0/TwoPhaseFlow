@@ -49,25 +49,17 @@ class RayleighTaylorBenchmark:
         self.Re = Re
 
     def _make_config(self):
-        from ..config import SimulationConfig
+        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
         return SimulationConfig(
-            ndim=2,
-            N=(self.N, 4 * self.N),
-            L=(0.5, 2.0),
-            Re=self.Re,
-            Fr=1.0,
-            We=1e6,           # 表面張力無視
-            rho_ratio=0.2,    # ρ₁/ρ₂ = 0.2（密度比 5:1）
-            mu_ratio=0.2,
-            epsilon_factor=1.5,
-            reinit_steps=4,
-            cfl_number=0.25,
-            t_end=self.t_end,
-            ppe_solver_type="bicgstab",
-            bicgstab_tol=1e-10,
-            bicgstab_maxiter=2000,
-            bc_type="wall",
-            use_gpu=False,
+            grid=GridConfig(ndim=2, N=(self.N, 4 * self.N), L=(0.5, 2.0)),
+            fluid=FluidConfig(Re=self.Re, Fr=1.0, We=1e6, rho_ratio=0.2, mu_ratio=0.2),
+            numerics=NumericsConfig(
+                epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
+                t_end=self.t_end, bc_type="wall",
+            ),
+            solver=SolverConfig(
+                ppe_solver_type="bicgstab", bicgstab_tol=1e-10, bicgstab_maxiter=2000,
+            ),
         )
 
     def run(self, verbose: bool = True) -> Dict[str, Any]:
@@ -77,15 +69,15 @@ class RayleighTaylorBenchmark:
         -------
         results : スパイク/バブル先端位置の時系列と最終フィールドを含む辞書
         """
-        from ..simulation import TwoPhaseSimulation
+        from ..simulation.builder import SimulationBuilder
 
         cfg = self._make_config()
-        sim = TwoPhaseSimulation(cfg)
+        sim = SimulationBuilder(cfg).build()
         X, Y = sim.grid.meshgrid()
         eps = sim.eps
 
         # 初期界面: y = 1 + 0.1 * cos(2π x / Lx)
-        Lx = cfg.L[0]
+        Lx = cfg.grid.L[0]
         y_interface = 1.0 + 0.1 * np.cos(2.0 * np.pi * X / Lx)
         # ψ = 1（重い流体=上）, ψ = 0（軽い流体=下）
         dist = Y - y_interface

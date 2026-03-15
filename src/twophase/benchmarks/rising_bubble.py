@@ -58,25 +58,17 @@ class RisingBubbleBenchmark:
 
     def _make_config(self):
         """シミュレーション設定を構築する。"""
-        from ..config import SimulationConfig
+        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
         return SimulationConfig(
-            ndim=2,
-            N=(self.N, 2 * self.N),    # 縦長ドメイン（幅 1, 高さ 2）
-            L=(1.0, 2.0),
-            Re=35.0,
-            Fr=1.0,
-            We=10.0,
-            rho_ratio=0.1,
-            mu_ratio=0.1,
-            epsilon_factor=1.5,
-            reinit_steps=4,
-            cfl_number=0.25,
-            t_end=self.t_end,
-            ppe_solver_type="bicgstab",
-            bicgstab_tol=1e-10,
-            bicgstab_maxiter=2000,
-            bc_type="wall",
-            use_gpu=False,
+            grid=GridConfig(ndim=2, N=(self.N, 2 * self.N), L=(1.0, 2.0)),
+            fluid=FluidConfig(Re=35.0, Fr=1.0, We=10.0, rho_ratio=0.1, mu_ratio=0.1),
+            numerics=NumericsConfig(
+                epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
+                t_end=self.t_end, bc_type="wall",
+            ),
+            solver=SolverConfig(
+                ppe_solver_type="bicgstab", bicgstab_tol=1e-10, bicgstab_maxiter=2000,
+            ),
         )
 
     def run(self, save_checkpoints: bool = False,
@@ -92,11 +84,11 @@ class RisingBubbleBenchmark:
         -------
         results : 時系列データと最終指標を含む辞書
         """
-        from ..simulation import TwoPhaseSimulation
+        from ..simulation.builder import SimulationBuilder
         from ..io.checkpoint import CheckpointManager
 
         cfg = self._make_config()
-        sim = TwoPhaseSimulation(cfg)
+        sim = SimulationBuilder(cfg).build()
 
         # 初期条件: 中心 (0.5, 0.5) 半径 0.25 の円形気泡
         X, Y = sim.grid.meshgrid()

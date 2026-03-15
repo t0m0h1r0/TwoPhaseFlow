@@ -23,7 +23,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from twophase.backend import Backend
-from twophase.config import SimulationConfig
+from twophase.config import SimulationConfig, GridConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.pressure.ppe_builder import PPEBuilder
@@ -41,8 +41,10 @@ def backend():
 def make_setup(N=16, backend=None):
     if backend is None:
         backend = Backend(use_gpu=False)
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
-                           bicgstab_tol=1e-12, bicgstab_maxiter=2000)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(bicgstab_tol=1e-12, bicgstab_maxiter=2000),
+    )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     return cfg, grid, ccd, backend
@@ -102,8 +104,10 @@ def test_ppe_solve_residual(backend):
 def test_divergence_free_projection(backend):
     """PPE 求解 + 速度補正後に ‖∇·u‖_∞ < 1e-3 であること。"""
     N = 16
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
-                           bicgstab_tol=1e-12, bicgstab_maxiter=2000)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(bicgstab_tol=1e-12, bicgstab_maxiter=2000),
+    )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
 
@@ -149,9 +153,8 @@ def test_pseudotime_ppe_solve_uniform_density(backend):
     """MINRES PPE ソルバーの残差が収束後に tol 以下になること（一様密度）。"""
     N = 16
     cfg = SimulationConfig(
-        ndim=2, N=(N, N), L=(1.0, 1.0),
-        pseudo_tol=1e-10, pseudo_maxiter=500,
-        ppe_solver_type="pseudotime",
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-10, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
@@ -183,9 +186,8 @@ def test_pseudotime_ppe_solve_variable_density(backend):
     """MINRES PPE ソルバーが変密度ケースで収束すること。"""
     N = 16
     cfg = SimulationConfig(
-        ndim=2, N=(N, N), L=(1.0, 1.0),
-        pseudo_tol=1e-8, pseudo_maxiter=500,
-        ppe_solver_type="pseudotime",
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
@@ -213,9 +215,8 @@ def test_pseudotime_warm_start_no_convergence_warning(backend):
     """収束済み解からウォームスタートすると収束警告が出ないこと。"""
     N = 16
     cfg = SimulationConfig(
-        ndim=2, N=(N, N), L=(1.0, 1.0),
-        pseudo_tol=1e-8, pseudo_maxiter=500,
-        ppe_solver_type="pseudotime",
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
     )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
@@ -248,7 +249,7 @@ def test_pseudotime_warm_start_no_convergence_warning(backend):
 def test_rhie_chow_divergence(backend):
     """チェッカーボード圧力場で Rhie-Chow 発散がセル中心発散と異なること。"""
     N = 16
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     rc = RhieChowInterpolator(backend, grid, ccd)

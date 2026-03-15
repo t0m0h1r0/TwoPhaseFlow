@@ -15,7 +15,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from twophase.backend import Backend
-from twophase.config import SimulationConfig
+from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside, delta, invert_heaviside, update_properties
@@ -73,7 +73,7 @@ def test_reinit_eikonal_quality(backend):
     starting point (no distortion).
     """
     N = 32
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
@@ -119,7 +119,7 @@ def test_curvature_circle(backend):
     """For a circle of radius R, κ ≈ −1/R (convention: negative inside)."""
     N = 64
     R = 0.25
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
@@ -152,7 +152,7 @@ def test_curvature_circle(backend):
 def test_cls_advection_volume_conservation(backend):
     """Rigid rotation of a circle: volume change < 2% over one revolution."""
     N = 32
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
     grid = Grid(cfg, backend)
     xp = backend.xp
 

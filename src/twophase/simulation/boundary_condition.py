@@ -26,8 +26,8 @@ class BoundaryConditionHandler:
     """
 
     def __init__(self, config: "SimulationConfig") -> None:
-        self.bc_type = config.bc_type
-        self.ndim = config.ndim
+        self.bc_type = config.numerics.bc_type
+        self.ndim = config.grid.ndim
 
     def apply(self, velocity: "VectorField") -> None:
         """速度場に境界条件を適用する。

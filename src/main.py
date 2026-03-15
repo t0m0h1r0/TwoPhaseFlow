@@ -42,18 +42,18 @@ def run_simulation(args: argparse.Namespace) -> None:
     import numpy as np
     from twophase.configs import load_config
     from twophase.io.checkpoint import CheckpointManager
-    from twophase.simulation import TwoPhaseSimulation
+    from twophase.simulation.builder import SimulationBuilder
 
     # ── 設定読み込み ────────────────────────────────────────────────
     print(f"設定ファイル読み込み: {args.config}")
     cfg, out_cfg = load_config(args.config)
-    print(f"  ndim={cfg.ndim}, N={cfg.N}, L={cfg.L}")
-    print(f"  Re={cfg.Re}, Fr={cfg.Fr}, We={cfg.We}")
-    print(f"  t_end={cfg.t_end}, cfl={cfg.cfl_number}")
-    print(f"  PPEソルバー: {cfg.ppe_solver_type}")
+    print(f"  ndim={cfg.grid.ndim}, N={cfg.grid.N}, L={cfg.grid.L}")
+    print(f"  Re={cfg.fluid.Re}, Fr={cfg.fluid.Fr}, We={cfg.fluid.We}")
+    print(f"  t_end={cfg.numerics.t_end}, cfl={cfg.numerics.cfl_number}")
+    print(f"  PPEソルバー: {cfg.solver.ppe_solver_type}")
 
     # ── シミュレーション構築 ─────────────────────────────────────────
-    sim = TwoPhaseSimulation(cfg)
+    sim = SimulationBuilder(cfg).build()
     mgr = CheckpointManager(
         directory=out_cfg.get("checkpoint_dir", "checkpoints"),
         use_hdf5=None,
@@ -93,7 +93,7 @@ def run_simulation(args: argparse.Namespace) -> None:
     vis_interval = out_cfg.get("visualization_interval", 50)
 
     sim.run(
-        t_end=cfg.t_end,
+        t_end=cfg.numerics.t_end,
         output_interval=vis_interval,
         verbose=True,
         callback=combined_callback,
@@ -117,9 +117,9 @@ def _set_default_initial_condition(sim) -> None:
     Y = X_mg[1]
 
     # 中心は各軸の 1/3 付近、半径はドメイン幅の 0.2 倍
-    cx = cfg.L[0] * 0.5
-    cy = cfg.L[1] * 0.33
-    r0 = min(cfg.L) * 0.2
+    cx = cfg.grid.L[0] * 0.5
+    cy = cfg.grid.L[1] * 0.33
+    r0 = min(cfg.grid.L) * 0.2
 
     r = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2)
     eps = sim.eps

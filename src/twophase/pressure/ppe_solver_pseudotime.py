@@ -49,8 +49,8 @@ class PPESolverPseudoTime(IPPESolver):
         self.backend = backend
         self.ndim = grid.ndim
         self.grid = grid
-        self.tol = config.pseudo_tol
-        self.maxiter = config.pseudo_maxiter
+        self.tol = config.solver.pseudo_tol
+        self.maxiter = config.solver.pseudo_maxiter
 
         # 静的な面インデックス配列を事前計算
         self._face_indices: dict = {}

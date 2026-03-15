@@ -16,7 +16,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from twophase.backend import Backend
-from twophase.config import SimulationConfig
+from twophase.config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ns_terms.convection import ConvectionTerm
@@ -35,7 +35,10 @@ def backend():
 def make_setup(N=16, backend=None):
     if backend is None:
         backend = Backend(use_gpu=False)
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0), Re=10., Fr=1., We=5.)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        fluid=FluidConfig(Re=10., Fr=1., We=5.),
+    )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     return cfg, grid, ccd, backend
@@ -138,7 +141,10 @@ def test_gravity_froude(backend):
 def test_surface_tension_localised(backend):
     """CSF force must be large only near the interface (|φ| < 3ε)."""
     N = 32
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0), We=1.0)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        fluid=FluidConfig(We=1.0),
+    )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
@@ -169,8 +175,11 @@ def test_predictor_no_nan(backend):
     """Predictor must not produce NaN for a simple flow."""
     from twophase.ns_terms.predictor import Predictor
     N = 16
-    cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
-                           Re=10., Fr=1., We=5., cn_viscous=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        fluid=FluidConfig(Re=10., Fr=1., We=5.),
+        numerics=NumericsConfig(cn_viscous=False),
+    )
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp

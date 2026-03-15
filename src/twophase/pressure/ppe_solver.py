@@ -46,8 +46,8 @@ class PPESolver(IPPESolver):
     ):
         self.backend = backend
         self.xp = backend.xp
-        self.tol = config.bicgstab_tol
-        self.maxiter = config.bicgstab_maxiter
+        self.tol = config.solver.bicgstab_tol
+        self.maxiter = config.solver.bicgstab_maxiter
         # PPEBuilder を内包して外部から triplet を渡す必要をなくす（SRP修正）
         self._builder = PPEBuilder(backend, grid)
 

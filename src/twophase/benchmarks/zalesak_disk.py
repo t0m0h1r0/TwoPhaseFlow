@@ -95,33 +95,24 @@ class ZalesakDiskBenchmark:
         -------
         results : L1 誤差・体積誤差・フィールドスナップショットを含む辞書
         """
-        from ..config import SimulationConfig
-        from ..simulation import TwoPhaseSimulation
+        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
+        from ..simulation.builder import SimulationBuilder
 
         # 1 回転の周期
         T = 1.0 / self.n_rev
 
         cfg = SimulationConfig(
-            ndim=2,
-            N=(self.N, self.N),
-            L=(1.0, 1.0),
-            Re=1e6,        # 実質的に非粘性（移流のみ検証）
-            Fr=1e6,        # 重力無視
-            We=1e6,        # 表面張力無視
-            rho_ratio=1.0,
-            mu_ratio=1.0,
-            epsilon_factor=1.5,
-            reinit_steps=2,
-            cfl_number=0.3,
-            t_end=T,
-            ppe_solver_type="bicgstab",
-            bicgstab_tol=1e-8,
-            bicgstab_maxiter=500,
-            bc_type="wall",
-            use_gpu=False,
+            grid=GridConfig(ndim=2, N=(self.N, self.N), L=(1.0, 1.0)),
+            fluid=FluidConfig(Re=1e6, Fr=1e6, We=1e6, rho_ratio=1.0, mu_ratio=1.0),
+            numerics=NumericsConfig(
+                epsilon_factor=1.5, reinit_steps=2, cfl_number=0.3, t_end=T, bc_type="wall",
+            ),
+            solver=SolverConfig(
+                ppe_solver_type="bicgstab", bicgstab_tol=1e-8, bicgstab_maxiter=500,
+            ),
         )
 
-        sim = TwoPhaseSimulation(cfg)
+        sim = SimulationBuilder(cfg).build()
         X, Y = sim.grid.meshgrid()
         eps = sim.eps
 

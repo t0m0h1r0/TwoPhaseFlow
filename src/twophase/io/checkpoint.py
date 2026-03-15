@@ -202,7 +202,7 @@ class CheckpointManager:
         sim.psi.data      = be.to_device(state["psi"])
         sim.pressure.data = be.to_device(state["pressure"])
 
-        for ax in range(sim.config.ndim):
+        for ax in range(sim.config.grid.ndim):
             sim.velocity[ax] = be.to_device(state[f"velocity_{ax}"])
 
         # 復元後に材料特性と曲率を再計算

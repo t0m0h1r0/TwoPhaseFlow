@@ -129,14 +129,17 @@ class SimulationBuilder:
         backend = Backend(use_gpu=config.use_gpu)
 
         grid = Grid(config, backend)
-        dx_min = min(config.L[ax] / config.N[ax] for ax in range(config.ndim))
-        eps = config.epsilon_factor * dx_min
+        dx_min = min(
+            config.grid.L[ax] / config.grid.N[ax]
+            for ax in range(config.grid.ndim)
+        )
+        eps = config.numerics.epsilon_factor * dx_min
         ccd = CCDSolver(grid, backend)
 
         # レベルセット演算子
         ls_advect = LevelSetAdvection(backend)
         ls_advect.set_grid(grid)
-        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.reinit_steps)
+        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
         # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
@@ -154,7 +157,7 @@ class SimulationBuilder:
         # 補助演算子
         rhie_chow = RhieChowInterpolator(backend, grid, ccd)
         vel_corrector = VelocityCorrector(backend, ccd)
-        cfl_calc = CFLCalculator(backend, grid, config.cfl_number)
+        cfl_calc = CFLCalculator(backend, grid, config.numerics.cfl_number)
 
         # 境界条件・診断
         bc_handler = BoundaryConditionHandler(config)
