@@ -110,9 +110,13 @@ class ViscousTerm(INSTerm):
         # Explicit viscous term at time n
         visc_n = self._evaluate(u_old, mu, rho, ccd)
 
-        # Initialise u* with the fully-explicit predictor
+        # Initialise u* with the fully-explicit predictor.
+        # Correct formula: u* = u^n + Δt * R / ρ̃
+        # where R = explicit_rhs (force/volume) + ρ̃ * visc_n (force/volume).
+        # Since visc_n = V_α/(Re·ρ̃) is already divided by ρ̃, we write:
+        #   u* = u^n + Δt * (explicit_rhs / ρ̃ + visc_n)
         u_pred = [
-            u_old[c] + dt * (explicit_rhs[c] + visc_n[c])
+            u_old[c] + dt * (explicit_rhs[c] / rho + visc_n[c])
             for c in range(ndim)
         ]
 
@@ -122,7 +126,7 @@ class ViscousTerm(INSTerm):
         # One CN correction iteration
         visc_star = self._evaluate(u_pred, mu, rho, ccd)
         u_cn = [
-            u_old[c] + dt * (explicit_rhs[c]
+            u_old[c] + dt * (explicit_rhs[c] / rho
                               + 0.5 * visc_n[c]
                               + 0.5 * visc_star[c])
             for c in range(ndim)

@@ -14,7 +14,7 @@ Right term: diffusion that controls interface thickness.
 Equilibrium solution: ψ = H_ε(s/ε) where s is the signed distance.
 
 The pseudo-time step is chosen as:
-    Δτ = 0.5 · min(Δx)                          (§3.4 stability)
+    Δτ = min(0.5 · min(Δx), min(Δx)² / (2·ndim·ε))   (§3.4 stability)
 
 satisfying both the hyperbolic CFL and the parabolic stability condition
 for the diffusion term.

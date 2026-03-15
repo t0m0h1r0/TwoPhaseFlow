@@ -1,7 +1,64 @@
 # HANDOVER
 
-Last update: 2026-03-15 (dead code cleanup)
-Status: Dead code eliminated — all NS term classes inherit `INSTerm`; `LevelSetAdvection` inherits `ILevelSetAdvection`; `config_to_yaml` exported; 28 tests passing
+Last update: 2026-03-15 (paper verification + critical bug fixes)
+Status: 2 critical bugs fixed (CN predictor /ρ; capillary CFL); 28 tests passing
+
+---
+
+# Recent Changes (2026-03-15) — Paper Verification & Critical Bug Fixes (5th Pass)
+
+## 変更の目的
+
+論文との整合性検証で発見された 2 件のクリティカルバグを修正。コードの振る舞いは論文により忠実になる。
+
+## 修正ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `ns_terms/viscous.py` | CN 予測子で `explicit_rhs / rho` に修正（`/rho` 欠落バグ） |
+| `time_integration/cfl.py` | 毛管波 CFL `Δt_σ` 制約を追加（§8.4 Eq.(dt_sigma)） |
+| `simulation/builder.py` | `CFLCalculator` に `We` と `rho_ratio` を渡すよう更新 |
+
+## Bug 1: CN 予測子で `/ρ̃` の除算が漏れていた
+
+**場所**: `ns_terms/viscous.py` `apply_cn_predictor()` L114-129
+
+**論文 §9 Step 5**: `u* = u^n + Δt · R / ρ̃`
+
+```python
+# Before (WRONG):
+u_pred = [u_old[c] + dt * (explicit_rhs[c] + visc_n[c]) for c in range(ndim)]
+
+# After (CORRECT):
+u_pred = [u_old[c] + dt * (explicit_rhs[c] / rho + visc_n[c]) for c in range(ndim)]
+```
+
+**影響**: `cn_viscous=True`（デフォルト）かつ二相流 (ρ ≠ 1) の場合、速度予測値が `rho_ratio` 倍誤っていた。テストが `cn_viscous=False` で書かれていたため未検出。
+
+## Bug 2: 毛管波 CFL 制約が未実装
+
+**場所**: `time_integration/cfl.py`
+
+**論文 §8.4**: `Δt_σ = sqrt((ρ_l + ρ_g)·min(Δx)³/(2π·σ))`
+
+無次元形式（ρ_l=1, σ=1/We）: `Δt_σ = sqrt((1+ρ̃_g)·We·h³/(2π))`
+
+**修正**: `CFLCalculator.__init__` に `We` と `rho_ratio` 引数を追加し `dt_sigma` を計算。`SimulationBuilder` から渡す。
+
+## 残存する既知の逸脱（論文との差異）
+
+| 問題 | 影響 | 対応 |
+|------|------|------|
+| 再初期化: 前進 Euler（論文: TVD-RK3） | 疑似時間が 1 次精度 | n_steps 調整と同時変更が必要なため保留 |
+| 再初期化: WENO5 未使用（論文: WENO5 圧縮項） | 界面圧縮精度低下の可能性 | 別タスクとして実装 |
+| 静止液滴ベンチマーク未実装 | 寄生流れ定量検証ができない | TODO |
+
+## 検証
+
+```
+pytest src/twophase/tests
+→ 28 passed
+```
 
 ---
 

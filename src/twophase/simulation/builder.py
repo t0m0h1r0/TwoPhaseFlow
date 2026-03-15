@@ -157,7 +157,11 @@ class SimulationBuilder:
         # 補助演算子
         rhie_chow = RhieChowInterpolator(backend, grid, ccd)
         vel_corrector = VelocityCorrector(backend, ccd)
-        cfl_calc = CFLCalculator(backend, grid, config.numerics.cfl_number)
+        cfl_calc = CFLCalculator(
+            backend, grid, config.numerics.cfl_number,
+            We=config.fluid.We,
+            rho_ratio=config.fluid.rho_ratio,
+        )
 
         # 境界条件・診断
         bc_handler = BoundaryConditionHandler(config)
