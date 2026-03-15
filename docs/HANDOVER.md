@@ -1,5 +1,51 @@
 # HANDOVER
 
+Last update: 2026-03-15 (dead code cleanup)
+Status: Dead code eliminated — all NS term classes inherit `INSTerm`; `LevelSetAdvection` inherits `ILevelSetAdvection`; `config_to_yaml` exported; 28 tests passing
+
+---
+
+# Recent Changes (2026-03-15) — Dead Code Cleanup (4th Pass)
+
+## 変更の目的
+
+デッドコード除去・レガシーコードクリーンアップ。コードの振る舞いは変更しない。
+
+## 修正ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `twophase/__init__.py` | docstring を新 sub-config API + `SimulationBuilder` に更新; `SimulationBuilder` を `__all__` に追加 |
+| `simulation/__init__.py` | 廃止済み `TwoPhaseSimulation(config)` への言及を docstring から削除 |
+| `levelset/advection.py` | `ILevelSetAdvection` 継承を追加; 到達不能な `else 1.0` 分岐を削除 |
+| `interfaces/ns_terms.py` | `INSTerm.compute()` の `@abstractmethod` を削除 → マーカーインターフェースに変更 |
+| `ns_terms/convection.py` | `INSTerm` 継承を追加 |
+| `ns_terms/gravity.py` | `INSTerm` 継承を追加 |
+| `ns_terms/surface_tension.py` | `INSTerm` 継承を追加 |
+| `ns_terms/viscous.py` | `INSTerm` 継承を追加 |
+| `configs/__init__.py` | `config_to_yaml` を `__all__` に追加 |
+
+## 各変更の理由
+
+| 問題 | 原因 | 修正 |
+|------|------|------|
+| `advection.py` L97: `if self._h is not None else 1.0` | `set_grid()` 削除後も古い None ガードが残存 | デッドブランチ除去 |
+| `LevelSetAdvection` が `ILevelSetAdvection` を継承しない | `Reinitializer`/`CurvatureCalculator` と不整合 | 継承追加 |
+| `INSTerm.compute()` シグネチャと実際の呼び出しが不一致 | 各 NS 項クラスは独自シグネチャで `compute()` を実装する | マーカーインターフェースに変更 |
+| NS 項クラス 4 つが `INSTerm` を継承しない | インターフェースが定義されたが具象クラスへの適用が漏れ | 継承追加 |
+| `config_to_yaml` がエクスポートされない | `config_loader.py` に定義済みだが `__init__.py` に未記載 | `__all__` に追加 |
+
+## 検証
+
+```
+pytest src/twophase/tests
+→ 28 passed
+```
+
+---
+
+# Recent Changes (2026-03-15) — Backward Compatibility Removal
+
 Last update: 2026-03-15 (backward compat removal)
 Status: All legacy compatibility code removed — SimulationConfig is now pure sub-config composition; SimulationBuilder is the sole construction path
 

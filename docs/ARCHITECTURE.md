@@ -40,8 +40,8 @@ src/
 | `simulation/` | TwoPhaseSimulation / SimulationBuilder / BC / 診断 |
 | `core/` | グリッドとフィールドコンテナ |
 | `ccd/` | コンパクト有限差分 (6次精度) |
-| `levelset/` | 界面追跡 (CLS) — Reinitializer/CurvatureCalculator はコンストラクタ注入 |
-| `ns_terms/` | Navier–Stokes 各項 — Predictor はオプション注入対応 |
+| `levelset/` | 界面追跡 (CLS) — LevelSetAdvection/Reinitializer/CurvatureCalculator はコンストラクタ注入 |
+| `ns_terms/` | Navier–Stokes 各項 (全クラスが `INSTerm` を継承) — Predictor はオプション注入対応 |
 | `pressure/` | 圧力ポアソン方程式ソルバー群 — RhieChow/VelocityCorrector はコンストラクタ注入 |
 | `time_integration/` | CFL 計算 / TVD-RK3 |
 | `visualization/` | スカラー・ベクトル場プロット、リアルタイム表示 |
@@ -76,7 +76,7 @@ sim.run()
 ```
 interfaces/ (全 ABC — 依存なし)
   IPPESolver           ← 圧力ソルバー統一インターフェース
-  INSTerm              ← NS 各項共通インターフェース
+  INSTerm              ← NS 各項マーカーインターフェース (abstractmethod なし; 各項クラスが独自シグネチャで compute() を実装)
   ILevelSetAdvection   ← CLS 移流演算子
   IReinitializer       ← 再初期化演算子
   ICurvatureCalculator ← 曲率計算
@@ -89,6 +89,7 @@ pressure/
   VelocityCorrector    ← ccd をコンストラクタ注入
 
 levelset/
+  LevelSetAdvection    ← ILevelSetAdvection 実装; ccd をコンストラクタ注入
   Reinitializer        ← IReinitializer 実装; ccd をコンストラクタ注入
   CurvatureCalculator  ← ICurvatureCalculator 実装; ccd をコンストラクタ注入
 

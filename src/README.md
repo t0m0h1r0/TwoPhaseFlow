@@ -18,16 +18,16 @@ pip install -e src/
 ```
 
 ```python
-from twophase import SimulationConfig, TwoPhaseSimulation
+from twophase import SimulationConfig, SimulationBuilder
+from twophase.config import GridConfig, FluidConfig, NumericsConfig
 import numpy as np
 
 cfg = SimulationConfig(
-    ndim=2, N=(64, 64), L=(1.0, 1.0),
-    Re=100., Fr=1., We=10.,
-    rho_ratio=0.1, mu_ratio=0.1,
-    t_end=0.5, cfl_number=0.3,
+    grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
+    fluid=FluidConfig(Re=100., Fr=1., We=10., rho_ratio=0.1, mu_ratio=0.1),
+    numerics=NumericsConfig(t_end=0.5, cfl_number=0.3),
 )
-sim = TwoPhaseSimulation(cfg)
+sim = SimulationBuilder(cfg).build()
 
 # Place a circular droplet at (0.5, 0.5) with radius 0.2
 X, Y = sim.grid.meshgrid()
@@ -45,8 +45,11 @@ sim.run(output_interval=20, verbose=True)
 ```
 src/twophase/
 ├── backend.py              — numpy/cupy abstraction                     (all)
-├── config.py               — SimulationConfig dataclass                 (§2.4)
-├── simulation.py           — 7-step time-step loop                      (§9.1)
+├── config.py               — GridConfig/FluidConfig/NumericsConfig/SolverConfig + SimulationConfig  (§2.4)
+│
+├── interfaces/             — ABCs: IPPESolver / INSTerm / ILevelSetAdvection / IReinitializer / ICurvatureCalculator
+│
+├── simulation/             — SimulationBuilder + TwoPhaseSimulation + BC + Diagnostics  (§9.1)
 │
 ├── core/
 │   ├── grid.py             — Grid, metrics, interface-fitted coords      (§5)
@@ -73,11 +76,31 @@ src/twophase/
 │   ├── rhie_chow.py        — face-velocity RC interpolation            (§6.3, §7.4)
 │   ├── ppe_builder.py      — variable-density FVM Laplacian (sparse)   (§7.3)
 │   ├── ppe_solver.py       — BiCGSTAB with ILU(0)                      (§7.4)
+│   ├── ppe_solver_pseudotime.py — MINRES + warm-start alternative
+│   ├── ppe_solver_factory.py    — create_ppe_solver(config, backend, grid)
 │   └── velocity_corrector.py — u^{n+1} = u* − (Δt/ρ̃)∇p              (§9.1 Step 7)
 │
 ├── time_integration/
 │   ├── tvd_rk3.py          — TVD-RK3 (Shu-Osher)                      (§8 Eq.79–81)
 │   └── cfl.py              — convective + viscous CFL                  (§8 Eq.84)
+│
+├── visualization/
+│   ├── plot_scalar.py      — 2D scalar field plots
+│   ├── plot_vector.py      — velocity magnitude, vorticity, streamlines
+│   └── realtime_viewer.py  — RealtimeViewer callback for sim.run()
+│
+├── io/
+│   ├── checkpoint.py       — CheckpointManager (HDF5 / npz)
+│   └── serializers.py      — HDF5Serializer / NpzSerializer
+│
+├── configs/
+│   └── config_loader.py    — load_config / load_config_dict / config_to_yaml
+│
+├── benchmarks/
+│   ├── rising_bubble.py    — Hysing et al. TC1
+│   ├── zalesak_disk.py     — slotted-disk advection test
+│   ├── rayleigh_taylor.py  — RT instability
+│   └── run_all_benchmarks.py
 │
 └── tests/
     ├── test_ccd.py         — CCD O(h⁶) convergence
@@ -117,32 +140,23 @@ xp = backend.xp                  # np or cp, passed everywhere
 
 Mark GPU-specific optimisation points with `# TODO(gpu)`.
 
+### SOLID architecture
+
+- `interfaces/` contains pure ABCs; concrete classes depend only on these.
+- `SimulationBuilder` is the **only** place that instantiates concrete classes (SRP/DIP).
+- `INSTerm` is a marker interface — NS term classes inherit it with their own `compute()` signatures.
+- PPE solvers are selected via `ppe_solver_factory.create_ppe_solver()` — `TwoPhaseSimulation` never references concrete solver classes (OCP).
+
 ### Paper over reference code
 
-When the reference implementation under `base/` conflicts with the paper,
-the paper takes precedence.  Known deviations corrected in this
-implementation:
+When the reference implementation conflicts with the paper,
+the paper takes precedence.  Known deviations corrected in this implementation:
 
 | Issue | Fix |
 |-------|-----|
 | PPE matrix built with Python for-loop | Vectorised NumPy indexing in `ppe_builder.py` |
 | Crank-Nicolson not implemented | One fixed-point CN iteration in `viscous.py` |
 | Interface-fitted grid goes singular at high α | `dx_min_floor` guard in `grid.py` |
-
-### CCD (§4)
-
-Interior nodes: 3-point block-tridiagonal system solved with pre-factored
-LU (`block_tridiag.py`).  Boundary nodes: one-sided O(h⁵) compact scheme
-absorbed into the matrix via the coupling matrix **M**.
-
-For non-uniform grids the system is solved in computational coordinates ξ
-and the chain-rule metric J = ∂ξ/∂x is applied afterwards (§4.9).
-
-### Rhie-Chow (§6.3)
-
-The PPE right-hand side **must** use the Rhie-Chow face-velocity divergence,
-not the cell-centred ∇·u*.  Using the wrong divergence re-introduces the
-checkerboard mode that RC is designed to suppress.
 
 ---
 
@@ -169,21 +183,42 @@ Expected results (N=32–64 grids):
 
 ## Configuration Reference
 
-Key `SimulationConfig` fields:
+`SimulationConfig` is composed of four sub-config dataclasses:
+
+### GridConfig
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `ndim` | 2 | Spatial dimension (2 or 3) |
 | `N` | (64,64) | Grid cells per axis |
 | `L` | (1,1) | Domain lengths |
+| `alpha_grid` | 1.0 | 1 = uniform; > 1 = interface-fitted |
+
+### FluidConfig
+
+| Field | Default | Description |
+|-------|---------|-------------|
 | `Re` | 100 | Reynolds number |
 | `Fr` | 1 | Froude number |
 | `We` | 10 | Weber number |
 | `rho_ratio` | 0.001 | ρ_gas / ρ_liquid |
 | `mu_ratio` | 0.01 | μ_gas / μ_liquid |
-| `epsilon_factor` | 1.5 | ε = factor × Δx_min |
-| `alpha_grid` | 1.0 | 1 = uniform; > 1 = interface-fitted |
-| `reinit_steps` | 4 | Reinitialisation sub-steps per timestep |
-| `cn_viscous` | True | Crank-Nicolson for viscous term |
+
+### NumericsConfig
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `t_end` | 1.0 | End time |
 | `cfl_number` | 0.3 | CFL safety factor |
-| `use_gpu` | False | Use CuPy if available |
+| `epsilon_factor` | 1.5 | ε = factor × Δx_min |
+| `reinit_steps` | 4 | Reinitialization sub-steps per timestep |
+| `cn_viscous` | True | Crank-Nicolson for viscous term |
+| `bc_type` | "wall" | Boundary condition type |
+
+### SolverConfig
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `ppe_solver_type` | "bicgstab" | "bicgstab" or "pseudotime" |
+| `bicgstab_tol` | 1e-6 | BiCGSTAB convergence tolerance |
+| `pseudo_tol` | 1e-6 | Pseudo-time solver tolerance |

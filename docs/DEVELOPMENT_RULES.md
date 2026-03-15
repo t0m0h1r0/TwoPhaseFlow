@@ -79,8 +79,8 @@ Prohibited
 
 新しい Navier-Stokes 右辺項（例: 熱伝導項、磁場項）を追加する場合:
 
-1. `INSTerm` を継承したクラスを作成する
-2. `compute(vel, rho, mu, kappa, psi, dt) -> List` を実装する（`ccd` はコンストラクタ注入）
+1. `INSTerm` を継承したクラスを作成する (`INSTerm` はマーカーインターフェースのため abstractmethod はない)
+2. 物理計算に適したシグネチャで `compute()` を実装する（`ccd` はコンストラクタ注入）
 3. `SimulationBuilder` または `Predictor` のコンストラクタ引数で注入する
 
 `Predictor` 自体を変更してはならない（OCP）。
