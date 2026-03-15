@@ -1,64 +1,198 @@
 % paper/sections/09_full_algorithm.tex
-\section{完全アルゴリズムフロー}
+\section{完全アルゴリズムフロー：離散形式}
 \label{sec:algorithm}
 
-時刻 $t^n$ から $t^{n+1}$ への計算手順を以下にまとめる．
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
+添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
+以下の離散化オペレータを用いる．
 
-\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の完全計算フロー}]
+\begin{tcolorbox}[defbox, title={離散化オペレータの定義}]
+\begin{itemize}
+  \item $D_x^{(1)}, D_y^{(1)}$：CCD 法による1次微分 $(\partial/\partial x,\, \partial/\partial y)$
+  \item $D_x^{(2)}, D_y^{(2)}$：CCD 法による2次微分 $(\partial^2/\partial x^2,\, \partial^2/\partial y^2)$
+  \item $D_{xy}^{(11)}$：CCD 法による混合微分 $\partial^2/\partial x\partial y$
+  \item $\mathcal{C}_{\text{WENO}}(\bu,\, q)$：速度 $\bu$ による WENO5 上流移流オペレータ
+          $\displaystyle= u\,D_x^{(1)} q + v\,D_y^{(1)} q$ （保存形）
+  \item $\mathcal{L}_{\text{visc},x}(\mu,\, \bu)$：粘性応力テンソル $\nabla\cdot\boldsymbol{\tau}$ の $x$ 成分\newline
+          $\displaystyle= D_x^{(1)}\!\left[2\mu\,D_x^{(1)} u\right] + D_y^{(1)}\!\left[\mu\bigl(D_y^{(1)} u + D_x^{(1)} v\bigr)\right]$
+  \item $\mathcal{L}_{\text{visc},y}(\mu,\, \bu)$：粘性応力テンソル $\nabla\cdot\boldsymbol{\tau}$ の $y$ 成分\newline
+          $\displaystyle= D_x^{(1)}\!\left[\mu\bigl(D_x^{(1)} v + D_y^{(1)} u\bigr)\right] + D_y^{(1)}\!\left[2\mu\,D_y^{(1)} v\right]$
+  \item CLS 移流の発散 $\text{Div}_h^{\psi}(\psi\bm{u})$：WENO5 フラックス分割法で計算したフェイスフラックスの和
+          $\approx D_x^{(1)}(\psi u) + D_y^{(1)}(\psi v)$（保存形，詳細は第\ref{sec:levelset}章）
+  \item Poisson 方程式の発散・勾配は $D_x^{(1)}, D_y^{(1)}$ で直接表記し，係数に調和平均 $(1/\rho)^{\mathrm{harm}}$ を乗じる（第\ref{sec:collocate}章参照）
+\end{itemize}
+\end{tcolorbox}
 
-\textbf{1. CLS 移流 (Advection)}
-WENO5 空間再構成と TVD-RK3 時間積分を用いて，界面指標 $\psi$ を移流させる．
+\begin{tcolorbox}[algbox, title={時刻 $t^n \to t^{n+1}$ の離散計算フロー}]
+
+\textbf{1. CLS 移流 (Advection)} \\
+保存形レベルセット変数 $\psi^n$ を，速度場 $\bm{u}^n$ を用いて時間発展させる．
+ここでは3次のルンゲ=クッタ法（TVD-RK3）を用いる．
+\begin{align*}
+  \psi^{(1)}_{i,j} &= \psi^n_{i,j} - \Delta t \, \text{Div}_h^{\psi}(\psi^n \bm{u}^n)_{i,j} \\
+  \psi^{(2)}_{i,j} &= \frac{3}{4}\psi^n_{i,j} + \frac{1}{4}\psi^{(1)}_{i,j} - \frac{1}{4}\Delta t \, \text{Div}_h^{\psi}(\psi^{(1)} \bm{u}^n)_{i,j} \\
+  \psi^*_{i,j} &= \frac{1}{3}\psi^n_{i,j} + \frac{2}{3}\psi^{(2)}_{i,j} - \frac{2}{3}\Delta t \, \text{Div}_h^{\psi}(\psi^{(2)} \bm{u}^n)_{i,j}
+\end{align*}
+ここで $\text{Div}_h^{\psi}(\cdot)$ はWENO5フラックス分割法で評価した保存形発散オペレータである（定義は上の defbox を参照）．
+
+\textbf{2. 再初期化 (Reinitialization)} \\
+移流によって鈍化した界面プロファイル $\psi^*$ を整形する．
+式 \eqref{eq:cls_reinit_iso} で表される偏微分方程式を，仮想時間 $\tau$ について複数ステップ解く．
+\[ \psi^{n+1} = \text{Reinitialize}(\psi^*) \]
+
+\textbf{3. グリッド・物性更新 (Update Properties)} \\
+更新された $\psi^{n+1}_{i,j}$ に基づき，各格子点での距離関数 $\phi$ および物理的物性値を再計算する．
+
+\begin{tcolorbox}[warnbox, title={Step 3 における $\phi$ と $\psi$ の役割分担（実装上の重要事項）}]
+\begin{itemize}
+  \item \textbf{物性補間 $\rho,\,\mu$ には $\psi$ を使う}：第\ref{sec:governing}章（式~\eqref{eq:interp_intro}）で定義した
+        $\rho(\psi) = \rho_g+(\rho_l-\rho_g)\psi$，$\mu(\psi)=\mu_g+(\mu_l-\mu_g)\psi$ は
+        $\psi\in[0,1]$ を引数とする．$\phi$ は $(-\infty,+\infty)$ の値域を持ち，
+        $|\phi|>3\varepsilon$ 領域では $\rho(\phi)$ という表記は定義外の補間を与えるため，
+        \textbf{$\rho(\phi)$，$\mu(\phi)$ と書いてはならない}．
+  \item \textbf{幾何量（法線・曲率）には $\phi$ を使う}：
+        $\hat{\bm{n}}=\nabla\phi/|\nabla\phi|$，$\kappa=-\nabla\cdot\hat{\bm{n}}$ の計算は
+        Eikonal 条件 $|\nabla\phi|=1$ を利用するため $\phi$ でなければならない（Step 4）．
+\end{itemize}
+この役割分担は §\ref{sec:notation} の変数役割表で明示されているが，
+Step 3 の実装で誤って $\rho(\phi),\mu(\phi)$ と書くケースが多いため，ここで再度強調する．
+\end{tcolorbox}
+
+\begin{align*}
+  \phi^{n+1}_{i,j} &= H_\varepsilon^{-1}(\psi^{n+1}_{i,j}) \quad (\text{Newton法，§\ref{sec:newton_inversion}}) \\
+  \rho^{n+1}_{i,j} &= \rho(\psi^{n+1}_{i,j})
+                    = \rho_g + (\rho_l-\rho_g)\,\psi^{n+1}_{i,j} \\
+  \mu^{n+1}_{i,j}  &= \mu(\psi^{n+1}_{i,j})
+                    = \mu_g + (\mu_l-\mu_g)\,\psi^{n+1}_{i,j}
+\end{align*}
+
+\textbf{4. 曲率計算 (Curvature)} \\
+$\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，式 \eqref{eq:curvature_2d} に直接代入して曲率を求める．
+\begin{align*}
+ (\phi_x)_{i,j} &= D_x^{(1)} \phi^{n+1}_{i,j}, \quad
+ (\phi_y)_{i,j} = D_y^{(1)} \phi^{n+1}_{i,j} \\
+ (\phi_{xx})_{i,j} &= D_x^{(2)} \phi^{n+1}_{i,j}, \quad
+ (\phi_{yy})_{i,j} = D_y^{(2)} \phi^{n+1}_{i,j}, \quad
+ (\phi_{xy})_{i,j} = D_{xy}^{(11)} \phi^{n+1}_{i,j}
+\end{align*}
+\begin{equation*}
+ \kappa^{n+1}_{i,j} = -\frac{(\phi_y)_{i,j}^2 (\phi_{xx})_{i,j}
+                              - 2(\phi_x)_{i,j}(\phi_y)_{i,j}(\phi_{xy})_{i,j}
+                              + (\phi_x)_{i,j}^2 (\phi_{yy})_{i,j}}
+                           {\max\!\bigl((\phi_x)_{i,j}^2 + (\phi_y)_{i,j}^2,\;
+                            \epsilon_{\text{norm}}^2\bigr)^{3/2}}
+\end{equation*}
+
+\textbf{5. 運動量予測 (Predictor Step)} \\
+$x$成分と$y$成分それぞれについて，格子点 $(i,j)$ での離散式を以下に示す．
+
+\underline{$x$成分（$u^*_{i,j}$ を求める）：}
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(u^*_{i,j} - u^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[u^n_{i,j}\,D_x^{(1)} u^n_{i,j} + v^n_{i,j}\,D_y^{(1)} u^n_{i,j}\Bigr] \\
+  &\quad + \frac{1}{2}\Bigl[D_x^{(1)}\!\bigl(2\mu^{n+1} D_x^{(1)} u^*\bigr)
+                          + D_y^{(1)}\!\bigl(\mu^{n+1}(D_y^{(1)} u^* + D_x^{(1)} v^*)\bigr) \\
+  &\qquad\qquad    + D_x^{(1)}\!\bigl(2\mu^{n+1} D_x^{(1)} u^n\bigr)
+                          + D_y^{(1)}\!\bigl(\mu^{n+1}(D_y^{(1)} u^n + D_x^{(1)} v^n)\bigr)\Bigr]_{i,j} \\
+  &\quad + \frac{\kappa^{n+1}_{i,j}\,(D_x^{(1)}\psi^{n+1})_{i,j}}{We}
+\end{align*}
+
+\underline{$y$成分（$v^*_{i,j}$ を求める）：}
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(v^*_{i,j} - v^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[u^n_{i,j}\,D_x^{(1)} v^n_{i,j} + v^n_{i,j}\,D_y^{(1)} v^n_{i,j}\Bigr] \\
+  &\quad + \frac{1}{2}\Bigl[D_x^{(1)}\!\bigl(\mu^{n+1}(D_x^{(1)} v^* + D_y^{(1)} u^*)\bigr)
+                          + D_y^{(1)}\!\bigl(2\mu^{n+1} D_y^{(1)} v^*\bigr) \\
+  &\qquad\qquad    + D_x^{(1)}\!\bigl(\mu^{n+1}(D_x^{(1)} v^n + D_y^{(1)} u^n)\bigr)
+                          + D_y^{(1)}\!\bigl(2\mu^{n+1} D_y^{(1)} v^n\bigr)\Bigr]_{i,j} \\
+  &\quad - \frac{\rho^{n+1}_{i,j}}{Fr^2}
+         + \frac{\kappa^{n+1}_{i,j}\,(D_y^{(1)}\psi^{n+1})_{i,j}}{We}
+\end{align*}
+\begin{tcolorbox}[warnbox, title={粘性応力テンソルと $x$/$y$ 成分の違い：なぜ係数 2 が現れるか}]
+\textbf{応力テンソルの定義（ニュートン流体）：}
 \[
-  \frac{\psi^* - \psi^n}{\Delta t} + \bnabla\cdot(\psi^n \bu^n) = 0 \quad \longrightarrow \quad \psi^*
+  \tau_{xx} = 2\mu\frac{\partial u}{\partial x}, \quad
+  \tau_{yy} = 2\mu\frac{\partial v}{\partial y}, \quad
+  \tau_{xy} = \tau_{yx} = \mu\!\left(\frac{\partial u}{\partial y}+\frac{\partial v}{\partial x}\right)
 \]
-
-\textbf{2. 再初期化 (Reinitialization)}
-圧縮・拡散項を持つ再初期化方程式を仮想時間 $\tau$ ステップで解き，界面プロファイルを整形する．
+$x$ 成分の粘性力は $\partial\tau_{xx}/\partial x + \partial\tau_{xy}/\partial y$，すなわち
 \[
-  \psi^* \xrightarrow{\text{solve Eq.}\eqref{eq:cls_reinit_iso}} \psi^{n+1}
+  \mathcal{L}_{\text{visc},x} = D_x^{(1)}[2\mu D_x^{(1)} u] + D_y^{(1)}[\mu(D_y^{(1)} u + D_x^{(1)} v)]
 \]
+\textbf{係数 $2$ の重要性：}
+非圧縮条件 $\partial u/\partial x + \partial v/\partial y = 0$ を仮定した定数粘性流体では
+$D_x^{(1)}[2\mu D_x^{(1)} u] = D_x^{(1)}[\mu(D_x^{(1)}u - D_y^{(1)}v)] + D_x^{(1)}[\mu D_x^{(1)}u]$ と書けるが，
+\textbf{$\mu$ が空間変化する界面近傍では係数 2 の省略は致命的な誤りとなる}（$\partial\mu/\partial x \cdot \partial u/\partial x$ の寄与が消える）．
+$x \leftrightarrow y$，$u \leftrightarrow v$ の置き換えで $y$ 成分が得られ，対称テンソルの構造が保たれる．
+\end{tcolorbox}
 
-\textbf{3. グリッド・物性更新 (Update Properties)}
-更新された $\psi^{n+1}$ に基づき，距離関数 $\phi$ および物性値を再計算する．
-\[
-  \phi^{n+1} = H_\varepsilon^{-1}(\psi^{n+1}), \quad
-  \rho^{n+1} = \rho(\phi^{n+1}), \quad
-  \mu^{n+1} = \mu(\phi^{n+1})
-\]
+移流項（第1行）は陽解法（時刻 $t^n$ の値のみ），粘性項（第2--3行）は Crank--Nicolson（$\bm{u}^*$ と $\bm{u}^n$ の平均）で離散化する．
+$\bm{u}^*$ を含む粘性項のため，全格子点をまとめると $\bm{u}^* = (u^*, v^*)$ に関する\textbf{ブロック三重対角線形方程式系}が得られ，これをガウス消去法等で解く．
 
-\textbf{4. 曲率計算 (Curvature)}
-CCD法を適用し， $\phi^{n+1}$ の二階微分から曲率を算出する．
+\begin{tcolorbox}[defbox, title={Crank--Nicolson 予測ステップの行列アセンブリ概要}]
+$x$ 成分の粘性項（等粘性 $\mu$ を定数と近似）を例に取る．
+Crank--Nicolson で半陰的に書くと：
 \[
-  \bnabla \phi^{n+1} \xrightarrow{\text{CCD}} \nabla^2 \phi^{n+1}
-  \quad \Longrightarrow \quad
-  \kappa^{n+1} = -\frac{\phi_y^2\phi_{xx} - 2\phi_x\phi_y\phi_{xy} + \phi_x^2\phi_{yy}}{|\bnabla\phi|^3}
+  \frac{\rho}{\Delta t}(u^*_i - u^n_i)
+  = \frac{\mu}{2}\bigl(u^*_{i-1} - 2u^*_i + u^*_{i+1}\bigr)
+  + \frac{\mu}{2}\bigl(u^n_{i-1} - 2u^n_i + u^n_{i+1}\bigr)
+  + \text{（対流・表面張力の陽的項）}
 \]
+$u^*$ について整理すると（$\lambda \equiv \mu\Delta t/(2\rho)$）：
+\[
+  -\lambda\,u^*_{i-1} + (1+2\lambda)\,u^*_i - \lambda\,u^*_{i+1}
+  = u^n_i + \lambda(u^n_{i-1}-2u^n_i+u^n_{i+1}) + \frac{\Delta t}{\rho}(\text{陽的項})_i
+\]
+全格子点 $i = 1, \ldots, N$ をまとめると，$u^*$ に関する三重対角線形系
+$\mathbf{M}_{\mathrm{CN}} \bm{u}^* = \bm{b}^n$ が得られる．
+$\mathbf{M}_{\mathrm{CN}}$ は対角優位な三重対角行列（$y$ 方向が加わると5対角）で，
+Thomas 法または TDMA で $O(N)$ コストで解ける．
 
-\textbf{5. 運動量予測 (Predictor Step)}
-圧力勾配項を除いた運動量方程式を解き，予測速度場 $\bu^*$ を求める．
-粘性項には Crank-Nicolson 法（半陰的），移流項には WENO5 空間再構成を適用する．
-\[
-  \frac{\bu^* - \bu^n}{\Delta t} =
-  -\left( \bu \cdot \bnabla \bu \right)^n_{\text{WENO}}
-  + \frac{1}{2 Re \rho^{n+1}} \bnabla \cdot \left[ \mu^{n+1} 2\bm{D}(\bu^* + \bu^n) \right]_{\text{CCD}}
-  + \bm{F}_{\text{ext}}
-\]
-ここで $\bm{D}(\bu) = \frac{1}{2}(\bnabla \bu + \bnabla \bu^T)$ は変形速度テンソルである．
+\textbf{2次元の場合：} $x$ 方向と $y$ 方向の粘性を同時に半陰的に扱うと
+ペンタダイアゴナル（5対角）系になる（ADI 法で2つの三重対角系に分割することも多い）．
+本稿では $x$，$y$ それぞれを順次 1D スイープする次元分離 ADI アプローチを推奨する．
+\end{tcolorbox}
 
-\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)}
-非圧縮条件 $\bnabla \cdot \bu^{n+1} = 0$ を満たすための圧力場を求める．
-係数行列 $A$ は変密度 $\rho^{n+1}$ を含む非対称行列となる．
-\[
-  \bnabla_h \cdot \left( \frac{1}{\rho^{n+1}} \bnabla_h p^{n+1} \right)
-  = \frac{\bnabla_h \cdot \bu^*}{\Delta t}
-\]
-左辺および右辺の発散 $\bnabla_h \cdot$ は Rhie-Chow 補正を含む離散化を用いる．
+\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
+Step 5 で得た $\bm{u}^*$ が非圧縮条件を離散的に満たすよう，圧力 $p^{n+1}$ を求める．
 
-\textbf{7. 速度補正 (Corrector Step)}
-圧力勾配を用いて予測速度を修正し，次ステップの速度場を得る．
-\[
-  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}} (\bnabla p^{n+1})_{\text{CCD}}
-\]
-セル界面の流束計算には，別途 Rhie-Chow 補正流束 $U_f$ を用いる．
+\begin{tcolorbox}[warnbox, title={Step 6 の時刻レベルと Rhie-Chow 補正の整合性}]
+\begin{itemize}
+  \item PPE の RHS には，Step 5 終了直後の予測速度 $\bu^*$（時刻 $t^*$）から計算した
+        \textbf{Rhie-Chow 補正済み発散}（第\ref{sec:pressure}章，式 \eqref{eq:rc_divergence}）を使う：
+        \[
+          q_h = \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
+        \]
+  \item Rhie-Chow 補正のフェイス速度（式 \eqref{eq:rc-face}）に現れる
+        圧力勾配補正量 $(\nabla p)_f - \overline{(\nabla p)}_f$ は，
+        現タイムステップで利用可能な最新の圧力である $p^n$（前タイムステップの解）を用いる：
+        \[
+          (u_f)_{i+1/2,j} = \bar{u}^*_{i+1/2,j}
+          - \Delta t \left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{i+1/2,j}
+          \!\bigl[(\nabla p^n)_{i+1/2,j} - \overline{(\nabla p^n)}_{i+1/2,j}\bigr]
+        \]
+  \item \textbf{なぜ $p^n$ を使うか}：$p^{n+1}$ はこの Step で初めて求まる未知数であるため，
+        RHS の計算時点では利用不可能である．Rhie-Chow 補正の目的は「チェッカーボードモードの除去」
+        であり，$p^n$ でも $p^{n+1}$ でも同等の除去効果があることが確認されている．
+\end{itemize}
+\end{tcolorbox}
+
+離散 Poisson 方程式は各格子点 $(i,j)$ について以下の形式になる：
+\begin{equation*}
+D_x^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!x}\! D_x^{(1)} p^{n+1}\right]_{i,j}
++ D_y^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!y}\! D_y^{(1)} p^{n+1}\right]_{i,j}
+= \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
+\end{equation*}
+ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho^{n+1})$ の調和平均（第\ref{sec:collocate}章，式 \eqref{eq:rc-face} 参照）であり，
+右辺の $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ は式 \eqref{eq:rc_divergence} で定義された Rhie-Chow 補正済み発散である．
+全格子点の未知数 $p^{n+1}_{i,j}$ を連立すると大規模方程式系になり，\textbf{仮想時間陰解法＋CCD}（§\ref{sec:ppe_pseudotime}）で解く．
+
+\textbf{7. 速度補正 (Corrector Step)} \\
+得られた圧力勾配を用いて予測速度場を補正し，最終速度場 $\bm{u}^{n+1}$ を得る．
+\begin{align*}
+u^{n+1}_{i,j} &= u^*_{i,j} - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(D_x^{(1)} p^{n+1}\bigr)_{i,j} \\
+v^{n+1}_{i,j} &= v^*_{i,j} - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(D_y^{(1)} p^{n+1}\bigr)_{i,j}
+\end{align*}
+この $\bm{u}^{n+1}$ は $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1} = 0$ を離散的に満たす非圧縮速度場となる．
 
 \end{tcolorbox}

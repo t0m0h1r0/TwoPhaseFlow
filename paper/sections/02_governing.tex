@@ -1,8 +1,261 @@
-% paper/sections/02_governing.tex
+% paper/sections/02_governing.tex  ─── 改訂版 ───────────────────────────────
+%
+%  変更概要（構造見直し計画に基づく）：
+%  ・§2.1（新設）：旧§2.3「主要変数の定義」を章の最初へ移動（初出前に定義）
+%  ・§2.2：旧§2.1「Two-Fluid → One-Fluid」（内容変更なし，順序移動のみ）
+%  ・§2.3：旧§2.2「One-Fluid 定式化」（内容変更なし，順序移動のみ）
+%  ・§2.4：旧§2.4「CSF モデル」から Balanced-Force warnbox を削除→第6章 §6.5 へ
+%  ・§2.5：旧§2.5「無次元化 NS」（内容変更なし）
+%  ・§2.6：旧§2.6「曲率の計算」から数値的安定化サブセクションを削除→第3章 §3.6 へ
+%
+%  【削除コンテンツの移動先】
+%  - Balanced-Force warnbox（旧 §2.4 末尾）→ 06_collocate.tex §6.5 に挿入予定
+%  - 曲率数値安定化 subsubsection（旧 §2.6 末尾）→ 03_levelset.tex §3.6 に挿入予定
+% ─────────────────────────────────────────────────────────────────────────────
+
 \section{支配方程式系と表面張力項}
 \label{sec:governing}
 
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{主要変数の定義：\texorpdfstring{$\phi$}{phi}（符号付き距離関数）と \texorpdfstring{$\psi$}{psi}（保存形 Level Set 変数）}
+\label{sec:notation}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿では，界面を表現するために二つの関連する変数，
+符号付き距離関数 $\phi$ と保存形レベルセット変数 $\psi$ を用いる．
+両者の役割を明確に区別することが，本章以降のアルゴリズムを理解する上で極めて重要である．
+以降の全ての方程式で登場するこれらの変数を，本節で事前に定義しておく．
+
+\begin{tcolorbox}[defbox, title={変数 $\phi$ と $\psi$ の役割分担（本稿全章共通）}]
+\begin{itemize}
+  \item \textbf{符号付き距離関数 $\phi(\bm{x}, t)$}：
+        界面からの最短距離に符号を付けた関数（$\phi=0$ が界面，$\phi<0$ が液相内部）．
+        その性質 $|\bnabla\phi|=1$（Eikonal 条件）は，
+        法線ベクトル $\hat{\bm{n}} = \bnabla\phi$ や
+        曲率 $\kappa = -\bnabla\cdot\hat{\bm{n}}$ といった
+        \textbf{幾何学的情報}の計算精度を保証するために不可欠である．
+        本稿では，曲率計算（§\ref{sec:curvature}）や
+        再初期化方程式における法線ベクトルの算出に $\phi$ を用いる．
+
+  \item \textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$}：
+        $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，
+        液相で $\psi \approx 1$，気相で $\psi \approx 0$ を取る．
+        その移流方程式は保存形で書けるため，\textbf{質量（体積）保存性}を向上させる．
+        密度 $\rho(\psi)$ や粘性 $\mu(\psi)$ などの
+        \textbf{物理的物性値}の補間にも直接用いられる．
+\end{itemize}
+
+\medskip
+\textbf{両変数の関係：}
+両者は
+\[
+  \psi = H_\varepsilon(\phi)
+  \qquad \bigl(H_\varepsilon \text{：滑らかなヘヴィサイド関数，第\ref{sec:levelset}章で詳述}\bigr)
+\]
+の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，
+非線形方程式 $H_\varepsilon(\phi) - \psi = 0$ を
+ニュートン法などの反復解法で数値的に解く必要がある（第\ref{sec:levelset}章参照）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
+\textbf{本稿の符号規約（全章共通）：}
+\begin{itemize}
+  \item $\phi < 0$：液相内部，$\phi > 0$：気相，
+        $\hat{\bm{n}} = \nabla\phi/|\nabla\phi|$ は\textbf{液相から気相への外向き}法線．
+  \item $\kappa = -\nabla\cdot\hat{\bm{n}}$：
+        球状液滴（内部が液相）では $\kappa = -1/R < 0$．
+\end{itemize}
+
+\textbf{Young-Laplace 則の確認：}
+$[p] = p_\text{gas} - p_\text{liq} = \sigma\kappa = \sigma\cdot(-1/R) = -\sigma/R < 0$
+より，$p_\text{liq} > p_\text{gas}$（液滴内部の圧力が外部より高い）は物理的に正しい．
+$|[p]| = \sigma/R$ を「ラプラス圧力の大きさ」と呼ぶが，符号付き定義
+$[p] = \sigma\kappa$ を正式表記として用いる．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Two-Fluid から One-Fluid へ：統一支配方程式の導出}
+\label{sec:two_to_one}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+「なぜ2種類の流体を1つの方程式で記述できるのか？」
+これは One-Fluid 定式化を初めて学ぶ際に誰もが抱く正当な疑問である．
+本節では，まず各相の方程式を別々に書き，界面条件を経て統一形式に至る
+導出のロードマップを示す．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{各相の支配方程式（Two-Fluid 形式）}
+% ─────────────────────────────────────────────────────────────────────────────
+
+液相（添字 $l$）と気相（添字 $g$）はそれぞれ，各相の占有する領域 $\Omega_l$，$\Omega_g$ で
+別々の Navier-Stokes 方程式に従う：
+\begin{align}
+  \bnabla\cdot\bu &= 0 \quad \text{（各相内部，非圧縮条件）}
+  \label{eq:cont_each} \\
+  \rho_k\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  &= -\bnabla p + \bnabla\cdot[\mu_k(\bnabla\bu+\bnabla\bu^T)] + \rho_k\bm{g}
+  \quad (k = l,\, g)
+  \label{eq:NS_each}
+\end{align}
+これら2組の方程式は，界面 $\Gamma(t)$ 上で以下の\textbf{接合条件（jump conditions）}で結ばれる：
+\begin{align}
+  [\bu]_\Gamma &= 0
+  \quad \text{（速度の連続性：スリップなし）}
+  \label{eq:jump_vel} \\
+  [-p\mathbf{I} + \mu(\bnabla\bu+\bnabla\bu^T)]\cdot\hat{\bm n}\big|_\Gamma &= \sigma\kappa\hat{\bm n}
+  \quad \text{（応力ジャンプ = 表面張力）}
+  \label{eq:jump_stress}
+\end{align}
+式 \eqref{eq:jump_stress} は\textbf{Young-Laplace 則}の力の形への表現であり，
+「界面を挟む法線応力の不連続が表面張力 $\sigma\kappa$ に等しい」ことを意味する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Two-Fluid → One-Fluid への変換：$\delta$ 関数による統合}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Two-Fluid 形式は各相で別々の方程式を解く必要があり，
+界面の移動追跡（Front Tracking）を常に必要とするため，実装が非常に煩雑になる．
+
+\textbf{One-Fluid 定式化}は，全領域 $\Omega = \Omega_l \cup \Omega_g \cup \Gamma$ で
+\textbf{一つの方程式系}を成立させるアイデアである．
+鍵となるのは，界面上の表面張力（面力）を「界面上にのみ集中する体積力」として
+\textbf{界面デルタ関数 $\delta_s(\bm{x})$} を用いて表現することである：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm n}\,\delta_s(\bm{x})
+  \quad \text{（全空間で定義された体積力，界面以外でゼロ）}
+  \label{eq:csf_intro}
+\end{equation}
+また，物性値 $\rho, \mu$ を界面指標関数 $\psi \in [0,1]$ で補間する：
+\begin{equation}
+  \rho(\psi) = \rho_g + (\rho_l - \rho_g)\psi, \qquad
+  \mu(\psi) = \mu_g + (\mu_l - \mu_g)\psi
+  \label{eq:interp_intro}
+\end{equation}
+これにより，各相の方程式 \eqref{eq:NS_each} と界面条件 \eqref{eq:jump_stress} が
+\textbf{一本の方程式}に統合される：
+\begin{equation}
+  \rho(\psi)\!\left(\pd{\bu}{t} + \bu\cdot\bnabla\bu\right)
+  = -\bnabla p + \bnabla\cdot[\mu(\psi)(\bnabla\bu+\bnabla\bu^T)]
+  + \rho(\psi)\bm{g} + \bm{f}_\sigma
+  \label{eq:NS_onefluid}
+\end{equation}
+
+\begin{tcolorbox}[defbox, title={One-Fluid 統合のポイント：何が「消えた」のか}]
+Two-Fluid 形式から One-Fluid 形式への変換で，以下の操作が行われている：
+\begin{enumerate}
+  \item 各相の\textbf{別々の方程式}（$k=l,g$）が\textbf{1本の方程式} \eqref{eq:NS_onefluid} に統合された．
+  \item 界面での\textbf{応力ジャンプ条件} \eqref{eq:jump_stress} が
+        右辺の\textbf{CSF 体積力項} $\bm{f}_\sigma$（CSF モデル，§\ref{sec:csf}）として吸収された．
+  \item 界面の\textbf{速度連続条件} \eqref{eq:jump_vel} は，
+        全領域で同一の速度場 $\bu$ を解くことで自動的に満たされる．
+\end{enumerate}
+代償として，$\psi$ の時間発展方程式（第\ref{sec:levelset}章，CLS 法）を別途解く必要がある．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{One-Fluid 化の数学的メカニズム：1次元モデルによる直感的理解}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Two-Fluid から One-Fluid への変換がなぜ成り立つのかを，
+1次元の簡単な拡散方程式で示す．
+
+\textbf{問題設定：} 1次元領域 $\Omega = (-1, 1)$ で，$x=0$ に界面があるとする．
+左域 $\Omega^- = (-1,0)$（液相，係数 $\mu_l$）と
+右域 $\Omega^+ = (0,1)$（気相，係数 $\mu_g$）で
+それぞれ拡散方程式が成立し，界面条件を持つ：
+
+\begin{align}
+  \frac{d}{dx}\!\left(\mu_l \frac{du}{dx}\right) &= 0 \quad (x \in \Omega^-) \\
+  \frac{d}{dx}\!\left(\mu_g \frac{du}{dx}\right) &= 0 \quad (x \in \Omega^+)
+\end{align}
+\textbf{界面条件（$x=0$）：}
+\begin{align}
+  [u]_0 &= u(0^+) - u(0^-) = 0 \quad\text{（速度の連続性）} \label{eq:1d_jump_vel} \\
+  \left[\mu\frac{du}{dx}\right]_0
+  &= \mu_g u'(0^+) - \mu_l u'(0^-)
+   = f_\sigma \quad\text{（応力のジャンプ = 界面力）} \label{eq:1d_jump_stress}
+\end{align}
+
+\textbf{One-Fluid 化：}
+$\mu(x) = \mu_l H(-x) + \mu_g H(x)$（ヘヴィサイド関数で補間した係数）として，
+全領域で1本の方程式を書く：
+\begin{equation}
+  \frac{d}{dx}\!\left(\mu(x) \frac{du}{dx}\right) = f_\sigma\,\delta(x)
+  \label{eq:1d_onefluid}
+\end{equation}
+ここで右辺の $\delta(x)$ は界面 $x=0$ に集中するディラックデルタ関数である．
+
+\begin{tcolorbox}[defbox, title={1次元 One-Fluid 化の数学的正当性：積分による検証}]
+式 \eqref{eq:1d_onefluid} を区間 $(-\varepsilon, +\varepsilon)$（$\varepsilon \to 0$）で積分する：
+\[
+  \int_{-\varepsilon}^{+\varepsilon} \frac{d}{dx}\!\left(\mu\frac{du}{dx}\right) dx
+  = \left[\mu\frac{du}{dx}\right]_{-\varepsilon}^{+\varepsilon}
+  = \mu_g u'(0^+) - \mu_l u'(0^-)
+\]
+右辺：
+\[
+  \int_{-\varepsilon}^{+\varepsilon} f_\sigma\,\delta(x)\,dx = f_\sigma
+\]
+両辺を比較すると，式 \eqref{eq:1d_jump_stress} の応力ジャンプ条件が
+自動的に再現されることがわかる．
+
+また，$\mu(x)$ が $x = 0$ で不連続であることを，弱形式（分布関数的な意味）で処理することにより，
+$x=0$ での方程式 \eqref{eq:1d_onefluid} は
+界面条件 \eqref{eq:1d_jump_vel}--\eqref{eq:1d_jump_stress} と等価になる．
+
+\textbf{結論：} One-Fluid 方程式に右辺のデルタ関数項を加えることで，
+界面条件が体積方程式の中に「吸収」される．
+3次元 Navier-Stokes 方程式における CSF モデル $\bm{f}_\sigma = \sigma\kappa\nabla\psi$ は，
+この1次元モデルの表面張力（法線応力のジャンプ）を多次元・曲面界面に一般化したものである．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{One-Fluid 定式化と非圧縮条件}
+\label{sec:onefluid}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{One-Fluid モデルの仮定}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿では，気相と液相を「1つの流体」として統一的に記述する
+\textbf{One-Fluid（単一流体）定式化}を採用する．
+このアプローチは以下の物理的仮定に基づいている．
+
+\begin{tcolorbox}[defbox, title={One-Fluid モデルの基本仮定}]
+\begin{enumerate}
+  \item \textbf{非混合（immiscible）：}
+        気相と液相は混合せず，明確な界面が存在する．
+  \item \textbf{界面厚さは数値的：}
+        物理的な界面は厚さゼロだが，数値計算上はグリッド数セル分の厚みを持つ
+        遷移層として表現する（CLS 変数 $\psi$ の役割）．
+  \item \textbf{速度の連続性：}
+        界面を挟んで速度は連続 $[\bm{u}]_\Gamma = 0$（スリップなし）．
+  \item \textbf{圧力のジャンプ条件（Young-Laplace 則）：}
+        界面での圧力は表面張力により不連続になる：
+        \begin{equation}
+          [p]_\Gamma \equiv p_\text{gas} - p_\text{liq} = \sigma\kappa
+          \label{eq:young-laplace}
+        \end{equation}
+        ここで $\sigma$ は表面張力係数，$\kappa$ は界面の平均曲率
+        （§\ref{sec:notation} の符号規約では液滴界面で $\kappa < 0$）．
+\end{enumerate}
+\end{tcolorbox}
+
+仮定3・4は連続体レベルの条件であり，One-Fluid 定式化ではこれらを
+\textbf{暗黙的に}（界面での物性補間と CSF モデルによって）
+自動的に満足する形で離散化される．
+
+\paragraph{なぜ物性値を補間できるのか？}
+仮定1（非混合）と仮定2（数値的界面）から，
+界面近傍の各格子点には実際には気相または液相のどちらかが占有されているが，
+有限の界面幅の中では「どの割合で液相か」を $\psi$ で表現する．
+すなわち，$\psi\in[0,1]$ は「液相の体積分率」と解釈でき，
+加重平均による物性補間は有限体積的に整合している．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{支配方程式（連続の式と運動量保存）}
+% ─────────────────────────────────────────────────────────────────────────────
 
 非圧縮条件は連続の式：
 \begin{equation}
@@ -12,63 +265,482 @@
 で与えられる．
 物性値は界面指標 $\psi \in [0,1]$ により連続的に補間する：
 \begin{align}
- \rho(\psi)&=\rho_g+(\rho_l-\rho_g)\,\psi, & \mu(\psi)&=\mu_g+(\mu_l-\mu_g)\,\psi.
+ \rho(\psi)&=\rho_g+(\rho_l-\rho_g)\,\psi,
+ &
+ \mu(\psi)&=\mu_g+(\mu_l-\mu_g)\,\psi.
 \end{align}
-ここで $\psi$ は Conservative Level Set 法におけるヘヴィサイド関数 $H_\varepsilon(\phi)$ に相当する．
+ここで $\psi$ は Conservative Level Set 法における
+ヘヴィサイド関数 $H_\varepsilon(\phi)$ に相当し（§\ref{sec:notation} 参照），
+その時間発展は第\ref{sec:levelset}章の CLS 法で計算される．
 
-\subsection{主要な変数と記法の定義}
-\label{sec:notation}
+\begin{tcolorbox}[warnbox, title={粘性係数 $\mu$ の算術平均と調和平均：選択根拠と定量比較}]
+\textbf{$\rho$ には調和平均，$\mu$ には算術平均を使う理由}
 
-本稿では，界面を表現するために二つの関連する変数，符号付き距離関数 $\phi$ と保存形レベルセット変数 $\psi$ を用いる．両者の役割を明確に区別することが，アルゴリズムを理解する上で極めて重要である．
+Rhie-Chow 補正（§\ref{sec:rhie_chow}）では面密度の補間に調和平均
+$(1/\rho)^{\mathrm{harm}}_f$ を使う（式 \eqref{eq:rc-face} 参照）．
+これは圧力ポアソン方程式 $\bnabla\cdot(\rho^{-1}\bnabla p) = \cdots$ の離散化において，
+$\rho^{-1}$ の面補間が拡散型作用素の標準的な「界面抵抗」として自然に調和平均を要求するためである
+（「直列抵抗則」：抵抗 = $\rho$ に対して，並列での有効通過性は調和平均）．
 
-\begin{tcolorbox}[defbox, title={変数 $\phi$ と $\psi$ の役割分担}]
+粘性応力項 $\bnabla\cdot[\mu(\bnabla\bu+(\bnabla\bu)^\top)]$ の面補間では，
+体積分率 $\psi$ による加重平均（算術平均）が標準的に用いられる．
+これは以下の理由による：
 \begin{itemize}
-  \item \textbf{符号付き距離関数 $\phi(\bm{x}, t)$}:
-        界面からの最短距離に符号を付けた関数（$\phi=0$ が界面）．
-        その性質 $|\bnabla\phi|=1$ は，法線ベクトル $\hat{\bm{n}} = \bnabla\phi$ や曲率 $\kappa = -\bnabla\cdot\hat{\bm{n}}$ といった\textbf{幾何学的情報}の計算精度を保証するために不可欠である．
-        本稿では，曲率計算や再初期化方程式における法線ベクトルの算出に $\phi$ を用いる．
-
-  \item \textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$}:
-        $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，液相で 1，気相で 0 を取る．
-        その移流方程式は保存形で書けるため，\textbf{質量（体積）保存性}を向上させる役割を担う．
-        密度 $\rho(\psi)$ や粘性 $\mu(\psi)$ などの\textbf{物理的物性値}の補間にも直接用いられる．
+  \item $\psi\in[0,1]$ の「液相体積分率」解釈と整合する加重平均であること
+  \item 粘性応力はせん断率（$\bnabla\bu$）と $\mu$ の積であり，
+        有限体積的に界面を挟む両セルの平均が算術平均で表現されること
+  \item 調和平均では高粘度比流れで界面粘性が物理的に過小評価される
+        （下記の定量比較を参照）
 \end{itemize}
-両者は $\psi = H_\varepsilon(\phi)$ の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，非線形方程式 $H_\varepsilon(\phi) - \psi = 0$ をニュートン法などの反復解法で数値的に解く必要がある．
+
+\medskip
+\noindent\textbf{定量比較：$\mu_l/\mu_g = 100$（液体-空気類似系），界面中心 $\psi=1/2$}
+
+\[
+  \mu^{\mathrm{arith}}_f
+  = \frac{\mu_l + \mu_g}{2}
+  = \frac{100\mu_g + \mu_g}{2}
+  = 50.5\,\mu_g
+\]
+\[
+  \mu^{\mathrm{harm}}_f
+  = \frac{2\mu_l\mu_g}{\mu_l+\mu_g}
+  = \frac{2\times 100\mu_g \times \mu_g}{101\mu_g}
+  \approx 1.98\,\mu_g
+\]
+\[
+  \frac{\mu^{\mathrm{arith}}_f}{\mu^{\mathrm{harm}}_f}
+  = \frac{50.5}{1.98}
+  \approx 25.5
+\]
+算術平均は調和平均の約\textbf{25倍}大きい．
+調和平均を粘性補間に使うと，界面での有効粘性が気相粘性のわずか $\approx 2$ 倍に低下し，
+液相の高粘性効果がほぼ消失する．これは非物理的であり，界面近傍のせん断速度が著しく過大評価される．
+よって $\mu$ の補間には算術平均を採用する．
+
+なお，密度比 $\rho_l/\rho_g \approx 800$（水-空気）における同様の比較では，
+$\rho^{\mathrm{arith}}_f / \rho^{\mathrm{harm}}_f \approx 400$ となり，圧力ポアソン方程式においても
+密度の算術平均補間は不適切であることが確認できる（密度には調和平均を使う一貫した選択）．
 \end{tcolorbox}
 
-\subsection{無次元化 NS 方程式}
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CSF（連続表面力）モデルによる表面張力の体積力化}
+\label{sec:csf}
+% ═══════════════════════════════════════════════════════════════════════════════
 
-参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ．
-これらを用いて，物理変数を無次元化する．次元を持つ変数を $(\cdot)^*$，無次元変数を $(\cdot)$ と表すと，以下の関係式が成り立つ：
+Navier-Stokes 方程式に表面張力項 $\bm{f}_\sigma^*$ を組み込む前に，
+その導出を示す必要がある．表面張力は本来「界面上の線力（3次元では面力）」だが，
+これをそのまま体積方程式に入れることはできない．
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル} \cite{Brackbill1992} は
+この問題を解決する標準的手法である．
 
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜデルタ関数が必要か：面積分から体積積分への変換}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\paragraph{直感的理解：「フィルター」としてのデルタ関数}
+表面張力は本来，界面 $\Gamma$ という\textbf{面（2次元曲面）}の上にのみ作用する力である．
+一方，Navier-Stokes 方程式は\textbf{体積（3次元領域）}全体にわたる方程式である．
+「面の上の力」を「体積全体の力」として書き直すには，
+\textbf{「界面でのみ1，それ以外でゼロ」という数学的なフィルター}が必要になる．
+これがディラックデルタ関数 $\delta_s$ の役割である．
+
+具体的には，表面張力による力 $F_\sigma$ を体積積分と面積分の両方で表すと：
+\[
+  \underbrace{\int_\Omega \bm{f}_\sigma(\bm{x})\, dV}_{\text{体積積分（NS 方程式側）}}
+  = \underbrace{\int_\Gamma \sigma\kappa\hat{\bm{n}}\, dS}_{\text{面積分（物理的表現）}}
+\]
+この等式が成り立つためには，$\bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})$
+（界面上では $+\infty$，それ以外では $0$，積分すると界面の面積を与える関数）
+とおく必要がある．
+
+\paragraph{1次元での直感：ヘヴィサイド関数の微分}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  %% 左：ヘヴィサイド関数
+  \begin{scope}[xshift=-45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（a）ヘヴィサイド関数 $H_\varepsilon(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$H_\varepsilon$};
+    \draw[very thick, blue2, domain=-2:2, samples=80]
+      plot (\x, {1.8/(1+exp(-3*\x))});
+    \node[font=\scriptsize, blue2] at (1.4, 1.65) {$H_\varepsilon(\phi)$};
+    \draw[dashed, gray] (-2.2, 1.8) -- (2.2, 1.8) node[right, font=\scriptsize, gray]{$1$};
+    \draw[dashed, gray] (-2.2, 0)   -- (2.2, 0)   node[right, font=\scriptsize, gray]{$0$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \node[font=\scriptsize] at (-1.3, 0.9) {気相};
+    \node[font=\scriptsize] at (1.3,  0.9) {液相};
+  \end{scope}
+  %% 右：デルタ関数（微分）
+  \begin{scope}[xshift=45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（b）微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$\delta_\varepsilon$};
+    \draw[very thick, red2, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)});
+    \fill[red2!15, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)}) -- (2, 0) -- (-2, 0) -- cycle;
+    \node[font=\scriptsize, red2] at (0.6, 1.8) {$\delta_\varepsilon(\phi)$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \draw[<->, thick, darkgray]
+      (-0.6, -0.15) -- (0.6, -0.15) node[midway, below, font=\scriptsize]{幅 $\approx 2\varepsilon$};
+    \node[font=\scriptsize, darkgray] at (1.6, 0.3) {界面外 $\approx 0$};
+    \node[font=\scriptsize] at (0, 1.0) {$\int\delta_\varepsilon\,d\phi = 1$};
+  \end{scope}
+  %% 微分矢印
+  \draw[-Stealth, very thick, navy] (-0.8, 1.4) -- (0.8, 1.4)
+        node[midway, above, font=\small, navy]{$\dfrac{d}{d\phi}$};
+\end{tikzpicture}
+\caption{（a）CLS 変数 $\psi = H_\varepsilon(\phi)$（ヘヴィサイド関数の滑らか版）．
+界面 $\phi=0$ を中心に 0 から 1 へ連続的に変化する．
+（b）その微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$ は界面近傍にのみ集中した
+ピーク（デルタ関数の滑らか版）を形成する．
+$|\bnabla\psi| = \delta_\varepsilon(\phi)|\bnabla\phi| \approx \delta_\varepsilon(\phi)$
+が界面デルタ関数 $\delta_s$ の数値近似となる．}
+\label{fig:heaviside_delta}
+\end{figure}
+
+1次元の場合，ヘヴィサイド関数 $H(x)$（$x>0$ で 1，$x<0$ で 0）の微分は
+ディラックデルタ $\delta(x)$ である：
+\[
+  \frac{d}{dx}H(x) = \delta(x)
+\]
+数値計算では厳密なステップ関数の代わりに，
+滑らかな近似 $H_\varepsilon(\phi)$（図\ref{fig:heaviside_delta}(a)）を用いる．
+その微分 $H_\varepsilon'(\phi) = \delta_\varepsilon(\phi)$ は
+「幅 $\approx 2\varepsilon$ を持つ滑らかなピーク関数」（図\ref{fig:heaviside_delta}(b)）となり，
+これが界面ディラックデルタ $\delta_s$ の数値的な近似として機能する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{物理的表面張力と界面のディラックデルタ}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ 上に作用する表面張力は，単位面積あたり $\sigma\kappa\hat{\bm{n}}$ の法線力である．
+これを全空間で定義された体積力 $\bm{f}_\sigma$ として書くには，
+界面上だけ値を持つ\textbf{界面ディラックデルタ} $\delta_s$ を用いる：
 \begin{equation}
- \bm{x}^* = L\bm{x}, \quad \bu^* = U\bu, \quad t^* = \frac{L}{U}t, \quad p^* = \rho_l U^2 p
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
+  \label{eq:csf_dirac}
+\end{equation}
+$\delta_s$ は界面 $\Gamma$ 上では $+\infty$，それ以外では $0$ の一般化関数であり，
+$\int_\Omega \delta_s(\bm{x})\,dV = \int_\Gamma dS$（面積分）という性質を持つ．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CLS を用いた $\delta_s$ と $\hat{\bm{n}}$ の近似}
+% ─────────────────────────────────────────────────────────────────────────────
+
+解析的には $\delta_s$ は扱いにくいが，CLS 変数 $\psi = H_\varepsilon(\phi)$ を用いると
+\textbf{滑らかな近似}が得られる：
+\begin{align}
+  |\bnabla\psi| &= |H_\varepsilon'(\phi)|\,|\bnabla\phi|
+                 = \delta_\varepsilon(\phi)\,|\bnabla\phi|
+                 \approx \delta_\varepsilon(\phi)
+  \label{eq:csf_delta_psi}
+\end{align}
+最後の近似は $|\bnabla\phi|\approx 1$（符号付き距離関数の Eikonal 性質）による．
+すなわち，\textbf{$|\bnabla\psi|$ が界面ディラックデルタ $\delta_s$ の滑らかな近似}となる．
+
+\begin{tcolorbox}[defbox, title={近似 $|\bnabla\psi| \approx \delta_s$ の精度：Eikonal 条件下で $\Ord{\varepsilon^2}$}]
+Eikonal 条件 $|\bnabla\phi|=1$ が厳密に成立するとき，
+式 \eqref{eq:csf_delta_psi} の近似誤差を法線方向座標によるテイラー展開で定量化する．
+
+\medskip
+\noindent\textbf{法線座標展開}
+
+界面 $\Gamma$（$\phi=0$）の法線方向座標を $s$，接線方向座標を $\bm{\tau}$ とおく．
+曲率 $\kappa_1, \kappa_2$（2次元では $\kappa_2=0$）を持つ界面近傍の体積要素は：
+\[
+  dV = \bigl(1 - \kappa_1 s\bigr)\bigl(1 - \kappa_2 s\bigr)\, ds\, dA_\Gamma
+  \approx \bigl(1 - 2H s + \kappa_1\kappa_2 s^2 + \cdots\bigr)\, ds\, dA_\Gamma
+\]
+ここで $H = (\kappa_1+\kappa_2)/2$ は平均曲率，$dA_\Gamma$ は界面面積要素である．
+
+界面デルタ関数の定義 $\int_\Omega f\,\delta_s\,dV = \int_\Gamma f\,dA_\Gamma$ から：
+\[
+  \delta_s = \frac{\delta(s)}{(1-\kappa_1 s)(1-\kappa_2 s)}
+  = \delta(s)\bigl(1 + 2Hs + \Ord{s^2}\bigr)
+\]
+
+\noindent\textbf{近似誤差の評価}
+
+$|\bnabla\phi|=1$ のとき $|\bnabla\psi| = \delta_\varepsilon(s)$ であるから：
+\begin{align*}
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  &= \int_\Gamma \int_{-\infty}^{\infty}
+       f\,\delta_\varepsilon(s)\,\bigl(1 - 2Hs + \Ord{s^2}\bigr)\,ds\, dA_\Gamma
+     - \int_\Gamma f\, dA_\Gamma \\
+  &= \int_\Gamma f
+       \underbrace{\int_{-\infty}^{\infty}\delta_\varepsilon(s)\,ds}_{=1}\, dA_\Gamma
+     - \int_\Gamma f\, dA_\Gamma \\
+  &\quad
+     + \int_\Gamma f\!\int_{-\infty}^{\infty}\delta_\varepsilon(s)\cdot(-2Hs)\,ds\, dA_\Gamma
+     + \Ord{\varepsilon^2}
+\end{align*}
+$\delta_\varepsilon(s) = H_\varepsilon'(s) = e^{-s/\varepsilon}/[\varepsilon(1+e^{-s/\varepsilon})^2]$ は
+$s$ に関して\textbf{偶関数}（$s \to -s$ で不変）であり，$s$ は奇関数であるから：
+\[
+  \int_{-\infty}^{\infty} s\,\delta_\varepsilon(s)\,ds = 0
+  \quad \text{（奇関数 $\times$ 偶関数の積分はゼロ）}
+\]
+したがって曲率 $H$ の項は消え，誤差の主要項は $s^2\,\delta_\varepsilon(s)$ の積分から来る：
+\[
+  \int_{-\infty}^{\infty} s^2\,\delta_\varepsilon(s)\,ds
+  = \int_{-\infty}^{\infty} s^2\,\frac{e^{-s/\varepsilon}}{\varepsilon(1+e^{-s/\varepsilon})^2}\,ds
+  = \frac{\pi^2\varepsilon^2}{3}
+  \quad \Bigl(\text{置換 } t=s/\varepsilon\text{ により } \varepsilon^2 \text{ スケーリング}\Bigr)
+\]
+
+\noindent\textbf{結論}
+\[
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  = \Ord{\varepsilon^2\,\kappa^2\,\|f\|_{L^\infty}}
+\]
+Eikonal 条件 $|\bnabla\phi|=1$ のもとでの近似 $|\bnabla\psi| \approx \delta_s$ の誤差は
+$\Ord{\varepsilon^2}$ である（より正確には $\Ord{\varepsilon^2 \kappa^2}$，
+すなわち界面が直線 $\kappa=0$ のときは厳密）．
+$\varepsilon = C_\varepsilon\Delta x_{\min}$ とすれば誤差は $\Ord{\Delta x^2}$ であり，
+CSF モデルの体積力の精度に対して一貫した精度評価が成り立つ．
+\end{tcolorbox}
+
+一方，界面の外向き単位法線は：
+\begin{equation}
+  \hat{\bm{n}} = \frac{\bnabla\psi}{|\bnabla\psi|}
+  \label{eq:csf_normal}
 \end{equation}
 
-これらを次元を持つ運動量保存則に代入し，整理することで，流体の挙動を支配する3つの主要な無次元パラメータが自然に導かれる．
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CSF 体積力の最終形：$\bm{f}_\sigma = \sigma\kappa\bnabla\psi$}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式 \eqref{eq:csf_delta_psi} と \eqref{eq:csf_normal} を式 \eqref{eq:csf_dirac} に代入する：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\,\hat{\bm{n}}\,\delta_s
+  \approx \sigma\kappa\,\frac{\bnabla\psi}{|\bnabla\psi|}\,|\bnabla\psi|
+  = \boxed{\sigma\kappa\,\bnabla\psi}
+  \label{eq:csf_final}
+\end{equation}
+
+\begin{tcolorbox}[defbox, title={CSF モデルの物理的直感}]
+$\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる（界面から離れるとゼロに近づく）．
+したがって $\sigma\kappa\bnabla\psi$ は
+\begin{itemize}
+  \item 界面近傍でのみ作用し（$\delta_s$ の役割を $|\bnabla\psi|$ が担う），
+  \item 界面の法線方向に大きさ $\sigma\kappa$ の力を与える（Young-Laplace 則を再現），
+  \item 全空間積分すると Young-Laplace のジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を再現する
+\end{itemize}
+ことが示せる（以下の検証を参照）．
+CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={CSF モデルが Young-Laplace ジャンプ条件を再現することの検証}]
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が界面ジャンプ条件
+$[p]_\Gamma \equiv p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa$
+を再現することを，界面法線方向の積分によって示す．
+
+\textbf{設定：} 平衡状態（速度ゼロ）の静止液滴を考える．
+運動方程式（式 \eqref{eq:NS_onefluid}）より
+$\bnabla p = \sigma\kappa\bnabla\psi$ が成立する．
+
+\textbf{界面法線方向への積分：}
+界面を法線方向 $s$（液相側 $s \to -\infty$ から気相側 $s \to +\infty$ の方向）に沿って積分する：
+\[
+  p_{\text{gas}} - p_{\text{liq}}
+  = \int_{-\infty}^{+\infty} \frac{\partial p}{\partial s}\,ds
+  = \int_{-\infty}^{+\infty} \sigma\kappa\,\frac{\partial\psi}{\partial s}\,ds
+  = \sigma\kappa \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+\]
+（曲率 $\kappa$ は界面近傍で一定とみなせるため積分の外に出せる）
+
+\textbf{鍵となる積分：}
+$\psi$ は液相側で $\psi \to 0$，気相側で $\psi \to 1$ へと単調に変化するから：
+\[
+  \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+  = \psi\big|_{s=+\infty} - \psi\big|_{s=-\infty}
+  = 1 - 0 = 1
+\]
+
+\textbf{結論：}
+\[
+  \boxed{p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa \cdot 1 = \sigma\kappa}
+\]
+これにより，CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が
+Young-Laplace ジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を
+正確に再現することが示された．
+
+\textbf{注意：} この証明は $\psi$ が真の $H_\varepsilon$ プロファイルを保っている
+（再初期化が正常に機能している）ことを前提とする．
+$\psi$ のプロファイルが崩れると $\int|\nabla\psi|ds \neq 1$ となり，
+圧力ジャンプに誤差が生じる（これが再初期化の物理的重要性の一つである）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={Balanced-Force 条件（予告）：ここでは物理的必要性のみを示す}]
+\label{box:balanced_force_ref}
+物理的直感を得るためには本節の式 \eqref{eq:csf_final} だけで十分である．
+しかし，数値実装での落とし穴（差分演算子の不整合による寄生流れ増幅）は，
+\textbf{格子の選択（第\ref{sec:grid}章）および差分スキームの選択（第\ref{sec:CCD}章）に強く依存する}問題であるため，
+\textbf{実装上の詳細・警告・チェックリストは第\ref{sec:collocate}章（§\ref{sec:balanced_force}）にまとめて掲載する}．
+
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ の\textbf{離散化段階}において，
+圧力勾配項 $-\bnabla p$ と表面張力項 $\sigma\kappa\bnabla\psi$ に
+\textbf{完全に同一の差分演算子}を用いること（\textbf{Balanced-Force 条件}）は，
+寄生流れ（第\ref{sec:intro}章・失敗例1）を抑制するために不可欠である．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{無次元 Navier--Stokes 方程式}
+\label{sec:nondim}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，次元を持つ Navier-Stokes 方程式から，その無次元形を段階的に導出する．
+このプロセスを理解することは，シミュレーション結果を物理的に解釈する上で不可欠である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{次元系の支配方程式}
+% ─────────────────────────────────────────────────────────────────────────────
+
+まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，
+非圧縮性流体の運動量保存則（Navier-Stokes 方程式）を記述する．
+表面張力項には前節の CSF 表現（式 \eqref{eq:csf_final}）を用いる．
+\begin{equation}
+ \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
+ =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]
+ -\rho^*\bm{g}^* + \bm{f}_\sigma^*
+ \label{eq:NS_dim}
+\end{equation}
+ここで，$\rho^*$ は密度，$\mu^*$ は粘性係数，$\bu^*$ は速度ベクトル，
+$p^*$ は圧力，$\bm{g}^*$ は重力加速度ベクトル，$\bm{f}_\sigma^*$ は表面張力項である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{無次元化変数の導入}
+% ─────────────────────────────────────────────────────────────────────────────
+
+次に，参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ．
+これらを用いて，物理変数を以下のように無次元化する．
+\begin{align}
+ \bm{x}^* &= L\bm{x} & \bu^* &= U\bu & t^* &= \frac{L}{U}t & p^* &= \rho_l U^2 p \\
+ \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla
+\end{align}
+ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla$ は全て無次元量である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜ「慣性力スケール」で正規化するのか}
+% ─────────────────────────────────────────────────────────────────────────────
+
+無次元化の本質的な目的は，「どの力が支配的か」を一目で判断できる形に
+方程式を書き換えることである．
+
+式 \eqref{eq:NS_dim} の各項は次元をもつため，
+項の大きさを比較しても値が使用する単位系に依存してしまい，
+普遍的な議論ができない．
+そこで，全ての項を同じ「力のスケール」で割ることで，
+各項の係数が純粋な力の比（すなわち無次元数）として現れるようにする．
+
+\begin{tcolorbox}[defbox, title={基準スケールとして慣性力を選ぶ理由}]
+Navier-Stokes 方程式の左辺（$\rho Du/Dt$）は，
+\textbf{慣性力}（流体が加速するために必要な力）を表す．
+参照量 $\rho_l, U, L$ を代入すると，慣性力のスケールは
+\[
+ \text{慣性力のスケール} = \rho_l \cdot \frac{U^2}{L} = \frac{\rho_l U^2}{L}
+\]
+となる（「密度 × 代表加速度」の形）．
+
+この慣性力スケール $[\rho_l U^2 / L]$ で方程式の両辺を割れば，
+左辺（慣性項）の係数はちょうど $1$ になる．
+右辺の各項（粘性力，重力，表面張力）は，慣性力からの「相対的な強さ」として，
+$Re, Fr, We$ の形の無次元係数に変換される：
+\[
+ \underbrace{1}_{\text{慣性}}
+ \sim
+ \underbrace{\frac{1}{Re}}_{\text{粘性}}
+ + \underbrace{\frac{1}{Fr^2}}_{\text{重力}}
+ + \underbrace{\frac{1}{We}}_{\text{表面張力}}
+\]
+もし重力スケールで割れば重力の係数が $1$ になるが，
+その場合は他の無次元数の形が変わり，より扱いにくい形になる．
+慣性力は非圧縮流体の運動量方程式において常に主役であるため，
+これを基準（分母）とするのが標準的な慣行である．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{各項の無次元化}
+% ─────────────────────────────────────────────────────────────────────────────
+
+これらの関係式を，方程式 \eqref{eq:NS_dim} の各項に代入し，変換していく．
+方程式全体を支配する代表的な力である「慣性力」のスケール $\rho_l U^2 / L$ が
+各項に現れることを確認しよう．
 
 \begin{itemize}
-  \item \textbf{レイノルズ数 ($Re$)}：慣性力と粘性力の比
-  \[ Re \equiv \frac{\rho_l U L}{\mu_l} \quad \left(\text{係数項：}\frac{\mu_l}{\rho_l U L} = \frac{1}{Re}\right) \]
-  \item \textbf{フルード数 ($Fr$)}：慣性力と重力の比
-  \[ Fr \equiv \frac{U}{\sqrt{gL}} \quad \left(\text{係数項：}\frac{gL}{U^2} = \frac{1}{Fr^2}\right) \]
-  \item \textbf{ウェーバー数 ($We$)}：慣性力と表面張力の比
-  \[ We \equiv \frac{\rho_l U^2 L}{\sigma} \quad \left(\text{係数項：}\frac{\sigma}{\rho_l U^2 L} = \frac{1}{We}\right) \]
+    \item \textbf{非定常項（時間微分項）}:
+    \[
+      \rho^* \pd{\bu^*}{t^*}
+      = (\rho_l\rho)\,\pd{(U\bu)}{\frac{L}{U}t}
+      = \left[\frac{\rho_l U^2}{L}\right]\,\rho\,\pd{\bu}{t}
+    \]
+
+    \item \textbf{移流項}:
+    \[
+      \rho^* (\bu^* \cdot \bnabla^*) \bu^*
+      = (\rho_l\rho) \left( (U\bu) \cdot \left(\frac{1}{L}\bnabla\right) \right) (U\bu)
+      = \left[\frac{\rho_l U^2}{L}\right] \rho(\bu\cdot\bnabla)\bu
+    \]
+
+    \item \textbf{圧力勾配項}:
+    \[
+      \bnabla^* p^* = \left(\frac{1}{L}\bnabla\right) (\rho_l U^2 p)
+      = \left[\frac{\rho_l U^2}{L}\right] \bnabla p
+    \]
+
+    \item \textbf{粘性項}:
+    \begin{align*}
+     \bnabla^*\cdot(\mu^*\bnabla^*\bu^*)
+     &= \frac{1}{L}\bnabla\cdot\left( (\mu_l\mu) \frac{1}{L}\bnabla (U\bu) \right) \\
+     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot(\mu\bnabla\bu)
+      = \left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re}
+        \bnabla\cdot(\mu\bnabla\bu)
+    \end{align*}
+    ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
+
+    \item \textbf{重力項}:（$\bm{g}^* = (0, -g, 0)$ の場合）
+    \[
+      \rho^* \bm{g}^*
+      = (\rho_l\rho) (g\hat{\bm{z}})
+      = \left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{gL}{U^2}\right)}_{=1/Fr^2}
+        \rho \hat{\bm z}
+    \]
+    ここで，フルード数 $Fr \equiv U/\sqrt{gL}$ が現れる．
+
+    \item \textbf{表面張力項}:（CSF モデル $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を仮定）
+    \begin{align*}
+      \sigma\kappa^*\bnabla^*\psi
+      &= \sigma \left(\frac{1}{L}\kappa\right) \left(\frac{1}{L}\bnabla\psi\right)
+       = \frac{\sigma}{L^2}\kappa\bnabla\psi \\
+      &= \left[\frac{\rho_l U^2}{L}\right]
+         \underbrace{\left(\frac{\sigma}{\rho_l U^2 L}\right)}_{=1/We}
+         \kappa\bnabla\psi
+    \end{align*}
+    ここで，ウェーバー数 $We \equiv \rho_l U^2 L / \sigma$ が現れる．
 \end{itemize}
 
-具体的な導出過程は以下の通りである．次元系の運動量方程式の各項に変換式を代入する．
-例えば，左辺の慣性項（非定常項）は次のように変換される：
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{無次元方程式の完成}
+% ─────────────────────────────────────────────────────────────────────────────
 
-\[ \rho^* \pd{\bu^*}{t^*} = (\rho_l\rho)\,\pd{(U\bu)}{\frac{L}{U}t} = \frac{\rho_l U^2}{L}\,\rho\,\pd{\bu}{t} \]
-
-同様に，圧力勾配項は $(\rho_l U^2/L)\bnabla p$，粘性項は $(\mu_l U/L^2)\bnabla\cdot(\mu \dots)$ のように変換される．
-方程式全体を慣性力の代表スケール $\rho_l U^2/L$ で除算すると，
-\[
- \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)
- = -\bnabla p + \frac{\mu_l}{\rho_l U L}\bnabla\cdot\!\left[\mu(\psi)(\bnabla\bu+\bnabla\bu^T)\right]
- - \frac{gL}{U^2}\frac{\rho(\psi)}{\rho_l}\hat{\bm z} + \frac{\sigma}{\rho_l U^2 L}\kappa\,\bnabla\psi
-\]
-となり，前述の無次元パラメータが係数として現れる．Conservative Level Set (CLS) 法に基づく最終的な無次元形は以下となる：
+前節で求めた各項の変換結果を，元の次元系方程式 \eqref{eq:NS_dim} に代入すると，
+共通因子 $[\rho_l U^2/L]$ が全ての項に現れる：
+\begin{align}
+ &\underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{\text{共通因子}} \!\!
+ \rho\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \notag \\
+ &= - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}\bnabla p
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{1}{Re}\,
+     \bnabla\cdot\!\bigl[\mu(\bnabla\bu+\bnabla\bu^T)\bigr]
+   - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\rho}{Fr^2}\hat{\bm z}
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\kappa\bnabla\psi}{We}
+ \label{eq:NS_assembled}
+\end{align}
+両辺を $[\rho_l U^2/L]$ で割ると，最終的な無次元 Navier-Stokes 方程式が得られる．
 
 \begin{tcolorbox}[mybox, title={無次元 Navier--Stokes（CLS 版）}]
 \begin{equation}
@@ -79,30 +751,129 @@
 \end{equation}
 \end{tcolorbox}
 
-\subsubsection{CSF の正規化（Balanced-Force）}
+この方程式は，流体の挙動が $Re, Fr, We$ という3つの無次元パラメータによって
+支配されることを明示している．
 
-Balanced-force の観点から，表面張力項 $\kappa\,\bnabla\psi/We$ は圧力勾配項と同一点・同重みで離散化する必要がある．
-これにより，静止流体中での寄生流れ（parasitic currents）を抑制する．
+\begin{tcolorbox}[defbox, title={3つの無次元数の物理的意味：「力の比」として理解する}]
+無次元数は，\textbf{2種類の力（またはエネルギー）の比}として解釈すると
+直感的に理解しやすい．
 
-\subsection{曲率の計算}
-界面形状に関する幾何量（法線ベクトル・曲率）は，符号付き距離関数 $\phi$ から計算する方が精度が良い．
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lccc}
+\hline
+無次元数      & 定義 & 力の比 & 大きいとき \\
+\hline
+Reynolds 数 $Re$ & $\dfrac{\rho_l U L}{\mu_l}$
+  & $\dfrac{\text{慣性力}}{\text{粘性力}}$
+  & 乱流的，粘性の影響が小さい \\[6pt]
+Froude 数 $Fr$   & $\dfrac{U}{\sqrt{gL}}$
+  & $\sqrt{\dfrac{\text{慣性力}}{\text{重力}}}$
+  & 重力波が生じにくい（速い流れ） \\[6pt]
+Weber 数 $We$    & $\dfrac{\rho_l U^2 L}{\sigma}$
+  & $\dfrac{\text{慣性力}}{\text{表面張力}}$
+  & 液滴が変形・分裂しやすい \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{例：}
+水（$\rho_l=1000\,\mathrm{kg/m^3}$,
+$\mu_l=10^{-3}\,\mathrm{Pa\cdot s}$,
+$\sigma=0.073\,\mathrm{N/m}$）の落下液滴
+（$U=1\,\mathrm{m/s}$, $L=10^{-3}\,\mathrm{m}$）では，
+$Re=1000$，$Fr=10.1$，$We=13.7$ となる．
+$We > 1$ であるから，表面張力よりも慣性力が勝り，
+液滴は球形から変形しやすい状態にあると判断できる．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{界面曲率の定義と解析表現}
+\label{sec:curvature}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+界面の曲率 $\kappa$ は，表面張力項を評価するために不可欠な幾何学量である．
+本稿では，符号付き距離関数 $\phi$ から高精度に曲率を計算する．
+その定義は，法線ベクトル $\hat{\bm{n}}$ の発散として与えられる．
 \begin{equation}
- \kappa(\phi) = -\bnabla\cdot \hat{\bm{n}} = -\bnabla\cdot\!\left(\frac{\bnabla\phi}{\norm{\bnabla\phi}}\right)
+ \kappa(\phi) = -\bnabla\cdot \hat{\bm{n}}
+ = -\bnabla\cdot\!\left(\frac{\bnabla\phi}{\norm{\bnabla\phi}}\right)
  \label{eq:curvature_div}
 \end{equation}
-この発散形式のまま離散化することも可能だが，微分誤差を最小化するために
-商の微分公式を用いて展開した形を用いることが推奨される．
+$\phi$ が真の符号付き距離関数であれば $\norm{\bnabla\phi}=1$ であるため，
+$\kappa = -\bnabla^2\phi$ と単純化される．
+しかし，数値計算では移流誤差によりこの性質が常に満たされるとは限らないため，
+上式を直接扱う必要がある．
 
-2次元直交座標系 $(x,y)$ において，法線ベクトルは $\hat{\bm{n}} = (\phi_x/|\bnabla\phi|, \phi_y/|\bnabla\phi|)$ と表される．
-これを発散の定義式に代入して展開する：
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{2次元デカルト座標における展開}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式 \eqref{eq:curvature_div} を数値計算で安定して扱うため，
+商の微分法則を用いて展開する．
+2次元 $(x,y)$ 系では，$\bnabla\phi = (\phi_x, \phi_y)$ であり，
+$\norm{\bnabla\phi} = \sqrt{\phi_x^2 + \phi_y^2}$ となる．
+曲率の定義は以下のようになる：
+\[
+  \kappa = -\left( \pd{n_x}{x} + \pd{n_y}{y} \right)
+  = -\left(
+      \pd{}{x}\frac{\phi_x}{\sqrt{\phi_x^2+\phi_y^2}}
+      + \pd{}{y}\frac{\phi_y}{\sqrt{\phi_x^2+\phi_y^2}}
+    \right)
+\]
+
+この計算を，第一項 $\pd{n_x}{x}$ に集中して段階的に見ていこう．
+$f/g$ の微分は $(f'g - fg')/g^2$ である．
+ここで，$f=\phi_x$，$g=\sqrt{\phi_x^2+\phi_y^2}$ とすると，
+\begin{itemize}
+    \item $f' = \pd{f}{x} = \pd{(\phi_x)}{x} = \phi_{xx}$
+    \item $g' = \pd{g}{x} = \pd{(\phi_x^2+\phi_y^2)^{1/2}}{x}$
+\end{itemize}
+$g'$ の計算には連鎖律（chain rule）を用いる．
+\[
+  g' = \frac{1}{2}(\phi_x^2+\phi_y^2)^{-1/2}
+       \cdot \pd{(\phi_x^2+\phi_y^2)}{x}
+     = \frac{2\phi_x\phi_{xx} + 2\phi_y\phi_{xy}}{2\sqrt{\phi_x^2+\phi_y^2}}
+     = \frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{\sqrt{\phi_x^2+\phi_y^2}}
+\]
+これらを商の微分公式に代入すると，
 \begin{align}
-  \kappa &= -\left( \pd{}{x}\frac{\phi_x}{\sqrt{\phi_x^2+\phi_y^2}} + \pd{}{y}\frac{\phi_y}{\sqrt{\phi_x^2+\phi_y^2}} \right) \notag \\
-  &= -\left[ \frac{\phi_{xx}(\phi_x^2+\phi_y^2)^{1/2} - \phi_x \cdot \frac{1}{2}(\phi_x^2+\phi_y^2)^{-1/2}(2\phi_x\phi_{xx} + 2\phi_y\phi_{xy})}{\phi_x^2+\phi_y^2} \right] - (\text{$y$成分}) \notag \\
-  &= -\frac{\phi_{xx}(\phi_x^2+\phi_y^2) - \phi_x^2\phi_{xx} - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
-     -\frac{\phi_{yy}(\phi_x^2+\phi_y^2) - \phi_y^2\phi_{yy} - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
-  &= -\frac{\phi_{yy}\phi_x^2 - 2\phi_x\phi_y\phi_{xy} + \phi_{xx}\phi_y^2}{(\phi_x^2+\phi_y^2)^{3/2}}
+ \pd{n_x}{x}
+ &= \frac{
+     \overbrace{\phi_{xx}}^{f'}
+     \overbrace{(\phi_x^2+\phi_y^2)^{1/2}}^{g}
+     -
+     \overbrace{\phi_x}^{f}
+     \overbrace{\left(\frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{1/2}}\right)}^{g'}
+   }{\underbrace{\phi_x^2+\phi_y^2}_{g^2}} \notag \\
+ \text{（分母分子に $(\phi_x^2+\phi_y^2)^{1/2}$ を掛けて整理すると）} \notag \\
+ &= \frac{\phi_{xx}(\phi_x^2+\phi_y^2) - \phi_x(\phi_x\phi_{xx} + \phi_y\phi_{xy})}
+         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
+ &= \frac{\phi_{xx}\phi_x^2 + \phi_{xx}\phi_y^2 - \phi_x^2\phi_{xx} - \phi_x\phi_y\phi_{xy}}
+         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
+ &= \frac{\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
+ \label{eq:dnx_dx}
 \end{align}
-整理すると，以下の実装形式が得られる．
+全く同様に，$y$ に関する第二項は，変数の対称性 $(x \leftrightarrow y)$ から求まる
+（$f=\phi_y$, $g=\sqrt{\phi_x^2+\phi_y^2}$ とした商の微分）．
+\[
+  \pd{n_y}{y}
+  = \frac{\phi_{yy}\phi_x^2 - \phi_y\phi_x\phi_{yx}}{(\phi_x^2+\phi_y^2)^{3/2}}
+  \label{eq:dny_dy}
+\]
+$\phi$ の連続性を仮定すれば，$\phi_{xy}=\phi_{yx}$ である（Schwarz の定理）．
+
+最後に，式 \eqref{eq:dnx_dx} と上式を足し合わせる．
+分母は共通の $(\phi_x^2+\phi_y^2)^{3/2}$ であるから，分子だけを整理する：
+\begin{align*}
+  \text{分子}
+  &= \bigl(\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}\bigr)
+   + \bigl(\phi_{yy}\phi_x^2 - \phi_y\phi_x\phi_{yx}\bigr) \\
+  &= \phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}
+   + \phi_{yy}\phi_x^2 - \phi_x\phi_y\phi_{xy}
+     \quad \bigl(\because\, \phi_{yx}=\phi_{xy}\bigr) \\
+  &= \phi_{xx}\phi_y^2 - 2\phi_x\phi_y\phi_{xy} + \phi_{yy}\phi_x^2
+\end{align*}
 
 \begin{tcolorbox}[mybox, title={2次元界面曲率（展開形）}]
 \begin{equation}
@@ -113,20 +884,95 @@ Balanced-force の観点から，表面張力項 $\kappa\,\bnabla\psi/We$ は圧
   }{\bigl(\phi_x^2 + \phi_y^2\bigr)^{3/2}}
   \label{eq:curvature_2d}
 \end{equation}
-
-\subsubsection{曲率計算の数値的安定化}
-
-式 \eqref{eq:curvature_2d} は数学的には厳密だが，数値計算で直接使用するには注意が必要である．
-分母の $\norm{\bnabla\phi}^{3/2}$ は，$\phi$ が完全な符号付き距離関数であれば界面近傍で 1 に近いため問題ない．
-しかし，界面から離れた領域や，移流・再初期化の誤差によって $\norm{\bnabla\phi}$ がゼロに近づくと，
-この項は発散し，計算が破綻する可能性がある．
-
-\begin{tcolorbox}[warnbox, title={実装上の重要事項：ゼロ除算の回避}]
-この問題を回避するため，分母の大きさに下限値を設けるのが一般的である．
-具体的には，小さな正の定数 $\epsilon_{\text{norm}}$（例：$10^{-8}$）を導入し，
-分母を $\max(\norm{\bnabla\phi}, \epsilon_{\text{norm}})^{3}$ で置き換える．
-\[ \kappa \approx -\frac{ \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} }{ \max\bigl(\phi_x^2 + \phi_y^2, \epsilon_{\text{norm}}^2\bigr)^{3/2} } \]
-この処理により，$\bnabla\phi$ がゼロになる点（特異点）での発散を防ぎ，計算のロバスト性を確保できる．
-さらに，計算された $\kappa$ に対して微小なガウシアンフィルタを適用し，格子スケールの数値ノイズを除去することも有効な手段である．
+この形式は，各微分項（$\phi_x, \phi_y, \phi_{xx}, \dots$）を
+有限差分で近似して代入することで，直接 $\kappa$ を計算できるため，
+数値実装に適している．
+CCD 法（第\ref{sec:CCD}章）を用いることで，これらの微分を $\Ord{h^6}$ 精度で評価できる．
 \end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{具体例：半径 $R$ の円による曲率式の検証}
+\label{sec:curvature_circle_example}
+% ─────────────────────────────────────────────────────────────────────────────
+
+曲率式 \eqref{eq:curvature_2d} が正しいことを，
+最も基本的な例である「円」で検証しよう．
+これは実装後の最初の動作確認（単体テスト）としても極めて重要である．
+
+\paragraph{設定：}
+原点を中心とする半径 $R$ の円を，符号付き距離関数
+\[
+  \phi(x,y) = \sqrt{x^2 + y^2} - R \equiv r - R
+  \quad \left(r \equiv \sqrt{x^2+y^2}\right)
+\]
+で表す（$\phi < 0$：円内部（液相），$\phi > 0$：円外部（気相），$\phi = 0$：界面）．
+
+\paragraph{微分の計算：}
+\begin{align}
+  \phi_x &= \frac{x}{r},\quad \phi_y = \frac{y}{r} \notag \\
+  \phi_{xx} &= \frac{r^2-x^2}{r^3} = \frac{y^2}{r^3},\quad
+  \phi_{yy} = \frac{x^2}{r^3},\quad
+  \phi_{xy} = -\frac{xy}{r^3}
+  \label{eq:circle_deriv}
+\end{align}
+
+\paragraph{式 \eqref{eq:curvature_2d} への代入：}
+
+まず分母を確認する：
+$\phi_x^2 + \phi_y^2 = x^2/r^2 + y^2/r^2 = 1$（真の符号付き距離関数の性質）．
+
+次に分子を計算する：
+\begin{align*}
+  &\phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} \\
+  &= \frac{y^2}{r^2}\cdot\frac{y^2}{r^3}
+     - 2\cdot\frac{x}{r}\cdot\frac{y}{r}\cdot\left(-\frac{xy}{r^3}\right)
+     + \frac{x^2}{r^2}\cdot\frac{x^2}{r^3} \\
+  &= \frac{y^4 + 2x^2y^2 + x^4}{r^5}
+   = \frac{(x^2+y^2)^2}{r^5} = \frac{r^4}{r^5} = \frac{1}{r}
+\end{align*}
+
+\begin{tcolorbox}[mybox, title={円の曲率（実装確認の基準値）}]
+\[
+  \kappa = -\frac{1/r}{1^{3/2}} = -\frac{1}{r}
+\]
+界面 $r = R$ 上では $\kappa = -1/R < 0$
+（本稿の符号規約と一致：液滴内部が液相で $\hat{\bm{n}}$ が外向き）．
+
+\textbf{Young-Laplace 則の検証：}
+式 \eqref{eq:young-laplace} に $\kappa = -1/R$ を代入する：
+\[
+  [p] = p_\text{gas} - p_\text{liq} = \sigma\kappa = -\frac{\sigma}{R} < 0
+  \quad\Longrightarrow\quad
+  p_\text{liq} - p_\text{gas} = \frac{\sigma}{R} > 0
+\]
+液滴内部（液相）の圧力が外部（気相）より $\sigma/R$ だけ高い——
+これは物理的に正しい結果である．
+ラプラス圧力の大きさは $|[p]| = \sigma/R$ と確認できる．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={実装確認テスト手順（曲率収束テスト）}]
+\begin{enumerate}
+  \item 計算領域 $[-2R, 2R]^2$ に，
+        格子幅 $h = 2R/N$（$N = 16, 32, 64, \dots$）の一様格子を設定する．
+  \item 各格子点で $\phi_{i,j} = r_{i,j} - R$（解析値）を与え，
+        CCD 法（第\ref{sec:CCD}章）で微分を計算する．
+  \item 式 \eqref{eq:curvature_2d} で $\kappa_{i,j}$ を計算し，
+        解析値 $-1/R$ との絶対誤差を求める：
+        \[
+          E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty}
+        \]
+  \item 格子を細分化するにつれ $E_\kappa(h) = \Ord{h^6}$ で収束すれば，
+        CCD の精度が確認できる．
+\end{enumerate}
+$h$ を半分にすると誤差が $1/64$ 倍（$\approx 1.6\%$）になるはずである．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={曲率の数値的安定化（第\ref{sec:levelset}章 §\ref{sec:curvature_stab} で詳述）}]
+\label{box:curvature_stab_ref}
+式~\eqref{eq:curvature_2d} の分母 $(\phi_x^2 + \phi_y^2)^{3/2}$ は，
+移流・再初期化の誤差によって $|\bnabla\phi| \to 0$ となる場合に発散する恐れがある．
+このゼロ除算問題への対処（分母への下限値 $\varepsilon_{\text{norm}}$ の導入，
+ガウシアンフィルタによるノイズ除去）は，
+CLS 再初期化の品質（Eikonal 条件 $|\bnabla\phi|=1$ の維持）と密接に関連するため，
+\textbf{第\ref{sec:levelset}章（§\ref{sec:curvature_stab}）で再初期化の文脈とともに詳述する}．
 \end{tcolorbox}

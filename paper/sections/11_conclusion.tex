@@ -2,16 +2,29 @@
 \section{まとめと今後の課題}
 \label{sec:conclusion}
 
-本稿では，気液二相流の高精度シミュレーション手法として，
-Conservative Level Set 法，結合コンパクト差分法 (CCD)，WENO5 移流スキーム，
-および変密度 Projection 法を統合した完全な定式化を示した．
+\subsection{本稿の貢献のまとめ}
 
-特に以下の点が重要である：
-\begin{enumerate}
-    \item \textbf{質量保存性：} CLS 法の導入により，標準 Level Set 法の弱点を克服した．
-    \item \textbf{高次精度空間微分：} CCD 法の係数を厳密に導出し，曲率計算の精度を担保した．
-    \item \textbf{安定な圧力計算：} Rhie--Chow 補正（調和平均係数）と変密度 PPE の整合性を確保した．
+本稿では気液二相流の高精度数値シミュレーションのための定式化を示した．技術的に重要な3点の貢献を以下にまとめる．
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{質量保存性（第\ref{sec:levelset}章）：}
+        CLS 法の圧縮・拡散項競合により界面厚さを安定維持し，長時間計算でも $\int\psi\,dV \approx \text{const}$ を保つ．
+  \item \textbf{高精度空間微分（第\ref{sec:CCD}章）：}
+        CCD 法（$O(h^6)$）による曲率計算で表面張力項の寄生流れを大幅に抑制する．
+  \item \textbf{安定な圧力-速度連成（第\ref{sec:collocate}，\ref{sec:pressure}章）：}
+        Rhie--Chow 補正に調和平均密度を採用し，密度比 $O(1000)$ でも安定な変密度 PPE 求解を実現する．
 \end{enumerate}
 
-今後の課題として，3次元並列計算への実装拡張，適応的格子細分化 (AMR) との結合，
-および乱流モデルとの統合が挙げられる．
+\subsection{今後の課題}
+
+本稿の定式化（2次元・等温・非圧縮）の主要な拡張方向を示す．
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{3次元実装と並列化：} CCD・Rhie--Chow の3方向拡張と MPI 非局所通信への対応．
+  \item \textbf{AMR との統合：} 界面近傍の動的細分化による計算コスト削減；粗・密格子境界での CCD 整合性が課題．
+  \item \textbf{表面張力の陰的処理：} Implicit Surface Tension により毛管波制約（$\Delta t_\sigma \propto \sqrt{\Delta x^3}$）を除去．
+  \item \textbf{相変化の組み込み：} Stefan 条件とエネルギー方程式の結合により沸騰・蒸発問題へ対応．
+  \item \textbf{乱流モデルとの統合：} LES/RANS との結合；界面近傍の渦粘性モデリングが主要課題．
+\end{enumerate}
+
+本稿の定式化が，気液二相流数値解析の研究・教育に貢献することを期待する．

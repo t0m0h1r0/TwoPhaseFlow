@@ -1,0 +1,862 @@
+% paper/sections/05_ccd.tex
+\section{結合コンパクト差分法（CCD 法）の厳密導出}
+\label{sec:CCD}
+
+\subsection{なぜコンパクトスキームが必要か：精度と計算コストの観点}
+\label{sec:ccd_motivation}
+
+本章の CCD スキームを学ぶ前に，「なぜわざわざこのような複雑な手法が必要なのか」を
+理解しておくことが重要である．
+
+\subsubsection{中心差分との精度比較}
+
+最もシンプルな2次精度の中心差分（一次微分）は：
+\begin{equation}
+  f'_i \approx \frac{f_{i+1} - f_{i-1}}{2h} + \underbrace{\frac{h^2}{6}f^{(3)}_i}_{\text{打ち切り誤差}}
+  + O(h^4)
+  \label{eq:central2nd}
+\end{equation}
+4次精度まで拡張すると5点ステンシルが必要になる：
+\begin{equation}
+  f'_i \approx \frac{-f_{i+2}+8f_{i+1}-8f_{i-1}+f_{i+2}}{12h} + O(h^4)
+  \label{eq:central4th}
+\end{equation}
+しかし，\textbf{本稿の最重要計算である曲率 $\kappa$} は $\phi$ の \textbf{2階微分}を含み，
+その打ち切り誤差が表面張力項 $\sigma\kappa\nabla\psi$ を通じて速度場の誤差（寄生流れ）を
+直接引き起こす（第\ref{sec:intro}章・失敗例1参照）．したがって，曲率計算には可能な限り高精度の
+微分評価が必要である．
+
+\begin{tcolorbox}[defbox, title={精度次数と寄生流れの関係}]
+寄生流れの振幅は，曲率誤差 $E_\kappa$ に比例することが理論的に示される：
+\[
+  |\bm{u}_{\text{para}}| \propto \frac{\sigma}{\mu} E_\kappa = \frac{\sigma}{\mu} \cdot C \cdot h^{p-2}
+\]
+ここで $p$ は微分スキームの精度次数，$C$ は $O(1)$ の定数．
+$p=2$（2次中心差分）では誤差が格子幅 $h$ に依存せず残留してしまう（$h \to 0$ でゼロにならない）．
+$p=6$ の CCD 法では誤差が $h^4$ に比例するため，格子を細分化するにつれて急速に減衰する．
+\end{tcolorbox}
+
+\subsubsection{コンパクトスキームの発想}
+
+精度を上げるためにステンシル幅を広げると（例：4次精度 5点，6次精度 7点），
+境界処理が複雑になり，並列計算でのデータ通信も増大する．
+
+\textbf{コンパクトスキーム}は，\textbf{「ステンシル幅は狭いまま，精度だけ上げる」}ことを
+目指した手法である．その発想は：
+\begin{enumerate}
+  \item 求めたい微分値 $f'_i$ を\textbf{未知数として}方程式に組み込む（暗黙的定式化）
+  \item 隣接点の微分値 $f'_{i\pm1}$ も同時に未知数として連立する
+  \item 3点ステンシル（$i-1, i, i+1$）のまま，高精度の方程式系を作る
+\end{enumerate}
+代償として，全格子点の微分値を一括して求める連立方程式（三重対角行列）を解く必要があるが，
+Thomas 法で $O(N)$ のコストで解けるため，実用上の負担は小さい．
+
+\begin{tcolorbox}[mybox, title={精度次数・ステンシル幅・コストの比較}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\hline
+手法 & 精度 & ステンシル幅 & 求解コスト & 備考 \\
+\hline
+2次中心差分 & $O(h^2)$ & 3点 & $O(N)$（陽的） & 最シンプル \\
+4次中心差分 & $O(h^4)$ & 5点 & $O(N)$（陽的） & 境界処理が煩雑 \\
+4次コンパクト（Padé） & $O(h^4)$ & 3点 & $O(N)$（三重対角） & \cite{Lele1992} \\
+\textbf{CCD（本稿）} & $\bm{O(h^6)}$ & \textbf{3点} & $\bm{O(N)}$（ブロック Thomas） & \cite{ChuFan1998} \\
+\hline
+\end{tabular}
+\end{center}
+CCD 法は「3点ステンシルで $O(h^6)$」という優れたトレードオフを実現する．
+同等の精度を陽的中心差分で達成するには7点ステンシルが必要である．
+\end{tcolorbox}
+
+\subsubsection{CCD 法の核心的アイデア：微分の連立求解}
+
+CCD (Coupled Compact Difference) 法 \cite{ChuFan1998} の本質は，
+\textbf{一次微分 $f'$ と二次微分 $f''$ を同時に未知数として1つの線形系に組み込む}ことにある．
+
+通常のコンパクトスキームが $f'$ のみを連立するのに対し，CCD 法は $f'$ と $f''$ を同時に解く．
+この「2種類の微分の連立」により，係数決定の自由度が増し，同じ3点ステンシルで
+2次高い精度（$O(h^6)$）が実現できる（次節で厳密に導出する）．
+
+\subsection{CCD スキームの定義}
+
+CCD 法は，関数値 $f$ とその一次微分 $f^{(1)}$，二次微分 $f^{(2)}$ を同時に連立して解くことで，
+3点ステンシルで $\Ord{h^6}$ 精度を実現する手法である．
+各内点 $i$ において，以下の2式が成立するように係数を定める：
+
+\begin{tcolorbox}[mybox, title={CCD スキームの2方程式}]
+\textbf{Equation-I}（一次微分の結合式）：
+\begin{equation}
+  \alpha_1\fp{i-1} + \fp{i} + \alpha_1\fp{i+1}
+  = \frac{a_1}{h}\bigl(f_{i+1}-f_{i-1}\bigr)
+  + b_1 h\bigl(\fpp{i+1}-\fpp{i-1}\bigr)
+  \label{eq:CCD_I}
+\end{equation}
+
+\textbf{Equation-II}（二次微分の結合式）：
+\begin{equation}
+  \beta_2\fpp{i-1} + \fpp{i} + \beta_2\fpp{i+1}
+  = \frac{a_2}{h^2}\bigl(f_{i-1}-2f_i+f_{i+1}\bigr)
+  + \frac{b_2}{h}\bigl(\fp{i+1}-\fp{i-1}\bigr)
+  \label{eq:CCD_II}
+\end{equation}
+\end{tcolorbox}
+
+\subsection{Equation-I の係数導出：厳密な代数的証明}
+
+ここでは，Equation-I の係数 $\alpha_1, a_1, b_1$ が $\Ord{h^6}$ 精度を達成するためにどのように導出されるかを，代数的な変形を追って詳細に示す．
+
+\subsubsection{テイラー展開の準備}
+まず，Equation-I \eqref{eq:CCD_I} に現れる各項を，格子点 $i$ の周りでテイラー展開する．高次の誤差項を評価するため，$\Ord{h^7}$ まで展開しておく．
+\begin{align*}
+f_{i\pm1} &= f_i \pm h f^{(1)}_i + \frac{h^2}{2}f^{(2)}_i \pm \frac{h^3}{6}f^{(3)}_i + \frac{h^4}{24}f^{(4)}_i \pm \frac{h^5}{120}f^{(5)}_i + \frac{h^6}{720}f^{(6)}_i \pm \frac{h^7}{5040}f^{(7)}_i + \dots \\
+f'_{i\pm1} &= f'_i \pm h f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i \pm \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i \pm \frac{h^5}{120}f^{(6)}_i + \frac{h^6}{720}f^{(7)}_i + \dots \\
+f''_{i\pm1} &= f''_i \pm h f^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i + \frac{h^4}{24}f^{(6)}_i \pm \frac{h^5}{120}f^{(7)}_i + \dots
+\end{align*}
+
+\subsubsection{式変形と誤差項の整理}
+これらの展開式を，Equation-I の左辺 (LHS) と右辺 (RHS) にそれぞれ代入する．
+\begin{align*}
+  \text{LHS} &= \alpha_1 f'_{i-1} + f'_i + \alpha_1 f'_{i+1} \\
+  \text{RHS} &= \frac{a_1}{h}(f_{i+1}-f_{i-1}) + b_1 h(f''_{i+1}-f''_{i-1})
+\end{align*}
+
+\paragraph{LHS の整理:}
+\begin{align*}
+\text{LHS} &= \alpha_1(f'_i - h f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i - \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i - \dots) \\
+         &\quad + f'_i \\
+         &\quad + \alpha_1(f'_i + h f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i + \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i + \dots) \\
+         &= (1+2\alpha_1)f'_i + \alpha_1 h^2 f^{(3)}_i + \frac{\alpha_1}{12}h^4 f^{(5)}_i + \frac{\alpha_1}{360}h^6 f^{(7)}_i + \Ord{h^8}
+\end{align*}
+
+\paragraph{RHS の整理:}
+まず，差分項を計算する．
+\begin{align*}
+f_{i+1}-f_{i-1} &= 2h f'_i + \frac{2h^3}{6}f^{(3)}_i + \frac{2h^5}{120}f^{(5)}_i + \frac{2h^7}{5040}f^{(7)}_i + \dots \\
+f''_{i+1}-f''_{i-1} &= 2h f^{(3)}_i + \frac{2h^3}{6}f^{(5)}_i + \frac{2h^5}{120}f^{(7)}_i + \dots
+\end{align*}
+これらを RHS の式に代入する．
+\begin{align*}
+\text{RHS} &= \frac{a_1}{h}\left(2h f'_i + \frac{h^3}{3}f^{(3)}_i + \frac{h^5}{60}f^{(5)}_i + \frac{h^7}{2520}f^{(7)}_i + \dots\right) \\
+         &\quad + b_1 h\left(2h f^{(3)}_i + \frac{h^3}{3}f^{(5)}_i + \frac{h^5}{60}f^{(7)}_i + \dots\right) \\
+         &= (2a_1)f'_i + \left(\frac{a_1}{3} + 2b_1\right)h^2 f^{(3)}_i + \left(\frac{a_1}{60} + \frac{b_1}{3}\right)h^4 f^{(5)}_i + \left(\frac{a_1}{2520} + \frac{b_1}{60}\right)h^6 f^{(7)}_i + \Ord{h^8}
+\end{align*}
+
+\subsubsection{係数比較による連立方程式の導出}
+LHS と RHS が恒等的に等しくなるように，各微分階数 $f^{(n)}_i$ の係数を比較する．
+\[ \text{LHS} - \text{RHS} = 0 \]
+\begin{align*}
+(1+2\alpha_1 - 2a_1)f'_i & \\
++ \left(\alpha_1 - (\frac{a_1}{3} + 2b_1)\right)h^2 f^{(3)}_i & \\
++ \left(\frac{\alpha_1}{12} - (\frac{a_1}{60} + \frac{b_1}{3})\right)h^4 f^{(5)}_i & \\
++ \left(\frac{\alpha_1}{360} - (\frac{a_1}{2520} + \frac{b_1}{60})\right)h^6 f^{(7)}_i + \Ord{h^8} &= 0
+\end{align*}
+この等式が任意の関数 $f$ について成り立つためには，各項の係数がゼロでなければならない．
+最高の精度を得るために，できるだけ高次の項まで係数をゼロにしていく．
+
+\begin{itemize}
+  \item $\fp{i}$ の係数=0： $1 + 2\alpha_1 = 2a_1$
+  \item $f^{(3)}_i$ の係数=0： $\alpha_1 = \frac{a_1}{3} + 2b_1$
+  \item $f^{(5)}_i$ の係数=0： $\frac{\alpha_1}{12} = \frac{a_1}{60} + \frac{b_1}{3}$
+\end{itemize}
+これにより，未知数 $\alpha_1, a_1, b_1$ に関する3つの線形方程式が得られた．
+
+\begin{tcolorbox}[defbox, title={導出された連立方程式}]
+\begin{align}
+ 2a_1 - 2\alpha_1 &= 1 \label{eq:sys1} \\
+ \frac{1}{3}a_1 - \alpha_1 + 2b_1 &= 0 \label{eq:sys2} \\
+ \frac{1}{60}a_1 - \frac{1}{12}\alpha_1 + \frac{1}{3}b_1 &= 0 \label{eq:sys3}
+\end{align}
+\end{tcolorbox}
+この3元連立1次方程式を解くことで，$\Ord{h^6}$ 精度を達成する係数が一意に定まる．
+式 \eqref{eq:sys3} を $12$ 倍すると $\frac{1}{5}a_1 - \alpha_1 + 4b_1 = 0$ となり，式 \eqref{eq:sys2} との比較から $b_1$ が容易に求まる．
+
+\begin{tcolorbox}[resultbox]
+\textbf{Equation-I 係数解：}
+\begin{equation}
+  \boxed{
+    \alpha_1 = \frac{7}{16},\quad
+    a_1 = \frac{15}{16},\quad
+    b_1 = \frac{1}{16}
+  }
+\end{equation}
+\end{tcolorbox}
+これらの係数を代入すると，$h^0, h^2, h^4$ の項はすべてゼロになり，最初のゼロでない誤差項は $h^6 f^{(7)}_i$ の係数となる．
+
+\begin{tcolorbox}[defbox, title={打ち切り誤差係数の厳密計算}]
+式 \eqref{eq:CCD_I} において，$\text{LHS} - \text{RHS}$ の $h^6 f^{(7)}_i$ 係数を求める．
+LHS 側の係数は $\alpha_1/360$，RHS 側の係数は $a_1/2520 + b_1/60$ であるから：
+\[
+  TE_{h^6} = \frac{\alpha_1}{360} - \frac{a_1}{2520} - \frac{b_1}{60}
+\]
+$\alpha_1 = 7/16,\ a_1 = 15/16,\ b_1 = 1/16$ を代入し，共通分母 $40320$ で整理する：
+\[
+  TE_{h^6} = \frac{7/16}{360} - \frac{15/16}{2520} - \frac{1/16}{60}
+  = \frac{49}{40320} - \frac{15}{40320} - \frac{42}{40320}
+  = \frac{49 - 15 - 42}{40320} = \frac{-8}{40320} = -\frac{1}{5040}
+\]
+\end{tcolorbox}
+
+したがって，打ち切り誤差は
+\begin{equation}
+  TE = -\frac{1}{5040}h^6 f^{(7)}_i = -\frac{1}{7!}h^6 f^{(7)}_i
+  \label{eq:CCD_TE}
+\end{equation}
+であり，本スキームが $\Ord{h^6}$ 精度を持つことが確認できる（係数 $1/7!$ は7点陽的スキームの打ち切り誤差と同じオーダーである）．
+
+\subsection{Equation-II の係数導出：厳密な代数的証明}
+
+Equation-I と全く同じ手順で，Equation-II \eqref{eq:CCD_II} の係数 $\beta_2, a_2, b_2$ を導出する．
+
+\subsubsection{テイラー展開の準備}
+
+Equation-II に現れる各項を，格子点 $i$ の周りでテイラー展開する．
+LHS に含まれる $f^{(2)}_{i\pm1}$，および RHS の $f'_{i\pm1}$ を展開する（$f_{i\pm1}$ の展開は前節と同じ）．
+\begin{align*}
+f^{(2)}_{i\pm1} &= f^{(2)}_i \pm h\,f^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i + \frac{h^4}{24}f^{(6)}_i \pm \cdots \\
+f'_{i\pm1} &= f'_i \pm h\,f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i \pm \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i \pm \cdots
+\end{align*}
+
+\subsubsection{式変形と誤差項の整理}
+
+\paragraph{LHS の整理:}
+奇数次の項は $\pm$ で相殺される（Equation-I と同様）．
+
+\begin{align*}
+\text{LHS} &= \beta_2 f^{(2)}_{i-1} + f^{(2)}_i + \beta_2 f^{(2)}_{i+1} \\
+           &= (1 + 2\beta_2)\,f^{(2)}_i + \beta_2\,h^2 f^{(4)}_i + \frac{\beta_2}{12}\,h^4 f^{(6)}_i + \Ord{h^6}
+\end{align*}
+
+\paragraph{RHS の整理:}
+
+まず，差分の組み合わせを計算する．
+\begin{align*}
+f_{i+1} - 2f_i + f_{i-1} &= h^2 f^{(2)}_i + \frac{h^4}{12}f^{(4)}_i + \frac{h^6}{360}f^{(6)}_i + \Ord{h^8} \\
+f'_{i+1} - f'_{i-1} &= 2h\,f^{(2)}_i + \frac{h^3}{3}f^{(4)}_i + \frac{h^5}{60}f^{(6)}_i + \Ord{h^7}
+\end{align*}
+
+\begin{tcolorbox}[warnbox, title={注意：第2差分と $f''$ の展開}]
+$f_{i+1} - 2f_i + f_{i-1}$ を展開すると $f^{(2)}_i$ が現れる（2次の中心差分）．
+同様に $f'_{i+1} - f'_{i-1}$ を展開すると，先頭項も $f^{(2)}_i$ である（$f'$ の1次中心差分 $\approx h f^{(2)}_i$）．
+これら2つの差分項が $f^{(2)}_i$ を「挟み撃ち」にすることで，高次精度が実現される．
+\end{tcolorbox}
+
+これらを RHS に代入する：
+\begin{align*}
+\text{RHS} &= \frac{a_2}{h^2}\!\left(h^2 f^{(2)}_i + \frac{h^4}{12}f^{(4)}_i + \frac{h^6}{360}f^{(6)}_i + \cdots\right)
+            + \frac{b_2}{h}\!\left(2h\,f^{(2)}_i + \frac{h^3}{3}f^{(4)}_i + \frac{h^5}{60}f^{(6)}_i + \cdots\right) \\
+           &= (a_2 + 2b_2)\,f^{(2)}_i
+            + \left(\frac{a_2}{12} + \frac{b_2}{3}\right)h^2 f^{(4)}_i
+            + \left(\frac{a_2}{360} + \frac{b_2}{60}\right)h^4 f^{(6)}_i + \Ord{h^6}
+\end{align*}
+
+\subsubsection{係数比較による連立方程式の導出}
+
+$\text{LHS} - \text{RHS} = 0$ として各微分次数の係数を比較する．
+
+\begin{tcolorbox}[defbox, title={導出された連立方程式}]
+\begin{align}
+ (1 + 2\beta_2) - (a_2 + 2b_2) &= 0 \label{eq:sys_II_1} \\
+ \beta_2 - \left(\frac{a_2}{12} + \frac{b_2}{3}\right) &= 0 \label{eq:sys_II_2} \\
+ \frac{\beta_2}{12} - \left(\frac{a_2}{360} + \frac{b_2}{60}\right) &= 0 \label{eq:sys_II_3}
+\end{align}
+\end{tcolorbox}
+
+Equation-I と同じ構造（3本の線形方程式，3つの未知数）である．以下に代数的な解法を示す．
+
+\paragraph{連立方程式の解法：}
+
+式 \eqref{eq:sys_II_2} を $4$ 倍して式 \eqref{eq:sys_II_3} を $12$ 倍した式から引くことで $\beta_2$ を消去する．
+\begin{align*}
+  4 \times \eqref{eq:sys_II_2}:&\quad 4\beta_2 = \frac{a_2}{3} + \frac{4b_2}{3} \\
+  12 \times \eqref{eq:sys_II_3}:&\quad \beta_2 = \frac{a_2}{30} + \frac{b_2}{5}
+\end{align*}
+上の式から下の式を引くと：
+\[
+  3\beta_2 = \frac{9a_2}{30} + \frac{17b_2}{15}
+  \quad \Longrightarrow \quad
+  90\beta_2 = 9a_2 + 34b_2 \tag{C}
+\]
+
+\textbf{$a_2$ の消去：} 式 \eqref{eq:sys_II_1} を変形すると $a_2 = 1 + 2\beta_2 - 2b_2$ ．
+これを (C) に代入する：
+\begin{align*}
+  90\beta_2 &= 9(1 + 2\beta_2 - 2b_2) + 34b_2 = 9 + 18\beta_2 + 16b_2 \\
+  72\beta_2 &= 9 + 16b_2 \tag{D}
+\end{align*}
+
+\textbf{$b_2$ の $\beta_2$ による表現：} 式 \eqref{eq:sys_II_2} に $a_2 = 1+2\beta_2-2b_2$ を代入する：
+\begin{align*}
+  \beta_2 &= \frac{1+2\beta_2-2b_2}{12} + \frac{b_2}{3}
+           = \frac{1+2\beta_2-2b_2+4b_2}{12} = \frac{1+2\beta_2+2b_2}{12} \\
+  10\beta_2 &= 1 + 2b_2
+  \quad \Longrightarrow \quad
+  b_2 = \frac{10\beta_2-1}{2} \tag{E}
+\end{align*}
+
+\textbf{$\beta_2$ の決定：} (E) を (D) に代入する：
+\[
+  72\beta_2 = 9 + 16\cdot\frac{10\beta_2-1}{2} = 9 + 80\beta_2 - 8 = 1 + 80\beta_2
+\]
+\[
+  -8\beta_2 = 1 \quad\Longrightarrow\quad \boxed{\beta_2 = -\frac{1}{8}}
+\]
+
+\textbf{残りの係数：} (E) および $a_2 = 1+2\beta_2-2b_2$ に代入すると：
+\[
+  b_2 = \frac{10(-\tfrac{1}{8})-1}{2} = \frac{-\tfrac{18}{8}}{2} = -\frac{9}{8}, \qquad
+  a_2 = 1 + 2\!\left(-\frac{1}{8}\right) - 2\!\left(-\frac{9}{8}\right) = 1 - \frac{1}{4} + \frac{9}{4} = 3
+\]
+これらを解くことで，以下の係数を得る．
+
+\begin{tcolorbox}[resultbox]
+\textbf{Equation-II 係数解：}
+\begin{equation}
+  \qquad
+  \boxed{
+    \beta_2 = -\frac{1}{8},\quad
+    a_2 = 3,\quad
+    b_2 = -\frac{9}{8}
+  }
+  \label{eq:coef_CCD}
+\end{equation}
+\end{tcolorbox}
+
+\subsubsection{Equation-II の打ち切り誤差：$\Ord{h^6}$ の厳密計算}
+\label{sec:ccd_te_II}
+
+\begin{tcolorbox}[defbox, title={Equation-II 打ち切り誤差の厳密計算}]
+Equation-II \eqref{eq:CCD_II} を真の関数値に代入したとき，
+LHS $-$ RHS として生じる打ち切り誤差を求める．
+スキームの対称性（$\beta_2 f^{(2)}_{i-1} + f^{(2)}_i + \beta_2 f^{(2)}_{i+1}$）により奇数次導関数が消え，
+TE に現れるのは偶数次の $h^{2k}f^{(2k+2)}_i$ のみである．
+
+\medskip
+\noindent\textbf{テイラー展開の集約}
+
+各項を格子点 $i$ の周りで展開し，係数を $h^{2k}$ ごとに整理すると：
+\begin{align*}
+  \text{LHS} &= (1+2\beta_2)f^{(2)}_i
+              + \beta_2 h^2 f^{(4)}_i
+              + \frac{\beta_2}{12}\,h^4 f^{(6)}_i
+              + \frac{\beta_2}{360}\,h^6 f^{(8)}_i + \Ord{h^8} \\
+  \text{RHS} &= (a_2+2b_2)f^{(2)}_i
+              + \!\left(\frac{a_2}{12}+\frac{b_2}{3}\right)h^2 f^{(4)}_i \\
+             &\quad
+              + \!\left(\frac{a_2}{360}+\frac{b_2}{60}\right)h^4 f^{(6)}_i
+              + \!\left(\frac{a_2}{20160}+\frac{b_2}{2520}\right)h^6 f^{(8)}_i + \Ord{h^8}
+\end{align*}
+
+\noindent\textbf{係数の整合確認（$h^0, h^2, h^4$ 項はゼロ）}
+\begin{itemize}
+  \item $f^{(2)}_i$：$(1+2\beta_2)-(a_2+2b_2) = (1-\tfrac{1}{4}) - (3-\tfrac{9}{4}) = \tfrac{3}{4}-\tfrac{3}{4} = 0$ \checkmark
+  \item $h^2 f^{(4)}_i$：$\beta_2 - (\tfrac{a_2}{12}+\tfrac{b_2}{3}) = -\tfrac{1}{8} - (\tfrac{3}{12}-\tfrac{9}{24}) = -\tfrac{1}{8}-(-\tfrac{1}{8}) = 0$ \checkmark
+  \item $h^4 f^{(6)}_i$：$\tfrac{\beta_2}{12} - (\tfrac{a_2}{360}+\tfrac{b_2}{60}) = -\tfrac{1}{96} - (\tfrac{1}{120}-\tfrac{3}{160}) = -\tfrac{1}{96}-(-\tfrac{1}{96}) = 0$ \checkmark
+\end{itemize}
+
+\noindent\textbf{主要打ち切り誤差係数（$h^6 f^{(8)}_i$ 項）}
+\[
+  TE_{\text{II},\,h^6}
+  = \frac{\beta_2}{360} - \!\left(\frac{a_2}{20160}+\frac{b_2}{2520}\right)
+  = -\frac{1}{2880} - \!\left(\frac{3}{20160}+\frac{-9/8}{2520}\right)
+\]
+\[
+  = -\frac{7}{20160} - \!\left(\frac{3}{20160}-\frac{9}{20160}\right)
+  = -\frac{7}{20160} + \frac{6}{20160}
+  = -\frac{1}{20160}
+\]
+\end{tcolorbox}
+
+したがって，Equation-II の打ち切り誤差は
+\begin{equation}
+  TE_{\mathrm{II}} = -\frac{1}{20160}\,h^6 f^{(8)}_i = -\frac{2}{8!}\,h^6 f^{(8)}_i
+  \label{eq:CCD_TE_II}
+\end{equation}
+であり，Equation-II も Equation-I と同じく $\Ord{h^6}$ 精度を持つことが確認できる
+（Equation-I の係数 $-1/5040 = -2/7!/2$ と比較すると，主要係数は Equation-II の方が
+$1/4$ 倍と小さいが，いずれも $\Ord{h^6}$ の精度クラスに属する）．
+
+\subsection{境界条件}
+\label{sec:ccd_bc}
+
+CCD スキームは内点において3点ステンシル（$i-1, i, i+1$）を用いるため，両端の境界点（$i=0, N$）では方程式が閉じない問題が生じる．
+この「閉包問題」を解決するため，境界点専用の片側差分スキームが必要となる．
+
+\begin{tcolorbox}[warnbox, title={境界スキームの役割と精度}]
+境界スキームは，内点の連立方程式系（ブロック三重対角行列）を閉じるために不可欠である．
+本稿では，数値的な安定性と精度のバランスを考慮し，内点より1次低い $\Ord{h^5}$ 精度のスキームを採用する．
+具体的には，境界点 $i=0$ での微分値 $\fp{0}, \fpp{0}$ を，境界近傍の関数値 $f_0, \dots, f_3$ と，内側の微分値 $\fp{1}, \fpp{1}$ を用いて表現する式を導出する．
+これにより，全体としての計算精度を損なうことなく，ロバストな境界処理が可能となる．
+\end{tcolorbox}
+
+\subsubsection{左境界スキームの導出}
+
+内点スキームは $f_{i-1}$ を参照するが，$i=0$ では $f_{-1}$ が存在しない．
+そこで，片側ステンシル $\{f_0, f_1, f_2, f_3\}$ と，内側第1点での微分値 $\fp{1}, \fpp{1}$ を組み合わせた以下の形式を採用する：
+\begin{equation}
+  \fp{0} + \alpha\fp{1} + \beta h\fpp{1}
+  = \frac{1}{h}\!\left(c_0 f_0 + c_1 f_1 + c_2 f_2 + c_3 f_3\right)
+  \label{eq:bc_general}
+\end{equation}
+未知数は $\alpha, \beta, c_0, c_1, c_2, c_3$ の計6個である．
+これらをテイラー展開による精度条件で決定する．
+
+\paragraph{Step 1：LHS の整理と $\alpha, \beta$ の決定}
+
+$\fp{1}$ と $\fpp{1}$ を境界点 $i=0$ の周りでテイラー展開する：
+\begin{align*}
+  \fp{1}  &= \fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \frac{h^3}{6}f^{(4)}_0 + \cdots \\
+  \fpp{1} &= \fpp{0} + h f^{(3)}_0 + \frac{h^2}{2}f^{(4)}_0 + \cdots
+\end{align*}
+これを LHS に代入すると：
+\begin{align*}
+  \text{LHS} &= \fp{0} + \alpha\fp{1} + \beta h\fpp{1} \\
+             &= (1+\alpha)\fp{0} + (\alpha + \beta) h\fpp{0}
+               + \left(\frac{\alpha}{2} + \beta\right)h^2 f^{(3)}_0
+               + \left(\frac{\alpha}{6} + \frac{\beta}{2}\right)h^3 f^{(4)}_0 + \cdots
+\end{align*}
+
+$\fpp{0}$（未知の内部微分）が LHS に残ると RHS と矛盾する．
+$\fpp{0}$ の係数がゼロになる条件 $\alpha + \beta = 0$，すなわち $\beta = -\alpha$ を課す．
+\begin{tcolorbox}[defbox, title={$\alpha = 3/2$ の一意決定：$\Ord{h^5}$ 精度条件による導出}]
+$\beta = -\alpha$ を代入した時点で，未知数は $(\alpha, c_0, c_1, c_2, c_3)$ の5個である．
+$\Ord{h^5}$ 精度（打ち切り誤差の主要項が $h^5$ 以上）を達成するには，
+RHS のテイラー展開における $f_0,\, f'_0,\, f''_0,\, f^{(3)}_0,\, f^{(4)}_0$ の各係数を LHS と整合させる
+5個の条件が必要である：
+
+\[
+  S_k \equiv c_1 + 2^k c_2 + 3^k c_3
+\]
+
+として，整合条件は
+$c_0{+}c_1{+}c_2{+}c_3=0$（定数項消去），$S_1=1{+}\alpha$，$S_2=0$，
+$S_3=-3\alpha$，$S_4=-8\alpha$ の5式となる（$S_k$ の具体的な導出は下記 Step 2 参照）．
+
+\medskip
+\noindent\textbf{$\alpha$ の一意決定：}
+差分 $S_2{-}S_1$，$S_3{-}S_2$，$S_4{-}S_3$ を取ると：
+\[
+  2c_2+6c_3 = -(1+\alpha),\quad
+  4c_2+18c_3 = -3\alpha,\quad
+  8c_2+54c_3 = -5\alpha.
+\]
+第1式の2倍を第2式から引くと $6c_3 = 2-\alpha$，すなわち $c_3 = (2-\alpha)/6$．
+これを第1式に戻すと \textbf{$c_2 = -3/2$（$\alpha$ に依らず一定）}．
+最後に第3式に $c_2 = -3/2$，$c_3 = (2-\alpha)/6$ を代入すると：
+\[
+  8\!\left(-\tfrac{3}{2}\right) + 54\cdot\frac{2-\alpha}{6}
+  = -5\alpha
+  \;\;\Longrightarrow\;\;
+  -12 + 9(2-\alpha) = -5\alpha
+  \;\;\Longrightarrow\;\;
+  6 = 4\alpha
+  \;\;\Longrightarrow\;\;
+  \boxed{\alpha = \tfrac{3}{2}.}
+\]
+$\alpha$ を他の値に設定すると $\Ord{h^4}$ で止まり，$\Ord{h^5}$ は達成できない．
+すなわち $\alpha = 3/2$ は 4点片側ステンシルで $\Ord{h^5}$ 精度を実現する唯一の選択である．
+\end{tcolorbox}
+
+$\alpha = 3/2$ と選ぶと $\beta = -3/2$ となり（以下の RHS 精度条件が $\Ord{h^5}$ で整合する），
+\[
+  \text{LHS} = \frac{5}{2}\fp{0}
+             - \frac{3h^2}{4} f^{(3)}_0
+             - \frac{h^3}{2} f^{(4)}_0
+             - \frac{3h^4}{16} f^{(5)}_0 + \Ord{h^5}
+\]
+
+\paragraph{Step 2：RHS の係数決定（4点ステンシル）}
+
+$f_k = f_0 + kh\fp{0} + \frac{(kh)^2}{2}\fpp{0} + \cdots$（$k=0,1,2,3$）を RHS に代入し，
+$\fpp{0}$ は含まれない設計にする（境界点では $\fpp{0}$ を陽に評価しない）ため，
+$\fpp{0}$ の係数条件も課す：
+
+\begin{tcolorbox}[defbox, title={境界スキームの係数決定条件（5元1次方程式）}]
+\begin{align}
+c_0 + c_1 + c_2 + c_3 &= 0 \quad\text{（$f_0/h$ の消去）} \label{eq:bc1} \\
+c_1 + 2c_2 + 3c_3 &= \tfrac{5}{2} \quad\text{（$\fp{0}$ の整合）} \label{eq:bc2} \\
+c_1 + 4c_2 + 9c_3 &= 0 \quad\text{（$\fpp{0}$ の消去）} \label{eq:bc3} \\
+c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \label{eq:bc4}
+\end{align}
+\end{tcolorbox}
+
+4式・4未知数（$c_0$ は式\eqref{eq:bc1}で後から決まるので実質 $c_1,c_2,c_3$ の3元）として解く：
+\begin{itemize}
+  \item 式\eqref{eq:bc3}$-$式\eqref{eq:bc2}: $\;2c_2+6c_3 = -\tfrac{5}{2}$，つまり $c_2+3c_3 = -\tfrac{5}{4}$
+  \item 式\eqref{eq:bc4}$-$式\eqref{eq:bc3}: $\;4c_2+18c_3 = -\tfrac{9}{2}$，つまり $2c_2+9c_3 = -\tfrac{9}{4}$
+  \item 上の2式から $c_3$: $\;-3c_3 = -\tfrac{5}{4}+\tfrac{9}{8} = -\tfrac{1}{4}$ $\Rightarrow$ $c_3 = \tfrac{1}{12}$
+  \item $c_2 = -\tfrac{5}{4}-3\cdot\tfrac{1}{12} = -\tfrac{3}{2}$
+  \item $c_1 = \tfrac{5}{2}-2\cdot(-\tfrac{3}{2})-3\cdot\tfrac{1}{12} = \tfrac{21}{4}$
+  \item $c_0 = -(c_1+c_2+c_3) = -\tfrac{23}{6}$
+\end{itemize}
+
+以上が左境界 ($i=0$) における Equation-I の境界スキームである：
+\begin{equation}
+  \fp{0} + \frac{3}{2}\fp{1} - \frac{3h}{2}\fpp{1}
+  = \frac{1}{h}\!\left(-\frac{23}{6}f_0 + \frac{21}{4}f_1 - \frac{3}{2}f_2 + \frac{1}{12}f_3\right)
+  \label{eq:bc_left}
+\end{equation}
+
+\subsubsection{左境界 Equation-II の導出：$\fpp{0}$ の境界スキーム}
+\label{sec:ccd_bc_II}
+
+\begin{tcolorbox}[warnbox, title={Equation-II 境界スキームの必要性}]
+ブロック三重対角行列（式 \eqref{eq:ccd_global}）の境界ブロックには，
+$[\fp{0},\fpp{0}]^\top$ の2成分が未知数として存在する．
+前節の Equation-I 境界スキームは $\fp{0}$ に対する関係式を与えるが，
+$\fpp{0}$ に対する関係式（Equation-II 境界スキーム）がなければ行列が閉じない．
+これは実装上の致命的な欠落であり，本節で導出する．
+\end{tcolorbox}
+
+内点の Equation-II（式 \eqref{eq:CCD_II}）は $f''_{i-1}$ を参照するため，$i=0$ では閉じない．
+そこで Equation-I と同様の片側スキームを採用する．
+$\fpp{0}$ と，近傍の関数値 $\{f_0, f_1, f_2, f_3\}$ および内側第1点の微分値 $\fp{1}, \fpp{1}$ の結合式として：
+\begin{equation}
+  \fpp{0} + \gamma\,h\fp{1} + \delta\, h^2\fpp{1}
+  = \frac{1}{h^2}\!\left(d_0 f_0 + d_1 f_1 + d_2 f_2 + d_3 f_3\right)
+  \label{eq:bcII_general}
+\end{equation}
+という形式を仮定する．未知数は $\gamma, \delta, d_0, d_1, d_2, d_3$ の6個である．
+
+\paragraph{Step 1：LHS の整理}
+
+$\fp{1}$ と $\fpp{1}$ を境界点 $i=0$ の周りで展開する：
+\begin{align*}
+  \fp{1}  &= \fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \frac{h^3}{6}f^{(4)}_0 + \cdots \\
+  \fpp{1} &= \fpp{0} + h f^{(3)}_0 + \frac{h^2}{2}f^{(4)}_0 + \cdots
+\end{align*}
+
+LHS に代入すると：
+\begin{align*}
+  \text{LHS} &= \fpp{0}
+    + \gamma h\!\left[\fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \cdots\right]
+    + \delta h^2\!\left[\fpp{0} + h f^{(3)}_0 + \cdots\right] \\
+  &= \gamma h\,\fp{0}
+    + \bigl(1 + \gamma + \delta\bigr)\fpp{0}
+    + \left(\frac{\gamma}{2} + \delta\right)h^2 f^{(3)}_0
+    + \cdots
+\end{align*}
+
+目標は $\fpp{0}$ を LHS に孤立させることなので（RHS は関数値のみ），
+$\fp{0}$ の係数をゼロにする：$\gamma = 0$．
+また $\fpp{0}$ の係数を $1$ に正規化すると $1 + \gamma + \delta = 1$，すなわち $\delta = 0$．
+
+したがって $\gamma = \delta = 0$ であり，LHS $= \fpp{0}$ のみとなる（片側関数値スキーム）．
+
+\paragraph{Step 2：RHS の係数決定}
+
+$f_k = f_0 + kh\fp{0} + \frac{(kh)^2}{2}\fpp{0} + \frac{(kh)^3}{6}f^{(3)}_0 + \cdots$ を RHS に代入し，
+$\fpp{0}$ を RHS から求める．整合条件は：
+
+\begin{tcolorbox}[defbox, title={Equation-II 境界スキーム係数の決定条件}]
+\begin{align}
+  d_0 + d_1 + d_2 + d_3 &= 0 \quad\text{（$f_0/h^2$ の消去）} \label{eq:bcII1} \\
+  d_1 + 2d_2 + 3d_3 &= 0 \quad\text{（$\fp{0}/h$ の消去）} \label{eq:bcII2} \\
+  d_1 + 4d_2 + 9d_3 &= 2 \quad\text{（$\fpp{0}$ の整合）} \label{eq:bcII3} \\
+  d_1 + 8d_2 + 27d_3 &= 0 \quad\text{（$f^{(3)}_0/h$ の消去）} \label{eq:bcII4}
+\end{align}
+\end{tcolorbox}
+
+\paragraph{係数の計算：}
+\begin{itemize}
+  \item 式\eqref{eq:bcII3}$-$式\eqref{eq:bcII2}: $\;2d_2+6d_3 = 2$，つまり $d_2+3d_3 = 1$
+  \item 式\eqref{eq:bcII4}$-$式\eqref{eq:bcII3}: $\;4d_2+18d_3 = -2$，つまり $2d_2+9d_3 = -1$
+  \item 上の2式から $d_3$: $\;3d_3 = -3 \Rightarrow d_3 = -1$
+  \item $d_2 = 1-3\cdot(-1) = 4$
+  \item $d_1 = -2d_2-3d_3 = -8+3 = -5$（式\eqref{eq:bcII2} より）
+  \item $d_0 = -(d_1+d_2+d_3) = -(-5+4-1) = 2$（式\eqref{eq:bcII1} より）
+\end{itemize}
+
+以上が左境界 ($i=0$) における Equation-II 境界スキームである：
+\begin{equation}
+  \boxed{
+    \fpp{0}
+    = \frac{1}{h^2}\!\left(2f_0 - 5f_1 + 4f_2 - f_3\right)
+  }
+  \label{eq:bcII_left}
+\end{equation}
+
+\begin{tcolorbox}[mybox, title={Equation-II 境界スキームの精度検証}]
+式\eqref{eq:bcII_left} の打ち切り誤差を確認する．
+$f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \frac{k^4h^4}{24}f^{(4)}_0 + \cdots$ を代入すると：
+\[
+  \frac{1}{h^2}(2f_0-5f_1+4f_2-f_3)
+  = \fpp{0} + \underbrace{\left(-\frac{11}{12}h^2 f^{(4)}_0 + \cdots\right)}_{\text{打ち切り誤差 }\mathcal{O}(h^2)}
+\]
+よってこの境界スキームは $\mathcal{O}(h^2)$ 精度の片側差分公式であり，
+内点の $\mathcal{O}(h^6)$ より低次だが，境界は1層のみで全体精度への影響は限定的である（\cite{ChuFan1998} 参照）．
+より高精度な境界処理が必要な場合はゴーストセル法（次節）を採用する．
+\end{tcolorbox}
+
+\subsubsection{実装：ゴーストセル法による境界処理}
+\label{sec:ccd_ghost}
+
+前節の境界スキームは数学的に精密だが，実装において別の選択肢として
+\textbf{ゴーストセル（ghost cell）法}がある．
+計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
+境界条件に応じた値を設定することで，
+内点スキーム（3点ステンシル）を境界近傍でもそのまま適用できる．
+
+\begin{tcolorbox}[defbox, title={ゴーストセルの設定規則}]
+左境界 $x = 0$（$i = 0$ が境界セル，$i = -1$ がゴーストセル）の例：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\hline
+境界条件 & ゴーストセル値 & 物理的意味 \\
+\hline
+Dirichlet（ノースリップ壁）: $u|_{\mathrm{wall}}=0$ &
+  $u_{-1} = -u_1$ &
+  鏡像反転（$u_{0} \approx 0$） \\
+Dirichlet（強制流入）: $u|_{\mathrm{wall}}=U_w$ &
+  $u_{-1} = 2U_w - u_1$ &
+  $u_{0} = (u_{-1}+u_1)/2 = U_w$ \\
+Neumann（流出・対称）: $\partial u/\partial x|_{\mathrm{wall}}=0$ &
+  $u_{-1} = u_1$ &
+  勾配ゼロ（偶関数的反射） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{境界セル $i=0$ の内点方程式（ゴーストセル利用版）：}
+\begin{equation}
+  \alpha_1 f'_{-1} + f'_0 + \alpha_1 f'_1
+  = \frac{a_1}{h}(f_1 - f_{-1}) + b_1 h(f''_1 - f''_{-1})
+  \label{eq:ccd_ghost_eq}
+\end{equation}
+ここで $f_{-1}$ および $f'_{-1}, f''_{-1}$ はゴーストセルの値（境界条件から設定）．
+これにより，内点と全く同じ係数行列 $\mathbf{A}, \mathbf{B}$ を境界でも使えるため，
+行列アセンブリのコードが統一できる利点がある．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={ゴーストセル法の注意点}]
+\begin{itemize}
+  \item ゴーストセルへの $f'_{-1}, f''_{-1}$ の設定方法が精度に影響する．
+    ノースリップ壁（$u = 0$）の場合，$f'$ は壁に対して\textbf{偶関数}的に
+    反射（$f'_{-1} = f'_1$），$f''$ は\textbf{奇関数}的（$f''_{-1} = -f''_1$）に設定する
+    ことで，壁上の $f' = 0$，$f'' \neq 0$ の滑らかな挙動が保たれる．
+  \item 流出境界では $f'_{-1} = f'_1$，$f''_{-1} = f''_1$ とするが，
+    圧力の全 Neumann 境界問題（零固有モード）については第\ref{sec:pressure}章の対処法を参照すること．
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{行列構造：ブロック三重対角システム}
+\label{sec:ccd_matrix}
+
+各格子点 $i$ での未知数ベクトルを $\bm{v}_i = [f'_i,\, f''_i]^\top \in \mathbb{R}^2$ とおく．
+格子点数 $N$（内点 $i = 1, \dots, N-2$，境界 $i=0, N-1$）全体の未知数を縦に並べたベクトルを
+$\bm{v} = [\bm{v}_0, \bm{v}_1, \dots, \bm{v}_{N-1}]^\top \in \mathbb{R}^{2N}$ とする．
+
+\subsubsection{内点のブロック係数行列}
+
+内点 $i$（$1 \le i \le N-2$）では，Equation-I \eqref{eq:CCD_I} と Equation-II \eqref{eq:CCD_II} をまとめると
+$\bm{v}_{i-1}, \bm{v}_i, \bm{v}_{i+1}$ をつなぐ $2\times2$ ブロック方程式が得られる：
+\begin{equation}
+  \mathbf{A}\,\bm{v}_{i-1} + \mathbf{B}\,\bm{v}_i + \mathbf{A}\,\bm{v}_{i+1} = \mathbf{r}_i
+  \label{eq:ccd_block}
+\end{equation}
+ここで係数ブロック $\mathbf{A}, \mathbf{B} \in \mathbb{R}^{2\times 2}$ と右辺 $\mathbf{r}_i \in \mathbb{R}^2$ は，
+Equation-I/II の各行を対応させることで読み取れる：
+
+\begin{tcolorbox}[defbox, title={内点のブロック係数行列（正しい非対称形）}]
+Equation-I と Equation-II を $\bm{v}_{i-1}, \bm{v}_i, \bm{v}_{i+1}$ のブロック形式にまとめると：
+\[
+  \underbrace{\begin{bmatrix} \alpha_1 & b_1 h \\ -b_2/h & \beta_2 \end{bmatrix}}_{\mathbf{A}_L}
+  \bm{v}_{i-1}
+  +
+  \underbrace{\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}}_{\mathbf{B}}
+  \bm{v}_i
+  +
+  \underbrace{\begin{bmatrix} \alpha_1 & -b_1 h \\ +b_2/h & \beta_2 \end{bmatrix}}_{\mathbf{A}_R}
+  \bm{v}_{i+1}
+  = \mathbf{r}_i
+\]
+
+\textbf{導出の詳細：} 2行目（Equation-II）の右辺は
+$a_2(f_{i-1}-2f_i+f_{i+1})/h^2 + b_2(f'_{i+1}-f'_{i-1})/h$ だが，
+$f'_{i\pm1} = [\bm{v}_{i\pm1}]_1$（未知数の第1成分）であるから左辺に移項する：
+\begin{itemize}
+  \item $\bm{v}_{i-1}$ ブロック第2行：$b_2 f'_{i-1}/h$ を左辺へ移項 $\Rightarrow$ 係数 $-b_2/h$
+  \item $\bm{v}_{i+1}$ ブロック第2行：$-b_2 f'_{i+1}/h$ を左辺へ移項 $\Rightarrow$ 係数 $+b_2/h$
+\end{itemize}
+
+右辺ベクトル（関数値 $f_i$ のみからなる項）：
+\[
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{a_1}{h}(f_{i+1}-f_{i-1}) \\[8pt]
+    \dfrac{a_2}{h^2}(f_{i-1}-2f_i+f_{i+1})
+  \end{bmatrix}
+\]
+
+\textbf{重要：} $\mathbf{A}_L \neq \mathbf{A}_R$（左右で異なる非対称ブロック）であることに注意．
+係数 $b_2 = -9/8$ を代入すると $b_2/h = -9/(8h)$ となり，$-b_2/h = 9/(8h) > 0$，$+b_2/h = -9/(8h) < 0$．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={$\mathbf{A}_L \neq \mathbf{A}_R$：左右ブロックの非対称性}]
+Equation-II \eqref{eq:CCD_II} の RHS に $b_2(f'_{i+1}-f'_{i-1})/h$ という隣接点の $f'$ が含まれるため，
+これを左辺に移項すると左右ブロックが\textbf{非対称}になる：
+\[
+  \mathbf{A}_L = \begin{bmatrix} \alpha_1 & b_1 h \\ -b_2/h & \beta_2 \end{bmatrix}, \qquad
+  \mathbf{A}_R = \begin{bmatrix} \alpha_1 & -b_1 h \\ +b_2/h & \beta_2 \end{bmatrix}
+\]
+$b_2 = -9/8$ を代入すると：$-b_2/h = 9/(8h) > 0$，$+b_2/h = -9/(8h) < 0$．
+ブロック三重対角行列自体は依然として $O(N)$ のブロック Thomas 法で解けるが，
+$\mathbf{A}_L$ と $\mathbf{A}_R$ を別々に格納・使用する必要がある点に注意．
+\end{tcolorbox}
+
+\subsubsection{全体行列の構造}
+
+$N$ 格子点全体をまとめると，以下のブロック三重対角行列が得られる：
+\begin{equation}
+  \underbrace{
+  \begin{bmatrix}
+    \mathbf{B}_0 & \mathbf{C}_0 & & & \\
+    \mathbf{A}_1 & \mathbf{B} & \mathbf{A}_1 & & \\
+    & \mathbf{A}_2 & \mathbf{B} & \mathbf{A}_2 & \\
+    & & \ddots & \ddots & \ddots \\
+    & & & \mathbf{A}_{N-2} & \mathbf{B} & \mathbf{C}_{N-1} \\
+    & & & & \mathbf{A}_{N-1} & \mathbf{B}_{N-1}
+  \end{bmatrix}
+  }_{\text{$2N \times 2N$ ブロック三重対角行列}}
+  \begin{bmatrix} \bm{v}_0 \\ \bm{v}_1 \\ \vdots \\ \bm{v}_{N-1} \end{bmatrix}
+  =
+  \begin{bmatrix} \mathbf{r}_0 \\ \mathbf{r}_1 \\ \vdots \\ \mathbf{r}_{N-1} \end{bmatrix}
+  \label{eq:ccd_global}
+\end{equation}
+ここで $\mathbf{B}_0, \mathbf{C}_0$（左境界）および $\mathbf{A}_{N-1}, \mathbf{B}_{N-1}$（右境界）は
+式 \eqref{eq:bc_left} から導かれる境界専用ブロックである．
+
+\begin{tcolorbox}[mybox, title={求解アルゴリズムとコスト}]
+式 \eqref{eq:ccd_global} のブロック三重対角システムは，\textbf{ブロック Thomas 法}（LU 分解のブロック版）で $O(N)$ の計算量で解ける．各ブロック操作は $2\times2$ 行列の逆行列・積であり，スカラー Thomas 法と比べてわずかに定数倍のコスト増加で済む．
+
+\textbf{計算手順の概要：}
+\begin{enumerate}
+  \item \textbf{前進消去（Forward Sweep）：} $i = 1, \dots, N-1$ に対して $\mathbf{A}_i \mathbf{B}_{i-1}^{-1}$ を用いて $\mathbf{A}_i$ を消去し，修正済み係数 $\tilde{\mathbf{B}}_i$ と右辺 $\tilde{\mathbf{r}}_i$ を更新する．
+  \item \textbf{後退代入（Backward Substitution）：} $i = N-1, \dots, 0$ の順に $\bm{v}_i$ を順次決定する．
+\end{enumerate}
+
+2方向（$x, y$）の CCD を行う場合，まず $x$ 方向に沿った全行に対してブロック Thomas 法を適用し，
+続いて $y$ 方向に沿った全列に対して同様の操作を行う（次元分離）．
+この処理で $f'_x, f''_x, f'_y, f''_y$ が一括して得られる．
+\end{tcolorbox}
+
+\subsection{非一様格子への拡張：座標変換法}
+\label{sec:ccd_metric}
+
+本稿では界面近傍の解像度を上げるために非一様格子を用いるが，前述の CCD 係数（式 \eqref{eq:coef_CCD}）は等間隔格子 $h$ を前提としている．
+非一様格子上で高精度を維持するための最もエレガントな手法は，計算空間への座標変換を用いることである．
+
+\begin{tcolorbox}[mybox, title={座標変換による実装}]
+\textbf{概念：}
+物理空間 $x$（非一様）を，計算空間 $\xi$（一様，$\Delta\xi=1$）に写像する．
+微分計算はすべて計算空間 $\xi$ 上で標準の等間隔 CCD スキームを用いて行い，その結果を連鎖律（chain rule）で物理空間の微分値に変換する．
+
+\textbf{変換公式：}
+物理空間での一次微分 $\partial f/\partial x$ および二次微分 $\partial^2 f/\partial x^2$ は，メトリック係数 $J = \partial \xi / \partial x$ を用いて次のように計算される：
+\begin{align}
+  \pd{f}{x} &= \pd{\xi}{x}\pd{f}{\xi} = J \fp{\xi} \\
+  \pdd{f}{x} &= J \pd{}{x}\!\left(\fp{\xi}\right) + \fp{\xi}\pd{J}{x} = J^2 \fpp{\xi} + J \pd{J}{\xi} \fp{\xi}
+\end{align}
+ここで，$f^{(\cdot)}_\xi$ は計算空間上で CCD 法により求めた微分値である．
+この手法により，複雑な非一様格子係数を導出することなく，一様格子の CCD ソルバーをそのまま再利用できる利点がある．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={$\partial J/\partial\xi$ の精度：全体精度への影響}]
+式 \eqref{eq:transform_2nd_correct} の右辺第2項には $\partial J/\partial\xi$ が含まれる．
+第\ref{sec:grid}章 §\ref{sec:grid_gen} のステップ5では $J_x$ を $\mathcal{O}(h^2)$ 中心差分で評価しているため，
+そのままでは $\partial J/\partial\xi$ の精度が $\mathcal{O}(h)$ 以下となり，
+CCD の $\mathcal{O}(h^6)$ 空間精度全体が $\mathcal{O}(h)$ または $\mathcal{O}(h^2)$ に劣化する．
+
+\textbf{解決策：} 座標配列 $x(\xi)$ を「関数値」として CCD に入力し，
+$dx/d\xi$ および $d^2x/d\xi^2$ を $\mathcal{O}(h^6)$ 精度で求める：
+\[
+  J|_i = \frac{1}{(dx/d\xi)_i}, \qquad
+  \pd{J}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
+\]
+これにより $J$ および $\partial J/\partial\xi$ がともに $\mathcal{O}(h^6)$ 精度で評価され，
+物理空間の2階微分も $\mathcal{O}(h^6)$ 精度が保たれる（§\ref{box:grid_jx_accuracy}の注意ボックスも参照）．
+\end{tcolorbox}
+
+\subsection{2次元への拡張：混合偏微分 \texorpdfstring{$D_{xy}^{(11)}$}{Dxy\^{}(11)} の計算}
+\label{sec:ccd_mixed}
+
+曲率 $\kappa$ の計算式（式 \eqref{eq:curvature_2d}）には混合偏微分 $\phi_{xy} = \partial^2\phi/\partial x\partial y$ が不可欠である．
+CCD 法は1次元のブロック Thomas 法として定式化されているため，混合微分は以下の\textbf{2段階適用}で計算する．
+
+\subsubsection{基本的な考え方：逐次的な1次元 CCD の適用}
+
+\begin{tcolorbox}[defbox, title={混合微分 $\partial^2 f/\partial x\partial y$ の計算手順}]
+\textbf{Step 1：$x$ 方向 CCD}
+
+各行（$j = \text{const}$）に対して $x$ 方向のブロック Thomas 法を適用し，
+各格子点 $(i,j)$ における $x$ 方向一次微分 $g_{i,j} \equiv \partial f/\partial x \big|_{(i,j)}$ を計算する．
+この操作を全行（$j = 0, 1, \ldots, N_y-1$）に対して実行する．
+\[
+  g_{i,j} = D_x^{(1)} f \big|_{(i,j)} \quad \Leftarrow \quad x \text{ 方向 CCD（行スウィープ）}
+\]
+
+\textbf{Step 2：$g = \partial f/\partial x$ への $y$ 方向 CCD}
+
+Step 1 で得た $g_{i,j}$ を，今度は\textbf{$y$ 方向の関数値}とみなして，
+各列（$i = \text{const}$）に対して $y$ 方向のブロック Thomas 法を適用する．
+\[
+  \phi_{xy,\,i,j} = D_y^{(1)} g \big|_{(i,j)} = D_y^{(1)}\bigl(D_x^{(1)} f\bigr)\big|_{(i,j)}
+\]
+
+\textbf{結果：} 混合微分 $\partial^2 f/\partial x \partial y$ が全格子点で得られる．
+\end{tcolorbox}
+
+\subsubsection{精度の議論：$O(h^6)$ の維持}
+
+\begin{tcolorbox}[mybox, title={2段階 CCD の精度次数}]
+各方向の CCD が $O(h^6)$ 精度を持つとき，逐次適用で得られる混合微分の精度を確認する．
+
+Step 1 で得た $g = \partial f/\partial x$ の誤差は $E_g = O(h^6)$．
+Step 2 で $g$ を $y$ 方向に微分するとき，$g$ の離散値に誤差 $E_g$ が含まれる．
+$y$ 方向 CCD は「入力値 $g + E_g$」に対して適用されるため，誤差の上界は：
+\[
+  E_{\phi_{xy}} \leq \underbrace{O(h^6)}_{\text{$y$ 方向 CCD の打ち切り誤差}}
+               + \underbrace{\left\|\pd{E_g}{y}\right\|}_{\text{$E_g$ の $y$ 方向変動}}
+\]
+ここで右辺第2項の評価が精度を決定する．
+
+\textbf{注意：一般には $\partial E_g/\partial y \sim O(h^6/h) = O(h^5)$ となる可能性がある．}
+差分演算子は入力の誤差を $h^{-1}$ 倍程度増幅するため，$O(h^6)$ の誤差場を数値微分すると
+$O(h^5)$ に劣化するのが一般論である．
+
+\textbf{ただし，以下の条件が成立すれば $O(h^6)$ が維持される：}
+CCD スキームの打ち切り誤差 $E_g(x,y)$ は，真の関数 $f$ の滑らかさから $h^6 f^{(7)}$ に比例する滑らかな場であり，
+その $y$ 方向変動 $\partial E_g/\partial y = O(h^6)$（$h^6 f^{(8)}$ のオーダー）が成立する場合に限る．
+これは $f$ が十分滑らかであれば（$f \in C^8$）成立し，多くの物理問題では妥当な仮定である．
+
+\textbf{結論：}
+\begin{itemize}
+  \item $f \in C^8$ の場合：$E_{\phi_{xy}} = O(h^6)$ が維持される
+  \item $f$ に不連続性や急峻な変化がある場合：精度が $O(h^5)$ 以下に劣化する可能性がある
+\end{itemize}
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={実証的確認の必要性}]
+上記の理論的議論に加え，\textbf{格子収束テストによる実証}が不可欠である．
+$f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\pi y)$）で
+格子精緻化テストを行い，$N$ を倍にするたびに誤差が $1/64$ 倍（$\approx 6$ 次収束）になるかを確認する（第\ref{sec:verification}章参照）．
+もし5次収束（誤差が $1/32$ 倍）にとどまる場合，Step 2 の入力誤差増幅が支配的である．
+\end{tcolorbox}
+
+\subsubsection{実装上の注意：メモリと計算順序}
+
+\begin{tcolorbox}[warnbox, title={混合微分実装の落とし穴}]
+\begin{itemize}
+  \item \textbf{中間配列の保存：} Step 1 で得た $g_{i,j} = (D_x^{(1)} f)_{i,j}$ を一時配列に格納し，
+        Step 2 でこれを入力として使う．元の $f_{i,j}$ は Step 2 では直接使用しない．
+  \item \textbf{交換可能性の確認：} 滑らかな $f$ に対して Schwarz の定理から $f_{xy} = f_{yx}$（理論値として）．
+        実装の検証として $D_x^{(1)}(D_y^{(1)} f)$ と $D_y^{(1)}(D_x^{(1)} f)$ の差が $O(h^6)$ 以内であることを確認する．
+  \item \textbf{非一様格子：} 非一様格子では，Step 1 の $x$ 方向 CCD は計算空間の一様格子で行い，
+        連鎖律（$\partial f/\partial x = J_x \partial f/\partial\xi$）で物理空間の微分を得る（前節参照）．
+        同様に Step 2 も $y$ 方向の計算空間で処理する．
+  \item \textbf{境界条件：} Step 2 では「$g$ という関数の $y$ 方向微分」であるから，
+        $g$ に対して物理的に適切な境界条件（通常は壁面での Neumann 条件）を設定する．
+\end{itemize}
+\end{tcolorbox}
