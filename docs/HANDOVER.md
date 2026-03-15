@@ -1,7 +1,57 @@
 # HANDOVER
 
-Last update: 2026-03-15 (paper verification + critical bug fixes + Issues 3/4/5)
-Status: 5 paper-compliance fixes applied; 28 tests passing
+Last update: 2026-03-16 (stationary droplet benchmark implemented)
+Status: 5 paper-compliance fixes applied; stationary droplet benchmark added; 28 tests passing
+
+---
+
+# Recent Changes (2026-03-16) — Stationary Droplet Benchmark (7th Pass)
+
+## 変更の目的
+
+残存していた唯一の論文逸脱（静止液滴ベンチマーク未実装）を解消。
+
+## 追加ファイル
+
+| ファイル | 内容 |
+|---------|------|
+| `benchmarks/stationary_droplet.py` | 静止液滴ベンチマーク（§10.3 Benchmark 1）|
+| `benchmarks/__init__.py` | `StationaryDropletBenchmark` をエクスポートに追加 |
+
+## StationaryDropletBenchmark の仕様
+
+**設定（論文 §10.3）:**
+
+| パラメータ | 値 |
+|-----------|-----|
+| 領域 | [0,1]², N×N |
+| 液滴中心 | (0.5, 0.5), R=0.25 |
+| ρ_l/ρ_g | 1000 (rho_ratio=0.001) |
+| We | 1.0 |
+| Fr | 1×10¹⁰（事実上∞、重力なし）|
+| 初期速度 | u=0 |
+| 終了時刻 | t=0.1 |
+
+**測定指標:**
+
+1. **Laplace 圧力**: Δp = p_in − p_out ≈ σ/R = (1/We)/R = 4.0
+2. **寄生流れ振幅**: ||u||_∞
+3. **規格化寄生流れ**: ||u||_∞ / (σ/μ_l) = ||u||_∞ × We/Re⁻¹ = ||u||_∞ × Re/We ≤ O(10⁻⁵)（目標）
+4. **格子収束次数**: `run_convergence(N_list=[32,64,128])` で O(h^p), p ≥ 4 を確認
+
+**使用例:**
+
+```python
+from twophase.benchmarks import StationaryDropletBenchmark
+
+bench = StationaryDropletBenchmark(N=64, t_end=0.1)
+results = bench.run(verbose=True)
+bench.print_metrics(results)
+
+# 格子収束確認
+conv = bench.run_convergence([32, 64, 128])
+bench.print_convergence(conv)
+```
 
 ---
 
@@ -51,9 +101,7 @@ if not self._cn_viscous:
 
 ## 残存する既知の逸脱（論文との差異）
 
-| 問題 | 影響 | 対応 |
-|------|------|------|
-| 静止液滴ベンチマーク未実装 | 寄生流れ定量検証ができない | TODO |
+なし（全 Issues 解決済み）
 
 ## 検証
 
