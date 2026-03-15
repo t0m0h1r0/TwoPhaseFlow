@@ -1,7 +1,7 @@
 # HANDOVER
 
 Last update: 2026-03-15
-Status: Extended with visualization / IO / YAML config / benchmarks
+Status: SOLID refactoring applied — interfaces / factory / SRP decomposition
 
 ---
 
@@ -84,6 +84,69 @@ Python ≥ 3.9
 
 ## Updated
 - `src/pyproject.toml` — added optional extras: `vis`, `io`, `all`.
+
+---
+
+# Recent Changes (2026-03-15) — SOLID Refactoring
+
+## 新規モジュール
+
+### `src/twophase/interfaces/`
+- `ppe_solver.py` — `IPPESolver` 抽象基底クラス（ABC）。
+  - 統一シグネチャ `solve(rhs, rho, dt, p_init=None) → p` を定義。
+  - LSP 違反（異なる `solve()` シグネチャ）と DIP 違反（具象クラスへの依存）を解消。
+
+### `src/twophase/pressure/ppe_solver_factory.py`
+- `create_ppe_solver(config, backend, grid) → IPPESolver`。
+- `SimulationConfig.ppe_solver_type` に基づいてソルバーを生成するファクトリ関数。
+- OCP 準拠: 新ソルバー追加時に `TwoPhaseSimulation` の変更が不要になった。
+
+### `src/twophase/simulation/` (パッケージに昇格)
+- `_core.py` — `TwoPhaseSimulation` 本体（旧 `simulation.py` から移動）。
+- `boundary_condition.py` — `BoundaryConditionHandler`: 壁面 BC の適用ロジックを分離（SRP）。
+- `diagnostics.py` — `DiagnosticsReporter`: 発散・体積の診断出力ロジックを分離（SRP）。
+
+### `src/twophase/io/serializers.py`
+- `HDF5Serializer` — HDF5 形式の state dict 保存・読込。
+- `NpzSerializer` — NumPy npz 形式の state dict 保存・読込。
+- `CheckpointManager` から形式別 I/O を分離（SRP）。
+
+## 修正モジュール
+
+### `src/twophase/pressure/ppe_solver.py`
+- `IPPESolver` を実装。
+- `PPEBuilder` を内部に保持し、呼び出し側が triplet を渡す必要をなくした。
+- 統一シグネチャ `solve(rhs, rho, dt, p_init=None)` を採用。
+
+### `src/twophase/pressure/ppe_solver_pseudotime.py`
+- `IPPESolver` を実装。
+- 旧シグネチャ `solve(p_init, q_h, rho, ccd)` を廃止。
+- 統一シグネチャ `solve(rhs, rho, dt, p_init=None)` を採用。
+
+### `src/twophase/simulation.py` → `src/twophase/simulation/_core.py`
+- `isinstance(ppe_solver, PPESolverPseudoTime)` チェックを削除（LSP 修正）。
+- `_apply_wall_bc()` → `BoundaryConditionHandler.apply()` に委譲。
+- `_print_diagnostics()` → `DiagnosticsReporter.report()` に委譲。
+- `ppe_builder` フィールドを削除（PPESolver が内包）。
+- `create_ppe_solver()` ファクトリ経由でソルバーを取得。
+
+### `src/twophase/io/checkpoint.py`
+- `HDF5Serializer` / `NpzSerializer` に I/O を委譲。
+- `CheckpointManager` はコーディネータ責務に特化。
+
+### `src/twophase/tests/test_pressure.py`
+- 新統一 API `PPESolver(backend, config, grid)` に更新。
+- `solve(rhs, rho, dt, p_init=None)` シグネチャに合わせて全テストを更新。
+
+## 適用した SOLID 原則
+
+| 原則 | 対応内容 |
+|------|---------|
+| SRP | BC・診断・I/O形式別処理を独立クラスに分離 |
+| OCP | IPPESolver + factory により新ソルバー追加時に simulation.py 変更不要 |
+| LSP | 統一 `solve()` シグネチャで両ソルバーが完全に置換可能 |
+| ISP | IPPESolver は最小インターフェースのみ定義 |
+| DIP | TwoPhaseSimulation は IPPESolver 抽象に依存、factory で注入 |
 
 ---
 
