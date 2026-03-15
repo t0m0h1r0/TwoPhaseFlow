@@ -104,32 +104,23 @@ class RhieChowInterpolator:
             s[axis] = idx
             return tuple(s)
 
-        # Internal faces i = 0 … N_ax-1  (face i+1/2 between cells i and i+1)
-        for i in range(N_ax - 1):
-            u_L = u_star[sl(i)]
-            u_R = u_star[sl(i + 1)]
-            rho_L = rho[sl(i)]
-            rho_R = rho[sl(i + 1)]
-            p_L = p[sl(i)]
-            p_R = p[sl(i + 1)]
-            dp_L = dp_cell[sl(i)]
-            dp_R = dp_cell[sl(i + 1)]
+        # Internal faces 1 … N_ax-1  (face i+1/2 between cells i and i+1)
+        # Vectorised: L = cells 0..N_ax-2, R = cells 1..N_ax-1
+        u_L = u_star[sl(slice(0, N_ax - 1))]
+        u_R = u_star[sl(slice(1, N_ax))]
+        rho_L = rho[sl(slice(0, N_ax - 1))]
+        rho_R = rho[sl(slice(1, N_ax))]
+        p_L = p[sl(slice(0, N_ax - 1))]
+        p_R = p[sl(slice(1, N_ax))]
+        dp_L = dp_cell[sl(slice(0, N_ax - 1))]
+        dp_R = dp_cell[sl(slice(1, N_ax))]
 
-            # Linear interpolation of u*
-            u_bar = 0.5 * (u_L + u_R)
+        u_bar = 0.5 * (u_L + u_R)
+        dp_face = (p_R - p_L) / h
+        dp_bar = 0.5 * (dp_L + dp_R)
+        inv_rho_harm = 2.0 / (rho_L + rho_R)   # harmonic mean of 1/ρ  (§6.3)
 
-            # Direct face pressure gradient
-            dp_face = (p_R - p_L) / h
-
-            # Interpolated cell-centred gradient
-            dp_bar = 0.5 * (dp_L + dp_R)
-
-            # Harmonic mean of 1/ρ  (§6.3)
-            inv_rho_harm = 2.0 / (rho_L + rho_R)
-
-            # Rhie-Chow correction
-            u_f = u_bar - dt * inv_rho_harm * (dp_face - dp_bar)
-            flux[sl(i + 1)] = u_f
+        flux[sl(slice(1, N_ax))] = u_bar - dt * inv_rho_harm * (dp_face - dp_bar)
 
         # Boundary faces: no-penetration wall → u_f = 0 (already zeros)
         # For periodic BC this would need wrapping (not implemented here)

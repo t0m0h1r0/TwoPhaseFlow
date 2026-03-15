@@ -20,6 +20,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.pressure.ppe_solver import PPESolver
+from twophase.pressure.ppe_solver_pseudotime import PPESolverPseudoTime
 from twophase.pressure.rhie_chow import RhieChowInterpolator
 from twophase.pressure.velocity_corrector import VelocityCorrector
 
@@ -133,6 +134,103 @@ def test_divergence_free_projection(backend):
     # On N=16, expect ~O(h^2) PPE + O(h^5) CCD ≈ 1e-4.
     assert div_max < 1e-3, (
         f"Post-correction divergence ‖∇·u‖_∞ = {div_max:.3e} > 1e-3"
+    )
+
+
+# ── Test 5: PPESolverPseudoTime (CCD-GMRES) — solve Poisson ──────────────
+
+def test_pseudotime_ppe_solve_uniform_density(backend):
+    """MINRES PPE solver residual < tol after convergence (uniform density)."""
+    N = 16
+    cfg = SimulationConfig(
+        ndim=2, N=(N, N), L=(1.0, 1.0),
+        pseudo_tol=1e-10, pseudo_maxiter=500,
+        ppe_solver_type="pseudotime",
+    )
+    grid = Grid(cfg, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverPseudoTime(backend, cfg, grid)
+
+    rho = np.ones(grid.shape)
+    rhs = np.random.default_rng(7).standard_normal(grid.shape)
+    rhs -= rhs.mean()
+    rhs[0, 0] = 0.0
+
+    p = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
+    assert not np.any(np.isnan(p)), "MINRES PPE returned NaN"
+
+    # Verify FVM residual: A p ≈ rhs (use the assembled symmetric matrix)
+    import scipy.sparse as sp
+    (data, rows, cols), A_shape = solver._build_sym(rho)
+    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
+    p_h = np.asarray(backend.to_host(p)).ravel()
+    residual = A @ p_h - rhs.ravel()
+    residual[0] = 0.0
+    rel_res = np.linalg.norm(residual) / max(np.linalg.norm(rhs.ravel()[1:]), 1e-14)
+    assert rel_res < 1e-6, (
+        f"MINRES PPE relative residual {rel_res:.3e} > 1e-6"
+    )
+
+
+def test_pseudotime_ppe_solve_variable_density(backend):
+    """MINRES PPE solver should converge for variable density."""
+    N = 16
+    cfg = SimulationConfig(
+        ndim=2, N=(N, N), L=(1.0, 1.0),
+        pseudo_tol=1e-8, pseudo_maxiter=500,
+        ppe_solver_type="pseudotime",
+    )
+    grid = Grid(cfg, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverPseudoTime(backend, cfg, grid)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    rho = 0.1 + 0.9 * (0.5 + 0.5 * np.tanh(10 * (X - 0.5)))
+
+    rhs = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
+    rhs -= rhs.mean()
+    rhs[0, 0] = 0.0
+
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
+
+    assert not np.any(np.isnan(p)), "MINRES PPE returned NaN (variable density)"
+    assert np.isfinite(p).all(), "MINRES PPE returned inf (variable density)"
+
+
+def test_pseudotime_warm_start_no_convergence_warning(backend):
+    """Warm-starting from a converged p should not emit a convergence warning."""
+    N = 16
+    cfg = SimulationConfig(
+        ndim=2, N=(N, N), L=(1.0, 1.0),
+        pseudo_tol=1e-8, pseudo_maxiter=500,
+        ppe_solver_type="pseudotime",
+    )
+    grid = Grid(cfg, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverPseudoTime(backend, cfg, grid)
+
+    rho = np.ones(grid.shape)
+    rhs = np.random.default_rng(99).standard_normal(grid.shape)
+    rhs -= rhs.mean()
+    rhs[0, 0] = 0.0
+
+    # First solve (cold start)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p_warm = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
+
+    # Second solve (warm start) — same RHS, should converge immediately
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        solver.solve(p_warm, rhs, rho, ccd)
+        conv_warns = [x for x in w if issubclass(x.category, RuntimeWarning)]
+    assert len(conv_warns) == 0, (
+        "Warm-started MINRES PPE emitted convergence warning"
     )
 
 

@@ -47,6 +47,7 @@ from .ns_terms.predictor import Predictor
 from .pressure.rhie_chow import RhieChowInterpolator
 from .pressure.ppe_builder import PPEBuilder
 from .pressure.ppe_solver import PPESolver
+from .pressure.ppe_solver_pseudotime import PPESolverPseudoTime
 from .pressure.velocity_corrector import VelocityCorrector
 from .time_integration.cfl import CFLCalculator
 
@@ -102,7 +103,10 @@ class TwoPhaseSimulation:
         self.predictor = Predictor(self.backend, config)
         self.rhie_chow = RhieChowInterpolator(self.backend, self.grid)
         self.ppe_builder = PPEBuilder(self.backend, self.grid)
-        self.ppe_solver = PPESolver(self.backend, config)
+        if config.ppe_solver_type == "pseudotime":
+            self.ppe_solver = PPESolverPseudoTime(self.backend, config, self.grid)
+        else:
+            self.ppe_solver = PPESolver(self.backend, config)
         self.vel_corrector = VelocityCorrector(self.backend)
         self.cfl_calc = CFLCalculator(self.backend, self.grid, config.cfl_number)
 
@@ -202,11 +206,17 @@ class TwoPhaseSimulation:
         )
         rhs_ppe = div_rc / dt
 
-        triplet, A_shape = self.ppe_builder.build(self.rho.data)
-        p_new = self.ppe_solver.solve(
-            triplet, A_shape, rhs_ppe, self.ppe_builder.n_dof,
-            self.grid.shape
-        )
+        if isinstance(self.ppe_solver, PPESolverPseudoTime):
+            p_new = self.ppe_solver.solve(
+                self.pressure.data, rhs_ppe, self.rho.data, self.ccd
+            )
+        else:
+            triplet, A_shape = self.ppe_builder.build(self.rho.data)
+            p_new = self.ppe_solver.solve(
+                triplet, A_shape, rhs_ppe, self.ppe_builder.n_dof,
+                self.grid.shape,
+                p_init=self.pressure.data,   # warm-start from p^n
+            )
         self.pressure.data = p_new
 
         # Step 7: Corrector ────────────────────────────────────────────────

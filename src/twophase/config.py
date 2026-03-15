@@ -48,8 +48,16 @@ class SimulationConfig:
     cn_viscous: bool = True
 
     # ── Pressure solver ───────────────────────────────────────────────────
+    # Solver type: "bicgstab" (FVM, O(h²)) or "pseudotime" (CCD, O(h⁶))
+    ppe_solver_type: str = "bicgstab"
+
+    # BiCGSTAB parameters (used when ppe_solver_type = "bicgstab")
     bicgstab_tol: float = 1e-10
     bicgstab_maxiter: int = 1000
+
+    # Pseudo-time parameters (used when ppe_solver_type = "pseudotime")
+    pseudo_tol: float = 1e-8
+    pseudo_maxiter: int = 500
 
     # ── Boundary conditions ───────────────────────────────────────────────
     # 'wall'     — no-slip / no-penetration on all boundaries
@@ -72,4 +80,8 @@ class SimulationConfig:
         )
         assert self.bc_type in ("wall", "periodic"), (
             f"bc_type must be 'wall' or 'periodic', got '{self.bc_type}'"
+        )
+        assert self.ppe_solver_type in ("bicgstab", "pseudotime"), (
+            f"ppe_solver_type must be 'bicgstab' or 'pseudotime', "
+            f"got '{self.ppe_solver_type}'"
         )

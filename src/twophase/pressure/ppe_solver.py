@@ -47,6 +47,7 @@ class PPESolver:
         rhs,
         n_dof: int,
         field_shape,
+        p_init=None,
     ):
         """Solve A p = rhs.
 
@@ -57,6 +58,7 @@ class PPESolver:
         rhs        : array, shape ``field_shape`` (will be flattened)
         n_dof      : total number of pressure unknowns
         field_shape: shape of the pressure field
+        p_init     : optional warm-start array, shape ``field_shape``
 
         Returns
         -------
@@ -73,6 +75,11 @@ class PPESolver:
         # Fix RHS: p[0] = 0 → set rhs[0] = 0
         rhs_host[0] = 0.0
 
+        # Warm-start initial guess
+        x0 = None
+        if p_init is not None:
+            x0 = self.backend.to_host(p_init).ravel().astype(float)
+
         # ILU(0) preconditioner
         try:
             ilu = spla.spilu(A.tocsc(), fill_factor=1)
@@ -82,6 +89,7 @@ class PPESolver:
 
         p_flat, info = spla.bicgstab(
             A, rhs_host,
+            x0=x0,
             M=M,
             rtol=self.tol,
             maxiter=self.maxiter,
