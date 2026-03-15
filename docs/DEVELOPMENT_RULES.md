@@ -55,3 +55,46 @@ Prohibited
 2. `CheckpointManager.__init__` でそのシリアライザを選択するロジックを追加する
 
 `CheckpointManager` に形式固有のコードを直接書いてはならない（SRP）。
+
+### Config 設定の追加
+
+新しいシミュレーションパラメータを追加する場合:
+
+- グリッド設定 → `GridConfig` に追加する
+- 流体物性 → `FluidConfig` に追加する
+- 数値スキーム → `NumericsConfig` に追加する
+- ソルバー設定 → `SolverConfig` に追加する
+- `SimulationConfig` にも同フィールドを追加して後方互換を維持する
+
+### レベルセット演算子の差し替え
+
+`Reinitializer`, `CurvatureCalculator` の代替実装を追加する場合:
+
+1. `IReinitializer` / `ICurvatureCalculator` を継承する
+2. `reinitialize(psi)` / `compute(psi)` を実装する（ccd はコンストラクタ注入）
+3. `SimulationBuilder` で注入する
+
+### NS 物理項の追加
+
+新しい Navier-Stokes 右辺項（例: 熱伝導項、磁場項）を追加する場合:
+
+1. `INSTerm` を継承したクラスを作成する
+2. `compute(vel, rho, mu, kappa, psi, ccd, dt) -> List` を実装する
+3. `SimulationBuilder` または `Predictor` のコンストラクタ引数で注入する
+
+`Predictor` 自体を変更してはならない（OCP）。
+
+### シミュレーション構築のカスタマイズ
+
+コンポーネントを差し替えてシミュレーションを構築する場合:
+
+```python
+from twophase.simulation.builder import SimulationBuilder
+
+sim = (SimulationBuilder(config)
+       .with_ppe_solver(my_custom_solver)
+       .with_convection(my_custom_convection)
+       .build())
+```
+
+`TwoPhaseSimulation.__init__` を直接変更してはならない（OCP）。

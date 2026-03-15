@@ -36,25 +36,30 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 
+from ..interfaces.levelset import IReinitializer
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
 
-class Reinitializer:
+class Reinitializer(IReinitializer):
     """Reinitialize ψ by integrating the reinitialization PDE.
 
     Parameters
     ----------
     backend       : Backend
     grid          : Grid (for spacing h and domain size)
+    ccd           : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     eps           : interface thickness ε
     n_steps       : number of pseudo-time steps per call
     """
 
-    def __init__(self, backend: "Backend", grid, eps: float, n_steps: int = 4):
+    def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
+                 eps: float, n_steps: int = 4):
         self.xp = backend.xp
         self.grid = grid
+        self.ccd = ccd
         self.eps = eps
         self.n_steps = n_steps
 
@@ -69,15 +74,14 @@ class Reinitializer:
         dtau_hyp  = 0.5 * dx_min
         self.dtau = min(dtau_para, dtau_hyp)
 
-    # ── Public API ────────────────────────────────────────────────────────
+    # ── Public API (IReinitializer 実装) ─────────────────────────────────
 
-    def reinitialize(self, psi, ccd: "CCDSolver"):
-        """Reinitialize ψ in-place.
+    def reinitialize(self, psi) -> "array":
+        """Reinitialize ψ.
 
         Parameters
         ----------
-        psi : array, shape ``grid.shape``, modified in-place
-        ccd : CCDSolver for gradient computation
+        psi : array, shape ``grid.shape``
 
         Returns
         -------
@@ -87,6 +91,7 @@ class Reinitializer:
         q = xp.copy(psi)
         dtau = self.dtau
         eps = self.eps
+        ccd = self.ccd
 
         for _ in range(self.n_steps):
             rhs = self._rhs(q, ccd)

@@ -26,17 +26,18 @@ class VelocityCorrector:
     Parameters
     ----------
     backend : Backend
+    ccd     : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     """
 
-    def __init__(self, backend: "Backend"):
+    def __init__(self, backend: "Backend", ccd: "CCDSolver"):
         self.xp = backend.xp
+        self.ccd = ccd
 
     def correct(
         self,
         vel_star: List,
         p: "array",
         rho: "array",
-        ccd: "CCDSolver",
         dt: float,
     ) -> List:
         """Return u^{n+1} = u* − (Δt/ρ̃) ∇p.
@@ -46,13 +47,13 @@ class VelocityCorrector:
         vel_star : list of u* arrays
         p        : pressure field p^{n+1}
         rho      : density field ρ̃^{n+1}
-        ccd      : CCDSolver for ∇p
         dt       : time step
 
         Returns
         -------
         vel_new : corrected velocity list
         """
+        ccd = self.ccd
         ndim = len(vel_star)
         vel_new = []
         for ax in range(ndim):

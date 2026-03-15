@@ -28,6 +28,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .heaviside import invert_heaviside
+from ..interfaces.levelset import ICurvatureCalculator
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -37,32 +38,34 @@ if TYPE_CHECKING:
 _EPS_NORM = 1e-8   # regularisation floor for |∇φ|
 
 
-class CurvatureCalculator:
+class CurvatureCalculator(ICurvatureCalculator):
     """Compute interface curvature κ from the CLS field ψ.
 
     Parameters
     ----------
     backend : Backend
+    ccd     : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     eps     : interface thickness ε (used for H_ε inversion)
     """
 
-    def __init__(self, backend: "Backend", eps: float):
+    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps: float):
         self.xp = backend.xp
+        self.ccd = ccd
         self.eps = eps
 
-    def compute(self, psi, ccd: "CCDSolver"):
+    def compute(self, psi) -> "array":
         """Compute curvature field κ.
 
         Parameters
         ----------
         psi : array, shape ``grid.shape``, values ∈ (0, 1)
-        ccd : CCDSolver
 
         Returns
         -------
         kappa : array, same shape as ``psi``
         """
         xp = self.xp
+        ccd = self.ccd
         ndim = ccd.ndim
         eps = self.eps
 

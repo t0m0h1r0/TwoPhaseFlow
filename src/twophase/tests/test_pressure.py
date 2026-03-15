@@ -109,7 +109,7 @@ def test_divergence_free_projection(backend):
 
     # 新しい統一 API: PPESolver(backend, config, grid)
     solver = PPESolver(backend, cfg, grid)
-    corrector = VelocityCorrector(backend)
+    corrector = VelocityCorrector(backend, ccd)
 
     # 非発散ゼロの速度場
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
@@ -129,7 +129,7 @@ def test_divergence_free_projection(backend):
     # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
     p = solver.solve(rhs, rho, dt)
 
-    vel_new = corrector.correct([u_star, v_star], p, rho, ccd, dt)
+    vel_new = corrector.correct([u_star, v_star], p, rho, dt)
 
     # 補正後の発散を確認
     du_new_dx, _ = ccd.differentiate(vel_new[0], 0)
@@ -251,7 +251,7 @@ def test_rhie_chow_divergence(backend):
     cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
-    rc = RhieChowInterpolator(backend, grid)
+    rc = RhieChowInterpolator(backend, grid, ccd)
 
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
@@ -269,7 +269,7 @@ def test_rhie_chow_divergence(backend):
     rho = np.ones(grid.shape)
     dt = 0.01
 
-    div_rc = rc.face_velocity_divergence([u_star, v_star], p_checker, rho, ccd, dt)
+    div_rc = rc.face_velocity_divergence([u_star, v_star], p_checker, rho, dt)
     # セル中心発散
     du_dx, _ = ccd.differentiate(u_star, 0)
     dv_dy, _ = ccd.differentiate(v_star, 1)

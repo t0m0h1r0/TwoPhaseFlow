@@ -79,7 +79,7 @@ def test_reinit_eikonal_quality(backend):
     xp = backend.xp
 
     eps = 1.5 / N
-    reinit = Reinitializer(backend, grid, eps, n_steps=4)
+    reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4)
 
     # Perfect circle — reinit should preserve or sharpen the profile
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
@@ -89,7 +89,7 @@ def test_reinit_eikonal_quality(backend):
 
     M0 = float(xp.sum(psi0 * (1.0 - psi0))) * grid.cell_volume()
 
-    psi_r = reinit.reinitialize(psi0, ccd)
+    psi_r = reinit.reinitialize(psi0)
 
     M1 = float(xp.sum(psi_r * (1.0 - psi_r))) * grid.cell_volume()
 
@@ -125,14 +125,14 @@ def test_curvature_circle(backend):
     xp = backend.xp
 
     eps = 1.5 / N
-    curv_calc = CurvatureCalculator(backend, eps)
+    curv_calc = CurvatureCalculator(backend, ccd, eps)
 
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
     phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
     psi = heaviside(xp, phi, eps)
 
-    kappa = curv_calc.compute(psi, ccd)
+    kappa = curv_calc.compute(psi)
 
     # Expected curvature at the interface (|φ| < 2ε)
     near_iface = np.abs(phi) < 2 * eps

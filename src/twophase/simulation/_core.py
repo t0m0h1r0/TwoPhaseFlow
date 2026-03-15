@@ -65,6 +65,20 @@ class TwoPhaseSimulation:
     Parameters
     ----------
     config : SimulationConfig
+
+    注: 推奨される構築方法は SimulationBuilder を使用すること。
+        直接コンストラクタ呼び出し（後方互換）も引き続き動作する。
+
+    例（後方互換）::
+
+        sim = TwoPhaseSimulation(config)
+
+    例（Builder 経由）::
+
+        from twophase.simulation.builder import SimulationBuilder
+        sim = SimulationBuilder(config).build()
+        # または カスタムソルバーを注入:
+        sim = SimulationBuilder(config).with_ppe_solver(my_solver).build()
     """
 
     def __init__(self, config: SimulationConfig):
@@ -101,17 +115,17 @@ class TwoPhaseSimulation:
         self.ls_advect.set_grid(self.grid)
 
         self.ls_reinit = Reinitializer(
-            self.backend, self.grid, self.eps, config.reinit_steps
+            self.backend, self.grid, self.ccd, self.eps, config.reinit_steps
         )
 
-        self.curvature_calc = CurvatureCalculator(self.backend, self.eps)
+        self.curvature_calc = CurvatureCalculator(self.backend, self.ccd, self.eps)
         self.predictor = Predictor(self.backend, config)
-        self.rhie_chow = RhieChowInterpolator(self.backend, self.grid)
+        self.rhie_chow = RhieChowInterpolator(self.backend, self.grid, self.ccd)
 
         # ファクトリ経由で IPPESolver を取得（DIP: 具体クラスに依存しない）
         self.ppe_solver = create_ppe_solver(config, self.backend, self.grid)
 
-        self.vel_corrector = VelocityCorrector(self.backend)
+        self.vel_corrector = VelocityCorrector(self.backend, self.ccd)
         self.cfl_calc = CFLCalculator(self.backend, self.grid, config.cfl_number)
 
         # 境界条件と診断を独立クラスに委譲（SRP修正）
@@ -181,7 +195,7 @@ class TwoPhaseSimulation:
         psi_adv = self.ls_advect.advance(self.psi.data, vel_components, dt)
 
         # Step 2: 再初期化 ────────────────────────────────────────────────
-        psi_new = self.ls_reinit.reinitialize(psi_adv, self.ccd)
+        psi_new = self.ls_reinit.reinitialize(psi_adv)
         self.psi.data = psi_new
 
         # Step 3: 物性更新 ────────────────────────────────────────────────
@@ -210,7 +224,6 @@ class TwoPhaseSimulation:
             [self.vel_star[ax] for ax in range(self.config.ndim)],
             self.pressure.data,
             self.rho.data,
-            self.ccd,
             dt,
         )
         rhs_ppe = div_rc / dt
@@ -228,7 +241,6 @@ class TwoPhaseSimulation:
             [self.vel_star[ax] for ax in range(self.config.ndim)],
             self.pressure.data,
             self.rho.data,
-            self.ccd,
             dt,
         )
         for ax in range(self.config.ndim):
@@ -253,4 +265,70 @@ class TwoPhaseSimulation:
         self.mu.data  = mu
 
     def _update_curvature(self) -> None:
-        self.kappa.data = self.curvature_calc.compute(self.psi.data, self.ccd)
+        self.kappa.data = self.curvature_calc.compute(self.psi.data)
+
+    # ── Builder 用ファクトリメソッド ─────────────────────────────────────
+
+    @classmethod
+    def _from_components(
+        cls,
+        config: SimulationConfig,
+        backend,
+        grid,
+        eps: float,
+        ccd,
+        ls_advect,
+        ls_reinit,
+        curvature_calc,
+        predictor,
+        ppe_solver,
+        rhie_chow,
+        vel_corrector,
+        cfl_calc,
+        bc_handler,
+        diagnostics,
+    ) -> "TwoPhaseSimulation":
+        """SimulationBuilder が生成したコンポーネントから TwoPhaseSimulation を組み立てる。
+
+        このメソッドは SimulationBuilder のみが呼び出すことを意図している。
+        外部から直接呼び出す場合は SimulationBuilder を使用すること。
+        """
+        obj = cls.__new__(cls)
+        obj.config = config
+        obj.backend = backend
+        obj.grid = grid
+        obj.eps = eps
+        obj.ccd = ccd
+
+        # フィールドの初期化
+        obj.psi      = ScalarField(grid, backend)
+        obj.rho      = ScalarField(grid, backend)
+        obj.mu       = ScalarField(grid, backend)
+        obj.kappa    = ScalarField(grid, backend)
+        obj.pressure = ScalarField(grid, backend)
+        obj.velocity = VectorField(grid, backend)
+        obj.vel_star = VectorField(grid, backend)
+
+        # サブモジュールの設定
+        obj.ls_advect      = ls_advect
+        obj.ls_reinit      = ls_reinit
+        obj.curvature_calc = curvature_calc
+        obj.predictor      = predictor
+        obj.ppe_solver     = ppe_solver
+        obj.rhie_chow      = rhie_chow
+        obj.vel_corrector  = vel_corrector
+        obj.cfl_calc       = cfl_calc
+        obj._bc_handler    = bc_handler
+        obj._diagnostics   = diagnostics
+
+        # 状態変数
+        obj.time = 0.0
+        obj.step = 0
+
+        # 無次元流体物性
+        obj._rho_l = 1.0
+        obj._rho_g = config.rho_ratio
+        obj._mu_l  = 1.0
+        obj._mu_g  = config.mu_ratio
+
+        return obj

@@ -40,19 +40,20 @@ class RhieChowInterpolator:
     ----------
     backend : Backend
     grid    : Grid
+    ccd     : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     """
 
-    def __init__(self, backend: "Backend", grid):
+    def __init__(self, backend: "Backend", grid, ccd: "CCDSolver"):
         self.xp = backend.xp
         self.grid = grid
         self.ndim = grid.ndim
+        self.ccd = ccd
 
     def face_velocity_divergence(
         self,
         vel_star: List,
         p: "array",
         rho: "array",
-        ccd: "CCDSolver",
         dt: float,
     ) -> "array":
         """Compute ∇·u_RC (the Rhie-Chow face-velocity divergence).
@@ -62,7 +63,6 @@ class RhieChowInterpolator:
         vel_star : list of u* arrays
         p        : current pressure field (used for RC correction)
         rho      : density field
-        ccd      : CCDSolver (for cell-centred ∇p)
         dt       : time step
 
         Returns
@@ -71,6 +71,7 @@ class RhieChowInterpolator:
         """
         xp = self.xp
         ndim = self.ndim
+        ccd = self.ccd
         div_rc = xp.zeros_like(vel_star[0])
 
         for ax in range(ndim):

@@ -145,13 +145,13 @@ def test_surface_tension_localised(backend):
 
     eps = 1.5 / N
     st = SurfaceTensionTerm(backend, We=1.0)
-    curv_calc = CurvatureCalculator(backend, eps)
+    curv_calc = CurvatureCalculator(backend, ccd, eps)
 
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
     phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.2
     psi = heaviside(xp, phi, eps)
-    kappa = curv_calc.compute(psi, ccd)
+    kappa = curv_calc.compute(psi)
 
     f_st = st.compute(kappa, psi, ccd)
 
@@ -184,8 +184,8 @@ def test_predictor_no_nan(backend):
     rho = 0.1 + 0.9 * psi
     mu  = 0.01 + 0.99 * psi
 
-    curv_calc = CurvatureCalculator(backend, eps)
-    kappa = curv_calc.compute(psi, ccd)
+    curv_calc = CurvatureCalculator(backend, ccd, eps)
+    kappa = curv_calc.compute(psi)
 
     u = np.zeros((N+1, N+1))
     v = np.zeros((N+1, N+1))

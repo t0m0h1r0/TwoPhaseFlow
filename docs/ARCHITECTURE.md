@@ -12,15 +12,15 @@ src/
 │   └── rayleigh_taylor.yaml
 └── twophase/
     ├── backend.py
-    ├── config.py
+    ├── config.py            ← GridConfig / FluidConfig / NumericsConfig / SolverConfig + SimulationConfig
     ├── core/
     ├── ccd/
     ├── levelset/
     ├── ns_terms/
     ├── pressure/
     ├── time_integration/
-    ├── interfaces/        ← NEW (SOLID refactoring)
-    ├── simulation/        ← NEW (SOLID refactoring; 旧 simulation.py)
+    ├── interfaces/          ← IPPESolver / INSTerm / ILevelSetAdvection / IReinitializer / ICurvatureCalculator
+    ├── simulation/          ← TwoPhaseSimulation + SimulationBuilder + BC + Diagnostics
     ├── visualization/
     ├── io/
     ├── configs/
@@ -35,14 +35,14 @@ src/
 | Module | Purpose |
 |--------|---------|
 | `backend` | numpy/cupy スイッチ |
-| `config` | シミュレーションパラメータ (SimulationConfig dataclass) |
-| `interfaces/` | 抽象インターフェース (IPPESolver ABC) |
-| `simulation/` | メインタイムループ / BC / 診断 |
+| `config` | GridConfig / FluidConfig / NumericsConfig / SolverConfig + 集約 SimulationConfig |
+| `interfaces/` | IPPESolver / INSTerm / ILevelSetAdvection / IReinitializer / ICurvatureCalculator |
+| `simulation/` | TwoPhaseSimulation / SimulationBuilder / BC / 診断 |
 | `core/` | グリッドとフィールドコンテナ |
 | `ccd/` | コンパクト有限差分 (6次精度) |
-| `levelset/` | 界面追跡 (CLS) |
-| `ns_terms/` | Navier–Stokes 各項 |
-| `pressure/` | 圧力ポアソン方程式ソルバー群 |
+| `levelset/` | 界面追跡 (CLS) — Reinitializer/CurvatureCalculator はコンストラクタ注入 |
+| `ns_terms/` | Navier–Stokes 各項 — Predictor はオプション注入対応 |
+| `pressure/` | 圧力ポアソン方程式ソルバー群 — RhieChow/VelocityCorrector はコンストラクタ注入 |
 | `time_integration/` | CFL 計算 / TVD-RK3 |
 | `visualization/` | スカラー・ベクトル場プロット、リアルタイム表示 |
 | `io/` | チェックポイント保存・リスタート |
@@ -74,17 +74,39 @@ sim.run()
 ### Dependency flow
 
 ```
-interfaces/IPPESolver  (ABC)
+interfaces/ (全 ABC — 依存なし)
+  IPPESolver           ← 圧力ソルバー統一インターフェース
+  INSTerm              ← NS 各項共通インターフェース
+  ILevelSetAdvection   ← CLS 移流演算子
+  IReinitializer       ← 再初期化演算子
+  ICurvatureCalculator ← 曲率計算
         ▲ 実装
 pressure/
   PPESolver            ← PPEBuilder を内包
   PPESolverPseudoTime
   ppe_solver_factory   ← create_ppe_solver(config, backend, grid)
+  RhieChowInterpolator ← ccd をコンストラクタ注入
+  VelocityCorrector    ← ccd をコンストラクタ注入
+
+levelset/
+  Reinitializer        ← IReinitializer 実装; ccd をコンストラクタ注入
+  CurvatureCalculator  ← ICurvatureCalculator 実装; ccd をコンストラクタ注入
+
+ns_terms/
+  Predictor            ← convection/viscous/gravity/st をオプション注入
         ▲ 使用
 simulation/
-  TwoPhaseSimulation   ← IPPESolver に依存（具象クラスに依存しない）
+  SimulationBuilder    ← 具象クラスを知る唯一の場所 (SRP)
+  TwoPhaseSimulation   ← インターフェースのみに依存 (DIP)
   BoundaryConditionHandler
   DiagnosticsReporter
+
+config/
+  GridConfig           ← グリッド設定のみ
+  FluidConfig          ← 流体物性のみ
+  NumericsConfig       ← 数値スキーム設定
+  SolverConfig         ← PPEソルバー設定
+  SimulationConfig     ← 上記を集約（後方互換維持）
 
 io/
   HDF5Serializer       ← state dict の HDF5 I/O

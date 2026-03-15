@@ -1,7 +1,7 @@
 # HANDOVER
 
-Last update: 2026-03-15
-Status: SOLID refactoring applied — interfaces / factory / SRP decomposition
+Last update: 2026-03-15 (2nd pass)
+Status: Architecture refinement applied — Config hierarchy / new interfaces / CCD injection / SimulationBuilder
 
 ---
 
@@ -17,6 +17,77 @@ pytest src/twophase/tests
 ```
 
 Python ≥ 3.9
+
+---
+
+# Recent Changes (2026-03-15) — Architecture Refinement (2nd Pass)
+
+## 新規ファイル
+
+### `src/twophase/interfaces/ns_terms.py`
+- `INSTerm` ABC — Navier-Stokes 各項の共通インターフェース。
+- `compute(vel, rho, mu, kappa, psi, ccd, dt) -> List` を定義。
+- OCP 準拠: 新物理項（熱伝導、磁場等）を Predictor 変更なしに追加可能。
+
+### `src/twophase/interfaces/levelset.py`
+- `ILevelSetAdvection` — CLS 移流演算子の ABC。
+- `IReinitializer` — 再初期化演算子の ABC（`reinitialize(psi)` シグネチャ）。
+- `ICurvatureCalculator` — 曲率計算の ABC（`compute(psi)` シグネチャ）。
+
+### `src/twophase/simulation/builder.py`
+- `SimulationBuilder` — TwoPhaseSimulation の構築を担当するビルダー。
+- `with_ppe_solver()` / `with_convection()` 等で個別コンポーネントを差し替え可能（OCP）。
+- God Constructor 問題を解消（SRP）。
+
+## 修正ファイル
+
+### `src/twophase/config.py`
+- `GridConfig`, `FluidConfig`, `NumericsConfig`, `SolverConfig` の 4 サブ設定クラスを追加（SRP）。
+- `SimulationConfig.from_sub_configs()` で組み立て可能。
+- `SimulationConfig.to_*_config()` で各サブ設定に変換可能。
+- 全フィールドを維持し後方互換を保つ。
+
+### `src/twophase/levelset/reinitialize.py`
+- `IReinitializer` を実装。
+- コンストラクタに `ccd` を追加（`Reinitializer(backend, grid, ccd, eps, n_steps)`）。
+- `reinitialize(psi, ccd)` → `reinitialize(psi)` — シグネチャ簡潔化。
+
+### `src/twophase/levelset/curvature.py`
+- `ICurvatureCalculator` を実装。
+- コンストラクタに `ccd` を追加（`CurvatureCalculator(backend, ccd, eps)`）。
+- `compute(psi, ccd)` → `compute(psi)` — シグネチャ簡潔化。
+
+### `src/twophase/pressure/rhie_chow.py`
+- コンストラクタに `ccd` を追加（`RhieChowInterpolator(backend, grid, ccd)`）。
+- `face_velocity_divergence(..., ccd, dt)` → `face_velocity_divergence(..., dt)` — シグネチャ簡潔化。
+
+### `src/twophase/pressure/velocity_corrector.py`
+- コンストラクタに `ccd` を追加（`VelocityCorrector(backend, ccd)`）。
+- `correct(..., ccd, dt)` → `correct(..., dt)` — シグネチャ簡潔化。
+
+### `src/twophase/ns_terms/predictor.py`
+- DIP 改善: `convection`, `viscous`, `gravity`, `surface_tension` をコンストラクタで注入可能に。
+- 省略時はデフォルト生成（後方互換維持）。
+
+### `src/twophase/simulation/_core.py`
+- サブモジュール構築をコンストラクタ注入パターンに更新。
+- `_from_components()` クラスメソッドを追加（SimulationBuilder 用）。
+
+### `src/twophase/interfaces/__init__.py`
+- `INSTerm`, `ILevelSetAdvection`, `IReinitializer`, `ICurvatureCalculator` を追加エクスポート。
+
+### テストファイル
+- `test_levelset.py`, `test_ns_terms.py`, `test_pressure.py` — 新 API に更新。
+
+## 適用したアーキテクチャ改善
+
+| 問題 | 解決策 | 原則 |
+|------|--------|------|
+| SimulationConfig が5関心事を混在 | 4サブ設定クラスへ分割 | SRP |
+| God Constructor (13+ 直接生成) | SimulationBuilder に構築を委譲 | SRP, DIP |
+| ccd が毎呼び出しで引き渡される | コンストラクタ注入に統一 | ISP |
+| Predictor が具象クラスを直接生成 | オプション注入パターンに変更 | DIP, OCP |
+| レベルセット演算子に抽象なし | ILevelSetAdvection 等 ABC を追加 | DIP, OCP |
 
 ---
 

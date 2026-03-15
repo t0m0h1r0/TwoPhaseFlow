@@ -21,11 +21,17 @@ When ``cn_viscous=True`` the viscous term uses the Crank-Nicolson scheme
 (§9), which performs one fixed-point iteration:
   1. Compute explicit u* with V(uⁿ).
   2. Evaluate V(u*) and recompute with the average ½[V(uⁿ)+V(u*)].
+
+DIP 改善（2026-03-15）:
+    - ConvectionTerm, ViscousTerm, GravityTerm, SurfaceTensionTerm を
+      コンストラクタで注入可能にした（デフォルト値で後方互換を維持）。
+    - Predictor 自体は具象クラスを知らなくてよくなった。
+    - SimulationBuilder がデフォルト依存関係を組み立てる責務を担う。
 """
 
 from __future__ import annotations
 import numpy as np
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 from .convection import ConvectionTerm
 from .viscous import ViscousTerm
@@ -43,18 +49,34 @@ class Predictor:
 
     Parameters
     ----------
-    backend : Backend
-    config  : SimulationConfig
+    backend        : Backend
+    config         : SimulationConfig
+    convection     : ConvectionTerm インスタンス（省略時はデフォルト生成）
+    viscous        : ViscousTerm インスタンス（省略時はデフォルト生成）
+    gravity        : GravityTerm インスタンス（省略時はデフォルト生成）
+    surface_tension: SurfaceTensionTerm インスタンス（省略時はデフォルト生成）
+
+    注: 各項を外部から注入することで、テスト・差し替えが容易になる（DIP）。
+        引数を省略した場合は config の値から自動生成し、後方互換を保つ。
     """
 
-    def __init__(self, backend: "Backend", config: "SimulationConfig"):
+    def __init__(
+        self,
+        backend: "Backend",
+        config: "SimulationConfig",
+        convection: Optional[ConvectionTerm] = None,
+        viscous: Optional[ViscousTerm] = None,
+        gravity: Optional[GravityTerm] = None,
+        surface_tension: Optional[SurfaceTensionTerm] = None,
+    ):
         self.xp = backend.xp
         self.config = config
 
-        self.convection    = ConvectionTerm(backend)
-        self.viscous       = ViscousTerm(backend, config.Re, config.cn_viscous)
-        self.gravity       = GravityTerm(backend, config.Fr, config.ndim)
-        self.surface_tens  = SurfaceTensionTerm(backend, config.We)
+        # 注入された依存関係を使用。省略時はデフォルト生成（後方互換）
+        self.convection   = convection    or ConvectionTerm(backend)
+        self.viscous      = viscous       or ViscousTerm(backend, config.Re, config.cn_viscous)
+        self.gravity      = gravity       or GravityTerm(backend, config.Fr, config.ndim)
+        self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.We)
 
     def compute(
         self,
