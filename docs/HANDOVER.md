@@ -493,16 +493,6 @@ Do not reference it.
 
 ---
 
-# TODO
-
-- GPU optimization (CuPy kernels)
-- Non-uniform grid tests
-- 3D verification
-- Periodic boundary support
-- VTK output writer
-
----
-
 # Possible Next Tasks
 
 1. Run benchmarks at higher resolution (N=128) and compare to reference values
