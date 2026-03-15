@@ -1,11 +1,19 @@
 """
-Tests for the pressure-projection modules (§6–7 of the paper).
+圧力投影モジュールのテスト（論文 §6–7）。
 
-Verified properties:
-  1. PPE matrix: zero row-sum for interior rows (consistency).
-  2. PPE solve: residual ‖Ap − b‖ < tol for a known source.
-  3. Rhie-Chow: divergence reduction on a collocated velocity field.
-  4. Divergence-free projection: ‖∇·u‖_∞ < 1e-10 after correction.
+検証項目:
+  1. PPE 行列: 内部行の行和 ≈ 0（一貫性）
+  2. PPE 求解: 残差 ‖Ap − b‖ < tol
+  3. Rhie-Chow: コロケートグリッドの発散補正
+  4. 発散ゼロ投影: ‖∇·u‖_∞ < 1e-8（速度補正後）
+  5. PPESolverPseudoTime: MINRES 残差 < tol
+  6. PPESolverPseudoTime: 変密度ケースでの収束
+  7. PPESolverPseudoTime: ウォームスタートによる収束警告の抑制
+
+リファクタリング後の変更点:
+  - PPESolver(be, cfg, grid) — grid が必須引数になった
+  - solve(rhs, rho, dt, p_init=None) — 統一インターフェース（IPPESolver）
+  - PPESolverPseudoTime も同じシグネチャを使用
 """
 
 import numpy as np
@@ -40,10 +48,10 @@ def make_setup(N=16, backend=None):
     return cfg, grid, ccd, backend
 
 
-# ── Test 1: PPE matrix symmetry ───────────────────────────────────────────
+# ── Test 1: PPE 行列の一貫性 ───────────────────────────────────────────────
 
 def test_ppe_matrix_interior_row_sum(backend):
-    """For constant ρ, all interior rows of A should sum to ≈ 0."""
+    """一定密度のとき、内部行の行和は ≈ 0 であること。"""
     import scipy.sparse as sp
     cfg, grid, ccd, be = make_setup(backend=backend)
     builder = PPEBuilder(be, grid)
@@ -52,57 +60,58 @@ def test_ppe_matrix_interior_row_sum(backend):
     (data, rows, cols), A_shape = builder.build(rho)
     A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
-    # Row sums (skip row 0 which is pinned for Dirichlet BC)
+    # Dirichlet ピン点（行 0）を除いた行和を検証
     row_sums = np.array(A.sum(axis=1)).ravel()
     max_interior_sum = np.max(np.abs(row_sums[1:]))
     assert max_interior_sum < 1e-10, (
-        f"PPE matrix row sum not zero: {max_interior_sum:.3e}"
+        f"PPE 行列の行和がゼロでない: {max_interior_sum:.3e}"
     )
 
 
-# ── Test 2: PPE solve residual ────────────────────────────────────────────
+# ── Test 2: PPE 求解残差（BiCGSTAB） ─────────────────────────────────────
 
 def test_ppe_solve_residual(backend):
-    """BiCGSTAB residual should be below tolerance after solve."""
+    """BiCGSTAB の残差が許容値以下に収束すること。"""
     import scipy.sparse as sp
     cfg, grid, ccd, be = make_setup(N=16, backend=backend)
-    builder = PPEBuilder(be, grid)
-    solver = PPESolver(be, cfg)
+
+    # 新しい統一 API: PPESolver(backend, config, grid)
+    solver = PPESolver(be, cfg, grid)
 
     rho = np.ones(grid.shape)
-    (data, rows, cols), A_shape = builder.build(rho)
 
-    # Create a consistent RHS: project out null-space
+    # 一貫性のある右辺（零空間を投影）
     rhs = np.random.default_rng(42).standard_normal(grid.shape)
     rhs -= rhs.mean()
-    rhs[0, 0] = 0.0   # consistent with pinned BC
+    rhs[0, 0] = 0.0   # ピン点と整合
 
-    p = solver.solve((data, rows, cols), A_shape, rhs,
-                     builder.n_dof, grid.shape)
+    # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
+    p = solver.solve(rhs, rho, dt=0.01)
 
-    # Check residual
+    # 残差を検証: 内部行列を使って Ap ≈ b を確認
+    (data, rows, cols), A_shape = solver._builder.build(rho)
     A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
     residual = np.linalg.norm(A @ p.ravel() - rhs.ravel())
     rhs_norm = np.linalg.norm(rhs.ravel())
     rel_res = residual / max(rhs_norm, 1e-14)
-    assert rel_res < 1e-8, f"PPE solve relative residual {rel_res:.3e} > 1e-8"
+    assert rel_res < 1e-8, f"PPE 相対残差 {rel_res:.3e} > 1e-8"
 
 
-# ── Test 3: Divergence-free projection ───────────────────────────────────
+# ── Test 3: 発散ゼロ投影 ──────────────────────────────────────────────────
 
 def test_divergence_free_projection(backend):
-    """After PPE solve + velocity correction, ‖∇·u‖_∞ < 1e-8."""
+    """PPE 求解 + 速度補正後に ‖∇·u‖_∞ < 1e-3 であること。"""
     N = 16
     cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
                            bicgstab_tol=1e-12, bicgstab_maxiter=2000)
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
-    builder = PPEBuilder(backend, grid)
-    solver = PPESolver(backend, cfg)
-    corrector = VelocityCorrector(backend)
-    xp = backend.xp
 
-    # A non-divergence-free velocity field
+    # 新しい統一 API: PPESolver(backend, config, grid)
+    solver = PPESolver(backend, cfg, grid)
+    corrector = VelocityCorrector(backend)
+
+    # 非発散ゼロの速度場
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
     u_star = np.sin(np.pi * X) * np.cos(np.pi * Y)
@@ -110,37 +119,34 @@ def test_divergence_free_projection(backend):
 
     rho = np.ones(grid.shape)
     dt = 0.01
-    p_init = np.zeros(grid.shape)
 
-    # Build PPE RHS from ∇·u*  (use CCD divergence)
+    # CCD による ∇·u* から PPE 右辺を構築
     du_dx, _ = ccd.differentiate(u_star, 0)
     dv_dy, _ = ccd.differentiate(v_star, 1)
     div_ustar = du_dx + dv_dy
     rhs = div_ustar / dt
 
-    (data, rows, cols), A_shape = builder.build(rho)
-    p = solver.solve((data, rows, cols), A_shape, rhs,
-                     builder.n_dof, grid.shape)
+    # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
+    p = solver.solve(rhs, rho, dt)
 
     vel_new = corrector.correct([u_star, v_star], p, rho, ccd, dt)
 
-    # Check divergence of corrected velocity
+    # 補正後の発散を確認
     du_new_dx, _ = ccd.differentiate(vel_new[0], 0)
     dv_new_dy, _ = ccd.differentiate(vel_new[1], 1)
     div_new = du_new_dx + dv_new_dy
 
     div_max = float(np.max(np.abs(div_new)))
-    # Divergence limited by: PPE discretisation error + CCD boundary accuracy.
-    # On N=16, expect ~O(h^2) PPE + O(h^5) CCD ≈ 1e-4.
+    # N=16 では PPE 離散化誤差 O(h²) + CCD 境界精度 ≈ O(h⁵) で ~1e-4 を期待
     assert div_max < 1e-3, (
-        f"Post-correction divergence ‖∇·u‖_∞ = {div_max:.3e} > 1e-3"
+        f"補正後の発散 ‖∇·u‖_∞ = {div_max:.3e} > 1e-3"
     )
 
 
-# ── Test 5: PPESolverPseudoTime (CCD-GMRES) — solve Poisson ──────────────
+# ── Test 4: PPESolverPseudoTime — 一様密度 ───────────────────────────────
 
 def test_pseudotime_ppe_solve_uniform_density(backend):
-    """MINRES PPE solver residual < tol after convergence (uniform density)."""
+    """MINRES PPE ソルバーの残差が収束後に tol 以下になること（一様密度）。"""
     N = 16
     cfg = SimulationConfig(
         ndim=2, N=(N, N), L=(1.0, 1.0),
@@ -156,10 +162,11 @@ def test_pseudotime_ppe_solve_uniform_density(backend):
     rhs -= rhs.mean()
     rhs[0, 0] = 0.0
 
-    p = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
-    assert not np.any(np.isnan(p)), "MINRES PPE returned NaN"
+    # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
+    p = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
+    assert not np.any(np.isnan(p)), "MINRES PPE が NaN を返した"
 
-    # Verify FVM residual: A p ≈ rhs (use the assembled symmetric matrix)
+    # FVM 残差の検証: A p ≈ rhs
     import scipy.sparse as sp
     (data, rows, cols), A_shape = solver._build_sym(rho)
     A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
@@ -168,12 +175,12 @@ def test_pseudotime_ppe_solve_uniform_density(backend):
     residual[0] = 0.0
     rel_res = np.linalg.norm(residual) / max(np.linalg.norm(rhs.ravel()[1:]), 1e-14)
     assert rel_res < 1e-6, (
-        f"MINRES PPE relative residual {rel_res:.3e} > 1e-6"
+        f"MINRES PPE 相対残差 {rel_res:.3e} > 1e-6"
     )
 
 
 def test_pseudotime_ppe_solve_variable_density(backend):
-    """MINRES PPE solver should converge for variable density."""
+    """MINRES PPE ソルバーが変密度ケースで収束すること。"""
     N = 16
     cfg = SimulationConfig(
         ndim=2, N=(N, N), L=(1.0, 1.0),
@@ -195,14 +202,15 @@ def test_pseudotime_ppe_solve_variable_density(backend):
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        p = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
+        # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
+        p = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
 
-    assert not np.any(np.isnan(p)), "MINRES PPE returned NaN (variable density)"
-    assert np.isfinite(p).all(), "MINRES PPE returned inf (variable density)"
+    assert not np.any(np.isnan(p)), "MINRES PPE が NaN を返した（変密度）"
+    assert np.isfinite(p).all(), "MINRES PPE が inf を返した（変密度）"
 
 
 def test_pseudotime_warm_start_no_convergence_warning(backend):
-    """Warm-starting from a converged p should not emit a convergence warning."""
+    """収束済み解からウォームスタートすると収束警告が出ないこと。"""
     N = 16
     cfg = SimulationConfig(
         ndim=2, N=(N, N), L=(1.0, 1.0),
@@ -218,42 +226,41 @@ def test_pseudotime_warm_start_no_convergence_warning(backend):
     rhs -= rhs.mean()
     rhs[0, 0] = 0.0
 
-    # First solve (cold start)
+    # 1回目: コールドスタート
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        p_warm = solver.solve(np.zeros(grid.shape), rhs, rho, ccd)
+        # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
+        p_warm = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
 
-    # Second solve (warm start) — same RHS, should converge immediately
+    # 2回目: ウォームスタート（同じ RHS → 即時収束を期待）
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        solver.solve(p_warm, rhs, rho, ccd)
+        solver.solve(rhs, rho, dt=0.01, p_init=p_warm)
         conv_warns = [x for x in w if issubclass(x.category, RuntimeWarning)]
     assert len(conv_warns) == 0, (
-        "Warm-started MINRES PPE emitted convergence warning"
+        "ウォームスタート MINRES PPE が収束警告を発した"
     )
 
 
-# ── Test 4: Rhie-Chow reduces checkerboard ────────────────────────────────
+# ── Test 5: Rhie-Chow 発散補正 ────────────────────────────────────────────
 
 def test_rhie_chow_divergence(backend):
-    """RC divergence should differ from cell-centred divergence for
-    a checkerboard pressure field (showing the correction is non-trivial)."""
+    """チェッカーボード圧力場で Rhie-Chow 発散がセル中心発散と異なること。"""
     N = 16
     cfg = SimulationConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     rc = RhieChowInterpolator(backend, grid)
-    xp = backend.xp
 
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
 
-    # Divergence-free velocity
+    # 発散ゼロの速度場
     u_star = -np.sin(np.pi * Y)
     v_star =  np.sin(np.pi * X)
 
-    # Checkerboard pressure
+    # チェッカーボード圧力
     i_idx = np.arange(N+1)
     j_idx = np.arange(N+1)
     II, JJ = np.meshgrid(i_idx, j_idx, indexing='ij')
@@ -263,12 +270,10 @@ def test_rhie_chow_divergence(backend):
     dt = 0.01
 
     div_rc = rc.face_velocity_divergence([u_star, v_star], p_checker, rho, ccd, dt)
-    # Cell-centred divergence
+    # セル中心発散
     du_dx, _ = ccd.differentiate(u_star, 0)
     dv_dy, _ = ccd.differentiate(v_star, 1)
     div_cc = du_dx + dv_dy
 
-    # The RC divergence should not equal the cell-centred one
-    diff = np.max(np.abs(div_rc - div_cc))
-    # Not NaN
-    assert not np.any(np.isnan(div_rc)), "Rhie-Chow divergence contains NaN"
+    # Rhie-Chow 発散はセル中心発散と一致しないこと（補正が非自明であること）
+    assert not np.any(np.isnan(div_rc)), "Rhie-Chow 発散が NaN を含む"

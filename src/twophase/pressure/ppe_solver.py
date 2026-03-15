@@ -1,86 +1,100 @@
 """
-PPE linear solver (BiCGSTAB).
+PPE 線形ソルバー（BiCGSTAB）。
 
-Implements §7.4 of the paper.
-
-Solves the sparse linear system
+論文の §7.4 を実装。
 
     A p = rhs
 
-assembled by :class:`~twophase.pressure.ppe_builder.PPEBuilder`.
+を BiCGSTAB で解く。:class:`~twophase.pressure.ppe_builder.PPEBuilder` で
+組み立てたスパース行列を内部で生成する。
 
-The solver uses scipy's BiCGSTAB implementation with an ILU(0)
-preconditioner from ``scipy.sparse.linalg``.  On GPU (CuPy), it falls
-back to the CuPy equivalent.
-
-Convergence is declared when ``‖r‖₂ / ‖b‖₂ < tol``.
+リファクタリング時の変更:
+    - IPPESolver を実装し、統一シグネチャ solve(rhs, rho, dt, p_init=None) を採用。
+    - PPEBuilder を内部に保持し、呼び出し側が triplet を直接渡す必要をなくした。
+    - これにより TwoPhaseSimulation の isinstance チェックが不要になった（LSP修正）。
 """
 
 from __future__ import annotations
-import numpy as np
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..config import SimulationConfig
+    from ..core.grid import Grid
+
+from ..interfaces.ppe_solver import IPPESolver
+from .ppe_builder import PPEBuilder
 
 
-class PPESolver:
-    """BiCGSTAB solver for the PPE sparse system.
+class PPESolver(IPPESolver):
+    """BiCGSTAB による PPE スパース系ソルバー。
+
+    PPEBuilder を内部に保持し、各ステップで行列を組み立てて BiCGSTAB で解く。
 
     Parameters
     ----------
     backend : Backend
-    config  : SimulationConfig (provides tol and maxiter)
+    config  : SimulationConfig（tol, maxiter を参照）
+    grid    : Grid（PPEBuilder の構築に使用）
     """
 
-    def __init__(self, backend: "Backend", config: "SimulationConfig"):
+    def __init__(
+        self,
+        backend: "Backend",
+        config: "SimulationConfig",
+        grid: "Grid",
+    ):
         self.backend = backend
         self.xp = backend.xp
         self.tol = config.bicgstab_tol
         self.maxiter = config.bicgstab_maxiter
+        # PPEBuilder を内包して外部から triplet を渡す必要をなくす（SRP修正）
+        self._builder = PPEBuilder(backend, grid)
+
+    # ── IPPESolver 実装 ──────────────────────────────────────────────────
 
     def solve(
         self,
-        triplet: Tuple,
-        A_shape: Tuple[int, int],
         rhs,
-        n_dof: int,
-        field_shape,
+        rho,
+        dt: float,
         p_init=None,
     ):
-        """Solve A p = rhs.
+        """IPPESolver インターフェースの実装。
 
         Parameters
         ----------
-        triplet    : (data, row, col) COO arrays on host
-        A_shape    : (n, n)
-        rhs        : array, shape ``field_shape`` (will be flattened)
-        n_dof      : total number of pressure unknowns
-        field_shape: shape of the pressure field
-        p_init     : optional warm-start array, shape ``field_shape``
+        rhs    : array, shape ``grid.shape`` — 右辺 (1/Δt) ∇·u*_RC
+        rho    : array, shape ``grid.shape`` — 密度フィールド
+        dt     : float — タイムステップ幅（本ソルバーでは未使用）
+        p_init : optional array — ウォームスタート初期値 p^n
 
         Returns
         -------
-        p : array, shape ``field_shape``
+        p : array, shape ``grid.shape``
         """
         import scipy.sparse as sp
         import scipy.sparse.linalg as spla
         import numpy as np_host
 
+        # 行列を組み立て
+        triplet, A_shape = self._builder.build(rho)
+        n_dof = self._builder.n_dof
+        field_shape = self._builder.shape_field
+
         data, rows, cols = triplet
         A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
         rhs_host = self.backend.to_host(rhs).ravel().astype(float)
-        # Fix RHS: p[0] = 0 → set rhs[0] = 0
+        # Dirichlet 固定点 (ノード 0) の右辺を 0 に設定
         rhs_host[0] = 0.0
 
-        # Warm-start initial guess
+        # ウォームスタート初期値の設定
         x0 = None
         if p_init is not None:
             x0 = self.backend.to_host(p_init).ravel().astype(float)
 
-        # ILU(0) preconditioner
+        # ILU(0) 前処理
         try:
             ilu = spla.spilu(A.tocsc(), fill_factor=1)
             M = spla.LinearOperator(A_shape, ilu.solve)
@@ -98,8 +112,8 @@ class PPESolver:
         if info != 0:
             import warnings
             warnings.warn(
-                f"PPE BiCGSTAB did not converge (info={info}). "
-                "Consider increasing bicgstab_maxiter or loosening tol.",
+                f"PPE BiCGSTAB が収束しませんでした (info={info})。"
+                " bicgstab_maxiter を増やすか tol を緩めてください。",
                 RuntimeWarning,
                 stacklevel=2,
             )

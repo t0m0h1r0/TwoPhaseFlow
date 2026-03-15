@@ -4,6 +4,10 @@
 HDF5 形式（h5py が利用可能な場合）または NumPy npz 形式で
 シミュレーション状態を保存・復元する。
 
+SOLID リファクタリング後の変更点:
+    - HDF5/NPZ の具体的な I/O 処理を HDF5Serializer / NpzSerializer に委譲（SRP修正）。
+    - CheckpointManager はコーディネータとして、ファイル管理と状態の収集・復元に専念する。
+
 保存データ:
     - タイムステップ番号・物理時刻
     - 速度場（全成分）
@@ -35,6 +39,8 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from ..simulation import TwoPhaseSimulation
 
+from .serializers import HDF5Serializer, NpzSerializer
+
 
 def _h5py_available() -> bool:
     """h5py がインストールされているか確認する。"""
@@ -46,7 +52,9 @@ def _h5py_available() -> bool:
 
 
 class CheckpointManager:
-    """チェックポイントの保存・ロードを管理するクラス。
+    """チェックポイントの保存・ロードを管理するコーディネータクラス。
+
+    形式別 I/O の詳細は HDF5Serializer または NpzSerializer に委譲する（SRP修正）。
 
     Parameters
     ----------
@@ -71,6 +79,8 @@ class CheckpointManager:
                 )
 
         self._ext = ".h5" if self.use_hdf5 else ".npz"
+        # シリアライザを注入（DIP: 具体的な形式に直接依存しない）
+        self._serializer = HDF5Serializer() if self.use_hdf5 else NpzSerializer()
 
     # ── 保存 ─────────────────────────────────────────────────────────────
 
@@ -92,11 +102,7 @@ class CheckpointManager:
         path = os.path.join(self.directory, fname)
 
         state = self._collect_state(sim)
-
-        if self.use_hdf5:
-            self._save_hdf5(path, state)
-        else:
-            self._save_npz(path, state)
+        self._serializer.save(path, state)
 
         return path
 
@@ -105,8 +111,7 @@ class CheckpointManager:
 
         Parameters
         ----------
-        interval : 何ステップごとに保存するか（run の output_interval と
-                   組み合わせて使う）
+        interval : 何ステップごとに保存するか（run の output_interval と組み合わせて使う）
 
         Returns
         -------
@@ -132,10 +137,11 @@ class CheckpointManager:
         sim  : TwoPhaseSimulation — 復元先のシミュレーション
         path : チェックポイントファイルのパス
         """
+        # ファイル拡張子で読み込む形式を自動判定
         if path.endswith(".h5"):
-            state = self._load_hdf5(path)
+            state = HDF5Serializer.load(path)
         else:
-            state = self._load_npz(path)
+            state = NpzSerializer.load(path)
 
         self._restore_state(sim, state)
 
@@ -165,30 +171,23 @@ class CheckpointManager:
         be = sim.backend
 
         state: dict = {
-            # タイムステップ情報
             "step": sim.step,
             "time": sim.time,
-
-            # グリッド情報
-            "ndim":  sim.config.ndim,
-            "N":     list(sim.config.N),
-            "L":     list(sim.config.L),
-
-            # フィールドデータ（numpy 配列）
+            "ndim": sim.config.ndim,
+            "N":    list(sim.config.N),
+            "L":    list(sim.config.L),
             "psi":      np.asarray(be.to_host(sim.psi.data)),
             "pressure": np.asarray(be.to_host(sim.pressure.data)),
         }
 
-        # 速度成分
         for ax in range(sim.config.ndim):
             state[f"velocity_{ax}"] = np.asarray(be.to_host(sim.velocity[ax]))
 
-        # SimulationConfig をシリアライズ
         try:
             cfg_dict = dataclasses.asdict(sim.config)
             state["config_json"] = json.dumps(cfg_dict)
         except Exception:
-            pass  # config のシリアライズに失敗しても保存は継続
+            pass  # config のシリアライズに失敗しても保存を継続
 
         return state
 
@@ -209,99 +208,3 @@ class CheckpointManager:
         # 復元後に材料特性と曲率を再計算
         sim._update_properties()
         sim._update_curvature()
-
-    # ── 内部: HDF5 I/O ──────────────────────────────────────────────────
-
-    @staticmethod
-    def _save_hdf5(path: str, state: dict) -> None:
-        """HDF5 形式でチェックポイントを保存する。"""
-        import h5py
-        with h5py.File(path, "w") as f:
-            # スカラー値とメタデータ
-            f.attrs["step"] = state["step"]
-            f.attrs["time"] = state["time"]
-            f.attrs["ndim"] = state["ndim"]
-            if "config_json" in state:
-                f.attrs["config_json"] = state["config_json"]
-
-            f.create_dataset("N", data=np.array(state["N"]))
-            f.create_dataset("L", data=np.array(state["L"]))
-
-            # フィールドデータ
-            for key in ("psi", "pressure"):
-                f.create_dataset(key, data=state[key],
-                                 compression="gzip", compression_opts=4)
-
-            ndim = state["ndim"]
-            vel_grp = f.create_group("velocity")
-            for ax in range(ndim):
-                vel_grp.create_dataset(
-                    str(ax), data=state[f"velocity_{ax}"],
-                    compression="gzip", compression_opts=4,
-                )
-
-    @staticmethod
-    def _load_hdf5(path: str) -> dict:
-        """HDF5 ファイルからチェックポイントを読み込む。"""
-        import h5py
-        state: dict = {}
-        with h5py.File(path, "r") as f:
-            state["step"] = int(f.attrs["step"])
-            state["time"] = float(f.attrs["time"])
-            state["ndim"] = int(f.attrs["ndim"])
-            if "config_json" in f.attrs:
-                state["config_json"] = str(f.attrs["config_json"])
-
-            state["N"] = list(f["N"][:])
-            state["L"] = list(f["L"][:])
-            state["psi"]      = f["psi"][:]
-            state["pressure"] = f["pressure"][:]
-
-            for ax in range(state["ndim"]):
-                state[f"velocity_{ax}"] = f["velocity"][str(ax)][:]
-
-        return state
-
-    # ── 内部: NumPy npz I/O ─────────────────────────────────────────────
-
-    @staticmethod
-    def _save_npz(path: str, state: dict) -> None:
-        """NumPy npz 形式でチェックポイントを保存する。"""
-        # ndarray でないスカラーは numpy スカラーに変換
-        arrays = {}
-        for key, val in state.items():
-            if isinstance(val, np.ndarray):
-                arrays[key] = val
-            elif isinstance(val, (int, float)):
-                arrays[key] = np.array(val)
-            elif isinstance(val, list):
-                arrays[key] = np.array(val)
-            elif isinstance(val, str):
-                arrays[key] = np.array(val)
-        np.savez_compressed(path, **arrays)
-
-    @staticmethod
-    def _load_npz(path: str) -> dict:
-        """NumPy npz ファイルからチェックポイントを読み込む。"""
-        raw = np.load(path, allow_pickle=False)
-        state: dict = {}
-        for key in raw.files:
-            arr = raw[key]
-            if arr.ndim == 0:
-                # スカラーの場合は Python ネイティブ型に変換
-                val = arr.item()
-                if key in ("step", "ndim"):
-                    val = int(val)
-                elif key == "time":
-                    val = float(val)
-                state[key] = val
-            else:
-                state[key] = arr
-
-        # リスト型に戻す
-        if "N" in state:
-            state["N"] = list(state["N"].astype(int))
-        if "L" in state:
-            state["L"] = list(state["L"].astype(float))
-
-        return state

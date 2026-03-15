@@ -1,48 +1,41 @@
 """
-MINRES PPE solver with warm-start (pseudo-time Krylov variant).
+MINRES PPE ソルバー（ウォームスタート付き疑似時間 Krylov 法）。
 
-Implements a matrix-free-compatible pseudo-time approach for the PPE:
+∇·(1/ρ ∇p) = q_h, q_h = (1/Δt) ∇·u*_RC
 
-    ∇·(1/ρ ∇p) = q_h,    q_h = (1/Δt) ∇·u*_RC
+を PPESolver と同じ FVM スパース行列で解くが、以下の点が異なる:
 
-using scipy MINRES on the same FVM sparse system as PPESolver, but with:
+  * 対称 Dirichlet ピン（行 0 と列 0 を同時にゼロ化）により
+    行列の対称性を保ち、BiCGSTAB の代わりに MINRES を使用。
+  * p^n からウォームスタートし、解がゆっくり変化する場合の
+    反復回数を大幅に削減。
 
-  * Symmetric Dirichlet pinning (row AND column 0 zeroed), making the
-    matrix truly symmetric so that MINRES (not BiCGSTAB) can be used.
-  * Warm-start from p^n, drastically reducing iteration count when
-    the solution changes slowly between time steps.
-
-Why MINRES instead of BiCGSTAB?
-  MINRES is optimal for symmetric indefinite systems (a superset of the
-  symmetric positive definite case handled by CG).  After symmetric
-  pinning the FVM Laplacian is symmetric and negative semi-definite on
-  the interior, so MINRES is the mathematically correct Krylov choice.
-
-Usage difference from PPESolver:
-  PPESolver  – builds sparse matrix, solves with BiCGSTAB, no warm-start.
-  This class – builds sparse matrix, solves with MINRES, warm-starts from
-               previous p.
+リファクタリング時の変更:
+    - IPPESolver を実装し、統一シグネチャ solve(rhs, rho, dt, p_init=None) を採用。
+    - 旧シグネチャ solve(p_init, q_h, rho, ccd) を廃止した。
+    - これにより TwoPhaseSimulation の isinstance チェックが不要になった（LSP修正）。
 """
 
 from __future__ import annotations
 import warnings
 import numpy as np
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..config import SimulationConfig
     from ..core.grid import Grid
-    from ..ccd.ccd_solver import CCDSolver
+
+from ..interfaces.ppe_solver import IPPESolver
 
 
-class PPESolverPseudoTime:
-    """MINRES solver for the variable-density PPE with warm-start.
+class PPESolverPseudoTime(IPPESolver):
+    """MINRES によるウォームスタート付き変密度 PPE ソルバー。
 
     Parameters
     ----------
     backend : Backend
-    config  : SimulationConfig  (uses pseudo_tol, pseudo_maxiter)
+    config  : SimulationConfig（pseudo_tol, pseudo_maxiter を参照）
     grid    : Grid
     """
 
@@ -59,27 +52,29 @@ class PPESolverPseudoTime:
         self.tol = config.pseudo_tol
         self.maxiter = config.pseudo_maxiter
 
-        # Pre-compute static face-index arrays (same logic as PPEBuilder)
+        # 静的な面インデックス配列を事前計算
         self._face_indices: dict = {}
         self._build_index_arrays()
 
-    # ── Public API ────────────────────────────────────────────────────────
+    # ── IPPESolver 実装 ──────────────────────────────────────────────────
 
     def solve(
         self,
-        p_init,
-        q_h,
+        rhs,
         rho,
-        ccd: "CCDSolver",   # accepted for API compatibility, not used here
+        dt: float,
+        p_init=None,
     ):
-        """Solve ∇·(1/ρ ∇p) = q_h using MINRES with warm-start from p_init.
+        """IPPESolver インターフェースの実装。
+
+        MINRES + ウォームスタートで PPE を解く。
 
         Parameters
         ----------
-        p_init : array, shape ``grid.shape``  — warm-start (use p^n)
-        q_h    : array, shape ``grid.shape``  — RHS = (1/Δt) ∇·u*_RC
-        rho    : array, shape ``grid.shape``  — density field
-        ccd    : CCDSolver  (not used; present for interface compatibility)
+        rhs    : array, shape ``grid.shape`` — 右辺 (1/Δt) ∇·u*_RC
+        rho    : array, shape ``grid.shape`` — 密度フィールド
+        dt     : float — タイムステップ幅（本ソルバーでは未使用）
+        p_init : optional array, shape ``grid.shape`` — ウォームスタート p^n
 
         Returns
         -------
@@ -89,14 +84,19 @@ class PPESolverPseudoTime:
         import scipy.sparse.linalg as spla
 
         rho_h = np.asarray(self.backend.to_host(rho), dtype=float)
-        q_h_host = np.asarray(self.backend.to_host(q_h), dtype=float).ravel()
-        p0_host = np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
+        q_h_host = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
 
-        # Build sparse FVM matrix with SYMMETRIC pinning
+        # ウォームスタート初期値
+        if p_init is not None:
+            p0_host = np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
+        else:
+            p0_host = np.zeros(int(np.prod(self.grid.shape)))
+
+        # 対称ピン付き FVM 行列を組み立て
         (data, rows, cols), A_shape = self._build_sym(rho_h)
         A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
-        # Consistent RHS: pin p[0] = 0
+        # ピン点の右辺を 0 に設定（p[0] = 0）
         q_h_host[0] = 0.0
 
         p_flat, info = spla.minres(
@@ -109,8 +109,8 @@ class PPESolverPseudoTime:
 
         if info != 0:
             warnings.warn(
-                f"PPE MINRES did not converge (info={info}). "
-                "Consider increasing pseudo_maxiter or loosening pseudo_tol.",
+                f"PPE MINRES が収束しませんでした (info={info})。"
+                " pseudo_maxiter を増やすか pseudo_tol を緩めてください。",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -118,19 +118,18 @@ class PPESolverPseudoTime:
         p_arr = p_flat.reshape(self.grid.shape)
         return self.backend.to_device(p_arr)
 
-    # ── Matrix assembly ───────────────────────────────────────────────────
+    # ── 行列組立 ─────────────────────────────────────────────────────────
 
-    def _build_sym(self, rho: np.ndarray) -> Tuple:
-        """Build the FVM PPE matrix with SYMMETRIC pinning of node 0.
+    def _build_sym(self, rho: np.ndarray):
+        """対称ピン付き FVM PPE 行列を組み立てる。
 
-        Symmetric pinning:  A[0, :] = A[:, 0] = e_0  (identity row+col).
-        This preserves symmetry so MINRES can be used.
+        対称ピン: A[0, :] = A[:, 0] = e_0（行と列の両方を単位ベクトルに）。
+        これにより行列の対称性が保たれ、MINRES が使用可能になる。
         """
         n = int(np.prod(self.grid.shape))
-        ndim = self.ndim
         data_list, row_list, col_list = [], [], []
 
-        for ax in range(ndim):
+        for ax in range(self.ndim):
             h = float(self.grid.L[ax] / self.grid.N[ax])
             h2 = h * h
             idx_L, idx_R = self._face_indices[ax]
@@ -140,13 +139,13 @@ class PPESolverPseudoTime:
             a_f = 2.0 / (rho_L + rho_R)
             coeff = a_f / h2
 
-            # Off-diagonal: L↔R connections (symmetric)
+            # 非対角: L↔R（対称性あり）
             for (src, dst) in [(idx_L, idx_R), (idx_R, idx_L)]:
                 data_list.append(coeff)
                 row_list.append(src)
                 col_list.append(dst)
 
-            # Diagonal contributions: subtract coeff at both ends
+            # 対角: 両端で coeff を引く
             for idx in [idx_L, idx_R]:
                 data_list.append(-coeff)
                 row_list.append(idx)
@@ -156,8 +155,7 @@ class PPESolverPseudoTime:
         rows = np.concatenate(row_list)
         cols = np.concatenate(col_list)
 
-        # Symmetric pinning of node 0:
-        # Remove ALL entries in row 0 AND column 0, then add A[0,0] = 1.
+        # 対称ピン: 行 0 と列 0 をすべて除去してから A[0,0] = 1 を追加
         mask = (rows != 0) & (cols != 0)
         data = data[mask]
         rows = rows[mask]
@@ -169,10 +167,10 @@ class PPESolverPseudoTime:
 
         return (data, rows, cols), (n, n)
 
-    # ── Index array pre-computation ───────────────────────────────────────
+    # ── インデックス配列の事前計算 ────────────────────────────────────────
 
     def _build_index_arrays(self) -> None:
-        """Pre-compute flat node indices of interior faces (same as PPEBuilder)."""
+        """内部面の平坦ノードインデックスを事前計算する（PPEBuilder と同じロジック）。"""
         shape = self.grid.shape
 
         for ax in range(self.ndim):

@@ -41,22 +41,22 @@ from __future__ import annotations
 import numpy as np
 from typing import Optional, Callable, TYPE_CHECKING
 
-from .backend import Backend
-from .config import SimulationConfig
-from .core.grid import Grid
-from .core.field import ScalarField, VectorField
-from .ccd.ccd_solver import CCDSolver
-from .levelset.heaviside import heaviside, update_properties, invert_heaviside
-from .levelset.curvature import CurvatureCalculator
-from .levelset.advection import LevelSetAdvection
-from .levelset.reinitialize import Reinitializer
-from .ns_terms.predictor import Predictor
-from .pressure.rhie_chow import RhieChowInterpolator
-from .pressure.ppe_solver_factory import create_ppe_solver
-from .pressure.velocity_corrector import VelocityCorrector
-from .time_integration.cfl import CFLCalculator
-from .simulation.boundary_condition import BoundaryConditionHandler
-from .simulation.diagnostics import DiagnosticsReporter
+from ..backend import Backend
+from ..config import SimulationConfig
+from ..core.grid import Grid
+from ..core.field import ScalarField, VectorField
+from ..ccd.ccd_solver import CCDSolver
+from ..levelset.heaviside import heaviside, update_properties, invert_heaviside
+from ..levelset.curvature import CurvatureCalculator
+from ..levelset.advection import LevelSetAdvection
+from ..levelset.reinitialize import Reinitializer
+from ..ns_terms.predictor import Predictor
+from ..pressure.rhie_chow import RhieChowInterpolator
+from ..pressure.ppe_solver_factory import create_ppe_solver
+from ..pressure.velocity_corrector import VelocityCorrector
+from ..time_integration.cfl import CFLCalculator
+from .boundary_condition import BoundaryConditionHandler
+from .diagnostics import DiagnosticsReporter
 
 
 class TwoPhaseSimulation:
@@ -205,7 +205,7 @@ class TwoPhaseSimulation:
             self.vel_star[ax] = vel_star_list[ax]
 
         # Step 6: PPE 求解 ─────────────────────────────────────────────────
-        # isinstance チェックが不要になった（LSP修正: 統一インターフェース IPPESolver）
+        # isinstance チェックが不要（LSP修正: 統一インターフェース IPPESolver）
         div_rc = self.rhie_chow.face_velocity_divergence(
             [self.vel_star[ax] for ax in range(self.config.ndim)],
             self.pressure.data,
