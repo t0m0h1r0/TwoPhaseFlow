@@ -97,7 +97,7 @@ Navier-Stokes 方程式において圧力が存在する物理的理由は，
 \end{center}
 
 変密度場では $\phi \propto \Delta t \, p/\rho$ と同定されることで，
-$\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第7章§\ref{sec:projection_derivation}）．
+$\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第8章§\ref{sec:projection_derivation}）．
 \end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -139,7 +139,7 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
     密度 $\rho$ は界面で物理的に\textbf{不連続}（ステップ状の跳び）を持つ．
     不連続な係数をもつ拡散型方程式 $\nabla\cdot(a\nabla p) = q$（$a = 1/\rho$）を
     有限体積法で離散化すると，フラックスの連続性から自然に\textbf{調和平均}
-    $a_f = 2/(a_P^{-1}+a_E^{-1})$ が現れる（7章で詳述）．
+    $a_f = 2/(a_P^{-1}+a_E^{-1})$ が現れる（8章で詳述）．
     同じ調和平均を Rhie--Chow 係数に使うことで，PPE との数値的整合性が保たれる．
 \end{itemize}
 
