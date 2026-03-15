@@ -139,7 +139,7 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
     密度 $\rho$ は界面で物理的に\textbf{不連続}（ステップ状の跳び）を持つ．
     不連続な係数をもつ拡散型方程式 $\nabla\cdot(a\nabla p) = q$（$a = 1/\rho$）を
     有限体積法で離散化すると，フラックスの連続性から自然に\textbf{調和平均}
-    $a_f = 2/(a_P^{-1}+a_E^{-1})$ が現れる（8章で詳述）．
+    $a_f = 2/(a_P^{-1}+a_E^{-1})$ が現れる（第\ref{sec:pressure}章で詳述）．
     同じ調和平均を Rhie--Chow 係数に使うことで，PPE との数値的整合性が保たれる．
 \end{itemize}
 
@@ -249,7 +249,7 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
         \textbf{スペクトル選択的フィルタ}として機能する．
 \end{itemize}
 
-\textbf{実装上の確認：} 静止液滴ベンチマーク（10章）において寄生流れ振幅が $O(h^4)$ 以上で
+\textbf{実装上の確認：} 静止液滴ベンチマーク（第\ref{sec:verification}章）において寄生流れ振幅が $O(h^4)$ 以上で
 収束することを確認すれば，Rhie-Chow 補正が CCD の高精度を損なっていないことが検証できる．
 \end{tcolorbox}
 
@@ -258,9 +258,9 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
 \label{sec:balanced_force}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本節では，第2章（§\ref{box:balanced_force_ref}）で予告した
+本節では，第\ref{sec:governing}章（§\ref{box:balanced_force_ref}）で予告した
 \textbf{Balanced-Force 離散化条件}の詳細を述べる．
-これは寄生流れ（spurious currents，第1章§\ref{sec:failure_modes}）を
+これは寄生流れ（spurious currents，第\ref{sec:intro}章§\ref{sec:failure_modes}）を
 抑制するための最も重要な実装要件である．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
 圧力勾配項 $-\bnabla p$ と表面張力項 $(\kappa\bnabla\psi)/We$ に，
 \textbf{完全に同一の離散差分演算子}を用いなければならない．
 
-本稿の実装では CCD 法による1次微分演算子 $D_x^{(1)}, D_y^{(1)}$（第4章）を用いる：
+本稿の実装では CCD 法による1次微分演算子 $D_x^{(1)}, D_y^{(1)}$（第\ref{sec:CCD}章）を用いる：
 \begin{align}
   \text{圧力勾配：} & \quad
     -D_x^{(1)} p_{i,j}, \quad -D_y^{(1)} p_{i,j}
@@ -341,7 +341,7 @@ $f$ が解析関数のとき，各演算子の打ち切り誤差は：
   = D^{(1)}_{\mathrm{CCD}}\!\left(p - \frac{\kappa\psi}{We}\right)
   = D^{(1)}_{\mathrm{CCD}}(\text{const}) + O(h^6)
 \]
-となり，寄生流れは $O(h^6)$ まで抑制される（第10章の静止液滴ベンチマークで確認）．
+となり，寄生流れは $O(h^6)$ まで抑制される（第\ref{sec:verification}章の静止液滴ベンチマークで確認）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Balanced-Force 実装の確認方法}

@@ -18,8 +18,8 @@
   \item $\mathcal{L}_{\text{visc},y}(\mu,\, \bu)$：粘性応力テンソル $\nabla\cdot\boldsymbol{\tau}$ の $y$ 成分\newline
           $\displaystyle= D_x^{(1)}\!\left[\mu\bigl(D_x^{(1)} v + D_y^{(1)} u\bigr)\right] + D_y^{(1)}\!\left[2\mu\,D_y^{(1)} v\right]$
   \item CLS 移流の発散 $\text{Div}_h^{\psi}(\psi\bm{u})$：WENO5 フラックス分割法で計算したフェイスフラックスの和
-          $\approx D_x^{(1)}(\psi u) + D_y^{(1)}(\psi v)$（保存形，詳細は3章）
-  \item Poisson 方程式の発散・勾配は $D_x^{(1)}, D_y^{(1)}$ で直接表記し，係数に調和平均 $(1/\rho)^{\mathrm{harm}}$ を乗じる（7章参照）
+          $\approx D_x^{(1)}(\psi u) + D_y^{(1)}(\psi v)$（保存形，詳細は第\ref{sec:levelset}章）
+  \item Poisson 方程式の発散・勾配は $D_x^{(1)}, D_y^{(1)}$ で直接表記し，係数に調和平均 $(1/\rho)^{\mathrm{harm}}$ を乗じる（第\ref{sec:collocate}章参照）
 \end{itemize}
 \end{tcolorbox}
 
@@ -143,7 +143,7 @@ D_x^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!x}\! D_x
 + D_y^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!y}\! D_y^{(1)} p^{n+1}\right]_{i,j}
 = \frac{1}{\Delta t}\Bigl(D_x^{(1)} u^*_{i,j} + D_y^{(1)} v^*_{i,j}\Bigr)
 \end{equation*}
-ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho)$ の調和平均（7章，式 \eqref{eq:rc-face} 参照）であり，Rhie-Chow 補正項はこの係数に吸収されている．
+ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho)$ の調和平均（第\ref{sec:collocate}章，式 \eqref{eq:rc-face} 参照）であり，Rhie-Chow 補正項はこの係数に吸収されている．
 全格子点の未知数 $p^{n+1}_{i,j}$ を連立すると大規模方程式系になり，\textbf{仮想時間陰解法＋CCD}（§\ref{sec:ppe_pseudotime}）で解く．
 
 \textbf{7. 速度補正 (Corrector Step)} \\
