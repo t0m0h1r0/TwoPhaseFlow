@@ -94,11 +94,13 @@ class CFLCalculator:
         h = self._h_min
         cfl = self.cfl
 
-        # Max speed
-        u_max = max(float(xp.max(xp.abs(vel))) for vel in velocity_components)
-        u_max = max(u_max, 1e-14)
+        # Sum of per-axis max speeds (paper §8 Eq.(dt_adv)):
+        #   Δt_adv = CFL · h / Σ_i max|u_i|
+        # Using sum rather than max gives a tighter (correct) stability bound.
+        u_sum = sum(float(xp.max(xp.abs(vel))) for vel in velocity_components)
+        u_sum = max(u_sum, 1e-14)
 
-        dt_conv = cfl * h / u_max
+        dt_conv = cfl * h / u_sum
 
         dt = dt_conv
 
