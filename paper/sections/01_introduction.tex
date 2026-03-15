@@ -552,49 +552,71 @@ Rhie--Chow 補正（第\ref{sec:collocate}章），変密度 PPE の導出と求
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-  node distance=10mm and 16mm,
+  node distance=5mm and 18mm,
   %% 界面サブシステム用ボックス（青系）
-  boxL/.style={draw=navy!70, fill=lightblue, rounded corners=6pt,
-               font=\small\bfseries, inner sep=10pt,
-               minimum width=52mm, minimum height=22mm, align=center},
-  %% 結合値ラベル用ボックス
-  boxC/.style={font=\small\bfseries, text=teal2, align=center},
+  box/.style={draw=navy!70, fill=lightblue, rounded corners=5pt,
+              font=\small\bfseries, inner sep=6pt,
+              minimum width=42mm, minimum height=13mm, align=center},
   %% 流体力学サブシステム用ボックス（赤系）
-  boxR/.style={draw=red2!70, fill=red2!8, rounded corners=6pt,
-               font=\small\bfseries, inner sep=10pt,
-               minimum width=52mm, minimum height=22mm, align=center},
+  boxr/.style={draw=red2!70, fill=red2!8, rounded corners=5pt,
+               font=\small\bfseries, inner sep=6pt,
+               minimum width=42mm, minimum height=13mm, align=center},
   %% 矢印スタイル
-  arr/.style={-Stealth, thick, darkgray!80, line width=1.2pt},
-  lbl/.style={font=\small\bfseries, text=darkgray},
+  arr/.style={-Stealth, thick, darkgray!80},
+  cross/.style={-Stealth, thick, teal2!80, dashed, line width=1.2pt},
+  lbl/.style={font=\scriptsize\bfseries, text=darkgray},
+  %% 章参照ラベル
+  chap/.style={font=\scriptsize\itshape, text=darkgray!65},
 ]
 
-%% ── 3ブロック横並び ──────────────────────────────────────────────────────
-\node[boxL] (iface) at (0, 0)
-  {界面サブシステム\\[4pt]
-   \footnotesize\normalfont（ステップ 1--4）\\[2pt]
-   \footnotesize\normalfont CLS 移流・再初期化\\
-   \footnotesize\normalfont 物性更新・曲率計算};
+%% ── 列見出し ──────────────────────────────────────────────────────────
+\node[font=\normalsize\bfseries, text=navy]
+  (hdL) at (0, 0) {界面サブシステム};
+\node[font=\normalsize\bfseries, text=red2]
+  (hdR) at (62mm, 0) {流体力学サブシステム};
 
-\node[boxR, right=32mm of iface] (fluid)
-  {流体力学ソルバー\\[4pt]
-   \footnotesize\normalfont（ステップ 5--7）\\[2pt]
-   \footnotesize\normalfont Predictor\\
-   \footnotesize\normalfont $\to$ PPE 求解 $\to$ Corrector};
+%% ── 左列：界面サブシステム（ステップ1--4）──────────────────────────────
+\node[box, below=8mm of hdL] (s1)
+  {1.\ \ CLS 移流\\[1pt]\footnotesize（WENO5 ／ 第\ref{sec:levelset}・\ref{sec:time}章）};
+\node[box, below=of s1] (s2)
+  {2.\ \ 再初期化\\[1pt]\footnotesize（CLS ／ 第\ref{sec:levelset}章）};
+\node[box, below=of s2] (s3)
+  {3.\ \ 物性更新\\[1pt]\footnotesize（$\rho,\,\mu,\,\phi$ ／ 第\ref{sec:governing}・\ref{sec:levelset}章）};
+\node[box, below=of s3] (s4)
+  {4.\ \ 曲率計算\\[1pt]\footnotesize（CCD ／ 第\ref{sec:governing}・\ref{sec:CCD}章）};
 
-%% ── 結合矢印 ────────────────────────────────────────────────────────────
-\draw[arr] (iface.east) -- node[lbl, above, yshift=2pt]{$\rho,\;\mu,\;\kappa$}
-                            (fluid.west);
+%% ── 右列：流体力学サブシステム（ステップ5--7）──────────────────────────
+\node[boxr, right=18mm of s3] (s5)
+  {5.\ \ 運動量予測\\[1pt]\footnotesize（Predictor ／ 第\ref{sec:pressure}・\ref{sec:algorithm}章）};
+\node[boxr, below=of s5] (s6)
+  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（仮想時間陰解法 ／ 第\ref{sec:collocate}・\ref{sec:pressure}章）};
+\node[boxr, below=of s6] (s7)
+  {7.\ \ 速度補正\\[1pt]\footnotesize（Corrector ／ 第\ref{sec:pressure}・\ref{sec:algorithm}章）};
+
+%% ── 矢印：左列（界面サブシステム内）────────────────────────────────────
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s4);
+
+%% ── 矢印：右列（流体力学サブシステム内）──────────────────────────────────
+\draw[arr] (s5) -- (s6);
+\draw[arr] (s6) -- (s7);
+
+%% ── 結合矢印（界面 → 流体力学）──────────────────────────────────────────
+\draw[cross] (s3.east)
+  -- node[lbl, above, yshift=1pt]{$\rho,\;\mu$} (s5.west);
+\draw[cross] (s4.east)
+  -- node[lbl, below, yshift=-1pt]{$\kappa$} (s5.south west);
 
 %% ── 時間ループ矢印 ───────────────────────────────────────────────────────
 \draw[arr]
-  (fluid.south) -- ++(0, -8mm)
-  -| node[lbl, near start, below, yshift=-1pt]{\small $t^{n+1} \to t^{n+2}$}
-  (iface.south);
+  (s7.east) -- ++(5mm, 0)
+  |- node[lbl, near start, right, xshift=1mm]{\small $t^{n+1} \to t^{n+2}$}
+  (s1.east);
 
-%% ── 注記 ────────────────────────────────────────────────────────────────
-\node[font=\scriptsize, text=darkgray!70,
-      below=16mm of fluid, xshift=-12mm]
-  {（各ステップの完全な離散方程式は第\ref{sec:algorithm}章参照）};
+%% ── 離散詳細は第9章の注記 ────────────────────────────────────────────────
+\node[chap, below=6mm of s7, xshift=25mm]
+  {\textup{（各ステップの完全な離散方程式は第\ref{sec:algorithm}章参照）}};
 
 \end{tikzpicture}
 \caption{1タイムステップの処理フロー（概念図）．
