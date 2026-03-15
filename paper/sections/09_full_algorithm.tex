@@ -42,10 +42,28 @@
 
 \textbf{3. グリッド・物性更新 (Update Properties)} \\
 更新された $\psi^{n+1}_{i,j}$ に基づき，各格子点での距離関数 $\phi$ および物理的物性値を再計算する．
+
+\begin{tcolorbox}[warnbox, title={Step 3 における $\phi$ と $\psi$ の役割分担（実装上の重要事項）}]
+\begin{itemize}
+  \item \textbf{物性補間 $\rho,\,\mu$ には $\psi$ を使う}：第\ref{sec:governing}章（式~\eqref{eq:interp_intro}）で定義した
+        $\rho(\psi) = \rho_g+(\rho_l-\rho_g)\psi$，$\mu(\psi)=\mu_g+(\mu_l-\mu_g)\psi$ は
+        $\psi\in[0,1]$ を引数とする．$\phi$ は $(-\infty,+\infty)$ の値域を持ち，
+        $|\phi|>3\varepsilon$ 領域では $\rho(\phi)$ という表記は定義外の補間を与えるため，
+        \textbf{$\rho(\phi)$，$\mu(\phi)$ と書いてはならない}．
+  \item \textbf{幾何量（法線・曲率）には $\phi$ を使う}：
+        $\hat{\bm{n}}=\nabla\phi/|\nabla\phi|$，$\kappa=-\nabla\cdot\hat{\bm{n}}$ の計算は
+        Eikonal 条件 $|\nabla\phi|=1$ を利用するため $\phi$ でなければならない（Step 4）．
+\end{itemize}
+この役割分担は §\ref{sec:notation} の変数役割表で明示されているが，
+Step 3 の実装で誤って $\rho(\phi),\mu(\phi)$ と書くケースが多いため，ここで再度強調する．
+\end{tcolorbox}
+
 \begin{align*}
-  \phi^{n+1}_{i,j} &= H_\varepsilon^{-1}(\psi^{n+1}_{i,j}) \quad (\text{Newton法で解く}) \\
-  \rho^{n+1}_{i,j} &= \rho(\phi^{n+1}_{i,j}) \\
-  \mu^{n+1}_{i,j} &= \mu(\phi^{n+1}_{i,j})
+  \phi^{n+1}_{i,j} &= H_\varepsilon^{-1}(\psi^{n+1}_{i,j}) \quad (\text{Newton法，§\ref{sec:newton_inversion}}) \\
+  \rho^{n+1}_{i,j} &= \rho(\psi^{n+1}_{i,j})
+                    = \rho_g + (\rho_l-\rho_g)\,\psi^{n+1}_{i,j} \\
+  \mu^{n+1}_{i,j}  &= \mu(\psi^{n+1}_{i,j})
+                    = \mu_g + (\mu_l-\mu_g)\,\psi^{n+1}_{i,j}
 \end{align*}
 
 \textbf{4. 曲率計算 (Curvature)} \\
@@ -136,14 +154,37 @@ Thomas 法または TDMA で $O(N)$ コストで解ける．
 \end{tcolorbox}
 
 \textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
-$\bm{u}^{n+1}$ が非圧縮条件を離散的に満たすよう，圧力 $p^{n+1}$ を求める．
+Step 5 で得た $\bm{u}^*$ が非圧縮条件を離散的に満たすよう，圧力 $p^{n+1}$ を求める．
+
+\begin{tcolorbox}[warnbox, title={Step 6 の時刻レベルと Rhie-Chow 補正の整合性}]
+\begin{itemize}
+  \item PPE の RHS には，Step 5 終了直後の予測速度 $\bu^*$（時刻 $t^*$）から計算した
+        \textbf{Rhie-Chow 補正済み発散}（第\ref{sec:pressure}章，式 \eqref{eq:rc_divergence}）を使う：
+        \[
+          q_h = \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
+        \]
+  \item Rhie-Chow 補正のフェイス速度（式 \eqref{eq:rc-face}）に現れる
+        圧力勾配補正量 $(\nabla p)_f - \overline{(\nabla p)}_f$ は，
+        現タイムステップで利用可能な最新の圧力である $p^n$（前タイムステップの解）を用いる：
+        \[
+          (u_f)_{i+1/2,j} = \bar{u}^*_{i+1/2,j}
+          - \Delta t \left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{i+1/2,j}
+          \!\bigl[(\nabla p^n)_{i+1/2,j} - \overline{(\nabla p^n)}_{i+1/2,j}\bigr]
+        \]
+  \item \textbf{なぜ $p^n$ を使うか}：$p^{n+1}$ はこの Step で初めて求まる未知数であるため，
+        RHS の計算時点では利用不可能である．Rhie-Chow 補正の目的は「チェッカーボードモードの除去」
+        であり，$p^n$ でも $p^{n+1}$ でも同等の除去効果があることが確認されている．
+\end{itemize}
+\end{tcolorbox}
+
 離散 Poisson 方程式は各格子点 $(i,j)$ について以下の形式になる：
 \begin{equation*}
 D_x^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!x}\! D_x^{(1)} p^{n+1}\right]_{i,j}
 + D_y^{(1)}\!\left[\left(\frac{1}{\rho^{n+1}}\right)^{\!\mathrm{harm}}_{\!y}\! D_y^{(1)} p^{n+1}\right]_{i,j}
-= \frac{1}{\Delta t}\Bigl(D_x^{(1)} u^*_{i,j} + D_y^{(1)} v^*_{i,j}\Bigr)
+= \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
 \end{equation*}
-ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho)$ の調和平均（第\ref{sec:collocate}章，式 \eqref{eq:rc-face} 参照）であり，Rhie-Chow 補正項はこの係数に吸収されている．
+ここで $(\cdot)^{\mathrm{harm}}_x$，$(\cdot)^{\mathrm{harm}}_y$ は $x$，$y$方向フェイスでの $(1/\rho^{n+1})$ の調和平均（第\ref{sec:collocate}章，式 \eqref{eq:rc-face} 参照）であり，
+右辺の $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ は式 \eqref{eq:rc_divergence} で定義された Rhie-Chow 補正済み発散である．
 全格子点の未知数 $p^{n+1}_{i,j}$ を連立すると大規模方程式系になり，\textbf{仮想時間陰解法＋CCD}（§\ref{sec:ppe_pseudotime}）で解く．
 
 \textbf{7. 速度補正 (Corrector Step)} \\

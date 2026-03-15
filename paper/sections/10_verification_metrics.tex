@@ -8,7 +8,7 @@
 
 \subsection{定量的検証指標}
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
 \caption{数値検証の指標と許容誤差（内部整合性チェック）}
 \label{tab:verification}
@@ -47,7 +47,7 @@ $E_\kappa(h) = \|\kappa_h - (-1/R)\|_{L^\infty}$（界面 $|\phi| < \varepsilon$
 $p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
 \end{tcolorbox}
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
 \caption{CCD 法による曲率計算の格子収束テスト（目標値）}
 \label{tab:grid_conv}
@@ -365,4 +365,87 @@ $y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
 ベンチマーク4は，表面張力・粘性・重力・密度差・界面変形が全て同時に作用する
 最も現実的なテストである．ここで参照解と定量的に一致すれば，
 本ソルバーの全体的な正確性が確認されたとみなせる．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{誤差バジェット（Error Budget）：各コンポーネントの精度分析}
+\label{sec:error_budget}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本ソルバーは複数の数値スキームを組み合わせて構成される．
+各コンポーネントの空間・時間精度を一覧化し，
+なぜ高次精度スキームが全体精度向上に寄与するかを説明する．
+
+\begin{table}[htbp]
+\centering
+\caption{各コンポーネントの精度オーダーと役割}
+\label{tab:error_budget}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{p{32mm}p{28mm}p{28mm}p{48mm}}
+\toprule
+コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
+\midrule
+WENO5 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
+CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
+CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
+FVM-PPE（圧力 Poisson） & $\Ord{h^2}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
+Corrector（速度更新） & $\Ord{h^2}$（PPE 依存） & — & 速度場の無発散補正 \\
+Crank--Nicolson（粘性） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
+NS 対流項（Predictor） & $\Ord{h^5}$（WENO5） & $\Ord{\Delta t}$（Euler） & 対流による運動量移送 \\
+\bottomrule
+\textbf{全体（空間律速）} & $\boldsymbol{\Ord{h^2}}$（PPE） & $\boldsymbol{\Ord{\Delta t}}$（Euler） & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tcolorbox}[warnbox, title={$\Ord{h^2}$ の PPE が律速するのに，なぜ $\Ord{h^6}$ の CCD が意味を持つのか}]
+一見したところ，PPE が $\Ord{h^2}$ で律速するなら，
+曲率計算に $\Ord{h^6}$ の CCD を使うことは「過剰な精度」に思える．
+しかし，これは以下の理由から意味がある．
+
+\medskip
+\noindent\textbf{理由1：誤差の種類が異なる}
+
+PPE の $\Ord{h^2}$ 誤差は\textbf{圧力 $p$ の絶対値の誤差}だが，
+流速の更新に使うのは圧力\textbf{勾配} $\bnabla p/\rho$ であり，
+後者の誤差は実際には圧力 Poisson 方程式の右辺（発散）精度と
+係数 $1/\rho$ の補間精度に依存する．一方，CCD の $\Ord{h^6}$ 誤差は
+表面張力体積力 $\sigma\kappa\bnabla\psi$ の\textbf{曲率計算誤差}であり，
+これは PPE の誤差とは独立した経路で速度場に影響する．
+
+\medskip
+\noindent\textbf{理由2：寄生流れへの直接的な影響}
+
+静止液滴（ベンチマーク1）では，理論的に速度はゼロである．
+観測される残差速度（寄生流れ）の大きさは：
+\[
+  \|\bu_{\text{spurious}}\|
+  \;\propto\;
+  \sigma \|\kappa_h - \kappa_{\text{exact}}\|
+  \;\sim\;
+  \sigma \, C_\kappa \, h^{p_\kappa}
+\]
+ここで $p_\kappa$ は曲率計算の精度次数である．CCD を用いると $p_\kappa = 6$ となり，
+低次手法（$p_\kappa = 2$）と比較して同じ格子で寄生流れを桁違いに抑制できる
+（$h = 1/64$ では $h^6/h^2 = (1/64)^4 \approx 10^{-7}$ の改善）．
+
+\medskip
+\noindent\textbf{理由3：精度向上の方向性}
+
+PPE の精度を $\Ord{h^2}$ から $\Ord{h^6}$ へ改善するには，
+係数 $1/\rho$ の不連続性（界面での密度ジャンプ）の数値処理まで高次化する必要があり，
+これは格段に困難である（界面切断セルの処理，Immersed Interface Method など）．
+一方，曲率を CCD で高次計算することは既存のフレームワーク内で実現可能であり，
+実用的な精度改善として有効である．
+
+\medskip
+\noindent\textbf{結論（精度のミスマッチの合理性）：}
+\begin{itemize}
+  \item PPE：$\Ord{h^2}$ — 密度ジャンプを含む変係数方程式の標準的限界
+  \item CCD（曲率）：$\Ord{h^6}$ — 寄生流れ抑制の観点から実質的に有効
+  \item 全体（速度場の絶対誤差）：$\Ord{h^2}$ — PPE 律速
+  \item 全体（寄生流れ比）：$\Ord{h^6}$ の恩恵あり — 表面張力項精度が寄与
+\end{itemize}
+ミスマッチは「無駄」ではなく，\textbf{各誤差経路の物理的役割が異なる}ことから生じる
+合理的な設計選択である．
 \end{tcolorbox}

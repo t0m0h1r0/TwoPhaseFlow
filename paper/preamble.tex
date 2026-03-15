@@ -7,6 +7,16 @@
 % -- Fonts --
 \setmainfont{Times New Roman}
 
+% -- Section always starts on new page (skip if immediately after \part) --
+\usepackage{etoolbox}
+\newbool{afterpart}
+\AtBeginDocument{
+  \preto{\part}{\booltrue{afterpart}}
+  \preto{\section}{%
+    \ifbool{afterpart}{\boolfalse{afterpart}}{\clearpage}%
+  }
+}
+
 % -- Algorithm environments --
 \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 

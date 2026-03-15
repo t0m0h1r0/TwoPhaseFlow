@@ -215,8 +215,37 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 隣り合う格子点の圧力が連立されないため（1つ飛びの点しか参照しない），
 高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する．
 
-\textbf{本稿の対処：} Rhie-Chow 型フラックス補正により，
+\medskip
+\noindent\textbf{数学的モード解析：$2\Delta x$ 圧力モードはなぜゼロ勾配か}
+
+1次元コロケート格子（格子間隔 $\Delta x$，格子点 $j$）を考える．
+圧力勾配の標準的な中心差分近似は：
+\[
+  \left.\frac{\partial p}{\partial x}\right|_j \approx \frac{p_{j+1} - p_{j-1}}{2\Delta x}
+\]
+チェッカーボードモード（波数 $k = \pi/\Delta x$，すなわち周期 $2\Delta x$）を
+代入する：
+\[
+  p_j = P_0\,e^{i(k\,j\Delta x)} = P_0\,e^{i\pi j} = P_0\,(-1)^j
+\]
+このとき圧力勾配の数値近似は：
+\begin{align*}
+  &\frac{p_{j+1} - p_{j-1}}{2\Delta x}
+  = \frac{P_0(-1)^{j+1} - P_0(-1)^{j-1}}{2\Delta x} \\
+  &= \frac{P_0(-1)^j\bigl[(-1)^1 - (-1)^{-1}\bigr]}{2\Delta x}
+  = \frac{P_0(-1)^j \cdot \bigl(-1 - (-1)\bigr)}{2\Delta x}
+  = \boxed{0}
+\end{align*}
+\textbf{結論：} $2\Delta x$ チェッカーボードモード $p_j = P_0(-1)^j$ は，
+中心差分の圧力勾配に対して\textbf{完全にゼロ}となる「見えないモード（幽霊モード，ghost mode）」である．
+このモードが PPE の解に混入しても速度 Corrector $\bu^{n+1} = \bu^* - \Delta t/\rho\,\bnabla p$ に
+影響を与えず，したがって散逸もされずに増幅・持続する可能性がある．
+
+\medskip
+\noindent\textbf{本稿の対処：} Rhie-Chow 型フラックス補正により，
 圧力と速度を適切に連成させる（第\ref{sec:collocate}章参照）．
+Rhie-Chow 補正は面速度に陽的な圧力補正 $\Delta t/\rho[({\bnabla p})_f - \overline{(\bnabla p)}_f]$ を
+加えることで，$2\Delta x$ モードの蓄積を防ぐ．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={失敗例4：界面のにじみ（Interface Smearing）}]
