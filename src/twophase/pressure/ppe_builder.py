@@ -83,11 +83,14 @@ class PPEBuilder:
         row_list  = []
         col_list  = []
 
+        # Strides for extracting per-axis indices from flat indices (C/ij order)
+        strides = [int(np_host.prod(self.shape_field[ax + 1:]))
+                   for ax in range(ndim)]
+
         for ax in range(ndim):
             h = float(self.grid.L[ax] / self.grid.N[ax])
             h2 = h * h
             N_ax = self.N[ax]
-            field_shape = self.shape_field
 
             # Indices of all interior faces along ax
             # Face i+½ between nodes i and i+1 in axis ax
@@ -101,22 +104,33 @@ class PPEBuilder:
             # A[L, R] += a_f / h²  and  A[R, L] += a_f / h²
             coeff = a_f / h2
 
-            # L → R contribution
-            data_list.append(coeff)
+            # Node-centred FVM boundary correction (§FVM):
+            # Boundary nodes have a control volume of width h/2 along the
+            # axis, not h.  This halves the effective h² denominator → doubles
+            # the face-coefficient *contribution to the boundary node equation*.
+            # Detect which L/R nodes sit on the domain boundary along this axis.
+            stride = strides[ax]
+            ax_idx_L = (idx_L // stride) % self.shape_field[ax]
+            ax_idx_R = (idx_R // stride) % self.shape_field[ax]
+            coeff_for_L = np_host.where(ax_idx_L == 0,    2.0 * coeff, coeff)
+            coeff_for_R = np_host.where(ax_idx_R == N_ax, 2.0 * coeff, coeff)
+
+            # L → R contribution (enters L's equation row)
+            data_list.append(coeff_for_L)
             row_list.append(idx_L)
             col_list.append(idx_R)
 
-            # R → L contribution
-            data_list.append(coeff)
+            # R → L contribution (enters R's equation row)
+            data_list.append(coeff_for_R)
             row_list.append(idx_R)
             col_list.append(idx_L)
 
-            # Diagonal contributions: A[L,L] -= coeff, A[R,R] -= coeff
-            data_list.append(-coeff)
+            # Diagonal contributions: A[L,L] -= coeff_for_L, A[R,R] -= coeff_for_R
+            data_list.append(-coeff_for_L)
             row_list.append(idx_L)
             col_list.append(idx_L)
 
-            data_list.append(-coeff)
+            data_list.append(-coeff_for_R)
             row_list.append(idx_R)
             col_list.append(idx_R)
 

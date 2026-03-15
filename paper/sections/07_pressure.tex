@@ -143,6 +143,40 @@ PPE 演算子 $\mathcal{L}[p] = \bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）
 ここで $a_{i\pm1/2,j} = 2/(\rho_{i,j} + \rho_{i\pm1,j})$（式 \eqref{eq:af_exact}）．
 \end{tcolorbox}
 
+\begin{tcolorbox}[warnbox, title={ノード中心 FVM における境界ノードの制御体積補正（実装上の重要な修正）}]
+\label{warn:boundary_cv}
+
+式~\eqref{eq:PPE_FVM} は\textbf{内部ノード}（$1 \le i \le N_x-1$）に対してのみ成立する．
+本稿の格子は\textbf{ノード中心配置}（格子点が物理境界 $x=0,\,x=L_x$ 上に存在）を採用するため，
+境界ノードの制御体積幅は $h/2$（内部ノードの $h$ の半分）となる．
+
+\medskip
+\textbf{導出：} $x$ 方向の FVM 積分 $\displaystyle\int_{\Omega_i} \nabla\cdot(a\nabla p)\,dV = \int_{\partial\Omega_i} a\nabla p\cdot\bn\,dS$ において，
+境界ノード $i=0$ の制御体積は $\Omega_0 = [0,\,h/2]$（幅 $h/2$），フェイス $x_{1/2}=h/2$ が唯一の内部フェイスである：
+\[
+  \text{内部ノード}\,(1\le i\le N-1): \quad
+  \frac{a_{i+1/2}}{h^2}(p_{i+1}-p_i) - \frac{a_{i-1/2}}{h^2}(p_i - p_{i-1}) = \text{rhs}_i
+\]
+\[
+  \text{境界ノード}\,(i=0,\;\text{Neumann}\;\partial p/\partial n=0): \quad
+  \boxed{\frac{2\,a_{1/2}}{h^2}(p_1 - p_0)} + (\text{$y$方向同様}) = \text{rhs}_0
+\]
+$x=0$ での Neumann 条件 $(\partial p/\partial x)|_{x=0}=0$ によりゴーストフェイスのフラックスはゼロとなり，
+残るフェイス $x_{1/2}$ の係数に $2/(h/2 \cdot h) = 2/h^2$（制御体積幅 $h/2$ で割るため係数 2 倍）が現れる．
+
+\medskip
+\textbf{実装への影響：} 境界ノード（$i=0$ または $i=N_x$，$j=0$ または $j=N_y$）のフェイス係数項は，
+内部ノードのものに対して\textbf{係数 2 倍}を乗じる必要がある：
+\begin{itemize}
+  \item 境界ノード $i=0$（左境界）：$a_{1/2}/h^2$ を $2a_{1/2}/h^2$ に置き換え
+  \item 境界ノード $i=N_x$（右境界）：$a_{N_x-1/2}/h^2$ を $2a_{N_x-1/2}/h^2$ に置き換え
+  \item $y$ 方向境界ノード（$j=0,\,j=N_y$）：同様
+\end{itemize}
+
+\textbf{この補正を省略すると，}境界付近での PPE の離散打ち切り誤差が $\mathcal{O}(1)$ 程度（すなわち精度が失われ）になり，
+格子幅 $h$ を細かくしても収束次数が著しく低下する（数値実験により 2 次収束のはずが 0.7 次程度に劣化することを確認）．
+\end{tcolorbox}
+
 \subsubsection{Rhie-Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}
 \label{sec:rc_divergence}
 
