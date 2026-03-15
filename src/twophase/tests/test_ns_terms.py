@@ -174,7 +174,7 @@ def test_predictor_no_nan(backend):
     grid = Grid(cfg, backend)
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
-    pred = Predictor(backend, cfg)
+    pred = Predictor(backend, cfg, ccd)
 
     eps = 1.5 / N
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
@@ -190,6 +190,6 @@ def test_predictor_no_nan(backend):
     u = np.zeros((N+1, N+1))
     v = np.zeros((N+1, N+1))
 
-    vel_star = pred.compute([u, v], rho, mu, kappa, psi, ccd, dt=0.01)
+    vel_star = pred.compute([u, v], rho, mu, kappa, psi, dt=0.01)
     for ax, vs in enumerate(vel_star):
         assert not np.any(np.isnan(vs)), f"NaN in vel_star component {ax}"

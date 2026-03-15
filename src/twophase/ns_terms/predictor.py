@@ -27,6 +27,10 @@ DIP 改善（2026-03-15）:
       コンストラクタで注入可能にした（デフォルト値で後方互換を維持）。
     - Predictor 自体は具象クラスを知らなくてよくなった。
     - SimulationBuilder がデフォルト依存関係を組み立てる責務を担う。
+
+ISP 改善（2026-03-15 3rd pass）:
+    - ccd をコンストラクタ注入に変更。
+    - compute() のシグネチャから ccd を除去し、他の演算子と統一した。
 """
 
 from __future__ import annotations
@@ -51,6 +55,7 @@ class Predictor:
     ----------
     backend        : Backend
     config         : SimulationConfig
+    ccd            : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     convection     : ConvectionTerm インスタンス（省略時はデフォルト生成）
     viscous        : ViscousTerm インスタンス（省略時はデフォルト生成）
     gravity        : GravityTerm インスタンス（省略時はデフォルト生成）
@@ -64,6 +69,7 @@ class Predictor:
         self,
         backend: "Backend",
         config: "SimulationConfig",
+        ccd: "CCDSolver",
         convection: Optional[ConvectionTerm] = None,
         viscous: Optional[ViscousTerm] = None,
         gravity: Optional[GravityTerm] = None,
@@ -71,6 +77,7 @@ class Predictor:
     ):
         self.xp = backend.xp
         self.config = config
+        self.ccd = ccd   # コンストラクタ注入
 
         # 注入された依存関係を使用。省略時はデフォルト生成（後方互換）
         self.convection   = convection    or ConvectionTerm(backend)
@@ -85,7 +92,6 @@ class Predictor:
         mu: "array",
         kappa: "array",
         psi: "array",
-        ccd: "CCDSolver",
         dt: float,
     ) -> List:
         """Compute u* = uⁿ + Δt * R / ρ̃.
@@ -97,7 +103,6 @@ class Predictor:
         mu     : viscosity at time n+1
         kappa  : curvature at time n+1
         psi    : CLS field at time n+1
-        ccd    : CCDSolver
         dt     : time step
 
         Returns
@@ -105,6 +110,7 @@ class Predictor:
         vel_star : list of u* arrays
         """
         xp = self.xp
+        ccd = self.ccd   # コンストラクタ注入済みの ccd を使用
 
         # ── Explicit terms ────────────────────────────────────────────────
         conv = self.convection.compute(vel_n, ccd)           # −(u·∇)u  (ρ-weighted later)

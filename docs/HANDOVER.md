@@ -1,7 +1,7 @@
 # HANDOVER
 
-Last update: 2026-03-15 (2nd pass)
-Status: Architecture refinement applied — Config hierarchy / new interfaces / CCD injection / SimulationBuilder
+Last update: 2026-03-15 (3rd pass)
+Status: Architecture refinement applied — Predictor CCD injection / INSTerm signature / Builder DIP / dead code removal
 
 ---
 
@@ -17,6 +17,56 @@ pytest src/twophase/tests
 ```
 
 Python ≥ 3.9
+
+---
+
+# Recent Changes (2026-03-15) — Architecture Refinement (3rd Pass)
+
+## 削除ファイル
+
+### `src/twophase/simulation.py`
+- 旧バージョンのデッドコード（パッケージ `simulation/` が存在するため到達不能）。
+- 旧 API（`reinitialize(psi, ccd)` 等）が残存し混乱の元になっていたため削除。
+
+## 修正ファイル
+
+### `src/twophase/ns_terms/predictor.py`
+- `ccd` をコンストラクタ注入に変更（`Reinitializer`, `CurvatureCalculator` 等と統一）。
+- `__init__(backend, config, ccd, ...)` — `ccd` を第3引数として追加。
+- `compute(vel, rho, mu, kappa, psi, dt)` — `ccd` をシグネチャから除去。
+- 内部では `self.ccd` を使用する。
+
+### `src/twophase/interfaces/ns_terms.py`
+- `INSTerm.compute()` から `ccd` 引数を除去（ISP改善）。
+- 新しい NS 項実装はコンストラクタで `ccd` を受け取る設計を推奨する旨をドキュメント化。
+
+### `src/twophase/simulation/_core.py`
+- `Predictor(self.backend, config, self.ccd)` — `ccd` を渡すよう更新。
+- `predictor.compute(vel_n, rho, mu, kappa, psi, dt)` — `ccd` 引数を削除。
+
+### `src/twophase/simulation/builder.py`
+- `Predictor(backend, config, ccd, ...)` — `ccd` を渡すよう更新。
+- `with_convection/viscous/gravity/surface_tension()` の型ヒントを `INSTerm` に変更（DIP改善）。
+- 内部フィールドも `Optional[INSTerm]` に変更。
+
+### `src/twophase/__init__.py`
+- ドキュメント修正: `sim.phi.data` → `sim.psi.data`（存在しないフィールドへの参照を修正）。
+
+### `src/twophase/tests/test_ns_terms.py`
+- `Predictor(backend, cfg, ccd)` — 新 API に更新。
+- `pred.compute([u, v], rho, mu, kappa, psi, dt=0.01)` — `ccd` 引数を削除。
+
+## 適用したアーキテクチャ改善
+
+| 問題 | 解決策 | 原則 |
+|------|--------|------|
+| `simulation.py` レガシーデッドコード残存 | ファイル削除 | 一貫性 |
+| `Predictor.compute(ccd)` — 他演算子と不整合 | コンストラクタ注入に統一 | ISP |
+| `INSTerm.compute(ccd)` — fat interface | `ccd` をシグネチャから除去 | ISP |
+| `SimulationBuilder.with_*()` が具象型を要求 | `INSTerm` インターフェース型に変更 | DIP, OCP |
+| `__init__.py` に存在しない `sim.phi.data` | `sim.psi.data` に修正 | 正確性 |
+
+---
 
 ---
 

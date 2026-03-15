@@ -16,7 +16,9 @@ Quick start::
     sim = TwoPhaseSimulation(cfg)
 
     X, Y = sim.grid.meshgrid()
-    sim.phi.data[:] = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.2
+    sim.psi.data[:] = 1.0 / (1.0 + np.exp(
+        -(np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.2) / (1.5 / 64)
+    ))
     sim.run(output_interval=20, verbose=True)
 """
 

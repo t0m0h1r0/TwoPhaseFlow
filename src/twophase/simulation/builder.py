@@ -56,6 +56,7 @@ from .diagnostics import DiagnosticsReporter
 
 if TYPE_CHECKING:
     from ..interfaces.ppe_solver import IPPESolver
+    from ..interfaces.ns_terms import INSTerm
     from ._core import TwoPhaseSimulation
 
 
@@ -71,10 +72,11 @@ class SimulationBuilder:
         self._config = config
         # オプションで差し替えるコンポーネント（None = デフォルト生成）
         self._ppe_solver: Optional["IPPESolver"] = None
-        self._convection: Optional[ConvectionTerm] = None
-        self._viscous: Optional[ViscousTerm] = None
-        self._gravity: Optional[GravityTerm] = None
-        self._surface_tension: Optional[SurfaceTensionTerm] = None
+        # NS 各項: 具象型ではなく INSTerm インターフェース型で保持（DIP）
+        self._convection: Optional["INSTerm"] = None
+        self._viscous: Optional["INSTerm"] = None
+        self._gravity: Optional["INSTerm"] = None
+        self._surface_tension: Optional["INSTerm"] = None
 
     # ── カスタムコンポーネントの注入メソッド ─────────────────────────────
 
@@ -88,23 +90,23 @@ class SimulationBuilder:
         self._ppe_solver = solver
         return self
 
-    def with_convection(self, term: ConvectionTerm) -> "SimulationBuilder":
-        """カスタム対流項を注入する。"""
+    def with_convection(self, term: "INSTerm") -> "SimulationBuilder":
+        """カスタム対流項を注入する。INSTerm インターフェースを実装した任意の項を受け付ける。"""
         self._convection = term
         return self
 
-    def with_viscous(self, term: ViscousTerm) -> "SimulationBuilder":
-        """カスタム粘性項を注入する。"""
+    def with_viscous(self, term: "INSTerm") -> "SimulationBuilder":
+        """カスタム粘性項を注入する。INSTerm インターフェースを実装した任意の項を受け付ける。"""
         self._viscous = term
         return self
 
-    def with_gravity(self, term: GravityTerm) -> "SimulationBuilder":
-        """カスタム重力項を注入する。"""
+    def with_gravity(self, term: "INSTerm") -> "SimulationBuilder":
+        """カスタム重力項を注入する。INSTerm インターフェースを実装した任意の項を受け付ける。"""
         self._gravity = term
         return self
 
-    def with_surface_tension(self, term: SurfaceTensionTerm) -> "SimulationBuilder":
-        """カスタム表面張力項を注入する。"""
+    def with_surface_tension(self, term: "INSTerm") -> "SimulationBuilder":
+        """カスタム表面張力項を注入する。INSTerm インターフェースを実装した任意の項を受け付ける。"""
         self._surface_tension = term
         return self
 
@@ -137,9 +139,9 @@ class SimulationBuilder:
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.reinit_steps)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
-        # NS 各項（注入または自動生成）
+        # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
         predictor = Predictor(
-            backend, config,
+            backend, config, ccd,
             convection=self._convection,
             viscous=self._viscous,
             gravity=self._gravity,

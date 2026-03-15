@@ -119,7 +119,7 @@ class TwoPhaseSimulation:
         )
 
         self.curvature_calc = CurvatureCalculator(self.backend, self.ccd, self.eps)
-        self.predictor = Predictor(self.backend, config)
+        self.predictor = Predictor(self.backend, config, self.ccd)
         self.rhie_chow = RhieChowInterpolator(self.backend, self.grid, self.ccd)
 
         # ファクトリ経由で IPPESolver を取得（DIP: 具体クラスに依存しない）
@@ -212,7 +212,6 @@ class TwoPhaseSimulation:
             self.mu.data,
             self.kappa.data,
             self.psi.data,
-            self.ccd,
             dt,
         )
         for ax in range(self.config.ndim):
