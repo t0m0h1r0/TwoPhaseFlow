@@ -161,6 +161,7 @@ class SimulationBuilder:
             backend, grid, config.numerics.cfl_number,
             We=config.fluid.We,
             rho_ratio=config.fluid.rho_ratio,
+            cn_viscous=config.numerics.cn_viscous,
         )
 
         # 境界条件・診断

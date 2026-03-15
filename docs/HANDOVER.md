@@ -1,7 +1,66 @@
 # HANDOVER
 
-Last update: 2026-03-15 (paper verification + critical bug fixes)
-Status: 2 critical bugs fixed (CN predictor /ρ; capillary CFL); 28 tests passing
+Last update: 2026-03-15 (paper verification + critical bug fixes + Issues 3/4/5)
+Status: 5 paper-compliance fixes applied; 28 tests passing
+
+---
+
+# Recent Changes (2026-03-15) — Paper Compliance: Issues 3, 4, 5 (6th Pass)
+
+## 変更の目的
+
+前回検証で残存した3件の論文逸脱を実装。
+
+## 修正ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `levelset/reinitialize.py` | 再初期化を TVD-RK3（§8.2）+ WENO5 圧縮項（§8.3）に置換 |
+| `time_integration/cfl.py` | `cn_viscous=True` 時に粘性 CFL を除外（§8 安定性 warnbox）|
+| `simulation/builder.py` | `CFLCalculator` に `cn_viscous` を渡す |
+
+## Issue 3 + 4: 再初期化 TVD-RK3 + WENO5 圧縮項
+
+**再初期化の擬似時間積分**を前進 Euler → TVD-RK3（Shu–Osher, §8.2 Eq.79–81）へ変更。
+
+**圧縮項 ∇·(ψ(1-ψ)n̂)** を CCD 展開 → WENO5 フラックス分割（§8.3）へ変更:
+- フラックス F_ax = ψ(1-ψ)·n̂_ax
+- 大域 LF 分割: F^± = (F ± α·ψ)/2, α = max|ψ(1-ψ)|（§8.3 推奨値）
+- WENO5 で界面フラックス再構成 → 発散計算
+- 拡散項 ε∇²ψ は引き続き CCD で評価
+
+**TVD-RK3 安定性**: CCD 高次 Laplacian は高周波振動モードに対して FD より大きな有効固有値を持つ。各 TVD-RK3 サブステージが前進 Euler ステップを行うため、この増幅が蓄積してψ≈0/1領域に振動を生じさせる。安全率 0.5 を Δτ に乗じて安定化:
+```
+dtau = 0.5 * h² / (2·ndim·ε)   # TVD-RK3 safety factor
+```
+
+## Issue 5: CN 粘性時の粘性 CFL 除外
+
+論文 §8 安定性 warnbox: "CN 法（無条件安定）を粘性項に採用しているため, Δt_visc は時間刻み決定に使用しない"
+
+`cn_viscous=True`（デフォルト）のとき `dt_visc` を CFL 計算から除外。
+
+```python
+# Before: always included dt_visc
+dt = min(dt_conv, dt_visc)
+
+# After: dt_visc only for explicit viscous treatment
+if not self._cn_viscous:
+    dt = min(dt, dt_visc)
+```
+
+## 残存する既知の逸脱（論文との差異）
+
+| 問題 | 影響 | 対応 |
+|------|------|------|
+| 静止液滴ベンチマーク未実装 | 寄生流れ定量検証ができない | TODO |
+
+## 検証
+
+```
+pytest src/twophase/tests
+→ 28 passed
+```
 
 ---
 
@@ -49,8 +108,6 @@ u_pred = [u_old[c] + dt * (explicit_rhs[c] / rho + visc_n[c]) for c in range(ndi
 
 | 問題 | 影響 | 対応 |
 |------|------|------|
-| 再初期化: 前進 Euler（論文: TVD-RK3） | 疑似時間が 1 次精度 | n_steps 調整と同時変更が必要なため保留 |
-| 再初期化: WENO5 未使用（論文: WENO5 圧縮項） | 界面圧縮精度低下の可能性 | 別タスクとして実装 |
 | 静止液滴ベンチマーク未実装 | 寄生流れ定量検証ができない | TODO |
 
 ## 検証
