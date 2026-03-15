@@ -5,6 +5,11 @@
 \subsection{WENO5 による移流：なぜ必要か}
 \label{sec:weno5}
 
+第\ref{sec:levelset}章では CLS 移流方程式 $\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$ を
+「WENO5 スキームで解く」と述べた．
+本章ではその WENO5 スキームを正式に導出し，なぜ線形高次精度スキームでなく
+これが必要かを数学的に示す．
+
 対流項および CLS の移流項には，5次精度の Weighted ENO (WENO5) スキーム \cite{JiangShu1996} を採用する．
 
 \subsubsection{気液界面移流の困難}

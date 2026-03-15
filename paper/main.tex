@@ -19,19 +19,23 @@
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/01_introduction}  %% 第1章
 \input{sections/02_governing}     %% 第2章
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\part{界面追跡法}
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/03_levelset}      %% 第3章
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \part{数値離散化スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/04_ccd}               %% 第4章（旧 05_ccd）
-\input{sections/05_grid}              %% 第5章（旧 04_grid）
+\input{sections/05_grid}              %% 新第4章：界面適合非一様格子
+\input{sections/04_ccd}               %% 新第5章：結合コンパクト差分法（CCD）
 \input{sections/08_time_integration}  %% 第6章（旧 第8章→昇格）
 \input{sections/06_collocate}         %% 第7章（旧 第6章）
 \input{sections/07_pressure}          %% 第8章（旧 第7章）
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\part{実装・検証・まとめ}
+\part{統合・検証・展望}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/09_full_algorithm}    %% 第9章
 \input{sections/10_verification_metrics} %% 第10章

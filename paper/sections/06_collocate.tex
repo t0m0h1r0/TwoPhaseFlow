@@ -97,7 +97,7 @@ Navier-Stokes 方程式において圧力が存在する物理的理由は，
 \end{center}
 
 変密度場では $\phi \propto \Delta t \, p/\rho$ と同定されることで，
-$\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第8章§\ref{sec:projection_derivation}）．
+$\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pressure}章§\ref{sec:projection_derivation}）．
 \end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -159,6 +159,7 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
 \end{itemize}
 
 \subsubsection{本研究における実装形式}
+\label{sec:rc_implementation}
 最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の実装形式を用いる．
 \begin{equation}
  u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p)_f - \overline{(\bnabla p)}_f \right]
@@ -307,7 +308,7 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
 \begin{itemize}
   \item 表面張力項の計算だけ別ルーティンで2次差分を使う．
   \item 圧力 Poisson 方程式の係数行列と Rhie-Chow 係数で
-        異なる密度補間（算術平均 vs 調和平均）を混在させる（§\ref{sec:collocate} §6.2.2 参照）．
+        異なる密度補間（算術平均 vs 調和平均）を混在させる（§\ref{sec:rc_implementation} 参照）．
   \item 再初期化直後と曲率計算のタイミングがずれて，$\psi$ と $\phi$ の整合性が失われる状態で
         表面張力を計算する（§\ref{sec:curvature_stab} 参照）．
 \end{itemize}
