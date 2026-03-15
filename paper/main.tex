@@ -8,22 +8,38 @@
 \input{preamble}
 
 \begin{document}
-\input{sections/00_abstract}
 \pagenumbering{roman}
+\input{sections/00_abstract}
 \tableofcontents
 \newpage
 \pagenumbering{arabic}
-\input{sections/01_introduction}
-\input{sections/02_governing}
-\input{sections/03_levelset}
-\input{sections/04_grid}
-\input{sections/05_ccd}
-\input{sections/06_collocate}
-\input{sections/07_pressure}
-\input{sections/08_time_integration}
-\input{sections/09_full_algorithm}
-\input{sections/10_verification_metrics}
-\input{sections/11_conclusion}
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\part{問題設定と数学的基盤}
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\input{sections/01_introduction}  %% 第1章
+\input{sections/02_governing}     %% 第2章
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\part{界面追跡法}
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\input{sections/03_levelset}      %% 第3章
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\part{数値離散化スキーム}
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\input{sections/05_grid}              %% 新第4章：界面適合非一様格子
+\input{sections/04_ccd}               %% 新第5章：結合コンパクト差分法（CCD）
+\input{sections/08_time_integration}  %% 第6章（旧 第8章→昇格）
+\input{sections/06_collocate}         %% 第7章（旧 第6章）
+\input{sections/07_pressure}          %% 第8章（旧 第7章）
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\part{統合・検証・展望}
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\input{sections/09_full_algorithm}    %% 第9章
+\input{sections/10_verification_metrics} %% 第10章
+\input{sections/11_conclusion}        %% 第11章
 
 \bibliographystyle{plain}
 \bibliography{bibliography}

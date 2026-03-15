@@ -2,9 +2,23 @@
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
 \WarningFilter{xeCJK}{Redefining CJKfamily}
+\WarningFilter{relsize}{Failed to get list}
 
 % -- Fonts --
 \setmainfont{Times New Roman}
+
+% -- Section always starts on new page (skip if immediately after \part) --
+\usepackage{etoolbox}
+\newbool{afterpart}
+\AtBeginDocument{
+  \preto{\part}{\booltrue{afterpart}}
+  \preto{\section}{%
+    \ifbool{afterpart}{\boolfalse{afterpart}}{\clearpage}%
+  }
+}
+
+% -- Algorithm environments --
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 
 % -- Math / Figures / Tables --
 \usepackage{amsmath, amssymb, amsthm, mathtools}
@@ -29,7 +43,7 @@
 \usepackage{ragged2e}
 
 % -- Page layout --
-\geometry{reset, a4paper, top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt, footskip=14pt}
+\geometry{reset, a4paper, top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt, footskip=20pt}
 \emergencystretch=2em
 \setlength{\hfuzz}{3pt}
 
