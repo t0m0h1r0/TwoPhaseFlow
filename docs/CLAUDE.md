@@ -78,5 +78,6 @@ If instructed, follow the appropriate protocol:
 - `docs/11_WRITING.md`        → paper writing (Japanese LaTeX)
 - `docs/12_REVIEW.md`         → paper review (CFD professor role)
 - `docs/13_UPDATE.md`         → paper pedagogical expansion
-- `docs/14_STRUCTUAL_REVIEW.md` → manuscript structural review
-- `docs/15_STRUCTUAL_UPDATE.md` → manuscript structural rewrite
+- `docs/14_STRUCTURAL_REVIEW.md` → manuscript structural review
+- `docs/15_STRUCTURAL_UPDATE.md` → manuscript structural rewrite
+- `docs/16_FIX_REF.md`          → LaTeX reference refactoring (`\ref{}`/`\eqref{}`)

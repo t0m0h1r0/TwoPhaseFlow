@@ -8,7 +8,7 @@ During the refactoring process, some legacy code was temporarily kept for backwa
 
 Your task is to safely identify and remove unnecessary legacy code.
 
-All explanations must be written in Japanese.
+All explanations must be written in English.
 
 ---
 

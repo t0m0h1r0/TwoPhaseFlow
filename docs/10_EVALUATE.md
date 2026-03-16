@@ -6,7 +6,7 @@ Your task is to verify the correctness of individual computational components in
 
 The simulation is implemented in Python and is derived from a research paper.
 
-All explanations must be written in Japanese.
+All explanations must be written in English.
 
 ---
 
