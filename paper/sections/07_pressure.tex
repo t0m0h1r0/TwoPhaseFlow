@@ -148,6 +148,38 @@ PPE 演算子 $\mathcal{L}[p] = \bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）
 ここで $a_{i\pm1/2,j} = 2/(\rho_{i,j} + \rho_{i\pm1,j})$（式 \eqref{eq:af_exact}）．
 \end{tcolorbox}
 
+\begin{tcolorbox}[warnbox, title={重要：FVM 離散化（§\ref{sec:fvm_face_coeff}）と CCD 実装（§\ref{sec:ppe_pseudotime}）の役割分担}]
+\label{warn:fvm_vs_ccd}
+本節（§\ref{sec:fvm_face_coeff}）で導出した \textbf{FVM 面係数 $a_f = 2/(\rho_L+\rho_R)$} は，
+変密度 PPE の概念的理解と調和平均の数学的根拠を提供するものであり，
+\textbf{本稿の実際の実装で直接使用されるわけではない}．
+
+本稿が採用する CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_matrix}）では，
+演算子 $\nabla\cdot(1/\rho\,\nabla p)$ を \textbf{product rule で展開した微分形式}：
+\begin{equation}
+  \nabla\cdot\!\left(\frac{1}{\rho}\nabla p\right)
+  = \frac{1}{\rho}\nabla^2 p - \frac{\nabla\rho}{\rho^2}\cdot\nabla p
+  \label{eq:varrho_product_rule}
+\end{equation}
+で離散化し，$\nabla^2 p$，$\nabla\rho$，$\nabla p$ をすべて CCD 法（6次精度）で評価する
+（詳細は§\ref{sec:ccd_2d_full}，式 \eqref{eq:Lx_varrho_discrete}）．
+この非保存形（微分形式）は FVM 保存形と \textbf{連続体レベルでは等価}だが，
+離散化誤差の次数が異なる：FVM が $\mathcal{O}(h^2)$ であるのに対し，CCD 微分形式は $\mathcal{O}(h^6)$ を達成する．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcc}
+\hline
+役割 & 手法 & 本稿での位置づけ \\
+\hline
+調和平均係数の根拠・概念的動機 & FVM 積分（§\ref{sec:fvm_face_coeff}） & 参照のみ \\
+性能比較の基準手法 & FVM + BiCGSTAB & 表~\ref{tab:ccd_vs_fvm} \\
+\textbf{実際の実装（本稿標準）} & \textbf{CCD 微分形式 + 仮想時間陰解法} & §\ref{sec:ppe_pseudotime} \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
 \begin{tcolorbox}[warnbox, title={ノード中心 FVM における境界ノードの制御体積補正（実装上の重要な修正）}]
 \label{warn:boundary_cv}
 
@@ -339,7 +371,8 @@ $\varepsilon_\text{tol}$ で満たす}ため，収束後の誤差は許容誤差
   q_h \equiv \frac{(\bnabla_h^{\mathrm{RC}}\cdot\bu^*)}{\Delta t}
   \label{eq:PPE_discrete}
 \end{equation}
-と書く（$\mathcal{L}_h$ は式 \eqref{eq:PPE_FVM} で与えられる可変係数 Laplace 演算子の離散化）．
+と書く（$\mathcal{L}_h$ は式 \eqref{eq:varrho_product_rule} の product rule 展開を CCD で離散化した可変係数演算子；
+具体的な行列-free 評価手順は§\ref{sec:ccd_2d_full} に示す）．
 この楕円型方程式を直接解く代わりに，\textbf{仮想時間} $\tau$ を導入した放物型問題
 \begin{equation}
   \pd{p}{\tau} = q_h - \mathcal{L}_h\, p
@@ -599,6 +632,82 @@ $p''$ 成分のみを抽出する射影行列 $\mathbf{E}_2 \in \mathbb{R}^{N \t
 仮想時間刻みの選択指針（§\ref{sec:ppe_pseudotime}）がそのまま適用できる．
 \end{tcolorbox}
 
+\subsubsection{Neumann 境界条件の CCD-Poisson への組み込み}
+\label{sec:ccd_neumann_bc}
+
+PPE の壁面境界では $\partial p/\partial n = 0$（Neumann 条件）が課される．
+本節では，この条件を CCD ブロック Thomas 系にどう組み込むかを変密度場の場合を含めて厳密に示す．
+
+\begin{tcolorbox}[defbox, title={Neumann 境界条件 $p'_0 = 0$ の CCD ブロック方程式への組み込み（$x$ 左端 $i=0$）}]
+\textbf{手順1：PPE から境界フラックス条件を導く}
+
+PPE $\nabla\cdot(1/\rho\,\nabla p) = q$ の $x$ 方向項 $\partial_x(a\,\partial_x p)$（$a=1/\rho$）を
+境界ノード $i=0$ 付近で法線積分すると，境界面でのフラックスは
+$a_0 \cdot p'_0 = 0$（$a_0 = 1/\rho_0 > 0$）となり，これは単純に
+\begin{equation}
+  p'_0 \equiv \left.\frac{\partial p}{\partial x}\right|_{x=0} = 0
+  \label{eq:neumann_bc_ccd}
+\end{equation}
+を意味する．密度値 $\rho_0$ によらず Neumann 条件は $p$ の1次微分の拘束となる．
+
+\textbf{手順2：CCD 境界ブロック方程式を修正する}
+
+CCD ブロック Thomas 系（式 \eqref{eq:ccd_matrix_full}）の $i=0$ 行：
+\begin{equation}
+  \mathbf{B}_0^{\mathrm{bc}}
+  \begin{bmatrix} p'_0 \\ p''_0 \end{bmatrix}
+  + \mathbf{C}_0^{\mathrm{bc}}
+  \begin{bmatrix} p'_1 \\ p''_1 \end{bmatrix}
+  = \mathbf{r}_0^{\mathrm{bc}}(\bm{p})
+  \label{eq:ccd_bc_neumann}
+\end{equation}
+の第1行（$p'_0$ に対する方程式）を Neumann 条件 \eqref{eq:neumann_bc_ccd} で直接置き換える：
+\[
+  \mathbf{B}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 1 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  \mathbf{C}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 0 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  r_{0,1}^{\mathrm{bc}} \leftarrow 0
+\]
+第2行（$p''_0$ に対する方程式）は通常の内点公式（境界向け修正版）をそのまま用いる．
+
+\textbf{手順3：変密度 PPE 演算子値の計算}
+
+式 \eqref{eq:varrho_product_rule} の演算子値
+$(\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p})_0 = (1/\rho_0)\,p''_0 - (\nabla\rho_0/\rho_0^2)\,p'_0$
+を計算する際，$p'_0 = 0$（手順2で確定）を代入することで：
+\[
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_0
+  = \frac{p''_0}{\rho_0}
+  \qquad (\text{クロス微分項が消滅})
+\]
+境界ノードでの演算子値は $p''_0$ と $\rho_0$ のみで決まり，計算が単純化される．
+
+\textbf{右端 $i=N-1$ および $y$ 方向境界：} 対称的に同様の操作を適用する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={Dirichlet 境界（$p = p_{\mathrm{BC}}$）の場合との比較}]
+Dirichlet 境界では，境界ブロック方程式の第1行と第2行の両方を，
+$p'$ と $p''$ を境界値から解析的に決定する式で置き換える（一様密度での Poisson 方程式と同様）．
+Neumann 条件（本 PPE の標準ケース）は $p' = 0$ のみを強制し，$p''$ は自由に決まる点が
+Dirichlet 条件と根本的に異なる．両境界条件の CCD ブロック方程式への組み込みを
+表~\ref{tab:ccd_bc_types} にまとめる．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+境界条件 & 第1行（$p'$） & 第2行（$p''$） \\
+\hline
+Neumann（$p'=0$） & $p'_0 = 0$（強制代入） & 内点公式（境界版） \\
+Dirichlet（$p=p_{\mathrm{BC}}$） & $p'_0 = $ 解析値 & $p''_0 = $ 解析値 \\
+\hline
+\end{tabular}
+\end{center}
+\captionof{table}{CCD 境界ブロック方程式への境界条件の組み込み方}
+\label{tab:ccd_bc_types}
+\end{tcolorbox}
+
 \subsubsection{2次元変密度 CCD-Poisson 演算子の完全定式化}
 \label{sec:ccd_2d_full}
 
@@ -747,12 +856,12 @@ CCD + GMRES (matrix-free) & $\Ord{h^6}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-5})$ & 
 \midrule
 CLS 移流（界面追跡） & WENO5 + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
 幾何量計算（曲率等） & CCD 法 & $O(h^6)$ & — \\
-PPE 離散化 & FVM + 調和平均係数 & $O(h^2)$ & — \\
-PPE 求解 & 仮想時間 CCD 陰解法 & $O(h^6)$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + 仮想時間陰解法 & $O(h^6)$ & — \\
+（参考：FVM + BiCGSTAB を使った場合） & （FVM + 調和平均係数） & （$O(h^2)$） & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $O(h^6)$ & $O(\Delta t^2)$ \\
 NS 対流項（Predictor） & CCD（1次微分） & $O(h^6)$ & $O(\Delta t)$ \\
 \midrule
-\textbf{全体（空間律速：FVM-PPE）} & & $\boldsymbol{O(h^2)}$ & — \\
+\textbf{全体（空間律速：CLS WENO5）} & & $\boldsymbol{O(h^5)}$ & — \\
 \textbf{全体（時間律速：NS 対流）} & & — & $\boldsymbol{O(\Delta t)}$ \\
 \bottomrule
 \end{tabular}
@@ -762,12 +871,12 @@ NS 対流項（Predictor） & CCD（1次微分） & $O(h^6)$ & $O(\Delta t)$ \\
 表\ref{tab:accuracy_summary}に示す通り，本稿の手法には以下の精度ミスマッチが存在する：
 
 \begin{enumerate}
-  \item \textbf{空間精度（CCD $O(h^6)$ vs. FVM-PPE $O(h^2)$）：}
-        曲率・速度微分の計算には $O(h^6)$ 精度を実現しているが，
-        圧力 Poisson 方程式の FVM 離散化は $O(h^2)$ に留まる．
-        寄生流れの大きさが $\propto h^{p-2}$（$p$ は曲率の計算精度）であるため，
-        \textbf{曲率のみを高精度化することに明確な工学的意義がある}
-        （PPE の精度を上げずとも寄生流れは大幅に抑制される）．
+  \item \textbf{空間精度（全コンポーネント $O(h^5)$～$O(h^6)$，律速は CLS WENO5 $O(h^5)$）：}
+        本稿では PPE も CCD 微分形式により $O(h^6)$ を達成しており，
+        空間精度のボトルネックは CLS 移流の WENO5 による $O(h^5)$ となる．
+        表~\ref{tab:ccd_vs_fvm} に示すとおり，FVM + BiCGSTAB では PPE の空間精度は $O(h^2)$ に
+        留まることと対比されたい．CCD ソルバーを採用することで，
+        寄生流れ振幅を $O(h^4)$ 以上の次数で抑制できる（§\ref{sec:ccd_balanced_force}）．
 
   \item \textbf{時間精度（CLS $O(\Delta t^3)$ vs. NS $O(\Delta t)$）：}
         Projection 法のスプリッティング誤差が $O(\Delta t)$ であるため，
