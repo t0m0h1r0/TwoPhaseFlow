@@ -153,8 +153,71 @@ Thomas 法または TDMA で $O(N)$ コストで解ける．
 本稿では $x$，$y$ それぞれを順次 1D スイープする次元分離 ADI アプローチを推奨する．
 \end{tcolorbox}
 
-\textbf{6. 圧力 Poisson 方程式の求解 (Pressure Solve)} \\
+\textbf{6. 圧力 Poisson 方程式の求解：CCD-Poisson ソルバー (Pressure Solve)} \\
 Step 5 で得た $\bm{u}^*$ が非圧縮条件を離散的に満たすよう，圧力 $p^{n+1}$ を求める．
+本ステップでは CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$
+（第\ref{sec:CCD}章 §\ref{sec:ccd_elliptic}，第\ref{sec:pressure}章 §\ref{sec:ccd_poisson_matrix}）
+を用いた仮想時間陰解法（§\ref{sec:ppe_pseudotime}）で PPE を解く．
+
+\begin{tcolorbox}[algbox, title={CCD-Poisson ソルバーの詳細アルゴリズム（Step 6 展開版）}]
+\textbf{入力：} 予測速度 $\bu^*$，密度場 $\rho^{n+1}$，前時刻圧力 $p^n$，
+仮想時間刻み $\Delta\tau$，収束許容誤差 $\varepsilon_{\mathrm{tol}}$
+
+\medskip
+\textbf{前処理：}
+\begin{enumerate}
+  \item[(6.0)] \textbf{密度勾配の事前計算：}
+  各行・列に CCD を適用し，$(D_x^{(1)}\rho)_{i,j}$ および $(D_y^{(1)}\rho)_{i,j}$ を計算（物性更新後1回）．
+\end{enumerate}
+
+\textbf{右辺の構築：}
+\begin{enumerate}
+  \item[(6.1)] Rhie-Chow 補正済みフェイス速度から発散を計算：
+  \[
+    q_{i,j} = \frac{1}{\Delta t}\left[\frac{(u_f)_{i+1/2,j}-(u_f)_{i-1/2,j}}{\Delta x}
+    + \frac{(v_f)_{i,j+1/2}-(v_f)_{i,j-1/2}}{\Delta y}\right]
+  \]
+\end{enumerate}
+
+\textbf{仮想時間反復ループ（$m = 0, 1, 2, \dots$）：}
+\begin{enumerate}
+  \item[(6.2)] \textbf{CCD 演算子の matrix-free 評価} $\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m$：
+  \begin{enumerate}
+    \item $x$ 方向 CCD スウィープ（各行 $j$）：$(D_x^{(1)}p^m)_{i,j}$，$(D_x^{(2)}p^m)_{i,j}$ を計算
+    \item $y$ 方向 CCD スウィープ（各列 $i$）：$(D_y^{(1)}p^m)_{i,j}$，$(D_y^{(2)}p^m)_{i,j}$ を計算
+    \item 演算子値の組み立て（式 \eqref{eq:L_CCD_2d_full}）：
+    \[
+      \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m\bigr)_{i,j}
+      = \frac{(D_x^{(2)}p^m)_{i,j} + (D_y^{(2)}p^m)_{i,j}}{\rho_{i,j}}
+      - \frac{(D_x^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_x^{(1)}p^m)_{i,j}
+      - \frac{(D_y^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_y^{(1)}p^m)_{i,j}
+    \]
+  \end{enumerate}
+
+  \item[(6.3)] \textbf{残差の計算と収束判定：}
+  \[
+    \varepsilon^m = \bigl\|\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m - q\bigr\|_2
+  \]
+  $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ ならば収束として反復終了 $\rightarrow$ Step 6.5
+
+  \item[(6.4)] \textbf{圧力の更新（陰的 Euler ステップ）：}
+  \[
+    \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_{\mathrm{CCD}}^{\rho}\bigr)p^{m+1}
+    = p^m + \Delta\tau\,q
+  \]
+  実装：スウィープ型（$x$ 方向→ $y$ 方向 Thomas 法を交互適用）または
+  Krylov 法（$\mathcal{L}_{\mathrm{CCD}}^{\rho}$ を matrix-free で前処理として利用）
+
+  $m \leftarrow m+1$ として (6.2) へ戻る
+\end{enumerate}
+
+\textbf{収束後：}
+\begin{enumerate}
+  \item[(6.5)] $p^{n+1} = p^m$（収束した解を圧力場として採用）
+\end{enumerate}
+
+\textbf{出力：} $p^{n+1}$（$\Ord{h^6}$ 精度の圧力場），総反復回数
+\end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={Step 6 の時刻レベルと Rhie-Chow 補正の整合性}]
 \begin{itemize}

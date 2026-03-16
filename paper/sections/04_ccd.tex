@@ -860,3 +860,180 @@ $f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\p
         $g$ に対して物理的に適切な境界条件（通常は壁面での Neumann 条件）を設定する．
 \end{itemize}
 \end{tcolorbox}
+
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CCD 法の双対的役割：微分スキームから楕円型ソルバーへ}
+\label{sec:ccd_elliptic}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+これまでの節では，CCD 法を「既知の関数 $f$ の微分値 $f', f''$ を高精度に求めるスキーム」
+として解説してきた．しかしCCD 法はより深い役割を担う．
+本節では CCD 法が\textbf{楕円型方程式の陰的ソルバー}として機能することを示し，
+その数学的構造を明らかにする．これは第\ref{sec:pressure}章の CCD-Poisson ソルバーの
+理論的基盤となる極めて重要な観点である．
+
+\subsubsection{従来の見方：陽的な微分演算子}
+
+CCD 法の一般的な利用法は，既知の関数値 $\bm{f} = [f_0, f_1, \dots, f_{N-1}]^\top$
+が与えられたとき，未知の微分値ベクトル
+$\bm{v} = [f'_0, f''_0, f'_1, f''_1, \dots, f'_{N-1}, f''_{N-1}]^\top \in \mathbb{R}^{2N}$
+を求めることである．これは式~\eqref{eq:ccd_global} のブロック三重対角線形系
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v} = \mathcal{R}(\bm{f})
+  \label{eq:ccd_derivative_system}
+\end{equation}
+を解くことに相当する．ここで $\mathcal{M}_{\mathrm{CCD}} \in \mathbb{R}^{2N \times 2N}$ は
+ブロック三重対角行列（式 \eqref{eq:ccd_global}），$\mathcal{R}(\bm{f})$ は
+関数値 $\bm{f}$ から構成される右辺ベクトルである．
+
+解は形式的に
+\begin{equation}
+  \bm{v} = \mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{f})
+  \label{eq:ccd_solution_formal}
+\end{equation}
+と書ける（実際には LU 分解や Thomas 法で $O(N)$ で解く）．
+
+\subsubsection{新しい見方：未知関数に対する線形演算子}
+
+圧力 Poisson 方程式（PPE）では，
+\begin{equation}
+  \mathcal{L} p = \bnabla\cdot\!\left(\frac{1}{\rho}\bnabla p\right) = q
+  \label{eq:elliptic_ppe}
+\end{equation}
+の\textbf{未知関数} $p$ に対して，CCD 法を用いて一次・二次微分
+$p' \equiv \partial p/\partial x$ および $p'' \equiv \partial^2 p/\partial x^2$ を評価し，
+楕円型演算子を構成したい．
+
+この場合，関数値ベクトル $\bm{p} = [p_0, p_1, \dots, p_{N-1}]^\top$ を
+「入力」とする CCD 系は
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v}[p] = \mathcal{R}(\bm{p})
+  \label{eq:ccd_on_p}
+\end{equation}
+となる（$\bm{v}[p]$ は $p$ の微分値を意味する）．
+
+この解から一次微分成分と二次微分成分を抽出する射影行列
+$\mathbf{E}_1, \mathbf{E}_2 \in \mathbb{R}^{N \times 2N}$ を定義する：
+\begin{align}
+  \mathbf{E}_1\,\bm{v} &= [f'_0,\, f'_1,\, \dots,\, f'_{N-1}]^\top
+  \quad \text{（奇数成分の抽出）} \\
+  \mathbf{E}_2\,\bm{v} &= [f''_0,\, f''_1,\, \dots,\, f''_{N-1}]^\top
+  \quad \text{（偶数成分の抽出）}
+\end{align}
+
+これにより，CCD 法で離散化した微分演算子は
+\begin{align}
+  D_x^{(1)}\bm{p} &\equiv \mathbf{E}_1\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+  \label{eq:Dx1_op} \\
+  D_x^{(2)}\bm{p} &\equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+  \label{eq:Dx2_op}
+\end{align}
+という $\bm{p}$ に対する\textbf{線形演算子}として定義される．
+
+\begin{tcolorbox}[defbox, title={CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}$ の定義}]
+1次元の（等密度）ラプラシアン $\mathcal{L}p = \partial^2 p/\partial x^2$ を
+CCD 法で離散化した演算子行列を：
+\begin{equation}
+  \boxed{
+    \mathbf{L}_{\mathrm{CCD}}^{(x)} \equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}
+    \in \mathbb{R}^{N \times N}
+  }
+  \label{eq:L_CCD_def}
+\end{equation}
+と定義する．$\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は $N \times N$ の行列であり，
+入力 $\bm{p} \in \mathbb{R}^N$（圧力値ベクトル）に対して
+$\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p} \approx [p''_0, p''_1, \dots, p''_{N-1}]^\top$（$\Ord{h^6}$ 精度）
+を返す．
+
+\textbf{注意：} $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ を陽に組み立てる必要はない．
+各反復において $\mathcal{M}_{\mathrm{CCD}}$ に対するブロック Thomas 法を適用することで，
+$O(N)$ のコストで $\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}$ の積ベクトルが得られる
+（行列-ベクトル積の\textbf{matrix-free 実装}）．
+\end{tcolorbox}
+
+\subsubsection{変密度場における CCD-Poisson 演算子}
+\label{sec:ccd_varrho_op}
+
+変密度 PPE の演算子 $\mathcal{L}^{\rho}p = \nabla\cdot(1/\rho\,\nabla p)$ を
+CCD 法で離散化する．1次元では：
+\begin{equation}
+  \mathcal{L}^{\rho}p
+  = \frac{1}{\rho}\frac{\partial^2 p}{\partial x^2}
+  + \frac{\partial}{\partial x}\!\left(\frac{1}{\rho}\right)\frac{\partial p}{\partial x}
+  = \frac{1}{\rho}\,p'' - \frac{\rho_x}{\rho^2}\,p'
+  \label{eq:varrho_op_1d}
+\end{equation}
+ここで $\rho_x = \partial\rho/\partial x$ は CCD 法でも求められる（密度場 $\rho$ への CCD 適用）．
+
+格子点ごとに密度行列 $\boldsymbol{\Lambda}_\rho = \mathrm{diag}(\rho_0, \dots, \rho_{N-1})$ を用いると，
+変密度 CCD-Poisson 演算子は：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}
+  = \boldsymbol{\Lambda}_\rho^{-1}\,\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}
+  - \boldsymbol{\Lambda}_\rho^{-2}\,\mathrm{diag}(D_x^{(1)}\bm{\rho})\,D_x^{(1)}\bm{p}
+  \label{eq:L_CCD_varrho}
+\end{equation}
+となる（$\bm{\rho} = [\rho_0, \dots, \rho_{N-1}]^\top$ は密度ベクトル）．
+2次元では $x$・$y$ 方向の和として：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho} = \mathbf{L}_{\mathrm{CCD}}^{\rho,x} + \mathbf{L}_{\mathrm{CCD}}^{\rho,y}
+  \label{eq:L_CCD_2d}
+\end{equation}
+
+\begin{tcolorbox}[mybox, title={CCD 演算子の対称性と正定値性}]
+等密度場（$\rho = \text{const}$）における $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は，
+適切な境界条件（ディリクレまたは Neumann）のもとで\textbf{負半定値}行列である
+（全固有値 $\lambda_k \le 0$）．これはラプラシアンの本質的性質と一致する．
+
+変密度場では $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の対称性は厳密には成立しないが，
+仮想時間反復の収束性は演算子の\textbf{スペクトル半径}に支配されるため，
+実用上は十分な収束が得られる（第\ref{sec:pressure}章，§\ref{sec:ppe_pseudotime}）．
+
+なお，CCD ブロック Thomas 法によって $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p}$ を陽に組み立てない
+\textbf{matrix-free} 評価が可能であり，大規模問題に対する記憶効率が高い．
+\end{tcolorbox}
+
+\subsubsection{CCD 法の2つの役割の統合的理解}
+
+以上から，本稿における CCD 法の役割を以下の2つの観点でまとめる．
+
+\begin{tcolorbox}[defbox, title={CCD 法の2つの役割}]
+\textbf{役割 1：微分演算子}（第\ref{sec:CCD}章 §\ref{sec:ccd_motivation}--§\ref{sec:ccd_mixed}）
+
+既知の関数 $f$（例：レベルセット関数 $\phi$，速度 $\bu$）から，
+$\Ord{h^6}$ 精度の微分値 $f', f''$ および混合微分 $f_{xy}$ を求める．
+\begin{itemize}
+  \item 曲率 $\kappa$ の高精度計算（表面張力に不可欠）
+  \item 粘性項 $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ の空間微分評価
+\end{itemize}
+
+\bigskip
+\textbf{役割 2：楕円型ソルバーの構成要素}（本節 §\ref{sec:ccd_elliptic}，第\ref{sec:pressure}章 §\ref{sec:ppe_pseudotime}）
+
+未知の圧力場 $p$ に対して CCD を適用し，演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ を構成する．
+PPE $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p} = \bm{q}$ を仮想時間陰解法で解く：
+\begin{equation}
+  \underbrace{\bigl(\mathbf{I} + \Delta\tau\,\mathbf{L}_{\mathrm{CCD}}^{\rho}\bigr)}_{\text{CCD 陰的演算子}}\bm{p}^{m+1}
+  = \bm{p}^m + \Delta\tau\,\bm{q}
+  \label{eq:ccd_implicit_iteration}
+\end{equation}
+\begin{itemize}
+  \item $\Ord{h^6}$ 精度の楕円型演算子（FVM の $\Ord{h^2}$ を超える）
+  \item matrix-free 実装による $O(N)$ 記憶量
+  \item 無条件安定（仮想時間刻み $\Delta\tau$ に制限なし）
+\end{itemize}
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={なぜ「楕円型ソルバー」としての CCD が重要か}]
+従来の PPE ソルバー（BiCGSTAB + FVM）は $\Ord{h^2}$ 精度の空間離散化を使うため，
+密度比 $\rho_l/\rho_g = 1000$ のような強い変密度場では係数行列が悪条件化しやすい．
+
+CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ は 6 次精度のため，
+同じ格子解像度でより正確な圧力場が得られ，
+結果として速度補正の精度（寄生流れの低減）も向上する．
+
+さらに，CCD の構造的特徴（ブロック Thomas 法の $O(N)$ コスト）を
+仮想時間反復の各ステップで直接活用できる点が，
+Krylov 法（GMRES 等）単独の使用に比べた優位性である：
+CCD スウィープが\textbf{前処理} (preconditioner) の役割を果たす．
+\end{tcolorbox}
