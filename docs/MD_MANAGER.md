@@ -1,6 +1,6 @@
 # MD Manager — Documentation Orchestrator
 
-**Last update:** 2026-03-15
+**Last update:** 2026-03-16
 **Purpose:** Central manager for the project's documentation markdown files. Provides templates, update/creation rules, Claude prompts, and automation snippets so that docs in `docs/` and `paper/` stay consistent and are easy for an LLM to update.
 
 ---
