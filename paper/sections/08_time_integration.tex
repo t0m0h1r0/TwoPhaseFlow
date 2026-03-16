@@ -2,6 +2,31 @@
 \section{時間積分・移流スキームの高精度化}
 \label{sec:time}
 
+\begin{tcolorbox}[defbox, title={本章の役割：CLS 移流スキームと NS 時間積分の統合整理}]
+本章では，第\ref{sec:levelset}章（CLS 法）で「WENO5 スキームで解く」「TVD-RK3 で時間積分する」と
+記述した数値手法，および第\ref{sec:collocate}章・第\ref{sec:pressure}章（Projection 法）で前提とした
+時間離散化を\textbf{正式に導出・定義する}．
+
+\medskip
+\textbf{本章の構成：}
+\begin{itemize}
+  \item §\ref{sec:weno5}：WENO5 スキーム
+        ——CLS 移流方程式（式~\eqref{eq:cls_advection}）および再初期化の圧縮項に使用．
+        Lax--Friedrichs フラックス分割，滑らかさ指標 $\beta_k$，再構成係数を導出する．
+  \item §\ref{sec:time_int}：TVD-RK3（CLS 移流・再初期化のみ適用）
+        および Crank--Nicolson（NS 粘性項の半陰的処理）
+  \item §\ref{sec:godunov}：Godunov 型上流化——標準 Level Set 再初期化の参照実装
+  \item §\ref{sec:stability}：安定性制約——対流 CFL 条件と毛管波制約の導出
+\end{itemize}
+
+\medskip
+\textbf{重要な注意（§\ref{sec:time_int} warnbox で詳説）：}\\
+TVD-RK3 は CLS 移流にのみ用い，NS 方程式の時間積分には\textbf{使用しない}．
+NS 対流項は前進 Euler（1次精度）のままとする．
+理由は，Predictor--Corrector 分割（Projection 法）が既に $\Ord{\Delta t}$ のスプリッティング誤差を持つため，
+NS 対流項を高次化しても全体時間精度は $\Ord{\Delta t}$ に律速され改善されないからである．
+\end{tcolorbox}
+
 \subsection{WENO5 による移流：なぜ必要か}
 \label{sec:weno5}
 

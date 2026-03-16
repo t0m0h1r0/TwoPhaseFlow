@@ -100,6 +100,20 @@ Navier-Stokes 方程式において圧力が存在する物理的理由は，
 $\bnabla^2\phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pressure}章§\ref{sec:projection_derivation}）．
 \end{tcolorbox}
 
+\begin{tcolorbox}[mybox, title={等密度仮定の限界と変密度 Projection 法への拡張}]
+\textbf{本節（§\ref{sec:helmholtz}）の Projection 法の導出は，教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定している}．
+式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla\phi$ という純粋な Helmholtz 分解で
+書けるのは，この仮定のもとでのみである．
+
+実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は
+$\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になる．
+この差によって Poisson 方程式が標準的な $\bnabla^2\phi = \bnabla\cdot\bu^*$ でなく，
+$\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ という
+\textbf{可変係数の楕円型方程式}（変密度 PPE）に変わる．
+
+\textbf{→ 変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．}
+\end{tcolorbox}
+
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Rhie--Chow 補正による問題の解決}
 \label{sec:rhie_chow}

@@ -105,12 +105,7 @@ Conservative Level Set (CLS) 法 \cite{OlssonKreiss2005} は，
 $\phi$ の代わりに，滑らかな\textbf{ヘヴィサイド関数} $\psi = H_\varepsilon(\phi) \in [0,1]$
 を輸送変数として採用することでこの問題を解決する．
 
-$\psi$ の移流方程式は\textbf{保存形（発散形）}：
-\begin{equation}
-  \pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0
-  \label{eq:cls_advection_intro}
-\end{equation}
-これにより $\int\psi\,dV =$ const（液相体積の離散的保存）が\textbf{自動的に保証}される．
+$\psi$ の移流方程式は\textbf{保存形（発散形）}（式~\eqref{eq:cls_advection}，§\ref{sec:cls_advection} で詳述）で記述されるため，$\int\psi\,dV =$ const（液相体積の離散的保存）が\textbf{自動的に保証}される．
 
 \begin{tcolorbox}[defbox, title={標準 LS 法 vs CLS 法：選択の根拠}]
 \begin{center}
@@ -130,6 +125,7 @@ $\psi$ の移流方程式は\textbf{保存形（発散形）}：
 \end{tcolorbox}
 
 \subsection{保存形移流方程式}
+\label{sec:cls_advection}
 
 本稿では Conservative Level Set 法 \cite{OlssonKreiss2005} を採用する．
 界面指標として，滑らか化ヘヴィサイド関数に相当する $\psi(\bm{x}, t)$ を用いる．
