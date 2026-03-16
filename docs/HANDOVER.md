@@ -1,7 +1,50 @@
 # HANDOVER
 
-Last update: 2026-03-16 (paper pedagogical expansion — 13_UPDATE tasks complete)
+Last update: 2026-03-16 (manuscript structural review — 14_STRUCTUAL_REVIEW complete)
 Status: Paper revised (102 pages, clean compile); 28 tests passing
+
+---
+
+# Recent Changes (2026-03-16) — Manuscript Structural Review (14_STRUCTUAL_REVIEW)
+
+## 変更の目的
+
+14_STRUCTUAL_REVIEW.md プロトコルに従い，CFD 教授役として論文全章の構造・順序・図表配置を包括的にレビュー。コード・LaTeX への変更はなし（レビュー出力のみ）。
+
+## レビュー結果サマリー
+
+### 発見された主要課題（7件）
+
+| 課題 | 章 | 重大度 |
+|------|----|--------|
+| 第1章の情報過密（§1.5+§1.6 重複，fig:algo_flow が早すぎる） | 第1章 | 高 |
+| 格子章（第4章）→ CCD 章（第5章）の論理的逆転 | 第4–5章 | 高 |
+| 時間積分章（旧第6章）が CLS 法（第3章）から離れすぎ | 第6章 | 高 |
+| §2.6 に CCD 前提の実装テスト手順が混在 | 第2章 | 中 |
+| 精度サマリー表が第11章まで隠れている | 第11章 | 中 |
+| Part II が第3章のみで章数不均衡 | 全体 | 中 |
+| 第10章の検証が数値結果なしの「計画書」止まり | 第10章 | 低 |
+
+### 推奨する新章立て
+
+```
+Part I  問題設定と数学的基盤   Ch.1–2（現状維持，§1.5+§1.6 を統合）
+Part II 界面追跡法と移流スキーム Ch.3（CLS），Ch.4（時間積分 ← 旧第6章昇格）
+Part III 空間離散化スキーム     Ch.5（CCD ← 旧第5章），Ch.6（格子 ← 旧第4章），
+                               Ch.7（Rhie-Chow），Ch.8（PPE）+ §8.X 精度サマリー
+Part IV 統合・検証・展望        Ch.9–11
+```
+
+### 図表の主要改善案
+
+- `fig:ns_solvers`（NS各項↔ソルバー対応）を第1章から第9章冒頭へ移動
+- `fig:algo_flow` の詳細版を第9章へ移動，第1章は高レベル概念図（新設）に差し替え
+- `tab:accuracy_summary`（精度コンポーネント表）を第11章から第8章末尾へ移動
+- `tab:chapter_overview` を簡略版（3列）に整理
+
+## 検証
+
+コード変更なし。LaTeX 変更なし。
 
 ---
 
