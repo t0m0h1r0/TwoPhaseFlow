@@ -357,6 +357,48 @@ CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
 CN 法（無条件安定）を粘性項に採用しているため，$\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
 \end{tcolorbox}
 
+\begin{tcolorbox}[defbox, title={毛管波制約の導出：分散関係から CFL 条件へ}]
+\textbf{Step 1：毛管波の分散関係}
+
+気液界面上の微小振幅波（毛管波）を考える．
+界面変位 $\eta(x,t) = \hat{\eta}\,e^{i(kx - \omega t)}$ として
+線形安定解析を行うと，角周波数 $\omega$ と波数 $k$ の関係（分散関係）は：
+\begin{equation}
+  \omega^2 = \frac{\sigma\,k^3}{\rho_l + \rho_g}
+  \label{eq:capillary_dispersion}
+\end{equation}
+これより位相速度は $c_\sigma = \omega/k = \sqrt{\sigma k/(\rho_l+\rho_g)}$，
+群速度は $c_g = 3c_\sigma/2$ である．
+
+\textbf{Step 2：格子上の最大分解可能波数}
+
+格子間隔 $\Delta x$ の離散格子で分解できる最も高い波数は
+$k_{\max} = \pi/\Delta x$（ナイキスト波数）である．
+
+\textbf{Step 3：CFL 条件の適用}
+
+最高波数 $k_{\max}$ に対応する群速度 $c_g(k_{\max})$ を用いて
+CFL 条件 $c_g \cdot \Delta t \le \Delta x$ を適用する：
+\begin{align}
+  c_g(k_{\max}) &= \frac{3}{2}\sqrt{\frac{\sigma\,k_{\max}}{\rho_l+\rho_g}}
+  = \frac{3}{2}\sqrt{\frac{\sigma\,\pi/\Delta x}{\rho_l+\rho_g}} \notag\\
+  \Rightarrow\quad
+  \Delta t &\le \frac{\Delta x}{c_g(k_{\max})}
+  = \frac{2}{3}\sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{\sigma\,\pi}}
+  \label{eq:dt_sigma_derive}
+\end{align}
+係数 $2/(3\sqrt{\pi}) \approx 0.376$ を安全側で丸めて $1/\sqrt{2\pi}$ とすると：
+\[
+  \Delta t_\sigma = \sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{2\pi\sigma}}
+\]
+これが式 \eqref{eq:dt_sigma} の毛管波制約である（より保守的な係数 $\sqrt{1/(2\pi)}$ を採用）．
+
+\textbf{物理的解釈：} $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性は，
+毛管波の分散関係が $\omega \propto k^{3/2}$ に由来する．
+格子を半分にすると（$\Delta x \to \Delta x/2$）$\Delta t_\sigma$ は $1/2^{3/2} \approx 0.354$ 倍，
+すなわち約 2.8 倍制約が厳しくなる．
+\end{tcolorbox}
+
 \begin{tcolorbox}[warnbox, title={毛管波制約 $\Delta t_\sigma \propto \sqrt{\Delta x^3}$ が厳しい理由}]
 表面張力が支配的な問題（$We \ll 1$，小液滴，毛管現象）では，
 毛管波（capillary wave）の位相速度が大きくなり CFL 条件が厳しくなる．

@@ -2,29 +2,263 @@
 \section{まとめと今後の課題}
 \label{sec:conclusion}
 
+% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{本稿の貢献のまとめ}
+\label{sec:contribution_summary}
+% ═══════════════════════════════════════════════════════════════════════════════
 
-本稿では気液二相流の高精度数値シミュレーションのための定式化を示した．技術的に重要な3点の貢献を以下にまとめる．
+本稿では，気液二相流の高精度数値シミュレーションに必要な数学的・数値的基盤を，
+学部生・大学院生を主な読者として体系的に解説した．
+各章の貢献を技術的に整理する前に，
+\textbf{「なぜこの組み合わせが必要か」}という設計方針を振り返る．
 
-\begin{enumerate}[noitemsep]
-  \item \textbf{質量保存性（第\ref{sec:levelset}章）：}
-        CLS 法の圧縮・拡散項競合により界面厚さを安定維持し，長時間計算でも $\int\psi\,dV \approx \text{const}$ を保つ．
-  \item \textbf{高精度空間微分（第\ref{sec:CCD}章）：}
-        CCD 法（$O(h^6)$）による曲率計算で表面張力項の寄生流れを大幅に抑制する．
-  \item \textbf{安定な圧力-速度連成（第\ref{sec:collocate}，\ref{sec:pressure}章）：}
-        Rhie--Chow 補正に調和平均密度を採用し，密度比 $O(1000)$ でも安定な変密度 PPE 求解を実現する．
+\begin{tcolorbox}[defbox, title={本稿の技術的設計方針：問題 → 手法の対応関係}]
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{>{\raggedright}p{40mm}>{\raggedright\arraybackslash}p{55mm}}
+\hline
+\textbf{数値的困難} & \textbf{本稿の対処手法} \\
+\hline
+界面の質量損失       & CLS 法（第\ref{sec:levelset}章）\\
+低次移流による界面にじみ & WENO5 + TVD-RK3（第\ref{sec:time}章）\\
+曲率計算誤差 $\to$ 寄生流れ & CCD 法 $O(h^6)$（第\ref{sec:CCD}章）\\
+チェッカーボード圧力振動 & コロケート格子 + Rhie--Chow 補正（第\ref{sec:collocate}章）\\
+変密度 PPE の収束悪化 & 仮想時間 CCD 陰解法（第\ref{sec:pressure}章）\\
+格子粗さによる界面解像不足 & Level Set 連動非一様格子（第\ref{sec:grid}章）\\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{各章の技術的貢献}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{description}
+  \item[\textbf{第\ref{sec:governing}章：支配方程式と One-Fluid 定式化}]
+        2つの独立した Navier--Stokes 方程式系（液相・気相）を，
+        ヘヴィサイド関数 $\psi$ を用いた一体化方程式に変換する
+        One-Fluid 定式化を導いた（§\ref{sec:onefluid}）．
+        表面張力の特異な面力を体積力に置き換える
+        CSF モデル（§\ref{sec:csf}）を導出し，
+        近似誤差が $O(\varepsilon^2) \approx O(\Delta x^2)$ に収まることを示した．
+        また，無次元化（Re，Fr，We の定義）と曲率公式の幾何学的導出（§\ref{sec:curvature}）により，
+        後の章の数値実装の基礎を確立した．
+
+  \item[\textbf{第\ref{sec:levelset}章：Conservative Level Set 法}]
+        標準 Level Set 法の質量損失問題を克服するため，
+        $\psi = H_\varepsilon(\phi) \in [0,1]$ を移流変数とする
+        \textbf{保存形}の界面追跡法（CLS 法）を実装した（第\ref{sec:levelset}章）．
+        再初期化方程式（圧縮--拡散 PDE）により，
+        移流で崩れた界面プロファイルを回復する．
+        $\psi \to \phi$ の解析的逆変換（§\ref{sec:newton_inversion}）により，
+        幾何計算に必要な距離関数 $\phi$（$|\nabla\phi|=1$）を高精度に復元できる．
+
+  \item[\textbf{第\ref{sec:grid}章：界面適合非一様格子}]
+        Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
+        界面近傍のみを自動的に高解像度化する非一様テンソル積格子を導入した（§\ref{sec:grid_gen}）．
+        座標変換メトリック係数の CCD 法による $O(h^6)$ 精度評価と，
+        ALE（任意ラグランジュ--オイラー）効果の簡略化条件を明示した（§\ref{sec:grid_ale}）．
+
+  \item[\textbf{第\ref{sec:CCD}章：結合コンパクト差分法（CCD 法）}]
+        3点ステンシルで1階・2階微分を同時求解する CCD 法（Chu \& Fan 1998）の
+        係数導出（第\ref{sec:CCD}章：$\alpha_1 = 7/16$，$a_1 = 15/16$，$b_1 = 1/16$）と，
+        打切り誤差の Taylor 展開による確認を行った．
+        また，CCD 法を楕円型境界値問題のソルバーとして用いる
+        \textbf{仮想時間陰解法}（§\ref{sec:ccd_elliptic}）を定式化し，
+        変密度 PPE への応用（§\ref{sec:ccd_poisson_matrix}）を示した．
+        これにより，外部線形代数ライブラリを用いず，
+        2D 圧力 Poisson 方程式を $O(h^6)$ 精度で効率的に解くことが可能となる．
+
+  \item[\textbf{第\ref{sec:time}章：時間積分と移流スキーム}]
+        界面急峻部の振動を抑制する WENO5 スキーム（Jiang \& Shu 1996）の
+        Lax--Friedrichs フラックス分割・滑らかさ指標・非線形重みの
+        導出と実装係数を完全に記述した（§\ref{sec:weno5}）．
+        CLS 移流・再初期化には TVD-RK3（Shu--Osher 1988）を適用し，
+        全変動非増大性（TVD 性）を保証する（§\ref{sec:time_int}）．
+        全体時間精度が NS 対流項の1次 Euler で律速されること，および
+        その理由（Projection 法の分割誤差 $O(\Delta t)$）を明示した（§\ref{sec:time_int}）．
+        毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ の分散関係からの導出（§\ref{sec:stability}）により，
+        時間刻みの設計根拠を与えた．
+
+  \item[\textbf{第\ref{sec:collocate}章：圧力--速度連成と Rhie--Chow 補正}]
+        コロケート格子でのチェッカーボード不安定の数学的メカニズム（$2\Delta x$ モード解析）を示し，
+        変密度流体に対応した調和平均係数付き Rhie--Chow 補正（§\ref{sec:rhie_chow}）を実装した．
+        Balanced-Force 条件（§\ref{sec:balanced_force}）—圧力勾配 $\nabla p$ と
+        表面張力 $\sigma\kappa\nabla\psi$ に\textbf{同一の離散演算子}を用いる—
+        を明示し，寄生流れ抑制の実装上の鍵を示した．
+
+  \item[\textbf{第\ref{sec:pressure}章：変密度圧力 Poisson 方程式}]
+        変密度 Chorin Projection 法の導出（§\ref{sec:projection_derivation}）から，
+        変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を
+        FVM で離散化した（§\ref{sec:ppe}）．
+        境界制御体積の半セル補正と
+        調和平均フェイス係数 $a_f = 2/(\rho_L+\rho_R)$ の密度不連続に対する優位性（§\ref{sec:fvm_face_coeff}）を示した．
+        仮想時間陰解法（§\ref{sec:ppe_pseudotime}）による非対称疎行列の反復求解アルゴリズムを
+        Step-by-Step で記述した．
+
+  \item[\textbf{第\ref{sec:algorithm}章：完全アルゴリズムフロー}]
+        7ステップの離散計算手順（CLS 移流・再初期化・物性更新・曲率計算・
+        Predictor・PPE 求解・Corrector）を，各ステップの離散演算子定義とともに統合的に整理した．
+        特に，Crank--Nicolson 粘性項により生じるブロック三重対角線形系の
+        行列アセンブリとADI分解による求解（§\ref{sec:algorithm}）を明示した．
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{精度バランスの整理}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿の数値手法における各コンポーネントの精度を以下に整理する．
+
+\begin{table}[htbp]
+\centering
+\caption{数値手法コンポーネント別の精度まとめ}
+\label{tab:accuracy_summary}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcc}
+\toprule
+コンポーネント & 手法 & 空間精度 & 時間精度 \\
+\midrule
+CLS 移流（界面追跡） & WENO5 + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
+幾何量計算（曲率等） & CCD 法 & $O(h^6)$ & — \\
+PPE 離散化 & FVM + 調和平均係数 & $O(h^2)$ & — \\
+PPE 求解 & 仮想時間 CCD 陰解法 & $O(h^6)$ & — \\
+NS 粘性項 & CCD + Crank--Nicolson & $O(h^6)$ & $O(\Delta t^2)$ \\
+NS 対流項（Predictor） & CCD（1次微分） & $O(h^6)$ & $O(\Delta t)$ \\
+\midrule
+\textbf{全体（空間律速：FVM-PPE）} & & $\boldsymbol{O(h^2)}$ & — \\
+\textbf{全体（時間律速：NS 対流）} & & — & $\boldsymbol{O(\Delta t)}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
+表\ref{tab:accuracy_summary}に示す通り，本稿の手法には以下の精度ミスマッチが存在する：
+
+\begin{enumerate}
+  \item \textbf{空間精度（CCD $O(h^6)$ vs. FVM-PPE $O(h^2)$）：}
+        曲率・速度微分の計算には $O(h^6)$ 精度を実現しているが，
+        圧力 Poisson 方程式の FVM 離散化は $O(h^2)$ に留まる．
+        寄生流れの大きさが $\propto h^{p-2}$（$p$ は曲率の計算精度）であるため，
+        \textbf{曲率のみを高精度化することに明確な工学的意義がある}
+        （PPE の精度を上げずとも寄生流れは大幅に抑制される）．
+
+  \item \textbf{時間精度（CLS $O(\Delta t^3)$ vs. NS $O(\Delta t)$）：}
+        Projection 法のスプリッティング誤差が $O(\Delta t)$ であるため，
+        NS 対流項を高次化しても全体時間精度は改善されない．
+        時間方向の高精度化には，分割誤差 $O(\Delta t^2)$ を持つ高次 Projection 法
+        （例：Kim--Moin 法，Guermond--Shen 法）への移行が必要となる．
+
+  \item \textbf{CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$：}
+        界面厚さ $\varepsilon \approx \Delta x$ の設定下で，CSF モデルの
+        表面張力近似誤差は $O(\Delta x^2)$ となり，
+        CCD 法の曲率計算精度 $O(h^6)$ と比べて大きい．
+        これは本質的には VOF や Level Set を問わず全ての拡散界面法が抱える制限であり，
+        格子精細化（$\Delta x \to 0$）によって改善される（第\ref{sec:governing}章 §\ref{sec:csf}参照）．
 \end{enumerate}
+\end{tcolorbox}
 
+% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}
+\label{sec:future_work}
+% ═══════════════════════════════════════════════════════════════════════════════
 
-本稿の定式化（2次元・等温・非圧縮）の主要な拡張方向を示す．
+本稿の定式化（2次元・等温・非圧縮・固定格子）の主要な拡張方向を示す．
 
-\begin{enumerate}[noitemsep]
-  \item \textbf{3次元実装と並列化：} CCD・Rhie--Chow の3方向拡張と MPI 非局所通信への対応．
-  \item \textbf{AMR との統合：} 界面近傍の動的細分化による計算コスト削減；粗・密格子境界での CCD 整合性が課題．
-  \item \textbf{表面張力の陰的処理：} Implicit Surface Tension により毛管波制約（$\Delta t_\sigma \propto \sqrt{\Delta x^3}$）を除去．
-  \item \textbf{相変化の組み込み：} Stefan 条件とエネルギー方程式の結合により沸騰・蒸発問題へ対応．
-  \item \textbf{乱流モデルとの統合：} LES/RANS との結合；界面近傍の渦粘性モデリングが主要課題．
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{数値精度の向上}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{description}
+  \item[\textbf{NS 方程式の時間高精度化：}]
+        現状 $O(\Delta t)$ に留まる全体時間精度を向上させるには，
+        スプリッティング誤差が $O(\Delta t^2)$ 以上の高次 Projection 法への移行が必要である．
+        具体的には Kim--Moin 法（1985）や Guermond--Shen 法（2006）が候補であり，
+        各法の安定性・実装コストと精度向上の比較が今後の研究対象となる．
+
+  \item[\textbf{FVM-PPE の高次化：}]
+        現状の $O(h^2)$ FVM 離散化を CCD ベースの $O(h^6)$ 離散化に統一することで，
+        空間精度の全コンポーネント均一化を実現できる．
+        ただし，非均一係数 $1/\rho$ の CCD 離散化では境界制御体積の整合が課題となる．
+
+  \item[\textbf{表面張力の陰的処理：}]
+        毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を除去するため，
+        Implicit Surface Tension 法（例：Raessi \& Pitsch 2012）の導入が有効である．
+        表面張力項を陰的に扱うことで，時間刻み制約を対流 CFL 条件のみとしながら
+        安定計算が可能となり，高解像度計算での計算コストを大幅に削減できる．
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{機能拡張}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{description}
+  \item[\textbf{3次元実装と並列化：}]
+        CCD 演算子・Rhie--Chow 補正・PPE 求解の3方向（$x,y,z$）拡張は
+        概念的には直接的であるが，実装では MPI による非局所通信（ハロー交換）が必要となる．
+        3D CCD の LU 分解コストと並列スケーラビリティの評価が課題である．
+
+  \item[\textbf{適応格子細分化（AMR）との統合：}]
+        界面近傍の動的細分化（AMR）は計算コストの大幅削減をもたらす．
+        粗・密格子境界での CCD ステンシルの整合性，
+        および非一様格子上での保存形 WENO5 フラックス計算が技術的課題となる．
+
+  \item[\textbf{相変化の組み込み：}]
+        沸騰・蒸発問題への対応には，
+        界面でのエネルギーバランス（Stefan 条件）とエネルギー方程式の連成が必要である．
+        界面での質量フラックスが発散条件（$\nabla\cdot\bu = 0$）を修正するため，
+        Projection 法の定式化も修正が必要となる．
+
+  \item[\textbf{乱流モデルとの統合：}]
+        高 Reynolds 数の気液二相乱流では，界面近傍のサブグリッドスケールモデリングが重要である．
+        LES/RANS との結合では，界面近傍での渦粘性モデルの適用範囲
+        （「界面の内側か外側か」）の定義が主要な研究課題となる．
+
+  \item[\textbf{非等温・非平衡問題：}]
+        本稿は等温を仮定しているが，凝縮・蒸発・燃焼などの非等温現象では
+        温度場・化学種輸送方程式との連成が必要となる．
+        物性値の温度依存性（$\sigma(T)$，$\mu(T)$）も
+        Marangoni 流れ（表面張力勾配駆動流）などの新たな物理を生む．
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{検証と実証}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{description}
+  \item[\textbf{第\ref{sec:verification}章の標準問題の実施：}]
+        本稿で定義した4つのベンチマーク（Zalesak 円板，静止液滴，
+        Rayleigh--Taylor 不安定，上昇気泡）について，実際の数値実験結果と
+        解析解・文献値との定量的比較を行うことが，手法の妥当性確認として必要不可欠である．
+
+  \item[\textbf{格子収束解析：}]
+        各ベンチマークについて格子数 $N = 32, 64, 128, 256$ での
+        系統的な収束解析を行い，理論精度（$O(h^2)$，$O(h^5)$，$O(h^6)$）との
+        整合を定量的に確認することが今後の重要な検証項目である．
+\end{description}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{学習者へのメッセージ}
+\label{sec:message}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿を最後まで読み通した読者は，気液二相流 CFD の主要な数値的困難と
+その克服手法を体系的に習得したことになる．
+しかし，本稿は「スタート地点」に過ぎない．
+
+気液二相流の数値計算は，界面の物理（表面張力，接触角，相変化），
+数値スキームの精度と安定性，そして高性能計算の工学的要請が
+複雑に絡み合う，活発な研究フロンティアである．
+本稿で学んだ基礎—One-Fluid 定式化，CLS 法，CCD 法，Projection 法—は，
+いずれも最新の研究論文にも引き続き登場する普遍的な技術要素である．
+
+次のステップとして，以下を推奨する：
+\begin{enumerate}
+  \item 本稿の手法を一つ実装し，§\ref{sec:verification} のベンチマークで検証する
+  \item Tryggvason \textit{et al.} \cite{Tryggvason2011} などの
+        二相流 CFD の標準テキストで知識を補完する
+  \item 文献 \cite{OlssonKreiss2005}（CLS），\cite{JiangShu1996}（WENO5），
+        \cite{ChuFan1998}（CCD）の原論文を熟読し，省略された数学的詳細を習得する
 \end{enumerate}
 
 本稿の定式化が，気液二相流数値解析の研究・教育に貢献することを期待する．

@@ -12,7 +12,10 @@
   \item $D_x^{(2)}, D_y^{(2)}$：CCD 法による2次微分 $(\partial^2/\partial x^2,\, \partial^2/\partial y^2)$
   \item $D_{xy}^{(11)}$：CCD 法による混合微分 $\partial^2/\partial x\partial y$
   \item $\mathcal{C}_{\text{WENO}}(\bu,\, q)$：速度 $\bu$ による WENO5 上流移流オペレータ
-          $\displaystyle= u\,D_x^{(1)} q + v\,D_y^{(1)} q$ （保存形）
+          $\displaystyle= u\,D_x^{(1)} q + v\,D_y^{(1)} q$
+          （\textbf{非保存形}；非圧縮条件 $\nabla\cdot\bm{u}=0$ のもとで保存形
+          $\nabla\cdot(q\bm{u})$ と等価．NS 対流項に使用．CLS 移流には
+          保存形演算子 $\mathrm{Div}_h^{\psi}$ を使用—次項参照）
   \item $\mathcal{L}_{\text{visc},x}(\mu,\, \bu)$：粘性応力テンソル $\nabla\cdot\boldsymbol{\tau}$ の $x$ 成分\newline
           $\displaystyle= D_x^{(1)}\!\left[2\mu\,D_x^{(1)} u\right] + D_y^{(1)}\!\left[\mu\bigl(D_y^{(1)} u + D_x^{(1)} v\bigr)\right]$
   \item $\mathcal{L}_{\text{visc},y}(\mu,\, \bu)$：粘性応力テンソル $\nabla\cdot\boldsymbol{\tau}$ の $y$ 成分\newline
