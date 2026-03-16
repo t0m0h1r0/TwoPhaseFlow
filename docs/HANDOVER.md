@@ -1,7 +1,41 @@
 # HANDOVER
 
-Last update: 2026-03-16 (manuscript structural review — 14_STRUCTUAL_REVIEW complete)
+Last update: 2026-03-17 (manuscript structural rewrite — 15_STRUCTUAL_UPDATE complete)
 Status: Paper revised (102 pages, clean compile); 28 tests passing
+
+---
+
+# Recent Changes (2026-03-17) — Manuscript Structural Rewrite (15_STRUCTUAL_UPDATE)
+
+## 変更の目的
+
+15_STRUCTUAL_UPDATE.md プロトコルに従い，14_STRUCTUAL_REVIEW で合意した章構成変更を
+LaTeX ファイルへ実際に適用した．情報の零損失を遵守しつつ構成・順序・図表配置を改善．
+
+## 修正ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `paper/main.tex` | Part II タイトル変更・`08_time_integration` を Part II へ移動；Part III タイトル変更・`04_ccd` を `05_grid` の前に移動 |
+| `paper/sections/01_introduction.tex` | §1.5+§1.6 を「本稿のアプローチ・構成・学習ロードマップ」1節に統合；`fig:ns_solvers` を削除（第9章へ移動）；`tab:chapter_overview` 章番号・順序を新構成に合わせて更新；`fig:algo_flow` ボックスラベルから章参照を除去（概念図として整理） |
+| `paper/sections/09_full_algorithm.tex` | 章冒頭に `fig:ns_solvers`（NS 各項↔ソルバー対応図）を追加 |
+| `paper/sections/07_pressure.tex` | 末尾に `tab:accuracy_summary`（精度コンポーネント表）と「精度ミスマッチ」warnbox を追加（第11章から移動） |
+| `paper/sections/11_conclusion.tex` | `tab:accuracy_summary` と warnbox を削除し，第8章 §\ref{sec:pressure_accuracy_summary} への参照に置換 |
+| `paper/sections/05_grid.tex` | L69 の「次章 第\ref{sec:CCD}章で詳述」→「第\ref{sec:CCD}章で詳述」に修正（CCD が今や前章） |
+
+## 新章構成
+
+```
+Part I  問題設定と数学的基盤     Ch.1 はじめに，Ch.2 支配方程式
+Part II 界面追跡法と移流スキーム  Ch.3 CLS 法，Ch.4 時間積分（旧第6章 → Part II へ昇格）
+Part III 空間離散化スキーム      Ch.5 CCD 法，Ch.6 界面適合格子（旧第4章 → 後退），
+                               Ch.7 圧力--速度連成，Ch.8 圧力 Poisson + 精度サマリー
+Part IV 統合・検証・展望         Ch.9 完全アルゴリズム（fig:ns_solvers 追加），Ch.10，Ch.11
+```
+
+## 検証
+
+コード変更なし．LaTeX 変更のみ（コンパイル確認は次回セッションで実施推奨）．
 
 ---
 
