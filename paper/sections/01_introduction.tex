@@ -310,13 +310,43 @@ CLS 法は質量保存性と幾何精度の両立という点で，CFD 教科書
 \end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{本稿の構成・対象読者・学習ロードマップ}
+\subsection{本稿のアプローチ・構成・学習ロードマップ}
 \label{sec:roadmap}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本稿は，気液二相流の CFD を初めて学ぶ読者のための橋渡し教材として設計されている．
 一般的な CFD テキストが単相流で終わる部分から先—界面追跡・表面張力の離散化・
 変密度圧力求解—を，理論と実装の両面から体系的に解説することを目的とする．
+
+§\ref{sec:challenges} で述べた4つの困難を克服するため，
+本稿では以下の手法を組み合わせる：
+
+\begin{itemize}
+  \item \textbf{界面追跡：} \textbf{Conservative Level Set (CLS) 法} \cite{OlssonKreiss2005}
+        により，質量保存性に優れた界面追跡を行う．
+        標準的な Level Set 法の弱点である体積損失を抑制する．
+
+  \item \textbf{移流スキーム：} 移流項には \textbf{WENO5} \cite{JiangShu1996} を採用し，
+        衝撃波的な界面の急峻な変化を振動なく捉える．
+
+  \item \textbf{高精度空間微分：} 結合コンパクト差分法（CCD 法，Chu \& Fan \cite{ChuFan1998}）を用い，
+        曲率計算などに必要な微分を $\Ord{h^6}$ 精度で評価する．
+
+  \item \textbf{界面適合格子：} Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
+        界面近傍のみを自動的に高解像度化する非一様格子を生成する．
+
+  \item \textbf{格子構造：} チェッカーボード不安定を防ぐため
+        コロケート格子を採用し，Rhie--Chow 型流束補正を適用する．
+
+  \item \textbf{時間積分：} 対流項と CLS 移流には
+        3次 TVD Runge--Kutta を，粘性項には Crank--Nicolson 半陰的処理を用いる．
+
+  \item \textbf{圧力求解：} 変密度 Chorin Projection 法に基づいて圧力 Poisson 方程式を導き，
+        CCD 法で高精度差分化した後，仮想時間陰解法（§\ref{sec:ppe_pseudotime}）で反復求解する．
+\end{itemize}
+
+NS 方程式の各項とそれを処理するソルバーの対応関係は，
+アルゴリズム全体を把握した後の第\ref{sec:algorithm}章（図\ref{fig:ns_solvers}）で整理する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{対象読者と前提知識}
@@ -364,15 +394,15 @@ CLS 法は質量保存性と幾何精度の両立という点で，CFD 教科書
 3  & CLS 法
    & 保存形界面追跡，再初期化方程式，曲率数値計算
    & 2 \\
-4  & 界面適合格子
-   & レベルセット連動格子生成，メトリック係数，ALE 簡略化
+4  & 時間積分
+   & WENO5，TVD-RK3，Crank--Nicolson，時間刻み制約
    & 3 \\
 5  & CCD 法
    & 6次精度コンパクト差分，係数導出，楕円型ソルバーとしての定式化
    & --- \\
-6  & 時間積分
-   & WENO5，TVD-RK3，Crank--Nicolson，時間刻み制約
-   & --- \\
+6  & 界面適合格子
+   & レベルセット連動格子生成，メトリック係数，ALE 簡略化
+   & 3，5 \\
 7  & 圧力--速度連成
    & Helmholtz 分解，Rhie--Chow 補正，Balanced-Force
    & 4，6 \\
@@ -406,14 +436,15 @@ CLS 法は質量保存性と幾何精度の両立という点で，CFD 教科書
 有限差分法の基本概念（表\ref{tab:chapter_overview}「前提知識」参照）
 
 \medskip
-\textbf{ステップ2（本稿第\ref{sec:governing}--\ref{sec:levelset}章：数学的基盤）：}
+\textbf{ステップ2（本稿第\ref{sec:governing}--\ref{sec:time}章：数学的基盤と界面追跡）：}
 One-Fluid 定式化（第\ref{sec:governing}章），CSF モデルによる表面張力の体積力化（第\ref{sec:governing}章），
-Conservative Level Set 法による界面追跡（第\ref{sec:levelset}章）
+Conservative Level Set 法による界面追跡（第\ref{sec:levelset}章），
+WENO5 移流スキームと時間積分（第\ref{sec:time}章）
 
 \medskip
-\textbf{ステップ3（本稿第\ref{sec:grid}--\ref{sec:pressure}章：数値離散化スキーム）：}
-界面適合格子の生成（第\ref{sec:grid}章），CCD 法の理論と実装（第\ref{sec:CCD}章），
-WENO5 移流スキームと時間積分（第\ref{sec:time}章），
+\textbf{ステップ3（本稿第\ref{sec:CCD}--\ref{sec:pressure}章：空間離散化スキーム）：}
+CCD 法の理論と実装（第\ref{sec:CCD}章），
+界面適合格子の生成（第\ref{sec:grid}章），
 Rhie--Chow 補正（第\ref{sec:collocate}章），変密度 PPE の導出と求解（第\ref{sec:pressure}章）
 
 \medskip
@@ -426,86 +457,6 @@ Rhie--Chow 補正（第\ref{sec:collocate}章），変密度 PPE の導出と求
 上昇気泡の4つのベンチマークによる段階的検証
 \end{tcolorbox}
 
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{本稿のアプローチとアルゴリズム全体像}
-\label{sec:approach_overview}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-§\ref{sec:challenges} で述べた4つの困難を克服するため，
-本稿では以下の手法を組み合わせる（図\ref{fig:ns_solvers}参照）：
-
-\begin{itemize}
-  \item \textbf{界面追跡：} \textbf{Conservative Level Set (CLS) 法} \cite{OlssonKreiss2005}
-        により，質量保存性に優れた界面追跡を行う．
-        標準的な Level Set 法の弱点である体積損失を抑制する．
-
-  \item \textbf{移流スキーム：} 移流項には \textbf{WENO5} \cite{JiangShu1996} を採用し，
-        衝撃波的な界面の急峻な変化を振動なく捉える．
-
-  \item \textbf{高精度空間微分：} 結合コンパクト差分法（CCD 法，Chu \& Fan \cite{ChuFan1998}）を用い，
-        曲率計算などに必要な微分を $\Ord{h^6}$ 精度で評価する．
-
-  \item \textbf{界面適合格子：} Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
-        界面近傍のみを自動的に高解像度化する非一様格子を生成する．
-
-  \item \textbf{格子構造：} チェッカーボード不安定を防ぐため
-        コロケート格子を採用し，Rhie--Chow 型流束補正を適用する．
-
-  \item \textbf{時間積分：} 対流項と CLS 移流には
-        3次 TVD Runge--Kutta を，粘性項には Crank--Nicolson 半陰的処理を用いる．
-
-  \item \textbf{圧力求解：} 変密度 Chorin Projection 法に基づいて圧力 Poisson 方程式を導き，
-        CCD 法で高精度差分化した後，仮想時間陰解法（§\ref{sec:ppe_pseudotime}）で反復求解する．
-\end{itemize}
-
-%%% ── 図：NS各項とソルバーの対応 ─────────────────────────────────────────
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[
-  node distance=4mm and 5mm,
-  nsterm/.style={draw=navy!70, fill=lightblue, rounded corners=4pt,
-                 font=\small\bfseries, inner sep=6pt,
-                 minimum width=26mm, minimum height=10mm, align=center},
-  solver/.style={draw=#1!70, fill=#1!10, rounded corners=4pt,
-                 font=\scriptsize, inner sep=5pt,
-                 minimum width=26mm, align=center},
-  solver/.default=navy,
-  subarr/.style={-Stealth, semithick, darkgray!60},
-]
-
-\node[font=\small\bfseries, text=navy] (hd1) at (0,0)
-  {NS 方程式の各項とソルバーの対応};
-
-%% ── NS 5項ボックス ─────────────────────────────────────────────────
-\node[nsterm, below=7mm of hd1, xshift=-57mm] (T1) {対流項};
-\node[nsterm, right=4mm of T1]  (T2) {圧力項};
-\node[nsterm, right=4mm of T2]  (T3) {粘性項};
-\node[nsterm, right=4mm of T3]  (T4) {重力項};
-\node[nsterm, right=4mm of T4]  (T5) {表面張力項};
-
-%% ── 各ソルバーボックス ─────────────────────────────────────────────
-\node[solver=orange2, below=5mm of T1] (S1)
-  {WENO5\\TVD-RK3\\陽的};
-\node[solver=midblue, below=5mm of T2] (S2)
-  {CCD $\to\bnabla p$\\FVM-PPE\\Projection法};
-\node[solver=teal2, below=5mm of T3] (S3)
-  {CCD（$\Ord{h^6}$）\\Crank-Nicolson\\半陰的};
-\node[solver=darkgray, below=5mm of T4] (S4)
-  {陽的\\(定数項)};
-\node[solver=red2, below=5mm of T5] (S5)
-  {Level Set $\to\kappa$\\CCD\\半陰的};
-
-\foreach \t/\s in {T1/S1, T2/S2, T3/S3, T4/S4, T5/S5}
-  \draw[subarr] (\t) -- (\s);
-
-\end{tikzpicture}
-\caption{NS 方程式の各項と対応ソルバーの概要．
-対流項は WENO5 + TVD-RK3 時間積分で陽的に処理し，
-圧力項は FVM ベース PPE を Projection 法で求解する．
-粘性項は CCD + Crank--Nicolson で半陰的に扱う．}
-\label{fig:ns_solvers}
-\end{figure}
-
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{1タイムステップの処理フロー（概観）}
 \label{sec:algo_overview}
@@ -517,30 +468,31 @@ Rhie--Chow 補正（第\ref{sec:collocate}章），変密度 PPE の導出と求
 
 \begin{tcolorbox}[algbox, title={1タイムステップの処理フロー（概略）$t^n \to t^{n+1}$}]
 \begin{enumerate}
-  \item \textbf{界面移流}（第\ref{sec:levelset}・\ref{sec:time}章）：
+  \item \textbf{界面移流：}
         CLS 変数 $\psi^n$ を WENO5 スキームで移流し，中間値 $\psi^*$ を得る
 
-  \item \textbf{再初期化}（第\ref{sec:levelset}章）：
+  \item \textbf{再初期化：}
         崩れた界面プロファイルを整形し $\psi^{n+1}$ を確定する
 
-  \item \textbf{物性更新}（第\ref{sec:governing}・\ref{sec:levelset}章）：
+  \item \textbf{物性更新：}
         $\psi^{n+1}$ から密度 $\rho^{n+1}$，粘性 $\mu^{n+1}$，距離関数 $\phi^{n+1}$ を計算
 
-  \item \textbf{曲率計算}（第\ref{sec:governing}・\ref{sec:CCD}章）：
+  \item \textbf{曲率計算：}
         CCD 法で $\phi^{n+1}$ を高精度微分し，表面張力に必要な $\kappa^{n+1}$ を求める
 
-  \item \textbf{運動量予測（Predictor）}（第\ref{sec:pressure}・\ref{sec:algorithm}章）：
+  \item \textbf{運動量予測（Predictor）：}
         圧力勾配を無視して予測速度 $\bu^*$ を計算（一般に $\nabla\cdot\bu^* \neq 0$）
 
-  \item \textbf{圧力 Poisson 方程式求解}（第\ref{sec:collocate}・\ref{sec:pressure}章）：
+  \item \textbf{圧力 Poisson 方程式求解：}
         $\nabla\cdot\!\left(\dfrac{1}{\rho}\nabla p^{n+1}\right)
         = \dfrac{1}{\Delta t}\nabla\cdot\bu^*$
         を仮想時間陰解法で解く
 
-  \item \textbf{速度補正（Corrector）}（第\ref{sec:pressure}・\ref{sec:algorithm}章）：
+  \item \textbf{速度補正（Corrector）：}
         $\bu^{n+1} = \bu^* - \dfrac{\Delta t}{\rho^{n+1}}\nabla p^{n+1}$
         として発散フリー速度場を得る
 \end{enumerate}
+各ステップの具体的な章での解説は第\ref{sec:algorithm}章のアルゴリズムフロー参照．
 \end{tcolorbox}
 
 上記7ステップの関係を図\ref{fig:algo_flow}に示す．
@@ -577,21 +529,21 @@ Rhie--Chow 補正（第\ref{sec:collocate}章），変密度 PPE の導出と求
 
 %% ── 左列：界面サブシステム（ステップ1--4）──────────────────────────────
 \node[box, below=8mm of hdL] (s1)
-  {1.\ \ CLS 移流\\[1pt]\footnotesize（WENO5 ／ 第\ref{sec:levelset}・\ref{sec:time}章）};
+  {1.\ \ CLS 移流\\[1pt]\footnotesize（WENO5）};
 \node[box, below=of s1] (s2)
-  {2.\ \ 再初期化\\[1pt]\footnotesize（CLS ／ 第\ref{sec:levelset}章）};
+  {2.\ \ 再初期化\\[1pt]\footnotesize（CLS 法）};
 \node[box, below=of s2] (s3)
-  {3.\ \ 物性更新\\[1pt]\footnotesize（$\rho,\,\mu,\,\phi$ ／ 第\ref{sec:governing}・\ref{sec:levelset}章）};
+  {3.\ \ 物性更新\\[1pt]\footnotesize（$\rho,\,\mu,\,\phi$）};
 \node[box, below=of s3] (s4)
-  {4.\ \ 曲率計算\\[1pt]\footnotesize（CCD ／ 第\ref{sec:governing}・\ref{sec:CCD}章）};
+  {4.\ \ 曲率計算\\[1pt]\footnotesize（CCD 法）};
 
 %% ── 右列：流体力学サブシステム（ステップ5--7）──────────────────────────
 \node[boxr, right=18mm of s3] (s5)
-  {5.\ \ 運動量予測\\[1pt]\footnotesize（Predictor ／ 第\ref{sec:pressure}・\ref{sec:algorithm}章）};
+  {5.\ \ 運動量予測\\[1pt]\footnotesize（Predictor）};
 \node[boxr, below=of s5] (s6)
-  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（仮想時間陰解法 ／ 第\ref{sec:collocate}・\ref{sec:pressure}章）};
+  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（仮想時間陰解法）};
 \node[boxr, below=of s6] (s7)
-  {7.\ \ 速度補正\\[1pt]\footnotesize（Corrector ／ 第\ref{sec:pressure}・\ref{sec:algorithm}章）};
+  {7.\ \ 速度補正\\[1pt]\footnotesize（Corrector）};
 
 %% ── 矢印：左列（界面サブシステム内）────────────────────────────────────
 \draw[arr] (s1) -- (s2);

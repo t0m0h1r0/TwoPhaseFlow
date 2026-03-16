@@ -2,6 +2,59 @@
 \section{完全アルゴリズムフロー：離散形式}
 \label{sec:algorithm}
 
+本章では，前章まで個別に導いた数値手法を統合し，
+時刻 $t^n$ から $t^{n+1}$ への1タイムステップ全体を離散形式でまとめる．
+まず各 NS 方程式の項とそれを処理するソルバーの対応関係を図\ref{fig:ns_solvers}に示し，
+続いて完全なアルゴリズムフローを詳述する．
+
+%%% ── 図：NS各項とソルバーの対応 ─────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm and 5mm,
+  nsterm/.style={draw=navy!70, fill=lightblue, rounded corners=4pt,
+                 font=\small\bfseries, inner sep=6pt,
+                 minimum width=26mm, minimum height=10mm, align=center},
+  solver/.style={draw=#1!70, fill=#1!10, rounded corners=4pt,
+                 font=\scriptsize, inner sep=5pt,
+                 minimum width=26mm, align=center},
+  solver/.default=navy,
+  subarr/.style={-Stealth, semithick, darkgray!60},
+]
+
+\node[font=\small\bfseries, text=navy] (hd1) at (0,0)
+  {NS 方程式の各項とソルバーの対応};
+
+%% ── NS 5項ボックス ─────────────────────────────────────────────────
+\node[nsterm, below=7mm of hd1, xshift=-57mm] (T1) {対流項};
+\node[nsterm, right=4mm of T1]  (T2) {圧力項};
+\node[nsterm, right=4mm of T2]  (T3) {粘性項};
+\node[nsterm, right=4mm of T3]  (T4) {重力項};
+\node[nsterm, right=4mm of T4]  (T5) {表面張力項};
+
+%% ── 各ソルバーボックス ─────────────────────────────────────────────
+\node[solver=orange2, below=5mm of T1] (S1)
+  {WENO5\\TVD-RK3\\陽的};
+\node[solver=midblue, below=5mm of T2] (S2)
+  {CCD $\to\bnabla p$\\FVM-PPE\\Projection法};
+\node[solver=teal2, below=5mm of T3] (S3)
+  {CCD（$\Ord{h^6}$）\\Crank-Nicolson\\半陰的};
+\node[solver=darkgray, below=5mm of T4] (S4)
+  {陽的\\(定数項)};
+\node[solver=red2, below=5mm of T5] (S5)
+  {Level Set $\to\kappa$\\CCD\\半陰的};
+
+\foreach \t/\s in {T1/S1, T2/S2, T3/S3, T4/S4, T5/S5}
+  \draw[subarr] (\t) -- (\s);
+
+\end{tikzpicture}
+\caption{NS 方程式の各項と対応ソルバーの概要．
+対流項は WENO5 + TVD-RK3 時間積分で陽的に処理し（第\ref{sec:time}章），
+圧力項は FVM ベース PPE を Projection 法で求解する（第\ref{sec:pressure}章）．
+粘性項は CCD + Crank--Nicolson で半陰的に扱う（第\ref{sec:CCD}章）．}
+\label{fig:ns_solvers}
+\end{figure}
+
 時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
 添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
 以下の離散化オペレータを用いる．
