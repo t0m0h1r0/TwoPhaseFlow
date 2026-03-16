@@ -69,7 +69,14 @@ Prefer minimal changes.
 
 If instructed, follow the appropriate protocol:
 
-- `docs/02_CODEGEN.md` → algorithm implementation
-- `docs/03_TESTGEN.md` → numerical tests
-- `docs/04_REFACTOR.md` → safe refactoring
-- `docs/05_RESEARCH.md` → research assistance
+- `docs/02_CODEGEN.md`        → algorithm implementation
+- `docs/03_TESTGEN.md`        → numerical tests
+- `docs/07_VERIFY.md`         → paper-to-code verification
+- `docs/08_CLEANUP.md`        → dead code elimination
+- `docs/09_REFACTORING.md`    → safe refactoring (SOLID)
+- `docs/10_EVALUATE.md`       → component correctness evaluation
+- `docs/11_WRITING.md`        → paper writing (Japanese LaTeX)
+- `docs/12_REVIEW.md`         → paper review (CFD professor role)
+- `docs/13_UPDATE.md`         → paper pedagogical expansion
+- `docs/14_STRUCTUAL_REVIEW.md` → manuscript structural review
+- `docs/15_STRUCTUAL_UPDATE.md` → manuscript structural rewrite

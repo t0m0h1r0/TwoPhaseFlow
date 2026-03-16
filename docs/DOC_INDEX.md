@@ -291,14 +291,38 @@ Output: LaTeX only.
 
 # DOC_INDEX
 
+Last update: 2026-03-16 — aligned with actual files; added 07–15 entries
+
 This file lists the canonical order for reading docs and which file to prime Claude with.
 
-1. `PROJECT_CONTEXT.md` — LLM quick context (short)
-2. `HANDOVER.md` — current status
-3. `ARCHITECTURE.md` — code layout and responsibilities
-4. `DEVELOPMENT_RULES.md` — coding & LLM rules
-5. `CLAUDE.md` — operation instructions
-6. `02_CODEGEN.md`, `03_TESTGEN.md`, `04_REFACTOR.md`, `05_RESEARCH.md`, `06_PAPER_WRITING.md` — mode protocols
+## Core context (always read first)
+
+1. `PROJECT_CONTEXT.md`    — LLM quick context (short)
+2. `HANDOVER.md`           — current status and recent changes
+3. `ARCHITECTURE.md`       — code layout and responsibilities
+4. `DEVELOPMENT_RULES.md`  — coding & LLM rules
+5. `CLAUDE.md`             — operation instructions and mode map
+
+## Mode protocol files
+
+| File | Mode | Purpose |
+|------|------|---------|
+| `02_CODEGEN.md`          | CODEGEN   | Implement algorithms from paper into src/ |
+| `03_TESTGEN.md`          | TESTGEN   | Generate numerical and unit tests |
+| `07_VERIFY.md`           | VERIFY    | Paper-to-code verification (7-step process) |
+| `08_CLEANUP.md`          | CLEANUP   | Dead code and legacy code elimination |
+| `09_REFACTORING.md`      | REFACTOR  | SOLID architecture refactoring |
+| `10_EVALUATE.md`         | EVALUATE  | Component correctness via MMS/convergence |
+| `11_WRITING.md`          | WRITING   | Paper writing (Japanese LaTeX) |
+| `12_REVIEW.md`           | REVIEW    | CFD professor review of manuscript |
+| `13_UPDATE.md`           | UPDATE    | Pedagogical expansion of .tex files |
+| `14_STRUCTUAL_REVIEW.md` | STRUCT-R  | Manuscript structural review |
+| `15_STRUCTUAL_UPDATE.md` | STRUCT-U  | Manuscript structural rewrite |
+
+## Meta
+
+- `MD_MANAGER.md` — doc creation/update rules and templates
+- `MEMORY.md`     — project memory index
 
 Usage: Always prime Claude with `docs/PROJECT_CONTEXT.md` then `docs/CLAUDE.md`.
 

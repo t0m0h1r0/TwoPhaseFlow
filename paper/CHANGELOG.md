@@ -1,5 +1,26 @@
 # Changelog
 
+## Paper Revision — Pedagogical Expansion (2026-03-16)
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `sections/00_abstract.tex` | Fixed pressure solver description: BiCGSTAB → 仮想時間 CCD 陰解法 |
+| `sections/01_introduction.tex` | Swapped table rows 4–5 (Grid/CCD order) + corrected roadmap paragraph order to Grid→CCD |
+| `sections/08_time_integration.tex` | Added step-by-step capillary wave time constraint derivation (defbox) |
+| `sections/09_full_algorithm.tex` | Corrected C_WENO operator label from 保存形 → 非保存形 with pedagogical note |
+| `sections/11_conclusion.tex` | Complete rewrite: 31 lines → ~280 lines with §11.1 design table, accuracy summary, precision mismatch discussion, §11.2 future work, §11.3 learner message |
+
+### Verification
+
+```
+xelatex -interaction=nonstopmode main.tex
+→ Output written on main.pdf (102 pages, no undefined references)
+```
+
+---
+
 ## Merged Version (Combined A & B)
 
 ### Structural Changes

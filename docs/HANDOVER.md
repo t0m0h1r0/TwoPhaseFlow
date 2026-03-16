@@ -1,7 +1,34 @@
 # HANDOVER
 
-Last update: 2026-03-16 (stationary droplet benchmark implemented)
-Status: 5 paper-compliance fixes applied; stationary droplet benchmark added; 28 tests passing
+Last update: 2026-03-16 (paper pedagogical expansion — 13_UPDATE tasks complete)
+Status: Paper revised (102 pages, clean compile); 28 tests passing
+
+---
+
+# Recent Changes (2026-03-16) — Paper Pedagogical Expansion (13_UPDATE Tasks)
+
+## 変更の目的
+
+11_REVIEW.md で指摘された5件の誤記・不足を修正し，11_conclusion.tex を全面改稿。
+
+## 修正ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `paper/sections/00_abstract.tex` | 圧力解法の記述を BiCGSTAB → 仮想時間 CCD 陰解法 に修正（L21） |
+| `paper/sections/01_introduction.tex` | 章紹介表の行4–5（Grid/CCD）を swap + ロードマップ本文の順序を Grid→CCD に修正 |
+| `paper/sections/08_time_integration.tex` | 毛管波 CFL 制約の導出 defbox を追加（分散関係→k_max→Δt_σ の3ステップ） |
+| `paper/sections/09_full_algorithm.tex` | C_WENO 演算子ラベルを「保存形」→「非保存形」に修正（教育的注釈付き） |
+| `paper/sections/11_conclusion.tex` | 31行→約280行に全面改稿（設計哲学表・精度比較表・精度不整合考察・将来課題・学習者へのメッセージ） |
+
+## 検証
+
+```
+xelatex -interaction=nonstopmode main.tex
+→ Output written on main.pdf (102 pages, undefined references: 0)
+```
+
+---
 
 ---
 
