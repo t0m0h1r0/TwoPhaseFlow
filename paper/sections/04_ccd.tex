@@ -592,8 +592,25 @@ $f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \f
   = \fpp{0} + \underbrace{\left(-\frac{11}{12}h^2 f^{(4)}_0 + \cdots\right)}_{\text{打ち切り誤差 }\mathcal{O}(h^2)}
 \]
 よってこの境界スキームは $\mathcal{O}(h^2)$ 精度の片側差分公式であり，
-内点の $\mathcal{O}(h^6)$ より低次だが，境界は1層のみで全体精度への影響は限定的である（\cite{ChuFan1998} 参照）．
-より高精度な境界処理が必要な場合はゴーストセル法（次節）を採用する．
+内点の $\mathcal{O}(h^6)$ より低次だが，以下の定量的な議論により全体精度への影響は許容範囲内にとどまる
+（\cite{ChuFan1998} 参照）．
+
+\textbf{$\mathcal{O}(h^2)$ 境界が全体精度に与える影響の定量的評価：}
+
+全域での離散化誤差 $E_{\mathrm{total}}$ を，境界1層と内点 $(N-2)$ 層の寄与に分離する：
+\[
+  E_{\mathrm{total}}
+  = \underbrace{\mathcal{O}(h^2) \cdot \frac{2}{N}}_{\text{境界2点の寄与}}
+  + \underbrace{\mathcal{O}(h^6) \cdot \frac{N-2}{N}}_{\text{内点の寄与}}
+  \sim \mathcal{O}(h^2) \cdot h + \mathcal{O}(h^6)
+  = \mathcal{O}(h^3)
+\]
+ここで $h = L/N$ のため $1/N \sim h/L$（$L$ は領域長さ，本稿では $L = O(1)$）．
+
+この推定は，境界の $\mathcal{O}(h^2)$ スキームが存在しても，格子全体の \textbf{$L^2$ ノルム誤差は少なくとも $\mathcal{O}(h^3)$} に維持されることを示す．
+実際には境界層の係数が小さいため，$h=1/64$ での数値実験では内点精度 $\mathcal{O}(h^6)$ が支配的に観測される（第\ref{sec:pressure}章 §\ref{sec:ccd_poisson_verification} の格子収束テスト参照）．
+
+高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（次節）を採用する．
 \end{tcolorbox}
 
 \subsubsection{実装：ゴーストセル法による境界処理}

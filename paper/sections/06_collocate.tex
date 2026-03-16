@@ -264,6 +264,15 @@ $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を
         \textbf{スペクトル選択的フィルタ}として機能する．
 \end{itemize}
 
+\textbf{Balanced-Force 条件との整合性（重要）：}
+Balanced-Force 条件（§\ref{sec:balanced_force}）は，\emph{主運動量方程式}において
+圧力勾配 $-\bnabla p$ と表面張力 $\sigma\kappa\bnabla\psi$ に
+\textbf{完全に同一の CCD 演算子}を使うことである．
+Rhie-Chow 補正項 $[(\nabla p)_f - \overline{(\nabla p)}_f]$ は
+\textbf{フェイス速度の補助的な安定化項}であり，
+主方程式の差分演算子とは独立した役割を担う．
+したがって，Rhie-Chow の2次精度フェイス差分は Balanced-Force 条件に直接影響しない．
+
 \textbf{実装上の確認：} 静止液滴ベンチマーク（第\ref{sec:verification}章）において寄生流れ振幅が $O(h^4)$ 以上で
 収束することを確認すれば，Rhie-Chow 補正が CCD の高精度を損なっていないことが検証できる．
 \end{tcolorbox}
