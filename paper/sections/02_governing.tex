@@ -39,7 +39,8 @@
 
   \item \textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$}：
         $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，
-        液相で $\psi \approx 1$，気相で $\psi \approx 0$ を取る．
+        液相で $\psi \approx 0$，気相で $\psi \approx 1$ を取る
+        （第\ref{sec:levelset}章 §\ref{sec:cls_formulation} 参照）．
         その移流方程式は保存形で書けるため，\textbf{質量（体積）保存性}を向上させる．
         密度 $\rho(\psi)$ や粘性 $\mu(\psi)$ などの
         \textbf{物理的物性値}の補間にも直接用いられる．
@@ -125,10 +126,11 @@ Two-Fluid 形式は各相で別々の方程式を解く必要があり，
   \quad \text{（全空間で定義された体積力，界面以外でゼロ）}
   \label{eq:csf_intro}
 \end{equation}
-また，物性値 $\rho, \mu$ を界面指標関数 $\psi \in [0,1]$ で補間する：
+また，物性値 $\rho, \mu$ を界面指標関数 $\psi \in [0,1]$ で補間する
+（$\psi \approx 0$ が液相，$\psi \approx 1$ が気相）：
 \begin{equation}
-  \rho(\psi) = \rho_g + (\rho_l - \rho_g)\psi, \qquad
-  \mu(\psi) = \mu_g + (\mu_l - \mu_g)\psi
+  \rho(\psi) = \rho_l + (\rho_g - \rho_l)\psi, \qquad
+  \mu(\psi) = \mu_l + (\mu_g - \mu_l)\psi
   \label{eq:interp_intro}
 \end{equation}
 これにより，各相の方程式 \eqref{eq:NS_each} と界面条件 \eqref{eq:jump_stress} が
@@ -263,11 +265,11 @@ $x=0$ での方程式 \eqref{eq:1d_onefluid} は
   \label{eq:continuity}
 \end{equation}
 で与えられる．
-物性値は界面指標 $\psi \in [0,1]$ により連続的に補間する：
+物性値は界面指標 $\psi \in [0,1]$（$\psi \approx 0$ が液相，$\psi \approx 1$ が気相）により連続的に補間する：
 \begin{align}
- \rho(\psi)&=\rho_g+(\rho_l-\rho_g)\,\psi,
+ \rho(\psi)&=\rho_l+(\rho_g-\rho_l)\,\psi,
  &
- \mu(\psi)&=\mu_g+(\mu_l-\mu_g)\,\psi.
+ \mu(\psi)&=\mu_l+(\mu_g-\mu_l)\,\psi.
 \end{align}
 ここで $\psi$ は Conservative Level Set 法における
 ヘヴィサイド関数 $H_\varepsilon(\phi)$ に相当し（§\ref{sec:notation} 参照），

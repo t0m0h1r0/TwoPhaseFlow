@@ -348,6 +348,19 @@ $\psi(1-\psi)$ は界面外でゼロに近くなる（$\psi\approx 0$ または 
 初期に $M$ が大きい（界面プロファイルが乱れている）ほど，再初期化が多く必要である．
 収束判定基準として $M(\tau_k)/M(0) < \theta$（例：$\theta = 0.01 \sim 0.05$）を用いてよい．
 
+\textbf{参照値 $M_{\mathrm{ref}}$ の定義：}
+適応的再初期化において $M$ の「乱れ」を判定するために，\textbf{基準値} $M_{\mathrm{ref}}$ が必要となる．
+本稿では
+\begin{equation}
+  M_{\mathrm{ref}} \;\equiv\; M_{\text{eq}}
+  = \int_\Omega H_\varepsilon(\phi_0)\bigl(1 - H_\varepsilon(\phi_0)\bigr)\,dV
+  \label{eq:M_ref_def}
+\end{equation}
+として，\textbf{完全に整ったプロファイル（初期 $\phi_0$ から構成した $\psi_0 = H_\varepsilon(\phi_0)$ の $M$ 値）}を基準とする．
+実装上は，各物理ステップの移流前（再初期化直後）の $M$ を記録し，
+最初の数ステップ平均として $M_{\mathrm{ref}}$ を推定するのが簡便である．
+$M(\tau)/M_{\mathrm{ref}}$ が1より有意に大きければ，プロファイルが乱れていると判定する．
+
 \medskip
 \noindent\textbf{必要ステップ数と初期乱れの定量的な関係}
 
@@ -462,6 +475,34 @@ $\phi^{(0)} = \varepsilon\ln(\psi_i/(1-\psi_i))$ は $F(\phi^{(0)}) = H_\varepsi
 対数関数の引数 $\psi_i/(1-\psi_i)$ が $0$ または $\infty$ に近づき浮動小数点オーバーフローが生じるため，
 この領域では $|\phi| = \phi_{\max}$ に飽和させるか，対数を計算せずニュートン法で安全に収束させる．
 \end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={ニュートン法の二次収束：理論的保証}]
+\textbf{標準領域（$\psi_i \in [\delta, 1-\delta]$）：}
+解析的逆変換 $\phi^{(0)} = \varepsilon\ln(\psi_i/(1-\psi_i))$ は $F(\phi^{(0)}) = 0$ を代数的に満たすため，
+ニュートン法は \textbf{0回反復で厳密収束}する（2次収束以上，むしろ有限ステップ収束）．
+
+\textbf{飽和領域（$\psi_i$ が0または1に近い場合）での二次収束の証明：}
+$F(\phi) = H_\varepsilon(\phi) - \psi_i$ に対して，ニュートン法の誤差方程式を導く．
+
+$\phi^*$ を真の解（$F(\phi^*)=0$），$e_k = \phi^{(k)} - \phi^*$ を誤差とすると，
+テイラー展開：
+\[
+  F(\phi^{(k)}) = F(\phi^*) + F'(\phi^*) e_k + \frac{1}{2}F''(\xi_k) e_k^2
+  = F'(\phi^*) e_k + \frac{F''(\xi_k)}{2} e_k^2
+\]
+ニュートン更新：$e_{k+1} = e_k - F(\phi^{(k)})/F'(\phi^{(k)})$ を整理すると：
+\[
+  e_{k+1} = -\frac{F''(\xi_k)}{2F'(\phi^{(k)})} e_k^2
+\]
+$F'(\phi) = H_\varepsilon'(\phi) = \frac{1}{\varepsilon}H_\varepsilon(1-H_\varepsilon) > 0$（常に正），
+$F''(\phi) = \frac{1}{\varepsilon^2}H_\varepsilon(1-H_\varepsilon)(1-2H_\varepsilon)$ は有界であるから，
+$|e_{k+1}| \le C|e_k|^2$（$C = \|F''\|_\infty / (2\inf|F'|)$）が成立し，\textbf{二次収束}が確認できる．
+
+$H_\varepsilon$ は $\phi \in [-\phi_{\max}, \phi_{\max}]$ 上で $C^\infty$ であるため，
+$F'$ は有界下界を持ち（$F'_{\min} = H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max}))/\varepsilon > 0$），
+収束定数 $C$ は有限であり，二次収束が保証される．
+\end{tcolorbox}
+
 境界値 $\psi_i \to 0$ または $\psi_i \to 1$ では分母がゼロに近づくため，飽和処理を行う．
 
 \begin{tcolorbox}[defbox, title={飽和処理のパラメータ $\phi_{\max}$ の選択根拠}]

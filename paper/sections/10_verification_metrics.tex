@@ -388,29 +388,31 @@ $y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
 WENO5 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
 CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
 CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
-FVM-PPE（圧力 Poisson） & $\Ord{h^2}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
-Corrector（速度更新） & $\Ord{h^2}$（PPE 依存） & — & 速度場の無発散補正 \\
+CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
+Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
 Crank--Nicolson（粘性） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
 NS 対流項（Predictor） & $\Ord{h^5}$（WENO5） & $\Ord{\Delta t}$（Euler） & 対流による運動量移送 \\
 \bottomrule
-\textbf{全体（空間律速）} & $\boldsymbol{\Ord{h^2}}$（PPE） & $\boldsymbol{\Ord{\Delta t}}$（Euler） & \\
+\textbf{全体（空間律速）} & $\boldsymbol{\Ord{h^5}}$（WENO5） & $\boldsymbol{\Ord{\Delta t}}$（Euler） & \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{tcolorbox}[warnbox, title={$\Ord{h^2}$ の PPE が律速するのに，なぜ $\Ord{h^6}$ の CCD が意味を持つのか}]
-PPE が $\Ord{h^2}$ で律速するなら CCD の $\Ord{h^6}$ は「過剰」に見えるが，以下の理由から意味がある．
+\begin{tcolorbox}[mybox, title={精度設計のまとめ：各コンポーネントの空間精度が揃っている理由}]
+本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
+粘性項（CCD + Crank--Nicolson，$\Ord{h^6}$），界面移流（WENO5，$\Ord{h^5}$）のすべてで高次精度を達成している．
 
 \begin{itemize}[noitemsep]
-  \item \textbf{誤差経路が独立：} PPE の $\Ord{h^2}$ 誤差は圧力絶対値の誤差であり，
-        CCD の $\Ord{h^6}$ 誤差は曲率 $\kappa$ 経由の表面張力誤差である．両者は速度場への影響経路が異なる．
+  \item \textbf{全体空間精度律速：} WENO5 移流の $\Ord{h^5}$ が現状の空間精度の律速段階であり，
+        CCD-PPE の $\Ord{h^6}$ はこれと整合する．
   \item \textbf{寄生流れへの直接効果：} 寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
         曲率精度次数 $p_\kappa$ に直接依存する．CCD（$p_\kappa=6$）は2次手法と比べ
         $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．
-  \item \textbf{実装コスト：} PPE を $\Ord{h^6}$ に高次化するには密度ジャンプの高次処理が必要で困難だが，
-        曲率の CCD 高次化は既存フレームワーク内で実現可能である．
+  \item \textbf{時間精度律速：} 全体の時間精度は Projection 法スプリッティング誤差 $\Ord{\Delta t}$
+        に律速されており，空間精度の高次化による利得は時間刻みを細かくすることで享受できる．
 \end{itemize}
-精度のミスマッチは無駄ではなく，\textbf{各誤差経路の物理的役割の違い}による合理的な設計選択である．
+本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
+CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第\ref{sec:pressure}章参照）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[mybox, title={CCD-Poisson ソルバーの単体検証（参照先：第\ref{sec:pressure}章）}]
