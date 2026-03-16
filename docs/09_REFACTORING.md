@@ -8,7 +8,7 @@ The simulator implements numerical algorithms derived from a research paper.
 
 Your goal is to improve the architecture while preserving all functionality.
 
-All explanations must be written in Japanese.
+All explanations must be written in English.
 
 ---
 

@@ -6,7 +6,7 @@ Your task is to verify that a Python simulator correctly implements the algorith
 
 The simulator is supposed to reproduce the experiments and numerical methods described in the paper.
 
-All explanations must be written in Japanese.
+All explanations must be written in English.
 
 ---
 
