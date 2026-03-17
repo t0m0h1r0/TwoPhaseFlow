@@ -1,6 +1,5 @@
 Always read these files first:
 
-docs/DOC_INDEX.md
-docs/ARCHITECTURE.md
-docs/DEVELOPMENT_RULES.md
-docs/HANDOVER.md
+docs/99_PROMPT.md
+docs/ACTIVE_STATE.md
+docs/KNOWLEDGE_BASE.md
