@@ -23,8 +23,9 @@
 \textbf{重要な注意（§\ref{sec:time_int} warnbox で詳説）：}\\
 TVD-RK3 は CLS 移流にのみ用い，NS 方程式の時間積分には\textbf{使用しない}．
 NS 対流項は前進 Euler（1次精度）のままとする．
-理由は，Predictor--Corrector 分割（Projection 法）が既に $\Ord{\Delta t}$ のスプリッティング誤差を持つため，
-NS 対流項を高次化しても全体時間精度は $\Ord{\Delta t}$ に律速され改善されないからである．
+理由と背景については §\ref{sec:time_int} で正直に述べる
+（標準 Chorin 法のスプリッティング誤差の性質，2次精度 Projection 法の存在，
+および本稿が1次精度を採用する判断根拠を含む）．
 \end{tcolorbox}
 
 \subsection{WENO5 による移流：なぜ必要か}
@@ -353,13 +354,46 @@ NS 粘性項 & Crank--Nicolson & $\Ord{\Delta t^2}$ \\
 空間精度が高次（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）であるにもかかわらず，
 時間方向が1次で律速されることに注意が必要である．
 
-CLS の移流は TVD-RK3 で高精度（3次）に扱う一方，
-NS 自体の時間積分を高次化しない理由は，\textbf{プロジェクション法の分割誤差}
-（圧力と速度の間のスプリッティング誤差）が $\Ord{\Delta t}$ であるためである：
-Predictor--Corrector 分割によって導入される誤差は既に $\Ord{\Delta t}$ のオーダーにあり，
-NS 対流項を高次化しても全体精度は改善されない．
-したがって，実装コストと精度バランスの観点から NS 対流項を1次 Euler のままとするのは合理的である
-（プロジェクション法の時間精度向上には，分割誤差 $\Ord{\Delta t^2}$ のより高次スプリッティングが必要）．
+\medskip
+\noindent\textbf{標準 Chorin Projection 法のスプリッティング誤差}
+
+標準的な Predictor--Corrector 分割（Chorin, 1968）は，
+圧力境界条件の不整合（いわゆる ``artificial pressure boundary layer''）に起因する
+$\Ord{\Delta t}$ のスプリッティング誤差を内包する
+（Guermond et al., \textit{Acta Numerica}, 2006 \cite{Guermond2006} に詳しい）．
+この誤差は NS 対流項の離散化精度とは\textbf{独立した}誤差源であり，
+対流項を TVD-RK3（3次精度）に変更しても，スプリッティング誤差が全体時間精度を $\Ord{\Delta t}$ に律速させる．
+
+\medskip
+\noindent\textbf{重要：2次精度 Projection 法は存在する——本稿の選択を誤解しないこと}
+
+「標準 Chorin 法が $\Ord{\Delta t}$ に留まる」ことは，
+「Projection 法で2次精度は達成不可能」を意味\textbf{しない}．
+
+van Kan（1986）\cite{vanKan1986} の
+\textbf{Incremental Pressure Correction（IPC）法}は，
+圧力補正の定式化を修正することでスプリッティング誤差を $\Ord{\Delta t^2}$ に低減し，
+NS 時間積分全体を2次精度に引き上げることができる．
+具体的には，予測速度 $\bm{u}^*$ の計算に \textbf{前ステップの圧力} $p^n$ を陽的に加えることで
+圧力境界層を消去し，標準 Chorin 法の1次誤差項を除去する：
+\[
+  \frac{\bm{u}^* - \bm{u}^n}{\Delta t}
+  = \bm{R}^{n+1} - \frac{1}{\rho}\bnabla p^n
+  \quad \text{（IPC 法 Predictor；本稿の式 \eqref{eq:predictor} との差分に注目）}
+\]
+この修正により，追加の実装コストを最小限に抑えながら2次精度が達成される．
+
+\medskip
+\noindent\textbf{本稿が1次精度 Euler を採用する理由（正直な開示）}
+
+本稿では，教材としての実装の簡潔さと各アルゴリズムの独立した理解を優先するため，
+\textbf{標準 Chorin 法の枠組みの中で NS 対流項を1次 Euler のまま採用する}．
+これは「1次精度で十分」という主張ではなく，
+「Projection 法の核心（Helmholtz 分解による圧力--速度分離）を最も透明に学べる定式化」
+を選択したことによる意図的な設計判断である．
+
+実用シミュレータで時間精度2次を目指す読者には，
+van Kan (1986) \cite{vanKan1986} の IPC 法を推奨する．
 \end{tcolorbox}
 
 \subsubsection{Crank--Nicolson 法（粘性項）}
