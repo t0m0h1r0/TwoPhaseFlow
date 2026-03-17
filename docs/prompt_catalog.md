@@ -1,174 +1,168 @@
 # Prompt Catalog
 
-Last update: 2026-03-17
+Last update: 2026-03-18 — complete rewrite for consolidated 7-prompt system
 
 Navigation map for all workflow prompt files in `docs/`.
-See `DOC_INDEX.md` for the canonical reading order.
+See `DOC_INDEX.md` for canonical reading order.
 
 ---
 
 ## Naming Convention
 
-Workflow prompts follow: `NN_ACTION.md`
+Workflow prompts follow: `NN_DOMAIN_ROLE.md`
 
-- `NN` — two-digit sequence number for ordering
-- `ACTION` — uppercase verb describing the operation
+- `NN` — two-digit sequence (01–09 = code, 10–19 = paper, 99 = meta)
+- `DOMAIN` — `CODE` or `PAPER`
+- `ROLE` — uppercase noun describing the agent role
 
 ---
 
 ## Code Workflow Prompts
 
-### [02_CODEGEN.md](02_CODEGEN.md)
-**Purpose:** Implement numerical algorithms from `paper/` into `src/`.
+### [01_CODE_MASTER.md](01_CODE_MASTER.md)
 
-**When to use:** You need to translate a paper equation or algorithm into Python code.
+**Role:** Master Orchestrator & Lead Scientist
 
-**Key constraints:** Follow equations exactly; support `ndim=2/3`; use `xp = backend.xp`; include tests.
+**Purpose:** Drive the overall paper↔code verification loop. Parse the paper, build a Component Inventory, identify unverified components, and dispatch the appropriate sub-agent.
 
-**Output:** Summary + code patch with file path + test/validation instructions.
+**When to use:** At the start of a session to get an up-to-date project status, or when you need to decide which sub-agent to invoke next.
 
----
+**Output:** Project summary, Component Inventory table (paper ref → file → status), Top-3 next actions with sub-agent targets.
 
-### [03_TESTGEN.md](03_TESTGEN.md)
-**Purpose:** Generate numerical and unit tests for `src/` modules.
-
-**When to use:** You need convergence tests, conservation tests, or regression tests.
-
-**Test types:** Convergence/order (analytic functions), conservation properties, regression (fixed seeds).
-
-**Output:** Purpose statement + pytest code + run instructions with expected outcome.
+**Dispatches to:** `02_CODE_DEVELOP`, `03_CODE_VERIFY`, `04_CODE_REFACTOR`
 
 ---
 
-### [07_VERIFY.md](07_VERIFY.md)
-**Purpose:** Verify that `src/` faithfully implements the algorithms described in `paper/`.
+### [02_CODE_DEVELOP.md](02_CODE_DEVELOP.md)
 
-**When to use:** After a major implementation to confirm paper-to-code fidelity.
+**Role:** Elite Scientific Software Engineer & Test Architect
 
-**Process (7 steps):**
-1. Paper structure analysis
-2. Implementation analysis
-3. Paper-to-code mapping table
-4. Missing implementation detection
-5. Implementation fixes
-6. Benchmark reproducibility
-7. Final verification report
+**Purpose:** Translate mathematical equations from the paper into production-ready Python modules with rigorous MMS (Method of Manufactured Solutions) tests.
 
-**Relationship:** Run before `10_EVALUATE.md` (VERIFY = structural match; EVALUATE = numerical correctness).
+**When to use:** Implementing a new algorithm, discretization scheme, or numerical component from a paper section or equation.
 
----
+**Key constraints:**
+- Follow equations exactly; never alter discretization
+- Use injected `xp` backend for all array ops
+- Cite equation numbers in docstrings
+- MMS test must assert convergence order (observed ≥ expected − 0.2)
 
-### [08_CLEANUP.md](08_CLEANUP.md)
-**Purpose:** Safely identify and remove dead code, legacy compatibility layers, and obsolete code.
-
-**When to use:** After refactoring when backward-compat code is no longer needed.
-
-**Safety rules:** Never delete unless confirmed unused; check benchmarks, CLI, serialization.
-
-**Process (8 steps):** Analysis → legacy detection → dead code → deletion candidates → plan → updated structure → cleaned code → verification.
+**Output:** Variable mapping → architecture → source code → test code → CLI run instructions.
 
 ---
 
-### [09_REFACTORING.md](09_REFACTORING.md)
-**Purpose:** Redesign architecture following SOLID principles without changing numerical results.
+### [03_CODE_VERIFY.md](03_CODE_VERIFY.md)
 
-**When to use:** Architecture has grown complex, coupling is high, or extensibility is poor.
+**Role:** Senior Numerical Verifier & Project Lead
 
-**Allowed changes:** Class/module structure, dependency injection, interfaces, directory layout.
+**Purpose:** Interpret test outputs, diagnose numerical failures, determine root cause (code bug vs. paper error), and propose the authoritative fix.
 
-**Forbidden changes:** Numerical algorithms, discretization schemes, boundary conditions.
+**When to use:** After running tests, when convergence is wrong, or when a component behaves unexpectedly.
 
-**Process (6 steps):** Analysis → redesign → directory structure → migration → implementation → verification.
+**Key constraints:**
+- Rank root-cause hypotheses with confidence scores
+- Every decision must be evidence-based
+- Paper corrections must be in Japanese LaTeX
+
+**Output:** Diagnostic thinking → diagnosis summary → resolution (diff or Japanese LaTeX fix) → JSON decision log.
 
 ---
 
-### [10_EVALUATE.md](10_EVALUATE.md)
-**Purpose:** Verify numerical correctness of individual components using analytical/manufactured solutions.
+### [04_CODE_REFACTOR.md](04_CODE_REFACTOR.md)
 
-**When to use:** A component may have a discretization bug; convergence order is wrong.
+**Role:** Senior Software Architect & Code Auditor
 
-**Strategy:** Method of Manufactured Solutions (MMS), grid refinement (N=32/64/128/256), L1/L2/L∞ norms.
+**Purpose:** Eliminate dead code, reduce duplication, and improve architecture without altering numerical behavior or external APIs.
 
-**Process (8 steps):** Components → solutions → experiment setup → error measurement → convergence test → diagnosis → fix → re-verification.
+**When to use:** Architecture has grown complex, backward-compat code is stale, or a cleanup pass is needed after refactoring.
+
+**Risk levels:** `SAFE_REMOVE` / `LOW_RISK` / `HIGH_RISK`
+
+**Key constraint:** External behavior and numerical results must remain identical (bitwise where possible).
+
+**Output:** Analysis → findings inventory table → migration plan → diff patch → verification commands.
 
 ---
 
 ## Paper Workflow Prompts
 
-### [11_WRITING.md](11_WRITING.md)
-**Purpose:** Write Japanese LaTeX sections for `paper/`.
+### [10_PAPER_EDITOR.md](10_PAPER_EDITOR.md)
 
-**When to use:** Adding new sections or expanding existing content in the manuscript.
+**Role:** Distinguished Professor & Academic Editor (CFD)
 
-**Rules:** Academic Japanese; define all variables before use; valid LaTeX only; reference paper equations.
+**Purpose:** Write and expand LaTeX manuscript sections with textbook-quality pedagogical depth. Covers initial drafting, pedagogical expansion of terse sections, and structural rewriting.
 
----
+**When to use:**
+- Adding new sections to `paper/`
+- Expanding terse derivations into step-by-step textbook content
+- Rewriting manuscript structure after a structural review
 
-### [12_REVIEW.md](12_REVIEW.md)
-**Purpose:** Review the manuscript as a rigorous CFD professor.
+**Key constraints:**
+- Manuscript text in Academic Japanese (である/だ style)
+- Zero information loss — expand, never condense
+- Follow complex equations with physical meaning + algorithmic implications
+- Use `tcolorbox`, `algorithm2e`, `align` environments
 
-**When to use:** After a writing pass to catch logical gaps, weak derivations, or missing validation.
-
-**Role:** Distinguished professor specializing in computational methods; output in Japanese.
-
-**Output:** Scan synthesis, verification gaps, weak logic, detailed critiques.
-
----
-
-### [13_UPDATE.md](13_UPDATE.md)
-**Purpose:** Expand `.tex` files with textbook-quality pedagogical depth.
-
-**When to use:** A section is too terse, lacks step-by-step derivations, or would confuse readers.
-
-**Constraint:** ZERO summarization; 100% technical depth preserved; expand, never condense.
+**Output:** Structural intent (English) → complete ready-to-compile LaTeX block (Japanese).
 
 ---
 
-### [14_STRUCTURAL_REVIEW.md](14_STRUCTURAL_REVIEW.md)
-**Purpose:** Review the manuscript's overall structure, chapter order, figure/table placement.
+### [11_PAPER_CRITIC.md](11_PAPER_CRITIC.md)
 
-**When to use:** Before or after a major writing pass to assess logical flow at chapter level.
+**Role:** No-punches-pulled Peer Reviewer & Senior Research Scientist
+
+**Purpose:** Rigorous audit of the LaTeX manuscript — logical consistency, mathematical validity, pedagogical clarity, and structural flow.
+
+**When to use:** After a writing pass to catch logical gaps, circular logic, dimension mismatches, or weak derivations.
+
+**Key constraints:** Entire output in Japanese. Authorized to recommend complete removal of invalid/redundant content.
 
 **Output (Japanese):**
-- 【現状の課題】Current structural flaws
-- 【新章立て案】Revised TOC proposal
-- 【構成・順序の変更指示】Section move instructions
-- 【図表・レイアウトの改善案】Figure/table/layout improvements
-
-**Relationship:** Run before `15_STRUCTURAL_UPDATE.md`.
+- 【致命的な矛盾と改修案】Fatal contradictions with fixes
+- 【論理の飛躍と「行間」の指摘】Logical leaps and missing steps
+- 【実装容易性の評価】Implementation readiness critique
+- 【構成・レイアウトへの辛口評価】Structure and layout critique
 
 ---
 
-### [15_STRUCTURAL_UPDATE.md](15_STRUCTURAL_UPDATE.md)
-**Purpose:** Implement the structural revision agreed upon from `14_STRUCTURAL_REVIEW.md`.
+### [12_LATEX_ENGINE.md](12_LATEX_ENGINE.md)
 
-**When to use:** After a structural review has produced a revised TOC and move instructions.
+**Role:** LaTeX Compliance & Repair Engine
 
-**Constraint:** Section-by-section rewrite; ZERO information loss; Japanese text.
+**Purpose:** Enforce strict authoring rules — replace all hard-coded section/figure/equation numbers with `\ref{}`/`\eqref{}`, and fix any compilation errors with minimal intervention.
 
----
+**When to use:**
+- After structural rewrites where numbering may have shifted
+- When `latexmk` reports errors (fontspec, missing packages, syntax)
+- Before final submission to ensure cross-reference integrity
 
-### [16_FIX_REF.md](16_FIX_REF.md)
-**Purpose:** Detect and replace all hard-coded section/figure/equation numbers with `\ref{}`/`\eqref{}`.
+**Key constraints:**
+- Anti-hardcoding: no manual "Section 3", "Eq. (5)" allowed
+- Minimal intervention — fix errors without rewriting prose
+- Consistent label naming: `sec:`, `eq:`, `fig:`
 
-**When to use:** After structural rewrites where numbering may have shifted, or before final submission.
-
-**Output:** Semantic label naming, full replacement list, updated `.tex` files.
+**Output:** Refactor report (replaced refs, added labels, diagnosed errors) → unified diff / updated files → compliance status.
 
 ---
 
 ## Prompt Relationships
 
 ```
-Paper writing workflow:
-  11_WRITING → 12_REVIEW → 13_UPDATE → 14_STRUCTURAL_REVIEW → 15_STRUCTURAL_UPDATE → 16_FIX_REF
-
 Code development workflow:
-  02_CODEGEN → 03_TESTGEN → 07_VERIFY → 10_EVALUATE
+  01_CODE_MASTER → dispatches to:
+    02_CODE_DEVELOP  (implement + test)
+    03_CODE_VERIFY   (diagnose failures)
+    04_CODE_REFACTOR (cleanup + SOLID)
 
-Maintenance workflow:
-  08_CLEANUP (after refactoring)
-  09_REFACTORING (when architecture degrades)
+Paper writing workflow:
+  10_PAPER_EDITOR   (write / expand / restructure)
+    → 11_PAPER_CRITIC (critical review)
+    → 10_PAPER_EDITOR (address critique)
+    → 12_LATEX_ENGINE (fix refs + compile)
+
+Typical full cycle:
+  02_CODE_DEVELOP → 03_CODE_VERIFY → 01_CODE_MASTER (re-assess)
+  10_PAPER_EDITOR → 11_PAPER_CRITIC → 10_PAPER_EDITOR → 12_LATEX_ENGINE
 ```
 
 ---
@@ -176,6 +170,7 @@ Maintenance workflow:
 ## Meta Prompts
 
 ### [99_PROMPT.md](99_PROMPT.md)
+
 **Purpose:** Evolve and maintain the prompt system itself.
 
 **When to use:** When prompts become stale, redundant, or the project has changed significantly.
