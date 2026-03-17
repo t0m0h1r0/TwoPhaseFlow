@@ -6,7 +6,7 @@ Your responsibility is to maintain, optimize, and evolve the Claude prompt syste
 
 The repository uses Markdown prompt files to operate Claude during development.
 
-All explanations must be written in Japanese.
+All explanations must be written in English.
 
 ---
 

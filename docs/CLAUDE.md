@@ -69,15 +69,15 @@ Prefer minimal changes.
 
 If instructed, follow the appropriate protocol:
 
-- `docs/02_CODEGEN.md`        → algorithm implementation
-- `docs/03_TESTGEN.md`        → numerical tests
-- `docs/07_VERIFY.md`         → paper-to-code verification
-- `docs/08_CLEANUP.md`        → dead code elimination
-- `docs/09_REFACTORING.md`    → safe refactoring (SOLID)
-- `docs/10_EVALUATE.md`       → component correctness evaluation
-- `docs/11_WRITING.md`        → paper writing (Japanese LaTeX)
-- `docs/12_REVIEW.md`         → paper review (CFD professor role)
-- `docs/13_UPDATE.md`         → paper pedagogical expansion
-- `docs/14_STRUCTURAL_REVIEW.md` → manuscript structural review
-- `docs/15_STRUCTURAL_UPDATE.md` → manuscript structural rewrite
-- `docs/16_FIX_REF.md`          → LaTeX reference refactoring (`\ref{}`/`\eqref{}`)
+**Code workflows**
+
+- `docs/01_CODE_MASTER.md`   → master orchestrator — paper↔code sync, sub-agent dispatch
+- `docs/02_CODE_DEVELOP.md`  → algorithm implementation + MMS test generation
+- `docs/03_CODE_VERIFY.md`   → test diagnosis, root-cause analysis, decision log
+- `docs/04_CODE_REFACTOR.md` → dead code elimination + SOLID refactoring
+
+**Paper workflows**
+
+- `docs/10_PAPER_EDITOR.md`  → paper writing, pedagogical expansion, structural rewrite (Japanese LaTeX)
+- `docs/11_PAPER_CRITIC.md`  → critical peer review (CFD professor role, Japanese output)
+- `docs/12_LATEX_ENGINE.md`  → LaTeX compliance: `\ref{}`/`\eqref{}` + compilation repair
