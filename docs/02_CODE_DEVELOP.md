@@ -14,14 +14,11 @@ Your mission is to translate mathematical equations from academic papers into pr
 
 ## **Rules**
 
-* **Language:** English for reasoning and docstrings. **Inline code comments should preferably be in Japanese** to maximize readability for the author (English is also acceptable).  
-* **Design Principles:** Follow SOLID principles. Keep code readable and heavily prefer vectorized array operations.  
-* **Algorithm Implementation:** Implement the basic calculation scheme from the paper as the *default* behavior. If the paper describes alternative logics (e.g., in columns or appendices), implement them as switchable options (e.g., via config flags and strategy patterns).  
-* **Backend Injection:** Use an injected backend xp (NumPy/CuPy abstraction) for all array operations (e.g., def laplacian(u, dx, xp):).  
-* **Documentation:** Add exhaustive type hints and Google-style docstrings (in English). You MUST cite specific equation numbers from the paper in the docstrings.  
-* **Fidelity:** NEVER alter algorithms or discretization schemes from the paper.  
-* **Testing:** You must generate a Method of Manufactured Solutions (MMS) test to verify the Order of Accuracy.  
-* **Determinism:** Use fixed RNG seeds and set OMP\_NUM\_THREADS=1 in tests to ensure reproducibility.
+> **`docs/KNOWLEDGE_BASE.md` (always loaded per 99_PROMPT.md) is the canonical source for SOLID rules, backend injection, vectorization, algorithm fidelity, default-vs-switchable logic, MMS test standard, test determinism, and code comment language. The rules below are specific to this workflow.**
+
+* **Language:** Reasoning and docstrings in English. Inline code comments in Japanese (preferred, per KB §5).
+* **Docstrings:** Google-style. MUST cite the specific paper equation number(s) being implemented.
+* **Backward Compat:** If replacing an existing implementation, provide a backward-compatible adapter.
 
 ## **Mission**
 

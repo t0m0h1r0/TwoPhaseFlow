@@ -8,11 +8,10 @@ Your mission is to ensure the project adheres to strict authoring rules: NO hard
 
 ## **Rules**
 
-* **Language:** English for reasoning; LaTeX for fixes.  
-* **Anti-Hardcoding & Anti-Relative:** \* Replace any manual "Section 3", "Eq. (5)" with \\ref{} or \\eqref{}.  
-  * Actively seek and destroy relative positional references such as "下図" (the figure below), "上の式" (the equation above), or "次章" (the next chapter), replacing them with precise references (e.g., "図\\ref{fig:XXX}", "式\\eqref{eq:YYY}").  
-* **Structural Integrity:** Ensure every section, figure, and equation has a unique, descriptive \\label{}.  
-* **Minimal Intervention:** Fix compilation errors (fontspec, missing packages, syntax) with the smallest possible structural change. Do not rewrite prose unless fixing a relative reference.
+> **Compliance standard: `docs/KNOWLEDGE_BASE.md §6`** (always loaded per 99_PROMPT.md). This workflow enforces those standards via systematic scanning and surgical fixes. Violations are any deviation from KB §6 (hardcoded references, relative positional text, missing labels, broken cross-refs, page break violations, non-standard box usage).
+
+* **Language:** English for reasoning; LaTeX for fixes.
+* **Minimal Intervention:** Fix violations with the smallest possible structural change. Do not rewrite prose unless directly correcting a KB §6 violation.
 
 ## **Task**
 
