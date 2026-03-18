@@ -199,6 +199,8 @@ def test_predictor_no_nan(backend):
     u = np.zeros((N+1, N+1))
     v = np.zeros((N+1, N+1))
 
-    vel_star = pred.compute([u, v], rho, mu, kappa, psi, dt=0.01)
+    from twophase.core.flow_state import FlowState
+    state = FlowState(velocity=[u, v], psi=psi, rho=rho, mu=mu, kappa=kappa, pressure=np.zeros_like(psi))
+    vel_star = pred.compute(state, dt=0.01)
     for ax, vs in enumerate(vel_star):
         assert not np.any(np.isnan(vs)), f"NaN in vel_star component {ax}"

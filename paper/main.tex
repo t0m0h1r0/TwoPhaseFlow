@@ -21,18 +21,18 @@
 \input{sections/02_governing}     %% 第2章
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\part{界面追跡法}
+\part{界面追跡法と移流スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/03_levelset}      %% 第3章
+\input{sections/03_levelset}          %% 第3章：CLS 法
+\input{sections/08_time_integration}  %% 第4章：時間積分・移流スキーム（CLS と直結）
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\part{数値離散化スキーム}
+\part{空間離散化スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/05_grid}              %% 新第4章：界面適合非一様格子
-\input{sections/04_ccd}               %% 新第5章：結合コンパクト差分法（CCD）
-\input{sections/08_time_integration}  %% 第6章（旧 第8章→昇格）
-\input{sections/06_collocate}         %% 第7章（旧 第6章）
-\input{sections/07_pressure}          %% 第8章（旧 第7章）
+\input{sections/04_ccd}               %% 第5章：結合コンパクト差分法（CCD）＋楕円型ソルバー
+\input{sections/05_grid}              %% 第6章：界面適合非一様格子（CCD でメトリック評価）
+\input{sections/06_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
+\input{sections/07_pressure}          %% 第8章：圧力 Poisson 方程式
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \part{統合・検証・展望}
@@ -43,5 +43,11 @@
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
+
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+%% 付録：数学的補足証明
+%% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\clearpage
+\input{sections/appendix_proofs}
 
 \end{document}
