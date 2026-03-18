@@ -758,7 +758,9 @@ Eikonal 誤差 $\delta \ll 1$ のとき曲率への影響は $\mathcal{O}(\delta
 \begin{tcolorbox}[algbox, title={曲率計算の実装チェックリスト}]
 \begin{enumerate}
   \item \textbf{$\phi$ の取得：}
-        移流後の $\psi^{n+1}$ からニュートン法逆変換（§\ref{sec:newton_inversion}）で
+        移流後の $\psi^{n+1}$ から\textbf{ロジット逆変換}（§\ref{sec:newton_inversion}，
+        標準経路：$\phi = \varepsilon\ln\!\bigl(\psi/(1-\psi)\bigr)$；
+        $\psi < \delta_{\text{clamp}}$ または $\psi > 1-\delta_{\text{clamp}}$ の飽和域のみニュートン法）で
         $\phi^{n+1}$ を計算する．
 
   \item \textbf{再初期化の実行：}
