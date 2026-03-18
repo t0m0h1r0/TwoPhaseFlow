@@ -4,11 +4,25 @@
 
 ## **1\. Project Status Summary**
 
-* **Date/Update:** 2026-03-18
+* **Date/Update:** 2026-03-19
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **All CRITIC/EDITOR passes complete. LATEX ENGINE pass complete (2026-03-18).** 13 relative-reference violations fixed (次節/前節/上式 → \ref/\eqref); 3 new labels added (sec:ccd\_def, sec:ccd\_te\_I, sec:nondim\_items); \[\] → equation for eq:dny\_dy. **106-page PDF compiles clean with zero undefined references. DOCUMENT IS COMPLETE.**
+* **Paper:** 12 sections + appendix\_proofs. **9 CRITIC passes + 5 EDITOR sweeps + LATEX ENGINE pass complete (2026-03-19).** 8 issues from 9th-pass CRITIC review resolved in EDITOR 5th sweep. Requires re-compile to confirm clean build.
 
 ## **2\. Recent Resolutions**
+
+### Paper (2026-03-19 — CRITIC 9th pass + EDITOR 5th sweep)
+
+* **D-1 FIXED**: `00_abstract.tex` defbox — 精度律速行追加（NS 対流項 O(Δt)，CSF O(ε²)；§sec:accuracy_summary 参照）
+* **D-2 FIXED**: `07_pressure.tex` tab:ppe_methods — 「精度」列ヘッダー → 「空間離散化次数」；スウィープ型は O(h⁶) が Krylov 実装のみ実現することを明記
+* **D-3 FIXED**: `07_pressure.tex` resultbox — balanced-force O(h⁴) 主張を「曲率離散化誤差成分のみ」に限定；CSF O(ε²) 残留を明記
+* **D-4 FIXED**: `07_pressure.tex` Predictor Step 1 — ρ^{n+1} の出所と operator splitting 順序を mybox で説明
+* **G-1 FIXED**: `08_time_integration.tex` — 負側 β_k^- の3式（eq:weno5_beta_minus）を明示；インデックス反転則を記述
+* **G-2 FIXED**: `07_pressure.tex` RC 補正 — (1/ρ)^harm の評価時刻（時刻 n，陽的）を明示
+* **G-3 CONFIRMED**: `03_levelset.tex` L.440-448 — N_reinit=28 の指数収束推定式（既存）を確認；変更不要
+* **L-1 FIXED**: `07_pressure.tex` warn:boundary_cv — fbox でスキップ案内を追加（CCD 実装者向け）
+* **I-2 FIXED**: `07_pressure.tex` Δτ defbox — C_τ=2 推奨値，典型収束回数 10〜30 回の実測値例を追記
+
+---
 
 ### Paper (2026-03-18 — LATEX ENGINE pass, 12\_LATEX\_ENGINE.md)
 
