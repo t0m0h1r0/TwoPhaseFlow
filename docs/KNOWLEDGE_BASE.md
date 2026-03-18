@@ -124,15 +124,19 @@ SimulationConfig
 ### Page Layout
 - **New Page Rule (MANDATORY):** Every `\part{...}` and `\section{...}` MUST begin on a new page. Use `\clearpage` or (for double-sided) `\cleardoublepage`.
 - **No Double Breaks:** If a Part and its first Section start consecutively, use ONE page break only (before the Part). Do not insert another `\clearpage` before the Section.
+- **Centralization Rule (MANDATORY):** All `\clearpage` and `\cleardoublepage` commands MUST live exclusively in `main.tex`. Never place page-break commands inside individual section files (`sections/*.tex`). Whether a section is first-in-part can only be determined from `main.tex`; scattering these commands across content files creates maintenance fragility.
 
 ```latex
-% Correct
+% Correct (all breaks in main.tex)
 \cleardoublepage
 \part{Methodology}
-\section{Governing equations}   % no extra \clearpage here
+\input{sections/02_governing}   % no \clearpage inside 02_governing.tex
 
-% Standalone section
 \clearpage
+\input{sections/03_levelset}    % no \clearpage inside 03_levelset.tex
+
+% Wrong — do NOT put \clearpage at the top of a section file
+% \clearpage  ← remove from sections/*.tex
 \section{Numerical method}
 ```
 
@@ -168,7 +172,7 @@ SimulationConfig
 | `03_levelset.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), logit inverse |
 | `04_ccd.tex` | §4 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme (O(h⁵)/O(h²)) |
 | `05_grid.tex` | §5 Grid & Discretization | Staggered grid, CCD-based Jacobian (step 5) |
-| `06_collocate.tex` | §6 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ, Balanced-Force condition |
+| `06_collocate.tex` | §6 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
 | `07_pressure.tex` | §7 Pressure Solver | Variable-density PPE, pseudo-time implicit, BiCGSTAB (tab:ppe_methods) |
 | `08_time_integration.tex` | §8 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
@@ -198,5 +202,5 @@ create_ppe_solver(solver_type, backend, config, grid) -> IPPESolver
 ```
 
 ### Rhie-Chow / Balanced-Force
-Face density uses `(1/ρⁿ)^harm_f` (previous time step); `ρⁿ⁺¹` is unavailable before PPE solve.
-Balanced-Force: CCD curvature evaluation suppresses parasitic currents to O(h⁶).
+Face density uses `(1/ρⁿ⁺¹)^harm_f` (current time step). `ρⁿ⁺¹` is available because CLS advection (Step 3 of the 7-step algorithm) updates density before the Predictor (Step 5) and PPE solve (Step 6). Using `ρⁿ` here would be stale and inconsistent with the algorithm order.
+Balanced-Force: with CCD-based curvature, numerical discretization error cancels and parasitic currents are dominated by CSF model error O(h²) — NOT h⁴ as the unbalanced `h^{p-2}` formula would suggest.
