@@ -18,32 +18,39 @@
 \cleardoublepage
 \part{問題設定と数学的基盤}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/01_introduction}  %% 第1章（Part直後→\cleardoubleページ不要）
-\input{sections/02_governing}     %% 第2章（\clearpage は章ファイル先頭）
+\input{sections/01_introduction}      %% 第1章
+\clearpage
+\input{sections/02_governing}         %% 第2章
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \part{界面追跡法と移流スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/03_levelset}          %% 第3章：CLS 法（Part直後）
-\input{sections/08_time_integration}  %% 第4章：時間積分・移流スキーム（\clearpage は章ファイル先頭）
+\input{sections/03_levelset}          %% 第3章：CLS 法
+\clearpage
+\input{sections/08_time_integration}  %% 第4章：時間積分・移流スキーム
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \part{空間離散化スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/04_ccd}               %% 第5章：結合コンパクト差分法（Part直後）
-\input{sections/05_grid}              %% 第6章：界面適合非一様格子（\clearpage は章ファイル先頭）
-\input{sections/06_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow（\clearpage は章ファイル先頭）
-\input{sections/07_pressure}          %% 第8章：圧力 Poisson 方程式（\clearpage は章ファイル先頭）
+\input{sections/04_ccd}               %% 第5章：結合コンパクト差分法
+\clearpage
+\input{sections/05_grid}              %% 第6章：界面適合非一様格子
+\clearpage
+\input{sections/06_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
+\clearpage
+\input{sections/07_pressure}          %% 第8章：圧力 Poisson 方程式
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \part{統合・検証・展望}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/09_full_algorithm}    %% 第9章（Part直後）
-\input{sections/10_verification_metrics} %% 第10章（\clearpage は章ファイル先頭）
-\input{sections/11_conclusion}        %% 第11章（\clearpage は章ファイル先頭）
+\input{sections/09_full_algorithm}    %% 第9章
+\clearpage
+\input{sections/10_verification_metrics} %% 第10章
+\clearpage
+\input{sections/11_conclusion}        %% 第11章
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
