@@ -18,7 +18,7 @@
 空間離散： & CCD $\Ord{h^6}$（微分），WENO5（移流），非一様格子対応\\
 格子構造： & コロケート格子 + Rhie--Chow 補正（面速度）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
-圧力解法： & 変密度 Chorin Projection + FVM-PPE + 仮想時間 CCD 陰解法\\
+圧力解法： & 変密度 Chorin Projection + CCD-PPE（$O(h^6)$）+ 仮想時間陰解法\\
 表面張力： & CSF 法（$\kappa\,\bnabla\psi$ 形式；balanced-force）
 \end{tabular}
 \end{tcolorbox}
