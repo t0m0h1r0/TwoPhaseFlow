@@ -6,8 +6,7 @@
 * **Languages:** Python (Implementation), LaTeX (Specification).  
 * **Core Tech:** Compact Finite Difference (CCD), Level Set Method (CLS), Projection Method, Variable Density Navier-Stokes.  
 * **Current Architecture:** Fully refactored to component injection via SimulationBuilder.  
-* **Directory Structure:**  
-  * paper/ : Mathematical specification & theoretical textbook.  
+* **Directory Structure:** \* paper/ : Mathematical specification & theoretical textbook. File names must reflect the latest paper structure.  
   * src/ : Production Python implementation (src/twophase/).  
   * docs/ : System prompts and project state.
 
@@ -15,7 +14,7 @@
 
 Whenever a new session starts, you MUST:
 
-1. Silently absorb docs/99_PROMPT.md, docs/KNOWLEDGE\_BASE.md, and docs/ACTIVE\_STATE.md.  
+1. Silently absorb docs/99\_PROMPT.md, docs/KNOWLEDGE\_BASE.md, and docs/ACTIVE\_STATE.md.  
 2. Understand the current state: 28 tests passing, 11 chapters compiled cleanly.  
 3. Await the user's specific workflow instruction or prompt file execution.  
 4. NEVER reference deleted directories (e.g., base/).  
@@ -23,7 +22,8 @@ Whenever a new session starts, you MUST:
 
 ## **3\. Strict Language Policy**
 
-* **English ONLY:** Reasoning, code comments, git commits, docstrings, and standard markdown files (like this one).  
+* **English ONLY:** Reasoning, git commits, docstrings, and standard markdown files (like this one).  
+* **Japanese (or English):** Inline code comments. When in doubt, Japanese is the first choice for code comments to ensure intent is clear.  
 * **Japanese ONLY:** The actual content of the LaTeX manuscript (paper/\*.tex) and review outputs targeting the paper.
 
 ## **4\. Workflow Prompt Map**
