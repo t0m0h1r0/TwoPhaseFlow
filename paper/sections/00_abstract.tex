@@ -14,7 +14,7 @@
 \begin{tcolorbox}[defbox, width=0.88\textwidth]
 \small\centering
 \begin{tabular}{rl}
-界面追跡： & Conservative Level Set 法,($\psi\equiv H_\varepsilon(\phi)$)\\
+界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(\phi)$）\\
 空間離散： & CCD $\Ord{h^6}$（微分），WENO5（移流），非一様格子対応\\
 格子構造： & コロケート格子 + Rhie--Chow 補正（面速度）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
@@ -24,7 +24,7 @@
 \multicolumn{2}{l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
 時間方向律速： & NS 対流項 前進 Euler $\Rightarrow$ 全体時間精度 $\mathcal{O}(\Delta t)$（1次）\\
 表面張力律速： & CSF モデル誤差 $\mathcal{O}(\varepsilon^2)\approx\mathcal{O}(h^2)$（$\varepsilon\sim h$ 設定時）\\
-\multicolumn{2}{l}{\footnotesize CCD の $\mathcal{O}(h^6)$ 空間精度は PPE・曲率・メトリクス評価で有効（§\ref{sec:accuracy_summary}）}
+\multicolumn{2}{l}{\footnotesize CCD の $\mathcal{O}(h^6)$ 空間精度は PPE・曲率・メトリクス評価で有効（§\ref{sec:accuracy_summary}）}\\
 \end{tabular}
 \end{tcolorbox}
 \end{center}

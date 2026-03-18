@@ -176,10 +176,13 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
 \label{sec:rc_implementation}
 最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の実装形式を用いる．
 \begin{equation}
- u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p)_f - \overline{(\bnabla p)}_f \right]
+ u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
  \label{eq:rc-face}
 \end{equation}
-ここで，$(\nabla p)_f$ はフェイスにおける圧力勾配の評価値，$\overline{(\nabla p)}_f$ はセル中心における圧力勾配の補間値である．
+ここで，$(\nabla p^n)_f$ はフェイスにおける\textbf{前時刻圧力 $p^n$ の勾配}（陽的評価），
+$\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である
+（新圧力 $p^{n+1}$ は PPE を解く前の段階では未知であるため，Rhie-Chow 補正は $p^n$ を用いた陽的処理となる；
+詳細は第\ref{sec:pressure}章，式~\eqref{eq:rc_divergence} 参照）．
 係数 $d_f \equiv \Delta t \,(1/\rho)_f^\mathrm{harm}$ に\textbf{密度の逆数の調和平均}を用いる理由を，以下で丁寧に説明する．
 
 \paragraph{なぜ調和平均か：変密度場における根拠}
