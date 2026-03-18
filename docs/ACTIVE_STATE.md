@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-18
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. Six CRITIC passes completed (2026-03-18). All issues resolved including L-2 (tcolorbox refactor: 49→35 boxes across §2/§3/§6). Next: final compile check (12\_LATEX\_ENGINE.md).
+* **Paper:** 12 sections + appendix\_proofs. Seven CRITIC passes completed (2026-03-18). All issues resolved including L-2 (tcolorbox refactor: 49→35 boxes) and 7th-pass D/B/G fixes (BiCGSTAB dangling claim, CN/Backward Euler inconsistency, NS Forward Euler clarification, boundary_cv FVM scope, balanced-force formula). Next: final compile check (12\_LATEX\_ENGINE.md).
 
 ## **2\. Recent Resolutions**
 
@@ -42,6 +42,16 @@
 * **B-2**: `11_conclusion.tex` §7.2 description list — reordered to sec:time (Ch4) → sec:CCD (Ch5) → sec:grid (Ch6), matching actual chapter order.
 * **B-3**: `11_conclusion.tex` L115-116 — Spatial bottleneck corrected from WENO5 O(h⁵) to CSF O(ε²)≈O(Δx²); text revised accordingly.
 * **M-1**: `04_ccd.tex` L1 comment `05_ccd.tex` → `04_ccd.tex`; `05_grid.tex` L1 comment `04_grid.tex` → `05_grid.tex`.
+
+### Paper (2026-03-18 CRITIC 7th pass — all resolved via 10\_PAPER\_EDITOR)
+
+* **D-1 FIXED**: `07_pressure.tex` resultbox — stale "第§1・§9 で BiCGSTAB と記した箇所" claim removed; §1 and §9 already use 仮想時間陰解法.
+* **D-2 FIXED**: `07_pressure.tex` eq:NS_full — added mybox clarifying derivation uses simplified Backward Euler while implementation uses Crank--Nicolson (O(Δt²)) per §4; CN viscous → implicit linear system for u*.
+* **D-3 FIXED**: `01_introduction.tex` L.344 + `09_full_algorithm.tex` fig:ns_solvers — NS 対流項 explicitly uses Forward Euler (O(Δt)), not TVD-RK3; CLS advection uses TVD-RK3; figure S1 node corrected from "WENO5/TVD-RK3" to "CCD D^(1)/前進Euler".
+* **B-1 FIXED**: `07_pressure.tex` warnbox boundary_cv — titled "(FVM 実装専用)"; note added that CCD-Poisson boundary handling is in §8.5 and does NOT need this correction.
+* **B-2 FIXED**: `07_pressure.tex` L.316 — dangling "前処理については下記参照" replaced with reference to §8.5 and tab:ppe_methods.
+* **B-3 FIXED**: `07_pressure.tex` eq:balanced_force_condition — asymmetric operator notation corrected; supplementary mybox explains "≈" in terms of CSF O(ε²) accuracy limit.
+* **G-3 FIXED**: `07_pressure.tex` eq:rc_divergence — p^n (前時刻) explicitly noted in Rhie-Chow face velocity formula.
 
 ### Paper (2026-03-18 CRITIC passes 3rd–6th — all resolved via 10\_PAPER\_EDITOR)
 
