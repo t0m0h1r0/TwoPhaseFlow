@@ -1,6 +1,14 @@
-% paper/sections/04_grid.tex
+% paper/sections/05_grid.tex
 \section{界面適合非一様格子の構築}
 \label{sec:grid}
+
+本章では，第\ref{sec:CCD}章で導出した CCD 差分演算子を
+\textbf{界面近傍を高密度化した非一様格子}（界面適合格子）上で適用するための
+座標変換とメトリクス係数の理論を整備する．
+一様計算空間 $\xi$ 上では第\ref{sec:CCD}章と同一の CCD スキーム（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）
+が形式的にそのまま成立し，物理空間 $x$ への微分変換はメトリクス係数
+$\partial x/\partial\xi$（本章で定義）を乗じることで行われる．
+これにより，界面付近での格子細分化と CCD の $\Ord{h^6}$ 高精度化を両立させることができる．
 
 \subsection{グリッド密度関数}
 
@@ -66,7 +74,7 @@ $\alpha > 1$ は界面近傍の格子密度倍率である．
  \label{eq:transform_2nd_correct}
 \end{align}
 \end{tcolorbox}
-ここで $J_x = d\xi/dx$ はメトリクス係数であり，CCD 法を用いて高精度に評価される（次章 第\ref{sec:CCD}章で詳述）．
+ここで $J_x = d\xi/dx$ はメトリクス係数であり，CCD 法を用いて高精度に評価される（第\ref{sec:CCD}章で詳述）．
 
 \subsection{格子点座標の生成アルゴリズム}
 \label{sec:grid_gen}
@@ -94,41 +102,42 @@ $\alpha > 1$ は界面近傍の格子密度倍率である．
   x_i = L \cdot \frac{\tilde{x}_i}{\tilde{x}_{N-1}}
 \]
 
-\textbf{ステップ5：} メトリクス係数を差分で求める：
+\textbf{ステップ5：} メトリクス係数を CCD で評価する（推奨・$\mathcal{O}(h^6)$ 精度）：
 \[
-  J_x\big|_i = \frac{d\xi}{dx}\bigg|_i \approx \frac{\xi_{i+1}-\xi_{i-1}}{x_{i+1}-x_{i-1}}
-  = \frac{2\Delta\xi}{x_{i+1}-x_{i-1}}
-  \quad (\text{境界は片側差分})
+  J_x\big|_i = \frac{1}{(dx/d\xi)_i}, \qquad
+  \pd{J_x}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
 \]
+ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は，座標配列 $\{x_i\}$ を**入力データ**として
+CCD 連立方程式（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）を解くことで同時に得る．
+すなわち「$f(\xi_i) = x_i$」として CCD を適用すれば，1階・2階微分が一度の Thomas 法求解で得られる
+（CCD が 1・2 階微分を同時出力するという特性を格子生成にも活用する点に注意）．
+中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
+CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
+（理由は \ref{box:grid_jx_accuracy} で詳述）．
 
-\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$．
+\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$，$\{\partial J_x/\partial\xi|_i\}$．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={【重要】メトリクス係数 $J_x$ の精度と $\partial J_x/\partial\xi$ の評価}]
 \label{box:grid_jx_accuracy}
-上記の中心差分 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は $\mathcal{O}(h^2)$ 精度しか持たない．
-座標変換を用いた2階微分（式 \eqref{eq:transform_2nd_correct}）：
+素朴な中心差分 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は $\mathcal{O}(h^2)$ 精度しか持たず，
+CCD の $\mathcal{O}(h^6)$ 精度を著しく損なうため本稿では採用しない（step 5 参照）．
+その理由は，座標変換を用いた2階微分（式 \eqref{eq:transform_2nd_correct}）：
 \[
   \pdd{f}{x} = J_x^2 \fpp{\xi} + J_x \pd{J_x}{\xi} \fp{\xi}
 \]
-の右辺第2項には $\partial J_x/\partial \xi$ が含まれる．
-もし $J_x$ が $\mathcal{O}(h^2)$ 差分で与えられているとすると，
-$\partial J_x/\partial\xi$ をさらに差分で評価すると精度は $\mathcal{O}(h)$ 以下に劣化し，
+の右辺第2項に $\partial J_x/\partial \xi$ が含まれるためである．
+$J_x$ が $\mathcal{O}(h^2)$ 差分で与えられていると，
+$\partial J_x/\partial\xi$ をさらに差分で評価した際に精度は $\mathcal{O}(h)$ 以下に劣化し，
 CCD の $\mathcal{O}(h^6)$ 空間精度が $\mathcal{O}(h)$ または $\mathcal{O}(h^2)$ に低下する．
 
-\textbf{精度を保つための対処法（推奨）：}
+\textbf{本稿の実装選択（CCD による $J_x$ 評価）の代替案：}
 \begin{enumerate}
-  \item \textbf{$J_x$ を CCD で評価する：} 計算空間上で $J_x(\xi) = 1/(dx/d\xi)$ を CCD の $x'(\xi)$ として求め，$\mathcal{O}(h^6)$ 精度の $J_x$ と $\partial J_x/\partial\xi$ を得る．具体的には：
-  \[
-    J_x|_i = \frac{1}{(dx/d\xi)_i}, \qquad
-    \pd{J_x}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
-  \]
-  ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は座標配列 $x(\xi)$ に CCD を適用して得る．
   \item \textbf{格子変化が緩やかな場合：} 界面近傍の格子集中が滑らかであれば（$\omega(\phi)$ が緩やかに変化），$J_x$ の $\mathcal{O}(h^2)$ 誤差が全体精度に与える影響は小さい場合がある．ただし，定量的確認（格子収束テスト）なしにこの仮定を採用すべきでない．
-  \item \textbf{代替案：高次片側差分による $J_x$ 計算：} 4次以上の差分で $J_x$ を評価することで中間的な解決策となる（実装負荷は低い）．
+  \item \textbf{高次片側差分による $J_x$ 計算：} 4次以上の差分で $J_x$ を評価することで中間的な解決策となる（実装負荷は低い）．
 \end{enumerate}
-\textbf{本稿の実装選択：} 上記の方法1（CCD による $J_x$ 評価）を推奨する．
-格子収束テスト（第\ref{sec:verification}章）で $\mathcal{O}(h^6)$ 収束が確認されれば，この評価が適切に機能していることを確認できる．
+格子収束テスト（第\ref{sec:verification}章）で $\mathcal{O}(h^6)$ 収束が確認されれば，
+step 5 の CCD 評価が適切に機能していることを確認できる．
 \end{tcolorbox}
 
 \begin{tcolorbox}[defbox, title={アルゴリズムの物理的直感}]
@@ -205,18 +214,25 @@ def build_1d_grid(phi_min_row, N, L, alpha, eps_g):
         x_tilde[i+1] = x_tilde[i] + dxi / omega[i]
     # 領域長 L に正規化
     x = L * x_tilde / x_tilde[-1]
-    # メトリクス係数（中心差分）
-    Jx = np.gradient(xi, x)  # dxi/dx
-    return x, Jx
+    # ステップ5：メトリクス係数は CCD で評価すること（O(h^6) 精度）
+    # 実装：x[i] を入力データとして CCD 連立方程式を解き，
+    #       dx_dxi[i]（1階微分）と d2x_dxi2[i]（2階微分）を同時取得する
+    # Jx = 1.0 / dx_dxi        （dxi/dx）
+    # dJx_dxi = -d2x_dxi2 / dx_dxi**2
+    # 注意：np.gradient(xi, x) は O(h^2) 中心差分であり
+    #       CCD 精度を損なうため使用禁止（詳細は box:grid_jx_accuracy 参照）
+    dx_dxi, d2x_dxi2 = ccd_solve(x, xi)   # CCD: f=x(xi) -> f', f'' 同時求解
+    Jx = 1.0 / dx_dxi
+    return x, Jx, d2x_dxi2
 
 def build_2d_grid(phi0, Nx, Ny, Lx, Ly, alpha, eps_g):
     """2次元テンソル積格子生成"""
     # x 方向：各列の最小 |phi|
     phi_min_x = np.min(np.abs(phi0), axis=1)  # shape (Nx,)
-    x, Jx = build_1d_grid(phi_min_x, Nx, Lx, alpha, eps_g)
+    x, Jx, d2x = build_1d_grid(phi_min_x, Nx, Lx, alpha, eps_g)
     # y 方向：各行の最小 |phi|
     phi_min_y = np.min(np.abs(phi0), axis=0)  # shape (Ny,)
-    y, Jy = build_1d_grid(phi_min_y, Ny, Ly, alpha, eps_g)
+    y, Jy, d2y = build_1d_grid(phi_min_y, Ny, Ly, alpha, eps_g)
     # 2次元メッシュ
     X, Y = np.meshgrid(x, y, indexing='ij')
     return X, Y, Jx, Jy

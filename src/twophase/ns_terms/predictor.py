@@ -31,6 +31,11 @@ DIP 改善（2026-03-15）:
 ISP 改善（2026-03-15 3rd pass）:
     - ccd をコンストラクタ注入に変更。
     - compute() のシグネチャから ccd を除去し、他の演算子と統一した。
+
+FlowState 導入（2026-03-16）:
+    - compute() が FlowState を受け取るようにシグネチャを変更。
+    - 引数を構造化することで呼び出しコードが明瞭になり、
+      新しい物理場（温度等）を追加する際の変更箇所が最小化される（OCP）。
 """
 
 from __future__ import annotations
@@ -41,6 +46,7 @@ from .convection import ConvectionTerm
 from .viscous import ViscousTerm
 from .gravity import GravityTerm
 from .surface_tension import SurfaceTensionTerm
+from ..core.flow_state import FlowState
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -86,32 +92,26 @@ class Predictor:
         self.gravity      = gravity       or GravityTerm(backend, config.fluid.Fr, config.grid.ndim)
         self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.fluid.We)
 
-    def compute(
-        self,
-        vel_n: List,
-        rho: "array",
-        mu: "array",
-        kappa: "array",
-        psi: "array",
-        dt: float,
-    ) -> List:
+    def compute(self, state: FlowState, dt: float) -> List:
         """Compute u* = uⁿ + Δt * R / ρ̃.
 
         Parameters
         ----------
-        vel_n  : velocity components [u, v[, w]] at time n
-        rho    : density at time n+1
-        mu     : viscosity at time n+1
-        kappa  : curvature at time n+1
-        psi    : CLS field at time n+1
-        dt     : time step
+        state : FlowState
+            現タイムステップの流体場（velocity, psi, rho, mu, kappa, pressure）。
+        dt    : float
+            タイムステップ幅。
 
         Returns
         -------
-        vel_star : list of u* arrays
+        vel_star : list of u* arrays  (ndim 個)
         """
-        xp = self.xp
-        ccd = self.ccd   # コンストラクタ注入済みの ccd を使用
+        ccd = self.ccd
+        vel_n = state.velocity
+        rho   = state.rho
+        mu    = state.mu
+        kappa = state.kappa
+        psi   = state.psi
 
         # ── Explicit terms ────────────────────────────────────────────────
         conv = self.convection.compute(vel_n, ccd)           # −(u·∇)u  (ρ-weighted later)
