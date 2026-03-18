@@ -513,79 +513,64 @@ $\Delta\tau$ の選択に安定性制約（CFL 条件に相当）が存在する
 \subsection{\texorpdfstring{$\psi$}{ψ} と \texorpdfstring{$\phi$}{φ} の関係}
 \label{sec:levelset_mapping}
 
-\begin{tcolorbox}[defbox]
-\textbf{対応付け：}
+\begin{tcolorbox}[defbox, title={$\psi$--$\phi$ 対応付けと解析的逆変換（ロジット関数）}]
 Conservative Level Set 変数 $\psi$ と符号付き距離関数 $\phi$ は以下の関係にある：
 \begin{equation}
   \psi(\bm{x},t) \equiv H_\varepsilon(\phi(\bm{x},t)), \qquad \bnabla\psi = \delta_\varepsilon(\phi)\,\bnabla\phi
 \end{equation}
 物性値補間 $\rho(\psi), \mu(\psi)$ には $\psi$ を直接用い，
-曲率計算などの幾何学的操作には $\phi$ を用いる．
+曲率計算などの幾何学的操作（法線 $\hat{\bm n}$，曲率 $\kappa$）には $\phi$ を用いる．
 
-\vspace{1em}
-\textbf{逆変換の必要性：}
-CLS 法の核心は，移流計算は $\psi$ で行い，幾何量（特に再初期化に必要な法線 $\hat{\bm n}$）の計算は $\phi$ で行う点にある．
-したがって，移流後の $\psi^{n+1}$ から対応する $\phi^{n+1}$ を求める「逆変換」が必要となる．
-$\psi = H_\varepsilon(\phi)$ は非線形関数であるため，この逆変換は解析的に行えない．
-各格子点において，$\psi_i$ の値に対して $H_\varepsilon(\phi_i) - \psi_i = 0$ を満たす $\phi_i$ を，ニュートン法などの反復解法を用いて数値的に求める必要がある．
-$H_\varepsilon$ は単調増加関数であるため，解は一意に定まる．
+\medskip
+\textbf{逆変換（$\psi \to \phi$）：}
+CLS 法の移流計算は $\psi$ で行うが，幾何量計算には $\phi$ が必要である．
+$H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ はシグモイド型関数であり，
+その逆関数（ロジット関数）は\textbf{解析的に求まる}：
+\begin{equation}
+  \phi = H_\varepsilon^{-1}(\psi) = \varepsilon\ln\!\left(\frac{\psi}{1-\psi}\right)
+  \label{eq:logit_inverse}
+\end{equation}
+$H_\varepsilon$ は単調増加関数（$H_\varepsilon' > 0$）であるから，解は一意に定まる．
+唯一の実装上の注意は，$\psi \to 0$ または $\psi \to 1$ の\textbf{飽和領域}で
+対数引数が $0$ または $\infty$ に近づき浮動小数点オーバーフローが生じる点である．
+この場合は $|\phi| = \phi_{\max}$ に飽和させる（§\ref{sec:newton_inversion} 参照）．
 \end{tcolorbox}
 
-\subsubsection{ニュートン法による逆変換の手順}
+\subsubsection{逆変換の実装：解析的逆関数と飽和処理}
 \label{sec:newton_inversion}
 
-$F(\phi) \equiv H_\varepsilon(\phi) - \psi_i = 0$ に対してニュートン法を適用する．
-$H_\varepsilon$ の微分は式 \eqref{eq:Heps_deriv} から $H_\varepsilon'(\phi) = \tfrac{1}{\varepsilon}H_\varepsilon(\phi)(1-H_\varepsilon(\phi))$ であるから，
-更新式は：
+式~\eqref{eq:logit_inverse} で示したように，逆変換は\textbf{ロジット関数}によって点ごとに $O(1)$ で実行できる．
+実装上の唯一の注意点は飽和領域における浮動小数点オーバーフローの回避である．
+
+以下に実装の全手順を示す．
+
+\begin{tcolorbox}[algbox, title={$\psi \to \phi$ 逆変換の実装手順（全格子点に対して点別に実行）}]
+\begin{enumerate}
+  \item \textbf{飽和判定：} $\psi_i < \delta_{\text{clamp}}$ または $\psi_i > 1 - \delta_{\text{clamp}}$（例：$\delta_{\text{clamp}} = 10^{-6}$）を確認する．
+  \item \textbf{飽和領域：} 飽和している点では $\phi_i = \mp\phi_{\max}$ に固定する（$\phi_{\max}$ の選択は後述）．
+  \item \textbf{標準領域：} 飽和していない点では解析的逆変換
+        \[
+          \phi_i = \varepsilon\ln\!\left(\frac{\psi_i}{1-\psi_i}\right)
+        \]
+        を直接計算する．計算コストは対数1回のみ（$O(1)$ per point）．
+\end{enumerate}
+
+\textbf{備考：}
+\begin{itemize}
+  \item ニュートン反復は\textbf{不要}である．解析的逆関数は残差ゼロを代数的に保証する．
+  \item 飽和処理後，逆変換された $\phi$ のプロファイルが $|\nabla\phi|\approx 1$ を満たしているかを
+        確認するため，CLS 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）を数回適用することが推奨される．
+  \item 飽和領域の格子点は界面から遠く（$|\phi| \gg \varepsilon$），
+        $|\nabla\psi| \approx 0$ であるため曲率計算に寄与しない．
+\end{itemize}
+\end{tcolorbox}
+
 \begin{equation}
   \phi^{(k+1)} = \phi^{(k)} - \frac{H_\varepsilon(\phi^{(k)}) - \psi_i}{\dfrac{1}{\varepsilon}H_\varepsilon(\phi^{(k)})\bigl(1-H_\varepsilon(\phi^{(k)})\bigr)}
   \label{eq:newton_inversion}
 \end{equation}
-初期値として解析的逆変換
-\[
-  \phi^{(0)} = \varepsilon\ln\!\left(\frac{\psi_i}{1-\psi_i}\right)
-\]
-を用いることができる．これは $H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ の\textbf{厳密な逆関数}であるから，
-代数的に $H_\varepsilon(\phi^{(0)}) \equiv \psi_i$ が成立する．
-
-\begin{tcolorbox}[warnbox, title={解析的逆関数とニュートン法の関係}]
-$\phi^{(0)} = \varepsilon\ln(\psi_i/(1-\psi_i))$ は $F(\phi^{(0)}) = H_\varepsilon(\phi^{(0)}) - \psi_i = 0$ を代数的に満たすため，
-ニュートン法は原理的に0回反復で収束する（残差は浮動小数点丸め誤差のみ）．
-
-したがって，ほとんどの格子点では解析的逆変換を直接使えばよく，ニュートン反復は不要である．
-ニュートン法が実用的に必要になるのは，$\psi_i \to 0$ または $\psi_i \to 1$ の\textbf{飽和領域}のみである：
-対数関数の引数 $\psi_i/(1-\psi_i)$ が $0$ または $\infty$ に近づき浮動小数点オーバーフローが生じるため，
-この領域では $|\phi| = \phi_{\max}$ に飽和させるか，対数を計算せずニュートン法で安全に収束させる．
-\end{tcolorbox}
-
-\begin{tcolorbox}[mybox, title={ニュートン法の二次収束：理論的保証}]
-\textbf{標準領域（$\psi_i \in [\delta, 1-\delta]$）：}
-解析的逆変換 $\phi^{(0)} = \varepsilon\ln(\psi_i/(1-\psi_i))$ は $F(\phi^{(0)}) = 0$ を代数的に満たすため，
-ニュートン法は \textbf{0回反復で厳密収束}する（2次収束以上，むしろ有限ステップ収束）．
-
-\textbf{飽和領域（$\psi_i$ が0または1に近い場合）での二次収束の証明：}
-$F(\phi) = H_\varepsilon(\phi) - \psi_i$ に対して，ニュートン法の誤差方程式を導く．
-
-$\phi^*$ を真の解（$F(\phi^*)=0$），$e_k = \phi^{(k)} - \phi^*$ を誤差とすると，
-テイラー展開：
-\[
-  F(\phi^{(k)}) = F(\phi^*) + F'(\phi^*) e_k + \frac{1}{2}F''(\xi_k) e_k^2
-  = F'(\phi^*) e_k + \frac{F''(\xi_k)}{2} e_k^2
-\]
-ニュートン更新：$e_{k+1} = e_k - F(\phi^{(k)})/F'(\phi^{(k)})$ を整理すると：
-\[
-  e_{k+1} = -\frac{F''(\xi_k)}{2F'(\phi^{(k)})} e_k^2
-\]
-$F'(\phi) = H_\varepsilon'(\phi) = \frac{1}{\varepsilon}H_\varepsilon(1-H_\varepsilon) > 0$（常に正），
-$F''(\phi) = \frac{1}{\varepsilon^2}H_\varepsilon(1-H_\varepsilon)(1-2H_\varepsilon)$ は有界であるから，
-$|e_{k+1}| \le C|e_k|^2$（$C = \|F''\|_\infty / (2\inf|F'|)$）が成立し，\textbf{二次収束}が確認できる．
-
-$H_\varepsilon$ は $\phi \in [-\phi_{\max}, \phi_{\max}]$ 上で $C^\infty$ であるため，
-$F'$ は有界下界を持ち（$F'_{\min} = H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max}))/\varepsilon > 0$），
-収束定数 $C$ は有限であり，二次収束が保証される．
-\end{tcolorbox}
-
-境界値 $\psi_i \to 0$ または $\psi_i \to 1$ では分母がゼロに近づくため，飽和処理を行う．
+式~\eqref{eq:newton_inversion} は飽和領域でニュートン法を使う場合の更新式である（通常は不要）．
+飽和領域での二次収束の理論的証明は付録~\ref{app:newton_quad_conv} を参照されたい．
 
 \begin{tcolorbox}[defbox, title={飽和処理のパラメータ $\phi_{\max}$ の選択根拠}]
 飽和条件：$|\psi_i - 0.5| > 1 - \delta_{\text{clamp}}$（例 $\delta_{\text{clamp}} = 10^{-6}$）の点を
