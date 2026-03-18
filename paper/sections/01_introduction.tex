@@ -399,10 +399,13 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & 保存形界面追跡，再初期化方程式，曲率数値計算
    & 2 \\
 4  & 時間積分
-   & WENO5，TVD-RK3，Crank--Nicolson，時間刻み制約
-   & 3 \\
+   & CLS 移流：WENO5 + TVD-RK3（$\mathcal{O}(\Delta t^3)$）；
+     NS 対流項：前進 Euler（$\mathcal{O}(\Delta t)$），
+     粘性項：Crank--Nicolson（$\mathcal{O}(\Delta t^2)$）；時間刻み制約
+   & 2, 3 \\
 5  & CCD 法
-   & 6次精度コンパクト差分，係数導出，楕円型ソルバーとしての定式化（仮想時間陰解法による楕円型 PPE への応用を含む）
+   & 6次精度コンパクト差分，係数導出，楕円型ソルバーとしての定式化
+     （PPE への応用は第\ref{sec:pressure}章§\ref{sec:ppe_pseudotime}で展開）
    & --- \\
 6  & 界面適合格子
    & レベルセット連動格子生成，メトリック係数，ALE 簡略化
@@ -464,12 +467,14 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
         CCD 法で $\phi^{n+1}$ を高精度微分し，表面張力に必要な $\kappa^{n+1}$ を求める
 
   \item \textbf{運動量予測（Predictor）：}
-        圧力勾配を無視して予測速度 $\bu^*$ を計算（一般に $\nabla\cdot\bu^* \neq 0$）
+        対流項（前進 Euler）と粘性項（Crank--Nicolson）を含む線形系を解き，
+        圧力勾配を含まない予測速度 $\bu^*$ を得る（一般に $\nabla\cdot\bu^* \neq 0$）
 
   \item \textbf{圧力 Poisson 方程式求解：}
         $\nabla\cdot\!\left(\dfrac{1}{\rho}\nabla p^{n+1}\right)
-        = \dfrac{1}{\Delta t}\nabla\cdot\bu^*$
-        を仮想時間陰解法で解く
+        = \dfrac{1}{\Delta t}\nabla_h^{\mathrm{RC}}\!\cdot\bu^*$
+        を CCD-Poisson 仮想時間陰解法で解く
+        （$\nabla_h^{\mathrm{RC}}\!\cdot$：Rhie--Chow 補正済み発散，第\ref{sec:pressure}章参照）
 
   \item \textbf{速度補正（Corrector）：}
         $\bu^{n+1} = \bu^* - \dfrac{\Delta t}{\rho^{n+1}}\nabla p^{n+1}$

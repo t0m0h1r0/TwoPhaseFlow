@@ -48,10 +48,17 @@
 * **D-1 FIXED**: `07_pressure.tex` resultbox — stale "第§1・§9 で BiCGSTAB と記した箇所" claim removed; §1 and §9 already use 仮想時間陰解法.
 * **D-2 FIXED**: `07_pressure.tex` eq:NS_full — added mybox clarifying derivation uses simplified Backward Euler while implementation uses Crank--Nicolson (O(Δt²)) per §4; CN viscous → implicit linear system for u*.
 * **D-3 FIXED**: `01_introduction.tex` L.344 + `09_full_algorithm.tex` fig:ns_solvers — NS 対流項 explicitly uses Forward Euler (O(Δt)), not TVD-RK3; CLS advection uses TVD-RK3; figure S1 node corrected from "WENO5/TVD-RK3" to "CCD D^(1)/前進Euler".
+* **L-5 FIXED**: `01_introduction.tex` tab:chapter_overview Ch4 — 前提 "3" → "2, 3"; content revised to distinguish CLS(WENO5+TVD-RK3) from NS(前進Euler+CN); Ch5 CCD description scoped to §5 only with PPE application reference to §8.
+* **algbox enhancement**: Step 5 scheme names added (前進Euler/CN); Step 6 Rhie-Chow corrected divergence ∇_h^RC·u* explicitly referenced.
 * **B-1 FIXED**: `07_pressure.tex` warnbox boundary_cv — titled "(FVM 実装専用)"; note added that CCD-Poisson boundary handling is in §8.5 and does NOT need this correction.
 * **B-2 FIXED**: `07_pressure.tex` L.316 — dangling "前処理については下記参照" replaced with reference to §8.5 and tab:ppe_methods.
 * **B-3 FIXED**: `07_pressure.tex` eq:balanced_force_condition — asymmetric operator notation corrected; supplementary mybox explains "≈" in terms of CSF O(ε²) accuracy limit.
 * **G-3 FIXED**: `07_pressure.tex` eq:rc_divergence — p^n (前時刻) explicitly noted in Rhie-Chow face velocity formula.
+
+### Paper (2026-03-18 EDITOR 3rd sweep — resolved via 10\_PAPER\_EDITOR)
+
+* **04_ccd.tex** L393-398 warnbox `{境界スキームの役割と精度}` — corrected O(h^5) claim: Equation-I boundary is O(h^5), Equation-II boundary is O(h^2) (consistent with mybox at L.587-596 showing L² impact O(h^3)).
+* **07_pressure.tex** D-2 mybox label — confirmed `\eqref{eq:crank_nicolson}` is correct (was already fixed; not broken).
 
 ### Paper (2026-03-18 CRITIC passes 3rd–6th — all resolved via 10\_PAPER\_EDITOR)
 
