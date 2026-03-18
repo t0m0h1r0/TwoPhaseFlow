@@ -17,6 +17,16 @@
 
 ---
 
+### Paper (2026-03-18 — EDITOR 4th sweep, post-8th-pass CRITIC)
+
+* **D-1 FIXED**: `05_grid.tex` Python pseudocode — `np.gradient(xi, x)` (O(h²) central diff) replaced with CCD-based Jx evaluation; algbox Step 5 expanded with 3-step CCD application explanation.
+* **D-2 FIXED**: `09_full_algorithm.tex` fig:ns_solvers S5 node — "半陰的" → "陽的"; caption updated to state CSF surface tension is explicit (time-n body force).
+* **B-1 FIXED**: `10_verification_metrics.tex` warnbox — curvature error claim O(h⁴) corrected to O(h^6) (numerical discretization) vs. O(ε²)≈O(h²) (CSF model error, the bottleneck).
+* **B-2 FIXED**: `11_conclusion.tex` §pressure chapter description — "FVM で離散化した" → CCD-PPE(O(h^6)) + 仮想時間陰解法 as primary; FVM relegated to comparison.
+* **G-1 FIXED**: `10_verification_metrics.tex` L.131 — `第\ref{sec:governing}章参照` → `§\ref{sec:balanced_force}参照`.
+* **L-1 FIXED**: `05_grid.tex` algbox Step 5 — 3-step CCD procedure for Jx made explicit (apply CCD to x(ξ_i) to get dx/dξ and d²x/dξ² simultaneously).
+* **L-2 CONFIRMED**: `appendix_proofs.tex` `\ref{sec:two_to_one}` — label exists in `02_governing.tex:79`. No action required.
+
 ### Paper (2026-03-18 — EDITOR 3rd sweep, post-7th-pass)
 
 * **04\_ccd.tex** L393-398 warnbox `{境界スキームの役割と精度}` — split blanket "O(h^5)" claim into:

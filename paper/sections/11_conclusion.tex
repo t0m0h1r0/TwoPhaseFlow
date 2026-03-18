@@ -89,13 +89,12 @@
         を明示し，寄生流れ抑制の実装上の鍵を示した．
 
   \item[\textbf{第\ref{sec:pressure}章：変密度圧力 Poisson 方程式}]
-        変密度 Chorin Projection 法の導出（§\ref{sec:projection_derivation}）から，
-        変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を
-        FVM で離散化した（§\ref{sec:ppe}）．
-        境界制御体積の半セル補正と
-        調和平均フェイス係数 $a_f = 2/(\rho_L+\rho_R)$ の密度不連続に対する優位性（§\ref{sec:fvm_face_coeff}）を示した．
-        仮想時間陰解法（§\ref{sec:ppe_pseudotime}）による非対称疎行列の反復求解アルゴリズムを
-        Step-by-Step で記述した．
+        変密度 Chorin Projection 法の導出（§\ref{sec:projection_derivation}）から
+        変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を定式化し，
+        \textbf{CCD-PPE（$\mathcal{O}(h^6)$）＋仮想時間陰解法}（§\ref{sec:ppe_pseudotime}）を
+        本稿の標準求解手法として実装した（FVM 版は §\ref{sec:fvm_face_coeff} で比較）．
+        仮想時間反復の各スイープが CCD ブロック Thomas 法で閉じること，
+        および balanced-force 条件（§\ref{sec:balanced_force}）との整合性を示した．
 
   \item[\textbf{第\ref{sec:algorithm}章：完全アルゴリズムフロー}]
         7ステップの離散計算手順（CLS 移流・再初期化・物性更新・曲率計算・
