@@ -176,14 +176,16 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
 \label{sec:rc_implementation}
 最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の実装形式を用いる．
 \begin{equation}
- u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
+ u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho^n} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
  \label{eq:rc-face}
 \end{equation}
 ここで，$(\nabla p^n)_f$ はフェイスにおける\textbf{前時刻圧力 $p^n$ の勾配}（陽的評価），
 $\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である
 （新圧力 $p^{n+1}$ は PPE を解く前の段階では未知であるため，Rhie-Chow 補正は $p^n$ を用いた陽的処理となる；
 詳細は第\ref{sec:pressure}章，式~\eqref{eq:rc_divergence} 参照）．
-係数 $d_f \equiv \Delta t \,(1/\rho)_f^\mathrm{harm}$ に\textbf{密度の逆数の調和平均}を用いる理由を，以下で丁寧に説明する．
+係数 $(1/\rho^n)_f^\mathrm{harm} = 2/(\rho^n_P + \rho^n_E)$ には\textbf{前時刻密度 $\rho^n$ の調和平均}を用いる
+（$\rho^{n+1}$ は PPE の解が未確定のため使用できない；第\ref{sec:pressure}章§\ref{sec:rc_divergence} 参照）．
+その導出根拠を以下で丁寧に説明する．
 
 \paragraph{なぜ調和平均か：変密度場における根拠}
 
@@ -325,8 +327,9 @@ Rhie-Chow 補正項 $[(\nabla p)_f - \overline{(\nabla p)}_f]$ は
         「圧力には2次中心差分，表面張力には CCD」という組み合わせは\textbf{不可}．
   \item 曲率 $\kappa_{i,j}$ の計算に用いる $\phi$ の微分も，
         同じ CCD 演算子 $D_x^{(1)}, D_y^{(1)}, D_x^{(2)}, D_y^{(2)}, D_{xy}^{(11)}$ で行う．
-  \item Rhie-Chow 補正（§\ref{sec:collocate}，式~\eqref{eq:rc-face}）の
-        $(\bnabla p)_f$ の計算にも CCD 演算子を用いる（$\overline{(\bnabla p)}_f$ の補間元）．
+  \item Rhie-Chow 補正（§\ref{sec:rc_implementation}，式~\eqref{eq:rc-face}）の
+        $(\bnabla p^n)_f$ の直接差分は $O(h^2)$ だが，
+        $\overline{(\bnabla p^n)}_f$ の補間元となるセル中心勾配には CCD 演算子を用いる．
 \end{enumerate}
 
 \textbf{やってはいけないこと（実装バグの典型例）：}
