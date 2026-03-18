@@ -512,11 +512,11 @@ $
 \hline
 BiCGSTAB（FVM 離散化） & $\mathcal{O}(h^2)$ & なし & 反復回数/残差 & 低 \\
 ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$ & 固定スウィープ数 & 中 \\
-仮想時間陰解法 + CCD（スウィープ実装）& $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$$^{\ast}$ & 残差駆動 & 中 \\
+仮想時間陰解法 + CCD（スウィープ実装）& $\mathcal{O}(h^6)^{\dagger}$ & $\mathcal{O}(\Delta\tau^2)$ & 残差駆動 & 中 \\
 仮想時間陰解法 + CCD（Krylov 実装） & $\mathcal{O}(h^6)$ & なし & 残差駆動 & 高 \\
 \hline
-\multicolumn{5}{l}{$^{\ast}$ 分割誤差のため $\mathcal{O}(h^6)$ 精度が実現されるのは Krylov 実装のみ．スウィープ型では収束後（$\varepsilon^m < \varepsilon_\text{tol}$）}\\
-\multicolumn{5}{l}{\phantom{$^{\ast}$} の解が PPE を $\varepsilon_\text{tol}$ 精度で満たすにとどまる．$\mathcal{O}(h^6)$ 空間精度を活かすには $\varepsilon_\text{tol} \ll h^6$ に設定すること．}
+\multicolumn{5}{l}{$^{\dagger}$ $\varepsilon_\mathrm{tol} \ll h^6$ の設定のもとでのみ達成可能；通常の収束判定では空間精度は $\varepsilon_\mathrm{tol}$ に律速される．}\\
+\multicolumn{5}{l}{\phantom{$^{\dagger}$} 分割誤差は収束後の残差が支配的でなければ影響しない（§\ref{warn:ppe_splitting} 参照）．}
 \end{tabular}
 \end{table}
 

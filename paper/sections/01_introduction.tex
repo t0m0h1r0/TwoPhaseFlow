@@ -133,56 +133,57 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 気液二相流を数値的に扱う際には，以下の4つの本質的困難が存在する：
 
 \begin{enumerate}
-  \item \textbf{界面の捕捉}：密度・粘性が界面を挟んで不連続に変化する
+  \item \textbf{界面の捕捉と質量保存}：
+        密度・粘性が界面を挟んで不連続に変化する
         （$\rho_l/\rho_g \approx 1000$，$\mu_l/\mu_g \approx 100$）ため，
         界面位置を高精度かつ安定に追跡しなければならない．
+        標準的な Level Set 移流方程式 $\partial\phi/\partial t + \bu\cdot\nabla\phi = 0$ は
+        \textbf{非保存形}であるため，数値積分誤差が体積損失として蓄積する
+        （第\ref{sec:failure_modes}節，失敗例2参照）．
+        さらに移流スキームの数値拡散により界面プロファイルが「にじみ」，
+        曲率計算精度が低下する（同節，失敗例4参照）．
 
-  \item \textbf{表面張力の正確な評価}：表面張力は界面の曲率（$\kappa$）に比例する体積力である．
-        曲率の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
+        \textbf{→ 本稿の対処：} Conservative Level Set 法（CLS 法）による
+        質量（体積）の離散的保存性の向上，および WENO5 スキームによる数値拡散の低減
+        （第\ref{sec:levelset}章，第\ref{sec:time}章）．
 
-  \item \textbf{非圧縮条件の高精度維持}：速度場の発散をゼロに保つ
-        圧力場を毎ステップ正確に求解する必要がある．
-        単相流では均一係数のラプラシアン $\nabla^2 p = \cdots$ であるが，
-        二相流では可変係数 $\nabla\cdot(1/\rho\,\nabla p) = \cdots$ となり，
-        界面をまたぐ密度比（$\rho_l/\rho_g \approx 1000$）が係数の急峻な変化を生み，
-        反復ソルバーの収束が著しく悪化する．
-
-  \item \textbf{密度成層の安定処理}：重力と密度差による静水圧分布を
-        正確に扱わないと寄生流れ（parasitic currents）が発生する．
-\end{enumerate}
-
-以下に，各困難の数値計算上の根源と，本稿における具体的な対処方針を詳述する．
-
-\begin{enumerate}
-  \item \textbf{密度・粘性のジャンプ}（$\rho_l/\rho_g \approx 1000$）：
-        圧力 Poisson 方程式の係数が格子点ごとに激しく変化するため，
-        行列が悪条件化し，反復ソルバーの収束が著しく悪化する．
-
-        \textbf{→ 本稿の対処：} 調和平均フェイス係数による変密度 PPE 離散化
-        および仮想時間陰解法（第\ref{sec:pressure}章）
-
-  \item \textbf{表面張力の特異性}：
+  \item \textbf{表面張力の正確な評価}：
         表面張力 $\sigma\kappa\hat{\bm n}$ は本来「界面上の面力（2次元面力）」であり，
         体積方程式（Navier-Stokes）に直接組み込めない．
+        曲率 $\kappa$ の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
         デルタ関数的な集中力をどう離散化するかが精度を決定する．
 
         \textbf{→ 本稿の対処：} CSF（連続表面力）モデルによる体積力化（第\ref{sec:governing}章）
+        および CCD 法による高精度曲率評価（第\ref{sec:CCD}章）．
 
-  \item \textbf{界面追跡の数値誤差}：
-        界面の移流（対流）による数値拡散で界面が「にじみ」，
-        質量損失や曲率の誤計算が発生する．
+  \item \textbf{非圧縮条件の高精度維持}：
+        速度場の発散をゼロに保つ圧力場を毎ステップ正確に求解する必要がある．
+        単相流では均一係数のラプラシアン $\nabla^2 p = \cdots$ であるが，
+        二相流では可変係数 $\nabla\cdot(1/\rho\,\nabla p) = \cdots$ となり，
+        界面をまたぐ密度比（$\rho_l/\rho_g \approx 1000$）が係数の急峻な変化を生み，
+        反復ソルバーの収束が著しく悪化する（第\ref{sec:pressure}章）．
+        さらにコロケート格子では圧力と速度の数値的デカップリング
+        （チェッカーボード不安定，第\ref{sec:failure_modes}節失敗例3参照）が
+        追加の困難をもたらす．
 
-        \textbf{→ 本稿の対処：} Conservative Level Set 法（CLS 法）による
-        質量（体積）の離散的保存性の向上（第\ref{sec:levelset}章）
+        \textbf{→ 本稿の対処：} 調和平均フェイス係数による変密度 PPE 離散化
+        および仮想時間陰解法（第\ref{sec:pressure}章），
+        Rhie--Chow 型フラックス補正による圧力--速度の適切な連成
+        （第\ref{sec:collocate}章）．
 
-  \item \textbf{非圧縮条件と密度変化の競合}：
-        単相では圧力 Poisson 方程式（PPE）は一様係数のラプラシアン
-        $\nabla^2 p = \cdots$ で済むが，二相では可変係数
-        $\nabla\cdot(1/\rho\,\nabla p) = \cdots$ になり，
-        係数の不連続が数値振動（チェッカーボード）を誘発する．
+  \item \textbf{密度成層と寄生流れの安定処理}：
+        重力と密度差による静水圧分布を正確に扱わないと，
+        静止すべき液滴の界面に沿って渦状の人工的速度場（寄生流れ，spurious currents）が発生する
+        （第\ref{sec:failure_modes}節，失敗例1参照）．
+        寄生流れの根本原因は，運動量方程式において圧力勾配項 $-\nabla p$ と
+        表面張力項 $\sigma\kappa\nabla\psi$ に\textbf{異なる差分演算子}を用いることによる
+        離散化の不整合である：連続体レベルで両者が釣り合っていても，
+        離散レベルで $\mathcal{O}(h^2)$ の不整合誤差が体積力として残り，
+        人工的な速度場を駆動する（§\ref{sec:balanced_force} 参照）．
 
-        \textbf{→ 本稿の対処：} Rhie--Chow 型フラックス補正による
-        圧力--速度の適切な連成（第\ref{sec:collocate}章）
+        \textbf{→ 本稿の対処：} CCD 法による高精度曲率計算（第\ref{sec:CCD}章）と
+        Balanced-Force 離散化条件（第\ref{sec:collocate}章§\ref{sec:balanced_force}）
+        により，寄生流れを $\mathcal{O}(h^6)$ まで抑制する．
 \end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -424,7 +425,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & 3, 5 \\
 7  & 圧力--速度連成
    & Helmholtz 分解，Rhie--Chow 補正，Balanced-Force
-   & 4，6 \\
+   & 4, 6 \\
 8  & 圧力 Poisson 方程式
    & 変密度 PPE 導出，FVM 離散化，仮想時間陰解法
    & 7 \\

@@ -6,9 +6,20 @@
 
 * **Date/Update:** 2026-03-19
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **10 CRITIC passes + 7 EDITOR sweeps + 2 LATEX ENGINE passes complete (2026-03-19).** Requires re-compile to confirm clean build.
+* **Paper:** 12 sections + appendix\_proofs. **11 CRITIC passes + 8 EDITOR sweeps + 2 LATEX ENGINE passes complete (2026-03-19).** Requires re-compile to confirm clean build.
 
 ## **2\. Recent Resolutions**
+
+### Paper (2026-03-19 — CRITIC 11th pass + EDITOR 8th sweep)
+
+* **D-1/D-2 FIXED**: `01_introduction.tex` §1.2 — 2重 enumerate（要約+詳細の順序が不対応）を1本の統合 enumerate に統合；各項目に原因+対処を折り込み；item 4（密度成層/寄生流れ）に missing 詳細コンテンツを追加
+* **D-3 FIXED**: `04_ccd.tex` L.762 — $C_{N-1}$ 記述「右境界行の左結合」→「最終内点行の右上結合ブロック（右境界スキーム修正版）」
+* **G-1 FIXED**: `04_ccd.tex` defbox:ccd_numeric_blocks — $a_1=15/16$ を係数リストに追記
+* **G-2 FIXED**: `06_collocate.tex` eq:rc-face — $(1/\rho)_f^\mathrm{harm}$ → $(1/\rho^n)_f^\mathrm{harm}$；ρⁿ 使用理由を説明文に明記
+* **S-3 FIXED**: `01_introduction.tex` tab:chapter_overview Ch7 前提 `4，6`（全角）→ `4, 6`（ASCII）
+* **S-4 FIXED**: `06_collocate.tex` Balanced-Force warnbox — `\ref{sec:collocate}`（自己参照）→ `\ref{sec:rc_implementation}`
+* **I-1 FIXED**: `04_ccd.tex` block Thomas mybox — 前進消去を $\mathbf{A}_L$/$\mathbf{A}_R$/$\mathbf{C}_{N-1}$ の具体的更新式で明示
+* **I-2 FIXED**: `07_pressure.tex` tab:ppe_methods — スウィープ実装 $O(h^6)$ に $\dagger$ を追加；脚注を分割誤差と空間精度制限に分離
 
 ### Paper (2026-03-19 — CRITIC 10th pass + EDITOR 6th sweep)
 

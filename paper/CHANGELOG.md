@@ -1,5 +1,24 @@
 # Changelog
 
+## Paper — CRITIC 11th pass + EDITOR 8th sweep (2026-03-19)
+
+11-issue CRITIC pass followed by targeted EDITOR fixes: D-1/D-2 (§1.2 dual-enumerate structural fix), D-3 (C_{N-1} description), G-1 (a₁ missing), G-2 (density time level), S-3 (CJK comma Ch7), S-4 (self-ref fix), I-1 (block Thomas forward sweep), I-2 (O(h^6) table qualification).
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `sections/01_introduction.tex` | §1.2 — replaced two misaligned enumerates (brief + detailed in different order) with one unified 4-item enumerate; added missing content for item 4 (密度成層/寄生流れ/Balanced-Force) |
+| `sections/01_introduction.tex` | tab:chapter_overview Ch7 前提 `4，6` (CJK) → `4, 6` (ASCII) |
+| `sections/04_ccd.tex` | eq:ccd_global description L.762 — corrected C_{N-1} from "右境界行の左結合" to "最終内点行の右上結合ブロック（右境界スキームによる修正版）" |
+| `sections/04_ccd.tex` | defbox:ccd_numeric_blocks — added a₁=15/16 to coefficient list in defbox header |
+| `sections/04_ccd.tex` | mybox block Thomas — rewrote Forward Sweep step to explicitly use A_L/A_R/C_{N-1} with update formulae |
+| `sections/06_collocate.tex` | eq:rc-face — $(1/\rho)_f^\mathrm{harm}$ → $(1/\rho^n)_f^\mathrm{harm}$; description clarified that $\rho^n$ (previous step) is used |
+| `sections/06_collocate.tex` | Balanced-Force warnbox item 3 — `\ref{sec:collocate}` (self-ref) → `\ref{sec:rc_implementation}` |
+| `sections/07_pressure.tex` | tab:ppe_methods — added `†` to O(h^6) for sweep implementation; updated footnote to separate spatial accuracy limitation from splitting error |
+
+---
+
 ## Paper — EDITOR 7th sweep: 01_introduction.tex (2026-03-19)
 
 Chapter 1 targeted EDITOR pass (pedagogical expansion + reference completeness).
