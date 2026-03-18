@@ -1,5 +1,25 @@
 # Changelog
 
+## Paper — CRITIC 9th pass + EDITOR 5th sweep (2026-03-19)
+
+Nine-pass CRITIC review (10_PAPER_REVIEW) + EDITOR sweep (11_PAPER_EDITOR) completed.
+All D/G/L/I issues identified in the 9th-pass review resolved.
+
+### EDITOR 5th sweep changes
+
+| File | Change |
+|------|--------|
+| `sections/00_abstract.tex` | defbox — 精度律速行を追加（NS 対流項 O(Δt)，CSF O(ε²)≈O(h²)；§sec:accuracy_summary 参照） |
+| `sections/07_pressure.tex` | tab:ppe_methods — 「精度」列ヘッダー → 「空間離散化次数」；スウィープ型注記を2行に拡張（εtol 要件を明記） |
+| `sections/07_pressure.tex` | resultbox (sec:ccd_balanced_force) — 「O(h⁴) 寄生流れ抑制」を「曲率離散化誤差成分のみ」に限定；CSF O(ε²) 残留を明記 |
+| `sections/07_pressure.tex` | Step 1 Predictor — ρ^{n+1} の出所と operator splitting 順序を mybox で説明 |
+| `sections/07_pressure.tex` | eq:rc_divergence defbox — (1/ρ)^harm の評価時刻（時刻 n，陽的）を明示 |
+| `sections/07_pressure.tex` | warn:boundary_cv — CCD 実装者向けスキップ案内を冒頭に fbox で追加 |
+| `sections/07_pressure.tex` | Δτ 選択指針 defbox — C_τ=2 推奨値，典型収束回数 10〜30 回（N=64 標準問題）を追記 |
+| `sections/08_time_integration.tex` | 負側フラックス tcolorbox — β_k^- の3式（eq:weno5_beta_minus）を明示；インデックス反転則を記述 |
+
+---
+
 ## Paper — LATEX ENGINE Pass (2026-03-18)
 
 LATEX compliance sweep completed. 106-page PDF compiles clean with zero undefined references.
