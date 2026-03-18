@@ -391,7 +391,7 @@ CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価
 CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
 Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
 Crank--Nicolson（粘性） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
-NS 対流項（Predictor） & $\Ord{h^5}$（WENO5） & $\Ord{\Delta t}$（Euler） & 対流による運動量移送 \\
+NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t}$（Euler） & 対流による運動量移送 \\
 \bottomrule
 \textbf{全体（空間律速）} & \multicolumn{1}{>{\raggedright\arraybackslash}p{28mm}}{$\boldsymbol{\Ord{h^2}}$（CSF $O(\varepsilon^2)$）} & $\boldsymbol{\Ord{\Delta t}}$（Euler） & \\
 \bottomrule

@@ -54,8 +54,8 @@
   \qquad \bigl(H_\varepsilon \text{：滑らかなヘヴィサイド関数，第\ref{sec:levelset}章で詳述}\bigr)
 \]
 の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，
-非線形方程式 $H_\varepsilon(\phi) - \psi = 0$ を
-ニュートン法などの反復解法で数値的に解く必要がある（第\ref{sec:levelset}章参照）．
+ロジット関数 $\phi = \varepsilon\ln\bigl(\psi/(1-\psi)\bigr)$ により
+解析的に求まる（第\ref{sec:levelset}章参照）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
@@ -567,13 +567,25 @@ $s$ は奇関数であるから：
   \int_{-\infty}^{\infty} s\,\delta_\varepsilon(s)\,ds = 0
   \quad \text{（奇関数 $\times$ 偶関数の積分はゼロ）}
 \]
-したがって曲率 $H$ の項は消え，誤差の主要項は $s^2\,\delta_\varepsilon(s)$ の積分から来る：
+したがって曲率 $H$ の項は消え，誤差の主要項は $s^2\,\delta_\varepsilon(s)$ の積分から来る．
+置換 $t = s/\varepsilon$（$ds = \varepsilon\,dt$）により：
 \[
   \int_{-\infty}^{\infty} s^2\,\delta_\varepsilon(s)\,ds
-  = \int_{-\infty}^{\infty} s^2\,\frac{e^{-s/\varepsilon}}{\varepsilon(1+e^{-s/\varepsilon})^2}\,ds
+  = \int_{-\infty}^{\infty} (\varepsilon t)^2\,\frac{e^{-t}}{\varepsilon(1+e^{-t})^2}\,\varepsilon\,dt
+  = \varepsilon^2 \int_{-\infty}^{\infty} t^2\,\frac{e^{-t}}{(1+e^{-t})^2}\,dt
   = \frac{\pi^2\varepsilon^2}{3}
-  \quad \Bigl(\text{置換 } t=s/\varepsilon\text{ により } \varepsilon^2 \text{ スケーリング}\Bigr)
 \]
+最後の等号は $t>0$ での級数展開
+$e^{-t}/(1+e^{-t})^2 = \sum_{n=1}^{\infty}(-1)^{n-1}\,n\,e^{-nt}$
+と $\int_0^\infty t^2 e^{-nt}\,dt = 2/n^3$ を用いて：
+\[
+  \int_0^\infty t^2\,\frac{e^{-t}}{(1+e^{-t})^2}\,dt
+  = 2\sum_{n=1}^{\infty}\frac{(-1)^{n-1}}{n^2}
+  = 2\cdot\frac{\pi^2}{12} = \frac{\pi^2}{6}
+\]
+偶関数の対称性 $\bigl(\delta_\varepsilon(-s)=\delta_\varepsilon(s)\bigr)$ から $[-\infty,0]$ 側も同値であり，合計 $\pi^2/3$ を得る．
+ここで $\sum_{n=1}^{\infty}(-1)^{n-1}/n^2 = \pi^2/12$
+はディリクレのエータ関数 $\eta(2)=(1-2^{1-2})\zeta(2)=\pi^2/12$ の標準的結果である．
 
 \noindent\textbf{結論}
 \[

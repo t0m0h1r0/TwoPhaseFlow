@@ -102,14 +102,18 @@ $\alpha > 1$ は界面近傍の格子密度倍率である．
   x_i = L \cdot \frac{\tilde{x}_i}{\tilde{x}_{N-1}}
 \]
 
-\textbf{ステップ5：} メトリクス係数を差分で求める：
+\textbf{ステップ5：} メトリクス係数を CCD で評価する（推奨・$\mathcal{O}(h^6)$ 精度）：
 \[
-  J_x\big|_i = \frac{d\xi}{dx}\bigg|_i \approx \frac{\xi_{i+1}-\xi_{i-1}}{x_{i+1}-x_{i-1}}
-  = \frac{2\Delta\xi}{x_{i+1}-x_{i-1}}
-  \quad (\text{境界は片側差分})
+  J_x\big|_i = \frac{1}{(dx/d\xi)_i}, \qquad
+  \pd{J_x}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
 \]
+ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は座標配列 $x(\xi)$ に CCD を適用して得る
+（詳細は \ref{box:grid_jx_accuracy} 参照）．
+中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
+CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
+（理由は \ref{box:grid_jx_accuracy} で詳述）．
 
-\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$．
+\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$，$\{\partial J_x/\partial\xi|_i\}$．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={【重要】メトリクス係数 $J_x$ の精度と $\partial J_x/\partial\xi$ の評価}]
