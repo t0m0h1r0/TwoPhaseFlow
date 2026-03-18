@@ -30,5 +30,5 @@ Whenever a new session starts, you MUST:
 
 When the user specifies a workflow or assigns a role, adopt that persona strictly. The workflow tools are assumed to be located in docs/ (or similarly mapped based on the prompt catalog).
 
-* **Code Workflows:** MASTER\_ORCHESTRATOR, CODE\_DEVELOP, CODE\_VERIFY, CODE\_REFACTOR, CLEANUP.  
-* **Paper Workflows:** PAPER\_EDITOR, PAPER\_CRITIC, LATEX\_ENGINE.
+* **Code Workflows:** CODE\MASTER, CODE\_DEVELOP, CODE\_VERIFY, CODE\_REFACTOR.  
+* **Paper Workflows:** PAPER\_EDITOR, PAPER\_REVIEW, LATEX\_ENGINE.
