@@ -313,7 +313,7 @@ $TV(q^{n+1}) \leq TV(q^n)$．
 
 TVD-RK3 は以下の2箇所にのみ適用する：
 \begin{itemize}
-  \item \textbf{CLS 移流方程式}（式 \eqref{eq:cls_advection}）：$\partial_t\psi + \bu\cdot\bnabla\psi = 0$
+  \item \textbf{CLS 移流方程式}（式 \eqref{eq:cls_advection}）：$\pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0$（保存形）
   \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分
 \end{itemize}
 

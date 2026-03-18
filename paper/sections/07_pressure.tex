@@ -851,6 +851,7 @@ CCD + GMRES (matrix-free) & $\Ord{h^6}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-5})$ & 
 \caption{数値手法コンポーネント別の精度まとめ}
 \label{tab:accuracy_summary}
 \renewcommand{\arraystretch}{1.3}
+\small
 \begin{tabular}{llcc}
 \toprule
 コンポーネント & 手法 & 空間精度 & 時間精度 \\
@@ -861,8 +862,9 @@ PPE（離散化＋求解） & CCD 微分形式 + 仮想時間陰解法 & $O(h^6)
 （参考：FVM + BiCGSTAB を使った場合） & （FVM + 調和平均係数） & （$O(h^2)$） & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $O(h^6)$ & $O(\Delta t^2)$ \\
 NS 対流項（Predictor） & CCD（1次微分） & $O(h^6)$ & $O(\Delta t)$ \\
+CSF モデル（表面張力） & 連続体表面力近似 & $O(\varepsilon^2){\approx}O(h^2)$ & — \\
 \midrule
-\textbf{全体（空間律速：CLS WENO5）} & & $\boldsymbol{O(h^5)}$ & — \\
+\textbf{全体（空間律速：CSF モデル）} & & $\boldsymbol{O(\varepsilon^2) \approx O(h^2)}$ & — \\
 \textbf{全体（時間律速：NS 対流）} & & — & $\boldsymbol{O(\Delta t)}$ \\
 \bottomrule
 \end{tabular}
@@ -872,9 +874,11 @@ NS 対流項（Predictor） & CCD（1次微分） & $O(h^6)$ & $O(\Delta t)$ \\
 表\ref{tab:accuracy_summary}に示す通り，本稿の手法には以下の精度ミスマッチが存在する：
 
 \begin{enumerate}
-  \item \textbf{空間精度（全コンポーネント $O(h^5)$～$O(h^6)$，律速は CLS WENO5 $O(h^5)$）：}
+  \item \textbf{空間精度（全数値コンポーネント $O(h^5)$～$O(h^6)$，物理モデル律速は CSF $O(\varepsilon^2){\approx}O(h^2)$）：}
         本稿では PPE も CCD 微分形式により $O(h^6)$ を達成しており，
-        空間精度のボトルネックは CLS 移流の WENO5 による $O(h^5)$ となる．
+        数値離散化の精度は全コンポーネントで $O(h^5)$ 以上に揃っている．
+        しかし，CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(h^2)$（$\varepsilon \approx \Delta x$ 設定下）が
+        現状の空間精度の律速段階であり，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵となる．
         表~\ref{tab:ccd_vs_fvm} に示すとおり，FVM + BiCGSTAB では PPE の空間精度は $O(h^2)$ に
         留まることと対比されたい．CCD ソルバーを採用することで，
         寄生流れ振幅を $O(h^4)$ 以上の次数で抑制できる（§\ref{sec:ccd_balanced_force}）．
