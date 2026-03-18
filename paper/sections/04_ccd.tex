@@ -41,7 +41,15 @@
 \]
 ここで $p$ は微分スキームの精度次数，$C$ は $O(1)$ の定数．
 $p=2$（2次中心差分）では誤差が格子幅 $h$ に依存せず残留してしまう（$h \to 0$ でゼロにならない）．
-$p=6$ の CCD 法では誤差が $h^4$ に比例するため，格子を細分化するにつれて急速に減衰する．
+$p=6$ の CCD 法では数値離散化誤差が $h^4$ に比例するため，格子を細分化するにつれて急速に減衰する．
+
+\textbf{注意（Balanced-Force 実装の場合）：}
+本稿の CCD + Balanced-Force 実装（§\ref{sec:balanced_force}，第\ref{sec:pressure}章）では，
+$\nabla p$ と $\sigma\kappa\nabla\psi$ に同一の CCD 演算子を用いることで，
+\textbf{数値離散化誤差成分（$\Ord{h^6}$）が両項で相殺される}．
+残差は CSF モデル誤差 $\Ord{\varepsilon^2}\approx\Ord{h^2}$（$\varepsilon\sim h$ 設定）が律速するため，
+実測の収束次数は $h^2$ 程度となる（上式の $h^4$ は Balanced-Force なし単純スキームの値）．
+定量的な閾値と格子収束テストの詳細は §\ref{sec:grid_convergence} を参照のこと．
 \end{tcolorbox}
 
 \subsubsection{コンパクトスキームの発想}
