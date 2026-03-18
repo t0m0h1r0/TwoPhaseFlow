@@ -6,9 +6,18 @@
 
 * **Date/Update:** 2026-03-18
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **Seven CRITIC passes + EDITOR 3rd sweep completed (2026-03-18). All issues resolved.** Fixes include: tcolorbox refactor (49→35 boxes), 7th-pass D/B/G issues, CCD warnbox O(h²) boundary accuracy correction (04\_ccd.tex). **Next: final compile check (12\_LATEX\_ENGINE.md).**
+* **Paper:** 12 sections + appendix\_proofs. **All CRITIC/EDITOR passes complete. LATEX ENGINE pass complete (2026-03-18).** 13 relative-reference violations fixed (次節/前節/上式 → \ref/\eqref); 3 new labels added (sec:ccd\_def, sec:ccd\_te\_I, sec:nondim\_items); \[\] → equation for eq:dny\_dy. **106-page PDF compiles clean with zero undefined references. DOCUMENT IS COMPLETE.**
 
 ## **2\. Recent Resolutions**
+
+### Paper (2026-03-18 — LATEX ENGINE pass, 12\_LATEX\_ENGINE.md)
+
+* 13 relative-reference violations eliminated across 5 files (次節/前節/前章/上式 → \\ref/\\eqref).
+* 3 new \\label{} added: `sec:ccd_def` (04\_ccd §4.2), `sec:ccd_te_I` (04\_ccd §4.3), `sec:nondim_items` (02\_governing §2.5.4).
+* `\\[...\\]` at 02\_governing L898 upgraded to `\\begin{equation}` so `\\label{eq:dny_dy}` is referenceable.
+* **106-page PDF: XeLaTeX clean compile, zero undefined references.**
+
+---
 
 ### Code (2026-03-15)
 
