@@ -3,7 +3,7 @@
 ## **1\. System Architecture (src/twophase/)**
 
 * **backend:** Numpy/CuPy hardware abstraction via xp \= backend.xp. NEVER hardcode numpy.  
-* **config:** Hierarchical pure data classes (SimulationConfig composed of Grid, Fluid, Numerics, Solver). Sub-configs are the single source of truth.  
+* **config:** Hierarchical pure data classes (SimulationConfig composed of GridConfig, FluidConfig, NumericsConfig, SolverConfig). Sub-configs are the single source of truth.  
 * **interfaces:** Abstract Base Classes strictly enforce contracts (IPPESolver, IReinitializer, ICurvatureCalculator, etc.).  
 * **simulation:** Coordination logic. TwoPhaseSimulation is the executor, SimulationBuilder is the constructor.
 

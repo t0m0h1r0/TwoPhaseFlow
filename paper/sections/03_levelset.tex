@@ -489,9 +489,9 @@ $\Delta\tau$ の選択に安定性制約（CFL 条件に相当）が存在する
 
 \textbf{安定条件の導出：}
 \begin{itemize}
-  \item \textbf{双曲型成分（CFL 条件）：} 圧縮項の最大波速は $|\psi(1-\psi)| \le 1/4$ であるから，
+  \item \textbf{双曲型成分（CFL 条件）：} 圧縮項のフラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値は $1$ であるから，
   \[
-    \Delta\tau_{\text{hyp}} \le \frac{\Delta s}{1/4} = 4\Delta s
+    \Delta\tau_{\text{hyp}} \le \frac{\Delta s}{1} = \Delta s
   \]
   ここで $\Delta s = \min(h_x, h_y)$ は最小格子間隔．
   \item \textbf{放物型成分（拡散安定条件）：} 拡散項のスケールは $\varepsilon/(\Delta s)^2$ 程度であるから，
@@ -501,7 +501,7 @@ $\Delta\tau$ の選択に安定性制約（CFL 条件に相当）が存在する
 \end{itemize}
 実用的な安定条件はこれらの最小値：
 \[
-  \Delta\tau \le \min\!\left(4\Delta s,\; \frac{(\Delta s)^2}{2\varepsilon}\right)
+  \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{2\varepsilon}\right)
 \]
 典型的なパラメータ $\varepsilon = 1.5\Delta s$ では $(\Delta s)^2/(2\varepsilon) = \Delta s/3$ となり，
 双曲型成分より拡散型成分の制約が厳しくなる．
