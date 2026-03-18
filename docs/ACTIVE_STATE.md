@@ -172,4 +172,5 @@
 
 ### **Paper / Documentation**
 
-1. ~~Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.~~ **DONE (2026-03-19)**
+1. ~~Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.~~ **DONE (2026-03-19, after LATEX ENGINE 2nd pass)**
+2. **Re-compile required** — EDITOR 6th/7th/8th sweeps added new labels (`defbox:ccd_numeric_blocks`), new cross-refs (`\ref{sec:rc_implementation}`, `\ref{sec:time}`, `\ref{sec:reinit}`), and table footnote markers (`†`). Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.
