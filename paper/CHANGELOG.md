@@ -1,5 +1,41 @@
 # Changelog
 
+## Paper — EDITOR 7th sweep: 01_introduction.tex (2026-03-19)
+
+Chapter 1 targeted EDITOR pass (pedagogical expansion + reference completeness).
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `sections/01_introduction.tex` | §1.1.2 smearing section — added refs to ch3 CLS (§sec:reinit) and ch4 WENO5; added one-sentence description of each mechanism |
+| `sections/01_introduction.tex` | §1.2 challenge 3 (非圧縮条件) — expanded with variable-density PPE coefficient note ($\nabla\cdot(1/\rho\,\nabla p)$, density-ratio stiffness) |
+| `sections/01_introduction.tex` | §1.5 CCD approach item — expanded to include PPE discretization and grid metric coefficient evaluation as additional CCD roles; added ch5 cross-ref |
+| `sections/01_introduction.tex` | tab:chapter_overview Ch6 前提 — "3，5"（CJK comma）→"3, 5"（ASCII comma）for consistency with other rows |
+| `sections/01_introduction.tex` | tab:method_comparison CLS "可" — added $^*$ footnote explaining why CLS implementation is rated 可 (logit transform + reinit PDE + conservative flux; logit is analytic so Newton not needed) |
+
+---
+
+## Paper — CRITIC 10th pass + EDITOR 6th sweep (2026-03-19)
+
+Ten-pass CRITIC review (10_PAPER_REVIEW) + EDITOR 6th sweep (11_PAPER_EDITOR) completed.
+All D/G/L/I issues identified in the 10th-pass review resolved.
+
+### EDITOR 6th sweep changes
+
+| File | Change |
+|------|--------|
+| `sections/00_abstract.tex` | L-1: CLS 行の読点（`,`）を全角括弧（`（…）`）に修正；最終 `\multicolumn` 行に `\\` を追加 |
+| `sections/04_ccd.tex` | D-3: eq:ccd_block — 対称 `\mathbf{A}` を `\mathbf{A}_L`/`\mathbf{A}_R` に修正；説明文更新 |
+| `sections/04_ccd.tex` | D-4: eq:ccd_global — 内点行の `\mathbf{A}_1,\mathbf{A}_2,\mathbf{A}_{N-2}` を均一 `\mathbf{A}_L`/`\mathbf{A}_R` に修正；説明文追記 |
+| `sections/04_ccd.tex` | I-2: §sec:ccd_matrix に数値係数行列 defbox（$\mathbf{A}_L,\mathbf{A}_R,\mathbf{B},\mathbf{r}_i$ の浮動小数係数）を追加 |
+| `sections/06_collocate.tex` | G-3: eq:rc-face — 圧力を `p^n`（前時刻，陽的）と明示；説明文に PPE との関係注記を追加 |
+| `sections/07_pressure.tex` | G-1: 演算子分割 mybox — 4ステップリストの不完全性を注記（CLS 再初期化・曲率評価は §sec:algorithm の7ステップに含まれる旨を明記） |
+| `sections/07_pressure.tex` | G-4: Δτ defbox — 「実測値（参考）」→「経験値（参考）」 |
+| `sections/08_time_integration.tex` | G-2: β_k^- 変換則 — 誤記「$f_{i+k}$ を $F^-_{i+(2-k)}$，$i+2$ 中心」→「$i+j$ を $i+(1-j)$，$i+\tfrac{1}{2}$ 中心に折り返す」に修正 |
+
+---
+
 ## Paper — CRITIC 9th pass + EDITOR 5th sweep (2026-03-19)
 
 Nine-pass CRITIC review (10_PAPER_REVIEW) + EDITOR sweep (11_PAPER_EDITOR) completed.

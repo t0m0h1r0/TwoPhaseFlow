@@ -6,9 +6,22 @@
 
 * **Date/Update:** 2026-03-19
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **9 CRITIC passes + 5 EDITOR sweeps + 2 LATEX ENGINE passes complete (2026-03-19).** 106-page PDF: XeLaTeX clean compile, zero errors, zero undefined references.
+* **Paper:** 12 sections + appendix\_proofs. **10 CRITIC passes + 7 EDITOR sweeps + 2 LATEX ENGINE passes complete (2026-03-19).** Requires re-compile to confirm clean build.
 
 ## **2\. Recent Resolutions**
+
+### Paper (2026-03-19 — CRITIC 10th pass + EDITOR 6th sweep)
+
+* **D-3 FIXED**: `04_ccd.tex` eq:ccd_block — 対称 `\mathbf{A}` → `\mathbf{A}_L`/`\mathbf{A}_R`；説明文も「$\mathbf{A}_L \neq \mathbf{A}_R$」明記
+* **D-4 FIXED**: `04_ccd.tex` eq:ccd_global — 内点行の位置依存 `\mathbf{A}_1,\mathbf{A}_2,...` → 均一 `\mathbf{A}_L`/`\mathbf{A}_R`；説明文追記
+* **G-1 FIXED**: `07_pressure.tex` 演算子分割 mybox — 4ステップ簡略リストの不完全性を注記（§sec:algorithm 参照誘導）
+* **G-2 FIXED**: `08_time_integration.tex` β_k^- 変換則 — 誤記「$i+2$ 中心，$k$ 添字」→「$i+\tfrac{1}{2}$ 中心，オフセット $j\to1-j$」
+* **G-3 FIXED**: `06_collocate.tex` eq:rc-face — 圧力を `p^n`（前時刻，陽的）と明示
+* **G-4 FIXED**: `07_pressure.tex` Δτ defbox — 「実測値」→「経験値」
+* **L-1 FIXED**: `00_abstract.tex` — CLS 行の読点を全角括弧に修正；最終 `\multicolumn` 行に `\\` を追加
+* **I-2 ADDED**: `04_ccd.tex` §sec:ccd_matrix — 数値係数 defbox（$\mathbf{A}_L,\mathbf{A}_R,\mathbf{B},\mathbf{r}_i$ の有理数係数）を追加
+
+---
 
 ### Paper (2026-03-19 — CRITIC 9th pass + EDITOR 5th sweep)
 
