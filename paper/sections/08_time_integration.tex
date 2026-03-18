@@ -309,7 +309,7 @@ Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
   \label{eq:tvd_rk3}
 \end{align}
 ここで $\mathcal{L}(q)$ は空間演算子（WENO5 フラックスの発散）を表す．
-\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（下記の warnbox を参照）．
+\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（§\ref{warn:tvd_rk3_scope}参照）．
 
 \begin{tcolorbox}[defbox, title={TVD の意味：全変動を増大させない}]
 TVD（Total Variation Diminishing）とは，数値解の全変動
@@ -321,6 +321,7 @@ $TV(q^{n+1}) \leq TV(q^n)$．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={TVD-RK3 の適用範囲と全体時間精度}]
+\label{warn:tvd_rk3_scope}
 \textbf{TVD-RK3 の適用先（CLS のみ）}
 
 TVD-RK3 は以下の2箇所にのみ適用する：
@@ -480,7 +481,7 @@ Eikonal 方程式 $|\nabla\phi| = 1$ を求解するために用いられる．
 再初期化手法 & 方程式 & 本節との関連 \\
 \hline
 \textbf{標準 LS：Sussman 法} & \small$\partial_\tau\phi + \operatorname{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化} \\[4pt]
-\textbf{CLS 法} & \small$\partial_\tau\psi + \nabla\cdot(\psi(1{-}\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用（下記参照）} \\
+\textbf{CLS 法} & \small$\partial_\tau\psi + \nabla\cdot(\psi(1{-}\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用（§\ref{sec:cls_compression}参照）} \\
 \hline
 \end{tabular}
 \end{center}
@@ -499,6 +500,7 @@ Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
 ここで $D^\pm$ は前進・後退差分である．
 
 \subsubsection{CLS 再初期化における圧縮項の離散化}
+\label{sec:cls_compression}
 
 CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）の圧縮項
 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$

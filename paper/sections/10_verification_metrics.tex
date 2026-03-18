@@ -401,6 +401,7 @@ NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t}$（Euler）
 \end{table}
 
 \begin{tcolorbox}[mybox, title={精度設計のまとめ：各コンポーネントの空間精度が揃っている理由}]
+\label{sec:accuracy_summary}
 本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
 粘性項（CCD + Crank--Nicolson，$\Ord{h^6}$），界面移流（WENO5，$\Ord{h^5}$）のすべてで高次精度を達成している．
 

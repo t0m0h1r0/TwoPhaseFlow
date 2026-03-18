@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-19
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **9 CRITIC passes + 5 EDITOR sweeps + LATEX ENGINE pass complete (2026-03-19).** 8 issues from 9th-pass CRITIC review resolved in EDITOR 5th sweep. Requires re-compile to confirm clean build.
+* **Paper:** 12 sections + appendix\_proofs. **9 CRITIC passes + 5 EDITOR sweeps + 2 LATEX ENGINE passes complete (2026-03-19).** 106-page PDF: XeLaTeX clean compile, zero errors, zero undefined references.
 
 ## **2\. Recent Resolutions**
 
@@ -21,6 +21,15 @@
 * **G-3 CONFIRMED**: `03_levelset.tex` L.440-448 — N_reinit=28 の指数収束推定式（既存）を確認；変更不要
 * **L-1 FIXED**: `07_pressure.tex` warn:boundary_cv — fbox でスキップ案内を追加（CCD 実装者向け）
 * **I-2 FIXED**: `07_pressure.tex` Δτ defbox — C_τ=2 推奨値，典型収束回数 10〜30 回の実測値例を追記
+
+---
+
+### Paper (2026-03-19 — LATEX ENGINE 2nd pass, 12\_LATEX\_ENGINE.md)
+
+* 11 relative/positional reference violations eliminated across 5 files.
+* 7 new `\label{}` added: `eq:eps_scaling` (03\_levelset), `warn:cls_dtau_stability` (03\_levelset), `warn:ppe_splitting` (07\_pressure), `warn:tvd_rk3_scope` (08\_time\_integration), `sec:cls_compression` (08\_time\_integration), `proof:csf_young_laplace` (02\_governing), `sec:accuracy_summary` (10\_verification\_metrics).
+* `\fbox{...\\ ...}` LR-mode error in 07\_pressure.tex warn:boundary\_cv fixed with `\parbox`; `★` → `$\bigstar$` for font compatibility.
+* **106-page PDF: XeLaTeX clean compile, zero errors, zero undefined references.**
 
 ---
 
@@ -139,4 +148,4 @@
 
 ### **Paper / Documentation**
 
-1. Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.
+1. ~~Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.~~ **DONE (2026-03-19)**
