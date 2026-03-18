@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-18
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. Six CRITIC passes completed (2026-03-18). All D/B/G issues resolved. Remaining: L-2 (tcolorbox overuse, low priority). Next: final compile check (12\_LATEX\_ENGINE.md).
+* **Paper:** 12 sections + appendix\_proofs. Six CRITIC passes completed (2026-03-18). All issues resolved including L-2 (tcolorbox refactor: 49→35 boxes across §2/§3/§6). Next: final compile check (12\_LATEX\_ENGINE.md).
 
 ## **2\. Recent Resolutions**
 
@@ -86,4 +86,3 @@
 ### **Paper / Documentation**
 
 1. Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.
-2. L-2: tcolorbox overuse in §2, §3, §6 (optional aesthetic refactor).
