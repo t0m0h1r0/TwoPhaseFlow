@@ -84,9 +84,10 @@ CCD (Coupled Compact Difference) 法 \cite{ChuFan1998} の本質は，
 
 通常のコンパクトスキームが $f'$ のみを連立するのに対し，CCD 法は $f'$ と $f''$ を同時に解く．
 この「2種類の微分の連立」により，係数決定の自由度が増し，同じ3点ステンシルで
-2次高い精度（$O(h^6)$）が実現できる（次節で厳密に導出する）．
+2次高い精度（$O(h^6)$）が実現できる（§\ref{sec:ccd_def}で厳密に導出する）．
 
 \subsection{CCD スキームの定義}
+\label{sec:ccd_def}
 
 CCD 法は，関数値 $f$ とその一次微分 $f^{(1)}$，二次微分 $f^{(2)}$ を同時に連立して解くことで，
 3点ステンシルで $\Ord{h^6}$ 精度を実現する手法である．
@@ -111,6 +112,7 @@ CCD 法は，関数値 $f$ とその一次微分 $f^{(1)}$，二次微分 $f^{(2
 \end{tcolorbox}
 
 \subsection{Equation-I の係数導出：厳密な代数的証明}
+\label{sec:ccd_te_I}
 
 ここでは，Equation-I の係数 $\alpha_1, a_1, b_1$ が $\Ord{h^6}$ 精度を達成するためにどのように導出されるかを，代数的な変形を追って詳細に示す．
 
@@ -219,7 +221,7 @@ Equation-I と全く同じ手順で，Equation-II \eqref{eq:CCD_II} の係数 $\
 \subsubsection{テイラー展開の準備}
 
 Equation-II に現れる各項を，格子点 $i$ の周りでテイラー展開する．
-LHS に含まれる $f^{(2)}_{i\pm1}$，および RHS の $f'_{i\pm1}$ を展開する（$f_{i\pm1}$ の展開は前節と同じ）．
+LHS に含まれる $f^{(2)}_{i\pm1}$，および RHS の $f'_{i\pm1}$ を展開する（$f_{i\pm1}$ の展開は§\ref{sec:ccd_te_I}と同様）．
 \begin{align*}
 f^{(2)}_{i\pm1} &= f^{(2)}_i \pm h\,f^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i + \frac{h^4}{24}f^{(6)}_i \pm \cdots \\
 f'_{i\pm1} &= f'_i \pm h\,f^{(2)}_i + \frac{h^2}{2}f^{(3)}_i \pm \frac{h^3}{6}f^{(4)}_i + \frac{h^4}{24}f^{(5)}_i \pm \cdots
@@ -515,7 +517,7 @@ c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \lab
 \begin{tcolorbox}[warnbox, title={Equation-II 境界スキームの必要性}]
 ブロック三重対角行列（式 \eqref{eq:ccd_global}）の境界ブロックには，
 $[\fp{0},\fpp{0}]^\top$ の2成分が未知数として存在する．
-前節の Equation-I 境界スキームは $\fp{0}$ に対する関係式を与えるが，
+§\ref{sec:ccd_bc}の Equation-I 境界スキームは $\fp{0}$ に対する関係式を与えるが，
 $\fpp{0}$ に対する関係式（Equation-II 境界スキーム）がなければ行列が閉じない．
 これは実装上の致命的な欠落であり，本節で導出する．
 \end{tcolorbox}
@@ -614,13 +616,13 @@ $f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \f
 この推定は，境界の $\mathcal{O}(h^2)$ スキームが存在しても，格子全体の \textbf{$L^2$ ノルム誤差は少なくとも $\mathcal{O}(h^3)$} に維持されることを示す．
 実際には境界層の係数が小さいため，$h=1/64$ での数値実験では内点精度 $\mathcal{O}(h^6)$ が支配的に観測される（第\ref{sec:pressure}章 §\ref{sec:ccd_poisson_verification} の格子収束テスト参照）．
 
-高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（次節）を採用する．
+高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（§\ref{sec:ccd_ghost}）を採用する．
 \end{tcolorbox}
 
 \subsubsection{実装：ゴーストセル法による境界処理}
 \label{sec:ccd_ghost}
 
-前節の境界スキームは数学的に精密だが，実装において別の選択肢として
+§\ref{sec:ccd_bc}の境界スキームは数学的に精密だが，実装において別の選択肢として
 \textbf{ゴーストセル（ghost cell）法}がある．
 計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
 境界条件に応じた値を設定することで，
@@ -883,7 +885,7 @@ $f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\p
   \item \textbf{交換可能性の確認：} 滑らかな $f$ に対して Schwarz の定理から $f_{xy} = f_{yx}$（理論値として）．
         実装の検証として $D_x^{(1)}(D_y^{(1)} f)$ と $D_y^{(1)}(D_x^{(1)} f)$ の差が $O(h^6)$ 以内であることを確認する．
   \item \textbf{非一様格子：} 非一様格子では，Step 1 の $x$ 方向 CCD は計算空間の一様格子で行い，
-        連鎖律（$\partial f/\partial x = J_x \partial f/\partial\xi$）で物理空間の微分を得る（前節参照）．
+        連鎖律（$\partial f/\partial x = J_x \partial f/\partial\xi$）で物理空間の微分を得る（§\ref{sec:ccd_metric}参照）．
         同様に Step 2 も $y$ 方向の計算空間で処理する．
   \item \textbf{境界条件：} Step 2 では「$g$ という関数の $y$ 方向微分」であるから，
         $g$ に対して物理的に適切な境界条件（通常は壁面での Neumann 条件）を設定する．
