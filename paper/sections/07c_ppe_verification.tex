@@ -107,7 +107,20 @@ $\Delta\tau \in \{0.1h^2,\, 0.5h^2,\, h^2,\, 5h^2,\, 10h^2\}$
 \textbf{解析解：} $p^*(x,y) = \rho(x,y)\sin(\pi x)\sin(\pi y)$
 （密度場と整合した平滑な解）
 
-\textbf{右辺：} 解析解を代入して計算した $f(x,y)$
+\textbf{右辺：} 解析解 $p^* = \rho\sin\pi x\sin\pi y$ を
+$\nabla\cdot(1/\rho\,\nabla p) = (1/\rho)\nabla^2 p - (\nabla\rho/\rho^2)\cdot\nabla p$
+（product-rule，式~\eqref{eq:varrho_product_rule}）に代入して計算した $f(x,y)$：
+\begin{align*}
+  \nabla^2 p^* &= \nabla^2(\rho\sin\pi x\sin\pi y)
+  = \sin\pi x\sin\pi y\,\nabla^2\rho
+    + 2(\nabla\rho)\cdot(\nabla\sin\pi x\sin\pi y)
+    - 2\pi^2\rho\sin\pi x\sin\pi y \\
+  \nabla p^* &= \nabla\rho\cdot\sin\pi x\sin\pi y
+    + \rho\,\pi\cos\pi x\sin\pi y\,\bm{e}_x
+    + \rho\,\pi\sin\pi x\cos\pi y\,\bm{e}_y
+\end{align*}
+（$\nabla\rho$ は $H_\varepsilon$ の勾配から解析的に計算；$|x-0.5|\le\varepsilon$ 外では $\nabla\rho=0$．
+実装では上式を数値的に評価して各格子点の $f_{ij}$ を構築してよい．）
 
 \textbf{格子：} $N = 32, 64, 128$
 

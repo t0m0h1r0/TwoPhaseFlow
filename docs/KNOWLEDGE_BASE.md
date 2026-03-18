@@ -149,6 +149,8 @@ SimulationConfig
 
 **Usage rule:** Consistent and sparse — only for governing equations, algorithm boxes, or explicit "column"-style notes. Avoid mixing box types or over-using colors.
 
+**No nesting (MANDATORY):** Never place a tcolorbox inside another tcolorbox. Nested breakable boxes break tcolorbox's internal height calculation, producing "The upper box part has become overfull" warnings that `\tcbbreak` cannot fix. When supplementary notes are needed inside a box, fold them into prose (`\textbf{Note:}` etc.). If a sub-algorithm box is required, place it as an independent box *after* the parent box and reference it from the text. Flatten any nesting found in existing files immediately.
+
 ### Label Consistency
 - Every section, equation, figure, and table must have a descriptive `\label{}`.
 
