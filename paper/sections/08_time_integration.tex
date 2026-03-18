@@ -498,7 +498,7 @@ CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
 よって，前節（\ref{sec:weno5}節）と同様の WENO5 フラックス分割法を適用できる：
 \begin{enumerate}
   \item フラックス $F = \psi(1-\psi)\hat{n}_x$（$x$ 成分）を定義し，Lax-Friedrichs 分割を行う．
-  \item 波速の上界として $\alpha = \max|\psi(1-\psi)|_{i,j} \le 1/4$ を用いる．
+  \item 波速の上界として $\alpha = \max_{i,j}|1-2\psi_{i,j}| \le 1$ を用いる．
   \item WENO5 でセル界面フラックスを再構成し，発散を計算する．
 \end{enumerate}
 拡散項 $\nabla\cdot(\varepsilon\nabla\psi)$ は CCD 法で高精度に評価する（2階微分として）．

@@ -27,7 +27,13 @@
 * **C-1**: tab:chapter\_overview Ch.5 row updated with pseudo-time elliptic interpretation.
 * **M-5**: E\_shape norm corrected to L2 formula in 10\_verification\_metrics.tex.
 
-### Paper (2026-03-18 PAPER\_CRITIC cycle — all resolved via 10\_PAPER\_EDITOR)
+### Paper (2026-03-18 PAPER\_CRITIC cycle 2nd pass — all resolved via 10\_PAPER\_EDITOR)
+
+* **D-1**: `09_full_algorithm.tex` L39 solver box S2 — `FVM-PPE` → `CCD-PPE（$O(h^6)$）`; L53 caption — `FVM ベース PPE` → `CCD-PPE（$O(h^6)$）`.
+* **D-2**: `08_time_integration.tex` §sec:godunov defbox — `α = max|ψ(1-ψ)| ≤ 1/4` → `α = max|1-2ψ| ≤ 1`（正しい LF フラックスヤコビアン上界）.
+* **B-1**: `10_verification_metrics.tex` tab:error_budget 最終行 — 空間律速を WENO5 O(h⁵) → CSF O(ε²)≈O(Δx²) に修正; mybox "精度設計のまとめ" の律速記述も同様に修正.
+
+### Paper (2026-03-18 PAPER\_CRITIC cycle 1st pass — all resolved via 10\_PAPER\_EDITOR)
 
 * **D-1**: `10_verification_metrics.tex` L93 — `第\ref{sec:governing}章参照` → `§\ref{sec:balanced_force}参照`（正しい参照先：06\_collocate.tex §balanced\_force）.
 * **D-2**: `03_levelset.tex` §3.3 warnbox — CFL wave speed corrected from function value `|ψ(1-ψ)|≤1/4` to flux Jacobian `|F'(ψ)|=|1-2ψ|` max=1; `Δτ_hyp ≤ 4Δs` → `Δτ_hyp ≤ Δs`; min formula updated accordingly.

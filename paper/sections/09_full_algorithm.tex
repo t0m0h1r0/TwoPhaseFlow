@@ -36,7 +36,7 @@
 \node[solver=orange2, below=5mm of T1] (S1)
   {WENO5\\TVD-RK3\\陽的};
 \node[solver=midblue, below=5mm of T2] (S2)
-  {CCD $\to\bnabla p$\\FVM-PPE\\Projection法};
+  {CCD-PPE（$O(h^6)$）\\Projection法};
 \node[solver=teal2, below=5mm of T3] (S3)
   {CCD（$\Ord{h^6}$）\\Crank-Nicolson\\半陰的};
 \node[solver=darkgray, below=5mm of T4] (S4)
@@ -50,7 +50,7 @@
 \end{tikzpicture}
 \caption{NS 方程式の各項と対応ソルバーの概要．
 対流項は WENO5 + TVD-RK3 時間積分で陽的に処理し（第\ref{sec:time}章），
-圧力項は FVM ベース PPE を Projection 法で求解する（第\ref{sec:pressure}章）．
+圧力項は CCD-PPE（$O(h^6)$）を Projection 法で求解する（第\ref{sec:pressure}章）．
 粘性項は CCD + Crank--Nicolson で半陰的に扱う（第\ref{sec:CCD}章）．}
 \label{fig:ns_solvers}
 \end{figure}
