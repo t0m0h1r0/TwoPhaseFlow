@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-18
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections (00\_abstract – 11\_conclusion) clean compile. All critical/significant/minor issues from the 2026-03-17 PAPER\_CRITIC cycle have been resolved.
+* **Paper:** 12 sections + appendix\_proofs. Six CRITIC passes completed (2026-03-18). All D/B/G issues resolved. Remaining: L-2 (tcolorbox overuse, low priority). Next: final compile check (12\_LATEX\_ENGINE.md).
 
 ## **2\. Recent Resolutions**
 
@@ -43,6 +43,37 @@
 * **B-3**: `11_conclusion.tex` L115-116 — Spatial bottleneck corrected from WENO5 O(h⁵) to CSF O(ε²)≈O(Δx²); text revised accordingly.
 * **M-1**: `04_ccd.tex` L1 comment `05_ccd.tex` → `04_ccd.tex`; `05_grid.tex` L1 comment `04_grid.tex` → `05_grid.tex`.
 
+### Paper (2026-03-18 CRITIC passes 3rd–6th — all resolved via 10\_PAPER\_EDITOR)
+
+**3rd pass:**
+* **D-1**: `10_verification_metrics.tex` L93 cross-ref corrected.
+* **D-2**: `03_levelset.tex` §3.3 warnbox — CFL wave speed corrected (flux Jacobian `|1-2ψ|≤1`); `Δτ_hyp ≤ Δs`.
+* **D-3**: `00_abstract.tex` L21 — `FVM-PPE` → `CCD-PPE（$O(h^6)$）`.
+
+**4th pass:**
+* `03_levelset.tex` §3.2 — stability: `Δτ=0.5Δs` → `Δτ=0.25Δs` (within parabolic limit); N\_reinit: 14→28 steps.
+* `01_introduction.tex` L445 — relative ref `下図の 7ステップフロー` → `図\ref{fig:algo_flow}の 7ステップフロー`.
+* `09_full_algorithm.tex` L67 — `$\mathcal{C}_\text{WENO}$` → `$\mathcal{C}_\text{CCD}$`.
+* `03_levelset.tex` §3.4 — false claim "解析的に行えない" → logit inverse + appendix proof; new file `sections/appendix_proofs.tex`.
+
+**5th pass:**
+* `08_time_integration.tex` — CLS advection: non-conservative `u·∇ψ` → conservative `∇·(ψu)`.
+* `07_pressure.tex` tab:accuracy\_summary — CSF O(ε²)≈O(h²) row added; spatial bottleneck updated.
+* `10_verification_metrics.tex` tab:error\_budget — NS predictor: WENO5 O(h⁵) → CCD O(h⁶).
+* `11_conclusion.tex` — `ADI分解による求解` → `逐次Thomas法による求解`.
+* `01_introduction.tex` + `02_governing.tex` — stale "ニュートン法が必要" → logit analytic inverse.
+* `03_levelset.tex` §3.4 warnbox — retitled "ロジット逆変換 vs. Sussman 再初期化".
+* `05_grid.tex` algbox step 5 — O(h²) formula replaced with CCD approach.
+* `02_governing.tex` L572 — `∫s²δ_ε ds = π²ε²/3` self-contained proof added (Dirichlet η(2)).
+* `02_governing.tex` §2.2.3 — 1D One-Fluid proof moved to `appendix_proofs.tex` §\ref{app:onefluid\_1d}.
+
+**6th pass:**
+* `09_full_algorithm.tex` L106+L120-123 — ρ(ψ)・μ(ψ) interpolation sign corrected (liquid/gas were swapped).
+* `09_full_algorithm.tex` L119 — `(Newton法)` → logit function + Newton fallback note.
+* `04_ccd.tex` L21 — 4th-order central diff typo: `+f_{i+2}` → `+f_{i-2}`.
+* `05_grid.tex` warnbox — dangling "上記の中心差分" fixed; redundant CCD formulas removed.
+* `06_collocate.tex` L35-115 — Helmholtz/Projection scalar φ → Φ (10 instances; local-scope note added).
+
 ## **3\. Pending Action Items**
 
 ### **Code / Implementation**
@@ -55,3 +86,4 @@
 ### **Paper / Documentation**
 
 1. Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.
+2. L-2: tcolorbox overuse in §2, §3, §6 (optional aesthetic refactor).
