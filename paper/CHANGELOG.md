@@ -1,8 +1,45 @@
 # Changelog
 
+## Paper — LATEX ENGINE Pass (2026-03-18)
+
+LATEX compliance sweep completed. 106-page PDF compiles clean with zero undefined references.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `sections/02_governing.tex` | `前節の CSF 表現` → `§\ref{sec:csf}の CSF 表現` |
+| `sections/02_governing.tex` | `前節で求めた各項の変換結果` → `§\ref{sec:nondim_items}で求めた…`; new `\label{sec:nondim_items}` added to `\subsubsection{各項の無次元化}` |
+| `sections/02_governing.tex` | `上式を直接扱う必要がある` → `式\eqref{eq:curvature_div}を直接扱う必要がある` |
+| `sections/02_governing.tex` | `式\eqref{eq:dnx_dx}と上式` → `式\eqref{eq:dnx_dx}と式\eqref{eq:dny_dy}`; `\[...\]` → `\begin{equation}` so `\label{eq:dny_dy}` is referenceable |
+| `sections/04_ccd.tex` | `次節で厳密に導出する` → `§\ref{sec:ccd_def}で厳密に導出する`; new `\label{sec:ccd_def}` added |
+| `sections/04_ccd.tex` | `前節と同じ` → `§\ref{sec:ccd_te_I}と同様`; new `\label{sec:ccd_te_I}` added |
+| `sections/04_ccd.tex` | `前節の Equation-I 境界スキーム` → `§\ref{sec:ccd_bc}の Equation-I 境界スキーム` |
+| `sections/04_ccd.tex` | `ゴーストセル法（次節）` → `ゴーストセル法（§\ref{sec:ccd_ghost}）` |
+| `sections/04_ccd.tex` | `前節の境界スキームは` → `§\ref{sec:ccd_bc}の境界スキームは` |
+| `sections/04_ccd.tex` | `（前節参照）` → `（§\ref{sec:ccd_metric}参照）` |
+| `sections/05_grid.tex` | `前節のステップ2--5` → `§\ref{sec:grid_gen}のステップ2--5` |
+| `sections/08_time_integration.tex` | `前節（\ref{sec:weno5}節）と同様の` → `§\ref{sec:weno5}と同様の` |
+| `sections/09_full_algorithm.tex` | `前章まで個別に導いた` → `第\ref{sec:time}章まで個別に導いた` |
+
+---
+
+## Paper — CRITIC 8th pass + EDITOR 4th sweep (2026-03-18)
+
+### EDITOR 4th sweep (post-8th pass)
+
+| File | Change |
+|------|--------|
+| `sections/05_grid.tex` | Python pseudocode — `np.gradient(xi, x)` (O(h²)) replaced with CCD-based Jx evaluation; algbox Step 5 expanded with 3-step CCD explanation |
+| `sections/09_full_algorithm.tex` | fig:ns_solvers S5 node — "半陰的" → "陽的"; caption states CSF surface tension is explicit body force at time n |
+| `sections/10_verification_metrics.tex` | warnbox — curvature error O(h⁴) corrected: O(h^6) numerical discretization vs. O(ε²)≈O(h²) CSF model error (bottleneck); section ref → `§\ref{sec:balanced_force}` |
+| `sections/11_conclusion.tex` | §pressure chapter description — "FVM で離散化した" → CCD-PPE(O(h^6)) + 仮想時間陰解法 as primary; FVM relegated to comparison |
+
+---
+
 ## Paper — CRITIC/EDITOR Passes (2026-03-18)
 
-Seven full CRITIC passes + EDITOR 3rd sweep completed. All D/B/G/L issues resolved.
+Eight full CRITIC passes + four EDITOR sweeps completed. All D/B/G/L issues resolved.
 
 ### EDITOR 3rd sweep (post-7th pass)
 

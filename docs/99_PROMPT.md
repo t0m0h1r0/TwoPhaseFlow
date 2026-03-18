@@ -15,7 +15,7 @@
 Whenever a new session starts, you MUST:
 
 1. Silently absorb docs/99\_PROMPT.md, docs/KNOWLEDGE\_BASE.md, and docs/ACTIVE\_STATE.md.  
-2. Understand the current state: 28 tests passing, 11 chapters compiled cleanly.  
+2. Understand the current state: 28 tests passing. Paper: 12 sections + appendix_proofs, 106-page PDF, XeLaTeX clean. All CRITIC/EDITOR/LATEX ENGINE passes complete. Document finalized.  
 3. Await the user's specific workflow instruction or prompt file execution.  
 4. NEVER reference deleted directories (e.g., base/).  
 5. Ensure any proposed architectural changes align with the strict rules in KNOWLEDGE\_BASE.md.
