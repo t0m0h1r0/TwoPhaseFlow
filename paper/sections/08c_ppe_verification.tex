@@ -98,11 +98,20 @@ $\Delta\tau \in \{0.1h^2,\, 0.5h^2,\, h^2,\, 5h^2,\, 10h^2\}$
 
 \textbf{密度場：} 界面 $x = 0.5$ での1次元ジャンプを模擬した滑らかな遷移
 \[
-  \rho(x,y) = \rho_g + (\rho_l - \rho_g)\,H_\varepsilon(x - 0.5),
+  \rho(x,y) = \rho_g + (\rho_l - \rho_g)\,\hat{H}_\varepsilon(x - 0.5),
   \quad
-  H_\varepsilon(s) = \frac{1}{2}\!\left(1 + \frac{s}{\varepsilon}\right) \text{ for } |s| \le \varepsilon
+  \hat{H}_\varepsilon(s) =
+  \begin{cases}
+    0 & (s < -\varepsilon) \\
+    \dfrac{1}{2}\!\left(1 + \dfrac{s}{\varepsilon}\right) & (|s| \le \varepsilon) \\
+    1 & (s > \varepsilon)
+  \end{cases}
 \]
 （$\rho_l = 1000$，$\rho_g = 1$，$\varepsilon = 3h$）
+
+\noindent\textbf{注：}ここで用いる $\hat{H}_\varepsilon$ はテスト専用の区分線形近似であり，
+本稿の CLS で使うシグモイド型 $H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ とは別物である．
+テストの解析解 $p^*(x,y)$ と右辺 $f(x,y)$ の計算では一貫して $\hat{H}_\varepsilon$ を用いること．
 
 \textbf{解析解：} $p^*(x,y) = \rho(x,y)\sin(\pi x)\sin(\pi y)$
 （密度場と整合した平滑な解）
