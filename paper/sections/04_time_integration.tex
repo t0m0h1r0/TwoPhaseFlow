@@ -19,12 +19,11 @@
 \end{itemize}
 
 \medskip
-\textbf{重要な注意（§\ref{sec:time_int} warnbox で詳説）：}\\
+\textbf{重要な注意（§\ref{sec:time_int} で詳説）：}\\
 TVD-RK3 は CLS 移流にのみ用い，NS 方程式の時間積分には\textbf{使用しない}．
-NS 対流項は前進 Euler（1次精度）のままとする．
-理由と背景については §\ref{sec:time_int} で正直に述べる
-（標準 Chorin 法のスプリッティング誤差の性質，2次精度 Projection 法の存在，
-および本稿が1次精度を採用する判断根拠を含む）．
+NS 対流項には\textbf{2段 Adams-Bashforth 法（AB2，2次精度）}を採用し，
+van Kan（1986）の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせることで，
+全体の時間精度を $\mathcal{O}(\Delta t^2)$ に引き上げる（§\ref{sec:time_int} 参照）．
 
 \subsection{WENO5 による移流：なぜ必要か}
 \label{sec:weno5}
