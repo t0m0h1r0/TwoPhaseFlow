@@ -161,79 +161,35 @@ $\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$ であり，全体精度は $\Ord{
 \begin{tcolorbox}[warnbox, title={CN 粘性項のクロス微分：$u$ と $v$ の陰的結合と実装上の分離}]
 \label{warn:cn_cross_derivative}
 
-\textbf{問題の所在：} 変粘性流体の粘性応力テンソル $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ を
-$x$ 方向成分で展開すると：
+変粘性流体の粘性応力 $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ の $x$ 成分は：
 \begin{align}
   \bigl[\nabla\cdot(\mu(\nabla\bu+\nabla^T\bu))\bigr]_x
   &= \underbrace{2\frac{\partial}{\partial x}\!\left(\mu\frac{\partial u}{\partial x}\right)
-     + \frac{\partial}{\partial y}\!\left(\mu\frac{\partial u}{\partial y}\right)}_{\text{$u$ のみの対角粘性項 $\mathcal{D}_{\mathrm{d}}(u)$}}
+     + \frac{\partial}{\partial y}\!\left(\mu\frac{\partial u}{\partial y}\right)}_{\text{対角項 $\mathcal{D}_{\mathrm{d}}(u)$}}
    + \underbrace{\frac{\partial}{\partial y}\!\left(\mu\frac{\partial v}{\partial x}\right)}_{\text{クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$}}
   \label{eq:viscous_full_x}
 \end{align}
-クロス微分項 $\mathcal{D}_{\mathrm{c}}(v) = \partial_y(\mu\,\partial_x v)$ は $v$ を含み，
-CN 法で $t^{n+1}$ に置くと $u^*$ と $v^*$ の連立線形系（サイズ $2N^2 \times 2N^2$）が生じる．
-これを解くのは計算コストが高く，ブロック Thomas 法（$O(N)$）の優位性が失われる．
-
-\textbf{標準的な対処法：クロス微分項の陽的処理}
-
-クロス微分項のみを時刻 $n$（陽的）で評価し，対角項だけを CN（半陰的）で処理する
-（以下は $\rho = \mathrm{const}$，IPC 項省略の概念例；実際の Predictor は式~\eqref{eq:predictor_ab2_ipc} を参照）：
+クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$ を CN で $t^{n+1}$ に置くと $u^*$-$v^*$ の連立系（$2N^2$ 未知数）が生じ，ブロック Thomas 法の優位が失われる．\textbf{標準対処法：クロス項のみ時刻 $n$ で陽的評価し，対角項だけ CN で半陰的処理}する：
 \begin{equation*}
   \frac{u^* - u^n}{\Delta t}
   = \frac{1}{2Re}\bigl[\mathcal{D}_{\mathrm{d}}(u^n) + \mathcal{D}_{\mathrm{d}}(u^*)\bigr]
   + \frac{1}{Re}\,\mathcal{D}_{\mathrm{c}}(v^n)
   + \bm{f}_x^{n+1}
 \end{equation*}
-この分割により，$u$ と $v$ を\textbf{独立に}ブロック三重対角系として求解できる：
-\begin{itemize}
-  \item $u^*$ の求解：$u^n$，$v^n$ が既知 $\Rightarrow$ $x$ 方向 Thomas 法（$O(N_x)$ per row）+ $y$ 方向 Thomas 法
-  \item $v^*$ の求解：$u^*$ を求解した後，同様の操作（$v$ の式に $u^*$ のクロス項 $\mathcal{D}_{\mathrm{c}}(u^*)$ を代入）
-\end{itemize}
+これにより $u^*$, $v^*$ を独立にブロック Thomas 法で求解できる．
 
-\textbf{精度への影響（AB2+IPC スキームでの注意）：}
-クロス微分項の陽的1次処理は $\Ord{\Delta t}$ 誤差を導入する．
-AB2+IPC による全体精度は $\Ord{\Delta t^2}$（§\ref{sec:time_int} の表参照）であるため，
-クロス項の1次陽的処理は\textbf{界面近傍（$|\bnabla\mu| \neq 0$）で全体精度を $\Ord{\Delta t}$ に劣化させる可能性がある}．
+クロス微分項の1次陽的処理は $\Ord{\Delta t}$ 誤差を導入し，界面近傍（$|\bnabla\mu| \neq 0$）で全体精度を $\Ord{\Delta t}$ に劣化させる可能性がある．$\mu_l/\mu_g \gg 10$ の水/空気系では AB2 外挿 $[\frac{3}{2}\mathcal{D}_{\mathrm{c}}^n - \frac{1}{2}\mathcal{D}_{\mathrm{c}}^{n-1}]$ の適用を推奨する．
+\end{tcolorbox}
 
-真に $\Ord{\Delta t^2}$ を維持したい場合，クロス微分項にも AB2 外挿を適用する：
-\[
-  \frac{1}{Re}\left[\frac{3}{2}\mathcal{D}_{\mathrm{c}}(v^n)
-    - \frac{1}{2}\mathcal{D}_{\mathrm{c}}(v^{n-1})\right]
-\]
-ただし，$\mu_l/\mu_g \lesssim 10$ の問題では界面での $|\bnabla\mu|$ は限定的であり，
-クロス項の寄与は実用上無視できる場合が多い．$\mu_l/\mu_g \gg 10$ の水/空気系では
-AB2 外挿の適用を推奨する．
+\begin{tcolorbox}[warnbox, title={変粘性界面でのクロス微分陽的処理：粘性 CFL 条件の実質的復活}]
+\label{warn:cross_cfl}
 
-\textbf{等粘性流体（$\mu = \mathrm{const}$）の場合：}
-$\nabla\mu = 0$ のとき，$\partial_y(\mu\,\partial_x v) = \mu\,\partial_{xy}v$ となり，
-非圧縮条件 $\partial_x u + \partial_y v = 0$ から $\mu\,\partial_{xy}v = -\mu\,\partial_{xx}u$ が使えるため，
-クロス項は $u$ のみの演算子に帰着させられる場合がある．
-ただし，変密度（変粘性）系では一般に上記の陽的処理を採用する．
-
-\medskip
-\textbf{【危険】変粘性界面でのクロス微分陽的処理：粘性 CFL 条件の実質的復活}
-
-気液界面近傍では粘性係数 $\mu$ が数格子幅以内で $\mu_l/\mu_g \approx 10^2$ 変化する（例：水/空気）．
-この領域でクロス微分 $\mathcal{D}_{\mathrm{c}}(v) = \partial_y(\mu\,\partial_x v)$ を陽的処理すると，
-$\mu$ の勾配が大きいため実効的な「係数」は
-\[
-  \left|\frac{\partial\mu}{\partial y}\,\frac{\partial v}{\partial x}\right|
-  \approx \frac{\mu_l - \mu_g}{\varepsilon}\cdot\frac{|v|_{\max}}{h}
-  = \Ord{\frac{\Delta\mu}{\varepsilon h}}
-\]
-となる（$\varepsilon \approx 2h$ は界面厚さ）．
-
-対角粘性項の陰的処理（CN 法）は無条件安定だが，このクロス微分項は陽的であるため，
-フォン・ノイマン安定性解析（均一格子 $h$，$\Delta\mu = \mu_l - \mu_g$）によると，
-界面上での局所 CFL 条件が復活する：
+気液界面近傍では $\mu$ が数格子幅で $\mu_l/\mu_g \approx 10^2$ 変化する．クロス微分 $\mathcal{D}_{\mathrm{c}}(v)$ を陽的処理すると，界面上でのフォン・ノイマン安定性解析から局所 CFL 条件が復活する：
 \begin{equation}
   \Delta t \le C_{\mathrm{cross}} \cdot \frac{h^2}{\Delta\mu / \rho}
-  \approx C_{\mathrm{cross}} \cdot \frac{\mu_l/\rho_l}{\Delta\mu/\rho} \cdot \frac{h^2}{\nu_l}
   \label{eq:cross_cfl}
 \end{equation}
-ここで $C_{\mathrm{cross}} = O(1)$ は定数（精確な値は実装依存）．
-$\mu_l/\mu_g = 100$ の水/空気系では，この制約が $\Delta t_{\mathrm{visc}}$（等粘性系の陽的粘性 CFL）の
-約 $1/100$ 倍に相当する可能性がある．
+ここで $C_{\mathrm{cross}} = O(1)$，$\Delta\mu = \mu_l - \mu_g$．$\mu_l/\mu_g = 100$ の系では等粘性系の陽的粘性 CFL より約 $1/100$ 倍厳しくなる可能性がある．
 
 \begin{center}
 \renewcommand{\arraystretch}{1.2}
@@ -242,57 +198,19 @@ $\mu_l/\mu_g = 100$ の水/空気系では，この制約が $\Delta t_{\mathrm{
 処理方法 & 安定条件 & 適用場面 \\
 \hline
 対角粘性項 $\mathcal{D}_{\mathrm{d}}$（CN 法） & 無条件安定 & 常に適用 \\
-クロス微分項 $\mathcal{D}_{\mathrm{c}}$（陽的） & 式~\eqref{eq:cross_cfl} の制約あり &
-  $\mu_l/\mu_g \lesssim 10$ では無害 \\
+クロス微分項 $\mathcal{D}_{\mathrm{c}}$（陽的） & 式~\eqref{eq:cross_cfl} の制約あり & $\mu_l/\mu_g \lesssim 10$ では無害 \\
 \hline
 \end{tabular}
 \end{center}
 
-\textbf{シミュレーションが爆発した場合のチェックリスト：}
-\begin{itemize}
-  \item 密度比 $\rho_l/\rho_g \gg 1$ かつ 粘性比 $\mu_l/\mu_g \gg 1$ の問題か？
-  \item 対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）はすべて満たしているか？
-  \item それでも爆発する場合：クロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性．
-        $\Delta t$ を $1/10$ に減らして安定化するか確認し，
-        または $\mathcal{D}_{\mathrm{c}}$ の係数に上限クリッピングを施す．
-\end{itemize}
+\textbf{シミュレーションが爆発した場合：}対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）を確認後，なお爆発する場合はクロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性がある．$\Delta t$ を $1/10$ に減らして安定化するか確認する．
 \end{tcolorbox}
 
-\subsection{再初期化の Godunov 型上流化}
-\label{sec:godunov}
+\subsection{CLS 再初期化における圧縮項の離散化}
 
-\subsubsection{どの再初期化に使うか：CLS vs. 標準 Level Set}
+\noindent（標準 Level Set の Sussman 再初期化に対応した Godunov 型上流化は，本稿の主実装では使用しない．詳細は付録~\ref{app:godunov_ls} 参照．）
 
-Godunov 型上流化は\textbf{標準 Level Set 法（Sussman 再初期化）}において，
-Eikonal 方程式 $|\nabla\phi| = 1$ を求解するために用いられる．
-
-\begin{table}[htbp]
-\centering
-\caption{各再初期化方程式と上流化スキームの対応}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{>{\raggedright\arraybackslash}p{40mm}>{\raggedright\arraybackslash}p{55mm}>{\raggedright\arraybackslash}p{38mm}}
-\hline
-再初期化手法 & 方程式 & 本節との関連 \\
-\hline
-\textbf{標準 LS：Sussman 法} & \small$\partial_\tau\phi + \operatorname{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化} \\[4pt]
-\textbf{CLS 法} & \small$\partial_\tau\psi + \nabla\cdot(\psi(1{-}\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用（§\ref{sec:cls_compression}参照）} \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{標準 LS 再初期化への Godunov 上流化}
-
-標準 Level Set の再初期化において，
-Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
-情報伝播方向 $s=\operatorname{sgn}(\phi_0)$ に応じた統一表現は以下の通りである：
-\begin{equation}
- \norm{\bnabla\phi}^{\mathrm{uw}}_{i,j}=
- \sqrt{G_x^2+G_y^2},\qquad G_x^2=\max(s\,D_x^-,0)^2+\min(s\,D_x^+,0)^2
- \label{eq:godunov_upwind}
-\end{equation}
-ここで $D^\pm$ は前進・後退差分である．
-
-\subsubsection{CLS 再初期化における圧縮項の離散化}
+\subsubsection{CLS 圧縮項の WENO5 スキーム}
 \label{sec:cls_compression}
 
 CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）の圧縮項

@@ -9,7 +9,7 @@
 %% ═══════════════════════════════════════════════════════════════════════════════
 
 本節では，CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（第\ref{sec:CCD}章，
-§\ref{sec:ccd_elliptic}，式 \eqref{eq:L_CCD_2d}）を
+§\ref{sec:ccd_elliptic}，式 \eqref{eq:L_CCD_2d_full}）を
 PPE ソルバーとして陽に活用するための実装上の詳細を述べる．
 
 \subsubsection{1次元 CCD-Laplacian の行列表現}
@@ -173,7 +173,7 @@ Dirichlet（$p=p_{\mathrm{BC}}$） & $p'_0 = $ 解析値 & $p''_0 = $ 解析値 
 \label{sec:ccd_2d_full}
 
 2次元変密度 PPE $\nabla\cdot(1/\rho\,\nabla p) = q$ の CCD 離散化を示す．
-$x$ 方向の演算子（式 \eqref{eq:varrho_op_1d}）を格子点 $(i,j)$ で評価すると：
+$x$ 方向の演算子（式 \eqref{eq:L_split}）を格子点 $(i,j)$ で評価すると：
 \begin{align}
   \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_{i,j}
   &= \frac{1}{\rho_{i,j}}\bigl(D_x^{(2)} p\bigr)_{i,j}

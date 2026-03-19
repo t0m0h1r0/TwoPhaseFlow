@@ -13,37 +13,13 @@
 両者の役割を明確に区別することが，本章以降のアルゴリズムを理解する上で極めて重要である．
 以降の全ての方程式で登場するこれらの変数を，本節で事前に定義しておく．
 
-\begin{tcolorbox}[defbox, title={変数 $\phi$ と $\psi$ の役割分担（本稿全章共通）}]
-\begin{itemize}
-  \item \textbf{符号付き距離関数 $\phi(\bm{x}, t)$}：
-        界面からの最短距離に符号を付けた関数（$\phi=0$ が界面，$\phi<0$ が液相内部）．
-        その性質 $|\bnabla\phi|=1$（Eikonal 条件）は，
-        法線ベクトル $\hat{\bm{n}} = \bnabla\phi$ や
-        曲率 $\kappa = -\bnabla\cdot\hat{\bm{n}}$ といった
-        \textbf{幾何学的情報}の計算精度を保証するために不可欠である．
-        本稿では，曲率計算（§\ref{sec:curvature}）や
-        再初期化方程式における法線ベクトルの算出に $\phi$ を用いる．
+\textbf{符号付き距離関数 $\phi(\bm{x}, t)$} は界面からの最短距離に符号を付けた関数（$\phi=0$ が界面，$\phi<0$ が液相内部）である．
+Eikonal 条件 $|\bnabla\phi|=1$ が法線ベクトル $\hat{\bm{n}} = \bnabla\phi$ や曲率 $\kappa = -\bnabla\cdot\hat{\bm{n}}$ の計算精度を保証する（§\ref{sec:curvature}）．
 
-  \item \textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$}：
-        $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，
-        液相で $\psi \approx 0$，気相で $\psi \approx 1$ を取る
-        （第\ref{sec:levelset}章 §\ref{sec:cls_advection} 参照）．
-        その移流方程式は保存形で書けるため，\textbf{質量（体積）保存性}を向上させる．
-        密度 $\rho(\psi)$ や粘性 $\mu(\psi)$ などの
-        \textbf{物理的物性値}の補間にも直接用いられる．
-\end{itemize}
+\textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$} は $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，液相で $\psi \approx 0$，気相で $\psi \approx 1$ を取る（第\ref{sec:levelset}章 §\ref{sec:cls_advection} 参照）．
+保存形移流方程式により\textbf{質量保存性}を向上させ，密度 $\rho(\psi)$・粘性 $\mu(\psi)$ の補間にも直接用いる．
 
-\medskip
-\textbf{両変数の関係：}
-両者は
-\[
-  \psi = H_\varepsilon(\phi)
-  \qquad \bigl(H_\varepsilon \text{：滑らかなヘヴィサイド関数，第\ref{sec:levelset}章で詳述}\bigr)
-\]
-の関係で結ばれる．逆に $\psi$ から $\phi$ を得るには，
-ロジット関数 $\phi = \varepsilon\ln\bigl(\psi/(1-\psi)\bigr)$ により
-解析的に求まる（第\ref{sec:levelset}章参照）．
-\end{tcolorbox}
+両変数は $\psi = H_\varepsilon(\phi)$ で結ばれ，逆変換はロジット関数 $\phi = \varepsilon\ln\bigl(\psi/(1-\psi)\bigr)$ で解析的に得られる（第\ref{sec:levelset}章参照）．
 
 \begin{tcolorbox}[warnbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
 \textbf{本稿の符号規約（全章共通）：}
