@@ -45,17 +45,27 @@ TVD-RK3 は以下の2箇所にのみ適用する：
 van Kan（1986）\cite{vanKan1986} の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせる．
 Predictor ステップの離散式は：
 \begin{equation}
+\begin{split}
   \frac{\rho^{n+1}}{\Delta t}(\bu^* - \bu^n)
-  = -\rho^{n+1}\!\left[\frac{3}{2}\mathcal{C}(\bu^n,\bu^n)
-    - \frac{1}{2}\mathcal{C}(\bu^{n-1},\bu^{n-1})\right]
-  + \frac{1}{2Re}\bigl[\mathcal{D}(\mu^{n+1},\bu^*)
+  &= -\rho^{n+1}\!\left[\tfrac{3}{2}\mathcal{C}(\bu^n,\bu^n)
+    - \tfrac{1}{2}\mathcal{C}(\bu^{n-1},\bu^{n-1})\right] \\
+  &\quad + \tfrac{1}{2Re}\bigl[\mathcal{D}(\mu^{n+1},\bu^*)
     + \mathcal{D}(\mu^n,\bu^n)\bigr]
   - \bnabla p^n
   + \bm{f}^{n+1}
+\end{split}
   \label{eq:predictor_ab2_ipc}
 \end{equation}
 ここで $\mathcal{C}(\bu,q) = \bu\cdot\bnabla q$（対流演算子），$\mathcal{D}$ は完全粘性応力演算子
 （式~\eqref{eq:viscous_full_x}）．
+体積力 $\bm{f}^{n+1}$ は表面張力項（$\rho$ 因子なし）と重力項（$\rho^{n+1}$ 因子あり）の和：
+\begin{equation*}
+  \bm{f}^{n+1} = \frac{\kappa^{n+1}\bnabla\psi^{n+1}}{We}
+                - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
+\end{equation*}
+（表面張力は CSF 体積力 $\sigma\kappa\bnabla\psi$（式~\eqref{eq:csf_final}）の無次元形；
+重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
+2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$）．
 対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
 前ステップ圧力 $-\bnabla p^n$ の陽的組込みが IPC の本質である．
 
@@ -127,9 +137,12 @@ $n=1\to2$ 以降 & AB2：$\tfrac{3}{2}\mathcal{C}^n - \tfrac{1}{2}\mathcal{C}^{n
 \end{tabular}
 \end{center}
 
-初回ステップの $\Ord{\Delta t}$ 誤差は全体積分精度に影響しない
-（時間区間 $[0,T]$ 全体で $N_t$ ステップを踏むとき，1ステップ分の $\Ord{\Delta t^2}$ 局所誤差は
-全体精度 $\Ord{\Delta t^2}$ を損わない）．
+初回ステップの前進 Euler による局所打ち切り誤差は $\Ord{\Delta t^2}$（1次精度スキームの標準値）であり，
+全体積分精度 $\Ord{\Delta t^2}$ に影響しない．
+誤差伝播論による根拠：$N_t = T/\Delta t$ ステップ積分で，
+1ステップ分の局所誤差 $\Ord{\Delta t^2}$ の全体誤差への寄与は $\Ord{\Delta t^2}$ のまま（定数項として残るが
+$N_t$ 倍されない）；残り $N_t - 1$ ステップの AB2 局所誤差 $\Ord{\Delta t^3}$ は合算しても
+$\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$ であり，全体精度は $\Ord{\Delta t^2}$ に保たれる．
 初回完了後，対流項 $\mathcal{C}^0 = \mathcal{C}(\bu^0,\bu^0)$ をバッファに保存し，
 以降の AB2 ステップで利用する（追加メモリ：速度場1つ分，$2N_xN_y$ 実数値）．
 \end{tcolorbox}
@@ -163,14 +176,14 @@ CN 法で $t^{n+1}$ に置くと $u^*$ と $v^*$ の連立線形系（サイズ 
 
 \textbf{標準的な対処法：クロス微分項の陽的処理}
 
-クロス微分項のみを時刻 $n$（陽的）で評価し，対角項だけを CN（半陰的）で処理する：
-\begin{equation}
+クロス微分項のみを時刻 $n$（陽的）で評価し，対角項だけを CN（半陰的）で処理する
+（以下は $\rho = \mathrm{const}$，IPC 項省略の概念例；実際の Predictor は式~\eqref{eq:predictor_ab2_ipc} を参照）：
+\begin{equation*}
   \frac{u^* - u^n}{\Delta t}
   = \frac{1}{2Re}\bigl[\mathcal{D}_{\mathrm{d}}(u^n) + \mathcal{D}_{\mathrm{d}}(u^*)\bigr]
   + \frac{1}{Re}\,\mathcal{D}_{\mathrm{c}}(v^n)
   + \bm{f}_x^{n+1}
-  \label{eq:cn_split_predictor}
-\end{equation}
+\end{equation*}
 この分割により，$u$ と $v$ を\textbf{独立に}ブロック三重対角系として求解できる：
 \begin{itemize}
   \item $u^*$ の求解：$u^n$，$v^n$ が既知 $\Rightarrow$ $x$ 方向 Thomas 法（$O(N_x)$ per row）+ $y$ 方向 Thomas 法
