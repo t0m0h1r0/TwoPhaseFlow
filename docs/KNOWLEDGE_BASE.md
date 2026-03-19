@@ -181,17 +181,19 @@ SimulationConfig
 
 ## **7. Paper Structure**
 
+> **WARNING — filename ≠ chapter number.** `main.tex` reorders the `\input{}` calls so that `08_time_integration.tex` becomes §4 and `04_ccd.tex` becomes §5. Always consult `main.tex` comments (`%% 第N章`) as the authoritative chapter number, never the file-name prefix.
+
 | File | Chapter | Content |
 |------|---------|---------|
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, WENO5, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
 | `02_governing.tex` | §2 Governing Equations | One-Fluid NS, CSF, Heaviside, ψ-convention (液相≈0, 気相≈1) |
 | `03_levelset.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), logit inverse |
-| `04_ccd.tex` | §4 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme (O(h⁵)/O(h²)) |
-| `05_grid.tex` | §5 Grid & Discretization | Staggered grid, CCD-based Jacobian (step 5) |
-| `06_collocate.tex` | §6 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
-| `07_pressure.tex` | §7 Pressure Solver | Variable-density PPE, pseudo-time implicit, BiCGSTAB (tab:ppe_methods) |
-| `08_time_integration.tex` | §8 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
+| `08_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
+| `04_ccd.tex` | §5 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme (O(h⁵)/O(h²)) |
+| `05_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
+| `06_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
+| `07_pressure.tex` | §8 Pressure Solver | Variable-density PPE, pseudo-time implicit, BiCGSTAB (tab:ppe_methods) |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
 | `10_verification_metrics.tex` | §10 Verification | Error norms, tab:error_budget (CSF bottleneck O(ε²)≈O(h²)) |
 | `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (逐次Thomas法), future work |
