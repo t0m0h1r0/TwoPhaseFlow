@@ -172,6 +172,9 @@ SimulationConfig
 
 **No nesting (MANDATORY):** Never place a tcolorbox inside another tcolorbox. Nested breakable boxes break tcolorbox's internal height calculation, producing "The upper box part has become overfull" warnings that `\tcbbreak` cannot fix. When supplementary notes are needed inside a box, fold them into prose (`\textbf{Note:}` etc.). If a sub-algorithm box is required, place it as an independent box *after* the parent box and reference it from the text. Flatten any nesting found in existing files immediately.
 
+### Japanese Font Constraints
+- **No `\emph` on Japanese text.** Hiragino Mincho (and most Japanese fonts) have no italic shape; `\emph{和文}` triggers "Font shape undefined" warnings and falls back silently to upright. Use `\textbf{和文}` for emphasis on Japanese text.
+
 ### Label Consistency
 - Every section, equation, figure, and table must have a descriptive `\label{}`.
 
