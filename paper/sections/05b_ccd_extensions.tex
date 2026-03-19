@@ -1,0 +1,295 @@
+% paper/sections/05b_ccd_extensions.tex
+%
+% §5 CCD 法の続き（05_ccd.tex からの分割）
+% 内容：非一様格子拡張・2次元混合偏微分・楕円型ソルバーとしての双対的役割
+%
+\subsection{非一様格子への拡張：座標変換法}
+\label{sec:ccd_metric}
+
+本稿では界面近傍の解像度を上げるために非一様格子を用いるが，CCD 係数（式~\eqref{eq:coef_CCD}）は等間隔格子 $h$ を前提としている．
+非一様格子上で高精度を維持するための最もエレガントな手法は，計算空間への座標変換を用いることである．
+
+\noindent\textbf{座標変換による実装．}
+物理空間 $x$（非一様）を，計算空間 $\xi$（一様，$\Delta\xi=1$）に写像する．
+微分計算はすべて計算空間 $\xi$ 上で標準の等間隔 CCD スキームを用いて行い，その結果を連鎖律（chain rule）で物理空間の微分値に変換する．
+
+\textbf{変換公式：}
+物理空間での一次微分 $\partial f/\partial x$ および二次微分 $\partial^2 f/\partial x^2$ は，メトリック係数 $J = \partial \xi / \partial x$ を用いて次のように計算される：
+\begin{align}
+  \pd{f}{x} &= \pd{\xi}{x}\pd{f}{\xi} = J \fp{\xi} \\
+  \pdd{f}{x} &= J \pd{}{x}\!\left(\fp{\xi}\right) + \fp{\xi}\pd{J}{x} = J^2 \fpp{\xi} + J \pd{J}{\xi} \fp{\xi}
+\end{align}
+ここで，$f^{(\cdot)}_\xi$ は計算空間上で CCD 法により求めた微分値である．
+この手法により，複雑な非一様格子係数を導出することなく，一様格子の CCD ソルバーをそのまま再利用できる利点がある．
+
+\medskip
+
+\begin{tcolorbox}[warnbox, title={$\partial J/\partial\xi$ の精度：全体精度への影響}]
+式 \eqref{eq:transform_2nd_correct} の右辺第2項には $\partial J/\partial\xi$ が含まれる．
+第\ref{sec:grid}章 §\ref{sec:grid_gen} のステップ5では $J_x$ を $\mathcal{O}(h^2)$ 中心差分で評価しているため，
+そのままでは $\partial J/\partial\xi$ の精度が $\mathcal{O}(h)$ 以下となり，
+CCD の $\mathcal{O}(h^6)$ 空間精度全体が $\mathcal{O}(h)$ または $\mathcal{O}(h^2)$ に劣化する．
+
+\textbf{解決策：} 座標配列 $x(\xi)$ を「関数値」として CCD に入力し，
+$dx/d\xi$ および $d^2x/d\xi^2$ を $\mathcal{O}(h^6)$ 精度で求める：
+\[
+  J|_i = \frac{1}{(dx/d\xi)_i}, \qquad
+  \pd{J}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
+\]
+これにより $J$ および $\partial J/\partial\xi$ がともに $\mathcal{O}(h^6)$ 精度で評価され，
+物理空間の2階微分も $\mathcal{O}(h^6)$ 精度が保たれる（§\ref{box:grid_jx_accuracy}の注意ボックスも参照）．
+\end{tcolorbox}
+
+\subsection{2次元への拡張：混合偏微分 \texorpdfstring{$D_{xy}^{(11)}$}{Dxy\^{}(11)} の計算}
+\label{sec:ccd_mixed}
+
+曲率 $\kappa$ の計算式（式 \eqref{eq:curvature_2d}）には混合偏微分 $\phi_{xy} = \partial^2\phi/\partial x\partial y$ が不可欠である．
+CCD 法は1次元のブロック Thomas 法として定式化されているため，混合微分は以下の\textbf{2段階適用}で計算する．
+
+\subsubsection{基本的な考え方：逐次的な1次元 CCD の適用}
+
+\begin{tcolorbox}[defbox, title={混合微分 $\partial^2 f/\partial x\partial y$ の計算手順}]
+\textbf{Step 1：$x$ 方向 CCD}
+
+各行（$j = \text{const}$）に対して $x$ 方向のブロック Thomas 法を適用し，
+各格子点 $(i,j)$ における $x$ 方向一次微分 $g_{i,j} \equiv \partial f/\partial x \big|_{(i,j)}$ を計算する．
+この操作を全行（$j = 0, 1, \ldots, N_y-1$）に対して実行する．
+\[
+  g_{i,j} = D_x^{(1)} f \big|_{(i,j)} \quad \Leftarrow \quad x \text{ 方向 CCD（行スウィープ）}
+\]
+
+\textbf{Step 2：$g = \partial f/\partial x$ への $y$ 方向 CCD}
+
+Step 1 で得た $g_{i,j}$ を，今度は\textbf{$y$ 方向の関数値}とみなして，
+各列（$i = \text{const}$）に対して $y$ 方向のブロック Thomas 法を適用する．
+\[
+  \phi_{xy,\,i,j} = D_y^{(1)} g \big|_{(i,j)} = D_y^{(1)}\bigl(D_x^{(1)} f\bigr)\big|_{(i,j)}
+\]
+
+\textbf{結果：} 混合微分 $\partial^2 f/\partial x \partial y$ が全格子点で得られる．
+\end{tcolorbox}
+
+\subsubsection{精度の議論：$O(h^6)$ の維持}
+
+\begin{tcolorbox}[mybox, title={2段階 CCD の精度次数}]
+各方向の CCD が $O(h^6)$ 精度を持つとき，逐次適用で得られる混合微分の精度を確認する．
+
+Step 1 で得た $g = \partial f/\partial x$ の誤差は $E_g = O(h^6)$．
+Step 2 で $g$ を $y$ 方向に微分するとき，$g$ の離散値に誤差 $E_g$ が含まれる．
+$y$ 方向 CCD は「入力値 $g + E_g$」に対して適用されるため，誤差の上界は：
+\[
+  E_{\phi_{xy}} \leq \underbrace{O(h^6)}_{\text{$y$ 方向 CCD の打ち切り誤差}}
+               + \underbrace{\left\|\pd{E_g}{y}\right\|}_{\text{$E_g$ の $y$ 方向変動}}
+\]
+ここで右辺第2項の評価が精度を決定する．
+
+\textbf{注意：一般には $\partial E_g/\partial y \sim O(h^6/h) = O(h^5)$ となる可能性がある．}
+差分演算子は入力の誤差を $h^{-1}$ 倍程度増幅するため，$O(h^6)$ の誤差場を数値微分すると
+$O(h^5)$ に劣化するのが一般論である．
+
+\textbf{ただし，以下の条件が成立すれば $O(h^6)$ が維持される：}
+CCD スキームの打ち切り誤差 $E_g(x,y)$ は，真の関数 $f$ の滑らかさから $h^6 f^{(7)}$ に比例する滑らかな場であり，
+その $y$ 方向変動 $\partial E_g/\partial y = O(h^6)$（$h^6 f^{(8)}$ のオーダー）が成立する場合に限る．
+これは $f$ が十分滑らかであれば（$f \in C^8$）成立し，多くの物理問題では妥当な仮定である．
+
+\textbf{結論：}
+\begin{itemize}
+  \item $f \in C^8$ の場合：$E_{\phi_{xy}} = O(h^6)$ が維持される
+  \item $f$ に不連続性や急峻な変化がある場合：精度が $O(h^5)$ 以下に劣化する可能性がある
+\end{itemize}
+\end{tcolorbox}
+
+\noindent\textbf{注意：実証的確認の必要性．}
+上記の理論的議論に加え，\textbf{格子収束テストによる実証}が不可欠である．
+$f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\pi y)$）で
+格子精緻化テストを行い，$N$ を倍にするたびに誤差が $1/64$ 倍（$\approx 6$ 次収束）になるかを確認する（第\ref{sec:verification}章参照）．
+もし5次収束（誤差が $1/32$ 倍）にとどまる場合，Step 2 の入力誤差増幅が支配的である．
+
+\medskip
+
+\subsubsection{実装上の注意：メモリと計算順序}
+
+\begin{tcolorbox}[warnbox, title={混合微分実装の落とし穴}]
+\begin{itemize}
+  \item \textbf{中間配列の保存：} Step 1 で得た $g_{i,j} = (D_x^{(1)} f)_{i,j}$ を一時配列に格納し，
+        Step 2 でこれを入力として使う．元の $f_{i,j}$ は Step 2 では直接使用しない．
+  \item \textbf{交換可能性の確認：} 滑らかな $f$ に対して Schwarz の定理から $f_{xy} = f_{yx}$（理論値として）．
+        実装の検証として $D_x^{(1)}(D_y^{(1)} f)$ と $D_y^{(1)}(D_x^{(1)} f)$ の差が $O(h^6)$ 以内であることを確認する．
+  \item \textbf{非一様格子：} 非一様格子では，Step 1 の $x$ 方向 CCD は計算空間の一様格子で行い，
+        連鎖律（$\partial f/\partial x = J_x \partial f/\partial\xi$）で物理空間の微分を得る（§\ref{sec:ccd_metric}参照）．
+        同様に Step 2 も $y$ 方向の計算空間で処理する．
+  \item \textbf{境界条件：} Step 2 では「$g$ という関数の $y$ 方向微分」であるから，
+        $g$ に対して物理的に適切な境界条件（通常は壁面での Neumann 条件）を設定する．
+\end{itemize}
+\end{tcolorbox}
+
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CCD 法の双対的役割：微分スキームから楕円型ソルバーへ}
+\label{sec:ccd_elliptic}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+これまでの節では，CCD 法を「既知の関数 $f$ の微分値 $f', f''$ を高精度に求めるスキーム」
+として解説してきた．しかしCCD 法はより深い役割を担う．
+本節では CCD 法が\textbf{楕円型方程式の陰的ソルバー}として機能することを示し，
+その数学的構造を明らかにする．これは第\ref{sec:pressure}章の CCD-Poisson ソルバーの
+理論的基盤となる極めて重要な観点である．
+
+\subsubsection{従来の見方：陽的な微分演算子}
+
+CCD 法の一般的な利用法は，既知の関数値 $\bm{f} = [f_0, f_1, \dots, f_{N-1}]^\top$
+が与えられたとき，未知の微分値ベクトル
+$\bm{v} = [f'_0, f''_0, f'_1, f''_1, \dots, f'_{N-1}, f''_{N-1}]^\top \in \mathbb{R}^{2N}$
+を求めることである．これは式~\eqref{eq:ccd_global} のブロック三重対角線形系
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v} = \mathcal{R}(\bm{f})
+  \label{eq:ccd_derivative_system}
+\end{equation}
+を解くことに相当する．ここで $\mathcal{M}_{\mathrm{CCD}} \in \mathbb{R}^{2N \times 2N}$ は
+ブロック三重対角行列（式 \eqref{eq:ccd_global}），$\mathcal{R}(\bm{f})$ は
+関数値 $\bm{f}$ から構成される右辺ベクトルである．
+
+解は形式的に
+\begin{equation}
+  \bm{v} = \mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{f})
+  \label{eq:ccd_solution_formal}
+\end{equation}
+と書ける（実際には LU 分解や Thomas 法で $O(N)$ で解く）．
+
+\subsubsection{新しい見方：未知関数に対する線形演算子}
+
+圧力 Poisson 方程式（PPE）では，
+\begin{equation}
+  \mathcal{L} p = \bnabla\cdot\!\left(\frac{1}{\rho}\bnabla p\right) = q
+  \label{eq:elliptic_ppe}
+\end{equation}
+の\textbf{未知関数} $p$ に対して，CCD 法を用いて一次・二次微分
+$p' \equiv \partial p/\partial x$ および $p'' \equiv \partial^2 p/\partial x^2$ を評価し，
+楕円型演算子を構成したい．
+
+この場合，関数値ベクトル $\bm{p} = [p_0, p_1, \dots, p_{N-1}]^\top$ を
+「入力」とする CCD 系は
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v}[p] = \mathcal{R}(\bm{p})
+  \label{eq:ccd_on_p}
+\end{equation}
+となる（$\bm{v}[p]$ は $p$ の微分値を意味する）．
+
+この解から一次微分成分と二次微分成分を抽出する射影行列
+$\mathbf{E}_1, \mathbf{E}_2 \in \mathbb{R}^{N \times 2N}$ を定義する：
+\begin{align}
+  \mathbf{E}_1\,\bm{v} &= [f'_0,\, f'_1,\, \dots,\, f'_{N-1}]^\top
+  \quad \text{（奇数成分の抽出）} \\
+  \mathbf{E}_2\,\bm{v} &= [f''_0,\, f''_1,\, \dots,\, f''_{N-1}]^\top
+  \quad \text{（偶数成分の抽出）}
+\end{align}
+
+これにより，CCD 法で離散化した微分演算子は
+\begin{align}
+  D_x^{(1)}\bm{p} &\equiv \mathbf{E}_1\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+  \label{eq:Dx1_op} \\
+  D_x^{(2)}\bm{p} &\equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+  \label{eq:Dx2_op}
+\end{align}
+という $\bm{p}$ に対する\textbf{線形演算子}として定義される．
+
+\begin{tcolorbox}[defbox, title={CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}$ の定義}]
+1次元の（等密度）ラプラシアン $\mathcal{L}p = \partial^2 p/\partial x^2$ を
+CCD 法で離散化した演算子行列を：
+\begin{equation}
+  \boxed{
+    \mathbf{L}_{\mathrm{CCD}}^{(x)} \equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}
+    \in \mathbb{R}^{N \times N}
+  }
+  \label{eq:L_CCD_def}
+\end{equation}
+と定義する．$\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は $N \times N$ の行列であり，
+入力 $\bm{p} \in \mathbb{R}^N$（圧力値ベクトル）に対して
+$\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p} \approx [p''_0, p''_1, \dots, p''_{N-1}]^\top$（$\Ord{h^6}$ 精度）
+を返す．
+
+\textbf{注意：} $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ を陽に組み立てる必要はない．
+各反復において $\mathcal{M}_{\mathrm{CCD}}$ に対するブロック Thomas 法を適用することで，
+$O(N)$ のコストで $\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}$ の積ベクトルが得られる
+（行列-ベクトル積の\textbf{matrix-free 実装}）．
+\end{tcolorbox}
+
+\subsubsection{変密度場における CCD-Poisson 演算子}
+\label{sec:ccd_varrho_op}
+
+変密度 PPE の演算子 $\mathcal{L}^{\rho}p = \nabla\cdot(1/\rho\,\nabla p)$ を
+CCD 法で離散化する．1次元では：
+\begin{equation}
+  \mathcal{L}^{\rho}p
+  = \frac{1}{\rho}\frac{\partial^2 p}{\partial x^2}
+  + \frac{\partial}{\partial x}\!\left(\frac{1}{\rho}\right)\frac{\partial p}{\partial x}
+  = \frac{1}{\rho}\,p'' - \frac{\rho_x}{\rho^2}\,p'
+  \label{eq:varrho_op_1d}
+\end{equation}
+ここで $\rho_x = \partial\rho/\partial x$ は CCD 法でも求められる（密度場 $\rho$ への CCD 適用）．
+
+格子点ごとに密度行列 $\boldsymbol{\Lambda}_\rho = \mathrm{diag}(\rho_0, \dots, \rho_{N-1})$ を用いると，
+変密度 CCD-Poisson 演算子は：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}
+  = \boldsymbol{\Lambda}_\rho^{-1}\,\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}
+  - \boldsymbol{\Lambda}_\rho^{-2}\,\mathrm{diag}(D_x^{(1)}\bm{\rho})\,D_x^{(1)}\bm{p}
+  \label{eq:L_CCD_varrho}
+\end{equation}
+となる（$\bm{\rho} = [\rho_0, \dots, \rho_{N-1}]^\top$ は密度ベクトル）．
+2次元では $x$・$y$ 方向の和として：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho} = \mathbf{L}_{\mathrm{CCD}}^{\rho,x} + \mathbf{L}_{\mathrm{CCD}}^{\rho,y}
+  \label{eq:L_CCD_2d}
+\end{equation}
+
+\noindent 等密度場（$\rho = \text{const}$）における $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は，
+適切な境界条件（ディリクレまたは Neumann）のもとで\textbf{負半定値}行列である
+（全固有値 $\lambda_k \le 0$）．これはラプラシアンの本質的性質と一致する．
+
+変密度場では $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の対称性は厳密には成立しないが，
+仮想時間反復の収束性は演算子の\textbf{スペクトル半径}に支配されるため，
+実用上は十分な収束が得られる（第\ref{sec:pressure}章，§\ref{sec:ppe_pseudotime}）．
+
+なお，CCD ブロック Thomas 法によって $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p}$ を陽に組み立てない
+\textbf{matrix-free} 評価が可能であり，大規模問題に対する記憶効率が高い．
+
+\subsubsection{CCD 法の2つの役割の統合的理解}
+
+以上から，本稿における CCD 法の役割を以下の2つの観点でまとめる．
+
+\noindent\textbf{役割 1：微分演算子}（第\ref{sec:CCD}章 §\ref{sec:ccd_motivation}--§\ref{sec:ccd_mixed}）
+
+既知の関数 $f$（例：レベルセット関数 $\phi$，速度 $\bu$）から，
+$\Ord{h^6}$ 精度の微分値 $f', f''$ および混合微分 $f_{xy}$ を求める．
+\begin{itemize}
+  \item 曲率 $\kappa$ の高精度計算（表面張力に不可欠）
+  \item 粘性項 $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ の空間微分評価
+\end{itemize}
+
+\medskip
+\noindent\textbf{役割 2：楕円型ソルバーの構成要素}（本節 §\ref{sec:ccd_elliptic}，第\ref{sec:pressure}章 §\ref{sec:ppe_pseudotime}）
+
+未知の圧力場 $p$ に対して CCD を適用し，演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ を構成する．
+PPE $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p} = \bm{q}$ を仮想時間陰解法で解く：
+\begin{equation}
+  \underbrace{\bigl(\mathbf{I} + \Delta\tau\,\mathbf{L}_{\mathrm{CCD}}^{\rho}\bigr)}_{\text{CCD 陰的演算子}}\bm{p}^{m+1}
+  = \bm{p}^m + \Delta\tau\,\bm{q}
+  \label{eq:ccd_implicit_iteration}
+\end{equation}
+\begin{itemize}
+  \item $\Ord{h^6}$ 精度の楕円型演算子（FVM の $\Ord{h^2}$ を超える）
+  \item matrix-free 実装による $O(N)$ 記憶量
+  \item 無条件安定（仮想時間刻み $\Delta\tau$ に制限なし）
+\end{itemize}
+
+\noindent 従来の PPE ソルバー（BiCGSTAB + FVM）は $\Ord{h^2}$ 精度の空間離散化を使うため，
+密度比 $\rho_l/\rho_g = 1000$ のような強い変密度場では係数行列が悪条件化しやすい．
+
+CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ は 6 次精度のため，
+同じ格子解像度でより正確な圧力場が得られ，
+結果として速度補正の精度（寄生流れの低減）も向上する．
+
+さらに，CCD の構造的特徴（ブロック Thomas 法の $O(N)$ コスト）を
+仮想時間反復の各ステップで直接活用できる点が，
+Krylov 法（GMRES 等）単独の使用に比べた優位性である：
+CCD スウィープが\textbf{前処理} (preconditioner) の役割を果たす．

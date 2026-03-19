@@ -68,7 +68,7 @@
 
 ## **2. Paper Structure**
 
-> **WARNING — filename ≠ chapter number.** `main.tex` reorders the `\input{}` calls so that `08_time_integration.tex` becomes §4 and `04_ccd.tex` becomes §5. Always consult `main.tex` comments (`%% 第N章`) as the authoritative chapter number, never the file-name prefix.
+File-number prefixes now match chapter numbers. `main.tex` is authoritative for include order. Sub-files (`05b_`, `08b_`, `08c_`) are included without a `\clearpage` break — they continue their parent chapter.
 
 | File | Chapter | Content |
 |------|---------|---------|
@@ -76,11 +76,14 @@
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
 | `02_governing.tex` | §2 Governing Equations | One-Fluid NS, CSF, Heaviside, ψ-convention (液相≈0, 気相≈1) |
 | `03_levelset.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), logit inverse |
-| `08_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
-| `04_ccd.tex` | §5 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme (O(h⁵)/O(h²)) |
-| `05_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
-| `06_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
-| `07_pressure.tex` | §8 Pressure Solver | Variable-density PPE, pseudo-time implicit, BiCGSTAB (tab:ppe_methods) |
+| `04_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
+| `05_ccd.tex` | §5 CCD | O(h⁶) scheme, boundary scheme (O(h⁵)/O(h²)), block Thomas solver |
+| `05b_ccd_extensions.tex` | §5 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
+| `06_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
+| `07_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
+| `08_pressure.tex` | §8 Pressure Solver | Variable-density PPE derivation, FVM discretization, pseudo-time implicit |
+| `08b_ccd_poisson.tex` | §8 cont. | CCD-Poisson matrix structure, Balanced-Force consistency, method comparison |
+| `08c_ppe_verification.tex` | §8 cont. | CCD-Poisson solver unit tests (Test C-1, C-2, C-3) |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
 | `10_verification_metrics.tex` | §10 Verification | Error norms, tab:error_budget (CSF bottleneck O(ε²)≈O(h²)) |
 | `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (逐次Thomas法), future work |
