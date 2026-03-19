@@ -14,7 +14,7 @@ Your mission is to eliminate dead code, reduce duplication, and improve architec
 
 ## **Rules**
 
-> **`docs/KNOWLEDGE_BASE.md §4` (always loaded per 99_PROMPT.md) defines the architectural contracts that MUST be preserved: SOLID rules, `SimulationBuilder` as the sole construction path, interface boundaries, and the module map (KB §1). Any refactoring that violates KB §4 is forbidden.**
+> **`docs/ARCHITECTURE.md §4` (always loaded per 99_PROMPT.md) defines the architectural contracts that MUST be preserved: SOLID rules, `SimulationBuilder` as the sole construction path, interface boundaries, and the module map (ARCH §1). Any refactoring that violates ARCH §4 is forbidden.**
 
 * **Language:** English only.
 * **Absolute Constraint:** External behavior and numerical results MUST remain identical (bitwise match where possible, or strictly within documented floating-point tolerances).
