@@ -66,6 +66,103 @@
 - Move tangential detail to `appendix_proofs.tex`. Do not detour readers in the main text.
 - Every equation must be followed by its physical meaning and implementation implications (Pedagogy First).
 
+## **3. Whole-Paper Consistency Review Checklist**
+
+> These rules were distilled from FATAL errors found *after* 22+ EDITOR sweeps.
+> Each item captures a class of bug that recurred because no explicit rule existed for it.
+> Apply this checklist whenever a CRITIC or EDITOR pass is run.
+
+---
+
+### 3-A. スキーム変更の全ファイル波及チェック (Scheme-Change Propagation)
+
+**Rule:** When a core numerical scheme description changes (e.g., Chorin → AB2+IPC, 前進Euler → AB2), **every file that mentions the old scheme must be updated** — not just the primary chapter.
+
+**Mandatory propagation targets for any time/space accuracy claim:**
+
+| File | What to check |
+|------|--------------|
+| `00_abstract.tex` | Summary table rows (time integration, bottleneck accuracy) |
+| `01_introduction.tex` | Overview bullet list (`\textbf{時間積分：}` etc.) + chapter-overview table (tab:chapter_overview) |
+| Primary chapter body | The defining section itself |
+| Accuracy summary table | Every row listing the scheme's order |
+| `11_conclusion.tex` | Per-chapter summary bullet + accuracy balance paragraph |
+| Appendix | Any section citing the scheme or its order |
+
+**Trigger:** Any edit that changes an O(Δtⁿ) order, replaces a named scheme, or renames a method.
+**How to verify:** `grep -r "Chorin\|前進 Euler\|O(\\Delta t)"` across all `sections/*.tex` after the change.
+
+---
+
+### 3-B. `\ref` と `\label` のペア完全性 (Paired Label Audit)
+
+**Rule:** Every `\ref{X}` (or `\eqref{X}`) added to any file must have a matching `\label{X}` **somewhere** in the compiled document. Adding a `\ref` without verifying the `\label` exists is a build-breaking error.
+
+**Procedure after adding any `\ref{sec:foo}` or `\ref{eq:bar}`:**
+1. `grep -r "\\label{sec:foo}" paper/sections/` — must return exactly one hit.
+2. If zero hits → add `\label{sec:foo}` at the appropriate location before committing.
+3. If two hits → remove the duplicate (LaTeX will multiply-defined warning).
+
+**Common source of missing labels:** A warnbox or resultbox is rewritten to reference a new `sec:` label that does not yet exist in the target section (e.g., `\ref{sec:ipc_derivation}` added to `08b_ccd_poisson.tex` but `\label{sec:ipc_derivation}` not yet placed in `04b_time_schemes.tex`).
+
+---
+
+### 3-C. 数式の中間ステップ整合性 (Intermediate-Step Accuracy Audit)
+
+**Rule:** In Taylor expansion derivations (especially in appendices justifying O(hᵏ) claims), **every intermediate step must be individually correct** — not just the final conclusion.
+
+**Failure pattern:** The final conclusion "差は O(h²)" can be correct even when an intermediate step wrongly claims "O(h⁶)" for a quantity that is only O(h²). Pedagogically, wrong intermediate steps mislead readers who want to understand the derivation.
+
+**Checklist for each Taylor expansion:**
+- Write out the full expansion for each term separately.
+- State the order of **each** term before combining.
+- The stated order of an *arithmetic average* of two values at $x ± h/2$ is only O(h²) from the midpoint, **not** O(h⁶), even if each value was computed with O(h⁶) CCD accuracy (the averaging introduces an O(h²) centering error — see appendix_numerics §app:rc_precision for the fixed derivation).
+- Only claim O(hⁿ) for an expression after verifying the coefficient of the leading error term.
+
+---
+
+### 3-D. 同一パラメータの多箇所一貫性 (Multi-Site Parameter Consistency)
+
+**Rule:** When a numerical parameter (ε_tol, Δτ_opt, C_τ, Δτ_par, etc.) is mentioned in multiple sections with constraints or recommended values, **all mentions must be mutually non-contradictory**.
+
+**Failure pattern:** One section states "X = 10⁻⁸ does not satisfy the condition" while another section recommends "X = 10⁻⁸ as the example value." Both can appear in the same file after incremental edits.
+
+**How to check:** For each parameter P that appears in a `resultbox` or `warnbox`, grep all sections for P and read every occurrence in sequence. Ask: is there any pair of sentences that assert contradictory constraints?
+
+**Parameters in this paper requiring cross-section consistency:**
+
+| Parameter | Defined/constrained in | Referenced in |
+|-----------|----------------------|---------------|
+| `ε_tol` | `08_pressure.tex` (eq:etol_physical) | `08_pressure.tex` (box:dtau_impl), `09_full_algorithm.tex` |
+| `Δτ_opt` | `08_pressure.tex` (eq:dtau_opt) | `appendix_proofs.tex` (sec:dtau_derive) |
+| `Δτ_par` (CLS) | `03_levelset.tex` | `03_levelset.tex` warnbox |
+| Time accuracy order | `04b_time_schemes.tex` (tab, sec:time_accuracy_table) | `00_abstract.tex`, `01_introduction.tex`, `08b_ccd_poisson.tex`, `11_conclusion.tex` |
+
+---
+
+### 3-E. アルゴリズムの循環依存・ブートストラップの明示 (Bootstrap Requirement)
+
+**Rule:** Any algorithm that requires input X which is itself derived from the algorithm's output must explicitly describe the **initialization sequence** (bootstrap) that breaks the circularity.
+
+**Failure pattern:** The 2D non-uniform grid algorithm requires φ to compute ω(φ), but φ is defined on the grid — circular. Without an explicit "compute φ on uniform grid first" note, implementers are stuck.
+
+**Checklist:** For each algorithm box (`algbox`) in the paper:
+- Identify every input quantity.
+- For each input, ask: "Is this quantity available before this algorithm runs for the first time?"
+- If no → document the bootstrap: (1) initial uniform-grid estimate, (2) full algorithm using that estimate, (3) optional re-run when input changes significantly.
+
+---
+
+### 3-F. 複数オプション提示後の選択ガイド必須 (Selection Guide Completeness)
+
+**Rule:** Whenever a section derives or presents **multiple variants** of a scheme, boundary condition, or solver (e.g., one-sided BC vs. ghost-cell BC; BiCGSTAB vs. pseudo-time; ADI vs. sweep), a **practical selection guide must conclude the section**.
+
+**Failure pattern:** Multiple variants are derived and their properties noted, but no guidance is given on *which to choose when*. Readers are left without actionable information.
+
+**Required format:** A short table or `mybox` at the end of the section with columns: "Situation | Recommended choice | Notes". See `05b_ccd_bc_matrix.tex` (box:ccd_bc_guide) and `08_pressure.tex` (tab:ppe_methods) as reference examples.
+
+---
+
 ## **2. Paper Structure**
 
 File-number prefixes now match chapter numbers. `main.tex` is authoritative for include order. Sub-files (`05b_`, `08b_`, `08c_`) are included without a `\clearpage` break — they continue their parent chapter.
