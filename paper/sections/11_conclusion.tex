@@ -60,8 +60,8 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
         Lax--Friedrichs フラックス分割・滑らかさ指標・非線形重みの
         理論と実装係数を詳述した（§\ref{sec:weno5}）．
         CLS 移流・再初期化には TVD-RK3（Shu--Osher 1988）を適用し，全変動非増大性を保証した．
-        全体時間精度が \textbf{Projection 法スプリッティング誤差 $O(\Delta t)$} に律速されること
-        および NS 対流項の前進 Euler も同次数であることを明示した（§\ref{sec:time_int}）．
+        AB2 対流外挿と IPC スプリッティングの組み合わせにより
+        \textbf{全体時間精度 $O(\Delta t^2)$} を達成したことを明示した（§\ref{sec:time_int}）．
         毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を分散関係から導出した（§\ref{sec:stability}）．
 
   \item[\textbf{第\ref{sec:CCD}章：結合コンパクト差分法（CCD 法）}]
@@ -111,7 +111,7 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
 （1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・WENO5 $\Ord{h^5}$ と高次で統一されているが，
 CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間律速段階であり，
 界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である，
-（2）時間精度は Projection 法スプリッティング誤差 $O(\Delta t)$ に律速されている，
+（2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
 の2点が挙げられる（詳細は§\ref{sec:pressure_accuracy_summary}参照）．
 これらの特性は意図的な設計選択であり，
 空間全コンポーネントの高次精度統一と曲率計算の高精度化が寄生流れを直接抑制するという工学的意義に基づく．
