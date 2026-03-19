@@ -1,0 +1,281 @@
+% paper/sections/03b_levelset_mapping.tex
+%
+% §3 CLS 法の続き（03_levelset.tex からの分割）
+% 内容：ψ-φ 関係・逆変換・曲率の数値計算と安定化
+%
+\subsection{\texorpdfstring{$\psi$}{ψ} と \texorpdfstring{$\phi$}{φ} の関係}
+\label{sec:levelset_mapping}
+
+\begin{tcolorbox}[defbox, title={$\psi$--$\phi$ 対応付けと解析的逆変換（ロジット関数）}]
+Conservative Level Set 変数 $\psi$ と符号付き距離関数 $\phi$ は以下の関係にある：
+\begin{equation}
+  \psi(\bm{x},t) \equiv H_\varepsilon(\phi(\bm{x},t)), \qquad \bnabla\psi = \delta_\varepsilon(\phi)\,\bnabla\phi
+\end{equation}
+物性値補間 $\rho(\psi), \mu(\psi)$ には $\psi$ を直接用い，
+曲率計算などの幾何学的操作（法線 $\hat{\bm n}$，曲率 $\kappa$）には $\phi$ を用いる．
+
+\medskip
+\textbf{逆変換（$\psi \to \phi$）：}
+CLS 法の移流計算は $\psi$ で行うが，幾何量計算には $\phi$ が必要である．
+$H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ はシグモイド型関数であり，
+その逆関数（ロジット関数）は\textbf{解析的に求まる}：
+\begin{equation}
+  \phi = H_\varepsilon^{-1}(\psi) = \varepsilon\ln\!\left(\frac{\psi}{1-\psi}\right)
+  \label{eq:logit_inverse}
+\end{equation}
+$H_\varepsilon$ は単調増加関数（$H_\varepsilon' > 0$）であるから，解は一意に定まる．
+唯一の実装上の注意は，$\psi \to 0$ または $\psi \to 1$ の\textbf{飽和領域}で
+対数引数が $0$ または $\infty$ に近づき浮動小数点オーバーフローが生じる点である．
+この場合は $|\phi| = \phi_{\max}$ に飽和させる（§\ref{sec:newton_inversion} 参照）．
+\end{tcolorbox}
+
+\subsubsection{逆変換の実装：解析的逆関数と飽和処理}
+\label{sec:newton_inversion}
+
+式~\eqref{eq:logit_inverse} で示したように，逆変換は\textbf{ロジット関数}によって点ごとに $O(1)$ で実行できる．
+実装上の唯一の注意点は飽和領域における浮動小数点オーバーフローの回避である．
+
+以下に実装の全手順を示す．
+
+\begin{tcolorbox}[algbox, title={$\psi \to \phi$ 逆変換の実装手順（全格子点に対して点別に実行）}]
+\begin{enumerate}
+  \item \textbf{飽和判定：} $\psi_i < \delta_{\text{clamp}}$ または $\psi_i > 1 - \delta_{\text{clamp}}$（例：$\delta_{\text{clamp}} = 10^{-6}$）を確認する．
+  \item \textbf{飽和領域：} 飽和している点では $\phi_i = \mp\phi_{\max}$ に固定する（$\phi_{\max}$ の選択は §\ref{sec:levelset_mapping}参照）．
+  \item \textbf{標準領域：} 飽和していない点では解析的逆変換
+        \[
+          \phi_i = \varepsilon\ln\!\left(\frac{\psi_i}{1-\psi_i}\right)
+        \]
+        を直接計算する．計算コストは対数1回のみ（$O(1)$ per point）．
+\end{enumerate}
+
+\textbf{備考：}
+\begin{itemize}
+  \item ニュートン反復は\textbf{不要}である．解析的逆関数は残差ゼロを代数的に保証する．
+  \item 飽和処理後，逆変換された $\phi$ のプロファイルが $|\nabla\phi|\approx 1$ を満たしているかを
+        確認するため，CLS 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）を数回適用することが推奨される．
+  \item 飽和領域の格子点は界面から遠く（$|\phi| \gg \varepsilon$），
+        $|\nabla\psi| \approx 0$ であるため曲率計算に寄与しない．
+\end{itemize}
+\end{tcolorbox}
+
+\begin{equation}
+  \phi^{(k+1)} = \phi^{(k)} - \frac{H_\varepsilon(\phi^{(k)}) - \psi_i}{\dfrac{1}{\varepsilon}H_\varepsilon(\phi^{(k)})\bigl(1-H_\varepsilon(\phi^{(k)})\bigr)}
+  \label{eq:newton_inversion}
+\end{equation}
+式~\eqref{eq:newton_inversion} は飽和領域でニュートン法を使う場合の更新式である（通常は不要）．
+飽和領域での二次収束の理論的証明は付録~\ref{app:newton_quad_conv} を参照されたい．
+
+\begin{tcolorbox}[defbox, title={飽和処理のパラメータ $\phi_{\max}$ の選択根拠}]
+飽和条件：$|\psi_i - 0.5| > 1 - \delta_{\text{clamp}}$（例 $\delta_{\text{clamp}} = 10^{-6}$）の点を
+$\phi_i = \mp\phi_{\max}$ に固定する．
+
+\textbf{$\phi_{\max}$ の選択基準：} $H_\varepsilon(\phi_{\max}) > 1 - \delta_{\text{clamp}}$ となる最小値を選ぶ．
+具体的には：
+\[
+  H_\varepsilon(\phi_{\max}) = \frac{1}{1+e^{-\phi_{\max}/\varepsilon}} = 1 - \delta_{\text{clamp}}
+  \quad\Longrightarrow\quad
+  \phi_{\max} = \varepsilon\ln\!\left(\frac{1-\delta_{\text{clamp}}}{\delta_{\text{clamp}}}\right)
+\]
+$\delta_{\text{clamp}} = 10^{-6}$ を代入すると $\phi_{\max} \approx \varepsilon \cdot \ln(10^6) \approx 13.8\varepsilon$．
+
+よって，\textbf{飽和値 $\phi_{\max} = 5\varepsilon$ は過小評価}である：
+$H_\varepsilon(5\varepsilon) = 1/(1+e^{-5}) \approx 0.9933$，すなわち $\psi = 0.9993$ という純液相に近い点でも
+$\phi = 5\varepsilon$ に飽和させてしまい，$\phi$ の値に $\approx 0.007\varepsilon$ の誤差が生じる．
+
+\textbf{推奨値：} $\phi_{\max} = 10\varepsilon$（$H_\varepsilon(10\varepsilon) \approx 1 - 4.5\times10^{-5}$）
+または $\phi_{\max} = 15\varepsilon$（$H_\varepsilon(15\varepsilon) \approx 1 - 3\times10^{-7}$，$\delta_{\text{clamp}} = 10^{-6}$ と整合）．
+
+\textbf{曲率計算への影響：} 飽和した格子点（$|\phi| = \phi_{\max}$）では $|\nabla\phi|$ の計算に誤差が生じる
+可能性があるが，これらの点は界面から遠く離れており（$|\phi| \gg \varepsilon$），
+$|\nabla\psi| \approx 0$ であるため曲率計算には実質的に寄与しない（$\delta_\varepsilon(\phi_{\max}) \approx 0$）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={ロジット逆変換 vs. Sussman 再初期化：$\psi \to \phi$ 変換の選択}]
+本節で確立したロジット解析逆変換（式~\eqref{eq:logit_inverse}）と
+標準 LS 法で使われる Sussman 再初期化を比較する．
+\begin{center}
+\begin{tabular}{lll}
+\hline
+ & \textbf{ロジット逆変換（本稿）} & \textbf{Sussman 再初期化} \\
+\hline
+対象 & $\psi \to \phi$ の点ごとの変換 & $\phi$ のみを直接更新 \\
+計算式 & $\phi = \varepsilon\ln(\psi/(1-\psi))$（解析的） & $\partial\phi/\partial\tau + \mathrm{sgn}(\phi_0)(|\bnabla\phi|-1)=0$ \\
+コスト & $O(N)$，1 回の対数計算 & $O(N \cdot N_\tau)$，PDE を反復求解 \\
+精度 & $\phi = H_\varepsilon^{-1}(\psi)$ の厳密な逆変換 & $|\bnabla\phi|=1$ を修正するが $\psi$ との整合性なし \\
+適合 & CLS 法（$\psi$ が基本変数） & 標準 LS 法（$\phi$ が基本変数） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{本稿の選択：} CLS 法では $\psi$ を移流して保存性を得るのが主目的であり，
+$\phi$ はあくまで幾何量（法線・曲率）計算の補助として使う．
+ロジット関数は各格子点で $O(N)$ の計算（対数1回）で完結し，
+$\psi$ と $\phi$ の整合性を代数的に厳密に保てるため，CLS 法に自然に適合する．
+飽和域（$\psi \to 0$ または $\psi \to 1$）のみニュートン法のフォールバックを用いるが，
+対象格子点数は $O(e^{-15})$ 以下であり計算コストは無視できる（付録~\ref{app:newton_quad_conv} 参照）．
+Sussman 再初期化は $\phi$ の符号付き距離性質（$|\bnabla\phi|=1$）を直接維持したい
+標準 LS 法に適しており，CLS 法との組み合わせでは過剰なコストと $\psi$--$\phi$ 不整合を生む恐れがある．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{曲率の数値計算と安定化：再初期化との接続}
+\label{sec:curvature_stab}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+第\ref{sec:governing}章 §\ref{sec:curvature}（式~\eqref{eq:curvature_2d}）で曲率の展開式を導出し，
+§\ref{sec:csf} の box~\ref{box:curvature_stab} で実装クイックスタート（分母クランプ式 \eqref{eq:curvature_clamped}）を提示した．
+\textbf{本節の目的}は，そのクランプが「なぜ必要か」を CLS 再初期化の文脈から説明することである：
+ゼロ除算は再初期化の不完全性に起因するため，クランプは応急処置であり，
+根本的な保証は再初期化の品質にある——この因果関係を以下で定量的に示す．
+
+第\ref{sec:governing}章（式~\eqref{eq:curvature_2d}）で導出した2次元曲率の展開式
+\[
+  \kappa = -\frac{
+    \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy}
+  }{\bigl(\phi_x^2 + \phi_y^2\bigr)^{3/2}}
+\]
+は数学的には厳密であるが，数値計算で直接使用するには注意が必要である．
+問題の核心は\textbf{分母 $(\phi_x^2+\phi_y^2)^{3/2}$ のゼロ除算リスク}であり，
+これは CLS 再初期化の品質（Eikonal 条件 $|\bnabla\phi|=1$ の維持）と
+密接に関連した実装上の重要課題である——以下に詳述する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{ゼロ除算の発生メカニズム：再初期化の不完全性との関係}
+% ─────────────────────────────────────────────────────────────────────────────
+
+真の符号付き距離関数 $\phi$ であれば，Eikonal 条件 $|\bnabla\phi|=1$ が
+至るところで成立するため，分母は常に $1^{3/2}=1$ となりゼロ除算は起きない．
+しかし，数値計算では以下の理由により $|\bnabla\phi|$ が小さくなる場合がある：
+
+\begin{enumerate}
+  \item \textbf{移流誤差の蓄積：}
+        WENO5 + TVD-RK3 による $\psi$ の移流は高精度だが，
+        有限の数値誤差により $\psi$ のプロファイルが徐々に崩れ，
+        $\phi = H_\varepsilon^{-1}(\psi)$ の逆変換後に $|\bnabla\phi|$ が
+        Eikonal 条件から外れることがある．
+
+  \item \textbf{再初期化の不完全収束：}
+        CLS 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）の仮想時間積分を
+        有限回数で打ち切るため，$\psi = H_\varepsilon(\phi)$ への整形が
+        完全には完了しない場合がある．特に界面が急激に変形・合体・
+        分裂する直後は，$|\bnabla\phi|$ が局所的に小さくなりやすい．
+
+  \item \textbf{格子点での偶発的なゼロ：}
+        格子が界面の特異点（鞍点，頂点など）付近に来たとき，
+        $\phi_x^2+\phi_y^2 \approx 0$ となる格子点が現れることがある．
+\end{enumerate}
+
+以上のすべての状況で，式~\eqref{eq:curvature_2d} をそのまま計算すると
+$0/0$ という数値的不定形が生じ，$\kappa$ が非常に大きな誤った値を取って
+表面張力項が発散し，シミュレーション全体が不安定化する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{ゼロ除算の回避：分母への下限値の導入}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[warnbox, title={実装上の重要事項：ゼロ除算の回避（必須実装）}]
+式~\eqref{eq:curvature_2d} の数値実装では，分母にゼロ除算防止のための
+\textbf{下限値 $\varepsilon_{\text{norm}}^2$} を加える：
+\begin{equation}
+  \kappa \approx -\frac{
+    \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy}
+  }{\max\!\bigl(\phi_x^2 + \phi_y^2,\; \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
+  \label{eq:curvature_regularized}
+\end{equation}
+この変更により：
+\begin{itemize}
+  \item $|\bnabla\phi|^2 \gg \varepsilon_{\text{norm}}^2$ の正常な界面近傍では，
+        式~\eqref{eq:curvature_2d} と実質的に同一の結果を与える．
+  \item $|\bnabla\phi|^2 \lesssim \varepsilon_{\text{norm}}^2$ の特異点付近では，
+        分母が $\varepsilon_{\text{norm}}^3$ に固定され，$\kappa$ の値が
+        有界に保たれる（ただし精度は低下する）．
+\end{itemize}
+
+\textbf{$\varepsilon_{\text{norm}}$ の選択基準：}
+$\varepsilon_{\text{norm}}$ は，「曲率計算が必要な界面近傍では意味のある $|\bnabla\phi|$ を持つ」
+という前提のもと，数値ノイズのみを除去する程度の小さい値とする．
+
+\begin{itemize}
+  \item 再初期化が正常に機能していれば $|\bnabla\phi| \approx 1$ であるため，
+        $\varepsilon_{\text{norm}} = 10^{-3} \sim 10^{-4}$（次元なし）で十分である．
+  \item $\varepsilon_{\text{norm}}$ が大きすぎると，界面の曲率が系統的に過小評価される：
+        曲率の相対誤差は $\mathcal{O}(\varepsilon_{\text{norm}}^2/|\bnabla\phi|^2)$ 程度である．
+  \item \textbf{推奨値：} $\varepsilon_{\text{norm}} = 10^{-3}$（ほとんどの問題設定で安全）．
+        密度比 $\rho_l/\rho_g \gg 1$ で Eikonal 誤差が大きい場合は $10^{-2}$ も検討する．
+\end{itemize}
+\end{tcolorbox}
+
+$|\bnabla\phi|^2 = 1 + \delta^2$（$\delta$ は Eikonal 誤差）の場合，$|\bnabla\phi|^2 \gg \varepsilon_{\text{norm}}^2$ のとき $\max$ は $|\bnabla\phi|^2$ を選ぶので：
+\begin{align*}
+  \kappa_{\text{reg}} &= -\frac{\text{分子}}{(1+\delta^2)^{3/2}}
+  \approx -\frac{\text{分子}}{1} \cdot \left(1 - \frac{3}{2}\delta^2 + \cdots\right)
+\end{align*}
+Eikonal 誤差 $\delta \ll 1$ のとき曲率への影響は $\mathcal{O}(\delta^2)$ に留まり，
+再初期化が概ね正常に機能している限り高精度が維持される．
+すなわち，\textbf{曲率精度の第一の保証は正則化ではなく，再初期化の品質（Eikonal 条件の維持）にある}．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{ガウシアンフィルタによる曲率ノイズの低減}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式~\eqref{eq:curvature_regularized} で求めた曲率 $\kappa$ には，
+格子スケールの高周波数ノイズが重畳することがある．
+これは曲率計算が $\phi$ の\textbf{2次微分}を含むため，
+格子スケールの $\phi$ の誤差（1次微分の誤差）がさらに増幅されるためである．
+
+\begin{tcolorbox}[mybox, title={ガウシアンフィルタの適用}]
+曲率の高周波数ノイズを低減するため，$\phi$ に対してガウシアンフィルタを
+適用した後に曲率を計算する（または $\kappa$ そのものをフィルタする）方法がある：
+
+\textbf{格子フィルタ（2次元，$3\times 3$ カーネル）：}
+\[
+  \tilde{\phi}_{i,j} = \frac{1}{16}\begin{pmatrix} 1 & 2 & 1 \\ 2 & 4 & 2 \\ 1 & 2 & 1 \end{pmatrix} * \phi_{i,j}
+\]
+この操作は $\phi$ の空間スペクトルの高周波成分を減衰させ，
+曲率計算に伴うノイズを低減する．
+
+\textbf{適用に関する注意：}
+\begin{itemize}
+  \item フィルタはあくまで補助的な手段であり，
+        \textbf{根本的な解決策は再初期化の品質向上}である．
+  \item フィルタを頻繁・過剰に適用すると，界面形状そのものを平滑化してしまい，
+        物理的な曲率精度が低下する（液滴半径が大きく見えるなどの系統誤差）．
+  \item CCD 法（第\ref{sec:CCD}章）による $O(h^6)$ 精度の微分計算は，
+        フィルタなしでも十分な曲率精度を提供できる場合が多く，
+        本稿の基本実装ではフィルタを省略して CCD の精度に依拠する方針とする．
+\end{itemize}
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{曲率計算の実装チェックリスト}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[algbox, title={曲率計算の実装チェックリスト}]
+\begin{enumerate}
+  \item \textbf{$\phi$ の取得：}
+        移流後の $\psi^{n+1}$ から\textbf{ロジット逆変換}（§\ref{sec:newton_inversion}，
+        標準経路：$\phi = \varepsilon\ln\!\bigl(\psi/(1-\psi)\bigr)$；
+        $\psi < \delta_{\text{clamp}}$ または $\psi > 1-\delta_{\text{clamp}}$ の飽和域のみニュートン法）で
+        $\phi^{n+1}$ を計算する．
+
+  \item \textbf{再初期化の実行：}
+        CLS 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）を数回反復して
+        $\phi$ の Eikonal 条件 $|\bnabla\phi|\approx 1$ を可能な限り維持する．
+
+  \item \textbf{1次・2次微分の計算：}
+        $\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy}$ を CCD 法（第\ref{sec:CCD}章）で
+        $O(h^6)$ 精度で計算する．
+
+  \item \textbf{正則化された曲率の計算：}
+        式~\eqref{eq:curvature_regularized}（$\varepsilon_{\text{norm}} = 10^{-3}$ 推奨）
+        で $\kappa$ を計算する．
+
+  \item \textbf{（オプション）ガウシアンフィルタ：}
+        $\kappa$ または $\phi$ に $3\times 3$ ガウシアンフィルタを適用して
+        高周波数ノイズを低減する．高密度比問題では特に有効．
+
+  \item \textbf{単体テスト（半径 $R$ の円）：}
+        解析値 $\kappa = -1/R$ との誤差 $E_\kappa(h) = O(h^6)$ 収束を
+        $N = 16, 32, 64, 128$ で確認する（第\ref{sec:governing}章 §\ref{sec:curvature_circle_example}）．
+\end{enumerate}
+\end{tcolorbox}

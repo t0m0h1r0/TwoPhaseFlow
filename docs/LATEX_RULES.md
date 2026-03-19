@@ -74,11 +74,15 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 |------|---------|---------|
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, WENO5, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
-| `02_governing.tex` | §2 Governing Equations | One-Fluid NS, CSF, Heaviside, ψ-convention (液相≈0, 気相≈1) |
-| `03_levelset.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), logit inverse |
+| `02_governing.tex` | §2 | Variables, Two-Fluid → One-Fluid derivation, ψ-convention (液相≈0, 気相≈1) |
+| `02b_csf.tex` | §2 cont. | CSF surface tension model, δ-function volume force, Balanced-Force |
+| `02c_nondim_curvature.tex` | §2 cont. | Non-dimensionalization (Re/Fr/We), interface curvature κ |
+| `03_levelset.tex` | §3 | Why CLS, conservative advection, reinitialization (Δτ=0.25Δs) |
+| `03b_levelset_mapping.tex` | §3 cont. | ψ-φ mapping, logit inverse, curvature numerics & stabilization |
 | `04_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
-| `05_ccd.tex` | §5 CCD | O(h⁶) scheme, boundary scheme (O(h⁵)/O(h²)), block Thomas solver |
-| `05b_ccd_extensions.tex` | §5 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
+| `05_ccd.tex` | §5 | CCD motivation, definition, Equation-I & II coefficient derivations |
+| `05b_ccd_bc_matrix.tex` | §5 cont. | Boundary schemes (O(h⁵)/O(h²)), ghost-cell method, block tridiagonal matrix |
+| `05c_ccd_extensions.tex` | §5 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
 | `06_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
 | `07_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
 | `08_pressure.tex` | §8 Pressure Solver | Variable-density PPE derivation, FVM discretization, pseudo-time implicit |
