@@ -1,0 +1,324 @@
+% paper/sections/appendix_ccd.tex
+%
+% 付録（CCD 法の係数導出・境界スキーム係数導出）
+%   app:ccd_coef_derivation   — CCD 内点係数の Taylor 展開導出（親ラベル）
+%   app:ccd_coef_derivation_I — Equation-I 係数導出
+%   app:ccd_coef_derivation_II — Equation-II 係数導出
+%   app:ccd_bc_derivation     — CCD 境界スキーム係数導出（親ラベル）
+%   app:ccd_bc_derivation_I   — Equation-I 境界スキーム
+%   app:ccd_bc_derivation_II  — Equation-II 境界スキーム
+%
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{CCD 係数の Taylor 展開による厳密導出}
+\label{app:ccd_coef_derivation}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ccd_te_I} で述べた CCD スキームの係数
+$(\alpha_1, a_1, b_1)$ および $(\beta_2, a_2, b_2)$ を，
+Taylor 展開による打ち切り誤差解析から厳密に導出する．
+各 Equation の RHS を格子点 $i$ 周りで展開し，
+LHS との係数比較により3元連立方程式を立て，代数的に解く．
+
+\subsection{Equation-I の係数導出}
+\label{app:ccd_coef_derivation_I}
+
+Equation-I（式~\eqref{eq:CCD_I}）の各項を $f$ の Taylor 展開で表す．
+添字 $i\pm1$ の一次微分値と二次微分値は：
+\begin{align}
+  f'_{i\pm1} &= f'_i \pm hf''_i + \frac{h^2}{2}f^{(3)}_i \pm \frac{h^3}{6}f^{(4)}_i
+               + \frac{h^4}{24}f^{(5)}_i \pm \frac{h^5}{120}f^{(6)}_i
+               + \frac{h^6}{720}f^{(7)}_i + \Ord{h^7} \\
+  f''_{i\pm1} &= f''_i \pm hf^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i
+                + \frac{h^4}{24}f^{(6)}_i \pm \frac{h^5}{120}f^{(7)}_i + \Ord{h^6}
+\end{align}
+関数値については：
+\begin{align}
+  f_{i+1} - f_{i-1} &= 2hf'_i + \frac{h^3}{3}f^{(3)}_i + \frac{h^5}{60}f^{(5)}_i
+                       + \frac{h^7}{2520}f^{(7)}_i + \Ord{h^8}
+\end{align}
+
+\subsubsection*{左辺（LHS）の展開}
+
+\begin{align}
+  \text{LHS} &= \alpha_1 f'_{i-1} + f'_i + \alpha_1 f'_{i+1}
+  = (1 + 2\alpha_1)f'_i + \alpha_1 h^2 f^{(3)}_i
+    + \frac{\alpha_1}{12}h^4 f^{(5)}_i + \frac{\alpha_1}{360}h^6 f^{(7)}_i + \Ord{h^7}
+\end{align}
+
+\subsubsection*{右辺（RHS）の展開}
+
+\begin{align}
+  \frac{a_1}{h}(f_{i+1}-f_{i-1})
+  &= 2a_1 f'_i + \frac{a_1}{3}h^2 f^{(3)}_i + \frac{a_1}{60}h^4 f^{(5)}_i
+     + \frac{a_1}{2520}h^6 f^{(7)}_i + \Ord{h^7} \\
+  b_1 h\bigl(f''_{i+1}-f''_{i-1}\bigr)
+  &= 2b_1 h^2 f^{(3)}_i + \frac{b_1}{3}h^4 f^{(5)}_i
+     + \frac{b_1}{60}h^6 f^{(7)}_i + \Ord{h^7}
+\end{align}
+
+合計：
+\begin{equation}
+  \text{RHS} = 2a_1 f'_i
+  + \Bigl(\frac{a_1}{3} + 2b_1\Bigr)h^2 f^{(3)}_i
+  + \Bigl(\frac{a_1}{60} + \frac{b_1}{3}\Bigr)h^4 f^{(5)}_i
+  + \Bigl(\frac{a_1}{2520} + \frac{b_1}{60}\Bigr)h^6 f^{(7)}_i + \Ord{h^7}
+\end{equation}
+
+\subsubsection*{係数比較と連立方程式}
+
+$\Ord{h^6}$ まで LHS $=$ RHS が成立するには，
+$f'_i$，$h^2 f^{(3)}_i$，$h^4 f^{(5)}_i$ の各係数が一致しなければならない：
+
+\begin{align}
+  f'_i       &:\quad 1 + 2\alpha_1 = 2a_1 \label{eq:app_I_eq1} \\
+  h^2 f^{(3)}_i &:\quad \alpha_1 = \frac{a_1}{3} + 2b_1 \label{eq:app_I_eq2} \\
+  h^4 f^{(5)}_i &:\quad \frac{\alpha_1}{12} = \frac{a_1}{60} + \frac{b_1}{3} \label{eq:app_I_eq3}
+\end{align}
+
+\subsubsection*{解法}
+
+式~\eqref{eq:app_I_eq1} より $a_1 = (1+2\alpha_1)/2$．
+式~\eqref{eq:app_I_eq2} より $b_1 = (\alpha_1 - a_1/3)/2$：
+\[
+  b_1 = \frac{1}{2}\!\left(\alpha_1 - \frac{1+2\alpha_1}{6}\right)
+      = \frac{1}{2}\cdot\frac{6\alpha_1 - 1 - 2\alpha_1}{6}
+      = \frac{4\alpha_1 - 1}{12}
+\]
+$a_1$ と $b_1$ を式~\eqref{eq:app_I_eq3} に代入：
+\[
+  \frac{\alpha_1}{12}
+  = \frac{1+2\alpha_1}{120} + \frac{4\alpha_1-1}{36}
+\]
+両辺に $360$ を掛けて整理：
+\[
+  30\alpha_1 = 3(1+2\alpha_1) + 10(4\alpha_1-1)
+             = 3 + 6\alpha_1 + 40\alpha_1 - 10
+             = 46\alpha_1 - 7
+\]
+\[
+  -16\alpha_1 = -7
+  \quad\Longrightarrow\quad
+  \alpha_1 = \frac{7}{16}
+\]
+
+以上より：
+\begin{alignat}{3}
+  \alpha_1 &= \frac{7}{16}, \qquad
+  &a_1 &= \frac{1+2\cdot(7/16)}{2} = \frac{1 + 7/8}{2} = \frac{15}{16}, \qquad
+  &b_1 &= \frac{4\cdot(7/16)-1}{12} = \frac{7/4-1}{12} = \frac{3/4}{12} = \frac{1}{16}
+\end{alignat}
+
+\subsubsection*{打ち切り誤差}
+
+$h^6 f^{(7)}_i$ の LHS 係数 $-$ RHS 係数：
+\[
+  TE_{\mathrm{I}} = \left(\frac{\alpha_1}{360} - \frac{a_1}{2520} - \frac{b_1}{60}\right)h^6 f^{(7)}_i
+\]
+数値代入：
+\begin{align*}
+  &\frac{7/16}{360} - \frac{15/16}{2520} - \frac{1/16}{60}
+  = \frac{1}{16}\!\left(\frac{7}{360} - \frac{15}{2520} - \frac{1}{60}\right) \\
+  &= \frac{1}{16}\!\left(\frac{49}{2520} - \frac{15}{2520} - \frac{42}{2520}\right)
+  = \frac{1}{16}\cdot\frac{-8}{2520}
+  = -\frac{1}{5040} = -\frac{1}{7!}
+\end{align*}
+したがって
+\[
+  TE_{\mathrm{I}} = -\frac{1}{7!}\,h^6 f^{(7)}_i = \Ord{h^6}
+\]
+が成立し，スキームが $\Ord{h^6}$ 精度であることが確認された．\qed
+
+\subsection{Equation-II の係数導出}
+\label{app:ccd_coef_derivation_II}
+
+Equation-II（式~\eqref{eq:CCD_II}）の各項を展開する．
+二次微分値と関数値の差分については：
+\begin{align}
+  f''_{i\pm1} &= f''_i \pm hf^{(3)}_i + \frac{h^2}{2}f^{(4)}_i \pm \frac{h^3}{6}f^{(5)}_i
+                + \frac{h^4}{24}f^{(6)}_i \pm \frac{h^5}{120}f^{(7)}_i
+                + \frac{h^6}{720}f^{(8)}_i + \Ord{h^7} \\
+  f_{i-1} - 2f_i + f_{i+1} &= h^2 f''_i + \frac{h^4}{12}f^{(4)}_i
+                               + \frac{h^6}{360}f^{(6)}_i
+                               + \frac{h^8}{20160}f^{(8)}_i + \Ord{h^8} \\
+  f'_{i+1} - f'_{i-1} &= 2hf''_i + \frac{h^3}{3}f^{(4)}_i
+                         + \frac{h^5}{60}f^{(6)}_i
+                         + \frac{h^7}{2520}f^{(8)}_i + \Ord{h^8}
+\end{align}
+
+\subsubsection*{左辺（LHS）の展開}
+
+\begin{equation}
+  \text{LHS} = \beta_2 f''_{i-1} + f''_i + \beta_2 f''_{i+1}
+  = (1+2\beta_2)f''_i + \beta_2 h^2 f^{(4)}_i
+    + \frac{\beta_2}{12}h^4 f^{(6)}_i + \frac{\beta_2}{360}h^6 f^{(8)}_i + \Ord{h^7}
+\end{equation}
+
+\subsubsection*{右辺（RHS）の展開}
+
+\begin{align}
+  \frac{a_2}{h^2}(f_{i-1}-2f_i+f_{i+1})
+  &= a_2 f''_i + \frac{a_2}{12}h^2 f^{(4)}_i + \frac{a_2}{360}h^4 f^{(6)}_i
+     + \frac{a_2}{20160}h^6 f^{(8)}_i + \Ord{h^7} \\
+  \frac{b_2}{h}(f'_{i+1}-f'_{i-1})
+  &= 2b_2 f''_i + \frac{b_2}{3}h^2 f^{(4)}_i + \frac{b_2}{60}h^4 f^{(6)}_i
+     + \frac{b_2}{2520}h^6 f^{(8)}_i + \Ord{h^7}
+\end{align}
+
+合計：
+\begin{equation}
+  \text{RHS} = (a_2+2b_2)f''_i
+  + \Bigl(\frac{a_2}{12}+\frac{b_2}{3}\Bigr)h^2 f^{(4)}_i
+  + \Bigl(\frac{a_2}{360}+\frac{b_2}{60}\Bigr)h^4 f^{(6)}_i
+  + \Bigl(\frac{a_2}{20160}+\frac{b_2}{2520}\Bigr)h^6 f^{(8)}_i + \Ord{h^7}
+\end{equation}
+
+\subsubsection*{係数比較と連立方程式}
+
+$f''_i$，$h^2 f^{(4)}_i$，$h^4 f^{(6)}_i$ の係数を比較する：
+\begin{align}
+  f''_i        &:\quad (1+2\beta_2) - (a_2+2b_2) = 0 \label{eq:app_II_eq1} \\
+  h^2 f^{(4)}_i &:\quad \beta_2 - \Bigl(\frac{a_2}{12}+\frac{b_2}{3}\Bigr) = 0 \label{eq:app_II_eq2} \\
+  h^4 f^{(6)}_i &:\quad \frac{\beta_2}{12} - \Bigl(\frac{a_2}{360}+\frac{b_2}{60}\Bigr) = 0 \label{eq:app_II_eq3}
+\end{align}
+
+\subsubsection*{解法}
+
+式~\eqref{eq:app_II_eq2} および \eqref{eq:app_II_eq3} から $\beta_2$ を消去する．
+式~\eqref{eq:app_II_eq2} の12倍 $=$ 式~\eqref{eq:app_II_eq3} の左辺に代入：
+\[
+  \frac{a_2}{12} + \frac{b_2}{3} = \frac{a_2}{30} + \frac{b_2}{5}
+\]
+整理：
+\[
+  a_2\!\left(\frac{1}{12}-\frac{1}{30}\right) = b_2\!\left(\frac{1}{5}-\frac{1}{3}\right)
+  \quad\Longrightarrow\quad
+  a_2\cdot\frac{3}{60} = b_2\cdot\!\left(-\frac{2}{15}\right)
+  \quad\Longrightarrow\quad
+  b_2 = -\frac{3a_2}{8}
+\]
+式~\eqref{eq:app_II_eq1} に代入：
+\[
+  1 + 2\beta_2 = a_2 + 2b_2 = a_2 - \frac{3a_2}{4} = \frac{a_2}{4}
+  \quad\Longrightarrow\quad
+  \beta_2 = \frac{a_2}{8} - \frac{1}{2}
+\]
+これを式~\eqref{eq:app_II_eq2} に代入：
+\[
+  \frac{a_2}{8} - \frac{1}{2} = \frac{a_2}{12} + \frac{1}{3}\cdot\!\left(-\frac{3a_2}{8}\right)
+  = \frac{a_2}{12} - \frac{a_2}{8}
+  = -\frac{a_2}{24}
+\]
+\[
+  \frac{a_2}{8} + \frac{a_2}{24} = \frac{1}{2}
+  \quad\Longrightarrow\quad
+  \frac{4a_2}{24} = \frac{1}{2}
+  \quad\Longrightarrow\quad
+  a_2 = 3
+\]
+
+以上より：
+\begin{alignat}{3}
+  a_2 &= 3, \qquad
+  &b_2 &= -\frac{3\times3}{8} = -\frac{9}{8}, \qquad
+  &\beta_2 &= \frac{3}{8} - \frac{1}{2} = -\frac{1}{8}
+\end{alignat}
+
+\subsubsection*{打ち切り誤差}
+
+$h^6 f^{(8)}_i$ の LHS 係数 $-$ RHS 係数：
+\[
+  TE_{\mathrm{II}} = \left(\frac{\beta_2}{360} - \frac{a_2}{20160} - \frac{b_2}{2520}\right)h^6 f^{(8)}_i
+\]
+数値代入：
+\[
+  \frac{-1/8}{360} - \frac{3}{20160} - \frac{-9/8}{2520}
+  = -\frac{1}{2880} - \frac{3}{20160} + \frac{9}{20160}
+  = -\frac{7}{20160} + \frac{6}{20160}
+  = -\frac{1}{20160} = -\frac{2}{8!}
+\]
+したがって
+\[
+  TE_{\mathrm{II}} = -\frac{2}{8!}\,h^6 f^{(8)}_i = \Ord{h^6}
+\]
+が成立し，Equation-II も $\Ord{h^6}$ 精度であることが確認された．\qed
+
+\medskip
+\noindent
+主要打ち切り誤差係数 $-1/5040$（Eq-I）と $-1/20160$（Eq-II）はいずれも
+7点陽的スキームの係数（$-1/7! = -1/5040$）と同オーダーであり，
+3点ステンシルで7点相当の精度を実現していることを示している．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{CCD 境界スキームの係数導出}
+\label{app:ccd_bc_derivation}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ccd_bc} の左境界スキームの係数を Taylor 展開により導出する．
+
+\subsection{Equation-I 境界スキームの導出}
+\label{app:ccd_bc_derivation_I}
+
+境界点 $i=0$ において，片側スキーム（式 \eqref{eq:bc_general}）の未知数
+$(\alpha, \beta, c_0, c_1, c_2, c_3)$ を決定する．
+
+\paragraph{Step 1：$\alpha, \beta$ の決定}
+
+$\fp{1}, \fpp{1}$ を $i=0$ 周りで展開して LHS に代入すると，
+$\fpp{0}$ の係数消去条件 $\alpha + \beta = 0$（すなわち $\beta = -\alpha$）が得られる．
+
+\paragraph{Step 2：$\Ord{h^5}$ 精度から $\alpha$ の一意決定}
+
+$\beta = -\alpha$ 代入後，$S_k \equiv c_1 + 2^k c_2 + 3^k c_3$ として
+5つの整合条件（定数項から $f^{(4)}_0$ まで）を立てる：
+$c_0{+}c_1{+}c_2{+}c_3=0$，$S_1=1{+}\alpha$，$S_2=0$，$S_3=-3\alpha$，$S_4=-8\alpha$．
+
+差分 $S_2{-}S_1$，$S_3{-}S_2$，$S_4{-}S_3$ を順次取ると：
+\[
+  2c_2+6c_3 = -(1+\alpha),\quad
+  4c_2+18c_3 = -3\alpha,\quad
+  8c_2+54c_3 = -5\alpha
+\]
+第1式の2倍を第2式から引くと $c_3 = (2-\alpha)/6$．
+第1式に戻して $c_2 = -3/2$（$\alpha$ に依らず一定）．
+第3式に代入：
+\[
+  -12 + 9(2-\alpha) = -5\alpha
+  \quad\Longrightarrow\quad
+  6 = 4\alpha
+  \quad\Longrightarrow\quad
+  \boxed{\alpha = \tfrac{3}{2}}
+\]
+$\alpha \neq 3/2$ では $\Ord{h^4}$ にとどまる—— $\alpha = 3/2$ は唯一の $\Ord{h^5}$ 選択である．
+
+\paragraph{Step 3：残余係数の計算}
+
+$\alpha = 3/2$，$c_2 = -3/2$ を用いて：
+$c_3 = 1/12$，$c_1 = 21/4$，$c_0 = -23/6$．\qed
+
+\subsection{Equation-II 境界スキームの導出}
+\label{app:ccd_bc_derivation_II}
+
+境界点 $i=0$ において，式 \eqref{eq:bcII_general} の未知数
+$(\gamma, \delta, d_0, d_1, d_2, d_3)$ を決定する．
+
+\paragraph{Step 1：$\gamma, \delta$ の決定}
+
+$\fp{1}, \fpp{1}$ を $i=0$ 周りで展開して LHS に代入すると：
+\[
+  \text{LHS} = \gamma h\,\fp{0} + (1+\gamma+\delta)\fpp{0} + \cdots
+\]
+$\fp{0}$ の係数をゼロにする：$\gamma = 0$．
+$\fpp{0}$ の係数を 1 に正規化：$1+\gamma+\delta = 1$，すなわち $\delta = 0$．
+したがって LHS $= \fpp{0}$（片側関数値スキーム）．
+
+\paragraph{Step 2：RHS の係数決定}
+
+$f_k$（$k=0,1,2,3$）を $f_0$ 周りで展開し，$f_0/h^2$，$\fp{0}/h$，$\fpp{0}$，$f^{(3)}_0/h$ の
+各係数整合条件を解く：
+\begin{itemize}
+  \item $\fpp{0}$係数$-$$\fp{0}/h$係数: $d_2+3d_3=1$
+  \item $f^{(3)}_0/h$係数$-$$\fpp{0}$係数: $2d_2+9d_3=-1$
+  \item $3d_3 = -3 \Rightarrow d_3=-1$，$d_2=4$，$d_1=-5$，$d_0=2$
+\end{itemize}
+結果：式 \eqref{eq:bcII_left} の $\fpp{0} = (2f_0-5f_1+4f_2-f_3)/h^2$（$\Ord{h^2}$ 精度）．\qed

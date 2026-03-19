@@ -1,17 +1,39 @@
-% paper/sections/01_introduction.tex  ─── 改訂版 ───────────────────────────
-%
-%  変更概要（構造見直し計画に基づく）：
-%  ・§1.1：§1.2 冒頭「気液二相流とは…」をここへ統合し，定義を最初に提示
-%  ・§1.1.1：図 fig:density_jump を保持，defbox は §1.2 へ移動
-%  ・§1.2（新設）：旧§1.2 枚挙 + 旧§1.1.1 の defbox を「詳細」として統合
-%  ・§1.3：旧§1.3 そのまま（失敗例4選）
-%  ・§1.4：旧§1.5（界面捕捉法分類）を前倒し
-%  ・§1.5（新設）：結論章§11.2 の学習ロードマップ＋章立て概要表を序章へ移動
-%  ・§1.6：旧§1.4（アプローチ）＋旧§1.6（アルゴリズム全体像，図を高レベル化）
-% ─────────────────────────────────────────────────────────────────────────────
+% paper/sections/01_introduction.tex
 
 \section{はじめに}
 \label{sec:intro}
+
+% ─────────────────────────────────────────────────────────────────────────────
+% 【論文の芯】本稿を貫く単一の設計哲学
+% ─────────────────────────────────────────────────────────────────────────────
+
+気液二相流の数値シミュレーションには多くの数値的困難が伴うが，
+それらのうち最も根本的かつ克服が難しいのが
+\textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である．
+寄生流れの根本原因は，圧力勾配と表面張力に\textbf{異なる差分演算子}を用いることによる離散化の不整合であり，
+格子を細分化しても消えない $O(1)$ の誤差体積力として速度場を汚染する（§\ref{sec:failure_modes}，§\ref{sec:balanced_force}）．
+
+\textbf{本稿の技術的中核はこの問題の根本的解決にある．}
+結合コンパクト差分法（CCD，$O(h^6)$，第\ref{sec:CCD}章）による高精度曲率計算と，
+圧力勾配・表面張力に\textbf{完全に同一の離散演算子}を用いる
+Balanced-Force 離散化条件（第\ref{sec:collocate}章）を組み合わせることで，
+数値離散化誤差成分を $O(h^6)$ まで低減する（残差は CSF モデル誤差 $O(h^2)$ が律速）．
+
+本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
+\begin{description}
+  \item[Conservative Level Set + WENO5]（第\ref{sec:levelset}・\ref{sec:time}章）
+        界面の質量保存と数値拡散抑制——曲率計算の入力精度を維持するための基盤
+  \item[Rhie--Chow 補正]（第\ref{sec:collocate}章）
+        コロケート格子でのチェッカーボード不安定を抑制し，Balanced-Force と整合する面速度を提供
+  \item[CCD-PPE + 仮想時間陰解法]（第\ref{sec:pressure}章）
+        変密度 Poisson 方程式を $O(h^6)$ 精度で求解し，Corrector の速度補正精度を保証
+  \item[非一様格子]（第\ref{sec:grid}章）
+        界面近傍を自動的に高解像度化し，CSF モデル誤差 $O(\varepsilon^2)$ の $\varepsilon \to 0$ 極限を効率的に達成
+\end{description}
+
+以下 §\ref{sec:why_hard}〜§\ref{sec:roadmap} では，
+なぜ単相流の方法がそのまま使えないか，どの困難がどの手法で解決されるかを順番に説明する．
+全体アルゴリズムの俯瞰図は §\ref{sec:algo_overview} に先行提示する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{単相流と気液二相流の本質的違い}
@@ -184,7 +206,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 
         \textbf{→ 本稿の対処：} CCD 法による高精度曲率計算（第\ref{sec:CCD}章）と
         Balanced-Force 離散化条件（第\ref{sec:collocate}章§\ref{sec:balanced_force}）
-        により，寄生流れを $\mathcal{O}(h^6)$ まで抑制する．
+        により，数値離散化誤差成分を $\mathcal{O}(h^6)$ まで低減する
+        （残差は CSF モデル誤差 $\mathcal{O}(h^2)$ が律速；§\ref{sec:balanced_force} 参照）．
 \end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -224,34 +247,9 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 \textbf{原因：} コロケート格子において，中心差分による圧力勾配の評価では
 隣り合う格子点の圧力が連立されないため（1つ飛びの点しか参照しない），
 高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する．
+周期 $2\Delta x$ のチェッカーボードモード $p_j = P_0(-1)^j$ に対して
+中心差分がゼロ勾配を返すことは代数的に示される（付録~\ref{app:checkerboard_mode}）．
 
-\medskip
-\noindent\textbf{数学的モード解析：$2\Delta x$ 圧力モードはなぜゼロ勾配か}
-
-1次元コロケート格子（格子間隔 $\Delta x$，格子点 $j$）を考える．
-圧力勾配の標準的な中心差分近似は：
-\[
-  \left.\frac{\partial p}{\partial x}\right|_j \approx \frac{p_{j+1} - p_{j-1}}{2\Delta x}
-\]
-チェッカーボードモード（波数 $k = \pi/\Delta x$，すなわち周期 $2\Delta x$）を
-代入する：
-\[
-  p_j = P_0\,e^{i(k\,j\Delta x)} = P_0\,e^{i\pi j} = P_0\,(-1)^j
-\]
-このとき圧力勾配の数値近似は：
-\begin{align*}
-  &\frac{p_{j+1} - p_{j-1}}{2\Delta x}
-  = \frac{P_0(-1)^{j+1} - P_0(-1)^{j-1}}{2\Delta x} \\
-  &= \frac{P_0(-1)^j\bigl[(-1)^1 - (-1)^{-1}\bigr]}{2\Delta x}
-  = \frac{P_0(-1)^j \cdot \bigl(-1 - (-1)\bigr)}{2\Delta x}
-  = \boxed{0}
-\end{align*}
-\textbf{結論：} $2\Delta x$ チェッカーボードモード $p_j = P_0(-1)^j$ は，
-中心差分の圧力勾配に対して\textbf{完全にゼロ}となる「見えないモード（幽霊モード，ghost mode）」である．
-このモードが PPE の解に混入しても速度 Corrector $\bu^{n+1} = \bu^* - \Delta t/\rho\,\bnabla p$ に
-影響を与えず，したがって散逸もされずに増幅・持続する可能性がある．
-
-\medskip
 \noindent\textbf{本稿の対処：} Rhie-Chow 型フラックス補正により，
 圧力と速度を適切に連成させる（第\ref{sec:collocate}章参照）．
 Rhie-Chow 補正は面速度に陽的な圧力補正 $\Delta t/\rho[({\bnabla p})_f - \overline{(\bnabla p)}_f]$ を

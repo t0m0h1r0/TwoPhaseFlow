@@ -170,18 +170,8 @@ PPE 演算子 $\mathcal{L}[p] = \bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）
 \end{itemize}
 \end{tcolorbox}
 
-\begin{tcolorbox}[defbox, title={なぜ $a=1/\rho$ の調和平均なのか：FVM の積分論理}]
-セル $P$ と $E$ の間を2点間として積分すると：
-\[
-  \int_{x_P}^{x_E} a(x)\,dx \approx a_f \Delta x
-  \quad \Rightarrow \quad
-  a_f = \frac{\Delta x}{\dfrac{\Delta x/2}{a_L} + \dfrac{\Delta x/2}{a_R}}
-  = \frac{2 a_L a_R}{a_L + a_R}
-  = \frac{2}{\rho_L + \rho_R}
-\]
-これは直列回路の等価抵抗（$1/R_{\text{eq}} = 1/R_1 + 1/R_2$）と同じ論理であり，
-熱伝導率の界面補間で使われる標準公式と同一構造を持つ（第\ref{sec:collocate}章，熱伝導の類比参照）．
-\end{tcolorbox}
+$a_f = 2/(\rho_L+\rho_R)$ の導出は，セル間の積分論理（直列抵抗則）による
+（付録~\ref{app:fvm_face_coeff} 参照）．
 
 \begin{tcolorbox}[mybox, title={FVM 変密度 PPE（展開形，実装可能な形式，IPC 増分形）}]
 式 \eqref{eq:af_exact} の $a_f$ を用いた FVM 離散化の完全な形（$x$方向のみ表示，未知変数は $\delta p \equiv p^{n+1}-p^n$）：
