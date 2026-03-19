@@ -207,7 +207,8 @@ $y$ 方向も同様に：
   (D_x^{(1)} p)_{i,j},\quad (D_x^{(2)} p)_{i,j} \quad \forall\, i
 \]
 を一括計算（$O(N_x)$ per row）．密度場 $\rho$ の $x$ 方向微分
-$(D_x^{(1)}\rho)_{i,j}$ も同様に計算（事前に1回計算して保存可）．
+$(D_x^{(1)}\rho)_{i,j}$ は，\textbf{タイムステップ開始時（PPE 反復ループの外側）に1回だけ}
+CCD スウィープで計算して保存する（$\rho^{n+1}$ は CLS 移流後に確定し，PPE 反復中は不変）．
 
 \medskip
 \textbf{Step 2：$x$ 方向演算子値の組み立て}
@@ -283,7 +284,13 @@ $D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価す
 寄生流れの発生源は \textbf{独立した2種} に分類される：
 \begin{enumerate}
   \item \textbf{数値離散化誤差}（Balanced-Force 条件の成否で決まる）：
-        FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上（格子を半分にすると $\simeq (1/2)^4=1/16$ 倍）．
+        FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上．
+        \textbf{注：}CCD の空間精度は $\Ord{h^6}$ だが，Balanced-Force の文脈での有効次数は
+        $\Ord{h^4}$ 以上となる．これは表面張力項 $\sigma\kappa\nabla\psi$ の $\psi$ が
+        WENO5 による $\Ord{h^5}$ 精度の CLS 移流場であるため，
+        圧力勾配との差分演算子整合性は $\min(\Ord{h^5},\Ord{h^6}) = \Ord{h^5}$ に律速され，
+        さらに密度勾配項 $D_x^{(1)}\rho\sim\Ord{h^{-1}}$ のスケールが介在するため
+        有効精度は $\Ord{h^4}$ 以上と評価される（格子を半分にすると $\simeq 1/16$ 倍以上）．
   \item \textbf{CSF 物理モデル誤差}（$\varepsilon>0$ による界面厚みに由来）：
         FVM・CCD ともに $\Ord{\varepsilon^2}\approx\Ord{h^2}$（$\varepsilon\sim h$ 設定下）．
         Balanced-Force 整合性では除去不能な物理的下限（physical error floor）である．
@@ -292,7 +299,7 @@ $D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価す
 \medskip
 \noindent\textbf{CCD を使う意義：}
 CCD を採用することで誤差源(1)が誤差源(2)より十分小さくなり
-（数値成分を $\Ord{h^4}$ まで抑制）,
+（数値成分を $\Ord{h^4}$ 以上に抑制），
 格子精細化の効果が CSF 物理モデル精度の改善にそのまま直結する．
 FVM では格子を細かくしても数値成分が $\Ord{h^2}$ で残留し，CSF 誤差と区別できない
 （表~\ref{tab:ccd_vs_fvm}，§\ref{sec:balanced_force}，表~\ref{tab:accuracy_summary} 参照）．

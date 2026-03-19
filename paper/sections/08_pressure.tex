@@ -225,48 +225,11 @@ PPE 演算子 $\mathcal{L}[p] = \bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）
 \end{center}
 \end{tcolorbox}
 
-\begin{tcolorbox}[warnbox, title={ノード中心 FVM における境界ノードの制御体積補正（FVM 実装専用）}]
-\label{warn:boundary_cv}
-\begin{center}
-\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}{%
-\textbf{$\bigstar$ 本稿の標準実装（CCD 仮想時間陰解法）を使う読者はここを読み飛ばしてよい．\\
-CCD 境界処理は §\ref{sec:ccd_neumann_bc} で独立に扱われ，以下の「係数 2 倍」補正は不要．}}}
-\end{center}
-
-\textbf{適用対象：FVM 離散化（§\ref{sec:fvm_face_coeff}）を独自実装する場合のみ．}
-
-\medskip
-
-式~\eqref{eq:PPE_FVM} は\textbf{内部ノード}（$1 \le i \le N_x-1$）に対してのみ成立する．
-本稿の格子は\textbf{ノード中心配置}（格子点が物理境界 $x=0,\,x=L_x$ 上に存在）を採用するため，
-境界ノードの制御体積幅は $h/2$（内部ノードの $h$ の半分）となる．
-
-\medskip
-\textbf{導出：} $x$ 方向の FVM 積分 $\displaystyle\int_{\Omega_i} \nabla\cdot(a\nabla p)\,dV = \int_{\partial\Omega_i} a\nabla p\cdot\bn\,dS$ において，
-境界ノード $i=0$ の制御体積は $\Omega_0 = [0,\,h/2]$（幅 $h/2$），フェイス $x_{1/2}=h/2$ が唯一の内部フェイスである：
-\[
-  \text{内部ノード}\,(1\le i\le N-1): \quad
-  \frac{a_{i+1/2}}{h^2}(p_{i+1}-p_i) - \frac{a_{i-1/2}}{h^2}(p_i - p_{i-1}) = \text{rhs}_i
-\]
-\[
-  \text{境界ノード}\,(i=0,\;\text{Neumann}\;\partial p/\partial n=0): \quad
-  \boxed{\frac{2\,a_{1/2}}{h^2}(p_1 - p_0)} + (\text{$y$方向同様}) = \text{rhs}_0
-\]
-$x=0$ での Neumann 条件 $(\partial p/\partial x)|_{x=0}=0$ によりゴーストフェイスのフラックスはゼロとなり，
-残るフェイス $x_{1/2}$ の係数に $2/(h/2 \cdot h) = 2/h^2$（制御体積幅 $h/2$ で割るため係数 2 倍）が現れる．
-
-\medskip
-\textbf{実装への影響：} 境界ノード（$i=0$ または $i=N_x$，$j=0$ または $j=N_y$）のフェイス係数項は，
-内部ノードのものに対して\textbf{係数 2 倍}を乗じる必要がある：
-\begin{itemize}
-  \item 境界ノード $i=0$（左境界）：$a_{1/2}/h^2$ を $2a_{1/2}/h^2$ に置き換え
-  \item 境界ノード $i=N_x$（右境界）：$a_{N_x-1/2}/h^2$ を $2a_{N_x-1/2}/h^2$ に置き換え
-  \item $y$ 方向境界ノード（$j=0,\,j=N_y$）：同様
-\end{itemize}
-
-\textbf{この補正を省略すると，}境界付近での PPE の離散打ち切り誤差が $\mathcal{O}(1)$ 程度（すなわち精度が失われ）になり，
-格子幅 $h$ を細かくしても収束次数が著しく低下する（数値実験により 2 次収束のはずが 0.7 次程度に劣化することを確認）．
-\end{tcolorbox}
+\noindent\textbf{注（FVM 独自実装者向け）：}
+式~\eqref{eq:PPE_FVM} は内部ノードに対してのみ成立する．
+ノード中心格子では境界ノードの制御体積幅が $h/2$ となるため，
+その行の係数を内部ノードの 2 倍にする必要がある
+（CCD 実装ではこの補正は不要；CCD 境界処理は §\ref{sec:ccd_neumann_bc} 参照）．
 
 \subsubsection{Rhie-Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}
 \label{sec:rc_divergence}
@@ -488,17 +451,24 @@ $
 $
 の関係から，$\mathcal{O}(\Delta\tau^2)$ の\textbf{分割誤差}（splitting error）を生じる．
 
-本研究では ADI 分割を行わず，
-仮想時間ステップ方向に対して直接，式~\eqref{eq:pseudo_linear} を各反復で繰り返す．
-これにより，
+本稿では実装の簡便さから\textbf{スウィープ型}（$x$ 方向 Thomas 法 $\to$ $y$ 方向 Thomas 法の逐次適用）を採用する：
+式~\eqref{eq:pseudo_linear} の左辺行列 $(\mathbf{I}+\Delta\tau\mathcal{L}_h)$ を
+$(\mathbf{I}+\Delta\tau\mathcal{L}_x)(\mathbf{I}+\Delta\tau\mathcal{L}_y)$ で近似して因子分解し，
+各反復を $x$・$y$ 方向の逐次 Thomas 法で実行する
+（分割誤差 $\mathcal{O}(\Delta\tau^2)$ が伴うが，残差収束判定により実用上の精度を保証する；
+§\ref{warn:ppe_splitting} および表~\ref{tab:ppe_methods} 参照）．
+ADI 法との違いは Crank--Nicolson 風の対称半分割を用いない点のみであり，
+収束後の解の精度は両者とも $\varepsilon_\text{tol}$ に律速される点で同等である．
+
+この設計から得られる利点：
 
 \begin{itemize}
-  \item 収束後の解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす（スウィープ実装の場合は $\mathcal{O}(\Delta\tau^2)$ 分割誤差が残るが，収束判定により実用上の精度を保証できる）
-  \item 反復回数を収束判定で制御でき，過剰計算を避けられる
+  \item 収束後の解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす
+  \item 反復回数を残差収束判定で制御でき，過剰計算を避けられる
   \item 複雑な密度場・非直交格子への拡張が容易
 \end{itemize}
 
-という利点が得られる（表~\ref{tab:ppe_methods} 参照）．
+（表~\ref{tab:ppe_methods} 参照）．
 
 \begin{table}[ht]
 \centering
@@ -542,9 +512,15 @@ $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}}
   \item \textbf{RHS 構築：} $q_h = (\bnabla_h^{\mathrm{RC}}\cdot\bu^*)/\Delta t$ を計算する．
   \item \textbf{反復ループ（$m = 0, 1, 2, \dots$）：}
     \begin{enumerate}
-      \item CCD ブロック Thomas 法で各行・各列の空間微分を計算し，$\mathcal{L}_h p^m$ を評価．
-      \item 残差 $\varepsilon^m = \|\mathcal{L}_h p^m - q_h\|_2$ を計算し，$\varepsilon^m < \varepsilon_{\mathrm{tol}}$ なら収束として終了．
-      \item 線形系~\eqref{eq:pseudo_linear} を解いて $p^{m+1}$ を更新．
+      \item \textbf{残差評価：} $x$・$y$ 方向 CCD スウィープで $\mathcal{L}_h p^m$ を計算し，
+            残差 $\varepsilon^m = \|\mathcal{L}_h p^m - q_h\|_2$ を求める．
+            $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ なら収束として終了．
+      \item \textbf{$x$ 方向スウィープ（逐次第1段）：} 各行 $j$ に対して
+            $(\mathbf{I}+\Delta\tau\mathcal{L}_x)\tilde{p}^{m+1}_{:,j} = p^m_{:,j} + \Delta\tau\, q_{h,:,j}$
+            をブロック Thomas 法で解き，中間解 $\tilde{p}^{m+1}$ を得る．
+      \item \textbf{$y$ 方向スウィープ（逐次第2段）：} 各列 $i$ に対して
+            $(\mathbf{I}+\Delta\tau\mathcal{L}_y)p^{m+1}_{i,:} = \tilde{p}^{m+1}_{i,:}$
+            をブロック Thomas 法で解き，$p^{m+1}$ を得る．
     \end{enumerate}
   \item \textbf{出力：} 収束した $p^{m+1} = p^{n+1}$ を圧力補正に渡す．
 \end{enumerate}
@@ -555,17 +531,18 @@ $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}}
 
 \textbf{収束率解析と最適 $\Delta\tau$ の導出（スウィープ型）：}
 
-スウィープ型は \textbf{任意の $\Delta\tau > 0$ で無条件安定}（残差は発散しない）だが，
-収束\textbf{速度}は $\Delta\tau$ に依存する．
-等方的 Laplacian の固有値 $\lambda$ （$\mathcal{L}_x,\mathcal{L}_y$ が各 $\lambda/2$ を持つと仮定）に
-対して，1反復あたりの残差低減係数は：
+スウィープ型は \textbf{任意の $\Delta\tau > 0$ で無条件安定}（誤差は発散しない）だが，
+収束\textbf{速度}と分割誤差の大きさはともに $\Delta\tau$ に依存する．
+等方格子・一様係数の理想条件下での解析では，
+収束速度と分割誤差のトレードオフを捉える指標
 \[
   \gamma(t) = \frac{1 + t^2}{(1+t)^2},
   \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
 \]
-と計算できる（$\gamma < 1$ が任意の $t > 0$ で成立；付録 §\ref{sec:dtau_derive} 参照）．
-$d\gamma/dt = 0$ を解くと $t = 1$，すなわち $\Delta\tau_{\mathrm{opt}} = 2/\lambda$ でこの係数が
-最小値 $\gamma=1/2$（1反復で誤差半減）をとる．
+が得られる（厳密な導出および $\gamma < 1$（$\forall t>0$）の証明は付録 §\ref{sec:dtau_derive} 参照）．
+$d\gamma/dt = 0$ を解くと $t = 1$，すなわち $\Delta\tau_{\mathrm{opt}} = 2/\lambda$ で
+この指標が最小値 $\gamma=1/2$ をとる
+（収束速度と分割誤差のトレードオフが最良にバランスする点）．
 
 最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$（CCD Laplacian; §\ref{sec:ccd_1d_matrix} 参照）を
 代入すると最適仮想時間刻みが得られる：
