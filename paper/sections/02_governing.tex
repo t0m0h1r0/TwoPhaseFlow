@@ -13,8 +13,17 @@
 両者の役割を明確に区別することが，本章以降のアルゴリズムを理解する上で極めて重要である．
 以降の全ての方程式で登場するこれらの変数を，本節で事前に定義しておく．
 
-\textbf{符号付き距離関数 $\phi(\bm{x}, t)$} は界面からの最短距離に符号を付けた関数（$\phi=0$ が界面，$\phi<0$ が液相内部）である．
-Eikonal 条件 $|\bnabla\phi|=1$ が法線ベクトル $\hat{\bm{n}} = \bnabla\phi$ や曲率 $\kappa = -\bnabla\cdot\hat{\bm{n}}$ の計算精度を保証する（§\ref{sec:curvature}）．
+\textbf{符号付き距離関数 $\phi(\bm{x}, t)$} は界面からの最短距離に符号を付けた関数である：
+\begin{equation}
+  \phi < 0\text{：液相内部},\quad \phi = 0\text{：界面},\quad \phi > 0\text{：気相}
+  \label{eq:phi_def}
+\end{equation}
+Eikonal 条件 $|\bnabla\phi|=1$ が成り立ち，法線ベクトルと曲率を以下で定義する（§\ref{sec:curvature}）：
+\begin{equation}
+  \hat{\bm{n}} = \frac{\bnabla\phi}{|\bnabla\phi|} = \bnabla\phi, \qquad
+  \kappa = -\bnabla\cdot\hat{\bm{n}}
+  \label{eq:kappa_def}
+\end{equation}
 
 \textbf{保存形レベルセット変数 $\psi(\bm{x}, t)$} は $\phi$ を滑らかなヘヴィサイド関数 $H_\varepsilon$ で変換したもので，液相で $\psi \approx 0$，気相で $\psi \approx 1$ を取る（第\ref{sec:levelset}章 §\ref{sec:cls_advection} 参照）．
 保存形移流方程式により\textbf{質量保存性}を向上させ，密度 $\rho(\psi)$・粘性 $\mu(\psi)$ の補間にも直接用いる．
@@ -39,7 +48,7 @@ $\phi(\bm{x}) = |\bm{x}| - R$（液相は $|\bm{x}| < R$ で $\phi < 0$，界面
 \[
   \nabla\phi = \frac{\bm{x}}{|\bm{x}|} \equiv \hat{\bm{r}}, \qquad
   |\nabla\phi| = 1, \qquad
-  \hat{\bm{n}} = \hat{\bm{r}} \quad \text{（球面外向き = 液相→気相 ✓）}
+  \hat{\bm{n}} = \hat{\bm{r}} \quad \text{（球面外向き = 液相→気相 $\checkmark$）}
 \]
 
 2次元円（$\nabla\cdot\hat{\bm{r}} = 1/r$）では $r = R$ で：
@@ -54,7 +63,7 @@ $\phi(\bm{x}) = |\bm{x}| - R$（液相は $|\bm{x}| < R$ で $\phi < 0$，界面
      = \sigma\kappa = \sigma\!\cdot\!\left(-\frac{1}{R}\right) = -\frac{\sigma}{R} < 0
 \]
 $[p] < 0$ すなわち $p_\text{liq} > p_\text{gas}$
-（液滴内部の圧力が外部より高い）は Laplace 圧力の物理と整合 ✓
+（液滴内部の圧力が外部より高い）は Laplace 圧力の物理と整合 $\checkmark$
 
 $|[p]| = \sigma/R$ を「ラプラス圧力の大きさ」と呼ぶが，符号付き定義
 $[p] = \sigma\kappa$ を正式表記として用いる．
