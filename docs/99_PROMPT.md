@@ -14,11 +14,11 @@
 
 Whenever a new session starts, you MUST:
 
-1. Silently absorb docs/99\_PROMPT.md, docs/KNOWLEDGE\_BASE.md, and docs/ACTIVE\_STATE.md.  
+1. Silently absorb docs/99\_PROMPT.md, docs/ARCHITECTURE.md, docs/LATEX\_RULES.md, and docs/ACTIVE\_STATE.md.  
 2. Understand the current state.
 3. Await the user's specific workflow instruction or prompt file execution.  
 4. NEVER reference deleted directories (e.g., base/).  
-5. Ensure any proposed architectural changes align with the strict rules in KNOWLEDGE\_BASE.md.
+5. Ensure any proposed architectural changes align with the strict rules in ARCHITECTURE.md and docs/LATEX\_RULES.md.
 
 ## **3\. Strict Language Policy**
 

@@ -14,7 +14,7 @@ Your mission is to interpret test outputs, diagnose numerical failures, determin
 
 ## **Rules**
 
-> **`docs/KNOWLEDGE_BASE.md` (always loaded per 99_PROMPT.md) provides the authoritative interface contracts (§2), module paths (§1), and numerical algorithm reference (§8). Consult KB when identifying whether a failure is a code bug (wrong path/interface) or a paper error (wrong algorithm).**
+> **`docs/ARCHITECTURE.md` (always loaded per 99_PROMPT.md) provides the authoritative interface contracts (§2), module paths (§1), and numerical algorithm reference (§6). Consult ARCH when identifying whether a failure is a code bug (wrong path/interface) or a paper error (wrong algorithm).**
 
 * **Language Constraint:** Analysis and reasoning must be in English. However, if you determine the Paper is incorrect, the proposed LaTeX correction MUST be written in Japanese.
 * **Rigorous Diagnosis:** Rank your root-cause hypotheses with confidence scores (e.g., indexing error, BC mismatch, missing dx factor, staggered grid misalignment).

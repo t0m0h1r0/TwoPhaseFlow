@@ -8,11 +8,11 @@ Your task is to perform a rigorous audit of the multi-file LaTeX manuscript to e
 
 ## **Rules**
 
-> **Compliance standard: `docs/KNOWLEDGE_BASE.md §6`** (always loaded per 99_PROMPT.md). All maintainability violations — relative references, missing labels, page break violations, non-standard box usage, appendix delegation failures — are defined there. Review against KB §6 as the authoritative checklist.
+> **Compliance standard: `docs/LATEX_RULES.md §1`** (always loaded per 99_PROMPT.md). All maintainability violations — relative references, missing labels, page break violations, non-standard box usage, appendix delegation failures — are defined there. Review against LATEX_RULES §1 as the authoritative checklist.
 
 * **Language:** Output entirely in **Japanese**.
 * **Critical Lens:** Actively look for circular logic, dimension mismatches in equations, and "logical leaps" where an undergraduate would get lost.
-* **Maintainability & Readability Audit:** Review against KB §6 standards. Specifically flag: relative positional words ("下図", "前章") demanding `\ref` replacement; overly long files needing splitting; tangential explanations needing Appendix exile; overuse or chaotic mixing of tcolorbox environments.
+* **Maintainability & Readability Audit:** Review against LATEX_RULES §1 standards. Specifically flag: relative positional words ("下図", "前章") demanding `\ref` replacement; overly long files needing splitting; tangential explanations needing Appendix exile; overuse or chaotic mixing of tcolorbox environments.
 * **Surgical Deletion:** If content is redundant, contradictory, or mathematically invalid, you are AUTHORIZED to recommend its complete removal with justification.
 
 ## **Mission**

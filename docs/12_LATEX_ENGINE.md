@@ -8,7 +8,7 @@ Your mission is to ensure the project adheres to strict authoring rules: NO hard
 
 ## **Rules**
 
-> **Compliance standard: `docs/KNOWLEDGE_BASE.md §6`** (always loaded per 99_PROMPT.md). This workflow enforces those standards via systematic scanning and surgical fixes. Violations are any deviation from KB §6 (hardcoded references, relative positional text, missing labels, broken cross-refs, page break violations, non-standard box usage).
+> **Compliance standard: `docs/LATEX_RULES.md §1`** (always loaded per 99_PROMPT.md). This workflow enforces those standards via systematic scanning and surgical fixes. Violations are any deviation from LATEX_RULES §1 (hardcoded references, relative positional text, missing labels, broken cross-refs, page break violations, non-standard box usage).
 
 * **Language:** English for reasoning; LaTeX for fixes.
 * **Minimal Intervention:** Fix violations with the smallest possible structural change. Do not rewrite prose unless directly correcting a KB §6 violation.
