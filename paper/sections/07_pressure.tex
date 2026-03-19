@@ -553,17 +553,33 @@ $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}}
 \begin{tcolorbox}[defbox, title={最適仮想時間刻み $\Delta\tau$ の選択指針}]
 仮想時間刻み $\Delta\tau$ は収束速度に直接影響する重要なパラメータである．
 
-\textbf{安定性の観点（スウィープ型の場合）：}
-各反復内のスウィープが安定に収束するためには，$\mathcal{L}_x$ および $\mathcal{L}_y$ の
-最大固有値 $\lambda_{\max}$ に対して安定性条件が課される場合がある．
-CCD + 陰的オイラーの組み合わせは原理的に無条件安定だが，
-スウィープ近似（ADI 的）の収束性を確保するために：
+\textbf{収束率解析と最適 $\Delta\tau$ の導出（スウィープ型）：}
+
+スウィープ型は \textbf{任意の $\Delta\tau > 0$ で無条件安定}（残差は発散しない）だが，
+収束 \emph{速度} は $\Delta\tau$ に依存する．
+等方的 Laplacian の固有値 $\lambda$ （$\mathcal{L}_x,\mathcal{L}_y$ が各 $\lambda/2$ を持つと仮定）に
+対して，1反復あたりの残差低減係数は：
 \[
-  \Delta\tau \lesssim \frac{C \, h^2}{a_{\max}}, \qquad
-  a_{\max} = \max_{i,j} \frac{1}{\rho_{i,j}}, \quad
-  C \sim O(1)
+  \gamma(t) = \frac{1 + t^2}{(1+t)^2},
+  \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
 \]
-という指針が実用的な出発点となる（$a = 1/\rho$ は PPE の係数）．
+と計算できる（$\gamma < 1$ が任意の $t > 0$ で成立；付録 §\ref{sec:dtau_derive} 参照）．
+$d\gamma/dt = 0$ を解くと $t = 1$，すなわち $\Delta\tau_{\mathrm{opt}} = 2/\lambda$ でこの係数が
+最小値 $\gamma=1/2$（1反復で誤差半減）をとる．
+
+最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$（CCD Laplacian; §\ref{sec:ccd_1d_matrix} 参照）を
+代入すると最適仮想時間刻みが得られる：
+\begin{equation}
+  \Delta\tau_{\mathrm{opt}}
+  \approx \frac{2}{\lambda_{\max}}
+  \approx \frac{0.58\,h^2}{a_{\max}},
+  \qquad
+  a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
+  \label{eq:dtau_opt}
+\end{equation}
+経験則 $\Delta\tau \sim C h^2/a_{\max}$（$C=1\sim5$）はこの理論値を中心とする範囲に対応する．
+$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ では $\gamma \to 1$（収束が遅くなるが発散しない）；
+$\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ では $\gamma \approx 1 - \Delta\tau\lambda \approx 1$（同様に遅い）．
 
 \textbf{収束速度の観点：}
 \begin{itemize}
@@ -865,16 +881,22 @@ $D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価す
 \begin{tcolorbox}[resultbox]
 \textbf{CCD-Poisson ソルバーの Balanced-Force 整合性：}
 
-CCD 法で $\nabla p$ と $\sigma\kappa\nabla\psi$ を同一スキームで離散化することにより，
-\textbf{曲率離散化誤差に起因する}寄生流れが $\Ord{h^4}$ 以上のオーダーで抑制され，
-FVM 離散化（$\Ord{h^2}$）と比較して格子を半分にしたときの効果が $\simeq (1/2)^4 = 1/16$ 倍になる．
+寄生流れの発生源は \textbf{独立した2種} に分類される：
+\begin{enumerate}
+  \item \textbf{数値離散化誤差}（Balanced-Force 条件の成否で決まる）：
+        FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上（格子を半分にすると $\simeq (1/2)^4=1/16$ 倍）．
+  \item \textbf{CSF 物理モデル誤差}（$\varepsilon>0$ による界面厚みに由来）：
+        FVM・CCD ともに $\Ord{\varepsilon^2}\approx\Ord{h^2}$（$\varepsilon\sim h$ 設定下）．
+        Balanced-Force 整合性では除去不能な物理的下限（physical error floor）である．
+\end{enumerate}
 
 \medskip
-\textbf{重要な注意（精度律速）：}
-上記の $\Ord{h^4}$ 抑制効果は\textbf{曲率の数値離散化誤差成分のみ}に対して成立する．
-CSF モデル固有の誤差（$\varepsilon>0$ による界面厚みに由来する $\Ord{\varepsilon^2}\approx\Ord{h^2}$ の寄生流れ）は
-Balanced-Force 整合性では解消されず，$\varepsilon\sim h$ の設定下では $\Ord{h^2}$ 成分が残留する
-（§\ref{sec:balanced_force}，表~\ref{tab:accuracy_summary}参照）．
+\noindent\textbf{CCD を使う意義：}
+CCD を採用することで誤差源(1)が誤差源(2)より十分小さくなり
+（数値成分を $\Ord{h^4}$ まで抑制）,
+格子精細化の効果が CSF 物理モデル精度の改善にそのまま直結する．
+FVM では格子を細かくしても数値成分が $\Ord{h^2}$ で残留し，CSF 誤差と区別できない
+（表~\ref{tab:ccd_vs_fvm}，§\ref{sec:balanced_force}，表~\ref{tab:accuracy_summary} 参照）．
 \end{tcolorbox}
 
 \subsubsection{他手法との定量的比較}

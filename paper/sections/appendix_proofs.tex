@@ -141,3 +141,78 @@ One-Fluid 方程式に右辺のデルタ関数項を加えることで，
 3次元 Navier-Stokes 方程式における CSF モデル $\bm{f}_\sigma = \sigma\kappa\nabla\psi$ は，
 この1次元モデルの表面張力（法線応力のジャンプ）を多次元・曲面界面に一般化したものである．\qed
 
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{スウィープ型擬似時間反復の収束率解析と最適 \texorpdfstring{$\Delta\tau$}{Δτ} の導出}
+\label{sec:dtau_derive}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ppe_pseudotime} で使用した収束率因子
+$\gamma(t) = (1+t^2)/(1+t)^2$ を導出し，最適擬似時間刻み $\Delta\tau_{\mathrm{opt}}$ を
+理論的に確定する．
+
+\subsection*{設定}
+
+スウィープ型擬似時間 PPE 反復の1ステップを
+\begin{equation}
+  (\mathbf{I} + \Delta\tau \mathcal{L}_x)(\mathbf{I} + \Delta\tau \mathcal{L}_y)\,
+  p^{m+1} = p^m + \Delta\tau\,q_h
+  \label{eq:dtau_sweep}
+\end{equation}
+と書く．ここで $\mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y$ は
+CCD 離散 Laplacian の $x$・$y$ 方向分割であり，
+それぞれ固有値 $\lambda_x,\lambda_y \ge 0$ を持つ（正定値）．
+
+残差 $r^m \equiv \mathcal{L}_h p^m - q_h$ の反復ごとの変化を追う．
+式 \eqref{eq:dtau_sweep} に $\mathcal{L}_h$ を作用させ，$q_h$ を消去すると
+\begin{equation}
+  r^{m+1} = \mathbf{M}\,r^m,
+  \qquad
+  \mathbf{M} = (\mathbf{I}+\Delta\tau\mathcal{L}_x)^{-1}(\mathbf{I}+\Delta\tau\mathcal{L}_y)^{-1}
+              (\mathbf{I} - \Delta\tau^2\mathcal{L}_x\mathcal{L}_y)
+\end{equation}
+が得られる（$\mathcal{L}_x\mathcal{L}_y$ 交換項を整理した結果）．
+
+\subsection*{スカラー化}
+
+等方格子 $(\Delta x = \Delta y = h)$ かつ一様係数を仮定すると
+$\lambda_x = \lambda_y = \lambda/2$（$\lambda$ は $\mathcal{L}_h$ の固有値）．
+$t \equiv \Delta\tau\lambda/2$ とおけば，
+$\mathbf{M}$ の対応する固有値（収束率因子）は
+
+\begin{equation}
+  \gamma(t) = \frac{1}{(1+t)^2}\bigl[(1+t)^2 - 2t\bigr]
+            = \frac{1 + t^2}{(1+t)^2}
+  \label{eq:gamma_t}
+\end{equation}
+
+となる．$t > 0$ に対して $\gamma(t) < 1$ が成立するため，
+スウィープ型反復は\textbf{任意の正の $\Delta\tau$ に対して無条件安定}かつ収束する．
+
+\subsection*{最適点の導出}
+
+$\gamma(t)$ を最小化する $t^*$ を求める：
+\begin{equation}
+  \frac{d\gamma}{dt} = \frac{2(t-1)}{(1+t)^3} = 0
+  \quad\Longrightarrow\quad t^* = 1
+\end{equation}
+
+このとき $\gamma(1) = 2/4 = 1/2$．すなわち最適擬似時間刻みでは
+\textbf{1スウィープごとに残差が半減}する．
+
+$t^* = 1$ を $\Delta\tau$ に戻すと $\Delta\tau_{\mathrm{opt}} = 2/\lambda_{\max}$．
+CCD Laplacian の最大固有値は $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$（$a_{\max}$ は最大逆密度係数）であるから
+
+\begin{equation}
+  \Delta\tau_{\mathrm{opt}} \approx \frac{2h^2}{3.43\,a_{\max}}
+                             \approx \frac{0.58\,h^2}{a_{\max}}
+  \label{eq:dtau_opt_derive}
+\end{equation}
+
+これは §\ref{sec:ppe_pseudotime} の経験的指針 $C \approx 1$ の理論的根拠となる．
+
+\subsection*{$t \to 0$ および $t \to \infty$ の挙動}
+
+$\gamma(t) \to 1$（$t \to 0$）：$\Delta\tau$ が小さすぎると更新量がゼロに近づき，収束が遅い．
+$\gamma(t) \to 1$（$t \to \infty$）：$\Delta\tau$ が大きすぎると「オーバーシュート」し，収束が遅い（発散はしない）．
+最適点 $t=1$ から外れるほど収束は遅くなるが，安定性は保たれる．\qed
+
