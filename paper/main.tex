@@ -20,13 +20,16 @@
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/01_introduction}      %% 第1章
 \clearpage
-\input{sections/02_governing}         %% 第2章
+\input{sections/02_governing}         %% 第2章：変数定義・Two-Fluid→One-Fluid
+\input{sections/02b_csf}              %% 第2章続き：CSF 表面張力モデル
+\input{sections/02c_nondim_curvature} %% 第2章続き：無次元化・界面曲率
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \part{界面追跡法と移流スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/03_levelset}          %% 第3章：CLS 法
+\input{sections/03_levelset}          %% 第3章：CLS 法（なぜ必要か・移流・再初期化）
+\input{sections/03b_levelset_mapping} %% 第3章続き：ψ-φ 関係・逆変換・曲率安定化
 \clearpage
 \input{sections/04_time_integration}  %% 第4章：時間積分・移流スキーム
 
@@ -34,8 +37,9 @@
 \cleardoublepage
 \part{空間離散化スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/05_ccd}               %% 第5章：結合コンパクト差分法（定義・係数導出・境界・行列）
-\input{sections/05b_ccd_extensions}   %% 第5章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
+\input{sections/05_ccd}               %% 第5章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
+\input{sections/05b_ccd_bc_matrix}    %% 第5章続き（境界条件・ブロック三重対角行列構造）
+\input{sections/05c_ccd_extensions}   %% 第5章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
 \clearpage
 \input{sections/06_grid}              %% 第6章：界面適合非一様格子
 \clearpage

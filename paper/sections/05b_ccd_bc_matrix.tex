@@ -1,0 +1,447 @@
+% paper/sections/05b_ccd_bc_matrix.tex
+%
+% §5 CCD 法の続き（05_ccd.tex からの分割）
+% 内容：境界条件（片側差分・ゴーストセル法）・ブロック三重対角行列構造
+%
+\subsection{境界条件}
+\label{sec:ccd_bc}
+
+CCD スキームは内点において3点ステンシル（$i-1, i, i+1$）を用いるため，両端の境界点（$i=0, N$）では方程式が閉じない問題が生じる．
+この「閉包問題」を解決するため，境界点専用の片側差分スキームが必要となる．
+
+\begin{tcolorbox}[warnbox, title={境界スキームの役割と精度}]
+境界スキームは，内点の連立方程式系（ブロック三重対角行列）を閉じるために不可欠である．
+本稿では，数値的な安定性と精度のバランスを考慮し，以下の精度の境界スキームを採用する：
+\begin{itemize}
+  \item \textbf{Equation-I（$\fp{0}$）}：内点より1次低い $\Ord{h^5}$ 精度の片側スキーム（式~\eqref{eq:bc_left}）．
+  \item \textbf{Equation-II（$\fpp{0}$）}：$\Ord{h^2}$ 精度の片側スキーム（式~\eqref{eq:bcII_left}）．
+        全体 L$^2$ 誤差への影響は境界2点分（$2/N$ の重み）のみであり，1次元問題に対しては $\Ord{h^3}$ に抑えられる（式~\eqref{eq:bcII_left}の精度検証参照）．
+\end{itemize}
+具体的には，境界点 $i=0$ での微分値 $\fp{0}, \fpp{0}$ を，境界近傍の関数値 $f_0, \dots, f_3$ と，内側の微分値 $\fp{1}, \fpp{1}$ を用いて表現する式を導出する．
+
+\textbf{2次元への注意：} 2次元問題では全4辺に境界スキームが適用される．
+$\Ord{h^2}$ 境界誤差がブロック Thomas 前進消去を通じて内点に伝播する可能性があるが，
+CCD の打ち切り誤差 $h^6 f^{(8)}$ は滑らかな関数では全域で均一に小さく，
+実際の数値実験（§\ref{sec:ccd_poisson_verification}，テスト C-1）では内点精度 $\Ord{h^6}$ が支配的に観測される．
+理論的な厳密評価については Chu \& Fan \cite{ChuFan1998} を参照されたい．
+\end{tcolorbox}
+
+\subsubsection{左境界スキームの導出}
+
+内点スキームは $f_{i-1}$ を参照するが，$i=0$ では $f_{-1}$ が存在しない．
+そこで，片側ステンシル $\{f_0, f_1, f_2, f_3\}$ と，内側第1点での微分値 $\fp{1}, \fpp{1}$ を組み合わせた以下の形式を採用する：
+\begin{equation}
+  \fp{0} + \alpha\fp{1} + \beta h\fpp{1}
+  = \frac{1}{h}\!\left(c_0 f_0 + c_1 f_1 + c_2 f_2 + c_3 f_3\right)
+  \label{eq:bc_general}
+\end{equation}
+未知数は $\alpha, \beta, c_0, c_1, c_2, c_3$ の計6個である．
+これらをテイラー展開による精度条件で決定する．
+
+\paragraph{Step 1：LHS の整理と $\alpha, \beta$ の決定}
+
+$\fp{1}$ と $\fpp{1}$ を境界点 $i=0$ の周りでテイラー展開する：
+\begin{align*}
+  \fp{1}  &= \fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \frac{h^3}{6}f^{(4)}_0 + \cdots \\
+  \fpp{1} &= \fpp{0} + h f^{(3)}_0 + \frac{h^2}{2}f^{(4)}_0 + \cdots
+\end{align*}
+これを LHS に代入すると：
+\begin{align*}
+  \text{LHS} &= \fp{0} + \alpha\fp{1} + \beta h\fpp{1} \\
+             &= (1+\alpha)\fp{0} + (\alpha + \beta) h\fpp{0}
+               + \left(\frac{\alpha}{2} + \beta\right)h^2 f^{(3)}_0
+               + \left(\frac{\alpha}{6} + \frac{\beta}{2}\right)h^3 f^{(4)}_0 + \cdots
+\end{align*}
+
+$\fpp{0}$（未知の内部微分）が LHS に残ると RHS と矛盾する．
+$\fpp{0}$ の係数がゼロになる条件 $\alpha + \beta = 0$，すなわち $\beta = -\alpha$ を課す．
+\begin{tcolorbox}[defbox, title={$\alpha = 3/2$ の一意決定：$\Ord{h^5}$ 精度条件による導出}]
+$\beta = -\alpha$ を代入した時点で，未知数は $(\alpha, c_0, c_1, c_2, c_3)$ の5個である．
+$\Ord{h^5}$ 精度（打ち切り誤差の主要項が $h^5$ 以上）を達成するには，
+RHS のテイラー展開における $f_0,\, f'_0,\, f''_0,\, f^{(3)}_0,\, f^{(4)}_0$ の各係数を LHS と整合させる
+5個の条件が必要である：
+
+\[
+  S_k \equiv c_1 + 2^k c_2 + 3^k c_3
+\]
+
+として，整合条件は
+$c_0{+}c_1{+}c_2{+}c_3=0$（定数項消去），$S_1=1{+}\alpha$，$S_2=0$，
+$S_3=-3\alpha$，$S_4=-8\alpha$ の5式となる（$S_k$ の具体的な導出は Step~2 で与える）．
+
+\medskip
+\noindent\textbf{$\alpha$ の一意決定：}
+差分 $S_2{-}S_1$，$S_3{-}S_2$，$S_4{-}S_3$ を取ると：
+\[
+  2c_2+6c_3 = -(1+\alpha),\quad
+  4c_2+18c_3 = -3\alpha,\quad
+  8c_2+54c_3 = -5\alpha.
+\]
+第1式の2倍を第2式から引くと $6c_3 = 2-\alpha$，すなわち $c_3 = (2-\alpha)/6$．
+これを第1式に戻すと \textbf{$c_2 = -3/2$（$\alpha$ に依らず一定）}．
+最後に第3式に $c_2 = -3/2$，$c_3 = (2-\alpha)/6$ を代入すると：
+\[
+  8\!\left(-\tfrac{3}{2}\right) + 54\cdot\frac{2-\alpha}{6}
+  = -5\alpha
+  \;\;\Longrightarrow\;\;
+  -12 + 9(2-\alpha) = -5\alpha
+  \;\;\Longrightarrow\;\;
+  6 = 4\alpha
+  \;\;\Longrightarrow\;\;
+  \boxed{\alpha = \tfrac{3}{2}.}
+\]
+$\alpha$ を他の値に設定すると $\Ord{h^4}$ で止まり，$\Ord{h^5}$ は達成できない．
+すなわち $\alpha = 3/2$ は 4点片側ステンシルで $\Ord{h^5}$ 精度を実現する唯一の選択である．
+\end{tcolorbox}
+
+$\alpha = 3/2$ と選ぶと $\beta = -3/2$ となり（以下の RHS 精度条件が $\Ord{h^5}$ で整合する），
+\[
+  \text{LHS} = \frac{5}{2}\fp{0}
+             - \frac{3h^2}{4} f^{(3)}_0
+             - \frac{h^3}{2} f^{(4)}_0
+             - \frac{3h^4}{16} f^{(5)}_0 + \Ord{h^5}
+\]
+
+\paragraph{Step 2：RHS の係数決定（4点ステンシル）}
+
+$f_k = f_0 + kh\fp{0} + \frac{(kh)^2}{2}\fpp{0} + \cdots$（$k=0,1,2,3$）を RHS に代入し，
+$\fpp{0}$ は含まれない設計にする（境界点では $\fpp{0}$ を陽に評価しない）ため，
+$\fpp{0}$ の係数条件も課す：
+
+\begin{align}
+c_0 + c_1 + c_2 + c_3 &= 0 \quad\text{（$f_0/h$ の消去）} \label{eq:bc1} \\
+c_1 + 2c_2 + 3c_3 &= \tfrac{5}{2} \quad\text{（$\fp{0}$ の整合）} \label{eq:bc2} \\
+c_1 + 4c_2 + 9c_3 &= 0 \quad\text{（$\fpp{0}$ の消去）} \label{eq:bc3} \\
+c_1 + 8c_2 + 27c_3 &= -\tfrac{9}{2} \quad\text{（$f^{(3)}_0$ の整合）} \label{eq:bc4}
+\end{align}
+
+4式・4未知数（$c_0$ は式\eqref{eq:bc1}で後から決まるので実質 $c_1,c_2,c_3$ の3元）として解く：
+\begin{itemize}
+  \item 式\eqref{eq:bc3}$-$式\eqref{eq:bc2}: $\;2c_2+6c_3 = -\tfrac{5}{2}$，つまり $c_2+3c_3 = -\tfrac{5}{4}$
+  \item 式\eqref{eq:bc4}$-$式\eqref{eq:bc3}: $\;4c_2+18c_3 = -\tfrac{9}{2}$，つまり $2c_2+9c_3 = -\tfrac{9}{4}$
+  \item 上の2式から $c_3$: $\;-3c_3 = -\tfrac{5}{4}+\tfrac{9}{8} = -\tfrac{1}{4}$ $\Rightarrow$ $c_3 = \tfrac{1}{12}$
+  \item $c_2 = -\tfrac{5}{4}-3\cdot\tfrac{1}{12} = -\tfrac{3}{2}$
+  \item $c_1 = \tfrac{5}{2}-2\cdot(-\tfrac{3}{2})-3\cdot\tfrac{1}{12} = \tfrac{21}{4}$
+  \item $c_0 = -(c_1+c_2+c_3) = -\tfrac{23}{6}$
+\end{itemize}
+
+以上が左境界 ($i=0$) における Equation-I の境界スキームである：
+\begin{equation}
+  \fp{0} + \frac{3}{2}\fp{1} - \frac{3h}{2}\fpp{1}
+  = \frac{1}{h}\!\left(-\frac{23}{6}f_0 + \frac{21}{4}f_1 - \frac{3}{2}f_2 + \frac{1}{12}f_3\right)
+  \label{eq:bc_left}
+\end{equation}
+
+\subsubsection{左境界 Equation-II の導出：$\fpp{0}$ の境界スキーム}
+\label{sec:ccd_bc_II}
+
+\begin{tcolorbox}[warnbox, title={Equation-II 境界スキームの必要性}]
+ブロック三重対角行列（式 \eqref{eq:ccd_global}）の境界ブロックには，
+$[\fp{0},\fpp{0}]^\top$ の2成分が未知数として存在する．
+§\ref{sec:ccd_bc}の Equation-I 境界スキームは $\fp{0}$ に対する関係式を与えるが，
+$\fpp{0}$ に対する関係式（Equation-II 境界スキーム）がなければ行列が閉じない．
+これは実装上の致命的な欠落であり，本節で導出する．
+\end{tcolorbox}
+
+内点の Equation-II（式 \eqref{eq:CCD_II}）は $f''_{i-1}$ を参照するため，$i=0$ では閉じない．
+そこで Equation-I と同様の片側スキームを採用する．
+$\fpp{0}$ と，近傍の関数値 $\{f_0, f_1, f_2, f_3\}$ および内側第1点の微分値 $\fp{1}, \fpp{1}$ の結合式として：
+\begin{equation}
+  \fpp{0} + \gamma\,h\fp{1} + \delta\, h^2\fpp{1}
+  = \frac{1}{h^2}\!\left(d_0 f_0 + d_1 f_1 + d_2 f_2 + d_3 f_3\right)
+  \label{eq:bcII_general}
+\end{equation}
+という形式を仮定する．未知数は $\gamma, \delta, d_0, d_1, d_2, d_3$ の6個である．
+
+\paragraph{Step 1：LHS の整理}
+
+$\fp{1}$ と $\fpp{1}$ を境界点 $i=0$ の周りで展開する：
+\begin{align*}
+  \fp{1}  &= \fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \frac{h^3}{6}f^{(4)}_0 + \cdots \\
+  \fpp{1} &= \fpp{0} + h f^{(3)}_0 + \frac{h^2}{2}f^{(4)}_0 + \cdots
+\end{align*}
+
+LHS に代入すると：
+\begin{align*}
+  \text{LHS} &= \fpp{0}
+    + \gamma h\!\left[\fp{0} + h\fpp{0} + \frac{h^2}{2}f^{(3)}_0 + \cdots\right]
+    + \delta h^2\!\left[\fpp{0} + h f^{(3)}_0 + \cdots\right] \\
+  &= \gamma h\,\fp{0}
+    + \bigl(1 + \gamma + \delta\bigr)\fpp{0}
+    + \left(\frac{\gamma}{2} + \delta\right)h^2 f^{(3)}_0
+    + \cdots
+\end{align*}
+
+目標は $\fpp{0}$ を LHS に孤立させることなので（RHS は関数値のみ），
+$\fp{0}$ の係数をゼロにする：$\gamma = 0$．
+また $\fpp{0}$ の係数を $1$ に正規化すると $1 + \gamma + \delta = 1$，すなわち $\delta = 0$．
+
+したがって $\gamma = \delta = 0$ であり，LHS $= \fpp{0}$ のみとなる（片側関数値スキーム）．
+
+\paragraph{Step 2：RHS の係数決定}
+
+$f_k = f_0 + kh\fp{0} + \frac{(kh)^2}{2}\fpp{0} + \frac{(kh)^3}{6}f^{(3)}_0 + \cdots$ を RHS に代入し，
+$\fpp{0}$ を RHS から求める．整合条件は：
+
+\begin{align}
+  d_0 + d_1 + d_2 + d_3 &= 0 \quad\text{（$f_0/h^2$ の消去）} \label{eq:bcII1} \\
+  d_1 + 2d_2 + 3d_3 &= 0 \quad\text{（$\fp{0}/h$ の消去）} \label{eq:bcII2} \\
+  d_1 + 4d_2 + 9d_3 &= 2 \quad\text{（$\fpp{0}$ の整合）} \label{eq:bcII3} \\
+  d_1 + 8d_2 + 27d_3 &= 0 \quad\text{（$f^{(3)}_0/h$ の消去）} \label{eq:bcII4}
+\end{align}
+
+\paragraph{係数の計算：}
+\begin{itemize}
+  \item 式\eqref{eq:bcII3}$-$式\eqref{eq:bcII2}: $\;2d_2+6d_3 = 2$，つまり $d_2+3d_3 = 1$
+  \item 式\eqref{eq:bcII4}$-$式\eqref{eq:bcII3}: $\;4d_2+18d_3 = -2$，つまり $2d_2+9d_3 = -1$
+  \item 上の2式から $d_3$: $\;3d_3 = -3 \Rightarrow d_3 = -1$
+  \item $d_2 = 1-3\cdot(-1) = 4$
+  \item $d_1 = -2d_2-3d_3 = -8+3 = -5$（式\eqref{eq:bcII2} より）
+  \item $d_0 = -(d_1+d_2+d_3) = -(-5+4-1) = 2$（式\eqref{eq:bcII1} より）
+\end{itemize}
+
+以上が左境界 ($i=0$) における Equation-II 境界スキームである：
+\begin{equation}
+  \boxed{
+    \fpp{0}
+    = \frac{1}{h^2}\!\left(2f_0 - 5f_1 + 4f_2 - f_3\right)
+  }
+  \label{eq:bcII_left}
+\end{equation}
+
+\noindent 式\eqref{eq:bcII_left} の打ち切り誤差を確認する．
+$f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \frac{k^4h^4}{24}f^{(4)}_0 + \cdots$ を代入すると：
+\[
+  \frac{1}{h^2}(2f_0-5f_1+4f_2-f_3)
+  = \fpp{0} + \underbrace{\left(-\frac{11}{12}h^2 f^{(4)}_0 + \cdots\right)}_{\text{打ち切り誤差 }\mathcal{O}(h^2)}
+\]
+よってこの境界スキームは $\mathcal{O}(h^2)$ 精度の片側差分公式であり，
+内点の $\mathcal{O}(h^6)$ より低次だが，以下の定量的な議論により全体精度への影響は許容範囲内にとどまる
+（\cite{ChuFan1998} 参照）．
+
+\textbf{$\mathcal{O}(h^2)$ 境界が全体精度に与える影響の定量的評価：}
+
+全域での離散化誤差 $E_{\mathrm{total}}$ を，境界1層と内点 $(N-2)$ 層の寄与に分離する：
+\[
+  E_{\mathrm{total}}
+  = \underbrace{\mathcal{O}(h^2) \cdot \frac{2}{N}}_{\text{境界2点の寄与}}
+  + \underbrace{\mathcal{O}(h^6) \cdot \frac{N-2}{N}}_{\text{内点の寄与}}
+  \sim \mathcal{O}(h^2) \cdot h + \mathcal{O}(h^6)
+  = \mathcal{O}(h^3)
+\]
+ここで $h = L/N$ のため $1/N \sim h/L$（$L$ は領域長さ，本稿では $L = O(1)$）．
+
+この推定は，境界の $\mathcal{O}(h^2)$ スキームが存在しても，格子全体の \textbf{$L^2$ ノルム誤差は少なくとも $\mathcal{O}(h^3)$} に維持されることを示す．
+実際には境界層の係数が小さいため，$h=1/64$ での数値実験では内点精度 $\mathcal{O}(h^6)$ が支配的に観測される（第\ref{sec:pressure}章 §\ref{sec:ccd_poisson_verification} の格子収束テスト参照）．
+
+高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（§\ref{sec:ccd_ghost}）を採用する．
+
+\subsubsection{実装：ゴーストセル法による境界処理}
+\label{sec:ccd_ghost}
+
+\begin{tcolorbox}[warnbox, title={本稿の標準実装の選択：境界スキーム法}]
+本稿では \textbf{境界スキーム法}（§\ref{sec:ccd_bc}，式~\eqref{eq:bc_left}, \eqref{eq:bcII_left}）を標準実装として採用する．
+第\ref{sec:pressure}章（§\ref{sec:ccd_neumann_bc}）の Neumann 境界条件の組み込み手順も境界スキーム法を前提としている．
+
+以下に説明する\textbf{ゴーストセル法}は実装の均一性（全格子点で同一係数行列を使用）という利点を持つ代替手段だが，
+§\ref{sec:ccd_neumann_bc}の Neumann 組み込みとの整合には境界スキーム法の方が直接的である．
+独自実装としてゴーストセル法を選択する場合は，PPE の Neumann 境界処理（§\ref{sec:ccd_neumann_bc}）を
+ゴーストセル法に合わせて再設計すること．
+\end{tcolorbox}
+
+§\ref{sec:ccd_bc}の境界スキームは数学的に精密だが，実装において別の選択肢として
+\textbf{ゴーストセル（ghost cell）法}がある．
+計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
+境界条件に応じた値を設定することで，
+内点スキーム（3点ステンシル）を境界近傍でもそのまま適用できる．
+
+\begin{tcolorbox}[defbox, title={ゴーストセルの設定規則}]
+左境界 $x = 0$（$i = 0$ が境界セル，$i = -1$ がゴーストセル）の例：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\hline
+境界条件 & ゴーストセル値 & 物理的意味 \\
+\hline
+Dirichlet（ノースリップ壁）: $u|_{\mathrm{wall}}=0$ &
+  $u_{-1} = -u_1$ &
+  鏡像反転（$u_{0} \approx 0$） \\
+Dirichlet（強制流入）: $u|_{\mathrm{wall}}=U_w$ &
+  $u_{-1} = 2U_w - u_1$ &
+  $u_{0} = (u_{-1}+u_1)/2 = U_w$ \\
+Neumann（流出・対称）: $\partial u/\partial x|_{\mathrm{wall}}=0$ &
+  $u_{-1} = u_1$ &
+  勾配ゼロ（偶関数的反射） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{境界セル $i=0$ の内点方程式（ゴーストセル利用版）：}
+\begin{equation}
+  \alpha_1 f'_{-1} + f'_0 + \alpha_1 f'_1
+  = \frac{a_1}{h}(f_1 - f_{-1}) + b_1 h(f''_1 - f''_{-1})
+  \label{eq:ccd_ghost_eq}
+\end{equation}
+ここで $f_{-1}$ および $f'_{-1}, f''_{-1}$ はゴーストセルの値（境界条件から設定）．
+これにより，内点と全く同じ係数行列 $\mathbf{A}, \mathbf{B}$ を境界でも使えるため，
+行列アセンブリのコードが統一できる利点がある．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={ゴーストセル法の注意点}]
+\begin{itemize}
+  \item ゴーストセルへの $f'_{-1}, f''_{-1}$ の設定方法が精度に影響する．
+    ノースリップ壁（$u = 0$）の場合，$f'$ は壁に対して\textbf{偶関数}的に
+    反射（$f'_{-1} = f'_1$），$f''$ は\textbf{奇関数}的（$f''_{-1} = -f''_1$）に設定する
+    ことで，壁上の $f' = 0$，$f'' \neq 0$ の滑らかな挙動が保たれる．
+  \item 流出境界では $f'_{-1} = f'_1$，$f''_{-1} = f''_1$ とするが，
+    圧力の全 Neumann 境界問題（零固有モード）については第\ref{sec:pressure}章の対処法を参照すること．
+\end{itemize}
+\end{tcolorbox}
+
+\subsection{行列構造：ブロック三重対角システム}
+\label{sec:ccd_matrix}
+
+各格子点 $i$ での未知数ベクトルを $\bm{v}_i = [f'_i,\, f''_i]^\top \in \mathbb{R}^2$ とおく．
+格子点数 $N$（内点 $i = 1, \dots, N-2$，境界 $i=0, N-1$）全体の未知数を縦に並べたベクトルを
+$\bm{v} = [\bm{v}_0, \bm{v}_1, \dots, \bm{v}_{N-1}]^\top \in \mathbb{R}^{2N}$ とする．
+
+\subsubsection{内点のブロック係数行列}
+
+内点 $i$（$1 \le i \le N-2$）では，Equation-I \eqref{eq:CCD_I} と Equation-II \eqref{eq:CCD_II} をまとめると
+$\bm{v}_{i-1}, \bm{v}_i, \bm{v}_{i+1}$ をつなぐ $2\times2$ ブロック方程式が得られる：
+\begin{equation}
+  \mathbf{A}_L\,\bm{v}_{i-1} + \mathbf{B}\,\bm{v}_i + \mathbf{A}_R\,\bm{v}_{i+1} = \mathbf{r}_i
+  \label{eq:ccd_block}
+\end{equation}
+ここで係数ブロック $\mathbf{A}_L, \mathbf{A}_R, \mathbf{B} \in \mathbb{R}^{2\times 2}$（$\mathbf{A}_L \neq \mathbf{A}_R$）と右辺 $\mathbf{r}_i \in \mathbb{R}^2$ は，
+Equation-I/II の各行を対応させることで読み取れる：
+
+\begin{tcolorbox}[defbox, title={内点のブロック係数行列（正しい非対称形）}]
+Equation-I と Equation-II を $\bm{v}_{i-1}, \bm{v}_i, \bm{v}_{i+1}$ のブロック形式にまとめると：
+\[
+  \underbrace{\begin{bmatrix} \alpha_1 & b_1 h \\ -b_2/h & \beta_2 \end{bmatrix}}_{\mathbf{A}_L}
+  \bm{v}_{i-1}
+  +
+  \underbrace{\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}}_{\mathbf{B}}
+  \bm{v}_i
+  +
+  \underbrace{\begin{bmatrix} \alpha_1 & -b_1 h \\ +b_2/h & \beta_2 \end{bmatrix}}_{\mathbf{A}_R}
+  \bm{v}_{i+1}
+  = \mathbf{r}_i
+\]
+
+\textbf{導出の詳細：} 2行目（Equation-II）の右辺は
+$a_2(f_{i-1}-2f_i+f_{i+1})/h^2 + b_2(f'_{i+1}-f'_{i-1})/h$ だが，
+$f'_{i\pm1} = [\bm{v}_{i\pm1}]_1$（未知数の第1成分）であるから左辺に移項する：
+\begin{itemize}
+  \item $\bm{v}_{i-1}$ ブロック第2行：$b_2 f'_{i-1}/h$ を左辺へ移項 $\Rightarrow$ 係数 $-b_2/h$
+  \item $\bm{v}_{i+1}$ ブロック第2行：$-b_2 f'_{i+1}/h$ を左辺へ移項 $\Rightarrow$ 係数 $+b_2/h$
+\end{itemize}
+
+右辺ベクトル（関数値 $f_i$ のみからなる項）：
+\[
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{a_1}{h}(f_{i+1}-f_{i-1}) \\[8pt]
+    \dfrac{a_2}{h^2}(f_{i-1}-2f_i+f_{i+1})
+  \end{bmatrix}
+\]
+
+\textbf{重要：} $\mathbf{A}_L \neq \mathbf{A}_R$（左右で異なる非対称ブロック）であることに注意．
+係数 $b_2 = -9/8$ を代入すると $b_2/h = -9/(8h)$ となり，$-b_2/h = 9/(8h) > 0$，$+b_2/h = -9/(8h) < 0$．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={$\mathbf{A}_L \neq \mathbf{A}_R$：左右ブロックの非対称性}]
+Equation-II \eqref{eq:CCD_II} の RHS に $b_2(f'_{i+1}-f'_{i-1})/h$ という隣接点の $f'$ が含まれるため，
+これを左辺に移項すると左右ブロックが\textbf{非対称}になる：
+\[
+  \mathbf{A}_L = \begin{bmatrix} \alpha_1 & b_1 h \\ -b_2/h & \beta_2 \end{bmatrix}, \qquad
+  \mathbf{A}_R = \begin{bmatrix} \alpha_1 & -b_1 h \\ +b_2/h & \beta_2 \end{bmatrix}
+\]
+$b_2 = -9/8$ を代入すると：$-b_2/h = 9/(8h) > 0$，$+b_2/h = -9/(8h) < 0$．
+ブロック三重対角行列自体は依然として $O(N)$ のブロック Thomas 法で解けるが，
+$\mathbf{A}_L$ と $\mathbf{A}_R$ を別々に格納・使用する必要がある点に注意．
+\end{tcolorbox}
+
+\subsubsection{全体行列の構造}
+
+$N$ 格子点全体をまとめると，以下のブロック三重対角行列が得られる：
+\begin{equation}
+  \underbrace{
+  \begin{bmatrix}
+    \mathbf{B}_0 & \mathbf{C}_0 & & & \\
+    \mathbf{A}_L & \mathbf{B} & \mathbf{A}_R & & \\
+    & \mathbf{A}_L & \mathbf{B} & \mathbf{A}_R & \\
+    & & \ddots & \ddots & \ddots \\
+    & & & \mathbf{A}_L & \mathbf{B} & \mathbf{C}_{N-1} \\
+    & & & & \mathbf{A}_{N-1} & \mathbf{B}_{N-1}
+  \end{bmatrix}
+  }_{\text{$2N \times 2N$ ブロック三重対角行列}}
+  \begin{bmatrix} \bm{v}_0 \\ \bm{v}_1 \\ \vdots \\ \bm{v}_{N-1} \end{bmatrix}
+  =
+  \begin{bmatrix} \mathbf{r}_0 \\ \mathbf{r}_1 \\ \vdots \\ \mathbf{r}_{N-1} \end{bmatrix}
+  \label{eq:ccd_global}
+\end{equation}
+ここで $\mathbf{B}_0, \mathbf{C}_0$（左境界）および $\mathbf{A}_{N-1}, \mathbf{B}_{N-1}$（右境界）は
+式 \eqref{eq:bc_left} から導かれる境界専用ブロックであり，
+内点行の $\mathbf{A}_L, \mathbf{A}_R$ は式 \eqref{eq:ccd_block} の均一な非対称ブロック（全内点で同一値）である．
+$\mathbf{C}_{N-1}$ は最終内点行（$i=N-2$）の\textbf{右上結合ブロック}であり，
+右境界スキーム（式~\eqref{eq:bc_left} 右境界対応版）が $\bm{v}_{N-2}$ への依存を修正するため
+$\mathbf{A}_R$（一般内点の右上ブロック）とは異なる値を持つ．
+左境界では対応する修正が $\mathbf{D}_0 = \mathbf{A}_L$（変化なし）となるため，
+行列の左右は非対称な境界処理となっている点に注意されたい．
+
+\noindent\label{defbox:ccd_numeric_blocks}%
+\textbf{【数値代入例】内点ブロック行列の数値係数．}
+上記の記号形（$\mathbf{A}_L$，$\mathbf{A}_R$ の非対称構造）に式 \eqref{eq:coef_CCD} の6係数 $\alpha_1=7/16,\;a_1=15/16,\;b_1=1/16,\;\beta_2=-1/8,\;a_2=3,\;b_2=-9/8$ を代入すると
+（$a_1$ は $\mathbf{r}_i[1]$ の係数，$b_1$ は $\mathbf{A}_{L/R}$ の (1,2) 成分への寄与）：
+\[
+  \mathbf{A}_L =
+  \begin{bmatrix}
+    \dfrac{7}{16} & \dfrac{h}{16} \\[8pt]
+    \dfrac{9}{8h} & -\dfrac{1}{8}
+  \end{bmatrix},
+  \quad
+  \mathbf{A}_R =
+  \begin{bmatrix}
+    \dfrac{7}{16} & -\dfrac{h}{16} \\[8pt]
+    -\dfrac{9}{8h} & -\dfrac{1}{8}
+  \end{bmatrix},
+  \quad
+  \mathbf{B} =
+  \begin{bmatrix}
+    1 & 0 \\
+    0 & 1
+  \end{bmatrix},
+  \quad
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{15}{16h}(f_{i+1}-f_{i-1}) \\[8pt]
+    \dfrac{3}{h^2}(f_{i-1}-2f_i+f_{i+1})
+  \end{bmatrix}
+\]
+$\mathbf{A}_L$ と $\mathbf{A}_R$ は (1,2) および (2,1) 成分の符号が反転した関係にある（対角 $\alpha_1,\beta_2$ は共通）．
+
+\medskip
+
+\noindent 式 \eqref{eq:ccd_global} のブロック三重対角システムは，\textbf{ブロック Thomas 法}（LU 分解のブロック版）で $O(N)$ の計算量で解ける．各ブロック操作は $2\times2$ 行列の逆行列・積であり，スカラー Thomas 法と比べてわずかに定数倍のコスト増加で済む．
+
+\textbf{計算手順の概要：}
+\begin{enumerate}
+  \item \textbf{前進消去（Forward Sweep）：} $i = 1, \dots, N-2$ の各内点行に対して
+        下ブロック $\mathbf{A}_L$（全内点で同一値）を消去する：
+        \[
+          \tilde{\mathbf{B}}_i = \mathbf{B} - \mathbf{A}_L\,\tilde{\mathbf{B}}_{i-1}^{-1}\,\mathbf{A}_R,
+          \qquad
+          \tilde{\mathbf{r}}_i = \mathbf{r}_i - \mathbf{A}_L\,\tilde{\mathbf{B}}_{i-1}^{-1}\,\tilde{\mathbf{r}}_{i-1}
+        \]
+        （最終内点行 $i=N-2$ のみ $\mathbf{A}_R$ の代わりに $\mathbf{C}_{N-1}$ を使用；
+        境界行 $i=N-1$ は $\mathbf{A}_{N-1}, \mathbf{B}_{N-1}$ の専用係数で処理）．
+  \item \textbf{後退代入（Backward Substitution）：} $i = N-1, \dots, 0$ の順に $\bm{v}_i$ を順次決定する．
+\end{enumerate}
+
+2方向（$x, y$）の CCD を行う場合，まず $x$ 方向に沿った全行に対してブロック Thomas 法を適用し，
+続いて $y$ 方向に沿った全列に対して同様の操作を行う（次元分離）．
+この処理で $f'_x, f''_x, f'_y, f''_y$ が一括して得られる．
+

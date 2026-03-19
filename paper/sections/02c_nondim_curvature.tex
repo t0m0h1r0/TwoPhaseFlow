@@ -1,0 +1,364 @@
+% paper/sections/02c_nondim_curvature.tex
+%
+% §2 支配方程式の続き（02_governing.tex からの分割）
+% 内容：無次元 Navier--Stokes 方程式・界面曲率の定義
+%
+\subsection{無次元 Navier--Stokes 方程式}
+\label{sec:nondim}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，次元を持つ Navier-Stokes 方程式から，その無次元形を段階的に導出する．
+このプロセスを理解することは，シミュレーション結果を物理的に解釈する上で不可欠である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{次元系の支配方程式}
+% ─────────────────────────────────────────────────────────────────────────────
+
+まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，
+非圧縮性流体の運動量保存則（Navier-Stokes 方程式）を記述する．
+表面張力項には§\ref{sec:csf}の CSF 表現（式 \eqref{eq:csf_final}）を用いる．
+\begin{equation}
+ \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
+ =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]
+ -\rho^*\bm{g}^* + \bm{f}_\sigma^*
+ \label{eq:NS_dim}
+\end{equation}
+ここで，$\rho^*$ は密度，$\mu^*$ は粘性係数，$\bu^*$ は速度ベクトル，
+$p^*$ は圧力，$\bm{g}^*$ は重力加速度ベクトル，$\bm{f}_\sigma^*$ は表面張力項である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{無次元化変数の導入}
+% ─────────────────────────────────────────────────────────────────────────────
+
+次に，参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ．
+これらを用いて，物理変数を以下のように無次元化する．
+\begin{align}
+ \bm{x}^* &= L\bm{x} & \bu^* &= U\bu & t^* &= \frac{L}{U}t & p^* &= \rho_l U^2 p \\
+ \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla
+\end{align}
+ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla$ は全て無次元量である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜ「慣性力スケール」で正規化するのか}
+% ─────────────────────────────────────────────────────────────────────────────
+
+無次元化の本質的な目的は，「どの力が支配的か」を一目で判断できる形に
+方程式を書き換えることである．
+
+式 \eqref{eq:NS_dim} の各項は次元をもつため，
+項の大きさを比較しても値が使用する単位系に依存してしまい，
+普遍的な議論ができない．
+そこで，全ての項を同じ「力のスケール」で割ることで，
+各項の係数が純粋な力の比（すなわち無次元数）として現れるようにする．
+
+慣性力スケール $\rho_l U^2/L$ を基準として方程式の両辺を割ることで，
+左辺（慣性項）の係数がちょうど $1$ になり，右辺の各項は「慣性力に対する相対的な強さ」として
+$Re, Fr, We$ の形の無次元係数に変換される．
+慣性力は非圧縮流体の運動量方程式において常に主役であるため，これを基準とするのが標準的な慣行である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{各項の無次元化}
+\label{sec:nondim_items}
+% ─────────────────────────────────────────────────────────────────────────────
+
+これらの関係式を，方程式 \eqref{eq:NS_dim} の各項に代入し，変換していく．
+方程式全体を支配する代表的な力である「慣性力」のスケール $\rho_l U^2 / L$ が
+各項に現れることを確認しよう．
+
+\begin{itemize}
+    \item \textbf{非定常項（時間微分項）}:
+    \[
+      \rho^* \pd{\bu^*}{t^*}
+      = (\rho_l\rho)\,\pd{(U\bu)}{\frac{L}{U}t}
+      = \left[\frac{\rho_l U^2}{L}\right]\,\rho\,\pd{\bu}{t}
+    \]
+
+    \item \textbf{移流項}:
+    \[
+      \rho^* (\bu^* \cdot \bnabla^*) \bu^*
+      = (\rho_l\rho) \left( (U\bu) \cdot \left(\frac{1}{L}\bnabla\right) \right) (U\bu)
+      = \left[\frac{\rho_l U^2}{L}\right] \rho(\bu\cdot\bnabla)\bu
+    \]
+
+    \item \textbf{圧力勾配項}:
+    \[
+      \bnabla^* p^* = \left(\frac{1}{L}\bnabla\right) (\rho_l U^2 p)
+      = \left[\frac{\rho_l U^2}{L}\right] \bnabla p
+    \]
+
+    \item \textbf{粘性項}:
+    \begin{align*}
+     \bnabla^*\cdot(\mu^*\bnabla^*\bu^*)
+     &= \frac{1}{L}\bnabla\cdot\left( (\mu_l\mu) \frac{1}{L}\bnabla (U\bu) \right) \\
+     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot(\mu\bnabla\bu)
+      = \left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re}
+        \bnabla\cdot(\mu\bnabla\bu)
+    \end{align*}
+    ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
+
+    \item \textbf{重力項}:（$\bm{g}^* = -g\hat{\bm{z}}$，$\hat{\bm{z}}$ は鉛直上向き単位ベクトル，$g > 0$）
+    \[
+      \rho^* \bm{g}^*
+      = (\rho_l\rho) (-g\hat{\bm{z}})
+      = -\left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{gL}{U^2}\right)}_{=1/Fr^2}
+        \rho \hat{\bm z}
+    \]
+    ここで，フルード数 $Fr \equiv U/\sqrt{gL}$ が現れる．
+
+    \item \textbf{表面張力項}:（CSF モデル $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を仮定）
+    \begin{align*}
+      \sigma\kappa^*\bnabla^*\psi
+      &= \sigma \left(\frac{1}{L}\kappa\right) \left(\frac{1}{L}\bnabla\psi\right)
+       = \frac{\sigma}{L^2}\kappa\bnabla\psi \\
+      &= \left[\frac{\rho_l U^2}{L}\right]
+         \underbrace{\left(\frac{\sigma}{\rho_l U^2 L}\right)}_{=1/We}
+         \kappa\bnabla\psi
+    \end{align*}
+    ここで，ウェーバー数 $We \equiv \rho_l U^2 L / \sigma$ が現れる．
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{無次元方程式の完成}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§\ref{sec:nondim_items}で求めた各項の変換結果を，元の次元系方程式 \eqref{eq:NS_dim} に代入すると，
+共通因子 $[\rho_l U^2/L]$ が全ての項に現れる：
+\begin{align}
+ &\underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{\text{共通因子}} \!\!
+ \rho\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \notag \\
+ &= - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}\bnabla p
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{1}{Re}\,
+     \bnabla\cdot\!\bigl[\mu(\bnabla\bu+\bnabla\bu^T)\bigr]
+   - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\rho}{Fr^2}\hat{\bm z}
+   + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\kappa\bnabla\psi}{We}
+ \label{eq:NS_assembled}
+\end{align}
+両辺を $[\rho_l U^2/L]$ で割ると，最終的な無次元 Navier-Stokes 方程式が得られる．
+
+\begin{equation}
+ \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)
+ =-\bnabla p+\frac{1}{Re}\,\bnabla\cdot\!\left[\mu\,(\bnabla\bu+\bnabla\bu^T)\right]
+ -\frac{\rho}{Fr^2}\hat{\bm z}+\frac{\kappa\,\bnabla\psi}{We}
+ \label{eq:NS_dimless_cls}
+\end{equation}
+
+この方程式は，流体の挙動が $Re, Fr, We$ という3つの無次元パラメータによって
+支配されることを明示している．
+
+各無次元数の定義と物理的意味を表~\ref{tab:dimless_numbers} に示す．
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lccc}
+\hline
+無次元数      & 定義 & 力の比 & 大きいとき \\
+\hline
+Reynolds 数 $Re$ & $\dfrac{\rho_l U L}{\mu_l}$
+  & $\dfrac{\text{慣性力}}{\text{粘性力}}$
+  & 乱流的，粘性の影響が小さい \\[6pt]
+Froude 数 $Fr$   & $\dfrac{U}{\sqrt{gL}}$
+  & $\sqrt{\dfrac{\text{慣性力}}{\text{重力}}}$
+  & 重力波が生じにくい（速い流れ） \\[6pt]
+Weber 数 $We$    & $\dfrac{\rho_l U^2 L}{\sigma}$
+  & $\dfrac{\text{慣性力}}{\text{表面張力}}$
+  & 液滴が変形・分裂しやすい \\
+\hline
+\end{tabular}
+\caption{3つの無次元数の定義と力の比としての解釈}
+\label{tab:dimless_numbers}
+\end{table}
+
+\noindent\textbf{例：}
+水（$\rho_l=1000\,\mathrm{kg/m^3}$,
+$\mu_l=10^{-3}\,\mathrm{Pa\cdot s}$,
+$\sigma=0.073\,\mathrm{N/m}$）の落下液滴
+（$U=1\,\mathrm{m/s}$, $L=10^{-3}\,\mathrm{m}$）では，
+$Re=1000$，$Fr=10.1$，$We=13.7$ となる．
+$We > 1$ であるから，表面張力よりも慣性力が勝り，
+液滴は球形から変形しやすい状態にあると判断できる．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{界面曲率の定義と解析表現}
+\label{sec:curvature}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+界面の曲率 $\kappa$ は，表面張力項を評価するために不可欠な幾何学量である．
+本稿では，符号付き距離関数 $\phi$ から高精度に曲率を計算する．
+その定義は，法線ベクトル $\hat{\bm{n}}$ の発散として与えられる．
+\begin{equation}
+ \kappa(\phi) = -\bnabla\cdot \hat{\bm{n}}
+ = -\bnabla\cdot\!\left(\frac{\bnabla\phi}{\norm{\bnabla\phi}}\right)
+ \label{eq:curvature_div}
+\end{equation}
+$\phi$ が真の符号付き距離関数であれば $\norm{\bnabla\phi}=1$ であるため，
+$\kappa = -\bnabla^2\phi$ と単純化される．
+しかし，数値計算では移流誤差によりこの性質が常に満たされるとは限らないため，
+式\eqref{eq:curvature_div}を直接扱う必要がある．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{2次元デカルト座標における展開}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式 \eqref{eq:curvature_div} を数値計算で安定して扱うため，
+商の微分法則を用いて展開する．
+2次元 $(x,y)$ 系では，$\bnabla\phi = (\phi_x, \phi_y)$ であり，
+$\norm{\bnabla\phi} = \sqrt{\phi_x^2 + \phi_y^2}$ となる．
+曲率の定義は以下のようになる：
+\[
+  \kappa = -\left( \pd{n_x}{x} + \pd{n_y}{y} \right)
+  = -\left(
+      \pd{}{x}\frac{\phi_x}{\sqrt{\phi_x^2+\phi_y^2}}
+      + \pd{}{y}\frac{\phi_y}{\sqrt{\phi_x^2+\phi_y^2}}
+    \right)
+\]
+
+この計算を，第一項 $\pd{n_x}{x}$ に集中して段階的に見ていこう．
+$f/g$ の微分は $(f'g - fg')/g^2$ である．
+ここで，$f=\phi_x$，$g=\sqrt{\phi_x^2+\phi_y^2}$ とすると，
+\begin{itemize}
+    \item $f' = \pd{f}{x} = \pd{(\phi_x)}{x} = \phi_{xx}$
+    \item $g' = \pd{g}{x} = \pd{(\phi_x^2+\phi_y^2)^{1/2}}{x}$
+\end{itemize}
+$g'$ の計算には連鎖律（chain rule）を用いる．
+\[
+  g' = \frac{1}{2}(\phi_x^2+\phi_y^2)^{-1/2}
+       \cdot \pd{(\phi_x^2+\phi_y^2)}{x}
+     = \frac{2\phi_x\phi_{xx} + 2\phi_y\phi_{xy}}{2\sqrt{\phi_x^2+\phi_y^2}}
+     = \frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{\sqrt{\phi_x^2+\phi_y^2}}
+\]
+これらを商の微分公式に代入すると，
+\begin{align}
+ \pd{n_x}{x}
+ &= \frac{
+     \overbrace{\phi_{xx}}^{f'}
+     \overbrace{(\phi_x^2+\phi_y^2)^{1/2}}^{g}
+     -
+     \overbrace{\phi_x}^{f}
+     \overbrace{\left(\frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{1/2}}\right)}^{g'}
+   }{\underbrace{\phi_x^2+\phi_y^2}_{g^2}} \notag \\
+ \text{（分母分子に $(\phi_x^2+\phi_y^2)^{1/2}$ を掛けて整理すると）} \notag \\
+ &= \frac{\phi_{xx}(\phi_x^2+\phi_y^2) - \phi_x(\phi_x\phi_{xx} + \phi_y\phi_{xy})}
+         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
+ &= \frac{\phi_{xx}\phi_x^2 + \phi_{xx}\phi_y^2 - \phi_x^2\phi_{xx} - \phi_x\phi_y\phi_{xy}}
+         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
+ &= \frac{\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
+ \label{eq:dnx_dx}
+\end{align}
+全く同様に，$y$ に関する第二項は，変数の対称性 $(x \leftrightarrow y)$ から求まる
+（$f=\phi_y$, $g=\sqrt{\phi_x^2+\phi_y^2}$ とした商の微分）．
+\begin{equation}
+  \pd{n_y}{y}
+  = \frac{\phi_{yy}\phi_x^2 - \phi_y\phi_x\phi_{yx}}{(\phi_x^2+\phi_y^2)^{3/2}}
+  \label{eq:dny_dy}
+\end{equation}
+$\phi$ の連続性を仮定すれば，$\phi_{xy}=\phi_{yx}$ である（Schwarz の定理）．
+
+最後に，式 \eqref{eq:dnx_dx} と式\eqref{eq:dny_dy}を足し合わせる．
+分母は共通の $(\phi_x^2+\phi_y^2)^{3/2}$ であるから，分子だけを整理する：
+\begin{align*}
+  \text{分子}
+  &= \bigl(\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}\bigr)
+   + \bigl(\phi_{yy}\phi_x^2 - \phi_y\phi_x\phi_{yx}\bigr) \\
+  &= \phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}
+   + \phi_{yy}\phi_x^2 - \phi_x\phi_y\phi_{xy}
+     \quad \bigl(\because\, \phi_{yx}=\phi_{xy}\bigr) \\
+  &= \phi_{xx}\phi_y^2 - 2\phi_x\phi_y\phi_{xy} + \phi_{yy}\phi_x^2
+\end{align*}
+
+\begin{equation}
+  \kappa = -\frac{
+    \phi_y^2\,\phi_{xx}
+    - 2\phi_x\phi_y\,\phi_{xy}
+    + \phi_x^2\,\phi_{yy}
+  }{\bigl(\phi_x^2 + \phi_y^2\bigr)^{3/2}}
+  \label{eq:curvature_2d}
+\end{equation}
+この形式は，各微分項（$\phi_x, \phi_y, \phi_{xx}, \dots$）を
+有限差分で近似して代入することで，直接 $\kappa$ を計算できるため，
+数値実装に適している．
+CCD 法（第\ref{sec:CCD}章）を用いることで，これらの微分を $\Ord{h^6}$ 精度で評価できる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{具体例：半径 $R$ の円による曲率式の検証}
+\label{sec:curvature_circle_example}
+% ─────────────────────────────────────────────────────────────────────────────
+
+曲率式 \eqref{eq:curvature_2d} が正しいことを，
+最も基本的な例である「円」で検証しよう．
+これは実装後の最初の動作確認（単体テスト）としても極めて重要である．
+
+\paragraph{設定：}
+原点を中心とする半径 $R$ の円を，符号付き距離関数
+\[
+  \phi(x,y) = \sqrt{x^2 + y^2} - R \equiv r - R
+  \quad \left(r \equiv \sqrt{x^2+y^2}\right)
+\]
+で表す（$\phi < 0$：円内部（液相），$\phi > 0$：円外部（気相），$\phi = 0$：界面）．
+
+\paragraph{微分の計算：}
+\begin{align}
+  \phi_x &= \frac{x}{r},\quad \phi_y = \frac{y}{r} \notag \\
+  \phi_{xx} &= \frac{r^2-x^2}{r^3} = \frac{y^2}{r^3},\quad
+  \phi_{yy} = \frac{x^2}{r^3},\quad
+  \phi_{xy} = -\frac{xy}{r^3}
+  \label{eq:circle_deriv}
+\end{align}
+
+\paragraph{式 \eqref{eq:curvature_2d} への代入：}
+
+まず分母を確認する：
+$\phi_x^2 + \phi_y^2 = x^2/r^2 + y^2/r^2 = 1$（真の符号付き距離関数の性質）．
+
+次に分子を計算する：
+\begin{align*}
+  &\phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} \\
+  &= \frac{y^2}{r^2}\cdot\frac{y^2}{r^3}
+     - 2\cdot\frac{x}{r}\cdot\frac{y}{r}\cdot\left(-\frac{xy}{r^3}\right)
+     + \frac{x^2}{r^2}\cdot\frac{x^2}{r^3} \\
+  &= \frac{y^4 + 2x^2y^2 + x^4}{r^5}
+   = \frac{(x^2+y^2)^2}{r^5} = \frac{r^4}{r^5} = \frac{1}{r}
+\end{align*}
+
+分子 $= 1/r$，分母 $= 1^{3/2} = 1$ より：
+\[
+  \kappa = -\frac{1/r}{1} = -\frac{1}{r}
+\]
+界面 $r = R$ 上では $\kappa = -1/R < 0$（本稿の符号規約と一致：液滴内部が液相で $\hat{\bm{n}}$ が外向き）．
+式 \eqref{eq:young-laplace} に代入すると $[p] = \sigma\kappa = -\sigma/R < 0$，
+すなわち $p_\text{liq} - p_\text{gas} = \sigma/R > 0$（液滴内部の圧力が外部より高い）となり，
+物理的に正しい結果が確認できる．
+
+実装確認には，解析曲率が既知の円（$\phi = r - R$，$\kappa = -1/R$）を使った収束テストが有効である：
+格子幅 $h = 2R/N$（$N = 16, 32, 64, \dots$）で $E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty}$ を計測し，
+$\Ord{h^6}$ 収束（$h$ を半分にすると誤差が $1/64$ 倍）が確認できれば CCD の精度が保証される．
+
+\begin{tcolorbox}[warnbox, title={曲率の数値的安定化：実装クイックスタート（詳細分析は §\ref{sec:curvature_stab}）}]
+\label{box:curvature_stab}
+
+式~\eqref{eq:curvature_2d} の分母 $(\phi_x^2+\phi_y^2)^{3/2}$ は，
+移流・再初期化の数値誤差により $|\bnabla\phi|\to 0$ となる格子点でゼロ除算を引き起こす恐れがある．
+実装では必ず以下の\textbf{分母クランプ}（下限値 $\varepsilon_{\text{norm}}$）を施す：
+
+\begin{equation}
+  \kappa \approx -\frac{
+    \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy}
+  }{\max\!\bigl(\phi_x^2 + \phi_y^2,\; \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
+  \label{eq:curvature_clamped}
+\end{equation}
+
+\textbf{推奨値：} $\varepsilon_{\text{norm}} = 10^{-3}$（次元なし，再初期化が正常なら作動しない）．
+
+\medskip
+\noindent\textbf{根本的保証は再初期化にある：}
+CLS 再初期化（第\ref{sec:levelset}章）が $|\bnabla\phi|\approx 1$ を維持していれば，
+分母は常に $\approx 1$ に保たれクランプは実質的に不要となる．
+クランプは過渡的な状況への防御的フォールバックである．
+
+\medskip
+\noindent\textbf{深い分析（ゼロ除算の発生メカニズム，誤差評価，
+ガウシアンフィルタ，実装チェックリスト）は
+第\ref{sec:levelset}章（§\ref{sec:curvature_stab}）を参照．}
+\end{tcolorbox}

@@ -1,0 +1,310 @@
+% paper/sections/02b_csf.tex
+%
+% §2 支配方程式の続き（02_governing.tex からの分割）
+% 内容：CSF（連続表面力）モデルによる表面張力の体積力化
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CSF（連続表面力）モデルによる表面張力の体積力化}
+\label{sec:csf}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+Navier-Stokes 方程式に表面張力項 $\bm{f}_\sigma^*$ を組み込む前に，
+その導出を示す必要がある．表面張力は本来「界面上の線力（3次元では面力）」だが，
+これをそのまま体積方程式に入れることはできない．
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル} \cite{Brackbill1992} は
+この問題を解決する標準的手法である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜデルタ関数が必要か：面積分から体積積分への変換}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\paragraph{直感的理解：「フィルター」としてのデルタ関数}
+表面張力は本来，界面 $\Gamma$ という\textbf{面（2次元曲面）}の上にのみ作用する力である．
+一方，Navier-Stokes 方程式は\textbf{体積（3次元領域）}全体にわたる方程式である．
+「面の上の力」を「体積全体の力」として書き直すには，
+\textbf{「界面でのみ1，それ以外でゼロ」という数学的なフィルター}が必要になる．
+これがディラックデルタ関数 $\delta_s$ の役割である．
+
+具体的には，表面張力による力 $F_\sigma$ を体積積分と面積分の両方で表すと：
+\[
+  \underbrace{\int_\Omega \bm{f}_\sigma(\bm{x})\, dV}_{\text{体積積分（NS 方程式側）}}
+  = \underbrace{\int_\Gamma \sigma\kappa\hat{\bm{n}}\, dS}_{\text{面積分（物理的表現）}}
+\]
+この等式が成り立つためには，$\bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})$
+（界面上では $+\infty$，それ以外では $0$，積分すると界面の面積を与える関数）
+とおく必要がある．
+
+\paragraph{1次元での直感：ヘヴィサイド関数の微分}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  %% 左：ヘヴィサイド関数
+  \begin{scope}[xshift=-45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（a）ヘヴィサイド関数 $H_\varepsilon(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$H_\varepsilon$};
+    \draw[very thick, blue2, domain=-2:2, samples=80]
+      plot (\x, {1.8/(1+exp(-3*\x))});
+    \node[font=\scriptsize, blue2] at (1.4, 1.65) {$H_\varepsilon(\phi)$};
+    \draw[dashed, gray] (-2.2, 1.8) -- (2.2, 1.8) node[right, font=\scriptsize, gray]{$1$};
+    \draw[dashed, gray] (-2.2, 0)   -- (2.2, 0)   node[right, font=\scriptsize, gray]{$0$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \node[font=\scriptsize] at (-1.3, 0.9) {液相};
+    \node[font=\scriptsize] at (1.3,  0.9) {気相};
+  \end{scope}
+  %% 右：デルタ関数（微分）
+  \begin{scope}[xshift=45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（b）微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$\delta_\varepsilon$};
+    \draw[very thick, red2, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)});
+    \fill[red2!15, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)}) -- (2, 0) -- (-2, 0) -- cycle;
+    \node[font=\scriptsize, red2] at (0.6, 1.8) {$\delta_\varepsilon(\phi)$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \draw[<->, thick, darkgray]
+      (-0.6, -0.15) -- (0.6, -0.15) node[midway, below, font=\scriptsize]{幅 $\approx 2\varepsilon$};
+    \node[font=\scriptsize, darkgray] at (1.6, 0.3) {界面外 $\approx 0$};
+    \node[font=\scriptsize] at (0, 1.0) {$\int\delta_\varepsilon\,d\phi = 1$};
+  \end{scope}
+  %% 微分矢印
+  \draw[-Stealth, very thick, navy] (-0.8, 1.4) -- (0.8, 1.4)
+        node[midway, above, font=\small, navy]{$\dfrac{d}{d\phi}$};
+\end{tikzpicture}
+\caption{（a）CLS 変数 $\psi = H_\varepsilon(\phi)$（ヘヴィサイド関数の滑らか版）．
+界面 $\phi=0$ を中心に 0 から 1 へ連続的に変化する．
+（b）その微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$ は界面近傍にのみ集中した
+ピーク（デルタ関数の滑らか版）を形成する．
+$|\bnabla\psi| = \delta_\varepsilon(\phi)|\bnabla\phi| \approx \delta_\varepsilon(\phi)$
+が界面デルタ関数 $\delta_s$ の数値近似となる．}
+\label{fig:heaviside_delta}
+\end{figure}
+
+1次元の場合，ヘヴィサイド関数 $H(x)$（$x>0$ で 1，$x<0$ で 0）の微分は
+ディラックデルタ $\delta(x)$ である：
+\[
+  \frac{d}{dx}H(x) = \delta(x)
+\]
+数値計算では厳密なステップ関数の代わりに，
+滑らかな近似 $H_\varepsilon(\phi)$（図\ref{fig:heaviside_delta}(a)）を用いる．
+その微分 $H_\varepsilon'(\phi) = \delta_\varepsilon(\phi)$ は
+「幅 $\approx 2\varepsilon$ を持つ滑らかなピーク関数」（図\ref{fig:heaviside_delta}(b)）となり，
+これが界面ディラックデルタ $\delta_s$ の数値的な近似として機能する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{物理的表面張力と界面のディラックデルタ}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ 上に作用する表面張力は，単位面積あたり $\sigma\kappa\hat{\bm{n}}$ の法線力である．
+これを全空間で定義された体積力 $\bm{f}_\sigma$ として書くには，
+界面上だけ値を持つ\textbf{界面ディラックデルタ} $\delta_s$ を用いる：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
+  \label{eq:csf_dirac}
+\end{equation}
+$\delta_s$ は界面 $\Gamma$ 上では $+\infty$，それ以外では $0$ の一般化関数であり，
+$\int_\Omega \delta_s(\bm{x})\,dV = \int_\Gamma dS$（面積分）という性質を持つ．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CLS を用いた $\delta_s$ と $\hat{\bm{n}}$ の近似}
+% ─────────────────────────────────────────────────────────────────────────────
+
+解析的には $\delta_s$ は扱いにくいが，CLS 変数 $\psi = H_\varepsilon(\phi)$ を用いると
+\textbf{滑らかな近似}が得られる：
+\begin{align}
+  |\bnabla\psi| &= |H_\varepsilon'(\phi)|\,|\bnabla\phi|
+                 = \delta_\varepsilon(\phi)\,|\bnabla\phi|
+                 \approx \delta_\varepsilon(\phi)
+  \label{eq:csf_delta_psi}
+\end{align}
+最後の近似は $|\bnabla\phi|\approx 1$（符号付き距離関数の Eikonal 性質）による．
+すなわち，\textbf{$|\bnabla\psi|$ が界面ディラックデルタ $\delta_s$ の滑らかな近似}となる．
+
+\begin{tcolorbox}[defbox, title={本節で使用する $H_\varepsilon$ の定義（前提確認；正式導出は第\ref{sec:levelset}章）}]
+\label{box:Heps_preview}
+以下の精度証明は $H_\varepsilon$ の具体的な形式に依拠する．
+第\ref{sec:levelset}章（§\ref{sec:cls_advection}）で正式に導出するが，
+証明に必要な2つの性質をここで先行定義する．
+
+\medskip
+\noindent\textbf{定義（シグモイド型滑らかヘヴィサイド関数）：}
+\begin{equation}
+  H_\varepsilon(\phi) \equiv \frac{1}{1+e^{-\phi/\varepsilon}}
+  \label{eq:Heps_def_preview}
+\end{equation}
+$\phi=0$（界面）で $H_\varepsilon = 1/2$，$\phi\to-\infty$（液相）で $H_\varepsilon\to 0$，
+$\phi\to+\infty$（気相）で $H_\varepsilon\to 1$．
+
+\medskip
+\noindent\textbf{性質1（微分の閉形式）：}
+\begin{equation}
+  \delta_\varepsilon(\phi) \equiv H_\varepsilon'(\phi)
+  = \frac{e^{-\phi/\varepsilon}}{\varepsilon(1+e^{-\phi/\varepsilon})^2}
+  = \frac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr)
+  \label{eq:delta_eps_def}
+\end{equation}
+
+\noindent\textbf{性質2（偶関数性）：} $\delta_\varepsilon(\phi) = \delta_\varepsilon(-\phi)$
+（すなわち $\delta_\varepsilon$ は $\phi=0$ に関して対称）．
+
+\textbf{確認：}
+$\delta_\varepsilon(-\phi) = \frac{e^{\phi/\varepsilon}}{\varepsilon(1+e^{\phi/\varepsilon})^2}
+= \frac{e^{-\phi/\varepsilon}}{\varepsilon(1+e^{-\phi/\varepsilon})^2} = \delta_\varepsilon(\phi)$
+（分子分母を $e^{2\phi/\varepsilon}$ で割ると一致）．
+
+この偶関数性は，以下の精度評価において $\int s\,\delta_\varepsilon(s)\,ds = 0$ を保証するために使用される．
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={近似 $|\bnabla\psi| \approx \delta_s$ の精度：Eikonal 条件下で $\Ord{\varepsilon^2}$}]
+Eikonal 条件 $|\bnabla\phi|=1$ が厳密に成立するとき，
+式 \eqref{eq:csf_delta_psi} の近似誤差を法線方向座標によるテイラー展開で定量化する．
+以下では，$\delta_\varepsilon$ として上の box~\ref{box:Heps_preview} で定義したシグモイド微分
+（式 \eqref{eq:delta_eps_def}）を使用する．
+
+\medskip
+\noindent\textbf{法線座標展開}
+
+界面 $\Gamma$（$\phi=0$）の法線方向座標を $s$，接線方向座標を $\bm{\tau}$ とおく．
+曲率 $\kappa_1, \kappa_2$（2次元では $\kappa_2=0$）を持つ界面近傍の体積要素は：
+\[
+  dV = \bigl(1 - \kappa_1 s\bigr)\bigl(1 - \kappa_2 s\bigr)\, ds\, dA_\Gamma
+  \approx \bigl(1 - 2H s + \kappa_1\kappa_2 s^2 + \cdots\bigr)\, ds\, dA_\Gamma
+\]
+ここで $H = (\kappa_1+\kappa_2)/2$ は平均曲率，$dA_\Gamma$ は界面面積要素である．
+
+界面デルタ関数の定義 $\int_\Omega f\,\delta_s\,dV = \int_\Gamma f\,dA_\Gamma$ から：
+\[
+  \delta_s = \frac{\delta(s)}{(1-\kappa_1 s)(1-\kappa_2 s)}
+  = \delta(s)\bigl(1 + 2Hs + \Ord{s^2}\bigr)
+\]
+
+\noindent\textbf{近似誤差の評価}
+
+$|\bnabla\phi|=1$ のとき $|\bnabla\psi| = \delta_\varepsilon(s)$ であるから：
+\begin{align*}
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  &= \int_\Gamma \int_{-\infty}^{\infty}
+       f\,\delta_\varepsilon(s)\,\bigl(1 - 2Hs + \Ord{s^2}\bigr)\,ds\, dA_\Gamma
+     - \int_\Gamma f\, dA_\Gamma \\
+  &= \int_\Gamma f
+       \underbrace{\int_{-\infty}^{\infty}\delta_\varepsilon(s)\,ds}_{=1}\, dA_\Gamma
+     - \int_\Gamma f\, dA_\Gamma \\
+  &\quad
+     + \int_\Gamma f\!\int_{-\infty}^{\infty}\delta_\varepsilon(s)\cdot(-2Hs)\,ds\, dA_\Gamma
+     + \Ord{\varepsilon^2}
+\end{align*}
+$\delta_\varepsilon(s)$（式 \eqref{eq:delta_eps_def}）は
+$s$ に関して\textbf{偶関数}（$s \to -s$ で不変，box~\ref{box:Heps_preview} の性質2で確認済み）であり，
+$s$ は奇関数であるから：
+\[
+  \int_{-\infty}^{\infty} s\,\delta_\varepsilon(s)\,ds = 0
+  \quad \text{（奇関数 $\times$ 偶関数の積分はゼロ）}
+\]
+したがって曲率 $H$ の項は消え，誤差の主要項は $s^2\,\delta_\varepsilon(s)$ の積分から来る．
+置換 $t = s/\varepsilon$（$ds = \varepsilon\,dt$）により：
+\[
+  \int_{-\infty}^{\infty} s^2\,\delta_\varepsilon(s)\,ds
+  = \int_{-\infty}^{\infty} (\varepsilon t)^2\,\frac{e^{-t}}{\varepsilon(1+e^{-t})^2}\,\varepsilon\,dt
+  = \varepsilon^2 \int_{-\infty}^{\infty} t^2\,\frac{e^{-t}}{(1+e^{-t})^2}\,dt
+  = \frac{\pi^2\varepsilon^2}{3}
+\]
+最後の等号は $t>0$ での級数展開
+$e^{-t}/(1+e^{-t})^2 = \sum_{n=1}^{\infty}(-1)^{n-1}\,n\,e^{-nt}$
+と $\int_0^\infty t^2 e^{-nt}\,dt = 2/n^3$ を用いて：
+\[
+  \int_0^\infty t^2\,\frac{e^{-t}}{(1+e^{-t})^2}\,dt
+  = 2\sum_{n=1}^{\infty}\frac{(-1)^{n-1}}{n^2}
+  = 2\cdot\frac{\pi^2}{12} = \frac{\pi^2}{6}
+\]
+偶関数の対称性 $\bigl(\delta_\varepsilon(-s)=\delta_\varepsilon(s)\bigr)$ から $[-\infty,0]$ 側も同値であり，合計 $\pi^2/3$ を得る．
+ここで $\sum_{n=1}^{\infty}(-1)^{n-1}/n^2 = \pi^2/12$
+はディリクレのエータ関数 $\eta(2)=(1-2^{1-2})\zeta(2)=\pi^2/12$ の標準的結果である．
+
+\noindent\textbf{結論}
+\[
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  = \Ord{\varepsilon^2\,\kappa^2\,\|f\|_{L^\infty}}
+\]
+Eikonal 条件 $|\bnabla\phi|=1$ のもとでの近似 $|\bnabla\psi| \approx \delta_s$ の誤差は
+$\Ord{\varepsilon^2}$ である（より正確には $\Ord{\varepsilon^2 \kappa^2}$，
+すなわち界面が直線 $\kappa=0$ のときは厳密）．
+$\varepsilon = C_\varepsilon\Delta x_{\min}$ とすれば誤差は $\Ord{\Delta x^2}$ であり，
+CSF モデルの体積力の精度に対して一貫した精度評価が成り立つ．
+\end{tcolorbox}
+
+一方，界面の外向き単位法線は：
+\begin{equation}
+  \hat{\bm{n}} = \frac{\bnabla\psi}{|\bnabla\psi|}
+  \label{eq:csf_normal}
+\end{equation}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CSF 体積力の最終形：$\bm{f}_\sigma = \sigma\kappa\bnabla\psi$}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式 \eqref{eq:csf_delta_psi} と \eqref{eq:csf_normal} を式 \eqref{eq:csf_dirac} に代入する：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\,\hat{\bm{n}}\,\delta_s
+  \approx \sigma\kappa\,\frac{\bnabla\psi}{|\bnabla\psi|}\,|\bnabla\psi|
+  = \boxed{\sigma\kappa\,\bnabla\psi}
+  \label{eq:csf_final}
+\end{equation}
+
+$\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる（界面から離れるとゼロに近づく）．
+したがって $\sigma\kappa\bnabla\psi$ は界面近傍でのみ作用し（$\delta_s$ の役割を $|\bnabla\psi|$ が担う），
+界面の法線方向に大きさ $\sigma\kappa$ の力を与え，全空間積分すると Young-Laplace のジャンプ条件
+$[p]_\Gamma = \sigma\kappa$ を再現する（§\ref{proof:csf_young_laplace}参照）．
+CSF モデルはこれを全空間で定義された通常の体積力として扱えるようにしたものである．
+
+\medskip
+\phantomsection\label{proof:csf_young_laplace}
+\noindent\textbf{検証：CSF モデルが Young-Laplace ジャンプ条件を再現すること}
+
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が界面ジャンプ条件
+$[p]_\Gamma \equiv p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa$
+を再現することを，界面法線方向の積分によって示す．
+
+\textbf{設定：} 平衡状態（速度ゼロ）の静止液滴を考える．
+運動方程式（式 \eqref{eq:NS_onefluid}）より
+$\bnabla p = \sigma\kappa\bnabla\psi$ が成立する．
+
+\textbf{界面法線方向への積分：}
+界面を法線方向 $s$（液相側 $s \to -\infty$ から気相側 $s \to +\infty$ の方向）に沿って積分する：
+\[
+  p_{\text{gas}} - p_{\text{liq}}
+  = \int_{-\infty}^{+\infty} \frac{\partial p}{\partial s}\,ds
+  = \int_{-\infty}^{+\infty} \sigma\kappa\,\frac{\partial\psi}{\partial s}\,ds
+  = \sigma\kappa \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+\]
+（曲率 $\kappa$ は界面近傍で一定とみなせるため積分の外に出せる）
+
+\textbf{鍵となる積分：}
+$\psi$ は液相側で $\psi \to 0$，気相側で $\psi \to 1$ へと単調に変化するから：
+\[
+  \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+  = \psi\big|_{s=+\infty} - \psi\big|_{s=-\infty}
+  = 1 - 0 = 1
+\]
+
+\textbf{結論：}
+\[
+  \boxed{p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa \cdot 1 = \sigma\kappa}
+\]
+これにより，CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が
+Young-Laplace ジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を正確に再現することが示された．
+$\psi$ のプロファイルが崩れると $\int|\nabla\psi|ds \neq 1$ となり圧力ジャンプに誤差が生じる
+（これが再初期化の物理的重要性の一つである）．
+
+\paragraph{Balanced-Force 条件（予告）：ここでは物理的必要性のみを示す}
+\label{box:balanced_force_ref}
+物理的直感を得るためには本節の式 \eqref{eq:csf_final} だけで十分である．
+しかし，数値実装での落とし穴（差分演算子の不整合による寄生流れ増幅）は，
+\textbf{格子の選択（第\ref{sec:grid}章）および差分スキームの選択（第\ref{sec:CCD}章）に強く依存する}問題であるため，
+\textbf{実装上の詳細・警告・チェックリストは第\ref{sec:collocate}章（§\ref{sec:balanced_force}）にまとめて掲載する}．
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ の\textbf{離散化段階}において，
+圧力勾配項 $-\bnabla p$ と表面張力項 $\sigma\kappa\bnabla\psi$ に
+\textbf{完全に同一の差分演算子}を用いること（\textbf{Balanced-Force 条件}）は，
+寄生流れ（第\ref{sec:intro}章・失敗例1）を抑制するために不可欠である．
+
+% ═══════════════════════════════════════════════════════════════════════════════
