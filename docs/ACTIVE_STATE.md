@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-19
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **14 CRITIC passes + 14 EDITOR sweeps complete (2026-03-19).** Appendix `sec:dtau_derive` (Δτ convergence rate derivation) added. Re-compile required to verify clean build after recent additions.
+* **Paper:** 12 sections + appendix\_proofs. **15 CRITIC passes + 15 EDITOR sweeps complete (2026-03-19).** Re-compile required to verify clean build.
 
 ## **2. Pending Action Items**
 
@@ -19,4 +19,4 @@
 
 ### **Paper / Documentation**
 
-1. **Re-compile required** — EDITOR sweeps 12–14 added new labels, cross-refs, and appendix section (`sec:dtau_derive`). Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.
+1. **Re-compile required** — EDITOR sweeps 12–15 added new labels, cross-refs, appendix section, and rewrote several subsections. Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.

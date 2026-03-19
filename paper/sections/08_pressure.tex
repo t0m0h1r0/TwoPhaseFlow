@@ -529,7 +529,7 @@ $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}}
 \begin{tcolorbox}[defbox, title={最適仮想時間刻み $\Delta\tau$ の選択指針}]
 仮想時間刻み $\Delta\tau$ は収束速度に直接影響する重要なパラメータである．
 
-\textbf{収束率解析と最適 $\Delta\tau$ の導出（スウィープ型）：}
+\textbf{最適 $\Delta\tau$ の理論的根拠（スウィープ型，詳細は付録 §\ref{sec:dtau_derive}）：}
 
 スウィープ型は \textbf{任意の $\Delta\tau > 0$ で無条件安定}（誤差は発散しない）だが，
 収束\textbf{速度}と分割誤差の大きさはともに $\Delta\tau$ に依存する．
@@ -539,7 +539,7 @@ $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}}
   \gamma(t) = \frac{1 + t^2}{(1+t)^2},
   \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
 \]
-が得られる（厳密な導出および $\gamma < 1$（$\forall t>0$）の証明は付録 §\ref{sec:dtau_derive} 参照）．
+が得られる（$\gamma < 1$，$\forall t>0$）．
 $d\gamma/dt = 0$ を解くと $t = 1$，すなわち $\Delta\tau_{\mathrm{opt}} = 2/\lambda$ で
 この指標が最小値 $\gamma=1/2$ をとる
 （収束速度と分割誤差のトレードオフが最良にバランスする点）．

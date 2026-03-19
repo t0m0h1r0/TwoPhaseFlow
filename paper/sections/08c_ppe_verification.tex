@@ -10,6 +10,12 @@ CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_m
 ここでは3種類のテストにより，
 (i) 空間精度次数，(ii) 収束挙動，(iii) 変密度場での精度を段階的に確認する．
 
+\noindent\textbf{注（実装検証仕様）：}
+本節に示す誤差・収束次数は，ソルバーが正しく実装された場合に達成されるべき目標値（実装仕様）であり，
+本稿の数値実験から得られた実測値ではない．
+各テストの合格基準を満たすことを実装完了の必要条件として用いること．
+流体力学ソルバーと組み合わせた実測ベンチマーク結果は §\ref{sec:bench_droplet} を参照のこと．
+
 \subsubsection{検証テスト C-1：等密度 Poisson 方程式の格子収束（$\Ord{h^6}$ の確認）}
 \label{sec:ccd_test_c1}
 
