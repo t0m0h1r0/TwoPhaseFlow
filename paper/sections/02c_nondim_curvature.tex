@@ -20,7 +20,7 @@
 \begin{equation}
  \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
  =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]
- -\rho^*\bm{g}^* + \bm{f}_\sigma^*
+ +\rho^*\bm{g}^* + \bm{f}_\sigma^*
  \label{eq:NS_dim}
 \end{equation}
 ここで，$\rho^*$ は密度，$\mu^*$ は粘性係数，$\bu^*$ は速度ベクトル，
@@ -88,12 +88,14 @@ $Re, Fr, We$ の形の無次元係数に変換される．
 
     \item \textbf{粘性項}:
     \begin{align*}
-     \bnabla^*\cdot(\mu^*\bnabla^*\bu^*)
-     &= \frac{1}{L}\bnabla\cdot\left( (\mu_l\mu) \frac{1}{L}\bnabla (U\bu) \right) \\
-     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot(\mu\bnabla\bu)
+     \bnabla^*\cdot\bigl[\mu^*(\bnabla^*\bu^* + (\bnabla^*\bu^*)^T)\bigr]
+     &= \frac{1}{L}\bnabla\cdot\left[
+         (\mu_l\mu)\left(\frac{U}{L}\bnabla\bu + \frac{U}{L}(\bnabla\bu)^T\right)
+        \right] \\
+     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot\bigl[\mu(\bnabla\bu+(\bnabla\bu)^T)\bigr]
       = \left[\frac{\rho_l U^2}{L}\right]
         \underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re}
-        \bnabla\cdot(\mu\bnabla\bu)
+        \bnabla\cdot\bigl[\mu(\bnabla\bu+(\bnabla\bu)^T)\bigr]
     \end{align*}
     ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
 
