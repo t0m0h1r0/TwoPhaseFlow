@@ -251,11 +251,9 @@ $p_{i_0,j_0} = 0$ はあくまで数学的拘束であり，
 （BiCGSTAB は低次精度実装の代替として表~\ref{tab:ppe_methods} に掲載）．
 この方法は FVM ベースの BiCGSTAB（§\ref{sec:fvm_face_coeff}）に対して以下の優位性を持つ：
 \begin{itemize}
-  \item \textbf{空間精度}：CCD 法（6次精度）を用いるため，$\mathcal{O}(h^6)$ の高精度—
-        ただし $\mathcal{O}(h^6)$ の空間精度を実現するには $\varepsilon_\text{tol} \ll h^6$ が必要条件であり，
-        収束精度が $\varepsilon_\text{tol}$ に律速されることに注意（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照；
-        典型的に $N=64$ では $h^6 \approx 3\times10^{-12}$ であり，
-        $\varepsilon_\text{tol} = 10^{-8}$ ではこの条件を満たさない）
+  \item \textbf{空間精度}：CCD 法（6次精度）を用いるため，$\mathcal{O}(h^6)$ の高精度
+        （ただし表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照；実用上は $\varepsilon_\text{tol}$ の選択は
+        後述の式~\eqref{eq:etol_criterion} による）
   \item \textbf{行列不要}：大規模疎行列を陽に組み立てず，各反復でブロック Thomas 法を適用
   \item \textbf{収束後の精度保証}：残差 $\varepsilon^m < \varepsilon_\text{tol}$ が達成された時点で
         定常解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす
@@ -414,7 +412,26 @@ ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)
 （右辺の近似等号は，線形系~\eqref{eq:pseudo_linear} が各反復で厳密に解かれる場合に成立する；
 スウィープ実装では右辺に $\mathcal{O}(\Delta\tau^2)$ の誤差が生じるため，
 残差計算には直接 $\mathcal{L}_h(\delta p)^m - q_h$ を評価する左辺を用いることを推奨する．）
-$\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}} = 10^{-8}$）を満たした時点で収束とみなし，反復を終了する．
+$\varepsilon^m < \varepsilon_{\mathrm{tol}}$ を満たした時点で収束とみなし，反復を終了する．
+
+\begin{tcolorbox}[resultbox, title={$\varepsilon_{\mathrm{tol}}$ 選択の実用基準}]
+\label{eq:etol_criterion}
+PPE の収束誤差は速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\nabla(\delta p)$ を通じて
+速度誤差 $\sim \varepsilon_\mathrm{tol}/\Delta t$ を引き起こす．
+全体 $O(\Delta t^2)$ 時間精度を損なわないためには，
+この速度誤差が $O(\Delta t^2)$ より小さいことが必要，すなわち：
+\begin{equation}
+  \varepsilon_\mathrm{tol} \;\ll\; \Delta t^2
+  \label{eq:etol_physical}
+\end{equation}
+$\Delta t \sim 10^{-2}$ では $\varepsilon_\mathrm{tol} \leq 10^{-6}$，
+$\Delta t \sim 10^{-3}$ では $\varepsilon_\mathrm{tol} \leq 10^{-8}$ が目安となる．
+\textbf{推奨：} $\varepsilon_\mathrm{tol} = \Delta t^2 \times 10^{-2}$（$\Delta t$ 依存の適応設定）
+または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合に十分）．
+なお，CCD の $O(h^6)$ 空間精度を線形代数レベルで発現させるには $\varepsilon_\mathrm{tol} \ll h^6$ が
+理論上の必要条件だが，NS シミュレーションでは時間精度 $O(\Delta t^2)$ が支配的であり
+上記の条件で十分である（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
+\end{tcolorbox}
 
 \begin{tcolorbox}[resultbox, title={最適仮想時間刻み $\Delta\tau$ の理論（詳細：付録 §\ref{sec:dtau_derive}）}]
 \label{result:dtau_opt}
