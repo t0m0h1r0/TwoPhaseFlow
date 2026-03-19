@@ -422,7 +422,13 @@ $f$ が解析関数のとき，各演算子の打ち切り誤差は：
   = D^{(1)}_{\mathrm{CCD}}\!\left(p - \frac{\kappa\psi}{We}\right)
   = D^{(1)}_{\mathrm{CCD}}(\text{const}) + O(h^6)
 \]
-となり，寄生流れは $O(h^6)$ まで抑制される（第\ref{sec:verification}章の静止液滴ベンチマークで確認）．
+となり，寄生流れの\textbf{数値離散化誤差成分}は $O(h^6)$ まで低減される．
+ただし，残差は CSF モデルが界面を有限厚さ $\varepsilon \sim O(h)$ で近似することによる
+\textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，
+実測の寄生流れ収束次数は $O(h^2)$ 程度となる
+（§\ref{sec:accuracy_summary} および第\ref{sec:verification}章の静止液滴ベンチマーク参照）．
+Balanced-Force 条件の「Balanced」とは「数値離散化誤差の相殺」を指し，
+CSF モデル誤差そのものを除去するものではない点に注意されたい．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Balanced-Force 実装の確認方法}
