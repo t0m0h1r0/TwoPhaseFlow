@@ -151,7 +151,24 @@ SimulationConfig
 | `resultbox` | Key numerical results / summary tables |
 | `derivbox` | Mathematical derivations (collapsible or inline) |
 
-**Usage rule:** Consistent and sparse — only for governing equations, algorithm boxes, or explicit "column"-style notes. Avoid mixing box types or over-using colors.
+**Usage rule:** Sparse and purposeful — boxes are for content that readers must *find again quickly* or that would be missed if buried in prose. The default is body text; a box requires a positive reason.
+
+**When a box is justified:**
+- `algbox` — numbered step-by-step algorithm or verification procedure that will be referenced and executed
+- `warnbox` — non-obvious implementation pitfall (e.g. asymmetry of A_L ≠ A_R, sign convention valid across all chapters, denominator clamp to avoid division-by-zero)
+- `defbox` / `resultbox` — formal definition or key numerical result that is *cross-referenced by label* from other sections or files
+- `mybox` — only for CFL/timestep constraint formulas or other compact reference tables that practitioners look up repeatedly
+
+**When NOT to use a box (use body text instead):**
+- Physical intuition / motivational explanation ("why we choose X") — write as a paragraph
+- Derivation steps shown inline — use numbered equations with `\label`
+- Comparison tables that appear once and are never cross-referenced — use a regular `\begin{table}` environment
+- Chapter/section introductions — use a plain opening paragraph
+- Short notes (1–3 lines) that are a natural continuation of the surrounding text — inline with `\textbf{Note:}` or `\noindent\textbf{...}`
+- Summaries of what was just derived — write as a closing sentence
+- Content that duplicates a nearby numbered equation — do not re-box it
+
+**Audit result (2026-03-19):** A full pass found 80 boxes; 56 were removed as unnecessary. The paper now has ~24 boxes. Before adding any new box, verify it cannot be expressed as body text.
 
 **No nesting (MANDATORY):** Never place a tcolorbox inside another tcolorbox. Nested breakable boxes break tcolorbox's internal height calculation, producing "The upper box part has become overfull" warnings that `\tcbbreak` cannot fix. When supplementary notes are needed inside a box, fold them into prose (`\textbf{Note:}` etc.). If a sub-algorithm box is required, place it as an independent box *after* the parent box and reference it from the text. Flatten any nesting found in existing files immediately.
 
