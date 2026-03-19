@@ -219,6 +219,32 @@ $\rho^{n+1}$ は界面追跡で決まる密度であり，PPE で初めて決定
 が現れる（これは不連続な係数をもつ拡散方程式の標準的な離散化である）．
 Rhie-Chow 補正係数に\textbf{同じ調和平均を用いることで，速度補正と Poisson 方程式の係数が一致し，数値的に一貫した定式化}が得られる．
 
+\begin{tcolorbox}[defbox, title={概念整理：FVM 動機付け vs CCD 実装の分離}]
+本節（§\ref{sec:rhie_chow}）において FVM のフラックス連続性を持ち出した目的は，
+\textbf{Rhie-Chow 係数における調和平均の物理的必然性を正当化すること}のみである．
+これは「FVM ベースの実装を提案している」という意味ではない．
+
+\textbf{本稿の実際の実装方針（分離して理解すること）：}
+\begin{enumerate}
+  \item \textbf{Rhie-Chow 係数の動機付け（FVM 概念）：}
+        変密度 PPE $\nabla\cdot(1/\rho\,\nabla p) = q$ を FVM で離散化したときに
+        自然に現れる調和平均 $(1/\rho)_f^\mathrm{harm}$ を，
+        Rhie-Chow 補正係数の選択根拠として使用する．
+  \item \textbf{PPE の実際の求解（CCD 実装）：}
+        PPE 本体は保存形ではなく，product-rule 展開した\textbf{非保存形の微分形式}
+        （式~\eqref{eq:varrho_product_rule}）として CCD 差分法で求解する
+        （第\ref{sec:pressure}章 §\ref{sec:ccd_poisson_matrix}）．
+        これは節点値の高精度微分（$\Ord{h^6}$）を目的としたノードベース離散化であり，
+        FVM フラックス保存の枠組みとは異なる．
+\end{enumerate}
+
+\textbf{なぜ混在が生じるのか（学習上の注意）：}
+「調和平均を使う物理的根拠（FVM の論理）」と「高精度差分演算子による求解（CCD）」は
+それぞれ独立の概念である．FVM の論理で係数を選び，CCD の演算子で求解するというハイブリッド構成が
+本稿の特徴である．
+両者を混同すると「PPE は FVM で解く」または「CCD での調和平均の根拠が不明」という誤解が生じるため注意されたい．
+\end{tcolorbox}
+
 \paragraph{熱伝導の類比}
 この状況は，異なる熱伝導率 $\lambda_P, \lambda_E$ を持つ2つのセル間の熱フラックス計算と全く同じ構造である．
 熱伝導方程式 $\bnabla \cdot (\lambda \bnabla T) = 0$ の界面フラックスを正しく評価するには，
@@ -253,15 +279,44 @@ Rhie-Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやす
 $(\nabla p)_f = (p_E - p_P)/\Delta x$（2次精度のフェイス直接差分）と，
 $\overline{(\nabla p)}_f$（CCD，6次精度）の差は，$O(h^2)$ の誤差を持つ補正量である．
 
-\textbf{なぜ全体精度は損なわれないのか：}
+\textbf{なぜ全体精度は損なわれないのか：離散テイラー展開による定量的確認}
+
+フェイス $f$ を $x_P$ と $x_E$ の中点 $x_f = x_P + h/2$ とする．
+各圧力勾配評価をテイラー展開すると：
+\begin{align}
+  (\nabla p)_f &= \frac{p_E - p_P}{h}
+    = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
+    \label{eq:rc_face_taylor}\\
+  \overline{(\nabla p)}_f &= \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
+    = p'(x_f) + \Ord{h^6}
+    \label{eq:rc_avg_taylor}
+\end{align}
+（CCD ノード勾配は $\Ord{h^6}$ 精度，中点線形補間で $\Ord{h^2}$ の追加誤差が生じるが，
+ ここでは両端の CCD 値の単純平均をとるため偶数次誤差のキャンセルにより $\Ord{h^4}$ 補間誤差が残る）．
+
+これらの差（補正検出項）は：
+\[
+  (\nabla p)_f - \overline{(\nabla p)}_f = \Ord{h^2}
+\]
+
+Rhie-Chow 補正の大きさは：
+\[
+  \left|\Delta t \left(\frac{1}{\rho}\right)^\mathrm{harm}_f
+  \bigl[(\nabla p)_f - \overline{(\nabla p)}_f\bigr]\right|
+  = \Ord{\Delta t \cdot h^2}
+\]
+
 \begin{itemize}
-  \item Rhie-Chow 補正項は\textbf{チェッカーボードモード（波長 $2h$）の振動を除去する減衰項}であり，
-        滑らかな圧力場（波長 $\gg 2h$）に対しては補正量自体が $O(h^2)$ の小さな値に過ぎない．
-  \item 滑らかな圧力場では $(\nabla p)_f \approx \overline{(\nabla p)}_f + O(h^2)$ が成立するため，
-        補正項 $\propto h^2 \cdot O(h^2/\Delta x) = O(h^3)$（$\Delta x \sim h$）となり，
-        CCD の主流計算の精度（$O(h^6)$）を実質的に阻害しない．
-  \item すなわち，Rhie-Chow 補正は「低波数の物理的情報」を高精度 CCD で処理し，
-        「高波数のチェッカーボード振動」のみを $O(h^2)$ の低精度で除去するという
+  \item \textbf{滑らかな圧力場（波長 $\gg 2h$）：} 補正量は $\Ord{h^2}$ であり，
+        これが $\nabla\cdot\bm{u}^*$（PPE の RHS）に影響するが，
+        その結果 PPE 解 $p$ への影響は $\Ord{h^2}$ 精度にとどまる．
+        これは CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，
+        CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
+  \item \textbf{チェッカーボード場（波長 $= 2h$）：}
+        $p_E - p_P = \Ord{1}$（ギザギザ），$\overline{(\nabla p)}_f \approx 0$ となるため
+        補正量が $\Ord{1}$ の大きな値となり，非物理振動を効果的に除去する．
+  \item \textbf{スペクトル選択的フィルタ：} 低波数（物理情報）は CCD $\Ord{h^6}$ で処理し，
+        高波数（チェッカーボード振動）のみを $\Ord{h^2}$ で減衰するという
         \textbf{スペクトル選択的フィルタ}として機能する．
 \end{itemize}
 

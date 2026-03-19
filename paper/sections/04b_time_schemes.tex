@@ -170,6 +170,53 @@ $\nabla\mu = 0$ のとき，$\partial_y(\mu\,\partial_x v) = \mu\,\partial_{xy}v
 非圧縮条件 $\partial_x u + \partial_y v = 0$ から $\mu\,\partial_{xy}v = -\mu\,\partial_{xx}u$ が使えるため，
 クロス項は $u$ のみの演算子に帰着させられる場合がある．
 ただし，変密度（変粘性）系では一般に上記の陽的処理を採用する．
+
+\medskip
+\textbf{【危険】変粘性界面でのクロス微分陽的処理：粘性 CFL 条件の実質的復活}
+
+気液界面近傍では粘性係数 $\mu$ が数格子幅以内で $\mu_l/\mu_g \approx 10^2$ 変化する（例：水/空気）．
+この領域でクロス微分 $\mathcal{D}_{\mathrm{c}}(v) = \partial_y(\mu\,\partial_x v)$ を陽的処理すると，
+$\mu$ の勾配が大きいため実効的な「係数」は
+\[
+  \left|\frac{\partial\mu}{\partial y}\,\frac{\partial v}{\partial x}\right|
+  \approx \frac{\mu_l - \mu_g}{\varepsilon}\cdot\frac{|v|_{\max}}{h}
+  = \Ord{\frac{\Delta\mu}{\varepsilon h}}
+\]
+となる（$\varepsilon \approx 2h$ は界面厚さ）．
+
+対角粘性項の陰的処理（CN 法）は無条件安定だが，このクロス微分項は陽的であるため，
+フォン・ノイマン安定性解析（均一格子 $h$，$\Delta\mu = \mu_l - \mu_g$）によると，
+界面上での局所 CFL 条件が復活する：
+\begin{equation}
+  \Delta t \le C_{\mathrm{cross}} \cdot \frac{h^2}{\Delta\mu / \rho}
+  \approx C_{\mathrm{cross}} \cdot \frac{\mu_l/\rho_l}{\Delta\mu/\rho} \cdot \frac{h^2}{\nu_l}
+  \label{eq:cross_cfl}
+\end{equation}
+ここで $C_{\mathrm{cross}} = O(1)$ は定数（精確な値は実装依存）．
+$\mu_l/\mu_g = 100$ の水/空気系では，この制約が $\Delta t_{\mathrm{visc}}$（等粘性系の陽的粘性 CFL）の
+約 $1/100$ 倍に相当する可能性がある．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+処理方法 & 安定条件 & 適用場面 \\
+\hline
+対角粘性項 $\mathcal{D}_{\mathrm{d}}$（CN 法） & 無条件安定 & 常に適用 \\
+クロス微分項 $\mathcal{D}_{\mathrm{c}}$（陽的） & 式~\eqref{eq:cross_cfl} の制約あり &
+  $\mu_l/\mu_g \lesssim 10$ では無害 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{シミュレーションが爆発した場合のチェックリスト：}
+\begin{itemize}
+  \item 密度比 $\rho_l/\rho_g \gg 1$ かつ 粘性比 $\mu_l/\mu_g \gg 1$ の問題か？
+  \item 対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）はすべて満たしているか？
+  \item それでも爆発する場合：クロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性．
+        $\Delta t$ を $1/10$ に減らして安定化するか確認し，
+        または $\mathcal{D}_{\mathrm{c}}$ の係数に上限クリッピングを施す．
+\end{itemize}
 \end{tcolorbox}
 
 \subsection{再初期化の Godunov 型上流化}
@@ -246,7 +293,10 @@ CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
   \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
   \quad \text{（陽的粘性処理のみ適用；CN 法採用時は不要）}
 \]
-CN 法（無条件安定）を粘性項に採用しているため，$\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
+CN 法（無条件安定）を対角粘性項に採用しているため，等粘性流体では $\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
+ただし，変粘性流体（気液二相流）ではクロス微分項 $\partial_y(\mu\partial_x v)$ が陽的処理されるため，
+大密度比（$\mu_l/\mu_g \gg 1$）の場合には界面近傍で粘性類似の制約が実質的に復活しうる
+（詳細は §\ref{warn:cn_cross_derivative} 末尾の安定性解析を参照）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[defbox, title={毛管波制約の導出：分散関係から CFL 条件へ}]
@@ -289,6 +339,30 @@ CFL 条件 $c_g \cdot \Delta t \le \Delta x$ を適用する：
 毛管波の分散関係が $\omega \propto k^{3/2}$ に由来する．
 格子を半分にすると（$\Delta x \to \Delta x/2$）$\Delta t_\sigma$ は $1/2^{3/2} \approx 0.354$ 倍，
 すなわち約 2.8 倍制約が厳しくなる．
+
+\medskip\noindent\textbf{極端な密度比（$\rho_l \gg \rho_g$）での物理的解釈：}
+
+分散関係 \eqref{eq:capillary_dispersion} に含まれる $\rho_l + \rho_g$ は，
+$\rho_l/\rho_g = 1000$（水/空気）では事実上
+\[
+  \rho_l + \rho_g \approx \rho_l
+  \qquad \text{（$\rho_g/\rho_l = 10^{-3}$ の寄与は $0.1\%$ 以下）}
+\]
+となる．これは深い物理的意味を持つ：
+
+\textbf{慣性支配の流体が毛管波の時間スケールを決定する．}
+表面張力 $\sigma$ は界面の変形を元に戻そうとする\textbf{復元力}（ばね）を提供するが，
+その変形に抵抗する\textbf{慣性}（質量）は重い液相 $\rho_l$ が担う．
+気相 $\rho_g$ の慣性は無視できるほど小さいため，
+毛管波の振動周期 $T \sim 1/\omega \sim \sqrt{\rho_l / (\sigma k^3)}$ は
+液相密度のみで決まる．これはばね・質量系の振動周期が
+$T = 2\pi\sqrt{m/k_{\text{spring}}}$ と「重い方の質量」で決まることの流体版である．
+
+実用的含意：$\rho_l/\rho_g$ が大きいほど $\Delta t_\sigma \propto \sqrt{\rho_l + \rho_g}$
+が大きくなる（制約が緩和される）が，これは液相の慣性が大きく，
+表面張力に対して界面が「ゆっくり」応答するためである．
+すなわち密度比 1000 の水/空気系では，密度比 1 の流体より
+$\sqrt{1000} \approx 32$ 倍だけ大きい $\Delta t_\sigma$ が許される．
 \end{tcolorbox}
 
 \noindent\textbf{注意：}
