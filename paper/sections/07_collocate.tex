@@ -168,10 +168,23 @@ Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちら
 $\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である
 （新圧力 $p^{n+1}$ は PPE を解く前の段階では未知であるため，Rhie-Chow 補正は $p^n$ を用いた陽的処理となる；
 詳細は第\ref{sec:pressure}章，式~\eqref{eq:rc_divergence} 参照）．
-係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には\textbf{現時刻密度 $\rho^{n+1}$ の調和平均}を用いる
-（$\rho^{n+1}$ は CLS 移流 Step~3 完了後に確定しており，Predictor（Step~5）・PPE（Step~6）の開始前に既知である；
-$\rho^{n+1}$ は界面追跡で決まる密度であり，PPE で初めて決定される圧力 $p^{n+1}$ とは本質的に異なる量である）．
-その導出根拠を以下で丁寧に説明する．
+係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には\textbf{現時刻密度 $\rho^{n+1}$ の調和平均}を用いる．
+この選択には以下の2つの独立した根拠がある：
+
+\noindent\textbf{（根拠1）既知量であること：}
+$\rho^{n+1}$ は CLS 移流 Step~3 完了後に確定しており，Predictor（Step~5）・PPE（Step~6）の開始前に既知である
+（$\rho^{n+1}$ は界面追跡で決まる密度であり，PPE で初めて決定される圧力 $p^{n+1}$ とは本質的に異なる量；
+Step 3 での密度更新の詳細は§\ref{sec:algorithm}参照）．
+
+\noindent\textbf{（根拠2）PPE 演算子との密度時刻の整合性（Balanced-Force 条件）：}
+PPE の演算子 $\mathcal{L}_{\mathrm{CCD}}^{\rho}$（式~\eqref{eq:varrho_product_rule}）も $\rho^{n+1}$ を係数として使用する．
+Rhie-Chow 面係数と PPE 演算子で\textbf{同一の密度時刻 $\rho^{n+1}$} を使うことで，
+離散 Projection 法全体の演算子整合性が保たれ，Balanced-Force 条件が維持される
+（もし異なる時刻の密度を混用すると，面係数と演算子の間に $\Ord{h^2}$ の不整合が生じ，
+界面近傍での寄生流れキャンセレーションが局所的に失われる）．
+
+\medskip
+その調和平均形式の導出根拠を以下で丁寧に説明する．
 
 \paragraph{熱伝導の類比}
 この状況は，異なる熱伝導率 $\lambda_P, \lambda_E$ を持つ2つのセル間の熱フラックス計算と全く同じ構造である．
@@ -201,6 +214,14 @@ Rhie-Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやす
 補正検出項 $[(\nabla p)_f - \overline{(\nabla p)}_f]$ は $\Ord{h^2}$ の大きさを持つが，
 これは CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，CCD の $\Ord{h^6}$ を
 律速する新たな誤差源とはならない．詳細なテイラー展開による検証は付録~\ref{app:rc_precision} を参照されたい．
+
+\noindent\textbf{【重要】PPE 右辺での Rhie-Chow 発散の必須使用：}
+式~\eqref{eq:rc-face} の Rhie-Chow 補正済みフェイス速度を定義した後，
+\textbf{PPE 右辺の発散計算にも必ずこのフェイス速度の発散 $\nabla_h^{\mathrm{RC}}\cdot\bu^*$（式~\eqref{eq:rc_divergence}）を使用しなければならない}．
+よくある実装ミスとして，PPE 右辺に「セル中心発散 $D_x^{(1)}u^* + D_y^{(1)}v^*$」を代用してしまうケースがある．
+これを行うと，Rhie-Chow 補正でフェイス速度から除去したチェッカーボード（$2\Delta x$ 波長）成分が
+PPE 右辺を経由して圧力解に「逆流」し，圧力場に高周波振動が再生する
+（詳細は第\ref{sec:pressure}章，§\ref{sec:rc_divergence} 参照）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Balanced-Force 離散化：寄生流れ抑制のための実装要件}
