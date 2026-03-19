@@ -195,7 +195,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 上記の困難を軽視すると，計算は「動く」が物理的に意味のない結果を出力する．
 学部生が実装する際に最もよく遭遇する4つの失敗例を示す．
 
-\begin{tcolorbox}[warnbox, title={失敗例1：寄生流れ（Spurious Currents）}]
+\paragraph{失敗例1：寄生流れ（Spurious Currents）}
 \textbf{症状：} 静止しているはずの液滴が，界面に沿って渦状の速度場を持つ．
 速度の大きさは表面張力に比例して大きくなる．
 
@@ -205,9 +205,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 
 \textbf{本稿の対処：} CCD 法による高精度な$\kappa$計算（6次精度），
 および Rhie-Chow 補正による圧力--速度連成の改善によって抑制する．
-\end{tcolorbox}
 
-\begin{tcolorbox}[warnbox, title={失敗例2：質量損失（Mass Loss）}]
+\paragraph{失敗例2：質量損失（Mass Loss）}
 \textbf{症状：} 時間が経つにつれて液滴が小さくなり，最終的に消える．
 
 \textbf{原因：} 標準的な Level Set 法では，移流方程式
@@ -217,9 +216,8 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 
 \textbf{本稿の対処：} Conservative Level Set 法（CLS）により，
 質量（体積）の離散的保存性を向上させる．
-\end{tcolorbox}
 
-\begin{tcolorbox}[warnbox, title={失敗例3：圧力--速度のデカップリング（Checkerboard 不安定）}]
+\paragraph{失敗例3：圧力--速度のデカップリング（Checkerboard 不安定）}
 \textbf{症状：} 圧力場が空間的に激しく振動し（チェッカーボードパターン），
 速度場が非物理的な振動を示す．
 
@@ -258,9 +256,8 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 圧力と速度を適切に連成させる（第\ref{sec:collocate}章参照）．
 Rhie-Chow 補正は面速度に陽的な圧力補正 $\Delta t/\rho[({\bnabla p})_f - \overline{(\bnabla p)}_f]$ を
 加えることで，$2\Delta x$ モードの蓄積を防ぐ．
-\end{tcolorbox}
 
-\begin{tcolorbox}[warnbox, title={失敗例4：界面のにじみ（Interface Smearing）}]
+\paragraph{失敗例4：界面のにじみ（Interface Smearing）}
 \textbf{症状：} 時間とともに界面が広がり，密度・粘性の遷移領域が厚くなっていく．
 
 \textbf{原因：} 移流スキームの数値拡散（numerical diffusion）により，
@@ -269,7 +266,6 @@ Rhie-Chow 補正は面速度に陽的な圧力補正 $\Delta t/\rho[({\bnabla p}
 
 \textbf{本稿の対処：} WENO5 スキーム（5次精度の上流差分）と
 CLS 再初期化の定期的適用により，界面の鮮鋭さを維持する．
-\end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{界面捕捉法の分類と本稿の手法の位置付け}
