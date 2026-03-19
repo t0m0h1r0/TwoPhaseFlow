@@ -28,19 +28,21 @@
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/03_levelset}          %% 第3章：CLS 法
 \clearpage
-\input{sections/08_time_integration}  %% 第4章：時間積分・移流スキーム
+\input{sections/04_time_integration}  %% 第4章：時間積分・移流スキーム
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \part{空間離散化スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/04_ccd}               %% 第5章：結合コンパクト差分法
+\input{sections/05_ccd}               %% 第5章：結合コンパクト差分法（定義・係数導出・境界・行列）
+\input{sections/05b_ccd_extensions}   %% 第5章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
 \clearpage
-\input{sections/05_grid}              %% 第6章：界面適合非一様格子
+\input{sections/06_grid}              %% 第6章：界面適合非一様格子
 \clearpage
-\input{sections/06_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
+\input{sections/07_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
 \clearpage
-\input{sections/07_pressure}          %% 第8章：圧力 Poisson 方程式
+\input{sections/08_pressure}          %% 第8章：圧力 Poisson 方程式（Projection・FVM・仮想時間法）
+\input{sections/08b_ccd_poisson}      %% 第8章続き（CCD-Poisson 行列・Balanced-Force・手法比較・検証）
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
