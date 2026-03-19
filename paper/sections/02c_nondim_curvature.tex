@@ -24,7 +24,15 @@
  \label{eq:NS_dim}
 \end{equation}
 ここで，$\rho^*$ は密度，$\mu^*$ は粘性係数，$\bu^*$ は速度ベクトル，
-$p^*$ は圧力，$\bm{g}^*$ は重力加速度ベクトル，$\bm{f}_\sigma^*$ は表面張力項である．
+$p^*$ は圧力，$\bm{f}_\sigma^*$ は表面張力項である．
+重力加速度ベクトル $\bm{g}^*$ は，\textbf{鉛直上向きを正}（$\hat{\bm{z}}$ 方向）とする座標系において
+\begin{equation}
+  \bm{g}^* = -g\hat{\bm{z}}, \qquad g > 0
+  \label{eq:gravity_convention}
+\end{equation}
+と定義する（$g \approx 9.81\,\mathrm{m/s^2}$）．
+符号が負であることから，$+\rho^*\bm{g}^*$ の項は鉛直下向きの力 $-\rho^* g\hat{\bm{z}}$ を与える．
+この座標規約は本章全体を通して一貫して用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{無次元化変数の導入}
@@ -99,7 +107,7 @@ $Re, Fr, We$ の形の無次元係数に変換される．
     \end{align*}
     ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
 
-    \item \textbf{重力項}:（$\bm{g}^* = -g\hat{\bm{z}}$，$\hat{\bm{z}}$ は鉛直上向き単位ベクトル，$g > 0$）
+    \item \textbf{重力項}:（座標規約 \eqref{eq:gravity_convention} より $\bm{g}^* = -g\hat{\bm{z}}$）
     \[
       \rho^* \bm{g}^*
       = (\rho_l\rho) (-g\hat{\bm{z}})
