@@ -112,6 +112,26 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 空間精度（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）と釣り合った高精度定式化となっている．
 
 \medskip
+\noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
+
+CLS 移流に TVD-RK3（$\Ord{\Delta t^3}$）を採用している一方，NS 対流項は AB2（$\Ord{\Delta t^2}$）にとどめている．
+この非対称性は意図的な設計選択であり，以下の理由による：
+
+界面と流体運動は\textbf{疎結合（operator-split）}として扱われる．
+CLS 移流（界面輸送）は密度場 $\rho^{n+1}$ と曲率 $\kappa^{n+1}$ を決定する「前処理」であり，
+その時間精度が $\Ord{\Delta t^2}$ 以上であれば，全体の流体運動精度は NS 方程式側の $\Ord{\Delta t^2}$ で律速する：
+\[
+  \text{全体時間精度} = \min\!\bigl(\underbrace{\Ord{\Delta t^3}}_\text{CLS},\;
+    \underbrace{\Ord{\Delta t^2}}_\text{NS (AB2+IPC)}\bigr) = \Ord{\Delta t^2}
+\]
+\textbf{CLS の $\Ord{\Delta t^3}$ 高精度化の役割：}
+時間精度を $\Ord{\Delta t^3}$ に向上させることには貢献しないが，
+界面プロファイルの変形が小さく保たれることで
+（i）曲率 $\kappa$ の数値精度が向上し寄生流れを抑制，
+（ii）再初期化の必要頻度が減少し質量保存誤差が低減する，
+という実用上の優位が得られる．
+
+\medskip
 \noindent\textbf{背景：標準 Chorin 法のスプリッティング誤差（なぜ AB2 だけでは不十分か）}
 
 対流項を AB2（2次精度）に変更するだけでは全体精度は $\Ord{\Delta t^2}$ に\textbf{ならない}．
@@ -139,12 +159,24 @@ $n=1\to2$ 以降 & AB2：$\tfrac{3}{2}\mathcal{C}^n - \tfrac{1}{2}\mathcal{C}^{n
 \end{tabular}
 \end{center}
 
-初回ステップの前進 Euler による局所打ち切り誤差は $\Ord{\Delta t^2}$（1次精度スキームの標準値）であり，
-全体積分精度 $\Ord{\Delta t^2}$ に影響しない．
-誤差伝播論による根拠：$N_t = T/\Delta t$ ステップ積分で，
-1ステップ分の局所誤差 $\Ord{\Delta t^2}$ の全体誤差への寄与は $\Ord{\Delta t^2}$ のまま（定数項として残るが
-$N_t$ 倍されない）；残り $N_t - 1$ ステップの AB2 局所誤差 $\Ord{\Delta t^3}$ は合算しても
-$\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$ であり，全体精度は $\Ord{\Delta t^2}$ に保たれる．
+初回ステップの前進 Euler による局所打ち切り誤差は $\Ord{\Delta t^2}$（1次精度スキームを1ステップのみ適用した標準値）であり，
+以後の AB2 ステップへの伝播が\textbf{安定}であれば，全体積分精度 $\Ord{\Delta t^2}$ に影響しない．
+
+\noindent\textbf{AB2 の零安定性による正当化：}
+AB2 は線形多段スキームであり，特性多項式 $\rho(z) = z^2 - z$ の根は $z=0,\,z=1$ で，
+いずれも $|z| \leq 1$ かつ $z=1$ は単根（Dahlquist の根条件を満足）．
+これにより AB2 は\textbf{零安定（zero-stable）}であり，
+$n=0$ での局所誤差 $e_1 = \Ord{\Delta t^2}$ は各後続ステップで高々定数倍（$\leq C$ で $C$ は問題に依存しない有界な定数）にしか増幅されない
+（Dahlquist--Bjorck, \textit{Numerical Methods}, 1974 §5.3）．
+結果として $N_t - 1$ ステップ後も $e_1$ の寄与は $\Ord{\Delta t^2}$ のまま保たれる．
+
+\noindent\textbf{誤差積み上げの明示：}
+$N_t = T/\Delta t$ ステップ積分で，
+初回の局所誤差 $\Ord{\Delta t^2}$ の全体誤差への寄与は $\leq C\,\Ord{\Delta t^2}$（定数倍；$N_t$ 倍されない）；
+残り $N_t - 1$ ステップの AB2 局所誤差 $\Ord{\Delta t^3}$ の合算は
+$\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$
+であり，全体精度は $\Ord{\Delta t^2}$ に保たれる．
+
 初回完了後，対流項 $\mathcal{C}^0 = \mathcal{C}(\bu^0,\bu^0)$ をバッファに保存し，
 以降の AB2 ステップで利用する（追加メモリ：速度場1つ分，$2N_xN_y$ 実数値）．
 \end{tcolorbox}

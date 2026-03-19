@@ -22,17 +22,40 @@ Eikonal 条件 $|\bnabla\phi|=1$ が法線ベクトル $\hat{\bm{n}} = \bnabla\p
 両変数は $\psi = H_\varepsilon(\phi)$ で結ばれ，逆変換はロジット関数 $\phi = \varepsilon\ln\bigl(\psi/(1-\psi)\bigr)$ で解析的に得られる（第\ref{sec:levelset}章参照）．
 
 \begin{tcolorbox}[warnbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
-\textbf{本稿の符号規約（全章共通）：}
+\textbf{符号規約の定義（全章共通）：}
 \begin{itemize}
-  \item $\phi < 0$：液相内部，$\phi > 0$：気相，
-        $\hat{\bm{n}} = \nabla\phi/|\nabla\phi|$ は\textbf{液相から気相への外向き}法線．
-  \item $\kappa = -\nabla\cdot\hat{\bm{n}}$：
-        球状液滴（内部が液相）では $\kappa = -1/R < 0$．
+  \item $\phi < 0$：液相内部，$\phi > 0$：気相（式~\eqref{eq:phi_def}，§\ref{sec:notation}）．
+  \item $\hat{\bm{n}} = \nabla\phi/|\nabla\phi|$：
+        液相内部では $\phi < 0$ → $\phi$ が増加する方向（液相→気相）を向くため，
+        $\hat{\bm{n}}$ は\textbf{液相から気相への外向き}法線である．
+  \item $\kappa = -\nabla\cdot\hat{\bm{n}}$（曲率の定義，式~\eqref{eq:kappa_def}）．
 \end{itemize}
 
-\textbf{Young-Laplace 則の確認：}
-$[p] = p_\text{gas} - p_\text{liq} = \sigma\kappa = \sigma\cdot(-1/R) = -\sigma/R < 0$
-より，$p_\text{liq} > p_\text{gas}$（液滴内部の圧力が外部より高い）は物理的に正しい．
+\medskip
+\textbf{球状液滴（半径 $R$，中心を原点）での具体的導出：}
+
+$\phi(\bm{x}) = |\bm{x}| - R$（液相は $|\bm{x}| < R$ で $\phi < 0$，界面は $|\bm{x}|=R$ で $\phi=0$）とすると，
+
+\[
+  \nabla\phi = \frac{\bm{x}}{|\bm{x}|} \equiv \hat{\bm{r}}, \qquad
+  |\nabla\phi| = 1, \qquad
+  \hat{\bm{n}} = \hat{\bm{r}} \quad \text{（球面外向き = 液相→気相 ✓）}
+\]
+
+2次元円（$\nabla\cdot\hat{\bm{r}} = 1/r$）では $r = R$ で：
+\[
+  \kappa = -\nabla\cdot\hat{\bm{n}} = -\frac{1}{R} < 0
+\]
+
+\medskip
+\textbf{Young-Laplace 則との整合確認：}
+\[
+  [p] \equiv p_\text{gas} - p_\text{liq}
+     = \sigma\kappa = \sigma\!\cdot\!\left(-\frac{1}{R}\right) = -\frac{\sigma}{R} < 0
+\]
+$[p] < 0$ すなわち $p_\text{liq} > p_\text{gas}$
+（液滴内部の圧力が外部より高い）は Laplace 圧力の物理と整合 ✓
+
 $|[p]| = \sigma/R$ を「ラプラス圧力の大きさ」と呼ぶが，符号付き定義
 $[p] = \sigma\kappa$ を正式表記として用いる．
 \end{tcolorbox}

@@ -111,6 +111,15 @@ CCD 連立方程式（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）を解くこと
 \]
 すなわち，通常は物理場 $f(\xi_i)$ を入力する CCD ソルバーに，座標配列 $f(\xi_i) \leftarrow x_i$，一様格子幅 $\Delta\xi = \xi_{i+1}-\xi_i$（$= L/(N-1)$）を渡す．ソルバーは1・2階微分を同時に返すので，$dx/d\xi$ と $d^2x/d\xi^2$ が一度の Thomas 法求解で $\mathcal{O}(h^6)$ 精度で得られる
 （CCD が 1・2 階微分を同時出力するという特性を格子生成にも活用する点に注意）．
+
+\noindent\textbf{CCD の $\mathcal{O}(h^6)$ 出力精度が保証される前提条件：}
+CCD は入力配列 $\{x_i\}$ が $C^8$ 級（8階微分可能かつ有界）である場合に
+$\mathcal{O}(h^6)$ 精度の微分を保証する（打ち切り誤差は $f^{(8)}_i$ に依存，式~\eqref{eq:CCD_TE_II}）．
+本稿の座標配列 $x(\xi)$ は台形則（ステップ2）による $\omega(\phi)$ の累積積分として生成されるが，
+$\omega(\phi)$ は $\delta_\varepsilon^*(\bar\phi^x)$ の滑らか（$C^\infty$）な関数であるため，
+$x(\xi)$ は高階微分まで有界な滑らかな関数となる（累積和の打ち切り誤差 $\mathcal{O}(\Delta\xi^2)$ は
+$\{x_i\}$ の滑らかさには影響しない）．
+したがって CCD の $\mathcal{O}(h^6)$ 精度保証の前提条件は満たされる．
 中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
 CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
 （理由は \ref{box:grid_jx_accuracy} で詳述）．

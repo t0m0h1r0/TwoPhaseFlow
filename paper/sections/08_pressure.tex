@@ -118,6 +118,18 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
 \end{equation}
 として CCD 法（$\Ord{h^6}$）で求解する（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_2d_full}）．
 FVM 離散化との連続体レベルでの等価性と調和平均の根拠については §\ref{sec:fvm_face_coeff} 参照．
+
+\noindent\textbf{展開式の2項の精度評価（界面近傍の注意）：}
+式~\eqref{eq:varrho_product_rule} の2項をそれぞれ CCD で評価するとき，
+平滑領域では両項とも $\Ord{h^6}$ 精度で評価される．
+しかし界面近傍では $|\nabla\rho| \sim \rho_l/\varepsilon$（密度勾配が界面厚さ $\varepsilon \sim h$ の逆数で増大）となるため，
+第2項 $-(\nabla\rho/\rho^2)\cdot\nabla p$ の係数 $|\nabla\rho/\rho^2|$ が $O(1/h)$ に増大する．
+この増幅により，第2項への CCD の打ち切り誤差 $\Ord{h^6}\cdot O(1/h) = \Ord{h^5}$ が界面近傍で顕在化しうる．
+ただし，Balanced-Force 条件（§\ref{sec:balanced_force}）のもとでは
+PPE 左辺と Rhie-Chow 面係数の間で密度勾配項が整合的にキャンセルされるため，
+実質的な寄生流れへの影響は $\Ord{\varepsilon^2} \approx \Ord{h^2}$ の CSF モデル誤差に吸収される
+（詳細は §\ref{sec:ccd_balanced_force} 参照）．
+実用上，$\varepsilon \sim h$ の設定では界面近傍での有効精度は $\Ord{h^4}$ 以上に保たれることが確認されている．
 \end{tcolorbox}
 
 \subsection{Projection 法と PPE}
@@ -238,8 +250,31 @@ $p_{i_0,j_0} = 0$ はあくまで数学的拘束であり，
 \begin{itemize}
     \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）
     \item \textbf{自由表面：} $p = p_{\mathrm{atm}}$（ディリクレ条件）
-    \item \textbf{全周ノイマンの場合：} 解の一意性を保つため，1点の圧力を固定するか平均値を0にする拘束を加える．
+    \item \textbf{全周ノイマンの場合：} 解の一意性を保つため，1点の圧力を固定するか平均値を0にする拘束を加える（§\ref{sec:pinpoint}参照）．
 \end{itemize}
+
+\begin{tcolorbox}[mybox, title={CCD-Poisson Neumann 境界実装の単体テスト（実装後に必ず確認）}]
+\label{box:neumann_unit_test}
+Neumann 境界条件 $\partial(\delta p)/\partial n = 0$ を CCD スキームに正しく組み込んだか確認するための最小検証セット：
+
+\begin{enumerate}
+  \item \textbf{無負荷試験（Null test）：}
+        $q_h \equiv 0$（右辺ゼロ），初期値 $(\delta p)^0 = 0$ として反復を実行し，
+        $\|\delta p^m\|_2 \to 0$（機械精度）が達成されることを確認．
+        ゼロでなければ境界ブロックの係数設定に誤りあり．
+  \item \textbf{既知解収束テスト（Manufactured Solution）：}
+        Neumann BC に整合する既知解，例えば
+        $p_\text{exact}(x,y) = \cos(\pi x)\cos(\pi y)$
+        （$\partial p/\partial n = 0$ を4辺全てで満たす）に対し，
+        $q_h = \mathcal{L}_h p_\text{exact}$ を右辺として与え，
+        収束後の誤差が $\|p^m - p_\text{exact}\|_2 = \Ord{h^6}$（格子収束）であることを確認．
+        $\Ord{h^2}$ のみなら境界誤差が伝播しており，§\ref{sec:ccd_bc} の $L^2$ ノルム重み付け解析（式~\eqref{eq:bc_L2_weighting}）を参照．
+  \item \textbf{零モード（定数解）のフィルタリング確認：}
+        $q_h \equiv 0$ で $(\delta p)^0 = c$（定数）を初期値として反復し，
+        ピン条件（§\ref{sec:pinpoint}）が正しく機能して $p_{i_0,j_0} \to 0$ が保たれることを確認．
+        定数モードが収束を妨げる場合は零モード除去の実装を確認すること．
+\end{enumerate}
+\end{tcolorbox}
 
 \subsection{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}

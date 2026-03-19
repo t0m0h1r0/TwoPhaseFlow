@@ -297,8 +297,22 @@ $H_\varepsilon(0) = 1/2$ であるため，定常プロファイル $\psi_\mathr
 $\partial\psi/\partial\tau\big|_{\psi=0.5} = \varepsilon\,\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ のみが残る．
 定常プロファイル $H_\varepsilon$ では $s=0$ が変曲点（$H_\varepsilon''(0)=0$）であるから
 この項もゼロとなり，$\partial\psi/\partial\tau\big|_{\psi=0.5} = 0$ が\textbf{定常状態で厳密}に成立する．
-移流直後の過渡状態ではプロファイルが非対称となり $\varepsilon\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ が微小に残りうるが，
-その移動量は Sussman 法と比べて極めて小さく実用上は界面位置固定とみなせる（付録~\ref{app:cls_fixed_point} 参照）．
+移流直後の過渡状態ではプロファイルが非対称となり $\varepsilon\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ が微小に残りうる．
+この残差項の大きさを定量的に評価する．移流後プロファイルのズレ量を $\delta\psi = \psi - H_\varepsilon(\phi)$
+（$|\delta\psi| \le \Ord{h^5\Delta t}$，WENO5 打ち切り誤差）とすると，
+$\varepsilon\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ への寄与は $\Ord{\varepsilon\,\delta\psi/h^2}$
+$= \Ord{\varepsilon h^3\Delta t/h^2} = \Ord{\varepsilon h\Delta t}$ と評価される．
+仮想時間 $N_\tau$ ステップの再初期化（各ステップ幅 $\Delta\tau = \Ord{h}$）で蓄積する界面ずれは：
+\[
+  |\Delta s_\mathrm{interface}| \lesssim N_\tau\,\Delta\tau\cdot\Ord{\varepsilon h\Delta t}
+  = \Ord{N_\tau\, h^2\,\varepsilon\,\Delta t}
+\]
+$\varepsilon \sim h$，$N_\tau \sim O(1)$（典型 2〜5 回）の設定では
+$|\Delta s_\mathrm{interface}| = \Ord{h^3\Delta t}$ であり，
+1タイムステップあたりの体積変化率は $\Ord{h^3\Delta t}/L = \Ord{h^3\Delta t}$（$L=O(1)$ の問題スケール）となる．
+この値はCLS 移流の保存誤差 $\Ord{h^5\Delta t}$ と比べると大きいが，
+Sussman 法の $\Ord{\Delta t\cdot h^2}$ より1次低く，実用上は界面位置固定とみなせる
+（付録~\ref{app:cls_fixed_point} の不動点証明および第\ref{sec:verification}章のベンチマーク結果を参照）．
 これが CLS 法の質量保存性の核心であり，Sussman 再初期化（式~\eqref{eq:sussman_reinit}）との根本的な差異である．
 
 右辺の拡散項係数 $\varepsilon$ は，数値的な界面厚さを決定する重要なパラメータである．
