@@ -27,7 +27,7 @@ Projection 法（Chorin, 1968）の本質は，Navier-Stokes 方程式を
 \end{equation}
 
 \begin{tcolorbox}[mybox, title={式~\eqref{eq:NS_full} の時間離散化に関する注意}]
-対流項 $-\rho^{n+1}(\bu^n\cdot\bnabla)\bu^n$ は\textbf{前進 Euler}（時刻 $n$ の速度を使用，$\mathcal{O}(\Delta t)$）で離散化している．
+対流項は \textbf{AB2}（式~\eqref{eq:predictor_ab2_ipc}：係数 $3/2$ と $-1/2$ による時刻 $n$，$n-1$ の外挿，$\mathcal{O}(\Delta t^2)$）で離散化し，IPC 法に従い前時刻圧力 $-\bnabla p^n$ を陽的に加える．
 粘性項の表記 $\bnabla\cdot[\mu^{n+1}(\bnabla\bu^{n+1}+\cdots)]$ は概念的な後退 Euler 形式であるが，
 本稿の\textbf{実装では Crank--Nicolson（$\mathcal{O}(\Delta t^2)$）}を採用する：
 \[

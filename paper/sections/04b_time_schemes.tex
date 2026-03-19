@@ -38,19 +38,44 @@ TVD-RK3 は以下の2箇所にのみ適用する：
 \end{itemize}
 
 \medskip
-\noindent\textbf{NS 方程式の時間積分方式}
+\noindent\textbf{NS 方程式の時間積分方式（AB2 + IPC 法）}
 
-プロジェクション法（第\ref{sec:algorithm}章）における Predictor ステップの対流項は，
-\textbf{1次精度の前進 Euler 法}で離散化される：
-\[
-  \frac{\bu^* - \bu^n}{\Delta t}
-  = -(\bu^n \cdot \bnabla)\bu^n
-    + \frac{1}{2}\bigl[\mathcal{D}(\bu^n) + \mathcal{D}(\bu^{n+1})\bigr]
-    + \bm{f}^{n+1}
-\]
-対流項 $-(\bu^n\cdot\bnabla)\bu^n$ は時刻 $n$ のみを使う1次 Euler である．
-粘性項は Crank-Nicolson（2次精度，§\ref{sec:time_int}）で処理するが，
-対流項の1次精度が時間方向の精度律速となる．
+本稿では，プロジェクション法の全体時間精度を $\mathcal{O}(\Delta t^2)$ とするため，
+対流項に \textbf{2段 Adams-Bashforth（AB2）法}を採用し，
+van Kan（1986）\cite{vanKan1986} の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせる．
+Predictor ステップの離散式は：
+\begin{equation}
+  \frac{\rho^{n+1}}{\Delta t}(\bu^* - \bu^n)
+  = -\rho^{n+1}\!\left[\frac{3}{2}\mathcal{C}(\bu^n,\bu^n)
+    - \frac{1}{2}\mathcal{C}(\bu^{n-1},\bu^{n-1})\right]
+  + \frac{1}{2Re}\bigl[\mathcal{D}(\mu^{n+1},\bu^*)
+    + \mathcal{D}(\mu^n,\bu^n)\bigr]
+  - \bnabla p^n
+  + \bm{f}^{n+1}
+  \label{eq:predictor_ab2_ipc}
+\end{equation}
+ここで $\mathcal{C}(\bu,q) = \bu\cdot\bnabla q$（対流演算子），$\mathcal{D}$ は完全粘性応力演算子
+（式~\eqref{eq:viscous_full_x}）．
+対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
+前ステップ圧力 $-\bnabla p^n$ の陽的組込みが IPC の本質である．
+
+\medskip
+\noindent\textbf{IPC 法の核心：圧力増分 $\delta p$ の求解}
+
+IPC 法では，圧力 Poisson 方程式において絶対圧力 $p^{n+1}$ の代わりに
+\textbf{圧力増分 $\delta p \equiv p^{n+1} - p^n$} を未知変数として解く
+（§\ref{sec:algorithm} Step 6--7 参照）：
+\begin{align*}
+  &\text{PPE：}\quad \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
+    = \frac{1}{\Delta t}\bnabla\cdot\bu^*\\
+  &\text{補正：}\quad \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla(\delta p),
+  \qquad p^{n+1} = p^n + \delta p
+\end{align*}
+CCD 演算子 $\mathcal{L}^{\rho}_{\mathrm{CCD}}$ は絶対圧力版と\textbf{完全に同一}であり，
+求解対象変数が $p^{n+1}$ から $\delta p$ に変わるだけである．
+この定式化により，標準 Chorin 法の人工的圧力境界層に起因する
+$\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
+（Guermond et al., \textit{Acta Numerica}, 2006 \cite{Guermond2006}）．
 
 \medskip
 \noindent\textbf{全体的な時間精度}
@@ -62,58 +87,51 @@ TVD-RK3 は以下の2箇所にのみ適用する：
 方程式・項 & 時間積分法 & 時間精度 \\
 \hline
 CLS 移流 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
-NS 対流項（Predictor） & 前進 Euler & $\Ord{\Delta t}$ \\
+NS 対流項（Predictor） & AB2（van Kan + 外挿係数 3/2, -1/2） & $\Ord{\Delta t^2}$ \\
 NS 粘性項 & Crank--Nicolson & $\Ord{\Delta t^2}$ \\
+Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$ \\
 \hline
-\textbf{全体（律速：Projection 分割誤差）} & & $\boldsymbol{\Ord{\Delta t}}$ \\
+\textbf{全体} & & $\boldsymbol{\Ord{\Delta t^2}}$ \\
 \hline
 \end{tabular}
 \end{center}
 
-すなわち，本スキームの\textbf{全体時間精度は $\Ord{\Delta t}$（1次精度）}である．
-空間精度が高次（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）であるにもかかわらず，
-時間方向が1次で律速されることに注意が必要である．
+本スキームの\textbf{全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
+空間精度（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）と釣り合った高精度定式化となっている．
 
 \medskip
-\noindent\textbf{標準 Chorin Projection 法のスプリッティング誤差}
+\noindent\textbf{背景：標準 Chorin 法のスプリッティング誤差（なぜ AB2 だけでは不十分か）}
 
+対流項を AB2（2次精度）に変更するだけでは全体精度は $\Ord{\Delta t^2}$ に\textbf{ならない}．
 標準的な Predictor--Corrector 分割（Chorin, 1968）は，
-圧力境界条件の不整合（いわゆる ``artificial pressure boundary layer''）に起因する
-$\Ord{\Delta t}$ のスプリッティング誤差を内包する
-（Guermond et al., \textit{Acta Numerica}, 2006 \cite{Guermond2006} に詳しい）．
-この誤差は NS 対流項の離散化精度とは\textbf{独立した}誤差源であり，
-対流項を TVD-RK3（3次精度）に変更しても，スプリッティング誤差が全体時間精度を $\Ord{\Delta t}$ に律速させる．
+圧力境界条件の不整合（人工的圧力境界層）に起因する $\Ord{\Delta t}$ スプリッティング誤差を独立に内包するため，
+対流項の高次化だけで律速が解消されない．
+IPC 法による予測ステップへの $p^n$ の組み込みがスプリッティング誤差を除去する唯一の手段である．
 
 \medskip
-\noindent\textbf{重要：2次精度 Projection 法は存在する——本稿の選択を誤解しないこと}
+\noindent\textbf{AB2 スタートアップ問題（最初の1ステップ目の特別処理）}
 
-「標準 Chorin 法が $\Ord{\Delta t}$ に留まる」ことは，
-「Projection 法で2次精度は達成不可能」を意味\textbf{しない}．
+AB2 法は2時刻分の対流項履歴
+$\bigl(\mathcal{C}^n,\,\mathcal{C}^{n-1}\bigr)$
+を必要とするため，$t=0$ の最初のステップ（$n=0\to1$）では AB2 を適用できない．
 
-van Kan（1986）\cite{vanKan1986} の
-\textbf{Incremental Pressure Correction（IPC）法}は，
-圧力補正の定式化を修正することでスプリッティング誤差を $\Ord{\Delta t^2}$ に低減し，
-NS 時間積分全体を2次精度に引き上げることができる．
-具体的には，予測速度 $\bm{u}^*$ の計算に \textbf{前ステップの圧力} $p^n$ を陽的に加えることで
-圧力境界層を消去し，標準 Chorin 法の1次誤差項を除去する：
-\[
-  \frac{\bm{u}^* - \bm{u}^n}{\Delta t}
-  = \bm{R}^{n+1} - \frac{1}{\rho}\bnabla p^n
-  \quad \text{（IPC 法 Predictor；本稿の式 \eqref{eq:predictor} との差分に注目）}
-\]
-この修正により，追加の実装コストを最小限に抑えながら2次精度が達成される．
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+ステップ & 対流項の扱い & 時間精度 \\
+\hline
+$n=0\to1$（初回）& 前進 Euler：$-\mathcal{C}(\bu^0,\bu^0)$ & $\Ord{\Delta t}$（スタートアップ） \\
+$n=1\to2$ 以降 & AB2：$\tfrac{3}{2}\mathcal{C}^n - \tfrac{1}{2}\mathcal{C}^{n-1}$ & $\Ord{\Delta t^2}$ \\
+\hline
+\end{tabular}
+\end{center}
 
-\medskip
-\noindent\textbf{本稿が1次精度 Euler を採用する理由（正直な開示）}
-
-本稿では，教材としての実装の簡潔さと各アルゴリズムの独立した理解を優先するため，
-\textbf{標準 Chorin 法の枠組みの中で NS 対流項を1次 Euler のまま採用する}．
-これは「1次精度で十分」という主張ではなく，
-「Projection 法の核心（Helmholtz 分解による圧力--速度分離）を最も透明に学べる定式化」
-を選択したことによる意図的な設計判断である．
-
-実用シミュレータで時間精度2次を目指す読者には，
-van Kan (1986) \cite{vanKan1986} の IPC 法を推奨する．
+初回ステップの $\Ord{\Delta t}$ 誤差は全体積分精度に影響しない
+（時間区間 $[0,T]$ 全体で $N_t$ ステップを踏むとき，1ステップ分の $\Ord{\Delta t^2}$ 局所誤差は
+全体精度 $\Ord{\Delta t^2}$ を損わない）．
+初回完了後，対流項 $\mathcal{C}^0 = \mathcal{C}(\bu^0,\bu^0)$ をバッファに保存し，
+以降の AB2 ステップで利用する（追加メモリ：速度場1つ分，$2N_xN_y$ 実数値）．
 \end{tcolorbox}
 
 \subsubsection{Crank--Nicolson 法（粘性項）}
@@ -159,11 +177,19 @@ CN 法で $t^{n+1}$ に置くと $u^*$ と $v^*$ の連立線形系（サイズ 
   \item $v^*$ の求解：$u^*$ を求解した後，同様の操作（$v$ の式に $u^*$ のクロス項 $\mathcal{D}_{\mathrm{c}}(u^*)$ を代入）
 \end{itemize}
 
-\textbf{精度への影響：}
-クロス微分項は $O(\Delta t)$ 誤差を導入するが，
-対角粘性項の CN が $O(\Delta t^2)$ であるため，
-\textbf{全体の時間精度は対流項の前進 Euler に律速されており $O(\Delta t)$}（§\ref{sec:time_int} の表参照）．
-したがってクロス項の陽的処理は全体精度に追加の劣化をもたらさない．
+\textbf{精度への影響（AB2+IPC スキームでの注意）：}
+クロス微分項の陽的1次処理は $\Ord{\Delta t}$ 誤差を導入する．
+AB2+IPC による全体精度は $\Ord{\Delta t^2}$（§\ref{sec:time_int} の表参照）であるため，
+クロス項の1次陽的処理は\textbf{界面近傍（$|\bnabla\mu| \neq 0$）で全体精度を $\Ord{\Delta t}$ に劣化させる可能性がある}．
+
+真に $\Ord{\Delta t^2}$ を維持したい場合，クロス微分項にも AB2 外挿を適用する：
+\[
+  \frac{1}{Re}\left[\frac{3}{2}\mathcal{D}_{\mathrm{c}}(v^n)
+    - \frac{1}{2}\mathcal{D}_{\mathrm{c}}(v^{n-1})\right]
+\]
+ただし，$\mu_l/\mu_g \lesssim 10$ の問題では界面での $|\bnabla\mu|$ は限定的であり，
+クロス項の寄与は実用上無視できる場合が多い．$\mu_l/\mu_g \gg 10$ の水/空気系では
+AB2 外挿の適用を推奨する．
 
 \textbf{等粘性流体（$\mu = \mathrm{const}$）の場合：}
 $\nabla\mu = 0$ のとき，$\partial_y(\mu\,\partial_x v) = \mu\,\partial_{xy}v$ となり，
