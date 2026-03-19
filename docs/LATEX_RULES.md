@@ -79,7 +79,8 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 | `02c_nondim_curvature.tex` | §2 cont. | Non-dimensionalization (Re/Fr/We), interface curvature κ |
 | `03_levelset.tex` | §3 | Why CLS, conservative advection, reinitialization (Δτ=0.25Δs) |
 | `03b_levelset_mapping.tex` | §3 cont. | ψ-φ mapping, logit inverse, curvature numerics & stabilization |
-| `04_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
+| `04_time_integration.tex` | §4 | WENO5 advection: LF flux splitting, ENO/WENO ideas, coefficients, boundary |
+| `04b_time_schemes.tex` | §4 cont. | TVD-RK3 (CLS), Crank-Nicolson (viscous), Godunov upwinding, CFL stability |
 | `05_ccd.tex` | §5 | CCD motivation, definition, Equation-I & II coefficient derivations |
 | `05b_ccd_bc_matrix.tex` | §5 cont. | Boundary schemes (O(h⁵)/O(h²)), ghost-cell method, block tridiagonal matrix |
 | `05c_ccd_extensions.tex` | §5 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
@@ -89,6 +90,7 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 | `08b_ccd_poisson.tex` | §8 cont. | CCD-Poisson matrix structure, Balanced-Force consistency, method comparison |
 | `08c_ppe_verification.tex` | §8 cont. | CCD-Poisson solver unit tests (Test C-1, C-2, C-3) |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
-| `10_verification_metrics.tex` | §10 Verification | Error norms, tab:error_budget (CSF bottleneck O(ε²)≈O(h²)) |
+| `10_verification.tex` | §10 | Error norms, grid convergence tests (curvature, parasitic currents) |
+| `10b_benchmarks.tex` | §10 cont. | 4 benchmarks (stationary droplet, Zalesak, RT instability, rising bubble) + error budget |
 | `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (逐次Thomas法), future work |
 | `appendix_proofs.tex` | Appendix | 1D One-Fluid proof, logit inverse derivation, Newton convergence, Δτ convergence rate (sec:dtau_derive) |

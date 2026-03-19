@@ -1,0 +1,305 @@
+% paper/sections/04b_time_schemes.tex
+%
+% §4 時間積分・移流スキームの続き（04_time_integration.tex からの分割）
+% 内容：TVD-RK3（CLS 移流）・Crank-Nicolson（粘性）・Godunov 上流化・安定性制約（CFL）
+%
+\subsection{時間積分スキーム}
+\label{sec:time_int}
+
+\subsubsection{3次 TVD Runge--Kutta 法（CLS 移流・再初期化のみ）}
+
+\textbf{CLS 移流ステップ（界面追跡）および CLS 再初期化の仮想時間積分}に，
+Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
+\begin{align}
+  q^{(1)} &= q^n + \Delta t \, \mathcal{L}(q^n) \notag\\
+  q^{(2)} &= \frac{3}{4}q^n + \frac{1}{4}q^{(1)} + \frac{1}{4}\Delta t\,\mathcal{L}(q^{(1)}) \notag\\
+  q^{n+1} &= \frac{1}{3}q^n + \frac{2}{3}q^{(2)} + \frac{2}{3}\Delta t\,\mathcal{L}(q^{(2)})
+  \label{eq:tvd_rk3}
+\end{align}
+ここで $\mathcal{L}(q)$ は空間演算子（WENO5 フラックスの発散）を表す．
+\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（§\ref{warn:tvd_rk3_scope}参照）．
+
+\noindent\textbf{TVD（Total Variation Diminishing）の定義：}
+TVD（Total Variation Diminishing）とは，数値解の全変動
+$TV(q) \equiv \sum_i |q_{i+1} - q_i|$ が時間的に増大しない性質を指す：
+$TV(q^{n+1}) \leq TV(q^n)$．
+これにより，$\psi$ のプロファイルに新たな振動が生成されることが防止され，
+界面のギザギザな数値ノイズが自然に抑制される．
+特に CLS 変数 $\psi \in [0,1]$ の範囲外への逸脱を防ぐ効果がある．
+
+\begin{tcolorbox}[warnbox, title={TVD-RK3 の適用範囲と全体時間精度}]
+\label{warn:tvd_rk3_scope}
+\textbf{TVD-RK3 の適用先（CLS のみ）}
+
+TVD-RK3 は以下の2箇所にのみ適用する：
+\begin{itemize}
+  \item \textbf{CLS 移流方程式}（式 \eqref{eq:cls_advection}）：$\pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0$（保存形）
+  \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分
+\end{itemize}
+
+\medskip
+\noindent\textbf{NS 方程式の時間積分方式}
+
+プロジェクション法（第\ref{sec:algorithm}章）における Predictor ステップの対流項は，
+\textbf{1次精度の前進 Euler 法}で離散化される：
+\[
+  \frac{\bu^* - \bu^n}{\Delta t}
+  = -(\bu^n \cdot \bnabla)\bu^n
+    + \frac{1}{2}\bigl[\mathcal{D}(\bu^n) + \mathcal{D}(\bu^{n+1})\bigr]
+    + \bm{f}^{n+1}
+\]
+対流項 $-(\bu^n\cdot\bnabla)\bu^n$ は時刻 $n$ のみを使う1次 Euler である．
+粘性項は Crank-Nicolson（2次精度，§\ref{sec:time_int}）で処理するが，
+対流項の1次精度が時間方向の精度律速となる．
+
+\medskip
+\noindent\textbf{全体的な時間精度}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcc}
+\hline
+方程式・項 & 時間積分法 & 時間精度 \\
+\hline
+CLS 移流 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
+NS 対流項（Predictor） & 前進 Euler & $\Ord{\Delta t}$ \\
+NS 粘性項 & Crank--Nicolson & $\Ord{\Delta t^2}$ \\
+\hline
+\textbf{全体（律速：Projection 分割誤差）} & & $\boldsymbol{\Ord{\Delta t}}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+すなわち，本スキームの\textbf{全体時間精度は $\Ord{\Delta t}$（1次精度）}である．
+空間精度が高次（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）であるにもかかわらず，
+時間方向が1次で律速されることに注意が必要である．
+
+\medskip
+\noindent\textbf{標準 Chorin Projection 法のスプリッティング誤差}
+
+標準的な Predictor--Corrector 分割（Chorin, 1968）は，
+圧力境界条件の不整合（いわゆる ``artificial pressure boundary layer''）に起因する
+$\Ord{\Delta t}$ のスプリッティング誤差を内包する
+（Guermond et al., \textit{Acta Numerica}, 2006 \cite{Guermond2006} に詳しい）．
+この誤差は NS 対流項の離散化精度とは\textbf{独立した}誤差源であり，
+対流項を TVD-RK3（3次精度）に変更しても，スプリッティング誤差が全体時間精度を $\Ord{\Delta t}$ に律速させる．
+
+\medskip
+\noindent\textbf{重要：2次精度 Projection 法は存在する——本稿の選択を誤解しないこと}
+
+「標準 Chorin 法が $\Ord{\Delta t}$ に留まる」ことは，
+「Projection 法で2次精度は達成不可能」を意味\textbf{しない}．
+
+van Kan（1986）\cite{vanKan1986} の
+\textbf{Incremental Pressure Correction（IPC）法}は，
+圧力補正の定式化を修正することでスプリッティング誤差を $\Ord{\Delta t^2}$ に低減し，
+NS 時間積分全体を2次精度に引き上げることができる．
+具体的には，予測速度 $\bm{u}^*$ の計算に \textbf{前ステップの圧力} $p^n$ を陽的に加えることで
+圧力境界層を消去し，標準 Chorin 法の1次誤差項を除去する：
+\[
+  \frac{\bm{u}^* - \bm{u}^n}{\Delta t}
+  = \bm{R}^{n+1} - \frac{1}{\rho}\bnabla p^n
+  \quad \text{（IPC 法 Predictor；本稿の式 \eqref{eq:predictor} との差分に注目）}
+\]
+この修正により，追加の実装コストを最小限に抑えながら2次精度が達成される．
+
+\medskip
+\noindent\textbf{本稿が1次精度 Euler を採用する理由（正直な開示）}
+
+本稿では，教材としての実装の簡潔さと各アルゴリズムの独立した理解を優先するため，
+\textbf{標準 Chorin 法の枠組みの中で NS 対流項を1次 Euler のまま採用する}．
+これは「1次精度で十分」という主張ではなく，
+「Projection 法の核心（Helmholtz 分解による圧力--速度分離）を最も透明に学べる定式化」
+を選択したことによる意図的な設計判断である．
+
+実用シミュレータで時間精度2次を目指す読者には，
+van Kan (1986) \cite{vanKan1986} の IPC 法を推奨する．
+\end{tcolorbox}
+
+\subsubsection{Crank--Nicolson 法（粘性項）}
+
+粘性項（2階空間微分を含む）は，純陽的処理では厳しい時間刻み制限（$\Delta t < O(h^2)$）を課す．
+これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する：
+\begin{equation}
+  \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
+  \label{eq:crank_nicolson}
+\end{equation}
+ここで $\mathcal{D}$ は粘性拡散演算子．CN 法は時間方向に2次精度（$O(\Delta t^2)$）かつ
+\textbf{無条件安定}（スペクトル半径の制約なし）であり，適度な $\Delta t$ での安定計算が可能となる．
+
+\begin{tcolorbox}[warnbox, title={CN 粘性項のクロス微分：$u$ と $v$ の陰的結合と実装上の分離}]
+\label{warn:cn_cross_derivative}
+
+\textbf{問題の所在：} 変粘性流体の粘性応力テンソル $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ を
+$x$ 方向成分で展開すると：
+\begin{align}
+  \bigl[\nabla\cdot(\mu(\nabla\bu+\nabla^T\bu))\bigr]_x
+  &= \underbrace{2\frac{\partial}{\partial x}\!\left(\mu\frac{\partial u}{\partial x}\right)
+     + \frac{\partial}{\partial y}\!\left(\mu\frac{\partial u}{\partial y}\right)}_{\text{$u$ のみの対角粘性項 $\mathcal{D}_{\mathrm{d}}(u)$}}
+   + \underbrace{\frac{\partial}{\partial y}\!\left(\mu\frac{\partial v}{\partial x}\right)}_{\text{クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$}}
+  \label{eq:viscous_full_x}
+\end{align}
+クロス微分項 $\mathcal{D}_{\mathrm{c}}(v) = \partial_y(\mu\,\partial_x v)$ は $v$ を含み，
+CN 法で $t^{n+1}$ に置くと $u^*$ と $v^*$ の連立線形系（サイズ $2N^2 \times 2N^2$）が生じる．
+これを解くのは計算コストが高く，ブロック Thomas 法（$O(N)$）の優位性が失われる．
+
+\textbf{標準的な対処法：クロス微分項の陽的処理}
+
+クロス微分項のみを時刻 $n$（陽的）で評価し，対角項だけを CN（半陰的）で処理する：
+\begin{equation}
+  \frac{u^* - u^n}{\Delta t}
+  = \frac{1}{2Re}\bigl[\mathcal{D}_{\mathrm{d}}(u^n) + \mathcal{D}_{\mathrm{d}}(u^*)\bigr]
+  + \frac{1}{Re}\,\mathcal{D}_{\mathrm{c}}(v^n)
+  + \bm{f}_x^{n+1}
+  \label{eq:cn_split_predictor}
+\end{equation}
+この分割により，$u$ と $v$ を\textbf{独立に}ブロック三重対角系として求解できる：
+\begin{itemize}
+  \item $u^*$ の求解：$u^n$，$v^n$ が既知 $\Rightarrow$ $x$ 方向 Thomas 法（$O(N_x)$ per row）+ $y$ 方向 Thomas 法
+  \item $v^*$ の求解：$u^*$ を求解した後，同様の操作（$v$ の式に $u^*$ のクロス項 $\mathcal{D}_{\mathrm{c}}(u^*)$ を代入）
+\end{itemize}
+
+\textbf{精度への影響：}
+クロス微分項は $O(\Delta t)$ 誤差を導入するが，
+対角粘性項の CN が $O(\Delta t^2)$ であるため，
+\textbf{全体の時間精度は対流項の前進 Euler に律速されており $O(\Delta t)$}（§\ref{sec:time_int} の表参照）．
+したがってクロス項の陽的処理は全体精度に追加の劣化をもたらさない．
+
+\textbf{等粘性流体（$\mu = \mathrm{const}$）の場合：}
+$\nabla\mu = 0$ のとき，$\partial_y(\mu\,\partial_x v) = \mu\,\partial_{xy}v$ となり，
+非圧縮条件 $\partial_x u + \partial_y v = 0$ から $\mu\,\partial_{xy}v = -\mu\,\partial_{xx}u$ が使えるため，
+クロス項は $u$ のみの演算子に帰着させられる場合がある．
+ただし，変密度（変粘性）系では一般に上記の陽的処理を採用する．
+\end{tcolorbox}
+
+\subsection{再初期化の Godunov 型上流化}
+\label{sec:godunov}
+
+\subsubsection{どの再初期化に使うか：CLS vs. 標準 Level Set}
+
+Godunov 型上流化は\textbf{標準 Level Set 法（Sussman 再初期化）}において，
+Eikonal 方程式 $|\nabla\phi| = 1$ を求解するために用いられる．
+
+\begin{table}[htbp]
+\centering
+\caption{各再初期化方程式と上流化スキームの対応}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\raggedright\arraybackslash}p{40mm}>{\raggedright\arraybackslash}p{55mm}>{\raggedright\arraybackslash}p{38mm}}
+\hline
+再初期化手法 & 方程式 & 本節との関連 \\
+\hline
+\textbf{標準 LS：Sussman 法} & \small$\partial_\tau\phi + \operatorname{sgn}(\phi_0)(|\nabla\phi|-1) = 0$ & \textbf{本節の Godunov 上流化} \\[4pt]
+\textbf{CLS 法} & \small$\partial_\tau\psi + \nabla\cdot(\psi(1{-}\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$ & \textbf{WENO5/上流化は圧縮項に適用（§\ref{sec:cls_compression}参照）} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{標準 LS 再初期化への Godunov 上流化}
+
+標準 Level Set の再初期化において，
+Eikonal 方程式の求解には Godunov 型の上流差分が必要となる．
+情報伝播方向 $s=\operatorname{sgn}(\phi_0)$ に応じた統一表現は以下の通りである：
+\begin{equation}
+ \norm{\bnabla\phi}^{\mathrm{uw}}_{i,j}=
+ \sqrt{G_x^2+G_y^2},\qquad G_x^2=\max(s\,D_x^-,0)^2+\min(s\,D_x^+,0)^2
+ \label{eq:godunov_upwind}
+\end{equation}
+ここで $D^\pm$ は前進・後退差分である．
+
+\subsubsection{CLS 再初期化における圧縮項の離散化}
+\label{sec:cls_compression}
+
+CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）の圧縮項
+$\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$
+は $\psi$ を「速度」$\psi(1-\psi)\hat{\bm{n}}$ で移流する保存則とみなせる．
+
+CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
+\textbf{$\psi(1-\psi)$ を非線形「波速」とする1次移流}として解釈できる．
+よって，§\ref{sec:weno5}と同様の WENO5 フラックス分割法を適用できる：
+\begin{enumerate}
+  \item フラックス $F = \psi(1-\psi)\hat{n}_x$（$x$ 成分）を定義し，Lax-Friedrichs 分割を行う．
+  \item 波速の上界として $\alpha = \max_{i,j}|1-2\psi_{i,j}| \le 1$ を用いる．
+  \item WENO5 でセル界面フラックスを再構成し，発散を計算する．
+\end{enumerate}
+拡散項 $\nabla\cdot(\varepsilon\nabla\psi)$ は CCD 法で高精度に評価する（2階微分として）．
+仮想時間 $\tau$ の時間積分には TVD-RK3（式 \eqref{eq:tvd_rk3}）を使用する．
+
+\subsection{安定性制約（時間刻みの決定）}
+\label{sec:stability}
+
+時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
+
+\begin{tcolorbox}[mybox, title={時間刻みの制約（CN 法採用時：2制約）}]
+\begin{align}
+  &\text{\textbf{対流 CFL}：}\quad
+  \Delta t_{\text{adv}} = \text{CFL}_{\max} \cdot \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
+  \label{eq:dt_adv} \\[6pt]
+  &\text{\textbf{毛管波制約（2D）}：}\quad
+  \Delta t_\sigma = \sqrt{\frac{(\rho_l + \rho_g)\min(\Delta x, \Delta y)^3}{2\pi\sigma}}
+  \label{eq:dt_sigma}
+\end{align}
+\textbf{最終的な時間刻み：}$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_\sigma)$
+
+\medskip
+\textbf{粘性 CFL（参考値）：}
+\[
+  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
+  \quad \text{（陽的粘性処理のみ適用；CN 法採用時は不要）}
+\]
+CN 法（無条件安定）を粘性項に採用しているため，$\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={毛管波制約の導出：分散関係から CFL 条件へ}]
+\textbf{Step 1：毛管波の分散関係}
+
+気液界面上の微小振幅波（毛管波）を考える．
+界面変位 $\eta(x,t) = \hat{\eta}\,e^{i(kx - \omega t)}$ として
+線形安定解析を行うと，角周波数 $\omega$ と波数 $k$ の関係（分散関係）は：
+\begin{equation}
+  \omega^2 = \frac{\sigma\,k^3}{\rho_l + \rho_g}
+  \label{eq:capillary_dispersion}
+\end{equation}
+これより位相速度は $c_\sigma = \omega/k = \sqrt{\sigma k/(\rho_l+\rho_g)}$，
+群速度は $c_g = 3c_\sigma/2$ である．
+
+\textbf{Step 2：格子上の最大分解可能波数}
+
+格子間隔 $\Delta x$ の離散格子で分解できる最も高い波数は
+$k_{\max} = \pi/\Delta x$（ナイキスト波数）である．
+
+\textbf{Step 3：CFL 条件の適用}
+
+最高波数 $k_{\max}$ に対応する群速度 $c_g(k_{\max})$ を用いて
+CFL 条件 $c_g \cdot \Delta t \le \Delta x$ を適用する：
+\begin{align}
+  c_g(k_{\max}) &= \frac{3}{2}\sqrt{\frac{\sigma\,k_{\max}}{\rho_l+\rho_g}}
+  = \frac{3}{2}\sqrt{\frac{\sigma\,\pi/\Delta x}{\rho_l+\rho_g}} \notag\\
+  \Rightarrow\quad
+  \Delta t &\le \frac{\Delta x}{c_g(k_{\max})}
+  = \frac{2}{3}\sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{\sigma\,\pi}}
+  \label{eq:dt_sigma_derive}
+\end{align}
+係数 $2/(3\sqrt{\pi}) \approx 0.376$ を安全側で丸めて $1/\sqrt{2\pi}$ とすると：
+\[
+  \Delta t_\sigma = \sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{2\pi\sigma}}
+\]
+これが式 \eqref{eq:dt_sigma} の毛管波制約である（より保守的な係数 $\sqrt{1/(2\pi)}$ を採用）．
+
+\textbf{物理的解釈：} $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性は，
+毛管波の分散関係が $\omega \propto k^{3/2}$ に由来する．
+格子を半分にすると（$\Delta x \to \Delta x/2$）$\Delta t_\sigma$ は $1/2^{3/2} \approx 0.354$ 倍，
+すなわち約 2.8 倍制約が厳しくなる．
+\end{tcolorbox}
+
+\noindent\textbf{注意：}
+表面張力が支配的な問題（$We \ll 1$，小液滴，毛管現象）では，
+毛管波（capillary wave）の位相速度が大きくなり CFL 条件が厳しくなる．
+特に $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性（格子を半分にすると $\approx 2.8$ 倍制約が厳しくなる）
+のため，高解像度計算では毛管波制約が支配的になることが多い．
+
+\textbf{対策：}
+\begin{itemize}
+  \item 表面張力の半陰的処理（Implicit Surface Tension）による制約の緩和
+  \item 問題によっては圧力 $p$ から $p + p_0$（静水圧 $p_0 = \rho g z$）を分離する
+        動的圧力（kinematic pressure）分割で寄生流れを抑制しつつ $\Delta t$ を拡大
+\end{itemize}
