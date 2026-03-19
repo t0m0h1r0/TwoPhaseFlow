@@ -4,9 +4,9 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-19
+* **Date/Update:** 2026-03-20
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **16 CRITIC passes + 21 EDITOR sweeps complete (2026-03-19).** Re-compile required to verify clean build.
+* **Paper:** 12 sections + appendix\_proofs. **16 CRITIC passes + 22 EDITOR sweeps complete (2026-03-20).** Re-compile required to verify clean build.
 
 ## **2. Pending Action Items**
 
@@ -19,4 +19,4 @@
 
 ### **Paper / Documentation**
 
-1. **Re-compile required** — EDITOR sweep 21 (appendix delegation pass): moved 8 proof/derivation blocks from §§1–8 to `appendix_proofs.tex` (new labels: `app:checkerboard_mode`, `app:mu_interp_derivation`, `app:csf_delta_precision`, `app:cls_fixed_point`, `app:capillary_cfl`, `app:ccd_bc_derivation_I`, `app:ccd_bc_derivation_II`, `app:fvm_face_coeff`); removed redundant §2.3.1 One-Fluid assumptions block; fixed mass-loss proof (coarea formula precision, Ω→Ω_l); fixed defbox→mybox/table misuse in §3; compressed reinit mybox from 75 lines to 15 lines. Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.
+1. **Re-compile required** — EDITOR sweep 22 (docs/11_PAPER_EDIT.md, all 31 issues): applied FATAL-01–03, EXILE-01–08, BOX-01–05, GAP-01–04, DUP-01,03, DIG-01–03, IMPL-01–03, MAINT-01 across §§02–09, appendix_ccd/numerics. Key changes: converted section-intro defboxes to body text (BOX-01,02,05), removed explicit β_k^- formulas (EXILE-07), compressed φ_max defbox + Gaussian filter mybox in §3b (EXILE-08+DIG-01), compressed Rhie-Chow precision warnbox (EXILE-06), removed Step1/Step2 harmonic justification (DUP-01), fixed 2D stability condition Δτ_par = (Δs)²/(4ε) in §3 (IMPL-03), added ψ=0.5 interface-fixed paragraph (GAP-01), added Young-Laplace boundary clarification + resultbox (GAP-04), added ccd_solve() function spec (IMPL-02), added ADI 2nd-order justification (IMPL-01). Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.

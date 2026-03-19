@@ -14,7 +14,7 @@
         Lax--Friedrichs フラックス分割，滑らかさ指標 $\beta_k$，再構成係数を導出する．
   \item §\ref{sec:time_int}：TVD-RK3（CLS 移流・再初期化のみ適用）
         および Crank--Nicolson（NS 粘性項の半陰的処理）
-  \item §\ref{sec:godunov}：Godunov 型上流化——標準 Level Set 再初期化の参照実装
+  \item §\ref{app:godunov_ls}：Godunov 型上流化——標準 Level Set 再初期化の参照実装
   \item §\ref{sec:stability}：安定性制約——対流 CFL 条件と毛管波制約の導出
 \end{itemize}
 
@@ -180,27 +180,12 @@ $\beta_k$ が小さいほど，そのステンシルの範囲が滑らか（$\Ri
 \]
 $\omega_k$ は式 \eqref{eq:weno5_beta} の $\beta_k$ から計算した非線形重みである．
 
-負側フラックス $\hat{F}^-$ の再構成係数はミラー対称性により得られる．負側フラックス $F^-_i$ の再構成は，\textbf{正側のミラー像}（インデックスを逆転）として得られる：
-\begin{align}
-  \hat{f}^-_0 &= \frac{1}{3}F^-_{i+3} - \frac{7}{6}F^-_{i+2} + \frac{11}{6}F^-_{i+1}
-  \\[4pt]
-  \hat{f}^-_1 &= -\frac{1}{6}F^-_{i+2} + \frac{5}{6}F^-_{i+1} + \frac{1}{3}F^-_i
-  \\[4pt]
-  \hat{f}^-_2 &= \frac{1}{3}F^-_{i+1} + \frac{5}{6}F^-_i - \frac{1}{6}F^-_{i-1}
-\end{align}
-負側の $\beta_k$ は\textbf{正側の鏡映}（インデックス方向を反転）として計算する：
-\begin{align}
-  \beta_0^- &= \frac{13}{12}(F^-_{i+3}-2F^-_{i+2}+F^-_{i+1})^2
-              + \frac{1}{4}(F^-_{i+3}-4F^-_{i+2}+3F^-_{i+1})^2 \notag\\
-  \beta_1^- &= \frac{13}{12}(F^-_{i+2}-2F^-_{i+1}+F^-_i)^2
-              + \frac{1}{4}(F^-_{i+2}-F^-_i)^2 \notag\\
-  \beta_2^- &= \frac{13}{12}(F^-_{i+1}-2F^-_i+F^-_{i-1})^2
-              + \frac{1}{4}(3F^-_{i+1}-4F^-_i+F^-_{i-1})^2
-  \label{eq:weno5_beta_minus}
-\end{align}
-変換則：正側式 \eqref{eq:weno5_beta} の各添字 $i+j$（$j$ は整数オフセット）を
-$i+(1-j)$（$i+\tfrac{1}{2}$ を対称軸とした折り返し）で置き換えると $\beta_k^-$ が得られる
-（右向き↔左向き上流化の鏡映対称性による；例：$j=-2 \to 3,\;j=0 \to 1,\;j=2 \to -1$）．
+負側フラックス $\hat{F}^-$ の再構成係数・滑らかさ指標 $\beta_k^-$ はいずれも
+\textbf{正側のミラー像}（インデックスを逆転）として得られる：
+正側式 \eqref{eq:weno5_beta} および式 \eqref{eq:weno5_rec0}--\eqref{eq:weno5_rec2} の
+各添字 $i+j$（$j$ は整数オフセット）を $i+(1-j)$（$i+\tfrac{1}{2}$ を対称軸とした折り返し）で
+置き換えると $\hat{f}_k^-$ および $\beta_k^-$ が得られる
+（右向き↔左向き上流化の鏡映対称性；例：$j=-2\to3,\;j=0\to1,\;j=2\to-1$）．
 
 $\beta_k^-$ を用いて正側と同様の非線形重み $\omega_k^-$ を計算し：
 \[
@@ -220,9 +205,7 @@ WENO5 は格子点 $i$ に対して正側フラックスに $\{F^+_{i-2},\ldots,
 領域端（$i=0,1$ および $i=N-2,N-1$）ではこのステンシルが計算領域外に飛び出るため，
 境界外の仮想点（ゴーストセル）または低次切り替えによる対処が必要である．
 
-\begin{tcolorbox}[defbox, title={境界ステンシル処理の2方針}]
-\textbf{方針A：ゴーストセル外挿（本稿採用）}
-
+\begin{tcolorbox}[algbox, title={ゴーストセルによる境界ステンシル処理（本稿採用方針）}]
 格子の両端に2点のゴーストセルを付加し，物理境界条件に応じた値を補充する：
 
 \begin{center}
@@ -238,33 +221,8 @@ WENO5 は格子点 $i$ に対して正側フラックスに $\{F^+_{i-2},\ldots,
 \end{tabular}
 \end{center}
 
-CLS 移流は周期 BC または壁面 Neumann BC を使用することが多く，
-本稿の実装は\textbf{ゴーストセル方式}を標準とする．
-実装では格子配列を $N+4$ サイズ（両端2点のゴースト付き）で確保し，
+格子配列を $N+4$ サイズ（両端2点のゴースト付き）で確保し，
 各時間ステップの WENO5 評価前にゴーストセルを更新する．
-
-\textbf{疑似コード（$x$ 方向，$N_x$ 点，周期 BC）：}
-\begin{center}
-\begin{minipage}{0.82\linewidth}
-\begin{verbatim}
-# 物理セル: f[0 .. Nx-1]
-# ゴーストセル: f[-2], f[-1]  （左端），f[Nx], f[Nx+1]（右端）
-
-# 周期 BC
-f[-1]    = f[Nx-1];   f[-2]    = f[Nx-2]
-f[Nx]    = f[0];      f[Nx+1]  = f[1]
-
-# 壁面 Neumann BC（対称反射）
-f[-1]    = f[1];      f[-2]    = f[2]
-f[Nx]    = f[Nx-2];   f[Nx+1]  = f[Nx-3]
-\end{verbatim}
-\end{minipage}
-\end{center}
-
-\textbf{方針B：境界近傍での次数低下}
-
-$i=0$ では3点ステンシル（1次/2次精度），$i=1$ では5点ステンシル（3次/4次精度）へ
-段階的に切り替える．ゴーストセルが使えない環境（GPU の共有メモリ境界など）で有効．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={境界ゴーストセルの精度への影響}]

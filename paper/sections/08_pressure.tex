@@ -108,16 +108,16 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={なぜ $\bnabla\cdot(1/\rho\,\bnabla p)$ の形が出るのか？}]
-一様密度（$\rho=\text{const}$）の場合，補正式 \eqref{eq:corrector} は
-$\bu^{n+1} = \bu^* - (\Delta t/\rho)\bnabla p$ となり，発散を取ると
-$\bnabla^2 p = \rho\,\bnabla\cdot\bu^*/\Delta t$ という標準的な Poisson 方程式になる．
-
-変密度場では密度が空間的に変化するため，$\bnabla\cdot(1/\rho\,\bnabla p)$ という
-\textbf{可変係数の拡散型演算子}が現れる（係数 $1/\rho$ が空間に依存）．
-連続体レベルでの動機づけとして，この演算子を FVM で離散化した場合に調和平均係数
-$a_f = 2/(\rho_L+\rho_R)$ が現れる（§\ref{sec:fvm_face_coeff}）．
-\textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，
-§\ref{sec:ppe_pseudotime}）であり，$\Ord{h^6}$ を達成する（直後の注意 §\ref{warn:fvm_vs_ccd} 参照）．
+一様密度（$\rho=\text{const}$）では $\bnabla^2 p = \rho\,\bnabla\cdot\bu^*/\Delta t$ になる．
+変密度場では密度が空間的に変化するため\textbf{可変係数の拡散型演算子}が現れる．
+本稿の実装ではこれを product-rule で展開した微分形式：
+\begin{equation}
+  \nabla\cdot\!\left(\frac{1}{\rho}\nabla p\right)
+  = \frac{1}{\rho}\nabla^2 p - \frac{\nabla\rho}{\rho^2}\cdot\nabla p
+  \label{eq:varrho_product_rule}
+\end{equation}
+として CCD 法（$\Ord{h^6}$）で求解する（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_2d_full}）．
+FVM 離散化との連続体レベルでの等価性と調和平均の根拠については §\ref{sec:fvm_face_coeff} 参照．
 \end{tcolorbox}
 
 \subsection{Projection 法と PPE}
@@ -129,100 +129,18 @@ $a_f = 2/(\rho_L+\rho_R)$ が現れる（§\ref{sec:fvm_face_coeff}）．
   \label{eq:PPE_varrho}
 \end{equation}
 
-\subsection{FVM による離散化：面係数の厳密な導出}
+\subsection{FVM 面係数：調和平均の根拠}
 \label{sec:fvm_face_coeff}
 
-\begin{tcolorbox}[warnbox]
-\textbf{本節（§\ref{sec:fvm_face_coeff}）は概念的動機づけ専用の解説である．}
-本稿の標準実装（CCD product-rule 展開 + 仮想時間陰解法，§\ref{sec:ppe_pseudotime}）を
-実装する場合は，§\ref{warn:fvm_vs_ccd}（本節末尾）まで読み飛ばしてよい．
-FVM 面係数 $a_f = 2/(\rho_L+\rho_R)$ は「なぜ調和平均が現れるのか」の数学的論理を
-示すための参照であり，実装には使用しない（表~\ref{tab:ccd_vs_fvm} 参照）．
-\end{tcolorbox}
-
-式\eqref{eq:PPE_varrho}は有限体積法（FVM）を用いて離散化する．
-ここでは「どの量の調和平均を取るべきか」を，積分形から厳密に導出する．
-
-\subsubsection{面係数 $a_f$ の導出（重要）}
-
-PPE 演算子 $\mathcal{L}[p] = \bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を
-セル $P$（位置 $x_P$）と隣接セル $E$（位置 $x_E$）の間の面 $f$（位置 $x_f$）で
-有限体積積分する．
-
-フェイスフラックス $F_f = a_f \cdot (p_E - p_P)/\Delta x$ において，
-面係数 $a_f$ は調和平均で与えられる：
-
-\begin{tcolorbox}[mybox, title={PPE 面係数 $a_f$ の厳密な式（実装で使うべき式）}]
+PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散化すると，
+フェイス面係数として\textbf{調和平均}が自然に現れる（積分論理は付録~\ref{app:fvm_face_coeff}）：
 \begin{equation}
-  \boxed{
   a_f = \frac{2}{\rho_L + \rho_R}
-  }
   \label{eq:af_exact}
 \end{equation}
-ただし $\rho_L, \rho_R$ はフェイスを挟む左右のセル中心の密度値．
-
-\textbf{注意：以下の2つは全く異なる値を与える（実装ミスの典型例）：}
-\begin{itemize}
-  \item \textbf{正しい}：$a_f = 2/(\rho_L + \rho_R)$
-        \quad（$a=1/\rho$ の調和平均 $= 2a_La_R/(a_L+a_R)$）
-  \item \textbf{誤り（よくある実装ミス）}：$1/\rho_f^{\text{harm}}$（$\rho$ の調和平均の逆数）
-        $= (\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$
-\end{itemize}
-\end{tcolorbox}
-
-$a_f = 2/(\rho_L+\rho_R)$ の導出は，セル間の積分論理（直列抵抗則）による
-（付録~\ref{app:fvm_face_coeff} 参照）．
-
-\begin{tcolorbox}[mybox, title={FVM 変密度 PPE（展開形，実装可能な形式，IPC 増分形）}]
-式 \eqref{eq:af_exact} の $a_f$ を用いた FVM 離散化の完全な形（$x$方向のみ表示，未知変数は $\delta p \equiv p^{n+1}-p^n$）：
-\begin{equation}
-  \underbrace{\frac{a_{i+1/2,j}}{h_x^2}}_{\text{右係数}} (\delta p)_{i+1,j}
-  - \underbrace{\frac{a_{i+1/2,j}+a_{i-1/2,j}}{h_x^2}}_{\text{中央係数}} (\delta p)_{i,j}
-  + \underbrace{\frac{a_{i-1/2,j}}{h_x^2}}_{\text{左係数}} (\delta p)_{i-1,j}
-  + (\text{$y$方向同様})
-  = \frac{(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}}{\Delta t}
-  \label{eq:PPE_FVM}
-\end{equation}
-ここで $a_{i\pm1/2,j} = 2/(\rho_{i,j} + \rho_{i\pm1,j})$（式 \eqref{eq:af_exact}）．
-\end{tcolorbox}
-
-\begin{tcolorbox}[warnbox, title={重要：FVM 離散化（§\ref{sec:fvm_face_coeff}）と CCD 実装（§\ref{sec:ppe_pseudotime}）の役割分担}]
-\label{warn:fvm_vs_ccd}
-本節（§\ref{sec:fvm_face_coeff}）で導出した \textbf{FVM 面係数 $a_f = 2/(\rho_L+\rho_R)$} は，
-変密度 PPE の概念的理解と調和平均の数学的根拠を提供するものであり，
-\textbf{本稿の実際の実装で直接使用されるわけではない}．
-
-本稿が採用する CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_matrix}）では，
-演算子 $\nabla\cdot(1/\rho\,\nabla p)$ を \textbf{product rule で展開した微分形式}：
-\begin{equation}
-  \nabla\cdot\!\left(\frac{1}{\rho}\nabla p\right)
-  = \frac{1}{\rho}\nabla^2 p - \frac{\nabla\rho}{\rho^2}\cdot\nabla p
-  \label{eq:varrho_product_rule}
-\end{equation}
-で離散化し，$\nabla^2 p$，$\nabla\rho$，$\nabla p$ をすべて CCD 法（6次精度）で評価する
-（詳細は§\ref{sec:ccd_2d_full}，式 \eqref{eq:Lx_varrho_discrete}）．
-この非保存形（微分形式）は FVM 保存形と \textbf{連続体レベルでは等価}だが，
-離散化誤差の次数が異なる：FVM が $\mathcal{O}(h^2)$ であるのに対し，CCD 微分形式は $\mathcal{O}(h^6)$ を達成する．
-
-\begin{center}
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{lcc}
-\hline
-役割 & 手法 & 本稿での位置づけ \\
-\hline
-調和平均係数の根拠・概念的動機 & FVM 積分（§\ref{sec:fvm_face_coeff}） & 参照のみ \\
-性能比較の基準手法 & FVM + BiCGSTAB & 表~\ref{tab:ccd_vs_fvm} \\
-\textbf{実際の実装（本稿標準）} & \textbf{CCD 微分形式 + 仮想時間陰解法} & §\ref{sec:ppe_pseudotime} \\
-\hline
-\end{tabular}
-\end{center}
-\end{tcolorbox}
-
-\noindent\textbf{注（FVM 独自実装者向け）：}
-式~\eqref{eq:PPE_FVM} は内部ノードに対してのみ成立する．
-ノード中心格子では境界ノードの制御体積幅が $h/2$ となるため，
-その行の係数を内部ノードの 2 倍にする必要がある
-（CCD 実装ではこの補正は不要；CCD 境界処理は §\ref{sec:ccd_neumann_bc} 参照）．
+よくある実装ミス：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$．
+\textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ppe_pseudotime}）であり，$\Ord{h^6}$ を達成する．
+式~\eqref{eq:af_exact} は Rhie-Chow 補正係数と一致する（§\ref{sec:rc_implementation}）．
 
 \subsubsection{Rhie-Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}
 \label{sec:rc_divergence}
@@ -498,80 +416,31 @@ ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)
 残差計算には直接 $\mathcal{L}_h(\delta p)^m - q_h$ を評価する左辺を用いることを推奨する．）
 $\varepsilon^m < \varepsilon_{\mathrm{tol}}$（例：$\varepsilon_{\mathrm{tol}} = 10^{-8}$）を満たした時点で収束とみなし，反復を終了する．
 
-\begin{tcolorbox}[mybox, title={PPE 仮想時間陰解法の反復アルゴリズム（IPC 増分形）}]
-\begin{enumerate}
-  \item \textbf{初期値：} $(\delta p)^0 = 0$（IPC 増分の初期推定値）を設定する．
-        初期残差は $\|\mathcal{L}_h\cdot 0 - q_h\|_2 = \|q_h\|_2$ であり，
-        収束には典型的に数回〜数十回の反復を要する．
-  \item \textbf{RHS 構築：} $q_h = (\bnabla_h^{\mathrm{RC}}\cdot\bu^*)/\Delta t$ を計算する．
-  \item \textbf{反復ループ（$m = 0, 1, 2, \dots$）：}
-    \begin{enumerate}
-      \item \textbf{残差評価：} $x$・$y$ 方向 CCD スウィープで $\mathcal{L}_h(\delta p)^m$ を計算し，
-            残差 $\varepsilon^m = \|\mathcal{L}_h(\delta p)^m - q_h\|_2$ を求める．
-            $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ なら収束として終了．
-      \item \textbf{$x$ 方向スウィープ（逐次第1段）：} 各行 $j$ に対して
-            $(\mathbf{I}+\Delta\tau\mathcal{L}_x)\widetilde{(\delta p)}^{m+1}_{:,j} = (\delta p)^m_{:,j} + \Delta\tau\, q_{h,:,j}$
-            をブロック Thomas 法で解き，中間解 $\widetilde{(\delta p)}^{m+1}$ を得る．
-      \item \textbf{$y$ 方向スウィープ（逐次第2段）：} 各列 $i$ に対して
-            $(\mathbf{I}+\Delta\tau\mathcal{L}_y)(\delta p)^{m+1}_{i,:} = \widetilde{(\delta p)}^{m+1}_{i,:}$
-            をブロック Thomas 法で解き，$(\delta p)^{m+1}$ を得る．
-    \end{enumerate}
-  \item \textbf{出力：} 収束した $(\delta p)^{m+1} = \delta p$；$p^{n+1} = p^n + \delta p$ を Corrector に渡す．
-\end{enumerate}
-\end{tcolorbox}
-
-\begin{tcolorbox}[defbox, title={最適仮想時間刻み $\Delta\tau$ の選択指針}]
-仮想時間刻み $\Delta\tau$ は収束速度に直接影響する重要なパラメータである．
-
-\textbf{最適 $\Delta\tau$ の理論的根拠（スウィープ型，詳細は付録 §\ref{sec:dtau_derive}）：}
-
-スウィープ型は \textbf{任意の $\Delta\tau > 0$ で無条件安定}（誤差は発散しない）だが，
-収束\textbf{速度}と分割誤差の大きさはともに $\Delta\tau$ に依存する．
-等方格子・一様係数の理想条件下での解析では，
-収束速度と分割誤差のトレードオフを捉える指標
+\begin{tcolorbox}[resultbox, title={最適仮想時間刻み $\Delta\tau$ の理論（詳細：付録 §\ref{sec:dtau_derive}）}]
+\label{result:dtau_opt}
+等方格子・一様係数の理想条件下で，収束速度と分割誤差のトレードオフを捉える指標：
 \[
   \gamma(t) = \frac{1 + t^2}{(1+t)^2},
   \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
 \]
-が得られる（$\gamma < 1$，$\forall t>0$）．
-$d\gamma/dt = 0$ を解くと $t = 1$，すなわち $\Delta\tau_{\mathrm{opt}} = 2/\lambda$ で
-この指標が最小値 $\gamma=1/2$ をとる
-（収束速度と分割誤差のトレードオフが最良にバランスする点）．
-
-最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$（CCD Laplacian; §\ref{sec:ccd_1d_matrix} 参照）を
-代入すると最適仮想時間刻みが得られる：
+$d\gamma/dt = 0$ を解くと $t^* = 1$（$\gamma_{\min} = 1/2$）．
+CCD Laplacian の最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$ を代入すると：
 \begin{equation}
   \Delta\tau_{\mathrm{opt}}
-  \approx \frac{2}{\lambda_{\max}}
   \approx \frac{0.58\,h^2}{a_{\max}},
   \qquad
   a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
   \label{eq:dtau_opt}
 \end{equation}
-経験則 $\Delta\tau \sim C h^2/a_{\max}$（$C=1\sim5$）はこの理論値を中心とする範囲に対応する．
-$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ では $\gamma \to 1$（収束が遅くなるが発散しない）；
-$\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ では $\gamma \approx 1 - \Delta\tau\lambda \approx 1$（同様に遅い）．
+スウィープ型は任意の $\Delta\tau > 0$ で\textbf{無条件安定}；$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも $\gamma \to 1$（収束が遅い）．
+\end{tcolorbox}
 
-\textbf{収束速度の観点：}
-\begin{itemize}
-  \item $\Delta\tau$ が\textbf{大きい}ほど：1反復あたりの圧力更新量が大きくなり収束が速い傾向
-        （ただし，スウィープ近似の場合は過大な $\Delta\tau$ で振動的になることがある）
-  \item $\Delta\tau$ が\textbf{小さい}ほど：安定だが収束が遅い
-  \item \textbf{推奨：} $\Delta\tau = C_\tau \cdot h^2 / a_{\max}$（$C_\tau = 1 \sim 5$）を試し，
-        収束挙動を見ながら調整する
-\end{itemize}
+\begin{tcolorbox}[mybox, title={$\Delta\tau$ の実装指針と典型収束挙動}]
+\label{box:dtau_impl}
+経験則：$\Delta\tau = C_\tau \cdot h^2/a_{\max}$，$C_\tau = 1 \sim 5$（式~\eqref{eq:dtau_opt}を中心とする範囲）．
 
-\textbf{典型的な反復回数：}
-前時刻圧力 $p^n$ を初期値とする場合，通常の問題（$\Delta t$ が小さい場合）では
-$5 \sim 50$ 回程度の反復で $\varepsilon_\text{tol} = 10^{-8}$ に達することが多い．
-初期時刻や大きな圧力変動がある場合は更に多くの反復が必要になることがある．
+\textbf{推奨出発点：} $C_\tau = 2.0$（静止液滴テスト，$N=64$，$\rho_l/\rho_g=10$ の設定で $10\sim30$ 回で $\varepsilon_\text{tol}=10^{-8}$ 達成）．大密度比（$\rho_l/\rho_g \geq 100$）では $C_\tau=1\sim2$ から試すこと．
 
-\medskip
-\textbf{標準問題における経験値（参考）：}\\
-設定：$N_x=N_y=64$，$Re=100$，$We=10$，$\rho_l/\rho_g=10$，静止液滴テスト\\
-推奨出発点：$C_\tau = 2.0$（すなわち $\Delta\tau = 2h^2\,a_{\max}$）\\
-典型収束反復数：$10\sim30$ 回（$\varepsilon_\text{tol}=10^{-8}$，前時刻圧力を初期値とした場合）\\
-$C_\tau=5$ まで増やしても同設定では振動は観察されないが，
-密度比が大きい問題（$\rho_l/\rho_g \geq 100$）では $C_\tau=1\sim2$ から試すことを推奨する．
+\textbf{初期値：} $(\delta p)^0 = 0$（増分の初期推定）；収束は典型的に数回〜数十回．初期時刻や大きな圧力変動がある場合は更に多くの反復を要する．
 \end{tcolorbox}
 

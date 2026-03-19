@@ -104,9 +104,12 @@ $\alpha > 1$ は界面近傍の格子密度倍率である．
   J_x\big|_i = \frac{1}{(dx/d\xi)_i}, \qquad
   \pd{J_x}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
 \]
-ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は，座標配列 $\{x_i\}$ を**入力データ**として
-CCD 連立方程式（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）を解くことで同時に得る．
-すなわち「$f(\xi_i) = x_i$」として CCD を適用すれば，1階・2階微分が一度の Thomas 法求解で得られる
+ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は，座標配列 $\{x_i\}$ を「関数値」として
+CCD 連立方程式（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）を解くことで同時に得る：
+\[
+  \texttt{ccd\_solve}(\,\{x_i\},\,\Delta\xi\,) \;\to\; \bigl\{(dx/d\xi)_i,\;(d^2x/d\xi^2)_i\bigr\}
+\]
+すなわち，通常は物理場 $f(\xi_i)$ を入力する CCD ソルバーに，座標配列 $f(\xi_i) \leftarrow x_i$，一様格子幅 $\Delta\xi = \xi_{i+1}-\xi_i$（$= L/(N-1)$）を渡す．ソルバーは1・2階微分を同時に返すので，$dx/d\xi$ と $d^2x/d\xi^2$ が一度の Thomas 法求解で $\mathcal{O}(h^6)$ 精度で得られる
 （CCD が 1・2 階微分を同時出力するという特性を格子生成にも活用する点に注意）．
 中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
 CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
@@ -235,54 +238,6 @@ def build_2d_grid(phi0, Nx, Ny, Lx, Ly, alpha, eps_g):
 \subsection{時間変化格子と ALE 効果}
 \label{sec:grid_ale}
 
-本稿の格子は初期水準集合値 $\phi^{(0)}$ から生成されるが，界面位置は時間発展する．
-格子を毎タイムステップ更新する場合，\textbf{ALE（Arbitrary Lagrangian-Eulerian）定式化}が必要となる．
-
-\begin{tcolorbox}[warnbox, title={本稿の実装方針：時間固定格子（簡単化のための仮定）}]
-ALE 定式化では，格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：
-\[
-  \frac{\partial\psi}{\partial t} + \nabla\cdot\bigl((\bm{u} - \bm{v}_\text{mesh})\psi\bigr) = 0
-\]
-ただし，この追加項の離散化は実装の複雑さを大きく増加させる．
-
-\textbf{本稿の簡単化：} 格子を時間固定として扱う（$\bm{v}_\text{mesh} = 0$）か，
-タイムステップごとに格子を再生成するが $\bm{v}_\text{mesh}$ の補正は省略する．
-\end{tcolorbox}
-
-ALE 補正項 $\nabla\cdot(\bm{v}_\text{mesh}\psi)$ を省略したときの誤差を定量的に評価する．
-
-\textbf{誤差の発生機構：}
-1ステップあたりの界面移動量を $\delta = |\bm{u}|\Delta t$ とすると，
-格子が再生成される場合，界面近傍の格子点は $\delta/h$ 程度移動する（$h$：格子間隔）．
-ALE 補正を省略することで，$\bm{v}_\text{mesh}$ による追加対流量 $\bm{v}_\text{mesh}\cdot\bnabla\psi \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi|$ が無視される．
-
-\textbf{界面移動速度と格子速度の関係：}
-界面集中格子では $|\bm{v}_\text{mesh}| \approx \dot{\bm{x}}_{\text{interface}} \approx |\bm{u}|_{\Gamma}$（界面速度）である．
-これを省略した場合，1ステップ当たりの誤差は：
-\[
-  \varepsilon_{\text{ALE}} \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi| \cdot \Delta t \sim U_\Gamma \cdot \frac{1}{\varepsilon} \cdot \Delta t
-\]
-ここで $|\bnabla\psi| \sim 1/(4\varepsilon)$（界面近傍のプロファイル），$U_\Gamma$ は界面速度である．
-
-\textbf{近似が有効な条件：}
-\begin{center}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
-\hline
-条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\
-\hline
-緩やかな界面変形 & $< 0.1$ & 良好（誤差 $< 10\%$ of $\Delta t^2$ 項） \\
-標準的な問題 & $\approx 0.5$ & 条件付きで可（格子収束確認要） \\
-大密度比 ($\rho_l/\rho_g{=}1000$) の高速界面 & $> 1$ & 精度劣化の可能性大（ALE 実装推奨） \\
-\hline
-\end{tabular}
-\end{center}
-
-\textbf{大密度比問題での注意：}
-$\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがある．
-この状況では ALE 補正なしの格子更新は実質的に $O(\Delta t)$ 精度（1次）となり，
-時間積分スキーム（TVD-RK3, Crank-Nicolson の $O(\Delta t^3), O(\Delta t^2)$）の精度優位性が失われる．
-
-\textbf{推奨する検証手順：}
-格子収束テスト（第\ref{sec:verification}章）に加えて，時間刻み $\Delta t$ を半分にしたとき誤差が $1/4$ 倍になる（2次収束）か，
-$1/8$ 倍（3次収束）になるかを確認し，ALE 省略の影響を定量的に評価する．
+本稿の格子は初期水準集合値 $\phi^{(0)}$ から生成し，\textbf{時間固定}として扱う（$\bm{v}_\text{mesh} = 0$）．
+格子を毎タイムステップ更新しつつ ALE 補正を省略した場合の誤差評価，および
+ALE 定式化が必要となる条件（大密度比・高速界面変形）については付録~\ref{app:grid_ale} を参照されたい．
