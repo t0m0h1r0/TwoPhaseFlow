@@ -55,7 +55,10 @@ $\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$
 （保存形）に適用するには，まず移流フラックスを
 \textbf{上流方向に分割}する必要がある．
 本稿では数値安定性と実装の簡潔さのバランスに優れた
-\textbf{大域 Lax--Friedrichs（GLF）分割}を採用する：
+\textbf{大域 Lax--Friedrichs（GLF）分割}を採用する
+（局所 LF = Rusanov フラックスとの比較：局所 LF は $\alpha_i = |u_i|$ として数値拡散を格子点ごとに最小化するが，
+実装コストが増し界面近傍での同時フラックス評価の一貫性が必要となる；
+本稿の CLS 移流では GLF の一様な $\alpha$ が界面の sharp 保持に十分であることを経験的に確認している）：
 
 Lax--Friedrichs フラックス分割（$x$ 方向）：
 

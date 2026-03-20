@@ -317,8 +317,12 @@ $f$ が解析関数のとき，各演算子の打ち切り誤差は：
 \textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，
 実測の寄生流れ収束次数は $O(h^2)$ 程度となる
 （§\ref{sec:accuracy_summary} および第\ref{sec:verification}章の静止液滴ベンチマーク参照）．
-Balanced-Force 条件の「Balanced」とは「数値離散化誤差の相殺」を指し，
-CSF モデル誤差そのものを除去するものではない点に注意されたい．
+Balanced-Force 条件の「Balanced」とは「数値離散化誤差成分の相殺（$O(h^6)$ への低減）」を指し，
+CSF モデル誤差（$O(\varepsilon^2) \approx O(h^2)$）そのものを除去するものではない点に注意されたい．
+また，Rhie--Chow 補正の検出項（付録~\ref{app:rc_precision}）は $O(h^2)$ の安定化項であるが，
+これはフェイス速度の非物理振動抑制を担う補助項であり，
+$\nabla p$ と $\kappa\nabla\psi$ の主方程式演算子（CCD）の整合性とは独立した役割を持つ
+（したがって Balanced-Force の $O(h^6)$ 相殺を損なわない；付録~\ref{app:rc_precision} 末尾参照）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Balanced-Force 実装の確認方法}
