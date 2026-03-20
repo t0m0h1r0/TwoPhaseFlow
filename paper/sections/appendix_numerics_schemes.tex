@@ -1,0 +1,135 @@
+% paper/sections/appendix_numerics_schemes.tex
+%
+% 付録（時間積分・スキーム・実装補足）
+%   app:grid_ale      — 時間変化格子と ALE 効果（本稿では未実装）
+%   app:rc_precision  — Rhie--Chow 補正と CCD 高次精度の整合性
+%   app:godunov_ls    — 標準 LS 法の Godunov 型スキーム（参考）
+%
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{時間変化格子と ALE 効果（本稿では未実装）}
+\label{app:grid_ale}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
+\textbf{本稿の実装では格子を時間固定として扱う（$\bm{v}_\text{mesh} = 0$）}か，タイムステップごとに格子を再生成するが $\bm{v}_\text{mesh}$ の補正は省略する．
+
+\begin{tcolorbox}[warnbox, title={ALE 定式化の概要と省略の条件}]
+ALE 定式化では，格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：
+\[
+  \frac{\partial\psi}{\partial t} + \nabla\cdot\bigl((\bm{u} - \bm{v}_\text{mesh})\psi\bigr) = 0
+\]
+ただし，この追加項の離散化は実装の複雑さを大きく増加させる．
+\end{tcolorbox}
+
+\textbf{誤差の発生機構：}
+1ステップあたりの界面移動量を $\delta = |\bm{u}|\Delta t$ とすると，
+ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量が無視される：
+\[
+  \varepsilon_{\text{ALE}} \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi| \cdot \Delta t \sim U_\Gamma \cdot \frac{1}{\varepsilon} \cdot \Delta t
+\]
+ここで $|\bnabla\psi| \sim 1/(4\varepsilon)$（界面近傍プロファイル），$U_\Gamma$ は界面速度である．
+
+\textbf{近似が有効な条件：}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
+\hline
+条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\
+\hline
+緩やかな界面変形 & $< 0.1$ & 良好（誤差 $< 10\%$ of $\Delta t^2$ 項） \\
+標準的な問題 & $\approx 0.5$ & 条件付きで可（格子収束確認要） \\
+大密度比 ($\rho_l/\rho_g{=}1000$) の高速界面 & $> 1$ & 精度劣化の可能性大（ALE 実装推奨） \\
+\hline
+\end{tabular}
+\end{center}
+
+$\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがあり，ALE 補正なしの格子更新は実質的に $O(\Delta t)$ 精度（1次）となる．
+格子収束テスト（第\ref{sec:verification}章）に加えて，時間刻み $\Delta t$ を半分にしたとき誤差が $1/4$ 倍（2次）か $1/8$ 倍（3次）になるかを確認し，ALE 省略の影響を定量的に評価すること．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Rhie--Chow 補正と CCD 高次精度の整合性}
+\label{app:rc_precision}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+式~\eqref{eq:rc-face} の補正項は $O(h^2)$ の誤差を持つが，CCD の $O(h^6)$ 精度を律速しない理由を示す．
+
+フェイス $f$（$x_P$ と $x_E$ の中点，$x_f = (x_P+x_E)/2$，$x_E - x_P = h$）での各勾配評価の
+テイラー展開：
+
+\textbf{(1) 直接フェイス差分：}
+$x_P = x_f - h/2$，$x_E = x_f + h/2$ として
+\[
+  p_E - p_P = h\,p'(x_f) + \frac{h^3}{24}p'''(x_f) + \Ord{h^5}
+\]
+を $h$ で割ると
+\begin{equation}
+  (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_face_taylor}
+\end{equation}
+
+\textbf{(2) CCD 勾配の算術平均：}
+CCD は各セル中心で $O(h^6)$ 精度の1階微分を返す：
+$(D^{(1)}_\mathrm{CCD}\,p)_P = p'(x_P) + \Ord{h^6}$，
+$(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
+これらの算術平均をテイラー展開：
+\[
+  p'(x_P) = p'(x_f) - \tfrac{h}{2}p''(x_f) + \tfrac{h^2}{8}p'''(x_f) + \Ord{h^3},
+  \quad
+  p'(x_E) = p'(x_f) + \tfrac{h}{2}p''(x_f) + \tfrac{h^2}{8}p'''(x_f) + \Ord{h^3}
+\]
+\begin{equation}
+  \overline{(\nabla p)}_f \equiv \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
+    = p'(x_f) + \frac{h^2}{8}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_avg_taylor}
+\end{equation}
+（奇数次項が相殺し，$O(h^2)$ の次数で $p'(x_f)$ を近似することに注意；$O(h^6)$ ではない）
+
+\textbf{(3) Rhie-Chow 検出項（差）：}
+\begin{equation}
+  (\nabla p)_f - \overline{(\nabla p)}_f
+  = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
+  = -\frac{h^2}{12}p'''(x_f) + \Ord{h^4} = \Ord{h^2}
+  \label{eq:rc_detection_taylor}
+\end{equation}
+補正量は $\Ord{\Delta t \cdot h^2}$．
+
+\begin{itemize}
+  \item \textbf{滑らかな圧力場：} 補正が $\Ord{h^2}$ であり，CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度．CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
+  \item \textbf{チェッカーボード場（波長 $2h$）：} $p_E - p_P = \Ord{1}$，$\overline{(\nabla p)}_f \approx 0$ のため補正量が $\Ord{1}$ の大きな値となり非物理振動を除去する．
+  \item \textbf{スペクトル選択的フィルタ：} 低波数（物理情報）は CCD $\Ord{h^6}$ で処理し，高波数（チェッカーボード）のみ $\Ord{h^2}$ で減衰する選択的フィルタとして機能する．
+\end{itemize}
+
+Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhie-Chow 補正はフェイス速度の安定化補助項であり，主方程式の CCD 演算子とは独立の役割を担う．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{標準 Level Set 法の Godunov 型スキーム（参考）}
+\label{app:godunov_ls}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:weno5} で用いる CLS 法の WENO5 スキームとは別に，
+\textbf{標準レベルセット（符号付き距離関数）}移流に対して使われる Godunov 型 upwinding スキームを説明する．
+本稿の主実装（CLS + WENO5）では使用しないが，実装の選択肢として参考に記す．
+
+\subsection{Godunov 型スキームの基本形}
+
+符号付き距離関数 $\phi$ の移流方程式 $\phi_t + \bm{u}\cdot\nabla\phi = 0$ に対して，
+速度場 $\bm{u}$ の発散フリー条件 $\nabla\cdot\bm{u}=0$ のもとで保存形 $\phi_t + \nabla\cdot(\bm{u}\phi) = 0$ と等価となる．
+
+$x$ 方向フラックスを Godunov 法で評価する：
+\begin{equation}
+  F_{i+1/2} = u_{i+1/2}^+ \phi_i + u_{i+1/2}^- \phi_{i+1}
+\end{equation}
+ここで $u^+ = \max(u, 0)$，$u^- = \min(u, 0)$ は速度の上流風分解である．
+
+\subsection{再初期化との組み合わせ}
+
+標準 LS 法では移流後に符号付き距離条件 $|\nabla\phi| = 1$ が崩れるため，
+再初期化方程式
+\[
+  \phi_\tau + S(\phi^0)(|\nabla\phi|-1) = 0
+\]
+を仮想時間 $\tau$ 方向に数回反復する（$S(\phi^0)$ は初期符号に合わせたスムーズ符号関数）．
+
+CLS 法（本稿主方式）では再初期化が $\psi$ の compact プロファイルを保つよう設計されており，
+Godunov 型スキームと組み合わせるよりも質量保存性に優れる（§\ref{sec:reinit}）．

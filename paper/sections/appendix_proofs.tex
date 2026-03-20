@@ -2,13 +2,17 @@
 %
 % 付録エントリーポイント — 各付録ファイルをインクルードする
 %
-%   appendix_interface.tex  — 界面表現・物性補間・CSF モデル関連の補足証明
-%   appendix_ccd.tex        — CCD 法の内点係数導出・境界スキーム係数導出
-%   appendix_numerics.tex   — 数値解析・安定性・圧力関連の補足証明
+%   appendix_interface.tex          — 界面表現・物性補間・CSF モデル関連の補足証明
+%   appendix_ccd_coef.tex           — CCD 法の内点係数・境界スキーム係数導出
+%   appendix_ccd_impl.tex           — CCD 法のゴーストセル法・混合微分精度・楕円ソルバー応用
+%   appendix_numerics_solver.tex    — 擬似時間反復収束率・チェッカーボード・毛管波CFL・FVM面係数
+%   appendix_numerics_schemes.tex   — ALE効果・Rhie-Chow/CCD整合性・LS Godunovスキーム（参考）
 %
 \appendix
 \part*{付録}
 
 \input{sections/appendix_interface}
-\input{sections/appendix_ccd}
-\input{sections/appendix_numerics}
+\input{sections/appendix_ccd_coef}
+\input{sections/appendix_ccd_impl}
+\input{sections/appendix_numerics_solver}
+\input{sections/appendix_numerics_schemes}

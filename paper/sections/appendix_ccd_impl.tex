@@ -1,0 +1,195 @@
+% paper/sections/appendix_ccd_impl.tex
+%
+% 付録（CCD 法の実装・精度解析）
+%   app:ccd_ghost           — ゴーストセル法による境界処理（代替実装）
+%   app:ccd_mixed_precision — 2段階 CCD 混合微分の精度解析（$C^8$ 条件）
+%   app:ccd_elliptic        — CCD 法の楕円型ソルバーとしての双対的役割
+%
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{ゴーストセル法による CCD 境界処理（代替実装）}
+\label{app:ccd_ghost}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ccd_bc} の境界スキーム法に対する代替として，\textbf{ゴーストセル（ghost cell）法}
+を説明する．本稿の標準実装は境界スキーム法であり（§\ref{sec:ccd_bc}），
+第\ref{sec:pressure}章（§\ref{sec:ccd_neumann_bc}）の Neumann 境界条件の組み込みも境界スキーム法を前提としている．
+独自実装としてゴーストセル法を選択する場合は，PPE の Neumann 境界処理（§\ref{sec:ccd_neumann_bc}）を
+ゴーストセル法に合わせて再設計すること．
+
+計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
+境界条件に応じた値を設定することで，内点スキーム（3点ステンシル）を境界近傍でもそのまま適用できる．
+これにより行列アセンブリのコードが統一される利点がある．
+
+\begin{tcolorbox}[algbox, title={ゴーストセルの設定手順（左境界 $i=0$ の例）}]
+\textbf{Step 1：ゴーストセル値の設定}
+
+境界条件に応じて $f_{-1}$，$f'_{-1}$，$f''_{-1}$ を以下のように設定する：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+\hline
+境界条件 & ゴーストセル値 & 物理的意味 \\
+\hline
+Dirichlet（ノースリップ壁）: $u|_{\mathrm{wall}}=0$ &
+  $u_{-1} = -u_1$ &
+  鏡像反転（$u_{0} \approx 0$） \\
+Dirichlet（強制流入）: $u|_{\mathrm{wall}}=U_w$ &
+  $u_{-1} = 2U_w - u_1$ &
+  $u_{0} = (u_{-1}+u_1)/2 = U_w$ \\
+Neumann（流出・対称）: $\partial u/\partial x|_{\mathrm{wall}}=0$ &
+  $u_{-1} = u_1$ &
+  勾配ゼロ（偶関数的反射） \\
+\hline
+\end{tabular}
+\end{center}
+
+微分値のゴーストセル設定（ノースリップ壁の例）：
+$f'$ は偶関数的に反射（$f'_{-1} = f'_1$），$f''$ は奇関数的（$f''_{-1} = -f''_1$）．
+
+\textbf{Step 2：境界点での内点方程式の適用}
+
+\begin{equation}
+  \alpha_1 f'_{-1} + f'_0 + \alpha_1 f'_1
+  = \frac{a_1}{h}(f_1 - f_{-1}) + b_1 h(f''_1 - f''_{-1})
+  \label{eq:ccd_ghost_eq}
+\end{equation}
+ここで $f_{-1}$，$f'_{-1}$，$f''_{-1}$ はStep 1 で設定したゴーストセル値．
+全格子点で同一の係数行列 $\mathbf{A}_L, \mathbf{A}_R, \mathbf{B}$ を使えるため，行列アセンブリが単純化される．
+
+\textbf{注意：} 圧力の全 Neumann 境界問題（零固有モード）については第\ref{sec:pressure}章の対処法を参照すること．
+\end{tcolorbox}
+
+\begin{tcolorbox}[defbox, title={PPE Neumann 境界条件のゴーストセル法による再設計（$\partial p/\partial n = 0$ の場合）}]
+境界スキーム法（§\ref{sec:ccd_bc}，§\ref{sec:ccd_neumann_bc}）では，
+第1行を $p'_0 = 0$ に直接置き換えることで Neumann 条件を強制した．
+ゴーストセル法を選択した場合，この条件は\textbf{ゴーストセル値の偶関数的反射}として実装する：
+
+\medskip
+\textbf{Step 1：圧力ゴーストセルの設定（左境界 $i=0$ の例）}
+\[
+  p_{-1} = p_1, \qquad p'_{-1} = p'_1, \qquad p''_{-1} = p''_1
+\]
+（偶関数的反射：$\partial p/\partial x|_{x=0} = 0$ を意味する）
+
+\textbf{Step 2：境界点での内点方程式の適用}
+
+ゴーストセル値を代入した Equation-I（式~\eqref{eq:ccd_ghost_eq}）：
+\[
+  \alpha_1 p'_{-1} + p'_0 + \alpha_1 p'_1
+  = \frac{a_1}{h}(p_1 - p_{-1}) + b_1 h(p''_1 - p''_{-1})
+\]
+$p_{-1} = p_1$ および $p''_{-1} = p''_1$ を代入すると，右辺が消え：
+\[
+  (1 + 2\alpha_1) p'_0 = 0 \quad\Longrightarrow\quad p'_0 = 0
+\]
+Neumann 条件が自動的に成立する（境界スキームの明示的な修正は不要）．
+
+\textbf{Step 3：CCD 演算子値の計算}
+
+$p'_0 = 0$ が確定したうえで，変密度 PPE 演算子値
+$(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p})_0 = p''_0/\rho_0$
+（§\ref{sec:ccd_neumann_bc}，式の導出と同様；密度勾配項は $p'_0=0$ により消滅）を計算する．
+
+\medskip
+\textbf{零固有モードへの対処：} ゴーストセル法を使う場合も，全周 Neumann 境界での零モード問題（§\ref{sec:pinpoint}）は同様に発生する．式~\eqref{eq:pin_overwrite} の強制上書きによるピン条件が有効であり，ゴーストセル法特有の追加対処は不要である．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{2段階 CCD 混合微分の精度解析：\texorpdfstring{$C^8$}{C\textasciicircum 8} 条件と劣化機構}
+\label{app:ccd_mixed_precision}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+§\ref{sec:ccd_mixed} の2段階 CCD 混合微分 $\phi_{xy}$ の精度を詳細に解析する．
+
+Step 1 で得た $g = \partial f/\partial x$ の誤差は $E_g = O(h^6)$．
+Step 2 で $g$ を $y$ 方向に微分するとき，誤差の上界は：
+\[
+  E_{\phi_{xy}} \leq \underbrace{O(h^6)}_{\text{$y$ 方向 CCD の打ち切り誤差}}
+               + \underbrace{\left\|\pd{E_g}{y}\right\|}_{\text{$E_g$ の $y$ 方向変動}}
+\]
+
+\textbf{一般論では $\partial E_g/\partial y \sim O(h^6/h) = O(h^5)$ となる可能性がある．}
+差分演算子は入力の誤差を $h^{-1}$ 倍程度増幅するため，$O(h^6)$ の誤差場を数値微分すると $O(h^5)$ に劣化するのが一般論である．
+
+\textbf{ただし $f \in C^8$ であれば $O(h^6)$ が維持される：}
+CCD の打ち切り誤差 $E_g(x,y) \propto h^6 f^{(7)}$ は $f$ の高次微分から生じる滑らかな場であり，
+その $y$ 方向変動 $\partial E_g/\partial y \propto h^6 f^{(8)}$ は $f \in C^8$ のもとで $O(h^6)$ オーダーにとどまる．
+
+\textbf{精度まとめ：}
+\begin{itemize}
+  \item $f \in C^8$ の場合：$E_{\phi_{xy}} = O(h^6)$ が維持される
+  \item $f$ に不連続性や急峻な変化がある場合：精度が $O(h^5)$ 以下に劣化する可能性あり
+\end{itemize}
+
+\textbf{気液二相流の界面近傍への影響：}
+気液二相流では，界面近傍で CLS 変数 $\psi$ が $O(\varepsilon)$ の厚さで急峻に変化するため，
+$\psi$ の高次微分（$\psi^{(8)}$ 等）は $O(1/\varepsilon^7)$ のオーダーとなり，
+実質的に $C^8$ 条件が界面近傍の格子点（界面から $3\varepsilon$ 以内）で成立しない．
+したがって，曲率計算の混合微分 $\phi_{xy}$ の精度は界面近傍で $O(h^5)$ 以下に劣化しうる．
+ただし，この劣化は界面近傍の $O(\varepsilon/h) \sim O(1)$ 個の格子点のみに影響し，
+大域的な $L^2$ ノルム誤差への寄与は $O(h^{5+d/2})$（$d$：次元）程度に収まる
+（比較：CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$ が既に界面近傍精度を律速している）．
+実務上は，格子収束テスト（第\ref{sec:verification}章）で曲率 $\kappa$ の収束次数を直接確認することが
+この劣化の存在と程度を評価する最も確実な方法である．
+
+実証的確認として，$f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\pi y)$）で格子収束テストを行い，$N$ を倍にするたびに誤差が $1/64$ 倍（6次収束）になるかを確認すること（第\ref{sec:verification}章参照）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{CCD 法の楕円型ソルバーとしての双対的役割}
+\label{app:ccd_elliptic}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ccd_mixed} までで説明した「微分演算子としての CCD」に加えて，
+CCD が\textbf{楕円型方程式の陰的ソルバー}として機能する数学的構造を説明する．
+これは第\ref{sec:pressure}章の CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}）の理論的基盤である．
+
+\subsection{CCD 演算子行列の定義}
+
+既知の関数値 $\bm{f} = [f_0, \dots, f_{N-1}]^\top$ に対してブロック Thomas 法で
+$\bm{v} = [f'_0, f''_0, \dots, f'_{N-1}, f''_{N-1}]^\top$ を求める系：
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v} = \mathcal{R}(\bm{f})
+  \label{eq:ccd_derivative_system_app}
+\end{equation}
+から，第1・第2微分成分を抽出する射影行列 $\mathbf{E}_1, \mathbf{E}_2 \in \mathbb{R}^{N \times 2N}$ を用いると，
+CCD 離散微分演算子は：
+\begin{align}
+  D_x^{(1)}\bm{p} &\equiv \mathbf{E}_1\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p}) \\
+  D_x^{(2)}\bm{p} &\equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+\end{align}
+となる．1次元等密度ラプラシアンを離散化した演算子行列：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{(x)} \equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}
+  \in \mathbb{R}^{N \times N}
+  \label{eq:L_CCD_def_app}
+\end{equation}
+は $N \times N$ の行列であり，$\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p} \approx [p''_0, \dots, p''_{N-1}]^\top$（$\Ord{h^6}$ 精度）を返す．
+$\mathbf{L}_{\mathrm{CCD}}^{(x)}$ を陽に組み立てる必要はなく，各反復でブロック Thomas 法を適用する matrix-free 実装が可能（$O(N)$ コスト）．
+
+\subsection{変密度場における CCD-Poisson 演算子}
+
+変密度 PPE の演算子 $\nabla\cdot(1/\rho\,\nabla p)$ を1次元で展開すると：
+\[
+  \mathcal{L}^{\rho}p = \frac{1}{\rho}\,p'' - \frac{\rho_x}{\rho^2}\,p'
+\]
+格子点ごとの密度行列 $\boldsymbol{\Lambda}_\rho = \mathrm{diag}(\rho_0, \dots, \rho_{N-1})$ を用いると：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}
+  = \boldsymbol{\Lambda}_\rho^{-1}\,\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}
+  - \boldsymbol{\Lambda}_\rho^{-2}\,\mathrm{diag}(D_x^{(1)}\bm{\rho})\,D_x^{(1)}\bm{p}
+\end{equation}
+2次元ではこれを $x$・$y$ 方向に加算する．
+
+等密度場では $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は適切な境界条件のもとで\textbf{負半定値}（全固有値 $\lambda_k \le 0$），ラプラシアンの本質的性質と一致する．
+変密度場では厳密な対称性は失われるが，仮想時間反復の収束性はスペクトル半径に支配されるため実用上は十分である．
+
+\subsection{仮想時間反復（PPE ソルバーへの応用）}
+
+PPE $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p} = \bm{q}$ を仮想時間陰解法で解く：
+\begin{equation}
+  \bigl(\mathbf{I} + \Delta\tau\,\mathbf{L}_{\mathrm{CCD}}^{\rho}\bigr)\bm{p}^{m+1}
+  = \bm{p}^m + \Delta\tau\,\bm{q}
+\end{equation}
+CCD スウィープが前処理の役割を果たし，$O(N)$ のコストで各反復を実行できる点が Krylov 法（GMRES 等）単独より優位である（詳細は §\ref{sec:ppe_pseudotime}）．
