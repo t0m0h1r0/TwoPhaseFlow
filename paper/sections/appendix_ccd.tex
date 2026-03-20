@@ -381,6 +381,41 @@ $f'$ は偶関数的に反射（$f'_{-1} = f'_1$），$f''$ は奇関数的（$f
 \textbf{注意：} 圧力の全 Neumann 境界問題（零固有モード）については第\ref{sec:pressure}章の対処法を参照すること．
 \end{tcolorbox}
 
+\begin{tcolorbox}[defbox, title={PPE Neumann 境界条件のゴーストセル法による再設計（$\partial p/\partial n = 0$ の場合）}]
+境界スキーム法（§\ref{sec:ccd_bc}，§\ref{sec:ccd_neumann_bc}）では，
+第1行を $p'_0 = 0$ に直接置き換えることで Neumann 条件を強制した．
+ゴーストセル法を選択した場合，この条件は\textbf{ゴーストセル値の偶関数的反射}として実装する：
+
+\medskip
+\textbf{Step 1：圧力ゴーストセルの設定（左境界 $i=0$ の例）}
+\[
+  p_{-1} = p_1, \qquad p'_{-1} = p'_1, \qquad p''_{-1} = p''_1
+\]
+（偶関数的反射：$\partial p/\partial x|_{x=0} = 0$ を意味する）
+
+\textbf{Step 2：境界点での内点方程式の適用}
+
+ゴーストセル値を代入した Equation-I（式~\eqref{eq:ccd_ghost_eq}）：
+\[
+  \alpha_1 p'_{-1} + p'_0 + \alpha_1 p'_1
+  = \frac{a_1}{h}(p_1 - p_{-1}) + b_1 h(p''_1 - p''_{-1})
+\]
+$p_{-1} = p_1$ および $p''_{-1} = p''_1$ を代入すると，右辺が消え：
+\[
+  (1 + 2\alpha_1) p'_0 = 0 \quad\Longrightarrow\quad p'_0 = 0
+\]
+Neumann 条件が自動的に成立する（境界スキームの明示的な修正は不要）．
+
+\textbf{Step 3：CCD 演算子値の計算}
+
+$p'_0 = 0$ が確定したうえで，変密度 PPE 演算子値
+$(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p})_0 = p''_0/\rho_0$
+（§\ref{sec:ccd_neumann_bc}，式の導出と同様；密度勾配項は $p'_0=0$ により消滅）を計算する．
+
+\medskip
+\textbf{零固有モードへの対処：} ゴーストセル法を使う場合も，全周 Neumann 境界での零モード問題（§\ref{sec:pinpoint}）は同様に発生する．式~\eqref{eq:pin_overwrite} の強制上書きによるピン条件が有効であり，ゴーストセル法特有の追加対処は不要である．
+\end{tcolorbox}
+
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{2段階 CCD 混合微分の精度解析：\texorpdfstring{$C^8$}{C\textasciicircum 8} 条件と劣化機構}
 \label{app:ccd_mixed_precision}
@@ -407,6 +442,17 @@ CCD の打ち切り誤差 $E_g(x,y) \propto h^6 f^{(7)}$ は $f$ の高次微分
   \item $f \in C^8$ の場合：$E_{\phi_{xy}} = O(h^6)$ が維持される
   \item $f$ に不連続性や急峻な変化がある場合：精度が $O(h^5)$ 以下に劣化する可能性あり
 \end{itemize}
+
+\textbf{気液二相流の界面近傍への影響：}
+気液二相流では，界面近傍で CLS 変数 $\psi$ が $O(\varepsilon)$ の厚さで急峻に変化するため，
+$\psi$ の高次微分（$\psi^{(8)}$ 等）は $O(1/\varepsilon^7)$ のオーダーとなり，
+実質的に $C^8$ 条件が界面近傍の格子点（界面から $3\varepsilon$ 以内）で成立しない．
+したがって，曲率計算の混合微分 $\phi_{xy}$ の精度は界面近傍で $O(h^5)$ 以下に劣化しうる．
+ただし，この劣化は界面近傍の $O(\varepsilon/h) \sim O(1)$ 個の格子点のみに影響し，
+大域的な $L^2$ ノルム誤差への寄与は $O(h^{5+d/2})$（$d$：次元）程度に収まる
+（比較：CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$ が既に界面近傍精度を律速している）．
+実務上は，格子収束テスト（第\ref{sec:verification}章）で曲率 $\kappa$ の収束次数を直接確認することが
+この劣化の存在と程度を評価する最も確実な方法である．
 
 実証的確認として，$f(x,y) = \sin(\pi x)\cos(\pi y)$（解析解 $f_{xy} = -\pi^2\cos(\pi x)\sin(\pi y)$）で格子収束テストを行い，$N$ を倍にするたびに誤差が $1/64$ 倍（6次収束）になるかを確認すること（第\ref{sec:verification}章参照）．
 

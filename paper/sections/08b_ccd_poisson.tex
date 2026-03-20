@@ -144,6 +144,19 @@ $(\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p})_0 = (1/\rho_0)\,p''_0 - (\nabla\rho_0
 境界ノードでの演算子値は $p''_0$ と $\rho_0$ のみで決まり，計算が単純化される．
 
 \textbf{右端 $i=N-1$ および $y$ 方向境界：} 対称的に同様の操作を適用する．
+
+\medskip
+\noindent\textbf{境界スキーム精度の PPE ソルバーへの影響：}
+CCD 境界スキームの Equation-II（$p''_0$ の片側公式）は $\mathcal{O}(h^2)$ 精度であり，
+内点の $\mathcal{O}(h^6)$ より低次である（§\ref{sec:ccd_bc}，式~\eqref{eq:bcII_left}）．
+$L^2$ ノルム重み付け解析（式~\eqref{eq:bc_L2_weighting}）によれば，
+境界2点（全 $N$ 点中）の寄与は $h \cdot \mathcal{O}(h^4) = \mathcal{O}(h^5)$ に過ぎず，
+大域 $L^2$ 誤差は $\mathcal{O}(h^{5/2})$ に抑えられる．
+Neumann 条件適用後の $p'_0 = 0$（手順2）により密度勾配項が消滅するため，
+境界ノードの PPE 演算子値 $(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p})_0 = p''_0/\rho_0$ の
+精度は $p''_0$ の $\mathcal{O}(h^2)$ 精度に律速される（点別）が，
+PPE 解の大域精度への影響は $\mathcal{O}(h^{5/2})$ であり，
+時間精度 $\mathcal{O}(\Delta t^2)$ が支配的な実用計算では無視できる（詳細：§\ref{sec:ccd_bc}）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[warnbox, title={Dirichlet 境界（$p = p_{\mathrm{BC}}$）の場合との比較}]
