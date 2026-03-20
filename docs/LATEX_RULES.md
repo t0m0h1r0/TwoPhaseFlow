@@ -74,7 +74,7 @@
 
 ---
 
-### 3-A. スキーム変更の全ファイル波及チェック (Scheme-Change Propagation)
+### 3-A. Scheme-Change Propagation
 
 **Rule:** When a core numerical scheme description changes (e.g., Chorin → AB2+IPC, 前進Euler → AB2), **every file that mentions the old scheme must be updated** — not just the primary chapter.
 
@@ -94,7 +94,7 @@
 
 ---
 
-### 3-B. `\ref` と `\label` のペア完全性 (Paired Label Audit)
+### 3-B. Paired `\ref` / `\label` Audit
 
 **Rule:** Every `\ref{X}` (or `\eqref{X}`) added to any file must have a matching `\label{X}` **somewhere** in the compiled document. Adding a `\ref` without verifying the `\label` exists is a build-breaking error.
 
@@ -107,11 +107,11 @@
 
 ---
 
-### 3-C. 数式の中間ステップ整合性 (Intermediate-Step Accuracy Audit)
+### 3-C. Intermediate-Step Accuracy Audit
 
 **Rule:** In Taylor expansion derivations (especially in appendices justifying O(hᵏ) claims), **every intermediate step must be individually correct** — not just the final conclusion.
 
-**Failure pattern:** The final conclusion "差は O(h²)" can be correct even when an intermediate step wrongly claims "O(h⁶)" for a quantity that is only O(h²). Pedagogically, wrong intermediate steps mislead readers who want to understand the derivation.
+**Failure pattern:** The final conclusion "error is O(h²)" can be correct even when an intermediate step wrongly claims "O(h⁶)" for a quantity that is only O(h²). Pedagogically, wrong intermediate steps mislead readers who want to understand the derivation.
 
 **Checklist for each Taylor expansion:**
 - Write out the full expansion for each term separately.
@@ -121,7 +121,7 @@
 
 ---
 
-### 3-D. 同一パラメータの多箇所一貫性 (Multi-Site Parameter Consistency)
+### 3-D. Multi-Site Parameter Consistency
 
 **Rule:** When a numerical parameter (ε_tol, Δτ_opt, C_τ, Δτ_par, etc.) is mentioned in multiple sections with constraints or recommended values, **all mentions must be mutually non-contradictory**.
 
@@ -140,7 +140,7 @@
 
 ---
 
-### 3-E. アルゴリズムの循環依存・ブートストラップの明示 (Bootstrap Requirement)
+### 3-E. Bootstrap Requirement for Circular Dependencies
 
 **Rule:** Any algorithm that requires input X which is itself derived from the algorithm's output must explicitly describe the **initialization sequence** (bootstrap) that breaks the circularity.
 
@@ -153,7 +153,7 @@
 
 ---
 
-### 3-F. 複数オプション提示後の選択ガイド必須 (Selection Guide Completeness)
+### 3-F. Selection Guide Completeness
 
 **Rule:** Whenever a section derives or presents **multiple variants** of a scheme, boundary condition, or solver (e.g., one-sided BC vs. ghost-cell BC; BiCGSTAB vs. pseudo-time; ADI vs. sweep), a **practical selection guide must conclude the section**.
 
@@ -171,7 +171,7 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 |------|---------|---------|
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, WENO5, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
-| `02_governing.tex` | §2 | Variables, Two-Fluid → One-Fluid derivation, ψ-convention (液相≈0, 気相≈1) |
+| `02_governing.tex` | §2 | Variables, Two-Fluid → One-Fluid derivation, ψ-convention (liquid≈0, gas≈1) |
 | `02b_csf.tex` | §2 cont. | CSF surface tension model, δ-function volume force, Balanced-Force |
 | `02c_nondim_curvature.tex` | §2 cont. | Non-dimensionalization (Re/Fr/We), interface curvature κ |
 | `03_levelset.tex` | §3 | Why CLS, conservative advection, reinitialization (Δτ=0.25Δs) |
@@ -189,5 +189,5 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
 | `10_verification.tex` | §10 | Error norms, grid convergence tests (curvature, parasitic currents) |
 | `10b_benchmarks.tex` | §10 cont. | 4 benchmarks (stationary droplet, Zalesak, RT instability, rising bubble) + error budget |
-| `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (逐次Thomas法), future work |
+| `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (sequential sweep), future work |
 | `appendix_proofs.tex` | Appendix | 1D One-Fluid proof, logit inverse derivation, Newton convergence, Δτ convergence rate (sec:dtau_derive) |

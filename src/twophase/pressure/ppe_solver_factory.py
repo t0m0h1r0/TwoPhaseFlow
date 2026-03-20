@@ -28,6 +28,7 @@ def create_ppe_solver(
     config: "SimulationConfig",
     backend: "Backend",
     grid: "Grid",
+    ccd=None,
 ) -> "IPPESolver":
     """SimulationConfig の設定に基づいて PPE ソルバーを生成する。
 
@@ -36,6 +37,7 @@ def create_ppe_solver(
     config  : SimulationConfig — ppe_solver_type を参照
     backend : Backend
     grid    : Grid
+    ccd     : CCDSolver（オプション）— "pseudotime" ソルバーに注入される
 
     Returns
     -------
@@ -51,7 +53,8 @@ def create_ppe_solver(
     solver_type = config.solver.ppe_solver_type
 
     if solver_type == "pseudotime":
-        return PPESolverPseudoTime(backend, config, grid)
+        # ccd を注入して CCD matrix-free O(h⁶) ソルバーを使用
+        return PPESolverPseudoTime(backend, config, grid, ccd=ccd)
     elif solver_type == "bicgstab":
         return PPESolver(backend, config, grid)
     else:

@@ -152,7 +152,8 @@ class SimulationBuilder:
         )
 
         # 圧力ソルバー（注入または factory 経由）
-        ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid)
+        # ccd を渡すことで PPESolverPseudoTime が CCD matrix-free O(h⁶) を使用できる
+        ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid, ccd=ccd)
 
         # 補助演算子
         rhie_chow = RhieChowInterpolator(backend, grid, ccd)

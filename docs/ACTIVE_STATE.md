@@ -20,3 +20,4 @@
 ### **Paper / Documentation**
 
 1. ~~EDITOR sweep 27~~ — **Done (2026-03-20).** All CRITIC pass 18 issues fixed (5 FATAL + 5 GAP + 2 IMPL + 2 MAINT). Clean build: 116 pages, 0 undefined refs. Ready for submission review or further CRITIC pass.
+2. ~~CCD block matrix A_L/A_R (2,1) sign error fix~~ — **Done (2026-03-20).** Fixed 3 locations in `05b_ccd_bc_matrix.tex` (defbox symbolic form, bullet derivation, numeric example). Paper had A_L(2,1)=+9/(8h) and A_R(2,1)=−9/(8h); correct values are A_L(2,1)=−9/(8h) and A_R(2,1)=+9/(8h). Code was already correct. Also fixed `ARCHITECTURE.md` "3×3 blocks" → "2×2 blocks".
