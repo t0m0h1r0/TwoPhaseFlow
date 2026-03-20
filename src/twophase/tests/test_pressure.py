@@ -1,19 +1,20 @@
 """
-圧力投影モジュールのテスト（論文 §6–7）。
+圧力投影モジュールのテスト（論文 §6–8）。
 
 検証項目:
-  1. PPE 行列: 内部行の行和 ≈ 0（一貫性）
-  2. PPE 求解: 残差 ‖Ap − b‖ < tol
-  3. Rhie-Chow: コロケートグリッドの発散補正
-  4. 発散ゼロ投影: ‖∇·u‖_∞ < 1e-8（速度補正後）
-  5. PPESolverPseudoTime: MINRES 残差 < tol
-  6. PPESolverPseudoTime: 変密度ケースでの収束
-  7. PPESolverPseudoTime: ウォームスタートによる収束警告の抑制
+  1. PPE 行列: 内部行の行和 ≈ 0（一貫性; FVM BiCGSTAB）
+  2. PPE 求解: 残差 ‖Ap − b‖ < tol（FVM BiCGSTAB）
+  3. 発散ゼロ投影: ‖∇·u‖_∞ < 1e-3（FVM BiCGSTAB 速度補正後）
+  4. PPESolverPseudoTime（CCD matrix-free）: 一様密度での収束
+  5. PPESolverPseudoTime（CCD matrix-free）: 変密度ケースでの収束
+  6. PPESolverPseudoTime（CCD matrix-free）: IPC 増分法（p_init=None）
+  7. Rhie-Chow: コロケートグリッドの発散補正
 
 リファクタリング後の変更点:
   - PPESolver(be, cfg, grid) — grid が必須引数になった
   - solve(rhs, rho, dt, p_init=None) — 統一インターフェース（IPPESolver）
-  - PPESolverPseudoTime も同じシグネチャを使用
+  - PPESolverPseudoTime: CCD matrix-free GMRES に変更（O(h⁶)）
+    → FVM 残差テストを CCD 残差テスト（compute_residual）に置き換え
 """
 
 import numpy as np
@@ -147,43 +148,10 @@ def test_divergence_free_projection(backend):
     )
 
 
-# ── Test 4: PPESolverPseudoTime — 一様密度 ───────────────────────────────
+# ── Test 4: PPESolverPseudoTime (CCD matrix-free) — 一様密度 ──────────────
 
-def test_pseudotime_ppe_solve_uniform_density(backend):
-    """MINRES PPE ソルバーの残差が収束後に tol 以下になること（一様密度）。"""
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-10, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid)
-
-    rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(7).standard_normal(grid.shape)
-    rhs -= rhs.mean()
-    rhs[0, 0] = 0.0
-
-    # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
-    p = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
-    assert not np.any(np.isnan(p)), "MINRES PPE が NaN を返した"
-
-    # FVM 残差の検証: A p ≈ rhs
-    import scipy.sparse as sp
-    (data, rows, cols), A_shape = solver._build_sym(rho)
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    p_h = np.asarray(backend.to_host(p)).ravel()
-    residual = A @ p_h - rhs.ravel()
-    residual[0] = 0.0
-    rel_res = np.linalg.norm(residual) / max(np.linalg.norm(rhs.ravel()[1:]), 1e-14)
-    assert rel_res < 1e-6, (
-        f"MINRES PPE 相対残差 {rel_res:.3e} > 1e-6"
-    )
-
-
-def test_pseudotime_ppe_solve_variable_density(backend):
-    """MINRES PPE ソルバーが変密度ケースで収束すること。"""
+def test_ccd_ppe_solve_uniform_density(backend):
+    """CCD matrix-free PPE ソルバーが一様密度で収束し NaN を返さないこと。"""
     N = 16
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
@@ -191,7 +159,36 @@ def test_pseudotime_ppe_solve_variable_density(backend):
     )
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid)
+    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
+
+    rho = np.ones(grid.shape)
+    rhs = np.random.default_rng(7).standard_normal(grid.shape)
+    rhs -= rhs.mean()
+    rhs[0, 0] = 0.0
+
+    p = solver.solve(rhs, rho, dt=0.01)
+    assert not np.any(np.isnan(p)), "CCD PPE が NaN を返した"
+    assert np.isfinite(p).all(), "CCD PPE が inf を返した"
+
+    # CCD 残差の検証: ‖L_CCD^ρ p − rhs‖₂ / ‖rhs‖₂ < 1e-5
+    res = solver.compute_residual(p, rhs, rho)
+    rhs_norm = float(np.linalg.norm(rhs.ravel()))
+    rel_res = res / max(rhs_norm, 1e-14)
+    assert rel_res < 1e-5, f"CCD PPE 相対残差 {rel_res:.3e} > 1e-5"
+
+
+# ── Test 5: PPESolverPseudoTime (CCD matrix-free) — 変密度 ────────────────
+
+def test_ccd_ppe_solve_variable_density(backend):
+    """CCD matrix-free PPE ソルバーが変密度ケースで収束すること。"""
+    N = 16
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=1000, ppe_solver_type="pseudotime"),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
 
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
@@ -204,15 +201,16 @@ def test_pseudotime_ppe_solve_variable_density(backend):
     import warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
-        p = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
+        p = solver.solve(rhs, rho, dt=0.01)
 
-    assert not np.any(np.isnan(p)), "MINRES PPE が NaN を返した（変密度）"
-    assert np.isfinite(p).all(), "MINRES PPE が inf を返した（変密度）"
+    assert not np.any(np.isnan(p)), "CCD PPE が NaN を返した（変密度）"
+    assert np.isfinite(p).all(), "CCD PPE が inf を返した（変密度）"
 
 
-def test_pseudotime_warm_start_no_convergence_warning(backend):
-    """収束済み解からウォームスタートすると収束警告が出ないこと。"""
+# ── Test 6: IPC 増分法 — p_init=None でゼロ初期化 ─────────────────────────
+
+def test_ccd_ppe_ipc_zero_init(backend):
+    """IPC 増分法: p_init=None（ゼロ初期化）で CCD PPE が収束すること（§4 sec:ipc_derivation）。"""
     N = 16
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
@@ -220,28 +218,24 @@ def test_pseudotime_warm_start_no_convergence_warning(backend):
     )
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid)
+    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
 
     rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(99).standard_normal(grid.shape)
+    rhs = np.random.default_rng(42).standard_normal(grid.shape)
     rhs -= rhs.mean()
     rhs[0, 0] = 0.0
 
-    # 1回目: コールドスタート
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
-        p_warm = solver.solve(rhs, rho, dt=0.01, p_init=np.zeros(grid.shape))
+    # IPC: p_init=None → ゼロ初期化（圧力増分 δp を求解）
+    delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
+    assert not np.any(np.isnan(delta_p)), "CCD PPE IPC が NaN を返した"
 
-    # 2回目: ウォームスタート（同じ RHS → 即時収束を期待）
+    # ウォームスタート（p_init=delta_p → 既収束解から再スタート）は警告なし
+    import warnings
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        solver.solve(rhs, rho, dt=0.01, p_init=p_warm)
+        solver.solve(rhs, rho, dt=0.01, p_init=delta_p)
         conv_warns = [x for x in w if issubclass(x.category, RuntimeWarning)]
-    assert len(conv_warns) == 0, (
-        "ウォームスタート MINRES PPE が収束警告を発した"
-    )
+    assert len(conv_warns) == 0, "ウォームスタート CCD PPE が収束警告を発した"
 
 
 # ── Test 5: Rhie-Chow 発散補正 ────────────────────────────────────────────

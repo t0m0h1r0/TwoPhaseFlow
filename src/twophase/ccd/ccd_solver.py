@@ -226,9 +226,9 @@ class CCDSolver:
         c_II = xp.asarray(bc['c_II'])
         R_I  = (c_I[0]*f[0] + c_I[1]*f[1] + c_I[2]*f[2] + c_I[3]*f[3])
         R_II = (c_II[0]*f[0] + c_II[1]*f[1] + c_II[2]*f[2] + c_II[3]*f[3])
-        # After algebraic manipulation: c₁ = R_I, c₂ = R_II − (23/(3h))·R_I
+        # Eq-I-bc gives fp0; Eq-II-bc is standalone (no fp1/fpp1 coupling)
         fp0  = R_I
-        fpp0 = R_II - (23.0 / (3.0 * h)) * R_I
+        fpp0 = R_II
         return fp0, fpp0
 
     def _right_boundary(self, info, f, h, N, bc_right_override):
@@ -246,8 +246,9 @@ class CCDSolver:
                   + c_I_r[2]*f[N-2] + c_I_r[3]*f[N-3])
         R_II_r = (c_II_r[0]*f[N] + c_II_r[1]*f[N-1]
                   + c_II_r[2]*f[N-2] + c_II_r[3]*f[N-3])
+        # Eq-I-bc gives fpN; Eq-II-bc is standalone (no fp_{N-1}/fpp_{N-1} coupling)
         fpN  = R_I_r
-        fppN = R_II_r + (23.0 / (3.0 * h)) * R_I_r
+        fppN = R_II_r
         return fpN, fppN
 
     # ── Non-uniform metric transform ──────────────────────────────────────
@@ -277,41 +278,49 @@ class CCDSolver:
 # ── Boundary coefficient constructors (module-level, pure functions) ─────
 
 def _boundary_coeffs_left(h: float) -> dict:
-    """One-sided compact scheme at left boundary (O(h⁵), §4.7).
+    """One-sided compact scheme at left boundary (§4.7).
 
     The boundary values satisfy:
         [f'₀ ]  = M @ [f'₁ ]  + [c₁(f₀…f₃)]
         [f''₀]        [f''₁]    [c₂(f₀…f₃)]
 
-    Equations:
-        Eq-I-bc:  f'₀ + (3/2)f'₁ − (3h/2)f''₁
+    Equations (§5 eq:bc_left, eq:bcII_left):
+        Eq-I-bc  (O(h⁵)): f'₀ + (3/2)f'₁ − (3h/2)f''₁
                     = (1/h)(−23/6·f₀ + 21/4·f₁ − 3/2·f₂ + 1/12·f₃)
-        Eq-II-bc: f''₀ − 3f''₁ + (23/(3h))f'₀ + (9/h)f'₁
-                    = (1/h²)(−325/18·f₀ + 39/2·f₁ − 3/2·f₂ + 1/18·f₃)
+        Eq-II-bc (O(h²)): f''₀
+                    = (1/h²)(2·f₀ − 5·f₁ + 4·f₂ − f₃)
+
+    Eq-II-bc is independent of f'₁, f''₁ (γ=δ=0 in §5 eq:bcII_general).
 
     After solving for [f'₀, f''₀]:
-        M[0,:] = [-3/2,  3h/2]
-        M[1,:] = [5/(2h), -17/2]
+        M[0,:] = [-3/2,  3h/2]   (from Eq-I-bc)
+        M[1,:] = [0,     0   ]   (Eq-II-bc is standalone — no fp₁/fpp₁ coupling)
     and the data-dependent RHS coefficients are returned in c_I, c_II.
     """
-    M = np.array([[-3.0 / 2.0,      3.0 * h / 2.0],
-                   [ 5.0 / (2.0*h), -17.0 / 2.0   ]])
-    c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0,  1.0/12.0]) / h
-    c_II = np.array([-325.0/18.0, 39.0/2.0, -3.0/2.0, 1.0/18.0]) / (h * h)
+    M = np.array([[-3.0 / 2.0, 3.0 * h / 2.0],
+                   [ 0.0,       0.0            ]])
+    c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0, 1.0/12.0]) / h
+    c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
 
 
 def _boundary_coeffs_right(h: float) -> dict:
-    """One-sided compact scheme at right boundary (O(h⁵), §4.7).
+    """One-sided compact scheme at right boundary (§4.7).
 
     Obtained from the left scheme by h → −h symmetry.
 
+    Equations (§5 eq:bc_left mirror, eq:bcII_left mirror):
+        Eq-I-bc  (O(h⁵)): f'_N + (3/2)f'_{N-1} + (3h/2)f''_{N-1}
+                    = (1/h)(23/6·f_N − 21/4·f_{N-1} + 3/2·f_{N-2} − 1/12·f_{N-3})
+        Eq-II-bc (O(h²)): f''_N
+                    = (1/h²)(2·f_N − 5·f_{N-1} + 4·f_{N-2} − f_{N-3})
+
     After solving for [f'_N, f''_N]:
-        M[0,:] = [-3/2, -3h/2]
-        M[1,:] = [-5/(2h), -17/2]
+        M[0,:] = [-3/2, -3h/2]   (from Eq-I-bc mirror)
+        M[1,:] = [0,     0   ]   (Eq-II-bc is standalone)
     """
-    M = np.array([[-3.0 / 2.0,      -3.0 * h / 2.0],
-                   [-5.0 / (2.0*h), -17.0 / 2.0    ]])
-    c_I  = np.array([23.0/6.0, -21.0/4.0,  3.0/2.0, -1.0/12.0]) / h
-    c_II = np.array([-325.0/18.0, 39.0/2.0, -3.0/2.0, 1.0/18.0]) / (h * h)
+    M = np.array([[-3.0 / 2.0, -3.0 * h / 2.0],
+                   [ 0.0,        0.0            ]])
+    c_I  = np.array([23.0/6.0, -21.0/4.0, 3.0/2.0, -1.0/12.0]) / h
+    c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}

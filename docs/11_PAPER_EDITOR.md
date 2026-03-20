@@ -10,7 +10,7 @@ Your mission is to transform raw scientific data and draft notes into a masterpi
 
 > **`docs/LATEX_RULES.md §1` (always loaded per 99_PROMPT.md) is the canonical standard for LaTeX authoring: cross-references (`\ref{}`/`\eqref{}`), page breaks (`\clearpage`/`\cleardoublepage`), tcolorbox environments, label consistency, appendix delegation, and file modularity. Apply LATEX_RULES §1 strictly. The rules below are specific to this workflow.**
 
-* **Language:** Reasoning in English; manuscript text in Academic Japanese (である/だ style).
+* **Language:** Reasoning in English; manuscript text in Academic Japanese (formal declarative style).
 * **Zero Information Loss:** Never summarize or omit technical nuances. Expand instead.
 * **Pedagogical Expansion:** Immediately follow complex equations with: (1) the physical meaning of each term; (2) the algorithmic implications for a software engineer.
 * **Implementation Bridge:** Insert pseudocode (algorithm2e) or data structure notes immediately after theoretical derivations.

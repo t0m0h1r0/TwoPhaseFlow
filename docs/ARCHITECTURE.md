@@ -10,7 +10,7 @@ src/
     ├── config.py                   # SimulationConfig (composed of 4 sub-configs)
     ├── ccd/
     │   ├── ccd_solver.py           # CCDSolver — O(h⁶) compact finite differences
-    │   └── block_tridiag.py        # Block Thomas algorithm (3×3 blocks)
+    │   └── block_tridiag.py        # Block Thomas algorithm (2×2 blocks)
     ├── core/
     │   ├── grid.py                 # Grid — spacing, coordinates, ndim
     │   ├── field.py                # Field utilities
@@ -121,7 +121,7 @@ SimulationConfig
 ### CCD Coefficients
 `α₁=7/16, a₁=15/16, b₁=1/16, β₂=−1/8, a₂=3, b₂=−9/8`
 
-Block structure (3×3 per node): `A_L` (left coupling), `B` (diagonal), `A_R` (right coupling).
+Block structure (2×2 per node): `A_L` (left coupling), `B` (diagonal), `A_R` (right coupling).
 Last interior row (i=N-2) uses `C_{N-1}` instead of `A_R` — modified by right boundary scheme.
 
 ### Time Integration
