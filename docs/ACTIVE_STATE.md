@@ -6,7 +6,7 @@
 
 * **Date/Update:** 2026-03-20
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **17 CRITIC passes + 25 EDITOR sweeps complete (2026-03-20).** Re-compile required to verify clean build.
+* **Paper:** 12 sections + appendix\_proofs. **17 CRITIC passes + 26 EDITOR sweeps complete (2026-03-20).** Clean build confirmed — zero undefined references, zero missing-character warnings (113 pages).
 
 ## **2. Pending Action Items**
 
@@ -19,4 +19,4 @@
 
 ### **Paper / Documentation**
 
-1. **Re-compile required** — EDITOR sweeps 23–25 (CRITIC passes 16–17) complete. Key changes: full AB2+IPC O(Δt²) propagation (abstract/intro/conclusion), IPC derivation labels, Dahlquist zero-stability justification, ε_tol physical criterion, Rhie-Chow O(h²) intermediate-step fix, circular sign-convention warnbox rewrite, ρ^{n+1} unification declaration, interface-shift quantitative bound O(h³Δt), CCD coefficient uniqueness, viscous ADI accuracy clarification, product-rule near-interface analysis, CLS vs NS time-accuracy narrative, Neumann BC unit-test checklist. Run `12_LATEX_ENGINE.md` to verify zero undefined references and clean build.
+1. ~~Re-compile~~ — **Done (sweep 26, 2026-03-20).** Clean build: 113 pages, 0 undefined refs. Remaining paper work: none identified. Ready for submission review or further CRITIC pass.
