@@ -1,5 +1,22 @@
 # Changelog
 
+## Paper — EDITOR 28th sweep: CLS mass-conservation formula error + 2D droplet terminology (2026-03-21)
+
+Two errors found by external reviewer audit of §§2.1, 2.6, 3.2.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `sections/03_levelset.tex` | **CRITICAL fix** — warnbox in §3.2 (sec:cls_advection): removed erroneous `- ∫ψ(∇·u)dV` term from the volume-rate formula. Correct result is `d/dt ∫ψdV = -∮ψu·n̂dS` (Gauss theorem applied directly to ∇·(ψu), no ∇·u = 0 assumption needed). Rewrote title, opening claim, and itemized practical notes accordingly. |
+| `sections/03_levelset.tex` | Tightened mybox (sec:why_cls_massloss): "境界条件に依らず" → "壁面・周期境界条件のもとで…速度場の発散値に依らず" for precision. |
+| `sections/02_governing.tex` | Warnbox heading: "球状液滴" (spherical, 3D) → "円形液滴（2次元）" to match the 2D polar divergence formula `∇·r̂ = 1/r` used in the derivation. |
+
+### Root cause
+The original warnbox confused application of the Gauss Divergence Theorem with a simultaneous product-rule expansion of `∇·(ψu)`, introducing a spurious `- ∫ψ(∇·u)dV` term. The conservative form needs no `∇·u = 0` condition for volume conservation; it requires only that the boundary flux vanishes (wall/periodic BC).
+
+---
+
 ## Docs — Split KNOWLEDGE_BASE.md (2026-03-19)
 
 `docs/KNOWLEDGE_BASE.md` split into two focused files:

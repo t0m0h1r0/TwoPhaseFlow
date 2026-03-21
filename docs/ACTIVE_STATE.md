@@ -4,9 +4,9 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-20
+* **Date/Update:** 2026-03-21
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **18 CRITIC passes + 27 EDITOR sweeps complete (2026-03-20).** Clean build confirmed — zero undefined references (116 pages).
+* **Paper:** 12 sections + appendix\_proofs. **18 CRITIC passes + 28 EDITOR sweeps complete (2026-03-21).** Clean build confirmed — zero undefined references (116 pages).
 
 ## **2. Pending Action Items**
 
@@ -21,3 +21,4 @@
 
 1. ~~EDITOR sweep 27~~ — **Done (2026-03-20).** All CRITIC pass 18 issues fixed (5 FATAL + 5 GAP + 2 IMPL + 2 MAINT). Clean build: 116 pages, 0 undefined refs. Ready for submission review or further CRITIC pass.
 2. ~~CCD block matrix A_L/A_R (2,1) sign error fix~~ — **Done (2026-03-20).** Fixed 3 locations in `05b_ccd_bc_matrix.tex` (defbox symbolic form, bullet derivation, numeric example). Paper had A_L(2,1)=+9/(8h) and A_R(2,1)=−9/(8h); correct values are A_L(2,1)=−9/(8h) and A_R(2,1)=+9/(8h). Code was already correct. Also fixed `ARCHITECTURE.md` "3×3 blocks" → "2×2 blocks".
+3. ~~EDITOR sweep 28~~ — **Done (2026-03-21).** External reviewer found 1 CRITICAL math error + 1 terminology inconsistency in §§2.1, 3.2. Spurious `- ∫ψ(∇·u)dV` term removed from CLS volume-conservation formula; warnbox rewritten. "球状液滴" → "円形液滴（2次元）" in §2.1 warnbox.
