@@ -51,13 +51,17 @@ For any claim about a mathematical error:
 
 ### **Step 3 — Classify the Reviewer Claim**
 
-Assign one of three verdicts:
+Assign one of five verdicts:
 
-| Verdict | Meaning |
-|---|---|
-| **VERIFIED** | Paper is wrong; reviewer's fix direction is correct (verify the fix formula independently too) |
-| **REVIEWER_ERROR** | Paper is already correct; reviewer misread or hallucinated |
-| **SCOPE_LIMITATION** | Paper is correct within its stated scope; reviewer flagged a known limitation already documented as future work |
+| Verdict | Meaning | Edit? |
+|---|---|---|
+| **VERIFIED** | Paper is wrong; reviewer's fix direction is correct (verify the fix formula independently too) | Yes — fix immediately |
+| **REVIEWER_ERROR** | Paper is already correct; reviewer misread or hallucinated | No |
+| **SCOPE_LIMITATION** | Paper is correct within its stated scope; reviewer flagged a known limitation already documented as future work | No |
+| **LOGICAL_GAP** | Paper's conclusion is correct but the intermediate argument has a flaw or missing step (e.g. illegal operator factoring, skipped derivation step) | Yes — fix the argument; conclusion stands |
+| **MINOR_INCONSISTENCY** | Text description, comment, or wording does not match the formula/code, but the mathematical result is unaffected (e.g. "conservative" rounding that is actually less conservative; pseudocode comment names wrong algorithm) | Discretionary — fix the text |
+
+> **Fix priority:** `VERIFIED` (math error) > `LOGICAL_GAP` (argument error) > `MINOR_INCONSISTENCY` (text error). Never edit for `REVIEWER_ERROR` or `SCOPE_LIMITATION`.
 
 ### **Step 4 — Known Hallucination Patterns (Watch For These)**
 
@@ -74,6 +78,14 @@ These patterns were observed in the 2026-03-21 session and recur in AI-generated
 5. **Scope vs. Error Confusion:** Reviewer flags an approximation, boundary condition, or limiting assumption as an "error." Check §11 (Conclusion/Future Work) and any warnbox near the flagged section — the limitation may already be explicitly acknowledged.
 
 6. **Correct Formula, Wrong Attribution:** Reviewer says "the paper uses formula A (wrong), should use formula B (correct)" but the paper actually uses formula B. This is the most common hallucination.
+
+7. **Leibniz Rule Shortcut:** Reviewer (or prior editor) writes `D(κf) = κD(f)` and factors a spatially-varying quantity κ out of a differential operator D. This is only valid for constant κ. For spatially varying κ, `D(κf) = κD(f) + f·D(κ)`. In two-phase CFD, curvature κ, density ρ, and viscosity μ all vary in space. The factoring is wrong but the conclusion may still be correct via an independent argument (see KL-04 in `13_MATH_VERIFY.md`).
+
+8. **Nyquist Formula ≠ Finite-Grid Spectral Radius:** A reviewer (or the paper itself) states a compact scheme's spectral radius using the infinite-periodic modified wavenumber at k=π/h. For CCD: `4a₂/[(1+2|β₂|)h²]` = 9.6/h², while the actual finite-grid eigenvalue with Neumann BCs is ≈ 3.43/h². Always verify which quantity is being claimed (see KL-05 in `13_MATH_VERIFY.md`).
+
+9. **Pre-Asymptotic vs Asymptotic Rate:** Reviewer claims "the paper shows O(h⁴)" when the table data is O(h⁴) only in the pre-asymptotic regime (moderate N). As N increases, a model-error floor (e.g. O(h²) from CSF) dominates. The paper is correct within its stated N range, but the reviewer mistakes a pre-asymptotic measurement for the theoretical asymptote (see KL-06).
+
+10. **Conservative Rounding Direction:** A CFL or stability coefficient is claimed to be a "conservative" (safe/tight) bound, but the rounded value is actually larger than the derived value — making it less conservative (more permissive). "Conservative" for an upper-bound Δt constraint means the coefficient should be rounded DOWN (see KL-07).
 
 ### **Step 5 — Edit Only After Verification**
 
