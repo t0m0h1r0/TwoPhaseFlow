@@ -120,7 +120,8 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | Fix paper per reviewer comments | `docs/11_PAPER_EDITOR.md` |
 | Critical review of whole paper | `docs/10_PAPER_REVIEW.md` |
 | Fix LaTeX syntax / build errors | `docs/12_LATEX_ENGINE.md` |
-| Diagnose test failures | `docs/03_CODE_VERIFY.md` |
+| Diagnose test failures (post-hoc verdict) | `docs/03_CODE_VERIFY.md` |
+| Active debugging (staged experiments + patches) | `docs/05_CODE_DEBUG.md` |
 | Add new code features | `docs/02_CODE_DEVELOP.md` |
 | Refactor code | `docs/04_CODE_REFACTOR.md` |
 

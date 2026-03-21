@@ -114,7 +114,7 @@ def test_divergence_free_projection(backend):
 
     # 新しい統一 API: PPESolver(backend, config, grid)
     solver = PPESolver(backend, cfg, grid)
-    corrector = VelocityCorrector(backend, ccd)
+    corrector = VelocityCorrector(backend, grid)
 
     # 非発散ゼロの速度場
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
@@ -142,10 +142,10 @@ def test_divergence_free_projection(backend):
     div_new = du_new_dx + dv_new_dy
 
     div_max = float(np.max(np.abs(div_new)))
-    # CCD Eq-II-bc の O(h²) 境界精度の影響で N=16 では ~2e-3 が限界。
-    # 論文の O(h⁶) 精度はインターフェース近傍（ドメイン境界から離れた領域）で成立。
-    assert div_max < 2e-3, (
-        f"補正後の発散 ‖∇·u‖_∞ = {div_max:.3e} > 2e-3"
+    # FD corrector + FVM PPE: O(h²) consistency → O(h²) residual divergence.
+    # For N=16, h=1/16: tolerance is O(h²) ~ 6e-3.
+    assert div_max < 6e-3, (
+        f"補正後の発散 ‖∇·u‖_∞ = {div_max:.3e} > 6e-3"
     )
 
 
