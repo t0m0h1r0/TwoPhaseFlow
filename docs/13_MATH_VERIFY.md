@@ -307,6 +307,44 @@ Check every audit against these patterns first.
 
 ---
 
+### KL-08: Kronecker Product Index Convention — C-Order vs. Fortran-Order
+
+**Found:** 2026-03-21
+**Location:** `paper/sections/appendix_ccd_impl.tex` `app:ccd_kronecker` (added 2026-03-21)
+**Risk:** The Kronecker product formulas `D2x ⊗ I_Ny` and `I_Nx ⊗ D2y` are correct **only** when the 2D array is flattened in C-order (row-major: k = i·Ny + j). If Fortran-order (column-major: k = j·Nx + i) is used instead, the roles of the two factors swap: `I_Nx ⊗ D2x` (x-derivative) and `D2y ⊗ I_Ny` (y-derivative).
+
+**NumPy default:** `array.ravel()` uses C-order by default. `scipy.sparse.kron(A, B)` assembles the block structure consistent with C-order when A acts on the slow (row) index and B on the fast (column) index. This is exactly `D2x ⊗ I_Ny` for x (slow) and `I_Nx ⊗ D2y` for y (fast).
+
+**Checklist for any Kronecker product 2D operator:**
+- [ ] Confirm data layout: `p.ravel()` is C-order → flat index k = i·Ny + j
+- [ ] `kron(D_axis0, I_axis1)` for axis-0 (x) derivative ✓
+- [ ] `kron(I_axis0, D_axis1)` for axis-1 (y) derivative ✓
+- [ ] Verify against code: `sp.kron(D2x, sp.eye(Ny))` ← D2x ⊗ I_Ny ✓
+- [ ] Cross-check: feed a known polynomial and compare `kron` matrix-vector product against `ccd.differentiate` pointwise result. Max difference must be exactly 0.
+
+**Generalised rule:** For a 2D array stored in C-order with shape (Nx, Ny), the partial derivative operator along axis $\ell$ is:
+```
+L_full = kron(D_ℓ, I_other)   if ℓ = 0 (slow index, x)
+       = kron(I_other, D_ℓ)   if ℓ = 1 (fast index, y)
+```
+For 3D arrays (Nx, Ny, Nz) in C-order: axis-0 → `D⊗I_y⊗I_z`, axis-1 → `I_x⊗D⊗I_z`, axis-2 → `I_x⊗I_y⊗D`.
+
+---
+
+### KL-09: Pseudo-Time Iteration vs. Direct LU — Implementation Discrepancy
+
+**Found:** 2026-03-21
+**Location:** `appendix_ccd_impl.tex` l.188–196 (old text), `ppe_solver_pseudotime.py:solve()`
+**Discrepancy:** The paper previously described a pseudo-time iteration loop `(I + Δτ L) p^{m+1} = p^m + Δτ q`. The actual implementation uses `spsolve(L_pinned, rhs)` — a single direct LU solve of `L p = q`, with no iteration loop.
+
+**Root cause:** CCD one-sided boundary schemes produce a highly asymmetric matrix (max asymmetry ≈ 900 for N=16). GMRES/BiCGSTAB diverge; direct LU is the only robust choice. The pseudo-time framework remains valid as mathematical background (Δτ_opt derivation, convergence rate analysis) but the implementation skips the iteration by solving L p = q directly.
+
+**Resolution (2026-03-21):** `app:ccd_lu_direct` subsection in `appendix_ccd_impl.tex` updated to describe the direct LU approach. The pseudo-time analysis in `sec:dtau_derive` (`appendix_numerics_solver.tex`) is retained as mathematical background.
+
+**Generalised rule:** When the implementation of an iterative method is replaced by a direct solver, update the corresponding paper section to reflect the change. Do not leave pseudo-time iteration language in a section that describes a direct-solve implementation.
+
+---
+
 ### KL-07: "Conservative" CFL Rounding Direction Error
 
 **Found:** 2026-03-21
@@ -342,6 +380,8 @@ Check every audit against these patterns first.
 | |∇ψ|≈δ_s error O(ε²) | `appendix_interface.tex` | — | 2026-03-21 | ✅ VERIFIED | Odd-function cancellation; ∫t²δ_ε dt = π²ε²/3 ✓ |
 | Balanced-Force O(h⁶) argument | `07_collocate.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Conclusion correct; intermediate algebra fixed (KL-04) |
 | CCD spectral radius 3.43/h² | `08b_ccd_poisson.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Value self-consistent with Δτ_opt; formula 9.6/h² is Nyquist bound (KL-05) |
+| Kronecker product 2D operator eq:L_CCD_2d_kron | `appendix_ccd_impl.tex` app:ccd_kronecker | `ppe_solver_pseudotime.py:267-284` | 2026-03-21 | ✅ VERIFIED | C-order index k=i·Ny+j; kron(D2x,I_Ny) and kron(I_Nx,D2y) confirmed algebraically and vs. code (KL-08) |
+| Pseudo-time vs. direct LU discrepancy | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:156-160` | 2026-03-21 | ✅ FIXED | DISCREPANCY resolved: paper updated to describe spsolve direct LU (KL-09) |
 | Rhie-Chow ρⁿ⁺¹ usage | `07_collocate.tex` | `rhie_chow.py` | — | 🔲 TODO | |
 | WENO5 coefficients (β₀,β₁,β₂) | `04_time_integration.tex` | `advection.py` | — | 🔲 TODO | |
 | CFL condition (advection + viscous) | `04_time_integration.tex` | `cfl.py` | — | 🔲 TODO | |

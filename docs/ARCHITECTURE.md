@@ -159,11 +159,24 @@ create_ppe_solver(solver_type, backend, config, grid) -> IPPESolver
 # "bicgstab"   → PPESolver
 ```
 
+**PPESolverPseudoTime — Kronecker Product Assembly + Sparse LU:**
+The solver assembles the 2D CCD-Poisson operator via Kronecker products (C-order flat index k=i·Ny+j):
+```python
+L = diag(1/ρ) @ (kron(D2x, I_Ny) + kron(I_Nx, D2y))
+    - diag(∂ρ_x/ρ²) @ kron(D1x, I_Ny)
+    - diag(∂ρ_y/ρ²) @ kron(I_Nx, D1y)
+```
+and solves `L_pinned p = q` with `scipy.sparse.linalg.spsolve` (SuperLU).
+Paper ref: `appendix_ccd_impl.tex` §app:ccd_kronecker, §app:ccd_lu_direct.
+
+**CAUTION — C-order vs. Fortran-order (KL-08):**
+kron(D_axis0, I_Ny) is correct for x-derivatives (slow index) ONLY in C-order.
+Never swap kron argument order without updating the data layout accordingly.
+
 **PPESolverPseudoTime — CCD Laplacian Null-Space (Known Limitation):**
-The 2D CCD Laplacian built via Kronecker products (`D2x_full ⊗ I_y + I_x ⊗ D2y_full`) has an
-**8-dimensional null space** (e.g., rank 17/25 for N=4) with condition number ~1e17 after pinning one
-node. `spsolve` returns a numerically garbage solution; the algebraic residual `‖Lp − q‖₂` is O(‖q‖₂)
-even when the physical solution is correct.
+The 2D CCD Laplacian has an **8-dimensional null space** (e.g., rank 17/25 for N=4) with condition
+number ~1e17 after pinning one node. `spsolve` returns a numerically garbage solution; the algebraic
+residual `‖Lp − q‖₂` is O(‖q‖₂) even when the physical solution is correct.
 - **Algebraic residual tests are suppressed** for this solver — do not reinstate them without first
   implementing null-space deflation (project q and p onto the range of L before and after solve).
 - Root cause: compact one-sided boundary stencils (Eq-II-bc) break the translation-invariance that
