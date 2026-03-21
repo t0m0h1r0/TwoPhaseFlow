@@ -331,17 +331,29 @@ For 3D arrays (Nx, Ny, Nz) in C-order: axis-0 → `D⊗I_y⊗I_z`, axis-1 → `I
 
 ---
 
-### KL-09: Pseudo-Time Iteration vs. Direct LU — Implementation Discrepancy
+### KL-09: Solver Strategy — Iterative Primary, LU Fallback (PPE)
 
-**Found:** 2026-03-21
-**Location:** `appendix_ccd_impl.tex` l.188–196 (old text), `ppe_solver_pseudotime.py:solve()`
-**Discrepancy:** The paper previously described a pseudo-time iteration loop `(I + Δτ L) p^{m+1} = p^m + Δτ q`. The actual implementation uses `spsolve(L_pinned, rhs)` — a single direct LU solve of `L p = q`, with no iteration loop.
+**Found:** 2026-03-21 (initial discrepancy); **Updated:** 2026-03-21 (design clarification)
+**Location:** `appendix_ccd_impl.tex` app:ccd_lu_direct; `ppe_solver_pseudotime.py:solve()`
 
-**Root cause:** CCD one-sided boundary schemes produce a highly asymmetric matrix (max asymmetry ≈ 900 for N=16). GMRES/BiCGSTAB diverge; direct LU is the only robust choice. The pseudo-time framework remains valid as mathematical background (Δτ_opt derivation, convergence rate analysis) but the implementation skips the iteration by solving L p = q directly.
+**Design intent (confirmed 2026-03-21):**
+- PRIMARY: LGMRES iterative solver — O(n·k) memory, warm start from p_init.
+- FALLBACK: sparse direct LU (`spsolve`) — invoked automatically when LGMRES does not
+  converge within `pseudo_maxiter` steps. Ensures no blocking of downstream development.
 
-**Resolution (2026-03-21):** `app:ccd_lu_direct` subsection in `appendix_ccd_impl.tex` updated to describe the direct LU approach. The pseudo-time analysis in `sec:dtau_derive` (`appendix_numerics_solver.tex`) is retained as mathematical background.
+**Root cause of needing fallback:** CCD one-sided boundary schemes (Eq-II-bc) produce a
+highly asymmetric matrix (max asymmetry ≈ 900 for N=16). Standard GMRES diverges on some
+grids; LGMRES is more robust but not guaranteed to converge.
 
-**Generalised rule:** When the implementation of an iterative method is replaced by a direct solver, update the corresponding paper section to reflect the change. Do not leave pseudo-time iteration language in a section that describes a direct-solve implementation.
+**Solver policy scope:**
+- PPE global sparse system: iterative primary, LU fallback (memory efficiency).
+- CCD block tridiagonal (Thomas sweeps), Helmholtz 1D: direct LU (banded — LU fill-in is O(N)).
+
+**Paper ref:** `appendix_ccd_impl.tex` §app:ccd_lu_direct (updated to match this design).
+
+**Generalised rule:** For large unstructured sparse systems, always design iterative-primary/
+LU-fallback so that convergence issues never block development. For banded systems where
+direct LU fill-in is provably O(N), prefer direct LU outright.
 
 ---
 
@@ -381,7 +393,7 @@ For 3D arrays (Nx, Ny, Nz) in C-order: axis-0 → `D⊗I_y⊗I_z`, axis-1 → `I
 | Balanced-Force O(h⁶) argument | `07_collocate.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Conclusion correct; intermediate algebra fixed (KL-04) |
 | CCD spectral radius 3.43/h² | `08b_ccd_poisson.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Value self-consistent with Δτ_opt; formula 9.6/h² is Nyquist bound (KL-05) |
 | Kronecker product 2D operator eq:L_CCD_2d_kron | `appendix_ccd_impl.tex` app:ccd_kronecker | `ppe_solver_pseudotime.py:267-284` | 2026-03-21 | ✅ VERIFIED | C-order index k=i·Ny+j; kron(D2x,I_Ny) and kron(I_Nx,D2y) confirmed algebraically and vs. code (KL-08) |
-| Pseudo-time vs. direct LU discrepancy | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:156-160` | 2026-03-21 | ✅ FIXED | DISCREPANCY resolved: paper updated to describe spsolve direct LU (KL-09) |
+| PPE solver strategy (iterative+LU fallback) | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:solve()` | 2026-03-21 | ✅ VERIFIED | Design: LGMRES primary, spsolve fallback on non-convergence (KL-09) |
 | Rhie-Chow ρⁿ⁺¹ usage | `07_collocate.tex` | `rhie_chow.py` | — | 🔲 TODO | |
 | WENO5 coefficients (β₀,β₁,β₂) | `04_time_integration.tex` | `advection.py` | — | 🔲 TODO | |
 | CFL condition (advection + viscous) | `04_time_integration.tex` | `cfl.py` | — | 🔲 TODO | |

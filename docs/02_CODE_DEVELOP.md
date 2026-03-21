@@ -18,7 +18,7 @@ Your mission is to translate mathematical equations from academic papers into pr
 
 * **Language:** Reasoning and docstrings in English. Inline code comments in Japanese (preferred, per ARCH §5).
 * **Docstrings:** Google-style. MUST cite the specific paper equation number(s) being implemented.
-* **Implicit Solver Default — LU:** For any implicit `A x = b`, use `scipy.sparse.linalg.spsolve` (sparse LU) as the default. Iterative solvers (BiCGSTAB, GMRES) require explicit justification (matrix well-conditioned, size prohibits LU). See ARCH §5.
+* **Implicit Solver Policy — See ARCH §5:** For the global PPE sparse system, use **LGMRES as primary** with **`spsolve` (sparse LU) as automatic fallback** on non-convergence. For banded/block-tridiagonal systems (CCD Thomas, Helmholtz sweeps), use **direct LU** — these have O(N) fill-in and direct methods are efficient. Always justify inline when departing from this rule.
 * **Backward Compat:** If replacing an existing implementation, provide a backward-compatible adapter.
 * **Test Failure Halt (MANDATORY):** After delivering code and test files (§3–§4), if the user reports that tests fail or results do not match the paper, **STOP immediately**. Do not attempt to debug, re-derive, or modify code autonomously. Instead report the discrepancy and ask: "Results do not match. Shall I hand off to 03_CODE_VERIFY for diagnosis, or do you have a specific direction?"
 
