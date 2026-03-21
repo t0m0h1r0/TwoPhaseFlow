@@ -135,11 +135,12 @@ class SimulationBuilder:
             for ax in range(config.grid.ndim)
         )
         eps = config.numerics.epsilon_factor * dx_min
-        ccd = CCDSolver(grid, backend)
+        ccd = CCDSolver(grid, backend, bc_type=config.numerics.bc_type)
 
         # レベルセット演算子
-        ls_advect = LevelSetAdvection(backend, grid)
-        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps)
+        _ls_bc = config.numerics.bc_type if config.numerics.bc_type == 'periodic' else 'zero'
+        ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
+        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
         # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
@@ -156,7 +157,7 @@ class SimulationBuilder:
         ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid, ccd=ccd)
 
         # 補助演算子
-        rhie_chow = RhieChowInterpolator(backend, grid, ccd)
+        rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type=config.numerics.bc_type)
         vel_corrector = VelocityCorrector(backend, grid)
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,

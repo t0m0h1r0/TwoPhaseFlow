@@ -64,23 +64,40 @@ class CCDSolver:
     ----------
     grid    : Grid object describing node positions and spacings.
     backend : Backend carrying the array namespace ``xp``.
+    bc_type : 'wall' (default) or 'periodic'.
+              'wall'     — one-sided compact scheme at boundaries (O(h⁵)).
+              'periodic' — block-circulant system for all N nodes; node N
+                           is treated as the periodic image of node 0 and
+                           its derivative is set equal to node 0 after the
+                           solve.  Uses a dense LU factorisation of the
+                           2N×2N block-circulant matrix (pre-computed once).
 
-    The solver pre-factorise the block-tridiagonal system once per axis
-    during ``__init__``, so ``differentiate()`` calls are cheap.
+    The solver pre-factorise the block-tridiagonal (or block-circulant)
+    system once per axis during ``__init__``, so ``differentiate()``
+    calls are cheap.
     """
 
-    def __init__(self, grid: "Grid", backend: "Backend"):
+    def __init__(self, grid: "Grid", backend: "Backend", bc_type: str = "wall"):
         self.grid = grid
         self.backend = backend
         self.xp = backend.xp
         self.ndim = grid.ndim
+        self.bc_type = bc_type
 
-        # Build one solver per axis
+        # Build one solver per axis (wall BC)
         self._solvers: dict = {}
         for ax in range(self.ndim):
             n_pts = grid.N[ax] + 1
             h = float(grid.L[ax] / grid.N[ax])   # uniform spacing for CCD system
             self._solvers[ax] = self._build_axis_solver(n_pts, h)
+
+        # Build periodic solvers if needed (block-circulant, dense LU)
+        self._periodic_solvers: dict = {}
+        if bc_type == "periodic":
+            for ax in range(self.ndim):
+                n_pts = grid.N[ax] + 1
+                h = float(grid.L[ax] / grid.N[ax])
+                self._periodic_solvers[ax] = self._build_axis_solver_periodic(n_pts, h)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -92,6 +109,10 @@ class CCDSolver:
         bc_right: Optional[Tuple[float, float]] = None,
     ):
         """Compute first and second derivatives along ``axis``.
+
+        When ``bc_type='periodic'`` (and no bc_left/bc_right overrides),
+        the periodic block-circulant solver is used instead of the
+        one-sided boundary scheme.
 
         Parameters
         ----------
@@ -105,6 +126,9 @@ class CCDSolver:
         d1 : array, same shape as ``data`` — ∂data/∂x_axis
         d2 : array, same shape as ``data`` — ∂²data/∂x_axis²
         """
+        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+            return self._differentiate_periodic(data, axis)
+
         xp = self.xp
         info = self._solvers[axis]
         h = info['h']
@@ -209,6 +233,97 @@ class CCDSolver:
             'bc_left': bc_left,
             'bc_right': bc_right,
         }
+
+    # ── Periodic solver ───────────────────────────────────────────────────
+
+    def _build_axis_solver_periodic(self, n_pts: int, h: float) -> dict:
+        """Build block-circulant CCD solver for periodic BC.
+
+        For a periodic domain sampled at N+1 nodes (0..N) with node N = node 0,
+        the N unique DOFs (0..N-1) all use the standard interior CCD stencil
+        with wrap-around neighbours.
+
+        The resulting 2N×2N block-circulant system is pre-factorised once
+        using scipy dense LU.  At solve time each batch column is solved in
+        one call via lu_solve.
+        """
+        from scipy.linalg import lu_factor
+        N = n_pts - 1   # number of unique nodes (node N is the periodic image of node 0)
+        assert N >= 3, f"Need ≥ 3 unique nodes for periodic CCD; got {N}"
+
+        lower_blk = np.array([[_ALPHA1,  _B1 * h],
+                               [_B2 / h,  _BETA2]])   # left-neighbour coupling
+        upper_blk = np.array([[_ALPHA1, -_B1 * h],
+                               [-_B2 / h,  _BETA2]])  # right-neighbour coupling
+
+        # Build 2N × 2N block-circulant matrix
+        A = np.zeros((2 * N, 2 * N))
+        for i in range(N):
+            A[2*i:2*i+2, 2*i:2*i+2] += np.eye(2)                        # diagonal
+            j_lo = (i - 1) % N
+            A[2*i:2*i+2, 2*j_lo:2*j_lo+2] += lower_blk                  # left  (wrap at i=0)
+            j_hi = (i + 1) % N
+            A[2*i:2*i+2, 2*j_hi:2*j_hi+2] += upper_blk                  # right (wrap at i=N-1)
+
+        lu, piv = lu_factor(A)
+        return {'lu': lu, 'piv': piv, 'h': h, 'N': N}
+
+    def _differentiate_periodic(self, data, axis: int):
+        """Periodic CCD differentiation using the pre-factorised block-circulant solver.
+
+        Nodes 0..N-1 are solved via the 2N×2N system; node N receives a copy
+        of node 0 (periodic image).
+        """
+        from scipy.linalg import lu_solve
+        xp = self.xp
+        info = self._periodic_solvers[axis]
+        h = info['h']
+        N = info['N']
+
+        # Move target axis to front, flatten remaining axes as batch
+        data = xp.asarray(data)
+        f_full = xp.moveaxis(data, axis, 0)      # (N+1, *other)
+        orig_shape = f_full.shape
+        n_pts = f_full.shape[0]                  # N+1
+        batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
+        f_full = f_full.reshape(n_pts, batch_size)  # (N+1, batch)
+
+        # Host copy for the scipy solve (N unique nodes only; node N = node 0)
+        f_host = np.asarray(f_full)[:N, :]       # (N, batch)
+
+        # Build RHS (2N × batch): all N nodes use the interior stencil with wrap-around
+        rhs = np.zeros((2 * N, batch_size))
+        for i in range(N):
+            ip1 = (i + 1) % N
+            im1 = (i - 1) % N
+            rhs[2*i,   :] = (_A1 / h)         * (f_host[ip1] - f_host[im1])
+            rhs[2*i+1, :] = (_A2 / (h * h))   * (f_host[im1] - 2.0 * f_host[i] + f_host[ip1])
+
+        # Solve (2N × batch): lu_solve handles multiple RHS columns at once
+        x = lu_solve((info['lu'], info['piv']), rhs)   # (2N, batch)
+
+        # Extract d1 (even rows) and d2 (odd rows) for nodes 0..N-1
+        d1_inner = x[0::2, :]   # (N, batch)
+        d2_inner = x[1::2, :]   # (N, batch)
+
+        # Full (N+1, batch) arrays: node N = node 0 (periodic image)
+        d1_flat = np.empty((N + 1, batch_size))
+        d2_flat = np.empty((N + 1, batch_size))
+        d1_flat[:N, :] = d1_inner
+        d2_flat[:N, :] = d2_inner
+        d1_flat[N, :] = d1_inner[0, :]
+        d2_flat[N, :] = d2_inner[0, :]
+
+        # Convert back to device and restore original field shape
+        d1_flat_xp = xp.asarray(d1_flat)
+        d2_flat_xp = xp.asarray(d2_flat)
+        d1 = xp.moveaxis(d1_flat_xp.reshape(orig_shape), 0, axis)
+        d2 = xp.moveaxis(d2_flat_xp.reshape(orig_shape), 0, axis)
+
+        if not self.grid.uniform:
+            d1, d2 = self._apply_metric(d1, d2, axis)
+
+        return d1, d2
 
     # ── Boundary helper methods ───────────────────────────────────────────
 

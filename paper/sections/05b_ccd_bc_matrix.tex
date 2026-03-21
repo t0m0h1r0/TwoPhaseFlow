@@ -281,6 +281,9 @@ $\mathcal{O}(h^5)$（Eq.-I），$\mathcal{O}(h^2)$（Eq.-II） \\[4pt]
 Neumann BC \\（$f'_0$ 既知，例：PPE 壁面圧力） &
 $f'_0$ を既知値として Eq.-I の左辺に移項し，右辺を修正（§\ref{sec:ccd_bc} と同手順） &
 $\mathcal{O}(h^5)$（Eq.-I の逆利用） \\[4pt]
+周期 BC \\（$f_0 = f_N$，例：一様流検証） &
+ブロック循環 CCD（付録~\ref{app:ccd_periodic}） &
+$\mathcal{O}(h^6)$（全節点，境界スキーム不要） \\[4pt]
 高精度が必要 \\（$\mathcal{O}(h^4)$ 以上の境界精度） &
 ゴーストセル法（付録~\ref{app:ccd_ghost}） &
 $\mathcal{O}(h^4)$〜$\mathcal{O}(h^6)$ \\
@@ -293,5 +296,6 @@ $\mathcal{O}(h^4)$〜$\mathcal{O}(h^6)$ \\
 自由表面・対称境界では Neumann，インフロー/アウトフローでは問題に応じて選択する．
 標準的な閉容器流れ（静止液滴，ライジングバブル）では片側スキーム（式~\eqref{eq:bc_left}）で十分であり，
 ゴーストセル法は精度上の要求が高い場合（$h^4$ 以上が必要）のみ採用する．
+周期境界条件の取り扱いについては付録~\ref{app:ccd_periodic} で詳述する．
 \end{tcolorbox}
 
