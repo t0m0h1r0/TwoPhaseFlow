@@ -213,6 +213,13 @@ $y$ 方向も同様に：
   \label{eq:L_CCD_2d_full}
 \end{equation}
 
+\noindent\textbf{大域行列形式（スパース直接法）：}
+式~\eqref{eq:L_CCD_2d_full} の点ごと演算子は，C順序フラットベクトル $\bm{p} \in \mathbb{R}^n$
+（$n = N_x N_y$）に対するクロネッカー積スパース行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho} \in \mathbb{R}^{n \times n}$
+（式~\eqref{eq:L_CCD_2d_kron}）として陽に組み立てられ，スパース LU 法で直接求解される
+（付録~\ref{app:ccd_kronecker}，付録~\ref{app:ccd_lu_direct} を参照）．
+以下は matrix-free 評価手順であり，クロネッカー積行列の各列への作用と代数的に等価である．
+
 \begin{tcolorbox}[defbox, title={2次元 CCD-Poisson 演算子の Matrix-Free 評価手順}]
 各反復ステップで $\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p}$ を計算するアルゴリズム：
 
