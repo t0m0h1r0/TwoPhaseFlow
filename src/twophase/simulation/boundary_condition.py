@@ -38,7 +38,8 @@ class BoundaryConditionHandler:
         """
         if self.bc_type == "wall":
             self._apply_wall(velocity)
-        # 'periodic' は追加の処理不要（将来実装可能）
+        elif self.bc_type == "periodic":
+            self._apply_periodic(velocity)
 
     def _apply_wall(self, velocity: "VectorField") -> None:
         """全境界面でノースリップ条件（u = 0）を適用する。"""
@@ -51,3 +52,14 @@ class BoundaryConditionHandler:
             sl_hi[ax] = -1
             u[tuple(sl_lo)] = 0.0
             u[tuple(sl_hi)] = 0.0
+
+    def _apply_periodic(self, velocity: "VectorField") -> None:
+        """周期境界条件: node 0 と node N を一致させる（node N ← node 0）。"""
+        for ax in range(self.ndim):
+            for c in range(self.ndim):
+                u = velocity[c]
+                sl_first = [slice(None)] * self.ndim
+                sl_last = [slice(None)] * self.ndim
+                sl_first[ax] = 0
+                sl_last[ax] = -1
+                u[tuple(sl_last)] = u[tuple(sl_first)]
