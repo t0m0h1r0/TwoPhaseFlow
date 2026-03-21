@@ -1,8 +1,84 @@
-% paper/sections/04b_time_schemes.tex
+% paper/sections/05_advection.tex
 %
-% §4 時間積分・移流スキームの続き（04_time_integration.tex からの分割）
-% 内容：TVD-RK3（CLS 移流）・Crank-Nicolson（粘性）・Godunov 上流化・安定性制約（CFL）
+% §5  CLS 移流の離散化：スキーム選択・時間積分・安定性制約
+%     （旧 04_time_integration.tex + 04b_time_schemes.tex の統合）
+%     WENO5 の完全な定式化は付録~\ref{app:weno5} に移動した．
 %
+\section{CLS 移流の離散化概要}
+\label{sec:time}
+
+本章では，第~\ref{sec:levelset}章で導入した CLS 移流方程式
+\begin{equation}
+  \frac{\partial\psi}{\partial t} + \nabla\cdot(\psi\bm{u}) = 0
+  \label{eq:cls_advection_ref}
+\end{equation}
+（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための\textbf{空間離散化スキームの選択根拠}を示す．
+CCD による微分計算（第~\ref{sec:CCD}章）および
+散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）の設計を踏まえ，
+本章はそれらと CLS 移流がどのように役割分担するかを説明する．
+
+\subsection{スキーム選択の動機：なぜ WENO5 が必要か}
+\label{sec:advection_motivation}
+
+\subsubsection{気液界面移流の困難}
+
+$\psi$ は界面付近で $0$ から $1$ へと急激に変化するが，この勾配の強さは
+物理的実体（物性の不連続）を反映したものであって，数値拡散でなだらかにして良いものではない．
+
+\textbf{線形スキームの限界：}
+通常の線形スキーム（例：CCD 直接適用）は高精度だが，
+$\psi$ のような急峻なプロファイルを移流すると
+\textbf{Gibbs 振動}（$\psi < 0$ や $\psi > 1$ の非物理的値）が発生する．
+これが界面の「にじみ」（第~\ref{sec:intro}章~§\ref{sec:failure_modes}）の主因の一つである．
+
+\textbf{CCD との役割分担：}
+CCD は\textbf{滑らかな場}の高精度微分評価（曲率 $\kappa$，速度勾配 $\nabla\bm{u}$，
+圧力勾配 $\nabla p$）に最適化されており，急峻な勾配を持つ $\psi$ の\textbf{移流}には
+設計上適合しない（中心差分ベースの振動問題）．
+一方，散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）は CCD 微分場の
+高周波ノイズを除去するが，$\psi$ の非線形移流そのものを安定化するには至らない．
+
+したがって，CLS 移流には\textbf{不連続・急峻勾配に対応した非線形スキーム}が別途必要である．
+
+\subsubsection{WENO5 の採用}
+
+本稿では，CLS 移流に 5 次精度の Weighted ENO（WENO5）スキーム \cite{JiangShu1996} を採用する．
+WENO5 は\textbf{滑らかさ指標（smoothness indicator）$\beta_k$} に基づく非線形重みを用い，
+\begin{itemize}
+  \item \textbf{滑らかな領域：} 3 つの候補ステンシルを最適に凸結合し $O(h^5)$ 精度を達成
+  \item \textbf{不連続・急峻勾配付近：} 不連続を含む候補ステンシルの重みが自動的にゼロとなり
+        振動を抑制（ENO 的挙動）
+\end{itemize}
+する自己適応型スキームである．
+
+\textbf{保存形との整合性：}
+式~\eqref{eq:cls_advection_ref} は保存形（発散形）で記述されており，
+WENO5 もフラックス形式（$\hat{F}_{i+1/2}$）で実装されるため，
+離散的な質量保存が自動的に成立する（CLS 法の主要な利点，§\ref{sec:why_cls}）．
+
+\medskip
+WENO5 の完全な定式化（Lax--Friedrichs フラックス分割，
+滑らかさ指標 $\beta_k$，再構成係数，境界ゴーストセル処理）は
+付録~\ref{app:weno5} に収録する．
+本文では概念的な役割と CCD/散逸フィルタとの関係のみを示す．
+
+\begin{tcolorbox}[resultbox, title={本稿の空間離散化スキームの役割分担}]
+\label{box:scheme_roles}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llll}
+\hline
+対象 & スキーム & 精度 & 根拠 \\
+\hline
+CLS 移流（$\psi$） & WENO5（付録~\ref{app:weno5}） & $O(h^5)$ & 非線形安定化・保存形 \\
+曲率・速度微分 & CCD（§\ref{sec:CCD}） & $O(h^6)$ & 高精度・コンパクト \\
+高周波ノイズ除去 & 散逸的 CCD（§\ref{sec:dissipative_ccd}） & — & CCD と同一 3 点ステンシル \\
+圧力 Poisson & CCD-Poisson（§\ref{sec:pressure}） & $O(h^6)$ & Balanced-Force 整合性 \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
 \subsection{時間積分スキーム}
 \label{sec:time_int}
 
