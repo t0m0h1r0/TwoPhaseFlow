@@ -37,7 +37,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 from ..interfaces.levelset import IReinitializer
-from .advection import _weno5_pos, _weno5_neg, _pad_zero
+from .advection import _weno5_pos, _weno5_neg, _pad_bc
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -54,15 +54,18 @@ class Reinitializer(IReinitializer):
     ccd           : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
     eps           : interface thickness ε
     n_steps       : number of pseudo-time steps per call (each is a full TVD-RK3 step)
+    bc            : Ghost-cell BC for WENO5 compression stencils (§4 sec:weno5_boundary).
+                    'periodic' | 'neumann' | 'outflow' | 'zero' (default, backward-compat)
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float, n_steps: int = 4):
+                 eps: float, n_steps: int = 4, bc: str = 'zero'):
         self.xp = backend.xp
         self.grid = grid
         self.ccd = ccd
         self.eps = eps
         self.n_steps = n_steps
+        self._bc = bc  # WENO5 圧縮項のゴーストセルBCタイプ
         # Cell spacing per axis (for WENO5 divergence)
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
@@ -179,8 +182,9 @@ class Reinitializer(IReinitializer):
         xp = self.xp
         n = psi.shape[axis]
 
-        psi_p = _pad_zero(xp, psi, axis, 3)
-        F_p   = _pad_zero(xp, F,   axis, 3)
+        # §4 sec:weno5_boundary に従ったゴーストセル補充
+        psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
+        F_p   = _pad_bc(xp, F,   axis, 3, self._bc)
 
         def sl(start, stop):
             s = [slice(None)] * psi.ndim

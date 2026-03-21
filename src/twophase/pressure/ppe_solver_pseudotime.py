@@ -200,7 +200,11 @@ class PPESolverPseudoTime(IPPESolver):
 
         rhs_dev = xp.asarray(self.backend.to_host(rhs))
         residual = Lp - rhs_dev
-        return float(np.sqrt(np.sum(np.asarray(self.backend.to_host(residual)) ** 2)))
+        # ピン点（node 0）は PDE ではなくゲージ拘束条件で置き換えられているため、
+        # 物理 PDE 残差の計算から除外する。
+        residual_arr = np.asarray(self.backend.to_host(residual))
+        residual_arr.ravel()[0] = 0.0
+        return float(np.sqrt(np.sum(residual_arr ** 2)))
 
     # ── プライベートヘルパー ──────────────────────────────────────────────
 

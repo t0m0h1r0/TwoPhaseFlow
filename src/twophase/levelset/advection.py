@@ -1,7 +1,7 @@
 """
 Conservative Level Set advection.
 
-Implements §3.3 (Eq. 16) and §8 of the paper.
+Implements §3.3 (Eq. 16) and §4 of the paper.
 
 The CLS conservation equation is:
 
@@ -11,19 +11,25 @@ which, using ∇·u = 0, becomes the non-conservative convection form:
 
     ∂ψ/∂t + u·∇ψ = 0
 
-Time integration uses the TVD-RK3 scheme (§8, Eq. 79–81).
-Spatial fluxes use the WENO5 scheme (§8.2) with global Lax-Friedrichs
+Time integration uses the TVD-RK3 scheme (§4 eq:tvd_rk3).
+Spatial fluxes use the WENO5 scheme (§4 sec:weno5) with global Lax-Friedrichs
 splitting to handle the near-discontinuous ψ profile without Gibbs
 oscillations.
 
-WENO5 smoothness indicators and weights follow (§8.2 Eq. 82):
+WENO5 smoothness indicators and weights follow (§4 eq:weno5_beta):
     β₀ = (13/12)(fᵢ₋₂ − 2fᵢ₋₁ + fᵢ)²   + (1/4)(fᵢ₋₂ − 4fᵢ₋₁ + 3fᵢ)²
     β₁ = (13/12)(fᵢ₋₁ − 2fᵢ   + fᵢ₊₁)²  + (1/4)(fᵢ₋₁ − fᵢ₊₁)²
     β₂ = (13/12)(fᵢ   − 2fᵢ₊₁ + fᵢ₊₂)²  + (1/4)(3fᵢ − 4fᵢ₊₁ + fᵢ₊₂)²
 
-Lax-Friedrichs flux splitting (§8.2 Eq. 73):
+Lax-Friedrichs flux splitting (§4 eq:lf_split):
     F⁺ = (1/2)(F + α q),  F⁻ = (1/2)(F − α q)
-    α = max|u|  (global Lax-Friedrichs)
+    α = max|u|  (global Lax-Friedrichs, §4 eq:alpha_glf)
+
+Boundary ghost cells (§4 sec:weno5_boundary):
+    bc='periodic' — wrap indices (zero contamination, O(h⁵) preserved)
+    bc='neumann'  — symmetric reflection (wall ∂ψ/∂n = 0)
+    bc='outflow'  — constant extrapolation (O(h) near boundary)
+    bc='zero'     — zero ghost cells (backward-compatible default)
 """
 
 from __future__ import annotations
@@ -50,9 +56,18 @@ class LevelSetAdvection(ILevelSetAdvection):
     grid    : Grid — constructor-injected; eliminates temporal coupling from set_grid()
     """
 
-    def __init__(self, backend: "Backend", grid: "Grid"):
+    def __init__(self, backend: "Backend", grid: "Grid", bc: str = 'zero'):
+        """
+        Parameters
+        ----------
+        backend : Backend
+        grid    : Grid — constructor-injected
+        bc      : Ghost-cell boundary condition for WENO5 stencils (§4 sec:weno5_boundary).
+                  'periodic' | 'neumann' | 'outflow' | 'zero' (default, backward-compat)
+        """
         self.xp = backend.xp
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+        self._bc = bc  # BCタイプを保持（_weno5_divergenceで使用）
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -122,8 +137,9 @@ class LevelSetAdvection(ILevelSetAdvection):
 
         # Pad with 3 ghost cells (using zero-padding for wall BC; does not
         # affect interior nodes for smooth flows)
-        psi_p = _pad_zero(xp, psi, axis, 3)
-        F_p   = _pad_zero(xp, F, axis, 3)
+        # §4 sec:weno5_boundary に従ったゴーストセル補充
+        psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
+        F_p   = _pad_bc(xp, F,   axis, 3, self._bc)
 
         # Number of internal faces: n-1 (between node 0..n-2)
         # After padding, node i maps to padded index 3+i
@@ -192,7 +208,6 @@ class LevelSetAdvection(ILevelSetAdvection):
         flux_face = Fp_face + Fm_face   # shape: n-1 along axis
 
         # Divergence: (F_{i+1/2} − F_{i-1/2}) / h at interior nodes i=1..n-2
-        # For boundary nodes, use zero boundary flux (wall BC)
         sl_hi = [slice(None)] * psi.ndim
         sl_lo = [slice(None)] * psi.ndim
         sl_hi[axis] = slice(1, None)   # faces 1..n-2
@@ -201,11 +216,24 @@ class LevelSetAdvection(ILevelSetAdvection):
         div_interior = (flux_face[tuple(sl_hi)] - flux_face[tuple(sl_lo)]) / h
         # div_interior has shape n-2 along axis (interior nodes i=1..n-2)
 
-        # Pad to full size: boundary nodes get 0 divergence (wall BC)
-        shape_pad = list(psi.shape)
-        shape_pad[axis] = 1
-        pad = xp.zeros(shape_pad)
-        div_full = xp.concatenate([pad, div_interior, pad], axis=axis)
+        if self._bc == 'periodic':
+            # For periodic BC on a node-centered grid, nodes 0 and n-1 are
+            # the same physical point.  The wrap-around divergence is:
+            #   div[0] = (flux_face[0] − flux_face[-1]) / h
+            # where flux_face[-1] is the face between node n-2 and node 0.
+            # Both boundary nodes share this value; div[n-1] = div[0].
+            sl_f0 = [slice(None)] * psi.ndim
+            sl_fN = [slice(None)] * psi.ndim
+            sl_f0[axis] = slice(0, 1)     # first face
+            sl_fN[axis] = slice(-1, None) # last face (wrap-around)
+            div_wrap = (flux_face[tuple(sl_f0)] - flux_face[tuple(sl_fN)]) / h
+            div_full = xp.concatenate([div_wrap, div_interior, div_wrap], axis=axis)
+        else:
+            # Non-periodic BCs: boundary nodes get zero divergence (wall / zero / outflow)
+            shape_pad = list(psi.shape)
+            shape_pad[axis] = 1
+            pad = xp.zeros(shape_pad)
+            div_full = xp.concatenate([pad, div_interior, pad], axis=axis)
 
         return div_full
 
@@ -249,9 +277,59 @@ def _weno5_neg(xp, q0, q1, q2, q3, q4):
     return w0*r0 + w1*r1 + w2*r2
 
 
+def _pad_bc(xp, arr, axis: int, n_ghost: int, bc_type: str):
+    """Pad ``arr`` along ``axis`` with ``n_ghost`` ghost cells.
+
+    Implements the ghost-cell strategies from §4 sec:weno5_boundary.
+
+    Parameters
+    ----------
+    xp        : array namespace (numpy or cupy)
+    arr       : array to pad
+    axis      : axis along which to pad
+    n_ghost   : number of ghost cells on each side (3 for WENO5)
+    bc_type   : 'periodic' | 'neumann' | 'outflow' | 'zero'
+
+    Returns
+    -------
+    padded array with shape arr.shape[axis] + 2*n_ghost along ``axis``
+    """
+    n = arr.shape[axis]
+
+    def _sl(start, stop=None):
+        # 指定軸のスライスを生成するヘルパー
+        s = [slice(None)] * arr.ndim
+        s[axis] = slice(start, stop)
+        return tuple(s)
+
+    if bc_type == 'periodic':
+        # 周期BC: node-centered グリッドでは node 0 と node n-1 が同一物理点。
+        # ゴーストセルは重複端点を含まない一意なセルを使う（§4 warnbox 精度への影響）。
+        # left  = arr[n-1-n_ghost : n-1]  (arr[Nx-3:Nx])
+        # right = arr[1 : 1+n_ghost]      (arr[1:4])
+        left  = arr[_sl(n - 1 - n_ghost, n - 1)]
+        right = arr[_sl(1, 1 + n_ghost)]
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    elif bc_type == 'neumann':
+        # 対称反射BC: ∂ψ/∂n = 0（偶数次微分を保存する even extension）
+        left  = xp.flip(arr[_sl(0, n_ghost)],        axis=axis)
+        right = xp.flip(arr[_sl(n - n_ghost, n)],    axis=axis)
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    elif bc_type == 'outflow':
+        # 流出BC: 境界値を一定外挿（境界近傍は O(h) に低下, §4 warnbox 精度への影響）
+        left  = xp.repeat(arr[_sl(0, 1)],       n_ghost, axis=axis)
+        right = xp.repeat(arr[_sl(n - 1, n)],   n_ghost, axis=axis)
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    else:  # 'zero' — ゼロゴースト（後方互換デフォルト）
+        shape_pad = list(arr.shape)
+        shape_pad[axis] = n_ghost
+        pad = xp.zeros(shape_pad, dtype=arr.dtype)
+        return xp.concatenate([pad, arr, pad], axis=axis)
+
+
 def _pad_zero(xp, arr, axis: int, n_ghost: int):
-    """Pad array along ``axis`` with n_ghost zero cells on each side."""
-    shape_pad = list(arr.shape)
-    shape_pad[axis] = n_ghost
-    pad = xp.zeros(shape_pad)
-    return xp.concatenate([pad, arr, pad], axis=axis)
+    """Backward-compatible alias for ``_pad_bc(..., bc_type='zero')``."""
+    return _pad_bc(xp, arr, axis, n_ghost, 'zero')
