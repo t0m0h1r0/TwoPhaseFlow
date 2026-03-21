@@ -78,16 +78,16 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ## 3. LaTeX Build
 
-- `[x]` `pdflatex` clean — 0 errors, 0 undefined references (last confirmed: sweep 29, 2026-03-21)
-- `[x]` Page count stable: **116 pages**
-- `[!]` Re-build needed — `appendix_ccd_impl.tex` had structural additions (app:ccd_kronecker, app:ccd_lu_direct rewrite) in 2026-03-21 session; run `pdflatex` to confirm no new undefined references
+- `[x]` `xelatex` (latexmk) clean — 0 errors, 0 undefined references (confirmed 2026-03-21 after appendix additions)
+- `[x]` Page count: **119 pages** (+3 from app:ccd_kronecker + app:ccd_lu_direct additions)
+- `[x]` CRITIC pass 19 (2026-03-21) — app:ccd_kronecker, app:ccd_lu_direct, 08b forward ref: all 16 criteria SAFE
 
 ---
 
 ## 4. Code Test Suite
 
 - `[x]` `pytest src/twophase/tests/` — **31 tests passing** (as of 2026-03-21)
-- `[ ]` Benchmark at N=128 (higher-resolution confirmation)
+- `[!]` Benchmark at N=128 — stationary_droplet NaN for all N; PPE fails at 1000:1 density ratio (see §5 action item)
 - `[ ]` GPU backend (CuPy) compatibility check
 - `[ ]` 3D cases
 - `[ ]` VTK output writer (`io/`)
@@ -101,11 +101,11 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 - `[x]` Boundary Eq-II discrepancy RESOLVED (2026-03-21)
 - `[x]` Formal MATH_VERIFY for §§1–4 — SAFE (2026-03-21)
 - `[x]` Formal MATH_VERIFY for Rhie-Chow, WENO5, TVD-RK3, Capillary CFL, CSF curvature — all VERIFIED (2026-03-21)
-- `[ ]` Next CRITIC pass (pass 19) if major new content is added
+- `[x]` CRITIC pass 19 (2026-03-21) — new appendix sections all SAFE
 
 ### Code
 
-- `[ ]` N=128 benchmark runs and comparison to reference values
+- `[!]` N=128 benchmark — BLOCKED: stationary_droplet NaN (PPE diverges for ρ ratio 1000:1); await user direction (A/B/C)
 - `[ ]` GPU (CuPy) backend verification
 - `[ ]` 3D implementation
 - `[ ]` VTK output writer
