@@ -125,9 +125,28 @@ SimulationConfig
 ## **6. Numerical Algorithm Reference**
 
 ### CCD Coefficients
+
+Interior coefficients (uniform grid):
 `α₁=7/16, a₁=15/16, b₁=1/16, β₂=−1/8, a₂=3, b₂=−9/8`
 
-Block structure (2×2 per node): `A_L` (left coupling), `B` (diagonal), `A_R` (right coupling).
+Truncation errors:
+`TE_I = −(1/7!)h⁶f^(7) = −1/5040·h⁶f^(7)`,  `TE_II = −(2/8!)h⁶f^(8) = −1/20160·h⁶f^(8)`
+
+Block matrices (2×2 per node):
+```
+A_L = [[ α₁,   +b₁h ],     A_R = [[ α₁,   −b₁h ],
+        [+b₂/h,  β₂ ]]              [−b₂/h,  β₂ ]]
+```
+Numeric: `A_L(2,1) = b₂/h = −9/(8h) < 0`,  `A_R(2,1) = −b₂/h = +9/(8h) > 0`
+
+Left boundary Eq-I (O(h⁵)):
+`f'₀ + (3/2)f'₁ − (3h/2)f''₁ = (1/h)(−23/6·f₀ + 21/4·f₁ − 3/2·f₂ + 1/12·f₃)`
+Recovery matrix: `M_left = [[−3/2, 3h/2], [5/(2h), −17/2]]`
+
+Left boundary Eq-II (paper, O(h²)):
+`f''₀ = (2f₀ − 5f₁ + 4f₂ − f₃) / h²`
+
+Block structure roles: `A_L` (left coupling), `B` (diagonal), `A_R` (right coupling).
 Last interior row (i=N-2) uses `C_{N-1}` instead of `A_R` — modified by right boundary scheme.
 
 **CCD Boundary Accuracy (Eq-II-bc limitation):**
