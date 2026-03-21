@@ -1,244 +1,80 @@
 % paper/sections/04_time_integration.tex
-\section{時間積分・移流スキームの高精度化}
+%
+% §4  CLS 移流の離散化概要
+%     WENO5 の完全な定式化は付録~\ref{app:weno5} に移動した．
+%     本章では移流スキーム選択の動機と TVD-RK3 の接続のみを扱う．
+%
+\section{CLS 移流の離散化概要}
 \label{sec:time}
 
-本章では，第\ref{sec:levelset}章（CLS 法）で「WENO5 スキームで解く」「TVD-RK3 で時間積分する」と
-記述した数値手法，および第\ref{sec:collocate}章・第\ref{sec:pressure}章（Projection 法）で前提とした
-時間離散化を\textbf{正式に導出・定義する}．
+本章では，第~\ref{sec:levelset}章で導入した CLS 移流方程式
+\begin{equation}
+  \frac{\partial\psi}{\partial t} + \nabla\cdot(\psi\bm{u}) = 0
+  \label{eq:cls_advection_ref}
+\end{equation}
+（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための\textbf{空間離散化スキームの選択根拠}を示す．
+CCD による微分計算（第~\ref{sec:CCD}章）および
+散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）の設計を踏まえ，
+本章はそれらと CLS 移流がどのように役割分担するかを説明する．
 
-\medskip
-\textbf{本章の構成：}
-\begin{itemize}
-  \item §\ref{sec:weno5}：WENO5 スキーム
-        ——CLS 移流方程式（式~\eqref{eq:cls_advection}）および再初期化の圧縮項に使用．
-        Lax--Friedrichs フラックス分割，滑らかさ指標 $\beta_k$，再構成係数を導出する．
-  \item §\ref{sec:time_int}：TVD-RK3（CLS 移流・再初期化のみ適用）
-        および Crank--Nicolson（NS 粘性項の半陰的処理）
-  \item §\ref{app:godunov_ls}：Godunov 型上流化——標準 Level Set 再初期化の参照実装
-  \item §\ref{sec:stability}：安定性制約——対流 CFL 条件と毛管波制約の導出
-\end{itemize}
-
-\medskip
-\textbf{重要な注意（§\ref{sec:time_int} で詳説）：}\\
-TVD-RK3 は CLS 移流にのみ用い，NS 方程式の時間積分には\textbf{使用しない}．
-NS 対流項には\textbf{2段 Adams-Bashforth 法（AB2，2次精度）}を採用し，
-van Kan（1986）の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせることで，
-全体の時間精度を $\mathcal{O}(\Delta t^2)$ に引き上げる（§\ref{sec:time_int} 参照）．
-
-\subsection{WENO5 による移流：なぜ必要か}
-\label{sec:weno5}
-
-第\ref{sec:levelset}章では CLS 移流方程式 $\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$ を
-「WENO5 スキームで解く」と述べた．
-本章ではその WENO5 スキームを正式に導出し，なぜ線形高次精度スキームでなく
-これが必要かを数学的に示す．
-
-対流項および CLS の移流項には，5次精度の Weighted ENO (WENO5) スキーム \cite{JiangShu1996} を採用する．
+\subsection{スキーム選択の動機：なぜ WENO5 が必要か}
+\label{sec:advection_motivation}
 
 \subsubsection{気液界面移流の困難}
 
-気液界面の移流は，数値スキームの設計において特殊な問題を提起する．
-$\psi$ は界面付近で 0 から 1 へと急激に変化するが，この勾配の強さは
-物理的実体（物性の不連続）を反映したものであって，数値拡散で
-「なだらかにして良い」ものではない．
+$\psi$ は界面付近で $0$ から $1$ へと急激に変化するが，この勾配の強さは
+物理的実体（物性の不連続）を反映したものであって，数値拡散でなだらかにして良いものではない．
 
-通常の線形スキーム（例：4次中心差分）は高精度だが，
+\textbf{線形スキームの限界：}
+通常の線形スキーム（例：CCD 直接適用）は高精度だが，
 $\psi$ のような急峻なプロファイルを移流すると
-\textbf{Gibbs 振動}（負の $\psi$ や $\psi > 1$ の非物理的な値）が発生する．
-これが界面の「にじみ」（第\ref{sec:intro}章・失敗例4）の主な原因の一つである．
+\textbf{Gibbs 振動}（$\psi < 0$ や $\psi > 1$ の非物理的値）が発生する．
+これが界面の「にじみ」（第~\ref{sec:intro}章~§\ref{sec:failure_modes}）の主因の一つである．
 
-\subsubsection{Lax--Friedrichs フラックス分割：実装の核心}
-\label{sec:lf_splitting}
+\textbf{CCD との役割分担：}
+CCD は\textbf{滑らかな場}の高精度微分評価（曲率 $\kappa$，速度勾配 $\nabla\bm{u}$，
+圧力勾配 $\nabla p$）に最適化されており，急峻な勾配を持つ $\psi$ の\textbf{移流}には
+設計上適合しない（中心差分ベースの振動問題）．
+一方，散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）は CCD 微分場の
+高周波ノイズを除去するが，$\psi$ の非線形移流そのものを安定化するには至らない．
 
-WENO5 を CLS の移流方程式
-$\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$
-（保存形）に適用するには，まず移流フラックスを
-\textbf{上流方向に分割}する必要がある．
-本稿では数値安定性と実装の簡潔さのバランスに優れた
-\textbf{大域 Lax--Friedrichs（GLF）分割}を採用する
-（局所 LF = Rusanov フラックスとの比較：局所 LF は $\alpha_i = |u_i|$ として数値拡散を格子点ごとに最小化するが，
-実装コストが増し界面近傍での同時フラックス評価の一貫性が必要となる；
-本稿の CLS 移流では GLF の一様な $\alpha$ が界面の sharp 保持に十分であることを経験的に確認している）：
+したがって，CLS 移流には\textbf{不連続・急峻勾配に対応した非線形スキーム}が別途必要である．
 
-Lax--Friedrichs フラックス分割（$x$ 方向）：
+\subsubsection{WENO5 の採用}
 
-$x$ 方向のフラックス $F(q) = u \cdot q$（$q = \psi$）を正負に分割する：
-\begin{equation}
-  F^+(q) = \frac{1}{2}(F + \alpha\, q), \qquad
-  F^-(q) = \frac{1}{2}(F - \alpha\, q)
-  \label{eq:lf_split}
-\end{equation}
-ここで $\alpha$ は波速の上界（数値粘性係数）：
-\begin{equation}
-  \alpha = \max_{i,j}\,|u_{i,j}^n|
-  \quad (\text{大域 LF；時刻 $t^n$ でのグリッド全体の最大速度})
-  \label{eq:alpha_glf}
-\end{equation}
-\textbf{正側フラックス $F^+$ は左側ステンシル（$i-2, \dots, i$）で WENO5 再構成，
-負側フラックス $F^-$ は右側ステンシル（$i+1, \dots, i+3$）で WENO5 再構成}し，
-セル界面 $i+1/2$ でのフラックスを：
-\begin{equation}
-  \hat{F}_{i+1/2} = \hat{F}^+_{i+1/2}(F^+_{i-2},\ldots,F^+_i)
-                  + \hat{F}^-_{i+1/2}(F^-_{i+1},\ldots,F^-_{i+3})
-  \label{eq:weno5_face_flux}
-\end{equation}
-で得る．$y$ 方向も同様（$v_{i,j}$ を用いて $G^{\pm}$ を構成）．
-
-\begin{tcolorbox}[warnbox, title={大域 LF vs 局所 LF}]
+本稿では，CLS 移流に 5 次精度の Weighted ENO（WENO5）スキーム \cite{JiangShu1996} を採用する．
+WENO5 は\textbf{滑らかさ指標（smoothness indicator）$\beta_k$} に基づく非線形重みを用い，
 \begin{itemize}
-  \item \textbf{大域 LF（本稿採用）：} $\alpha = \max_{\mathrm{all}}\,|u|$．
-    実装が単純で，$F^{\pm}$ のリコンパイルなしに全格子点で同一の $\alpha$ を使える．
-    ただし，低速領域で過剰な数値粘性が加わる可能性がある．
-  \item \textbf{局所 LF（Roe 的）：} $\alpha_i = \max(|u_i|, |u_{i+1}|)$ などセル局所値を使用．
-    数値粘性が適応的で精度が高いが，実装の手間が増す．
+  \item \textbf{滑らかな領域：} 3 つの候補ステンシルを最適に凸結合し $O(h^5)$ 精度を達成
+  \item \textbf{不連続・急峻勾配付近：} 不連続を含む候補ステンシルの重みが自動的にゼロとなり
+        振動を抑制（ENO 的挙動）
 \end{itemize}
-気液二相流では密度比が大きいため，界面近傍で波速が大きく変動する．
-大域 LF は界面付近の過剰粘性は大きいが，安定性の観点から推奨される．
-\end{tcolorbox}
+する自己適応型スキームである．
 
-\subsubsection{ENO・WENO の基本思想}
+\textbf{保存形との整合性：}
+式~\eqref{eq:cls_advection_ref} は保存形（発散形）で記述されており，
+WENO5 もフラックス形式（$\hat{F}_{i+1/2}$）で実装されるため，
+離散的な質量保存が自動的に成立する（CLS 法の主要な利点，§\ref{sec:why_cls}）．
 
-\textbf{ENO（Essentially Non-Oscillatory）法}の思想は，「局所的な滑らかさを検出し，
-不連続（または急峻な勾配）を含まない滑らかな候補ステンシルを選んで使う」ことである．
+\medskip
+WENO5 の完全な定式化（Lax--Friedrichs フラックス分割，
+滑らかさ指標 $\beta_k$，再構成係数，境界ゴーストセル処理）は
+付録~\ref{app:weno5} に収録する．
+本文では概念的な役割と CCD/散逸フィルタとの関係のみを示す．
 
-WENO 法はこれを改良し，複数のステンシルを\textbf{滑らかさ指標（smoothness indicator）
-に基づく重みで凸結合}する：
-\begin{equation}
-  \hat{f}^{\text{WENO}} = \sum_{k=0}^{r-1} \omega_k \, \hat{f}_k
-  \label{eq:weno_convex}
-\end{equation}
-ここで $\hat{f}_k$ は $k$ 番目の候補ステンシルからの数値フラックス，
-$\omega_k$ は滑らかさ指標 $\beta_k$ から導出される重みで，
-$\sum_k \omega_k = 1$，$\omega_k \ge 0$（凸結合）を満たす．
-
-\textbf{WENO5 の場合（5次精度，3つのステンシル）：}
-\begin{itemize}
-  \item 3つの3点ステンシル（それぞれ3次精度）を凸結合し，滑らかな領域では5次精度を達成
-  \item 不連続付近では，その不連続を含むステンシルの重みが自動的にゼロに近づき，
-        滑らかなステンシルのみが使われる（振動抑制）
-\end{itemize}
-
-WENO5 の滑らかさ指標（1次元 $x$ 方向，上流フラックス）は以下の通りである．格子点 $i$ における3つの候補ステンシルの滑らかさ指標 $\beta_k$ は：
-\begin{align}
-  \beta_0 &= \frac{13}{12}(f_{i-2}-2f_{i-1}+f_i)^2 + \frac{1}{4}(f_{i-2}-4f_{i-1}+3f_i)^2 \notag\\
-  \beta_1 &= \frac{13}{12}(f_{i-1}-2f_i+f_{i+1})^2 + \frac{1}{4}(f_{i-1}-f_{i+1})^2 \notag\\
-  \beta_2 &= \frac{13}{12}(f_i-2f_{i+1}+f_{i+2})^2 + \frac{1}{4}(3f_i-4f_{i+1}+f_{i+2})^2
-  \label{eq:weno5_beta}
-\end{align}
-$\beta_k$ が小さいほど，そのステンシルの範囲が滑らか（$\Rightarrow$ 高い重み $\omega_k$）．
-不連続を含むステンシルでは $\beta_k$ が大きくなり，重みがほぼゼロになる．
-
-\textbf{ステップ1：理想重み（5次精度凸結合の係数）：}
-\[
-  d_0 = \tfrac{1}{10},\quad d_1 = \tfrac{3}{5},\quad d_2 = \tfrac{3}{10}
-\]
-
-\textbf{ステップ2：$\alpha$ 重みを計算（$\beta_k$ を逆2乗でスケール）：}
-\[
-  \alpha_k = \frac{d_k}{(\varepsilon + \beta_k)^2}, \qquad k = 0,1,2
-\]
-ここで $\varepsilon = 10^{-6}$ は\textbf{ゼロ除算回避のための微小定数}である
-（$\beta_k = 0$ となる完全に平坦な領域で分母がゼロになるのを防ぐ）．
-
-\textbf{ステップ3：正規化して非線形重みを得る：}
-\[
-  \omega_k = \frac{\alpha_k}{\displaystyle\sum_{j=0}^{2}\alpha_j}, \qquad \sum_{k=0}^{2}\omega_k = 1
-\]
-
-\textbf{動作原理：}
-\begin{itemize}
-  \item \textbf{滑らかな領域}：$\beta_k \approx 0$ なので $\alpha_k \approx d_k/\varepsilon^2$，
-        よって $\omega_k \approx d_k$（理想重みに収束，5次精度を達成）
-  \item \textbf{不連続付近}：不連続を含むステンシルでは $\beta_k \gg 1$ となり $\alpha_k \approx 0$，
-        そのステンシルの寄与が自動的に除外される（振動抑制）
-\end{itemize}
-
-\noindent\textbf{WENO5 の性質まとめ：}
-\begin{itemize}
-  \item 滑らかな領域：5次精度（$O(h^5)$）の空間精度
-  \item 不連続・急峻な勾配付近：重みにより振動を自動的に抑制（ENO 的挙動）
-  \item 保存形：フラックス形式で書けるため，離散的質量保存が成立
-  \item 移流方向の上流化：情報伝播方向を考慮した上流側ステンシルを優先
-\end{itemize}
-
-\subsubsection{WENO5 再構成係数（実装に必須の係数表）}
-
-フラックス分割後，各候補ステンシルからの数値フラックス $\hat{f}^\pm_k$ を計算するための
-\textbf{再構成多項式の係数}を以下に示す．これがなければ WENO5 は実装できない．
-
-正側フラックス $\hat{F}^+$ の3候補ステンシル再構成係数を以下に示す．Lax-Friedrichs 分割で得た正側フラックス値 $F^+_i$ を用いて，セル界面 $i+1/2$ での再構成値 $\hat{f}^+_k$ を以下の3つのステンシルで計算する：
-
-\begin{align}
-  \hat{f}^+_0 &= \frac{1}{3}F^+_{i-2} - \frac{7}{6}F^+_{i-1} + \frac{11}{6}F^+_i
-  \label{eq:weno5_rec0} \\[4pt]
-  \hat{f}^+_1 &= -\frac{1}{6}F^+_{i-1} + \frac{5}{6}F^+_i + \frac{1}{3}F^+_{i+1}
-  \label{eq:weno5_rec1} \\[4pt]
-  \hat{f}^+_2 &= \frac{1}{3}F^+_i + \frac{5}{6}F^+_{i+1} - \frac{1}{6}F^+_{i+2}
-  \label{eq:weno5_rec2}
-\end{align}
-
-\textbf{最終フラックス（非線形重み付き凸結合）：}
-\[
-  \hat{F}^+_{i+1/2} = \omega_0\,\hat{f}^+_0 + \omega_1\,\hat{f}^+_1 + \omega_2\,\hat{f}^+_2
-\]
-$\omega_k$ は式 \eqref{eq:weno5_beta} の $\beta_k$ から計算した非線形重みである．
-
-負側フラックス $\hat{F}^-$ の再構成係数・滑らかさ指標 $\beta_k^-$ はいずれも
-\textbf{正側のミラー像}（インデックスを逆転）として得られる：
-正側式 \eqref{eq:weno5_beta} および式 \eqref{eq:weno5_rec0}--\eqref{eq:weno5_rec2} の
-各添字 $i+j$（$j$ は整数オフセット）を $i+(1-j)$（$i+\tfrac{1}{2}$ を対称軸とした折り返し）で
-置き換えると $\hat{f}_k^-$ および $\beta_k^-$ が得られる
-（右向き↔左向き上流化の鏡映対称性；例：$j=-2\to3,\;j=0\to1,\;j=2\to-1$）．
-
-$\beta_k^-$ を用いて正側と同様の非線形重み $\omega_k^-$ を計算し：
-\[
-  \hat{F}^-_{i+1/2} = \omega_0^-\,\hat{f}^-_0 + \omega_1^-\,\hat{f}^-_1 + \omega_2^-\,\hat{f}^-_2
-\]
-\textbf{全体フラックス：} $\hat{F}_{i+1/2} = \hat{F}^+_{i+1/2} + \hat{F}^-_{i+1/2}$
-
-\noindent 各ステンシル $k$ の係数は，3点 Lagrange 補間で「セル平均値 $\Rightarrow$ セル界面値」を再構成する多項式の係数である（Jiang \& Shu 1996, Table 2.1 参照）．
-理想重み $d_0 = 1/10, d_1 = 3/5, d_2 = 3/10$ と組み合わせて使うと，
-$\hat{F}^+ = \sum_k d_k \hat{f}^+_k$ は $F^+$ についての5次精度補間値になる（滑らか領域）．
-
-\subsubsection{WENO5 の境界処理：領域端でのステンシル不足への対応}
-\label{sec:weno5_boundary}
-
-WENO5 は格子点 $i$ に対して正側フラックスに $\{F^+_{i-2},\ldots,F^+_i\}$，
-負側フラックスに $\{F^-_{i+1},\ldots,F^-_{i+3}\}$ の計6点を必要とする．
-領域端（$i=0,1$ および $i=N-2,N-1$）ではこのステンシルが計算領域外に飛び出るため，
-境界外の仮想点（ゴーストセル）または低次切り替えによる対処が必要である．
-
-\begin{tcolorbox}[algbox, title={ゴーストセルによる境界ステンシル処理（本稿採用方針）}]
-格子の両端に2点のゴーストセルを付加し，物理境界条件に応じた値を補充する：
-
+\begin{tcolorbox}[resultbox, title={本稿の空間離散化スキームの役割分担}]
+\label{box:scheme_roles}
 \begin{center}
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{lll}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llll}
 \hline
-境界条件 & 左端ゴースト（$i=-1,-2$） & 右端ゴースト（$i=N,N+1$） \\
+対象 & スキーム & 精度 & 根拠 \\
 \hline
-\textbf{周期 BC} & $f_{-k} = f_{N-k}$ & $f_{N+k} = f_k$（$k=1,2$） \\
-\textbf{壁面 Neumann} & $f_{-k} = f_{k}$（対称反射） & $f_{N+k} = f_{N-k}$ \\
-\textbf{流出 Outflow} & $f_{-k} = f_0$（一定外挿） & $f_{N+k} = f_{N-1}$ \\
+CLS 移流（$\psi$） & WENO5（付録~\ref{app:weno5}） & $O(h^5)$ & 非線形安定化・保存形 \\
+曲率・速度微分 & CCD（§\ref{sec:CCD}） & $O(h^6)$ & 高精度・コンパクト \\
+高周波ノイズ除去 & 散逸的 CCD（§\ref{sec:dissipative_ccd}） & — & CCD と同一 3 点ステンシル \\
+圧力 Poisson & CCD-Poisson（§\ref{sec:pressure}） & $O(h^6)$ & Balanced-Force 整合性 \\
 \hline
 \end{tabular}
 \end{center}
-
-格子配列を $N+4$ サイズ（両端2点のゴースト付き）で確保し，
-各時間ステップの WENO5 評価前にゴーストセルを更新する．
 \end{tcolorbox}
-
-\begin{tcolorbox}[warnbox, title={境界ゴーストセルの精度への影響}]
-ゴーストセルに用いる外挿精度が WENO5 の全体精度に影響する．
-
-\begin{itemize}
-  \item \textbf{周期 BC}：周期インデックスによる折り返しは誤差ゼロであり，全体精度 $O(h^5)$ が保たれる．
-  \item \textbf{壁面 Neumann BC}（対称反射）：$f_{-k} = f_k$ は偶数次微分を保存するため
-        $\partial f/\partial x = 0$ の境界条件に一致する．壁面近傍では
-        WENO5 の $O(h^5)$ が $O(h^3)$〜$O(h^4)$ 程度に若干低下する可能性があるが，
-        通常の計算では許容範囲内である．
-  \item \textbf{流出 BC}（一定外挿）：1次精度の外挿であり，境界近傍での局所精度は $O(h)$ に低下する．
-        高解像度計算では高次外挿（3次以上）を推奨する．
-\end{itemize}
-\end{tcolorbox}
-

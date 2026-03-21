@@ -107,7 +107,7 @@ Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhi
 \label{app:godunov_ls}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本付録は §\ref{sec:weno5} で用いる CLS 法の WENO5 スキームとは別に，
+本節は付録~\ref{app:weno5} で詳述した CLS 法の WENO5 スキームとは別に，
 \textbf{標準レベルセット（符号付き距離関数）}移流に対して使われる Godunov 型 upwinding スキームを説明する．
 本稿の主実装（CLS + WENO5）では使用しないが，実装の選択肢として参考に記す．
 
@@ -133,3 +133,126 @@ $x$ 方向フラックスを Godunov 法で評価する：
 
 CLS 法（本稿主方式）では再初期化が $\psi$ の compact プロファイルを保つよう設計されており，
 Godunov 型スキームと組み合わせるよりも質量保存性に優れる（§\ref{sec:reinit}）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{WENO5 移流スキームの詳細}
+\label{app:weno5}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は，§\ref{sec:levelset}章（CLS 法）および §\ref{sec:time_int} で
+「WENO5 スキームで解く」と参照した WENO5 の完全な定式化を与える．
+本文を参照する際は付録~\ref{app:weno5} を確認されたい．
+
+\subsection{Lax--Friedrichs フラックス分割}
+\label{app:lf_splitting}
+
+WENO5 を CLS 移流方程式
+$\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$（保存形）に適用するには，
+まず移流フラックスを上流方向に分割する必要がある．
+本稿では大域 Lax--Friedrichs（GLF）分割を採用する：
+
+\begin{equation}
+  F^+(q) = \frac{1}{2}(F + \alpha\, q), \qquad
+  F^-(q) = \frac{1}{2}(F - \alpha\, q)
+  \label{eq:lf_split}
+\end{equation}
+ここで $F(q) = u \cdot q$（$q = \psi$），$\alpha = \max_{i,j}|u_{i,j}^n|$ は波速の上界（大域 LF）．
+
+\begin{tcolorbox}[warnbox, title={大域 LF vs 局所 LF}]
+\begin{itemize}
+  \item \textbf{大域 LF（本稿採用）：} $\alpha = \max_{\mathrm{all}}|u|$．実装が単純で安定性が高い．
+        低速領域では過剰な数値粘性が加わる可能性あり．
+  \item \textbf{局所 LF（Roe 的）：} $\alpha_i = \max(|u_i|, |u_{i+1}|)$．
+        数値粘性が適応的で精度が高いが実装の手間が増す．
+\end{itemize}
+気液二相流では密度比が大きく界面近傍で波速が大きく変動するため，
+大域 LF が安定性の観点から推奨される（第~\ref{sec:dissipative_ccd}章の適応フィルタとの組み合わせも有効）．
+\end{tcolorbox}
+
+\subsection{ENO・WENO の基本思想と WENO5 の定式化}
+\label{app:weno5_formulation}
+
+WENO 法は，複数の候補ステンシルを\textbf{滑らかさ指標に基づく重みで凸結合}する：
+\begin{equation}
+  \hat{f}^{\text{WENO}} = \sum_{k=0}^{r-1} \omega_k \, \hat{f}_k
+  \label{eq:weno_convex}
+\end{equation}
+ここで $\hat{f}_k$ は $k$ 番目の候補ステンシルからの数値フラックス，
+$\omega_k \geq 0$，$\sum_k \omega_k = 1$（凸結合）．
+
+\textbf{WENO5 の滑らかさ指標（$\beta_k$）：}
+\begin{align}
+  \beta_0 &= \frac{13}{12}(f_{i-2}-2f_{i-1}+f_i)^2 + \frac{1}{4}(f_{i-2}-4f_{i-1}+3f_i)^2 \notag\\
+  \beta_1 &= \frac{13}{12}(f_{i-1}-2f_i+f_{i+1})^2 + \frac{1}{4}(f_{i-1}-f_{i+1})^2 \notag\\
+  \beta_2 &= \frac{13}{12}(f_i-2f_{i+1}+f_{i+2})^2 + \frac{1}{4}(3f_i-4f_{i+1}+f_{i+2})^2
+  \label{eq:weno5_beta}
+\end{align}
+$\beta_k$ が小さいほどそのステンシルの範囲が滑らか（高い重み $\omega_k$）．
+
+\textbf{非線形重みの計算（3段構成）：}
+
+\noindent\textbf{ステップ 1：理想重み：}
+$d_0 = 1/10$，$d_1 = 3/5$，$d_2 = 3/10$
+
+\noindent\textbf{ステップ 2：$\alpha$ 重みの計算（$\varepsilon_\mathrm{w} = 10^{-6}$ はゼロ除算回避）：}
+\[
+  \alpha_k = \frac{d_k}{(\varepsilon_\mathrm{w} + \beta_k)^2}, \qquad k = 0,1,2
+\]
+
+\noindent\textbf{ステップ 3：正規化：}
+\[
+  \omega_k = \frac{\alpha_k}{\sum_{j=0}^{2}\alpha_j}, \qquad \sum_{k=0}^{2}\omega_k = 1
+\]
+
+\subsection{WENO5 再構成係数}
+\label{app:weno5_coef}
+
+正側フラックス $\hat{F}^+$ の 3 候補ステンシル再構成係数：
+\begin{align}
+  \hat{f}^+_0 &= \frac{1}{3}F^+_{i-2} - \frac{7}{6}F^+_{i-1} + \frac{11}{6}F^+_i
+  \label{eq:weno5_rec0} \\[4pt]
+  \hat{f}^+_1 &= -\frac{1}{6}F^+_{i-1} + \frac{5}{6}F^+_i + \frac{1}{3}F^+_{i+1}
+  \label{eq:weno5_rec1} \\[4pt]
+  \hat{f}^+_2 &= \frac{1}{3}F^+_i + \frac{5}{6}F^+_{i+1} - \frac{1}{6}F^+_{i+2}
+  \label{eq:weno5_rec2}
+\end{align}
+
+最終フラックス：$\hat{F}^+_{i+1/2} = \omega_0\hat{f}^+_0 + \omega_1\hat{f}^+_1 + \omega_2\hat{f}^+_2$
+
+負側フラックス $\hat{F}^-$ の再構成係数・$\beta_k^-$ は正側のミラー像（インデックス反転）で得られる．
+全体フラックス：$\hat{F}_{i+1/2} = \hat{F}^+_{i+1/2} + \hat{F}^-_{i+1/2}$
+
+\subsection{WENO5 の境界処理：ゴーストセル法}
+\label{app:weno5_boundary}
+
+WENO5 は格子点 $i$ に対して正側フラックスに $\{F^+_{i-2},\ldots,F^+_i\}$，
+負側フラックスに $\{F^-_{i+1},\ldots,F^-_{i+3}\}$ の計 6 点を必要とする．
+領域端ではゴーストセルを付加する：
+
+\begin{tcolorbox}[algbox, title={ゴーストセルによる境界ステンシル処理（本稿採用方針）}]
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+境界条件 & 左端ゴースト（$i=-1,-2$） & 右端ゴースト（$i=N,N+1$） \\
+\hline
+\textbf{周期 BC} & $f_{-k} = f_{N-k}$ & $f_{N+k} = f_k$（$k=1,2$） \\
+\textbf{壁面 Neumann} & $f_{-k} = f_{k}$（対称反射） & $f_{N+k} = f_{N-k}$ \\
+\textbf{流出 Outflow} & $f_{-k} = f_0$（一定外挿） & $f_{N+k} = f_{N-1}$ \\
+\hline
+\end{tabular}
+\end{center}
+格子配列を $N+4$ サイズ（両端 2 点のゴースト付き）で確保し，各タイムステップの WENO5 評価前にゴーストセルを更新する．
+\end{tcolorbox}
+
+\subsection{WENO5 の性質まとめ}
+\label{app:weno5_summary}
+
+\begin{itemize}
+  \item \textbf{空間精度：} 滑らかな領域で $O(h^5)$；不連続・急峻な勾配付近では振動抑制（ENO 的挙動）
+  \item \textbf{保存形：} フラックス形式により離散的質量保存が成立
+  \item \textbf{上流化：} 情報伝播方向を考慮した上流側ステンシルを優先
+  \item \textbf{WENO5 vs CCD：} 不連続が存在する CLS 移流に WENO5，
+        滑らかな曲率・速度微分に CCD を使い分けることで，
+        精度・安定性・保存性の三者を同時に達成する（§\ref{sec:dissipative_ccd} も参照）
+\end{itemize}
