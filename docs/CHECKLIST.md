@@ -16,10 +16,10 @@
 
 | Section | File | Last sweep | Type | Status | Notes |
 |---------|------|-----------|------|--------|-------|
-| §1 Introduction | `01_intro.tex` | sweep ≤27 | CRITIC/EDITOR | `[~]` no formal MATH_VERIFY | — |
-| §2 Governing eqs | `02_governing.tex` | sweep 28 | EDITOR | `[x]` | 球状液滴→円形液滴（2次元）fixed |
-| §3 Level Set | `03_levelset.tex` | sweep 28 | EDITOR | `[x]` | CLS volume-conservation formula fixed |
-| §4 Time integration | `04_time_integration.tex` | sweep ≤27 | CRITIC/EDITOR | `[~]` no formal MATH_VERIFY | — |
+| §1 Introduction | `01_intro.tex` | 2026-03-21 | MATH_VERIFY | `[x]` SAFE | Prose only; no derivation target |
+| §2 Governing eqs | `02_governing.tex` | sweep 28 + 2026-03-21 | EDITOR+MATH_VERIFY | `[x]` | 球状液滴→円形液滴 fixed; One-Fluid / CSF verified |
+| §3 Level Set | `03_levelset.tex` | sweep 28 + 2026-03-21 | EDITOR+MATH_VERIFY | `[x]` | CLS fixed-point verified; reinitialization Δτ noted |
+| §4 Time integration | `04_time_integration.tex` | 2026-03-21 | MATH_VERIFY | `[x]` SAFE | WENO5 β+weights ✓; TVD-RK3 ✓; CFL ✓ |
 | §5 CCD method | `05_ccd.tex` + `05b_ccd_bc_matrix.tex` | 2026-03-20 | MATH_VERIFY | `[x]` | A_L/A_R (2,1) sign error found and fixed |
 
 ### §6–§11 + Appendices (sweep 29, 2026-03-21)
@@ -42,26 +42,37 @@
 
 ---
 
-## 2. Code–Paper Consistency (MATH_VERIFY register)
+## 2. Code–Paper Consistency — Verification Register
 
-| Algorithm | Code file | Paper ref | Status | Notes |
-|-----------|-----------|-----------|--------|-------|
-| CCD Eq-I coefficients (α₁, a₁, b₁) | `ccd_solver.py:51-53` | `05_ccd.tex` | `[x]` VERIFIED | TE = −1/7! |
-| CCD Eq-II coefficients (β₂, a₂, b₂) | `ccd_solver.py:55-57` | `05_ccd.tex` | `[x]` VERIFIED | TE = −2/8! |
-| A_L, A_R block matrices | `ccd_solver.py:186-189` | `05b_ccd_bc_matrix.tex` | `[x]` FIXED | A_L(2,1)=−9/(8h), A_R(2,1)=+9/(8h) |
-| Boundary Eq-I (O(h⁵)) | `ccd_solver.py:299` | `appendix_ccd_coef.tex` | `[x]` VERIFIED | α=3/2 unique O(h⁵) solution |
-| Boundary Eq-II (paper O(h²)) | `appendix_ccd_coef.tex` | `appendix_ccd_coef.tex` | `[x]` VERIFIED | — |
-| Boundary Eq-II (code coupled) | `ccd_solver.py:303` | `appendix_ccd_coef.tex` | `[x]` STALE RESOLVED (2026-03-21) | Code uses `[2,−5,4,−1]/h²` = paper O(h²) formula; prior entry was stale |
-| PPE pseudo-time convergence | `ppe_solver_pseudotime.py` | `08_pressure.tex` / `appendix_numerics_solver.tex` | `[x]` VERIFIED | γ(t)=(1+t²)/(1+t)²; Δτ_opt=0.58h²/a_max |
-| Rhie-Chow correction | `rhie_chow.py` | `07_collocate.tex` | `[x]` VERIFIED (2026-03-21) | 2/(ρ_P^{n+1}+ρ_E^{n+1}) harmonic mean ✓ |
-| WENO5 coefficients | `advection.py` | `04_time_integration.tex` | `[x]` VERIFIED (2026-03-21) | β₀,β₁,β₂ Jiang-Shu; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6 ✓ |
-| TVD-RK3 Shu-Osher coefficients | `tvd_rk3.py` | `09_full_algorithm.tex` | `[x]` VERIFIED (2026-03-21) | Stage coefficients Shu-Osher form ✓ |
-| Capillary wave CFL | `cfl.py` | `appendix_numerics_solver.tex` | `[x]` VERIFIED (2026-03-21) | σ/(ρ_min h³) cap. CFL; ν/h² viscous CFL ✓ |
-| CSF curvature kernel | `curvature.py` | `03_levelset.tex` / `07_collocate.tex` | `[x]` VERIFIED (2026-03-21) | κ=−(φ_y²φ_xx−2φ_xφ_yφ_xy+φ_x²φ_yy)/|∇φ|³ ✓ |
-| Variable-density PPE product rule | `ppe_solver_pseudotime.py` | `08_pressure.tex` | `[x]` VERIFIED (sweep 29) | (1/ρ)∇²p − (∇ρ/ρ²)·∇p ✓ |
-| Boundary Eq-II (code vs paper) | `ccd_solver.py:303` | `appendix_ccd_coef.tex` | `[x]` STALE_ENTRY RESOLVED (2026-03-21) | Code uses [2,−5,4,−1]/h² = paper formula; prior discrepancy report was stale |
-| Kronecker product 2D CCD assembly | `ppe_solver_pseudotime.py` | `appendix_ccd_impl.tex` (app:ccd_kronecker) | `[x]` VERIFIED (2026-03-21) | kron(D2x,I_Ny)+kron(I_Nx,D2y); C-order k=i·Ny+j ✓ |
-| PPE solver strategy (LGMRES/LU) | `ppe_solver_pseudotime.py` | `appendix_ccd_impl.tex` (app:ccd_lu_direct) | `[x]` VERIFIED (2026-03-21) | LGMRES primary (O(n·k) mem), spsolve LU fallback on info≠0 ✓ |
+Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Append new verifications here.
+
+| Target | Paper location | Code file | Date | Verdict | Notes |
+|--------|---------------|-----------|------|---------|-------|
+| Eq-I coefficients (α₁, a₁, b₁) | `05_ccd.tex` eq:CCD_TE | `ccd_solver.py:51-53` | 2026-03-20 | ✅ VERIFIED | TE = −1/7! |
+| Eq-II coefficients (β₂, a₂, b₂) | `05_ccd.tex` eq:coef_CCD | `ccd_solver.py:55-57` | 2026-03-20 | ✅ VERIFIED | TE = −2/8! |
+| A_L, A_R (2,1) entries | `05b_ccd_bc_matrix.tex` l.147 | `ccd_solver.py:186-189` | 2026-03-20 | ✅ FIXED | PAPER_ERROR (KL-01); A_L(2,1)=−9/(8h), A_R(2,1)=+9/(8h) |
+| Left boundary Eq-I (O(h⁵)) | `05b_ccd_bc_matrix.tex` eq:bc_left | `ccd_solver.py:299` | 2026-03-20 | ✅ VERIFIED | α=3/2 unique; h⁴ coefficient cancels |
+| Left boundary Eq-II (paper) | `appendix_ccd_coef.tex` eq:bcII_left | — | 2026-03-20 | ✅ VERIFIED | O(h²) one-sided formula confirmed |
+| Left boundary Eq-II (code) | `appendix_ccd_coef.tex` | `ccd_solver.py:303` | 2026-03-21 | ✅ STALE RESOLVED | Code uses [2,−5,4,−1]/h² = paper O(h²) formula; prior discrepancy was stale |
+| TE_I = −1/7! | `05_ccd.tex`, `appendix_ccd_coef.tex` | — | 2026-03-20 | ✅ VERIFIED | −1/5040 exact |
+| TE_II = −2/8! | `05_ccd.tex`, `appendix_ccd_coef.tex` | — | 2026-03-20 | ✅ VERIFIED | −1/20160 exact |
+| Boundary Eq-I O(h⁵) accuracy | `05b_ccd_bc_matrix.tex` | — | 2026-03-20 | ✅ VERIFIED | h⁴ coefficient cancels |
+| PPE pseudo-time γ(t) derivation | `08_pressure.tex` / `appendix_numerics_solver.tex` | `ppe_solver_pseudotime.py` | 2026-03-21 | ✅ VERIFIED | γ(t)=(1+t²)/(1+t)²; t*=1; Δτ_opt=0.58h²/a_max |
+| Variable-density PPE product rule | `08_pressure.tex` | `ppe_solver_pseudotime.py` | 2026-03-21 | ✅ VERIFIED | (1/ρ)∇²p − (∇ρ/ρ²)·∇p ✓ |
+| Harmonic mean face coefficient a_f | `appendix_numerics_solver.tex` | `ppe_solver_pseudotime.py` | 2026-03-21 | ✅ VERIFIED | 2/(ρ_L+ρ_R) from series resistance ✓ |
+| μ arithmetic mean derivation | `appendix_interface.tex` | — | 2026-03-21 | ✅ VERIFIED | Linear ψ → volume avg = arithmetic mean ✓ |
+| CLS fixed-point H_ε(φ) | `appendix_interface.tex` | `reinitialize.py` | 2026-03-21 | ✅ VERIFIED | LHS=RHS=(1/ε)(1−2ψ)ψ(1−ψ) ✓ |
+| TVD-RK3 Shu-Osher coefficients | `09_full_algorithm.tex` | `tvd_rk3.py` | 2026-03-21 | ✅ VERIFIED | Stage coefficients (1,1),(3/4,1/4,1/4),(1/3,2/3,2/3) ✓ |
+| Capillary CFL derivation | `appendix_numerics_solver.tex` | `cfl.py` | 2026-03-21 | ✅ VERIFIED (text fix) | Formula OK; "保守的に" wording corrected (KL-07) |
+| ‖∇ψ‖≈δ_s error O(ε²) | `appendix_interface.tex` | — | 2026-03-21 | ✅ VERIFIED | Odd-function cancellation; ∫t²δ_ε dt = π²ε²/3 ✓ |
+| Balanced-Force O(h⁶) argument | `07_collocate.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Conclusion correct; Leibniz algebra fixed (KL-04) |
+| CCD spectral radius 3.43/h² | `08b_ccd_poisson.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Self-consistent with Δτ_opt; 9.6/h² is Nyquist bound (KL-05) |
+| Kronecker product 2D operator eq:L_CCD_2d_kron | `appendix_ccd_impl.tex` app:ccd_kronecker | `ppe_solver_pseudotime.py:267-284` | 2026-03-21 | ✅ VERIFIED | C-order k=i·Ny+j; kron(D2x,I_Ny)+kron(I_Nx,D2y) ✓ (KL-08) |
+| PPE solver strategy (LGMRES + LU fallback) | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:solve()` | 2026-03-21 | ✅ VERIFIED | LGMRES primary, spsolve fallback on info≠0 (KL-09) |
+| Rhie-Chow ρⁿ⁺¹ face coefficient | `07_collocate.tex:164,171` | `rhie_chow.py:119-124` | 2026-03-21 | ✅ VERIFIED | 2/(ρ_P^{n+1}+ρ_E^{n+1}) harmonic mean ✓ |
+| WENO5 β₀,β₁,β₂ (Jiang-Shu) | `04_time_integration.tex:122-126` | `advection.py:246-248` | 2026-03-21 | ✅ VERIFIED | (13/12)(·)²+(1/4)(·)²; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6 ✓ |
+| CFL advection + viscous conditions | `04b_time_schemes.tex:271-286` | `cfl.py:100-113` | 2026-03-21 | ✅ VERIFIED | Advection CFL ✓; viscous CFL safety factor conservative ✓ |
+| CSF curvature κ = −(…)/‖∇φ‖³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Rederived from ∇·(∇φ/‖∇φ‖) ✓ |
 
 ---
 
@@ -87,8 +98,8 @@
 
 ### Paper / Documentation
 
-- `[x]` Boundary Eq-II discrepancy **RESOLVED**: code uses `[2,−5,4,−1]/h²` which matches paper O(h²) formula; prior discrepancy report was stale (2026-03-21)
-- `[x]` Formal MATH_VERIFY for §§1–4 — SAFE (general scan 2026-03-21; no formula errors found)
+- `[x]` Boundary Eq-II discrepancy RESOLVED (2026-03-21)
+- `[x]` Formal MATH_VERIFY for §§1–4 — SAFE (2026-03-21)
 - `[x]` Formal MATH_VERIFY for Rhie-Chow, WENO5, TVD-RK3, Capillary CFL, CSF curvature — all VERIFIED (2026-03-21)
 - `[ ]` Next CRITIC pass (pass 19) if major new content is added
 

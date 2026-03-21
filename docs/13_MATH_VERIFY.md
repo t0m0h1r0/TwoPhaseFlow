@@ -238,11 +238,11 @@ Check every audit against these patterns first.
 
 **Generalised rule:** In any scheme of the form `= C·(X_{i+1} − X_{i-1})`, the `X_{i-1}` coefficient on the RHS is **−C**, not +C. LHS after transposition: **+C**.
 
-**Checklist for every block-matrix audit:**
-- [ ] A_L(2,1) = +b₂/h; with b₂ = −9/8 this is negative (−9/(8h))
-- [ ] A_R(2,1) = −b₂/h; with b₂ = −9/8 this is positive (+9/(8h))
-- [ ] Code `lower[k][1,0]` = `_B2/h` < 0  ✓
-- [ ] Code `upper[k][1,0]` = `-_B2/h` > 0  ✓
+**Steps for every block-matrix audit:**
+- Verify A_L(2,1) = +b₂/h; with b₂ = −9/8 this is negative (−9/(8h))
+- Verify A_R(2,1) = −b₂/h; with b₂ = −9/8 this is positive (+9/(8h))
+- Confirm code `lower[k][1,0]` = `_B2/h` < 0
+- Confirm code `upper[k][1,0]` = `-_B2/h` > 0
 
 ---
 
@@ -315,12 +315,12 @@ Check every audit against these patterns first.
 
 **NumPy default:** `array.ravel()` uses C-order by default. `scipy.sparse.kron(A, B)` assembles the block structure consistent with C-order when A acts on the slow (row) index and B on the fast (column) index. This is exactly `D2x ⊗ I_Ny` for x (slow) and `I_Nx ⊗ D2y` for y (fast).
 
-**Checklist for any Kronecker product 2D operator:**
-- [ ] Confirm data layout: `p.ravel()` is C-order → flat index k = i·Ny + j
-- [ ] `kron(D_axis0, I_axis1)` for axis-0 (x) derivative ✓
-- [ ] `kron(I_axis0, D_axis1)` for axis-1 (y) derivative ✓
-- [ ] Verify against code: `sp.kron(D2x, sp.eye(Ny))` ← D2x ⊗ I_Ny ✓
-- [ ] Cross-check: feed a known polynomial and compare `kron` matrix-vector product against `ccd.differentiate` pointwise result. Max difference must be exactly 0.
+**Steps for any Kronecker product 2D operator:**
+- Confirm data layout: `p.ravel()` is C-order → flat index k = i·Ny + j
+- `kron(D_axis0, I_axis1)` for axis-0 (x) derivative
+- `kron(I_axis0, D_axis1)` for axis-1 (y) derivative
+- Verify against code: `sp.kron(D2x, sp.eye(Ny))` ← D2x ⊗ I_Ny
+- Cross-check: feed a known polynomial and compare `kron` matrix-vector product against `ccd.differentiate` pointwise result. Max difference must be exactly 0.
 
 **Generalised rule:** For a 2D array stored in C-order with shape (Nx, Ny), the partial derivative operator along axis $\ell$ is:
 ```
@@ -371,38 +371,8 @@ direct LU fill-in is provably O(N), prefer direct LU outright.
 
 ## **Verification Register**
 
-| Target | Paper location | Code file | Date | Verdict | Notes |
-|--------|---------------|-----------|------|---------|-------|
-| Eq-I coefficients (α₁, a₁, b₁) | `05_ccd.tex` eq:CCD_TE | `ccd_solver.py:51-53` | 2026-03-20 | ✅ VERIFIED | Linear system residuals = 0; TE = −1/7! |
-| Eq-II coefficients (β₂, a₂, b₂) | `05_ccd.tex` eq:coef_CCD | `ccd_solver.py:55-57` | 2026-03-20 | ✅ VERIFIED | Linear system residuals = 0; TE = −2/8! |
-| A_L, A_R (2,1) entries | `05b_ccd_bc_matrix.tex` l.147 | `ccd_solver.py:186-189` | 2026-03-20 | ✅ FIXED | PAPER_ERROR (KL-01). Code was always correct. |
-| Left boundary Eq-I coefficients | `05b_ccd_bc_matrix.tex` eq:bc_left | `ccd_solver.py:299` | 2026-03-20 | ✅ VERIFIED | Taylor coefficients match h⁰ through h⁴ |
-| Left boundary Eq-II (paper) | `appendix_ccd_coef.tex` eq:bcII_left | — | 2026-03-20 | ✅ VERIFIED | O(h²) one-sided formula confirmed |
-| Left boundary Eq-II (code) | — | `ccd_solver.py:300` | 2026-03-20 | ⚠ DISCREPANCY | Code uses coupled scheme c_II=[−325/18,…]; paper describes simple O(h²) formula. Tests pass. Needs documentation. |
-| TE_I = −1/7! | `05_ccd.tex`, `appendix_ccd_coef.tex` | — | 2026-03-20 | ✅ VERIFIED | −1/5040 exact |
-| TE_II = −2/8! | `05_ccd.tex`, `appendix_ccd_coef.tex` | — | 2026-03-20 | ✅ VERIFIED | −1/20160 exact |
-| Boundary Eq-I O(h⁵) accuracy | `05b_ccd_bc_matrix.tex` | — | 2026-03-20 | ✅ VERIFIED | h⁴ coefficient cancels |
-| PPE pseudo-time γ(t) derivation | `08_pressure.tex` / `appendix_numerics_solver.tex` | `ppe_solver_pseudotime.py` | 2026-03-21 | ✅ VERIFIED | γ(t)=(1+t²)/(1+t)²; t*=1; Δτ_opt=0.58h²/a_max |
-| Variable-density PPE product rule | `08_pressure.tex` | — | 2026-03-21 | ✅ VERIFIED | (1/ρ)∇²p − (∇ρ/ρ²)·∇p ✓ |
-| Harmonic mean face coefficient a_f | `appendix_numerics_solver.tex` | `ppe_solver_pseudotime.py` | 2026-03-21 | ✅ VERIFIED | 2/(ρ_L+ρ_R) from series resistance ✓ |
-| μ arithmetic mean derivation | `appendix_interface.tex` | — | 2026-03-21 | ✅ VERIFIED | Linear ψ → volume avg = arithmetic mean ✓ |
-| CLS fixed-point H_ε(φ) | `appendix_interface.tex` | `reinitialize.py` | 2026-03-21 | ✅ VERIFIED | LHS=RHS=(1/ε)(1-2ψ)ψ(1-ψ) ✓ |
-| TVD-RK3 Shu-Osher coefficients | `09_full_algorithm.tex` | `tvd_rk3.py` | 2026-03-21 | ✅ VERIFIED | Stage coefficients (1,1),(3/4,1/4,1/4),(1/3,2/3,2/3) ✓ |
-| Capillary CFL derivation | `appendix_numerics_solver.tex` | `cfl.py` | 2026-03-21 | ✅ VERIFIED (text fix) | Formula value OK; "保守的に" wording corrected (KL-07) |
-| |∇ψ|≈δ_s error O(ε²) | `appendix_interface.tex` | — | 2026-03-21 | ✅ VERIFIED | Odd-function cancellation; ∫t²δ_ε dt = π²ε²/3 ✓ |
-| Balanced-Force O(h⁶) argument | `07_collocate.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Conclusion correct; intermediate algebra fixed (KL-04) |
-| CCD spectral radius 3.43/h² | `08b_ccd_poisson.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Value self-consistent with Δτ_opt; formula 9.6/h² is Nyquist bound (KL-05) |
-| Kronecker product 2D operator eq:L_CCD_2d_kron | `appendix_ccd_impl.tex` app:ccd_kronecker | `ppe_solver_pseudotime.py:267-284` | 2026-03-21 | ✅ VERIFIED | C-order index k=i·Ny+j; kron(D2x,I_Ny) and kron(I_Nx,D2y) confirmed algebraically and vs. code (KL-08) |
-| PPE solver strategy (iterative+LU fallback) | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:solve()` | 2026-03-21 | ✅ VERIFIED | Design: LGMRES primary, spsolve fallback on non-convergence (KL-09) |
-| Rhie-Chow ρⁿ⁺¹ face coefficient | `07_collocate.tex:164,171` | `rhie_chow.py:119-124` | 2026-03-21 | ✅ VERIFIED | 2/(ρ_P^{n+1}+ρ_E^{n+1}) harmonic mean; code uses current-step ρ ✓ |
-| WENO5 β₀,β₁,β₂ (Jiang-Shu) | `04_time_integration.tex:122-126` | `advection.py:246-248` | 2026-03-21 | ✅ VERIFIED | (13/12)(·)²+(1/4)(·)²; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6; neg flux reverses d weights ✓ |
-| CFL advection + viscous conditions | `04b_time_schemes.tex:271-286` | `cfl.py:100-113` | 2026-03-21 | ✅ VERIFIED | Advection CFL = CFL·h/|u|_sum ✓; viscous CFL = CFL·h²/(4ν_max) — paper gives limit, code adds safety factor (conservative, correct) |
-| CSF curvature κ = −(φ_y²φ_xx−2φ_xφ_yφ_xy+φ_x²φ_yy)/|∇φ|³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Independent rederivation from ∇·(∇φ/|∇φ|) confirms formula; code uses φ=invert_heaviside(ψ) before computing ✓ |
-| Boundary Eq-II code vs paper | — | `ccd_solver.py:303` | 2026-03-21 | ✅ STALE_ENTRY RESOLVED | CHECKLIST [!] was stale: current code uses c_II=[2,−5,4,−1]/h² = paper O(h²) formula. Discrepancy no longer exists. |
-| §1 Introduction | `01_introduction.tex` | — | 2026-03-21 | ✅ SAFE | No equations; prose/motivation only. No derivation target. |
-| §2 Governing equations | `02_governing.tex`,`02b_csf.tex`,`02c_nondim.tex` | — | sweep 28 + 2026-03-21 CSF verified | ✅ SAFE | One-Fluid verified in appendix_interface; CSF curvature formula verified above |
-| §3 Level Set (CLS) | `03_levelset.tex`,`03b_levelset_mapping.tex` | — | sweep 28 + 2026-03-21 | ✅ SAFE | CLS fixed-point verified (appendix_interface); reinitialization Δτ=0.25Δs noted |
-| §4 Time Integration (WENO5+TVD-RK3) | `04_time_integration.tex`,`04b_time_schemes.tex` | `advection.py`,`tvd_rk3.py`,`cfl.py` | 2026-03-21 | ✅ SAFE | WENO5 β + weights ✓; TVD-RK3 Shu-Osher ✓; CFL ✓ — all verified above |
+> Moved to `docs/CHECKLIST.md §2` — the single source of truth for all audit results.
+> Append new verifications to that table, not here.
 
 ---
 
