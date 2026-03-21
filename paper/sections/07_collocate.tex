@@ -306,13 +306,18 @@ $f$ が解析関数のとき，各演算子の打ち切り誤差は：
 \end{align}
 この $O(h^2)$ の不整合が\textbf{体積力として運動量方程式に残り，寄生流れを駆動する}．
 
-同一の演算子（CCD）を両方に用いると：
+同一の演算子（CCD）を両方に用いると，各項が独立に $O(h^6)$ 精度で連続微分を近似するため
+（$D_{\mathrm{CCD}}^{(1)} f = \nabla f + O(h^6)$），
+平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ のもとで：
 \[
   D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{CCD}}\psi
-  = D^{(1)}_{\mathrm{CCD}}\!\left(p - \frac{\kappa\psi}{We}\right)
-  = D^{(1)}_{\mathrm{CCD}}(\text{const}) + O(h^6)
+  = \underbrace{\nabla p - \frac{\kappa}{We}\nabla\psi}_{=\,0\;\text{（平衡条件）}} + O(h^6)
+  = O(h^6)
 \]
 となり，寄生流れの\textbf{数値離散化誤差成分}は $O(h^6)$ まで低減される．
+（注：$D_{\mathrm{CCD}}(\kappa\psi/We) = (\kappa/We)D_{\mathrm{CCD}}\psi + (\psi/We)D_{\mathrm{CCD}}\kappa$
+であるから，$\kappa$ が空間変化する一般の場合は代数的因数分解 $D_{\mathrm{CCD}}(p-\kappa\psi/We)$ は使えない．
+上式の $O(h^6)$ は各演算子の精度から直接導かれる．）
 ただし，残差は CSF モデルが界面を有限厚さ $\varepsilon \sim O(h)$ で近似することによる
 \textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，
 実測の寄生流れ収束次数は $O(h^2)$ 程度となる

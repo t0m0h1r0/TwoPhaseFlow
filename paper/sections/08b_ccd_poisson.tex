@@ -87,9 +87,13 @@ $p''$ 成分のみを抽出する射影行列 $\mathbf{E}_2 \in \mathbb{R}^{N \t
   \label{eq:L_CCD_explicit}
 \end{equation}
 
-等間隔格子 $h$，Dirichlet 境界条件のもとで CCD-Laplacian のスペクトル半径は
-$\rho(\mathbf{L}_{\mathrm{CCD}}^{(x)}) \approx 4a_2/[(1+2|\beta_2|)h^2] \approx 3.43/h^2$
-（$a_2=3,\,\beta_2=-1/8$）と近似され，2次中心差分の $4/h^2$ と同程度である．
+有限格子（Neumann 境界条件）における CCD-Laplacian の数値スペクトル半径は
+$\rho(\mathbf{L}_{\mathrm{CCD}}^{(x)}) \approx 3.43/h^2$ と推定され，
+2次中心差分の $4/h^2$ と同程度である（§\ref{sec:ppe_pseudotime} の $\Delta\tau_{\mathrm{opt}} = 0.58\,h^2/a_{\max}$ と整合：
+$\lambda_{\max} = 2/\Delta\tau_{\mathrm{opt}} \approx 3.45/h^2$）．
+なお，無限周期格子での Nyquist 波数 $k=\pi/h$ における修正波数解析は
+$4a_2/[(1+2|\beta_2|)h^2] = 9.6/h^2$（$a_2=3,\,\beta_2=-1/8$）を与えるが，
+これは有限格子のスペクトル半径の上界を与える量であり，実際の有限格子固有値はより小さい．
 したがって §\ref{sec:ppe_pseudotime} の $\Delta\tau$ 選択指針がそのまま適用できる．
 
 \subsubsection{Neumann 境界条件の CCD-Poisson への組み込み}

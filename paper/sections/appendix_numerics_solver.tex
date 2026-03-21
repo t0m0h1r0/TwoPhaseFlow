@@ -178,7 +178,7 @@ $k_{\max}$ に対応する群速度で CFL 条件 $c_g(k_{\max})\,\Delta t \le \
   \Delta t &\le \frac{\Delta x}{c_g(k_{\max})}
   = \frac{2}{3}\sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{\sigma\pi}}
 \end{align*}
-係数 $2/(3\sqrt{\pi}) \approx 0.376$ を保守的に $1/\sqrt{2\pi}$ に丸めると式 \eqref{eq:dt_sigma} を得る：
+係数 $2/(3\sqrt{\pi}) \approx 0.376$ を近似的に $1/\sqrt{2\pi} \approx 0.399$ に丸めると式 \eqref{eq:dt_sigma} を得る（$6\%$ の差異は実用上の安全率の範囲内）：
 \[
   \Delta t_\sigma = \sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{2\pi\sigma}}
 \]
