@@ -45,7 +45,7 @@ class PPESolverLU(IPPESolver):
         grid: "Grid",
     ) -> None:
         self.backend = backend
-        self._builder = PPEBuilder(backend, grid)
+        self._builder = PPEBuilder(backend, grid, bc_type=config.numerics.bc_type)
 
     # ── IPPESolver 実装 ──────────────────────────────────────────────────
 
@@ -73,6 +73,8 @@ class PPESolverLU(IPPESolver):
 
         rhs_host = self.backend.to_host(rhs).ravel().astype(float)
         rhs_host[0] = 0.0  # Dirichlet 固定点（ノード 0）
+        if self._builder._periodic_image_dofs is not None:
+            rhs_host[self._builder._periodic_image_dofs] = 0.0
 
         # 対角スケーリング: 密度比が大きい場合の条件数を低減する。
         # 各行を対角絶対値で割る（Jacobi スケーリング）。

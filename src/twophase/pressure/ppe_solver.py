@@ -48,8 +48,8 @@ class PPESolver(IPPESolver):
         self.xp = backend.xp
         self.tol = config.solver.bicgstab_tol
         self.maxiter = config.solver.bicgstab_maxiter
-        # PPEBuilder を内包して外部から triplet を渡す必要をなくす（SRP修正）
-        self._builder = PPEBuilder(backend, grid)
+        bc_type = config.numerics.bc_type
+        self._builder = PPEBuilder(backend, grid, bc_type=bc_type)
 
     # ── IPPESolver 実装 ──────────────────────────────────────────────────
 
@@ -88,15 +88,23 @@ class PPESolver(IPPESolver):
         rhs_host = self.backend.to_host(rhs).ravel().astype(float)
         # Dirichlet 固定点 (ノード 0) の右辺を 0 に設定
         rhs_host[0] = 0.0
+        # 周期 BC: 周期像ノードの方程式は p[ghost]=p[src] → RHS = 0
+        if self._builder._periodic_image_dofs is not None:
+            rhs_host[self._builder._periodic_image_dofs] = 0.0
 
         # ウォームスタート初期値の設定
         x0 = None
         if p_init is not None:
             x0 = self.backend.to_host(p_init).ravel().astype(float)
 
-        # ILU(0) 前処理
+        # 前処理: 周期 BC では ILU が収束しない（identity-minus 行と FVM 行の混在が原因）
+        # → Jacobi（対角スケーリング）で代替する。壁面 BC では ILU(0) を使用。
+        # 前処理: 周期 BC では identity-minus 行と FVM 行が混在するため ILU(0) が
+        # 収束しにくい。fill_factor=10 で完全な充填を許してより良い前処理を得る。
+        # 壁面 BC では fill_factor=1 で十分。
+        fill = 10 if self._builder.bc_type == 'periodic' else 1
         try:
-            ilu = spla.spilu(A.tocsc(), fill_factor=1)
+            ilu = spla.spilu(A.tocsc(), fill_factor=fill)
             M = spla.LinearOperator(A_shape, ilu.solve)
         except Exception:
             M = None
