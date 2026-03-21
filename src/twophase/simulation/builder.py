@@ -138,7 +138,10 @@ class SimulationBuilder:
         ccd = CCDSolver(grid, backend, bc_type=config.numerics.bc_type)
 
         # レベルセット演算子
-        _ls_bc = config.numerics.bc_type if config.numerics.bc_type == 'periodic' else 'zero'
+        # 'periodic' → 'periodic'(wrap), 'wall' → 'neumann'(∂ψ/∂n=0 対称反射).
+        # 'zero' は後方互換のデフォルトだが壁面 BC では誤差が大きい
+        # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
+        _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
         ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)

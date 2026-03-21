@@ -42,16 +42,25 @@ class BoundaryConditionHandler:
             self._apply_periodic(velocity)
 
     def _apply_wall(self, velocity: "VectorField") -> None:
-        """全境界面でノースリップ条件（u = 0）を適用する。"""
-        for ax in range(self.ndim):
-            u = velocity[ax]
-            # 各軸の最小・最大境界面のスライスを構築
-            sl_lo = [slice(None)] * self.ndim
-            sl_hi = [slice(None)] * self.ndim
-            sl_lo[ax] = 0
-            sl_hi[ax] = -1
-            u[tuple(sl_lo)] = 0.0
-            u[tuple(sl_hi)] = 0.0
+        """全境界面でノースリップ条件（u = 0）を適用する。
+
+        wall_ax 方向に垂直な両壁面（インデックス 0 と -1）において，
+        すべての速度成分（法線・接線を問わず）をゼロに設定する．
+        これにより完全ノースリップ条件が保証される．
+
+        注意: 以前の実装は velocity[ax] を ax 方向の壁面のみでゼロにしていたため，
+        接線速度成分（例: u_x at y=0 壁）が未処理となり，
+        壁面付近で速度が増大するバグがあった（Bug #wall-tangential）．
+        """
+        for wall_ax in range(self.ndim):        # 壁面の法線方向
+            for comp in range(self.ndim):       # 速度成分（法線・接線すべて）
+                u = velocity[comp]
+                sl_lo = [slice(None)] * self.ndim
+                sl_hi = [slice(None)] * self.ndim
+                sl_lo[wall_ax] = 0
+                sl_hi[wall_ax] = -1
+                u[tuple(sl_lo)] = 0.0
+                u[tuple(sl_hi)] = 0.0
 
     def _apply_periodic(self, velocity: "VectorField") -> None:
         """周期境界条件: node 0 と node N を一致させる（node N ← node 0）。"""
