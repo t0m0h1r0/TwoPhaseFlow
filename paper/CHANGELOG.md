@@ -1,5 +1,34 @@
 # Changelog
 
+## Paper — EDITOR sweep 29: mathematical audit §§6–11 + appendices; 5 issues fixed (2026-03-21)
+
+Full mathematical audit of §§6–11 + all 5 appendix files (19 sections). 5 issues verified and fixed; zero PAPER_ERROR (all were documentation/description-level).
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `sections/06_grid.tex` | **Comment fix** — pseudocode: `# 台形則で累積積分` → `# 矩形則（前進型）で累積積分`. Code uses `x_tilde[i+1] = x_tilde[i] + dxi/omega[i]` (left Riemann sum), not the trapezoidal rule. |
+| `sections/07_collocate.tex` | **Algebra fix** — Balanced-Force argument: replaced incorrect `D_CCD p − (κ/We)D_CCD ψ = D_CCD(p−κψ/We)` with correct derivation. That factoring is only valid for constant κ; for spatially-varying κ, `D_CCD(κψ/We) = (κ/We)D_CCD ψ + (ψ/We)D_CCD κ`. Correct argument: each term individually = ∇(·)+O(h⁶), so the difference = ∇p − (κ/We)∇ψ + O(h⁶) = O(h⁶) (equilibrium condition). Conclusion unchanged. |
+| `sections/08b_ccd_poisson.tex` | **Formula fix** — spectral radius: removed `4a₂/[(1+2\|β₂\|)h²] ≈ 3.43/h²` (this formula evaluates to 9.6/h² for a₂=3, β₂=−1/8, not 3.43). Replaced with: finite-grid numerical estimate ≈ 3.43/h² (consistent with Δτ_opt = 0.58h²); the formula 9.6/h² is the infinite-periodic Nyquist modified wavenumber, an upper bound not reached on finite grids. |
+| `sections/10_verification.tex` | **Clarifying note** — added parenthetical explaining that O(h⁴) convergence at N=32–128 is *pre-asymptotic* behavior (CSF model error not yet dominant); asymptotic theoretical rate is O(h²) (CSF-limited, §§7, 11). |
+| `sections/appendix_numerics_solver.tex` | **Text fix** — app:capillary_cfl: "保守的に $1/\sqrt{2\pi}$ に丸めると" → "近似的に $1/\sqrt{2\pi}\approx0.399$ に丸めると（6% の差異は実用上の安全率の範囲内）". Exact coefficient is 2/(3√π)≈0.376; 1/√(2π)≈0.399 is 6% *more* permissive (less conservative). |
+
+### Audit summary
+
+| Section | Verdict |
+|---------|---------|
+| §6 (grid) | Fixed M1: pseudocode comment "台形則" → "矩形則（前進型）" |
+| §7 (collocated) | Fixed M1: Balanced-Force algebra — removed incorrect κ-factoring |
+| §8 (pressure) | SAFE (spectral radius value 3.43 is self-consistent with Δτ_opt) |
+| §8b (CCD-Poisson) | Fixed M1: removed formula `4a₂/[(1+2\|β₂\|)h²]≈3.43` (gives 9.6, not 3.43) |
+| §9 (algorithm) | SAFE |
+| §10 (verification) | Fixed M1: added pre-asymptotic note for O(h⁴) table |
+| §11 (conclusion) | SAFE |
+| Appendices (19 sections) | Fixed A15: capillary CFL "保守的に" → "近似的に" |
+
+---
+
 ## Paper — EDITOR 28th sweep: CLS mass-conservation formula error + 2D droplet terminology (2026-03-21)
 
 Two errors found by external reviewer audit of §§2.1, 2.6, 3.2.

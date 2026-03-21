@@ -8,6 +8,10 @@
 * **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
 * **Paper:** 12 sections + appendix\_proofs. **18 CRITIC passes + 28 EDITOR sweeps complete (2026-03-21).** Clean build confirmed — zero undefined references (116 pages).
 
+## **2. Completed (2026-03-21)**
+
+4. ~~Mathematical audit §§6–11 + all appendices + EDITOR sweep 29~~ — **Done (2026-03-21).** 19 appendix sections + 6 main sections verified. Zero PAPER_ERROR. 5 documentation-level fixes applied: (1) §6 pseudocode comment "台形則"→"矩形則（前進型）", (2) §7 Balanced-Force algebra with incorrect κ-factoring removed, (3) §8b spectral radius formula 4a₂/[(1+2|β₂|)h²]=9.6≠3.43 clarified, (4) §10 O(h⁴) pre-asymptotic note added, (5) appendix capillary CFL "保守的に"→"近似的に".
+
 ## **2. Pending Action Items**
 
 ### **Code / Implementation**
