@@ -65,27 +65,11 @@ Assign one of five verdicts:
 
 ### **Step 4 — Known Hallucination Patterns (Watch For These)**
 
-These patterns were observed in the 2026-03-21 session and recur in AI-generated reviews:
-
-1. **Formula Swap:** Reviewer's "fix suggestion" column describes the correct formula that is already in the paper. The reviewer claims the paper has the wrong formula, but in fact the paper already has the "fix." Reading the actual file immediately exposes this.
-
-2. **Misread Table Row:** Reviewer attributes a numerical value to the wrong row of a results table. Always read the table directly; identify which benchmark (e.g., hydrostatic test vs. static droplet) the value belongs to.
-
-3. **Cascading False Premise:** Reviewer opens with "given the errors in Chapter X..." but those "errors" are themselves REVIEWER_ERROR. All subsequent claims in the same review then inherit the false premise. Identify the root premise and verify it first.
-
-4. **Chapter/Section Number Mismatch:** Reviewer uses a different numbering scheme than the paper. A claim about "Chapter 5" may map to the paper's §7 or §8. Verify by content matching, not numbering.
-
-5. **Scope vs. Error Confusion:** Reviewer flags an approximation, boundary condition, or limiting assumption as an "error." Check §11 (Conclusion/Future Work) and any warnbox near the flagged section — the limitation may already be explicitly acknowledged.
-
-6. **Correct Formula, Wrong Attribution:** Reviewer says "the paper uses formula A (wrong), should use formula B (correct)" but the paper actually uses formula B. This is the most common hallucination.
-
-7. **Leibniz Rule Shortcut:** Reviewer (or prior editor) writes `D(κf) = κD(f)` and factors a spatially-varying quantity κ out of a differential operator D. This is only valid for constant κ. For spatially varying κ, `D(κf) = κD(f) + f·D(κ)`. In two-phase CFD, curvature κ, density ρ, and viscosity μ all vary in space. The factoring is wrong but the conclusion may still be correct via an independent argument (see KL-04 in `13_MATH_VERIFY.md`).
-
-8. **Nyquist Formula ≠ Finite-Grid Spectral Radius:** A reviewer (or the paper itself) states a compact scheme's spectral radius using the infinite-periodic modified wavenumber at k=π/h. For CCD: `4a₂/[(1+2|β₂|)h²]` = 9.6/h², while the actual finite-grid eigenvalue with Neumann BCs is ≈ 3.43/h². Always verify which quantity is being claimed (see KL-05 in `13_MATH_VERIFY.md`).
-
-9. **Pre-Asymptotic vs Asymptotic Rate:** Reviewer claims "the paper shows O(h⁴)" when the table data is O(h⁴) only in the pre-asymptotic regime (moderate N). As N increases, a model-error floor (e.g. O(h²) from CSF) dominates. The paper is correct within its stated N range, but the reviewer mistakes a pre-asymptotic measurement for the theoretical asymptote (see KL-06).
-
-10. **Conservative Rounding Direction:** A CFL or stability coefficient is claimed to be a "conservative" (safe/tight) bound, but the rounded value is actually larger than the derived value — making it less conservative (more permissive). "Conservative" for an upper-bound Δt constraint means the coefficient should be rounded DOWN (see KL-07).
+> See **`docs/LESSONS.md §B`** for the full list of 10 documented hallucination patterns.
+> Patterns include: Formula Swap, Misread Table Row, Cascading False Premise,
+> Chapter/Section Number Mismatch, Scope vs. Error Confusion, Leibniz Rule Shortcut (KL-04),
+> Nyquist Formula ≠ Spectral Radius (KL-05), Pre-Asymptotic Rate (KL-06),
+> Conservative Rounding Direction (KL-07).
 
 ### **Step 5 — Edit Only After Verification**
 
