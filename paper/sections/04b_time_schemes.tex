@@ -253,7 +253,7 @@ $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$
 
 CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
 \textbf{$\psi(1-\psi)$ を非線形「波速」とする1次移流}として解釈できる．
-よって，§\ref{sec:weno5}と同様の WENO5 フラックス分割法を適用できる：
+よって，付録~\ref{app:lf_splitting} と同様の WENO5 フラックス分割法を適用できる：
 \begin{enumerate}
   \item フラックス $F = \psi(1-\psi)\hat{n}_x$（$x$ 成分）を定義し，Lax-Friedrichs 分割を行う．
   \item 波速の上界として $\alpha = \max_{i,j}|1-2\psi_{i,j}| \le 1$ を用いる．

@@ -26,13 +26,10 @@
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
-\part{界面追跡法と移流スキーム}
+\part{界面追跡法}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/03_levelset}          %% 第3章：CLS 法（なぜ必要か・移流・再初期化）
 \input{sections/03b_levelset_mapping} %% 第3章続き：ψ-φ 関係・逆変換・曲率安定化
-\clearpage
-\input{sections/04_time_integration}  %% 第4章：WENO5 移流スキーム
-\input{sections/04b_time_schemes}     %% 第4章続き：TVD-RK3・CN・Godunov 上流化・CFL 安定条件
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
@@ -41,6 +38,10 @@
 \input{sections/05_ccd}               %% 第5章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
 \input{sections/05b_ccd_bc_matrix}    %% 第5章続き（境界条件・ブロック三重対角行列構造）
 \input{sections/05c_ccd_extensions}   %% 第5章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
+\input{sections/05d_dissipative_ccd}  %% 第5章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
+\clearpage
+\input{sections/04_time_integration}  %% 第4章：CLS 移流離散化概要（WENO5 詳細は付録 app:weno5）
+\input{sections/04b_time_schemes}     %% 第4章続き：TVD-RK3・CN・CFL 安定条件
 \clearpage
 \input{sections/06_grid}              %% 第6章：界面適合非一様格子
 \clearpage
@@ -64,7 +65,8 @@
 \bibliography{bibliography}
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-%% 付録：数学的補足証明
+%% 付録：数学的補足証明・スキーム詳細
+%% （appendix_proofs.tex が他の付録ファイルを \input する）
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
 \input{sections/appendix_proofs}
