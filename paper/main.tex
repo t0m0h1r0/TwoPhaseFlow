@@ -33,15 +33,14 @@
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
-\part{空間離散化スキーム}
+\part{空間離散化・時間積分スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/05_ccd}               %% 第5章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
-\input{sections/05b_ccd_bc_matrix}    %% 第5章続き（境界条件・ブロック三重対角行列構造）
-\input{sections/05c_ccd_extensions}   %% 第5章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
-\input{sections/05d_dissipative_ccd}  %% 第5章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
+\input{sections/04_ccd}               %% 第4章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
+\input{sections/04b_ccd_bc}           %% 第4章続き（境界条件・ブロック三重対角行列構造）
+\input{sections/04c_ccd_extensions}   %% 第4章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
+\input{sections/04d_dissipative_ccd}  %% 第4章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
 \clearpage
-\input{sections/04_time_integration}  %% 第4章：CLS 移流離散化概要（WENO5 詳細は付録 app:weno5）
-\input{sections/04b_time_schemes}     %% 第4章続き：TVD-RK3・CN・CFL 安定条件
+\input{sections/05_advection}         %% 第5章：CLS 移流離散化・時間積分・安定性制約
 \clearpage
 \input{sections/06_grid}              %% 第6章：界面適合非一様格子
 \clearpage
@@ -49,6 +48,7 @@
 \clearpage
 \input{sections/08_pressure}          %% 第8章：圧力 Poisson 方程式（Projection・FVM・仮想時間法）
 \input{sections/08b_ccd_poisson}      %% 第8章続き（CCD-Poisson 行列・Balanced-Force・手法比較・検証）
+\input{sections/08c_ppe_verification} %% 第8章続き：CCD-Poisson ソルバーの単体検証
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
@@ -66,9 +66,15 @@
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 %% 付録：数学的補足証明・スキーム詳細
-%% （appendix_proofs.tex が他の付録ファイルを \input する）
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
-\input{sections/appendix_proofs}
+\appendix
+\part*{付録}
+
+\input{sections/appendix_interface}
+\input{sections/appendix_ccd_coef}
+\input{sections/appendix_ccd_impl}
+\input{sections/appendix_numerics_solver}
+\input{sections/appendix_numerics_schemes}
 
 \end{document}
