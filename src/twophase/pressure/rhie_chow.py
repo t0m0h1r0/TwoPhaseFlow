@@ -26,7 +26,7 @@ repulsion.  Only the Rhie-Chow face-velocity divergence is correct.
 """
 
 from __future__ import annotations
-from typing import List, Tuple, TYPE_CHECKING
+from typing import List, Tuple, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -52,10 +52,10 @@ class RhieChowInterpolator:
     def face_velocity_divergence(
         self,
         vel_star: List,
-        p: "array",
-        rho: "array",
+        p: Any,
+        rho: Any,
         dt: float,
-    ) -> "array":
+    ) -> Any:
         """Compute ∇·u_RC (the Rhie-Chow face-velocity divergence).
 
         Parameters
@@ -105,42 +105,49 @@ class RhieChowInterpolator:
             s[axis] = idx
             return tuple(s)
 
-        # Internal faces 1 … N_ax-1  (face i+1/2 between cells i and i+1)
-        # Vectorised: L = cells 0..N_ax-2, R = cells 1..N_ax-1
-        u_L = u_star[sl(slice(0, N_ax - 1))]
-        u_R = u_star[sl(slice(1, N_ax))]
-        rho_L = rho[sl(slice(0, N_ax - 1))]
-        rho_R = rho[sl(slice(1, N_ax))]
-        p_L = p[sl(slice(0, N_ax - 1))]
-        p_R = p[sl(slice(1, N_ax))]
-        dp_L = dp_cell[sl(slice(0, N_ax - 1))]
-        dp_R = dp_cell[sl(slice(1, N_ax))]
+        # Internal faces 1 … N_ax  (face k lies between nodes k-1 and k)
+        # face 0 is the left wall (no node to the left) → stays 0
+        # face N_ax is between nodes N_ax-1 and N_ax (wall node) → computed below
+        # Vectorised: L = nodes 0..N_ax-1, R = nodes 1..N_ax
+        u_L = u_star[sl(slice(0, N_ax))]
+        u_R = u_star[sl(slice(1, N_ax + 1))]
+        rho_L = rho[sl(slice(0, N_ax))]
+        rho_R = rho[sl(slice(1, N_ax + 1))]
+        p_L = p[sl(slice(0, N_ax))]
+        p_R = p[sl(slice(1, N_ax + 1))]
+        dp_L = dp_cell[sl(slice(0, N_ax))]
+        dp_R = dp_cell[sl(slice(1, N_ax + 1))]
 
         u_bar = 0.5 * (u_L + u_R)
         dp_face = (p_R - p_L) / h
         dp_bar = 0.5 * (dp_L + dp_R)
         inv_rho_harm = 2.0 / (rho_L + rho_R)   # harmonic mean of 1/ρ  (§6.3)
 
-        flux[sl(slice(1, N_ax))] = u_bar - dt * inv_rho_harm * (dp_face - dp_bar)
+        flux[sl(slice(1, N_ax + 1))] = u_bar - dt * inv_rho_harm * (dp_face - dp_bar)
 
-        # Boundary faces: no-penetration wall → u_f = 0 (already zeros)
+        # face 0 (left wall): no-penetration → u_f = 0 (already zero)
         # For periodic BC this would need wrapping (not implemented here)
         return flux
 
     # ── Flux divergence ───────────────────────────────────────────────────
 
     def _flux_divergence_1d(self, flux_faces, axis: int, h: float):
-        """∇·F from face fluxes: (F_{i+1/2} − F_{i−1/2}) / h."""
+        """∇·F from face fluxes: (F_{i+1/2} − F_{i−1/2}) / h.
+
+        flux_faces has shape[axis] = N_ax+1 (faces 0..N_ax).
+        Face k lies between nodes k-1 and k.
+        FVM divergence at node k: (flux[k+1] - flux[k]) / h, k = 0..N_ax-1.
+        One trailing zero is appended for the extra boundary node N_ax.
+        """
         xp = self.xp
         sl_hi = [slice(None)] * len(flux_faces.shape)
         sl_lo = [slice(None)] * len(flux_faces.shape)
-        sl_hi[axis] = slice(2, None)     # faces 1 … N
-        sl_lo[axis] = slice(0, -2)       # faces 0 … N-1
-        # Result has shape[axis] = N-1; pad to grid shape with zeros at boundary
-        div_interior = (flux_faces[tuple(sl_hi)] - flux_faces[tuple(sl_lo)]) / h
+        sl_hi[axis] = slice(1, None)     # faces 1 … N_ax   (right face of node k)
+        sl_lo[axis] = slice(0, -1)       # faces 0 … N_ax-1 (left  face of node k)
+        # Result has shape[axis] = N_ax; pad one zero at end for boundary node N_ax
+        div_nodes = (flux_faces[tuple(sl_hi)] - flux_faces[tuple(sl_lo)]) / h
 
-        # Pad one row on each side along axis to recover grid shape
         shape_pad = list(flux_faces.shape)
         shape_pad[axis] = 1
         pad = xp.zeros(shape_pad)
-        return xp.concatenate([pad, div_interior, pad], axis=axis)
+        return xp.concatenate([div_nodes, pad], axis=axis)

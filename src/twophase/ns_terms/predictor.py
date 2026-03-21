@@ -157,8 +157,10 @@ class Predictor:
         # van Kan (1986) の増分圧力補正：前時刻圧力 p^n を陽的に加える
         # これにより PPE は圧力増分 δp = p^{n+1}−p^n を解くだけでよくなり
         # スプリッティング誤差が O(Δt) → O(Δt²) に改善する
+        # NOTE: FD (O(h²) central diff) を使用。FVM PPE との整合性を保つため。
+        # CCD を使うと balanced-force 条件が破れて寄生流れが増大する。
         ipc = [
-            -ccd.differentiate(state.pressure, c)[0]
+            -self._fd_gradient(state.pressure, c)
             for c in range(ndim)
         ]
 
@@ -192,3 +194,25 @@ class Predictor:
         self._ab2_ready = True
 
         return vel_star
+
+    # ── private ───────────────────────────────────────────────────────────
+
+    def _fd_gradient(self, p, ax: int):
+        """O(h²) central-difference gradient along ax.
+
+        Interior nodes k = 1..N-1: (p[k+1] - p[k-1]) / (2h).
+        Boundary nodes k = 0, N: zero (Neumann ∂p/∂n = 0).
+        """
+        xp = self.xp
+        h = float(self.config.grid.L[ax] / self.config.grid.N[ax])
+        grad = xp.zeros_like(p)
+        sl_hi  = [slice(None)] * p.ndim
+        sl_lo  = [slice(None)] * p.ndim
+        sl_int = [slice(None)] * p.ndim
+        sl_hi[ax]  = slice(2, None)
+        sl_lo[ax]  = slice(0, -2)
+        sl_int[ax] = slice(1, -1)
+        grad[tuple(sl_int)] = (
+            (p[tuple(sl_hi)] - p[tuple(sl_lo)]) / (2.0 * h)
+        )
+        return grad

@@ -49,16 +49,19 @@ def create_ppe_solver(
     """
     from .ppe_solver import PPESolver
     from .ppe_solver_pseudotime import PPESolverPseudoTime
+    from .ppe_solver_lu import PPESolverLU
 
     solver_type = config.solver.ppe_solver_type
 
     if solver_type == "pseudotime":
-        # ccd を注入して CCD matrix-free O(h⁶) ソルバーを使用
         return PPESolverPseudoTime(backend, config, grid, ccd=ccd)
     elif solver_type == "bicgstab":
         return PPESolver(backend, config, grid)
+    elif solver_type == "lu":
+        # 直接 LU 法（FVM + spsolve）— 反復収束問題を回避するデバッグ用
+        return PPESolverLU(backend, config, grid)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'bicgstab' または 'pseudotime' を指定してください。"
+            " 'bicgstab', 'pseudotime', または 'lu' を指定してください。"
         )
