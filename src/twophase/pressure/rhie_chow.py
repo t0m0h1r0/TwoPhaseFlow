@@ -106,6 +106,18 @@ class RhieChowInterpolator:
             s[axis] = idx
             return tuple(s)
 
+        # Wall BC: CCD Neumann sets dp_cell[0]=0 and dp_cell[N]=0 (∂p/∂n=0).
+        # Using these zero values in dp_bar at wall-adjacent faces gives an
+        # O(1) spurious RC correction (dp_face - dp_bar ≠ 0 for any non-trivial p).
+        # Fix: replace boundary-node dp_cell with one-sided differences so that
+        # dp_face - dp_bar = O(h) for smooth p — consistent with interior faces O(h²).
+        if self.bc_type == 'wall':
+            dp_cell = xp.copy(dp_cell)
+            # Left wall: node 0 → forward one-sided  (p[1]−p[0])/h
+            dp_cell[sl(0)] = (p[sl(1)] - p[sl(0)]) / h
+            # Right wall: node N_ax → backward one-sided  (p[N]−p[N−1])/h
+            dp_cell[sl(N_ax)] = (p[sl(N_ax)] - p[sl(N_ax - 1)]) / h
+
         # Internal faces 1 … N_ax  (face k lies between nodes k-1 and k)
         # face 0 is the left wall (no node to the left) → stays 0
         # face N_ax is between nodes N_ax-1 and N_ax (wall node) → computed below

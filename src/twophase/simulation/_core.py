@@ -169,6 +169,13 @@ class TwoPhaseSimulation:
         state = self._build_flow_state()
         vel_star = self._step_predictor(state, dt)
 
+        # Step 5b: 壁面 BC を u* に適用（wall BC のみ）
+        # Rhie-Chow が u* の壁面接線成分（例: u_x at y=0）を参照する前に
+        # ノースリップ条件を強制する．これを省略すると IPC 圧力勾配の
+        # コーナー非対称性（pin ノード p=0 に起因）が u* 壁面成分を
+        # 非ゼロにし，Rhie-Chow 発散に誤差を与えて発散を招く．
+        self._bc_handler.apply(self.vel_star)
+
         # Step 6: PPE 求解 → δp（IPC 増分法; p^{n+1} = p^n + δp を内部で更新）
         delta_p = self._step_ppe(vel_star, dt)
 
