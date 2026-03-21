@@ -112,7 +112,11 @@ SimulationConfig
 - **Algorithm Sync:** Codebase must track paper's theoretical developments. New paper logic → implementation.
 - **Default vs. Alternative:** Paper's primary scheme = default behavior. Alternatives (discussed in columns/appendices) must be switchable via config, not hardcoded.
 - **Algorithm Fidelity:** NEVER alter an algorithm or discretization scheme from the paper. A deviation is always a bug.
-- **Implicit Solver Default — LU:** For any implicit matrix equation `A x = b` (CCD block tridiagonal, PPE sparse system, Helmholtz), use a **direct LU decomposition** as the default solver (`scipy.sparse.linalg.spsolve`, which uses SuperLU internally). Iterative solvers (BiCGSTAB, GMRES, MINRES) are admissible ONLY when (a) the matrix is provably well-conditioned (κ ≪ 1/ε_mach) and (b) the system size makes direct methods impractical. Document the justification inline when departing from LU.
+- **Implicit Solver Policy:**
+  - **PPE (global sparse system):** Use **iterative solver (LGMRES) as primary**, with **sparse LU (`spsolve`) as automatic fallback** on non-convergence. Rationale: the global PPE matrix is O(n²) in memory for LU fill-in; iterative is O(n·k). The LU fallback prevents iterative convergence failures from blocking downstream development. See `PPESolverPseudoTime`.
+  - **All other implicit systems** (CCD block tridiagonal, Helmholtz 1D sweeps): use **direct LU** (block Thomas algorithm / `spsolve`). These are banded/block-tridiagonal with O(N) fill-in — direct LU is both fast and memory-efficient for them.
+  - When introducing a new implicit system, decide by matrix size and structure: banded → direct; large unstructured sparse → iterative-primary with LU fallback.
+  - Always document the solver choice and justification inline.
 - **Docstrings:** Google-style, English. MUST cite the specific paper equation number(s) implemented (e.g., `Implements eq:rc-face from §7`).
 - **MMS Test Standard:** Every new numerical component requires a pytest with Method of Manufactured Solutions. Use N = [32, 64, 128, 256]. Assert `observed_order ≥ expected_order − 0.2` via linear regression on L1/L2/L∞ norms.
 - **Test Determinism:** Fix RNG seeds and set `OMP_NUM_THREADS=1` in all tests for reproducibility.
@@ -159,14 +163,15 @@ create_ppe_solver(solver_type, backend, config, grid) -> IPPESolver
 # "bicgstab"   → PPESolver
 ```
 
-**PPESolverPseudoTime — Kronecker Product Assembly + Sparse LU:**
+**PPESolverPseudoTime — Kronecker Product Assembly + LGMRES / LU fallback:**
 The solver assembles the 2D CCD-Poisson operator via Kronecker products (C-order flat index k=i·Ny+j):
 ```python
 L = diag(1/ρ) @ (kron(D2x, I_Ny) + kron(I_Nx, D2y))
     - diag(∂ρ_x/ρ²) @ kron(D1x, I_Ny)
     - diag(∂ρ_y/ρ²) @ kron(I_Nx, D1y)
 ```
-and solves `L_pinned p = q` with `scipy.sparse.linalg.spsolve` (SuperLU).
+Solve strategy: LGMRES primary (O(n·k) memory, warm start from p_init),
+spsolve (SuperLU) fallback on non-convergence (info != 0).
 Paper ref: `appendix_ccd_impl.tex` §app:ccd_kronecker, §app:ccd_lu_direct.
 
 **CAUTION — C-order vs. Fortran-order (KL-08):**

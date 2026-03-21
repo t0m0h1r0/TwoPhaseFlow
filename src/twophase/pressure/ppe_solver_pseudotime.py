@@ -1,5 +1,5 @@
 """
-CCD matrix-free PPE solver (pseudo-time / implicit iteration).
+CCD sparse PPE solver — iterative primary, direct LU fallback.
 
 Solves the variable-density Pressure Poisson Equation:
 
@@ -14,21 +14,19 @@ using the 6th-order CCD product-rule operator (§8b Eq. L_CCD_2d_full):
 
 The CCD 1st/2nd derivative matrices (per axis) are built once via a single
 batched CCD call on the identity matrix, then assembled into the 2D operator
-via Kronecker products (scipy.sparse.kron).  The pseudo-time implicit update
+via Kronecker products (scipy.sparse.kron) — see app:ccd_kronecker.
 
-    (I + Δτ L_CCD^ρ) p^{m+1} = p^m + Δτ q        (§9 Step 6.4)
+Solve strategy (app:ccd_lu_direct):
+  PRIMARY  — LGMRES iterative solver: O(n·k) memory (k = inner restart);
+             uses p_init as warm start; controlled by pseudo_tol / pseudo_maxiter.
+  FALLBACK — sparse direct LU (spsolve / SuperLU): invoked automatically when
+             LGMRES does not converge within maxiter; O(n^1.5) memory due to
+             LU fill-in but guaranteed to succeed for a non-singular system.
 
-is solved directly with scipy.sparse.linalg.spsolve.  Choosing Δτ ~ 1/λ_min
-gives geometric convergence; convergence is checked via the CCD residual
-‖L_CCD^ρ p^m − q‖₂ (§9 Step 6.3).
-
-Compared to the GMRES matrix-free approach:
-  - The CCD operator matrix is highly asymmetric (max asymmetry ~900 for N=16)
-    due to compact one-sided boundary schemes, causing GMRES divergence.
-  - The Kronecker-product sparse formulation avoids GMRES by building the
-    full sparse matrix once per timestep and using a direct solver.
-  - Cost: O(N^4) build (2 batched CCD calls + kron) + O(N^3) solve per step;
-    typically 1-3 pseudo-time steps suffice for convergence.
+The CCD operator matrix is highly asymmetric (max asymmetry ~900 for N=16)
+due to compact one-sided boundary schemes; full GMRES diverges on some grids.
+LGMRES (augmented Krylov) is more robust but may still not converge — the LU
+fallback ensures the solver never blocks downstream development.
 
 IPC integration (§4 sec:ipc_derivation):
     Caller passes δp ≡ p^{n+1}−p^n as the unknown (p_init=None → zeros).
@@ -40,11 +38,11 @@ Boundary conditions:
     and velocity BC.  One interior node is pinned to zero to fix the null
     space: row 0 of L is replaced by the identity row.
 
-Refactoring notes (2026-03-20):
-    - Replaces FVM+MINRES and GMRES matrix-free implementations.
-    - Accepts ``ccd`` via constructor injection (DIP).
-    - Factory and builder updated to supply ccd.
-    - Existing IPPESolver interface (solve signature) unchanged.
+Refactoring notes:
+    2026-03-20: Replaces FVM+MINRES and GMRES matrix-free implementations.
+                Accepts ``ccd`` via constructor injection (DIP).
+    2026-03-21: Added Kronecker product matrix assembly (app:ccd_kronecker).
+                Switched from LU-only to LGMRES-primary / LU-fallback.
 """
 
 from __future__ import annotations
@@ -62,7 +60,7 @@ from ..interfaces.ppe_solver import IPPESolver
 
 
 class PPESolverPseudoTime(IPPESolver):
-    """CCD sparse-direct variable-density PPE solver (O(h⁶)).
+    """CCD variable-density PPE solver — LGMRES primary, LU fallback (O(h⁶)).
 
     Parameters
     ----------
@@ -127,7 +125,7 @@ class PPESolverPseudoTime(IPPESolver):
         p : array, shape ``grid.shape``
         """
         import scipy.sparse as sp
-        import scipy.sparse.linalg as spla  # noqa: F401 (spsolve used below)
+        import scipy.sparse.linalg as spla
 
         shape = self.grid.shape
         n = int(np.prod(shape))
@@ -149,19 +147,41 @@ class PPESolverPseudoTime(IPPESolver):
         L_lil[0, 0] = 1.0
         L_pinned = L_lil.tocsr()
 
-        # ─── 右辺の準備 ─────────────────────────────────────────────────
+        # ─── 右辺・初期推定値の準備 ─────────────────────────────────────
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
         rhs_np[0] = 0.0   # ピン点と整合
 
-        # ─── 直接法による求解（スパース LU; 1ステップで収束） ─────────────
-        # CCD コンパクト境界スキームが非対称行列を生成するため
-        # 仮想時間反復（Krylov 系）は収束が不安定になりやすい。
-        # スパース直接ソルバーを用いることで確実に L p = q を解く。
-        p_flat = spla.spsolve(L_pinned, rhs_np)
+        # 初期推定値：p_init があれば warm start、なければゼロ初期化
+        p0 = (
+            np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
+            if p_init is not None
+            else np.zeros(n)
+        )
+
+        # ─── PRIMARY: LGMRES 反復法（メモリ効率 O(n·k)）────────────────────
+        # CCD 境界スキームの非対称性（非対称度 ~900 for N=16）により
+        # 標準 GMRES が発散するケースがある。LGMRES（拡張 Krylov）はより頑健。
+        p_flat, info = spla.lgmres(
+            L_pinned, rhs_np,
+            x0=p0,
+            rtol=self.tol,
+            maxiter=self.maxiter,
+            atol=0,
+        )
+
+        # ─── FALLBACK: スパース LU（収束失敗時）────────────────────────────
+        if info != 0:
+            warnings.warn(
+                f"CCD-PPE LGMRES が収束しませんでした (info={info})。"
+                " スパース LU にフォールバックします。",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            p_flat = spla.spsolve(L_pinned, rhs_np)
 
         if not np.isfinite(p_flat).all():
             warnings.warn(
-                "CCD-PPE spsolve が非有限値を返しました。"
+                "CCD-PPE ソルバーが非有限値を返しました。"
                 " 右辺または密度場を確認してください。",
                 RuntimeWarning,
                 stacklevel=2,
