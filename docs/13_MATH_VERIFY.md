@@ -394,11 +394,15 @@ direct LU fill-in is provably O(N), prefer direct LU outright.
 | CCD spectral radius 3.43/h² | `08b_ccd_poisson.tex` | — | 2026-03-21 | ✅ VERIFIED (fix) | Value self-consistent with Δτ_opt; formula 9.6/h² is Nyquist bound (KL-05) |
 | Kronecker product 2D operator eq:L_CCD_2d_kron | `appendix_ccd_impl.tex` app:ccd_kronecker | `ppe_solver_pseudotime.py:267-284` | 2026-03-21 | ✅ VERIFIED | C-order index k=i·Ny+j; kron(D2x,I_Ny) and kron(I_Nx,D2y) confirmed algebraically and vs. code (KL-08) |
 | PPE solver strategy (iterative+LU fallback) | `appendix_ccd_impl.tex` app:ccd_lu_direct | `ppe_solver_pseudotime.py:solve()` | 2026-03-21 | ✅ VERIFIED | Design: LGMRES primary, spsolve fallback on non-convergence (KL-09) |
-| Rhie-Chow ρⁿ⁺¹ usage | `07_collocate.tex` | `rhie_chow.py` | — | 🔲 TODO | |
-| WENO5 coefficients (β₀,β₁,β₂) | `04_time_integration.tex` | `advection.py` | — | 🔲 TODO | |
-| CFL condition (advection + viscous) | `04_time_integration.tex` | `cfl.py` | — | 🔲 TODO | |
-| CSF curvature kernel | `03_levelset.tex` | `curvature.py` | — | 🔲 TODO | |
-| §§1–4 general MATH_VERIFY | `01_intro.tex`–`04_time_integration.tex` | — | — | 🔲 TODO | No formal Procedure E pass yet |
+| Rhie-Chow ρⁿ⁺¹ face coefficient | `07_collocate.tex:164,171` | `rhie_chow.py:119-124` | 2026-03-21 | ✅ VERIFIED | 2/(ρ_P^{n+1}+ρ_E^{n+1}) harmonic mean; code uses current-step ρ ✓ |
+| WENO5 β₀,β₁,β₂ (Jiang-Shu) | `04_time_integration.tex:122-126` | `advection.py:246-248` | 2026-03-21 | ✅ VERIFIED | (13/12)(·)²+(1/4)(·)²; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6; neg flux reverses d weights ✓ |
+| CFL advection + viscous conditions | `04b_time_schemes.tex:271-286` | `cfl.py:100-113` | 2026-03-21 | ✅ VERIFIED | Advection CFL = CFL·h/|u|_sum ✓; viscous CFL = CFL·h²/(4ν_max) — paper gives limit, code adds safety factor (conservative, correct) |
+| CSF curvature κ = −(φ_y²φ_xx−2φ_xφ_yφ_xy+φ_x²φ_yy)/|∇φ|³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Independent rederivation from ∇·(∇φ/|∇φ|) confirms formula; code uses φ=invert_heaviside(ψ) before computing ✓ |
+| Boundary Eq-II code vs paper | — | `ccd_solver.py:303` | 2026-03-21 | ✅ STALE_ENTRY RESOLVED | CHECKLIST [!] was stale: current code uses c_II=[2,−5,4,−1]/h² = paper O(h²) formula. Discrepancy no longer exists. |
+| §1 Introduction | `01_introduction.tex` | — | 2026-03-21 | ✅ SAFE | No equations; prose/motivation only. No derivation target. |
+| §2 Governing equations | `02_governing.tex`,`02b_csf.tex`,`02c_nondim.tex` | — | sweep 28 + 2026-03-21 CSF verified | ✅ SAFE | One-Fluid verified in appendix_interface; CSF curvature formula verified above |
+| §3 Level Set (CLS) | `03_levelset.tex`,`03b_levelset_mapping.tex` | — | sweep 28 + 2026-03-21 | ✅ SAFE | CLS fixed-point verified (appendix_interface); reinitialization Δτ=0.25Δs noted |
+| §4 Time Integration (WENO5+TVD-RK3) | `04_time_integration.tex`,`04b_time_schemes.tex` | `advection.py`,`tvd_rk3.py`,`cfl.py` | 2026-03-21 | ✅ SAFE | WENO5 β + weights ✓; TVD-RK3 Shu-Osher ✓; CFL ✓ — all verified above |
 
 ---
 
