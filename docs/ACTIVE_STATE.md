@@ -4,11 +4,20 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-22
+* **Date/Update:** 2026-03-23
 * **Code:** **53 passed, 2 skipped** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6): density function ω formula, CCD O(h⁶) metrics via `differentiate_raw()`, 6 new MMS tests in `test_grid.py`. config_loader YAML round-trip fixed.
-* **Paper:** 14 sections + 5 appendices. **25 CRITIC passes + 38 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices. **27 CRITIC passes + 39 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-23)**
+
+23. ~~CRITIC passes 26+27 + EDITOR sweep 39 — 全編ゼロベース + 付録ゼロベース~~ — **Done (2026-03-23).** 16箇所修正（STRUCT-1×12, STRUCT-2×1, MINOR-1×1, APPEND-1×2）:
+    - **STRUCT-1 (12件)**: `§\ref{warn:...}`, `§\ref{box:...}`, `§\ref{proof:...}` を `\ref{}` に修正（LATEX_RULES §1）。対象ファイル: `02b_csf.tex`, `03_levelset.tex`, `04c_ccd_extensions.tex`, `04d_dissipative_ccd.tex`, `05b_time_integration.tex`(×2), `05c_reinitialization.tex`, `09_full_algorithm.tex`(×3), `appendix_numerics_solver.tex`(×2)
+    - **STRUCT-2**: `05_advection.tex` "下表に整理する" → `表~\ref{box:scheme_roles}に整理する`（ハードコード位置参照を解消）
+    - **MINOR-1**: `08b_ccd_poisson.tex` `\label{tab:ccd_bc_types}}` 二重閉じブレース削除
+    - **APPEND-1 (2件)**: `appendix_ccd_impl.tex` の `§\ref{app:ccd_kronecker}`, `§\ref{app:ccd_lu_direct}`（小節参照）を `付録~\ref{}` 形式に修正
+    - 付録数学内容: 全件正確（Newton収束, CCD係数 Eq-I/II, γ(t)導出, 毛管CFL, FVM調和平均）
+
+22. ~~CRITIC pass 26 (全編ゼロベース)~~ — **Done (2026-03-23).** 全29 .texファイル査読。ラベル353件・参照809件整合確認。新規 VERIFIED 修正候補: STRUCT-1×12, STRUCT-2×1, MINOR-1×1。数学的誤りなし。
 
 21. ~~CRITIC pass 25 + EDITOR sweep 38 — §8d + §7 4 issues~~ — **Done (2026-03-23).** All VERIFIED/MINOR items fixed:
     - **STRUCT-1**: `warn:ppe_splitting` Approach 1 末尾の dangling コロン「：」→「．」

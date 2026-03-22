@@ -19,14 +19,14 @@ Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
 ここで $\mathcal{L}(q)$ は空間演算子であり，
 CLS 移流では式~\eqref{eq:dccd_adv_filter} の Dissipative CCD フラックス発散
 $\mathcal{L}(\psi) = \tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}）を指す．
-\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（§\ref{warn:tvd_rk3_scope}参照）．
+\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（\ref{warn:tvd_rk3_scope}参照）．
 
 \noindent\textbf{TVD（Total Variation Diminishing）の定義：}
 TVD（Total Variation Diminishing）とは，数値解の全変動
 $TV(q) \equiv \sum_i |q_{i+1} - q_i|$ が時間的に増大しない性質を指す：
 $TV(q^{n+1}) \leq TV(q^n)$．
 TVD-RK3 はこの性質を時間方向に保証するが，
-Dissipative CCD は線形フィルタであり空間 TVD 性を持たない（§\ref{warn:adv_clamp}）．
+Dissipative CCD は線形フィルタであり空間 TVD 性を持たない（\ref{warn:adv_clamp}）．
 クランプ処置（式~\eqref{eq:psi_clamp}）と組み合わせることで
 $\psi \in [0,1]$ を維持する．
 
