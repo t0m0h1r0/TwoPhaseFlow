@@ -98,6 +98,7 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 ## 3. LaTeX Build
 
 - `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 33 edits pending compile verification
+- `[x]` CRITIC pass 25 + EDITOR sweep 38 (2026-03-23) — `08d`: dangling colon→句点; L_x^CCD superscript削除→eq:L_split参照; LTS「最大固有値」→「最適Δτは h²/a_{ij}に比例」で精確化. `07`: Item 3に参照を統合（孤立段落解消）
 - `[x]` CRITIC pass 24 + EDITOR sweep 37 (2026-03-23) — `08d`: FATAL-1 sweep≠欠陥補正（別手法書き直し）; FATAL-2 eq:residual増分式修正; GAP-1 近似解明記; GAP-2 LTS均等収束数式; IMPL-1 未実装注記; MINOR-1 result:etol_criterionリネーム. `07`: STRUCT-1 重複結論削除
 - `[x]` CRITIC pass 23 + EDITOR sweep 35 (2026-03-23) — `08d_ppe_pseudotime.tex`: ADI Δτ/2 fix (FATAL-1), tcolorbox `\eqref` fix (FATAL-2), C_τ三重矛盾解消 (FATAL-3), 安定条件→最適収束域 (FATAL-4), 5 labels追加, tab:ppe_methods 欠陥補正行追加, 変数凍結節移動
 - `[x]` EDITOR sweep 36 (2026-03-23) — `07_collocate.tex`: BF code-alignment confirmation (3 CCD sites verified) + stability-conclusion sentence in warnbox

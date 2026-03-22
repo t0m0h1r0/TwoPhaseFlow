@@ -6,11 +6,17 @@
 
 * **Date/Update:** 2026-03-22
 * **Code:** **53 passed, 2 skipped** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6): density function ω formula, CCD O(h⁶) metrics via `differentiate_raw()`, 6 new MMS tests in `test_grid.py`. config_loader YAML round-trip fixed.
-* **Paper:** 14 sections + 5 appendices. **23 CRITIC passes + 37 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices. **25 CRITIC passes + 38 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-23)**
 
-19. ~~CRITIC pass 24 + EDITOR sweep 37 — §8d + §7 7 issues~~ — **Done (2026-03-23).** All VERIFIED/LOGICAL_GAP/MINOR items fixed:
+21. ~~CRITIC pass 25 + EDITOR sweep 38 — §8d + §7 4 issues~~ — **Done (2026-03-23).** All VERIFIED/MINOR items fixed:
+    - **STRUCT-1**: `warn:ppe_splitting` Approach 1 末尾の dangling コロン「：」→「．」
+    - **GAP-1**: `\mathcal{L}_x^\mathrm{CCD}` の未定義 superscript を削除 → 式~\eqref{eq:L_split} の定義済み `\mathcal{L}_x`，`\mathcal{L}_y` を参照
+    - **GAP-2**: LTS「最大固有値」→「最適 Δτ の大きさは h²/a_{i,j} に比例する」（局所最適条件を正確に記述）
+    - **MINOR**: §7 コード一覧の末尾括弧参照を Item 3 に統合（孤立段落を解消）
+
+20. ~~CRITIC pass 24 + EDITOR sweep 37 — §8d + §7 7 issues~~ — **Done (2026-03-23).** All VERIFIED/LOGICAL_GAP/MINOR items fixed:
     - **FATAL-1**: 「スウィープ型実装は欠陥補正法の枠組みに直接対応する」→「欠陥補正法は将来の改良候補であり，現行スウィープとは異なる手法」に書き直し（Table の別行5行目と整合）
     - **FATAL-2**: `eq:residual` 近似式 `‖(I+ΔτL_h)(δp)^m − …‖/Δτ` が数学的に誤り（厳密解時にゼロになる）→ 正しい増分式 `‖(δp)^m − (δp)^{m-1}‖/Δτ` に修正
     - **STRUCT-1**: §7 の「安定性の理論的必須条件」+爆発記述が main text と warnbox 結論に重複 → main text の重複2文を削除，warnbox canonical に統一
