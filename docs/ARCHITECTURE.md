@@ -21,7 +21,7 @@ src/
     │   ├── ns_terms.py             # INSTerm
     │   └── ppe_solver.py           # IPPESolver
     ├── levelset/
-    │   ├── advection.py            # WENO5 advection (ILevelSetAdvection)
+    │   ├── advection.py            # CLS advection — WENO5 impl (ILevelSetAdvection); ⚠ CODE-PAPER GAP: paper now uses Dissipative CCD (§5); WENO5 demoted to reference appendix
     │   ├── reinitialize.py         # Pseudo-time reinitialization (IReinitializer)
     │   ├── curvature.py            # CCD-based κ computation (ICurvatureCalculator)
     │   └── heaviside.py            # Regularized Heaviside / delta function
@@ -66,7 +66,7 @@ src/
         ├── test_levelset.py        # CLS advection, reinitialization, curvature
         ├── test_ns_terms.py        # Convection, viscous, surface tension terms
         ├── test_pressure.py        # PPE solve, Rhie-Chow, velocity correction
-        └── test_time_integration.py# WENO5 spatial order (≥4.8), TVD-RK3 temporal order (≥2.8)
+        └── test_time_integration.py# WENO5 spatial order (≥4.8), TVD-RK3 temporal order (≥2.8)  ⚠ needs Dissipative CCD test
 ```
 
 ## **2. Interfaces (ABCs)**
@@ -158,11 +158,25 @@ This couples into the global tridiagonal solve and limits global L∞ accuracy:
 
 ### Time Integration
 - **NS convection:** CCD D⁽¹⁾ + Forward Euler O(Δt)
-- **CLS advection:** WENO5 + TVD-RK3 (conservative form `∇·(ψu)`)
+- **CLS advection (paper-primary):** Dissipative CCD + TVD-RK3 (conservative form `∇·(ψu)`)
+  - Filter: `F̃_i = f'_i + ε_d(f'_{i+1} − 2f'_i + f'_{i-1})`, uniform `ε_d^adv = 0.05` (no S(ψ) modulation)
+  - Clamp `ψ ← max(0, min(1, ψ))` after each TVD-RK3 stage (no TVD guarantee)
+  - Mass conservation error: O(h⁵Δt) per step (periodic BC)
+  - Paper ref: §5, eq:ccd_adv_instability, eq:eps_adv, eq:psi_clamp
+  - **⚠ CODE-PAPER GAP:** `levelset/advection.py` still implements WENO5. Must add `DissiativeCCDAdvection(ILevelSetAdvection)` and register via config.
+- **CLS advection (reference/alternative):** WENO5 + TVD-RK3 — demoted to `appendix_numerics_schemes.tex app:weno5`
 - **CLS reinitialization:** Pseudo-time, `Δτ=0.25Δs`, N_reinit≈28 steps
+- **CLS compression advection part:** Dissipative CCD (same as CLS advection); diffusion part: CCD Crank-Nicolson implicit
 - **NS viscous/pressure:** Crank-Nicolson O(Δt²) via Helmholtz decomposition
 
-**WENO5 Periodic BC — Ghost Cell Rule (node-centered grid):**
+**Dissipative CCD Filter — Spectral Properties:**
+Transfer function: `H(ξ; ε_d) = 1 − 4ε_d sin²(ξ/2)`
+- DC preserved: `H(0) = 1`; stability: `ε_d ≤ 1/4`
+- Nyquist (2h) damping at ε_d=0.05: `H(π) = 0.80` (20% amplitude reduction)
+- Added error in bulk: `O(ε_d h²)` — intentional, same order as CSF model floor O(h²)
+- At interface: `ε_d^(i) = ε_d,max · S(ψ_i) → 0` (adaptive filter for velocity/pressure fields only)
+
+**WENO5 Periodic BC — Ghost Cell Rule (node-centered grid, retained for reference implementation):**
 On a node-centered periodic grid, node index Nx equals node index 0 (same physical point — duplicate endpoint).
 Ghost cells must **skip the duplicate endpoint**:
 ```python

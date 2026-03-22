@@ -4,18 +4,25 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-21
-* **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **18 CRITIC passes + 28 EDITOR sweeps complete (2026-03-21).** Clean build confirmed — zero undefined references (116 pages).
+* **Date/Update:** 2026-03-22
+* **Code:** 31 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. **⚠ CODE-PAPER GAP: `levelset/advection.py` still WENO5; paper §5 now Dissipative CCD.**
+* **Paper:** 12 sections + 5 appendices. **20 CRITIC passes + 29 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+
+## **2. Completed (2026-03-22)**
+
+5. ~~WENO5 → Dissipative CCD global paper sweep~~ — **Done (2026-03-22, commit 1f5d7ee).** 30+ WENO5 references replaced across 7 non-appendix files. WENO5 retained in appendix as reference scheme only.
+
+6. ~~20th CRITIC pass (full review including appendix)~~ — **Done (2026-03-22, commit 24ee31a).** 4 clarity fixes: (A) Balanced-Force warnbox explicit note that Dissipative CCD ≠ standard CCD for NS terms; (B) H(π;0.05)=0.80 Nyquist damping calculated; (C) ψ clamp note in Step 1 of 09_full_algorithm.tex; (D) O(h⁵Δt) mass conservation derivation step completed.
 
 ## **2. Completed (2026-03-21)**
 
 4. ~~Mathematical audit §§6–11 + all appendices + EDITOR sweep 29~~ — **Done (2026-03-21).** 19 appendix sections + 6 main sections verified. Zero PAPER_ERROR. 5 documentation-level fixes applied: (1) §6 pseudocode comment "台形則"→"矩形則（前進型）", (2) §7 Balanced-Force algebra with incorrect κ-factoring removed, (3) §8b spectral radius formula 4a₂/[(1+2|β₂|)h²]=9.6≠3.43 clarified, (4) §10 O(h⁴) pre-asymptotic note added, (5) appendix capillary CFL "保守的に"→"近似的に".
 
-## **2. Pending Action Items**
+## **3. Pending Action Items**
 
 ### **Code / Implementation**
 
+0. **[CRITICAL] Implement `DissipativeCCDAdvection(ILevelSetAdvection)`** in `levelset/advection.py` to match paper §5. Add `advection_scheme: str = "dissipative_ccd"` to `NumericsConfig`. Register both `"dissipative_ccd"` (default) and `"weno5"` (alternative) in a factory or builder method. Write MMS test in `test_time_integration.py`.
 1. Run benchmarks at higher resolution (N=128) and compare to reference values.
 2. Verify GPU backend compatibility (CuPy).
 3. Implement and test 3D cases.
