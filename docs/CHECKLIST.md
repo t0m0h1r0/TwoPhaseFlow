@@ -88,9 +88,10 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ## 3. LaTeX Build
 
-- `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 30 edits pending compile verification
-- `[x]` CRITIC pass 20 (2026-03-22) — WENO5→Dissipative CCD global sweep + 4 clarity fixes (Balanced-Force, ε_d, ψ clamp, mass conservation)
-- `[~]` EDITOR sweep 30 (2026-03-22) — §7 Balanced-Force: blow-up narrative, eq:rc-face-balanced (RC+ST), app:balanced_force_taylor (moved Taylor expansion)
+- `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 33 edits pending compile verification
+- `[x]` CRITIC pass 22 + EDITOR sweep 33 (2026-03-22) — 全体構造・用語統一: 08c追加, FATAL-3 label rename, ARCHITECTURE.md修正, Rhie--Chow統一, Balanced-Force統一, 05分割(→05b/05c), 08分割(→08d)
+- `[x]` CRITIC pass 20 (2026-03-22) — WENO5→Dissipative CCD global sweep + 4 clarity fixes
+- `[x]` EDITOR sweep 32 (2026-03-22) — §7 Balanced-Force: 12 issues
 
 ---
 

@@ -169,25 +169,27 @@ File-number prefixes now match chapter numbers. `main.tex` is authoritative for 
 
 | File | Chapter | Content |
 |------|---------|---------|
-| `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, WENO5, Balanced-Force summary |
+| `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, Dissipative CCD, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
 | `02_governing.tex` | §2 | Variables, Two-Fluid → One-Fluid derivation, ψ-convention (liquid≈0, gas≈1) |
-| `02b_csf.tex` | §2 cont. | CSF surface tension model, δ-function volume force, Balanced-Force |
+| `02b_csf.tex` | §2 cont. | CSF surface tension model, δ-function volume force, Balanced-Force preview |
 | `02c_nondim_curvature.tex` | §2 cont. | Non-dimensionalization (Re/Fr/We), interface curvature κ |
 | `03_levelset.tex` | §3 | Why CLS, conservative advection, reinitialization (Δτ=0.25Δs) |
 | `03b_levelset_mapping.tex` | §3 cont. | ψ-φ mapping, logit inverse, curvature numerics & stabilization |
-| `04_time_integration.tex` | §4 | WENO5 advection: LF flux splitting, ENO/WENO ideas, coefficients, boundary |
-| `04b_time_schemes.tex` | §4 cont. | TVD-RK3 (CLS), Crank-Nicolson (viscous), Godunov upwinding, CFL stability |
-| `05_ccd.tex` | §5 | CCD motivation, definition, Equation-I & II coefficient derivations |
-| `05b_ccd_bc_matrix.tex` | §5 cont. | Boundary schemes (O(h⁵)/O(h²)), ghost-cell method, block tridiagonal matrix |
-| `05c_ccd_extensions.tex` | §5 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
+| `04_ccd.tex` | §4 | CCD motivation, definition, Eq-I & II coefficient derivations |
+| `04b_ccd_bc.tex` | §4 cont. | Boundary schemes (O(h⁵)/O(h²)), block tridiagonal matrix structure |
+| `04c_ccd_extensions.tex` | §4 cont. | Non-uniform grid (coord transform), 2D mixed derivatives, elliptic solver role |
+| `04d_dissipative_ccd.tex` | §4 cont. | Dissipative CCD filter, S(ψ) derivation, ε_max design, spectral analysis |
+| `05_advection.tex` | §5 | CLS advection: Dissipative CCD design rationale, instability analysis, filter theory |
+| `05b_time_integration.tex` | §5 cont. | Time integration: TVD-RK3 (CLS), AB2+IPC (NS), Crank-Nicolson (viscous) |
+| `05c_reinitialization.tex` | §5 cont. | CLS reinitialization (compression + diffusion), stability constraints (CFL) |
 | `06_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
-| `07_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
-| `08_pressure.tex` | §8 Pressure Solver | Variable-density PPE derivation, FVM discretization, pseudo-time implicit |
+| `07_collocate.tex` | §7 | Rhie--Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
+| `08_pressure.tex` | §8 Pressure Solver | Variable-density PPE derivation, FVM discretization, Rhie--Chow divergence, BC |
 | `08b_ccd_poisson.tex` | §8 cont. | CCD-Poisson matrix structure, Balanced-Force consistency, method comparison |
-| `08c_ppe_verification.tex` | §8 cont. | CCD-Poisson solver unit tests (Test C-1, C-2, C-3) |
+| `08c_ppe_verification.tex` | §8 cont. | PPE solver unit tests (Test C-1, C-2, C-3) |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
 | `10_verification.tex` | §10 | Error norms, grid convergence tests (curvature, parasitic currents) |
 | `10b_benchmarks.tex` | §10 cont. | 4 benchmarks (stationary droplet, Zalesak, RT instability, rising bubble) + error budget |
 | `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (sequential sweep), future work |
-| `appendix_proofs.tex` | Appendix | 1D One-Fluid proof, logit inverse derivation, Newton convergence, Δτ convergence rate (sec:dtau_derive) |
+| `appendix_proofs.tex` | Appendix | 1D One-Fluid proof, logit inverse derivation, Newton convergence, Δτ convergence rate |

@@ -158,7 +158,7 @@ This couples into the global tridiagonal solve and limits global L∞ accuracy:
 - **Consequence for tests:** MMS convergence order thresholds must account for boundary contamination: d1 ≥ 3.5 (not 5.5), d2 ≥ 2.5 (not 4.5). The 2D axis-independence polynomial must be degree ≤ 3 so Eq-II-bc is exact.
 
 ### Time Integration
-- **NS convection:** CCD D⁽¹⁾ + Forward Euler O(Δt)
+- **NS convection:** CCD D⁽¹⁾ + AB2 (Adams-Bashforth 2nd order) O(Δt²) with IPC (Incremental Pressure Correction); startup step n=0 uses Forward Euler
 - **CLS advection (paper-primary):** Dissipative CCD + TVD-RK3 (conservative form `∇·(ψu)`)
   - Filter: `F̃_i = f'_i + ε_d(f'_{i+1} − 2f'_i + f'_{i-1})`, uniform `ε_d^adv = 0.05` (no S(ψ) modulation)
   - Clamp `ψ ← max(0, min(1, ψ))` after each TVD-RK3 stage (no TVD guarantee)
