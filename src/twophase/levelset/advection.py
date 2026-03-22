@@ -1,31 +1,42 @@
 """
 Conservative Level Set advection.
 
-Implements §3.3 (Eq. 16) and §4 of the paper.
+Implements §3.3 (Eq. 16) and §5 of the paper.
 
 The CLS conservation equation is:
 
     ∂ψ/∂t + ∇·(ψ u) = 0                          (§3.3 Eq.16)
 
-which, using ∇·u = 0, becomes the non-conservative convection form:
+Two schemes are provided (both use TVD-RK3, §9 eq:tvd_rk3):
 
-    ∂ψ/∂t + u·∇ψ = 0
+DissipativeCCDAdvection  (paper-primary, §5)
+--------------------------------------------
+Computes ∂(ψu)/∂x via CCD first-derivative solve, then applies the
+spectral filter (§5 eq:dccd_adv_filter):
 
-Time integration uses the TVD-RK3 scheme (§4 eq:tvd_rk3).
-Spatial fluxes use the WENO5 scheme (§4 sec:weno5) with global Lax-Friedrichs
-splitting to handle the near-discontinuous ψ profile without Gibbs
-oscillations.
+    F̃ᵢ = f'ᵢ + ε_d (f'ᵢ₊₁ − 2f'ᵢ + f'ᵢ₋₁),   ε_d = 0.05
 
-WENO5 smoothness indicators and weights follow (§4 eq:weno5_beta):
+Transfer function H(ξ; 0.05) = 1 − 4·0.05·sin²(ξ/2) suppresses
+high-frequency modes that are linearly unstable in pure CCD (§5
+eq:ccd_adv_instability).  At Nyquist: H(π; 0.05) = 0.80 (20% damping).
+
+ψ is clamped to [0, 1] after each TVD-RK3 stage (§5 warn:adv_clamp)
+because the filter has no TVD guarantee.
+
+LevelSetAdvection  (reference scheme, appendix app:weno5)
+----------------------------------------------------------
+Spatial fluxes via WENO5 + global Lax-Friedrichs splitting.
+
+WENO5 smoothness indicators and weights follow (app:weno5 eq:weno5_beta):
     β₀ = (13/12)(fᵢ₋₂ − 2fᵢ₋₁ + fᵢ)²   + (1/4)(fᵢ₋₂ − 4fᵢ₋₁ + 3fᵢ)²
     β₁ = (13/12)(fᵢ₋₁ − 2fᵢ   + fᵢ₊₁)²  + (1/4)(fᵢ₋₁ − fᵢ₊₁)²
     β₂ = (13/12)(fᵢ   − 2fᵢ₊₁ + fᵢ₊₂)²  + (1/4)(3fᵢ − 4fᵢ₊₁ + fᵢ₊₂)²
 
-Lax-Friedrichs flux splitting (§4 eq:lf_split):
+Lax-Friedrichs flux splitting (app:weno5 eq:lf_split):
     F⁺ = (1/2)(F + α q),  F⁻ = (1/2)(F − α q)
-    α = max|u|  (global Lax-Friedrichs, §4 eq:alpha_glf)
+    α = max|u|  (global Lax-Friedrichs, app:weno5 eq:alpha_glf)
 
-Boundary ghost cells (§4 sec:weno5_boundary):
+Boundary ghost cells (app:weno5 sec:weno5_boundary):
     bc='periodic' — wrap indices (zero contamination, O(h⁵) preserved)
     bc='neumann'  — symmetric reflection (wall ∂ψ/∂n = 0)
     bc='outflow'  — constant extrapolation (O(h) near boundary)
@@ -41,6 +52,7 @@ from ..interfaces.levelset import ILevelSetAdvection
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
+    from ..ccd.ccd_solver import CCDSolver
 
 # WENO5 ideal weights
 _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
@@ -236,6 +248,113 @@ class LevelSetAdvection(ILevelSetAdvection):
             div_full = xp.concatenate([pad, div_interior, pad], axis=axis)
 
         return div_full
+
+
+# ── Dissipative CCD advection (paper-primary, §5) ─────────────────────────
+
+_EPS_D_ADV = 0.05   # uniform filter strength (§5 eq:eps_adv)
+
+
+class DissipativeCCDAdvection(ILevelSetAdvection):
+    """Advects ψ using Dissipative CCD + TVD-RK3 (paper §5, alg:dccd_adv).
+
+    Algorithm per step
+    ------------------
+    For each axis ax:
+        1.  f_i  = ψ_i · u_ax,i            (advective flux)
+        2.  f'_i = CCD.differentiate(f, ax) (6th-order derivative)
+        3.  F̃_i  = f'_i + ε_d(f'_{i+1} − 2f'_i + f'_{i-1})   (spectral filter)
+    RHS = −Σ_ax F̃_ax
+    TVD-RK3 with ψ ← clip(ψ, 0, 1) after each stage.
+
+    Parameters
+    ----------
+    backend : Backend
+    grid    : Grid — constructor-injected
+    ccd     : CCDSolver — constructor-injected (same instance as NS solver)
+    bc      : Ghost-cell BC for the filter second-difference stencil.
+              'periodic' | 'neumann' | 'outflow' | 'zero'
+    eps_d   : Filter strength ε_d (default 0.05, §5 eq:eps_adv)
+    """
+
+    def __init__(
+        self,
+        backend: "Backend",
+        grid: "Grid",
+        ccd: "CCDSolver",
+        bc: str = 'periodic',
+        eps_d: float = _EPS_D_ADV,
+    ):
+        self.xp = backend.xp
+        self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+        self._ccd = ccd
+        self._bc = bc
+        self._eps_d = float(eps_d)
+
+    # ── Public API ────────────────────────────────────────────────────────
+
+    def advance(self, psi, velocity_components: List, dt: float):
+        """Advance ψ by one time step using TVD-RK3 with per-stage clamp.
+
+        Parameters
+        ----------
+        psi                 : array, shape ``(Nx+1, Ny+1[, Nz+1])``
+        velocity_components : list of arrays [u, v[, w]], same shape as psi
+        dt                  : time step
+
+        Returns
+        -------
+        psi_new : updated ψ array, clipped to [0, 1]
+        """
+        xp = self.xp
+
+        def L(q):
+            return self._rhs(q, velocity_components)
+
+        # TVD-RK3 (Shu-Osher) with ψ ∈ [0,1] clamp after each stage
+        # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
+        q0 = xp.copy(psi)
+        q1 = xp.clip(q0 + dt * L(q0), 0.0, 1.0)
+        q2 = xp.clip(0.75 * q0 + 0.25 * (q1 + dt * L(q1)), 0.0, 1.0)
+        q_new = xp.clip(
+            (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * L(q2)),
+            0.0, 1.0,
+        )
+        return q_new
+
+    # ── RHS: −∇·(ψu) via Dissipative CCD ────────────────────────────────
+
+    def _rhs(self, psi, vel):
+        """Compute RHS = −Σ_ax F̃_ax  (§5 alg:dccd_adv steps 1–4)."""
+        xp = self.xp
+        ndim = len(vel)
+        result = xp.zeros_like(psi)
+
+        for ax in range(ndim):
+            # Step 1: advective flux f_i = ψ_i · u_ax,i
+            f = psi * vel[ax]
+
+            # Step 2: CCD first derivative f'_i ≈ ∂f/∂x_ax
+            fp, _ = self._ccd.differentiate(f, axis=ax)
+
+            # Step 3: Dissipative filter
+            #   F̃_i = f'_i + ε_d (f'_{i+1} − 2f'_i + f'_{i-1})
+            fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
+            n = fp.shape[ax]
+
+            def _sl(start, stop, _ax=ax):
+                s = [slice(None)] * fp.ndim
+                s[_ax] = slice(start, stop)
+                return tuple(s)
+
+            fp_p1 = fp_pad[_sl(2, n + 2)]   # f'_{i+1}
+            fp_m1 = fp_pad[_sl(0, n)]        # f'_{i-1}
+            F_tilde = fp + self._eps_d * (fp_p1 - 2.0 * fp + fp_m1)
+
+            # Step 4: accumulate −∂(ψu)/∂x_ax
+            result -= F_tilde
+
+        return result
 
 
 # ── WENO5 reconstruction kernels (vectorised) ─────────────────────────────

@@ -5,7 +5,7 @@
 ## **1. Project Status Summary**
 
 * **Date/Update:** 2026-03-22
-* **Code:** 31 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. **⚠ CODE-PAPER GAP: `levelset/advection.py` still WENO5; paper §5 now Dissipative CCD.**
+* **Code:** 33 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED.
 * **Paper:** 12 sections + 5 appendices. **20 CRITIC passes + 29 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-22)**
@@ -13,6 +13,8 @@
 5. ~~WENO5 → Dissipative CCD global paper sweep~~ — **Done (2026-03-22, commit 1f5d7ee).** 30+ WENO5 references replaced across 7 non-appendix files. WENO5 retained in appendix as reference scheme only.
 
 6. ~~20th CRITIC pass (full review including appendix)~~ — **Done (2026-03-22, commit 24ee31a).** 4 clarity fixes: (A) Balanced-Force warnbox explicit note that Dissipative CCD ≠ standard CCD for NS terms; (B) H(π;0.05)=0.80 Nyquist damping calculated; (C) ψ clamp note in Step 1 of 09_full_algorithm.tex; (D) O(h⁵Δt) mass conservation derivation step completed.
+
+7. ~~DissipativeCCDAdvection implementation~~ — **Done (2026-03-22).** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py`. `advection_scheme` field added to `NumericsConfig` (default `"dissipative_ccd"`, alternative `"weno5"`). `SimulationBuilder` updated to select scheme from config. 2 new MMS tests added (spatial order ≥ 1.8 O(h²), full method order ≥ 1.8). **33 tests passing.** Code-paper gap CLOSED.
 
 ## **2. Completed (2026-03-21)**
 
@@ -22,7 +24,6 @@
 
 ### **Code / Implementation**
 
-0. **[CRITICAL] Implement `DissipativeCCDAdvection(ILevelSetAdvection)`** in `levelset/advection.py` to match paper §5. Add `advection_scheme: str = "dissipative_ccd"` to `NumericsConfig`. Register both `"dissipative_ccd"` (default) and `"weno5"` (alternative) in a factory or builder method. Write MMS test in `test_time_integration.py`.
 1. Run benchmarks at higher resolution (N=128) and compare to reference values.
 2. Verify GPU backend compatibility (CuPy).
 3. Implement and test 3D cases.
