@@ -1,10 +1,10 @@
 % paper/sections/05_advection.tex
 %
-% §5  CLS 移流の離散化：スキーム選択・時間積分・安定性制約
+% §5  CLS 移流の離散化：Dissipative CCD スキーム・時間積分・安定性制約
 %     （旧 04_time_integration.tex + 04b_time_schemes.tex の統合）
-%     WENO5 の完全な定式化は付録~\ref{app:weno5} に移動した．
+%     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
 %
-\section{CLS 移流の離散化概要}
+\section{CLS 移流の離散化}
 \label{sec:time}
 
 本章では，第~\ref{sec:levelset}章で導入した CLS 移流方程式
@@ -12,75 +12,204 @@
   \frac{\partial\psi}{\partial t} + \nabla\cdot(\psi\bm{u}) = 0
   \label{eq:cls_advection_ref}
 \end{equation}
-（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための\textbf{空間離散化スキームの選択根拠}を示す．
-CCD による微分計算（第~\ref{sec:CCD}章）および
-散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）の設計を踏まえ，
-本章はそれらと CLS 移流がどのように役割分担するかを説明する．
+（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための離散化スキームを示す．
+第~\ref{sec:CCD}章で構築した CCD 法および第~\ref{sec:dissipative_ccd}節の
+Dissipative CCD フィルタを移流方程式へ適用する設計根拠を述べ，
+圧縮項（再初期化）・時間積分・安定性制約と合わせて全スキームを定式化する．
 
-\subsection{スキーム選択の動機：なぜ WENO5 が必要か}
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Dissipative CCD による CLS 移流の安定化：設計根拠}
 \label{sec:advection_motivation}
+% ─────────────────────────────────────────────────────────────────────────────
 
-\subsubsection{気液界面移流の困難}
+\subsubsection{気液界面移流の困難と純 CCD の限界}
+\label{sec:advection_ccd_limit}
 
-$\psi$ は界面付近で $0$ から $1$ へと急激に変化するが，この勾配の強さは
-物理的実体（物性の不連続）を反映したものであって，数値拡散でなだらかにして良いものではない．
+$\psi$ は界面付近で $0$ から $1$ へと急激に変化する（界面幅 $\sim 2\varepsilon$）．
+この急峻なプロファイルを移流方程式~\eqref{eq:cls_advection_ref}で輸送するとき，
+\textbf{中心差分ベースのスキームは原理的に不安定}になる．
 
-\textbf{線形スキームの限界：}
-通常の線形スキーム（例：CCD 直接適用）は高精度だが，
-$\psi$ のような急峻なプロファイルを移流すると
-\textbf{Gibbs 振動}（$\psi < 0$ や $\psi > 1$ の非物理的値）が発生する．
-これが界面の「にじみ」（第~\ref{sec:intro}章~§\ref{sec:failure_modes}）の主因の一つである．
+フォン・ノイマン安定性解析による確認：
+CCD は純中心差分（修正波数 $k^*(kh)$ が実数）であるため，
+移流方程式 $\partial\psi/\partial t + u\,\partial\psi/\partial x = 0$ に
+陽的時間積分を組み合わせると，Fourier モード $\psi_i = e^{i\xi i}$ に対して
+増幅係数は
+\begin{equation}
+  |g(\xi)|^2 = 1 + \sigma^2 \left[\frac{k^*(\xi)}{k}\right]^2 > 1
+  \quad \forall\, \xi > 0, \;\sigma = \frac{u\Delta t}{h} > 0
+  \label{eq:ccd_adv_instability}
+\end{equation}
+となり，\textbf{すべての波数で振幅が増大する}——これは純 CCD による陽的移流が
+本質的に不安定であることを意味する（CFL 条件を小さくしても解消しない）．
 
-\textbf{CCD との役割分担：}
-CCD は\textbf{滑らかな場}の高精度微分評価（曲率 $\kappa$，速度勾配 $\nabla\bm{u}$，
-圧力勾配 $\nabla p$）に最適化されており，急峻な勾配を持つ $\psi$ の\textbf{移流}には
-設計上適合しない（中心差分ベースの振動問題）．
-一方，散逸的 CCD フィルタ（§\ref{sec:dissipative_ccd}）は CCD 微分場の
-高周波ノイズを除去するが，$\psi$ の非線形移流そのものを安定化するには至らない．
+この不安定性の物理的帰結は \textbf{Gibbs 振動}（$\psi < 0$ や $\psi > 1$
+の非物理的値の発生）であり，界面のにじみおよび密度場の不整合として現れる
+（§\ref{sec:failure_modes}）．
 
-したがって，CLS 移流には\textbf{不連続・急峻勾配に対応した非線形スキーム}が別途必要である．
+\subsubsection{Dissipative CCD の採用：フィルタによるスペクトル安定化}
+\label{sec:advection_dccd_design}
 
-\subsubsection{WENO5 の採用}
-
-本稿では，CLS 移流に 5 次精度の Weighted ENO（WENO5）スキーム \cite{JiangShu1996} を採用する．
-WENO5 は\textbf{滑らかさ指標（smoothness indicator）$\beta_k$} に基づく非線形重みを用い，
-\begin{itemize}
-  \item \textbf{滑らかな領域：} 3 つの候補ステンシルを最適に凸結合し $O(h^5)$ 精度を達成
-  \item \textbf{不連続・急峻勾配付近：} 不連続を含む候補ステンシルの重みが自動的にゼロとなり
-        振動を抑制（ENO 的挙動）
-\end{itemize}
-する自己適応型スキームである．
-
-\textbf{保存形との整合性：}
-式~\eqref{eq:cls_advection_ref} は保存形（発散形）で記述されており，
-WENO5 もフラックス形式（$\hat{F}_{i+1/2}$）で実装されるため，
-離散的な質量保存が自動的に成立する（CLS 法の主要な利点，§\ref{sec:why_cls}）．
+第~\ref{sec:dissipative_ccd}節で設計した 3 点スペクトルフィルタ
+（式~\eqref{eq:dccd_filter}）を，
+CLS 移流フラックス発散の計算に組み込むことで上記の不安定性を解消する．
 
 \medskip
-WENO5 の完全な定式化（Lax--Friedrichs フラックス分割，
-滑らかさ指標 $\beta_k$，再構成係数，境界ゴーストセル処理）は
-付録~\ref{app:weno5} に収録する．
-本文では概念的な役割と CCD/散逸フィルタとの関係のみを示す．
+\noindent\textbf{移流への適用．}
+フラックス場 $f_i = \psi_i u_i$（$x$ 方向）に CCD を適用して微分場 $f'_i$
+を求め，その後 Dissipative フィルタを適用する：
+\begin{align}
+  f'_i &= \left[\frac{\partial(\psi u)}{\partial x}\right]_i
+  \quad\text{（CCD 求解，$O(h^6)$ 精度）}
+  \label{eq:dccd_adv_ccd} \\[4pt]
+  \tilde{F}_i &= f'_i + \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+  \label{eq:dccd_adv_filter}
+\end{align}
+得られた修正フラックス発散 $\tilde{F}_i$ を時間積分（§\ref{sec:time_int}）の
+空間演算子として使用する：$\mathcal{L}(\psi) = \tilde{F}$．
+
+\medskip
+\noindent\textbf{安定化機構：フィルタ伝達関数による振幅減衰．}
+Fourier モード $\psi_i = e^{i\xi i}$ に対して
+$f'_{i+1} - 2f'_i + f'_{i-1} = (e^{i\xi}-2+e^{-i\xi})f'_i = -4\sin^2(\xi/2)\,f'_i$
+であるから，フィルタ適用後の有効スペクトルは
+$\tilde{F}(\xi) = H(\xi;\varepsilon_d^{\mathrm{adv}})\cdot f'(\xi)$，
+$H(\xi) = 1 - 4\varepsilon_d^{\mathrm{adv}}\sin^2(\xi/2) \leq 1$．
+
+この実数係数（$0 \leq H \leq 1$）の乗算が\textbf{振幅を単調に減衰}させ，
+増幅係数を
+\begin{equation}
+  |g(\xi)|^2 = 1 + \sigma^2 H(\xi)^2\left[\frac{k^*(\xi)}{k}\right]^2
+  \label{eq:dccd_adv_amp}
+\end{equation}
+に変える．$H(\xi) < 1$ によって有効 CFL 数が $\sigma H(\xi) < \sigma$ に縮小し，
+高波数（$\xi \to \pi$，$H \to 1-4\varepsilon_d^{\mathrm{adv}}$）では
+成長率が大幅に低減される．
+典型的な二相流パラメータ（$\mathrm{CFL} \leq 0.5$，$\varepsilon_d^{\mathrm{adv}} = 0.05$）のもとで
+実用的な安定性が得られることを数値実験で確認している（第~\ref{sec:verification}章参照）．
+
+\begin{tcolorbox}[warnbox, title={移流フィルタの散逸強度：S(ψ) 制御を使わない理由}]
+\label{warn:adv_filter_uniform}
+
+第~\ref{sec:dissipative_ccd}節の速度・圧力場フィルタでは
+スイッチ関数 $S(\psi) = (2\psi-1)^2$ を用いて
+\textbf{界面でフィルタを OFF}（$S(1/2) = 0$）にし，曲率計算の精度を保護した．
+
+CLS 移流に同じ $S(\psi)$ を適用すると，Gibbs 振動が最も激しい
+$\psi \approx 0.5$（界面）の近傍でフィルタ強度がゼロになり，
+安定化が最も必要な場所で無効化されるという\textbf{設計矛盾}が生じる．
+
+\textbf{したがって CLS 移流には一様散逸強度を使用する：}
+\begin{equation}
+  \varepsilon_d^{\mathrm{adv}} = \varepsilon_{d,\max} = 0.05 \quad\text{（全格子点，S(ψ) 制御なし）}
+  \label{eq:eps_adv}
+\end{equation}
+速度・圧力場フィルタ（適応制御 $\varepsilon_d^{(i)} = \varepsilon_{d,\max}S(\psi_i)$）
+との使い分けを下表に整理する．
+\end{tcolorbox}
+
+\medskip
+\noindent\textbf{質量保存性．}
+フィルタ項 $\varepsilon_d^{\mathrm{adv}}(f'_{i+1}-2f'_i+f'_{i-1})$ の周期境界での総和は
+\[
+  \sum_i \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+  = \varepsilon_d^{\mathrm{adv}}\!\left(\sum_i f'_{i+1} - 2\sum_i f'_i + \sum_i f'_{i-1}\right) = 0
+\]
+（添字のシフト対称性より）．
+すなわち\textbf{フィルタは総質量に寄与しない}（周期 BC）．
+CCD そのものは $\sum_i f'_i\,h \approx [f]_0^L$（発散定理）を $O(h^6)$ 精度で近似するため，
+移流ステップあたりの質量保存誤差は $O(h^5\,\Delta t)$ となる
+（WENO5 の完全な保存性と比較する場合は付録~\ref{app:weno5} 参照）．
+
+\begin{tcolorbox}[warnbox, title={TVD 性の欠如と ψ のクランプ処置}]
+\label{warn:adv_clamp}
+
+WENO5 + TVD-RK3 は TVD 性（Total Variation Diminishing）により
+$\psi \in [0,1]$ を自動保証する．
+Dissipative CCD は線形フィルタであり TVD 性を持たないため，
+界面近傍での Gibbs 振動が抑制不足になると $\psi$ が $[0,1]$ を
+逸脱する可能性がある．
+
+\textbf{対処：} 各 TVD-RK3 ステージ完了後に
+\begin{equation}
+  \psi_i \leftarrow \max\bigl(0,\, \min(1,\, \psi_i)\bigr)
+  \label{eq:psi_clamp}
+\end{equation}
+のクランプを適用する．クランプによる質量誤差は $O(h^2)$ で
+CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$（§\ref{sec:balanced_force}）
+と同オーダーであり，全体精度のボトルネックにならない．
+クランプ後の質量変化は第~\ref{sec:verification}章の体積保存ベンチマークで定量確認すること．
+\end{tcolorbox}
+
+\medskip
+\noindent\textbf{アルゴリズムの概要（1 次元，TVD-RK3 第 1 ステージ）：}
+
+\begin{tcolorbox}[algbox, title={Dissipative CCD による CLS 移流アルゴリズム（1D)}]
+\label{alg:dccd_adv}
+
+\textbf{入力：} $\{\psi_i^n\}$，$\{u_i^n\}$，散逸強度 $\varepsilon_d^{\mathrm{adv}}$
+
+\begin{enumerate}
+  \item \textbf{フラックス場の構成：}
+        各格子点 $i$ で $f_i = \psi_i \cdot u_i$．
+
+  \item \textbf{CCD 求解（Eq-I + Eq-II システム）：}
+        §\ref{sec:ccd_matrix} のブロック Thomas 法で
+        $\{f'_i\} = \{(\partial(\psi u)/\partial x)_i\}$ を得る．
+
+  \item \textbf{Dissipative フィルタの適用（一様 $\varepsilon_d^{\mathrm{adv}}$）：}
+        内点 $i = 1,\ldots,N-2$：
+        \[
+          \tilde{F}_i = f'_i + \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+        \]
+        周期 BC：折り返しインデックスで $i=0,N-1$ にも同様に適用．
+        壁面 BC：境界点はフィルタ前の $f'$ 値を使用（§\ref{sec:dccd_bc}）．
+
+  \item \textbf{TVD-RK3 第 1 ステージ更新：}
+        \[
+          \psi_i^{(1)} = \psi_i^n - \Delta t\,\tilde{F}_i
+        \]
+
+  \item \textbf{クランプ：} $\psi_i^{(1)} = \max(0,\min(1,\psi_i^{(1)}))$ （式~\eqref{eq:psi_clamp}）．
+
+  \item 第 2・第 3 RK ステージでステップ 1--5 を繰り返す（式~\eqref{eq:tvd_rk3}）．
+\end{enumerate}
+
+\textbf{2 次元への拡張：} 次元分割法（dimensional splitting）を適用し，
+$x$ 方向フラックス $\psi u$ と $y$ 方向フラックス $\psi v$ に独立に
+1 次元手順を実行する：
+\[
+  \tilde{F}_{x,ij} = \left[\frac{\partial(\psi u)}{\partial x}\right]_{ij}^{\text{filtered}},
+  \quad
+  \tilde{F}_{y,ij} = \left[\frac{\partial(\psi v)}{\partial y}\right]_{ij}^{\text{filtered}}
+\]
+\[
+  \psi_{ij}^{(1)} = \psi_{ij}^n - \Delta t\!\left(\tilde{F}_{x,ij} + \tilde{F}_{y,ij}\right)
+\]
+\end{tcolorbox}
 
 \begin{tcolorbox}[resultbox, title={本稿の空間離散化スキームの役割分担}]
 \label{box:scheme_roles}
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{llll}
+\begin{tabular}{lllp{5cm}}
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & WENO5（付録~\ref{app:weno5}） & $O(h^5)$ & 非線形安定化・保存形 \\
+CLS 移流（$\psi$） & Dissipative CCD（§\ref{sec:advection_motivation}） & $O(h^6)$＋フィルタ & 同一ステンシル；一様 $\varepsilon_d^{\mathrm{adv}}$ でGibbs 振動抑制 \\
+CLS 圧縮（移流部） & Dissipative CCD（§\ref{sec:cls_compression}） & $O(h^6)$＋フィルタ & 移流と同構成（陽解法） \\
+CLS 圧縮（拡散部） & CCD-CN（§\ref{sec:cls_compression}） & $O(h^6)$ & 無条件安定（陰解法） \\
 曲率・速度微分 & CCD（§\ref{sec:CCD}） & $O(h^6)$ & 高精度・コンパクト \\
-高周波ノイズ除去 & 散逸的 CCD（§\ref{sec:dissipative_ccd}） & — & CCD と同一 3 点ステンシル \\
+速度・圧力場ノイズ除去 & 散逸的 CCD 適応制御（§\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\
 圧力 Poisson & CCD-Poisson（§\ref{sec:pressure}） & $O(h^6)$ & Balanced-Force 整合性 \\
 \hline
 \end{tabular}
 \end{center}
 \end{tcolorbox}
 
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{時間積分スキーム}
 \label{sec:time_int}
+% ─────────────────────────────────────────────────────────────────────────────
 
 \subsubsection{3次 TVD Runge--Kutta 法（CLS 移流・再初期化のみ）}
 
@@ -92,16 +221,19 @@ Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
   q^{n+1} &= \frac{1}{3}q^n + \frac{2}{3}q^{(2)} + \frac{2}{3}\Delta t\,\mathcal{L}(q^{(2)})
   \label{eq:tvd_rk3}
 \end{align}
-ここで $\mathcal{L}(q)$ は空間演算子（WENO5 フラックスの発散）を表す．
+ここで $\mathcal{L}(q)$ は空間演算子であり，
+CLS 移流では式~\eqref{eq:dccd_adv_filter} の Dissipative CCD フラックス発散
+$\mathcal{L}(\psi) = \tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}）を指す．
 \textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（§\ref{warn:tvd_rk3_scope}参照）．
 
 \noindent\textbf{TVD（Total Variation Diminishing）の定義：}
 TVD（Total Variation Diminishing）とは，数値解の全変動
 $TV(q) \equiv \sum_i |q_{i+1} - q_i|$ が時間的に増大しない性質を指す：
 $TV(q^{n+1}) \leq TV(q^n)$．
-これにより，$\psi$ のプロファイルに新たな振動が生成されることが防止され，
-界面のギザギザな数値ノイズが自然に抑制される．
-特に CLS 変数 $\psi \in [0,1]$ の範囲外への逸脱を防ぐ効果がある．
+TVD-RK3 はこの性質を時間方向に保証するが，
+Dissipative CCD は線形フィルタであり空間 TVD 性を持たない（§\ref{warn:adv_clamp}）．
+クランプ処置（式~\eqref{eq:psi_clamp}）と組み合わせることで
+$\psi \in [0,1]$ を維持する．
 
 \begin{tcolorbox}[warnbox, title={TVD-RK3 の適用範囲と全体時間精度}]
 \label{warn:tvd_rk3_scope}
@@ -110,7 +242,7 @@ $TV(q^{n+1}) \leq TV(q^n)$．
 TVD-RK3 は以下の2箇所にのみ適用する：
 \begin{itemize}
   \item \textbf{CLS 移流方程式}（式 \eqref{eq:cls_advection}）：$\pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0$（保存形）
-  \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分
+  \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分（移流部のみ）
 \end{itemize}
 
 \medskip
@@ -185,7 +317,9 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 \end{center}
 
 本スキームの\textbf{全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
-空間精度（WENO5：$\Ord{h^5}$，CCD：$\Ord{h^6}$）と釣り合った高精度定式化となっている．
+空間精度（Dissipative CCD 移流：実効 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ フィルタ誤差，
+CCD：$O(h^6)$ 微分精度）は，CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+（§\ref{sec:balanced_force}）が律速する全体空間精度と整合する．
 
 \medskip
 \noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
@@ -316,30 +450,108 @@ $\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$
 \textbf{シミュレーションが爆発した場合：}対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）を確認後，なお爆発する場合はクロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性がある．$\Delta t$ を $1/10$ に減らして安定化するか確認する．
 \end{tcolorbox}
 
-\subsection{CLS 再初期化における圧縮項の離散化}
-
-\noindent（標準 Level Set の Sussman 再初期化に対応した Godunov 型上流化は，本稿の主実装では使用しない．詳細は付録~\ref{app:godunov_ls} 参照．）
-
-\subsubsection{CLS 圧縮項の WENO5 スキーム}
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{CLS 再初期化：圧縮項の Dissipative CCD スキーム}
 \label{sec:cls_compression}
+% ─────────────────────────────────────────────────────────────────────────────
 
-CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）の圧縮項
-$\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$
-は $\psi$ を「速度」$\psi(1-\psi)\hat{\bm{n}}$ で移流する保存則とみなせる．
+CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）
+\begin{equation}
+  \frac{\partial\psi}{\partial\tau}
+  + \underbrace{\nabla\cdot\!\bigl(\psi(1-\psi)\hat{\bm{n}}\bigr)}_{\text{圧縮項（陽解法）}}
+  = \underbrace{\nabla\cdot(\varepsilon\nabla\psi)}_{\text{拡散項（陰解法）}}
+  \label{eq:cls_reinit_split}
+\end{equation}
+は\textbf{移流的圧縮項}（界面へ $\psi$ を引き戻す）と
+\textbf{拡散項}（界面プロファイルを滑らかに保つ）の和として解釈できる．
 
-CLS 再初期化の圧縮項 $\nabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ は，
-\textbf{$\psi(1-\psi)$ を非線形「波速」とする1次移流}として解釈できる．
-よって，付録~\ref{app:lf_splitting} と同様の WENO5 フラックス分割法を適用できる：
+\medskip
+\noindent\textbf{陽解法・陰解法の使い分け：}
+\begin{itemize}
+  \item \textbf{圧縮項（陽解法）：}
+        波速 $c(\psi) = \psi(1-\psi)|\hat{\bm{n}}|$ は $\psi = 0.5$ で最大値 $1/4$ をとり，
+        バルク（$\psi \to 0$ または $1$）でゼロに退化する．
+        §\ref{sec:advection_motivation} の Dissipative CCD 移流と同構成で陽的に処理する
+        （CFL 制約：$\Delta\tau \leq 4h$ 程度）．
+  \item \textbf{拡散項（陰解法）：}
+        $\varepsilon\nabla^2\psi$ は $\Delta\tau < \varepsilon h^2$ という厳しい陽的 CFL 制約を持つ
+        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau < h^3/2$）．
+        Crank--Nicolson（CN）による半陰的処理で無条件安定化し，
+        圧縮項の CFL と同程度の大きな $\Delta\tau$ を許容する．
+\end{itemize}
+
+\medskip
+\noindent\textbf{圧縮項の Dissipative CCD 離散化（陽解法）．}
+$x$ 成分のフラックス場 $g_i = \psi_i(1-\psi_i)\hat{n}_{x,i}$ を定義し，
+§\ref{sec:advection_motivation} と同一手順でフィルタ適用済みフラックス発散を計算する：
+\begin{align}
+  g'_i &= \left[\frac{\partial(\psi(1-\psi)\hat{n}_x)}{\partial x}\right]_i
+  \quad\text{（CCD 求解）}
+  \label{eq:comp_ccd} \\
+  \tilde{G}_i &= g'_i + \varepsilon_d^{\mathrm{comp}}\!\left(g'_{i+1} - 2g'_i + g'_{i-1}\right)
+  \quad\bigl(\varepsilon_d^{\mathrm{comp}} = \varepsilon_{d,\max} = 0.05\bigr)
+  \label{eq:comp_filter}
+\end{align}
+$y$ 成分についても同様に処理し，合計フラックス発散
+$\tilde{G} = \tilde{G}_x + \tilde{G}_y$ を得る．
+法線ベクトル $\hat{\bm{n}} = \bnabla\psi / |\bnabla\psi|$ は
+CCD + Dissipative フィルタ適用済みの 1 次微分場（§\ref{sec:dissipative_ccd}）
+から評価する（ゼロ除算回避のため $|\bnabla\psi| + \delta$，$\delta = 10^{-8}$ を使用）．
+
+\medskip
+\noindent\textbf{拡散項の CCD-CN 陰解法（陰解法）．}
+CCD Eq-II の2階微分行列（§\ref{sec:ccd_matrix}）を $M_2$（左辺係数，三重対角），
+$B_2$（右辺係数，三重対角）と記す（$M_2\{\psi''_i\} = B_2\{h^{-2}\psi_i\}$）．
+Crank--Nicolson の $\theta=1/2$ スキームにおける陰的拡散方程式は，
+$M_2$ を両辺に乗じることで：
+\begin{equation}
+  \left(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}\,B_2\right)\psi^{\tau+1}
+  = \left(M_2 + \frac{\varepsilon\Delta\tau}{2h^2}\,B_2\right)\psi^{**}
+  \label{eq:comp_cn_system}
+\end{equation}
+この線形系の係数行列 $M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2$ は
+\textbf{三重対角}（$M_2$，$B_2$ ともに三重対角のため）であり，
+Thomas アルゴリズムで $O(N)$ に求解できる．ここで $\psi^{**}$ は
+圧縮項の陽的処理後の中間値である．
+
+\begin{tcolorbox}[algbox, title={CLS 再初期化の Dissipative CCD スキーム（1 仮想時間ステップ）}]
+\label{alg:cls_reinit_dccd}
+
+\textbf{入力：} $\{\psi_i^\tau\}$，$\varepsilon$（界面幅），$\varepsilon_d^{\mathrm{comp}}$，$\Delta\tau$
+
 \begin{enumerate}
-  \item フラックス $F = \psi(1-\psi)\hat{n}_x$（$x$ 成分）を定義し，Lax-Friedrichs 分割を行う．
-  \item 波速の上界として $\alpha = \max_{i,j}|1-2\psi_{i,j}| \le 1$ を用いる．
-  \item WENO5 でセル界面フラックスを再構成し，発散を計算する．
-\end{enumerate}
-拡散項 $\nabla\cdot(\varepsilon\nabla\psi)$ は CCD 法で高精度に評価する（2階微分として）．
-仮想時間 $\tau$ の時間積分には TVD-RK3（式 \eqref{eq:tvd_rk3}）を使用する．
+  \item \textbf{法線ベクトルの評価：}
+        CCD + Dissipative フィルタ（§\ref{sec:dissipative_ccd}，$S(\psi)$ 制御）で
+        $\{\bnabla\psi_i^\tau\}$ を計算；$\hat{n}_{x,i} = (\partial\psi/\partial x)_i / (|\bnabla\psi_i| + \delta)$．
 
+  \item \textbf{圧縮フラックス（陽解法，Dissipative CCD）：}
+        $g_i = \psi_i^\tau(1-\psi_i^\tau)\hat{n}_{x,i}$；
+        CCD + 一様フィルタ（式~\eqref{eq:comp_ccd}--\eqref{eq:comp_filter}）で $\tilde{G}_{x,i}$ を計算；
+        $y$ 方向も同様に $\tilde{G}_{y,i}$．
+
+  \item \textbf{圧縮ステージ（陽的更新）：}
+        \[
+          \psi_i^{**} = \psi_i^\tau - \Delta\tau\!\left(\tilde{G}_{x,i} + \tilde{G}_{y,i}\right)
+        \]
+        クランプ：$\psi_i^{**} = \max(0,\min(1,\psi_i^{**}))$．
+
+  \item \textbf{拡散ステージ（CN 陰解法，式~\eqref{eq:comp_cn_system}）：}
+        右辺 $\bm{r} = (M_2 + \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{**}$ を計算；
+        三重対角システム $(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{\tau+1} = \bm{r}$
+        を Thomas アルゴリズムで求解（各方向独立に）．
+
+  \item \textbf{クランプ：} $\psi_i^{\tau+1} = \max(0,\min(1,\psi_i^{\tau+1}))$．
+\end{enumerate}
+
+\textbf{仮想時間刻みの制約（圧縮項 CFL）：}
+$\Delta\tau \leq C_\tau \cdot h$（$C_\tau = O(1)$ は波速の上界 $\max|\psi(1-\psi)|\hat{n}| \leq 1/4$ から）．
+拡散項は CN 陰解法のため $\Delta\tau$ を制限しない（無条件安定）．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{安定性制約（時間刻みの決定）}
 \label{sec:stability}
+% ─────────────────────────────────────────────────────────────────────────────
 
 時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
 

@@ -238,9 +238,11 @@ $\int\psi\,dV = \text{const}$ が\textbf{速度場の発散条件に依存せず
 
 \textbf{離散実装における精度：}
 \begin{itemize}
-  \item WENO5 は保存形フラックス差分を用いるため，体積保存誤差は
-        1ステップあたり WENO5 打ち切り誤差のみに起因し
-        $\Ord{h^5\,\Delta t}$ に抑えられる（下表参照）．
+  \item 本稿の主実装では CLS 移流に Dissipative CCD（§\ref{sec:advection_motivation}）を使用する．
+        CCD は $O(h^6)$ 精度の点微分を用いて $\partial(\psi u)/\partial x$ を評価し，
+        発散定理 $\sum_i f'_i\,h \approx [f]_0^L$ を $O(h^6)$ 精度で満たすため，
+        1ステップあたりの体積保存誤差は $O(h^5\,\Delta t)$（$N \propto h^{-1}$ 点での積算）となる
+        （フィルタ自体は周期 BC での総和がゼロ，§\ref{sec:advection_motivation}）．
   \item 中間速度 $\bm{u}^*$（Predictor 後，Corrector 前）を CLS 移流に用いると，
         壁面法線速度が厳密にゼロでない場合に境界フラックスへの誤差が生じうる．
         本実装では $\bm{u}^n$（前時刻，発散自由）を使用する．
@@ -249,7 +251,7 @@ $\int\psi\,dV = \text{const}$ が\textbf{速度場の発散条件に依存せず
 
 \medskip\noindent\textbf{CLS が標準 LS より優れる理由：誤差オーダーの比較}
 
-コロケート格子 + WENO5 では MAC スタガード格子と異なり
+コロケート格子 + Dissipative CCD では MAC スタガード格子と異なり
 「厳密な離散発散フリー」は保証されない．
 しかし，以下の誤差オーダー比較が CLS の優位性を示す：
 
@@ -261,8 +263,8 @@ $\int\psi\,dV = \text{const}$ が\textbf{速度場の発散条件に依存せず
 \hline
 標準 LS（非保存形） & $\Ord{\Delta t \cdot h^q}$（$q=2\text{~}4$） &
   $\phi[\nabla\cdot\bm{u}]_h$ の非キャンセル項 \\
-CLS（保存形 + WENO5） & $\Ord{h^5 \cdot \Delta t}$ &
-  WENO5 の打ち切り誤差（フラックス誤差） \\
+CLS（保存形 + Dissipative CCD） & $\Ord{h^5 \cdot \Delta t}$ &
+  CCD 打ち切り誤差（$N$ 点積算，$O(h^6)$ → 全体 $O(h^5)$） \\
 MAC スタガード格子 & $0$（厳密保存） &
   構造的な離散発散フリー保証 \\
 \hline
@@ -272,8 +274,8 @@ MAC スタガード格子 & $0$（厳密保存） &
 標準 LS は非保存形のため，Projection 法が残す微小な離散発散
 $[\nabla\cdot\bm{u}]_h = \Ord{\Delta t \cdot h^2/\Delta t} = \Ord{h^2}$ が
 $\phi\,[\nabla\cdot\bm{u}]_h$ として体積誤差に直結する（§\ref{sec:why_cls_massloss}）．
-CLS（保存形 + WENO5）では保存形の発散定理によりこの項が消去され，
-残差は WENO5 フラックスの打ち切り誤差 $\Ord{h^5}$ のみとなる．
+CLS（保存形 + Dissipative CCD）では保存形の発散定理によりこの項が消去され，
+残差は CCD 微分の打ち切り誤差 $\Ord{h^5}$ のみとなる．
 格子を細分化するほど（$h \to 0$）体積保存が改善するという格子収束性が保証される点が重要である．
 \end{tcolorbox}
 
