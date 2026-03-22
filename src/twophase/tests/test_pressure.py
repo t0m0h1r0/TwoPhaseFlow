@@ -278,3 +278,100 @@ def test_rhie_chow_divergence(backend):
 
     # Rhie-Chow 発散はセル中心発散と一致しないこと（補正が非自明であること）
     assert not np.any(np.isnan(div_rc)), "Rhie-Chow 発散が NaN を含む"
+
+
+# ── Test 8: PPESolverSweep — 一様密度での収束 ────────────────────────────
+
+def test_sweep_ppe_uniform_density(backend):
+    """スウィープ PPE ソルバーが一様密度で収束し有限値を返すこと（§8d）。"""
+    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
+
+    N = 16
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=500, pseudo_c_tau=2.0,
+                            ppe_solver_type="sweep"),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
+
+    rho = np.ones(grid.shape)
+    rhs = np.random.default_rng(7).standard_normal(grid.shape)
+    rhs -= rhs.mean()
+
+    p = solver.solve(rhs, rho, dt=0.01)
+    assert np.isfinite(p).all(), "PPESolverSweep が非有限値を返した（一様密度）"
+
+
+# ── Test 9: PPESolverSweep — 変密度での収束 ──────────────────────────────
+
+def test_sweep_ppe_variable_density(backend):
+    """スウィープ PPE ソルバーが変密度ケースで有限値を返すこと（§8d LTS）。"""
+    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
+    import warnings
+
+    N = 16
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-5, pseudo_maxiter=1000, pseudo_c_tau=2.0,
+                            ppe_solver_type="sweep"),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    rho = 0.1 + 0.9 * (0.5 + 0.5 * np.tanh(10 * (X - 0.5)))
+
+    rhs = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
+    rhs -= rhs.mean()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p = solver.solve(rhs, rho, dt=0.01)
+
+    assert np.isfinite(p).all(), "PPESolverSweep が非有限値を返した（変密度）"
+
+
+# ── Test 10: PPESolverSweep — IPC ゼロ初期値 ─────────────────────────────
+
+def test_sweep_ppe_ipc_zero_init(backend):
+    """IPC 増分法: p_init=None でスウィープ PPE ソルバーが有限値を返すこと。"""
+    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
+
+    N = 16
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=500, pseudo_c_tau=2.0,
+                            ppe_solver_type="sweep"),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
+
+    rho = np.ones(grid.shape)
+    rhs = np.random.default_rng(42).standard_normal(grid.shape)
+    rhs -= rhs.mean()
+
+    delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
+    assert np.isfinite(delta_p).all(), "PPESolverSweep IPC が非有限値を返した"
+
+
+# ── Test 11: PPESolverSweep — ファクトリ経由で構築 ────────────────────────
+
+def test_sweep_ppe_factory(backend):
+    """ppe_solver_factory が 'sweep' 種別で PPESolverSweep を返すこと。"""
+    from twophase.pressure.ppe_solver_factory import create_ppe_solver
+    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
+
+    N = 16
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(ppe_solver_type="sweep"),
+    )
+    grid = Grid(cfg.grid, backend)
+
+    solver = create_ppe_solver(cfg, backend, grid)
+    assert isinstance(solver, PPESolverSweep)

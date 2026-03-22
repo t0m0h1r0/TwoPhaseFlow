@@ -121,9 +121,12 @@ class SolverConfig:
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
 
+    # 仮想時間スウィープソルバーの密度係数: Δτᵢⱼ = C_τ·ρᵢⱼ·h²/2 (§8d eq:dtau_lts)
+    pseudo_c_tau: float = 2.0
+
     def __post_init__(self) -> None:
-        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu", "ccd_lu"), (
-            f"ppe_solver_type は 'bicgstab', 'pseudotime', 'lu', または 'ccd_lu' でなければならない: "
+        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu", "ccd_lu", "sweep"), (
+            f"ppe_solver_type は 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' でなければならない: "
             f"'{self.ppe_solver_type}'"
         )
 

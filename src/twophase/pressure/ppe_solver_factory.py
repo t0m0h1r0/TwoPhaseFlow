@@ -51,6 +51,7 @@ def create_ppe_solver(
     from .ppe_solver_pseudotime import PPESolverPseudoTime
     from .ppe_solver_lu import PPESolverLU
     from .ppe_solver_ccd_lu import PPESolverCCDLU
+    from .ppe_solver_sweep import PPESolverSweep
 
     solver_type = config.solver.ppe_solver_type
 
@@ -59,6 +60,9 @@ def create_ppe_solver(
     elif solver_type == "ccd_lu":
         # CCD Kronecker 積演算子 + 常時 spsolve（SuperLU）— balanced-force 保証
         return PPESolverCCDLU(backend, config, grid, ccd=ccd)
+    elif solver_type == "sweep":
+        # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
+        return PPESolverSweep(backend, config, grid, ccd=ccd)
     elif solver_type == "bicgstab":
         return PPESolver(backend, config, grid)
     elif solver_type == "lu":
@@ -67,5 +71,5 @@ def create_ppe_solver(
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'bicgstab', 'pseudotime', 'lu', または 'ccd_lu' を指定してください。"
+            " 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' を指定してください。"
         )

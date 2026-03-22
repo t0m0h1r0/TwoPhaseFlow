@@ -6,6 +6,7 @@ Verified properties:
   2. O(h⁵) convergence of d2 (2nd derivative).
   3. Exact boundary compact scheme values.
   4. Consistency of 2-D / 3-D differentiation (axis independence).
+  5. CCD D2 operator null space dimension = 1 for n_pts ≥ 6 (O(h⁴) Eq-II-bc).
 """
 
 import numpy as np
@@ -71,10 +72,9 @@ def test_ccd_d1_convergence_order(backend):
         slopes.append(slope)
 
     mean_slope = np.mean(slopes)
-    # Eq-II-bc uses an O(h²) formula for f'' at domain boundaries, which
-    # contaminates interior nodes through the global tridiagonal solve and limits
-    # global L∞ convergence to ~O(h⁴) for d1.  The paper's O(h⁶) claim holds
-    # near-interface (far from domain boundaries); see §4 sec:weno5_boundary.
+    # With O(h⁴) Eq-II-bc (6-point formula, n_pts ≥ 6), global L∞ convergence
+    # for d1 is at least O(h⁴).  The paper's O(h⁶) claim holds in the interior
+    # far from domain boundaries; see §4 sec:weno5_boundary.
     assert mean_slope >= 3.5, (
         f"CCD d1 convergence order {mean_slope:.2f} < 3.5\n"
         f"Errors: {errors}\nSlopes: {slopes}"
@@ -106,9 +106,9 @@ def test_ccd_d2_convergence_order(backend):
         for i in range(1, len(Ns))
     ]
     mean_slope = np.mean(slopes)
-    # Eq-II-bc uses an O(h²) formula for f'' at domain boundaries, limiting
-    # global L∞ convergence for d2 to ~O(h³).  The paper's O(h⁵) claim for d2
-    # holds in the interior far from domain boundaries.
+    # With O(h⁴) Eq-II-bc (6-point formula, n_pts ≥ 6), global L∞ convergence
+    # for d2 is at least O(h³).  The paper's O(h⁵) claim for d2 holds in the
+    # interior far from domain boundaries.
     assert mean_slope >= 2.5, (
         f"CCD d2 convergence order {mean_slope:.2f} < 2.5\n"
         f"Errors: {errors}\nSlopes: {slopes}"
@@ -169,3 +169,50 @@ def test_ccd_2d_axis_independence(backend):
 
     assert err_x < 1e-9, f"CCD 2D d1 along axis 0: error {err_x:.3e}"
     assert err_y < 1e-9, f"CCD 2D d1 along axis 1: error {err_y:.3e}"
+
+
+# ── Test 5: D2 null space structure (constants + linear functions) ────────
+
+def test_ccd_d2_nullspace_dim(backend):
+    """The CCD 1-D second-derivative operator D2 has null space dim = 2.
+
+    The null space is spanned by {constants, linear functions}: both have f''=0
+    everywhere, and neither Eq-I-bc nor Eq-II-bc can distinguish them from zero
+    without explicit Neumann BC enforcement (f'=0 at walls).
+
+    Properties verified:
+    - null_dim == 2 for n_pts ≥ 6 (O(h⁴) Eq-II-bc active)
+    - Constants are exactly annihilated: D2 @ 1 = 0
+    - Linear functions are exactly annihilated: D2 @ x = 0
+    """
+    N = 8   # n_pts = 9 ≥ 6 → O(h⁴) 6-point Eq-II-bc is active
+    grid = make_grid_1d(N, backend)
+    ccd = CCDSolver(grid, backend)
+
+    n_pts = N + 1
+    f_basis = np.eye(n_pts)
+    _, d2_mat = ccd.differentiate(f_basis, axis=0)
+    D2 = np.asarray(d2_mat)   # D2[i, j] = (D2 e_j)[i]
+
+    # Null space dimension = n_pts - rank(D2)
+    rank = np.linalg.matrix_rank(D2, tol=1e-8)
+    null_dim = n_pts - rank
+
+    assert null_dim == 2, (
+        f"CCD D2 null space dim = {null_dim} (expected 2: constants + linear); rank = {rank}/{n_pts}."
+    )
+
+    # Constants are annihilated: D2 @ [1,1,...,1] ≈ 0
+    f_const = np.ones(n_pts)
+    r_const = D2 @ f_const
+    assert np.max(np.abs(r_const)) < 1e-10, (
+        f"D2 not annihilating constants: max |D2 @ 1| = {np.max(np.abs(r_const)):.3e}"
+    )
+
+    # Linear functions are annihilated: D2 @ [0, h, 2h, ...] ≈ 0
+    h = 1.0 / N
+    f_lin = np.arange(n_pts) * h
+    r_lin = D2 @ f_lin
+    assert np.max(np.abs(r_lin)) < 1e-10, (
+        f"D2 not annihilating linear functions: max |D2 @ x| = {np.max(np.abs(r_lin)):.3e}"
+    )

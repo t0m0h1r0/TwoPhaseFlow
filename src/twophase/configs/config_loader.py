@@ -154,6 +154,7 @@ def load_config(
         bicgstab_maxiter=_get("bicgstab_maxiter", 1000),
         pseudo_tol=_get("pseudo_tol", 1e-8),
         pseudo_maxiter=_get("pseudo_maxiter", 500),
+        pseudo_c_tau=_get("pseudo_c_tau", 2.0),
     )
 
     # 未知キーの警告
@@ -163,6 +164,7 @@ def load_config(
         "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
         "advection_scheme",
         "ppe_solver_type", "bicgstab_tol", "bicgstab_maxiter", "pseudo_tol", "pseudo_maxiter",
+        "pseudo_c_tau",
         "use_gpu",
     }
     for key in raw:
@@ -235,6 +237,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "bicgstab_maxiter": config.solver.bicgstab_maxiter,
         "pseudo_tol":       config.solver.pseudo_tol,
         "pseudo_maxiter":   config.solver.pseudo_maxiter,
+        "pseudo_c_tau":     config.solver.pseudo_c_tau,
         # ハードウェア
         "use_gpu": config.use_gpu,
     }

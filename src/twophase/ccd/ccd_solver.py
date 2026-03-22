@@ -263,8 +263,8 @@ class CCDSolver:
         n_int = N - 1
         assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
 
-        bc_left = _boundary_coeffs_left(h)
-        bc_right = _boundary_coeffs_right(h)
+        bc_left = _boundary_coeffs_left(h, n_pts)
+        bc_right = _boundary_coeffs_right(h, n_pts)
 
         # Original off-diagonal blocks (before boundary absorption)
         L0 = np.array([[_ALPHA1, _B1 * h],
@@ -406,7 +406,7 @@ class CCDSolver:
         c_I  = xp.asarray(bc['c_I'])
         c_II = xp.asarray(bc['c_II'])
         R_I  = (c_I[0]*f[0] + c_I[1]*f[1] + c_I[2]*f[2] + c_I[3]*f[3])
-        R_II = (c_II[0]*f[0] + c_II[1]*f[1] + c_II[2]*f[2] + c_II[3]*f[3])
+        R_II = sum(c_II[k] * f[k] for k in range(len(bc['c_II'])))
         # Eq-I-bc gives fp0; Eq-II-bc is standalone (no fp1/fpp1 coupling)
         fp0  = R_I
         fpp0 = R_II
@@ -425,8 +425,7 @@ class CCDSolver:
         c_II_r = xp.asarray(bc['c_II'])
         R_I_r  = (c_I_r[0]*f[N] + c_I_r[1]*f[N-1]
                   + c_I_r[2]*f[N-2] + c_I_r[3]*f[N-3])
-        R_II_r = (c_II_r[0]*f[N] + c_II_r[1]*f[N-1]
-                  + c_II_r[2]*f[N-2] + c_II_r[3]*f[N-3])
+        R_II_r = sum(c_II_r[k] * f[N - k] for k in range(len(bc['c_II'])))
         # Eq-I-bc gives fpN; Eq-II-bc is standalone (no fp_{N-1}/fpp_{N-1} coupling)
         fpN  = R_I_r
         fppN = R_II_r
@@ -458,18 +457,19 @@ class CCDSolver:
 
 # ── Boundary coefficient constructors (module-level, pure functions) ─────
 
-def _boundary_coeffs_left(h: float) -> dict:
+def _boundary_coeffs_left(h: float, n_pts: int) -> dict:
     """One-sided compact scheme at left boundary (§4.7).
 
     The boundary values satisfy:
         [f'₀ ]  = M @ [f'₁ ]  + [c₁(f₀…f₃)]
-        [f''₀]        [f''₁]    [c₂(f₀…f₃)]
+        [f''₀]        [f''₁]    [c₂(f₀…fₖ)]
 
     Equations (§5 eq:bc_left, eq:bcII_left):
         Eq-I-bc  (O(h⁵)): f'₀ + (3/2)f'₁ − (3h/2)f''₁
                     = (1/h)(−23/6·f₀ + 21/4·f₁ − 3/2·f₂ + 1/12·f₃)
-        Eq-II-bc (O(h²)): f''₀
-                    = (1/h²)(2·f₀ − 5·f₁ + 4·f₂ − f₃)
+        Eq-II-bc:
+          n_pts < 6 → O(h²) 4-point: f''₀ = (1/h²)(2f₀−5f₁+4f₂−f₃)
+          n_pts ≥ 6 → O(h⁴) 6-point: f''₀ = (1/(12h²))(45f₀−154f₁+214f₂−156f₃+61f₄−10f₅)
 
     Eq-II-bc is independent of f'₁, f''₁ (γ=δ=0 in §5 eq:bcII_general).
 
@@ -481,11 +481,16 @@ def _boundary_coeffs_left(h: float) -> dict:
     M = np.array([[-3.0 / 2.0, 3.0 * h / 2.0],
                    [ 0.0,       0.0            ]])
     c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0, 1.0/12.0]) / h
-    c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
+    if n_pts >= 6:
+        # O(h⁴) 6-point formula (§5 eq:bcII_left_h4)
+        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
+    else:
+        # O(h²) 4-point fallback for very small grids
+        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
 
 
-def _boundary_coeffs_right(h: float) -> dict:
+def _boundary_coeffs_right(h: float, n_pts: int) -> dict:
     """One-sided compact scheme at right boundary (§4.7).
 
     Obtained from the left scheme by h → −h symmetry.
@@ -493,8 +498,9 @@ def _boundary_coeffs_right(h: float) -> dict:
     Equations (§5 eq:bc_left mirror, eq:bcII_left mirror):
         Eq-I-bc  (O(h⁵)): f'_N + (3/2)f'_{N-1} + (3h/2)f''_{N-1}
                     = (1/h)(23/6·f_N − 21/4·f_{N-1} + 3/2·f_{N-2} − 1/12·f_{N-3})
-        Eq-II-bc (O(h²)): f''_N
-                    = (1/h²)(2·f_N − 5·f_{N-1} + 4·f_{N-2} − f_{N-3})
+        Eq-II-bc:
+          n_pts < 6 → O(h²) 4-point: f''_N = (1/h²)(2f_N−5f_{N-1}+4f_{N-2}−f_{N-3})
+          n_pts ≥ 6 → O(h⁴) 6-point (mirror of left): coefficients applied as f[N-k]
 
     After solving for [f'_N, f''_N]:
         M[0,:] = [-3/2, -3h/2]   (from Eq-I-bc mirror)
@@ -503,5 +509,10 @@ def _boundary_coeffs_right(h: float) -> dict:
     M = np.array([[-3.0 / 2.0, -3.0 * h / 2.0],
                    [ 0.0,        0.0            ]])
     c_I  = np.array([23.0/6.0, -21.0/4.0, 3.0/2.0, -1.0/12.0]) / h
-    c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
+    if n_pts >= 6:
+        # O(h⁴) 6-point formula — mirror of left boundary (applied as f[N-k])
+        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
+    else:
+        # O(h²) 4-point fallback for very small grids
+        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
