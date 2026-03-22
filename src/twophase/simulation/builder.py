@@ -164,7 +164,7 @@ class SimulationBuilder:
 
         # 補助演算子
         rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type=config.numerics.bc_type)
-        vel_corrector = VelocityCorrector(backend, grid)
+        vel_corrector = VelocityCorrector(backend, grid, ccd)
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,
             We=config.fluid.We,

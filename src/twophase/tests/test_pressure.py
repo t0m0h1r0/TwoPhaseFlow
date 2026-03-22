@@ -118,7 +118,7 @@ def test_divergence_free_projection(backend):
 
     # 新しい統一 API: PPESolver(backend, config, grid)
     solver = PPESolver(backend, cfg, grid)
-    corrector = VelocityCorrector(backend, grid)
+    corrector = VelocityCorrector(backend, grid, ccd)
 
     # 非発散ゼロの速度場
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
@@ -146,7 +146,7 @@ def test_divergence_free_projection(backend):
     div_new = du_new_dx + dv_new_dy
 
     div_max = float(np.max(np.abs(div_new)))
-    # FD corrector + FVM PPE: O(h²) consistency → O(h²) residual divergence.
+    # CCD corrector + FVM PPE: CCD is O(h⁶) but FVM PPE is O(h²) → O(h²) residual divergence.
     # For N=16, h=1/16: tolerance is O(h²) ~ 6e-3.
     assert div_max < 6e-3, (
         f"補正後の発散 ‖∇·u‖_∞ = {div_max:.3e} > 6e-3"
