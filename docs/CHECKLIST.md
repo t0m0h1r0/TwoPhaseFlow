@@ -18,9 +18,12 @@
 |---------|------|-----------|------|--------|-------|
 | §1 Introduction | `01_introduction.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` SAFE | WENO5→Dissipative CCD global sweep; 6 occurrences fixed |
 | §2 Governing eqs | `02_governing.tex` | sweep 28 + 2026-03-21 | EDITOR+MATH_VERIFY | `[x]` | 球状液滴→円形液滴 fixed; One-Fluid / CSF verified |
-| §3 Level Set | `03_levelset.tex` | sweep 20 + 2026-03-22 | EDITOR+MATH_VERIFY | `[x]` | CLS fixed-point verified; "WENO5 打ち切り誤差"→Dissipative CCD |
-| §4 CCD method | `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` | ε_d=0.05 → H(π)=0.80 added; A_L/A_R signs verified |
-| §5 CLS advection | `05_advection.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` | New chapter (merged from old §4 time_integration). Dissipative CCD scheme; mass conservation O(h⁵Δt) step clarified; ψ clamp note |
+| §2b CSF | `02b_csf.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1: §\ref{proof:csf_young_laplace} → \ref |
+| §3 Level Set | `03_levelset.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1: §\ref{warn:cls_dtau_stability} → \ref; CLS fixed-point verified |
+| §4 CCD method | `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | sweep 39 2026-03-23 | CRITIC+EDITOR | `[x]` | STRUCT-1 ×2: §\ref{box:grid_jx_accuracy}, §\ref{warn:adv_filter_uniform} → \ref; ε_d=0.05 → H(π)=0.80 added |
+| §5 CLS advection | `05_advection.tex` | sweep 39 2026-03-23 | CRITIC+EDITOR | `[x]` | New chapter (merged from old §4 time_integration). Dissipative CCD scheme; mass conservation O(h⁵Δt) step clarified; ψ clamp note. STRUCT-2: 下表→表~\ref{box:scheme_roles} |
+| §5b time integration | `05b_time_integration.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1 ×2: §\ref{warn:tvd_rk3_scope}, §\ref{warn:adv_clamp} → \ref |
+| §5c reinitialization | `05c_reinitialization.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1 ×1: §\ref{warn:cn_cross_derivative} → \ref |
 
 ### §6–§11 + Appendices (sweep 29, 2026-03-21)
 
@@ -29,16 +32,16 @@
 | §6 Grid generation | `06_grid.tex` | `[x]` FIXED | MATH_VERIFY 2026-03-22: PAPER_ERROR ω(0)=α → ω(0)=1+(α−1)/(ε_g√π) fixed; density function formula, transforms, metric code all VERIFIED; 10 targets total |
 | §7 Collocated | `07_collocate.tex` | `[~]` UPDATED | EDITOR sweep 30+31 (2026-03-22): eq:bf_operator_mismatch fixed (O(h²) not O(h⁶)−O(h²)); blow-up positive-feedback mechanism added; warnbox κ item demoted to "推奨"; warnbox item 3 updated to eq:rc-face-balanced; sec:rc_balanced_force rewrote with full quantity definitions + code-gap warnbox + face/cell-center cancellation logic; algbox "機械精度" → O(h²) CSF floor; appendix derivation expanded to show equilibrium cancellation. Build pending. |
 | §8 Pressure / IPC | `08_pressure.tex` | `[x]` SAFE | — |
-| §8b CCD-Poisson | `08b_ccd_poisson.tex` | `[x]` SAFE | Spectral radius formula 9.6≠3.43 clarified |
+| §8b CCD-Poisson | `08b_ccd_poisson.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | MINOR-1: double closing brace on \label{tab:ccd_bc_types} fixed |
 | §8c PPE verification | `08c_ppe_verification.tex` | `[x]` SAFE | — |
 | §8d PPE pseudo-time | `08d_ppe_pseudotime.tex` | `[x]` UPDATED | CRITIC 23 + EDITOR sweep 35 (2026-03-23): 4 FATAL + 9 minor fixes; ADI eq corrected (Δτ/2 q_h), C_τ unified, 5 labels added, table row added, notation unified |
-| §9 Full algorithm | `09_full_algorithm.tex` | `[x]` SAFE | — |
+| §9 Full algorithm | `09_full_algorithm.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1 ×3: §\ref{warn:adv_clamp}, §\ref{warn:ppe_splitting}(×2) → \ref |
 | §10 Verification | `10_verification.tex` | `[x]` SAFE | Pre-asymptotic O(h⁴) note added |
 | §11 Conclusion | `11_conclusion.tex` | `[x]` SAFE | — |
 | App: interface proofs | `appendix_interface.tex` | `[x]` SAFE | 5 sections: Newton conv., One-Fluid, μ interp., δ_s, CLS fixed-pt |
 | App: CCD coefficients | `appendix_ccd_coef.tex` | `[x]` SAFE | Eq-I/II interior + BC derivations |
-| App: CCD impl | `appendix_ccd_impl.tex` | `[x]` SAFE | Ghost-cell, mixed deriv., elliptic solver |
-| App: numerics solver | `appendix_numerics_solver.tex` | `[x]` SAFE | Δτ derivation + checkerboard + capillary CFL (A15 text fix) |
+| App: CCD impl | `appendix_ccd_impl.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | APPEND-1 ×2: §\ref{app:ccd_kronecker}, §\ref{app:ccd_lu_direct} → 付録~\ref{} |
+| App: numerics solver | `appendix_numerics_solver.tex` | sweep 39 2026-03-23 | EDITOR | `[x]` | STRUCT-1 ×2: §\ref{warn:ppe_splitting}(×2) → \ref; math content verified correct |
 | App: numerics schemes | `appendix_numerics_schemes.tex` | `[x]` SAFE | ALE, Rhie-Chow, Godunov LS |
 
 ---

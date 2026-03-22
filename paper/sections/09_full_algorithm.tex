@@ -95,7 +95,7 @@ CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Del
 \end{align*}
 ここで $\text{Div}_h^{\psi}(\cdot)$ は Dissipative CCD フィルタ付き保存形発散オペレータである（§\ref{sec:advection_motivation}，上記オペレータ一覧参照）．
 \textbf{各ステージ完了後に} $\psi \leftarrow \max(0,\min(1,\psi))$ のクランプを適用すること
-（Dissipative CCD は TVD 性を持たないため必須；§\ref{warn:adv_clamp}）．
+（Dissipative CCD は TVD 性を持たないため必須；\ref{warn:adv_clamp}）．
 
 \textbf{2. 再初期化 (Reinitialization)} \\
 移流によって鈍化した界面プロファイル $\psi^*$ を整形する．
@@ -300,7 +300,7 @@ $p^{n+1}$ は次ステップの IPC Predictor および Rhie--Chow 補正で $p^
     \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_{\mathrm{CCD}}^{\rho}\bigr)p^{m+1}
     = p^m + \Delta\tau\,q
   \]
-  \textbf{スウィープ型実装（推奨，$O(\Delta\tau^2)$ 分割誤差あり；§\ref{warn:ppe_splitting}）：}
+  \textbf{スウィープ型実装（推奨，$O(\Delta\tau^2)$ 分割誤差あり；\ref{warn:ppe_splitting}）：}
 
   \medskip
   Step A（$x$ 方向 Thomas 法，各行 $j$ 独立）：
@@ -320,7 +320,7 @@ $p^{n+1}$ は次ステップの IPC Predictor および Rhie--Chow 補正で $p^
   \]
 
   Krylov 型実装（分割誤差なし）：GMRES/CG 法で式~\eqref{eq:pseudo_linear} を直接解く；
-  matrix-free 積ベクトルに (6.2) の CCD スウィープを利用する（§\ref{warn:ppe_splitting} Approach 2）．
+  matrix-free 積ベクトルに (6.2) の CCD スウィープを利用する（\ref{warn:ppe_splitting} Approach 2）．
 
   $m \leftarrow m+1$ として (6.2) へ戻る
 \end{enumerate}
