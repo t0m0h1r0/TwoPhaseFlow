@@ -129,6 +129,51 @@ class CCDSolver:
         if self.bc_type == "periodic" and bc_left is None and bc_right is None:
             return self._differentiate_periodic(data, axis)
 
+        d1, d2 = self._differentiate_wall_raw(data, axis, bc_left, bc_right)
+
+        # Non-uniform grid: transform from ξ-space back to x-space (§4.9)
+        if not self.grid.uniform:
+            d1, d2 = self._apply_metric(d1, d2, axis)
+
+        return d1, d2
+
+    def differentiate_raw(self, data: np.ndarray, axis: int):
+        """Compute CCD derivatives in ξ-space without metric transformation.
+
+        Used exclusively for grid metric computation (§6 Step 5): call with the
+        physical coordinate array x[i] on the uniform computational grid to obtain
+        dx/d(x_unif) and d²x/d(x_unif)², from which J and ∂J/∂ξ are derived.
+
+        The input ``data`` must be a 1-D array of shape ``(N[axis]+1,)``.  It is
+        internally embedded into an N-dimensional array so that ``axis`` picks the
+        correct pre-factored CCD solver.
+
+        Parameters
+        ----------
+        data : 1-D numpy array, shape ``(N[axis]+1,)``
+        axis : spatial axis (0, 1, or 2)
+
+        Returns
+        -------
+        d1 : 1-D numpy array — ∂data/∂x_unif in ξ-space
+        d2 : 1-D numpy array — ∂²data/∂x_unif² in ξ-space
+        """
+        arr = np.asarray(data).ravel()
+        # Embed 1-D coords into an N-D array with shape[axis]=N+1, all others=1,
+        # so that moveaxis(data, axis, 0) gives (N+1, 1) regardless of axis value.
+        shape = [1] * self.ndim
+        shape[axis] = -1
+        data_nd = arr.reshape(shape)
+        d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
+        return np.asarray(d1_nd).ravel(), np.asarray(d2_nd).ravel()
+
+    def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
+        """Wall-BC CCD solve in ξ-space, no metric transformation.
+
+        Core computation shared by ``differentiate()`` (wall path) and
+        ``differentiate_raw()`` (metric computation).  Returns ξ-space
+        derivatives in the same shape as ``data``.
+        """
         xp = self.xp
         info = self._solvers[axis]
         h = info['h']
@@ -183,11 +228,6 @@ class CCDSolver:
         # Restore original shape
         d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
         d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
-
-        # Non-uniform grid: transform from ξ-space back to x-space (§4.9)
-        if not self.grid.uniform:
-            d1, d2 = self._apply_metric(d1, d2, axis)
-
         return d1, d2
 
     def enforce_wall_neumann(self, grad, ax: int) -> None:

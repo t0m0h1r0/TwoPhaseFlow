@@ -130,6 +130,7 @@ def load_config(
         L=_get("L", (1.0, 1.0)),
         alpha_grid=_get("alpha_grid", 1.0),
         dx_min_floor=_get("dx_min_floor", 1e-6),
+        eps_g_factor=_get("eps_g_factor", 2.0),
     )
     fluid = FluidConfig(
         Re=_get("Re", 100.0),
@@ -157,7 +158,7 @@ def load_config(
 
     # 未知キーの警告
     _known = {
-        "ndim", "N", "L", "alpha_grid", "dx_min_floor",
+        "ndim", "N", "L", "alpha_grid", "dx_min_floor", "eps_g_factor",
         "Re", "Fr", "We", "rho_ratio", "mu_ratio",
         "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
         "advection_scheme",
@@ -213,6 +214,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "L":            list(config.grid.L),
         "alpha_grid":   config.grid.alpha_grid,
         "dx_min_floor": config.grid.dx_min_floor,
+        "eps_g_factor": config.grid.eps_g_factor,
         # FluidConfig
         "Re":        config.fluid.Re,
         "Fr":        config.fluid.Fr,

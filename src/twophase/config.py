@@ -36,10 +36,12 @@ class GridConfig:
     N: Tuple[int, ...] = (64, 64)
     # 物理領域の各軸の長さ
     L: Tuple[float, ...] = (1.0, 1.0)
-    # 界面適合グリッドの伸縮係数（§5）; 1.0 = 一様格子
+    # 界面適合グリッドの伸縮係数（§6）; 1.0 = 一様格子
     alpha_grid: float = 1.0
     # セル幅の下限（CCD条件数を防ぐためのフロア値）
     dx_min_floor: float = 1e-6
+    # ガウス型グリッド密度関数の幅: ε_g = eps_g_factor × ε（§6 eq:grid_delta）; 推奨 2–4
+    eps_g_factor: float = 2.0
 
     def __post_init__(self) -> None:
         assert self.ndim in (2, 3), f"ndim は 2 か 3 でなければならない: {self.ndim}"
