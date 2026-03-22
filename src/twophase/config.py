@@ -19,6 +19,7 @@
 """
 
 from __future__ import annotations
+import warnings
 from dataclasses import dataclass, field
 from typing import Tuple
 
@@ -93,6 +94,16 @@ class NumericsConfig:
             f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "
             f"'{self.advection_scheme}'"
         )
+        if self.advection_scheme == "dissipative_ccd" and self.epsilon_factor < 1.2:
+            warnings.warn(
+                f"epsilon_factor={self.epsilon_factor} < 1.2 with advection_scheme="
+                "'dissipative_ccd' risks instability for nonlinear flows "
+                "(We > 100, density ratio > 100). "
+                "Consider epsilon_factor >= 1.5 or advection_scheme='weno5'. "
+                "(§5 warn:adv_risks)",
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 @dataclass

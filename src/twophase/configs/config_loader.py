@@ -145,6 +145,7 @@ def load_config(
         t_end=_get("t_end", 1.0),
         cn_viscous=_get("cn_viscous", True),
         bc_type=_get("bc_type", "wall"),
+        advection_scheme=_get("advection_scheme", "dissipative_ccd"),
     )
     solver = SolverConfig(
         ppe_solver_type=_get("ppe_solver_type", "bicgstab"),
@@ -159,6 +160,7 @@ def load_config(
         "ndim", "N", "L", "alpha_grid", "dx_min_floor",
         "Re", "Fr", "We", "rho_ratio", "mu_ratio",
         "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
+        "advection_scheme",
         "ppe_solver_type", "bicgstab_tol", "bicgstab_maxiter", "pseudo_tol", "pseudo_maxiter",
         "use_gpu",
     }
@@ -222,8 +224,9 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "reinit_steps":   config.numerics.reinit_steps,
         "cfl_number":     config.numerics.cfl_number,
         "t_end":          config.numerics.t_end,
-        "cn_viscous":     config.numerics.cn_viscous,
-        "bc_type":        config.numerics.bc_type,
+        "cn_viscous":       config.numerics.cn_viscous,
+        "bc_type":          config.numerics.bc_type,
+        "advection_scheme": config.numerics.advection_scheme,
         # SolverConfig
         "ppe_solver_type":  config.solver.ppe_solver_type,
         "bicgstab_tol":     config.solver.bicgstab_tol,
