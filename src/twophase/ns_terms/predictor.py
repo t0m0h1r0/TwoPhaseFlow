@@ -157,12 +157,21 @@ class Predictor:
         # van Kan (1986) の増分圧力補正：前時刻圧力 p^n を陽的に加える
         # これにより PPE は圧力増分 δp = p^{n+1}−p^n を解くだけでよくなり
         # スプリッティング誤差が O(Δt) → O(Δt²) に改善する
-        # NOTE: FD (O(h²) central diff) を使用。FVM PPE との整合性を保つため。
-        # CCD を使うと balanced-force 条件が破れて寄生流れが増大する。
-        ipc = [
-            -self._fd_gradient(state.pressure, c)
-            for c in range(ndim)
-        ]
+        # CCD D^{(1)} を使用することで balanced-force 条件を満たす（§7 warnbox）:
+        # 表面張力 κ D^{(1)} ψ/We と同一演算子により寄生流れが O(h⁶) まで低減する
+        # 壁面 BC: FVM PPE は Neumann 条件を FVM 意味でのみ満たし CCD 境界値は非ゼロ。
+        # 毎ステップ蓄積されると正帰還ループを生じるため、壁面法線 CCD 勾配を 0 にする。
+        ipc = []
+        for c in range(ndim):
+            dp_dc, _ = ccd.differentiate(state.pressure, c)
+            if ccd.bc_type == "wall":
+                xp = self.xp
+                sl_lo = [slice(None)] * dp_dc.ndim
+                sl_hi = [slice(None)] * dp_dc.ndim
+                sl_lo[c] = 0; sl_hi[c] = -1
+                dp_dc[tuple(sl_lo)] = 0.0
+                dp_dc[tuple(sl_hi)] = 0.0
+            ipc.append(-dp_dc)
 
         # ── 陽的 RHS の組み立て ────────────────────────────────────────
         # ρ × ab2_conv = −ρ[3/2 C^n − 1/2 C^{n-1}]（対流項）

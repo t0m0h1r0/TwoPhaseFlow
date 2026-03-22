@@ -110,7 +110,7 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # ソルバー種別: "bicgstab"（FVM反復）/ "pseudotime"（CCD反復）/ "lu"（FVM直接法）
+    # ソルバー種別: "bicgstab"（FVM反復）/ "pseudotime"（CCD反復）/ "lu"（FVM直接法）/ "ccd_lu"（CCD直接法）
     ppe_solver_type: str = "bicgstab"
     # BiCGSTAB パラメータ（ppe_solver_type="bicgstab" 時に使用）
     bicgstab_tol: float = 1e-10
@@ -120,8 +120,8 @@ class SolverConfig:
     pseudo_maxiter: int = 500
 
     def __post_init__(self) -> None:
-        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu"), (
-            f"ppe_solver_type は 'bicgstab', 'pseudotime', または 'lu' でなければならない: "
+        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu", "ccd_lu"), (
+            f"ppe_solver_type は 'bicgstab', 'pseudotime', 'lu', または 'ccd_lu' でなければならない: "
             f"'{self.ppe_solver_type}'"
         )
 
