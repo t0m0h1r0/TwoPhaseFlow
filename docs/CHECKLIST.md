@@ -75,6 +75,9 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | CSF curvature κ = −(…)/‖∇φ‖³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Rederived from ∇·(∇φ/‖∇φ‖) ✓ |
 | Dissipative CCD |g(ξ)|²>1 instability proof | `05_advection.tex` eq:ccd_adv_instability | `advection.py` | 2026-03-22 | ✅ VERIFIED | Von Neumann analysis: |g|²=1+σ²[k*(ξ)/k]²>1 ∀ξ>0; H(π;0.05)=0.80; ε_d=0.05 hardcoded |
 | Dissipative CCD filter sum=0 (periodic) | `05_advection.tex` mass conservation | `advection.py` | 2026-03-22 | ✅ VERIFIED | Shift-symmetry ⟹ Σ(f'_{i+1}−2f'_i+f'_{i-1})=0; O(h⁵Δt) per step; implemented in DissipativeCCDAdvection._rhs |
+| Rhie-Chow FVM div at wall node N_ax | §7 / appendix RC | `rhie_chow.py:_flux_divergence_1d` | 2026-03-22 | ✅ FIXED (BUG) | div[N_ax]=(face_{N_ax+1}−face_{N_ax})/h = −flux[N_ax]/h; padding 0 treated interior face N_ax as wall face (WRONG) |
+| PPE gauge pin — symmetry invariance | §8 / appendix FVM PPE | `ppe_builder.py`, `ppe_solver*.py` | 2026-03-22 | ✅ FIXED (BUG) | Corner pin (0,0) breaks x-flip/y-flip symmetry → spurious antisymmetric ∇p; center node (N/2,N/2) is invariant under all square-domain symmetries |
+| Capillary CFL safety factor | `appendix_numerics_solver.tex` eq:dt_sigma | `cfl.py:117` | 2026-03-22 | ✅ FIXED (BUG) | dt=min(dt, dt_sigma) operated at marginal stability limit; fixed to dt=min(dt, cfl·dt_sigma) consistent with convective/viscous constraints |
 
 ---
 
@@ -93,6 +96,7 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 - `[x]` **ε_factor < 1.2 safety warning:** `UserWarning` in `NumericsConfig.__post_init__` for `epsilon_factor < 1.2` + `advection_scheme="dissipative_ccd"` (§5 warn:adv_risks(B)).
 - `[x]` **test_config.py added:** 6 tests — scheme validation (valid/invalid), ε_factor warning (positive/negative/safe), YAML round-trip, unknown-key suppression.
 - `[x]` **Dead code removed (refactor):** `_pad_zero` alias (`advection.py`), `Optional` unused import (`config_loader.py`), `TYPE_CHECKING` unused import (`_core.py`).
+- `[x]` **Symmetry-breaking root causes fixed (2026-03-22):** (1) `rhie_chow.py` wall node FVM div formula corrected; (2) PPE pin moved to center node (N/2,N/2); (3) capillary CFL safety factor applied. Machine-precision symmetry confirmed at sub-capillary-CFL timestep.
 - `[!]` Benchmark at N=128 — stationary_droplet NaN for all N; PPE fails at 1000:1 density ratio (see §5 action item)
 - `[ ]` GPU backend (CuPy) compatibility check
 - `[ ]` 3D cases

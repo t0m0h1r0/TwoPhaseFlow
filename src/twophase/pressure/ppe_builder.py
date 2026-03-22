@@ -57,6 +57,19 @@ class PPEBuilder:
         # Total degrees of freedom = number of grid nodes
         self.n_dof = int(np.prod(self.shape_field))
 
+        # Pressure gauge pin DOF.
+        # Wall BC: pin the *centre* node (N[ax]//2 along each axis) so that the
+        # pin is invariant under all symmetries of the square/cubic domain
+        # (x-flip, y-flip, diagonal swap).  Pinning corner node 0 breaks
+        # x-flip and y-flip symmetry, driving spurious non-antisymmetric
+        # pressure gradients that excite parasitic currents.
+        # Periodic BC: pin node 0 (any node is equivalent by translational symmetry).
+        if bc_type == 'wall':
+            centre_idx = tuple(n // 2 for n in self.N)
+            self._pin_dof = int(np.ravel_multi_index(centre_idx, self.shape_field))
+        else:
+            self._pin_dof = 0
+
         # Pre-compute static index arrays for vectorised assembly
         self._build_index_arrays()
 
@@ -171,17 +184,18 @@ class PPEBuilder:
             rows = np_host.concatenate([rows, img_dofs, img_dofs])
             cols = np_host.concatenate([cols, img_dofs, src_dofs])
 
-        # Pin one pressure degree of freedom (node 0) to fix the null space
-        # p[0] = 0  →  clear row 0 and set diagonal to 1
-        mask = rows != 0
+        # Pin one pressure degree of freedom to fix the null space.
+        # p[pin] = 0  →  clear row pin and set diagonal to 1.
+        pin = self._pin_dof
+        mask = rows != pin
         data = data[mask]
         rows = rows[mask]
         cols = cols[mask]
 
-        # Add A[0,0] = 1
+        # Add A[pin, pin] = 1
         data = np_host.append(data, 1.0)
-        rows = np_host.append(rows, 0)
-        cols = np_host.append(cols, 0)
+        rows = np_host.append(rows, pin)
+        cols = np_host.append(cols, pin)
 
         return (data, rows, cols), (n, n)
 

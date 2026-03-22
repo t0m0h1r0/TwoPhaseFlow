@@ -10,6 +10,11 @@
 
 ## **2. Completed (2026-03-22)**
 
+12. ~~Symmetry-breaking root-cause investigation and fixes~~ — **Done (2026-03-22).** Three independent root causes of symmetry breaking identified and fixed:
+    - **Fix 1 (`rhie_chow.py`):** `_flux_divergence_1d` wall BC padded `0` for node `N_ax`, treating interior face `N_ax` (between nodes `N_ax-1` and `N_ax`) as a wall face. Correct FVM formula: `div[N_ax] = (face_{N_ax+1} - face_{N_ax})/h = -flux[N_ax]/h`. Primary instability (blowup) resolved.
+    - **Fix 2 (`ppe_builder.py` + 3 solvers + tests):** Dirichlet pressure gauge pin moved from corner node `(0,0)` to center node `(N/2, N/2)`, which is invariant under all symmetry operations of the square domain (x-flip, y-flip, diagonal swap). Corner pin sets `δp[0,0]=0` while the symmetric corner `(N,0)` has non-zero RHS, driving spurious non-antisymmetric pressure gradients. Step-by-step symmetry test at dt=0.005 confirmed machine-precision symmetry after both fixes (u_xflip_err = 6.22e-17).
+    - **Fix 3 (`cfl.py`):** Capillary CFL applied without safety factor (`dt = min(dt, dt_sigma)`), operating at the marginal stability limit and causing capillary instability that broke symmetry. Fixed to `dt = min(dt, cfl * dt_sigma)` (consistent with convective/viscous constraints).
+
 5. ~~WENO5 → Dissipative CCD global paper sweep~~ — **Done (2026-03-22, commit 1f5d7ee).** 30+ WENO5 references replaced across 7 non-appendix files. WENO5 retained in appendix as reference scheme only.
 
 6. ~~20th CRITIC pass (full review including appendix)~~ — **Done (2026-03-22, commit 24ee31a).** 4 clarity fixes: (A) Balanced-Force warnbox explicit note that Dissipative CCD ≠ standard CCD for NS terms; (B) H(π;0.05)=0.80 Nyquist damping calculated; (C) ψ clamp note in Step 1 of 09_full_algorithm.tex; (D) O(h⁵Δt) mass conservation derivation step completed.
