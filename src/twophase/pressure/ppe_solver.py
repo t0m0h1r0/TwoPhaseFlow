@@ -86,8 +86,8 @@ class PPESolver(IPPESolver):
         A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
         rhs_host = self.backend.to_host(rhs).ravel().astype(float)
-        # Dirichlet 固定点 (ノード 0) の右辺を 0 に設定
-        rhs_host[0] = 0.0
+        # Dirichlet 固定点（中央ノード）の右辺を 0 に設定
+        rhs_host[self._builder._pin_dof] = 0.0
         # 周期 BC: 周期像ノードの方程式は p[ghost]=p[src] → RHS = 0
         if self._builder._periodic_image_dofs is not None:
             rhs_host[self._builder._periodic_image_dofs] = 0.0

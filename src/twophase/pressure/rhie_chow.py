@@ -187,7 +187,14 @@ class RhieChowInterpolator:
             div_Nax = (flux_faces[tuple(sl_f0)] - flux_faces[tuple(sl_fN)]) / h
             return xp.concatenate([div_nodes, div_Nax], axis=axis)
         else:
-            shape_pad = list(flux_faces.shape)
-            shape_pad[axis] = 1
-            pad = xp.zeros(shape_pad)
-            return xp.concatenate([div_nodes, pad], axis=axis)
+            # Right-wall node N_ax: the wall boundary face (face N_ax+1) is not
+            # stored in the flux array but is implicitly 0 (no-penetration).
+            # FVM divergence: div[N_ax] = (face[N_ax+1] - face[N_ax]) / h
+            #                           = (0 - flux[N_ax]) / h
+            #                           = -flux[N_ax] / h
+            # Padding with 0 (treating flux[N_ax] as a wall face) was incorrect;
+            # flux[N_ax] is an interior face between nodes N_ax-1 and N_ax.
+            sl_last = [slice(None)] * len(flux_faces.shape)
+            sl_last[axis] = slice(-1, None)   # face N_ax
+            div_Nax = -flux_faces[tuple(sl_last)] / h
+            return xp.concatenate([div_nodes, div_Nax], axis=axis)

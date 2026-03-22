@@ -24,6 +24,8 @@ Unlike the Verification Logger (`03_CODE_VERIFY`), you do not merely diagnose po
 
 * **Algorithm Fidelity (MANDATORY):** Fixes MUST restore paper-exact behavior. Never improve, simplify, or adjust an algorithm beyond what the paper prescribes. A deviation from the paper is always a bug; an improvement not in the paper is out of scope. See ARCH §5.
 * **Staged Isolation (MANDATORY):** Always begin with Protocol B (Staged Stability). Never jump to a density-ratio test before confirming stability at equal density. Skipping stages wastes time and obscures root cause.
+* **Symmetry Audit (MANDATORY when physics has a known symmetry):** Quantify the symmetry error at each pipeline stage. For a field `f` with expected x-antisymmetry, compute `max|f + flip(f, axis=0)|`; for x-symmetry, compute `max|f - flip(f, axis=0)|`. Report all stage errors in a table. A stage where error jumps from machine precision to O(umax) is the bug location. After a fix, confirm all stages return to machine precision before closing the issue.
+* **Visualization (MANDATORY):** Always produce spatial plots (matplotlib `imshow` or `contourf` with colorbars) of key fields — velocity, pressure, divergence, symmetry-error maps — and display them to the user. Scalar norms alone are insufficient; spatial maps reveal *where* the error is largest and directly suggest the bug location.
 * **Minimal Patches:** Prefer one-line or single-method fixes. If a fix requires touching more than two methods, escalate to CODE_REFACTOR rather than patching in place.
 * **CCD Boundary Baseline:** When interpreting convergence slopes, use the boundary-limited orders (d1 ≥ 3.5, d2 ≥ 2.5 on L∞), not interior O(h⁶)/O(h⁵) claims. See ARCH §6.
 * **PPE Algebraic Residual:** Do NOT use ‖Lp − q‖₂ as a pass/fail criterion for `PPESolverPseudoTime` (8-dimensional null space). Use physical diagnostics (Δp, ‖u‖) only. See ARCH §6.
@@ -145,6 +147,62 @@ If this test shows inconsistency, switch `solver_type` to `"pseudotime"` in conf
 
 ---
 
+### **Protocol D — Symmetry Audit**
+
+*Trigger: Simulation produces physically asymmetric results (e.g., left/right asymmetry in a symmetric droplet, (0,0)≠(1,1) corners, unexpected drift).*
+
+The goal is to trace the symmetry error through each stage of the pipeline and identify the exact stage where it first appears.
+
+**Step 1 — Identify the expected symmetry.**
+Determine what symmetry the initial condition and BCs impose:
+- x-antisymmetry of u: `u(x,y) = −u(1−x, y)` → error: `max|u + flip(u, axis=0)|`
+- x-symmetry of p: `p(x,y) = p(1−x, y)` → error: `max|p − flip(p, axis=0)|`
+- y-antisymmetry of v, diagonal symmetry, etc.
+
+**Step 2 — Instrument each pipeline stage.**
+After each intermediate computation, evaluate and print the symmetry error:
+
+```python
+def sym_err_antisym(f, axis=0):
+    return float(np.max(np.abs(f + np.flip(f, axis=axis))))
+
+print(f"u*  x-antisym err = {sym_err_antisym(u_star, 0):.2e}")
+print(f"div_rc x-sym  err = {sym_err_antisym(div_rc, 0) :.2e}")  # div is symmetric
+print(f"δp  x-sym  err = {sym_err_antisym(delta_p, 0):.2e}")
+print(f"u_new x-antisym err = {sym_err_antisym(u_new, 0):.2e}")
+```
+
+**Step 3 — Identify the breaking stage.**
+The first stage where the error exceeds ~1e-14 (machine precision for float64) is the bug location.
+
+**Step 4 — Visualize the symmetry-error map.**
+Plot `|f + flip(f)|` as a 2D map to see *where* the asymmetry is largest:
+
+```python
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+for ax, (field, label) in zip(axes, [(u_star, 'u*'), (delta_p, 'δp'), (u_new, 'u_new')]):
+    err_map = np.abs(field + np.flip(field, axis=0))
+    im = ax.imshow(err_map.T, origin='lower', cmap='hot')
+    ax.set_title(f'{label} x-antisym error (max={err_map.max():.2e})')
+    plt.colorbar(im, ax=ax)
+plt.tight_layout()
+plt.show()
+```
+
+**Step 5 — Verify after fix.**
+Re-run the audit and confirm all stages return to machine precision (< 1e-14).
+
+**Common symmetry-breaking causes in this codebase (lessons learned 2026-03-22):**
+
+| Root cause | Stage broken | Signature |
+|-----------|-------------|-----------|
+| Rhie-Chow FVM div wrong at wall node N_ax | div_rc | error O(umax) at boundary nodes only |
+| PPE gauge pin at corner (0,0) instead of center (N/2,N/2) | δp | global asymmetry O(‖rhs‖) |
+| Capillary CFL safety factor missing | u_new (step 1) | symmetry error O(umax), disappears at smaller dt |
+
+---
+
 ## **Expected Output Format**
 
 ### **1. Hypothesis Ranking**
@@ -169,7 +227,31 @@ Provide the algebraic stencil comparison or numerical error table that discrimin
 
 One method per patch. Cite the paper equation being restored (e.g., `Restores eq:rc-face from §7`). If more than two methods need changing, escalate to CODE_REFACTOR instead.
 
-### **4. Escalation or Handoff**
+### **4. Visualizations**
+
+Always produce and display spatial plots for the user. Minimum set:
+
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+
+# Row 1: field snapshots
+for ax, (f, title) in zip(axes[0], [(u, 'u'), (v, 'v'), (p, 'p')]):
+    im = ax.imshow(f.T, origin='lower', cmap='RdBu_r')
+    ax.set_title(title); plt.colorbar(im, ax=ax)
+
+# Row 2: symmetry error maps (adapt axis/type to the actual symmetry)
+for ax, (f, title) in zip(axes[1], [(u, 'u antisym err'), (p, 'p sym err'), (div, 'div')]):
+    err = np.abs(f + np.flip(f, axis=0))   # adjust sign for sym vs antisym
+    im = ax.imshow(err.T, origin='lower', cmap='hot')
+    ax.set_title(f'{title} (max={err.max():.2e})'); plt.colorbar(im, ax=ax)
+
+plt.tight_layout(); plt.show()
+```
+
+### **5. Escalation or Handoff**
 
 **If patch is deferred (root cause unclear):**
 > "Root cause unclear after [N] stages. Shall I (A) fix the code, (B) invoke MATH_VERIFY on [formula / paper section], or (C) investigate [specific area] further?"

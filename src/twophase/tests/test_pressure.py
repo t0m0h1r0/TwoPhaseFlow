@@ -63,9 +63,12 @@ def test_ppe_matrix_interior_row_sum(backend):
     (data, rows, cols), A_shape = builder.build(rho)
     A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
-    # Dirichlet ピン点（行 0）を除いた行和を検証
+    # Dirichlet ピン点（中央ノード）を除いた行和を検証
+    pin_dof = builder._pin_dof
     row_sums = np.array(A.sum(axis=1)).ravel()
-    max_interior_sum = np.max(np.abs(row_sums[1:]))
+    mask = np.ones(len(row_sums), dtype=bool)
+    mask[pin_dof] = False
+    max_interior_sum = np.max(np.abs(row_sums[mask]))
     assert max_interior_sum < 1e-10, (
         f"PPE 行列の行和がゼロでない: {max_interior_sum:.3e}"
     )
@@ -86,7 +89,8 @@ def test_ppe_solve_residual(backend):
     # 一貫性のある右辺（零空間を投影）
     rhs = np.random.default_rng(42).standard_normal(grid.shape)
     rhs -= rhs.mean()
-    rhs[0, 0] = 0.0   # ピン点と整合
+    pin_dof = solver._builder._pin_dof
+    rhs.ravel()[pin_dof] = 0.0   # 中央ノード（ピン点）と整合
 
     # 統一インターフェース: solve(rhs, rho, dt, p_init=None)
     p = solver.solve(rhs, rho, dt=0.01)

@@ -72,7 +72,7 @@ class PPESolverLU(IPPESolver):
         A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
         rhs_host = self.backend.to_host(rhs).ravel().astype(float)
-        rhs_host[0] = 0.0  # Dirichlet 固定点（ノード 0）
+        rhs_host[self._builder._pin_dof] = 0.0  # Dirichlet 固定点（中央ノード）
         if self._builder._periodic_image_dofs is not None:
             rhs_host[self._builder._periodic_image_dofs] = 0.0
 

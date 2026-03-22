@@ -141,15 +141,19 @@ class PPESolverPseudoTime(IPPESolver):
         # ─── スパース演算子行列 L_CCD^ρ を Kronecker 積で構築 ──────────────
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
-        # ─── ピン点：行 0 を恒等行に置き換えて零空間を除去 ────────────────
+        # ─── ピン点：中央ノードを恒等行に置き換えて零空間を除去 ────────────
+        # 中央ノードはドメインの全対称操作（x-flip, y-flip, 対角反転）で不変。
+        # 隅角ノード 0 のピンは x-flip / y-flip 対称性を破り寄生流れを生じさせる。
+        pin_idx = tuple(n // 2 for n in self.grid.N)
+        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
         L_lil = L_sparse.tolil()
-        L_lil[0, :] = 0.0
-        L_lil[0, 0] = 1.0
+        L_lil[pin_dof, :] = 0.0
+        L_lil[pin_dof, pin_dof] = 1.0
         L_pinned = L_lil.tocsr()
 
         # ─── 右辺・初期推定値の準備 ─────────────────────────────────────
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
-        rhs_np[0] = 0.0   # ピン点と整合
+        rhs_np[pin_dof] = 0.0   # ピン点と整合
 
         # 初期推定値：p_init があれば warm start、なければゼロ初期化
         p0 = (

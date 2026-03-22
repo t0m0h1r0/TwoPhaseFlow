@@ -113,7 +113,10 @@ class CFLCalculator:
             dt = min(dt, dt_visc)
 
         # Capillary wave CFL (§8.4 Eq.(dt_sigma))
+        # Apply the same CFL safety factor as convective/viscous constraints.
+        # Without it, dt == dt_sigma (the marginal stability limit), which can
+        # cause capillary instability that breaks physical symmetry.
         if self._dt_sigma is not None:
-            dt = min(dt, self._dt_sigma)
+            dt = min(dt, cfl * self._dt_sigma)
 
         return max(dt, 1e-8)
