@@ -6,9 +6,30 @@
 
 * **Date/Update:** 2026-03-22
 * **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 12 sections + 5 appendices. **20 CRITIC passes + 29 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 12 sections + 5 appendices. **21 CRITIC passes + 32 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-22)**
+
+14. ~~EDITOR sweep 32 — §7 second CRITIC pass (12 issues)~~ — **Done (2026-03-22).** All 12 issues resolved:
+    - **FATAL-1**: algbox Step 3 `q≈5` → `q≈2`; Balanced-Force benefit reframed as coefficient reduction, not rate improvement.
+    - **FATAL-2**: `\ref{box:balanced_force_ref}` (paragraph label) → `\ref{sec:csf}`.
+    - **GAP-1**: Added CCD-specific checkerboard/decoupling paragraph (zero eigenvalue at kh=π).
+    - **GAP-2**: `d_e ≈ (Δt/ρ)_e` → `d_e = (Δt/ρ)_e`.
+    - **GAP-3**: Added O(Δt) time-level residual note near `eq:rc-face-balanced` (IPC-consistent).
+    - **GAP-4**: Strengthened blow-up argument with checkerboard λ_min≈0 growing-mode mechanism.
+    - **STRUCT-1**: `Rhie and Chow (1983)` → `\cite{RhieChow1983}`; `Chung (2002)` → `\cite{Chung2002}`; added `Chung2002` bib entry.
+    - **STRUCT-2**: Warnbox items 2,3 forward-reference verbosity reduced.
+    - **STRUCT-3**: Surface tension RC correction O(h²) analysis added to `app:rc_precision`.
+    - **STRUCT-4**: Triple "RC independent of BF" consolidated — canonical in `app:rc_precision`; two duplicates shortened to cross-references.
+    - **IMPL-1**: `eq:rc-face-balanced` implementation check added to algbox failure checklist.
+    - **IMPL-2**: `sec:rc_implementation` header clarified: `eq:rc-face` = current code; `eq:rc-face-balanced` = full theory.
+
+13. ~~EDITOR sweep 30 — Balanced-Force §7 expansion~~ — **Done (2026-03-22).** Three changes to `07_collocate.tex`:
+    - **Enhanced root cause** (§\ref{sec:bf_operator_mismatch}): blow-up narrative + explicit `eq:bf_operator_mismatch` ($O(h^6)-O(h^2)$ mismatch formula).
+    - **Moved Taylor expansion** to appendix `app:balanced_force_taylor` in `appendix_numerics_schemes.tex` (3 subsections: truncation error derivation, O(h^6) reduction proof, CSF model error floor).
+    - **New §\ref{sec:rc_balanced_force}** + `eq:rc-face-balanced`: Rhie–Chow formula extended with surface tension term $[(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f]$; κ decoupling note; cross-ref to appendix.
+
+
 
 12. ~~Symmetry-breaking root-cause investigation and fixes~~ — **Done (2026-03-22).** Three independent root causes of symmetry breaking identified and fixed:
     - **Fix 1 (`rhie_chow.py`):** `_flux_divergence_1d` wall BC padded `0` for node `N_ax`, treating interior face `N_ax` (between nodes `N_ax-1` and `N_ax`) as a wall face. Correct FVM formula: `div[N_ax] = (face_{N_ax+1} - face_{N_ax})/h = -flux[N_ax]/h`. Primary instability (blowup) resolved.
