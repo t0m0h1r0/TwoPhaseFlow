@@ -8,14 +8,14 @@
 {\color{navy}\rule{\linewidth}{2pt}}\\[10pt]
 {\large
 \textbf{High-Order Numerical Simulation of Gas--Liquid Two-Phase Flows}\\[4pt]
-\textit{Spurious-Current Suppression via CCD $\cdot$ Conservative Level Set $\cdot$ WENO5 $\cdot$ Projection Method}
+\textit{Spurious-Current Suppression via CCD $\cdot$ Conservative Level Set $\cdot$ Dissipative CCD $\cdot$ Projection Method}
 }
 \vspace{14mm}
 \begin{tcolorbox}[defbox, width=0.88\textwidth]
 \small\centering
 \begin{tabular}{rl}
 界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(\phi)$）\\
-空間離散： & CCD $\Ord{h^6}$（微分），WENO5（移流），非一様格子対応\\
+空間離散： & CCD $\Ord{h^6}$（微分），Dissipative CCD（移流），非一様格子対応\\
 格子構造： & コロケート格子 + Rhie--Chow 補正（面速度）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
 圧力解法： & 変密度 IPC（van Kan 1986）+ CCD-PPE（$O(h^6)$）+ 仮想時間陰解法\\
@@ -42,7 +42,7 @@
 本稿は，この問題を結合コンパクト差分法（CCD，$O(h^6)$）と
 Balanced-Force 離散化条件を組み合わせることで根本的に解決する設計を提案し，
 その理論的基盤・実装詳細・検証手順を体系的に解説する．
-界面追跡には Conservative Level Set（CLS）法と WENO5 スキームを採用して質量保存性と
+界面追跡には Conservative Level Set（CLS）法と Dissipative CCD スキームを採用して質量保存性と
 数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は CCD 仮想時間陰解法
 （$O(h^6)$）で高精度に求解する．
 Rhie--Chow 型フラックス補正がコロケート格子でのチェッカーボード不安定を抑制し，

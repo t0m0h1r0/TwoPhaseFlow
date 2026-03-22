@@ -120,7 +120,7 @@ $c_x = 0.5,\; c_y = 0.75,\; R = 0.15$，スロット幅 $2w = 0.05$（$w = 0.025
 \noindent\textbf{スロットデスクが難しい理由：}
 スロットの鋭角な角（コーナー）と細い溝は，数値拡散の影響が最も現れやすい形状である．
 スロットが消えて丸くなったり，面積が減少したりする場合，移流スキームの数値拡散が過剰であることを示す．
-WENO5 + TVD-RK3 の組み合わせは，このテストにおいてスロット形状を良好に保持できることが知られている．
+Dissipative CCD + TVD-RK3 の組み合わせは，このテストにおいてスロット形状を良好に保持できることが期待される（§\ref{sec:advection_motivation}）．
 
 %%%  ── Benchmark 3 ──────────────────────────────────────────────
 \subsubsection{ベンチマーク3：Rayleigh--Taylor 不安定性}
@@ -289,7 +289,7 @@ $y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
 \# & テスト名 & 検証対象 & 難易度 \\
 \hline
 1 & 静止液滴 & CSF・曲率・寄生流れ & $\bullet\circ\circ\circ$ \\
-2 & Zalesak スロットデスク & WENO5 移流・質量保存 & $\bullet\bullet\circ\circ$ \\
+2 & Zalesak スロットデスク & Dissipative CCD 移流・質量保存 & $\bullet\bullet\circ\circ$ \\
 3 & Rayleigh-Taylor & 密度差・重力・線形安定論 & $\bullet\bullet\bullet\circ$ \\
 4 & 気泡上昇 & 全物理の結合・定量比較 & $\bullet\bullet\bullet\bullet$ \\
 \hline
@@ -318,7 +318,7 @@ $y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
 \toprule
 コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
 \midrule
-WENO5 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
+Dissipative CCD 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
 CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
 CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
 CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
@@ -335,11 +335,11 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
 \noindent\textbf{精度設計のまとめ：}
 \label{sec:accuracy_summary}
 本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
-粘性項（CCD + Crank--Nicolson，$\Ord{h^6}$），界面移流（WENO5，$\Ord{h^5}$）のすべてで高次精度を達成している．
+粘性項（CCD + Crank--Nicolson，$\Ord{h^6}$），界面移流（Dissipative CCD，$\Ord{h^5}$）のすべてで高次精度を達成している．
 
 \begin{itemize}[noitemsep]
   \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間精度の律速段階であり，
-        WENO5（$\Ord{h^5}$）および CCD-PPE（$\Ord{h^6}$）はこれより高次であるため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
+        Dissipative CCD（$\Ord{h^5}$）および CCD-PPE（$\Ord{h^6}$）はこれより高次であるため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
   \item \textbf{寄生流れへの直接効果：} 寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
         曲率精度次数 $p_\kappa$ に直接依存する．CCD（$p_\kappa=6$）は2次手法と比べ
         $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．

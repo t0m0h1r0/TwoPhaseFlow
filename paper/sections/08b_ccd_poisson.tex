@@ -311,7 +311,7 @@ $D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価す
         FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上．
         \textbf{注：}CCD の空間精度は $\Ord{h^6}$ だが，Balanced-Force の文脈での有効次数は
         $\Ord{h^4}$ 以上となる．これは表面張力項 $\sigma\kappa\nabla\psi$ の $\psi$ が
-        WENO5 による $\Ord{h^5}$ 精度の CLS 移流場であるため，
+        Dissipative CCD による $\Ord{h^5}$ 精度の CLS 移流場であるため，
         圧力勾配との差分演算子整合性は $\min(\Ord{h^5},\Ord{h^6}) = \Ord{h^5}$ に律速され，
         さらに密度勾配項 $D_x^{(1)}\rho\sim\Ord{h^{-1}}$ のスケールが介在するため
         有効精度は $\Ord{h^4}$ 以上と評価される（格子を半分にすると $\simeq 1/16$ 倍以上）．
@@ -372,7 +372,7 @@ CCD + GMRES (matrix-free) & $\Ord{h^6}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-5})$ & 
 \toprule
 コンポーネント & 手法 & 空間精度 & 時間精度 \\
 \midrule
-CLS 移流（界面追跡） & WENO5 + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
+CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
 幾何量計算（曲率等） & CCD 法 & $O(h^6)$ & — \\
 PPE（離散化＋求解） & CCD 微分形式 + 仮想時間陰解法 & $O(h^6)$ & — \\
 （参考：FVM + BiCGSTAB を使った場合） & （FVM + 調和平均係数） & （$O(h^2)$） & — \\
