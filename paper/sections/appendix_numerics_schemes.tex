@@ -14,13 +14,7 @@
 本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
 \textbf{本稿の実装では格子を時間固定として扱う（$\bm{v}_\text{mesh} = 0$）}か，タイムステップごとに格子を再生成するが $\bm{v}_\text{mesh}$ の補正は省略する．
 
-\begin{tcolorbox}[warnbox, title={ALE 定式化の概要と省略の条件}]
-ALE 定式化では，格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：
-\[
-  \frac{\partial\psi}{\partial t} + \nabla\cdot\bigl((\bm{u} - \bm{v}_\text{mesh})\psi\bigr) = 0
-\]
-ただし，この追加項の離散化は実装の複雑さを大きく増加させる．
-\end{tcolorbox}
+ALE 定式化では格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：$\partial\psi/\partial t + \nabla\cdot((\bm{u} - \bm{v}_\text{mesh})\psi) = 0$．ただしこの追加項の離散化は実装の複雑さを大きく増加させる．
 
 \textbf{誤差の発生機構：}
 1ステップあたりの界面移動量を $\delta = |\bm{u}|\Delta t$ とすると，

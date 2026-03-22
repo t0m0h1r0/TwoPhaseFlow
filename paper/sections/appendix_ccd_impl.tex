@@ -62,7 +62,7 @@ $f'$ は偶関数的に反射（$f'_{-1} = f'_1$），$f''$ は奇関数的（$f
 \textbf{注意：} 圧力の全 Neumann 境界問題（零固有モード）については第\ref{sec:pressure}章の対処法を参照すること．
 \end{tcolorbox}
 
-\begin{tcolorbox}[defbox, title={PPE Neumann 境界条件のゴーストセル法による再設計（$\partial p/\partial n = 0$ の場合）}]
+\begin{tcolorbox}[algbox, title={PPE Neumann 境界条件のゴーストセル法による再設計（$\partial p/\partial n = 0$ の場合）}]
 境界スキーム法（§\ref{sec:ccd_bc}，§\ref{sec:ccd_neumann_bc}）では，
 第1行を $p'_0 = 0$ に直接置き換えることで Neumann 条件を強制した．
 ゴーストセル法を選択した場合，この条件は\textbf{ゴーストセル値の偶関数的反射}として実装する：

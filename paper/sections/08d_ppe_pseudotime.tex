@@ -4,23 +4,15 @@
 \subsection{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}
 
-\begin{tcolorbox}[resultbox]
-\textbf{本稿の標準 PPE 求解手法：仮想時間陰解法＋CCD}
-
 本節で解説する\textbf{仮想時間（pseudo-time）陰解法}が本稿の標準手法である
 （BiCGSTAB は低次精度実装の代替として表~\ref{tab:ppe_methods} に掲載）．
 この方法は FVM ベースの BiCGSTAB（§\ref{sec:fvm_face_coeff}）に対して以下の優位性を持つ：
-\begin{itemize}
-  \item \textbf{空間精度}：CCD 法（6次精度）を用いるため，$\mathcal{O}(h^6)$ の高精度
-        （ただし表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照；実用上は $\varepsilon_\text{tol}$ の選択は
-        後述の収束基準~\ref{result:etol_criterion} による）
-  \item \textbf{行列不要}：大規模疎行列を陽に組み立てず，各反復でブロック Thomas 法を適用
-  \item \textbf{収束後の精度保証}：残差 $\varepsilon^m < \varepsilon_\text{tol}$ が達成された時点で
-        定常解は $\mathcal{L}_h p = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす
-        （スウィープ実装では各反復に $\mathcal{O}(\Delta\tau^2)$ 分割誤差が生じるが，
-        収束判定により実用上の精度は保証される；詳細は \ref{warn:ppe_splitting} および表~\ref{tab:ppe_methods} 参照）
-\end{itemize}
-\end{tcolorbox}
+\textbf{空間精度}として CCD 法（6次精度）を用いるため $\mathcal{O}(h^6)$ の高精度が得られ
+（表~\ref{tab:ppe_methods} 脚注 $\dagger$，収束基準は §\ref{result:etol_criterion} 参照），
+\textbf{行列不要}で大規模疎行列を陽に組み立てず各反復にブロック Thomas 法を適用し，
+残差 $\varepsilon^m < \varepsilon_\text{tol}$ 達成後は定常解が $\mathcal{L}_h p = q_h$ を
+$\varepsilon_\text{tol}$ 精度で満たす\textbf{収束後の精度保証}が得られる
+（スウィープ実装の分割誤差については \ref{warn:ppe_splitting} および表~\ref{tab:ppe_methods} 参照）．
 
 \begin{tcolorbox}[warnbox, title={2次元求解における実装方法と分割誤差について}]
 \label{warn:ppe_splitting}
