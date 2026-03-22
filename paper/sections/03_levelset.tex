@@ -257,7 +257,7 @@ $\int\psi\,dV = \text{const}$ が\textbf{速度場の発散条件に依存せず
 
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lp{4.5cm}p{5cm}}
+\begin{tabular}{p{3.5cm}p{4.5cm}p{5cm}}
 \hline
 方法 & 体積変化率（1ステップあたり） & 主な誤差源 \\
 \hline
@@ -307,7 +307,7 @@ $\partial\psi/\partial\tau\big|_{\psi=0.5} = \varepsilon\,\partial^2\psi/\partia
 この項もゼロとなり，$\partial\psi/\partial\tau\big|_{\psi=0.5} = 0$ が\textbf{定常状態で厳密}に成立する．
 移流直後の過渡状態ではプロファイルが非対称となり $\varepsilon\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ が微小に残りうる．
 この残差項の大きさを定量的に評価する．移流後プロファイルのズレ量を $\delta\psi = \psi - H_\varepsilon(\phi)$
-（$|\delta\psi| \le \Ord{h^5\Delta t}$，WENO5 打ち切り誤差）とすると，
+（$|\delta\psi| \le \Ord{h^5\Delta t}$，Dissipative CCD 打ち切り誤差）とすると，
 $\varepsilon\partial^2\psi/\partial s^2\big|_{\psi=0.5}$ への寄与は $\Ord{\varepsilon\,\delta\psi/h^2}$
 $= \Ord{\varepsilon h^3\Delta t/h^2} = \Ord{\varepsilon h\Delta t}$ と評価される．
 仮想時間 $N_\tau$ ステップの再初期化（各ステップ幅 $\Delta\tau = \Ord{h}$）で蓄積する界面ずれは：
