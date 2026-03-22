@@ -55,7 +55,7 @@ YAML は従来のフラット形式（後方互換）とネスト形式の両方
 
 from __future__ import annotations
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 
 def _require_pyyaml() -> Any:

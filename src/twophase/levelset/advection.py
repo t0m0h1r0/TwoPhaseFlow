@@ -449,6 +449,3 @@ def _pad_bc(xp, arr, axis: int, n_ghost: int, bc_type: str):
         return xp.concatenate([pad, arr, pad], axis=axis)
 
 
-def _pad_zero(xp, arr, axis: int, n_ghost: int):
-    """Backward-compatible alias for ``_pad_bc(..., bc_type='zero')``."""
-    return _pad_bc(xp, arr, axis, n_ghost, 'zero')
