@@ -5,7 +5,7 @@
 ## **1. Project Status Summary**
 
 * **Date/Update:** 2026-03-22
-* **Code:** 33 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED.
+* **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
 * **Paper:** 12 sections + 5 appendices. **20 CRITIC passes + 29 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-22)**
@@ -15,6 +15,14 @@
 6. ~~20th CRITIC pass (full review including appendix)~~ — **Done (2026-03-22, commit 24ee31a).** 4 clarity fixes: (A) Balanced-Force warnbox explicit note that Dissipative CCD ≠ standard CCD for NS terms; (B) H(π;0.05)=0.80 Nyquist damping calculated; (C) ψ clamp note in Step 1 of 09_full_algorithm.tex; (D) O(h⁵Δt) mass conservation derivation step completed.
 
 7. ~~DissipativeCCDAdvection implementation~~ — **Done (2026-03-22).** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py`. `advection_scheme` field added to `NumericsConfig` (default `"dissipative_ccd"`, alternative `"weno5"`). `SimulationBuilder` updated to select scheme from config. 2 new MMS tests added (spatial order ≥ 1.8 O(h²), full method order ≥ 1.8). **33 tests passing.** Code-paper gap CLOSED.
+
+8. ~~§5 paper inserts (WENO5 critique + warn:adv_risks)~~ — **Done (2026-03-22).** Added `\subsubsection{移流スキーム選択の設計根拠}` (label: `sec:advection_weno5_critique`) and `warn:adv_risks` tcolorbox warnbox to `05_advection.tex`. Fixed cross-refs (`eq:Heps_def_preview`, `sec:ccd_bc`).
+
+9. ~~Appendix D↔E reorder~~ — **Done (2026-03-22).** `appendix_numerics_schemes` (first-ref §5) moved before `appendix_numerics_solver` (first-ref §8) in `paper/main.tex`.
+
+10. ~~config_loader YAML round-trip fix + ε_factor warning~~ — **Done (2026-03-22).** Added `advection_scheme` to `config_loader.py` load/`_known`/dump. Added `UserWarning` in `NumericsConfig.__post_init__` for `epsilon_factor < 1.2` with `dissipative_ccd`. Added `test_config.py` (6 tests). **39 tests passing.**
+
+11. ~~Dead code refactor (SAFE_REMOVE)~~ — **Done (2026-03-22).** Removed 3 items: `_pad_zero` alias (0 call sites, `advection.py`), `Optional` unused import (`config_loader.py`), `TYPE_CHECKING` unused import (`_core.py`).
 
 ## **2. Completed (2026-03-21)**
 

@@ -73,8 +73,8 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | WENO5 β₀,β₁,β₂ (Jiang-Shu) | `04_time_integration.tex:122-126` | `advection.py:246-248` | 2026-03-21 | ✅ VERIFIED | (13/12)(·)²+(1/4)(·)²; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6 ✓ |
 | CFL advection + viscous conditions | `04b_time_schemes.tex:271-286` | `cfl.py:100-113` | 2026-03-21 | ✅ VERIFIED | Advection CFL ✓; viscous CFL safety factor conservative ✓ |
 | CSF curvature κ = −(…)/‖∇φ‖³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Rederived from ∇·(∇φ/‖∇φ‖) ✓ |
-| Dissipative CCD |g(ξ)|²>1 instability proof | `05_advection.tex` eq:ccd_adv_instability | `advection.py` (⚠ not yet impl.) | 2026-03-22 | ⚠ PAPER ONLY | Von Neumann analysis: |g|²=1+σ²[k*(ξ)/k]²>1 ∀ξ>0; H(π;0.05)=0.80 |
-| Dissipative CCD filter sum=0 (periodic) | `05_advection.tex` mass conservation | `advection.py` (⚠ not yet impl.) | 2026-03-22 | ⚠ PAPER ONLY | Shift-symmetry ⟹ Σ(f'_{i+1}−2f'_i+f'_{i-1})=0; O(h⁵Δt) per step |
+| Dissipative CCD |g(ξ)|²>1 instability proof | `05_advection.tex` eq:ccd_adv_instability | `advection.py` | 2026-03-22 | ✅ VERIFIED | Von Neumann analysis: |g|²=1+σ²[k*(ξ)/k]²>1 ∀ξ>0; H(π;0.05)=0.80; ε_d=0.05 hardcoded |
+| Dissipative CCD filter sum=0 (periodic) | `05_advection.tex` mass conservation | `advection.py` | 2026-03-22 | ✅ VERIFIED | Shift-symmetry ⟹ Σ(f'_{i+1}−2f'_i+f'_{i-1})=0; O(h⁵Δt) per step; implemented in DissipativeCCDAdvection._rhs |
 
 ---
 
@@ -87,8 +87,12 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ## 4. Code Test Suite
 
-- `[x]` `pytest src/twophase/tests/` — **33 tests passing** (as of 2026-03-22)
+- `[x]` `pytest src/twophase/tests/` — **39 tests passing** (as of 2026-03-22)
 - `[x]` **CODE-PAPER GAP CLOSED:** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py` (§5 alg:dccd_adv). `NumericsConfig.advection_scheme = "dissipative_ccd"` (default); `"weno5"` selectable. `SimulationBuilder` updated. 2 MMS tests added (spatial O(h²) ≥ 1.8, full method ≥ 1.8).
+- `[x]` **config_loader YAML round-trip fixed:** `advection_scheme` added to load/`_known`/dump in `config_loader.py`. Previously silently dropped on round-trip and triggered unknown-key warning.
+- `[x]` **ε_factor < 1.2 safety warning:** `UserWarning` in `NumericsConfig.__post_init__` for `epsilon_factor < 1.2` + `advection_scheme="dissipative_ccd"` (§5 warn:adv_risks(B)).
+- `[x]` **test_config.py added:** 6 tests — scheme validation (valid/invalid), ε_factor warning (positive/negative/safe), YAML round-trip, unknown-key suppression.
+- `[x]` **Dead code removed (refactor):** `_pad_zero` alias (`advection.py`), `Optional` unused import (`config_loader.py`), `TYPE_CHECKING` unused import (`_core.py`).
 - `[!]` Benchmark at N=128 — stationary_droplet NaN for all N; PPE fails at 1000:1 density ratio (see §5 action item)
 - `[ ]` GPU backend (CuPy) compatibility check
 - `[ ]` 3D cases
