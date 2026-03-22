@@ -87,8 +87,8 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ## 4. Code Test Suite
 
-- `[x]` `pytest src/twophase/tests/` — **31 tests passing** (as of 2026-03-21)
-- `[!]` **CODE-PAPER GAP:** `levelset/advection.py` implements WENO5; paper §5 now uses Dissipative CCD. Must add `DissipativeCCDAdvection(ILevelSetAdvection)` + register via config `numerics.advection_scheme = "dissipative_ccd"`. WENO5 remains available as `"weno5"` (alternative).
+- `[x]` `pytest src/twophase/tests/` — **33 tests passing** (as of 2026-03-22)
+- `[x]` **CODE-PAPER GAP CLOSED:** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py` (§5 alg:dccd_adv). `NumericsConfig.advection_scheme = "dissipative_ccd"` (default); `"weno5"` selectable. `SimulationBuilder` updated. 2 MMS tests added (spatial O(h²) ≥ 1.8, full method ≥ 1.8).
 - `[!]` Benchmark at N=128 — stationary_droplet NaN for all N; PPE fails at 1000:1 density ratio (see §5 action item)
 - `[ ]` GPU backend (CuPy) compatibility check
 - `[ ]` 3D cases
@@ -107,7 +107,7 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ### Code
 
-- `[!]` **Dissipative CCD advection implementation** — Add `DissipativeCCDAdvection` to `levelset/advection.py`, register in `NumericsConfig` as `advection_scheme` field, set as default. Write MMS test in `test_time_integration.py` checking spatial O(h⁴.⁸+) and temporal O(2.8+). WENO5 stays as selectable alternative.
+- `[x]` **Dissipative CCD advection** — `DissipativeCCDAdvection` implemented + registered + tested (2026-03-22).
 - `[!]` N=128 benchmark — BLOCKED: stationary_droplet NaN (PPE diverges for ρ ratio 1000:1); await user direction (A/B/C)
 - `[ ]` GPU (CuPy) backend verification
 - `[ ]` 3D implementation

@@ -82,10 +82,16 @@ class NumericsConfig:
     cn_viscous: bool = True
     # 境界条件の種類: 'wall' または 'periodic'
     bc_type: str = "wall"
+    # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）
+    advection_scheme: str = "dissipative_ccd"
 
     def __post_init__(self) -> None:
         assert self.bc_type in ("wall", "periodic"), (
             f"bc_type は 'wall' または 'periodic' でなければならない: '{self.bc_type}'"
+        )
+        assert self.advection_scheme in ("dissipative_ccd", "weno5"), (
+            f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "
+            f"'{self.advection_scheme}'"
         )
 
 

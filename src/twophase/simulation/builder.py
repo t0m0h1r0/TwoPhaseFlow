@@ -40,7 +40,7 @@ from ..core.grid import Grid
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..ccd.ccd_solver import CCDSolver
-from ..levelset.advection import LevelSetAdvection
+from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature import CurvatureCalculator
 from ..ns_terms.predictor import Predictor
@@ -142,7 +142,10 @@ class SimulationBuilder:
         # 'zero' は後方互換のデフォルトだが壁面 BC では誤差が大きい
         # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
         _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
-        ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
+        if config.numerics.advection_scheme == "dissipative_ccd":
+            ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc)
+        else:  # "weno5"
+            ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
