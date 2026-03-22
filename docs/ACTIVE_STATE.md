@@ -4,9 +4,16 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-22
+* **Date/Update:** 2026-03-23
 * **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 33 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 33 EDITOR sweeps complete (2026-03-22). EDITOR sweep 34 complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+
+## **2. Completed (2026-03-23)**
+
+16. ~~EDITOR sweep 34 — §8d pseudo-time study expansion~~ — **Done (2026-03-23).** Three new subsubsections added to `08d_ppe_pseudotime.tex` (323→330 lines):
+    - **NEW `sec:pseudo_variable_freeze`**: "反復中の物理変数の凍結" — explains that ρ, u*, Δt are fully frozen during pseudo-time iterations; only δp is updated. Loop isolation rationale.
+    - **NEW `sec:defect_correction`**: "欠陥補正法による離散化の分離" — defect correction hybrid: LHS implicit matrix uses low-order FD `[I/Δτ − L_FD]`, RHS residual R_CCD computed at CCD O(h⁶) accuracy. Equations `eq:defect_correction_split` and `eq:defect_correction_linear` added. Convergence (δp→0 ⟹ L_CCD·p=q_h) proved.
+    - **NEW `sec:lts_dtau`**: "密度適応型局所時間刻み（LTS）" — density-adaptive local time step `Δτᵢⱼ = C_τ · ρᵢⱼ · h²/2` (eq:dtau_lts). Consistency with global Δτ_opt at uniform density (C_τ ≈ 1.16 matches box:dtau_impl range). Dynamic C_τ escalation strategy described.
 
 ## **2. Completed (2026-03-22)**
 

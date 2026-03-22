@@ -31,6 +31,7 @@
 | §8 Pressure / IPC | `08_pressure.tex` | `[x]` SAFE | — |
 | §8b CCD-Poisson | `08b_ccd_poisson.tex` | `[x]` SAFE | Spectral radius formula 9.6≠3.43 clarified |
 | §8c PPE verification | `08c_ppe_verification.tex` | `[x]` SAFE | — |
+| §8d PPE pseudo-time | `08d_ppe_pseudotime.tex` | `[x]` UPDATED | EDITOR sweep 34 (2026-03-23): 3 new subsubsections — variable freezing (sec:pseudo_variable_freeze), defect correction (sec:defect_correction, eq:defect_correction_split/linear), LTS (sec:lts_dtau, eq:dtau_lts) |
 | §9 Full algorithm | `09_full_algorithm.tex` | `[x]` SAFE | — |
 | §10 Verification | `10_verification.tex` | `[x]` SAFE | Pre-asymptotic O(h⁴) note added |
 | §11 Conclusion | `11_conclusion.tex` | `[x]` SAFE | — |
