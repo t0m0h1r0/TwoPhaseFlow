@@ -26,7 +26,7 @@
 
 | Section | File | Status | Notes |
 |---------|------|--------|-------|
-| §6 Grid generation | `06_grid.tex` | `[x]` SAFE | Comment fix: "台形則"→"矩形則（前進型）" |
+| §6 Grid generation | `06_grid.tex` | `[x]` FIXED | MATH_VERIFY 2026-03-22: PAPER_ERROR ω(0)=α → ω(0)=1+(α−1)/(ε_g√π) fixed; density function formula, transforms, metric code all VERIFIED; 10 targets total |
 | §7 Collocated | `07_collocate.tex` | `[~]` UPDATED | EDITOR sweep 30+31 (2026-03-22): eq:bf_operator_mismatch fixed (O(h²) not O(h⁶)−O(h²)); blow-up positive-feedback mechanism added; warnbox κ item demoted to "推奨"; warnbox item 3 updated to eq:rc-face-balanced; sec:rc_balanced_force rewrote with full quantity definitions + code-gap warnbox + face/cell-center cancellation logic; algbox "機械精度" → O(h²) CSF floor; appendix derivation expanded to show equilibrium cancellation. Build pending. |
 | §8 Pressure / IPC | `08_pressure.tex` | `[x]` SAFE | — |
 | §8b CCD-Poisson | `08b_ccd_poisson.tex` | `[x]` SAFE | Spectral radius formula 9.6≠3.43 clarified |
@@ -84,12 +84,21 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | Corrector divergence-free claim | `09_full_algorithm.tex:246` | `velocity_corrector.py` | 2026-03-22 | ✅ FIXED (LOGICAL_GAP) | D_CCD·u^{n+1}=O(h²)≠0; velocity satisfies ∇^RC·u^{n+1}=0; paper now states RC-sense (KL-10) |
 | `compute_residual()` pin exclusion | `ppe_solver_pseudotime.py:230` | same | 2026-03-22 | ✅ FIXED (CODE_BUG) | Was excluding corner node 0; now excludes center pin_dof=(N//2)*Ny+(N//2) (KL-11) |
 | Capillary CFL safety factor | `appendix_numerics_solver.tex` eq:dt_sigma | `cfl.py:117` | 2026-03-22 | ✅ FIXED (BUG) | dt=min(dt, dt_sigma) operated at marginal stability limit; fixed to dt=min(dt, cfl·dt_sigma) consistent with convective/viscous constraints |
+| δ*(φ) normalization ∫δ*dφ=1 | `06_grid.tex` eq:grid_delta | `grid.py:122` | 2026-03-22 | ✅ VERIFIED | ∫exp(−φ²/ε_g²)/(ε_g√π)dφ = 1 exact ✓ |
+| ω(0) = α claim | `06_grid.tex` パラメータ選択指針 | — | 2026-03-22 | ✅ FIXED (PAPER_ERROR) | ω(0)=1+(α−1)/(ε_g√π)≠α; corrected to exact formula in paper |
+| eq:transform_1st_correct ∂f/∂x=J·∂f/∂ξ | `06_grid.tex` | `grid.py:183-185` | 2026-03-22 | ✅ VERIFIED | Standard chain rule; J=∂ξ/∂x ✓ |
+| eq:transform_2nd_correct ∂²f/∂x² | `06_grid.tex` | `grid.py:154-157` | 2026-03-22 | ✅ VERIFIED | ∂/∂x(J·∂f/∂ξ)=J²·∂²f/∂ξ²+J·(∂J/∂ξ)·∂f/∂ξ ✓ |
+| J=1/d1_raw, dJ=−d2_raw/d1_raw² | `06_grid.tex` Step 5 | `grid.py:179-180` | 2026-03-22 | ✅ VERIFIED | Implicit differentiation of J=1/(dx/dξ) ✓ |
+| differentiate_raw axis embedding | — | `ccd_solver.py` | 2026-03-22 | ✅ VERIFIED | shape=[1]*ndim; shape[axis]=-1 broadcasts 1D coords to correct axis ✓ |
+| MMS thresholds ≥3.5 (J), ≥2.5 (∂J/∂ξ) | ARCH §6 | `test_grid.py:146,196` | 2026-03-22 | ✅ VERIFIED | Matches CCD boundary accuracy for d1/d2 ✓ |
+| min|φ| marginal (§6 2D algo) | `06_grid.tex` 2D tensor-product | `grid.py:119` | 2026-03-22 | ✅ VERIFIED | np.min(np.abs(phi), axis=other) = closest interface approach ✓ |
 
 ---
 
 ## 3. LaTeX Build
 
 - `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 33 edits pending compile verification
+- `[x]` CRITIC pass 24 + EDITOR sweep 37 (2026-03-23) — `08d`: FATAL-1 sweep≠欠陥補正（別手法書き直し）; FATAL-2 eq:residual増分式修正; GAP-1 近似解明記; GAP-2 LTS均等収束数式; IMPL-1 未実装注記; MINOR-1 result:etol_criterionリネーム. `07`: STRUCT-1 重複結論削除
 - `[x]` CRITIC pass 23 + EDITOR sweep 35 (2026-03-23) — `08d_ppe_pseudotime.tex`: ADI Δτ/2 fix (FATAL-1), tcolorbox `\eqref` fix (FATAL-2), C_τ三重矛盾解消 (FATAL-3), 安定条件→最適収束域 (FATAL-4), 5 labels追加, tab:ppe_methods 欠陥補正行追加, 変数凍結節移動
 - `[x]` EDITOR sweep 36 (2026-03-23) — `07_collocate.tex`: BF code-alignment confirmation (3 CCD sites verified) + stability-conclusion sentence in warnbox
 - `[x]` EDITOR sweep 34 (2026-03-23) — `08d_ppe_pseudotime.tex` 3 new subsubsections: variable freeze, defect correction (eq:defect_correction_split/linear), LTS (eq:dtau_lts)
@@ -101,7 +110,7 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ## 4. Code Test Suite
 
-- `[x]` `pytest src/twophase/tests/` — **39 tests passing** (as of 2026-03-22)
+- `[x]` `pytest src/twophase/tests/` — **53 passed, 2 skipped** (as of 2026-03-22; +14 from non-uniform grid + dissipative CCD tests)
 - `[x]` **CODE-PAPER GAP CLOSED:** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py` (§5 alg:dccd_adv). `NumericsConfig.advection_scheme = "dissipative_ccd"` (default); `"weno5"` selectable. `SimulationBuilder` updated. 2 MMS tests added (spatial O(h²) ≥ 1.8, full method ≥ 1.8).
 - `[x]` **config_loader YAML round-trip fixed:** `advection_scheme` added to load/`_known`/dump in `config_loader.py`. Previously silently dropped on round-trip and triggered unknown-key warning.
 - `[x]` **ε_factor < 1.2 safety warning:** `UserWarning` in `NumericsConfig.__post_init__` for `epsilon_factor < 1.2` + `advection_scheme="dissipative_ccd"` (§5 warn:adv_risks(B)).
