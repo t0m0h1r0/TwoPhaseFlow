@@ -6,9 +6,21 @@
 
 * **Date/Update:** 2026-03-23
 * **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 33 EDITOR sweeps complete (2026-03-22). EDITOR sweep 34 complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 35 EDITOR sweeps complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-23)**
+
+17. ~~CRITIC pass 23 + EDITOR sweep 35 — `08d_ppe_pseudotime.tex` 13 issues~~ — **Done (2026-03-23).** All VERIFIED items fixed (commit f022ef3):
+    - **FATAL-1**: `eq:ADI` ソース項 `Δτ q_h` → `Δτ/2 q_h`（両ステージ）；旧形式は固定点 `L_h δp* = 2q_h` という因子2誤差を生じていた
+    - **FATAL-2**: `\eqref{eq:etol_criterion}` → `\ref{eq:etol_criterion}`（tcolorbox を数式参照していた）
+    - **FATAL-3**: `C_τ = O(10¹~10³)` vs `C_τ = 1~5` vs `C_τ ≈ 1.16` の三重矛盾を解消；全箇所 `C_τ = 1~5` に統一
+    - **FATAL-4**: "安定条件 Δτ≤Cρh²/2" が "無条件安定" と矛盾 → 収束速度の最適化条件として言い直し
+    - **GAP-1**: `sec:pseudo_variable_freeze` を定式化節より後（安定性説明の直後）に移動（前方参照解消）
+    - **GAP-2/3**: `p^{(m)}` → `(δp)^{(m)}`，`\mathcal{L}_{CCD}` → `\mathcal{L}_h` に統一
+    - **GAP-4**: `tab:ppe_methods` に欠陥補正+LTS 行追加（$\ddagger$ 脚注付き）
+    - **STRUCT-1**: 5 subsubsection に `\label{}` 追加（sec:pseudo_formulation, sec:pseudo_implicit, sec:pseudo_ccd_discretization, sec:pseudo_adi_comparison, sec:pseudo_convergence）
+    - **STRUCT-2**: `§\ref{warn:ppe_splitting}` の `§` 全削除（warnbox を節番号参照していた）
+    - **IMPL-1/2**: `\mathcal{L}_{FD} \neq \mathcal{L}_h` 明記；`(δp)^{(0)}=0` cross-ref 追加
 
 16. ~~EDITOR sweep 34 — §8d pseudo-time study expansion~~ — **Done (2026-03-23).** Three new subsubsections added to `08d_ppe_pseudotime.tex` (323→330 lines):
     - **NEW `sec:pseudo_variable_freeze`**: "反復中の物理変数の凍結" — explains that ρ, u*, Δt are fully frozen during pseudo-time iterations; only δp is updated. Loop isolation rationale.
