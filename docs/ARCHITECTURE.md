@@ -21,7 +21,7 @@ src/
     │   ├── ns_terms.py             # INSTerm
     │   └── ppe_solver.py           # IPPESolver
     ├── levelset/
-    │   ├── advection.py            # CLS advection — WENO5 impl (ILevelSetAdvection); ⚠ CODE-PAPER GAP: paper now uses Dissipative CCD (§5); WENO5 demoted to reference appendix
+    │   ├── advection.py            # CLS advection — DissipativeCCDAdvection (default, §5) + LevelSetAdvection (WENO5, reference appendix)
     │   ├── reinitialize.py         # Pseudo-time reinitialization (IReinitializer)
     │   ├── curvature.py            # CCD-based κ computation (ICurvatureCalculator)
     │   └── heaviside.py            # Regularized Heaviside / delta function
@@ -66,7 +66,8 @@ src/
         ├── test_levelset.py        # CLS advection, reinitialization, curvature
         ├── test_ns_terms.py        # Convection, viscous, surface tension terms
         ├── test_pressure.py        # PPE solve, Rhie-Chow, velocity correction
-        └── test_time_integration.py# WENO5 spatial order (≥4.8), TVD-RK3 temporal order (≥2.8)  ⚠ needs Dissipative CCD test
+        ├── test_time_integration.py# WENO5 spatial order (≥4.8), TVD-RK3 temporal order (≥2.8); Dissipative CCD spatial order (≥1.8), full method order (≥1.8)
+        └── test_config.py          # NumericsConfig advection_scheme validation; ε_factor<1.2 warning; YAML round-trip
 ```
 
 ## **2. Interfaces (ABCs)**
@@ -163,7 +164,7 @@ This couples into the global tridiagonal solve and limits global L∞ accuracy:
   - Clamp `ψ ← max(0, min(1, ψ))` after each TVD-RK3 stage (no TVD guarantee)
   - Mass conservation error: O(h⁵Δt) per step (periodic BC)
   - Paper ref: §5, eq:ccd_adv_instability, eq:eps_adv, eq:psi_clamp
-  - **⚠ CODE-PAPER GAP:** `levelset/advection.py` still implements WENO5. Must add `DissiativeCCDAdvection(ILevelSetAdvection)` and register via config.
+  - **Implemented:** `DissipativeCCDAdvection(ILevelSetAdvection)` in `levelset/advection.py`. Selected via `NumericsConfig.advection_scheme = "dissipative_ccd"` (default). `SimulationBuilder` injects correct scheme.
 - **CLS advection (reference/alternative):** WENO5 + TVD-RK3 — demoted to `appendix_numerics_schemes.tex app:weno5`
 - **CLS reinitialization:** Pseudo-time, `Δτ=0.25Δs`, N_reinit≈28 steps
 - **CLS compression advection part:** Dissipative CCD (same as CLS advection); diffusion part: CCD Crank-Nicolson implicit
