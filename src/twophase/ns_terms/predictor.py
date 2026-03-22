@@ -164,13 +164,7 @@ class Predictor:
         ipc = []
         for c in range(ndim):
             dp_dc, _ = ccd.differentiate(state.pressure, c)
-            if ccd.bc_type == "wall":
-                xp = self.xp
-                sl_lo = [slice(None)] * dp_dc.ndim
-                sl_hi = [slice(None)] * dp_dc.ndim
-                sl_lo[c] = 0; sl_hi[c] = -1
-                dp_dc[tuple(sl_lo)] = 0.0
-                dp_dc[tuple(sl_hi)] = 0.0
+            ccd.enforce_wall_neumann(dp_dc, c)
             ipc.append(-dp_dc)
 
         # ── 陽的 RHS の組み立て ────────────────────────────────────────
@@ -204,24 +198,3 @@ class Predictor:
 
         return vel_star
 
-    # ── private ───────────────────────────────────────────────────────────
-
-    def _fd_gradient(self, p, ax: int):
-        """O(h²) central-difference gradient along ax.
-
-        Interior nodes k = 1..N-1: (p[k+1] - p[k-1]) / (2h).
-        Boundary nodes k = 0, N: zero (Neumann ∂p/∂n = 0).
-        """
-        xp = self.xp
-        h = float(self.config.grid.L[ax] / self.config.grid.N[ax])
-        grad = xp.zeros_like(p)
-        sl_hi  = [slice(None)] * p.ndim
-        sl_lo  = [slice(None)] * p.ndim
-        sl_int = [slice(None)] * p.ndim
-        sl_hi[ax]  = slice(2, None)
-        sl_lo[ax]  = slice(0, -2)
-        sl_int[ax] = slice(1, -1)
-        grad[tuple(sl_int)] = (
-            (p[tuple(sl_hi)] - p[tuple(sl_lo)]) / (2.0 * h)
-        )
-        return grad
