@@ -16,18 +16,18 @@
 
 | Section | File | Last sweep | Type | Status | Notes |
 |---------|------|-----------|------|--------|-------|
-| §1 Introduction | `01_intro.tex` | 2026-03-21 | MATH_VERIFY | `[x]` SAFE | Prose only; no derivation target |
+| §1 Introduction | `01_introduction.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` SAFE | WENO5→Dissipative CCD global sweep; 6 occurrences fixed |
 | §2 Governing eqs | `02_governing.tex` | sweep 28 + 2026-03-21 | EDITOR+MATH_VERIFY | `[x]` | 球状液滴→円形液滴 fixed; One-Fluid / CSF verified |
-| §3 Level Set | `03_levelset.tex` | sweep 28 + 2026-03-21 | EDITOR+MATH_VERIFY | `[x]` | CLS fixed-point verified; reinitialization Δτ noted |
-| §4 Time integration | `04_time_integration.tex` | 2026-03-21 | MATH_VERIFY | `[x]` SAFE | WENO5 β+weights ✓; TVD-RK3 ✓; CFL ✓ |
-| §5 CCD method | `05_ccd.tex` + `05b_ccd_bc_matrix.tex` | 2026-03-20 | MATH_VERIFY | `[x]` | A_L/A_R (2,1) sign error found and fixed |
+| §3 Level Set | `03_levelset.tex` | sweep 20 + 2026-03-22 | EDITOR+MATH_VERIFY | `[x]` | CLS fixed-point verified; "WENO5 打ち切り誤差"→Dissipative CCD |
+| §4 CCD method | `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` | ε_d=0.05 → H(π)=0.80 added; A_L/A_R signs verified |
+| §5 CLS advection | `05_advection.tex` | 2026-03-22 | CRITIC+EDITOR | `[x]` | New chapter (merged from old §4 time_integration). Dissipative CCD scheme; mass conservation O(h⁵Δt) step clarified; ψ clamp note |
 
 ### §6–§11 + Appendices (sweep 29, 2026-03-21)
 
 | Section | File | Status | Notes |
 |---------|------|--------|-------|
 | §6 Grid generation | `06_grid.tex` | `[x]` SAFE | Comment fix: "台形則"→"矩形則（前進型）" |
-| §7 Collocated | `07_collocate.tex` | `[x]` SAFE | Balanced-Force Leibniz algebra fix |
+| §7 Collocated | `07_collocate.tex` | `[x]` SAFE | Balanced-Force Leibniz algebra fix; explicit note that Dissipative CCD NOT used for ∇p/κ∇ψ |
 | §8 Pressure / IPC | `08_pressure.tex` | `[x]` SAFE | — |
 | §8b CCD-Poisson | `08b_ccd_poisson.tex` | `[x]` SAFE | Spectral radius formula 9.6≠3.43 clarified |
 | §8c PPE verification | `08c_ppe_verification.tex` | `[x]` SAFE | — |
@@ -73,20 +73,22 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | WENO5 β₀,β₁,β₂ (Jiang-Shu) | `04_time_integration.tex:122-126` | `advection.py:246-248` | 2026-03-21 | ✅ VERIFIED | (13/12)(·)²+(1/4)(·)²; d₀=1/10,d₁=3/5,d₂=3/10; ε=1e-6 ✓ |
 | CFL advection + viscous conditions | `04b_time_schemes.tex:271-286` | `cfl.py:100-113` | 2026-03-21 | ✅ VERIFIED | Advection CFL ✓; viscous CFL safety factor conservative ✓ |
 | CSF curvature κ = −(…)/‖∇φ‖³ | `02c_nondim_curvature.tex:281-288` | `curvature.py:97-111` | 2026-03-21 | ✅ VERIFIED | Rederived from ∇·(∇φ/‖∇φ‖) ✓ |
+| Dissipative CCD |g(ξ)|²>1 instability proof | `05_advection.tex` eq:ccd_adv_instability | `advection.py` (⚠ not yet impl.) | 2026-03-22 | ⚠ PAPER ONLY | Von Neumann analysis: |g|²=1+σ²[k*(ξ)/k]²>1 ∀ξ>0; H(π;0.05)=0.80 |
+| Dissipative CCD filter sum=0 (periodic) | `05_advection.tex` mass conservation | `advection.py` (⚠ not yet impl.) | 2026-03-22 | ⚠ PAPER ONLY | Shift-symmetry ⟹ Σ(f'_{i+1}−2f'_i+f'_{i-1})=0; O(h⁵Δt) per step |
 
 ---
 
 ## 3. LaTeX Build
 
-- `[x]` `xelatex` (latexmk) clean — 0 errors, 0 undefined references (confirmed 2026-03-21 after appendix additions)
-- `[x]` Page count: **119 pages** (+3 from app:ccd_kronecker + app:ccd_lu_direct additions)
-- `[x]` CRITIC pass 19 (2026-03-21) — app:ccd_kronecker, app:ccd_lu_direct, 08b forward ref: all 16 criteria SAFE
+- `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); 20th CRITIC pass edits pending compile verification
+- `[x]` CRITIC pass 20 (2026-03-22) — WENO5→Dissipative CCD global sweep + 4 clarity fixes (Balanced-Force, ε_d, ψ clamp, mass conservation)
 
 ---
 
 ## 4. Code Test Suite
 
 - `[x]` `pytest src/twophase/tests/` — **31 tests passing** (as of 2026-03-21)
+- `[!]` **CODE-PAPER GAP:** `levelset/advection.py` implements WENO5; paper §5 now uses Dissipative CCD. Must add `DissipativeCCDAdvection(ILevelSetAdvection)` + register via config `numerics.advection_scheme = "dissipative_ccd"`. WENO5 remains available as `"weno5"` (alternative).
 - `[!]` Benchmark at N=128 — stationary_droplet NaN for all N; PPE fails at 1000:1 density ratio (see §5 action item)
 - `[ ]` GPU backend (CuPy) compatibility check
 - `[ ]` 3D cases
@@ -105,6 +107,7 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 
 ### Code
 
+- `[!]` **Dissipative CCD advection implementation** — Add `DissipativeCCDAdvection` to `levelset/advection.py`, register in `NumericsConfig` as `advection_scheme` field, set as default. Write MMS test in `test_time_integration.py` checking spatial O(h⁴.⁸+) and temporal O(2.8+). WENO5 stays as selectable alternative.
 - `[!]` N=128 benchmark — BLOCKED: stationary_droplet NaN (PPE diverges for ρ ratio 1000:1); await user direction (A/B/C)
 - `[ ]` GPU (CuPy) backend verification
 - `[ ]` 3D implementation
