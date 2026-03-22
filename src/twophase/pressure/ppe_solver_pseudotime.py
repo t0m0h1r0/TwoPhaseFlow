@@ -1,5 +1,5 @@
 """
-CCD sparse PPE solver — iterative primary, direct LU fallback.
+CCD sparse PPE solver — base class + LGMRES-primary / LU-fallback variant.
 
 Solves the variable-density Pressure Poisson Equation:
 
@@ -16,17 +16,24 @@ The CCD 1st/2nd derivative matrices (per axis) are built once via a single
 batched CCD call on the identity matrix, then assembled into the 2D operator
 via Kronecker products (scipy.sparse.kron) — see app:ccd_kronecker.
 
-Solve strategy (app:ccd_lu_direct):
-  PRIMARY  — LGMRES iterative solver: O(n·k) memory (k = inner restart);
-             uses p_init as warm start; controlled by pseudo_tol / pseudo_maxiter.
-  FALLBACK — sparse direct LU (spsolve / SuperLU): invoked automatically when
-             LGMRES does not converge within maxiter; O(n^1.5) memory due to
-             LU fill-in but guaranteed to succeed for a non-singular system.
+Architecture (Template Method pattern, OCP + SRP):
+  _CCDPPEBase(IPPESolver) — shared matrix assembly + solve template:
+      • _build_1d_ccd_matrices()  — precomputed once in __init__
+      • _build_sparse_operator()  — Kronecker product L_CCD^ρ
+      • _assemble_pinned_system() — operator + pin + RHS preparation
+      • solve()                   — template: assemble → _solve_linear_system
+      • compute_residual()        — diagnostic
+      • _solve_linear_system()    — abstract; subclasses provide solve strategy
 
-The CCD operator matrix is highly asymmetric (max asymmetry ~900 for N=16)
-due to compact one-sided boundary schemes; full GMRES diverges on some grids.
-LGMRES (augmented Krylov) is more robust but may still not converge — the LU
-fallback ensures the solver never blocks downstream development.
+  PPESolverPseudoTime(_CCDPPEBase):
+      LGMRES iterative solver (O(n·k) memory, warm start) with sparse LU
+      fallback when LGMRES does not converge.
+
+  PPESolverCCDLU(_CCDPPEBase)  [ppe_solver_ccd_lu.py]:
+      Always-direct sparse LU (spsolve / SuperLU); no iterative phase.
+
+Adding a new solve strategy requires only implementing _solve_linear_system
+in a new subclass — no changes to base or factory (OCP).
 
 IPC integration (§4 sec:ipc_derivation):
     Caller passes δp ≡ p^{n+1}−p^n as the unknown (p_init=None → zeros).
@@ -36,18 +43,24 @@ IPC integration (§4 sec:ipc_derivation):
 Boundary conditions:
     Neumann ∂p/∂n = 0 at all walls: satisfied through the Rhie-Chow RHS
     and velocity BC.  One interior node is pinned to zero to fix the null
-    space: row 0 of L is replaced by the identity row.
+    space: the center node (N//2, N//2) is pinned — invariant under all
+    square-domain symmetry operations (x-flip, y-flip, diagonal swap).
 
 Refactoring notes:
     2026-03-20: Replaces FVM+MINRES and GMRES matrix-free implementations.
                 Accepts ``ccd`` via constructor injection (DIP).
     2026-03-21: Added Kronecker product matrix assembly (app:ccd_kronecker).
                 Switched from LU-only to LGMRES-primary / LU-fallback.
+    2026-03-22: Pin moved from corner (0,0) to center (N//2,N//2) to
+                avoid symmetry breaking.
+    2026-03-22: Extracted _CCDPPEBase (Template Method); PPESolverCCDLU
+                now inherits _CCDPPEBase directly (OCP, SRP, DRY).
 """
 
 from __future__ import annotations
 import warnings
 import numpy as np
+from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -59,15 +72,21 @@ if TYPE_CHECKING:
 from ..interfaces.ppe_solver import IPPESolver
 
 
-class PPESolverPseudoTime(IPPESolver):
-    """CCD variable-density PPE solver — LGMRES primary, LU fallback (O(h⁶)).
+# ── Shared base: matrix assembly + solve template ──────────────────────────
+
+class _CCDPPEBase(IPPESolver):
+    """Abstract base for CCD Kronecker-product PPE solvers (O(h⁶)).
+
+    Handles all matrix assembly (D1/D2 pre-computation, Kronecker products,
+    pin-node setup) and the solve template.  Subclasses implement only
+    ``_solve_linear_system``, which receives the assembled pinned system.
 
     Parameters
     ----------
     backend : Backend
-    config  : SimulationConfig  (pseudo_tol, pseudo_maxiter を参照)
+    config  : SimulationConfig  (pseudo_tol, pseudo_maxiter)
     grid    : Grid
-    ccd     : CCDSolver  (コンストラクタ注入; None の場合は自動生成)
+    ccd     : CCDSolver  (constructor injection; auto-built if None)
     """
 
     def __init__(
@@ -84,14 +103,13 @@ class PPESolverPseudoTime(IPPESolver):
         self.tol = config.solver.pseudo_tol
         self.maxiter = config.solver.pseudo_maxiter
 
-        # CCD ソルバーの注入または自動生成
         if ccd is not None:
             self.ccd = ccd
         else:
             from ..ccd.ccd_solver import CCDSolver as _CCDSolver
             self.ccd = _CCDSolver(grid, backend)
 
-        # 1D CCD 微分行列をコンストラクタで1回だけ構築（軸ごとの単位行列を差分）
+        # Pre-compute 1D CCD derivative matrices once per axis
         self._D1: list = []
         self._D2: list = []
         for ax in range(self.ndim):
@@ -99,7 +117,7 @@ class PPESolverPseudoTime(IPPESolver):
             self._D1.append(d1)
             self._D2.append(d2)
 
-    # ── IPPESolver 実装 ──────────────────────────────────────────────────
+    # ── IPPESolver implementation (Template Method) ───────────────────────
 
     def solve(
         self,
@@ -108,87 +126,39 @@ class PPESolverPseudoTime(IPPESolver):
         dt: float,
         p_init=None,
     ):
-        """IPPESolver インターフェースの実装。
+        """Solve the PPE via CCD Kronecker operator (O(h⁶)).
 
-        CCD sparse-direct 法で PPE を解く（O(h⁶)）。
+        Assembles the pinned system, then delegates to
+        ``_solve_linear_system`` (implemented by subclasses).
 
         Parameters
         ----------
-        rhs    : array, shape ``grid.shape`` — 右辺 (1/Δt) ∇·u*_RC
-        rho    : array, shape ``grid.shape`` — 密度フィールド
-        dt     : float — タイムステップ幅（本ソルバーでは未使用）
-        p_init : optional array, shape ``grid.shape`` — 初期推定値
-                 IPC 増分法では None（ゼロ初期化）を渡すこと
+        rhs    : array, shape ``grid.shape`` — RHS (1/Δt) ∇·u*_RC
+        rho    : array, shape ``grid.shape`` — density field
+        dt     : float — time step (unused by this solver; kept for LSP)
+        p_init : optional array, shape ``grid.shape`` — warm-start initial
+                 guess; pass None for IPC incremental formulation (→ zeros)
 
         Returns
         -------
         p : array, shape ``grid.shape``
         """
-        import scipy.sparse as sp
-        import scipy.sparse.linalg as spla
-
         shape = self.grid.shape
         n = int(np.prod(shape))
 
-        # ─── 密度勾配の事前計算（PPE 反復ループの外側で1回）───────────────
-        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
-        xp = self.xp
-        drho_np = []
-        for ax in range(self.ndim):
-            drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
-            drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+        L_pinned, rhs_np = self._assemble_pinned_system(rhs, rho)
 
-        # ─── スパース演算子行列 L_CCD^ρ を Kronecker 積で構築 ──────────────
-        L_sparse = self._build_sparse_operator(rho_np, drho_np)
-
-        # ─── ピン点：中央ノードを恒等行に置き換えて零空間を除去 ────────────
-        # 中央ノードはドメインの全対称操作（x-flip, y-flip, 対角反転）で不変。
-        # 隅角ノード 0 のピンは x-flip / y-flip 対称性を破り寄生流れを生じさせる。
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
-        L_lil = L_sparse.tolil()
-        L_lil[pin_dof, :] = 0.0
-        L_lil[pin_dof, pin_dof] = 1.0
-        L_pinned = L_lil.tocsr()
-
-        # ─── 右辺・初期推定値の準備 ─────────────────────────────────────
-        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
-        rhs_np[pin_dof] = 0.0   # ピン点と整合
-
-        # 初期推定値：p_init があれば warm start、なければゼロ初期化
         p0 = (
             np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
             if p_init is not None
             else np.zeros(n)
         )
 
-        # ─── PRIMARY: LGMRES 反復法（メモリ効率 O(n·k)）────────────────────
-        # CCD 境界スキームの非対称性（非対称度 ~900 for N=16）により
-        # 標準 GMRES が発散するケースがある。LGMRES（拡張 Krylov）はより頑健。
-        # atol: ||b|| が極小のステップ（例：初期化直後）でも rtol 基準を下回れるよう
-        # fp64 フロア（1e-14）を絶対許容誤差として設定する。
-        atol = max(1e-14, self.tol * float(np.linalg.norm(rhs_np)))
-        p_flat, info = spla.lgmres(
-            L_pinned, rhs_np,
-            x0=p0,
-            rtol=self.tol,
-            maxiter=self.maxiter,
-            atol=atol,
-        )
-
-        # ─── FALLBACK: スパース LU（収束失敗時）────────────────────────────
-        if info != 0:
-            warnings.warn(
-                f"CCD-PPE LGMRES が収束しませんでした (info={info})。"
-                " スパース LU にフォールバックします。",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            p_flat = spla.spsolve(L_pinned, rhs_np)
+        p_flat = self._solve_linear_system(L_pinned, rhs_np, p0)
 
         if not np.isfinite(p_flat).all():
             warnings.warn(
-                "CCD-PPE ソルバーが非有限値を返しました。"
+                f"{type(self).__name__}: ソルバーが非有限値を返しました。"
                 " 右辺または密度場を確認してください。",
                 RuntimeWarning,
                 stacklevel=2,
@@ -196,16 +166,39 @@ class PPESolverPseudoTime(IPPESolver):
 
         return self.backend.to_device(p_flat.reshape(shape))
 
-    # ── 診断用：CCD 演算子の残差を計算 ───────────────────────────────────
-
-    def compute_residual(self, p, rhs, rho) -> float:
-        """‖L_CCD^ρ p − rhs‖₂ を返す（テスト・診断用）。
+    @abstractmethod
+    def _solve_linear_system(
+        self,
+        L_pinned,
+        rhs_np: np.ndarray,
+        p0: np.ndarray,
+    ) -> np.ndarray:
+        """Solve the assembled pinned linear system and return the flat solution.
 
         Parameters
         ----------
-        p   : array, shape ``grid.shape`` — 圧力場
-        rhs : array, shape ``grid.shape`` — PPE 右辺
-        rho : array, shape ``grid.shape`` — 密度場
+        L_pinned : scipy.sparse.csr_matrix — pinned CCD operator
+        rhs_np   : np.ndarray, shape (n,) — RHS with pin row zeroed
+        p0       : np.ndarray, shape (n,) — initial guess (may be ignored)
+
+        Returns
+        -------
+        p_flat : np.ndarray, shape (n,)
+        """
+
+    # ── Diagnostic: CCD operator residual ────────────────────────────────
+
+    def compute_residual(self, p, rhs, rho) -> float:
+        """Return ‖L_CCD^ρ p − rhs‖₂ (for tests / diagnostics).
+
+        The pin node (center, N//2,N//2) is excluded from the residual
+        since it carries a gauge constraint, not a PDE equation.
+
+        Parameters
+        ----------
+        p   : array, shape ``grid.shape`` — pressure field
+        rhs : array, shape ``grid.shape`` — PPE RHS
+        rho : array, shape ``grid.shape`` — density field
 
         Returns
         -------
@@ -227,49 +220,81 @@ class PPESolverPseudoTime(IPPESolver):
 
         rhs_dev = xp.asarray(self.backend.to_host(rhs))
         residual = Lp - rhs_dev
-        # ピン点（中央ノード N//2, N//2）は PDE ではなくゲージ拘束条件で置き換えられているため、
-        # 物理 PDE 残差の計算から除外する。
-        pin_idx = tuple(n // 2 for n in self.grid.N)
+        pin_idx = tuple(ni // 2 for ni in self.grid.N)
         pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
         residual_arr = np.asarray(self.backend.to_host(residual))
         residual_arr.ravel()[pin_dof] = 0.0
         return float(np.sqrt(np.sum(residual_arr ** 2)))
 
-    # ── プライベートヘルパー ──────────────────────────────────────────────
+    # ── Private helpers ───────────────────────────────────────────────────
 
-    def _build_1d_ccd_matrices(self, axis: int):
-        """指定軸の 1D CCD 微分行列 D1, D2 を構築する。
+    def _assemble_pinned_system(self, rhs, rho):
+        """Build the pinned CCD operator and matching RHS vector.
 
-        Parameters
-        ----------
-        axis : 0 (x方向) or 1 (y方向)
+        Shared by all subclasses; eliminates duplication between
+        PPESolverPseudoTime and PPESolverCCDLU.
 
         Returns
         -------
-        D1 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(1)} 行列
-        D2 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(2)} 行列
+        L_pinned : scipy.sparse.csr_matrix, shape (n, n)
+        rhs_np   : np.ndarray, shape (n,)
+        """
+        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+        xp = self.xp
+        drho_np = []
+        for ax in range(self.ndim):
+            drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
+            drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+
+        L_sparse = self._build_sparse_operator(rho_np, drho_np)
+
+        # Pin center node — invariant under all square-domain symmetries
+        pin_idx = tuple(ni // 2 for ni in self.grid.N)
+        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
+        L_lil = L_sparse.tolil()
+        L_lil[pin_dof, :] = 0.0
+        L_lil[pin_dof, pin_dof] = 1.0
+        L_pinned = L_lil.tocsr()
+
+        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
+        rhs_np[pin_dof] = 0.0
+
+        return L_pinned, rhs_np
+
+    def _build_1d_ccd_matrices(self, axis: int):
+        """Build 1D CCD derivative matrices D1, D2 for the given axis.
+
+        Parameters
+        ----------
+        axis : 0 (x) or 1 (y)
+
+        Returns
+        -------
+        D1 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(1)} matrix
+        D2 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(2)} matrix
         """
         n_pts = self.grid.N[axis] + 1
-        # 単位行列を差分することで全列を一括計算（バッチ処理）
         I = np.eye(n_pts)
 
         if axis == 0:
-            # axis=0: data shape (n_pts, batch), moveaxis後も同じ
-            # D1[i, k] = (D_x^{(1)} e_k)[i]（k列目は単位ベクトル e_k）
             d1, d2 = self.ccd.differentiate(I, axis=0)
             return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
         else:
-            # axis=1: ccd.differentiate(I, 1) returns d1[k, j] = (D_y^{(1)} e_k)[j]
-            # → 転置して D1[j, k] = (D_y^{(1)} e_k)[j]
+            # axis=1: differentiate returns d1[k,j] = (D_y^{(1)} e_k)[j]
+            # Transpose to recover D1[j,k] = (D_y^{(1)} e_k)[j]
             d1, d2 = self.ccd.differentiate(I, axis=1)
             return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
 
     def _build_sparse_operator(self, rho_np, drho_np):
-        """L_CCD^ρ のスパース行列を Kronecker 積で構築する。
+        """Assemble the sparse L_CCD^ρ matrix via Kronecker products.
 
         L_CCD^ρ p = (1/ρ)(D2x⊗I_y + I_x⊗D2y)p
                     − (Dρ_x/ρ²)(D1x⊗I_y)p
                     − (Dρ_y/ρ²)(I_x⊗D1y)p
+
+        C-order ravel: flat index k = i·Ny + j.  D2x acts on the slow
+        (row) index → kron(D2x, I_y); D2y acts on the fast (column)
+        index → kron(I_x, D2y).  See KL-08 (docs/LESSONS.md).
 
         Parameters
         ----------
@@ -283,22 +308,18 @@ class PPESolverPseudoTime(IPPESolver):
         import scipy.sparse as sp
 
         shape = self.grid.shape
-        Nx, Ny = shape  # (N[0]+1, N[1]+1)
+        Nx, Ny = shape
 
-        D1x = self._D1[0]   # (Nx, Nx)
+        D1x = self._D1[0]
         D2x = self._D2[0]
-        D1y = self._D1[1]   # (Ny, Ny)
+        D1y = self._D1[1]
         D2y = self._D2[1]
 
-        # Kronecker 積による 2D 微分行列（変密度前の純粋な微分演算子）
-        # データ順: p.ravel() は (i, j) 順（i=x軸, j=y軸, C-order)
-        # D2x_full[k, l]: x方向 2次微分を全グリッド点に適用
         D2x_full = sp.kron(sp.csr_matrix(D2x), sp.eye(Ny), format='csr')
         D2y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(D2y), format='csr')
         D1x_full = sp.kron(sp.csr_matrix(D1x), sp.eye(Ny), format='csr')
         D1y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(D1y), format='csr')
 
-        # 密度重み対角行列
         rho_flat = rho_np.ravel()
         drho_x_flat = drho_np[0].ravel()
         drho_y_flat = drho_np[1].ravel() if self.ndim > 1 else np.zeros_like(rho_flat)
@@ -307,9 +328,60 @@ class PPESolverPseudoTime(IPPESolver):
         coeff_x = sp.diags(drho_x_flat / rho_flat ** 2, format='csr')
         coeff_y = sp.diags(drho_y_flat / rho_flat ** 2, format='csr')
 
-        # L_CCD^ρ = (1/ρ)(D2x + D2y) − (Dρ_x/ρ²) D1x − (Dρ_y/ρ²) D1y
         L = (inv_rho @ (D2x_full + D2y_full)
              - coeff_x @ D1x_full
              - coeff_y @ D1y_full)
 
         return L.tocsr()
+
+
+# ── LGMRES-primary / LU-fallback variant ───────────────────────────────────
+
+class PPESolverPseudoTime(_CCDPPEBase):
+    """CCD variable-density PPE solver — LGMRES primary, LU fallback (O(h⁶)).
+
+    Parameters
+    ----------
+    backend : Backend
+    config  : SimulationConfig  (pseudo_tol, pseudo_maxiter)
+    grid    : Grid
+    ccd     : CCDSolver  (constructor injection; auto-built if None)
+    """
+
+    def _solve_linear_system(
+        self,
+        L_pinned,
+        rhs_np: np.ndarray,
+        p0: np.ndarray,
+    ) -> np.ndarray:
+        """LGMRES iterative solve (O(n·k) memory) with sparse LU fallback.
+
+        The CCD operator is highly asymmetric (max asymmetry ~900 for N=16)
+        due to compact one-sided boundary schemes; standard GMRES diverges on
+        some grids.  LGMRES (augmented Krylov) is more robust; the LU fallback
+        ensures no blocking when LGMRES does not converge.
+
+        atol: fp64 floor prevents spurious non-convergence when ‖rhs‖ is tiny
+        (e.g. immediately after initialisation).  See KL-09 (docs/LESSONS.md).
+        """
+        import scipy.sparse.linalg as spla
+
+        atol = max(1e-14, self.tol * float(np.linalg.norm(rhs_np)))
+        p_flat, info = spla.lgmres(
+            L_pinned, rhs_np,
+            x0=p0,
+            rtol=self.tol,
+            maxiter=self.maxiter,
+            atol=atol,
+        )
+
+        if info != 0:
+            warnings.warn(
+                f"CCD-PPE LGMRES が収束しませんでした (info={info})。"
+                " スパース LU にフォールバックします。",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            p_flat = spla.spsolve(L_pinned, rhs_np)
+
+        return p_flat

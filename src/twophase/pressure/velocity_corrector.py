@@ -75,24 +75,6 @@ class VelocityCorrector:
         vel_new = []
         for ax in range(ndim):
             dp_dax, _ = self.ccd.differentiate(p, ax)
-            if self.ccd.bc_type == "wall":
-                self._enforce_neumann(dp_dax, ax)
+            self.ccd.enforce_wall_neumann(dp_dax, ax)
             vel_new.append(vel_star[ax] - (dt / rho) * dp_dax)
         return vel_new
-
-    # ── private ───────────────────────────────────────────────────────────
-
-    def _enforce_neumann(self, grad, ax: int) -> None:
-        """Zero CCD gradient at wall boundaries (Neumann BC: ∂p/∂n = 0).
-
-        The FVM PPE enforces Neumann BC via zero wall-face flux, but the
-        CCD one-sided boundary stencil gives a nonzero wall gradient.
-        Explicitly zeroing it is consistent with the physical BC and
-        prevents a growing feedback loop through the IPC pressure term.
-        """
-        sl_lo = [slice(None)] * grad.ndim
-        sl_hi = [slice(None)] * grad.ndim
-        sl_lo[ax] = 0
-        sl_hi[ax] = -1
-        grad[tuple(sl_lo)] = 0.0
-        grad[tuple(sl_hi)] = 0.0

@@ -190,6 +190,32 @@ class CCDSolver:
 
         return d1, d2
 
+    def enforce_wall_neumann(self, grad, ax: int) -> None:
+        """Zero CCD gradient at wall boundaries (Neumann BC: ∂p/∂n = 0).
+
+        No-op when ``bc_type != 'wall'``.
+
+        The CCD one-sided boundary stencil gives a nonzero wall-normal gradient
+        even when the physical BC is zero-flux.  Explicitly zeroing the boundary
+        planes corrects for this and prevents accumulating IPC feedback errors.
+
+        Used by both ``VelocityCorrector`` and ``Predictor`` (IPC term) so that
+        the zeroing logic lives in one place (DRY).
+
+        Parameters
+        ----------
+        grad : array — gradient field (modified in-place)
+        ax   : int   — axis along which the wall boundaries are zeroed
+        """
+        if self.bc_type != "wall":
+            return
+        sl_lo = [slice(None)] * grad.ndim
+        sl_hi = [slice(None)] * grad.ndim
+        sl_lo[ax] = 0
+        sl_hi[ax] = -1
+        grad[tuple(sl_lo)] = 0.0
+        grad[tuple(sl_hi)] = 0.0
+
     # ── Build per-axis solver ─────────────────────────────────────────────
 
     def _build_axis_solver(self, n_pts: int, h: float) -> dict:
