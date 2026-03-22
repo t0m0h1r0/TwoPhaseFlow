@@ -144,7 +144,7 @@ class PPESolverPseudoTime(IPPESolver):
         # ─── ピン点：中央ノードを恒等行に置き換えて零空間を除去 ────────────
         # 中央ノードはドメインの全対称操作（x-flip, y-flip, 対角反転）で不変。
         # 隅角ノード 0 のピンは x-flip / y-flip 対称性を破り寄生流れを生じさせる。
-        pin_idx = tuple(n // 2 for n in self.grid.N)
+        pin_idx = tuple(ni // 2 for ni in self.grid.N)
         pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
         L_lil = L_sparse.tolil()
         L_lil[pin_dof, :] = 0.0
@@ -165,12 +165,15 @@ class PPESolverPseudoTime(IPPESolver):
         # ─── PRIMARY: LGMRES 反復法（メモリ効率 O(n·k)）────────────────────
         # CCD 境界スキームの非対称性（非対称度 ~900 for N=16）により
         # 標準 GMRES が発散するケースがある。LGMRES（拡張 Krylov）はより頑健。
+        # atol: ||b|| が極小のステップ（例：初期化直後）でも rtol 基準を下回れるよう
+        # fp64 フロア（1e-14）を絶対許容誤差として設定する。
+        atol = max(1e-14, self.tol * float(np.linalg.norm(rhs_np)))
         p_flat, info = spla.lgmres(
             L_pinned, rhs_np,
             x0=p0,
             rtol=self.tol,
             maxiter=self.maxiter,
-            atol=0,
+            atol=atol,
         )
 
         # ─── FALLBACK: スパース LU（収束失敗時）────────────────────────────
@@ -224,10 +227,12 @@ class PPESolverPseudoTime(IPPESolver):
 
         rhs_dev = xp.asarray(self.backend.to_host(rhs))
         residual = Lp - rhs_dev
-        # ピン点（node 0）は PDE ではなくゲージ拘束条件で置き換えられているため、
+        # ピン点（中央ノード N//2, N//2）は PDE ではなくゲージ拘束条件で置き換えられているため、
         # 物理 PDE 残差の計算から除外する。
+        pin_idx = tuple(n // 2 for n in self.grid.N)
+        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
         residual_arr = np.asarray(self.backend.to_host(residual))
-        residual_arr.ravel()[0] = 0.0
+        residual_arr.ravel()[pin_dof] = 0.0
         return float(np.sqrt(np.sum(residual_arr ** 2)))
 
     # ── プライベートヘルパー ──────────────────────────────────────────────

@@ -152,6 +152,46 @@ direct LU fill-in is provably O(N), prefer direct LU outright.
 
 ---
 
+### KL-10: Collocated-Grid Corrector — RC vs CCD Divergence-Free
+
+**Found:** 2026-03-22
+**Location:** `09_full_algorithm.tex:246`; `velocity_corrector.py`; `ppe_solver_pseudotime.py`
+
+**Error:** Paper claimed `D_x^(1)u^{n+1}+D_y^(1)v^{n+1}=0` (CCD divergence-free exactly).
+
+**Derivation:** With CCD corrector `u^{n+1} = u* − (Δt/ρ) D^(1)_CCD δp` and
+PPE `L_CCD^ρ δp = (1/Δt) ∇^RC · u*`, applying CCD divergence gives:
+```
+D_CCD · u^{n+1} = D_CCD · u* − Δt L_CCD^ρ δp = D_CCD · u* − ∇^RC · u* = O(h²)
+```
+The Rhie-Chow detection term `∇^RC·u* − D_CCD·u* = O(h²)` remains as a residual.
+The velocity IS divergence-free in the `∇^RC` (Rhie-Chow) sense.
+
+**Fix:** Paper now states `∇_h^RC · u^{n+1} = 0` with O(h²) note for CCD sense.
+
+**Generalised rule:** When PPE RHS uses RC divergence for checkerboard stability, the
+corrector produces `∇^RC · u^{n+1} = 0`, not `D_CCD · u^{n+1} = 0`. Never claim
+exact CCD-divergence-free after a collocated-grid projection step.
+
+---
+
+### KL-11: Pin Node Exclusion Must Track Pin Location
+
+**Found:** 2026-03-22
+**Location:** `ppe_solver_pseudotime.py:compute_residual()` line 230
+
+**Error:** `solve()` moved pin from corner (0,0) to center (N//2,N//2) in 2026-03-22 commit.
+`compute_residual()` still excluded `ravel()[0]` (corner), not the actual pin node.
+
+**Fix:** Replaced hardcoded `ravel()[0] = 0.0` with dynamic `ravel()[pin_dof] = 0.0`
+where `pin_dof = ravel_multi_index(tuple(n//2 for n in grid.N), grid.shape)`.
+
+**Generalised rule:** When pin location is changed, grep for ALL hardcoded references
+to the old pin index (especially diagnostic residual methods). Use the same
+`pin_idx = tuple(n // 2 for n in grid.N)` expression everywhere.
+
+---
+
 ## B. Reviewer / AI Hallucination Patterns
 
 Referenced by `docs/11_PAPER_EDITOR.md`. Watch for these in every review cycle.

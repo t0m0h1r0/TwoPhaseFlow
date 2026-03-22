@@ -27,7 +27,7 @@
 | Section | File | Status | Notes |
 |---------|------|--------|-------|
 | §6 Grid generation | `06_grid.tex` | `[x]` SAFE | Comment fix: "台形則"→"矩形則（前進型）" |
-| §7 Collocated | `07_collocate.tex` | `[x]` SAFE | Balanced-Force Leibniz algebra fix; explicit note that Dissipative CCD NOT used for ∇p/κ∇ψ |
+| §7 Collocated | `07_collocate.tex` | `[~]` UPDATED | EDITOR sweep 30+31 (2026-03-22): eq:bf_operator_mismatch fixed (O(h²) not O(h⁶)−O(h²)); blow-up positive-feedback mechanism added; warnbox κ item demoted to "推奨"; warnbox item 3 updated to eq:rc-face-balanced; sec:rc_balanced_force rewrote with full quantity definitions + code-gap warnbox + face/cell-center cancellation logic; algbox "機械精度" → O(h²) CSF floor; appendix derivation expanded to show equilibrium cancellation. Build pending. |
 | §8 Pressure / IPC | `08_pressure.tex` | `[x]` SAFE | — |
 | §8b CCD-Poisson | `08b_ccd_poisson.tex` | `[x]` SAFE | Spectral radius formula 9.6≠3.43 clarified |
 | §8c PPE verification | `08c_ppe_verification.tex` | `[x]` SAFE | — |
@@ -77,14 +77,20 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | Dissipative CCD filter sum=0 (periodic) | `05_advection.tex` mass conservation | `advection.py` | 2026-03-22 | ✅ VERIFIED | Shift-symmetry ⟹ Σ(f'_{i+1}−2f'_i+f'_{i-1})=0; O(h⁵Δt) per step; implemented in DissipativeCCDAdvection._rhs |
 | Rhie-Chow FVM div at wall node N_ax | §7 / appendix RC | `rhie_chow.py:_flux_divergence_1d` | 2026-03-22 | ✅ FIXED (BUG) | div[N_ax]=(face_{N_ax+1}−face_{N_ax})/h = −flux[N_ax]/h; padding 0 treated interior face N_ax as wall face (WRONG) |
 | PPE gauge pin — symmetry invariance | §8 / appendix FVM PPE | `ppe_builder.py`, `ppe_solver*.py` | 2026-03-22 | ✅ FIXED (BUG) | Corner pin (0,0) breaks x-flip/y-flip symmetry → spurious antisymmetric ∇p; center node (N/2,N/2) is invariant under all square-domain symmetries |
+| `L_CCD^ρ` product-rule derivation | `ppe_solver_pseudotime.py:305-308` | same | 2026-03-22 | ✅ VERIFIED | (1/ρ)(D2x+D2y)−(Dρx/ρ²)D1x−(Dρy/ρ²)D1y matches ∇·(1/ρ∇p) product rule exactly |
+| Kronecker C-order + axis=1 transpose | `ppe_solver_pseudotime.py:291-294,259-260` | same | 2026-03-22 | ✅ VERIFIED | kron(D2x,I_y)+kron(I_x,D2y) correct for C-order p.ravel(); axis=1 needs d1.T (KL-08 extension) |
+| `_enforce_neumann` index range | `velocity_corrector.py:93-98` | same | 2026-03-22 | ✅ VERIFIED | sl_lo[ax]=0, sl_hi[ax]=-1 zeroes correct wall-normal boundary nodes |
+| Corrector divergence-free claim | `09_full_algorithm.tex:246` | `velocity_corrector.py` | 2026-03-22 | ✅ FIXED (LOGICAL_GAP) | D_CCD·u^{n+1}=O(h²)≠0; velocity satisfies ∇^RC·u^{n+1}=0; paper now states RC-sense (KL-10) |
+| `compute_residual()` pin exclusion | `ppe_solver_pseudotime.py:230` | same | 2026-03-22 | ✅ FIXED (CODE_BUG) | Was excluding corner node 0; now excludes center pin_dof=(N//2)*Ny+(N//2) (KL-11) |
 | Capillary CFL safety factor | `appendix_numerics_solver.tex` eq:dt_sigma | `cfl.py:117` | 2026-03-22 | ✅ FIXED (BUG) | dt=min(dt, dt_sigma) operated at marginal stability limit; fixed to dt=min(dt, cfl·dt_sigma) consistent with convective/viscous constraints |
 
 ---
 
 ## 3. LaTeX Build
 
-- `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); 20th CRITIC pass edits pending compile verification
+- `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 30 edits pending compile verification
 - `[x]` CRITIC pass 20 (2026-03-22) — WENO5→Dissipative CCD global sweep + 4 clarity fixes (Balanced-Force, ε_d, ψ clamp, mass conservation)
+- `[~]` EDITOR sweep 30 (2026-03-22) — §7 Balanced-Force: blow-up narrative, eq:rc-face-balanced (RC+ST), app:balanced_force_taylor (moved Taylor expansion)
 
 ---
 

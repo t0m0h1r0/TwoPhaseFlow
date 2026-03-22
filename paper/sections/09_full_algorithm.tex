@@ -243,7 +243,9 @@ v^{n+1}_{i,j} &= v^*_{i,j}
   - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(D_y^{(1)} \delta p\bigr)_{i,j} \\
 p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
 \end{align*}
-この $\bm{u}^{n+1}$ は $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1} = 0$ を離散的に満たす非圧縮速度場となる．
+この $\bm{u}^{n+1}$ は Rhie--Chow 補正済み発散の意味で非圧縮条件を満たす：
+$\bnabla_h^{\mathrm{RC}} \cdot \bm{u}^{n+1} = 0$．
+CCD 発散 $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1}$ の残差は $O(h^2)$ の RC 安定化項の寄与により厳密にはゼロとならないが（§\ref{sec:rhie_chow}），これはコロケート格子の設計特性である．
 $p^{n+1}$ は次ステップの IPC Predictor および Rhie-Chow 補正で $p^n$ として使用される．
 
 \end{tcolorbox}
