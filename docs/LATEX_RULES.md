@@ -153,6 +153,33 @@
 
 ---
 
+### 3-G. `\texorpdfstring` in Numbered Section Titles (MANDATORY)
+
+**Rule:** Any **numbered** `\section`, `\subsection`, or `\subsubsection` title that contains math (`$...$`) **must** wrap the math in `\texorpdfstring{<latex>}{<plain-text>}`. Starred variants (`\section*`, `\subsection*`) are exempt because hyperref does not generate PDF bookmarks for them.
+
+**Failure mode:** Without `\texorpdfstring`, hyperref tries to expand math macros (e.g., `\mathcal{O}`, `\bm{u}`, `\Delta\tau`) into a PDF bookmark string. Macros that recursively call math-mode commands cause hyperref's expansion engine to **loop infinitely at 100% CPU with no output**, with no error in the log. The document never finishes compiling.
+
+**Observed instance (2026-03-23):** `\subsection{...（$\Ord{h^4}$）}` — `\Ord{}` expands to `\mathcal{O}(...)`, which hyperref cannot handle in PDF-string context → 18-minute infinite loop.
+
+**Correct pattern:**
+```latex
+% Numbered — MUST use \texorpdfstring
+\section{CCD 精度解析：\texorpdfstring{$\Ord{h^6}$}{O(h\textasciicircum 6)} の導出}
+\subsection{境界スキームの昇格（\texorpdfstring{$\Ord{h^4}$}{O(h\textasciicircum 4)}）}
+
+% Starred — no bookmark generated, no \texorpdfstring needed
+\subsection*{三重対角係数（内部節点 $1 \le i \le N-1$）}
+```
+
+**Quick audit command:**
+```bash
+grep -rn '\\section\b\|\\subsection\b\|\\subsubsection\b' paper/sections/ \
+  | grep '\$' | grep -v 'texorpdfstring\|\*'
+```
+Any hit is a violation.
+
+---
+
 ### 3-F. Selection Guide Completeness
 
 **Rule:** Whenever a section derives or presents **multiple variants** of a scheme, boundary condition, or solver (e.g., one-sided BC vs. ghost-cell BC; BiCGSTAB vs. pseudo-time; ADI vs. sweep), a **practical selection guide must conclude the section**.

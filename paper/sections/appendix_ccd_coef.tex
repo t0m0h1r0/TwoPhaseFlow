@@ -323,7 +323,7 @@ $f_k$（$k=0,1,2,3$）を $f_0$ 周りで展開し，$f_0/h^2$，$\fp{0}/h$，$\
 \end{itemize}
 結果：式 \eqref{eq:bcII_left} の $\fpp{0} = (2f_0-5f_1+4f_2-f_3)/h^2$（$\Ord{h^2}$ 精度）．\qed
 
-\subsection{Equation-II 境界スキームの4次精度昇格（$\Ord{h^4}$）}
+\subsection{Equation-II 境界スキームの4次精度昇格（\texorpdfstring{$\Ord{h^4}$}{O(h\textasciicircum 4)}）}
 \label{app:ccd_bc_derivation_II_h4}
 
 4点公式（$\Ord{h^2}$）では全体の CCD d2 収束が境界で制限されるため，6点公式
@@ -371,6 +371,6 @@ $f_0 \to f_N,\, f_1 \to f_{N-1},\ldots$ の鏡像公式を適用する．
 \paragraph{収束効果}
 
 昇格により d2 の全域 $L^\infty$ 収束が境界寄与によって制限されず，
-表~\ref{tab:ccd_convergence} の $\Ord{h^5}$ 内部精度に揃う．
+内点スキームの $\Ord{h^6}$ 精度に近い収束率が得られる．
 数値実験（\texttt{test\_ccd.py} Test~2）では平均スロープ ${\approx}4.8$ を確認した．\qed
 
