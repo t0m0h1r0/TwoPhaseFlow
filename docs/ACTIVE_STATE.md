@@ -6,9 +6,19 @@
 
 * **Date/Update:** 2026-03-22
 * **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 12 sections + 5 appendices. **21 CRITIC passes + 32 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 33 EDITOR sweeps complete (2026-03-22).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-22)**
+
+15. ~~CRITIC pass 22 + EDITOR sweep 33 — 全体構造・用語統一~~ — **Done (2026-03-22).** 8 issues resolved:
+    - **FATAL-1**: `08c_ppe_verification.tex` が main.tex に未インクルードだったため追加．
+    - **FATAL-2**: `LATEX_RULES.md §2` Paper Structure テーブルを旧ファイル名（04_time_integration等）から現在のファイル名（04_ccd, 05_advection等）に全面更新．
+    - **FATAL-3**: `\label{sec:time}` → `\label{sec:advection}` リネーム（01, 08, 09, 11章の全 `\ref{sec:time}` を更新）．
+    - **FATAL-4**: `ARCHITECTURE.md` NS convection「Forward Euler」→「AB2+IPC, n=0: Euler」に修正（論文・コードと整合）．
+    - **TERM-1**: `Rhie-Chow`（単ハイフン）→ `Rhie--Chow`（em-dash）全ファイル一括統一（7ファイル）．
+    - **TERM-2**: `balanced-force`（小文字）→ `Balanced-Force` 3箇所（00_abstract, 10b_benchmarks ×2）．
+    - **SPLIT-1**: `05_advection.tex`（715行）→ 3分割: `05_advection.tex`（322行）+ `05b_time_integration.tex`（新設）+ `05c_reinitialization.tex`（新設）．
+    - **SPLIT-2**: `08_pressure.tex`（576行）→ 2分割: `08_pressure.tex`（356行）+ `08d_ppe_pseudotime.tex`（新設）．
 
 14. ~~EDITOR sweep 32 — §7 second CRITIC pass (12 issues)~~ — **Done (2026-03-22).** All 12 issues resolved:
     - **FATAL-1**: algbox Step 3 `q≈5` → `q≈2`; Balanced-Force benefit reframed as coefficient reduction, not rate improvement.

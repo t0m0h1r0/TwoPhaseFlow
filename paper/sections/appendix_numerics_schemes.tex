@@ -85,7 +85,7 @@ $(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
 \end{equation}
 （奇数次項が相殺し，$O(h^2)$ の次数で $p'(x_f)$ を近似することに注意；$O(h^6)$ ではない）
 
-\textbf{(3) Rhie-Chow 検出項（差）：}
+\textbf{(3) Rhie--Chow 検出項（差）：}
 \begin{equation}
   (\nabla p)_f - \overline{(\nabla p)}_f
   = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
@@ -114,7 +114,7 @@ $(\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f$ が加わる．
 差は $(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f = \Ord{h^2}$，補正量は $\Ord{\Delta t \cdot h^2}$．
 したがって表面張力補正項も CCD の $\Ord{h^6}$ 精度を律速しない．
 
-Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhie-Chow 補正はフェイス速度の安定化補助項であり，主方程式の CCD 演算子とは独立の役割を担う（詳細は §\ref{sec:rc_balanced_force} 参照）．
+Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhie--Chow 補正はフェイス速度の安定化補助項であり，主方程式の CCD 演算子とは独立の役割を担う（詳細は §\ref{sec:rc_balanced_force} 参照）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Balanced-Force 条件：離散化演算子不一致の誤差解析}

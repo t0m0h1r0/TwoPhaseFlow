@@ -21,7 +21,7 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
 \textbf{数値的困難} & \textbf{本稿の対処手法} \\
 \hline
 界面の質量損失       & CLS 法（第\ref{sec:levelset}章）\\
-低次移流による界面にじみ & Dissipative CCD + TVD-RK3（第\ref{sec:time}章）\\
+低次移流による界面にじみ & Dissipative CCD + TVD-RK3（第\ref{sec:advection}章）\\
 曲率計算誤差 $\to$ 寄生流れ & CCD 法 $O(h^6)$（第\ref{sec:CCD}章）\\
 チェッカーボード圧力振動 & コロケート格子 + Rhie--Chow 補正（第\ref{sec:collocate}章）\\
 変密度 PPE の収束悪化 & 仮想時間 CCD 陰解法（第\ref{sec:pressure}章）\\
@@ -55,7 +55,7 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
         $\psi \to \phi$ の解析的逆変換（§\ref{sec:newton_inversion}）により，
         幾何計算に必要な距離関数 $\phi$（$|\nabla\phi|=1$）の高精度復元手順を明示した．
 
-  \item[\textbf{第\ref{sec:time}章：Dissipative CCD 移流スキームと時間積分（NS 方程式）}]
+  \item[\textbf{第\ref{sec:advection}章：CLS 移流の離散化（Dissipative CCD スキーム・時間積分・安定性制約）}]
         純粋な CCD 中心差分移流のフォン・ノイマン不安定性（$|g(\xi)|^2 > 1$）を証明し，
         スペクトルフィルタ $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ による
         振幅抑制機構を定式化した（§\ref{sec:advection_motivation}）．

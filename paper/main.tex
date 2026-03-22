@@ -40,14 +40,18 @@
 \input{sections/04c_ccd_extensions}   %% 第4章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
 \input{sections/04d_dissipative_ccd}  %% 第4章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
 \clearpage
-\input{sections/05_advection}         %% 第5章：CLS 移流離散化・時間積分・安定性制約
+\input{sections/05_advection}         %% 第5章：CLS 移流スキーム（Dissipative CCD 設計根拠）
+\input{sections/05b_time_integration} %% 第5章続き：時間積分（TVD-RK3・AB2+IPC・CN法）
+\input{sections/05c_reinitialization} %% 第5章続き：CLS 再初期化・安定性制約
 \clearpage
 \input{sections/06_grid}              %% 第6章：界面適合非一様格子
 \clearpage
 \input{sections/07_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
 \clearpage
-\input{sections/08_pressure}          %% 第8章：圧力 Poisson 方程式（Projection・FVM・仮想時間法）
-\input{sections/08b_ccd_poisson}      %% 第8章続き（CCD-Poisson 行列・Balanced-Force・手法比較・検証）
+\input{sections/08_pressure}          %% 第8章：圧力 Poisson 方程式（Projection・FVM・境界条件）
+\input{sections/08d_ppe_pseudotime}   %% 第8章続き：CCD 陰解法と仮想時間ステップ反復
+\input{sections/08b_ccd_poisson}      %% 第8章続き（CCD-Poisson 行列・Balanced-Force・手法比較）
+\input{sections/08c_ppe_verification} %% 第8章続き（PPE ソルバ検証：Test C-1, C-2, C-3）
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage
@@ -73,7 +77,7 @@
 \input{sections/appendix_interface}      %% 付録A: 界面数学・CLS 証明（§2-§3 対応）
 \input{sections/appendix_ccd_coef}      %% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
 \input{sections/appendix_ccd_impl}      %% 付録C: CCD 実装詳細・Kronecker 積・周期BC（§4/§8 対応）
-\input{sections/appendix_numerics_schemes} %% 付録D: 参照スキーム（WENO5・ALE・Rhie-Chow・Godunov, §5-§7 対応）
+\input{sections/appendix_numerics_schemes} %% 付録D: 参照スキーム（WENO5・ALE・Rhie--Chow・Godunov, §5-§7 対応）
 \input{sections/appendix_numerics_solver}  %% 付録E: ソルバー解析（擬似時間・CFL・チェッカーボード, §5-§8 対応）
 
 \end{document}
