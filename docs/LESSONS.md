@@ -192,6 +192,35 @@ to the old pin index (especially diagnostic residual methods). Use the same
 
 ---
 
+### KL-12: `\texorpdfstring` Omission → Infinite hyperref Expansion Loop
+
+**Found:** 2026-03-23
+**Location:** `paper/sections/appendix_ccd_coef.tex:326`
+
+**Error:** A numbered `\subsection` title contained `$\Ord{h^4}$` without `\texorpdfstring`:
+```latex
+\subsection{Equation-II 境界スキームの4次精度昇格（$\Ord{h^4}$）}
+```
+`\Ord{}` expands to `\mathcal{O}(...)`. hyperref's PDF bookmark generator tried to expand `\mathcal` in text-string context, triggering an **infinite expansion loop** at 100% CPU. xelatex ran for 18 minutes without producing output or error messages, leaving the log frozen at page 98 (the page before the appendix was reached).
+
+**Diagnosis clues:**
+- `ps` shows xelatex at ~100% CPU for > 5 minutes with no log growth
+- `lsof -p <PID>` shows the problematic `.tex` file open for reading; `main.toc` at 0 bytes
+- `sample <PID>` shows all CPU time inside xetex binary (no I/O), consistent with macro loop
+
+**Root cause:** Numbered `\section`/`\subsection`/`\subsubsection` headings are passed to hyperref for PDF bookmark generation. hyperref cannot stringify math macros like `\mathcal`, `\bm`, `\boldsymbol`, `\Delta`, `\Ord`. Without `\texorpdfstring`, the expansion loops.
+
+**Fix:**
+```latex
+\subsection{...（\texorpdfstring{$\Ord{h^4}$}{O(h\textasciicircum 4)}）}
+```
+
+**Generalised rule:** Every numbered section title with `$...$` must use `\texorpdfstring{<math>}{<plain>}`. See LATEX_RULES.md §3-G for the full rule and quick audit command.
+
+**Exempt:** `\section*`, `\subsection*`, `\subsubsection*` — no bookmark is generated for starred headings.
+
+---
+
 ## B. Reviewer / AI Hallucination Patterns
 
 Referenced by `docs/11_PAPER_EDITOR.md`. Watch for these in every review cycle.
