@@ -4,11 +4,20 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-23
-* **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 36 EDITOR sweeps complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Date/Update:** 2026-03-22
+* **Code:** **53 passed, 2 skipped** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6): density function ω formula, CCD O(h⁶) metrics via `differentiate_raw()`, 6 new MMS tests in `test_grid.py`. config_loader YAML round-trip fixed.
+* **Paper:** 14 sections + 5 appendices. **23 CRITIC passes + 37 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-23)**
+
+19. ~~CRITIC pass 24 + EDITOR sweep 37 — §8d + §7 7 issues~~ — **Done (2026-03-23).** All VERIFIED/LOGICAL_GAP/MINOR items fixed:
+    - **FATAL-1**: 「スウィープ型実装は欠陥補正法の枠組みに直接対応する」→「欠陥補正法は将来の改良候補であり，現行スウィープとは異なる手法」に書き直し（Table の別行5行目と整合）
+    - **FATAL-2**: `eq:residual` 近似式 `‖(I+ΔτL_h)(δp)^m − …‖/Δτ` が数学的に誤り（厳密解時にゼロになる）→ 正しい増分式 `‖(δp)^m − (δp)^{m-1}‖/Δτ` に修正
+    - **STRUCT-1**: §7 の「安定性の理論的必須条件」+爆発記述が main text と warnbox 結論に重複 → main text の重複2文を削除，warnbox canonical に統一
+    - **GAP-1**: `warn:ppe_splitting` のスウィープ説明に「近似解」である旨と残差の出所を明記
+    - **GAP-2**: LTS の均等収束根拠として `Δτ_{i,j}·a_{i,j} = C_τh²/2`（密度依存打ち消し）の数式を追加
+    - **IMPL-1**: `sec:defect_correction` 冒頭に「将来の改良候補（現行コードへの実装は未完了）」の注意書きを追加
+    - **MINOR-1**: `\label{eq:etol_criterion}` → `\label{result:etol_criterion}` にリネーム（tcolorbox に `eq:` プレフィックス不可）
 
 18. ~~EDITOR sweep 36 — §7 BF code-alignment + stability conclusion~~ — **Done (2026-03-23).** Two targeted additions to `07_collocate.tex` (commit db83e1e):
     - **IMPL**: Code-alignment confirmation paragraph after `eq:bf_operator_mismatch` — verified 3 code locations all use `D^{(1)}_CCD`: `SurfaceTensionTerm.compute()`, `Predictor.compute()` IPC term, `VelocityCorrector.correct()`.
@@ -33,6 +42,11 @@
     - **NEW `sec:lts_dtau`**: "密度適応型局所時間刻み（LTS）" — density-adaptive local time step `Δτᵢⱼ = C_τ · ρᵢⱼ · h²/2` (eq:dtau_lts). Consistency with global Δτ_opt at uniform density (C_τ ≈ 1.16 matches box:dtau_impl range). Dynamic C_τ escalation strategy described.
 
 ## **2. Completed (2026-03-22)**
+
+20. ~~MATH_VERIFY §6 (non-uniform grid)~~ — **Done (2026-03-22).** 11 targets audited; 1 PAPER_ERROR fixed:
+    - **PAPER_ERROR**: `06_grid.tex` パラメータ選択指針: `ω(0)=α` is false. Correct: `ω(0) = 1+(α−1)/(ε_g√π)`. Fixed with example for ε_g=2ε.
+    - All other targets SAFE: δ* normalization, chain-rule transforms (1st + 2nd order), J=1/d1 formula, dJ=−d2/d1², `differentiate_raw` axis embedding, MMS thresholds, min|φ| marginal, coordinate normalization, metric code.
+    - **Code gaps CLOSED**: `eps_g_factor` added to `GridConfig`, `config_loader`; `differentiate_raw()` + `_differentiate_wall_raw()` added to `CCDSolver`; `update_from_levelset` and `_build_metrics` use paper formula; 6 new tests in `test_grid.py` all passing. Full suite: 53 passed, 2 skipped.
 
 15. ~~CRITIC pass 22 + EDITOR sweep 33 — 全体構造・用語統一~~ — **Done (2026-03-22).** 8 issues resolved:
     - **FATAL-1**: `08c_ppe_verification.tex` が main.tex に未インクルードだったため追加．
