@@ -90,6 +90,9 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 ## 3. LaTeX Build
 
 - `[~]` `xelatex` (latexmk) — last confirmed clean 2026-03-21 (119 pages); EDITOR sweep 33 edits pending compile verification
+- `[x]` CRITIC pass 23 + EDITOR sweep 35 (2026-03-23) — `08d_ppe_pseudotime.tex`: ADI Δτ/2 fix (FATAL-1), tcolorbox `\eqref` fix (FATAL-2), C_τ三重矛盾解消 (FATAL-3), 安定条件→最適収束域 (FATAL-4), 5 labels追加, tab:ppe_methods 欠陥補正行追加, 変数凍結節移動
+- `[x]` EDITOR sweep 36 (2026-03-23) — `07_collocate.tex`: BF code-alignment confirmation (3 CCD sites verified) + stability-conclusion sentence in warnbox
+- `[x]` EDITOR sweep 34 (2026-03-23) — `08d_ppe_pseudotime.tex` 3 new subsubsections: variable freeze, defect correction (eq:defect_correction_split/linear), LTS (eq:dtau_lts)
 - `[x]` CRITIC pass 22 + EDITOR sweep 33 (2026-03-22) — 全体構造・用語統一: 08c追加, FATAL-3 label rename, ARCHITECTURE.md修正, Rhie--Chow統一, Balanced-Force統一, 05分割(→05b/05c), 08分割(→08d)
 - `[x]` CRITIC pass 20 (2026-03-22) — WENO5→Dissipative CCD global sweep + 4 clarity fixes
 - `[x]` EDITOR sweep 32 (2026-03-22) — §7 Balanced-Force: 12 issues

@@ -6,9 +6,14 @@
 
 * **Date/Update:** 2026-03-23
 * **Code:** 39 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection. `DissipativeCCDAdvection` implemented (§5); code-paper gap CLOSED. config_loader YAML round-trip fixed; ε_factor<1.2 warning implemented; 3 dead-code removals (refactor).
-* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 35 EDITOR sweeps complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
+* **Paper:** 14 sections + 5 appendices (2 new splits: 05b+05c from 05; 08d from 08). **22 CRITIC passes + 36 EDITOR sweeps complete (2026-03-23).** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
 ## **2. Completed (2026-03-23)**
+
+18. ~~EDITOR sweep 36 — §7 BF code-alignment + stability conclusion~~ — **Done (2026-03-23).** Two targeted additions to `07_collocate.tex` (commit db83e1e):
+    - **IMPL**: Code-alignment confirmation paragraph after `eq:bf_operator_mismatch` — verified 3 code locations all use `D^{(1)}_CCD`: `SurfaceTensionTerm.compute()`, `Predictor.compute()` IPC term, `VelocityCorrector.correct()`.
+    - **CONCL**: Stability-conclusion sentence added to BF warnbox: "Balanced-Force 条件は精度向上の選択肢ではなく，本 CCD フレームワークにおける安定性の理論的必須条件である．"
+    - Reviewer study (§§1–4 on BF+CCD unification) confirmed entirely REVIEWER_ERROR — all 4 theoretical points already present in paper.
 
 17. ~~CRITIC pass 23 + EDITOR sweep 35 — `08d_ppe_pseudotime.tex` 13 issues~~ — **Done (2026-03-23).** All VERIFIED items fixed (commit f022ef3):
     - **FATAL-1**: `eq:ADI` ソース項 `Δτ q_h` → `Δτ/2 q_h`（両ステージ）；旧形式は固定点 `L_h δp* = 2q_h` という因子2誤差を生じていた
