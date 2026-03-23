@@ -10,6 +10,10 @@
 
 ## **2. Completed (2026-03-23)**
 
+25. ~~付録 引用文献拡充~~ — **Done (2026-03-23).** 1箇所修正:
+    - **`\cite{JiangShu1996}`**: `appendix_numerics_schemes.tex`（WENO5 formulation subsection，β_k smoothness indicator 定式化節 — 既存 bib エントリが未 \cite）
+    - 他の付録（`appendix_ccd_coef`, `appendix_ccd_impl`, `appendix_interface`, `appendix_numerics_solver`）は全て原著 derivation または既存 `\cite{}` 引用済み（`Gustafsson1981`, `Kelley2003`）
+
 24. ~~引用文献拡充（CRITIC pass — 引用漏れ5件修正）~~ — **Done (2026-03-23).** 7箇所修正（bibliography.bib に2新規エントリ追加，既存エントリ3件の `\cite{}` 追加）:
     - **新規 bib エントリ2件**: `PeacemanRachford1955`（ADI 法の原論文），`DahlquistBjorck1974`（数値解析教科書）
     - **`\cite{Chorin1968}`**: `05b_time_integration.tex`（Chorin, 1968）+ `08_pressure.tex`（Chorin, 1968）— 既存 bib エントリが未 \cite
