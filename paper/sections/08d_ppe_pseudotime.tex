@@ -4,7 +4,11 @@
 \subsection{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}
 
-本節で解説する\textbf{仮想時間（pseudo-time）陰解法}が本稿の標準手法である
+本節で解説する\textbf{仮想時間（pseudo-time）陰解法}（スウィープ型，行列フリー）と，
+付録~\ref{app:ccd_lu_direct} のクロネッカー積大域行列による \textbf{LGMRES/直接 LU 法}の
+2種類の実装が本稿では使用可能である：
+前者（本節）は大規模格子（$N \gtrsim 128$）でのメモリ効率に優れる matrix-free 手法，
+後者（付録）はスプリッティング誤差がなくデバッグ・検証用途に適した明示的行列法である
 （BiCGSTAB は低次精度実装の代替として表~\ref{tab:ppe_methods} に掲載）．
 この方法は FVM ベースの BiCGSTAB（§\ref{sec:fvm_face_coeff}）に対して以下の優位性を持つ：
 \textbf{空間精度}として CCD 法（6次精度）を用いるため $\mathcal{O}(h^6)$ の高精度が得られ
