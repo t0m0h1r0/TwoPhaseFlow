@@ -10,6 +10,14 @@
 
 ## **2. Completed (2026-03-23)**
 
+24. ~~引用文献拡充（CRITIC pass — 引用漏れ5件修正）~~ — **Done (2026-03-23).** 7箇所修正（bibliography.bib に2新規エントリ追加，既存エントリ3件の `\cite{}` 追加）:
+    - **新規 bib エントリ2件**: `PeacemanRachford1955`（ADI 法の原論文），`DahlquistBjorck1974`（数値解析教科書）
+    - **`\cite{Chorin1968}`**: `05b_time_integration.tex`（Chorin, 1968）+ `08_pressure.tex`（Chorin, 1968）— 既存 bib エントリが未 \cite
+    - **`\cite{Sussman1994}`**: `03_levelset.tex`（Sussman 再初期化の初出説明）— 既存 bib エントリが未 \cite
+    - **`\cite{Unverdi1992}`**: `02_governing.tex`（Front Tracking の説明）— 既存 bib エントリが未 \cite
+    - **`\cite{PeacemanRachford1955}`**: `08d_ppe_pseudotime.tex`（ADI 法の定義節）
+    - **`\cite{DahlquistBjorck1974}`**: `05b_time_integration.tex`（AB2 零安定性の参照，インラインテキストを \cite{} に変換）
+
 23. ~~CRITIC passes 26+27 + EDITOR sweep 39 — 全編ゼロベース + 付録ゼロベース~~ — **Done (2026-03-23).** 16箇所修正（STRUCT-1×12, STRUCT-2×1, MINOR-1×1, APPEND-1×2）:
     - **STRUCT-1 (12件)**: `§\ref{warn:...}`, `§\ref{box:...}`, `§\ref{proof:...}` を `\ref{}` に修正（LATEX_RULES §1）。対象ファイル: `02b_csf.tex`, `03_levelset.tex`, `04c_ccd_extensions.tex`, `04d_dissipative_ccd.tex`, `05b_time_integration.tex`(×2), `05c_reinitialization.tex`, `09_full_algorithm.tex`(×3), `appendix_numerics_solver.tex`(×2)
     - **STRUCT-2**: `05_advection.tex` "下表に整理する" → `表~\ref{box:scheme_roles}に整理する`（ハードコード位置参照を解消）
