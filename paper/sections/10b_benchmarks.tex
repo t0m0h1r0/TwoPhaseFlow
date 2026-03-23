@@ -323,7 +323,7 @@ CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma
 CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
 CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
 Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
-Crank--Nicolson（粘性） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
+Crank--Nicolson（粘性） & $\Ord{h^2}$（ADI 対角）/ $\Ord{h^6}$（非対角） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
 NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$（AB2） & 対流による運動量移送 \\
 IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） & 全体時間精度の律速段階 \\
 \midrule
@@ -335,14 +335,20 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
 \noindent\textbf{精度設計のまとめ：}
 \label{sec:accuracy_summary}
 本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
-粘性項（CCD + Crank--Nicolson，$\Ord{h^6}$），界面移流（Dissipative CCD，$\Ord{h^5}$）のすべてで高次精度を達成している．
+粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
+界面移流（Dissipative CCD，$\Ord{h^5}$）を実装している．
 
 \begin{itemize}[noitemsep]
   \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間精度の律速段階であり，
         Dissipative CCD（$\Ord{h^5}$）および CCD-PPE（$\Ord{h^6}$）はこれより高次であるため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
-  \item \textbf{寄生流れへの直接効果：} 寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
-        曲率精度次数 $p_\kappa$ に直接依存する．CCD（$p_\kappa=6$）は2次手法と比べ
+  \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
+        Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
+        曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
         $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．
+        しかし，\textbf{Balanced-Force 条件下（§\ref{sec:balanced_force}）では}，圧力勾配と
+        表面張力に同一の CCD 演算子を用いることで離散化誤差成分が相殺されるため，
+        有効な寄生流れはどちらの手法でも CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+        によって律速される（収束次数の改善ではなく収束係数の大幅な低減；§\ref{sec:bench_droplet} 参照）．
   \item \textbf{時間精度：} AB2+IPC スキームにより全体時間精度 $\Ord{\Delta t^2}$ を達成している
         （§\ref{sec:time_accuracy_table} 参照）．
         さらなる高次化（$O(\Delta t^3)$ 以上）には IPC を超える高次 Projection 法が必要であり，

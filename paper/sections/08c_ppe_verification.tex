@@ -16,6 +16,14 @@ CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_m
 各テストの合格基準を満たすことを実装完了の必要条件として用いること．
 流体力学ソルバーと組み合わせた実測ベンチマーク結果は §\ref{sec:bench_droplet} を参照のこと．
 
+\noindent\textbf{注（テスト C-1 の境界条件とノイマン BC 検証の分担）：}
+テスト C-1（§\ref{sec:ccd_test_c1}）はディリクレ条件 $p|_{\partial\Omega}=0$ の解析解を用いて
+CCD-Poisson 演算子の\textbf{空間精度次数（$\Ord{h^6}$）}を確認するテストである．
+本実装の PPE はノイマン条件 $\partial p/\partial n = 0$ を使用するが，これはテスト C-1 の目的とは独立である：
+ノイマン BC の正しい組み込みは §\ref{sec:ppe}（$\texttt{box:neumann\_unit\_test}$）の
+Null test・Manufactured Solution test（コサイン解析解）で別途確認する．
+両テストを合わせることで「CCD 演算子の精度」と「Neumann BC 実装の正確性」を独立に検証できる．
+
 \subsubsection{検証テスト C-1：等密度 Poisson 方程式の格子収束（\texorpdfstring{$\Ord{h^6}$}{O(h\textasciicircum 6)} の確認）}
 \label{sec:ccd_test_c1}
 
