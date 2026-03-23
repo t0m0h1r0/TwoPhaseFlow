@@ -245,3 +245,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(d, f, default_flow_style=False, allow_unicode=True)
+
+
+# save_config は config_to_yaml の別名（テスト互換性のため）
+save_config = config_to_yaml
