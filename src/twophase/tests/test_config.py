@@ -91,7 +91,7 @@ def test_config_loader_advection_scheme_roundtrip():
 
     try:
         save_config(cfg_orig, path)
-        cfg_loaded = load_config(path)
+        cfg_loaded, _ = load_config(path)
         assert cfg_loaded.numerics.advection_scheme == "weno5", (
             f"Round-trip failed: got '{cfg_loaded.numerics.advection_scheme}'"
         )
