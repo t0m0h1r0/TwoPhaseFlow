@@ -120,7 +120,7 @@ $\mathcal{O}(N)$ の計算量で一括計算する．
 \subsubsection{ADI 法との比較}
 \label{sec:pseudo_adi_comparison}
 
-ADI 法（交互方向陰解法）では，演算子を $x$・$y$ 方向に交互に分割して解く：
+ADI 法（交互方向陰解法，\cite{PeacemanRachford1955}）では，演算子を $x$・$y$ 方向に交互に分割して解く：
 \begin{equation}
   \Bigl(\mathbf{I} + \tfrac{\Delta\tau}{2}\mathcal{L}_x\Bigr)\widetilde{\delta p}
   = \Bigl(\mathbf{I} - \tfrac{\Delta\tau}{2}\mathcal{L}_y\Bigr)(\delta p)^m + \tfrac{\Delta\tau}{2}\, q_h,
