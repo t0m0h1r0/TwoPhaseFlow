@@ -48,13 +48,19 @@ src/
     │   └── tvd_rk3.py              # TVD-RK3 for CLS advection
     ├── io/
     │   ├── checkpoint.py           # CheckpointManager
-    │   └── serializers.py          # Array serialization
+    │   ├── serializers.py          # Array serialization
+    │   └── vtk_writer.py           # VTKWriter — VTK XML RectilinearGrid (.vtr) + PVD collection output
     ├── configs/
     │   └── config_loader.py        # YAML/JSON config loading
     ├── visualization/
     │   ├── plot_scalar.py          # Scalar field plots
     │   ├── plot_vector.py          # Vector field plots
     │   └── realtime_viewer.py      # Live visualization
+    ├── initial_conditions/
+    │   ├── shapes.py               # ShapePrimitive ABC + Circle/Rectangle/HalfSpace/SinusoidalInterface + shape_from_dict
+    │   ├── velocity_fields.py      # VelocityField ABC + RigidRotation/UniformFlow + velocity_field_from_dict
+    │   ├── builder.py              # InitialConditionBuilder — SDF union/subtraction → CLS ψ
+    │   └── __init__.py             # Public API re-export
     ├── benchmarks/
     │   ├── stationary_droplet.py   # Parasitic current / Balanced-Force test
     │   ├── rising_bubble.py        # Rising bubble (ρ ratio 1000)
@@ -67,7 +73,8 @@ src/
         ├── test_ns_terms.py        # Convection, viscous, surface tension terms
         ├── test_pressure.py        # PPE solve, Rhie-Chow, velocity correction
         ├── test_time_integration.py# WENO5 spatial order (≥4.8), TVD-RK3 temporal order (≥2.8); Dissipative CCD spatial order (≥1.8), full method order (≥1.8)
-        └── test_config.py          # NumericsConfig advection_scheme validation; ε_factor<1.2 warning; YAML round-trip
+        ├── test_config.py          # NumericsConfig advection_scheme validation; ε_factor<1.2 warning; YAML round-trip; ic_cfg/vf_cfg unpack
+        └── test_initial_conditions.py # Circle/Rectangle/HalfSpace/SinusoidalInterface + InitialConditionBuilder + RigidRotation/UniformFlow
 ```
 
 ## **2. Interfaces (ABCs)**

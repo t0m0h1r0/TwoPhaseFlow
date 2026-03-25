@@ -1,20 +1,24 @@
 # =====================================================================
-# Rayleigh-Taylor 不安定性シミュレーション設定
+# 静止液滴ベンチマーク設定（Benchmark 1: Stationary Droplet）
+# 論文 §10.3 Benchmark 1 に対応
+#
+# 目的: CSF 表面張力の検証 + 寄生電流（parasitic currents）の定量評価
+# 参考値: Laplace 圧力差 Δp = σ/R = (1/We)/R = 4.0
 # =====================================================================
 
 # ── グリッド ──────────────────────────────────────────────────────
 ndim: 2
-N: [64, 256]          # x: 64点, y: 256点（縦長ドメイン）
-L: [0.5, 2.0]
+N: [64, 64]           # 正方形ドメイン
+L: [1.0, 1.0]
 
 # ── 無次元数 ─────────────────────────────────────────────────────
-Re: 3000.0
-Fr: 1.0
-We: 1000000.0         # 表面張力無視
+Re: 100.0             # レイノルズ数（寄生電流の正規化に使用）
+Fr: 1.0e10            # フルード数（∞ = 重力なし）
+We: 1.0               # ウェーバー数 → σ = 1/We = 1
 
-# ── 流体特性（重い流体 / 軽い流体） ──────────────────────────────
-rho_ratio: 0.2        # 密度比 1:5
-mu_ratio: 0.2
+# ── 流体特性（比率 = 気体/液体）───────────────────────────────────
+rho_ratio: 0.001      # ρ_g / ρ_l = 1/1000
+mu_ratio: 0.001       # μ_g / μ_l = 1/1000
 
 # ── 界面パラメータ ───────────────────────────────────────────────
 epsilon_factor: 1.5
@@ -22,38 +26,33 @@ reinit_steps: 4
 
 # ── 時間積分 ─────────────────────────────────────────────────────
 cfl_number: 0.25
-t_end: 3.0
+t_end: 0.1            # 短時間で定常寄生電流を計測
 
 # ── 圧力ソルバー ─────────────────────────────────────────────────
-ppe_solver_type: bicgstab
-bicgstab_tol: 1.0e-10
-bicgstab_maxiter: 2000
+ppe_solver_type: lu
 
-# ── 境界条件 ─────────────────────────────────────────────────────
-advection_scheme: dissipative_ccd   # §5 Dissipative CCD（デフォルト）; "weno5" も可
+# ── 境界条件・移流スキーム ───────────────────────────────────────
+advection_scheme: dissipative_ccd
 bc_type: wall
+cn_viscous: true
 
 # ── ハードウェア ─────────────────────────────────────────────────
 use_gpu: false
 
 # ── 初期条件（InitialConditionBuilder が使用） ──────────────────
-# 正弦波界面: y = 1.0 + 0.1·cos(2π x / 0.5)
-# 液体（重流体, ψ=1）が界面より下側（y < y_interface）
-# 気体（軽流体, ψ=0）が界面より上側（y > y_interface）
+# ドメイン中心 (0.5, 0.5) に半径 0.25 の液体液滴を配置
 initial_condition:
   background_phase: gas
   shapes:
-    - type: sinusoidal_interface
-      axis: 1           # y 軸法線方向
-      mean: 1.0         # 平均界面位置 y = 1.0
-      amplitude: 0.1    # 正弦波振幅
-      wavelength: 0.5   # 波長 = Lx
-      interior_phase: liquid  # y < interface → 液体（重流体）
+    - type: circle
+      center: [0.5, 0.5]
+      radius: 0.25
+      interior_phase: liquid
 
-# ── 出力設定 ────────────────────────────────────────────────────
+# ── 出力設定（main.py が使用） ──────────────────────────────────
 output:
-  checkpoint_dir: checkpoints/rayleigh_taylor
-  checkpoint_interval: 50
+  checkpoint_dir: checkpoints/stationary_droplet
+  checkpoint_interval: 100
   visualization_interval: 20
-  output_dir: results/rayleigh_taylor
+  output_dir: results/stationary_droplet
   save_figures: true
