@@ -4,9 +4,18 @@
 
 ## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-23
-* **Code:** **53 passed, 2 skipped** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6): density function ω formula, CCD O(h⁶) metrics via `differentiate_raw()`, 6 new MMS tests in `test_grid.py`. config_loader YAML round-trip fixed.
+* **Date/Update:** 2026-03-26
+* **Code:** **95 passed** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6). `initial_conditions` module added. YAML IC+velocity_field pipeline integrated into `main.py`. VTK output writer implemented (`io/vtk_writer.py`).
 * **Paper:** 14 sections + 5 appendices. **27 CRITIC passes + 39 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
+
+## **2. Completed (2026-03-26)**
+
+26. ~~Initial conditions module + YAML pipeline~~ — **Done (2026-03-26).** Full implementation:
+    - **`initial_conditions/` module**: `ShapePrimitive` ABC + `Circle`, `Rectangle`, `HalfSpace`, `SinusoidalInterface`; `shape_from_dict`; `VelocityField` ABC + `RigidRotation`, `UniformFlow`; `velocity_field_from_dict`; `InitialConditionBuilder` (SDF union/subtraction → CLS ψ via Heaviside); `__init__.py` public API.
+    - **`main.py` YAML IC+velocity field integration**: `load_config` now returns `(cfg, out_cfg, ic_cfg, vf_cfg)`; `_set_yaml_initial_condition` applies `InitialConditionBuilder`; `_apply_velocity_field` + `_make_velocity_callback` prescribe rigid-body velocity fields with per-step re-application.
+    - **Benchmark YAML configs**: `src/configs/stationary_droplet.yaml` (circle IC, wall BC, t_end=0.1); `src/configs/zalesak_disk.yaml` (slotted-disk IC, rigid_rotation velocity field, t_end=1.0).
+    - **`test_initial_conditions.py`**: 26 tests — shapes, builders, SDF compositing, SinusoidalInterface RT match, Zalesak disk, velocity fields, validation. Full suite: **95 passed**.
+    - **`ARCHITECTURE.md`** updated: `io/vtk_writer.py`, `test_initial_conditions.py`, `initial_conditions/` module (already partially added).
 
 ## **2. Completed (2026-03-23)**
 
@@ -136,7 +145,7 @@
 1. Run benchmarks at higher resolution (N=128) and compare to reference values.
 2. Verify GPU backend compatibility (CuPy).
 3. Implement and test 3D cases.
-4. Implement VTK output writer in io/.
+4. ~~Implement VTK output writer in io/.~~ — **Done.** `io/vtk_writer.py` committed.
 
 ### **Paper / Documentation**
 
