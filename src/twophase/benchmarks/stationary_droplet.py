@@ -37,6 +37,7 @@ Grid convergence study::
 from __future__ import annotations
 import numpy as np
 from typing import Dict, List, Optional, Any
+from ..initial_conditions import InitialConditionBuilder, Circle
 
 
 class StationaryDropletBenchmark:
@@ -106,14 +107,6 @@ class StationaryDropletBenchmark:
             ),
         )
 
-    def _init_psi(self, sim) -> None:
-        """Set the initial CLS field ψ for a circular droplet."""
-        X, Y = sim.grid.meshgrid()
-        r = np.sqrt((X - self.CENTER[0]) ** 2 + (Y - self.CENTER[1]) ** 2)
-        # CLS smooth Heaviside: ψ = 1/(1 + exp((r − R)/ε))
-        psi_np = 1.0 / (1.0 + np.exp((r - self.RADIUS) / sim.eps))
-        sim.psi.data = sim.backend.to_device(psi_np)
-
     # ── Single-resolution run ────────────────────────────────────────────
 
     def run(self, verbose: Optional[bool] = None) -> Dict[str, Any]:
@@ -137,7 +130,12 @@ class StationaryDropletBenchmark:
 
         cfg = self._make_config(self.N)
         sim = SimulationBuilder(cfg).build()
-        self._init_psi(sim)
+        psi_np = (
+            InitialConditionBuilder(background_phase="gas")
+            .add(Circle(center=self.CENTER, radius=self.RADIUS))
+            .build(sim.grid, sim.eps)
+        )
+        sim.psi.data = sim.backend.to_device(psi_np)
 
         times: List[float] = []
         max_vel: List[float] = []
