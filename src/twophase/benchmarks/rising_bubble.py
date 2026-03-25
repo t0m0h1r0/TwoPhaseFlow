@@ -25,6 +25,7 @@ Hysing et al. (2009) のテストケース 1 を基にした検証問題。
 from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
+from ..initial_conditions import InitialConditionBuilder, Circle
 
 
 class RisingBubbleBenchmark:
@@ -91,14 +92,12 @@ class RisingBubbleBenchmark:
         sim = SimulationBuilder(cfg).build()
 
         # 初期条件: 中心 (0.5, 0.5) 半径 0.25 の円形気泡
-        X, Y = sim.grid.meshgrid()
-        r = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
-        # CLS 初期化: ψ = 1/(1 + exp((r - r0)/ε))
-        r0 = 0.25
-        eps = sim.eps
-        sim.psi.data = sim.backend.to_device(
-            1.0 / (1.0 + np.exp((r - r0) / eps))
+        psi0 = (
+            InitialConditionBuilder(background_phase="gas")
+            .add(Circle(center=(0.5, 0.5), radius=0.25))
+            .build(sim.grid, sim.eps)
         )
+        sim.psi.data = sim.backend.to_device(psi0)
 
         # 計測用時系列データ
         times, centroid_y, rise_velocity, volume = [], [], [], []
