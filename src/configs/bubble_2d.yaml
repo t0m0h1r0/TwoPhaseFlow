@@ -37,6 +37,16 @@ bc_type: wall         # "wall" or "periodic"
 # ── ハードウェア ─────────────────────────────────────────────────
 use_gpu: false
 
+# ── 初期条件（InitialConditionBuilder が使用） ──────────────────
+# 気体背景に液体円形気泡を 1 個配置（Hysing et al. テストケース 1）
+initial_condition:
+  background_phase: gas
+  shapes:
+    - type: circle
+      center: [0.5, 0.5]    # x=0.5, y=0.5（縦長ドメインの下側）
+      radius: 0.25
+      interior_phase: liquid
+
 # ── 出力設定（main.py が使用） ──────────────────────────────────
 output:
   checkpoint_dir: checkpoints/bubble_2d

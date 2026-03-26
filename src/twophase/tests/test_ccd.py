@@ -40,9 +40,8 @@ def make_grid_2d(N: int, backend):
 
 # ── Test 1: O(h⁶) convergence for d1 ─────────────────────────────────────
 
-@pytest.mark.parametrize("N", [8, 16, 32, 64])
-def test_ccd_d1_convergence(N, backend):
-    """First derivative should converge at O(h⁶) for f = sin(2πx)."""
+def _ccd_d1_error(N, backend):
+    """Helper: compute L∞ error of CCD first derivative for f = sin(2πx)."""
     grid = make_grid_1d(N, backend)
     ccd = CCDSolver(grid, backend)
 
@@ -57,12 +56,19 @@ def test_ccd_d1_convergence(N, backend):
     return N, err
 
 
+@pytest.mark.parametrize("N", [8, 16, 32, 64])
+def test_ccd_d1_convergence(N, backend):
+    """First derivative error must be finite and positive for f = sin(2πx)."""
+    _, err = _ccd_d1_error(N, backend)
+    assert np.isfinite(err) and err > 0
+
+
 def test_ccd_d1_convergence_order(backend):
     """Measure empirical slope: should be ≥ 5.5."""
     Ns = [8, 16, 32, 64]
     errors = []
     for N in Ns:
-        N_val, err = test_ccd_d1_convergence(N, backend)
+        _, err = _ccd_d1_error(N, backend)
         errors.append(err)
 
     # Compute log-log slope between consecutive pairs

@@ -59,8 +59,6 @@ CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Del
 
 時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
 添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
-以下の離散化オペレータを用いる．
-
 以下の離散化オペレータを用いる：
 \begin{itemize}
   \item $D_x^{(1)}, D_y^{(1)}$：CCD 法による1次微分 $(\partial/\partial x,\, \partial/\partial y)$
@@ -99,8 +97,25 @@ CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Del
 
 \textbf{2. 再初期化 (Reinitialization)} \\
 移流によって鈍化した界面プロファイル $\psi^*$ を整形する．
-式 \eqref{eq:cls_reinit_iso} で表される偏微分方程式を，仮想時間 $\tau$ について複数ステップ解く．
-\[ \psi^{n+1} = \text{Reinitialize}(\psi^*) \]
+式 \eqref{eq:cls_reinit_iso} で表される偏微分方程式を，仮想時間 $\tau$ について固定ステップ数解く：
+\[ \psi^{n+1} = \text{Reinitialize}(\psi^*,\; n_{\mathrm{reinit}}) \]
+\textbf{仮想時間刻み：}
+\begin{equation}
+  \Delta\tau = \min\!\left(
+    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放物安定条件}},\;
+    \underbrace{0.5\,h}_{\text{双曲 CFL}}
+  \right)
+  \label{eq:dtau_reinit}
+\end{equation}
+ここで $h = \min(\Delta x, \Delta y)$，$N_{\mathrm{dim}}$ は空間次元数（2D では $N_{\mathrm{dim}}=2$），
+$\varepsilon$ は界面幅パラメータ（§\ref{sec:levelset}）．
+放物安定条件は拡散項 $\varepsilon\Delta\psi$ の陽的処理に対する CFL 制約であり，
+TVD-RK3 の安全率 0.5 を含む（$\varepsilon \sim h$ では放物条件が支配的）．
+
+\textbf{ステップ数：} デフォルト $n_{\mathrm{reinit}} = 4$（\texttt{config.numerics.reinit\_steps} で変更可）．
+収束判定による停止は行わず，固定ステップ数を毎タイムステップ実行する
+（$n_{\mathrm{reinit}} = 4$ は $\Delta\tau \sim 0.5h$ のとき仮想時間 $\tau_{\mathrm{total}} \approx 2h$ に相当し，
+界面プロファイルの整形に十分な仮想時間を確保する；§\ref{sec:cls_compression} のアルゴリズム~\ref{alg:cls_reinit_dccd} 参照）．
 
 \textbf{3. グリッド・物性更新 (Update Properties)} \\
 更新された $\psi^{n+1}_{i,j}$ に基づき，各格子点での距離関数 $\phi$ および物理的物性値を再計算する．

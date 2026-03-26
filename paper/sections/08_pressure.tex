@@ -238,7 +238,7 @@ $p_{i_0,j_0} = 0$ はあくまで数学的拘束であり，
 
 \subsection{境界条件}
 \begin{itemize}
-    \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）
+    \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）．CCD ブロック方程式への組み込み手順（境界行を $p'_0=0$ で置き換え，変密度項の消滅）は §\ref{sec:ccd_neumann_bc} を参照．
     \item \textbf{自由表面：} $p = p_{\mathrm{atm}}$（ディリクレ条件）
     \item \textbf{全周ノイマンの場合：} 解の一意性を保つため，1点の圧力を固定するか平均値を0にする拘束を加える（§\ref{sec:pinpoint}参照）．
     \item \textbf{周期境界：} 全辺を周期とする場合は FVM 行列に折り返しフェイスおよびゴーストノード拘束を組み込む（§\ref{sec:fvm_periodic} 参照）．零空間対策は壁面 BC と同一（1点ピン条件）．

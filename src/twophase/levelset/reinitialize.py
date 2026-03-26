@@ -1,40 +1,28 @@
 """
 Conservative Level Set reinitialization.
 
-Implements §3.4 (Eq. 34) and §8.2–§8.3 of the paper.
+Implements the operator-split scheme described in §5c (alg:cls_reinit_dccd):
 
-The reinitialization PDE (in pseudo-time τ):
+    Each pseudo-time step τ:
+      Stage 1 – Compression  (explicit Forward Euler, Dissipative CCD):
+          ψ** = ψ − Δτ ∇·[ψ(1−ψ) n̂]
+      Stage 2 – Diffusion    (Crank–Nicolson ADI, CCD Eq-II matrices):
+          (M₂ − μ B₂) ψ^{τ+1} = (M₂ + μ B₂) ψ**   per axis (ADI)
+          where μ = ε Δτ / (2h²)
 
-    ∂ψ/∂τ + ∇·[ψ(1−ψ) n̂] = ε ∇²ψ              (§3.4 Eq.34)
+Pseudo-time step (eq:dtau_reinit_def):
+    Δτ = min(0.5 h²/(2 ndim ε),  0.5 h_min)
 
-where n̂ = ∇ψ / |∇ψ| is the interface normal.
+M₂ = tridiag(β₂, 1, β₂)  with β₂ = −1/8
+B₂ = tridiag(a₂, −2a₂, a₂) with a₂ = 3
 
-Left term: compression towards a step profile.
-Right term: diffusion that controls interface thickness.
-Equilibrium solution: ψ = H_ε(s/ε) where s is the signed distance.
-
-Time integration (pseudo-time τ):
-    TVD-RK3 (Shu–Osher scheme, §8.2 Eq. 79–81) — same as CLS advection.
-
-Spatial discretization of compression term ∇·[ψ(1−ψ) n̂] (§8.3):
-    WENO5 flux splitting with global Lax-Friedrichs dissipation.
-    Flux F_ax = ψ(1−ψ) n̂_ax;  wave-speed bound α = max|ψ(1−ψ)| ≤ 1/4.
-    LF split: F^± = (F ± α ψ) / 2 → WENO5 reconstruction → divergence.
-
-Diffusion term ε ∇²ψ: evaluated with CCD 6th-order Laplacian.
-
-The pseudo-time step is chosen as:
-    Δτ = min(0.5 · min(Δx), min(Δx)² / (2·ndim·ε))   (§3.4 stability)
-
-satisfying both the hyperbolic CFL and the parabolic stability condition.
-
-Volume-conservation monitor M(τ) = ∫ ψ(1−ψ) dV should decrease
-monotonically during reinitialization.
+Boundary conditions (Neumann, ∂ψ/∂n = 0):
+    Off-diagonal entry at boundary rows doubled (ghost-cell reflection).
 """
 
 from __future__ import annotations
 import numpy as np
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
 
 from ..interfaces.levelset import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
@@ -44,18 +32,231 @@ if TYPE_CHECKING:
     from ..backend import Backend
 
 
+# ── CCD Eq-II coefficients ────────────────────────────────────────────────
+_BETA2 = -1.0 / 8.0   # M₂ off-diagonal
+_A2    =  3.0           # B₂ coefficient  (B₂ diagonal = −2a₂ = −6)
+_EPS_D_COMP = 0.05      # Dissipative CCD filter strength for compression
+
+
 class Reinitializer(IReinitializer):
-    """Reinitialize ψ by integrating the reinitialization PDE.
+    """Reinitialize ψ using operator-split Dissipative CCD + CN diffusion.
 
     Parameters
     ----------
-    backend       : Backend
-    grid          : Grid (for spacing h and domain size)
-    ccd           : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
-    eps           : interface thickness ε
-    n_steps       : number of pseudo-time steps per call (each is a full TVD-RK3 step)
-    bc            : Ghost-cell BC for WENO5 compression stencils (§4 sec:weno5_boundary).
-                    'periodic' | 'neumann' | 'outflow' | 'zero' (default, backward-compat)
+    backend  : Backend
+    grid     : Grid
+    ccd      : CCDSolver — injected; used for gradient / divergence
+    eps      : interface thickness ε
+    n_steps  : pseudo-time steps per call  (default 4, §09_full_algorithm Step 2)
+    bc       : boundary condition type for compression flux normal
+               'periodic' | 'neumann' (default)
+    """
+
+    def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
+                 eps: float, n_steps: int = 4, bc: str = 'zero'):
+        self.xp      = backend.xp
+        self.grid    = grid
+        self.ccd     = ccd
+        self.eps     = eps
+        self.n_steps = n_steps
+        self._bc     = bc
+        self._h      = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+
+        # ── Pseudo-time step (eq:dtau_reinit_def) ────────────────────────
+        ndim    = grid.ndim
+        dx_min  = min(self._h)
+        dtau_para = 0.5 * dx_min**2 / (2.0 * ndim * eps)   # parabolic bound
+        dtau_hyp  = 0.5 * dx_min                             # hyperbolic CFL
+        self.dtau = min(dtau_para, dtau_hyp)
+
+        # ── Pre-compute CN Thomas factorizations per axis ─────────────────
+        # A_L = M₂ − μ B₂  (LHS of CN solve)
+        # Store: (thomas_factors, modified_diag, super_diag) per axis
+        self._cn_factors: List[Tuple] = []
+        for ax in range(ndim):
+            self._cn_factors.append(self._build_cn_factors(ax))
+
+    # ── Public API ────────────────────────────────────────────────────────
+
+    def reinitialize(self, psi) -> "array":
+        """Run n_steps operator-split pseudo-time steps on ψ.
+
+        Each step:
+          1. Compression  — explicit FE with Dissipative CCD divergence
+          2. Diffusion    — CN ADI solve (x-sweep, y-sweep, …)
+        """
+        xp = self.xp
+        q  = xp.copy(psi)
+
+        for _ in range(self.n_steps):
+            # Stage 1: compression (Forward Euler, Dissipative CCD)
+            div_comp = self._dccd_compression_div(q, self.ccd)
+            q_star   = xp.clip(q - self.dtau * div_comp, 0.0, 1.0)
+
+            # Stage 2: diffusion (CN ADI, one sweep per axis)
+            q_new = q_star
+            for ax in range(self.grid.ndim):
+                q_new = self._cn_diffusion_axis(q_new, ax)
+            q = xp.clip(q_new, 0.0, 1.0)
+
+        return q
+
+    # ── Stage 1: Dissipative CCD compression divergence ──────────────────
+
+    def _dccd_compression_div(self, psi, ccd: "CCDSolver"):
+        """Compute ∇·[ψ(1−ψ) n̂] with Dissipative CCD filter.
+
+        Implements alg:cls_reinit_dccd Steps 1–2 (§05c_reinitialization):
+          g_ax  = ψ(1−ψ) n̂_ax
+          g'_ax = D¹_CCD(g_ax)           (CCD first derivative)
+          G̃_ax  = g'_ax + ε_d (g'_{ax,i+1} − 2g'_{ax,i} + g'_{ax,i−1})
+        """
+        xp   = self.xp
+        ndim = self.grid.ndim
+        eps_d = _EPS_D_COMP
+
+        # Gradient of ψ for n̂
+        dpsi = []
+        for ax in range(ndim):
+            g1, _ = ccd.differentiate(psi, ax)
+            dpsi.append(g1)
+
+        grad_sq   = sum(g * g for g in dpsi)
+        safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
+        n_hat     = [g / safe_grad for g in dpsi]
+
+        psi_1mpsi = psi * (1.0 - psi)
+        div_total = xp.zeros_like(psi)
+
+        for ax in range(ndim):
+            flux_ax = psi_1mpsi * n_hat[ax]
+            # CCD divergence of flux
+            g_prime, _ = ccd.differentiate(flux_ax, ax)
+            # Dissipative filter (eq:comp_filter)
+            g_prime_pad = self._pad_neumann(xp, g_prime, ax)
+            sl_c  = self._sl(psi.ndim, ax, 1, -1)
+            sl_p1 = self._sl(psi.ndim, ax, 2, None)
+            sl_m1 = self._sl(psi.ndim, ax, 0, -2)
+            g_tilde = (g_prime_pad[sl_c]
+                       + eps_d * (g_prime_pad[sl_p1]
+                                  - 2.0 * g_prime_pad[sl_c]
+                                  + g_prime_pad[sl_m1]))
+            div_total = div_total + g_tilde
+
+        return div_total
+
+    # ── Stage 2: CN diffusion ADI ─────────────────────────────────────────
+
+    def _cn_diffusion_axis(self, psi, axis: int):
+        """One CN diffusion half-step along ``axis`` (ADI sweep).
+
+        Solves: (M₂ − μ B₂) ψ_new = (M₂ + μ B₂) ψ   per 1-D pencil.
+        Neumann BC: boundary off-diagonal entries doubled.
+        """
+        xp  = self.xp
+        h   = self._h[axis]
+        mu  = self.eps * self.dtau / (2.0 * h**2)
+
+        # A_R coefficients
+        d_R = 1.0 - 6.0 * mu   # A_R main diagonal  (1 + μ·(−6))
+        c_R = _BETA2 + 3.0 * mu  # A_R off-diagonal   (β₂ + μ·a₂)
+
+        # Move sweep axis to front: shape (n, *batch)
+        psi_t = xp.moveaxis(psi, axis, 0)
+        n     = psi_t.shape[0]
+
+        # Apply A_R (vectorised, no loop)
+        rhs = xp.empty_like(psi_t)
+        rhs[1:-1] = c_R * psi_t[:-2] + d_R * psi_t[1:-1] + c_R * psi_t[2:]
+        rhs[0]    = d_R * psi_t[0]  + 2.0 * c_R * psi_t[1]      # Neumann left
+        rhs[-1]   = 2.0 * c_R * psi_t[-2] + d_R * psi_t[-1]     # Neumann right
+
+        # Apply pre-factored A_L Thomas solve
+        thomas_f, m_diag, sup = self._cn_factors[axis]
+
+        # Forward sweep (sequential over n; vectorised over batch)
+        d = xp.array(rhs)           # mutable copy
+        for i in range(1, n):
+            d[i] = d[i] - thomas_f[i - 1] * d[i - 1]
+
+        # Back substitution
+        x = xp.empty_like(d)
+        x[-1] = d[-1] / xp.asarray(m_diag[-1])
+        for i in range(n - 2, -1, -1):
+            x[i] = (d[i] - xp.asarray(sup[i]) * x[i + 1]) / xp.asarray(m_diag[i])
+
+        return xp.moveaxis(x, 0, axis)
+
+    # ── CN Thomas factorization (pre-computed in __init__) ────────────────
+
+    def _build_cn_factors(self, axis: int):
+        """Pre-compute Thomas factors for A_L = M₂ − μ B₂ along ``axis``.
+
+        Returns (factors, modified_diag, super_diag) as numpy float64 arrays.
+        """
+        h  = self._h[axis]
+        mu = self.eps * self.dtau / (2.0 * h**2)
+        n  = self.grid.N[axis] + 1
+
+        d_L = 1.0 + 6.0 * mu    # A_L main diagonal
+        c_L = _BETA2 - 3.0 * mu  # A_L interior off-diagonal
+
+        # Build full tridiagonal (sub, main, sup) with Neumann BC
+        main = np.full(n, d_L)
+        sup  = np.full(n - 1, c_L)
+        sub  = np.full(n - 1, c_L)
+        sup[0]  = 2.0 * c_L   # Neumann left:  upper entry of row 0
+        sub[-1] = 2.0 * c_L   # Neumann right: lower entry of row n-1
+
+        # Thomas forward elimination → store row factors and modified diagonal
+        m = main.copy()
+        factors = np.empty(n - 1)
+        for i in range(1, n):
+            factors[i - 1] = sub[i - 1] / m[i - 1]
+            m[i] -= factors[i - 1] * sup[i - 1]
+
+        return factors, m, sup  # all numpy float64
+
+    # ── Helpers ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _pad_neumann(xp, arr, axis: int):
+        """Pad arr by 1 ghost cell on each side (Neumann reflection)."""
+        sl_first = [slice(None)] * arr.ndim
+        sl_last  = [slice(None)] * arr.ndim
+        sl_first[axis] = slice(0, 1)
+        sl_last[axis]  = slice(-1, None)
+        return xp.concatenate(
+            [arr[tuple(sl_first)], arr, arr[tuple(sl_last)]], axis=axis
+        )
+
+    @staticmethod
+    def _sl(ndim: int, axis: int, start, stop):
+        s = [slice(None)] * ndim
+        s[axis] = slice(start, stop)
+        return tuple(s)
+
+    # ── Volume monitor ────────────────────────────────────────────────────
+
+    def volume_monitor(self, psi) -> float:
+        """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""
+        dV = self.grid.cell_volume()
+        return float(self.xp.sum(psi * (1.0 - psi))) * dV
+
+
+# ── Legacy WENO5 implementation (retained for comparison / validation) ────────
+#
+# Prior implementation used WENO5 flux splitting + TVD-RK3 for BOTH compression
+# and diffusion terms (combined RHS).  Replaced by operator-split Dissipative CCD
+# + CN scheme (Reinitializer above) to match the paper (§5c).
+# DO NOT DELETE — preserved for cross-validation benchmarks.
+
+
+class ReinitializerWENO5(IReinitializer):
+    """Reinitialize ψ via WENO5 compression + CCD diffusion, TVD-RK3 time march.
+
+    Legacy implementation — kept for comparison against the Dissipative CCD + CN
+    scheme (``Reinitializer``).  API is identical.
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
@@ -65,124 +266,56 @@ class Reinitializer(IReinitializer):
         self.ccd = ccd
         self.eps = eps
         self.n_steps = n_steps
-        self._bc = bc  # WENO5 圧縮項のゴーストセルBCタイプ
-        # Cell spacing per axis (for WENO5 divergence)
+        self._bc = bc
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
-        # Pseudo-time step satisfying both CFL conditions (§3.4):
-        #   Hyperbolic: Δτ ≤ h / α  where α = max|ψ(1-ψ)| ≤ 1/4  ⟹  Δτ ≤ 4h
-        #   Parabolic:  Δτ ≤ h² / (2·ndim·ε)   (explicit diffusion stability)
-        # With ε = C·h the parabolic bound dominates for refined grids.
-        #
-        # TVD-RK3 safety factor (0.5):
-        # The classical parabolic bound h²/(2·ndim·ε) is derived for the 2nd-order
-        # finite-difference Laplacian.  CCD's 6th-order Laplacian has larger effective
-        # eigenvalues for high-frequency (oscillatory) modes that arise near ψ=0 or
-        # ψ=1 in the gas/liquid phase.  A safety factor of 0.5 prevents these modes
-        # from being amplified within the TVD-RK3 sub-stages, which each take a full
-        # forward-Euler step before the weighted combination is applied.
         _TVD_RK3_SAFETY = 0.5
         ndim = grid.ndim
         dx_min = min(float(grid.L[ax] / grid.N[ax]) for ax in range(ndim))
         dtau_para = _TVD_RK3_SAFETY * dx_min**2 / (2.0 * ndim * eps)
-        dtau_hyp  = 0.5 * dx_min   # conservative (hyperbolic bound is 4·Δx)
+        dtau_hyp  = 0.5 * dx_min
         self.dtau = min(dtau_para, dtau_hyp)
 
-    # ── Public API (IReinitializer 実装) ─────────────────────────────────
-
     def reinitialize(self, psi) -> "array":
-        """Reinitialize ψ using TVD-RK3 pseudo-time integration (§8.2).
-
-        Parameters
-        ----------
-        psi : array, shape ``grid.shape``
-
-        Returns
-        -------
-        psi_new : reinitialized ψ array
-        """
         xp = self.xp
         q = xp.copy(psi)
         dtau = self.dtau
         ccd = self.ccd
-
         for _ in range(self.n_steps):
-            # TVD-RK3 (Shu-Osher scheme, §8 Eq. 79–81)
-            # ψ ∈ [0,1] is enforced at each sub-stage to prevent negative ψ
-            # from destabilising the nonlinear WENO5 compression flux.
             r0 = self._rhs(q, ccd)
             q1 = xp.clip(q + dtau * r0, 0.0, 1.0)
             r1 = self._rhs(q1, ccd)
             q2 = xp.clip(0.75 * q + 0.25 * (q1 + dtau * r1), 0.0, 1.0)
             r2 = self._rhs(q2, ccd)
             q = xp.clip((1.0 / 3.0) * q + (2.0 / 3.0) * (q2 + dtau * r2), 0.0, 1.0)
-
         return q
 
-    # ── RHS of reinit PDE ─────────────────────────────────────────────────
-
     def _rhs(self, psi, ccd: "CCDSolver"):
-        """Compute RHS = −∇·[ψ(1−ψ)n̂] + ε Δψ.
-
-        Compression term ∇·[ψ(1−ψ)n̂] is discretised via WENO5 flux splitting
-        (§8.3): flux F_ax = ψ(1−ψ)·n̂_ax, global LF with α = max|ψ(1−ψ)| ≤ 1/4.
-
-        ε Δψ uses the CCD Laplacian (§8.3, "拡散項は CCD 法で評価").
-        """
         xp = self.xp
         ndim = self.grid.ndim
         eps = self.eps
-
-        # ── CCD gradient of ψ (for n̂ and Laplacian) ─────────────────────
         dpsi = []
         d2psi_sum = xp.zeros_like(psi)
         for ax in range(ndim):
             g1, g2 = ccd.differentiate(psi, ax)
             dpsi.append(g1)
-            d2psi_sum += g2   # Laplacian accumulates
-
-        # n̂ = ∇ψ / |∇ψ|
+            d2psi_sum += g2
         grad_psi_sq = sum(g * g for g in dpsi)
         safe_grad   = xp.maximum(xp.sqrt(xp.maximum(grad_psi_sq, 1e-28)), 1e-14)
         n_hat = [g / safe_grad for g in dpsi]
-
-        # ── Compression term ∇·[ψ(1−ψ)n̂] via WENO5 (§8.3) ──────────────
         psi_1mpsi = psi * (1.0 - psi)
-
-        # ── Compression term −∇·[ψ(1−ψ)n̂] via WENO5 (§8.3) ──────────────
-        # Flux F_ax = ψ(1-ψ)·n̂_ax.
-        # Global LF splitting: F^± = (F ± α·ψ)/2
-        # α bounds max|dF/dψ| = max|(1-2ψ)·n̂_ax|.
-        # At equilibrium ψ=H_ε(φ), the compression and diffusion terms must
-        # balance.  The LF artificial viscosity is proportional to α, so we
-        # use α = max|ψ(1-ψ)| (the paper's recommendation, §8.3) which is
-        # small near equilibrium and reduces artificial diffusion.
         alpha = float(xp.max(xp.abs(psi_1mpsi)))
         alpha = max(alpha, 1e-14)
-
         div_compression = xp.zeros_like(psi)
         for ax in range(ndim):
-            F_ax = psi_1mpsi * n_hat[ax]   # flux in direction ax
+            F_ax = psi_1mpsi * n_hat[ax]
             div_ax = self._weno5_compression_div(psi, F_ax, alpha, ax)
             div_compression += div_ax
-
-        # ── Diffusion term ε Δψ (CCD Laplacian) ──────────────────────────
         return -div_compression + eps * d2psi_sum
 
-    # ── WENO5 flux divergence for compression term ────────────────────────
-
     def _weno5_compression_div(self, psi, F, alpha: float, axis: int):
-        """WENO5 divergence of flux F = ψ(1−ψ)·n̂_ax along ``axis``.
-
-        Uses global Lax-Friedrichs splitting:
-            F^± = (F ± α·ψ) / 2   with α = max|ψ(1−ψ)| ≤ 1/4
-
-        Identical stencil structure to LevelSetAdvection._weno5_divergence.
-        """
         xp = self.xp
         n = psi.shape[axis]
-
-        # §4 sec:weno5_boundary に従ったゴーストセル補充
         psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
         F_p   = _pad_bc(xp, F,   axis, 3, self._bc)
 
@@ -191,70 +324,34 @@ class Reinitializer(IReinitializer):
             s[axis] = slice(start, stop if stop != 0 else None)
             return tuple(s)
 
-        i_max = n - 1   # number of internal faces
+        i_max = n - 1
+        fp_m2 = F_p[sl(1, 1+i_max)]; fp_m1 = F_p[sl(2, 2+i_max)]
+        fp_0  = F_p[sl(3, 3+i_max)]; fp_p1 = F_p[sl(4, 4+i_max)]; fp_p2 = F_p[sl(5, 5+i_max)]
+        pp_m2 = psi_p[sl(1,1+i_max)]; pp_m1 = psi_p[sl(2,2+i_max)]
+        pp_0  = psi_p[sl(3,3+i_max)]; pp_p1 = psi_p[sl(4,4+i_max)]; pp_p2 = psi_p[sl(5,5+i_max)]
+        Fplus_m2 = 0.5*(fp_m2+alpha*pp_m2); Fplus_m1 = 0.5*(fp_m1+alpha*pp_m1)
+        Fplus_0  = 0.5*(fp_0 +alpha*pp_0 ); Fplus_p1 = 0.5*(fp_p1+alpha*pp_p1)
+        Fplus_p2 = 0.5*(fp_p2+alpha*pp_p2)
+        Fp_face  = _weno5_pos(xp, Fplus_m2, Fplus_m1, Fplus_0, Fplus_p1, Fplus_p2)
 
-        # ── Positive-flux stencil (left-biased, nodes i-2..i+2) ──────────
-        fp_m2 = F_p[sl(1, 1 + i_max)]
-        fp_m1 = F_p[sl(2, 2 + i_max)]
-        fp_0  = F_p[sl(3, 3 + i_max)]
-        fp_p1 = F_p[sl(4, 4 + i_max)]
-        fp_p2 = F_p[sl(5, 5 + i_max)]
+        fm_m1 = F_p[sl(2,2+i_max)]; fm_0  = F_p[sl(3,3+i_max)]; fm_p1 = F_p[sl(4,4+i_max)]
+        fm_p2 = F_p[sl(5,5+i_max)]; fm_p3 = F_p[sl(6,6+i_max)]
+        pm_m1 = psi_p[sl(2,2+i_max)]; pm_0  = psi_p[sl(3,3+i_max)]; pm_p1 = psi_p[sl(4,4+i_max)]
+        pm_p2 = psi_p[sl(5,5+i_max)]; pm_p3 = psi_p[sl(6,6+i_max)]
+        Fminus_m1 = 0.5*(fm_m1-alpha*pm_m1); Fminus_0  = 0.5*(fm_0 -alpha*pm_0 )
+        Fminus_p1 = 0.5*(fm_p1-alpha*pm_p1); Fminus_p2 = 0.5*(fm_p2-alpha*pm_p2)
+        Fminus_p3 = 0.5*(fm_p3-alpha*pm_p3)
+        Fm_face   = _weno5_neg(xp, Fminus_m1, Fminus_0, Fminus_p1, Fminus_p2, Fminus_p3)
 
-        pp_m2 = psi_p[sl(1, 1 + i_max)]
-        pp_m1 = psi_p[sl(2, 2 + i_max)]
-        pp_0  = psi_p[sl(3, 3 + i_max)]
-        pp_p1 = psi_p[sl(4, 4 + i_max)]
-        pp_p2 = psi_p[sl(5, 5 + i_max)]
-
-        Fplus_m2 = 0.5 * (fp_m2 + alpha * pp_m2)
-        Fplus_m1 = 0.5 * (fp_m1 + alpha * pp_m1)
-        Fplus_0  = 0.5 * (fp_0  + alpha * pp_0 )
-        Fplus_p1 = 0.5 * (fp_p1 + alpha * pp_p1)
-        Fplus_p2 = 0.5 * (fp_p2 + alpha * pp_p2)
-
-        Fp_face = _weno5_pos(xp, Fplus_m2, Fplus_m1, Fplus_0, Fplus_p1, Fplus_p2)
-
-        # ── Negative-flux stencil (right-biased, nodes i+1..i+3) ─────────
-        fm_m1 = F_p[sl(2, 2 + i_max)]
-        fm_0  = F_p[sl(3, 3 + i_max)]
-        fm_p1 = F_p[sl(4, 4 + i_max)]
-        fm_p2 = F_p[sl(5, 5 + i_max)]
-        fm_p3 = F_p[sl(6, 6 + i_max)]
-
-        pm_m1 = psi_p[sl(2, 2 + i_max)]
-        pm_0  = psi_p[sl(3, 3 + i_max)]
-        pm_p1 = psi_p[sl(4, 4 + i_max)]
-        pm_p2 = psi_p[sl(5, 5 + i_max)]
-        pm_p3 = psi_p[sl(6, 6 + i_max)]
-
-        Fminus_m1 = 0.5 * (fm_m1 - alpha * pm_m1)
-        Fminus_0  = 0.5 * (fm_0  - alpha * pm_0 )
-        Fminus_p1 = 0.5 * (fm_p1 - alpha * pm_p1)
-        Fminus_p2 = 0.5 * (fm_p2 - alpha * pm_p2)
-        Fminus_p3 = 0.5 * (fm_p3 - alpha * pm_p3)
-
-        Fm_face = _weno5_neg(xp, Fminus_m1, Fminus_0, Fminus_p1, Fminus_p2, Fminus_p3)
-
-        flux_face = Fp_face + Fm_face   # shape: n-1 along axis
-
-        # ── Divergence = (F_{i+1/2} − F_{i-1/2}) / h ─────────────────────
+        flux_face = Fp_face + Fm_face
         h = self._h[axis]
-        sl_hi = [slice(None)] * psi.ndim
-        sl_lo = [slice(None)] * psi.ndim
-        sl_hi[axis] = slice(1, None)
-        sl_lo[axis] = slice(0, -1)
+        sl_hi = [slice(None)] * psi.ndim; sl_hi[axis] = slice(1, None)
+        sl_lo = [slice(None)] * psi.ndim; sl_lo[axis] = slice(0, -1)
         div_interior = (flux_face[tuple(sl_hi)] - flux_face[tuple(sl_lo)]) / h
-
-        # Pad boundary nodes to zero (wall BC)
-        shape_pad = list(psi.shape)
-        shape_pad[axis] = 1
+        shape_pad = list(psi.shape); shape_pad[axis] = 1
         pad = xp.zeros(shape_pad)
         return xp.concatenate([pad, div_interior, pad], axis=axis)
 
-    # ── Volume monitor ────────────────────────────────────────────────────
-
     def volume_monitor(self, psi) -> float:
-        """M(τ) = ∫ ψ(1−ψ) dV — should decrease during reinitialization."""
-        xp = self.xp
         dV = self.grid.cell_volume()
-        return float(xp.sum(psi * (1.0 - psi))) * dV
+        return float(self.xp.sum(psi * (1.0 - psi))) * dV
