@@ -3,39 +3,48 @@ Velocity predictor step (u* computation).
 
 Implements Step 5 of the full algorithm (§9.1 Eq. 85–92).
 
-The predictor solves:
+The predictor solves (AB2 + IPC formulation, §4 Eq. eq:predictor_ab2_ipc):
 
     ρ̃^{n+1} (u* − uⁿ) / Δt = R^{n+1}
 
 where the RHS collects:
 
-    R = −ρ̃ (u·∇)u                    (convection, explicit)
-      + (1/Re) ∇·[μ̃ (∇u+∇uᵀ)]        (viscous, CN or explicit)
-      − ρ̃ ẑ / Fr²                     (gravity, explicit)
-      + κ ∇ψ / We                     (surface tension, at t^{n+1})
+    R = −ρ̃ [3/2 C(uⁿ) − 1/2 C(uⁿ⁻¹)]  (convection, AB2 explicit; n=0: Euler)
+      + 1/2 (1/Re) ∇·[μ̃ (∇u*+∇u*ᵀ)]
+        + 1/2 (1/Re) ∇·[μ̃ (∇uⁿ+∇uⁿᵀ)]   (viscous, Crank-Nicolson or explicit)
+      − ∇pⁿ                               (IPC: explicit old pressure, §4 §ipc_derivation)
+      − ρ̃ ẑ / Fr²                         (gravity, explicit)
+      + κ ∇ψ / We                         (surface tension, at t^{n+1})
+
+where C(u) = (u·∇)u is the convection operator.
 
 The predictor does NOT enforce ∇·u* = 0; that is handled by the pressure
-Poisson equation and the corrector step.
+Poisson equation (solved for δp = p^{n+1}−pⁿ) and the corrector step.
 
-When ``cn_viscous=True`` the viscous term uses the Crank-Nicolson scheme
-(§9), which performs one fixed-point iteration:
-  1. Compute explicit u* with V(uⁿ).
-  2. Evaluate V(u*) and recompute with the average ½[V(uⁿ)+V(u*)].
+AB2 startup (§4 warn:tvd_rk3_scope):
+    n=0 (first step): forward Euler, C^{−1} unavailable.
+    n≥1: AB2 with coefficients (3/2, −1/2).
+    After each step the convection term C^n is buffered for the next step.
+
+IPC (Incremental Pressure Correction, §4 sec:ipc_derivation):
+    Explicitly adds −∇pⁿ to the predictor RHS so that the PPE only needs
+    to solve for the pressure increment δp, reducing splitting errors from
+    O(Δt) (Chorin) to O(Δt²) (van Kan 1986).
 
 DIP 改善（2026-03-15）:
     - ConvectionTerm, ViscousTerm, GravityTerm, SurfaceTensionTerm を
       コンストラクタで注入可能にした（デフォルト値で後方互換を維持）。
-    - Predictor 自体は具象クラスを知らなくてよくなった。
-    - SimulationBuilder がデフォルト依存関係を組み立てる責務を担う。
 
 ISP 改善（2026-03-15 3rd pass）:
     - ccd をコンストラクタ注入に変更。
-    - compute() のシグネチャから ccd を除去し、他の演算子と統一した。
 
 FlowState 導入（2026-03-16）:
     - compute() が FlowState を受け取るようにシグネチャを変更。
-    - 引数を構造化することで呼び出しコードが明瞭になり、
-      新しい物理場（温度等）を追加する際の変更箇所が最小化される（OCP）。
+
+AB2+IPC 実装（2026-03-20）:
+    - 対流項を AB2 に変更（n=0: 前進 Euler，n≥1: 係数 3/2, -1/2）。
+    - IPC 項 −∇p^n を explicit_rhs に追加。
+    - _conv_prev バッファで前ステップ対流項を保持。
 """
 
 from __future__ import annotations
@@ -92,8 +101,20 @@ class Predictor:
         self.gravity      = gravity       or GravityTerm(backend, config.fluid.Fr, config.grid.ndim)
         self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.fluid.We)
 
+        # AB2 スタートアップ用バッファ（§4 warn:tvd_rk3_scope）
+        # _conv_prev: 前ステップの対流項 C^{n-1}（各速度成分のリスト）
+        # _ab2_ready: True のとき AB2 係数を使用；False のとき前進 Euler
+        self._conv_prev: Optional[List] = None
+        self._ab2_ready: bool = False
+
     def compute(self, state: FlowState, dt: float) -> List:
-        """Compute u* = uⁿ + Δt * R / ρ̃.
+        """Compute u* using AB2 convection + IPC + CN/explicit viscous.
+
+        Implements §9 Step 5 (Eq. eq:predictor_ab2_ipc):
+
+            ρ(u*−uⁿ)/Δt = −ρ[3/2 C^n − 1/2 C^{n−1}] + viscous − ∇p^n + gravity + ST
+
+        AB2 startup: first call uses forward Euler (C^{−1} unavailable).
 
         Parameters
         ----------
@@ -106,26 +127,57 @@ class Predictor:
         -------
         vel_star : list of u* arrays  (ndim 個)
         """
-        ccd = self.ccd
+        ccd  = self.ccd
+        ndim = self.config.grid.ndim
         vel_n = state.velocity
         rho   = state.rho
         mu    = state.mu
         kappa = state.kappa
         psi   = state.psi
 
-        # ── Explicit terms ────────────────────────────────────────────────
-        conv = self.convection.compute(vel_n, ccd)           # −(u·∇)u  (ρ-weighted later)
-        grav = self.gravity.compute(rho, vel_n[0].shape)     # −ρ̃ ẑ/Fr²
-        st   = self.surface_tens.compute(kappa, psi, ccd)    # κ ∇ψ/We
+        # ── 対流項 C^n = −(u·∇)u （負符号を含む） ──────────────────────────
+        conv_n = self.convection.compute(vel_n, ccd)   # C^n = −(u·∇)u
 
-        # ── Combine explicit terms (per component) ────────────────────────
-        # Multiply convection by ρ̃ (because it enters as ρ̃ a_conv = −ρ̃(u·∇)u)
+        # ── AB2 外挿（§4 eq:predictor_ab2_ipc） ──────────────────────────
+        # n=0（スタートアップ）: 前進 Euler → ab2_conv = conv_n
+        # n≥1: AB2 → ab2_conv = 3/2 * conv_n − 1/2 * conv_prev
+        if self._ab2_ready and self._conv_prev is not None:
+            ab2_conv = [
+                1.5 * conv_n[c] - 0.5 * self._conv_prev[c]
+                for c in range(ndim)
+            ]
+        else:
+            ab2_conv = conv_n   # 前進 Euler（n=0）
+
+        # ── 重力・表面張力（陽的，t^{n+1}） ─────────────────────────────
+        grav = self.gravity.compute(rho, vel_n[0].shape)   # −ρ̃/Fr² ẑ
+        st   = self.surface_tens.compute(kappa, psi, ccd)  # κ ∇ψ/We
+
+        # ── IPC 項 −∇p^n（§4 sec:ipc_derivation） ────────────────────────
+        # van Kan (1986) の増分圧力補正：前時刻圧力 p^n を陽的に加える
+        # これにより PPE は圧力増分 δp = p^{n+1}−p^n を解くだけでよくなり
+        # スプリッティング誤差が O(Δt) → O(Δt²) に改善する
+        # CCD D^{(1)} を使用することで balanced-force 条件を満たす（§7 warnbox）:
+        # 表面張力 κ D^{(1)} ψ/We と同一演算子により寄生流れが O(h⁶) まで低減する
+        # 壁面 BC: FVM PPE は Neumann 条件を FVM 意味でのみ満たし CCD 境界値は非ゼロ。
+        # 毎ステップ蓄積されると正帰還ループを生じるため、壁面法線 CCD 勾配を 0 にする。
+        ipc = []
+        for c in range(ndim):
+            dp_dc, _ = ccd.differentiate(state.pressure, c)
+            ccd.enforce_wall_neumann(dp_dc, c)
+            ipc.append(-dp_dc)
+
+        # ── 陽的 RHS の組み立て ────────────────────────────────────────
+        # ρ × ab2_conv = −ρ[3/2 C^n − 1/2 C^{n-1}]（対流項）
+        # grav = −ρ̃/Fr² ẑ（重力項，ρ 因子あり）
+        # st   = κ∇ψ/We（表面張力，ρ 因子なし）
+        # ipc  = −∇p^n（IPC 圧力項）
         explicit_rhs = [
-            rho * conv[c] + grav[c] + st[c]
-            for c in range(self.config.grid.ndim)
+            rho * ab2_conv[c] + grav[c] + st[c] + ipc[c]
+            for c in range(ndim)
         ]
 
-        # ── Viscous term (CN or explicit) ─────────────────────────────────
+        # ── 粘性項（CN または陽的） ────────────────────────────────────
         if self.config.numerics.cn_viscous:
             vel_star = self.viscous.apply_cn_predictor(
                 vel_n, None, explicit_rhs, mu, rho, ccd, dt
@@ -134,7 +186,15 @@ class Predictor:
             visc = self.viscous.compute_explicit(vel_n, mu, rho, ccd)
             vel_star = [
                 vel_n[c] + dt * (explicit_rhs[c] + rho * visc[c]) / rho
-                for c in range(self.config.grid.ndim)
+                for c in range(ndim)
             ]
 
+        # ── AB2 バッファ更新 ──────────────────────────────────────────
+        # conv_n を保存して次ステップの AB2 の「前ステップ項」として使用する
+        # コピーが必要（conv_n は ccd から返る配列で次ステップで上書きされる）
+        xp = self.xp
+        self._conv_prev = [xp.copy(conv_n[c]) for c in range(ndim)]
+        self._ab2_ready = True
+
         return vel_star
+

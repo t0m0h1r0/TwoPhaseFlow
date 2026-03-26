@@ -31,6 +31,7 @@ bicgstab_tol: 1.0e-10
 bicgstab_maxiter: 2000
 
 # ── 境界条件 ─────────────────────────────────────────────────────
+advection_scheme: dissipative_ccd   # §5 Dissipative CCD（デフォルト）; "weno5" も可
 bc_type: wall         # "wall" or "periodic"
 
 # ── ハードウェア ─────────────────────────────────────────────────

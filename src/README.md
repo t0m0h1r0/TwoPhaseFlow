@@ -45,24 +45,24 @@ sim.run(output_interval=20, verbose=True)
 ```
 src/twophase/
 ├── backend.py              — numpy/cupy abstraction                     (all)
-├── config.py               — GridConfig/FluidConfig/NumericsConfig/SolverConfig + SimulationConfig  (§2.4)
+├── config.py               — GridConfig/FluidConfig/NumericsConfig/SolverConfig + SimulationConfig  (§2)
 │
 ├── interfaces/             — ABCs: IPPESolver / INSTerm / ILevelSetAdvection / IReinitializer / ICurvatureCalculator
 │
 ├── simulation/             — SimulationBuilder + TwoPhaseSimulation + BC + Diagnostics  (§9.1)
 │
 ├── core/
-│   ├── grid.py             — Grid, metrics, interface-fitted coords      (§5)
+│   ├── grid.py             — Grid, metrics, interface-fitted coords      (§6)
 │   └── field.py            — ScalarField, VectorField containers
 │
 ├── ccd/
-│   ├── ccd_solver.py       — CCD O(h⁶) differentiation                 (§4)
+│   ├── ccd_solver.py       — CCD O(h⁶) differentiation                 (§5)
 │   └── block_tridiag.py    — Block-tridiagonal LU solver
 │
 ├── levelset/
 │   ├── heaviside.py        — H_ε, δ_ε, material property update        (§3.2–3.3)
 │   ├── curvature.py        — κ = −∇·(∇φ/|∇φ|) via CCD                 (§2.6)
-│   ├── advection.py        — TVD-RK3 + WENO5 CLS advection             (§3.3, §8)
+│   ├── advection.py        — TVD-RK3 + WENO5 CLS advection             (§3.3, §4)
 │   └── reinitialize.py     — Godunov reinitialization PDE              (§3.4)
 │
 ├── ns_terms/
@@ -73,16 +73,16 @@ src/twophase/
 │   └── predictor.py        — assembles all terms → u*                  (§9.1 Step 5)
 │
 ├── pressure/
-│   ├── rhie_chow.py        — face-velocity RC interpolation            (§6.3, §7.4)
-│   ├── ppe_builder.py      — variable-density FVM Laplacian (sparse)   (§7.3)
-│   ├── ppe_solver.py       — BiCGSTAB with ILU(0)                      (§7.4)
-│   ├── ppe_solver_pseudotime.py — MINRES + warm-start alternative
+│   ├── rhie_chow.py        — face-velocity RC interpolation            (§7.3, §8.4)
+│   ├── ppe_builder.py      — variable-density PPE matrix assembly      (§8.3)
+│   ├── ppe_solver.py       — BiCGSTAB with ILU(0)                      (§8.4)
+│   ├── ppe_solver_pseudotime.py — pseudo-time implicit solver (default) (§8.4)
 │   ├── ppe_solver_factory.py    — create_ppe_solver(config, backend, grid)
 │   └── velocity_corrector.py — u^{n+1} = u* − (Δt/ρ̃)∇p              (§9.1 Step 7)
 │
 ├── time_integration/
-│   ├── tvd_rk3.py          — TVD-RK3 (Shu-Osher)                      (§8 Eq.79–81)
-│   └── cfl.py              — convective + viscous CFL                  (§8 Eq.84)
+│   ├── tvd_rk3.py          — TVD-RK3 (Shu-Osher)                      (§4 Eq.79–81)
+│   └── cfl.py              — convective + viscous CFL                  (§4 Eq.84)
 │
 ├── visualization/
 │   ├── plot_scalar.py      — 2D scalar field plots

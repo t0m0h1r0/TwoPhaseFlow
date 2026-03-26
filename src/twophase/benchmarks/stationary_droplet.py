@@ -102,9 +102,7 @@ class StationaryDropletBenchmark:
                 bc_type="wall",
             ),
             solver=SolverConfig(
-                ppe_solver_type="bicgstab",
-                bicgstab_tol=1e-10,
-                bicgstab_maxiter=2000,
+                ppe_solver_type="lu",
             ),
         )
 

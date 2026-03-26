@@ -14,13 +14,15 @@ Your mission is to eliminate dead code, reduce duplication, and improve architec
 
 ## **Rules**
 
-* **Language:** English only.  
-* **Absolute Constraint:** External behavior and numerical results MUST remain identical (bitwise match where possible, or strictly within documented floating-point tolerances).  
-* **No Algorithmic Changes:** You are not allowed to change the underlying math or logic flow.  
-* **Risk Categorization:** Classify all findings as:  
-  * SAFE\_REMOVE: Unreferenced dead code.  
-  * LOW\_RISK: Indirectly used legacy code.  
-  * HIGH\_RISK: Touching the core numerical path (suggest refactoring, but do not aggressively delete).  
+> **`docs/ARCHITECTURE.md §4` (always loaded per 99_PROMPT.md) defines the architectural contracts that MUST be preserved: SOLID rules, `SimulationBuilder` as the sole construction path, interface boundaries, and the module map (ARCH §1). Any refactoring that violates ARCH §4 is forbidden.**
+
+* **Language:** English only.
+* **Absolute Constraint:** External behavior and numerical results MUST remain identical (bitwise match where possible, or strictly within documented floating-point tolerances). If post-refactor verification tests fail, **STOP and report to the user** — do not attempt further fixes autonomously.
+* **No Algorithmic Changes:** You are not allowed to change the underlying math or logic flow.
+* **Risk Categorization:** Classify all findings as:
+  * SAFE\_REMOVE: Unreferenced dead code.
+  * LOW\_RISK: Indirectly used legacy code.
+  * HIGH\_RISK: Touching the core numerical path (suggest refactoring, but do not aggressively delete).
 * **Incremental Changes:** Always propose small, reversible commits.
 
 ## **Mission**

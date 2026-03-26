@@ -55,7 +55,7 @@ YAML は従来のフラット形式（後方互換）とネスト形式の両方
 
 from __future__ import annotations
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 
 def _require_pyyaml() -> Any:
@@ -130,6 +130,7 @@ def load_config(
         L=_get("L", (1.0, 1.0)),
         alpha_grid=_get("alpha_grid", 1.0),
         dx_min_floor=_get("dx_min_floor", 1e-6),
+        eps_g_factor=_get("eps_g_factor", 2.0),
     )
     fluid = FluidConfig(
         Re=_get("Re", 100.0),
@@ -145,6 +146,7 @@ def load_config(
         t_end=_get("t_end", 1.0),
         cn_viscous=_get("cn_viscous", True),
         bc_type=_get("bc_type", "wall"),
+        advection_scheme=_get("advection_scheme", "dissipative_ccd"),
     )
     solver = SolverConfig(
         ppe_solver_type=_get("ppe_solver_type", "bicgstab"),
@@ -152,14 +154,17 @@ def load_config(
         bicgstab_maxiter=_get("bicgstab_maxiter", 1000),
         pseudo_tol=_get("pseudo_tol", 1e-8),
         pseudo_maxiter=_get("pseudo_maxiter", 500),
+        pseudo_c_tau=_get("pseudo_c_tau", 2.0),
     )
 
     # 未知キーの警告
     _known = {
-        "ndim", "N", "L", "alpha_grid", "dx_min_floor",
+        "ndim", "N", "L", "alpha_grid", "dx_min_floor", "eps_g_factor",
         "Re", "Fr", "We", "rho_ratio", "mu_ratio",
         "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
+        "advection_scheme",
         "ppe_solver_type", "bicgstab_tol", "bicgstab_maxiter", "pseudo_tol", "pseudo_maxiter",
+        "pseudo_c_tau",
         "use_gpu",
     }
     for key in raw:
@@ -211,6 +216,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "L":            list(config.grid.L),
         "alpha_grid":   config.grid.alpha_grid,
         "dx_min_floor": config.grid.dx_min_floor,
+        "eps_g_factor": config.grid.eps_g_factor,
         # FluidConfig
         "Re":        config.fluid.Re,
         "Fr":        config.fluid.Fr,
@@ -222,14 +228,16 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "reinit_steps":   config.numerics.reinit_steps,
         "cfl_number":     config.numerics.cfl_number,
         "t_end":          config.numerics.t_end,
-        "cn_viscous":     config.numerics.cn_viscous,
-        "bc_type":        config.numerics.bc_type,
+        "cn_viscous":       config.numerics.cn_viscous,
+        "bc_type":          config.numerics.bc_type,
+        "advection_scheme": config.numerics.advection_scheme,
         # SolverConfig
         "ppe_solver_type":  config.solver.ppe_solver_type,
         "bicgstab_tol":     config.solver.bicgstab_tol,
         "bicgstab_maxiter": config.solver.bicgstab_maxiter,
         "pseudo_tol":       config.solver.pseudo_tol,
         "pseudo_maxiter":   config.solver.pseudo_maxiter,
+        "pseudo_c_tau":     config.solver.pseudo_c_tau,
         # ハードウェア
         "use_gpu": config.use_gpu,
     }
@@ -237,3 +245,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(d, f, default_flow_style=False, allow_unicode=True)
+
+
+# save_config は config_to_yaml の別名（テスト互換性のため）
+save_config = config_to_yaml

@@ -9,9 +9,9 @@
   Step 2 — 再初期化（疑似時間 PDE）
   Step 3 — 物性更新（ρ̃, μ̃）
   Step 4 — 曲率（φ ← H_ε^{-1}(ψ), κ ← CCD）
-  Step 5 — 予測速度 u*（対流 + 粘性 + 重力 + 表面張力）
-  Step 6 — PPE 求解（Rhie-Chow div + IPPESolver）
-  Step 7 — 速度修正 u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
+  Step 5 — 予測速度 u*（AB2 対流 + CN 粘性 + 重力 + 表面張力 − ∇p^n [IPC]）
+  Step 6 — PPE 求解（Rhie-Chow div + IPPESolver）→ δp = p^{n+1}−p^n
+  Step 7 — 速度・圧力補正 u^{n+1} = u* − (Δt/ρ̃) ∇(δp);  p^{n+1} = p^n + δp
 
 使用例::
 
@@ -34,7 +34,7 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Optional, Callable, List, TYPE_CHECKING
+from typing import Optional, Callable, List
 
 from ..backend import Backend
 from ..config import SimulationConfig
@@ -165,15 +165,22 @@ class TwoPhaseSimulation:
         # Step 4: 曲率更新（κ）
         self._update_curvature()
 
-        # Step 5: 予測速度 u*
+        # Step 5: 予測速度 u*（AB2+IPC: state.pressure = p^n を使用）
         state = self._build_flow_state()
         vel_star = self._step_predictor(state, dt)
 
-        # Step 6: PPE 求解 → p^{n+1}
-        p_new = self._step_ppe(vel_star, dt)
+        # Step 5b: 壁面 BC を u* に適用（wall BC のみ）
+        # Rhie-Chow が u* の壁面接線成分（例: u_x at y=0）を参照する前に
+        # ノースリップ条件を強制する．これを省略すると IPC 圧力勾配の
+        # コーナー非対称性（pin ノード p=0 に起因）が u* 壁面成分を
+        # 非ゼロにし，Rhie-Chow 発散に誤差を与えて発散を招く．
+        self._bc_handler.apply(self.vel_star)
 
-        # Step 7: 速度修正 u^{n+1}
-        self._step_correct_velocity(vel_star, p_new, dt)
+        # Step 6: PPE 求解 → δp（IPC 増分法; p^{n+1} = p^n + δp を内部で更新）
+        delta_p = self._step_ppe(vel_star, dt)
+
+        # Step 7: 速度補正 u^{n+1} = u* − (Δt/ρ̃) ∇(δp)
+        self._step_correct_velocity(vel_star, delta_p, dt)
 
         self._bc_handler.apply(self.velocity)
         self.time += dt
@@ -214,26 +221,38 @@ class TwoPhaseSimulation:
         return [self.vel_star[ax] for ax in range(ndim)]
 
     def _step_ppe(self, vel_star: List, dt: float) -> object:
-        """Step 6: Rhie-Chow div → PPE 求解 → p^{n+1} を返す。
+        """Step 6: Rhie-Chow div → PPE 求解（IPC 増分法） → δp を返す。
+
+        IPC 増分法（§4 sec:ipc_derivation, §9 Step 6）:
+            PPE は圧力増分 δp ≡ p^{n+1}−p^n を求解対象とする
+            （初期値 0 ；Rhie-Chow 補正は p^n を使用）．
+            求解後 p^{n+1} = p^n + δp で圧力場を更新する．
 
         Returns
         -------
-        p_new : pressure array at time n+1
+        delta_p : 圧力増分 δp（速度 Corrector に渡す）
         """
         ndim = self.config.grid.ndim
+        # Rhie-Chow 補正発散: self.pressure.data = p^n（Step 5 では未更新）
         div_rc = self.rhie_chow.face_velocity_divergence(
             vel_star, self.pressure.data, self.rho.data, dt,
         )
-        p_new = self.ppe_solver.solve(
-            div_rc / dt, self.rho.data, dt, p_init=self.pressure.data,
+        # δp を解く（IPC: 初期値 0，p^n ではない）
+        delta_p = self.ppe_solver.solve(
+            div_rc / dt, self.rho.data, dt, p_init=None,
         )
-        self.pressure.data = p_new
-        return p_new
+        # p^{n+1} = p^n + δp（§9 Step 7 の圧力更新）
+        self.pressure.data = self.pressure.data + delta_p
+        return delta_p   # 速度 Corrector は ∇(δp) を適用する
 
-    def _step_correct_velocity(self, vel_star: List, p_new: object, dt: float) -> None:
-        """Step 7: u* − (Δt/ρ̃)∇p → u^{n+1} を velocity フィールドに書き込む。"""
+    def _step_correct_velocity(self, vel_star: List, delta_p: object, dt: float) -> None:
+        """Step 7: u* − (Δt/ρ̃)∇(δp) → u^{n+1} を velocity フィールドに書き込む。
+
+        IPC 増分法: 速度補正には圧力増分 δp の勾配を使用する（§9 Step 7）．
+        絶対圧力 p^{n+1} の勾配ではなく δp の勾配である点に注意．
+        """
         ndim = self.config.grid.ndim
-        vel_new = self.vel_corrector.correct(vel_star, p_new, self.rho.data, dt)
+        vel_new = self.vel_corrector.correct(vel_star, delta_p, self.rho.data, dt)
         for ax in range(ndim):
             self.velocity[ax] = vel_new[ax]
 

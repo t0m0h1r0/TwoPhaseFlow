@@ -1,0 +1,410 @@
+% paper/sections/07_collocate.tex
+\section{コロケート格子と圧力速度連成問題}
+\label{sec:collocate}
+
+\subsection{コロケート格子の利点と課題}
+本研究では，すべての物理量（速度 $\bu$, 圧力 $p$, レベルセット $\phi, \psi$）を同一の格子点（セル中心）に配置する\textbf{コロケート格子}（collocated grid）を採用する．この配置は，複雑な形状の境界を扱う際に実装が単純であり，高次精度スキーム（例えば本稿のCCD法）をすべての変数に統一的に適用できるという大きな利点を持つ．
+
+しかし，コロケート格子には特有の課題が存在する．それは，\textbf{圧力と速度の数値的な分離（decoupling）}に起因する，非物理的な振動解（チェッカーボードパターン）が発生しうることである．
+
+\paragraph{なぜチェッカーボード問題が起きるのか：1次元の例}
+
+1次元の運動量方程式（$x$方向）を考えよう．セル $i$ における圧力勾配を単純な中心差分で近似すると，
+\[ \left(\pd{p}{x}\right)_i \approx \frac{p_{i+1} - p_{i-1}}{2\Delta x} \]
+セル $i$ の運動量は隣接するセル $i+1$ と $i-1$ の圧力しか参照せず，$p_i$ 自身は寄与しない．
+圧力場が $\ldots +1, -1, +1, -1, \ldots$ のような波長 $2\Delta x$ の振動を持つ場合，
+どのセルでも $\frac{p_{i+1}-p_{i-1}}{2\Delta x} = 0$ と評価され，
+\textbf{速度場は高周波の圧力振動を「感知」できない}．
+その結果，物理的に意味のないギザギザの圧力解が誤差として残り続ける——
+これが圧力速度デカップリング問題の本質である．
+
+\paragraph{CCD を用いた場合のデカップリング}
+中心差分ではなく CCD を用いる場合も，本質的に同じデカップリング問題が起きる．
+CCD の 1 次微分ステンシルは偶数格子点と奇数格子点を結合する陰的系を解くため，
+2D では $2N \times 2N$ 連立系に $O(N^2)$ 次元のヌル空間が残り，
+波長 $2h$ のチェッカーボードモードを感知しない圧力モードが存在する
+（CCD の周波数応答は $|\hat{D}_k| \to 0$ when $kh \to \pi$）．
+Rhie--Chow 補正は CCD ベースのコロケート格子においてもこのデカップリングを除去するために不可欠である（§\ref{sec:rhie_chow}）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Projection 法の数学的基礎：Helmholtz 分解}
+\label{sec:helmholtz}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+Projection 法を理解するには，まず「速度場の分解」という数学的概念を把握する必要がある．
+
+\subsubsection{Helmholtz 分解定理}
+
+\textbf{Helmholtz 分解}（Helmholtz-Hodge 分解）は，任意のベクトル場を
+「\textbf{発散フリー成分}」と「\textbf{勾配成分（回転フリー）}」に一意分解できるという定理である：
+
+\medskip
+\noindent\textbf{Helmholtz 分解定理：}
+任意の十分滑らかなベクトル場 $\bm{w}$ は，適当なスカラー場 $\Phi$
+（本章ローカル記号；本稿全体での $\phi$ = 符号付き距離関数とは別物）を用いて
+\begin{equation}
+  \bm{w} = \underbrace{\bm{u}}_{\text{発散フリー：}\bnabla\cdot\bm{u}=0}
+           + \underbrace{\bnabla\Phi}_{\text{勾配場（回転フリー）}}
+  \label{eq:helmholtz}
+\end{equation}
+と一意に分解できる（適切な境界条件の下で）．
+
+\subsubsection{Projection 法の幾何学的意味}
+
+Navier-Stokes 方程式を時間離散化すると，
+「圧力なし」の中間速度 $\bu^*$ が得られる．
+この $\bu^*$ は一般に $\bnabla\cdot\bu^* \neq 0$（非圧縮ではない）．
+
+\textbf{Projection 法のアイデア}：
+$\bu^*$ を Helmholtz 分解して発散フリー成分だけを取り出す（「射影する」）．
+\begin{equation}
+  \bu^* = \underbrace{\bu^{n+1}}_{\bnabla\cdot\bu^{n+1}=0}
+          + \underbrace{\bnabla\Phi}_{\text{圧力から生じる補正}}
+  \label{eq:projection_decomp}
+\end{equation}
+ここで補正ポテンシャル $\Phi$ が圧力 $p^{n+1}$（に比例する量）として同定される．
+
+\noindent\textbf{Projection 法の直感的理解．}
+速度場 $\bu^*$ を「発散フリー速度の空間（Leray 空間）」に\textbf{直交射影}する操作が
+Projection 法の本質である．
+
+\textbf{アナロジー（ベクトルの射影）：}
+3次元空間のベクトル $\bm{v}$ を平面（$z=0$）に射影すると $\bm{v}_{xy} = (v_x, v_y, 0)$ が得られる．
+これと同じ発想で，「速度場の空間」において
+$\bu^*$ を「発散ゼロ面」に射影することが Projection 法である．
+
+\textbf{圧力の役割：}
+圧力勾配 $\bnabla p$ は「発散を生む成分」（=勾配場）を $\bu^*$ から取り除くポテンシャルである．
+Navier-Stokes 方程式において圧力が存在する物理的理由は，
+まさにこの「速度場を発散フリーに保つ」ことにある．
+
+\subsubsection{なぜ発散を取ると PPE が得られるのか：数学的論理}
+
+式 \eqref{eq:projection_decomp} の両辺に $\bnabla\cdot$ を作用させる：
+\begin{equation}
+  \bnabla\cdot\bu^*
+  = \underbrace{\bnabla\cdot\bu^{n+1}}_{=0 \text{（非圧縮条件）}}
+  + \bnabla^2\Phi
+  \quad\Longrightarrow\quad
+  \bnabla^2\Phi = \bnabla\cdot\bu^*
+  \label{eq:why_divergence}
+\end{equation}
+
+\noindent\textbf{なぜ発散を取るのか．}
+発散を取る理由は，\textbf{非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$} を使って
+速度 $\bu^{n+1}$ を消去し，圧力ポテンシャル $\Phi$（$\propto p$）だけの方程式を得るためである．
+
+\begin{center}
+\begin{tabular}{rcl}
+\textbf{発散前} & ： & $\bu^{n+1}$ と $\Phi$ の2つの未知数が混在\\
+\textbf{発散後} & ： & $\bnabla\cdot\bu^{n+1}=0$ の代入で $\Phi$ のみの Poisson 方程式\\
+\end{tabular}
+\end{center}
+
+変密度場では $\Phi \propto \Delta t \, p/\rho$ と同定されることで，
+$\bnabla^2\Phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pressure}章§\ref{sec:projection_derivation}）．
+
+\noindent\textbf{注意（等密度仮定）：} 本節（§\ref{sec:helmholtz}）の Projection 法の導出は教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定しており，式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla\Phi$ という純粋な Helmholtz 分解で書けるのはこの仮定のもとでのみである．実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になり，Poisson 方程式が可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Rhie--Chow 補正による問題の解決}
+\label{sec:rhie_chow}
+% ═══════════════════════════════════════════════════════════════════════════════
+この問題を解決するため，Rhie と Chow~\cite{RhieChow1983} によって提案された補間法が広く用いられている．
+その本質は，セル中心の離散化運動量方程式を適切に補間して，セル界面（face）の速度を定義することにある．
+これにより，すべての格子点における圧力が速度の計算に寄与するようになり，デカップリングが抑制される．
+
+\subsubsection{補正された界面速度の定義}
+本稿では，Chung~\cite{Chung2002} に基づく変密度場に対応した形式を用いる．
+東側フェイス $e$ における $x$ 方向速度 $u_e$ は，隣接するセル中心 $P$ と $E$ の値を用いて以下のように定義される．
+\begin{equation}
+ u_e = \overline{u_e} - d_e \left[ \left(\pd{p}{x}\right)_e - \overline{\left(\pd{p}{x}\right)_e} \right]
+ \label{eq:rc-concept}
+\end{equation}
+ここで，
+\begin{itemize}
+    \item $\overline{u_e}$: セル中心 $P, E$ の速度を線形補間した速度．$\overline{u_e} = (u_P+u_E)/2$．
+    \item $(\partial p/\partial x)_e$: フェイス $e$ での圧力勾配．単純な中心差分 $\frac{p_E-p_P}{\Delta x}$ で計算．
+    \item $\overline{(\partial p/\partial x)_e}$: セル中心 $P, E$ で評価された圧力勾配を線形補間したもの．
+    $\overline{(\partial p/\partial x)_e} = \frac{1}{2}\left[ \left(\frac{\partial p}{\partial x}\right)_P + \left(\frac{\partial p}{\partial x}\right)_E \right]$
+    \item $d_e$: 補間係数．運動量方程式から導かれ，時間刻み幅 $\Delta t$ と密度 $\rho$ に依存する．
+    $d_e = (\Delta t / \rho)_e$（式~\eqref{eq:rc-face} 参照）．
+\end{itemize}
+
+Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちらを使うかは，
+その物理量が界面をまたいで\textbf{連続か不連続か}によって決まる：
+\begin{itemize}
+  \item \textbf{$\bar{u}_f$（速度）→ 算術平均 $= (u_P + u_E)/2$}：
+    速度は界面での運動学的接続条件（no-slip，式 \eqref{eq:jump_vel}）により気液界面をまたいでも物理的に\textbf{連続}であるため，単純な線形補間が適切である．
+
+  \item \textbf{$d_f = \Delta t (1/\rho)_f^{\mathrm{harm}}$（密度係数）→ 調和平均}：
+    密度 $\rho$ は界面で\textbf{不連続}（ステップ状の跳び）を持つ．
+    不連続係数の拡散型方程式 $\nabla\cdot(a\nabla p) = q$（$a = 1/\rho$）を有限体積法で離散化するとフラックスの連続性から自然に調和平均が現れ（第\ref{sec:pressure}章），Rhie--Chow 係数に同じ値を使うことで PPE との整合性が保たれる．
+\end{itemize}
+
+\paragraph{補正項の働き}
+式 \eqref{eq:rc-concept} の第2項が Rhie--Chow 補正の核心である．
+この項は「\textbf{フェイス上で直接計算した圧力勾配}」と「\textbf{セル中心の圧力勾配を補間したもの}」との\textbf{差}に比例する．
+\begin{itemize}
+    \item \textbf{滑らかな圧力場の場合}：
+    圧力場が滑らかであれば，2つの圧力勾配の評価方法はほぼ同じ値を与えるため，補正項は自然にゼロに近くなる．
+    \item \textbf{チェッカーボード圧力場の場合}：
+    圧力場がギザギザの場合，フェイスでの勾配 $(p_E-p_P)/\Delta x$ は大きな値を持つが，セル中心での勾配の平均 $\overline{(\partial p/\partial x)_e}$ はゼロに近くなる．
+    この差が大きな補正量となり，非物理的な振動を効果的に\textbf{減衰（damping）}させる働きをする．
+\end{itemize}
+
+\subsubsection{本研究における実装形式}
+\label{sec:rc_implementation}
+最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の実装形式を用いる
+（\textbf{現行コード実装}；表面張力補正項を加えた完全形式 \eqref{eq:rc-face-balanced} については §\ref{sec:rc_balanced_force} を参照）．
+\begin{equation}
+ u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho^{n+1}} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
+ \label{eq:rc-face}
+\end{equation}
+ここで，$(\nabla p^n)_f$ はフェイスにおける\textbf{前時刻圧力 $p^n$ の勾配}（陽的評価），
+$\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である
+（新圧力 $p^{n+1}$ は PPE を解く前の段階では未知であるため，Rhie--Chow 補正は $p^n$ を用いた陽的処理となる；
+詳細は第\ref{sec:pressure}章，式~\eqref{eq:rc_divergence} 参照）．
+係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には\textbf{現時刻密度 $\rho^{n+1}$ の調和平均}を用いる．
+この選択には以下の2つの独立した根拠がある：
+
+\noindent\textbf{（根拠1）既知量であること：}
+$\rho^{n+1}$ は CLS 移流 Step~3 完了後に確定しており，Predictor（Step~5）・PPE（Step~6）の開始前に既知である
+（$\rho^{n+1}$ は界面追跡で決まる密度であり，PPE で初めて決定される圧力 $p^{n+1}$ とは本質的に異なる量；
+Step 3 での密度更新の詳細は§\ref{sec:algorithm}参照）．
+
+\noindent\textbf{（根拠2）PPE 演算子との密度時刻の整合性（Balanced-Force 条件）：}
+PPE の演算子 $\mathcal{L}_{\mathrm{CCD}}^{\rho}$（式~\eqref{eq:varrho_product_rule}）も $\rho^{n+1}$ を係数として使用する．
+Rhie--Chow 面係数と PPE 演算子で\textbf{同一の密度時刻 $\rho^{n+1}$} を使うことで，
+離散 Projection 法全体の演算子整合性が保たれ，Balanced-Force 条件が維持される
+（もし異なる時刻の密度を混用すると，面係数と演算子の間に $\Ord{h^2}$ の不整合が生じ，
+界面近傍での寄生流れキャンセレーションが局所的に失われる）．
+
+\medskip
+その調和平均形式の導出根拠を以下で丁寧に説明する．
+
+\paragraph{熱伝導の類比}
+この状況は，異なる熱伝導率 $\lambda_P, \lambda_E$ を持つ2つのセル間の熱フラックス計算と全く同じ構造である．
+熱伝導方程式 $\bnabla \cdot (\lambda \bnabla T) = 0$ の界面フラックスを正しく評価するには，
+\[ \lambda_f = \frac{2\lambda_P \lambda_E}{\lambda_P + \lambda_E} \quad (\text{調和平均}) \]
+を用いなければならない（単純算術平均では界面の熱抵抗を過小評価する）．
+Rhie--Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやすさ（移動度）」とみなした場合の，全く同じ論理に基づいている．
+
+\begin{tcolorbox}[warnbox, title={実装上の確認事項}]
+算術平均と調和平均の値の差は，\textbf{密度比が大きいほど顕著}になる：
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+流体系 & $\rho_l/\rho_g$ & $(1/\rho)^{\mathrm{arith}}_f \cdot \rho_g$ & $(1/\rho)^{\mathrm{harm}}_f \cdot \rho_g$ \\
+\hline
+水・水蒸気 & $10$ & $0.55$ & $0.18$ \\
+水・空気（常温） & $1000$ & $\approx 0.500$ & $\approx 0.002$ \\
+\hline
+\end{tabular}
+\end{center}
+密度比1000の場合，算術平均は調和平均の約250倍の値を与える．
+これほど大きな補正係数の差は，界面近傍の速度場に壊滅的な数値振動をもたらす．
+\end{tcolorbox}
+
+この形式により，変密度場においても数値的に安定した圧力速度連成が保証される．
+
+補正検出項 $[(\nabla p)_f - \overline{(\nabla p)}_f]$ は $\Ord{h^2}$ の大きさを持つが，
+これは CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，CCD の $\Ord{h^6}$ を
+律速する新たな誤差源とはならない．詳細なテイラー展開による検証は付録~\ref{app:rc_precision} を参照されたい．
+
+\noindent\textbf{【重要】PPE 右辺での Rhie--Chow 発散の必須使用：}
+式~\eqref{eq:rc-face} の Rhie--Chow 補正済みフェイス速度を定義した後，
+\textbf{PPE 右辺の発散計算にも必ずこのフェイス速度の発散 $\nabla_h^{\mathrm{RC}}\cdot\bu^*$（式~\eqref{eq:rc_divergence}）を使用しなければならない}．
+よくある実装ミスとして，PPE 右辺に「セル中心発散 $D_x^{(1)}u^* + D_y^{(1)}v^*$」を代用してしまうケースがある．
+これを行うと，Rhie--Chow 補正でフェイス速度から除去したチェッカーボード（$2\Delta x$ 波長）成分が
+PPE 右辺を経由して圧力解に「逆流」し，圧力場に高周波振動が再生する
+（詳細は第\ref{sec:pressure}章，§\ref{sec:rc_divergence} 参照）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Balanced-Force 離散化：寄生流れ抑制のための実装要件}
+\label{sec:balanced_force}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，第\ref{sec:governing}章（§\ref{sec:csf}）で予告した
+\textbf{Balanced-Force 離散化条件}の詳細を述べる．
+これは寄生流れ（spurious currents，第\ref{sec:intro}章§\ref{sec:failure_modes}）を
+抑制するための最も重要な実装要件である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{寄生流れと計算爆発の根本原因：離散化演算子の不一致}
+\label{sec:bf_operator_mismatch}
+% ─────────────────────────────────────────────────────────────────────────────
+
+静止液滴の平衡状態を考える．速度 $\bu=\bm{0}$ のとき，Navier-Stokes 方程式（式~\eqref{eq:NS_dimless_cls}）の運動量バランスは，圧力勾配と表面張力が完全に釣り合う状態：
+\[
+  \bnabla p = \frac{\kappa\bnabla\psi}{We}
+\]
+を要求する．数値シミュレーションで寄生流れを完全に排除するためには，\textbf{離散化空間においてもこの等式が厳密に成立}しなければならない．離散化演算子を $G$ と表すと，
+\[
+  G_p(p) = G_\sigma\!\left(\frac{\kappa\bnabla\psi}{We}\right)
+\]
+が要求される．
+
+本稿の PPE では圧力勾配の計算 $G_p$ に高次精度 CCD 演算子 $D^{(1)}_{\mathrm{CCD}}$ を用いる．一方，表面張力の空間微分 $G_\sigma$ に低次の有限差分 $D^{(1)}_{\mathrm{FD}}$（例：2次中心差分）を用いると，平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ のもとで先行項が相殺した後の残差は：
+\begin{equation}
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{FD}}\psi
+  = \Ord{h^2} \neq \bm{0}
+  \label{eq:bf_operator_mismatch}
+\end{equation}
+となる（CCD の打ち切り誤差 $\Ord{h^6}$ と FD の $\Ord{h^2}$ の差 $\approx \Ord{h^2}$ が残差を支配する；付録~\ref{app:balanced_force_taylor} に導出）．この $\Ord{h^2}$ の不整合が静止しているべき流体を加速させる\textbf{人工的な体積力（駆動源）}として毎ステップ運動量方程式に現れる．固定外力であれば有界な応答しか生まないが，本問題では\textbf{正帰還ループ}が成立する：寄生速度が CLS 移流を通じてインターフェース形状を変形させ，変形した界面が曲率 $\kappa$ の誤差を増幅し，さらに大きな表面張力の不整合を生む，という連鎖である．特にコロケート格子では，変密度 PPE の離散演算子がチェッカーボードモード（波長 $2h$）に対してほぼ零固有値を持つ（§\ref{sec:rhie_chow} の圧力デカップリング参照）．この駆動力がその零モード方向に投影されると，PPE ソルバの収束をほぼ妨げず，補正速度に $O(1/\lambda_{\min})$ の増幅が生じる（$\lambda_{\min} \approx 0$ はチェッカーボードの固有値）．Rhie--Chow 補正を省略または誤実装した状態では，この増幅がステップごとに積算されて指数的増大を招き，\textbf{最終的に計算の爆発（発散）}を引き起こす（§\ref{sec:bench_droplet} の静止液滴ベンチマーク参照）．
+
+\noindent\textbf{コード実装との整合性（必須確認事項）：}
+本稿のコードでは，以下の 3 箇所すべてに $D^{(1)}_\mathrm{CCD}$ を用いており，
+式~\eqref{eq:bf_operator_mismatch} の不整合はゼロに設計されている：
+\begin{enumerate}
+  \item \texttt{SurfaceTensionTerm.compute()}: $\bm{f}_\sigma = (\kappa/We)\,D^{(1)}_\mathrm{CCD}\psi$
+  \item \texttt{Predictor.compute()} IPC 項: $-D^{(1)}_\mathrm{CCD} p^n$（前時刻圧力勾配）
+  \item \texttt{VelocityCorrector.correct()}: $-({\Delta t}/{\rho})\,D^{(1)}_\mathrm{CCD}(\delta p)$（速度補正；§\ref{sec:bench_droplet} の静止液滴ベンチマークで定量的に確認済み）
+\end{enumerate}
+
+\begin{tcolorbox}[warnbox, title={Balanced-Force 条件：実装上の最重要事項}]
+\textbf{Balanced-Force 条件：}
+圧力勾配項 $-\bnabla p$ と表面張力項 $(\kappa\bnabla\psi)/We$ に，
+\textbf{完全に同一の離散差分演算子}を用いなければならない．
+
+本稿の実装では CCD 法による1次微分演算子 $D_x^{(1)}, D_y^{(1)}$（第\ref{sec:CCD}章）を用いる：
+\begin{align}
+  \text{圧力勾配：} & \quad
+    -D_x^{(1)} p_{i,j}, \quad -D_y^{(1)} p_{i,j}
+    \label{eq:balanced_pressure} \\
+  \text{表面張力：} & \quad
+    \frac{\kappa_{i,j}}{We} D_x^{(1)} \psi_{i,j}, \quad
+    \frac{\kappa_{i,j}}{We} D_y^{(1)} \psi_{i,j}
+    \label{eq:balanced_surface}
+\end{align}
+
+\textbf{守らなければならないこと：}
+\begin{enumerate}
+  \item 圧力勾配と表面張力の両方に\textbf{同一の演算子} $D_x^{(1)}, D_y^{(1)}$ を使う．
+        「圧力には2次中心差分，表面張力には CCD」という組み合わせは\textbf{不可}．
+        \textbf{注：} 第~\ref{sec:dissipative_ccd}節の Dissipative CCD フィルタは
+        CLS 移流（$\psi$ 輸送方程式）および NS 対流項の速度場デノイジング専用であり，
+        式~\eqref{eq:balanced_pressure}--\eqref{eq:balanced_surface}の
+        $\nabla p$ と $\kappa\nabla\psi/We$ には\textbf{標準 CCD} $D^{(1)}$ を使用する——
+        Balanced-Force 整合性はこれにより完全に維持される．
+  \item 曲率 $\kappa_{i,j}$ の計算は Balanced-Force 条件の論理的必須要件ではない（$\kappa$ はスカラーとして先確定；$D^{(1)}\psi$ の演算子整合性のみが問題）．ただし精度向上のため CCD 演算子の使用を\textbf{強く推奨する}（§\ref{sec:curvature_stab} 参照）．
+  \item Rhie--Chow 拡張形式（式~\eqref{eq:rc-face-balanced}）のセル中心平均には\textbf{同一の CCD 演算子}を用いること（平衡状態でのキャンセルに必須；§\ref{sec:rc_balanced_force} 参照）．
+\end{enumerate}
+
+\textbf{やってはいけないこと（実装バグの典型例）：}
+\begin{itemize}
+  \item 表面張力項の計算だけ別ルーティンで2次差分を使う．
+  \item 圧力 Poisson 方程式の係数行列と Rhie--Chow 係数で
+        異なる密度補間（算術平均 vs 調和平均）を混在させる（§\ref{sec:rc_implementation} 参照）．
+  \item 再初期化直後と曲率計算のタイミングがずれて，$\psi$ と $\phi$ の整合性が失われる状態で
+        表面張力を計算する（§\ref{sec:curvature_stab} 参照）．
+\end{itemize}
+
+\noindent\textbf{結論：} Balanced-Force 条件は精度向上の選択肢ではなく，
+本 CCD フレームワークにおける\textbf{安定性の理論的必須条件}である．
+式~\eqref{eq:bf_operator_mismatch} の $\Ord{h^2}$ 不整合は毎ステップ蓄積して正帰還ループを形成し，
+統一演算子なしには計算の爆発が回避できない．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Rhie--Chow 補正への表面張力項の拡張：フェイス速度への Balanced-Force 反映}
+\label{sec:rc_balanced_force}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{【注意：本節の拡張形式は将来実装の提案であり，現行コードには未実装である。】}
+現行コード（\texttt{rhie\_chow.py}）は §\ref{sec:rc_implementation}（式~\eqref{eq:rc-face}）の
+圧力補正のみの形式を実装している．
+本節では，Balanced-Force の論理をフェイス速度の計算にも\textbf{完全に}反映させるための
+拡張形式を設計提案として詳述する．表面張力支配の問題（$We \ll 1$）への適用を計画している読者はこの提案を参照されたい．
+
+§\ref{sec:rc_implementation}（式~\eqref{eq:rc-face}）の圧力補正のみの形式は現行コード実装である．しかし Balanced-Force の論理をフェイス速度の計算にも完全に反映させるためには，表面張力体積力の差分項を加えた拡張形式が必要である：
+\begin{equation}
+  u_f = \bar{u}_f
+    - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
+    \Biggl[
+      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}_f\Bigr)
+      - \Bigl((\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f\Bigr)
+    \Biggr]
+  \label{eq:rc-face-balanced}
+\end{equation}
+
+\noindent\textbf{時刻レベルの注意：}
+式~\eqref{eq:rc-face-balanced} では圧力項に $p^n$（前時刻），表面張力項に $f_\sigma^{n+1}$（現時刻）を用いる．
+これは $O(\Delta t)$ の不整合を生じるが，IPC スプリッティング（§\ref{sec:ipc_derivation}）の
+全体的な時刻精度 $O(\Delta t^2)$ を損なわない：$p^n$ から $p^{n+1}$ への差分が $O(\Delta t)$ であるのに対し，
+この時刻ずれは IPC 誤差と同次のものとして吸収される（van Kan (1986)~\cite{vanKan1986} 参照）．
+
+ここで各量の定義は以下の通りである：
+\begin{itemize}
+  \item $(\bm{f}_\sigma^{n+1})_f = (\kappa_f^{n+1}/We)\cdot(\psi_E^{n+1}-\psi_P^{n+1})/h$：
+        フェイス $f$ での表面張力体積力．$\kappa_f^{n+1} = \tfrac{1}{2}(\kappa_P^{n+1}+\kappa_E^{n+1})$（算術平均），$\psi^{n+1}$ は CLS 移流 Step~3 完了後の更新済み値を用いる（$\kappa^{n+1}$ も同様）．
+  \item $\overline{(\bm{f}_\sigma^{n+1})}_f = \tfrac{1}{2}[(\bm{f}_\sigma^{n+1})_P + (\bm{f}_\sigma^{n+1})_E]$：
+        セル中心 $P, E$ の表面張力体積力の算術平均補間値．\textbf{必須：} セル中心値 $(\bm{f}_\sigma^{n+1})_c = (\kappa_c^{n+1}/We)\,D^{(1)}_{\mathrm{CCD}}\psi^{n+1}\big|_c$ には CCD 演算子を使用する（Balanced-Force 整合性条件，式~\eqref{eq:balanced_surface}）．
+\end{itemize}
+
+\noindent\textbf{現行実装との差異：} 現行実装（\texttt{rhie\_chow.py}）は式~\eqref{eq:rc-face}（圧力補正のみ）を実装している．式~\eqref{eq:rc-face-balanced} の表面張力補正項は未実装であり，\texttt{face\_velocity\_divergence} の引数に \texttt{kappa}，\texttt{psi} を追加する API 変更を伴う．表面張力支配の問題（$We \ll 1$，寄生流れが顕著な系）では式~\eqref{eq:rc-face-balanced} の実装が推奨される．
+
+\paragraph{なぜ同一演算子が必須か：フェイス補正項のキャンセル論理}
+
+平衡状態では，\textbf{フェイス直接差分}レベルで：
+\[
+  (\bnabla p^n)_f = \frac{p_E - p_P}{h}
+  \approx \frac{(\kappa/We)(\psi_E - \psi_P)}{h}
+  = (\bm{f}_\sigma^{n+1})_f \quad \bigl(+\,\Ord{h^2}\bigr)
+\]
+両者はともに $O(h^2)$ 精度の直接差分で同じ物理量を近似するためほぼキャンセルする．
+
+一方，\textbf{セル中心平均}レベルでは，圧力勾配に CCD（$O(h^6)$），表面張力に FD（$O(h^2)$）を使うと：
+\[
+  \overline{(\bnabla p^n)}_f - \overline{(\bm{f}_\sigma^{n+1})}_f
+  = \bigl[\nabla p + \Ord{h^6}\bigr] - \bigl[(\kappa/We)\nabla\psi + \Ord{h^2}\bigr]
+  = \Ord{h^2} \neq 0
+\]
+この $O(h^2)$ の残差が RC 補正の括弧内に現れ，フェイス速度に非物理的な湧き出しを生じさせる．これが PPE 右辺の発散計算を通じて圧力解に逆流し，ポアソンソルバの収束性を悪化させ，計算の爆発につながる（式~\eqref{eq:bf_operator_mismatch}；詳細は付録~\ref{app:balanced_force_taylor}）．
+
+\medskip
+\noindent\textbf{注（曲率 $\kappa$ の評価との切り離し）：}
+Balanced-Force の要請は「圧力勾配 $\bnabla p$ 全体」と「体積力ベクトル $\bm{f}_\sigma = (\kappa/We)\bnabla\psi$ 全体」の演算子整合性であり，\textbf{曲率 $\kappa$ 自体の計算演算子とは独立}である（$\kappa$ はスカラー量として先に確定し，$D^{(1)}\psi$ の微分演算のみが Balanced-Force に関与する）．ただし，曲率評価にも CCD の $D^{(1)}, D^{(2)}, D^{(11)}_{xy}$ を用いることで界面形状がより正確に反映され，系全体の精度が向上する（§\ref{sec:curvature_stab}）．
+
+Rhie--Chow 補正と Balanced-Force 条件の独立性については付録~\ref{app:rc_precision} 末尾を参照されたい．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Balanced-Force 実装の確認方法}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[algbox, title={静止液滴テスト：Balanced-Force の検証手順}]
+\begin{enumerate}
+  \item \textbf{初期条件：} 計算領域中央に半径 $R$ の円形液滴を置く．
+        速度 $\bm{u} = \bm{0}$，圧力は Young-Laplace 解 $p = \sigma\kappa = -\sigma/R$（液相内）．
+
+  \item \textbf{時間発展：} 数十タイムステップ計算する．
+        Balanced-Force が正しく実装されていれば，速度は CSF モデル誤差が律速する
+        $O(\varepsilon^2) \approx O(h^2)$ レベルに留まる
+        （例：$N=64$ で $\|\bm{u}\|_{L^\infty} \lesssim 10^{-3}$〜$10^{-4}$ 程度）．
+        CSF が界面を有限厚さ $\varepsilon \sim h$ で近似する限り，
+        \textbf{モデル誤差 $O(h^2)$} が寄生流れの下限を決めるため，
+        機械精度への収束は物理的に不可能である（付録~\ref{app:balanced_force_taylor}）．
+
+  \item \textbf{収束確認：} 格子幅 $h$ を変えながら最大速度振幅
+        \[
+          U_{\mathrm{max}}(h) = \|\bm{u}\|_{L^\infty}
+        \]
+        を測定し，$U_{\mathrm{max}}(h) = O(h^q)$（$q \approx 2$）の収束を確認する．
+        CSF モデルの界面厚さ $\varepsilon \sim O(h)$ に起因するモデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+        が律速するため，Balanced-Force + CCD を正しく実装しても収束次数は $q \approx 2$ となる
+        （付録~\ref{app:balanced_force_taylor}，§3）．
+        Balanced-Force の効果は収束\textbf{次数}の改善ではなく，収束\textbf{係数}の大幅な低減
+        ——例えば $U_{\mathrm{max}}$ が $O(10^{-1})$〜$O(1)$（実装ミス）から
+        $O(10^{-3})$〜$O(10^{-4})$（正しい実装）へ——として現れる（§\ref{sec:bench_droplet} 参照）．
+
+  \item \textbf{失敗の兆候：} $U_{\mathrm{max}}$ が$O(1)$〜$O(10^{-2})$程度で収束しない場合，
+        以下を確認する：
+        \begin{itemize}
+          \item 圧力勾配と表面張力に同一の差分演算子を使っているか？
+          \item Rhie--Chow の密度係数と PPE の係数に同じ調和平均を使っているか？
+          \item 曲率計算と表面張力の計算タイミングが整合しているか？
+          \item 表面張力支配の問題（$We \ll 1$）では，式~\eqref{eq:rc-face-balanced} の
+                表面張力補正項を Rhie--Chow に追加しているか（§\ref{sec:rc_balanced_force} 参照）？
+        \end{itemize}
+\end{enumerate}
+\end{tcolorbox}

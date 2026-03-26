@@ -1,0 +1,97 @@
+% paper/sections/10_verification.tex
+\section{検証指標とベンチマーク}
+\label{sec:verification}
+
+数値計算の信頼性を確認するため，以下の指標と段階的ベンチマークを用いる．
+検証は「単純な設定で理論解と一致するか」を確認するものであり，
+複雑なシミュレーションへの移行前に必ず実施すべき手順である．
+
+\subsection{定量的検証指標}
+
+\begin{table}[htbp]
+\centering
+\caption{数値検証の指標と許容誤差（内部整合性チェック）}
+\label{tab:verification}
+\begin{tabular}{p{35mm}p{40mm}p{35mm}c}
+\toprule
+検証項目 & 理論値/解析解 & チェック方法 & 許容誤差 \\
+\midrule
+CCD 精度収束 & $\Ord{h^6}$ & $f=\sin x$ 格子精緻化 & スロープ確認\\
+Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 10^{-4}$\\
+体積保存 & $\int\psi\,dV = \text{const}$ & タイムステップ毎積分 & $< 0.1\%$\\
+非圧縮性 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
+静水圧テスト & $p = \rho g z$ & 寄生流れの有無 & $< 10^{-12}$\\
+毛管波周波数 & 分散関係式 & 時系列 FFT 比較 & $< 1\%$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{格子収束テスト（精度次数の定量的確認）}
+\label{sec:grid_convergence}
+
+本テキストの主要な技術的主張は「CCD 法による $O(h^6)$ 精度の曲率計算」である．
+この主張を定量的に検証するための手順を以下に示す．
+
+\subsubsection{曲率計算の精度収束テスト}
+
+\begin{tcolorbox}[algbox, title={曲率 $\kappa$ の格子収束テスト手順}]
+\textbf{解析解：} 原点中心，半径 $R=0.5$ の円．$\phi(x,y) = \sqrt{x^2+y^2} - R$，解析曲率 $\kappa = -1/R = -2$．
+
+\textbf{格子設定：} $N = 16, 32, 64, 128, 256$（$N$ は各方向の格子点数），
+$h = 2R/N = 1/N$（一様格子）．
+
+\textbf{誤差計算：}
+$E_\kappa(h) = \|\kappa_h - (-1/R)\|_{L^\infty}$（界面 $|\phi| < \varepsilon$ 上の最大誤差）
+
+\textbf{収束次数の計算：} 連続する2格子の誤差から：
+$p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
+\end{tcolorbox}
+
+\begin{table}[htbp]
+\centering
+\caption{CCD 法による曲率計算の格子収束テスト（目標値）}
+\label{tab:grid_conv}
+\begin{tabular}{ccc}
+\toprule
+$N$ & $E_\kappa$ (目標値) & 収束次数 $p$ \\
+\midrule
+$16$  & $\sim 1 \times 10^{-4}$ & --- \\
+$32$  & $\sim 1.6 \times 10^{-6}$ & $\approx 6$ \\
+$64$  & $\sim 2.5 \times 10^{-8}$ & $\approx 6$ \\
+$128$ & $\sim 3.9 \times 10^{-10}$ & $\approx 6$ \\
+$256$ & $\sim 6.1 \times 10^{-12}$ & $\approx 6$ \\
+\bottomrule
+\end{tabular}
+
+\medskip
+注：格子を半分にする（$h \to h/2$）と誤差が $1/64$ 倍（$\approx 1.6\%$）になるはず．
+\end{table}
+
+\subsubsection{静止液滴における寄生流れの収束テスト}
+
+\noindent\textbf{寄生流れ振幅の格子収束確認．}
+静止液滴ベンチマーク（ベンチマーク1，\ref{sec:bench_droplet}節）において，
+寄生流れ振幅の格子収束次数を確認する．
+
+\textbf{測定量：} $\|\bm{u}_\text{para}\|_\infty = \max_{i,j}\sqrt{u_{i,j}^2 + v_{i,j}^2}$
+（時刻 $t = 0.1$ において計測）
+
+\textbf{期待される収束：}
+\begin{center}
+\begin{tabular}{ccc}
+\hline
+$N$ & $\|\bm{u}_\text{para}\|_\infty / (\sigma/\mu)$（目標） & 収束次数 \\
+\hline
+$32$ & $\sim 10^{-3}$ & --- \\
+$64$ & $\sim 6 \times 10^{-5}$ & $\approx 4$ \\
+$128$ & $\sim 4 \times 10^{-6}$ & $\approx 4$ \\
+\hline
+\end{tabular}
+\end{center}
+
+寄生流れが $O(h^4)$ 以上（$p \ge 4$）で収束すれば，CCD 高精度化の効果が確認される
+（この $N=32\sim128$ の中程度解像度では CSF モデル誤差 $O(\varepsilon^2)\approx O(h^2)$ がまだ
+支配的でなく，離散化誤差が現れる前漸近的な挙動；§\ref{sec:balanced_force}，§\ref{sec:accuracy_summary}参照）．
+$O(h^2)$ 以下（$p < 2$）の場合は，Balanced-Force 離散化またはその実装に問題がある（§\ref{sec:balanced_force}参照）．
+漸近的な理論精度は CSF モデル誤差に律速された $O(h^2)$ である（§\ref{sec:conclusion}）．
+

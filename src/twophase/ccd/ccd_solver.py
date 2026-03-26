@@ -64,23 +64,40 @@ class CCDSolver:
     ----------
     grid    : Grid object describing node positions and spacings.
     backend : Backend carrying the array namespace ``xp``.
+    bc_type : 'wall' (default) or 'periodic'.
+              'wall'     — one-sided compact scheme at boundaries (O(h⁵)).
+              'periodic' — block-circulant system for all N nodes; node N
+                           is treated as the periodic image of node 0 and
+                           its derivative is set equal to node 0 after the
+                           solve.  Uses a dense LU factorisation of the
+                           2N×2N block-circulant matrix (pre-computed once).
 
-    The solver pre-factorise the block-tridiagonal system once per axis
-    during ``__init__``, so ``differentiate()`` calls are cheap.
+    The solver pre-factorise the block-tridiagonal (or block-circulant)
+    system once per axis during ``__init__``, so ``differentiate()``
+    calls are cheap.
     """
 
-    def __init__(self, grid: "Grid", backend: "Backend"):
+    def __init__(self, grid: "Grid", backend: "Backend", bc_type: str = "wall"):
         self.grid = grid
         self.backend = backend
         self.xp = backend.xp
         self.ndim = grid.ndim
+        self.bc_type = bc_type
 
-        # Build one solver per axis
+        # Build one solver per axis (wall BC)
         self._solvers: dict = {}
         for ax in range(self.ndim):
             n_pts = grid.N[ax] + 1
             h = float(grid.L[ax] / grid.N[ax])   # uniform spacing for CCD system
             self._solvers[ax] = self._build_axis_solver(n_pts, h)
+
+        # Build periodic solvers if needed (block-circulant, dense LU)
+        self._periodic_solvers: dict = {}
+        if bc_type == "periodic":
+            for ax in range(self.ndim):
+                n_pts = grid.N[ax] + 1
+                h = float(grid.L[ax] / grid.N[ax])
+                self._periodic_solvers[ax] = self._build_axis_solver_periodic(n_pts, h)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -93,6 +110,10 @@ class CCDSolver:
     ):
         """Compute first and second derivatives along ``axis``.
 
+        When ``bc_type='periodic'`` (and no bc_left/bc_right overrides),
+        the periodic block-circulant solver is used instead of the
+        one-sided boundary scheme.
+
         Parameters
         ----------
         data    : array_like, shape ``grid.shape``
@@ -104,6 +125,54 @@ class CCDSolver:
         -------
         d1 : array, same shape as ``data`` — ∂data/∂x_axis
         d2 : array, same shape as ``data`` — ∂²data/∂x_axis²
+        """
+        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+            return self._differentiate_periodic(data, axis)
+
+        d1, d2 = self._differentiate_wall_raw(data, axis, bc_left, bc_right)
+
+        # Non-uniform grid: transform from ξ-space back to x-space (§4.9)
+        if not self.grid.uniform:
+            d1, d2 = self._apply_metric(d1, d2, axis)
+
+        return d1, d2
+
+    def differentiate_raw(self, data: np.ndarray, axis: int):
+        """Compute CCD derivatives in ξ-space without metric transformation.
+
+        Used exclusively for grid metric computation (§6 Step 5): call with the
+        physical coordinate array x[i] on the uniform computational grid to obtain
+        dx/d(x_unif) and d²x/d(x_unif)², from which J and ∂J/∂ξ are derived.
+
+        The input ``data`` must be a 1-D array of shape ``(N[axis]+1,)``.  It is
+        internally embedded into an N-dimensional array so that ``axis`` picks the
+        correct pre-factored CCD solver.
+
+        Parameters
+        ----------
+        data : 1-D numpy array, shape ``(N[axis]+1,)``
+        axis : spatial axis (0, 1, or 2)
+
+        Returns
+        -------
+        d1 : 1-D numpy array — ∂data/∂x_unif in ξ-space
+        d2 : 1-D numpy array — ∂²data/∂x_unif² in ξ-space
+        """
+        arr = np.asarray(data).ravel()
+        # Embed 1-D coords into an N-D array with shape[axis]=N+1, all others=1,
+        # so that moveaxis(data, axis, 0) gives (N+1, 1) regardless of axis value.
+        shape = [1] * self.ndim
+        shape[axis] = -1
+        data_nd = arr.reshape(shape)
+        d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
+        return np.asarray(d1_nd).ravel(), np.asarray(d2_nd).ravel()
+
+    def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
+        """Wall-BC CCD solve in ξ-space, no metric transformation.
+
+        Core computation shared by ``differentiate()`` (wall path) and
+        ``differentiate_raw()`` (metric computation).  Returns ξ-space
+        derivatives in the same shape as ``data``.
         """
         xp = self.xp
         info = self._solvers[axis]
@@ -159,12 +228,33 @@ class CCDSolver:
         # Restore original shape
         d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
         d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
-
-        # Non-uniform grid: transform from ξ-space back to x-space (§4.9)
-        if not self.grid.uniform:
-            d1, d2 = self._apply_metric(d1, d2, axis)
-
         return d1, d2
+
+    def enforce_wall_neumann(self, grad, ax: int) -> None:
+        """Zero CCD gradient at wall boundaries (Neumann BC: ∂p/∂n = 0).
+
+        No-op when ``bc_type != 'wall'``.
+
+        The CCD one-sided boundary stencil gives a nonzero wall-normal gradient
+        even when the physical BC is zero-flux.  Explicitly zeroing the boundary
+        planes corrects for this and prevents accumulating IPC feedback errors.
+
+        Used by both ``VelocityCorrector`` and ``Predictor`` (IPC term) so that
+        the zeroing logic lives in one place (DRY).
+
+        Parameters
+        ----------
+        grad : array — gradient field (modified in-place)
+        ax   : int   — axis along which the wall boundaries are zeroed
+        """
+        if self.bc_type != "wall":
+            return
+        sl_lo = [slice(None)] * grad.ndim
+        sl_hi = [slice(None)] * grad.ndim
+        sl_lo[ax] = 0
+        sl_hi[ax] = -1
+        grad[tuple(sl_lo)] = 0.0
+        grad[tuple(sl_hi)] = 0.0
 
     # ── Build per-axis solver ─────────────────────────────────────────────
 
@@ -173,8 +263,8 @@ class CCDSolver:
         n_int = N - 1
         assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
 
-        bc_left = _boundary_coeffs_left(h)
-        bc_right = _boundary_coeffs_right(h)
+        bc_left = _boundary_coeffs_left(h, n_pts)
+        bc_right = _boundary_coeffs_right(h, n_pts)
 
         # Original off-diagonal blocks (before boundary absorption)
         L0 = np.array([[_ALPHA1, _B1 * h],
@@ -210,6 +300,97 @@ class CCDSolver:
             'bc_right': bc_right,
         }
 
+    # ── Periodic solver ───────────────────────────────────────────────────
+
+    def _build_axis_solver_periodic(self, n_pts: int, h: float) -> dict:
+        """Build block-circulant CCD solver for periodic BC.
+
+        For a periodic domain sampled at N+1 nodes (0..N) with node N = node 0,
+        the N unique DOFs (0..N-1) all use the standard interior CCD stencil
+        with wrap-around neighbours.
+
+        The resulting 2N×2N block-circulant system is pre-factorised once
+        using scipy dense LU.  At solve time each batch column is solved in
+        one call via lu_solve.
+        """
+        from scipy.linalg import lu_factor
+        N = n_pts - 1   # number of unique nodes (node N is the periodic image of node 0)
+        assert N >= 3, f"Need ≥ 3 unique nodes for periodic CCD; got {N}"
+
+        lower_blk = np.array([[_ALPHA1,  _B1 * h],
+                               [_B2 / h,  _BETA2]])   # left-neighbour coupling
+        upper_blk = np.array([[_ALPHA1, -_B1 * h],
+                               [-_B2 / h,  _BETA2]])  # right-neighbour coupling
+
+        # Build 2N × 2N block-circulant matrix
+        A = np.zeros((2 * N, 2 * N))
+        for i in range(N):
+            A[2*i:2*i+2, 2*i:2*i+2] += np.eye(2)                        # diagonal
+            j_lo = (i - 1) % N
+            A[2*i:2*i+2, 2*j_lo:2*j_lo+2] += lower_blk                  # left  (wrap at i=0)
+            j_hi = (i + 1) % N
+            A[2*i:2*i+2, 2*j_hi:2*j_hi+2] += upper_blk                  # right (wrap at i=N-1)
+
+        lu, piv = lu_factor(A)
+        return {'lu': lu, 'piv': piv, 'h': h, 'N': N}
+
+    def _differentiate_periodic(self, data, axis: int):
+        """Periodic CCD differentiation using the pre-factorised block-circulant solver.
+
+        Nodes 0..N-1 are solved via the 2N×2N system; node N receives a copy
+        of node 0 (periodic image).
+        """
+        from scipy.linalg import lu_solve
+        xp = self.xp
+        info = self._periodic_solvers[axis]
+        h = info['h']
+        N = info['N']
+
+        # Move target axis to front, flatten remaining axes as batch
+        data = xp.asarray(data)
+        f_full = xp.moveaxis(data, axis, 0)      # (N+1, *other)
+        orig_shape = f_full.shape
+        n_pts = f_full.shape[0]                  # N+1
+        batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
+        f_full = f_full.reshape(n_pts, batch_size)  # (N+1, batch)
+
+        # Host copy for the scipy solve (N unique nodes only; node N = node 0)
+        f_host = np.asarray(f_full)[:N, :]       # (N, batch)
+
+        # Build RHS (2N × batch): all N nodes use the interior stencil with wrap-around
+        rhs = np.zeros((2 * N, batch_size))
+        for i in range(N):
+            ip1 = (i + 1) % N
+            im1 = (i - 1) % N
+            rhs[2*i,   :] = (_A1 / h)         * (f_host[ip1] - f_host[im1])
+            rhs[2*i+1, :] = (_A2 / (h * h))   * (f_host[im1] - 2.0 * f_host[i] + f_host[ip1])
+
+        # Solve (2N × batch): lu_solve handles multiple RHS columns at once
+        x = lu_solve((info['lu'], info['piv']), rhs)   # (2N, batch)
+
+        # Extract d1 (even rows) and d2 (odd rows) for nodes 0..N-1
+        d1_inner = x[0::2, :]   # (N, batch)
+        d2_inner = x[1::2, :]   # (N, batch)
+
+        # Full (N+1, batch) arrays: node N = node 0 (periodic image)
+        d1_flat = np.empty((N + 1, batch_size))
+        d2_flat = np.empty((N + 1, batch_size))
+        d1_flat[:N, :] = d1_inner
+        d2_flat[:N, :] = d2_inner
+        d1_flat[N, :] = d1_inner[0, :]
+        d2_flat[N, :] = d2_inner[0, :]
+
+        # Convert back to device and restore original field shape
+        d1_flat_xp = xp.asarray(d1_flat)
+        d2_flat_xp = xp.asarray(d2_flat)
+        d1 = xp.moveaxis(d1_flat_xp.reshape(orig_shape), 0, axis)
+        d2 = xp.moveaxis(d2_flat_xp.reshape(orig_shape), 0, axis)
+
+        if not self.grid.uniform:
+            d1, d2 = self._apply_metric(d1, d2, axis)
+
+        return d1, d2
+
     # ── Boundary helper methods ───────────────────────────────────────────
 
     def _left_boundary(self, info, f, h, bc_left_override):
@@ -225,10 +406,10 @@ class CCDSolver:
         c_I  = xp.asarray(bc['c_I'])
         c_II = xp.asarray(bc['c_II'])
         R_I  = (c_I[0]*f[0] + c_I[1]*f[1] + c_I[2]*f[2] + c_I[3]*f[3])
-        R_II = (c_II[0]*f[0] + c_II[1]*f[1] + c_II[2]*f[2] + c_II[3]*f[3])
-        # After algebraic manipulation: c₁ = R_I, c₂ = R_II − (23/(3h))·R_I
+        R_II = sum(c_II[k] * f[k] for k in range(len(bc['c_II'])))
+        # Eq-I-bc gives fp0; Eq-II-bc is standalone (no fp1/fpp1 coupling)
         fp0  = R_I
-        fpp0 = R_II - (23.0 / (3.0 * h)) * R_I
+        fpp0 = R_II
         return fp0, fpp0
 
     def _right_boundary(self, info, f, h, N, bc_right_override):
@@ -244,10 +425,10 @@ class CCDSolver:
         c_II_r = xp.asarray(bc['c_II'])
         R_I_r  = (c_I_r[0]*f[N] + c_I_r[1]*f[N-1]
                   + c_I_r[2]*f[N-2] + c_I_r[3]*f[N-3])
-        R_II_r = (c_II_r[0]*f[N] + c_II_r[1]*f[N-1]
-                  + c_II_r[2]*f[N-2] + c_II_r[3]*f[N-3])
+        R_II_r = sum(c_II_r[k] * f[N - k] for k in range(len(bc['c_II'])))
+        # Eq-I-bc gives fpN; Eq-II-bc is standalone (no fp_{N-1}/fpp_{N-1} coupling)
         fpN  = R_I_r
-        fppN = R_II_r + (23.0 / (3.0 * h)) * R_I_r
+        fppN = R_II_r
         return fpN, fppN
 
     # ── Non-uniform metric transform ──────────────────────────────────────
@@ -276,42 +457,62 @@ class CCDSolver:
 
 # ── Boundary coefficient constructors (module-level, pure functions) ─────
 
-def _boundary_coeffs_left(h: float) -> dict:
-    """One-sided compact scheme at left boundary (O(h⁵), §4.7).
+def _boundary_coeffs_left(h: float, n_pts: int) -> dict:
+    """One-sided compact scheme at left boundary (§4.7).
 
     The boundary values satisfy:
         [f'₀ ]  = M @ [f'₁ ]  + [c₁(f₀…f₃)]
-        [f''₀]        [f''₁]    [c₂(f₀…f₃)]
+        [f''₀]        [f''₁]    [c₂(f₀…fₖ)]
 
-    Equations:
-        Eq-I-bc:  f'₀ + (3/2)f'₁ − (3h/2)f''₁
+    Equations (§5 eq:bc_left, eq:bcII_left):
+        Eq-I-bc  (O(h⁵)): f'₀ + (3/2)f'₁ − (3h/2)f''₁
                     = (1/h)(−23/6·f₀ + 21/4·f₁ − 3/2·f₂ + 1/12·f₃)
-        Eq-II-bc: f''₀ − 3f''₁ + (23/(3h))f'₀ + (9/h)f'₁
-                    = (1/h²)(−325/18·f₀ + 39/2·f₁ − 3/2·f₂ + 1/18·f₃)
+        Eq-II-bc:
+          n_pts < 6 → O(h²) 4-point: f''₀ = (1/h²)(2f₀−5f₁+4f₂−f₃)
+          n_pts ≥ 6 → O(h⁴) 6-point: f''₀ = (1/(12h²))(45f₀−154f₁+214f₂−156f₃+61f₄−10f₅)
+
+    Eq-II-bc is independent of f'₁, f''₁ (γ=δ=0 in §5 eq:bcII_general).
 
     After solving for [f'₀, f''₀]:
-        M[0,:] = [-3/2,  3h/2]
-        M[1,:] = [5/(2h), -17/2]
+        M[0,:] = [-3/2,  3h/2]   (from Eq-I-bc)
+        M[1,:] = [0,     0   ]   (Eq-II-bc is standalone — no fp₁/fpp₁ coupling)
     and the data-dependent RHS coefficients are returned in c_I, c_II.
     """
-    M = np.array([[-3.0 / 2.0,      3.0 * h / 2.0],
-                   [ 5.0 / (2.0*h), -17.0 / 2.0   ]])
-    c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0,  1.0/12.0]) / h
-    c_II = np.array([-325.0/18.0, 39.0/2.0, -3.0/2.0, 1.0/18.0]) / (h * h)
+    M = np.array([[-3.0 / 2.0, 3.0 * h / 2.0],
+                   [ 0.0,       0.0            ]])
+    c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0, 1.0/12.0]) / h
+    if n_pts >= 6:
+        # O(h⁴) 6-point formula (§5 eq:bcII_left_h4)
+        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
+    else:
+        # O(h²) 4-point fallback for very small grids
+        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
 
 
-def _boundary_coeffs_right(h: float) -> dict:
-    """One-sided compact scheme at right boundary (O(h⁵), §4.7).
+def _boundary_coeffs_right(h: float, n_pts: int) -> dict:
+    """One-sided compact scheme at right boundary (§4.7).
 
     Obtained from the left scheme by h → −h symmetry.
 
+    Equations (§5 eq:bc_left mirror, eq:bcII_left mirror):
+        Eq-I-bc  (O(h⁵)): f'_N + (3/2)f'_{N-1} + (3h/2)f''_{N-1}
+                    = (1/h)(23/6·f_N − 21/4·f_{N-1} + 3/2·f_{N-2} − 1/12·f_{N-3})
+        Eq-II-bc:
+          n_pts < 6 → O(h²) 4-point: f''_N = (1/h²)(2f_N−5f_{N-1}+4f_{N-2}−f_{N-3})
+          n_pts ≥ 6 → O(h⁴) 6-point (mirror of left): coefficients applied as f[N-k]
+
     After solving for [f'_N, f''_N]:
-        M[0,:] = [-3/2, -3h/2]
-        M[1,:] = [-5/(2h), -17/2]
+        M[0,:] = [-3/2, -3h/2]   (from Eq-I-bc mirror)
+        M[1,:] = [0,     0   ]   (Eq-II-bc is standalone)
     """
-    M = np.array([[-3.0 / 2.0,      -3.0 * h / 2.0],
-                   [-5.0 / (2.0*h), -17.0 / 2.0    ]])
-    c_I  = np.array([23.0/6.0, -21.0/4.0,  3.0/2.0, -1.0/12.0]) / h
-    c_II = np.array([-325.0/18.0, 39.0/2.0, -3.0/2.0, 1.0/18.0]) / (h * h)
+    M = np.array([[-3.0 / 2.0, -3.0 * h / 2.0],
+                   [ 0.0,        0.0            ]])
+    c_I  = np.array([23.0/6.0, -21.0/4.0, 3.0/2.0, -1.0/12.0]) / h
+    if n_pts >= 6:
+        # O(h⁴) 6-point formula — mirror of left boundary (applied as f[N-k])
+        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
+    else:
+        # O(h²) 4-point fallback for very small grids
+        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}

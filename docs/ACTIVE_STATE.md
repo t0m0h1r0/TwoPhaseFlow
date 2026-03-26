@@ -1,111 +1,135 @@
 # **CURRENT STATE & HANDOVER**
 
-*Note: This file should be continuously updated by the Orchestrator or human developer.*
+*Note: This file should be continuously updated by the Orchestrator or human developer. Keep it to current status + pending items only — all resolved-issue history lives in `paper/CHANGELOG.md`.*
 
-## **1\. Project Status Summary**
+## **1. Project Status Summary**
 
-* **Date/Update:** 2026-03-18
-* **Code:** 28 tests passing (pytest src/twophase/tests). Architecture fully refactored to use SimulationBuilder and component injection.
-* **Paper:** 12 sections + appendix\_proofs. **Seven CRITIC passes + EDITOR 3rd sweep completed (2026-03-18). All issues resolved.** Fixes include: tcolorbox refactor (49→35 boxes), 7th-pass D/B/G issues, CCD warnbox O(h²) boundary accuracy correction (04\_ccd.tex). **Next: final compile check (12\_LATEX\_ENGINE.md).**
+* **Date/Update:** 2026-03-23
+* **Code:** **53 passed, 2 skipped** (pytest src/twophase/tests). Architecture fully refactored. `DissipativeCCDAdvection` (§5) implemented. **3 non-uniform grid code-paper gaps CLOSED** (§6): density function ω formula, CCD O(h⁶) metrics via `differentiate_raw()`, 6 new MMS tests in `test_grid.py`. config_loader YAML round-trip fixed.
+* **Paper:** 14 sections + 5 appendices. **27 CRITIC passes + 39 EDITOR sweeps complete. MATH_VERIFY §6 complete (2026-03-22): 1 PAPER_ERROR fixed (ω(0)=α→exact formula in パラメータ選択指針), 10 targets SAFE.** Build pending recompile (last clean: 119 pages, 2026-03-21).
 
-## **2\. Recent Resolutions**
+## **2. Completed (2026-03-23)**
 
-### Code (2026-03-15)
+25. ~~付録 引用文献拡充~~ — **Done (2026-03-23).** 1箇所修正:
+    - **`\cite{JiangShu1996}`**: `appendix_numerics_schemes.tex`（WENO5 formulation subsection，β_k smoothness indicator 定式化節 — 既存 bib エントリが未 \cite）
+    - 他の付録（`appendix_ccd_coef`, `appendix_ccd_impl`, `appendix_interface`, `appendix_numerics_solver`）は全て原著 derivation または既存 `\cite{}` 引用済み（`Gustafsson1981`, `Kelley2003`）
 
-* SimulationConfig is now pure sub-config composition (GridConfig, FluidConfig, NumericsConfig, SolverConfig, use\_gpu). All backward-compat shims removed.
-* TwoPhaseSimulation.\_\_init\_\_ deleted; SimulationBuilder(cfg).build() is the sole construction path.
+24. ~~引用文献拡充（CRITIC pass — 引用漏れ5件修正）~~ — **Done (2026-03-23).** 7箇所修正（bibliography.bib に2新規エントリ追加，既存エントリ3件の `\cite{}` 追加）:
+    - **新規 bib エントリ2件**: `PeacemanRachford1955`（ADI 法の原論文），`DahlquistBjorck1974`（数値解析教科書）
+    - **`\cite{Chorin1968}`**: `05b_time_integration.tex`（Chorin, 1968）+ `08_pressure.tex`（Chorin, 1968）— 既存 bib エントリが未 \cite
+    - **`\cite{Sussman1994}`**: `03_levelset.tex`（Sussman 再初期化の初出説明）— 既存 bib エントリが未 \cite
+    - **`\cite{Unverdi1992}`**: `02_governing.tex`（Front Tracking の説明）— 既存 bib エントリが未 \cite
+    - **`\cite{PeacemanRachford1955}`**: `08d_ppe_pseudotime.tex`（ADI 法の定義節）
+    - **`\cite{DahlquistBjorck1974}`**: `05b_time_integration.tex`（AB2 零安定性の参照，インラインテキストを \cite{} に変換）
 
----
+23. ~~CRITIC passes 26+27 + EDITOR sweep 39 — 全編ゼロベース + 付録ゼロベース~~ — **Done (2026-03-23).** 16箇所修正（STRUCT-1×12, STRUCT-2×1, MINOR-1×1, APPEND-1×2）:
+    - **STRUCT-1 (12件)**: `§\ref{warn:...}`, `§\ref{box:...}`, `§\ref{proof:...}` を `\ref{}` に修正（LATEX_RULES §1）。対象ファイル: `02b_csf.tex`, `03_levelset.tex`, `04c_ccd_extensions.tex`, `04d_dissipative_ccd.tex`, `05b_time_integration.tex`(×2), `05c_reinitialization.tex`, `09_full_algorithm.tex`(×3), `appendix_numerics_solver.tex`(×2)
+    - **STRUCT-2**: `05_advection.tex` "下表に整理する" → `表~\ref{box:scheme_roles}に整理する`（ハードコード位置参照を解消）
+    - **MINOR-1**: `08b_ccd_poisson.tex` `\label{tab:ccd_bc_types}}` 二重閉じブレース削除
+    - **APPEND-1 (2件)**: `appendix_ccd_impl.tex` の `§\ref{app:ccd_kronecker}`, `§\ref{app:ccd_lu_direct}`（小節参照）を `付録~\ref{}` 形式に修正
+    - 付録数学内容: 全件正確（Newton収束, CCD係数 Eq-I/II, γ(t)導出, 毛管CFL, FVM調和平均）
 
-### Paper (2026-03-18 — EDITOR 4th sweep, post-8th-pass CRITIC)
+22. ~~CRITIC pass 26 (全編ゼロベース)~~ — **Done (2026-03-23).** 全29 .texファイル査読。ラベル353件・参照809件整合確認。新規 VERIFIED 修正候補: STRUCT-1×12, STRUCT-2×1, MINOR-1×1。数学的誤りなし。
 
-* **D-1 FIXED**: `05_grid.tex` Python pseudocode — `np.gradient(xi, x)` (O(h²) central diff) replaced with CCD-based Jx evaluation; algbox Step 5 expanded with 3-step CCD application explanation.
-* **D-2 FIXED**: `09_full_algorithm.tex` fig:ns_solvers S5 node — "半陰的" → "陽的"; caption updated to state CSF surface tension is explicit (time-n body force).
-* **B-1 FIXED**: `10_verification_metrics.tex` warnbox — curvature error claim O(h⁴) corrected to O(h^6) (numerical discretization) vs. O(ε²)≈O(h²) (CSF model error, the bottleneck).
-* **B-2 FIXED**: `11_conclusion.tex` §pressure chapter description — "FVM で離散化した" → CCD-PPE(O(h^6)) + 仮想時間陰解法 as primary; FVM relegated to comparison.
-* **G-1 FIXED**: `10_verification_metrics.tex` L.131 — `第\ref{sec:governing}章参照` → `§\ref{sec:balanced_force}参照`.
-* **L-1 FIXED**: `05_grid.tex` algbox Step 5 — 3-step CCD procedure for Jx made explicit (apply CCD to x(ξ_i) to get dx/dξ and d²x/dξ² simultaneously).
-* **L-2 CONFIRMED**: `appendix_proofs.tex` `\ref{sec:two_to_one}` — label exists in `02_governing.tex:79`. No action required.
+21. ~~CRITIC pass 25 + EDITOR sweep 38 — §8d + §7 4 issues~~ — **Done (2026-03-23).** All VERIFIED/MINOR items fixed:
+    - **STRUCT-1**: `warn:ppe_splitting` Approach 1 末尾の dangling コロン「：」→「．」
+    - **GAP-1**: `\mathcal{L}_x^\mathrm{CCD}` の未定義 superscript を削除 → 式~\eqref{eq:L_split} の定義済み `\mathcal{L}_x`，`\mathcal{L}_y` を参照
+    - **GAP-2**: LTS「最大固有値」→「最適 Δτ の大きさは h²/a_{i,j} に比例する」（局所最適条件を正確に記述）
+    - **MINOR**: §7 コード一覧の末尾括弧参照を Item 3 に統合（孤立段落を解消）
 
-### Paper (2026-03-18 — EDITOR 3rd sweep, post-7th-pass)
+20. ~~CRITIC pass 24 + EDITOR sweep 37 — §8d + §7 7 issues~~ — **Done (2026-03-23).** All VERIFIED/LOGICAL_GAP/MINOR items fixed:
+    - **FATAL-1**: 「スウィープ型実装は欠陥補正法の枠組みに直接対応する」→「欠陥補正法は将来の改良候補であり，現行スウィープとは異なる手法」に書き直し（Table の別行5行目と整合）
+    - **FATAL-2**: `eq:residual` 近似式 `‖(I+ΔτL_h)(δp)^m − …‖/Δτ` が数学的に誤り（厳密解時にゼロになる）→ 正しい増分式 `‖(δp)^m − (δp)^{m-1}‖/Δτ` に修正
+    - **STRUCT-1**: §7 の「安定性の理論的必須条件」+爆発記述が main text と warnbox 結論に重複 → main text の重複2文を削除，warnbox canonical に統一
+    - **GAP-1**: `warn:ppe_splitting` のスウィープ説明に「近似解」である旨と残差の出所を明記
+    - **GAP-2**: LTS の均等収束根拠として `Δτ_{i,j}·a_{i,j} = C_τh²/2`（密度依存打ち消し）の数式を追加
+    - **IMPL-1**: `sec:defect_correction` 冒頭に「将来の改良候補（現行コードへの実装は未完了）」の注意書きを追加
+    - **MINOR-1**: `\label{eq:etol_criterion}` → `\label{result:etol_criterion}` にリネーム（tcolorbox に `eq:` プレフィックス不可）
 
-* **04\_ccd.tex** L393-398 warnbox `{境界スキームの役割と精度}` — split blanket "O(h^5)" claim into:
-  Equation-I (f'₀): O(h^5); Equation-II (f''₀): O(h^2) with L² impact note (consistent with mybox at L.587-596).
+18. ~~EDITOR sweep 36 — §7 BF code-alignment + stability conclusion~~ — **Done (2026-03-23).** Two targeted additions to `07_collocate.tex` (commit db83e1e):
+    - **IMPL**: Code-alignment confirmation paragraph after `eq:bf_operator_mismatch` — verified 3 code locations all use `D^{(1)}_CCD`: `SurfaceTensionTerm.compute()`, `Predictor.compute()` IPC term, `VelocityCorrector.correct()`.
+    - **CONCL**: Stability-conclusion sentence added to BF warnbox: "Balanced-Force 条件は精度向上の選択肢ではなく，本 CCD フレームワークにおける安定性の理論的必須条件である．"
+    - Reviewer study (§§1–4 on BF+CCD unification) confirmed entirely REVIEWER_ERROR — all 4 theoretical points already present in paper.
 
-### Paper (2026-03-18 — CRITIC 7th pass, all resolved via 10\_PAPER\_EDITOR)
+17. ~~CRITIC pass 23 + EDITOR sweep 35 — `08d_ppe_pseudotime.tex` 13 issues~~ — **Done (2026-03-23).** All VERIFIED items fixed (commit f022ef3):
+    - **FATAL-1**: `eq:ADI` ソース項 `Δτ q_h` → `Δτ/2 q_h`（両ステージ）；旧形式は固定点 `L_h δp* = 2q_h` という因子2誤差を生じていた
+    - **FATAL-2**: `\eqref{eq:etol_criterion}` → `\ref{eq:etol_criterion}`（tcolorbox を数式参照していた）
+    - **FATAL-3**: `C_τ = O(10¹~10³)` vs `C_τ = 1~5` vs `C_τ ≈ 1.16` の三重矛盾を解消；全箇所 `C_τ = 1~5` に統一
+    - **FATAL-4**: "安定条件 Δτ≤Cρh²/2" が "無条件安定" と矛盾 → 収束速度の最適化条件として言い直し
+    - **GAP-1**: `sec:pseudo_variable_freeze` を定式化節より後（安定性説明の直後）に移動（前方参照解消）
+    - **GAP-2/3**: `p^{(m)}` → `(δp)^{(m)}`，`\mathcal{L}_{CCD}` → `\mathcal{L}_h` に統一
+    - **GAP-4**: `tab:ppe_methods` に欠陥補正+LTS 行追加（$\ddagger$ 脚注付き）
+    - **STRUCT-1**: 5 subsubsection に `\label{}` 追加（sec:pseudo_formulation, sec:pseudo_implicit, sec:pseudo_ccd_discretization, sec:pseudo_adi_comparison, sec:pseudo_convergence）
+    - **STRUCT-2**: `§\ref{warn:ppe_splitting}` の `§` 全削除（warnbox を節番号参照していた）
+    - **IMPL-1/2**: `\mathcal{L}_{FD} \neq \mathcal{L}_h` 明記；`(δp)^{(0)}=0` cross-ref 追加
 
-* **D-1 FIXED**: `07_pressure.tex` resultbox — stale "第§1・§9 で BiCGSTAB と記した箇所" claim removed; §1 and §9 already use 仮想時間陰解法.
-* **D-2 FIXED**: `07_pressure.tex` eq:NS\_full — added mybox clarifying derivation uses simplified Backward Euler while implementation uses Crank--Nicolson (O(Δt²)) per §4; CN viscous → implicit linear system for u*.
-* **D-3 FIXED**: `01_introduction.tex` L.344 + `09_full_algorithm.tex` fig:ns\_solvers — NS 対流項 explicitly uses Forward Euler (O(Δt)), not TVD-RK3; CLS advection uses TVD-RK3; figure S1 node corrected from "WENO5/TVD-RK3" to "CCD D^(1)/前進Euler".
-* **L-5 FIXED**: `01_introduction.tex` tab:chapter\_overview Ch4 — 前提 "3" → "2, 3"; content revised to distinguish CLS(WENO5+TVD-RK3) from NS(前進Euler+CN); Ch5 CCD description scoped to §5 only with PPE application reference to §8.
-* **algbox enhancement**: Step 5 scheme names added (前進Euler/CN); Step 6 Rhie-Chow corrected divergence ∇\_h^RC·u\* explicitly referenced.
-* **B-1 FIXED**: `07_pressure.tex` warnbox boundary\_cv — titled "(FVM 実装専用)"; note added that CCD-Poisson boundary handling is in §8.5 and does NOT need this correction.
-* **B-2 FIXED**: `07_pressure.tex` L.316 — dangling "前処理については下記参照" replaced with reference to §8.5 and tab:ppe\_methods.
-* **B-3 FIXED**: `07_pressure.tex` eq:balanced\_force\_condition — asymmetric operator notation corrected; supplementary mybox explains "≈" in terms of CSF O(ε²) accuracy limit.
-* **G-3 FIXED**: `07_pressure.tex` eq:rc\_divergence — p^n (前時刻) explicitly noted in Rhie-Chow face velocity formula.
+16. ~~EDITOR sweep 34 — §8d pseudo-time study expansion~~ — **Done (2026-03-23).** Three new subsubsections added to `08d_ppe_pseudotime.tex` (323→330 lines):
+    - **NEW `sec:pseudo_variable_freeze`**: "反復中の物理変数の凍結" — explains that ρ, u*, Δt are fully frozen during pseudo-time iterations; only δp is updated. Loop isolation rationale.
+    - **NEW `sec:defect_correction`**: "欠陥補正法による離散化の分離" — defect correction hybrid: LHS implicit matrix uses low-order FD `[I/Δτ − L_FD]`, RHS residual R_CCD computed at CCD O(h⁶) accuracy. Equations `eq:defect_correction_split` and `eq:defect_correction_linear` added. Convergence (δp→0 ⟹ L_CCD·p=q_h) proved.
+    - **NEW `sec:lts_dtau`**: "密度適応型局所時間刻み（LTS）" — density-adaptive local time step `Δτᵢⱼ = C_τ · ρᵢⱼ · h²/2` (eq:dtau_lts). Consistency with global Δτ_opt at uniform density (C_τ ≈ 1.16 matches box:dtau_impl range). Dynamic C_τ escalation strategy described.
 
-### Paper (2026-03-18 — CRITIC passes 3rd–6th, all resolved via 10\_PAPER\_EDITOR)
+## **2. Completed (2026-03-22)**
 
-**3rd pass:**
-* **D-1**: `10_verification_metrics.tex` L93 cross-ref corrected.
-* **D-2**: `03_levelset.tex` §3.3 warnbox — CFL wave speed corrected (flux Jacobian `|1-2ψ|≤1`); `Δτ_hyp ≤ Δs`.
-* **D-3**: `00_abstract.tex` L21 — `FVM-PPE` → `CCD-PPE（$O(h^6)$）`.
+20. ~~MATH_VERIFY §6 (non-uniform grid)~~ — **Done (2026-03-22).** 11 targets audited; 1 PAPER_ERROR fixed:
+    - **PAPER_ERROR**: `06_grid.tex` パラメータ選択指針: `ω(0)=α` is false. Correct: `ω(0) = 1+(α−1)/(ε_g√π)`. Fixed with example for ε_g=2ε.
+    - All other targets SAFE: δ* normalization, chain-rule transforms (1st + 2nd order), J=1/d1 formula, dJ=−d2/d1², `differentiate_raw` axis embedding, MMS thresholds, min|φ| marginal, coordinate normalization, metric code.
+    - **Code gaps CLOSED**: `eps_g_factor` added to `GridConfig`, `config_loader`; `differentiate_raw()` + `_differentiate_wall_raw()` added to `CCDSolver`; `update_from_levelset` and `_build_metrics` use paper formula; 6 new tests in `test_grid.py` all passing. Full suite: 53 passed, 2 skipped.
 
-**4th pass:**
-* `03_levelset.tex` §3.2 — stability: `Δτ=0.5Δs` → `Δτ=0.25Δs` (within parabolic limit); N\_reinit: 14→28 steps.
-* `01_introduction.tex` L445 — relative ref `下図の 7ステップフロー` → `図\ref{fig:algo_flow}の 7ステップフロー`.
-* `09_full_algorithm.tex` L67 — `$\mathcal{C}_\text{WENO}$` → `$\mathcal{C}_\text{CCD}$`.
-* `03_levelset.tex` §3.4 — false claim "解析的に行えない" → logit inverse + appendix proof; new file `sections/appendix_proofs.tex`.
+15. ~~CRITIC pass 22 + EDITOR sweep 33 — 全体構造・用語統一~~ — **Done (2026-03-22).** 8 issues resolved:
+    - **FATAL-1**: `08c_ppe_verification.tex` が main.tex に未インクルードだったため追加．
+    - **FATAL-2**: `LATEX_RULES.md §2` Paper Structure テーブルを旧ファイル名（04_time_integration等）から現在のファイル名（04_ccd, 05_advection等）に全面更新．
+    - **FATAL-3**: `\label{sec:time}` → `\label{sec:advection}` リネーム（01, 08, 09, 11章の全 `\ref{sec:time}` を更新）．
+    - **FATAL-4**: `ARCHITECTURE.md` NS convection「Forward Euler」→「AB2+IPC, n=0: Euler」に修正（論文・コードと整合）．
+    - **TERM-1**: `Rhie-Chow`（単ハイフン）→ `Rhie--Chow`（em-dash）全ファイル一括統一（7ファイル）．
+    - **TERM-2**: `balanced-force`（小文字）→ `Balanced-Force` 3箇所（00_abstract, 10b_benchmarks ×2）．
+    - **SPLIT-1**: `05_advection.tex`（715行）→ 3分割: `05_advection.tex`（322行）+ `05b_time_integration.tex`（新設）+ `05c_reinitialization.tex`（新設）．
+    - **SPLIT-2**: `08_pressure.tex`（576行）→ 2分割: `08_pressure.tex`（356行）+ `08d_ppe_pseudotime.tex`（新設）．
 
-**5th pass:**
-* `08_time_integration.tex` — CLS advection: non-conservative `u·∇ψ` → conservative `∇·(ψu)`.
-* `07_pressure.tex` tab:accuracy\_summary — CSF O(ε²)≈O(h²) row added; spatial bottleneck updated.
-* `10_verification_metrics.tex` tab:error\_budget — NS predictor: WENO5 O(h⁵) → CCD O(h⁶).
-* `11_conclusion.tex` — `ADI分解による求解` → `逐次Thomas法による求解`.
-* `01_introduction.tex` + `02_governing.tex` — stale "ニュートン法が必要" → logit analytic inverse.
-* `03_levelset.tex` §3.4 warnbox — retitled "ロジット逆変換 vs. Sussman 再初期化".
-* `05_grid.tex` algbox step 5 — O(h²) formula replaced with CCD approach.
-* `02_governing.tex` L572 — `∫s²δ_ε ds = π²ε²/3` self-contained proof added (Dirichlet η(2)).
-* `02_governing.tex` §2.2.3 — 1D One-Fluid proof moved to `appendix_proofs.tex` §\ref{app:onefluid\_1d}.
+14. ~~EDITOR sweep 32 — §7 second CRITIC pass (12 issues)~~ — **Done (2026-03-22).** All 12 issues resolved:
+    - **FATAL-1**: algbox Step 3 `q≈5` → `q≈2`; Balanced-Force benefit reframed as coefficient reduction, not rate improvement.
+    - **FATAL-2**: `\ref{box:balanced_force_ref}` (paragraph label) → `\ref{sec:csf}`.
+    - **GAP-1**: Added CCD-specific checkerboard/decoupling paragraph (zero eigenvalue at kh=π).
+    - **GAP-2**: `d_e ≈ (Δt/ρ)_e` → `d_e = (Δt/ρ)_e`.
+    - **GAP-3**: Added O(Δt) time-level residual note near `eq:rc-face-balanced` (IPC-consistent).
+    - **GAP-4**: Strengthened blow-up argument with checkerboard λ_min≈0 growing-mode mechanism.
+    - **STRUCT-1**: `Rhie and Chow (1983)` → `\cite{RhieChow1983}`; `Chung (2002)` → `\cite{Chung2002}`; added `Chung2002` bib entry.
+    - **STRUCT-2**: Warnbox items 2,3 forward-reference verbosity reduced.
+    - **STRUCT-3**: Surface tension RC correction O(h²) analysis added to `app:rc_precision`.
+    - **STRUCT-4**: Triple "RC independent of BF" consolidated — canonical in `app:rc_precision`; two duplicates shortened to cross-references.
+    - **IMPL-1**: `eq:rc-face-balanced` implementation check added to algbox failure checklist.
+    - **IMPL-2**: `sec:rc_implementation` header clarified: `eq:rc-face` = current code; `eq:rc-face-balanced` = full theory.
 
-**6th pass:**
-* `09_full_algorithm.tex` L106+L120-123 — ρ(ψ)・μ(ψ) interpolation sign corrected (liquid/gas were swapped).
-* `09_full_algorithm.tex` L119 — `(Newton法)` → logit function + Newton fallback note.
-* `04_ccd.tex` L21 — 4th-order central diff typo: `+f_{i+2}` → `+f_{i-2}`.
-* `05_grid.tex` warnbox — dangling "上記の中心差分" fixed; redundant CCD formulas removed.
-* `06_collocate.tex` L35-115 — Helmholtz/Projection scalar φ → Φ (10 instances; local-scope note added).
+13. ~~EDITOR sweep 30 — Balanced-Force §7 expansion~~ — **Done (2026-03-22).** Three changes to `07_collocate.tex`:
+    - **Enhanced root cause** (§\ref{sec:bf_operator_mismatch}): blow-up narrative + explicit `eq:bf_operator_mismatch` ($O(h^6)-O(h^2)$ mismatch formula).
+    - **Moved Taylor expansion** to appendix `app:balanced_force_taylor` in `appendix_numerics_schemes.tex` (3 subsections: truncation error derivation, O(h^6) reduction proof, CSF model error floor).
+    - **New §\ref{sec:rc_balanced_force}** + `eq:rc-face-balanced`: Rhie–Chow formula extended with surface tension term $[(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f]$; κ decoupling note; cross-ref to appendix.
 
-### Paper (2026-03-18 — CRITIC passes 1st–2nd, all resolved via 10\_PAPER\_EDITOR)
 
-**1st pass:**
-* **D-1**: `10_verification_metrics.tex` L93 — `第\ref{sec:governing}章参照` → `§\ref{sec:balanced_force}参照`.
-* **D-2**: `03_levelset.tex` §3.3 warnbox — CFL wave speed corrected from function value `|ψ(1-ψ)|≤1/4` to flux Jacobian `|F'(ψ)|=|1-2ψ|` max=1; `Δτ_hyp ≤ 4Δs` → `Δτ_hyp ≤ Δs`; min formula updated.
-* **D-3**: `00_abstract.tex` L21 — `FVM-PPE` → `CCD-PPE（$O(h^6)$）`.
-* **B-1**: `02_governing.tex` L418-419 — Heaviside figure φ-axis labels swapped: 液相 (φ<0) and 気相 (φ>0), consistent with §2.1 sign convention.
-* **B-2**: `11_conclusion.tex` §7.2 description list — reordered to sec:time (Ch4) → sec:CCD (Ch5) → sec:grid (Ch6), matching actual chapter order.
-* **B-3**: `11_conclusion.tex` L115-116 — Spatial bottleneck corrected from WENO5 O(h⁵) to CSF O(ε²)≈O(Δx²).
-* **M-1**: `04_ccd.tex` L1 comment `05_ccd.tex` → `04_ccd.tex`; `05_grid.tex` L1 comment `04_grid.tex` → `05_grid.tex`.
 
-**2nd pass:**
-* **D-1**: `09_full_algorithm.tex` L39 solver box S2 — `FVM-PPE` → `CCD-PPE（$O(h^6)$）`; L53 caption — `FVM ベース PPE` → `CCD-PPE（$O(h^6)$）`.
-* **D-2**: `08_time_integration.tex` §sec:godunov defbox — `α = max|ψ(1-ψ)| ≤ 1/4` → `α = max|1-2ψ| ≤ 1`（正しい LF フラックスヤコビアン上界）.
-* **B-1**: `10_verification_metrics.tex` tab:error\_budget 最終行 — 空間律速を WENO5 O(h⁵) → CSF O(ε²)≈O(Δx²) に修正; mybox "精度設計のまとめ" の律速記述も同様に修正.
+12. ~~Symmetry-breaking root-cause investigation and fixes~~ — **Done (2026-03-22).** Three independent root causes of symmetry breaking identified and fixed:
+    - **Fix 1 (`rhie_chow.py`):** `_flux_divergence_1d` wall BC padded `0` for node `N_ax`, treating interior face `N_ax` (between nodes `N_ax-1` and `N_ax`) as a wall face. Correct FVM formula: `div[N_ax] = (face_{N_ax+1} - face_{N_ax})/h = -flux[N_ax]/h`. Primary instability (blowup) resolved.
+    - **Fix 2 (`ppe_builder.py` + 3 solvers + tests):** Dirichlet pressure gauge pin moved from corner node `(0,0)` to center node `(N/2, N/2)`, which is invariant under all symmetry operations of the square domain (x-flip, y-flip, diagonal swap). Corner pin sets `δp[0,0]=0` while the symmetric corner `(N,0)` has non-zero RHS, driving spurious non-antisymmetric pressure gradients. Step-by-step symmetry test at dt=0.005 confirmed machine-precision symmetry after both fixes (u_xflip_err = 6.22e-17).
+    - **Fix 3 (`cfl.py`):** Capillary CFL applied without safety factor (`dt = min(dt, dt_sigma)`), operating at the marginal stability limit and causing capillary instability that broke symmetry. Fixed to `dt = min(dt, cfl * dt_sigma)` (consistent with convective/viscous constraints).
 
-### Paper (2026-03-17 review cycle — all resolved)
+5. ~~WENO5 → Dissipative CCD global paper sweep~~ — **Done (2026-03-22, commit 1f5d7ee).** 30+ WENO5 references replaced across 7 non-appendix files. WENO5 retained in appendix as reference scheme only.
 
-* **D-1**: Removed stale FVM-PPE O(h²) bottleneck row from tab:error\_budget; warnbox deleted.
-* **D-1b**: Removed CCD-Poisson "future work" framing from 11\_conclusion.tex.
-* **D-2**: Fixed ψ convention in 02\_governing.tex defbox (液相でψ≈0，気相でψ≈1).
-* **B-1**: M\_ref = M(0) defined in 03\_levelset.tex adaptive reinitialization criterion.
-* **B-2**: Quantitative boundary accuracy analysis added to 04\_ccd.tex (O(h²) boundary → O(h³) global).
-* **B-3**: Rhie-Chow pressure gradient mixed-precision clarified in 06\_collocate.tex.
-* **B-4**: Newton convergence quadratic-convergence proof added to 03\_levelset.tex §3.4.
-* **C-1**: tab:chapter\_overview Ch.5 row updated with pseudo-time elliptic interpretation.
-* **M-5**: E\_shape norm corrected to L2 formula in 10\_verification\_metrics.tex.
+6. ~~20th CRITIC pass (full review including appendix)~~ — **Done (2026-03-22, commit 24ee31a).** 4 clarity fixes: (A) Balanced-Force warnbox explicit note that Dissipative CCD ≠ standard CCD for NS terms; (B) H(π;0.05)=0.80 Nyquist damping calculated; (C) ψ clamp note in Step 1 of 09_full_algorithm.tex; (D) O(h⁵Δt) mass conservation derivation step completed.
 
----
+7. ~~DissipativeCCDAdvection implementation~~ — **Done (2026-03-22).** `DissipativeCCDAdvection(ILevelSetAdvection)` added to `levelset/advection.py`. `advection_scheme` field added to `NumericsConfig` (default `"dissipative_ccd"`, alternative `"weno5"`). `SimulationBuilder` updated to select scheme from config. 2 new MMS tests added (spatial order ≥ 1.8 O(h²), full method order ≥ 1.8). **33 tests passing.** Code-paper gap CLOSED.
 
-## **3\. Pending Action Items**
+8. ~~§5 paper inserts (WENO5 critique + warn:adv_risks)~~ — **Done (2026-03-22).** Added `\subsubsection{移流スキーム選択の設計根拠}` (label: `sec:advection_weno5_critique`) and `warn:adv_risks` tcolorbox warnbox to `05_advection.tex`. Fixed cross-refs (`eq:Heps_def_preview`, `sec:ccd_bc`).
+
+9. ~~Appendix D↔E reorder~~ — **Done (2026-03-22).** `appendix_numerics_schemes` (first-ref §5) moved before `appendix_numerics_solver` (first-ref §8) in `paper/main.tex`.
+
+10. ~~config_loader YAML round-trip fix + ε_factor warning~~ — **Done (2026-03-22).** Added `advection_scheme` to `config_loader.py` load/`_known`/dump. Added `UserWarning` in `NumericsConfig.__post_init__` for `epsilon_factor < 1.2` with `dissipative_ccd`. Added `test_config.py` (6 tests). **39 tests passing.**
+
+11. ~~Dead code refactor (SAFE_REMOVE)~~ — **Done (2026-03-22).** Removed 3 items: `_pad_zero` alias (0 call sites, `advection.py`), `Optional` unused import (`config_loader.py`), `TYPE_CHECKING` unused import (`_core.py`).
+
+## **2. Completed (2026-03-21)**
+
+4. ~~Mathematical audit §§6–11 + all appendices + EDITOR sweep 29~~ — **Done (2026-03-21).** 19 appendix sections + 6 main sections verified. Zero PAPER_ERROR. 5 documentation-level fixes applied: (1) §6 pseudocode comment "台形則"→"矩形則（前進型）", (2) §7 Balanced-Force algebra with incorrect κ-factoring removed, (3) §8b spectral radius formula 4a₂/[(1+2|β₂|)h²]=9.6≠3.43 clarified, (4) §10 O(h⁴) pre-asymptotic note added, (5) appendix capillary CFL "保守的に"→"近似的に".
+
+## **3. Pending Action Items**
 
 ### **Code / Implementation**
 
@@ -116,4 +140,6 @@
 
 ### **Paper / Documentation**
 
-1. Final compile and cross-reference check using 12\_LATEX\_ENGINE.md.
+1. ~~EDITOR sweep 27~~ — **Done (2026-03-20).** All CRITIC pass 18 issues fixed (5 FATAL + 5 GAP + 2 IMPL + 2 MAINT). Clean build: 116 pages, 0 undefined refs. Ready for submission review or further CRITIC pass.
+2. ~~CCD block matrix A_L/A_R (2,1) sign error fix~~ — **Done (2026-03-20).** Fixed 3 locations in `05b_ccd_bc_matrix.tex` (defbox symbolic form, bullet derivation, numeric example). Paper had A_L(2,1)=+9/(8h) and A_R(2,1)=−9/(8h); correct values are A_L(2,1)=−9/(8h) and A_R(2,1)=+9/(8h). Code was already correct. Also fixed `ARCHITECTURE.md` "3×3 blocks" → "2×2 blocks".
+3. ~~EDITOR sweep 28~~ — **Done (2026-03-21).** External reviewer found 1 CRITICAL math error + 1 terminology inconsistency in §§2.1, 3.2. Spurious `- ∫ψ(∇·u)dV` term removed from CLS volume-conservation formula; warnbox rewritten. "球状液滴" → "円形液滴（2次元）" in §2.1 warnbox.

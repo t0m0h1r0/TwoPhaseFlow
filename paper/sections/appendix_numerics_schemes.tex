@@ -1,0 +1,321 @@
+% paper/sections/appendix_numerics_schemes.tex
+%
+% 付録（時間積分・スキーム・実装補足）
+%   app:grid_ale      — 時間変化格子と ALE 効果（本稿では未実装）
+%   app:rc_precision  — Rhie--Chow 補正と CCD 高次精度の整合性
+%   app:godunov_ls    — 標準 LS 法の Godunov 型スキーム（参考）
+%
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{時間変化格子と ALE 効果（本稿では未実装）}
+\label{app:grid_ale}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
+\textbf{本稿の実装では格子を時間固定として扱う（$\bm{v}_\text{mesh} = 0$）}か，タイムステップごとに格子を再生成するが $\bm{v}_\text{mesh}$ の補正は省略する．
+
+ALE 定式化では格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：$\partial\psi/\partial t + \nabla\cdot((\bm{u} - \bm{v}_\text{mesh})\psi) = 0$．ただしこの追加項の離散化は実装の複雑さを大きく増加させる．
+
+\textbf{誤差の発生機構：}
+1ステップあたりの界面移動量を $\delta = |\bm{u}|\Delta t$ とすると，
+ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量が無視される：
+\[
+  \varepsilon_{\text{ALE}} \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi| \cdot \Delta t \sim U_\Gamma \cdot \frac{1}{\varepsilon} \cdot \Delta t
+\]
+ここで $|\bnabla\psi| \sim 1/(4\varepsilon)$（界面近傍プロファイル），$U_\Gamma$ は界面速度である．
+
+\textbf{近似が有効な条件：}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
+\hline
+条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\
+\hline
+緩やかな界面変形 & $< 0.1$ & 良好（誤差 $< 10\%$ of $\Delta t^2$ 項） \\
+標準的な問題 & $\approx 0.5$ & 条件付きで可（格子収束確認要） \\
+大密度比 ($\rho_l/\rho_g{=}1000$) の高速界面 & $> 1$ & 精度劣化の可能性大（ALE 実装推奨） \\
+\hline
+\end{tabular}
+\end{center}
+
+$\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがあり，ALE 補正なしの格子更新は実質的に $O(\Delta t)$ 精度（1次）となる．
+格子収束テスト（第\ref{sec:verification}章）に加えて，時間刻み $\Delta t$ を半分にしたとき誤差が $1/4$ 倍（2次）か $1/8$ 倍（3次）になるかを確認し，ALE 省略の影響を定量的に評価すること．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Rhie--Chow 補正と CCD 高次精度の整合性}
+\label{app:rc_precision}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+式~\eqref{eq:rc-face} の補正項は $O(h^2)$ の誤差を持つが，CCD の $O(h^6)$ 精度を律速しない理由を示す．
+
+フェイス $f$（$x_P$ と $x_E$ の中点，$x_f = (x_P+x_E)/2$，$x_E - x_P = h$）での各勾配評価の
+テイラー展開：
+
+\textbf{(1) 直接フェイス差分：}
+$x_P = x_f - h/2$，$x_E = x_f + h/2$ として
+\[
+  p_E - p_P = h\,p'(x_f) + \frac{h^3}{24}p'''(x_f) + \Ord{h^5}
+\]
+を $h$ で割ると
+\begin{equation}
+  (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_face_taylor}
+\end{equation}
+
+\textbf{(2) CCD 勾配の算術平均：}
+CCD は各セル中心で $O(h^6)$ 精度の1階微分を返す：
+$(D^{(1)}_\mathrm{CCD}\,p)_P = p'(x_P) + \Ord{h^6}$，
+$(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
+これらの算術平均をテイラー展開：
+\[
+  p'(x_P) = p'(x_f) - \tfrac{h}{2}p''(x_f) + \tfrac{h^2}{8}p'''(x_f) + \Ord{h^3},
+  \quad
+  p'(x_E) = p'(x_f) + \tfrac{h}{2}p''(x_f) + \tfrac{h^2}{8}p'''(x_f) + \Ord{h^3}
+\]
+\begin{equation}
+  \overline{(\nabla p)}_f \equiv \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
+    = p'(x_f) + \frac{h^2}{8}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_avg_taylor}
+\end{equation}
+（奇数次項が相殺し，$O(h^2)$ の次数で $p'(x_f)$ を近似することに注意；$O(h^6)$ ではない）
+
+\textbf{(3) Rhie--Chow 検出項（差）：}
+\begin{equation}
+  (\nabla p)_f - \overline{(\nabla p)}_f
+  = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
+  = -\frac{h^2}{12}p'''(x_f) + \Ord{h^4} = \Ord{h^2}
+  \label{eq:rc_detection_taylor}
+\end{equation}
+補正量は $\Ord{\Delta t \cdot h^2}$．
+
+\begin{itemize}
+  \item \textbf{滑らかな圧力場：} 補正が $\Ord{h^2}$ であり，CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度．CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
+  \item \textbf{チェッカーボード場（波長 $2h$）：} $p_E - p_P = \Ord{1}$，$\overline{(\nabla p)}_f \approx 0$ のため補正量が $\Ord{1}$ の大きな値となり非物理振動を除去する．
+  \item \textbf{スペクトル選択的フィルタ：} 低波数（物理情報）は CCD $\Ord{h^6}$ で処理し，高波数（チェッカーボード）のみ $\Ord{h^2}$ で減衰する選択的フィルタとして機能する．
+\end{itemize}
+
+\textbf{(4) 表面張力 RC 補正の誤差（式~\eqref{eq:rc-face-balanced} の $(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f$）：}
+拡張 Rhie--Chow 式~\eqref{eq:rc-face-balanced} では，圧力補正項に加えて表面張力検出項
+$(\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f$ が加わる．
+フェイス直接差分 $(\bm{f}_\sigma)_f = (\kappa_f/We)(\psi_E-\psi_P)/h$ はテイラー展開から：
+\[
+  (\bm{f}_\sigma)_f = (\kappa/We)\nabla\psi(x_f) + \Ord{h^2}
+\]
+セル中心 CCD 平均 $\overline{(\bm{f}_\sigma)}_f$ も式~\eqref{eq:rc_avg_taylor} と同じ構造で：
+\[
+  \overline{(\bm{f}_\sigma)}_f = (\kappa/We)\nabla\psi(x_f) + \Ord{h^2}
+\]
+差は $(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f = \Ord{h^2}$，補正量は $\Ord{\Delta t \cdot h^2}$．
+したがって表面張力補正項も CCD の $\Ord{h^6}$ 精度を律速しない．
+
+Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhie--Chow 補正はフェイス速度の安定化補助項であり，主方程式の CCD 演算子とは独立の役割を担う（詳細は §\ref{sec:rc_balanced_force} 参照）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Balanced-Force 条件：離散化演算子不一致の誤差解析}
+\label{app:balanced_force_taylor}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，§\ref{sec:bf_operator_mismatch}（式~\eqref{eq:bf_operator_mismatch}）で示した演算子不一致誤差を，離散テイラー展開によって定量的に導出する．
+
+\subsection{打ち切り誤差の定量評価}
+
+連続レベルでは $\bnabla p = \kappa\bnabla\psi/We$ の釣り合いが成立している静止液滴を，
+異なる差分演算子 $D^{(1)}_{\mathrm{low}}$（低次）と $D^{(1)}_{\mathrm{CCD}}$（CCD，高次）で計算した場合の離散誤差を見る．
+
+$f$ が解析関数のとき，各演算子の打ち切り誤差は：
+\begin{align}
+  D^{(1)}_{\mathrm{low}} f   &= f' + c_1 h^2 f''' + \Ord{h^4} \\
+  D^{(1)}_{\mathrm{CCD}} f   &= f' + c_2 h^6 f^{(7)} + \Ord{h^8}
+\end{align}
+
+\textbf{平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ を用いた残差の展開：}
+\begin{align}
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{low}}\psi
+  &= \Bigl[\nabla p + \Ord{h^6}\Bigr]
+     - \frac{\kappa}{We}\Bigl[\nabla\psi + \Ord{h^2}\Bigr] \notag\\
+  &= \underbrace{\Bigl(\nabla p - \frac{\kappa}{We}\nabla\psi\Bigr)}_{=\,0\;\text{（平衡条件）}}
+     + \Ord{h^6} - \frac{\kappa}{We}\Ord{h^2} \notag\\
+  &= \Ord{h^2}
+  \label{eq:bf_mismatch_expand}
+\end{align}
+FD の打ち切り誤差 $O(h^2)$ が残差を支配し（CCD の $O(h^6)$ は無視できる），この $O(h^2)$ の不整合が\textbf{体積力として運動量方程式に残り，寄生流れを駆動し，最終的に計算の爆発を引き起こす}（§\ref{sec:bf_operator_mismatch}）．
+
+\subsection{同一演算子（CCD）使用時の誤差低減}
+
+同一の演算子（CCD）を両方に用いると，各項が独立に $O(h^6)$ 精度で連続微分を近似するため（$D_{\mathrm{CCD}}^{(1)} f = \nabla f + O(h^6)$），平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ のもとで：
+\[
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{CCD}}\psi
+  = \underbrace{\nabla p - \frac{\kappa}{We}\nabla\psi}_{=\,0\;\text{（平衡条件）}} + O(h^6)
+  = O(h^6)
+\]
+となり，寄生流れの\textbf{数値離散化誤差成分}は $O(h^6)$ まで低減される．
+
+\noindent\textbf{（注：演算子の可換性について）}
+$D_{\mathrm{CCD}}(\kappa\psi/We) = (\kappa/We)D_{\mathrm{CCD}}\psi + (\psi/We)D_{\mathrm{CCD}}\kappa$
+であるから，$\kappa$ が空間変化する一般の場合は代数的因数分解 $D_{\mathrm{CCD}}(p-\kappa\psi/We)$ は使えない．上式の $O(h^6)$ は各演算子の精度から直接導かれる．
+
+\subsection{CSF モデル誤差との関係：実測収束次数}
+
+ただし，残差は CSF モデルが界面を有限厚さ $\varepsilon \sim O(h)$ で近似することによる\textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，実測の寄生流れ収束次数は $O(h^2)$ 程度となる（§\ref{sec:accuracy_summary} および第\ref{sec:verification}章の静止液滴ベンチマーク参照）．Balanced-Force 条件の「Balanced」とは「数値離散化誤差成分の相殺（$O(h^6)$ への低減）」を指し，CSF モデル誤差（$O(\varepsilon^2) \approx O(h^2)$）そのものを除去するものではない点に注意されたい．
+
+Rhie--Chow 補正と Balanced-Force 条件の独立性は付録~\ref{app:rc_precision} 末尾で確認されている（表面張力補正項を含む拡張形式も同様）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{標準 Level Set 法の Godunov 型スキーム（参考）}
+\label{app:godunov_ls}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節は付録~\ref{app:weno5} に収録した WENO5 スキームとは別に，
+\textbf{標準レベルセット（符号付き距離関数）}移流に対して使われる Godunov 型 upwinding スキームを説明する．
+本稿の主実装（CLS + Dissipative CCD，§\ref{sec:advection_motivation}）では使用しないが，実装の選択肢として参考に記す．
+
+\subsection{Godunov 型スキームの基本形}
+
+符号付き距離関数 $\phi$ の移流方程式 $\phi_t + \bm{u}\cdot\nabla\phi = 0$ に対して，
+速度場 $\bm{u}$ の発散フリー条件 $\nabla\cdot\bm{u}=0$ のもとで保存形 $\phi_t + \nabla\cdot(\bm{u}\phi) = 0$ と等価となる．
+
+$x$ 方向フラックスを Godunov 法で評価する：
+\begin{equation}
+  F_{i+1/2} = u_{i+1/2}^+ \phi_i + u_{i+1/2}^- \phi_{i+1}
+\end{equation}
+ここで $u^+ = \max(u, 0)$，$u^- = \min(u, 0)$ は速度の上流風分解である．
+
+\subsection{再初期化との組み合わせ}
+
+標準 LS 法では移流後に符号付き距離条件 $|\nabla\phi| = 1$ が崩れるため，
+再初期化方程式
+\[
+  \phi_\tau + S(\phi^0)(|\nabla\phi|-1) = 0
+\]
+を仮想時間 $\tau$ 方向に数回反復する（$S(\phi^0)$ は初期符号に合わせたスムーズ符号関数）．
+
+CLS 法（本稿主方式）では再初期化が $\psi$ の compact プロファイルを保つよう設計されており，
+Godunov 型スキームと組み合わせるよりも質量保存性に優れる（§\ref{sec:reinit}）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{WENO5 移流スキームの詳細（参照スキーム）}
+\label{app:weno5}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は WENO5（5次精度 Weighted ENO）スキームの完全な定式化を収録する．
+本稿の主実装では CLS 移流に Dissipative CCD（§\ref{sec:advection_motivation}）を採用しており，
+WENO5 は実装オプションとして，また質量保存性・TVD 特性の比較参照スキームとして記録する．
+WENO5 を採用した場合の TVD 性・保存形フラックス差分による厳密な質量保存については
+§\ref{sec:advection_motivation} との対比で参照されたい．
+
+\subsection{Lax--Friedrichs フラックス分割}
+\label{app:lf_splitting}
+
+WENO5 を移流方程式
+$\partial\psi/\partial t + \nabla\cdot(\psi\bm{u}) = 0$（保存形）に適用するには，
+まず移流フラックスを上流方向に分割する必要がある
+（本稿主実装では CLS 移流に Dissipative CCD を使用する；§\ref{sec:advection_motivation} 参照）．
+WENO5 を使用する場合，本稿では大域 Lax--Friedrichs（GLF）分割を採用する：
+
+\begin{equation}
+  F^+(q) = \frac{1}{2}(F + \alpha\, q), \qquad
+  F^-(q) = \frac{1}{2}(F - \alpha\, q)
+  \label{eq:lf_split}
+\end{equation}
+ここで $F(q) = u \cdot q$（$q = \psi$），$\alpha = \max_{i,j}|u_{i,j}^n|$ は波速の上界（大域 LF）．
+
+\begin{tcolorbox}[warnbox, title={大域 LF vs 局所 LF}]
+\begin{itemize}
+  \item \textbf{大域 LF（本稿採用）：} $\alpha = \max_{\mathrm{all}}|u|$．実装が単純で安定性が高い．
+        低速領域では過剰な数値粘性が加わる可能性あり．
+  \item \textbf{局所 LF（Roe 的）：} $\alpha_i = \max(|u_i|, |u_{i+1}|)$．
+        数値粘性が適応的で精度が高いが実装の手間が増す．
+\end{itemize}
+気液二相流では密度比が大きく界面近傍で波速が大きく変動するため，
+大域 LF が安定性の観点から推奨される（第~\ref{sec:dissipative_ccd}章の適応フィルタとの組み合わせも有効）．
+\end{tcolorbox}
+
+\subsection{ENO・WENO の基本思想と WENO5 の定式化}
+\label{app:weno5_formulation}
+
+WENO 法（\cite{JiangShu1996}）は，複数の候補ステンシルを\textbf{滑らかさ指標に基づく重みで凸結合}する：
+\begin{equation}
+  \hat{f}^{\text{WENO}} = \sum_{k=0}^{r-1} \omega_k \, \hat{f}_k
+  \label{eq:weno_convex}
+\end{equation}
+ここで $\hat{f}_k$ は $k$ 番目の候補ステンシルからの数値フラックス，
+$\omega_k \geq 0$，$\sum_k \omega_k = 1$（凸結合）．
+
+\textbf{WENO5 の滑らかさ指標（$\beta_k$）：}
+\begin{align}
+  \beta_0 &= \frac{13}{12}(f_{i-2}-2f_{i-1}+f_i)^2 + \frac{1}{4}(f_{i-2}-4f_{i-1}+3f_i)^2 \notag\\
+  \beta_1 &= \frac{13}{12}(f_{i-1}-2f_i+f_{i+1})^2 + \frac{1}{4}(f_{i-1}-f_{i+1})^2 \notag\\
+  \beta_2 &= \frac{13}{12}(f_i-2f_{i+1}+f_{i+2})^2 + \frac{1}{4}(3f_i-4f_{i+1}+f_{i+2})^2
+  \label{eq:weno5_beta}
+\end{align}
+$\beta_k$ が小さいほどそのステンシルの範囲が滑らか（高い重み $\omega_k$）．
+
+\textbf{非線形重みの計算（3段構成）：}
+
+\noindent\textbf{ステップ 1：理想重み：}
+$d_0 = 1/10$，$d_1 = 3/5$，$d_2 = 3/10$
+
+\noindent\textbf{ステップ 2：$\alpha$ 重みの計算（$\varepsilon_\mathrm{w} = 10^{-6}$ はゼロ除算回避）：}
+\[
+  \alpha_k = \frac{d_k}{(\varepsilon_\mathrm{w} + \beta_k)^2}, \qquad k = 0,1,2
+\]
+
+\noindent\textbf{ステップ 3：正規化：}
+\[
+  \omega_k = \frac{\alpha_k}{\sum_{j=0}^{2}\alpha_j}, \qquad \sum_{k=0}^{2}\omega_k = 1
+\]
+
+\subsection{WENO5 再構成係数}
+\label{app:weno5_coef}
+
+正側フラックス $\hat{F}^+$ の 3 候補ステンシル再構成係数：
+\begin{align}
+  \hat{f}^+_0 &= \frac{1}{3}F^+_{i-2} - \frac{7}{6}F^+_{i-1} + \frac{11}{6}F^+_i
+  \label{eq:weno5_rec0} \\[4pt]
+  \hat{f}^+_1 &= -\frac{1}{6}F^+_{i-1} + \frac{5}{6}F^+_i + \frac{1}{3}F^+_{i+1}
+  \label{eq:weno5_rec1} \\[4pt]
+  \hat{f}^+_2 &= \frac{1}{3}F^+_i + \frac{5}{6}F^+_{i+1} - \frac{1}{6}F^+_{i+2}
+  \label{eq:weno5_rec2}
+\end{align}
+
+最終フラックス：$\hat{F}^+_{i+1/2} = \omega_0\hat{f}^+_0 + \omega_1\hat{f}^+_1 + \omega_2\hat{f}^+_2$
+
+負側フラックス $\hat{F}^-$ の再構成係数・$\beta_k^-$ は正側のミラー像（インデックス反転）で得られる．
+全体フラックス：$\hat{F}_{i+1/2} = \hat{F}^+_{i+1/2} + \hat{F}^-_{i+1/2}$
+
+\subsection{WENO5 の境界処理：ゴーストセル法}
+\label{app:weno5_boundary}
+
+WENO5 は格子点 $i$ に対して正側フラックスに $\{F^+_{i-2},\ldots,F^+_i\}$，
+負側フラックスに $\{F^-_{i+1},\ldots,F^-_{i+3}\}$ の計 6 点を必要とする．
+領域端ではゴーストセルを付加する：
+
+\begin{tcolorbox}[algbox, title={ゴーストセルによる境界ステンシル処理（本稿採用方針）}]
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+境界条件 & 左端ゴースト（$i=-1,-2$） & 右端ゴースト（$i=N,N+1$） \\
+\hline
+\textbf{周期 BC} & $f_{-k} = f_{N-k}$ & $f_{N+k} = f_k$（$k=1,2$） \\
+\textbf{壁面 Neumann} & $f_{-k} = f_{k}$（対称反射） & $f_{N+k} = f_{N-k}$ \\
+\textbf{流出 Outflow} & $f_{-k} = f_0$（一定外挿） & $f_{N+k} = f_{N-1}$ \\
+\hline
+\end{tabular}
+\end{center}
+格子配列を $N+4$ サイズ（両端 2 点のゴースト付き）で確保し，各タイムステップの WENO5 評価前にゴーストセルを更新する．
+\end{tcolorbox}
+
+\subsection{WENO5 の性質まとめ}
+\label{app:weno5_summary}
+
+\begin{itemize}
+  \item \textbf{空間精度：} 滑らかな領域で $O(h^5)$；不連続・急峻な勾配付近では振動抑制（ENO 的挙動）
+  \item \textbf{保存形：} フラックス形式により離散的質量保存が成立
+  \item \textbf{上流化：} 情報伝播方向を考慮した上流側ステンシルを優先
+  \item \textbf{WENO5 vs Dissipative CCD：} WENO5 は非線形重みによる TVD 性と
+        フラックス差分の厳密な質量保存を提供する；
+        本稿主実装の Dissipative CCD（§\ref{sec:advection_motivation}）は
+        線形フィルタで Gibbs 振動を抑制し，同一の CCD ステンシルで統一した実装を実現する．
+        両スキームの精度・安定性の特性比較は第~\ref{sec:verification}章の検証で確認する．
+\end{itemize}

@@ -11,43 +11,73 @@
 \pagenumbering{roman}
 \input{sections/00_abstract}
 \tableofcontents
-\newpage
+\cleardoublepage
 \pagenumbering{arabic}
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\cleardoublepage
 \part{問題設定と数学的基盤}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/01_introduction}  %% 第1章
-\input{sections/02_governing}     %% 第2章
+\input{sections/01_introduction}      %% 第1章
+\clearpage
+\input{sections/02_governing}         %% 第2章：変数定義・Two-Fluid→One-Fluid
+\input{sections/02b_csf}              %% 第2章続き：CSF 表面張力モデル
+\input{sections/02c_nondim_curvature} %% 第2章続き：無次元化・界面曲率
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\part{界面追跡法と移流スキーム}
+\cleardoublepage
+\part{界面追跡法}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/03_levelset}          %% 第3章：CLS 法
-\input{sections/08_time_integration}  %% 第4章：時間積分・移流スキーム（CLS と直結）
+\input{sections/03_levelset}          %% 第3章：CLS 法（なぜ必要か・移流・再初期化）
+\input{sections/03b_levelset_mapping} %% 第3章続き：ψ-φ 関係・逆変換・曲率安定化
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\part{空間離散化スキーム}
+\cleardoublepage
+\part{空間離散化・時間積分スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/04_ccd}               %% 第5章：結合コンパクト差分法（CCD）＋楕円型ソルバー
-\input{sections/05_grid}              %% 第6章：界面適合非一様格子（CCD でメトリック評価）
-\input{sections/06_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
-\input{sections/07_pressure}          %% 第8章：圧力 Poisson 方程式
+\input{sections/04_ccd}               %% 第4章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
+\input{sections/04b_ccd_bc}           %% 第4章続き（境界条件・ブロック三重対角行列構造）
+\input{sections/04c_ccd_extensions}   %% 第4章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
+\input{sections/04d_dissipative_ccd}  %% 第4章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
+\clearpage
+\input{sections/05_advection}         %% 第5章：CLS 移流スキーム（Dissipative CCD 設計根拠）
+\input{sections/05b_time_integration} %% 第5章続き：時間積分（TVD-RK3・AB2+IPC・CN法）
+\input{sections/05c_reinitialization} %% 第5章続き：CLS 再初期化・安定性制約
+\clearpage
+\input{sections/06_grid}              %% 第6章：界面適合非一様格子
+\clearpage
+\input{sections/07_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
+\clearpage
+\input{sections/08_pressure}          %% 第8章：圧力 Poisson 方程式（Projection・FVM・境界条件）
+\input{sections/08d_ppe_pseudotime}   %% 第8章続き：CCD 陰解法と仮想時間ステップ反復
+\input{sections/08b_ccd_poisson}      %% 第8章続き（CCD-Poisson 行列・Balanced-Force・手法比較）
+\input{sections/08c_ppe_verification} %% 第8章続き（PPE ソルバ検証：Test C-1, C-2, C-3）
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\cleardoublepage
 \part{統合・検証・展望}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/09_full_algorithm}    %% 第9章
-\input{sections/10_verification_metrics} %% 第10章
+\clearpage
+\input{sections/10_verification}         %% 第10章：検証指標・格子収束テスト
+\input{sections/10b_benchmarks}          %% 第10章続き：4ベンチマーク・誤差バジェット
+\clearpage
 \input{sections/11_conclusion}        %% 第11章
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-%% 付録：数学的補足証明
+%% 付録：数学的補足証明・スキーム詳細
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\clearpage
-\input{sections/appendix_proofs}
+\cleardoublepage
+\appendix
+\part*{付録}
+
+\input{sections/appendix_interface}      %% 付録A: 界面数学・CLS 証明（§2-§3 対応）
+\input{sections/appendix_ccd_coef}      %% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
+\input{sections/appendix_ccd_impl}      %% 付録C: CCD 実装詳細・Kronecker 積・周期BC（§4/§8 対応）
+\input{sections/appendix_numerics_schemes} %% 付録D: 参照スキーム（WENO5・ALE・Rhie--Chow・Godunov, §5-§7 対応）
+\input{sections/appendix_numerics_solver}  %% 付録E: ソルバー解析（擬似時間・CFL・チェッカーボード, §5-§8 対応）
 
 \end{document}
