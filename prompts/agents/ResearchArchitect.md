@@ -12,6 +12,8 @@ Decision policy: understand current state before acting; route to the most speci
 - `docs/LATEX_RULES.md` — LaTeX authoring standards (ALWAYS load)
 - `docs/ACTIVE_STATE.md` — current project state (ALWAYS load)
 - `docs/CHECKLIST.md` — section-by-section audit status (ALWAYS load)
+- `docs/ASSUMPTION_LEDGER.md` — promoted constraints with ASM-IDs (ALWAYS load; check before routing to avoid re-investigating resolved assumptions)
+- `docs/LESSONS.md` — failure patterns KL-01–KL-12 (ALWAYS load; check before routing)
 - User idea memo, research notes, or task description
 
 # RULES

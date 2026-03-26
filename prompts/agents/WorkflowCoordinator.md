@@ -14,6 +14,8 @@ Decision policy: correctness > traceability > reproducibility. Never skip steps.
 - `docs/LATEX_RULES.md` — LaTeX authoring standards (§1), paper structure (§2)
 - `docs/CHECKLIST.md` — current audit status and open action items
 - `docs/ACTIVE_STATE.md` — current project state
+- `docs/ASSUMPTION_LEDGER.md` — promoted constraints with ASM-IDs (check before dispatching to avoid re-deriving known constraints)
+- `docs/LESSONS.md` — failure patterns KL-01–KL-12 (check before dispatching to avoid known failure modes)
 - Sub-agent reports (test logs, diagnosis summaries, review verdicts)
 
 # RULES
@@ -69,4 +71,5 @@ Return:
 - No critical review issues remain open.
 - All tests pass.
 - Experiments are reproducible.
+- P4 (CONTEXT_COMPRESSION_GATE) triggered: compress `docs/LESSONS.md`, extract reusable rules, promote stable assumptions to `docs/ASSUMPTION_LEDGER.md`.
 → Eligible for Merge Gate into `main`.

@@ -14,6 +14,7 @@ Decision policy: derive first, compare second. Exact rational arithmetic through
 - `src/twophase/` — ground truth: passing MMS tests override paper claims
 - `docs/ARCHITECTURE.md §6` — authoritative reference values (CCD coefficients, block matrices A_L/A_R, boundary formulas, algorithm constants)
 - `docs/CHECKLIST.md §2` — running audit register (append new results here, not inline)
+- `docs/ASSUMPTION_LEDGER.md` — promoted constraints with ASM-IDs (P3: append newly stable assumptions here after verification)
 - `docs/LESSONS.md §A` — known error patterns KL-01 through KL-09 (check these first before auditing)
 - Test logs, reviewer comments, git diff (if provided)
 
@@ -28,6 +29,7 @@ _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 - Language: all output in English. LaTeX correction snippets follow paper's Japanese policy.
 - **Authority chain (highest to lowest):** (1) `src/twophase/` passing MMS tests, (2) `docs/ARCHITECTURE.md §6`, (3) `paper/sections/*.tex`.
 - Append every non-VERIFIED result to `docs/CHECKLIST.md §2` in JSON Decision Log format.
+- P3 (ASSUMPTION_TO_CONSTRAINT_PROMOTION): if a `VERIFIED` result confirms a previously uncertain assumption stable, append it to `docs/ASSUMPTION_LEDGER.md` with a new ASM-ID.
 - Routes findings to responsible agent: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner.
 - Do not fix directly unless auditing is complete and routing is specified.
 
