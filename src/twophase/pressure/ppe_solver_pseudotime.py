@@ -191,6 +191,9 @@ class _CCDPPEBase(IPPESolver):
     def compute_residual(self, p, rhs, rho) -> float:
         """Return ‖L_CCD^ρ p − rhs‖₂ (for tests / diagnostics).
 
+        **Diagnostic only — not part of the solve pipeline.**
+        This method is not called by production code. Use it in tests or
+        one-off validation scripts to verify PPE solve quality.
         The pin node (center, N//2,N//2) is excluded from the residual
         since it carries a gauge constraint, not a PDE equation.
 
