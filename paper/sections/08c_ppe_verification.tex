@@ -1,0 +1,187 @@
+%% 08c_ppe_verification.tex — CCD-Poisson ソルバー単体検証（§sec:ccd_poisson_verification）
+%% 08_pressure.tex から分割 (2026-03-19)
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CCD-Poisson ソルバーの単体検証}
+\label{sec:ccd_poisson_verification}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_matrix}）を
+流体力学ソルバーから切り離して単体で検証する．
+ここでは3種類のテストにより，
+(i) 空間精度次数，(ii) 収束挙動，(iii) 変密度場での精度を段階的に確認する．
+
+\noindent\textbf{注（実装検証仕様）：}
+本節に示す誤差・収束次数は，ソルバーが正しく実装された場合に達成されるべき目標値（実装仕様）であり，
+本稿の数値実験から得られた実測値ではない．
+各テストの合格基準を満たすことを実装完了の必要条件として用いること．
+流体力学ソルバーと組み合わせた実測ベンチマーク結果は §\ref{sec:bench_droplet} を参照のこと．
+
+\noindent\textbf{注（テスト C-1 の境界条件とノイマン BC 検証の分担）：}
+テスト C-1（§\ref{sec:ccd_test_c1}）はディリクレ条件 $p|_{\partial\Omega}=0$ の解析解を用いて
+CCD-Poisson 演算子の\textbf{空間精度次数（$\Ord{h^6}$）}を確認するテストである．
+本実装の PPE はノイマン条件 $\partial p/\partial n = 0$ を使用するが，これはテスト C-1 の目的とは独立である：
+ノイマン BC の CCD ブロック方程式への組み込み手順は §\ref{sec:ccd_neumann_bc}（離散式 \eqref{eq:neumann_bc_ccd}）に示し，
+正しく実装されたかの確認は §\ref{sec:ppe}（$\texttt{box:neumann\_unit\_test}$）の
+Null test・Manufactured Solution test（コサイン解析解）で別途行う．
+両テストを合わせることで「CCD 演算子の精度」と「Neumann BC 実装の正確性」を独立に検証できる．
+
+\subsubsection{検証テスト C-1：等密度 Poisson 方程式の格子収束（\texorpdfstring{$\Ord{h^6}$}{O(h\textasciicircum 6)} の確認）}
+\label{sec:ccd_test_c1}
+
+\begin{tcolorbox}[algbox, title={テスト C-1 の設定}]
+\textbf{問題：} 2次元 Poisson 方程式（等密度，$\rho = 1$）
+\[
+  \Delta p = f(x,y), \quad (x,y) \in [0,1]^2
+\]
+解析解 $p^*(x,y) = \sin(\pi x)\sin(\pi y)$ を採用する．
+このとき $f(x,y) = -2\pi^2\sin(\pi x)\sin(\pi y)$（右辺ソース項）．
+
+\textbf{境界条件：} ディリクレ条件 $p|_{\partial\Omega} = 0$
+
+\textbf{格子：} $N = 8, 16, 32, 64, 128, 256$（一様格子 $h = 1/N$）
+
+\textbf{ソルバー：} 仮想時間陰解法 + CCD（$\varepsilon_{\mathrm{tol}} = 10^{-12}$，
+$\Delta\tau = 0.5h^2$）
+
+\textbf{誤差評価：}
+\[
+  E_p(h) = \|p_h - p^*\|_{L^\infty([0,1]^2)}
+  = \max_{i,j}|p_{i,j}^h - p^*(x_i, y_j)|
+\]
+
+\textbf{期待される収束次数：} $p = \log_2(E_p(h)/E_p(h/2)) \approx 6$
+\end{tcolorbox}
+
+\begin{table}[htbp]
+\centering
+\caption{テスト C-1：CCD-Poisson ソルバーの格子収束テスト（目標値）}
+\label{tab:ccd_poisson_conv}
+\begin{tabular}{cccc}
+\toprule
+$N$ & $h$ & $E_p$（目標値） & 収束次数 $p$ \\
+\midrule
+$8$   & $1/8$   & $\sim 2 \times 10^{-3}$ & --- \\
+$16$  & $1/16$  & $\sim 3 \times 10^{-5}$ & $\approx 6.0$ \\
+$32$  & $1/32$  & $\sim 5 \times 10^{-7}$ & $\approx 6.0$ \\
+$64$  & $1/64$  & $\sim 8 \times 10^{-9}$ & $\approx 6.0$ \\
+$128$ & $1/128$ & $\sim 1 \times 10^{-10}$ & $\approx 6.0$ \\
+$256$ & $1/256$ & $\sim 2 \times 10^{-12}$ & $\approx 6.0$ \\
+\bottomrule
+\end{tabular}
+
+\medskip
+注：格子を半分にするたびに誤差が $1/64$ 倍（$\approx 6$ 次収束）になること．
+FVM 2次手法との比較として，FVM の場合は $E_p \sim C h^2$ となり同解像度で $10^3$ 倍程度大きい誤差となる．
+\end{table}
+
+\subsubsection{検証テスト C-2：仮想時間反復の収束挙動}
+\label{sec:ccd_test_c2}
+
+\begin{tcolorbox}[algbox, title={テスト C-2 の設定}]
+\textbf{目的：} 仮想時間刻み $\Delta\tau$ と収束速度の関係，および反復回数の依存性を確認する．
+
+\textbf{問題：} テスト C-1 と同じ設定（$N=64$）
+
+\textbf{パラメータスウィープ：}
+$\Delta\tau \in \{0.1h^2,\, 0.5h^2,\, h^2,\, 5h^2,\, 10h^2\}$
+
+\textbf{評価指標：}
+\begin{itemize}
+  \item 残差の収束履歴 $\varepsilon^m = \|\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m - q\|_2$
+        を反復ステップ $m$ に対してプロット（対数スケール）
+  \item 収束に要した反復回数 $m_{\mathrm{conv}}$（$\varepsilon^m < 10^{-8}$ を達成するまで）
+\end{itemize}
+
+\textbf{期待される結果：}
+\begin{itemize}
+  \item $\varepsilon^m$ が指数的に減少する（線形収束）
+  \item 収束率（対数プロットの傾き）が $\Delta\tau$ の増加とともに改善する
+  \item $\Delta\tau \gtrsim 10h^2$ で振動的な収束挙動が観察される場合がある
+        （スウィープ型実装での分割誤差の影響）
+\end{itemize}
+\end{tcolorbox}
+
+\subsubsection{検証テスト C-3：変密度 Poisson 方程式（密度比 \texorpdfstring{$10^3$}{10\textasciicircum 3}）}
+\label{sec:ccd_test_c3}
+
+\begin{tcolorbox}[algbox, title={テスト C-3 の設定}]
+\textbf{問題：} 変密度 Poisson 方程式
+\[
+  \nabla\cdot\!\left(\frac{1}{\rho(x,y)}\nabla p\right) = f(x,y),
+  \quad (x,y) \in [0,1]^2
+\]
+
+\textbf{密度場：} 界面 $x = 0.5$ での1次元ジャンプを模擬した滑らかな遷移
+\[
+  \rho(x,y) = \rho_g + (\rho_l - \rho_g)\,\hat{H}_\varepsilon(x - 0.5),
+  \quad
+  \hat{H}_\varepsilon(s) =
+  \begin{cases}
+    0 & (s < -\varepsilon) \\
+    \dfrac{1}{2}\!\left(1 + \dfrac{s}{\varepsilon}\right) & (|s| \le \varepsilon) \\
+    1 & (s > \varepsilon)
+  \end{cases}
+\]
+（$\rho_l = 1000$，$\rho_g = 1$，$\varepsilon = 3h$）
+
+\noindent\textbf{注：}ここで用いる $\hat{H}_\varepsilon$ はテスト専用の区分線形近似であり，
+本稿の CLS で使うシグモイド型 $H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ とは別物である．
+テストの解析解 $p^*(x,y)$ と右辺 $f(x,y)$ の計算では一貫して $\hat{H}_\varepsilon$ を用いること．
+
+\textbf{解析解：} $p^*(x,y) = \rho(x,y)\sin(\pi x)\sin(\pi y)$
+（密度場と整合した平滑な解）
+
+\textbf{右辺：} 解析解 $p^* = \rho\sin\pi x\sin\pi y$ を
+$\nabla\cdot(1/\rho\,\nabla p) = (1/\rho)\nabla^2 p - (\nabla\rho/\rho^2)\cdot\nabla p$
+（product-rule，式~\eqref{eq:varrho_product_rule}）に代入して計算した $f(x,y)$：
+\begin{align*}
+  \nabla^2 p^* &= \nabla^2(\rho\sin\pi x\sin\pi y)
+  = \sin\pi x\sin\pi y\,\nabla^2\rho
+    + 2(\nabla\rho)\cdot(\nabla\sin\pi x\sin\pi y)
+    - 2\pi^2\rho\sin\pi x\sin\pi y \\
+  \nabla p^* &= \nabla\rho\cdot\sin\pi x\sin\pi y
+    + \rho\,\pi\cos\pi x\sin\pi y\,\bm{e}_x
+    + \rho\,\pi\sin\pi x\cos\pi y\,\bm{e}_y
+\end{align*}
+（$\nabla\rho$ は $H_\varepsilon$ の勾配から解析的に計算；$|x-0.5|\le\varepsilon$ 外では $\nabla\rho=0$．
+実装では上式を数値的に評価して各格子点の $f_{ij}$ を構築してよい．）
+
+\textbf{格子：} $N = 32, 64, 128$
+
+\textbf{評価指標：}
+\[
+  E_p^{\rho}(h) = \|p_h - p^*\|_{L^\infty}
+\]
+
+\textbf{期待される収束次数：}
+密度遷移層内（$\varepsilon = 3h$ のため格子細化とともに界面解像度も向上）では
+$\Ord{h^4}$~$\Ord{h^6}$ の間の収束次数が期待される．
+遷移層外（純粋相）では $\Ord{h^6}$ が維持される．
+
+\textbf{FVM（2次精度）との比較確認：}
+同一問題を FVM 二次離散化で解き，
+\begin{itemize}
+  \item 界面近傍での誤差分布（$|p_h - p^*|$ のカラーマップ）の比較
+  \item $\rho_l/\rho_g = 10$，$100$，$1000$ での誤差の密度比依存性
+\end{itemize}
+を定量化する．CCD の優位性が高密度比ほど顕著に現れることを確認する．
+\end{tcolorbox}
+
+\begin{table}[ht]
+\centering
+\caption{3テストの段階的役割}
+\label{tab:three_tests_role}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{clll}
+\hline
+テスト & 検証対象 & 合格基準 & 失敗時の疑い箇所 \\
+\hline
+C-1 & 空間精度 $\Ord{h^6}$ & 収束次数 $p \ge 5.5$ & CCD 係数の実装誤り \\
+C-2 & 仮想時間収束挙動 & 指数的残差減少 & $\Delta\tau$ 選択，スウィープ実装 \\
+C-3 & 変密度精度 & $E_p$ が FVM より $10^2$~$10^4$ 倍小さい & 密度勾配項の実装誤り \\
+\hline
+\end{tabular}
+\end{table}
+
+これら3テストを合格した後に，流体力学ソルバーと組み合わせた
+ベンチマーク1（静止液滴，第\ref{sec:verification}章 §\ref{sec:bench_droplet}）に進む．

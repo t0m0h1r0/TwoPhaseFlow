@@ -1,0 +1,322 @@
+% paper/sections/05_advection.tex
+%
+% §5  CLS 移流の離散化：Dissipative CCD スキームの設計根拠（§5.1）
+%     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
+%
+\section{CLS 移流の離散化}
+\label{sec:advection}
+
+本章では，第~\ref{sec:levelset}章で導入した CLS 移流方程式
+\begin{equation}
+  \frac{\partial\psi}{\partial t} + \nabla\cdot(\psi\bm{u}) = 0
+  \label{eq:cls_advection_ref}
+\end{equation}
+（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための離散化スキームを示す．
+第~\ref{sec:CCD}章で構築した CCD 法および第~\ref{sec:dissipative_ccd}節の
+Dissipative CCD フィルタを移流方程式へ適用する設計根拠を述べ，
+圧縮項（再初期化）・時間積分・安定性制約と合わせて全スキームを定式化する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Dissipative CCD による CLS 移流の安定化：設計根拠}
+\label{sec:advection_motivation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{移流スキーム選択の設計根拠：WENO5 からの脱却}
+\label{sec:advection_weno5_critique}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\paragraph{WENO5 の設計思想と CLS 界面の非適合性．}
+WENO5（Weighted Essentially Non-Oscillatory 5次精度）スキーム~\cite{JiangShu1996}は，
+衝撃波・接触不連続面を含む圧縮性流体力学における数値振動（Gibbs 現象）を
+強力に抑制するために設計された．
+ステンシル内の\textbf{滑らかさ指標}（$\beta_k$，式~\eqref{eq:weno5_beta}）が
+不連続を検知すると，その方向の重みを $O(\varepsilon^2)$ まで低減して
+\textbf{非線形散逸}を自動的に投入する機構がスキームの中核にある．
+
+\medskip
+
+一方，本稿で採用する保存型レベルセット（CLS）法では，界面を滑らかな
+正則化ヘヴィサイド関数 $H_\varepsilon(\phi)$（式~\eqref{eq:Heps_def_preview}）で表現し，
+界面厚みを $2\varepsilon \sim O(h)$ に制御する．
+この枠組みにおいて $\psi = H_\varepsilon(\phi)$ は\textbf{実質的に滑らかな関数}であり，
+移流方程式の解の中に\textbf{真の不連続は存在しない}．
+結果として WENO5 の滑らかさ指標は，
+滑らかな界面プロファイルを「不連続の兆候」と過剰に検知し，
+\textbf{不必要な非線形散逸を常時付加する}こととなる．
+
+この過剰散逸の帰結は以下の 2 点に集約される：
+\begin{enumerate}
+  \item \textbf{界面の非物理的平滑化：}
+        液滴の微細変形，薄液膜の形成，界面の強いせん断巻き込みといった
+        物理的に意味のある界面構造が，数値散逸によって均されてしまう．
+        特に高 $\mathrm{We}$ 数・高 $\mathrm{Re}$ 数流れで顕著となる．
+  \item \textbf{Balanced-Force 精度の侵食：}
+        第~\ref{sec:balanced_force}章で導く Balanced-Force 条件は，
+        曲率 $\kappa$ の計算と圧力勾配 $\nabla p$ に\textbf{同一の差分演算子}を
+        用いることで寄生流れを $O(h^6)$ まで低減する．
+        WENO5 の非線形重みは $\psi$ の移流精度を適応的に劣化させるため，
+        再初期化後の $\psi$ プロファイル（曲率計算の入力）に振動・ぼやけを残し，
+        Balanced-Force によって確保したはずの高精度を実用上無意味にする危険がある．
+\end{enumerate}
+
+\paragraph{CCD との根本的親和性．}
+CCD（結合コンパクト差分，第~\ref{sec:CCD}章）は，
+スペクトル解像度に優れる\textbf{線形・コンパクト・低散逸}スキームである．
+CLS が提供する滑らかな $\psi$ プロファイルは，まさに CCD が最も得意とする対象であり，
+以下の理由から移流項の離散化として理論的に最適な選択となる．
+
+\begin{description}
+  \item[\upshape(i) 設定界面構造の長時間保持]
+        非線形重み調整をもたない CCD は，
+        設定した $\varepsilon$ のプロファイルを移流中に追加散逸なく維持する．
+        WENO5 が数ステップで界面を $O(h)$ 幅だけ肥厚させる状況でも，
+        CCD は高忠実な界面形状を保ち続ける（第~\ref{sec:verification}章参照）．
+  \item[\upshape(ii) 空間離散化スキームの統一]
+        本フレームワークでは PPE（§\ref{sec:pressure}），粘性項，
+        表面張力の曲率評価，速度場微分の全てに CCD を用いている．
+        移流項に\textbf{同一の 3 点コンパクトステンシル}を採用することで，
+        支配方程式全体の空間離散化が単一の構造で統一される．
+        この統一性は，境界条件の処理を一元化し（§\ref{sec:ccd_bc}），
+        変数間の数値的干渉を低減する——
+        WENO5 の 5 点ステンシルと CCD の 3 点ステンシルを混在させた場合に生じる
+        \textbf{打ち切り誤差の非整合}（$O(h^5)$ の移流誤差が $O(h^6)$ の圧力精度を
+        律速する非均質な精度階層）を回避できる．
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{気液界面移流の困難と純 CCD の限界}
+\label{sec:advection_ccd_limit}
+
+$\psi$ は界面付近で $0$ から $1$ へと急激に変化する（界面幅 $\sim 2\varepsilon$）．
+この急峻なプロファイルを移流方程式~\eqref{eq:cls_advection_ref}で輸送するとき，
+\textbf{中心差分ベースのスキームは原理的に不安定}になる．
+
+フォン・ノイマン安定性解析による確認：
+CCD は純中心差分（修正波数 $k^*(kh)$ が実数）であるため，
+移流方程式 $\partial\psi/\partial t + u\,\partial\psi/\partial x = 0$ に
+陽的時間積分を組み合わせると，Fourier モード $\psi_i = e^{i\xi i}$ に対して
+増幅係数は
+\begin{equation}
+  |g(\xi)|^2 = 1 + \sigma^2 \left[\frac{k^*(\xi)}{k}\right]^2 > 1
+  \quad \forall\, \xi > 0, \;\sigma = \frac{u\Delta t}{h} > 0
+  \label{eq:ccd_adv_instability}
+\end{equation}
+となり，\textbf{すべての波数で振幅が増大する}——これは純 CCD による陽的移流が
+本質的に不安定であることを意味する（CFL 条件を小さくしても解消しない）．
+
+この不安定性の物理的帰結は \textbf{Gibbs 振動}（$\psi < 0$ や $\psi > 1$
+の非物理的値の発生）であり，界面のにじみおよび密度場の不整合として現れる
+（§\ref{sec:failure_modes}）．
+
+\subsubsection{Dissipative CCD の採用：フィルタによるスペクトル安定化}
+\label{sec:advection_dccd_design}
+
+第~\ref{sec:dissipative_ccd}節で設計した 3 点スペクトルフィルタ
+（式~\eqref{eq:dccd_filter}）を，
+CLS 移流フラックス発散の計算に組み込むことで上記の不安定性を解消する．
+
+\medskip
+\noindent\textbf{移流への適用．}
+フラックス場 $f_i = \psi_i u_i$（$x$ 方向）に CCD を適用して微分場 $f'_i$
+を求め，その後 Dissipative フィルタを適用する：
+\begin{align}
+  f'_i &= \left[\frac{\partial(\psi u)}{\partial x}\right]_i
+  \quad\text{（CCD 求解，$O(h^6)$ 精度）}
+  \label{eq:dccd_adv_ccd} \\[4pt]
+  \tilde{F}_i &= f'_i + \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+  \label{eq:dccd_adv_filter}
+\end{align}
+得られた修正フラックス発散 $\tilde{F}_i$ を時間積分（§\ref{sec:time_int}）の
+空間演算子として使用する：$\mathcal{L}(\psi) = \tilde{F}$．
+
+\medskip
+\noindent\textbf{安定化機構：フィルタ伝達関数による振幅減衰．}
+Fourier モード $\psi_i = e^{i\xi i}$ に対して
+$f'_{i+1} - 2f'_i + f'_{i-1} = (e^{i\xi}-2+e^{-i\xi})f'_i = -4\sin^2(\xi/2)\,f'_i$
+であるから，フィルタ適用後の有効スペクトルは
+$\tilde{F}(\xi) = H(\xi;\varepsilon_d^{\mathrm{adv}})\cdot f'(\xi)$，
+$H(\xi) = 1 - 4\varepsilon_d^{\mathrm{adv}}\sin^2(\xi/2) \leq 1$．
+
+この実数係数（$0 \leq H \leq 1$）の乗算が\textbf{振幅を単調に減衰}させ，
+増幅係数を
+\begin{equation}
+  |g(\xi)|^2 = 1 + \sigma^2 H(\xi)^2\left[\frac{k^*(\xi)}{k}\right]^2
+  \label{eq:dccd_adv_amp}
+\end{equation}
+に変える．$H(\xi) < 1$ によって有効 CFL 数が $\sigma H(\xi) < \sigma$ に縮小し，
+高波数（$\xi \to \pi$，$H \to 1-4\varepsilon_d^{\mathrm{adv}}$）では
+成長率が大幅に低減される．
+典型的な二相流パラメータ（$\mathrm{CFL} \leq 0.5$，$\varepsilon_d^{\mathrm{adv}} = 0.05$）のもとで
+実用的な安定性が得られることを数値実験で確認している（第~\ref{sec:verification}章参照）．
+
+\begin{tcolorbox}[warnbox, title={移流フィルタの散逸強度：S(ψ) 制御を使わない理由}]
+\label{warn:adv_filter_uniform}
+
+第~\ref{sec:dissipative_ccd}節の速度・圧力場フィルタでは
+スイッチ関数 $S(\psi) = (2\psi-1)^2$ を用いて
+\textbf{界面でフィルタを OFF}（$S(1/2) = 0$）にし，曲率計算の精度を保護した．
+
+CLS 移流に同じ $S(\psi)$ を適用すると，Gibbs 振動が最も激しい
+$\psi \approx 0.5$（界面）の近傍でフィルタ強度がゼロになり，
+安定化が最も必要な場所で無効化されるという\textbf{設計矛盾}が生じる．
+
+\textbf{したがって CLS 移流には一様散逸強度を使用する：}
+\begin{equation}
+  \varepsilon_d^{\mathrm{adv}} = \varepsilon_{d,\max} = 0.05 \quad\text{（全格子点，S(ψ) 制御なし）}
+  \label{eq:eps_adv}
+\end{equation}
+この値のもとでナイキスト波長 $2h$（$\xi=\pi$）での伝達関数は
+$H(\pi;\,0.05) = 1 - 4\times 0.05 = 0.80$（20\%\ 振幅減衰）；
+物理的に重要な低波数成分（$\xi \ll \pi$）への影響は
+$H(\xi) \approx 1 - \varepsilon_d^{\mathrm{adv}}\xi^2 \approx 1$（精度劣化 $O(\varepsilon_d\xi^2) \ll 1$）に抑えられる
+（式~\eqref{eq:dccd_transfer}，§\ref{sec:dccd_filter_theory}）．
+典型的な CFL $\leq 0.5$ のもとでの実用的安定性は第~\ref{sec:verification}章のベンチマークで検証する．
+
+速度・圧力場フィルタ（適応制御 $\varepsilon_d^{(i)} = \varepsilon_{d,\max}S(\psi_i)$）
+との使い分けを表~\ref{box:scheme_roles}に整理する．
+\end{tcolorbox}
+
+\medskip
+\noindent\textbf{質量保存性．}
+フィルタ項 $\varepsilon_d^{\mathrm{adv}}(f'_{i+1}-2f'_i+f'_{i-1})$ の周期境界での総和は
+\[
+  \sum_i \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+  = \varepsilon_d^{\mathrm{adv}}\!\left(\sum_i f'_{i+1} - 2\sum_i f'_i + \sum_i f'_{i-1}\right) = 0
+\]
+（添字のシフト対称性より）．
+すなわち\textbf{フィルタは総質量に寄与しない}（周期 BC）．
+CCD そのものは $\sum_i f'_i\,h \approx [f]_0^L$（発散定理）を $O(h^6)$ 精度で近似するため，
+$N$ 格子点での局所打ち切り誤差 $O(h^6/h)=O(h^5)$ が $N$ 点累積して
+$h \cdot N \cdot O(h^5) = O(h^5 \cdot L)$ となり，
+移流ステップあたりの質量保存誤差は $O(h^5\,\Delta t)$ となる
+（WENO5 のフラックス差分法による完全な保存性と比較する場合は付録~\ref{app:weno5} 参照）．
+
+\begin{tcolorbox}[warnbox, title={TVD 性の欠如と ψ のクランプ処置}]
+\label{warn:adv_clamp}
+
+WENO5 + TVD-RK3 は TVD 性（Total Variation Diminishing）により
+$\psi \in [0,1]$ を自動保証する．
+Dissipative CCD は線形フィルタであり TVD 性を持たないため，
+界面近傍での Gibbs 振動が抑制不足になると $\psi$ が $[0,1]$ を
+逸脱する可能性がある．
+
+\textbf{対処：} 各 TVD-RK3 ステージ完了後に
+\begin{equation}
+  \psi_i \leftarrow \max\bigl(0,\, \min(1,\, \psi_i)\bigr)
+  \label{eq:psi_clamp}
+\end{equation}
+のクランプを適用する．クランプによる質量誤差は $O(h^2)$ で
+CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$（§\ref{sec:balanced_force}）
+と同オーダーであり，全体精度のボトルネックにならない．
+クランプ後の質量変化は第~\ref{sec:verification}章の体積保存ベンチマークで定量確認すること．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={線形 CCD 移流の残余リスクと既知の失敗モード}]
+\label{warn:adv_risks}
+
+Dissipative CCD とクランプ処置（式~\eqref{eq:psi_clamp}）は
+TVD 欠如リスクを実用的に抑制するが，
+以下の 2 点はスキームの\textbf{設計上の固有制限}として明示しておく．
+
+\medskip
+\noindent\textbf{(A) 非線形エイリアシングの蓄積．}
+線形スキームである CCD は振幅の自律的減衰機能を持たない．
+移流項 $\nabla\cdot(\psi\bm{u})$ の非線形相互作用（$\psi$ と $\bm{u}$ の積）は，
+低波数 $\to$ 高波数へのエネルギーカスケードを生成し，
+格子スケールのノイズとして蓄積する．
+本フレームワークではこれに対して二重の対策を施している：
+\begin{itemize}
+  \item Dissipative CCD フィルタ（$\varepsilon_d^{\mathrm{adv}} = 0.05$）が
+        高波数成分（$\xi \to \pi$）を各ステップで 20\%\ 減衰させる
+        （$H(\pi;\,0.05) = 0.80$，式~\eqref{eq:eps_adv}）；
+  \item Rhie--Chow 補間（§\ref{sec:rhie_chow}）が
+        コロケート格子上でのチェッカーボード励起を独立に抑制する．
+\end{itemize}
+高 $\mathrm{Re}$ 数・高解像度（$N \geq 256$）ケースにおいて
+これらの対策が十分かどうかは，第~\ref{sec:verification}章の
+乱流混合ベンチマークで評価すること
+（現時点では層流・中低 $\mathrm{Re}$ 数の検証にとどまる）．
+
+\medskip
+\noindent\textbf{(B) 極薄界面設定時の破綻．}
+界面厚みを格子幅に極限まで近づけた設定
+（$\varepsilon \to h$，すなわち $\varepsilon_{\mathrm{factor}} \to 1.0$）では，
+$\psi$ プロファイルがほぼ step 関数に退化し，
+CCD の高精度近似前提（関数の十分な滑らかさ）が成立しなくなる．
+この条件下では Dissipative CCD の散逸補正が不十分となり，
+激しい振動とクランプによる質量損失が急増する．
+
+\textbf{安全な運用範囲：} $\varepsilon_{\mathrm{factor}} \geq 1.5$
+（デフォルト値，\texttt{NumericsConfig.epsilon\_factor}）を推奨する．
+$\varepsilon_{\mathrm{factor}} < 1.2$ かつ流れが非線形に強い場合
+（$\mathrm{We} > 100$，密度比 $> 100$）は
+計算破綻のリスクがあり，WENO5（付録~\ref{app:weno5}）への
+フォールバックを検討すること．
+\end{tcolorbox}
+
+\medskip
+\noindent\textbf{アルゴリズムの概要（1 次元，TVD-RK3 第 1 ステージ）：}
+
+\begin{tcolorbox}[algbox, title={Dissipative CCD による CLS 移流アルゴリズム（1D)}]
+\label{alg:dccd_adv}
+
+\textbf{入力：} $\{\psi_i^n\}$，$\{u_i^n\}$，散逸強度 $\varepsilon_d^{\mathrm{adv}}$
+
+\begin{enumerate}
+  \item \textbf{フラックス場の構成：}
+        各格子点 $i$ で $f_i = \psi_i \cdot u_i$．
+
+  \item \textbf{CCD 求解（Eq-I + Eq-II システム）：}
+        §\ref{sec:ccd_matrix} のブロック Thomas 法で
+        $\{f'_i\} = \{(\partial(\psi u)/\partial x)_i\}$ を得る．
+
+  \item \textbf{Dissipative フィルタの適用（一様 $\varepsilon_d^{\mathrm{adv}}$）：}
+        内点 $i = 1,\ldots,N-2$：
+        \[
+          \tilde{F}_i = f'_i + \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
+        \]
+        周期 BC：折り返しインデックスで $i=0,N-1$ にも同様に適用．
+        壁面 BC：境界点はフィルタ前の $f'$ 値を使用（§\ref{sec:dccd_bc}）．
+
+  \item \textbf{TVD-RK3 第 1 ステージ更新：}
+        \[
+          \psi_i^{(1)} = \psi_i^n - \Delta t\,\tilde{F}_i
+        \]
+
+  \item \textbf{クランプ：} $\psi_i^{(1)} = \max(0,\min(1,\psi_i^{(1)}))$ （式~\eqref{eq:psi_clamp}）．
+
+  \item 第 2・第 3 RK ステージでステップ 1--5 を繰り返す（式~\eqref{eq:tvd_rk3}）．
+\end{enumerate}
+
+\textbf{2 次元への拡張：} 次元分割法（dimensional splitting）を適用し，
+$x$ 方向フラックス $\psi u$ と $y$ 方向フラックス $\psi v$ に独立に
+1 次元手順を実行する：
+\[
+  \tilde{F}_{x,ij} = \left[\frac{\partial(\psi u)}{\partial x}\right]_{ij}^{\text{filtered}},
+  \quad
+  \tilde{F}_{y,ij} = \left[\frac{\partial(\psi v)}{\partial y}\right]_{ij}^{\text{filtered}}
+\]
+\[
+  \psi_{ij}^{(1)} = \psi_{ij}^n - \Delta t\!\left(\tilde{F}_{x,ij} + \tilde{F}_{y,ij}\right)
+\]
+\end{tcolorbox}
+
+\begin{tcolorbox}[resultbox, title={本稿の空間離散化スキームの役割分担}]
+\label{box:scheme_roles}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.5cm}>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}p{1.5cm}>{\raggedright\arraybackslash}p{4cm}}
+\hline
+対象 & スキーム & 精度 & 根拠 \\
+\hline
+CLS 移流（$\psi$） & Dissipative CCD（§\ref{sec:advection_motivation}） & $O(h^6)$＋フィルタ & 同一ステンシル；一様 $\varepsilon_d^{\mathrm{adv}}$ でGibbs 振動抑制 \\
+CLS 圧縮（移流部） & Dissipative CCD（§\ref{sec:cls_compression}） & $O(h^6)$＋フィルタ & 移流と同構成（陽解法） \\
+CLS 圧縮（拡散部） & CCD-CN（§\ref{sec:cls_compression}） & $O(h^6)$ & 無条件安定（陰解法） \\
+曲率・速度微分 & CCD（§\ref{sec:CCD}） & $O(h^6)$ & 高精度・コンパクト \\
+速度・圧力場ノイズ除去 & 散逸的 CCD 適応制御（§\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\
+圧力 Poisson & CCD-Poisson（§\ref{sec:pressure}） & $O(h^6)$ & Balanced-Force 整合性 \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}

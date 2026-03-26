@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from ..backend import Backend
 
 
-_EPS_NORM = 1e-8   # regularisation floor for |∇φ|
+_EPS_NORM = 1e-3   # regularisation floor for |∇φ| (paper §3.5 recommended value)
 
 
 class CurvatureCalculator(ICurvatureCalculator):
@@ -102,10 +102,8 @@ class CurvatureCalculator(ICurvatureCalculator):
         phi_xx        = d2[0]
         phi_yy        = d2[1]
 
-        # Mixed derivative φ_xy via sequential CCD: first along x, then along y
-        phi_x_only, _ = ccd.differentiate(phi, 0)
-        _, temp       = ccd.differentiate(phi, 0)   # (not needed here)
-        phi_xy, _     = ccd.differentiate(phi_x_only, 1)
+        # Mixed derivative φ_xy via sequential CCD: differentiate d1[0] along y
+        phi_xy, _ = ccd.differentiate(d1[0], 1)
 
         numerator = (phi_y**2 * phi_xx
                      - 2.0 * phi_x * phi_y * phi_xy

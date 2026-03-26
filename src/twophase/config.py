@@ -19,6 +19,7 @@
 """
 
 from __future__ import annotations
+import warnings
 from dataclasses import dataclass, field
 from typing import Tuple
 
@@ -35,10 +36,12 @@ class GridConfig:
     N: Tuple[int, ...] = (64, 64)
     # 物理領域の各軸の長さ
     L: Tuple[float, ...] = (1.0, 1.0)
-    # 界面適合グリッドの伸縮係数（§5）; 1.0 = 一様格子
+    # 界面適合グリッドの伸縮係数（§6）; 1.0 = 一様格子
     alpha_grid: float = 1.0
     # セル幅の下限（CCD条件数を防ぐためのフロア値）
     dx_min_floor: float = 1e-6
+    # ガウス型グリッド密度関数の幅: ε_g = eps_g_factor × ε（§6 eq:grid_delta）; 推奨 2–4
+    eps_g_factor: float = 2.0
 
     def __post_init__(self) -> None:
         assert self.ndim in (2, 3), f"ndim は 2 か 3 でなければならない: {self.ndim}"
@@ -82,18 +85,34 @@ class NumericsConfig:
     cn_viscous: bool = True
     # 境界条件の種類: 'wall' または 'periodic'
     bc_type: str = "wall"
+    # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）
+    advection_scheme: str = "dissipative_ccd"
 
     def __post_init__(self) -> None:
         assert self.bc_type in ("wall", "periodic"), (
             f"bc_type は 'wall' または 'periodic' でなければならない: '{self.bc_type}'"
         )
+        assert self.advection_scheme in ("dissipative_ccd", "weno5"), (
+            f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "
+            f"'{self.advection_scheme}'"
+        )
+        if self.advection_scheme == "dissipative_ccd" and self.epsilon_factor < 1.2:
+            warnings.warn(
+                f"epsilon_factor={self.epsilon_factor} < 1.2 with advection_scheme="
+                "'dissipative_ccd' risks instability for nonlinear flows "
+                "(We > 100, density ratio > 100). "
+                "Consider epsilon_factor >= 1.5 or advection_scheme='weno5'. "
+                "(§5 warn:adv_risks)",
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 @dataclass
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # ソルバー種別: "bicgstab"（FVM, O(h²)）または "pseudotime"（CCD, O(h⁶)）
+    # ソルバー種別: "bicgstab"（FVM反復）/ "pseudotime"（CCD反復）/ "lu"（FVM直接法）/ "ccd_lu"（CCD直接法）
     ppe_solver_type: str = "bicgstab"
     # BiCGSTAB パラメータ（ppe_solver_type="bicgstab" 時に使用）
     bicgstab_tol: float = 1e-10
@@ -102,9 +121,12 @@ class SolverConfig:
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
 
+    # 仮想時間スウィープソルバーの密度係数: Δτᵢⱼ = C_τ·ρᵢⱼ·h²/2 (§8d eq:dtau_lts)
+    pseudo_c_tau: float = 2.0
+
     def __post_init__(self) -> None:
-        assert self.ppe_solver_type in ("bicgstab", "pseudotime"), (
-            f"ppe_solver_type は 'bicgstab' または 'pseudotime' でなければならない: "
+        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu", "ccd_lu", "sweep"), (
+            f"ppe_solver_type は 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' でなければならない: "
             f"'{self.ppe_solver_type}'"
         )
 

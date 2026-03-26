@@ -31,10 +31,21 @@ bicgstab_tol: 1.0e-10
 bicgstab_maxiter: 2000
 
 # ── 境界条件 ─────────────────────────────────────────────────────
+advection_scheme: dissipative_ccd   # §5 Dissipative CCD（デフォルト）; "weno5" も可
 bc_type: wall         # "wall" or "periodic"
 
 # ── ハードウェア ─────────────────────────────────────────────────
 use_gpu: false
+
+# ── 初期条件（InitialConditionBuilder が使用） ──────────────────
+# 気体背景に液体円形気泡を 1 個配置（Hysing et al. テストケース 1）
+initial_condition:
+  background_phase: gas
+  shapes:
+    - type: circle
+      center: [0.5, 0.5]    # x=0.5, y=0.5（縦長ドメインの下側）
+      radius: 0.25
+      interior_phase: liquid
 
 # ── 出力設定（main.py が使用） ──────────────────────────────────
 output:

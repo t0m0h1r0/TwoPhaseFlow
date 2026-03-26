@@ -1,0 +1,356 @@
+% paper/sections/08d_ppe_pseudotime.tex
+% §8 続き：CCD 陰解法と仮想時間ステップ反復（PPE ソルバの実装詳細）
+%
+\subsection{CCD 陰解法と仮想時間ステップ反復}
+\label{sec:ppe_pseudotime}
+
+本節で解説する\textbf{仮想時間（pseudo-time）陰解法}（スウィープ型，行列フリー）と，
+付録~\ref{app:ccd_lu_direct} のクロネッカー積大域行列による \textbf{LGMRES/直接 LU 法}の
+2種類の実装が本稿では使用可能である：
+前者（本節）は大規模格子（$N \gtrsim 128$）でのメモリ効率に優れる matrix-free 手法，
+後者（付録）はスプリッティング誤差がなくデバッグ・検証用途に適した明示的行列法である
+（BiCGSTAB は低次精度実装の代替として表~\ref{tab:ppe_methods} に掲載）．
+この方法は FVM ベースの BiCGSTAB（§\ref{sec:fvm_face_coeff}）に対して以下の優位性を持つ：
+\textbf{空間精度}として CCD 法（6次精度）を用いるため $\mathcal{O}(h^6)$ の高精度が得られ
+（表~\ref{tab:ppe_methods} 脚注 $\dagger$，収束基準は \ref{result:etol_criterion} 参照），
+\textbf{行列不要}で大規模疎行列を陽に組み立てず各反復にブロック Thomas 法を適用し，
+残差 $\varepsilon^m < \varepsilon_\text{tol}$ 達成後は定常解が $\mathcal{L}_h p = q_h$ を
+$\varepsilon_\text{tol}$ 精度で満たす\textbf{収束後の精度保証}が得られる
+（スウィープ実装の分割誤差については \ref{warn:ppe_splitting} および表~\ref{tab:ppe_methods} 参照）．
+
+\begin{tcolorbox}[warnbox, title={2次元求解における実装方法と分割誤差について}]
+\label{warn:ppe_splitting}
+2次元 PPE の線形系 $(\mathbf{I} + \Delta\tau\mathcal{L}_h)(\delta p)^{m+1} = (\delta p)^m + \Delta\tau q_h$
+（$\mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y$，式~\eqref{eq:pseudo_linear}）を実際に解く方法として，
+以下の2つのアプローチがある：
+
+\textbf{アプローチ 1（スウィープ型）：} $x$ 方向・$y$ 方向の CCD ブロック Thomas 法を交互に適用する．
+実際に解く方程式は $(\mathbf{I}+\Delta\tau\mathcal{L}_x)(\mathbf{I}+\Delta\tau\mathcal{L}_y)(\delta p)^{m+1} = (\delta p)^m + \Delta\tau q_h$ であり，
+これは式~\eqref{eq:pseudo_linear} の原式 $(\mathbf{I}+\Delta\tau\mathcal{L}_h)(\delta p)^{m+1} = (\delta p)^m + \Delta\tau q_h$ の\textbf{近似解}を与える．
+因子展開
+\[
+  \bigl(\mathbf{I}+\Delta\tau\mathcal{L}_x\bigr)\bigl(\mathbf{I}+\Delta\tau\mathcal{L}_y\bigr)
+  = \mathbf{I} + \Delta\tau\mathcal{L}_h + \Delta\tau^2\mathcal{L}_x\mathcal{L}_y
+\]
+から，原式に対して $\Delta\tau^2\mathcal{L}_x\mathcal{L}_y(\delta p)^{m+1}$ の残差（分割誤差）が生じる．
+
+\textbf{アプローチ 2（Krylov 法）：} GMRES や CG 法で連立系を直接解く．
+この場合，$\mathcal{L}_h$ の積ベクトル計算に CCD を利用でき，分割誤差は生じないが，
+ブロック Thomas 法の $O(N)$ コスト優位性は失われる．
+
+\textbf{本稿の選択と実用的な解釈：}
+スウィープ型を採用する場合，「分割誤差ゼロ」は成立しないが，
+\textbf{反復が収束した（$\varepsilon^m < \varepsilon_\text{tol}$）時点での解は $\mathcal{L}_h(\delta p) = q_h$ を精度
+$\varepsilon_\text{tol}$ で満たす}ため，収束後の誤差は許容誤差以内に収まる．
+実用上は収束後の残差を確認することで，分割誤差の影響を定量的に評価できる．
+\end{tcolorbox}
+
+\subsubsection{仮想時間ステップ法の定式化}
+\label{sec:pseudo_formulation}
+
+離散 PPE（IPC 増分形，未知変数 $\delta p \equiv p^{n+1}-p^n$）を
+\begin{equation}
+  \mathcal{L}_h\,(\delta p) = q_h,
+  \qquad
+  q_h \equiv \frac{(\bnabla_h^{\mathrm{RC}}\cdot\bu^*)}{\Delta t}
+  \label{eq:PPE_discrete}
+\end{equation}
+と書く（$\mathcal{L}_h$ は式 \eqref{eq:varrho_product_rule} の product rule 展開を CCD で離散化した可変係数演算子；
+具体的な行列-free 評価手順は§\ref{sec:ccd_2d_full} に示す）．
+この楕円型方程式を直接解く代わりに，\textbf{仮想時間} $\tau$ を導入した放物型問題
+\begin{equation}
+  \pd{(\delta p)}{\tau} = q_h - \mathcal{L}_h\,(\delta p)
+  \label{eq:pseudo_parabolic}
+\end{equation}
+を考える．$\tau\to\infty$ で $\partial(\delta p)/\partial\tau \to 0$ となり，式~\eqref{eq:pseudo_parabolic} の定常解は元の PPE~\eqref{eq:PPE_discrete} の解に一致する．
+
+\subsubsection{仮想時間方向の陰的離散化}
+\label{sec:pseudo_implicit}
+
+式~\eqref{eq:pseudo_parabolic} を仮想時間方向に\textbf{陰的 Euler 法}で離散化する（$m$ は仮想時間反復ステップ）：
+\begin{equation}
+  \frac{(\delta p)^{m+1} - (\delta p)^m}{\Delta\tau} = q_h - \mathcal{L}_h\,(\delta p)^{m+1}
+  \label{eq:pseudo_implicit_raw}
+\end{equation}
+整理すると，各反復ステップで解くべき線形系が得られる：
+\begin{equation}
+  \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_h\bigr)\,(\delta p)^{m+1}
+  = (\delta p)^m + \Delta\tau\, q_h
+  \label{eq:pseudo_linear}
+\end{equation}
+
+\textbf{安定性の利点：}式~\eqref{eq:pseudo_implicit_raw} の陰的離散化は，仮想時間刻み $\Delta\tau$ の大きさに関係なく\textbf{無条件安定}である．
+これにより $\Delta\tau$ を任意に大きく設定でき，収束を加速することが可能である
+（CFL 制約による $\Delta\tau$ の上限が存在しない）．
+
+\subsubsection{反復中の物理変数の凍結}
+\label{sec:pseudo_variable_freeze}
+
+仮想時間反復ループ（$m = 0,\,1,\,2,\ldots$）の全過程において，
+$\delta p \equiv p^{n+1}-p^n$ を除くすべての物理変数は
+\textbf{現在の物理時間ステップ開始時点の値に完全に凍結（フリーズ）}されなければならない．
+\begin{itemize}
+  \item \textbf{密度場 $\rho$：} 界面捕獲法（CLS）が現在の物理ステップで与えた
+        最新の密度場を用い，反復中は界面を動かさない．
+  \item \textbf{予測速度 $\bu^*$：} 運動量式（移流・粘性・表面張力等）から得た
+        発散非ゼロの仮速度であり，反復中に変更しない．
+  \item \textbf{物理時間刻み $\Delta t$：} 現在の流体計算で進行させようとしている
+        時間刻み幅であり，定数として扱う．
+\end{itemize}
+この凍結により，PPE は $\delta p$ のみを未知変数とする純粋な楕円型線形問題として隔離される．
+残差 $\varepsilon^m < \varepsilon_\mathrm{tol}$（式~\eqref{eq:residual}）が達成されて初めて
+反復ループを抜け，次の物理計算（速度射影・界面移流）へ移行する．
+
+\subsubsection{CCD 法による空間離散化}
+\label{sec:pseudo_ccd_discretization}
+
+式~\eqref{eq:pseudo_linear} の左辺行列 $\mathbf{I} + \Delta\tau\,\mathcal{L}_h$（未知量 $(\delta p)^{m+1}$）を構成するにあたり，
+空間演算子 $\mathcal{L}_h$ を\textbf{CCD 法}（第\ref{sec:CCD}章）で離散化する．
+
+2次元の PPE 演算子は
+\begin{equation}
+  \mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y,
+  \qquad
+  \mathcal{L}_x \equiv \pd{}{x}\!\Bigl(\tfrac{1}{\rho}\pd{p}{x}\Bigr),\quad
+  \mathcal{L}_y \equiv \pd{}{y}\!\Bigl(\tfrac{1}{\rho}\pd{p}{y}\Bigr)
+  \label{eq:L_split}
+\end{equation}
+と書ける．各方向の一次・二次微分を CCD で求め，$\mathcal{O}(h^6)$ の精度で $\mathcal{L}_h$ を評価する．
+具体的には，各格子行（$i=$const）および格子列（$j=$const）に対して
+式~\eqref{eq:ccd_global} のブロック Thomas 法を適用することで，
+$\partial p/\partial x,\,\partial^2 p/\partial x^2$ および $\partial p/\partial y,\,\partial^2 p/\partial y^2$ を
+$\mathcal{O}(N)$ の計算量で一括計算する．
+
+\subsubsection{ADI 法との比較}
+\label{sec:pseudo_adi_comparison}
+
+ADI 法（交互方向陰解法，\cite{PeacemanRachford1955}）では，演算子を $x$・$y$ 方向に交互に分割して解く：
+\begin{equation}
+  \Bigl(\mathbf{I} + \tfrac{\Delta\tau}{2}\mathcal{L}_x\Bigr)\widetilde{\delta p}
+  = \Bigl(\mathbf{I} - \tfrac{\Delta\tau}{2}\mathcal{L}_y\Bigr)(\delta p)^m + \tfrac{\Delta\tau}{2}\, q_h,
+  \quad
+  \Bigl(\mathbf{I} + \tfrac{\Delta\tau}{2}\mathcal{L}_y\Bigr)(\delta p)^{m+1}
+  = \Bigl(\mathbf{I} - \tfrac{\Delta\tau}{2}\mathcal{L}_x\Bigr)\widetilde{\delta p} + \tfrac{\Delta\tau}{2}\, q_h
+  \label{eq:ADI}
+\end{equation}
+この分割は
+$
+  \bigl(\mathbf{I}+\tfrac{\Delta\tau}{2}\mathcal{L}_x\bigr)
+  \bigl(\mathbf{I}+\tfrac{\Delta\tau}{2}\mathcal{L}_y\bigr)
+  = \mathbf{I} + \Delta\tau\mathcal{L}_h + \tfrac{\Delta\tau^2}{4}\mathcal{L}_x\mathcal{L}_y
+$
+の関係から，$\mathcal{O}(\Delta\tau^2)$ の\textbf{分割誤差}（splitting error）を生じる．
+
+本稿では実装の簡便さから\textbf{スウィープ型}（$x$ 方向 Thomas 法 $\to$ $y$ 方向 Thomas 法の逐次適用）を採用する：
+式~\eqref{eq:pseudo_linear} の左辺行列 $(\mathbf{I}+\Delta\tau\mathcal{L}_h)$ を
+$(\mathbf{I}+\Delta\tau\mathcal{L}_x)(\mathbf{I}+\Delta\tau\mathcal{L}_y)$ で近似して因子分解し，
+各反復（$(\delta p)^m \to (\delta p)^{m+1}$）を $x$・$y$ 方向の逐次 Thomas 法で実行する
+（分割誤差 $\mathcal{O}(\Delta\tau^2)$ が伴うが，残差収束判定により実用上の精度を保証する；
+\ref{warn:ppe_splitting} および表~\ref{tab:ppe_methods} 参照）．
+ADI 法との違いは Crank--Nicolson 風の対称半分割を用いない点のみであり，
+収束後の解の精度は両者とも $\varepsilon_\text{tol}$ に律速される点で同等である．
+
+この設計から得られる利点：
+
+\begin{itemize}
+  \item 収束後の解は $\mathcal{L}_h(\delta p) = q_h$ を $\varepsilon_\text{tol}$ 精度で満たす
+  \item 反復回数を残差収束判定で制御でき，過剰計算を避けられる
+  \item 複雑な密度場・非直交格子への拡張が容易
+\end{itemize}
+
+（表~\ref{tab:ppe_methods} 参照）．
+
+\subsubsection{欠陥補正法による離散化の分離}
+\label{sec:defect_correction}
+
+\noindent\textbf{本節で解説する欠陥補正法は，\texttt{PPESolverSweep}（\texttt{ppe\_solver\_type="sweep"}）として実装済みである．}
+
+仮想時間法の収束先は常に CCD 精度の解を与えるが，
+その収束を駆動する陰的左辺行列には必ずしも高次 CCD を用いる必要がない．
+この着想を定式化した枠組みが\textbf{欠陥補正法（Defect Correction）}である．
+仮想時間の更新式（式~\eqref{eq:pseudo_implicit_raw}）の空間演算子を，
+\textbf{右辺（残差評価）}には高次 CCD，\textbf{左辺（陰的行列）}には低次 FD と分離する：
+\begin{equation}
+  \frac{(\delta p)^{(m+1)}-(\delta p)^{(m)}}{\Delta\tau}
+  = \Bigl[\mathcal{L}_{FD}\bigl((\delta p)^{(m+1)}-(\delta p)^{(m)}\bigr)\Bigr]
+    + R_h\bigl((\delta p)^{(m)}\bigr)
+  \label{eq:defect_correction_split}
+\end{equation}
+ここで $R_h((\delta p)^{(m)}) \equiv q_h - \mathcal{L}_h\,(\delta p)^{(m)}$ は現在の反復値 $(\delta p)^{(m)}$
+を CCD 演算子 $\mathcal{L}_h$（式~\eqref{eq:PPE_discrete}）で評価した高精度残差，
+$\mathcal{L}_{FD}$ は 2次精度中心差分（FD）で構築した近似演算子であり $\mathcal{L}_h \neq \mathcal{L}_{FD}$ である．
+初期値は $(\delta p)^{(0)} = 0$（\ref{box:dtau_impl} 参照）．
+$\Delta_{(m)} \equiv (\delta p)^{(m+1)}-(\delta p)^{(m)}$ に整理すると，各反復で解くべき線形系は
+\begin{equation}
+  \Bigl[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD}\Bigr]\,\Delta_{(m)}
+  = R_h\bigl((\delta p)^{(m)}\bigr)
+  \label{eq:defect_correction_linear}
+\end{equation}
+となる．各項の役割を整理する：
+\begin{itemize}
+  \item \textbf{左辺 $[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD}]$：}
+        $\mathcal{L}_{FD} \le 0$（負半定値）より正定値かつ対角優位であり，
+        三重対角行列の集まりに近似できるため ADI 法や
+        Thomas 法で $\mathcal{O}(N)$ コストで求解可能．
+        ここで $\mathcal{L}_{FD}$ は 2次精度中心差分演算子であり，
+        高次の $\mathcal{L}_h$（CCD）とは\textbf{異なる}演算子であることに注意する．
+  \item \textbf{右辺 $R_h$：} CCD 演算子 $\mathcal{L}_h$ の $\mathcal{O}(h^6)$ 精度で評価された残差であり，
+        収束先の解の空間精度を決定する．
+\end{itemize}
+
+\textbf{収束後の精度保証：}
+$\Delta_{(m)} \to 0$ の極限では $R_h((\delta p)^{(m)}) \to 0$，すなわち
+$\mathcal{L}_h\,(\delta p) = q_h$ が $\varepsilon_\mathrm{tol}$ の精度で満たされ，
+最終圧力解は完全な CCD 空間精度を持つ（表~\ref{tab:ppe_methods} 参照）．
+左辺に低次 FD を用いても\textbf{収束先の精度は損なわれない}点が欠陥補正法の本質である
+（右辺 $R_h$ が高精度を保証するため）．
+
+\textbf{実装（\texttt{PPESolverSweep}）との対応：}
+欠陥補正法（式~\eqref{eq:defect_correction_linear}）は
+\texttt{PPESolverSweep}（\texttt{ppe\_solver\_type="sweep"}）として実装されており（表~\ref{tab:ppe_methods} 5行目），
+本稿の標準 PPE ソルバである．
+左辺は 2次精度 FD 演算子 $\mathcal{L}_{FD}$（$x$・$y$ 方向の三重対角 Thomas 法で求解），
+右辺残差は CCD 演算子 $\mathcal{L}_h$（$\mathcal{O}(h^6)$）で評価する．
+$x$ 方向スウィープ後に $y$ 方向スウィープを適用する因子分解
+$[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD_x}]^{-1}[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD_y}]^{-1}$
+で $\Delta_{(m)}$ を求め，$(\delta p)^{m+1} = (\delta p)^{m} + \Delta_{(m)}$ と更新する
+（分割誤差なし；残差収束のみが精度を決定する）．
+各方向の Thomas 三重対角係数の導出は付録 \ref{app:sweep_thomas_coeff} に示す．
+LTS 刻み幅（式~\eqref{eq:dtau_lts}）と組み合わせることで，
+高密度比流れでも気体・液体相の残差が均等な速度で減衰する（§\ref{sec:lts_dtau}）．
+
+\begin{table}[ht]
+\centering
+\small
+\caption{PPE 求解法の比較}
+\label{tab:ppe_methods}
+\begin{tabular}{lcccc}
+\hline
+手法 & 空間離散化次数 & 分割誤差 & 収束判定 & 実装複雑度 \\
+\hline
+BiCGSTAB（FVM 離散化） & $\mathcal{O}(h^2)$ & なし & 反復回数/残差 & 低 \\
+ADI + CCD（軸方向分割） & $\mathcal{O}(h^6)$ & $\mathcal{O}(\Delta\tau^2)$ & 固定スウィープ数 & 中 \\
+仮想時間陰解法 + CCD（スウィープ実装）& $\mathcal{O}(h^6)^{\dagger}$ & $\mathcal{O}(\Delta\tau^2)$ & 残差駆動 & 中 \\
+仮想時間陰解法 + CCD（Krylov 実装） & $\mathcal{O}(h^6)$ & なし & 残差駆動 & 高 \\
+欠陥補正（FD 左辺 + CCD 残差）$\ddagger$ \textbf{[本稿標準]} & $\mathcal{O}(h^6)$ & なし & 残差駆動 & 中 \\
+\hline
+\multicolumn{5}{l}{$^{\dagger}$ $\varepsilon_\mathrm{tol} \ll h^6$ の設定のもとでのみ達成可能；通常の収束判定では空間精度は $\varepsilon_\mathrm{tol}$ に律速される．}\\
+\multicolumn{5}{l}{\phantom{$^{\dagger}$} 分割誤差は収束後の残差が支配的でなければ影響しない（\ref{warn:ppe_splitting} 参照）．}\\
+\multicolumn{5}{l}{$^{\ddagger}$ 左辺に 2次精度 FD 演算子 $\mathcal{L}_{FD}$，右辺残差に CCD 演算子 $\mathcal{L}_h$ を用いる（§\ref{sec:defect_correction}，付録 \ref{app:sweep_thomas_coeff}）．}\\
+\multicolumn{5}{l}{\phantom{$^{\ddagger}$} \texttt{PPESolverSweep}（\texttt{ppe\_solver\_type="sweep"}）として実装済み；}\\
+\multicolumn{5}{l}{\phantom{$^{\ddagger}$} 密度適応 LTS（§\ref{sec:lts_dtau}）により高密度比流れの収束を改善する．}
+\end{tabular}
+\end{table}
+
+本稿では\textbf{欠陥補正法}（表~\ref{tab:ppe_methods} 5行目）を標準 PPE ソルバとして採用する：
+左辺に 2次精度 FD 三重対角（$x$ 方向 $\to$ $y$ 方向の逐次 Thomas 法），
+右辺残差に CCD（$\mathcal{O}(h^6)$）を用いることで，分割誤差なしに行列不要の $\mathcal{O}(N)$/ステップを実現する
+（精度保証は §\ref{sec:defect_correction}，Thomas 係数の導出は付録 \ref{app:sweep_thomas_coeff} 参照）．
+
+\subsubsection{収束判定と反復アルゴリズム}
+\label{sec:pseudo_convergence}
+
+収束判定には PPE の残差ノルムを用いる：
+\begin{equation}
+  \varepsilon^m \equiv \bigl\|\mathcal{L}_h(\delta p)^m - q_h\bigr\|_2
+  \approx \frac{\bigl\|(\delta p)^m - (\delta p)^{m-1}\bigr\|_2}{\Delta\tau}
+  \label{eq:residual}
+\end{equation}
+右辺の近似等号は，線形系~\eqref{eq:pseudo_linear} が各反復で厳密に解かれる場合に成立する
+（厳密解時: $(\delta p)^m - (\delta p)^{m-1} = \Delta\tau(q_h - \mathcal{L}_h(\delta p)^m)$，
+両辺の $\ell^2$ ノルムを $\Delta\tau$ で除すと左辺に一致）．
+スウィープ実装では線形系は $\mathcal{O}(\Delta\tau^2)$ の誤差を残すため，
+残差計算には増分式ではなく直接 $\mathcal{L}_h(\delta p)^m - q_h$ を評価することを推奨する．
+$\varepsilon^m < \varepsilon_{\mathrm{tol}}$ を満たした時点で収束とみなし，反復を終了する．
+
+\begin{tcolorbox}[resultbox, title={$\varepsilon_{\mathrm{tol}}$ 選択の実用基準}]
+\label{result:etol_criterion}
+PPE の収束誤差は速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\nabla(\delta p)$ を通じて
+速度誤差 $\sim \varepsilon_\mathrm{tol}/\Delta t$ を引き起こす．
+全体 $O(\Delta t^2)$ 時間精度を損なわないためには，
+この速度誤差が $O(\Delta t^2)$ より小さいことが必要，すなわち：
+\begin{equation}
+  \varepsilon_\mathrm{tol} \;\ll\; \Delta t^2
+  \label{eq:etol_physical}
+\end{equation}
+$\Delta t \sim 10^{-2}$ では $\varepsilon_\mathrm{tol} \leq 10^{-6}$，
+$\Delta t \sim 10^{-3}$ では $\varepsilon_\mathrm{tol} \leq 10^{-8}$ が目安となる．
+\textbf{推奨：} $\varepsilon_\mathrm{tol} = \Delta t^2 \times 10^{-2}$（$\Delta t$ 依存の適応設定）
+または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合に十分）．
+なお，CCD の $O(h^6)$ 空間精度を線形代数レベルで発現させるには $\varepsilon_\mathrm{tol} \ll h^6$ が
+理論上の必要条件だが，NS シミュレーションでは時間精度 $O(\Delta t^2)$ が支配的であり
+上記の条件で十分である（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[resultbox, title={最適仮想時間刻み $\Delta\tau$ の理論（詳細：付録 §\ref{sec:dtau_derive}）}]
+\label{result:dtau_opt}
+等方格子・一様係数の理想条件下で，収束速度と分割誤差のトレードオフを捉える指標：
+\[
+  \gamma(t) = \frac{1 + t^2}{(1+t)^2},
+  \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
+\]
+$d\gamma/dt = 0$ を解くと $t^* = 1$（$\gamma_{\min} = 1/2$）．
+CCD Laplacian の最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$ を代入すると：
+\begin{equation}
+  \Delta\tau_{\mathrm{opt}}
+  \approx \frac{0.58\,h^2}{a_{\max}},
+  \qquad
+  a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
+  \label{eq:dtau_opt}
+\end{equation}
+スウィープ型は任意の $\Delta\tau > 0$ で\textbf{無条件安定}；$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも $\gamma \to 1$（収束が遅い）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={$\Delta\tau$ の実装指針と典型収束挙動}]
+\label{box:dtau_impl}
+経験則：$\Delta\tau = C_\tau \cdot h^2/a_{\max}$，$C_\tau = 1 \sim 5$（式~\eqref{eq:dtau_opt}を中心とする範囲）．
+
+\textbf{推奨出発点：} $C_\tau = 2.0$（静止液滴テスト，$N=64$，$\rho_l/\rho_g=10$ の設定で $10\sim30$ 回で $\varepsilon_\text{tol}=10^{-8}$ 達成）．大密度比（$\rho_l/\rho_g \geq 100$）では $C_\tau=1\sim2$ から試すこと．
+
+\textbf{初期値：} $(\delta p)^0 = 0$（増分の初期推定）；収束は典型的に数回〜数十回．初期時刻や大きな圧力変動がある場合は更に多くの反復を要する．
+\end{tcolorbox}
+
+\subsubsection{密度適応型局所時間刻み（Local Time Stepping）}
+\label{sec:lts_dtau}
+
+式~\eqref{eq:dtau_opt} の最適 $\Delta\tau_\mathrm{opt} \approx 0.58\,h^2/a_\mathrm{max}$ は
+等方格子・一様密度の理想条件下では有効だが，気液二相流では密度が空間的に大きく変化するため，
+単一のグローバル $\Delta\tau$ では以下の問題が生じる．すなわち，同式の
+$a_\mathrm{max} = \max_{i,j} 1/\rho_{i,j}$ を含むため，気体相（低密度 $\rho_\mathrm{gas}$）で
+最速収束となる $\Delta\tau_\mathrm{opt}^\mathrm{gas} = \mathcal{O}(\rho_\mathrm{gas}\,h^2)$ は
+液体相の最適値 $\Delta\tau_\mathrm{opt}^\mathrm{liq} = \mathcal{O}(\rho_\mathrm{liq}\,h^2)$ より
+密度比倍だけ小さい．グローバル一様 $\Delta\tau$ はこの両相の\textbf{最適収束域の乖離}を解決できず，
+密度比が大きいほど液体相の収束が遅くなる（剛性問題）．
+この気液間の物性差に起因する\textbf{剛性（Stiffness）}を緩和する手法が
+\textbf{密度適応型局所時間刻み（LTS: Local Time Stepping）}である：
+\begin{equation}
+  \Delta\tau_{i,j} = C_\tau \cdot \frac{\rho_{i,j}\,h^2}{2}
+  \label{eq:dtau_lts}
+\end{equation}
+$C_\tau = 1 \sim 5$ は全領域一様のグローバル係数であり，
+式~\eqref{eq:dtau_opt}・\ref{box:dtau_impl} で示した推奨範囲と同一スケールである．
+式~\eqref{eq:dtau_lts} の均等化のメカニズムを示す．
+1次元 PPE 演算子 $\mathcal{L}_h = \partial_x(\rho^{-1}\partial_x)$ の
+セル $(i,j)$ における最適 $\Delta\tau$ の大きさは $h^2/a_{i,j}$（$a_{i,j} \equiv 1/\rho_{i,j}$）に比例する
+（式~\eqref{eq:dtau_opt} 参照）．LTS 刻み幅と密度流動度の積を計算すると：
+\begin{equation*}
+  \Delta\tau_{i,j} \cdot a_{i,j}
+  = \frac{C_\tau\,\rho_{i,j}\,h^2}{2} \cdot \frac{1}{\rho_{i,j}}
+  = \frac{C_\tau\,h^2}{2} \quad (\text{全セルで一定})
+\end{equation*}
+となり，密度依存性が完全に打ち消される．
+この均等化により，気体相・液体相を問わず各セルが同一の「規格化仮想時間刻み」で更新され，
+全領域の残差がほぼ均等なペースで減衰する．
+
+\textbf{グローバル公式との整合性：}
+一様密度（$\rho_{i,j} = \rho_l$）では式~\eqref{eq:dtau_lts} は
+$\Delta\tau = C_\tau\,\rho_l\,h^2/2$ となる．式~\eqref{eq:dtau_opt} の $a_\mathrm{max} = 1/\rho_l$ を代入すると
+$\Delta\tau_\mathrm{opt} \approx 0.58\,h^2\,\rho_l$ であり，
+$C_\tau \approx 1.16$ に相当する範囲で両式は整合する（\ref{box:dtau_impl} の $C_\tau = 1 \sim 5$ の範囲内）．
+
+\textbf{$C_\tau$ の動的増大：}
+反復初期は $C_\tau$ を小さめ（$C_\tau = \mathcal{O}(1)$）に設定して安定性を確保し，
+残差が十分に減少した後に段階的に増大させると定常解への到達を劇的に早める．
+$\Delta\tau_{i,j}$ が陰的 Euler（式~\eqref{eq:pseudo_implicit_raw}）に基づく限り，
+$C_\tau$ を大きくしても発散しない（無条件安定性；\ref{warn:ppe_splitting} 参照）．
+

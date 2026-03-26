@@ -30,10 +30,25 @@ bicgstab_tol: 1.0e-10
 bicgstab_maxiter: 2000
 
 # ── 境界条件 ─────────────────────────────────────────────────────
+advection_scheme: dissipative_ccd   # §5 Dissipative CCD（デフォルト）; "weno5" も可
 bc_type: wall
 
 # ── ハードウェア ─────────────────────────────────────────────────
 use_gpu: false
+
+# ── 初期条件（InitialConditionBuilder が使用） ──────────────────
+# 正弦波界面: y = 1.0 + 0.1·cos(2π x / 0.5)
+# 液体（重流体, ψ=1）が界面より下側（y < y_interface）
+# 気体（軽流体, ψ=0）が界面より上側（y > y_interface）
+initial_condition:
+  background_phase: gas
+  shapes:
+    - type: sinusoidal_interface
+      axis: 1           # y 軸法線方向
+      mean: 1.0         # 平均界面位置 y = 1.0
+      amplitude: 0.1    # 正弦波振幅
+      wavelength: 0.5   # 波長 = Lx
+      interior_phase: liquid  # y < interface → 液体（重流体）
 
 # ── 出力設定 ────────────────────────────────────────────────────
 output:

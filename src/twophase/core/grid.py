@@ -79,42 +79,57 @@ class Grid:
         """
         return np.meshgrid(*self.coords, indexing="ij")
 
-    def update_from_levelset(self, phi_data: np.ndarray, eps: float) -> None:
+    def update_from_levelset(
+        self,
+        phi_data: np.ndarray,
+        eps: float,
+        ccd=None,
+    ) -> None:
         """Rebuild interface-fitted grid given the signed-distance field φ.
 
         Only active when ``grid_config.alpha_grid > 1.0``.
-        Applies a minimum cell-width floor to avoid CCD ill-conditioning.
+
+        Density function (§6 eq:grid_delta):
+            ω(φ) = 1 + (α−1) · δ*(φ),  δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π)
+        where ε_g = eps_g_factor × ε.  ω ∈ [1, α]: interface dense, bulk coarse.
+
+        Metric coefficients J = ∂ξ/∂x and ∂J/∂ξ are computed with CCD (O(h⁶))
+        when ``ccd`` is provided (§6 Step 5, box:grid_jx_accuracy).  Falls back
+        to O(h²) central differences when ``ccd`` is None.
 
         Parameters
         ----------
         phi_data : array of shape ``self.shape``
-        eps      : interface half-width (ε = epsilon_factor * dx_min),
-                   computed by the caller (e.g. SimulationBuilder)
+        eps      : interface half-width (ε = epsilon_factor × dx_min)
+        ccd      : CCDSolver instance for O(h⁶) metric evaluation (optional)
         """
         alpha = self._gc.alpha_grid
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
+        # ε_g = eps_g_factor × ε  (§6: 推奨 ε_g ≈ 2–4 ε)
+        eps_g = self._gc.eps_g_factor * eps
 
         for ax in range(self.ndim):
-            # 1-D marginal of φ along this axis (mean over other axes)
+            # 1-D marginal of φ along this axis (minimum |φ| over other axes,
+            # §6 2次元格子生成アルゴリズム: φ̄^x_i = min_j |φ^(0)_{i,j}|)
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            phi_1d = np.mean(self.backend.to_host(phi_data), axis=axes_other)
+            phi_host = np.abs(self.backend.to_host(phi_data))
+            phi_1d = np.min(phi_host, axis=axes_other)
 
-            # Grid density ω ∈ (0, 1]
-            omega = np.exp(-alpha * (phi_1d / eps) ** 2)
-            # Spacing proportional to 1 / ω (dense near interface)
-            raw_dx = 1.0 / np.maximum(omega, 1e-12)
-            # Enforce minimum cell width
-            raw_dx = np.maximum(raw_dx, dx_floor)
-            # Normalise so that sum(dx) = L[ax]
+            # Paper §6 eq:grid_delta: ω = 1 + (α−1)·δ*(φ), δ* = Gaussian delta
+            delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
+            omega = 1.0 + (alpha - 1.0) * delta_star   # ω ∈ [1, α] — always ≥ 1
+
+            # Spacing proportional to 1/ω; enforce minimum cell width
+            raw_dx = np.maximum(1.0 / omega, dx_floor)
+            # Normalise so that cumulative sum spans [0, L[ax]]
             raw_dx = raw_dx * (self._gc.L[ax] / raw_dx.sum())
 
-            # Integrate to get node coordinates
+            # Cumulative integration: ステップ3–4 (§6 格子点生成アルゴリズム)
             coords_ax = np.zeros(self._gc.N[ax] + 1)
             coords_ax[1:] = np.cumsum(raw_dx[:-1])  # N cells → N+1 nodes
-            # Rescale to exactly [0, L[ax]]
             coords_ax = coords_ax * (self._gc.L[ax] / coords_ax[-1])
 
             self.coords[ax] = coords_ax
@@ -126,37 +141,56 @@ class Grid:
             node_dx[1:-1] = 0.5 * (cell_dx[:-1] + cell_dx[1:])
             self.h[ax] = node_dx
 
-        self._build_metrics()
+        self._build_metrics(ccd=ccd)
 
     # ── Private helpers ───────────────────────────────────────────────────
 
-    def _build_metrics(self) -> None:
+    def _build_metrics(self, ccd=None) -> None:
         """Compute CCD metrics J = ∂ξ/∂x and dJ/dξ for each axis.
 
         For a uniform grid J = 1/h (constant) and dJ/dξ = 0.
         For non-uniform grids J varies along the axis.
 
         The chain rule (§4.9) gives:
-            ∂f/∂x  = J · (∂f/∂ξ)
+            ∂f/∂x   = J · (∂f/∂ξ)
             ∂²f/∂x² = J² · (∂²f/∂ξ²) + J · (dJ/dξ) · (∂f/∂ξ)
+
+        When ``ccd`` is provided and the grid is non-uniform, metrics are
+        evaluated with CCD (O(h⁶)) via differentiate_raw(x_coords, axis)
+        as required by §6 Step 5 and box:grid_jx_accuracy.  Without CCD
+        (uniform grid or fallback) O(h²) central differences are used.
+
+        Parameters
+        ----------
+        ccd : CCDSolver or None — O(h⁶) solver for metric computation
         """
         self.J: list[np.ndarray] = []
         self.dJ_dxi: list[np.ndarray] = []
 
         for ax in range(self.ndim):
-            # ξ spacing in computational space is always 1/N[ax]
-            dxi = 1.0 / self.N[ax]
-            h = self.h[ax]  # physical spacing per node
-            J_ax = dxi / h   # = ∂ξ/∂x = (1/N) / (dx)
+            if ccd is not None and not self.uniform:
+                # §6 Step 5: differentiate coordinate array x_i in ξ-space via CCD
+                # differentiate_raw returns d/d(x_unif) where x_unif has spacing L/N.
+                # For the domain convention used here (L=1 assumed by _apply_metric),
+                # d1_raw ≈ dx_phys/dξ and J = ∂ξ/∂x_phys = 1/d1_raw.
+                coords_ax = np.asarray(self.coords[ax])
+                d1_raw, d2_raw = ccd.differentiate_raw(coords_ax, axis=ax)
+                # J = ∂ξ/∂x_phys;  ∂J/∂ξ from implicit differentiation of J = 1/d1
+                J_ax = 1.0 / d1_raw
+                dJ_ax = -d2_raw / (d1_raw ** 2)
+            else:
+                # O(h²) central-difference fallback (uniform grid or no CCD)
+                dxi = 1.0 / self.N[ax]
+                h = self.h[ax]  # physical spacing per node
+                J_ax = dxi / h   # = ∂ξ/∂x = (1/N) / (dx)
 
-            # dJ/dξ via central differences in ξ-space
-            dJ = np.zeros_like(J_ax)
-            dJ[1:-1] = (J_ax[2:] - J_ax[:-2]) / (2.0 * dxi)
-            dJ[0] = (J_ax[1] - J_ax[0]) / dxi
-            dJ[-1] = (J_ax[-1] - J_ax[-2]) / dxi
+                dJ_ax = np.zeros_like(J_ax)
+                dJ_ax[1:-1] = (J_ax[2:] - J_ax[:-2]) / (2.0 * dxi)
+                dJ_ax[0] = (J_ax[1] - J_ax[0]) / dxi
+                dJ_ax[-1] = (J_ax[-1] - J_ax[-2]) / dxi
 
             self.J.append(J_ax)
-            self.dJ_dxi.append(dJ)
+            self.dJ_dxi.append(dJ_ax)
 
     # ── Convenience ──────────────────────────────────────────────────────
 
