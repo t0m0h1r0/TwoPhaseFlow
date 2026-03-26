@@ -4,12 +4,12 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | docs/ initialized; all 12 agents re-generated per meta-prompt.md template (2026-03-27) |
-| next_action | Run PromptAuditor on regenerated agents; verify LaTeX compile state via PaperCompiler |
+| last_decision | WorkflowCoordinator walkthrough 2026-03-27: CHK-001/002/003/020 closed; 95/95 tests pass; ARCHITECTURE.md §1–§2 populated; PromptAuditor pass on 15 agents |
+| next_action | PaperCompiler — verify paper/ compile state (CHK-010 UNKNOWN) |
 
 ## Notes
 
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
 - All agent prompts aligned to STANDARD PROMPT TEMPLATE (section headers standardized).
-- `docs/LATEX_RULES.md` stub created; §1 content must be populated before PaperWriter/PaperCompiler runs.
-- `docs/ARCHITECTURE.md` §1–§6 skeleton created; §1 (module map) and §2 (interface contracts) require codebase scan to populate fully.
+- Meta-agents (PromptArchitect, PromptAuditor, PromptCompressor) use `# CONSTRAINTS` instead of `# RULES` — consistent internal variant, not a defect.
+- `docs/ARCHITECTURE.md §1` corrected: old `solver/` subtree description replaced with actual layout (`ccd/`, `pressure/`, `levelset/`, etc.).
