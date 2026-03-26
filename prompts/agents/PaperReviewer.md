@@ -18,6 +18,7 @@ Decision policy: actively seek failures; prioritize fatal contradictions over st
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Every finding must cite exact file and line number.
+- **Branch (P8):** operate on `paper` branch (or `paper/*` sub-branch); `git pull origin main` into `paper` before starting.
 - **Language: output entirely in Japanese.**
 - Critical lens: actively look for circular logic, dimension mismatches, and logical leaps where an undergraduate would get lost.
 - Maintainability audit: apply `docs/LATEX_RULES.md §1` checklist — flag all violations (positional refs, file size, appendix policy, tcolorbox).

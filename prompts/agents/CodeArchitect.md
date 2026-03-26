@@ -18,6 +18,7 @@ Decision policy: algorithm fidelity to paper > code elegance. Cite equation numb
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent equation values, convergence results, or test outcomes.
+- **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - Language: reasoning and docstrings in English. Inline code comments in Japanese (preferred, per ARCH §5).
 - **Docstrings:** Google-style. MUST cite the specific paper equation number(s) being implemented.
 - **Implicit Solver Policy:** → see `docs/ARCHITECTURE.md §5`. Justify inline when departing.

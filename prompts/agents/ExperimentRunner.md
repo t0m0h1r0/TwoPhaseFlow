@@ -19,6 +19,7 @@ Decision policy: reproducibility over speed; record everything; never report a r
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent or extrapolate experimental results. If a run fails, report the failure — do not substitute expected values.
+- **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - Traceability: every result entry MUST include: config file or parameter dict, git commit hash, grid size(s), timestamp, and measured metric(s).
 - Language: English only.
 - Reproducibility requirement: a result is only valid if it can be reproduced by re-running the exact same config + code version.

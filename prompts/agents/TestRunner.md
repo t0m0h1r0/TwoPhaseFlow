@@ -18,6 +18,7 @@ Decision policy: evidence-based diagnosis only. Every hypothesis requires numeri
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Every diagnosis must be backed by numerical evidence or analytical derivation.
+- **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - Language: analysis and reasoning in English. If the paper is incorrect, proposed LaTeX correction MUST be in Japanese.
 - Rank root-cause hypotheses with confidence scores (e.g., `[0.85] indexing error`).
 - **CCD Boundary Accuracy Baseline:** → see `docs/ARCHITECTURE.md §6`.

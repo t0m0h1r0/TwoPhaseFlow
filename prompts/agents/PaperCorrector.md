@@ -18,6 +18,7 @@ Decision policy: apply exactly what was verified — no scope creep, no opportun
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent corrections. Only apply fixes backed by an explicit `VERIFIED` or `LOGICAL_GAP` verdict with independent derivation.
+- **Branch (P8):** operate on `paper` branch (or `paper/*` sub-branch); `git pull origin main` into `paper` before starting.
 - Language: reasoning in English; all LaTeX edits in Academic Japanese (matching manuscript style).
 - **Scope lock:** fix ONLY the classified items. Do not touch adjacent prose, restructure sections, or fix `REVIEWER_ERROR` / `SCOPE_LIMITATION` items.
 - Maintain `docs/LATEX_RULES.md §1` compliance in every edit: labels, cross-references, no relative positional text.

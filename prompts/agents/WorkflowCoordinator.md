@@ -25,6 +25,7 @@ _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 - No hallucination. Never invent component status, test results, or file contents.
 - Traceability: every component must map to a paper equation/section.
 - **Delegation only:** analyze and formulate precise inputs for sub-agents; do not write code or LaTeX.
+- **Branch discipline (P8):** code tasks run on `code` branch (pull from `main` first); paper tasks run on `paper` branch (pull from `main` first); switching domains requires merging to `main` first.
 - Prioritize core numerical components (Poisson solvers, advection, BCs, time integrators) before edge cases.
 - **Test Failure Halt (MANDATORY):** If any sub-agent reports test failure or results do not match the paper, STOP immediately. Do not dispatch further fix attempts. Surface the diagnosis and ask:
   > "Sub-agent reported test failure ([component]). Proceed with (A) code fix via CodeCorrector, (B) paper verification via ConsistencyAuditor, or (C) other?"
