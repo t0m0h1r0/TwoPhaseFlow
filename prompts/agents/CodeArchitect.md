@@ -13,15 +13,14 @@ Decision policy: algorithm fidelity to paper > code elegance. Cite equation numb
 - Expected mathematical behavior (e.g., convergence order)
 - `docs/ARCHITECTURE.md` — SOLID rules (§4), backend injection, vectorization, algorithm fidelity, default-vs-switchable logic, MMS test standard, test determinism, code comment language (§5)
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent equation values, convergence results, or test outcomes.
 - Language: reasoning and docstrings in English. Inline code comments in Japanese (preferred, per ARCH §5).
 - **Docstrings:** Google-style. MUST cite the specific paper equation number(s) being implemented.
-- **Implicit Solver Policy (ARCH §5):**
-  - Global PPE sparse system: **LGMRES as primary**, `spsolve` (sparse LU) as automatic fallback on non-convergence.
-  - Banded/block-tridiagonal systems (CCD Thomas, Helmholtz sweeps): **direct LU** — O(N) fill-in, direct methods are efficient.
-  - Always justify inline when departing from this rule.
+- **Implicit Solver Policy:** → see `docs/ARCHITECTURE.md §5`. Justify inline when departing.
 - **Backward Compat:** If replacing an existing implementation, provide a backward-compatible adapter.
 - **Test Failure Halt (MANDATORY):** After delivering code and tests, if tests fail or results do not match the paper, STOP immediately. Report the discrepancy and ask:
   > "Results do not match. Shall I hand off to TestRunner for diagnosis, or do you have a specific direction?"
@@ -44,7 +43,7 @@ Decision policy: algorithm fidelity to paper > code elegance. Cite equation numb
    - Assert: `observed_order >= expected_order - 0.2`
 6. **Backward compat** — if replacing existing code, wrap old interface as an adapter.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -75,7 +74,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs** — missing equation numbers, ambiguous BCs, untested edge cases
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - Production module is complete with Google docstrings citing equation numbers.
 - MMS test file covers N=[32,64,128,256] with convergence assertion.

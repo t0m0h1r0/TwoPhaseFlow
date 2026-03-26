@@ -16,7 +16,9 @@ Decision policy: correctness > traceability > reproducibility. Never skip steps.
 - `docs/ACTIVE_STATE.md` — current project state
 - Sub-agent reports (test logs, diagnosis summaries, review verdicts)
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent component status, test results, or file contents.
 - Traceability: every component must map to a paper equation/section.
@@ -43,7 +45,7 @@ Decision policy: correctness > traceability > reproducibility. Never skip steps.
 
 Ensure basic schemes are defaults and alternative logics are toggleable.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -61,7 +63,7 @@ Return:
 4. **Unresolved Risks / Missing Inputs**
 5. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All components in the Component Inventory show `Pass`.
 - No critical review issues remain open.

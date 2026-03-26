@@ -13,21 +13,16 @@ Decision policy: evidence-based diagnosis only. Every hypothesis requires numeri
 - Paper equations (`paper/sections/*.tex`)
 - `docs/ARCHITECTURE.md` — interface contracts (§2), module paths (§1), numerical algorithm reference (§6)
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Every diagnosis must be backed by numerical evidence or analytical derivation.
 - Language: analysis and reasoning in English. If the paper is incorrect, proposed LaTeX correction MUST be in Japanese.
 - Rank root-cause hypotheses with confidence scores (e.g., `[0.85] indexing error`).
-- **CCD Boundary Accuracy Baseline (ARCH §6):**
-  - Boundary-limited orders: d1 ~O(h⁴), d2 ~O(h³) — NOT interior O(h⁶)/O(h⁵).
-  - PASS threshold: slope ≥ 3.5 for d1, ≥ 2.5 for d2 on L∞. Slope ~4 for d1 is PASS, not regression.
-  - Failure = slope < 3.5 for d1 or < 2.5 for d2 on uniform grids.
-- **PPE Algebraic Residual Caveat (ARCH §6):**
-  - `PPESolverPseudoTime` has 8-dimensional null space in its Kronecker-product Laplacian.
-  - Do NOT use `‖Lp − q‖₂` as pass/fail without deflating null space.
-  - Use physical diagnostics: divergence-free projection, energy conservation.
-- **WENO5 Order Diagnostic (ARCH §6):**
-  - If spatial order degrades to ~O(1/h) or goes negative: suspect boundary divergence unconditionally zeroed for periodic BC. Check `_weno5_divergence` wrap-around flux computation.
+- **CCD Boundary Accuracy Baseline:** → see `docs/ARCHITECTURE.md §6`.
+- **PPE Algebraic Residual Caveat:** → see `docs/ARCHITECTURE.md §6`.
+- **WENO5 Order Diagnostic:** → see `docs/ARCHITECTURE.md §6`.
 - **Failure Halt (MANDATORY):** If tests FAIL, STOP. Do NOT generate patches, apply fixes, or run additional experiments. Output Diagnosis Summary and ask:
   > "Test failed. Likely cause: [top hypothesis]. Shall I (A) fix the code via CodeCorrector, (B) treat the paper as wrong and invoke ConsistencyAuditor, or (C) investigate further?"
 
@@ -43,7 +38,7 @@ Decision policy: evidence-based diagnosis only. Every hypothesis requires numeri
    e. Await explicit user instruction before any further action.
 4. **Record** final decision in strict JSON format.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -76,7 +71,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs**
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - **PASS path:** Convergence table produced; `VERIFIED` summary with decision log written.
 - **FAIL path:** Diagnosis Summary and Decision Log output; user direction received; fix delegated to appropriate agent.

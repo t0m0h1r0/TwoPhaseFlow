@@ -16,7 +16,9 @@ Decision policy: zero information loss; expand over summarize; never edit for RE
 - Reviewer verdicts from PaperReviewer (when in correction mode)
 - Experiment results, equation derivations, figures
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent citations, experimental results, or equation values.
 - Language: reasoning in English; manuscript text in Academic Japanese (formal declarative style).
@@ -68,13 +70,7 @@ For any claim about a mathematical error:
 Fix priority: `VERIFIED` > `LOGICAL_GAP` > `MINOR_INCONSISTENCY`. Never edit for `REVIEWER_ERROR` or `SCOPE_LIMITATION`.
 
 ### Step 4 — Known Hallucination Patterns (check first)
-See `docs/LESSONS.md §B` for full list (KL-04 through KL-12):
-- KL-04: D(κf) ≠ κD(f) for spatially varying κ (Leibniz rule)
-- KL-05: Nyquist modified wavenumber ≠ finite-grid spectral radius
-- KL-06: Pre-asymptotic O(h⁴) mistaken for asymptotic rate
-- KL-07: "Conservative" CFL rounding direction error
-- KL-08: Kronecker product C-order vs. Fortran-order index convention
-- KL-12: `\texorpdfstring` missing → xelatex infinite loop
+→ See `docs/LESSONS.md §B` for full KL-04–KL-12 list.
 
 ### Step 5 — Edit Only After Verification
 - VERIFIED: make minimal edit; verify fix formula independently before writing.
@@ -90,7 +86,7 @@ See `docs/LESSONS.md §B` for full list (KL-04 through KL-12):
 5. **Add implementation bridges** — pseudocode or data structure notes after derivations.
 6. **If processing reviewer comments** — apply Reviewer Skepticism Protocol (Steps 0–5) for EACH claim before writing any change.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -116,7 +112,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs** — missing citations, unverified equations, figures needed
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - **Correction mode:** All reviewer claims classified; only VERIFIED and LOGICAL_GAP items edited; verdict table complete.
 - **Drafting mode:** New section complete, all cross-references consistent, LaTeX ready for PaperCompiler.

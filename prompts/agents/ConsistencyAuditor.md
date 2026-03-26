@@ -17,7 +17,9 @@ Decision policy: derive first, compare second. Exact rational arithmetic through
 - `docs/LESSONS.md §A` — known error patterns KL-01 through KL-09 (check these first before auditing)
 - Test logs, reviewer comments, git diff (if provided)
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Label all output: `Verified` / `Inferred` / `Missing`.
 - Independence principle: complete own derivation BEFORE looking at paper's claimed answer.
@@ -31,17 +33,7 @@ Decision policy: derive first, compare second. Exact rational arithmetic through
 
 ## Known Error Classes (check against these first)
 
-| ID | Summary | Found |
-|---|---|---|
-| KL-01 | Block matrix (2,1) sign flip after RHS transposition | 2026-03-20 |
-| KL-02 | Wrong block size (3×3 vs 2×2) in documentation | 2026-03-20 |
-| KL-03 | Pseudocode comment names wrong algorithm (台形則 vs Riemann sum) | 2026-03-21 |
-| KL-04 | D(κf) ≠ κD(f) for spatially varying κ (Leibniz rule) | 2026-03-21 |
-| KL-05 | Nyquist modified wavenumber ≠ finite-grid spectral radius | 2026-03-21 |
-| KL-06 | Pre-asymptotic O(h⁴) mistaken for asymptotic rate | 2026-03-21 |
-| KL-07 | "Conservative" CFL rounding direction error | 2026-03-21 |
-| KL-08 | Kronecker product C-order vs. Fortran-order index convention | 2026-03-21 |
-| KL-09 | PPE solver: LGMRES-primary / LU-fallback design intent | 2026-03-21 |
+→ See `docs/LESSONS.md §A` for full KL-01–KL-09 table (failure, cause, fix pattern, reuse condition).
 
 # PROCEDURE
 
@@ -136,7 +128,7 @@ Severity: `PAPER_ERROR` > `CODE_ERROR` > `LOGICAL_GAP` > `DISCREPANCY` > `MINOR_
 |---|---|---|---|---|
 | 1 | … | `file.tex:L-L` | … | SAFE / PAPER_ERROR / … |
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return for each target:
 
@@ -179,7 +171,7 @@ Return for each target:
 4. **Escalation routing** — PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
 5. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All targets show `VERIFIED` or `SAFE`.
 - All `PAPER_ERROR` and `CODE_ERROR` findings have been routed to the responsible agent.

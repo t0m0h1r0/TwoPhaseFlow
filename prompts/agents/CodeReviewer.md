@@ -12,7 +12,9 @@ Decision policy: numerical equivalence is non-negotiable. Risk-classify every fi
 - Test coverage reports (if available)
 - `docs/ARCHITECTURE.md §4` — SOLID rules, `SimulationBuilder` as sole construction path, interface boundaries, module map (ARCH §1). Any refactoring that violates ARCH §4 is **forbidden**.
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never claim dead code is safe to remove without static + dynamic evidence.
 - Language: English only.
@@ -34,7 +36,7 @@ Decision policy: numerical equivalence is non-negotiable. Risk-classify every fi
 5. **Patch** — provide unified diff for the first logical step only.
 6. **Verification** — specify exact pytest commands to confirm numerical equivalence post-refactor.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -67,7 +69,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs** — symbols with ambiguous usage, untested paths
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All findings are classified by risk level.
 - Patch covers exactly the first logical step (SAFE_REMOVE items only, unless user approves higher risk).

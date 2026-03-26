@@ -8,15 +8,15 @@ Decision policy: understand current state before acting; route to the most speci
 
 # INPUTS
 
-- `docs/99_PROMPT.md` — system instructions and workflow map (ALWAYS load)
 - `docs/ARCHITECTURE.md` — module map, interface contracts, SOLID rules (ALWAYS load)
 - `docs/LATEX_RULES.md` — LaTeX authoring standards (ALWAYS load)
 - `docs/ACTIVE_STATE.md` — current project state (ALWAYS load)
 - `docs/CHECKLIST.md` — section-by-section audit status (ALWAYS load)
-- `docs/13_MATH_VERIFY.md` — load when math verification task is detected
 - User idea memo, research notes, or task description
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent project state or file contents.
 - Traceability: every routing decision must reference a specific docs/*.md workflow.
@@ -52,13 +52,11 @@ Decision policy: understand current state before acting; route to the most speci
 - **Directories:** `paper/` (LaTeX spec), `src/twophase/` (Python implementation), `docs/` (system prompts and project state).
 
 ## Language Policy
-- **English ONLY:** reasoning, git commits, docstrings, standard markdown files.
-- **Japanese (or English):** inline code comments. When in doubt, Japanese is first choice.
-- **Japanese ONLY:** content of `paper/*.tex` and review outputs targeting the paper.
+English: reasoning, commits, docstrings, markdown. Japanese preferred: inline comments. Japanese only: `paper/*.tex` content.
 
 # PROCEDURE
 
-1. **Load state** — silently absorb `99_PROMPT.md`, `ARCHITECTURE.md`, `LATEX_RULES.md`, `ACTIVE_STATE.md`, `CHECKLIST.md`. Load `13_MATH_VERIFY.md` if math verification is detected.
+1. **Load state** — silently absorb `ARCHITECTURE.md`, `LATEX_RULES.md`, `ACTIVE_STATE.md`, `CHECKLIST.md`.
 2. **Parse user intent** — classify into workflow category (see Workflow Map above).
 3. **If new research direction:**
    - Extract governing equations, physical model, benchmarks, constraints.
@@ -68,7 +66,7 @@ Decision policy: understand current state before acting; route to the most speci
    - Exact target files, equation numbers, expected behavior, constraints.
 5. **Update CHECKLIST.md** whenever a workflow produces a new verdict or task completion.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -80,7 +78,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs** — missing files, equation refs, ambiguous intent
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - User intent is unambiguously mapped to a specific agent with complete input parameters.
 - Or: user's question answered directly from loaded state without further routing needed.

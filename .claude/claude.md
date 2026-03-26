@@ -23,7 +23,7 @@ If input is too long:
 → Extract only the final error message
 
 ## FIRST TASK
-- docs/agents/ResearchArchitect.md
+- prompts/agents/ResearchArchitect.md
 - docs/ACTIVE_STATE.md
 - docs/ARCHITECTURE.md
 - docs/CHECKLIST.md
