@@ -18,7 +18,7 @@
 
 | CHK-ID | Status | Type | Location |
 |---|---|---|---|
-| CHK-010 | UNKNOWN | compile | paper/ — last compile outcome not recorded; next action: PaperCompiler pass |
+| CHK-010 | CLOSED | compile | paper/ — XeLaTeX 2-pass clean: 139 pages, 0 errors, 0 overfull/underfull, 0 undefined refs, rerunfilecheck stable (2026-03-27) |
 
 ## Format reference
 

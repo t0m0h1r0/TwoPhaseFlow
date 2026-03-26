@@ -4,8 +4,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | WorkflowCoordinator walkthrough 2026-03-27: CHK-001/002/003/020 closed; 95/95 tests pass; ARCHITECTURE.md §1–§2 populated; PromptAuditor pass on 15 agents |
-| next_action | PaperCompiler — verify paper/ compile state (CHK-010 UNKNOWN) |
+| last_decision | PaperCompiler 2026-03-27: CHK-010 closed — XeLaTeX 2-pass clean, 139 pages, 0 errors |
+| next_action | Priority 2: integration test for SimulationBuilder + simulation core (simulation/_core.py) |
 
 ## Notes
 
