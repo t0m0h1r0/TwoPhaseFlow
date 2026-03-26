@@ -13,6 +13,8 @@
 | CHK-ID | Status | Type | Location | Verdict | Timestamp |
 |---|---|---|---|---|---|
 | CHK-020 | CLOSED | test | src/twophase/tests/ — 95/95 tests pass, 0 warnings | PASS | 2026-03-27 |
+| CHK-021 | CLOSED | test | src/twophase/tests/test_simulation.py — 3 integration tests: builder constructs, step_forward no NaN/Inf, Laplace pressure sign positive | PASS | 2026-03-27 |
+| CHK-022 | CLOSED | test | Full suite after Priority 2: 98/98 pass, 0 warnings | PASS | 2026-03-27 |
 
 ## §3 — Paper / Compile Status
 

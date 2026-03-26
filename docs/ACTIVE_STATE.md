@@ -4,8 +4,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | PaperCompiler 2026-03-27: CHK-010 closed — XeLaTeX 2-pass clean, 139 pages, 0 errors |
-| next_action | Priority 2: integration test for SimulationBuilder + simulation core (simulation/_core.py) |
+| last_decision | Priority 2 resolved 2026-03-27: test_simulation.py — 3 integration tests pass (98/98 total); SimulationBuilder + core loop verified |
+| next_action | Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark (§10b) |
 
 ## Notes
 
