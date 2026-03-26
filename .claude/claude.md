@@ -27,3 +27,11 @@ If input is too long:
 - docs/ACTIVE_STATE.md
 - docs/ARCHITECTURE.md
 - docs/CHECKLIST.md
+- docs/CODING_POLICY.md
+
+## CODING RULES (enforced every session)
+- **SOLID principles are MANDATORY** — before writing or modifying any class/function,
+  check §1 of docs/CODING_POLICY.md. Report violations in `[SOLID-X]` format and fix them.
+- **Never delete tested code** — superseded implementations must be retained as legacy classes
+  per §2 of docs/CODING_POLICY.md. DO NOT remove a class that has passed tests unless the
+  user explicitly says "delete it".

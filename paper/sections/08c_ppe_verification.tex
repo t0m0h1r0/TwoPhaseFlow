@@ -20,8 +20,9 @@ CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_m
 テスト C-1（§\ref{sec:ccd_test_c1}）はディリクレ条件 $p|_{\partial\Omega}=0$ の解析解を用いて
 CCD-Poisson 演算子の\textbf{空間精度次数（$\Ord{h^6}$）}を確認するテストである．
 本実装の PPE はノイマン条件 $\partial p/\partial n = 0$ を使用するが，これはテスト C-1 の目的とは独立である：
-ノイマン BC の正しい組み込みは §\ref{sec:ppe}（$\texttt{box:neumann\_unit\_test}$）の
-Null test・Manufactured Solution test（コサイン解析解）で別途確認する．
+ノイマン BC の CCD ブロック方程式への組み込み手順は §\ref{sec:ccd_neumann_bc}（離散式 \eqref{eq:neumann_bc_ccd}）に示し，
+正しく実装されたかの確認は §\ref{sec:ppe}（$\texttt{box:neumann\_unit\_test}$）の
+Null test・Manufactured Solution test（コサイン解析解）で別途行う．
 両テストを合わせることで「CCD 演算子の精度」と「Neumann BC 実装の正確性」を独立に検証できる．
 
 \subsubsection{検証テスト C-1：等密度 Poisson 方程式の格子収束（\texorpdfstring{$\Ord{h^6}$}{O(h\textasciicircum 6)} の確認）}

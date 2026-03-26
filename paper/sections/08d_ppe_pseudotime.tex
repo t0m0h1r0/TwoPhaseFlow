@@ -12,7 +12,7 @@
 （BiCGSTAB は低次精度実装の代替として表~\ref{tab:ppe_methods} に掲載）．
 この方法は FVM ベースの BiCGSTAB（§\ref{sec:fvm_face_coeff}）に対して以下の優位性を持つ：
 \textbf{空間精度}として CCD 法（6次精度）を用いるため $\mathcal{O}(h^6)$ の高精度が得られ
-（表~\ref{tab:ppe_methods} 脚注 $\dagger$，収束基準は §\ref{result:etol_criterion} 参照），
+（表~\ref{tab:ppe_methods} 脚注 $\dagger$，収束基準は \ref{result:etol_criterion} 参照），
 \textbf{行列不要}で大規模疎行列を陽に組み立てず各反復にブロック Thomas 法を適用し，
 残差 $\varepsilon^m < \varepsilon_\text{tol}$ 達成後は定常解が $\mathcal{L}_h p = q_h$ を
 $\varepsilon_\text{tol}$ 精度で満たす\textbf{収束後の精度保証}が得られる
