@@ -3,23 +3,28 @@
 \begin{center}
 \vspace*{12mm}
 {\color{navy}\rule{\linewidth}{2pt}}\\[8pt]
-{\LARGE\bfseries 二次元気液混合流体の数値計算法（統合最終版）}\\[6pt]
-{\large\bfseries —— Conservative Level Set + CCD + RC + 可変密度PPE ——}\\[4pt]
+{\LARGE\bfseries 気液二相流の高精度数値シミュレーション}\\[6pt]
+{\large\bfseries —— CCD 法による寄生流れ抑制と保存形界面追跡の統合設計 ——}\\[4pt]
 {\color{navy}\rule{\linewidth}{2pt}}\\[10pt]
 {\large
-\textbf{Numerical Methods for Two-Dimensional Gas--Liquid Two-Phase Flows (Merged Final)}\\[4pt]
-\textit{Conservative Level Set $\cdot$ WENO5 $\cdot$ Coupled Compact Difference $\cdot$ Projection Method}
+\textbf{High-Order Numerical Simulation of Gas--Liquid Two-Phase Flows}\\[4pt]
+\textit{Spurious-Current Suppression via CCD $\cdot$ Conservative Level Set $\cdot$ Dissipative CCD $\cdot$ Projection Method}
 }
 \vspace{14mm}
 \begin{tcolorbox}[defbox, width=0.88\textwidth]
 \small\centering
 \begin{tabular}{rl}
-界面追跡： & \textbf{Conservative Level Set 法}\,($\psi\equiv H_\varepsilon(\phi)$)\\
-空間離散： & CCD $\Ord{h^6}$（微分），WENO5（移流），非一様格子対応\\
+界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(\phi)$）\\
+空間離散： & CCD $\Ord{h^6}$（微分），Dissipative CCD（移流），非一様格子対応\\
 格子構造： & コロケート格子 + Rhie--Chow 補正（面速度）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
-圧力解法： & 変密度 Chorin Projection + CCD-PPE（$O(h^6)$）+ 仮想時間陰解法\\
-表面張力： & CSF 法（$\kappa\,\bnabla\psi$ 形式；balanced-force）
+圧力解法： & 変密度 IPC（van Kan 1986）+ CCD-PPE（$O(h^6)$）+ 仮想時間陰解法\\
+表面張力： & CSF 法（$\kappa\,\bnabla\psi$ 形式；Balanced-Force）\\[4pt]
+\hline
+\multicolumn{2}{l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
+時間方向律速： & AB2+IPC スキーム $\Rightarrow$ 全体時間精度 $\mathcal{O}(\Delta t^2)$（§\ref{sec:time_accuracy_table}）\\
+表面張力律速： & CSF モデル誤差 $\mathcal{O}(\varepsilon^2)\approx\mathcal{O}(h^2)$（$\varepsilon\sim h$ 設定時）\\
+\multicolumn{2}{l}{\footnotesize CCD の $\mathcal{O}(h^6)$ 空間精度は PPE・曲率・メトリクス評価で有効（§\ref{sec:accuracy_summary}）}\\
 \end{tabular}
 \end{tcolorbox}
 \end{center}
@@ -27,3 +32,21 @@
 {\color{navy}\rule{\linewidth}{0.8pt}}\\[2pt]
 {\small\color{darkgray}対象読者：大学院生・研究者（計算流体力学の基礎知識を前提）}
 \end{titlepage}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{abstract}
+気液二相流数値シミュレーションにおける最大の数値的障害は，
+静止液滴界面に生じる人工的渦流れ——\textbf{寄生流れ（spurious currents）}——である．
+その根本原因は，圧力勾配項と表面張力項に異なる差分演算子を用いることによる離散化の不整合であり，
+格子を細分化しても残留する $O(1)$ の誤差体積力を生む．
+本稿は，この問題を結合コンパクト差分法（CCD，$O(h^6)$）と
+Balanced-Force 離散化条件を組み合わせることで根本的に解決する設計を提案し，
+その理論的基盤・実装詳細・検証手順を体系的に解説する．
+界面追跡には Conservative Level Set（CLS）法と Dissipative CCD スキームを採用して質量保存性と
+数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は CCD 仮想時間陰解法
+（$O(h^6)$）で高精度に求解する．
+Rhie--Chow 型フラックス補正がコロケート格子でのチェッカーボード不安定を抑制し，
+Balanced-Force 条件が寄生流れの数値離散化誤差成分を相殺する（残差は CSF モデル誤差 $O(h^2)$ が律速）．
+全手法は7ステップのタイムループとして統合され，
+静止液滴・Zalesak 円盤・Rayleigh--Taylor 不安定・上昇気泡の4段階ベンチマークで検証される．
+\end{abstract}

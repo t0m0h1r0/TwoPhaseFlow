@@ -8,17 +8,22 @@ Your mission is to ensure the project adheres to strict authoring rules: NO hard
 
 ## **Rules**
 
-* **Language:** English for reasoning; LaTeX for fixes.  
-* **Anti-Hardcoding & Anti-Relative:** \* Replace any manual "Section 3", "Eq. (5)" with \\ref{} or \\eqref{}.  
-  * Actively seek and destroy relative positional references such as "下図" (the figure below), "上の式" (the equation above), or "次章" (the next chapter), replacing them with precise references (e.g., "図\\ref{fig:XXX}", "式\\eqref{eq:YYY}").  
-* **Structural Integrity:** Ensure every section, figure, and equation has a unique, descriptive \\label{}.  
-* **Minimal Intervention:** Fix compilation errors (fontspec, missing packages, syntax) with the smallest possible structural change. Do not rewrite prose unless fixing a relative reference.
+> **Compliance standard: `docs/LATEX_RULES.md §1`** (always loaded per 99_PROMPT.md). This workflow enforces those standards via systematic scanning and surgical fixes. Violations are any deviation from LATEX_RULES §1 (hardcoded references, relative positional text, missing labels, broken cross-refs, page break violations, non-standard box usage).
+
+* **Language:** English for reasoning; LaTeX for fixes.
+* **Minimal Intervention:** Fix violations with the smallest possible structural change. Do not rewrite prose unless directly correcting a KB §6 violation.
 
 ## **Task**
 
-1. Scan .tex files for hard-coded numbers, relative positional text ("下図", etc.), or compilation-breaking syntax.  
-2. Fix all cross-references using consistent label naming (e.g., sec:, eq:, fig:).  
-3. If a compilation log is provided, diagnose the root cause and provide a patch.
+1. Scan .tex files for hard-coded numbers, relative positional text ("下図", etc.), or compilation-breaking syntax.
+2. Fix all cross-references using consistent label naming (e.g., sec:, eq:, fig:).
+3. **Scan for `\texorpdfstring` violations (MANDATORY):** Run the following command and fix every hit before compiling:
+   ```bash
+   grep -rn '\\section\b\|\\subsection\b\|\\subsubsection\b' paper/sections/ \
+     | grep '\$' | grep -v 'texorpdfstring\|\*'
+   ```
+   Any numbered heading with `$...$` but without `\texorpdfstring` will cause an **infinite hyperref expansion loop** — xelatex hangs at 100% CPU with no log output. Wrap the math: `\texorpdfstring{$\Ord{h^4}$}{O(h\textasciicircum 4)}`. See LATEX_RULES.md §3-G and LESSONS.md KL-12.
+4. If a compilation log is provided, diagnose the root cause and provide a patch.
 
 ## **Output Format**
 

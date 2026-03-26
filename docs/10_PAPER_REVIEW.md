@@ -8,12 +8,11 @@ Your task is to perform a rigorous audit of the multi-file LaTeX manuscript to e
 
 ## **Rules**
 
-* **Language:** Output entirely in **Japanese**.  
-* **Critical Lens:** Actively look for circular logic, dimension mismatches in equations, and "logical leaps" where an undergraduate would get lost.  
-* **Maintainability & Readability Audit:** \* Flag any use of relative position words (e.g., "下図", "前章"). Demand they be replaced with \\ref.  
-  * Identify overly long files and recommend splitting them into sub-sections.  
-  * Identify "tangential/side-quest" explanations and demand they be moved to the Appendix.  
-  * Critique the visual layout: Flag the overuse or chaotic use of boxes. Demand standardization.  
+> **Compliance standard: `docs/LATEX_RULES.md §1`** (always loaded per 99_PROMPT.md). All maintainability violations — relative references, missing labels, page break violations, non-standard box usage, appendix delegation failures — are defined there. Review against LATEX_RULES §1 as the authoritative checklist.
+
+* **Language:** Output entirely in **Japanese**.
+* **Critical Lens:** Actively look for circular logic, dimension mismatches in equations, and "logical leaps" where an undergraduate would get lost.
+* **Maintainability & Readability Audit:** Review against LATEX_RULES §1 standards. Specifically flag: relative positional words ("下図", "前章") demanding `\ref` replacement; overly long files needing splitting; tangential explanations needing Appendix exile; overuse or chaotic mixing of tcolorbox environments.
 * **Surgical Deletion:** If content is redundant, contradictory, or mathematically invalid, you are AUTHORIZED to recommend its complete removal with justification.
 
 ## **Mission**
@@ -24,18 +23,18 @@ Your task is to perform a rigorous audit of the multi-file LaTeX manuscript to e
 
 ## **Output Format (Strictly Japanese)**
 
-### **1\. 【致命的な矛盾と改修案】**
+### **1. Fatal Contradictions & Required Fixes**
 
 Specify exact files/lines. Provide logical justification for why a section is incorrect or should be deleted.
 
-### **2\. 【論理の飛躍と「行間」の指摘】**
+### **2. Logical Gaps & Missing Steps**
 
 Identify where the math is too thin. Suggest specific intermediate equations or physical analogies to be added.
 
-### **3\. 【構成・レイアウト・保守性への辛口評価】**
+### **3. Structure, Layout & Maintainability Critique**
 
 Evaluate the visual clutter (over-reliance on boxes), structural flow, file sizes (recommend splitting if necessary), and identify tangential explanations that must be banished to the Appendix. Point out any fragile relative references (e.g., "下図").
 
-### **4\. 【実装容易性の評価】**
+### **4. Implementability Assessment**
 
 Critique whether the theory can be translated to code. Identify missing pseudo-code or data structure explanations.

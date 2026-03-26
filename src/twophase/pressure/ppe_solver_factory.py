@@ -28,6 +28,7 @@ def create_ppe_solver(
     config: "SimulationConfig",
     backend: "Backend",
     grid: "Grid",
+    ccd=None,
 ) -> "IPPESolver":
     """SimulationConfig の設定に基づいて PPE ソルバーを生成する。
 
@@ -36,6 +37,7 @@ def create_ppe_solver(
     config  : SimulationConfig — ppe_solver_type を参照
     backend : Backend
     grid    : Grid
+    ccd     : CCDSolver（オプション）— "pseudotime" ソルバーに注入される
 
     Returns
     -------
@@ -47,15 +49,27 @@ def create_ppe_solver(
     """
     from .ppe_solver import PPESolver
     from .ppe_solver_pseudotime import PPESolverPseudoTime
+    from .ppe_solver_lu import PPESolverLU
+    from .ppe_solver_ccd_lu import PPESolverCCDLU
+    from .ppe_solver_sweep import PPESolverSweep
 
     solver_type = config.solver.ppe_solver_type
 
     if solver_type == "pseudotime":
-        return PPESolverPseudoTime(backend, config, grid)
+        return PPESolverPseudoTime(backend, config, grid, ccd=ccd)
+    elif solver_type == "ccd_lu":
+        # CCD Kronecker 積演算子 + 常時 spsolve（SuperLU）— balanced-force 保証
+        return PPESolverCCDLU(backend, config, grid, ccd=ccd)
+    elif solver_type == "sweep":
+        # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
+        return PPESolverSweep(backend, config, grid, ccd=ccd)
     elif solver_type == "bicgstab":
         return PPESolver(backend, config, grid)
+    elif solver_type == "lu":
+        # 直接 LU 法（FVM + spsolve）— 反復収束問題を回避するデバッグ用
+        return PPESolverLU(backend, config, grid)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'bicgstab' または 'pseudotime' を指定してください。"
+            " 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' を指定してください。"
         )

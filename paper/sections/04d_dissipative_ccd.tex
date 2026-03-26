@@ -1,0 +1,407 @@
+% paper/sections/04d_dissipative_ccd.tex
+%
+% §4d  散逸的結合コンパクト差分（Dissipative-CCD）と界面適応フィルタ
+%       — CLS プロファイルに基づくスイッチ関数と散逸強度の厳密導出 —
+%
+% 本節は §\ref{sec:CCD}（CCD 法）の直後に配置される。
+% 前提知識：CCD の 3 点ステンシル定式化（第 \ref{sec:CCD} 章），
+%            CLS 平衡プロファイル ψ = H_ε(φ)（第 \ref{sec:levelset} 章）
+
+\subsection{散逸的 CCD フィルタ：設計原理と界面適応制御}
+\label{sec:dissipative_ccd}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{問題の所在：CCD の純中心差分性と高周波不安定性}
+\label{sec:dccd_motivation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+第~\ref{sec:CCD}章で導出した標準 CCD は，
+Equation-I（式~\eqref{eq:CCD_I}）と Equation-II（式~\eqref{eq:CCD_II}）の
+係数をいずれも\textbf{中心対称}（$\alpha_1^+ = \alpha_1^-$，$b_2^+ = -b_2^-$ で左右対称）
+に設計することで $O(h^6)$ 精度を達成する．
+この中心対称性は，修正波数 $k^*(kh)$ の虚数部が\textbf{厳密にゼロ}であることを意味し，
+すべての波数モードが振幅減衰なく伝播する——これは高精度スキームとして理想的な性質である．
+
+しかし，非線形の気液二相流シミュレーションでは，この散逸のなさが問題を引き起こす：
+\begin{itemize}
+  \item \textbf{エイリアシング不安定性：}
+        対流項 $\bm{u}\cdot\nabla\bm{u}$ の非線形相互作用によって高波数エネルギーが
+        生成され続けるが，CCD はこれを排出する機構を持たない．
+        結果として格子スケール（$kh \approx \pi$）のノイズが蓄積し，
+        最終的に計算が発散する．
+  \item \textbf{界面近傍の圧力・速度振動：}
+        表面張力項 $\sigma\kappa\delta_\varepsilon\hat{\bm{n}}$ は界面の鋭い変化を起点に
+        高周波振動（寄生流れ）を生成する（第~\ref{sec:intro}章~§\ref{sec:failure_modes}）．
+        CCD による高精度な曲率 $\kappa$ 計算はこれを抑制するが，
+        格子スケールノイズが一度流速場に混入すると，次ステップの移流・圧力求解で増幅される．
+\end{itemize}
+
+従来の対処法として，（a）CCD 微分場に独立な広ステンシルフィルタ（5〜7 点）を後処理として適用する方法，
+または（b）速度場の離散化自体を上流偏向スキームに切り替える方法がある．
+前者は CCD のコンパクト性を損ない；後者は速度の低波数成分にも数値拡散を導入し高精度性を毀損する．
+
+\textbf{本節の提案：}
+CCD の解いた微分場 $(f'_i, f''_i)$ に対して，\textbf{CCD と同じ 3 点ステンシル}を
+用いたスペクトルフィルタを後処理として適用する．
+フィルタ強度は CLS の平衡プロファイル $\psi$ から導出されるスイッチ関数 $S(\psi)$ で
+適応制御され，界面近傍ではゼロに退化する．
+これにより CCD の $O(h^6)$ 精度と高周波安定性を同一ステンシル内で両立する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{3 点スペクトルフィルタの理論的枠組み}
+\label{sec:dccd_filter_theory}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\textbf{フィルタの定義．}
+スカラー場 $g_i$（$i = 0, 1, \ldots, N$）に対して，3 点コンパクトフィルタ $\mathcal{F}$ を
+\begin{equation}
+  \bigl(\mathcal{F}\,g\bigr)_i
+  \;\equiv\;
+  g_i + \varepsilon_d\,\bigl(g_{i+1} - 2g_i + g_{i-1}\bigr)
+  \label{eq:dccd_filter}
+\end{equation}
+で定義する．ここで $\varepsilon_d \geq 0$ は散逸強度パラメータである．
+
+\textbf{スペクトル特性（空間一様 $\varepsilon_d$ の場合）．}
+$g_j = e^{ij\xi}$（$\xi = kh \in [0,\pi]$ は規格化波数）を代入すると，
+$(g_{i+1}-2g_i+g_{i-1}) = (e^{i\xi}-2+e^{-i\xi})g_i = -4\sin^2(\xi/2)\,g_i$
+であるから，フィルタ伝達関数は
+\begin{equation}
+  H(\xi;\varepsilon_d)
+  \;\equiv\;
+  1 - 4\varepsilon_d\sin^2\!\left(\frac{\xi}{2}\right)
+  \label{eq:dccd_transfer}
+\end{equation}
+となる．
+\textbf{注：} 適応制御では $\varepsilon_d^{(i)}$ が空間的に変化するため，
+厳密なフーリエ解析は成立しない．本解析は局所凍結係数近似（locally frozen coefficient）——
+各格子点近傍では $\varepsilon_d$ が一定と仮定——に基づく．
+$\varepsilon_d^{(i)} \leq \varepsilon_{d,\max}$ であるから，$\varepsilon_d = \varepsilon_{d,\max}$ のときが
+伝達関数 $H$ の下限値（最大減衰）を与える保守的な評価となる．
+
+$H$ の性質を以下に整理する．
+
+\begin{tcolorbox}[resultbox, title={3 点フィルタ伝達関数 $H(\xi;\varepsilon_d)$ の性質}]
+\label{box:filter_properties}
+\begin{equation}
+  H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2\!\Bigl(\frac{\xi}{2}\Bigr)
+  = 1 - 2\varepsilon_d(1-\cos\xi)
+  \tag{\ref{eq:dccd_transfer}}
+\end{equation}
+\begin{itemize}
+  \item \textbf{DC 成分保存：} $H(0;\varepsilon_d) = 1$（波数ゼロは変化なし）
+  \item \textbf{単調減衰：} $H$ は $\xi$ の\textbf{減少}関数（$dH/d\xi = -2\varepsilon_d\sin\xi \leq 0$；高波数ほど強く減衰）
+  \item \textbf{最大減衰（ナイキスト）：} $H(\pi;\varepsilon_d) = 1 - 4\varepsilon_d$
+  \item \textbf{安定性条件：} $H(\xi) \geq 0$（振幅反転なし）$\Leftrightarrow$ $\varepsilon_d \leq 1/4$
+  \item \textbf{低波数近似：} $H(\xi;\varepsilon_d) \approx 1 - \varepsilon_d\xi^2$ for $\xi \ll 1$
+        （精度影響は $O(\varepsilon_d\xi^2)$，CCD の $O(h^6)$ 誤差より十分小さい）
+\end{itemize}
+\end{tcolorbox}
+
+\textbf{CCD 微分場への適用．}
+CCD ブロック Thomas 法（§\ref{sec:ccd_matrix}）で求めた
+$(f'_i, f''_i)$ に対し，フィルタを適用して修正済み微分場を得る：
+\begin{align}
+  \tilde{f}'_i  &= f'_i  + \varepsilon_d^{(i)}\,\bigl(f'_{i+1}  - 2f'_i  + f'_{i-1}\bigr)
+  \label{eq:dccd_apply_d1} \\
+  \tilde{f}''_i &= f''_i + \varepsilon_d^{(i)}\,\bigl(f''_{i+1} - 2f''_i + f''_{i-1}\bigr)
+  \label{eq:dccd_apply_d2}
+\end{align}
+ここで $\varepsilon_d^{(i)} \geq 0$ は格子点ごとの散逸強度（適応制御の場合，後述する
+$\varepsilon_d^{(i)} = \varepsilon_{d,\max} \cdot S(\psi_i)$ となる）．
+
+\textbf{ステンシル幅の確認．}
+式~\eqref{eq:dccd_apply_d1}--\eqref{eq:dccd_apply_d2} において，
+$f'_{i\pm1}$ および $f''_{i\pm1}$ は CCD システム求解によって
+すでに\textbf{メモリ上に存在する量}であり，新たな関数値 $f_{i\pm2}$ 等を
+参照しない．したがって，この後処理は 3 点ステンシル（$i-1, i, i+1$）の範囲で完結し，
+CCD の「コンパクト性の哲学」を維持する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{スイッチ関数 \texorpdfstring{$S(\psi)$}{S(psi)} の厳密導出：CLS 平衡プロファイルから}
+\label{sec:dccd_switch}
+% ─────────────────────────────────────────────────────────────────────────────
+
+フィルタは界面近傍では完全に無効化し，バルク領域でのみ機能させたい．
+この適応制御のためのスイッチ関数 $S(\psi) \in [0,1]$ を，CLS の平衡プロファイルそのものから導出する．
+
+\medskip
+\noindent\textbf{ステップ 1：CLS 平衡プロファイルの確認．}
+
+第~\ref{sec:levelset}章（式~\eqref{eq:logit_inverse}~および~§\ref{sec:levelset_mapping}）で示したように，
+CLS 変数 $\psi$ は符号付き距離関数 $\phi$ と正則化 Heaviside 関数を介して
+\begin{equation}
+  \psi = H_\varepsilon(\phi) = \frac{1}{1+e^{-\phi/\varepsilon}}
+  \label{eq:cls_equilibrium}
+\end{equation}
+の関係にある（$\varepsilon$ は界面幅パラメータ）．
+平衡状態では $|\nabla\phi| = 1$（Eikonal 条件）が成立し，
+1 次元定常プロファイルは $\psi(x) = H_\varepsilon(x - x_\Gamma)$ で与えられる．
+
+\medskip
+\noindent\textbf{ステップ 2：界面指示子の構成．}
+
+平衡プロファイル $\psi = H_\varepsilon(\phi)$ を $\phi$ で微分すると，
+デルタ関数の近似（界面厚さ $\varepsilon$ の正則化デルタ関数）が得られる：
+\begin{equation}
+  \delta_\varepsilon(\phi)
+  = H'_\varepsilon(\phi)
+  = \frac{1}{\varepsilon}\,H_\varepsilon(\phi)\bigl(1 - H_\varepsilon(\phi)\bigr)
+  = \frac{1}{\varepsilon}\,\psi(1-\psi)
+  \label{eq:delta_reg}
+\end{equation}
+Eikonal 条件 $|\nabla\phi| = 1$ のもとで $|\nabla\psi| = |\delta_\varepsilon(\phi)|\,|\nabla\phi| = \delta_\varepsilon(\phi)$ となる（$\delta_\varepsilon \geq 0$）．
+
+$\delta_\varepsilon$ は $\phi = 0$（界面）でピーク値 $\delta_\varepsilon(0) = 1/(4\varepsilon)$ を持ち，
+バルク（$|\phi| \gg \varepsilon$）では指数的に減衰する．
+そこで，$4\varepsilon\delta_\varepsilon = 4\psi(1-\psi)$ を\textbf{正規化界面指示子}と定義する：
+\begin{equation}
+  \Theta(\psi) \;\equiv\; 4\psi(1-\psi) = \frac{|\nabla\psi|_{\mathrm{eq}}}{\max|\nabla\psi|_{\mathrm{eq}}} \;\in\; [0, 1]
+  \label{eq:interface_indicator}
+\end{equation}
+$\Theta(\psi) = 1$ が界面（$\psi = 0.5$），$\Theta(\psi) = 0$ がバルク（$\psi = 0$ または $1$）に対応する．
+
+\medskip
+\noindent\textbf{ステップ 3：スイッチ関数の定義．}
+
+フィルタは界面指示子の\textbf{補集合}（界面 $\to 0$，バルク $\to 1$）であるべきであるから，
+
+\begin{tcolorbox}[defbox, title={スイッチ関数 $S(\psi)$（CLS 平衡プロファイルからの導出）}]
+\label{defbox:switch}
+\begin{equation}
+  \boxed{
+    S(\psi) \;\equiv\; 1 - \Theta(\psi) = (2\psi - 1)^2
+  }
+  \label{eq:switch_function}
+\end{equation}
+あるいは，$\phi$ の観点から（式~\eqref{eq:cls_equilibrium} を代入して整理）：
+\begin{equation}
+  S(\phi) = \bigl(2H_\varepsilon(\phi) - 1\bigr)^2 = \tanh^2\!\left(\frac{\phi}{2\varepsilon}\right)
+  \label{eq:switch_phi}
+\end{equation}
+\textbf{性質：}
+\begin{itemize}
+  \item $S(1/2) = 0$：界面（$\psi = 1/2$，$\phi = 0$）でスイッチがゼロ
+  \item $S(0) = S(1) = 1$：バルク（$\psi \to 0$ または $1$）でスイッチが最大
+  \item $S(\psi) \in [0,1]$：確率的解釈が可能な有界関数
+  \item $S \in C^\infty$：$\psi$ の 2 次多項式として $C^\infty$；$\phi$ の関数としては $S(\phi) = \tanh^2(\phi/(2\varepsilon))$ で tanh の合成により $C^\infty$
+  \item 対称性：$S(\psi) = S(1-\psi)$（液相・気相の役割交換に対して不変）
+\end{itemize}
+\end{tcolorbox}
+
+\noindent\textbf{式~\eqref{eq:switch_phi} の導出（$\tanh$ 表現）：}
+$2H_\varepsilon(\phi) - 1 = 2/(1+e^{-\phi/\varepsilon}) - 1
+= (1 - e^{-\phi/\varepsilon})/(1 + e^{-\phi/\varepsilon})
+= \tanh(\phi/(2\varepsilon))$
+であるから，$S(\phi) = \tanh^2(\phi/(2\varepsilon))$．$\square$
+
+\medskip
+$S(\psi)$ は $\psi = 0.5$ 周辺の界面幅 $\sim 2\varepsilon$ の領域で $S \approx 0$ となり，
+その外側のバルク領域で急速に $S \to 1$ へ回復する
+（例：$\psi = 0.3$ または $0.7$ で $S = (2\cdot 0.3-1)^2 = 0.16$，$\psi = 0.1$ または $0.9$ で $S = 0.64$）．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{散逸強度 \texorpdfstring{$\varepsilon_{d,\max}$}{ε\_d,max} のスペクトル設計}
+\label{sec:dccd_eps_design}
+% ─────────────────────────────────────────────────────────────────────────────
+
+スイッチ関数が決まれば，次は散逸強度の上限 $\varepsilon_{d,\max}$ を設計する問題となる．
+設計の指針は以下の 2 つの要求の\textbf{同時達成}である：
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{精度保存：} 低波数域（長波長の物理情報）は CCD の $O(h^6)$ 精度を損なわない．
+  \item \textbf{高周波抑制：} ナイキスト近傍（$\xi \gtrsim 2\pi/3$，波長 $\lesssim 3h$）を
+        有意に減衰させる．
+\end{enumerate}
+
+\medskip
+\noindent\textbf{定量的設計．}
+
+フィルタ伝達関数 $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ において，
+低波数（$\xi \leq \xi_L$）での精度要求を：
+\begin{equation}
+  |H(\xi_L;\varepsilon_d) - 1| = 4\varepsilon_d\sin^2\!\left(\frac{\xi_L}{2}\right) \leq \delta_\mathrm{acc}
+  \label{eq:accuracy_req}
+\end{equation}
+高波数（$\xi = \pi$）での減衰要求を：
+\begin{equation}
+  H(\pi;\varepsilon_d) = 1 - 4\varepsilon_d \leq 1 - D_\mathrm{target}
+  \quad\Leftrightarrow\quad
+  \varepsilon_d \geq \frac{D_\mathrm{target}}{4}
+  \label{eq:damping_req}
+\end{equation}
+と定式化する．典型的な二相流計算では，$\xi_L = \pi/3$（波長 $\geq 6h$ を精度保存），
+$\delta_\mathrm{acc} = 0.05$（5\% 以内の振幅変化を許容），
+$D_\mathrm{target} = 0.20$（ナイキスト成分を 20\% 減衰）とする：
+
+\begin{tcolorbox}[resultbox, title={$\varepsilon_{d,\max}$ の設計値と設計根拠}]
+\label{box:eps_design}
+精度要求（式~\eqref{eq:accuracy_req}，$\xi_L = \pi/3$，$\delta_\mathrm{acc}=0.05$）から：
+\begin{equation}
+  4\varepsilon_d\sin^2(\pi/6) = 4\varepsilon_d\cdot\frac{1}{4} = \varepsilon_d \;\leq\; 0.05
+  \label{eq:eps_bound_accuracy}
+\end{equation}
+
+減衰要求（式~\eqref{eq:damping_req}，$D_\mathrm{target}=0.20$）から：
+\begin{equation}
+  \varepsilon_d \;\geq\; \frac{0.20}{4} = 0.05
+  \label{eq:eps_bound_damping}
+\end{equation}
+
+両制約が $\varepsilon_{d,\max} = 0.05$ で\textbf{等号達成}：
+
+\begin{equation}
+  \boxed{\varepsilon_{d,\max} = 0.05}
+  \label{eq:eps_max}
+\end{equation}
+
+\textbf{解釈：}
+波長 $6h$ 以上（物理的に意味ある成分）の精度劣化は最大 5\%，
+ナイキスト成分（波長 $2h$）は 20\% 減衰する．
+より強い安定化が必要な場合（高密度比・高 Reynolds 数計算）は
+$\varepsilon_{d,\max} = 0.10$〜$0.20$ まで拡張できるが，
+この場合は波長 $6h$ の精度劣化も 10〜20\% に増加することに注意する．
+
+\medskip
+\textbf{安定性制約の確認：}
+$\varepsilon_{d,\max} = 0.05 \leq 0.25$（式~\eqref{eq:dccd_transfer} の安定限界 $1/4$）を満足する．$\square$
+\end{tcolorbox}
+
+\noindent\textbf{フィルタ伝達関数の波数プロファイル（$\varepsilon_d = 0.05$）：}
+\begin{align*}
+  H(0;\, 0.05)     &= 1.00 \quad (\xi = 0,\text{ DC 成分，変化なし}) \\
+  H(\pi/3;\, 0.05) &= 1 - 4(0.05)\sin^2(\pi/6) = 1 - 0.05 = 0.95 \quad (\text{波長}\ 6h,\ 5\%\ \text{減衰}) \\
+  H(2\pi/3;\, 0.05)&= 1 - 4(0.05)\sin^2(\pi/3) = 1 - 0.15 = 0.85 \quad (\text{波長}\ 3h,\ 15\%\ \text{減衰}) \\
+  H(\pi;\, 0.05)   &= 1 - 4(0.05) = 0.80 \quad (\text{波長}\ 2h,\ 20\%\ \text{減衰})
+\end{align*}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{適応散逸制御則と実装アルゴリズム}
+\label{sec:dccd_adaptive}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\textbf{適応散逸強度．}
+格子点 $i$ での散逸強度を CLS 変数 $\psi_i^n$（時刻 $t^n$）によって点別に制御する：
+\begin{equation}
+  \varepsilon_d^{(i)} \;=\; \varepsilon_{d,\max} \cdot S(\psi_i^n)
+  \;=\; \varepsilon_{d,\max}\,(2\psi_i^n - 1)^2
+  \label{eq:adaptive_eps}
+\end{equation}
+これにより：
+\begin{itemize}
+  \item $\psi_i \approx 0.5$（界面）：$\varepsilon_d^{(i)} \approx 0$，フィルタ無効，標準 CCD に退化
+  \item $\psi_i \approx 0$ または $1$（バルク）：$\varepsilon_d^{(i)} \approx \varepsilon_{d,\max}$，
+        最大散逸でノイズを積極的に排除
+\end{itemize}
+
+\begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの実装アルゴリズム}]
+\label{alg:dccd}
+\textbf{入力：} スカラー場 $f$ の格子値 $\{f_i\}$，CLS 変数 $\{\psi_i^n\}$，散逸強度 $\varepsilon_{d,\max}$
+
+\begin{enumerate}
+  \item \textbf{CCD 求解：}
+        標準 CCD ブロック Thomas アルゴリズム（§\ref{sec:ccd_matrix}）を実行し，
+        $\{f'_i\}$，$\{f''_i\}$ を得る．
+  \item \textbf{点別散逸強度の計算：}
+        各格子点 $i$ に対して
+        \[
+          \varepsilon_d^{(i)} = \varepsilon_{d,\max}\,(2\psi_i^n - 1)^2
+        \]
+        を計算する（計算コスト：$O(N)$，数値演算 1 回/点）．
+  \item \textbf{1 次微分のフィルタ適用：}
+        \[
+          \tilde{f}'_i = f'_i + \varepsilon_d^{(i)}\,(f'_{i+1} - 2f'_i + f'_{i-1}),
+          \quad i = 1, \ldots, N-2
+        \]
+        境界点 $i=0, N-1$：周期 BC では折り返しインデックスを使用；
+        壁面・流出 BC では $f'$ の境界値に外挿を適用（詳細は §\ref{sec:ccd_bc}）．
+  \item \textbf{2 次微分のフィルタ適用：}
+        \[
+          \tilde{f}''_i = f''_i + \varepsilon_d^{(i)}\,(f''_{i+1} - 2f''_i + f''_{i-1}),
+          \quad i = 1, \ldots, N-2
+        \]
+  \item \textbf{後続計算への引き渡し：}
+        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ を曲率計算・速度勾配評価・
+        圧力勾配計算（第~\ref{sec:pressure}章）に用いる．
+\end{enumerate}
+
+\textbf{2 次元への拡張：}
+2 次元計算では $x$ 方向と $y$ 方向に独立に 1 次元フィルタを適用する（次元分割法）：
+\[
+  \tilde{f}'_{x,ij} = f'_{x,ij} + \varepsilon_d^{(ij)}\,(f'_{x,i+1,j} - 2f'_{x,ij} + f'_{x,i-1,j}),
+  \quad
+  \tilde{f}'_{y,ij} = f'_{y,ij} + \varepsilon_d^{(ij)}\,(f'_{y,i,j+1} - 2f'_{y,ij} + f'_{y,i,j-1})
+\]
+$f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
+
+\textbf{計算コスト：} ステップ 1（CCD，$O(N^2)$ for 2D）+ ステップ 2--4（フィルタ，$O(N^2)$）．
+フィルタは CCD の後処理として追加コストが小さい．
+また，$\tilde{f}'$ と $\tilde{f}''$ はフィルタ段階で\textbf{独立}に補正する——
+すなわち $\tilde{f}''$ は $\tilde{f}'$ から再連立せずに計算する（計算コスト削減のための設計選択）．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{設計の一貫性：CCD の \texorpdfstring{$O(h^6)$}{O(h\textasciicircum 6)} 精度に対する影響の定量化}
+\label{sec:dccd_accuracy_impact}
+% ─────────────────────────────────────────────────────────────────────────────
+
+フィルタ適用による精度への影響を定量的に確認する．
+CCD の 1 次微分 $f'_i$ の打ち切り誤差は $TE_\mathrm{I} = -h^6 f^{(7)}_i/5040$（式~\eqref{eq:CCD_TE}）であり，
+フィルタ項の追加誤差は Fourier 表現から：
+\begin{equation}
+  \varepsilon_d^{(i)}\,(f'_{i+1} - 2f'_i + f'_{i-1})
+  \approx \varepsilon_d^{(i)} \cdot h^2 \cdot (f')''_i + O(h^4)
+  = \varepsilon_d^{(i)}\,h^2\,f'''_i + O(h^4)
+  \label{eq:dccd_accuracy_error}
+\end{equation}
+すなわちフィルタは $O(\varepsilon_d\,h^2)$ の追加誤差を導入する（$h$ の2乗）．
+
+バルク領域（$\varepsilon_d^{(i)} \leq \varepsilon_{d,\max} = 0.05$）では：
+$O(0.05h^2) \sim O(h^2)$——CCD の $O(h^6)$ より 4 次粗い精度である．
+
+しかし，\textbf{この精度低下は意図的かつ許容範囲内}である：
+バルク領域での $u$ や $p$ の滑らかな挙動に対しては，
+$h^2$ 誤差は格子収束とともに消え（$h \to 0$ で $\varepsilon_d h^2 \to 0$），
+かつ表面張力の CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$（§\ref{sec:balanced_force}）と同オーダーであり，
+全体の精度のボトルネックとならない．
+
+界面近傍（$\varepsilon_d^{(i)} \approx 0$）では，フィルタ誤差がゼロに退化し，
+曲率・法線方向の計算には一切の影響を与えない：
+$O(\varepsilon_d^{(i)}\,h^2) = O(S(\psi_i)\varepsilon_{d,\max}h^2) \xrightarrow[\psi_i \to 0.5]{} 0$．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{境界条件との整合性}
+\label{sec:dccd_bc}
+% ─────────────────────────────────────────────────────────────────────────────
+
+フィルタ式~\eqref{eq:dccd_apply_d1}--\eqref{eq:dccd_apply_d2} は $i = 1, \ldots, N-2$ の内点にのみ適用し，
+境界点 $i = 0, N-1$ の取り扱いは CCD 境界スキーム（§\ref{sec:ccd_bc}）と整合させる：
+
+\begin{itemize}
+  \item \textbf{周期 BC：}
+        $f'_{-1} \leftarrow f'_{N-2}$，$f'_{N} \leftarrow f'_{1}$（折り返し）として
+        $i=0, N-1$ にも同様のフィルタを適用可能．
+        スペクトル的に一貫した減衰が全格子点で保証される．
+  \item \textbf{壁面（Dirichlet/Neumann）BC：}
+        境界点では CCD の片側スキーム（§\ref{sec:ccd_bc}）が $O(h^5)$ 精度の $f'$ を与える．
+        フィルタは $i=1, \ldots, N-2$ の内点のみに適用し，
+        境界点 ($i=0, N-1$) はフィルタ適用前の CCD 値をそのまま使用する．
+        境界から 1 点内側（$i=1, N-2$）では片側差分 $f'_0, f'_{N-1}$ を使うため，
+        フィルタ精度は境界スキームの精度（$O(h^5)$）に制限されるが，
+        これは全体精度に対してボトルネックとならない
+        （§\ref{sec:ccd_bc}「CCD 境界精度の制約」参照）．
+\end{itemize}
+
+\begin{tcolorbox}[warnbox, title={Dissipative-CCD フィルタの適用範囲（実装上の注意）}]
+フィルタ係数 $\varepsilon_d^{(i)}$ は CLS 変数 $\psi^n$（現時刻）から毎タイムステップ計算する．
+$\psi$ の更新（CLS 移流ステップ，7 段アルゴリズムのステップ 3，§\ref{sec:algorithm}）が
+CCD 演算（ステップ 5, 6）より前に完了していることを確認すること．
+これは本稿の 7 段アルゴリズム（図~\ref{fig:ns_solvers}）では自動的に保証されている．
+\end{tcolorbox}
+
+\noindent\textbf{本節と CLS 移流への適用の関係．}
+本節のフィルタ（$S(\psi)$ 適応制御，$\varepsilon_d^{(i)} = \varepsilon_{d,\max}S(\psi_i)$）は
+\textbf{速度場・圧力場の微分場後処理}を対象とし，界面での曲率計算を保護する．
+CLS 移流（§\ref{sec:advection_motivation}）およびCLS 圧縮項（§\ref{sec:cls_compression}）への
+Dissipative CCD 適用は\textbf{一様強度}（$\varepsilon_d^{\mathrm{adv}} = \varepsilon_{d,\max}$，$S(\psi)$ 制御なし）を使用する——
+その理由は，CLS 移流の Gibbs 振動は界面（$\psi \approx 0.5$）で最も激しいため，
+$S(1/2) = 0$ で無効化する適応制御は移流安定化に適合しないからである（\ref{warn:adv_filter_uniform}）．

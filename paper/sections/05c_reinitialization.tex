@@ -1,0 +1,150 @@
+% paper/sections/05c_reinitialization.tex
+% §5 続き：CLS 再初期化（圧縮項 Dissipative CCD + 拡散項 CN 陰解法）・安定性制約
+%
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{CLS 再初期化：圧縮項の Dissipative CCD スキーム}
+\label{sec:cls_compression}
+% ─────────────────────────────────────────────────────────────────────────────
+
+CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）
+\begin{equation}
+  \frac{\partial\psi}{\partial\tau}
+  + \underbrace{\nabla\cdot\!\bigl(\psi(1-\psi)\hat{\bm{n}}\bigr)}_{\text{圧縮項（陽解法）}}
+  = \underbrace{\nabla\cdot(\varepsilon\nabla\psi)}_{\text{拡散項（陰解法）}}
+  \label{eq:cls_reinit_split}
+\end{equation}
+は\textbf{移流的圧縮項}（界面へ $\psi$ を引き戻す）と
+\textbf{拡散項}（界面プロファイルを滑らかに保つ）の和として解釈できる．
+
+\medskip
+\noindent\textbf{陽解法・陰解法の使い分け：}
+\begin{itemize}
+  \item \textbf{圧縮項（陽解法）：}
+        波速 $c(\psi) = \psi(1-\psi)|\hat{\bm{n}}|$ は $\psi = 0.5$ で最大値 $1/4$ をとり，
+        バルク（$\psi \to 0$ または $1$）でゼロに退化する．
+        §\ref{sec:advection_motivation} の Dissipative CCD 移流と同構成で陽的に処理する
+        （CFL 制約：$\Delta\tau \leq 4h$ 程度）．
+  \item \textbf{拡散項（陰解法）：}
+        $\varepsilon\nabla^2\psi$ は $\Delta\tau < \varepsilon h^2$ という厳しい陽的 CFL 制約を持つ
+        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau < h^3/2$）．
+        Crank--Nicolson（CN）による半陰的処理で無条件安定化し，
+        圧縮項の CFL と同程度の大きな $\Delta\tau$ を許容する．
+\end{itemize}
+
+\medskip
+\noindent\textbf{圧縮項の Dissipative CCD 離散化（陽解法）．}
+$x$ 成分のフラックス場 $g_i = \psi_i(1-\psi_i)\hat{n}_{x,i}$ を定義し，
+§\ref{sec:advection_motivation} と同一手順でフィルタ適用済みフラックス発散を計算する：
+\begin{align}
+  g'_i &= \left[\frac{\partial(\psi(1-\psi)\hat{n}_x)}{\partial x}\right]_i
+  \quad\text{（CCD 求解）}
+  \label{eq:comp_ccd} \\
+  \tilde{G}_i &= g'_i + \varepsilon_d^{\mathrm{comp}}\!\left(g'_{i+1} - 2g'_i + g'_{i-1}\right)
+  \quad\bigl(\varepsilon_d^{\mathrm{comp}} = \varepsilon_{d,\max} = 0.05\bigr)
+  \label{eq:comp_filter}
+\end{align}
+$y$ 成分についても同様に処理し，合計フラックス発散
+$\tilde{G} = \tilde{G}_x + \tilde{G}_y$ を得る．
+法線ベクトル $\hat{\bm{n}} = \bnabla\psi / |\bnabla\psi|$ は
+CCD + Dissipative フィルタ適用済みの 1 次微分場（§\ref{sec:dissipative_ccd}）
+から評価する（ゼロ除算回避のため $|\bnabla\psi| + \delta$，$\delta = 10^{-8}$ を使用）．
+
+\medskip
+\noindent\textbf{拡散項の CCD-CN 陰解法（陰解法）．}
+CCD Eq-II の2階微分行列（§\ref{sec:ccd_matrix}）を $M_2$（左辺係数，三重対角），
+$B_2$（右辺係数，三重対角）と記す（$M_2\{\psi''_i\} = B_2\{h^{-2}\psi_i\}$）．
+Crank--Nicolson の $\theta=1/2$ スキームにおける陰的拡散方程式は，
+$M_2$ を両辺に乗じることで：
+\begin{equation}
+  \left(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}\,B_2\right)\psi^{\tau+1}
+  = \left(M_2 + \frac{\varepsilon\Delta\tau}{2h^2}\,B_2\right)\psi^{**}
+  \label{eq:comp_cn_system}
+\end{equation}
+この線形系の係数行列 $M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2$ は
+\textbf{三重対角}（$M_2$，$B_2$ ともに三重対角のため）であり，
+Thomas アルゴリズムで $O(N)$ に求解できる．ここで $\psi^{**}$ は
+圧縮項の陽的処理後の中間値である．
+
+\begin{tcolorbox}[algbox, title={CLS 再初期化の Dissipative CCD スキーム（1 仮想時間ステップ）}]
+\label{alg:cls_reinit_dccd}
+
+\textbf{入力：} $\{\psi_i^\tau\}$，$\varepsilon$（界面幅），$\varepsilon_d^{\mathrm{comp}}$，$\Delta\tau$
+
+\begin{enumerate}
+  \item \textbf{法線ベクトルの評価：}
+        CCD + Dissipative フィルタ（§\ref{sec:dissipative_ccd}，$S(\psi)$ 制御）で
+        $\{\bnabla\psi_i^\tau\}$ を計算；$\hat{n}_{x,i} = (\partial\psi/\partial x)_i / (|\bnabla\psi_i| + \delta)$．
+
+  \item \textbf{圧縮フラックス（陽解法，Dissipative CCD）：}
+        $g_i = \psi_i^\tau(1-\psi_i^\tau)\hat{n}_{x,i}$；
+        CCD + 一様フィルタ（式~\eqref{eq:comp_ccd}--\eqref{eq:comp_filter}）で $\tilde{G}_{x,i}$ を計算；
+        $y$ 方向も同様に $\tilde{G}_{y,i}$．
+
+  \item \textbf{圧縮ステージ（陽的更新）：}
+        \[
+          \psi_i^{**} = \psi_i^\tau - \Delta\tau\!\left(\tilde{G}_{x,i} + \tilde{G}_{y,i}\right)
+        \]
+        クランプ：$\psi_i^{**} = \max(0,\min(1,\psi_i^{**}))$．
+
+  \item \textbf{拡散ステージ（CN 陰解法，式~\eqref{eq:comp_cn_system}）：}
+        右辺 $\bm{r} = (M_2 + \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{**}$ を計算；
+        三重対角システム $(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{\tau+1} = \bm{r}$
+        を Thomas アルゴリズムで求解（各方向独立に）．
+
+  \item \textbf{クランプ：} $\psi_i^{\tau+1} = \max(0,\min(1,\psi_i^{\tau+1}))$．
+\end{enumerate}
+
+\textbf{仮想時間刻みの制約（圧縮項 CFL）：}
+$\Delta\tau \leq C_\tau \cdot h$（$C_\tau = O(1)$ は波速の上界 $\max|\psi(1-\psi)|\hat{n}| \leq 1/4$ から）．
+拡散項は CN 陰解法のため $\Delta\tau$ を制限しない（無条件安定）．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{安定性制約（時間刻みの決定）}
+\label{sec:stability}
+% ─────────────────────────────────────────────────────────────────────────────
+
+時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
+
+\begin{tcolorbox}[mybox, title={時間刻みの制約（CN 法採用時：2制約）}]
+\begin{align}
+  &\text{\textbf{対流 CFL}：}\quad
+  \Delta t_{\text{adv}} = \text{CFL}_{\max} \cdot \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
+  \label{eq:dt_adv} \\[6pt]
+  &\text{\textbf{毛管波制約（2D）}：}\quad
+  \Delta t_\sigma = \sqrt{\frac{(\rho_l + \rho_g)\min(\Delta x, \Delta y)^3}{2\pi\sigma}}
+  \label{eq:dt_sigma}
+\end{align}
+\textbf{最終的な時間刻み：}$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_\sigma)$
+
+\medskip
+\textbf{粘性 CFL（参考値）：}
+\[
+  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
+  \quad \text{（陽的粘性処理のみ適用；CN 法採用時は不要）}
+\]
+CN 法（無条件安定）を対角粘性項に採用しているため，等粘性流体では $\Delta t_{\text{visc}}$ は時間刻み決定に使用しない．
+ただし，変粘性流体（気液二相流）ではクロス微分項 $\partial_y(\mu\partial_x v)$ が陽的処理されるため，
+大密度比（$\mu_l/\mu_g \gg 1$）の場合には界面近傍で粘性類似の制約が実質的に復活しうる
+（詳細は \ref{warn:cn_cross_derivative} 末尾の安定性解析を参照）．
+\end{tcolorbox}
+
+式 \eqref{eq:dt_sigma} の毛管波制約は，界面上の微小振幅波の分散関係
+$\omega^2 = \sigma k^3/(\rho_l+\rho_g)$ にナイキスト波数 $k_{\max}=\pi/\Delta x$
+を代入し，群速度 CFL 条件 $c_g\,\Delta t \le \Delta x$ を適用して得られる
+（導出の全手順と $\rho_l\gg\rho_g$ での物理的解釈は付録~\ref{app:capillary_cfl} 参照）．
+$\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性は分散関係 $\omega\propto k^{3/2}$ に由来し，
+格子を半分にすると約 2.8 倍の制約強化をもたらす．
+
+\noindent\textbf{注意：}
+表面張力が支配的な問題（$We \ll 1$，小液滴，毛管現象）では，
+毛管波（capillary wave）の位相速度が大きくなり CFL 条件が厳しくなる．
+特に $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性（格子を半分にすると $\approx 2.8$ 倍制約が厳しくなる）
+のため，高解像度計算では毛管波制約が支配的になることが多い．
+
+\textbf{対策：}
+\begin{itemize}
+  \item 表面張力の半陰的処理（Implicit Surface Tension）による制約の緩和
+  \item 問題によっては圧力 $p$ から $p + p_0$（静水圧 $p_0 = \rho g z$）を分離する
+        動的圧力（kinematic pressure）分割で寄生流れを抑制しつつ $\Delta t$ を拡大
+\end{itemize}

@@ -1,0 +1,418 @@
+% paper/sections/08b_ccd_poisson.tex
+%
+% §8 圧力 Poisson 方程式の続き（08_pressure.tex からの分割）
+% 内容：CCD-Poisson 演算子の行列構造・変密度拡張・Balanced-Force整合性・手法比較・単体検証
+%
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CCD-Poisson 演算子の行列構造と変密度拡張}
+\label{sec:ccd_poisson_matrix}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（第\ref{sec:CCD}章，
+§\ref{sec:ccd_elliptic}，式 \eqref{eq:L_CCD_2d_full}）を
+PPE ソルバーとして陽に活用するための実装上の詳細を述べる．
+
+\subsubsection{1次元 CCD-Laplacian の行列表現}
+\label{sec:ccd_1d_matrix}
+
+等密度場（$\rho = \mathrm{const}$）の1次元 Poisson 方程式
+$\partial^2 p / \partial x^2 = q$ を例に取り，
+CCD 演算子 $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ の行列構造を具体的に示す．
+
+\paragraph{CCD ブロック系の再整理：}
+
+CCD ブロック Thomas 系（式 \eqref{eq:ccd_global}）を，
+関数値 $\bm{p}$ を入力，微分値 $\bm{v}$ を出力として書くと：
+\begin{equation}
+  \underbrace{
+  \begin{bmatrix}
+    \mathbf{B}_0^{\mathrm{bc}} & \mathbf{C}_0^{\mathrm{bc}} & & \\
+    \mathbf{A}_L & \mathbf{B} & \mathbf{A}_R & \\
+    & \ddots & \ddots & \ddots \\
+    & & \mathbf{A}_L & \mathbf{B} & \mathbf{A}_R \\
+    & & & \mathbf{A}^{\mathrm{bc}} & \mathbf{B}_{N-1}^{\mathrm{bc}}
+  \end{bmatrix}
+  }_{\mathcal{M}_{\mathrm{CCD}} \in \mathbb{R}^{2N \times 2N}}
+  \underbrace{
+  \begin{bmatrix} p'_0 \\ p''_0 \\ p'_1 \\ p''_1 \\ \vdots \\ p'_{N-1} \\ p''_{N-1} \end{bmatrix}
+  }_{\bm{v}}
+  =
+  \underbrace{
+  \mathcal{R}(\bm{p})
+  }_{\text{関数値の線形写像}}
+  \label{eq:ccd_matrix_full}
+\end{equation}
+
+ここで $\mathcal{R}(\bm{p})$ は関数値 $p_i$ の線形結合であり，
+$\mathcal{R} \in \mathbb{R}^{2N \times N}$ を用いて $\mathcal{R}(\bm{p}) = \mathcal{R}\bm{p}$
+と書ける（以下に具体形を示す）．
+
+\paragraph{右辺行列 $\mathcal{R}$ の具体形（内点）：}
+
+内点 $i$（$1 \le i \le N-2$）の右辺ブロック $\mathbf{r}_i \in \mathbb{R}^2$ は：
+\begin{equation}
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{a_1}{h}(p_{i+1} - p_{i-1}) \\[8pt]
+    \dfrac{a_2}{h^2}(p_{i-1} - 2p_i + p_{i+1})
+  \end{bmatrix}
+  =
+  \underbrace{\begin{bmatrix} -a_1/h & 0 \\ a_2/h^2 & -2a_2/h^2 \\ a_1/h & a_2/h^2 \end{bmatrix}
+  \begin{bmatrix} p_{i-1} \\ p_i \\ p_{i+1} \end{bmatrix}
+  }_{\text{3点ステンシル（各行2成分）}}
+  \label{eq:rhs_block}
+\end{equation}
+これにより，$\mathcal{R}$ は $2N \times N$ の疎行列となる（各行に3点以内の非零要素）．
+
+\paragraph{CCD-Laplacian 行列の構成：}
+
+$\mathcal{M}_{\mathrm{CCD}}$ を LU 分解（ブロック Thomas 法）で解くことで，
+$\bm{v} = \mathcal{M}_{\mathrm{CCD}}^{-1}\mathcal{R}\bm{p}$ が得られる．
+$p''$ 成分のみを抽出する射影行列 $\mathbf{E}_2 \in \mathbb{R}^{N \times 2N}$：
+\begin{equation}
+  \mathbf{E}_2 = \begin{bmatrix}
+    0 & 1 & 0 & 0 & \cdots & 0 & 0 \\
+    0 & 0 & 0 & 1 & \cdots & 0 & 0 \\
+    \vdots & & & & \ddots & & \vdots \\
+    0 & 0 & 0 & 0 & \cdots & 0 & 1
+  \end{bmatrix}
+  \label{eq:E2_proj}
+\end{equation}
+を用いると，CCD-Laplacian 行列は：
+\begin{equation}
+  \boxed{
+    \mathbf{L}_{\mathrm{CCD}}^{(x)} = \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}
+    \in \mathbb{R}^{N \times N}
+  }
+  \label{eq:L_CCD_explicit}
+\end{equation}
+
+有限格子（Neumann 境界条件）における CCD-Laplacian の数値スペクトル半径は
+$\rho(\mathbf{L}_{\mathrm{CCD}}^{(x)}) \approx 3.43/h^2$ と推定され，
+2次中心差分の $4/h^2$ と同程度である（§\ref{sec:ppe_pseudotime} の $\Delta\tau_{\mathrm{opt}} = 0.58\,h^2/a_{\max}$ と整合：
+$\lambda_{\max} = 2/\Delta\tau_{\mathrm{opt}} \approx 3.45/h^2$）．
+なお，無限周期格子での Nyquist 波数 $k=\pi/h$ における修正波数解析は
+$4a_2/[(1+2|\beta_2|)h^2] = 9.6/h^2$（$a_2=3,\,\beta_2=-1/8$）を与えるが，
+これは有限格子のスペクトル半径の上界を与える量であり，実際の有限格子固有値はより小さい．
+したがって §\ref{sec:ppe_pseudotime} の $\Delta\tau$ 選択指針がそのまま適用できる．
+
+\subsubsection{Neumann 境界条件の CCD-Poisson への組み込み}
+\label{sec:ccd_neumann_bc}
+
+PPE の壁面境界では $\partial p/\partial n = 0$（Neumann 条件）が課される．
+本節では，この条件を CCD ブロック Thomas 系にどう組み込むかを変密度場の場合を含めて厳密に示す．
+
+\begin{tcolorbox}[defbox, title={Neumann 境界条件 $p'_0 = 0$ の CCD ブロック方程式への組み込み（$x$ 左端 $i=0$）}]
+\textbf{手順1：PPE から境界フラックス条件を導く}
+
+PPE $\nabla\cdot(1/\rho\,\nabla p) = q$ の $x$ 方向項 $\partial_x(a\,\partial_x p)$（$a=1/\rho$）を
+境界ノード $i=0$ 付近で法線積分すると，境界面でのフラックスは
+$a_0 \cdot p'_0 = 0$（$a_0 = 1/\rho_0 > 0$）となり，これは単純に
+\begin{equation}
+  p'_0 \equiv \left.\frac{\partial p}{\partial x}\right|_{x=0} = 0
+  \label{eq:neumann_bc_ccd}
+\end{equation}
+を意味する．密度値 $\rho_0$ によらず Neumann 条件は $p$ の1次微分の拘束となる．
+
+\textbf{手順2：CCD 境界ブロック方程式を修正する}
+
+CCD ブロック Thomas 系（式 \eqref{eq:ccd_matrix_full}）の $i=0$ 行：
+\begin{equation}
+  \mathbf{B}_0^{\mathrm{bc}}
+  \begin{bmatrix} p'_0 \\ p''_0 \end{bmatrix}
+  + \mathbf{C}_0^{\mathrm{bc}}
+  \begin{bmatrix} p'_1 \\ p''_1 \end{bmatrix}
+  = \mathbf{r}_0^{\mathrm{bc}}(\bm{p})
+  \label{eq:ccd_bc_neumann}
+\end{equation}
+の第1行（$p'_0$ に対する方程式）を Neumann 条件 \eqref{eq:neumann_bc_ccd} で直接置き換える：
+\[
+  \mathbf{B}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 1 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  \mathbf{C}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 0 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  r_{0,1}^{\mathrm{bc}} \leftarrow 0
+\]
+第2行（$p''_0$ に対する方程式）は通常の内点公式（境界向け修正版）をそのまま用いる．
+
+\textbf{手順3：変密度 PPE 演算子値の計算}
+
+式 \eqref{eq:varrho_product_rule} の演算子値
+$(\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p})_0 = (1/\rho_0)\,p''_0 - (\nabla\rho_0/\rho_0^2)\,p'_0$
+を計算する際，$p'_0 = 0$（手順2で確定）を代入することで：
+\[
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_0
+  = \frac{p''_0}{\rho_0}
+  \qquad (\text{クロス微分項が消滅})
+\]
+境界ノードでの演算子値は $p''_0$ と $\rho_0$ のみで決まり，計算が単純化される．
+
+\textbf{右端 $i=N-1$ および $y$ 方向境界：} 対称的に同様の操作を適用する．
+
+\medskip
+\noindent\textbf{境界スキーム精度の PPE ソルバーへの影響：}
+CCD 境界スキームの Equation-II（$p''_0$ の片側公式）は $\mathcal{O}(h^2)$ 精度であり，
+内点の $\mathcal{O}(h^6)$ より低次である（§\ref{sec:ccd_bc}，式~\eqref{eq:bcII_left}）．
+$L^2$ ノルム重み付け解析（式~\eqref{eq:bc_L2_weighting}）によれば，
+境界2点（全 $N$ 点中）の寄与は $h \cdot \mathcal{O}(h^4) = \mathcal{O}(h^5)$ に過ぎず，
+大域 $L^2$ 誤差は $\mathcal{O}(h^{5/2})$ に抑えられる．
+Neumann 条件適用後の $p'_0 = 0$（手順2）により密度勾配項が消滅するため，
+境界ノードの PPE 演算子値 $(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p})_0 = p''_0/\rho_0$ の
+精度は $p''_0$ の $\mathcal{O}(h^2)$ 精度に律速される（点別）が，
+PPE 解の大域精度への影響は $\mathcal{O}(h^{5/2})$ であり，
+時間精度 $\mathcal{O}(\Delta t^2)$ が支配的な実用計算では無視できる（詳細：§\ref{sec:ccd_bc}）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={Dirichlet 境界（$p = p_{\mathrm{BC}}$）の場合との比較}]
+Dirichlet 境界では，境界ブロック方程式の第1行と第2行の両方を，
+$p'$ と $p''$ を境界値から解析的に決定する式で置き換える（一様密度での Poisson 方程式と同様）．
+Neumann 条件（本 PPE の標準ケース）は $p' = 0$ のみを強制し，$p''$ は自由に決まる点が
+Dirichlet 条件と根本的に異なる．両境界条件の CCD ブロック方程式への組み込みを
+表~\ref{tab:ccd_bc_types} にまとめる．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+境界条件 & 第1行（$p'$） & 第2行（$p''$） \\
+\hline
+Neumann（$p'=0$） & $p'_0 = 0$（強制代入） & 内点公式（境界版） \\
+Dirichlet（$p=p_{\mathrm{BC}}$） & $p'_0 = $ 解析値 & $p''_0 = $ 解析値 \\
+\hline
+\end{tabular}
+\end{center}
+{\captionsetup{hypcap=false}%
+\captionof{table}{CCD 境界ブロック方程式への境界条件の組み込み方}%
+\label{tab:ccd_bc_types}}
+\end{tcolorbox}
+
+\subsubsection{2次元変密度 CCD-Poisson 演算子の完全定式化}
+\label{sec:ccd_2d_full}
+
+2次元変密度 PPE $\nabla\cdot(1/\rho\,\nabla p) = q$ の CCD 離散化を示す．
+$x$ 方向の演算子（式 \eqref{eq:L_split}）を格子点 $(i,j)$ で評価すると：
+\begin{align}
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_{i,j}
+  &= \frac{1}{\rho_{i,j}}\bigl(D_x^{(2)} p\bigr)_{i,j}
+  - \frac{(D_x^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}\bigl(D_x^{(1)} p\bigr)_{i,j}
+  \label{eq:Lx_varrho_discrete}
+\end{align}
+$y$ 方向も同様に：
+\begin{align}
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,y}\bm{p}\bigr)_{i,j}
+  &= \frac{1}{\rho_{i,j}}\bigl(D_y^{(2)} p\bigr)_{i,j}
+  - \frac{(D_y^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}\bigl(D_y^{(1)} p\bigr)_{i,j}
+  \label{eq:Ly_varrho_discrete}
+\end{align}
+
+合計演算子：
+\begin{equation}
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p}\bigr)_{i,j}
+  = \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_{i,j}
+  + \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,y}\bm{p}\bigr)_{i,j}
+  \label{eq:L_CCD_2d_full}
+\end{equation}
+
+\noindent\textbf{大域行列形式（スパース直接法）：}
+式~\eqref{eq:L_CCD_2d_full} の点ごと演算子は，C順序フラットベクトル $\bm{p} \in \mathbb{R}^n$
+（$n = N_x N_y$）に対するクロネッカー積スパース行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho} \in \mathbb{R}^{n \times n}$
+（式~\eqref{eq:L_CCD_2d_kron}）として陽に組み立てられ，スパース LU 法で直接求解される
+（付録~\ref{app:ccd_kronecker}，付録~\ref{app:ccd_lu_direct} を参照）．
+以下は matrix-free 評価手順であり，クロネッカー積行列の各列への作用と代数的に等価である．
+
+\begin{tcolorbox}[defbox, title={2次元 CCD-Poisson 演算子の Matrix-Free 評価手順}]
+各反復ステップで $\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p}$ を計算するアルゴリズム：
+
+\medskip
+\textbf{Step 1：$x$ 方向 CCD スウィープ}
+
+各行 $j = 0, 1, \dots, N_y-1$ に対して，ブロック Thomas 法で：
+\[
+  (D_x^{(1)} p)_{i,j},\quad (D_x^{(2)} p)_{i,j} \quad \forall\, i
+\]
+を一括計算（$O(N_x)$ per row）．密度場 $\rho$ の $x$ 方向微分
+$(D_x^{(1)}\rho)_{i,j}$ は，\textbf{タイムステップ開始時（PPE 反復ループの外側）に1回だけ}
+CCD スウィープで計算して保存する（$\rho^{n+1}$ は CLS 移流後に確定し，PPE 反復中は不変）．
+
+\medskip
+\textbf{Step 2：$x$ 方向演算子値の組み立て}
+
+\[
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_{i,j}
+  = \frac{(D_x^{(2)} p)_{i,j}}{\rho_{i,j}}
+  - \frac{(D_x^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_x^{(1)} p)_{i,j}
+\]
+
+\medskip
+\textbf{Step 3：$y$ 方向 CCD スウィープ}
+
+各列 $i = 0, 1, \dots, N_x-1$ に対してブロック Thomas 法を適用し，
+$(D_y^{(1)} p)_{i,j}$，$(D_y^{(2)} p)_{i,j}$ を計算．
+
+\medskip
+\textbf{Step 4：$y$ 方向演算子値の組み立てと加算}
+
+\[
+  \bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho}\bm{p}\bigr)_{i,j}
+  \mathrel{+}=
+  \frac{(D_y^{(2)} p)_{i,j}}{\rho_{i,j}}
+  - \frac{(D_y^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_y^{(1)} p)_{i,j}
+\]
+
+\medskip
+\textbf{総計算量：} $O(N_x N_y)$（全格子点数に比例）．
+\end{tcolorbox}
+
+\subsubsection{Balanced-Force 表面張力との整合性}
+\label{sec:ccd_balanced_force}
+
+Balanced-Force 法（第\ref{sec:governing}章）は表面張力項
+$\sigma\kappa\nabla\psi$ と PPE の離散化を整合させることで寄生流れを低減する．
+CCD-Poisson ソルバーとの整合性を以下に示す．
+
+PPE の右辺（予測速度の発散）には Rhie--Chow 補正済み発散
+$q_h = (\nabla_h^{\mathrm{RC}}\cdot\bu^*)/\Delta t$ を用いる
+（式 \eqref{eq:rc_divergence}，§\ref{sec:rc_divergence}）．
+
+Balanced-Force 条件は，表面張力ソース項 $\bm{F}_\sigma = \sigma\kappa\nabla\psi$ が
+圧力勾配 $\nabla p$ と「キャンセルする」ような離散化を要求する．
+静止液滴の平衡条件 $\nabla p = \sigma\kappa\nabla\psi$ を仮定すると，
+PPE の左辺演算子を $p$ に適用した離散値が表面張力項の離散値と近似的に一致することが要件であり，
+これを離散 Balanced-Force 条件と呼ぶ：
+\begin{equation}
+  D_x^{(1)}\!\left(\frac{1}{\rho} D_x^{(1)} p\right) \approx
+  D_x^{(1)}\!\left(\frac{\sigma\kappa}{\rho} D_x^{(1)}\psi\right)
+  \label{eq:balanced_force_condition}
+\end{equation}
+\noindent\textbf{導出補足：}
+\textbf{前提：} 本稿では界面厚さパラメータを $\varepsilon = C_\varepsilon \Delta x$（$C_\varepsilon = O(1)$，典型的には $C_\varepsilon = 1.5$）と設定する．
+この $\varepsilon \sim \Delta x$ の仮定のもとで以下の議論が成立する．
+
+右辺を積の法則で展開すると $\frac{1}{\rho}D_x^{(1)}(\sigma\kappa D_x^{(1)}\psi) - \frac{D_x^{(1)}\rho}{\rho^2}\sigma\kappa D_x^{(1)}\psi$ となる．
+界面の薄さ（$\varepsilon = C_\varepsilon\Delta x$）により $D_x^{(1)}\rho \sim \mathcal{O}(\Delta x^{-1})$ は大きくなりうるが，
+同時に $D_x^{(1)}\psi \sim \mathcal{O}(\Delta x^{-1})$ であるため，密度勾配項の寄与は $\mathcal{O}(\Delta x^{-2})$
+となる．一方，CSF モデルの近似誤差は $\mathcal{O}(\varepsilon^2) = \mathcal{O}(C_\varepsilon^2 \Delta x^2)$ であるから，
+密度勾配項のスケール $\mathcal{O}(\Delta x^{-2})$ と $\mathcal{O}(\varepsilon^2)$ の積は $\mathcal{O}(1)$ となる．
+これが Balanced-Force の「$\approx$」の精度限界（CSF $\mathcal{O}(\varepsilon^2)$ の範囲内での近似）に対応し，
+格子精細化（$\Delta x \to 0$）により改善される．
+\textbf{注意：}$\varepsilon \gg \Delta x$ の場合は密度勾配項がより小さくなる（有利），
+$\varepsilon \ll \Delta x$ の場合は精度が悪化するため，推奨値 $C_\varepsilon = 1.5$ を厳守すること．
+
+CCD 演算子では，圧力の1次微分 $D_x^{(1)} p$ と表面張力由来の勾配
+$D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価するため，
+両者の離散化誤差が同構造を持ち，Balanced-Force 条件が自然に満足される．
+
+\begin{tcolorbox}[resultbox]
+\textbf{CCD-Poisson ソルバーの Balanced-Force 整合性：}
+
+寄生流れの発生源は \textbf{独立した2種} に分類される：
+\begin{enumerate}
+  \item \textbf{数値離散化誤差}（Balanced-Force 条件の成否で決まる）：
+        FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上．
+        \textbf{注：}CCD の空間精度は $\Ord{h^6}$ だが，Balanced-Force の文脈での有効次数は
+        $\Ord{h^4}$ 以上となる．これは表面張力項 $\sigma\kappa\nabla\psi$ の $\psi$ が
+        Dissipative CCD による $\Ord{h^5}$ 精度の CLS 移流場であるため，
+        圧力勾配との差分演算子整合性は $\min(\Ord{h^5},\Ord{h^6}) = \Ord{h^5}$ に律速され，
+        さらに密度勾配項 $D_x^{(1)}\rho\sim\Ord{h^{-1}}$ のスケールが介在するため
+        有効精度は $\Ord{h^4}$ 以上と評価される（格子を半分にすると $\simeq 1/16$ 倍以上）．
+  \item \textbf{CSF 物理モデル誤差}（$\varepsilon>0$ による界面厚みに由来）：
+        FVM・CCD ともに $\Ord{\varepsilon^2}\approx\Ord{h^2}$（$\varepsilon\sim h$ 設定下）．
+        Balanced-Force 整合性では除去不能な物理的下限（physical error floor）である．
+\end{enumerate}
+
+\medskip
+\noindent\textbf{CCD を使う意義：}
+CCD を採用することで誤差源(1)が誤差源(2)より十分小さくなり
+（数値成分を $\Ord{h^4}$ 以上に抑制），
+格子精細化の効果が CSF 物理モデル精度の改善にそのまま直結する．
+FVM では格子を細かくしても数値成分が $\Ord{h^2}$ で残留し，CSF 誤差と区別できない
+（表~\ref{tab:ccd_vs_fvm}，§\ref{sec:balanced_force}，表~\ref{tab:accuracy_summary} 参照）．
+\end{tcolorbox}
+
+\subsubsection{他手法との定量的比較}
+\label{sec:ccd_vs_fvm}
+
+\begin{table}[ht]
+\centering
+\caption{PPE 離散化手法の定量的比較（$N \times N$ 格子，$h = 1/N$）}
+\label{tab:ccd_vs_fvm}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lccccc}
+\hline
+手法 & 空間精度 & 記憶量 & 反復コスト & 寄生流れ ($N=64$) & 実装難易度 \\
+\hline
+FVM + BiCGSTAB & $\Ord{h^2}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-2})$ & 低 \\
+FVM + GMRES & $\Ord{h^2}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-2})$ & 中 \\
+CCD + ADI & $\Ord{h^6}$ & $O(N^2)$ & $O(N^2)$/iter & $O(10^{-5})$ & 中 \\
+\textbf{CCD + 仮想時間陰解法} & $\bm{\Ord{h^6}}$ & $O(N^2)$ & $O(N^2)$/iter & $\bm{O(10^{-5})}$ & 中 \\
+CCD + GMRES (matrix-free) & $\Ord{h^6}$ & $O(N^2)$ & $O(kN^2)$ & $O(10^{-5})$ & 高 \\
+\hline
+\end{tabular}
+
+\smallskip
+注：$k$ = 反復回数（BiCGSTAB/GMRES）；「寄生流れ」は静止液滴ベンチマーク
+（§\ref{sec:bench_droplet}）での $\|\bu_{\mathrm{para}}\|_\infty/(\sigma/\mu)$ の目安値．
+\end{table}
+
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{本章のまとめ：精度バランスと設計上のトレードオフ}
+\label{sec:pressure_accuracy_summary}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿で採用した数値手法の各コンポーネントの精度を以下に整理する．
+この精度バランスの理解は，解の信頼性を評価する上で不可欠である．
+
+\begin{table}[htbp]
+\centering
+\caption{数値手法コンポーネント別の精度まとめ}
+\label{tab:accuracy_summary}
+\renewcommand{\arraystretch}{1.3}
+\small
+\begin{tabular}{llcc}
+\toprule
+コンポーネント & 手法 & 空間精度 & 時間精度 \\
+\midrule
+CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
+幾何量計算（曲率等） & CCD 法 & $O(h^6)$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + 仮想時間陰解法 & $O(h^6)$ & — \\
+（参考：FVM + BiCGSTAB を使った場合） & （FVM + 調和平均係数） & （$O(h^2)$） & — \\
+NS 粘性項 & CCD + Crank--Nicolson & $O(h^6)$ & $O(\Delta t^2)$ \\
+NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $O(h^6)$ & $O(\Delta t^2)$ \\
+Projection スプリッティング & IPC 法（van Kan 1986） & — & $O(\Delta t^2)$ \\
+CSF モデル（表面張力） & 連続体表面力近似 & $O(\varepsilon^2){\approx}O(h^2)$ & — \\
+\midrule
+\textbf{全体（空間律速：CSF モデル）} & & $\boldsymbol{O(\varepsilon^2) \approx O(h^2)}$ & — \\
+\textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{O(\Delta t^2)}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
+表\ref{tab:accuracy_summary}に示す通り，本稿の手法には以下の精度ミスマッチが存在する：
+
+\begin{enumerate}
+  \item \textbf{空間精度（全数値コンポーネント $O(h^5)$～$O(h^6)$，物理モデル律速は CSF $O(\varepsilon^2){\approx}O(h^2)$）：}
+        本稿では PPE も CCD 微分形式により $O(h^6)$ を達成しており，
+        数値離散化の精度は全コンポーネントで $O(h^5)$ 以上に揃っている．
+        しかし，CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(h^2)$（$\varepsilon \approx \Delta x$ 設定下）が
+        現状の空間精度の律速段階であり，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵となる．
+        表~\ref{tab:ccd_vs_fvm} に示すとおり，FVM + BiCGSTAB では PPE の空間精度は $O(h^2)$ に
+        留まることと対比されたい．CCD ソルバーを採用することで，
+        寄生流れ振幅を $O(h^4)$ 以上の次数で抑制できる（§\ref{sec:ccd_balanced_force}）．
+
+  \item \textbf{時間精度（AB2 + IPC により全体 $O(\Delta t^2)$ を達成）：}
+        本稿では NS 対流項に \textbf{2段 Adams--Bashforth 法（AB2，$O(\Delta t^2)$）}を採用し，
+        さらに \textbf{IPC 法（van Kan 1986）}を用いることで標準 Chorin 法の
+        スプリッティング誤差 $O(\Delta t)$ を $O(\Delta t^2)$ に低減している（§\ref{sec:ipc_derivation}）．
+        全コンポーネント（対流：AB2，粘性：Crank--Nicolson，Projection 分割：IPC）が
+        $O(\Delta t^2)$ に揃っているため，\textbf{全体時間精度は $O(\Delta t^2)$} である（§\ref{sec:time_accuracy_table}）．
+        これにより空間精度（CSF モデル律速：$O(h^2)$）との釣り合いが向上している．
+
+  \item \textbf{CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$：}
+        界面厚さ $\varepsilon \approx \Delta x$ の設定下で，CSF モデルの
+        表面張力近似誤差は $O(\Delta x^2)$ となり，
+        CCD 法の曲率計算精度 $O(h^6)$ と比べて大きい．
+        これは本質的には VOF や Level Set を問わず全ての拡散界面法が抱える制限であり，
+        格子精細化（$\Delta x \to 0$）によって改善される（第\ref{sec:governing}章 §\ref{sec:csf}参照）．
+\end{enumerate}
+\end{tcolorbox}
