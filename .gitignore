@@ -67,3 +67,6 @@ Thumbs.db
 
 .continue/
 .pytest_cache/
+.devcontainer/
+checkpoints/
+results/

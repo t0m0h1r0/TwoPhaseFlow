@@ -17,6 +17,7 @@
     → FVM 残差テストを CCD 残差テスト（compute_residual）に置き換え
 """
 
+import warnings
 import numpy as np
 import pytest
 
@@ -171,7 +172,10 @@ def test_ccd_ppe_solve_uniform_density(backend):
     rhs -= rhs.mean()
     rhs[0, 0] = 0.0
 
-    p = solver.solve(rhs, rho, dt=0.01)
+    # LGMRES → LU fallback is expected for highly asymmetric CCD operators
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p = solver.solve(rhs, rho, dt=0.01)
     assert not np.any(np.isnan(p)), "CCD PPE が NaN を返した"
     assert np.isfinite(p).all(), "CCD PPE が inf を返した"
 
@@ -232,14 +236,17 @@ def test_ccd_ppe_ipc_zero_init(backend):
     rhs -= rhs.mean()
     rhs[0, 0] = 0.0
 
-    # IPC: p_init=None → ゼロ初期化（圧力増分 δp を求解）
-    delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
+    # LGMRES → LU fallback is expected for highly asymmetric CCD operators
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        # IPC: p_init=None → ゼロ初期化（圧力増分 δp を求解）
+        delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
     assert not np.any(np.isnan(delta_p)), "CCD PPE IPC が NaN を返した"
 
     # ウォームスタート（p_init=delta_p → 既収束解から再スタート）でも有限値を返すこと。
-    # LGMRES が非対称 CCD 行列で収束しない場合はスパース LU にフォールバックするため
-    # RuntimeWarning（フォールバック通知）は許容する。
-    p2 = solver.solve(rhs, rho, dt=0.01, p_init=delta_p)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p2 = solver.solve(rhs, rho, dt=0.01, p_init=delta_p)
     assert not np.any(np.isnan(p2)), "ウォームスタート CCD PPE が NaN を返した"
     assert not np.any(np.isinf(p2)), "ウォームスタート CCD PPE が Inf を返した"
 
@@ -300,7 +307,10 @@ def test_sweep_ppe_uniform_density(backend):
     rhs = np.random.default_rng(7).standard_normal(grid.shape)
     rhs -= rhs.mean()
 
-    p = solver.solve(rhs, rho, dt=0.01)
+    # Sweep solver may not converge for random RHS; LU fallback ensures finite result
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        p = solver.solve(rhs, rho, dt=0.01)
     assert np.isfinite(p).all(), "PPESolverSweep が非有限値を返した（一様密度）"
 
 
@@ -355,7 +365,9 @@ def test_sweep_ppe_ipc_zero_init(backend):
     rhs = np.random.default_rng(42).standard_normal(grid.shape)
     rhs -= rhs.mean()
 
-    delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
     assert np.isfinite(delta_p).all(), "PPESolverSweep IPC が非有限値を返した"
 
 

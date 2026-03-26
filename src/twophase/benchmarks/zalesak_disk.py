@@ -30,6 +30,8 @@ from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
 
+from ..initial_conditions import RigidRotation
+
 
 class ZalesakDiskBenchmark:
     """Zalesak スロット付き円盤ベンチマーク。
@@ -72,18 +74,6 @@ class ZalesakDiskBenchmark:
         psi = 1.0 / (1.0 + np.exp(dist / eps))
         return psi
 
-    @staticmethod
-    def _rotation_velocity(
-        X: np.ndarray, Y: np.ndarray, T: float
-    ):
-        """1 周期 T の一様回転速度場を返す。
-
-        u = −2π(y − 0.5)/T,  v = 2π(x − 0.5)/T
-        """
-        u = -2.0 * np.pi * (Y - 0.5) / T
-        v =  2.0 * np.pi * (X - 0.5) / T
-        return u, v
-
     def run(self, verbose: bool = True) -> Dict[str, Any]:
         """ベンチマークを実行する。
 
@@ -121,7 +111,7 @@ class ZalesakDiskBenchmark:
         sim.psi.data = sim.backend.to_device(psi0.copy())
 
         # 速度場を固定（predictor を使わず直接設定）
-        u_rot, v_rot = self._rotation_velocity(X, Y, T)
+        u_rot, v_rot = RigidRotation(center=(0.5, 0.5), period=T).compute(X, Y)
         sim.velocity[0] = sim.backend.to_device(u_rot)
         sim.velocity[1] = sim.backend.to_device(v_rot)
 
