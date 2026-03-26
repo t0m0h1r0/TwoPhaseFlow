@@ -216,10 +216,19 @@ P7: LEGACY MIGRATION
 
 P8: BRANCH-SCOPED EXECUTION
 
-* paper tasks run only on `paper`
-* code tasks run only on `code`
-* integration and release gating happen only through `main`
+Branch layout:
+* `main` — integration and release gate only; never edited directly
+* `code` — all code work; always pull from `main` before starting
+* `paper` — all paper work; always pull from `main` before starting
+* `code/*` or `paper/*` — sub-branches allowed for isolated tasks; branch from `code` or `paper`, never from `main`
+
+Rules:
+* before starting any code task: `git pull origin main` into `code`
+* before starting any paper task: `git pull origin main` into `paper`
+* to switch from code work to paper work (or vice versa): merge current branch into `main` first
 * never mix paper and code edits in one branch step unless explicitly authorized
+* sub-branches merge back to their parent (`code` or `paper`), not directly to `main`
+* `main` is kept clean — only receives merges from `code` or `paper` when work is complete and verified
 
 ────────────────────────────────────────────────────────
 

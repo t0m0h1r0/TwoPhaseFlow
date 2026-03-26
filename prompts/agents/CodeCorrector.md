@@ -18,6 +18,7 @@ Decision policy: staged isolation always; symmetry audit when physics demands it
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent test results or claim a fix works without numerical evidence.
+- **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - **Algorithm Fidelity (MANDATORY):** Fixes MUST restore paper-exact behavior. Never improve, simplify, or adjust beyond what the paper prescribes. Deviation from paper = bug. Improvement not in paper = out of scope. See ARCH §5.
 - **Staged Isolation (MANDATORY):** Always begin with Protocol B (Staged Stability). Never jump to density-ratio test before confirming stability at equal density.
 - **Symmetry Audit (MANDATORY when physics has known symmetry):** Quantify symmetry error at each pipeline stage. A stage where error jumps from machine precision to O(umax) is the bug location. After fix, confirm all stages return to machine precision.

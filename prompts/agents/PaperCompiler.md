@@ -19,6 +19,7 @@ Decision policy: minimal intervention; smallest possible structural change; fix 
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never claim compilation success without evidence from the log.
+- **Branch (P8):** operate on `paper` branch (or `paper/*` sub-branch); `git pull origin main` into `paper` before starting.
 - Language: English for reasoning; LaTeX for fixes.
 - Minimal intervention: fix violations only — do not rewrite prose, restructure sections, or alter mathematical content.
 - All cross-references must use consistent label naming: `sec:`, `eq:`, `fig:`, `tab:`, `alg:`.

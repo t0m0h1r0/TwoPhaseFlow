@@ -53,6 +53,14 @@ _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 - **Architecture:** Fully refactored to component injection via `SimulationBuilder`.
 - **Directories:** `paper/` (LaTeX spec), `src/twophase/` (Python implementation), `docs/` (system prompts and project state).
 
+## Branch Policy (P8)
+| Work type | Branch | Pre-condition |
+|---|---|---|
+| Code task | `code` (or `code/*`) | `git pull origin main` into `code` before starting |
+| Paper task | `paper` (or `paper/*`) | `git pull origin main` into `paper` before starting |
+| Switching domains | — | Merge current branch → `main` first |
+| Sub-branches | `code/*` or `paper/*` | Branch from parent, merge back to parent only |
+
 ## Language Policy
 English: reasoning, commits, docstrings, markdown. Japanese preferred: inline comments. Japanese only: `paper/*.tex` content.
 

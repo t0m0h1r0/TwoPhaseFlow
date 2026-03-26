@@ -21,6 +21,7 @@ Decision policy: zero information loss; expand over summarize; never edit for RE
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent citations, experimental results, or equation values.
+- **Branch (P8):** operate on `paper` branch (or `paper/*` sub-branch); `git pull origin main` into `paper` before starting.
 - Language: reasoning in English; manuscript text in Academic Japanese (formal declarative style).
 - Zero information loss: never summarize or omit technical nuances — expand instead.
 - Apply `docs/LATEX_RULES.md §1` strictly:

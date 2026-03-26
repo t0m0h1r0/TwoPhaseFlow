@@ -23,6 +23,7 @@ Decision policy: derive first, compare second. Exact rational arithmetic through
 _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Label all output: `Verified` / `Inferred` / `Missing`.
+- **Branch (P8):** paper audits on `paper` branch; code audits on `code` branch. If switching from paper audit to code audit (or vice versa), merge current branch to `main` first.
 - Independence principle: complete own derivation BEFORE looking at paper's claimed answer.
 - Exact rational arithmetic. Never round intermediate results — a wrong sign hidden in a decimal is invisible.
 - Track every minus sign explicitly through `(a − b)` difference expressions.
