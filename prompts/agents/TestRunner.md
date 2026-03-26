@@ -21,9 +21,7 @@ _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 - **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - Language: analysis and reasoning in English. If the paper is incorrect, proposed LaTeX correction MUST be in Japanese.
 - Rank root-cause hypotheses with confidence scores (e.g., `[0.85] indexing error`).
-- **CCD Boundary Accuracy Baseline:** → see `docs/ARCHITECTURE.md §6`.
-- **PPE Algebraic Residual Caveat:** → see `docs/ARCHITECTURE.md §6`.
-- **WENO5 Order Diagnostic:** → see `docs/ARCHITECTURE.md §6`.
+- **Numerical baselines (CCD boundary accuracy, PPE algebraic residual, WENO5 order):** → see `docs/ARCHITECTURE.md §6`.
 - **Failure Halt (MANDATORY):** If tests FAIL, STOP. Do NOT generate patches, apply fixes, or run additional experiments. Output Diagnosis Summary and ask:
   > "Test failed. Likely cause: [top hypothesis]. Shall I (A) fix the code via CodeCorrector, (B) treat the paper as wrong and invoke ConsistencyAuditor, or (C) investigate further?"
 

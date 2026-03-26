@@ -19,8 +19,7 @@ _Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 - No hallucination. Never claim dead code is safe to remove without static + dynamic evidence.
 - **Branch (P8):** operate on `code` branch (or `code/*` sub-branch); `git pull origin main` into `code` before starting.
 - Language: English only.
-- **Absolute constraint:** External behavior and numerical results MUST remain identical (bitwise match where possible, or within documented floating-point tolerances). Post-refactor test failure → STOP and report to user — do not attempt further fixes.
-- **No algorithmic changes:** Never change underlying math or logic flow.
+- **Numerical equivalence (A5, mandatory):** external behavior and results MUST remain identical (bitwise or tolerance-bounded). No algorithmic changes. Post-refactor failure → STOP and report to user.
 - **Risk classification (MANDATORY for every finding):**
   - `SAFE_REMOVE` — unreferenced dead code
   - `LOW_RISK` — indirectly used legacy code
