@@ -1,0 +1,365 @@
+% paper/sections/10b_benchmarks.tex
+%
+% §10 検証の続き（10_verification.tex からの分割）
+% 内容：4ベンチマーク（静止液滴・Zalesak・Rayleigh-Taylor・気泡上昇）・誤差バジェット
+%
+\subsection{ベンチマークテスト群}
+\label{sec:benchmarks}
+
+以下に，二相流ソルバーの検証として標準的に用いられる4つのベンチマークを示す．
+これらは難易度の低い順に配置されており，各ステップで合格してから
+次のテストに進むことが推奨される．
+
+%%%  ── Benchmark 1 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク1：静止液滴とラプラス圧力（Stationary Droplet）}
+\label{sec:bench_droplet}
+
+\textbf{目的：} 表面張力の実装（CSF モデル）と，寄生流れ（parasitic currents）の定量評価．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 正方形領域 $[0,1]^2$，中心 $(0.5, 0.5)$ に半径 $R=0.25$ の静止液滴
+  \item 初期速度 $\bm{u} = \bm{0}$，密度比 $\rho_l/\rho_g = 1000$，$We = 1$，$Fr = \infty$（重力なし）
+  \item 時刻 $t = 0$ から $t = T_{\text{end}}$ まで時間発展させる
+\end{itemize}
+
+\textbf{期待される結果：}
+\begin{enumerate}
+  \item 液滴は静止を保つ：$\|\bm{u}(\cdot, t)\|_\infty \approx 0$（理想）
+  \item ラプラス圧力の大きさ $|[p]| \equiv |p_\text{gas} - p_\text{liq}| = \sigma/R$ が内外圧差として正確に再現される（符号付き定義 $[p] = \sigma\kappa = -\sigma/R < 0$ については §\ref{sec:governing} を参照）
+  \item 寄生流れの振幅 $\|\bm{u}\|_\infty$ が $O(h^p)$（$p \ge 4$）で収束する
+\end{enumerate}
+
+\begin{tcolorbox}[warnbox, title={寄生流れ振幅の目安と閾値の根拠}]
+典型的な許容レベル：
+\begin{itemize}
+  \item 2次精度スキーム：$\|\bm{u}_{\text{para}}\| / ({\sigma/\mu}) \sim O(10^{-2})$（許容不可の場合が多い）
+  \item CCD（6次精度）+ Rhie--Chow 補正：$\|\bm{u}_{\text{para}}\| / ({\sigma/\mu}) \lesssim O(10^{-5})$（目標）
+\end{itemize}
+
+\textbf{閾値 $O(10^{-5})(\sigma/\mu)$ の根拠：}
+寄生流れの振幅は曲率誤差 $E_\kappa$ に比例し，$|\bm{u}_\text{para}| \sim (\sigma/\mu) E_\kappa$ が成立する（§\ref{sec:balanced_force}参照）．
+CCD 法の\textbf{数値離散化誤差}は $E_\kappa^{\text{discr}} = \mathcal{O}(h^6)$ であるが，
+CSF モデルの界面厚み $\varepsilon \sim 1.5h$ による\textbf{モデル誤差}が $\mathcal{O}(\varepsilon^2)\approx\mathcal{O}(h^2)$ で支配する
+（§\ref{sec:pressure_accuracy_summary} 参照）．
+すなわち実効曲率誤差は $E_\kappa \sim C\varepsilon^2 \approx C h^2$ であり，
+格子幅 $h = 1/64$ では $E_\kappa \sim (1/64)^2 \approx 2.4\times10^{-4}$ が\textbf{非バランス力スキームでの}理論的目安となる．
+Balanced-force 条件（§\ref{sec:balanced_force}）のもとでは，
+$\nabla p$ と $\sigma\kappa\nabla\psi$ に\textbf{同一の CCD 演算子}を用いることで，
+数値離散化誤差（$\mathcal{O}(h^6)$）が両項で相殺される．
+残差は CSF モデル誤差のみとなり，実効曲率誤差は $E_\kappa^{\text{model}} \approx C_{\text{model}}\,\varepsilon^2$ で決まる．
+Hysing et al. \cite{Hysing2009} は $h = 1/64$，$\varepsilon \approx 1.5h$ の条件での測定から
+$|\bm{u}_\text{para}|/(\sigma/\mu) \sim \mathcal{O}(10^{-5})$ を報告しており，
+$\mathcal{O}(10^{-4})$ から1桁の低減が Balanced-Force による相殺効果によるものである．
+$O(10^{-5})$ という閾値は Hysing 等の先行研究での報告値から設定した
+\textbf{数値的参照値}であり，理論的な下限ではなく実用的な合格基準として解釈すること．
+
+この値が大きい場合，曲率計算の精度不足または Rhie--Chow 補正の実装ミスが疑われる．
+\end{tcolorbox}
+
+%%%  ── Benchmark 2 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク2：Zalesak スロットデスク（界面追跡精度）}
+\label{sec:bench_zalesak}
+
+\textbf{目的：} CLS 移流スキームの界面形状保存能力と質量保存性の評価．
+剛体回転という純粋な移流問題で，流体力学を切り離して界面追跡のみをテストする \cite{Zalesak1979}．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0,1]^2$，中心 $(0.5, 0.75)$ に半径 $R=0.15$ の円盤
+  \item 円盤に縦長のスロット（幅 $0.05$，深さ $0.25$）を刻んだ形状（スロットデスク）
+  \item 速度場：原点 $(0.5, 0.5)$ 周りの剛体回転 $u = -2\pi(y-0.5)$，$v = 2\pi(x-0.5)$
+  \item 1周期（$T = 1$）後に元の位置に戻ったときの形状誤差を測定
+\end{itemize}
+
+\begin{tcolorbox}[algbox, title={スロットデスクの符号付き距離関数（SDF）の解析的構築}]
+複雑形状の SDF を数式で与えるには，\textbf{CSG（Constructive Solid Geometry）}の考え方が有効である．
+基本形状の SDF を $\max$・$\min$ 演算で組み合わせて複合形状を表現できる．
+
+\textbf{必要な基本 SDF：}
+\begin{itemize}
+  \item \textbf{円盤}（中心 $(c_x, c_y)$，半径 $R$）：
+  \[
+    \phi_{\text{disk}}(x,y) = \sqrt{(x-c_x)^2 + (y-c_y)^2} - R
+    \quad (\phi < 0: \text{内部（液相）},\;\phi > 0: \text{外部（気相）})
+  \]
+  \item \textbf{無限矩形スロット}（幅 $2w$，$x$ 方向中心 $c_x$，深さ $d$，上端 $y_{\mathrm{top}}$）：
+  \[
+    \phi_{\text{slot}}(x,y) = -\min\!\bigl(\underbrace{w - |x - c_x|}_{\text{幅方向}},\;
+                                      \underbrace{y_{\mathrm{top}} - y}_{\text{深さ方向}}\bigr)
+  \]
+\end{itemize}
+
+\textbf{スロットデスクの SDF（CSG による「円盤から矩形を抜く」操作）：}
+\[
+  \phi_{\text{Zalesak}}(x,y) = \max\!\bigl(\phi_{\text{disk}}(x,y),\; -\phi_{\text{slot}}(x,y)\bigr)
+\]
+$\max$ 演算は「\textbf{差集合}（setdifference）」に対応する：$\phi_{\text{disk}} < 0$（円盤内部）かつ $\phi_{\text{slot}} > 0$（スロット外部）の領域が $\phi < 0$ となる．
+
+\textbf{本設定の具体値：}
+$c_x = 0.5,\; c_y = 0.75,\; R = 0.15$，スロット幅 $2w = 0.05$（$w = 0.025$），
+深さ $d = 0.25$（上端 $y_{\mathrm{top}} = c_y + R = 0.90$，下端 $y_{\mathrm{bot}} = y_{\mathrm{top}} - d = 0.65$）：
+\[
+  \phi_{\text{slot}}(x,y) = -\min\!\bigl(0.025 - |x - 0.5|,\; 0.90 - y\bigr)
+  \quad \text{ただし}\; y > 0.65 \text{（深さの下端より上）のみ有効}
+\]
+実装では $y \le 0.65$ の格子点では $\phi_{\text{slot}} \to +\infty$（スロット外）として処理する．
+（具体的には $\phi_{\text{slot}} = 10^6$ 等の大きな有限センチネル値を用いる．
+\texttt{np.finfo(float).max / 2} も使用可能だが，$\max(\phi_{\text{disk}},\,-\phi_{\text{slot}})$
+の演算で桁落ちが生じないよう $10^6 \approx 10^3 h^{-1}$ 程度の有限値を推奨する．）
+\end{tcolorbox}
+
+\textbf{検証指標：}
+\begin{align}
+  E_{\text{area}} &= \frac{|\Omega_{\psi>0.5}^{T=1}| - |\Omega_{\psi>0.5}^{T=0}|}{|\Omega_{\psi>0.5}^{T=0}|}
+  \quad (\text{体積保存誤差，目標：} < 0.1\%) \\
+  E_{\text{shape}} &= \frac{1}{|\Omega|}\int_\Omega |\psi^{T=1} - \psi^{T=0}|\,dA
+  \quad (\text{形状誤差，$L^1$ ノルム})
+\end{align}
+
+\noindent\textbf{スロットデスクが難しい理由：}
+スロットの鋭角な角（コーナー）と細い溝は，数値拡散の影響が最も現れやすい形状である．
+スロットが消えて丸くなったり，面積が減少したりする場合，移流スキームの数値拡散が過剰であることを示す．
+Dissipative CCD + TVD-RK3 の組み合わせは，このテストにおいてスロット形状を良好に保持できることが期待される（§\ref{sec:advection_motivation}）．
+
+%%%  ── Benchmark 3 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク3：Rayleigh--Taylor 不安定性}
+\label{sec:bench_rt}
+
+\textbf{目的：} 密度差・重力による界面変形の長時間シミュレーション能力の検証．
+理論的な線形成長率との比較および非線形段階での形状の定性的確認を行う．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0, \lambda] \times [0, 4\lambda]$（$\lambda$：擾乱波長），周期境界（$x$），
+        固定壁（$y$）
+  \item 上層（重流体 $\rho_l$）が下層（軽流体 $\rho_g$）の上に乗る不安定成層
+  \item 界面に微小正弦波擾乱 $y_0(x) = L_0 + A_0\sin(2\pi x/\lambda)$（$A_0 \ll \lambda$）を付与
+  \item $Fr = O(1)$，$We \gg 1$（表面張力なし，または非常に小さい）
+\end{itemize}
+
+\textbf{線形安定論との比較：}
+Rayleigh--Taylor 不安定の線形成長率は線形安定解析から解析的に導出される：
+\begin{equation}
+  \omega_{\text{RT}} = \sqrt{\frac{\rho_l - \rho_g}{\rho_l + \rho_g} \cdot \frac{g \cdot 2\pi}{\lambda}}
+  \quad (\text{表面張力なし})
+  \label{eq:rt_growth}
+\end{equation}
+
+\begin{tcolorbox}[algbox, title={線形成長率 $\omega_{\text{RT}}$ の導出（線形安定解析の概略）}]
+微小振幅 $A(t) e^{ikx}$（$k = 2\pi/\lambda$）の界面擾乱を仮定し，
+非圧縮・非粘性の2流体系に対して線形化した運動方程式を解く：
+
+\textbf{ステップ1：} 各相でポテンシャル流 $\phi^\pm$ を仮定し（$\bu^\pm = \bnabla\phi^\pm$），
+Laplace 方程式 $\nabla^2\phi^\pm = 0$ の解を境界条件（有界性）を満たす指数関数形で書く：
+\[
+  \phi^+ = B^+ e^{-kz} e^{ikx+\sigma t}, \qquad
+  \phi^- = B^- e^{+kz} e^{ikx+\sigma t}
+\]
+（$z > 0$：重流体，$z < 0$：軽流体，$k > 0$）
+
+\textbf{ステップ2：} 界面 $z = A(t) e^{ikx}$ での運動学的条件（$\partial A/\partial t = v_z$ at interface）と
+動力学的条件（Bernoulli 方程式による圧力整合）を線形化して適用する．
+
+\textbf{ステップ3：} 固有値問題 $\sigma^2 = gk \cdot (\rho_l - \rho_g)/(\rho_l + \rho_g)$ を得る．
+$\rho_l > \rho_g$ の場合 $\sigma^2 > 0$ であるから $\sigma = \omega_{\text{RT}} > 0$ となり不安定成長が生じる：
+\[
+  \omega_{\text{RT}} = \sqrt{\frac{\rho_l - \rho_g}{\rho_l + \rho_g} \cdot gk}
+  = \sqrt{\frac{\rho_l - \rho_g}{\rho_l + \rho_g} \cdot \frac{2\pi g}{\lambda}}
+\]
+（完全な導出は例えば Chandrasekhar \cite{Chandrasekhar1961}「Hydrodynamic and Hydromagnetic Stability」Chapter X を参照）
+\end{tcolorbox}
+
+初期の界面振幅の時間発展 $A(t) = A_0 e^{\omega_{\text{RT}} t}$ と数値解を比較し，
+成長率の相対誤差が $< 5\%$ であることを確認する．
+
+\textbf{非線形段階の定性的特徴（長時間計算）：}
+\begin{itemize}
+  \item キノコ状の「バブル（軽流体が上昇）」と「スパイク（重流体が下降）」の形成
+  \item バブルの合体と粗大化（coarsening）
+  \item スパイク先端のKelvin-Helmholtz 的巻き込み（Kelvin-Helmholtz instability との相互作用）
+\end{itemize}
+
+\begin{tcolorbox}[defbox, title={Rayleigh--Taylor ベンチマーク：具体的パラメータ（推奨設定）}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\hline
+パラメータ & 記号 & 推奨値 \\
+\hline
+擾乱波長 & $\lambda$ & $1.0$（基準長さ） \\
+計算領域 & $[0,\lambda]\times[0,4\lambda]$ & $[0,1]\times[0,4]$ \\
+初期界面位置 & $L_0$ & $2.0$（領域高さの $50\%$） \\
+初期擾乱振幅 & $A_0$ & $0.05\lambda = 0.05$（$\lambda$ の $5\%$） \\
+重流体密度 & $\rho_l$ & $3.0$（無次元） \\
+軽流体密度 & $\rho_g$ & $1.0$（無次元，Atwood 数 $At = 0.5$） \\
+粘性係数（両相） & $\mu_l = \mu_g$ & $0.01$（弱粘性，$Re = 100$ 相当） \\
+表面張力 & $\sigma$ & $0$（または $We \gg 10^3$） \\
+重力加速度 & $g$ & $1.0$（無次元，$Fr = 1$） \\
+初期速度場 & $\bm{u}$ & $\bm{0}$ \\
+メッシュ（標準） & $N_x \times N_y$ & $64 \times 256$（$\lambda / N_x = h = 1/64$） \\
+メッシュ（高解像度） & $N_x \times N_y$ & $128 \times 512$（収束確認用） \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{理論線形成長率（上記パラメータの場合）：}
+\[
+  \omega_{\mathrm{RT}} = \sqrt{\frac{3-1}{3+1} \cdot \frac{1 \cdot 2\pi}{1}} = \sqrt{\pi} \approx 1.7725
+  \quad [\text{無次元時間}^{-1}]
+\]
+初期振幅が線形領域にある $A(t) < 0.1\lambda$ の間（$t \lesssim 1.5$）に成長率を測定し，
+数値解との相対誤差 $< 5\%$ を確認する．
+\end{tcolorbox}
+
+%%%  ── Benchmark 4 ──────────────────────────────────────────────
+\subsubsection{ベンチマーク4：気泡上昇（Rising Bubble）}
+\label{sec:bench_bubble}
+
+\textbf{目的：} 表面張力・重力・粘性が同時に作用する現実的な問題での総合的検証．
+Hysing ら \cite{Hysing2009} の参照解（高解像度ベンチマーク）と比較する．
+
+\begin{tcolorbox}[warnbox, title={動格子使用時の時間精度に関する注意}]
+本ソルバーは §\ref{sec:grid_gen} の界面連動非一様格子を使用するが，
+\textbf{格子速度 $\bm{v}_\mathrm{mesh}$ の補正（ALE 項）は実装していない}（付録~\ref{app:grid_ale}）．
+ALE 補正を省略した場合，1タイムステップあたりの界面移動量 $\delta = |\bm{u}|\Delta t$ が
+$\delta/h > 0.5$ 程度になると，実効的な時間精度が $O(\Delta t)$ に劣化することがある．
+
+気泡上昇問題（$\rho_l/\rho_g = 10$，$Re = 35$）の標準設定では $\delta/h \ll 1$ が保たれるため，
+ALE 省略の影響は軽微である．しかし \textbf{密度比 $\rho_l/\rho_g = 1000$ の高速界面変形条件}では，
+時間収束テストで $\Delta t$ を半減したとき誤差が $1/4$ 倍（$O(\Delta t^2)$）になるかを
+必ず確認し，ALE 省略の影響を定量評価すること．
+\end{tcolorbox}
+
+\textbf{設定（ベンチマーク1 \cite{Hysing2009}）：}
+\begin{itemize}
+  \item 計算領域 $[0, 1] \times [0, 2]$，初期気泡：中心 $(0.5,\,0.5)$，半径 $R = 0.25$
+  \item $\rho_l / \rho_g = 10$，$\mu_l / \mu_g = 10$，$Re = 35$，$We = 10$（$Fr^2 = 1$）
+  \item 側面・底面：スリップ（$\partial u/\partial n = 0$，$v = 0$），上面：スリップ
+\end{itemize}
+
+\textbf{検証指標：}
+\begin{align}
+  V_c(t) &= \frac{\int_{\Omega_b} v \, dV}{|\Omega_b|}
+  \quad (\text{気泡重心の上昇速度}) \label{eq:bubble_vc} \\
+  C_{\mathrm{circ}}(t) &= \frac{\text{等面積円の周長}}{\text{実際の気泡周長}}
+  \quad (\text{真球度，= 1 で球形}) \label{eq:bubble_circ}
+\end{align}
+
+$t = 3$ における $V_c$ と $C_{\mathrm{circ}}$ の Hysing 参照解との相対誤差 $< 1\%$ を目標とする．
+
+\begin{tcolorbox}[defbox, title={Hysing (2009) Test Case 1 の参照値（数値参照解）}]
+\textbf{重要：これらの値は解析解ではなく，複数の高精度数値ソルバーによる「数値的参照解」である．}
+
+Hysing ら \cite{Hysing2009} は TP2D（FEM），FreeLIFE（FEM レベルセット），MooNMD（FEM）の3グループの
+高解像度計算結果をベンチマーク参照解として提示している：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\hline
+指標 & TP2D（Group 1） & FreeLIFE（Group 2） & MooNMD（Group 3） & 平均（参照値） \\
+\hline
+$V_c(t=3)$ & $0.2417$ & $0.2421$ & $0.2414$ & $\approx 0.2417$ \\
+$C_{\mathrm{circ}}(t=3)$ & $0.9011$ & $0.9013$ & $0.9015$ & $\approx 0.9013$ \\
+$y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
+\hline
+\end{tabular}
+\end{center}
+
+グループ間の差 $\Delta V_c \approx 0.001$（$\approx 0.4\%$）は「本ベンチマークの不確かさ」であり，
+本ソルバーの結果がこの差の範囲内に収まることを目標とする（$< 1\%$ 相対誤差）．
+
+\textbf{解析解が存在しない理由：} 非線形界面変形・粘性・表面張力の複合問題は
+一般に厳密解が存在せず，数値的参照解との比較が標準的な検証手法である．
+
+\textbf{追加確認指標：}
+\begin{itemize}
+  \item $t = 1.5$ での気泡形状（上側に突出した「傘形」）の定性的確認
+  \item $V_c(t)$ の時間発展グラフを Hysing 論文 Fig.~3 と目視比較
+\end{itemize}
+\end{tcolorbox}
+
+\begin{table}[h]
+\centering
+\caption{4つのベンチマークの段階的関係}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{clll}
+\hline
+\# & テスト名 & 検証対象 & 難易度 \\
+\hline
+1 & 静止液滴 & CSF・曲率・寄生流れ & $\bullet\circ\circ\circ$ \\
+2 & Zalesak スロットデスク & Dissipative CCD 移流・質量保存 & $\bullet\bullet\circ\circ$ \\
+3 & Rayleigh-Taylor & 密度差・重力・線形安定論 & $\bullet\bullet\bullet\circ$ \\
+4 & 気泡上昇 & 全物理の結合・定量比較 & $\bullet\bullet\bullet\bullet$ \\
+\hline
+\end{tabular}
+\end{table}
+
+ベンチマーク4は，表面張力・粘性・重力・密度差・界面変形が全て同時に作用する
+最も現実的なテストである．ここで参照解と定量的に一致すれば，
+本ソルバーの全体的な正確性が確認されたとみなせる．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{誤差バジェット（Error Budget）：各コンポーネントの精度分析}
+\label{sec:error_budget}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本ソルバーは複数の数値スキームを組み合わせて構成される．
+各コンポーネントの空間・時間精度を一覧化し，
+なぜ高次精度スキームが全体精度向上に寄与するかを説明する．
+
+\begin{table}[htbp]
+\centering
+\caption{各コンポーネントの精度オーダーと役割}
+\label{tab:error_budget}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{48mm}}
+\toprule
+コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
+\midrule
+Dissipative CCD 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
+CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
+CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
+CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
+Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
+Crank--Nicolson（粘性） & $\Ord{h^2}$（ADI 対角）/ $\Ord{h^6}$（非対角） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
+NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$（AB2） & 対流による運動量移送 \\
+IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） & 全体時間精度の律速段階 \\
+\midrule
+\textbf{全体（空間律速）} & \multicolumn{1}{>{\raggedright\arraybackslash}p{28mm}}{$\boldsymbol{\Ord{h^2}}$（CSF $O(\varepsilon^2)$）} & $\boldsymbol{\Ord{\Delta t^2}}$（AB2+IPC） & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{精度設計のまとめ：}
+\label{sec:accuracy_summary}
+本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
+粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
+界面移流（Dissipative CCD，$\Ord{h^5}$）を実装している．
+
+\begin{itemize}[noitemsep]
+  \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間精度の律速段階であり，
+        Dissipative CCD（$\Ord{h^5}$）および CCD-PPE（$\Ord{h^6}$）はこれより高次であるため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
+  \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
+        Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
+        曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
+        $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．
+        しかし，\textbf{Balanced-Force 条件下（§\ref{sec:balanced_force}）では}，圧力勾配と
+        表面張力に同一の CCD 演算子を用いることで離散化誤差成分が相殺されるため，
+        有効な寄生流れはどちらの手法でも CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+        によって律速される（収束次数の改善ではなく収束係数の大幅な低減；§\ref{sec:bench_droplet} 参照）．
+  \item \textbf{時間精度：} AB2+IPC スキームにより全体時間精度 $\Ord{\Delta t^2}$ を達成している
+        （§\ref{sec:time_accuracy_table} 参照）．
+        さらなる高次化（$O(\Delta t^3)$ 以上）には IPC を超える高次 Projection 法が必要であり，
+        これは今後の課題として §\ref{sec:future_work} で展望する．
+\end{itemize}
+本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
+CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第\ref{sec:pressure}章参照）．
+
+\noindent CCD-Poisson ソルバー（仮想時間陰解法 + CCD）の単体検証——
+(i) 等密度格子収束テスト（$\Ord{h^6}$ 確認），
+(ii) 仮想時間反復の収束挙動，
+(iii) 変密度 Poisson（密度比 $10^3$）での精度——については，
+第\ref{sec:pressure}章（§\ref{sec:ccd_poisson_verification}）で詳述している．
+これら3テスト（C-1，C-2，C-3）を合格した後に，下記ベンチマーク1（§\ref{sec:bench_droplet}）に進むこと．

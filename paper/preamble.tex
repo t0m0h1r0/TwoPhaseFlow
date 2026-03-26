@@ -44,6 +44,7 @@
 
 % -- Page layout --
 \geometry{reset, a4paper, top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt, footskip=20pt}
+\raggedbottom
 \emergencystretch=2em
 \setlength{\hfuzz}{3pt}
 
@@ -90,14 +91,14 @@
     sharp corners,
   },
   resultbox/.style={
-    enhanced,
+    enhanced, breakable,
     colback=tgreen, colframe=navy,
     toprule=1pt, bottomrule=1pt,
     leftrule=1pt, rightrule=1pt,
     sharp corners,
   },
   warnbox/.style={
-    enhanced,
+    enhanced, breakable,
     colback=tyellow, colframe=red2!70,
     toprule=0.6pt, bottomrule=0.6pt,
     leftrule=3pt, rightrule=0.6pt,
@@ -115,7 +116,7 @@
     boxed title style={sharp corners},
   },
   defbox/.style={
-    enhanced,
+    enhanced, breakable,
     colback=boxgray, colframe=darkgray!50,
     toprule=0.6pt, bottomrule=0.6pt,
     leftrule=0.6pt, rightrule=0.6pt,
@@ -145,6 +146,7 @@
 \newcommand{\pdm}[3]{\dfrac{\partial^2 #1}{\partial #2\,\partial #3}}
 \newcommand{\bu}{\bm{u}}
 \newcommand{\bg}{\bm{g}}
+\newcommand{\bn}{\bm{n}}
 \newcommand{\bnabla}{\bm{\nabla}}
 \newcommand{\He}{H_\varepsilon}
 \newcommand{\de}{\delta_\varepsilon}

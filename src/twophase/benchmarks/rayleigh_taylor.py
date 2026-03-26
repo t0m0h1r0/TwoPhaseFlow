@@ -27,6 +27,7 @@ Rayleigh-Taylor 不安定性ベンチマーク。
 from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
+from ..initial_conditions import InitialConditionBuilder, SinusoidalInterface
 
 
 class RayleighTaylorBenchmark:
@@ -73,16 +74,18 @@ class RayleighTaylorBenchmark:
 
         cfg = self._make_config()
         sim = SimulationBuilder(cfg).build()
-        X, Y = sim.grid.meshgrid()
-        eps = sim.eps
 
-        # 初期界面: y = 1 + 0.1 * cos(2π x / Lx)
+        # 初期界面: y = 1 + 0.1 * cos(2π x / Lx)  重い流体 = 下側 (ψ→1)
         Lx = cfg.grid.L[0]
-        y_interface = 1.0 + 0.1 * np.cos(2.0 * np.pi * X / Lx)
-        # ψ = 1（重い流体=上）, ψ = 0（軽い流体=下）
-        dist = Y - y_interface
-        psi0 = 1.0 / (1.0 + np.exp(dist / eps))
-        sim.psi.data = sim.backend.to_device(psi0.copy())
+        psi0 = (
+            InitialConditionBuilder(background_phase="gas")
+            .add(SinusoidalInterface(
+                axis=1, mean=1.0, amplitude=0.1, wavelength=Lx,
+                interior_phase="liquid",
+            ))
+            .build(sim.grid, sim.eps)
+        )
+        sim.psi.data = sim.backend.to_device(psi0)
 
         # 計測用時系列データ
         times, spike_tips, bubble_tips = [], [], []

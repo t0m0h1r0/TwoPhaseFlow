@@ -40,7 +40,7 @@ from ..core.grid import Grid
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..ccd.ccd_solver import CCDSolver
-from ..levelset.advection import LevelSetAdvection
+from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature import CurvatureCalculator
 from ..ns_terms.predictor import Predictor
@@ -135,11 +135,18 @@ class SimulationBuilder:
             for ax in range(config.grid.ndim)
         )
         eps = config.numerics.epsilon_factor * dx_min
-        ccd = CCDSolver(grid, backend)
+        ccd = CCDSolver(grid, backend, bc_type=config.numerics.bc_type)
 
         # レベルセット演算子
-        ls_advect = LevelSetAdvection(backend, grid)
-        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps)
+        # 'periodic' → 'periodic'(wrap), 'wall' → 'neumann'(∂ψ/∂n=0 対称反射).
+        # 'zero' は後方互換のデフォルトだが壁面 BC では誤差が大きい
+        # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
+        _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
+        if config.numerics.advection_scheme == "dissipative_ccd":
+            ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc)
+        else:  # "weno5"
+            ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
+        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
         # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
@@ -152,11 +159,12 @@ class SimulationBuilder:
         )
 
         # 圧力ソルバー（注入または factory 経由）
-        ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid)
+        # ccd を渡すことで PPESolverPseudoTime が CCD matrix-free O(h⁶) を使用できる
+        ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid, ccd=ccd)
 
         # 補助演算子
-        rhie_chow = RhieChowInterpolator(backend, grid, ccd)
-        vel_corrector = VelocityCorrector(backend, ccd)
+        rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type=config.numerics.bc_type)
+        vel_corrector = VelocityCorrector(backend, grid, ccd)
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,
             We=config.fluid.We,

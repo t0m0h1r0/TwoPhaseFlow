@@ -1,0 +1,79 @@
+# =====================================================================
+# Zalesak スロット付き円盤ベンチマーク設定（Benchmark 2: Zalesak Disk）
+# 論文 §10.3.2 に対応
+#
+# 目的: 純移流テスト — 一様回転速度場で 1 回転させ形状誤差を計測
+# 参考: Zalesak (1979), J. Comput. Phys., 31(3), 335-362
+#
+# 実行方法:
+#   python src/main.py src/configs/zalesak_disk.yaml
+#
+# velocity_field: rigid_rotation を指定することで、NS ソルバーによる速度更新を
+# 上書きし、各ステップ後に剛体回転速度場を維持する。
+# =====================================================================
+
+# ── グリッド ──────────────────────────────────────────────────────
+ndim: 2
+N: [64, 64]
+L: [1.0, 1.0]
+
+# ── 無次元数（極端に大きくして NS の影響を最小化） ──────────────
+Re: 1.0e6
+Fr: 1.0e6
+We: 1.0e6
+
+# ── 流体特性（均一流体） ─────────────────────────────────────────
+rho_ratio: 1.0
+mu_ratio: 1.0
+
+# ── 界面パラメータ ───────────────────────────────────────────────
+epsilon_factor: 1.5
+reinit_steps: 2
+
+# ── 時間積分（1 回転周期 = 1.0）─────────────────────────────────
+cfl_number: 0.3
+t_end: 1.0
+
+# ── 圧力ソルバー ─────────────────────────────────────────────────
+ppe_solver_type: bicgstab
+bicgstab_tol: 1.0e-8
+bicgstab_maxiter: 500
+
+# ── 境界条件 ─────────────────────────────────────────────────────
+advection_scheme: dissipative_ccd
+bc_type: wall
+
+# ── ハードウェア ─────────────────────────────────────────────────
+use_gpu: false
+
+# ── 速度場（prescribed — NS 速度更新を上書きする剛体回転） ────────
+# rigid_rotation: center を回転中心、period を 1 回転の周期（= t_end）として設定
+velocity_field:
+  type: rigid_rotation
+  center: [0.5, 0.5]
+  period: 1.0           # 1 回転 = t_end = 1.0 と一致
+
+# ── 初期条件（InitialConditionBuilder が使用） ──────────────────
+# スロット付き円盤:
+#   円形液体領域（center=(0.5, 0.75), radius=0.15）から
+#   矩形スロット（x ∈ [0.475, 0.525], y ∈ [0.6, 0.9]）を気体として切り抜く
+#   SDF 合成: φ_final = max(φ_liquid_circle, −φ_gas_slot)
+#             → 円内かつスロット外の領域が液体
+initial_condition:
+  background_phase: gas
+  shapes:
+    - type: circle
+      center: [0.5, 0.75]
+      radius: 0.15
+      interior_phase: liquid
+    - type: rectangle
+      bounds: [[0.475, 0.525], [0.60, 0.90]]
+      interior_phase: gas
+
+# ── 出力設定（main.py が使用） ──────────────────────────────────
+output:
+  checkpoint_dir: checkpoints/zalesak_disk
+  checkpoint_interval: 50
+  visualization_interval: 10
+  output_dir: results/zalesak_disk
+  save_figures: true

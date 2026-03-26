@@ -1,0 +1,266 @@
+% paper/sections/06_grid.tex
+\section{界面適合非一様格子の構築}
+\label{sec:grid}
+
+本章では，第\ref{sec:CCD}章で導出した CCD 差分演算子を
+\textbf{界面近傍を高密度化した非一様格子}（界面適合格子）上で適用するための
+座標変換とメトリクス係数の理論を整備する．
+一様計算空間 $\xi$ 上では第\ref{sec:CCD}章と同一の CCD スキーム（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）
+が形式的にそのまま成立し，物理空間 $x$ への微分変換はメトリクス係数
+$\partial x/\partial\xi$（本章で定義）を乗じることで行われる．
+これにより，界面付近での格子細分化と CCD の $\Ord{h^6}$ 高精度化を両立させることができる．
+
+\subsection{グリッド密度関数}
+
+界面近傍の解像度を上げるため，Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ を導入する．
+\begin{equation}
+  \omega(\phi) = 1 + (\alpha - 1)\,\delta_\varepsilon^*(\phi)
+\end{equation}
+$\alpha > 1$ は界面近傍の格子密度倍率，$\delta_\varepsilon^*(\phi)$ は界面近傍に集中した正規化スムーズデルタ関数である．
+
+\subsubsection{グリッド密度デルタ関数 $\delta_\varepsilon^*(\phi)$ の定義}
+
+$\delta_\varepsilon^*(\phi)$ は界面（$\phi=0$）近傍でのみ大きな値を持ち，
+全域積分が正規化条件 $\int_{-\infty}^{\infty}\delta_\varepsilon^*(\phi)\,d\phi = 1$ を満たす関数である．
+格子生成に適した具体的な定義として，ガウス型スムーズデルタ関数を用いる：
+
+\begin{equation}
+  \delta_\varepsilon^*(\phi) =
+  \frac{1}{\varepsilon_g\sqrt{\pi}}\exp\!\left(-\frac{\phi^2}{\varepsilon_g^2}\right)
+  \label{eq:grid_delta}
+\end{equation}
+ここで $\varepsilon_g$ は界面近傍の格子細分化幅（有効半幅）を制御するパラメータである．
+
+\textbf{正規化の確認：}
+\[
+  \int_{-\infty}^{\infty} \delta_\varepsilon^*(\phi)\,d\phi
+  = \frac{1}{\varepsilon_g\sqrt{\pi}}\int_{-\infty}^{\infty}e^{-\phi^2/\varepsilon_g^2}\,d\phi
+  = \frac{1}{\varepsilon_g\sqrt{\pi}} \cdot \varepsilon_g\sqrt{\pi} = 1 \quad \checkmark
+\]
+
+\textbf{パラメータの選択指針：}
+\begin{itemize}
+  \item $\varepsilon_g \approx 2\text{--}4 \, \varepsilon$（$\varepsilon$ は CLS 法の界面幅パラメータ）
+  \item $\phi = 0$ では $\delta_\varepsilon^*(0) = 1/(\varepsilon_g\sqrt{\pi})$，界面での格子密度は $\omega(0) = 1 + (\alpha-1)/(\varepsilon_g\sqrt{\pi})$（$\varepsilon_g = 2\varepsilon$ のとき $\omega(0) \approx 1 + 0.28(\alpha-1)$）
+  \item $|\phi| > 3\varepsilon_g$ の領域では $\delta_\varepsilon^*(\phi) < e^{-9}/(\varepsilon_g\sqrt{\pi}) \approx 0$：ほぼ一様格子に戻る
+\end{itemize}
+
+\noindent\textbf{代替定義（コサイン型）：}
+ガウス型の代わりに，有限台を持つコサイン型を使うこともある（界面から完全に離れた点で厳密にゼロとなる利点）：
+\[
+  \delta_\varepsilon^*(\phi) =
+  \begin{cases}
+    \dfrac{1}{2\varepsilon_g}\left[1 + \cos\!\left(\dfrac{\pi\phi}{\varepsilon_g}\right)\right] & |\phi| \le \varepsilon_g \\[6pt]
+    0 & |\phi| > \varepsilon_g
+  \end{cases}
+\]
+この場合も $\int_{-\infty}^{\infty}\delta_\varepsilon^*\,d\phi = 1$ が満たされる（$[-\varepsilon_g,+\varepsilon_g]$ 上の積分が1）．
+
+$\alpha > 1$ は界面近傍の格子密度倍率である．
+
+\subsection{座標変換とメトリクス係数}
+
+一様計算空間 $\xi$ への座標変換を行う．物理空間微分と計算空間微分の関係は以下の通り厳密に導出される．
+
+\begin{tcolorbox}[resultbox]
+\textbf{座標変換公式（厳密形）：}
+\begin{align}
+ \pd{f}{x} &= J_x\,\pd{f}{\xi}
+ \label{eq:transform_1st_correct} \\[6pt]
+ \pdd{f}{x} &= J_x^2\,\pdd{f}{\xi} + J_x\,\pd{J_x}{\xi}\,\pd{f}{\xi}
+ \label{eq:transform_2nd_correct}
+\end{align}
+\end{tcolorbox}
+ここで $J_x = d\xi/dx$ はメトリクス係数であり，CCD 法を用いて高精度に評価される（第\ref{sec:CCD}章で詳述）．
+
+\subsection{格子点座標の生成アルゴリズム}
+\label{sec:grid_gen}
+
+メトリクス係数 $J_x = d\xi/dx$ を得るには，まず物理座標配列 $\{x_i\}$ を
+グリッド密度関数 $\omega(\phi)$ から生成する必要がある．
+以下に，台形公式を用いた累積和による具体的な手順を示す．
+
+\begin{tcolorbox}[algbox, title={1次元格子点生成アルゴリズム（台形則積分）}]
+\textbf{入力：} 格子数 $N$，領域長 $L$，初期水準集合値 $\{\phi^{(0)}_i\}$（一様格子上），密度倍率 $\alpha$
+
+\textbf{ステップ1：} 一様計算格子 $\xi_i = iL/(N-1)$（$i=0,1,\ldots,N-1$）を定義する．
+
+\textbf{ステップ2：} 各格子点で $\omega_i = \omega(\phi^{(0)}_i) = 1 + (\alpha-1)\delta_\varepsilon^*(\phi^{(0)}_i)$ を計算する．
+
+\textbf{ステップ3：} 台形則で累積積分し，物理座標の「未正規化」値を求める：
+\[
+  \tilde{x}_0 = 0, \qquad
+  \tilde{x}_{i+1} = \tilde{x}_i + \frac{\Delta\xi}{\omega_i},
+  \quad \Delta\xi = \frac{L}{N-1}
+\]
+
+\textbf{ステップ4：} $\tilde{x}_{N-1}$ で割って領域長 $L$ に正規化する：
+\[
+  x_i = L \cdot \frac{\tilde{x}_i}{\tilde{x}_{N-1}}
+\]
+
+\textbf{ステップ5：} メトリクス係数を CCD で評価する（推奨・$\mathcal{O}(h^6)$ 精度）：
+\[
+  J_x\big|_i = \frac{1}{(dx/d\xi)_i}, \qquad
+  \pd{J_x}{\xi}\bigg|_i = -\frac{(d^2x/d\xi^2)_i}{(dx/d\xi)_i^2}
+\]
+ここで $(dx/d\xi)_i$ および $(d^2x/d\xi^2)_i$ は，座標配列 $\{x_i\}$ を「関数値」として
+CCD 連立方程式（式~\eqref{eq:CCD_I}，\eqref{eq:CCD_II}）を解くことで同時に得る：
+\[
+  \texttt{ccd\_solve}(\,\{x_i\},\,\Delta\xi\,) \;\to\; \bigl\{(dx/d\xi)_i,\;(d^2x/d\xi^2)_i\bigr\}
+\]
+すなわち，通常は物理場 $f(\xi_i)$ を入力する CCD ソルバーに，座標配列 $f(\xi_i) \leftarrow x_i$，一様格子幅 $\Delta\xi = \xi_{i+1}-\xi_i$（$= L/(N-1)$）を渡す．ソルバーは1・2階微分を同時に返すので，$dx/d\xi$ と $d^2x/d\xi^2$ が一度の Thomas 法求解で $\mathcal{O}(h^6)$ 精度で得られる
+（CCD が 1・2 階微分を同時出力するという特性を格子生成にも活用する点に注意）．
+
+\noindent\textbf{CCD の $\mathcal{O}(h^6)$ 出力精度が保証される前提条件：}
+CCD は入力配列 $\{x_i\}$ が $C^8$ 級（8階微分可能かつ有界）である場合に
+$\mathcal{O}(h^6)$ 精度の微分を保証する（打ち切り誤差は $f^{(8)}_i$ に依存，式~\eqref{eq:CCD_TE_II}）．
+本稿の座標配列 $x(\xi)$ は台形則（ステップ2）による $\omega(\phi)$ の累積積分として生成されるが，
+$\omega(\phi)$ は $\delta_\varepsilon^*(\bar\phi^x)$ の滑らか（$C^\infty$）な関数であるため，
+$x(\xi)$ は高階微分まで有界な滑らかな関数となる（累積和の打ち切り誤差 $\mathcal{O}(\Delta\xi^2)$ は
+$\{x_i\}$ の滑らかさには影響しない）．
+したがって CCD の $\mathcal{O}(h^6)$ 精度保証の前提条件は満たされる．
+中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
+CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
+（理由は \ref{box:grid_jx_accuracy} で詳述）．
+
+\textbf{出力：} 物理座標配列 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$，$\{\partial J_x/\partial\xi|_i\}$．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={【重要】メトリクス係数 $J_x$ の精度と $\partial J_x/\partial\xi$ の評価}]
+\label{box:grid_jx_accuracy}
+素朴な中心差分 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は $\mathcal{O}(h^2)$ 精度しか持たず，
+CCD の $\mathcal{O}(h^6)$ 精度を著しく損なうため本稿では採用しない（step 5 参照）．
+その理由は，座標変換を用いた2階微分（式 \eqref{eq:transform_2nd_correct}）：
+\[
+  \pdd{f}{x} = J_x^2 \fpp{\xi} + J_x \pd{J_x}{\xi} \fp{\xi}
+\]
+の右辺第2項に $\partial J_x/\partial \xi$ が含まれるためである．
+$J_x$ が $\mathcal{O}(h^2)$ 差分で与えられていると，
+$\partial J_x/\partial\xi$ をさらに差分で評価した際に精度は $\mathcal{O}(h)$ 以下に劣化し，
+CCD の $\mathcal{O}(h^6)$ 空間精度が $\mathcal{O}(h)$ または $\mathcal{O}(h^2)$ に低下する．
+
+\textbf{本稿の実装選択（CCD による $J_x$ 評価）の代替案：}
+\begin{enumerate}
+  \item \textbf{格子変化が緩やかな場合：} 界面近傍の格子集中が滑らかであれば（$\omega(\phi)$ が緩やかに変化），$J_x$ の $\mathcal{O}(h^2)$ 誤差が全体精度に与える影響は小さい場合がある．ただし，定量的確認（格子収束テスト）なしにこの仮定を採用すべきでない．
+  \item \textbf{高次片側差分による $J_x$ 計算：} 4次以上の差分で $J_x$ を評価することで中間的な解決策となる（実装負荷は低い）．
+\end{enumerate}
+格子収束テスト（第\ref{sec:verification}章）で $\mathcal{O}(h^6)$ 収束が確認されれば，
+step 5 の CCD 評価が適切に機能していることを確認できる．
+\end{tcolorbox}
+
+\noindent
+$\omega(\phi) > 1$ となる界面近傍では $\Delta\tilde{x} = \Delta\xi/\omega < \Delta\xi$ となり，
+物理格子幅が細くなる（$\omega$ 倍の格子密度）．
+逆に界面から遠い領域（$\omega \approx 1$）では均一な格子幅が保たれる．
+正規化（ステップ4）により，格子の総長が常に $L$ に一致することが保証される．
+
+\subsection{2次元格子生成への拡張}
+\label{sec:grid_2d}
+
+本節では，1次元の手順を2次元に拡張する方法を示す．
+2次元では $x$ 方向と $y$ 方向の格子を\textbf{独立に}生成する（テンソル積格子）．
+
+\subsubsection{テンソル積格子の生成手順}
+
+\begin{tcolorbox}[algbox, title={2次元格子点生成アルゴリズム（テンソル積）}]
+\textbf{前処理（ブートストラップ手順）：}
+格子生成には Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
+循環参照を次のように解消する：
+\begin{enumerate}
+  \item まず一様格子（$N_x \times N_y$ 等間隔格子）上で $\phi^{(0)}_{i,j}$ を計算する
+        （界面形状が解析的に与えられる場合は直接代入；そうでない場合は
+        一様格子上の符号付き距離関数として初期化）．
+  \item 以下のステップで非一様格子を生成する（$\phi^{(0)}$ は一様格子上の値を使用）．
+  \item 以後の時間発展では，界面が大きく移動した場合に格子を再生成することができる
+        （その際は最新の $\phi^n$ を上記ステップ1の代わりに使用する）．
+\end{enumerate}
+
+\textbf{$x$ 方向格子：}
+\begin{enumerate}
+  \item $x$ 方向の密度関数 $\omega^x_i = 1 + (\alpha-1)\delta_\varepsilon^*(\bar{\phi}^x_i)$ を計算する．
+        ここで $\bar{\phi}^x_i = \min_j |\phi^{(0)}_{i,j}|$（列 $i$ における界面までの最短距離）または
+        $\bar{\phi}^x_i = (1/N_y)\sum_j \phi^{(0)}_{i,j}$（列平均）を用いる．
+  \item §\ref{sec:grid_gen}のステップ2--5で物理座標 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$ を計算する．
+\end{enumerate}
+
+\textbf{$y$ 方向格子：}
+\begin{enumerate}
+  \item $y$ 方向の密度関数 $\omega^y_j = 1 + (\alpha-1)\delta_\varepsilon^*(\bar{\phi}^y_j)$ を計算する．
+        ここで $\bar{\phi}^y_j = \min_i |\phi^{(0)}_{i,j}|$（行 $j$ における界面までの最短距離）を用いる．
+  \item 同様の積分・正規化・メトリクス係数計算を実行し，$\{y_j\}$ と $\{J_y|_j\}$ を得る．
+\end{enumerate}
+
+\textbf{出力：} $N_x \times N_y$ の非一様格子 $\{(x_i, y_j)\}$ と
+メトリクス係数 $\{J_x|_i\}$，$\{J_y|_j\}$（2次元に適用する際は $J_x$ は $i$ のみに，$J_y$ は $j$ のみに依存）．
+\end{tcolorbox}
+
+\noindent\textbf{テンソル積格子の仮定と制限．}
+テンソル積格子は「$x$ 方向格子と $y$ 方向格子の直積」であるため，以下の特性を持つ：
+\begin{itemize}
+  \item \textbf{直交格子：} 格子線は $x$ 方向と $y$ 方向に平行であり，常に直交する．
+        変換行列のオフ対角項はゼロ（$\partial\xi/\partial y = \partial\eta/\partial x = 0$）．
+  \item \textbf{界面傾き対応：} 界面が斜め（例：45°）の場合，界面近傍の格子細分化が
+        $x$ 方向と $y$ 方向の両方で自動的に行われる（$\min_j|\phi_{i,j}|$ を使うため）．
+  \item \textbf{制限：} 界面が1本の直線または単純閉曲線の場合には有効だが，
+        複数の界面が互いに異なる方向を向く場合，一方の方向での細分化が過剰になる可能性がある．
+\end{itemize}
+
+\textbf{本稿での実装上の仮定：} 座標変換式（式 \eqref{eq:transform_1st_correct}, \eqref{eq:transform_2nd_correct}）は
+直交テンソル積格子を前提としており，$\partial x/\partial\eta = \partial y/\partial\xi = 0$ が成立する．
+非直交格子では追加のオフ対角メトリクス項が必要になるため，本稿の適用範囲外となる．
+
+\subsubsection{2次元格子の実装例（Python 擬似コード）}
+
+以下の擬似コードは上記アルゴリズムの実装例を示す：
+
+\begin{verbatim}
+import numpy as np
+
+def build_1d_grid(phi_min_row, N, L, alpha, eps_g):
+    """1次元格子生成（行または列の最小|phi|を入力）"""
+    xi = np.linspace(0, L, N)
+    dxi = L / (N - 1)
+    # ガウス型スムーズデルタ関数
+    omega = 1 + (alpha - 1) * np.exp(-phi_min_row**2 / eps_g**2) \
+                             / (eps_g * np.sqrt(np.pi))
+    # 矩形則（前進型）で累積積分
+    x_tilde = np.zeros(N)
+    for i in range(N - 1):
+        x_tilde[i+1] = x_tilde[i] + dxi / omega[i]
+    # 領域長 L に正規化
+    x = L * x_tilde / x_tilde[-1]
+    # ステップ5：メトリクス係数は CCD で評価すること（O(h^6) 精度）
+    # 実装：x[i] を入力データとして CCD 連立方程式を解き，
+    #       dx_dxi[i]（1階微分）と d2x_dxi2[i]（2階微分）を同時取得する
+    # Jx = 1.0 / dx_dxi        （dxi/dx）
+    # dJx_dxi = -d2x_dxi2 / dx_dxi**2
+    # 注意：np.gradient(xi, x) は O(h^2) 中心差分であり
+    #       CCD 精度を損なうため使用禁止（詳細は box:grid_jx_accuracy 参照）
+    dx_dxi, d2x_dxi2 = ccd_solve(x, xi)   # CCD: f=x(xi) -> f', f'' 同時求解
+    Jx = 1.0 / dx_dxi
+    return x, Jx, d2x_dxi2
+
+def build_2d_grid(phi0, Nx, Ny, Lx, Ly, alpha, eps_g):
+    """2次元テンソル積格子生成"""
+    # x 方向：各列の最小 |phi|
+    phi_min_x = np.min(np.abs(phi0), axis=1)  # shape (Nx,)
+    x, Jx, d2x = build_1d_grid(phi_min_x, Nx, Lx, alpha, eps_g)
+    # y 方向：各行の最小 |phi|
+    phi_min_y = np.min(np.abs(phi0), axis=0)  # shape (Ny,)
+    y, Jy, d2y = build_1d_grid(phi_min_y, Ny, Ly, alpha, eps_g)
+    # 2次元メッシュ
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    return X, Y, Jx, Jy
+\end{verbatim}
+
+\subsection{時間変化格子と ALE 効果}
+\label{sec:grid_ale}
+
+本稿の格子は初期水準集合値 $\phi^{(0)}$ から生成し，\textbf{時間固定}として扱う（$\bm{v}_\text{mesh} = 0$）．
+この選択により ALE 誤差はゼロであり，全体時間精度 $O(\Delta t^2)$ が保持される．
+ただし，界面が初期精細化領域から大きく離れる場合（上昇気泡等，長距離移動問題）では，
+経時的に空間解像度が低下する点に注意されたい
+（詳細・対処法については付録~\ref{app:grid_ale} を参照）．
+格子を毎タイムステップ更新しつつ ALE 補正を省略した場合の $O(\Delta t)$ 精度劣化，および
+ALE 定式化が必要となる条件（大密度比・高速界面変形）についても付録~\ref{app:grid_ale} で詳述する．

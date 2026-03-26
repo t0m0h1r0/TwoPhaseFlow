@@ -1,0 +1,248 @@
+% paper/sections/05b_time_integration.tex
+% §5 続き：時間積分スキーム（TVD-RK3 + AB2+IPC + CN 法）・安定性制約
+%
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{時間積分スキーム}
+\label{sec:time_int}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsubsection{3次 TVD Runge--Kutta 法（CLS 移流・再初期化のみ）}
+
+\textbf{CLS 移流ステップ（界面追跡）および CLS 再初期化の仮想時間積分}に，
+Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
+\begin{align}
+  q^{(1)} &= q^n + \Delta t \, \mathcal{L}(q^n) \notag\\
+  q^{(2)} &= \frac{3}{4}q^n + \frac{1}{4}q^{(1)} + \frac{1}{4}\Delta t\,\mathcal{L}(q^{(1)}) \notag\\
+  q^{n+1} &= \frac{1}{3}q^n + \frac{2}{3}q^{(2)} + \frac{2}{3}\Delta t\,\mathcal{L}(q^{(2)})
+  \label{eq:tvd_rk3}
+\end{align}
+ここで $\mathcal{L}(q)$ は空間演算子であり，
+CLS 移流では式~\eqref{eq:dccd_adv_filter} の Dissipative CCD フラックス発散
+$\mathcal{L}(\psi) = \tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}）を指す．
+\textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（\ref{warn:tvd_rk3_scope}参照）．
+
+\noindent\textbf{TVD（Total Variation Diminishing）の定義：}
+TVD（Total Variation Diminishing）とは，数値解の全変動
+$TV(q) \equiv \sum_i |q_{i+1} - q_i|$ が時間的に増大しない性質を指す：
+$TV(q^{n+1}) \leq TV(q^n)$．
+TVD-RK3 はこの性質を時間方向に保証するが，
+Dissipative CCD は線形フィルタであり空間 TVD 性を持たない（\ref{warn:adv_clamp}）．
+クランプ処置（式~\eqref{eq:psi_clamp}）と組み合わせることで
+$\psi \in [0,1]$ を維持する．
+
+\begin{tcolorbox}[warnbox, title={TVD-RK3 の適用範囲：CLS のみ，NS には不使用}]
+\label{warn:tvd_rk3_scope}
+TVD-RK3 は以下の2箇所にのみ適用する：
+\begin{itemize}
+  \item \textbf{CLS 移流方程式}（式 \eqref{eq:cls_advection}）：$\pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0$（保存形）
+  \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分（移流部のみ）
+\end{itemize}
+\textbf{NS 方程式の時間積分}には TVD-RK3 は使用しない（下節 §\ref{sec:ab2_ipc} 参照）．
+\end{tcolorbox}
+
+\subsubsection{NS 方程式の時間積分：AB2 + IPC 法}
+\label{sec:ab2_ipc}
+
+本稿では，プロジェクション法の全体時間精度を $\mathcal{O}(\Delta t^2)$ とするため，
+対流項に \textbf{2段 Adams-Bashforth（AB2）法}を採用し，
+van Kan（1986）\cite{vanKan1986} の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせる．
+Predictor ステップの離散式は：
+\begin{equation}
+\begin{split}
+  \frac{\rho^{n+1}}{\Delta t}(\bu^* - \bu^n)
+  &= -\rho^{n+1}\!\left[\tfrac{3}{2}\mathcal{C}(\bu^n,\bu^n)
+    - \tfrac{1}{2}\mathcal{C}(\bu^{n-1},\bu^{n-1})\right] \\
+  &\quad + \tfrac{1}{2Re}\bigl[\mathcal{D}(\mu^{n+1},\bu^*)
+    + \mathcal{D}(\mu^n,\bu^n)\bigr]
+  - \bnabla p^n
+  + \bm{f}^{n+1}
+\end{split}
+  \label{eq:predictor_ab2_ipc}
+\end{equation}
+ここで $\mathcal{C}(\bu,q) = \bu\cdot\bnabla q$（対流演算子），$\mathcal{D}$ は完全粘性応力演算子
+（式~\eqref{eq:viscous_full_x}）．
+体積力 $\bm{f}^{n+1}$ は表面張力項（$\rho$ 因子なし）と重力項（$\rho^{n+1}$ 因子あり）の和：
+\begin{equation*}
+  \bm{f}^{n+1} = \frac{\kappa^{n+1}\bnabla\psi^{n+1}}{We}
+                - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
+\end{equation*}
+（表面張力は CSF 体積力 $\sigma\kappa\bnabla\psi$（式~\eqref{eq:csf_final}）の無次元形；
+重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
+2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$）．
+対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
+前ステップ圧力 $-\bnabla p^n$ の陽的組込みが IPC の本質である．
+
+\noindent\textbf{起動ステップ（$n=0$）の注意：}
+$n=0$ では $\bu^{n-1}$ が未定義であるため，AB2 外挿係数 $(3/2,\,-1/2)$ の代わりに
+前進 Euler 係数 $(1,\,0)$ を用いる
+（式~\eqref{eq:predictor_ab2_ipc} の $\mathcal{C}$ 係数を $3/2 \to 1$，$-1/2 \to 0$ と置き換える）．
+$\mathcal{O}(\Delta t^2)$ の全体時間精度は $n \geq 1$ 以降のステップで達成される．
+
+\paragraph{IPC 法の核心：圧力増分 $\delta p$ の求解}%
+\label{sec:ipc_derivation}
+
+IPC 法では，圧力 Poisson 方程式において絶対圧力 $p^{n+1}$ の代わりに
+\textbf{圧力増分 $\delta p \equiv p^{n+1} - p^n$} を未知変数として解く
+（§\ref{sec:algorithm} Step 6--7 参照）：
+\begin{align*}
+  &\text{PPE：}\quad \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
+    = \frac{1}{\Delta t}\bnabla\cdot\bu^*\\
+  &\text{補正：}\quad \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla(\delta p),
+  \qquad p^{n+1} = p^n + \delta p
+\end{align*}
+CCD 演算子 $\mathcal{L}^{\rho}_{\mathrm{CCD}}$ は絶対圧力版と\textbf{完全に同一}であり，
+求解対象変数が $p^{n+1}$ から $\delta p$ に変わるだけである．
+この定式化により，標準 Chorin 法の人工的圧力境界層に起因する
+$\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
+（Guermond et al., \textit{Acta Numerica}, 2006 \cite{Guermond2006}）．
+
+\paragraph{全体的な時間精度}%
+\label{sec:time_accuracy_table}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{lcc}
+\hline
+方程式・項 & 時間積分法 & 時間精度 \\
+\hline
+CLS 移流 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
+NS 対流項（Predictor） & AB2（van Kan + 外挿係数 3/2, -1/2） & $\Ord{\Delta t^2}$ \\
+NS 粘性項（対角項 $\mathcal{D}_{\mathrm{d}}$） & Crank--Nicolson（半陰的） & $\Ord{\Delta t^2}$ \\
+NS 粘性項（クロス微分項 $\mathcal{D}_{\mathrm{c}}$） & 陽的（時刻 $n$） & $\Ord{\Delta t}$（界面近傍）$^\dagger$ \\
+Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$ \\
+\hline
+\textbf{全体（均質流域）} & & $\boldsymbol{\Ord{\Delta t^2}}$ \\
+\textbf{全体（界面近傍，$\mu_l/\mu_g \gg 1$）} & & $\boldsymbol{\Ord{\Delta t}}$\,$^\dagger$ \\
+\hline
+\end{tabular}
+\end{center}
+
+{\small $^\dagger$ 変粘性界面（$|\bnabla\mu| \neq 0$）ではクロス微分項 $\mathcal{D}_{\mathrm{c}}$ の陽的処理が $\Ord{\Delta t}$ 誤差を導入し，界面近傍での全体時間精度が $\Ord{\Delta t}$ に律速される（\ref{warn:cn_cross_derivative} 参照）．$\mu_l/\mu_g \gg 10$ の場合は AB2 外挿 $[\frac{3}{2}\mathcal{D}_{\mathrm{c}}^n - \frac{1}{2}\mathcal{D}_{\mathrm{c}}^{n-1}]$ の適用を推奨する．}
+
+本スキームの\textbf{均質流域での全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
+界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用される．
+空間精度（Dissipative CCD 移流：実効 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ フィルタ誤差，
+CCD：$O(h^6)$ 微分精度）は，CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+（§\ref{sec:balanced_force}）が律速する全体空間精度と整合する．
+
+\noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
+
+CLS 移流に TVD-RK3（$\Ord{\Delta t^3}$）を採用している一方，NS 対流項は AB2（$\Ord{\Delta t^2}$）にとどめている．
+この非対称性は意図的な設計選択であり，以下の理由による：
+
+界面と流体運動は\textbf{疎結合（operator-split）}として扱われる．
+CLS 移流（界面輸送）は密度場 $\rho^{n+1}$ と曲率 $\kappa^{n+1}$ を決定する「前処理」であり，
+その時間精度が $\Ord{\Delta t^2}$ 以上であれば，全体の流体運動精度は NS 方程式側の $\Ord{\Delta t^2}$ で律速する：
+\[
+  \text{全体時間精度} = \min\!\bigl(\underbrace{\Ord{\Delta t^3}}_\text{CLS},\;
+    \underbrace{\Ord{\Delta t^2}}_\text{NS (AB2+IPC)}\bigr) = \Ord{\Delta t^2}
+\]
+\textbf{CLS の $\Ord{\Delta t^3}$ 高精度化の役割：}
+時間精度を $\Ord{\Delta t^3}$ に向上させることには貢献しないが，
+界面プロファイルの変形が小さく保たれることで
+（i）曲率 $\kappa$ の数値精度が向上し寄生流れを抑制，
+（ii）再初期化の必要頻度が減少し質量保存誤差が低減する，
+という実用上の優位が得られる．
+
+\noindent\textbf{背景：標準 Chorin 法のスプリッティング誤差（なぜ AB2 だけでは不十分か）}
+
+対流項を AB2（2次精度）に変更するだけでは全体精度は $\Ord{\Delta t^2}$ に\textbf{ならない}．
+標準的な Predictor--Corrector 分割（Chorin, 1968 \cite{Chorin1968}）は，
+圧力境界条件の不整合（人工的圧力境界層）に起因する $\Ord{\Delta t}$ スプリッティング誤差を独立に内包するため，
+対流項の高次化だけで律速が解消されない．
+IPC 法による予測ステップへの $p^n$ の組み込みがスプリッティング誤差を除去する唯一の手段である．
+
+\begin{tcolorbox}[warnbox, title={AB2 スタートアップ問題：初回ステップの特別処理}]
+\label{warn:ab2_startup}
+
+AB2 法は2時刻分の対流項履歴
+$\bigl(\mathcal{C}^n,\,\mathcal{C}^{n-1}\bigr)$
+を必要とするため，$t=0$ の最初のステップ（$n=0\to1$）では AB2 を適用できない．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+ステップ & 対流項の扱い & 時間精度 \\
+\hline
+$n=0\to1$（初回）& 前進 Euler：$-\mathcal{C}(\bu^0,\bu^0)$ & $\Ord{\Delta t}$（スタートアップ） \\
+$n=1\to2$ 以降 & AB2：$\tfrac{3}{2}\mathcal{C}^n - \tfrac{1}{2}\mathcal{C}^{n-1}$ & $\Ord{\Delta t^2}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+初回ステップの前進 Euler による局所打ち切り誤差は $\Ord{\Delta t^2}$（1次精度スキームを1ステップのみ適用した標準値）であり，
+以後の AB2 ステップへの伝播が\textbf{安定}であれば，全体積分精度 $\Ord{\Delta t^2}$ に影響しない．
+
+\noindent\textbf{AB2 の零安定性による正当化：}
+AB2 は線形多段スキームであり，特性多項式 $\rho(z) = z^2 - z$ の根は $z=0,\,z=1$ で，
+いずれも $|z| \leq 1$ かつ $z=1$ は単根（Dahlquist の根条件を満足）．
+これにより AB2 は\textbf{零安定（zero-stable）}であり，
+$n=0$ での局所誤差 $e_1 = \Ord{\Delta t^2}$ は各後続ステップで高々定数倍（$\leq C$，$C$ は有界な定数）にしか増幅されない
+（\cite{DahlquistBjorck1974} §5.3）．
+$N_t = T/\Delta t$ ステップ積分で，初回誤差の寄与は $\leq C\,\Ord{\Delta t^2}$（$N_t$ 倍されない）；
+残り $N_t - 1$ ステップの AB2 局所誤差合算は $\Ord{(N_t-1)\Delta t^3} = \Ord{T\Delta t^2}$ であり，
+全体精度は $\Ord{\Delta t^2}$ に保たれる．
+
+初回完了後，対流項 $\mathcal{C}^0 = \mathcal{C}(\bu^0,\bu^0)$ をバッファに保存し，
+以降の AB2 ステップで利用する（追加メモリ：速度場1つ分，$2N_xN_y$ 実数値）．
+\end{tcolorbox}
+
+\subsubsection{Crank--Nicolson 法（粘性項）}
+
+粘性項（2階空間微分を含む）は，純陽的処理では厳しい時間刻み制限（$\Delta t < O(h^2)$）を課す．
+これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する：
+\begin{equation}
+  \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
+  \label{eq:crank_nicolson}
+\end{equation}
+ここで $\mathcal{D}$ は粘性拡散演算子．CN 法は時間方向に2次精度（$O(\Delta t^2)$）かつ
+\textbf{無条件安定}（スペクトル半径の制約なし）であり，適度な $\Delta t$ での安定計算が可能となる．
+
+\begin{tcolorbox}[warnbox, title={CN 粘性項のクロス微分：$u$ と $v$ の陰的結合と実装上の分離}]
+\label{warn:cn_cross_derivative}
+
+変粘性流体の粘性応力 $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ の $x$ 成分は：
+\begin{align}
+  \bigl[\nabla\cdot(\mu(\nabla\bu+\nabla^T\bu))\bigr]_x
+  &= \underbrace{2\frac{\partial}{\partial x}\!\left(\mu\frac{\partial u}{\partial x}\right)
+     + \frac{\partial}{\partial y}\!\left(\mu\frac{\partial u}{\partial y}\right)}_{\text{対角項 $\mathcal{D}_{\mathrm{d}}(u)$}}
+   + \underbrace{\frac{\partial}{\partial y}\!\left(\mu\frac{\partial v}{\partial x}\right)}_{\text{クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$}}
+  \label{eq:viscous_full_x}
+\end{align}
+クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$ を CN で $t^{n+1}$ に置くと $u^*$-$v^*$ の連立系（$2N^2$ 未知数）が生じ，ブロック Thomas 法の優位が失われる．\textbf{標準対処法：クロス項のみ時刻 $n$ で陽的評価し，対角項だけ CN で半陰的処理}する：
+\begin{equation*}
+  \frac{u^* - u^n}{\Delta t}
+  = \frac{1}{2Re}\bigl[\mathcal{D}_{\mathrm{d}}(u^n) + \mathcal{D}_{\mathrm{d}}(u^*)\bigr]
+  + \frac{1}{Re}\,\mathcal{D}_{\mathrm{c}}(v^n)
+  + \bm{f}_x^{n+1}
+\end{equation*}
+これにより $u^*$, $v^*$ を独立にブロック Thomas 法で求解できる．
+
+クロス微分項の1次陽的処理は $\Ord{\Delta t}$ 誤差を導入し，気液界面が存在する限り（$|\bnabla\mu| \neq 0$）\textbf{界面近傍での全体時間精度は必ず $\Ord{\Delta t}$ に律速される}．$\mu_l/\mu_g \gg 10$ の水/空気系では特に顕著であり，AB2 外挿 $[\frac{3}{2}\mathcal{D}_{\mathrm{c}}^n - \frac{1}{2}\mathcal{D}_{\mathrm{c}}^{n-1}]$ の適用を推奨する（式~\eqref{eq:predictor_ab2_ipc} の $\mathcal{C}$ 係数と同様の外挿）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={変粘性界面でのクロス微分陽的処理：粘性 CFL 条件の実質的復活}]
+\label{warn:cross_cfl}
+
+気液界面近傍では $\mu$ が数格子幅で $\mu_l/\mu_g \approx 10^2$ 変化する．クロス微分 $\mathcal{D}_{\mathrm{c}}(v)$ を陽的処理すると，界面上でのフォン・ノイマン安定性解析から局所 CFL 条件が復活する：
+\begin{equation}
+  \Delta t \le C_{\mathrm{cross}} \cdot \frac{h^2}{\Delta\mu / \rho}
+  \label{eq:cross_cfl}
+\end{equation}
+ここで $C_{\mathrm{cross}} = O(1)$，$\Delta\mu = \mu_l - \mu_g$．$\mu_l/\mu_g = 100$ の系では等粘性系の陽的粘性 CFL より約 $1/100$ 倍厳しくなる可能性がある．
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+処理方法 & 安定条件 & 適用場面 \\
+\hline
+対角粘性項 $\mathcal{D}_{\mathrm{d}}$（CN 法） & 無条件安定 & 常に適用 \\
+クロス微分項 $\mathcal{D}_{\mathrm{c}}$（陽的） & 式~\eqref{eq:cross_cfl} の制約あり & $\mu_l/\mu_g \lesssim 10$ では無害 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{シミュレーションが爆発した場合：}対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）を確認後，なお爆発する場合はクロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性がある．$\Delta t$ を $1/10$ に減らして安定化するか確認する．
+\end{tcolorbox}

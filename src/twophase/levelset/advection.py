@@ -1,29 +1,46 @@
 """
 Conservative Level Set advection.
 
-Implements §3.3 (Eq. 16) and §8 of the paper.
+Implements §3.3 (Eq. 16) and §5 of the paper.
 
 The CLS conservation equation is:
 
     ∂ψ/∂t + ∇·(ψ u) = 0                          (§3.3 Eq.16)
 
-which, using ∇·u = 0, becomes the non-conservative convection form:
+Two schemes are provided (both use TVD-RK3, §9 eq:tvd_rk3):
 
-    ∂ψ/∂t + u·∇ψ = 0
+DissipativeCCDAdvection  (paper-primary, §5)
+--------------------------------------------
+Computes ∂(ψu)/∂x via CCD first-derivative solve, then applies the
+spectral filter (§5 eq:dccd_adv_filter):
 
-Time integration uses the TVD-RK3 scheme (§8, Eq. 79–81).
-Spatial fluxes use the WENO5 scheme (§8.2) with global Lax-Friedrichs
-splitting to handle the near-discontinuous ψ profile without Gibbs
-oscillations.
+    F̃ᵢ = f'ᵢ + ε_d (f'ᵢ₊₁ − 2f'ᵢ + f'ᵢ₋₁),   ε_d = 0.05
 
-WENO5 smoothness indicators and weights follow (§8.2 Eq. 82):
+Transfer function H(ξ; 0.05) = 1 − 4·0.05·sin²(ξ/2) suppresses
+high-frequency modes that are linearly unstable in pure CCD (§5
+eq:ccd_adv_instability).  At Nyquist: H(π; 0.05) = 0.80 (20% damping).
+
+ψ is clamped to [0, 1] after each TVD-RK3 stage (§5 warn:adv_clamp)
+because the filter has no TVD guarantee.
+
+LevelSetAdvection  (reference scheme, appendix app:weno5)
+----------------------------------------------------------
+Spatial fluxes via WENO5 + global Lax-Friedrichs splitting.
+
+WENO5 smoothness indicators and weights follow (app:weno5 eq:weno5_beta):
     β₀ = (13/12)(fᵢ₋₂ − 2fᵢ₋₁ + fᵢ)²   + (1/4)(fᵢ₋₂ − 4fᵢ₋₁ + 3fᵢ)²
     β₁ = (13/12)(fᵢ₋₁ − 2fᵢ   + fᵢ₊₁)²  + (1/4)(fᵢ₋₁ − fᵢ₊₁)²
     β₂ = (13/12)(fᵢ   − 2fᵢ₊₁ + fᵢ₊₂)²  + (1/4)(3fᵢ − 4fᵢ₊₁ + fᵢ₊₂)²
 
-Lax-Friedrichs flux splitting (§8.2 Eq. 73):
+Lax-Friedrichs flux splitting (app:weno5 eq:lf_split):
     F⁺ = (1/2)(F + α q),  F⁻ = (1/2)(F − α q)
-    α = max|u|  (global Lax-Friedrichs)
+    α = max|u|  (global Lax-Friedrichs, app:weno5 eq:alpha_glf)
+
+Boundary ghost cells (app:weno5 sec:weno5_boundary):
+    bc='periodic' — wrap indices (zero contamination, O(h⁵) preserved)
+    bc='neumann'  — symmetric reflection (wall ∂ψ/∂n = 0)
+    bc='outflow'  — constant extrapolation (O(h) near boundary)
+    bc='zero'     — zero ghost cells (backward-compatible default)
 """
 
 from __future__ import annotations
@@ -35,6 +52,7 @@ from ..interfaces.levelset import ILevelSetAdvection
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
+    from ..ccd.ccd_solver import CCDSolver
 
 # WENO5 ideal weights
 _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
@@ -50,9 +68,18 @@ class LevelSetAdvection(ILevelSetAdvection):
     grid    : Grid — constructor-injected; eliminates temporal coupling from set_grid()
     """
 
-    def __init__(self, backend: "Backend", grid: "Grid"):
+    def __init__(self, backend: "Backend", grid: "Grid", bc: str = 'zero'):
+        """
+        Parameters
+        ----------
+        backend : Backend
+        grid    : Grid — constructor-injected
+        bc      : Ghost-cell boundary condition for WENO5 stencils (§4 sec:weno5_boundary).
+                  'periodic' | 'neumann' | 'outflow' | 'zero' (default, backward-compat)
+        """
         self.xp = backend.xp
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+        self._bc = bc  # BCタイプを保持（_weno5_divergenceで使用）
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -122,8 +149,9 @@ class LevelSetAdvection(ILevelSetAdvection):
 
         # Pad with 3 ghost cells (using zero-padding for wall BC; does not
         # affect interior nodes for smooth flows)
-        psi_p = _pad_zero(xp, psi, axis, 3)
-        F_p   = _pad_zero(xp, F, axis, 3)
+        # §4 sec:weno5_boundary に従ったゴーストセル補充
+        psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
+        F_p   = _pad_bc(xp, F,   axis, 3, self._bc)
 
         # Number of internal faces: n-1 (between node 0..n-2)
         # After padding, node i maps to padded index 3+i
@@ -192,7 +220,6 @@ class LevelSetAdvection(ILevelSetAdvection):
         flux_face = Fp_face + Fm_face   # shape: n-1 along axis
 
         # Divergence: (F_{i+1/2} − F_{i-1/2}) / h at interior nodes i=1..n-2
-        # For boundary nodes, use zero boundary flux (wall BC)
         sl_hi = [slice(None)] * psi.ndim
         sl_lo = [slice(None)] * psi.ndim
         sl_hi[axis] = slice(1, None)   # faces 1..n-2
@@ -201,13 +228,133 @@ class LevelSetAdvection(ILevelSetAdvection):
         div_interior = (flux_face[tuple(sl_hi)] - flux_face[tuple(sl_lo)]) / h
         # div_interior has shape n-2 along axis (interior nodes i=1..n-2)
 
-        # Pad to full size: boundary nodes get 0 divergence (wall BC)
-        shape_pad = list(psi.shape)
-        shape_pad[axis] = 1
-        pad = xp.zeros(shape_pad)
-        div_full = xp.concatenate([pad, div_interior, pad], axis=axis)
+        if self._bc == 'periodic':
+            # For periodic BC on a node-centered grid, nodes 0 and n-1 are
+            # the same physical point.  The wrap-around divergence is:
+            #   div[0] = (flux_face[0] − flux_face[-1]) / h
+            # where flux_face[-1] is the face between node n-2 and node 0.
+            # Both boundary nodes share this value; div[n-1] = div[0].
+            sl_f0 = [slice(None)] * psi.ndim
+            sl_fN = [slice(None)] * psi.ndim
+            sl_f0[axis] = slice(0, 1)     # first face
+            sl_fN[axis] = slice(-1, None) # last face (wrap-around)
+            div_wrap = (flux_face[tuple(sl_f0)] - flux_face[tuple(sl_fN)]) / h
+            div_full = xp.concatenate([div_wrap, div_interior, div_wrap], axis=axis)
+        else:
+            # Non-periodic BCs: boundary nodes get zero divergence (wall / zero / outflow)
+            shape_pad = list(psi.shape)
+            shape_pad[axis] = 1
+            pad = xp.zeros(shape_pad)
+            div_full = xp.concatenate([pad, div_interior, pad], axis=axis)
 
         return div_full
+
+
+# ── Dissipative CCD advection (paper-primary, §5) ─────────────────────────
+
+_EPS_D_ADV = 0.05   # uniform filter strength (§5 eq:eps_adv)
+
+
+class DissipativeCCDAdvection(ILevelSetAdvection):
+    """Advects ψ using Dissipative CCD + TVD-RK3 (paper §5, alg:dccd_adv).
+
+    Algorithm per step
+    ------------------
+    For each axis ax:
+        1.  f_i  = ψ_i · u_ax,i            (advective flux)
+        2.  f'_i = CCD.differentiate(f, ax) (6th-order derivative)
+        3.  F̃_i  = f'_i + ε_d(f'_{i+1} − 2f'_i + f'_{i-1})   (spectral filter)
+    RHS = −Σ_ax F̃_ax
+    TVD-RK3 with ψ ← clip(ψ, 0, 1) after each stage.
+
+    Parameters
+    ----------
+    backend : Backend
+    grid    : Grid — constructor-injected
+    ccd     : CCDSolver — constructor-injected (same instance as NS solver)
+    bc      : Ghost-cell BC for the filter second-difference stencil.
+              'periodic' | 'neumann' | 'outflow' | 'zero'
+    eps_d   : Filter strength ε_d (default 0.05, §5 eq:eps_adv)
+    """
+
+    def __init__(
+        self,
+        backend: "Backend",
+        grid: "Grid",
+        ccd: "CCDSolver",
+        bc: str = 'periodic',
+        eps_d: float = _EPS_D_ADV,
+    ):
+        self.xp = backend.xp
+        self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+        self._ccd = ccd
+        self._bc = bc
+        self._eps_d = float(eps_d)
+
+    # ── Public API ────────────────────────────────────────────────────────
+
+    def advance(self, psi, velocity_components: List, dt: float):
+        """Advance ψ by one time step using TVD-RK3 with per-stage clamp.
+
+        Parameters
+        ----------
+        psi                 : array, shape ``(Nx+1, Ny+1[, Nz+1])``
+        velocity_components : list of arrays [u, v[, w]], same shape as psi
+        dt                  : time step
+
+        Returns
+        -------
+        psi_new : updated ψ array, clipped to [0, 1]
+        """
+        xp = self.xp
+
+        def L(q):
+            return self._rhs(q, velocity_components)
+
+        # TVD-RK3 (Shu-Osher) with ψ ∈ [0,1] clamp after each stage
+        # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
+        q0 = xp.copy(psi)
+        q1 = xp.clip(q0 + dt * L(q0), 0.0, 1.0)
+        q2 = xp.clip(0.75 * q0 + 0.25 * (q1 + dt * L(q1)), 0.0, 1.0)
+        q_new = xp.clip(
+            (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * L(q2)),
+            0.0, 1.0,
+        )
+        return q_new
+
+    # ── RHS: −∇·(ψu) via Dissipative CCD ────────────────────────────────
+
+    def _rhs(self, psi, vel):
+        """Compute RHS = −Σ_ax F̃_ax  (§5 alg:dccd_adv steps 1–4)."""
+        xp = self.xp
+        ndim = len(vel)
+        result = xp.zeros_like(psi)
+
+        for ax in range(ndim):
+            # Step 1: advective flux f_i = ψ_i · u_ax,i
+            f = psi * vel[ax]
+
+            # Step 2: CCD first derivative f'_i ≈ ∂f/∂x_ax
+            fp, _ = self._ccd.differentiate(f, axis=ax)
+
+            # Step 3: Dissipative filter
+            #   F̃_i = f'_i + ε_d (f'_{i+1} − 2f'_i + f'_{i-1})
+            fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
+            n = fp.shape[ax]
+
+            def _sl(start, stop, _ax=ax):
+                s = [slice(None)] * fp.ndim
+                s[_ax] = slice(start, stop)
+                return tuple(s)
+
+            fp_p1 = fp_pad[_sl(2, n + 2)]   # f'_{i+1}
+            fp_m1 = fp_pad[_sl(0, n)]        # f'_{i-1}
+            F_tilde = fp + self._eps_d * (fp_p1 - 2.0 * fp + fp_m1)
+
+            # Step 4: accumulate −∂(ψu)/∂x_ax
+            result -= F_tilde
+
+        return result
 
 
 # ── WENO5 reconstruction kernels (vectorised) ─────────────────────────────
@@ -249,9 +396,56 @@ def _weno5_neg(xp, q0, q1, q2, q3, q4):
     return w0*r0 + w1*r1 + w2*r2
 
 
-def _pad_zero(xp, arr, axis: int, n_ghost: int):
-    """Pad array along ``axis`` with n_ghost zero cells on each side."""
-    shape_pad = list(arr.shape)
-    shape_pad[axis] = n_ghost
-    pad = xp.zeros(shape_pad)
-    return xp.concatenate([pad, arr, pad], axis=axis)
+def _pad_bc(xp, arr, axis: int, n_ghost: int, bc_type: str):
+    """Pad ``arr`` along ``axis`` with ``n_ghost`` ghost cells.
+
+    Implements the ghost-cell strategies from §4 sec:weno5_boundary.
+
+    Parameters
+    ----------
+    xp        : array namespace (numpy or cupy)
+    arr       : array to pad
+    axis      : axis along which to pad
+    n_ghost   : number of ghost cells on each side (3 for WENO5)
+    bc_type   : 'periodic' | 'neumann' | 'outflow' | 'zero'
+
+    Returns
+    -------
+    padded array with shape arr.shape[axis] + 2*n_ghost along ``axis``
+    """
+    n = arr.shape[axis]
+
+    def _sl(start, stop=None):
+        # 指定軸のスライスを生成するヘルパー
+        s = [slice(None)] * arr.ndim
+        s[axis] = slice(start, stop)
+        return tuple(s)
+
+    if bc_type == 'periodic':
+        # 周期BC: node-centered グリッドでは node 0 と node n-1 が同一物理点。
+        # ゴーストセルは重複端点を含まない一意なセルを使う（§4 warnbox 精度への影響）。
+        # left  = arr[n-1-n_ghost : n-1]  (arr[Nx-3:Nx])
+        # right = arr[1 : 1+n_ghost]      (arr[1:4])
+        left  = arr[_sl(n - 1 - n_ghost, n - 1)]
+        right = arr[_sl(1, 1 + n_ghost)]
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    elif bc_type == 'neumann':
+        # 対称反射BC: ∂ψ/∂n = 0（偶数次微分を保存する even extension）
+        left  = xp.flip(arr[_sl(0, n_ghost)],        axis=axis)
+        right = xp.flip(arr[_sl(n - n_ghost, n)],    axis=axis)
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    elif bc_type == 'outflow':
+        # 流出BC: 境界値を一定外挿（境界近傍は O(h) に低下, §4 warnbox 精度への影響）
+        left  = xp.repeat(arr[_sl(0, 1)],       n_ghost, axis=axis)
+        right = xp.repeat(arr[_sl(n - 1, n)],   n_ghost, axis=axis)
+        return xp.concatenate([left, arr, right], axis=axis)
+
+    else:  # 'zero' — ゼロゴースト（後方互換デフォルト）
+        shape_pad = list(arr.shape)
+        shape_pad[axis] = n_ghost
+        pad = xp.zeros(shape_pad, dtype=arr.dtype)
+        return xp.concatenate([pad, arr, pad], axis=axis)
+
+

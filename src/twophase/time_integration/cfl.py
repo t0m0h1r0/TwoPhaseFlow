@@ -94,11 +94,13 @@ class CFLCalculator:
         h = self._h_min
         cfl = self.cfl
 
-        # Max speed
-        u_max = max(float(xp.max(xp.abs(vel))) for vel in velocity_components)
-        u_max = max(u_max, 1e-14)
+        # Sum of per-axis max speeds (paper §8 Eq.(dt_adv)):
+        #   Δt_adv = CFL · h / Σ_i max|u_i|
+        # Using sum rather than max gives a tighter (correct) stability bound.
+        u_sum = sum(float(xp.max(xp.abs(vel))) for vel in velocity_components)
+        u_sum = max(u_sum, 1e-14)
 
-        dt_conv = cfl * h / u_max
+        dt_conv = cfl * h / u_sum
 
         dt = dt_conv
 
@@ -111,7 +113,10 @@ class CFLCalculator:
             dt = min(dt, dt_visc)
 
         # Capillary wave CFL (§8.4 Eq.(dt_sigma))
+        # Apply the same CFL safety factor as convective/viscous constraints.
+        # Without it, dt == dt_sigma (the marginal stability limit), which can
+        # cause capillary instability that breaks physical symmetry.
         if self._dt_sigma is not None:
-            dt = min(dt, self._dt_sigma)
+            dt = min(dt, cfl * self._dt_sigma)
 
         return max(dt, 1e-8)

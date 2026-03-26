@@ -1,0 +1,320 @@
+% paper/sections/08_pressure.tex
+\section{圧力 Poisson 方程式（PPE）の導出と離散化}
+\label{sec:pressure}
+
+\subsection{変密度 Projection 法の段階的導出}
+\label{sec:projection_derivation}
+
+第\ref{sec:collocate}章（§\ref{sec:helmholtz}）では，\textbf{等密度場（$\rho = \mathrm{const}$）を仮定した}
+Helmholtz 分解を用いて Projection 法の幾何学的意味と「発散を取ると PPE が得られる」数学的論理を説明した．
+本節ではこの定式化を気液二相流に不可欠な\textbf{変密度場}へ拡張し，
+なぜ可変係数演算子 $\bnabla\cdot(1/\rho\,\bnabla p)$ が現れるかを段階的に導出する．
+
+Projection 法（Chorin, 1968 \cite{Chorin1968}）の本質は，Navier-Stokes 方程式を
+「\textbf{速度予測ステップ}」と「\textbf{圧力・速度補正ステップ}」の2段階に分解することにある．
+本稿では van Kan（1986）の \textbf{IPC（Incremental Pressure Correction）法}を採用し，
+予測ステップに前時刻圧力 $-\bnabla p^n$ を組み込む（§\ref{sec:time_int}，式~\eqref{eq:predictor_ab2_ipc}）．
+これにより，標準 Chorin 法に固有の $\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される．
+変密度場ではこの分解に特別な注意が必要であり，以下に丁寧に導出する．
+
+\subsubsection{Step 1：予測速度（Predictor）}
+
+時刻 $t^{n+1}$ の離散 NS 方程式（無次元形）は：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^{n+1} - \bu^n}{\Delta t}
+  = \underbrace{-\rho^{n+1}(\bu^n\cdot\bnabla)\bu^n
+    + \frac{1}{Re}\bnabla\cdot[\mu^{n+1}(\bnabla\bu^{n+1}+\bnabla^T\bu^{n+1})]
+    + \bm{F}_\text{ext}^{n+1}}_{\displaystyle \equiv \bm{R}^{n+1}}
+  - \bnabla p^{n+1}
+  \label{eq:NS_full}
+\end{equation}
+
+\noindent\textbf{時間離散化の注意：} 対流項は AB2（式~\eqref{eq:predictor_ab2_ipc}）で離散化し IPC 法に従い前時刻圧力 $-\bnabla p^n$ を陽的に加える．粘性項の表記 $\bnabla\cdot[\mu^{n+1}(\bnabla\bu^{n+1}+\cdots)]$ は概念的な後退 Euler 形式であるが，実装では Crank--Nicolson（$\mathcal{O}(\Delta t^2)$）を採用する（詳細は§\ref{sec:advection}，式~\eqref{eq:crank_nicolson}）．本節の導出では Backward Euler 形式で統一し Projection 法の圧力--速度分離構造を示す．
+
+IPC 法では，前時刻圧力 $-\bnabla p^n$ を陽的に加えて\textbf{予測速度} $\bu^*$ を定義する：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^* - \bu^n}{\Delta t} = \bm{R}^{n+1} - \bnabla p^n
+  \quad\Longrightarrow\quad
+  \bu^* = \bu^n + \frac{\Delta t}{\rho^{n+1}}\bigl(\bm{R}^{n+1} - \bnabla p^n\bigr)
+  \label{eq:predictor}
+\end{equation}
+$\bu^*$ は一般に発散フリーではない（$\bnabla\cdot\bu^* \neq 0$）．
+
+式~\eqref{eq:predictor} に現れる $\rho^{n+1}$ は，同一時間ステップ内で事前に完了している CLS 移流ステップ（§\ref{sec:algorithm}，Step 1）が更新した密度場 $\rho^{n+1}_{i,j} = \rho_l + (\rho_g - \rho_l)\,\psi^{n+1}_{i,j}$ から得る．全体アルゴリズムの実行順序（CLS 移流 → Predictor → PPE → Corrector）については §\ref{sec:algorithm} を参照のこと（CLS 再初期化・曲率評価を含む合計7ステップ構成）．
+
+\subsubsection{Step 2：圧力補正（Corrector）}
+
+式 \eqref{eq:NS_full} から式 \eqref{eq:predictor} を引くと，
+圧力増分 $\delta p \equiv p^{n+1} - p^n$ と速度補正の関係が得られる：
+\begin{equation}
+  \rho^{n+1}\frac{\bu^{n+1} - \bu^*}{\Delta t} = -\bnabla p^{n+1} + \bnabla p^n = -\bnabla(\delta p)
+  \quad\Longrightarrow\quad
+  \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla(\delta p)
+  \label{eq:corrector}
+\end{equation}
+
+\subsubsection{Step 3：発散フリー条件から PPE を導く}
+
+$\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
+式 \eqref{eq:corrector} の両辺に $\bnabla\cdot(\cdot)$ を作用させると：
+\begin{align}
+  \bnabla\cdot\bu^{n+1}
+  &= \bnabla\cdot\bu^* - \Delta t\,\bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right) = 0
+  \notag \\
+  &\Longrightarrow\quad
+  \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
+  = \frac{1}{\Delta t}\,\bnabla\cdot\bu^*
+  \label{eq:PPE_derivation}
+\end{align}
+
+以上の3ステップ（Predictor・PPE・Corrector）が変密度 IPC 射影法の骨格であり，
+完全な7ステップ実装順序は§\ref{sec:algorithm}（特に図~\ref{fig:ns_solvers}）を参照のこと．
+
+\noindent\textbf{初期条件 $p^0$ の設定（$t=0$ での圧力場）：}
+IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
+推奨される初期化戦略は問題に応じて以下から選択する：
+\begin{itemize}
+  \item \textbf{静止液滴（検証問題）：} Young-Laplace 解 $p^0 = \sigma\kappa_0$（液相内），$p^0 = 0$（気相）を解析的に与える．
+  \item \textbf{一般問題（高密度比を含む）：} $n=0$ でのみ PPE（式~\eqref{eq:PPE_derivation} に $\delta p = p^{n+1}$ を代入）を $p^0 = 0$ 初期値で解き，得られた圧力場を $p^0$ として設定する（1回追加求解のコスト）．
+  \item \textbf{簡易設定：} $p^0 = 0$ のまま発進する．IPC の O(Δt²) 精度は定常後に達成され，初期の数タイムステップ（$O(1)$ 回）では O(Δt) の過渡誤差が生じる可能性があるが，多くの実用問題では影響は無視できる．
+\end{itemize}
+
+\begin{tcolorbox}[warnbox, title={なぜ $\bnabla\cdot(1/\rho\,\bnabla p)$ の形が出るのか？}]
+一様密度（$\rho=\text{const}$）では $\bnabla^2 p = \rho\,\bnabla\cdot\bu^*/\Delta t$ になる．
+変密度場では密度が空間的に変化するため\textbf{可変係数の拡散型演算子}が現れる．
+本稿の実装ではこれを product-rule で展開した微分形式：
+\begin{equation}
+  \nabla\cdot\!\left(\frac{1}{\rho}\nabla p\right)
+  = \frac{1}{\rho}\nabla^2 p - \frac{\nabla\rho}{\rho^2}\cdot\nabla p
+  \label{eq:varrho_product_rule}
+\end{equation}
+として CCD 法（$\Ord{h^6}$）で求解する（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_2d_full}）．
+FVM 離散化との連続体レベルでの等価性と調和平均の根拠については §\ref{sec:fvm_face_coeff} 参照．
+
+\noindent\textbf{展開式の2項の精度評価（界面近傍の注意）：}
+式~\eqref{eq:varrho_product_rule} の2項をそれぞれ CCD で評価するとき，
+平滑領域では両項とも $\Ord{h^6}$ 精度で評価される．
+しかし界面近傍では $|\nabla\rho| \sim \rho_l/\varepsilon$（密度勾配が界面厚さ $\varepsilon \sim h$ の逆数で増大）となるため，
+第2項 $-(\nabla\rho/\rho^2)\cdot\nabla p$ の係数 $|\nabla\rho/\rho^2|$ が $O(1/h)$ に増大する．
+この増幅により，第2項への CCD の打ち切り誤差 $\Ord{h^6}\cdot O(1/h) = \Ord{h^5}$ が界面近傍で顕在化しうる．
+ただし，Balanced-Force 条件（§\ref{sec:balanced_force}）のもとでは
+PPE 左辺と Rhie--Chow 面係数の間で密度勾配項が整合的にキャンセルされるため，
+実質的な寄生流れへの影響は $\Ord{\varepsilon^2} \approx \Ord{h^2}$ の CSF モデル誤差に吸収される
+（詳細は §\ref{sec:ccd_balanced_force} 参照）．
+実用上，$\varepsilon \sim h$ の設定では界面近傍での有効精度は $\Ord{h^4}$ 以上に保たれることが確認されている．
+\end{tcolorbox}
+
+\subsection{Projection 法と PPE}
+\label{sec:ppe}
+
+以上の導出から得られる変密度 Pressure Poisson Equation（PPE，IPC 増分形式）を改めて記す：
+\begin{equation}
+  \bnabla\cdot\!\left( \frac{1}{\rho^{n+1}} \bnabla(\delta p) \right) = \frac{1}{\Delta t}\, \bnabla\cdot \bu^{\ast}
+  \label{eq:PPE_varrho}
+\end{equation}
+
+\subsection{FVM 面係数：調和平均の根拠}
+\label{sec:fvm_face_coeff}
+
+PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散化すると，
+フェイス面係数として\textbf{調和平均}が自然に現れる（積分論理は付録~\ref{app:fvm_face_coeff}）：
+\begin{equation}
+  a_f = \frac{2}{\rho_L + \rho_R}
+  \label{eq:af_exact}
+\end{equation}
+よくある実装ミス：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$．
+\textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ppe_pseudotime}）であり，$\Ord{h^6}$ を達成する．
+式~\eqref{eq:af_exact} は Rhie--Chow 補正係数と一致する（§\ref{sec:rc_implementation}）．
+
+\subsubsection{Rhie--Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}
+\label{sec:rc_divergence}
+
+PPE の右辺に現れる $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$（「Rhie--Chow 補正済み発散」）は，
+本稿のどこにも定義されていないまま使用されていれば実装上の混乱を招く重要な量である．
+以下に明示的に定義する．
+
+\begin{tcolorbox}[defbox, title={Rhie--Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}]
+Rhie--Chow 補正済みフェイス速度（第\ref{sec:collocate}章，式~\eqref{eq:rc-face}）
+\[
+  (u_f)_{i+1/2,j} = \bar{u}_{i+1/2,j}
+    - \Delta t \left(\frac{1}{\rho}\right)^{\!\mathrm{harm}}_{i+1/2,j}
+      \!\bigl[(\nabla p^n)_{i+1/2,j} - \overline{(\nabla p^n)}_{i+1/2,j}\bigr]
+\]
+（ここで $p^n$ は\textbf{前時刻の圧力}を使う陽的 Rhie--Chow 補正；
+新圧力 $p^{n+1}$ は本 PPE の解として未知であるため使用できない．
+また $(1/\rho)^{\mathrm{harm}}_{i+1/2,j} = 2/(\rho^{n+1}_{i,j}+\rho^{n+1}_{i+1,j})$ は
+\textbf{時刻 $n+1$ の密度値}から評価する；
+$\rho^{n+1}$ は全体アルゴリズム Step 3（§\ref{sec:algorithm}）で CLS 移流直後に確定しており，
+Predictor・PPE 求解の時点では既知量である．PPE 左辺演算子 $\mathcal{L}_{\mathrm{CCD}}^{\rho}$ も
+$\rho^{n+1}$ を使うため，Rhie--Chow 面係数に $\rho^{n+1}$ を使うことで密度の時刻が統一される．）
+を用いて，セル $(i,j)$ での\textbf{フェイス速度の発散}として定義する：
+\begin{equation}
+  \bigl(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*\bigr)_{i,j}
+  \equiv
+  \frac{(u_f)_{i+1/2,j} - (u_f)_{i-1/2,j}}{\Delta x}
+  + \frac{(v_f)_{i,j+1/2} - (v_f)_{i,j-1/2}}{\Delta y}
+  \label{eq:rc_divergence}
+\end{equation}
+ここで $(u_f)_{i+1/2,j}$，$(v_f)_{i,j+1/2}$ はそれぞれ $x$・$y$ 方向の東西・南北フェイスで
+計算した Rhie--Chow 補正済みフェイス速度である（$\bu^*$ から計算）．
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={なぜセル中心発散でなくフェイス速度の発散を使うのか：チェッカーボードとの関係}]
+標準的な Projection 法の教科書では，PPE の RHS を
+$\nabla\cdot\bu^* \approx D_x^{(1)}u^* + D_y^{(1)}v^*$（セル中心の発散）として計算する．
+しかし，コロケート格子で Rhie--Chow 補正を用いる場合，
+\textbf{RHS にもフェイス速度の発散を使わなければ整合性が壊れる}：
+
+\begin{itemize}
+  \item Rhie--Chow 補正はフェイス速度からチェッカーボード（$2\Delta x$ 波長）成分を除去する．
+  \item セル中心の発散 $D_x^{(1)}u^*+D_y^{(1)}v^*$ をそのまま RHS に使うと，
+        補正で除いたはずのチェッカーボード成分が RHS 経由で PPE の解に「逆流」し，
+        圧力場に高周波振動が残る．
+  \item フェイス速度の発散 $(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}$（式 \eqref{eq:rc_divergence}）
+        をRHS に使うことで，LHS の Rhie--Chow 補正係数（$a_f$）と整合した離散系が得られ，
+        チェッカーボードが再生しない安定な PPE 求解が可能となる．
+\end{itemize}
+\end{tcolorbox}
+
+\begin{tcolorbox}[warnbox, title={全周ノイマン境界における零モード対策（必須）}]
+全境界が $\partial p/\partial n = 0$（ノイマン条件）の場合，
+PPE の係数行列は特異（行和 $= 0$，零固有値あり）であり，解 $p$ は定数だけの自由度を持つ．
+この自由度を取り除かないと反復ソルバーが発散する．
+
+\textbf{対処法（2択）：}
+\begin{enumerate}
+  \item \textbf{1点固定（ピン条件）：} セル $(i_0, j_0)$（界面が通過しない純粋単相領域；
+        選択基準は §\ref{sec:pinpoint} の原則2参照）の圧力を $p_{i_0,j_0} = 0$ に固定し，
+        その行を単位行ベクトル $\mathbf{e}^T$ に置き換える（Dirichlet 1点）．
+  \item \textbf{平均値拘束：} $\sum_{i,j} p_{i,j} = 0$ という線形拘束を追加し，
+        拡張行列系を解く（精度的に優位）．
+\end{enumerate}
+本稿では実装の単純さから手法 (1) を推奨する．
+
+\medskip
+\noindent\textbf{仮想時間 matrix-free 反復でのピン条件実装（重要）：}
+
+本稿の PPE ソルバー（§\ref{sec:ppe_pseudotime}）は明示的な行列を組み立てない matrix-free 陰解法であるため，
+「行を単位行ベクトルに置き換える」という操作は以下の等価手順で実現する：
+各仮想時間反復ステップ $m$ の更新が完了した後，ピン点の値を強制上書きする：
+\begin{equation}
+  (\delta p)^m_{i_0, j_0} \leftarrow 0
+  \qquad \text{（全反復ステップで更新直後に適用）}
+  \label{eq:pin_overwrite}
+\end{equation}
+この操作は CCD ブロック Thomas 法の前進消去・後退代入とは独立に実行できるため，
+ブロック三重対角構造を破壊しない（各スウィープは行・列単位で完結しており，
+ピン点への上書きは次の反復の RHS に自然に反映される）．
+収束判定は引き続き残差ノルム（式~\eqref{eq:residual}）で行い，
+ピン点の値が $0$ に固定されたまま $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ を達成したことを確認する．
+\end{tcolorbox}
+
+\subsubsection*{圧力固定点（ピン点）の選択}
+\label{sec:pinpoint}
+
+ピン条件 $p_{i_0,j_0} = 0$ を採用する場合，固定点 $(i_0,j_0)$ の選択は
+数値精度とシミュレーション安定性に直接影響する．
+
+\noindent\textbf{原則1：固定点を途中で変更しない．}
+ピン点を変更すると，圧力の基準値（ゼロ点）が不連続に変化し，
+圧力勾配に突発的な誤差が生じる．界面追跡法では密度が時々刻々変化するため，
+圧力の絶対値はフレームごとに変動するが，相対的な空間分布は連続性を持つ必要がある．
+
+\noindent\textbf{原則2：固定点は純粋気相または純粋液相の領域に置く．}
+界面が固定点を通過すると，ピン条件により正しい PPE 方程式が反映されず，
+近傍で圧力誤差が発生し，最悪の場合は収束が崩れる．
+閉容器内の単一気泡ではコーナーセル $(0,0)$ が純液相になることが多い．
+界面が全域を移動する場合（液滴合体・分裂など）は，
+物理的に一方の相が常に存在する領域（壁面付近の液相主流部等）に固定点を置くか，
+固定点を持たない平均値拘束（上記手法 (2)）に切り替えること．
+
+\noindent\textbf{原則3：圧力のゼロ点は相対量である．}
+$p_{i_0,j_0} = 0$ はあくまで数学的拘束であり，
+圧力の絶対値に物理的意味はない．速度補正に必要な勾配 $\nabla p$ は
+スカラーシフトに依存しない．
+
+得られた連立一次方程式は BiCGSTAB 法などで求解する
+（本稿の標準手法は §\ref{sec:ppe_pseudotime} の仮想時間陰解法を推奨；比較は表~\ref{tab:ppe_methods} 参照）．
+
+\subsection{境界条件}
+\begin{itemize}
+    \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）．CCD ブロック方程式への組み込み手順（境界行を $p'_0=0$ で置き換え，変密度項の消滅）は §\ref{sec:ccd_neumann_bc} を参照．
+    \item \textbf{自由表面：} $p = p_{\mathrm{atm}}$（ディリクレ条件）
+    \item \textbf{全周ノイマンの場合：} 解の一意性を保つため，1点の圧力を固定するか平均値を0にする拘束を加える（§\ref{sec:pinpoint}参照）．
+    \item \textbf{周期境界：} 全辺を周期とする場合は FVM 行列に折り返しフェイスおよびゴーストノード拘束を組み込む（§\ref{sec:fvm_periodic} 参照）．零空間対策は壁面 BC と同一（1点ピン条件）．
+\end{itemize}
+
+\begin{tcolorbox}[mybox, title={CCD-Poisson Neumann 境界実装の単体テスト（実装後に必ず確認）}]
+\label{box:neumann_unit_test}
+Neumann 境界条件 $\partial(\delta p)/\partial n = 0$ を CCD スキームに正しく組み込んだか確認するための最小検証セット：
+
+\begin{enumerate}
+  \item \textbf{無負荷試験（Null test）：}
+        $q_h \equiv 0$（右辺ゼロ），初期値 $(\delta p)^0 = 0$ として反復を実行し，
+        $\|\delta p^m\|_2 \to 0$（機械精度）が達成されることを確認．
+        ゼロでなければ境界ブロックの係数設定に誤りあり．
+  \item \textbf{既知解収束テスト（Manufactured Solution）：}
+        Neumann BC に整合する既知解，例えば
+        $p_\text{exact}(x,y) = \cos(\pi x)\cos(\pi y)$
+        （$\partial p/\partial n = 0$ を4辺全てで満たす）に対し，
+        $q_h = \mathcal{L}_h p_\text{exact}$ を右辺として与え，
+        収束後の誤差が $\|p^m - p_\text{exact}\|_2 = \Ord{h^6}$（格子収束）であることを確認．
+        $\Ord{h^2}$ のみなら境界誤差が伝播しており，§\ref{sec:ccd_bc} の $L^2$ ノルム重み付け解析（式~\eqref{eq:bc_L2_weighting}）を参照．
+  \item \textbf{零モード（定数解）のフィルタリング確認：}
+        $q_h \equiv 0$ で $(\delta p)^0 = c$（定数）を初期値として反復し，
+        ピン条件（§\ref{sec:pinpoint}）が正しく機能して $p_{i_0,j_0} \to 0$ が保たれることを確認．
+        定数モードが収束を妨げる場合は零モード除去の実装を確認すること．
+\end{enumerate}
+\end{tcolorbox}
+
+\subsubsection{FVM PPE 行列の周期境界条件対応}
+\label{sec:fvm_periodic}
+
+壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
+周期境界を持つ計算領域ではそのまま適用できない．
+本稿の実装では以下の3点を変更して周期 FVM 行列を組み立てる．
+
+\paragraph{（1）折り返しフェイスの追加}
+通常の軸 $x$ 方向内部フェイスはノード $i\,(i=0,\ldots,N-2)$ とノード $i+1$ を結ぶ
+$N-1$ 本で構成される．
+周期 BC ではさらに\textbf{折り返しフェイス（wrap face）}
+としてノード $N_x-1$ とノード $0$ を結ぶフェイスを追加する：
+\begin{equation}
+  a_{N_x - 1/2} = \frac{2}{\rho_{N_x-1} + \rho_0}
+  \label{eq:af_wrap}
+\end{equation}
+このフェイスにより，スパース行列は完全な循環ステンシルを持つ．
+
+\paragraph{（2）境界半格子体積補正の省略}
+壁面 BC では境界ノード（$i=0$ または $i=N$）の制御体積が
+$h/2$（半格子幅）であるため，フェイス係数の寄与を2倍に補正する．
+周期 BC ではすべてのノードが同じ格子幅 $h$ の制御体積を持つため，
+この補正は行わない（$a_f / h^2$ を一様に適用）．
+
+\paragraph{（3）ゴーストノードの同一性拘束}
+本稿の格子は各軸方向に $N+1$ ノード（インデックス $0,1,\ldots,N$）を持つ．
+インデックス $N$ のノードは物理的に $0$ の周期像（ゴーストノード）であり，
+独立な自由度ではない．
+これらのゴーストノードに対応するスパース行列の行を
+\textbf{同一性拘束行（identity-minus）}で置き換える：
+\begin{equation}
+  p_{\mathrm{ghost}} - p_{\mathrm{src}} = 0
+  \quad\Longleftrightarrow\quad
+  A[\mathrm{ghost},\,\mathrm{ghost}] = 1,\quad
+  A[\mathrm{ghost},\,\mathrm{src}]   = -1,\quad
+  b[\mathrm{ghost}] = 0
+  \label{eq:ghost_identity}
+\end{equation}
+ここで $\mathrm{src}$ はゴーストノードに対応する物理ノード（インデックス $0$）を指す．
+各軸方向に独立にゴーストノードを列挙し，複数軸で同時にゴーストとなるコーナー節点は
+最初の軸の拘束のみを採用する（重複適用を避けるため）．
+
+\begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
+  式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
+  充填率 \texttt{fill\_factor}$=1$ の不完全 LU（ILU(0)）を前処理として使用すると，
+  BiCGSTAB の収束が著しく遅延する（FVM 行は対角優位だが同一性拘束行は異なる構造を持つため）．
+  実装では周期 BC に対して \texttt{fill\_factor}$=10$ に引き上げることで安定収束を確認した．
+  直接法（SuperLU / spsolve）はこの問題を回避できるため，
+  収束診断の際は \texttt{ppe\_solver\_type='lu'} で動作確認を行うと有効である．
+\end{tcolorbox}
+
