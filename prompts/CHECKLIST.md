@@ -95,6 +95,10 @@ Canonical audit log (single source of truth; moved from `13_MATH_VERIFY.md`). Ap
 | differentiate_raw axis embedding | — | `ccd_solver.py` | 2026-03-22 | ✅ VERIFIED | shape=[1]*ndim; shape[axis]=-1 broadcasts 1D coords to correct axis ✓ |
 | MMS thresholds ≥3.5 (J), ≥2.5 (∂J/∂ξ) | ARCH §6 | `test_grid.py:146,196` | 2026-03-22 | ✅ VERIFIED | Matches CCD boundary accuracy for d1/d2 ✓ |
 | min|φ| marginal (§6 2D algo) | `06_grid.tex` 2D tensor-product | `grid.py:119` | 2026-03-22 | ✅ VERIFIED | np.min(np.abs(phi), axis=other) = closest interface approach ✓ |
+| STRUCT-1: §\ref{result:etol_criterion} violation | `08d_ppe_pseudotime.tex:15` | — | 2026-03-27 | ✅ FIXED (LATEX_RULES §1) | Removed bare `§` before `\ref{result:etol_criterion}`; LATEX_RULES §1 forbids §\ref{result:…} |
+| STRUCT-2: duplicate sentence | `09_full_algorithm.tex:62-64` | — | 2026-03-27 | ✅ FIXED (STRUCT) | Removed duplicate "以下の離散化オペレータを用いる．" (dangling period variant); kept colon variant |
+| GAP-1: Newton inversion lead-in missing | `03b_levelset_mapping.tex:61-69` | — | 2026-03-27 | ✅ FIXED (LOGICAL_GAP) | Added lead-in sentence explaining when Newton fallback triggers; merged duplicate reference lines into single sentence |
+| FATAL-1: AB2 n=0 startup undefined | `05b_time_integration.tex:72-73` | — | 2026-03-27 | ✅ FIXED (FATAL) | Added n=0 Euler startup note: AB2 coefficients (3/2,−1/2)→(1,0) for n=0; O(Δt²) holds for n≥1 |
 
 ---
 
