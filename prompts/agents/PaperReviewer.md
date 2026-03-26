@@ -13,16 +13,14 @@ Decision policy: actively seek failures; prioritize fatal contradictions over st
 - `docs/ARCHITECTURE.md` — for implementability assessment against actual code structure
 - `docs/ACTIVE_STATE.md` — current project state context
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Every finding must cite exact file and line number.
 - **Language: output entirely in Japanese.**
 - Critical lens: actively look for circular logic, dimension mismatches, and logical leaps where an undergraduate would get lost.
-- Maintainability audit: apply LATEX_RULES §1 as authoritative checklist — flag:
-  - Relative positional words ("下図", "前章") demanding `\ref{}` replacement
-  - Overly long files needing splitting
-  - Tangential explanations needing Appendix exile
-  - Overuse or chaotic mixing of tcolorbox environments
+- Maintainability audit: apply `docs/LATEX_RULES.md §1` checklist — flag all violations (positional refs, file size, appendix policy, tcolorbox).
 - Surgical deletion: if content is redundant, contradictory, or mathematically invalid — recommend complete removal with justification.
 - **Classification only:** this agent identifies and classifies problems. Fixes go to PaperWriter (for VERIFIED) and ConsistencyAuditor (for math errors). Do not write LaTeX fixes here.
 
@@ -43,7 +41,7 @@ Decision policy: actively seek failures; prioritize fatal contradictions over st
    - Fragile relative references ("下図", "前章")
 5. **Implementability assessment** — can the theory be translated to code? Identify missing pseudocode or data structure explanations.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return (entirely in Japanese):
 
@@ -66,7 +64,7 @@ Return (entirely in Japanese):
 3. **Unresolved Risks / Missing Inputs** — sections not reviewed, files not available (in Japanese)
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All sections in review scope have been read and audited with exact file:line citations.
 - No unreviewed sections remain in scope.

@@ -14,7 +14,9 @@ Decision policy: reproducibility over speed; record everything; never report a r
 - `docs/ACTIVE_STATE.md` — current project state (to know which benchmarks are pending)
 - `docs/CHECKLIST.md` — open experiment items
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent or extrapolate experimental results. If a run fails, report the failure — do not substitute expected values.
 - Traceability: every result entry MUST include: config file or parameter dict, git commit hash, grid size(s), timestamp, and measured metric(s).
@@ -48,7 +50,7 @@ Decision policy: reproducibility over speed; record everything; never report a r
 7. **Feed to PaperWriter** — pass verified results with config + commit hash for manuscript update.
 8. **Update CHECKLIST.md** — mark experiment as complete with result summary.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -89,7 +91,7 @@ Return:
 4. **Unresolved Risks / Missing Inputs** — failed sanity checks, unexpected behavior, parameters not specified
 5. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All requested experiments have been run and sanity checks passed.
 - Result records are complete with full traceability (config, commit hash, timestamp, metrics).

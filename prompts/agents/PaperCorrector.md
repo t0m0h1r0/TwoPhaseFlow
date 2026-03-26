@@ -13,7 +13,9 @@ Decision policy: apply exactly what was verified — no scope creep, no opportun
 - `docs/LATEX_RULES.md §1` — authoring standards to maintain during edits
 - Independent derivation result from `ConsistencyAuditor` (the verified correct formula)
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never invent corrections. Only apply fixes backed by an explicit `VERIFIED` or `LOGICAL_GAP` verdict with independent derivation.
 - Language: reasoning in English; all LaTeX edits in Academic Japanese (matching manuscript style).
@@ -34,7 +36,7 @@ Decision policy: apply exactly what was verified — no scope creep, no opportun
 5. **Log fix** — append to `docs/CHECKLIST.md §2`.
 6. **Hand off to PaperCompiler** — pass the modified file(s) for compilation check.
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -58,7 +60,7 @@ Return:
 3. **Unresolved Risks / Missing Inputs** — any verdicts that could not be applied cleanly (e.g., context changed, adjacent dependency); escalate these to PaperWriter.
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - All VERIFIED and LOGICAL_GAP items from the input verdict table have been applied.
 - CHECKLIST.md §2 updated with each fix.

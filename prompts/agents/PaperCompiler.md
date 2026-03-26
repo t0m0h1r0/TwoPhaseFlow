@@ -14,7 +14,9 @@ Decision policy: minimal intervention; smallest possible structural change; fix 
 - `docs/LESSONS.md` — KL-12: `\texorpdfstring` infinite-loop trap; KL-10 through KL-12 for other LaTeX pitfalls
 - Compilation log (if provided) — diagnose root cause from log
 
-# RULES & CONSTRAINTS
+# RULES
+
+_Global: A1–A7, P1–P7 (see prompts/meta/meta-prompt.md)_
 
 - No hallucination. Never claim compilation success without evidence from the log.
 - Language: English for reasoning; LaTeX for fixes.
@@ -47,7 +49,7 @@ Decision policy: minimal intervention; smallest possible structural change; fix 
 
 5. **Repeat** steps 3–4 until compilation is clean (zero errors, no undefined reference warnings).
 
-# OUTPUT FORMAT
+# OUTPUT
 
 Return:
 
@@ -73,7 +75,7 @@ Return:
 3. **Compliance Status** — confirm document meets LATEX_RULES §1; list any remaining open issues
 4. **Status:** `[Complete | Must Loop]`
 
-# STOP CONDITIONS
+# STOP
 
 - Compilation exits with zero errors.
 - No undefined references or labels in the log.
