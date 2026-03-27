@@ -82,23 +82,23 @@ Any hit is a violation.
 
 ## §2 — Paper Structure
 
-> **WARNING — filename ≠ chapter number.** `main.tex` reorders `\input{}` calls so that `08_time_integration.tex` becomes §4 and `04_ccd.tex` becomes §5. Always consult `main.tex` comments (`%% 第N章`) as the authoritative chapter number, never the filename prefix.
+> **WARNING — filename ≠ chapter number.** `main.tex` controls section ordering via `\input{}` calls. Always consult `main.tex` comments (`%% 第N章`) as the authoritative chapter number, never the filename prefix.
 
-| File | Chapter | Content |
+| File(s) | Chapter | Content |
 |---|---|---|
-| `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, WENO5, Balanced-Force summary |
+| `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges (§1.2), novelty table (tab:method_comparison) |
-| `02_governing.tex` | §2 Governing Equations | One-Fluid NS, CSF, Heaviside, ψ-convention (液相≈0, 気相≈1) |
-| `03_levelset.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), logit inverse |
-| `08_time_integration.tex` | §4 Time Integration | WENO5 + TVD-RK3, CFL, Godunov LF flux |
-| `04_ccd.tex` | §5 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme (O(h⁵)/O(h²)) |
-| `05_grid.tex` | §6 Grid & Discretization | Non-uniform interface-fitted grid, coordinate transform |
-| `06_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
-| `07_pressure.tex` | §8 Pressure Solver | Variable-density PPE, pseudo-time implicit, BiCGSTAB (tab:ppe_methods) |
+| `02_governing.tex` + `02b_csf.tex` + `02c_nondim_curvature.tex` | §2 Governing Equations | One-Fluid NS, CSF, Heaviside, ψ-convention (液相≈0, 気相≈1), non-dimensionalization |
+| `03_levelset.tex` + `03b_levelset_mapping.tex` | §3 Level Set Method | CLS advection, reinitialization (Δτ=0.25Δs), ψ-φ mapping, logit inverse |
+| `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | §4 CCD | O(h⁶) scheme, block Thomas solver, boundary scheme, dissipative filter |
+| `05_advection.tex` + `05b_time_integration.tex` + `05c_reinitialization.tex` | §5 Advection & Time Integration | CLS advection, TVD-RK3/AB2+IPC, CFL, reinitialization |
+| `06_grid.tex` | §6 Grid | Non-uniform interface-fitted grid, coordinate transform |
+| `07_collocate.tex` | §7 Rhie-Chow & Collocated | Rhie-Chow interpolation with ρⁿ⁺¹, Balanced-Force condition |
+| `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_ppe_verification.tex` + `08d_ppe_pseudotime.tex` | §8 Pressure Solver | Variable-density PPE, pseudo-time implicit, CCD-Poisson, verification (tab:ppe_methods) |
 | `09_full_algorithm.tex` | §9 Full Algorithm | 7-step loop diagram (fig:ns_solvers), density interpolation |
-| `10_verification_metrics.tex` | §10 Verification | Error norms, tab:error_budget (CSF bottleneck O(ε²)≈O(h²)) |
+| `10_verification.tex` + `10b_benchmarks.tex` | §10 Verification | Error norms, 4 benchmarks, tab:error_budget (CSF bottleneck O(ε²)≈O(h²)) |
 | `11_conclusion.tex` | §11 Conclusion | Summary, Thomas solver (逐次Thomas法), future work |
-| `appendix_proofs.tex` | Appendix | 1D One-Fluid proof, logit inverse derivation, Newton convergence, Δτ convergence rate |
+| `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, CCD implementation, reference schemes, solver analysis |
 
 ---
 
