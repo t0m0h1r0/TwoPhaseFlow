@@ -1,101 +1,238 @@
-# **Research-to-Paper-to-Code Workflow System**
+# Research-to-Paper-to-Code Workflow System
 
-This system is a deterministic, self-evolving prompt architecture designed to transform ideas into "validated scientific papers," "correct numerical solvers," and "robust infrastructure."
+A deterministic, self-evolving prompt architecture for transforming ideas into validated scientific papers, correct numerical solvers, and robust infrastructure.
 
-It is designed NOT to maximize the LLM's "creativity," but rather to maximize **Correctness, Traceability, Reproducibility, and Structural Integrity**.
+Designed NOT to maximize LLM creativity — designed to maximize **Correctness, Traceability, Reproducibility, and Structural Integrity**.
 
-## **1\. Core Axioms**
+---
 
-This system operates on strict rules defined in meta-prompt.md.
+## 1. Core Axioms
 
-* **3-Layer Traceability:** The chain of Equation → Discretization → Code must ALWAYS be preserved.  
-* **External Memory First:** Never rely on the LLM's implicit context. All states, decisions, and assumptions must be explicitly written to files under the docs/ directory (e.g., ACTIVE\_STATE.md, ASSUMPTION\_LEDGER.md).  
-* **Strict Layer Separation:** Logic/content/tags/styles must be separated. The numerical solver (core math) and infrastructure (I/O, logging) must be completely isolated.  
-* **Diff-First Output:** Full file rewrites are prohibited. The system enforces patch-style edits to save tokens and prevent context destruction.
+Defined in `meta/meta-tasks.md`. All agents obey these unconditionally.
 
-## **2\. Directory Structure**
+| Axiom | Rule |
+|-------|------|
+| A1 Token Economy | diff > rewrite; reference > duplication; no redundancy |
+| A2 External Memory First | all state in `docs/`; never rely on implicit context |
+| A3 3-Layer Traceability | Equation → Discretization → Code chain must be preserved |
+| A4 Separation | never mix logic/content/tags/style; never mix solver/infra |
+| A5 Solver Purity | infrastructure must not affect numerical results |
+| A6 Diff-First Output | no full file rewrites unless explicitly required |
+| A7 Backward Compatibility | preserve semantics; upgrade by mapping, never by discarding |
+| A8 Git Governance | `main` protected; `paper`/`code` branches only; merge-only into `main` |
 
-We recommend the following directory layout for your project. Note that all core system prompts are stored in the meta/ directory.
+---
 
-project-root/  
-├── meta/                      \# Core system prompts  
-│   ├── meta-prompt.md         \# The Constitution / Core rules  
-│   ├── meta-bootstrapper.md   \# Bootstrapper for initial agent generation  
-│   ├── prompt-architect.md    \# \[Generated\] Creates role-specific prompts  
-│   ├── prompt-compressor.md   \# \[Generated\] Compresses memory/prompts  
-│   └── prompt-auditor.md      \# \[Generated\] Validates outputs against axioms  
-│  
-├── agents/                    \# \[Generated\] Task-specific prompts (e.g., paper-writer)  
-│  
-├── docs/                      \# External Memory (Mandatory)  
-│   ├── ACTIVE\_STATE.md        \# Current phase and next actions  
-│   ├── CHECKLIST.md           \# Task completion status  
-│   ├── ASSUMPTION\_LEDGER.md   \# Ledger of constraints and assumptions  
-│   ├── LESSONS.md             \# Record of failures and solutions  
-│   └── ARCHITECTURE.md        \# High-level design  
-│  
-├── paper/                     \# LaTeX workspace for the paper  
-└── src/                       \# Source code  
-    ├── solver/                \# Pure numerical computation core  
-    └── infra/                 \# I/O, logging, visualization
+## 2. Directory Structure
 
-## **3\. Initial Deployment (Bootstrapping)**
+```
+project-root/
+├── prompts/
+│   ├── meta/                     # Meta system (canonical source)
+│   │   ├── meta-deploy.md        # Deploy & environment optimization
+│   │   ├── meta-tasks.md         # Agent roles, constraints, task specs
+│   │   ├── meta-persona.md       # Agent personality, skills, decision styles
+│   │   └── meta-workflow.md      # Inter-agent coordination, state machine, handoffs
+│   │
+│   └── agents/                   # Agent prompt files (generated or maintained here)
+│       ├── ResearchArchitect.md
+│       ├── WorkflowCoordinator.md
+│       ├── CodeArchitect.md
+│       ├── CodeCorrector.md
+│       ├── CodeReviewer.md
+│       ├── TestRunner.md
+│       ├── ExperimentRunner.md
+│       ├── PaperWriter.md
+│       ├── PaperReviewer.md
+│       ├── PaperCompiler.md
+│       ├── PaperCorrector.md
+│       ├── ConsistencyAuditor.md
+│       ├── PromptArchitect.md
+│       ├── PromptCompressor.md
+│       └── PromptAuditor.md
+│
+├── docs/                         # External Memory (mandatory)
+│   ├── ACTIVE_STATE.md           # Current phase, branch, last decision, next action
+│   ├── CHECKLIST.md              # CHK-ID task tracking
+│   ├── ASSUMPTION_LEDGER.md      # ASM-ID assumption registry
+│   ├── LESSONS.md                # LES-ID failure patterns and fix recipes
+│   └── ARCHITECTURE.md           # High-level design (authority source)
+│
+├── paper/                        # LaTeX workspace
+└── src/
+    ├── solver/                   # Pure numerical computation (solver domain)
+    └── infra/                    # I/O, logging, visualization (infra domain)
+```
 
-To start using the system, you need to generate the **Core Agents** optimized for your specific execution environment (e.g., Claude, Codex, Ollama).
+---
 
-### **Shortest Path to Deployment**
+## 3. Meta System Overview
 
-For the initial deployment, simply place these two files in your meta/ directory:
+The `meta/` directory is the **canonical source** for the entire agent system.
+From these 4 files alone, all 15 agents can be reconstructed from scratch.
 
-1. meta-prompt.md  
-2. meta-bootstrapper.md
+| File | Purpose |
+|------|---------|
+| `meta-deploy.md` | How to bootstrap the system; environment profiles (Claude/Codex/Ollama/Mixed); deployment workflow; validation checklist |
+| `meta-tasks.md` | Global axioms (A1–A8); per-agent task specifications (PURPOSE, INPUTS, PROCEDURE, OUTPUT, STOP) |
+| `meta-persona.md` | Per-agent personality, skills, decision styles, and critical behaviors |
+| `meta-workflow.md` | Workflow state machine; agent handoff map; control protocols P1–P8; meta-evolution policy |
 
-### **First Execution**
+---
 
-Run your LLM (preferably an agentic IDE tool) with a command like this:
+## 4. Initial Deployment (Bootstrapping)
 
-Execute EnvMetaBootstrapper  
-Using meta-bootstrapper.md  
-On meta-prompt.md  
+### From Scratch
+
+Place the 4 meta files in `prompts/meta/`. Then run:
+
+```
+Execute EnvMetaBootstrapper
+Using meta-deploy.md
+Input meta-tasks.md, meta-persona.md, meta-workflow.md
 Target Claude
+```
 
-After execution, follow the DEPLOYMENT NOTES provided in the output to save prompt-architect.md, prompt-compressor.md, and prompt-auditor.md into the meta/ directory. Your initial deployment is now complete.
+The bootstrapper will:
+1. Initialize external memory files under `docs/`
+2. Generate all 15 agent prompts (environment-optimized)
+3. Output an audit report and deployment notes
 
-## **4\. Author's Notes & Best Practices: The Claude Code Workflow**
+### First Agent to Run
 
-**Conclusion:** Claude Code (in VSCode) is highly compatible with this system—much more so than standard chat interfaces or basic completion tools.
+```
+Execute ResearchArchitect
+```
 
-Because this architecture is fundamentally a **"File-Based State Management System"**, you must treat the LLM as a **File Manipulation Agent**, not just a text generator.
+ResearchArchitect loads `docs/ACTIVE_STATE.md`, maps your intent, and routes to the appropriate agent.
 
-### **The Optimal Workflow (Zero Copy-Paste)**
+### File-Generation Mode (recommended for Claude Code)
 
-Instead of having the LLM print prompts inline for you to copy, instruct Claude to generate the files directly in your workspace.
+Instruct the LLM to write files directly — no copy-paste:
 
-1. **Bootstrap via File Generation:**  
-   When running the bootstrapper, ensure your prompt includes instructions like:*"You are a file-generating agent. Read meta-prompt.md and generate three files (prompt-architect.md, prompt-compressor.md, prompt-auditor.md). DO NOT print prompts inline. Instead, WRITE them directly as files in the meta/ workspace."*  
-   Run this via @bootstrap.md or Run bootstrap.md in Claude Code. The files will be created automatically, eliminating human error.  
-2. **Diff-First Update Mode:**  
-   Once the initial files are generated, switch to an "Update Mode" for future iterations.*"If files already exist, DO NOT rewrite. Apply minimal diffs only. Preserve existing structure."*  
-   This aligns perfectly with the system's diff \> rewrite axiom.  
-3. **Advanced: Pipeline Automation:**  
-   You can further automate the workflow by defining pipelines in your bootstrapper:  
-   *Step 1: Generate agents → Step 2: Compress prompts → Step 3: Audit prompts → Step 4: Auto-fix if needed.*  
-   If you change meta-prompt.md in the future, you can simply trigger a command to automatically update all downstream agents via diffs.
+> *"You are a file-generating agent. Read meta-tasks.md, meta-persona.md, and meta-workflow.md. Generate all agent prompt files directly into prompts/agents/. DO NOT print prompts inline."*
 
-## **5\. Executing Tasks**
+---
 
-Once your core agents are ready, use prompt-architect.md to generate task-specific prompts (e.g., paper-writer.md, solver-dev.md, infra-engineer.md).
+## 5. The Execution Loop
 
-**The Execution Loop:**
+1. **Load state:** ResearchArchitect reads `docs/ACTIVE_STATE.md`
+2. **Single-action discipline:** one agent, one objective per step (P5)
+3. **Agent executes:** outputs a diff/patch; never rewrites full files
+4. **Record assumptions:** new constraints → `docs/ASSUMPTION_LEDGER.md` with ASM-ID
+5. **Hand off:** agent routes result to next agent per the handoff map in `meta-workflow.md`
+6. **Audit before merge:** ConsistencyAuditor runs the release checklist; only then merge to `main`
 
-1. **Record State:** Update docs/ACTIVE\_STATE.md before starting.  
-2. **Single-Action Discipline:** Load only ONE role-specific prompt per step.  
-3. **Apply Patch:** The LLM will output a diff/patch. Apply it directly to the code or paper.  
-4. **Record Assumptions:** Log any new constraints to docs/ASSUMPTION\_LEDGER.md with an ASM-ID.  
-5. **Audit:** Run the Auditor agent to ensure layer separation and solver purity are maintained before merging the changes.
+---
 
-## **6\. Meta Rules (Reminders)**
+## 6. Agent Roster
 
-* **Diff \> Rewrite:** Always output minimal changes to prevent context destruction.  
-* **Stop Early \> Guess:** If the agent lacks information, it must STOP and escalate, rather than hallucinating or guessing.  
-* **Explicit \> Implicit:** All decisions must be recorded in the docs/ external memory with IDs. Never rely on the LLM's context window memory.
+| Domain | Agent | Role |
+|--------|-------|------|
+| Coordination | ResearchArchitect | Session start, intent routing |
+| Coordination | WorkflowCoordinator | Master orchestrator, state machine controller |
+| Code | CodeArchitect | Equation → Python implementation + MMS tests |
+| Code | CodeCorrector | Staged numerical debugging |
+| Code | CodeReviewer | Refactoring without numerical change |
+| Code | TestRunner | Convergence analysis, PASS/FAIL verdict |
+| Code | ExperimentRunner | Reproducible benchmark execution |
+| Paper | PaperWriter | LaTeX manuscript authoring |
+| Paper | PaperReviewer | Rigorous peer review (output in Japanese) |
+| Paper | PaperCompiler | LaTeX compilation and repair |
+| Paper | PaperCorrector | Minimal targeted fixes from verified findings |
+| Verification | ConsistencyAuditor | Cross-validates equations ↔ code ↔ paper |
+| Prompt system | PromptArchitect | Generates role-specific agent prompts |
+| Prompt system | PromptCompressor | Reduces token usage without semantic loss |
+| Prompt system | PromptAuditor | Validates prompt correctness (read-only) |
+
+---
+
+## 7. Agent Collaboration Diagram
+
+```mermaid
+flowchart TD
+    User([User]) --> RA
+
+    subgraph session[Session Start]
+        RA[ResearchArchitect]
+    end
+
+    subgraph code[Code Domain — branch: code]
+        WC[WorkflowCoordinator]
+        CArc[CodeArchitect]
+        CRev[CodeReviewer]
+        CCor[CodeCorrector]
+        TR[TestRunner]
+        ER[ExperimentRunner]
+    end
+
+    subgraph paper[Paper Domain — branch: paper]
+        PW[PaperWriter]
+        PR[PaperReviewer]
+        PCor[PaperCorrector]
+        PC[PaperCompiler]
+    end
+
+    subgraph verify[Verification — Release Gate]
+        CA[ConsistencyAuditor]
+    end
+
+    subgraph prompts[Prompt System]
+        PArc[PromptArchitect]
+        PCmp[PromptCompressor]
+        PAud[PromptAuditor]
+    end
+
+    MERGE([merge to main])
+
+    %% Session routing
+    RA -->|code task| WC
+    RA -->|paper write| PW
+    RA -->|paper review| PR
+    RA -->|compile| PC
+    RA -->|experiment| ER
+    RA -->|cross-validate| CA
+    RA -->|prompt task| PArc
+
+    %% Code domain flow
+    WC --> CArc
+    WC --> CRev
+    CRev -->|migration plan| CArc
+    CArc -->|impl done| TR
+    TR -->|PASS| WC
+    TR -->|FAIL — STOP| CCor
+    CCor -->|fix applied| TR
+    ER -->|verified data| PW
+
+    %% Paper domain flow
+    PR -->|VERIFIED / LOGICAL_GAP| PCor
+    PCor -->|fix applied| PC
+    PC -->|unresolvable error| PW
+
+    %% Verification & release
+    WC -->|all components verified| CA
+    CA -->|PAPER_ERROR| PW
+    CA -->|CODE_ERROR| CArc
+    CA -->|gate PASS| MERGE
+
+    %% Prompt system flow
+    PArc -->|generated| PAud
+    PCmp -->|compressed| PAud
+    PAud -->|FAIL| PArc
+```
+
+**Reading the diagram:**
+- Solid arrows show normal handoff direction
+- `FAIL — STOP` means the agent halts and waits for user direction before CCor is invoked
+- ConsistencyAuditor is the sole release gate — nothing merges to `main` without its PASS verdict
+- The Prompt System is self-contained and loops internally until PAud returns PASS
+
+---
+
+## 8. Meta Rules
+
+- **diff > rewrite** — minimal changes only
+- **stop early > guess** — STOP and escalate when information is missing; never hallucinate
+- **explicit > implicit** — all decisions in `docs/` with IDs; never rely on LLM context window
+- **one agent per step** — no multi-goal execution inside a single action
+- **test failure = halt** — TestRunner and WorkflowCoordinator never auto-fix; they STOP and ask
