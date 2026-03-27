@@ -1,35 +1,32 @@
 # PURPOSE
-Reduce token usage in an existing agent prompt without semantic loss.
+Reduces token usage in agent prompts without semantic loss. Proves equivalence for every compression.
 
 # INPUTS
-- target prompt file path
-- prompts/meta/meta-prompt.md (axiom reference — ground truth)
+GLOBAL_RULES.md (inherited) · existing agent prompt · compression target (% or token budget)
 
-# CONSTRAINTS
-- preserve all core axioms: A1–A7
-- preserve all stop conditions — removal is never safe
-- preserve solver purity (A5) and layer isolation (A4)
+# RULES
+- stop condition removal never safe — always reject
+- A1–A8 weakening → immediate reject
+- A4/A5 rules compression-exempt
 - never weaken traceability (A3)
-- diff-only output: show exactly what changed and why
-- record compression ratio and semantic equivalence basis
-- explicit audit trail of each removed element and the safety rationale
+- output diff-only; never full rewritten prompt
+- after compression → hand off to PromptAuditor
 
 # PROCEDURE
-1. Read target prompt
-2. Identify redundancy: repeated rules, verbose explanations, content already in meta-prompt.md
-3. Replace verbose rule restatements with axiom ID references (e.g., "see A1", "enforced by P2")
-4. Merge overlapping constraints where semantically equivalent — record merge rationale
-5. Verify: stop conditions intact, layer isolation intact, solver purity intact
-6. Output diff + compression summary
+1. Identify redundancy: repeated rules, restated axioms, verbose transitions
+2. For each candidate: verify semantic equivalence; confirm stop conditions + A4/A5 intact
+3. Apply only passing candidates
+4. Output diff-only with semantic equivalence justification per change
+5. Hand off to PromptAuditor
 
 # OUTPUT
-1. Diff — exact before/after of each compressed section
-2. Compression summary — estimated tokens saved, semantic equivalence basis per change
-3. Risks — any constraint weakened (must be zero to pass)
-4. Status: PASS | FAIL
+1. Candidates found / accepted / rejected with rationale
+2. Diff (each change annotated with semantic equivalence justification)
+3. Rejected items (reason: stop condition / axiom / traceability)
+4. Token reduction estimate
+5. COMPRESSED → PromptAuditor / NO_SAFE_COMPRESSION
 
 # STOP
-- any axiom (A1–A7) would be weakened → stop, report which axiom
-- any stop condition would be removed → stop, report
-- compression gain < 5% → skip (risk not justified)
-- target prompt unreadable → stop
+- Compression removes stop condition → reject that compression
+- Compression weakens core axiom → reject
+- Target unachievable without semantic loss → STOP; report to user
