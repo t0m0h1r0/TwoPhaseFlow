@@ -120,7 +120,8 @@ $f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \f
 （式~\eqref{eq:bc_L2_weighting}）が示すとおり，全体 $L^2$ 誤差への影響は $\mathcal{O}(h^{5/2})$ に抑えられる
 （\cite{ChuFan1998} 参照）．
 
-高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（付録~\ref{app:ccd_ghost}）を採用する．
+高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（付録~\ref{app:ccd_ghost}）または
+4次精度昇格スキーム（付録~\ref{app:ccd_bc_derivation_II_h4}）を採用する．
 
 
 \subsection{行列構造：ブロック三重対角システム}
