@@ -191,7 +191,7 @@ $N_t = T/\Delta t$ ステップ積分で，初回誤差の寄与は $\leq C\,\Or
 \subsubsection{Crank--Nicolson 法（粘性項）}
 
 粘性項（2階空間微分を含む）は，純陽的処理では厳しい時間刻み制限（$\Delta t < O(h^2)$）を課す．
-これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する：
+これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する（行列構造と Thomas 法の詳細は \ref{box:cn_tridiagonal} 参照）：
 \begin{equation}
   \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
   \label{eq:crank_nicolson}
@@ -245,4 +245,43 @@ $N_t = T/\Delta t$ ステップ積分で，初回誤差の寄与は $\leq C\,\Or
 \end{center}
 
 \textbf{シミュレーションが爆発した場合：}対流 CFL・毛管波制約（式~\eqref{eq:dt_adv},\eqref{eq:dt_sigma}）を確認後，なお爆発する場合はクロス微分項 $\mathcal{D}_{\mathrm{c}}$ が原因の可能性がある．$\Delta t$ を $1/10$ に減らして安定化するか確認する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[algbox, title={CN 対角粘性系の行列構造と Thomas 法による求解}]
+\label{box:cn_tridiagonal}
+対角粘性項 $\mathcal{D}_{\mathrm{d}}(u) = 2\partial_x(\mu\partial_x u) + \partial_y(\mu\partial_y u)$
+の CN 半陰的処理で，$x$ 方向項 $(1/2Re)\cdot 2\partial_x(\mu\partial_x u^*)$
+をLHSに移項すると（$(1/2Re)\cdot 2 = 1/Re$），行 $j$ の連立系は：
+\[
+  \left[\frac{\rho^{n+1}_{ij}}{\Delta t}
+    + \frac{\mu_{i+1/2,j}+\mu_{i-1/2,j}}{Re\,h^2}\right]u^*_{ij}
+  - \frac{\mu_{i+1/2,j}}{Re\,h^2}\,u^*_{i+1,j}
+  - \frac{\mu_{i-1/2,j}}{Re\,h^2}\,u^*_{i-1,j}
+  = \mathrm{RHS}_{ij}
+\]
+の\textbf{三重対角形}となる（下・上対角係数は負；$D_{d,x}$ の因子 $2$ と CN の $1/2$ が相殺して $1/Re$）：
+
+\medskip
+\textbf{$x$ 方向スウィープ（各行 $j$ 独立）：}
+$[\mathbf{L}_x^j]\{u^*_{\cdot,j}\} = \{\mathrm{RHS}^j\}$ を Thomas 法で $\mathcal{O}(N_x)$ 求解．
+\begin{itemize}
+  \item 主対角：$\rho^{n+1}/\Delta t + (\mu_{i+1/2}+\mu_{i-1/2})/(Re\,h^2)$
+  \item 上・下対角：$-\mu_{i+1/2}/(Re\,h^2)$，$-\mu_{i-1/2}/(Re\,h^2)$（ともに負符号）
+\end{itemize}
+
+\textbf{$y$ 方向スウィープ（各列 $i$ 独立）：}
+$y$ 方向の $D_{d,y}(u) = \partial_y(\mu\partial_y u)$（因子 $1$）に対し：
+\begin{itemize}
+  \item 上・下対角：$-\mu_{j+1/2}/(2\,Re\,h^2)$（$y$ 方向は $D_{d,y}$ の因子 $1$ と $1/2Re$ でそのまま $1/(2Re)$）
+  \item $x$ 方向と異なる係数に注意．
+\end{itemize}
+Thomas 法で $\mathcal{O}(N_y)$ 求解．
+
+\textbf{境界条件の組み込み：}
+壁面（ノースリップ，$u^*=0$）では対応行を単位行に置き換える．
+
+\textbf{$x$-$y$ 分割と全体精度：}
+本稿の実装では $y$ 方向 CN を時刻 $n$ の陽的評価で補い（§\ref{warn:cn_cross_derivative}），
+$u^*$-$v^*$ の連立系を $\mathcal{O}(N)$ Thomas 法で完全分離する
+（§\ref{sec:time_accuracy_table} 参照）．
 \end{tcolorbox}

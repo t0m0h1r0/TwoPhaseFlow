@@ -354,3 +354,60 @@ $C_\tau \approx 1.16$ に相当する範囲で両式は整合する（\ref{box:d
 $\Delta\tau_{i,j}$ が陰的 Euler（式~\eqref{eq:pseudo_implicit_raw}）に基づく限り，
 $C_\tau$ を大きくしても発散しない（無条件安定性；\ref{warn:ppe_splitting} 参照）．
 
+\subsubsection{全周 Neumann 境界の可解性条件とゲージ固定点の対称性}
+\label{sec:ppe_gauge_neumann}
+
+\noindent\textbf{可解性条件（Neumann 境界の必要条件）．}
+全境界が $\partial(\delta p)/\partial n = 0$ の場合，
+PPE~\eqref{eq:PPE_discrete} が解を持つための必要十分条件は
+\begin{equation}
+  \int_\Omega q_h \, dV = 0
+  \quad\Longleftrightarrow\quad
+  \sum_{i,j}(q_h)_{i,j}\,h^2 = 0
+  \label{eq:neumann_solvability}
+\end{equation}
+である．発散定理から
+$\sum_{i,j}(q_h)_{i,j}h^2 = (1/\Delta t)\oint_{\partial\Omega}(\bu^*\cdot\hat{n})\,dS$
+であり，固体壁境界 $\bu^*\cdot\hat{n}=0$ では\textbf{自動的に満たされる}（§\ref{sec:ab2_ipc} の壁面 BC 参照）．
+数値誤差による可解性条件の微小な違反が現れる場合は，
+$(q_h)_{i,j} \leftarrow (q_h)_{i,j} - \overline{q_h}$（$\overline{q_h} = $ 全域平均）の
+補正を RHS に適用して厳密に $\sum q_h = 0$ を回復させる．
+
+\medskip
+\noindent\textbf{ゲージ固定点の対称性：中心セル $(N/2,\,N/2)$ の根拠．}
+
+可解性条件が満たされても，解 $\delta p$ は定数零固有モードの自由度を持つ（§\ref{sec:pinpoint}）．
+ピン条件（式~\eqref{eq:pin_overwrite}）でこの自由度を除去する際，
+固定点 $(i_0,j_0)$ の選択は\textbf{数値対称性の保持}に影響する．
+
+正方形領域 $[0,L]^2$ 上の物理設定（単一気泡・静止液滴）が
+$x$-$y$ 面内4倍対称（$x\leftrightarrow L-x$，$y\leftrightarrow L-y$）を持つ場合，
+圧力場も同一の格子対称性を持つ必要がある．
+この対称性を数値的に保持するには，
+ピン条件 $p_{i_0,j_0}=0$ が変換 $i\mapsto N-1-i$ および $j\mapsto N-1-j$ に対して不変であることが必要である：
+\[
+  i_0 = N-1-i_0 \;\text{かつ}\; j_0 = N-1-j_0
+  \;\Longrightarrow\;
+  i_0 = j_0 = \bigl\lfloor N/2 \bigr\rfloor
+\]
+（本稿では $N$ が偶数の正方格子を前提とし，$i_0=j_0=N/2$ を使用する；
+奇数 $N$ の場合は $i_0=j_0=(N-1)/2$ が対称中心だが，本稿ではこの設定は対象としない．）
+
+\begin{tcolorbox}[mybox, title={ゲージ点選択の比較}]
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+\hline
+ゲージ点 & 4倍対称の不変点 & 対称性の保持 \\
+\hline
+$(0,0)$（コーナー） & \texttimes & 破る \\
+$(N/2,\,N/2)$（中心） & \checkmark & 保持 \\
+\hline
+\end{tabular}
+\end{center}
+コーナー点 $(0,0)$ をゲージに選ぶと，対称な物理設定でも圧力ゲージの非対称性が
+速度補正 $\bu^{n+1}=\bu^*-(\Delta t/\rho)\bnabla(\delta p)$ を通じて微小な流れ場非対称性を誘起し，
+長時間積分で蓄積する（symmetry-breaking；§\ref{sec:pinpoint} 原則 2 参照）．
+中心ピンはこの人工的な非対称性をゼロにする選択である．
+\end{tcolorbox}
+
