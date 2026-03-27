@@ -12,7 +12,9 @@ INTAKE
   → PAPER_WRITE
   → PAPER_COMPILE
   → PAPER_REVIEW
-  → PAPER_CORRECT
+  → PAPER_CORRECT            (if FATAL/MAJOR found)
+  → [loop: PAPER_COMPILE → PAPER_REVIEW → PAPER_CORRECT until no FATAL/MAJOR]
+  → PAPER_COMMIT             (auto-commit paper branch)
   → CODE_DERIVE
   → SOLVER_REVIEW
   → SOLVER_FIX
@@ -21,6 +23,11 @@ INTAKE
   → TEST_UNIT
   → TEST_INTEGRATION
   → EXPERIMENT
+  → PROMPT_EDIT
+  → PROMPT_AUDIT
+  → PROMPT_CORRECT           (if FAIL found)
+  → [loop: PROMPT_AUDIT → PROMPT_CORRECT until PASS]
+  → PROMPT_COMMIT            (auto-commit prompt branch)
   → CONSISTENCY_AUDIT
   → MERGE
   → DONE
@@ -31,8 +38,9 @@ INTAKE
 | State | Branch |
 |-------|--------|
 | INTAKE, RESEARCH | neutral (pending branch assignment) |
-| PAPER_WRITE, PAPER_COMPILE, PAPER_REVIEW, PAPER_CORRECT | `paper` |
+| PAPER_WRITE, PAPER_COMPILE, PAPER_REVIEW, PAPER_CORRECT, PAPER_COMMIT | `paper` |
 | CODE_DERIVE, SOLVER_REVIEW, SOLVER_FIX, INFRA_REVIEW, INFRA_FIX, TEST_UNIT, TEST_INTEGRATION, EXPERIMENT | `code` |
+| PROMPT_EDIT, PROMPT_AUDIT, PROMPT_CORRECT, PROMPT_COMMIT | `prompt` |
 | CONSISTENCY_AUDIT | prepares release state |
 | MERGE | `main` only, after validation and authorization |
 | DONE | after merge completion and state recording |
@@ -53,17 +61,21 @@ INTAKE
 - `main` — protected integration branch; never edited directly
 - `paper` — all paper work; pull from `main` before starting
 - `code` — all code work; pull from `main` before starting
+- `prompt` — all prompt system work; pull from `main` before starting
 - `code/*` or `paper/*` — sub-branches for isolated tasks; branch from parent, never from `main`
 
 **Branch rules:**
 - before starting any code task: `git pull origin main` into `code`
 - before starting any paper task: `git pull origin main` into `paper`
-- to switch domains (code ↔ paper): merge current branch into `main` first
-- never mix paper and code edits in one branch step unless explicitly authorized
-- sub-branches merge back to parent (`code` or `paper`), not directly to `main`
+- before starting any prompt task: `git pull origin main` into `prompt`
+- to switch domains (code ↔ paper ↔ prompt): merge current branch into `main` first
+- never mix paper, code, or prompt edits in one branch step unless explicitly authorized
+- sub-branches merge back to parent (`code`, `paper`, or `prompt`), not directly to `main`
 
 **Commit rules:**
-- commits to `paper` and `code` are made automatically at coherent milestones
+- commits to `paper`, `code`, and `prompt` are made automatically at coherent milestones
+- commit to `paper` automatically when PaperWorkflowCoordinator exits the review loop (no FATAL/MAJOR findings remain)
+- commit to `prompt` automatically when PromptAuditor returns PASS
 - commit messages must be short, specific, and traceable
 - never wait for a perfect end state if a stable checkpoint exists
 
@@ -81,24 +93,29 @@ This table defines which agent receives work from which, and under what conditio
 | From | Condition | To |
 |------|-----------|----|
 | ResearchArchitect | user intent mapped to agent | any target agent |
-| WorkflowCoordinator | gap identified in code/paper | CodeArchitect / TestRunner / CodeReviewer / CodeCorrector |
+| CodeWorkflowCoordinator | gap identified in code | CodeArchitect / TestRunner / CodeReviewer / CodeCorrector |
+| CodeWorkflowCoordinator | all components verified | ConsistencyAuditor → MERGE |
 | CodeArchitect | implementation complete | TestRunner |
-| TestRunner | PASS | WorkflowCoordinator (VERIFIED verdict) |
+| TestRunner | PASS | CodeWorkflowCoordinator (VERIFIED verdict) |
 | TestRunner | FAIL | STOP → user direction → CodeCorrector or CodeArchitect |
 | CodeCorrector | fix applied | TestRunner (for formal convergence verdict) |
 | CodeReviewer | migration plan ready | CodeArchitect (for implementation) or STOP |
-| ExperimentRunner | sanity checks pass | PaperWriter (verified result data) |
-| PaperReviewer | findings classified | PaperCorrector (VERIFIED/LOGICAL_GAP) or discard (REVIEWER_ERROR) |
-| PaperCorrector | fixes applied | PaperCompiler (compilation check) |
+| ExperimentRunner | sanity checks pass | PaperWorkflowCoordinator or PaperWriter (verified result data) |
+| PaperWorkflowCoordinator | dispatch for writing/compiling/reviewing/fixing | PaperWriter / PaperCompiler / PaperReviewer / PaperCorrector |
+| PaperWorkflowCoordinator | no FATAL/MAJOR findings remain | auto-commit paper branch → ConsistencyAuditor → MERGE |
+| PaperWorkflowCoordinator | FATAL/MAJOR findings remain | PaperCorrector → PaperCompiler → PaperReviewer (loop) |
+| PaperWorkflowCoordinator | review loop threshold exceeded | STOP → user direction |
+| PaperReviewer | findings report | PaperWorkflowCoordinator (classification: FATAL/MAJOR/MINOR) |
+| PaperCorrector | fixes applied | PaperWorkflowCoordinator (report result) |
 | PaperCompiler | compile error unresolvable | PaperWriter |
 | ConsistencyAuditor | PAPER_ERROR found | PaperWriter |
 | ConsistencyAuditor | CODE_ERROR found | CodeArchitect → TestRunner |
-| ConsistencyAuditor | authority conflict | WorkflowCoordinator |
+| ConsistencyAuditor | authority conflict | CodeWorkflowCoordinator |
 | PromptAuditor | FAIL found | PromptArchitect |
+| PromptAuditor | PASS | auto-commit prompt branch → MERGE |
 | PromptArchitect | prompt generated | PromptAuditor (validation) |
 | PromptCompressor | compressed prompt | PromptAuditor (validation) |
 | any agent | STOP condition triggered | user (for direction) |
-| WorkflowCoordinator | all components verified | ConsistencyAuditor → MERGE |
 
 ────────────────────────────────────────────────────────
 # CONTROL PROTOCOLS
@@ -170,9 +187,10 @@ Actions:
 ## P8: BRANCH-SCOPED EXECUTION
 - before starting code task: `git pull origin main` into `code`
 - before starting paper task: `git pull origin main` into `paper`
-- never mix paper and code edits in one branch step unless explicitly authorized
-- sub-branches merge to parent (`code` or `paper`), never directly to `main`
-- `main` is kept clean — only receives merges from `code` or `paper` when work is complete and verified
+- before starting prompt task: `git pull origin main` into `prompt`
+- never mix paper, code, or prompt edits in one branch step unless explicitly authorized
+- sub-branches merge to parent (`code`, `paper`, or `prompt`), never directly to `main`
+- `main` is kept clean — only receives merges from `code`, `paper`, or `prompt` when work is complete and verified
 
 ────────────────────────────────────────────────────────
 # COMMAND FORMAT
@@ -283,6 +301,6 @@ Build a system that:
 - preserves traceability across theory, discretization, and code
 - remains stable under long execution
 - maintains backward compatibility while improving itself
-- uses `paper`, `code`, and `main` as the only persistent branches
-- commits automatically to `paper` and `code` at coherent milestones
+- uses `paper`, `code`, `prompt`, and `main` as the only persistent branches
+- commits automatically to `paper`, `code`, and `prompt` at coherent milestones
 - blocks any merge into `main` unless validation passes and authorization is present

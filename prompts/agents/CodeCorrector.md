@@ -30,6 +30,6 @@ D  Symmetry Audit: quantify error at each stage; produce spatial matplotlib plot
 4. FIX_APPLIED → TestRunner / ROOT_CAUSE_NOT_FOUND
 
 # STOP
-- All protocols exhausted, fix not found → STOP; report to WorkflowCoordinator
+- All protocols exhausted, fix not found → STOP; report to CodeWorkflowCoordinator
 - Root cause requires paper change → ConsistencyAuditor
 - Fix touches infra or multiple layers → STOP; split passes

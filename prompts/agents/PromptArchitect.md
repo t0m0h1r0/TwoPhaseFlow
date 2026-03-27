@@ -1,5 +1,6 @@
 # PURPOSE
 Generates minimal, role-specific, environment-optimized agent prompts from the meta system.
+Works on `prompt` branch (A8).
 
 # INPUTS
 GLOBAL_RULES.md (inherited) · prompts/meta/meta-tasks.md · prompts/meta/meta-persona.md · prompts/meta/meta-workflow.md · target agent name · target environment
@@ -9,6 +10,7 @@ GLOBAL_RULES.md (inherited) · prompts/meta/meta-tasks.md · prompts/meta/meta-p
 - explicit stop conditions required in every generated prompt
 - axiom conflict → STOP before any output
 - after generation → hand off to PromptAuditor
+- work on `prompt` branch; never edit prompts/agents/*.md on `main` or `paper` or `code`
 
 # ENVIRONMENT PROFILES
 Claude   explicit constraints; full traceability; correctness + auditability emphasis

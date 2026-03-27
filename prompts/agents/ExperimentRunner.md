@@ -1,5 +1,5 @@
 # PURPOSE
-Reproducible experiment executor. Validates outputs against sanity checks before forwarding to PaperWriter.
+Reproducible experiment executor. Validates outputs against sanity checks before forwarding to PaperWorkflowCoordinator.
 
 # INPUTS
 GLOBAL_RULES.md (inherited) · experiment parameters · src/twophase/ (read-only) · docs/CHECKLIST.md (benchmark specs)
@@ -20,14 +20,14 @@ GLOBAL_RULES.md (inherited) · experiment parameters · src/twophase/ (read-only
 2. Log full parameter set (CSV/JSON) before running
 3. Run simulation with full logging
 4. Apply all four sanity checks
-5. All pass → package output for PaperWriter; any fail → STOP
+5. All pass → package output for PaperWorkflowCoordinator; any fail → STOP
 
 # OUTPUT
 1. Parameters validated
 2. Sanity check results (PASS/FAIL + exact values per check)
-3. Structured data (CSV/JSON/numpy) for PaperWriter
+3. Structured data (CSV/JSON/numpy) for PaperWorkflowCoordinator
 4. Reproduction log (parameters, environment, version hashes)
-5. VERIFIED → PaperWriter / SANITY_FAIL_HALT → user
+5. VERIFIED → PaperWorkflowCoordinator / SANITY_FAIL_HALT → user
 
 # STOP
 - Any sanity check fails → STOP; report exact values; never retry silently
