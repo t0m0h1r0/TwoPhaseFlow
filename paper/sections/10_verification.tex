@@ -88,15 +88,14 @@ $256$ & $\sim 6.1 \times 10^{-12}$ & $\approx 6$ \\
 $N$ & $\|\bm{u}_\text{para}\|_\infty / (\sigma/\mu)$（目標） & 収束次数 \\
 \hline
 $32$ & $\sim 10^{-3}$ & --- \\
-$64$ & $\sim 6 \times 10^{-5}$ & $\approx 4$ \\
-$128$ & $\sim 4 \times 10^{-6}$ & $\approx 4$ \\
+$64$ & $\sim 2.5 \times 10^{-4}$ & $\approx 2$ \\
+$128$ & $\sim 6.3 \times 10^{-5}$ & $\approx 2$ \\
 \hline
 \end{tabular}
 \end{center}
 
-寄生流れが $O(h^4)$ 以上（$p \ge 4$）で収束すれば，CCD 高精度化の効果が確認される
-（この $N=32\sim128$ の中程度解像度では CSF モデル誤差 $O(\varepsilon^2)\approx O(h^2)$ がまだ
-支配的でなく，離散化誤差が現れる前漸近的な挙動；§\ref{sec:balanced_force}，§\ref{sec:accuracy_summary}参照）．
-$O(h^2)$ 以下（$p < 2$）の場合は，Balanced-Force 離散化またはその実装に問題がある（§\ref{sec:balanced_force}参照）．
-漸近的な理論精度は CSF モデル誤差に律速された $O(h^2)$ である（§\ref{sec:conclusion}）．
+バランス力適用下では，CCD 離散化誤差（$O(h^6)$）は CSF モデル誤差（$O(\varepsilon^2)\approx O(h^2)$）
+より全解像度で無視できるほど小さい（$N=32$ でも比率 $h^4 \approx 10^{-6}$）ため，
+寄生流れは全実用解像度において CSF モデル誤差律速の $O(h^2)$ で収束する（詳細は §\ref{sec:bench_droplet} 参照）．
+$p < 2$（$O(h^2)$ より遅い収束）の場合は，Balanced-Force 離散化またはその実装に問題がある（§\ref{sec:balanced_force}参照）．
 

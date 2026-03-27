@@ -27,7 +27,7 @@
 \begin{enumerate}
   \item 液滴は静止を保つ：$\|\bm{u}(\cdot, t)\|_\infty \approx 0$（理想）
   \item ラプラス圧力の大きさ $|[p]| \equiv |p_\text{gas} - p_\text{liq}| = \sigma/R$ が内外圧差として正確に再現される（符号付き定義 $[p] = \sigma\kappa = -\sigma/R < 0$ については §\ref{sec:governing} を参照）
-  \item 寄生流れの振幅 $\|\bm{u}\|_\infty$ が $O(h^p)$（$p \ge 4$）で収束する
+  \item 寄生流れの振幅 $\|\bm{u}\|_\infty$ が $O(h^2)$（CSF モデル誤差律速；バランス力適用時）で収束する
 \end{enumerate}
 
 \begin{tcolorbox}[warnbox, title={寄生流れ振幅の目安と閾値の根拠}]
@@ -111,7 +111,7 @@ $c_x = 0.5,\; c_y = 0.75,\; R = 0.15$，スロット幅 $2w = 0.05$（$w = 0.025
 
 \textbf{検証指標：}
 \begin{align}
-  E_{\text{area}} &= \frac{|\Omega_{\psi>0.5}^{T=1}| - |\Omega_{\psi>0.5}^{T=0}|}{|\Omega_{\psi>0.5}^{T=0}|}
+  E_{\text{area}} &= \frac{\bigl||\Omega_{\psi>0.5}^{T=1}| - |\Omega_{\psi>0.5}^{T=0}|\bigr|}{|\Omega_{\psi>0.5}^{T=0}|}
   \quad (\text{体積保存誤差，目標：} < 0.1\%) \\
   E_{\text{shape}} &= \frac{1}{|\Omega|}\int_\Omega |\psi^{T=1} - \psi^{T=0}|\,dA
   \quad (\text{形状誤差，$L^1$ ノルム})
@@ -193,7 +193,7 @@ $\rho_l > \rho_g$ の場合 $\sigma^2 > 0$ であるから $\sigma = \omega_{\te
 初期擾乱振幅 & $A_0$ & $0.05\lambda = 0.05$（$\lambda$ の $5\%$） \\
 重流体密度 & $\rho_l$ & $3.0$（無次元） \\
 軽流体密度 & $\rho_g$ & $1.0$（無次元，Atwood 数 $At = 0.5$） \\
-粘性係数（両相） & $\mu_l = \mu_g$ & $0.01$（弱粘性，$Re = 100$ 相当） \\
+粘性係数（両相） & $\mu_l = \mu_g$ & $0.01$（弱粘性） \\
 表面張力 & $\sigma$ & $0$（または $We \gg 10^3$） \\
 重力加速度 & $g$ & $1.0$（無次元，$Fr = 1$） \\
 初期速度場 & $\bm{u}$ & $\bm{0}$ \\
