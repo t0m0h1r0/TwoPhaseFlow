@@ -97,6 +97,8 @@ CCD は純中心差分（修正波数 $k^*(kh)$ が実数）であるため，
 移流方程式 $\partial\psi/\partial t + u\,\partial\psi/\partial x = 0$ に
 陽的時間積分を組み合わせると，Fourier モード $\psi_i = e^{i\xi i}$ に対して
 増幅係数は
+ここで $k = \xi/h$ は実波数（$\xi \in (0,\pi]$ は計算空間上の波数），
+$k^*(\xi)$ は CCD の修正波数（実数；§\ref{sec:CCD} の Fourier 解析参照）である．
 \begin{equation}
   |g(\xi)|^2 = 1 + \sigma^2 \left[\frac{k^*(\xi)}{k}\right]^2 > 1
   \quad \forall\, \xi > 0, \;\sigma = \frac{u\Delta t}{h} > 0
@@ -148,7 +150,7 @@ $H(\xi) = 1 - 4\varepsilon_d^{\mathrm{adv}}\sin^2(\xi/2) \leq 1$．
 高波数（$\xi \to \pi$，$H \to 1-4\varepsilon_d^{\mathrm{adv}}$）では
 成長率が大幅に低減される．
 典型的な二相流パラメータ（$\mathrm{CFL} \leq 0.5$，$\varepsilon_d^{\mathrm{adv}} = 0.05$）のもとで
-実用的な安定性が得られることを数値実験で確認している（第~\ref{sec:verification}章参照）．
+実用的な安定性が得られることを数値実験で確認している（第~\ref{sec:verification}章参照；形式的上界は \ref{result:dccd_stability} 参照）．
 
 \begin{tcolorbox}[warnbox, title={移流フィルタの散逸強度：S(ψ) 制御を使わない理由}]
 \label{warn:adv_filter_uniform}
@@ -175,6 +177,38 @@ $H(\xi) \approx 1 - \varepsilon_d^{\mathrm{adv}}\xi^2 \approx 1$（精度劣化 
 
 速度・圧力場フィルタ（適応制御 $\varepsilon_d^{(i)} = \varepsilon_{d,\max}S(\psi_i)$）
 との使い分けを表~\ref{box:scheme_roles}に整理する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[resultbox, title={TVD-RK3 + Dissipative CCD の安定性上界（形式的導出）}]
+\label{result:dccd_stability}
+TVD-RK3（式~\eqref{eq:tvd_rk3}）の増幅係数は，
+線形空間演算子の固有値 $\lambda_j = -\mathrm{i}\,u\,k^*_j H_j$（純虚数；
+$k^*_j = k^*(\xi_j)$ は CCD 修正波数，$H_j \equiv H(\xi_j;\varepsilon_d^{\mathrm{adv}})$）
+に対して $g_{\mathrm{RK3}}(-\mathrm{i}\omega) = 1-\mathrm{i}\omega - \omega^2/2 + \mathrm{i}\omega^3/6$
+（$\omega \equiv \sigma H(\xi)k^*(\xi)h$，$\sigma=u\Delta t/h$）であり，
+$|g_{\mathrm{RK3}}|^2 = 1 - \omega^4/12 + \omega^6/36$
+から安定条件 $|g| \leq 1$ は
+\begin{equation}
+  \omega^4\!\left(\frac{\omega^2}{36} - \frac{1}{12}\right) \leq 0
+  \;\Longleftrightarrow\;
+  |\omega| \leq \sqrt{3}
+  \label{eq:rk3_stability_condition}
+\end{equation}
+すなわち $\sigma \leq \sqrt{3}/\max_\xi\bigl\{H(\xi;\varepsilon_d^{\mathrm{adv}})\,k^*(\xi;\mathrm{CCD})\,h\bigr\}$ となる．
+CCD 修正波数 $k^*h$ は特性方程式（式~\eqref{eq:CCD_I} の Fourier 解析）から求まり，
+$\varepsilon_d^{\mathrm{adv}} = 0.05$ のとき $\max_\xi\{H(\xi)\,k^*h\} \approx 1.9$
+（$\xi \approx 0.8\pi$ 付近，数値計算による）であるから：
+\begin{equation}
+  \sigma_{\max} = \frac{\sqrt{3}}{1.9} \approx 0.91
+  \label{eq:cfl_upper_bound}
+\end{equation}
+本稿の CFL $\leq 0.5$（式~\eqref{eq:dt_adv}）はこの上界を十分に下回り，
+\textbf{TVD-RK3 + Dissipative CCD は CFL $\leq 0.5$ のもとで形式的に安定}である．
+
+\textbf{注：} 純 CCD フィルタなし（$H=1$）の場合，
+順 Euler 時間積分では $|g_\text{FE}|^2 = 1+\omega^2 > 1$（全波数で不安定；式~\eqref{eq:ccd_adv_instability}）だが，
+TVD-RK3 では $\sigma_{\max} \approx \sqrt{3}/k^*_{\max}h \approx \sqrt{3}/2.35 \approx 0.74$（安定）．
+Dissipative フィルタは安定限界の小幅な緩和よりも，Gibbs 振動の抑制（高波数減衰）を主目的とする．
 \end{tcolorbox}
 
 \medskip

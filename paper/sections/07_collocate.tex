@@ -40,11 +40,11 @@ Projection 法を理解するには，まず「速度場の分解」という数
 
 \medskip
 \noindent\textbf{Helmholtz 分解定理：}
-任意の十分滑らかなベクトル場 $\bm{w}$ は，適当なスカラー場 $\Phi$
-（本章ローカル記号；本稿全体での $\phi$ = 符号付き距離関数とは別物）を用いて
+任意の十分滑らかなベクトル場 $\bm{w}$ は，適当なスカラーポテンシャル $q$
+を用いて
 \begin{equation}
   \bm{w} = \underbrace{\bm{u}}_{\text{発散フリー：}\bnabla\cdot\bm{u}=0}
-           + \underbrace{\bnabla\Phi}_{\text{勾配場（回転フリー）}}
+           + \underbrace{\bnabla q}_{\text{勾配場（回転フリー）}}
   \label{eq:helmholtz}
 \end{equation}
 と一意に分解できる（適切な境界条件の下で）．
@@ -59,10 +59,10 @@ Navier-Stokes 方程式を時間離散化すると，
 $\bu^*$ を Helmholtz 分解して発散フリー成分だけを取り出す（「射影する」）．
 \begin{equation}
   \bu^* = \underbrace{\bu^{n+1}}_{\bnabla\cdot\bu^{n+1}=0}
-          + \underbrace{\bnabla\Phi}_{\text{圧力から生じる補正}}
+          + \underbrace{\bnabla q}_{\text{圧力から生じる補正}}
   \label{eq:projection_decomp}
 \end{equation}
-ここで補正ポテンシャル $\Phi$ が圧力 $p^{n+1}$（に比例する量）として同定される．
+ここで補正ポテンシャル $q$ が圧力 $p^{n+1}$（に比例する量）として同定される．
 
 \noindent\textbf{Projection 法の直感的理解．}
 速度場 $\bu^*$ を「発散フリー速度の空間（Leray 空間）」に\textbf{直交射影}する操作が
@@ -84,27 +84,27 @@ Navier-Stokes 方程式において圧力が存在する物理的理由は，
 \begin{equation}
   \bnabla\cdot\bu^*
   = \underbrace{\bnabla\cdot\bu^{n+1}}_{=0 \text{（非圧縮条件）}}
-  + \bnabla^2\Phi
+  + \bnabla^2q
   \quad\Longrightarrow\quad
-  \bnabla^2\Phi = \bnabla\cdot\bu^*
+  \bnabla^2q = \bnabla\cdot\bu^*
   \label{eq:why_divergence}
 \end{equation}
 
 \noindent\textbf{なぜ発散を取るのか．}
 発散を取る理由は，\textbf{非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$} を使って
-速度 $\bu^{n+1}$ を消去し，圧力ポテンシャル $\Phi$（$\propto p$）だけの方程式を得るためである．
+速度 $\bu^{n+1}$ を消去し，圧力ポテンシャル $q$（$\propto p$）だけの方程式を得るためである．
 
 \begin{center}
 \begin{tabular}{rcl}
-\textbf{発散前} & ： & $\bu^{n+1}$ と $\Phi$ の2つの未知数が混在\\
-\textbf{発散後} & ： & $\bnabla\cdot\bu^{n+1}=0$ の代入で $\Phi$ のみの Poisson 方程式\\
+\textbf{発散前} & ： & $\bu^{n+1}$ と $q$ の2つの未知数が混在\\
+\textbf{発散後} & ： & $\bnabla\cdot\bu^{n+1}=0$ の代入で $q$ のみの Poisson 方程式\\
 \end{tabular}
 \end{center}
 
-変密度場では $\Phi \propto \Delta t \, p/\rho$ と同定されることで，
-$\bnabla^2\Phi$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pressure}章§\ref{sec:projection_derivation}）．
+変密度場では $q \propto \Delta t \, p/\rho$ と同定されることで，
+$\bnabla^2q$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pressure}章§\ref{sec:projection_derivation}）．
 
-\noindent\textbf{注意（等密度仮定）：} 本節（§\ref{sec:helmholtz}）の Projection 法の導出は教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定しており，式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla\Phi$ という純粋な Helmholtz 分解で書けるのはこの仮定のもとでのみである．実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になり，Poisson 方程式が可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．
+\noindent\textbf{注意（等密度仮定）：} 本節（§\ref{sec:helmholtz}）の Projection 法の導出は教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定しており，式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla q$ という純粋な Helmholtz 分解で書けるのはこの仮定のもとでのみである．実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になり，Poisson 方程式が可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Rhie--Chow 補正による問題の解決}

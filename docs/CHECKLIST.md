@@ -21,6 +21,10 @@
 | CHK-ID | Status | Type | Location |
 |---|---|---|---|
 | CHK-010 | CLOSED | compile | paper/ — XeLaTeX 2-pass clean: 139 pages, 0 errors, 0 overfull/underfull, 0 undefined refs, rerunfilecheck stable (2026-03-27) |
+| CHK-011 | CLOSED | review | PaperReviewer full audit (main + appendix) 2026-03-27: 2 fatal, 12 high-priority issues found and classified |
+| CHK-012 | CLOSED | fix | PaperCorrector — 6 high-priority fixes applied 2026-03-27: (1) Φ→q rename in 07_collocate.tex; (2) ALE 必須→強く推奨 in appendix_numerics_schemes_s1.tex; (3) §\ref→付録~\ref in appendix_ccd_impl_s3.tex; (4) Eq-II O(h⁴) 今後の課題→実装済み in appendix_ccd_impl_s3.tex; (5) γ(t)/LU wording clarified in appendix_ccd_impl_s3.tex; (6) ghost cell reflection scope note in appendix_ccd_impl_s1.tex. Compile: 139 pages, 0 errors. |
+| CHK-013 | CLOSED | fix | PaperWriter 5 items written 2026-03-27: (a) sec:ppe_gauge_neumann in 08d — Neumann solvability + center-node gauge; (b) result:dccd_stability in 05_advection — TVD-RK3 CFL bound σ_max≈0.91; (c) box:cn_tridiagonal in 05b — tridiagonal coefficients for x/y sweeps; (d) box:grid_modes in 06_grid — Mode 1/Mode 2 with bootstrap explanation; (e) sec:lambda_max_derive in appendix_numerics_solver_s2 — Eq-II Fourier analysis giving 4.8/h², empirical 3.43/h². Compile: 142 pages, 0 errors. |
+| CHK-014 | CLOSED | fix | PaperCorrector 3 fixes applied 2026-03-27: (1) 06_grid.tex resultbox line 65 — added title={座標変換公式（厳密形）} + \label{box:transform_formula}; (2) 06_grid.tex algbox title + step 3 text — "台形則" → "前進矩形則（左端点則）" to match actual formula x̃_{i+1}=x̃_i+Δξ/ω_i; (3) 05_advection.tex — added k=ξ/h definition before eq:ccd_adv_instability. Issue (1) duplicate labels: REVIEWER_ERROR — appendix_numerics_solver.tex / appendix_numerics_schemes.tex not \input'd in main.tex. Compile: 142 pages, 0 errors, 0 undefined refs. |
 
 ## Format reference
 
