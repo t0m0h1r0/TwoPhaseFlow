@@ -4,7 +4,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | Priority 2 resolved 2026-03-27: test_simulation.py — 3 integration tests pass (98/98 total); SimulationBuilder + core loop verified |
+| last_decision | CHK-028 CLOSED 2026-03-28: PaperCorrector cross-section consistency audit — 1 fix applied (m-A \epsilon_{\text{norm}} → \varepsilon_{\text{norm}} in 09_full_algorithm.tex:155); compile clean 142pp |
 | next_action | Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark (§10b) |
 
 ## Notes

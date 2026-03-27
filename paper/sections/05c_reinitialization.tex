@@ -25,8 +25,8 @@ CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）
         §\ref{sec:advection_motivation} の Dissipative CCD 移流と同構成で陽的に処理する
         （CFL 制約：$\Delta\tau \leq 4h$ 程度）．
   \item \textbf{拡散項（陰解法）：}
-        $\varepsilon\nabla^2\psi$ は $\Delta\tau < \varepsilon h^2$ という厳しい陽的 CFL 制約を持つ
-        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau < h^3/2$）．
+        $\varepsilon\nabla^2\psi$ は $\Delta\tau \leq h^2/(2\varepsilon)$ という厳しい陽的 CFL 制約を持つ
+        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau \leq h$，すなわち $O(h)$）．
         Crank--Nicolson（CN）による半陰的処理で無条件安定化し，
         圧縮項の CFL と同程度の大きな $\Delta\tau$ を許容する．
 \end{itemize}

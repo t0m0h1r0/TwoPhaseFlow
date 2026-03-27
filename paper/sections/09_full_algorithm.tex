@@ -152,7 +152,7 @@ $\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，式 \eqref{eq:cu
                               - 2(\phi_x)_{i,j}(\phi_y)_{i,j}(\phi_{xy})_{i,j}
                               + (\phi_x)_{i,j}^2 (\phi_{yy})_{i,j}}
                            {\max\!\bigl((\phi_x)_{i,j}^2 + (\phi_y)_{i,j}^2,\;
-                            \epsilon_{\text{norm}}^2\bigr)^{3/2}}
+                            \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
 \end{equation*}
 
 \textbf{5. 運動量予測 (Predictor Step, AB2 + IPC)} \\
@@ -164,8 +164,9 @@ $\phi^{n+1}$ の空間微分をCCD法で高精度に計算し，式 \eqref{eq:cu
 $\bm{C}^0_{i,j} \leftarrow u^0\,D_x^{(1)}u^0 + v^0\,D_y^{(1)}u^0$（$x$ 成分）等をバッファ保存する．
 $n \ge 1$ では格納済み $\bm{C}^{n-1}$ を用いて以下の AB2 式を適用する．
 初回ステップ（$n=0$）は前進 Euler の打ち切り誤差 $\Ord{\Delta t}$ が入るが，
-$n=1$ 以降で AB2 に移行すると過渡誤差は $O(\Delta t^2)$ 精度の定常軌道上に
-\textbf{1ステップで収束}するため，長時間計算の全体精度 $O(\Delta t^2)$ は保たれる
+$n=1$ 以降で AB2 に移行すると寄生根 $|\rho_2|=0.5$ の減衰により
+過渡誤差は\textbf{数ステップで無視できるレベルに減衰する}ため，
+長時間計算の全体精度 $O(\Delta t^2)$ は保たれる
 （Dahlquist-Björck \cite{DahlquistBjorck1974}，§5.4）．
 
 \medskip
@@ -292,7 +293,8 @@ $p^{n+1}$ は次ステップの IPC Predictor および Rhie--Chow 補正で $p^
 
 \textbf{仮想時間反復ループ（$m = 0, 1, 2, \dots$）：}
 \begin{enumerate}
-  \item[(6.2)] \textbf{CCD 演算子の matrix-free 評価} $\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m$：
+  \item[(6.2)] \textbf{CCD 演算子の matrix-free 評価} $\mathcal{L}_{\mathrm{CCD}}^{\rho}p^m$
+  （以下 $p^m \equiv \delta p^m$；$p^0 = 0$）：
   \begin{enumerate}
     \item $x$ 方向 CCD スウィープ（各行 $j$）：$(D_x^{(1)}p^m)_{i,j}$，$(D_x^{(2)}p^m)_{i,j}$ を計算
     \item $y$ 方向 CCD スウィープ（各列 $i$）：$(D_y^{(1)}p^m)_{i,j}$，$(D_y^{(2)}p^m)_{i,j}$ を計算
