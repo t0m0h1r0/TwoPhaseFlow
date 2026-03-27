@@ -97,24 +97,23 @@ Each agent prompt must be:
 - verify deployment usability
 
 ## Stage 6: Emit
-- output final agent prompts to prompts/agents/
+- output final agent prompts to prompts/agents/ (GENERATED — do NOT edit directly; edit meta/*.md only)
 - output audit results
 - output deployment notes
 - output minimal execution comment block for operator
+
+**IMPORTANT:** prompts/agents/*.md are generated outputs only.
+All changes must be made in prompts/meta/*.md and regenerated via `Execute EnvMetaBootstrapper`.
 
 ────────────────────────────────────────────────────────
 # VALIDATION CHECKLIST
 
 Pass only if ALL are true:
 1. core axioms preserved (A1–A8)
-2. solver purity preserved
-3. layer separation preserved
-4. external memory discipline preserved
-5. stop conditions present and unambiguous
-6. output format is clear
-7. environment optimization is appropriate
-8. initial deployment is simple (one bootstrap file, one command)
-9. backward compatibility preserved
+2. stop conditions present and unambiguous in every agent prompt
+3. output format is clear
+4. environment optimization is appropriate
+5. initial deployment is simple (one bootstrap file, one command)
 
 If any check fails: mark FAIL, list issues, do not silently repair.
 
@@ -154,18 +153,9 @@ Prefer the smallest viable first deployment:
 ────────────────────────────────────────────────────────
 # CORE RULES (non-negotiable)
 
-- preserve all core axioms from meta-tasks.md
-- no layer mixing
-- no solver / infrastructure mixing
-- diff > rewrite
-- reference > duplication
-- external memory first
-- minimal token usage
-- backward compatibility preserved
-- explicit stop conditions required
-- validation required before final output
-
-If any core rule conflicts with a requested optimization: STOP and report the conflict.
+All core axioms A1–A8 from meta-tasks.md apply unconditionally.
+Validation required before final output.
+If any axiom conflicts with a requested optimization: STOP and report the conflict.
 
 ────────────────────────────────────────────────────────
 # STOP CONDITIONS

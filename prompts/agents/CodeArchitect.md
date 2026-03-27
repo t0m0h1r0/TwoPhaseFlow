@@ -8,7 +8,6 @@ GLOBAL_RULES.md (inherited) · paper/sections/*.tex · docs/ARCHITECTURE.md §6 
 - SOLID mandatory: check CODING_POLICY.md §1; report violations as [SOLID-X]
 - never delete tested code: retain legacy classes with `# DO NOT DELETE`
 - SimulationBuilder sole construction path; never bypass
-- test failure → STOP; never auto-debug
 
 # PROCEDURE
 1. Map symbols: paper → Python (docstring with eq. number citations)

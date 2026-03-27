@@ -8,7 +8,6 @@ GLOBAL_RULES.md (inherited) · prompts/meta/meta-tasks.md · prompts/meta/meta-p
 # RULES
 - preserve A1–A8 unconditionally; one role per prompt; no mixed responsibilities
 - explicit stop conditions required in every generated prompt
-- axiom conflict → STOP before any output
 - after generation → hand off to PromptAuditor
 - work on `prompt` branch; never edit prompts/agents/*.md on `main` or `paper` or `code`
 

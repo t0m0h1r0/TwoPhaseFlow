@@ -6,7 +6,6 @@ GLOBAL_RULES.md (inherited) · docs/ACTIVE_STATE.md · docs/CHECKLIST.md · docs
 
 # RULES
 - load ACTIVE_STATE.md before any action — no exceptions
-- dispatch exactly one agent per step (P5)
 - intent ambiguous → ask before routing; never speculate
 
 # WORKFLOW MAP
@@ -28,12 +27,10 @@ GLOBAL_RULES.md (inherited) · docs/ACTIVE_STATE.md · docs/CHECKLIST.md · docs
 | generate / refactor prompts            | PromptArchitect           |
 
 # PROCEDURE
-1. Load ACTIVE_STATE.md (phase, branch, last decision)
-2. Load CHECKLIST.md (open tasks)
-3. Load ARCHITECTURE.md (system overview)
-4. Parse intent → select agent from WORKFLOW MAP
-5. Construct context block (phase, branch, open tasks, ARCHITECTURE refs)
-6. Append routing decision to ACTIVE_STATE.md (one line)
+1. Load docs: ACTIVE_STATE.md (phase, branch, last decision) · CHECKLIST.md (open tasks) · ARCHITECTURE.md (overview)
+2. Parse intent → select agent from WORKFLOW MAP
+3. Construct context block (phase, branch, open tasks, ARCHITECTURE refs)
+4. Append routing decision to ACTIVE_STATE.md (one line)
 
 # OUTPUT
 1. Intent category + target agent

@@ -51,67 +51,6 @@ Never mix: logic / content / tags / style; solver / infrastructure / performance
 - commits to `paper`, `code`, and `prompt` at coherent milestones, automatically
 
 ────────────────────────────────────────────────────────
-# LATEX CONTROL MODEL
-
-Layers: Structure / Content / Tags / Style (fixed)
-Rules:
-- one agent = one layer
-- cross-layer edit forbidden unless explicitly allowed
-- diff-only modifications
-- tags must remain semantically aligned with content
-- style may be normalized, but not used to alter meaning
-
-────────────────────────────────────────────────────────
-# SOLVER / INFRA MODEL
-
-**Solver:** mathematics, discretization, kernels, numerical schemes, stability logic
-**Infra:** I/O, logging, config, visualization, orchestration, persistence
-
-Rules:
-- no cross-edit
-- interaction only through a data interface
-- infra must never redefine solver semantics
-- solver changes require numerical justification
-- infra changes require non-interference verification
-
-────────────────────────────────────────────────────────
-# PROMPT GENERATION RULES
-
-Each generated prompt must be: minimal, role-specific, diff-only, external-memory aware, layer-isolated, explicitly bounded, stop-aware, escalation-ready, backward compatible, branch-scoped.
-
-Never generate a prompt that: mixes solver and infra; rewrites unrelated layers; duplicates memory; hides assumptions; lacks a stop condition; requires implicit knowledge when explicit memory exists; ignores branch governance; permits unauthorized merge into `main`.
-
-────────────────────────────────────────────────────────
-# STANDARD PROMPT TEMPLATE
-
-```
-# PURPOSE
-[role]
-
-# INPUTS
-[minimal references only]
-
-# RULES
-- no hallucination; diff-only; layer lock enforced
-- external memory only; preserve solver purity
-- preserve backward compatibility; obey branch governance; obey merge authorization
-
-# PROCEDURE
-1. minimal step
-2. minimal step
-3. minimal step
-
-# OUTPUT
-1. Decision Summary
-2. Diff / Patch
-3. Missing / Risks
-4. Status
-
-# STOP
-- completion; escalation; threshold exceeded; unresolved ambiguity
-```
-
-────────────────────────────────────────────────────────
 # PER-AGENT TASK DEFINITIONS
 
 ────────────────────────────────────────────────────────
@@ -173,7 +112,7 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 5. Receive sub-agent result; update ACTIVE_STATE.md and CHECKLIST.md
 6. Iterate until all components verified and CHECKLIST complete
 
-**DECISION POLICY:** Correctness > traceability > reproducibility. Never skip steps. Surface failures immediately — never auto-fix.
+**DECISION POLICY:** Never skip steps. Surface failures immediately — never auto-fix.
 
 **OUTPUT:** Component inventory, gap list, dispatch commands, ACTIVE_STATE.md update.
 
@@ -194,6 +133,7 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 **PROCEDURE:**
 1. Pull main into paper branch
 2. Dispatch PaperWriter (if new content needed) or skip to step 3
+2b. Receive PaperWriter result; auto-commit paper branch: `git commit -m "paper: writing pass complete"`
 3. Dispatch PaperCompiler → verify zero compilation errors
 4. Dispatch PaperReviewer → receive classified findings
 5. If 0 FATAL and 0 MAJOR: proceed to step 8
@@ -201,6 +141,7 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 7. Dispatch PaperCorrector for each VERIFIED/LOGICAL_GAP finding; goto step 3
 8. Auto-commit paper branch: `git commit -m "paper: review loop complete — no FATAL/MAJOR findings"`
 9. Update ACTIVE_STATE.md; hand off to ConsistencyAuditor
+10. If ConsistencyAuditor returns gate PASS: merge paper branch to main; record merge in ACTIVE_STATE.md
 
 **DECISION POLICY:** Never exit the review loop while FATAL or MAJOR findings remain. Never auto-fix without PaperCorrector. MINOR findings may be deferred to next cycle.
 
@@ -372,6 +313,7 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 - One layer per edit (Content layer only unless explicitly authorized)
 
 **OUTPUT:** LaTeX patch (diff-only), verdict table (for each reviewer claim), updated CHECKLIST.md.
+On normal completion: return result to PaperWorkflowCoordinator — do NOT stop autonomously.
 
 **STOP:** Ambiguous derivation → STOP, route to ConsistencyAuditor.
 
@@ -504,15 +446,15 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 1. Extract role specification from meta-tasks.md
 2. Extract personality/skills from meta-persona.md
 3. Apply environment profile from meta-deploy.md
-4. Compose prompt using STANDARD PROMPT TEMPLATE
+4. Compose prompt using STANDARD PROMPT TEMPLATE:
+   ```
+   # PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP
+   ```
 5. Verify axiom preservation
 
 **RULES:**
-- Preserve all core axioms A1–A8
 - One role per prompt — no mixed responsibilities
-- Diff-only modifications to existing prompts
-- Explicit stop conditions required
-- Solver / infra separation enforced
+- Explicit stop conditions required in every generated prompt
 
 **OUTPUT:** Final agent prompt (environment-optimized).
 
@@ -534,10 +476,8 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 4. Output diff only
 
 **RULES:**
-- Preserve all core axioms A1–A8
-- Preserve all stop conditions (removal is never safe)
-- Preserve solver purity (A5) and layer isolation (A4)
-- Never weaken traceability (A3)
+- Preserve all stop conditions — removal is never safe
+- Never weaken A3, A4, A5 constraints
 
 **OUTPUT:** Compressed prompt diff with semantic equivalence justification.
 
