@@ -4,7 +4,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | CHK-028 CLOSED 2026-03-28: PaperCorrector cross-section consistency audit — 1 fix applied (m-A \epsilon_{\text{norm}} → \varepsilon_{\text{norm}} in 09_full_algorithm.tex:155); compile clean 142pp |
+| last_decision | CHK-031 CLOSED 2026-03-28: PaperCorrector §10b+§08b — 4 fixes applied (M-A Dissipative CCD O(h^5)→O(ε_d h²) in 10b table:321, text:339, text:343; M-B 08b min() argument rewritten O(h^5)→O(ε_d h²), O(h^4)→O(ε_d h)); compile clean 142pp |
 | next_action | Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark (§10b) |
 
 ## Notes

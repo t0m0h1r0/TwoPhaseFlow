@@ -310,11 +310,13 @@ $D_x^{(1)}(\sigma\kappa\psi)$ を\textbf{同一の CCD スキーム}で評価す
   \item \textbf{数値離散化誤差}（Balanced-Force 条件の成否で決まる）：
         FVM は $\Ord{h^2}$；CCD は $\Ord{h^4}$ 以上．
         \textbf{注：}CCD の空間精度は $\Ord{h^6}$ だが，Balanced-Force の文脈での有効次数は
-        $\Ord{h^4}$ 以上となる．これは表面張力項 $\sigma\kappa\nabla\psi$ の $\psi$ が
-        Dissipative CCD による $\Ord{h^5}$ 精度の CLS 移流場であるため，
-        圧力勾配との差分演算子整合性は $\min(\Ord{h^5},\Ord{h^6}) = \Ord{h^5}$ に律速され，
+        $O(\varepsilon_d h)$ 以上となる．これは表面張力項 $\sigma\kappa\nabla\psi$ の $\psi$ が
+        Dissipative CCD による $O(\varepsilon_d h^2)$（フィルタ律速）精度の CLS 移流場であるため，
+        圧力勾配との差分演算子整合性は $\min(O(\varepsilon_d h^2),\Ord{h^6}) = O(\varepsilon_d h^2)$ に律速され，
         さらに密度勾配項 $D_x^{(1)}\rho\sim\Ord{h^{-1}}$ のスケールが介在するため
-        有効精度は $\Ord{h^4}$ 以上と評価される（格子を半分にすると $\simeq 1/16$ 倍以上）．
+        有効精度は $O(\varepsilon_d h)$ 以上と評価される（格子を半分にすると $\simeq 1/2$ 倍以上；
+        $\varepsilon_d=0.05$ 固定では $O(\varepsilon_d h)$ は $O(h^2)$ と同程度の実用的寄与となり，
+        CSF 誤差 $O(\varepsilon^2)\approx O(h^2)$ が依然として律速する）．
   \item \textbf{CSF 物理モデル誤差}（$\varepsilon>0$ による界面厚みに由来）：
         FVM・CCD ともに $\Ord{\varepsilon^2}\approx\Ord{h^2}$（$\varepsilon\sim h$ 設定下）．
         Balanced-Force 整合性では除去不能な物理的下限（physical error floor）である．

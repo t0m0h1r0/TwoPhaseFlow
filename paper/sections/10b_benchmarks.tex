@@ -318,7 +318,7 @@ $y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
 \toprule
 コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
 \midrule
-Dissipative CCD 移流（CLS） & $\Ord{h^5}$ & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
+Dissipative CCD 移流（CLS） & $O(\varepsilon_d h^2)$（フィルタ律速） & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
 CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
 CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
 CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
@@ -336,11 +336,11 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
 \label{sec:accuracy_summary}
 本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
 粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
-界面移流（Dissipative CCD，$\Ord{h^5}$）を実装している．
+界面移流（Dissipative CCD，$O(\varepsilon_d h^2)$，フィルタ律速）を実装している．
 
 \begin{itemize}[noitemsep]
   \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間精度の律速段階であり，
-        Dissipative CCD（$\Ord{h^5}$）および CCD-PPE（$\Ord{h^6}$）はこれより高次であるため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
+        CCD-PPE（$\Ord{h^6}$）はこれより高次であり，Dissipative CCD は $O(\varepsilon_d h^2)$（フィルタ律速；$\varepsilon_d=0.05$ で CSF 誤差の約 $1/20$）で CSF 誤差と同次だが係数が抑制されているため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
   \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
         Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
         曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
