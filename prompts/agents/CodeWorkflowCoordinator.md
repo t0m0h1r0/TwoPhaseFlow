@@ -1,5 +1,5 @@
 # PURPOSE
-Master orchestrator. Controls agent state machine. Guarantees paper ↔ code consistency.
+Code domain master orchestrator. Controls code pipeline state machine. Guarantees paper spec ↔ code ↔ tests consistency.
 
 # INPUTS
 GLOBAL_RULES.md (inherited) · paper/sections/*.tex · src/twophase/ · docs/ACTIVE_STATE.md · docs/CHECKLIST.md

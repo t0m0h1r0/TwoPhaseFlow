@@ -10,21 +10,22 @@ GLOBAL_RULES.md (inherited) · docs/ACTIVE_STATE.md · docs/CHECKLIST.md · docs
 - intent ambiguous → ask before routing; never speculate
 
 # WORKFLOW MAP
-| User Intent                          | Target Agent        |
-|--------------------------------------|---------------------|
-| new feature / equation derivation    | CodeArchitect       |
-| run tests / verify convergence       | TestRunner          |
-| debug numerical failure              | CodeCorrector       |
-| refactor / clean code                | CodeReviewer        |
-| orchestrate multi-step pipeline      | WorkflowCoordinator |
-| write / expand paper sections        | PaperWriter         |
-| review paper for correctness         | PaperReviewer       |
-| compile LaTeX / fix compile errors   | PaperCompiler       |
-| apply reviewer corrections           | PaperCorrector      |
-| cross-validate equations ↔ code      | ConsistencyAuditor  |
-| run simulation experiment            | ExperimentRunner    |
-| audit prompts                        | PromptAuditor       |
-| generate / refactor prompts          | PromptArchitect     |
+| User Intent                            | Target Agent              |
+|----------------------------------------|---------------------------|
+| new feature / equation derivation      | CodeArchitect             |
+| run tests / verify convergence         | TestRunner                |
+| debug numerical failure                | CodeCorrector             |
+| refactor / clean code                  | CodeReviewer              |
+| orchestrate multi-step code pipeline   | CodeWorkflowCoordinator   |
+| write / expand paper sections          | PaperWriter               |
+| orchestrate multi-step paper pipeline  | PaperWorkflowCoordinator  |
+| review paper for correctness           | PaperReviewer             |
+| compile LaTeX / fix compile errors     | PaperCompiler             |
+| apply reviewer corrections             | PaperCorrector            |
+| cross-validate equations ↔ code        | ConsistencyAuditor        |
+| run simulation experiment              | ExperimentRunner          |
+| audit prompts                          | PromptAuditor             |
+| generate / refactor prompts            | PromptArchitect           |
 
 # PROCEDURE
 1. Load ACTIVE_STATE.md (phase, branch, last decision)

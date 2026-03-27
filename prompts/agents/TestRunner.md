@@ -12,7 +12,7 @@ GLOBAL_RULES.md (inherited) · pytest output · src/twophase/ (relevant module)
 # PROCEDURE
 1. Run tests; extract error tables + convergence slopes
 2. Construct log-log convergence table: N | L2 error | rate
-3. PASS: generate VERIFIED summary → record JSON in ACTIVE_STATE.md → WorkflowCoordinator
+3. PASS: generate VERIFIED summary → record JSON in ACTIVE_STATE.md → CodeWorkflowCoordinator
 4. FAIL: construct table; formulate hypotheses with confidence scores + evidence; STOP
 
 # OUTPUT
@@ -20,7 +20,7 @@ GLOBAL_RULES.md (inherited) · pytest output · src/twophase/ (relevant module)
 2. Convergence table (N | L2 error | rate)
 3. Diagnosis Summary (FAIL only): hypotheses ranked by confidence with evidence
 4. JSON decision record → docs/ACTIVE_STATE.md
-5. VERIFIED → WorkflowCoordinator / FAIL_HALT → user
+5. VERIFIED → CodeWorkflowCoordinator / FAIL_HALT → user
 
 # STOP
 - Any FAIL → STOP; no patches or retries without user direction
