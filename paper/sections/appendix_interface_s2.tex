@@ -1,0 +1,61 @@
+\section{One-Fluid 化の数学的メカニズム：1次元モデルによる検証}
+\label{app:onefluid_1d}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿 §\ref{sec:two_to_one} で述べた Two-Fluid から One-Fluid への変換がなぜ成り立つのかを，
+1次元の簡単な拡散方程式で示す．
+
+\subsection*{問題設定}
+
+1次元領域 $\Omega = (-1, 1)$ で，$x=0$ に界面があるとする．
+左域 $\Omega^- = (-1,0)$（液相，係数 $\mu_l$）と
+右域 $\Omega^+ = (0,1)$（気相，係数 $\mu_g$）で
+それぞれ拡散方程式が成立し，界面条件を持つ：
+\begin{align}
+  \frac{d}{dx}\!\left(\mu_l \frac{du}{dx}\right) &= 0 \quad (x \in \Omega^-) \\
+  \frac{d}{dx}\!\left(\mu_g \frac{du}{dx}\right) &= 0 \quad (x \in \Omega^+)
+\end{align}
+\textbf{界面条件（$x=0$）：}
+\begin{align}
+  [u]_0 &= u(0^+) - u(0^-) = 0 \quad\text{（速度の連続性）} \\
+  \left[\mu\frac{du}{dx}\right]_0
+  &= \mu_g u'(0^+) - \mu_l u'(0^-)
+   = f_\sigma \quad\text{（応力のジャンプ = 界面力）}
+\end{align}
+
+\subsection*{One-Fluid 化}
+
+$\mu(x) = \mu_l H(-x) + \mu_g H(x)$（ヘヴィサイド関数で補間した係数）として，
+全領域で1本の方程式を書く：
+\begin{equation}
+  \frac{d}{dx}\!\left(\mu(x) \frac{du}{dx}\right) = f_\sigma\,\delta(x)
+  \label{eq:app_1d_onefluid}
+\end{equation}
+ここで右辺の $\delta(x)$ は界面 $x=0$ に集中するディラックデルタ関数である．
+
+\subsection*{数学的正当性：積分による検証}
+
+式 \eqref{eq:app_1d_onefluid} を区間 $(-\varepsilon, +\varepsilon)$（$\varepsilon \to 0$）で積分する：
+\[
+  \int_{-\varepsilon}^{+\varepsilon} \frac{d}{dx}\!\left(\mu\frac{du}{dx}\right) dx
+  = \left[\mu\frac{du}{dx}\right]_{-\varepsilon}^{+\varepsilon}
+  = \mu_g u'(0^+) - \mu_l u'(0^-)
+\]
+右辺：
+\[
+  \int_{-\varepsilon}^{+\varepsilon} f_\sigma\,\delta(x)\,dx = f_\sigma
+\]
+両辺を比較すると，応力ジャンプ条件が自動的に再現されることがわかる．
+
+また，$\mu(x)$ が $x = 0$ で不連続であることを，弱形式（分布関数的な意味）で処理することにより，
+$x=0$ での方程式 \eqref{eq:app_1d_onefluid} は
+速度連続条件・応力ジャンプ条件と等価になる．
+
+\subsection*{結論と3次元への一般化}
+
+One-Fluid 方程式に右辺のデルタ関数項を加えることで，
+界面条件が体積方程式の中に「吸収」される．
+3次元 Navier-Stokes 方程式における CSF モデル $\bm{f}_\sigma = \sigma\kappa\nabla\psi$ は，
+この1次元モデルの表面張力（法線応力のジャンプ）を多次元・曲面界面に一般化したものである．\qed
+
+% ═══════════════════════════════════════════════════════════════════════════════

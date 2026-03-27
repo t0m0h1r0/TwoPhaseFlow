@@ -1,0 +1,121 @@
+\section{スウィープ型擬似時間反復の収束率解析と最適 \texorpdfstring{$\Delta\tau$}{Δτ} の導出}
+\label{sec:dtau_derive}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ppe_pseudotime} で使用した収束率指標
+$\gamma(t) = (1+t^2)/(1+t)^2$ を導出し，最適擬似時間刻み $\Delta\tau_{\mathrm{opt}}$ を
+理論的に確定する．
+
+\subsection*{設定}
+
+スウィープ型擬似時間 PPE 反復の1ステップを
+\begin{equation}
+  (\mathbf{I} + \Delta\tau \mathcal{L}_x)(\mathbf{I} + \Delta\tau \mathcal{L}_y)\,
+  p^{m+1} = p^m + \Delta\tau\,q_h
+  \label{eq:dtau_sweep}
+\end{equation}
+と書く．ここで $\mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y$ は
+CCD 離散 Laplacian の $x$・$y$ 方向分割であり，
+それぞれ固有値 $\lambda_x,\lambda_y \ge 0$ を持つ（正定値）．
+
+\textbf{スプリッティング不動点．}
+式 \eqref{eq:dtau_sweep} の不動点 $\tilde{p}$（$p^{m+1}=p^m=\tilde{p}$）は
+\[
+  \bigl(\mathcal{L}_h + \Delta\tau\,\mathcal{L}_x\mathcal{L}_y\bigr)\tilde{p} = q_h
+\]
+を満たす．これは元の PPE $\mathcal{L}_h p^* = q_h$ とは $\mathcal{O}(\Delta\tau^2)$ だけ異なり，
+この差がスプリッティング誤差（\ref{warn:ppe_splitting}）の根源である．
+
+\subsection*{誤差収縮の解析}
+
+誤差 $e^m \equiv p^m - \tilde{p}$ を定義する．
+式 \eqref{eq:dtau_sweep} から不動点方程式を辺々引くと
+\[
+  (\mathbf{I}+\Delta\tau\mathcal{L}_x)(\mathbf{I}+\Delta\tau\mathcal{L}_y)\,e^{m+1} = e^m
+\]
+となり，誤差は\textbf{斉次}の縮小方程式に従う．
+
+\subsection*{スカラー化}
+
+等方格子 $(\Delta x = \Delta y = h)$ かつ一様係数を仮定すると
+$\lambda_x = \lambda_y = \lambda/2$（$\lambda$ は $\mathcal{L}_h$ の固有値）．
+$t \equiv \Delta\tau\lambda/2$ とおけば，スペクトル解析から
+
+\begin{equation}
+  e^{m+1} = \frac{e^m}{(1+t)^2}
+  \label{eq:error_contraction}
+\end{equation}
+
+が得られる．すなわちスウィープ型反復は，スプリッティング不動点 $\tilde{p}$ への誤差を
+各反復ごとに $1/(1+t)^2$ 倍に縮小する（\textbf{無条件安定}；任意の $t > 0$ で縮小率 $< 1$）．
+
+\medskip
+\textbf{実用的な収束率指標 $\gamma(t)$ の導出．}
+上記の純粋な誤差縮小率 $1/(1+t)^2$ は $t \to \infty$ で $0$ に近づくため，
+「大きな $\Delta\tau$ が常に良い」と誤解される恐れがある．
+しかし大きな $\Delta\tau$ はスプリッティング不動点誤差 $\|\tilde{p} - p^*\| \sim \mathcal{O}(\Delta\tau^2)$
+をも拡大する．このトレードオフを捉える指標として，
+等方格子・一様係数・スカラー固有値 $\lambda$（$t = \Delta\tau\lambda/2$）の設定で
+$p^0 = 0$ から1スウィープ後の真の残差比を厳密に計算する．
+
+\textbf{1スウィープ後の解：} 式 \eqref{eq:dtau_sweep} に $p^0 = 0$ を代入すると
+$(1+t)^2 p^1 = \Delta\tau\,q_h$，すなわち $p^1 = \Delta\tau q_h/(1+t)^2$．
+真の解は $\lambda p^* = q_h$，$\Delta\tau = 2t/\lambda$ より
+$p^* = q_h/\lambda = \Delta\tau q_h/(2t)$．
+
+\textbf{残差比の計算：}
+\begin{align*}
+  r^0 &= \lambda(p^0 - p^*) = -q_h \\
+  r^1 &= \lambda(p^1 - p^*) = \lambda\!\left[\frac{\Delta\tau q_h}{(1+t)^2} - \frac{\Delta\tau q_h}{2t}\right]
+       = \lambda\,\Delta\tau\,q_h \cdot \frac{2t - (1+t)^2}{2t(1+t)^2}
+       = -q_h\cdot\frac{1+t^2}{(1+t)^2}
+\end{align*}
+ここで $2t-(1+t)^2 = -(1+t^2)$，$\lambda\,\Delta\tau = 2t$ を用いた．したがって：
+
+\begin{equation}
+  \gamma(t) \equiv \frac{|r^1|}{|r^0|} = \frac{1 + t^2}{(1+t)^2}
+  \label{eq:gamma_t}
+\end{equation}
+
+（$t > 0$ に対して $\gamma(t) < 1$；初期残差を1スウィープで $\gamma$ 倍に縮小する指標．）
+この指標は「収束速度」と「スプリッティング誤差下限」の両方を反映しており，
+$t \to 0$ でも $t \to \infty$ でも $\gamma \to 1$（収束が遅い）という正しい定性的挙動を示す．
+
+\subsection*{最適点の導出}
+
+$\gamma(t)$ を最小化する $t^*$ を求める：
+\begin{equation}
+  \frac{d\gamma}{dt} = \frac{2(t-1)}{(1+t)^3} = 0
+  \quad\Longrightarrow\quad t^* = 1
+\end{equation}
+
+このとき $\gamma(1) = 2/4 = 1/2$．すなわち最適擬似時間刻みでは
+$\gamma$ の意味で\textbf{1スウィープごとに収束率指標が最小値}をとり，
+収束と分割誤差のトレードオフが最も良くバランスする．
+
+$t^* = 1$ を $\Delta\tau$ に戻すと $\Delta\tau_{\mathrm{opt}} = 2/\lambda_{\max}$．
+CCD Laplacian の最大固有値は $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$（$a_{\max}$ は最大逆密度係数）であるから
+
+\begin{equation}
+  \Delta\tau_{\mathrm{opt}} \approx \frac{2h^2}{3.43\,a_{\max}}
+                             \approx \frac{0.58\,h^2}{a_{\max}}
+  \label{eq:dtau_opt_derive}
+\end{equation}
+
+これは §\ref{sec:ppe_pseudotime} の経験的指針 $C \approx 1$ の理論的根拠となる．
+
+\subsection*{$t \to 0$ および $t \to \infty$ の挙動}
+
+\begin{itemize}
+  \item $\gamma(t) \to 1$（$t \to 0$）：$\Delta\tau$ が小さすぎると誤差縮小率 $1/(1+t)^2 \to 1$ となり，
+        スプリッティング不動点 $\tilde{p}$ への収束が遅い．
+  \item $\gamma(t) \to 1$（$t \to \infty$）：$\Delta\tau$ が大きすぎるとスプリッティング不動点誤差
+        $\|\tilde{p} - p^*\| \sim \mathcal{O}(\Delta\tau^2)$ が拡大し，真の解 $p^*$ からの乖離が増す．
+  \item 最適点 $t=1$（$\Delta\tau = \Delta\tau_{\mathrm{opt}}$）：指標 $\gamma$ が最小値 $1/2$ をとり，
+        収束速度と分割誤差のトレードオフが最良にバランスする．
+        式~\eqref{eq:error_contraction} の純粋な誤差縮小率はこの点で $1/4$ であり，
+        収束は速いが分割誤差下限が残る（残差収束判定により実用上は問題ない；\ref{warn:ppe_splitting} 参照）．
+\end{itemize}
+\qed
+
+% ═══════════════════════════════════════════════════════════════════════════════

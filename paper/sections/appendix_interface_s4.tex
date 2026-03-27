@@ -1,0 +1,57 @@
+\section{\texorpdfstring{近似 $|\bnabla\psi| \approx \delta_s$ の精度：Eikonal 条件下で $\Ord{\varepsilon^2}$}{近似 |∇ψ|≈δ\_s の精度：Eikonal 条件下で O(ε²)}}
+\label{app:csf_delta_precision}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+Eikonal 条件 $|\bnabla\phi|=1$ が厳密に成立するとき，
+§\ref{sec:csf} の近似 $|\bnabla\psi| \approx \delta_s$ の誤差を
+法線方向座標によるテイラー展開で定量化する．
+
+\medskip
+\noindent\textbf{法線座標展開}
+
+界面 $\Gamma$（$\phi=0$）の法線方向座標を $s$，曲率 $\kappa_1, \kappa_2$ を持つ界面近傍の体積要素は：
+\[
+  dV = \bigl(1 - \kappa_1 s\bigr)\bigl(1 - \kappa_2 s\bigr)\, ds\, dA_\Gamma
+  \approx \bigl(1 - 2H s + \kappa_1\kappa_2 s^2 + \cdots\bigr)\, ds\, dA_\Gamma
+\]
+ここで $H = (\kappa_1+\kappa_2)/2$ は平均曲率．界面デルタ関数の定義から：
+\[
+  \delta_s = \frac{\delta(s)}{(1-\kappa_1 s)(1-\kappa_2 s)}
+  = \delta(s)\bigl(1 + 2Hs + \Ord{s^2}\bigr)
+\]
+
+\noindent\textbf{近似誤差の評価}
+
+$|\bnabla\phi|=1$ のとき $|\bnabla\psi| = \delta_\varepsilon(s)$（式 \eqref{eq:delta_eps_def}）であるから：
+\begin{align*}
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  &= \int_\Gamma \int_{-\infty}^{\infty}
+       f\,\delta_\varepsilon(s)\,\bigl(1 - 2Hs + \Ord{s^2}\bigr)\,ds\, dA_\Gamma
+     - \int_\Gamma f\, dA_\Gamma \\
+  &= \int_\Gamma f\!\int_{-\infty}^{\infty}\delta_\varepsilon(s)\cdot(-2Hs)\,ds\, dA_\Gamma
+     + \Ord{\varepsilon^2}
+\end{align*}
+$\delta_\varepsilon(s)$（式 \eqref{eq:delta_eps_def}）は $s$ の\textbf{偶関数}であり，$s$ は奇関数であるから：
+\[
+  \int_{-\infty}^{\infty} s\,\delta_\varepsilon(s)\,ds = 0
+\]
+したがって曲率 $H$ の項は消え，誤差の主要項は $s^2\,\delta_\varepsilon(s)$ の積分から来る．
+置換 $t = s/\varepsilon$ により：
+\[
+  \int_{-\infty}^{\infty} s^2\,\delta_\varepsilon(s)\,ds
+  = \varepsilon^2 \int_{-\infty}^{\infty} t^2\,\frac{e^{-t}}{(1+e^{-t})^2}\,dt
+  = \frac{\pi^2\varepsilon^2}{3}
+\]
+最後の等号は $t>0$ での級数展開と $\int_0^\infty t^2 e^{-nt}\,dt = 2/n^3$，
+ディリクレのエータ関数 $\eta(2) = \pi^2/12$ を用いる（$[-\infty,0]$ 側は偶関数性で等値）．
+
+\noindent\textbf{結論}
+\[
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  = \Ord{\varepsilon^2\,\kappa^2\,\|f\|_{L^\infty}}
+\]
+Eikonal 条件下での近似 $|\bnabla\psi| \approx \delta_s$ の誤差は $\Ord{\varepsilon^2}$ である
+（より正確には $\Ord{\varepsilon^2\kappa^2}$；界面が直線 $\kappa=0$ のときは厳密）．
+$\varepsilon \sim \Delta x$ の設定では誤差は $\Ord{\Delta x^2}$．\qed
+
+% ═══════════════════════════════════════════════════════════════════════════════

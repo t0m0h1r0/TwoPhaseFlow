@@ -74,10 +74,35 @@
 \appendix
 \part*{付録}
 
-\input{sections/appendix_interface}      %% 付録A: 界面数学・CLS 証明（§2-§3 対応）
-\input{sections/appendix_ccd_coef}      %% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
-\input{sections/appendix_ccd_impl}      %% 付録C: CCD 実装詳細・Kronecker 積・周期BC（§4/§8 対応）
-\input{sections/appendix_numerics_schemes} %% 付録D: 参照スキーム（WENO5・ALE・Rhie--Chow・Godunov, §5-§7 対応）
-\input{sections/appendix_numerics_solver}  %% 付録E: ソルバー解析（擬似時間・CFL・チェッカーボード, §5-§8 対応）
+%% 付録A: 界面数学・CLS 証明（§2-§3 対応）
+\input{sections/appendix_interface_s1}   %% A.1 ψ→φ Newton 二次収束証明
+\input{sections/appendix_interface_s2}   %% A.2 One-Fluid 化の数学的メカニズム
+\input{sections/appendix_interface_s3}   %% A.3 CLS 拡散界面における粘性補間
+\input{sections/appendix_interface_s4}   %% A.4 |∇ψ|≈δ_s の精度：Eikonal 条件下 O(ε²)
+\input{sections/appendix_interface_s5}   %% A.5 CLS 再初期化方程式の設計動機と不動点証明
+
+%% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
+\input{sections/appendix_ccd_coef_s1}    %% B.1 CCD 係数の Taylor 展開による厳密導出
+\input{sections/appendix_ccd_coef_s2}    %% B.2 CCD 境界スキームの係数導出
+
+%% 付録C: CCD 実装詳細・Kronecker 積・周期BC（§4/§8 対応）
+\input{sections/appendix_ccd_impl_s1}    %% C.1 ゴーストセル法による CCD 境界処理
+\input{sections/appendix_ccd_impl_s2}    %% C.2 2段階 CCD 混合微分の精度解析
+\input{sections/appendix_ccd_impl_s3}    %% C.3 CCD 法の楕円型ソルバーとしての双対的役割
+\input{sections/appendix_ccd_impl_s4}    %% C.4 周期境界条件：ブロック循環 CCD 行列法
+
+%% 付録D: 参照スキーム（WENO5・ALE・Rhie--Chow・Godunov, §5-§7 対応）
+\input{sections/appendix_numerics_schemes_s1} %% D.1 時間変化格子と ALE 効果
+\input{sections/appendix_numerics_schemes_s2} %% D.2 Rhie--Chow 補正と CCD 高次精度の整合性
+\input{sections/appendix_numerics_schemes_s3} %% D.3 Balanced-Force 条件：誤差解析
+\input{sections/appendix_numerics_schemes_s4} %% D.4 標準 Level Set 法の Godunov 型スキーム
+\input{sections/appendix_numerics_schemes_s5} %% D.5 WENO5 移流スキームの詳細
+
+%% 付録E: ソルバー解析（擬似時間・CFL・チェッカーボード, §5-§8 対応）
+\input{sections/appendix_numerics_solver_s1}  %% E.1 スウィープ法 Thomas 三重対角係数導出
+\input{sections/appendix_numerics_solver_s2}  %% E.2 擬似時間反復の収束率解析と最適 Δτ
+\input{sections/appendix_numerics_solver_s3}  %% E.3 チェッカーボードモードの代数的証明
+\input{sections/appendix_numerics_solver_s4}  %% E.4 毛管波制約：分散関係から CFL 条件へ
+\input{sections/appendix_numerics_solver_s5}  %% E.5 PPE 面係数 a_f = 2/(ρ_L+ρ_R) の FVM 積分論理
 
 \end{document}
