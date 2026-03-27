@@ -1,0 +1,239 @@
+\section{CCD 法の楕円型ソルバーとしての双対的役割}
+\label{app:ccd_elliptic}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ccd_mixed} までで説明した「微分演算子としての CCD」に加えて，
+CCD が\textbf{楕円型方程式の陰的ソルバー}として機能する数学的構造を説明する．
+これは第\ref{sec:pressure}章の CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}）の理論的基盤である．
+
+\subsection{CCD 演算子行列の定義}
+
+既知の関数値 $\bm{f} = [f_0, \dots, f_{N-1}]^\top$ に対してブロック Thomas 法で
+$\bm{v} = [f'_0, f''_0, \dots, f'_{N-1}, f''_{N-1}]^\top$ を求める系：
+\begin{equation}
+  \mathcal{M}_{\mathrm{CCD}}\,\bm{v} = \mathcal{R}(\bm{f})
+  \label{eq:ccd_derivative_system_app}
+\end{equation}
+から，第1・第2微分成分を抽出する射影行列 $\mathbf{E}_1, \mathbf{E}_2 \in \mathbb{R}^{N \times 2N}$ を用いると，
+CCD 離散微分演算子は：
+\begin{align}
+  D_x^{(1)}\bm{p} &\equiv \mathbf{E}_1\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p}) \\
+  D_x^{(2)}\bm{p} &\equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}(\bm{p})
+\end{align}
+となる．1次元等密度ラプラシアンを離散化した演算子行列：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{(x)} \equiv \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}
+  \in \mathbb{R}^{N \times N}
+  \label{eq:L_CCD_def_app}
+\end{equation}
+は $N \times N$ の行列であり，$\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p} \approx [p''_0, \dots, p''_{N-1}]^\top$（$\Ord{h^6}$ 精度）を返す．
+$\mathbf{L}_{\mathrm{CCD}}^{(x)}$ を陽に組み立てる必要はなく，各反復でブロック Thomas 法を適用する matrix-free 実装が可能（$O(N)$ コスト）．
+
+\subsection{変密度場における CCD-Poisson 演算子}
+
+変密度 PPE の演算子 $\nabla\cdot(1/\rho\,\nabla p)$ を1次元で展開すると：
+\[
+  \mathcal{L}^{\rho}p = \frac{1}{\rho}\,p'' - \frac{\rho_x}{\rho^2}\,p'
+\]
+格子点ごとの密度行列 $\boldsymbol{\Lambda}_\rho = \mathrm{diag}(\rho_0, \dots, \rho_{N-1})$ を用いると：
+\begin{equation}
+  \mathbf{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}
+  = \boldsymbol{\Lambda}_\rho^{-1}\,\mathbf{L}_{\mathrm{CCD}}^{(x)}\bm{p}
+  - \boldsymbol{\Lambda}_\rho^{-2}\,\mathrm{diag}(D_x^{(1)}\bm{\rho})\,D_x^{(1)}\bm{p}
+\end{equation}
+2次元ではこれを $x$・$y$ 方向に加算する．
+
+等密度場では $\mathbf{L}_{\mathrm{CCD}}^{(x)}$ は適切な境界条件のもとで\textbf{負半定値}（全固有値 $\lambda_k \le 0$），ラプラシアンの本質的性質と一致する．
+変密度場では厳密な対称性は失われるが，仮想時間反復の収束性はスペクトル半径に支配されるため実用上は十分である．
+
+\subsection{PPE の数値解法：反復法（LGMRES）優先・直接 LU フォールバック}
+\label{app:ccd_lu_direct}
+
+PPE $\mathbf{L}_{\mathrm{CCD}}^{\rho}\bm{p} = \bm{q}$
+（クロネッカー積表現：式~\eqref{eq:L_CCD_2d_kron}，付録~\ref{app:ccd_kronecker}）の求解には
+\textbf{二段構えの戦略}を採用する．
+
+\subsubsection*{Primary：LGMRES 反復法}
+
+LGMRES（拡張 Krylov 部分空間法；\texttt{scipy.sparse.linalg.lgmres}）を第一選択とする．
+収束した場合のメモリコストは $O(n k)$（$k$：内部再スタート数）であり，
+行列要素のみを格納する疎行列表現と合わせて全体で $O(n)$ に抑えられる．
+前タイムステップの圧力 $\bm{p}^n$（または増分法では $\delta\bm{p}^n$）を初期推定値として
+warm start することで，収束に要するイテレーション数を大幅に削減できる．
+
+LGMRES は通常の GMRES より拡張 Krylov 部分空間を使用するため，
+CCD 境界スキームが誘発する高非対称行列（$N=16$ 時点で最大非対称度 $\approx 900$）でも
+より頑健に収束することが期待される．
+収束判定は許容誤差 $\varepsilon_{\mathrm{tol}}$（設定値 \texttt{pseudo\_tol}）と
+最大反復回数 \texttt{pseudo\_maxiter} による．
+
+\subsubsection*{Fallback：直接スパース LU 法}
+
+LGMRES が \texttt{pseudo\_maxiter} ステップ以内に収束しない場合，
+直接スパース LU 法（SuperLU: \texttt{scipy.sparse.linalg.spsolve}）に自動的に切り替える．
+直接法はメモリコスト $O(n^{1.5})$（2次元問題での LU 充填の経験則）と引き換えに，
+非特異な系を必ず正確に解くことが保証される．
+この安全網により，反復法の収束失敗が他モジュールの開発を停滞させることを防ぐ．
+
+\subsubsection*{零空間のピン条件}
+
+等密度場で全周 Neumann 境界を課した PPE は定数圧力モードという零空間を持つ（§\ref{app:checkerboard_mode}）．
+変密度場でも同様に零空間が生じうる（詳細は付録~\ref{app:ccd_kronecker}）．
+零空間を除去するため，\textbf{中央ノード $(N/2, N/2)$}（整数除算）の行を恒等行で上書きして
+その圧力を $0$ に固定する（ゲージ条件；式~\eqref{eq:pin_overwrite}）：
+修正系 $\hat{\mathbf{L}}\bm{p} = \hat{\bm{q}}$ を LGMRES（または LU）で解く．
+中央ノードは正方形領域の4つの対称操作（$x$・$y$ 軸反転，対角置換）に対して不変であり，
+ピン固定がシミュレーションの物理的対称性を破らない（コーナー固定では対称性が崩れる）．
+
+\subsubsection*{仮想時間フレームワークとの関係}
+
+付録~\ref{sec:dtau_derive}（収束率解析）は，スウィープ型仮想時間反復の最適擬似時間刻み
+$\Delta\tau_{\mathrm{opt}}$ を導出しており，数学的証明として引き続き有効である．
+本付録の実装はスウィープ分割を行わず，組み立てた大域行列に対して直接 Krylov 法を適用するため，
+スプリッティング誤差（付録~\ref{sec:dtau_derive} の $\mathcal{O}(\Delta\tau^2)$ 項）は生じない．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{2次元 CCD-Poisson 演算子のクロネッカー積による大域行列表現}
+\label{app:ccd_kronecker}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，§\ref{sec:ccd_2d_full} の点ごと演算子式（式~\eqref{eq:L_CCD_2d_full}）を，
+付録~\ref{app:ccd_lu_direct} の直接 LU 法に渡す $n \times n$ スパース行列として
+\textbf{代数的に厳密}に組み立てる手順を示す．
+
+\subsubsection{記号と格子設定}
+
+$x$ 方向に $N_x$ 点，$y$ 方向に $N_y$ 点の2次元等間隔ノードセンタード格子を考える（各端点を含む）：
+\[
+  N_x = N^{(x)}+1,\quad N_y = N^{(y)}+1,\quad n = N_x N_y
+\]
+2次元配列 $p[i,j]$（$0 \le i < N_x$，$0 \le j < N_y$）を \textbf{C順序（行優先）}でフラット化する：
+\begin{equation}
+  k(i,j) = i N_y + j \in \{0, 1, \dots, n-1\}
+  \label{eq:c_order_index}
+\end{equation}
+フラットベクトル $\bm{p} \in \mathbb{R}^n$ を $\bm{p}_k = p[i,j]$ と定義する．
+
+\subsubsection{1次元 CCD 行列の構成}
+
+各軸の1次元 CCD 微分行列を以下のように定義する：
+\begin{align}
+  \mathbf{D}_1^{(x)} \in \mathbb{R}^{N_x \times N_x}: &\quad
+    [\mathbf{D}_1^{(x)}]_{i\kappa} = \bigl[D_x^{(1)}\mathbf{e}_\kappa\bigr]_i
+    \label{eq:D1x_def} \\
+  \mathbf{D}_2^{(x)} \in \mathbb{R}^{N_x \times N_x}: &\quad
+    [\mathbf{D}_2^{(x)}]_{i\kappa} = \bigl[D_x^{(2)}\mathbf{e}_\kappa\bigr]_i
+    \label{eq:D2x_def}
+\end{align}
+ここで $\mathbf{e}_\kappa \in \mathbb{R}^{N_x}$ は第 $\kappa$ 標準基底ベクトル，$D_x^{(\ell)}$ は
+§\ref{app:ccd_elliptic} のブロック Thomas 解法による CCD 微分演算子である．
+$y$ 方向も同様に $\mathbf{D}_1^{(y)}, \mathbf{D}_2^{(y)} \in \mathbb{R}^{N_y \times N_y}$ を定義する．
+
+\noindent\textbf{実装：} $\mathbf{D}_\ell^{(x)}$ は $N_x \times N_x$ 単位行列を入力として CCD を一括適用することで
+$O(N_x^2)$ で構成できる（全列を一括差分）：
+\[
+  [\mathbf{D}_1^{(x)},\, \mathbf{D}_2^{(x)}] = \mathrm{CCD.differentiate}(\mathbf{I}_{N_x},\;\mathrm{axis}=0)
+\]
+
+\subsubsection{クロネッカー積による2次元微分行列}
+
+C順序フラットベクトル $\bm{p}$ への2次元偏微分はクロネッカー積で表現される．
+以下に $x$ 方向の場合の厳密な証明を示す．
+
+\textbf{命題：} C順序のもとで，$(D_x^{(2)} p)_{ij}$ のフラット表現は $(\mathbf{D}_2^{(x)} \otimes \mathbf{I}_{N_y})\bm{p}$ に等しい．
+
+\textbf{証明：}
+クロネッカー積 $\mathbf{D}_2^{(x)} \otimes \mathbf{I}_{N_y}$ の $k(i,j)$ 行への作用は：
+\[
+  \bigl[(\mathbf{D}_2^{(x)} \otimes \mathbf{I}_{N_y})\bm{p}\bigr]_{i N_y + j}
+  = \sum_{\kappa=0}^{N_x-1}\sum_{l=0}^{N_y-1}
+    [\mathbf{D}_2^{(x)}]_{i\kappa}\,[\mathbf{I}_{N_y}]_{jl}\,\bm{p}_{\kappa N_y + l}
+  = \sum_{\kappa=0}^{N_x-1} [\mathbf{D}_2^{(x)}]_{i\kappa}\,p[\kappa, j]
+  = (D_x^{(2)} p)_{ij}
+  \quad\square
+\]
+$y$ 方向も同様に，$(\mathbf{I}_{N_x} \otimes \mathbf{D}_2^{(y)})\bm{p}$ の $k(i,j)$ 成分は：
+\[
+  \bigl[(\mathbf{I}_{N_x} \otimes \mathbf{D}_2^{(y)})\bm{p}\bigr]_{i N_y + j}
+  = \sum_{l=0}^{N_y-1} [\mathbf{D}_2^{(y)}]_{jl}\,p[i, l]
+  = (D_y^{(2)} p)_{ij}
+  \quad\square
+\]
+4つの2次元微分行列を以下のように定める（サイズはすべて $n \times n$）：
+\begin{align}
+  \mathbf{D}_{2x}^{\mathrm{2D}} &= \mathbf{D}_2^{(x)} \otimes \mathbf{I}_{N_y}
+  \label{eq:D2x_2d} \\
+  \mathbf{D}_{2y}^{\mathrm{2D}} &= \mathbf{I}_{N_x} \otimes \mathbf{D}_2^{(y)}
+  \label{eq:D2y_2d} \\
+  \mathbf{D}_{1x}^{\mathrm{2D}} &= \mathbf{D}_1^{(x)} \otimes \mathbf{I}_{N_y}
+  \label{eq:D1x_2d} \\
+  \mathbf{D}_{1y}^{\mathrm{2D}} &= \mathbf{I}_{N_x} \otimes \mathbf{D}_1^{(y)}
+  \label{eq:D1y_2d}
+\end{align}
+
+\subsubsection{変密度 2次元 CCD-Poisson 演算子の行列表現}
+
+密度場 $\rho[i,j]$ および各軸の密度勾配 $(\partial_x\rho)[i,j]$，$(\partial_y\rho)[i,j]$ を
+同じ C順序でフラット化した対角行列：
+\begin{align}
+  \boldsymbol{\Lambda}_{\rho^{-1}}       &= \mathrm{diag}(1/\bm{\rho})
+  \in \mathbb{R}^{n \times n} \\
+  \boldsymbol{\Lambda}_{\partial\rho_x/\rho^2} &= \mathrm{diag}(\partial_x\bm{\rho}/\bm{\rho}^2)
+  \in \mathbb{R}^{n \times n} \\
+  \boldsymbol{\Lambda}_{\partial\rho_y/\rho^2} &= \mathrm{diag}(\partial_y\bm{\rho}/\bm{\rho}^2)
+  \in \mathbb{R}^{n \times n}
+\end{align}
+を用いると，変密度 2次元 CCD-Poisson 演算子の大域行列表現は：
+\begin{equation}
+  \boxed{
+  \mathbf{L}_{\mathrm{CCD}}^{\rho}
+  = \boldsymbol{\Lambda}_{\rho^{-1}}\!
+    \bigl(\mathbf{D}_{2x}^{\mathrm{2D}} + \mathbf{D}_{2y}^{\mathrm{2D}}\bigr)
+  - \boldsymbol{\Lambda}_{\partial\rho_x/\rho^2}\,\mathbf{D}_{1x}^{\mathrm{2D}}
+  - \boldsymbol{\Lambda}_{\partial\rho_y/\rho^2}\,\mathbf{D}_{1y}^{\mathrm{2D}}
+  \;\in \mathbb{R}^{n \times n}
+  }
+  \label{eq:L_CCD_2d_kron}
+\end{equation}
+この式は §\ref{sec:ccd_2d_full} の点ごと式（式~\eqref{eq:L_CCD_2d_full}）と代数的に等価であり，
+C順序インデックス写像~\eqref{eq:c_order_index} のもとで厳密に成立する．
+
+\textbf{物理的解釈：}
+$\mathbf{D}_{2x}^{\mathrm{2D}} + \mathbf{D}_{2y}^{\mathrm{2D}}$ は等密度等方ラプラシアン $\nabla^2$
+の $O(h^6)$ 離散化であり，$\boldsymbol{\Lambda}_{\rho^{-1}}$ が変密度係数 $1/\rho$ を乗じ，
+クロス微分項 $\boldsymbol{\Lambda}_{\partial\rho/\rho^2}\mathbf{D}_1^{\mathrm{2D}}$ が積の法則
+$\nabla\cdot(1/\rho\,\nabla p) = (1/\rho)\nabla^2 p - (\nabla\rho/\rho^2)\cdot\nabla p$
+（式~\eqref{eq:varrho_product_rule}）の第2項を担う．
+
+\subsubsection{零空間の次元とピン条件の必要性}
+
+等密度・全周 Neumann 境界では $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の零空間は定数モード1次元のみとなる
+（連続問題に対応）．しかし Eq-II-bc（§\ref{sec:ccd_bc}）の $O(h^2)$ 一側公式は
+ブロック Thomas 系に非対称成分を導入し，数値的に零空間次元が増大することがある
+（$N=4$ 時点で零空間次元 $= 8$，条件数 $\approx 1.9 \times 10^{17}$；付録~\ref{app:ccd_lu_direct} も参照）．
+
+したがってピン条件（式~\eqref{eq:pin_overwrite}）は\textbf{必須}である．
+根本的解決策は Eq-II-bc を $O(h^4)$ 以上の公式に昇格させることであり，
+これにより零空間次元が理論通り1次元に収束する（今後の課題；§\ref{sec:conclusion}）．
+
+\subsubsection{計算コスト}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{llp{5.5cm}}
+\hline
+処理 & コスト & 備考 \\
+\hline
+1D CCD 行列構成 & $O(N_x^2 + N_y^2)$ & 単位行列一括差分（タイムステップ毎ではなく初期化時1回） \\
+クロネッカー積組み立て & $O(N_x N_y^2 + N_x^2 N_y)$ & scipy.sparse.kron \\
+密度重みの対角行列更新 & $O(n)$ & 各タイムステップで $\rho$ 更新時に再計算 \\
+スパース LU 因数分解 & $O(n^{1.5})$（2D 問題の経験則） & 各タイムステップ1回 \\
+前進後退代入（求解） & $O(n^{1.0})$ & LU 因数後 \\
+\hline
+\end{tabular}
+\end{center}
+
+典型的な計算では $n \lesssim 10^4$（$100 \times 100$ 格子）のため，
+1タイムステップあたりの PPE 求解コストは $O(n^{1.5}) \approx 10^6$ 演算程度であり実用的である．
+
+% ═══════════════════════════════════════════════════════════════════════════════

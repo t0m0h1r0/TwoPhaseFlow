@@ -1,0 +1,92 @@
+\section{欠陥補正スウィープ法の Thomas 三重対角係数導出}
+\label{app:sweep_thomas_coeff}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:defect_correction} で定義した欠陥補正法（式~\eqref{eq:defect_correction_linear}）において，
+左辺の有限差分演算子 $[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD}]$ を
+1方向 Thomas 法で求解するための三重対角係数を導出する．
+(\texttt{PPESolverSweep}，\texttt{ppe\_solver\_type="sweep"} の実装に対応．)
+
+\subsection*{変密度 FD 演算子の離散化}
+
+PPE の可変係数 Laplacian を $x$ 方向（格子幅 $h$，節点数 $N+1$）に対し 2 次精度中心差分で離散化する：
+\begin{equation}
+  (\mathcal{L}_{FD,x}\,q)_i
+  = \frac{1}{\rho_i}\,\frac{q_{i-1} - 2q_i + q_{i+1}}{h^2}
+    - \frac{(\partial\rho/\partial x)_i}{\rho_i^2}\,\frac{q_{i+1} - q_{i-1}}{2h}
+  \label{eq:lfd_x_disc}
+\end{equation}
+ここで $\rho_i$ は密度，$(\partial\rho/\partial x)_i$ は CCD で事前計算した密度勾配（反復中凍結）．
+
+\subsection*{各方向の更新方程式}
+
+欠陥補正の各反復（式~\eqref{eq:defect_correction_linear}）を
+$x$・$y$ 方向の2段スウィープに因子分解する：
+
+\textbf{第1スウィープ（$x$ 方向）：}
+\begin{equation}
+  \Bigl[\tfrac{1}{\Delta\tau_{i,j}}\,\mathbf{I} - \mathcal{L}_{FD,x}\Bigr]\,q_{i,j} = R_{i,j}
+  \label{eq:sweep_x}
+\end{equation}
+
+\textbf{第2スウィープ（$y$ 方向）：}
+\begin{equation}
+  \Bigl[\tfrac{1}{\Delta\tau_{i,j}}\,\mathbf{I} - \mathcal{L}_{FD,y}\Bigr]\,\Delta_{i,j} = q_{i,j}
+  \label{eq:sweep_y}
+\end{equation}
+
+各スウィープでは「解く軸」に沿った三重対角系を独立な「断面バッチ」として同時求解する（全断面ベクトル化 Thomas 法）．
+
+\subsection*{三重対角係数（内部節点 $1 \le i \le N-1$）}
+
+式~\eqref{eq:lfd_x_disc} を $-\mathcal{L}_{FD,x}$ として式~\eqref{eq:sweep_x} の係数を整理する：
+\begin{align}
+  a_i &= -\frac{1}{\rho_i\,h^2} + \frac{(\partial\rho/\partial x)_i}{2\rho_i^2\,h}
+          &&\text{（下対角：$q_{i-1}$ の係数）}
+  \label{eq:coeff_a}\\
+  b_i &= \frac{1}{\Delta\tau_{i,j}} + \frac{2}{\rho_i\,h^2}
+          &&\text{（主対角：$q_i$ の係数）}
+  \label{eq:coeff_b}\\
+  c_i &= -\frac{1}{\rho_i\,h^2} - \frac{(\partial\rho/\partial x)_i}{2\rho_i^2\,h}
+          &&\text{（上対角：$q_{i+1}$ の係数）}
+  \label{eq:coeff_c}
+\end{align}
+
+\textbf{主対角優位の確認：}
+$\rho_i > 0$，$h > 0$，$\Delta\tau_{i,j} > 0$ より $b_i = 1/\Delta\tau_{i,j} + 2/(\rho_i h^2) > 0$．
+また $|b_i| - |a_i| - |c_i| = 1/\Delta\tau_{i,j} > 0$ であるため，
+行列は\textbf{厳密対角優位}（strict diagonal dominance）を満たし，
+ピボッティングなしの Thomas 法は数値的に安定である（$b_i - a_i c_{i-1}/b_{i-1} > 0$）．
+
+\subsection*{境界節点（Neumann BC）}
+
+壁面節点（$i=0$ および $i=N$）では圧力増分をゼロとする Neumann 境界条件を適用する：
+\begin{equation}
+  a_0 = 0,\quad b_0 = 1,\quad c_0 = 0,\quad R_0 = 0
+  \qquad\text{（および $i=N$ も同様）}
+  \label{eq:sweep_bc}
+\end{equation}
+これはスウィープの増分量 $\Delta_{(m)}$ が壁面で変化しないことを意味し（$\Delta_{(m)}|_\text{wall} = 0$），
+Neumann 圧力境界条件（$\partial p/\partial n|_\text{wall} = 0$）の弱い形式に対応する．
+
+\subsection*{ゲージ固定}
+
+PPE は Neumann BC のみでは定数不定（零空間）であるため，
+中央節点 $(N/2, N/2)$ を圧力ゲージピンとして $(\delta p)|_\text{pin} = 0$ に固定する
+（各スウィープ後に強制適用；§\ref{sec:pseudo_convergence} 参照）．
+正方形領域の 4 つの対称操作（$x$・$y$ 反転，対角置換）に対して中心節点は不変であり，
+ゲージ固定がシミュレーションの物理的対称性を破らない．
+
+\subsection*{計算量}
+
+格子点数を $N_x \times N_y$ とすると：
+\begin{itemize}
+  \item $x$ スウィープ：$N_y$ 本の $N_x$ 節点三重対角系を並列 Thomas 法で求解 — $\mathcal{O}(N_x N_y)$
+  \item $y$ スウィープ：$N_x$ 本の $N_y$ 節点三重対角系を並列 Thomas 法で求解 — $\mathcal{O}(N_x N_y)$
+  \item CCD 残差評価：$x$・$y$ 各方向 CCD 計算 — $\mathcal{O}(N_x N_y)$
+\end{itemize}
+1反復あたりの総計算量は $\mathcal{O}(N^2)$（$N = N_x = N_y$）であり，
+Krylov 法（GMRES 等，前処理なし）の1ステップと同オーダーだが，
+Thomas 法の定数係数が小さく実測上の反復コストが低い．
+
+% ═══════════════════════════════════════════════════════════════════════════════

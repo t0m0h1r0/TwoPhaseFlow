@@ -1,0 +1,58 @@
+\section{CLS 再初期化方程式の設計動機と不動点証明}
+\label{app:cls_fixed_point}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は，再初期化方程式 \eqref{eq:cls_reinit_iso} がなぜこの形を持つのか（設計原理）と，
+$\psi = H_\varepsilon(\phi)$ が厳密な不動点である代数的証明を1次元で与える．
+
+\subsection*{設計原理（逆算による導出）}
+
+\textbf{目標：} 定常解 $\psi = H_\varepsilon(\phi)$，すなわち $\psi' = \frac{1}{\varepsilon}\psi(1-\psi)$ を持つ方程式を作る．
+
+1次元で $\partial\psi/\partial\tau = 0$ の定常条件 $d[A(\psi)]/ds = d[B(\psi')]/ds$ において，
+定常解が $\psi = H_\varepsilon$ になるように $A,B$ を選ぶ．
+
+\textbf{Step 1：} $\psi' = \frac{1}{\varepsilon}\psi(1-\psi)$ から
+$\frac{d}{ds}[\psi(1-\psi)] = (1-2\psi)\psi' = \frac{1}{\varepsilon}(1-2\psi)\psi(1-\psi)$.
+
+\textbf{Step 2：} また $\varepsilon\psi'' = \varepsilon\frac{d}{ds}[\frac{1}{\varepsilon}\psi(1-\psi)] = \frac{d}{ds}[\psi(1-\psi)]$.
+
+\textbf{結論：} $A(\psi) = \psi(1-\psi)$，$B(\psi') = \varepsilon\psi'$ が定常条件を満たす——
+すなわち方程式 $\partial_\tau\psi + \nabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$
+の定常解が $H_\varepsilon(\phi)$ であることが自然に導かれる．
+
+\subsection*{不動点の解析的証明}
+
+1次元の定常条件 $\frac{d}{ds}[\psi(1-\psi)] = \varepsilon\,\frac{d^2\psi}{ds^2}$ において，
+$\psi = H_\varepsilon(s) = \frac{1}{1+e^{-s/\varepsilon}}$ がこれを満たすことを示す．
+
+微分公式：
+\[
+  \psi' = \frac{e^{-s/\varepsilon}}{\varepsilon(1+e^{-s/\varepsilon})^2} = \frac{1}{\varepsilon}\psi(1-\psi)
+\]
+
+\textbf{左辺を計算：}
+\[
+  \frac{d}{ds}[\psi(1-\psi)]
+  = (1-2\psi)\,\psi'
+  = (1-2\psi)\cdot\frac{1}{\varepsilon}\psi(1-\psi)
+\]
+
+\textbf{右辺を独立に計算（$\psi' = \tfrac{1}{\varepsilon}\psi(1-\psi)$ を連鎖律で微分）：}
+\[
+  \psi'' = \frac{d\psi'}{ds}
+         = \frac{d}{ds}\!\left[\frac{1}{\varepsilon}\psi(1-\psi)\right]
+         = \frac{1}{\varepsilon}(1-2\psi)\,\psi'
+         = \frac{1}{\varepsilon}(1-2\psi)\cdot\frac{1}{\varepsilon}\psi(1-\psi)
+\]
+したがって：
+\[
+  \varepsilon\,\psi''
+  = (1-2\psi)\cdot\frac{1}{\varepsilon}\psi(1-\psi)
+\]
+
+左辺 $=$ 右辺．
+（注：右辺の計算では $\psi' = \tfrac{1}{\varepsilon}\psi(1-\psi)$ を「$H_\varepsilon$ の微分公式から独立に導出された事実」として用いており，
+左辺の値を参照していない．循環論法は生じない．）
+
+\textbf{すなわち $\psi = H_\varepsilon(\phi)$ は式 \eqref{eq:cls_reinit_iso} の厳密な不動点である．}\qed

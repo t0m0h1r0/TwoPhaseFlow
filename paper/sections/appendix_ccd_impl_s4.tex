@@ -1,0 +1,144 @@
+\section{周期境界条件：ブロック循環 CCD 行列法}
+\label{app:ccd_periodic}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\begin{tcolorbox}[warnbox, title={片側スキームと周期 BC の相性問題}]
+§\ref{sec:ccd_bc} の片側差分境界スキームは，\textbf{非周期的な両端固定境界}（壁面・Dirichlet・Neumann）
+に対して設計されている．周期境界条件（$f_0 = f_N$）に対してこのスキームをそのまま適用すると，
+境界節点 $i=0,\, N$ の微分値に浮動小数点丸め起因の $\mathcal{O}(\epsilon_{\mathrm{mach}}/h)$ 程度の
+誤差が残留する．
+
+\medskip
+\textbf{不安定化の機構．}
+境界節点の誤差が AB2 時間積分スキームによって増幅される現象は，
+Gustafsson \cite{Gustafsson1981} の境界安定性問題として知られている．
+AB2 法の安定領域は純虚数軸上で $|\mathrm{Im}(\hat{\lambda})| \lesssim 0.47$ に制限されるが，
+片側スキームが導入する非対称な境界行は実部正の偽固有値を生成し，AB2 の安定領域を逸脱する．
+実際，表~\ref{tab:uniform_flow_comparison} に示すように，
+一様流試験（$u=1$，周期 BC）でこのスキームを誤用すると
+1 ステップあたり約 16 倍の誤差増幅が生じ，$t \approx 0.07$ でブローアップする．
+
+\medskip
+\textbf{根本原因：}
+節点 $i=0$ の内点ステンシルが必要とする左隣り $f_{-1}$ は，
+周期境界では $f_{N-1}$（折り返し）であるが，
+片側スキームは代わりに $\{f_0, f_1, f_2, f_3\}$ を用いる—これは物理的に誤った構成である．
+\end{tcolorbox}
+
+\subsection{正しい定式化：全節点に内点スキームを適用}
+
+周期境界条件下では，$N$ 個の独立節点（$i = 0, \ldots, N-1$；節点 $N$ は節点 0 の周期像）が
+\textbf{すべて内点スキーム（式~\eqref{eq:ccd_block}）を折り返し添字で使用可能}である：
+%
+\begin{equation}
+  \mathbf{A}_L\,\bm{v}_{(i-1)\bmod N}
+  + \mathbf{B}\,\bm{v}_i
+  + \mathbf{A}_R\,\bm{v}_{(i+1)\bmod N}
+  = \mathbf{r}_i, \qquad i = 0, 1, \ldots, N-1
+  \label{eq:ccd_periodic}
+\end{equation}
+%
+右辺は折り返し添字で評価する：
+%
+\begin{equation}
+  \mathbf{r}_i =
+  \begin{bmatrix}
+    \dfrac{a_1}{h}\bigl(f_{(i+1)\bmod N} - f_{(i-1)\bmod N}\bigr) \\[8pt]
+    \dfrac{a_2}{h^2}\bigl(f_{(i-1)\bmod N} - 2f_i + f_{(i+1)\bmod N}\bigr)
+  \end{bmatrix}
+  \label{eq:rhs_periodic}
+\end{equation}
+%
+求解後，周期像節点の微分値は $\bm{v}_N = \bm{v}_0$ とおく（同一物理点）．
+
+\subsection{全体行列：\texorpdfstring{$2N\times 2N$}{2N x 2N} ブロック循環行列}
+
+$N$ 式（各 $2\times 2$ ブロック）をまとめた全体行列は
+\textbf{ブロック循環（block-circulant）行列}となる：
+%
+\begin{equation}
+  \mathbf{K}_{\mathrm{circ}} =
+  \begin{bmatrix}
+    \mathbf{B}   & \mathbf{A}_R & \mathbf{0}   & \cdots & \mathbf{0}   & \mathbf{A}_L \\
+    \mathbf{A}_L & \mathbf{B}   & \mathbf{A}_R & \cdots & \mathbf{0}   & \mathbf{0}   \\
+    \mathbf{0}   & \mathbf{A}_L & \mathbf{B}   & \ddots & \vdots       & \vdots       \\
+    \vdots       &              & \ddots        & \ddots & \mathbf{A}_R & \mathbf{0}   \\
+    \mathbf{0}   & \cdots       & \mathbf{0}   & \mathbf{A}_L & \mathbf{B} & \mathbf{A}_R \\
+    \mathbf{A}_R & \mathbf{0}   & \cdots & \mathbf{0}   & \mathbf{A}_L & \mathbf{B}
+  \end{bmatrix}
+  \in \mathbb{R}^{2N\times 2N}
+  \label{eq:ccd_circulant}
+\end{equation}
+%
+ここで $\mathbf{A}_L,\, \mathbf{A}_R,\, \mathbf{B}$ は式~\eqref{eq:ccd_block} の内点ブロックと完全に同一であり，
+\textbf{境界専用ブロックは一切不要}となる．
+ブロック三重対角行列（式~\eqref{eq:ccd_global}）との違いは隅の $\mathbf{A}_R$（右上）と $\mathbf{A}_L$（左下）の2ブロックのみである．
+
+\begin{tcolorbox}[defbox, title={ブロック循環行列の正則性}]
+$\mathbf{K}_{\mathrm{circ}}$ が正則であることを示す．
+
+定数モード $\bm{v}_i = [c,\, 0]^\top$ を代入すると各行は
+$(\mathbf{A}_L + \mathbf{B} + \mathbf{A}_R)[c,\, 0]^\top = [(1+2\alpha_1)c,\, 0]^\top$ となり，
+$1+2\alpha_1 = 1 + 7/8 = 15/8 \neq 0$ だから零固有値にならない．
+
+定数モード $\bm{v}_i = [0,\, c]^\top$ は $(1+2\beta_2) = 3/4 \neq 0$ から同様に非退化．
+
+一般の波数 $k=1,\ldots,N-1$ の Fourier モード $\bm{v}_i = e^{2\pi\mathrm{i}ki/N}\bm{w}$ に対する固有値は，
+$\hat{\mathbf{K}}_k = e^{-2\pi\mathrm{i}k/N}\mathbf{A}_L + \mathbf{B} + e^{+2\pi\mathrm{i}k/N}\mathbf{A}_R$ の固有値に対応し，
+CCD スキームの修正波数解析（§\ref{sec:ccd_def}）から全波数で非零である．
+ゆえに $\mathbf{K}_{\mathrm{circ}}$ は正則である．
+\end{tcolorbox}
+
+\subsection{数値解法：密行列 LU 分解}
+
+$N \leq 512$ 程度では，$2N\times 2N$ 行列の密行列 LU 分解（前計算コスト $\mathcal{O}(N^3)$，
+$N=32$ で $64\times64$，$N=128$ で $256\times256$）を初期化時に1回だけ実行し，
+タイムステップ毎に \texttt{lu\_solve} によるバッチ後退代入（コスト $\mathcal{O}(N^2 B)$，$B$ はバッチサイズ）を適用する．
+
+\begin{tcolorbox}[algbox, title={周期 CCD 解法の手順（実装概要）}]
+\textbf{初期化（$\mathcal{O}(N^3)$，1回）：}
+\begin{enumerate}
+  \item $2N\times 2N$ ブロック循環行列 $\mathbf{K}_{\mathrm{circ}}$（式~\eqref{eq:ccd_circulant}）を組み立てる．
+  \item $(\mathbf{L},\,\mathbf{U},\,\mathbf{P}) = \mathrm{lu}(\mathbf{K}_{\mathrm{circ}})$ を計算・保存する．
+\end{enumerate}
+\textbf{求解（$\mathcal{O}(N^2 B)$，タイムステップ毎）：}
+\begin{enumerate}
+  \item 折り返し添字で右辺 $\mathbf{R} \in \mathbb{R}^{2N\times B}$ を構築する（式~\eqref{eq:rhs_periodic}）．
+  \item $\mathbf{K}_{\mathrm{circ}}\,\mathbf{V} = \mathbf{R}$ を LU 後退代入で解く．
+  \item $[f'_i,\, f''_i]^\top = \mathbf{V}_{2i:2i+2}$ を取り出し，$\bm{v}_N = \bm{v}_0$ とする．
+\end{enumerate}
+\end{tcolorbox}
+
+\subsection{検証：一様流試験}
+\label{sec:verify_uniform_flow}
+
+実装の正確性を確認するために，\textbf{一様流試験}（$u\equiv1,\; v\equiv0,\; p\equiv0$；
+$32\times32$ 格子，$Re=10^6$，$We=Fr=10^{10}$，$\rho_r=\mu_r=1$，CFL$=0.3$，周期 BC）を実施した．
+理論上，全ての項（対流・粘性・IPC・Rhie--Chow 補正）が恒等的にゼロとなるため，
+速度・圧力は全時刻で初期値のまま保持されなければならない．
+
+\begin{table}[htbp]
+\centering
+\caption{一様流試験の結果比較：周期 CCD \textit{vs.} 片側スキーム誤適用}
+\label{tab:uniform_flow_comparison}
+\begin{tabular}{lccccc}
+\toprule
+スキーム & ステップ & $t$ & $\|u-1\|_\infty$ & $\|v\|_\infty$ & $\|p\|_\infty$ \\
+\midrule
+\multirow{3}{*}{周期 CCD（正）}
+  &  1 & 0.009 & $0$              & $9\times10^{-23}$ & $0$ \\
+  & 10 & 0.094 & $0$              & $9\times10^{-22}$ & $0$ \\
+  & 20 & 0.188 & $0$              & $2\times10^{-21}$ & $0$ \\
+\midrule
+\multirow{3}{*}{片側スキーム（誤）}
+  &  1 & 0.009 & $2.5\times10^{-9}$  & $2.5\times10^{-9}$  & $3.3\times10^{-8}$ \\
+  &  7 & 0.066 & $2.5\times10^{-3}$  & $2.6\times10^{-3}$  & $2.8\times10^{-1}$ \\
+  & 10 & 0.094 & $4.7\times10^{0}$   & $5.0\times10^{0}$   & $1.4\times10^{3}$  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+周期 CCD では $\|u-1\|_\infty$ および $\|p\|_\infty$ は全ステップで浮動小数点表現の最小単位（マシンゼロ）であり，
+$\|v\|_\infty$ は 20 ステップで $\mathcal{O}(10^{-21})$ と線形増加する（時間積分の丸め累積のみ）．
+一方，片側スキームを誤用した場合は 1 ステップあたり約 16 倍の誤差増幅が生じ，$t\approx0.07$ でブローアップした．

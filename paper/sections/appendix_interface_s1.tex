@@ -1,0 +1,76 @@
+\section{\texorpdfstring{$\psi \to \phi$}{ψ→φ} 逆変換におけるニュートン法の二次収束証明}
+\label{app:newton_quad_conv}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿の §\ref{sec:newton_inversion} で述べたように，
+$\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
+ほとんどの格子点で解析的に求まる（残差ゼロ，ニュートン法不要）．
+ニュートン法（式~\eqref{eq:newton_inversion}）が実用的に必要になるのは
+$\psi_i \to 0$ または $\psi_i \to 1$ の\textbf{飽和領域のみ}（界面から $15\varepsilon$ 以遠，
+全格子点の $\mathcal{O}(e^{-15})$ 以下の割合）である．
+以下の証明はこの飽和域の少数の格子点に対する数学的完全性のために掲載する．
+
+\textbf{本証明のスコープ：} 以下の二次収束証明は，実装上の飽和処理（clamp）により
+$|\phi^{(k)}| \le \phi_{\max}$（$\phi_{\max} = 15\varepsilon$ 程度）の有界区間内に
+反復が閉じ込められる場合に成立する．この有界性は，ニュートン法の初期値を
+$\phi^{(0)} = \phi_{\max}\,\mathrm{sign}(\psi_i - 0.5)$（飽和限界）から開始することで
+実装上保証される．有界区間外（数学的には $\psi \in (0,1)$ 全体）での収束解析は
+Kelley \cite{Kelley2003} 等のニュートン法標準テキストを参照のこと．
+
+以下では，この飽和有界区間においてニュートン法が二次収束することを厳密に示す．
+
+\subsection*{前提}
+
+$F(\phi) \equiv H_\varepsilon(\phi) - \psi_i = 0$ を根とする問題を考える．
+$\phi^*$ を真の解（$F(\phi^*)=0$），$e_k = \phi^{(k)} - \phi^*$ を第 $k$ 反復での誤差とする．
+
+\subsection*{二次収束の証明}
+
+テイラー展開より：
+\[
+  F(\phi^{(k)}) = F'(\phi^*) e_k + \frac{F''(\xi_k)}{2} e_k^2
+  \quad (\xi_k \in [\phi^*, \phi^{(k)}])
+\]
+ニュートン更新 $\phi^{(k+1)} = \phi^{(k)} - F(\phi^{(k)})/F'(\phi^{(k)})$ に対して
+誤差方程式を導くと：
+\[
+  e_{k+1} = -\frac{F''(\xi_k)}{2F'(\phi^{(k)})} e_k^2
+\]
+
+各因子を評価する．
+\begin{itemize}
+  \item $F'(\phi) = H_\varepsilon'(\phi) = \dfrac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr) > 0$
+        （$H_\varepsilon \in (0,1)$ であるから常に正）．
+
+  \item 飽和処理により $|\phi| \le \phi_{\max}$ に制限されているとき，
+        $H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max})) > 0$ が保証されるから
+        $F'$ は有限の正の下界 $F'_{\min} > 0$ を持つ：
+        \[
+          F'_{\min} = \frac{1}{\varepsilon}H_\varepsilon(\phi_{\max})\bigl(1-H_\varepsilon(\phi_{\max})\bigr) > 0
+        \]
+
+  \item $F''(\phi) = \dfrac{1}{\varepsilon^2}H_\varepsilon(1-H_\varepsilon)(1-2H_\varepsilon)$ は
+        $\phi \in [-\phi_{\max}, \phi_{\max}]$ 上で有界である（$H_\varepsilon \in [0,1]$ の連続関数）．
+        したがって $\|F''\|_\infty \le 1/(4\varepsilon^2)$ が成立する（$H_\varepsilon(1-H_\varepsilon) \le 1/4$）．
+\end{itemize}
+
+以上より，収束定数
+\[
+  C = \frac{\|F''\|_\infty}{2 F'_{\min}}
+    = \frac{1}{8\varepsilon^2} \cdot \frac{\varepsilon}{H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max}))}
+    < \infty
+\]
+は有限であり，
+\[
+  |e_{k+1}| \le C\,|e_k|^2
+\]
+が成立する．これはニュートン法の\textbf{二次収束}を示す．\qed
+
+\subsection*{実装上の含意}
+
+飽和処理の閾値 $\delta_{\text{clamp}} = 10^{-6}$，$\phi_{\max} = 15\varepsilon$ の設定下では，
+飽和領域の格子点数は全体の $\mathcal{O}(e^{-\phi_{\max}/\varepsilon}) = \mathcal{O}(e^{-15})$ 以下であり
+（界面から $15\varepsilon$ 以遠の点），曲率計算にも寄与しない．
+したがって実際の計算コストは無視できるレベルである．
+
+% ═══════════════════════════════════════════════════════════════════════════════
