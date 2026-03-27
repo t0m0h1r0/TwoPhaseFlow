@@ -8,8 +8,14 @@ A4  layer isolation: one agent = one layer; cross-layer edit forbidden unless au
 A5  solver purity: infra must not alter numerical results; invariant under I/O, logging, config
 A6  diff-first output: no full file unless required; explain only what changed
 A7  backward compatibility: upgrade by mapping; never discard meaning without deprecation
-A8  branch governance: paper → `paper`; code → `code`; prompt → `prompt`;
-    merge to `main` only after validation + explicit authorization
+A8  branch governance:
+    - domains: paper → `paper`; code → `code`; prompt → `prompt`
+    - each domain follows 3-phase lifecycle: DRAFT → REVIEWED → VALIDATED
+    - auto-commit at each phase boundary; auto-merge `{branch} → main` on VALIDATED
+    - commit format: `{branch}: {phase} — {summary}` (phase = draft | reviewed | validated)
+    - merge format:  `merge({branch} → main): {summary}`
+    - each domain merges to `main` independently — no cross-domain wait required
+    - direct `main` edits forbidden unless explicitly authorized
 
 P1  layer stasis: when editing one layer, all others are READ-ONLY
 P5  single-action: one agent, one objective per step

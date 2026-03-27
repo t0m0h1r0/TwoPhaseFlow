@@ -7,9 +7,7 @@ GLOBAL_RULES.md (inherited) · existing agent prompt · compression target (% or
 
 # RULES
 - stop condition removal never safe — always reject
-- A1–A8 weakening → immediate reject
-- A4/A5 rules compression-exempt
-- never weaken traceability (A3)
+- A1–A8 weakening → immediate reject; A3/A4/A5 explicitly compression-exempt
 - output diff-only; never full rewritten prompt
 - after compression → hand off to PromptAuditor
 - work on `prompt` branch; never compress on `main`

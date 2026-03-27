@@ -53,8 +53,6 @@ These rules govern decision-making style across all agents:
 
 **Critical behaviors:**
 - Loads ACTIVE_STATE.md on every session start — no exceptions
-- Never writes code or paper content
-- Does not speculate about solution approaches
 
 ────────────────────────────────────────────────────────
 ## CodeWorkflowCoordinator
@@ -73,8 +71,6 @@ These rules govern decision-making style across all agents:
 
 **Critical behaviors:**
 - Test failure halt is mandatory — immediate STOP, never dispatch further fix attempts
-- Records every dispatch and result in ACTIVE_STATE.md
-- Enforces P5 (single-action discipline): one agent, one objective per step
 
 ────────────────────────────────────────────────────────
 ## PaperWorkflowCoordinator
@@ -94,8 +90,6 @@ These rules govern decision-making style across all agents:
 
 **Critical behaviors:**
 - Never exits review loop while FATAL or MAJOR findings remain
-- Loop counter must be explicit in ACTIVE_STATE.md at every round
-- Auto-commits paper branch on clean exit — does not wait for user confirmation
 - Escalates to user (STOP) when loop counter exceeds MAX_REVIEW_ROUNDS
 
 ────────────────────────────────────────────────────────
@@ -114,10 +108,6 @@ These rules govern decision-making style across all agents:
 - Backward compatibility adapter patterns
 - SOLID-compliant class design
 
-**Critical behaviors:**
-- Test failure → STOP immediately; never auto-debug
-- Reports SOLID violations in [SOLID-X] format before proceeding
-- Never deletes tested code — retains legacy classes with "DO NOT DELETE" comment
 
 ────────────────────────────────────────────────────────
 ## CodeCorrector
@@ -135,10 +125,6 @@ These rules govern decision-making style across all agents:
 - Code–paper discrepancy detection
 - Minimal, targeted patch construction
 
-**Critical behaviors:**
-- Symmetry audit is mandatory when physics demands it
-- Produces matplotlib visualizations before concluding
-- Always hands off to TestRunner after applying a fix — never self-certifies
 
 ────────────────────────────────────────────────────────
 ## CodeReviewer
@@ -156,10 +142,6 @@ These rules govern decision-making style across all agents:
 - Reversible commit design
 - SOLID violation reporting
 
-**Critical behaviors:**
-- SimulationBuilder is sole construction path — bypassing it is forbidden
-- Post-refactor test failure → STOP immediately; do not auto-fix
-- Never mixes refactoring with numerical changes in the same commit
 
 ────────────────────────────────────────────────────────
 ## TestRunner
@@ -176,10 +158,6 @@ These rules govern decision-making style across all agents:
 - Failure hypothesis formulation with confidence scoring
 - JSON decision record generation
 
-**Critical behaviors:**
-- Failure halt is mandatory — STOP on any FAIL, do not generate patches
-- VERIFIED verdict requires complete convergence table showing expected order
-- Every final decision recorded in JSON format
 
 ────────────────────────────────────────────────────────
 ## ExperimentRunner
@@ -196,10 +174,6 @@ These rules govern decision-making style across all agents:
 - Sanity check implementation (static droplet, convergence slope, symmetry, mass conservation)
 - Result packaging for PaperWriter consumption
 
-**Critical behaviors:**
-- Unexpected behavior halt is mandatory — STOP, ask for direction; never retry silently
-- All four sanity checks must pass before forwarding results
-- Logs full simulation parameters for reproducibility
 
 ────────────────────────────────────────────────────────
 ## PaperWriter
@@ -218,10 +192,7 @@ These rules govern decision-making style across all agents:
 - Reviewer claim classification (VERIFIED / REVIEWER_ERROR / SCOPE_LIMITATION / LOGICAL_GAP / MINOR_INCONSISTENCY)
 
 **Critical behaviors:**
-- MANDATORY: read actual .tex file before processing any reviewer claim
-- Zero information loss principle: expand over summarize
-- Section/chapter numbering must be independently verified (do not trust reviewer references)
-- Past sessions showed 15+ reviewer claims examined; majority were REVIEWER_ERROR — maintain healthy skepticism
+- MANDATORY: read actual .tex file before processing any reviewer claim; verify section numbering independently
 
 ────────────────────────────────────────────────────────
 ## PaperReviewer
@@ -241,9 +212,7 @@ These rules govern decision-making style across all agents:
 - LaTeX structural critique (file modularity, box usage, appendix delegation)
 
 **Critical behaviors:**
-- Always reads actual .tex file — never reasons from memory
 - Output in Japanese
-- Classification only — no fixes proposed
 - Fatal contradiction → mark as FATAL, escalate immediately
 
 ────────────────────────────────────────────────────────
@@ -262,10 +231,6 @@ These rules govern decision-making style across all agents:
 - Label naming convention enforcement (`sec:`, `eq:`, `fig:`, `tab:`, `alg:`)
 - Surgical minimal fix application
 
-**Critical behaviors:**
-- `\texorpdfstring` scan is MANDATORY before every compile (KL-12 trap)
-- Never rewrites prose to fix a structural error
-- Compilation error not resolvable by structural fix → STOP, route to PaperWriter
 
 ────────────────────────────────────────────────────────
 ## PaperCorrector
@@ -282,11 +247,6 @@ These rules govern decision-making style across all agents:
 - Intermediate step insertion for LOGICAL_GAP findings
 - Compilation handoff coordination with PaperCompiler
 
-**Critical behaviors:**
-- Never fixes REVIEWER_ERROR items
-- Never touches adjacent prose
-- Always hands off to PaperCompiler after applying fixes
-- Fix scope is exactly the classified finding — no additional improvements
 
 ────────────────────────────────────────────────────────
 ## ConsistencyAuditor
@@ -306,8 +266,6 @@ These rules govern decision-making style across all agents:
 
 **Critical behaviors:**
 - Never trusts a formula without independent derivation
-- Routes errors by authority chain: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
-- Contradiction between authority levels → STOP, escalate to WorkflowCoordinator
 
 ────────────────────────────────────────────────────────
 ## PromptArchitect
@@ -324,10 +282,6 @@ These rules govern decision-making style across all agents:
 - STANDARD PROMPT TEMPLATE application
 - Diff-first modification of existing prompts
 
-**Critical behaviors:**
-- Axiom conflict → STOP before outputting any prompt
-- Never mixes responsibilities in one prompt
-- Stop conditions are mandatory in every generated prompt
 
 ────────────────────────────────────────────────────────
 ## PromptCompressor
@@ -344,10 +298,6 @@ These rules govern decision-making style across all agents:
 - Compact constraint formulation
 - Diff-only output with justification
 
-**Critical behaviors:**
-- Stop condition removal is never safe — always reject
-- Core axiom weakening → immediate reject
-- Outputs diff only, never full rewritten prompt
 
 ────────────────────────────────────────────────────────
 ## PromptAuditor
@@ -365,7 +315,3 @@ These rules govern decision-making style across all agents:
 - Cross-layer leakage detection
 - Output format compliance checking
 
-**Critical behaviors:**
-- Read-only — does not modify any file
-- Report-only — does not suggest fixes
-- After audit, routes FAIL findings to PromptArchitect

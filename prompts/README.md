@@ -19,7 +19,7 @@ Defined in `meta/meta-tasks.md`. All agents obey these unconditionally.
 | A5 Solver Purity | infrastructure must not affect numerical results |
 | A6 Diff-First Output | no full file rewrites unless explicitly required |
 | A7 Backward Compatibility | preserve semantics; upgrade by mapping, never by discarding |
-| A8 Git Governance | `main` protected; `paper`/`code` branches only; merge-only into `main` |
+| A8 Git Governance | 3-phase lifecycle per domain: DRAFT → REVIEWED → VALIDATED → auto-merge `{branch} → main`; each domain independent |
 
 ---
 
@@ -32,7 +32,7 @@ project-root/
 │   │   ├── meta-deploy.md             # Bootstrap workflow; environment profiles; 6-stage deployment
 │   │   ├── meta-tasks.md              # Agent roles, axioms (A1–A8), per-agent task specs
 │   │   ├── meta-persona.md            # Agent personality, skills, decision styles
-│   │   └── meta-workflow.md           # State machine, handoff map, protocols P1–P8
+│   │   └── meta-workflow.md           # State machine, handoff map, protocols P1–P7
 │   │
 │   └── agents/                        # Generated agent prompt files (DO NOT edit directly)
 │       ├── GLOBAL_RULES.md            # Shared axiom inheritance (A1–A8, P1, P5, P6)
@@ -81,9 +81,9 @@ From these 4 files alone, all 16 agents can be reconstructed from scratch.
 | `meta-deploy.md` | Bootstrap workflow; environment profiles (Claude/Codex/Ollama/Mixed); 6-stage deployment; validation checklist |
 | `meta-tasks.md` | Global axioms (A1–A8); per-agent task specifications (PURPOSE, INPUTS, PROCEDURE, OUTPUT, STOP) |
 | `meta-persona.md` | Per-agent personality, skills, decision styles, and critical behaviors |
-| `meta-workflow.md` | Workflow state machine; agent handoff map; control protocols P1–P8; meta-evolution policy |
+| `meta-workflow.md` | Workflow state machine; agent handoff map; control protocols P1–P7; meta-evolution policy |
 
-**Important:** `prompts/agents/*.md` files are generated outputs. Never edit them directly. All changes must be made in `prompts/meta/*.md` and then regenerated via `Execute EnvMetaBootstrapper`.
+**Important:** `prompts/agents/*.md` files are **generated outputs — never edit them directly**. All changes must be made in `prompts/meta/*.md` and then regenerated via `Execute EnvMetaBootstrapper`. The meta files are the single source of truth for the entire agent system.
 
 ---
 
@@ -130,7 +130,7 @@ Instruct the LLM to write files directly — no copy-paste:
 3. **Agent executes:** outputs a diff/patch; never rewrites full files
 4. **Record decisions:** findings → `docs/ACTIVE_STATE.md`; new constraints → `docs/ASSUMPTION_LEDGER.md` (ASM-ID); violations → `docs/CHECKLIST.md` (CHK-ID)
 5. **Hand off:** agent routes result to next agent per the handoff map in `meta-workflow.md`
-6. **Audit before merge:** ConsistencyAuditor runs the release checklist; only then merge to `main`
+6. **3-phase lifecycle:** each domain auto-commits at DRAFT, REVIEWED, and VALIDATED boundaries; auto-merges `{branch} → main` on ConsistencyAuditor / PromptAuditor GATE_PASS — independently per domain
 
 ---
 
@@ -139,18 +139,18 @@ Instruct the LLM to write files directly — no copy-paste:
 | Domain | Agent | Role |
 |--------|-------|------|
 | Session | ResearchArchitect | Session start, intent routing (cross-domain) |
-| Code | CodeWorkflowCoordinator | Code pipeline orchestrator, state machine controller |
+| Code | CodeWorkflowCoordinator | Code domain orchestrator; drives DRAFT→REVIEWED→VALIDATED lifecycle |
 | Code | CodeArchitect | Equation → Python implementation + MMS tests |
 | Code | CodeCorrector | Staged numerical debugging (protocols A–D) |
 | Code | CodeReviewer | Refactoring without numerical change |
 | Code | TestRunner | Convergence analysis, PASS/FAIL verdict |
 | Code | ExperimentRunner | Reproducible benchmark execution |
-| Paper | PaperWorkflowCoordinator | Paper pipeline orchestrator + review loop to auto-commit |
-| Paper | PaperWriter | LaTeX manuscript authoring (skeptical verifier) |
+| Paper | PaperWorkflowCoordinator | Paper domain orchestrator; drives DRAFT→REVIEWED→VALIDATED lifecycle; auto-merges on gate PASS |
+| Paper | PaperWriter | LaTeX manuscript authoring (skeptical verifier); returns to coordinator on completion |
 | Paper | PaperReviewer | Rigorous peer review — output in Japanese |
 | Paper | PaperCompiler | LaTeX compilation and repair (KL-12 guard) |
 | Paper | PaperCorrector | Minimal targeted fixes from verified findings only |
-| Verification | ConsistencyAuditor | Cross-validates equations ↔ code ↔ paper (authority chain) |
+| Verification | ConsistencyAuditor | Re-derives equations from first principles; VALIDATED gate for paper and code domains |
 | Prompt | PromptArchitect | Generates role-specific agent prompts |
 | Prompt | PromptCompressor | Reduces token usage without semantic loss |
 | Prompt | PromptAuditor | Validates prompt correctness (read-only) |
@@ -184,7 +184,7 @@ flowchart TD
         PC[PaperCompiler]
     end
 
-    subgraph verify[Verification — Release Gate]
+    subgraph verify[Verification — Domain Gate]
         CA[ConsistencyAuditor]
     end
 
@@ -194,7 +194,9 @@ flowchart TD
         PAud[PromptAuditor]
     end
 
-    MERGE([merge to main])
+    MERGE_PAPER([merge paper → main])
+    MERGE_CODE([merge code → main])
+    MERGE_PROMPT([merge prompt → main])
 
     %% Session routing
     RA -->|code pipeline| CWC
@@ -209,40 +211,42 @@ flowchart TD
     CWC --> CRev
     CRev -->|migration plan| CArc
     CArc -->|impl done| TR
-    TR -->|PASS| CWC
+    TR -->|PASS — draft commit| CWC
     TR -->|FAIL — STOP| CCor
     CCor -->|fix applied| TR
     ER -->|verified data| PWC
+    CWC -->|all PASS — reviewed commit| CA
+    CA -->|CODE_ERROR| CArc
+    CA -->|GATE_PASS — validated commit + merge| MERGE_CODE
 
-    %% Paper domain flow — loop until no FATAL/MAJOR
+    %% Paper domain flow — loop until no FATAL/MAJOR, then auto-merge
     PWC -->|dispatch write| PW
+    PW -->|writing complete — auto-commit draft| PWC
     PWC -->|dispatch compile| PC
     PWC -->|dispatch review| PR
     PWC -->|dispatch fix| PCor
     PR -->|findings| PWC
     PCor -->|fix result| PWC
     PC -->|unresolvable error| PW
-    PWC -->|no FATAL/MAJOR — auto-commit paper| CA
-
-    %% Verification & release
-    CWC -->|all components verified| CA
+    PWC -->|no FATAL/MAJOR — reviewed commit| CA
     CA -->|PAPER_ERROR| PW
-    CA -->|CODE_ERROR| CArc
-    CA -->|gate PASS| MERGE
+    CA -->|GATE_PASS — validated commit + merge| MERGE_PAPER
 
     %% Prompt system flow
     PArc -->|generated| PAud
     PCmp -->|compressed| PAud
     PAud -->|FAIL| PArc
-    PAud -->|PASS — auto-commit prompt| MERGE
+    PAud -->|PASS — auto-commit + auto-merge| MERGE_PROMPT
 ```
 
 **Reading the diagram:**
-- Solid arrows show normal handoff direction
+- Every domain follows the same 3-phase lifecycle: **DRAFT commit → REVIEWED commit → VALIDATED commit + merge**
 - `FAIL — STOP` means the agent halts and waits for user direction before CCor is invoked
-- PaperWorkflowCoordinator drives the PaperReviewer ↔ PaperCorrector loop until no FATAL/MAJOR findings remain, then auto-commits
-- ConsistencyAuditor is the sole release gate for code/paper — nothing merges to `main` without its PASS verdict
-- The Prompt System loops internally (PromptArchitect ↔ PromptAuditor) and auto-commits on PASS
+- **PaperWriter always returns to PaperWorkflowCoordinator** — it does not stop autonomously; coordinator issues the DRAFT commit
+- **Code domain:** DRAFT commit per component (TestRunner PASS); REVIEWED commit when all components pass; VALIDATED commit + merge after ConsistencyAuditor GATE_PASS
+- **Paper domain:** DRAFT commit after PaperWriter returns; REVIEWED commit when review loop clears; VALIDATED commit + merge after ConsistencyAuditor GATE_PASS
+- **Prompt domain:** DRAFT commit after PromptArchitect/Compressor; VALIDATED commit + merge after PromptAuditor PASS (no separate REVIEWED phase)
+- Each domain merges to `main` **independently** — no cross-domain wait
 
 ---
 
@@ -259,7 +263,6 @@ Defined in `meta-workflow.md`. Key protocols:
 | P5 SINGLE-ACTION DISCIPLINE | One agent, one objective per step — no multi-goal execution |
 | P6 BOUNDED LOOP CONTROL | Retry counter per phase; escalate on threshold breach; never loop silently |
 | P7 LEGACY MIGRATION | Old prompts/schemas mapped, compressed, and upgraded; semantics preserved |
-| P8 BRANCH-SCOPED EXECUTION | Pull from `main` before starting; never mix paper/code edits in one step |
 
 ---
 

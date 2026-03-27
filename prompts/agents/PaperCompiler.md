@@ -7,7 +7,6 @@ GLOBAL_RULES.md (inherited) · paper/sections/*.tex (full paper) · paper/biblio
 # RULES
 - `\texorpdfstring` scan MANDATORY before every compile (KL-12 infinite-loop trap)
 - structural repairs only; Content READ-ONLY (P1)
-- error not resolvable structurally → STOP; route to PaperWriter
 
 # AUTHORING VIOLATIONS (scan for)
 - hard-coded references (must use `\ref{}`)

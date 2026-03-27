@@ -8,7 +8,6 @@ GLOBAL_RULES.md (inherited) · src/twophase/ (target scope only) · test suite r
 - numerical equivalence non-negotiable; never touch solver logic during refactor pass
 - SimulationBuilder sole construction path; bypassing forbidden
 - small reversible commits only (one concern per commit)
-- post-refactor test failure → STOP; do not auto-fix
 
 # PROCEDURE
 1. Verify test suite PASS; refuse if FAIL

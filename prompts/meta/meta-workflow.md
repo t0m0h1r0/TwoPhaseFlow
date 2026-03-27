@@ -9,12 +9,19 @@ and how the system evolves over time.
 ```
 INTAKE
   → RESEARCH
+
+── PAPER DOMAIN (branch: paper) ──────────────────────────
   → PAPER_WRITE
+  → PAPER_COMMIT_DRAFT       (auto-commit after PaperWriter completes)
   → PAPER_COMPILE
   → PAPER_REVIEW
   → PAPER_CORRECT            (if FATAL/MAJOR found)
   → [loop: PAPER_COMPILE → PAPER_REVIEW → PAPER_CORRECT until no FATAL/MAJOR]
-  → PAPER_COMMIT             (auto-commit paper branch)
+  → PAPER_COMMIT             (auto-commit when review loop clears)
+  → PAPER_CONSISTENCY        (ConsistencyAuditor gate — paper domain)
+  → PAPER_MERGE_MAIN         (merge paper → main independently)
+
+── CODE DOMAIN (branch: code) ────────────────────────────
   → CODE_DERIVE
   → SOLVER_REVIEW
   → SOLVER_FIX
@@ -23,13 +30,19 @@ INTAKE
   → TEST_UNIT
   → TEST_INTEGRATION
   → EXPERIMENT
+  → CODE_CONSISTENCY         (ConsistencyAuditor gate — code domain)
+  → CODE_MERGE_MAIN          (merge code → main independently)
+
+── PROMPT DOMAIN (branch: prompt) ────────────────────────
   → PROMPT_EDIT
   → PROMPT_AUDIT
   → PROMPT_CORRECT           (if FAIL found)
   → [loop: PROMPT_AUDIT → PROMPT_CORRECT until PASS]
   → PROMPT_COMMIT            (auto-commit prompt branch)
-  → CONSISTENCY_AUDIT
-  → MERGE
+  → PROMPT_MERGE_MAIN        (merge prompt → main independently)
+
+── CROSS-DOMAIN ──────────────────────────────────────────
+  → CONSISTENCY_AUDIT        (full cross-domain validation, if needed)
   → DONE
 ```
 
@@ -38,12 +51,12 @@ INTAKE
 | State | Branch |
 |-------|--------|
 | INTAKE, RESEARCH | neutral (pending branch assignment) |
-| PAPER_WRITE, PAPER_COMPILE, PAPER_REVIEW, PAPER_CORRECT, PAPER_COMMIT | `paper` |
-| CODE_DERIVE, SOLVER_REVIEW, SOLVER_FIX, INFRA_REVIEW, INFRA_FIX, TEST_UNIT, TEST_INTEGRATION, EXPERIMENT | `code` |
+| PAPER_WRITE, PAPER_COMMIT_DRAFT, PAPER_COMPILE, PAPER_REVIEW, PAPER_CORRECT, PAPER_COMMIT, PAPER_CONSISTENCY | `paper` |
+| CODE_DERIVE, SOLVER_REVIEW, SOLVER_FIX, INFRA_REVIEW, INFRA_FIX, TEST_UNIT, TEST_INTEGRATION, EXPERIMENT, CODE_CONSISTENCY | `code` |
 | PROMPT_EDIT, PROMPT_AUDIT, PROMPT_CORRECT, PROMPT_COMMIT | `prompt` |
-| CONSISTENCY_AUDIT | prepares release state |
-| MERGE | `main` only, after validation and authorization |
-| DONE | after merge completion and state recording |
+| PAPER_MERGE_MAIN, CODE_MERGE_MAIN, PROMPT_MERGE_MAIN | `main` after domain-specific validation |
+| CONSISTENCY_AUDIT | cross-domain release gate (optional) |
+| DONE | after all required merges and state recording |
 
 **Rules:**
 - do not skip states unless explicitly authorized
@@ -65,25 +78,38 @@ INTAKE
 - `code/*` or `paper/*` — sub-branches for isolated tasks; branch from parent, never from `main`
 
 **Branch rules:**
-- before starting any code task: `git pull origin main` into `code`
-- before starting any paper task: `git pull origin main` into `paper`
-- before starting any prompt task: `git pull origin main` into `prompt`
 - to switch domains (code ↔ paper ↔ prompt): merge current branch into `main` first
 - never mix paper, code, or prompt edits in one branch step unless explicitly authorized
 - sub-branches merge back to parent (`code`, `paper`, or `prompt`), not directly to `main`
 
-**Commit rules:**
-- commits to `paper`, `code`, and `prompt` are made automatically at coherent milestones
-- commit to `paper` automatically when PaperWorkflowCoordinator exits the review loop (no FATAL/MAJOR findings remain)
-- commit to `prompt` automatically when PromptAuditor returns PASS
-- commit messages must be short, specific, and traceable
-- never wait for a perfect end state if a stable checkpoint exists
+**Commit & merge lifecycle (applies uniformly to every branch)**
 
-**Merge rules:**
-- merge to `main` requires all tests, reviews, and audits to pass
+Every domain branch passes through three phases. Each phase boundary triggers an automatic commit; the final phase triggers an automatic merge to `main`.
+
+| Phase | Trigger | Auto-action |
+|-------|---------|-------------|
+| DRAFT | Primary creation agent returns to coordinator | `git commit -m "{branch}: draft — {summary}"` |
+| REVIEWED | Review loop exits with no blocking findings | `git commit -m "{branch}: reviewed — {summary}"` |
+| VALIDATED | Gate auditor returns PASS | `git commit -m "{branch}: validated — {summary}"` then merge `{branch} → main` |
+
+**Per-domain trigger map:**
+
+| Branch | Coordinator | DRAFT trigger | REVIEWED trigger | GATE (VALIDATED) |
+|--------|-------------|---------------|-----------------|-----------------|
+| `paper` | PaperWorkflowCoordinator | PaperWriter returns to coordinator | PaperReviewer: no FATAL/MAJOR remaining | ConsistencyAuditor PASS |
+| `code` | CodeWorkflowCoordinator | Each CodeArchitect/Corrector cycle when TestRunner PASS | All components TestRunner PASS | ConsistencyAuditor PASS |
+| `prompt` | PromptArchitect (direct) | PromptArchitect/Compressor returns | *(no intermediate review loop)* | PromptAuditor PASS |
+
+**Merge message format:** `merge({branch} → main): {summary}`
+
+**Rules:**
+- never skip a phase commit — each is a recoverable checkpoint
+- never merge to `main` without reaching the VALIDATED phase
+- each domain merges to `main` independently — no cross-domain wait
 - merge decisions must be recorded in ACTIVE_STATE.md
-- non-authorized agents may prepare diffs, but may not finalize merges into `main`
-- `main` merges require explicit permission from authorized maintainer or merge agent
+- direct `main` edits are forbidden unless explicitly authorized
+
+**Adding a new branch:** define (1) branch name, (2) coordinator, (3) DRAFT trigger, (4) REVIEWED trigger, (5) gate auditor. Add one row to the per-domain trigger map above.
 
 ────────────────────────────────────────────────────────
 # AGENT HANDOFF MAP
@@ -94,25 +120,33 @@ This table defines which agent receives work from which, and under what conditio
 |------|-----------|----|
 | ResearchArchitect | user intent mapped to agent | any target agent |
 | CodeWorkflowCoordinator | gap identified in code | CodeArchitect / TestRunner / CodeReviewer / CodeCorrector |
-| CodeWorkflowCoordinator | all components verified | ConsistencyAuditor → MERGE |
+| CodeWorkflowCoordinator | all components verified | ConsistencyAuditor (code domain gate) |
+| CodeWorkflowCoordinator | ConsistencyAuditor gate PASS | auto-merge code → main |
 | CodeArchitect | implementation complete | TestRunner |
 | TestRunner | PASS | CodeWorkflowCoordinator (VERIFIED verdict) |
 | TestRunner | FAIL | STOP → user direction → CodeCorrector or CodeArchitect |
 | CodeCorrector | fix applied | TestRunner (for formal convergence verdict) |
 | CodeReviewer | migration plan ready | CodeArchitect (for implementation) or STOP |
 | ExperimentRunner | sanity checks pass | PaperWorkflowCoordinator or PaperWriter (verified result data) |
-| PaperWorkflowCoordinator | dispatch for writing/compiling/reviewing/fixing | PaperWriter / PaperCompiler / PaperReviewer / PaperCorrector |
-| PaperWorkflowCoordinator | no FATAL/MAJOR findings remain | auto-commit paper branch → ConsistencyAuditor → MERGE |
+| PaperWorkflowCoordinator | dispatch for writing | PaperWriter |
+| PaperWorkflowCoordinator | PaperWriter result received | auto-commit paper branch (`paper: writing pass complete`) |
+| PaperWorkflowCoordinator | dispatch for compiling/reviewing/fixing | PaperCompiler / PaperReviewer / PaperCorrector |
+| PaperWorkflowCoordinator | no FATAL/MAJOR findings remain | auto-commit paper branch → ConsistencyAuditor (paper domain gate) |
+| PaperWorkflowCoordinator | ConsistencyAuditor gate PASS | auto-merge paper → main |
 | PaperWorkflowCoordinator | FATAL/MAJOR findings remain | PaperCorrector → PaperCompiler → PaperReviewer (loop) |
 | PaperWorkflowCoordinator | review loop threshold exceeded | STOP → user direction |
+| PaperWriter | writing complete (normal) | PaperWorkflowCoordinator (return result — do NOT stop) |
+| PaperWriter | ambiguous derivation | STOP → ConsistencyAuditor |
 | PaperReviewer | findings report | PaperWorkflowCoordinator (classification: FATAL/MAJOR/MINOR) |
 | PaperCorrector | fixes applied | PaperWorkflowCoordinator (report result) |
 | PaperCompiler | compile error unresolvable | PaperWriter |
 | ConsistencyAuditor | PAPER_ERROR found | PaperWriter |
 | ConsistencyAuditor | CODE_ERROR found | CodeArchitect → TestRunner |
 | ConsistencyAuditor | authority conflict | CodeWorkflowCoordinator |
+| ConsistencyAuditor | gate PASS (paper domain) | PaperWorkflowCoordinator → merge paper → main |
+| ConsistencyAuditor | gate PASS (code domain) | CodeWorkflowCoordinator → merge code → main |
 | PromptAuditor | FAIL found | PromptArchitect |
-| PromptAuditor | PASS | auto-commit prompt branch → MERGE |
+| PromptAuditor | PASS | auto-commit prompt branch → auto-merge prompt → main |
 | PromptArchitect | prompt generated | PromptAuditor (validation) |
 | PromptCompressor | compressed prompt | PromptAuditor (validation) |
 | any agent | STOP condition triggered | user (for direction) |
@@ -184,14 +218,6 @@ Actions:
 - preserve semantics
 - record migration notes in ARCHITECTURE or LESSONS
 
-## P8: BRANCH-SCOPED EXECUTION
-- before starting code task: `git pull origin main` into `code`
-- before starting paper task: `git pull origin main` into `paper`
-- before starting prompt task: `git pull origin main` into `prompt`
-- never mix paper, code, or prompt edits in one branch step unless explicitly authorized
-- sub-branches merge to parent (`code`, `paper`, or `prompt`), never directly to `main`
-- `main` is kept clean — only receives merges from `code`, `paper`, or `prompt` when work is complete and verified
-
 ────────────────────────────────────────────────────────
 # COMMAND FORMAT
 
@@ -228,79 +254,10 @@ If any item fails: do not merge. Prefer explicit escalation over silent repair.
 ────────────────────────────────────────────────────────
 # META-EVOLUTION POLICY
 
-Purpose: make the system improve without becoming noisy or unstable.
+Cycle: **Observe** (failures, drift, redundancy, layer violations) → **Evaluate** (structural vs. incidental; recurrence; impact on correctness/traceability/reproducibility) → **Generalize** (abstract to short, stable, reusable rule) → **Promote** (LESSON → rule; stable ASSUMPTION → constraint; workaround → protocol) → **Validate** (no axiom conflict; no solver-purity violation; no layer interference; backward-compatible) → **Compress** (merge overlapping rules; remove subsumed rules; preserve semantics).
 
-## Observe
-- failures
-- repeated exceptions
-- drift
-- redundancy
-- unnecessary rewrites
-- schema friction
-- layer violations
+**Deprecate** if: obsolete, redundant, subsumed, conflicting, or over-specific.
 
-## Evaluate
-- Is the issue incidental or structural?
-- Does it recur across tasks?
-- Does it affect correctness, traceability, or reproducibility?
+**Never promote** a rule that: increases ambiguity, breaks solver purity, mixes layers, adds token load without generality, or weakens reproducibility.
 
-## Generalize
-- abstract reusable patterns
-- rewrite into short, general rules
-- keep only stable patterns
-
-## Promote
-- LESSON → candidate rule
-- stable ASSUMPTION → constraint
-- repeated workaround → protocol
-- recurring schema pattern → architecture rule
-
-## Validate (before promoting)
-- no conflict with core axioms
-- no solver-purity violation
-- no layer interference
-- no loss of backward compatibility
-
-## Compress
-- remove redundant lower-level rules
-- merge overlapping rules
-- preserve semantics via migration notes
-
-## Deprecate
-Deprecate a rule if it is: obsolete, redundant, subsumed, conflicting, or too specific.
-
-Never promote a rule that:
-- increases ambiguity
-- breaks solver purity
-- mixes layers
-- increases token load without added generality
-- weakens reproducibility
-
-────────────────────────────────────────────────────────
-# PROMOTION CRITERIA
-
-A rule may be promoted only if it satisfies most of the following:
-- repeated usefulness across multiple tasks
-- structural generality
-- non-interference with existing axioms
-- short and stable formulation
-- explicit reuse value
-- compression benefit
-- backward compatibility
-
-If uncertain, keep it in LESSONS or ASSUMPTION_LEDGER. Do not over-promote.
-
-────────────────────────────────────────────────────────
-# FINAL INSTRUCTION
-
-Build a system that:
-- never corrupts structure
-- never breaks solver purity
-- evolves its own rules only through validated promotion
-- minimizes tokens without losing meaning
-- preserves traceability across theory, discretization, and code
-- remains stable under long execution
-- maintains backward compatibility while improving itself
-- uses `paper`, `code`, `prompt`, and `main` as the only persistent branches
-- commits automatically to `paper`, `code`, and `prompt` at coherent milestones
-- blocks any merge into `main` unless validation passes and authorization is present
+**Promotion requires:** repeated usefulness, structural generality, axiom-compatible, short formulation, compression benefit. If uncertain, keep in LESSONS or ASSUMPTION_LEDGER.
