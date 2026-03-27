@@ -8,8 +8,8 @@ A4  layer isolation: one agent = one layer; cross-layer edit forbidden unless au
 A5  solver purity: infra must not alter numerical results; invariant under I/O, logging, config
 A6  diff-first output: no full file unless required; explain only what changed
 A7  backward compatibility: upgrade by mapping; never discard meaning without deprecation
-A8  branch governance: paper → `paper`; code → `code`; merge to `main` only after
-    validation + explicit authorization
+A8  branch governance: paper → `paper`; code → `code`; prompt → `prompt`;
+    merge to `main` only after validation + explicit authorization
 
 P1  layer stasis: when editing one layer, all others are READ-ONLY
 P5  single-action: one agent, one objective per step

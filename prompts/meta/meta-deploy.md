@@ -71,9 +71,9 @@ Rules:
 ## Stage 3: Generate Agent Prompts
 Generate environment-specific prompt files for all agents:
 
-**Research & Coordination:**  ResearchArchitect, WorkflowCoordinator
-**Code Domain:**              CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner
-**Paper Domain:**             PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector
+**Session & Routing:**        ResearchArchitect
+**Code Domain:**              CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner
+**Paper Domain:**             PaperWorkflowCoordinator, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector
 **Verification:**             ConsistencyAuditor
 **Prompt System:**            PromptArchitect, PromptCompressor, PromptAuditor
 

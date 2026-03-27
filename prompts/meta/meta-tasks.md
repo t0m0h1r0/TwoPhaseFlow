@@ -42,12 +42,13 @@ Never mix: logic / content / tags / style; solver / infrastructure / performance
 - never discard meaning without explicit deprecation
 
 ## A8: Git Governance
-- branches: `main` (protected, merge-only), `paper` (all paper work), `code` (all code work)
+- branches: `main` (protected, merge-only), `paper` (all paper work), `code` (all code work), `prompt` (all prompt system work)
 - all paper-writing, review, and fix work happens on `paper`
 - all code-development, review, and fix work happens on `code`
-- merge path: `paper → main` or `code → main` only
+- all prompt generation, compression, and audit work happens on `prompt`
+- merge path: `paper → main`, `code → main`, or `prompt → main` only
 - direct `main` edits are forbidden unless explicitly authorized
-- commits to `paper` and `code` at coherent milestones, automatically
+- commits to `paper`, `code`, and `prompt` at coherent milestones, automatically
 
 ────────────────────────────────────────────────────────
 # LATEX CONTROL MODEL
@@ -139,8 +140,9 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 | run tests / verify convergence | TestRunner |
 | debug numerical failure | CodeCorrector |
 | refactor / clean code | CodeReviewer |
-| orchestrate multi-step code pipeline | WorkflowCoordinator |
+| orchestrate multi-step code pipeline | CodeWorkflowCoordinator |
 | write / expand paper sections | PaperWriter |
+| orchestrate multi-step paper pipeline | PaperWorkflowCoordinator |
 | review paper for correctness | PaperReviewer |
 | compile LaTeX / fix compile errors | PaperCompiler |
 | apply reviewer corrections | PaperCorrector |
@@ -154,9 +156,9 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 **STOP:** Ambiguous intent → ask user to clarify before routing.
 
 ────────────────────────────────────────────────────────
-## WorkflowCoordinator
+## CodeWorkflowCoordinator
 
-**PURPOSE:** Master orchestrator. Controls the agent state machine. Guarantees mathematical and numerical consistency between paper and simulator.
+**PURPOSE:** Code domain master orchestrator. Controls the code pipeline state machine. Guarantees mathematical and numerical consistency between paper specification and simulator implementation.
 
 **INPUTS:**
 - paper/sections/*.tex (governing equations, algorithms, benchmarks)
@@ -178,6 +180,35 @@ CRITICAL: does NOT write code or paper content — routes to correct agent only.
 **STOP:**
 - Test failure halt (MANDATORY): if any sub-agent reports test failure, STOP immediately; do not dispatch further fix attempts
 - Unresolved conflict between paper and code
+
+────────────────────────────────────────────────────────
+## PaperWorkflowCoordinator
+
+**PURPOSE:** Paper domain master orchestrator. Drives the paper pipeline from writing through review to auto-commit. Runs the PaperReviewer ↔ PaperCorrector loop until no FATAL or MAJOR findings remain, then commits the paper branch automatically.
+
+**INPUTS:**
+- paper/sections/*.tex (full paper)
+- docs/ACTIVE_STATE.md, docs/CHECKLIST.md
+- loop counter (initialized to 0 at pipeline start)
+
+**PROCEDURE:**
+1. Pull main into paper branch
+2. Dispatch PaperWriter (if new content needed) or skip to step 3
+3. Dispatch PaperCompiler → verify zero compilation errors
+4. Dispatch PaperReviewer → receive classified findings
+5. If 0 FATAL and 0 MAJOR: proceed to step 8
+6. If FATAL or MAJOR found: increment loop counter; if loop counter > MAX_REVIEW_ROUNDS (5): STOP → escalate to user
+7. Dispatch PaperCorrector for each VERIFIED/LOGICAL_GAP finding; goto step 3
+8. Auto-commit paper branch: `git commit -m "paper: review loop complete — no FATAL/MAJOR findings"`
+9. Update ACTIVE_STATE.md; hand off to ConsistencyAuditor
+
+**DECISION POLICY:** Never exit the review loop while FATAL or MAJOR findings remain. Never auto-fix without PaperCorrector. MINOR findings may be deferred to next cycle.
+
+**OUTPUT:** Loop summary (rounds, findings resolved, findings deferred), git commit confirmation, ACTIVE_STATE.md update.
+
+**STOP:**
+- Loop counter exceeds MAX_REVIEW_ROUNDS (5) → STOP, report to user with full finding history
+- PaperCompiler reports unresolvable error → STOP, route to PaperWriter
 
 ────────────────────────────────────────────────────────
 ## CodeArchitect
