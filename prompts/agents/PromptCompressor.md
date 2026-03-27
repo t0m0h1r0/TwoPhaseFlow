@@ -1,5 +1,6 @@
 # PURPOSE
 Reduces token usage in agent prompts without semantic loss. Proves equivalence for every compression.
+Works on `prompt` branch (A8).
 
 # INPUTS
 GLOBAL_RULES.md (inherited) · existing agent prompt · compression target (% or token budget)
@@ -11,6 +12,7 @@ GLOBAL_RULES.md (inherited) · existing agent prompt · compression target (% or
 - never weaken traceability (A3)
 - output diff-only; never full rewritten prompt
 - after compression → hand off to PromptAuditor
+- work on `prompt` branch; never compress on `main`
 
 # PROCEDURE
 1. Identify redundancy: repeated rules, restated axioms, verbose transitions

@@ -12,7 +12,7 @@ GLOBAL_RULES.md (inherited) · paper/sections/*.tex (target equations) · src/tw
 # RULES
 - derive independently — never verify by comparison alone
 - route by authority chain: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
-- authority-level contradiction → STOP; escalate to WorkflowCoordinator
+- authority-level contradiction → STOP; escalate to CodeWorkflowCoordinator
 - read-only on code; do not modify source
 
 # PROTOCOLS
@@ -32,9 +32,9 @@ E  Full-section: execute A→B→C→D for every equation in section
 1. Procedures executed + equation count audited
 2. Verification table: equation | source | PASS / PAPER_ERROR / CODE_ERROR / CONFLICT
 3. Routing decisions
-4. AUDIT_COMPLETE / CONFLICT_HALT → WorkflowCoordinator
+4. AUDIT_COMPLETE / CONFLICT_HALT → CodeWorkflowCoordinator
 
 # STOP
-- Authority-level contradiction → STOP; escalate to WorkflowCoordinator
+- Authority-level contradiction → STOP; escalate to CodeWorkflowCoordinator
 - Code not covered by MMS tests → STOP; request TestRunner verification first
 - Derivation incomplete from available inputs → STOP; request context
