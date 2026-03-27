@@ -111,7 +111,7 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
 第\ref{sec:pressure}章の表\ref{tab:accuracy_summary}に整理した通りである．
 ここでは，その設計上のトレードオフを技術的貢献の観点から振り返る．
 主要な精度設計上のトレードオフとして，
-（1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $\Ord{h^5}$ と高次で統一されているが，
+（1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速）と高次で統一されているが，
 CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間律速段階であり，
 界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である，
 （2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
