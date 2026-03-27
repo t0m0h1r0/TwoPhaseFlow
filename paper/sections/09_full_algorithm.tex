@@ -91,7 +91,7 @@ CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Del
   \psi^{(2)}_{i,j} &= \frac{3}{4}\psi^n_{i,j} + \frac{1}{4}\psi^{(1)}_{i,j} - \frac{1}{4}\Delta t \, \text{Div}_h^{\psi}(\psi^{(1)} \bm{u}^n)_{i,j} \\
   \psi^*_{i,j} &= \frac{1}{3}\psi^n_{i,j} + \frac{2}{3}\psi^{(2)}_{i,j} - \frac{2}{3}\Delta t \, \text{Div}_h^{\psi}(\psi^{(2)} \bm{u}^n)_{i,j}
 \end{align*}
-ここで $\text{Div}_h^{\psi}(\cdot)$ は Dissipative CCD フィルタ付き保存形発散オペレータである（§\ref{sec:advection_motivation}，上記オペレータ一覧参照）．
+ここで $\text{Div}_h^{\psi}(\cdot)$ は Dissipative CCD フィルタ付き保存形発散オペレータである（§\ref{sec:advection_motivation} 参照）．
 \textbf{各ステージ完了後に} $\psi \leftarrow \max(0,\min(1,\psi))$ のクランプを適用すること
 （Dissipative CCD は TVD 性を持たないため必須；\ref{warn:adv_clamp}）．
 
@@ -203,7 +203,7 @@ Step 5 完了後：対流項 $\mathcal{C}^n_{i,j}$（$x$ 成分：$u^n D_x^{(1)}
 をバッファに保存し（AB2 の $n-1$ 項として次ステップで利用；追加メモリ：$2N_xN_y$ 実数値），
 速度場 $\bu^n$ は上書きして次の Corrector で $\bu^{n+1}$ に進める．
 粘性項に $\bm{u}^*$ が含まれるため，各方向を ADI スウィープで解く．
-ADI の陰的係数には完全な CCD 6次演算子（上記 $\mathcal{L}_{\text{visc},x}$）の代わりに
+ADI の陰的係数には完全な CCD 6次演算子（§\ref{sec:time_int} の $\mathcal{L}_{\text{visc},x}$）の代わりに
 2次中心差分の分割係数 $\tilde\lambda^\pm \equiv \mu^\pm/\Delta x^2$ を用いる
 （\textbf{理由1：実装上の利点} — CCD 演算子は3点ブロック連成形式であり，ADI の各スウィープで CCD を使うと係数行列が拡張バンド構造となって Thomas 法の直接適用が不可能になる．2次中心差分はシンプルなトライダイアゴナル行列を生み，$O(N)$ の Thomas 法がそのまま使える．
 \textbf{理由2：精度トレードオフの整理} — 陰的係数に2次中心差分を使うため，粘性対角項の\textbf{空間精度は $\mathcal{O}(h^2)$} に留まる（$\mathcal{O}(h^6)$ ではない）．
