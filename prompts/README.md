@@ -1,276 +1,142 @@
-# Research-to-Paper-to-Code Workflow System
+# prompts/ — 3-Layer, Domain-Oriented Architecture
+# Three-layer separation: Abstract Meta → Concrete SSoT → Project Context.
 
-A deterministic, self-evolving prompt architecture for transforming ideas into validated scientific papers, correct numerical solvers, and robust infrastructure.
+────────────────────────────────────────────────────────
+## 1. Architecture Principle
 
-Designed NOT to maximize LLM creativity — designed to maximize **Correctness, Traceability, Reproducibility, and Structural Integrity**.
+```
+Layer 1 — Abstract Meta:   prompts/meta/        ← WHY and HOW (concepts, structure, logic)
+Layer 2 — Concrete SSoT:   docs/00_GLOBAL_RULES.md  ← WHAT (project-independent rules, authoritative)
+Layer 3 — Project Context: docs/01_PROJECT_MAP.md   ← WHERE/WHICH (module map, ASM-IDs)
+                           docs/02_ACTIVE_LEDGER.md  ← WHEN/STATUS (phase, CHK/KL registers)
+```
 
----
+**Layer 1 → 2 relationship:** meta files define axiom intent and domain structure;
+`00_GLOBAL_RULES.md` is the authoritative, project-independent implementation of those rules.
+If meta/ conflicts with 00_GLOBAL_RULES.md on rule intent: **meta/ wins**.
+If 00_GLOBAL_RULES.md conflicts with 01–02 on data: **00_GLOBAL_RULES.md wins for rules; 01–02 win for project state**.
 
-## 1. Core Axioms
+**No mixing rule:** 00_GLOBAL_RULES.md contains zero project-specific state (no Phase, CHK, ASM, module paths).
+01–02 contain zero rule content — exclusively fluid project data.
 
-Defined in `meta/meta-tasks.md`. All agents obey these unconditionally.
+────────────────────────────────────────────────────────
+## 2. Directory Map
+
+```
+prompts/
+├── meta/                          ← LAYER 1: Abstract Meta (edit here for concepts + structure)
+│   ├── meta-persona.md            ← Axioms A1–A8 (intent) + per-agent behavioral characteristics
+│   ├── meta-tasks.md              ← 5 Domain definitions + agent task specs (PURPOSE/PROCEDURE/STOP)
+│   ├── meta-workflow.md           ← P-E-V-A loop logic, Git governance, state machine, handoff map
+│   └── meta-deploy.md             ← EnvMetaBootstrapper: regenerates agents/ from meta/
+│
+├── agents/                        ← GENERATED — do NOT edit directly (regenerate via EnvMetaBootstrapper)
+│   ├── ResearchArchitect.md
+│   ├── CodeWorkflowCoordinator.md
+│   ├── CodeArchitect.md
+│   ├── CodeCorrector.md
+│   ├── CodeReviewer.md
+│   ├── TestRunner.md
+│   ├── ExperimentRunner.md
+│   ├── PaperWorkflowCoordinator.md
+│   ├── PaperWriter.md
+│   ├── PaperReviewer.md
+│   ├── PaperCompiler.md
+│   ├── PaperCorrector.md
+│   ├── ConsistencyAuditor.md
+│   ├── PromptArchitect.md
+│   ├── PromptCompressor.md
+│   └── PromptAuditor.md
+│
+└── README.md                      ← this file
+
+docs/                              ← LAYER 2 + 3
+├── 00_GLOBAL_RULES.md             ← LAYER 2: Concrete SSoT — project-independent constitutional rules
+├── 01_PROJECT_MAP.md              ← LAYER 3: Project Context — module map, ASM-IDs, paper structure
+└── 02_ACTIVE_LEDGER.md            ← LAYER 3: Project Context — phase, branch, CHK/KL registers
+```
+
+────────────────────────────────────────────────────────
+## 3. Rule Ownership Map
+
+| Rule | Abstract definition | Concrete SSoT | Project context |
+|------|--------------------|--------------|---------------------------------|
+| Axioms A1–A8 | `meta-persona.md §AXIOMS` (intent) | `00_GLOBAL_RULES.md §A` | — |
+| SOLID C1–C6 | `meta-tasks.md § Code Domain` (why) | `00_GLOBAL_RULES.md §C` | `01_PROJECT_MAP.md §C2` (legacy register) |
+| LaTeX P1–P4, KL-12 | `meta-tasks.md § Paper Domain` (why) | `00_GLOBAL_RULES.md §P` | `01_PROJECT_MAP.md §9–§10` (P2, P3-D) |
+| Prompt rules Q1–Q4 | `meta-tasks.md § Prompt Domain` (why) | `00_GLOBAL_RULES.md §Q` | — |
+| Audit gate AU1–AU3 | `meta-tasks.md § Audit Domain` (why) | `00_GLOBAL_RULES.md §AU` | — |
+| Git lifecycle | `meta-workflow.md §GIT` (logic) | `00_GLOBAL_RULES.md §GIT` | `02_ACTIVE_LEDGER.md` (state) |
+| P-E-V-A loop | `meta-workflow.md §P-E-V-A` (logic) | `00_GLOBAL_RULES.md §P-E-V-A` | — |
+| Module map | — | — | `01_PROJECT_MAP.md §1–§7` |
+| Numerical baselines | — | — | `01_PROJECT_MAP.md §6` |
+| Phase / CHK / KL | — | — | `02_ACTIVE_LEDGER.md` |
+
+────────────────────────────────────────────────────────
+## 4. Core Axioms A1–A8 — Quick Reference
 
 | Axiom | Rule |
 |-------|------|
 | A1 Token Economy | diff > rewrite; reference > duplication; no redundancy |
-| A2 External Memory First | all state in `docs/`; never rely on implicit context |
-| A3 3-Layer Traceability | Equation → Discretization → Code chain must be preserved |
-| A4 Separation | never mix logic/content/tags/style; never mix solver/infra |
+| A2 External Memory First | all state in docs/02_ACTIVE_LEDGER.md and 01_PROJECT_MAP.md |
+| A3 3-Layer Traceability | Equation → Discretization → Code mandatory |
+| A4 Separation | never mix logic/content/tags; never mix solver/infra |
 | A5 Solver Purity | infrastructure must not affect numerical results |
 | A6 Diff-First Output | no full file rewrites unless explicitly required |
 | A7 Backward Compatibility | preserve semantics; upgrade by mapping, never by discarding |
-| A8 Git Governance | 3-phase lifecycle per domain: DRAFT → REVIEWED → VALIDATED → auto-merge `{branch} → main`; each domain independent |
+| A8 Git Governance | 3-phase lifecycle: DRAFT → REVIEWED → VALIDATED → auto-merge |
 
----
-
-## 2. Directory Structure
-
-```
-project-root/
-├── prompts/
-│   ├── meta/                          # Meta system (canonical source — edit here only)
-│   │   ├── meta-deploy.md             # Bootstrap workflow; environment profiles; 6-stage deployment
-│   │   ├── meta-tasks.md              # Agent roles, axioms (A1–A8), per-agent task specs
-│   │   ├── meta-persona.md            # Agent personality, skills, decision styles
-│   │   └── meta-workflow.md           # State machine, handoff map, protocols P1–P7
-│   │
-│   └── agents/                        # Generated agent prompt files (DO NOT edit directly)
-│       ├── GLOBAL_RULES.md            # Shared axiom inheritance (A1–A8, P1, P5, P6)
-│       ├── ResearchArchitect.md       # Session start, intent routing (cross-domain)
-│       ├── CodeWorkflowCoordinator.md # Code domain pipeline orchestrator
-│       ├── CodeArchitect.md           # Equation → Python implementation + MMS tests
-│       ├── CodeCorrector.md           # Staged numerical debugging (protocols A–D)
-│       ├── CodeReviewer.md            # Refactoring without numerical change
-│       ├── TestRunner.md              # Convergence analysis, PASS/FAIL verdict
-│       ├── ExperimentRunner.md        # Reproducible benchmark execution
-│       ├── PaperWorkflowCoordinator.md# Paper domain pipeline orchestrator + review loop
-│       ├── PaperWriter.md             # LaTeX manuscript authoring (skeptical verifier)
-│       ├── PaperReviewer.md           # Rigorous peer review — output in Japanese
-│       ├── PaperCompiler.md           # LaTeX compilation and repair (KL-12 guard)
-│       ├── PaperCorrector.md          # Minimal targeted fixes from verified findings only
-│       ├── ConsistencyAuditor.md      # Cross-validates equations ↔ code ↔ paper
-│       ├── PromptArchitect.md         # Generates role-specific agent prompts
-│       ├── PromptCompressor.md        # Reduces token usage without semantic loss
-│       └── PromptAuditor.md           # Validates prompt correctness (read-only)
-│
-├── docs/                         # External Memory (mandatory)
-│   ├── ACTIVE_STATE.md           # Current phase, branch, last decision, next action
-│   ├── CHECKLIST.md              # CHK-ID task tracking
-│   ├── ASSUMPTION_LEDGER.md      # ASM-ID assumption registry
-│   ├── LESSONS.md                # LES-ID failure patterns and fix recipes
-│   ├── ARCHITECTURE.md           # High-level design (authority source)
-│   ├── CODING_POLICY.md          # SOLID rules and code governance
-│   └── LATEX_RULES.md            # LaTeX authoring rules (tcolorbox, labels, refs)
-│
-├── paper/                        # LaTeX workspace
-└── src/
-    └── twophase/                 # Solver + infrastructure (domain boundary enforced in code)
-```
-
-**Note on `GLOBAL_RULES.md`:** All 16 agent prompts inherit A1–A8, P1, P5, P6 and universal stop triggers from this file by reference. Per A1, axioms are not restated per-agent.
-
----
-
-## 3. Meta System Overview
-
-The `meta/` directory is the **canonical source** for the entire agent system.
-From these 4 files alone, all 16 agents can be reconstructed from scratch.
-
-| File | Purpose |
-|------|---------|
-| `meta-deploy.md` | Bootstrap workflow; environment profiles (Claude/Codex/Ollama/Mixed); 6-stage deployment; validation checklist |
-| `meta-tasks.md` | Global axioms (A1–A8); per-agent task specifications (PURPOSE, INPUTS, PROCEDURE, OUTPUT, STOP) |
-| `meta-persona.md` | Per-agent personality, skills, decision styles, and critical behaviors |
-| `meta-workflow.md` | Workflow state machine; agent handoff map; control protocols P1–P7; meta-evolution policy |
-
-**Important:** `prompts/agents/*.md` files are **generated outputs — never edit them directly**. All changes must be made in `prompts/meta/*.md` and then regenerated via `Execute EnvMetaBootstrapper`. The meta files are the single source of truth for the entire agent system.
-
----
-
-## 4. Initial Deployment (Bootstrapping)
-
-### From Scratch
-
-Place the 4 meta files in `prompts/meta/`. Then run:
+────────────────────────────────────────────────────────
+## 5. Execution Loop
 
 ```
-Execute EnvMetaBootstrapper
-Using meta-deploy.md
-Input meta-tasks.md, meta-persona.md, meta-workflow.md
-Target Claude
+1. Execute ResearchArchitect     ← loads 02_ACTIVE_LEDGER + 01_PROJECT_MAP; routes intent
+2. PLAN    → define scope, record in 02_ACTIVE_LEDGER
+3. EXECUTE → specialist agent (one objective, one step)
+4. VERIFY  → TestRunner / PaperCompiler+Reviewer / PromptAuditor
+5. AUDIT   → ConsistencyAuditor gate (AU2: 10 items) → auto-merge on PASS
 ```
 
-The bootstrapper will:
-1. Initialize external memory files under `docs/`
-2. Generate `agents/GLOBAL_RULES.md` (shared axiom inheritance)
-3. Generate all 16 agent prompts (environment-optimized)
-4. Run PromptAuditor on all generated prompts
-5. Output an audit report and deployment notes
+────────────────────────────────────────────────────────
+## 6. 3-Phase Domain Lifecycle
 
-### First Agent to Run
+| Phase | Trigger | Auto-action |
+|-------|---------|-------------|
+| DRAFT | creation agent returns | `git commit -m "{branch}: draft — {summary}"` |
+| REVIEWED | no blocking findings | `git commit -m "{branch}: reviewed — {summary}"` |
+| VALIDATED | gate auditor PASS | `git commit -m "{branch}: validated — {summary}"` → merge |
 
-```
-Execute ResearchArchitect
-```
-
-ResearchArchitect loads `docs/ACTIVE_STATE.md`, maps your intent, and routes to the appropriate agent.
-
-### File-Generation Mode (recommended for Claude Code)
-
-Instruct the LLM to write files directly — no copy-paste:
-
-> *"You are a file-generating agent. Read meta-tasks.md, meta-persona.md, and meta-workflow.md. Generate all agent prompt files directly into prompts/agents/. DO NOT print prompts inline."*
-
----
-
-## 5. The Execution Loop
-
-1. **Load state:** ResearchArchitect reads `docs/ACTIVE_STATE.md`
-2. **Single-action discipline:** one agent, one objective per step (P5)
-3. **Agent executes:** outputs a diff/patch; never rewrites full files
-4. **Record decisions:** findings → `docs/ACTIVE_STATE.md`; new constraints → `docs/ASSUMPTION_LEDGER.md` (ASM-ID); violations → `docs/CHECKLIST.md` (CHK-ID)
-5. **Hand off:** agent routes result to next agent per the handoff map in `meta-workflow.md`
-6. **3-phase lifecycle:** each domain auto-commits at DRAFT, REVIEWED, and VALIDATED boundaries; auto-merges `{branch} → main` on ConsistencyAuditor / PromptAuditor GATE_PASS — independently per domain
-
----
-
-## 6. Agent Roster
+────────────────────────────────────────────────────────
+## 7. Agent Roster (16 agents)
 
 | Domain | Agent | Role |
 |--------|-------|------|
-| Session | ResearchArchitect | Session start, intent routing (cross-domain) |
-| Code | CodeWorkflowCoordinator | Code domain orchestrator; drives DRAFT→REVIEWED→VALIDATED lifecycle |
-| Code | CodeArchitect | Equation → Python implementation + MMS tests |
-| Code | CodeCorrector | Staged numerical debugging (protocols A–D) |
-| Code | CodeReviewer | Refactoring without numerical change |
-| Code | TestRunner | Convergence analysis, PASS/FAIL verdict |
+| Routing | ResearchArchitect | Session start, intent → agent mapping |
+| Code | CodeWorkflowCoordinator | Code pipeline orchestrator |
+| Code | CodeArchitect | Equation → Python + MMS tests |
+| Code | CodeCorrector | Staged debug (protocols A–D) |
+| Code | CodeReviewer | Refactor without numerical change |
+| Code | TestRunner | Convergence analysis, PASS/FAIL halt |
 | Code | ExperimentRunner | Reproducible benchmark execution |
-| Paper | PaperWorkflowCoordinator | Paper domain orchestrator; drives DRAFT→REVIEWED→VALIDATED lifecycle; auto-merges on gate PASS |
-| Paper | PaperWriter | LaTeX manuscript authoring (skeptical verifier); returns to coordinator on completion |
-| Paper | PaperReviewer | Rigorous peer review — output in Japanese |
-| Paper | PaperCompiler | LaTeX compilation and repair (KL-12 guard) |
-| Paper | PaperCorrector | Minimal targeted fixes from verified findings only |
-| Verification | ConsistencyAuditor | Re-derives equations from first principles; VALIDATED gate for paper and code domains |
+| Paper | PaperWorkflowCoordinator | Paper pipeline orchestrator + review loop |
+| Paper | PaperWriter | LaTeX authoring (skeptical verifier) |
+| Paper | PaperReviewer | Peer review — output in Japanese |
+| Paper | PaperCompiler | LaTeX compile + KL-12 guard |
+| Paper | PaperCorrector | Targeted fix from VERIFIED/LOGICAL_GAP only |
+| Audit | ConsistencyAuditor | Independent re-deriver; domain gate |
 | Prompt | PromptArchitect | Generates role-specific agent prompts |
 | Prompt | PromptCompressor | Reduces token usage without semantic loss |
-| Prompt | PromptAuditor | Validates prompt correctness (read-only) |
+| Prompt | PromptAuditor | Validates prompts (read-only) |
 
----
+────────────────────────────────────────────────────────
+## 8. Regeneration
 
-## 7. Agent Collaboration Diagram
-
-```mermaid
-flowchart TD
-    User([User]) --> RA
-
-    subgraph session[Session Start — cross-domain]
-        RA[ResearchArchitect]
-    end
-
-    subgraph code[Code Domain — branch: code]
-        CWC[CodeWorkflowCoordinator]
-        CArc[CodeArchitect]
-        CRev[CodeReviewer]
-        CCor[CodeCorrector]
-        TR[TestRunner]
-        ER[ExperimentRunner]
-    end
-
-    subgraph paper[Paper Domain — branch: paper]
-        PWC[PaperWorkflowCoordinator]
-        PW[PaperWriter]
-        PR[PaperReviewer]
-        PCor[PaperCorrector]
-        PC[PaperCompiler]
-    end
-
-    subgraph verify[Verification — Domain Gate]
-        CA[ConsistencyAuditor]
-    end
-
-    subgraph prompts[Prompt System — branch: prompt]
-        PArc[PromptArchitect]
-        PCmp[PromptCompressor]
-        PAud[PromptAuditor]
-    end
-
-    MERGE_PAPER([merge paper → main])
-    MERGE_CODE([merge code → main])
-    MERGE_PROMPT([merge prompt → main])
-
-    %% Session routing
-    RA -->|code pipeline| CWC
-    RA -->|paper pipeline| PWC
-    RA -->|paper write only| PW
-    RA -->|experiment| ER
-    RA -->|cross-validate| CA
-    RA -->|prompt task| PArc
-
-    %% Code domain flow
-    CWC --> CArc
-    CWC --> CRev
-    CRev -->|migration plan| CArc
-    CArc -->|impl done| TR
-    TR -->|PASS — draft commit| CWC
-    TR -->|FAIL — STOP| CCor
-    CCor -->|fix applied| TR
-    ER -->|verified data| PWC
-    CWC -->|all PASS — reviewed commit| CA
-    CA -->|CODE_ERROR| CArc
-    CA -->|GATE_PASS — validated commit + merge| MERGE_CODE
-
-    %% Paper domain flow — loop until no FATAL/MAJOR, then auto-merge
-    PWC -->|dispatch write| PW
-    PW -->|writing complete — auto-commit draft| PWC
-    PWC -->|dispatch compile| PC
-    PWC -->|dispatch review| PR
-    PWC -->|dispatch fix| PCor
-    PR -->|findings| PWC
-    PCor -->|fix result| PWC
-    PC -->|unresolvable error| PW
-    PWC -->|no FATAL/MAJOR — reviewed commit| CA
-    CA -->|PAPER_ERROR| PW
-    CA -->|GATE_PASS — validated commit + merge| MERGE_PAPER
-
-    %% Prompt system flow
-    PArc -->|generated| PAud
-    PCmp -->|compressed| PAud
-    PAud -->|FAIL| PArc
-    PAud -->|PASS — auto-commit + auto-merge| MERGE_PROMPT
+To rebuild all agents/ from meta/:
+```
+Execute EnvMetaBootstrapper
+Using prompts/meta/meta-deploy.md
+Target Claude
 ```
 
-**Reading the diagram:**
-- Every domain follows the same 3-phase lifecycle: **DRAFT commit → REVIEWED commit → VALIDATED commit + merge**
-- `FAIL — STOP` means the agent halts and waits for user direction before CCor is invoked
-- **PaperWriter always returns to PaperWorkflowCoordinator** — it does not stop autonomously; coordinator issues the DRAFT commit
-- **Code domain:** DRAFT commit per component (TestRunner PASS); REVIEWED commit when all components pass; VALIDATED commit + merge after ConsistencyAuditor GATE_PASS
-- **Paper domain:** DRAFT commit after PaperWriter returns; REVIEWED commit when review loop clears; VALIDATED commit + merge after ConsistencyAuditor GATE_PASS
-- **Prompt domain:** DRAFT commit after PromptArchitect/Compressor; VALIDATED commit + merge after PromptAuditor PASS (no separate REVIEWED phase)
-- Each domain merges to `main` **independently** — no cross-domain wait
-
----
-
-## 8. Control Protocols
-
-Defined in `meta-workflow.md`. Key protocols:
-
-| Protocol | Purpose |
-|----------|---------|
-| P1 LAYER_STASIS | When editing one layer, all others are READ-ONLY |
-| P2 NON_INTERFERENCE_AUDIT | Infrastructure changes must not alter numerical results |
-| P3 ASSUMPTION_TO_CONSTRAINT | Stable assumptions promoted to constraints with ASM-ID |
-| P4 CONTEXT_COMPRESSION_GATE | Token efficiency before DONE / schema migration / prompt regeneration |
-| P5 SINGLE-ACTION DISCIPLINE | One agent, one objective per step — no multi-goal execution |
-| P6 BOUNDED LOOP CONTROL | Retry counter per phase; escalate on threshold breach; never loop silently |
-| P7 LEGACY MIGRATION | Old prompts/schemas mapped, compressed, and upgraded; semantics preserved |
-
----
-
-## 9. Meta Rules
-
-- **diff > rewrite** — minimal changes only
-- **stop early > guess** — STOP and escalate when information is missing; never hallucinate
-- **explicit > implicit** — all decisions in `docs/` with IDs; never rely on LLM context window
-- **one agent per step** — no multi-goal execution inside a single action
-- **test failure = halt** — TestRunner and WorkflowCoordinator never auto-fix; they STOP and ask
-- **authority chain** — MMS-passing code > ARCHITECTURE.md > paper (ConsistencyAuditor enforces)
+To update 00_GLOBAL_RULES.md: edit directly (it is authoritative, not generated).
+To update 01–02: append project state entries; never add rule content.
