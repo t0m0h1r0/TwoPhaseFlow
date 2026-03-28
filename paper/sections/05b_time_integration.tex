@@ -30,7 +30,6 @@ Dissipative CCD は線形フィルタであり空間 TVD 性を持たない（\r
 クランプ処置（式~\eqref{eq:psi_clamp}）と組み合わせることで
 $\psi \in [0,1]$ を維持する．
 
-\begin{tcolorbox}[warnbox, title={TVD-RK3 の適用範囲：CLS のみ，NS には不使用}]
 \label{warn:tvd_rk3_scope}
 TVD-RK3 は以下の2箇所にのみ適用する：
 \begin{itemize}
@@ -38,7 +37,6 @@ TVD-RK3 は以下の2箇所にのみ適用する：
   \item \textbf{CLS 再初期化方程式}（式 \eqref{eq:cls_reinit_iso}）の仮想時間 $\tau$ 積分（移流部のみ）
 \end{itemize}
 \textbf{NS 方程式の時間積分}には TVD-RK3 は使用しない（下節 §\ref{sec:ab2_ipc} 参照）．
-\end{tcolorbox}
 
 \subsubsection{NS 方程式の時間積分：AB2 + IPC 法}
 \label{sec:ab2_ipc}

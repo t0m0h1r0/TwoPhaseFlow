@@ -303,14 +303,12 @@ CCD Laplacian の最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$ を
 スウィープ型は任意の $\Delta\tau > 0$ で\textbf{無条件安定}；$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも $\gamma \to 1$（収束が遅い）．
 \end{tcolorbox}
 
-\begin{tcolorbox}[mybox, title={$\Delta\tau$ の実装指針と典型収束挙動}]
 \label{box:dtau_impl}
 経験則：$\Delta\tau = C_\tau \cdot h^2/a_{\max}$，$C_\tau = 1 \sim 5$（式~\eqref{eq:dtau_opt}を中心とする範囲）．
 
 \textbf{推奨出発点：} $C_\tau = 2.0$（静止液滴テスト，$N=64$，$\rho_l/\rho_g=10$ の設定で $10\sim30$ 回で $\varepsilon_\text{tol}=10^{-8}$ 達成）．大密度比（$\rho_l/\rho_g \geq 100$）では $C_\tau=1\sim2$ から試すこと．
 
 \textbf{初期値：} $(\delta p)^0 = 0$（増分の初期推定）；収束は典型的に数回〜数十回．初期時刻や大きな圧力変動がある場合は更に多くの反復を要する．
-\end{tcolorbox}
 
 \subsubsection{密度適応型局所時間刻み（Local Time Stepping）}
 \label{sec:lts_dtau}
