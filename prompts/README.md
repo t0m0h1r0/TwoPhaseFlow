@@ -129,7 +129,92 @@ docs/                              ← LAYER 2 + 3
 | Prompt | PromptAuditor | Validates prompts (read-only) |
 
 ────────────────────────────────────────────────────────
-## 8. Regeneration
+## 8. Agent Interaction Diagram
+
+```mermaid
+flowchart TD
+    RA["ResearchArchitect\n(Session Start · Router)"]
+
+    subgraph CODE["Code Domain — branch: code"]
+        CWC["CodeWorkflowCoordinator"]
+        CA["CodeArchitect"]
+        CC["CodeCorrector"]
+        CR["CodeReviewer"]
+        TR["TestRunner"]
+        ER["ExperimentRunner"]
+    end
+
+    subgraph PAPER["Paper Domain — branch: paper"]
+        PWC["PaperWorkflowCoordinator"]
+        PW["PaperWriter"]
+        PC["PaperCompiler"]
+        PR["PaperReviewer"]
+        PCo["PaperCorrector"]
+    end
+
+    subgraph PROMPT["Prompt Domain — branch: prompt"]
+        PA["PromptArchitect"]
+        PComp["PromptCompressor"]
+        PAud["PromptAuditor"]
+    end
+
+    CSA["ConsistencyAuditor\n(Domain Gate — AU2)"]
+    MAIN[("main\n(protected)")]
+
+    %% --- Routing ---
+    RA -->|route| CWC
+    RA -->|route| PWC
+    RA -->|route| PA
+    RA -->|route| CSA
+
+    %% --- Code Domain internal ---
+    CWC --> CA
+    CWC --> CC
+    CWC --> CR
+    CA --> TR
+    CC --> TR
+    TR -->|PASS| CWC
+    TR -->|FAIL| CC
+    CR -.->|migration plan| CA
+    ER -->|verified data| PWC
+
+    %% --- Paper Domain internal ---
+    PWC --> PW
+    PWC --> PC
+    PWC --> PR
+    PWC --> PCo
+    PW -->|return| PWC
+    PR -->|FATAL/MAJOR| PWC
+    PCo --> PC
+    PC -->|error| PW
+
+    %% --- Audit gate ---
+    CWC -->|gate| CSA
+    PWC -->|gate| CSA
+    CSA -->|PAPER_ERROR| PW
+    CSA -->|CODE_ERROR| CA
+    CSA -->|PASS code| CWC
+    CSA -->|PASS paper| PWC
+
+    %% --- Prompt Domain internal ---
+    PA --> PAud
+    PComp --> PAud
+    PAud -->|FAIL| PA
+
+    %% --- Merge to main ---
+    PAud -.->|PASS → merge| MAIN
+    CWC -.->|validated → merge| MAIN
+    PWC -.->|validated → merge| MAIN
+```
+
+**凡例:**
+- 実線 `-->` : 通常のハンドオフ（結果を渡して次のエージェントへ）
+- 破線 `-.->` : 条件付きフロー（検証後のマージ、計画の提示など）
+- `(Domain Gate — AU2)` : ConsistencyAuditor は Code・Paper 両ドメインの統合ゲート
+- `main (protected)` : マージはゲート監査 PASS 後のみ
+
+────────────────────────────────────────────────────────
+## 9. Regeneration
 
 To rebuild all agents/ from meta/:
 ```
