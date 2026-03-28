@@ -22,13 +22,18 @@ by ResearchArchitect or an escalation to ConsistencyAuditor.
 | Git branch | none — stateless; reads current state from `main` |
 | Coordinator | ResearchArchitect |
 | Members | ResearchArchitect |
-| Storage (write) | docs/02_ACTIVE_LEDGER.md (routing entry only) |
+| Storage (write) | **NONE** — Routing domain is strictly No-Write for all files |
 | Storage (read) | docs/02_ACTIVE_LEDGER.md, docs/01_PROJECT_MAP.md |
 | Rules | meta-core.md §AXIOMS only (no domain rule section) |
 | Lifecycle | none — entry point only; routes to a domain then exits |
 
 **Domain purpose:** Session intake and work routing. Routing domain never produces
 artifacts — it records routing decisions and dispatches to the appropriate domain.
+
+**No-Write rule:** ResearchArchitect must not write to any file, including
+docs/02_ACTIVE_LEDGER.md, during the Routing phase. Writing is delegated to the
+receiving domain's coordinator after routing completes. Any write attempt by
+ResearchArchitect triggers DOM-02 CONTAMINATION_GUARD — STOP; escalate to user.
 
 ────────────────────────────────────────────────────────
 ## Domain: Code
@@ -264,10 +269,24 @@ Every agent, before every file write, edit, or delete, must run DOM-02:
 □ 1. Retrieve DOMAIN-LOCK from the current DISPATCH context.
      Absent → STOP; request domain lock from coordinator before any write.
 □ 2. Resolve target_path against write_territory (prefix match).
-     Match → proceed with write.
+     Match → proceed to check 3.
      In read_territory only → STOP; convert to read-only access; notify coordinator.
      In neither → STOP; CONTAMINATION_GUARD violation — issue RETURN STOPPED.
+□ 3. Role-extension check: verify that the writing agent's tier (from meta-ops.md §AUTHORITY TIERS)
+     is sufficient for the target path:
+     - interface/ writes require [AUTH_LEVEL: Gatekeeper] and an IF-COMMIT token (see below).
+       Writing to interface/ without IF-COMMIT token → STOP; CONTAMINATION_GUARD violation.
+     - prompts/meta/ writes require explicit Governance/meta-deploy authorization.
+       Writing without that authorization → STOP; escalate to user.
+     - All other territory matches from check 2 → proceed with write.
 ```
+
+**IF-COMMIT token:** Required for any write to the `interface/` directory. The Gatekeeper must
+emit this token before the write and include it in the commit message:
+```
+IF-COMMIT: domain={domain} feature={feature} gatekeeper={coordinator} set_at={git-short-hash}
+```
+A write to `interface/` without a valid IF-COMMIT token is a Gatekeeper tier violation → STOP.
 
 ## Recognized Contamination Patterns
 
@@ -277,8 +296,12 @@ Every agent, before every file write, edit, or delete, must run DOM-02:
 | Paper agent writes `src/twophase/*.py` | Missing `scope_out` in DISPATCH | STOP; RETURN STOPPED |
 | Any agent writes `prompts/meta/*.md` | Only Governance/meta-deploy authorized | STOP; escalate to user |
 | Any agent writes `docs/00_GLOBAL_RULES.md` | Governance-owned; read-only for agents | STOP; escalate to user |
+| Any agent writes `interface/` without IF-COMMIT token | Gatekeeper obligation violated | STOP; CONTAMINATION_GUARD violation |
+| Specialist writes `interface/` (any) | Only Gatekeeper tier may write interface/ | STOP; escalate to coordinator |
+| ResearchArchitect writes any file (Routing domain) | Routing domain is No-Write | STOP; escalate to user |
 | Coordinator commits on `main` directly | Branch rule violation (A8) | STOP; run GIT-01 to restore correct branch |
 | Two coordinators active simultaneously | Domain lock collision | STOP; escalate to user |
+| Agent invokes operation above its AUTH_LEVEL | Role-extension inconsistency | STOP; RETURN BLOCKED (HAND-03 check 0) |
 
 ## Contamination RETURN Token
 
