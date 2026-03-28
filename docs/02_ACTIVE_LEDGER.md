@@ -11,7 +11,7 @@
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
 | last_decision | CHK-031 CLOSED 2026-03-28: PaperCorrector §10b+§08b — 4 fixes applied (M-A Dissipative CCD O(h^5)→O(ε_d h²) in 10b table:321, text:339, text:343; M-B 08b min() argument rewritten O(h^5)→O(ε_d h²), O(h^4)→O(ε_d h)); compile clean 142pp |
-| next_action | Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark (§10b) |
+| next_action | CHK-032 IN_PROGRESS — 10 MINOR未処理 |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -66,6 +66,7 @@
 | CHK-029 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (§11 audit): [M-A] 11_conclusion.tex:114 Dissipative CCD O(h^5)→O(ε_d h²). Compile: 142pp. |
 | CHK-030 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (appendix audit): [M-A] appendix_numerics_solver_s2.tex a₂=3/2→3; 12sin²→24sin²; Λ_max=4.8→9.6. Compile: 142pp. |
 | CHK-031 | CLOSED | fix | PaperCorrector 4 fixes 2026-03-28 (full re-audit): [M-A] 10b_benchmarks.tex:321,339,343 Dissipative CCD O(h^5)→O(ε_d h²); [M-B] 08b_ccd_poisson.tex:314–317 Balanced-Force min() argument rewritten. Compile: 142pp, 0 errors, 0 warnings. |
+| CHK-032 | IN_PROGRESS | review | PaperReviewer full audit 2026-03-28: 3 FATAL all REVIEWER_ERROR; 8 MAJOR: 4 REVIEWER_ERROR + 4 LOGICAL_GAP fixed (05c:105 CN精度条件訂正; 08_pressure:103,104 broken ref修正; 06_grid:120-122 O(h)メトリクス精度注記追加; 08d:43-44 sweep分割誤差フロア注記追加). Compile: 142pp, 0 errors. 10 MINOR未処理。 |
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`

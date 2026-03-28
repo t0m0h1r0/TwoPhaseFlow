@@ -119,7 +119,10 @@ $\mathcal{O}(h^6)$ 精度の微分を保証する（打ち切り誤差は $f^{(8
 $\omega(\phi)$ は $\delta_\varepsilon^*(\bar\phi^x)$ の滑らか（$C^\infty$）な関数であるため，
 $x(\xi)$ は高階微分まで有界な滑らかな関数となる（累積和の打ち切り誤差 $\mathcal{O}(\Delta\xi^2)$ は
 $\{x_i\}$ の滑らかさには影響しない）．
-したがって CCD の $\mathcal{O}(h^6)$ 精度保証の前提条件は満たされる．
+したがって CCD の $\mathcal{O}(h^6)$ 精度保証の平滑性前提は満たされる．
+ただし CCD の $\mathcal{O}(h^6)$ 精度は入力値が厳密な関数値である場合に保証される；
+前進矩形則の大域誤差 $\mathcal{O}(h)$ を含む $\{x_i\}$ に対しては，CCD が返すメトリクス係数の実効精度は $\mathcal{O}(h)$ に制限される
+（全体スキームの精度 $\mathcal{O}(h^2)$ との整合は取れている）．
 中心差分による $\mathcal{O}(h^2)$ 近似 $J_x|_i \approx 2\Delta\xi/(x_{i+1}-x_{i-1})$ は
 CCD の空間精度 $\mathcal{O}(h^6)$ を著しく損なうため，本稿では採用しない
 （理由は \ref{box:grid_jx_accuracy} で詳述）．
