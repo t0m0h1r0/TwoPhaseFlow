@@ -9,21 +9,42 @@
 
 Seven files, one question each. Mixing concerns across files cascades unrelated edits.
 
-| File | Question | Stable when |
-|------|----------|-------------|
-| meta-core.md (this file) | FOUNDATION — φ1–φ7, A1–A10, system targets | core values change |
-| meta-domains.md | STRUCTURE — domain registry, branches, storage, lock protocol | org structure changes |
-| meta-persona.md | WHO — agent character and skills | agent design principles change |
-| meta-roles.md | WHAT — per-agent role contracts | responsibilities shift |
-| meta-workflow.md | HOW — pipelines, coordination protocols | process matures |
-| meta-ops.md | EXECUTE — canonical commands and handoff protocols | tooling changes |
-| meta-deploy.md | DEPLOY — EnvMetaBootstrapper | system structure changes |
+**3-Layer Architecture (one-way dependency — lower layers must NOT import upper):**
+
+```
+Layer 1 — Static Foundation (Immutable)
+  meta-core.md    — FOUNDATION: φ1–φ7, A1–A10, system targets   ← stable only when core values change
+  meta-persona.md — WHO: agent character and skills               ← stable only when agent design changes
+
+Layer 2 — Dynamic Execution (Operational)
+  meta-domains.md — STRUCTURE: domain registry, branches, storage, lock protocol   ← updated on org change
+  meta-roles.md   — WHAT: per-agent role contracts                                 ← updated on role reassignment
+  meta-ops.md     — EXECUTE: canonical commands and handoff protocols               ← updated on tooling changes
+
+Layer 3 — Orchestration (Process)
+  meta-workflow.md — HOW: pipelines, coordination protocols   ← updated on process maturity
+  meta-deploy.md   — DEPLOY: EnvMetaBootstrapper              ← updated on system structure changes
+```
+
+| File | Layer | Question | Stable when |
+|------|-------|----------|-------------|
+| meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A10, system targets | core values change |
+| meta-persona.md | 1 — Static Foundation | WHO — agent character and skills | agent design principles change |
+| meta-domains.md | 2 — Dynamic Execution | STRUCTURE — domain registry, branches, storage, lock protocol | org structure changes |
+| meta-roles.md | 2 — Dynamic Execution | WHAT — per-agent role contracts | responsibilities shift |
+| meta-ops.md | 2 — Dynamic Execution | EXECUTE — canonical commands and handoff protocols | tooling changes |
+| meta-workflow.md | 3 — Orchestration | HOW — pipelines, coordination protocols | process matures |
+| meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper | system structure changes |
 
 **Separation rule:** WHO (character) is intrinsic. WHAT (contract) can be reassigned without touching
 character. HOW (process) can be improved without changing identity or contracts.
 
 **Authority rule:** meta-core.md wins on axiom intent; docs/00_GLOBAL_RULES.md wins on rule
 interpretation; docs/01–02 win on project state. No mixing rule (A10).
+
+**Layer dependency rule:** Layer 3 may reference Layer 2 and Layer 1. Layer 2 may reference Layer 1.
+Layer 1 must not reference Layer 2 or Layer 3. Any cross-layer upward dependency is a
+structural violation — fix at source (φ6).
 
 ────────────────────────────────────────────────────────
 # § DESIGN PHILOSOPHY
@@ -231,6 +252,36 @@ All agents share these optimization priorities (in order):
 7. external-memory efficiency
 8. self-evolution
 9. backward compatibility
+
+────────────────────────────────────────────────────────
+# § OPERATIONAL PHILOSOPHY: Mechanical Harmonization
+
+Harmony between agents is achieved through **Logical Exclusion**, not guessing or intuition.
+These three principles govern all multi-agent coordination.
+
+## MH-1: Stop is Progress
+A STOP triggered by detecting a contradiction is more valuable than proceeding with
+flawed reasoning. An agent that halts on a conflict and reports it produces a recoverable
+state. An agent that guesses and continues produces untracked, unauditable state (φ1, φ5).
+
+**Corollary:** A STOP returned with a clear trigger is a successful agent action.
+A STOP concealed by a guess is a traceability violation.
+
+## MH-2: The Ledger is the Truth
+Any reasoning not recorded in docs/02_ACTIVE_LEDGER.md is non-existent to the system.
+An agent's in-context conclusions that are not externalized are lost at session end (φ4).
+The ACTIVE_LEDGER is the single shared memory — if it is not there, it did not happen.
+
+**Corollary:** Before acting on a prior conclusion, verify it is present in the Ledger.
+If absent, re-derive or re-classify — do not rely on recall.
+
+## MH-3: Broken Symmetry
+The Executor (Specialist) and the Validator (Auditor) must never follow the same
+reasoning path. If they share the same assumptions, the same bugs survive both checks.
+Independent re-derivation (not verification by comparison) is the only reliable gate (φ7).
+
+**Corollary:** A reviewer that reads the author's draft first, then checks it, has broken symmetry.
+Derive first; compare second. Sequence matters.
 
 ────────────────────────────────────────────────────────
 # § SYSTEM META RULES

@@ -289,6 +289,41 @@ Record in 02_ACTIVE_LEDGER.md §LESSONS.
 If uncertain: keep in 02_ACTIVE_LEDGER.md §LESSONS.
 
 ────────────────────────────────────────────────────────
+## § META-EVOLUTION GUARDRAILS
+
+Any self-evolution proposal — whether from a human operator, an agent, or a bootstrapper run —
+that modifies or weakens the following **Immutable Zones** must be treated as a **System Panic**:
+
+**Immutable Zone 1: Foundational Principles**
+- All φ-Principles (φ1–φ7) in meta-core.md §DESIGN PHILOSOPHY
+- All Axioms (A1–A10) in meta-core.md §AXIOMS
+
+**Immutable Zone 2: Acceptance Check Logic**
+- HAND-03 Acceptance Check items (checks 0–8) in meta-ops.md §HANDOFF PROTOCOL
+
+**System Panic protocol:**
+```
+SYSTEM_PANIC triggered by: {proposing agent or operation}
+  reason:   "Immutable Zone modification attempted: {zone name} — {specific element}"
+  proposal: {verbatim text of the proposed change}
+  action:   STOP all pipeline activity immediately
+  required: escalate to user; do not apply any part of the proposal
+  resume:   only after explicit user authorization with documented rationale
+```
+
+**Corollary:** A proposal that "refines" or "tightens" an axiom without removing it is still
+a modification. Intent does not override the rule — structure does. Route all Immutable Zone
+proposals to the user before any edit is made to prompts/meta/*.md.
+
+**Permitted evolution paths (outside Immutable Zones):**
+- Adding new axioms (A11+) — permitted if axiom-compatible and user-authorized
+- Adding new control protocols (P-new) — permitted in meta-workflow.md §CONTROL PROTOCOLS
+- Adding new operations (NEW-xx) — permitted in meta-ops.md with correct AUTH_LEVEL tag
+- Modifying Layer 3 (meta-workflow.md, meta-deploy.md) — permitted within bounds of Layer 1+2
+- Modifying Layer 2 (meta-domains.md, meta-roles.md, meta-ops.md) operations — permitted
+  if not touching HAND-03 acceptance logic or AUTH_LEVEL definitions in Immutable Zone 2
+
+────────────────────────────────────────────────────────
 # § COMMAND FORMAT → meta-ops.md §COMMAND FORMAT
 
 Canonical command syntax and invocation rules: **meta-ops.md §COMMAND FORMAT**.

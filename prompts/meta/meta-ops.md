@@ -106,6 +106,7 @@ before a Gatekeeper or Root Admin may merge it:
 ## GIT-00: IF-Agreement + Specialist Branch Setup
 
 **Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect)
+**[AUTH_LEVEL: Gatekeeper]**
 **Trigger:** MANDATORY — before dispatching any Specialist; precondition for GIT-01
 **Phase:** Before PLAN
 
@@ -136,6 +137,7 @@ git checkout -b dev/{agent_role}
 ## GIT-SP: Specialist Branch Operations
 
 **Authorized:** All Specialist-tier agents (sovereign over their own dev/ branch)
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** Whenever a Specialist commits work or opens a PR
 **Phase:** During EXECUTE or VERIFY
 
@@ -170,6 +172,7 @@ Violation → CONTAMINATION RETURN + Branch Isolation breach (→ meta-domains.m
 
 **Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect),
                Root Admin ResearchArchitect (Step 0 auto-switch only — see below)
+**[AUTH_LEVEL: Gatekeeper | Root Admin (Step 0 only)]**
 **Trigger:** MANDATORY — first action of every session, before any GIT-00 dispatch or file edit;
              ALSO triggered automatically when ResearchArchitect detects a branch/domain mismatch
              on a user-issued request (Usability Exception — see below)
@@ -227,6 +230,7 @@ Do not proceed. Escalate to user for branch cleanup.
 ## DOM-01: Domain Lock Establishment
 
 **Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect
+**[AUTH_LEVEL: Gatekeeper]**
 **Trigger:** MANDATORY — immediately after GIT-01 confirms branch; before any DISPATCH or file edit
 **Phase:** Session start
 
@@ -262,6 +266,7 @@ subsequent HAND-01 `context.domain_lock` field.
 ## DOM-02: Pre-Write Storage Check
 
 **Authorized:** every agent (universal obligation — no AUTHORITY restriction)
+**[AUTH_LEVEL: universal — no tier restriction]**
 **Trigger:** MANDATORY — before every file write, edit, or delete
 **Phase:** Any
 
@@ -281,6 +286,7 @@ requires DOM-02 — the check passes because all domains include it in write_ter
 ## GIT-02: DRAFT Commit
 
 **Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect
+**[AUTH_LEVEL: Gatekeeper]**
 **Trigger:** Primary creation agent completes and returns to coordinator
 **Phase:** End of EXECUTE
 
@@ -300,6 +306,7 @@ git commit -m "{branch}: draft — {summary}"
 ## GIT-03: REVIEWED Commit
 
 **Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptAuditor
+**[AUTH_LEVEL: Gatekeeper]**
 **Trigger:** Review phase exits with no blocking findings
 **Phase:** End of VERIFY (TestRunner PASS / PaperReviewer 0 FATAL+0 MAJOR / PromptAuditor Q3 PASS)
 
@@ -317,6 +324,7 @@ git commit -m "{branch}: reviewed — {summary}"
 
 **Phase A — Gatekeeper (merges dev/ PR into domain branch):**
 **Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptAuditor)
+**[AUTH_LEVEL: Gatekeeper (Phase A) | Root Admin (Phase B)]**
 **Trigger:** Gate auditor (ConsistencyAuditor or PromptAuditor) issues PASS verdict AND
              all three MERGE CRITERIA (TEST-PASS, BUILD-SUCCESS, LOG-ATTACHED) are satisfied
 **Phase:** End of AUDIT
@@ -366,6 +374,7 @@ git checkout {branch}
 ## GIT-05: Sub-branch Operations
 
 **Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator
+**[AUTH_LEVEL: Gatekeeper]**
 **Trigger:** Task requires isolation within a domain (e.g., experimental refactor, parallel sections)
 
 **Create sub-branch from parent:**
@@ -395,6 +404,7 @@ via GIT-04 after VALIDATED phase.
 ## BUILD-01: Pre-compile Scan
 
 **Authorized:** PaperCompiler
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** MANDATORY before any BUILD-02 invocation
 **Phase:** Start of VERIFY (paper domain)
 
@@ -424,6 +434,7 @@ grep -ni "\bbove\b\|\bbelow\b\|\bfollowing figure\b\|\bpreceding\b" paper/sectio
 ## BUILD-02: LaTeX Compilation
 
 **Authorized:** PaperCompiler
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** After BUILD-01 scan passes
 **Phase:** VERIFY (paper domain)
 
@@ -463,6 +474,7 @@ ROUTE_TO_WRITER: STOP; do not attempt further compilation; route to PaperWriter.
 ## TEST-01: pytest Execution
 
 **Authorized:** TestRunner
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** After CodeArchitect or CodeCorrector completes implementation
 **Phase:** VERIFY (code domain)
 
@@ -489,6 +501,7 @@ python -m pytest {target} -v --tb=short 2>&1 | tee tests/last_run.log
 ## TEST-02: Convergence Analysis
 
 **Authorized:** TestRunner
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** After TEST-01 (on both PASS and FAIL)
 **Phase:** VERIFY (code domain)
 
@@ -524,6 +537,7 @@ This table is mandatory in every TestRunner output — PASS or FAIL.
 ## EXP-01: Simulation Execution
 
 **Authorized:** ExperimentRunner
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** After parameter validation against benchmark spec
 **Phase:** EXECUTE (experiment step, optional in code pipeline)
 
@@ -548,6 +562,7 @@ python -m src.twophase.run \
 ## EXP-02: Mandatory Sanity Checks
 
 **Authorized:** ExperimentRunner
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** MANDATORY after every EXP-01; results must NOT be forwarded until all four pass
 **Phase:** VERIFY (experiment step)
 
@@ -567,6 +582,7 @@ Any single FAIL → STOP; do not forward results to PaperWriter; report which ch
 ## AUDIT-01: AU2 Release Gate
 
 **Authorized:** ConsistencyAuditor
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** MANDATORY before any merge to `main` (Code and Paper domains)
 **Phase:** AUDIT
 
@@ -596,6 +612,7 @@ All 10 items must pass. A single FAIL blocks merge. No item may be skipped.
 ## AUDIT-02: Verification Procedures A–E
 
 **Authorized:** ConsistencyAuditor
+**[AUTH_LEVEL: Specialist]**
 **Trigger:** As part of AUDIT-01 items 1, 6 (equation–code traceability checks)
 **Phase:** AUDIT
 
@@ -653,16 +670,19 @@ and break audit traceability (φ4).
 
 ```
 DISPATCH → {specialist_name}
-  task:         {one-sentence objective — what must be produced, not how}
-  inputs:       [{file_or_artifact_1}, {file_or_artifact_2}, ...]
-  scope_out:    [{explicitly excluded — prevents overreach}]
+  task:            {one-sentence objective — what must be produced, not how}
+  inputs:          [{file_or_artifact_1}, {file_or_artifact_2}, ...]
+  scope_out:       [{explicitly excluded — prevents overreach}]
   context:
-    phase:        {PLAN | EXECUTE | VERIFY | AUDIT}
-    branch:       {active domain git branch — Specialist will create dev/{agent_role} from this}
-    commit:       "{last commit message — confirms git state at dispatch}"
-    domain_lock:  {verbatim copy of active DOMAIN-LOCK block from DOM-01}
-    if_agreement: {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
-  expects:      {deliverable description — must match IF-AGREEMENT outputs field}
+    phase:          {PLAN | EXECUTE | VERIFY | AUDIT}
+    branch:         {active domain git branch — Specialist will create dev/{agent_role} from this}
+    commit:         "{last commit message — confirms git state at dispatch}"
+    domain_lock:    {verbatim copy of active DOMAIN-LOCK block from DOM-01}
+    if_agreement:   {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
+    context_root:   {Instruction ID issued by ResearchArchitect at session start — e.g. RA-2026-03-29-001}
+    domain_lock_id: {DOM-01 lock ID or set_at hash — proof of active lock acquired this session}
+    expected_verdict: {explicit success criterion with measurable threshold — e.g. "AU2 PASS: all 10 items", "convergence slope ≥ 1.8"}
+  expects:         {deliverable description — must match IF-AGREEMENT outputs field}
 ```
 
 **Rules**
@@ -670,6 +690,9 @@ DISPATCH → {specialist_name}
 - `scope_out` must be non-empty when there is a plausible adjacent task to exclude
 - `commit` must match `git log --oneline -1` at dispatch time
 - `domain_lock` must be present — a DISPATCH without domain_lock is malformed; specialist must REJECT (HAND-03 check 6)
+- `context_root` must be the Instruction ID from the originating ResearchArchitect routing decision; never omit
+- `domain_lock_id` must match the `set_at` field of the active DOMAIN-LOCK; a DISPATCH with a stale or absent lock ID is malformed
+- `expected_verdict` must be measurable — vague criteria such as "looks good" are not acceptable
 - Coordinator must not dispatch if its own RETURN token (from a previous step) has
   unresolved issues — resolve first, then dispatch
 
@@ -714,6 +737,11 @@ RETURN → {coordinator_or_requester}
 
 ```
 Acceptance Check:
+  □ 0. TIER AUTHORIZATION: does Sender.Tier ≥ Required.Tier for the operation being delegated?
+         Derive Sender.Tier from meta-ops.md §AUTHORITY TIERS (Root Admin > Gatekeeper > Specialist).
+         Derive Required.Tier from the [AUTH_LEVEL] tag on the operation in this file.
+         Sender.Tier < Required.Tier → REJECT immediately; issue RETURN with status BLOCKED.
+         (Example: a Specialist cannot dispatch a Gatekeeper-level GIT-03 operation to another agent.)
   □ 1. SENDER AUTHORIZED: is the sender listed in meta-roles.md AUTHORITY as allowed
          to dispatch this role? If not → REJECT
   □ 2. TASK IN SCOPE: does the task fall within this role's PURPOSE in meta-roles.md?
@@ -730,11 +758,15 @@ Acceptance Check:
   □ 6. DOMAIN LOCK PRESENT: does `context.domain_lock` exist and include `write_territory`?
          Absent or malformed → REJECT (coordinator must run DOM-01 and re-dispatch)
          domain_lock.branch ≠ domain portion of git branch → REJECT (branch/domain mismatch)
+         `context.domain_lock_id` absent or does not match domain_lock.set_at → REJECT (stale lock)
          If PASS → store domain_lock for DOM-02 checks throughout this session
   □ 7. IF-AGREEMENT PRESENT: does DISPATCH context include an `if_agreement` path pointing
          to a valid interface/ contract? (→ meta-domains.md §IF-AGREEMENT PROTOCOL)
          Absent → REJECT; Gatekeeper must run GIT-00 and re-dispatch
          If PASS → read IF-AGREEMENT outputs as the deliverable contract for this task
+  □ 8. EXPECTED_VERDICT PRESENT: does DISPATCH context include an `expected_verdict` with
+         a measurable criterion?
+         Absent or vague (e.g., "good", "complete") → REJECT; coordinator must supply explicit threshold
 ```
 
 **On REJECT or QUERY:**
@@ -758,12 +790,14 @@ Coordinator                          Specialist
     │                                    │
     │──── HAND-01 (DISPATCH) ──────────► │
     │                                    │ HAND-03: Acceptance Check
+    │                                    │   □ tier authorized?      ← AUTH_LEVEL check (check 0)
     │                                    │   □ sender authorized?
     │                                    │   □ task in scope?
     │                                    │   □ inputs available?
     │                                    │   □ git state valid?
     │                                    │   □ context consistent?
     │                                    │   □ domain lock present?  ← DOM-01 output
+    │                                    │   □ expected_verdict set? ← measurable criterion
     │                                    │
     │         [REJECT if any fails]      │
     │◄─── HAND-02 (status: BLOCKED) ─── │
