@@ -126,7 +126,7 @@ PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散
 \textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ppe_pseudotime}）であり，$\Ord{h^6}$ を達成する．
 式~\eqref{eq:af_exact} は Rhie--Chow 補正係数と一致する（§\ref{sec:rc_implementation}）．
 
-\subsubsection{Rhie--Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}
+\subsubsection{Rhie--Chow 補正済み発散 \texorpdfstring{$\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$}{∇\_h\^{}RC · u*} の定義}
 \label{sec:rc_divergence}
 
 PPE の右辺に現れる $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$（「Rhie--Chow 補正済み発散」）は，
