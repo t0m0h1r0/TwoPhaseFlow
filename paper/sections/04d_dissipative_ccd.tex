@@ -405,3 +405,85 @@ CLS 移流（§\ref{sec:advection_motivation}）およびCLS 圧縮項（§\ref{
 Dissipative CCD 適用は\textbf{一様強度}（$\varepsilon_d^{\mathrm{adv}} = \varepsilon_{d,\max}$，$S(\psi)$ 制御なし）を使用する——
 その理由は，CLS 移流の Gibbs 振動は界面（$\psi \approx 0.5$）で最も激しいため，
 $S(1/2) = 0$ で無効化する適応制御は移流安定化に適合しないからである（\ref{warn:adv_filter_uniform}）．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{保存則との整合性：微分場フィルタとフラックス形フィルタの比較}
+\label{sec:dccd_conservation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\textbf{保存形離散化における厳密な保存則．}
+一般の保存則 $\partial_t q + \partial_x F = 0$ の保存形離散化は，
+セル界面フラックス $F_{i+1/2}^*$ を用いたテレスコープ形式
+\begin{equation}
+  q_i^{n+1} = q_i^n - \frac{\Delta t}{h}\!\left(F_{i+1/2}^* - F_{i-1/2}^*\right)
+  \label{eq:flux_conservative}
+\end{equation}
+で与えられる．この形式では離散総量 $\sum_i q_i h$ が境界フラックスのみから変化するため，
+大域保存則が厳密に保持される．
+フィルタを導入する場合も，\textbf{セル界面フラックス $F_{i+1/2}^*$ に散逸項を付加する}
+フラックス形フィルタ
+\begin{equation}
+  \tilde{F}_{i+1/2} = F_{i+1/2}^{\mathrm{CCD}}
+    + \alpha_i\!\left(F_{i+3/2}^{\mathrm{CCD}} - 2F_{i+1/2}^{\mathrm{CCD}} + F_{i-1/2}^{\mathrm{CCD}}\right),
+  \quad \alpha_i \geq 0
+  \label{eq:flux_filter}
+\end{equation}
+を用いることで，式~\eqref{eq:flux_conservative} の保存則を厳密に維持できる
+（$\tilde{F}_{i+1/2}$ のテレスコープ差はやはり消去されるため）．
+係数 $\alpha_i$ には §\ref{sec:dccd_switch} の
+CLS スイッチ関数 $\varepsilon_{d,\max} S(\psi_i)$ を流用できる．
+
+\medskip
+\noindent\textbf{現行 DCCD スキームの位置づけ．}
+式~\eqref{eq:dccd_apply_d1}--\eqref{eq:dccd_apply_d2} の DCCD フィルタは
+\textbf{CCD 求解後の微分場} $(f'_i, f''_i)$ に後処理として作用し，
+セル界面フラックスを直接修正しない点でフラックス形フィルタと異なる．
+本稿の Navier--Stokes 離散化は移流項 $\bm{u}\cdot\nabla\bm{u}$ を
+\textbf{非保存形}（advective form）で評価しており，
+フラックス形式に基づく厳密な保存は当初から保証していない．
+この前提のもとで DCCD フィルタの非保存的誤差は
+$O(\varepsilon_d^{(i)} h^2)$（式~\eqref{eq:dccd_accuracy_error}）であり，
+CSF モデルの界面誤差 $O(\varepsilon^2)\approx O(h^2)$（§\ref{sec:balanced_force}）と
+同オーダーとなる．したがって，微分場フィルタは既存の離散化誤差の構造と整合しており，
+精度と安定性のトレードオフとして許容される．
+
+\begin{tcolorbox}[resultbox, title={フラックス形フィルタの適用指針}]
+\label{result:flux_filter_guideline}
+保存形 FVM スキーム（密度・運動量のセル平均を直接保存する定式化）へ移行する場合は，
+式~\eqref{eq:flux_filter} のフラックス形フィルタを採用することが理論的に望ましい．
+係数 $\alpha_i = \varepsilon_{d,\max} S(\psi_i)$ を用いることで，
+§\ref{sec:dccd_switch} の界面適応制御をそのまま継承できる．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{圧力場へのフィルタ適用禁止と代替処理}
+\label{sec:dccd_pressure_nofilt}
+% ─────────────────────────────────────────────────────────────────────────────
+
+圧力場 $p$ に対する直接的なフィルタ適用は，
+速度修正ステップ $\bm{u}^{n+1} = \bm{u}^* - \Delta t\,\tilde{\nabla}p$（§\ref{sec:pressure}）が
+\textbf{発散自由条件} $\nabla^{\mathrm{RC}}\cdot\bm{u}^{n+1} = 0$ を満たすよう設計されているためであり，
+フィルタによる $p$ の書き換えはこの条件を破壊する．
+
+圧力関連ノイズへの対処が必要な場合，以下の代替処理が保全性を保ちながら有効である：
+
+\begin{enumerate}
+  \item \textbf{圧力勾配のフィルタリング：}
+        NS 右辺に現れる $\nabla p$（CCD 微分として評価）に対して DCCD フィルタを適用する．
+        $p$ 自体は書き換えず，PPE の構造と発散自由性への影響がない．
+  \item \textbf{PPE 右辺の正則化：}
+        ポアソン方程式 $\nabla^2 p = \nabla^{\mathrm{RC}}\cdot\bm{u}^*/\Delta t$ の
+        右辺 $q = \nabla^{\mathrm{RC}}\cdot\bm{u}^*/\Delta t$（式~\eqref{eq:rc_divergence}）に
+        軽微なフィルタを適用して $p$ 求解前に平滑化する．
+        これはポアソンソルバーの収束安定化にも寄与し，
+        §\ref{sec:ppe_pseudotime} の擬似時間ソルバーでは
+        反復減衰によって自然に実現される．
+\end{enumerate}
+
+\begin{tcolorbox}[warnbox, title={実装上の禁忌：圧力場の直接フィルタ}]
+\label{warn:pressure_direct_filter}
+\texttt{p[:,:] = filter(p)} の形で圧力配列を直接書き換えることは，
+発散自由射影直後に誤差を混入させ，次タイムステップの速度補正を破壊する．
+本稿の \texttt{ppe\_solver\_pseudotime.py} および \texttt{velocity\_corrector.py} では
+この操作を一切行っていないことが CHK-036 審査により確認済みである．
+\end{tcolorbox}
