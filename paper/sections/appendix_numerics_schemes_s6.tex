@@ -153,7 +153,7 @@ $\mathrm{TV}$ は Gibbs 振動の大きさを定量化し，
     $L^2$ 誤差 $E_{L^2}$（$T=1$，$N=256$，$\mathrm{CFL}=0.4$）．太字：各行の最良値．
   }
   \label{tab:dccd_l2}
-  \begin{tabular}{lccccr}
+  \begin{tabular}{lccccc}
     \toprule
     初期条件 & O2 & O4 & CCD & DCCD & WENO5 \\
     \midrule
@@ -253,7 +253,7 @@ WENO5 は TV が $0.97$（若干の過散逸）であり，コーナー近傍で
 
 \paragraph{$C^\infty$ 平滑プロファイル（tanh 波）}
 $L^2$ 精度は CCD が最良（$2.57 \times 10^{-5}$），DCCD（$3.75 \times 10^{-5}$）がこれに次ぐ．
-WENO5 は $9.66 \times 10^{-4}$ と両者より 2 桁近く劣り，5 次精度と ENO スイッチ
+WENO5 は $9.66 \times 10^{-4}$ と両者より約 38 倍（1.6 桁）劣り，5 次精度と ENO スイッチ
 オーバーヘッドの影響が顕在化する．TV は 3 スキーム（CCD・DCCD・WENO5）がいずれも
 厳密値と一致する（$\mathrm{TV}/\mathrm{TV}_{\rm exact} = 1.000$）．
 
