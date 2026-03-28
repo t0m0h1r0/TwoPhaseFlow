@@ -55,7 +55,7 @@ Quick reference: which operations and handoff roles each agent has.
 | PaperReviewer | — | RETURNER |
 | PaperCorrector | — | RETURNER |
 | ConsistencyAuditor | AUDIT-01, AUDIT-02 | RETURNER |
-| ResearchArchitect | — | DISPATCHER |
+| ResearchArchitect | GIT-01 (auto-switch only, Step 0) | DISPATCHER |
 | PromptCompressor | — | RETURNER |
 
 **Handoff roles:**
@@ -76,13 +76,26 @@ no AUTHORITY grant because it is a constraint on all writes, not an operation.
 ────────────────────────────────────────────────────────
 ## GIT-01: Branch Preflight
 
-**Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect
-**Trigger:** MANDATORY — first action of every session, before any file edit or sub-agent dispatch
+**Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect,
+               ResearchArchitect (Step 0 auto-switch only — see below)
+**Trigger:** MANDATORY — first action of every session, before any file edit or sub-agent dispatch;
+             ALSO triggered automatically when ResearchArchitect detects a branch/domain mismatch
+             on a user-issued request (Usability Exception — see below)
 **Phase:** Before PLAN
 
 ```sh
-git checkout {branch} 2>/dev/null || git checkout -b {branch}
-git merge main --no-edit
+# Step 1 — Branch Validation
+current=$(git branch --show-current)
+if [ "$current" != "{branch}" ]; then
+  # Auto-Switch (Usability Exception): do not block user with wrong-branch error
+  git checkout {branch} 2>/dev/null || git checkout -b {branch}
+fi
+
+# Step 2 — Sync: pull latest main into working branch BEFORE any work
+git fetch origin main
+git merge origin/main --no-edit
+
+# Step 3 — Confirm
 git branch --show-current
 ```
 
@@ -91,11 +104,26 @@ git branch --show-current
 |-------|------------------------|--------------------------|----------------|
 | `{branch}` | `code` | `paper` | `prompt` |
 
-**Success:** `git branch --show-current` prints `{branch}` — not `main`
+**Auto-Switch (Usability Exception):** When the current branch does not match the target
+domain, Step 1 executes the checkout automatically — the caller must not block on a
+"wrong branch" error at the entry point. The caller derives `{branch}` from the task's
+target domain before invoking GIT-01 (see meta-roles.md for per-role branch mapping).
+
+**Unknown branch detection:** If `git branch --show-current` returns a value that does not
+appear in the domain branch map (`code` | `paper` | `prompt` | `main`), report
+CONTAMINATION immediately:
+```
+CONTAMINATION ALERT: current branch '{current}' is not in the domain registry.
+Do not proceed. Escalate to user for branch cleanup.
+```
+
+**Success:** `git branch --show-current` prints `{branch}` — not `main`;
+             `git merge origin/main` exits code 0
 
 **On failure**
-- Result is `main` → **STOP**; do not proceed under any circumstance
+- Checkout result is `main` → **STOP**; do not proceed under any circumstance
 - Merge conflict → **STOP**; report to user; do not resolve unilaterally
+- `git fetch` network error → **STOP**; report; do not proceed on stale state
 
 **Post-success:** immediately run DOM-01 to establish the session domain lock.
 

@@ -63,6 +63,8 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 - May read docs/02_ACTIVE_LEDGER.md and docs/01_PROJECT_MAP.md
 - May issue DISPATCH token (→ meta-ops.md HAND-01) to any agent in the workflow map
 - May ask user for clarification before routing
+- May invoke GIT-01 auto-switch step (Step 0 only) to align the environment to the target
+  domain branch before routing — no commit authority; no DOM-01 authority (coordinator runs that)
 
 | User Intent | Target Agent |
 |-------------|-------------|
@@ -85,9 +87,16 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 - Must load docs/02_ACTIVE_LEDGER.md before routing — no exceptions
 - Must not write code, paper content, or prompt content
 - Must not attempt to solve user problems directly
+- Must run GIT-01 Step 0 (auto-switch + origin/main sync → meta-ops.md GIT-01)
+  on every user-issued request before routing — no exceptions
 
 **STOP**
 - Ambiguous intent → ask user to clarify; do not guess
+- Unknown branch detected (Step 0): branch not in (`code`|`paper`|`prompt`|`main`)
+  → report CONTAMINATION; do not route
+- `git merge origin/main` conflict (Step 0) → report to user; do not proceed
+- Cross-domain handoff requested but previous domain branch not merged to `main`
+  → report to user; do not route to new domain
 
 ────────────────────────────────────────────────────────
 # § CODE DOMAIN

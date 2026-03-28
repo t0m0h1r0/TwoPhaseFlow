@@ -54,8 +54,12 @@ The abstract frame (above) governs; domain detail (below) specializes it.
 ## Code Pipeline (branch: `code`)
 
 ```
+PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]
+           → Run GIT-01 (auto-switch to `code` + origin/main sync → meta-ops.md GIT-01)
+           → Run DOM-01: establish DOMAIN-LOCK for this session
+
 PLAN     CodeWorkflowCoordinator
-           → Branch preflight
+           → Branch preflight (already done in PRE-CHECK)
            → Parse paper; inventory src/ gaps; record in 02_ACTIVE_LEDGER.md
            → Dispatch specialist (one gap per step, P5)
 
@@ -84,8 +88,12 @@ Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibili
 ## Paper Pipeline (branch: `paper`)
 
 ```
+PRE-CHECK  PaperWorkflowCoordinator  [MANDATORY before PLAN]
+           → Run GIT-01 (auto-switch to `paper` + origin/main sync → meta-ops.md GIT-01)
+           → Run DOM-01: establish DOMAIN-LOCK for this session
+
 PLAN     PaperWorkflowCoordinator
-           → Branch preflight
+           → Branch preflight (already done in PRE-CHECK)
            → Identify section gaps or review targets; record in 02_ACTIVE_LEDGER.md
 
 EXECUTE  PaperWriter
@@ -109,8 +117,12 @@ AUDIT    ConsistencyAuditor (AU2 gate — all 10 items)
 ## Prompt Pipeline (branch: `prompt`)
 
 ```
+PRE-CHECK  PromptArchitect  [MANDATORY before PLAN]
+           → Run GIT-01 (auto-switch to `prompt` + origin/main sync → meta-ops.md GIT-01)
+           → Run DOM-01: establish DOMAIN-LOCK for this session
+
 PLAN     PromptArchitect
-           → Branch preflight
+           → Branch preflight (already done in PRE-CHECK)
            → Parse target agent + environment; identify gaps vs. meta files
 
 EXECUTE  PromptArchitect   — generate or refactor prompt
@@ -153,6 +165,19 @@ Rules:
 All agent-to-agent transfers use the structured token format defined there.
 Every dispatch sends HAND-01; every completion returns HAND-02;
 every receiver runs HAND-03 (Acceptance Check) before starting work.
+
+**Definition of Done — Main-Merge Rule:**
+A task is NOT considered finished until all work is merged into `main` via GIT-04 (VALIDATED
+commit + merge). Cross-domain handoffs (e.g., Code → Paper) are only permitted after the
+source domain's work is merged into `main`. The receiving coordinator MUST verify this:
+
+```
+Cross-Domain Handoff Pre-check (run by receiving coordinator before accepting):
+  □ Verify source branch merged to main: confirm GIT-04 merge commit present in main history
+    (→ meta-ops.md GIT-04 for merge commit format)
+    Not found → REJECT handoff; source domain is not "Done" yet; return BLOCKED
+  □ Run PRE-CHECK for the new domain (→ GIT-01 auto-switch + origin/main sync + DOM-01)
+```
 
 The table below covers only non-obvious routing decisions — errors, stops,
 and cross-domain transitions. Normal coordinator ↔ specialist handoffs are
