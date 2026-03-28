@@ -27,15 +27,22 @@ from typing import TYPE_CHECKING, List, Tuple
 from ..interfaces.levelset import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
 
+
+def _sl(ndim: int, axis: int, start, stop) -> tuple:
+    """Return an index tuple that slices ``axis`` from ``start`` to ``stop``."""
+    s = [slice(None)] * ndim
+    s[axis] = slice(start, stop)
+    return tuple(s)
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
 
-# ── CCD Eq-II coefficients ────────────────────────────────────────────────
-_BETA2 = -1.0 / 8.0   # M₂ off-diagonal
+# ── CCD Eq-II coefficients (§4 Table 1 / Chu & Fan 1998) ─────────────────
+_BETA2 = -1.0 / 8.0   # M₂ off-diagonal coefficient
 _A2    =  3.0           # B₂ coefficient  (B₂ diagonal = −2a₂ = −6)
-_EPS_D_COMP = 0.05      # Dissipative CCD filter strength for compression
+_EPS_D_COMP = 0.05      # Dissipative CCD filter strength ε_d (§5 eq:eps_adv)
 
 
 class Reinitializer(IReinitializer):
@@ -133,10 +140,10 @@ class Reinitializer(IReinitializer):
             # CCD divergence of flux
             g_prime, _ = ccd.differentiate(flux_ax, ax)
             # Dissipative filter (eq:comp_filter)
-            g_prime_pad = self._pad_neumann(xp, g_prime, ax)
-            sl_c  = self._sl(psi.ndim, ax, 1, -1)
-            sl_p1 = self._sl(psi.ndim, ax, 2, None)
-            sl_m1 = self._sl(psi.ndim, ax, 0, -2)
+            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, 'neumann')
+            sl_c  = _sl(psi.ndim, ax, 1, -1)
+            sl_p1 = _sl(psi.ndim, ax, 2, None)
+            sl_m1 = _sl(psi.ndim, ax, 0, -2)
             g_tilde = (g_prime_pad[sl_c]
                        + eps_d * (g_prime_pad[sl_p1]
                                   - 2.0 * g_prime_pad[sl_c]
@@ -216,25 +223,6 @@ class Reinitializer(IReinitializer):
             m[i] -= factors[i - 1] * sup[i - 1]
 
         return factors, m, sup  # all numpy float64
-
-    # ── Helpers ───────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _pad_neumann(xp, arr, axis: int):
-        """Pad arr by 1 ghost cell on each side (Neumann reflection)."""
-        sl_first = [slice(None)] * arr.ndim
-        sl_last  = [slice(None)] * arr.ndim
-        sl_first[axis] = slice(0, 1)
-        sl_last[axis]  = slice(-1, None)
-        return xp.concatenate(
-            [arr[tuple(sl_first)], arr, arr[tuple(sl_last)]], axis=axis
-        )
-
-    @staticmethod
-    def _sl(ndim: int, axis: int, start, stop):
-        s = [slice(None)] * ndim
-        s[axis] = slice(start, stop)
-        return tuple(s)
 
     # ── Volume monitor ────────────────────────────────────────────────────
 

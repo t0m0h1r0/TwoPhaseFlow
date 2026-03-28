@@ -36,6 +36,20 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
 
 
+def ccd_pressure_gradient(ccd: "CCDSolver", p, ndim: int) -> List:
+    """Return [∂p/∂x₀, ∂p/∂x₁, ...] via CCD with wall-Neumann zeroing.
+
+    Used by both VelocityCorrector (§9 Step 7) and Predictor IPC term (§4).
+    Wall-normal gradient components are zeroed to prevent IPC accumulation.
+    """
+    grad = []
+    for ax in range(ndim):
+        dp_dax, _ = ccd.differentiate(p, ax)
+        ccd.enforce_wall_neumann(dp_dax, ax)
+        grad.append(dp_dax)
+    return grad
+
+
 class VelocityCorrector:
     """Apply pressure-gradient correction to u*.
 
@@ -71,10 +85,5 @@ class VelocityCorrector:
         -------
         vel_new : corrected velocity list
         """
-        ndim = len(vel_star)
-        vel_new = []
-        for ax in range(ndim):
-            dp_dax, _ = self.ccd.differentiate(p, ax)
-            self.ccd.enforce_wall_neumann(dp_dax, ax)
-            vel_new.append(vel_star[ax] - (dt / rho) * dp_dax)
-        return vel_new
+        grad_p = ccd_pressure_gradient(self.ccd, p, len(vel_star))
+        return [vel_star[ax] - (dt / rho) * grad_p[ax] for ax in range(len(vel_star))]
