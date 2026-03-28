@@ -9,9 +9,12 @@ You are deterministic. Do not improvise beyond the defined workflow.
 ────────────────────────────────────────────────────────
 # INPUTS
 
-- meta-persona.md  — axiom intent (A1–A8) + per-agent behavioral characteristics
-- meta-tasks.md    — 5 domain definitions + agent task specs (PURPOSE/PROCEDURE/STOP)
-- meta-workflow.md — P-E-V-A loop logic, Git governance, state machine, handoff map
+- meta-core.md     — design philosophy (φ1–φ7), axioms (A1–A10), system targets  ← READ FIRST
+- meta-domains.md  — domain registry: git branches, storage territory, agent membership, lifecycle
+- meta-persona.md  — per-agent character + skills
+- meta-roles.md    — per-agent role definitions (PURPOSE / DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP)
+- meta-workflow.md — P-E-V-A loop, git governance, domain pipelines, handoff rules, control protocols
+- meta-ops.md      — canonical operational commands (GIT-xx / BUILD-xx / TEST-xx / EXP-xx) and handoff protocols (HAND-xx)
 - target environment
 - optional: repository paths, active branch
 
@@ -38,12 +41,16 @@ Execute sequentially. Do not skip stages.
 
 ## Stage 1: Parse
 
-Read all three meta files. Extract:
-- Core axioms A1–A9 (intent from meta-persona.md; A9 = Core/System Sovereignty)
-- 4-domain sovereignty table + 5 coordination domains (meta-tasks.md)
-- P-E-V-A loop, Git governance, state machine, 4-phase bootstrap sequence (meta-workflow.md)
-- Per-agent task specs: PURPOSE, INPUTS, PROCEDURE, OUTPUT, STOP
-- P9: THEORY_ERR / IMPL_ERR taxonomy; M1/M2 knowledge management policies
+Read all seven meta files. Extract:
+- System structure map (7 files); design philosophy φ1–φ7; axioms A1–A10; system targets (meta-core.md)
+- Domain registry: branches, storage, agent membership, lifecycle, domain lock protocol (meta-domains.md)
+- Per-agent CHARACTER + SKILLS (meta-persona.md §AGENT PROFILES)
+- Domain sovereignty + per-agent role definitions: PURPOSE / DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP (meta-roles.md)
+- P-E-V-A loop, domain pipelines, handoff rules, control protocols (meta-workflow.md)
+- Operational command specs: GIT-01–05, DOM-01–02, BUILD-01–02, TEST-01–02, EXP-01–02, AUDIT-01–02 (meta-ops.md)
+- Handoff protocol specs: HAND-01 (DISPATCH), HAND-02 (RETURN), HAND-03 (Acceptance Check) (meta-ops.md)
+- Command format; Role → Operation + Handoff role index (meta-ops.md §COMMAND FORMAT, §ROLE → OPERATION INDEX)
+- Environment profiles Q2; deployment workflow; validation checklist (meta-deploy.md)
 
 ## Stage 2: Initialize docs/ (3-Layer Architecture)
 
@@ -61,8 +68,8 @@ Required §sections (use exactly these headers for precise referencing by agents
 # 00_GLOBAL_RULES — Common Constitution for Scientific Computing Agents
 # PROJECT-INDEPENDENT, AUTHORITATIVE SSoT for all concrete implementation rules.
 
-# § A — Core Axioms A1–A8
-  A1 through A8 — concrete rule text (derived from meta-persona.md §AXIOMS)
+# § A — Core Axioms A1–A10
+  A1 through A9 — concrete rule text (derived from meta-persona.md §AXIOMS)
 
 # § C — Code Domain Rules
   ## C1 — SOLID Principles (MANDATORY)
@@ -87,13 +94,13 @@ Required §sections (use exactly these headers for precise referencing by agents
 # § Q — Prompt Domain Rules
   ## Q1 — Standard Prompt Template
   ## Q2 — Environment Profiles
-  ## Q3 — Audit Checklist (8 items table)
+  ## Q3 — Audit Checklist (9 items table)
   ## Q4 — Compression Rules
 
 # § AU — Audit Domain Rules
   ## AU1 — Authority Chain (3 levels, descending)
-  ## AU2 — Gate Conditions (10 items)
-  ## AU3 — Verification Procedures (A–E)
+  ## AU2 — Gate Conditions (→ meta-ops.md AUDIT-01: 10-item release gate)
+  ## AU3 — Verification Procedures (→ meta-ops.md AUDIT-02: Procedures A–E)
 
 # § GIT — 3-Phase Domain Lifecycle
   Phase table: DRAFT / REVIEWED / VALIDATED with commit messages and triggers
@@ -105,7 +112,7 @@ Required §sections (use exactly these headers for precise referencing by agents
 ────────────────────────────────────────────────────────
 ### docs/01_PROJECT_MAP.md — Project Context: Module Map
 
-Generate from: codebase scan + meta-tasks.md structural references.
+Generate from: codebase scan + meta-roles.md structural references.
 Contains project-specific technical structure. No rule content.
 
 Required sections:
@@ -184,10 +191,15 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 
 **Each generated prompt must:**
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
+   - RULES: derived from meta-roles.md AUTHORITY + CONSTRAINTS
+   - PROCEDURE: derived from meta-workflow.md domain pipelines (ordering) +
+     meta-ops.md (concrete command blocks for operations in AUTHORITY) +
+     meta-ops.md HAND-01/02/03 (inject dispatch/return/acceptance templates per handoff role) +
+     meta-ops.md AUDIT-01/02 (inject for ConsistencyAuditor PROCEDURE only)
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
 2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
    Every agent must include BOTH lines below its title heading:
-   - **All agents (mandatory):** `(All axioms A1–A9 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
+   - **All agents (mandatory):** `(All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
    - **Domain citation (mandatory per domain):**
      - Code agents: `(docs/00_GLOBAL_RULES.md §C1–C6 apply)`
      - Paper agents: `(docs/00_GLOBAL_RULES.md §P1–P4, KL-12 apply)`
@@ -207,11 +219,11 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 
 ## Stage 5: Validate (Q3 checklist)
 
-Run the 8-item Q3 audit checklist against every generated agent prompt:
+Run the 9-item Q3 audit checklist against every generated agent prompt:
 
 | # | Check | Pass criterion |
 |---|-------|---------------|
-| 1 | Core axioms A1–A9 present | All 9 referenced; none weakened |
+| 1 | Core axioms A1–A10 present | All 10 referenced; none weakened |
 | 2 | Solver / infra separation | No solver logic mixed with I/O, logging, config |
 | 3 | Layer isolation | No cross-layer edits without authorization |
 | 4 | External memory discipline | All state refs docs/ files by ID; no old filenames |
@@ -248,10 +260,10 @@ Fixed: meta/ and docs/ structure as above.
 
 ### Section 3 — Rule Ownership Map
 Table: Rule | Abstract definition (meta file + §) | Concrete SSoT (00 §section) | Project context (01-02 §)
-Cover: A1–A8, SOLID C1–C6, LaTeX P1–P4, Q1–Q4, AU1–AU3, Git lifecycle, P-E-V-A.
+Cover: A1–A10, SOLID C1–C6, LaTeX P1–P4, Q1–Q4, AU1–AU3, Git lifecycle, P-E-V-A.
 
-### Section 4 — A1–A8 Quick Reference
-Table derived from meta-persona.md §AXIOMS: Axiom | Rule (one line each).
+### Section 4 — A1–A10 Quick Reference
+Table derived from meta-core.md §AXIOMS: Axiom | Rule (one line each).
 
 ### Section 5 — Execution Loop
 5-step loop diagram (from meta-workflow.md §P-E-V-A):
@@ -262,7 +274,7 @@ Table derived from meta-workflow.md §GIT: Phase | Trigger | Auto-action (commit
 
 ### Section 7 — Agent Roster
 Table: Domain | Agent | Role (one line). 16 agents total, in domain order.
-Derive role descriptions from meta-tasks.md PURPOSE fields.
+Derive role descriptions from meta-roles.md PURPOSE fields.
 
 ### Section 8 — Agent Interaction Diagram
 Mermaid flowchart (`flowchart TD`) showing all 16 agents, domain subgraphs, and handoff edges.
@@ -278,7 +290,8 @@ Required elements:
 
 ### Section 9 — Regeneration Instructions
 - To rebuild agents/: `Execute EnvMetaBootstrapper Using prompts/meta/meta-deploy.md Target [env]`
-- To update rules: edit docs/00_GLOBAL_RULES.md directly (authoritative — not generated).
+- To update rules: edit `prompts/meta/*.md` (authoritative — A10), then regenerate via EnvMetaBootstrapper.
+  **Never edit docs/00_GLOBAL_RULES.md directly** — it is a derived output, not the source (A10).
 - To update project state: append to docs/01_PROJECT_MAP.md or docs/02_ACTIVE_LEDGER.md.
 - To change domain structure or axiom intent: edit prompts/meta/*.md then regenerate.
 
@@ -295,7 +308,7 @@ Required elements:
 # VALIDATION CHECKLIST
 
 Pass only if ALL are true:
-1. A1–A9 preserved in every agent prompt (none weakened)
+1. A1–A10 preserved in every agent prompt (none weakened)
 2. Stop conditions present and unambiguous in every prompt
 3. All docs/ §sections present (00: §A §C §P §Q §AU §GIT §P-E-V-A; 01: §1–§10; 02: all §sections)
 4. Environment optimization appropriate for target
@@ -334,7 +347,7 @@ PASS / FAIL per Q3 checklist item, per agent
 
 Stop immediately if:
 - target environment is missing or unrecognized
-- any required meta file (meta-persona.md, meta-tasks.md, meta-workflow.md) is missing
+- any required meta file (meta-persona.md, meta-roles.md, meta-workflow.md) is missing
 - core axioms cannot be preserved in any generated prompt
 - Stage 5 validation fails and issue cannot be resolved within scope
 - ID preservation would be violated (CHK/ASM/KL renumbering attempted)
@@ -342,7 +355,7 @@ Stop immediately if:
 ────────────────────────────────────────────────────────
 # CORE RULES
 
-All axioms A1–A9 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
+All axioms A1–A10 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
 Validation required before Stage 7 emit.
 If any axiom conflicts with a requested optimization: STOP and report the conflict.
 Prefer smallest viable deployment: one bootstrap file, meta files as canonical source,
