@@ -49,6 +49,25 @@ commit; the final phase triggers an automatic merge to `main`.
   (4) REVIEWED trigger, (5) gate auditor. Add one row to the per-domain trigger map.
 
 ────────────────────────────────────────────────────────
+# § DOMAIN BOOTSTRAPPING SEQUENCE (new feature or component)
+
+When introducing a new feature or component, execute these 4 phases in order.
+No phase may be skipped. Gate = pass before proceeding.
+
+| Phase | Agent | Output | Gate |
+|-------|-------|--------|------|
+| 1: Formal Axiomatization | PaperWriter | docs/theory/logic.tex entry — set theory, functions, zero UI/framework mention | Logic self-consistent without external variables |
+| 2: Structural Contract | CodeArchitect | prompts/specs/architecture.md — map mathematical states to interfaces (State_t → schema) | Interface unidirectional: System depends on Core |
+| 3: Headless Implementation | CodeArchitect | src/core/ module — standard libraries only, 100% portable | Pass tests/core/ in CLI environment (TestRunner) |
+| 4: Shell Integration | CodeArchitect | src/system/ wrapper — visuals, I/O, user interactions | Integration + UI/UX validation by ExperimentRunner |
+
+Rules:
+- Phase 1 output is immutable once Phase 2 begins; change requires re-entering Phase 1
+- Phase 2 defines the contract; Core and System agree on it independently
+- Phase 3 implementation must not reference any Phase 4 artifact
+- CRITICAL_VIOLATION if Phase 4 bypasses Phase 2 contract to access Phase 3 internals (A9)
+
+────────────────────────────────────────────────────────
 # § PLAN → EXECUTE → VERIFY → AUDIT LOOP (P-E-V-A)
 
 This is the master execution loop for ALL domain work. Every significant task runs through
@@ -237,6 +256,14 @@ Actions:
 - reconstruction of docs/ from prompts/meta/ alone must always be possible
 - any rule change: edit prompts/meta/ first, then regenerate docs/ via EnvMetaBootstrapper
 
+## P9: THEORY_ERR / IMPL_ERR CLASSIFICATION
+When a bug or inconsistency is detected, classify before fixing:
+- THEORY_ERR: root cause is in Logic domain (wrong equation, missing derivation step, bad
+  mathematical assumption) → fix source in docs/theory/ or paper/sections/*.tex first
+- IMPL_ERR: root cause is in Infra/Shell domain (wrong discretization application, import
+  pollution, adapter mismatch) → fix in src/system/ or adapter layer
+Rule: Never patch a symptom. If uncertain, treat as THEORY_ERR and verify with ConsistencyAuditor.
+
 ────────────────────────────────────────────────────────
 # § CONSISTENCY AUDITOR CHECKLIST (release gate — AU2)
 
@@ -266,6 +293,17 @@ Observe (failures, drift, redundancy, layer violations)
 → Validate (no axiom conflict; no solver-purity violation; no layer interference;
             backward-compatible)
 → Compress (merge overlapping rules; remove subsumed; preserve semantics)
+
+**M1: Knowledge Promotion**
+Upon project success or milestone completion, extract reusable Logic (algorithms, derivations,
+proofs) into prompts/meta/library/. These become project-independent canonical references.
+Trigger: ConsistencyAuditor PASS on a full domain cycle.
+
+**M2: Self-Healing**
+When a bug occurs, apply P9 (THEORY_ERR / IMPL_ERR) before any fix attempt.
+- THEORY_ERR → update docs/theory/ or paper; then re-derive implementation
+- IMPL_ERR → patch Shell/Infra; never touch Logic domain artifacts
+Fix the source, not the symptom. Record in 02_ACTIVE_LEDGER.md §LESSONS.
 
 **Deprecate** if: obsolete, redundant, subsumed, conflicting, or over-specific.
 

@@ -25,7 +25,7 @@ If 00_GLOBAL_RULES.md conflicts with 01–02 on data: **00_GLOBAL_RULES.md wins 
 ```
 prompts/
 ├── meta/                          ← LAYER 1: Abstract Meta (edit here for concepts + structure)
-│   ├── meta-persona.md            ← Axioms A1–A8 (intent) + per-agent behavioral characteristics
+│   ├── meta-persona.md            ← Axioms A1–A9 (intent) + per-agent behavioral characteristics
 │   ├── meta-tasks.md              ← 5 Domain definitions + agent task specs (PURPOSE/PROCEDURE/STOP)
 │   ├── meta-workflow.md           ← P-E-V-A loop logic, Git governance, state machine, handoff map
 │   └── meta-deploy.md             ← EnvMetaBootstrapper: regenerates agents/ from meta/
@@ -61,19 +61,22 @@ docs/                              ← LAYER 2 + 3
 
 | Rule | Abstract definition | Concrete SSoT | Project context |
 |------|--------------------|--------------|---------------------------------|
-| Axioms A1–A8 | `meta-persona.md §AXIOMS` (intent) | `00_GLOBAL_RULES.md §A` | — |
+| Axioms A1–A9 | `meta-persona.md §AXIOMS` (intent) | `00_GLOBAL_RULES.md §A` | — |
+| Domain Sovereignty (A9) | `meta-tasks.md § Domain Sovereignty` | `00_GLOBAL_RULES.md §A9` | — |
 | SOLID C1–C6 | `meta-tasks.md § Code Domain` (why) | `00_GLOBAL_RULES.md §C` | `01_PROJECT_MAP.md §C2` (legacy register) |
 | LaTeX P1–P4, KL-12 | `meta-tasks.md § Paper Domain` (why) | `00_GLOBAL_RULES.md §P` | `01_PROJECT_MAP.md §9–§10` (P2, P3-D) |
 | Prompt rules Q1–Q4 | `meta-tasks.md § Prompt Domain` (why) | `00_GLOBAL_RULES.md §Q` | — |
 | Audit gate AU1–AU3 | `meta-tasks.md § Audit Domain` (why) | `00_GLOBAL_RULES.md §AU` | — |
 | Git lifecycle | `meta-workflow.md §GIT` (logic) | `00_GLOBAL_RULES.md §GIT` | `02_ACTIVE_LEDGER.md` (state) |
 | P-E-V-A loop | `meta-workflow.md §P-E-V-A` (logic) | `00_GLOBAL_RULES.md §P-E-V-A` | — |
+| 4-Phase Bootstrap | `meta-workflow.md § DOMAIN BOOTSTRAPPING` | — | — |
+| THEORY_ERR/IMPL_ERR (P9) | `meta-workflow.md §P9` | — | — |
 | Module map | — | — | `01_PROJECT_MAP.md §1–§7` |
 | Numerical baselines | — | — | `01_PROJECT_MAP.md §6` |
 | Phase / CHK / KL | — | — | `02_ACTIVE_LEDGER.md` |
 
 ────────────────────────────────────────────────────────
-## 4. Core Axioms A1–A8 — Quick Reference
+## 4. Core Axioms A1–A9 — Quick Reference
 
 | Axiom | Rule |
 |-------|------|
@@ -85,6 +88,7 @@ docs/                              ← LAYER 2 + 3
 | A6 Diff-First Output | no full file rewrites unless explicitly required |
 | A7 Backward Compatibility | preserve semantics; upgrade by mapping, never by discarding |
 | A8 Git Governance | 3-phase lifecycle: DRAFT → REVIEWED → VALIDATED → auto-merge |
+| A9 Core/System Sovereignty | Core is Master; System is Servant; System→Core import forbidden |
 
 ────────────────────────────────────────────────────────
 ## 5. Execution Loop
