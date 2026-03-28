@@ -7,10 +7,11 @@ Exact solution at T=1 = initial condition.
 
 Schemes
 -------
-  O2   : 2nd-order central FD
-  O4   : 4th-order central FD
-  CCD  : 6th-order Combined Compact Difference (src/twophase/ccd/ccd_solver.py, periodic)
-  DCCD : CCD + 10th-order selective filter (d10) applied every RK4 step
+  O2    : 2nd-order central FD
+  O4    : 4th-order central FD
+  CCD   : 6th-order Combined Compact Difference (src/twophase/ccd/ccd_solver.py, periodic)
+  DCCD  : CCD + 10th-order selective filter (d10) applied every RK4 step
+  WENO5 : 5th-order Weighted ENO + global Lax-Friedrichs (src/twophase/levelset/advection.py)
 
 Initial conditions (all supported on [0.3, 0.5] ⊂ [0, 1))
 -----------------------------------------------------------
@@ -65,6 +66,7 @@ import matplotlib.ticker as mticker
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.levelset.advection import _weno5_pos, _weno5_neg
 
 # ─── output directories ───────────────────────────────────────────────────────
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -158,17 +160,50 @@ def _rhs_ccd(u: np.ndarray) -> np.ndarray:
     d1, _ = _ccd_solver.differentiate(u_ext, axis=0)
     return -C * np.asarray(d1)[:N]
 
+def _rhs_weno5(u: np.ndarray) -> np.ndarray:
+    """WENO5 + global Lax-Friedrichs for u_t + c*u_x = 0 (periodic, N unique nodes).
+
+    Uses _weno5_pos/_weno5_neg from src/twophase/levelset/advection.py.
+    np.roll handles periodic wrapping without a duplicate endpoint node.
+    """
+    F     = C * u
+    alpha = abs(C)  # global Lax-Friedrichs speed = 1.0
+
+    # Positive split: F+[i] = (F[i] + alpha*u[i]) / 2
+    # Stencil for face i+1/2 (positive): nodes i-2..i+2
+    Fp_m2 = 0.5 * (np.roll(F,  2) + alpha * np.roll(u,  2))
+    Fp_m1 = 0.5 * (np.roll(F,  1) + alpha * np.roll(u,  1))
+    Fp_0  = 0.5 * (F              + alpha * u              )
+    Fp_p1 = 0.5 * (np.roll(F, -1) + alpha * np.roll(u, -1))
+    Fp_p2 = 0.5 * (np.roll(F, -2) + alpha * np.roll(u, -2))
+
+    # Negative split: F-[i] = (F[i] - alpha*u[i]) / 2
+    # Stencil for face i+1/2 (negative): nodes i-1..i+3
+    Fm_m1 = 0.5 * (np.roll(F,  1) - alpha * np.roll(u,  1))
+    Fm_0  = 0.5 * (F              - alpha * u              )
+    Fm_p1 = 0.5 * (np.roll(F, -1) - alpha * np.roll(u, -1))
+    Fm_p2 = 0.5 * (np.roll(F, -2) - alpha * np.roll(u, -2))
+    Fm_p3 = 0.5 * (np.roll(F, -3) - alpha * np.roll(u, -3))
+
+    flux = (_weno5_pos(np, Fp_m2, Fp_m1, Fp_0, Fp_p1, Fp_p2)
+          + _weno5_neg(np, Fm_m1, Fm_0,  Fm_p1, Fm_p2, Fm_p3))
+
+    # Divergence: (flux_{i+1/2} - flux_{i-1/2}) / H  (periodic)
+    return -(flux - np.roll(flux, 1)) / H
+
+
 def _d10_filter(u: np.ndarray) -> np.ndarray:
     """u + α_f · D10(u).  Dissipates HF modes: Nyquist → ×(1−α_f)."""
     d10 = sum(c * np.roll(u, 5 - j) for j, c in enumerate(_D10_KERNEL))
     return u + FILTER_ALPHA * d10
 
-# Scheme registry: key → (label, rhs, post_step, color, linestyle)
+# Scheme registry: key → (label, rhs, post_step, color, linestyle, linewidth)
 SCHEMES: OrderedDict[str, tuple] = OrderedDict([
-    ("O2",   ("O2",   _rhs_o2,  None,        "#e06c75", "-",  1.2)),
-    ("O4",   ("O4",   _rhs_o4,  None,        "#61afef", "-",  1.2)),
-    ("CCD",  ("CCD",  _rhs_ccd, None,        "#d19a66", "--", 1.5)),
-    ("DCCD", ("DCCD", _rhs_ccd, _d10_filter, "#98c379", "-",  1.8)),
+    ("O2",    ("O2",    _rhs_o2,   None,        "#e06c75", "-",  1.2)),
+    ("O4",    ("O4",    _rhs_o4,   None,        "#61afef", "-",  1.2)),
+    ("CCD",   ("CCD",   _rhs_ccd,  None,        "#d19a66", "--", 1.5)),
+    ("DCCD",  ("DCCD",  _rhs_ccd,  _d10_filter, "#98c379", "-",  1.8)),
+    ("WENO5", ("WENO5", _rhs_weno5, None,       "#c678dd", "-.",  1.5)),
 ])
 
 
