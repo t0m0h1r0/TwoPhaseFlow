@@ -119,8 +119,11 @@ verdicts that either unlock merge-to-main or route errors back to the appropriat
 | `paper/{x}` | Paper domain | PaperWorkflowCoordinator | `paper` only | PaperWorkflowCoordinator |
 
 **Cross-domain switch rule:** Before switching domains (e.g., from Code to Paper work),
-the current domain branch must be at VALIDATED phase and merged to `main` first.
-See meta-ops.md GIT-04 for the merge procedure.
+the current domain branch MUST be at VALIDATED phase and merged to `main` first (GIT-04).
+The receiving coordinator MUST confirm the merge is present in `main` history before
+running PRE-CHECK for the new domain. A task is NOT "Done" until it is merged into `main`.
+See meta-ops.md GIT-04 for the merge procedure and meta-workflow.md §HANDOFF RULES
+for the cross-domain handoff pre-check.
 
 **Adding a new domain:** define coordinator, branch name, storage territory, DRAFT/REVIEWED/VALIDATED
 triggers, gate auditor, and applicable docs/00_GLOBAL_RULES.md §section; add one row to this registry.
