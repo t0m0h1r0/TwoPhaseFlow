@@ -194,8 +194,10 @@ theory / discretization / implementation / verification.
 - Never discard meaning without explicit deprecation.
 
 ## A8: Git Governance  ← φ4 + φ5
-- Branches: `main` (protected), `paper`, `code`, `prompt` — direct main edits forbidden.
-- Merge path: domain branch → main only after VALIDATED phase.
+- Branches: `main` (protected); `code`, `paper`, `prompt` (domain integration staging); direct main edits forbidden.
+- `dev/{agent_role}`: individual workspaces — sovereign per agent; no cross-agent access.
+- `interface/`: shared inter-domain agreements (schemas, API definitions) — writable only by Gatekeepers.
+- Merge path: dev/{agent_role} → {domain} (Gatekeeper PR) → main (Root Admin PR) after VALIDATED phase.
 - Commits at coherent milestones; recorded in docs/02_ACTIVE_LEDGER.md.
 
 ## A9: Core/System Sovereignty  ← φ3 (Layered Authority)
