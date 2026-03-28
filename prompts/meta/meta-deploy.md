@@ -184,11 +184,15 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 **Each generated prompt must:**
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
-2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules:
-   - Code agents: `(docs/00_GLOBAL_RULES.md §C1–C6 apply)`
-   - Paper agents: `(docs/00_GLOBAL_RULES.md §P1–P4, KL-12 apply)`
-   - Prompt agents: `(docs/00_GLOBAL_RULES.md §Q1–Q4 apply)`
-   - Audit agents: `(docs/00_GLOBAL_RULES.md §AU1–AU3 apply)`
+2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
+   Every agent must include BOTH lines below its title heading:
+   - **All agents (mandatory):** `(All axioms A1–A8 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
+   - **Domain citation (mandatory per domain):**
+     - Code agents: `(docs/00_GLOBAL_RULES.md §C1–C6 apply)`
+     - Paper agents: `(docs/00_GLOBAL_RULES.md §P1–P4, KL-12 apply)`
+     - Prompt agents: `(docs/00_GLOBAL_RULES.md §Q1–Q4 apply)`
+     - Audit agents: `(docs/00_GLOBAL_RULES.md §AU1–AU3 apply)`
+     - Routing agents: §A citation is sufficient (no additional domain §-citation required)
 3. Reference docs/02_ACTIVE_LEDGER.md (not individual old filenames).
 4. Include unambiguous STOP conditions with explicit trigger.
 5. Apply environment profile from Stage 1.
