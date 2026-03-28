@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-045 CLOSED 2026-03-29: PaperReviewer+PaperCorrector §D.6+§D.7 audit — 1 FATAL [F-1] d_k sign fix; 1 MAJOR [M-1] 10^{-224}→10^{-142}; 4 MINOR tilde fixes. Compile: 152pp, 0 errors, 0 warnings. |
+| last_decision | CHK-046 CLOSED 2026-03-29: PaperCompiler — XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -78,6 +78,7 @@
 | CHK-041 | OPEN | experiment | experiment_cls_advection.py: CLS uniform-flow advection exact-solution convergence study. Two modes: (A) CFL-limited dt — expected DCCD O(h²), WENO5 O(h³); (B) fixed dt=1e-5 — expected DCCD O(h²), WENO5 O(h⁵). EXP-02 SC-3+SC-4 checks embedded. Committed fa64919. Pending execution. |
 | CHK-044 | CLOSED | experiment+paper | CCD pseudo-time verification 2026-03-29: experiments/ccd_pseudotime_verification.py — uses CCDSolver from src/ directly. 3 cases: (1) spatial convergence CCD~O(h⁵) boundary-limited; (2) parabolic BDF2+pseudo-time: CCD D2 ρ=9.57/h² (2.4×CDS2), stable Δτ computed numerically, CCD 20-30× more accurate at small Δt; (3) adv-diff Pe=10: CCD→O(h⁶), N=256 CCD 17万× better. Appendix D.7 added. 152pp, 0 errors. |
 | CHK-045 | CLOSED | review+fix | PaperReviewer+PaperCorrector 2026-03-29 (§D.6+§D.7 audit): [F-1] appendix_numerics_schemes_s6.tex:65 d_k sign (-1)^k→(-1)^{k+1} (hat_d(π)=+1→-1); [M-1] :74 0.6^640 exponent 10^{-224}→10^{-142}; [m-1] appendix_numerics_solver_s2.tex:27,117 ~\ref tilde added; [m-2] appendix_numerics_schemes_s6.tex:13,45,46,276 §~\ref tilde added. Compile: 152pp, 0 errors, 0 warnings. |
+| CHK-046 | CLOSED | compile | PaperCompiler 2026-03-29: XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
 | CHK-042 | CLOSED | experiment+paper | DCCD比較実験 2026-03-28: experiments/dccd_comparison.py — O2/O4/CCD/DCCD, 3 ICs (square/triangle/tanh), N=256, CFL=0.4, T=1. Key: DCCD TV/TV_exact=1.58 vs O2=9.20 (矩形波); CCD L2=2.57e-5 (tanh, 6次精度確認). 付録D.6 (appendix_numerics_schemes_s6.tex) 追加. 148pp, 0 errors. |
 
 ## Format reference
