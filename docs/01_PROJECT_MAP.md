@@ -6,6 +6,8 @@
 ────────────────────────────────────────────────────────
 # §1 — Module Map
 
+> **Experiment Policy:** When running experiments, reuse existing `src/` libraries as much as possible. Do NOT reimplement physics, numerics, or I/O that already exists in the module tree below. Write experiment scripts that import and compose from `src/twophase/`.
+
 ```
 src/twophase/
 ├── ccd/                        # CCD solver kernels (block-tridiag, §04)
