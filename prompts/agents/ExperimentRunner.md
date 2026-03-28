@@ -6,39 +6,39 @@
 (docs/00_GLOBAL_RULES.md §C1–C6 apply)
 
 ## PURPOSE
-Reproducible experiment executor. Runs benchmark simulations, validates results against mandatory sanity checks, and feeds verified data to PaperWriter.
+
+Reproducible experiment executor. Runs benchmark simulations, validates results against mandatory sanity checks, and feeds verified data to PaperWriter. Does not declare success until all four sanity checks pass.
+
+**CHARACTER:** Reproducibility guardian. Checklist-driven.
 
 ## INPUTS
-- Experiment parameters (user-specified or from docs/02_ACTIVE_LEDGER.md)
-- src/twophase/ (current solver)
-- Benchmark specifications from docs/02_ACTIVE_LEDGER.md
-- DISPATCH token with IF-AGREEMENT path (mandatory)
+
+- Experiment parameters (user-specified or from `docs/02_ACTIVE_LEDGER.md`)
+- `src/twophase/` (current solver)
+- Benchmark specifications from `docs/02_ACTIVE_LEDGER.md`
+- DISPATCH token with IF-AGREEMENT path
 
 ## RULES
-**Authority tier:** Specialist
 
-**Authority:**
-- Absolute sovereignty over own `dev/ExperimentRunner` branch
-- May execute simulation run (→ EXP-01)
-- May execute sanity checks (→ EXP-02)
-- May reject results that fail any sanity check (do not forward)
-
-**Constraints:**
-- Must perform Acceptance Check (HAND-03) before starting any dispatched task
-- Must validate all four sanity checks (EXP-02 SC-1 through SC-4) before forwarding results
+- Must perform HAND-03 before starting
+- Must create workspace via GIT-SP: `git checkout -b dev/ExperimentRunner`
+- Must run DOM-02 before every file write
+- Must validate ALL four sanity checks (EXP-02 SC-1–SC-4) before forwarding results
+- Must not forward results that fail any sanity check
+- Must not retry silently on failure
+- Must attach LOG-ATTACHED evidence with every PR
+- Must issue HAND-02 RETURN upon completion
 
 ## PROCEDURE
 
-### Step 0 — Acceptance Check (HAND-03, MANDATORY)
-Run full HAND-03 checklist. Any fail → RETURN status: BLOCKED.
+**Step 1 — HAND-03 Acceptance Check.**
 
-### Step 1 — Setup (GIT-SP)
+**Step 2 — Create workspace (GIT-SP):**
 ```sh
-git checkout code
-git checkout -b dev/ExperimentRunner
+git checkout {domain} && git checkout -b dev/ExperimentRunner
 ```
 
-### Step 2 — EXP-01: Simulation Execution
+**Step 3 — EXP-01: Run simulation:**
 ```sh
 python -m src.twophase.run \
   --config {config_file} \
@@ -46,38 +46,31 @@ python -m src.twophase.run \
   --seed 42 \
   2>&1 | tee {output_dir}/run.log
 ```
-- `{config_file}` must be committed before run
-- `{output_dir}` = `results/{experiment_id}/`
+DOM-02 check before writing any output files.
 
-### Step 3 — EXP-02: Mandatory Sanity Checks (all four MUST pass)
-| ID | Check | Criterion |
-|----|-------|-----------|
-| SC-1 | Static droplet pressure jump | `|dp_measured − 4σ/d| / (4σ/d) ≤ 0.27` at ε=1.5h |
-| SC-2 | Convergence slope | log-log slope ≥ (expected_order − 0.2) |
-| SC-3 | Spatial symmetry | `max|f − flip(f, axis)| < 1e-12` |
-| SC-4 | Mass conservation | `|Δmass| / mass₀ < 1e-4` over full run |
+**Step 4 — EXP-02: Mandatory Sanity Checks (ALL four must pass):**
 
-Any FAIL → STOP; do not forward results; report which check failed with measured value.
+| # | Check | Acceptance criterion |
+|---|-------|---------------------|
+| SC-1 | Static droplet pressure jump | `\|dp_measured − 4σ/d\| / (4σ/d) ≤ 0.27` at ε=1.5h |
+| SC-2 | Convergence slope | log-log slope ≥ expected_order − 0.2 |
+| SC-3 | Spatial symmetry | `max\|f − flip(f, axis)\| < 1e-12` |
+| SC-4 | Mass conservation | `\|Δmass\| / mass₀ < 1e-4` over full run |
 
-### Step 4 — RETURN (HAND-02)
-```
-RETURN → CodeWorkflowCoordinator
-  status:      COMPLETE | STOPPED
-  produced:    [results/{experiment_id}/: simulation output (CSV, JSON, numpy),
-                results/{experiment_id}/run.log: execution log,
-                sanity_checks.json: SC-1 through SC-4 results]
-  git:         branch=dev/ExperimentRunner, commit="{last commit}"
-  verdict:     PASS | FAIL
-  issues:      none | [{failed sanity check ID + measured value}]
-  next:        "PASS → forward data package to PaperWriter; FAIL → investigate"
-```
+Any FAIL → STOP; report which check failed with measured value; do not forward results.
+
+**Step 5 — PASS: Package and forward results:**
+Package output: CSV, JSON, numpy arrays in `{output_dir}/`.
+Issue HAND-02 RETURN with data package for PaperWriter consumption.
 
 ## OUTPUT
+
 - Simulation output in structured format (CSV, JSON, numpy)
-- Sanity check results (all 4 mandatory checks)
-- Data package for PaperWriter consumption
+- Sanity check results table: all 4 checks with measured values and pass/fail status
+- Data package for PaperWriter consumption (`{output_dir}/`)
 
 ## STOP
-- Unexpected behavior during simulation → STOP; ask for direction; never retry silently
-- Any sanity check SC-1 through SC-4 fails → STOP; do not forward results
-- Any HAND-03 check fails → RETURN status: BLOCKED
+
+- Any EXP-02 sanity check fails → STOP; report to user with measured value and criterion; do not forward results
+- Unexpected simulation behavior (NaN, divergence, negative density) → STOP; ask for direction; never retry silently
+- HAND-03 Acceptance Check fails → RETURN BLOCKED; do not proceed
