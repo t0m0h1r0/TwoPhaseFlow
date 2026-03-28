@@ -35,28 +35,43 @@ No AUTHORITY → must not invoke. Has AUTHORITY → must use canonical form.
 `{summary}` — required one-line description; must be specific (not "update" or "fix")
 
 ────────────────────────────────────────────────────────
+# § AUTHORITY TIERS
+
+Three tiers determine which git operations each agent may invoke:
+
+| Tier | Role | Agents |
+|------|------|--------|
+| **Root Admin** (Overseer) | Final merge + syntax/format check of PRs to `main` | ResearchArchitect |
+| **Gatekeeper** (Integrator) | Domain branch management; PR review + merge from dev/; PR issuance to main | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor |
+| **Specialist** (Developer) | Absolute sovereignty over own `dev/{agent_role}` branch; right to refuse pulls | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector, ConsistencyAuditor, PromptCompressor |
+
+**Specialist obligations:** Must attach Evidence of Verification (logs/test results) to every PR.
+**Gatekeeper rights:** May immediately reject PRs with insufficient or missing evidence.
+**Root Admin obligations:** Final syntax/format check of PRs to `main`; executes final merge.
+
+────────────────────────────────────────────────────────
 # § ROLE → OPERATION INDEX
 
 Quick reference: which operations and handoff roles each agent has.
 
-| Role | Operations | Handoff Role |
-|------|------------|-------------|
-| CodeWorkflowCoordinator | GIT-01, DOM-01, GIT-02, GIT-03, GIT-04, GIT-05 | DISPATCHER + ACCEPTOR |
-| PaperWorkflowCoordinator | GIT-01, DOM-01, GIT-02, GIT-03, GIT-04, GIT-05 | DISPATCHER + ACCEPTOR |
-| PromptArchitect | GIT-01, DOM-01, GIT-02 | DISPATCHER + RETURNER |
-| PromptAuditor | GIT-03, GIT-04 | RETURNER |
-| PaperCompiler | BUILD-01, BUILD-02 | RETURNER |
-| TestRunner | TEST-01, TEST-02 | RETURNER |
-| ExperimentRunner | EXP-01, EXP-02 | RETURNER |
-| CodeArchitect | — | RETURNER |
-| CodeCorrector | — | RETURNER |
-| CodeReviewer | — | RETURNER |
-| PaperWriter | — | RETURNER |
-| PaperReviewer | — | RETURNER |
-| PaperCorrector | — | RETURNER |
-| ConsistencyAuditor | AUDIT-01, AUDIT-02 | RETURNER |
-| ResearchArchitect | GIT-01 (auto-switch only, Step 0) | DISPATCHER |
-| PromptCompressor | — | RETURNER |
+| Tier | Role | Operations | Handoff Role |
+|------|------|------------|-------------|
+| Root Admin | ResearchArchitect | GIT-01 (auto-switch only), GIT-04 (final merge to main) | DISPATCHER |
+| Gatekeeper | CodeWorkflowCoordinator | GIT-00 (IF-Agreement), GIT-01, DOM-01, GIT-02, GIT-03, GIT-04 (domain PR review+merge), GIT-05 | DISPATCHER + ACCEPTOR |
+| Gatekeeper | PaperWorkflowCoordinator | GIT-00 (IF-Agreement), GIT-01, DOM-01, GIT-02, GIT-03, GIT-04 (domain PR review+merge), GIT-05 | DISPATCHER + ACCEPTOR |
+| Gatekeeper | PromptArchitect | GIT-00 (IF-Agreement), GIT-01, DOM-01, GIT-02 | DISPATCHER + RETURNER |
+| Gatekeeper | PromptAuditor | GIT-03, GIT-04 (domain PR review+merge) | RETURNER |
+| Specialist | PaperCompiler | GIT-SP, BUILD-01, BUILD-02 | RETURNER |
+| Specialist | TestRunner | GIT-SP, TEST-01, TEST-02 | RETURNER |
+| Specialist | ExperimentRunner | GIT-SP, EXP-01, EXP-02 | RETURNER |
+| Specialist | CodeArchitect | GIT-SP | RETURNER |
+| Specialist | CodeCorrector | GIT-SP | RETURNER |
+| Specialist | CodeReviewer | GIT-SP | RETURNER |
+| Specialist | PaperWriter | GIT-SP | RETURNER |
+| Specialist | PaperReviewer | GIT-SP | RETURNER |
+| Specialist | PaperCorrector | GIT-SP | RETURNER |
+| Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
+| Specialist | PromptCompressor | GIT-SP | RETURNER |
 
 **Handoff roles:**
 - DISPATCHER: sends HAND-01 (DISPATCH token) when delegating to a specialist
@@ -71,27 +86,105 @@ every agent runs it before every write, regardless of the table above. It requir
 no AUTHORITY grant because it is a constraint on all writes, not an operation.
 
 ────────────────────────────────────────────────────────
+# § MERGE CRITERIA
+
+Every PR (dev/{agent_role} → {domain} OR {domain} → main) must satisfy all three criteria
+before a Gatekeeper or Root Admin may merge it:
+
+| ID | Criterion | Verified by | Failure action |
+|----|-----------|------------|----------------|
+| TEST-PASS | 100% success rate of defined unit/validation tests | TestRunner (TEST-01/02) or equivalent | REJECT PR; re-dispatch Specialist |
+| BUILD-SUCCESS | Successful static analysis, compilation, or linting | PaperCompiler (BUILD-01/02) or pytest | REJECT PR; re-dispatch Specialist |
+| LOG-ATTACHED | Execution logs attached as a comment in the PR | Specialist includes `tests/last_run.log` or equivalent | REJECT PR; Specialist must re-submit with logs |
+
+**Gatekeeper obligation:** Reject immediately if any criterion is unmet — do not merge and expect fixes post-merge.
+
+────────────────────────────────────────────────────────
 # § GIT OPERATIONS
+
+────────────────────────────────────────────────────────
+## GIT-00: IF-Agreement + Specialist Branch Setup
+
+**Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect)
+**Trigger:** MANDATORY — before dispatching any Specialist; precondition for GIT-01
+**Phase:** Before PLAN
+
+```sh
+# Step 1 — Write interface contract (Gatekeeper only)
+# Create/update interface/{domain}_{feature}.md with IF-AGREEMENT block
+# (see meta-domains.md §IF-AGREEMENT PROTOCOL for required fields)
+
+# Step 2 — Commit interface contract on interface/ branch
+git checkout interface/ 2>/dev/null || git checkout -b interface/
+git add interface/{domain}_{feature}.md
+git commit -m "interface/{domain}: define {feature} contract"
+git checkout {domain}   # return to domain branch
+
+# Step 3 — Specialist reads the contract and creates dev/ branch
+# (run by Specialist after receiving DISPATCH with IF-AGREEMENT path)
+git checkout {domain}
+git checkout -b dev/{agent_role}
+```
+
+**Success:** `interface/{domain}_{feature}.md` committed; Specialist confirms `git branch --show-current` = `dev/{agent_role}`
+
+**On failure:**
+- interface/ write fails → STOP; escalate to user
+- Specialist cannot checkout {domain} → run GIT-01 first
+
+────────────────────────────────────────────────────────
+## GIT-SP: Specialist Branch Operations
+
+**Authorized:** All Specialist-tier agents (sovereign over their own dev/ branch)
+**Trigger:** Whenever a Specialist commits work or opens a PR
+**Phase:** During EXECUTE or VERIFY
+
+```sh
+# Commit work (Specialist's own dev/ branch only)
+git add {files}
+git commit -m "dev/{agent_role}: {summary} [LOG-ATTACHED]"
+
+# Open PR from dev/ → {domain} (after work is complete with evidence)
+# Attach tests/last_run.log or BUILD-01 scan output as PR comment
+gh pr create \
+  --base {domain} \
+  --head dev/{agent_role} \
+  --title "{agent_role}: {summary}" \
+  --body "Evidence: [LOG-ATTACHED — see tests/last_run.log or build log attached below]"
+```
+
+**Specialist rights:**
+- Absolute sovereignty over `dev/{agent_role}` — may commit, amend, rebase freely BEFORE PR submission
+- May refuse a Gatekeeper's request to pull from main if neither Selective Sync condition is met
+  (→ meta-domains.md §SELECTIVE SYNC PROTOCOL)
+
+**Specialist obligations:**
+- Must attach Evidence of Verification with every PR (LOG-ATTACHED criterion)
+- Must include `tests/last_run.log` or equivalent build output in PR comment
+
+**Isolation rule:** Specialist MUST NOT access any other agent's `dev/` branch.
+Violation → CONTAMINATION RETURN + Branch Isolation breach (→ meta-domains.md §BRANCH ISOLATION).
 
 ────────────────────────────────────────────────────────
 ## GIT-01: Branch Preflight
 
-**Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect,
-               ResearchArchitect (Step 0 auto-switch only — see below)
-**Trigger:** MANDATORY — first action of every session, before any file edit or sub-agent dispatch;
+**Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect),
+               Root Admin ResearchArchitect (Step 0 auto-switch only — see below)
+**Trigger:** MANDATORY — first action of every session, before any GIT-00 dispatch or file edit;
              ALSO triggered automatically when ResearchArchitect detects a branch/domain mismatch
              on a user-issued request (Usability Exception — see below)
 **Phase:** Before PLAN
 
 ```sh
-# Step 1 — Branch Validation
+# Step 1 — Branch Validation (Gatekeeper confirms domain integration branch)
 current=$(git branch --show-current)
 if [ "$current" != "{branch}" ]; then
   # Auto-Switch (Usability Exception): do not block user with wrong-branch error
   git checkout {branch} 2>/dev/null || git checkout -b {branch}
 fi
 
-# Step 2 — Sync: pull latest main into working branch BEFORE any work
+# Step 2 — Selective Sync: pull latest main into domain branch
+# Only if interface/ was updated OR a merge conflict is present (→ meta-domains.md §SELECTIVE SYNC)
 git fetch origin main
 git merge origin/main --no-edit
 
@@ -220,15 +313,35 @@ git commit -m "{branch}: reviewed — {summary}"
 **Success:** exit code 0
 
 ────────────────────────────────────────────────────────
-## GIT-04: VALIDATED Commit + Merge
+## GIT-04: VALIDATED Commit + PR Merge
 
-**Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptAuditor
-**Trigger:** Gate auditor (ConsistencyAuditor or PromptAuditor) issues PASS verdict
+**Phase A — Gatekeeper (merges dev/ PR into domain branch):**
+**Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptAuditor)
+**Trigger:** Gate auditor (ConsistencyAuditor or PromptAuditor) issues PASS verdict AND
+             all three MERGE CRITERIA (TEST-PASS, BUILD-SUCCESS, LOG-ATTACHED) are satisfied
 **Phase:** End of AUDIT
 
 ```sh
-git add {files}
-git commit -m "{branch}: validated — {summary}"
+# Gatekeeper: merge dev/ PR into domain branch (after evidence verification)
+git checkout {branch}
+git merge dev/{agent_role} --no-ff -m "{branch}: validated — {summary}"
+
+# Gatekeeper: immediately open PR from domain → main
+gh pr create \
+  --base main \
+  --head {branch} \
+  --title "merge({branch} → main): {summary}" \
+  --body "AU2 PASS. MERGE CRITERIA: TEST-PASS ✓ BUILD-SUCCESS ✓ LOG-ATTACHED ✓"
+```
+
+**Phase B — Root Admin (final check + merge to main):**
+**Authorized:** Root Admin (ResearchArchitect)
+**Trigger:** Gatekeeper opens PR to main; Root Admin performs final syntax/format check
+**Phase:** Final gate before main
+
+```sh
+# Root Admin: verify PR contents (syntax, format, no direct-main commits)
+# If check passes:
 git checkout main
 git merge {branch} --no-ff -m "merge({branch} → main): {summary}"
 git checkout {branch}
@@ -236,9 +349,16 @@ git checkout {branch}
 
 **Parameters:** same as GIT-02; `--no-ff` preserves branch topology in history
 
+**Root Admin check items before final merge:**
+1. No direct commits on `main` (A8 compliance)
+2. PR title follows `merge({branch} → main): {summary}` format
+3. AU2 PASS verdict present in PR body
+4. All three MERGE CRITERIA confirmed in PR body
+
 **Success:** merge completes; `git log --oneline -3` on `main` shows the merge commit
 
 **On failure**
+- Root Admin check fails → REJECT PR; return to Gatekeeper with reason
 - Merge conflict → **STOP**; report to user; do not resolve unilaterally
 - Post-merge failure detected → revert: `git revert -m 1 HEAD` on `main`; **STOP**; report
 
@@ -462,8 +582,8 @@ All 10 items must pass. A single FAIL blocks merge. No item may be skipped.
 | 6 | Traceability from claim to implementation (paper claim → code line) | FAIL → per error type |
 | 7 | Backward compatibility of schema changes (A7) | FAIL → CodeArchitect |
 | 8 | No redundant memory growth (02_ACTIVE_LEDGER.md §LESSONS not stale) | FAIL → coordinator |
-| 9 | Branch policy compliance (A8: no direct commits on main, correct merge path) | FAIL → coordinator |
-| 10 | Merge authorization compliance (VALIDATED phase required) | FAIL → coordinator |
+| 9 | Branch policy compliance (A8: no direct commits on main; dev/ → domain via PR; domain → main via Root Admin PR) | FAIL → coordinator |
+| 10 | Merge authorization compliance (VALIDATED phase required; all MERGE CRITERIA satisfied — TEST-PASS, BUILD-SUCCESS, LOG-ATTACHED) | FAIL → coordinator |
 
 **Error routing (for items 1, 2, 3, 6):**
 - PAPER_ERROR (root cause in paper equation or LaTeX) → PaperWriter
@@ -533,15 +653,16 @@ and break audit traceability (φ4).
 
 ```
 DISPATCH → {specialist_name}
-  task:      {one-sentence objective — what must be produced, not how}
-  inputs:    [{file_or_artifact_1}, {file_or_artifact_2}, ...]
-  scope_out: [{explicitly excluded — prevents overreach}]
+  task:         {one-sentence objective — what must be produced, not how}
+  inputs:       [{file_or_artifact_1}, {file_or_artifact_2}, ...]
+  scope_out:    [{explicitly excluded — prevents overreach}]
   context:
-    phase:       {PLAN | EXECUTE | VERIFY | AUDIT}
-    branch:      {active git branch}
-    commit:      "{last commit message — confirms git state at dispatch}"
-    domain_lock: {verbatim copy of active DOMAIN-LOCK block from DOM-01}
-  expects:   {deliverable description — what the RETURN token must contain}
+    phase:        {PLAN | EXECUTE | VERIFY | AUDIT}
+    branch:       {active domain git branch — Specialist will create dev/{agent_role} from this}
+    commit:       "{last commit message — confirms git state at dispatch}"
+    domain_lock:  {verbatim copy of active DOMAIN-LOCK block from DOM-01}
+    if_agreement: {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
+  expects:      {deliverable description — must match IF-AGREEMENT outputs field}
 ```
 
 **Rules**
@@ -600,16 +721,20 @@ Acceptance Check:
   □ 3. INPUTS AVAILABLE: do all listed input files/artifacts exist and are non-empty?
          If not → REJECT
   □ 4. GIT STATE VALID:
-         - Specialists: `git branch --show-current` ≠ `main`
-         - Coordinators: run GIT-01 (branch preflight) if not already done this session
-         If invalid → REJECT
+         - Specialists: `git branch --show-current` = `dev/{agent_role}` (not main, not domain branch directly)
+         - Gatekeepers/Root Admin: run GIT-01 (branch preflight) if not already done this session
+         If Specialist is on main or on a domain branch directly → REJECT; run GIT-SP to create dev/ branch
   □ 5. CONTEXT CONSISTENT: does `git log --oneline -1` match the `commit` field in
          the DISPATCH token? (confirms no intervening changes)
          If mismatch → QUERY sender before proceeding
   □ 6. DOMAIN LOCK PRESENT: does `context.domain_lock` exist and include `write_territory`?
          Absent or malformed → REJECT (coordinator must run DOM-01 and re-dispatch)
-         domain_lock.branch ≠ git branch --show-current → REJECT (branch/domain mismatch)
+         domain_lock.branch ≠ domain portion of git branch → REJECT (branch/domain mismatch)
          If PASS → store domain_lock for DOM-02 checks throughout this session
+  □ 7. IF-AGREEMENT PRESENT: does DISPATCH context include an `if_agreement` path pointing
+         to a valid interface/ contract? (→ meta-domains.md §IF-AGREEMENT PROTOCOL)
+         Absent → REJECT; Gatekeeper must run GIT-00 and re-dispatch
+         If PASS → read IF-AGREEMENT outputs as the deliverable contract for this task
 ```
 
 **On REJECT or QUERY:**

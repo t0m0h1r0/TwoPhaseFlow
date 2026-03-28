@@ -109,24 +109,91 @@ verdicts that either unlock merge-to-main or route errors back to the appropriat
 ────────────────────────────────────────────────────────
 # § BRANCH RULES
 
-| Branch | Owned by | May commit | Merge target | Created by |
-|--------|----------|------------|--------------|------------|
-| `main` | system | never directly | — | — |
-| `code` | Code domain | CodeWorkflowCoordinator | `main` (VALIDATED only) | CodeWorkflowCoordinator |
-| `paper` | Paper domain | PaperWorkflowCoordinator | `main` (VALIDATED only) | PaperWorkflowCoordinator |
-| `prompt` | Prompt domain | PromptArchitect, PromptAuditor | `main` (VALIDATED only) | PromptArchitect |
-| `code/{x}` | Code domain | CodeWorkflowCoordinator | `code` only | CodeWorkflowCoordinator |
-| `paper/{x}` | Paper domain | PaperWorkflowCoordinator | `paper` only | PaperWorkflowCoordinator |
+| Branch | Tier | Owned by | May commit | Merge target | Created by |
+|--------|------|----------|------------|--------------|------------|
+| `main` | — | system | never directly | — | Root Admin |
+| `code` | Domain Integration | Code Gatekeeper | CodeWorkflowCoordinator | `main` via PR (Root Admin executes) | CodeWorkflowCoordinator |
+| `paper` | Domain Integration | Paper Gatekeeper | PaperWorkflowCoordinator | `main` via PR (Root Admin executes) | PaperWorkflowCoordinator |
+| `prompt` | Domain Integration | Prompt Gatekeeper | PromptArchitect, PromptAuditor | `main` via PR (Root Admin executes) | PromptArchitect |
+| `dev/{agent_role}` | Individual Workspace | named agent only | named agent only | `{domain}` via PR | Specialist at task start |
+| `interface/` | Shared Agreements | Gatekeepers | Gatekeepers only | — (referenced, not merged) | Gatekeeper before task |
+
+**PR merge path (mandatory):**
+```
+Specialist commits on dev/{agent_role}
+  → opens PR: dev/{agent_role} → {domain}    (Gatekeeper reviews evidence)
+  → Gatekeeper merges dev/ PR
+  → Gatekeeper immediately opens PR: {domain} → main
+  → Root Admin performs final syntax/format check
+  → Root Admin executes final merge
+```
 
 **Cross-domain switch rule:** Before switching domains (e.g., from Code to Paper work),
-the current domain branch MUST be at VALIDATED phase and merged to `main` first (GIT-04).
+the current domain branch MUST be at VALIDATED phase and merged to `main` first.
 The receiving coordinator MUST confirm the merge is present in `main` history before
 running PRE-CHECK for the new domain. A task is NOT "Done" until it is merged into `main`.
-See meta-ops.md GIT-04 for the merge procedure and meta-workflow.md §HANDOFF RULES
-for the cross-domain handoff pre-check.
+See meta-ops.md GIT-04 and meta-workflow.md §HANDOFF RULES.
 
-**Adding a new domain:** define coordinator, branch name, storage territory, DRAFT/REVIEWED/VALIDATED
+**Adding a new domain:** define Gatekeeper, branch name, storage territory, DRAFT/REVIEWED/VALIDATED
 triggers, gate auditor, and applicable docs/00_GLOBAL_RULES.md §section; add one row to this registry.
+
+────────────────────────────────────────────────────────
+# § BRANCH ISOLATION
+
+**Branch Isolation is a physical law** — agents are programmatically and logically prohibited
+from viewing or operating on another agent's `dev/` branch.
+
+| Rule | Enforcement |
+|------|-------------|
+| No agent may `git checkout dev/{other_agent}` | STOP immediately; CONTAMINATION alert |
+| No agent may read files via another agent's dev/ branch | STOP; do not proceed |
+| No agent may push, force-push, or amend commits on another agent's dev/ branch | STOP; escalate to user |
+| Gatekeeper may read a dev/ PR diff for review only — no direct branch access | PR review interface only |
+
+Violation → issue CONTAMINATION RETURN (see §CONTAMINATION GUARD) and escalate to Root Admin.
+
+────────────────────────────────────────────────────────
+# § IF-AGREEMENT PROTOCOL (Interface First)
+
+**Trigger:** MANDATORY before any Specialist starts work on a `dev/` branch.
+
+Before development begins, the Gatekeeper establishes an interface contract in `interface/`
+that defines the inputs and outputs of the task. The Specialist reads this contract before
+creating their `dev/` branch.
+
+**Interface contract format (in `interface/{domain}_{feature}.md`):**
+```
+IF-AGREEMENT:
+  feature:      {one-line description}
+  domain:       {Code | Paper | Prompt}
+  gatekeeper:   {coordinator name}
+  specialist:   {target agent role}
+  inputs:       [{artifact_path}: {description}, ...]
+  outputs:      [{artifact_path}: {description}, ...]
+  success_criteria: {measurable criterion matching MERGE CRITERIA in meta-ops.md}
+  created_at:   {git short hash at time of creation}
+```
+
+**Rules:**
+- No Specialist may create a `dev/` branch without a valid IF-AGREEMENT on `interface/`
+- IF-AGREEMENT is immutable once the Specialist's dev/ branch is created
+- Changes to interface require: close current dev/ branch → new IF-AGREEMENT → new dev/ branch
+- ConsistencyAuditor reads IF-AGREEMENT during AUDIT to verify output matches contract
+
+────────────────────────────────────────────────────────
+# § SELECTIVE SYNC PROTOCOL
+
+Agents pull from `main` ONLY under one of these two conditions:
+
+| Condition | Trigger | Action |
+|-----------|---------|--------|
+| Interface file updated | Gatekeeper notifies Specialist of a change in `interface/` | `git fetch origin main && git merge origin/main` |
+| Physical merge conflict detected | `git merge` exits with conflict markers on Specialist's dev/ branch | `git fetch origin main && git merge origin/main` — then resolve conflict before proceeding |
+
+**Default (neither condition met):** do NOT pull from main. Gratuitous syncing contaminates
+the isolation boundary and introduces untested state into the Specialist's workspace.
+
+Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync conditions".
 
 ────────────────────────────────────────────────────────
 # § STORAGE SOVEREIGNTY

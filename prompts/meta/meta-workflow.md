@@ -19,11 +19,15 @@ Authoritative definitions — branch ownership, storage territory, 3-phase lifec
 branch rules, domain lock protocol, contamination guard: **meta-domains.md**.
 
 Quick reference only:
-- `code` branch: CodeWorkflowCoordinator; `paper`: PaperWorkflowCoordinator; `prompt`: PromptArchitect
-- `main`: protected — never committed directly (A8)
-- 3-phase lifecycle: DRAFT (GIT-02) → REVIEWED (GIT-03) → VALIDATED (GIT-04 + merge to main)
-- First action every session: Branch Preflight GIT-01, then Domain Lock DOM-01 (→ meta-ops.md)
+- `code`, `paper`, `prompt`: Domain Integration Staging branches; owned by Gatekeepers
+- `dev/{agent_role}`: Individual Workspaces; sovereign per Specialist; created via GIT-SP
+- `interface/`: Shared inter-domain agreements; writable by Gatekeepers only (→ GIT-00)
+- `main`: protected — never committed directly (A8); merged via PR by Root Admin only
+- 3-phase lifecycle: DRAFT (GIT-02 on dev/) → REVIEWED (dev/ PR merged to domain by Gatekeeper, GIT-03) → VALIDATED (domain PR merged to main by Root Admin, GIT-04)
+- Session start: GIT-00 (IF-Agreement) → GIT-01 (Branch Preflight) → DOM-01 (Domain Lock)
 - `git commit` on `main` = A8 violation → abort and re-run GIT-01
+- Branch Isolation: Specialists MUST NOT access other agents' `dev/` branches (→ meta-domains.md §BRANCH ISOLATION)
+- Selective Sync: pull from main ONLY when interface/ updated OR merge conflict detected (→ meta-domains.md §SELECTIVE SYNC)
 
 ────────────────────────────────────────────────────────
 # § P-E-V-A EXECUTION LOOP
@@ -51,32 +55,36 @@ Each pipeline is a concrete instantiation of P-E-V-A.
 The abstract frame (above) governs; domain detail (below) specializes it.
 
 ────────────────────────────────────────────────────────
-## Code Pipeline (branch: `code`)
+## Code Pipeline (branch: `code`, Specialist workspaces: `dev/{agent_role}`)
 
 ```
-PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]
-           → Run GIT-01 (auto-switch to `code` + origin/main sync → meta-ops.md GIT-01)
+PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
+           → Run GIT-01 (auto-switch to `code` + Selective Sync → meta-ops.md GIT-01)
            → Run DOM-01: establish DOMAIN-LOCK for this session
 
+IF-AGREE   CodeWorkflowCoordinator  [MANDATORY before dispatching any Specialist]
+           → Run GIT-00: write IF-AGREEMENT to interface/code_{feature}.md
+           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
+
 PLAN     CodeWorkflowCoordinator
-           → Branch preflight (already done in PRE-CHECK)
            → Parse paper; inventory src/ gaps; record in 02_ACTIVE_LEDGER.md
-           → Dispatch specialist (one gap per step, P5)
+           → Dispatch specialist (one gap per step, P5; include IF-AGREEMENT path in DISPATCH)
 
-EXECUTE  CodeArchitect     — new module or equation implementation
-         CodeCorrector     — targeted fix after TestRunner FAIL
-         CodeReviewer      — refactor plan (execution handed back to CodeArchitect)
-           → Artifact: Python module + pytest file
-           → git: draft commit
+EXECUTE  CodeArchitect     [Specialist] — new module or equation implementation on dev/CodeArchitect
+         CodeCorrector     [Specialist] — targeted fix on dev/CodeCorrector
+         CodeReviewer      [Specialist] — refactor plan on dev/CodeReviewer
+           → Artifact: Python module + pytest file (committed on dev/ branch)
+           → Specialist opens PR: dev/{agent_role} → code (with LOG-ATTACHED)
 
-VERIFY   TestRunner
-           PASS → CodeWorkflowCoordinator (component VERIFIED; continue inventory)
+VERIFY   TestRunner  [Specialist on dev/TestRunner]
+           → Runs TEST-01/02; attaches tests/last_run.log to PR
+           PASS → Gatekeeper reviews PR evidence → merges dev/ PR into code (GIT-03)
+                → Gatekeeper opens PR: code → main (immediately, GIT-04 Phase A)
            FAIL → STOP → user → CodeCorrector or CodeArchitect
          [repeat EXECUTE → VERIFY until all gaps closed]
-           → git: reviewed commit
 
-AUDIT    ConsistencyAuditor (AU2 gate — all 10 items)
-           PASS → CodeWorkflowCoordinator → git: validated + merge code → main
+AUDIT    ConsistencyAuditor  [Specialist on dev/ConsistencyAuditor]  (AU2 gate — all 10 items)
+           PASS → CodeWorkflowCoordinator (Gatekeeper) → Root Admin executes merge code → main (GIT-04 Phase B)
            THEORY_ERR → CodeArchitect → TestRunner
            IMPL_ERR   → CodeCorrector  → TestRunner
            Authority conflict → CodeWorkflowCoordinator → STOP → user
@@ -85,58 +93,66 @@ AUDIT    ConsistencyAuditor (AU2 gate — all 10 items)
 Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibility checks).
 
 ────────────────────────────────────────────────────────
-## Paper Pipeline (branch: `paper`)
+## Paper Pipeline (branch: `paper`, Specialist workspaces: `dev/{agent_role}`)
 
 ```
-PRE-CHECK  PaperWorkflowCoordinator  [MANDATORY before PLAN]
-           → Run GIT-01 (auto-switch to `paper` + origin/main sync → meta-ops.md GIT-01)
+PRE-CHECK  PaperWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
+           → Run GIT-01 (auto-switch to `paper` + Selective Sync → meta-ops.md GIT-01)
            → Run DOM-01: establish DOMAIN-LOCK for this session
 
+IF-AGREE   PaperWorkflowCoordinator  [MANDATORY before dispatching any Specialist]
+           → Run GIT-00: write IF-AGREEMENT to interface/paper_{section}.md
+           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
+
 PLAN     PaperWorkflowCoordinator
-           → Branch preflight (already done in PRE-CHECK)
            → Identify section gaps or review targets; record in 02_ACTIVE_LEDGER.md
+           → Dispatch specialist (include IF-AGREEMENT path in DISPATCH)
 
-EXECUTE  PaperWriter
-           → Artifact: LaTeX patch (diff only)
-           → git: draft commit
+EXECUTE  PaperWriter  [Specialist on dev/PaperWriter]
+           → Artifact: LaTeX patch (diff only; committed on dev/PaperWriter)
+           → Specialist opens PR: dev/PaperWriter → paper (with LOG-ATTACHED build scan)
 
-VERIFY   PaperCompiler   — zero compilation errors (pre-condition for review)
-         PaperReviewer   — classify findings: FATAL / MAJOR / MINOR
-           0 FATAL, 0 MAJOR → proceed
-           FATAL or MAJOR  → PaperCorrector → back to PaperCompiler
+VERIFY   PaperCompiler  [Specialist on dev/PaperCompiler]  — zero compilation errors
+         PaperReviewer  [Specialist on dev/PaperReviewer]  — classify: FATAL / MAJOR / MINOR
+           0 FATAL, 0 MAJOR → Gatekeeper merges dev/ PR into paper (GIT-03)
+                            → Gatekeeper opens PR: paper → main (immediately, GIT-04 Phase A)
+           FATAL or MAJOR   → PaperCorrector → back to PaperCompiler
            [loop; counter > MAX_REVIEW_ROUNDS → STOP → user with full history]
-           → git: reviewed commit
 
-AUDIT    ConsistencyAuditor (AU2 gate — all 10 items)
-           PASS       → PaperWorkflowCoordinator → git: validated + merge paper → main
+AUDIT    ConsistencyAuditor  [Specialist on dev/ConsistencyAuditor]  (AU2 gate — all 10 items)
+           PASS       → PaperWorkflowCoordinator (Gatekeeper) → Root Admin executes merge paper → main (GIT-04 Phase B)
            PAPER_ERROR → PaperWriter
            CODE_ERROR  → CodeArchitect → TestRunner (code branch)
 ```
 
 ────────────────────────────────────────────────────────
-## Prompt Pipeline (branch: `prompt`)
+## Prompt Pipeline (branch: `prompt`, Specialist workspaces: `dev/{agent_role}`)
 
 ```
-PRE-CHECK  PromptArchitect  [MANDATORY before PLAN]
-           → Run GIT-01 (auto-switch to `prompt` + origin/main sync → meta-ops.md GIT-01)
+PRE-CHECK  PromptArchitect  [MANDATORY before PLAN]  [Gatekeeper tier]
+           → Run GIT-01 (auto-switch to `prompt` + Selective Sync → meta-ops.md GIT-01)
            → Run DOM-01: establish DOMAIN-LOCK for this session
 
+IF-AGREE   PromptArchitect  [MANDATORY before dispatching PromptCompressor]
+           → Run GIT-00: write IF-AGREEMENT to interface/prompt_{agent}.md
+           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
+
 PLAN     PromptArchitect
-           → Branch preflight (already done in PRE-CHECK)
            → Parse target agent + environment; identify gaps vs. meta files
 
-EXECUTE  PromptArchitect   — generate or refactor prompt
-         PromptCompressor  — compress existing prompt (alternative EXECUTE path)
-           → Artifact: prompts/agents/{AgentName}.md
-           → git: draft commit
+EXECUTE  PromptArchitect   [Gatekeeper, acts as primary executor]  — generate or refactor prompt on dev/PromptArchitect
+         PromptCompressor  [Specialist on dev/PromptCompressor]    — compress existing prompt
+           → Artifact: prompts/agents/{AgentName}.md (committed on dev/ branch)
+           → Specialist opens PR: dev/{agent_role} → prompt (with LOG-ATTACHED audit scan)
 
-VERIFY   PromptAuditor (Q3 checklist — 9 items)
-           FAIL → PromptArchitect (targeted correction)
+VERIFY   PromptAuditor  [Gatekeeper, doubles as reviewer]  (Q3 checklist — 9 items)
+           FAIL → PromptArchitect (targeted correction on dev/PromptArchitect)
            [loop; counter > MAX_REVIEW_ROUNDS → STOP → user]
-           → git: reviewed commit on PASS
+           PASS → Gatekeeper merges dev/ PR into prompt (GIT-03)
+               → Gatekeeper opens PR: prompt → main (immediately, GIT-04 Phase A)
 
 AUDIT    PromptAuditor (doubles as gate for prompt domain)
-           PASS → git: validated commit + merge prompt → main
+           PASS → Root Admin executes merge prompt → main (GIT-04 Phase B)
 ```
 
 ────────────────────────────────────────────────────────
@@ -167,16 +183,17 @@ Every dispatch sends HAND-01; every completion returns HAND-02;
 every receiver runs HAND-03 (Acceptance Check) before starting work.
 
 **Definition of Done — Main-Merge Rule:**
-A task is NOT considered finished until all work is merged into `main` via GIT-04 (VALIDATED
-commit + merge). Cross-domain handoffs (e.g., Code → Paper) are only permitted after the
-source domain's work is merged into `main`. The receiving coordinator MUST verify this:
+A task is NOT considered finished until all work is merged into `main` via GIT-04 Phase B
+(Root Admin final merge). Cross-domain handoffs (e.g., Code → Paper) are only permitted
+after the source domain's work is merged into `main`. The receiving Gatekeeper MUST verify:
 
 ```
-Cross-Domain Handoff Pre-check (run by receiving coordinator before accepting):
-  □ Verify source branch merged to main: confirm GIT-04 merge commit present in main history
+Cross-Domain Handoff Pre-check (run by receiving Gatekeeper before accepting):
+  □ Verify source branch merged to main: confirm GIT-04 Phase B merge commit present in main history
     (→ meta-ops.md GIT-04 for merge commit format)
     Not found → REJECT handoff; source domain is not "Done" yet; return BLOCKED
-  □ Run PRE-CHECK for the new domain (→ GIT-01 auto-switch + origin/main sync + DOM-01)
+  □ Run PRE-CHECK for the new domain (→ GIT-01 Selective Sync + DOM-01)
+  □ Run IF-AGREE for the new task (→ GIT-00; write new IF-AGREEMENT before dispatching Specialist)
 ```
 
 The table below covers only non-obvious routing decisions — errors, stops,

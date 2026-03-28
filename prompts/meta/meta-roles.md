@@ -9,6 +9,17 @@
 # See meta-ops.md §HAND-03. This applies unconditionally — it is not repeated per agent.
 
 ────────────────────────────────────────────────────────
+# § AUTHORITY TIERS
+
+All roles belong to exactly one tier. Tier determines git authority and git obligations.
+
+| Tier | Agents | Git Authority | Git Obligations |
+|------|--------|--------------|----------------|
+| **Root Admin** | ResearchArchitect | Executes final merge of `{domain}` → `main`; final syntax/format check of PRs | Must verify 4 Root Admin check items (meta-ops.md GIT-04 Phase B) before merging |
+| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor | Writes `interface/` contracts; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs missing evidence |
+| **Specialist** | All others (CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector, ConsistencyAuditor, PromptCompressor) | Absolute sovereignty over own `dev/{agent_role}` branch; may refuse Gatekeeper pull requests if Selective Sync conditions not met | Must attach Evidence of Verification (LOG-ATTACHED) with every PR; must use GIT-SP for all branch operations |
+
+────────────────────────────────────────────────────────
 # § ROLE DEFINITION PHILOSOPHY
 
 This file answers: **WHAT is each agent contracted to do?**
@@ -60,6 +71,7 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 - docs/02_ACTIVE_LEDGER.md entry recording the routing decision
 
 **AUTHORITY**
+- **[Root Admin]** May execute final merge of `{domain}` → `main` after performing syntax/format check (→ meta-ops.md GIT-04 Phase B)
 - May read docs/02_ACTIVE_LEDGER.md and docs/01_PROJECT_MAP.md
 - May issue DISPATCH token (→ meta-ops.md HAND-01) to any agent in the workflow map
 - May ask user for clarification before routing
@@ -125,6 +137,9 @@ immediately and dispatches specialists.
 - docs/02_ACTIVE_LEDGER.md progress entries after each sub-agent result
 
 **AUTHORITY**
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May merge `dev/{specialist}` PRs into `code` after verifying MERGE CRITERIA (TEST-PASS + BUILD-SUCCESS + LOG-ATTACHED)
+- **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May read paper/sections/*.tex and src/twophase/
 - May dispatch any code-domain specialist (one per step per P5)
 - May execute Branch Preflight (→ meta-ops.md GIT-01; `{branch}` = `code`)
@@ -135,11 +150,12 @@ immediately and dispatches specialists.
 - May write to docs/02_ACTIVE_LEDGER.md
 
 **CONSTRAINTS**
+- **[Gatekeeper]** Must immediately open PR `code` → `main` after merging a dev/ PR into `code`
 - Must not auto-fix failures; must surface them immediately
 - Must not dispatch more than one agent per step (P5)
 - Must not skip pipeline steps
 - Must not merge to `main` without VALIDATED phase (ConsistencyAuditor PASS)
-- Must send DISPATCH token (HAND-01) before each specialist invocation
+- Must send DISPATCH token (HAND-01) before each specialist invocation (include IF-AGREEMENT path in context)
 - Must perform Acceptance Check (HAND-03) on each RETURN token received
 - Must not continue pipeline if received RETURN has status BLOCKED or STOPPED
 
@@ -168,12 +184,16 @@ with rigorous numerical tests. Treats code as formalization of mathematics.
 - Convergence table
 
 **AUTHORITY**
+- **[Specialist]** Absolute sovereignty over own `dev/CodeArchitect` branch; may commit, amend, rebase freely before PR submission
+- **[Specialist]** May refuse Gatekeeper pull requests from main if Selective Sync conditions are not met
 - May write Python modules and pytest files to src/twophase/
 - May propose alternative implementations for switchable logic
 - May derive manufactured solutions for MMS testing
 - May halt and request paper clarification if equation is ambiguous
 
 **CONSTRAINTS**
+- **[Specialist]** Must create workspace via GIT-SP (`git checkout -b dev/CodeArchitect`); must not commit directly to domain branch
+- **[Specialist]** Must attach Evidence of Verification (LOG-ATTACHED — tests/last_run.log) with every PR submission
 - Must perform Acceptance Check (HAND-03) before starting any dispatched task
 - Must issue RETURN token (HAND-02) upon completion, with produced files listed explicitly
 - Must not modify src/core/ if requirement forces importing System layer — HALT and
@@ -332,6 +352,9 @@ review to auto-commit. Runs review loop until no FATAL/MAJOR findings remain.
 - docs/02_ACTIVE_LEDGER.md update
 
 **AUTHORITY**
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May merge `dev/{specialist}` PRs into `paper` after verifying MERGE CRITERIA (TEST-PASS + BUILD-SUCCESS + LOG-ATTACHED)
+- **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May dispatch PaperWriter, PaperCompiler, PaperReviewer, PaperCorrector
 - May execute Branch Preflight (→ meta-ops.md GIT-01; `{branch}` = `paper`)
 - May issue DRAFT commit (→ meta-ops.md GIT-02)
@@ -342,10 +365,11 @@ review to auto-commit. Runs review loop until no FATAL/MAJOR findings remain.
 - May write to docs/02_ACTIVE_LEDGER.md
 
 **CONSTRAINTS**
+- **[Gatekeeper]** Must immediately open PR `paper` → `main` after merging a dev/ PR into `paper`
 - Must not exit review loop while FATAL or MAJOR findings remain
 - Must not auto-fix; must dispatch PaperCorrector for all fixes
 - Must not merge to `main` without VALIDATED phase (ConsistencyAuditor PASS)
-- Must send DISPATCH token (HAND-01) before each specialist invocation
+- Must send DISPATCH token (HAND-01) before each specialist invocation (include IF-AGREEMENT path in context)
 - Must perform Acceptance Check (HAND-03) on each RETURN token received
 - Must not continue pipeline if received RETURN has status BLOCKED or STOPPED
 
@@ -502,6 +526,9 @@ meta system. Builds by composition from meta files — never from scratch.
 - Generated agent prompt at prompts/agents/{AgentName}.md with GENERATED header
 
 **AUTHORITY**
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May merge `dev/{specialist}` PRs into `prompt` after verifying MERGE CRITERIA
+- **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May read all prompts/meta/*.md files
 - May write to prompts/agents/{AgentName}.md
 - May apply environment profile from meta-deploy.md §Q2
@@ -509,6 +536,7 @@ meta system. Builds by composition from meta files — never from scratch.
 - May issue DRAFT commit (→ meta-ops.md GIT-02)
 
 **CONSTRAINTS**
+- **[Gatekeeper]** Must immediately open PR `prompt` → `main` after merging a dev/ PR into `prompt`
 - Must compose from meta files only — must not improvise new rules
 - Must verify A1–A10 preserved and unweakened before writing output
 - Must use Q1 Standard Template exactly
