@@ -30,7 +30,7 @@
   \item 寄生流れの振幅 $\|\bm{u}\|_\infty$ が $O(h^2)$（CSF モデル誤差律速；バランス力適用時）で収束する
 \end{enumerate}
 
-\begin{tcolorbox}[warnbox, title={寄生流れ振幅の目安と閾値の根拠}]
+\begin{tcolorbox}[mybox, title={寄生流れ振幅の目安と閾値の根拠}]
 典型的な許容レベル：
 \begin{itemize}
   \item 2次精度スキーム：$\|\bm{u}_{\text{para}}\| / ({\sigma/\mu}) \sim O(10^{-2})$（許容不可の場合が多い）
@@ -146,7 +146,7 @@ Rayleigh--Taylor 不安定の線形成長率は線形安定解析から解析的
   \label{eq:rt_growth}
 \end{equation}
 
-\begin{tcolorbox}[algbox, title={線形成長率 $\omega_{\text{RT}}$ の導出（線形安定解析の概略）}]
+\begin{tcolorbox}[resultbox, title={線形成長率 $\omega_{\text{RT}}$ の導出（線形安定解析の概略）}]
 微小振幅 $A(t) e^{ikx}$（$k = 2\pi/\lambda$）の界面擾乱を仮定し，
 非圧縮・非粘性の2流体系に対して線形化した運動方程式を解く：
 
@@ -180,7 +180,7 @@ $\rho_l > \rho_g$ の場合 $\sigma^2 > 0$ であるから $\sigma = \omega_{\te
   \item スパイク先端のKelvin-Helmholtz 的巻き込み（Kelvin-Helmholtz instability との相互作用）
 \end{itemize}
 
-\begin{tcolorbox}[defbox, title={Rayleigh--Taylor ベンチマーク：具体的パラメータ（推奨設定）}]
+\begin{tcolorbox}[mybox, title={Rayleigh--Taylor ベンチマーク：具体的パラメータ（推奨設定）}]
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{lll}
@@ -248,7 +248,7 @@ ALE 省略の影響は軽微である．しかし \textbf{密度比 $\rho_l/\rho
 
 $t = 3$ における $V_c$ と $C_{\mathrm{circ}}$ の Hysing 参照解との相対誤差 $< 1\%$ を目標とする．
 
-\begin{tcolorbox}[defbox, title={Hysing (2009) Test Case 1 の参照値（数値参照解）}]
+\begin{tcolorbox}[mybox, title={Hysing (2009) Test Case 1 の参照値（数値参照解）}]
 \textbf{重要：これらの値は解析解ではなく，複数の高精度数値ソルバーによる「数値的参照解」である．}
 
 Hysing ら \cite{Hysing2009} は TP2D（FEM），FreeLIFE（FEM レベルセット），MooNMD（FEM）の3グループの

@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-047 CLOSED 2026-03-29: appendix ordering — 2 MAJOR forward-ref inversions fixed (E.3→C.5, E.5→A.6), D.4↔D.5 swapped. 152pp, 0 errors, 0 warnings. |
+| last_decision | CHK-048 CLOSED 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR). 152pp, 0 errors, 0 warnings. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -80,6 +80,7 @@
 | CHK-045 | CLOSED | review+fix | PaperReviewer+PaperCorrector 2026-03-29 (§D.6+§D.7 audit): [F-1] appendix_numerics_schemes_s6.tex:65 d_k sign (-1)^k→(-1)^{k+1} (hat_d(π)=+1→-1); [M-1] :74 0.6^640 exponent 10^{-224}→10^{-142}; [m-1] appendix_numerics_solver_s2.tex:27,117 ~\ref tilde added; [m-2] appendix_numerics_schemes_s6.tex:13,45,46,276 §~\ref tilde added. Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-046 | CLOSED | compile | PaperCompiler 2026-03-29: XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
 | CHK-047 | CLOSED | fix | PaperCorrector 2026-03-29: 3 appendix ordering fixes — [MAJOR-1] E.3(app:checkerboard_mode)→C.5 (reuse solver_s3 in ccd_impl.tex); [MAJOR-2] E.5(app:fvm_face_coeff)→A.6 (reuse solver_s5 in interface.tex); [MINOR-1] D swap s4↔s5 (WENO5 before Godunov-LS). App E now 3 sections (s1,s2,s4). Compile: 152pp, 0 errors, 0 undefined refs. |
+| CHK-048 | CLOSED | fix | PaperCorrector 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR) — warnbox→defbox(1), warnbox→mybox(7), warnbox→resultbox(1), defbox→resultbox(2), defbox→algbox(3), resultbox→mybox(2), algbox→resultbox(1), mybox→resultbox(1); 6 missing titles added (02b_csf ×2, 04_ccd ×2, 08b_ccd_poisson, math title with texorpdfstring). Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-042 | CLOSED | experiment+paper | DCCD比較実験 2026-03-28: experiments/dccd_comparison.py — O2/O4/CCD/DCCD, 3 ICs (square/triangle/tanh), N=256, CFL=0.4, T=1. Key: DCCD TV/TV_exact=1.58 vs O2=9.20 (矩形波); CCD L2=2.57e-5 (tanh, 6次精度確認). 付録D.6 (appendix_numerics_schemes_s6.tex) 追加. 148pp, 0 errors. |
 
 ## Format reference
