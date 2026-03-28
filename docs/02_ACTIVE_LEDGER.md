@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | CHK-031 CLOSED 2026-03-28: PaperCorrector §10b+§08b — 4 fixes applied (M-A Dissipative CCD O(h^5)→O(ε_d h²) in 10b table:321, text:339, text:343; M-B 08b min() argument rewritten O(h^5)→O(ε_d h²), O(h^4)→O(ε_d h)); compile clean 142pp |
-| next_action | CHK-035 CLOSED — ConsistencyAuditor 全体クロス検証 2026-03-28: AU2 CONDITIONAL FAIL. IMPL_ERR-001: builder.py:148 がexp(+φ/ε)使用（論文はexp(-φ/ε)）でψ規約が反転; update_properties もbuilder規約(ψ=1=液)に合わせ論文式と逆; 本番経路は自己整合だがheaviside()↔update_properties()間に境界不整合あり. 要CodeCorrector対応. |
+| last_decision | CHK-036 CLOSED 2026-03-28: CodeCorrector audit of IMPL_ERR-001 — REVIEWER_ERROR. initial_conditions/builder.py:148 uses exp(+φ/ε) with φ<0 inside liquid (outward SDF); heaviside.py:52 uses exp(-φ/ε) with φ>0 inside liquid (paper convention). Both produce ψ=1=liquid. Formulas equivalent: φ_builder=−φ_paper. update_properties consistent (ρ_l at ψ=1). curvature.py self-consistent via invert_heaviside. No code change required. All 98 tests passing. |
+| next_action | None — all CHKs closed. Project in clean state. |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -70,6 +70,7 @@
 | CHK-033 | CLOSED | review | PaperReviewer full audit 2026-03-28: 0 FATAL; 3 MAJOR 全件REVIEWER_ERROR (M-1: app:cls_fixed_point ラベル+参照は存在; M-2: CLS移流はε_d一定でspace-varying懸念不適用; M-3: ε_d^(i)は局所乗数でcomposition error不発生); 6 MINOR — 未処理(重要度低). 修正ゼロ件. |
 | CHK-034 | CLOSED | review+fix | PaperReviewer full audit pass 2 + PaperCorrector 2026-03-28: 0 FATAL; 0 MAJOR; 1 MINOR fixed (02b_csf:225 — 平衡条件 ∇p=σκ∇ψ がu=0でのNS方程式から直接導かれることを1行追記). Compile: 142pp, 0 errors, 0 warnings. |
 | CHK-035 | CLOSED | audit | ConsistencyAuditor 全体クロス検証 2026-03-28: AU2 CONDITIONAL FAIL. IMPL_ERR-001: builder.py:148 exp(+φ/ε) vs 論文 exp(-φ/ε) — ψ規約反転; update_properties ψ=1=液(builder規約)で論文式 ρ_l+(ρ_g-ρ_l)ψ と逆; 本番経路自己整合, heaviside()↔update_properties()境界不整合. 10モジュール中8 PASS. 要CodeCorrector. |
+| CHK-036 | CLOSED | audit | CodeCorrector IMPL_ERR-001 re-audit 2026-03-28: REVIEWER_ERROR. initial_conditions/builder.py:148 uses exp(+φ/ε) with φ<0=liquid (outward SDF); heaviside.py:52 uses exp(-φ/ε) with φ>0=liquid (paper). Equivalent: φ_builder=−φ_paper. update_properties ρ_l at ψ=1 matches paper Eq.6. curvature.py self-consistent via invert_heaviside. No fix required. 98/98 tests passing. |
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
