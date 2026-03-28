@@ -135,31 +135,25 @@ class ViscousTerm(INSTerm):
 
     # ── Core evaluation ───────────────────────────────────────────────────
 
+    def _stress_divergence_component(self, alpha: int, vel: List, mu, ccd: "CCDSolver"):
+        """Compute Σ_β ∂[μ̃(∂u_α/∂x_β + ∂u_β/∂x_α)]/∂x_β for one α."""
+        total = self.xp.zeros_like(vel[alpha])
+        for beta in range(len(vel)):
+            du_a_dbeta,  _ = ccd.differentiate(vel[alpha], beta)
+            du_b_dalpha, _ = ccd.differentiate(vel[beta],  alpha)
+            stress,          _ = ccd.differentiate(mu * (du_a_dbeta + du_b_dalpha), beta)
+            total += stress
+        return total
+
     def _evaluate(self, vel: List, mu, rho, ccd: "CCDSolver") -> List:
-        """Compute ∇·[μ̃ (∇u + ∇uᵀ)] / (ρ̃ Re) for each component."""
-        xp = self.xp
+        """Compute ∇·[μ̃ (∇u + ∇uᵀ)] / (ρ̃ Re) for each component.
+
+        Symmetric stress tensor S_{αβ} = μ̃ (∂u_α/∂x_β + ∂u_β/∂x_α) / 2
+        Viscous force per unit volume for component α:
+            V_α = (1/Re) Σ_β ∂[μ̃(∂u_α/∂x_β + ∂u_β/∂x_α)] / ∂x_β / ρ̃
+        """
         ndim = len(vel)
-        Re = self.Re
-        result = [xp.zeros_like(vel[c]) for c in range(ndim)]
-
-        # Symmetric stress tensor S_{αβ} = μ̃ (∂u_α/∂x_β + ∂u_β/∂x_α) / 2
-        # Divergence of 2S for component α:
-        #   V_α = (2/Re) Σ_β ∂S_{αβ}/∂x_β / ρ̃
-        # = (1/Re) Σ_β ∂[μ̃(∂u_α/∂x_β + ∂u_β/∂x_α)] / ∂x_β / ρ̃
-
-        for alpha in range(ndim):
-            for beta in range(ndim):
-                # ∂u_α/∂x_β and ∂u_β/∂x_α
-                du_a_dbeta, _ = ccd.differentiate(vel[alpha], beta)
-                du_b_dalpha, _ = ccd.differentiate(vel[beta], alpha)
-
-                # Stress component: μ̃ (∂u_α/∂x_β + ∂u_β/∂x_α)
-                stress = mu * (du_a_dbeta + du_b_dalpha)
-
-                # Divergence along β
-                d_stress_dbeta, _ = ccd.differentiate(stress, beta)
-                result[alpha] += d_stress_dbeta
-
-            result[alpha] = result[alpha] / (Re * rho)
-
-        return result
+        return [
+            self._stress_divergence_component(alpha, vel, mu, ccd) / (self.Re * rho)
+            for alpha in range(ndim)
+        ]

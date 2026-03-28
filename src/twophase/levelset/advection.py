@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
 
-# WENO5 ideal weights
+# WENO5 ideal weights (app:weno5 eq:weno5_ideal_weights)
 _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
 _WENO_EPS = 1e-6   # avoidance of division by zero in WENO weights
 

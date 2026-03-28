@@ -96,11 +96,9 @@ class CurvatureCalculator(ICurvatureCalculator):
 
     def _kappa_2d(self, xp, d1, d2, ccd, phi, grad_cube):
         """κ = −[φ_y² φ_xx − 2 φ_x φ_y φ_xy + φ_x² φ_yy] / |∇φ|³"""
-        phi_x, phi_y  = d1[0], d1[1]
-        phi_xx, _     = d2[0], None
-        phi_yy, _     = d2[1], None
-        phi_xx        = d2[0]
-        phi_yy        = d2[1]
+        phi_x, phi_y = d1[0], d1[1]
+        phi_xx       = d2[0]
+        phi_yy       = d2[1]
 
         # Mixed derivative φ_xy via sequential CCD: differentiate d1[0] along y
         phi_xy, _ = ccd.differentiate(d1[0], 1)

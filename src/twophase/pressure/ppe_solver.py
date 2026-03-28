@@ -25,6 +25,11 @@ if TYPE_CHECKING:
 from ..interfaces.ppe_solver import IPPESolver
 from .ppe_builder import PPEBuilder
 
+# ILU fill_factor: periodic BC mixes identity-minus rows with FVM rows,
+# requiring higher fill for convergence (§8 preconditioner note).
+_FILL_PERIODIC = 10
+_FILL_WALL     = 1
+
 
 class PPESolver(IPPESolver):
     """BiCGSTAB による PPE スパース系ソルバー。
@@ -102,7 +107,7 @@ class PPESolver(IPPESolver):
         # 前処理: 周期 BC では identity-minus 行と FVM 行が混在するため ILU(0) が
         # 収束しにくい。fill_factor=10 で完全な充填を許してより良い前処理を得る。
         # 壁面 BC では fill_factor=1 で十分。
-        fill = 10 if self._builder.bc_type == 'periodic' else 1
+        fill = _FILL_PERIODIC if self._builder.bc_type == 'periodic' else _FILL_WALL
         try:
             ilu = spla.spilu(A.tocsc(), fill_factor=fill)
             M = spla.LinearOperator(A_shape, ilu.solve)

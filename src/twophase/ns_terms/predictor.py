@@ -56,6 +56,7 @@ from .viscous import ViscousTerm
 from .gravity import GravityTerm
 from .surface_tension import SurfaceTensionTerm
 from ..core.flow_state import FlowState
+from ..pressure.velocity_corrector import ccd_pressure_gradient
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -159,13 +160,8 @@ class Predictor:
         # スプリッティング誤差が O(Δt) → O(Δt²) に改善する
         # CCD D^{(1)} を使用することで balanced-force 条件を満たす（§7 warnbox）:
         # 表面張力 κ D^{(1)} ψ/We と同一演算子により寄生流れが O(h⁶) まで低減する
-        # 壁面 BC: FVM PPE は Neumann 条件を FVM 意味でのみ満たし CCD 境界値は非ゼロ。
-        # 毎ステップ蓄積されると正帰還ループを生じるため、壁面法線 CCD 勾配を 0 にする。
-        ipc = []
-        for c in range(ndim):
-            dp_dc, _ = ccd.differentiate(state.pressure, c)
-            ccd.enforce_wall_neumann(dp_dc, c)
-            ipc.append(-dp_dc)
+        grad_pn = ccd_pressure_gradient(ccd, state.pressure, ndim)
+        ipc = [-g for g in grad_pn]
 
         # ── 陽的 RHS の組み立て ────────────────────────────────────────
         # ρ × ab2_conv = −ρ[3/2 C^n − 1/2 C^{n-1}]（対流項）

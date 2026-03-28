@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
-| last_decision | CHK-036 CLOSED 2026-03-28: CodeCorrector audit of IMPL_ERR-001 — REVIEWER_ERROR. initial_conditions/builder.py:148 uses exp(+φ/ε) with φ<0 inside liquid (outward SDF); heaviside.py:52 uses exp(-φ/ε) with φ>0 inside liquid (paper convention). Both produce ψ=1=liquid. Formulas equivalent: φ_builder=−φ_paper. update_properties consistent (ρ_l at ψ=1). curvature.py self-consistent via invert_heaviside. No code change required. All 98 tests passing. |
+| last_decision | CHK-038 CLOSED 2026-03-28: CodeReviewer refactor — 8 LOW_RISK changes applied (R-01–R-07, R-02); R-08 SKIPPED (ReinitializerWENO5 DO NOT DELETE §C2); R-10–R-14 HIGH_RISK deferred. 98/98 tests PASS. |
 | next_action | None — all CHKs closed. Project in clean state. |
 
 ### Notes
@@ -71,6 +71,8 @@
 | CHK-034 | CLOSED | review+fix | PaperReviewer full audit pass 2 + PaperCorrector 2026-03-28: 0 FATAL; 0 MAJOR; 1 MINOR fixed (02b_csf:225 — 平衡条件 ∇p=σκ∇ψ がu=0でのNS方程式から直接導かれることを1行追記). Compile: 142pp, 0 errors, 0 warnings. |
 | CHK-035 | CLOSED | audit | ConsistencyAuditor 全体クロス検証 2026-03-28: AU2 CONDITIONAL FAIL. IMPL_ERR-001: builder.py:148 exp(+φ/ε) vs 論文 exp(-φ/ε) — ψ規約反転; update_properties ψ=1=液(builder規約)で論文式 ρ_l+(ρ_g-ρ_l)ψ と逆; 本番経路自己整合, heaviside()↔update_properties()境界不整合. 10モジュール中8 PASS. 要CodeCorrector. |
 | CHK-036 | CLOSED | audit | CodeCorrector IMPL_ERR-001 re-audit 2026-03-28: REVIEWER_ERROR. initial_conditions/builder.py:148 uses exp(+φ/ε) with φ<0=liquid (outward SDF); heaviside.py:52 uses exp(-φ/ε) with φ>0=liquid (paper). Equivalent: φ_builder=−φ_paper. update_properties ρ_l at ψ=1 matches paper Eq.6. curvature.py self-consistent via invert_heaviside. No fix required. 98/98 tests passing. |
+| CHK-037 | CLOSED | test | TestRunner full suite 2026-03-28: 98/98 PASS, 0 warnings, 70.73s. CCD d1≥3.5, d2≥2.5, PPE convergence, WENO5, TVD-RK3, Dissipative CCD — all within tolerance (ASM-004). |
+| CHK-038 | CLOSED | refactor | CodeReviewer 2026-03-28: 8 LOW_RISK changes applied — R-01 curvature dead code; R-03 magic number comments; R-04 BC loop helper; R-09 viscous sub-method; R-05 ccd_pressure_gradient shared helper; R-06 _pad_neumann→_pad_bc; R-07 _sl module-level; R-02 return annotations. R-08 SKIPPED (§C2 DO NOT DELETE). R-10–R-14 HIGH_RISK deferred. 98/98 PASS. |
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`

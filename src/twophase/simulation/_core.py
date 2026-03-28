@@ -200,7 +200,7 @@ class TwoPhaseSimulation:
             pressure=self.pressure.data,
         )
 
-    def _step_advect_reinit(self, dt: float) -> None:
+    def _step_advect_reinit(self, dt: float) -> None:  # modifies self.psi in-place
         """Step 1–2: CLS 移流（WENO5+TVD-RK3）→ 再初期化（疑似時間 PDE）。"""
         ndim = self.config.grid.ndim
         vel_components = [self.velocity[ax] for ax in range(ndim)]
@@ -245,7 +245,7 @@ class TwoPhaseSimulation:
         self.pressure.data = self.pressure.data + delta_p
         return delta_p   # 速度 Corrector は ∇(δp) を適用する
 
-    def _step_correct_velocity(self, vel_star: List, delta_p: object, dt: float) -> None:
+    def _step_correct_velocity(self, vel_star: List, delta_p: object, dt: float) -> None:  # modifies self.velocity in-place
         """Step 7: u* − (Δt/ρ̃)∇(δp) → u^{n+1} を velocity フィールドに書き込む。
 
         IPC 増分法: 速度補正には圧力増分 δp の勾配を使用する（§9 Step 7）．
