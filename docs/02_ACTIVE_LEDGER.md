@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-048 CLOSED 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR). 152pp, 0 errors, 0 warnings. |
+| last_decision | CHK-049 CLOSED 2026-03-29: 9 unjustified boxes removed (wrappers only, content preserved). 152pp, 0 errors. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -81,6 +81,7 @@
 | CHK-046 | CLOSED | compile | PaperCompiler 2026-03-29: XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
 | CHK-047 | CLOSED | fix | PaperCorrector 2026-03-29: 3 appendix ordering fixes — [MAJOR-1] E.3(app:checkerboard_mode)→C.5 (reuse solver_s3 in ccd_impl.tex); [MAJOR-2] E.5(app:fvm_face_coeff)→A.6 (reuse solver_s5 in interface.tex); [MINOR-1] D swap s4↔s5 (WENO5 before Godunov-LS). App E now 3 sections (s1,s2,s4). Compile: 152pp, 0 errors, 0 undefined refs. |
 | CHK-048 | CLOSED | fix | PaperCorrector 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR) — warnbox→defbox(1), warnbox→mybox(7), warnbox→resultbox(1), defbox→resultbox(2), defbox→algbox(3), resultbox→mybox(2), algbox→resultbox(1), mybox→resultbox(1); 6 missing titles added (02b_csf ×2, 04_ccd ×2, 08b_ccd_poisson, math title with texorpdfstring). Compile: 152pp, 0 errors, 0 warnings. |
+| CHK-049 | CLOSED | fix | PaperCorrector 2026-03-29: 9 unjustified tcolorbox wrappers removed — R-01/R-02 02b_csf (2 resultboxes); R-03 05b_time_integration (TVD-RK3 scope warnbox); R-04 07_collocate (density table mybox); R-05/R-06 08_pressure (∇·(1/ρ∇p) mybox + Neumann unit-test mybox); R-07 08d_pseudotime (Δτ guide mybox); R-08 11_conclusion (design table mybox); R-09 app_schemes_s1 (mode summary mybox). All inner content + \label{}s preserved. Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-042 | CLOSED | experiment+paper | DCCD比較実験 2026-03-28: experiments/dccd_comparison.py — O2/O4/CCD/DCCD, 3 ICs (square/triangle/tanh), N=256, CFL=0.4, T=1. Key: DCCD TV/TV_exact=1.58 vs O2=9.20 (矩形波); CCD L2=2.57e-5 (tanh, 6次精度確認). 付録D.6 (appendix_numerics_schemes_s6.tex) 追加. 148pp, 0 errors. |
 
 ## Format reference
