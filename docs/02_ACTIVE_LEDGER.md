@@ -11,7 +11,7 @@
 | phase | BOOTSTRAP_COMPLETE |
 | branch | dev2 |
 | last_decision | CHK-031 CLOSED 2026-03-28: PaperCorrector §10b+§08b — 4 fixes applied (M-A Dissipative CCD O(h^5)→O(ε_d h²) in 10b table:321, text:339, text:343; M-B 08b min() argument rewritten O(h^5)→O(ε_d h²), O(h^4)→O(ε_d h)); compile clean 142pp |
-| next_action | CHK-032 CLOSED — 全指摘処理完了; Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark (§10b) |
+| next_action | CHK-034 CLOSED — PaperReviewer full audit pass 2 (2026-03-28): 0 FATAL, 0 MAJOR, 1 MINOR (02b_csf:222 CSF平衡条件論理根拠注記). Priority 3: run StationaryDropletBenchmark + ZalesakDiskBenchmark. |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -67,6 +67,8 @@
 | CHK-030 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (appendix audit): [M-A] appendix_numerics_solver_s2.tex a₂=3/2→3; 12sin²→24sin²; Λ_max=4.8→9.6. Compile: 142pp. |
 | CHK-031 | CLOSED | fix | PaperCorrector 4 fixes 2026-03-28 (full re-audit): [M-A] 10b_benchmarks.tex:321,339,343 Dissipative CCD O(h^5)→O(ε_d h²); [M-B] 08b_ccd_poisson.tex:314–317 Balanced-Force min() argument rewritten. Compile: 142pp, 0 errors, 0 warnings. |
 | CHK-032 | CLOSED | review | PaperReviewer full audit 2026-03-28: 3 FATAL all REVIEWER_ERROR; 8 MAJOR: 4 REVIEWER_ERROR + 4 LOGICAL_GAP fixed; 10 MINOR: 5 REVIEWER_ERROR + 5 LOGICAL_GAP fixed (00_abstract:18 DCCD用途追記; 03b:62 O(e^-15)→実質ゼロ; 04b_bc:205 D_0記号除去; 05_advection:229 O(h^6/h)説明追加; 09_algo:56 O(Δt)→厳密値; 11_conc:114 O(εd h²)導出注記). Compile: 142pp, 0 errors, 0 warnings. |
+| CHK-033 | CLOSED | review | PaperReviewer full audit 2026-03-28: 0 FATAL; 3 MAJOR 全件REVIEWER_ERROR (M-1: app:cls_fixed_point ラベル+参照は存在; M-2: CLS移流はε_d一定でspace-varying懸念不適用; M-3: ε_d^(i)は局所乗数でcomposition error不発生); 6 MINOR — 未処理(重要度低). 修正ゼロ件. |
+| CHK-034 | CLOSED | review+fix | PaperReviewer full audit pass 2 + PaperCorrector 2026-03-28: 0 FATAL; 0 MAJOR; 1 MINOR fixed (02b_csf:225 — 平衡条件 ∇p=σκ∇ψ がu=0でのNS方程式から直接導かれることを1行追記). Compile: 142pp, 0 errors, 0 warnings. |
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
