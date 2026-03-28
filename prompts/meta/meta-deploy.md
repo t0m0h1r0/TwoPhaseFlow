@@ -227,7 +227,7 @@ Do not proceed to Stage 6 if any agent FAIL is unresolved.
 Generate `prompts/README.md` from the current meta state.
 This file documents the 3-layer architecture for human operators and future deployments.
 
-**Content to generate (8 sections, in this order):**
+**Content to generate (9 sections, in this order):**
 
 ### Section 1 — Architecture Principle
 3-layer diagram:
@@ -262,7 +262,19 @@ Table derived from meta-workflow.md §GIT: Phase | Trigger | Auto-action (commit
 Table: Domain | Agent | Role (one line). 16 agents total, in domain order.
 Derive role descriptions from meta-tasks.md PURPOSE fields.
 
-### Section 8 — Regeneration Instructions
+### Section 8 — Agent Interaction Diagram
+Mermaid flowchart (`flowchart TD`) showing all 16 agents, domain subgraphs, and handoff edges.
+
+Required elements:
+- Four subgraphs: Code Domain, Paper Domain, Prompt Domain (one per domain branch)
+- ResearchArchitect shown as top-level router with edges to each orchestrator + ConsistencyAuditor
+- ConsistencyAuditor shown outside subgraphs as the shared domain gate
+- `main` shown as terminal node (cylinder shape)
+- All major handoffs as labeled edges (PASS/FAIL, PAPER_ERROR/CODE_ERROR, gate, merge)
+- Dashed edges (`-.->`) for merge-to-main and optional flows
+- Label each subgraph with its branch name
+
+### Section 9 — Regeneration Instructions
 - To rebuild agents/: `Execute EnvMetaBootstrapper Using prompts/meta/meta-deploy.md Target [env]`
 - To update rules: edit docs/00_GLOBAL_RULES.md directly (authoritative — not generated).
 - To update project state: append to docs/01_PROJECT_MAP.md or docs/02_ACTIVE_LEDGER.md.
@@ -287,7 +299,7 @@ Pass only if ALL are true:
 4. Environment optimization appropriate for target
 5. No old filenames (ACTIVE_STATE.md, CHECKLIST.md, ARCHITECTURE.md, etc.) in any generated file
 6. ID preservation: no CHK/ASM/KL entries renumbered or deleted
-7. README.md matches 8-section structure
+7. README.md matches 9-section structure (includes Mermaid agent interaction diagram)
 8. Deployment is simple: one bootstrap file, one command
 
 If any check fails: mark FAIL, list issues, do not silently repair.
