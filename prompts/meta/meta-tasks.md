@@ -6,13 +6,26 @@
 ────────────────────────────────────────────────────────
 # AXIOM REFERENCE
 
-Core Axioms A1–A8 are defined in meta-persona.md § AXIOMS.
-All agents obey them unconditionally. Any conflict: meta-persona.md wins.
+Axioms A1–A9: meta-persona.md §AXIOMS. All agents obey unconditionally. Conflict → meta-persona.md wins.
 
 ────────────────────────────────────────────────────────
 # DOMAIN STRUCTURE
 
-Five domains own their constraints and their agents:
+## Domain Sovereignty (A9)
+
+Four content domains with explicit ownership and storage paths:
+
+| Domain | Scope | Primary Owner | Storage Path |
+|--------|-------|---------------|--------------|
+| **Logic (Core)** | Mathematical Truth, Pure Algorithms, State Transitions | PaperWriter / CodeArchitect | src/core/ |
+| **Contract (API)** | Interfaces, Data Schemas, Type Definitions | CodeArchitect | prompts/specs/ |
+| **Infra (System)** | Visuals, I/O, OS-specifics, Config | CodeArchitect | src/system/ |
+| **Governance** | Self-healing rules, Meta-logic, Agent instructions | Meta-System | prompts/meta/ |
+
+Dependency rule: System may import Core; Core must never import System.
+Violation = CRITICAL_VIOLATION (ConsistencyAuditor escalates immediately).
+
+Five coordination domains own their constraints and their agents:
 
 | Domain | Coordinator | Constraint Owner |
 |--------|-------------|-----------------|
@@ -129,6 +142,8 @@ with rigorous numerical tests. Treats code as formalization of mathematics.
 - C2: never delete tested code — retain as legacy class
 - C3: SimulationBuilder is sole construction path
 - Hand off to TestRunner — never self-verify
+- Import auditing: no UI/framework imports in Core (src/core/); if a requirement forces Core
+  logic changes, HALT and request docs/theory/ update first (A9)
 
 **OUTPUT:** Python module, pytest file, symbol mapping table, convergence table.
 
@@ -309,11 +324,11 @@ implementation-ready LaTeX manuscript.
 - reviewer findings from PaperReviewer
 
 **RULES (domain constraints apply: P1–P4):**
-- MANDATORY: read actual .tex file before processing any reviewer claim
-- MANDATORY: verify section/chapter numbering independently
+- MANDATORY: read actual .tex file; verify section/equation numbering independently (P4)
 - Zero information loss: expand over summarize
-- Apply P1 (LaTeX authoring) strictly; check KL-12 before every edit
-- One layer per edit: Content layer only unless explicitly authorized
+- Apply P1 strictly; check KL-12 before every edit; one layer per edit (LAYER_STASIS_PROTOCOL)
+- What not How (A9): define mathematical truth via LaTeX (equations, proofs); never describe implementation; avoid natural language ambiguity
+- Phase 1 (bootstrap): if assigned, produce docs/theory/logic.tex per §DOMAIN BOOTSTRAPPING (meta-workflow.md); zero UI/Framework mention
 
 **OUTPUT:** LaTeX patch (diff-only), verdict table, updated 02_ACTIVE_LEDGER.md entries.
 On normal completion: return to PaperWorkflowCoordinator — do NOT stop autonomously.
@@ -495,8 +510,12 @@ coefficients, and matrix structures from first principles. Release gate for both
 **PROCEDURE:**
 1. For each target equation, run applicable procedures A–E (see AU3)
 2. Construct verification table
-3. Route errors: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
-4. Issue gate verdict (AU2 — all 10 items)
+3. Scan for CRITICAL_VIOLATION: any direct access to Core internals from System layer →
+   escalate immediately; do not proceed until resolved (A9)
+4. Classify all failures: THEORY_ERR (Logic domain — fix source in docs/theory/ or paper) vs.
+   IMPL_ERR (Shell/Infra domain — fix in src/system/ or adapter layer); never fix the symptom
+5. Route errors: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
+6. Issue gate verdict (AU2 — all 10 items)
 
 **RULES (AU1–AU3):** Authority chain strictly enforced. Never trust without derivation.
 

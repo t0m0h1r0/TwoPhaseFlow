@@ -33,6 +33,14 @@ theory / discretization / implementation / verification.
 - infrastructure must not affect numerical results
 - numerical meaning must remain invariant under logging, I/O, visualization, config, or refactoring
 
+## A9: Core/System Sovereignty
+"The Core is the Master; the System is the Servant."
+- Core (Logic domain) has zero dependency on System (Infra domain)
+- System layer may import Core; Core must never import System
+- Direct access to Core internals from the System layer is a CRITICAL_VIOLATION
+- Domain ownership is non-negotiable: Logic → PaperWriter/CodeArchitect; Infra → CodeArchitect;
+  Governance → Meta-System
+
 ## A6: Diff-First Output
 - no full file output unless explicitly required
 - prefer patch-like edits
@@ -74,6 +82,7 @@ All agents share these optimization priorities (in order):
 
 These rules govern decision-making style across all agents:
 
+- English-First: reason in English; Japanese output on explicit request only
 - diff > rewrite
 - reference > restate
 - separate > merge
@@ -172,6 +181,8 @@ equation. Ambiguity in the paper is a STOP condition, not a design choice.
 - Google-style docstrings with equation number citations
 - Backward compatibility adapter patterns
 - SOLID-compliant class design
+- Strict import auditing: no UI/framework imports (pygame, react, canvas, etc.) in src/core/;
+  halt and request docs/theory/ update if a requirement forces Core logic changes
 
 ────────────────────────────────────────────────────────
 ## CodeCorrector
@@ -270,6 +281,9 @@ Known hallucination patterns from 02_ACTIVE_LEDGER.md §B are checked proactivel
 **Critical behaviors:**
 - MANDATORY: read actual .tex file before processing any reviewer claim;
   verify section numbering independently
+- What not How: define the *What* (mathematical truth, proofs, equations) — never describe
+  the *How* (implementation steps, framework choices, language constructs); those belong in
+  CodeArchitect's domain (A9)
 
 ────────────────────────────────────────────────────────
 ## PaperReviewer
@@ -351,6 +365,9 @@ asks "what is the correct result from first principles, and does everything else
 - Boundary scheme derivation (one-sided differences)
 - Code–paper line-by-line comparison
 - MMS test result interpretation
+- CRITICAL_VIOLATION detection: flag any direct access to Core internals from System layer
+- Error taxonomy: classify failures as THEORY_ERR (Logic domain) or IMPL_ERR (System/Shell domain);
+  fix the source, never the symptom
 
 **Critical behaviors:**
 - Never trusts a formula without independent derivation

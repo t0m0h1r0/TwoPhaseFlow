@@ -39,10 +39,11 @@ Execute sequentially. Do not skip stages.
 ## Stage 1: Parse
 
 Read all three meta files. Extract:
-- Core axioms A1–A8 (intent from meta-persona.md)
-- 5 domain definitions and constraint pointers (meta-tasks.md)
-- P-E-V-A loop, Git governance, state machine (meta-workflow.md)
+- Core axioms A1–A9 (intent from meta-persona.md; A9 = Core/System Sovereignty)
+- 4-domain sovereignty table + 5 coordination domains (meta-tasks.md)
+- P-E-V-A loop, Git governance, state machine, 4-phase bootstrap sequence (meta-workflow.md)
 - Per-agent task specs: PURPOSE, INPUTS, PROCEDURE, OUTPUT, STOP
+- P9: THEORY_ERR / IMPL_ERR taxonomy; M1/M2 knowledge management policies
 
 ## Stage 2: Initialize docs/ (3-Layer Architecture)
 
@@ -186,7 +187,7 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
 2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
    Every agent must include BOTH lines below its title heading:
-   - **All agents (mandatory):** `(All axioms A1–A8 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
+   - **All agents (mandatory):** `(All axioms A1–A9 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
    - **Domain citation (mandatory per domain):**
      - Code agents: `(docs/00_GLOBAL_RULES.md §C1–C6 apply)`
      - Paper agents: `(docs/00_GLOBAL_RULES.md §P1–P4, KL-12 apply)`
@@ -210,7 +211,7 @@ Run the 8-item Q3 audit checklist against every generated agent prompt:
 
 | # | Check | Pass criterion |
 |---|-------|---------------|
-| 1 | Core axioms A1–A8 present | All 8 referenced; none weakened |
+| 1 | Core axioms A1–A9 present | All 9 referenced; none weakened |
 | 2 | Solver / infra separation | No solver logic mixed with I/O, logging, config |
 | 3 | Layer isolation | No cross-layer edits without authorization |
 | 4 | External memory discipline | All state refs docs/ files by ID; no old filenames |
@@ -218,6 +219,7 @@ Run the 8-item Q3 audit checklist against every generated agent prompt:
 | 6 | Standard template format | PURPOSE / INPUTS / RULES (or CONSTRAINTS) / PROCEDURE / OUTPUT / STOP |
 | 7 | Environment optimization | Appropriate for target |
 | 8 | Backward compatibility | No semantic removal without deprecation note |
+| 9 | Core/System sovereignty (A9) | CodeArchitect prompt includes import auditing mandate; ConsistencyAuditor includes CRITICAL_VIOLATION detection + THEORY_ERR/IMPL_ERR taxonomy |
 
 FAIL on any item → mark FAIL, list issues, do not silently repair.
 Do not proceed to Stage 6 if any agent FAIL is unresolved.
@@ -293,7 +295,7 @@ Required elements:
 # VALIDATION CHECKLIST
 
 Pass only if ALL are true:
-1. A1–A8 preserved in every agent prompt (none weakened)
+1. A1–A9 preserved in every agent prompt (none weakened)
 2. Stop conditions present and unambiguous in every prompt
 3. All docs/ §sections present (00: §A §C §P §Q §AU §GIT §P-E-V-A; 01: §1–§10; 02: all §sections)
 4. Environment optimization appropriate for target
@@ -340,7 +342,7 @@ Stop immediately if:
 ────────────────────────────────────────────────────────
 # CORE RULES
 
-All axioms A1–A8 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
+All axioms A1–A9 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
 Validation required before Stage 7 emit.
 If any axiom conflicts with a requested optimization: STOP and report the conflict.
 Prefer smallest viable deployment: one bootstrap file, meta files as canonical source,
