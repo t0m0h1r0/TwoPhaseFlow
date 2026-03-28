@@ -32,7 +32,7 @@ ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量
 $\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがあり，ALE 補正なしの格子更新（Mode 2）は実質的に $O(\Delta t)$ 精度（1次）となりうる．
 本稿の実装では ALE 補正を省略しており（§\ref{app:grid_ale} タイトル参照），上昇気泡ベンチマーク（§\ref{sec:bench_bubble}）では時間刻み精度の確認を格子収束テストとあわせて実施することを推奨する．
 
-\begin{tcolorbox}[warnbox, title={各モードの精度と適用範囲の整理}]
+\begin{tcolorbox}[mybox, title={各モードの精度と適用範囲の整理}]
 \textbf{Mode 1（時間固定格子，本稿の主設計）：}
 格子速度 $\bm{v}_\text{mesh} = 0$ として格子を更新しない．ALE 誤差はゼロであり，全体時間精度 $O(\Delta t^2)$ が保持される（§\ref{sec:time_accuracy_table}）．
 ただし，格子は初期水準集合値 $\phi^{(0)}$ から生成されるため，界面が初期精細化領域から大きく離れる問題（例：上昇気泡ベンチマーク，§\ref{sec:bench_bubble}）では経時的に空間解像度が失われる．
