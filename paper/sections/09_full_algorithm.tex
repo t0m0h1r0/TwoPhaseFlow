@@ -53,7 +53,7 @@ NS 対流項は CCD（$D^{(1)}$）+ AB2（2次精度）で陽的に処理し（$
 CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Delta t^3)$）を使う（§\ref{sec:advection_motivation}）．
 圧力項は CCD-PPE（$O(h^6)$）を Projection 法で求解する（第\ref{sec:pressure}章）．
 粘性項は CCD + Crank--Nicolson で半陰的に扱う（第\ref{sec:CCD}章）．
-表面張力項は時刻 $n+1$ の $\kappa^{n+1}, \psi^{n+1}$ から CCD で計算した体積力を Predictor 右辺に\textbf{陽的}に加算する（$\mathcal{O}(\Delta t)$；CLS 移流 Step~3・曲率計算 Step~4 完了後に既知；第\ref{sec:governing}章）．}
+表面張力項は時刻 $n+1$ の $\kappa^{n+1}, \psi^{n+1}$ から CCD で計算した体積力を Predictor 右辺に\textbf{陽的}に加算する（時刻 $n+1$ の厳密値を使用；全体 $\mathcal{O}(\Delta t^2)$ 精度と整合；CLS 移流 Step~3・曲率計算 Step~4 完了後に既知；第\ref{sec:governing}章）．}
 \label{fig:ns_solvers}
 \end{figure}
 
