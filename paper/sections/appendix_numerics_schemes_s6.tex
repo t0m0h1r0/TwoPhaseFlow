@@ -10,7 +10,7 @@
 \label{app:dccd_comparison}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本付録は，本稿主実装として採用した Dissipative CCD（DCCD; §\ref{sec:dissipative_ccd}）と，
+本付録は，本稿主実装として採用した Dissipative CCD（DCCD; §~\ref{sec:dissipative_ccd}）と，
 代替スキームである標準 O2・O4 中心差分，非散逸 CCD，
 および参照 ENO 系スキームとして WENO5（付録~\ref{app:weno5}）の性能を
 1次元線形移流問題で定量的に比較した数値実験の記録である．
@@ -42,8 +42,8 @@ $T = 1$（ちょうど 1 周期）で厳密解は初期条件と一致する：$
         $(\partial u / \partial x)_i \approx (u_{i+1} - u_{i-1}) / (2h)$
   \item \textbf{O4}：4 次精度中心差分
         $(\partial u / \partial x)_i \approx (-u_{i+2} + 8u_{i+1} - 8u_{i-1} + u_{i-2}) / (12h)$
-  \item \textbf{CCD}：6 次精度結合コンパクト差分（§\ref{sec:CCD}，周期 BC）
-  \item \textbf{DCCD}：CCD + 10 次選択的フィルタ（本稿採用スキーム；§\ref{sec:dissipative_ccd}）
+  \item \textbf{CCD}：6 次精度結合コンパクト差分（§~\ref{sec:CCD}，周期 BC）
+  \item \textbf{DCCD}：CCD + 10 次選択的フィルタ（本稿採用スキーム；§~\ref{sec:dissipative_ccd}）
   \item \textbf{WENO5}：5 次精度 Weighted ENO + 大域 Lax--Friedrichs フラックス分割
         （付録~\ref{app:weno5} の定式化；TVD 的散逸の参照スキーム）
 \end{enumerate}
@@ -62,7 +62,7 @@ DCCD では各 RK4 ステップ後に下記フィルタを適用する：
   \qquad \alpha_f = 0.4,
   \label{eq:d10_filter}
 \end{equation}
-係数 $d_k = (-1)^k \binom{10}{5-k} / 2^{10}$（11 点 2 項分布差分），$\sum_k d_k = 0$．
+係数 $d_k = (-1)^{k+1} \binom{10}{5-k} / 2^{10}$（11 点 2 項分布差分），$\sum_k d_k = 0$．
 この係数列は波数空間でのフィルタ固有値
 \begin{equation}
   \hat{d}(\xi) = \sum_{k=-5}^{5} d_k\, e^{ik\xi}
@@ -71,7 +71,7 @@ DCCD では各 RK4 ステップ後に下記フィルタを適用する：
 が $\xi \to 0$ でゼロ（低波数無影響），$\xi = \pi$（ナイキスト）で $-1$（最大散逸）
 となるよう設計されている．したがってフィルタ伝達関数 $1 + \alpha_f \hat{d}(\xi)$ は
 $[1-\alpha_f,\, 1] = [0.6,\, 1]$ の範囲に収まり，各ステップでナイキスト振幅を
-係数 $0.6$ に縮退させる（640 ステップ後：$0.6^{640} \approx 10^{-224}$，実質完全除去）．
+係数 $0.6$ に縮退させる（640 ステップ後：$0.6^{640} \approx 10^{-142}$，実質完全除去）．
 
 \begin{tcolorbox}[warnbox, title={フィルタ符号の注意}]
 式~\eqref{eq:d10_filter} は $u^* = u + \alpha_f D_{10}(u)$ の形（加算）であることに注意する．
@@ -273,6 +273,6 @@ WENO5 は $9.66 \times 10^{-4}$ と両者より約 38 倍（1.6 桁）劣り，5
         CLS プロファイルは界面近傍で急峻（tanh 状）かつ
         移流方向に不連続性を含み得るため，
         DCCD は $L^2$ 精度と TV 保持の両面で最も適切なスキームである．
-        本稿主実装としての採用を数値的に支持する（§\ref{sec:advection_motivation}）．
+        本稿主実装としての採用を数値的に支持する（§~\ref{sec:advection_motivation}）．
 \end{itemize}
 \end{tcolorbox}
