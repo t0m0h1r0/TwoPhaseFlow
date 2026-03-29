@@ -1,10 +1,13 @@
 % !TeX program = xelatex
 \documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
 \usepackage{xeCJK}
+\xeCJKDeclareCharClass{CJK}{"203B}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{tabularx}
+\renewcommand\tabularxcolumn[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{caption}
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
@@ -16,7 +19,7 @@
 
 
 
-\geometry{a4paper, margin=2.5cm}
+\geometry{reset, margin=2.5cm}
 
 \title{高精度界面追跡法における寄生流れの抑制と静止液滴シミュレーションの確立}
 \author{}
@@ -34,8 +37,7 @@
 \section*{2. 数値計算仕様（基盤系）}
 本シミュレーションで採用する「良さげな系」の具体的仕様は以下の通りとする。
 
-\begin{center}
-\begin{tabular}{|l|l|l|l|}
+\noindent\begin{tabularx}{\linewidth}{|l|X|X|l|}
 \hline
 \textbf{要素技術} & \textbf{仕様} & \textbf{手法} & \textbf{備考} \\
 \hline
@@ -46,8 +48,7 @@
 時間進行 & Fractional Step法 (Projection法) & 3rd-order Runge-Kutta 等 &  \\
 格子配置 & Collocated Grid + Rhie-Chow Coupling &  & CCD-PPE（圧力ポアソン）との親和性 \\
 \hline
-\end{tabular}
-\end{center}
+\end{tabularx}
 
 \section*{3. 段階的推進ステップ（実験・調整手順）}
 

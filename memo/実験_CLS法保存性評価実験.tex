@@ -1,10 +1,12 @@
 % !TeX program = xelatex
 \documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
 \usepackage{xeCJK}
+\xeCJKDeclareCharClass{CJK}{"203B}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
@@ -15,7 +17,7 @@
 \setmainfont{Times New Roman}
 
 
-\geometry{a4paper, margin=2.5cm}
+\geometry{reset, margin=2.5cm}
 
 \title{LS vs CLS 保存性比較数値実験 仕様書（動的非一様格子・DCCD対応版）}
 \author{}
@@ -63,7 +65,7 @@ $$\psi(x, t) = \frac{1}{2} \left[ 1 + \tanh\left( \frac{\phi(x, t)}{2\epsilon} \
 
 \section*{3. 数値計算条件}
 
-\begin{tabular}{|l|l|l|}
+\noindent\begin{tabularx}{\linewidth}{|l|X|X|}
 \hline
 項目 & 設定値 & 備考 \\
 \hline
@@ -73,7 +75,7 @@ $$\psi(x, t) = \frac{1}{2} \left[ 1 + \tanh\left( \frac{\phi(x, t)}{2\epsilon} \
 再初期化 & CLS 圧縮・拡散ステップ & 格子更新後のプロファイル整形 \\
 時間積分 & TVD-RK3 &  \\
 \hline
-\end{tabular}
+\end{tabularx}
 
 \section*{4. 実験手順}
 \begin{enumerate}
