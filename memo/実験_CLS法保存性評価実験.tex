@@ -1,7 +1,6 @@
 % !TeX program = xelatex
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage]{article}
 \usepackage{xeCJK}
-\xeCJKDeclareCharClass{CJK}{"203B}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
@@ -15,7 +14,7 @@
 
 % -- Fonts --
 \setmainfont{Times New Roman}
-
+\setCJKmainfont{Hiragino Mincho ProN}
 
 \geometry{reset, margin=2.5cm}
 
@@ -34,12 +33,9 @@
 
 \subsection*{1.1 支配方程式（1次元移流方程式と格子速度）}
 格子が時間的に変化するため、計算面 $\xi$ における移流方程式は格子速度 $u_g = \frac{\partial x}{\partial t}$ を考慮した対偶形式となる：
-$$\frac{\partial \psi}{\partial t} + (u - u_g) \frac{\partial \xi}{\partial x} \frac{\partial \psi}{\partial \xi} = 0$$
-ここで、$\frac{\partial \xi}{\partial x}$ は CCD 法を用いて算出される時空間メトリクスである。
+$$\frac{\partial \psi}{\partial t} + (u - u_g) \frac{\partial \xi}{\partial x} \frac{\partial \psi}{\partial \xi} = 0$$ここで、$\frac{\partial \xi}{\partial x}$ は CCD 法を用いて算出される時空間メトリクスである。
 
-\subsection*{1.2 滑らかなヘヴィサイド関数と界面幅}
-$$\psi(x, t) = \frac{1}{2} \left[ 1 + \tanh\left( \frac{\phi(x, t)}{2\epsilon} \right) \right]$$
-動的格子においては、局所的な最小格子間隔 $h_{\min}$ に基づいて $\epsilon$ を一定に保つか、あるいは格子解像度に合わせて $\epsilon$ をスケールさせる。
+\subsection*{1.2 滑らかなヘヴィサイド関数と界面幅}$$\psi(x, t) = \frac{1}{2} \left[ 1 + \tanh\left( \frac{\phi(x, t)}{2\epsilon} \right) \right]$$動的格子においては、局所的な最小格子間隔 $h_{\min}$ に基づいて $\epsilon$ を一定に保つか、あるいは格子解像度に合わせて $\epsilon$ をスケールさせる。
 
 \subsection*{1.3 空間離散化}
 \begin{itemize}
@@ -87,9 +83,8 @@ $$\psi(x, t) = \frac{1}{2} \left[ 1 + \tanh\left( \frac{\phi(x, t)}{2\epsilon} \
 
 \section*{5. 評価指標}
 
-\subsection*{5.1 質量保存誤差 ($E_{\text{mass}}$)}
-$$E_{\text{mass}}(t) = \frac{|\int \psi(x, t) \sqrt{g} d\xi - M_0|}{M_0}$$
-※ $\sqrt{g}$ は格子ヤコビアン。格子リフレッシュ時の補間誤差がここに蓄積される。
+\subsection*{5.1 質量保存誤差 ($E_{\text{mass}}$)}$$E_{\text{mass}}(t) = \frac{|\int \psi(x, t) \sqrt{g} d\xi - M_0|}{M_0}$$
+$\sqrt{g}$ は格子ヤコビアン。格子リフレッシュ時の補間誤差がここに蓄積される。
 
 \subsection*{5.2 形状保持特性}
 界面の勾配（厚み $\epsilon$）が、格子リフレッシュを繰り返す過程で拡散（増大）または急峻化（減少）していないかを評価。

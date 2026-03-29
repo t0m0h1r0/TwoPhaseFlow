@@ -1,10 +1,11 @@
 % !TeX program = xelatex
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage]{article}
 \usepackage{xeCJK}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
@@ -13,8 +14,7 @@
 
 % -- Fonts --
 \setmainfont{Times New Roman}
-
-
+\setCJKmainfont{Hiragino Mincho ProN}
 
 \geometry{reset, margin=2.5cm}
 
@@ -32,7 +32,6 @@
 \section*{2. 導入の利点と基本的アプローチ}
 表面張力の完全な陰解法は、曲率 $\kappa$ の強い非線形性のため困難である。そのため、Laplace-Beltrami演算子を用いた線形化による半陰解法が現実的である。界面位置の微小変位 $\mathbf{x}_s^{n+1} \approx \mathbf{x}_s^n + \mathbf{u}^{n+1} \Delta t$ と、微分幾何学的関係 $\kappa \mathbf{n} = \Delta_s \mathbf{x}_s$ （$\Delta_s$ は界面上のLaplace-Beltrami作用素）を利用し、次時刻の表面張力を以下のように線形化して運動量方程式に組み込む。
 $$(I - \frac{\sigma \Delta t^2}{\rho} \delta_s^n \Delta_s^n) \mathbf{u}^{n+1} = \mathbf{u}^* + \frac{\Delta t}{\rho} (\sigma \kappa^n \mathbf{n}^n \delta_s^n)$$
-
 \subsection*{利点}
 \begin{itemize}
     \item 時間刻み幅制約の緩和: 毛管波による厳しい $\Delta t$ 制約を回避または緩和でき、高Weber数や微細スケールの問題への適応力が向上する。
@@ -55,13 +54,10 @@ $$(I - \frac{\sigma \Delta t^2}{\rho} \delta_s^n \Delta_s^n) \mathbf{u}^{n+1} = 
 上述のリスクを回避し、線形化誤差を段階的に排除するための解決策を提案する。
 
 \subsection*{4.1 インクリメンタル形式（Delta-form）による初期平衡の確保}
-表面張力項を「既知の明示項」と「未知の陰的修正項」に分離する。
-$$\mathbf{f}_{\sigma}^{n+1} = \mathbf{f}_{\sigma}^{n} + \Delta t \mathcal{L}_{\sigma}(\mathbf{u}^{n+1})$$
-明示項 $\mathbf{f}_{\sigma}^{n}$ の評価には、CCD-PPEと同一の演算子を厳密に適用する。これにより、静止状態では修正項が消え、Balanced-Force条件が維持される。
+表面張力項を「既知の明示項」と「未知の陰的修正項」に分離する。$$\mathbf{f}_{\sigma}^{n+1} = \mathbf{f}_{\sigma}^{n} + \Delta t \mathcal{L}_{\sigma}(\mathbf{u}^{n+1})$$明示項 $\mathbf{f}_{\sigma}^{n}$ の評価には、CCD-PPEと同一の演算子を厳密に適用する。これにより、静止状態では修正項が消え、Balanced-Force条件が維持される。
 
 \subsection*{4.2 仮想時間反復（Inner Iterations）による修正項の消去}
-線形化誤差を排除するため、1つの物理ステップ内で仮想時間 $\tau$ に関する反復計算を行う。
-$$\frac{\mathbf{u}^{n+1, k+1} - \mathbf{u}^{n+1, k}}{\Delta \tau} + \mathcal{R}(\mathbf{u}^{n+1, k+1}) = 0$$
+線形化誤差を排除するため、1つの物理ステップ内で仮想時間 $\tau$ に関する反復計算を行う。$$\frac{\mathbf{u}^{n+1, k+1} - \mathbf{u}^{n+1, k}}{\Delta \tau} + \mathcal{R}(\mathbf{u}^{n+1, k+1}) = 0$$
 反復 $k$ ごとに最新の界面位置に基づき曲率 $\kappa$ と CCD 微分行列を再計算することで、収束時には\textbf{線形化近似に頼らない「真の $n+1$ ステップの平衡状態」}を得る。これにより、Balanced-Force条件と界面更新の整合性が同時に達成される。
 
 \subsection*{4.3 CCD高次補間とNarrow-band正則化}

@@ -1,11 +1,11 @@
 % !TeX program = xelatex
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage]{article}
 \usepackage{xeCJK}
-\xeCJKDeclareCharClass{CJK}{"203B}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
@@ -14,6 +14,7 @@
 
 % -- Fonts --
 \setmainfont{Times New Roman}
+\setCJKmainfont{Hiragino Mincho ProN}
 
 \geometry{reset, margin=2.5cm}
 
@@ -31,7 +32,7 @@
 \section*{2. 実装の核：CCD演算子の一貫性}
 すべての実験において、空間離散化は以下のCCD基本式をベースとする。未知数: 各格子点 $i$ における値 $\phi_i$、1階微分 $(\phi_x)_i$、2階微分 $(\phi_{xx})_i$。関係式: エルミート補完に基づくコンパクト形式。
 $$\alpha (\phi_x)_{i-1} + (\phi_x)_i + \alpha (\phi_x)_{i+1} = \frac{a}{h}(\phi_{i+1} - \phi_{i-1}) + \dots$$
-（※境界条件を含め、すべて $O(h^6)$ 精度で一貫させる）
+（境界条件を含め、すべて $O(h^6)$ 精度で一貫させる）
 
 \section*{3. 実験仕様 (Experimental Specifications)}
 

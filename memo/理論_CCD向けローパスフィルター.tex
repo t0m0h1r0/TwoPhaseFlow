@@ -1,10 +1,11 @@
 % !TeX program = xelatex
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage]{article}
 \usepackage{xeCJK}
 \usepackage{amsmath, amssymb}
 \usepackage{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{caption}
 \usepackage{silence}
 \WarningFilter{caption}{Unknown document class}
@@ -13,8 +14,7 @@
 
 % -- Fonts --
 \setmainfont{Times New Roman}
-
-
+\setCJKmainfont{Hiragino Mincho ProN}
 
 \geometry{reset, margin=2.5cm}
 
@@ -34,19 +34,13 @@
 
 \section*{2. フラックス形式による完全保存フィルター (Flux-form Filtering)}
 保存則を満たす最も確実な方法は、変数を直接平滑化するのではなく、有限体積法的な「フラックスの出入り」の枠組みの中でフィルター処理を完結させることである。離散化された保存則は次式で表される：
-$$u_i^{n+1} = u_i^n - \frac{\Delta t}{\Delta x} \left( F_{i+1/2} - F_{i-1/2} \right)$$
-ここで、数値フラックス $F_{i+1/2}$ に対してローパス効果を持つ項（人工粘性項など）を組み込む。
-$$F_{i+1/2} = \tilde{F}_{i+1/2}^{CCD} - \alpha (u_{i+1} - u_i)$$
-第1項はCCD等の高次精度スキームによって評価された高分解能フラックスであり、第2項がローパスフィルターとして機能する散逸項である。係数 $\alpha$ を適切に設計（例：高波数の検出器と連動させる）することで、保存則を厳密に満たしながら不要な振動のみを除去可能である。
+$$u_i^{n+1} = u_i^n - \frac{\Delta t}{\Delta x} \left( F_{i+1/2} - F_{i-1/2} \right)$$ここで、数値フラックス $F_{i+1/2}$ に対してローパス効果を持つ項（人工粘性項など）を組み込む。$$F_{i+1/2} = \tilde{F}_{i+1/2}^{CCD} - \alpha (u_{i+1} - u_i)$$第1項はCCD等の高次精度スキームによって評価された高分解能フラックスであり、第2項がローパスフィルターとして機能する散逸項である。係数 $\alpha$ を適切に設計（例：高波数の検出器と連動させる）することで、保存則を厳密に満たしながら不要な振動のみを除去可能である。
 
 \section*{3. 暗黙的（コンパクト）フィルターの保存的適用}
-Lele (1992) に代表されるコンパクトフィルターは、CCDと同様のスペクトル解像度を持ち、特定の波数のみを鋭くカットオフできるため非常に優秀である。一般的なコンパクトフィルターの形式：
-$$\alpha \hat{f}_{i-1} + \hat{f}_i + \alpha \hat{f}_{i+1} = a f_i + \frac{b}{2}(f_{i+1} + f_{i-1}) + \dots$$
-これを状態変数 $u$ に直接適用すると保存則が破綻するため、本手法では計算されたセル境界フラックス $F_{i+1/2}$ に対してこのフィルター演算を適用する。得られたフィルター済みフラックス $\hat{F}_{i+1/2}$ を用いて変数を更新することで、高次精度なローパス効果と保存則の完全な両立が達成される。
+Lele (1992) に代表されるコンパクトフィルターは、CCDと同様のスペクトル解像度を持ち、特定の波数のみを鋭くカットオフできるため非常に優秀である。一般的なコンパクトフィルターの形式：$$\alpha \hat{f}_{i-1} + \hat{f}_i + \alpha \hat{f}_{i+1} = a f_i + \frac{b}{2}(f_{i+1} + f_{i-1}) + \dots$$これを状態変数 $u$ に直接適用すると保存則が破綻するため、本手法では計算されたセル境界フラックス $F_{i+1/2}$ に対してこのフィルター演算を適用する。得られたフィルター済みフラックス $\hat{F}_{i+1/2}$ を用いて変数を更新することで、高次精度なローパス効果と保存則の完全な両立が達成される。
 
 \section*{4. LES的アプローチ：物理的散逸モデルの導入}
-数値的なフィルター演算の代替として、ナビエ・ストークス方程式に物理的なモデル化を加えるLES（Large Eddy Simulation）的アプローチも、移流・二相流計算において本質的な解決策となる。移流項の計算において、Smagorinskyモデルのような渦粘性モデルを導入する：
-$$\nu_{eff} = (C_s \Delta)^2 |S|$$
+数値的なフィルター演算の代替として、ナビエ・ストークス方程式に物理的なモデル化を加えるLES（Large Eddy Simulation）的アプローチも、移流・二相流計算において本質的な解決策となる。移流項の計算において、Smagorinskyモデルのような渦粘性モデルを導入する：$$\nu_{eff} = (C_s \Delta)^2 |S|$$
 （ここで $C_s$ はモデル定数、$\Delta$ はフィルタ幅（格子幅）、$S$ はひずみ速度テンソルである）この手法は、流れの剪断が強い（高波数が生成されやすい）領域に対してのみ局所的かつ自然に散逸（ローパス効果）を与え、物理的な整合性と数値的安定性を同時に提供する。単なる数値フィルターよりも二相流の寄生流抑制に対して劇的な効果を示す場合が多い。
 
 \section*{5. 圧力方程式（非圧縮性条件）におけるフィルタリングの注意点}
