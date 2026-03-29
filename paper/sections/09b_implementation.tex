@@ -1,0 +1,87 @@
+% paper/sections/09b_implementation.tex
+\section{Rhie--Chow・Balanced-Force：実装整合性と検証手順}
+\label{sec:impl_collocate}
+
+第~\ref{sec:algorithm}章（完全アルゴリズムフロー）で示した時間積分ループでは，
+Rhie--Chow 補正と Balanced-Force 離散化が正しく協調していることが安定動作の前提となる．
+本章では，第~\ref{sec:collocate}章で導いた Rhie--Chow 補正（§\ref{sec:rhie_chow}）および
+Balanced-Force 離散化条件（§\ref{sec:balanced_force}）を本コードで実現するにあたっての
+実装上の整合性要件と，静止液滴テストによる検証手順を述べる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{コード実装との整合性：演算子の統一確認}
+\label{sec:impl_bf_consistency}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§\ref{sec:balanced_force} の議論より，
+式~\eqref{eq:bf_operator_mismatch} の離散演算子不整合をゼロにするには，
+圧力勾配・表面張力・速度補正の 3 箇所すべてに同一の $D^{(1)}_\mathrm{CCD}$ を用いなければならない．
+本稿のコードでは以下の対応関係で実装している：
+
+\begin{enumerate}
+  \item \texttt{SurfaceTensionTerm.compute()}:
+        $\bm{f}_\sigma = (\kappa/We)\,D^{(1)}_\mathrm{CCD}\psi$
+  \item \texttt{Predictor.compute()} IPC 項:
+        $-D^{(1)}_\mathrm{CCD} p^n$（前時刻圧力勾配）
+  \item \texttt{VelocityCorrector.correct()}:
+        $-({\Delta t}/{\rho})\,D^{(1)}_\mathrm{CCD}(\delta p)$（速度補正）
+\end{enumerate}
+
+これにより，式~\eqref{eq:bf_operator_mismatch} の不整合はゼロに設計されている．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Balanced-Force RC：実装状況}
+\label{sec:impl_bf_rc}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\texttt{rhie\_chow.py} の \texttt{face\_velocity\_divergence} は，
+式~\eqref{eq:rc-face}（圧力補正のみ，デフォルト）と
+式~\eqref{eq:rc-face-balanced}（BF-RC 拡張，オプション）の両形式を実装している．
+\texttt{kappa}，\texttt{psi}，\texttt{we} を引数として渡すと
+式~\eqref{eq:rc-face-balanced} が有効化される．
+定量的検証は \texttt{experiments/balanced\_force\_rc\_benchmark.py}
+（§\ref{sec:bench_droplet} 参照）で実施できる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Balanced-Force 実装の確認方法：静止液滴テスト}
+\label{sec:impl_bf_verify}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[algbox, title={静止液滴テスト：Balanced-Force の検証手順}]
+\begin{enumerate}
+  \item \textbf{初期条件：} 計算領域中央に半径 $R$ の円形液滴を置く．
+        速度 $\bm{u} = \bm{0}$，圧力は Young-Laplace 解
+        $p^0 = -\sigma\kappa_0 = \sigma/R$（液相内，$\kappa_0 = -1/R$），
+        $p^0 = 0$（気相）．
+
+  \item \textbf{時間発展：} 数十タイムステップ計算する．
+        Balanced-Force が正しく実装されていれば，速度は CSF モデル誤差が律速する
+        $O(\varepsilon^2) \approx O(h^2)$ レベルに留まる
+        （例：$N=64$ で $\|\bm{u}\|_{L^\infty} \lesssim 10^{-3}$〜$10^{-4}$ 程度）．
+        CSF が界面を有限厚さ $\varepsilon \sim h$ で近似する限り，
+        \textbf{モデル誤差 $O(h^2)$} が寄生流れの下限を決めるため，
+        機械精度への収束は物理的に不可能である（付録~\ref{app:balanced_force_taylor}）．
+
+  \item \textbf{収束確認：} 格子幅 $h$ を変えながら最大速度振幅
+        \[
+          U_{\mathrm{max}}(h) = \|\bm{u}\|_{L^\infty}
+        \]
+        を測定し，$U_{\mathrm{max}}(h) = O(h^q)$（$q \approx 2$）の収束を確認する．
+        CSF モデルの界面厚さ $\varepsilon \sim O(h)$ に起因するモデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+        が律速するため，Balanced-Force + CCD を正しく実装しても収束次数は $q \approx 2$ となる
+        （付録~\ref{app:balanced_force_taylor}，§3）．
+        Balanced-Force の効果は収束\textbf{次数}の改善ではなく，収束\textbf{係数}の大幅な低減
+        ——例えば $U_{\mathrm{max}}$ が $O(10^{-1})$〜$O(1)$（実装ミス）から
+        $O(10^{-3})$〜$O(10^{-4})$（正しい実装）へ——として現れる（§\ref{sec:bench_droplet} 参照）．
+
+  \item \textbf{失敗の兆候：} $U_{\mathrm{max}}$ が $O(1)$〜$O(10^{-2})$ 程度で収束しない場合，
+        以下を確認する：
+        \begin{itemize}
+          \item 圧力勾配と表面張力に同一の差分演算子を使っているか？
+          \item Rhie--Chow の密度係数と PPE の係数に同じ調和平均を使っているか？
+          \item 曲率計算と表面張力の計算タイミングが整合しているか？
+          \item 表面張力支配の問題（$We \ll 1$）では，式~\eqref{eq:rc-face-balanced} の
+                表面張力補正項を Rhie--Chow に追加しているか（§\ref{sec:rc_balanced_force} 参照）？
+        \end{itemize}
+\end{enumerate}
+\end{tcolorbox}
