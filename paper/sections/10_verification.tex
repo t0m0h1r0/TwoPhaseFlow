@@ -1,11 +1,11 @@
 % paper/sections/10_verification.tex
-\section{検証指標とベンチマーク}
+\section{数値検証とベンチマーク}
 \label{sec:verification}
 
-本章は，第\ref{sec:algorithm}章の実装を検証するための指標・手順・ベンチマーク設定を定義する
-\textbf{設計仕様}として位置づける．
-本稿は理論的設計と実装詳細の解説を主目的としており，
-実際の数値実験結果は今後の課題（§\ref{sec:future_work}）として扱う．
+本章は，第~\ref{sec:algorithm}章の実装を検証するための指標・手順・ベンチマーク設定と，
+実施済みのコンポーネント検証結果を示す．
+§\ref{sec:grid_convergence}--§\ref{sec:benchmarks} は目標値・設計仕様として位置づけ，
+実施済みのサブシステム単体実験結果は §\ref{sec:component_verification} に収める．
 
 数値計算の信頼性を確認するため，以下の指標と段階的ベンチマークを用いる．
 検証は「単純な設定で理論解と一致するか」を確認するものであり，

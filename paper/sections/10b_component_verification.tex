@@ -1,8 +1,9 @@
 % paper/sections/10b_component_verification.tex
 %
-% §10.3  コンポーネント検証結果（実施済み）
+% §10.3  コンポーネント検証結果（実施済み・仕様）
 %   §10.3.1: CLS 保存性評価（動的非一様格子）← 10b_cls_conservation.tex
 %   §10.3.2: CCD 仮想時間ソルバー精度検証    ← 10b_ccd_pseudotime_verification.tex
+%   §10.3.3: CCD-Poisson ソルバー単体検証    ← 10b_ppe_verification.tex
 
 \subsection{コンポーネント検証結果（実施済み）}
 \label{sec:component_verification}
@@ -18,3 +19,7 @@
 \subsubsection{仮想時間陰解法と CCD の精度検証}
 \label{app:ccd_pseudotime}
 \input{sections/10b_ccd_pseudotime_verification}
+
+\subsubsection{CCD-Poisson ソルバーの単体検証（Tests C-1, C-2, C-3）}
+\label{sec:ccd_poisson_verification}
+\input{sections/10b_ppe_verification}
