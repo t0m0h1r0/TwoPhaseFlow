@@ -1,0 +1,20 @@
+% paper/sections/10c_component_verification.tex
+%
+% §11.3  コンポーネント検証結果（実施済み）
+%   §11.3.1: CLS 保存性評価（動的非一様格子）← appendix_numerics_schemes_s8.tex
+%   §11.3.2: CCD 仮想時間ソルバー精度検証    ← appendix_numerics_schemes_s7.tex
+
+\subsection{コンポーネント検証結果（実施済み）}
+\label{sec:component_verification}
+
+以下に，各サブシステムの単体検証実験を示す．
+いずれも §\ref{sec:algorithm} の対応モジュールを独立に動かし，
+表~\ref{tab:verification} の検証項目と直接対応する定量確認を行ったものである．
+
+\subsubsection{CLS 保存性評価：動的非一様格子上での保存型再マッピング}
+\label{app:cls_conservation}
+\input{sections/appendix_numerics_schemes_s8}
+
+\subsubsection{仮想時間陰解法と CCD の精度検証}
+\label{app:ccd_pseudotime}
+\input{sections/appendix_numerics_schemes_s7}
