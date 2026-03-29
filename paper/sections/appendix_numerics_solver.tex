@@ -6,10 +6,11 @@
 %   app:capillary_cfl      — 毛管波制約の導出
 %
 %   ※ app:checkerboard_mode は付録 C.5（appendix_ccd_impl.tex）へ移動
-%   ※ app:fvm_face_coeff    は付録 A.6（appendix_interface.tex）へ移動
+%   ※ app:fvm_face_coeff    は付録 E.4（本ファイル，appendix_numerics_solver.tex）へ移動（旧 A.6）
 %
 % 内容は各 _s*.tex に分割管理されている（重複防止のため \input で委譲）
 
-\input{sections/appendix_numerics_solver_s1}  %% E.1 スウィープ法 Thomas 三重対角係数導出
-\input{sections/appendix_numerics_solver_s2}  %% E.2 擬似時間反復の収束率解析と最適 Δτ
-\input{sections/appendix_numerics_solver_s4}  %% E.3 毛管波制約：分散関係から CFL 条件へ
+\input{sections/appendix_numerics_solver_s4}  %% E.1 毛管波制約：分散関係から CFL 条件へ（§5）
+\input{sections/appendix_numerics_solver_s1}  %% E.2 スウィープ法 Thomas 三重対角係数導出（§8）
+\input{sections/appendix_numerics_solver_s2}  %% E.3 擬似時間反復の収束率解析と最適 Δτ（§8）
+\input{sections/appendix_numerics_solver_s5}  %% E.4 PPE 面係数 a_f = 2/(ρ_L+ρ_R) の FVM 積分論理（§8）
