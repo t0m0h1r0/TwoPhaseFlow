@@ -1,0 +1,76 @@
+% !TeX program = xelatex
+\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\usepackage{xeCJK}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{silence}
+\WarningFilter{caption}{Unknown document class}
+\WarningFilter{xeCJK}{Redefining CJKfamily}
+\WarningFilter{relsize}{Failed to get list}
+
+% -- Fonts --
+\setmainfont{Times New Roman}
+
+
+
+\geometry{a4paper, margin=2.5cm}
+
+\title{高精度気液二相流シミュレーションにおける表面張力半陰解法の導入：課題と解決策}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. 緒言}
+気液二相流シミュレーションにおいて、表面張力の高精度な評価は、寄生流れ（Parasitic Currents）の抑制や微細気泡・液滴の挙動予測において極めて重要である。本稿の基盤となる手法は、Conservative Level Set (CLS) 法による質量保存性の確保、Combined Compact Difference (CCD) 法による高精度（空間6次精度）な曲率計算、およびBalanced-Force離散化による圧力勾配と表面張力項の演算子の整合性維持を特徴としている。しかし、表面張力を明示的に扱う場合、毛管波（Capillary Wave）の安定性制約により、時間刻み幅 $\Delta t$ は空間解像度 $h$ に対して $\Delta t \propto h^{1.5}$ の厳しい制限を受ける。本小論では、この制約を緩和し計算効率を飛躍的に向上させるための「表面張力の半陰解法（Semi-implicit Surface Tension）」の導入について、その利点、理論的困難、および仮想時間反復を用いた高精度な解決策を提案する。
+
+\section*{2. 導入の利点と基本的アプローチ}
+表面張力の完全な陰解法は、曲率 $\kappa$ の強い非線形性のため困難である。そのため、Laplace-Beltrami演算子を用いた線形化による半陰解法が現実的である。界面位置の微小変位 $\mathbf{x}_s^{n+1} \approx \mathbf{x}_s^n + \mathbf{u}^{n+1} \Delta t$ と、微分幾何学的関係 $\kappa \mathbf{n} = \Delta_s \mathbf{x}_s$ （$\Delta_s$ は界面上のLaplace-Beltrami作用素）を利用し、次時刻の表面張力を以下のように線形化して運動量方程式に組み込む。
+$$(I - \frac{\sigma \Delta t^2}{\rho} \delta_s^n \Delta_s^n) \mathbf{u}^{n+1} = \mathbf{u}^* + \frac{\Delta t}{\rho} (\sigma \kappa^n \mathbf{n}^n \delta_s^n)$$
+
+\subsection*{利点}
+\begin{itemize}
+    \item 時間刻み幅制約の緩和: 毛管波による厳しい $\Delta t$ 制約を回避または緩和でき、高Weber数や微細スケールの問題への適応力が向上する。
+    \item 既存手法との親和性: CLS法による安定した界面プロファイルと、CCD法による高解像度な微分演算は、陰的な線形化の精度を支える基盤となる。
+\end{itemize}
+
+\section*{3. 導入に伴う理論的困難とリスク}
+表面張力半陰解法を既存の高精度スキームに単純に組み込むと、以下の深刻な問題を引き起こす。
+
+\subsection*{3.1 Balanced-Force条件の崩壊（寄生流れの再発）}
+本手法の核は、圧力勾配演算子 $G$ と表面張力演算子を一致させるBalanced-Force離散化である。陰解法化のために表面張力項に線形化や近似を施すと、左辺の圧力ポアソン方程式（CCD-PPE）との演算子の整合性（Commutative Property）が失われ、静止液滴においても寄生流れが発生する。
+
+\subsection*{3.2 行列の特異性と条件数の悪化}
+陰解法行列は界面近傍でのみ定義されるため特異に近い。さらにCCD法を用いると未知数（関数値と微分値）が増加し、行列の条件数が悪化するため、反復ソルバーの収束性が低下する。
+
+\subsection*{3.3 界面更新と運動量の不整合}
+陰解法で速度場 $\mathbf{u}^{n+1}$ を更新した後、CLS法の再初期化によって界面が微修正されると、運動量と界面位置の間に不整合が生じ、非物理的なエネルギー増加を招く。
+
+\section*{4. 解決策の提案：仮想時間反復による強結合スキーム}
+上述のリスクを回避し、線形化誤差を段階的に排除するための解決策を提案する。
+
+\subsection*{4.1 インクリメンタル形式（Delta-form）による初期平衡の確保}
+表面張力項を「既知の明示項」と「未知の陰的修正項」に分離する。
+$$\mathbf{f}_{\sigma}^{n+1} = \mathbf{f}_{\sigma}^{n} + \Delta t \mathcal{L}_{\sigma}(\mathbf{u}^{n+1})$$
+明示項 $\mathbf{f}_{\sigma}^{n}$ の評価には、CCD-PPEと同一の演算子を厳密に適用する。これにより、静止状態では修正項が消え、Balanced-Force条件が維持される。
+
+\subsection*{4.2 仮想時間反復（Inner Iterations）による修正項の消去}
+線形化誤差を排除するため、1つの物理ステップ内で仮想時間 $\tau$ に関する反復計算を行う。
+$$\frac{\mathbf{u}^{n+1, k+1} - \mathbf{u}^{n+1, k}}{\Delta \tau} + \mathcal{R}(\mathbf{u}^{n+1, k+1}) = 0$$
+反復 $k$ ごとに最新の界面位置に基づき曲率 $\kappa$ と CCD 微分行列を再計算することで、収束時には\textbf{線形化近似に頼らない「真の $n+1$ ステップの平衡状態」}を得る。これにより、Balanced-Force条件と界面更新の整合性が同時に達成される。
+
+\subsection*{4.3 CCD高次補間とNarrow-band正則化}
+\begin{itemize}
+    \item CCD補間: スタガード格子点での表面張力評価に、CCDの多項式を用いた6次エルミート補間を適用し、界面通過時の数値ノイズを抑制する。
+    \item 正則化: 行列構築を界面近傍（Narrow-band）に限定し、遠方場で恒等写像として扱うことで、特異性を排除しソルバーの収束を助ける。
+\end{itemize}
+
+\section*{5. 結言}
+仮想時間反復の導入により、表面張力半陰解法の線形化誤差を実質的にゼロに追い込むことが可能となる。CCD法による高精度微分とこの反復スキームを組み合わせることで、時間刻み幅の制約を打破しつつ、寄生流れを極限まで抑制する「高精度かつ効率的」な二相流シミュレーションの枠組みが実現する。
+
+\end{document}
