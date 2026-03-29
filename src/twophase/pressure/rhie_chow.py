@@ -56,6 +56,9 @@ class RhieChowInterpolator:
         p: Any,
         rho: Any,
         dt: float,
+        kappa: Any = None,
+        psi: Any = None,
+        we: float = None,
     ) -> Any:
         """Compute ∇·u_RC (the Rhie-Chow face-velocity divergence).
 
@@ -65,6 +68,21 @@ class RhieChowInterpolator:
         p        : current pressure field (used for RC correction)
         rho      : density field
         dt       : time step
+        kappa    : curvature field (optional; enables Balanced-Force RC extension)
+        psi      : CLS field ψ   (optional; enables Balanced-Force RC extension)
+        we       : Weber number  (optional; enables Balanced-Force RC extension)
+
+        When ``kappa``, ``psi``, and ``we`` are all provided the face velocity
+        uses the Balanced-Force extended form (eq:rc-face-balanced, §7.3.2):
+
+            u_f = ū_f − Δt (1/ρ)_f^harm
+                  [(∇p)_f − (∇p̄)_f − ((f_σ)_f − (f̄_σ)_f)]
+
+        where (f_σ)_f is the face surface-tension force and (f̄_σ)_f is the
+        arithmetic average of CCD cell-centred surface-tension forces.
+        This eliminates the O(h²) Balanced-Force mismatch in the Rhie-Chow
+        bracket at equilibrium, reducing parasitic-current drivers for
+        surface-tension-dominated problems (We ≪ 1).
 
         Returns
         -------
@@ -75,22 +93,37 @@ class RhieChowInterpolator:
         ccd = self.ccd
         div_rc = xp.zeros_like(vel_star[0])
 
+        bf_enabled = (kappa is not None) and (psi is not None) and (we is not None)
+
         for ax in range(ndim):
             h = float(self.grid.L[ax] / self.grid.N[ax])
-            flux_faces = self._rc_flux_1d(vel_star[ax], p, rho, ccd, ax, dt, h)
+            flux_faces = self._rc_flux_1d(
+                vel_star[ax], p, rho, ccd, ax, dt, h,
+                kappa=kappa if bf_enabled else None,
+                psi=psi if bf_enabled else None,
+                we=we if bf_enabled else None,
+            )
             div_rc += self._flux_divergence_1d(flux_faces, ax, h, self.bc_type)
 
         return div_rc
 
     # ── Per-axis face flux ────────────────────────────────────────────────
 
-    def _rc_flux_1d(self, u_star, p, rho, ccd, axis: int, dt: float, h: float):
+    def _rc_flux_1d(
+        self, u_star, p, rho, ccd, axis: int, dt: float, h: float,
+        kappa=None, psi=None, we=None,
+    ):
         """Compute face-normal velocity u_f (RC-corrected) along ``axis``.
 
         Face i+½ lies between cell-centres i and i+1.
         Returns array of shape with ``shape[axis] = N[axis]+1``
         (N[axis] internal faces + 2 boundary faces, but boundaries are
         handled by wall/periodic BC — set to 0 for walls).
+
+        When ``kappa``, ``psi``, ``we`` are provided the Balanced-Force
+        extension (eq:rc-face-balanced, §7.3.2) is applied: the surface-
+        tension correction term is subtracted from the RC bracket so that
+        the bracket vanishes exactly at mechanical equilibrium.
         """
         xp = self.xp
         N_ax = self.grid.N[axis]
@@ -118,6 +151,23 @@ class RhieChowInterpolator:
             # Right wall: node N_ax → backward one-sided  (p[N]−p[N−1])/h
             dp_cell[sl(N_ax)] = (p[sl(N_ax)] - p[sl(N_ax - 1)]) / h
 
+        # Balanced-Force RC extension (eq:rc-face-balanced, §7.3.2):
+        # Cell-centred surface-tension force via CCD — same operator as pressure
+        # gradient to ensure cancellation at equilibrium.
+        bf_enabled = (kappa is not None) and (psi is not None) and (we is not None)
+        if bf_enabled:
+            dpsi_cell, _ = ccd.differentiate(psi, axis)
+            f_sigma_cell = kappa * dpsi_cell / we   # (κ/We) D^(1)_CCD ψ
+
+            if self.bc_type == 'wall':
+                # Apply same boundary fix as dp_cell: replace CCD boundary values
+                # with one-sided differences so the bracket correction is O(h).
+                f_sigma_cell = xp.copy(f_sigma_cell)
+                kappa_0 = kappa[sl(0)]
+                kappa_N = kappa[sl(N_ax)]
+                f_sigma_cell[sl(0)] = kappa_0 * (psi[sl(1)] - psi[sl(0)]) / (h * we)
+                f_sigma_cell[sl(N_ax)] = kappa_N * (psi[sl(N_ax)] - psi[sl(N_ax - 1)]) / (h * we)
+
         # Internal faces 1 … N_ax  (face k lies between nodes k-1 and k)
         # face 0 is the left wall (no node to the left) → stays 0
         # face N_ax is between nodes N_ax-1 and N_ax (wall node) → computed below
@@ -136,7 +186,24 @@ class RhieChowInterpolator:
         dp_bar = 0.5 * (dp_L + dp_R)
         inv_rho_harm = 2.0 / (rho_L + rho_R)   # harmonic mean of 1/ρ  (§6.3)
 
-        flux[sl(slice(1, N_ax + 1))] = u_bar - dt * inv_rho_harm * (dp_face - dp_bar)
+        if bf_enabled:
+            # Face surface-tension force: κ_f = arith. mean, direct diff for ψ
+            kappa_L = kappa[sl(slice(0, N_ax))]
+            kappa_R = kappa[sl(slice(1, N_ax + 1))]
+            psi_L   = psi[sl(slice(0, N_ax))]
+            psi_R   = psi[sl(slice(1, N_ax + 1))]
+            fs_L    = f_sigma_cell[sl(slice(0, N_ax))]
+            fs_R    = f_sigma_cell[sl(slice(1, N_ax + 1))]
+
+            kappa_face   = 0.5 * (kappa_L + kappa_R)
+            f_sigma_face = kappa_face * (psi_R - psi_L) / (h * we)   # direct diff
+            f_sigma_bar  = 0.5 * (fs_L + fs_R)                        # CCD mean
+
+            rc_bracket = (dp_face - dp_bar) - (f_sigma_face - f_sigma_bar)
+        else:
+            rc_bracket = dp_face - dp_bar
+
+        flux[sl(slice(1, N_ax + 1))] = u_bar - dt * inv_rho_harm * rc_bracket
 
         # face 0: left boundary
         if self.bc_type == 'periodic':
@@ -153,7 +220,22 @@ class RhieChowInterpolator:
             dp_face_0 = (p_R0 - p_L0) / h
             dp_bar_0 = 0.5 * (dp_L0 + dp_R0)
             inv_rho_harm_0 = 2.0 / (rho_L0 + rho_R0)
-            flux[sl(0)] = u_bar_0 - dt * inv_rho_harm_0 * (dp_face_0 - dp_bar_0)
+
+            if bf_enabled:
+                kappa_L0    = kappa[sl(N_ax)]
+                kappa_R0    = kappa[sl(0)]
+                psi_L0      = psi[sl(N_ax)]
+                psi_R0      = psi[sl(0)]
+                fs_L0       = f_sigma_cell[sl(N_ax)]
+                fs_R0       = f_sigma_cell[sl(0)]
+                kappa_face0  = 0.5 * (kappa_L0 + kappa_R0)
+                f_sigma_face0 = kappa_face0 * (psi_R0 - psi_L0) / (h * we)
+                f_sigma_bar0  = 0.5 * (fs_L0 + fs_R0)
+                rc_bracket_0  = (dp_face_0 - dp_bar_0) - (f_sigma_face0 - f_sigma_bar0)
+            else:
+                rc_bracket_0 = dp_face_0 - dp_bar_0
+
+            flux[sl(0)] = u_bar_0 - dt * inv_rho_harm_0 * rc_bracket_0
         # else: wall BC — face 0 stays 0 (no-penetration, already initialised)
         return flux
 
