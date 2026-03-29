@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-051 CLOSED 2026-03-29: Balanced-Force RC拡張実装 (rhie_chow.py eq:rc-face-balanced) + 検証実験スクリプト追加 (experiments/balanced_force_rc_benchmark.py). 07_collocate.tex §7.3.2「将来実装」注記削除. 98/98 tests pass. |
+| last_decision | CHK-052 CLOSED 2026-03-29: CCD ソルバー比較実験 (experiments/ccd_solver_benchmark.py) + 付録 D.9 (appendix_numerics_schemes_s9.tex). FD2+SOR / CCD+LU / BiCGSTAB / 仮想時間を N=[32,64,128,256] で比較. 158pp, 0 errors. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
