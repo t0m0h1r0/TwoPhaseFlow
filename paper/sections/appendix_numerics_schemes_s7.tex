@@ -1,27 +1,23 @@
 % paper/sections/appendix_numerics_schemes_s7.tex
 %
-% D.8  仮想時間陰解法 + CCD の精度検証（3事例）
+% §11.3.2  仮想時間陰解法 + CCD の精度検証（3事例）
+%          （旧 D.8; \section と \label は 10c_component_verification.tex の
+%            \subsubsection で提供する）
 %      Case 1: Poisson（空間収束），Case 2: 拡散方程式（大 Δt 安定性），
 %      Case 3: 定常移流拡散（高 Pe 境界層）
 %
 % 実験スクリプト: experiments/ccd_pseudotime_verification.py
 % 結果データ:    results/ccd_pseudotime/
 
-\section{仮想時間陰解法と CCD の精度検証}
-\label{app:ccd_pseudotime}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本付録は，6次精度 CCD スキーム（§\ref{sec:CCD}）と
+本節は，6次精度 CCD スキーム（§\ref{sec:CCD}）と
 仮想時間陰解法（§\ref{sec:ppe_pseudotime}）の組み合わせが，
 標準 2次中心差分（CDS2）と比較してどの程度の精度優位をもたらすかを
 3種類の標準問題によって定量的に検証した記録である．
 
-実験コードは \texttt{experiments/ccd\_pseudotime\_verification.py} に実装されており，
-CCD 計算には \texttt{src/twophase/ccd/ccd\_solver.CCDSolver} を直接使用する．
-
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Case 1：空間収束性（\texorpdfstring{$u'' = -(2\pi)^2\sin(2\pi x)$}{u'' = -(2pi)\^{}2 sin(2pi x)}）}
-\label{app:ccd_case1}
+\paragraph{Case 1：空間収束性（\texorpdfstring{$u'' = -(2\pi)^2\sin(2\pi x)$}{u'' = -(2pi)\^{}2 sin(2pi x)}）}\label{app:ccd_case1}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \paragraph{設定}
@@ -77,8 +73,7 @@ $L^\infty$ 誤差の収束次数を測定する．
 \end{tcolorbox}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Case 2：拡散方程式における大 \texorpdfstring{$\Delta t$}{Δt} 安定性}
-\label{app:ccd_case2}
+\paragraph{Case 2：拡散方程式における大 \texorpdfstring{$\Delta t$}{Δt} 安定性．}\label{app:ccd_case2}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \paragraph{設定}
@@ -184,8 +179,7 @@ $\varepsilon = 0.01$，$T = 1$ の厳密解 $u(x,T) = e^{-\varepsilon\pi^2 T}\si
 \end{tcolorbox}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Case 3：定常移流拡散方程式（高 Péclet 境界層）}
-\label{app:ccd_case3}
+\paragraph{Case 3：定常移流拡散方程式（高 Péclet 境界層）．}\label{app:ccd_case3}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \paragraph{設定}
@@ -199,8 +193,7 @@ $u_{\rm exact}(x) = (e^{Pe\,x} - 1)/(e^{Pe} - 1)$．
 格子サイズ $N \in \{8, 16, 32, 64, 128, 256\}$ に対して直接連立方程式で解く．
 
 \paragraph{離散化}
-CCD 作用素行列 $D_1$，$D_2$（各列を \texttt{CCDSolver.differentiate} への
-基底ベクトル入力で構築）を用いた線形系
+CCD 作用素行列 $D_1$，$D_2$ を用いた線形系
 \begin{equation}
   (c\,D_1 - \varepsilon\,D_2)\,\mathbf{u} = \mathbf{0},
   \qquad u_0 = 0,\quad u_N = 1,
