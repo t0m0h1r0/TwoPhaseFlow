@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-054 CLOSED 2026-03-29: §10 (09b_implementation.tex) コード参照除去 — クラス名・メソッド名・ファイル名・引数名を数学的記述に置換. 158pp, 0 errors. |
+| last_decision | CHK-055 CLOSED 2026-03-30: appendix D.2(CLS保存性)+D.8(CCD仮想時間精度) を §10.3 コンポーネント検証節に移動. Appendix D は D.1–D.7 に縮小. 157pp, 0 errors. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -86,6 +86,7 @@
 | CHK-050 | CLOSED | experiment+paper | CLS保存性評価実験 2026-03-29: experiments/ls_cls_conservation.py — 動的非一様格子(N=128,r=2), DCCD移流, TVD-RK3, グリッドリフレッシュK=[5,10,20,50]. CLS保存型再マッピング vs LS非保存補間. Key: K=10でCLS質量誤差8.9e-7 vs LS 7.6e-5 (85倍小さい). 付録D.8 (appendix_numerics_schemes_s8.tex) 追加. XeLaTeX 2-pass: 154pp, 0 errors, 0 warnings. |
 | CHK-054 | CLOSED | paper | §10 コード参照除去 2026-03-29: 09b_implementation.tex §10.1+§10.2 からクラス名・メソッド名・ファイル名・引数名を除去し数学的記述に置換．サブセクション題名も論文体裁に修正．158pp, 0 errors. |
 | CHK-053 | CLOSED | paper | §7 実装コンテンツ移動 2026-03-29: 07_collocate.tex からパートIII内の実装記述（コード実装との整合性 enumerate・実装状況段落・§7.4.3 Balanced-Force 検証手順）を除去し，パートIV 新規セクション sections/09b_implementation.tex（§10：Rhie--Chow・BF 実装整合性と検証手順）に移動．main.tex に \input{sections/09b\_implementation} を §9 直後に挿入．07_collocate.tex の代替テキストに第~\ref{sec:impl_collocate}章への前方参照を追加．XeLaTeX 2-pass: 158pp, 0 errors, 0 warnings, 0 undefined refs. |
+| CHK-055 | CLOSED | paper | §10.3 コンポーネント検証新設 2026-03-30: appendix D.2(CLS保存性評価)＋D.8(CCD仮想時間精度検証)を §10.3 (10c_component_verification.tex) に移動. Appendix D: D.1–D.9 → D.1–D.7. 157pp, 0 errors, 0 undefined refs. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference
