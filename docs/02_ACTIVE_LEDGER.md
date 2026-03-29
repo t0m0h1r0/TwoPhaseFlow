@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-049 CLOSED 2026-03-29: 9 unjustified boxes removed (wrappers only, content preserved). 152pp, 0 errors. |
+| last_decision | CHK-050 CLOSED 2026-03-29: CLS保存性実験完了 (experiments/ls_cls_conservation.py, adaptive non-uniform grid). 付録D.8追加. 154pp, 0 errors. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -83,6 +83,7 @@
 | CHK-048 | CLOSED | fix | PaperCorrector 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR) — warnbox→defbox(1), warnbox→mybox(7), warnbox→resultbox(1), defbox→resultbox(2), defbox→algbox(3), resultbox→mybox(2), algbox→resultbox(1), mybox→resultbox(1); 6 missing titles added (02b_csf ×2, 04_ccd ×2, 08b_ccd_poisson, math title with texorpdfstring). Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-049 | CLOSED | fix | PaperCorrector 2026-03-29: 9 unjustified tcolorbox wrappers removed — R-01/R-02 02b_csf (2 resultboxes); R-03 05b_time_integration (TVD-RK3 scope warnbox); R-04 07_collocate (density table mybox); R-05/R-06 08_pressure (∇·(1/ρ∇p) mybox + Neumann unit-test mybox); R-07 08d_pseudotime (Δτ guide mybox); R-08 11_conclusion (design table mybox); R-09 app_schemes_s1 (mode summary mybox). All inner content + \label{}s preserved. Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-042 | CLOSED | experiment+paper | DCCD比較実験 2026-03-28: experiments/dccd_comparison.py — O2/O4/CCD/DCCD, 3 ICs (square/triangle/tanh), N=256, CFL=0.4, T=1. Key: DCCD TV/TV_exact=1.58 vs O2=9.20 (矩形波); CCD L2=2.57e-5 (tanh, 6次精度確認). 付録D.6 (appendix_numerics_schemes_s6.tex) 追加. 148pp, 0 errors. |
+| CHK-050 | CLOSED | experiment+paper | CLS保存性評価実験 2026-03-29: experiments/ls_cls_conservation.py — 動的非一様格子(N=128,r=2), DCCD移流, TVD-RK3, グリッドリフレッシュK=[5,10,20,50]. CLS保存型再マッピング vs LS非保存補間. Key: K=10でCLS質量誤差8.9e-7 vs LS 7.6e-5 (85倍小さい). 付録D.8 (appendix_numerics_schemes_s8.tex) 追加. XeLaTeX 2-pass: 154pp, 0 errors, 0 warnings. |
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
