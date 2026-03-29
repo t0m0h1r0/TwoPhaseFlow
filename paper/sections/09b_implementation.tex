@@ -9,38 +9,38 @@ Balanced-Force 離散化条件（§\ref{sec:balanced_force}）を本コードで
 実装上の整合性要件と，静止液滴テストによる検証手順を述べる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{コード実装との整合性：演算子の統一確認}
+\subsection{離散演算子の統一：Balanced-Force 整合性の充足}
 \label{sec:impl_bf_consistency}
 % ─────────────────────────────────────────────────────────────────────────────
 
 §\ref{sec:balanced_force} の議論より，
 式~\eqref{eq:bf_operator_mismatch} の離散演算子不整合をゼロにするには，
 圧力勾配・表面張力・速度補正の 3 箇所すべてに同一の $D^{(1)}_\mathrm{CCD}$ を用いなければならない．
-本稿のコードでは以下の対応関係で実装している：
+本手法では以下の 3 箇所に同一の $D^{(1)}_\mathrm{CCD}$ を適用することで，この条件を充足する：
 
 \begin{enumerate}
-  \item \texttt{SurfaceTensionTerm.compute()}:
+  \item 表面張力項：
         $\bm{f}_\sigma = (\kappa/We)\,D^{(1)}_\mathrm{CCD}\psi$
-  \item \texttt{Predictor.compute()} IPC 項:
-        $-D^{(1)}_\mathrm{CCD} p^n$（前時刻圧力勾配）
-  \item \texttt{VelocityCorrector.correct()}:
-        $-({\Delta t}/{\rho})\,D^{(1)}_\mathrm{CCD}(\delta p)$（速度補正）
+  \item 予測ステップの IPC 項（前時刻圧力勾配）：
+        $-D^{(1)}_\mathrm{CCD} p^n$
+  \item 速度補正ステップ：
+        $-({\Delta t}/{\rho})\,D^{(1)}_\mathrm{CCD}(\delta p)$
 \end{enumerate}
 
 これにより，式~\eqref{eq:bf_operator_mismatch} の不整合はゼロに設計されている．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Balanced-Force RC：実装状況}
+\subsection{Balanced-Force RC：離散化の設計と有効化条件}
 \label{sec:impl_bf_rc}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\texttt{rhie\_chow.py} の \texttt{face\_velocity\_divergence} は，
-式~\eqref{eq:rc-face}（圧力補正のみ，デフォルト）と
-式~\eqref{eq:rc-face-balanced}（BF-RC 拡張，オプション）の両形式を実装している．
-\texttt{kappa}，\texttt{psi}，\texttt{we} を引数として渡すと
-式~\eqref{eq:rc-face-balanced} が有効化される．
-定量的検証は \texttt{experiments/balanced\_force\_rc\_benchmark.py}
-（§\ref{sec:bench_droplet} 参照）で実施できる．
+Rhie--Chow 面速度発散の離散化は，
+式~\eqref{eq:rc-face}（圧力補正のみの標準形）と
+式~\eqref{eq:rc-face-balanced}（Balanced-Force RC 拡張形）の両形式を支持する．
+BF-RC 拡張形は，界面曲率 $\kappa$，界面関数 $\psi$，ウェーバー数 $We$ を
+Rhie--Chow ブラケットに明示的に組み込むことで有効化される
+（§\ref{sec:rc_balanced_force} 参照）．
+定量的検証は §\ref{sec:bench_droplet} に示す静止液滴実験によって実施する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{Balanced-Force 実装の確認方法：静止液滴テスト}
