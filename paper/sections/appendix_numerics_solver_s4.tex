@@ -1,44 +1,21 @@
-\section{毛管波制約の導出：分散関係から CFL 条件へ}
-\label{app:capillary_cfl}
+\section{\texorpdfstring{PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の FVM 積分論理}{PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の FVM 積分論理}}
+\label{app:fvm_face_coeff}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\textbf{Step 1：毛管波の分散関係}
+PPE 演算子の係数 $a(x) = 1/\rho(x)$ について，
+セル $P$（位置 $x_L$）と $E$（位置 $x_R$）の間の等価面係数を FVM 積分で求める．
 
-気液界面上の微小振幅波（毛管波）の線形安定解析から，
-角周波数 $\omega$ と波数 $k$ の関係（分散関係）は：
-\begin{equation}
-  \omega^2 = \frac{\sigma\,k^3}{\rho_l + \rho_g}
-  \label{eq:capillary_dispersion_app}
-\end{equation}
-位相速度 $c_\sigma = \omega/k = \sqrt{\sigma k/(\rho_l+\rho_g)}$，
-群速度 $c_g = d\omega/dk = (3/2)c_\sigma$．
-
-\textbf{Step 2：格子上の最大分解可能波数}
-
-格子間隔 $\Delta x$ の離散格子で分解できる最高波数はナイキスト波数
-$k_{\max} = \pi/\Delta x$ である．
-
-\textbf{Step 3：CFL 条件の適用}
-
-$k_{\max}$ に対応する群速度で CFL 条件 $c_g(k_{\max})\,\Delta t \le \Delta x$ を適用する：
-\begin{align*}
-  c_g(k_{\max}) &= \frac{3}{2}\sqrt{\frac{\sigma\pi/\Delta x}{\rho_l+\rho_g}} \\
-  \Delta t &\le \frac{\Delta x}{c_g(k_{\max})}
-  = \frac{2}{3}\sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{\sigma\pi}}
-\end{align*}
-係数 $2/(3\sqrt{\pi}) \approx 0.376$ を近似的に $1/\sqrt{2\pi} \approx 0.399$ に丸めると式 \eqref{eq:dt_sigma} を得る（$6\%$ の差異は実用上の安全率の範囲内）：
+フラックス $F = a_f(p_E - p_P)/\Delta x$ において，
+連続体のフラックス $F = a(x)\,dp/dx$ を区間 $[x_L, x_R]$ で積分して面係数 $a_f$ を求める．
+$a(x)$ が区間内で区分的定数（各セル内で $a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 \[
-  \Delta t_\sigma = \sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{2\pi\sigma}}
+  \int_{x_L}^{x_R} \frac{dx}{a(x)}
+  = \frac{\Delta x/2}{a_L} + \frac{\Delta x/2}{a_R}
+  \quad\Rightarrow\quad
+  a_f = \frac{\Delta x}{\dfrac{\Delta x/2}{a_L}+\dfrac{\Delta x/2}{a_R}}
+  = \frac{2a_L a_R}{a_L+a_R}
+  = \frac{2}{\rho_L+\rho_R}
 \]
+これは直列抵抗の等価抵抗（$1/R_\mathrm{eq} = 1/R_1+1/R_2$）と同じ論理（調和平均）であり，
+熱伝導率の界面補間で使われる標準公式と同一構造を持つ．\qed
 
-\textbf{物理的解釈：} $\Delta t_\sigma \propto \Delta x^{3/2}$ は分散関係 $\omega \propto k^{3/2}$ に由来する．
-格子を半分にすると $\Delta t_\sigma$ は $1/2^{3/2} \approx 0.354$ 倍（$\approx 2.8$ 倍制約強化）．
-
-\medskip
-\textbf{大密度比（$\rho_l \gg \rho_g$）での解釈：}
-$\rho_l/\rho_g = 1000$（水/空気）では $\rho_l + \rho_g \approx \rho_l$（気相寄与は $0.1\%$ 以下）．
-表面張力が\textbf{復元力}（ばね），液相 $\rho_l$ が\textbf{慣性}（質量）を担い，
-気相の慣性は無視できる．密度比 1000 の系では密度比 1 の系より
-$\sqrt{1000} \approx 32$ 倍大きな $\Delta t_\sigma$ が許される（制約緩和）．\qed
-
-% ═══════════════════════════════════════════════════════════════════════════════

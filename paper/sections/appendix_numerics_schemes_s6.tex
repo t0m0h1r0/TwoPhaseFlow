@@ -1,278 +1,50 @@
-% paper/sections/appendix_numerics_schemes_s6.tex
-%
-% D.3  Dissipative CCD スキーム比較実験（線形移流）
-%      O2 / O4 / CCD / DCCD / WENO5 の波形保持精度と総変動量比較
-%
-% 実験スクリプト: experiments/dccd_comparison.py
-% 結果データ:    results/dccd_comparison/{data,figures,latex}/
-
-\section{Dissipative CCD 比較実験：線形移流における波形保持特性}
-\label{app:dccd_comparison}
+\section{Balanced-Force 条件：離散化演算子不一致の誤差解析}
+\label{app:balanced_force_taylor}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本付録は，本稿主実装として採用した Dissipative CCD（DCCD; §~\ref{sec:dissipative_ccd}）と，
-代替スキームである標準 O2・O4 中心差分，非散逸 CCD，
-および参照 ENO 系スキームとして WENO5（付録~\ref{app:weno5}）の性能を
-1次元線形移流問題で定量的に比較した数値実験の記録である．
+本節では，§\ref{sec:bf_operator_mismatch}（式~\eqref{eq:bf_operator_mismatch}）で示した演算子不一致誤差を，離散テイラー展開によって定量的に導出する．
 
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{実験設定}
-\label{app:dccd_setup}
-% ─────────────────────────────────────────────────────────────────────────────
+\subsection{打ち切り誤差の定量評価}
 
-\paragraph{支配方程式}
-周期境界条件下の 1 次元線形移流方程式を対象とする：
-\begin{equation}
-  \frac{\partial u}{\partial t} + c\,\frac{\partial u}{\partial x} = 0,
-  \qquad x \in [0,1),\quad t \in [0,1],\quad c = 1.
-  \label{eq:dccd_advection}
-\end{equation}
-$T = 1$（ちょうど 1 周期）で厳密解は初期条件と一致する：$u(x,T) = u_0(x)$．
+連続レベルでは $\bnabla p = \kappa\bnabla\psi/We$ の釣り合いが成立している静止液滴を，
+異なる差分演算子 $D^{(1)}_{\mathrm{low}}$（低次）と $D^{(1)}_{\mathrm{CCD}}$（CCD，高次）で計算した場合の離散誤差を見る．
 
-\paragraph{離散化}
-\begin{itemize}
-  \item 格子点数：$N = 256$（等間隔，$h = 1/N$）
-  \item 時間積分：4 次 Runge--Kutta（RK4），$\mathrm{CFL} = c\,\Delta t / h = 0.4$
-  \item 合計時間ステップ数：$n_s = T / \Delta t = 640$
-\end{itemize}
-
-\paragraph{比較スキーム}
-\begin{enumerate}
-  \item \textbf{O2}：2 次精度中心差分
-        $(\partial u / \partial x)_i \approx (u_{i+1} - u_{i-1}) / (2h)$
-  \item \textbf{O4}：4 次精度中心差分
-        $(\partial u / \partial x)_i \approx (-u_{i+2} + 8u_{i+1} - 8u_{i-1} + u_{i-2}) / (12h)$
-  \item \textbf{CCD}：6 次精度結合コンパクト差分（§~\ref{sec:CCD}，周期 BC）
-  \item \textbf{DCCD}：CCD + 10 次選択的フィルタ（本稿採用スキーム；§~\ref{sec:dissipative_ccd}）
-  \item \textbf{WENO5}：5 次精度 Weighted ENO + 大域 Lax--Friedrichs フラックス分割
-        （付録~\ref{app:weno5} の定式化；TVD 的散逸の参照スキーム）
-\end{enumerate}
-
-CCD・DCCD の 1 次微分は \texttt{src/twophase/ccd/ccd\_solver.py} の
-\texttt{CCDSolver}（周期 BC モード）を直接呼び出して計算した
-（$N$ 節点の $2N \times 2N$ ブロック巡回行列を事前 LU 分解）．
-WENO5 のフラックス再構成は \texttt{src/twophase/levelset/advection.py} の
-\texttt{\_weno5\_pos}/\texttt{\_weno5\_neg} カーネルを再利用し，
-周期折り返しを \texttt{numpy.roll} で処理した（重複端点なし，$N$ 一意節点）．
-
-\paragraph{10 次選択的フィルタ（d10）}
-DCCD では各 RK4 ステップ後に下記フィルタを適用する：
-\begin{equation}
-  u_i^* = u_i + \alpha_f \sum_{k=-5}^{5} d_k\, u_{i+k},
-  \qquad \alpha_f = 0.4,
-  \label{eq:d10_filter}
-\end{equation}
-係数 $d_k = (-1)^{k+1} \binom{10}{5-k} / 2^{10}$（11 点 2 項分布差分），$\sum_k d_k = 0$．
-この係数列は波数空間でのフィルタ固有値
-\begin{equation}
-  \hat{d}(\xi) = \sum_{k=-5}^{5} d_k\, e^{ik\xi}
-  \label{eq:d10_eigenvalue}
-\end{equation}
-が $\xi \to 0$ でゼロ（低波数無影響），$\xi = \pi$（ナイキスト）で $-1$（最大散逸）
-となるよう設計されている．したがってフィルタ伝達関数 $1 + \alpha_f \hat{d}(\xi)$ は
-$[1-\alpha_f,\, 1] = [0.6,\, 1]$ の範囲に収まり，各ステップでナイキスト振幅を
-係数 $0.6$ に縮退させる（640 ステップ後：$0.6^{640} \approx 10^{-142}$，実質完全除去）．
-
-\begin{tcolorbox}[warnbox, title={フィルタ符号の注意}]
-式~\eqref{eq:d10_filter} は $u^* = u + \alpha_f D_{10}(u)$ の形（加算）であることに注意する．
-$D_{10}$ のナイキスト固有値は $-1$ であるから，
-$u^* = u - \alpha_f D_{10}(u)$（減算）と定義すると係数 $1 - \alpha_f (-1) = 1+\alpha_f > 1$
-となりナイキストを\textbf{増幅}する（符号ミスによる不安定化）．
-\end{tcolorbox}
-
-\paragraph{初期条件}
-急峻な関数への耐性を評価するため，以下の 3 種類の初期条件を用いる（いずれも $[0.3, 0.5]$ に支持）：
-
-\begin{enumerate}
-  \item \textbf{矩形波（Square pulse）}：ステップ不連続
-    \begin{equation}
-      u_0(x) = \begin{cases} 1 & 0.3 \le x < 0.5 \\ 0 & \text{otherwise} \end{cases}
-      \label{eq:ic_square}
-    \end{equation}
-
-  \item \textbf{三角波（Triangle pulse）}：C0 連続，微分不連続（コーナー特異点）
-    \begin{equation}
-      u_0(x) = \begin{cases}
-        (x - 0.3)/0.1 & 0.3 \le x < 0.4 \\
-        (0.5 - x)/0.1 & 0.4 \le x < 0.5 \\
-        0              & \text{otherwise}
-      \end{cases}
-      \label{eq:ic_triangle}
-    \end{equation}
-
-  \item \textbf{平滑化矩形波（Tanh pulse）}：$C^\infty$ 連続，急峻プロファイル（CLS プロファイルの代替）
-    \begin{equation}
-      u_0(x) = \frac{1}{2}\left[
-        \tanh\!\left(\frac{x - 0.3}{\sigma}\right)
-        - \tanh\!\left(\frac{x - 0.5}{\sigma}\right)
-      \right], \quad \sigma = 0.02
-      \label{eq:ic_tanh}
-    \end{equation}
-\end{enumerate}
-
-\paragraph{評価指標}
+$f$ が解析関数のとき，各演算子の打ち切り誤差は：
 \begin{align}
-  E_{L^2} &= \sqrt{\frac{1}{N}\sum_{i=0}^{N-1}\bigl(u_i(T) - u_0(x_i)\bigr)^2}
-  \label{eq:l2_metric} \\
-  \mathrm{TV} &= \sum_{i=0}^{N-1} |u_{i+1} - u_i|
-  \quad (\text{周期境界：} u_N \equiv u_0)
-  \label{eq:tv_metric}
+  D^{(1)}_{\mathrm{low}} f   &= f' + c_1 h^2 f''' + \Ord{h^4} \\
+  D^{(1)}_{\mathrm{CCD}} f   &= f' + c_2 h^6 f^{(7)} + \Ord{h^8}
 \end{align}
-$T=1$ の厳密解は初期条件と一致するため，$E_{L^2}$ は純粋な数値誤差を表す．
-$\mathrm{TV}$ は Gibbs 振動の大きさを定量化し，
-理論値 $\mathrm{TV}_{\rm exact}$（矩形波 $= 2$，三角波 $\approx 1.97$，平滑化 $\approx 2.00$）
-との比 $\mathrm{TV}/\mathrm{TV}_{\rm exact}$ で散逸の過不足を評価する
-（$=1$：理想，$>1$：Gibbs 振動あり，$<1$：過散逸）．
 
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{数値結果}
-\label{app:dccd_results}
-% ─────────────────────────────────────────────────────────────────────────────
+\textbf{平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ を用いた残差の展開：}
+\begin{align}
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{low}}\psi
+  &= \Bigl[\nabla p + \Ord{h^6}\Bigr]
+     - \frac{\kappa}{We}\Bigl[\nabla\psi + \Ord{h^2}\Bigr] \notag\\
+  &= \underbrace{\Bigl(\nabla p - \frac{\kappa}{We}\nabla\psi\Bigr)}_{=\,0\;\text{（平衡条件）}}
+     + \Ord{h^6} - \frac{\kappa}{We}\Ord{h^2} \notag\\
+  &= \Ord{h^2}
+  \label{eq:bf_mismatch_expand}
+\end{align}
+FD の打ち切り誤差 $O(h^2)$ が残差を支配し（CCD の $O(h^6)$ は無視できる），この $O(h^2)$ の不整合が\textbf{体積力として運動量方程式に残り，寄生流れを駆動し，最終的に計算の爆発を引き起こす}（§\ref{sec:bf_operator_mismatch}）．
 
-\paragraph{波形比較}
-図~\ref{fig:dccd_waveforms} に各初期条件における $T=1$ 後の波形を示す（領域 $[0.15, 0.65]$ に拡大）．
+\subsection{同一演算子（CCD）使用時の誤差低減}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\linewidth]{figures/dccd_waveforms_panel}
-  \caption{%
-    1 次元線形移流 $T=1$ 後の波形比較（5 スキーム）．
-    左から矩形波・三角波・平滑化矩形波（tanh）．
-    破線：厳密解，実線/鎖線：各スキームの数値解．
-    $N = 256$，$\mathrm{CFL} = 0.4$，DCCD フィルタ強度 $\alpha_f = 0.4$．
-  }
-  \label{fig:dccd_waveforms}
-\end{figure}
+同一の演算子（CCD）を両方に用いると，各項が独立に $O(h^6)$ 精度で連続微分を近似するため（$D_{\mathrm{CCD}}^{(1)} f = \nabla f + O(h^6)$），平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ のもとで：
+\[
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{CCD}}\psi
+  = \underbrace{\nabla p - \frac{\kappa}{We}\nabla\psi}_{=\,0\;\text{（平衡条件）}} + O(h^6)
+  = O(h^6)
+\]
+となり，寄生流れの\textbf{数値離散化誤差成分}は $O(h^6)$ まで低減される．
 
-\paragraph{$L^2$ 誤差}
-表~\ref{tab:dccd_l2} に全スキーム・全初期条件の $L^2$ 誤差を示す．
+\noindent\textbf{（注：演算子の可換性について）}
+$D_{\mathrm{CCD}}(\kappa\psi/We) = (\kappa/We)D_{\mathrm{CCD}}\psi + (\psi/We)D_{\mathrm{CCD}}\kappa$
+であるから，$\kappa$ が空間変化する一般の場合は代数的因数分解 $D_{\mathrm{CCD}}(p-\kappa\psi/We)$ は使えない．この $O(h^6)$ は各演算子の精度から直接導かれる．
 
-\begin{table}[htbp]
-  \centering
-  \caption{%
-    $L^2$ 誤差 $E_{L^2}$（$T=1$，$N=256$，$\mathrm{CFL}=0.4$）．太字：各行の最良値．
-  }
-  \label{tab:dccd_l2}
-  \begin{tabular}{lccccc}
-    \toprule
-    初期条件 & O2 & O4 & CCD & DCCD & WENO5 \\
-    \midrule
-    矩形波（ステップ不連続）
-      & $1.41 \times 10^{-1}$
-      & $9.08 \times 10^{-2}$
-      & $4.80 \times 10^{-2}$
-      & $\mathbf{4.23 \times 10^{-2}}$
-      & $6.35 \times 10^{-2}$ \\
-    三角波（C0，コーナー点）
-      & $2.41 \times 10^{-2}$
-      & $5.84 \times 10^{-3}$
-      & $\mathbf{1.37 \times 10^{-3}}$
-      & $1.41 \times 10^{-3}$
-      & $3.90 \times 10^{-3}$ \\
-    平滑化矩形波（$C^\infty$，tanh）
-      & $3.75 \times 10^{-2}$
-      & $2.46 \times 10^{-3}$
-      & $\mathbf{2.57 \times 10^{-5}}$
-      & $3.75 \times 10^{-5}$
-      & $9.66 \times 10^{-4}$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\subsection{CSF モデル誤差との関係：実測収束次数}
 
-\paragraph{総変動量（TV）}
-表~\ref{tab:dccd_tv} に各スキームの $\mathrm{TV}/\mathrm{TV}_{\rm exact}$ 比を示す．
+ただし，残差は CSF モデルが界面を有限厚さ $\varepsilon \sim O(h)$ で近似することによる\textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，実測の寄生流れ収束次数は $O(h^2)$ 程度となる（§\ref{sec:accuracy_summary} および第\ref{sec:verification}章の静止液滴ベンチマーク参照）．Balanced-Force 条件の「Balanced」とは「数値離散化誤差成分の相殺（$O(h^6)$ への低減）」を指し，CSF モデル誤差（$O(\varepsilon^2) \approx O(h^2)$）そのものを除去するものではない点に注意されたい．
 
-\begin{table}[htbp]
-  \centering
-  \caption{%
-    総変動量比 $\mathrm{TV}/\mathrm{TV}_{\rm exact}$（$T=1$，$N=256$，$\mathrm{CFL}=0.4$）．
-    $1.00$：厳密値保持．$>1$：Gibbs 振動，$<1$：過散逸．太字：各行の最良値（1.00 に最近接）．
-  }
-  \label{tab:dccd_tv}
-  \begin{tabular}{lccccc}
-    \toprule
-    初期条件 & O2 & O4 & CCD & DCCD & WENO5 \\
-    \midrule
-    矩形波（ステップ不連続）
-      & $9.20$
-      & $8.58$
-      & $5.42$
-      & $1.58$
-      & $\mathbf{1.00}$ \\
-    三角波（C0，コーナー点）
-      & $1.32$
-      & $1.20$
-      & $1.06$
-      & $\mathbf{1.00}$
-      & $0.97$ \\
-    平滑化矩形波（$C^\infty$，tanh）
-      & $1.41$
-      & $1.01$
-      & $\mathbf{1.00}$
-      & $\mathbf{1.00}$
-      & $\mathbf{1.00}$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+Rhie--Chow 補正と Balanced-Force 条件の独立性は付録~\ref{app:rc_precision} 末尾で確認されている（表面張力補正項を含む拡張形式も同様）．
 
-図~\ref{fig:dccd_l2} および図~\ref{fig:dccd_tv} に各指標の棒グラフを示す
-（縦軸は対数スケール）．
-
-\begin{figure}[htbp]
-  \centering
-  \begin{minipage}{0.49\linewidth}
-    \includegraphics[width=\linewidth]{figures/dccd_l2_summary}
-    \caption{$L^2$ 誤差（対数スケール）．}
-    \label{fig:dccd_l2}
-  \end{minipage}
-  \hfill
-  \begin{minipage}{0.49\linewidth}
-    \includegraphics[width=\linewidth]{figures/dccd_tv_summary}
-    \caption{総変動量（対数スケール；破線：厳密値）．}
-    \label{fig:dccd_tv}
-  \end{minipage}
-\end{figure}
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{考察}
-\label{app:dccd_discussion}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\paragraph{ステップ不連続（矩形波）}
-O2・O4・CCD はいずれも $\mathrm{TV}/\mathrm{TV}_{\rm exact} \gg 1$（それぞれ $9.20, 8.58, 5.42$）
-であり，顕著な Gibbs 振動が残存する．
-WENO5 は内蔵 ENO 散逸により $\mathrm{TV}/\mathrm{TV}_{\rm exact} = 1.00$ を達成し，
-TV 保持に関しては最良スキームとなる．
-一方で $L^2$ 誤差は WENO5（$6.35 \times 10^{-2}$）より DCCD（$4.23 \times 10^{-2}$）の方が小さい．
-これは WENO5 の ENO スイッチングが不連続近傍でステンシルを局所的に低次化させるのに対し，
-DCCD の d10 フィルタは滑らかな高次精度を保ちつつ格子スケール振動のみを抑制するためと解釈できる．
-
-\paragraph{コーナー点特異性（三角波）}
-$L^2$ 精度は CCD が最良（$1.37 \times 10^{-3}$），TV 比では DCCD が唯一 $1.00$ を達成する．
-WENO5 は TV が $0.97$（若干の過散逸）であり，コーナー近傍でも ENO が積極的に散逸する傾向を示す．
-
-\paragraph{$C^\infty$ 平滑プロファイル（tanh 波）}
-$L^2$ 精度は CCD が最良（$2.57 \times 10^{-5}$），DCCD（$3.75 \times 10^{-5}$）がこれに次ぐ．
-WENO5 は $9.66 \times 10^{-4}$ と両者より約 38 倍（1.6 桁）劣り，5 次精度と ENO スイッチ
-オーバーヘッドの影響が顕在化する．TV は 3 スキーム（CCD・DCCD・WENO5）がいずれも
-厳密値と一致する（$\mathrm{TV}/\mathrm{TV}_{\rm exact} = 1.000$）．
-
-\begin{tcolorbox}[resultbox, title={実験からの結論}]
-\begin{itemize}
-  \item \textbf{TV 保持（不連続）：}
-        WENO5 が最優秀（矩形波 TV 比 $\mathbf{1.00}$）だが，$L^2$ 精度は DCCD（$4.23 \times 10^{-2}$）
-        より劣る（$6.35 \times 10^{-2}$）．WENO5 の ENO 散逸は不連続除去には強力だが
-        誤差の平坦化も引き起こす．
-  \item \textbf{総合精度（不連続・急峻）：}
-        DCCD は TV 比 $1.58$（WENO5 の次点）かつ最良 $L^2$ を兼備し，
-        精度と安定性のトレードオフが最小のスキームである．
-  \item \textbf{滑らかプロファイル精度：}
-        CCD が 6 次精度を完全発現（tanh L2 $= 2.57 \times 10^{-5}$）．
-        WENO5 は 5 次精度かつ ENO オーバーヘッドにより CCD の $38$ 倍劣る．
-  \item \textbf{総合判断（CLS 移流への適用）：}
-        CLS プロファイルは界面近傍で急峻（tanh 状）かつ
-        移流方向に不連続性を含み得るため，
-        DCCD は $L^2$ 精度と TV 保持の両面で最も適切なスキームである．
-        本稿主実装としての採用を数値的に支持する（§~\ref{sec:advection_motivation}）．
-\end{itemize}
-\end{tcolorbox}
+% ═══════════════════════════════════════════════════════════════════════════════

@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-057 CLOSED 2026-03-30: 全体の章構成見直し. §10タイトル更新, §10冒頭修正, §8d→§10.3.3移動, ヘッダーコメント修正. 157pp, 0 errors. |
+| last_decision | CHK-058 CLOSED 2026-03-30: 全ファイル名見直し. P1:§10bコンテンツ→10b1/2/3_, P2:appendix_numerics_schemes s4-6↔s1-3+s9→s7, P3:solver_s3→ccd_impl_s5+solver s4/1/2/5→s1/2/3/4. 157pp, 0 errors. |
 | next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
 
 ### Notes
@@ -87,6 +87,7 @@
 | CHK-054 | CLOSED | paper | §10 コード参照除去 2026-03-29: 09b_implementation.tex §10.1+§10.2 からクラス名・メソッド名・ファイル名・引数名を除去し数学的記述に置換．サブセクション題名も論文体裁に修正．158pp, 0 errors. |
 | CHK-053 | CLOSED | paper | §7 実装コンテンツ移動 2026-03-29: 07_collocate.tex からパートIII内の実装記述（コード実装との整合性 enumerate・実装状況段落・§7.4.3 Balanced-Force 検証手順）を除去し，パートIV 新規セクション sections/09b_implementation.tex（§10：Rhie--Chow・BF 実装整合性と検証手順）に移動．main.tex に \input{sections/09b\_implementation} を §9 直後に挿入．07_collocate.tex の代替テキストに第~\ref{sec:impl_collocate}章への前方参照を追加．XeLaTeX 2-pass: 158pp, 0 errors, 0 warnings, 0 undefined refs. |
 | CHK-056 | CLOSED | paper | sections/ ファイル名整合 2026-03-30: 08d/b/c→08b/c/d, 10c/b→10b/c, s7/s8→10b_ccd*/10b_cls*. 入力順=アルファベット順. 157pp, 0 errors. |
+| CHK-058 | CLOSED | paper | 全ファイル名見直し 2026-03-30: [P1] 10b_{cls,ccd_pseudo,ppe}→10b{1,2,3}_*（ディスパッチャ先頭保証）; [P2] appendix_numerics_schemes s4/5/6↔s1/2/3, s9→s7（D.1–D.7順に整合）; [P3] solver_s3→ccd_impl_s5, solver s4/1/2/5→s1/2/3/4（E.1–E.4順に整合）. \input参照・ヘッダーコメント全更新. 157pp, 0 errors. |
 | CHK-057 | CLOSED | paper | 全体の章構成見直し 2026-03-30: [A] §10 冒頭テキスト修正（「今後の課題」→「§10.3に実施済み結果を収める」）; [C] §10 タイトル「検証指標とベンチマーク」→「数値検証とベンチマーク」; [D] 10c_benchmarks.texヘッダーコメント修正; [B1] §8d PPE検証（Tests C-1/C-2/C-3）→ §10.3.3（10b_ppe_verification.tex新設, 10b_component_verification.texに追加, 08d_ppe_verification.texをリダイレクトスタブに置換, 10c_benchmarks:364参照修正）. sec:ccd_poisson_verificationラベルを§10.3.3に移動. 157pp, 0 errors, 0 warnings. |
 | CHK-055 | CLOSED | paper | §10.3 コンポーネント検証新設 2026-03-30: appendix D.2(CLS保存性評価)＋D.8(CCD仮想時間精度検証)を §10.3 (10c_component_verification.tex) に移動. Appendix D: D.1–D.9 → D.1–D.7. 157pp, 0 errors, 0 undefined refs. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
