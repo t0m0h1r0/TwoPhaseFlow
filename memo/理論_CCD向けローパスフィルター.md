@@ -1,58 +1,29 @@
-% !TeX program = xelatex
-\documentclass[12pt, a4paper, titlepage]{article}
-\usepackage{xeCJK}
-\usepackage{amsmath, amssymb}
-\usepackage{geometry}
-\usepackage{longtable}
-\usepackage{booktabs}
-\usepackage{tabularx}
-\usepackage{caption}
-\usepackage{silence}
-\WarningFilter{caption}{Unknown document class}
-\WarningFilter{xeCJK}{Redefining CJKfamily}
-\WarningFilter{relsize}{Failed to get list}
+# 保存則を保証する二相流・高次精度スキーム向けローパスフィルターの設計と実装
 
-% -- Fonts --
-\setmainfont{Times New Roman}
-\setCJKmainfont{Hiragino Mincho ProN}
-
-\geometry{reset, margin=2.5cm}
-
-\title{保存則を保証する二相流・高次精度スキーム向けローパスフィルターの設計と実装}
-\author{}
-\date{}
-
-\begin{document}
-
-\maketitle
-
-\section*{要旨 (Abstract)}
+## 要旨 (Abstract)
 高次精度差分法（Compact Finite Difference: CCD等）を用いた非圧縮性二相流の数値解析において、不連続面（気液界面）近傍で発生する非物理的な高波数振動（ギブス現象や寄生流）の抑制は極めて重要な課題である。一般的に用いられるローパスフィルターを計算結果の変数に対して直接適用する（後処理フィルター）アプローチは、系の質量や運動量の厳密な保存則を破壊する危険性を持つ。本稿では、高次精度スキームの解像度を維持しつつ、完全な保存則を保証するローパスフィルターの設計手法について論じる。具体的には、フラックス形式へのフィルター適用、暗黙的フィルターの保存的拡張、およびLES（Large Eddy Simulation）的アプローチの有効性を示す。
 
-\section*{1. はじめに (Introduction)}
+## 1. はじめに (Introduction)
 流体計算、特に界面捕獲法（Level Set法やVOF法）を伴う二相流計算では、物性値の急激な変化に起因して高波数の数値振動が発生しやすい。これを抑制するためにローパスフィルターが頻繁に用いられるが、変数 $u$ に対して直接フィルター演算 $\hat{u} = \mathcal{F}(u)$ を施すと、離散化空間における総量 $\sum \hat{u}$ が元の総量 $\sum u$ と一致せず、計算の進行とともに質量誤差が蓄積する問題が生じる。本稿では、保存則を数学的に保証しつつ高波数成分を減衰させる実践的なアプローチを提示する。
 
-\section*{2. フラックス形式による完全保存フィルター (Flux-form Filtering)}
+## 2. フラックス形式による完全保存フィルター (Flux-form Filtering)
 保存則を満たす最も確実な方法は、変数を直接平滑化するのではなく、有限体積法的な「フラックスの出入り」の枠組みの中でフィルター処理を完結させることである。離散化された保存則は次式で表される：
 $$u_i^{n+1} = u_i^n - \frac{\Delta t}{\Delta x} \left( F_{i+1/2} - F_{i-1/2} \right)$$ここで、数値フラックス $F_{i+1/2}$ に対してローパス効果を持つ項（人工粘性項など）を組み込む。$$F_{i+1/2} = \tilde{F}_{i+1/2}^{CCD} - \alpha (u_{i+1} - u_i)$$第1項はCCD等の高次精度スキームによって評価された高分解能フラックスであり、第2項がローパスフィルターとして機能する散逸項である。係数 $\alpha$ を適切に設計（例：高波数の検出器と連動させる）することで、保存則を厳密に満たしながら不要な振動のみを除去可能である。
 
-\section*{3. 暗黙的（コンパクト）フィルターの保存的適用}
+## 3. 暗黙的（コンパクト）フィルターの保存的適用
 Lele (1992) に代表されるコンパクトフィルターは、CCDと同様のスペクトル解像度を持ち、特定の波数のみを鋭くカットオフできるため非常に優秀である。一般的なコンパクトフィルターの形式：$$\alpha \hat{f}_{i-1} + \hat{f}_i + \alpha \hat{f}_{i+1} = a f_i + \frac{b}{2}(f_{i+1} + f_{i-1}) + \dots$$これを状態変数 $u$ に直接適用すると保存則が破綻するため、本手法では計算されたセル境界フラックス $F_{i+1/2}$ に対してこのフィルター演算を適用する。得られたフィルター済みフラックス $\hat{F}_{i+1/2}$ を用いて変数を更新することで、高次精度なローパス効果と保存則の完全な両立が達成される。
 
-\section*{4. LES的アプローチ：物理的散逸モデルの導入}
+## 4. LES的アプローチ：物理的散逸モデルの導入
 数値的なフィルター演算の代替として、ナビエ・ストークス方程式に物理的なモデル化を加えるLES（Large Eddy Simulation）的アプローチも、移流・二相流計算において本質的な解決策となる。移流項の計算において、Smagorinskyモデルのような渦粘性モデルを導入する：$$\nu_{eff} = (C_s \Delta)^2 |S|$$
-（ここで $C_s$ はモデル定数、$\Delta$ はフィルタ幅（格子幅）、$S$ はひずみ速度テンソルである）この手法は、流れの剪断が強い（高波数が生成されやすい）領域に対してのみ局所的かつ自然に散逸（ローパス効果）を与え、物理的な整合性と数値的安定性を同時に提供する。単なる数値フィルターよりも二相流の寄生流抑制に対して劇的な効果を示す場合が多い。
+（ここで $C_s$ はモデル定数、$\Delta$ はフィルタ幅（格子幅）、$S$ はひずみ速度テンソルである）
+この手法は、流れの剪断が強い（高波数が生成されやすい）領域に対してのみ局所的かつ自然に散逸（ローパス効果）を与え、物理的な整合性と数値的安定性を同時に提供する。単なる数値フィルターよりも二相流の寄生流抑制に対して劇的な効果を示す場合が多い。
 
-\section*{5. 圧力方程式（非圧縮性条件）におけるフィルタリングの注意点}
+## 5. 圧力方程式（非圧縮性条件）におけるフィルタリングの注意点
 非圧縮性流体計算において、圧力 $p$ 自体にフィルターをかけることは、速度場の非発散（Divergence-free）条件を破壊するため厳禁である。圧力に関連するノイズ（チェッカーボード・インスタビリティ等）を抑制する場合は、以下のいずれかのアプローチを取るべきである。
-\begin{itemize}
-    \item 圧力勾配のフィルタリング: ナビエ・ストークス方程式の右辺に現れる $\nabla p$ に対してフィルターを適用する。
-    \item 右辺項（RHS）のフィルタリング: 圧力ポアソン方程式 $\nabla^2 p = \frac{\rho}{\Delta t} \nabla \cdot \mathbf{u}^*$ を解く際、右辺の湧き出し項（Divergence）に対して軽いローパスフィルターをかける。これにより、Poissonソルバー（SOR等）の収束性を損なうことなく、滑らかな圧力場を獲得できる。
-\end{itemize}
+- 圧力勾配のフィルタリング: ナビエ・ストークス方程式の右辺に現れる $\nabla p$ に対してフィルターを適用する。
+- 右辺項（RHS）のフィルタリング: 圧力ポアソン方程式 $\nabla^2 p = \frac{\rho}{\Delta t} \nabla \cdot \mathbf{u}^*$ を解く際、右辺の湧き出し項（Divergence）に対して軽いローパスフィルターをかける。これにより、Poissonソルバー（SOR等）の収束性を損なうことなく、滑らかな圧力場を獲得できる。
 
-\section*{6. 結論 (Conclusion)}
+## 6. 結論 (Conclusion)
 高次精度スキームの利点を活かしつつ数値振動を抑えるためには、場全体に対する後処理としてのローパスフィルターからの脱却が必要である。本稿で提示した「フラックス形式へのフィルター適用」、あるいは「物理モデル（LES）としての組み込み」を計算コードに実装することで、完全な質量・運動量保存と安定した界面挙動の両立が可能となる。特にCCDと組み合わせる場合は、フラックスに対するコンパクトフィルターの適用が最も理論的な整合性が高い。
 
-\textbf{Keywords:} Compact Finite Difference, Low-pass Filter, Conservation Laws, Multiphase Flow, Implicit Filtering
-
-\end{document}
+**Keywords:** Compact Finite Difference, Low-pass Filter, Conservation Laws, Multiphase Flow, Implicit Filtering
