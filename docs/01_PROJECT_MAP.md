@@ -257,9 +257,11 @@ Never hardcode pin index (0,0).
 | `06_grid.tex` | §6 | Non-uniform interface-fitted grid |
 | `07_collocate.tex` | §7 | Rhie-Chow, Balanced-Force |
 | `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_ppe_verification.tex` + `08d_ppe_pseudotime.tex` | §8 | Variable-density PPE, pseudo-time |
-| `09_full_algorithm.tex` | §9 | 7-step loop diagram |
-| `10_verification.tex` + `10b_benchmarks.tex` | §10 | Error norms, 4 benchmarks |
-| `11_conclusion.tex` | §11 | Summary, future work |
+| `09_full_algorithm.tex` | §9 | 7-step loop diagram, operator mapping, timestep control |
+| `10_implementation.tex` | §10 | RC・BF implementation consistency |
+| `11_verification.tex` + `11b_component_verification.tex` + `11b1`–`11b5` + `11c_benchmarks.tex` | §11 | Component verification (CCD, GCL, CLS, PPE), error budget |
+| `12_benchmarks.tex` | §12 | Multi-phase flow benchmarks (static drop, capillary wave, rising bubble, RT) |
+| `13_conclusion.tex` | §13 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |
 
 ────────────────────────────────────────────────────────
