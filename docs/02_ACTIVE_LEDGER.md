@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-066 CLOSED 2026-03-30: PaperReviewer audit §9–§12 — 1 MAJOR fixed (11_benchmarks.tex:217 self-ref §\ref{sec:bench_rt} removed); 66 refs verified PASS; 0 undefined labels. 159pp, 0 errors, 0 warnings. |
-| next_action | CHK-059 RESUME: complex NS simulations (static_droplet, oscillating_droplet, rising_bubble) — or continue paper revision |
+| last_decision | CHK-071 CLOSED 2026-03-30: abstract+§1+§11+§12 structural consistency fixes — benchmark list corrected (Zalesak→§10 component; capillary wave added to §11); §1 chapter table updated to 12-chapter layout; §12 §9 description + 今後課題 updated; §11 pending-results notice added. 159pp, 0 errors, 0 warnings. |
+| next_action | CHK-059 RESUME or PaperReviewer full re-audit (Part I–III consistency scan) |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -98,6 +98,11 @@
 | CHK-064 | CLOSED | paper | §10c 縮小 2026-03-30: 10c_benchmarks.tex → 精度バジェットのみ保持; ベンチマーク4本を§11へ移動. |
 | CHK-065 | CLOSED | paper | main.tex更新 2026-03-30: 11_benchmarks.tex追加; 10c comment更新; 11_conclusion comment更新(§12). 159pp, 0 errors, 0 warnings. |
 | CHK-066 | CLOSED | review | PaperReviewer audit §9–§12 2026-03-30: 0 FATAL; 1 MAJOR fixed (11_benchmarks.tex:217 self-ref §\ref{sec:bench_rt}→削除); 66 cross-refs PASS; 0 MINOR relevant. 159pp, 0 errors, 0 warnings. |
+| CHK-067 | CLOSED | paper | §12 update 2026-03-30: §9章 description → §9.1/9.2/9.3 refs; 今後課題 → §10 component DONE vs §11 physical pending; 学習者メッセージ → add sec:validation. |
+| CHK-068 | CLOSED | paper | §11 intro: pending-results notice added (今後の課題→sec:future_work). |
+| CHK-069 | CLOSED | paper | §11 intro: sec:component_verification ref "第X章"→"§X"（節への誤参照修正）. |
+| CHK-070 | CLOSED | paper | §1 chapter table + roadmap: 12-chapter structure (§10 component / §11 physical / §12 まとめ). |
+| CHK-071 | CLOSED | paper | abstract: Zalesak→component verification (§10); add capillary wave to §11 benchmark list. 159pp, 0 errors, 0 warnings. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference
