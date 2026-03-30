@@ -1,0 +1,295 @@
+% paper/sections/appendix_legacy_methods.tex
+%
+% 付録 F: 標準手法の詳細（CSF モデル・Rhie--Chow 補正）
+% 本付録は本稿が GFM + DCCD 定式化に移行する以前の
+% CSF および Rhie--Chow 手法の完全な定式化を参考のため収録する．
+%
+
+\section{標準手法の詳細：CSF モデルと Rhie--Chow 補正}
+\label{app:legacy_methods}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CSF（連続表面力）モデルの完全な定式化}
+\label{app:csf_full}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+Navier-Stokes 方程式に表面張力項 $\bm{f}_\sigma^*$ を組み込む前に，
+その導出を示す必要がある．表面張力は本来「界面上の線力（3次元では面力）」だが，
+これをそのまま体積方程式に入れることはできない．
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル} \cite{Brackbill1992} は
+この問題を解決する標準的手法である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{なぜデルタ関数が必要か：面積分から体積積分への変換}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\paragraph{直感的理解：「フィルター」としてのデルタ関数}
+表面張力は本来，界面 $\Gamma$ という\textbf{面（2次元曲面）}の上にのみ作用する力である．
+一方，Navier-Stokes 方程式は\textbf{体積（3次元領域）}全体にわたる方程式である．
+「面の上の力」を「体積全体の力」として書き直すには，
+\textbf{「界面でのみ1，それ以外でゼロ」という数学的なフィルター}が必要になる．
+これがディラックデルタ関数 $\delta_s$ の役割である．
+
+具体的には，表面張力による力 $F_\sigma$ を体積積分と面積分の両方で表すと：
+\[
+  \underbrace{\int_\Omega \bm{f}_\sigma(\bm{x})\, dV}_{\text{体積積分（NS 方程式側）}}
+  = \underbrace{\int_\Gamma \sigma\kappa\hat{\bm{n}}\, dS}_{\text{面積分（物理的表現）}}
+\]
+この等式が成り立つためには，$\bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})$
+（界面上では $+\infty$，それ以外では $0$，積分すると界面の面積を与える関数）
+とおく必要がある．
+
+\paragraph{1次元での直感：ヘヴィサイド関数の微分}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  %% 左：ヘヴィサイド関数
+  \begin{scope}[xshift=-45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（a）ヘヴィサイド関数 $H_\varepsilon(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$H_\varepsilon$};
+    \draw[very thick, blue2, domain=-2:2, samples=80]
+      plot (\x, {1.8/(1+exp(-3*\x))});
+    \node[font=\scriptsize, blue2] at (1.4, 1.65) {$H_\varepsilon(\phi)$};
+    \draw[dashed, gray] (-2.2, 1.8) -- (2.2, 1.8) node[right, font=\scriptsize, gray]{$1$};
+    \draw[dashed, gray] (-2.2, 0)   -- (2.2, 0)   node[right, font=\scriptsize, gray]{$0$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \node[font=\scriptsize] at (-1.3, 0.9) {液相};
+    \node[font=\scriptsize] at (1.3,  0.9) {気相};
+  \end{scope}
+  %% 右：デルタ関数（微分）
+  \begin{scope}[xshift=45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（b）微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$\delta_\varepsilon$};
+    \draw[very thick, red2, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)});
+    \fill[red2!15, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)}) -- (2, 0) -- (-2, 0) -- cycle;
+    \node[font=\scriptsize, red2] at (0.6, 1.8) {$\delta_\varepsilon(\phi)$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \draw[<->, thick, darkgray]
+      (-0.6, -0.15) -- (0.6, -0.15) node[midway, below, font=\scriptsize]{幅 $\approx 2\varepsilon$};
+    \node[font=\scriptsize, darkgray] at (1.6, 0.3) {界面外 $\approx 0$};
+    \node[font=\scriptsize] at (0, 1.0) {$\int\delta_\varepsilon\,d\phi = 1$};
+  \end{scope}
+  %% 微分矢印
+  \draw[-Stealth, very thick, navy] (-0.8, 1.4) -- (0.8, 1.4)
+        node[midway, above, font=\small, navy]{$\dfrac{d}{d\phi}$};
+\end{tikzpicture}
+\caption{（a）CLS 変数 $\psi = H_\varepsilon(\phi)$（ヘヴィサイド関数の滑らか版）．
+界面 $\phi=0$ を中心に 0 から 1 へ連続的に変化する．
+（b）その微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$ は界面近傍にのみ集中した
+ピーク（デルタ関数の滑らか版）を形成する．
+$|\bnabla\psi| = \delta_\varepsilon(\phi)|\bnabla\phi| \approx \delta_\varepsilon(\phi)$
+が界面デルタ関数 $\delta_s$ の数値近似となる．}
+\label{fig:heaviside_delta_app}
+\end{figure}
+
+1次元の場合，ヘヴィサイド関数 $H(x)$（$x>0$ で 1，$x<0$ で 0）の微分は
+ディラックデルタ $\delta(x)$ である：
+\[
+  \frac{d}{dx}H(x) = \delta(x)
+\]
+数値計算では厳密なステップ関数の代わりに，
+滑らかな近似 $H_\varepsilon(\phi)$（図\ref{fig:heaviside_delta_app}(a)）を用いる．
+その微分 $H_\varepsilon'(\phi) = \delta_\varepsilon(\phi)$ は
+「幅 $\approx 2\varepsilon$ を持つ滑らかなピーク関数」（図\ref{fig:heaviside_delta_app}(b)）となり，
+これが界面ディラックデルタ $\delta_s$ の数値的な近似として機能する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{物理的表面張力と界面のディラックデルタ}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ 上に作用する表面張力は，単位面積あたり $\sigma\kappa\hat{\bm{n}}$ の法線力である．
+これを全空間で定義された体積力 $\bm{f}_\sigma$ として書くには，
+界面上だけ値を持つ\textbf{界面ディラックデルタ} $\delta_s$ を用いる：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
+  \label{eq:csf_dirac_app}
+\end{equation}
+$\delta_s$ は界面 $\Gamma$ 上では $+\infty$，それ以外では $0$ の一般化関数であり，
+$\int_\Omega \delta_s(\bm{x})\,dV = \int_\Gamma dS$（面積分）という性質を持つ．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CLS を用いた \texorpdfstring{$\delta_s$ と $\hat{\bm{n}}$}{δ\_s と n-hat} の近似}
+% ─────────────────────────────────────────────────────────────────────────────
+
+解析的には $\delta_s$ は扱いにくいが，CLS 変数 $\psi = H_\varepsilon(\phi)$ を用いると
+\textbf{滑らかな近似}が得られる：
+\begin{align}
+  |\bnabla\psi| &= |H_\varepsilon'(\phi)|\,|\bnabla\phi|
+                 = \delta_\varepsilon(\phi)\,|\bnabla\phi|
+                 \approx \delta_\varepsilon(\phi)
+  \label{eq:csf_delta_psi_app}
+\end{align}
+最後の近似は $|\bnabla\phi|\approx 1$（符号付き距離関数の Eikonal 性質）による．
+すなわち，\textbf{$|\bnabla\psi|$ が界面ディラックデルタ $\delta_s$ の滑らかな近似}となる．
+
+以下の精度証明は $H_\varepsilon$ の具体的な形式に依拠する（正式導出は第\ref{sec:levelset}章）．
+シグモイド型滑らかヘヴィサイド関数を
+\begin{equation}
+  H_\varepsilon(\phi) \equiv \frac{1}{1+e^{-\phi/\varepsilon}}
+  \label{eq:Heps_def_app}
+\end{equation}
+と定義する（$\phi=0$ で $H_\varepsilon = 1/2$，$\phi\to-\infty$ で $0$，$\phi\to+\infty$ で $1$）．
+その微分は閉形式で
+\begin{equation}
+  \delta_\varepsilon(\phi) \equiv H_\varepsilon'(\phi)
+  = \frac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr)
+  \label{eq:delta_eps_def_app}
+\end{equation}
+と書け，かつ $\delta_\varepsilon(\phi) = \delta_\varepsilon(-\phi)$（偶関数性）が成り立つ．
+
+\textbf{近似精度（付録~\ref{app:csf_delta_precision} に証明）：}
+Eikonal 条件 $|\bnabla\phi|=1$ のもとで，法線座標 $s$ のテイラー展開と
+$\delta_\varepsilon$ の偶関数性から：
+\[
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  = \Ord{\varepsilon^2\,\kappa^2\,\|f\|_{L^\infty}}
+\]
+$\varepsilon \sim \Delta x$ の設定では誤差は $\Ord{\Delta x^2}$ である．
+
+一方，界面の外向き単位法線は：
+\begin{equation}
+  \hat{\bm{n}} = \frac{\bnabla\psi}{|\bnabla\psi|}
+  \label{eq:csf_normal_app}
+\end{equation}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CSF 体積力の最終形：\texorpdfstring{$\bm{f}_\sigma = \sigma\kappa\bnabla\psi$}{f\_sigma = sigma*kappa*grad(psi)}}
+% ─────────────────────────────────────────────────────────────────────────────
+
+式 \eqref{eq:csf_delta_psi_app} と \eqref{eq:csf_normal_app} を式 \eqref{eq:csf_dirac_app} に代入する：
+\begin{equation}
+  \bm{f}_\sigma = \sigma\kappa\,\hat{\bm{n}}\,\delta_s
+  \approx \sigma\kappa\,\frac{\bnabla\psi}{|\bnabla\psi|}\,|\bnabla\psi|
+  \approx \sigma\kappa\,\bnabla\psi
+  \label{eq:csf_final}
+\end{equation}
+
+ただし，この近似は $|\bnabla\phi| \approx 1$（Eikonal 条件）が成立する場合に限り有効である．
+CLS 法では再初期化ステップによって $|\bnabla\phi|\approx 1$ を維持し，この近似の精度を保証する．
+
+$\bnabla\psi$ は界面の法線方向を向き，界面で最大値をとる．
+したがって $\sigma\kappa\bnabla\psi$ は界面近傍でのみ作用し，
+全空間積分すると Young-Laplace のジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を再現する
+（§\ref{sec:csf_young_laplace_app} 参照）．
+
+\medskip
+\phantomsection\label{sec:csf_young_laplace_app}
+\noindent\textbf{検証：CSF モデルが Young-Laplace ジャンプ条件を再現すること}
+
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ が界面ジャンプ条件
+$[p]_\Gamma \equiv p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa$
+を再現することを，界面法線方向の積分によって示す．
+
+平衡状態（速度ゼロ）では運動方程式より
+$\bnabla p = \sigma\kappa\bnabla\psi$ が成立する．
+界面を法線方向 $s$ に沿って積分すると：
+\[
+  p_{\text{gas}} - p_{\text{liq}}
+  = \sigma\kappa \int_{-\infty}^{+\infty} \frac{\partial\psi}{\partial s}\,ds
+  = \sigma\kappa\,(1 - 0) = \sigma\kappa
+\]
+\begin{equation}
+  p_{\text{gas}} - p_{\text{liq}} = \sigma\kappa
+  \label{eq:young-laplace-app}
+\end{equation}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Rhie--Chow 補正の完全な定式化}
+\label{app:rhie_chow_full}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録では，第\ref{sec:collocate}章§\ref{sec:rhie_chow} で参照した
+Rhie--Chow 補正の完全な定式化を収録する．
+
+\subsubsection{補正された界面速度の定義}
+本稿では，Chung~\cite{Chung2002} に基づく変密度場に対応した形式を用いる．
+東側フェイス $e$ における $x$ 方向速度 $u_e$ は，隣接するセル中心 $P$ と $E$ の値を用いて以下のように定義される．
+\begin{equation}
+ u_e = \overline{u_e} - d_e \left[ \left(\pd{p}{x}\right)_e - \overline{\left(\pd{p}{x}\right)_e} \right]
+ \label{eq:rc-concept-app}
+\end{equation}
+ここで，
+\begin{itemize}
+    \item $\overline{u_e}$: セル中心 $P, E$ の速度を線形補間した速度．$\overline{u_e} = (u_P+u_E)/2$．
+    \item $(\partial p/\partial x)_e$: フェイス $e$ での圧力勾配．単純な中心差分 $\frac{p_E-p_P}{\Delta x}$ で計算．
+    \item $\overline{(\partial p/\partial x)_e}$: セル中心 $P, E$ で評価された圧力勾配を線形補間したもの．
+    $\overline{(\partial p/\partial x)_e} = \frac{1}{2}\left[ \left(\frac{\partial p}{\partial x}\right)_P + \left(\frac{\partial p}{\partial x}\right)_E \right]$
+    \item $d_e$: 補間係数．運動量方程式から導かれ，時間刻み幅 $\Delta t$ と密度 $\rho$ に依存する．
+    $d_e = (\Delta t / \rho)_e$（式~\eqref{eq:rc-face} 参照）．
+\end{itemize}
+
+Rhie--Chow 式 \eqref{eq:rc-concept-app} に2種類の補間が現れる：
+\begin{itemize}
+  \item \textbf{$\bar{u}_f$（速度）→ 算術平均}：
+    速度は気液界面をまたいでも物理的に連続であるため，単純な線形補間が適切である．
+  \item \textbf{$d_f = \Delta t (1/\rho)_f^{\mathrm{harm}}$（密度係数）→ 調和平均}：
+    密度 $\rho$ は界面で不連続であり，フラックスの連続性から調和平均が自然に導かれる（第\ref{sec:pressure}章）．
+\end{itemize}
+
+\paragraph{補正項の働き}
+式 \eqref{eq:rc-concept-app} の第2項が Rhie--Chow 補正の核心である．
+チェッカーボード圧力場では，フェイスでの勾配 $(p_E-p_P)/\Delta x$ は大きな値を持つが，
+セル中心勾配の平均はゼロに近くなるため，この差が非物理的な振動を効果的に減衰させる．
+
+\subsubsection{本研究における離散化形式}
+\label{sec:rc_implementation}
+最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の離散化形式を用いる
+（表面張力補正項を加えた完全形式 \eqref{eq:rc-face-balanced} については §\ref{sec:rc_balanced_force} を参照）．
+\begin{equation}
+ u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho^{n+1}} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
+ \label{eq:rc-face}
+\end{equation}
+ここで，$(\nabla p^n)_f$ はフェイスにおける前時刻圧力 $p^n$ の勾配（陽的評価），
+$\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である．
+係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には現時刻密度の調和平均を用いる．
+
+\paragraph{調和平均係数の根拠}
+算術平均と調和平均の差は密度比が大きいほど顕著になる：
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+流体系 & $\rho_l/\rho_g$ & $(1/\rho)^{\mathrm{arith}}_f \cdot \rho_g$ & $(1/\rho)^{\mathrm{harm}}_f \cdot \rho_g$ \\
+\hline
+水・水蒸気 & $10$ & $0.55$ & $0.18$ \\
+水・空気（常温） & $1000$ & $\approx 0.500$ & $\approx 0.002$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{【重要】PPE 右辺での Rhie--Chow 発散の必須使用：}
+PPE 右辺の発散計算には，必ずこのフェイス速度の発散 $\nabla_h^{\mathrm{RC}}\cdot\bu^*$
+（式~\eqref{eq:rc_divergence}）を使用しなければならない
+（セル中心発散の代用はチェッカーボードの逆流を招く；第\ref{sec:pressure}章 §\ref{sec:rc_divergence} 参照）．
+
+\subsubsection{Rhie--Chow 補正への表面張力項の拡張：フェイス速度への Balanced-Force 反映}
+\label{app:rc_balanced_force}
+
+Balanced-Force の論理をフェイス速度の計算にも完全に反映させるためには，
+表面張力体積力の差分項を加えた拡張形式が必要である：
+\begin{equation}
+  u_f = \bar{u}_f
+    - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
+    \Biggl[
+      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}_f\Bigr)
+      - \Bigl((\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f\Bigr)
+    \Biggr]
+  \label{eq:rc-face-balanced-app}
+\end{equation}
+
+ここで各量の定義は以下の通りである：
+\begin{itemize}
+  \item $(\bm{f}_\sigma^{n+1})_f = (\kappa_f^{n+1}/We)\cdot(\psi_E^{n+1}-\psi_P^{n+1})/h$：
+        フェイス $f$ での表面張力体積力．
+  \item $\overline{(\bm{f}_\sigma^{n+1})}_f = \tfrac{1}{2}[(\bm{f}_\sigma^{n+1})_P + (\bm{f}_\sigma^{n+1})_E]$：
+        セル中心値の算術平均補間値．\textbf{必須：} セル中心値には CCD 演算子を使用する
+        （Balanced-Force 整合性条件，§\ref{sec:balanced_force}）．
+\end{itemize}
+
+平衡状態では，フェイス直接差分レベルで $(\bnabla p^n)_f \approx (\bm{f}_\sigma^{n+1})_f$
+がキャンセルし，セル中心平均で同一の CCD 演算子を使うことで
+$\overline{(\bnabla p^n)}_f - \overline{(\bm{f}_\sigma^{n+1})}_f \to 0$ となる
+（詳細は付録~\ref{app:balanced_force_taylor}）．
