@@ -9,9 +9,9 @@
 | Key | Value |
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
-| branch | feature/paper-gfm-dccd-future-work |
-| last_decision | CHK-075 OPEN 2026-03-31: PaperWriter — §今後の課題 (sec:future_work) in 13_conclusion.tex: added 2 new items: (1) GFM sharp-interface (Kang2000 cite added to bib); (2) DCCD+SAT Rhie-Chow elimination. 163pp, 0 errors, 0 warnings. Branch: feature/paper-gfm-dccd-future-work. Pending merge to main. |
-| next_action | Merge feature/paper-gfm-dccd-future-work → main, then CHK-059 RESUME |
+| branch | main |
+| last_decision | CHK-076 CLOSED 2026-03-31: PaperWriter — §2.4+§7.3 rewrite: (A) 02b_csf.tex CSF limitations paragraph + §2.4.5 sec:gfm (eq:gfm_jump/ghost_p/rhs_correction/ccd_div, Fedkiw1999); (B) 07_collocate.tex §7.3.3 sec:dccd_decoupling (εd=1/4 checkerboard, eq:dccd_filter_physical, dccd_ppe_rhs, sat_penalty, Carpenter1994). 165pp, 0 errors. Merged to main. |
+| next_action | CodeArchitect: implement GFM (replace CSF) + DCCD εd=1/4 decoupling (replace Rhie-Chow) per §sec:gfm + §sec:dccd_decoupling |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
