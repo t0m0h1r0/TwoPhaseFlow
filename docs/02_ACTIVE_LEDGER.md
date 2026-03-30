@@ -1,7 +1,7 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
 # Supersedes: ACTIVE_STATE.md, CHECKLIST.md, ASSUMPTION_LEDGER.md, LESSONS.md
-# Last updated: 2026-03-30
+# Last updated: 2026-03-31
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -9,9 +9,9 @@
 | Key | Value |
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
-| branch | main |
-| last_decision | CHK-074 CLOSED 2026-03-30: §11 component verification redo — (A) dccd_comparison.py run: square/triangle/tanh L2+TV table; new 11b6_dccd_dissipation.tex added (§11.3.6); §11b_component_verification.tex updated. (B) §11b3 note updated: 2D PPE null-space limitation documented (8D null space for N=4; 1D CCD accuracy proven in §11b2 sufficient); app:ccd_kronecker ref fixed. 161pp, 0 errors, 0 warnings. |
-| next_action | CHK-059 RESUME (complex NS benchmarks) or Part I–III chapter-number consistency scan |
+| branch | feature/paper-gfm-dccd-future-work |
+| last_decision | CHK-075 OPEN 2026-03-31: PaperWriter — §今後の課題 (sec:future_work) in 13_conclusion.tex: added 2 new items: (1) GFM sharp-interface (Kang2000 cite added to bib); (2) DCCD+SAT Rhie-Chow elimination. 163pp, 0 errors, 0 warnings. Branch: feature/paper-gfm-dccd-future-work. Pending merge to main. |
+| next_action | Merge feature/paper-gfm-dccd-future-work → main, then CHK-059 RESUME |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
