@@ -10,7 +10,8 @@
 本稿では，気液二相流の高精度数値シミュレーションに必要な数学的・数値的基盤を，
 学部生・大学院生を主な読者として体系的に解説した．
 本稿の技術的中核は\textbf{寄生流れの根本的抑制}にあり，
-CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件がその主要手段である（§\ref{sec:intro}）．
+CCD $O(h^6)$ による高精度曲率計算，GFM による鋭利な界面処理，
+および DCCD 散逸機構がその主要手段である（§\ref{sec:intro}）．
 各章の設計方針を整理する前に，「なぜこの組み合わせが必要か」を再確認する．
 
 \begin{center}
@@ -22,7 +23,7 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
 界面の質量損失       & CLS 法（第\ref{sec:levelset}章）\\
 低次移流による界面にじみ & Dissipative CCD + TVD-RK3（第\ref{sec:advection}章）\\
 曲率計算誤差 $\to$ 寄生流れ & CCD 法 $O(h^6)$（第\ref{sec:CCD}章）\\
-チェッカーボード圧力振動 & コロケート格子 + Rhie--Chow 補正（第\ref{sec:collocate}章）\\
+チェッカーボード圧力振動 & DCCD 散逸（$\varepsilon_d=1/4$，§\ref{sec:dccd_decoupling}，第\ref{sec:collocate}章）\\
 変密度 PPE の収束悪化 & 仮想時間 CCD 陰解法（第\ref{sec:pressure}章）\\
 格子粗さによる界面解像不足 & Level Set 連動非一様格子（第\ref{sec:grid}章）\\
 \hline
@@ -38,9 +39,9 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
         2つの独立した Navier--Stokes 方程式系（液相・気相）を，
         ヘヴィサイド関数 $\psi$ を用いた一体化方程式に変換する
         One-Fluid 定式化を導出した（§\ref{sec:onefluid}）．
-        表面張力の特異な面力を体積力に置き換える
-        CSF モデル（§\ref{sec:csf}）を定式化し，
-        近似誤差が $O(\varepsilon^2) \approx O(\Delta x^2)$ に収まることを示した．
+        表面張力の離散化には Ghost Fluid Method（GFM，§\ref{sec:gfm}）を採用し，
+        界面ジャンプ条件 $[p]_\Gamma=\kappa/We$ を PPE 右辺に直接組み込む定式化を示した
+        （CSF モデルの完全定式化は付録~\ref{app:csf_full}）．
         無次元化（Re，Fr，We の定義）と曲率公式の幾何学的導出（§\ref{sec:curvature}）により，
         後の章の数値実装の数学的基礎を確立した．
 
@@ -79,14 +80,12 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
         座標変換メトリック係数の CCD 法による $O(h^6)$ 精度評価と
         ALE 効果の簡略化条件を明示した（§\ref{sec:grid_ale}）．
 
-  \item[\textbf{第\ref{sec:collocate}章：圧力--速度連成と Rhie--Chow 補正}]
+  \item[\textbf{第\ref{sec:collocate}章：圧力--速度連成と DCCD 散逸}]
         コロケート格子でのチェッカーボード不安定のメカニズム（$2\Delta x$ モード解析）を示し，
-        変密度流体に対応した調和平均係数付き Rhie--Chow 補正（§\ref{sec:rhie_chow}）を定式化した．
-        \textbf{Balanced-Force 条件}（§\ref{sec:balanced_force}）——圧力勾配と
-        表面張力に\textbf{完全に同一の CCD 演算子}を用いる——の
-        理論的根拠と実装手順を詳述した．
-        寄生流れの数値離散化誤差成分は同一演算子の使用により相殺され，
-        残差は CSF モデル誤差 $O(h^2)$ が律速する（§\ref{sec:accuracy_summary}）．
+        GFM 定式化（§\ref{sec:gfm}）により CSF 体積力が除去される下で，
+        Dissipative CCD 散逸（$\varepsilon_d=1/4$，§\ref{sec:dccd_decoupling}）によるチェッカーボード
+        抑制の設計原理を示した．Rhie--Chow 補正（付録~\ref{app:rhie_chow_full}）および
+        Balanced-Force 条件（§\ref{sec:balanced_force}）の理論的根拠を参照収録した．
 
   \item[\textbf{第\ref{sec:pressure}章：変密度圧力 Poisson 方程式}]
         変密度 IPC Projection 法から
@@ -111,9 +110,8 @@ CCD $O(h^6)$ による高精度曲率計算と Balanced-Force 離散化条件が
 第\ref{sec:pressure}章の表\ref{tab:accuracy_summary}に整理した通りである．
 ここでは，その設計上のトレードオフを技術的貢献の観点から振り返る．
 主要な精度設計上のトレードオフとして，
-（1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速；低波数近似 $H\approx1-\varepsilon_d k^2h^2$ より導出）と高次で統一されているが，
-CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間律速段階であり，
-界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である，
+（1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速；低波数近似 $H\approx1-\varepsilon_d k^2h^2$ より導出）と高次で統一され，
+GFM 採用により CSF $O(\varepsilon^2)$ モデル誤差が除去された（§\ref{sec:gfm}，付録~\ref{app:csf_full}）；
 （2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
 さらなる高次化には $O(\Delta t^3)$ 以上の高次 Projection 法（例：Guermond--Shen 2006）への移行が必要である，
 の2点が挙げられる（詳細は§\ref{sec:pressure_accuracy_summary}参照）．

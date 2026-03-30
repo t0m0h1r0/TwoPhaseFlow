@@ -2,7 +2,7 @@
 %
 % §11  多相流ベンチマークと物理現象の検証（Validation）
 %
-%   §11.1: Balanced-Force と寄生流れ — 静止液滴テスト
+%   §11.1: GFM と寄生流れ — 静止液滴テスト
 %   §11.2: 毛細管波の周期と減衰 — Prosperetti 解析解との比較
 %   §11.3: 気泡上昇ベンチマーク（Hysing et al. 2009）
 %   §11.4: Rayleigh--Taylor 不安定性（線形成長率検証）
@@ -17,15 +17,15 @@
 ベンチマークは難易度の低い順に配置されており，各ステップで合格してから次のテストに進むことを推奨する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Balanced-Force と寄生流れの抑制：静止液滴テスト}
+\subsection{GFM と寄生流れの抑制：静止液滴テスト}
 \label{sec:val_static_drop}
 \label{sec:bench_droplet}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \textbf{目的：}
-Balanced-Force 離散化（§\ref{sec:balanced_force}）の下で，表面張力と圧力勾配が格子レベルで
-釣り合い，数値起源の寄生流れ（parasitic currents）が CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
-水準まで抑制されることを定量的に示す．
+Ghost Fluid Method（GFM，§\ref{sec:gfm}）の下で，表面張力ジャンプ条件 $[p]_\Gamma=\kappa/We$ が
+PPE 右辺に直接組み込まれ，数値起源の寄生流れ（parasitic currents）が
+CSF $O(\varepsilon^2)$ モデル誤差レベル以下に抑制されることを定量的に示す．
 これは本手法の主要な技術的主張であり，高次精度 CCD の採用効果が直接現れる．
 
 \textbf{設定：}
@@ -42,21 +42,21 @@ Balanced-Force 離散化（§\ref{sec:balanced_force}）の下で，表面張力
         （相対誤差 $< 1\%$）．
         符号については §\ref{sec:governing} の規約 $[p] = \sigma\kappa = -\sigma/R < 0$ を参照．
   \item \textbf{寄生流れ収束：}
-        $\|\bm{u}_{\mathrm{para}}\|_\infty$ が $O(h^2)$ で収束すること．
+        GFM により CSF モデル誤差が除去されるため，$\|\bm{u}_{\mathrm{para}}\|_\infty$ は
+        格子収束とともに急速に減少することが期待される．
         $N = 64$，$\varepsilon \approx 1.5h$ での目標：
         $\|\bm{u}\|_\infty / (\sigma/\mu_l) \lesssim 10^{-5}$（Hysing et al.~\cite{Hysing2009} 水準）．
 \end{enumerate}
 
-\begin{tcolorbox}[resultbox, title={寄生流れ振幅の理論的予測（Balanced-Force 条件下）}]
-Balanced-Force 条件下（§\ref{sec:balanced_force}）では，圧力勾配 $\bnabla p$ と
-表面張力 $\sigma\kappa\bnabla\psi$ に\textbf{同一の CCD 演算子}を用いることで，
-離散化誤差 $\mathcal{O}(h^6)$ が両項で相殺される．
-残差は CSF モデル誤差のみとなり，有効寄生流れ振幅は
+\begin{tcolorbox}[resultbox, title={寄生流れ振幅の理論的予測（GFM 下）}]
+GFM 下（§\ref{sec:gfm}）では，CSF $O(\varepsilon^2)$ モデル誤差が本質的に除去される．
+寄生流れの残差は界面近傍の数値拡張誤差と CCD 境界精度に依存し，
+$N = 64$，$\varepsilon \approx 1.5h$ では目標値：
 \[
-  \|\bm{u}_{\mathrm{para}}\| \sim \frac{\sigma}{\mu_l} C_{\mathrm{model}} \varepsilon^2 = O(h^2)
+  \|\bm{u}_{\mathrm{para}}\|/(\sigma/\mu_l) \lesssim 10^{-5}
 \]
-$h = 1/64$，$\varepsilon \approx 1.5h$ では $\|\bm{u}_{\mathrm{para}}\|/(\sigma/\mu_l) \sim 10^{-5}$ が目標値となる
-（非 Balanced-Force 2次手法と比べ約1桁の低減；§\ref{sec:bench_droplet}の詳細解析参照）．
+GFM + CCD の組み合わせによって寄生流れの格子収束が CSF 比で大幅に改善される
+ことが期待される（Fedkiw et al.~\cite{Fedkiw1999}，Kang et al.~\cite{Kang2000}）．
 \end{tcolorbox}
 
 \textbf{期待される結果：}
