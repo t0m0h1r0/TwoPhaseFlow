@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-076 CLOSED 2026-03-31: PaperWriter — §2.4+§7.3 rewrite: (A) 02b_csf.tex CSF limitations paragraph + §2.4.5 sec:gfm (eq:gfm_jump/ghost_p/rhs_correction/ccd_div, Fedkiw1999); (B) 07_collocate.tex §7.3.3 sec:dccd_decoupling (εd=1/4 checkerboard, eq:dccd_filter_physical, dccd_ppe_rhs, sat_penalty, Carpenter1994). 165pp, 0 errors. Merged to main. |
+| last_decision | CHK-077 CLOSED 2026-03-31: PaperReviewer+PaperCorrector — 7 fixes: F-1 eq:gfm_rhs_correction uses (1/ρ)^harm_{i+1/2}/h² (not ρ_i); F-2 εd=1/4 PPE filter distinguished from advection DCCD εd=0.05; M-1 C∞ claim replaced with Extension PDE future-work note; M-2 viscous jump condition stated; M-3 §7.3 title updated; m-1 CSF limitations paragraph reordered; m-2 ∂p/∂τ removed from eq:sat_penalty. 165pp, 0 errors, 0 warnings. Merged to main. |
 | next_action | CodeArchitect: implement GFM (replace CSF) + DCCD εd=1/4 decoupling (replace Rhie-Chow) per §sec:gfm + §sec:dccd_decoupling |
 
 ### Notes
