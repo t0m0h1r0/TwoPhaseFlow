@@ -40,36 +40,45 @@ Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 
 \subsubsection{曲率計算の精度収束テスト}
 
 \begin{tcolorbox}[algbox, title={曲率 $\kappa$ の格子収束テスト手順}]
-\textbf{解析解：} 原点中心，半径 $R=0.5$ の円．$\phi(x,y) = \sqrt{x^2+y^2} - R$，解析曲率 $\kappa = -1/R = -2$．
+\textbf{解析解：} 中心 $(0.5,0.5)$，半径 $R=0.5$ の円．
+$\phi(x,y) = \sqrt{(x-0.5)^2+(y-0.5)^2} - R$，点別解析曲率
+$\kappa(x,y) = -1/r$（$r = \|\bm{x}-\bm{x}_c\|$）．
 
-\textbf{格子設定：} $N = 16, 32, 64, 128, 256$（$N$ は各方向の格子点数），
+\textbf{格子設定：} $N = 16, 32, 64, 128, 256$（各方向の格子点数），
 $h = 2R/N = 1/N$（一様格子）．
 
-\textbf{誤差計算：}
-$E_\kappa(h) = \|\kappa_h - (-1/R)\|_{L^\infty}$（界面 $|\phi| < \varepsilon$ 上の最大誤差）
+\textbf{誤差計算（点別比較）：}
+\[
+  E_\kappa(h) = \max_{(i,j):\,|\phi_{ij}|<h}
+    \bigl|\kappa_h(x_i,y_j) - (-1/r_{ij})\bigr|
+\]
+評価域を$|\phi|<h$（格子幅1本分の帯）に限定することで，界面との幾何学的ずれ
+$O(h/R^2)$が CCD 精度$O(h^5)$より常に小さい条件を確保する．
 
-\textbf{収束次数の計算：} 連続する2格子の誤差から：
-$p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
+\textbf{収束次数：} $p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
 \end{tcolorbox}
 
 \begin{table}[htbp]
 \centering
-\caption{CCD 法による曲率計算の格子収束テスト（目標値）}
+\caption{CCD 法による曲率計算の格子収束テスト（実測値）．
+  スクリプト: \texttt{experiments/ccd\_curvature\_convergence.py}．}
 \label{tab:grid_conv}
 \begin{tabular}{ccc}
 \toprule
-$N$ & $E_\kappa$ (目標値) & 収束次数 $p$ \\
+$N$ & $E_\kappa$（実測値） & 収束次数 $p$ \\
 \midrule
-$16$  & $\sim 1 \times 10^{-4}$ & --- \\
-$32$  & $\sim 1.6 \times 10^{-6}$ & $\approx 6$ \\
-$64$  & $\sim 2.5 \times 10^{-8}$ & $\approx 6$ \\
-$128$ & $\sim 3.9 \times 10^{-10}$ & $\approx 6$ \\
-$256$ & $\sim 6.1 \times 10^{-12}$ & $\approx 6$ \\
+$16$  & $1.9 \times 10^{-2}$ & --- \\
+$32$  & $7.1 \times 10^{-5}$ & (前漸近) \\
+$64$  & $1.3 \times 10^{-6}$ & $5.8$ \\
+$128$ & $1.5 \times 10^{-8}$ & $6.4$ \\
+$256$ & $2.5 \times 10^{-10}$ & $5.9$ \\
 \bottomrule
 \end{tabular}
 
 \medskip
-注：格子を半分にする（$h \to h/2$）と誤差が $1/64$ 倍（$\approx 1.6\%$）になるはず．
+\noindent\small
+注：$N=16,32$（$R/h = 8,16$）は前漸近域であり，非線形な曲率公式の積構造に起因する
+誤差が支配的となる．$N\geq 64$（$R/h\geq 32$）で漸近的$O(h^{5.8\text{--}6.4})$が確認される．
 \end{table}
 
 \subsubsection{静止液滴における寄生流れの収束テスト}

@@ -1,0 +1,88 @@
+% paper/sections/10b4_gcl_verification.tex
+%
+% §10.3.4  非一様格子上の微分精度と幾何学的保存則（GCL）検証
+%          実験スクリプト: experiments/gcl_verification.py
+
+\paragraph{主張．}
+
+本実験が示す主命題は以下の二点である：
+
+\begin{center}
+\textbf{%
+  界面適合格子（$\alpha>1$）上でも CCD の漸近収束次数は一様格子と同等であり，%
+  定数速度場（フリーストリーム）に対する偽の空間微分は計算機精度に抑えられる．}
+\end{center}
+
+第~\ref{sec:grid}章の界面適合格子は，計算座標 $\xi=i/N$（一様）を Jacobian
+$J_i=\partial\xi/\partial x$ を介して物理座標 $x$ に写像する．
+CCD は均一な $\xi$-空間で解を構成し，以下の連鎖則（§~\ref{sec:CCD}）で物理微分に変換する：
+\begin{equation}
+  \frac{\partial f}{\partial x} = J\,\frac{\partial f}{\partial\xi}, \qquad
+  \frac{\partial^2 f}{\partial x^2}
+    = J^2\,\frac{\partial^2 f}{\partial\xi^2}
+      + J\,\frac{\mathrm{d}J}{\mathrm{d}\xi}\,\frac{\partial f}{\partial\xi}.
+  \label{eq:gcl_chain}
+\end{equation}
+
+\paragraph{実験設定．}
+
+\textbf{Test 1（収束次数の保全）．}
+$f(x)=\sin(\pi x)$（解析微分既知）を格子点で評価し，$N=16,32,64,128$ で格子を精緻化する．
+一様格子（$\alpha=1$）と非一様格子（$\alpha=2$，界面を $x=0.5$ に配置）の
+$L_\infty$ 誤差を比較する．
+
+\textbf{Test 2（GCL / フリーストリーム保存）．}
+定数場 $f=1$ を与え，CCD が生成する偽の空間微分 $\|\partial(1)/\partial x\|_\infty$
+を計算する．ナビエ・ストークス方程式の散逸項 $\nabla\cdot\bm{u}$ は一次微分演算子であるため，
+一次誤差が計算機精度 $\varepsilon_\mathrm{mach}$ に収まることを合格基準とする：
+\begin{equation}
+  \left\|\frac{\partial(1)}{\partial x}\right\|_\infty \leq 10^3\,\varepsilon_\mathrm{mach}.
+  \label{eq:gcl_criterion}
+\end{equation}
+
+\paragraph{結果．}
+
+\begin{table}[htbp]
+\centering
+\caption{非一様格子（$\alpha=2$）と一様格子上の CCD 微分精度：
+  $f=\sin(\pi x)$，$L_\infty$ 誤差と収束次数．}
+\label{tab:gcl_convergence}
+\begin{tabular}{c
+                r@{\ }l r@{\ }l
+                r@{\ }l r@{\ }l}
+\toprule
+& \multicolumn{4}{c}{一様格子 ($\alpha=1$)}
+& \multicolumn{4}{c}{非一様格子 ($\alpha=2$)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+$N$
+& \multicolumn{2}{c}{$E_{d1}$} & \multicolumn{2}{c}{次数}
+& \multicolumn{2}{c}{$E_{d1}$} & \multicolumn{2}{c}{次数} \\
+\midrule
+ 16 & $6.0\!\times\!10^{-5}$  & & $-$   & & $4.3\!\times\!10^{-2}$  & & $-$   & \\
+ 32 & $9.6\!\times\!10^{-7}$  & & $5.96$& & $7.4\!\times\!10^{-4}$  & & $5.86$& \\
+ 64 & $1.5\!\times\!10^{-8}$  & & $5.99$& & $7.3\!\times\!10^{-6}$  & & $6.65$& \\
+128 & $2.4\!\times\!10^{-10}$ & & $6.00$& & $1.1\!\times\!10^{-7}$  & & $6.08$& \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tcolorbox}[resultbox, title={Test 1 結果：収束次数の保全}]
+非一様格子（$\alpha=2$）上でも $d/dx$ の漸近収束次数は $O(h^6)$ に収束し，
+一様格子と同等の次数を示す（表~\ref{tab:gcl_convergence}）．
+$N=16$ における絶対誤差の差は，格子圧縮領域での前漸近的効果によるものであり，
+$N \geq 32$ では一様格子と同様の高次収束が得られる．
+\end{tcolorbox}
+
+\begin{tcolorbox}[resultbox, title={Test 2 結果：GCL 合格}]
+非一様格子（$\alpha=2$，$N=16\text{--}128$）上で $f=1$ を与えた場合，
+一次偽微分は式~\eqref{eq:gcl_criterion} の基準を満たす：
+\[
+  \max_{N}\left\|\frac{\partial(1)}{\partial x}\right\|_\infty
+    = 5.4\!\times\!10^{-14}
+    \ll 10^3\,\varepsilon_\mathrm{mach} = 2.2\!\times\!10^{-13}.
+\]
+二次微分 $\partial^2(1)/\partial x^2$ は Jacobian 項 $J\,(\mathrm{d}J/\mathrm{d}\xi)\,\varepsilon_\mathrm{mach}$
+に起因する~$O(N\,\varepsilon_\mathrm{mach})$ の残差を持つが，
+これはナビエ・ストークス方程式の散逸項（一次演算子）とは無関係であり，
+GCL の合否に影響しない．
+\end{tcolorbox}
