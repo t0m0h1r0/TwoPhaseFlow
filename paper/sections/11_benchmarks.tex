@@ -1,0 +1,217 @@
+% paper/sections/11_benchmarks.tex
+%
+% §11  多相流ベンチマークと物理現象の検証（Validation）
+%
+%   §11.1: Balanced-Force と寄生流れ — 静止液滴テスト
+%   §11.2: 毛細管波の周期と減衰 — Prosperetti 解析解との比較
+%   §11.3: 気泡上昇ベンチマーク（Hysing et al. 2009）
+%   §11.4: Rayleigh--Taylor 不安定性（線形成長率検証）
+
+\section{多相流ベンチマークと物理現象の検証}
+\label{sec:validation}
+\label{sec:benchmarks}
+
+第~\ref{sec:component_verification}章のコンポーネント検証で各部品の正確性を確認したのち，
+本章では複数の物理機構が連成する多相流問題に対するフル NS ソルバーの総合的な検証を行う．
+ベンチマークは難易度の低い順に配置されており，各ステップで合格してから次のテストに進むことを推奨する．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Balanced-Force と寄生流れの抑制：静止液滴テスト}
+\label{sec:val_static_drop}
+\label{sec:bench_droplet}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\textbf{目的：}
+Balanced-Force 離散化（§\ref{sec:balanced_force}）の下で，表面張力と圧力勾配が格子レベルで
+釣り合い，数値起源の寄生流れ（parasitic currents）が CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
+水準まで抑制されることを定量的に示す．
+これは本手法の主要な技術的主張であり，高次精度 CCD の採用効果が直接現れる．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 正方形領域 $[0,1]^2$，中心 $(0.5, 0.5)$ に半径 $R=0.25$ の静止液滴
+  \item 初期速度 $\bm{u} = \bm{0}$；密度比 $\rho_l/\rho_g = 1000$，$We = 1$，$Fr = \infty$（重力なし）
+  \item 格子解像度：$N = 32, 64, 128$
+\end{itemize}
+
+\textbf{検証指標：}
+\begin{enumerate}
+  \item \textbf{ラプラス圧力：}
+        内外圧差 $|\Delta p| = |p_{\mathrm{in}} - p_{\mathrm{out}}|$ が $\sigma / R$ に一致すること
+        （相対誤差 $< 1\%$）．
+        符号については §\ref{sec:governing} の規約 $[p] = \sigma\kappa = -\sigma/R < 0$ を参照．
+  \item \textbf{寄生流れ収束：}
+        $\|\bm{u}_{\mathrm{para}}\|_\infty$ が $O(h^2)$ で収束すること．
+        $N = 64$，$\varepsilon \approx 1.5h$ での目標：
+        $\|\bm{u}\|_\infty / (\sigma/\mu_l) \lesssim 10^{-5}$（Hysing et al.~\cite{Hysing2009} 水準）．
+\end{enumerate}
+
+\begin{tcolorbox}[resultbox, title={寄生流れ振幅の理論的予測（Balanced-Force 条件下）}]
+Balanced-Force 条件下（§\ref{sec:balanced_force}）では，圧力勾配 $\bnabla p$ と
+表面張力 $\sigma\kappa\bnabla\psi$ に\textbf{同一の CCD 演算子}を用いることで，
+離散化誤差 $\mathcal{O}(h^6)$ が両項で相殺される．
+残差は CSF モデル誤差のみとなり，有効寄生流れ振幅は
+\[
+  \|\bm{u}_{\mathrm{para}}\| \sim \frac{\sigma}{\mu_l} C_{\mathrm{model}} \varepsilon^2 = O(h^2)
+\]
+$h = 1/64$，$\varepsilon \approx 1.5h$ では $\|\bm{u}_{\mathrm{para}}\|/(\sigma/\mu_l) \sim 10^{-5}$ が目標値となる
+（非 Balanced-Force 2次手法と比べ約1桁の低減；§\ref{sec:bench_droplet}の詳細解析参照）．
+\end{tcolorbox}
+
+\textbf{期待される結果：}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ccc}
+\toprule
+$N$ & $\|\bm{u}_{\mathrm{para}}\|_\infty / (\sigma/\mu_l)$（目標） & 収束次数 \\
+\midrule
+$32$  & $\sim 10^{-3}$ & --- \\
+$64$  & $\sim 2.5\times10^{-4}$ & $\approx 2$ \\
+$128$ & $\sim 6.3\times10^{-5}$ & $\approx 2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{毛細管波の周期と減衰：Prosperetti 解析解との比較}
+\label{sec:val_capwave}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\textbf{目的：}
+粘性・表面張力・圧力の動的連成が正しく実装されていることを，
+毛細管波（capillary wave）の振動周期と減衰率に関する
+Prosperetti (1981) \cite{Prosperetti1981} の線形解析解との定量比較によって確認する．
+解析解が存在する問題であるため，数値誤差を厳密に評価できる．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0, \lambda] \times [0, 2\lambda]$（$\lambda$：波長，基準長さ $\lambda = 1$），
+        周期 BC（$x$ 方向），固定壁 BC（$y$ 方向）
+  \item 水平界面 $y = \lambda$（領域中央）に微小正弦波擾乱
+        $\eta(x,0) = \eta_0 \sin(2\pi x / \lambda)$（$\eta_0/\lambda = 10^{-2}$）
+  \item 初期速度 $\bm{u} = \bm{0}$；密度比 $\rho_l/\rho_g = 2$，$\mu_l = \mu_g = \mu$（等粘性）
+  \item 検査パラメータ：Laplace 数 $La = \rho_l \sigma \lambda / \mu_l^2$（$La = 10$：過減衰域；$La = 3000$：振動域）
+  \item 格子：$N_x = 64$（$\lambda / h = 64$），$N_y = 128$
+\end{itemize}
+
+\textbf{Prosperetti 解析解の概要：}
+線形化した2流体 NS 方程式に正弦波解 $\eta \propto e^{st}$ を仮定すると，
+成長率 $s$ は4次の分散方程式の根として得られる \cite{Prosperetti1981}：
+\begin{equation}
+  \left(s + 2\nu k^2\right)^2 \!+ \frac{\sigma k^3}{\rho_l + \rho_g}
+  = 4\nu^2 k^4 \sqrt{1 + \frac{s}{\nu k^2}}
+  \label{eq:prosperetti_dispersion}
+\end{equation}
+ここで $k = 2\pi/\lambda$ は波数，$\nu = \mu/\rho_l$ は動粘性係数である．
+$La \gg 1$ の非粘性極限では $s \to \pm i\omega_0$ に振動解が現れ，
+$\omega_0 = \sqrt{\sigma k^3 / (\rho_l + \rho_g)}$ （毛細管波角周波数）となる．
+
+\textbf{検証指標：}
+\begin{itemize}
+  \item 界面変位振幅 $\eta(t)$ の時間発展を計測し，
+        式~\eqref{eq:prosperetti_dispersion} の数値根と比較する
+  \item 振動周期・減衰率の相対誤差 $< 1\%$
+\end{itemize}
+
+\begin{tcolorbox}[mybox, title={参照パラメータ（Harvie \& Fletcher 2000 より）}]
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+ケース & $La$ & 挙動 \\
+\hline
+過減衰 & $10$ & 振動なし；指数減衰 \\
+臨界減衰付近 & $50$ & 1--2 振動後に減衰 \\
+振動域 & $3000$ & 長周期振動 + 緩やかな減衰 \\
+\hline
+\end{tabular}
+\end{center}
+
+毛細管時刻 $t_\sigma = \sqrt{(\rho_l+\rho_g)\lambda^3 / (2\pi\sigma)}$ で時間を無次元化し，
+$t \in [0, 5 t_\sigma]$ を積分する（$N_y = 128$ では $t_\sigma \approx 1/\omega_0$）．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{気泡上昇ベンチマーク（Hysing et al. 2009）}
+\label{sec:val_rising_bubble}
+\label{sec:bench_bubble}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\textbf{目的：}
+表面張力・重力・粘性・密度差が同時に作用する現実的な問題で，
+ソルバー全体の総合的な安定性と精度を Hysing ら \cite{Hysing2009} の
+高精度参照解（複数グループの独立検証による「数値的参照解」）と定量比較する．
+
+\textbf{設定（Test Case 1）：}
+\begin{itemize}
+  \item 計算領域 $[0, 1] \times [0, 2]$，初期気泡：中心 $(0.5, 0.5)$，半径 $R = 0.25$
+  \item $\rho_l / \rho_g = 10$，$\mu_l / \mu_g = 10$，$Re = 35$，$We = 10$（$Fr^2 = 1$）
+  \item 側面・底面・上面：スリップ BC（$\partial u/\partial n = 0$，$v = 0$）
+  \item 格子：$N_x \times N_y = 64 \times 128$（収束確認：$128 \times 256$）
+\end{itemize}
+
+\textbf{検証指標：}
+\begin{align}
+  V_c(t) &= \frac{\int_{\Omega_b} v \, dV}{|\Omega_b|}
+  \quad (\text{気泡重心の上昇速度}) \label{eq:bubble_vc_val} \\
+  C_{\mathrm{circ}}(t) &= \frac{\text{等面積円の周長}}{\text{実際の気泡周長}}
+  \quad (\text{真球度，= 1 で球形}) \label{eq:bubble_circ_val}
+\end{align}
+$t = 3$ での $V_c$ と $C_{\mathrm{circ}}$ の Hysing 参照解との相対誤差 $< 1\%$ を目標とする．
+
+\begin{tcolorbox}[resultbox, title={Hysing (2009) Test Case 1 の参照値（数値参照解）}]
+\textbf{重要：これらの値は解析解ではなく，複数の独立グループによる「数値的参照解」である．}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcccc}
+\toprule
+指標 & TP2D & FreeLIFE & MooNMD & 参照値（平均） \\
+\midrule
+$V_c(t=3)$ & $0.2417$ & $0.2421$ & $0.2414$ & $\approx 0.2417$ \\
+$C_{\mathrm{circ}}(t=3)$ & $0.9011$ & $0.9013$ & $0.9015$ & $\approx 0.9013$ \\
+$y_c(t=3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+グループ間の差 $\Delta V_c \approx 0.001$ ($\approx 0.4\%$) が本ベンチマークの不確かさであり，
+本ソルバーの結果がこの範囲内に収まることを合格基準とする．
+
+動格子（ALE）補正の省略については付録~\ref{app:grid_ale} 参照；
+本パラメータ設定（$Re = 35$）では ALE 省略の影響は軽微である．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Rayleigh--Taylor 不安定性（線形成長率検証）}
+\label{sec:val_rt}
+\label{sec:bench_rt}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\textbf{目的：}
+密度差・重力による界面変形の長時間シミュレーション能力を検証する．
+線形安定解析から導出された理論成長率（式~\eqref{eq:rt_growth}）と
+数値解の初期成長率を比較し，
+非線形段階での定性的なバブル--スパイク構造の形成を確認する．
+
+\textbf{設定：}
+\begin{itemize}
+  \item 計算領域 $[0, \lambda] \times [0, 4\lambda]$（$\lambda = 1$），
+        周期 BC（$x$），固定壁 BC（$y$）
+  \item 上層（重流体 $\rho_l = 3$）が下層（軽流体 $\rho_g = 1$）の上に乗る不安定成層
+        （Atwood 数 $At = (\rho_l-\rho_g)/(\rho_l+\rho_g) = 0.5$）
+  \item 初期擾乱：$y_0(x) = 2 + A_0\sin(2\pi x)$（$A_0 = 0.05$）；$\mu_l = \mu_g = 0.01$，$\sigma = 0$
+  \item 格子：$64 \times 256$
+\end{itemize}
+
+\textbf{線形成長率との比較：}
+\begin{equation}
+  \omega_{\mathrm{RT}} = \sqrt{\frac{\rho_l - \rho_g}{\rho_l + \rho_g} \cdot \frac{2\pi g}{\lambda}}
+  = \sqrt{\pi} \approx 1.7725
+  \quad [\text{無次元時間}^{-1}]
+  \label{eq:rt_growth}
+\end{equation}
+
+振幅が線形域 $A(t) < 0.1\lambda$ にある間（$t \lesssim 1.5$）に数値成長率を測定し，
+理論値との相対誤差 $< 5\%$ を確認する
+（詳細な導出は §\ref{sec:bench_rt}，線形安定解析の概略は Chandrasekhar \cite{Chandrasekhar1961} 参照）．
