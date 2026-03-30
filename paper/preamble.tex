@@ -36,17 +36,19 @@
 \usepackage{hyperref}
 \usepackage{cleveref}
 \usepackage{enumitem}
+\usepackage{ragged2e}
 \usepackage{caption}
+\captionsetup{justification=RaggedRight, singlelinecheck=false}
 \usepackage{subcaption}
 \usepackage{microtype}
 \usepackage{nicefrac}
-\usepackage{ragged2e}
 
 % -- Page layout --
 \geometry{reset, a4paper, top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt, footskip=20pt}
 \raggedbottom
 \emergencystretch=2em
 \setlength{\hfuzz}{3pt}
+\hbadness=4000
 
 % -- Colors (Merged from A and B) --
 \definecolor{navy}{RGB}{0,40,90}
