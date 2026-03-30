@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-061 CLOSED 2026-03-30: PaperCompiler compile fix. 4 issues fixed: (1) \rm→\mathrm{} in 5 files (10b1,10b2,app_s3,app_s7); (2) Overfull \hbox (65pt) in app_s7 table → \resizebox{\linewidth}; (3) Underfull \hbox (badness 10000→0) in captions → captionsetup RaggedRight + \hbadness=4000; (4) preamble \usepackage order: ragged2e before caption. XeLaTeX 2-pass: 159pp, 0 errors, 0 warnings. |
-| next_action | CHK-059 RESUME or new CHK — complex two-phase sims (static_droplet, oscillating_droplet, rising_bubble) remain SUSPENDED; resume when ready |
+| last_decision | CHK-062–065 CLOSED 2026-03-30: Part IV 章構成見直し (memo/改稿_PartIV.md). §9 subsections added (§9.1 演算子マッピング/§9.2 アルゴリズムフロー/§9.3 タイムステップ制御); §11 多相流ベンチマーク新設 (11_benchmarks.tex: §11.1 静止液滴/§11.2 毛細管波/§11.3 気泡上昇/§11.4 RT不安定); §10c → 精度バジェットのみに縮小; §12 = 旧§11 まとめ. Prosperetti1981追加. XeLaTeX+bibtex 4-pass: 159pp, 0 errors, 0 warnings. |
+| next_action | CHK-066 OPEN: PaperReviewer audit of restructured §9–§12 — verify cross-references, logical flow, no dangling refs |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -93,6 +93,10 @@
 | CHK-057 | CLOSED | paper | 全体の章構成見直し 2026-03-30: [A] §10 冒頭テキスト修正（「今後の課題」→「§10.3に実施済み結果を収める」）; [C] §10 タイトル「検証指標とベンチマーク」→「数値検証とベンチマーク」; [D] 10c_benchmarks.texヘッダーコメント修正; [B1] §8d PPE検証（Tests C-1/C-2/C-3）→ §10.3.3（10b_ppe_verification.tex新設, 10b_component_verification.texに追加, 08d_ppe_verification.texをリダイレクトスタブに置換, 10c_benchmarks:364参照修正）. sec:ccd_poisson_verificationラベルを§10.3.3に移動. 157pp, 0 errors, 0 warnings. |
 | CHK-055 | CLOSED | paper | §10.3 コンポーネント検証新設 2026-03-30: appendix D.2(CLS保存性評価)＋D.8(CCD仮想時間精度検証)を §10.3 (10c_component_verification.tex) に移動. Appendix D: D.1–D.9 → D.1–D.7. 157pp, 0 errors, 0 undefined refs. |
 | CHK-061 | CLOSED | compile | PaperCompiler 2026-03-30: 4 fixes — (1) \rm→\mathrm{} (10b1,10b2,app_s3,app_s7 ×8 occurrences); (2) Overfull \hbox 65pt in app_s7 solver-benchmark table → \resizebox{\linewidth}; (3) Underfull \hbox in captions → captionsetup RaggedRight + \hbadness=4000; (4) preamble ragged2e load order. 159pp, 0 errors, 0 warnings. |
+| CHK-062 | CLOSED | paper | §9 subsections追加 2026-03-30: 09_full_algorithm.tex に §9.1 離散演算子マッピング / §9.2 アルゴリズムフロー / §9.3 タイムステップ制御 を追加. eq:dt_full_algo新設. |
+| CHK-063 | CLOSED | paper | §11 多相流ベンチマーク新設 2026-03-30: 11_benchmarks.tex — §11.1 静止液滴(sec:bench_droplet backward-compat label); §11.2 毛細管波(Prosperetti1981); §11.3 気泡上昇(sec:bench_bubble); §11.4 RT不安定(sec:bench_rt). Prosperetti1981 bib追加. |
+| CHK-064 | CLOSED | paper | §10c 縮小 2026-03-30: 10c_benchmarks.tex → 精度バジェットのみ保持; ベンチマーク4本を§11へ移動. |
+| CHK-065 | CLOSED | paper | main.tex更新 2026-03-30: 11_benchmarks.tex追加; 10c comment更新; 11_conclusion comment更新(§12). 159pp, 0 errors, 0 warnings. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference

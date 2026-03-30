@@ -4,8 +4,18 @@
 
 本章では，第\ref{sec:advection}章まで個別に導いた数値手法を統合し，
 時刻 $t^n$ から $t^{n+1}$ への1タイムステップ全体を離散形式でまとめる．
-まず各 NS 方程式の項とそれを処理するソルバーの対応関係を図\ref{fig:ns_solvers}に示し，
+まず各 NS 方程式の項とそれを処理するソルバーの対応関係を示し，
 続いて完全なアルゴリズムフローを詳述する．
+物理ベンチマーク（静止液滴・毛細管波・気泡上昇）は第~\ref{sec:validation}章で扱う．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{離散演算子のマッピングと格子上の配置}
+\label{sec:algo_operator_map}
+% ─────────────────────────────────────────────────────────────────────────────
+
+図~\ref{fig:ns_solvers} に，NS 方程式の各項と本手法で用いる離散ソルバーの対応を示す．
+コロケート格子（セル中心）上で圧力・速度・界面変数すべてが同一点に配置され，
+Rhie--Chow 補間（§\ref{sec:rhie_chow}）によりチェッカーボード不安定を抑制する．
 
 %%% ── 図：NS各項とソルバーの対応 ─────────────────────────────────────────
 \begin{figure}[htbp]
@@ -56,6 +66,11 @@ CLS 移流（別ステップ）は Dissipative CCD + TVD-RK3（$\mathcal{O}(\Del
 表面張力項は時刻 $n+1$ の $\kappa^{n+1}, \psi^{n+1}$ から CCD で計算した体積力を Predictor 右辺に\textbf{陽的}に加算する（時刻 $n+1$ の厳密値を使用；全体 $\mathcal{O}(\Delta t^2)$ 精度と整合；CLS 移流 Step~3・曲率計算 Step~4 完了後に既知；第\ref{sec:governing}章）．}
 \label{fig:ns_solvers}
 \end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{アルゴリズムの全体フロー}
+\label{sec:algo_flow}
+% ─────────────────────────────────────────────────────────────────────────────
 
 時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
 添字 $(i,j)$ は格子点のインデックスを，上付き文字 $n, *, n+1$ は時間ステップを表す．
@@ -352,3 +367,24 @@ $p^{n+1}$ は次ステップの IPC Predictor および Rhie--Chow 補正で $p^
 
 \textbf{出力：} $\delta p$（$\Ord{h^6}$ 精度の圧力増分），$p^{n+1} = p^n + \delta p$，総反復回数
 \end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{タイムステップ制御}
+\label{sec:algo_timestep}
+% ─────────────────────────────────────────────────────────────────────────────
+
+各タイムステップの開始時に，以下の2制約のうち最も厳しい条件で $\Delta t$ を決定する
+（詳細な導出は §\ref{sec:stability} 参照）：
+
+\begin{equation}
+  \Delta t = C_{\mathrm{CFL}} \cdot \min\!\left(
+    \underbrace{\left[\max\!\left(\frac{|u|_{\max}}{\Delta x}+\frac{|v|_{\max}}{\Delta y}\right)\right]^{-1}}_{\Delta t_{\mathrm{adv}}\text{：対流 CFL（式~\eqref{eq:dt_adv}）}},\;
+    \underbrace{\sqrt{\frac{(\rho_l+\rho_g)\,h_{\min}^3}{2\pi\sigma}}}_{\Delta t_\sigma\text{：毛管波制約（式~\eqref{eq:dt_sigma}）}}
+  \right)
+  \label{eq:dt_full_algo}
+\end{equation}
+
+ここで $C_{\mathrm{CFL}} \le 0.5$ は安全率（デフォルト 0.45），$h_{\min} = \min(\Delta x, \Delta y)$ である．
+粘性項は Crank--Nicolson 法（無条件安定）で処理するため，等粘性系では粘性 CFL 制約は不要である．
+ただし大密度比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
+陽的処理に起因する実質的な粘性制約が界面近傍で復活する場合がある（§\ref{sec:stability} 参照）．
