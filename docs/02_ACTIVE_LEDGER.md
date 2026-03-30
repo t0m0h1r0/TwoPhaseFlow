@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-058 CLOSED 2026-03-30: 全ファイル名見直し. P1:§10bコンテンツ→10b1/2/3_, P2:appendix_numerics_schemes s4-6↔s1-3+s9→s7, P3:solver_s3→ccd_impl_s5+solver s4/1/2/5→s1/2/3/4. 157pp, 0 errors. |
-| next_action | CHK-041 OPEN — run experiment_cls_advection.py; record convergence slopes. |
+| last_decision | CHK-060 CLOSED 2026-03-30: §10 simple verification all 3 phases complete. Phase A: GCL+non-uniform grid (gcl_verification.py, §10.3.4); Phase B: CCD curvature convergence (ccd_curvature_convergence.py, §10.1 table updated to actual values O(h^5.8-6.4)); Phase C: Zalesak+Single Vortex (interface_advection.py, §10.3.5). XeLaTeX 2-pass: 159pp, 0 errors, 0 warnings. |
+| next_action | CHK-059 RESUME or new CHK — complex two-phase sims (static_droplet, oscillating_droplet, rising_bubble) remain SUSPENDED; resume when ready |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -75,7 +75,9 @@
 | CHK-038 | CLOSED | refactor | CodeReviewer 2026-03-28: 8 LOW_RISK changes applied — R-01 curvature dead code; R-03 magic number comments; R-04 BC loop helper; R-09 viscous sub-method; R-05 ccd_pressure_gradient shared helper; R-06 _pad_neumann→_pad_bc; R-07 _sl module-level; R-02 return annotations. R-08 SKIPPED (§C2 DO NOT DELETE). R-10–R-14 HIGH_RISK deferred. 98/98 PASS. |
 | CHK-039 | CLOSED | paper | PaperWriter 2026-03-28: §4d 04d_dissipative_ccd.tex — added 2 new subsubsections: (1) sec:dccd_conservation: flux-form conservation analysis, eq:flux_conservative + eq:flux_filter, DCCD non-conservative acceptability argument vs O(h²) CSF baseline, result:flux_filter_guideline; (2) sec:dccd_pressure_nofilt: pressure filtering prohibition, 2 safe alternatives (∇p filter, PPE RHS regularization), warn:pressure_direct_filter. |
 | CHK-040 | CLOSED | compile | PaperCompiler 2026-03-28: XeLaTeX 2-pass clean after CHK-039. 144pp, 0 errors, 0 warnings, 0 undefined refs. Fixed: remarkbox→resultbox; eq:ppe_rhs→eq:rc_divergence. |
-| CHK-041 | OPEN | experiment | experiment_cls_advection.py: CLS uniform-flow advection exact-solution convergence study. Two modes: (A) CFL-limited dt — expected DCCD O(h²), WENO5 O(h³); (B) fixed dt=1e-5 — expected DCCD O(h²), WENO5 O(h⁵). EXP-02 SC-3+SC-4 checks embedded. Committed fa64919. Pending execution. |
+| CHK-041 | CANCELLED | experiment | experiment_cls_advection.py disposed 2026-03-30 per user instruction. File removed from repo (commit 2235aef). |
+| CHK-059 | SUSPENDED | experiment | Complex two-phase sims (static_droplet, oscillating_droplet, rising_bubble) suspended 2026-03-30 — deferred until CHK-060 simple §10 verification complete. |
+| CHK-060 | CLOSED | experiment+paper | §10 simple verification from memo/改稿_PartIV.md — Phase A: GCL+non-uniform grid (gcl_verification.py, §10.3.4); Phase B: CCD curvature convergence (ccd_curvature_convergence.py, §10.1 actual values O(h^5.8-6.4)); Phase C: Zalesak+Single Vortex (interface_advection.py, §10.3.5). 159pp, 0 errors, 0 warnings. 2026-03-30. |
 | CHK-044 | CLOSED | experiment+paper | CCD pseudo-time verification 2026-03-29: experiments/ccd_pseudotime_verification.py — uses CCDSolver from src/ directly. 3 cases: (1) spatial convergence CCD~O(h⁵) boundary-limited; (2) parabolic BDF2+pseudo-time: CCD D2 ρ=9.57/h² (2.4×CDS2), stable Δτ computed numerically, CCD 20-30× more accurate at small Δt; (3) adv-diff Pe=10: CCD→O(h⁶), N=256 CCD 17万× better. Appendix D.7 added. 152pp, 0 errors. |
 | CHK-045 | CLOSED | review+fix | PaperReviewer+PaperCorrector 2026-03-29 (§D.6+§D.7 audit): [F-1] appendix_numerics_schemes_s6.tex:65 d_k sign (-1)^k→(-1)^{k+1} (hat_d(π)=+1→-1); [M-1] :74 0.6^640 exponent 10^{-224}→10^{-142}; [m-1] appendix_numerics_solver_s2.tex:27,117 ~\ref tilde added; [m-2] appendix_numerics_schemes_s6.tex:13,45,46,276 §~\ref tilde added. Compile: 152pp, 0 errors, 0 warnings. |
 | CHK-046 | CLOSED | compile | PaperCompiler 2026-03-29: XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
