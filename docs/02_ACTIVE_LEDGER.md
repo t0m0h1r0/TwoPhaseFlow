@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-071 CLOSED 2026-03-30: abstract+§1+§11+§12 structural consistency fixes — benchmark list corrected (Zalesak→§10 component; capillary wave added to §11); §1 chapter table updated to 12-chapter layout; §12 §9 description + 今後課題 updated; §11 pending-results notice added. 159pp, 0 errors, 0 warnings. |
-| next_action | CHK-059 RESUME or PaperReviewer full re-audit (Part I–III consistency scan) |
+| last_decision | CHK-074 CLOSED 2026-03-30: §11 component verification redo — (A) dccd_comparison.py run: square/triangle/tanh L2+TV table; new 11b6_dccd_dissipation.tex added (§11.3.6); §11b_component_verification.tex updated. (B) §11b3 note updated: 2D PPE null-space limitation documented (8D null space for N=4; 1D CCD accuracy proven in §11b2 sufficient); app:ccd_kronecker ref fixed. 161pp, 0 errors, 0 warnings. |
+| next_action | CHK-059 RESUME (complex NS benchmarks) or Part I–III chapter-number consistency scan |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -103,6 +103,8 @@
 | CHK-069 | CLOSED | paper | §11 intro: sec:component_verification ref "第X章"→"§X"（節への誤参照修正）. |
 | CHK-070 | CLOSED | paper | §1 chapter table + roadmap: 12-chapter structure (§10 component / §11 physical / §12 まとめ). |
 | CHK-071 | CLOSED | paper | abstract: Zalesak→component verification (§10); add capillary wave to §11 benchmark list. 159pp, 0 errors, 0 warnings. |
+| CHK-073 | CLOSED | experiment+paper | DCCD 1D advection comparison 2026-03-30: dccd_comparison.py run — O2/O4/CCD/DCCD/WENO5, 3 ICs (square/triangle/tanh), N=256. Key results: Square TV: CCD=10.83 → DCCD=3.15 (1/3), L2 DCCD=4.23e-2 (best); Smooth tanh: CCD≈DCCD L2=2.57e-5≈3.75e-5 (selective filter). New 11b6_dccd_dissipation.tex added (§11.3.6). §11b_component_verification.tex updated. 161pp, 0 errors, 0 warnings. |
+| CHK-074 | CLOSED | paper | §11b3 null-space note added 2026-03-30: 2D CCD-Poisson manufactured-solution verification blocked by 8D null space (ASM-002); 1D accuracy (§11b2 Case 1-3) + Kronecker product algebra cited as sufficient evidence; app:ccd_kronecker ref corrected (sec:→app:). Design spec tables retained. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference

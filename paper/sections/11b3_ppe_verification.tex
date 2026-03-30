@@ -10,11 +10,16 @@ CCD-Poisson ソルバー（§\ref{sec:ppe_pseudotime}，§\ref{sec:ccd_poisson_m
 ここでは3種類のテストにより，
 (i) 空間精度次数，(ii) 収束挙動，(iii) 変密度場での精度を段階的に確認する．
 
-\noindent\textbf{注（実装検証仕様）：}
+\noindent\textbf{注（実装検証仕様・測定状況）：}
 本節に示す誤差・収束次数は，ソルバーが正しく実装された場合に達成されるべき目標値（実装仕様）であり，
 本稿の数値実験から得られた実測値ではない．
+2次元 CCD-Poisson 作用素は Kronecker 積構成（付録~\ref{app:ccd_kronecker}）により生成されるが，
+ノイマン BC の一方向コンパクトスキームに起因する数値的 null space（$\sim8$ 次元，$N=4$ 格子）のため，
+単純な製造解（manufactured solution）テストでは gauge 制約ピンのみでは一意解が保証されない．
+1次元の CCD 精度（$O(h^5)$--$O(h^6)$）は §~\ref{app:ccd_case1}--§~\ref{app:ccd_case3} で実証済みであり，
+Kronecker 積による2次元への拡張は代数的に保証される（付録~\ref{app:ccd_kronecker}）．
+2次元ソルバーの実運用精度は多相流ベンチマーク §\ref{sec:bench_droplet} での評価に委ねる．
 各テストの合格基準を満たすことを実装完了の必要条件として用いること．
-流体力学ソルバーと組み合わせた実測ベンチマーク結果は §\ref{sec:bench_droplet} を参照のこと．
 
 \noindent\textbf{注（テスト C-1 の境界条件とノイマン BC 検証の分担）：}
 テスト C-1（§\ref{sec:ccd_test_c1}）はディリクレ条件 $p|_{\partial\Omega}=0$ の解析解を用いて
