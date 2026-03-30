@@ -108,7 +108,7 @@ $\bnabla^2q$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pr
 \noindent\textbf{注意（等密度仮定）：} 本節（§\ref{sec:helmholtz}）の Projection 法の導出は教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定しており，式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla q$ という純粋な Helmholtz 分解で書けるのはこの仮定のもとでのみである．実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になり，Poisson 方程式が可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Rhie--Chow 補正による問題の解決}
+\subsection{チェッカーボード問題の解決：Rhie--Chow 補正と DCCD 代替手法}
 \label{sec:rhie_chow}
 % ═══════════════════════════════════════════════════════════════════════════════
 この問題を解決するため，Rhie と Chow~\cite{RhieChow1983} によって提案された補間法が広く用いられている．
@@ -393,16 +393,17 @@ $\xi = k\Delta x = \pi$（$2\Delta x$ チェッカーボードモード）にお
   \label{eq:dccd_ppe_rhs}
 \end{equation}
 $\varepsilon_d = 1/4$ の選択により，$\tilde{\bu}^*$ の $2\Delta x$ モード成分はゼロとなり，PPE 右辺から高周波チェッカーボード駆動項が完全に除去される．
+この操作は CLS 移流スキームに使用する Dissipative CCD（$\varepsilon_d = 0.05$，§\ref{sec:dccd_filter_design}）とは独立した，PPE 右辺専用の明示的フィルタ適用ステップである（移流の数値散逸設計とは別に，チェッカーボード除去のみを目的として適用する）．
 
 \paragraph{SAT 境界処理（注記）}
 
 境界近傍では，Dissipative CCD スキームの散逸特性を境界まで一貫して拡張するため，SAT（Simultaneous Approximation Term）法~\cite{Carpenter1994} によるペナルティ型境界条件が有効である．
 SAT は境界条件を支配方程式への弱形式ペナルティ項として組み込み，エネルギー安定性を数学的に保証する：
 \begin{equation}
-  \frac{\partial p}{\partial \tau} + \mathcal{L}p = q + \tau\sigma_B(p_B - g_B)\delta_B
+  \mathcal{L}p = q + \sigma_B(p_B - g_B)\delta_B
   \label{eq:sat_penalty}
 \end{equation}
-ここで $\tau\sigma_B$ はペナルティ係数，$g_B$ は境界データ（Neumann BC では $g_B=0$），$\delta_B$ は境界デルタ関数である．本稿の現実装では既存の Neumann BC（CCD ブロック三重対角境界処理）を使用しており，SAT の完全実装は今後の課題である（§\ref{sec:future_work}参照）．
+ここで $\sigma_B$ はペナルティ係数，$g_B$ は境界データ（Neumann BC では $g_B=0$），$\delta_B$ は境界デルタ関数である（$\sigma_B$ は安定性解析から決定する；Carpenter \textit{et al.}~\cite{Carpenter1994}）．本稿の現実装では既存の Neumann BC（CCD ブロック三重対角境界処理）を使用しており，SAT の完全実装は今後の課題である（§\ref{sec:future_work}参照）．
 
 \medskip
 DCCD 散逸（$\varepsilon_d = 1/4$）による内在的デカップリング抑制は，Rhie--Chow 補正が担っていた $2\Delta x$ モード除去をスキーム固有の機構として実現する．これにより Balanced-Force 補正（式~\eqref{eq:rc-face-balanced}）も不要となり，GFM 定式化（§\ref{sec:gfm}）と合わせて，表面張力の離散化がより単純かつ数学的に整合した形式に帰着する．
