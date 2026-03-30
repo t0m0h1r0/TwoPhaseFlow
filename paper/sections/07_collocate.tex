@@ -108,116 +108,18 @@ $\bnabla^2q$ が $\bnabla\cdot(1/\rho\,\bnabla p)$ に変わる（第\ref{sec:pr
 \noindent\textbf{注意（等密度仮定）：} 本節（§\ref{sec:helmholtz}）の Projection 法の導出は教育的な説明として等密度（$\rho = \mathrm{const}$）を仮定しており，式~\eqref{eq:projection_decomp} の速度補正が $\bu^{n+1} = \bu^* - \bnabla q$ という純粋な Helmholtz 分解で書けるのはこの仮定のもとでのみである．実際の気液二相流では密度が界面をまたいで 2〜3 桁変化するため，補正式は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ と密度依存の形になり，Poisson 方程式が可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．変密度場への段階的導出は第\ref{sec:pressure}章（§\ref{sec:projection_derivation}）で行う．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{チェッカーボード問題の解決：Rhie--Chow 補正と DCCD 代替手法}
+\subsection{チェッカーボード問題の解決：DCCD 散逸機構}
 \label{sec:rhie_chow}
 % ═══════════════════════════════════════════════════════════════════════════════
-この問題を解決するため，Rhie と Chow~\cite{RhieChow1983} によって提案された補間法が広く用いられている．
-その本質は，セル中心の離散化運動量方程式を適切に補間して，セル界面（face）の速度を定義することにある．
-これにより，すべての格子点における圧力が速度の計算に寄与するようになり，デカップリングが抑制される．
 
-\subsubsection{補正された界面速度の定義}
-本稿では，Chung~\cite{Chung2002} に基づく変密度場に対応した形式を用いる．
-東側フェイス $e$ における $x$ 方向速度 $u_e$ は，隣接するセル中心 $P$ と $E$ の値を用いて以下のように定義される．
-\begin{equation}
- u_e = \overline{u_e} - d_e \left[ \left(\pd{p}{x}\right)_e - \overline{\left(\pd{p}{x}\right)_e} \right]
- \label{eq:rc-concept}
-\end{equation}
-ここで，
-\begin{itemize}
-    \item $\overline{u_e}$: セル中心 $P, E$ の速度を線形補間した速度．$\overline{u_e} = (u_P+u_E)/2$．
-    \item $(\partial p/\partial x)_e$: フェイス $e$ での圧力勾配．単純な中心差分 $\frac{p_E-p_P}{\Delta x}$ で計算．
-    \item $\overline{(\partial p/\partial x)_e}$: セル中心 $P, E$ で評価された圧力勾配を線形補間したもの．
-    $\overline{(\partial p/\partial x)_e} = \frac{1}{2}\left[ \left(\frac{\partial p}{\partial x}\right)_P + \left(\frac{\partial p}{\partial x}\right)_E \right]$
-    \item $d_e$: 補間係数．運動量方程式から導かれ，時間刻み幅 $\Delta t$ と密度 $\rho$ に依存する．
-    $d_e = (\Delta t / \rho)_e$（式~\eqref{eq:rc-face} 参照）．
-\end{itemize}
+コロケート格子における $2\Delta x$ チェッカーボード不安定の解消には，
+Rhie と Chow~\cite{RhieChow1983} によるフェイス速度補間が標準的に用いられる．
+この手法の完全な定式化（補正項の導出，変密度調和平均係数，Balanced-Force 拡張）は
+付録~\ref{app:rhie_chow_full} に収録した．
 
-Rhie--Chow 式 \eqref{eq:rc-concept} に2種類の補間が現れる．どちらを使うかは，
-その物理量が界面をまたいで\textbf{連続か不連続か}によって決まる：
-\begin{itemize}
-  \item \textbf{$\bar{u}_f$（速度）→ 算術平均 $= (u_P + u_E)/2$}：
-    速度は界面での運動学的接続条件（no-slip，式 \eqref{eq:jump_vel}）により気液界面をまたいでも物理的に\textbf{連続}であるため，単純な線形補間が適切である．
-
-  \item \textbf{$d_f = \Delta t (1/\rho)_f^{\mathrm{harm}}$（密度係数）→ 調和平均}：
-    密度 $\rho$ は界面で\textbf{不連続}（ステップ状の跳び）を持つ．
-    不連続係数の拡散型方程式 $\nabla\cdot(a\nabla p) = q$（$a = 1/\rho$）を有限体積法で離散化するとフラックスの連続性から自然に調和平均が現れ（第\ref{sec:pressure}章），Rhie--Chow 係数に同じ値を使うことで PPE との整合性が保たれる．
-\end{itemize}
-
-\paragraph{補正項の働き}
-式 \eqref{eq:rc-concept} の第2項が Rhie--Chow 補正の核心である．
-この項は「\textbf{フェイス上で直接計算した圧力勾配}」と「\textbf{セル中心の圧力勾配を補間したもの}」との\textbf{差}に比例する．
-\begin{itemize}
-    \item \textbf{滑らかな圧力場の場合}：
-    圧力場が滑らかであれば，2つの圧力勾配の評価方法はほぼ同じ値を与えるため，補正項は自然にゼロに近くなる．
-    \item \textbf{チェッカーボード圧力場の場合}：
-    圧力場がギザギザの場合，フェイスでの勾配 $(p_E-p_P)/\Delta x$ は大きな値を持つが，セル中心での勾配の平均 $\overline{(\partial p/\partial x)_e}$ はゼロに近くなる．
-    この差が大きな補正量となり，非物理的な振動を効果的に\textbf{減衰（damping）}させる働きをする．
-\end{itemize}
-
-\subsubsection{本研究における離散化形式}
-\label{sec:rc_implementation}
-最終的に，圧力 Poisson 方程式との整合性を厳密に保つため，本研究では以下の離散化形式を用いる
-（表面張力補正項を加えた完全形式 \eqref{eq:rc-face-balanced} については §\ref{sec:rc_balanced_force} を参照；実装詳細は第~\ref{sec:impl_collocate}章）．
-\begin{equation}
- u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho^{n+1}} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
- \label{eq:rc-face}
-\end{equation}
-ここで，$(\nabla p^n)_f$ はフェイスにおける\textbf{前時刻圧力 $p^n$ の勾配}（陽的評価），
-$\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である
-（新圧力 $p^{n+1}$ は PPE を解く前の段階では未知であるため，Rhie--Chow 補正は $p^n$ を用いた陽的処理となる；
-詳細は第\ref{sec:pressure}章，式~\eqref{eq:rc_divergence} 参照）．
-係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には\textbf{現時刻密度 $\rho^{n+1}$ の調和平均}を用いる．
-この選択には以下の2つの独立した根拠がある：
-
-\noindent\textbf{（根拠1）既知量であること：}
-$\rho^{n+1}$ は CLS 移流 Step~3 完了後に確定しており，Predictor（Step~5）・PPE（Step~6）の開始前に既知である
-（$\rho^{n+1}$ は界面追跡で決まる密度であり，PPE で初めて決定される圧力 $p^{n+1}$ とは本質的に異なる量；
-Step 3 での密度更新の詳細は§\ref{sec:algorithm}参照）．
-
-\noindent\textbf{（根拠2）PPE 演算子との密度時刻の整合性（Balanced-Force 条件）：}
-PPE の演算子 $\mathcal{L}_{\mathrm{CCD}}^{\rho}$（式~\eqref{eq:varrho_product_rule}）も $\rho^{n+1}$ を係数として使用する．
-Rhie--Chow 面係数と PPE 演算子で\textbf{同一の密度時刻 $\rho^{n+1}$} を使うことで，
-離散 Projection 法全体の演算子整合性が保たれ，Balanced-Force 条件が維持される
-（もし異なる時刻の密度を混用すると，面係数と演算子の間に $\Ord{h^2}$ の不整合が生じ，
-界面近傍での寄生流れキャンセレーションが局所的に失われる）．
-
-\medskip
-その調和平均形式の導出根拠を以下で丁寧に説明する．
-
-\paragraph{熱伝導の類比}
-この状況は，異なる熱伝導率 $\lambda_P, \lambda_E$ を持つ2つのセル間の熱フラックス計算と全く同じ構造である．
-熱伝導方程式 $\bnabla \cdot (\lambda \bnabla T) = 0$ の界面フラックスを正しく評価するには，
-\[ \lambda_f = \frac{2\lambda_P \lambda_E}{\lambda_P + \lambda_E} \quad (\text{調和平均}) \]
-を用いなければならない（単純算術平均では界面の熱抵抗を過小評価する）．
-Rhie--Chow の $(1/\rho)_f^\mathrm{harm}$ は，$1/\rho$ を「加速のしやすさ（移動度）」とみなした場合の，全く同じ論理に基づいている．
-
-算術平均と調和平均の値の差は，\textbf{密度比が大きいほど顕著}になる：
-\begin{center}
-\begin{tabular}{lccc}
-\hline
-流体系 & $\rho_l/\rho_g$ & $(1/\rho)^{\mathrm{arith}}_f \cdot \rho_g$ & $(1/\rho)^{\mathrm{harm}}_f \cdot \rho_g$ \\
-\hline
-水・水蒸気 & $10$ & $0.55$ & $0.18$ \\
-水・空気（常温） & $1000$ & $\approx 0.500$ & $\approx 0.002$ \\
-\hline
-\end{tabular}
-\end{center}
-密度比1000の場合，算術平均は調和平均の約250倍の値を与える．
-これほど大きな補正係数の差は，界面近傍の速度場に壊滅的な数値振動をもたらす．
-
-この形式により，変密度場においても数値的に安定した圧力速度連成が保証される．
-
-補正検出項 $[(\nabla p)_f - \overline{(\nabla p)}_f]$ は $\Ord{h^2}$ の大きさを持つが，
-これは CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，CCD の $\Ord{h^6}$ を
-律速する新たな誤差源とはならない．詳細なテイラー展開による検証は付録~\ref{app:rc_precision} を参照されたい．
-
-\noindent\textbf{【重要】PPE 右辺での Rhie--Chow 発散の必須使用：}
-式~\eqref{eq:rc-face} の Rhie--Chow 補正済みフェイス速度を定義した後，
-\textbf{PPE 右辺の発散計算にも必ずこのフェイス速度の発散 $\nabla_h^{\mathrm{RC}}\cdot\bu^*$（式~\eqref{eq:rc_divergence}）を使用しなければならない}．
-よくある実装ミスとして，PPE 右辺に「セル中心発散 $D_x^{(1)}u^* + D_y^{(1)}v^*$」を代用してしまうケースがある．
-これを行うと，Rhie--Chow 補正でフェイス速度から除去したチェッカーボード（$2\Delta x$ 波長）成分が
-PPE 右辺を経由して圧力解に「逆流」し，圧力場に高周波振動が再生する
-（詳細は第\ref{sec:pressure}章，§\ref{sec:rc_divergence} 参照）．
+本稿では，GFM 定式化（§\ref{sec:gfm}）により CSF 体積力が除去されることを活かし，
+Rhie--Chow 補正を用いず Dissipative CCD の内在的散逸によってデカップリングを抑制する
+（以下 §\ref{sec:dccd_decoupling}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Balanced-Force 離散化：寄生流れ抑制のための離散化要件}
@@ -393,7 +295,7 @@ $\xi = k\Delta x = \pi$（$2\Delta x$ チェッカーボードモード）にお
   \label{eq:dccd_ppe_rhs}
 \end{equation}
 $\varepsilon_d = 1/4$ の選択により，$\tilde{\bu}^*$ の $2\Delta x$ モード成分はゼロとなり，PPE 右辺から高周波チェッカーボード駆動項が完全に除去される．
-この操作は CLS 移流スキームに使用する Dissipative CCD（$\varepsilon_d = 0.05$，§\ref{sec:dccd_filter_design}）とは独立した，PPE 右辺専用の明示的フィルタ適用ステップである（移流の数値散逸設計とは別に，チェッカーボード除去のみを目的として適用する）．
+この操作は CLS 移流スキームに使用する Dissipative CCD（$\varepsilon_d = 0.05$，§\ref{sec:dccd_filter_theory}）とは独立した，PPE 右辺専用の明示的フィルタ適用ステップである（移流の数値散逸設計とは別に，チェッカーボード除去のみを目的として適用する）．
 
 \paragraph{SAT 境界処理（注記）}
 
