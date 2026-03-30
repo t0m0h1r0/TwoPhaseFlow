@@ -1,7 +1,7 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
 # Supersedes: ACTIVE_STATE.md, CHECKLIST.md, ASSUMPTION_LEDGER.md, LESSONS.md
-# Last updated: 2026-03-28
+# Last updated: 2026-03-30
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -10,7 +10,7 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-060 CLOSED 2026-03-30: §10 simple verification all 3 phases complete. Phase A: GCL+non-uniform grid (gcl_verification.py, §10.3.4); Phase B: CCD curvature convergence (ccd_curvature_convergence.py, §10.1 table updated to actual values O(h^5.8-6.4)); Phase C: Zalesak+Single Vortex (interface_advection.py, §10.3.5). XeLaTeX 2-pass: 159pp, 0 errors, 0 warnings. |
+| last_decision | CHK-061 CLOSED 2026-03-30: PaperCompiler compile fix. 4 issues fixed: (1) \rm→\mathrm{} in 5 files (10b1,10b2,app_s3,app_s7); (2) Overfull \hbox (65pt) in app_s7 table → \resizebox{\linewidth}; (3) Underfull \hbox (badness 10000→0) in captions → captionsetup RaggedRight + \hbadness=4000; (4) preamble \usepackage order: ragged2e before caption. XeLaTeX 2-pass: 159pp, 0 errors, 0 warnings. |
 | next_action | CHK-059 RESUME or new CHK — complex two-phase sims (static_droplet, oscillating_droplet, rising_bubble) remain SUSPENDED; resume when ready |
 
 ### Notes
@@ -92,6 +92,7 @@
 | CHK-058 | CLOSED | paper | 全ファイル名見直し 2026-03-30: [P1] 10b_{cls,ccd_pseudo,ppe}→10b{1,2,3}_*（ディスパッチャ先頭保証）; [P2] appendix_numerics_schemes s4/5/6↔s1/2/3, s9→s7（D.1–D.7順に整合）; [P3] solver_s3→ccd_impl_s5, solver s4/1/2/5→s1/2/3/4（E.1–E.4順に整合）. \input参照・ヘッダーコメント全更新. 157pp, 0 errors. |
 | CHK-057 | CLOSED | paper | 全体の章構成見直し 2026-03-30: [A] §10 冒頭テキスト修正（「今後の課題」→「§10.3に実施済み結果を収める」）; [C] §10 タイトル「検証指標とベンチマーク」→「数値検証とベンチマーク」; [D] 10c_benchmarks.texヘッダーコメント修正; [B1] §8d PPE検証（Tests C-1/C-2/C-3）→ §10.3.3（10b_ppe_verification.tex新設, 10b_component_verification.texに追加, 08d_ppe_verification.texをリダイレクトスタブに置換, 10c_benchmarks:364参照修正）. sec:ccd_poisson_verificationラベルを§10.3.3に移動. 157pp, 0 errors, 0 warnings. |
 | CHK-055 | CLOSED | paper | §10.3 コンポーネント検証新設 2026-03-30: appendix D.2(CLS保存性評価)＋D.8(CCD仮想時間精度検証)を §10.3 (10c_component_verification.tex) に移動. Appendix D: D.1–D.9 → D.1–D.7. 157pp, 0 errors, 0 undefined refs. |
+| CHK-061 | CLOSED | compile | PaperCompiler 2026-03-30: 4 fixes — (1) \rm→\mathrm{} (10b1,10b2,app_s3,app_s7 ×8 occurrences); (2) Overfull \hbox 65pt in app_s7 solver-benchmark table → \resizebox{\linewidth}; (3) Underfull \hbox in captions → captionsetup RaggedRight + \hbadness=4000; (4) preamble ragged2e load order. 159pp, 0 errors, 0 warnings. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference

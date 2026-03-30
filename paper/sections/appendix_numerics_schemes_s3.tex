@@ -120,8 +120,8 @@ $u^* = u - \alpha_f D_{10}(u)$（減算）と定義すると係数 $1 - \alpha_f
 \end{align}
 $T=1$ の厳密解は初期条件と一致するため，$E_{L^2}$ は純粋な数値誤差を表す．
 $\mathrm{TV}$ は Gibbs 振動の大きさを定量化し，
-理論値 $\mathrm{TV}_{\rm exact}$（矩形波 $= 2$，三角波 $\approx 1.97$，平滑化 $\approx 2.00$）
-との比 $\mathrm{TV}/\mathrm{TV}_{\rm exact}$ で散逸の過不足を評価する
+理論値 $\mathrm{TV}_{\mathrm{exact}}$（矩形波 $= 2$，三角波 $\approx 1.97$，平滑化 $\approx 2.00$）
+との比 $\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}}$ で散逸の過不足を評価する
 （$=1$：理想，$>1$：Gibbs 振動あり，$<1$：過散逸）．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -180,12 +180,12 @@ $\mathrm{TV}$ は Gibbs 振動の大きさを定量化し，
 \end{table}
 
 \paragraph{総変動量（TV）}
-表~\ref{tab:dccd_tv} に各スキームの $\mathrm{TV}/\mathrm{TV}_{\rm exact}$ 比を示す．
+表~\ref{tab:dccd_tv} に各スキームの $\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}}$ 比を示す．
 
 \begin{table}[htbp]
   \centering
   \caption{%
-    総変動量比 $\mathrm{TV}/\mathrm{TV}_{\rm exact}$（$T=1$，$N=256$，$\mathrm{CFL}=0.4$）．
+    総変動量比 $\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}}$（$T=1$，$N=256$，$\mathrm{CFL}=0.4$）．
     $1.00$：厳密値保持．$>1$：Gibbs 振動，$<1$：過散逸．太字：各行の最良値（1.00 に最近接）．
   }
   \label{tab:dccd_tv}
@@ -239,9 +239,9 @@ $\mathrm{TV}$ は Gibbs 振動の大きさを定量化し，
 % ─────────────────────────────────────────────────────────────────────────────
 
 \paragraph{ステップ不連続（矩形波）}
-O2・O4・CCD はいずれも $\mathrm{TV}/\mathrm{TV}_{\rm exact} \gg 1$（それぞれ $9.20, 8.58, 5.42$）
+O2・O4・CCD はいずれも $\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}} \gg 1$（それぞれ $9.20, 8.58, 5.42$）
 であり，顕著な Gibbs 振動が残存する．
-WENO5 は内蔵 ENO 散逸により $\mathrm{TV}/\mathrm{TV}_{\rm exact} = 1.00$ を達成し，
+WENO5 は内蔵 ENO 散逸により $\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}} = 1.00$ を達成し，
 TV 保持に関しては最良スキームとなる．
 一方で $L^2$ 誤差は WENO5（$6.35 \times 10^{-2}$）より DCCD（$4.23 \times 10^{-2}$）の方が小さい．
 これは WENO5 の ENO スイッチングが不連続近傍でステンシルを局所的に低次化させるのに対し，
@@ -255,7 +255,7 @@ WENO5 は TV が $0.97$（若干の過散逸）であり，コーナー近傍で
 $L^2$ 精度は CCD が最良（$2.57 \times 10^{-5}$），DCCD（$3.75 \times 10^{-5}$）がこれに次ぐ．
 WENO5 は $9.66 \times 10^{-4}$ と両者より約 38 倍（1.6 桁）劣り，5 次精度と ENO スイッチ
 オーバーヘッドの影響が顕在化する．TV は 3 スキーム（CCD・DCCD・WENO5）がいずれも
-厳密値と一致する（$\mathrm{TV}/\mathrm{TV}_{\rm exact} = 1.000$）．
+厳密値と一致する（$\mathrm{TV}/\mathrm{TV}_{\mathrm{exact}} = 1.000$）．
 
 \begin{tcolorbox}[resultbox, title={実験からの結論}]
 \begin{itemize}
