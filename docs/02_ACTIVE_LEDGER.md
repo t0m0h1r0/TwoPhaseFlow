@@ -10,8 +10,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-062–065 CLOSED 2026-03-30: Part IV 章構成見直し (memo/改稿_PartIV.md). §9 subsections added (§9.1 演算子マッピング/§9.2 アルゴリズムフロー/§9.3 タイムステップ制御); §11 多相流ベンチマーク新設 (11_benchmarks.tex: §11.1 静止液滴/§11.2 毛細管波/§11.3 気泡上昇/§11.4 RT不安定); §10c → 精度バジェットのみに縮小; §12 = 旧§11 まとめ. Prosperetti1981追加. XeLaTeX+bibtex 4-pass: 159pp, 0 errors, 0 warnings. |
-| next_action | CHK-066 OPEN: PaperReviewer audit of restructured §9–§12 — verify cross-references, logical flow, no dangling refs |
+| last_decision | CHK-066 CLOSED 2026-03-30: PaperReviewer audit §9–§12 — 1 MAJOR fixed (11_benchmarks.tex:217 self-ref §\ref{sec:bench_rt} removed); 66 refs verified PASS; 0 undefined labels. 159pp, 0 errors, 0 warnings. |
+| next_action | CHK-059 RESUME: complex NS simulations (static_droplet, oscillating_droplet, rising_bubble) — or continue paper revision |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
@@ -97,6 +97,7 @@
 | CHK-063 | CLOSED | paper | §11 多相流ベンチマーク新設 2026-03-30: 11_benchmarks.tex — §11.1 静止液滴(sec:bench_droplet backward-compat label); §11.2 毛細管波(Prosperetti1981); §11.3 気泡上昇(sec:bench_bubble); §11.4 RT不安定(sec:bench_rt). Prosperetti1981 bib追加. |
 | CHK-064 | CLOSED | paper | §10c 縮小 2026-03-30: 10c_benchmarks.tex → 精度バジェットのみ保持; ベンチマーク4本を§11へ移動. |
 | CHK-065 | CLOSED | paper | main.tex更新 2026-03-30: 11_benchmarks.tex追加; 10c comment更新; 11_conclusion comment更新(§12). 159pp, 0 errors, 0 warnings. |
+| CHK-066 | CLOSED | review | PaperReviewer audit §9–§12 2026-03-30: 0 FATAL; 1 MAJOR fixed (11_benchmarks.tex:217 self-ref §\ref{sec:bench_rt}→削除); 66 cross-refs PASS; 0 MINOR relevant. 159pp, 0 errors, 0 warnings. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
 
 ## Format reference
