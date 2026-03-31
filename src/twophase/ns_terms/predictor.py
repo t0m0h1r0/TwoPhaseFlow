@@ -14,7 +14,7 @@ where the RHS collects:
         + 1/2 (1/Re) ∇·[μ̃ (∇uⁿ+∇uⁿᵀ)]   (viscous, Crank-Nicolson or explicit)
       − ∇pⁿ                               (IPC: explicit old pressure, §4 §ipc_derivation)
       − ρ̃ ẑ / Fr²                         (gravity, explicit)
-      + κ ∇ψ / We                         (surface tension, at t^{n+1})
+      + κ ∇ψ / We                         (surface tension, CSF only; zeroed in GFM mode §8e)
 
 where C(u) = (u·∇)u is the convection operator.
 
@@ -91,10 +91,14 @@ class Predictor:
         viscous: Optional["INSTerm"] = None,
         gravity: Optional["INSTerm"] = None,
         surface_tension: Optional["INSTerm"] = None,
+        use_gfm: bool = False,
     ):
         self.xp = backend.xp
         self.config = config
         self.ccd = ccd   # コンストラクタ注入
+        # GFM mode (§8e): when True, surface tension is handled in PPE RHS
+        # via GFMCorrector, NOT as a volume force in the predictor.
+        self.use_gfm = use_gfm
 
         # 注入された依存関係を使用。省略時はデフォルト生成
         self.convection   = convection    or ConvectionTerm(backend)
@@ -152,7 +156,12 @@ class Predictor:
 
         # ── 重力・表面張力（陽的，t^{n+1}） ─────────────────────────────
         grav = self.gravity.compute(rho, vel_n[0].shape)   # −ρ̃/Fr² ẑ
-        st   = self.surface_tens.compute(kappa, psi, ccd)  # κ ∇ψ/We
+        # GFM mode (§8e sec:gfm): surface tension is handled in PPE RHS
+        # via GFMCorrector; predictor does NOT include CSF volume force.
+        if self.use_gfm:
+            st = [self.xp.zeros_like(vel_n[c]) for c in range(ndim)]
+        else:
+            st = self.surface_tens.compute(kappa, psi, ccd)  # κ ∇ψ/We (CSF)
 
         # ── IPC 項 −∇p^n（§4 sec:ipc_derivation） ────────────────────────
         # van Kan (1986) の増分圧力補正：前時刻圧力 p^n を陽的に加える

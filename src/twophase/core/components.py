@@ -7,8 +7,8 @@ new field here; the _from_components() signature remains stable (OCP).
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from ..ns_terms.predictor import Predictor
     from ..pressure.rhie_chow import RhieChowInterpolator
     from ..pressure.velocity_corrector import VelocityCorrector
+    from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
     from ..time_integration.cfl import CFLCalculator
     from ..simulation.boundary_condition import BoundaryConditionHandler
     from ..simulation.diagnostics import DiagnosticsReporter
@@ -47,3 +48,5 @@ class SimulationComponents:
     cfl_calc: "CFLCalculator"
     bc_handler: "BoundaryConditionHandler"
     diagnostics: "DiagnosticsReporter"
+    # GFM pipeline (§8e sec:gfm + §7 sec:dccd_decoupling): None when CSF mode
+    ppe_rhs_gfm: "Optional[PPERHSBuilderGFM]" = None
