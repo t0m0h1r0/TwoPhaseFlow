@@ -14,11 +14,15 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 表面張力は界面 $\Gamma$ 上の面力であり，NS 方程式（体積方程式）への組み込みには
-何らかの定式化方針が必要である．
+界面デルタ関数 $\delta_s$ を用いた特異体積力表現（式~\eqref{eq:csf_intro}，§\ref{sec:two_to_one}）：
+\begin{equation*}
+  \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
+\end{equation*}
+が数学的基盤となる．この連続表現を数値計算で近似する方針として二つの選択肢がある．
 標準的な手法は Brackbill \textit{et al.}~\cite{Brackbill1992} による
 \textbf{連続表面力（CSF: Continuum Surface Force）モデル}であり，
-表面張力を幅 $O(\varepsilon)$ の平滑化領域に分散した体積力
-$\bm{f}_\sigma = \sigma\kappa\bnabla\psi$ として扱う
+$\delta_s$ を幅 $O(\varepsilon)$ の平滑化関数で置き換えて体積力
+$\bm{f}_\sigma \approx \sigma\kappa\bnabla\psi$ を構成する
 （完全な定式化は付録~\ref{app:csf_full}）．
 CSF モデルは $O(\varepsilon^2) \approx O(\Delta x^2)$ のモデル誤差を持ち，
 空間精度の律速段階となる（§\ref{sec:pressure_accuracy_summary}）．
