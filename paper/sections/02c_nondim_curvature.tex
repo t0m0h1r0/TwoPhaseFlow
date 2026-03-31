@@ -345,6 +345,127 @@ Young--Laplace 則 $[p]=\sigma\kappa$（無次元形式は式~\eqref{eq:gfm_jump
 格子幅 $h = 2R/N$（$N = 16, 32, 64, \dots$）で $E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty}$ を計測し，
 $\Ord{h^6}$ 収束（$h$ を半分にすると誤差が $1/64$ 倍）が確認できれば CCD の精度が保証される．
 
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{擬似ヘヴィサイド関数 \texorpdfstring{$\psi$}{ψ} による曲率の直接計算}
+\label{sec:curvature_direct_psi}
+% ─────────────────────────────────────────────────────────────────────────────
+
+前節で導出した曲率式~\eqref{eq:curvature_2d} は
+符号付き距離関数 $\phi$ の偏微分で表されている．
+CLS 法では $\psi$ が基本変数であるため，
+従来は毎ステップ ロジット逆変換（§\ref{sec:newton_inversion}）で
+$\phi$ を復元してから曲率を計算していた．
+しかし，以下に示す\textbf{単調変換に対する曲率の不変性}により，
+$\phi$ への逆変換を経ずに $\psi$ の微分値から直接曲率を計算できる．
+
+\begin{theorem}[レベルセット曲率の単調変換不変性]
+\label{thm:curvature_invariance}
+$\psi = g(\phi)$ とし，$g$ を $C^2$ 級の狭義単調増加関数（$g' > 0$）とする．
+このとき，
+\begin{equation}
+  -\bnabla \cdot \frac{\bnabla \psi}{|\bnabla \psi|}
+  = -\bnabla \cdot \frac{\bnabla \phi}{|\bnabla \phi|}
+  = \kappa
+  \label{eq:curvature_invariance}
+\end{equation}
+すなわち，曲率は $\psi$ と $\phi$ のいずれから計算しても同一の値を与える．
+\end{theorem}
+\begin{proof}
+連鎖律より $\bnabla \psi = g'(\phi)\,\bnabla \phi$ である．
+$g' > 0$ より $|g'(\phi)| = g'(\phi)$ であるから，
+\[
+  |\bnabla \psi| = g'(\phi)\,|\bnabla \phi|
+\]
+したがって，単位法線ベクトルは
+\[
+  \hat{\bm{n}}_\psi
+  \equiv \frac{\bnabla \psi}{|\bnabla \psi|}
+  = \frac{g'(\phi)\,\bnabla \phi}{g'(\phi)\,|\bnabla \phi|}
+  = \frac{\bnabla \phi}{|\bnabla \phi|}
+  \equiv \hat{\bm{n}}_\phi
+\]
+となり，$\hat{\bm{n}}_\psi = \hat{\bm{n}}_\phi$ が成立する．
+曲率は $\kappa = -\bnabla \cdot \hat{\bm{n}}$ であるから，
+$\psi$ から計算しても $\phi$ から計算しても同一の値を与える．
+\end{proof}
+
+\noindent
+CLS 法の擬似ヘヴィサイド関数
+$H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ は狭義単調増加
+（$H_\varepsilon' > 0$）であるから，定理~\ref{thm:curvature_invariance} が直接適用できる．
+
+\begin{tcolorbox}[resultbox, title={CLS 法における $\psi$ 微分による曲率の直接計算}]
+\label{result:curvature_direct_psi}
+式~\eqref{eq:curvature_2d} において $\phi$ を $\psi$ で置き換えた
+\begin{equation}
+  \kappa = -\frac{
+    \psi_y^2\,\psi_{xx}
+    - 2\psi_x\psi_y\,\psi_{xy}
+    + \psi_x^2\,\psi_{yy}
+  }{\bigl(\psi_x^2 + \psi_y^2\bigr)^{3/2}}
+  \label{eq:curvature_psi_2d}
+\end{equation}
+は数学的に厳密に式~\eqref{eq:curvature_2d} と同一の曲率を与える．
+CCD 法は $\psi$ の解法過程で $\psi$, $\psi'$, $\psi''$ を
+同時に $\Ord{h^6}$ 精度で算出するため，
+式~\eqref{eq:curvature_psi_2d} の全ての入力が追加計算なしに利用可能である．
+
+\medskip
+\noindent\textbf{従来法（$\psi \to \phi \to \kappa$）に対する利点：}
+\begin{enumerate}
+  \item ロジット逆変換（式~\eqref{eq:logit_inverse}）の\textbf{完全な省略}：
+        飽和領域（$\psi \to 0, 1$）での対数関数の特異性による誤差増幅が
+        原理的に排除される．
+  \item 逆変換後の $\phi$ に対する差分演算が不要となり，
+        $\psi$ の滑らかな関数構造がそのまま保存される．
+  \item 再初期化による Eikonal 条件 $|\bnabla\phi| \approx 1$ の維持が
+        曲率精度の前提条件ではなくなる：
+        曲率はレベルセットの幾何学的性質であり，$|\bnabla\phi|$ の値には依存しない．
+\end{enumerate}
+\end{tcolorbox}
+
+\paragraph{数値的安定性：$|\bnabla\psi|$ の挙動と適用領域}
+
+式~\eqref{eq:curvature_psi_2d} の分母
+$(\psi_x^2+\psi_y^2)^{3/2}$ は，$\psi$ のプロファイル形状に依存する．
+界面近傍（$\psi \approx 0.5$）ではシグモイド勾配が最大値
+$|\bnabla\psi|_{\max} = 1/(4\varepsilon)$（$|\bnabla\phi|=1$ のとき）
+をとり，安定な除算が可能である．
+一方，$\psi \to 0$ または $\psi \to 1$ の領域では
+$|\bnabla\psi| \to 0$ となるが，
+これらの領域は界面から遠く，表面張力項の評価に曲率が寄与しない．
+したがって，実装上は以下のハイブリッド戦略をとる：
+\begin{itemize}
+  \item \textbf{界面近傍}（$\psi_{\min} < \psi < 1-\psi_{\min}$，
+        推奨 $\psi_{\min}=0.01$）：
+        式~\eqref{eq:curvature_psi_2d} を適用し，高精度な曲率を直接計算する．
+  \item \textbf{界面遠方}（$\psi \le \psi_{\min}$ または
+        $\psi \ge 1-\psi_{\min}$）：
+        $\kappa = 0$ とする（表面張力寄与なし）．
+\end{itemize}
+この閾値選択に対するロバスト性は高い：
+表面張力項 $\kappa\,\bnabla\psi/We$ において
+$|\bnabla\psi| \to 0$ の領域では $\kappa$ が不定となっても
+積 $\kappa\,|\bnabla\psi|$ は有界に留まるためである．
+
+\paragraph{実効界面厚み $\varepsilon_{\textup{eff}}$ によるプロファイル品質監視}
+
+$\psi$ による直接曲率計算では $\varepsilon$ の値は不要であるが，
+数値拡散や再初期化の不完全さによるプロファイル歪みを
+\textbf{診断}する目的で，各格子点における実効界面厚みを定義できる：
+\begin{equation}
+  \varepsilon_{\textup{eff},i}
+  = \frac{\psi_i(1-\psi_i)}{|\bnabla\psi|_i}
+  \label{eq:epsilon_eff}
+\end{equation}
+この定義は，シグモイド微分公式
+$|\bnabla\psi| = \frac{1}{\varepsilon}\psi(1-\psi)\,|\bnabla\phi|$
+と Eikonal 条件 $|\bnabla\phi| \approx 1$ から導かれる．
+界面近傍で $\varepsilon_{\textup{eff}} \approx \varepsilon$（設計値）であれば
+プロファイルが正常に維持されていることを意味し，
+$\varepsilon_{\textup{eff}} \gg \varepsilon$ は
+数値拡散による過度な界面幅増大を示す診断指標となる．
+
 \begin{tcolorbox}[warnbox, title={曲率の数値的安定化：実装クイックスタート（詳細分析は §\ref{sec:curvature_stab}）}]
 \label{box:curvature_stab}
 
