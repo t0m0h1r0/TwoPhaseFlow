@@ -931,3 +931,31 @@ CONDITIONAL PASS:
 **Hard rule:** If all formal checks pass and the Auditor cannot cite a specific violation,
 the Auditor MUST issue CONDITIONAL PASS — NOT continue deliberating, NOT block the pipeline.
 An Auditor that withholds PASS without a citable violation commits a Deadlock Violation.
+
+────────────────────────────────────────────────────────
+# § JIT COMMAND REFERENCE — Token Optimization
+
+**Rule:** Individual agent prompts (prompts/agents/*.md) MUST NOT include the full, detailed
+command syntax for operations defined in this file (GIT-xx, BUILD-xx, TEST-xx, EXP-xx,
+HAND-xx, DOM-xx, AUDIT-xx). Embedding the full syntax in every agent prompt creates
+redundancy, inflates token cost, and risks stale copies diverging from the canonical definition.
+
+**JIT reference rule (inject into every agent prompt that has operational AUTHORITY):**
+
+> "If a specific operation is required, consult `prompts/meta/meta-ops.md` to find the
+> canonical command syntax. Do NOT improvise; do NOT use a locally remembered version.
+> The canonical form in meta-ops.md is the only valid invocation."
+
+**What agent prompts SHOULD include:**
+- The operation ID only (e.g., `GIT-01`, `BUILD-02`, `HAND-01`) under AUTHORITY/PROCEDURE
+- The condition under which it is invoked (trigger)
+- The AUTH_LEVEL tag (Root Admin / Gatekeeper / Specialist)
+
+**What agent prompts MUST NOT include:**
+- Full parameter blocks (the `{}` template fields)
+- Full success criteria tables
+- Full failure handling steps
+
+**Enforcement (meta-deploy.md Stage 3):** EnvMetaBootstrapper must apply the JIT reference
+rule when generating all agent prompts. Stage 5 Q3 validation must reject any generated
+prompt that includes full operation syntax blocks copied verbatim from meta-ops.md.

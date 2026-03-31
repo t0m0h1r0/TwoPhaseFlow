@@ -230,9 +230,13 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
    - RULES: derived from meta-roles.md AUTHORITY + CONSTRAINTS
    - PROCEDURE: derived from meta-workflow.md domain pipelines (ordering) +
-     meta-ops.md (concrete command blocks for operations in AUTHORITY) +
-     meta-ops.md HAND-01/02/03 (inject dispatch/return/acceptance templates per handoff role) +
+     meta-ops.md operation IDs only (GIT-xx, BUILD-xx, etc.) — NOT full syntax blocks +
+     meta-ops.md HAND-01/02/03 roles (DISPATCHER/RETURNER/ACCEPTOR) — NOT full token templates +
      meta-ops.md AUDIT-01/02 (inject for ConsistencyAuditor PROCEDURE only)
+   - **JIT enforcement:** Agent prompts must NOT embed full operation parameter blocks or
+     success criteria tables copied from meta-ops.md. Include operation ID + trigger condition
+     only. Inject the JIT reference rule: "If a specific operation is required, consult
+     prompts/meta/meta-ops.md for canonical syntax." (→ meta-ops.md §JIT COMMAND REFERENCE)
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
 2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
    Every agent must include BOTH lines below its title heading:
