@@ -59,14 +59,15 @@ Predictor ステップの離散式は：
 \end{equation}
 ここで $\mathcal{C}(\bu,q) = \bu\cdot\bnabla q$（対流演算子），$\mathcal{D}$ は完全粘性応力演算子
 （式~\eqref{eq:viscous_full_x}）．
-体積力 $\bm{f}^{n+1}$ は表面張力項（$\rho$ 因子なし）と重力項（$\rho^{n+1}$ 因子あり）の和：
+体積力 $\bm{f}^{n+1}$ は重力項のみで構成する：
 \begin{equation*}
-  \bm{f}^{n+1} = \frac{\kappa^{n+1}\bnabla\psi^{n+1}}{We}
-                - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
+  \bm{f}^{n+1} = - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
 \end{equation*}
-（表面張力は CSF 体積力 $\sigma\kappa\bnabla\psi$（式~\eqref{eq:csf_final}）の無次元形；
-重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
+（重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
 2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$）．
+\textbf{表面張力は GFM（§\ref{sec:gfm}）によりジャンプ条件 $[p]_\Gamma = \kappa/We$
+として PPE 右辺の補正項 $b^{\mathrm{GFM}}$（式~\eqref{eq:gfm_rhs_correction}）に
+組み込み，Predictor の体積力からは完全に除去する}（§\ref{sec:algorithm} 参照）．
 対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
 前ステップ圧力 $-\bnabla p^n$ の陽的組込みが IPC の本質である．
 
