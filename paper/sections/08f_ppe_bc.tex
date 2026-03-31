@@ -49,3 +49,36 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         LGMRES が収束しない場合（ASM-005），\texttt{spsolve}（直接 LU）で
         条件数の影響を受けず解を得られる（実装は付録~\ref{sec:ppe_pseudotime}）．
 \end{itemize}
+
+\subsubsection{全周 Neumann 境界における零モード対策}
+\label{sec:ppe_zero_mode}
+
+全境界が $\partial p/\partial n = 0$（ノイマン条件）の場合，
+PPE の係数行列は特異（零固有値あり）であり，解 $p$ は定数の自由度を持つ．
+この自由度を取り除かないと反復ソルバーが発散する．
+
+\begin{enumerate}
+  \item \textbf{1点固定（ピン条件，推奨）：}
+        セル $(i_0, j_0)$ の圧力を $p_{i_0,j_0} = 0$ に固定し，その行を単位行に置き換える．
+        Matrix-free 反復では各ステップ後に強制上書きする：
+        \begin{equation}
+          (\delta p)^m_{i_0, j_0} \leftarrow 0
+          \qquad \text{（全反復ステップで更新直後に適用）}
+          \label{eq:pin_overwrite}
+        \end{equation}
+  \item \textbf{平均値拘束：} $\sum_{i,j} p_{i,j} = 0$ の線形拘束を追加する（精度的に優位だが実装が複雑）．
+\end{enumerate}
+
+\subsubsection{圧力固定点（ピン点）の選択原則}
+\label{sec:pinpoint}
+
+\noindent\textbf{原則1：固定点を途中で変更しない．}
+ピン点を変更すると，圧力の基準値が不連続に変化し圧力勾配に突発的誤差が生じる．
+
+\noindent\textbf{原則2：固定点は純粋気相または純粋液相の領域に置く．}
+界面が固定点を通過すると，ピン条件により正しい PPE 方程式が反映されず収束が崩れる．
+4倍対称な設定では中心セル $(N/2,N/2)$ が数値対称性を保持する
+（KL-11；§\ref{sec:ppe_gauge_neumann} 参照）．
+
+\noindent\textbf{原則3：圧力のゼロ点は相対量である．}
+$p_{i_0,j_0} = 0$ は数学的拘束であり，速度補正に必要な勾配 $\nabla p$ はスカラーシフトに依存しない．
