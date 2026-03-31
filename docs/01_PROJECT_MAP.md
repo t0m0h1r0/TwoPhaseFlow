@@ -264,6 +264,14 @@ Never hardcode pin index (0,0).
 | `13_conclusion.tex` | §13 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |
 
+### §9b — LaTeX Notation Conventions (MANDATORY, enforced 2026-04-01)
+
+| Rule | Correct | Wrong | Exception |
+|------|---------|-------|-----------|
+| Bold nabla | `\bnabla` | `\nabla` | Inside tcolorbox `defbox` proof derivations; `\texorpdfstring` args |
+| Order macro | `$\Ord{h^6}$` | `$O(h^6)$`, `$\mathcal{O}(h^6)$` | Computational complexity `$O(N)$`; qualitative `$O(1)$`; `\texorpdfstring` args |
+| Tilde before ref | `式~\eqref{eq:foo}`, `第~\ref{sec:bar}章` | `式 \eqref{...}`, `式\eqref{...}` | `§\ref{...}` (no tilde needed) |
+
 ────────────────────────────────────────────────────────
 # §10 — P3-D Multi-Site Parameter Register
 # Rule: docs/00_GLOBAL_RULES.md §P §P3-D
