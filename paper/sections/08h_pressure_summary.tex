@@ -24,36 +24,36 @@ GFM による鋭利な界面処理（§\ref{sec:gfm}），
 \toprule
 コンポーネント & 手法 & 空間精度 & 時間精度 \\
 \midrule
-CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $O(h^5)$ & $O(\Delta t^3)$ \\
-幾何量計算（曲率等） & CCD 法 & $O(h^6)$ & — \\
-PPE（離散化＋求解） & CCD 微分形式 + GFM ジャンプ補正 & $O(h^6)$ & — \\
-（参考：FVM + BiCGSTAB） & （FVM + 調和平均係数） & （$O(h^2)$） & — \\
-NS 粘性項 & CCD + Crank--Nicolson & $O(h^6)$ & $O(\Delta t^2)$ \\
-NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $O(h^6)$ & $O(\Delta t^2)$ \\
-Projection スプリッティング & IPC 法（van Kan 1986） & — & $O(\Delta t^2)$ \\
-GFM 界面処理（表面張力） & Young--Laplace ジャンプ直接組み込み & $O(h^2)$（界面近傍†） & — \\
+CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
+幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + GFM ジャンプ補正 & $\Ord{h^6}$ & — \\
+（参考：FVM + BiCGSTAB） & （FVM + 調和平均係数） & （$\Ord{h^2}$） & — \\
+NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
+NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
+Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
+GFM 界面処理（表面張力） & Young--Laplace ジャンプ直接組み込み & $\Ord{h^2}$（界面近傍†） & — \\
 \midrule
-\textbf{全体（空間律速：GFM 界面処理†）} & & $\boldsymbol{O(h^2)}$（界面近傍） & — \\
-\textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{O(\Delta t^2)}$ \\
+\textbf{全体（空間律速：GFM 界面処理†）} & & $\boldsymbol{\Ord{h^2}}$（界面近傍） & — \\
+\textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-\noindent†\ GFM は CSF の $O(\varepsilon^2)$ 物理誤差床を除去するが，界面直近（1–2格子幅以内）では
-Extension PDE なしに $O(h^6)$ 精度を完全に維持することは困難である（§\ref{sec:gfm}，今後の課題）．
-平滑領域では全コンポーネント $O(h^5)$ 以上が確保される．
+\noindent†\ GFM は CSF の $\Ord{\varepsilon^2}$ 物理誤差床を除去するが，界面直近（1–2格子幅以内）では
+Extension PDE なしに $\Ord{h^6}$ 精度を完全に維持することは困難である（§\ref{sec:gfm}，今後の課題）．
+平滑領域では全コンポーネント $\Ord{h^5}$ 以上が確保される．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
 \begin{enumerate}
   \item \textbf{空間精度：}
-        全数値コンポーネントが $O(h^5)$–$O(h^6)$ に揃っている（平滑領域）．
-        GFM により旧 CSF モデルの誤差床 $O(\varepsilon^2) \approx O(h^2)$ は除去されたが，
-        界面直近では GFM 処理精度（$O(h^2)$ 以上）が律速段階となる．
-        FVM + BiCGSTAB では $O(h^2)$ に留まる（表~\ref{tab:ccd_vs_fvm}）．
+        全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
+        GFM により旧 CSF モデルの誤差床 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は除去されたが，
+        界面直近では GFM 処理精度（$\Ord{h^2}$ 以上）が律速段階となる．
+        FVM + BiCGSTAB では $\Ord{h^2}$ に留まる（表~\ref{tab:ccd_vs_fvm}）．
 
   \item \textbf{時間精度：}
-        AB2 + IPC により全体 $O(\Delta t^2)$（§\ref{sec:ipc_derivation}）．
+        AB2 + IPC により全体 $\Ord{\Delta t^2}$（§\ref{sec:ipc_derivation}）．
         対流（AB2），粘性（Crank--Nicolson），Projection（IPC）の3要素が統一されている．
 \end{enumerate}
 \end{tcolorbox}
