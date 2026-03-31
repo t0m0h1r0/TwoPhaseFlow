@@ -201,7 +201,7 @@ $\psi$ の移流方程式は\textbf{保存形（発散形）}（式~\eqref{eq:cl
 質量保存 & 非保証（時間ドリフト） & 離散的に保証 \\
 Eikonal 条件 & 移流後に崩れる（曲率誤差の原因） & $\psi$ 自体は Eikonal 条件に依存しない \\
 再初期化 & Sussman 法（界面をわずかに動かす） & 圧縮-拡散方程式（界面固定） \\
-幾何計算 & $\phi$ から直接 & $\psi\to\phi$ の逆変換が必要 \\
+幾何計算 & $\phi$ から直接 & 曲率は $\psi$ から直接計算可（定理~\ref{thm:curvature_invariance}）；GFM 用 $\phi$ のみ逆変換 \\
 \hline
 \end{tabular}
 \end{center}
