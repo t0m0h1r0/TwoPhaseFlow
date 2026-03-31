@@ -24,14 +24,15 @@ If input is too long:
 
 ## FIRST TASK
 - prompts/agents/ResearchArchitect.md
-- docs/ACTIVE_STATE.md
-- docs/ARCHITECTURE.md
-- docs/CHECKLIST.md
-- docs/CODING_POLICY.md
+- docs/02_ACTIVE_LEDGER.md (phase, branch, last decision, open CHKs)
+- docs/01_PROJECT_MAP.md (module map, interface contracts, numerical reference)
+- docs/00_GLOBAL_RULES.md (axioms A1–A10, domain rules)
 
 ## CODING RULES (enforced every session)
 - **SOLID principles are MANDATORY** — before writing or modifying any class/function,
-  check §1 of docs/CODING_POLICY.md. Report violations in `[SOLID-X]` format and fix them.
+  check §C1 of docs/00_GLOBAL_RULES.md. Report violations in `[SOLID-X]` format and fix them.
 - **Never delete tested code** — superseded implementations must be retained as legacy classes
-  per §2 of docs/CODING_POLICY.md. DO NOT remove a class that has passed tests unless the
-  user explicitly says "delete it".
+  per §C2 of docs/00_GLOBAL_RULES.md. Register in docs/01_PROJECT_MAP.md §8 (Legacy Class Register).
+  DO NOT remove a class that has passed tests unless the user explicitly says "delete it".
+- **Algorithm Fidelity** — fixes MUST restore paper-exact behavior. Deviation = bug.
+- **A3 Traceability** — Equation → Discretization → Code chain is mandatory.
