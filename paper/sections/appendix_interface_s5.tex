@@ -56,3 +56,13 @@ $\psi = H_\varepsilon(s) = \frac{1}{1+e^{-s/\varepsilon}}$ がこれを満たす
 左辺の値を参照していない．循環論法は生じない．）
 
 \textbf{すなわち $\psi = H_\varepsilon(\phi)$ は式 \eqref{eq:cls_reinit_iso} の厳密な不動点である．}\qed
+
+\subsection*{多次元への拡張}
+
+上記の証明は1次元（法線方向座標 $s$）で与えたが，多次元の再初期化方程式
+$\partial_\tau\psi + \nabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \nabla\cdot(\varepsilon\nabla\psi)$
+においても，界面法線方向 $s = \hat{\bm{n}}\cdot\bm{x}$ に沿った1次元プロファイル
+$\psi(s) = H_\varepsilon(s)$ は不動点である．曲率 $\kappa \neq 0$ の界面では
+$\nabla\cdot\hat{\bm{n}} = \kappa$ による追加項が生じるが，
+この項は $\varepsilon\kappa\psi(1-\psi)$ のオーダーであり，
+$\varepsilon \to 0$ の極限で消失する（$\Ord{\varepsilon}$ の摂動）．

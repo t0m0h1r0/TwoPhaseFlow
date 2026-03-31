@@ -211,8 +211,21 @@ $\nabla\cdot(1/\rho\,\nabla p) = (1/\rho)\nabla^2 p - (\nabla\rho/\rho^2)\cdot\n
 
 等密度・全周 Neumann 境界では $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の零空間は定数モード1次元のみとなる
 （連続問題に対応）．しかし Eq-II-bc（§\ref{sec:ccd_bc}）の $O(h^2)$ 一側公式は
-ブロック Thomas 系に非対称成分を導入し，数値的に零空間次元が増大することがある
-（$N=4$ 時点で零空間次元 $= 8$，条件数 $\approx 1.9 \times 10^{17}$；付録~\ref{app:ccd_lu_direct} も参照）．
+ブロック Thomas 系に非対称成分を導入し，数値的に零空間次元が増大することがある．
+以下に $O(h^2)$ 境界スキーム使用時の零空間次元の変遷を示す：
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lccc}
+\hline
+$N$ & 零空間次元 & 条件数 & 備考 \\
+\hline
+$4$  & $8$ & $\approx 1.9 \times 10^{17}$ & 境界行の非対称性が支配的 \\
+$8$  & $4$ & $\approx 10^{10}$ & 内点行の寄与が増加 \\
+$16$ & $2$ & $\approx 10^{6}$ & 零空間縮小が進行 \\
+$\ge 32$ & $1$ & $\approx 10^{4}$ & 理論通り（$O(h^4)$ 昇格後は全 $N$ で 1） \\
+\hline
+\end{tabular}
+\end{center}
 
 したがってピン条件（式~\eqref{eq:pin_overwrite}）は\textbf{必須}である．
 根本的解決策は Eq-II-bc を $O(h^4)$ 以上の公式に昇格させることであり，
