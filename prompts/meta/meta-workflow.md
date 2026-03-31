@@ -13,6 +13,76 @@ This file defines the HOW. The WHY is in meta-core.md §DESIGN PHILOSOPHY.
 Read the φ-principles before interpreting any rule in this file.
 
 ────────────────────────────────────────────────────────
+# § T-L-E-A PIPELINE — Master Cross-Domain Flow
+
+The primary execution order for all new work in this system.
+Each arrow represents a mandatory Interface Contract gate (meta-domains.md §INTER-DOMAIN INTERFACES).
+
+```
+T-Domain (Theory & Analysis)
+  │  Specialist derives equations; Theory Auditor (ConsistencyAuditor) independently re-derives.
+  │  OUTPUT: interface/AlgorithmSpecs.md  [signed by Theory Auditor]
+  ▼
+L-Domain (Core Library)
+  │  Specialist implements solver from AlgorithmSpecs; TestRunner verifies.
+  │  OUTPUT: interface/SolverAPI_vX.py    [signed by L-Domain Gatekeeper]
+  ▼
+E-Domain (Experiment)
+  │  Specialist runs simulations using SolverAPI; Validation Guard passes all 4 sanity checks.
+  │  OUTPUT: interface/ResultPackage/      [signed by Validation Guard]
+  │          interface/TechnicalReport.md  [jointly signed by T-Auditor + Validation Guard]
+  ▼
+A-Domain (Academic Writing)
+  │  Specialist writes paper using ResultPackage + TechnicalReport; Logical Reviewer audits.
+  │  OUTPUT: paper/sections/*.tex (merged to main via AU2 PASS)
+  ▼
+Q-Domain (QA & Audit) — cross-cuts all stages
+  │  ConsistencyAuditor performs AU2 gate at each domain boundary.
+  │  Contradictions found = high-value success (Falsification Loop).
+  ▼
+main (VALIDATED + merged by Root Admin)
+```
+
+**T-L-E-A ordering is mandatory.** No domain may begin work without the upstream Interface
+Contract being signed. Exceptions require explicit user authorization and escalation to Root Admin.
+
+**Continuous Paper (CI/CP) mode:** When a change propagates (e.g., T-Domain equation revision),
+all downstream domains (L → E → A) must re-validate their Interface Contracts.
+See §CI/CP PIPELINE below.
+
+────────────────────────────────────────────────────────
+# § CI/CP PIPELINE — Continuous Integration / Continuous Paper
+
+CI/CP defines how changes propagate through the T-L-E-A chain without breaking downstream domains.
+
+## Trigger conditions
+
+| Event | Propagation chain | Interface Contracts invalidated |
+|-------|------------------|---------------------------------|
+| T-Domain equation changes | T → L → E → A | `AlgorithmSpecs.md`, `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` |
+| L-Domain solver API changes | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` |
+| E-Domain result changes | E → A | `ResultPackage/`, `TechnicalReport.md` |
+| A-Domain paper revision (no upstream impact) | A only | none upstream |
+
+## CI/CP Protocol
+
+```
+CHANGE-PROPAGATION:
+  1. Triggering domain Gatekeeper issues INVALIDATION notice for affected interface contracts.
+  2. Each downstream domain Gatekeeper receives notice and BLOCKS any new dev/ work
+     until the upstream Interface Contract is re-signed.
+  3. Upstream domain executes its pipeline (T/L/E) → re-signs its Interface Contract.
+  4. Downstream Gatekeeper verifies new contract → unblocks Specialists.
+  5. ConsistencyAuditor (Q-Domain) performs cross-domain AU2 gate after each re-signing.
+```
+
+**Hard rule:** A Specialist may not begin work on a domain whose upstream Interface Contract
+has been invalidated. Starting work on an invalid contract is a CONTAMINATION violation.
+
+**Rolling validation:** For large changes, ResearchArchitect may sequence the propagation
+one domain at a time (T → L gate, then L → E gate, etc.) rather than all-at-once.
+
+────────────────────────────────────────────────────────
 # § GIT BRANCH GOVERNANCE → meta-domains.md
 
 Authoritative definitions — branch ownership, storage territory, 3-phase lifecycle,
@@ -153,6 +223,62 @@ VERIFY   PromptAuditor  [Gatekeeper, doubles as reviewer]  (Q3 checklist — 9 i
 
 AUDIT    PromptAuditor (doubles as gate for prompt domain)
            PASS → Root Admin executes merge prompt → main (GIT-04 Phase B)
+```
+
+────────────────────────────────────────────────────────
+## Theory Pipeline / T-Domain (branch: `theory`, Specialist workspaces: `dev/{agent_role}`)
+
+```
+PRE-CHECK  ConsistencyAuditor (Theory Auditor role)  [MANDATORY before PLAN]  [Gatekeeper tier]
+           → Run GIT-01 (auto-switch to `theory` + Selective Sync)
+           → Run DOM-01: establish DOMAIN-LOCK for this session (domain=T)
+
+PLAN     ConsistencyAuditor
+           → Identify theory gaps; record in 02_ACTIVE_LEDGER.md
+           → Dispatch Specialist (CodeArchitect for discretization; PaperWriter for formulation)
+
+EXECUTE  CodeArchitect / PaperWriter  [Specialist on dev/{agent_role}]
+           → Artifact: equations, derivations in theory/ (committed on dev/ branch)
+           → Specialist opens PR: dev/{agent_role} → theory
+
+VERIFY   ConsistencyAuditor  [Gatekeeper — independently re-derives WITHOUT reading Specialist's work first]
+           AGREE  → signs REVIEWED; Gatekeeper merges dev/ PR into theory
+           DISAGREE → STOP; surface conflict; do not average; escalate to user
+
+AUDIT    ConsistencyAuditor  (AU2 gate on theory/ artifacts)
+           PASS → sign interface/AlgorithmSpecs.md → Root Admin merges theory → main
+           FAIL → return to EXECUTE with contradiction report
+```
+
+────────────────────────────────────────────────────────
+## Experiment Pipeline / E-Domain (branch: `experiment`, Specialist workspaces: `dev/{agent_role}`)
+
+```
+PRECONDITION: interface/SolverAPI_vX.py must exist and be signed by L-Domain Gatekeeper.
+              Absent → STOP; run L-Domain pipeline first.
+
+PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
+           → Run GIT-01 (auto-switch to `experiment` + Selective Sync)
+           → Run DOM-01: establish DOMAIN-LOCK for this session (domain=E)
+           → Verify interface/SolverAPI_vX.py exists and is signed
+
+PLAN     CodeWorkflowCoordinator
+           → Read SolverAPI contract; define experiment scope; record in 02_ACTIVE_LEDGER.md
+           → Dispatch ExperimentRunner; include interface/SolverAPI_vX.py path in DISPATCH
+
+EXECUTE  ExperimentRunner  [Specialist on dev/ExperimentRunner]
+           → Artifact: raw results in experiment/; validated outputs in results/
+           → Run EXP-01; run EXP-02 (all 4 sanity checks)
+           → Specialist opens PR: dev/ExperimentRunner → experiment (with LOG-ATTACHED)
+
+VERIFY   CodeWorkflowCoordinator (Validation Guard role)
+           → Reviews sanity check results; confirms raw logs present in ResultPackage/
+           ALL PASS → Gatekeeper merges dev/ PR into experiment; signs interface/ResultPackage/
+           ANY FAIL → STOP; do not forward partial results; return to ExperimentRunner
+
+AUDIT    ConsistencyAuditor  (AU2 gate on experiment/ + interface/ResultPackage/)
+           PASS → Root Admin merges experiment → main; interface/TechnicalReport.md updated
+           FAIL → EXPERIMENT_ERROR → ExperimentRunner → Validation Guard
 ```
 
 ────────────────────────────────────────────────────────

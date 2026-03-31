@@ -5,6 +5,65 @@
 # Coordination (HOW): meta-workflow.md | Operations (EXECUTE): meta-ops.md
 
 ────────────────────────────────────────────────────────
+# § 0 CORE PHILOSOPHY — "The Why" (Matrix-Style Divide and Conquer)
+
+These three pillars are embedded in EVERY file and EVERY agent decision in this system.
+When rules conflict, return to these pillars to resolve them.
+
+## §A: Sovereign Domains & Corporate Autonomy
+
+Each vertical domain (T / L / E / A) operates as an independent "Corporation."
+It does not trust the internal state of other domains.
+Communication between domains is ONLY permitted through Gatekeeper-approved Interface Contracts
+(prompts/meta/meta-domains.md §INTER-DOMAIN INTERFACES).
+
+**Why:** Trusting another domain's unvetted state allows "hallucination contamination" —
+one agent's guess becomes another domain's input fact. The Interface Contract is the legal
+firewall between corporations. Without it, errors propagate silently across the system.
+
+**Enforcement:** A domain that reads from another domain's files WITHOUT a signed Interface
+Contract is committing a sovereignty violation (= CONTAMINATION, DOM-02). STOP immediately.
+
+## §B: Separation of Creation and Auditing — Broken Symmetry
+
+Every practical task requires TWO distinct roles that must NEVER be filled by the same agent:
+
+1. **The Specialist (Creator):** Focused on progress, implementation, and discovery.
+   Accepts the working hypothesis. Builds toward a solution.
+
+2. **The Gatekeeper (Auditor / Devil's Advocate):** Focused on falsification, skepticism,
+   and standard compliance. Assumes the Specialist is WRONG until proven otherwise.
+   Derives independently before comparing — NEVER reads Specialist's reasoning first.
+
+**Why:** If the same agent creates and audits its own work, it will subconsciously rationalize
+its own errors. Independent derivation (not comparison) is the only reliable gate (φ7, MH-3).
+
+**Enforcement:** A Gatekeeper that reads the Specialist's reasoning before deriving independently
+has broken symmetry. That audit is invalid. Re-derive before comparing — always.
+
+**Role mapping:** see meta-domains.md §MATRIX ARCHITECTURE for Specialist/Gatekeeper pairs per domain.
+
+## §C: Falsification Loop — The Scientific Method
+
+The system evolves not only by building features, but by actively attempting to BREAK the
+current state. The QA & Audit domain (Q-Domain, ConsistencyAuditor) actively seeks
+contradictions between:
+- Code Implementation ↔ Theoretical Claims
+- Experimental Results ↔ Paper Statements
+- Interface Contract ↔ Actual Deliverables
+
+**Finding a contradiction is a HIGH-VALUE SUCCESS, not a failure.**
+A ConsistencyAuditor that reports "AU2 FAIL: equation discrepancy found" has done its job
+correctly. A ConsistencyAuditor that always reports PASS is suspicious.
+
+**Why:** Without active falsification attempts, subtle errors accumulate until catastrophic
+failure. The Falsification Loop is the immune system of the project.
+
+**Enforcement:** ConsistencyAuditor must attempt to falsify every claim it audits.
+"I couldn't find a problem" is only valid after at least Procedures A–D were applied
+(meta-ops.md AUDIT-02). Skipping procedures to reach PASS faster is a Protocol violation.
+
+────────────────────────────────────────────────────────
 # § SYSTEM STRUCTURE
 
 Seven files, one question each. Mixing concerns across files cascades unrelated edits.
@@ -13,17 +72,45 @@ Seven files, one question each. Mixing concerns across files cascades unrelated 
 
 ```
 Layer 1 — Static Foundation (Immutable)
-  meta-core.md    — FOUNDATION: φ1–φ7, A1–A10, system targets   ← stable only when core values change
-  meta-persona.md — WHO: agent character and skills               ← stable only when agent design changes
+  meta-core.md    — FOUNDATION: §0 CORE PHILOSOPHY, φ1–φ7, A1–A10, system targets   ← stable only when core values change
+  meta-persona.md — WHO: agent character (Specialist / Gatekeeper archetypes + skills) ← stable only when agent design changes
 
 Layer 2 — Dynamic Execution (Operational)
-  meta-domains.md — STRUCTURE: domain registry, branches, storage, lock protocol   ← updated on org change
-  meta-roles.md   — WHAT: per-agent role contracts                                 ← updated on role reassignment
-  meta-ops.md     — EXECUTE: canonical commands and handoff protocols               ← updated on tooling changes
+  meta-domains.md — STRUCTURE: 4×3 Matrix domain registry, Interface Contracts, branches, storage, lock protocol ← updated on org change
+  meta-roles.md   — WHAT: Gatekeeper Approval conditions, per-agent role contracts                               ← updated on role reassignment
+  meta-ops.md     — EXECUTE: canonical commands, HAND-xx (with Interface Contract enforcement), handoff protocols ← updated on tooling changes
 
 Layer 3 — Orchestration (Process)
-  meta-workflow.md — HOW: pipelines, coordination protocols   ← updated on process maturity
-  meta-deploy.md   — DEPLOY: EnvMetaBootstrapper              ← updated on system structure changes
+  meta-workflow.md — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
+  meta-deploy.md   — DEPLOY: EnvMetaBootstrapper (clean directory names, no numbers/dots)      ← updated on system structure changes
+```
+
+**4×3 Matrix Architecture (the domain model for all work):**
+
+```
+                  ┌─────────────────────────────────────────────────────┐
+                  │           HORIZONTAL GOVERNANCE DOMAINS              │
+                  │  M: Meta-Logic  │  P: Prompt&Env  │  Q: QA & Audit  │
+┌─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ T  Theory & Analysis  │ Constitutional │ Agent tooling  │ Independent    │
+│    Mathematical Truth  │ routing/protocol│ for T-Domain  │ re-derivation  │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ L  Core Library       │ Constitutional │ Agent tooling  │ Code–theory    │
+│    Functional Truth    │ routing/protocol│ for L-Domain  │ consistency    │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ E  Experiment         │ Constitutional │ Agent tooling  │ Sanity check   │
+│    Empirical Truth     │ routing/protocol│ for E-Domain  │ gate           │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ A  Academic Writing   │ Constitutional │ Agent tooling  │ Logical review │
+│    Logical Truth       │ routing/protocol│ for A-Domain  │ + AU2 gate     │
+└─────────────────┴─────────────────┴─────────────────┴─────────────────┘
+```
+
+**Interface Contract flow (T-L-E-A, mandatory ordering):**
+```
+T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
+                                               ↑
+                              TechnicalReport.md (T + E jointly → A)
 ```
 
 | File | Layer | Question | Stable when |

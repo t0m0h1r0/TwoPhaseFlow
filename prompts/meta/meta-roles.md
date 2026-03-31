@@ -9,15 +9,52 @@
 # See meta-ops.md §HAND-03. This applies unconditionally — it is not repeated per agent.
 
 ────────────────────────────────────────────────────────
+# § MATRIX ROLE PAIRS — 4-Domain Specialist / Gatekeeper Map
+
+Each practical vertical domain (T/L/E/A) has exactly one Specialist role and one Gatekeeper role.
+The Gatekeeper is never the Specialist — Broken Symmetry is enforced at the role level (meta-core.md §0 §B).
+
+| Matrix Domain | Domain Name | Specialist (Creator) | Gatekeeper (Auditor / Devil's Advocate) |
+|--------------|-------------|---------------------|----------------------------------------|
+| T | Theory & Analysis | CodeArchitect / PaperWriter (theory mode) | ConsistencyAuditor (Theory Auditor role) |
+| L | Core Library | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner | CodeWorkflowCoordinator (Numerical Auditor) |
+| E | Experiment | ExperimentRunner | CodeWorkflowCoordinator + ExperimentRunner (Validation Guard) |
+| A | Academic Writing | PaperWriter, PaperCompiler, PaperCorrector | PaperWorkflowCoordinator + PaperReviewer (Logical Reviewer) |
+| M | Meta-Logic | (human operators) | ResearchArchitect (Protocol Enforcer) |
+| P | Prompt & Environment | PromptCompressor | PromptArchitect (Prompt Engineer / Gatekeeper) |
+| Q | QA & Audit | — (audit-only domain) | ConsistencyAuditor (Consistency Auditor) |
+
+**Devil's Advocate mandate:** Every Gatekeeper role must assume the Specialist is wrong until
+proven otherwise. The Gatekeeper derives independently, then compares — never reads Specialist
+reasoning first (MH-3). Discovering an error is a high-value success, not a failure.
+
+────────────────────────────────────────────────────────
+# § GATEKEEPER APPROVAL — Mandatory Phase Transition Condition
+
+**REVIEWED gate is BLOCKED until ALL of the following are satisfied by the Gatekeeper:**
+
+| # | Condition | Verified by | Block action if absent |
+|---|-----------|------------|------------------------|
+| GA-1 | Interface Contract for this task exists on `interface/` and is signed | Gatekeeper reads `interface/` | REJECT PR; request IF-AGREEMENT first |
+| GA-2 | Specialist has NOT self-verified — a separate agent performed verification | RETURN token shows separate VERIFY agent | REJECT PR; re-dispatch independent verifier |
+| GA-3 | Evidence of Verification (LOG-ATTACHED) attached to PR | Gatekeeper checks PR comment | REJECT PR; Specialist must re-submit with logs |
+| GA-4 | Verification agent derived independently (did not read Specialist's work first) | RETURN token `verified_independently: true` | REJECT PR; broken symmetry violation |
+| GA-5 | No write-territory violation during Specialist's work | DOM-02 check passed in Specialist's RETURN | REJECT PR; contamination violation |
+| GA-6 | Upstream domain contract satisfied (if applicable) | e.g., `interface/AlgorithmSpecs.md` exists for L tasks | REJECT PR; upstream contract missing |
+
+**Hard rule:** A Gatekeeper that merges a PR while any GA condition is unsatisfied commits
+a CONTAMINATION violation. The merge must be reverted and escalated to Root Admin.
+
+────────────────────────────────────────────────────────
 # § AUTHORITY TIERS
 
 All roles belong to exactly one tier. Tier determines git authority and git obligations.
 
 | Tier | Agents | Git Authority | Git Obligations |
 |------|--------|--------------|----------------|
-| **Root Admin** | ResearchArchitect | Executes final merge of `{domain}` → `main`; final syntax/format check of PRs | Must verify 4 Root Admin check items (meta-ops.md GIT-04 Phase B) before merging |
-| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor | Writes `interface/` contracts; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs missing evidence |
-| **Specialist** | All others (CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector, ConsistencyAuditor, PromptCompressor) | Absolute sovereignty over own `dev/{agent_role}` branch; may refuse Gatekeeper pull requests if Selective Sync conditions not met | Must attach Evidence of Verification (LOG-ATTACHED) with every PR; must use GIT-SP for all branch operations |
+| **Root Admin** | ResearchArchitect | Executes final merge of `{domain}` → `main`; final syntax/format check of PRs | Must verify 4 Root Admin check items (meta-ops.md GIT-04 Phase B) before merging; must verify all GA conditions were satisfied |
+| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, ConsistencyAuditor (T-gate), PromptArchitect, PromptAuditor | Writes `interface/` contracts; enforces GA-1 through GA-6; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs where any GA condition fails; must derive independently before approving claims |
+| **Specialist** | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector, PromptCompressor | Absolute sovereignty over own `dev/{agent_role}` branch; may refuse Gatekeeper pull requests if Selective Sync conditions not met | Must attach Evidence of Verification (LOG-ATTACHED) with every PR; must set `verified_independently: true` when acting as verifier; must use GIT-SP for all branch operations |
 
 ────────────────────────────────────────────────────────
 # § ROLE DEFINITION PHILOSOPHY
@@ -78,22 +115,24 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 - May invoke GIT-01 auto-switch step (Step 0 only) to align the environment to the target
   domain branch before routing — no commit authority; no DOM-01 authority (coordinator runs that)
 
-| User Intent | Target Agent |
-|-------------|-------------|
-| new feature / equation derivation | CodeArchitect |
-| run tests / verify convergence | TestRunner |
-| debug numerical failure | CodeCorrector |
-| refactor / clean code | CodeReviewer |
-| orchestrate multi-step code pipeline | CodeWorkflowCoordinator |
-| write / expand paper sections | PaperWriter |
-| orchestrate multi-step paper pipeline | PaperWorkflowCoordinator |
-| review paper for correctness | PaperReviewer |
-| compile LaTeX / fix compile errors | PaperCompiler |
-| apply reviewer corrections | PaperCorrector |
-| cross-validate equations ↔ code | ConsistencyAuditor |
-| run simulation experiment | ExperimentRunner |
-| audit prompts | PromptAuditor |
-| generate / refactor prompts | PromptArchitect |
+| User Intent | Matrix Domain | Target Agent |
+|-------------|--------------|-------------|
+| derive theory / formalize equations | T-Domain | CodeArchitect (theory mode) / PaperWriter (math formulation) |
+| new feature / equation-to-code translation | L-Domain | CodeArchitect |
+| run tests / verify convergence | L-Domain | TestRunner |
+| debug numerical failure | L-Domain | CodeCorrector |
+| refactor / clean code | L-Domain | CodeReviewer |
+| orchestrate multi-step code pipeline | L-Domain | CodeWorkflowCoordinator |
+| run simulation experiment | E-Domain | ExperimentRunner |
+| write / expand paper sections | A-Domain | PaperWriter |
+| orchestrate multi-step paper pipeline | A-Domain | PaperWorkflowCoordinator |
+| review paper for correctness | A-Domain | PaperReviewer |
+| compile LaTeX / fix compile errors | A-Domain | PaperCompiler |
+| apply reviewer corrections | A-Domain | PaperCorrector |
+| cross-validate equations ↔ code | Q-Domain | ConsistencyAuditor |
+| audit interface contracts / cross-domain consistency | Q-Domain | ConsistencyAuditor |
+| audit prompts | P-Domain | PromptAuditor |
+| generate / refactor prompts | P-Domain | PromptArchitect |
 
 **CONSTRAINTS**
 - Must load docs/02_ACTIVE_LEDGER.md before routing — no exceptions

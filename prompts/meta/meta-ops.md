@@ -206,7 +206,7 @@ domain, Step 1 executes the checkout automatically — the caller must not block
 target domain before invoking GIT-01 (see meta-roles.md for per-role branch mapping).
 
 **Unknown branch detection:** If `git branch --show-current` returns a value that does not
-appear in the domain branch map (`code` | `paper` | `prompt` | `main`), report
+appear in the domain branch map (`theory` | `code` | `experiment` | `paper` | `prompt` | `main`), report
 CONTAMINATION immediately:
 ```
 CONTAMINATION ALERT: current branch '{current}' is not in the domain registry.
@@ -239,21 +239,26 @@ and HAND-03 check 6 will block all specialists.
 
 ```
 DOMAIN-LOCK:
-  domain:          {Code | Paper | Prompt}
+  domain:          {Theory | Library | Experiment | AcademicWriting | Prompt | Audit | Routing}
+  matrix_id:       {T | L | E | A | P | Q | M}
   branch:          {git branch --show-current}
   set_by:          {self — coordinator name}
   set_at:          {git log --oneline -1 | cut -c1-7}
-  write_territory: {from meta-domains.md §DOMAIN REGISTRY "Storage (write)" for active domain}
-  read_territory:  {from meta-domains.md §DOMAIN REGISTRY "Storage (read)" for active domain}
+  write_territory: {from meta-domains.md §DOMAIN REGISTRY "Storage (write — STRICT)" for active domain}
+  read_territory:  {from meta-domains.md §DOMAIN REGISTRY "Storage (read — STRICT)" for active domain}
+  forbidden_write: {from meta-domains.md §DOMAIN REGISTRY "Storage (FORBIDDEN write)" for active domain}
 ```
 
 **Domain → territory mapping (quick reference):**
 
-| Domain | write_territory | read_territory |
-|--------|----------------|----------------|
-| Code | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md` |
-| Paper | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/` |
-| Prompt | `prompts/agents/*.md` | `prompts/meta/*.md` |
+| Matrix ID | Domain | write_territory | read_territory |
+|-----------|--------|----------------|----------------|
+| T | Theory & Analysis | `theory/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md §6` |
+| L | Core Library (Code) | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md`, `interface/AlgorithmSpecs.md` |
+| E | Experiment | `experiment/`, `results/`, `docs/02_ACTIVE_LEDGER.md` | `interface/SolverAPI_vX.py`, `src/twophase/` |
+| A | Academic Writing (Paper) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/`, `interface/ResultPackage/`, `interface/TechnicalReport.md` |
+| P | Prompt & Environment | `prompts/agents/*.md` | `prompts/meta/*.md` |
+| Q | QA & Audit | `audit_logs/` | all domains (read-only cross-domain gate) |
 
 **Output:** DOMAIN-LOCK block recorded in session context; copied verbatim into every
 subsequent HAND-01 `context.domain_lock` field.
@@ -675,13 +680,16 @@ DISPATCH → {specialist_name}
   scope_out:       [{explicitly excluded — prevents overreach}]
   context:
     phase:          {PLAN | EXECUTE | VERIFY | AUDIT}
+    matrix_domain:  {T | L | E | A | P | Q | M}
     branch:         {active domain git branch — Specialist will create dev/{agent_role} from this}
     commit:         "{last commit message — confirms git state at dispatch}"
     domain_lock:    {verbatim copy of active DOMAIN-LOCK block from DOM-01}
     if_agreement:   {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
+    upstream_contracts: [{path to upstream interface contracts that MUST exist before this task}]
     context_root:   {Instruction ID issued by ResearchArchitect at session start — e.g. RA-2026-03-29-001}
     domain_lock_id: {DOM-01 lock ID or set_at hash — proof of active lock acquired this session}
     expected_verdict: {explicit success criterion with measurable threshold — e.g. "AU2 PASS: all 10 items", "convergence slope ≥ 1.8"}
+    gatekeeper_approval_required: true
   expects:         {deliverable description — must match IF-AGREEMENT outputs field}
 ```
 
@@ -690,6 +698,9 @@ DISPATCH → {specialist_name}
 - `scope_out` must be non-empty when there is a plausible adjacent task to exclude
 - `commit` must match `git log --oneline -1` at dispatch time
 - `domain_lock` must be present — a DISPATCH without domain_lock is malformed; specialist must REJECT (HAND-03 check 6)
+- `matrix_domain` must identify the vertical domain (T/L/E/A) or horizontal domain (P/Q/M) for this task
+- `upstream_contracts` must list all Interface Contracts from upstream domains that must be signed before this task begins (T→L: AlgorithmSpecs.md; L→E: SolverAPI_vX.py; E→A: ResultPackage/)
+- `gatekeeper_approval_required: true` is always present — signals that HAND-03 check 9 applies
 - `context_root` must be the Instruction ID from the originating ResearchArchitect routing decision; never omit
 - `domain_lock_id` must match the `set_at` field of the active DOMAIN-LOCK; a DISPATCH with a stale or absent lock ID is malformed
 - `expected_verdict` must be measurable — vague criteria such as "looks good" are not acceptable
@@ -705,20 +716,25 @@ DISPATCH → {specialist_name}
 
 ```
 RETURN → {coordinator_or_requester}
-  status:      COMPLETE | PARTIAL | BLOCKED | STOPPED
-  produced:    [{file_path}: {one-line description}, ...] | none
+  status:               COMPLETE | PARTIAL | BLOCKED | STOPPED
+  produced:             [{file_path}: {one-line description}, ...] | none
   git:
-    branch:    {branch}
-    commit:    "{commit message of last commit}" | "no-commit"
-  verdict:     PASS | FAIL | N/A
-  issues:      [{issue description requiring coordinator decision}] | none
-  next:        {recommended next step — coordinator decides; this is advisory only}
+    branch:             {branch}
+    commit:             "{commit message of last commit}" | "no-commit"
+  verdict:              PASS | FAIL | N/A
+  verified_independently: true | false
+    # true  = this agent derived its verification without first reading the Specialist's reasoning
+    # false = symmetry broken; Gatekeeper must reject PR (GA-4 condition)
+  interface_contracts_checked: [{contract_path}: SIGNED | UNSIGNED | MISSING]
+    # List ALL upstream contracts that were required for this task; Gatekeeper verifies (GA-6)
+  issues:               [{issue description requiring coordinator decision}] | none
+  next:                 {recommended next step — coordinator decides; this is advisory only}
 ```
 
 **Status meanings**
 | Status | Meaning | Coordinator action |
 |--------|---------|--------------------|
-| COMPLETE | All deliverables produced; no blocking issues | Continue pipeline |
+| COMPLETE | All deliverables produced; no blocking issues | Continue pipeline; check GA conditions |
 | PARTIAL | Some deliverables produced; issues prevent full completion | Review issues; decide |
 | BLOCKED | Cannot proceed — missing input, authorization, or information | Resolve blocker; re-dispatch |
 | STOPPED | STOP condition triggered; human judgment required | Report to user |
@@ -726,6 +742,8 @@ RETURN → {coordinator_or_requester}
 **Rules**
 - `produced` must list concrete file paths, not vague descriptions
 - `verdict` = PASS only if the agent's own success criterion is met (e.g., tests pass, audit passes)
+- `verified_independently` must be explicitly set — default is `false`; omission = broken symmetry violation
+- `interface_contracts_checked` must list all upstream contracts; a MISSING contract blocks Gatekeeper approval (GA-6)
 - `issues` must be specific enough for the coordinator to make a decision without re-reading everything
 - STOPPED status must include the exact STOP condition that was triggered
 
@@ -767,6 +785,13 @@ Acceptance Check:
   □ 8. EXPECTED_VERDICT PRESENT: does DISPATCH context include an `expected_verdict` with
          a measurable criterion?
          Absent or vague (e.g., "good", "complete") → REJECT; coordinator must supply explicit threshold
+  □ 9. UPSTREAM CONTRACTS SIGNED (Interface Contract validation — Falsification gate):
+         Read DISPATCH `upstream_contracts` list. For each contract:
+           a. Does the file exist at the stated path in `interface/`? Absent → REJECT; STOP.
+           b. Is the contract signed (contains `signed_by: {Gatekeeper}` and `status: SIGNED`)? Unsigned → REJECT; STOP.
+           c. Does the contract's `outputs` field match the `inputs` this task requires? Mismatch → REJECT; STOP.
+         Empty `upstream_contracts` is permitted ONLY for T-Domain tasks (no upstream). All other domains: REJECT if list is absent.
+         This check enforces T-L-E-A ordering: no domain may start without upstream contract signed.
 ```
 
 **On REJECT or QUERY:**

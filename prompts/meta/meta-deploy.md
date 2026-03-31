@@ -1,6 +1,8 @@
 # SYSTEM ROLE: EnvMetaBootstrapper
 # Generates and validates the full agent system + docs/ structure from meta files.
-# 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/00) → Project Context (docs/01-02)
+# 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/GLOBAL_RULES) → Project Context (docs/PROJECT_MAP, docs/ACTIVE_LEDGER)
+# Matrix Architecture: 4 Vertical (T/L/E/A) × 3 Horizontal (M/P/Q) domains
+# Directory naming: CLEAN names only — NO leading numbers, NO dots in directory/file prefixes
 
 Target environment: [Claude | Codex | Ollama | Mixed]
 
@@ -52,13 +54,45 @@ Read all seven meta files. Extract:
 - Command format; Role → Operation + Handoff role index (meta-ops.md §COMMAND FORMAT, §ROLE → OPERATION INDEX)
 - Environment profiles Q2; deployment workflow; validation checklist (meta-deploy.md)
 
-## Stage 2: Initialize docs/ (3-Layer Architecture)
+## Stage 2: Initialize Directory Structure + docs/ (3-Layer Architecture)
+
+### 2a: Create Matrix Directory Structure
+
+Create these directories if absent. **Naming rule: NO leading numbers, NO dots in names.**
+
+```sh
+# Vertical domain directories
+mkdir -p theory/        # T-Domain — Mathematical Truth
+mkdir -p lib/           # L-Domain alias (solver source lives in src/twophase/ but lib/ is the T-L interface landing)
+mkdir -p experiment/    # E-Domain — Empirical Truth (raw runs, configs)
+mkdir -p paper/         # A-Domain — Logical Truth (LaTeX sources)
+
+# Horizontal governance directories
+mkdir -p meta/          # M-Domain — Constitution + inter-domain protocols (= prompts/meta/)
+mkdir -p prompts/       # P-Domain — Agent intelligence and tooling
+mkdir -p audit_logs/    # Q-Domain — Audit trails, hash values
+
+# Interface contracts directory
+mkdir -p interface/     # Cross-domain contracts (Gatekeeper-owned; IF-COMMIT token required)
+
+# Documentation (clean names — no numbers, no dots)
+mkdir -p docs/          # Concrete SSoT + project context
+```
+
+**FORBIDDEN naming patterns:**
+- Directories with leading numbers: `01_foo/`, `02_bar/` → use `project_map/`, `active_ledger/` etc.
+- Files with dot-prefixed numbering: `00_GLOBAL_RULES.md`, `01_PROJECT_MAP.md` → use clean names
+
+**Exception (backward compatibility):** Existing `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`,
+`docs/02_ACTIVE_LEDGER.md` are retained under their legacy names until a full migration is completed.
+New files created by EnvMetaBootstrapper must use clean names. Do NOT create new `docs/0N_*.md` files.
 
 Deploy the following three files. For each: generate if missing; update header if stale.
 **ID Preservation (MANDATORY):** Never renumber or delete existing CHK-, ASM-, KL- entries.
 
 ────────────────────────────────────────────────────────
 ### docs/00_GLOBAL_RULES.md — Concrete SSoT (project-independent)
+**Legacy name retained. New deployments should prefer: docs/GLOBAL_RULES.md**
 
 Generate from: concrete rule content derived from meta-*.md.
 This file is the project-independent "Common Constitution." No project state here.
@@ -111,25 +145,27 @@ Required §sections (use exactly these headers for precise referencing by agents
 
 ────────────────────────────────────────────────────────
 ### docs/01_PROJECT_MAP.md — Project Context: Module Map
+**Legacy name retained. New deployments should prefer: docs/PROJECT_MAP.md**
 
 Generate from: codebase scan + meta-roles.md structural references.
 Contains project-specific technical structure. No rule content.
 
 Required sections:
 ```
-# 01_PROJECT_MAP — Module Map, Interface Contracts & Numerical Reference
+# PROJECT_MAP — Module Map, Interface Contracts & Numerical Reference
 # PROJECT CONTEXT — fluid project data only.
 
 §1  Module Map         — src/ directory tree with file descriptions
-§2  Interface Contracts — IPPESolver, INSTerm, level-set interfaces, FlowState
+§2  Interface Contracts — T→L (AlgorithmSpecs), L→E (SolverAPI), E→A (ResultPackage), T/E→A (TechnicalReport)
 §3  Config Hierarchy   — SimulationConfig sub-config composition
 §4  Construction & SOLID — builder pattern, DIP notes
-§5  Implementation Constraints — solver policy table (reference 00_GLOBAL_RULES §C4)
+§5  Implementation Constraints — solver policy table (reference GLOBAL_RULES §C4)
 §6  Numerical Algorithm Reference — CCD baselines, WENO5, PPE null space, solver consistency
 §7  Active Assumption Register — ASM-ID | Status | one-line summary
 §8  C2 Legacy Register — legacy class | file | superseded by | reason kept
 §9  Paper Structure Reference — file(s) | chapter | content (WARNING: filename ≠ chapter number)
 §10 P3-D Multi-Site Parameter Register — parameter | defined in | referenced in
+§11 Matrix Domain Map — T/L/E/A directory inventory; current interface contract status
 ```
 
 Entry formats:
@@ -139,6 +175,7 @@ ASM-ID | assumption | scope | risk: HIGH/MEDIUM/LOW | status: ACTIVE/FIXED/DEPRE
 
 ────────────────────────────────────────────────────────
 ### docs/02_ACTIVE_LEDGER.md — Project Context: Live State
+**Legacy name retained. New deployments should prefer: docs/ACTIVE_LEDGER.md**
 
 Generate from: current project state (phase, branch, open tasks).
 Append-only for CHK/ASM/KL entries. Phase/branch updated each session.
@@ -297,12 +334,23 @@ Required elements:
 
 ## Stage 7: Emit
 
+- Create matrix directory structure (Stage 2a directories) if absent
 - Write all generated agent prompts to `prompts/agents/`
 - Write `prompts/README.md` (from Stage 6)
 - Write `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md`
   (only if missing or if `--force` flag given; existing files preserve project state)
+- Write `interface/` directory skeleton with placeholder contracts if absent:
+  - `interface/AlgorithmSpecs.md` (T→L contract template)
+  - `interface/SolverAPI_v1.py` (L→E contract template)
+  - `interface/TechnicalReport.md` (T/E→A contract template)
+- Write `audit_logs/` directory if absent
 - Output audit results (Stage 5 verdict per agent)
 - Output deployment notes
+
+**Directory naming enforcement (emit-time check):**
+Before writing any file, verify its path contains no leading-number segments (e.g., `01_`, `00_`).
+If a path would violate the clean-name rule and is NOT a legacy exception, STOP and report.
+Legacy exceptions: `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md`.
 
 ────────────────────────────────────────────────────────
 # VALIDATION CHECKLIST
@@ -310,12 +358,16 @@ Required elements:
 Pass only if ALL are true:
 1. A1–A10 preserved in every agent prompt (none weakened)
 2. Stop conditions present and unambiguous in every prompt
-3. All docs/ §sections present (00: §A §C §P §Q §AU §GIT §P-E-V-A; 01: §1–§10; 02: all §sections)
+3. All docs/ §sections present (00: §A §C §P §Q §AU §GIT §P-E-V-A; 01: §1–§11; 02: all §sections)
 4. Environment optimization appropriate for target
 5. No old filenames (ACTIVE_STATE.md, CHECKLIST.md, ARCHITECTURE.md, etc.) in any generated file
 6. ID preservation: no CHK/ASM/KL entries renumbered or deleted
 7. README.md matches 9-section structure (includes Mermaid agent interaction diagram)
 8. Deployment is simple: one bootstrap file, one command
+9. Matrix architecture present: T/L/E/A domains + M/P/Q horizontal domains referenced in generated prompts
+10. Interface Contract scaffolding present: interface/ directory + AlgorithmSpecs.md + SolverAPI_v1.py + TechnicalReport.md templates emitted
+11. Directory naming: no new files created with leading-number prefixes (legacy exceptions allowed)
+12. §0 CORE PHILOSOPHY embedded: Sovereign Domains (§A), Broken Symmetry (§B), Falsification Loop (§C) referenced in ResearchArchitect and ConsistencyAuditor prompts
 
 If any check fails: mark FAIL, list issues, do not silently repair.
 
