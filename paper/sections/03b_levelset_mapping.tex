@@ -176,31 +176,42 @@ Eikonal 誤差 $\delta \ll 1$ のとき曲率への影響は $\mathcal{O}(\delta
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{tcolorbox}[algbox, title={曲率計算の実装チェックリスト}]
+
+\textbf{推奨経路（$\psi$ 直接法）}——定理~\ref{thm:curvature_invariance}（§\ref{sec:curvature_direct_psi}）に基づき，
+ロジット逆変換を省略して $\psi$ の微分値から曲率を直接計算する：
+
 \begin{enumerate}
-  \item \textbf{$\phi$ の取得：}
-        移流後の $\psi^{n+1}$ から\textbf{ロジット逆変換}（§\ref{sec:newton_inversion}，
-        標準経路：$\phi = \varepsilon\ln\!\bigl(\psi/(1-\psi)\bigr)$；
-        $\psi < \delta_{\text{clamp}}$ または $\psi > 1-\delta_{\text{clamp}}$ の飽和域のみニュートン法）で
-        $\phi^{n+1}$ を計算する．
-
-  \item \textbf{再初期化の実行：}
-        CLS 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）を数回反復して
-        $\phi$ の Eikonal 条件 $|\bnabla\phi|\approx 1$ を可能な限り維持する．
-
   \item \textbf{1次・2次微分の計算：}
-        $\phi_x, \phi_y, \phi_{xx}, \phi_{yy}, \phi_{xy}$ を CCD 法（第\ref{sec:CCD}章）で
-        $O(h^6)$ 精度で計算する．
+        移流後の $\psi^{n+1}$ に対して
+        $\psi_x, \psi_y, \psi_{xx}, \psi_{yy}, \psi_{xy}$ を CCD 法（第\ref{sec:CCD}章）で
+        $O(h^6)$ 精度で計算する（CCD は解法過程で同時に算出）．
 
-  \item \textbf{正則化された曲率の計算：}
-        式~\eqref{eq:curvature_regularized}（$\varepsilon_{\text{norm}} = 10^{-3}$ 推奨）
-        で $\kappa$ を計算する．
+  \item \textbf{適用領域の判定：}
+        界面近傍（$\psi_{\min} < \psi < 1-\psi_{\min}$，推奨 $\psi_{\min}=0.01$）の
+        格子点のみを曲率計算の対象とし，界面遠方では $\kappa = 0$ とする．
+
+  \item \textbf{曲率の計算：}
+        式~\eqref{eq:curvature_psi_2d} で $\kappa$ を計算する．
+
+  \item \textbf{（オプション）プロファイル品質監視：}
+        実効界面厚み $\varepsilon_{\textup{eff}}$（式~\eqref{eq:epsilon_eff}）を
+        評価し，$\varepsilon_{\textup{eff}}/\varepsilon$ が設計値から大きく逸脱していないか確認する．
 
   \item \textbf{（オプション）ガウシアンフィルタ：}
-        $\kappa$ または $\phi$ に $3\times 3$ ガウシアンフィルタを適用して
+        $\kappa$ に $3\times 3$ ガウシアンフィルタを適用して
         高周波数ノイズを低減する．高密度比問題では特に有効．
 
   \item \textbf{単体テスト（半径 $R$ の円）：}
         解析値 $\kappa = -1/R$ との誤差 $E_\kappa(h) = O(h^6)$ 収束を
-        $N = 16, 32, 64, 128$ で確認する（第\ref{sec:governing}章 §\ref{sec:curvature_circle_example}）．
+        $N = 16, 32, 64, 128$ で確認する（§\ref{sec:curvature_circle_example}）．
+\end{enumerate}
+
+\medskip
+\textbf{代替経路（$\phi$ 経由，従来法）}——$\phi$ が他の用途（GFM 等）で必要な場合：
+\begin{enumerate}
+  \item ロジット逆変換（§\ref{sec:newton_inversion}）で $\phi^{n+1}$ を取得．
+  \item CLS 再初期化（式~\eqref{eq:cls_reinit_iso}）で Eikonal 条件を維持．
+  \item CCD 法で $\phi$ の1次・2次微分を計算．
+  \item 式~\eqref{eq:curvature_regularized}（$\varepsilon_{\text{norm}} = 10^{-3}$）で $\kappa$ を計算．
 \end{enumerate}
 \end{tcolorbox}
