@@ -281,21 +281,21 @@ Never hardcode pin index (0,0).
 
 | Domain | Code | Directory | Description | Interface Contract |
 |--------|------|-----------|-------------|-------------------|
-| T — Theory & Analysis | Mathematical Truth | `theory/` | Formal equation derivations, mathematical proofs | `interface/AlgorithmSpecs.md` (T→L) |
-| L — Core Library | Functional Truth | `src/twophase/`, `lib/` | Solver kernels, numerical modules, tests | `interface/SolverAPI_v1.py` (L→E) |
-| E — Experiment | Empirical Truth | `experiment/` | Simulation configs, raw run outputs, benchmark results | `interface/TechnicalReport.md` (T/E→A) |
+| T — Theory & Analysis | Mathematical Truth | `paper/` (theory sections) | Formal equation derivations, mathematical proofs | `docs/legacy/AlgorithmSpecs.md` (T→L) |
+| L — Core Library | Functional Truth | `src/twophase/` | Solver kernels, numerical modules, tests | `docs/legacy/SolverAPI_v1.py` (L→E) |
+| E — Experiment | Empirical Truth | `experiment/` | Simulation scripts, benchmark results | `docs/legacy/TechnicalReport.md` (T/E→A) |
 | A — Academic Writing | Logical Truth | `paper/` | LaTeX manuscript, sections, bibliography | Signed by ConsistencyAuditor AU2 gate |
-| M — Meta-Logic | Constitutional | `prompts/meta/`, `meta/` | System rules, axioms, agent design (A10: read-only) | — |
+| M — Meta-Logic | Constitutional | `prompts/meta/` | System rules, axioms, agent design (A10: read-only) | — |
 | P — Prompt & Environment | Agent Intelligence | `prompts/` | Generated agent prompts, README | — |
-| Q — QA & Audit | Audit Trails | `audit_logs/` | Verification logs, AU2 verdicts, hash manifests | — |
+| Q — QA & Audit | Audit Trails | `docs/02_ACTIVE_LEDGER.md` | Verification logs, AU2 verdicts in CHK register | — |
 
 **Interface Contract Status:**
 
 | Contract | Path | Status | Upstream Domain | Downstream Domain |
 |----------|------|--------|----------------|------------------|
-| AlgorithmSpecs | `interface/AlgorithmSpecs.md` | pending | T-Domain | L-Domain (CodeArchitect) |
-| SolverAPI v1 | `interface/SolverAPI_v1.py` | pending | L-Domain | E-Domain (ExperimentRunner) |
-| TechnicalReport | `interface/TechnicalReport.md` | pending | T-Domain + E-Domain | A-Domain (PaperWriter) |
+| AlgorithmSpecs | `docs/legacy/AlgorithmSpecs.md` | pending | T-Domain | L-Domain (CodeArchitect) |
+| SolverAPI v1 | `docs/legacy/SolverAPI_v1.py` | pending | L-Domain | E-Domain (ExperimentRunner) |
+| TechnicalReport | `docs/legacy/TechnicalReport.md` | pending | T-Domain + E-Domain | A-Domain (PaperWriter) |
 
 **Note:** `{pending}` status means the corresponding domain pipeline has not yet been executed.
 Downstream domains must BLOCK new dev/ work until upstream contract is signed (meta-workflow.md §CI/CP).
