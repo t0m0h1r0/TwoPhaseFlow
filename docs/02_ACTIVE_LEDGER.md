@@ -34,6 +34,7 @@
 | CHK-001 | CLOSED | audit | prompts/agents/ — 16 agents audited 2026-03-28 after PromptCompressor pass. All PASS (PromptCompressor step numbering defect fixed). |
 | CHK-002 | CLOSED | docs | docs/01_PROJECT_MAP.md §1–§2 — populated from codebase scan (15 top-level modules, all interface contracts documented) |
 | CHK-003 | CLOSED | docs | docs/00_GLOBAL_RULES.md §P1 — authoritative LaTeX standard (replaces LATEX_RULES.md) |
+| CHK-087 | CLOSED | compress | prompts/agents/ — 16 agents compressed 2026-03-31 (PromptCompressor pass). 767→655 lines (−14.6%). HAND-03 factored to header citation; boilerplate GIT-SP collapsed; redundant domain-constraint reminders removed. Q3 16/16 PASS. Compression-exempt preserved: all STOP conditions, A3/A4/A5/A9. |
 
 ## §2 — Math / Code Audit Register
 
