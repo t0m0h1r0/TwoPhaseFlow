@@ -26,7 +26,7 @@ OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-def laplace_1d(Ns=[32, 64, 128, 256]):
+def laplace_1d(Ns=[32, 64, 128]):
     """1D-like Laplace pressure jump: flat interface, known Δp = σκ.
 
     Setup: 2D domain [0,1]², interface at x=0.5.
@@ -52,7 +52,7 @@ def laplace_1d(Ns=[32, 64, 128, 256]):
         h = 1.0 / N
 
         X, Y = grid.meshgrid()
-        phi = np.sqrt((X - center[0])**2 + (Y - center[1])**2) - R
+        phi = R - np.sqrt((X - center[0])**2 + (Y - center[1])**2)
         psi = heaviside(np, phi, eps)
 
         # Curvature via CCD
@@ -77,18 +77,18 @@ def laplace_1d(Ns=[32, 64, 128, 256]):
         # Use direct LU solver for accuracy
         fc = FluidConfig(We=We, rho_ratio=rho_g/rho_l)
         nc = NumericsConfig(bc_type="wall")
-        sc = SolverConfig(ppe_solver_type="ccd_lu")
+        sc = SolverConfig(ppe_solver_type="lu")
         config = SimulationConfig(grid=gc, fluid=fc, numerics=nc, solver=sc)
 
-        from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
-        ppe = PPESolverCCDLU(backend, config, grid, ccd)
+        from twophase.pressure.ppe_solver_lu import PPESolverLU
+        ppe = PPESolverLU(backend, config, grid)
 
         # RHS = GFM correction only (no velocity divergence for static case)
         p_gfm = ppe.solve(b_gfm, rho, dt=1.0)
 
         # Measure Laplace pressure: p_inside - p_outside
-        inside = phi < -2*h
-        outside = phi > 2*h
+        inside = phi > 2*h    # phi>0 inside circle (liquid)
+        outside = phi < -2*h  # phi<0 outside circle (gas)
         if np.any(inside) and np.any(outside):
             p_in = float(np.mean(p_gfm[inside]))
             p_out = float(np.mean(p_gfm[outside]))
@@ -173,7 +173,7 @@ def epsilon_sensitivity():
     h = 1.0 / N
 
     X, Y = grid.meshgrid()
-    phi = np.sqrt((X - center[0])**2 + (Y - center[1])**2) - R
+    phi = R - np.sqrt((X - center[0])**2 + (Y - center[1])**2)
 
     eps_factors = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
     results = []
@@ -187,8 +187,8 @@ def epsilon_sensitivity():
         rho_l, rho_g = 1.0, 0.001
         rho = rho_g + (rho_l - rho_g) * psi
 
-        inside = phi < -3*h
-        outside = phi > 3*h
+        inside = phi > 3*h
+        outside = phi < -3*h
 
         # Use CSF pressure estimate: integrate kappa across interface
         # Simple estimate: max curvature near interface
