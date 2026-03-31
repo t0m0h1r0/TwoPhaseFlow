@@ -72,7 +72,7 @@ $N$ 式（各 $2\times 2$ ブロック）をまとめた全体行列は
 %
 ここで $\mathbf{A}_L,\, \mathbf{A}_R,\, \mathbf{B}$ は式~\eqref{eq:ccd_block} の内点ブロックと完全に同一であり，
 \textbf{境界専用ブロックは一切不要}となる．
-ブロック三重対角行列（式~\eqref{eq:ccd_global}）との違いは隅の $\mathbf{A}_R$（右上）と $\mathbf{A}_L$（左下）の2ブロックのみである．
+ブロック三重対角行列（式~\eqref{eq:ccd_global}）との違いは隅の $\mathbf{A}_L$（右上：$i=0$ 行の折り返し）と $\mathbf{A}_R$（左下：$i=N{-}1$ 行の折り返し）の2ブロックのみである．
 
 \begin{tcolorbox}[defbox, title={ブロック循環行列の正則性}]
 $\mathbf{K}_{\mathrm{circ}}$ が正則であることを示す．

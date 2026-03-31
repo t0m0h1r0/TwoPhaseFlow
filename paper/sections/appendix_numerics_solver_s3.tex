@@ -15,8 +15,13 @@ $\gamma(t) = (1+t^2)/(1+t)^2$ を導出し，最適擬似時間刻み $\Delta\ta
   \label{eq:dtau_sweep}
 \end{equation}
 と書く．ここで $\mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y$ は
-CCD 離散 Laplacian の $x$・$y$ 方向分割であり，
-それぞれ固有値 $\lambda_x,\lambda_y \ge 0$ を持つ（正定値）．
+PPE 演算子 $-\nabla\cdot(1/\rho\,\nabla)$ の CCD 離散化の $x$・$y$ 方向分割である．
+符号規約に注意：$\mathcal{L}_h \equiv -\mathbf{L}_{\mathrm{CCD}}^{\rho}$
+（付録~\ref{app:ccd_kronecker} の $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ は
+$\nabla\cdot(1/\rho\,\nabla)$ の離散化で負半定値；
+本付録の $\mathcal{L}_h$ はその符号反転で固有値 $\lambda_x,\lambda_y \ge 0$）．
+この符号規約により式~\eqref{eq:pseudo_parabolic} の誤差方程式
+$\partial e/\partial\tau = -\mathcal{L}_h\,e$ が安定（減衰）となる．
 
 \textbf{スプリッティング不動点．}
 式 \eqref{eq:dtau_sweep} の不動点 $\tilde{p}$（$p^{m+1}=p^m=\tilde{p}$）は
