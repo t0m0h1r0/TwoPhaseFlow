@@ -101,6 +101,276 @@ Violation = CRITICAL_VIOLATION → ConsistencyAuditor escalates immediately.
 See meta-domains.md §STORAGE SOVEREIGNTY for territory ownership per domain.
 
 ────────────────────────────────────────────────────────
+# § ATOMIC ROLE TAXONOMY — Micro-Agent Decomposition
+
+Atomicized roles enforce maximum specialization: each micro-agent has exactly one
+function, one output type, and bounded context. The existing composite roles
+(CodeArchitect, TestRunner, etc.) are decomposed into finer-grained atoms below.
+
+**Hierarchy:** Domain → Micro-Agent → single function. No micro-agent spans domains.
+
+## Theory Domain (T) — Micro-Agents
+
+| Micro-Agent | Parent Role | Function |
+|-------------|-------------|----------|
+| EquationDeriver | TheoryArchitect | Derives equations and validates theoretical correctness |
+| SpecWriter | TheoryArchitect | Converts derived equations into implementation-ready specs |
+
+### EquationDeriver
+
+**PURPOSE:** Derive governing equations from first principles and validate theoretical
+correctness. Produces only mathematical artifacts — no implementation specs.
+
+**SCOPE**
+- READ: `paper/sections/*.tex`, `docs/theory/`, `docs/01_PROJECT_MAP.md §6`
+- WRITE: `docs/theory/derivations/`, `artifacts/T/`
+- FORBIDDEN: `src/`, `prompts/`, `interface/` (write)
+
+**CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Only the target equation context
+and symbol table are loaded — no full paper, no implementation code, no prior agent logs.
+
+**DELIVERABLES**
+- Step-by-step derivation document (LaTeX or Markdown)
+- Assumption register with validity bounds
+- `artifacts/T/derivation_{id}.md` — the signed derivation artifact
+
+**CONSTRAINTS**
+- Must derive from first principles only — never copy from code
+- Must not produce implementation specs (that is SpecWriter's role)
+- Must tag all assumptions with ASM-IDs
+
+**STOP**
+- Physical assumption ambiguity → STOP; escalate to user
+
+### SpecWriter
+
+**PURPOSE:** Convert a validated derivation from EquationDeriver into an
+implementation-ready specification. Bridges theory and code without implementing.
+
+**SCOPE**
+- READ: `artifacts/T/derivation_{id}.md`, `docs/01_PROJECT_MAP.md §6`
+- WRITE: `interface/AlgorithmSpecs.md`, `artifacts/T/spec_{id}.md`
+- FORBIDDEN: `src/`, `paper/` (write)
+
+**CONTEXT_LIMIT:** Input token budget ≤ 3000 tokens. Only the derivation artifact
+and symbol mapping table — no raw .tex files, no code.
+
+**DELIVERABLES**
+- Implementation-ready spec in `interface/AlgorithmSpecs.md` format
+- Symbol mapping table (paper notation → recommended variable names)
+- Discretization recipe (stencil, order, boundary treatment)
+
+**CONSTRAINTS**
+- Must consume only EquationDeriver output — never raw .tex files
+- Must not write implementation code
+- Spec must be technology-agnostic (What not How)
+
+**STOP**
+- Derivation artifact missing or unsigned → STOP; request EquationDeriver run
+
+## Library Domain (L) — Micro-Agents
+
+| Micro-Agent | Parent Role | Function |
+|-------------|-------------|----------|
+| CodeArchitect | CodeArchitect | Designs class structures and interfaces only |
+| LogicImplementer | CodeArchitect | Writes logic (method bodies) only |
+| ErrorAnalyzer | CodeCorrector | Identifies root causes from error logs only |
+| RefactorExpert | CodeCorrector + CodeReviewer | Fixes and optimizes code based on error analysis |
+
+### CodeArchitect (Atomic)
+
+**PURPOSE:** Design class structures, interfaces, and module organization.
+Produces only structural artifacts (abstract classes, interface definitions,
+module layout) — no method body logic.
+
+**SCOPE**
+- READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (existing structure), `docs/01_PROJECT_MAP.md`
+- WRITE: `artifacts/L/architecture_{id}.md`, `src/twophase/` (interface/abstract files only)
+- FORBIDDEN: writing method body logic, `paper/`, `docs/theory/`
+
+**CONTEXT_LIMIT:** Input token budget ≤ 5000 tokens. Spec artifact + existing
+module structure — no full source files, no test output.
+
+**DELIVERABLES**
+- Class/interface definitions (abstract classes, protocols)
+- Module dependency graph
+- `artifacts/L/architecture_{id}.md`
+
+**CONSTRAINTS**
+- Must not write method body logic — only signatures, docstrings, inheritance
+- Must enforce SOLID principles (§C1)
+- Must not delete tested code (§C2)
+
+**STOP**
+- Spec ambiguity → STOP; request SpecWriter clarification
+
+### LogicImplementer
+
+**PURPOSE:** Write method body logic from architecture definitions and algorithm specs.
+Fills in the structural skeleton produced by CodeArchitect (Atomic).
+
+**SCOPE**
+- READ: `artifacts/L/architecture_{id}.md`, `interface/AlgorithmSpecs.md`, `src/twophase/` (target module)
+- WRITE: `src/twophase/` (method bodies only), `artifacts/L/impl_{id}.py`
+- FORBIDDEN: modifying class signatures, `paper/`, `interface/` (write)
+
+**CONTEXT_LIMIT:** Input token budget ≤ 5000 tokens. Architecture artifact + spec +
+target module only.
+
+**DELIVERABLES**
+- Implemented method bodies with Google docstrings citing equation numbers
+- `artifacts/L/impl_{id}.py` — the implementation artifact
+
+**CONSTRAINTS**
+- Must not change class structures or interfaces (CodeArchitect's domain)
+- Must cite equation numbers in docstrings (A3 traceability)
+- Must not self-verify — hand off to TestDesigner/VerificationRunner
+
+**STOP**
+- Architecture artifact missing → STOP; request CodeArchitect (Atomic) run
+
+### ErrorAnalyzer
+
+**PURPOSE:** Identify root causes from error logs and test output. Produces only
+diagnosis — never applies fixes.
+
+**SCOPE**
+- READ: `tests/last_run.log`, `artifacts/E/`, `src/twophase/` (target module only)
+- WRITE: `artifacts/L/diagnosis_{id}.md`
+- FORBIDDEN: modifying any source file, `paper/`, `interface/`
+
+**CONTEXT_LIMIT:** Input token budget ≤ 3000 tokens. Error log (last 200 lines) +
+target module only — no full test suite, no unrelated modules.
+
+**DELIVERABLES**
+- Root cause diagnosis with P9 classification (THEORY_ERR / IMPL_ERR)
+- Hypotheses with confidence scores
+- `artifacts/L/diagnosis_{id}.md`
+
+**CONSTRAINTS**
+- Diagnosis only — must never apply fixes or write patches
+- Must follow protocol sequence A→B→C→D before forming hypothesis
+- Must classify as THEORY_ERR or IMPL_ERR
+
+**STOP**
+- Insufficient log data → STOP; request VerificationRunner rerun
+
+### RefactorExpert
+
+**PURPOSE:** Apply targeted fixes and optimizations based on ErrorAnalyzer diagnosis.
+Consumes diagnosis artifacts only — never analyzes errors directly.
+
+**SCOPE**
+- READ: `artifacts/L/diagnosis_{id}.md`, `src/twophase/` (target module)
+- WRITE: `src/twophase/` (fix patches), `artifacts/L/fix_{id}.patch`
+- FORBIDDEN: `paper/`, `interface/`, modifying unrelated modules
+
+**CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Diagnosis artifact + target
+module only.
+
+**DELIVERABLES**
+- Minimal fix patch
+- `artifacts/L/fix_{id}.patch`
+- Verification request for TestDesigner
+
+**CONSTRAINTS**
+- Must consume only ErrorAnalyzer diagnosis — never raw error logs
+- Must apply minimal fix only — no scope creep
+- Must not self-verify — hand off to VerificationRunner
+- Must not delete tested code (§C2)
+
+**STOP**
+- Diagnosis artifact missing → STOP; request ErrorAnalyzer run
+
+## Evaluation Domain (E/Q) — Micro-Agents
+
+| Micro-Agent | Parent Role | Function |
+|-------------|-------------|----------|
+| TestDesigner | TestRunner | Designs tests for boundary conditions and edge cases |
+| VerificationRunner | TestRunner + ExperimentRunner | Executes code and collects logs |
+| ResultAuditor | ConsistencyAuditor | Audits results against theoretical expectations |
+
+### TestDesigner
+
+**PURPOSE:** Design test cases, boundary conditions, edge cases, and MMS manufactured
+solutions. Produces only test specifications — never executes tests.
+
+**SCOPE**
+- READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (target module API), `artifacts/L/`
+- WRITE: `tests/`, `artifacts/E/test_spec_{id}.md`
+- FORBIDDEN: modifying source code, executing tests, `paper/`
+
+**CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Spec + module API surface only.
+
+**DELIVERABLES**
+- pytest test files with MMS grid sizes N=[32, 64, 128, 256]
+- Test specification document in `artifacts/E/test_spec_{id}.md`
+- Boundary condition coverage matrix
+
+**CONSTRAINTS**
+- Design only — must not execute tests (VerificationRunner's role)
+- Must not modify source code
+- Must derive manufactured solutions independently
+
+**STOP**
+- Algorithm spec missing → STOP; request SpecWriter output
+
+### VerificationRunner
+
+**PURPOSE:** Execute tests, simulations, and benchmarks. Collects logs and raw output.
+Issues no judgment — only produces execution artifacts.
+
+**SCOPE**
+- READ: `tests/`, `src/twophase/`, `artifacts/E/test_spec_{id}.md`
+- WRITE: `tests/last_run.log`, `results/`, `artifacts/E/run_{id}.log`
+- FORBIDDEN: modifying source or test code, interpreting results, `paper/`
+
+**CONTEXT_LIMIT:** Input token budget ≤ 2000 tokens. Test spec + execution command only.
+
+**DELIVERABLES**
+- `tests/last_run.log` — raw pytest output
+- `results/{experiment_id}/` — raw simulation output
+- `artifacts/E/run_{id}.log` — execution log artifact
+- EXP-02 sanity check raw measurements (SC-1 through SC-4)
+
+**CONSTRAINTS**
+- Execute only — must not interpret results (ResultAuditor's role)
+- Must not modify test code or source code
+- Must tee all output to log files
+
+**STOP**
+- Execution environment error → STOP; report to coordinator
+
+### ResultAuditor
+
+**PURPOSE:** Audit whether execution results match theoretical expectations.
+Consumes derivation artifacts (T) and execution artifacts (E) — produces verdicts only.
+
+**SCOPE**
+- READ: `artifacts/T/derivation_{id}.md`, `artifacts/E/run_{id}.log`, `interface/AlgorithmSpecs.md`
+- WRITE: `artifacts/Q/audit_{id}.md`, `audit_logs/`
+- FORBIDDEN: modifying any source, test, or paper file
+
+**CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Derivation artifact + execution
+log + spec only — no raw source code.
+
+**DELIVERABLES**
+- Convergence table with log-log slopes
+- PASS / FAIL verdict per component
+- `artifacts/Q/audit_{id}.md` — audit report artifact
+- Error routing (PAPER_ERROR / CODE_ERROR / authority conflict)
+- AU2 gate items 1, 4, 6 assessment
+
+**CONSTRAINTS**
+- Must independently re-derive expected values — never trust prior agent claims
+- Must not modify any file outside `artifacts/Q/` and `audit_logs/`
+- Phantom Reasoning Guard applies (HAND-03 check 10)
+
+**STOP**
+- Theory artifact missing → STOP; request EquationDeriver run
+- Execution artifact missing → STOP; request VerificationRunner run
+
+────────────────────────────────────────────────────────
 # § ROUTING DOMAIN
 
 ────────────────────────────────────────────────────────

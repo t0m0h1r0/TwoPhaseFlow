@@ -13,6 +13,117 @@ This file defines the HOW. The WHY is in meta-core.md §DESIGN PHILOSOPHY.
 Read the φ-principles before interpreting any rule in this file.
 
 ────────────────────────────────────────────────────────
+# § INTERFACE-FIRST LOOSE COUPLING
+
+All micro-agent inputs and outputs pass through files in the `interface/` and
+`artifacts/` directories. Direct agent-to-agent conversation is prohibited.
+Communication is file-based and asynchronous via SIGNALs.
+
+## Principles
+
+| # | Principle | Description |
+|---|-----------|-------------|
+| IF-01 | No direct conversation | Agents never pass context directly — all data flows through `interface/` or `artifacts/` files |
+| IF-02 | Artifact-mediated handoff | HAND-01/HAND-02 tokens reference artifact paths, not inline content |
+| IF-03 | SIGNAL-based coordination | State transitions are communicated via SIGNAL files, not agent dialogue |
+| IF-04 | Immutable artifacts | Once an artifact is signed, it is read-only until a new version is produced |
+
+## Artifact Directory Structure
+
+```
+artifacts/
+  T/                    ← Theory domain artifacts
+    derivation_{id}.md  ← EquationDeriver output
+    spec_{id}.md        ← SpecWriter output
+  L/                    ← Library domain artifacts
+    architecture_{id}.md ← CodeArchitect (Atomic) output
+    impl_{id}.py        ← LogicImplementer output
+    diagnosis_{id}.md   ← ErrorAnalyzer output
+    fix_{id}.patch      ← RefactorExpert output
+  E/                    ← Evaluation domain artifacts
+    test_spec_{id}.md   ← TestDesigner output
+    run_{id}.log        ← VerificationRunner output
+  Q/                    ← Audit domain artifacts
+    audit_{id}.md       ← ResultAuditor output
+```
+
+**Naming convention:** `{type}_{id}.{ext}` where `{id}` is a monotonically
+increasing integer within each domain, zero-padded to 3 digits (e.g., `derivation_001.md`).
+
+## SIGNAL Protocol
+
+SIGNALs are lightweight status files that coordinate asynchronous agent transitions.
+Agents poll for SIGNALs relevant to their domain before starting work.
+
+```
+interface/signals/
+  {domain}_{id}.signal.md
+```
+
+**SIGNAL format:**
+
+```markdown
+---
+signal_type: READY | BLOCKED | INVALIDATED | COMPLETE
+source_agent: {producing agent name}
+source_artifact: {path to artifact}
+target_domain: {T | L | E | Q}
+timestamp: {ISO 8601}
+---
+{one-line description of what the signal communicates}
+```
+
+**Signal types:**
+
+| Type | Meaning | Receiver action |
+|------|---------|-----------------|
+| READY | Upstream artifact is available for consumption | Receiver may begin work |
+| BLOCKED | Upstream agent cannot produce artifact; blocker described in body | Receiver must wait |
+| INVALIDATED | Previously signed artifact is no longer valid (CI/CP trigger) | Receiver must discard cached state and wait for new READY |
+| COMPLETE | Domain pipeline fully complete; artifacts are final | Downstream domain may begin |
+
+**Rules:**
+- An agent MUST NOT begin work unless a READY or COMPLETE signal exists for all
+  required upstream artifacts
+- An agent that produces an artifact MUST emit a READY signal after signing it
+- CI/CP propagation (§CI/CP PIPELINE) emits INVALIDATED signals to all downstream domains
+- SIGNALs are append-only within a session; old signals are not deleted
+
+## Precision Workflow Diagram (Interface-Mediated)
+
+```
+EquationDeriver ──► artifacts/T/derivation_001.md ──► SIGNAL:READY
+                                                          │
+SpecWriter ◄───────── reads artifact ◄────────────────────┘
+    │
+    └──► artifacts/T/spec_001.md ──► interface/AlgorithmSpecs.md ──► SIGNAL:READY
+                                                                        │
+CodeArchitect(Atomic) ◄──── reads spec ◄────────────────────────────────┘
+    │
+    └──► artifacts/L/architecture_001.md ──► SIGNAL:READY
+                                                 │
+LogicImplementer ◄───── reads architecture ◄─────┘
+    │
+    └──► artifacts/L/impl_001.py ──► SIGNAL:READY
+                                         │
+TestDesigner ◄──── reads spec + impl ◄───┘
+    │
+    └──► tests/ + artifacts/E/test_spec_001.md ──► SIGNAL:READY
+                                                       │
+VerificationRunner ◄──── reads tests ◄────────────────┘
+    │
+    └──► artifacts/E/run_001.log + tests/last_run.log ──► SIGNAL:READY
+                                                              │
+ResultAuditor ◄──── reads derivation + run log ◄──────────────┘
+    │
+    └──► artifacts/Q/audit_001.md ──► SIGNAL:COMPLETE
+                                          │
+                                    Gatekeeper merge gate
+```
+
+**Key:** `──►` = file write; `◄────` = file read; no direct agent-to-agent path exists.
+
+────────────────────────────────────────────────────────
 # § T-L-E-A PIPELINE — Master Cross-Domain Flow
 
 The primary execution order for all new work in this system.
