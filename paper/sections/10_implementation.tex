@@ -225,9 +225,31 @@ GFM は界面を跨ぐ格子点ペアに対し PPE 右辺補正
 $b^{\mathrm{GFM}}$（式~\eqref{eq:gfm_rhs_correction}）を適用し，
 CSF のようなスミアリングなく圧力跳びを捕捉する．
 
-GFM と CSF の Laplace 圧誤差を $N = 32, 64, 128, 256$ で比較する．
-また CSF の界面厚み $\varepsilon$ 感度を $\varepsilon/h = 0.5$--$4.0$ で評価し，
-GFM が $\varepsilon$ に依存しない利点を定量的に示す．
+GFM と CSF の Laplace 圧誤差を $N = 32, 64, 128$ で比較する（表~\ref{tab:gfm_laplace}）．
+GFM は全格子で安定に収束し，$N = 128$ で相対誤差 $1.8\%$ を達成する．
+一方 CSF は粗格子（$N = 32$）で $\Delta p$ の符号が反転し不安定だが，
+細格子では GFM を上回る精度に到達する．
+$\varepsilon$ 感度評価（$\varepsilon/h = 0.5$--$4.0$，$N = 128$）では
+CCD 曲率が $\kappa \approx 4.007$（誤差 $< 0.2\%$）で $\varepsilon$ 非依存を確認した．
+
+\begin{table}[htbp]
+\centering
+\caption{Laplace 圧力跳び $\Delta p = \kappa/\mathit{We}$（解析解 $4.0$）：GFM vs CSF}
+\label{tab:gfm_laplace}
+\begin{tabular}{rrrrrr}
+\toprule
+$N$ & GFM $\Delta p$ & GFM 相対誤差 & CSF $\Delta p$ & CSF 相対誤差 \\
+\midrule
+ 32 & 3.748 & $6.3 \times 10^{-2}$ & $-2.361$ & $1.6 \times 10^{0}$ \\
+ 64 & 3.866 & $3.4 \times 10^{-2}$ &  3.647  & $8.8 \times 10^{-2}$ \\
+128 & 3.927 & $1.8 \times 10^{-2}$ &  3.952  & $1.2 \times 10^{-2}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+GFM の収束次数は約 1 次であり，界面近傍の $\phi$ 補間精度に律速される．
+CSF は細格子で 2 次に近い収束を示すが，粗格子安定性に課題がある．
+実用的には GFM の粗格子ロバスト性が大規模計算で有利である．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{ソルバと時間発展の精度検証}
