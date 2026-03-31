@@ -51,6 +51,9 @@ from ..ns_terms.surface_tension import SurfaceTensionTerm
 from ..pressure.rhie_chow import RhieChowInterpolator
 from ..pressure.ppe_solver_factory import create_ppe_solver
 from ..pressure.velocity_corrector import VelocityCorrector
+from ..pressure.gfm import GFMCorrector
+from ..pressure.dccd_ppe_filter import DCCDPPEFilter
+from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
 from ..time_integration.cfl import CFLCalculator
 from .boundary_condition import BoundaryConditionHandler
 from .diagnostics import DiagnosticsReporter
@@ -149,6 +152,9 @@ class SimulationBuilder:
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
         curvature_calc = CurvatureCalculator(backend, ccd, eps)
 
+        # GFM mode detection (§8e sec:gfm)
+        use_gfm = config.numerics.surface_tension_model == "gfm"
+
         # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
         predictor = Predictor(
             backend, config, ccd,
@@ -156,6 +162,7 @@ class SimulationBuilder:
             viscous=self._viscous,
             gravity=self._gravity,
             surface_tension=self._surface_tension,
+            use_gfm=use_gfm,
         )
 
         # 圧力ソルバー（注入または factory 経由）
@@ -163,8 +170,16 @@ class SimulationBuilder:
         ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid, ccd=ccd)
 
         # 補助演算子
+        # Rhie-Chow is always constructed (used in CSF path; retained as legacy in GFM path)
         rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type=config.numerics.bc_type)
         vel_corrector = VelocityCorrector(backend, grid, ccd)
+
+        # GFM pipeline (§8e + §7 sec:dccd_decoupling)
+        ppe_rhs_gfm = None
+        if use_gfm:
+            gfm_corrector = GFMCorrector(backend, grid, config.fluid.We)
+            dccd_ppe_filter = DCCDPPEFilter(backend, grid, ccd, bc_type=config.numerics.bc_type)
+            ppe_rhs_gfm = PPERHSBuilderGFM(dccd_ppe_filter, gfm_corrector)
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,
             We=config.fluid.We,
@@ -194,5 +209,6 @@ class SimulationBuilder:
                 cfl_calc=cfl_calc,
                 bc_handler=bc_handler,
                 diagnostics=diagnostics,
+                ppe_rhs_gfm=ppe_rhs_gfm,
             )
         )

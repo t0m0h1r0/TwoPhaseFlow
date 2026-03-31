@@ -87,6 +87,9 @@ class NumericsConfig:
     bc_type: str = "wall"
     # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）
     advection_scheme: str = "dissipative_ccd"
+    # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
+    # Default: 'csf' for backward compatibility; 'gfm' is production (§8e)
+    surface_tension_model: str = "csf"
 
     def __post_init__(self) -> None:
         assert self.bc_type in ("wall", "periodic"), (
@@ -95,6 +98,10 @@ class NumericsConfig:
         assert self.advection_scheme in ("dissipative_ccd", "weno5"), (
             f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "
             f"'{self.advection_scheme}'"
+        )
+        assert self.surface_tension_model in ("gfm", "csf"), (
+            f"surface_tension_model は 'gfm' または 'csf' でなければならない: "
+            f"'{self.surface_tension_model}'"
         )
         if self.advection_scheme == "dissipative_ccd" and self.epsilon_factor < 1.2:
             warnings.warn(

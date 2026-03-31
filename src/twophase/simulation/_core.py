@@ -9,8 +9,8 @@
   Step 2 — 再初期化（疑似時間 PDE）
   Step 3 — 物性更新（ρ̃, μ̃）
   Step 4 — 曲率（φ ← H_ε^{-1}(ψ), κ ← CCD）
-  Step 5 — 予測速度 u*（AB2 対流 + CN 粘性 + 重力 + 表面張力 − ∇p^n [IPC]）
-  Step 6 — PPE 求解（Rhie-Chow div + IPPESolver）→ δp = p^{n+1}−p^n
+  Step 5 — 予測速度 u*（AB2 対流 + CN 粘性 + 重力 [+ 表面張力 if CSF] − ∇p^n [IPC]）
+  Step 6 — PPE 求解（GFM: DCCD-filtered div + GFM corr / CSF: Rhie-Chow div）→ δp
   Step 7 — 速度・圧力補正 u^{n+1} = u* − (Δt/ρ̃) ∇(δp);  p^{n+1} = p^n + δp
 
 使用例::
@@ -41,7 +41,7 @@ from ..config import SimulationConfig
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
-from ..levelset.heaviside import update_properties
+from ..levelset.heaviside import update_properties, invert_heaviside
 
 
 class TwoPhaseSimulation:
@@ -79,6 +79,7 @@ class TwoPhaseSimulation:
         obj.rho      = ScalarField(c.grid, c.backend)
         obj.mu       = ScalarField(c.grid, c.backend)
         obj.kappa    = ScalarField(c.grid, c.backend)
+        obj.phi      = ScalarField(c.grid, c.backend)   # cached φ = H_ε⁻¹(ψ) from Step 4
         obj.pressure = ScalarField(c.grid, c.backend)
         obj.velocity = VectorField(c.grid, c.backend)
         obj.vel_star = VectorField(c.grid, c.backend)
@@ -94,6 +95,7 @@ class TwoPhaseSimulation:
         obj.cfl_calc       = c.cfl_calc
         obj._bc_handler    = c.bc_handler
         obj._diagnostics   = c.diagnostics
+        obj._ppe_rhs_gfm   = c.ppe_rhs_gfm  # None when CSF mode
 
         # 状態変数
         obj.time = 0.0
@@ -170,10 +172,10 @@ class TwoPhaseSimulation:
         vel_star = self._step_predictor(state, dt)
 
         # Step 5b: 壁面 BC を u* に適用（wall BC のみ）
-        # Rhie-Chow が u* の壁面接線成分（例: u_x at y=0）を参照する前に
+        # PPE RHS 構築（Rhie-Chow or DCCD フィルタ）が u* を参照する前に
         # ノースリップ条件を強制する．これを省略すると IPC 圧力勾配の
         # コーナー非対称性（pin ノード p=0 に起因）が u* 壁面成分を
-        # 非ゼロにし，Rhie-Chow 発散に誤差を与えて発散を招く．
+        # 非ゼロにし，PPE RHS に誤差を与えて発散を招く．
         self._bc_handler.apply(self.vel_star)
 
         # Step 6: PPE 求解 → δp（IPC 増分法; p^{n+1} = p^n + δp を内部で更新）
@@ -221,25 +223,40 @@ class TwoPhaseSimulation:
         return [self.vel_star[ax] for ax in range(ndim)]
 
     def _step_ppe(self, vel_star: List, dt: float) -> object:
-        """Step 6: Rhie-Chow div → PPE 求解（IPC 増分法） → δp を返す。
+        """Step 6: PPE RHS 構築 → PPE 求解（IPC 増分法） → δp を返す。
+
+        Two paths depending on surface_tension_model config:
+          - GFM (§8e + §7 sec:dccd_decoupling):
+              RHS = DCCD-filtered CCD divergence + GFM correction
+          - CSF (legacy, §2b):
+              RHS = Rhie-Chow face-velocity divergence
 
         IPC 増分法（§4 sec:ipc_derivation, §9 Step 6）:
             PPE は圧力増分 δp ≡ p^{n+1}−p^n を求解対象とする
-            （初期値 0 ；Rhie-Chow 補正は p^n を使用）．
             求解後 p^{n+1} = p^n + δp で圧力場を更新する．
 
         Returns
         -------
         delta_p : 圧力増分 δp（速度 Corrector に渡す）
         """
-        ndim = self.config.grid.ndim
-        # Rhie-Chow 補正発散: self.pressure.data = p^n（Step 5 では未更新）
-        div_rc = self.rhie_chow.face_velocity_divergence(
-            vel_star, self.pressure.data, self.rho.data, dt,
-        )
-        # δp を解く（IPC: 初期値 0，p^n ではない）
+        if self._ppe_rhs_gfm is not None:
+            # GFM path (§8e Eq. gfm_ccd_div):
+            # q_h = (1/dt) div(u_tilde*) + b^GFM
+            # phi cached in _update_curvature (Step 4) to avoid redundant inversion
+            rhs = self._ppe_rhs_gfm.build_rhs(
+                vel_star, self.phi.data, self.kappa.data, self.rho.data, dt,
+            )
+        else:
+            # CSF/Rhie-Chow path (legacy):
+            # Rhie-Chow 補正発散: self.pressure.data = p^n
+            div_rc = self.rhie_chow.face_velocity_divergence(
+                vel_star, self.pressure.data, self.rho.data, dt,
+            )
+            rhs = div_rc / dt
+
+        # δp を解く（IPC: 初期値 0）
         delta_p = self.ppe_solver.solve(
-            div_rc / dt, self.rho.data, dt, p_init=None,
+            rhs, self.rho.data, dt, p_init=None,
         )
         # p^{n+1} = p^n + δp（§9 Step 7 の圧力更新）
         self.pressure.data = self.pressure.data + delta_p
@@ -270,3 +287,10 @@ class TwoPhaseSimulation:
 
     def _update_curvature(self) -> None:
         self.kappa.data = self.curvature_calc.compute(self.psi.data)
+        # Cache φ = H_ε⁻¹(ψ) for GFM PPE RHS (Step 6).
+        # Only computed when GFM is active; CurvatureCalculator also inverts
+        # ψ→φ internally, so this is a second inversion.  Eliminating it
+        # would require passing pre-computed φ through ICurvatureCalculator,
+        # which is too invasive for this change.
+        if self._ppe_rhs_gfm is not None:
+            self.phi.data = invert_heaviside(self.backend.xp, self.psi.data, self.eps)
