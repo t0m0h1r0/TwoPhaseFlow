@@ -79,19 +79,7 @@ Smooth tanh & $2.82$ & $2.02$ & $2.00$ & $2.00$ & $\mathbf{2.00}$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.95\linewidth]{%
-    ../results/dccd_comparison/figures/04_waveforms_panel.png}
-  \caption{%
-    3 種の初期条件で $T=1$ 後の波形比較（O2・O4・CCD・DCCD・WENO5）．
-    左から Square, Triangle, tanh．
-    Square では CCD に顕著な Gibbs 型振動が残るが，DCCD フィルタにより大幅に抑制される．
-    DCCD の TV は $3.15$（CCD の $10.83$ に対して約 1/3）であり，WENO5 の $2.00$ に近い．
-    Smooth tanh では CCD と DCCD の波形はほぼ重なり，フィルタが滑らかな成分に影響しないことを示す
-    （$L_2$: CCD $2.57\times10^{-5}$ vs DCCD $3.75\times10^{-5}$）．}
-  \label{fig:dccd_waveforms_bench}
-\end{figure}
+% Figure removed — placeholder only; regenerate from experiments/dccd_comparison.py
 
 \begin{tcolorbox}[resultbox, title={DCCD フィルタの選択的散逸効果}]
 \begin{itemize}[noitemsep]
