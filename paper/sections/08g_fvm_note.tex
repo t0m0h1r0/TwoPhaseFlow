@@ -1,9 +1,11 @@
 % paper/sections/08g_fvm_note.tex
 %
-% §8.6  【補足】FVM 基準との整合：調和平均の物理的根拠
+% §8 補足：FVM 基準との整合（調和平均の物理的根拠）
 %
-%   本節は参照用補足である．本稿の PPE ソルバーは CCD product-rule 展開（§\ref{sec:ccd_poisson_matrix}）を
-%   採用しており，FVM は使用しない．調和平均の物理的根拠とよくある実装ミスを記録する目的で残す．
+%   本節は参照用補足である．本稿の PPE ソルバーは CCD product-rule 展開を
+%   採用しており，FVM は使用しない．調和平均の物理的根拠を記録する目的で残す．
+%   ※ Rhie--Chow 補正済み発散の定義・チェッカーボード解説・零モード対策・ピン点選択は
+%     §8.4（08f_ppe_bc.tex）および付録 F（appendix_legacy_methods.tex）に統合済み（CHK-087）．
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{【補足】FVM 基準との整合：調和平均の物理的根拠}
 \label{sec:fvm_face_coeff}
@@ -18,117 +20,8 @@ PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散
 \textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ccd_poisson_matrix}）であり，$\Ord{h^6}$ を達成する．
 式~\eqref{eq:af_exact} は GFM 補正項の調和平均密度逆数（式~\eqref{eq:gfm_rhs_correction}）と一致する（§\ref{sec:gfm}）．
 
-\subsubsection{Rhie--Chow 補正済み発散 \texorpdfstring{$\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$}{∇\_h\^{}RC · u*} の定義}
-\label{sec:rc_divergence}
-
-PPE の右辺に現れる $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$（「Rhie--Chow 補正済み発散」）は，
-本稿のどこにも定義されていないまま使用されていれば実装上の混乱を招く重要な量である．
-以下に明示的に定義する．
-
-\begin{tcolorbox}[defbox, title={Rhie--Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の定義}]
-Rhie--Chow 補正済みフェイス速度（第\ref{sec:collocate}章，式~\eqref{eq:rc-face}）
-\[
-  (u_f)_{i+1/2,j} = \bar{u}_{i+1/2,j}
-    - \Delta t \left(\frac{1}{\rho}\right)^{\!\mathrm{harm}}_{i+1/2,j}
-      \!\bigl[(\nabla p^n)_{i+1/2,j} - \overline{(\nabla p^n)}_{i+1/2,j}\bigr]
-\]
-（ここで $p^n$ は\textbf{前時刻の圧力}を使う陽的 Rhie--Chow 補正；
-新圧力 $p^{n+1}$ は本 PPE の解として未知であるため使用できない．
-また $(1/\rho)^{\mathrm{harm}}_{i+1/2,j} = 2/(\rho^{n+1}_{i,j}+\rho^{n+1}_{i+1,j})$ は
-\textbf{時刻 $n+1$ の密度値}から評価する；
-$\rho^{n+1}$ は全体アルゴリズム Step 3（§\ref{sec:algorithm}）で CLS 移流直後に確定しており，
-Predictor・PPE 求解の時点では既知量である．PPE 左辺演算子 $\mathcal{L}_{\mathrm{CCD}}^{\rho}$ も
-$\rho^{n+1}$ を使うため，Rhie--Chow 面係数に $\rho^{n+1}$ を使うことで密度の時刻が統一される．）
-を用いて，セル $(i,j)$ での\textbf{フェイス速度の発散}として定義する：
-\begin{equation}
-  \bigl(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*\bigr)_{i,j}
-  \equiv
-  \frac{(u_f)_{i+1/2,j} - (u_f)_{i-1/2,j}}{\Delta x}
-  + \frac{(v_f)_{i,j+1/2} - (v_f)_{i,j-1/2}}{\Delta y}
-  \label{eq:rc_divergence}
-\end{equation}
-ここで $(u_f)_{i+1/2,j}$，$(v_f)_{i,j+1/2}$ はそれぞれ $x$・$y$ 方向の東西・南北フェイスで
-計算した Rhie--Chow 補正済みフェイス速度である（$\bu^*$ から計算）．
-\end{tcolorbox}
-
-\begin{tcolorbox}[mybox, title={なぜセル中心発散でなくフェイス速度の発散を使うのか：チェッカーボードとの関係}]
-標準的な Projection 法の教科書では，PPE の RHS を
-$\nabla\cdot\bu^* \approx D_x^{(1)}u^* + D_y^{(1)}v^*$（セル中心の発散）として計算する．
-しかし，コロケート格子で Rhie--Chow 補正を用いる場合，
-\textbf{RHS にもフェイス速度の発散を使わなければ整合性が壊れる}：
-
-\begin{itemize}
-  \item Rhie--Chow 補正はフェイス速度からチェッカーボード（$2\Delta x$ 波長）成分を除去する．
-  \item セル中心の発散 $D_x^{(1)}u^*+D_y^{(1)}v^*$ をそのまま RHS に使うと，
-        補正で除いたはずのチェッカーボード成分が RHS 経由で PPE の解に「逆流」し，
-        圧力場に高周波振動が残る．
-  \item フェイス速度の発散 $(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*)_{i,j}$（式 \eqref{eq:rc_divergence}）
-        をRHS に使うことで，LHS の Rhie--Chow 補正係数（$a_f$）と整合した離散系が得られ，
-        チェッカーボードが再生しない安定な PPE 求解が可能となる．
-  \item \textbf{本稿の実装（DCCD 散逸）：}DCCD フィルタ（§\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）を用いた
-        セル中心発散 $D_x^{(1)}\tilde{u}^*+D_y^{(1)}\tilde{v}^*$（式~\eqref{eq:dccd_ppe_rhs}）が
-        Rhie--Chow フェイス発散を代替し，チェッカーボード抑制を達成する（§\ref{sec:gfm}）．
-\end{itemize}
-\end{tcolorbox}
-
-\begin{tcolorbox}[warnbox, title={全周 Neumann 境界における零モード対策（必須）}]
-全境界が $\partial p/\partial n = 0$（ノイマン条件）の場合，
-PPE の係数行列は特異（行和 $= 0$，零固有値あり）であり，解 $p$ は定数だけの自由度を持つ．
-この自由度を取り除かないと反復ソルバーが発散する．
-
-\textbf{対処法（2択）：}
-\begin{enumerate}
-  \item \textbf{1点固定（ピン条件）：} セル $(i_0, j_0)$（界面が通過しない純粋単相領域；
-        選択基準は §\ref{sec:pinpoint} の原則2参照）の圧力を $p_{i_0,j_0} = 0$ に固定し，
-        その行を単位行ベクトル $\mathbf{e}^T$ に置き換える（Dirichlet 1点）．
-  \item \textbf{平均値拘束：} $\sum_{i,j} p_{i,j} = 0$ という線形拘束を追加し，
-        拡張行列系を解く（精度的に優位）．
-\end{enumerate}
-本稿では実装の単純さから手法 (1) を推奨する．
-
-\medskip
-\noindent\textbf{仮想時間 matrix-free 反復でのピン条件実装（重要）：}
-
-本稿の PPE ソルバー（§\ref{sec:ppe_pseudotime}）は明示的な行列を組み立てない matrix-free 陰解法であるため，
-「行を単位行ベクトルに置き換える」という操作は以下の等価手順で実現する：
-各仮想時間反復ステップ $m$ の更新が完了した後，ピン点の値を強制上書きする：
-\begin{equation}
-  (\delta p)^m_{i_0, j_0} \leftarrow 0
-  \qquad \text{（全反復ステップで更新直後に適用）}
-  \label{eq:pin_overwrite}
-\end{equation}
-この操作は CCD ブロック Thomas 法の前進消去・後退代入とは独立に実行できるため，
-ブロック三重対角構造を破壊しない（各スウィープは行・列単位で完結しており，
-ピン点への上書きは次の反復の RHS に自然に反映される）．
-収束判定は引き続き残差ノルム（式~\eqref{eq:residual}）で行い，
-ピン点の値が $0$ に固定されたまま $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ を達成したことを確認する．
-\end{tcolorbox}
-
-\subsubsection*{圧力固定点（ピン点）の選択}
-\label{sec:pinpoint}
-
-ピン条件 $p_{i_0,j_0} = 0$ を採用する場合，固定点 $(i_0,j_0)$ の選択は
-数値精度とシミュレーション安定性に直接影響する．
-
-\noindent\textbf{原則1：固定点を途中で変更しない．}
-ピン点を変更すると，圧力の基準値（ゼロ点）が不連続に変化し，
-圧力勾配に突発的な誤差が生じる．界面追跡法では密度が時々刻々変化するため，
-圧力の絶対値はフレームごとに変動するが，相対的な空間分布は連続性を持つ必要がある．
-
-\noindent\textbf{原則2：固定点は純粋気相または純粋液相の領域に置く．}
-界面が固定点を通過すると，ピン条件により正しい PPE 方程式が反映されず，
-近傍で圧力誤差が発生し，最悪の場合は収束が崩れる．
-閉容器内の単一気泡ではコーナーセル $(0,0)$ が純液相になることが多いが，
-4倍対称な設定では中心セル $(N/2,N/2)$ の選択が数値対称性を保持する
-（可解性条件と対称性の詳細は §\ref{sec:ppe_gauge_neumann} 参照）．
-界面が全域を移動する場合（液滴合体・分裂など）は，
-物理的に一方の相が常に存在する領域（壁面付近の液相主流部等）に固定点を置くか，
-固定点を持たない平均値拘束（上記手法 (2)）に切り替えること．
-
-\noindent\textbf{原則3：圧力のゼロ点は相対量である．}
-$p_{i_0,j_0} = 0$ はあくまで数学的拘束であり，
-圧力の絶対値に物理的意味はない．速度補正に必要な勾配 $\nabla p$ は
-スカラーシフトに依存しない．
-
-得られた連立一次方程式は BiCGSTAB 法などで求解する
-（本稿の標準手法は §\ref{sec:ppe_pseudotime} の仮想時間陰解法を推奨；比較は表~\ref{tab:ppe_methods} 参照）．
+Rhie--Chow 補正済み発散 $\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*$ の完全な定義，
+チェッカーボード安定性との関係，および旧 Balanced-Force 定式化は
+付録~\ref{app:rhie_chow_full} に収録されている．
+本稿は DCCD 散逸（§\ref{sec:dccd_decoupling}）+ GFM（§\ref{sec:gfm}）により
+Rhie--Chow 補正を代替する（式~\eqref{eq:gfm_ccd_div}）．
