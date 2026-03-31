@@ -274,3 +274,28 @@ Never hardcode pin index (0,0).
 | `Δτ_opt` | `08_pressure.tex` (eq:dtau_opt) | `appendix_proofs.tex` (sec:dtau_derive) |
 | `Δτ_par` (CLS) | `03_levelset.tex` | `03_levelset.tex` warnbox |
 | Time accuracy order | `04b_time_schemes.tex` | `00_abstract.tex`, `01_introduction.tex`, `11_conclusion.tex` |
+
+────────────────────────────────────────────────────────
+# §11 — Matrix Domain Map
+# T/L/E/A directory inventory + current interface contract status
+
+| Domain | Code | Directory | Description | Interface Contract |
+|--------|------|-----------|-------------|-------------------|
+| T — Theory & Analysis | Mathematical Truth | `theory/` | Formal equation derivations, mathematical proofs | `interface/AlgorithmSpecs.md` (T→L) |
+| L — Core Library | Functional Truth | `src/twophase/`, `lib/` | Solver kernels, numerical modules, tests | `interface/SolverAPI_v1.py` (L→E) |
+| E — Experiment | Empirical Truth | `experiment/` | Simulation configs, raw run outputs, benchmark results | `interface/TechnicalReport.md` (T/E→A) |
+| A — Academic Writing | Logical Truth | `paper/` | LaTeX manuscript, sections, bibliography | Signed by ConsistencyAuditor AU2 gate |
+| M — Meta-Logic | Constitutional | `prompts/meta/`, `meta/` | System rules, axioms, agent design (A10: read-only) | — |
+| P — Prompt & Environment | Agent Intelligence | `prompts/` | Generated agent prompts, README | — |
+| Q — QA & Audit | Audit Trails | `audit_logs/` | Verification logs, AU2 verdicts, hash manifests | — |
+
+**Interface Contract Status:**
+
+| Contract | Path | Status | Upstream Domain | Downstream Domain |
+|----------|------|--------|----------------|------------------|
+| AlgorithmSpecs | `interface/AlgorithmSpecs.md` | pending | T-Domain | L-Domain (CodeArchitect) |
+| SolverAPI v1 | `interface/SolverAPI_v1.py` | pending | L-Domain | E-Domain (ExperimentRunner) |
+| TechnicalReport | `interface/TechnicalReport.md` | pending | T-Domain + E-Domain | A-Domain (PaperWriter) |
+
+**Note:** `{pending}` status means the corresponding domain pipeline has not yet been executed.
+Downstream domains must BLOCK new dev/ work until upstream contract is signed (meta-workflow.md §CI/CP).
