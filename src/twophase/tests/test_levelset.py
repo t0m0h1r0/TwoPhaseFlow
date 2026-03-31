@@ -20,6 +20,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside, delta, invert_heaviside, update_properties
 from twophase.levelset.curvature import CurvatureCalculator
+from twophase.levelset.curvature_psi import CurvatureCalculatorPsi, _gaussian_3x3
 from twophase.levelset.advection import LevelSetAdvection
 from twophase.levelset.reinitialize import Reinitializer
 
@@ -185,3 +186,183 @@ def test_cls_advection_volume_conservation(backend):
     assert vol_err < 0.02, (
         f"Volume conservation error {vol_err*100:.2f}% > 2%"
     )
+
+
+# ── Test 5: CurvatureCalculatorPsi (G-4) ────────────────────────────────
+
+def test_curvature_psi_circle(backend):
+    """CurvatureCalculatorPsi: κ ≈ −1/R for a circle (section 3b eq. curvature_psi_2d)."""
+    N = 64
+    R = 0.25
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    curv_psi = CurvatureCalculatorPsi(backend, ccd)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    psi = heaviside(xp, phi, eps)
+
+    kappa = curv_psi.compute(psi)
+
+    # Near-interface check
+    near_iface = np.abs(phi) < 2 * eps
+    assert np.sum(near_iface) > 0, "No interface points found"
+    kappa_mean = float(np.mean(kappa[near_iface]))
+    kappa_theory = -1.0 / R
+    rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+    assert rel_err < 0.05, (
+        f"Psi-direct curvature: got {kappa_mean:.4f}, "
+        f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+    )
+
+
+def test_curvature_psi_matches_legacy(backend):
+    """CurvatureCalculatorPsi should match legacy CurvatureCalculator (Theorem curvature_invariance)."""
+    N = 64
+    R = 0.25
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    curv_legacy = CurvatureCalculator(backend, ccd, eps)
+    curv_psi = CurvatureCalculatorPsi(backend, ccd)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    psi = heaviside(xp, phi, eps)
+
+    kappa_legacy = curv_legacy.compute(psi)
+    kappa_psi = curv_psi.compute(psi)
+
+    # Compare only near interface where both are meaningful
+    near_iface = (psi > 0.05) & (psi < 0.95)
+    if np.sum(near_iface) > 0:
+        err = float(np.max(np.abs(kappa_psi[near_iface] - kappa_legacy[near_iface])))
+        kappa_scale = float(np.max(np.abs(kappa_legacy[near_iface])))
+        rel_err = err / max(kappa_scale, 1e-10)
+        assert rel_err < 0.1, (
+            f"Psi-direct vs legacy mismatch: max abs err={err:.4e}, "
+            f"rel_err={rel_err:.3f}"
+        )
+
+
+def test_curvature_psi_zero_far_from_interface(backend):
+    """CurvatureCalculatorPsi: κ = 0 far from interface (hybrid strategy)."""
+    N = 32
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    curv_psi = CurvatureCalculatorPsi(backend, ccd, psi_min=0.01)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
+    psi = heaviside(xp, phi, eps)
+
+    kappa = curv_psi.compute(psi)
+
+    # Far-from-interface points should be zero
+    far_mask = (psi <= 0.01) | (psi >= 0.99)
+    if np.sum(far_mask) > 0:
+        assert float(np.max(np.abs(kappa[far_mask]))) == 0.0, \
+            "Far-from-interface kappa should be exactly 0"
+
+
+# ── Test 6: Improved invert_heaviside (G-1) ──────────────────────────────
+
+def test_invert_heaviside_saturation(backend):
+    """invert_heaviside: saturated regions -> +/- phi_max (section 3b algbox)."""
+    xp = backend.xp
+    eps = 0.05
+
+    # Include extreme values near 0 and 1
+    psi = np.array([0.0, 1e-8, 1e-6, 0.5, 1.0 - 1e-6, 1.0 - 1e-8, 1.0])
+    phi = invert_heaviside(xp, psi, eps)
+
+    phi_max = eps * np.log((1.0 - 1e-6) / 1e-6)
+
+    # Saturated: should be clipped to +/- phi_max
+    assert abs(phi[0] - (-phi_max)) < 1e-10, f"phi[0] should be -phi_max, got {phi[0]}"
+    assert abs(phi[-1] - phi_max) < 1e-10, f"phi[-1] should be phi_max, got {phi[-1]}"
+
+    # Mid-range: should be ~0
+    assert abs(phi[3]) < 1e-10, f"phi at psi=0.5 should be ~0, got {phi[3]}"
+
+    # No NaN or Inf
+    assert not np.any(np.isnan(phi)), "invert_heaviside produced NaN"
+    assert not np.any(np.isinf(phi)), "invert_heaviside produced Inf"
+
+
+def test_invert_heaviside_roundtrip_improved(backend):
+    """invert_heaviside round-trip still works with improved implementation."""
+    xp = backend.xp
+    eps = 0.05
+    phi_orig = np.linspace(-0.5, 0.5, 100)
+    psi = heaviside(xp, phi_orig, eps)
+    phi_recovered = invert_heaviside(xp, psi, eps)
+    err = np.max(np.abs(phi_recovered - phi_orig))
+    assert err < 1e-10, f"Improved inversion round-trip error {err}"
+
+
+# ── Test 7: Gaussian filter (G-3) ────────────────────────────────────────
+
+def test_gaussian_filter_smooths(backend):
+    """3x3 Gaussian filter should reduce high-frequency noise."""
+    xp = backend.xp
+    N = 32
+
+    # Checkerboard pattern (worst-case high-frequency)
+    field = np.zeros((N, N))
+    field[::2, ::2] = 1.0
+    field[1::2, 1::2] = 1.0
+
+    filtered = _gaussian_3x3(xp, field)
+
+    # Variance should decrease
+    var_orig = float(np.var(field))
+    var_filt = float(np.var(filtered))
+    assert var_filt < var_orig, (
+        f"Gaussian filter did not reduce variance: {var_filt:.4f} >= {var_orig:.4f}"
+    )
+
+
+def test_curvature_psi_with_gaussian(backend):
+    """CurvatureCalculatorPsi with Gaussian filter should still give reasonable κ."""
+    N = 64
+    R = 0.25
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    curv_psi = CurvatureCalculatorPsi(backend, ccd, gaussian_filter=True)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    psi = heaviside(xp, phi, eps)
+
+    kappa = curv_psi.compute(psi)
+
+    near_iface = np.abs(phi) < 2 * eps
+    if np.sum(near_iface) > 0:
+        kappa_mean = float(np.mean(kappa[near_iface]))
+        kappa_theory = -1.0 / R
+        rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+        # Slightly relaxed tolerance due to smoothing
+        assert rel_err < 0.10, (
+            f"Gaussian-filtered curvature: got {kappa_mean:.4f}, "
+            f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+        )

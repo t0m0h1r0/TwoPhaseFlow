@@ -32,27 +32,66 @@ class DiagnosticsReporter:
         self.grid = grid
 
     def report(self, sim, dt: float) -> None:
-        """診断情報を計算してコンソールに出力する。
+        """Compute and print diagnostics.
 
         Parameters
         ----------
-        sim : TwoPhaseSimulation — 診断対象のシミュレーション
-        dt  : float — 現在のタイムステップ幅
+        sim : TwoPhaseSimulation
+        dt  : float — current time step size
         """
         xp = self.backend.xp
 
-        # 速度の発散を計算（非圧縮性残差）
+        # Velocity divergence (incompressibility residual)
         div = xp.zeros(self.grid.shape)
         for ax in range(self.grid.ndim):
             d1, _ = sim.ccd.differentiate(sim.velocity[ax], ax)
             div += d1
         div_max = float(xp.max(xp.abs(div)))
 
-        # レベルセット体積（ψ の積分）
+        # Level-set volume (integral of psi)
         dV = self.grid.cell_volume()
         vol = float(xp.sum(sim.psi.data)) * dV
 
+        # Effective interface thickness diagnostic (section 3b eq. epsilon_eff)
+        eps_eff_str = ""
+        if hasattr(sim, 'eps') and sim.eps > 0:
+            eps_eff_ratio = self._compute_eps_eff_ratio(xp, sim)
+            if eps_eff_ratio is not None:
+                eps_eff_str = f"  ε_eff/ε={eps_eff_ratio:.3f}"
+
         print(
             f"  t={sim.time:.5f}  dt={dt:.3e}  "
-            f"|∇·u|_∞={div_max:.3e}  vol(ψ)={vol:.6f}"
+            f"|∇·u|_∞={div_max:.3e}  vol(ψ)={vol:.6f}{eps_eff_str}"
         )
+
+    def _compute_eps_eff_ratio(self, xp, sim) -> float | None:
+        """Compute mean eps_eff / eps near the interface (section 3b eq. epsilon_eff).
+
+        eps_eff_i = psi_i * (1 - psi_i) / |nabla psi|_i
+
+        Near the interface (psi ~ 0.5), eps_eff should approximate the
+        design value eps.  eps_eff >> eps indicates numerical diffusion.
+
+        Returns
+        -------
+        float or None : mean eps_eff / eps near interface, or None if
+                        insufficient interface points.
+        """
+        psi = sim.psi.data
+
+        # Gradient magnitude
+        grad_sq = xp.zeros_like(psi)
+        for ax in range(self.grid.ndim):
+            d1, _ = sim.ccd.differentiate(psi, ax)
+            grad_sq += d1 ** 2
+        grad_mag = xp.sqrt(grad_sq)
+
+        # Near-interface mask: psi(1-psi) > 0.1 (within ~2 interface widths)
+        psi_1mpsi = psi * (1.0 - psi)
+        near_iface = psi_1mpsi > 0.1
+
+        if xp.sum(near_iface) < 4:
+            return None
+
+        eps_eff = psi_1mpsi[near_iface] / xp.maximum(grad_mag[near_iface], 1e-30)
+        return float(xp.mean(eps_eff)) / sim.eps

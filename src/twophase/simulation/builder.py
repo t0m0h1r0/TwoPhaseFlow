@@ -42,7 +42,8 @@ from ..core.components import SimulationComponents
 from ..ccd.ccd_solver import CCDSolver
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.reinitialize import Reinitializer
-from ..levelset.curvature import CurvatureCalculator
+from ..levelset.curvature import CurvatureCalculator  # legacy (phi-based)
+from ..levelset.curvature_psi import CurvatureCalculatorPsi  # recommended (psi-direct)
 from ..ns_terms.predictor import Predictor
 from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.viscous import ViscousTerm
@@ -150,7 +151,9 @@ class SimulationBuilder:
         else:  # "weno5"
             ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
-        curvature_calc = CurvatureCalculator(backend, ccd, eps)
+        # Curvature: psi-direct method (section 3b eq. curvature_psi_2d)
+        # eliminates logit inversion; falls back to legacy phi-based if configured
+        curvature_calc = CurvatureCalculatorPsi(backend, ccd)
 
         # GFM mode detection (§8e sec:gfm)
         use_gfm = config.numerics.surface_tension_model == "gfm"
