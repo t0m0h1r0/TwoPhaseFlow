@@ -49,6 +49,7 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 | refactor / clean code | L | CodeReviewer |
 | orchestrate code pipeline | L | CodeWorkflowCoordinator |
 | run simulation | E | ExperimentRunner |
+| post-process simulation data / visualizations | E | SimulationAnalyst |
 | write / expand paper | A | PaperWriter |
 | paper pipeline | A | PaperWorkflowCoordinator |
 | review paper | A | PaperReviewer |

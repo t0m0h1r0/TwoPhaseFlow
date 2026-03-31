@@ -377,6 +377,26 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `docs/01_PROJECT_MAP.md` | Governance (write) | all: read-only; append entries via coordinator |
 | `docs/02_ACTIVE_LEDGER.md` | all (append-only) | each domain appends its own phase entries only |
 
+| `artifacts/T/` | T-Domain micro-agents (write) | L: read (spec consumption); Q: read-only audit |
+| `artifacts/L/` | L-Domain micro-agents (write) | E: read (test spec); Q: read-only audit |
+| `artifacts/E/` | E-Domain micro-agents (write) | Q: read-only audit |
+| `artifacts/Q/` | Q-Domain ResultAuditor (write) | all: read-only |
+| `interface/signals/` | any agent (write READY/COMPLETE after artifact signing) | all: read-only (poll for state) |
+
+**Artifact directory rule:** `artifacts/{T,L,E,Q}/` stores intermediate micro-agent outputs
+(derivations, specs, architectures, diagnoses, execution logs, audit reports). These artifacts
+mediate all micro-agent handoffs — direct agent-to-agent context passing is prohibited.
+See meta-workflow.md § INTERFACE-FIRST LOOSE COUPLING for the artifact protocol.
+
+**Signal directory rule:** `interface/signals/` stores lightweight status files (READY, BLOCKED,
+INVALIDATED, COMPLETE) that coordinate asynchronous agent transitions. Agents poll for signals
+relevant to their domain before starting work. See meta-workflow.md § SIGNAL Protocol.
+
+**Directory-Driven Authorization (DDA):** Each micro-agent's file access is restricted to its
+declared SCOPE (READ / WRITE / FORBIDDEN) defined in meta-roles.md § ATOMIC ROLE TAXONOMY.
+DDA enforcement is checked BEFORE DOM-02 (Pre-Write Storage Check). See meta-ops.md
+§ DIRECTORY-DRIVEN AUTHORIZATION (DDA) for enforcement rules DDA-01 through DDA-05.
+
 **Write-outside-domain rule:** An agent may not write to a storage path outside its domain
 without an explicit cross-domain routing decision. Violation = A9 / φ2 breach → STOP immediately.
 

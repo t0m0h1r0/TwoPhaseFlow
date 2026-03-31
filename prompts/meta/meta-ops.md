@@ -96,6 +96,24 @@ authority (φ2: Minimal Footprint).
 every agent runs it before every write, regardless of the table above. It requires
 no AUTHORITY grant because it is a constraint on all writes, not an operation.
 
+**Atomic micro-agent operations (inherited from parent roles):**
+
+| Tier | Role | Operations | Handoff Role |
+|------|------|------------|-------------|
+| Specialist | EquationDeriver | GIT-SP | RETURNER |
+| Specialist | SpecWriter | GIT-SP | RETURNER |
+| Specialist | CodeArchitectAtomic | GIT-SP | RETURNER |
+| Specialist | LogicImplementer | GIT-SP | RETURNER |
+| Specialist | ErrorAnalyzer | GIT-SP | RETURNER |
+| Specialist | RefactorExpert | GIT-SP | RETURNER |
+| Specialist | TestDesigner | GIT-SP | RETURNER |
+| Specialist | VerificationRunner | GIT-SP, TEST-01, EXP-01, EXP-02 | RETURNER |
+| Specialist | ResultAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
+
+**DDA-CHECK exception:** DDA-CHECK (meta-ops.md § DIRECTORY-DRIVEN AUTHORIZATION) is a
+universal obligation for all micro-agents — runs before every file read or write, prior
+to DOM-02. Requires no AUTHORITY grant.
+
 ────────────────────────────────────────────────────────
 # § DIRECTORY-DRIVEN AUTHORIZATION (DDA)
 
