@@ -18,7 +18,7 @@ Shu--Osher 型 TVD-RK3 法 \cite{ShuOsher1988} を用いる：
 \end{align}
 ここで $\mathcal{L}(q)$ は空間演算子であり，
 CLS 移流では式~\eqref{eq:dccd_adv_filter} の Dissipative CCD フラックス発散を用いた
-$\mathcal{L}(\psi) = -\tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}，負符号は PDE $\partial\psi/\partial t = -\nabla\cdot(\psi\mathbf{u})$ に由来）を指す．
+$\mathcal{L}(\psi) = -\tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}，負符号は PDE $\partial\psi/\partial t = -\bnabla\cdot(\psi\mathbf{u})$ に由来）を指す．
 \textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（\ref{warn:tvd_rk3_scope}参照）．
 
 \noindent\textbf{TVD（Total Variation Diminishing）の定義：}
@@ -41,7 +41,7 @@ TVD-RK3 は以下の2箇所にのみ適用する：
 \subsubsection{NS 方程式の時間積分：AB2 + IPC 法}
 \label{sec:ab2_ipc}
 
-本稿では，プロジェクション法の全体時間精度を $\mathcal{O}(\Delta t^2)$ とするため，
+本稿では，プロジェクション法の全体時間精度を $\Ord{\Delta t^2}$ とするため，
 対流項に \textbf{2段 Adams-Bashforth（AB2）法}を採用し，
 van Kan（1986）\cite{vanKan1986} の \textbf{Incremental Pressure Correction（IPC）法}と組み合わせる．
 Predictor ステップの離散式は：
@@ -75,7 +75,7 @@ Predictor ステップの離散式は：
 $n=0$ では $\bu^{n-1}$ が未定義であるため，AB2 外挿係数 $(3/2,\,-1/2)$ の代わりに
 前進 Euler 係数 $(1,\,0)$ を用いる
 （式~\eqref{eq:predictor_ab2_ipc} の $\mathcal{C}$ 係数を $3/2 \to 1$，$-1/2 \to 0$ と置き換える）．
-$\mathcal{O}(\Delta t^2)$ の全体時間精度は $n \geq 1$ 以降のステップで達成される．
+$\Ord{\Delta t^2}$ の全体時間精度は $n \geq 1$ 以降のステップで達成される．
 
 \paragraph{IPC 法の核心：圧力増分 $\delta p$ の求解}%
 \label{sec:ipc_derivation}
@@ -120,11 +120,11 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 
 本スキームの\textbf{均質流域での全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
 界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用される．
-空間精度（Dissipative CCD 移流：実効 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ フィルタ誤差，
-CCD：$O(h^6)$ 微分精度）は，移流フィルタ誤差 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ が律速する
+空間精度（Dissipative CCD 移流：実効 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ フィルタ誤差，
+CCD：$\Ord{h^6}$ 微分精度）は，移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が律速する
 全体空間精度と整合する．GFM 採用（§\ref{sec:gfm}）により CSF モデル誤差
-$O(\varepsilon^2) \approx O(h^2)$ の律速は除去され，寄生流れの下限は曲率評価精度
-$O(h^6)$（§\ref{sec:curvature_stab}）に支配される（定量値は §\ref{sec:bench_droplet} 参照）．
+$\Ord{\varepsilon^2} \approx \Ord{h^2}$ の律速は除去され，寄生流れの下限は曲率評価精度
+$\Ord{h^6}$（§\ref{sec:curvature_stab}）に支配される（定量値は §\ref{sec:bench_droplet} 参照）．
 
 \noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
 
@@ -197,15 +197,15 @@ $N_t = T/\Delta t$ ステップ積分で，初回誤差の寄与は $\leq C\,\Or
   \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
   \label{eq:crank_nicolson}
 \end{equation}
-ここで $\mathcal{D}$ は粘性拡散演算子．CN 法は時間方向に2次精度（$O(\Delta t^2)$）かつ
+ここで $\mathcal{D}$ は粘性拡散演算子．CN 法は時間方向に2次精度（$\Ord{\Delta t^2}$）かつ
 \textbf{無条件安定}（スペクトル半径の制約なし）であり，適度な $\Delta t$ での安定計算が可能となる．
 
 \begin{tcolorbox}[warnbox, title={CN 粘性項のクロス微分：$u$ と $v$ の陰的結合と実装上の分離}]
 \label{warn:cn_cross_derivative}
 
-変粘性流体の粘性応力 $\nabla\cdot[\mu(\nabla\bu + \nabla^T\bu)]$ の $x$ 成分は：
+変粘性流体の粘性応力 $\bnabla\cdot[\mu(\bnabla\bu + \bnabla^T\bu)]$ の $x$ 成分は：
 \begin{align}
-  \bigl[\nabla\cdot(\mu(\nabla\bu+\nabla^T\bu))\bigr]_x
+  \bigl[\bnabla\cdot(\mu(\bnabla\bu+\bnabla^T\bu))\bigr]_x
   &= \underbrace{2\frac{\partial}{\partial x}\!\left(\mu\frac{\partial u}{\partial x}\right)
      + \frac{\partial}{\partial y}\!\left(\mu\frac{\partial u}{\partial y}\right)}_{\text{対角項 $\mathcal{D}_{\mathrm{d}}(u)$}}
    + \underbrace{\frac{\partial}{\partial y}\!\left(\mu\frac{\partial v}{\partial x}\right)}_{\text{クロス微分項 $\mathcal{D}_{\mathrm{c}}(v)$}}

@@ -9,8 +9,8 @@
 CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）
 \begin{equation}
   \frac{\partial\psi}{\partial\tau}
-  + \underbrace{\nabla\cdot\!\bigl(\psi(1-\psi)\hat{\bm{n}}\bigr)}_{\text{圧縮項（陽解法）}}
-  = \underbrace{\nabla\cdot(\varepsilon\nabla\psi)}_{\text{拡散項（陰解法）}}
+  + \underbrace{\bnabla\cdot\!\bigl(\psi(1-\psi)\hat{\bm{n}}\bigr)}_{\text{圧縮項（陽解法）}}
+  = \underbrace{\bnabla\cdot(\varepsilon\bnabla\psi)}_{\text{拡散項（陰解法）}}
   \label{eq:cls_reinit_split}
 \end{equation}
 は\textbf{移流的圧縮項}（界面へ $\psi$ を引き戻す）と
@@ -25,8 +25,8 @@ CLS 法の再初期化方程式（式 \eqref{eq:cls_reinit_iso}）
         §\ref{sec:advection_motivation} の Dissipative CCD 移流と同構成で陽的に処理する
         （CFL 制約：$\Delta\tau \leq h$；安全率 0.5 で $\Delta\tau \leq 0.5h$）．
   \item \textbf{拡散項（陰解法）：}
-        $\varepsilon\nabla^2\psi$ は $\Delta\tau \leq h^2/(2\varepsilon)$ という厳しい陽的 CFL 制約を持つ
-        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau \leq h$，すなわち $O(h)$）．
+        $\varepsilon\bnabla^2\psi$ は $\Delta\tau \leq h^2/(2\varepsilon)$ という厳しい陽的 CFL 制約を持つ
+        （典型値 $\varepsilon \approx h/2$ のとき $\Delta\tau \leq h$，すなわち $\Ord{h}$）．
         Crank--Nicolson（CN）による半陰的処理で無条件安定化し，
         圧縮項の CFL と同程度の大きな $\Delta\tau$ を許容する．
 \end{itemize}
@@ -109,7 +109,7 @@ $\varepsilon \sim h$ のとき放物条件 $\Delta\tau \sim h/(4N_{\mathrm{dim}}
 \textbf{ステップ数と停止基準：}
 本実装では収束判定による停止は行わず，固定ステップ数 $n_{\mathrm{reinit}}$（デフォルト 4）を実行する．
 $n_{\mathrm{reinit}} = 4$，$\Delta\tau \approx 0.5h$ のとき仮想積分時間 $\tau_{\mathrm{total}} \approx 2h$ となり，
-界面プロファイル $\psi = H_\varepsilon(\phi)$ の整形に必要な仮想拡散距離 $O(\varepsilon) \sim O(h)$ を十分確保する．
+界面プロファイル $\psi = H_\varepsilon(\phi)$ の整形に必要な仮想拡散距離 $\Ord{\varepsilon} \sim \Ord{h}$ を十分確保する．
 \end{tcolorbox}
 
 % ─────────────────────────────────────────────────────────────────────────────

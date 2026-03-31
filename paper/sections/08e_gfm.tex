@@ -42,7 +42,7 @@ Rhie--Chow 面速度補間は不要であり，チェッカーボード抑制は
 \subsubsection{CCD との数学的相性と今後の課題}
 
 本節で示した GFM 定式化（式~\eqref{eq:gfm_ghost_p}--\eqref{eq:gfm_rhs_correction}）は，圧力のゴースト値置換のみを扱う．
-速度場を界面越しに滑らかに拡張する \textbf{Extension PDE}（$\partial q/\partial\tau \pm \mathbf{n}\cdot\nabla q = 0$）を各相について解くことで，
+速度場を界面越しに滑らかに拡張する \textbf{Extension PDE}（$\partial q/\partial\tau \pm \mathbf{n}\cdot\bnabla q = 0$）を各相について解くことで，
 CCD のステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い滑らかな場を参照できるようになり，
 \textbf{界面直近まで $\Ord{h^6}$ 精度が維持される}可能性がある．
 Extension PDE の実装は本稿の現スコープ外であり，今後の課題とする（§\ref{sec:future_work}）．
