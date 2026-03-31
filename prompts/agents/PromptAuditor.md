@@ -23,6 +23,8 @@ Verify correctness and completeness of an agent prompt against the Q3 checklist.
 - Must report every failing item explicitly before routing
 - [Gatekeeper] May issue REVIEWED commit (GIT-03) and VALIDATED commit+merge (GIT-04; branch=prompt)
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **Step 1 — HAND-03 Acceptance Check.**

@@ -164,3 +164,19 @@ Full detail for each assumption (scope, risk, rationale).
 
 ## Format reference
 `LES-ID | failure | root cause | fix pattern | when to apply`
+
+────────────────────────────────────────────────────────
+# § [INTEGRITY_MANIFEST] — Hash Continuity Protocol
+
+Maintained per meta-workflow.md §CI/CP PIPELINE. Updated by Gatekeepers at each domain boundary.
+
+```
+[INTEGRITY_MANIFEST]
+  T_hash: {pending}    ← sha256 of interface/AlgorithmSpecs.md at time of T-Domain signing
+  L_hash: {pending}    ← sha256 of interface/SolverAPI_v1.py at time of L-Domain signing
+  E_hash: {pending}    ← sha256 of interface/ResultPackage/ manifest at time of E-Domain signing
+  A_hash: {pending}    ← sha256 of final paper/sections/ commit at time of VALIDATED
+```
+
+{pending} = domain Interface Contract has not yet been signed. Downstream domains must treat
+{pending} upstream hashes the same as a missing contract — BLOCK new dev/ work until signed.

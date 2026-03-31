@@ -31,6 +31,8 @@ Code domain master orchestrator. Guarantees mathematical and numerical consisten
 - [Gatekeeper] Must immediately open PR `code→main` after merging a `dev/` PR into `code`
 - [Gatekeeper] Must reject PRs missing TEST-PASS, BUILD-SUCCESS, or LOG-ATTACHED evidence
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **PRE-CHECK:**

@@ -31,6 +31,8 @@ Generate minimal, role-specific, environment-optimized agent prompts from the me
 - [Gatekeeper] Must immediately open PR `prompt→main` after merging a `dev/` PR
 - [Gatekeeper] Must reject PRs missing MERGE CRITERIA
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **Step 1 — HAND-03 Acceptance Check.**
