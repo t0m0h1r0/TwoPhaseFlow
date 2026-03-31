@@ -635,6 +635,43 @@ Five procedures, applied in sequence when verifying mathematical claims:
 Do not resolve authority conflicts by preference — derive and escalate (φ3, A9).
 
 ────────────────────────────────────────────────────────
+## PATCH-IF: Interface Patch Protocol (Agile Synchronization)
+
+**Authorized:** ResearchArchitect (with explicit user confirmation)
+**[AUTH_LEVEL: Root Admin]**
+**Trigger:** Downstream domain discovers a minor error in an upstream Interface Contract
+**Phase:** Any (mid-pipeline correction; does not reset the pipeline)
+
+**Purpose:** Allows a minimal correction to an upstream Interface Contract without invalidating
+downstream work, when the error does NOT alter the Functional Interface (API signatures or
+fundamental mathematical logic). Full CI/CP propagation is NOT triggered for MINOR scope.
+
+```
+PATCH-IF {target_interface} --scope {minimal_change}
+```
+
+**Procedure:**
+
+| Step | Action | Condition |
+|------|--------|-----------|
+| 1 | Downstream domain STOPS; reports discrepancy to ResearchArchitect with exact location | Discrepancy found in `interface/` contract |
+| 2 | ResearchArchitect assesses: does the change alter the Functional Interface? | — |
+| 3a | Scope = MINOR (typo, unit label, clarification note — no API change, no math change): ResearchArchitect applies patch and re-signs contract | `downstream_valid: true`; downstream resumes without re-derivation |
+| 3b | Scope = FUNCTIONAL (API signature, equation form, operator structure, boundary conditions): PATCH-IF DENIED | Run full CI/CP propagation (→ meta-workflow.md §CI/CP PIPELINE) |
+| 4 | ResearchArchitect writes `audit_logs/patch_if_{date}.md` with `scope`, `rationale`, `downstream_valid` | Required for traceability (φ4) |
+| 5 | If `downstream_valid: true`: downstream domain resumes existing artifacts | No re-derivation required |
+
+**Functional Interface definition:**
+- Functional Interface = API signatures (function names, parameter types, return types) +
+  fundamental mathematical logic (equation form, operator structure, boundary conditions).
+- Anything outside this = MINOR scope → PATCH-IF permitted.
+- Any change inside this = FUNCTIONAL scope → PATCH-IF denied; use CI/CP.
+
+**Hard rule:** PATCH-IF may be applied at most ONCE per Interface Contract version before
+requiring a full version increment. Two PATCH-IF patches on the same contract = treat as
+FUNCTIONAL scope and run CI/CP.
+
+────────────────────────────────────────────────────────
 # § COMMAND FORMAT
 
 Canonical syntax for invoking the agent system:
@@ -706,6 +743,9 @@ DISPATCH → {specialist_name}
 - `expected_verdict` must be measurable — vague criteria such as "looks good" are not acceptable
 - Coordinator must not dispatch if its own RETURN token (from a previous step) has
   unresolved issues — resolve first, then dispatch
+- When dispatching to an Auditor/Gatekeeper role: `inputs` must list ONLY final Artifact
+  paths and Interface Contract paths — never Specialist reasoning, scratch notes, or
+  intermediate derivations (Phantom Reasoning Guard → meta-core.md §B, HAND-03 check 10)
 
 ────────────────────────────────────────────────────────
 ## HAND-02: RETURN Token
@@ -792,6 +832,17 @@ Acceptance Check:
            c. Does the contract's `outputs` field match the `inputs` this task requires? Mismatch → REJECT; STOP.
          Empty `upstream_contracts` is permitted ONLY for T-Domain tasks (no upstream). All other domains: REJECT if list is absent.
          This check enforces T-L-E-A ordering: no domain may start without upstream contract signed.
+  □ 10. PHANTOM REASONING GUARD (Auditor/Gatekeeper roles only):
+         If this agent is acting as an Auditor or Gatekeeper (ConsistencyAuditor, PaperReviewer,
+         CodeWorkflowCoordinator in review mode, PromptAuditor, etc.):
+           a. Verify that DISPATCH `inputs` lists ONLY: final Artifact files, signed Interface
+              Contracts, and test output logs (e.g., last_run.log, compilation output).
+           b. If `inputs` includes Specialist chain-of-thought notes, intermediate derivation
+              scratch, reasoning logs, or draft commentary → REJECT immediately.
+              Issue RETURN with status BLOCKED; coordinator must re-dispatch with sanitized inputs.
+           c. The Auditor evaluates the Artifact only. Specialist reasoning is invisible to the
+              Auditor to ensure true Black Box auditing (meta-core.md §B Phantom Reasoning Guard).
+         If this agent is a Specialist (non-Auditor role): this check is N/A — proceed.
 ```
 
 **On REJECT or QUERY:**
@@ -823,6 +874,8 @@ Coordinator                          Specialist
     │                                    │   □ context consistent?
     │                                    │   □ domain lock present?  ← DOM-01 output
     │                                    │   □ expected_verdict set? ← measurable criterion
+    │                                    │   □ upstream contracts?   ← T-L-E-A ordering (check 9)
+    │                                    │   □ phantom guard?        ← auditor inputs clean (check 10)
     │                                    │
     │         [REJECT if any fails]      │
     │◄─── HAND-02 (status: BLOCKED) ─── │
@@ -840,3 +893,41 @@ Coordinator                          Specialist
     │ If BLOCKED/STOPPED:                │
     │   → resolve or escalate to user    │
 ```
+
+────────────────────────────────────────────────────────
+# § AUDIT EXIT CRITERIA — Deadlock Prevention
+
+**Purpose:** Prevent infinite skepticism loops. An Auditor (Gatekeeper) that never passes any
+deliverable is as harmful as an Auditor that never rejects. This section defines when an Auditor
+MUST issue a verdict rather than continue deliberating.
+
+**Rule:** A Gatekeeper / Auditor may REJECT a deliverable ONLY when the rejection is tied to a
+specific, citable violation of ONE of the following:
+
+| Category | Examples |
+|----------|---------|
+| 1. Formal Checklist violation | Q1–Q3 checklist item failed; AUDIT-01 AU2 item number N failed |
+| 2. Interface Contract violation | Output does not match `interface/{contract}.md` outputs field; contract unsigned |
+| 3. Core Axiom violation | A1–A10 violated (cite axiom number and exact violation) |
+
+**"Gut feeling" rejection is forbidden.** "This seems wrong" or "I'm not convinced" without
+a specific citation from categories 1–3 above is NOT a valid rejection basis.
+
+**CONDITIONAL PASS protocol (when all formal checks pass but doubt remains):**
+
+```
+CONDITIONAL PASS:
+  verdict:      CONDITIONAL_PASS
+  warning_note: {specific concern in one sentence — must reference a named risk, not vague doubt}
+  escalate_to:  user
+  pipeline:     CONTINUES (do NOT stop the pipeline)
+```
+
+- CONDITIONAL PASS means: all formal checks (GA-1 through GA-6, AUDIT-01, Q1–Q3) passed.
+- The Warning Note is logged for traceability but does NOT block the pipeline.
+- The Auditor escalates the concern to the User as advisory information.
+- The User decides whether to investigate further or accept the CONDITIONAL PASS.
+
+**Hard rule:** If all formal checks pass and the Auditor cannot cite a specific violation,
+the Auditor MUST issue CONDITIONAL PASS — NOT continue deliberating, NOT block the pipeline.
+An Auditor that withholds PASS without a citable violation commits a Deadlock Violation.

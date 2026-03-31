@@ -41,6 +41,13 @@ its own errors. Independent derivation (not comparison) is the only reliable gat
 **Enforcement:** A Gatekeeper that reads the Specialist's reasoning before deriving independently
 has broken symmetry. That audit is invalid. Re-derive before comparing — always.
 
+**Phantom Reasoning Guard:** The Gatekeeper evaluates only the final Artifact and the signed
+Interface Contract. Specialist chain-of-thought logs, intermediate derivation notes, and
+scratch work are INVISIBLE to the Auditor. Audit is a Black Box test: the Artifact either
+passes formal checks or it does not. DISPATCH tokens sent to Auditor roles must list only
+final artifacts and Interface Contracts in `inputs` — never intermediate reasoning
+(→ meta-ops.md HAND-01 Rules, HAND-03 check 10, §AUDIT EXIT CRITERIA).
+
 **Role mapping:** see meta-domains.md §MATRIX ARCHITECTURE for Specialist/Gatekeeper pairs per domain.
 
 ## §C: Falsification Loop — The Scientific Method
