@@ -219,38 +219,81 @@ git checkout -b dev/{agent_role}
 - Specialist cannot checkout {domain} → run GIT-01 first
 
 ────────────────────────────────────────────────────────
-## GIT-SP: Specialist Branch Operations
+## GIT-SP: Specialist Branch Operations (Workspace Creation)
 
 **Authorized:** All Specialist-tier agents (sovereign over their own dev/ branch)
 **[AUTH_LEVEL: Specialist]**
-**Trigger:** Whenever a Specialist commits work or opens a PR
-**Phase:** During EXECUTE or VERIFY
+**Trigger:** MANDATORY — absolute starting point for ALL Specialist operations
+**Phase:** Before EXECUTE (GIT-00 Pre-work)
+
+GIT-SP is the first operation every Specialist executes before any task work begins.
+It establishes the isolated workspace and ensures traceability.
 
 ```sh
-# Commit work (Specialist's own dev/ branch only)
+# ── GIT-00 Pre-work (MANDATORY before any file change) ──
+
+# Step 0 — Verify NOT on main (SYSTEM_PANIC guard)
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  echo "SYSTEM_PANIC: Agent on main branch — halting all operations"
+  exit 1  # → STOP condition; escalate to user
+fi
+
+# Step 1 — Branch out from domain integration branch to isolation branch
+git checkout {domain}
+git pull origin {domain} --ff-only
+git checkout -b dev/{domain}/{agent_id}/{task_id}
+
+# Step 2 — Update docs/PROJECT_MAP with active task registration
+# Append to docs/01_PROJECT_MAP.md §9 (Active Task Register):
+#   | {task_id} | {agent_id} | dev/{domain}/{agent_id}/{task_id} | IN_PROGRESS | {ISO 8601} |
+
+# Step 3 — Commit the PROJECT_MAP update as first commit on isolation branch
+git add docs/01_PROJECT_MAP.md
+git commit -m "dev/{domain}/{agent_id}/{task_id}: register task in PROJECT_MAP"
+```
+
+**Success:** Agent is on `dev/{domain}/{agent_id}/{task_id}` with PROJECT_MAP updated.
+
+```sh
+# ── Regular work operations (after GIT-00 Pre-work) ──
+
+# Commit work (agent's own isolation branch only)
 git add {files}
-git commit -m "dev/{agent_role}: {summary} [LOG-ATTACHED]"
+git commit -m "dev/{domain}/{agent_id}/{task_id}: {summary} [LOG-ATTACHED]"
 
 # Open PR from dev/ → {domain} (after work is complete with evidence)
 # Attach tests/last_run.log or BUILD-01 scan output as PR comment
 gh pr create \
   --base {domain} \
-  --head dev/{agent_role} \
-  --title "{agent_role}: {summary}" \
+  --head dev/{domain}/{agent_id}/{task_id} \
+  --title "{agent_id}/{task_id}: {summary}" \
   --body "Evidence: [LOG-ATTACHED — see tests/last_run.log or build log attached below]"
 ```
 
 **Specialist rights:**
-- Absolute sovereignty over `dev/{agent_role}` — may commit, amend, rebase freely BEFORE PR submission
+- Absolute sovereignty over `dev/{domain}/{agent_id}/{task_id}` — may commit, amend, rebase freely BEFORE PR submission
 - May refuse a Gatekeeper's request to pull from main if neither Selective Sync condition is met
   (→ meta-domains.md §SELECTIVE SYNC PROTOCOL)
 
 **Specialist obligations:**
+- Must execute GIT-00 Pre-work before ANY file change — no exceptions
 - Must attach Evidence of Verification with every PR (LOG-ATTACHED criterion)
 - Must include `tests/last_run.log` or equivalent build output in PR comment
 
 **Isolation rule:** Specialist MUST NOT access any other agent's `dev/` branch.
 Violation → CONTAMINATION RETURN + Branch Isolation breach (→ meta-domains.md §BRANCH ISOLATION).
+
+**SYSTEM_PANIC — Main Branch Contamination Guard:**
+If a file change is detected on the `main` branch by any non-Root-Admin agent,
+a SYSTEM_PANIC must be triggered immediately:
+```
+SYSTEM_PANIC triggered by: {agent_id}
+  reason:   "Forbidden write to main branch detected"
+  action:   STOP all pipeline activity immediately
+  required: escalate to user; revert unauthorized commit on main
+  resume:   only after explicit user authorization + revert confirmed
+```
 
 ────────────────────────────────────────────────────────
 ## GIT-01: Branch Preflight
@@ -755,6 +798,28 @@ PATCH-IF {target_interface} --scope {minimal_change}
 **Hard rule:** PATCH-IF may be applied at most ONCE per Interface Contract version before
 requiring a full version increment. Two PATCH-IF patches on the same contract = treat as
 FUNCTIONAL scope and run CI/CP.
+
+────────────────────────────────────────────────────────
+# § STOP CONDITIONS — Revised
+
+The following conditions trigger an immediate halt of all pipeline activity.
+All agents must monitor for these conditions continuously.
+
+| ID | Condition | Trigger | Action |
+|----|-----------|---------|--------|
+| STOP-01 | Main branch contamination | Non-Root-Admin agent commits to `main` | SYSTEM_PANIC → revert + escalate to user |
+| STOP-02 | Immutable Zone modification | Any agent proposes change to φ-principles, axioms, or HAND-03 logic | SYSTEM_PANIC → escalate to user |
+| STOP-03 | Domain lock violation | Agent writes outside its DOMAIN-LOCK territory | CONTAMINATION RETURN → Gatekeeper rejects PR |
+| STOP-04 | Branch isolation breach | Agent accesses another agent's `dev/` branch | CONTAMINATION RETURN → Gatekeeper rejects PR |
+| STOP-05 | GIT-00 Pre-work skipped | Agent begins file changes without executing GIT-SP GIT-00 Pre-work | SYSTEM_PANIC → agent must restart from GIT-00 |
+| STOP-06 | Context leakage | Downstream agent consumes upstream agent's conversation history instead of artifacts | Context Leakage Violation → Gatekeeper rejects deliverable + re-dispatch |
+| STOP-07 | Loop > MAX_REVIEW_ROUNDS | P-E-V-A loop exceeds 5 iterations | STOPPED → escalate to user with full history |
+| STOP-08 | Hash mismatch (INTEGRITY_MANIFEST) | Upstream contract hash ≠ recorded hash | CONTAMINATION → CI/CP re-propagation required |
+
+**STOP-01 enforcement (Main Branch Contamination Guard):**
+Every agent MUST check `git branch --show-current` before any file operation.
+If the result is `main`, the agent MUST NOT proceed — trigger SYSTEM_PANIC immediately.
+This check is embedded in GIT-SP GIT-00 Pre-work Step 0 and applies universally.
 
 ────────────────────────────────────────────────────────
 # § COMMAND FORMAT

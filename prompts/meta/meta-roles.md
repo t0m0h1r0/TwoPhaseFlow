@@ -101,6 +101,36 @@ Violation = CRITICAL_VIOLATION → ConsistencyAuditor escalates immediately.
 See meta-domains.md §STORAGE SOVEREIGNTY for territory ownership per domain.
 
 ────────────────────────────────────────────────────────
+# § ATOMIC ROLE & BRANCH MATRIX
+
+Every Micro-Agent is assigned a dedicated **Isolation Branch Pattern** that enforces
+environmental separation. Specialist agents are **strictly prohibited** from writing
+to the `main` branch — merge authority is reserved exclusively for the Gatekeeper tier.
+
+| Micro-Agent | Domain | Isolation Branch Pattern | Merge Authority |
+|-------------|--------|--------------------------|-----------------|
+| EquationDeriver | T | `dev/T/EquationDeriver/{task_id}` | ConsistencyAuditor (T-Gate) |
+| SpecWriter | T | `dev/T/SpecWriter/{task_id}` | ConsistencyAuditor (T-Gate) |
+| CodeArchitect (Atomic) | L | `dev/L/CodeArchitectAtomic/{task_id}` | CodeWorkflowCoordinator |
+| LogicImplementer | L | `dev/L/LogicImplementer/{task_id}` | CodeWorkflowCoordinator |
+| ErrorAnalyzer | L | `dev/L/ErrorAnalyzer/{task_id}` | CodeWorkflowCoordinator |
+| RefactorExpert | L | `dev/L/RefactorExpert/{task_id}` | CodeWorkflowCoordinator |
+| TestDesigner | E | `dev/E/TestDesigner/{task_id}` | CodeWorkflowCoordinator |
+| VerificationRunner | E | `dev/E/VerificationRunner/{task_id}` | CodeWorkflowCoordinator |
+| ResultAuditor | Q | `dev/Q/ResultAuditor/{task_id}` | ConsistencyAuditor |
+
+**Branch Pattern:** `dev/{domain}/{agent_id}/{task_id}`
+- `{domain}` = T | L | E | Q | A | P | M
+- `{agent_id}` = Micro-Agent name (PascalCase)
+- `{task_id}` = monotonically increasing integer or descriptive slug (e.g., `001`, `fix-bcs`)
+
+**Rules:**
+- Specialist agents MUST NOT commit to `main`, domain integration branches (`code`, `paper`, `prompt`, `theory`, `experiment`), or another agent's `dev/` branch
+- Each task gets its own branch — no branch reuse across tasks
+- Merge authority flows: `dev/{domain}/{agent_id}/{task_id}` → `{domain}` (by Gatekeeper) → `main` (by Root Admin)
+- A commit detected on `main` by any non-Root-Admin agent triggers **SYSTEM_PANIC** (→ meta-ops.md §STOP CONDITIONS)
+
+────────────────────────────────────────────────────────
 # § ATOMIC ROLE TAXONOMY — Micro-Agent Decomposition
 
 Atomicized roles enforce maximum specialization: each micro-agent has exactly one
@@ -120,6 +150,8 @@ function, one output type, and bounded context. The existing composite roles
 
 **PURPOSE:** Derive governing equations from first principles and validate theoretical
 correctness. Produces only mathematical artifacts — no implementation specs.
+
+**ISOLATION_BRANCH:** `dev/T/EquationDeriver/{task_id}`
 
 **SCOPE**
 - READ: `paper/sections/*.tex`, `docs/theory/`, `docs/01_PROJECT_MAP.md §6`
@@ -146,6 +178,8 @@ and symbol table are loaded — no full paper, no implementation code, no prior 
 
 **PURPOSE:** Convert a validated derivation from EquationDeriver into an
 implementation-ready specification. Bridges theory and code without implementing.
+
+**ISOLATION_BRANCH:** `dev/T/SpecWriter/{task_id}`
 
 **SCOPE**
 - READ: `artifacts/T/derivation_{id}.md`, `docs/01_PROJECT_MAP.md §6`
@@ -183,6 +217,8 @@ and symbol mapping table — no raw .tex files, no code.
 Produces only structural artifacts (abstract classes, interface definitions,
 module layout) — no method body logic.
 
+**ISOLATION_BRANCH:** `dev/L/CodeArchitectAtomic/{task_id}`
+
 **SCOPE**
 - READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (existing structure), `docs/01_PROJECT_MAP.md`
 - WRITE: `artifacts/L/architecture_{id}.md`, `src/twophase/` (interface/abstract files only)
@@ -209,6 +245,8 @@ module structure — no full source files, no test output.
 **PURPOSE:** Write method body logic from architecture definitions and algorithm specs.
 Fills in the structural skeleton produced by CodeArchitect (Atomic).
 
+**ISOLATION_BRANCH:** `dev/L/LogicImplementer/{task_id}`
+
 **SCOPE**
 - READ: `artifacts/L/architecture_{id}.md`, `interface/AlgorithmSpecs.md`, `src/twophase/` (target module)
 - WRITE: `src/twophase/` (method bodies only), `artifacts/L/impl_{id}.py`
@@ -233,6 +271,8 @@ target module only.
 
 **PURPOSE:** Identify root causes from error logs and test output. Produces only
 diagnosis — never applies fixes.
+
+**ISOLATION_BRANCH:** `dev/L/ErrorAnalyzer/{task_id}`
 
 **SCOPE**
 - READ: `tests/last_run.log`, `artifacts/E/`, `src/twophase/` (target module only)
@@ -259,6 +299,8 @@ target module only — no full test suite, no unrelated modules.
 
 **PURPOSE:** Apply targeted fixes and optimizations based on ErrorAnalyzer diagnosis.
 Consumes diagnosis artifacts only — never analyzes errors directly.
+
+**ISOLATION_BRANCH:** `dev/L/RefactorExpert/{task_id}`
 
 **SCOPE**
 - READ: `artifacts/L/diagnosis_{id}.md`, `src/twophase/` (target module)
@@ -295,6 +337,8 @@ module only.
 **PURPOSE:** Design test cases, boundary conditions, edge cases, and MMS manufactured
 solutions. Produces only test specifications — never executes tests.
 
+**ISOLATION_BRANCH:** `dev/E/TestDesigner/{task_id}`
+
 **SCOPE**
 - READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (target module API), `artifacts/L/`
 - WRITE: `tests/`, `artifacts/E/test_spec_{id}.md`
@@ -319,6 +363,8 @@ solutions. Produces only test specifications — never executes tests.
 
 **PURPOSE:** Execute tests, simulations, and benchmarks. Collects logs and raw output.
 Issues no judgment — only produces execution artifacts.
+
+**ISOLATION_BRANCH:** `dev/E/VerificationRunner/{task_id}`
 
 **SCOPE**
 - READ: `tests/`, `src/twophase/`, `artifacts/E/test_spec_{id}.md`
@@ -345,6 +391,8 @@ Issues no judgment — only produces execution artifacts.
 
 **PURPOSE:** Audit whether execution results match theoretical expectations.
 Consumes derivation artifacts (T) and execution artifacts (E) — produces verdicts only.
+
+**ISOLATION_BRANCH:** `dev/Q/ResultAuditor/{task_id}`
 
 **SCOPE**
 - READ: `artifacts/T/derivation_{id}.md`, `artifacts/E/run_{id}.log`, `interface/AlgorithmSpecs.md`
