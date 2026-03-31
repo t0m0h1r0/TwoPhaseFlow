@@ -120,8 +120,10 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 本スキームの\textbf{均質流域での全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
 界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用される．
 空間精度（Dissipative CCD 移流：実効 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ フィルタ誤差，
-CCD：$O(h^6)$ 微分精度）は，CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
-（§\ref{sec:balanced_force}）が律速する全体空間精度と整合する．
+CCD：$O(h^6)$ 微分精度）は，移流フィルタ誤差 $O(\varepsilon_d^{\mathrm{adv}} h^2)$ が律速する
+全体空間精度と整合する．GFM 採用（§\ref{sec:gfm}）により CSF モデル誤差
+$O(\varepsilon^2) \approx O(h^2)$ の律速は除去され，寄生流れの下限は曲率評価精度
+$O(h^6)$（§\ref{sec:curvature_stab}）に支配される（定量値は §\ref{sec:bench_droplet} 参照）．
 
 \noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
 
