@@ -1,23 +1,36 @@
-\section{\texorpdfstring{PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の FVM 積分論理と周期境界対応}{PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の FVM 積分論理と周期境界対応}}
+\section{\texorpdfstring{FVM 基準との整合：PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の積分論理と周期境界対応}{FVM 基準との整合：PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の積分論理と周期境界対応}}
 \label{app:fvm_face_coeff}
+\label{sec:fvm_face_coeff}
 % ═══════════════════════════════════════════════════════════════════════════════
+%% ※ 旧 08g_fvm_note.tex の内容を統合（CHK-088）
 
-PPE 演算子の係数 $a(x) = 1/\rho(x)$ について，
+PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散化すると，
+フェイス面係数として\textbf{調和平均}が自然に現れる：
+\begin{equation}
+  a_f = \frac{2}{\rho_L + \rho_R}
+  \label{eq:af_exact}
+\end{equation}
+よくある実装ミス：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$．
+\textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ccd_poisson_matrix}）であり，$\Ord{h^6}$ を達成する．
+式~\eqref{eq:af_exact} は GFM 補正項の調和平均密度逆数（式~\eqref{eq:gfm_rhs_correction}）と一致する（§\ref{sec:gfm}）．
+
+Rhie--Chow 補正済み発散の完全な定義および旧 Balanced-Force 定式化は
+付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + GFM により
+Rhie--Chow 補正を代替する（式~\eqref{eq:gfm_ccd_div}）．
+
+\subsection{FVM 積分論理}
+
 セル $P$（位置 $x_L$）と $E$（位置 $x_R$）の間の等価面係数を FVM 積分で求める．
-
 フラックス $F = a_f(p_E - p_P)/\Delta x$ において，
-連続体のフラックス $F = a(x)\,dp/dx$ を区間 $[x_L, x_R]$ で積分して面係数 $a_f$ を求める．
-$a(x)$ が区間内で区分的定数（各セル内で $a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
+$a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 \[
   \int_{x_L}^{x_R} \frac{dx}{a(x)}
   = \frac{\Delta x/2}{a_L} + \frac{\Delta x/2}{a_R}
   \quad\Rightarrow\quad
-  a_f = \frac{\Delta x}{\dfrac{\Delta x/2}{a_L}+\dfrac{\Delta x/2}{a_R}}
-  = \frac{2a_L a_R}{a_L+a_R}
+  a_f = \frac{2a_L a_R}{a_L+a_R}
   = \frac{2}{\rho_L+\rho_R}
 \]
-これは直列抵抗の等価抵抗（$1/R_\mathrm{eq} = 1/R_1+1/R_2$）と同じ論理（調和平均）であり，
-熱伝導率の界面補間で使われる標準公式と同一構造を持つ．\qed
+これは直列抵抗の等価抵抗と同じ論理（調和平均）である．\qed
 
 \subsection{FVM PPE 行列の周期境界条件対応}
 \label{sec:fvm_periodic}
