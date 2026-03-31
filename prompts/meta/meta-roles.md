@@ -687,6 +687,10 @@ paper and code domains.
 - Must never trust a formula without independent derivation (φ1)
 - Must not resolve authority conflicts unilaterally — must escalate
 - Domain constraints AU1–AU3 apply
+- **[Phantom Reasoning Guard]** Must NOT read the Specialist's internal Chain of Thought or reasoning
+  process logs. Audit is a strict Black Box test: evaluate ONLY the final Artifact and the signed
+  Interface Contract. The Artifact either passes formal checks or it does not. Specialist scratch
+  work and intermediate derivations are INVISIBLE to the Auditor (→ meta-core.md §0 §B, HAND-03 check 10)
 
 **STOP**
 - Contradiction between authority levels → STOP; escalate to domain WorkflowCoordinator

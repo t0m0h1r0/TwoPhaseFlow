@@ -91,6 +91,31 @@ has been invalidated. Starting work on an invalid contract is a CONTAMINATION vi
 **Rolling validation:** For large changes, ResearchArchitect may sequence the propagation
 one domain at a time (T → L gate, then L → E gate, etc.) rather than all-at-once.
 
+## [INTEGRITY_MANIFEST] — Hash Continuity Protocol
+
+Maintain an `[INTEGRITY_MANIFEST]` section within `docs/02_ACTIVE_LEDGER.md` that records
+the artifact hash of each domain's signed Interface Contract in the dependency chain:
+
+```
+[INTEGRITY_MANIFEST]
+  T_hash: {sha256 of interface/AlgorithmSpecs.md at time of signing}
+  L_hash: {sha256 of interface/SolverAPI_vX.py at time of signing}
+  E_hash: {sha256 of interface/ResultPackage/ manifest at time of signing}
+  A_hash: {sha256 of final paper/sections/ commit at time of VALIDATED}
+```
+
+**Dependency chain rule:** T(hash) → L(hash) → E(hash) → A(hash).
+Each downstream hash is recorded only after the upstream hash is locked.
+
+**Gatekeeper mandate:** Before issuing a PASS verdict at any domain boundary, the Gatekeeper
+MUST verify hash continuity — confirm that the upstream hash recorded in [INTEGRITY_MANIFEST]
+matches the current state of the upstream Interface Contract. A hash mismatch means the
+downstream domain was built on an invalidated contract (CONTAMINATION violation → CI/CP
+re-propagation required).
+
+**Update rule:** When a domain re-signs its Interface Contract (after CI/CP propagation),
+the corresponding hash and all downstream hashes MUST be updated before new dev/ work begins.
+
 ────────────────────────────────────────────────────────
 # § GIT BRANCH GOVERNANCE → meta-domains.md
 
