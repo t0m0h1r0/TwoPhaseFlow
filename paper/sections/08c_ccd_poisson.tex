@@ -8,6 +8,28 @@
 \label{sec:ccd_poisson_matrix}
 %% ═══════════════════════════════════════════════════════════════════════════════
 
+%% Modification I: O(h²) → O(h⁶) via CCD
+%% 本節は §8.2 の目標を達成するための中核である：
+%% (1) p, p', p'' を連立未知量として同時求解し O(h⁶) 精度を達成
+%% (2) コロケート格子上のチェッカーボード不安定性を DCCD 散逸で抑制
+
+\textbf{精度向上の動機：}
+標準 $\Ord{h^2}$ 中心差分では界面近傍で「数値ノイズ」が生じ，
+それが寄生流れ（parasitic currents）の主因となる．
+CCD 法（第~\ref{sec:CCD}章）はこれを克服するため，
+圧力 $p$，1次導関数 $p'$，2次導関数 $p''$ を\textbf{連立未知量として同時求解}する
+（CCD ブロック系，式~\eqref{eq:ccd_matrix_full}）．
+これにより速度補正に用いる圧力勾配の空間精度が $\Ord{h^6}$ に向上し，
+長時間シミュレーションにおける離散化誤差の蓄積を根本的に低減する．
+
+\textbf{コロケート格子のチェッカーボード（奇偶デカップリング）対策：}
+コロケート配置では $p$ の奇数・偶数モードが PPE 左辺に現れず，
+非物理的な格子スケール振動（checkerboard instability）が生じる．
+本稿ではこれを Rhie--Chow 補間の代わりに
+DCCD 散逸機構（§\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）で抑制する：
+DCCD フィルタが PPE 右辺の $\bnabla_h\!\cdot\bu^*$ に対してチェッカーボードモードを除去し，
+GFM ジャンプ補正との整合を保つ（式~\eqref{eq:gfm_ccd_div}）．
+
 本節では，CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（第\ref{sec:CCD}章，
 §\ref{sec:ccd_elliptic}，式 \eqref{eq:L_CCD_2d_full}）を
 PPE ソルバーとして陽に活用するための実装上の詳細を述べる．

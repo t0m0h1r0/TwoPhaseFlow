@@ -70,6 +70,12 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
 以上の3ステップ（Predictor・PPE・Corrector）が変密度 IPC 射影法の骨格であり，
 完全な7ステップ実装順序は§\ref{sec:algorithm}（特に図~\ref{fig:ns_solvers}）を参照のこと．
 
+\noindent\textbf{PPE ソルバーの実装詳細（付録~\ref{sec:ppe_pseudotime} を参照）：}
+得られた離散 PPE（式~\eqref{eq:PPE_varrho}）をどのように高速・安定に解くか――仮想時間スウィープ法，
+欠陥補正，最適 $\Delta\tau$ の選択，局所時間刻み，ゲージ固定――の実装詳細は
+付録~\ref{sec:ppe_pseudotime} にまとめる．
+本章（§8）は数学的物理と離散化ロジックのみを扱う（Modification IV: 実装詳細は付録へ）．
+
 \noindent\textbf{初期条件 $p^0$ の設定（$t=0$ での圧力場）：}
 IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
 推奨される初期化戦略は問題に応じて以下から選択する：
