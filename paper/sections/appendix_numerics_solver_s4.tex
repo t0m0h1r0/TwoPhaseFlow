@@ -1,4 +1,4 @@
-\section{\texorpdfstring{PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の FVM 積分論理}{PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の FVM 積分論理}}
+\section{\texorpdfstring{PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の FVM 積分論理と周期境界対応}{PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の FVM 積分論理と周期境界対応}}
 \label{app:fvm_face_coeff}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -18,4 +18,44 @@ $a(x)$ が区間内で区分的定数（各セル内で $a_L = 1/\rho_L$，$a_R 
 \]
 これは直列抵抗の等価抵抗（$1/R_\mathrm{eq} = 1/R_1+1/R_2$）と同じ論理（調和平均）であり，
 熱伝導率の界面補間で使われる標準公式と同一構造を持つ．\qed
+
+\subsection{FVM PPE 行列の周期境界条件対応}
+\label{sec:fvm_periodic}
+%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 E.4 へ移動（CHK-086）
+
+壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
+周期境界を持つ計算領域ではそのまま適用できない．
+本稿の実装では以下の3点を変更して周期 FVM 行列を組み立てる．
+
+\paragraph{（1）折り返しフェイスの追加}
+周期 BC では内部フェイスに加え，ノード $N_x-1$ とノード $0$ を結ぶ
+\textbf{折り返しフェイス（wrap face）}を追加する：
+\begin{equation}
+  a_{N_x - 1/2} = \frac{2}{\rho_{N_x-1} + \rho_0}
+  \label{eq:af_wrap}
+\end{equation}
+
+\paragraph{（2）境界半格子体積補正の省略}
+周期 BC ではすべてのノードが同じ格子幅 $h$ の制御体積を持つため，
+壁面 BC の $h/2$ 体積補正は行わない（$a_f / h^2$ を一様に適用）．
+
+\paragraph{（3）ゴーストノードの同一性拘束}
+インデックス $N$ ノード（物理的に $0$ の周期像）を
+\textbf{同一性拘束行}で置き換える：
+\begin{equation}
+  p_{\mathrm{ghost}} - p_{\mathrm{src}} = 0
+  \quad\Longleftrightarrow\quad
+  A[\mathrm{ghost},\,\mathrm{ghost}] = 1,\;
+  A[\mathrm{ghost},\,\mathrm{src}]   = -1,\;
+  b[\mathrm{ghost}] = 0
+  \label{eq:ghost_identity}
+\end{equation}
+コーナー節点は最初の軸の拘束のみを採用する（重複適用を避けるため）．
+
+\begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
+  式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
+  ILU(0)（\texttt{fill\_factor=1}）を前処理に使用すると BiCGSTAB の収束が著しく遅延する．
+  実装では \texttt{fill\_factor=10} で安定収束を確認した．
+  直接法（\texttt{spsolve}）は収束診断に有効である．
+\end{tcolorbox}
 

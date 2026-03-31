@@ -11,77 +11,10 @@
     \item \textbf{周期境界：} 全辺を周期とする場合は FVM 行列に折り返しフェイスおよびゴーストノード拘束を組み込む（§\ref{sec:fvm_periodic} 参照）．零空間対策は壁面 BC と同一（1点ピン条件）．
 \end{itemize}
 
-\label{box:neumann_unit_test}
-Neumann 境界条件 $\partial(\delta p)/\partial n = 0$ を CCD スキームに正しく組み込んだか確認するための最小検証セット：
-
-\begin{enumerate}
-  \item \textbf{無負荷試験（Null test）：}
-        $q_h \equiv 0$（右辺ゼロ），初期値 $(\delta p)^0 = 0$ として反復を実行し，
-        $\|\delta p^m\|_2 \to 0$（機械精度）が達成されることを確認．
-        ゼロでなければ境界ブロックの係数設定に誤りあり．
-  \item \textbf{既知解収束テスト（Manufactured Solution）：}
-        Neumann BC に整合する既知解，例えば
-        $p_\text{exact}(x,y) = \cos(\pi x)\cos(\pi y)$
-        （$\partial p/\partial n = 0$ を4辺全てで満たす）に対し，
-        $q_h = \mathcal{L}_h p_\text{exact}$ を右辺として与え，
-        収束後の誤差が $\|p^m - p_\text{exact}\|_2 = \Ord{h^6}$（格子収束）であることを確認．
-        $\Ord{h^2}$ のみなら境界誤差が伝播しており，§\ref{sec:ccd_bc} の $L^2$ ノルム重み付け解析（式~\eqref{eq:bc_L2_weighting}）を参照．
-  \item \textbf{零モード（定数解）のフィルタリング確認：}
-        $q_h \equiv 0$ で $(\delta p)^0 = c$（定数）を初期値として反復し，
-        ピン条件（§\ref{sec:pinpoint}）が正しく機能して $p_{i_0,j_0} \to 0$ が保たれることを確認．
-        定数モードが収束を妨げる場合は零モード除去の実装を確認すること．
-\end{enumerate}
-
-\subsubsection{FVM PPE 行列の周期境界条件対応}
-\label{sec:fvm_periodic}
-
-壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
-周期境界を持つ計算領域ではそのまま適用できない．
-本稿の実装では以下の3点を変更して周期 FVM 行列を組み立てる．
-
-\paragraph{（1）折り返しフェイスの追加}
-通常の軸 $x$ 方向内部フェイスはノード $i\,(i=0,\ldots,N-2)$ とノード $i+1$ を結ぶ
-$N-1$ 本で構成される．
-周期 BC ではさらに\textbf{折り返しフェイス（wrap face）}
-としてノード $N_x-1$ とノード $0$ を結ぶフェイスを追加する：
-\begin{equation}
-  a_{N_x - 1/2} = \frac{2}{\rho_{N_x-1} + \rho_0}
-  \label{eq:af_wrap}
-\end{equation}
-このフェイスにより，スパース行列は完全な循環ステンシルを持つ．
-
-\paragraph{（2）境界半格子体積補正の省略}
-壁面 BC では境界ノード（$i=0$ または $i=N$）の制御体積が
-$h/2$（半格子幅）であるため，フェイス係数の寄与を2倍に補正する．
-周期 BC ではすべてのノードが同じ格子幅 $h$ の制御体積を持つため，
-この補正は行わない（$a_f / h^2$ を一様に適用）．
-
-\paragraph{（3）ゴーストノードの同一性拘束}
-本稿の格子は各軸方向に $N+1$ ノード（インデックス $0,1,\ldots,N$）を持つ．
-インデックス $N$ のノードは物理的に $0$ の周期像（ゴーストノード）であり，
-独立な自由度ではない．
-これらのゴーストノードに対応するスパース行列の行を
-\textbf{同一性拘束行（identity-minus）}で置き換える：
-\begin{equation}
-  p_{\mathrm{ghost}} - p_{\mathrm{src}} = 0
-  \quad\Longleftrightarrow\quad
-  A[\mathrm{ghost},\,\mathrm{ghost}] = 1,\quad
-  A[\mathrm{ghost},\,\mathrm{src}]   = -1,\quad
-  b[\mathrm{ghost}] = 0
-  \label{eq:ghost_identity}
-\end{equation}
-ここで $\mathrm{src}$ はゴーストノードに対応する物理ノード（インデックス $0$）を指す．
-各軸方向に独立にゴーストノードを列挙し，複数軸で同時にゴーストとなるコーナー節点は
-最初の軸の拘束のみを採用する（重複適用を避けるため）．
-
-\begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
-  式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
-  充填率 \texttt{fill\_factor}$=1$ の不完全 LU（ILU(0)）を前処理として使用すると，
-  BiCGSTAB の収束が著しく遅延する（FVM 行は対角優位だが同一性拘束行は異なる構造を持つため）．
-  実装では周期 BC に対して \texttt{fill\_factor}$=10$ に引き上げることで安定収束を確認した．
-  直接法（SuperLU / spsolve）はこの問題を回避できるため，
-  収束診断の際は \texttt{ppe\_solver\_type='lu'} で動作確認を行うと有効である．
-\end{tcolorbox}
+%% Neumann BC 実装検証セット（無負荷試験・製造解収束テスト・零モード確認）は
+%% 付録~\ref{sec:ccd_neumann_unit_test} に移動（CHK-086）．
+%% FVM PPE 周期境界条件対応（折り返しフェイス・ゴーストノード拘束・ILU 充填）は
+%% 付録~\ref{sec:fvm_periodic} に移動（CHK-086）．
 
 \subsubsection{高密度比における条件数と数値安定性}
 \label{sec:ppe_condition_number}

@@ -239,3 +239,76 @@ $\nabla\cdot(1/\rho\,\nabla p) = (1/\rho)\nabla^2 p - (\nabla\rho/\rho^2)\cdot\n
 1タイムステップあたりの PPE 求解コストは $O(n^{1.5}) \approx 10^6$ 演算程度であり実用的である．
 
 % ═══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Neumann 境界条件の CCD-Poisson への組み込み}
+\label{sec:ccd_neumann_bc}
+%% 旧所在: §8.2.2（08c_ccd_poisson.tex）→ 付録 C.3 へ移動（CHK-086）
+
+PPE の壁面境界では $\partial p/\partial n = 0$（Neumann 条件）が課される．
+
+\begin{tcolorbox}[algbox, title={Neumann 境界条件 $p'_0 = 0$ の CCD ブロック方程式への組み込み（$x$ 左端 $i=0$）}]
+\textbf{手順1：} PPE を境界ノード $i=0$ 付近で法線積分すると $a_0 p'_0 = 0$ となり，
+密度値によらず $p'_0 = 0$ が境界条件となる：
+\begin{equation}
+  p'_0 \equiv \left.\frac{\partial p}{\partial x}\right|_{x=0} = 0
+  \label{eq:neumann_bc_ccd}
+\end{equation}
+
+\textbf{手順2：} CCD ブロック Thomas 系の $i=0$ 行第1行を式~\eqref{eq:neumann_bc_ccd} で置き換え：
+\[
+  \mathbf{B}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 1 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  \mathbf{C}_0^{\mathrm{bc}} \leftarrow
+  \begin{bmatrix} 0 & 0 \\ \cdot & \cdot \end{bmatrix},\quad
+  r_{0,1}^{\mathrm{bc}} \leftarrow 0
+\]
+第2行（$p''_0$）は通常の内点公式（境界向け修正版）を用いる．
+
+\textbf{手順3：} $p'_0 = 0$ 代入により密度勾配項が消滅：
+$\bigl(\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bm{p}\bigr)_0 = p''_0/\rho_0$．
+右端 $i=N-1$ および $y$ 方向境界も対称的に適用する．
+\end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={Dirichlet 境界との比較}]
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll}
+\hline
+境界条件 & 第1行（$p'$） & 第2行（$p''$） \\
+\hline
+Neumann（$p'=0$） & $p'_0 = 0$（強制代入） & 内点公式（境界版） \\
+Dirichlet（$p=p_{\mathrm{BC}}$） & $p'_0 = $ 解析値 & $p''_0 = $ 解析値 \\
+\hline
+\end{tabular}
+\end{center}
+\end{tcolorbox}
+
+\subsection{2次元 CCD-Poisson 演算子の Matrix-Free 評価手順}
+\label{sec:ccd_matrix_free_eval}
+%% 旧所在: §8.2.3 algbox（08c_ccd_poisson.tex）→ 付録 C.3 へ移動（CHK-086）
+
+\begin{tcolorbox}[algbox, title={2次元 CCD-Poisson 演算子の Matrix-Free 評価手順}]
+\textbf{Step 1 ($x$ スウィープ)：} 各行 $j$ にブロック Thomas 法を適用し，$(D_x^{(1)}p)_{i,j}$，$(D_x^{(2)}p)_{i,j}$ を一括計算．密度勾配 $(D_x^{(1)}\rho)_{i,j}$ は反復ループ開始前に1回計算して固定する．
+
+\textbf{Step 2 ($x$ 演算子値)：}
+$\bigl(\mathcal{L}^{\rho,x}\bm{p}\bigr)_{i,j}
+  = (D_x^{(2)}p)_{i,j}/\rho_{i,j} - (D_x^{(1)}\rho)_{i,j}(D_x^{(1)}p)_{i,j}/\rho_{i,j}^2$
+
+\textbf{Step 3 ($y$ スウィープ)：} 各列 $i$ にブロック Thomas 法を適用し，$(D_y^{(1)}p)_{i,j}$，$(D_y^{(2)}p)_{i,j}$ を計算．
+
+\textbf{Step 4 ($y$ 演算子値加算)：}
+$\bigl(\mathcal{L}^{\rho}\bm{p}\bigr)_{i,j} \mathrel{+}= (D_y^{(2)}p)_{i,j}/\rho_{i,j} - (D_y^{(1)}\rho)_{i,j}(D_y^{(1)}p)_{i,j}/\rho_{i,j}^2$
+
+\textbf{総計算量：} $O(N_x N_y)$．
+\end{tcolorbox}
+
+\subsection{Neumann 境界条件の実装検証セット}
+\label{sec:ccd_neumann_unit_test}
+%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 C.3 へ移動（CHK-086）
+
+CCD の Neumann BC 実装確認のための最小検証セット：
+\begin{enumerate}
+  \item \textbf{無負荷試験：} $q_h \equiv 0$，$(\delta p)^0 = 0$ として反復し，$\|\delta p^m\|_2 \to 0$（機械精度）を確認．
+  \item \textbf{製造解収束テスト：} $p_\text{exact}(x,y) = \cos(\pi x)\cos(\pi y)$ を既知解として $q_h = \mathcal{L}_h p_\text{exact}$ を与え，収束後の誤差が $\Ord{h^6}$ であることを確認．
+  \item \textbf{零モード確認：} $q_h \equiv 0$，$(\delta p)^0 = c$（定数）でピン条件（§\ref{sec:pinpoint}）が $p_{i_0,j_0} \to 0$ を保つことを確認．
+\end{enumerate}

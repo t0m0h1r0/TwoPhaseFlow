@@ -5,6 +5,19 @@
 \section{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}
 
+\subsection{初期圧力場 $p^0$ の設定}
+\label{sec:ppe_p0_init}
+%% 旧所在: §8.1（08_pressure.tex）→ 付録 E.5 へ移動（CHK-086）
+
+IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
+問題に応じて以下から選択する：
+\begin{itemize}
+  \item \textbf{静止液滴（検証問題）：} Young--Laplace 解 $p^0 = -\sigma\kappa_0 = \sigma/R$（液相内），$p^0 = 0$（気相）を解析的に与える（$\kappa_0 = -1/R < 0$）．
+  \item \textbf{一般問題（高密度比を含む）：} $n=0$ でのみ PPE（式~\eqref{eq:PPE_derivation}）を $p^0 = 0$ 初期値で解き，得られた圧力場を $p^0$ として設定する（1回追加求解のコスト）．
+  \item \textbf{簡易設定：} $p^0 = 0$ のまま発進する．$O(\Delta t^2)$ 精度は定常後に達成され，初期数ステップでは $O(\Delta t)$ 過渡誤差が生じうるが，多くの実用問題では無視できる．
+\end{itemize}
+
+\medskip
 本節で解説する\textbf{仮想時間（pseudo-time）陰解法}（スウィープ型，行列フリー）と，
 付録~\ref{app:ccd_lu_direct} のクロネッカー積大域行列による \textbf{LGMRES/直接 LU 法}の
 2種類の実装が本稿では使用可能である：
