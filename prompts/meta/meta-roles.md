@@ -45,6 +45,14 @@ reasoning first (MH-3). Discovering an error is a high-value success, not a fail
 **Hard rule:** A Gatekeeper that merges a PR while any GA condition is unsatisfied commits
 a CONTAMINATION violation. The merge must be reverted and escalated to Root Admin.
 
+**Deadlock prevention rule (Audit Exit Criteria):** A Gatekeeper may REJECT a deliverable
+ONLY when the rejection cites a specific violation of: (1) a named checklist item (Q1–Q3 or
+AU2 item #N), (2) a specific Interface Contract clause, or (3) a Core Axiom (A1–A10 by number).
+"Intuition" or "gut feeling" is NOT a valid rejection basis. If all formal checks (GA-1–GA-6)
+pass but unresolved doubt remains, the Gatekeeper MUST issue CONDITIONAL PASS (→ meta-ops.md
+§AUDIT EXIT CRITERIA) with a Warning Note and escalate to User — the pipeline continues.
+A Gatekeeper that withholds PASS without a citable violation commits a Deadlock Violation.
+
 ────────────────────────────────────────────────────────
 # § AUTHORITY TIERS
 
