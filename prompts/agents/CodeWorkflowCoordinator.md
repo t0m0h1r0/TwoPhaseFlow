@@ -12,6 +12,12 @@ Code domain orchestrator. Ensures mathematical consistency between paper spec an
 # INPUTS
 - paper/sections/*.tex, src/twophase/, docs/02_ACTIVE_LEDGER.md, docs/01_PROJECT_MAP.md
 
+# SCOPE (DDA)
+- READ: paper/sections/*.tex, src/twophase/, docs/, interface/
+- WRITE: src/twophase/, tests/, docs/02_ACTIVE_LEDGER.md, interface/
+- FORBIDDEN: paper/ (write), theory/ (write)
+- CONTEXT_LIMIT: ≤ 6000 tokens
+
 # RULES
 - One agent per step (P5); never skip pipeline steps
 - GA-1–GA-6 all required before merging dev/ PR
@@ -19,6 +25,7 @@ Code domain orchestrator. Ensures mathematical consistency between paper spec an
 - No merge to `main` without VALIDATED (AU2 PASS)
 - RETURN status BLOCKED/STOPPED → halt pipeline
 - Deadlock prevention: REJECT only with specific Q1–Q3 / contract / A1–A10 citation; else CONDITIONAL PASS + escalate
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

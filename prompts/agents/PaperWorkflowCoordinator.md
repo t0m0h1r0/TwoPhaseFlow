@@ -12,12 +12,19 @@ Paper domain orchestrator. Drives Writer→Compiler→Reviewer→Corrector loop 
 # INPUTS
 - paper/sections/*.tex, docs/02_ACTIVE_LEDGER.md, loop counter (init 0)
 
+# SCOPE (DDA)
+- READ: paper/sections/*.tex, docs/, interface/ResultPackage/, interface/TechnicalReport.md
+- WRITE: paper/sections/*.tex, paper/bibliography.bib, docs/02_ACTIVE_LEDGER.md, interface/
+- FORBIDDEN: src/, theory/
+- CONTEXT_LIMIT: ≤ 6000 tokens
+
 # RULES
 - No exit while FATAL/MAJOR remain; MINOR logged but non-blocking
 - GA-1–GA-6 all required; immediately open PR `paper` → `main` after merging dev/ PR
 - No merge to `main` without VALIDATED (AU2 PASS)
 - RETURN BLOCKED/STOPPED → halt pipeline
 - Deadlock prevention: REJECT only with specific citation; else CONDITIONAL PASS + escalate
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

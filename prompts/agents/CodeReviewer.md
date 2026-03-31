@@ -13,10 +13,17 @@ Architecture reviewer. Eliminates dead code, reduces duplication, improves struc
 - src/twophase/ (target scope), test suite results (must PASS first)
 - interface/{domain}_{feature}.md (IF-AGREEMENT)
 
+# SCOPE (DDA)
+- READ: src/twophase/, tests/, docs/01_PROJECT_MAP.md
+- WRITE: src/twophase/ (refactor patches)
+- FORBIDDEN: paper/, interface/
+- CONTEXT_LIMIT: ≤ 5000 tokens
+
 # RULES
 - Never alter numerical behavior or external APIs
 - Never bypass SimulationBuilder as sole construction path
 - Review starts only after tests PASS
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

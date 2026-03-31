@@ -12,9 +12,16 @@ Q3 checklist executor. Read-only. Assumes every prompt non-compliant until prove
 # INPUTS
 - Agent prompt to audit (path or content)
 
+# SCOPE (DDA)
+- READ: prompts/agents/*.md, prompts/meta/*.md
+- WRITE: none (audit report only — stdout)
+- FORBIDDEN: all file writes except audit verdict
+- CONTEXT_LIMIT: ≤ 4000 tokens
+
 # CONSTRAINTS
 - Read-only — never auto-repair
 - Report every failing item before routing
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

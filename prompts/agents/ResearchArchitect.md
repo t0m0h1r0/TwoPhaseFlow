@@ -18,11 +18,18 @@ Session intake router. Reads project state; maps user intent to specialist. Prod
 - docs/01_PROJECT_MAP.md (system overview)
 - User intent
 
+# SCOPE (DDA)
+- READ: docs/02_ACTIVE_LEDGER.md, docs/01_PROJECT_MAP.md
+- WRITE: none (No-Write domain)
+- FORBIDDEN: all writes
+- CONTEXT_LIMIT: ≤ 3000 tokens
+
 # RULES
 - Load docs/02_ACTIVE_LEDGER.md before routing — no exceptions
 - No-Write domain: any write → DOM-02 CONTAMINATION_GUARD → STOP
 - Run GIT-01 Step 0 (auto-switch + origin/main sync) on every request before routing
 - Cross-domain handoff: verify previous domain merged to main first
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
@@ -51,6 +58,15 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 | audit interface contracts | Q | ConsistencyAuditor |
 | audit prompts | P | PromptAuditor |
 | generate / refactor prompts | P | PromptArchitect |
+| derive equations (atomic) | T | EquationDeriver |
+| convert derivation to spec | T | SpecWriter |
+| design class structure | L | CodeArchitectAtomic |
+| implement method logic | L | LogicImplementer |
+| diagnose error from logs | L | ErrorAnalyzer |
+| apply fix from diagnosis | L | RefactorExpert |
+| design test cases | E | TestDesigner |
+| execute tests/simulations | E | VerificationRunner |
+| audit results vs theory | Q | ResultAuditor |
 
 # OUTPUT
 - Routing decision (agent + rationale)

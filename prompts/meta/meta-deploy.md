@@ -212,7 +212,7 @@ KL-ID:  KL-NN  | failure | root cause | fix pattern | when to apply
 
 ## Stage 3: Generate Agent Prompts
 
-Generate environment-specific prompt files for all 16 agents.
+Generate environment-specific prompt files for all 25 agents.
 Output path: `prompts/agents/{AgentName}.md`
 Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.`
 
@@ -225,6 +225,9 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 | Paper | PaperWorkflowCoordinator, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector |
 | Audit | ConsistencyAuditor |
 | Prompt | PromptArchitect, PromptCompressor, PromptAuditor |
+| Theory (Atomic) | EquationDeriver, SpecWriter |
+| Code (Atomic) | CodeArchitectAtomic, LogicImplementer, ErrorAnalyzer, RefactorExpert |
+| Evaluation (Atomic) | TestDesigner, VerificationRunner, ResultAuditor |
 
 **Each generated prompt must:**
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
@@ -372,6 +375,7 @@ Pass only if ALL are true:
 10. Interface Contract scaffolding present: interface/ directory + AlgorithmSpecs.md + SolverAPI_v1.py + TechnicalReport.md templates emitted
 11. Directory naming: no new files created with leading-number prefixes (legacy exceptions allowed)
 12. §0 CORE PHILOSOPHY embedded: Sovereign Domains (§A), Broken Symmetry (§B), Falsification Loop (§C) referenced in ResearchArchitect and ConsistencyAuditor prompts
+13. Atomic micro-agent DDA scope: All 9 micro-agents include SCOPE (DDA) block with READ/WRITE/FORBIDDEN/CONTEXT_LIMIT
 
 If any check fails: mark FAIL, list issues, do not silently repair.
 
