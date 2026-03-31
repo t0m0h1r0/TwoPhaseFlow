@@ -313,7 +313,7 @@ $\varepsilon_{d,\max} = 0.05 \leq 0.25$（式~\eqref{eq:dccd_transfer} の安定
           \quad i = 1, \ldots, N-2
         \]
         境界点 $i=0, N-1$：周期 BC では折り返しインデックスを使用；
-        壁面・流出 BC では $f'$ の境界値に外挿を適用（詳細は §\ref{sec:ccd_bc}）．
+        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§\ref{sec:dccd_bc} 参照）．
   \item \textbf{2 次微分のフィルタ適用：}
         \[
           \tilde{f}''_i = f''_i + \varepsilon_d^{(i)}\,(f''_{i+1} - 2f''_i + f''_{i-1}),
@@ -361,7 +361,7 @@ $O(0.05h^2) \sim O(h^2)$——CCD の $O(h^6)$ より 4 次粗い精度である
 しかし，\textbf{この精度低下は意図的かつ許容範囲内}である：
 バルク領域での $u$ や $p$ の滑らかな挙動に対しては，
 $h^2$ 誤差は格子収束とともに消え（$h \to 0$ で $\varepsilon_d h^2 \to 0$），
-かつ表面張力の CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$（§\ref{sec:balanced_force}）と同オーダーであり，
+かつ GFM の界面離散化誤差（§\ref{sec:gfm}）と同等以下のオーダーであり，
 全体の精度のボトルネックとならない．
 
 界面近傍（$\varepsilon_d^{(i)} \approx 0$）では，フィルタ誤差がゼロに退化し，
@@ -443,8 +443,8 @@ CLS スイッチ関数 $\varepsilon_{d,\max} S(\psi_i)$ を流用できる．
 フラックス形式に基づく厳密な保存は当初から保証していない．
 この前提のもとで DCCD フィルタの非保存的誤差は
 $O(\varepsilon_d^{(i)} h^2)$（式~\eqref{eq:dccd_accuracy_error}）であり，
-CSF モデルの界面誤差 $O(\varepsilon^2)\approx O(h^2)$（§\ref{sec:balanced_force}）と
-同オーダーとなる．したがって，微分場フィルタは既存の離散化誤差の構造と整合しており，
+GFM の界面離散化誤差（§\ref{sec:gfm}）と同等以下のオーダーとなる．
+したがって，微分場フィルタは既存の離散化誤差の構造と整合しており，
 精度と安定性のトレードオフとして許容される．
 
 \begin{tcolorbox}[mybox, title={フラックス形フィルタの適用指針}]
