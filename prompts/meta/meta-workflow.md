@@ -116,6 +116,20 @@ re-propagation required).
 **Update rule:** When a domain re-signs its Interface Contract (after CI/CP propagation),
 the corresponding hash and all downstream hashes MUST be updated before new dev/ work begins.
 
+**Initialization rule (first-run):** On fresh deployment, `[INTEGRITY_MANIFEST]` does not yet exist.
+EnvMetaBootstrapper creates the section with all hashes set to `{pending}`. A `{pending}` hash means
+the corresponding domain's Interface Contract has not yet been signed. Downstream domains must treat
+`{pending}` upstream hashes the same as a missing contract — BLOCK new dev/ work until the upstream
+domain executes its pipeline and replaces `{pending}` with a real hash.
+
+**Hash mismatch circuit breaker:** If a Gatekeeper performing hash continuity verification finds that
+the current `sha256` of an upstream Interface Contract does NOT match the hash recorded in
+`[INTEGRITY_MANIFEST]`, the Gatekeeper MUST:
+1. Issue a CONTAMINATION notice in `docs/02_ACTIVE_LEDGER.md`
+2. STOP all downstream dev/ work immediately
+3. Trigger CI/CP re-propagation from the domain where the mismatch was detected
+4. Do NOT issue PASS until the hash is reconciled and the manifest is updated
+
 ────────────────────────────────────────────────────────
 # § GIT BRANCH GOVERNANCE → meta-domains.md
 
@@ -244,7 +258,11 @@ IF-AGREE   PromptArchitect  [MANDATORY before dispatching PromptCompressor]
 PLAN     PromptArchitect
            → Parse target agent + environment; identify gaps vs. meta files
 
-EXECUTE  PromptArchitect   [Gatekeeper, acts as primary executor]  — generate or refactor prompt on dev/PromptArchitect
+EXECUTE  PromptArchitect   [Gatekeeper, acts as primary executor for generation tasks]
+           — generate or refactor prompt on dev/PromptArchitect
+           NOTE (Broken Symmetry): PromptArchitect is NOT the auditor of its own output.
+           PromptAuditor (independent agent) performs the VERIFY phase — this preserves
+           Broken Symmetry for the Prompt domain (meta-core.md §B, MH-3).
          PromptCompressor  [Specialist on dev/PromptCompressor]    — compress existing prompt
            → Artifact: prompts/agents/{AgentName}.md (committed on dev/ branch)
            → Specialist opens PR: dev/{agent_role} → prompt (with LOG-ATTACHED audit scan)

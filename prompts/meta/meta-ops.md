@@ -49,6 +49,17 @@ Three tiers determine which git operations each agent may invoke:
 **Gatekeeper rights:** May immediately reject PRs with insufficient or missing evidence.
 **Root Admin obligations:** Final syntax/format check of PRs to `main`; executes final merge.
 
+**ConsistencyAuditor hybrid tier (Cross-Domain Auditor):**
+ConsistencyAuditor holds a dual role that must not be confused:
+- **Git operations → Specialist tier:** Uses `dev/ConsistencyAuditor` branch; GIT-SP authority only.
+  Rationale: ConsistencyAuditor must be independent of all domain branches to preserve Broken Symmetry.
+  It never commits directly to `code`, `paper`, or `prompt` branches.
+- **Release gate authority → Gatekeeper level:** Issues AU2 PASS/FAIL verdicts; signs
+  `interface/AlgorithmSpecs.md` (T-Domain gate). These verdicts are Gatekeeper-equivalent decisions
+  that block or unblock domain merges to `main`.
+Consequence: ConsistencyAuditor's git tier is Specialist; its verdict authority is Gatekeeper.
+No other agent may issue AU2 verdicts. No other agent may sign T-Domain Interface Contracts.
+
 ────────────────────────────────────────────────────────
 # § ROLE → OPERATION INDEX
 

@@ -693,5 +693,5 @@ paper and code domains.
   work and intermediate derivations are INVISIBLE to the Auditor (→ meta-core.md §0 §B, HAND-03 check 10)
 
 **STOP**
-- Contradiction between authority levels → STOP; escalate to domain WorkflowCoordinator
-- MMS test results unavailable → STOP; ask user to run tests first
+- Contradiction between authority levels → STOP; issue RETURN with status STOPPED; escalate to domain WorkflowCoordinator
+- MMS test results unavailable → STOP; issue RETURN with status STOPPED; ask user to run tests first
