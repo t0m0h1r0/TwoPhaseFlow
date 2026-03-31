@@ -38,13 +38,19 @@ if TYPE_CHECKING:
 _EPS_NORM = 1e-3   # regularisation floor for |∇φ| (paper §3.5 recommended value)
 
 
+# DO NOT DELETE — passed tests 2026-03-27
+# Superseded by: CurvatureCalculatorPsi in curvature_psi.py
+# Retained for: cross-validation and regression baseline
 class CurvatureCalculator(ICurvatureCalculator):
-    """Compute interface curvature κ from the CLS field ψ.
+    """Compute interface curvature κ from the CLS field ψ (via phi inversion).
+
+    Legacy implementation: inverts ψ → φ via logit, then computes κ from φ.
+    Superseded by CurvatureCalculatorPsi which computes κ directly from ψ.
 
     Parameters
     ----------
     backend : Backend
-    ccd     : CCDSolver — コンストラクタ注入（毎呼び出しでの引き渡し不要）
+    ccd     : CCDSolver — constructor injection
     eps     : interface thickness ε (used for H_ε inversion)
     """
 

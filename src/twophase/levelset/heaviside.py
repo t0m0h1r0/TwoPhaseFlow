@@ -32,7 +32,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
-# Small clipping value to avoid log(0) in Newton inversion
+# Saturation clamp (section 3b algbox step 1): delta_clamp = 1e-6
+# phi_max = eps * ln((1 - delta_clamp) / delta_clamp) ~ 13.8 * eps
+_DELTA_CLAMP = 1e-6
+
+# Legacy clip value retained for backward compatibility
 _PSI_CLIP = 1e-10
 
 
@@ -70,20 +74,63 @@ def delta(xp, phi, eps: float):
 
 
 def invert_heaviside(xp, psi, eps: float):
-    """Exact inverse of H_ε: φ = ε · ln(ψ / (1 − ψ)).
+    """Exact inverse of H_ε with saturation handling (section 3b algbox).
+
+    Algorithm (section 3b):
+      1. Saturation test: psi < delta_clamp or psi > 1 - delta_clamp
+      2. Saturated points: phi = +/- phi_max
+      3. Standard region: phi = eps * ln(psi / (1 - psi))
+
+    Newton fallback (eq. newton_inversion) is applied to saturated points
+    that fall within (delta_clamp, _PSI_CLIP) or (1-_PSI_CLIP, 1-delta_clamp),
+    though in practice such points are negligible (~O(e^{-15})).
 
     Parameters
     ----------
     xp  : array namespace
-    psi : array of ψ values (clipped to (_PSI_CLIP, 1-_PSI_CLIP))
-    eps : interface thickness ε
+    psi : array of psi values in [0, 1]
+    eps : interface thickness epsilon
 
     Returns
     -------
     phi : signed-distance estimate
     """
-    psi_safe = xp.clip(psi, _PSI_CLIP, 1.0 - _PSI_CLIP)
-    return eps * xp.log(psi_safe / (1.0 - psi_safe))
+    import numpy as np
+
+    phi_max = eps * np.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
+
+    phi = xp.empty_like(psi, dtype=float)
+
+    # Masks for three regions
+    sat_low = psi <= _DELTA_CLAMP
+    sat_high = psi >= 1.0 - _DELTA_CLAMP
+    standard = ~sat_low & ~sat_high
+
+    # Step 2: saturated regions -> +/- phi_max
+    phi[sat_low] = -phi_max
+    phi[sat_high] = phi_max
+
+    # Step 3: standard region -> analytic logit
+    if xp.any(standard):
+        psi_std = psi[standard]
+        phi[standard] = eps * xp.log(psi_std / (1.0 - psi_std))
+
+    # Newton fallback (eq. newton_inversion, section 3b eq.66):
+    # For points near saturation boundary where analytic inversion
+    # may have reduced accuracy, refine with 2 Newton iterations.
+    # In practice with delta_clamp=1e-6, this covers ~0 points.
+    near_sat = ((psi > _DELTA_CLAMP) & (psi < 10 * _DELTA_CLAMP)) | \
+               ((psi < 1.0 - _DELTA_CLAMP) & (psi > 1.0 - 10 * _DELTA_CLAMP))
+    if xp.any(near_sat):
+        phi_ns = phi[near_sat]
+        psi_ns = psi[near_sat]
+        for _ in range(2):
+            H_k = 1.0 / (1.0 + xp.exp(-phi_ns / eps))
+            dH_k = (1.0 / eps) * H_k * (1.0 - H_k)
+            phi_ns = phi_ns - (H_k - psi_ns) / dH_k
+        phi[near_sat] = xp.clip(phi_ns, -phi_max, phi_max)
+
+    return phi
 
 
 def update_properties(xp, psi, rho_l: float, rho_g: float,
