@@ -212,7 +212,7 @@ KL-ID:  KL-NN  | failure | root cause | fix pattern | when to apply
 
 ## Stage 3: Generate Agent Prompts
 
-Generate environment-specific prompt files for all 25 agents.
+Generate environment-specific prompt files for all 26 agents.
 Output path: `prompts/agents/{AgentName}.md`
 Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.`
 
@@ -221,7 +221,7 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 | Domain | Agent |
 |--------|-------|
 | Routing | ResearchArchitect |
-| Code | CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner |
+| Code | CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst |
 | Paper | PaperWorkflowCoordinator, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector |
 | Audit | ConsistencyAuditor |
 | Prompt | PromptArchitect, PromptCompressor, PromptAuditor |

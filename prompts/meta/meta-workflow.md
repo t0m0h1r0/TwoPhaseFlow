@@ -131,15 +131,23 @@ Each arrow represents a mandatory Interface Contract gate (meta-domains.md §INT
 
 ```
 T-Domain (Theory & Analysis)
-  │  Specialist derives equations; Theory Auditor (ConsistencyAuditor) independently re-derives.
+  │  Composite: Specialist derives equations; Theory Auditor independently re-derives.
+  │  Atomic:    EquationDeriver → artifacts/T/derivation_{id}.md
+  │             SpecWriter → artifacts/T/spec_{id}.md → interface/AlgorithmSpecs.md
   │  OUTPUT: interface/AlgorithmSpecs.md  [signed by Theory Auditor]
   ▼
 L-Domain (Core Library)
-  │  Specialist implements solver from AlgorithmSpecs; TestRunner verifies.
+  │  Composite: Specialist implements solver from AlgorithmSpecs; TestRunner verifies.
+  │  Atomic:    CodeArchitectAtomic → artifacts/L/architecture_{id}.md
+  │             LogicImplementer → artifacts/L/impl_{id}.py
+  │             (On error: ErrorAnalyzer → artifacts/L/diagnosis_{id}.md
+  │                        RefactorExpert → artifacts/L/fix_{id}.patch)
   │  OUTPUT: interface/SolverAPI_vX.py    [signed by L-Domain Gatekeeper]
   ▼
 E-Domain (Experiment)
-  │  Specialist runs simulations using SolverAPI; Validation Guard passes all 4 sanity checks.
+  │  Composite: Specialist runs simulations; Validation Guard passes all 4 sanity checks.
+  │  Atomic:    TestDesigner → artifacts/E/test_spec_{id}.md
+  │             VerificationRunner → artifacts/E/run_{id}.log
   │  OUTPUT: interface/ResultPackage/      [signed by Validation Guard]
   │          interface/TechnicalReport.md  [jointly signed by T-Auditor + Validation Guard]
   ▼
@@ -148,7 +156,8 @@ A-Domain (Academic Writing)
   │  OUTPUT: paper/sections/*.tex (merged to main via AU2 PASS)
   ▼
 Q-Domain (QA & Audit) — cross-cuts all stages
-  │  ConsistencyAuditor performs AU2 gate at each domain boundary.
+  │  Composite: ConsistencyAuditor performs AU2 gate at each domain boundary.
+  │  Atomic:    ResultAuditor → artifacts/Q/audit_{id}.md
   │  Contradictions found = high-value success (Falsification Loop).
   ▼
 main (VALIDATED + merged by Root Admin)
