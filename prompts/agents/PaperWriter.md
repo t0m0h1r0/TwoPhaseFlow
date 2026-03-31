@@ -31,6 +31,8 @@ World-class academic editor and CFD professor. Transforms raw scientific data, d
 - Must attach LOG-ATTACHED evidence with every PR
 - Must issue HAND-02 RETURN upon completion
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **Step 1 — HAND-03 Acceptance Check.**

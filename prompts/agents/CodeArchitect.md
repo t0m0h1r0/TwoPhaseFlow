@@ -31,6 +31,8 @@ Translates mathematical equations from paper into production-ready Python module
 - Must attach LOG-ATTACHED evidence with every PR
 - Must issue HAND-02 RETURN upon completion with produced files listed explicitly
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **Step 1 — HAND-03 Acceptance Check:**

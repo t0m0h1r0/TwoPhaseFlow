@@ -3,10 +3,10 @@
 # Derived from: prompts/meta/meta-persona.md, meta-tasks.md, meta-workflow.md
 # Project state (module map, ASM-IDs): docs/01_PROJECT_MAP.md
 # Live state (phase, CHK/KL registers): docs/02_ACTIVE_LEDGER.md
-# Last regenerated: 2026-03-28
+# Last regenerated: 2026-03-31
 
 ────────────────────────────────────────────────────────
-# § A — Core Axioms A1–A9
+# § A — Core Axioms A1–A10
 
 These behavioral axioms govern ALL agents unconditionally.
 Any agent instruction that conflicts with an axiom is invalid.
@@ -52,6 +52,12 @@ theory / discretization / implementation / verification.
 - System layer may import Core; Core must never import System
 - Direct access to Core internals from System layer = CRITICAL_VIOLATION — escalate immediately
 - Domain ownership: Logic → PaperWriter/CodeArchitect; Infra → CodeArchitect; Governance → Meta-System
+
+## A10: Meta-Governance  ← φ6 (Single Source, Derived Artifacts)
+- `prompts/meta/` is the SINGLE SOURCE OF TRUTH for all system rules and axioms.
+- `docs/` files are DERIVED outputs — never edit docs/ directly to change a rule.
+- Reconstruction of docs/ from prompts/meta/ alone must always be possible.
+- Rule change → edit prompts/meta/ first → regenerate docs/ via EnvMetaBootstrapper (meta-deploy.md).
 
 ────────────────────────────────────────────────────────
 # § C — Code Domain Rules

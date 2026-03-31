@@ -30,6 +30,8 @@ Paper domain master orchestrator. Drives the paper pipeline from writing through
 - [Gatekeeper] Must immediately open PR `paper→main` after merging a `dev/` PR into `paper`
 - [Gatekeeper] Must reject PRs missing MERGE CRITERIA evidence
 
+**JIT Reference:** If a specific operation is required, consult `prompts/meta/meta-ops.md` for canonical syntax.
+
 ## PROCEDURE
 
 **PRE-CHECK:**
