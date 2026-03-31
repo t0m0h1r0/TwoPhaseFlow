@@ -105,44 +105,60 @@ DCCD フィルタ（$\varepsilon_d = 0.25$）を適用した結果，
 % ─────────────────────────────────────────────────────────────────────────────
 
 曲率計算（§\ref{sec:curvature}，式~\eqref{eq:curvature_2d}）の精度を
-2 種類のテスト問題で検証する．
+2 種類のテスト問題と 3 つの計算経路で検証する．
+3 経路の定義を以下に示す：
+\begin{itemize}
+  \item \textbf{経路 A（$\phi$ 直接）：}
+        真の符号付距離関数 $\phi$ に CCD を適用し $\kappa$ を計算（理想ベースライン）．
+  \item \textbf{経路 B（$\psi \to \phi$ ロジット逆変換）：}
+        CLS 変数 $\psi$ からロジット逆変換
+        $\phi = \varepsilon\ln[\psi/(1-\psi)]$（§\ref{sec:newton_inversion}）で
+        $\phi$ を復元し，$\phi$ の CCD 微分から $\kappa$ を計算（従来法）．
+  \item \textbf{経路 C（$\psi$ 直接法，§\ref{sec:curvature_direct_psi_cls}）：}
+        $\psi$ の CCD 微分値から式~\eqref{eq:curvature_psi_2d} で $\kappa$ を直接計算
+        （ロジット逆変換を省略；§\ref{sec:curvature_direct_psi_cls} の推奨経路）．
+\end{itemize}
 
 \textbf{(a) 正弦波状界面 $y = 0.5 + A\sin(2\pi x)$，$A = 0.05$：}
-曲率の解析解 $\kappa = -f''/(1+f'^2)^{3/2}$ と CCD 計算値を比較する．
-$N = 32 \to 256$ で $L_\infty$ 誤差の収束次数は
-$p \approx 4.96$--$4.99$，$L_2$ では $p \approx 5.45$--$5.50$ を示す
-（表~\ref{tab:curvature_sinusoidal}）．
+曲率の解析解 $\kappa = f''/(1+f'^2)^{3/2}$ と CCD 計算値を比較する．
+経路 A では $N = 32 \to 256$ で $L_\infty$ 誤差の収束次数は
+$p \approx 4.96$--$5.00$ を示す（表~\ref{tab:curvature_sinusoidal}）．
 これは CCD 6 次精度微分から期待される高次収束と整合する．
 
 \begin{table}[htbp]
 \centering
-\caption{正弦波状界面の曲率誤差収束（CCD 法，$A = 0.05$）}
+\caption{正弦波状界面の曲率 $L_\infty$ 誤差収束（$A = 0.05$，$\varepsilon = 1.5h$）}
 \label{tab:curvature_sinusoidal}
-\begin{tabular}{rrrrr}
+\begin{tabular}{rrrrrrr}
 \toprule
-$N$ & $L_\infty$ 誤差 & 次数 & $L_2$ 誤差 & 次数 \\
+$N$ & A: $\phi$ 直接 & 次数 & B: ロジット経由 & 次数 & C: $\psi$ 直接 & 次数 \\
 \midrule
- 32 & $7.64 \times 10^{-4}$ & ---  & $1.74 \times 10^{-4}$ & ---  \\
- 64 & $2.45 \times 10^{-5}$ & 4.96 & $3.97 \times 10^{-6}$ & 5.45 \\
-128 & $7.72 \times 10^{-7}$ & 4.99 & $8.85 \times 10^{-8}$ & 5.49 \\
-256 & $2.44 \times 10^{-8}$ & 4.99 & $1.96 \times 10^{-9}$ & 5.50 \\
+ 32 & $7.64 \times 10^{-4}$ & ---  & $7.64 \times 10^{-4}$ & ---  & $3.84 \times 10^{-2}$ & ---  \\
+ 64 & $2.45 \times 10^{-5}$ & 4.96 & $2.14 \times 10^{-5}$ & 5.16 & $2.19 \times 10^{-2}$ & 0.81 \\
+128 & $7.72 \times 10^{-7}$ & 4.99 & $5.80 \times 10^{-6}$ & 1.88 & $2.27 \times 10^{-2}$ & $-0.05$ \\
+256 & $2.42 \times 10^{-8}$ & 5.00 & $1.33 \times 10^{-5}$ & $-1.20$ & $3.59 \times 10^{-2}$ & $-0.66$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+経路 A は全格子で $\Ord{h^5}$ を維持する．
+経路 B は $N \leq 64$ で A と同等の精度を示すが，$N \geq 128$ では
+ロジット逆変換の飽和域処理に起因する誤差が顕在化して収束が停滞する．
+経路 C は全格子で収束しない（次節で原因を分析）．
+
 \textbf{(b) 円形界面（半径 $R = 0.25$，$\kappa_\mathrm{exact} = 1/R = 4$）：}
-CCD 法と標準 2 次精度中央差分（CD2）を比較する（表~\ref{tab:curvature_circle}）．
+CCD 法と標準 2 次精度中央差分（CD2）を経路 B で比較する
+（表~\ref{tab:curvature_circle}）．
 両手法とも $\Ord{h^1}$ 程度の収束にとどまる．
 これは CCD の理論精度限界ではなく，CLS 変数 $\psi$ から符号付距離関数 $\phi$ への
-逆変換 $\phi = \varepsilon \ln[\psi/(1-\psi)]$（§\ref{sec:reinit}）が
-界面厚み $\varepsilon = \Ord{h}$ に律速される系統誤差を生むためである．
-§\ref{sec:verify_curvature} の (a) で正弦波界面に対して $\Ord{h^5}$ を確認したことから，
+逆変換が界面厚み $\varepsilon = \Ord{h}$ に律速される系統誤差を生むためである．
+(a) で正弦波界面に対して経路 A が $\Ord{h^5}$ を達成したことから，
 CCD 微分演算自体は高精度であり，曲率精度の律速因子は
-$\psi \to \phi$ 逆変換の近似精度であることが分かる．
+界面表現の解像度（$\varepsilon$ に対する格子点数）であることが分かる．
 
 \begin{table}[htbp]
 \centering
-\caption{円形界面の曲率 $L_\infty$ 誤差収束：CCD 法 vs CD2 法}
+\caption{円形界面の曲率 $L_\infty$ 誤差収束：CCD 法 vs CD2 法（経路 B，$\varepsilon = 1.5h$）}
 \label{tab:curvature_circle}
 \begin{tabular}{rrrrr}
 \toprule
@@ -156,6 +172,94 @@ $N$ & CCD $L_\infty$ & 次数 & CD2 $L_\infty$ & 次数 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{$\psi$ 直接法の数値的安定性：$\varepsilon$ 依存性の分析}
+\label{sec:verify_psi_direct_stability}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§\ref{sec:curvature_direct_psi_cls} で導入した $\psi$ 直接法（経路 C）は
+曲率不変性定理（定理~\ref{thm:curvature_invariance}）に基づく
+数学的に厳密な手法であるが，
+標準 CLS 設定 $\varepsilon = 1.5h$ では数値的安定性に課題がある．
+
+\textbf{原因：}
+シグモイドの最大勾配は $|\bnabla\psi|_{\max} = 1/(4\varepsilon)$ であり，
+$\varepsilon = 1.5h$ のとき $|\bnabla\psi|_{\max} \propto N$ と格子精緻化に伴い
+際限なく増大する．
+式~\eqref{eq:curvature_psi_2d} の分子・分母はいずれも
+$|\bnabla\psi|^3 \propto 1/\varepsilon^3$ でスケールするため，
+大きな値同士の差に起因する\textbf{桁落ち}が発生し，
+$N$ 増加とともに曲率誤差が\emph{増大}する（表~\ref{tab:curvature_sinusoidal} 経路 C）．
+
+\textbf{$\varepsilon$ 固定時の検証：}
+$\varepsilon$ を $h$ に依存させず $\varepsilon = 0.05$（固定）とし，
+格子精緻化とともにシグモイドの解像度（$\varepsilon/h$）を向上させた場合，
+経路 C は $\Ord{h^6}$ の収束を達成する（表~\ref{tab:curvature_eps_fixed}）．
+$\varepsilon/h \geq 3$（1 遷移幅あたり 6 格子点以上）が安定な適用条件である．
+
+\begin{table}[htbp]
+\centering
+\caption{$\varepsilon = 0.05$（固定）での $\psi$ 直接法（経路 C）の曲率収束
+（円形界面 $R = 0.25$，$|\phi| < 2h$ の狭帯域で評価）}
+\label{tab:curvature_eps_fixed}
+\begin{tabular}{rrrr}
+\toprule
+$N$ & $\varepsilon/h$ & 経路 C $L_\infty$ 誤差 & 次数 \\
+\midrule
+ 32 & 1.6 & $2.34 \times 10^{-3}$ & ---  \\
+ 64 & 3.2 & $1.44 \times 10^{-5}$ & 7.35 \\
+128 & 6.4 & $2.13 \times 10^{-7}$ & 6.08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{tcolorbox}[resultbox, title={曲率計算経路の選択指針}]
+\label{result:curvature_path_selection}
+\begin{itemize}
+  \item \textbf{標準 CLS 設定（$\varepsilon = \Ord{h}$）：}
+        経路 B（$\psi \to \phi$ ロジット逆変換→CCD）を使用する．
+        律速因子は界面解像度であり，CCD vs CD2 の精度差は $N \geq 64$ で消失する．
+  \item \textbf{厚い界面設定（$\varepsilon/h \geq 3$）：}
+        経路 C（$\psi$ 直接法）が $\Ord{h^6}$ を達成し，
+        ロジット逆変換の飽和域誤差を回避できる．
+  \item \textbf{精度ベースライン（検証用途）：}
+        経路 A（真の符号付距離関数 $\phi$）は CCD 微分精度の上界を与える．
+\end{itemize}
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{実効界面厚み $\varepsilon_{\textup{eff}}$ によるプロファイル品質検証}
+\label{sec:verify_eps_eff}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§\ref{sec:curvature_direct_psi_cls} で導入した実効界面厚み
+（式~\eqref{eq:epsilon_eff}）の診断精度を確認する．
+円形界面（$R = 0.25$）の初期プロファイル $\psi = H_\varepsilon(\phi_\mathrm{exact})$
+に対して，界面近傍（$\psi_{\min} < \psi < 1-\psi_{\min}$，$\psi_{\min} = 0.01$）の
+$\varepsilon_{\textup{eff}}/\varepsilon$ を計測した．
+
+\begin{table}[htbp]
+\centering
+\caption{$\varepsilon_{\textup{eff}}$ プロファイル品質診断（円形界面 $R = 0.25$，$\varepsilon = 1.5h$）}
+\label{tab:eps_eff_diagnostic}
+\begin{tabular}{rrrrrr}
+\toprule
+$N$ & 界面帯点数 & $\varepsilon_{\textup{eff}}/\varepsilon$（平均） & 標準偏差 & 最小 & 最大 \\
+\midrule
+ 64 & 1388 & 1.000001 & $2.7 \times 10^{-5}$ & 0.9999 & 1.0001 \\
+128 & 2732 & 1.000001 & $2.7 \times 10^{-5}$ & 0.9999 & 1.0001 \\
+256 & 5548 & 1.000001 & $2.7 \times 10^{-5}$ & 0.9999 & 1.0001 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+全格子解像度で $\varepsilon_{\textup{eff}}/\varepsilon \approx 1$ が
+$\Ord{10^{-5}}$ の精度で成立しており，
+初期プロファイルのシグモイド形状が
+CCD 微分で正確に再現されていることを確認した．
+$\varepsilon_{\textup{eff}}$ は移流計算後のプロファイル歪みを
+定量的に検出する運用時の診断指標として有用である．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{界面処理の精度検証}
@@ -347,8 +451,11 @@ TVD-RK3 の陽的安定領域の制約を示す．
 
 表~\ref{tab:verification_summary} に各コンポーネントの検証結果を総括する．
 全ての離散演算子が設計精度を達成していることを確認した．
-曲率計算の律速因子は CCD 微分精度ではなく $\psi \to \phi$ 逆変換であり，
+曲率計算の律速因子は CCD 微分精度ではなく界面表現の解像度（$\varepsilon/h$）であり，
 この知見は第~\ref{sec:validation}章の多相流ベンチマークにおける精度解釈の基礎となる．
+$\psi$ 直接法は $\varepsilon/h \geq 3$ で $\Ord{h^6}$ を達成するが，
+標準 CLS 設定（$\varepsilon = 1.5h$）ではシグモイド勾配の急峻化に伴う桁落ちにより
+$\phi$ 経由法が実用上優位である．
 
 \begin{table}[htbp]
 \centering
@@ -361,8 +468,10 @@ TVD-RK3 の陽的安定領域の制約を示す．
 CCD 微分（周期） & $\Ord{h^6}$ & $\Ord{h^{6.0}}$ & $N = 256$ で丸め誤差到達 \\
 CCD 微分（壁面） & $\Ord{h^6}$ & $\Ord{h^{6.8\text{--}8.6}}$ & 境界項で超収束 \\
 DCCD フィルタ   & $H(\pi) = 0$ & $H(\pi) = 0$ & チェッカーボード完全抑制 \\
-曲率（正弦波）   & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ ($L_\infty$) & 十分高次 \\
-曲率（円形）     & $\Ord{h^6}$ & $\Ord{h^{1.1}}$ & $\psi \to \phi$ 逆変換が律速 \\
+曲率（正弦波，経路 A） & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ ($L_\infty$) & $\phi$ 直接；十分高次 \\
+曲率（円形，経路 B）   & --- & $\Ord{h^{1.1}}$ & $\varepsilon = 1.5h$ が律速 \\
+曲率（$\psi$ 直接，$\varepsilon$ 固定） & $\Ord{h^6}$ & $\Ord{h^{6.1}}$ & $\varepsilon/h \geq 3$ で達成 \\
+$\varepsilon_{\textup{eff}}$ 診断 & $\varepsilon_{\textup{eff}}/\varepsilon = 1$ & $1.000 \pm 10^{-5}$ & 初期プロファイル品質 \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ 律速 \\
 PPE (FVM-LU)    & $\Ord{h^2}$ & $\Ord{h^{2.0}}$ & 製造解で精確に確認 \\
 TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE・PDE 両方で確認 \\
