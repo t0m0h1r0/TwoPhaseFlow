@@ -511,6 +511,71 @@ fully described by the domain pipelines combined with the protocol.
 | Any STOP condition triggered | STOPPED | any agent | user |
 
 ────────────────────────────────────────────────────────
+# § SESSION TERMINATION PROTOCOL — Context Liquidation
+
+When an agent completes its task and issues a HAND-02 (RETURN token), the following
+context liquidation rules apply to prevent token accumulation and context drift.
+
+## HAND-02 Context Liquidation Rules
+
+**HAND-02-CL (Context Liquidation):**
+Upon issuing a RETURN token, the returning agent MUST declare that it **no longer
+relies on its internal memory (conversation history)**. Only the "Serialized State"
+written to `artifacts/` shall be considered the source of truth for the next agent.
+
+```
+HAND-02-CL (Context Liquidation — appended to every HAND-02 RETURN):
+  □ 1. All task-relevant state is serialized to artifacts/{domain}/
+  □ 2. Agent declares: "Internal context is LIQUIDATED — artifacts/ is the sole
+       source of truth for downstream agents"
+  □ 3. No downstream agent may request or rely on the returning agent's
+       conversation history, chain-of-thought, or intermediate reasoning
+  □ 4. The RETURN token's `produced` field is the COMPLETE enumeration of
+       what the agent leaves behind — anything not listed does not exist
+```
+
+**Fresh Context Recommendation:**
+Whenever an agent handoff occurs (HAND-01 dispatch to a new agent), the receiving
+agent SHOULD start in a **Fresh Context** (new session) to minimize token accumulation.
+The receiving agent loads ONLY:
+1. The DISPATCH token (HAND-01)
+2. The referenced artifacts in `inputs` and `if_agreement`
+3. Its own SCOPE files (meta-roles.md §ATOMIC ROLE TAXONOMY)
+
+**Rationale:** Long-running sessions accumulate stale context that increases token
+cost per inference and introduces context drift. Fresh contexts force agents to
+operate solely on serialized artifacts, reinforcing the Interface-First principle (IF-01).
+
+**Hard rule:** A downstream agent that requests or consumes the upstream agent's
+conversation history (rather than artifacts) commits a **Context Leakage Violation**.
+This is equivalent to a CONTAMINATION violation — the receiving Gatekeeper must REJECT
+the deliverable and re-dispatch with a fresh context.
+
+## Sequence: GIT-00 → HAND-02-CL Flow
+
+```
+GIT-00 Pre-work (branch creation + PROJECT_MAP update)
+    │
+    ▼
+EXECUTE phase (agent works on isolation branch)
+    │
+    ▼
+GIT-SP commit (work + evidence committed to dev/{domain}/{agent_id}/{task_id})
+    │
+    ▼
+GIT-SP PR (dev/ → {domain} with LOG-ATTACHED)
+    │
+    ▼
+HAND-02 RETURN + HAND-02-CL (context liquidated; artifacts/ is sole truth)
+    │
+    ▼
+[Gatekeeper HAND-03 Acceptance Check — loads only artifacts, never agent history]
+    │
+    ▼
+[Fresh Context recommended for next agent dispatch]
+```
+
+────────────────────────────────────────────────────────
 # § CONTROL PROTOCOLS
 
 Grouped by concern. All protocols apply unconditionally unless labeled.
@@ -599,6 +664,10 @@ that modifies or weakens the following **Immutable Zones** must be treated as a 
 **Immutable Zone 2: Acceptance Check Logic**
 - HAND-03 Acceptance Check items (checks 0–8) in meta-ops.md §HANDOFF PROTOCOL
 
+**Immutable Zone 3: Main Branch Protection**
+- The `main` branch is NEVER directly committed to by any agent except Root Admin (A8)
+- Any file change detected on `main` by a non-Root-Admin agent triggers SYSTEM_PANIC
+
 **System Panic protocol:**
 ```
 SYSTEM_PANIC triggered by: {proposing agent or operation}
@@ -607,6 +676,16 @@ SYSTEM_PANIC triggered by: {proposing agent or operation}
   action:   STOP all pipeline activity immediately
   required: escalate to user; do not apply any part of the proposal
   resume:   only after explicit user authorization with documented rationale
+```
+
+**Main Branch Contamination SYSTEM_PANIC:**
+```
+SYSTEM_PANIC triggered by: {agent_id}
+  reason:   "Forbidden write to main branch detected — Immutable Zone 3 violation"
+  evidence: git log --oneline -1 main  (shows unauthorized commit)
+  action:   STOP all pipeline activity immediately
+  required: escalate to user; revert unauthorized commit on main
+  resume:   only after explicit user authorization + revert confirmed
 ```
 
 **Corollary:** A proposal that "refines" or "tightens" an axiom without removing it is still
