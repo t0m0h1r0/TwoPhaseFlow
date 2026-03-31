@@ -115,12 +115,12 @@ $f_k = f_0 + kh\fp{0} + \frac{k^2h^2}{2}\fpp{0} + \frac{k^3h^3}{6}f^{(3)}_0 + \f
   \frac{1}{h^2}(2f_0-5f_1+4f_2-f_3)
   = \fpp{0} + \underbrace{\left(-\frac{11}{12}h^2 f^{(4)}_0 + \cdots\right)}_{\text{打ち切り誤差 }\mathcal{O}(h^2)}
 \]
-よってこの境界スキームは $\mathcal{O}(h^2)$ 精度の片側差分公式であり，
-内点の $\mathcal{O}(h^6)$ より低次だが，§\ref{sec:ccd_bc} 冒頭の $L^2$ ノルム重み付け解析
-（式~\eqref{eq:bc_L2_weighting}）が示すとおり，全体 $L^2$ 誤差への影響は $\mathcal{O}(h^{5/2})$ に抑えられる
+よってこの境界スキームは $\Ord{h^2}$ 精度の片側差分公式であり，
+内点の $\Ord{h^6}$ より低次だが，§\ref{sec:ccd_bc} 冒頭の $L^2$ ノルム重み付け解析
+（式~\eqref{eq:bc_L2_weighting}）が示すとおり，全体 $L^2$ 誤差への影響は $\Ord{h^{5/2}}$ に抑えられる
 （\cite{ChuFan1998} 参照）．
 
-高精度な境界処理（$\mathcal{O}(h^4)$ 以上）が必要な場合はゴーストセル法（付録~\ref{app:ccd_ghost}）または
+高精度な境界処理（$\Ord{h^4}$ 以上）が必要な場合はゴーストセル法（付録~\ref{app:ccd_ghost}）または
 4次精度昇格スキーム（付録~\ref{app:ccd_bc_derivation_II_h4}）を採用する．
 
 
@@ -277,16 +277,16 @@ $N_y$ 本のスウィープを並列実行できる．マルチコアCPU/GPU で
 \hline
 標準的な Dirichlet BC \\（$f_0$ 既知，$f'_0$ 不要） &
 式~\eqref{eq:bc_left} の片側スキーム &
-$\mathcal{O}(h^5)$（Eq.-I），$\mathcal{O}(h^2)$（Eq.-II） \\[4pt]
+$\Ord{h^5}$（Eq.-I），$\Ord{h^2}$（Eq.-II） \\[4pt]
 Neumann BC \\（$f'_0$ 既知，例：PPE 壁面圧力） &
 $f'_0$ を既知値として Eq.-I の左辺に移項し，右辺を修正（§\ref{sec:ccd_bc} と同手順） &
-$\mathcal{O}(h^5)$（Eq.-I の逆利用） \\[4pt]
+$\Ord{h^5}$（Eq.-I の逆利用） \\[4pt]
 周期 BC \\（$f_0 = f_N$，例：一様流検証） &
 ブロック循環 CCD（付録~\ref{app:ccd_periodic}） &
-$\mathcal{O}(h^6)$（全節点，境界スキーム不要） \\[4pt]
-高精度が必要 \\（$\mathcal{O}(h^4)$ 以上の境界精度） &
+$\Ord{h^6}$（全節点，境界スキーム不要） \\[4pt]
+高精度が必要 \\（$\Ord{h^4}$ 以上の境界精度） &
 ゴーストセル法（付録~\ref{app:ccd_ghost}） &
-$\mathcal{O}(h^4)$〜$\mathcal{O}(h^6)$ \\
+$\Ord{h^4}$〜$\Ord{h^6}$ \\
 \hline
 \end{tabular}
 
