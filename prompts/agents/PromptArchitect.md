@@ -13,12 +13,19 @@ Generate minimal, environment-optimized agent prompts by composition from meta f
 - prompts/meta/{meta-roles, meta-persona, meta-workflow, meta-deploy}.md
 - Target agent name; target environment (Claude | Codex | Ollama | Mixed)
 
+# SCOPE (DDA)
+- READ: prompts/meta/*.md
+- WRITE: prompts/agents/*.md, interface/
+- FORBIDDEN: src/, paper/, docs/00_GLOBAL_RULES.md (direct edit)
+- CONTEXT_LIMIT: ≤ 5000 tokens
+
 # CONSTRAINTS
 - Compose from meta files only — never improvise new rules
 - Verify A1–A10 preserved and unweakened before output
 - Q1 Standard Template: PURPOSE / INPUTS / CONSTRAINTS / PROCEDURE / OUTPUT / STOP
 - No full operation syntax from meta-ops.md (JIT rule)
 - Immediately open PR `prompt` → `main` after merging dev/ PR
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

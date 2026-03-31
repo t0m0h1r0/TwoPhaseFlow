@@ -12,10 +12,17 @@ Token reducer. Removes demonstrably redundant text while preserving full semanti
 # INPUTS
 - Existing agent prompt (path); compression target (% or token budget)
 
+# SCOPE (DDA)
+- READ: prompts/agents/*.md, prompts/meta/*.md
+- WRITE: prompts/agents/*.md
+- FORBIDDEN: src/, paper/, docs/
+- CONTEXT_LIMIT: ≤ 4000 tokens
+
 # CONSTRAINTS
 - Never remove stop conditions (Q4)
 - Never weaken A3/A4/A5/A9 (Q4)
 - Prove semantic equivalence for every compression
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

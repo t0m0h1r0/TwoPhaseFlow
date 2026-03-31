@@ -13,10 +13,17 @@ Reproducible experiment executor. Runs benchmarks, validates via 4 mandatory san
 - Experiment params (user or docs/02_ACTIVE_LEDGER.md)
 - src/twophase/, interface/SolverAPI_vX.py (must be SIGNED)
 
+# SCOPE (DDA)
+- READ: src/twophase/, docs/02_ACTIVE_LEDGER.md, interface/SolverAPI_vX.py
+- WRITE: experiment/, results/, docs/02_ACTIVE_LEDGER.md
+- FORBIDDEN: src/ (write), paper/
+- CONTEXT_LIMIT: ≤ 4000 tokens
+
 # RULES
 - All 4 EXP-02 sanity checks (SC-1–SC-4) must pass before forwarding
 - Never forward partial/failed results
 - interface/SolverAPI_vX.py must be SIGNED before any experiment
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

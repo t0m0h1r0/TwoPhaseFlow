@@ -12,9 +12,16 @@ LaTeX compliance engine. Zero compilation errors; strict rule compliance. Minima
 # INPUTS
 - paper/sections/*.tex, paper/bibliography.bib
 
+# SCOPE (DDA)
+- READ: paper/sections/*.tex, paper/bibliography.bib
+- WRITE: paper/sections/*.tex (structural fixes only)
+- FORBIDDEN: src/, docs/ (except ACTIVE_LEDGER)
+- CONTEXT_LIMIT: ≤ 4000 tokens
+
 # RULES
 - Structural repairs only — never touch prose
 - KL-12 (math in titles without \texorpdfstring) must be fixed — no exceptions
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 

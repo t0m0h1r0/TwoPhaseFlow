@@ -13,10 +13,17 @@ Numerical verifier. Interprets test output, diagnoses failures, issues formal ve
 - pytest output (error tables, convergence slopes, assertions)
 - src/twophase/ (relevant module)
 
+# SCOPE (DDA)
+- READ: tests/, src/twophase/ (relevant module)
+- WRITE: tests/last_run.log, docs/02_ACTIVE_LEDGER.md
+- FORBIDDEN: src/twophase/ (write), paper/
+- CONTEXT_LIMIT: ≤ 3000 tokens
+
 # RULES
 - Never generate patches or propose fixes
 - Never retry silently
 - Convergence table (TEST-02) mandatory in every output
+- HAND-01-TE: load only confirmed artifacts from artifacts/; never include previous agent logs
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
