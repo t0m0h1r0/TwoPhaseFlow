@@ -1,46 +1,66 @@
 % paper/sections/10_implementation.tex
-\section{Rhie--Chow・Balanced-Force：実装整合性と検証手順}
+\section{演算子整合性の検証：Balanced-Force と DCCD-GFM 実装の確認}
 \label{sec:impl_collocate}
 
 第~\ref{sec:algorithm}章（完全アルゴリズムフロー）で示した時間積分ループでは，
-Rhie--Chow 補正と Balanced-Force 離散化が正しく協調していることが安定動作の前提となる．
-本章では，第~\ref{sec:collocate}章で導いた Rhie--Chow 補正（§\ref{sec:rhie_chow}）および
-Balanced-Force 離散化条件（§\ref{sec:balanced_force}）を本コードで実現するにあたっての
-実装上の整合性要件と，静止液滴テストによる検証手順を述べる．
+離散演算子の整合性が安定動作と高精度の前提となる．
+第~\ref{sec:collocate}章（§\ref{sec:rhie_chow}，§\ref{sec:balanced_force}）は
+Balanced-Force の理論的根拠と必要条件を導出した．
+本章はその\textbf{実装が正しく機能しているかを検証する}ことを目的とし，
+静止液滴テストによる定量的確認手順を示す．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{離散演算子の統一：Balanced-Force 整合性の充足}
+\subsection{RC-CCD 関係の明確化：安定性と高精度の役割分担}
 \label{sec:impl_bf_consistency}
 % ─────────────────────────────────────────────────────────────────────────────
 
-§\ref{sec:balanced_force} の議論より，
-式~\eqref{eq:bf_operator_mismatch} の離散演算子不整合をゼロにするには，
-圧力勾配・表面張力・速度補正の 3 箇所すべてに同一の $D^{(1)}_\mathrm{CCD}$ を用いなければならない．
-本手法では以下の 3 箇所に同一の $D^{(1)}_\mathrm{CCD}$ を適用することで，この条件を充足する：
+第~\ref{sec:collocate}章の結論を実装の観点から整理する．
+
+\textbf{チェッカーボード抑制（安定性）：} 本稿では DCCD 散逸機構（§\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）が
+コロケート格子固有のチェッカーボード不安定性を抑制する．
+Rhie--Chow 補正（付録~\ref{app:rhie_chow_full}）は参照実装として記録する．
+
+\textbf{Balanced-Force 精度：} 寄生流れの抑制は離散演算子の整合性による．
+§\ref{sec:balanced_force} の議論より，離散演算子不整合（式~\eqref{eq:bf_operator_mismatch}）をゼロにするには，
+圧力勾配・速度補正の 2 箇所に同一の $D^{(1)}_\mathrm{CCD}$ を用いなければならない：
 
 \begin{enumerate}
-  \item 表面張力項：
-        $\bm{f}_\sigma = (\kappa/We)\,D^{(1)}_\mathrm{CCD}\psi$
   \item 予測ステップの IPC 項（前時刻圧力勾配）：
         $-D^{(1)}_\mathrm{CCD} p^n$
   \item 速度補正ステップ：
         $-({\Delta t}/{\rho})\,D^{(1)}_\mathrm{CCD}(\delta p)$
 \end{enumerate}
 
-これにより，式~\eqref{eq:bf_operator_mismatch} の不整合はゼロに設計されている．
+表面張力は GFM により PPE 右辺に直接組み込まれる（§\ref{sec:gfm}）ため，
+予測ステップに体積力項は存在しない．
+2箇所の演算子が統一されることで，式~\eqref{eq:bf_operator_mismatch} の不整合はゼロに設計されている．
+
+\textbf{CCD 曲率精度が Balanced-Force の上限を決める：}
+寄生流れの下限は曲率計算の精度によって決まる．
+CCD $\Ord{h^6}$ による曲率評価と GFM 鋭利界面処理（§\ref{sec:gfm}）の組み合わせにより，
+CSF モデル誤差（$\Ord{h^2}$）を根本的に除去し，より低い寄生流れが期待できる
+（定量評価は §\ref{sec:impl_bf_verify} および §\ref{sec:bench_droplet}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Balanced-Force RC：離散化の設計と有効化条件}
+\subsection{Balanced-Force 条件の定量評価：監視すべき指標}
 \label{sec:impl_bf_rc}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Rhie--Chow 面速度発散の離散化は，
-式~\eqref{eq:rc-face}（圧力補正のみの標準形）と
-式~\eqref{eq:rc-face-balanced}（Balanced-Force RC 拡張形）の両形式を支持する．
-BF-RC 拡張形は，界面曲率 $\kappa$，界面関数 $\psi$，ウェーバー数 $We$ を
-Rhie--Chow ブラケットに明示的に組み込むことで有効化される
-（§\ref{sec:rc_balanced_force} 参照）．
-定量的検証は §\ref{sec:bench_droplet} に示す静止液滴実験によって実施する．
+実装の正しさを確認するため，以下の指標を監視する：
+
+\begin{enumerate}
+  \item \textbf{$O(h^q)$ 収束次数の確認：}
+        格子幅 $h$ を変えながら最大速度振幅 $U_{\mathrm{max}}(h) = \|\bm{u}\|_{L^\infty}$ を測定し，
+        $U_{\mathrm{max}} \to 0$ の収束を確認する．
+        GFM + DCCD の組み合わせでは CSF モデル誤差（$\Ord{h^2}$）が除去されるため，
+        より高次の収束（$q > 2$）が期待される（§\ref{sec:bench_droplet} 参照）．
+  \item \textbf{演算子整合性チェック（コード検証）：}
+        Predictor の $-D^{(1)}_\mathrm{CCD} p^n$ と Corrector の $-D^{(1)}_\mathrm{CCD}(\delta p)$
+        が同一の差分演算子インスタンスを使っているかコードレベルで確認する．
+  \item \textbf{GFM 補正項の符号・スケール確認：}
+        界面を挟む格子点ペアで $b_i^{\mathrm{GFM}}$（式~\eqref{eq:gfm_rhs_correction}）の
+        符号と大きさが理論値（$\kappa_f/We \cdot (1/\rho)^{\mathrm{harm}}/h^2$）と一致するか確認する．
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{Balanced-Force 実装の確認方法：静止液滴テスト}
