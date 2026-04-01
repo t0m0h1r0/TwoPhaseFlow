@@ -105,80 +105,8 @@ authority (φ2: Minimal Footprint).
 every agent runs it before every write, regardless of the table above. It requires
 no AUTHORITY grant because it is a constraint on all writes, not an operation.
 
-**Atomic micro-agent operations [EXPERIMENTAL — not yet operational]:**
-
-| Tier | Role | Operations | Handoff Role |
-|------|------|------------|-------------|
-| Specialist | EquationDeriver | GIT-SP | RETURNER |
-| Specialist | SpecWriter | GIT-SP | RETURNER |
-| Specialist | CodeArchitectAtomic | GIT-SP | RETURNER |
-| Specialist | LogicImplementer | GIT-SP | RETURNER |
-| Specialist | ErrorAnalyzer | GIT-SP | RETURNER |
-| Specialist | RefactorExpert | GIT-SP | RETURNER |
-| Specialist | TestDesigner | GIT-SP | RETURNER |
-| Specialist | VerificationRunner | GIT-SP, TEST-01, EXP-01, EXP-02 | RETURNER |
-| Specialist | ResultAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
-
-────────────────────────────────────────────────────────
-# § EXPERIMENTAL — NOT YET OPERATIONAL
-# § DIRECTORY-DRIVEN AUTHORIZATION (DDA) below requires active micro-agent infrastructure.
-# Currently artifacts/ is empty and no enforcement tooling exists.
-# DOM-02 (Pre-Write Storage Check) remains active for all agents.
-────────────────────────────────────────────────────────
-# § DIRECTORY-DRIVEN AUTHORIZATION (DDA)  [EXPERIMENTAL]
-
-Each micro-agent is restricted from reading or writing files outside its declared SCOPE.
-Authorization is derived from the agent's SCOPE definition in meta-roles.md
-§ ATOMIC ROLE TAXONOMY — not from ad-hoc runtime decisions.
-
-## DDA Enforcement Rules
-
-| Rule | Description |
-|------|-------------|
-| DDA-01 | Agent READ access is limited to paths listed in SCOPE.READ |
-| DDA-02 | Agent WRITE access is limited to paths listed in SCOPE.WRITE |
-| DDA-03 | Any path listed in SCOPE.FORBIDDEN results in immediate REJECT |
-| DDA-04 | DDA is checked BEFORE DOM-02 (Pre-Write Storage Check) — DDA is the first gate |
-| DDA-05 | SCOPE violations are logged to `audit_logs/dda_violation_{date}.md` |
-
-## DDA Check (Pre-Operation Gate)
-
-**Authorized:** universal — every agent, every operation
-**Trigger:** MANDATORY — before every file read or write
-
-```
-DDA-CHECK:
-  □ 1. Retrieve agent SCOPE from meta-roles.md § ATOMIC ROLE TAXONOMY
-  □ 2. Classify operation: READ or WRITE
-  □ 3. Match target_path against SCOPE.{READ|WRITE} (prefix match)
-       FORBIDDEN hit → REJECT immediately; log to audit_logs/
-       No SCOPE match → REJECT; issue RETURN with status BLOCKED
-       Match found → proceed to DOM-02 (if WRITE) or execute (if READ)
-```
-
-## SCOPE Inheritance
-
-Composite roles (e.g., CodeWorkflowCoordinator) inherit the union of their
-constituent micro-agents' SCOPE when acting as a coordinator. When acting as
-a specific micro-agent, only that micro-agent's SCOPE applies.
-
-## Token Efficiency Rule: HAND-01-TE
-
-**Rule:** When processing a DISPATCH, agents MUST NOT include logs, reasoning, or
-intermediate outputs from the previous agent in their context. Only the latest
-**confirmed artifact** within the `artifacts/` directory is loaded.
-
-```
-HAND-01-TE (Token Efficiency):
-  □ 1. Identify the artifact path in DISPATCH.inputs
-  □ 2. Load ONLY the artifact file — not the producing agent's logs or reasoning
-  □ 3. If artifact is absent → REJECT (HAND-03 check 3 handles this)
-  □ 4. Previous agent's session context, chain-of-thought, and intermediate
-       files are INVISIBLE to the receiving agent
-```
-
-**Rationale:** Prevents context bloat across agent boundaries. Each agent sees only
-the structured artifact, enforcing loose coupling and maximizing token efficiency.
+**Atomic micro-agent operations → meta-experimental.md** (not yet operational).
+DDA enforcement, SCOPE inheritance, HAND-01-TE token efficiency: see meta-experimental.md.
 
 ────────────────────────────────────────────────────────
 # § MERGE CRITERIA

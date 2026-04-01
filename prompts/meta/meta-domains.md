@@ -27,21 +27,9 @@
 | Q  | QA & Audit           | Internal Affairs       | ConsistencyAuditor (Consistency Auditor)|
 
 **Sovereignty rule:** Each vertical domain acts as an independent "Corporation."
-It does not trust the internal state of other domains. All inter-domain communication
-must pass through a Gatekeeper-approved Interface Contract (see §INTER-DOMAIN INTERFACES).
+All inter-domain communication must pass through a Gatekeeper-approved Interface Contract.
 
-**Broken Symmetry rule:** Within every vertical domain, the Gatekeeper is NOT the Specialist.
-A Gatekeeper who created an artifact cannot audit it. See meta-core.md §0 CORE PHILOSOPHY.
-
-**Agent mapping to existing roles:**
-- T-Domain Specialist ↔ CodeArchitect (theory derivation) / PaperWriter (when theory-first)
-- T-Domain Gatekeeper ↔ TheoryAuditor (independent re-derivation gate; T-Domain only)
-- L-Domain Specialist ↔ CodeArchitect, CodeCorrector, CodeReviewer, TestRunner
-- L-Domain Gatekeeper ↔ CodeWorkflowCoordinator
-- E-Domain Specialist ↔ ExperimentRunner
-- E-Domain Gatekeeper ↔ CodeWorkflowCoordinator (sanity-check gate)
-- A-Domain Specialist ↔ PaperWriter, PaperCompiler, PaperCorrector
-- A-Domain Gatekeeper ↔ PaperWorkflowCoordinator + PaperReviewer (Logical Reviewer)
+**Broken Symmetry rule:** → meta-core.md §B. Gatekeeper ≠ Specialist within each domain.
 
 ────────────────────────────────────────────────────────
 # § INTER-DOMAIN INTERFACES (Connection by Contract)
@@ -377,25 +365,15 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `docs/01_PROJECT_MAP.md` | Governance (write) | all: read-only; append entries via coordinator |
 | `docs/02_ACTIVE_LEDGER.md` | all (append-only) | each domain appends its own phase entries only |
 
-| `artifacts/T/` | T-Domain micro-agents (write) | L: read (spec consumption); Q: read-only audit |
-| `artifacts/L/` | L-Domain micro-agents (write) | E: read (test spec); Q: read-only audit |
-| `artifacts/E/` | E-Domain micro-agents (write) | Q: read-only audit |
-| `artifacts/Q/` | Q-Domain ResultAuditor (write) | all: read-only |
-| `interface/signals/` | any agent (write READY/COMPLETE after artifact signing) | all: read-only (poll for state) |
+| `artifacts/{T,L,E,Q}/` | [NOT YET OPERATIONAL] micro-agent artifacts | see meta-experimental.md |
+| `interface/signals/` | [NOT YET OPERATIONAL] micro-agent coordination | see meta-experimental.md |
 
-**Artifact directory rule:** `artifacts/{T,L,E,Q}/` stores intermediate micro-agent outputs
-(derivations, specs, architectures, diagnoses, execution logs, audit reports). These artifacts
-mediate all micro-agent handoffs — direct agent-to-agent context passing is prohibited.
-See meta-workflow.md § INTERFACE-FIRST LOOSE COUPLING for the artifact protocol.
+**Artifact & Signal directories [NOT YET OPERATIONAL]:** `artifacts/` and `interface/signals/`
+mediate micro-agent handoffs when activated. See meta-experimental.md for full protocol.
 
-**Signal directory rule:** `interface/signals/` stores lightweight status files (READY, BLOCKED,
-INVALIDATED, COMPLETE) that coordinate asynchronous agent transitions. Agents poll for signals
-relevant to their domain before starting work. See meta-workflow.md § SIGNAL Protocol.
-
-**Directory-Driven Authorization (DDA):** Each micro-agent's file access is restricted to its
-declared SCOPE (READ / WRITE / FORBIDDEN) defined in meta-roles.md § ATOMIC ROLE TAXONOMY.
-DDA enforcement is checked BEFORE DOM-02 (Pre-Write Storage Check). See meta-ops.md
-§ DIRECTORY-DRIVEN AUTHORIZATION (DDA) for enforcement rules DDA-01 through DDA-05.
+**Directory-Driven Authorization (DDA) [NOT YET OPERATIONAL]:** When micro-agents are activated,
+file access is restricted per SCOPE (READ / WRITE / FORBIDDEN) defined in
+meta-experimental.md § ATOMIC ROLE TAXONOMY. See meta-experimental.md § DDA for rules DDA-01–DDA-05.
 
 **Write-outside-domain rule:** An agent may not write to a storage path outside its domain
 without an explicit cross-domain routing decision. Violation = A9 / φ2 breach → STOP immediately.

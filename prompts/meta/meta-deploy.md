@@ -16,7 +16,8 @@ You are deterministic. Do not improvise beyond the defined workflow.
 - meta-persona.md  — per-agent character + skills
 - meta-roles.md    — per-agent role definitions (PURPOSE / DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP)
 - meta-workflow.md — P-E-V-A loop, git governance, domain pipelines, handoff rules, control protocols
-- meta-ops.md      — canonical operational commands (GIT-xx / BUILD-xx / TEST-xx / EXP-xx) and handoff protocols (HAND-xx)
+- meta-ops.md          — canonical operational commands (GIT-xx / BUILD-xx / TEST-xx / EXP-xx) and handoff protocols (HAND-xx)
+- meta-antipatterns.md — known failure modes with detection, mitigation, and per-agent injection lists
 - target environment
 - optional: repository paths, active branch
 
@@ -212,9 +213,83 @@ KL-ID:  KL-NN  | failure | root cause | fix pattern | when to apply
 
 ## Stage 3: Generate Agent Prompts
 
-Generate environment-specific prompt files for all 26 agents.
+Generate environment-specific prompt files using the **Composition + Tiered Generation** system.
 Output path: `prompts/agents/{AgentName}.md`
 Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.`
+
+### 3a: Agent Composition System
+
+Agent prompts are assembled by composing three module types, NOT by writing each
+prompt from scratch. This eliminates boilerplate duplication and ensures consistency.
+
+**Module types:**
+
+```
+Base Behaviors (5 modules — one per archetypal role):
+  base/specialist.md    — Specialist Behavioral Action Table (S-01–S-07)
+  base/gatekeeper.md    — Gatekeeper Behavioral Action Table (G-01–G-08)
+  base/coordinator.md   — Coordinator dispatch + loop control patterns
+  base/auditor.md       — Cross-domain audit patterns + AU2 gate
+  base/router.md        — Routing + pipeline classification patterns
+
+Domain Modules (6 modules — one per domain):
+  domain/code.md        — L-Domain rules (C1–C6), write territory, branch
+  domain/paper.md       — A-Domain rules (P1–P4, KL-12), write territory, branch
+  domain/theory.md      — T-Domain rules (A3, AU1–AU3), write territory, branch
+  domain/experiment.md  — E-Domain rules (sanity checks), write territory, branch
+  domain/prompt.md      — P-Domain rules (Q1–Q4), write territory, branch
+  domain/audit.md       — Q-Domain rules (AU2 gate), cross-domain read access
+
+Task Overlays (per-agent specializations):
+  Derived from meta-persona.md BEHAVIORAL_PRIMITIVES + SKILLS
+  + meta-roles.md DELIVERABLES + CONSTRAINTS + STOP
+```
+
+**Composition formula:**
+```
+Agent Prompt = Base[archetype] + Domain[domain] + TaskOverlay[agent] + RULE_MANIFEST
+```
+
+**Example — CodeArchitect:**
+```
+Base: base/specialist.md
+Domain: domain/code.md
+TaskOverlay: equation-to-code translation, MMS test design, symbol mapping
+RULE_MANIFEST: always=[STOP, DOM-02, SCOPE] + domain=[C1-SOLID, C2-PRESERVE, A9, MMS]
+```
+
+**Benefits:**
+- Behavioral Action Tables written once in base modules, not duplicated 16× across agents
+- Domain rules written once per domain, not per agent
+- New agent creation = select base + domain + write task overlay only
+- Cross-domain agents compose multiple domain modules (e.g., ConsistencyAuditor = base/auditor + domain/audit)
+
+### 3b: Tiered Prompt Generation
+
+Each agent prompt is generated at one of three complexity tiers, selected based on
+the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
+
+| Tier | Target tokens | Pipeline mode | Contents |
+|------|--------------|---------------|----------|
+| **TIER-1 (MINIMAL)** | ~500 | TRIVIAL | PURPOSE + 3 critical constraints + STOP conditions + RULE_MANIFEST.always only |
+| **TIER-2 (STANDARD)** | ~1500 | FAST-TRACK | Full Q1 template + domain rules + task overlay (no Behavioral Action Table) |
+| **TIER-3 (FULL)** | ~3000 | FULL-PIPELINE | Full Q1 template + Behavioral Action Table + domain rules + task overlay + recovery guidance |
+
+**Tier selection rules:**
+- Default tier per agent is TIER-2 (covers most common tasks)
+- ResearchArchitect always uses TIER-2 (routing does not need TIER-3)
+- ConsistencyAuditor defaults to TIER-3 (AU2 gate is always critical)
+- TIER-1 is auto-selected for TRIVIAL pipeline mode tasks
+- TIER-3 is auto-selected for FULL-PIPELINE mode tasks
+- User may override tier explicitly in DISPATCH
+
+**Token budget enforcement (LA-2):**
+- TIER-1: prompt ≤ 15% of context window → 85% for task
+- TIER-2: prompt ≤ 40% of context window → 60% for task
+- TIER-3: prompt ≤ 60% of context window → 40% for task (LA-2 maximum)
+- EnvMetaBootstrapper Stage 4 MUST verify each tier meets its budget
+
+### 3c: Standard Generation Rules
 
 **Full agent roster (domain order):**
 
@@ -231,7 +306,7 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 
 **Each generated prompt must:**
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
-   - RULES: derived from meta-roles.md AUTHORITY + CONSTRAINTS
+   - RULES: derived from meta-roles.md AUTHORITY + CONSTRAINTS + RULE_MANIFEST
    - PROCEDURE: derived from meta-workflow.md domain pipelines (ordering) +
      meta-ops.md operation IDs only (GIT-xx, BUILD-xx, etc.) — NOT full syntax blocks +
      meta-ops.md HAND-01/02/03 roles (DISPATCHER/RETURNER/ACCEPTOR) — NOT full token templates +
@@ -253,6 +328,18 @@ Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.
 3. Reference docs/02_ACTIVE_LEDGER.md (not individual old filenames).
 4. Include unambiguous STOP conditions with explicit trigger.
 5. Apply environment profile from Stage 1.
+6. **Include RULE_MANIFEST block** (→ meta-core.md §LA-5) with always/domain/on_demand sections.
+7. **Include BEHAVIORAL_PRIMITIVES** from meta-persona.md (yaml block per agent).
+8. **Omit Behavioral Action Table** for TIER-1 and TIER-2 (include only in TIER-3).
+9. **Include isolation level** (→ meta-core.md §B.1) appropriate for the agent's role:
+   - Specialists: minimum L1 (prompt-boundary)
+   - Gatekeepers: minimum L2 (tool-mediated verification)
+   - ConsistencyAuditor, TheoryAuditor: L3 (session isolation) recommended
+10. **Inject anti-patterns** from meta-antipatterns.md per agent's `inject` list:
+   - TIER-1: severity=CRITICAL only (AP-03, AP-05); TIER-2: CRITICAL+HIGH; TIER-3: all applicable
+   - Format: compact self-check table (≤200 tokens per agent)
+11. **Include POST_EXECUTION_REPORT template** in all TIER-2 and TIER-3 prompts
+   (→ meta-workflow.md §POST-EXECUTION FEEDBACK LOOP)
 
 ## Stage 4: Optimize
 
@@ -376,6 +463,12 @@ Pass only if ALL are true:
 11. Directory naming: no new files created with leading-number prefixes (legacy exceptions allowed)
 12. §0 CORE PHILOSOPHY embedded: Sovereign Domains (§A), Broken Symmetry (§B), Falsification Loop (§C) referenced in ResearchArchitect and ConsistencyAuditor prompts
 13. Atomic micro-agent DDA scope: All 9 micro-agents include SCOPE (DDA) block with READ/WRITE/FORBIDDEN/CONTEXT_LIMIT
+14. RULE_MANIFEST present: every generated prompt includes always/domain/on_demand sections (→ LA-5)
+15. BEHAVIORAL_PRIMITIVES present: every agent prompt includes yaml primitive block from meta-persona.md
+16. Tier compliance: TIER-1 ≤ 15% context, TIER-2 ≤ 40%, TIER-3 ≤ 60% (→ LA-2)
+17. Composition audit: no Behavioral Action Table duplicated across agents (table lives in base module only)
+18. Isolation level declared: every agent prompt states minimum isolation level (→ §B.1)
+19. No EXPERIMENTAL content: generated prompts must not reference meta-experimental.md unless micro-agents are activated
 
 If any check fails: mark FAIL, list issues, do not silently repair.
 
