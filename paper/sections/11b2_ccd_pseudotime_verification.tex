@@ -32,8 +32,8 @@ $L^\infty$ 誤差の収束次数を測定する．
   \centering
   \caption{%
     $u'' = -(2\pi)^2\sin(2\pi x)$ の $L^\infty$ 誤差（内部節点 $i = 1 \ldots N-1$）．
-    CCD の収束次数は境界スキームの精度（Eq-I-bc: $O(h^5)$，Eq-II-bc: $O(h^4)$）に
-    制限され，漸近的に $O(h^5)$ に収束する（内部ステンシルの $O(h^6)$ は
+    CCD の収束次数は境界スキームの精度（Eq-I-bc: $\Ord{h^5}$，Eq-II-bc: $\Ord{h^4}$）に
+    制限され，漸近的に $\Ord{h^5}$ に収束する（内部ステンシルの $\Ord{h^6}$ は
     近傍節点を通じて境界誤差の影響を受ける）．
   }
   \label{tab:ccd_case1}
@@ -55,20 +55,20 @@ $L^\infty$ 誤差の収束次数を測定する．
   \includegraphics[width=0.72\linewidth]{figures/case1_convergence.png}
   \caption{%
     Case 1：格子間隔 $h$ に対する $L^\infty$ 誤差の収束グラフ（両対数）．
-    CCD は漸近的に $O(h^5)$（破線：$O(h^6)$ 参照線），
-    CDS2 は $O(h^2)$ で収束する．
+    CCD は漸近的に $\Ord{h^5}$（破線：$\Ord{h^6}$ 参照線），
+    CDS2 は $\Ord{h^2}$ で収束する．
   }
   \label{fig:ccd_case1}
 \end{figure}
 
 \begin{tcolorbox}[resultbox, title={空間収束次数（CCD vs.\ CDS2）}]
   \begin{itemize}
-    \item CCD は内部ステンシル $O(h^6)$ を持つが，コンパクトスキームの結合を通じた
-          境界スキーム $O(h^5)$（Eq-I-bc）の影響により，
-          全域 $L^\infty$ 収束次数は $O(h^5)$ に制限される（$N=128$ で $p \approx 5.0$）．
+    \item CCD は内部ステンシル $\Ord{h^6}$ を持つが，コンパクトスキームの結合を通じた
+          境界スキーム $\Ord{h^5}$（Eq-I-bc）の影響により，
+          全域 $L^\infty$ 収束次数は $\Ord{h^5}$ に制限される（$N=128$ で $p \approx 5.0$）．
     \item $N=128$ の時点で CCD の誤差は CDS2 の約 4500 倍小さい
           （$1.78 \times 10^{-6}$ vs.\ $7.93 \times 10^{-3}$）．
-    \item CDS2 は厳密に $O(h^2)$ で収束し，格子収束挙動は単純かつ予測可能である．
+    \item CDS2 は厳密に $\Ord{h^2}$ で収束し，格子収束挙動は単純かつ予測可能である．
   \end{itemize}
 \end{tcolorbox}
 
@@ -239,8 +239,8 @@ $N=8$（$Pe \cdot h = 1.25$）から安定な結果が得られた．
   \caption{%
     Case 3：格子間隔 $h$ に対する $L^\infty$ 誤差の収束グラフ（両対数）．
     縦破線：$Pe \cdot h = 2$ の CDS2 安定限界（$h=0.2$）．
-    CCD は漸近的に $O(h^6)$ に向かって収束次数が上昇し，
-    $N=256$ で $p \approx 5.8$，CDS2 は厳密に $O(h^2)$ で収束する．
+    CCD は漸近的に $\Ord{h^6}$ に向かって収束次数が上昇し，
+    $N=256$ で $p \approx 5.8$，CDS2 は厳密に $\Ord{h^2}$ で収束する．
   }
   \label{fig:ccd_case3}
 \end{figure}
@@ -250,8 +250,8 @@ $N=8$（$Pe \cdot h = 1.25$）から安定な結果が得られた．
     \item CCD は $N=256$（$h=1/256$）で $L^\infty = 2.71 \times 10^{-10}$ を達成し，
           同格子の CDS2（$4.68 \times 10^{-5}$）より約 17 万倍精度が高い．
     \item 収束次数は粗格子では前漸近的（$N=8$: $p=3.3$，$N=16$: $p=4.6$）だが，
-          $N \geq 64$ から漸近 $O(h^6)$ に向かって安定的に上昇する（$N=256$: $p=5.8$）．
+          $N \geq 64$ から漸近 $\Ord{h^6}$ に向かって安定的に上昇する（$N=256$: $p=5.8$）．
     \item CDS2 は中心差分スキームとして安定条件 $Pe \cdot h < 2$ を満たす範囲では
-          $O(h^2)$ を維持するが，CCD との誤差差は格子細分化に伴い指数的に拡大する．
+          $\Ord{h^2}$ を維持するが，CCD との誤差差は格子細分化に伴い指数的に拡大する．
   \end{itemize}
 \end{tcolorbox}

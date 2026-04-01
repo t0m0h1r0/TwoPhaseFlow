@@ -1,66 +1,7 @@
 % paper/sections/11c_benchmarks.tex
 %
-% §11.4  精度バジェット（Error Budget）
-%   物理ベンチマーク（静止液滴・毛細管波・気泡上昇・RT不安定）は
-%   第~\ref{sec:validation}章（§12）に収録．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{精度バジェット（Error Budget）：各コンポーネントの精度分析}
-\label{sec:error_budget}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-本ソルバーは複数の数値スキームを組み合わせて構成される．
-各コンポーネントの空間・時間精度を一覧化し，
-なぜ高次精度スキームが全体精度向上に寄与するかを説明する．
-物理的な多相流ベンチマーク（静止液滴・毛細管波・気泡上昇）は §\ref{sec:validation} で扱う．
-
-\begin{table}[htbp]
-\centering
-\caption{各コンポーネントの精度オーダーと役割}
-\label{tab:error_budget}
-\renewcommand{\arraystretch}{1.35}
-\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{48mm}}
-\toprule
-コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
-\midrule
-Dissipative CCD 移流（CLS） & $O(\varepsilon_d h^2)$（フィルタ律速） & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
-CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
-CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
-CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
-Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
-Crank--Nicolson（粘性） & $\Ord{h^2}$（ADI 対角）/ $\Ord{h^6}$（非対角） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
-NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$（AB2） & 対流による運動量移送 \\
-IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） & 全体時間精度の律速段階 \\
-\midrule
-\textbf{全体（空間律速）} & \multicolumn{1}{>{\raggedright\arraybackslash}p{28mm}}{$\boldsymbol{\Ord{h^2}}$（CSF $O(\varepsilon^2)$）} & $\boldsymbol{\Ord{\Delta t^2}}$（AB2+IPC） & \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent\textbf{精度設計のまとめ：}
-\label{sec:accuracy_summary}
-本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
-粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
-界面移流（Dissipative CCD，$O(\varepsilon_d h^2)$，フィルタ律速）を実装している．
-
-\begin{itemize}[noitemsep]
-  \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $O(\varepsilon^2) \approx O(\Delta x^2)$ が現状の空間精度の律速段階であり，
-        CCD-PPE（$\Ord{h^6}$）はこれより高次であり，Dissipative CCD は $O(\varepsilon_d h^2)$（フィルタ律速；$\varepsilon_d=0.05$ で CSF 誤差の約 $1/20$）で CSF 誤差と同次だが係数が抑制されているため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
-  \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
-        Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
-        曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
-        $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．
-        しかし，\textbf{Balanced-Force 条件下（§\ref{sec:balanced_force}）では}，圧力勾配と
-        表面張力に同一の CCD 演算子を用いることで離散化誤差成分が相殺されるため，
-        有効な寄生流れはどちらの手法でも CSF モデル誤差 $O(\varepsilon^2) \approx O(h^2)$
-        によって律速される（収束次数の改善ではなく収束係数の大幅な低減；§\ref{sec:bench_droplet} 参照）．
-  \item \textbf{時間精度：} AB2+IPC スキームにより全体時間精度 $\Ord{\Delta t^2}$ を達成している
-        （§\ref{sec:time_accuracy_table} 参照）．
-        さらなる高次化（$O(\Delta t^3)$ 以上）には IPC を超える高次 Projection 法が必要であり，
-        これは今後の課題として §\ref{sec:future_work} で展望する．
-\end{itemize}
-本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
-CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第\ref{sec:pressure}章参照）．
-
-\noindent CCD-Poisson ソルバーの格子収束特性は
-§~\ref{sec:verify_ppe}（第~\ref{sec:verification}章）で検証済みである．
+% LEGACY STUB — content moved to 11g_error_budget.tex (2026-04-01).
+% This file is retained for backward compatibility only.
+% DO NOT DELETE — see docs/00_GLOBAL_RULES.md §C2.
+%
+% Labels now live in 11g_error_budget.tex.

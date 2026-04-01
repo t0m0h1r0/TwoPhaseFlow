@@ -259,7 +259,7 @@ Never hardcode pin index (0,0).
 | `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_defect_correction.tex` + `08d_gfm.tex` + `08e_ppe_bc.tex` + `08f_pressure_summary.tex` | §8 | Variable-density PPE, defect correction, GFM, BC |
 | `09_full_algorithm.tex` | §9 | 7-step loop diagram, operator mapping, timestep control |
 | `10_implementation.tex` + `10b_spatial.tex` + `10c_interface.tex` + `10d_solver_time.tex` + `10e_verification_summary.tex` | §10 | CCD/DCCD/curvature/CLS/GFM/PPE/RK3 mathematical verification |
-| `11_verification.tex` + `11b_component_verification.tex` + `11b1`–`11b7` + `11c_benchmarks.tex` | §11 | Component verification (CCD, GCL, CLS, PPE, DCCD, DC), error budget |
+| `11_verification.tex` + `11b_force_balance.tex` + `11c_conservation.tex` + `11d_time_accuracy.tex` + `11e_coupling.tex` + `11f_interface_crossing.tex` + `11g_error_budget.tex` | §11 | NS physical consistency: force balance, conservation, time/space accuracy, coupling, error budget |
 | `12_benchmarks.tex` | §12 | Multi-phase flow benchmarks (static drop, capillary wave, rising bubble, RT) |
 | `13_conclusion.tex` | §13 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |

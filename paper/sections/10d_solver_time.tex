@@ -14,7 +14,7 @@
 
 圧力 Poisson 方程式（§\ref{sec:pressure}）のソルバ精度を，
 製造解法（method of manufactured solutions）により検証する．
-本稿の本番 PPE ソルバである\textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）を
+本稿で採用する PPE ソルバである\textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）を
 検証対象とする．
 CCD-PPE の反復解法（LGMRES）および直接解法（LU 分解）の詳細は
 付録~\ref{app:ccd_lu_direct} を参照されたい．
@@ -22,44 +22,21 @@ CCD-PPE の反復解法（LGMRES）および直接解法（LU 分解）の詳細
 \paragraph{(a) 欠陥補正法の格子収束（ディリクレ BC）．}
 
 §\ref{sec:defect_correction_main} の3ステップアルゴリズム（式~\eqref{eq:dc_three_step}）を
-固定反復回数 $k$ で打ち切り，空間精度の $k$ 依存性を検証する．
+固定反復回数 $k$ で打ち切り，空間精度の $k$ 依存性を検証した．
 $L_H$（CCD, $\Ord{h^6}$），$L_L$（2次精度 FD）を用い，
-$L_L$ は疎行列直接解法（\texttt{spsolve}）で厳密に求解する．
+$L_L$ は疎行列直接解法（\texttt{spsolve}）で解く．
 製造解 $p^* = \sin(\pi x)\sin(\pi y)$（$p|_{\partial\Omega}=0$）に対し，
-$N = 8 \to 128$ で $L_\infty$ 誤差を計測した（表~\ref{tab:dc_grid_convergence}）．
+$N = 8 \to 128$ で $L_\infty$ 誤差を計測した
+（表~\ref{tab:dc_iteration_accuracy}，$k=1,2,3$ 列）．
 
-\begin{table}[htbp]
-\centering
-\small
-\caption{欠陥補正法の格子収束：反復回数 $k$ と空間精度（$L^\infty$ 誤差，$\rho=1$，ディリクレ BC）}
-\label{tab:dc_grid_convergence}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{cccc}
-\toprule
-$N$ & $k=1$ & $k=2$ & $k=3$ \\
-\midrule
-$8$   & $1.30 \times 10^{-2}$ & $2.71 \times 10^{-4}$ & $2.08 \times 10^{-4}$ \\
-$16$  & $3.22 \times 10^{-3}$ & $1.13 \times 10^{-5}$ & $1.91 \times 10^{-6}$ \\
-$32$  & $8.04 \times 10^{-4}$ & $6.54 \times 10^{-7}$ & $1.60 \times 10^{-8}$ \\
-$64$  & $2.01 \times 10^{-4}$ & $4.04 \times 10^{-8}$ & $1.29 \times 10^{-10}$ \\
-$128$ & $5.02 \times 10^{-5}$ & $2.52 \times 10^{-9}$ & $1.02 \times 10^{-12}$ \\
-\midrule
-\multicolumn{1}{c}{収束次数} & $\approx 2.0$ & $\approx 4.0$ & $\approx 7.0$ \\
-\bottomrule
-\end{tabular}
-
-\smallskip
-\noindent 注：超収束（$p \approx 7$）はディリクレ解析解 $\sin\pi x\sin\pi y$ が
-境界上でゼロであるため境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅することによる．
-\end{table}
-
-\textbf{結果：}
 $k=1$ では $L_L$ の $\Ord{h^2}$ が支配的だが，$k=2$ で $\Ord{h^4}$，
-$k \geq 3$ で CCD 演算子の精度が完全に発現し $\Ord{h^7}$ に達する．
+$k \geq 3$ で CCD 演算子の精度が完全に発現し $\Ord{h^7}$ に達した．
 欠陥補正法が CCD 離散化精度を損なわないことが確認された．
-なお，$k=5, 10$ での追加反復の効果は収束次数を変えず
-絶対値が微減するのみであり（$k=3$ と $k=10$ で約 $2$ 倍差），
+なお，$k \geq 3$ では追加反復で収束次数は変わらず，
+$k=3$ と $k=10$ で絶対誤差は約 2 倍の差にとどまるため，
 $k=3$ が実用上の最適値である（詳細は §\ref{sec:dc_iteration_accuracy}）．
+超収束（$p \approx 7$）はディリクレ解析解が境界上でゼロであるため
+境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅することによる．
 
 \paragraph{(b) 欠陥補正法 vs FD 直接法の精度・コスト比較．}
 
@@ -100,13 +77,13 @@ $N=128$ で欠陥補正法は FD 直接法の $3.4$ 倍のコストで $4{,}900$
 % ─────────────────────────────────────────────────────────────────────────────
 
 TVD-RK3（Shu--Osher 3 段 SSP スキーム，§\ref{sec:time_int}）の
-$\Ord{\Delta t^3}$ 精度を ODE テストで検証する．
+$\Ord{\Delta t^3}$ 精度を ODE テストで検証した．
 
 \textbf{ODE 検証 $dq/dt = -q$：}
 解析解 $q(T) = e^{-T}$（$T = 1$）に対し，
 $\Delta t$ を $n = 4, 8, \ldots, 512$ ステップで精緻化し，
 誤差の収束次数を計測する（表~\ref{tab:tvd_rk3_ode}）．
-$n \geq 16$ の安定領域で $p \approx 3.00$ の精確な 3 次収束を確認した．
+$n \geq 16$ の安定領域で $p \approx 3.00$ の正確な 3 次収束を確認した．
 
 \begin{table}[htbp]
 \centering
