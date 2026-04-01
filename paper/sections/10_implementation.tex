@@ -4,14 +4,42 @@
 \label{sec:impl_collocate}% backward compat: referenced from §7
 
 本章は，前章までに導出した各離散演算子・ソルバ・時間発展スキームが，
-設計通りの数学的精度と安定性を有することを個別に検証する．
-検証は\textbf{解析解が既知の単純問題}に対して行い，
+設計通りの数学的精度と安定性を有することを\textbf{個別に}検証する．
+検証は解析解が既知の単純問題に対して行い，
 格子収束試験（grid refinement study）を基本手法とする．
+次章（第~\ref{sec:verification}章）で行う NS ソルバ全体の結合検証に先立ち，
+各部品が設計仕様を満たすことを確認する「単体テスト」としての位置づけである．
+
+表~\ref{tab:component_algorithm_map} に，
+§\ref{sec:algorithm} のアルゴリズム 7 ステップと本章の検証項目の対応を示す．
+
+\begin{table}[htbp]
+\centering
+\caption{アルゴリズム（§\ref{sec:algorithm}）と本章の検証項目の対応}
+\label{tab:component_algorithm_map}
+\begin{tabular}{clll}
+\toprule
+ステップ & 構成要素 & 検証項目 & 節 \\
+\midrule
+1 & CLS 移流（DCCD+RK3） & DCCD 散逸特性，CLS 形状・質量保存 & §\ref{sec:verify_dccd_dissipation}, \ref{sec:dccd_dissipation_bench}, \ref{sec:verify_cls_advection} \\
+2 & 再初期化 & CLS 移流テストに含む & §\ref{sec:verify_cls_advection} \\
+3 & 物性値更新（$\rho, \mu$） & GFM Laplace 圧力跳びで間接検証 & §\ref{sec:verify_gfm} \\
+4 & 曲率 $\kappa$（CCD） & 3 経路比較＋混合微分の間接検証 & §\ref{sec:verify_curvature} \\
+5 & Predictor（AB2+CN） & §\ref{sec:verification} で結合検証 & — \\
+6 & PPE（欠陥補正） & 反復回数 $k$ vs 精度，FD 比較 & §\ref{sec:verify_ppe} \\
+7 & Corrector & §\ref{sec:verification} で結合検証 & — \\
+\midrule
+基盤 & CCD 微分演算子 & 周期 BC 格子収束，非一様格子 GCL & §\ref{sec:verify_ccd_convergence}, \ref{sec:gcl_verification} \\
+基盤 & TVD-RK3 & ODE 時間精度 & §\ref{sec:verify_tvd_rk3} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 検証は以下の 3 段階で構成される：
 (1) 空間離散化スキームの精度——CCD/DCCD 収束性・GCL・散逸特性（§\ref{sec:verify_spatial}），
 (2) 界面処理の精度——CLS 移流・保存性・GFM 圧力跳び（§\ref{sec:verify_interface}），
 (3) ソルバと時間発展の精度——PPE 欠陥補正・TVD-RK3（§\ref{sec:verify_solver}）．
+§\ref{sec:verify_summary} に結果を総括する．
 
 \input{sections/10_1_spatial}               %% §10.1 空間離散化の精度検証
 \input{sections/10_2_interface}            %% §10.2 界面処理の精度検証

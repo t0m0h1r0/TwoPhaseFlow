@@ -11,20 +11,29 @@
 \label{sec:verification}%
 \label{sec:grid_convergence}% backward-compat: referenced from §4 (curvature convergence → now in §10.1)
 
-第~\ref{sec:numerical_integrity}章では，CCD/DCCD 微分演算・PPE ソルバ・TVD-RK3 等の
+本稿の数値検証は以下の 3 層構造で設計されている：
+\begin{enumerate}[noitemsep]
+  \item[\textbf{第~\ref{sec:numerical_integrity}章}]
+    \textbf{コンポーネント単体} — 各演算子・ソルバが設計精度を満たすか（済）
+  \item[\textbf{本章}]
+    \textbf{物理的整合性} — 組み上げた NS ソルバが物理法則を正しく記述するか
+  \item[\textbf{第~\ref{sec:validation}章}]
+    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（GFM 統合後に実施）
+\end{enumerate}
+第~\ref{sec:numerical_integrity}章では CCD 微分演算子の $\Ord{h^6}$ 精度，
+PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 個々のコンポーネントが設計精度を有することを確認した．
-本章では，これらのコンポーネントを組み合わせた
-\textbf{ナビエ・ストークスソルバ全体}が物理法則を正しく記述するかを検証する．
+しかし，各部品が正しくても，それらの結合が物理法則と整合する保証はない．
+本章では，Predictor--PPE--Corrector パイプライン全体を単一の NS ソルバとして動作させ，
+解析解が既知の物理問題で整合性を検証する．
 
 \noindent\textbf{本章のスコープ：}
-本章は\textbf{単相ナビエ・ストークスソルバ}の物理的整合性を対象とする．
-すべてのテストケースは等密度（$\rho = \mathrm{const.}$）条件下で実施し，
-Predictor--PPE--Corrector パイプラインの結合精度を検証する．
+本章は\textbf{単相ナビエ・ストークスソルバ}（$\rho = \mathrm{const.}$）の物理的整合性を対象とする．
 高密度比（$\rho_l/\rho_g \gg 1$）における界面横断時の整合性，
 および二相流における質量保存性（密度加重）は，
-GFM 統合後の物理ベンチマーク（第~\ref{sec:validation}章：静止液滴・毛細管波・気泡上昇・RT 不安定）にて定量的に検証する．
+GFM 統合後の第~\ref{sec:validation}章にて定量的に検証する．
 
-検証は以下の 4 段階で構成される：
+検証は以下の 4 段階で，物理的複雑さを段階的に引き上げて構成される：
 \begin{enumerate}[noitemsep]
   \item 力学的バランス——静止流体における重力・表面張力の釣合（§\ref{sec:force_balance}）
   \item 保存則——運動エネルギー減衰と非圧縮条件の維持（§\ref{sec:ns_conservation}）

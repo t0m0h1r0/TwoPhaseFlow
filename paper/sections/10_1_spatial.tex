@@ -7,6 +7,12 @@
 \label{sec:verify_spatial}
 % ═══════════════════════════════════════════════════════════════════════════════
 
+本稿の全離散演算子は CCD 法を基盤としている．
+本節ではまず CCD 微分演算子そのものの精度（§\ref{sec:verify_ccd_convergence}）を確認し，
+次にその拡張である DCCD フィルタの散逸特性（§\ref{sec:verify_dccd_dissipation}，§\ref{sec:dccd_dissipation_bench}），
+曲率計算への応用精度（§\ref{sec:verify_curvature}），
+非一様格子への適用性（§\ref{sec:gcl_verification}）を順に検証する．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{CCD/DCCD 微分演算の収束性}
 \label{sec:verify_ccd_convergence}
