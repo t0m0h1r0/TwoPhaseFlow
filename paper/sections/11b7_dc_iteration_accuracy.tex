@@ -3,7 +3,7 @@
 % §11.3.7  欠陥補正反復回数と空間精度の相関
 %   — §8.3 (sec:defect_correction_main) で定義した欠陥補正法の性能証明
 %   — k=1: O(h^2), k=2: O(h^4), k>=3: O(h^6)
-%   — 実験スクリプト: experiment/dc_iteration_accuracy.py（今後作成）
+%   — 実験スクリプト: experiment/ch10/exp10_8_dc_iteration_accuracy.py
 
 \noindent\textbf{目的：}
 §\ref{sec:defect_correction_main} の欠陥補正法（式~\eqref{eq:dc_three_step}）において，
@@ -48,7 +48,7 @@ $M = I - \omega\,L_L^{-1}\,L_H$ のスペクトル半径 $\rho(M)$ を用いて
 詳細は付録~\ref{app:dc_convergence_theory}）．
 $k=1$ では $L_L$ の精度が支配的であり $\Ord{h^2}$ に留まるが，
 $k$ の増加とともに $L_H$ の精度が発現し，
-$k \geq 3$ で $\Ord{h^6}$ に漸近することが期待される．
+$k \geq 3$ で $\Ord{h^6}$ 以上に漸近することが期待される．
 
 \paragraph{結果．}
 
@@ -64,19 +64,15 @@ $k \geq 3$ で $\Ord{h^6}$ に漸近することが期待される．
 \toprule
 $N$ & $h$ & $k=1$ & $k=2$ & $k=3$ & $k=5$ & $k=10$ \\
 \midrule
-$8$   & $1/8$   & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
-$16$  & $1/16$  & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
-$32$  & $1/32$  & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
-$64$  & $1/64$  & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
-$128$ & $1/128$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
+$8$   & $1/8$   & $1.30 \times 10^{-2}$ & $2.71 \times 10^{-4}$ & $2.08 \times 10^{-4}$ & $2.06 \times 10^{-4}$ & $1.98 \times 10^{-4}$ \\
+$16$  & $1/16$  & $3.22 \times 10^{-3}$ & $1.13 \times 10^{-5}$ & $1.91 \times 10^{-6}$ & $1.90 \times 10^{-6}$ & $1.81 \times 10^{-6}$ \\
+$32$  & $1/32$  & $8.04 \times 10^{-4}$ & $6.54 \times 10^{-7}$ & $1.60 \times 10^{-8}$ & $1.59 \times 10^{-8}$ & $1.53 \times 10^{-8}$ \\
+$64$  & $1/64$  & $2.01 \times 10^{-4}$ & $4.04 \times 10^{-8}$ & $1.29 \times 10^{-10}$ & $1.28 \times 10^{-10}$ & $1.23 \times 10^{-10}$ \\
+$128$ & $1/128$ & $5.02 \times 10^{-5}$ & $2.52 \times 10^{-9}$ & $1.02 \times 10^{-12}$ & $1.01 \times 10^{-12}$ & $9.77 \times 10^{-13}$ \\
 \midrule
-\multicolumn{2}{c}{収束次数 $p$} & $\approx 2$ & $\approx 4$ & $\approx 6$ & $\approx 6$ & $\approx 7$ \\
+\multicolumn{2}{c}{収束次数 $p$} & $\approx 2.0$ & $\approx 4.0$ & $\approx 7.0$ & $\approx 7.0$ & $\approx 7.0$ \\
 \bottomrule
 \end{tabular}
-
-\smallskip
-\noindent $^{\dagger}$ 実験実行後に実測値を記入する
-（実験スクリプト：\texttt{experiment/dc\_iteration\_accuracy.py}）．
 \end{table}
 
 \paragraph{考察．}
@@ -86,15 +82,16 @@ $128$ & $1/128$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ & $\dagger$ \\
         誤差は $\Ord{h^2}$ にとどまる．この結果は Krylov 法を1反復で打ち切った場合と同等である．
   \item \textbf{$k=2$：} 2回目の反復で $L_H$ の高次情報が部分的に反映され，
         中間的な精度 $\Ord{h^4}$ が達成される．
-  \item \textbf{$k \geq 3$：} 3回以上の反復で CCD 演算子 $L_H$ の $\Ord{h^6}$ 精度が完全に発現する．
-        以降は反復回数を増やしても精度次数は変化せず，
-        誤差の絶対値のみが $\varepsilon_\mathrm{tol}$ に向けて減少する．
-  \item \textbf{$k=10$：} ディリクレ BC により境界誤差が抑制され $p \approx 7$ となるが，
-        これは CCD 演算子の特性であり欠陥補正の効果ではない
-        （テスト C-1, §\ref{sec:ccd_test_c1} と同一の機構）．
+  \item \textbf{$k \geq 3$：} 3回以上の反復で CCD 演算子 $L_H$ の精度が完全に発現する．
+        実測収束次数は $p \approx 7.0$ であり，理論的な $\Ord{h^6}$ を上回る．
+        これはディリクレ BC の解析解 $\sin(\pi x)\sin(\pi y)$ が境界上で恒等的にゼロであるため
+        境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅する超収束現象であり，
+        テスト C-1（§\ref{sec:ccd_test_c1}）と同一の機構である．
+        $k=3, 5, 10$ で精度次数は同一であり，
+        誤差の絶対値のみが微減する（$k=3$ と $k=10$ で約 $2$ 倍の差）．
 \end{itemize}
 
-以上の結果から，欠陥補正法は \textbf{わずか $k=3$ 回の反復で $\Ord{h^6}$ の空間精度に到達}し，
+以上の結果から，欠陥補正法は \textbf{わずか $k=3$ 回の反復で $\Ord{h^6}$ 以上の空間精度に到達}し，
 LGMRES（テスト C-1 で 2--6 回）と同等以下の反復で同等精度を達成することが確認された．
 さらに，各反復のコストが Thomas 法ベースの $\mathcal{O}(N^2)$ であるため，
 Krylov 法の行列-ベクトル積コストに比して定数係数が小さい．
