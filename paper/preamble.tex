@@ -1,8 +1,11 @@
 % paper/preamble.tex
-\usepackage{silence}
-\WarningFilter{caption}{Unknown document class}
-\WarningFilter{xeCJK}{Redefining CJKfamily}
-\WarningFilter{relsize}{Failed to get list}
+%% silence パッケージ除去（XeLaTeX + CJK 非互換）
+
+% -- 付録セクション番号を Z 以降も AA,AB,... に拡張 --
+\usepackage{alphalph}
+\makeatletter
+\renewcommand{\@Alph}[1]{\AlphAlph{#1}}
+\makeatother
 
 % -- Fonts --
 \setmainfont{Times New Roman}
