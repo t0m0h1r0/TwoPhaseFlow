@@ -35,7 +35,7 @@ A Gatekeeper who created an artifact cannot audit it. See meta-core.md §0 CORE 
 
 **Agent mapping to existing roles:**
 - T-Domain Specialist ↔ CodeArchitect (theory derivation) / PaperWriter (when theory-first)
-- T-Domain Gatekeeper ↔ ConsistencyAuditor (independent re-derivation gate)
+- T-Domain Gatekeeper ↔ TheoryAuditor (independent re-derivation gate; T-Domain only)
 - L-Domain Specialist ↔ CodeArchitect, CodeCorrector, CodeReviewer, TestRunner
 - L-Domain Gatekeeper ↔ CodeWorkflowCoordinator
 - E-Domain Specialist ↔ ExperimentRunner
@@ -155,20 +155,20 @@ PaperWriter must consult when changing a symbol that appears in multiple section
 ────────────────────────────────────────────────────────
 ## Domain: Theory & Analysis / T-Domain
 
-**Matrix position:** Vertical domain T — Mathematical Truth. Gatekeeper: Theory Auditor (ConsistencyAuditor in T-gate role). Specialists: Theory Architect (CodeArchitect or PaperWriter in theory-derivation mode).
+**Matrix position:** Vertical domain T — Mathematical Truth. Gatekeeper: TheoryAuditor (dedicated T-Domain re-derivation gate; distinct from ConsistencyAuditor). Specialists: Theory Architect (CodeArchitect or PaperWriter in theory-derivation mode).
 
 | Property | Value |
 |----------|-------|
 | Git branch | `theory` (sub-branches: `theory/{topic}`) |
 | Matrix alias | T-Domain (Theory & Analysis) |
-| Coordinator / Gatekeeper | ConsistencyAuditor acting as Theory Auditor |
+| Coordinator / Gatekeeper | **TheoryAuditor** (T-Domain only; not ConsistencyAuditor) |
 | Specialist members | CodeArchitect (discretization), PaperWriter (mathematical formulation) |
 | Storage (write — STRICT) | `theory/`, `docs/02_ACTIVE_LEDGER.md` |
 | Storage (read — STRICT) | `paper/sections/*.tex` (reference only), `docs/01_PROJECT_MAP.md §6` |
 | Storage (FORBIDDEN write) | `src/`, `lib/`, `experiment/`, `paper/sections/`, `prompts/meta/` |
-| Interface contract produced | `interface/AlgorithmSpecs.md` (T→L) — signed by Theory Auditor before L-Domain may code |
+| Interface contract produced | `interface/AlgorithmSpecs.md` (T→L) — signed by TheoryAuditor before L-Domain may code |
 | Rules | docs/00_GLOBAL_RULES.md §A (A3: 3-Layer Traceability mandatory), §AU (AU1–AU3) |
-| Lifecycle | **DRAFT** — Specialist formalizes equations in `theory/`<br>**REVIEWED** — Theory Auditor independently re-derives and signs; contradictions block REVIEWED<br>**VALIDATED** — Theory Auditor publishes `interface/AlgorithmSpecs.md`; ConsistencyAuditor AU2 PASS |
+| Lifecycle | **DRAFT** — Specialist formalizes equations in `theory/`<br>**REVIEWED** — TheoryAuditor independently re-derives and signs; contradictions block REVIEWED<br>**VALIDATED** — TheoryAuditor publishes `interface/AlgorithmSpecs.md`; ConsistencyAuditor (Q-Domain) AU2 PASS |
 
 **Gatekeeper Approval condition (REVIEWED gate):** Theory Auditor must independently derive every
 equation without reading the Specialist's derivation first. Theory Auditor signs only after
@@ -272,7 +272,7 @@ AUDIT-RECORD:
 | Branch | Matrix Domain | Owned by | May commit | Merge target | Created by |
 |--------|--------------|----------|------------|--------------|------------|
 | `main` | — | system | never directly | — | Root Admin |
-| `theory` | T-Domain | Theory Auditor (Gatekeeper) | ConsistencyAuditor, CodeArchitect (on dev/) | `main` via PR (Root Admin executes) | ConsistencyAuditor |
+| `theory` | T-Domain | TheoryAuditor (Gatekeeper) | TheoryAuditor, CodeArchitect (on dev/) | `main` via PR (Root Admin executes) | TheoryAuditor |
 | `code` | L-Domain | CodeWorkflowCoordinator (Gatekeeper) | CodeWorkflowCoordinator | `main` via PR (Root Admin executes) | CodeWorkflowCoordinator |
 | `experiment` | E-Domain | CodeWorkflowCoordinator (Gatekeeper) | CodeWorkflowCoordinator, ExperimentRunner (on dev/) | `main` via PR (Root Admin executes) | CodeWorkflowCoordinator |
 | `paper` | A-Domain | PaperWorkflowCoordinator (Gatekeeper) | PaperWorkflowCoordinator | `main` via PR (Root Admin executes) | PaperWorkflowCoordinator |

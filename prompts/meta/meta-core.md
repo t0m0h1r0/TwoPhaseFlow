@@ -36,28 +36,42 @@ Every practical task requires TWO distinct roles that must NEVER be filled by th
    Derives independently before comparing — NEVER reads Specialist's reasoning first.
 
 **Why:** If the same agent creates and audits its own work, it will subconsciously rationalize
-its own errors. Independent derivation (not comparison) is the only reliable gate (φ7, MH-3).
+its own errors. Context isolation (not separate physical processes) is the practical gate (φ7, MH-3).
 
-**Enforcement:** A Gatekeeper that reads the Specialist's reasoning before deriving independently
-has broken symmetry. That audit is invalid. Re-derive before comparing — always.
+**Practical implementation (context-window isolation):**
+Because all agents run on the same LLM, physical isolation is impossible.
+The achievable equivalent is *context-window isolation*: the Auditor's DISPATCH token
+`inputs` field must contain ONLY final artifact paths and signed Interface Contracts —
+never the Specialist's session history, derivation notes, or chain-of-thought.
+This is both necessary and sufficient: an LLM that does not receive the Specialist's
+reasoning in context cannot be "contaminated" by it.
 
-**Phantom Reasoning Guard:** The Gatekeeper evaluates only the final Artifact and the signed
-Interface Contract. Specialist chain-of-thought logs, intermediate derivation notes, and
-scratch work are INVISIBLE to the Auditor. Audit is a Black Box test: the Artifact either
-passes formal checks or it does not. DISPATCH tokens sent to Auditor roles must list only
-final artifacts and Interface Contracts in `inputs` — never intermediate reasoning
-(→ meta-ops.md HAND-01 Rules, HAND-03 check 10, §AUDIT EXIT CRITERIA).
+**Enforcement (operationally verifiable):**
+- DISPATCH token `inputs` field must list ONLY: `{artifact_path}`, signed contract paths,
+  and test output logs (e.g., `last_run.log`, `compilation.log`).
+- Any Specialist session history, derivation commentary, or chain-of-thought notes
+  in `inputs` → REJECT (HAND-03 check 10).
+- Auditor's first action MUST be an independent derivation or re-check BEFORE opening
+  the artifact. "I verified by comparison only" = broken symmetry.
+
+**Phantom Reasoning Guard:** Audit is a Black Box test on the final Artifact.
+If the Artifact passes all formal checks (AU2 gate items), it passes — regardless of
+the Specialist's process. If it fails, it fails — regardless of how confident the
+Specialist sounded in prior context. Audit verdict = Artifact quality, not process quality.
 
 **Role mapping:** see meta-domains.md §MATRIX ARCHITECTURE for Specialist/Gatekeeper pairs per domain.
 
 ## §C: Falsification Loop — The Scientific Method
 
 The system evolves not only by building features, but by actively attempting to BREAK the
-current state. The QA & Audit domain (Q-Domain, ConsistencyAuditor) actively seeks
-contradictions between:
-- Code Implementation ↔ Theoretical Claims
-- Experimental Results ↔ Paper Statements
-- Interface Contract ↔ Actual Deliverables
+current state. Two agents drive the Falsification Loop at different scopes:
+
+- **TheoryAuditor (T-Domain):** Falsifies individual equation derivations.
+  Contradiction found in theory = STOP; surface to user.
+- **ConsistencyAuditor (Q-Domain):** Falsifies cross-domain consistency:
+  - Code Implementation ↔ Theoretical Claims
+  - Experimental Results ↔ Paper Statements
+  - Interface Contract ↔ Actual Deliverables
 
 **Finding a contradiction is a HIGH-VALUE SUCCESS, not a failure.**
 A ConsistencyAuditor that reports "AU2 FAIL: equation discrepancy found" has done its job
@@ -376,6 +390,36 @@ Independent re-derivation (not verification by comparison) is the only reliable 
 
 **Corollary:** A reviewer that reads the author's draft first, then checks it, has broken symmetry.
 Derive first; compare second. Sequence matters.
+
+────────────────────────────────────────────────────────
+# § STOP SEVERITY LEVELS
+
+Not all problems require the same response. Agents must classify before escalating.
+Over-escalation (treating every issue as STOP-HARD) blocks the pipeline unnecessarily.
+Under-escalation (treating integrity violations as warnings) destroys auditability.
+
+| Level | When to use | Agent action |
+|-------|------------|--------------|
+| **STOP-HARD** | Security/integrity violation; contamination; broken symmetry; main-branch commit by non-Root-Admin; missing upstream contract (FULL-PIPELINE only) | Halt immediately. Issue RETURN STOPPED. Do NOT proceed under any circumstance. Require explicit user resolution. |
+| **STOP-SOFT** | Protocol advisory violation; non-blocking quality issue; token budget exceeded; minor scope ambiguity | Log to docs/02_ACTIVE_LEDGER.md §PROTOCOL-VIOLATION. Proceed with the task. Report to coordinator in RETURN token. |
+| **WARN** | Style inconsistency; suboptimal but correct approach; FAST-TRACK missing optional gate | Annotate in RETURN token `warnings` field. Do not log to LEDGER. Proceed. |
+
+**Classification guide:**
+
+| Trigger | Level |
+|---------|-------|
+| DOM-02 write-territory violation | STOP-HARD |
+| GA condition violated during merge | STOP-HARD |
+| Broken Symmetry (Auditor received Specialist reasoning in context) | STOP-HARD |
+| T-domain upstream contract missing (FULL-PIPELINE) | STOP-HARD |
+| Token budget exceeded (EquationDeriver, SpecWriter) | STOP-SOFT |
+| IF-Agreement missing in FAST-TRACK | STOP-SOFT (declare reuse; proceed) |
+| AU2 PASS omitted in FAST-TRACK mode | STOP-SOFT (acceptable per §PIPELINE MODE) |
+| Style nit in LaTeX output | WARN |
+| git branch name deviates from naming convention | WARN |
+
+**Default when uncertain:** classify one level higher (i.e., STOP-SOFT → STOP-HARD).
+Better to over-stop than under-stop at an integrity boundary (φ5 Bounded Autonomy).
 
 ────────────────────────────────────────────────────────
 # § SYSTEM META RULES

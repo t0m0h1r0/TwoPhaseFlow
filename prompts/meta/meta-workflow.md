@@ -13,7 +13,13 @@ This file defines the HOW. The WHY is in meta-core.md §DESIGN PHILOSOPHY.
 Read the φ-principles before interpreting any rule in this file.
 
 ────────────────────────────────────────────────────────
-# § INTERFACE-FIRST LOOSE COUPLING
+# § EXPERIMENTAL — NOT YET OPERATIONAL
+# The following section defines the target micro-agent architecture.
+# It is NOT active: artifacts/{T,L,E,Q}/ and interface/signals/ are empty;
+# no generation tooling exists. Agents MUST NOT rely on these protocols.
+# Activate by running EnvMetaBootstrapper and populating artifacts/ + signals/.
+────────────────────────────────────────────────────────
+# § INTERFACE-FIRST LOOSE COUPLING  [EXPERIMENTAL]
 
 All micro-agent inputs and outputs pass through files in the `interface/` and
 `artifacts/` directories. Direct agent-to-agent conversation is prohibited.
@@ -124,6 +130,8 @@ ResultAuditor ◄──── reads derivation + run log ◄──────�
 **Key:** `──►` = file write; `◄────` = file read; no direct agent-to-agent path exists.
 
 ────────────────────────────────────────────────────────
+# § END EXPERIMENTAL
+────────────────────────────────────────────────────────
 # § T-L-E-A PIPELINE — Master Cross-Domain Flow
 
 The primary execution order for all new work in this system.
@@ -169,6 +177,62 @@ Contract being signed. Exceptions require explicit user authorization and escala
 **Continuous Paper (CI/CP) mode:** When a change propagates (e.g., T-Domain equation revision),
 all downstream domains (L → E → A) must re-validate their Interface Contracts.
 See §CI/CP PIPELINE below.
+
+────────────────────────────────────────────────────────
+# § PIPELINE MODE — FULL vs FAST-TRACK
+
+Every incoming task is classified into one of two execution modes BEFORE routing.
+ResearchArchitect performs this classification as part of GIT-01 Step 0.
+
+## Classification Criterion
+
+| Condition | Mode |
+|-----------|------|
+| Change touches `theory/`, `interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
+| New domain branch required (cross-domain work) | **FULL-PIPELINE** |
+| All other changes (bug fix, doc update, paper prose, experiment re-run, config) | **FAST-TRACK** |
+
+When uncertain → classify as FULL-PIPELINE (conservative fallback, φ1).
+
+## FULL-PIPELINE Mode
+
+Full T-L-E-A ordering. All protocols apply:
+- IF-Agreement (GIT-00) required before any Specialist starts
+- All GA-1 through GA-6 Gatekeeper Approval conditions enforced
+- AU2 PASS required for VALIDATED phase
+- CI/CP propagation applies on upstream change
+
+**Use for:** new theory derivations, solver algorithm changes, API contract changes,
+cross-domain work, any change to `src/core/` or `interface/`.
+
+## FAST-TRACK Mode
+
+Streamlined path for intra-domain, non-breaking changes. Reduced gate set:
+
+| Omitted gate | Reason |
+|-------------|--------|
+| IF-Agreement (GIT-00) | Existing interface contract is reused; Specialist declares it in DISPATCH context |
+| AU2 PASS | Gatekeeper PR review is sufficient for low-risk intra-domain work |
+| Composite roles only | micro-agent decomposition not required |
+
+**Retained gates:**
+- GIT-SP (Specialist branch isolation — always required)
+- DOM-02 Pre-Write Storage Check (contamination guard — always required)
+- HAND-03 checks 0–7 (omit check 9 upstream-contract validation for FAST-TRACK)
+- MERGE CRITERIA: TEST-PASS + LOG-ATTACHED (BUILD-SUCCESS optional for pure-prose changes)
+- Gatekeeper PR review: GA-2, GA-3, GA-5 (independent verification, evidence, no territory violation)
+
+**Use for:** bug fixes, paper prose corrections, adding documentation, experiment
+re-runs with unchanged solver, config changes, refactors that don't touch `src/core/`.
+
+## FAST-TRACK Guard — What Triggers Upgrade to FULL-PIPELINE
+
+If, during FAST-TRACK execution, any of the following is discovered:
+- The fix requires touching `src/core/` or `interface/`
+- A theory inconsistency is found (triggers T-Domain work)
+- The Gatekeeper determines the change has downstream impact
+
+→ STOP FAST-TRACK immediately; escalate to ResearchArchitect for FULL-PIPELINE re-routing.
 
 ────────────────────────────────────────────────────────
 # § CI/CP PIPELINE — Continuous Integration / Continuous Paper
@@ -401,11 +465,11 @@ AUDIT    PromptAuditor (doubles as gate for prompt domain)
 ## Theory Pipeline / T-Domain (branch: `theory`, Specialist workspaces: `dev/{agent_role}`)
 
 ```
-PRE-CHECK  ConsistencyAuditor (Theory Auditor role)  [MANDATORY before PLAN]  [Gatekeeper tier]
+PRE-CHECK  TheoryAuditor  [MANDATORY before PLAN]  [Gatekeeper tier — T-Domain only]
            → Run GIT-01 (auto-switch to `theory` + Selective Sync)
            → Run DOM-01: establish DOMAIN-LOCK for this session (domain=T)
 
-PLAN     ConsistencyAuditor
+PLAN     TheoryAuditor
            → Identify theory gaps; record in 02_ACTIVE_LEDGER.md
            → Dispatch Specialist (CodeArchitect for discretization; PaperWriter for formulation)
 
@@ -413,12 +477,12 @@ EXECUTE  CodeArchitect / PaperWriter  [Specialist on dev/{agent_role}]
            → Artifact: equations, derivations in theory/ (committed on dev/ branch)
            → Specialist opens PR: dev/{agent_role} → theory
 
-VERIFY   ConsistencyAuditor  [Gatekeeper — independently re-derives WITHOUT reading Specialist's work first]
+VERIFY   TheoryAuditor  [Gatekeeper — independently re-derives WITHOUT reading Specialist's work first]
            AGREE  → signs REVIEWED; Gatekeeper merges dev/ PR into theory
            DISAGREE → STOP; surface conflict; do not average; escalate to user
 
-AUDIT    ConsistencyAuditor  (AU2 gate on theory/ artifacts)
-           PASS → sign interface/AlgorithmSpecs.md → Root Admin merges theory → main
+AUDIT    ConsistencyAuditor  (Q-Domain AU2 gate on theory/ artifacts)
+           PASS → TheoryAuditor signs interface/AlgorithmSpecs.md → Root Admin merges theory → main
            FAIL → return to EXECUTE with contradiction report
 ```
 
