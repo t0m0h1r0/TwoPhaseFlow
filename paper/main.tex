@@ -45,14 +45,14 @@
 \input{sections/07_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
 \clearpage
 \input{sections/08_pressure}          %% §8.1 変密度 Projection 法の段階的導出
-\input{sections/08c_ccd_poisson}      %% §8.2 CCD による PPE 離散化（$O(h^6)$・変密度拡張）
-\input{sections/08d_defect_correction} %% §8.3 欠陥補正法（Defect Correction）による効率的 PPE 求解
-\input{sections/08e_gfm}             %% §8.4 界面処理：Ghost Fluid Method（GFM）
-\input{sections/08f_ppe_bc}           %% §8.5 境界条件と数値安定性（零モード・ピン点・条件数）
-\input{sections/08h_pressure_summary} %% §8.6 本章のまとめ：精度バランスと設計上のトレードオフ
-%% ※ 08d_ppe_verification（CCD-Poisson 単体検証スタブ）→ §10.3.3 に移行済みのため削除
-%% ※ 08g_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）
-%% ※ 08b_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.5 へ移動
+\input{sections/08b_ccd_poisson}       %% §8.2 CCD による PPE 離散化（$O(h^6)$・変密度拡張）
+\input{sections/08c_defect_correction} %% §8.3 欠陥補正法（Defect Correction）による効率的 PPE 求解
+\input{sections/08d_gfm}              %% §8.4 界面処理：Ghost Fluid Method（GFM）
+\input{sections/08e_ppe_bc}            %% §8.5 境界条件と数値安定性（零モード・ピン点・条件数）
+\input{sections/08f_pressure_summary}  %% §8.6 本章のまとめ：精度バランスと設計上のトレードオフ
+%% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §10.3.3 に移行済み
+%% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）
+%% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.6
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \cleardoublepage

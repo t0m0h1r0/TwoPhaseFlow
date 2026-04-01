@@ -256,7 +256,7 @@ Never hardcode pin index (0,0).
 | `05_advection.tex` + `05b_time_integration.tex` + `05c_reinitialization.tex` | §5 | CLS advection, TVD-RK3/AB2+IPC, CFL |
 | `06_grid.tex` | §6 | Non-uniform interface-fitted grid |
 | `07_collocate.tex` | §7 | Rhie-Chow, Balanced-Force |
-| `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_ppe_verification.tex` + `08d_ppe_pseudotime.tex` | §8 | Variable-density PPE, pseudo-time |
+| `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_defect_correction.tex` + `08d_gfm.tex` + `08e_ppe_bc.tex` + `08f_pressure_summary.tex` | §8 | Variable-density PPE, defect correction, GFM, BC |
 | `09_full_algorithm.tex` | §9 | 7-step loop diagram, operator mapping, timestep control |
 | `10_implementation.tex` | §10 | RC・BF implementation consistency |
 | `11_verification.tex` + `11b_component_verification.tex` + `11b1`–`11b5` + `11c_benchmarks.tex` | §11 | Component verification (CCD, GCL, CLS, PPE), error budget |
