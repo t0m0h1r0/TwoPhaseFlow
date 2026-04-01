@@ -27,8 +27,7 @@
         CLS 保存型再マッピングは LS 非保存補間に比べ質量誤差を 1--2 桁低減する
         （§\ref{app:cls_conservation}）．GFM は粗格子で安定に収束する．
   \item \textbf{PPE 求解：}
-        欠陥補正法は $k=3$ 回の反復で CCD 演算子の $\Ord{h^6}$ 精度を完全に発現させ，
-        LGMRES と同等の精度を達成する（§\ref{sec:ccd_poisson_verification}）．
+        欠陥補正法は $k=3$ 回の反復で CCD 演算子の $\Ord{h^6}$ 精度を完全に発現させる（§\ref{sec:verify_ppe}）．
         FD 直接法と比較して $N=128$ で $4{,}900$ 万倍高精度であり，コスト増は $3.4$ 倍に過ぎない．
   \item \textbf{時間積分：}
         TVD-RK3 は ODE テストで $\Ord{\Delta t^{3.00}}$ の精確な 3 次収束を確認した．
@@ -50,8 +49,7 @@ DCCD 移流（不連続） & TV 抑制 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ 律速 \\
 CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
 GFM Laplace 圧力跳び & 安定収束 & $\Ord{h^1}$ & 粗格子でも安定；$N=128$ で誤差 $1.8\%$ \\
-PPE（欠陥補正 $k{=}3$） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & LGMRES と同等；ディリクレ超収束 \\
-PPE（LGMRES 反復） & 高速収束 & 2--6 回 & ディリクレ BC で安定 \\
+PPE（欠陥補正 $k{=}3$） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ超収束 \\
 TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE テストで確認 \\
 \bottomrule
 \end{tabular}
