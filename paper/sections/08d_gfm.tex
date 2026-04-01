@@ -2,21 +2,21 @@
 %
 % §8.4  Ghost Fluid Method（GFM）による PPE 右辺への界面ジャンプ組み込み
 %
-%   界面ジャンプ条件 [p]_Γ = κ/We（§\ref{sec:csf}，式~\eqref{eq:gfm_jump}）を
+%   界面ジャンプ条件 [p]_Γ = κ/We（§~\ref{sec:csf}，式~\eqref{eq:gfm_jump}）を
 %   PPE 右辺ベクトルに直接組み込む離散化を定式化する．
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Ghost Fluid Method (GFM) による鋭利な界面処理}
 \label{sec:gfm}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-GFM \cite{Fedkiw1999} は界面 $\Gamma$ を数学的不連続面として扱い，
-§\ref{sec:csf} の界面ジャンプ条件（式~\eqref{eq:gfm_jump}）を PPE の右辺に直接組み込む手法である．
-CSF 体積力は予測子ステップ（Step~5）から完全に除去され，代わりにジャンプ条件が PPE の右辺ベクトルへの補正項として組み込まれる．
+GFM~\cite{Fedkiw1999} は界面 $\Gamma$ を数学的不連続面として扱い，
+§~\ref{sec:csf} の界面ジャンプ条件（式~\eqref{eq:gfm_jump}）を PPE の右辺に直接組み込む手法である．
+CSF 体積力は予測子ステップ（Step~5）から完全に除去される．代わりに，ジャンプ条件が PPE の右辺ベクトルへの補正項として組み込まれる．
 これにより，CSF モデル誤差 $\Ord{\varepsilon^2}$ が本質的に除去される．
 
 \subsubsection{ゴースト圧力置換と PPE 右辺補正}
 
-GFM では，界面を挟む格子点ペア $(i,\,i+1)$ において，相 1 側（$\phi_i > 0$）の PPE ステンシルで参照する相 2 ノード $i+1$ の圧力を，ジャンプ条件を加えた「ゴースト値」で置換する：
+GFM では，界面を挟む格子点ペア $(i,\,i+1)$ を考える．相 1 側（$\phi_i > 0$）の PPE ステンシルで参照する相 2 ノード $i+1$ の圧力を，ジャンプ条件を加えた「ゴースト値」で置換する：
 \begin{equation}
   \tilde{p}_{i+1}^{\text{ghost}} = p_{i+1} + [p]_\Gamma = p_{i+1} + \frac{\kappa_f}{We}
   \label{eq:gfm_ghost_p}
@@ -27,24 +27,24 @@ GFM では，界面を挟む格子点ペア $(i,\,i+1)$ において，相 1 側
   \quad \text{（界面を右に持つセル $i$ に対して）}
   \label{eq:gfm_rhs_correction}
 \end{equation}
-ここで $(1/\rho)_{i+1/2}^{\mathrm{harm}} = 2/(\rho_i + \rho_{i+1})$ は界面フェイスの調和平均密度逆数（PPE 演算子との整合性；付録~\ref{app:rhie_chow_full} 参照）であり，符号は界面の向き（$\phi_i > 0$ か $\phi_i < 0$ か）に従い，各軸方向について独立に適用する．
+ここで $(1/\rho)_{i+1/2}^{\mathrm{harm}} = 2/(\rho_i + \rho_{i+1})$ は界面フェイスの調和平均密度逆数（PPE 演算子との整合性；付録~\ref{app:rhie_chow_full} 参照）であり，符号は界面の向き（$\phi_i > 0$ か $\phi_i < 0$ か）に従う．この補正は各軸方向について独立に適用する．
 
 \subsubsection{DCCD 散逸との組み合わせ：PPE 右辺の構成}
 
-予測子ステップで CSF 体積力が除去されるため，$\bu^*$ の PPE 右辺は DCCD フィルタ済み（§\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）セル中心発散に GFM 補正を加えた形となる：
+予測子ステップで CSF 体積力が除去されるため，$\bu^*$ の PPE 右辺は DCCD フィルタ済み（§~\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）セル中心発散に GFM 補正を加えた形となる：
 \begin{equation}
   q_h = \frac{1}{\Delta t}\left(D_x^{(1)} \tilde{u}^* + D_y^{(1)} \tilde{v}^*\right) + b^{\mathrm{GFM}}
   \label{eq:gfm_ccd_div}
 \end{equation}
 ここで $\tilde{u}^*,\tilde{v}^*$ は DCCD フィルタ適用済み予測速度（式~\eqref{eq:dccd_ppe_rhs}），$b^{\mathrm{GFM}}$ は式~\eqref{eq:gfm_rhs_correction} の界面補正項である．
-Rhie--Chow 面速度補間は不要であり，チェッカーボード抑制は DCCD 散逸機構（§\ref{sec:dccd_decoupling}）が担う．
+Rhie--Chow 面速度補間は不要であり，チェッカーボード抑制は DCCD 散逸機構（§~\ref{sec:dccd_decoupling}）が担う．
 
 \subsubsection{CCD との数学的相性と今後の課題}
 
 本節で示した GFM 定式化（式~\eqref{eq:gfm_ghost_p}--\eqref{eq:gfm_rhs_correction}）は，圧力のゴースト値置換のみを扱う．
 速度場を界面越しに滑らかに拡張する \textbf{Extension PDE}（$\partial q/\partial\tau \pm \mathbf{n}\cdot\bnabla q = 0$）を各相について解くことで，
-CCD のステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い滑らかな場を参照できるようになり，
-\textbf{界面直近まで $\Ord{h^6}$ 精度が維持される}可能性がある．
-Extension PDE の実装は本稿の現スコープ外であり，今後の課題とする（§\ref{sec:future_work}）．
+CCD のステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い滑らかな場を参照できるようになる．
+これにより\textbf{界面直近まで $\Ord{h^6}$ 精度が維持される}可能性がある．
+Extension PDE の実装は本稿の現スコープ外であり，今後の課題とする（§~\ref{sec:future_work}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
