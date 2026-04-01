@@ -239,24 +239,26 @@ $g'$ の計算には連鎖律（chain rule）を用いる．
      = \frac{2\phi_x\phi_{xx} + 2\phi_y\phi_{xy}}{2\sqrt{\phi_x^2+\phi_y^2}}
      = \frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{\sqrt{\phi_x^2+\phi_y^2}}
 \]
-これらを商の微分公式に代入すると，
-\begin{align}
+これらを商の微分公式 $(f'g - fg')/g^2$ に代入する．
+まず，代入結果を書き下す：
+\begin{equation}
  \pd{n_x}{x}
- &= \frac{
+ = \frac{
      \overbrace{\phi_{xx}}^{f'}
      \overbrace{(\phi_x^2+\phi_y^2)^{1/2}}^{g}
      -
      \overbrace{\phi_x}^{f}
-     \overbrace{\left(\frac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{1/2}}\right)}^{g'}
-   }{\underbrace{\phi_x^2+\phi_y^2}_{g^2}} \notag \\
- \text{（分母分子に $(\phi_x^2+\phi_y^2)^{1/2}$ を掛けて整理すると）} \notag \\
- &= \frac{\phi_{xx}(\phi_x^2+\phi_y^2) - \phi_x(\phi_x\phi_{xx} + \phi_y\phi_{xy})}
-         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
- &= \frac{\phi_{xx}\phi_x^2 + \phi_{xx}\phi_y^2 - \phi_x^2\phi_{xx} - \phi_x\phi_y\phi_{xy}}
-         {(\phi_x^2+\phi_y^2)^{3/2}} \notag \\
- &= \frac{\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
+     \overbrace{\left(\dfrac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{1/2}}\right)}^{g'}
+   }{\underbrace{\phi_x^2+\phi_y^2}_{g^2}}
+ \label{eq:dnx_dx_raw}
+\end{equation}
+分母分子に $(\phi_x^2+\phi_y^2)^{1/2}$ を掛けて通分し，
+分子を展開すると $\phi_x^2\phi_{xx}$ の項が相殺される：
+\begin{equation}
+ \pd{n_x}{x}
+ = \frac{\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
  \label{eq:dnx_dx}
-\end{align}
+\end{equation}
 全く同様に，$y$ に関する第二項は，変数の対称性 $(x \leftrightarrow y)$ から求まる
 （$f=\phi_y$, $g=\sqrt{\phi_x^2+\phi_y^2}$ とした商の微分）．
 \begin{equation}
