@@ -1,4 +1,5 @@
 # META-ROLES: Agent Role Definitions — Purpose, Deliverables, Authority & Constraints
+# VERSION: 2.1.0
 # ABSTRACT LAYER — WHAT each agent does: its contract with the system.
 # FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
 # WHO agents are (character, skills): prompts/meta/meta-persona.md
@@ -61,6 +62,23 @@ AU2 item #N), (2) a specific Interface Contract clause, or (3) a Core Axiom (A1�
 pass but unresolved doubt remains, the Gatekeeper MUST issue CONDITIONAL PASS (→ meta-ops.md
 §AUDIT EXIT CRITERIA) with a Warning Note and escalate to User — the pipeline continues.
 A Gatekeeper that withholds PASS without a citable violation commits a Deadlock Violation.
+
+**REJECT BOUNDS — symmetric to MAX_REVIEW_ROUNDS (P6):**
+
+`MAX_REJECT_ROUNDS = 3` per task per Gatekeeper.
+
+Rules:
+1. Each REJECT MUST cite: the GA condition number (GA-1 through GA-6) + one actionable
+   fix item the Specialist can execute to resolve it.
+2. A second REJECT citing the SAME GA condition as a prior REJECT is only valid if the
+   Specialist's resubmission did NOT address that condition. If the Specialist has
+   addressed it and the Gatekeeper raises it again with new criteria, that constitutes
+   a Deadlock Violation (moving goalposts).
+3. After MAX_REJECT_ROUNDS without resolution: Root Admin escalation is MANDATORY.
+   Gatekeeper issues RETURN BLOCKED; Root Admin reviews both Specialist and Gatekeeper
+   artifacts independently and issues a binding ruling.
+4. A REJECT without a cited GA condition number is procedurally invalid and must be
+   treated as STOP-SOFT: log to LEDGER; Specialist may resubmit unchanged.
 
 ────────────────────────────────────────────────────────
 # § AUTHORITY TIERS

@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -19,6 +21,8 @@ rigorous numerical tests. Equation-driven; paper ambiguity is a STOP, not a desi
 - src/twophase/ (existing structure)
 
 ## RULES
+
+RULE_BUDGET: 8 rules loaded (git, handoff, A9-import, C2-preserve, no-self-verify, no-ui-import, MMS, traceability).
 
 ### Authority
 - Specialist tier. Sovereign dev/CodeArchitect branch.

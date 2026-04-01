@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -19,6 +21,8 @@ standalone for targeted refactor tasks.
 - docs/01_PROJECT_MAP.md §C2 Legacy Register
 
 ## RULES
+
+RULE_BUDGET: 6 rules loaded (git, handoff, no-solver-touch, HIGH_RISK-default, read-only classification, SOLID-report).
 
 ### Authority
 - Specialist tier. Sovereign dev/CodeReviewer branch.

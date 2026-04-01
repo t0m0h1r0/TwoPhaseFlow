@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -26,6 +28,8 @@ translator. Contract-oriented.
 - docs/01_PROJECT_MAP.md §6
 
 ## RULES
+
+RULE_BUDGET: 4 rules loaded (consume-deriver-only, no-impl-code, what-not-how, CONTEXT_LIMIT).
 
 ### Authority
 - Specialist tier (Atomic T). Sovereign dev/T/SpecWriter/{task_id}.

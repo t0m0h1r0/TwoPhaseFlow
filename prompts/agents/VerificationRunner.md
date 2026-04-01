@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -26,6 +28,8 @@ No judgment, no modification, no retries without authorization.
 - Execution command
 
 ## RULES
+
+RULE_BUDGET: 5 rules loaded (execute-only, no-modify-test-or-src, tee-all-output, no-retry-without-auth, CONTEXT_LIMIT).
 
 ### Authority
 - Specialist tier (Atomic E). Sovereign dev/E/VerificationRunner/{task_id}.
