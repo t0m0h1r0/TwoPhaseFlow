@@ -1,4 +1,5 @@
 # META-WORKFLOW: Inter-Agent Coordination, Task Flow & Evolution
+# VERSION: 3.0.0
 # ABSTRACT LAYER — workflow logic: P-E-V-A loop, domain pipelines, handoff rules, control protocols.
 # FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
 # Domain registry, branch rules, storage sovereignty: prompts/meta/meta-domains.md
@@ -333,6 +334,46 @@ Rules:
 - Step 1 is immutable once Step 2 begins; changes require re-entering Step 1
 - Step 3 must not reference any Step 4 artifact
 - CRITICAL_VIOLATION if Step 4 bypasses Step 2 contract to access Step 3 internals (A9)
+
+────────────────────────────────────────────────────────
+# § STOP-RECOVER MATRIX
+
+When an agent triggers a STOP condition, this matrix defines the recovery pathway.
+Every STOP is recoverable — the question is WHO resolves it and WHERE the pipeline resumes.
+
+## Recovery Table
+
+| STOP Trigger | Severity | Recovery Agent | Recovery Action | Resume Point |
+|-------------|----------|---------------|----------------|-------------|
+| Paper/equation ambiguity | STOP-HARD | User → PaperWriter or CodeArchitect | User clarifies ambiguity; Specialist re-derives | EXECUTE |
+| TestRunner FAIL | STOP-HARD | Coordinator → CodeCorrector | Classify THEORY_ERR/IMPL_ERR (P9); dispatch targeted fix | EXECUTE |
+| AU2 FAIL — PAPER_ERROR | STOP-HARD | ConsistencyAuditor → PaperWriter | Cite specific AU2 item; PaperWriter fixes | EXECUTE |
+| AU2 FAIL — CODE_ERROR | STOP-HARD | ConsistencyAuditor → CodeArchitect | Cite specific AU2 item; re-implement from spec | EXECUTE |
+| AU2 FAIL — THEORY_ERROR | STOP-HARD | ConsistencyAuditor → TheoryArchitect | Re-derive from first principles; TheoryAuditor re-verifies | EXECUTE (T-Domain) |
+| Authority conflict (paper vs code vs theory) | STOP-HARD | User | User ruling + rationale recorded in LEDGER; φ3 hierarchy applied | PLAN |
+| Merge conflict (GIT) | STOP-HARD | User | Manual conflict resolution; re-run GIT-01 | PRE-CHECK |
+| MAX_REJECT_ROUNDS exceeded (Gatekeeper) | STOP-HARD | User → Root Admin | Review both Specialist + Gatekeeper artifacts; binding ruling | VERIFY |
+| Loop > MAX_REVIEW_ROUNDS (Coordinator) | STOP-HARD | User | Review full loop history; scope change decision | PLAN |
+| Branch contamination (DOM-02 violation) | STOP-HARD | User | Revert contaminated commit; re-run GIT-SP from clean state | PRE-CHECK |
+| Upstream contract invalidated (CI/CP) | STOP-HARD | CI/CP propagation | Re-sign upstream contract; cascade INVALIDATED signals downstream | PLAN |
+| Broken Symmetry detected (Auditor saw CoT) | STOP-HARD | Coordinator | Re-dispatch Auditor in fresh session (L3 isolation) with sanitized inputs | VERIFY |
+| Token budget exceeded | STOP-SOFT | Coordinator | Compress context or split task; re-dispatch with smaller scope | EXECUTE |
+| Missing input file | STOP-SOFT | Coordinator | Identify which upstream agent should produce it; dispatch | PLAN |
+| PaperCompiler BUILD-FAIL | STOP-SOFT | PaperWorkflowCoordinator → PaperCompiler | Parse log; apply surgical fix; re-compile | VERIFY |
+| GPU/environment error | STOP-SOFT | User → DevOpsArchitect | Fix environment; re-run experiment | EXECUTE |
+
+## Recovery Protocol
+
+1. **Agent triggers STOP:** Issue RETURN token with `status: STOPPED` and `issues` field citing the specific trigger.
+2. **Coordinator receives RETURN:** Look up trigger in this matrix → identify Recovery Agent and Resume Point.
+3. **Coordinator dispatches recovery:** Issue HAND-01 to Recovery Agent with context block including:
+   - Original task scope
+   - STOP trigger description
+   - Resume Point (which P-E-V-A phase to re-enter)
+4. **Recovery Agent completes fix:** Issues HAND-02 RETURN → pipeline resumes at Resume Point.
+5. **If Recovery Agent is "User":** Coordinator issues RETURN STOPPED to user with full context; awaits user input.
+
+**Hard rule:** A coordinator that encounters a STOP trigger NOT listed in this matrix must escalate to User — do not improvise recovery paths.
 
 ────────────────────────────────────────────────────────
 # § HANDOFF RULES

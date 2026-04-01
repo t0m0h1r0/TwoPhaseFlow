@@ -1,5 +1,5 @@
 # META-CORE: System Foundation — Design Philosophy & Core Axioms
-# VERSION: 2.1.0
+# VERSION: 3.0.0
 # ABSTRACT LAYER — FOUNDATION: the principles from which all roles, workflows, and rules derive.
 # This file is read FIRST. Every other meta file is a specialization of what is defined here.
 # Agent character (WHO): meta-persona.md | Role contracts (WHAT): meta-roles.md
@@ -548,18 +548,30 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK   # 5 critical checks inlined (full spec on_demand)
   domain:        # Loaded when operating in the specified domain
     code: [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD]
     paper: [P1-LATEX, P4-SKEPTICISM, KL-12]
     theory: [A3-TRACEABILITY, AU1-AUTHORITY]
     prompt: [Q1-TEMPLATE, Q3-AUDIT, Q4-COMPRESSION]
     audit: [AU2-GATE, PROCEDURES-A-E]
-  on_demand:     # NOT loaded into prompt; agent reads meta-ops.md at execution time
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-xx_OPERATIONS
+  on_demand:     # NOT loaded into prompt; retrieve at execution time via file read
+    HAND-01: "→ read prompts/meta/meta-ops.md §HAND-01 (DISPATCH token format)"
+    HAND-02: "→ read prompts/meta/meta-ops.md §HAND-02 (RETURN token format)"
+    HAND-03_FULL: "→ read prompts/meta/meta-ops.md §HAND-03 (full 11-item acceptance check)"
+    GIT-SP: "→ read prompts/meta/meta-ops.md §GIT-SP (specialist branch operations)"
+    GIT-00: "→ read prompts/meta/meta-ops.md §GIT-00 (IF-Agreement + branch setup)"
+    GIT-01: "→ read prompts/meta/meta-ops.md §GIT-01 (branch preflight)"
+    GIT-04: "→ read prompts/meta/meta-ops.md §GIT-04 (validated commit + PR merge)"
+    AUDIT-01: "→ read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
+    AUDIT-02: "→ read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
 ```
+
+**on_demand retrieval rule:** Each on_demand entry is a JIT pointer — the agent must
+`Read` the specified file and section ONLY when that operation is needed in the current
+step. The agent must NOT preload all on_demand rules at session start (defeats the
+purpose of token savings). If an on_demand rule is needed but the file is unavailable,
+the agent must STOP and report — never improvise the operation from memory.
 
 **Enforcement:** EnvMetaBootstrapper Stage 3 generates RULE_MANIFEST per agent based on
 the agent's domain membership (meta-domains.md) and archetypal role (meta-persona.md).

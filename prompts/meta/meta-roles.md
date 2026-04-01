@@ -1,5 +1,5 @@
 # META-ROLES: Agent Role Definitions — Purpose, Deliverables, Authority & Constraints
-# VERSION: 2.1.0
+# VERSION: 3.0.0
 # ABSTRACT LAYER — WHAT each agent does: its contract with the system.
 # FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
 # WHO agents are (character, skills): prompts/meta/meta-persona.md

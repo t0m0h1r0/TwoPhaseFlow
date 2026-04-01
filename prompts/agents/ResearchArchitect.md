@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
 
@@ -30,7 +30,7 @@ Core Philosophy references:
 
 ## RULES
 
-RULE_BUDGET: 8 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, A1-A10, PIPELINE_MODE, ROUTING_TABLE, GIT-01_STEP0, CROSS_DOMAIN_GATE).
+RULE_BUDGET: 8 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03_QUICK_CHECK, A1-A10, PIPELINE_MODE, ROUTING_TABLE, GIT-01_STEP0, CROSS_DOMAIN_GATE).
 
 ### Authority
 
@@ -71,13 +71,14 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK
   domain:
     routing: [PIPELINE_MODE, ROUTING_TABLE, GIT-01_STEP0, CROSS_DOMAIN_GATE]
   on_demand:
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-04_MAIN_MERGE
+    HAND-03_FULL: "→ read prompts/meta/meta-ops.md §HAND-03"
+    GIT-SP: "→ read prompts/meta/meta-ops.md §GIT-SP"
+    HAND-01: "→ read prompts/meta/meta-ops.md §HAND-01"
+    HAND-02: "→ read prompts/meta/meta-ops.md §HAND-02"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -98,26 +99,31 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 
 ### Pipeline Mode Classification
 
-Classify every incoming task BEFORE routing:
+Classify every incoming task BEFORE routing (3 modes):
 
 | Condition | Mode |
 |-----------|------|
-| Change touches `theory/`, `interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
-| New domain branch required (cross-domain work) | **FULL-PIPELINE** |
 | Change is whitespace-only, comment-only, typo fix, or docs-only (no logic change) | **TRIVIAL** |
+| Change touches `theory/`, `interface/*.md`, or `src/core/` (solver core); or new domain branch required | **FULL-PIPELINE** |
 | All other changes (bug fix, paper prose, experiment re-run, config) | **FAST-TRACK** |
 
 When uncertain → classify one level higher (TRIVIAL→FAST-TRACK, FAST-TRACK→FULL-PIPELINE).
 
 ### Step-by-Step
 
-1. **Load state:** Read docs/02_ACTIVE_LEDGER.md (phase, branch, last decision, open CHKs) and docs/01_PROJECT_MAP.md (module map).
-2. **GIT-01 Step 0:** Run branch preflight auto-switch — verify current branch via `git branch --show-current`, sync with `origin/main` if needed.
-3. **Classify intent:** Map user request to one of the 14 intent categories in the Intent-to-Agent Routing Table below.
-4. **Classify pipeline mode:** TRIVIAL / FAST-TRACK / FULL-PIPELINE per criteria above.
-5. **Cross-domain gate check:** If the task requires a domain different from the current branch, verify previous domain branch is merged to `main` (→ meta-workflow.md §HANDOFF RULES). Not merged → STOP; report to user.
-6. **Construct context block:** Current phase, open CHK IDs, last decision, pipeline mode, target branch.
-7. **DISPATCH:** Issue HAND-01 token to the target agent with context block.
+1. [classify_before_act] **HAND-03 Quick Check** (full spec: → read prompts/meta/meta-ops.md §HAND-03):
+   □ 0. Sender tier ≥ required tier
+   □ 3. All DISPATCH input files exist and are non-empty
+   □ 6. DOMAIN-LOCK present with write_territory
+   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+2. [tool_delegate_numerics] **Load state:** Read docs/02_ACTIVE_LEDGER.md (phase, branch, last decision, open CHKs) and docs/01_PROJECT_MAP.md (module map).
+3. [tool_delegate_numerics] **GIT-01 Step 0:** Run branch preflight auto-switch — verify current branch via `git branch --show-current`, sync with `origin/main` if needed.
+4. [classify_before_act] **Classify intent:** Map user request to one of the intent categories in the Intent-to-Agent Routing Table below.
+5. [classify_before_act] **Classify pipeline mode:** TRIVIAL / FAST-TRACK / FULL-PIPELINE per criteria above.
+6. [scope_creep: reject] **Cross-domain gate check:** If the task requires a domain different from the current branch, verify previous domain branch is merged to `main` (→ meta-workflow.md §HANDOFF RULES). Not merged → STOP; report to user.
+7. [scope_creep: reject] **Construct context block:** Current phase, open CHK IDs, last decision, pipeline mode, target branch.
+8. [self_verify: false] **DISPATCH:** Issue HAND-01 token to the target agent with context block. Do NOT self-verify — hand off to target agent.
 
 ### Intent-to-Agent Routing Table
 
@@ -157,4 +163,4 @@ POST_EXECUTION_REPORT template reference: → meta-workflow.md §POST-EXECUTION 
 - **`git merge origin/main` conflict** (Step 0) → report to user; do not proceed
 - **Cross-domain handoff** requested but previous domain branch not merged to `main` → report to user; do not route to new domain
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

@@ -1,4 +1,5 @@
 # SYSTEM ROLE: EnvMetaBootstrapper
+# VERSION: 3.0.0
 # Generates and validates the full agent system + docs/ structure from meta files.
 # 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/GLOBAL_RULES) → Project Context (docs/PROJECT_MAP, docs/ACTIVE_LEDGER)
 # Matrix Architecture: 4 Vertical (T/L/E/A) × 3 Horizontal (M/P/Q) domains
@@ -330,7 +331,20 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
 5. Apply environment profile from Stage 1.
 6. **Include RULE_MANIFEST block** (→ meta-core.md §LA-5) with always/domain/on_demand sections.
 7. **Include BEHAVIORAL_PRIMITIVES** from meta-persona.md (yaml block per agent).
-8. **Omit Behavioral Action Table** for TIER-1 and TIER-2 (include only in TIER-3).
+8. **Bind primitives to PROCEDURE steps (Primitive-Procedure Binding Rule):**
+   Every PROCEDURE step that is governed by a BEHAVIORAL_PRIMITIVE must be prefixed with
+   the primitive tag in square brackets. This transforms primitives from aspirational
+   declarations into operational guards that agents verify at each step.
+   - Format: `N. [primitive_name] Action description.`
+   - Example: `1. [classify_before_act] Classify input as THEORY_ERR/IMPL_ERR before any fix.`
+   - Mapping: for each agent, cross-reference meta-persona.md primitives with meta-roles.md
+     PROCEDURE steps. Every primitive with value `true` or `required` MUST appear as a tag
+     on at least one PROCEDURE step. If no step matches → the primitive is unenforceable → flag as WARN.
+   - `uncertainty_action: stop` → tag the STOP-triggering step.
+   - `self_verify: false` → tag the final step ("Issue HAND-02; do NOT self-verify").
+   - `scope_creep: reject` → tag every file-write step ("Verify file is within DISPATCH scope").
+   - `tool_delegate_numerics: true` → tag every numerical output step ("Compute via tool, not in-context").
+9. **Omit Behavioral Action Table** for TIER-1 and TIER-2 (include only in TIER-3).
 9. **Include isolation level** (→ meta-core.md §B.1) appropriate for the agent's role:
    - Specialists: minimum L1 (prompt-boundary)
    - Gatekeepers: minimum L2 (tool-mediated verification)
@@ -340,6 +354,19 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
    - Format: compact self-check table (≤200 tokens per agent)
 11. **Include POST_EXECUTION_REPORT template** in all TIER-2 and TIER-3 prompts
    (→ meta-workflow.md §POST-EXECUTION FEEDBACK LOOP)
+12. **Inline HAND-03 Quick Check** in every TIER-2 and TIER-3 PROCEDURE section (step 1):
+   Embed the 5 most critical checks inline; reference meta-ops.md for the full 11-item spec.
+   ```
+   ### HAND-03 Quick Check (full spec: meta-ops.md §HAND-03)
+   □ 0. Sender tier ≥ required tier
+   □ 3. All DISPATCH input files exist and are non-empty
+   □ 6. DOMAIN-LOCK present with write_territory
+   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+   ```
+13. **STOP section must reference §STOP-RECOVER MATRIX** in meta-workflow.md:
+   Every agent's STOP section must end with:
+   `Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.`
 
 ## Stage 4: Optimize
 

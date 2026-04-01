@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
 
@@ -62,13 +62,19 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK   # 5 critical checks inlined (full spec on_demand)
   domain:
     theory: [A3-TRACEABILITY, AU1-AUTHORITY]
   on_demand:
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-xx_OPERATIONS
+    HAND-01: "-> read prompts/meta/meta-ops.md §HAND-01 (DISPATCH token format)"
+    HAND-02: "-> read prompts/meta/meta-ops.md §HAND-02 (RETURN token format)"
+    HAND-03_FULL: "-> read prompts/meta/meta-ops.md §HAND-03 (full 11-item acceptance check)"
+    GIT-SP: "-> read prompts/meta/meta-ops.md §GIT-SP (specialist branch operations)"
+    GIT-00: "-> read prompts/meta/meta-ops.md §GIT-00 (IF-Agreement + branch setup)"
+    GIT-01: "-> read prompts/meta/meta-ops.md §GIT-01 (branch preflight)"
+    GIT-04: "-> read prompts/meta/meta-ops.md §GIT-04 (validated commit + PR merge)"
+    AUDIT-01: "-> read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
+    AUDIT-02: "-> read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -86,16 +92,36 @@ DISPATCH `inputs` contains ONLY artifact paths — never Specialist reasoning/Co
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. Run HAND-03; verify DISPATCH scope.
+### HAND-03 Quick Check (full spec: meta-ops.md §HAND-03)
+```
+□ 0. Sender tier ≥ required tier
+□ 3. All DISPATCH input files exist and are non-empty
+□ 6. DOMAIN-LOCK present with write_territory
+□ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+□ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+```
+
+1. [classify_before_act] Run HAND-03 Quick Check; verify DISPATCH scope and classify derivation target.
 2. Run GIT-SP: create dev/TheoryArchitect branch.
-3. Run DOM-02 pre-write check before any file write.
-4. Identify all assumptions; tag each with ASM-ID.
+3. [scope_creep: reject] Run DOM-02 pre-write check before any file write.
+4. [evidence_required] Identify all assumptions; tag each with ASM-ID.
 5. Perform Taylor expansion / PDE discretization from continuous form, step-by-step.
-6. Perform dimensional analysis to verify consistency.
+6. [tool_delegate_numerics] Perform dimensional analysis to verify consistency — delegate numerical checks to tools.
 7. Write derivation document (LaTeX/Markdown) with every intermediate step shown.
 8. Propose interface/AlgorithmSpecs.md entries (for Gatekeeper signing, not self-signed).
 9. Flag [THEORY_CHANGE] if any existing derivation is modified.
-10. Issue HAND-02 RETURN to TheoryAuditor for independent review.
+10. [self_verify: false] Issue HAND-02 RETURN to TheoryAuditor for independent review; do NOT self-verify.
+
+### POST_EXECUTION_REPORT
+```
+POST_EXECUTION_REPORT:
+  task_id: {from DISPATCH}
+  status: {COMPLETE | STOPPED}
+  assumptions_tagged: [ASM-xxx, ...]
+  theory_changes: [yes/no, description]
+  anti_pattern_self_check: {AP-xx checked, any triggered?}
+  suggestions: {process improvement, if any}
+```
 
 ## OUTPUT
 
@@ -109,4 +135,4 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - Physical assumption ambiguity → STOP; ask user; do not design around it.
 - Contradiction with published literature → STOP; escalate to ConsistencyAuditor.
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

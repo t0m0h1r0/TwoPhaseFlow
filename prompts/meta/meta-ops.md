@@ -1,4 +1,5 @@
 # META-OPS: Operational Command Specifications & Handoff Protocols
+# VERSION: 3.0.0
 # ABSTRACT LAYER — canonical commands, parameters, success criteria, and handoff structures.
 # FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
 # Role bindings (who may invoke): prompts/meta/meta-roles.md §AUTHORITY
