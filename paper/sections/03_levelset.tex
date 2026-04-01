@@ -30,9 +30,9 @@ CLS 法がどのようにそれを解決するかを段階的に示す．
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[scale=0.9]
+\begin{tikzpicture}[scale=1.0]
   % 左：初期状態（|∇φ|=1）
-  \begin{scope}[xshift=-40mm]
+  \begin{scope}[xshift=-45mm]
     \node[font=\small\bfseries, text=navy] at (0,3.0) {初期：$|\bnabla\phi|=1$};
     \foreach \r in {0.5,1.0,1.5,2.0,2.5}{
       \draw[blue2!60, dashed] (0,0) circle (\r);
@@ -45,7 +45,7 @@ CLS 法がどのようにそれを解決するかを段階的に示す．
           node[right, font=\scriptsize]{$\bnabla\phi$};
   \end{scope}
   % 右：移流後（|∇φ|≠1）
-  \begin{scope}[xshift=40mm]
+  \begin{scope}[xshift=45mm]
     \node[font=\small\bfseries, text=navy] at (0,3.0) {移流後：$|\bnabla\phi|\neq 1$};
     \draw[blue2!40, dashed] (0,0) ellipse (0.4 and 0.5);
     \draw[blue2!40, dashed] (0,0) ellipse (0.8 and 1.1);
