@@ -54,8 +54,8 @@ $N$ & $\|\bu\|_\infty$ & $|p - p_{\mathrm{hydro}}|_\infty$ & 判定 \\
 静止液滴における Laplace 圧均衡の検証は，
 GFM 界面処理（§\ref{sec:gfm}）と Balanced-Force 離散化の両方を必要とする
 二相流統合テストである．
-GFM の Laplace 圧力跳び精度は §\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）で
-$N=128$ で相対誤差 $1.8\%$ に達することを確認済みである．
+GFM の Laplace 圧力跳び精度は §~\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）にて
+$N=128$ における相対誤差 $1.8\%$ を確認済みである．
 
 \paragraph{現状と課題．}
 現行の CSF ベース実装による予備実験では，寄生流れが格子精緻化に伴い増大し
@@ -64,4 +64,4 @@ $N=128$ で相対誤差 $1.8\%$ に達することを確認済みである．
 GFM への移行（§\ref{sec:gfm}）により界面圧力跳びを鋭く処理し，
 Balanced-Force 条件を回復する必要がある．
 寄生流れ振幅の格子収束次数（Balanced-Force 条件下で $\Ord{h^2}$）の
-定量的確認は §\ref{sec:validation}（第~\ref{sec:validation}章）の静止液滴ベンチマークにて行う．
+定量的確認は第~\ref{sec:validation}章の静止液滴ベンチマークにて行う．

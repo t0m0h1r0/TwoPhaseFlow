@@ -27,12 +27,11 @@ DCCD の散逸フィルタがこの不安定の抑制にどの程度寄与する
   \item DCCD（10 次選択フィルタ適用）：高波数成分を選択的に減衰
 \end{itemize}
 
-\textbf{期待される挙動：}
-CCD ではチェッカーボード振動が発生し解が発散する一方，
-DCCD フィルタは §\ref{sec:verify_dccd_dissipation} で確認した
-Nyquist モード抑制効果により安定な時間発展を実現する．
-第~\ref{sec:dccd_dissipation_bench}節の 1 次元移流実験で確認された
-TV 抑制効果（CCD 比 $1/3$）が 2 次元 NS 方程式でも有効に機能する．
+\textbf{検証の意図：}
+高解像度格子では CCD がチェッカーボード振動を励起しうるため，
+DCCD フィルタの §~\ref{sec:verify_dccd_dissipation} で確認した
+Nyquist モード抑制効果が 2 次元 NS 方程式でも有効に機能するかを確認する．
+同時に，低解像度で DCCD が過剰散逸を導入しないことも検証する．
 
 \begin{table}[htbp]
 \centering
