@@ -1,42 +1,15 @@
 % paper/sections/11b_component_verification.tex
 %
-% §11.3  コンポーネント検証結果（実施済み・仕様）
-%   §11.3.1: CLS 保存性評価（動的非一様格子）← 11b1_cls_conservation.tex
-%   §11.3.2: CCD 仮想時間ソルバー精度検証    ← 11b2_ccd_pseudotime_verification.tex
-%   §11.3.3: CCD-Poisson ソルバー単体検証    ← 11b3_ppe_verification.tex
-%   §11.3.4: 非一様格子 GCL 検証             ← 11b4_gcl_verification.tex
+% LEGACY STUB — content redistributed 2026-04-01:
+%   11b1 (CLS conservation)       → §10.2 (10c_interface.tex)
+%   11b2 (CCD pseudotime)         → Appendix D.8 (appendix_numerics_schemes.tex)
+%   11b3 (PPE C-1/C-2/C-3)       → §10.3 (10d_solver_time.tex)
+%   11b4 (GCL verification)       → §10.1 (10b_spatial.tex)
+%   11b5 (interface advection)    → Appendix D.9 (appendix_numerics_schemes.tex)
+%   11b6 (DCCD dissipation)       → §10.1 (10b_spatial.tex)
+%   11b7 (DC iteration accuracy)  → §10.3 (10d_solver_time.tex)
+%
+% Labels now live in their new locations.
+% sec:component_verification retained here for backward compatibility.
 
-\subsection{コンポーネント検証結果（実施済み）}
-\label{sec:component_verification}
-
-以下に，各サブシステムの単体検証実験を示す．
-いずれも §\ref{sec:algorithm} の対応モジュールを独立に動かし，
-表~\ref{tab:verification} の検証項目と直接対応する定量確認を行ったものである．
-
-\subsubsection{CLS 保存性評価：動的非一様格子上での保存型再マッピング}
-\label{app:cls_conservation}
-\input{sections/11b1_cls_conservation}
-
-\subsubsection{仮想時間陰解法と CCD の精度検証}
-\label{app:ccd_pseudotime}
-\input{sections/11b2_ccd_pseudotime_verification}
-
-\subsubsection{CCD-Poisson ソルバーの単体検証（Tests C-1, C-2, C-3）}
-\label{sec:ccd_poisson_verification}
-\input{sections/11b3_ppe_verification}
-
-\subsubsection{非一様格子上の微分精度と幾何学的保存則（GCL）}
-\label{sec:gcl_verification}
-\input{sections/11b4_gcl_verification}
-
-\subsubsection{界面移流ベンチマーク：Zalesak スロット円板・単一渦}
-\label{sec:interface_advection_bench}
-\input{sections/11b5_interface_advection}
-
-\subsubsection{DCCD フィルタ：分散・散逸特性と選択的高周波減衰の評価}
-\label{sec:dccd_dissipation_bench}
-\input{sections/11b6_dccd_dissipation}
-
-\subsubsection{欠陥補正反復回数と空間精度の相関}
-\label{sec:dc_iteration_accuracy}
-\input{sections/11b7_dc_iteration_accuracy}
+\label{sec:component_verification}% backward-compat: referenced from §12, §13

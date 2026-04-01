@@ -13,14 +13,22 @@
   \item \textbf{空間離散化：}
         CCD 微分は周期境界テストで $\Ord{h^{6.0}}$ を達成し，設計精度を確認した．
         DCCD フィルタは Nyquist モードを完全に抑制する（$H(\pi)=0$）．
+        非一様格子（$\alpha=2$）でも $\Ord{h^6}$ が保全され，
+        GCL は計算機精度で成立する（§\ref{sec:gcl_verification}）．
+  \item \textbf{DCCD 移流特性：}
+        1次元移流比較により，DCCD は不連続プロファイルの TV を CCD の約 $1/3$ に抑制し，
+        平滑プロファイルでは CCD と同等の精度を維持する（§\ref{sec:dccd_dissipation_bench}）．
   \item \textbf{曲率計算：}
         $\phi$ 直接微分（経路 A）では $\Ord{h^5}$ の高次収束を示すが，
         本番経路 B（$\psi \to \phi$ ロジット逆変換）は界面厚み $\varepsilon = \Ord{h}$ に律速される．
         ただし GFM 界面処理精度（$\Ord{h^2}$）が全体を律速するため，
         曲率計算経路の選択は実用上の精度に影響しない．
+  \item \textbf{界面処理：}
+        CLS 保存型再マッピングは LS 非保存補間に比べ質量誤差を 1--2 桁低減する
+        （§\ref{app:cls_conservation}）．GFM は粗格子で安定に収束する．
   \item \textbf{PPE 求解：}
         欠陥補正法は $k=3$ 回の反復で CCD 演算子の $\Ord{h^6}$ 精度を完全に発現させ，
-        LGMRES と同等の精度を達成する．
+        LGMRES と同等の精度を達成する（§\ref{sec:ccd_poisson_verification}）．
         FD 直接法と比較して $N=128$ で $4{,}900$ 万倍高精度であり，コスト増は $3.4$ 倍に過ぎない．
   \item \textbf{時間積分：}
         TVD-RK3 は ODE テストで $\Ord{\Delta t^{3.00}}$ の精確な 3 次収束を確認した．
@@ -35,11 +43,15 @@
 コンポーネント & 期待精度 & 実測精度 & 備考 \\
 \midrule
 CCD 微分（周期） & $\Ord{h^6}$ & $\Ord{h^{6.0}}$ & $N = 256$ で丸め誤差到達 \\
+CCD 微分（非一様格子） & $\Ord{h^6}$ & $\Ord{h^{6.1}}$ & GCL 合格（$5.4 \times 10^{-14}$） \\
 DCCD フィルタ   & $H(\pi) = 0$ & $H(\pi) = 0$ & チェッカーボード完全抑制 \\
+DCCD 移流（不連続） & TV 抑制 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 曲率（正弦波，$\phi$ 直接） & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ & CCD 微分精度のベースライン \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ 律速 \\
+CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
 GFM Laplace 圧力跳び & 安定収束 & $\Ord{h^1}$ & 粗格子でも安定；$N=128$ で誤差 $1.8\%$ \\
 PPE（欠陥補正 $k{=}3$） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & LGMRES と同等；ディリクレ超収束 \\
+PPE（LGMRES 反復） & 高速収束 & 2--6 回 & ディリクレ BC で安定 \\
 TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE テストで確認 \\
 \bottomrule
 \end{tabular}

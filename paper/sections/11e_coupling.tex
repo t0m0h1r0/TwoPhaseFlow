@@ -1,0 +1,42 @@
+% paper/sections/11e_coupling.tex
+%
+% §11.4  移流・圧力干渉のロバスト性
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{移流・圧力干渉のロバスト性}
+\label{sec:advection_pressure_coupling}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+高レイノルズ数では対流項が支配的となり，
+コロケーション格子固有のチェッカーボード不安定が顕在化しうる．
+DCCD の散逸係数 $\varepsilon_d$ がこの不安定の抑制にどの程度寄与するかを検証する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{高レイノルズ数二重剪断層}
+\label{sec:highre_dccd}
+% ─────────────────────────────────────────────────────────────────────────────
+
+%% 実験結果は exp11_6_highre_dccd.py の実行後に挿入
+
+\textbf{設定：}
+計算領域 $[0, 2\pi]^2$，周期境界条件，単相流（$\rho = 1$），$\mathit{Re} = 1000$．
+初期条件は二重剪断層（thin shear layer）：
+\begin{align}
+  u(x,y) &= \begin{cases}
+    \tanh\!\left(\frac{y - \pi/2}{\delta}\right) & y \leq \pi, \\[4pt]
+    \tanh\!\left(\frac{3\pi/2 - y}{\delta}\right) & y > \pi,
+  \end{cases} &
+  v(x,y) &= \varepsilon_0\,\sin(x),
+\end{align}
+ただし $\delta = \pi/15$（剪断層厚さ），$\varepsilon_0 = 0.05$（初期擾乱）．
+
+\textbf{比較対象：}
+\begin{itemize}[noitemsep]
+  \item CCD（$\varepsilon_d = 0$）：フィルタなし
+  \item DCCD（$\varepsilon_d = 0.05$）：移流用低散逸フィルタ
+\end{itemize}
+
+\textbf{合格基準：}
+CCD はチェッカーボード振動により解が発散する一方，
+DCCD は安定に時間発展し，剪断層の巻き上がり構造を正しく再現する．
+
+%% TODO: exp11_6 結果（エネルギースペクトル・速度場スナップショット）をここに挿入
