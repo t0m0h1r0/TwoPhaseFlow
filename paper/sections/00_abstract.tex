@@ -18,7 +18,7 @@
 空間離散： & CCD $\Ord{h^6}$（微分），Dissipative CCD（移流・速度/圧力），非一様格子\\
 格子構造： & コロケート格子 + DCCD 散逸（$\varepsilon_d=1/4$；チェッカーボード除去）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
-圧力解法： & 変密度 IPC（van Kan 1986）+ CCD-PPE（$O(h^6)$）+ 仮想時間陰解法\\
+圧力解法： & 変密度 IPC（van Kan 1986）+ CCD-PPE（$O(h^6)$）+ 欠陥補正法\\
 表面張力： & Ghost Fluid Method（GFM，鋭利な界面処理；付録~F）\\[4pt]
 \hline
 \multicolumn{2}{l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
@@ -43,7 +43,7 @@
 Ghost Fluid Method（GFM），および Dissipative CCD 散逸機構を組み合わせることで
 根本的に解決する設計を提案し，その理論的基盤・実装詳細・検証手順を体系的に解説する．
 界面追跡には Conservative Level Set（CLS）法と Dissipative CCD スキームを採用して質量保存性と
-数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は CCD 仮想時間陰解法
+数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は CCD 欠陥補正法
 （$O(h^6)$）で高精度に求解する．
 GFM が CSF $O(\varepsilon^2)$ モデル誤差を根本的に除去し，
 DCCD 散逸（$\varepsilon_d=1/4$）がコロケート格子でのチェッカーボード不安定を

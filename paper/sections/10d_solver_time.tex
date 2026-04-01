@@ -1,7 +1,7 @@
 % paper/sections/10d_solver_time.tex
 %
 % §10.3  ソルバと時間発展の精度検証
-%   PPE ソルバ収束特性，TVD-RK3 時間発展精度
+%   PPE ソルバ収束特性（欠陥補正法 — 本稿標準），TVD-RK3 時間発展精度
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{ソルバと時間発展の精度検証}
 \label{sec:verify_solver}
@@ -14,45 +14,89 @@
 
 圧力 Poisson 方程式（§\ref{sec:pressure}）のソルバ精度を，
 製造解法（method of manufactured solutions）により検証する．
-本稿の本番 PPE ソルバは欠陥補正法（§\ref{sec:defect_correction_main}）であるが，
-単体精度検証では CCD Kronecker 積演算子（付録~\ref{app:ccd_kronecker}）を
-LGMRES 反復法で求解する構成を用いる．
-欠陥補正法は Neumann null space との干渉により単体テストでは不安定となるため，
-本番条件（$p^n$ ウォームスタート，速度発散 RHS）での検証は
-多相流ベンチマーク（§\ref{sec:bench_droplet}）にて行う．
+本稿の本番 PPE ソルバである\textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）を
+主たる検証対象とし，CCD+LGMRES をクロスバリデーション用に併用する．
 
-\textbf{(a) CCD+LGMRES 格子収束（ディリクレ BC）：}
+\paragraph{(a) 欠陥補正法の格子収束（ディリクレ BC）．}
+
+§\ref{sec:defect_correction_main} の3ステップアルゴリズム（式~\eqref{eq:dc_three_step}）を
+固定反復回数 $k$ で打ち切り，空間精度の $k$ 依存性を検証する．
+$L_H$（CCD, $\Ord{h^6}$），$L_L$（2次精度 FD）を用い，
+$L_L$ は疎行列直接解法（\texttt{spsolve}）で厳密に求解する．
 製造解 $p^* = \sin(\pi x)\sin(\pi y)$（$p|_{\partial\Omega}=0$）に対し，
-CCD Kronecker 積作用素の境界行をディリクレ条件で置換した系を
-LGMRES で求解する．
-$N = 8 \to 128$ で $L_\infty$ 誤差は $2.00 \times 10^{-4} \to 9.65 \times 10^{-13}$
-と急速に減少し，収束次数 $p \approx 6.7$--$7.0$ を達成する
-（表~\ref{tab:ppe_convergence}；詳細は §\ref{sec:ccd_poisson_verification}）．
-この超収束は解析解が境界で恒等的にゼロであるため
-境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅することによる．
-LGMRES は全格子サイズで 2--6 回の外部反復で収束した．
+$N = 8 \to 128$ で $L_\infty$ 誤差を計測した（表~\ref{tab:dc_grid_convergence}）．
 
 \begin{table}[htbp]
 \centering
-\caption{PPE ソルバ格子収束（CCD+LGMRES，$p^* = \sin\pi x\sin\pi y$，$\rho = 1$，ディリクレ BC）}
-\label{tab:ppe_convergence}
-\begin{tabular}{rrrr}
+\small
+\caption{欠陥補正法の格子収束：反復回数 $k$ と空間精度（$L^\infty$ 誤差，$\rho=1$，ディリクレ BC）}
+\label{tab:dc_grid_convergence}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{cccccc}
 \toprule
-$N$ & $L^\infty$ 誤差 & 収束次数 & LGMRES 反復回数 \\
+$N$ & $k=1$ & $k=2$ & $k=3$ & LGMRES（参考） \\
 \midrule
-   8 & $2.00 \times 10^{-4}$  & ---    & 2 \\
-  16 & $1.87 \times 10^{-6}$  & $6.74$ & 2 \\
-  32 & $1.57 \times 10^{-8}$  & $6.90$ & 2 \\
-  64 & $1.26 \times 10^{-10}$ & $6.96$ & 5 \\
- 128 & $9.65 \times 10^{-13}$ & $7.03$ & 6 \\
+$8$   & $1.30 \times 10^{-2}$ & $2.71 \times 10^{-4}$ & $2.08 \times 10^{-4}$ & $2.00 \times 10^{-4}$ \\
+$16$  & $3.22 \times 10^{-3}$ & $1.13 \times 10^{-5}$ & $1.91 \times 10^{-6}$ & $1.87 \times 10^{-6}$ \\
+$32$  & $8.04 \times 10^{-4}$ & $6.54 \times 10^{-7}$ & $1.60 \times 10^{-8}$ & $1.57 \times 10^{-8}$ \\
+$64$  & $2.01 \times 10^{-4}$ & $4.04 \times 10^{-8}$ & $1.29 \times 10^{-10}$ & $1.26 \times 10^{-10}$ \\
+$128$ & $5.02 \times 10^{-5}$ & $2.52 \times 10^{-9}$ & $1.02 \times 10^{-12}$ & $9.65 \times 10^{-13}$ \\
+\midrule
+\multicolumn{1}{c}{収束次数} & $\approx 2.0$ & $\approx 4.0$ & $\approx 7.0$ & $\approx 7.0$ \\
 \bottomrule
 \end{tabular}
+
+\smallskip
+\noindent 注：$k=3$ の欠陥補正法と LGMRES は同一の CCD 演算子 $L_H$ を使用し，同等の $\Ord{h^7}$ 精度に達する．
+超収束（$p \approx 7$）はディリクレ解析解が境界上でゼロであるため
+境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅することによる
+（§\ref{sec:ccd_poisson_verification} テスト C-1 と同一の機構）．
 \end{table}
 
-\textbf{(b) FVM 2次精度との比較（参考）：}
+\textbf{結果：}
+$k=1$ では $L_L$ の $\Ord{h^2}$ が支配的だが，$k=2$ で $\Ord{h^4}$，
+$k \geq 3$ で CCD 演算子の精度が完全に発現し $\Ord{h^7}$ に達する．
+$k=3$ と LGMRES の誤差はほぼ同一であり，
+欠陥補正法が CCD 離散化精度を損なわないことが確認された．
+
+\paragraph{(b) 欠陥補正法 vs FD 直接法の精度・コスト比較．}
+
+欠陥補正法（$k=3$，$L_H$ = CCD）と FD 直接法（$L_L$ のみ，$\Ord{h^2}$）を比較する
+（表~\ref{tab:dc_vs_fd}）．
+両手法は同一の FD 疎行列直接解法を核に使用するが，
+欠陥補正法は CCD 残差評価を $k=3$ 回追加するだけで
+$\Ord{h^2}$ から $\Ord{h^6}$ 以上に精度を引き上げる．
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{PPE 求解法比較：FD 直接法（$\Ord{h^2}$）vs 欠陥補正法 $k=3$（$\Ord{h^6}$）}
+\label{tab:dc_vs_fd}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{crrcrrcc}
+\toprule
+$N$ & \multicolumn{2}{c}{FD 直接法} & & \multicolumn{2}{c}{欠陥補正 $k=3$} & 精度比 & コスト比 \\
+\cmidrule{2-3} \cmidrule{5-6}
+ & $L^\infty$ 誤差 & 次数 & & $L^\infty$ 誤差 & 次数 & & \\
+\midrule
+$8$   & $1.30 \times 10^{-2}$ & ---  & & $2.08 \times 10^{-4}$ & ---  & $62\times$ & $1.2\times$ \\
+$16$  & $3.22 \times 10^{-3}$ & $2.0$ & & $1.91 \times 10^{-6}$ & $6.8$ & $1{,}682\times$ & --- \\
+$32$  & $8.04 \times 10^{-4}$ & $2.0$ & & $1.60 \times 10^{-8}$ & $6.9$ & $50{,}219\times$ & --- \\
+$64$  & $2.01 \times 10^{-4}$ & $2.0$ & & $1.29 \times 10^{-10}$ & $7.0$ & $1.6 \times 10^{6}$ & $4.0\times$ \\
+$128$ & $5.02 \times 10^{-5}$ & $2.0$ & & $1.02 \times 10^{-12}$ & $7.0$ & $4.9 \times 10^{7}$ & $3.4\times$ \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\noindent 注：コスト比は壁時間の比（欠陥補正 / FD 直接）．
+$N=128$ で欠陥補正法は FD 直接法の $3.4$ 倍のコストで $4{,}900$ 万倍高精度．
+\end{table}
+
+\paragraph{(c) FVM 2次精度との比較（参考）．}
+
 FVM 5 点ステンシル（$\Ord{h^2}$）は同格子 $N=64$ で
 $L_\infty = 8.04 \times 10^{-4}$ であり，
-CCD+LGMRES の $1.26 \times 10^{-10}$ と比較して約 $6 \times 10^{5}$ 倍大きい．
+欠陥補正法 $k=3$ の $1.29 \times 10^{-10}$ と比較して約 $6 \times 10^{5}$ 倍大きい．
 CCD パイプライン全体の高次精度を活用するには CCD 演算子による PPE 離散化が不可欠である．
 
 % ─────────────────────────────────────────────────────────────────────────────
