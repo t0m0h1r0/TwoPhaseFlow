@@ -1,18 +1,25 @@
 % paper/sections/appendix_numerics_solver.tex
 %
 % 付録（数値解析・圧力ソルバー関連の補足証明）
-%   app:sweep_thomas_coeff — 欠陥補正スウィープ法の Thomas 三重対角係数導出（PPESolverSweep）
-%   sec:dtau_derive        — 擬似時間反復の収束率解析と最適 Δτ 導出
 %   app:capillary_cfl      — 毛管波制約の導出
+%   app:sweep_thomas_coeff — 欠陥補正スウィープ法の Thomas 三重対角係数導出
+%   sec:dtau_derive        — 擬似時間反復の収束率解析と最適 Δτ 導出
+%   app:dc_convergence_theory — 欠陥補正法の収束理論（スペクトル解析）
+%   app:fvm_face_coeff     — PPE 面係数の FVM 積分論理
 %
-%   ※ app:checkerboard_mode は付録 C.5（appendix_ccd_impl.tex）へ移動
-%   ※ app:fvm_face_coeff    は付録 E.4（本ファイル，appendix_numerics_solver.tex）へ移動（旧 A.6）
+% ※ 旧 E.2, E.3, E.5 は「欠陥補正法の理論と係数導出」として1 section に統合
+% ※ app:checkerboard_mode は付録 C.3（appendix_ccd_impl_s3.tex）に統合済み
 %
 % 内容は各 _s*.tex に分割管理されている（重複防止のため \input で委譲）
 
 \input{sections/appendix_numerics_solver_s1}  %% E.1 毛管波制約：分散関係から CFL 条件へ（§5）
-\input{sections/appendix_numerics_solver_s2}  %% E.2 スウィープ法 Thomas 三重対角係数導出（§8）
-\input{sections/appendix_numerics_solver_s3}  %% E.3 擬似時間反復の収束率解析と最適 Δτ（§8）
-\input{sections/appendix_numerics_solver_s4}  %% E.4 PPE 面係数 a_f = 2/(ρ_L+ρ_R) の FVM 積分論理（§8）
-\input{sections/appendix_numerics_solver_s5}  %% E.5 欠陥補正法の収束理論（§8.3 の理論的裏付け）
-\input{sections/appendix_ppe_pseudotime}       %% E.6 CCD 陰解法と仮想時間ステップ反復（実装詳細）
+
+%% E.2 欠陥補正法の理論と係数導出（旧 E.2 + E.3 + E.5 を統合）
+\section{欠陥補正法の理論と係数導出}
+\label{app:dc_theory}
+\input{sections/appendix_numerics_solver_s2}  %% E.2.1 Thomas 三重対角係数導出（§8）
+\input{sections/appendix_numerics_solver_s3}  %% E.2.2 収束率解析と最適 Δτ（§8）
+\input{sections/appendix_numerics_solver_s5}  %% E.2.3 収束理論：反復行列のスペクトル解析（§8）
+
+\input{sections/appendix_numerics_solver_s4}  %% E.3 PPE 面係数の FVM 積分論理（§8）
+\input{sections/appendix_ppe_pseudotime}       %% E.4 CCD 陰解法と仮想時間ステップ反復（実装詳細）

@@ -6,13 +6,13 @@
 %   — 緩和係数 ω の理論的導出
 %   — §8.3 (sec:defect_correction_main) の理論的裏付け
 
-\section{欠陥補正法の収束理論}
+\subsection{収束理論：反復行列のスペクトル解析}
 \label{app:dc_convergence_theory}
 
 本付録は §\ref{sec:defect_correction_main} で定義した欠陥補正法（式~\eqref{eq:dc_three_step}）の
 収束性を反復行列のスペクトル解析に基づいて理論的に保証する．
 
-\subsection*{反復行列のスペクトル半径}
+\subsubsection*{反復行列のスペクトル半径}
 
 欠陥補正法の更新式（式~\eqref{eq:dc_three_step}）を誤差 $e^{(k)} \equiv p^{(k)} - p^*$
 （$p^* = L_H^{-1} b$ は真の解）について整理すると：
@@ -23,7 +23,7 @@
 反復の収束条件はスペクトル半径 $\rho(M) < 1$ であり，
 $k$ 回反復後の誤差は $\|e^{(k)}\| \leq \rho(M)^k\,\|e^{(0)}\|$ で上界される．
 
-\subsection*{$M$ の固有値構造}
+\subsubsection*{\texorpdfstring{$M$ の固有値構造}{M の固有値構造}}
 
 $L_L$ と $L_H$ が同一の固有ベクトル系 $\{v_j\}$ を共有すると仮定する
 （等方一様格子で近似的に成立）．
@@ -37,7 +37,7 @@ $M$ の固有値は：
 低周波モード（$\xi \to 0$）では $\lambda_j / \mu_j \to 1$（両者とも $\Ord{\xi^2}$ で一致），
 高周波モード（$\xi \to \pi$）では $\lambda_j / \mu_j \neq 1$ となる（高次精度項の差異）．
 
-\subsection*{固有値比の解析}
+\subsubsection*{固有値比の解析}
 
 $L_H$ の修正波数は式~\eqref{eq:lambda_fourier} より
 $\lambda_j = \Lambda_H(\xi_j)/h^2$（$\Lambda_H(\xi) = 24\sin^2(\xi/2)/(3/2 + \sin^2(\xi/2))$），
@@ -56,7 +56,7 @@ $L_L$ の修正波数は標準2次精度中心差分 $\Lambda_L(\xi) = 4\sin^2(\
   \item $\xi_j = \pi$（Nyquist）：$\lambda_j/\mu_j = 6/(3/2+1) = 12/5 = 2.4$
 \end{itemize}
 
-\subsection*{最適緩和係数 $\omega^*$ の導出}
+\subsubsection*{\texorpdfstring{最適緩和係数 $\omega^*$ の導出}{最適緩和係数 ω* の導出}}
 
 $|\sigma_j| = |1 - \omega\,\lambda_j/\mu_j| < 1$ が全モードで成立するために，
 $\omega$ は $\lambda_j/\mu_j$ の最大値と最小値から決定される．
@@ -82,7 +82,7 @@ $\omega$ は $\lambda_j/\mu_j$ の最大値と最小値から決定される．
 $k=3$ 回の反復で $\rho^3 = 0.016$，$k=5$ で $\rho^5 \approx 10^{-3}$ となる．
 これは §\ref{sec:dc_iteration_accuracy} で観測される「$k=3$ で $\Ord{h^6}$ に漸近」の理論的根拠となる．
 
-\subsection*{仮想時間刻み $\Delta\tau$ との関係}
+\subsubsection*{\texorpdfstring{仮想時間刻み $\Delta\tau$ との関係}{仮想時間刻み Δτ との関係}}
 
 §\ref{sec:dc_terminology} で述べたように，$\omega$ と $\Delta\tau$ は等価である．
 式~\eqref{eq:dc_sweep_x}--\eqref{eq:dc_sweep_y} の左辺
@@ -97,7 +97,7 @@ $\delta p \approx \Delta\tau\,d + \Ord{\Delta\tau^2}$ となり，
 $\Delta\tau$ が大きい場合は $(\mathbf{I} - \Delta\tau L_L)^{-1}$ の非線形効果が加わるが，
 Thomas 法の対角優位性（付録~\ref{app:sweep_thomas_coeff}）により無条件安定が保証される．
 
-\subsection*{変密度場への拡張}
+\subsubsection*{変密度場への拡張}
 
 密度比 $\rho_l/\rho_g \gg 1$ の気液二相流では，
 $L_H$ と $L_L$ の固有値比 $\alpha_j = \lambda_j/\mu_j$ が空間的に変動する．
