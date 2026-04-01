@@ -75,10 +75,12 @@ Every new major component must follow this pattern to maintain dependency inject
 
 | System Type | Primary Solver | Fallback | Notes |
 |-------------|---------------|---------|-------|
-| Global PPE sparse | LGMRES | sparse LU (spsolve) | fallback on non-convergence only |
+| Global PPE (default) | CCD Kronecker + LGMRES | *(none)* | "pseudotime"; returns best iterate on non-convergence |
+| Global PPE (debug) | CCD Kronecker + direct LU | — | "ccd_lu"; guaranteed solution, O(n^1.5) memory |
+| Global PPE (large-scale) | CCD sweep (matrix-free) | — | "sweep"; defect correction + Thomas (O(N) per iter) |
 | Banded/block-tridiag (CCD) | Direct LU | — | O(N) fill-in; efficient |
-| Pseudo-time PPE | CCD Laplacian | — | Production solver (ASM-003) |
-| Test/validation only | FVM BiCGSTAB | — | Approximate O(h²); not production |
+
+FVM-based solvers (BiCGSTAB, FVM LU) are deprecated — O(h²) accuracy insufficient for CCD pipeline.
 
 ### C5 — General Code Quality
 

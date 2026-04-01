@@ -25,9 +25,9 @@ cfl_number: 0.25
 t_end: 3.0
 
 # ── 圧力ソルバー ─────────────────────────────────────────────────
-ppe_solver_type: bicgstab
-bicgstab_tol: 1.0e-10
-bicgstab_maxiter: 2000
+ppe_solver_type: pseudotime
+pseudo_tol: 1.0e-10
+pseudo_maxiter: 500
 
 # ── 境界条件 ─────────────────────────────────────────────────────
 advection_scheme: dissipative_ccd   # §5 Dissipative CCD（デフォルト）; "weno5" も可

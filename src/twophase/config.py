@@ -119,12 +119,9 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # ソルバー種別: "bicgstab"（FVM反復）/ "pseudotime"（CCD反復）/ "lu"（FVM直接法）/ "ccd_lu"（CCD直接法）
-    ppe_solver_type: str = "bicgstab"
-    # BiCGSTAB パラメータ（ppe_solver_type="bicgstab" 時に使用）
-    bicgstab_tol: float = 1e-10
-    bicgstab_maxiter: int = 1000
-    # 疑似時間パラメータ（ppe_solver_type="pseudotime" 時に使用）
+    # ソルバー種別: "pseudotime"（CCD+LGMRES反復）/ "ccd_lu"（CCD直接法）/ "sweep"（CCD仮想時間スウィープ）
+    ppe_solver_type: str = "pseudotime"
+    # LGMRES パラメータ（ppe_solver_type="pseudotime" 時に使用）
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
 
@@ -132,8 +129,8 @@ class SolverConfig:
     pseudo_c_tau: float = 2.0
 
     def __post_init__(self) -> None:
-        assert self.ppe_solver_type in ("bicgstab", "pseudotime", "lu", "ccd_lu", "sweep"), (
-            f"ppe_solver_type は 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' でなければならない: "
+        assert self.ppe_solver_type in ("pseudotime", "ccd_lu", "sweep"), (
+            f"ppe_solver_type は 'pseudotime', 'ccd_lu', または 'sweep' でなければならない: "
             f"'{self.ppe_solver_type}'"
         )
 
@@ -150,7 +147,7 @@ class SimulationConfig:
             grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
             fluid=FluidConfig(Re=100., Fr=1., We=10.),
             numerics=NumericsConfig(t_end=2.0, cfl_number=0.3),
-            solver=SolverConfig(ppe_solver_type="bicgstab"),
+            solver=SolverConfig(ppe_solver_type="pseudotime"),
         )
     """
 

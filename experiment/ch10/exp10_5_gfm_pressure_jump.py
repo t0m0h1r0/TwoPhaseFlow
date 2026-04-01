@@ -77,7 +77,7 @@ def laplace_1d(Ns=[32, 64, 128]):
         # Use direct LU solver for accuracy
         fc = FluidConfig(We=We, rho_ratio=rho_g/rho_l)
         nc = NumericsConfig(bc_type="wall")
-        sc = SolverConfig(ppe_solver_type="lu")
+        sc = SolverConfig(ppe_solver_type="ccd_lu")
         config = SimulationConfig(grid=gc, fluid=fc, numerics=nc, solver=sc)
 
         from twophase.pressure.ppe_solver_lu import PPESolverLU

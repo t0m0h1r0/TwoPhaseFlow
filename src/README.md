@@ -219,6 +219,6 @@ Expected results (N=32–64 grids):
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `ppe_solver_type` | "bicgstab" | "bicgstab" or "pseudotime" |
+| `ppe_solver_type` | "pseudotime" | "pseudotime", "ccd_lu", or "sweep" |
 | `bicgstab_tol` | 1e-6 | BiCGSTAB convergence tolerance |
 | `pseudo_tol` | 1e-6 | Pseudo-time solver tolerance |

@@ -45,9 +45,10 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         ピン固定点を中心ノード $(N/2, N/2)$ に設定することで（コーナーピン禁止），
         高密度比条件下でもグローバル非対称性 $O(\|\mathrm{rhs}\|)$ を回避する
         （ASM-008 対称性修正，2026-03-22 適用済み）．
-  \item \textbf{直接 LU ソルバーへのフォールバック：}
-        LGMRES が収束しない場合（ASM-005），\texttt{spsolve}（直接 LU）で
-        条件数の影響を受けず解を得られる（実装は付録~\ref{sec:ppe_pseudotime}）．
+  \item \textbf{LGMRES の頑健性：}
+        CCD 境界スキームによる高非対称行列でも LGMRES（拡張 Krylov 部分空間法）は
+        標準 GMRES より頑健に収束する（付録~\ref{app:ccd_lu_direct}）．
+        収束しない場合は最良反復解を返す．
 \end{itemize}
 
 \subsubsection{全周 Neumann 境界における零モード対策}

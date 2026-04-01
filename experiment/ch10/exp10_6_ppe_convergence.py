@@ -72,7 +72,7 @@ def grid_convergence(Ns=[16, 32, 64, 128]):
         results["ccd_lu"].append({"N": N, "h": h, "L2": err_ccd_L2, "Li": err_ccd_Li})
 
         # FVM-LU solver (O(h^2) expected)
-        sc_lu = SolverConfig(ppe_solver_type="lu")
+        sc_lu = SolverConfig(ppe_solver_type="ccd_lu")
         config_lu = SimulationConfig(
             grid=gc, fluid=FluidConfig(), numerics=NumericsConfig(bc_type="wall"),
             solver=sc_lu)
@@ -132,7 +132,7 @@ def iterative_convergence_history(N=64):
     results["pseudotime"] = {"time": t_pt, "err": err_pt}
 
     # BiCGSTAB
-    sc_bi = SolverConfig(ppe_solver_type="bicgstab", bicgstab_tol=1e-12, bicgstab_maxiter=1000)
+    sc_bi = SolverConfig(ppe_solver_type="pseudotime", pseudo_tol=1e-12, pseudo_maxiter=500)
     config_bi = SimulationConfig(
         grid=gc, fluid=FluidConfig(), numerics=NumericsConfig(bc_type="wall"),
         solver=sc_bi)

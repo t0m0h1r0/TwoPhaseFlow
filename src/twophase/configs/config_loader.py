@@ -29,9 +29,9 @@ YAML は従来のフラット形式（後方互換）とネスト形式の両方
     t_end: 1.0
 
     # 圧力ソルバー
-    ppe_solver_type: bicgstab
-    bicgstab_tol: 1.0e-10
-    bicgstab_maxiter: 1000
+    ppe_solver_type: pseudotime
+    pseudo_tol: 1.0e-8
+    pseudo_maxiter: 500
 
     # 境界条件
     bc_type: wall
@@ -176,9 +176,7 @@ def load_config(
         advection_scheme=str(_get("advection_scheme", "dissipative_ccd")),
     )
     solver = SolverConfig(
-        ppe_solver_type=str(_get("ppe_solver_type", "bicgstab")),
-        bicgstab_tol=_f("bicgstab_tol", 1e-10),
-        bicgstab_maxiter=_i("bicgstab_maxiter", 1000),
+        ppe_solver_type=str(_get("ppe_solver_type", "pseudotime")),
         pseudo_tol=_f("pseudo_tol", 1e-8),
         pseudo_maxiter=_i("pseudo_maxiter", 500),
         pseudo_c_tau=_f("pseudo_c_tau", 2.0),
@@ -190,8 +188,10 @@ def load_config(
         "Re", "Fr", "We", "rho_ratio", "mu_ratio",
         "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
         "advection_scheme",
-        "ppe_solver_type", "bicgstab_tol", "bicgstab_maxiter", "pseudo_tol", "pseudo_maxiter",
+        "ppe_solver_type", "pseudo_tol", "pseudo_maxiter",
         "pseudo_c_tau",
+        # legacy keys (ignored but no warning)
+        "bicgstab_tol", "bicgstab_maxiter",
         "use_gpu",
     }
     for key in raw:
@@ -260,8 +260,6 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "advection_scheme": config.numerics.advection_scheme,
         # SolverConfig
         "ppe_solver_type":  config.solver.ppe_solver_type,
-        "bicgstab_tol":     config.solver.bicgstab_tol,
-        "bicgstab_maxiter": config.solver.bicgstab_maxiter,
         "pseudo_tol":       config.solver.pseudo_tol,
         "pseudo_maxiter":   config.solver.pseudo_maxiter,
         "pseudo_c_tau":     config.solver.pseudo_c_tau,

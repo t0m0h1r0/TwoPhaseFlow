@@ -13,7 +13,7 @@ PPE 直接法ソルバー（FVM + スパース LU / spsolve）。
     - 全体の物理動作確認（反復法の収束チューニング前の足場）
 
 反復法への移行:
-    ppe_solver_type を "bicgstab" または "pseudotime" に切り替えること。
+    ppe_solver_type を "pseudotime", "ccd_lu", または "sweep" に切り替えること。
 """
 
 from __future__ import annotations
