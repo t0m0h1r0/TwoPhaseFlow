@@ -162,6 +162,10 @@
 \newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
 
 % -- Theorem environments --
+% amsthm の plain スタイルは \itshape を使うが，
+% ヒラギノ明朝にイタリック体がないため警告が出る．
+% definition スタイル（\normalfont）に統一する．
+\theoremstyle{definition}
 \newtheorem{remark}{Remark}
 \newtheorem{definition}{定義}
 \newtheorem{theorem}{定理}

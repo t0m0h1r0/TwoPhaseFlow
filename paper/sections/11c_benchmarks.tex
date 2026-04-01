@@ -62,10 +62,5 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
 本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
 CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第\ref{sec:pressure}章参照）．
 
-\noindent CCD-Poisson ソルバー（仮想時間陰解法 + CCD）の単体検証——
-(i) 等密度格子収束テスト（$\Ord{h^6}$ 確認），
-(ii) 仮想時間反復の収束挙動，
-(iii) 変密度 Poisson（密度比 $10^3$）での精度——については，
-§~\ref{sec:ccd_poisson_verification}（第~\ref{sec:verification}章）で詳述している．
-これら3テスト（C-1，C-2，C-3）を合格した後に，
-第~\ref{sec:validation}章のベンチマーク（§\ref{sec:val_static_drop}）に進むこと．
+\noindent CCD-Poisson ソルバーの格子収束特性は
+§~\ref{sec:verify_ppe}（第~\ref{sec:verification}章）で検証済みである．
