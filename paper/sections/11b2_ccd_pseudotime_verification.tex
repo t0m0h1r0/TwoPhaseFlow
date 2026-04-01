@@ -199,7 +199,10 @@ CCD 作用素行列 $D_1$，$D_2$ を用いた線形系
   \qquad u_0 = 0,\quad u_N = 1,
   \label{eq:ccd_advdiff_sys}
 \end{equation}
-を scipy の直接 LU 分解で求解する．
+を scipy の直接法で求解する
+（1次元 $N \times N$ 系であり，本稿で不使用とする
+2次元 PPE の LU 分解とは異なる；CCD 微分演算子の空間精度評価が目的であるため
+ソルバ選択は結果に影響しない）．
 CDS2 は標準中心差分 3 点ステンシルで同サイズの三重対角系を構築する．
 
 \paragraph{結果}
