@@ -1,0 +1,41 @@
+% paper/sections/10e_verification_summary.tex
+%
+% §10.4  検証結果のまとめ
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{検証結果のまとめ}
+\label{sec:verify_summary}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+表~\ref{tab:verification_summary} に各コンポーネントの検証結果を総括する．
+全ての離散演算子が設計精度を達成していることを確認した．
+曲率計算の律速因子は CCD 微分精度ではなく界面表現の解像度（$\varepsilon/h$）であり，
+この知見は第~\ref{sec:validation}章の多相流ベンチマークにおける精度解釈の基礎となる．
+$\psi$ 直接法は $\varepsilon/h \geq 3$ で $\Ord{h^6}$ を達成するが，
+標準 CLS 設定（$\varepsilon = 1.5h$）ではシグモイド勾配の急峻化に伴う桁落ちにより
+$\phi$ 経由法が実用上優位である．
+
+\begin{table}[htbp]
+\centering
+\caption{計算コンポーネント検証結果の総括}
+\label{tab:verification_summary}
+\begin{tabular}{llll}
+\toprule
+コンポーネント & 期待精度 & 実測精度 & 備考 \\
+\midrule
+CCD 微分（周期） & $\Ord{h^6}$ & $\Ord{h^{6.0}}$ & $N = 256$ で丸め誤差到達 \\
+CCD 微分（壁面） & $\Ord{h^6}$ & $\Ord{h^{6.8\text{--}8.6}}$ & 境界項で超収束 \\
+DCCD フィルタ   & $H(\pi) = 0$ & $H(\pi) = 0$ & チェッカーボード完全抑制 \\
+曲率（正弦波，経路 A） & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ ($L_\infty$) & $\phi$ 直接；十分高次 \\
+曲率（円形，経路 B）   & --- & $\Ord{h^{1.1}}$ & $\varepsilon = 1.5h$ が律速 \\
+曲率（$\psi$ 直接，$\varepsilon$ 固定） & $\Ord{h^6}$ & $\Ord{h^{6.1}}$ & $\varepsilon/h \geq 3$ で達成 \\
+$\varepsilon_{\textup{eff}}$ 診断 & $\varepsilon_{\textup{eff}}/\varepsilon = 1$ & $1.000 \pm 10^{-5}$ & 初期プロファイル品質 \\
+CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ 律速 \\
+PPE (CCD+LGMRES$^\ddagger$) & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ BC で超収束；2--6 反復 \\
+TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE・PDE 両方で確認 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\noindent $^{\ddagger}$ 単体精度検証用．本番ソルバは欠陥補正法（§\ref{sec:defect_correction_main}）であり，
+本番条件での検証は §\ref{sec:bench_droplet} にて行う．
+\end{table}

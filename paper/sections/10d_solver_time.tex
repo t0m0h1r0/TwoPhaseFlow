@@ -1,0 +1,101 @@
+% paper/sections/10d_solver_time.tex
+%
+% §10.3  ソルバと時間発展の精度検証
+%   PPE ソルバ収束特性，TVD-RK3 時間発展精度
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{ソルバと時間発展の精度検証}
+\label{sec:verify_solver}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{PPE ソルバ収束特性}
+\label{sec:verify_ppe}
+% ─────────────────────────────────────────────────────────────────────────────
+
+圧力 Poisson 方程式（§\ref{sec:pressure}）のソルバ精度を，
+製造解法（method of manufactured solutions）により検証する．
+本稿の本番 PPE ソルバは欠陥補正法（§\ref{sec:defect_correction_main}）であるが，
+単体精度検証では CCD Kronecker 積演算子（付録~\ref{app:ccd_kronecker}）を
+LGMRES 反復法で求解する構成を用いる．
+欠陥補正法は Neumann null space との干渉により単体テストでは不安定となるため，
+本番条件（$p^n$ ウォームスタート，速度発散 RHS）での検証は
+多相流ベンチマーク（§\ref{sec:bench_droplet}）にて行う．
+
+\textbf{(a) CCD+LGMRES 格子収束（ディリクレ BC）：}
+製造解 $p^* = \sin(\pi x)\sin(\pi y)$（$p|_{\partial\Omega}=0$）に対し，
+CCD Kronecker 積作用素の境界行をディリクレ条件で置換した系を
+LGMRES で求解する．
+$N = 8 \to 128$ で $L_\infty$ 誤差は $2.00 \times 10^{-4} \to 9.65 \times 10^{-13}$
+と急速に減少し，収束次数 $p \approx 6.7$--$7.0$ を達成する
+（表~\ref{tab:ppe_convergence}；詳細は §\ref{sec:ccd_poisson_verification}）．
+この超収束は解析解が境界で恒等的にゼロであるため
+境界スキーム（$\Ord{h^5}$）の誤差寄与が消滅することによる．
+LGMRES は全格子サイズで 2--6 回の外部反復で収束した．
+
+\begin{table}[htbp]
+\centering
+\caption{PPE ソルバ格子収束（CCD+LGMRES，$p^* = \sin\pi x\sin\pi y$，$\rho = 1$，ディリクレ BC）}
+\label{tab:ppe_convergence}
+\begin{tabular}{rrrr}
+\toprule
+$N$ & $L^\infty$ 誤差 & 収束次数 & LGMRES 反復回数 \\
+\midrule
+   8 & $2.00 \times 10^{-4}$  & ---    & 2 \\
+  16 & $1.87 \times 10^{-6}$  & $6.74$ & 2 \\
+  32 & $1.57 \times 10^{-8}$  & $6.90$ & 2 \\
+  64 & $1.26 \times 10^{-10}$ & $6.96$ & 5 \\
+ 128 & $9.65 \times 10^{-13}$ & $7.03$ & 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{(b) FVM 2次精度との比較（参考）：}
+FVM 5 点ステンシル（$\Ord{h^2}$）は同格子 $N=64$ で
+$L_\infty = 8.04 \times 10^{-4}$ であり，
+CCD+LGMRES の $1.26 \times 10^{-10}$ と比較して約 $6 \times 10^{5}$ 倍大きい．
+CCD パイプライン全体の高次精度を活用するには CCD 演算子による PPE 離散化が不可欠である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{TVD-RK3 時間発展精度}
+\label{sec:verify_tvd_rk3}
+% ─────────────────────────────────────────────────────────────────────────────
+
+TVD-RK3（Shu--Osher 3 段 SSP スキーム，§\ref{sec:time_int}）の
+$\Ord{\Delta t^3}$ 精度を 2 種類のテストで検証する．
+
+\textbf{(a) ODE 検証 $dq/dt = -q$：}
+解析解 $q(T) = e^{-T}$（$T = 1$）に対し，
+$\Delta t$ を $n = 4, 8, \ldots, 512$ ステップで精緻化し，
+誤差の収束次数を計測する（表~\ref{tab:tvd_rk3_ode}）．
+$n \geq 16$ の安定領域で $p \approx 3.00$ の精確な 3 次収束を確認した．
+
+\begin{table}[htbp]
+\centering
+\caption{TVD-RK3 の ODE 時間精度（$dq/dt = -q$，$T = 1$）}
+\label{tab:tvd_rk3_ode}
+\begin{tabular}{rrrr}
+\toprule
+ステップ数 $n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
+\midrule
+  16 & $6.25 \times 10^{-2}$ & $3.55 \times 10^{-5}$  & ---  \\
+  32 & $3.13 \times 10^{-2}$ & $4.39 \times 10^{-6}$  & 3.02 \\
+  64 & $1.56 \times 10^{-2}$ & $5.46 \times 10^{-7}$  & 3.01 \\
+ 128 & $7.81 \times 10^{-3}$ & $6.81 \times 10^{-8}$  & 3.00 \\
+ 256 & $3.91 \times 10^{-3}$ & $8.51 \times 10^{-9}$  & 3.00 \\
+ 512 & $1.95 \times 10^{-3}$ & $1.06 \times 10^{-9}$  & 3.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{(b) スカラー移流方程式の時空間結合収束：}
+$\partial q/\partial t + c\,\partial q/\partial x = 0$（$c = 1$）に対し，
+CFL 数 $0.3$ で格子幅と $\Delta t$ を同時に精緻化する．
+空間は CCD 6 次，時間は RK3 3 次であるため，
+CFL 固定（$\Delta t \propto h$）では低次の時間精度が律速し
+$\Ord{h^3}$ が期待される．
+
+\textbf{(c) 純時間方向収束（空間 $N = 256$ 固定）：}
+空間誤差を十分に小さくした条件で $\Delta t$ のみを精緻化し，
+CFL 安定限界内（$n \geq 320$）で $\Ord{\Delta t^3}$ の精確な収束を確認した．
+CFL 限界を超える $\Delta t$（$n < 160$）では不安定性が発生し，
+TVD-RK3 の陽的安定領域の制約を示す．
