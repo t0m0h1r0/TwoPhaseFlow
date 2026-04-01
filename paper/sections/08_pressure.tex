@@ -70,11 +70,12 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を適用する．
 以上の3ステップ（Predictor・PPE・Corrector）が変密度 IPC 射影法の骨格であり，
 完全な7ステップ実装順序は§\ref{sec:algorithm}（特に図~\ref{fig:ns_solvers}）を参照のこと．
 
-\noindent\textbf{PPE ソルバーの実装詳細（付録~\ref{sec:ppe_pseudotime} を参照）：}
-得られた離散 PPE（式~\eqref{eq:PPE_varrho}）をどのように高速・安定に解くか――仮想時間スウィープ法，
-欠陥補正，最適 $\Delta\tau$ の選択，局所時間刻み，ゲージ固定――の実装詳細は
+\noindent\textbf{PPE 求解法：}
+得られた離散 PPE（式~\eqref{eq:PPE_varrho}）は，
+CCD 演算子の直接反復が困難であるため，
+\textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）により効率的に解く．
+仮想時間ステップの定式化・局所時間刻み・ゲージ固定などの実装詳細は
 付録~\ref{sec:ppe_pseudotime} にまとめる．
-本章（§8）は数学的物理と離散化ロジックのみを扱う（Modification IV: 実装詳細は付録へ）．
 
 %% 初期条件 p^0 の設定（3戦略：Young-Laplace 解析値／1回追加求解／p^0=0 簡易）は
 %% 付録~\ref{sec:ppe_pseudotime} に移動（CHK-086）．
