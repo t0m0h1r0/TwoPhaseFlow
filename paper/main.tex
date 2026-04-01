@@ -1,7 +1,5 @@
 % paper/main.tex
-\RequirePackage{silence}
-\WarningFilter{zxjafont}{Font}
-\WarningFilter{latex}{Font shape}
+%% silence パッケージは XeLaTeX + CJK \section で \sl@RemoveGobble エラーを起こすため除去
 
 \documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
 
@@ -91,17 +89,16 @@
 %% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
 \input{sections/appendix_ccd_coef}           %% B.1–B.2（各節は appendix_ccd_coef_s*.tex に委譲）
 
-%% 付録C: CCD 実装詳細・Kronecker 積・周期BC（§4/§8 対応）
+%% 付録C: CCD 実装詳細・Kronecker 積・周期BC・チェッカーボード証明（§4/§8 対応）
+%% ※ 旧 C.5（チェッカーボード証明）は C.3 に統合済み
 \input{sections/appendix_ccd_impl}           %% C.1–C.4（各節は appendix_ccd_impl_s*.tex に委譲）
 
-%% 付録D: 参照スキーム（Godunov LS・WENO5・ALE・Rhie--Chow・BF・ポアソン, §3-§8 対応）
-%% ※ 旧 D.2(CLS保存性) と 旧 D.8(CCD仮想時間精度) は §10.3 へ移動済み
+%% 付録D: 参照スキーム（WENO5・DCCD比較・ALE・RC/BF精度解析・仮想時間・界面移流, §3-§8 対応）
+%% ※ 旧 D.1(Godunov LS), D.7(ソルバー比較) は削除; 旧 D.5(BF誤差解析) は D.4 に統合
 \input{sections/appendix_numerics_schemes}   %% D.1–D.7（各節は appendix_numerics_schemes_s*.tex に委譲）
 
-%% 付録E: ソルバー解析（毛管 CFL・Thomas 係数・擬似時間・PPE 面係数, §5-§8 対応）
+%% 付録E: ソルバー解析・FVM基準手法（毛管CFL・欠陥補正理論・面係数・CSF・RC, §5-§8 対応）
+%% ※ 旧 E.2+E.3+E.5 は「欠陥補正法の理論と係数」に統合; 旧付録F(CSF+RC) は E に統合
 \input{sections/appendix_numerics_solver}    %% E.1–E.4（各節は appendix_numerics_solver_s*.tex に委譲）
-
-%% 付録F: 標準手法の詳細（CSF モデル・Rhie--Chow 補正）
-\input{sections/appendix_legacy_methods}     %% F: CSF + Rhie--Chow 完全定式化（参考収録）
 
 \end{document}
