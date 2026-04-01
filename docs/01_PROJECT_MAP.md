@@ -250,7 +250,7 @@ Never hardcode pin index (0,0).
 |---|---|---|
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges, novelty table |
-| `02_governing.tex` + `02b_csf.tex` + `02c_nondim_curvature.tex` | §2 | One-Fluid NS, CSF, Heaviside, ψ-convention |
+| `02_governing.tex` + `02b_surface_tension.tex` + `02c_nondim_curvature.tex` | §2 | One-Fluid NS, CSF, Heaviside, ψ-convention |
 | `03_levelset.tex` + `03b_levelset_mapping.tex` | §3 | CLS advection, reinitialization |
 | `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | §4 | O(h⁶), block Thomas, boundary scheme, dissipative filter |
 | `05_advection.tex` + `05b_time_integration.tex` + `05c_reinitialization.tex` | §5 | CLS advection, TVD-RK3/AB2+IPC, CFL |
