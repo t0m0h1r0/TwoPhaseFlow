@@ -1,0 +1,21 @@
+% paper/sections/appendix_advection.tex
+%
+% 付録C: 移流スキームと安定性制約（§5-6 対応）
+
+%% C.1 WENO5 参照スキーム
+\input{sections/appendix_numerics_schemes_s2}  %% WENO5 移流スキームの詳細
+
+%% C.2 Dissipative CCD 比較実験と界面移流ベンチマーク
+\section{Dissipative CCD の数値実験}
+\label{app:dccd_experiments}
+\input{sections/appendix_numerics_schemes_s3}  %% C.2.1 線形移流における波形保持特性
+
+\subsection{界面移流ベンチマーク：DCCD による体積保存性}
+\label{sec:interface_advection_bench}
+\input{sections/11b5_interface_advection}      %% C.2.2 Zalesak・単一渦
+
+%% C.3 安定性制約
+\section{安定性制約}
+\label{app:stability_constraints}
+\input{sections/appendix_numerics_solver_s1}   %% C.3.1 毛管波 CFL
+\input{sections/appendix_numerics_schemes_s4}  %% C.3.2 ALE 効果（未実装）

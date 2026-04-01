@@ -1,15 +1,4 @@
 % paper/sections/appendix_ccd_impl.tex
-%
-% 付録（CCD 法の実装・精度解析）
-%   app:ccd_ghost           — ゴーストセル法による境界処理（代替実装）
-%   app:ccd_mixed_precision — 2段階 CCD 混合微分の精度解析（$C^8$ 条件）
-%   app:ccd_elliptic        — CCD 法の楕円型ソルバーとしての双対的役割
-%   app:ccd_periodic        — 周期境界条件：ブロック循環 CCD 行列法
-%
-% 内容は各 _s*.tex に分割管理されている（重複防止のため \input で委譲）
-
-\input{sections/appendix_ccd_impl_s1}    %% C.1 ゴーストセル法による CCD 境界処理
-\input{sections/appendix_ccd_impl_s2}    %% C.2 2段階 CCD 混合微分の精度解析
-\input{sections/appendix_ccd_impl_s3}    %% C.3 CCD 法の楕円型ソルバーとしての双対的役割
-\input{sections/appendix_ccd_impl_s4}    %% C.4 周期境界条件：ブロック循環 CCD 行列法
-%% 旧 C.5（チェッカーボードモードの代数的証明）は C.3 に統合済み
+% ※ このファイルは appendix_ccd.tex に統合済み．
+% ※ main.tex から \input されていないため，このファイルはコンパイルされない．
+\endinput

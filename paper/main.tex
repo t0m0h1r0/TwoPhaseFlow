@@ -83,22 +83,16 @@
 \appendix
 \part*{付録}
 
-%% 付録A: 界面数学・CLS 証明（§2-§3 対応）
-\input{sections/appendix_interface}          %% A.1–A.5（各節は appendix_interface_s*.tex に委譲）
+%% 付録A: 界面数学・CLS 証明（§2-3 対応）
+\input{sections/appendix_interface}       %% A.1–A.5
 
-%% 付録B: CCD 係数 Taylor 展開導出（§4 対応）
-\input{sections/appendix_ccd_coef}           %% B.1–B.2（各節は appendix_ccd_coef_s*.tex に委譲）
+%% 付録B: CCD 法の係数導出と実装（§4/§8 対応）
+\input{sections/appendix_ccd}             %% B.1 係数導出, B.2 境界代替, B.3 精度・楕円型
 
-%% 付録C: CCD 実装詳細・Kronecker 積・周期BC・チェッカーボード証明（§4/§8 対応）
-%% ※ 旧 C.5（チェッカーボード証明）は C.3 に統合済み
-\input{sections/appendix_ccd_impl}           %% C.1–C.4（各節は appendix_ccd_impl_s*.tex に委譲）
+%% 付録C: 移流スキームと安定性制約（§5-6 対応）
+\input{sections/appendix_advection}       %% C.1 WENO5, C.2 DCCD実験, C.3 安定性制約
 
-%% 付録D: 参照スキーム（WENO5・DCCD比較・ALE・RC/BF精度解析・仮想時間・界面移流, §3-§8 対応）
-%% ※ 旧 D.1(Godunov LS), D.7(ソルバー比較) は削除; 旧 D.5(BF誤差解析) は D.4 に統合
-\input{sections/appendix_numerics_schemes}   %% D.1–D.7（各節は appendix_numerics_schemes_s*.tex に委譲）
-
-%% 付録E: ソルバー解析・FVM基準手法（毛管CFL・欠陥補正理論・面係数・CSF・RC, §5-§8 対応）
-%% ※ 旧 E.2+E.3+E.5 は「欠陥補正法の理論と係数」に統合; 旧付録F(CSF+RC) は E に統合
-\input{sections/appendix_numerics_solver}    %% E.1–E.4（各節は appendix_numerics_solver_s*.tex に委譲）
+%% 付録D: 圧力ソルバーと連成解析（§7-8 対応）
+\input{sections/appendix_pressure}        %% D.1 RC/BF, D.2 欠陥補正, D.3 仮想時間, D.4 FVM基準
 
 \end{document}
