@@ -6,28 +6,29 @@
 \label{sec:ns_conservation}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-NS ソルバが物理的に正しい保存則を再現することを，
-Taylor--Green 渦の減衰問題により検証する．
-
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{運動エネルギー減衰}
 \label{sec:energy_conservation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\textbf{設定：}
-計算領域 $[0, 2\pi]^2$，周期境界条件，単相流（$\rho = 1$，$\nu = 0.01$，$\mathit{Re} = 100$）．
-初期条件は Taylor--Green 渦：
-\begin{align}
-  u(x,y,0) &= \sin x\,\cos y, &
-  v(x,y,0) &= -\cos x\,\sin y, \\
-  p(x,y,0) &= -\tfrac{1}{4}(\cos 2x + \cos 2y).
-\end{align}
-厳密解は $\bu(t) = \bu(0)\,e^{-2\nu t}$ であり，
-運動エネルギー $E_k(t) = E_k(0)\,e^{-4\nu t}$ が既知である．
+\noindent\textbf{目的：}
+Predictor--PPE--Corrector パイプラインが，
+既知の運動エネルギー減衰率を正しく再現し，
+離散非圧縮条件を計算機精度水準で維持することを確認する．
 
-$N = 64$，$\Delta t = 0.01$ で AB2+IPC スキームにより $T = 2.0$ まで計算し，
-$E_k(t)$ の理論減衰率に対する相対誤差と
-$\|\bnabla\cdot\bu\|_\infty$ の時間推移を記録する（表~\ref{tab:tgv_energy}）．
+\noindent\textbf{評価対象：}
+NS ソルバ全体の保存性（PPE 投影 + 粘性項 + 対流項の結合）．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item Taylor--Green 渦：$[0, 2\pi]^2$，周期境界，単相流（$\rho = 1$，$\nu = 0.01$，$\mathit{Re} = 100$）
+  \item 初期条件 $u = \sin x\cos y$，$v = -\cos x\sin y$，$p = -\tfrac{1}{4}(\cos 2x + \cos 2y)$
+  \item 厳密解 $E_k(t) = E_k(0)\,e^{-4\nu t}$
+  \item $N = 64$，$\Delta t = 0.01$，AB2+IPC，$T = 2.0$（200 ステップ）
+  \item 合格基準：$E_k$ 相対誤差 $< 10^{-4}$，$\|\bnabla\cdot\bu\|_\infty < 10^{-10}$
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -45,11 +46,11 @@ $2.0$ & $9.110793 \times 10^{0}$ & $9.110793 \times 10^{0}$ & $2.8 \times 10^{-1
 \end{tabular}
 \end{table}
 
-\textbf{結果：}
+\noindent\textbf{結論：}
 運動エネルギーの最大相対誤差は $2.8 \times 10^{-10}$（$t = 2.0$）であり，
 目標の $10^{-4}$ を 6 桁以上下回る．
-CCD-PPE による投影ステップは各タイムステップで
-$\|\bnabla\cdot\bu\|_\infty < 10^{-13}$ を維持しており，
+CCD-PPE 投影ステップは各タイムステップで
+$\|\bnabla\cdot\bu\|_\infty < 10^{-13}$ を維持し，
 離散非圧縮条件が計算機精度水準で成立する．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -59,5 +60,5 @@ $\|\bnabla\cdot\bu\|_\infty < 10^{-13}$ を維持しており，
 
 上記 Taylor--Green 渦シミュレーション全 200 ステップを通じて，
 $\|\bnabla\cdot\bu\|_\infty$ は $\Ord{10^{-13}}$--$\Ord{10^{-14}}$ に維持される．
-これは CCD 微分演算子の 6 次精度と Spectral PPE ソルバの組み合わせにより，
-速度場の無発散補正が浮動小数点丸め誤差のレベルで実現されていることを示す．
+CCD 微分演算子の 6 次精度と PPE ソルバの組み合わせにより，
+速度場の無発散補正が浮動小数点丸め誤差のレベルで実現されている．

@@ -15,16 +15,22 @@ NS ソルバの最も基本的な物理的整合性は，
 \label{sec:hydrostatic}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\textbf{設定：}
-計算領域 $[0,1]^2$，単相流，壁面境界条件，
-重力 $\bm{g} = (0, -1)^\top$．
-初期条件 $\bu = \bm{0}$，$p = \rho g (1-y)$（静水圧から出発）．
-格子解像度 $N = 32, 64, 128$．
-Predictor--PPE--Corrector パイプラインを 100 ステップ実行する．
+\noindent\textbf{目的：}
+Predictor--PPE--Corrector パイプラインが重力と圧力勾配の離散的釣合を
+厳密に維持することを確認する．
 
-\textbf{理論解：}
-圧力は静水圧分布 $p(y) = \rho g (1-y)$ を維持し，
-速度は恒等的にゼロ（$\bu \equiv \bm{0}$）であるべきである．
+\noindent\textbf{評価対象：}
+NS ソルバ全体の離散力平衡（CCD 微分 + PPE 投影 + 速度補正）．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item 計算領域 $[0,1]^2$，単相流，壁面境界条件，重力 $\bm{g} = (0, -1)^\top$
+  \item 初期条件 $\bu = \bm{0}$，$p = \rho g (1-y)$（静水圧から出発）
+  \item 格子 $N = 32, 64, 128$，100 ステップ実行
+  \item 合格基準 $\|\bu\|_\infty < 10^{-12}$
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -41,27 +47,31 @@ $N$ & $\|\bu\|_\infty$ & $|p - p_{\mathrm{hydro}}|_\infty$ & 判定 \\
 \end{tabular}
 \end{table}
 
+\noindent\textbf{結論：}
 速度・圧力ともに計算機精度水準（$\Ord{10^{-15}}$）に収まり，
-重力と圧力勾配の離散的釣合が\textbf{厳密に}成立することが確認された．
-これは CCD 微分演算子がフリーストリーム保存（§\ref{sec:gcl_verification}）を
-満たすことの直接的帰結である．
+重力と圧力勾配の離散的釣合が厳密に成立した．
+CCD 微分演算子のフリーストリーム保存（§\ref{sec:gcl_verification}）の直接的帰結．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{表面張力均衡と寄生流れ}
 \label{sec:bf_static_droplet}
 % ─────────────────────────────────────────────────────────────────────────────
 
-静止液滴における Laplace 圧均衡の検証は，
-GFM 界面処理（§\ref{sec:gfm}）と Balanced-Force 離散化の両方を必要とする
-二相流統合テストである．
-GFM の Laplace 圧力跳び精度は §~\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）にて
-$N=128$ における相対誤差 $1.8\%$ を確認済みである．
+\noindent\textbf{目的：}
+静止液滴における Laplace 圧均衡を検証し，
+Balanced-Force 条件下で寄生流れが格子収束することを確認する．
 
-\paragraph{現状と課題．}
-現行の CSF ベース実装による予備実験では，寄生流れが格子精緻化に伴い増大し
-（負の収束次数），Balanced-Force 条件が成立していない．
-これは CSF 体積力と圧力勾配の離散化経路不整合に起因する．
-GFM への移行（§\ref{sec:gfm}）により界面圧力跳びを鋭く処理し，
-Balanced-Force 条件を回復する必要がある．
-寄生流れ振幅の格子収束次数（Balanced-Force 条件下で $\Ord{h^2}$）の
-定量的確認は第~\ref{sec:validation}章の静止液滴ベンチマークにて行う．
+\noindent\textbf{評価対象：}
+GFM 界面処理（§\ref{sec:gfm}）＋ Balanced-Force 離散化の二相流統合テスト．
+
+\noindent\textbf{現状と課題：}
+GFM の Laplace 圧力跳び精度は §~\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）にて
+$N=128$ で相対誤差 $1.8\%$ を確認済み．
+現行の CSF ベース実装では寄生流れが格子精緻化に伴い増大し（負の収束次数），
+Balanced-Force 条件が成立していない．
+GFM への移行により Balanced-Force 条件を回復し，
+寄生流れ振幅の格子収束（$\Ord{h^2}$）を達成する必要がある．
+
+\noindent\textbf{結論：}
+定量的検証は GFM 統合後の第~\ref{sec:validation}章の
+静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて実施する．

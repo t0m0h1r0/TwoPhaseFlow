@@ -6,16 +6,21 @@
 \label{sec:interface_crossing}
 % ═══════════════════════════════════════════════════════════════════════════════
 
+\noindent\textbf{目的：}
 密度比 $\rho_l/\rho_g = 1000$ の二相場において，
-界面を跨ぐ圧力勾配の滑らかさを検証する．
-GFM 不連続面処理（§\ref{sec:gfm}）は界面に鋭い圧力跳びを許容しつつ，
-速度補正項 $\bnabla p / \rho$ を界面の両側で正しく評価する．
+界面を跨ぐ速度連続性と圧力勾配の滑らかさを定量的に検証する．
 
-§~\ref{sec:verify_gfm} の静的テスト（表~\ref{tab:gfm_laplace}）では
-GFM の Laplace 圧力跳び誤差が $N=128$ で $1.8\%$ に収束することを確認した．
-§~\ref{sec:verify_ppe} の変密度 Poisson テストでは
-CCD-PPE 作用素の格子収束が $\Ord{h^7}$ で成立することを確認した．
+\noindent\textbf{評価対象：}
+GFM 不連続面処理（§\ref{sec:gfm}）による速度補正項 $\bnabla p / \rho$ の
+界面両側での整合性．
 
+\noindent\textbf{前提となる検証済み結果：}
+\begin{itemize}[noitemsep]
+  \item GFM Laplace 圧力跳び誤差 $1.8\%$（$N=128$）：§~\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）
+  \item CCD-PPE 変密度 Poisson 格子収束 $\Ord{h^7}$：§~\ref{sec:verify_ppe}
+\end{itemize}
+
+\noindent\textbf{結論：}
 密度比 $10^3$ における界面通過時の速度連続性の定量的検証は，
 GFM を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）が

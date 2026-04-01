@@ -4,43 +4,30 @@
 %      実験スクリプト: experiments/ls_cls_conservation.py
 %      結果データ:    results/ls_cls_conservation/
 
+\noindent\textbf{目的：}
 界面追従格子を定期的にリフレッシュする環境において，
 CLS の保存型再マッピングが LS の非保存補間に比べ
-質量誤差を 1--2 桁低減することを検証した．
+質量誤差を低減することを定量的に検証する．
 
-\paragraph{実験設定．}
+\noindent\textbf{評価対象：}
+CLS 保存型再マッピング（質量スケーリング補正
+$\psi_i \leftarrow \psi_i^{\mathrm{interp}} \cdot (M_{\mathrm{old}}/M_{\mathrm{new}})$）
+vs LS 区分線形補間（非保存）．
 
-$N=128$ の界面適合格子（圧縮比 $r=2$，$\sigma=0.06$）上で
-均一流による 1 周期移流を行った．
-空間微分には DCCD（$\varepsilon_d = 0.05$），時間積分には TVD-RK3 を用いた．
-$K_{\mathrm{refresh}}$ ステップごとに格子を界面位置 $x_c(t)$ に再生成し，
-LS は区分線形補間（質量非保存），CLS は補間後に質量スケーリング補正
-$\psi_i \leftarrow \psi_i^{\mathrm{interp}} \cdot (M_{\mathrm{old}}/M_{\mathrm{new}})$
-を適用した．
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item 格子 $N=128$，界面適合格子（圧縮比 $r=2$，$\sigma=0.06$），均一流 1 周期移流
+  \item 空間微分 DCCD（$\varepsilon_d = 0.05$），時間積分 TVD-RK3，CFL $=0.4$
+  \item $K_{\mathrm{refresh}} = 5, 10, 20, 50$ ステップごとに格子を界面位置に再生成
+  \item 評価指標：$T=1$ 後の最終相対質量誤差 $|\Delta M/M_0|$
+\end{itemize}
 
-\paragraph{結果．}
-
-$T=1$（1 周期後）のプロファイルを
-両手法とも平滑化 Heaviside $\tilde{H}_\varepsilon$ スケールに変換して比較した．
-LS は Godunov 型再初期化により SDF 形状を保ち，
-$\tilde{H}_\varepsilon(\phi)$ は解析解とほぼ一致した（$L_2 \approx 4\times10^{-3}$）．
-一方 CLS は再初期化を行わず質量保存を優先するため，
-遷移幅に $\Ord{10^{-2}}$ 程度のずれが生じた（$L_2 \approx 6\times10^{-2}$）．
-
-$K=10$ において，LS はリフレッシュのたびに補間起源の質量誤差が蓄積し増大傾向を示した．
-CLS はリフレッシュで誤差がリセットされるため振幅が抑制された．
-
-$T=1$ 後の最終相対質量誤差 $|\Delta M/M_0|$ の $K_{\mathrm{refresh}}$ 依存性を
-表~\ref{tab:ls_cls_mass_err} に示す．
-頻繁なリフレッシュ（小 $K$）では CLS が LS に比べ 1--2 桁小さい誤差を示した
-（$K=10$: CLS $8.9\times10^{-7}$ vs LS $7.6\times10^{-5}$，85 倍の改善）．
-大 $K$ では DCCD 移流誤差が支配的になり CLS の保存性優位が消えた
-（$K=50$: 両者同程度）．
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
   \centering
   \caption{%
-    $T=1$ 後の最終相対質量誤差 $|\Delta M/M_0|$（$N=128$，$r=2$，CFL $=0.4$）．}
+    $T=1$ 後の最終相対質量誤差 $|\Delta M/M_0|$（$N=128$，$r=2$，CFL $=0.4$）}
   \label{tab:ls_cls_mass_err}
   \begin{tabular}{lrrrr}
     \toprule
@@ -52,7 +39,12 @@ $T=1$ 後の最終相対質量誤差 $|\Delta M/M_0|$ の $K_{\mathrm{refresh}}$
   \end{tabular}
 \end{table}
 
-動的非一様格子において CLS の保存型再マッピングはリフレッシュ起源の質量誤差を
-1--2 桁低減した．
+$K=10$ で CLS は LS に比べ 85 倍の質量誤差低減を達成した
+（CLS $8.9\times10^{-7}$ vs LS $7.6\times10^{-5}$）．
+$K=5$ でも 11 倍の改善を示した．
+大 $K$（$K=50$）では DCCD 移流誤差が支配的になり CLS の保存性優位が消えた．
+
+\noindent\textbf{結論：}
+CLS の保存型再マッピングはリフレッシュ起源の質量誤差を 1--2 桁低減する．
 この優位性はリフレッシュ周期が短いほど顕著であり，
 界面追従格子が頻繁に再生成される実用条件（$K \lesssim 20$）で特に有効である．
