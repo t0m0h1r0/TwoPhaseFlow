@@ -6,11 +6,11 @@
 %   第~\ref{sec:validation}章（§12）に収録．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{精度バジェット（Error Budget）：各コンポーネントの精度分析}
+\subsection{精度バジェット}
 \label{sec:error_budget}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本ソルバーは複数の数値スキームを組み合わせて構成される．
+本ソルバは複数の数値スキームを組み合わせて構成される．
 各コンポーネントの空間・時間精度を一覧化し，
 なぜ高次精度スキームが全体精度向上に寄与するかを説明する．
 物理的な多相流ベンチマーク（静止液滴・毛細管波・気泡上昇）は §\ref{sec:validation} で扱う．
@@ -40,13 +40,17 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
 
 \noindent\textbf{精度設計のまとめ：}
 \label{sec:accuracy_summary}
-本稿の数値手法は，圧力 Poisson ソルバー（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
+本稿の数値手法は，圧力 Poisson ソルバ（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
 粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
 界面移流（Dissipative CCD，$\Ord{\varepsilon_d h^2}$，フィルタ律速）を実装している．
 
 \begin{itemize}[noitemsep]
-  \item \textbf{全体空間精度律速：} CSF モデルの近似誤差 $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ が現状の空間精度の律速段階であり，
-        CCD-PPE（$\Ord{h^6}$）はこれより高次であり，Dissipative CCD は $\Ord{\varepsilon_d h^2}$（フィルタ律速；$\varepsilon_d=0.05$ で CSF 誤差の約 $1/20$）で CSF 誤差と同次だが係数が抑制されているため，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
+  \item \textbf{全体空間精度律速：}
+        CSF モデルの近似誤差 $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ が現状の律速段階である．
+        CCD-PPE（$\Ord{h^6}$）はこれより高次であり，
+        Dissipative CCD は $\Ord{\varepsilon_d h^2}$（$\varepsilon_d=0.05$ で CSF 誤差の約 $1/20$）で
+        CSF 誤差と同次だが係数が抑制されている．
+        したがって，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
   \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
         Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
         曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
@@ -61,7 +65,7 @@ IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） 
         これは今後の課題として §\ref{sec:future_work} で展望する．
 \end{itemize}
 本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
-CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第\ref{sec:pressure}章参照）．
+CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第~\ref{sec:pressure}章参照）．
 
-\noindent CCD-Poisson ソルバーの格子収束特性は
+\noindent CCD-Poisson ソルバの格子収束特性は
 §~\ref{sec:verify_ppe}（第~\ref{sec:numerical_integrity}章）で検証済みである．
