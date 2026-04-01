@@ -399,30 +399,20 @@ $H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ は狭義単調増加
 CLS 法における具体的な計算手順・数値的安定性・実装戦略は
 §\ref{sec:curvature_direct_psi_cls}（第~\ref{sec:levelset}章）で述べる．
 
-\begin{tcolorbox}[warnbox, title={曲率の数値的安定化：実装クイックスタート（詳細分析は §\ref{sec:curvature_stab}）}]
+\paragraph{曲率の数値的安定化（実装クイックスタート）}
 \label{box:curvature_stab}
-
 式~\eqref{eq:curvature_2d} の分母 $(\phi_x^2+\phi_y^2)^{3/2}$ は，
 移流・再初期化の数値誤差により $|\bnabla\phi|\to 0$ となる格子点でゼロ除算を引き起こす恐れがある．
 実装では必ず以下の\textbf{分母クランプ}（下限値 $\varepsilon_{\text{norm}}$）を施す：
-
 \begin{equation}
   \kappa \approx -\frac{
     \phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy}
   }{\max\!\bigl(\phi_x^2 + \phi_y^2,\; \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
   \label{eq:curvature_clamped}
 \end{equation}
-
 \textbf{推奨値：} $\varepsilon_{\text{norm}} = 10^{-3}$（次元なし，再初期化が正常なら作動しない）．
-
-\medskip
-\noindent\textbf{根本的保証は再初期化にある：}
 CLS 再初期化（第~\ref{sec:levelset}章）が $|\bnabla\phi|\approx 1$ を維持していれば，
 分母は常に $\approx 1$ に保たれクランプは実質的に不要となる．
 クランプは過渡的な状況への防御的フォールバックである．
-
-\medskip
-\noindent\textbf{深い分析（ゼロ除算の発生メカニズム，誤差評価，
-ガウシアンフィルタ，実装チェックリスト）は
-第~\ref{sec:levelset}章（§\ref{sec:curvature_stab}）を参照．}
-\end{tcolorbox}
+詳細分析（ゼロ除算の発生メカニズム，誤差評価，ガウシアンフィルタ，実装チェックリスト）は
+§\ref{sec:curvature_stab} を参照．
