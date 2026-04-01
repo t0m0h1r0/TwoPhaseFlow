@@ -136,32 +136,10 @@ $N$ & A: $\phi$ 直接 & 次数 & B: ロジット経由 & 次数 & C: $\psi$ 直
 $N = 256$ では誤差が増大する（収束次数が負値）．
 経路 C は全格子で収束しない（次節で原因を分析）．
 
-\textbf{(b) 円形界面（半径 $R = 0.25$，$\kappa_\mathrm{exact} = 1/R = 4$）：}
-CCD 法と標準 2 次精度中央差分（CD2）を経路 B で比較する
-（表~\ref{tab:curvature_circle}）．
-両手法とも $\Ord{h^1}$ 程度の収束にとどまる．
-これは CCD の理論精度限界ではなく，CLS 変数 $\psi$ から符号付距離関数 $\phi$ への
-逆変換が界面厚み $\varepsilon = \Ord{h}$ に律速される系統誤差を生むためである．
-(a) で正弦波界面に対して経路 A が $\Ord{h^5}$ を達成したことから，
-CCD 微分演算自体は高精度であり，曲率精度の律速因子は
-界面表現の解像度（$\varepsilon$ に対する格子点数）であることが分かる．
-
-\begin{table}[htbp]
-\centering
-\caption{円形界面の曲率 $L_\infty$ 誤差収束：CCD 法 vs CD2 法（経路 B，$\varepsilon = 1.5h$）}
-\label{tab:curvature_circle}
-\begin{tabular}{rrrrr}
-\toprule
-$N$ & CCD $L_\infty$ & 次数 & CD2 $L_\infty$ & 次数 \\
-\midrule
- 16 & $1.26 \times 10^{1}$  & ---  & $8.82 \times 10^{0}$  & ---  \\
- 32 & $2.42 \times 10^{0}$  & 2.38 & $2.23 \times 10^{0}$  & 1.98 \\
- 64 & $9.09 \times 10^{-1}$ & 1.42 & $9.12 \times 10^{-1}$ & 1.29 \\
-128 & $4.11 \times 10^{-1}$ & 1.14 & $4.10 \times 10^{-1}$ & 1.15 \\
-256 & $1.96 \times 10^{-1}$ & 1.07 & $1.96 \times 10^{-1}$ & 1.07 \\
-\bottomrule
-\end{tabular}
-\end{table}
+円形界面（$R = 0.25$，$\kappa_\mathrm{exact} = 4$）では，
+経路 B の曲率収束は CCD・CD2 ともに $\Ord{h^1}$ にとどまり，
+ロジット逆変換の界面厚み $\varepsilon = \Ord{h}$ が律速する．
+CCD 微分演算自体は (a) で $\Ord{h^5}$ を達成しており，精度の上界ではない．
 
 本稿では経路 B（$\psi \to \phi$ ロジット逆変換→CCD）を採用する．
 経路 C（$\psi$ 直接法）は $\varepsilon = \Ord{h}$ でシグモイド勾配の桁落ちにより
