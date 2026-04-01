@@ -14,11 +14,10 @@ Eikonal 条件 $|\bnabla\phi|=1$ が厳密に成立するとき，
   dV = \bigl(1 - \kappa_1 s\bigr)\bigl(1 - \kappa_2 s\bigr)\, ds\, dA_\Gamma
   \approx \bigl(1 - 2H s + \kappa_1\kappa_2 s^2 + \cdots\bigr)\, ds\, dA_\Gamma
 \]
-ここで $H = (\kappa_1+\kappa_2)/2$ は平均曲率．界面デルタ関数の定義から：
-\[
-  \delta_s = \frac{\delta(s)}{(1-\kappa_1 s)(1-\kappa_2 s)}
-  = \delta(s)\bigl(1 + 2Hs + \Ord{s^2}\bigr)
-\]
+ここで $H = (\kappa_1+\kappa_2)/2$ は平均曲率．
+界面デルタ関数 $\delta_s$ は $\int_\Omega f\,\delta_s\,dV = \int_\Gamma f\,dA_\Gamma$ を満たす分布として
+定義される．正則化 $\delta_\varepsilon(s)$ を用いた体積積分では，Jacobian 因子
+$(1 - 2Hs + \kappa_1\kappa_2 s^2 + \cdots)$ が被積分関数に現れる（下記参照）．
 
 \noindent\textbf{近似誤差の評価}
 

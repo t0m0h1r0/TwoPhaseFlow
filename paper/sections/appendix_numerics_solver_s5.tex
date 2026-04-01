@@ -123,12 +123,13 @@ $\Delta\tau_{i,j} \propto \rho_{i,j}$ とすることで $\Delta\tau_{i,j} \cdot
 条件 & $\rho(M)$ & $k=3$ での残差比 \\
 \midrule
 等密度・等方格子（$\omega = \omega^*$） & $0.25$ & $1.6 \times 10^{-2}$ \\
-等密度・等方格子（$\omega = 1.0$，非最適） & $\approx 0.75$ & $\approx 0.42$ \\
+等密度・等方格子（$\omega = 0.1$，非最適） & $\approx 0.76$ & $\approx 0.44$ \\
 変密度（$\rho_l/\rho_g = 10$，LTS 適用） & $\approx 0.3$--$0.4$ & $\approx 0.03$--$0.06$ \\
 変密度（$\rho_l/\rho_g = 1000$，LTS 適用） & $\approx 0.5$--$0.6$ & $\approx 0.1$--$0.2$ \\
 \bottomrule
 \end{tabular}
 \end{center}
+収束には $\omega \in (0,\, 2/\alpha_{\max}) = (0,\, 0.5)$ が必要であり，$\omega \ge 0.5$ では発散する．
 高密度比では LTS を適用してもスペクトル半径が $0.5$--$0.6$ に増大するため，
 $k = 10$--$20$ 回の反復が必要となる（それでもKrylov法より反復単価が低い）．
 \end{tcolorbox}
