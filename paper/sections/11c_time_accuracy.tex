@@ -14,10 +14,21 @@ Predictor--PPE--Corrector パイプライン全体としての時間・空間収
 \label{sec:tgv_temporal}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\textbf{設定：}
-§\ref{sec:energy_conservation} と同一の Taylor--Green 渦を
-$N = 64$ に固定（空間誤差を十分に小さくする）し，
-$\Delta t$ を系統的に変化させて $T = 0.5$ における速度場の $L^\infty$ 誤差を計測する．
+\noindent\textbf{目的：}
+AB2+IPC スキームが NS ソルバ全体で設計時間精度 $\Ord{\Delta t^2}$ を達成することを確認する．
+
+\noindent\textbf{評価対象：}
+Predictor（AB2 + CN）+ PPE + Corrector の結合時間精度．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item §\ref{sec:energy_conservation} と同一の Taylor--Green 渦（$\mathit{Re}=100$）
+  \item $N = 64$ に固定（空間誤差を十分に小さくする）
+  \item $\Delta t$ を系統的に変化させ（$n = 5, 10, 20, 40, 80, 160$ ステップ），
+        $T = 0.5$ における $L^\infty(\bu)$ を計測
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -37,30 +48,39 @@ $\Delta t$ を系統的に変化させて $T = 0.5$ における速度場の $L^
 \end{tabular}
 \end{table}
 
-\textbf{結果：}
-$\Delta t \geq 0.0125$ の領域で精確な $\Ord{\Delta t^2}$ 収束が確認された（次数 $1.98$--$2.00$）．
-これは AB2 時間外挿（$\Ord{\Delta t^2}$）+ IPC 分割誤差（$\Ord{\Delta t^2}$，van Kan 1986）
-の理論的期待と完全に一致する．
-$\Delta t \leq 0.006$ では丸め誤差のフロア（$\sim 10^{-12}$）に接近し，見かけ上の次数が低下する．
+\noindent\textbf{結論：}
+$\Delta t \geq 0.0125$ で精確な $\Ord{\Delta t^2}$ 収束を確認した（次数 $1.98$--$2.00$）．
+AB2（$\Ord{\Delta t^2}$）+ IPC 分割誤差（$\Ord{\Delta t^2}$，van Kan 1986）の理論と一致する．
+$\Delta t \leq 0.006$ では丸め誤差のフロア（$\sim 10^{-12}$）に接近し見かけ上の次数が低下する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Kovasznay 流による空間精度の検証}
 \label{sec:kovasznay}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\textbf{設定：}
-Kovasznay (1948) の 2 次元定常 NS 解析解（$\mathit{Re} = 40$）を用いる：
-\begin{align}
-  u(x,y) &= 1 - e^{\lambda x}\cos(2\pi y), &
-  v(x,y) &= \frac{\lambda}{2\pi}\,e^{\lambda x}\sin(2\pi y), \\
-  p(x,y) &= -\tfrac{1}{2}\,e^{2\lambda x},
-\end{align}
-ただし $\lambda = \mathit{Re}/2 - \sqrt{\mathit{Re}^2/4 + 4\pi^2} \approx -6.42$．
-計算領域 $[0, 1] \times [-0.5, 0.5]$，ディリクレ境界条件．
+\noindent\textbf{目的：}
+CCD 離散化した NS 方程式の空間収束次数を，
+非線形対流項を含む定常解析解を用いて検証する．
 
-CCD で離散化した NS 残差 $R = -\bu \cdot\bnabla\bu + \nu\bnabla^2\bu - \bnabla p$ を
-解析解上で評価し，格子精緻化に伴う残差の減少から空間精度を測定する
-（MMS 残差法）．
+\noindent\textbf{評価対象：}
+CCD 離散化 NS 残差の格子収束特性（非線形項 + 境界スキームの影響を含む全体精度）．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item Kovasznay (1948) の 2 次元定常 NS 解析解（$\mathit{Re} = 40$，
+        $\lambda = \mathit{Re}/2 - \sqrt{\mathit{Re}^2/4 + 4\pi^2} \approx -6.42$）：
+        \begin{align}
+          u &= 1 - e^{\lambda x}\cos(2\pi y), &
+          v &= \frac{\lambda}{2\pi}\,e^{\lambda x}\sin(2\pi y), &
+          p &= -\tfrac{1}{2}\,e^{2\lambda x}
+        \end{align}
+  \item 計算領域 $[0, 1] \times [-0.5, 0.5]$，ディリクレ境界条件
+  \item 格子 $N = 16, 32, 64, 128$
+  \item 評価方法：CCD 離散化 NS 残差 $R = -\bu \cdot\bnabla\bu + \nu\bnabla^2\bu - \bnabla p$
+        を解析解上で評価（MMS 残差法）
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -78,12 +98,9 @@ $N$ & NS 残差 $\|R\|_\infty$ & 次数 & $\|\bnabla\cdot\bu\|_\infty$ & 次数 
 \end{tabular}
 \end{table}
 
-\textbf{結果：}
-CCD 離散化連続方程式の残差は $\Ord{h^{5.97}}$ で収束し，CCD 内部精度 $\Ord{h^6}$ に整合する．
-NS 運動量残差は $\Ord{h^{3.96}}$ に収束する．これは対流項 $\bu \cdot \bnabla\bu$
-が非線形積であるため，ディリクレ境界近傍で CCD 境界スキーム（$\Ord{h^5}$）の
-誤差が非線形に増幅されることによる．
-内部節点のみを評価しても境界スキームの影響は数節点にわたり伝播するため，
-$\Ord{h^4}$ 程度の実効精度となる．
-$N=128$ で NS 残差は $10^{-8}$ に達しており，
-CCD ベースの NS ソルバが十分な空間精度を有することが確認された．
+\noindent\textbf{結論：}
+連続方程式残差は $\Ord{h^{5.97}}$（CCD 内部精度 $\Ord{h^6}$ に整合）．
+NS 運動量残差は $\Ord{h^{3.96}}$：非線形対流項 $\bu \cdot \bnabla\bu$ がディリクレ境界近傍で
+CCD 境界スキーム（$\Ord{h^5}$）の誤差を非線形に増幅するため，
+実効精度は $\Ord{h^4}$ 程度となる．
+$N=128$ で NS 残差は $10^{-8}$ に達し，十分な空間精度を確認した．

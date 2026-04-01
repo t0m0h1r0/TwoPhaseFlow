@@ -6,32 +6,29 @@
 \label{sec:advection_pressure_coupling}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-高レイノルズ数では対流項が支配的となり，
-コロケーション格子固有のチェッカーボード不安定が顕在化しうる．
-DCCD の散逸フィルタがこの不安定の抑制にどの程度寄与するかを，
-二重剪断層問題により検証する．
-
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{高レイノルズ数二重剪断層}
 \label{sec:highre_dccd}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\textbf{設定：}
-計算領域 $[0, 2\pi]^2$，周期境界条件，単相流，$\mathit{Re} = 1000$．
-初期条件は薄い剪断層（$\delta = \pi/15$）と微小擾乱（$\varepsilon_0 = 0.05\sin x$）からなる
-二重剪断層である．格子 $N = 64$，$\Delta t = 0.002$，$T = 0.5$ まで AB2+IPC で時間発展させる．
+\noindent\textbf{目的：}
+高レイノルズ数で対流項が支配的な条件下で，
+DCCD フィルタが NS ソルバに過剰な数値散逸を導入しないことを確認する．
 
-\textbf{比較対象：}
+\noindent\textbf{評価対象：}
+DCCD フィルタの 2 次元 NS 方程式における安定性・散逸特性
+（§\ref{sec:verify_dccd_dissipation} の 1D 結果の 2D 拡張）．
+
+\noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
-  \item CCD（フィルタなし）：高波数成分が無減衰で蓄積
-  \item DCCD（10 次選択フィルタ適用）：高波数成分を選択的に減衰
+  \item 二重剪断層：$[0, 2\pi]^2$，周期境界，単相流，$\mathit{Re} = 1000$
+  \item 薄い剪断層（$\delta = \pi/15$）＋微小擾乱（$\varepsilon_0 = 0.05\sin x$）
+  \item $N = 64$，$\Delta t = 0.002$，AB2+IPC，$T = 0.5$
+  \item 比較対象：CCD（$\varepsilon_d = 0$，フィルタなし）vs DCCD（$\varepsilon_d = 0.05$）
+  \item 評価指標：$T=0.5$ での運動エネルギー $E_k$ の差，安定性
 \end{itemize}
 
-\textbf{検証の意図：}
-高解像度格子では CCD がチェッカーボード振動を励起しうるため，
-DCCD フィルタの §~\ref{sec:verify_dccd_dissipation} で確認した
-Nyquist モード抑制効果が 2 次元 NS 方程式でも有効に機能するかを確認する．
-同時に，低解像度で DCCD が過剰散逸を導入しないことも検証する．
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -47,14 +44,8 @@ DCCD & $0.05$ & 250 & $1.7091 \times 10^{1}$ & 安定 \\
 \end{tabular}
 \end{table}
 
-\textbf{結果：}
-$N=64$ では CCD・DCCD ともに安定に時間発展し，
-運動エネルギー $E_k(T=0.5)$ の差は $0.01\%$ 以下である．
-このことは，$N=64$ の解像度では両スキームとも十分に安定であり，
-DCCD フィルタの安定化効果を弁別するには不十分であることを意味する．
-DCCD フィルタは $N=64$ では数値散逸が極めて小さく
-（$H(\xi; \varepsilon_d=0.05)$ は低波数で $\approx 1$，§\ref{sec:verify_dccd_dissipation}），
-物理的な解構造に影響を与えない．
-格子解像度を上げ Nyquist に近いモードが励起される場合（$N \geq 128$）に
-DCCD フィルタの安定化効果が顕在化する（§\ref{sec:dccd_dissipation_bench} の TV 抑制参照）．
-本テストの意義は，DCCD フィルタが低解像度で過剰な数値散逸を導入しないことの確認にある．
+\noindent\textbf{結論：}
+$N=64$ では CCD・DCCD ともに安定であり，$E_k$ の差は $0.01\%$ 以下．
+DCCD フィルタは低解像度で過剰な数値散逸を導入しないことを確認した．
+DCCD の安定化効果は Nyquist 近傍のモードが励起される高解像度（$N \geq 128$）で
+顕在化する（§\ref{sec:dccd_dissipation_bench} の TV 抑制参照）．
