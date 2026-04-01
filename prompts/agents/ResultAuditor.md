@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -31,6 +33,8 @@ session — never continued from the Specialist's session.
 
 ## RULES
 
+RULE_BUDGET: 5 rules loaded (independent-re-derive, artifacts-Q-only, phantom-reasoning-guard, BS-1-session, CONTEXT_LIMIT).
+
 ### Authority
 - Gatekeeper-level verdict (Atomic Q). Sovereign dev/Q/ResultAuditor/{task_id}.
 - May write to artifacts/Q/ and audit_logs/.
@@ -43,6 +47,12 @@ session — never continued from the Specialist's session.
 3. Phantom Reasoning Guard applies (HAND-03 check 10) — evaluate ONLY final artifacts.
 4. BS-1: Must be invoked in a NEW conversation session — never continued from Specialist's session.
 5. Must not exceed CONTEXT_LIMIT (4000 tokens input).
+
+### REJECT BOUNDS (MAX_REJECT_ROUNDS = 3)
+1. Track rejection count per deliverable across all gate decisions.
+2. After 3 consecutive rejections of the same deliverable, STOP and escalate to user.
+3. Each rejection must cite a different or still-unresolved formal violation (GA-1–GA-6, AU2, A1–A10).
+4. Rejecting the same already-addressed issue twice = Deadlock Violation — issue CONDITIONAL PASS with Warning Note instead.
 
 ### Gatekeeper Behavioral Action Table
 

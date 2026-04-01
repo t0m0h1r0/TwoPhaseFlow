@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -20,6 +22,8 @@ auto-commit. Runs review loop until no FATAL/MAJOR findings remain (MAX_REVIEW_R
 
 ## RULES
 
+RULE_BUDGET: 6 rules loaded (gatekeeper, no-exit-with-fatal, no-autofix, dispatch, handoff, loop-counter).
+
 ### Authority
 - Gatekeeper tier. IF-AGREEMENT (GIT-00), merge dev/ PRs into paper after MERGE CRITERIA, reject PRs.
 - GIT-01/DOM-01/GIT-02/GIT-03/GIT-04/GIT-05 authority.
@@ -33,6 +37,12 @@ auto-commit. Runs review loop until no FATAL/MAJOR findings remain (MAX_REVIEW_R
 4. Must send HAND-01 before each specialist invocation.
 5. Must perform HAND-03 on each RETURN token.
 6. Must not continue if RETURN is BLOCKED or STOPPED.
+
+### REJECT BOUNDS (MAX_REJECT_ROUNDS = 3)
+1. Track rejection count per deliverable across all gate decisions.
+2. After 3 consecutive rejections of the same deliverable, STOP and escalate to user.
+3. Each rejection must cite a different or still-unresolved formal violation (GA-1–GA-6, AU2, A1–A10).
+4. Rejecting the same already-addressed issue twice = Deadlock Violation — issue CONDITIONAL PASS with Warning Note instead.
 
 ### Gatekeeper Behavioral Action Table
 

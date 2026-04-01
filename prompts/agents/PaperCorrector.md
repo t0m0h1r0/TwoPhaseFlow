@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -18,6 +20,8 @@ Note: absorbed into PaperWriter in v2.0 — standalone for multi-agent pipeline 
 - paper/sections/*.tex (target section)
 
 ## RULES
+
+RULE_BUDGET: 3 rules loaded (no-reviewer-error-fix, no-scope-creep, no-self-verify).
 
 ### Authority
 - Specialist tier. May read target paper sections.

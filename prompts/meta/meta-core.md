@@ -1,4 +1,5 @@
 # META-CORE: System Foundation — Design Philosophy & Core Axioms
+# VERSION: 2.1.0
 # ABSTRACT LAYER — FOUNDATION: the principles from which all roles, workflows, and rules derive.
 # This file is read FIRST. Every other meta file is a specialization of what is defined here.
 # Agent character (WHO): meta-persona.md | Role contracts (WHAT): meta-roles.md
@@ -420,6 +421,78 @@ Under-escalation (treating integrity violations as warnings) destroys auditabili
 
 **Default when uncertain:** classify one level higher (i.e., STOP-SOFT → STOP-HARD).
 Better to over-stop than under-stop at an integrity boundary (φ5 Bounded Autonomy).
+
+────────────────────────────────────────────────────────
+# § LLM APTITUDE PRINCIPLES — Task-to-Capability Alignment
+
+LLMs have specific cognitive strengths and weaknesses. Assigning LLM-unsuitable tasks
+to agents without mitigation degrades the entire system. All agent designs and workflow
+assignments must account for these aptitude boundaries.
+
+## LA-1: Task Aptitude Matrix
+
+Every task in the system falls into one of three aptitude categories.
+When designing agent procedures, classify each step accordingly:
+
+| Aptitude | Description | Examples | Mitigation if assigned to LLM |
+|----------|-------------|----------|-------------------------------|
+| **LLM-NATIVE** | Tasks where LLM excels natively | Derivation, prose writing, code generation, classification, reasoning chains, pattern recognition | None needed — assign directly |
+| **TOOL-DELEGATE** | Tasks requiring precision that LLMs cannot guarantee | Numerical comparison, hash verification, file existence checks, git state tracking, exact string matching, counting | Agent MUST delegate to a tool (bash, script, CI) — never attempt in-context |
+| **HUMAN-GATE** | Tasks requiring judgment beyond the system's authority | Ambiguous physical assumptions, competing design tradeoffs, publication decisions, scope changes | STOP and escalate — never approximate |
+
+**Hard rule:** An agent that performs a TOOL-DELEGATE task in-context (e.g., mentally
+computing a convergence slope instead of running pytest) commits a **Reliability Violation**.
+The result is untrustworthy regardless of whether it appears correct.
+
+## LA-2: Context Saturation Awareness
+
+LLM performance degrades when the context window is saturated with rules rather than
+task-relevant content. Agent prompts must reserve sufficient context for the actual task.
+
+**Guideline:** Agent prompt + expected inputs should not exceed 60% of the model's
+effective context window. The remaining 40% is reserved for reasoning and output generation.
+
+**Enforcement:** meta-deploy.md Stage 4 must estimate token budget per agent and flag
+prompts that exceed the 60% threshold.
+
+## LA-3: State Tracking Limitation
+
+LLMs cannot reliably track mutable state across long conversations. All state that
+persists beyond a single agent turn must be externalized.
+
+**Corollary to φ4:** Not only SHOULD state be external (φ4) — for LLM agents, it MUST be,
+because in-context state tracking is unreliable. This is a capability constraint, not
+merely a design preference.
+
+**Practical implication:** Git branch state, loop counters (P6), domain lock status,
+and review round counts must be verified by tool invocation (e.g., `git branch --show-current`)
+at each step — never assumed from prior context.
+
+## LA-4: Rule Load Budgeting
+
+An LLM agent that loads every rule in the system before starting a task degrades
+performance through context saturation — the same failure mode LA-2 describes at the
+file level, applied at the rule level. More rules in context ≠ higher compliance;
+beyond a saturation threshold, compliance falls.
+
+**Hard rule:** Each agent prompt MUST declare a `RULE_BUDGET` (estimated token count
+for all loaded rules). At dispatch time, only rules matching the agent's domain and
+archetypal role (Specialist / Gatekeeper) are loaded. Cross-domain axioms (A1–A10)
+and φ-principles are always included; domain-specific rules for OTHER domains are
+excluded unless the task explicitly crosses domain boundaries.
+
+**Enforcement:** EnvMetaBootstrapper Stage 4 MUST estimate the token budget for each
+generated agent prompt and REJECT any prompt exceeding the 60% context threshold
+defined in LA-2. A prompt that passes Stage 4 is considered Rule-Load Compliant.
+
+**Priority for inclusion when near budget:**
+1. Stop conditions and CONTAMINATION rules (always included — omitting them is worse
+   than saturation)
+2. Role-specific DELIVERABLES and CONSTRAINTS
+3. Handoff protocol (HAND-01/02/03)
+4. Cross-domain axioms (A1–A10)
+5. φ-principles (summarized form acceptable)
+6. Routing/dispatch details (included only for coordinator/Gatekeeper roles)
 
 ────────────────────────────────────────────────────────
 # § SYSTEM META RULES

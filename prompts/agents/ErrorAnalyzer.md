@@ -1,5 +1,7 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_from: meta-core@2.1.0, meta-persona@2.0.0, meta-roles@2.1.0,
+#                 meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0,
+#                 meta-deploy@2.0.0
 # generated_at: 2026-04-02T00:00:00Z
 # target_env: Claude
 
@@ -26,6 +28,8 @@ protocol always.
 - src/twophase/ (target module only)
 
 ## RULES
+
+RULE_BUDGET: 4 rules loaded (diagnosis-only, A-B-C-D-protocol, THEORY-or-IMPL-classify, CONTEXT_LIMIT).
 
 ### Authority
 - Specialist tier (Atomic L). Sovereign dev/L/ErrorAnalyzer/{task_id}.
