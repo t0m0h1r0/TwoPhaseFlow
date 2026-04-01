@@ -1,111 +1,48 @@
 % paper/sections/11_verification.tex
-\section{数値検証とベンチマーク}
+%
+% §11  NS 方程式の物理的整合性検証 (Physical Consistency Verification)
+%
+% 検証の 3 層構造：
+%   第10章 — コンポーネント単体（各演算子が設計精度を満たすか）
+%   第11章 — 物理的整合性（組み上げた NS ソルバが物理法則を正しく記述するか）
+%   第12章 — 二相流ベンチマーク（公表参照解との定量比較）
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{NS 方程式の物理的整合性検証}
 \label{sec:verification}
 
-本章は，第~\ref{sec:algorithm}章の実装を検証するための指標・手順・ベンチマーク設定と，
-実施済みのコンポーネント検証結果を示す．
-§\ref{sec:grid_convergence}--§\ref{sec:error_budget} は定量指標と設計仕様として位置づけ，
-実施済みのサブシステム単体実験結果は §\ref{sec:component_verification} に収める．
-物理的多相流ベンチマークは第~\ref{sec:validation}章で扱う．
+第~\ref{sec:numerical_integrity}章では，CCD/DCCD 微分演算・PPE ソルバ・TVD-RK3 等の
+個々のコンポーネントが設計精度を有することを確認した．
+本章では，これらのコンポーネントを組み合わせた
+\textbf{ナビエ・ストークスソルバ全体}が物理法則を正しく記述するかを検証する．
 
-数値計算の信頼性を確認するため，以下の指標と段階的ベンチマークを用いる．
-検証は「単純な設定で理論解と一致するか」を確認するものであり，
-複雑なシミュレーションへの移行前に必ず実施すべき手順である．
+検証は以下の 5 段階で構成される：
+\begin{enumerate}[noitemsep]
+  \item 力学的バランス——静止流体における重力・表面張力の釣合（§\ref{sec:force_balance}）
+  \item 保存則——運動エネルギー減衰と非圧縮条件の維持（§\ref{sec:ns_conservation}）
+  \item 時間精度——NS 方程式の総合的な時間・空間収束次数（§\ref{sec:ns_time_accuracy}）
+  \item 移流・圧力干渉——高レイノルズ数での対流不安定性に対する DCCD の効果（§\ref{sec:advection_pressure_coupling}）
+  \item 界面通過時の整合性——密度比 $1{:}1000$ における速度連続性と圧力勾配の滑らかさ（§\ref{sec:interface_crossing}）
+\end{enumerate}
 
-\subsection{定量的検証指標}
+\noindent
+各テストは理論解・解析解との定量比較により合否を判定する．
+結果を踏まえた精度バジェットを §\ref{sec:error_budget} に総括し，
+第~\ref{sec:validation}章の二相流ベンチマークへと接続する．
 
 \begin{table}[htbp]
 \centering
-\caption{数値検証の指標と許容誤差（内部整合性チェック）}
+\caption{物理的整合性の検証指標と許容基準}
 \label{tab:verification}
 \begin{tabular}{p{35mm}p{40mm}p{35mm}c}
 \toprule
-検証項目 & 理論値/解析解 & チェック方法 & 許容誤差 \\
+検証項目 & 理論値/解析解 & チェック方法 & 許容基準 \\
 \midrule
-CCD 精度収束 & $\Ord{h^6}$ & $f=\sin x$ 格子精緻化 & スロープ確認\\
-Eikonal 品質 & $|\bnabla\phi| \equiv 1$ & $\|\,|\bnabla\phi|-1\|_\infty$ & $< 10^{-4}$\\
-体積保存 & $\int\psi\,dV = \text{const}$ & タイムステップ毎積分 & $< 0.1\%$\\
-非圧縮性 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
-静水圧テスト & $p = \rho g z$ & 寄生流れの有無 & $< 10^{-12}$\\
-毛管波周波数 & 分散関係式 & 時系列 FFT 比較 & $< 1\%$\\
+静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-12}$\\
+Laplace 圧均衡 & $\Delta p = \sigma/R$ & 寄生流れ振幅 & $\Ord{h^2}$ 収束\\
+運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$\\
+非圧縮条件 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
+NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認\\
+NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認\\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\subsection{格子収束テスト（精度次数の定量的確認）}
-\label{sec:grid_convergence}
-
-本テキストの主要な技術的主張は「CCD 法による $O(h^6)$ 精度の曲率計算」である．
-この主張を定量的に検証するための手順を以下に示す．
-
-\subsubsection{曲率計算の精度収束テスト}
-
-\begin{tcolorbox}[algbox, title={曲率 $\kappa$ の格子収束テスト手順}]
-\textbf{解析解：} 中心 $(0.5,0.5)$，半径 $R=0.5$ の円．
-$\phi(x,y) = \sqrt{(x-0.5)^2+(y-0.5)^2} - R$，点別解析曲率
-$\kappa(x,y) = -1/r$（$r = \|\bm{x}-\bm{x}_c\|$）．
-
-\textbf{格子設定：} $N = 16, 32, 64, 128, 256$（各方向の格子点数），
-$h = 2R/N = 1/N$（一様格子）．
-
-\textbf{誤差計算（点別比較）：}
-\[
-  E_\kappa(h) = \max_{(i,j):\,|\phi_{ij}|<h}
-    \bigl|\kappa_h(x_i,y_j) - (-1/r_{ij})\bigr|
-\]
-評価域を$|\phi|<h$（格子幅1本分の帯）に限定することで，界面との幾何学的ずれ
-$O(h/R^2)$が CCD 精度$O(h^5)$より常に小さい条件を確保する．
-
-\textbf{収束次数：} $p(N) = \log_2\!\bigl(E_\kappa(h)/E_\kappa(h/2)\bigr)$
-\end{tcolorbox}
-
-\begin{table}[htbp]
-\centering
-\caption{CCD 法による曲率計算の格子収束テスト（実測値）．
-  スクリプト: \texttt{experiments/ccd\_curvature\_convergence.py}．}
-\label{tab:grid_conv}
-\begin{tabular}{ccc}
-\toprule
-$N$ & $E_\kappa$（実測値） & 収束次数 $p$ \\
-\midrule
-$16$  & $1.9 \times 10^{-2}$ & --- \\
-$32$  & $7.1 \times 10^{-5}$ & (前漸近) \\
-$64$  & $1.3 \times 10^{-6}$ & $5.8$ \\
-$128$ & $1.5 \times 10^{-8}$ & $6.4$ \\
-$256$ & $2.5 \times 10^{-10}$ & $5.9$ \\
-\bottomrule
-\end{tabular}
-
-\medskip
-\noindent\small
-注：$N=16,32$（$R/h = 8,16$）は前漸近域であり，非線形な曲率公式の積構造に起因する
-誤差が支配的となる．$N\geq 64$（$R/h\geq 32$）で漸近的$O(h^{5.8\text{--}6.4})$が確認される．
-\end{table}
-
-\subsubsection{静止液滴における寄生流れの収束テスト}
-
-\noindent\textbf{寄生流れ振幅の格子収束確認．}
-静止液滴ベンチマーク（ベンチマーク1，\ref{sec:bench_droplet}節）において，
-寄生流れ振幅の格子収束次数を確認する．
-
-\textbf{測定量：} $\|\bm{u}_\text{para}\|_\infty = \max_{i,j}\sqrt{u_{i,j}^2 + v_{i,j}^2}$
-（時刻 $t = 0.1$ において計測）
-
-\textbf{期待される収束：}
-\begin{center}
-\begin{tabular}{ccc}
-\hline
-$N$ & $\|\bm{u}_\text{para}\|_\infty / (\sigma/\mu)$（目標） & 収束次数 \\
-\hline
-$32$ & $\sim 10^{-3}$ & --- \\
-$64$ & $\sim 2.5 \times 10^{-4}$ & $\approx 2$ \\
-$128$ & $\sim 6.3 \times 10^{-5}$ & $\approx 2$ \\
-\hline
-\end{tabular}
-\end{center}
-
-バランス力適用下では，CCD 離散化誤差（$O(h^6)$）は CSF モデル誤差（$O(\varepsilon^2)\approx O(h^2)$）
-より全解像度で無視できるほど小さい（$N=32$ でも比率 $h^4 \approx 10^{-6}$）ため，
-寄生流れは全実用解像度において CSF モデル誤差律速の $O(h^2)$ で収束する（詳細は §\ref{sec:bench_droplet} 参照）．
-$p < 2$（$O(h^2)$ より遅い収束）の場合は，Balanced-Force 離散化またはその実装に問題がある（§\ref{sec:balanced_force}参照）．
-
