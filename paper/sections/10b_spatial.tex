@@ -163,60 +163,11 @@ $N$ & CCD $L_\infty$ & 次数 & CD2 $L_\infty$ & 次数 \\
 \end{tabular}
 \end{table}
 
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{$\psi$ 直接法の数値的安定性：$\varepsilon$ 依存性の分析}
-\label{sec:verify_psi_direct_stability}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§\ref{sec:curvature_direct_psi_cls} で導入した $\psi$ 直接法（経路 C）は
-曲率不変性定理（定理~\ref{thm:curvature_invariance}）に基づく
-数学的に厳密な手法であるが，
-標準 CLS 設定 $\varepsilon = 1.5h$ では数値的安定性に課題がある．
-
-\textbf{原因：}
-シグモイドの最大勾配は $|\bnabla\psi|_{\max} = 1/(4\varepsilon)$ であり，
-$\varepsilon = 1.5h$ のとき $|\bnabla\psi|_{\max} \propto N$ と格子精緻化に伴い
-際限なく増大する．
-式~\eqref{eq:curvature_psi_2d} の分子・分母はいずれも
-$|\bnabla\psi|^3 \propto 1/\varepsilon^3$ でスケールするため，
-大きな値同士の差に起因する\textbf{桁落ち}が発生し，
-$N$ 増加とともに曲率誤差が\emph{増大}する（表~\ref{tab:curvature_sinusoidal} 経路 C）．
-
-\textbf{$\varepsilon$ 固定時の検証：}
-$\varepsilon$ を $h$ に依存させず $\varepsilon = 0.05$（固定）とし，
-格子精緻化とともにシグモイドの解像度（$\varepsilon/h$）を向上させた場合，
-経路 C は $\Ord{h^6}$ の収束を達成する（表~\ref{tab:curvature_eps_fixed}）．
-$\varepsilon/h \geq 3$（1 遷移幅あたり 6 格子点以上）が安定な適用条件である．
-
-\begin{table}[htbp]
-\centering
-\caption{$\varepsilon = 0.05$（固定）での $\psi$ 直接法（経路 C）の曲率収束
-（円形界面 $R = 0.25$，$|\phi| < 2h$ の狭帯域で評価）}
-\label{tab:curvature_eps_fixed}
-\begin{tabular}{rrrr}
-\toprule
-$N$ & $\varepsilon/h$ & 経路 C $L_\infty$ 誤差 & 次数 \\
-\midrule
- 32 & 1.6 & $2.34 \times 10^{-3}$ & ---  \\
- 64 & 3.2 & $1.44 \times 10^{-5}$ & 7.35 \\
-128 & 6.4 & $2.13 \times 10^{-7}$ & 6.08 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{tcolorbox}[resultbox, title={曲率計算経路の選択指針}]
-\label{result:curvature_path_selection}
-\begin{itemize}
-  \item \textbf{標準 CLS 設定（$\varepsilon = \Ord{h}$）：}
-        経路 B（$\psi \to \phi$ ロジット逆変換→CCD）を使用する．
-        律速因子は界面解像度であり，CCD vs CD2 の精度差は $N \geq 64$ で消失する．
-  \item \textbf{厚い界面設定（$\varepsilon/h \geq 3$）：}
-        経路 C（$\psi$ 直接法）が $\Ord{h^6}$ を達成し，
-        ロジット逆変換の飽和域誤差を回避できる．
-  \item \textbf{精度ベースライン（検証用途）：}
-        経路 A（真の符号付距離関数 $\phi$）は CCD 微分精度の上界を与える．
-\end{itemize}
-\end{tcolorbox}
+本稿では経路 B（$\psi \to \phi$ ロジット逆変換→CCD）を採用する．
+経路 C（$\psi$ 直接法）は $\varepsilon = \Ord{h}$ でシグモイド勾配の桁落ちにより
+格子精緻化で収束しないため不採用とした（表~\ref{tab:curvature_sinusoidal}）．
+なお，GFM 界面処理（§\ref{sec:gfm}）の精度が $\Ord{h^2}$（界面近傍）で律速されるため，
+曲率計算経路の選択は全体精度に影響しない．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{実効界面厚み $\varepsilon_{\textup{eff}}$ によるプロファイル品質検証}
