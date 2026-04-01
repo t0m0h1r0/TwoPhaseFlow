@@ -62,6 +62,39 @@ Specialist sounded in prior context. Audit verdict = Artifact quality, not proce
 
 **Role mapping:** see meta-domains.md §MATRIX ARCHITECTURE for Specialist/Gatekeeper pairs per domain.
 
+### §B.1: Reality-Grounded Isolation Model
+
+The Broken Symmetry principle requires isolation between Creator and Auditor.
+In a single-LLM environment (e.g., Claude Code), physical process isolation is impossible.
+The following **achievable isolation levels** replace the aspirational "separate processes"
+model with enforceable, tool-verifiable mechanisms.
+
+**Agents MUST use the highest isolation level applicable to the task.**
+
+| Level | Name | Mechanism | Use for | Enforcement |
+|-------|------|-----------|---------|-------------|
+| **L0** | No isolation | Same conversation context | Same-agent iterative work (e.g., CodeArchitect draft → refine) | None needed |
+| **L1** | Prompt-boundary | New prompt injection; no prior conversation history carried. DISPATCH `inputs` contains ONLY artifact paths — never Specialist reasoning/CoT. | Specialist → Gatekeeper transition within a session | HAND-03 check 10 (Phantom Reasoning Guard): reject if Specialist CoT present |
+| **L2** | Tool-mediated verification | All numerical comparisons, hash checks, and convergence computations delegated to tools (bash, pytest, scripts). LLM never performs these in-context. | All verification steps (TestRunner, ExperimentRunner, ResultAuditor) | LA-1 TOOL-DELEGATE: in-context numerical computation = Reliability Violation |
+| **L3** | Session isolation | Separate Claude Code agent invocation (e.g., `Agent` tool with `isolation: worktree`). Completely independent context window. | Critical audits: ConsistencyAuditor AU2 gate, TheoryAuditor re-derivation | BS-1 session separation: Gatekeeper must not share conversation with Specialist |
+
+**Default when uncertain:** use one level higher (L0→L1, L1→L2, L2→L3).
+
+**L1 enforcement (operationally verifiable):**
+The receiving agent's first action MUST be reading the artifact file directly —
+not consuming a summary, excerpt, or interpretation provided in conversation context.
+"I read the summary above" = broken L1 isolation.
+
+**L2 enforcement (operationally verifiable):**
+Any agent that reports a numerical result (convergence rate, hash value, error norm)
+without a corresponding tool invocation in the same turn commits a Reliability Violation.
+The result is untrustworthy regardless of whether it appears correct.
+
+**L3 enforcement (structurally verifiable):**
+Session isolation is achieved by invoking the audit agent via `Agent` tool, which
+creates a fresh context window. The agent receives only the DISPATCH token and artifact
+paths — zero conversation history from the Specialist's session.
+
 ## §C: Falsification Loop — The Scientific Method
 
 The system evolves not only by building features, but by actively attempting to BREAK the
@@ -88,14 +121,14 @@ failure. The Falsification Loop is the immune system of the project.
 ────────────────────────────────────────────────────────
 # § SYSTEM STRUCTURE
 
-Seven files, one question each. Mixing concerns across files cascades unrelated edits.
+Nine files, one question each. Mixing concerns across files cascades unrelated edits.
 
 **3-Layer Architecture (one-way dependency — lower layers must NOT import upper):**
 
 ```
 Layer 1 — Static Foundation (Immutable)
-  meta-core.md    — FOUNDATION: §0 CORE PHILOSOPHY, φ1–φ7, A1–A10, system targets   ← stable only when core values change
-  meta-persona.md — WHO: agent character (Specialist / Gatekeeper archetypes + skills) ← stable only when agent design changes
+  meta-core.md    — FOUNDATION: §0 CORE PHILOSOPHY, φ1–φ7, A1–A10, LA-1–LA-5, system targets ← stable only when core values change
+  meta-persona.md — WHO: agent behavioral primitives + skills                                  ← stable only when agent design changes
 
 Layer 2 — Dynamic Execution (Operational)
   meta-domains.md — STRUCTURE: 4×3 Matrix domain registry, Interface Contracts, branches, storage, lock protocol ← updated on org change
@@ -103,8 +136,14 @@ Layer 2 — Dynamic Execution (Operational)
   meta-ops.md     — EXECUTE: canonical commands, HAND-xx (with Interface Contract enforcement), handoff protocols ← updated on tooling changes
 
 Layer 3 — Orchestration (Process)
-  meta-workflow.md — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
-  meta-deploy.md   — DEPLOY: EnvMetaBootstrapper (clean directory names, no numbers/dots)      ← updated on system structure changes
+  meta-workflow.md     — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
+  meta-deploy.md       — DEPLOY: EnvMetaBootstrapper, composition system, tiered generation        ← updated on system structure changes
+
+Layer S — Safety & Evolution (cross-cutting, loaded selectively)
+  meta-antipatterns.md — AVOID: known failure modes with detection + mitigation per agent role    ← updated when new patterns observed
+
+Layer X — Experimental (NOT YET OPERATIONAL — load on demand only)
+  meta-experimental.md — FUTURE: micro-agent architecture, DDA, SIGNAL protocol, artifact dirs    ← activate when infrastructure ready
 ```
 
 **4×3 Matrix Architecture (the domain model for all work):**
@@ -137,13 +176,15 @@ T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
 
 | File | Layer | Question | Stable when |
 |------|-------|----------|-------------|
-| meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A10, system targets | core values change |
-| meta-persona.md | 1 — Static Foundation | WHO — agent character and skills | agent design principles change |
+| meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A10, LA-1–LA-5, system targets | core values change |
+| meta-persona.md | 1 — Static Foundation | WHO — agent behavioral primitives and skills | agent design principles change |
 | meta-domains.md | 2 — Dynamic Execution | STRUCTURE — domain registry, branches, storage, lock protocol | org structure changes |
 | meta-roles.md | 2 — Dynamic Execution | WHAT — per-agent role contracts | responsibilities shift |
 | meta-ops.md | 2 — Dynamic Execution | EXECUTE — canonical commands and handoff protocols | tooling changes |
 | meta-workflow.md | 3 — Orchestration | HOW — pipelines, coordination protocols | process matures |
-| meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper | system structure changes |
+| meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper, composition, tiered generation | system structure changes |
+| meta-antipatterns.md | S — Safety & Evolution | AVOID — known failure modes, detection, mitigation | new pattern observed |
+| meta-experimental.md | X — Experimental | FUTURE — micro-agent architecture (NOT YET OPERATIONAL) | activation decision |
 
 **Separation rule:** WHO (character) is intrinsic. WHAT (contract) can be reassigned without touching
 character. HOW (process) can be improved without changing identity or contracts.
@@ -493,6 +534,41 @@ defined in LA-2. A prompt that passes Stage 4 is considered Rule-Load Compliant.
 4. Cross-domain axioms (A1–A10)
 5. φ-principles (summarized form acceptable)
 6. Routing/dispatch details (included only for coordinator/Gatekeeper roles)
+
+## LA-5: Dynamic Rule Injection via RULE_MANIFEST
+
+Agent prompts must NOT embed all rules statically. Instead, each agent prompt declares
+a **RULE_MANIFEST** — a structured declaration of which rules are always loaded, which
+are loaded conditionally, and which are loaded on-demand (JIT reference).
+
+**RULE_MANIFEST format (included in every generated agent prompt):**
+```yaml
+RULE_MANIFEST:
+  always:        # Loaded into every prompt instance — critical for safety
+    - STOP_CONDITIONS
+    - DOM-02_CONTAMINATION_GUARD
+    - SCOPE_BOUNDARIES
+  domain:        # Loaded when operating in the specified domain
+    code: [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD]
+    paper: [P1-LATEX, P4-SKEPTICISM, KL-12]
+    theory: [A3-TRACEABILITY, AU1-AUTHORITY]
+    prompt: [Q1-TEMPLATE, Q3-AUDIT, Q4-COMPRESSION]
+    audit: [AU2-GATE, PROCEDURES-A-E]
+  on_demand:     # NOT loaded into prompt; agent reads meta-ops.md at execution time
+    - HAND-01_DISPATCH_SYNTAX
+    - HAND-02_RETURN_SYNTAX
+    - HAND-03_ACCEPTANCE_CHECK
+    - GIT-xx_OPERATIONS
+```
+
+**Enforcement:** EnvMetaBootstrapper Stage 3 generates RULE_MANIFEST per agent based on
+the agent's domain membership (meta-domains.md) and archetypal role (meta-persona.md).
+The `always` block is identical for all agents. The `domain` block selects the active
+domain's rules. The `on_demand` block is a JIT reference pointer, not embedded content.
+
+**Token savings:** On-demand rules reduce prompt size by ~30-40% compared to static
+embedding. The trade-off (one extra file read at execution time) is acceptable because
+on-demand rules are used infrequently (only when the specific operation is needed).
 
 ────────────────────────────────────────────────────────
 # § SYSTEM META RULES

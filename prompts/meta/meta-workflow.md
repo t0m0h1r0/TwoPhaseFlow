@@ -13,125 +13,6 @@ This file defines the HOW. The WHY is in meta-core.md §DESIGN PHILOSOPHY.
 Read the φ-principles before interpreting any rule in this file.
 
 ────────────────────────────────────────────────────────
-# § EXPERIMENTAL — NOT YET OPERATIONAL
-# The following section defines the target micro-agent architecture.
-# It is NOT active: artifacts/{T,L,E,Q}/ and interface/signals/ are empty;
-# no generation tooling exists. Agents MUST NOT rely on these protocols.
-# Activate by running EnvMetaBootstrapper and populating artifacts/ + signals/.
-────────────────────────────────────────────────────────
-# § INTERFACE-FIRST LOOSE COUPLING  [EXPERIMENTAL]
-
-All micro-agent inputs and outputs pass through files in the `interface/` and
-`artifacts/` directories. Direct agent-to-agent conversation is prohibited.
-Communication is file-based and asynchronous via SIGNALs.
-
-## Principles
-
-| # | Principle | Description |
-|---|-----------|-------------|
-| IF-01 | No direct conversation | Agents never pass context directly — all data flows through `interface/` or `artifacts/` files |
-| IF-02 | Artifact-mediated handoff | HAND-01/HAND-02 tokens reference artifact paths, not inline content |
-| IF-03 | SIGNAL-based coordination | State transitions are communicated via SIGNAL files, not agent dialogue |
-| IF-04 | Immutable artifacts | Once an artifact is signed, it is read-only until a new version is produced |
-
-## Artifact Directory Structure
-
-```
-artifacts/
-  T/                    ← Theory domain artifacts
-    derivation_{id}.md  ← EquationDeriver output
-    spec_{id}.md        ← SpecWriter output
-  L/                    ← Library domain artifacts
-    architecture_{id}.md ← CodeArchitect (Atomic) output
-    impl_{id}.py        ← LogicImplementer output
-    diagnosis_{id}.md   ← ErrorAnalyzer output
-    fix_{id}.patch      ← RefactorExpert output
-  E/                    ← Evaluation domain artifacts
-    test_spec_{id}.md   ← TestDesigner output
-    run_{id}.log        ← VerificationRunner output
-  Q/                    ← Audit domain artifacts
-    audit_{id}.md       ← ResultAuditor output
-```
-
-**Naming convention:** `{type}_{id}.{ext}` where `{id}` is a monotonically
-increasing integer within each domain, zero-padded to 3 digits (e.g., `derivation_001.md`).
-
-## SIGNAL Protocol
-
-SIGNALs are lightweight status files that coordinate asynchronous agent transitions.
-Agents poll for SIGNALs relevant to their domain before starting work.
-
-```
-interface/signals/
-  {domain}_{id}.signal.md
-```
-
-**SIGNAL format:**
-
-```markdown
----
-signal_type: READY | BLOCKED | INVALIDATED | COMPLETE
-source_agent: {producing agent name}
-source_artifact: {path to artifact}
-target_domain: {T | L | E | Q}
-timestamp: {ISO 8601}
----
-{one-line description of what the signal communicates}
-```
-
-**Signal types:**
-
-| Type | Meaning | Receiver action |
-|------|---------|-----------------|
-| READY | Upstream artifact is available for consumption | Receiver may begin work |
-| BLOCKED | Upstream agent cannot produce artifact; blocker described in body | Receiver must wait |
-| INVALIDATED | Previously signed artifact is no longer valid (CI/CP trigger) | Receiver must discard cached state and wait for new READY |
-| COMPLETE | Domain pipeline fully complete; artifacts are final | Downstream domain may begin |
-
-**Rules:**
-- An agent MUST NOT begin work unless a READY or COMPLETE signal exists for all
-  required upstream artifacts
-- An agent that produces an artifact MUST emit a READY signal after signing it
-- CI/CP propagation (§CI/CP PIPELINE) emits INVALIDATED signals to all downstream domains
-- SIGNALs are append-only within a session; old signals are not deleted
-
-## Precision Workflow Diagram (Interface-Mediated)
-
-```
-EquationDeriver ──► artifacts/T/derivation_001.md ──► SIGNAL:READY
-                                                          │
-SpecWriter ◄───────── reads artifact ◄────────────────────┘
-    │
-    └──► artifacts/T/spec_001.md ──► interface/AlgorithmSpecs.md ──► SIGNAL:READY
-                                                                        │
-CodeArchitect(Atomic) ◄──── reads spec ◄────────────────────────────────┘
-    │
-    └──► artifacts/L/architecture_001.md ──► SIGNAL:READY
-                                                 │
-LogicImplementer ◄───── reads architecture ◄─────┘
-    │
-    └──► artifacts/L/impl_001.py ──► SIGNAL:READY
-                                         │
-TestDesigner ◄──── reads spec + impl ◄───┘
-    │
-    └──► tests/ + artifacts/E/test_spec_001.md ──► SIGNAL:READY
-                                                       │
-VerificationRunner ◄──── reads tests ◄────────────────┘
-    │
-    └──► artifacts/E/run_001.log + tests/last_run.log ──► SIGNAL:READY
-                                                              │
-ResultAuditor ◄──── reads derivation + run log ◄──────────────┘
-    │
-    └──► artifacts/Q/audit_001.md ──► SIGNAL:COMPLETE
-                                          │
-                                    Gatekeeper merge gate
-```
-
-**Key:** `──►` = file write; `◄────` = file read; no direct agent-to-agent path exists.
-
-────────────────────────────────────────────────────────
-# § END EXPERIMENTAL
-────────────────────────────────────────────────────────
 # § T-L-E-A PIPELINE — Master Cross-Domain Flow
 
 The primary execution order for all new work in this system.
@@ -179,9 +60,9 @@ all downstream domains (L → E → A) must re-validate their Interface Contract
 See §CI/CP PIPELINE below.
 
 ────────────────────────────────────────────────────────
-# § PIPELINE MODE — FULL vs FAST-TRACK
+# § PIPELINE MODE — TRIVIAL / FAST-TRACK / FULL-PIPELINE
 
-Every incoming task is classified into one of two execution modes BEFORE routing.
+Every incoming task is classified into one of three execution modes BEFORE routing.
 ResearchArchitect performs this classification as part of GIT-01 Step 0.
 
 ## Classification Criterion
@@ -190,9 +71,41 @@ ResearchArchitect performs this classification as part of GIT-01 Step 0.
 |-----------|------|
 | Change touches `theory/`, `interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
 | New domain branch required (cross-domain work) | **FULL-PIPELINE** |
-| All other changes (bug fix, doc update, paper prose, experiment re-run, config) | **FAST-TRACK** |
+| Change is whitespace-only, comment-only, typo fix, or docs-only (no logic change) | **TRIVIAL** |
+| All other changes (bug fix, paper prose, experiment re-run, config) | **FAST-TRACK** |
 
-When uncertain → classify as FULL-PIPELINE (conservative fallback, φ1).
+When uncertain → classify one level higher (TRIVIAL→FAST-TRACK, FAST-TRACK→FULL-PIPELINE; φ1).
+
+## TRIVIAL Mode (NEW — minimal overhead for non-logic changes)
+
+Streamlined path for changes that cannot affect correctness. Designed to eliminate
+protocol overhead that exceeds the actual work (φ2 Minimal Footprint).
+
+**Applicable to:** typo fixes, whitespace normalization, comment additions/edits,
+documentation-only changes, `.gitignore` updates, config formatting.
+
+**NOT applicable to:** any change to `.py`, `.tex` (content), solver parameters,
+test files, or interface contracts — even if the change appears trivial.
+
+| Gate | Status |
+|------|--------|
+| HAND-03 Acceptance Check | **OMITTED** |
+| GIT-SP branch isolation | **OMITTED** — commit directly on domain branch |
+| DOM-02 Pre-Write Storage Check | **RETAINED** (contamination guard — always required) |
+| HAND-02 RETURN token | **OMITTED** |
+| Gatekeeper PR review | **OMITTED** — coordinator may self-commit |
+| IF-Agreement (GIT-00) | **OMITTED** |
+| AU2 PASS | **OMITTED** |
+
+**Commit format:** `{branch}: trivial — {summary}`
+
+**Guard — What Triggers Upgrade to FAST-TRACK:**
+If, during TRIVIAL execution, any of the following is discovered:
+- The change modifies logic (even one line of `.py` or `.tex` content)
+- The change affects test behavior
+- The diff is larger than 20 lines
+
+→ STOP TRIVIAL immediately; reclassify as FAST-TRACK or FULL-PIPELINE.
 
 ## FULL-PIPELINE Mode
 
@@ -353,169 +266,55 @@ Rules:
 ────────────────────────────────────────────────────────
 # § DOMAIN PIPELINES
 
-Each pipeline is a concrete instantiation of P-E-V-A.
-The abstract frame (above) governs; domain detail (below) specializes it.
+Each pipeline is a concrete instantiation of P-E-V-A (§ above).
+All pipelines share a common structure — domain-specific details are in the table and notes below.
 
-────────────────────────────────────────────────────────
-## Code Pipeline (branch: `code`, Specialist workspaces: `dev/{agent_role}`)
-
-```
-PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
-           → Run GIT-01 (auto-switch to `code` + Selective Sync → meta-ops.md GIT-01)
-           → Run DOM-01: establish DOMAIN-LOCK for this session
-
-IF-AGREE   CodeWorkflowCoordinator  [MANDATORY before dispatching any Specialist]
-           → Run GIT-00: write IF-AGREEMENT to interface/code_{feature}.md
-           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
-
-PLAN     CodeWorkflowCoordinator
-           → Parse paper; inventory src/ gaps; record in 02_ACTIVE_LEDGER.md
-           → Dispatch specialist (one gap per step, P5; include IF-AGREEMENT path in DISPATCH)
-
-EXECUTE  CodeArchitect     [Specialist] — new module or equation implementation on dev/CodeArchitect
-         CodeCorrector     [Specialist] — targeted fix on dev/CodeCorrector
-         CodeReviewer      [Specialist] — refactor plan on dev/CodeReviewer
-           → Artifact: Python module + pytest file (committed on dev/ branch)
-           → Specialist opens PR: dev/{agent_role} → code (with LOG-ATTACHED)
-
-VERIFY   TestRunner  [Specialist on dev/TestRunner]
-           → Runs TEST-01/02; attaches tests/last_run.log to PR
-           PASS → Gatekeeper reviews PR evidence → merges dev/ PR into code (GIT-03)
-                → Gatekeeper opens PR: code → main (immediately, GIT-04 Phase A)
-           FAIL → STOP → user → CodeCorrector or CodeArchitect
-         [repeat EXECUTE → VERIFY until all gaps closed]
-
-AUDIT    ConsistencyAuditor  [Specialist on dev/ConsistencyAuditor]  (AU2 gate — all 10 items)
-           PASS → CodeWorkflowCoordinator (Gatekeeper) → Root Admin executes merge code → main (GIT-04 Phase B)
-           THEORY_ERR → CodeArchitect → TestRunner
-           IMPL_ERR   → CodeCorrector  → TestRunner
-           Authority conflict → CodeWorkflowCoordinator → STOP → user
-```
-
-Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibility checks).
-
-────────────────────────────────────────────────────────
-## Paper Pipeline (branch: `paper`, Specialist workspaces: `dev/{agent_role}`)
+## Common Pipeline Structure (all domains)
 
 ```
-PRE-CHECK  PaperWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
-           → Run GIT-01 (auto-switch to `paper` + Selective Sync → meta-ops.md GIT-01)
-           → Run DOM-01: establish DOMAIN-LOCK for this session
-
-IF-AGREE   PaperWorkflowCoordinator  [MANDATORY before dispatching any Specialist]
-           → Run GIT-00: write IF-AGREEMENT to interface/paper_{section}.md
-           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
-
-PLAN     PaperWorkflowCoordinator
-           → Identify section gaps or review targets; record in 02_ACTIVE_LEDGER.md
-           → Dispatch specialist (include IF-AGREEMENT path in DISPATCH)
-
-EXECUTE  PaperWriter  [Specialist on dev/PaperWriter]
-           → Artifact: LaTeX patch (diff only; committed on dev/PaperWriter)
-           → Specialist opens PR: dev/PaperWriter → paper (with LOG-ATTACHED build scan)
-
-VERIFY   PaperCompiler  [Specialist on dev/PaperCompiler]  — zero compilation errors
-         PaperReviewer  [Specialist on dev/PaperReviewer]  — classify: FATAL / MAJOR / MINOR
-           0 FATAL, 0 MAJOR → Gatekeeper merges dev/ PR into paper (GIT-03)
-                            → Gatekeeper opens PR: paper → main (immediately, GIT-04 Phase A)
-           FATAL or MAJOR   → PaperCorrector → back to PaperCompiler
-           [loop; counter > MAX_REVIEW_ROUNDS → STOP → user with full history]
-
-AUDIT    ConsistencyAuditor  [Specialist on dev/ConsistencyAuditor]  (AU2 gate — all 10 items)
-           PASS       → PaperWorkflowCoordinator (Gatekeeper) → Root Admin executes merge paper → main (GIT-04 Phase B)
-           PAPER_ERROR → PaperWriter
-           CODE_ERROR  → CodeArchitect → TestRunner (code branch)
+PRE-CHECK  Gatekeeper → GIT-01 (branch preflight) + DOM-01 (domain lock)
+IF-AGREE   Gatekeeper → GIT-00 (interface contract) → Specialist reads contract → creates dev/ branch
+PLAN       Gatekeeper → identify gaps, record in 02_ACTIVE_LEDGER.md, dispatch Specialist
+EXECUTE    Specialist → produce artifact on dev/ branch → open PR: dev/ → {domain} (LOG-ATTACHED)
+VERIFY     Verifier   → run checks → PASS: Gatekeeper merges (GIT-03) + opens PR → main (GIT-04-A)
+                                    → FAIL: loop back to EXECUTE (P6 bounded)
+AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main (GIT-04-B)
+                                          → FAIL: route error to responsible agent
 ```
 
-────────────────────────────────────────────────────────
-## Prompt Pipeline (branch: `prompt`, Specialist workspaces: `dev/{agent_role}`)
+## Domain Pipeline Agent Assignments
 
-```
-PRE-CHECK  PromptArchitect  [MANDATORY before PLAN]  [Gatekeeper tier]
-           → Run GIT-01 (auto-switch to `prompt` + Selective Sync → meta-ops.md GIT-01)
-           → Run DOM-01: establish DOMAIN-LOCK for this session
+| Domain | Branch | Gatekeeper | EXECUTE agents | VERIFY agent(s) | AUDIT gate | Precondition |
+|--------|--------|------------|----------------|-----------------|------------|--------------|
+| **T** Theory | `theory` | TheoryAuditor | CodeArchitect, PaperWriter | TheoryAuditor (independent re-derivation) | ConsistencyAuditor | none (upstream) |
+| **L** Code | `code` | CodeWorkflowCoordinator | CodeArchitect, CodeCorrector, CodeReviewer | TestRunner (TEST-01/02) | ConsistencyAuditor | `interface/AlgorithmSpecs.md` signed |
+| **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `interface/SolverAPI_vX.py` signed |
+| **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `interface/ResultPackage/` signed |
+| **P** Prompt | `prompt` | PromptArchitect | PromptArchitect, PromptCompressor | PromptAuditor (Q3 checklist) | PromptAuditor | none |
 
-IF-AGREE   PromptArchitect  [MANDATORY before dispatching PromptCompressor]
-           → Run GIT-00: write IF-AGREEMENT to interface/prompt_{agent}.md
-           → Specialist reads IF-AGREEMENT, then: git checkout -b dev/{agent_role}
+## Domain-Specific Notes
 
-PLAN     PromptArchitect
-           → Parse target agent + environment; identify gaps vs. meta files
+**T-Domain (Theory):**
+- TheoryAuditor re-derives independently WITHOUT reading Specialist's work first (→ §B Broken Symmetry)
+- DISAGREE → STOP; surface conflict; do not average; escalate to user
+- On AUDIT PASS → TheoryAuditor signs `interface/AlgorithmSpecs.md`
 
-EXECUTE  PromptArchitect   [Gatekeeper, acts as primary executor for generation tasks]
-           — generate or refactor prompt on dev/PromptArchitect
-           NOTE (Broken Symmetry): PromptArchitect is NOT the auditor of its own output.
-           PromptAuditor (independent agent) performs the VERIFY phase — this preserves
-           Broken Symmetry for the Prompt domain (meta-core.md §B, MH-3).
-         PromptCompressor  [Specialist on dev/PromptCompressor]    — compress existing prompt
-           → Artifact: prompts/agents/{AgentName}.md (committed on dev/ branch)
-           → Specialist opens PR: dev/{agent_role} → prompt (with LOG-ATTACHED audit scan)
+**L-Domain (Code):**
+- VERIFY FAIL routing: THEORY_ERR → CodeArchitect; IMPL_ERR → CodeCorrector
+- Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibility checks)
 
-VERIFY   PromptAuditor  [Gatekeeper, doubles as reviewer]  (Q3 checklist — 9 items)
-           FAIL → PromptArchitect (targeted correction on dev/PromptArchitect)
-           [loop; counter > MAX_REVIEW_ROUNDS → STOP → user]
-           PASS → Gatekeeper merges dev/ PR into prompt (GIT-03)
-               → Gatekeeper opens PR: prompt → main (immediately, GIT-04 Phase A)
+**E-Domain (Experiment):**
+- Precondition is hard: absent `interface/SolverAPI_vX.py` → STOP; run L-Domain first
+- VERIFY: all 4 sanity checks (SC-1–SC-4) must PASS; partial results → STOP
+- On VERIFY PASS → Gatekeeper signs `interface/ResultPackage/`
 
-AUDIT    PromptAuditor (doubles as gate for prompt domain)
-           PASS → Root Admin executes merge prompt → main (GIT-04 Phase B)
-```
+**A-Domain (Paper):**
+- VERIFY exit: 0 FATAL + 0 MAJOR → PASS. FATAL or MAJOR → PaperCorrector → PaperCompiler loop
+- AUDIT FAIL routing: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
 
-────────────────────────────────────────────────────────
-## Theory Pipeline / T-Domain (branch: `theory`, Specialist workspaces: `dev/{agent_role}`)
-
-```
-PRE-CHECK  TheoryAuditor  [MANDATORY before PLAN]  [Gatekeeper tier — T-Domain only]
-           → Run GIT-01 (auto-switch to `theory` + Selective Sync)
-           → Run DOM-01: establish DOMAIN-LOCK for this session (domain=T)
-
-PLAN     TheoryAuditor
-           → Identify theory gaps; record in 02_ACTIVE_LEDGER.md
-           → Dispatch Specialist (CodeArchitect for discretization; PaperWriter for formulation)
-
-EXECUTE  CodeArchitect / PaperWriter  [Specialist on dev/{agent_role}]
-           → Artifact: equations, derivations in theory/ (committed on dev/ branch)
-           → Specialist opens PR: dev/{agent_role} → theory
-
-VERIFY   TheoryAuditor  [Gatekeeper — independently re-derives WITHOUT reading Specialist's work first]
-           AGREE  → signs REVIEWED; Gatekeeper merges dev/ PR into theory
-           DISAGREE → STOP; surface conflict; do not average; escalate to user
-
-AUDIT    ConsistencyAuditor  (Q-Domain AU2 gate on theory/ artifacts)
-           PASS → TheoryAuditor signs interface/AlgorithmSpecs.md → Root Admin merges theory → main
-           FAIL → return to EXECUTE with contradiction report
-```
-
-────────────────────────────────────────────────────────
-## Experiment Pipeline / E-Domain (branch: `experiment`, Specialist workspaces: `dev/{agent_role}`)
-
-```
-PRECONDITION: interface/SolverAPI_vX.py must exist and be signed by L-Domain Gatekeeper.
-              Absent → STOP; run L-Domain pipeline first.
-
-PRE-CHECK  CodeWorkflowCoordinator  [MANDATORY before PLAN]  [Gatekeeper tier]
-           → Run GIT-01 (auto-switch to `experiment` + Selective Sync)
-           → Run DOM-01: establish DOMAIN-LOCK for this session (domain=E)
-           → Verify interface/SolverAPI_vX.py exists and is signed
-
-PLAN     CodeWorkflowCoordinator
-           → Read SolverAPI contract; define experiment scope; record in 02_ACTIVE_LEDGER.md
-           → Dispatch ExperimentRunner; include interface/SolverAPI_vX.py path in DISPATCH
-
-EXECUTE  ExperimentRunner  [Specialist on dev/ExperimentRunner]
-           → Artifact: raw results in experiment/; validated outputs in results/
-           → Run EXP-01; run EXP-02 (all 4 sanity checks)
-           → Specialist opens PR: dev/ExperimentRunner → experiment (with LOG-ATTACHED)
-
-VERIFY   CodeWorkflowCoordinator (Validation Guard role)
-           → Reviews sanity check results; confirms raw logs present in ResultPackage/
-           ALL PASS → Gatekeeper merges dev/ PR into experiment; signs interface/ResultPackage/
-           ANY FAIL → STOP; do not forward partial results; return to ExperimentRunner
-
-AUDIT    ConsistencyAuditor  (AU2 gate on experiment/ + interface/ResultPackage/)
-           PASS → Root Admin merges experiment → main; interface/TechnicalReport.md updated
-           FAIL → EXPERIMENT_ERROR → ExperimentRunner → Validation Guard
-```
+**P-Domain (Prompt):**
+- PromptArchitect is both Gatekeeper and EXECUTE agent (Broken Symmetry preserved: PromptAuditor is the independent VERIFY agent)
+- AUDIT gate = PromptAuditor (doubles as domain gate for prompt domain)
 
 ────────────────────────────────────────────────────────
 ## Bootstrap Pipeline (new feature only — run before Code Pipeline)
@@ -584,13 +383,14 @@ context liquidation rules apply to prevent token accumulation and context drift.
 
 **HAND-02-CL (Context Liquidation):**
 Upon issuing a RETURN token, the returning agent MUST declare that it **no longer
-relies on its internal memory (conversation history)**. Only the "Serialized State"
-written to `artifacts/` shall be considered the source of truth for the next agent.
+relies on its internal memory (conversation history)**. Only the serialized state
+written to external files (domain storage or `artifacts/` when micro-agents are active)
+is the source of truth for the next agent.
 
 ```
 HAND-02-CL (Context Liquidation — appended to every HAND-02 RETURN):
-  □ 1. All task-relevant state is serialized to artifacts/{domain}/
-  □ 2. Agent declares: "Internal context is LIQUIDATED — artifacts/ is the sole
+  □ 1. All task-relevant state is serialized to external files (domain storage territory)
+  □ 2. Agent declares: "Internal context is LIQUIDATED — external files are the sole
        source of truth for downstream agents"
   □ 3. No downstream agent may request or rely on the returning agent's
        conversation history, chain-of-thought, or intermediate reasoning
@@ -604,7 +404,7 @@ agent SHOULD start in a **Fresh Context** (new session) to minimize token accumu
 The receiving agent loads ONLY:
 1. The DISPATCH token (HAND-01)
 2. The referenced artifacts in `inputs` and `if_agreement`
-3. Its own SCOPE files (meta-roles.md §ATOMIC ROLE TAXONOMY)
+3. Its own SCOPE files (meta-experimental.md §ATOMIC ROLE TAXONOMY)
 
 **Rationale:** Long-running sessions accumulate stale context that increases token
 cost per inference and introduces context drift. Fresh contexts force agents to
@@ -697,6 +497,66 @@ AU2 gate (10-item release checklist, ConsistencyAuditor): **meta-ops.md AUDIT-01
 AUDIT phase in each domain pipeline invokes AUDIT-01 before any merge to `main`.
 
 ────────────────────────────────────────────────────────
+# § POST-EXECUTION FEEDBACK LOOP
+
+Every agent that issues a HAND-02 RETURN token SHOULD append a lightweight
+**POST-EXECUTION REPORT** block. This report feeds the self-evolution mechanism
+(§META-EVOLUTION POLICY below) with empirical data from actual agent execution.
+
+## POST-EXECUTION REPORT Format
+
+Appended to HAND-02 RETURN token (after standard fields):
+
+```yaml
+POST_EXECUTION_REPORT:
+  friction_points:         # protocol steps that caused unnecessary overhead
+    - "{description of friction — cite specific rule/protocol ID}"
+  rules_useful:            # rules that actively prevented an error or guided a decision
+    - "{rule ID}: {how it helped}"
+  rules_irrelevant:        # rules loaded but never consulted for this task
+    - "{rule ID}"
+  anti_patterns_triggered: # AP-xx patterns that were detected and avoided
+    - "{AP-xx}: {what would have happened without the check}"
+  uncovered_scenarios:     # situations encountered that no rule addressed
+    - "{description of gap}"
+  isolation_level_used:    # actual isolation level applied (L0/L1/L2/L3)
+    level: "L1"
+    sufficient: true       # was this level adequate for the task?
+  tier_used: "TIER-2"      # which prompt tier was active
+  tier_adequate: true       # was the tier sufficient, or was information missing?
+```
+
+## Collection Rules
+
+1. **Mandatory fields:** `friction_points` and `uncovered_scenarios` (even if empty `[]`)
+2. **Optional fields:** all others (omit if nothing to report)
+3. **Token budget:** report must not exceed 150 tokens total
+4. **Honesty principle:** agents must report friction even when it reflects poorly on the system
+5. **No self-diagnosis:** report observations only — do not propose meta-level fixes
+   (that is the META-EVOLUTION POLICY's job)
+
+## Aggregation and Consumption
+
+1. Coordinators (CodeWorkflowCoordinator, PaperWorkflowCoordinator) collect POST_EXECUTION_REPORTs
+   from all specialists in their session
+2. At session end, coordinator writes an aggregated **SESSION_FEEDBACK** entry to
+   `docs/02_ACTIVE_LEDGER.md §FEEDBACK` (append-only):
+   ```
+   SESSION_FEEDBACK:
+     date: {ISO 8601}
+     domain: {T|L|E|A|P}
+     pipeline_mode: {TRIVIAL|FAST-TRACK|FULL-PIPELINE}
+     agents_invoked: [{agent1}, {agent2}, ...]
+     top_friction: "{most frequently cited friction point}"
+     uncovered_gaps: [{gap1}, {gap2}]
+     anti_patterns_caught: [{AP-xx}, ...]
+   ```
+3. ResearchArchitect reads §FEEDBACK on session start (alongside §ACTIVE STATE)
+   to inform pipeline mode classification and routing decisions
+4. Periodic review: after every 10 SESSION_FEEDBACK entries, a human operator or
+   PromptArchitect evaluates whether meta-*.md updates are warranted
+
+────────────────────────────────────────────────────────
 # § META-EVOLUTION POLICY
 
 **Cycle:** Observe → Evaluate (structural vs. incidental) → Generalize → Promote → Validate → Compress
@@ -726,7 +586,7 @@ that modifies or weakens the following **Immutable Zones** must be treated as a 
 - All Axioms (A1–A10) in meta-core.md §AXIOMS
 
 **Immutable Zone 2: Acceptance Check Logic**
-- HAND-03 Acceptance Check items (checks 0–8) in meta-ops.md §HANDOFF PROTOCOL
+- HAND-03 Acceptance Check items (checks 0–10) in meta-ops.md §HANDOFF PROTOCOL
 
 **Immutable Zone 3: Main Branch Protection**
 - The `main` branch is NEVER directly committed to by any agent except Root Admin (A8)
