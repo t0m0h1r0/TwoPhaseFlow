@@ -90,8 +90,11 @@ CCD $O(h^6)$ による高精度曲率計算，GFM による鋭利な界面処理
   \item[\textbf{第\ref{sec:pressure}章：変密度圧力 Poisson 方程式}]
         変密度 IPC Projection 法から
         変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を導出し，
-        \textbf{CCD 微分形式 + 仮想時間陰解法}（§\ref{sec:ppe_pseudotime}）を
-        本稿の標準求解手法として定式化した．
+        \textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）を
+        本稿の標準求解手法として定式化した：
+        CCD 演算子（$\Ord{h^6}$）で残差を評価し，
+        低次 FD 演算子の方向分離スイープで $\mathcal{O}(N)$ コストの補正を行う．
+        実装詳細は付録~\ref{sec:ppe_pseudotime} に示す．
         FVM 版（§\ref{sec:fvm_face_coeff}）は調和平均係数の動機づけとして参照的に示した．
 
   \item[\textbf{第\ref{sec:algorithm}章：完全アルゴリズムフロー}]
