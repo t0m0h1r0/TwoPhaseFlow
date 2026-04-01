@@ -16,14 +16,15 @@
 本章では，これらのコンポーネントを組み合わせた
 \textbf{ナビエ・ストークスソルバ全体}が物理法則を正しく記述するかを検証する．
 
-検証は以下の 5 段階で構成される：
+検証は以下の 4 段階で構成される：
 \begin{enumerate}[noitemsep]
   \item 力学的バランス——静止流体における重力・表面張力の釣合（§\ref{sec:force_balance}）
   \item 保存則——運動エネルギー減衰と非圧縮条件の維持（§\ref{sec:ns_conservation}）
   \item 時間精度——NS 方程式の総合的な時間・空間収束次数（§\ref{sec:ns_time_accuracy}）
   \item 移流・圧力干渉——高レイノルズ数での対流不安定性に対する DCCD の効果（§\ref{sec:advection_pressure_coupling}）
-  \item 界面通過時の整合性——密度比 $1{:}1000$ における速度連続性と圧力勾配の滑らかさ（§\ref{sec:interface_crossing}）
 \end{enumerate}
+密度比 $1{:}1000$ における界面通過時の整合性検証（§\ref{sec:interface_crossing}）は，
+GFM 統合後の二相流ベンチマーク（第~\ref{sec:validation}章）にて実施する．
 
 \noindent
 各テストは理論解・解析解との定量比較により合否を判定する．

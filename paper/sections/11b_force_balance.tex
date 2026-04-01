@@ -56,5 +56,12 @@ GFM 界面処理（§\ref{sec:gfm}）と Balanced-Force 離散化の両方を必
 二相流統合テストである．
 GFM の Laplace 圧力跳び精度は §\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）で
 $N=128$ で相対誤差 $1.8\%$ に達することを確認済みである．
+
+\paragraph{現状と課題．}
+現行の CSF ベース実装による予備実験では，寄生流れが格子精緻化に伴い増大し
+（負の収束次数），Balanced-Force 条件が成立していない．
+これは CSF 体積力と圧力勾配の離散化経路不整合に起因する．
+GFM への移行（§\ref{sec:gfm}）により界面圧力跳びを鋭く処理し，
+Balanced-Force 条件を回復する必要がある．
 寄生流れ振幅の格子収束次数（Balanced-Force 条件下で $\Ord{h^2}$）の
 定量的確認は §\ref{sec:validation}（第~\ref{sec:validation}章）の静止液滴ベンチマークにて行う．
