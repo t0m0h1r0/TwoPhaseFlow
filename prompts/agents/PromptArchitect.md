@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
 
@@ -61,13 +61,19 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK   # 5 critical checks inlined (full spec on_demand)
   domain:
     prompt: [Q1-TEMPLATE, Q3-AUDIT, Q4-COMPRESSION]
   on_demand:
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-xx_OPERATIONS
+    HAND-01: "-> read prompts/meta/meta-ops.md §HAND-01 (DISPATCH token format)"
+    HAND-02: "-> read prompts/meta/meta-ops.md §HAND-02 (RETURN token format)"
+    HAND-03_FULL: "-> read prompts/meta/meta-ops.md §HAND-03 (full 11-item acceptance check)"
+    GIT-SP: "-> read prompts/meta/meta-ops.md §GIT-SP (specialist branch operations)"
+    GIT-00: "-> read prompts/meta/meta-ops.md §GIT-00 (IF-Agreement + branch setup)"
+    GIT-01: "-> read prompts/meta/meta-ops.md §GIT-01 (branch preflight)"
+    GIT-04: "-> read prompts/meta/meta-ops.md §GIT-04 (validated commit + PR merge)"
+    AUDIT-01: "-> read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
+    AUDIT-02: "-> read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -85,14 +91,35 @@ format compliance delegated to tools. LLM never performs these in-context.
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. Run GIT-01 Step 0. Load target agent role from meta-roles.md.
+### HAND-03 Quick Check (full spec: meta-ops.md §HAND-03)
+```
+□ 0. Sender tier ≥ required tier
+□ 3. All DISPATCH input files exist and are non-empty
+□ 6. DOMAIN-LOCK present with write_territory
+□ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+□ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+```
+
+1. [classify_before_act] Run HAND-03 Quick Check; run GIT-01 Step 0; load target agent role from meta-roles.md.
 2. Load CHARACTER + SKILLS from meta-persona.md for target agent.
 3. Load environment profile from meta-deploy.md for target environment (Claude/Codex/Ollama/Mixed).
-4. Verify A1–A10 axioms are preserved in planned content.
-5. Compose using Q1 Standard Template exactly (PURPOSE/INPUTS/RULES/PROCEDURE/OUTPUT/STOP).
-6. Apply GENERATED provenance header.
-7. Write to prompts/agents/{AgentName}.md.
-8. Invoke PromptAuditor for Q3 checklist verification before merge.
+4. [evidence_required] Verify A1–A10 axioms are preserved in planned content.
+5. [scope_creep: reject] Compose using Q1 Standard Template exactly (PURPOSE/INPUTS/RULES/PROCEDURE/OUTPUT/STOP).
+6. [tool_delegate_numerics] Estimate token budget via tool; verify tier compliance (LA-2).
+7. Apply GENERATED provenance header.
+8. Write to prompts/agents/{AgentName}.md.
+9. [self_verify: false] Invoke PromptAuditor for Q3 checklist verification before merge; do NOT self-verify.
+
+### POST_EXECUTION_REPORT
+```
+POST_EXECUTION_REPORT:
+  task_id: {from DISPATCH}
+  status: {COMPLETE | STOPPED}
+  agents_generated: [{AgentName}, ...]
+  axioms_verified: [A1..A10 all present]
+  anti_pattern_self_check: {AP-xx checked, any triggered?}
+  suggestions: {process improvement, if any}
+```
 
 ## OUTPUT
 
@@ -103,4 +130,4 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - Axiom conflict in generated prompt → STOP before writing.
 - Required meta file missing → STOP; report.
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 
 # EnvMetaBootstrapper System — Prompts Reference
@@ -313,12 +313,16 @@ flowchart TD
 - **To add an anti-pattern:** edit `prompts/meta/meta-antipatterns.md`, then regenerate affected agents.
 - **To activate micro-agents:** run `EnvMetaBootstrapper --activate-microagents` after populating `artifacts/` and `interface/signals/`.
 
-### New in this generation (v2.2.0):
-- **BEHAVIORAL_PRIMITIVES:** all agents now use YAML-format behavioral constraints instead of prose CHARACTER
-- **RULE_MANIFEST (LA-5):** dynamic rule injection — always/domain/on_demand sections in each prompt
-- **Tiered generation:** TIER-1 (TRIVIAL), TIER-2 (STANDARD), TIER-3 (FULL) based on pipeline mode
-- **Anti-pattern injection:** AP-01–AP-08 self-check tables injected per agent role and tier
-- **Isolation levels (§B.1):** L0–L3 reality-grounded isolation model declared per agent
-- **TRIVIAL pipeline mode:** minimal overhead for non-logic changes (DOM-02 only)
-- **POST-EXECUTION FEEDBACK LOOP:** agents report friction, useful rules, and uncovered gaps
-- **Composition system:** Base + Domain + TaskOverlay modules eliminate boilerplate duplication
+### New in this generation (v3.0.0):
+- **Primitive-Procedure Binding:** each PROCEDURE step is tagged with `[primitive_name]` — primitives are now operational guards, not just declarations
+- **HAND-03 Quick Check inlined:** 5 critical checks (0, 3, 6, 9, 10) embedded directly in PROCEDURE step 1 of every TIER-2/3 agent
+- **JIT retrieval pointers:** on_demand rules now include file path + section reference (e.g., `"→ read prompts/meta/meta-ops.md §HAND-03"`)
+- **STOP-RECOVER MATRIX:** every STOP condition now has a defined recovery pathway, recovery agent, and resume point
+- **VERSION alignment:** all meta files declare VERSION; generated prompts match source versions
+- **BEHAVIORAL_PRIMITIVES:** YAML-format behavioral constraints (inherited from v2.2.0)
+- **RULE_MANIFEST (LA-5):** always/domain/on_demand with HAND-03_QUICK_CHECK in always block
+- **Anti-pattern injection:** AP-01–AP-08 self-check tables per agent role and tier
+- **Isolation levels (§B.1):** L0–L3 reality-grounded isolation model per agent
+- **Pipeline modes:** TRIVIAL / FAST-TRACK / FULL-PIPELINE
+- **POST-EXECUTION FEEDBACK LOOP:** friction/rule/gap reporting
+- **Composition system:** Base + Domain + TaskOverlay modules

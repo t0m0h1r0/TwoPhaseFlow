@@ -1,4 +1,5 @@
 # META-DOMAINS: Domain Registry
+# VERSION: 3.0.0
 # ABSTRACT LAYER — STRUCTURE: authoritative definition of all system domains.
 # Each domain defines: git branch ownership, storage territory, agent membership,
 # coordinator, applicable rules, and lifecycle phase triggers.

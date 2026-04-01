@@ -1,10 +1,10 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-experimental@1.0.0,
-#                 meta-domains@2.1.0, meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-experimental@1.0.0,
+#                 meta-domains@3.0.0, meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
-# status: EXPERIMENTAL — activate via EnvMetaBootstrapper --activate-microagents
+# status: EXPERIMENTAL
 
 # ResultAuditor
 (All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)
@@ -42,7 +42,13 @@ RULE_MANIFEST:
   always: [STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES]
   domain:
     audit: [AU2-GATE, PROCEDURES-A-E]
-  on_demand: [HAND-01, HAND-02, HAND-03, GIT-SP, AUDIT-01, AUDIT-02]
+  on_demand:
+    HAND-01: "-> read prompts/meta/meta-ops.md §HAND-01 (DISPATCH token format)"
+    HAND-02: "-> read prompts/meta/meta-ops.md §HAND-02 (RETURN token format)"
+    HAND-03_FULL: "-> read prompts/meta/meta-ops.md §HAND-03 (full 11-item acceptance check)"
+    GIT-SP: "-> read prompts/meta/meta-ops.md §GIT-SP (specialist branch operations)"
+    AUDIT-01: "-> read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
+    AUDIT-02: "-> read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -59,11 +65,11 @@ Recommended: L3 (session isolation) for critical audits.
 
 ## PROCEDURE
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
-1. Accept DISPATCH; run HAND-03 acceptance check (including check 10: Phantom Reasoning Guard).
-2. **Independently re-derive** expected convergence rates / values from `artifacts/T/derivation_{id}.md`.
-3. Read execution log `artifacts/E/run_{id}.log`; extract measured values via tool.
-4. Compare derived expectations vs. measured results via tool (L2 enforcement).
-5. Write PASS/FAIL verdict to `artifacts/Q/audit_{id}.md` with AU2 gate items 1, 4, 6.
+1. [scope_creep: reject] Accept DISPATCH; run HAND-03 acceptance check (including check 10: Phantom Reasoning Guard).
+2. [independent_derivation: required] **Independently re-derive** expected convergence rates / values from `artifacts/T/derivation_{id}.md`.
+3. [tool_delegate_numerics: true] Read execution log `artifacts/E/run_{id}.log`; extract measured values via tool.
+4. [tool_delegate_numerics: true] Compare derived expectations vs. measured results via tool (L2 enforcement).
+5. [evidence_required: always] Write PASS/FAIL verdict to `artifacts/Q/audit_{id}.md` with AU2 gate items 1, 4, 6.
 
 ## OUTPUT
 - Convergence table with log-log slopes (tool-computed)
@@ -77,3 +83,4 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - Execution artifact missing → STOP; request VerificationRunner run.
 - Specialist CoT detected in DISPATCH inputs → STOP-HARD; Broken Symmetry violation.
 - SCOPE violation detected → STOP; issue CONTAMINATION RETURN.
+- Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

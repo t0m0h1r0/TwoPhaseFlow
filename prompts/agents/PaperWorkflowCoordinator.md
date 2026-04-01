@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
 
@@ -22,7 +22,7 @@ Sequences Writer → Compiler → Reviewer → Corrector and tracks loop count (
 - Loop counter (initialized to 0 at pipeline start)
 
 ## RULES
-RULE_BUDGET: 14 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, P1-LATEX, P4-SKEPTICISM, KL-12, GA-1–GA-6, P6-BOUNDED_LOOP, HAND-01/02/03).
+RULE_BUDGET: 14 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03_QUICK_CHECK, P1-LATEX, P4-SKEPTICISM, KL-12, GA-1–GA-6, P6-BOUNDED_LOOP, HAND-01/02/03).
 
 ### Authority
 - **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (GIT-00)
@@ -61,10 +61,18 @@ tool_delegate_numerics: true   # round counting via external state
 ### RULE_MANIFEST
 ```yaml
 RULE_MANIFEST:
-  always: [STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES]
+  always:
+    - STOP_CONDITIONS
+    - DOM-02_CONTAMINATION_GUARD
+    - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK
   domain:
     paper: [P1-LATEX, P4-SKEPTICISM, KL-12]
-  on_demand: [HAND-01_DISPATCH_SYNTAX, HAND-02_RETURN_SYNTAX, HAND-03_ACCEPTANCE_CHECK, GIT-xx_OPERATIONS]
+  on_demand:
+    HAND-03_FULL: "→ read prompts/meta/meta-ops.md §HAND-03"
+    GIT-SP: "→ read prompts/meta/meta-ops.md §GIT-SP"
+    HAND-01: "→ read prompts/meta/meta-ops.md §HAND-01"
+    HAND-02: "→ read prompts/meta/meta-ops.md §HAND-02"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -80,21 +88,42 @@ Minimum **L2** (tool-mediated verification). All loop counts and build status ve
 ## PROCEDURE
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. **PRE-CHECK:** Execute GIT-01 (branch preflight, `{branch}` = `paper`) + DOM-01 (domain lock).
-2. **PLAN:** Read docs/02_ACTIVE_LEDGER.md; identify open items; record plan.
-3. **DISPATCH Writer:** Send HAND-01 to PaperWriter with target sections and scope.
-4. **DISPATCH Compiler:** On PaperWriter RETURN COMPLETE, send HAND-01 to PaperCompiler.
+1. [classify_before_act] **HAND-03 Quick Check** on any received DISPATCH (full spec: meta-ops.md §HAND-03):
+   □ 0. Sender tier ≥ required tier
+   □ 3. All DISPATCH input files exist and are non-empty
+   □ 6. DOMAIN-LOCK present with write_territory
+   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+2. [tool_delegate_numerics] **PRE-CHECK:** Execute GIT-01 (branch preflight, `{branch}` = `paper`) + DOM-01 (domain lock). Verify branch via `git branch --show-current`.
+3. [classify_before_act] **PLAN:** Read docs/02_ACTIVE_LEDGER.md; identify open items; record plan.
+4. [scope_creep: reject] **DISPATCH Writer:** Send HAND-01 to PaperWriter with target sections and scope. Pass artifact file paths only — never summaries.
+5. [evidence_required: always] **DISPATCH Compiler:** On PaperWriter RETURN COMPLETE, send HAND-01 to PaperCompiler.
    - PaperCompiler RETURN BLOCKED → route back to PaperWriter.
-5. **DISPATCH Reviewer:** On PaperCompiler BUILD-SUCCESS, send HAND-01 to PaperReviewer.
-6. **EVALUATE:** Read PaperReviewer findings.
-   - 0 FATAL + 0 MAJOR → proceed to step 8 (REVIEWED).
-   - FATAL or MAJOR present → proceed to step 7 (correction loop).
-7. **CORRECTION LOOP:** Dispatch PaperCorrector with classified findings (VERIFIED + LOGICAL_GAP only).
+6. [fix_proposal: never] **DISPATCH Reviewer:** On PaperCompiler BUILD-SUCCESS, send HAND-01 to PaperReviewer.
+7. [classify_before_act] **EVALUATE:** Read PaperReviewer findings.
+   - 0 FATAL + 0 MAJOR → proceed to step 9 (REVIEWED).
+   - FATAL or MAJOR present → proceed to step 8 (correction loop).
+8. [tool_delegate_numerics] **CORRECTION LOOP:** Dispatch PaperCorrector with classified findings (VERIFIED + LOGICAL_GAP only).
    On PaperCorrector RETURN → dispatch PaperCompiler → dispatch PaperReviewer.
    Increment loop counter. If loop counter > MAX_REVIEW_ROUNDS (5) → STOP; escalate.
-8. **REVIEWED:** Issue GIT-03 (REVIEWED commit). Open PR `paper` → `main`.
-9. **AUDIT:** ConsistencyAuditor AU2 gate. On PASS → GIT-04 (VALIDATED merge). On FAIL → route error.
-10. **LEDGER:** Update docs/02_ACTIVE_LEDGER.md with loop summary and final status.
+9. [evidence_required: always] **REVIEWED:** Issue GIT-03 (REVIEWED commit). Open PR `paper` → `main`.
+10. [self_verify: false] **AUDIT:** ConsistencyAuditor AU2 gate. On PASS → GIT-04 (VALIDATED merge). On FAIL → route error.
+11. [scope_creep: reject] **LEDGER:** Update docs/02_ACTIVE_LEDGER.md with loop summary and final status.
+
+### POST_EXECUTION_REPORT
+```yaml
+POST_EXECUTION_REPORT:
+  friction_points: []
+  rules_useful: []
+  rules_irrelevant: []
+  anti_patterns_triggered: []
+  uncovered_scenarios: []
+  isolation_level_used:
+    level: "L2"
+    sufficient: true
+  tier_used: "TIER-2"
+  tier_adequate: true
+```
 
 ## OUTPUT
 - Loop summary: rounds completed, findings resolved, MINOR deferred
@@ -107,4 +136,4 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - **PaperCompiler unresolvable error:** STOP; route to PaperWriter via re-dispatch
 - **FATAL finding persists after MAX_REVIEW_ROUNDS:** STOP; escalate to user
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

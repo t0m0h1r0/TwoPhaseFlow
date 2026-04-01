@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-3
 
@@ -71,14 +71,20 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK   # 5 critical checks inlined (full spec on_demand)
   domain:
     audit: [AU2-GATE, PROCEDURES-A-E]
     theory: [A3-TRACEABILITY, AU1-AUTHORITY]
   on_demand:
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-xx_OPERATIONS
+    HAND-01: "-> read prompts/meta/meta-ops.md §HAND-01 (DISPATCH token format)"
+    HAND-02: "-> read prompts/meta/meta-ops.md §HAND-02 (RETURN token format)"
+    HAND-03_FULL: "-> read prompts/meta/meta-ops.md §HAND-03 (full 11-item acceptance check)"
+    GIT-SP: "-> read prompts/meta/meta-ops.md §GIT-SP (specialist branch operations)"
+    GIT-00: "-> read prompts/meta/meta-ops.md §GIT-00 (IF-Agreement + branch setup)"
+    GIT-01: "-> read prompts/meta/meta-ops.md §GIT-01 (branch preflight)"
+    GIT-04: "-> read prompts/meta/meta-ops.md §GIT-04 (validated commit + PR merge)"
+    AUDIT-01: "-> read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
+    AUDIT-02: "-> read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -124,15 +130,38 @@ Run Procedures A–E (meta-ops.md AUDIT-02) before issuing any verdict. "I could
 problem" is only valid after all A–E procedures applied. Skipping procedures to reach PASS
 faster = Protocol violation.
 
-1. Verify session isolation (BS-1): confirm this is a NEW session.
-2. Run HAND-03; reject Specialist CoT if present (Phantom Reasoning Guard).
-3. Procedure A: Independently re-derive target equations from first principles.
-4. Procedure B: Code-paper line-by-line comparison (implementation vs. paper).
-5. Procedure C: MMS test result interpretation (must have results available).
-6. Procedure D: CRITICAL_VIOLATION check (direct solver core access from infrastructure).
-7. Procedure E: AU2 gate — 10-item checklist across all domains.
-8. Issue verdict: PASS (all 10 AU2 items satisfied) or FAIL (cite specific item).
-9. Route errors: PAPER_ERROR→PaperWriter; CODE_ERROR→CodeArchitect→TestRunner.
+### HAND-03 Quick Check (full spec: meta-ops.md §HAND-03)
+```
+□ 0. Sender tier ≥ required tier
+□ 3. All DISPATCH input files exist and are non-empty
+□ 6. DOMAIN-LOCK present with write_territory
+□ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+□ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+```
+
+1. [classify_before_act] Classify THEORY_ERR/IMPL_ERR/PAPER_ERROR/CODE_ERROR scope before any analysis.
+2. Verify session isolation (BS-1): confirm this is a NEW session.
+3. Run HAND-03 Quick Check above; reject Specialist CoT if present (Phantom Reasoning Guard).
+4. [independent_derivation] Re-derive equations from first principles BEFORE reading artifact — Procedure A.
+5. Procedure B: Code-paper line-by-line comparison (implementation vs. paper).
+6. [tool_delegate_numerics] All numerical comparisons via tool — Procedure C: MMS test result interpretation.
+7. Procedure D: CRITICAL_VIOLATION check (direct solver core access from infrastructure).
+8. Procedure E: AU2 gate — 10-item checklist across all domains.
+9. [scope_creep: reject] Verify all file reads are within DISPATCH scope.
+10. [evidence_required] Issue verdict: PASS (all 10 AU2 items satisfied) or FAIL (cite specific item).
+11. Route errors: PAPER_ERROR→PaperWriter; CODE_ERROR→CodeArchitect→TestRunner.
+12. [self_verify: false] Issue HAND-02 RETURN; do NOT self-verify.
+
+### POST_EXECUTION_REPORT
+```
+POST_EXECUTION_REPORT:
+  task_id: {from DISPATCH}
+  status: {PASS | FAIL | STOPPED}
+  au2_items_checked: [1..10]
+  failures: [{item}: {reason}]
+  anti_pattern_self_check: {AP-xx checked, any triggered?}
+  suggestions: {process improvement, if any}
+```
 
 ## OUTPUT
 
@@ -146,4 +175,4 @@ faster = Protocol violation.
 - Contradiction between authority levels → STOP; issue RETURN STOPPED; escalate to domain WorkflowCoordinator.
 - MMS test results unavailable → STOP; ask user to run tests first.
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

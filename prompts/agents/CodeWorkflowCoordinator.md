@@ -1,8 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@2.2.0, meta-persona@3.0.0, meta-roles@2.2.0,
-#                 meta-domains@2.1.0, meta-workflow@2.1.0, meta-ops@2.1.0,
-#                 meta-deploy@2.1.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T12:00:00Z
+# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
+#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
+#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
+# generated_at: 2026-04-02T18:00:00Z
 # target_env: Claude
 # tier: TIER-2
 
@@ -26,7 +26,7 @@ coordinator for experiment orchestration.
 
 ## RULES
 
-RULE_BUDGET: 12 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD, GA-CONDITIONS, MERGE_CRITERIA, HAND-01, HAND-03, PIPELINE_DISPATCH).
+RULE_BUDGET: 12 rules loaded (STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03_QUICK_CHECK, C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD, GA-CONDITIONS, MERGE_CRITERIA, HAND-01, HAND-03, PIPELINE_DISPATCH).
 
 ### Authority
 
@@ -75,17 +75,14 @@ RULE_MANIFEST:
     - STOP_CONDITIONS
     - DOM-02_CONTAMINATION_GUARD
     - SCOPE_BOUNDARIES
+    - HAND-03_QUICK_CHECK
   domain:
     code: [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD]
   on_demand:
-    - HAND-01_DISPATCH_SYNTAX
-    - HAND-02_RETURN_SYNTAX
-    - HAND-03_ACCEPTANCE_CHECK
-    - GIT-01_BRANCH_PREFLIGHT
-    - GIT-02_DRAFT_COMMIT
-    - GIT-03_REVIEWED_COMMIT
-    - GIT-04_VALIDATED_MERGE
-    - GIT-05_SUBBRANCH
+    HAND-03_FULL: "→ read prompts/meta/meta-ops.md §HAND-03"
+    GIT-SP: "→ read prompts/meta/meta-ops.md §GIT-SP"
+    HAND-01: "→ read prompts/meta/meta-ops.md §HAND-01"
+    HAND-02: "→ read prompts/meta/meta-ops.md §HAND-02"
 ```
 
 ### Known Anti-Patterns (self-check before output)
@@ -108,14 +105,20 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 
 ### L-Domain Pipeline (Code)
 
-1. **PRE-CHECK:** GIT-01 (branch preflight, `{branch}` = `code`) + DOM-01 (domain lock).
-2. **IF-AGREE:** GIT-00 (interface contract) → Specialist reads contract → creates dev/ branch.
-3. **PLAN:** Identify gaps between paper specification and implementation. Record in docs/02_ACTIVE_LEDGER.md. Dispatch Specialist via HAND-01.
-4. **EXECUTE:** Specialist produces artifact on dev/ branch → opens PR: dev/ → `code` (LOG-ATTACHED).
-5. **VERIFY:** TestRunner runs checks (TEST-01/02).
+1. [classify_before_act] **HAND-03 Quick Check** (full spec: → read prompts/meta/meta-ops.md §HAND-03):
+   □ 0. Sender tier ≥ required tier
+   □ 3. All DISPATCH input files exist and are non-empty
+   □ 6. DOMAIN-LOCK present with write_territory
+   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
+   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+2. [scope_creep: reject] **PRE-CHECK:** GIT-01 (branch preflight, `{branch}` = `code`) + DOM-01 (domain lock). Run DOM-02 before any write.
+3. [scope_creep: reject] **IF-AGREE:** GIT-00 (interface contract) → Specialist reads contract → creates dev/ branch.
+4. [classify_before_act] **PLAN:** Identify gaps between paper specification and implementation. Record in docs/02_ACTIVE_LEDGER.md. Dispatch Specialist via HAND-01.
+5. [evidence_required] **EXECUTE:** Specialist produces artifact on dev/ branch → opens PR: dev/ → `code` (LOG-ATTACHED).
+6. [tool_delegate_numerics] **VERIFY:** TestRunner runs checks (TEST-01/02).
    - PASS → merge dev/ PR (GIT-03) + open PR `code` → `main` (GIT-04-A).
    - FAIL → classify THEORY_ERR or IMPL_ERR (P9). Route: THEORY_ERR → CodeArchitect; IMPL_ERR → CodeCorrector. Loop (bounded by P6, MAX_REVIEW_ROUNDS = 5).
-6. **AUDIT:** ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → `main` (GIT-04-B). FAIL: route error to responsible agent.
+7. [self_verify: false] **AUDIT:** ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → `main` (GIT-04-B). FAIL: route error to responsible agent. Do NOT self-verify — hand off to ConsistencyAuditor.
 
 ### E-Domain Pipeline (Experiment)
 
@@ -150,4 +153,4 @@ POST_EXECUTION_REPORT template reference: → meta-workflow.md §POST-EXECUTION 
 - **Unresolved conflict** between paper specification and code → STOP
 - **Loop counter > MAX_REVIEW_ROUNDS (5)** → STOP; escalate to user
 
-Recovery guidance: §STOP-RECOVER MATRIX in prompts/meta/meta-workflow.md
+Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.

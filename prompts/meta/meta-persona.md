@@ -1,5 +1,5 @@
 # META-PERSONA: Agent Behavioral Primitives & Skills
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 # ABSTRACT LAYER — WHO each agent is: machine-verifiable behavioral constraints and technical skills.
 # Foundation (WHY — design philosophy, axioms): prompts/meta/meta-core.md  ← READ FIRST
 # Role contracts (WHAT — deliverables, authority, constraints): prompts/meta/meta-roles.md
