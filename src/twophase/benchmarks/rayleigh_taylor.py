@@ -59,7 +59,7 @@ class RayleighTaylorBenchmark:
                 t_end=self.t_end, bc_type="wall",
             ),
             solver=SolverConfig(
-                ppe_solver_type="bicgstab", bicgstab_tol=1e-10, bicgstab_maxiter=2000,
+                ppe_solver_type="pseudotime", pseudo_tol=1e-10, pseudo_maxiter=500,
             ),
         )
 

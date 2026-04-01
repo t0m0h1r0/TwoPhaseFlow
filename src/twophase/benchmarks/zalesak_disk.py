@@ -98,7 +98,7 @@ class ZalesakDiskBenchmark:
                 epsilon_factor=1.5, reinit_steps=2, cfl_number=0.3, t_end=T, bc_type="wall",
             ),
             solver=SolverConfig(
-                ppe_solver_type="bicgstab", bicgstab_tol=1e-8, bicgstab_maxiter=500,
+                ppe_solver_type="pseudotime", pseudo_tol=1e-8, pseudo_maxiter=500,
             ),
         )
 

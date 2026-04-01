@@ -7,6 +7,11 @@ SimulationConfig の設定に基づいて適切な IPPESolver 実装を生成す
 TwoPhaseSimulation はこのファクトリを通じて IPPESolver を取得することで、
 具体的なソルバークラスへの依存を排除できる。
 
+CCD ベースのソルバーのみをサポート（FVM は精度不足のため廃止）:
+    - "pseudotime": CCD Kronecker + LGMRES 反復（デフォルト・本番用）
+    - "ccd_lu":     CCD Kronecker + 常時直接 LU（デバッグ・検証用）
+    - "sweep":      CCD 仮想時間スウィープ（行列不要・大規模用）
+
 新しいソルバーを追加する場合は:
     1. IPPESolver を実装した新クラスを作成
     2. このファクトリに条件分岐を追加
@@ -47,9 +52,7 @@ def create_ppe_solver(
     ------
     ValueError : 未知の ppe_solver_type が指定された場合
     """
-    from .ppe_solver import PPESolver
     from .ppe_solver_pseudotime import PPESolverPseudoTime
-    from .ppe_solver_lu import PPESolverLU
     from .ppe_solver_ccd_lu import PPESolverCCDLU
     from .ppe_solver_sweep import PPESolverSweep
 
@@ -63,13 +66,8 @@ def create_ppe_solver(
     elif solver_type == "sweep":
         # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
         return PPESolverSweep(backend, config, grid, ccd=ccd)
-    elif solver_type == "bicgstab":
-        return PPESolver(backend, config, grid)
-    elif solver_type == "lu":
-        # 直接 LU 法（FVM + spsolve）— 反復収束問題を回避するデバッグ用
-        return PPESolverLU(backend, config, grid)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'bicgstab', 'pseudotime', 'lu', 'ccd_lu', または 'sweep' を指定してください。"
+            " 'pseudotime', 'ccd_lu', または 'sweep' を指定してください。"
         )

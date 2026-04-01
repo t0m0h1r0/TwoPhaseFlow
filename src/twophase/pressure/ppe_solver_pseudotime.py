@@ -1,5 +1,5 @@
 """
-CCD sparse PPE solver — base class + LGMRES-primary / LU-fallback variant.
+CCD sparse PPE solver — base class + LGMRES iterative variant.
 
 Solves the variable-density Pressure Poisson Equation:
 
@@ -26,8 +26,8 @@ Architecture (Template Method pattern, OCP + SRP):
       • _solve_linear_system()    — abstract; subclasses provide solve strategy
 
   PPESolverPseudoTime(_CCDPPEBase):
-      LGMRES iterative solver (O(n·k) memory, warm start) with sparse LU
-      fallback when LGMRES does not converge.
+      LGMRES iterative solver (O(n·k) memory, warm start).  Returns
+      the best iterate when LGMRES does not converge (no LU fallback).
 
   PPESolverCCDLU(_CCDPPEBase)  [ppe_solver_ccd_lu.py]:
       Always-direct sparse LU (spsolve / SuperLU); no iterative phase.
@@ -51,6 +51,8 @@ Refactoring notes:
                 Accepts ``ccd`` via constructor injection (DIP).
     2026-03-21: Added Kronecker product matrix assembly (app:ccd_kronecker).
                 Switched from LU-only to LGMRES-primary / LU-fallback.
+    2026-04-01: Removed LU fallback — LGMRES returns best iterate on
+                non-convergence.  Paper alignment (§app:ccd_lu_direct).
     2026-03-22: Pin moved from corner (0,0) to center (N//2,N//2) to
                 avoid symmetry breaking.
     2026-03-22: Extracted _CCDPPEBase (Template Method); PPESolverCCDLU
@@ -341,7 +343,7 @@ class _CCDPPEBase(IPPESolver):
 # ── LGMRES-primary / LU-fallback variant ───────────────────────────────────
 
 class PPESolverPseudoTime(_CCDPPEBase):
-    """CCD variable-density PPE solver — LGMRES primary, LU fallback (O(h⁶)).
+    """CCD variable-density PPE solver — LGMRES iterative (O(h⁶)).
 
     Parameters
     ----------
@@ -357,12 +359,13 @@ class PPESolverPseudoTime(_CCDPPEBase):
         rhs_np: np.ndarray,
         p0: np.ndarray,
     ) -> np.ndarray:
-        """LGMRES iterative solve (O(n·k) memory) with sparse LU fallback.
+        """LGMRES iterative solve (O(n·k) memory), no LU fallback.
 
         The CCD operator is highly asymmetric (max asymmetry ~900 for N=16)
         due to compact one-sided boundary schemes; standard GMRES diverges on
-        some grids.  LGMRES (augmented Krylov) is more robust; the LU fallback
-        ensures no blocking when LGMRES does not converge.
+        some grids.  LGMRES (augmented Krylov) is more robust.  When LGMRES
+        does not converge within maxiter, the best iterate is returned with
+        a warning — no direct-solver fallback.
 
         atol: fp64 floor prevents spurious non-convergence when ‖rhs‖ is tiny
         (e.g. immediately after initialisation).  See KL-09 (docs/LESSONS.md).
@@ -380,11 +383,11 @@ class PPESolverPseudoTime(_CCDPPEBase):
 
         if info != 0:
             warnings.warn(
-                f"CCD-PPE LGMRES が収束しませんでした (info={info})。"
-                " スパース LU にフォールバックします。",
+                f"CCD-PPE LGMRES が収束しませんでした (info={info}, "
+                f"maxiter={self.maxiter}, tol={self.tol})。"
+                " 最良反復解を返します。",
                 RuntimeWarning,
                 stacklevel=2,
             )
-            p_flat = spla.spsolve(L_pinned, rhs_np)
 
         return p_flat

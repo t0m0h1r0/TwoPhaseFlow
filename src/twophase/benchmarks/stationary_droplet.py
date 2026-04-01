@@ -103,7 +103,7 @@ class StationaryDropletBenchmark:
                 bc_type="wall",
             ),
             solver=SolverConfig(
-                ppe_solver_type="lu",
+                ppe_solver_type="ccd_lu",
             ),
         )
 

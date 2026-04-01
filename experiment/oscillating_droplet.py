@@ -129,7 +129,7 @@ def _make_config() -> SimulationConfig:
             cn_viscous=True,
             bc_type="wall",
         ),
-        solver=SolverConfig(ppe_solver_type="lu"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),
     )
 
 

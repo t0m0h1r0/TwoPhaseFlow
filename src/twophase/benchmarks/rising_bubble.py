@@ -68,7 +68,7 @@ class RisingBubbleBenchmark:
                 t_end=self.t_end, bc_type="wall",
             ),
             solver=SolverConfig(
-                ppe_solver_type="lu",
+                ppe_solver_type="ccd_lu",
             ),
         )
 

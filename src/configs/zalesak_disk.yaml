@@ -35,9 +35,9 @@ cfl_number: 0.3
 t_end: 1.0
 
 # ── 圧力ソルバー ─────────────────────────────────────────────────
-ppe_solver_type: bicgstab
-bicgstab_tol: 1.0e-8
-bicgstab_maxiter: 500
+ppe_solver_type: pseudotime
+pseudo_tol: 1.0e-8
+pseudo_maxiter: 500
 
 # ── 境界条件 ─────────────────────────────────────────────────────
 advection_scheme: dissipative_ccd
