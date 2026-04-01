@@ -1,28 +1,4 @@
 % paper/sections/appendix_numerics_schemes.tex
-%
-% 付録（時間積分・スキーム・実装補足）
-%   app:grid_ale      — 時間変化格子と ALE 効果（本稿では未実装）
-%   app:rc_precision  — Rhie--Chow 補正と CCD 高次精度の整合性
-%
-% ※ 旧 D.2 (app:cls_conservation) および 旧 D.8 (app:ccd_pseudotime) は
-%    §11.3 (10c_component_verification.tex) へ移動した．
-% ※ 旧 D.1 (app:godunov_ls) および旧 D.7 (app:ccd_solver_benchmark) は
-%    本稿で未使用のため削除．
-%
-% 内容は各 _s*.tex に分割管理されている（重複防止のため \input で委譲）
-
-\input{sections/appendix_numerics_schemes_s2} %% D.1 WENO5 移流スキームの詳細（§5）
-\input{sections/appendix_numerics_schemes_s3} %% D.2 Dissipative CCD 比較実験（線形移流）（§5）
-\input{sections/appendix_numerics_schemes_s4} %% D.3 時間変化格子と ALE 効果（§6）
-\input{sections/appendix_numerics_schemes_s5} %% D.4 Rhie--Chow 補正と Balanced-Force 条件の精度解析（§7）
-%% 旧 D.5（Balanced-Force 誤差解析）は D.4 に統合済み
-
-%% D.5 仮想時間陰解法 + CCD の精度検証（旧 §11.3.2）
-\section{仮想時間陰解法と CCD の精度検証}
-\label{app:ccd_pseudotime}
-\input{sections/11b2_ccd_pseudotime_verification}
-
-%% D.6 界面移流ベンチマーク：Zalesak スロット円板・単一渦（旧 §11.3.5）
-\section{界面移流ベンチマーク：DCCD による体積保存性}
-\label{sec:interface_advection_bench}
-\input{sections/11b5_interface_advection}
+% ※ このファイルは新構成（appendix_advection.tex / appendix_pressure.tex）に分割統合済み．
+% ※ main.tex から \input されていないため，このファイルはコンパイルされない．
+\endinput

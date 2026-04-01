@@ -1,4 +1,4 @@
-\section{周期境界条件：ブロック循環 CCD 行列法}
+\subsubsection{周期境界条件：ブロック循環 CCD 行列法}
 \label{app:ccd_periodic}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -25,7 +25,7 @@ AB2 法の安定領域は純虚数軸上で $|\mathrm{Im}(\hat{\lambda})| \lesss
 片側スキームは代わりに $\{f_0, f_1, f_2, f_3\}$ を用いる—これは物理的に誤った構成である．
 \end{tcolorbox}
 
-\subsection{正しい定式化：全節点に内点スキームを適用}
+\subsubsection{正しい定式化：全節点に内点スキームを適用}
 
 周期境界条件下では，$N$ 個の独立節点（$i = 0, \ldots, N-1$；節点 $N$ は節点 0 の周期像）が
 \textbf{すべて内点スキーム（式~\eqref{eq:ccd_block}）を折り返し添字で使用可能}である：
@@ -51,7 +51,7 @@ AB2 法の安定領域は純虚数軸上で $|\mathrm{Im}(\hat{\lambda})| \lesss
 %
 求解後，周期像節点の微分値は $\bm{v}_N = \bm{v}_0$ とおく（同一物理点）．
 
-\subsection{全体行列：\texorpdfstring{$2N\times 2N$}{2N x 2N} ブロック循環行列}
+\subsubsection{全体行列：\texorpdfstring{$2N\times 2N$}{2N x 2N} ブロック循環行列}
 
 $N$ 式（各 $2\times 2$ ブロック）をまとめた全体行列は
 \textbf{ブロック循環（block-circulant）行列}となる：
@@ -89,7 +89,7 @@ CCD スキームの修正波数解析（§\ref{sec:ccd_def}）から全波数で
 ゆえに $\mathbf{K}_{\mathrm{circ}}$ は正則である．
 \end{tcolorbox}
 
-\subsection{数値解法：密行列 LU 分解}
+\subsubsection{数値解法：密行列 LU 分解}
 
 $N \leq 512$ 程度では，$2N\times 2N$ 行列の密行列 LU 分解（前計算コスト $\mathcal{O}(N^3)$，
 $N=32$ で $64\times64$，$N=128$ で $256\times256$）を初期化時に1回だけ実行し，
@@ -109,7 +109,7 @@ $N=32$ で $64\times64$，$N=128$ で $256\times256$）を初期化時に1回だ
 \end{enumerate}
 \end{tcolorbox}
 
-\subsection{検証：一様流試験}
+\subsubsection{検証：一様流試験}
 \label{sec:verify_uniform_flow}
 
 実装の正確性を確認するために，\textbf{一様流試験}（$u\equiv1,\; v\equiv0,\; p\equiv0$；

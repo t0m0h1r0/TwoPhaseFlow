@@ -1,0 +1,23 @@
+% paper/sections/appendix_pressure.tex
+%
+% 付録D: 圧力ソルバーと連成解析（§7-8 対応）
+
+%% D.1 Rhie--Chow / Balanced-Force 精度解析
+\input{sections/appendix_numerics_schemes_s5}  %% RC + BF の離散誤差解析
+
+%% D.2 欠陥補正法の理論と係数導出
+\section{欠陥補正法の理論と係数導出}
+\label{app:dc_theory}
+\input{sections/appendix_numerics_solver_s2}   %% D.2.1 Thomas 三重対角係数
+\input{sections/appendix_numerics_solver_s3}   %% D.2.2 収束率解析と最適 Δτ
+\input{sections/appendix_numerics_solver_s5}   %% D.2.3 収束理論（スペクトル解析）
+
+%% D.3 CCD 陰解法と仮想時間反復（アルゴリズム＋精度検証）
+\input{sections/appendix_ppe_pseudotime}       %% D.3 本体（仮想時間ステップ反復）
+
+\subsection{仮想時間陰解法と CCD の精度検証}
+\label{app:ccd_pseudotime}
+\input{sections/11b2_ccd_pseudotime_verification}  %% D.3 末尾：精度検証
+
+%% D.4 FVM 基準手法の補足（面係数・CSF・Rhie--Chow）
+\input{sections/appendix_numerics_solver_s4}   %% FVM + CSF + RC 完全定式化
