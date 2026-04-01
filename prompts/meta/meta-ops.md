@@ -49,16 +49,24 @@ Three tiers determine which git operations each agent may invoke:
 **Gatekeeper rights:** May immediately reject PRs with insufficient or missing evidence.
 **Root Admin obligations:** Final syntax/format check of PRs to `main`; executes final merge.
 
-**ConsistencyAuditor hybrid tier (Cross-Domain Auditor):**
-ConsistencyAuditor holds a dual role that must not be confused:
-- **Git operations → Specialist tier:** Uses `dev/ConsistencyAuditor` branch; GIT-SP authority only.
-  Rationale: ConsistencyAuditor must be independent of all domain branches to preserve Broken Symmetry.
-  It never commits directly to `code`, `paper`, or `prompt` branches.
-- **Release gate authority → Gatekeeper level:** Issues AU2 PASS/FAIL verdicts; signs
-  `interface/AlgorithmSpecs.md` (T-Domain gate). These verdicts are Gatekeeper-equivalent decisions
-  that block or unblock domain merges to `main`.
-Consequence: ConsistencyAuditor's git tier is Specialist; its verdict authority is Gatekeeper.
-No other agent may issue AU2 verdicts. No other agent may sign T-Domain Interface Contracts.
+**TheoryAuditor tier (T-Domain Gate):**
+TheoryAuditor is the dedicated Gatekeeper for the T-Domain only.
+- **Git operations → Specialist tier:** Uses `dev/T/TheoryAuditor/{task_id}` branch; GIT-SP authority only.
+- **Release gate authority → Gatekeeper level:** Signs `interface/AlgorithmSpecs.md` (T→L contract).
+  Derives equations independently before comparing with the Specialist's output.
+Consequence: TheoryAuditor's git tier is Specialist; its T-Domain verdict authority is Gatekeeper.
+No other agent may sign T-Domain Interface Contracts.
+
+**ConsistencyAuditor tier (Q-Domain Cross-Domain Auditor):**
+ConsistencyAuditor is the dedicated Gatekeeper for Q-Domain (cross-domain AU2 gate).
+It no longer acts as T-Domain gate — that is TheoryAuditor's exclusive role.
+- **Git operations → Specialist tier:** Uses `dev/Q/ConsistencyAuditor/{task_id}` branch; GIT-SP authority only.
+  Rationale: ConsistencyAuditor must remain independent of all domain branches to preserve Broken Symmetry.
+  It never commits directly to `code`, `paper`, `theory`, or `prompt` branches.
+- **Release gate authority → Gatekeeper level:** Issues AU2 PASS/FAIL verdicts for all domains.
+  These verdicts block or unblock domain merges to `main`.
+Consequence: ConsistencyAuditor's git tier is Specialist; its AU2 verdict authority is Gatekeeper.
+No other agent may issue AU2 verdicts (except TheoryAuditor for T→L contract only).
 
 ────────────────────────────────────────────────────────
 # § ROLE → OPERATION INDEX
@@ -81,6 +89,7 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | PaperWriter | GIT-SP | RETURNER |
 | Specialist | PaperReviewer | GIT-SP | RETURNER |
 | Specialist | PaperCorrector | GIT-SP | RETURNER |
+| Specialist | TheoryAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 | Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 | Specialist | PromptCompressor | GIT-SP | RETURNER |
 
@@ -96,7 +105,7 @@ authority (φ2: Minimal Footprint).
 every agent runs it before every write, regardless of the table above. It requires
 no AUTHORITY grant because it is a constraint on all writes, not an operation.
 
-**Atomic micro-agent operations (inherited from parent roles):**
+**Atomic micro-agent operations [EXPERIMENTAL — not yet operational]:**
 
 | Tier | Role | Operations | Handoff Role |
 |------|------|------------|-------------|
@@ -110,12 +119,13 @@ no AUTHORITY grant because it is a constraint on all writes, not an operation.
 | Specialist | VerificationRunner | GIT-SP, TEST-01, EXP-01, EXP-02 | RETURNER |
 | Specialist | ResultAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 
-**DDA-CHECK exception:** DDA-CHECK (meta-ops.md § DIRECTORY-DRIVEN AUTHORIZATION) is a
-universal obligation for all micro-agents — runs before every file read or write, prior
-to DOM-02. Requires no AUTHORITY grant.
-
 ────────────────────────────────────────────────────────
-# § DIRECTORY-DRIVEN AUTHORIZATION (DDA)
+# § EXPERIMENTAL — NOT YET OPERATIONAL
+# § DIRECTORY-DRIVEN AUTHORIZATION (DDA) below requires active micro-agent infrastructure.
+# Currently artifacts/ is empty and no enforcement tooling exists.
+# DOM-02 (Pre-Write Storage Check) remains active for all agents.
+────────────────────────────────────────────────────────
+# § DIRECTORY-DRIVEN AUTHORIZATION (DDA)  [EXPERIMENTAL]
 
 Each micro-agent is restricted from reading or writing files outside its declared SCOPE.
 Authorization is derived from the agent's SCOPE definition in meta-roles.md
@@ -982,16 +992,30 @@ Acceptance Check:
            c. Does the contract's `outputs` field match the `inputs` this task requires? Mismatch → REJECT; STOP.
          Empty `upstream_contracts` is permitted ONLY for T-Domain tasks (no upstream). All other domains: REJECT if list is absent.
          This check enforces T-L-E-A ordering: no domain may start without upstream contract signed.
+         [FAST-TRACK mode exception — meta-workflow.md §PIPELINE MODE]:
+         In FAST-TRACK mode, this check is relaxed: Specialist must declare the reused
+         contract path in DISPATCH context `upstream_contracts` field, but `status: SIGNED`
+         verification is not required. Absence of `upstream_contracts` in FAST-TRACK →
+         STOP-SOFT (log to docs/02_ACTIVE_LEDGER.md §PROTOCOL-VIOLATION; proceed with
+         declaration of reuse).
   □ 10. PHANTOM REASONING GUARD (Auditor/Gatekeeper roles only):
-         If this agent is acting as an Auditor or Gatekeeper (ConsistencyAuditor, PaperReviewer,
-         CodeWorkflowCoordinator in review mode, PromptAuditor, etc.):
-           a. Verify that DISPATCH `inputs` lists ONLY: final Artifact files, signed Interface
-              Contracts, and test output logs (e.g., last_run.log, compilation output).
-           b. If `inputs` includes Specialist chain-of-thought notes, intermediate derivation
-              scratch, reasoning logs, or draft commentary → REJECT immediately.
+         If this agent is acting as an Auditor or Gatekeeper (TheoryAuditor, ConsistencyAuditor,
+         PaperReviewer, CodeWorkflowCoordinator in review mode, PromptAuditor, etc.):
+           a. Verify that DISPATCH `inputs` lists ONLY:
+              - final Artifact file paths (e.g., `paper/sections/11a.tex`, `src/core/solver.py`)
+              - signed Interface Contract paths (e.g., `interface/AlgorithmSpecs.md`)
+              - test/build output logs (e.g., `tests/last_run.log`, `compilation.log`)
+           b. If `inputs` includes ANY of the following → REJECT immediately (STOP-HARD):
+              - Specialist session history or prior conversation context
+              - Intermediate derivation notes or scratch work
+              - Specialist chain-of-thought logs or commentary
+              - Draft commentary explaining why the Specialist made a choice
               Issue RETURN with status BLOCKED; coordinator must re-dispatch with sanitized inputs.
-           c. The Auditor evaluates the Artifact only. Specialist reasoning is invisible to the
-              Auditor to ensure true Black Box auditing (meta-core.md §B Phantom Reasoning Guard).
+           c. Auditor's FIRST action after PASS: perform independent derivation or independent
+              re-check of the artifact BEFORE opening it. Document this in the RETURN token
+              `audit_method` field. "Verified by comparison only" = broken symmetry → STOP-HARD.
+           d. The Auditor evaluates the Artifact only. Verdict = Artifact quality, not
+              Specialist process quality (meta-core.md §B Phantom Reasoning Guard).
          If this agent is a Specialist (non-Auditor role): this check is N/A — proceed.
 ```
 

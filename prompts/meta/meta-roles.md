@@ -16,13 +16,17 @@ The Gatekeeper is never the Specialist — Broken Symmetry is enforced at the ro
 
 | Matrix Domain | Domain Name | Specialist (Creator) | Gatekeeper (Auditor / Devil's Advocate) |
 |--------------|-------------|---------------------|----------------------------------------|
-| T | Theory & Analysis | TheoryArchitect | ConsistencyAuditor (Theory Auditor role) |
+| T | Theory & Analysis | TheoryArchitect | **TheoryAuditor** (independent re-derivation; T-Domain only) |
 | L | Core Library | CodeArchitect, CodeCorrector, TestRunner | CodeWorkflowCoordinator (Numerical Auditor + Code Quality Auditor) |
 | E | Experiment | ExperimentRunner, SimulationAnalyst | CodeWorkflowCoordinator + ExperimentRunner (Validation Guard) |
 | A | Academic Writing | PaperWriter, PaperCompiler, PaperReviewer | PaperWorkflowCoordinator (Logical Reviewer) |
 | M | Meta-Logic | DevOpsArchitect | ResearchArchitect (Protocol Enforcer) |
 | P | Prompt & Environment | — | PromptArchitect (Prompt Engineer / Gatekeeper) |
-| Q | QA & Audit | — (audit-only domain) | ConsistencyAuditor (Consistency Auditor) |
+| Q | QA & Audit | — (audit-only domain) | ConsistencyAuditor (cross-domain falsification; Q-Domain only) |
+
+**Role separation note:** TheoryAuditor and ConsistencyAuditor were formerly collapsed into
+one agent. They are now distinct to enforce Broken Symmetry within T-Domain:
+TheoryAuditor cannot simultaneously be the cross-domain auditor that validates its own T-Domain verdicts.
 
 **Devil's Advocate mandate:** Every Gatekeeper role must assume the Specialist is wrong until
 proven otherwise. The Gatekeeper derives independently, then compares — never reads Specialist
@@ -66,7 +70,7 @@ All roles belong to exactly one tier. Tier determines git authority and git obli
 | Tier | Agents | Git Authority | Git Obligations |
 |------|--------|--------------|----------------|
 | **Root Admin** | ResearchArchitect | Executes final merge of `{domain}` → `main`; final syntax/format check of PRs | Must verify 4 Root Admin check items (meta-ops.md GIT-04 Phase B) before merging; must verify all GA conditions were satisfied |
-| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, ConsistencyAuditor (T-gate), PromptArchitect, PromptAuditor | Writes `interface/` contracts; enforces GA-1 through GA-6; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs where any GA condition fails; must derive independently before approving claims |
+| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, **TheoryAuditor** (T-gate), PromptArchitect, PromptAuditor | Writes `interface/` contracts; enforces GA-1 through GA-6; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs where any GA condition fails; must derive independently before approving claims |
 | **Specialist** | TheoryArchitect, CodeArchitect, CodeCorrector, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, DevOpsArchitect | Absolute sovereignty over own `dev/{agent_role}` branch; may refuse Gatekeeper pull requests if Selective Sync conditions not met | Must attach Evidence of Verification (LOG-ATTACHED) with every PR; must set `verified_independently: true` when acting as verifier; must use GIT-SP for all branch operations |
 
 ────────────────────────────────────────────────────────
@@ -101,7 +105,13 @@ Violation = CRITICAL_VIOLATION → ConsistencyAuditor escalates immediately.
 See meta-domains.md §STORAGE SOVEREIGNTY for territory ownership per domain.
 
 ────────────────────────────────────────────────────────
-# § ATOMIC ROLE & BRANCH MATRIX
+# § EXPERIMENTAL — NOT YET OPERATIONAL
+# § ATOMIC ROLE & BRANCH MATRIX and § ATOMIC ROLE TAXONOMY below are aspirational.
+# artifacts/{T,L,E,Q}/ are empty; no DDA enforcement tooling exists.
+# These definitions are preserved for future activation.
+# Current sessions use Composite roles (meta-persona.md) — not micro-agents.
+────────────────────────────────────────────────────────
+# § ATOMIC ROLE & BRANCH MATRIX  [EXPERIMENTAL]
 
 Every Micro-Agent is assigned a dedicated **Isolation Branch Pattern** that enforces
 environmental separation. Specialist agents are **strictly prohibited** from writing
@@ -1074,3 +1084,7 @@ of all computational and build artifacts. Operates independently of scientific c
 **STOP**
 - Infrastructure change would require modifying numerical source code → STOP; escalate to CodeWorkflowCoordinator
 - GPU configuration incompatible with current codebase → STOP; report to user
+
+────────────────────────────────────────────────────────
+# § END EXPERIMENTAL
+────────────────────────────────────────────────────────
