@@ -1,351 +1,328 @@
-# GENERATED -- do NOT edit directly. Edit prompts/meta/*.md and regenerate.
+# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
+# generated_from: meta-core@2.0.0, meta-persona@2.0.0, meta-roles@2.0.0, meta-domains@2.0.0, meta-workflow@2.0.0, meta-ops@2.0.0, meta-deploy@2.0.0
+# generated_at: 2026-04-02T00:00:00Z
+# target_env: Claude
 
-# EnvMetaBootstrapper System -- 3-Layer Architecture Reference
+# EnvMetaBootstrapper System — Prompts Reference
 
 ---
 
-## Section 1 -- Architecture Principle
+## 1. Architecture Principle
+
+The system is organized in three layers:
 
 ```
-Layer 1 -- Abstract Meta:   prompts/meta/             <- WHY and HOW (concepts, structure, logic)
-Layer 2 -- Concrete SSoT:   docs/00_GLOBAL_RULES.md   <- WHAT (project-independent rules)
-Layer 3 -- Project Context: docs/01_PROJECT_MAP.md     <- WHERE/WHICH (module map, ASM-IDs)
-                            docs/02_ACTIVE_LEDGER.md   <- WHEN/STATUS (phase, CHK/KL registers)
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3 — Agent Prompts (prompts/agents/*.md)          │
+│  GENERATED from meta files. Do NOT edit directly.       │
+│  29 agent prompts, one per role.                        │
+├─────────────────────────────────────────────────────────┤
+│  Layer 2 — Meta Files (prompts/meta/*.md)               │
+│  SOURCE OF TRUTH. Edit these to change agent behavior.  │
+│  7 files: core, persona, roles, domains, workflow,      │
+│  ops, deploy.                                           │
+├─────────────────────────────────────────────────────────┤
+│  Layer 1 — Global Rules (docs/00_GLOBAL_RULES.md)       │
+│  Foundation axioms A1–A10, domain rules §C, §P, §Q,     │
+│  §AU. Inviolable — agents may not weaken them.          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Authority rules (conflict resolution):**
+### Authority Rules
 
-| Conflict domain         | Winning layer                                                    |
-|-------------------------|------------------------------------------------------------------|
-| Axiom intent            | Layer 1 -- `prompts/meta/` (A10)                                 |
-| Rule interpretation     | Layer 2 -- `docs/00_GLOBAL_RULES.md`                             |
-| Project state / context | Layer 3 -- `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md`  |
-
-Layer 3 may reference Layer 2 and Layer 1. Layer 2 may reference Layer 1.
-Layer 1 must not reference Layer 2 or Layer 3. Any upward dependency is a
-structural violation -- fix at source (phi6).
-
-No mixing rule: each layer is authoritative for its scope only. When two rules
-conflict, return to the phi-principles (meta-core.md) and apply the conflict
-resolution hierarchy: phi3 > phi1 > phi7 > phi5 > phi2 > phi6 > phi4.
+| Tier | Agents | Git Authority |
+|------|--------|--------------|
+| Root Admin | ResearchArchitect | Final merge `{domain}→main`; GIT-04 Phase B |
+| Gatekeeper | CodeWorkflowCoordinator, PaperWorkflowCoordinator, TheoryAuditor, PromptArchitect, PromptAuditor | Merge dev/ PRs into domain; open domain→main PRs |
+| Specialist | All others | Sovereign dev/{agent} branch only |
 
 ---
 
-## Section 2 -- Directory Map
-
-### Composite Agents (`prompts/agents/`)
-
-| Domain | Agent files |
-|--------|------------|
-| **Routing** | `ResearchArchitect.md` |
-| **Theory** | `TheoryAuditor.md` |
-| **Code** | `CodeWorkflowCoordinator.md`, `CodeArchitect.md`, `CodeCorrector.md`, `CodeReviewer.md`, `TestRunner.md` |
-| **Experiment** | `ExperimentRunner.md`, `SimulationAnalyst.md` |
-| **Paper** | `PaperWorkflowCoordinator.md`, `PaperWriter.md`, `PaperReviewer.md`, `PaperCompiler.md`, `PaperCorrector.md` |
-| **Audit** | `ConsistencyAuditor.md` |
-| **Prompt** | `PromptArchitect.md`, `PromptCompressor.md`, `PromptAuditor.md` |
-| **Infrastructure** | `DevOpsArchitect.md` (no dedicated agent file yet) |
-
-### Atomic Micro-Agents (`prompts/agents/`) [EXPERIMENTAL]
-
-| Domain | Agent files |
-|--------|------------|
-| **T -- Theory** | `EquationDeriver.md`, `SpecWriter.md` |
-| **L -- Library** | `CodeArchitectAtomic.md`, `LogicImplementer.md`, `ErrorAnalyzer.md`, `RefactorExpert.md` |
-| **E/Q -- Eval** | `TestDesigner.md`, `VerificationRunner.md`, `ResultAuditor.md` |
-
-### Meta Layer (`prompts/meta/`)
-
-| File | Layer | Question |
-|------|-------|----------|
-| `meta-core.md` | 1 -- Static Foundation | FOUNDATION -- phi1-phi7, A1-A10, system targets |
-| `meta-persona.md` | 1 -- Static Foundation | WHO -- agent character and skills |
-| `meta-domains.md` | 2 -- Dynamic Execution | STRUCTURE -- 4x3 matrix domain registry, branches, storage |
-| `meta-roles.md` | 2 -- Dynamic Execution | WHAT -- per-agent role contracts |
-| `meta-ops.md` | 2 -- Dynamic Execution | EXECUTE -- canonical commands, handoff protocols |
-| `meta-workflow.md` | 3 -- Orchestration | HOW -- pipelines, coordination protocols |
-| `meta-deploy.md` | 3 -- Orchestration | DEPLOY -- EnvMetaBootstrapper |
-
-### Project Context (`docs/`)
-
-| File | Purpose |
-|------|---------|
-| `docs/00_GLOBAL_RULES.md` | Concrete SSoT -- all enforceable rules (A1-A10, C1-C6, P1-P4, Q1-Q4, AU1-AU3) |
-| `docs/01_PROJECT_MAP.md` | Module map, interface contracts, numerical reference, legacy register |
-| `docs/02_ACTIVE_LEDGER.md` | Phase state, branch status, CHK/KL registers, integrity manifest |
-
-### Project Directories (Storage Sovereignty)
+## 2. Directory Map
 
 ```
-theory/         T-Domain  (Mathematical Truth)
-src/twophase/   L-Domain  (Functional Truth -- solver source)
-tests/          L-Domain  (verification)
-experiment/     E-Domain  (Empirical Truth)
-results/        E-Domain  (simulation output)
-paper/          A-Domain  (Logical Truth -- LaTeX)
-prompts/        P-Domain  (Agent intelligence)
-audit_logs/     Q-Domain  (Audit trails -- append-only)
-interface/      Cross-domain contracts (Gatekeeper-owned)
-artifacts/      Micro-agent intermediate outputs (T/L/E/Q) [EXPERIMENTAL]
+prompts/
+├── README.md                        ← This file (generated)
+├── meta/
+│   ├── meta-core.md                 ← Design philosophy, axioms A1–A10
+│   ├── meta-persona.md              ← Agent CHARACTER + SKILLS
+│   ├── meta-roles.md                ← DELIVERABLES, AUTHORITY, CONSTRAINTS, STOP
+│   ├── meta-domains.md              ← Domain registry, branch rules, storage sovereignty
+│   ├── meta-workflow.md             ← Pipeline modes, handoff rules, CI/CP
+│   ├── meta-ops.md                  ← Canonical operation syntax (GIT/DOM/BUILD/TEST/EXP/HAND/AUDIT)
+│   └── meta-deploy.md               ← Environment profiles (Claude/Codex/Ollama/Mixed)
+└── agents/
+    ├── ResearchArchitect.md         ← M-Domain router (Gatekeeper)
+    ├── CodeWorkflowCoordinator.md   ← L-Domain coordinator (Gatekeeper)
+    ├── CodeArchitect.md             ← L-Domain equation→code (Specialist)
+    ├── CodeCorrector.md             ← L-Domain debugger (Specialist)
+    ├── CodeReviewer.md              ← L-Domain risk classifier (Specialist)
+    ├── TestRunner.md                ← L-Domain verifier (Specialist)
+    ├── ExperimentRunner.md          ← E-Domain simulator (Specialist)
+    ├── SimulationAnalyst.md         ← E-Domain post-processor (Specialist)
+    ├── PaperWorkflowCoordinator.md  ← A-Domain coordinator (Gatekeeper)
+    ├── PaperWriter.md               ← A-Domain author+corrector (Specialist)
+    ├── PaperReviewer.md             ← A-Domain peer reviewer (Specialist)
+    ├── PaperCompiler.md             ← A-Domain LaTeX engine (Specialist)
+    ├── PaperCorrector.md            ← A-Domain fix applier (Specialist)
+    ├── ConsistencyAuditor.md        ← Q-Domain cross-validator (Gatekeeper) [BS-1]
+    ├── TheoryAuditor.md             ← T-Domain re-deriver (Gatekeeper) [BS-1]
+    ├── TheoryArchitect.md           ← T-Domain deriver (Specialist)
+    ├── DevOpsArchitect.md           ← M-Domain infrastructure (Specialist)
+    ├── PromptArchitect.md           ← P-Domain generator (Gatekeeper)
+    ├── PromptCompressor.md          ← P-Domain compressor (Specialist)
+    ├── PromptAuditor.md             ← P-Domain auditor (Gatekeeper)
+    ├── EquationDeriver.md           ← Atomic T (M0 EXPERIMENTAL)
+    ├── SpecWriter.md                ← Atomic T (M0 EXPERIMENTAL)
+    ├── CodeArchitectAtomic.md       ← Atomic L (M0 EXPERIMENTAL)
+    ├── LogicImplementer.md          ← Atomic L (M0 EXPERIMENTAL)
+    ├── ErrorAnalyzer.md             ← Atomic L (M0 EXPERIMENTAL)
+    ├── RefactorExpert.md            ← Atomic L (M0 EXPERIMENTAL)
+    ├── TestDesigner.md              ← Atomic E (M0 EXPERIMENTAL)
+    ├── VerificationRunner.md        ← Atomic E (M0 EXPERIMENTAL)
+    └── ResultAuditor.md             ← Atomic Q (M0 EXPERIMENTAL) [BS-1]
+
+docs/
+├── 00_GLOBAL_RULES.md               ← Axioms A1–A10, §C, §P, §Q, §AU domain rules
+├── 01_PROJECT_MAP.md                ← Module map, interface contracts, symbol table §6
+└── 02_ACTIVE_LEDGER.md              ← Live project state: phase, branch, decisions, CHKs
 ```
 
 ---
 
-## Section 3 -- Rule Ownership Map
+## 3. Rule Ownership Map
 
-| Rule | Abstract definition (meta file + section) | Concrete SSoT (00 section) | Project context (01-02 section) |
-|------|------------------------------------------|---------------------------|-------------------------------|
-| A1 Token Economy | meta-core.md AXIOMS | 00 section A | -- |
-| A2 External Memory First | meta-core.md AXIOMS | 00 section A | 02 (append-only ledger) |
-| A3 3-Layer Traceability | meta-core.md AXIOMS | 00 section A | 01 section 6 (symbol map) |
-| A4 Separation | meta-core.md AXIOMS | 00 section A | -- |
-| A5 Solver Purity | meta-core.md AXIOMS | 00 section A | 01 (module map) |
-| A6 Diff-First Output | meta-core.md AXIOMS | 00 section A | -- |
-| A7 Backward Compatibility | meta-core.md AXIOMS | 00 section A | 01 section 8 (legacy register) |
-| A8 Git Governance | meta-core.md AXIOMS | 00 section GIT | 02 (branch/phase state) |
-| A9 Core/System Sovereignty | meta-core.md AXIOMS | 00 section A | 01 (module map) |
-| A10 Meta-Governance | meta-core.md AXIOMS | 00 section A | -- |
-| C1-C6 SOLID / Code | meta-roles.md CODE DOMAIN | 00 section C | 01 section C2 (legacy register) |
-| P1-P4 LaTeX / Paper | meta-roles.md PAPER DOMAIN | 00 section P | 01 section P3-D (param register) |
-| Q1-Q4 Prompt | meta-roles.md PROMPT DOMAIN | 00 section Q | -- |
-| AU1-AU3 Audit | meta-roles.md AUDIT DOMAIN | 00 section AU | 02 (audit verdicts) |
-| Git lifecycle (3-phase) | meta-domains.md BRANCH RULES | 00 section GIT | 02 section ACTIVE STATE |
-| P-E-V-A loop | meta-workflow.md P-E-V-A | 00 section P-E-V-A | 02 section CHECKLIST |
-| Domain registry | meta-domains.md DOMAIN REGISTRY | -- | 01 section 11 |
-| Handoff protocols | meta-ops.md HANDOFF PROTOCOL | -- | -- |
+| Rule Set | Defined In | Enforced By |
+|----------|-----------|-------------|
+| A1–A10 Core Axioms | docs/00_GLOBAL_RULES.md §A | All agents unconditionally |
+| §C1–C6 Code Rules | docs/00_GLOBAL_RULES.md §C | CodeWorkflowCoordinator, code Specialists |
+| §P1–P4 Paper Rules | docs/00_GLOBAL_RULES.md §P | PaperWorkflowCoordinator, paper Specialists |
+| KL-12 | docs/00_GLOBAL_RULES.md | PaperCompiler (tcolorbox nesting prohibition) |
+| §Q1–Q4 Prompt Rules | docs/00_GLOBAL_RULES.md §Q | PromptArchitect, PromptAuditor |
+| §AU1–AU3 Audit Rules | docs/00_GLOBAL_RULES.md §AU | ConsistencyAuditor, TheoryAuditor, ResultAuditor |
+| GA-1–GA-6 Gatekeeper Approval | meta-roles.md §GATEKEEPER APPROVAL | All Gatekeeper agents |
+| GIT-SP Branch Protocol | meta-ops.md §GIT-SP | All Specialist agents |
+| BS-1 Session Separation | meta-workflow.md | ConsistencyAuditor, TheoryAuditor, ResultAuditor |
+| Q3 Checklist (9 items) | meta-roles.md / meta-ops.md | PromptAuditor |
+| HAND-01/02/03 Handoff | meta-ops.md §HAND | All agents |
+| DOM-02 Storage Check | meta-ops.md §DOM-02 | All Specialist agents |
 
 ---
 
-## Section 4 -- A1-A10 Quick Reference
+## 4. A1–A10 Quick Reference
 
-| Axiom | Rule |
-|-------|------|
-| A1 | **Token Economy** -- no redundancy; diff > rewrite; reference > duplication |
-| A2 | **External Memory First** -- state only in docs/02, docs/01, git history; append-only; ID-based |
-| A3 | **3-Layer Traceability** -- Equation -> Discretization -> Code chain is mandatory |
-| A4 | **Separation** -- never mix logic/content/tags/style; solver/infrastructure/performance |
-| A5 | **Solver Purity** -- solver isolated from infrastructure; numerical meaning invariant |
-| A6 | **Diff-First Output** -- no full file output unless explicitly required; patch-like edits |
-| A7 | **Backward Compatibility** -- preserve semantics when migrating; upgrade by mapping |
-| A8 | **Git Governance** -- protected main; domain branches; dev/ workspaces; merge via PR only |
-| A9 | **Core/System Sovereignty** -- solver core is master; infrastructure is servant; zero dependency |
-| A10 | **Meta-Governance** -- prompts/meta/ is single source of truth; docs/ are derived outputs |
+| Axiom | Name | One-line description |
+|-------|------|----------------------|
+| A1 | Paper Fidelity | Implementation must match paper exactly; deviation = bug |
+| A2 | Test-First Verification | No feature merged without convergence test at N=[32,64,128,256] |
+| A3 | Traceability | Equation → Discretization → Code chain is mandatory; cite in docstrings |
+| A4 | No Silent Failure | Never retry silently; STOP and escalate on unexpected behavior |
+| A5 | Immutable Evidence | Evidence (logs, tables) is append-only; never deleted or overwritten |
+| A6 | Diff-Only Output | Agents output diffs, not full rewrites; minimizes scope creep |
+| A7 | SOLID Mandatory | SOLID principles enforced in all code; violations reported [SOLID-X] |
+| A8 | Legacy Retention | Tested code never deleted; superseded = legacy class with DO NOT DELETE |
+| A9 | Layer Sovereignty | System may import Core; Core must never import System |
+| A10 | Stop Is Progress | A STOP that catches a real problem is always the correct action |
+
+Full definitions: docs/00_GLOBAL_RULES.md §A
 
 ---
 
-## Section 5 -- Execution Loop
-
-The P-E-V-A loop governs ALL domain work. No phase may be skipped.
+## 5. Execution Loop
 
 ```
-                        +------------------------+
-                        | 1. ResearchArchitect    |
-                        |    Session intake;      |
-                        |    load 02_ACTIVE_LEDGER|
-                        |    Route to domain      |
-                        +-----------+------------+
-                                    |
-                                    v
-                        +-----------+------------+
-                        | 2. PLAN                 |
-                        |    Coordinator defines   |
-                        |    scope, success        |
-                        |    criteria, stop conds  |
-                        +-----------+------------+
-                                    |
-                                    v
-                        +-----------+------------+
-                    +-->| 3. EXECUTE              |
-                    |   |    Specialist produces   |
-                    |   |    artifact on dev/      |
-                    |   |    -> DRAFT commit       |
-                    |   +-----------+------------+
-                    |               |
-                    |               v
-                    |   +-----------+------------+
-                    +<--| 4. VERIFY               |
-                 FAIL   |    TestRunner /          |
-                        |    PaperCompiler+Reviewer|
-                        |    / PromptAuditor       |
-                        |    -> REVIEWED commit    |
-                        +-----------+------------+
-                                    |  PASS
-                                    v
-                        +-----------+------------+
-                    +<--| 5. AUDIT                |
-                 FAIL   |    ConsistencyAuditor    |
-                        |    AU2 gate (10 items)   |
-                        |    -> VALIDATED commit   |
-                        +-----------+------------+
-                                    |  PASS
-                                    v
-                               merge to main
+Step 1 — ROUTE
+  ResearchArchitect
+    • Loads docs/02_ACTIVE_LEDGER.md
+    • Runs GIT-01 Step 0
+    • Classifies: FULL-PIPELINE or FAST-TRACK
+    • Issues HAND-01 DISPATCH to target agent
+
+Step 2 — PLAN
+  Domain Coordinator (CodeWorkflowCoordinator / PaperWorkflowCoordinator / etc.)
+    • Runs IF-AGREEMENT (GIT-00) for FULL-PIPELINE
+    • Inventories gaps; produces dispatch queue
+    • Issues HAND-01 to first Specialist
+
+Step 3 — EXECUTE
+  Specialist Agent
+    • Runs HAND-03 acceptance check
+    • Runs DOM-02 pre-write check
+    • Produces deliverable; attaches LOG-ATTACHED
+    • Issues HAND-02 RETURN
+
+Step 4 — VERIFY
+  Independent Verifier (TestRunner / PaperCompiler / etc.)
+    • Runs independently; never reads Specialist reasoning
+    • Issues PASS or FAIL verdict
+
+Step 5 — AUDIT
+  Gatekeeper / Auditor
+    • Checks GA-1 through GA-6
+    • On PASS: merges dev/ PR → domain; opens domain → main PR
+    • On FAIL: rejects; re-dispatches Specialist
+    • ConsistencyAuditor performs AU2 gate at domain boundaries
 ```
 
-**Rules:**
-- FAIL at VERIFY -> return to EXECUTE (not PLAN unless scope changes)
-- FAIL at AUDIT -> return to EXECUTE
-- Loop counter tracked per phase (P6); MAX_REVIEW_ROUNDS = 5
-- AUDIT agent must be independent of EXECUTE agent (phi7 Broken Symmetry)
-- PLAN always starts with ResearchArchitect loading docs/02_ACTIVE_LEDGER.md
+---
+
+## 6. 3-Phase Domain Lifecycle
+
+| Phase | Commit Tag | Gate Condition | Who issues |
+|-------|-----------|----------------|------------|
+| DRAFT | `{branch}: {summary} [DRAFT]` | Specialist completes deliverable | Specialist |
+| REVIEWED | `{branch}: {summary} [REVIEWED]` | Gatekeeper verifies GA-1–GA-6 | Gatekeeper (GIT-03) |
+| VALIDATED | `{branch}: {summary} [VALIDATED]` | AU2 PASS (ConsistencyAuditor) | Gatekeeper (GIT-04) |
+
+VALIDATED commit triggers PR `{domain}→main`. Root Admin (ResearchArchitect) performs final
+syntax/format check before merging to main (GIT-04 Phase B).
 
 ---
 
-## Section 6 -- 3-Phase Domain Lifecycle
+## 7. Agent Roster
 
-Every domain artifact progresses through three mandatory phases tied to git commits.
+### Composite Agents (M2 — STABLE, production-ready)
 
-| Phase | Trigger | Auto-action (commit message) |
-|-------|---------|------------------------------|
-| **DRAFT** | Specialist completes artifact on `dev/` branch | `[DRAFT] {domain}: {description}` -- committed on `dev/{agent_role}` |
-| **REVIEWED** | Gatekeeper approves PR; all GA-1 through GA-6 conditions satisfied; Verifier PASS | `[REVIEWED] {domain}: {description}` -- Gatekeeper merges `dev/` PR into domain branch |
-| **VALIDATED** | ConsistencyAuditor AU2 PASS (all 10 items); Root Admin final check | `[VALIDATED] {domain}: {description}` -- Root Admin merges domain branch into `main` |
+| Agent | Domain | Archetype | Role |
+|-------|--------|-----------|------|
+| ResearchArchitect | M | Gatekeeper | Session intake, routing, environment alignment |
+| CodeWorkflowCoordinator | L | Gatekeeper | Code pipeline orchestration, numerical audit |
+| CodeArchitect | L | Specialist | Equation→Python module translation |
+| CodeCorrector | L | Specialist | Debug specialist (A→B→C→D protocol) |
+| CodeReviewer | L | Specialist | Risk classifier (SAFE_REMOVE/LOW_RISK/HIGH_RISK) |
+| TestRunner | L | Specialist | Convergence verification, PASS/FAIL verdict |
+| ExperimentRunner | E | Specialist | Benchmark simulation executor |
+| SimulationAnalyst | E | Specialist | Post-processing, visualization |
+| PaperWorkflowCoordinator | A | Gatekeeper | Paper pipeline orchestration, review loop |
+| PaperWriter | A | Specialist | Academic authoring + editorial corrections |
+| PaperReviewer | A | Specialist | Peer review (output in Japanese) |
+| PaperCompiler | A | Specialist | LaTeX compliance and compilation |
+| PaperCorrector | A | Specialist | Scope-enforced fix applier |
+| ConsistencyAuditor | Q | Gatekeeper | Cross-domain mathematical auditor [BS-1] |
+| TheoryAuditor | T | Gatekeeper | Independent equation re-deriver [BS-1] |
+| TheoryArchitect | T | Specialist | First-principles equation deriver |
+| DevOpsArchitect | M | Specialist | Infrastructure, Docker, CI/CD |
+| PromptArchitect | P | Gatekeeper | Prompt generation from meta files |
+| PromptCompressor | P | Specialist | Safe prompt compression |
+| PromptAuditor | P | Gatekeeper | Q3 checklist audit |
 
-**Transition rules:**
-- DRAFT -> REVIEWED requires: independent verification (not self-verified), evidence attached (LOG-ATTACHED), no territory violations, upstream contract satisfied
-- REVIEWED -> VALIDATED requires: ConsistencyAuditor AU2 PASS across all 10 gate items
-- A task is NOT done until it is merged into `main` (Main-Merge Rule)
+### Atomic Micro-Agents (M0 — EXPERIMENTAL, not yet operational)
 
----
-
-## Section 7 -- Agent Roster
-
-All composite agents (not micro-agents). Roles derived from meta-roles.md PURPOSE fields.
-
-| Domain | Agent | Role |
-|--------|-------|------|
-| Routing | ResearchArchitect | Session intake and workflow router; maps user intent to correct domain and agent; Root Admin for main merges |
-| Theory | TheoryArchitect | Mathematical first-principles specialist; derives governing equations independently of implementation |
-| Theory | TheoryAuditor | Independent re-derivation gate for T-Domain; Gatekeeper that signs interface/AlgorithmSpecs.md |
-| Code | CodeWorkflowCoordinator | Code domain orchestrator and code quality auditor; dispatches specialists; Gatekeeper for code branch |
-| Code | CodeArchitect | Translates mathematical equations from paper into production Python modules with numerical tests |
-| Code | CodeCorrector | Active debug specialist; isolates numerical failures through staged experiments and minimal fixes |
-| Code | CodeReviewer | Code quality reviewer; risk classification and SOLID enforcement (absorbed into CodeWorkflowCoordinator) |
-| Code | TestRunner | Senior numerical verifier; interprets test outputs, diagnoses failures, issues PASS/FAIL verdicts |
-| Experiment | ExperimentRunner | Reproducible experiment executor; runs benchmarks and validates via 4 mandatory sanity checks |
-| Experiment | SimulationAnalyst | Post-processing specialist; extracts physical quantities and generates publication-quality visualizations |
-| Paper | PaperWorkflowCoordinator | Paper domain orchestrator; drives write-review-commit loop; Gatekeeper for paper branch |
-| Paper | PaperWriter | Academic editor and LaTeX author; drafting and editorial refinements; defines mathematical truth (absorbs PaperCorrector) |
-| Paper | PaperReviewer | Rigorous peer reviewer; classifies findings as FATAL/MAJOR/MINOR; classification only, never fixes |
-| Paper | PaperCompiler | LaTeX compliance and repair engine; ensures zero compilation errors; structural fixes only, never prose |
-| Paper | PaperCorrector | Targeted LaTeX corrections from classified findings (role absorbed into PaperWriter) |
-| Audit | ConsistencyAuditor | Cross-system validator; independently re-derives equations; AU2 release gate for all domains |
-| Prompt | PromptArchitect | Generates role-specific agent prompts by composition from meta files; Gatekeeper for prompt branch |
-| Prompt | PromptCompressor | Compresses existing prompts to reduce token footprint while preserving semantic equivalence |
-| Prompt | PromptAuditor | Verifies prompt correctness against Q3 checklist (9 items); read-only audit; issues PASS/FAIL |
-| Infrastructure | DevOpsArchitect | Infrastructure and environment specialist; Docker, GPU, CI/CD pipelines, LaTeX build systems |
+| Agent | Domain | Type | Role |
+|-------|--------|------|------|
+| EquationDeriver | T | Atomic T | First-principles derivation |
+| SpecWriter | T | Atomic T | Derivation→implementation spec |
+| CodeArchitectAtomic | L | Atomic L | Class/interface structure design |
+| LogicImplementer | L | Atomic L | Method body implementation |
+| ErrorAnalyzer | L | Atomic L | Root cause diagnosis (never fixes) |
+| RefactorExpert | L | Atomic L | Targeted fix application |
+| TestDesigner | E | Atomic E | Test specification design |
+| VerificationRunner | E | Atomic E | Test/simulation execution |
+| ResultAuditor | Q | Atomic Q | Execution result audit [BS-1] |
 
 ---
 
-## Section 8 -- Agent Interaction Diagram
+## 8. Agent Interaction Diagram
 
 ```mermaid
 flowchart TD
-    RA[ResearchArchitect]
+    User([User Request]) --> RA[ResearchArchitect\nM-Domain Router]
 
-    subgraph TheoryDomain["Theory Domain (branch: theory)"]
-        ThA[TheoryArchitect]
-        TAud[TheoryAuditor]
-        ThA -->|artifact| TAud
-        TAud -->|AGREE / sign| TAud
-        TAud -->|DISAGREE| RA
+    subgraph T-Domain
+        TA_spec[TheoryArchitect\nSpecialist]
+        TA_aud[TheoryAuditor\nGatekeeper BS-1]
+        TA_spec --> TA_aud
     end
 
-    subgraph CodeDomain["Code Domain (branch: code)"]
-        CWC[CodeWorkflowCoordinator]
-        CArc[CodeArchitect]
+    subgraph L-Domain
+        CWC[CodeWorkflowCoordinator\nGatekeeper]
+        CA[CodeArchitect]
         CC[CodeCorrector]
+        CR[CodeReviewer]
         TR[TestRunner]
-        CWC -->|DISPATCH| CArc
-        CWC -->|DISPATCH| CC
-        CWC -->|DISPATCH| TR
-        CArc -->|PR| CWC
-        CC -->|PR| CWC
-        TR -->|PASS/FAIL| CWC
+        CWC --> CA
+        CWC --> CC
+        CWC --> CR
+        CA --> TR
+        CC --> TR
     end
 
-    subgraph ExperimentDomain["Experiment Domain (branch: experiment)"]
-        ER[ExperimentRunner]
-        SA[SimulationAnalyst]
-        ER -->|raw data| SA
-        ER -->|ResultPackage| CWC
+    subgraph E-Domain
+        ER[ExperimentRunner\nSpecialist]
+        SA[SimulationAnalyst\nSpecialist]
+        ER --> SA
     end
 
-    subgraph PaperDomain["Paper Domain (branch: paper)"]
-        PWC[PaperWorkflowCoordinator]
+    subgraph A-Domain
+        PWC[PaperWorkflowCoordinator\nGatekeeper]
         PW[PaperWriter]
         PRev[PaperReviewer]
         PC[PaperCompiler]
-        PWC -->|DISPATCH| PW
-        PWC -->|DISPATCH| PC
-        PWC -->|DISPATCH| PRev
-        PW -->|PR| PWC
-        PC -->|BUILD-SUCCESS| PWC
-        PRev -->|FATAL/MAJOR| PW
-        PRev -->|0 findings| PWC
+        PCorr[PaperCorrector]
+        PWC --> PW
+        PWC --> PRev
+        PWC --> PC
+        PWC --> PCorr
     end
 
-    subgraph PromptDomain["Prompt Domain (branch: prompt)"]
-        PArc[PromptArchitect]
-        PCmp[PromptCompressor]
-        PAud[PromptAuditor]
-        PArc -->|DISPATCH| PCmp
-        PCmp -->|PR| PArc
-        PArc -->|artifact| PAud
-        PAud -->|PASS/FAIL| PArc
+    subgraph Q-Domain
+        CSA[ConsistencyAuditor\nGatekeeper BS-1]
+        RA_audit[ResultAuditor\nAtomic Q BS-1]
     end
 
-    CAud[ConsistencyAuditor]
-    main[(main)]
+    subgraph P-Domain
+        PA[PromptArchitect\nGatekeeper]
+        PAud[PromptAuditor\nGatekeeper]
+        PComp[PromptCompressor\nSpecialist]
+        PA --> PAud
+        PA --> PComp
+    end
 
-    RA -->|route to Theory| TAud
-    RA -->|route to Code| CWC
-    RA -->|route to Paper| PWC
-    RA -->|route to Prompt| PArc
-    RA -->|route to Experiment| CWC
+    subgraph M-Domain
+        DOA[DevOpsArchitect\nSpecialist]
+    end
 
-    TAud -->|interface/AlgorithmSpecs.md| CWC
-    CWC -->|interface/SolverAPI_vX.py| ER
-    ER -->|interface/ResultPackage/| PWC
+    RA --> T-Domain
+    RA --> L-Domain
+    RA --> E-Domain
+    RA --> A-Domain
+    RA --> Q-Domain
+    RA --> P-Domain
+    RA --> M-Domain
 
-    CWC -->|gate| CAud
-    PWC -->|gate| CAud
-    TAud -->|gate| CAud
-    PArc -->|gate| CAud
-
-    CAud -->|PASS| main
-    CAud -->|PAPER_ERROR| PW
-    CAud -->|CODE_ERROR| CArc
-
-    CWC -.->|PR: code to main| RA
-    PWC -.->|PR: paper to main| RA
-    TAud -.->|PR: theory to main| RA
-    PArc -.->|PR: prompt to main| RA
-    RA -.->|merge| main
+    T-Domain -- "interface/AlgorithmSpecs.md" --> L-Domain
+    L-Domain -- "interface/SolverAPI" --> E-Domain
+    E-Domain -- "interface/ResultPackage" --> A-Domain
+    Q-Domain -. "AU2 gate" .-> T-Domain
+    Q-Domain -. "AU2 gate" .-> L-Domain
+    Q-Domain -. "AU2 gate" .-> E-Domain
+    Q-Domain -. "AU2 gate" .-> A-Domain
 ```
 
 ---
 
-## Section 9 -- Regeneration Instructions
+## 9. Regeneration Instructions
 
-- **Rebuild all derived files:**
-  ```
-  Execute EnvMetaBootstrapper Using prompts/meta/meta-deploy.md Target [Claude|Codex|Ollama|Mixed]
-  ```
+To regenerate all agent prompts after editing meta files:
 
-- **Edit source (authoritative -- A10):**
-  All changes to system rules, axioms, or agent contracts must be made in
-  `prompts/meta/*.md`. These seven files are the single source of truth.
+1. Edit one or more files in `prompts/meta/`:
+   - `meta-core.md` — axioms, design philosophy
+   - `meta-persona.md` — character traits, behavioral tables
+   - `meta-roles.md` — deliverables, authority, constraints, STOP
+   - `meta-domains.md` — domain registry, branch/storage rules
+   - `meta-workflow.md` — pipeline modes, handoff protocol, CI/CP
+   - `meta-ops.md` — canonical operation syntax
+   - `meta-deploy.md` — environment profiles
 
-- **Never edit `docs/00_GLOBAL_RULES.md` directly** -- it is a derived output.
-  Change the source in `prompts/meta/`, then regenerate via EnvMetaBootstrapper.
+2. Invoke PromptArchitect or EnvMetaBootstrapper with target environment `Claude`.
 
-- **Update project state:**
-  Append entries to `docs/01_PROJECT_MAP.md` (module map, legacy register) or
-  `docs/02_ACTIVE_LEDGER.md` (phase state, CHK/KL registers). These are Layer 3
-  project-context files and are NOT regenerated by the bootstrapper.
+3. All 29 agent files in `prompts/agents/` and this `README.md` will be regenerated.
+   - Update `generated_at` to current ISO 8601 timestamp.
+   - Update `generated_from` version tags if meta file versions changed.
 
-- **First command after deployment:**
-  ```
-  Execute ResearchArchitect
-  ```
+4. Run PromptAuditor Q3 checklist on each regenerated file before committing.
+
+5. Commit with message: `build(prompts): regenerate all 29 agent prompts + README via EnvMetaBootstrapper`
+
+**Hard rule:** Never edit `prompts/agents/*.md` or `prompts/README.md` directly.
+All changes must flow through `prompts/meta/*.md` and regeneration.
