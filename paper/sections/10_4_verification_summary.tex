@@ -33,6 +33,23 @@
         TVD-RK3 は ODE テストで $\Ord{\Delta t^{3.00}}$ の正確な 3 次収束を確認した．
 \end{enumerate}
 
+\noindent\textbf{間接的に検証されるコンポーネント：}
+上記のコンポーネント単体テストに加え，以下の構成要素は
+本章のテストまたは第~\ref{sec:verification}章の結合テストで間接的に検証される．
+\begin{itemize}[noitemsep]
+  \item \textbf{Crank--Nicolson 粘性項（$\Ord{\Delta t^2}$）・ADI 分裂誤差（$\Ord{\Delta t^2}$）：}
+        標準的な手法であり単体テストを省略するが，
+        第~\ref{sec:verification}章の Taylor--Green 渦テスト（§\ref{sec:ns_conservation}，§\ref{sec:ns_time_accuracy}）で
+        NS ソルバ全体の時間精度 $\Ord{\Delta t^2}$ として結合的に検証される．
+  \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
+        §\ref{sec:verify_gfm} の GFM テストにおいて密度場 $\rho(\psi)$ の補間が
+        Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
+  \item \textbf{Block Thomas 直接解法：}
+        全 CCD テスト（§\ref{sec:verify_ccd_convergence}--§\ref{sec:verify_curvature}）が
+        block Thomas アルゴリズムを介して CCD 連立方程式を解いており，
+        $\Ord{h^6}$ 精度の達成が block Thomas の正確性を含意する．
+\end{itemize}
+
 \begin{table}[htbp]
 \centering
 \caption{計算コンポーネント検証結果の総括}

@@ -16,6 +16,14 @@
 本章では，これらのコンポーネントを組み合わせた
 \textbf{ナビエ・ストークスソルバ全体}が物理法則を正しく記述するかを検証する．
 
+\noindent\textbf{本章のスコープ：}
+本章は\textbf{単相ナビエ・ストークスソルバ}の物理的整合性を対象とする．
+すべてのテストケースは等密度（$\rho = \mathrm{const.}$）条件下で実施し，
+Predictor--PPE--Corrector パイプラインの結合精度を検証する．
+高密度比（$\rho_l/\rho_g \gg 1$）における界面横断時の整合性，
+および二相流における質量保存性（密度加重）は，
+GFM 統合後の物理ベンチマーク（第~\ref{sec:validation}章：静止液滴・毛細管波・気泡上昇・RT 不安定）にて定量的に検証する．
+
 検証は以下の 4 段階で構成される：
 \begin{enumerate}[noitemsep]
   \item 力学的バランス——静止流体における重力・表面張力の釣合（§\ref{sec:force_balance}）
@@ -23,8 +31,6 @@
   \item 総合精度——NS 方程式の時間・空間収束次数（§\ref{sec:ns_time_accuracy}）
   \item 移流・圧力干渉——高レイノルズ数での対流不安定性に対する DCCD の効果（§\ref{sec:advection_pressure_coupling}）
 \end{enumerate}
-密度比 $1{:}1000$ における界面通過時の整合性検証（§\ref{sec:interface_crossing}）は，
-GFM 統合後の二相流ベンチマーク（第~\ref{sec:validation}章）にて実施する．
 
 \noindent
 各テストは理論解・解析解との定量比較により合否を判定する．
