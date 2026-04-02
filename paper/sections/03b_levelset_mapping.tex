@@ -391,10 +391,10 @@ CSF モデル誤差のみが純粋に測定可能となる．
 \medskip
 \noindent\textbf{Extension PDE の適用対象（§~\ref{sec:algorithm} Step 5c/6b）：}
 \begin{enumerate}
-  \item \textbf{IPC 圧力 $p^n$}（Predictor 前）：
+  \item \textbf{前時刻圧力場 $p^n$}（Projection 法の速度予測前）：
         CCD $\bnabla p^n$ の Gibbs 振動を防止．
-  \item \textbf{圧力増分 $\delta p$}（速度補正前）：
-        CCD $\bnabla(\delta p)$ の界面近傍精度を $\Ord{h^6}$ に維持．
+  \item \textbf{圧力補正量}（速度補正前）：
+        CCD による圧力勾配の界面近傍精度を $\Ord{h^6}$ に維持．
 \end{enumerate}
 $\psi$, $\rho$, $\mu$ は CLS 正則化 $H_\varepsilon$ で既に滑らかであるため延長不要．
 曲率 $\kappa$ は $\psi$ の直接法（式~\eqref{eq:curvature_psi_2d}）で計算するため延長不要．
