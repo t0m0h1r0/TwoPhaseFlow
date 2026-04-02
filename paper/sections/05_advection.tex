@@ -11,10 +11,20 @@
   \frac{\partial\psi}{\partial t} + \bnabla\cdot(\psi\bm{u}) = 0
   \label{eq:cls_advection_ref}
 \end{equation}
-（式~\eqref{eq:cls_advection}の再掲）を数値的に解くための離散化スキームを示す．
-以下では，第~\ref{sec:CCD}章で構築した CCD 法および第~\ref{sec:dissipative_ccd}節の
-Dissipative CCD フィルタを移流方程式へ適用する設計根拠を述べ，
-圧縮項（再初期化）・時間積分・安定性制約と合わせて全スキームを定式化する．
+（式~\eqref{eq:cls_advection}の再掲）を数値的に解く離散化スキームを示す．
+
+\begin{enumerate}
+  \item \textbf{§~\ref{sec:advection_motivation}（Dissipative CCD の設計根拠）：}
+        WENO5 が CLS 界面と相性が悪い理由を示し，
+        CCD フィルタによる安定化の設計を述べる．
+  \item \textbf{§~\ref{sec:cls_compression}（圧縮項の離散化）：}
+        再初期化方程式の圧縮項 $\bnabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ を
+        Dissipative CCD と Crank--Nicolson 法で離散化する．
+  \item \textbf{§~\ref{sec:time_int}（時間積分スキーム）：}
+        CLS 移流・再初期化には TVD-RK3，NS 方程式には AB2 + IPC を採用する根拠を示す．
+  \item \textbf{§~\ref{sec:stability}（安定性制約）：}
+        時間刻み $\Delta t$ の CFL・拡散安定条件と推奨値をまとめる．
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{Dissipative CCD による CLS 移流の安定化：設計根拠}
