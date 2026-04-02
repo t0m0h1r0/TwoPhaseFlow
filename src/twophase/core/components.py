@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from ..pressure.rhie_chow import RhieChowInterpolator
     from ..pressure.velocity_corrector import VelocityCorrector
     from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
+    from ..levelset.field_extender import FieldExtender
     from ..time_integration.cfl import CFLCalculator
     from ..simulation.boundary_condition import BoundaryConditionHandler
     from ..simulation.diagnostics import DiagnosticsReporter
@@ -50,3 +51,5 @@ class SimulationComponents:
     diagnostics: "DiagnosticsReporter"
     # GFM pipeline (§8e sec:gfm + §7 sec:dccd_decoupling): None when CSF mode
     ppe_rhs_gfm: "Optional[PPERHSBuilderGFM]" = None
+    # Extension PDE (Aslam 2004): smooth δp/p^n across Γ for CCD gradient
+    field_extender: "Optional[FieldExtender]" = None

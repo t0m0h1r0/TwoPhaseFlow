@@ -11,7 +11,7 @@
 本章では，変密度 PPE の導出（§~\ref{sec:projection_derivation}），
 CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
-GFM による鋭利な界面処理（§~\ref{sec:gfm}），
+Extension PDE による界面越し場延長（§~\ref{sec:extension_pde}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を順に論じた．
 以下に，各コンポーネントの精度を整理する．
 
@@ -27,29 +27,29 @@ GFM による鋭利な界面処理（§~\ref{sec:gfm}），
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + GFM & $\Ord{h^6}$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + Extension PDE & $\Ord{h^6}$ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-GFM 界面処理（表面張力） & Young--Laplace ジャンプ直接組み込み & $\Ord{h^2}$（界面近傍†） & — \\
+Extension PDE（界面越し場延長） & CSF + Extension PDE（Aslam 2004） & $\Ord{h^1}$（界面近傍†） & — \\
 \midrule
-\textbf{全体（空間律速：GFM 界面処理†）} & & $\boldsymbol{\Ord{h^2}}$（界面近傍） & — \\
+\textbf{全体（空間律速：Extension PDE 界面延長†）} & & $\boldsymbol{\Ord{h^1}}$（界面近傍） & — \\
 \textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-\noindent†\ GFM は CSF の $\Ord{\varepsilon^2}$ 物理誤差床を除去するが，界面直近（1–2格子幅以内）では
-Extension PDE を適用しない限り $\Ord{h^6}$ 精度を完全に維持することは困難である（§~\ref{sec:gfm}，今後の課題）．
-平滑領域では全コンポーネント $\Ord{h^5}$ 以上が確保される．
+\noindent†\ Extension PDE（§~\ref{sec:extension_pde}）により界面直近の圧力場を滑らかに延長するが，
+界面近傍（1–2格子幅以内）では Extension PDE の収束次数（一次精度，上風有限差分）が
+全体の空間精度を律速する．平滑領域では全コンポーネント $\Ord{h^5}$ 以上が確保される．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
 \begin{enumerate}
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        GFM により旧 CSF モデルの誤差床 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は除去されたが，
-        界面直近では GFM 処理精度（$\Ord{h^2}$ 以上）が律速段階となる．
+        Extension PDE（§~\ref{sec:extension_pde}）により界面直近の CCD Gibbs 振動を除去したが，
+        Extension PDE 自体の一次精度（上風 FD）が界面近傍の律速段階となる．
 
   \item \textbf{時間精度：}
         AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．

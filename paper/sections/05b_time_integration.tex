@@ -65,9 +65,9 @@ Predictor ステップの離散式は：
 \end{equation*}
 （重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
 2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$）．
-\textbf{表面張力は GFM（§~\ref{sec:gfm}）によりジャンプ条件 $[p]_\Gamma = \kappa/We$
-として PPE 右辺の補正項 $b^{\mathrm{GFM}}$（式~\eqref{eq:gfm_rhs_correction}）に
-組み込み，Predictor の体積力からは完全に除去する}（§~\ref{sec:algorithm} 参照）．
+\textbf{表面張力は CSF 体積力 $\kappa\bnabla\psi/\mathrm{We}$ として Predictor に含まれる}（§~\ref{sec:csf}）．
+圧力場には Extension PDE（§~\ref{sec:extension_pde}）を適用し，CCD 勾配が高次精度を維持できるよう
+界面を跨いで滑らかに延長する（§~\ref{sec:algorithm} 参照）．
 対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
 前ステップ圧力 $-\bnabla p^n$ の陽的組み込みが IPC の本質である．
 
@@ -122,9 +122,7 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用される．
 空間精度（Dissipative CCD 移流：実効 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ フィルタ誤差，
 CCD：$\Ord{h^6}$ 微分精度）は，移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が律速する
-全体空間精度と整合する．GFM 採用（§~\ref{sec:gfm}）により CSF モデル誤差
-$\Ord{\varepsilon^2} \approx \Ord{h^2}$ の律速は除去され，寄生流れの下限は曲率評価精度
-$\Ord{h^6}$（§~\ref{sec:curvature_stab}）に支配される（定量値は §~\ref{sec:bench_droplet} 参照）．
+全体空間精度と整合する．CSF モデル誤差 $\Ord{\varepsilon^2}$ が空間精度の律速であり，Extension PDE（§~\ref{sec:extension_pde}）によりそれ以外のコンポーネントは $\Ord{h^5}$ 以上を維持する（定量値は §~\ref{sec:bench_droplet} 参照）．
 
 \noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
 

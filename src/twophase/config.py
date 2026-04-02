@@ -90,6 +90,10 @@ class NumericsConfig:
     # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
     # Default: 'csf' for backward compatibility; 'gfm' is production (§8e)
     surface_tension_model: str = "csf"
+    # Extension PDE (Aslam 2004): smooth δp and p^n across Γ before CCD gradient.
+    # Eliminates Gibbs oscillations in CCD ∇p at the interface.
+    # n_extend = 0 disables; typical value 5 (covers CCD stencil width).
+    n_extend: int = 0
 
     def __post_init__(self) -> None:
         assert self.bc_type in ("wall", "periodic"), (
