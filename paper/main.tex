@@ -1,7 +1,7 @@
 % paper/main.tex
 %% silence パッケージは XeLaTeX + CJK \section で \sl@RemoveGobble エラーを起こすため除去
 
-\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, twoside]{bxjsarticle}
+\documentclass[12pt, a4paper, titlepage, xelatex, ja=standard, jafont=hiragino-pron, oneside]{bxjsarticle}
 
 \input{preamble}
 
@@ -9,11 +9,11 @@
 \pagenumbering{roman}
 \input{sections/00_abstract}
 \tableofcontents
-\cleardoublepage
+\clearpage
 \pagenumbering{arabic}
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\cleardoublepage
+\clearpage
 \part{定式化：支配方程式と界面表現}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/01_introduction}      %% 第1章
@@ -26,7 +26,7 @@
 \input{sections/03b_levelset_mapping} %% 第3章続き：ψ-φ 関係・逆変換・曲率安定化
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\cleardoublepage
+\clearpage
 \part{空間離散化・時間積分スキーム}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/04_ccd}               %% 第4章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
@@ -53,7 +53,7 @@
 %% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.6
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\cleardoublepage
+\clearpage
 \part{統合・検証・展望}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/09_full_algorithm}    %% 第9章
@@ -79,7 +79,7 @@
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 %% 付録：数学的補足証明・スキーム詳細
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\cleardoublepage
+\clearpage
 \appendix
 \part*{付録}
 
