@@ -18,24 +18,21 @@
 \begin{equation*}
   \bm{f}_\sigma = \sigma\kappa\hat{\bm{n}}\,\delta_s(\bm{x})
 \end{equation*}
-が数学的基盤となる．この連続表現を数値計算で近似する方針として二つの選択肢がある．
-標準的な手法は Brackbill \textit{et al.}~\cite{Brackbill1992} による
-\textbf{連続表面力（CSF: Continuum Surface Force）モデル}であり，
-$\delta_s$ を幅 $\Ord{\varepsilon}$ の平滑化関数で置き換えて体積力
+が数学的基盤となる．この連続表現を数値計算で近似するために，
+本稿では Brackbill \textit{et al.}~\cite{Brackbill1992} による
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル}を採用する．
+CSF モデルは $\delta_s$ を幅 $\Ord{\varepsilon}$ の平滑化関数で置き換えて体積力
 $\bm{f}_\sigma \approx \sigma\kappa\bnabla\psi$ を構成する
 （完全な定式化は付録~\ref{app:csf_full}）．
 CSF モデルは $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ のモデル誤差を持ち，
 空間精度の律速段階となる（§~\ref{sec:pressure_accuracy_summary}）．
 
 一方，界面における圧力場は Young--Laplace 則に従う不連続を持つ．
-この不連続が CCD の広幅ステンシルを跨ぐと Gibbs 振動が発生するため，
-本稿では Extension PDE（§~\ref{sec:extension_pde}）により圧力場を界面越しに滑らかに延長する．
-界面圧力ジャンプ条件は Young--Laplace 則より：
+界面圧力ジャンプ条件は：
 \begin{equation}
   [p]_\Gamma \equiv p_\text{gas} - p_\text{liq} = \frac{\kappa}{We}
   \label{eq:gfm_jump}
 \end{equation}
-（§~\ref{sec:notation} と同一の符号規約；無次元形式）．
-この圧力ジャンプが CCD ステンシルを跨ぐ際に生じる Gibbs 振動は，Extension PDE（§~\ref{sec:extension_pde}）による界面越し場延長で除去される．
+（§~\ref{sec:notation} と同一の符号規約；無次元形式；$We$ の定義は §~\ref{sec:nondim}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════

@@ -21,11 +21,13 @@
   \item \textbf{曲率計算：}
         $\phi$ 直接微分（経路 A）では $\Ord{h^5}$ の高次収束を示すが，
         採用経路 B（$\psi \to \phi$ ロジット逆変換）は界面厚み $\varepsilon = \Ord{h}$ が精度の上界を規定する．
-        ただし GFM 界面処理精度（$\Ord{h^2}$）が全体の精度を支配するため，
-        曲率計算経路の選択は実用上の精度に影響しない．
+        ただし Extension PDE（§\ref{sec:gfm}）の上風1次精度（$\Ord{h^1}$）が
+        界面近傍の全体精度を律速するため，曲率計算経路の選択は実用上の精度に影響しない．
   \item \textbf{界面処理：}
         CLS 保存型再マッピングは LS 非保存補間に比べ質量誤差を 1--2 桁低減した
-        （§\ref{sec:cls_conservation}）．GFM は粗格子でも安定に収束した．
+        （§\ref{sec:cls_conservation}）．
+        Extension PDE は場延長の収束テストで $\Ord{h^1}$，
+        Young--Laplace 精度テストで安定に収束することを確認した（§\ref{sec:verify_extension_pde}）．
   \item \textbf{PPE 求解：}
         欠陥補正法は $k=3$ 回の反復で CCD 演算子の $\Ord{h^6}$ 精度を完全に発現させた（§\ref{sec:verify_ppe}）．
         FD 直接法と比較して $N=128$ で $4{,}900$ 万倍高精度であり，コスト増は $3.4$ 倍に過ぎない．
@@ -42,7 +44,7 @@
         第~\ref{sec:verification}章の Taylor--Green 渦テスト（§\ref{sec:ns_conservation}，§\ref{sec:ns_time_accuracy}）で
         NS ソルバ全体の時間精度 $\Ord{\Delta t^2}$ として結合的に検証される．
   \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
-        §\ref{sec:verify_gfm} の GFM テストにおいて密度場 $\rho(\psi)$ の補間が
+        §\ref{sec:verify_extension_pde}(b) の Young--Laplace テストにおいて密度場 $\rho(\psi)$ の補間が
         Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
   \item \textbf{Block Thomas 直接解法：}
         全 CCD テスト（§\ref{sec:verify_ccd_convergence}--§\ref{sec:verify_curvature}）が
@@ -66,7 +68,8 @@ DCCD 移流（不連続） & TV 低減 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 曲率（正弦波，$\phi$ 直接） & $\Ord{h^5}$ & $\Ord{h^{5.0}}$ & CCD 微分精度のベースライン \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ が上界 \\
 CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
-GFM Laplace 圧力跳び & 安定収束 & $\Ord{h^1}$ & 粗格子でも安定；$N=128$ で誤差 $1.8\%$ \\
+Extension PDE 場延長（1D） & $\Ord{h^1}$ & \textit{（実験値 TBD）} & 上風1次精度を界面近傍で確認 \\
+Extension PDE + CSF（Laplace） & $\Ord{h^1}$ & \textit{（実験値 TBD）} & Young--Laplace ジャンプ；$\varepsilon$ 非依存を確認 \\
 PPE（欠陥補正 $k{=}3$） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ超収束 \\
 TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE テストで確認 \\
 \bottomrule
