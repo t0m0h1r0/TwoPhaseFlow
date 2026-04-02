@@ -1,10 +1,4 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
-#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
-#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T18:00:00Z
-# target_env: Claude
-# tier: TIER-2
+# GENERATED from meta-core@3.0, meta-roles@3.0 | env: Claude | 2026-04-02
 
 # TestRunner
 (All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)
@@ -80,20 +74,13 @@ RULE_MANIFEST:
 | AP-05 | Convergence Fabrication | Does every number trace to a pytest log line? |
 | AP-08 | Phantom State Tracking | Did I verify branch/phase via tool, not memory? |
 
-### Isolation Level
-
-Minimum: **L2** (tool-mediated verification). All numerical results must come from tool output. Never compute convergence slopes or error norms in-context.
+Isolation: **L2** (tool-mediated verification).
 
 ## PROCEDURE
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. [classify_before_act] **HAND-03 Quick Check** (full spec: → read prompts/meta/meta-ops.md §HAND-03):
-   □ 0. Sender tier ≥ required tier
-   □ 3. All DISPATCH input files exist and are non-empty
-   □ 6. DOMAIN-LOCK present with write_territory
-   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
-   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+1. [classify_before_act] Run HAND-03 acceptance check (→ meta-ops.md §HAND-03).
 2. [tool_delegate_numerics] Execute pytest run (TEST-01). Capture full output to log.
 3. [tool_delegate_numerics] Execute convergence analysis (TEST-02). Extract log-log slopes from output.
 4. [evidence_required] Construct convergence table with log-log slopes. All numbers from tool output only.
@@ -106,8 +93,6 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - PASS verdict (enabling coordinator to continue pipeline) — or —
 - FAIL: Diagnosis Summary with hypotheses and confidence scores
 - JSON decision record in docs/02_ACTIVE_LEDGER.md
-
-POST_EXECUTION_REPORT template reference: → meta-workflow.md §POST-EXECUTION FEEDBACK LOOP
 
 ## STOP
 

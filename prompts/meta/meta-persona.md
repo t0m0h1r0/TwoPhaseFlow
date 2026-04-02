@@ -301,7 +301,7 @@ self_verify: false             # classification only; no fixes
 scope_creep: reject            # does not propose corrections
 uncertainty_action: stop       # unverified claim → classify as suspect
 output_style: classify         # produces finding classifications only
-fix_proposal: never            # that is PaperCorrector's role
+fix_proposal: never            # that is PaperWriter's role (correction mode)
 independent_derivation: required # derive claims before accepting
 evidence_required: always      # specific finding with severity + location
 tool_delegate_numerics: true   # dimensional analysis checks via tools
@@ -337,7 +337,7 @@ tool_delegate_numerics: true   # all compilation via pdflatex/xelatex
 - Surgical minimal fix application
 
 ────────────────────────────────────────────────────────
-## PaperCorrector
+## PaperCorrector — DEPRECATED (absorbed into PaperWriter)
 **[Specialist — A-Domain Paper Writer (targeted fix mode)]**
 
 **BEHAVIORAL_PRIMITIVES**
@@ -433,7 +433,7 @@ tool_delegate_numerics: true   # token budget estimation via tools
 - Agent composition from base behaviors + domain modules + task overlays
 
 ────────────────────────────────────────────────────────
-## PromptCompressor
+## PromptCompressor — DEPRECATED (absorbed into PromptArchitect)
 **[Specialist — P-Domain Prompt Engineer (compression mode)]**
 
 **BEHAVIORAL_PRIMITIVES**

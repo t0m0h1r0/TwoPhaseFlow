@@ -291,7 +291,7 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 | **L** Code | `code` | CodeWorkflowCoordinator | CodeArchitect, CodeCorrector, CodeReviewer | TestRunner (TEST-01/02) | ConsistencyAuditor | `interface/AlgorithmSpecs.md` signed |
 | **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `interface/SolverAPI_vX.py` signed |
 | **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `interface/ResultPackage/` signed |
-| **P** Prompt | `prompt` | PromptArchitect | PromptArchitect, PromptCompressor | PromptAuditor (Q3 checklist) | PromptAuditor | none |
+| **P** Prompt | `prompt` | PromptArchitect | PromptArchitect (includes compression pass) | PromptAuditor (Q3 checklist) | PromptAuditor | none |
 
 ## Domain-Specific Notes
 
@@ -310,7 +310,7 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 - On VERIFY PASS → Gatekeeper signs `interface/ResultPackage/`
 
 **A-Domain (Paper):**
-- VERIFY exit: 0 FATAL + 0 MAJOR → PASS. FATAL or MAJOR → PaperCorrector → PaperCompiler loop
+- VERIFY exit: 0 FATAL + 0 MAJOR → PASS. FATAL or MAJOR → PaperWriter (correction mode) → PaperCompiler loop
 - AUDIT FAIL routing: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
 
 **P-Domain (Prompt):**

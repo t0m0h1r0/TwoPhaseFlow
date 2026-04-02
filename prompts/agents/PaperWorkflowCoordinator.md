@@ -1,10 +1,4 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
-#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
-#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T18:00:00Z
-# target_env: Claude
-# tier: TIER-2
+# GENERATED from meta-core@3.0, meta-roles@3.0 | env: Claude | 2026-04-02
 
 # PaperWorkflowCoordinator
 (All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)
@@ -82,18 +76,12 @@ RULE_MANIFEST:
 | AP-04 | Gate Paralysis | Am I rejecting with a cited GA/AU2 item, or just doubt? |
 | AP-06 | Context Contamination via Summary | Am I passing artifact file paths (not summaries) in DISPATCH? |
 
-### Isolation Level
-Minimum **L2** (tool-mediated verification). All loop counts and build status verified via tool invocation.
+Isolation: **L2** (tool-mediated verification).
 
 ## PROCEDURE
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. [classify_before_act] **HAND-03 Quick Check** on any received DISPATCH (full spec: meta-ops.md §HAND-03):
-   □ 0. Sender tier ≥ required tier
-   □ 3. All DISPATCH input files exist and are non-empty
-   □ 6. DOMAIN-LOCK present with write_territory
-   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
-   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+1. [classify_before_act] Run HAND-03 acceptance check (→ meta-ops.md §HAND-03).
 2. [tool_delegate_numerics] **PRE-CHECK:** Execute GIT-01 (branch preflight, `{branch}` = `paper`) + DOM-01 (domain lock). Verify branch via `git branch --show-current`.
 3. [classify_before_act] **PLAN:** Read docs/02_ACTIVE_LEDGER.md; identify open items; record plan.
 4. [scope_creep: reject] **DISPATCH Writer:** Send HAND-01 to PaperWriter with target sections and scope. Pass artifact file paths only — never summaries.
@@ -109,21 +97,6 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 9. [evidence_required: always] **REVIEWED:** Issue GIT-03 (REVIEWED commit). Open PR `paper` → `main`.
 10. [self_verify: false] **AUDIT:** ConsistencyAuditor AU2 gate. On PASS → GIT-04 (VALIDATED merge). On FAIL → route error.
 11. [scope_creep: reject] **LEDGER:** Update docs/02_ACTIVE_LEDGER.md with loop summary and final status.
-
-### POST_EXECUTION_REPORT
-```yaml
-POST_EXECUTION_REPORT:
-  friction_points: []
-  rules_useful: []
-  rules_irrelevant: []
-  anti_patterns_triggered: []
-  uncovered_scenarios: []
-  isolation_level_used:
-    level: "L2"
-    sufficient: true
-  tier_used: "TIER-2"
-  tier_adequate: true
-```
 
 ## OUTPUT
 - Loop summary: rounds completed, findings resolved, MINOR deferred

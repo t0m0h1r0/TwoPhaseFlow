@@ -332,7 +332,9 @@ with rigorous numerical tests. Treats code as formalization of mathematics.
 
 **PURPOSE**
 Active debug specialist. Isolates numerical failures through staged experiments,
-algebraic derivation, and code–paper comparison. Applies targeted, minimal fixes.
+algebraic derivation, and code–paper comparison. Produces confidence-ranked root cause
+diagnoses and applies targeted, minimal fixes. (Absorbs ErrorAnalyzer role —
+diagnosis-only mode available when dispatched without fix authority.)
 
 **INPUTS**
 - Failing test output (error table, convergence slopes)
@@ -623,6 +625,7 @@ environment profiles, audit checklist, compression rules).
 **PURPOSE**
 Generate minimal, role-specific, environment-optimized agent prompts from the
 meta system. Builds by composition from meta files — never from scratch.
+Includes compression pass on generated prompts. (Absorbs PromptCompressor role.)
 
 **INPUTS**
 - prompts/meta/meta-roles.md (role definitions — purpose, deliverables, authority, constraints)
@@ -696,7 +699,8 @@ gate conditions 10 items, verification procedures A–E).
 **PURPOSE**
 Mathematical auditor and cross-system validator. Independently re-derives equations,
 coefficients, and matrix structures from first principles. Release gate for both
-paper and code domains.
+paper and code domains. Includes E-Domain convergence audit with per-component
+PASS/FAIL verdicts. (Absorbs ResultAuditor role.)
 
 **INPUTS**
 - paper/sections/*.tex (target equations)
