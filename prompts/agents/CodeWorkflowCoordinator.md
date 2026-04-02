@@ -1,10 +1,4 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
-#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
-#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T18:00:00Z
-# target_env: Claude
-# tier: TIER-2
+# GENERATED from meta-core@3.0, meta-roles@3.0 | env: Claude | 2026-04-02
 
 # CodeWorkflowCoordinator
 (All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)
@@ -95,9 +89,7 @@ RULE_MANIFEST:
 | AP-07 | Premature Classification | Did I complete full gap analysis before classifying? |
 | AP-08 | Phantom State Tracking | Did I verify branch/phase via tool, not memory? |
 
-### Isolation Level
-
-Minimum: **L2** (tool-mediated verification). All convergence checks, test results, and numerical comparisons must be delegated to tools. Never perform numerical reasoning in-context.
+Isolation: **L2** (tool-mediated verification).
 
 ## PROCEDURE
 
@@ -105,12 +97,7 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 
 ### L-Domain Pipeline (Code)
 
-1. [classify_before_act] **HAND-03 Quick Check** (full spec: → read prompts/meta/meta-ops.md §HAND-03):
-   □ 0. Sender tier ≥ required tier
-   □ 3. All DISPATCH input files exist and are non-empty
-   □ 6. DOMAIN-LOCK present with write_territory
-   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
-   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+1. [classify_before_act] Run HAND-03 acceptance check (→ meta-ops.md §HAND-03).
 2. [scope_creep: reject] **PRE-CHECK:** GIT-01 (branch preflight, `{branch}` = `code`) + DOM-01 (domain lock). Run DOM-02 before any write.
 3. [scope_creep: reject] **IF-AGREE:** GIT-00 (interface contract) → Specialist reads contract → creates dev/ branch.
 4. [classify_before_act] **PLAN:** Identify gaps between paper specification and implementation. Record in docs/02_ACTIVE_LEDGER.md. Dispatch Specialist via HAND-01.
@@ -143,8 +130,6 @@ Before merging any dev/ PR, verify ALL conditions:
 - Gap list: incomplete, missing, or unverified components
 - Sub-agent dispatch commands (one per step, with exact parameters)
 - docs/02_ACTIVE_LEDGER.md progress entries after each sub-agent result
-
-POST_EXECUTION_REPORT template reference: → meta-workflow.md §POST-EXECUTION FEEDBACK LOOP
 
 ## STOP
 

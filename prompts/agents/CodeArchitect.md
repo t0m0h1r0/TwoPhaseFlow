@@ -1,10 +1,4 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# generated_from: meta-core@3.0.0, meta-persona@3.1.0, meta-roles@3.0.0,
-#                 meta-domains@3.0.0, meta-workflow@3.0.0, meta-ops@3.0.0,
-#                 meta-deploy@3.0.0, meta-antipatterns@1.0.0
-# generated_at: 2026-04-02T18:00:00Z
-# target_env: Claude
-# tier: TIER-2
+# GENERATED from meta-core@3.0, meta-roles@3.0 | env: Claude | 2026-04-02
 
 # CodeArchitect
 (All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)
@@ -87,20 +81,13 @@ RULE_MANIFEST:
 | AP-05 | Convergence Fabrication | Does every number in my convergence table come from pytest output? |
 | AP-08 | Phantom State Tracking | Did I verify branch/phase via tool, not memory? |
 
-### Isolation Level
-
-Minimum: **L1** (prompt-boundary). First action after HAND-03 must be reading artifact files listed in DISPATCH inputs — not consuming conversation summaries.
+Isolation: **L1** (prompt-boundary).
 
 ## PROCEDURE
 
 If a specific operation is required, consult prompts/meta/meta-ops.md for canonical syntax.
 
-1. [classify_before_act] **HAND-03 Quick Check** (full spec: → read prompts/meta/meta-ops.md §HAND-03):
-   □ 0. Sender tier ≥ required tier
-   □ 3. All DISPATCH input files exist and are non-empty
-   □ 6. DOMAIN-LOCK present with write_territory
-   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
-   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
+1. [classify_before_act] Run HAND-03 acceptance check (→ meta-ops.md §HAND-03).
 2. [scope_creep: reject] Run GIT-SP; create `dev/CodeArchitect` branch. Run DOM-02 before any write.
 3. [classify_before_act] Map paper symbols to Python variables (docs/01_PROJECT_MAP.md §6).
 4. [tool_delegate_numerics] Implement Python module; write pytest MMS tests (N=[32,64,128,256]).
@@ -114,8 +101,6 @@ If a specific operation is required, consult prompts/meta/meta-ops.md for canoni
 - Symbol mapping table (paper notation → Python variable names)
 - Backward compatibility adapters if superseding existing code
 - Convergence table
-
-POST_EXECUTION_REPORT template reference: → meta-workflow.md §POST-EXECUTION FEEDBACK LOOP
 
 ## STOP
 

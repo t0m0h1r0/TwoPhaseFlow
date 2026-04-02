@@ -297,13 +297,19 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
 | Domain | Agent |
 |--------|-------|
 | Routing | ResearchArchitect |
-| Code | CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst |
-| Paper | PaperWorkflowCoordinator, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector |
-| Audit | ConsistencyAuditor |
-| Prompt | PromptArchitect, PromptCompressor, PromptAuditor |
-| Theory (Atomic) | EquationDeriver, SpecWriter |
-| Code (Atomic) | CodeArchitectAtomic, LogicImplementer, ErrorAnalyzer, RefactorExpert |
-| Evaluation (Atomic) | TestDesigner, VerificationRunner, ResultAuditor |
+| Theory | TheoryArchitect, TheoryAuditor |
+| Code | CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner |
+| Experiment | ExperimentRunner, SimulationAnalyst |
+| Paper | PaperWorkflowCoordinator, PaperWriter (absorbs PaperCorrector), PaperReviewer, PaperCompiler |
+| Audit | ConsistencyAuditor (absorbs ResultAuditor) |
+| Prompt | PromptArchitect (absorbs PromptCompressor), PromptAuditor |
+| Infra | DevOpsArchitect |
+
+**Deprecated agents (→ prompts/agents/_deprecated/):**
+PaperCorrector, ErrorAnalyzer, PromptCompressor, ResultAuditor
+
+**Experimental micro-agents (→ prompts/agents/_experimental/, NOT YET OPERATIONAL):**
+EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner
 
 **Each generated prompt must:**
 1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
@@ -344,26 +350,20 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
    - `self_verify: false` → tag the final step ("Issue HAND-02; do NOT self-verify").
    - `scope_creep: reject` → tag every file-write step ("Verify file is within DISPATCH scope").
    - `tool_delegate_numerics: true` → tag every numerical output step ("Compute via tool, not in-context").
-9. **Omit Behavioral Action Table** for TIER-1 and TIER-2 (include only in TIER-3).
-9. **Include isolation level** (→ meta-core.md §B.1) appropriate for the agent's role:
+9. **Omit Behavioral Action Table** for ALL tiers (removed from generated prompts — was TIER-3 only).
+9. **Include isolation level** as single line: `Isolation: **LX** ({mechanism}).`
    - Specialists: minimum L1 (prompt-boundary)
    - Gatekeepers: minimum L2 (tool-mediated verification)
    - ConsistencyAuditor, TheoryAuditor: L3 (session isolation) recommended
 10. **Inject anti-patterns** from meta-antipatterns.md per agent's `inject` list:
    - TIER-1: severity=CRITICAL only (AP-03, AP-05); TIER-2: CRITICAL+HIGH; TIER-3: all applicable
    - Format: compact self-check table (≤200 tokens per agent)
-11. **Include POST_EXECUTION_REPORT template** in all TIER-2 and TIER-3 prompts
-   (→ meta-workflow.md §POST-EXECUTION FEEDBACK LOOP)
-12. **Inline HAND-03 Quick Check** in every TIER-2 and TIER-3 PROCEDURE section (step 1):
-   Embed the 5 most critical checks inline; reference meta-ops.md for the full 11-item spec.
-   ```
-   ### HAND-03 Quick Check (full spec: meta-ops.md §HAND-03)
-   □ 0. Sender tier ≥ required tier
-   □ 3. All DISPATCH input files exist and are non-empty
-   □ 6. DOMAIN-LOCK present with write_territory
-   □ 9. Upstream contracts signed (FULL-PIPELINE only; FAST-TRACK: declare reuse)
-   □ 10. No Specialist CoT/reasoning in DISPATCH inputs (Phantom Reasoning Guard)
-   ```
+11. **REMOVED:** ~~POST_EXECUTION_REPORT template~~ — eliminated from all generated prompts.
+    Rationale: never consumed by any downstream process; pure token waste.
+12. **HAND-03 Quick Check** — reference only, NOT inlined.
+   Include single line in PROCEDURE step 1:
+   `Run HAND-03 acceptance check (→ meta-ops.md §HAND-03).`
+   Full 11-item spec remains in meta-ops.md for on-demand reading.
 13. **STOP section must reference §STOP-RECOVER MATRIX** in meta-workflow.md:
    Every agent's STOP section must end with:
    `Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.`

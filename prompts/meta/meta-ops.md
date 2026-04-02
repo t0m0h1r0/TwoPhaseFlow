@@ -44,7 +44,7 @@ Three tiers determine which git operations each agent may invoke:
 |------|------|--------|
 | **Root Admin** (Overseer) | Final merge + syntax/format check of PRs to `main` | ResearchArchitect |
 | **Gatekeeper** (Integrator) | Domain branch management; PR review + merge from dev/; PR issuance to main | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor |
-| **Specialist** (Developer) | Absolute sovereignty over own `dev/{agent_role}` branch; right to refuse pulls | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, PaperWriter, PaperReviewer, PaperCompiler, PaperCorrector, ConsistencyAuditor, PromptCompressor |
+| **Specialist** (Developer) | Absolute sovereignty over own `dev/{agent_role}` branch; right to refuse pulls | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, TheoryArchitect, ConsistencyAuditor, DevOpsArchitect |
 
 **Specialist obligations:** Must attach Evidence of Verification (logs/test results) to every PR.
 **Gatekeeper rights:** May immediately reject PRs with insufficient or missing evidence.
@@ -89,10 +89,11 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | CodeReviewer | GIT-SP | RETURNER |
 | Specialist | PaperWriter | GIT-SP | RETURNER |
 | Specialist | PaperReviewer | GIT-SP | RETURNER |
-| Specialist | PaperCorrector | GIT-SP | RETURNER |
+| Specialist | TheoryArchitect | GIT-SP | RETURNER |
 | Specialist | TheoryAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 | Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
-| Specialist | PromptCompressor | GIT-SP | RETURNER |
+| Specialist | SimulationAnalyst | GIT-SP | RETURNER |
+| Specialist | DevOpsArchitect | GIT-SP | RETURNER |
 
 **Handoff roles:**
 - DISPATCHER: sends HAND-01 (DISPATCH token) when delegating to a specialist

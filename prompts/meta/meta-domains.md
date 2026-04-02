@@ -112,14 +112,14 @@ not be deleted (C2 preserve-tested rule). CodeArchitect must consult before remo
 ────────────────────────────────────────────────────────
 ## Domain: Academic Writing / A-Domain (Paper)
 
-**Matrix position:** Vertical domain A — Logical Truth. Gatekeeper: PaperWorkflowCoordinator + PaperReviewer (Logical Reviewer). Specialists: PaperWriter, PaperCompiler, PaperCorrector.
+**Matrix position:** Vertical domain A — Logical Truth. Gatekeeper: PaperWorkflowCoordinator + PaperReviewer (Logical Reviewer). Specialists: PaperWriter (absorbs PaperCorrector), PaperCompiler.
 
 | Property | Value |
 |----------|-------|
 | Git branch | `paper` (sub-branches: `paper/{section}`) |
 | Matrix alias | A-Domain (Academic Writing) |
 | Coordinator / Gatekeeper | PaperWorkflowCoordinator (orchestrator); PaperReviewer (Logical Reviewer gate) |
-| Specialist members | PaperWriter, PaperCompiler, PaperCorrector |
+| Specialist members | PaperWriter (absorbs PaperCorrector), PaperCompiler |
 | Storage (write — STRICT) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` |
 | Storage (read — STRICT) | `src/twophase/` (consistency checks only, via interface/TechnicalReport.md), `interface/ResultPackage/`, `interface/TechnicalReport.md` |
 | Storage (FORBIDDEN write) | `src/`, `lib/`, `theory/`, `experiment/`, `prompts/meta/`, `interface/` (without IF-COMMIT token) |
@@ -200,7 +200,7 @@ before any E-Domain work begins. Running experiments without a signed solver API
 | Git branch | `prompt` |
 | Matrix alias | P-Domain (Prompt & Environment) |
 | Coordinator / Gatekeeper | PromptArchitect (Prompt Engineer; acts as both coordinator and primary executor) |
-| Specialist members | PromptCompressor, PromptAuditor |
+| Specialist members | PromptAuditor |
 | Storage (write — STRICT) | `prompts/agents/*.md` |
 | Storage (read — STRICT) | `prompts/meta/*.md` (source only; never edit agents/ via meta/) |
 | Storage (FORBIDDEN write) | `prompts/meta/*.md` (Governance-owned; read-only for all agents), `src/`, `paper/`, `theory/`, `experiment/` |
@@ -208,7 +208,7 @@ before any E-Domain work begins. Running experiments without a signed solver API
 | Lifecycle | **DRAFT** — PromptArchitect generates agent prompt (GIT-02)<br>**REVIEWED** — PromptAuditor (Q3 checklist PASS) — Gatekeeper approval required (GIT-03)<br>**VALIDATED** — PromptAuditor gate PASS → merge `prompt` → `main` (GIT-04) |
 
 **Note:** Prompt domain has no separate coordinator above PromptArchitect.
-PromptArchitect dispatches to PromptCompressor (compress path) or PromptAuditor (review path).
+PromptArchitect includes compression pass (absorbs PromptCompressor) and dispatches to PromptAuditor (review path).
 PromptAuditor acts as Devil's Advocate: assumes every prompt is non-compliant until Q3 PASS.
 
 ────────────────────────────────────────────────────────
