@@ -8,20 +8,18 @@
 \subsection{欠陥補正法による効率的 PPE 求解}
 \label{sec:defect_correction_main}
 
-§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）は
-高精度であるが，その\textbf{直接反復は困難}である．
-$L_H$ は CCD ブロック Thomas 法（§~\ref{sec:CCD}）に基づく密結合演算子であり，
-(i)~帯幅が通常の中心差分（3点ステンシル）に比して広く，
-(ii)~$x$-$y$ 方向の結合が強いため ADI 的な方向分離が自然には成立せず，
-(iii)~大域疎行列を陽に構成して直接法（LU 分解）を適用すると
-メモリ $\mathcal{O}(N^2)$（$N = N_x N_y$：総自由度数）が必要となり大規模格子では非実用的である．
+本節では，§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）を
+「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する
+\textbf{欠陥補正法（Defect Correction Method）}~\cite{Stetter1978} を示す：
+残差（欠陥）の評価には $L_H$ を用いて $\Ord{h^6}$ 精度を確保し，
+線形系の求解には方向分離が容易な低次演算子 $L_L$（2次精度 FD）を用いて
+$\mathcal{O}(N^2)$ コストを維持する．
 
-この困難を解消する枠組みが\textbf{欠陥補正法（Defect Correction Method）}である
-\cite{Stetter1978}．
-核心は「\textbf{高精度で評価し，低精度で解く}」という演算子分離にある：
-右辺の残差（欠陥）には CCD 演算子 $L_H$（$\Ord{h^6}$）を用いて精度を確保し，
-左辺の線形系には方向分離が容易な低次演算子 $L_L$（2次精度 FD）を用いて
-$\mathcal{O}(N)$ コストで求解する．
+\noindent\textbf{なぜ $L_H$ を直接解かないのか：}
+$L_H$ は CCD ブロック Thomas 法に基づく密結合演算子であり，
+帯幅が広く $x$-$y$ 方向の結合が強いため ADI 的な方向分離が成立せず，
+また大域疎行列を陽に構成すると $\mathcal{O}(N^2)$ メモリが必要で大規模格子では非実用的である
+（検証用の直接 LU 法は付録~\ref{app:ccd_lu_direct} 参照）．
 
 \subsubsection{アルゴリズム}
 \label{sec:dc_algorithm}

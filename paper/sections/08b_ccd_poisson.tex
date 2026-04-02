@@ -8,41 +8,24 @@
 \label{sec:ccd_poisson_matrix}
 %% ═══════════════════════════════════════════════════════════════════════════════
 
-%% Modification I: O(h²) → O(h⁶) via CCD
-%% 本節は §8.2 の目標を達成するための中核である：
-%% (1) p, p', p'' を連立未知量として同時求解し O(h⁶) 精度を達成
-%% (2) コロケート格子上のチェッカーボード不安定性を DCCD 散逸で抑制
+§~\ref{sec:projection_derivation} で得た PPE（式~\eqref{eq:PPE_varrho}）を，
+CCD 法（第~\ref{sec:CCD}章）を用いて $\Ord{h^6}$ 精度で離散化する．
+本節では2つの課題を同時に解決する：
 
-\textbf{精度向上の動機：}
-標準 $\Ord{h^2}$ 中心差分では界面近傍で「数値ノイズ」が生じ，
-それが寄生流れ（parasitic currents）の主因となる．
-CCD 法（第~\ref{sec:CCD}章）はこれを克服するため，
-圧力 $p$，1次導関数 $p'$，2次導関数 $p''$ を\textbf{連立未知量として同時求解}する
-（CCD ブロック系，付録~\ref{app:ccd_elliptic}）．
-これにより速度補正に用いる圧力勾配の空間精度が $\Ord{h^6}$ に向上し，
-長時間シミュレーションにおける離散化誤差の蓄積を根本的に低減する．
+\begin{enumerate}
+  \item \textbf{$\Ord{h^2} \to \Ord{h^6}$ への精度向上：}
+        圧力 $p$，1次導関数 $p'$，2次導関数 $p''$ を連立未知量として同時求解する
+        CCD ブロック系（付録~\ref{app:ccd_elliptic}）により，
+        速度補正の圧力勾配を $\Ord{h^6}$ 精度で評価する．
+  \item \textbf{チェッカーボード（奇偶デカップリング）の抑制：}
+        コロケート配置では格子スケール振動が生じる．
+        本稿では Rhie--Chow の代わりに DCCD 散逸機構（§~\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）を用い，
+        DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）を PPE 右辺として構成する．
+\end{enumerate}
 
-\textbf{コロケート格子のチェッカーボード（奇偶デカップリング）対策：}
-コロケート配置では $p$ の奇数・偶数モードが PPE 左辺に現れず，
-非物理的な格子スケール振動（checkerboard instability）が生じる．
-本稿ではこれを Rhie--Chow 補間の代わりに
-DCCD 散逸機構（§~\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）で抑制する：
-DCCD フィルタが PPE 右辺の $\bnabla_h\!\cdot\bu^*$ に対してチェッカーボードモードを除去し，
-DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）を PPE 右辺として構成する．
-
-本節では，CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（第~\ref{sec:CCD}章，
-§~\ref{sec:ccd_elliptic}，式~\eqref{eq:L_CCD_2d_full}）を
-PPE ソルバーとして明示的に活用するための実装上の詳細を述べる．
-
-%% §8.2.1 (1D CCD-Laplacian 行列表現) および §8.2.2 (Neumann BC algbox) は
-%% 付録 C.3（\ref{app:ccd_elliptic}，\ref{sec:ccd_neumann_bc}）に移動（CHK-086）．
-%% ここでは要点のみ述べ，詳細は付録を参照する．
-
-CCD-Laplacian 行列 $\mathbf{L}_{\mathrm{CCD}}^{(x)} = \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R} \in \mathbb{R}^{N \times N}$
-の代数的導出（$\mathcal{R}$ の具体形，$\mathbf{E}_2$ 射影行列，スペクトル半径 $\approx 3.43/h^2$）は
-付録~\ref{app:ccd_elliptic} に示す．
-Neumann 境界条件（$p'_0 = 0$）の CCD ブロック Thomas 系への組み込み手順・変密度消滅・Dirichlet 比較表は
-付録~\ref{sec:ccd_neumann_bc} に示す．
+行列の代数的導出（$\mathbf{L}_{\mathrm{CCD}}^{(x)} = \mathbf{E}_2\,\mathcal{M}_{\mathrm{CCD}}^{-1}\,\mathcal{R}$，
+スペクトル半径 $\approx 3.43/h^2$）は付録~\ref{app:ccd_elliptic}，
+Neumann 境界条件の組み込み手順は付録~\ref{sec:ccd_neumann_bc} を参照のこと．
 
 \subsubsection{2次元変密度 CCD-Poisson 演算子の完全定式化}
 \label{sec:ccd_2d_full}
