@@ -10,6 +10,21 @@
 % -- Fonts --
 \setmainfont{Times New Roman}
 
+% -- Japanese fonts: suppress expected warnings during zxjafont loading --
+%    zxjafont W2: W2 not installed, W3 substitution is correct behavior
+%    xeCJK redef: expected when zxjafont overrides bxjsarticle defaults
+\ExplSyntaxOn
+\msg_redirect_name:nnn { xeCJK } { CJKfamily-redef } { none }
+\ExplSyntaxOff
+\makeatletter
+\let\zxjf@save@PkgWarnNL\PackageWarningNoLine
+\renewcommand{\PackageWarningNoLine}[2]{%
+  \def\zxjf@tmpa{zxjafont}\edef\zxjf@tmpb{#1}%
+  \ifx\zxjf@tmpa\zxjf@tmpb\else\zxjf@save@PkgWarnNL{#1}{#2}\fi}
+\usepackage[hiragino-pron]{zxjafont}
+\let\PackageWarningNoLine\zxjf@save@PkgWarnNL
+\makeatother
+
 % -- Section always starts on new page (skip if immediately after \part) --
 \usepackage{etoolbox}
 \newbool{afterpart}
@@ -21,7 +36,7 @@
 }
 
 % -- Algorithm environments --
-\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage[linesnumbered,ruled,vlined,norelsize]{algorithm2e}
 
 % -- Math / Figures / Tables --
 \usepackage{amsmath, amssymb, amsthm, mathtools}
@@ -40,8 +55,9 @@
 \usepackage{cleveref}
 \usepackage{enumitem}
 \usepackage{ragged2e}
-\usepackage{caption}
-\captionsetup{justification=RaggedRight, singlelinecheck=false}
+% -- Tell caption that bxjsarticle behaves like a standard class --
+\makeatletter\def\caption@documentclass{standard}\makeatother
+\usepackage[justification=RaggedRight, singlelinecheck=false]{caption}
 \usepackage{subcaption}
 \usepackage{microtype}
 \usepackage{nicefrac}
