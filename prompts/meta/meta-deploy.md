@@ -60,7 +60,7 @@ Read all seven meta files. Extract:
 
 ### 2a: Create Matrix Directory Structure
 
-Create these directories if absent. **Naming rule: NO leading numbers, NO dots in names.**
+Create these directories if absent. **Naming rule: NO leading numbers, NO dots in names. Canonical names are SINGULAR (e.g. `experiment/`, NOT `experiments/`).**
 
 ```sh
 # Vertical domain directories

@@ -175,6 +175,7 @@ independent agreement. If derivations conflict → STOP; escalate to user; do no
 | Coordinator / Gatekeeper | CodeWorkflowCoordinator (experiment orchestration); ExperimentRunner (Validation Guard for sanity) |
 | Specialist members | ExperimentRunner |
 | Storage (write — STRICT) | `experiment/`, `results/`, `docs/02_ACTIVE_LEDGER.md` |
+| **Directory name** | **`experiment/` (singular) — NEVER `experiments/`, `experint/`, or any variant** |
 | Storage (read — STRICT) | `interface/SolverAPI_vX.py` (L→E contract); `src/twophase/` (solver invocation only) |
 | Storage (FORBIDDEN write) | `src/`, `theory/`, `paper/`, `prompts/meta/` |
 | Interface contract in | `interface/SolverAPI_vX.py` (L→E — must have TestRunner PASS before E may run) |
