@@ -27,11 +27,11 @@
 3 & 物性値更新（$\rho, \mu$） & Extension PDE Laplace 精度で間接検証 & §\ref{sec:verify_gfm} \\
 4 & 曲率 $\kappa$（CCD） & 3 経路比較＋混合微分の間接検証 & §\ref{sec:verify_curvature} \\
 5 & Predictor（AB2+CN） & §\ref{sec:verification} で結合検証 & — \\
-6 & PPE（欠陥補正） & 反復回数 $k$ vs 精度，FD 比較 & §\ref{sec:verify_ppe} \\
+6 & PPE（欠陥補正） & $k$ vs 精度，Neumann BC，変密度 & §\ref{sec:verify_ppe}, \ref{sec:verify_ppe_neumann}, \ref{sec:verify_ppe_varrho} \\
 7 & Corrector & §\ref{sec:verification} で結合検証 & — \\
 \midrule
 基盤 & CCD 微分演算子 & 周期 BC 格子収束，非一様格子 GCL & §\ref{sec:verify_ccd_convergence}, \ref{sec:gcl_verification} \\
-基盤 & TVD-RK3 & ODE 時間精度 & §\ref{sec:verify_tvd_rk3} \\
+基盤 & TVD-RK3 / AB2 & ODE 時間精度 & §\ref{sec:verify_tvd_rk3}, \ref{sec:verify_ab2} \\
 \bottomrule
 \end{tabular}
 \end{table}
