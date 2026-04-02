@@ -28,7 +28,7 @@ CCD 法（第~\ref{sec:CCD}章）はこれを克服するため，
 本稿ではこれを Rhie--Chow 補間の代わりに
 DCCD 散逸機構（§~\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）で抑制する：
 DCCD フィルタが PPE 右辺の $\bnabla_h\!\cdot\bu^*$ に対してチェッカーボードモードを除去し，
-GFM ジャンプ補正との整合を保つ（式~\eqref{eq:gfm_ccd_div}）．
+DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）を PPE 右辺として構成する．
 
 本節では，CCD 演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（第~\ref{sec:CCD}章，
 §~\ref{sec:ccd_elliptic}，式~\eqref{eq:L_CCD_2d_full}）を
@@ -78,26 +78,30 @@ $\mathbf{L}_{\mathrm{CCD}}^{\rho}$（式~\eqref{eq:L_CCD_2d_kron}）として陽
 Matrix-Free 評価手順（各反復で Thomas 法を $x$・$y$ 方向に交互適用，$O(N_x N_y)$）は
 付録~\ref{sec:ccd_matrix_free_eval} を参照のこと．
 
-\subsubsection{GFM による界面処理と寄生流れの抑制}
+\subsubsection{CSF + Extension PDE による界面処理と寄生流れの抑制}
 \label{sec:ccd_balanced_force}
 
 CSF 体積力モデルでは，表面張力項 $\sigma\kappa\bnabla\psi$ と PPE 左辺の離散化を
-整合させる「Balanced-Force 条件」が必要であり，それでも CSF 近似誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$
-（$\varepsilon \sim h$）が寄生流れの物理的下限として残留した（CSF 時代の詳細は付録~\ref{app:csf_balanced_force} 参照）．
+整合させる「Balanced-Force 条件」が必要であり，CSF 近似誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$
+（$\varepsilon \sim h$）が寄生流れの物理的下限として残留する（詳細は付録~\ref{app:csf_balanced_force} 参照）．
 
-本稿では GFM（§~\ref{sec:gfm}）により界面を数学的不連続として扱う：
-Young--Laplace ジャンプ $[p]_\Gamma = \kappa/We$ を PPE 右辺に直接組み込むことで
-CSF 体積力を予測子ステップから完全に除去する．
+本稿では CSF 体積力（§~\ref{sec:csf}）を予測子ステップに維持し，Balanced-Force 条件（§~\ref{sec:balanced_force}）
+により圧力勾配と表面張力の離散化を整合させる：
+Young--Laplace ジャンプ $[p]_\Gamma = \kappa/We$ に対して，CCD 演算子 $D^{(1)}$ による
+圧力勾配と表面張力体積力 $(\kappa/We)D^{(1)}\psi$ に同一演算子を使用する
+（式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}）．
+Extension PDE（§~\ref{sec:extension_pde}）が PPE 求解前に圧力場を界面越しに滑らかに延長し，
+CCD ステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い場を参照できるようにする．
 これにより：
 \begin{itemize}
-  \item CSF 近似誤差 $\Ord{\varepsilon^2}$ による寄生流れの物理的下限が本質的に除去される．
-  \item PPE 右辺は DCCD フィルタ済み発散 $+$ GFM ジャンプ補正（式~\eqref{eq:gfm_ccd_div}）のみから構成される
-        （Rhie--Chow 補正は不要；§~\ref{sec:gfm}）．
+  \item CCD の Gibbs 振動が除去され，界面近傍の圧力勾配精度が大幅に向上する．
+  \item PPE 右辺は DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）のみから構成される
+        （Rhie--Chow Balanced-Force 補正はPredictor 段で適用；§~\ref{sec:rc_balanced_force}）．
   \item CCD 演算子が $p$・$p'$・$p''$ を同一スキームで評価するため，
         圧力勾配の離散化整合性が $\Ord{h^6}$ 精度で自動的に保たれる．
 \end{itemize}
 
-\begin{tcolorbox}[resultbox, title={GFM + CCD による寄生流れ抑制（FVM + CSF との比較）}]
+\begin{tcolorbox}[resultbox, title={Extension PDE + CCD による寄生流れ抑制（FVM + CSF との比較）}]
 \begin{center}
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{lll}
@@ -106,7 +110,7 @@ CSF 体積力を予測子ステップから完全に除去する．
 \hline
 FVM + CSF + Rhie-Chow & 数値離散化誤差 $+$ CSF 物理誤差 & $\Ord{h^2}$（CSF 律速） \\
 CCD + CSF + Balanced-Force & 数値成分低減，CSF 誤差残留 & $\Ord{\varepsilon^2} \approx \Ord{h^2}$（CSF 律速） \\
-\textbf{CCD + GFM + DCCD}（本稿） & CSF 誤差を除去，数値成分 $\Ord{h^6}$ & \textbf{界面処理精度律速} \\
+\textbf{CCD + CSF + Extension PDE + DCCD}（本稿） & Gibbs 振動を除去，数値成分 $\Ord{h^6}$ & \textbf{界面延長精度律速} \\
 \hline
 \end{tabular}
 \end{center}

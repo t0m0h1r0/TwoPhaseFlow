@@ -1,50 +1,65 @@
 % paper/sections/08d_gfm.tex
 %
-% §8.4  Ghost Fluid Method（GFM）による PPE 右辺への界面ジャンプ組み込み
+% §8.4  Extension PDE による界面越し場延長
 %
-%   界面ジャンプ条件 [p]_Γ = κ/We（§~\ref{sec:csf}，式~\eqref{eq:gfm_jump}）を
-%   PPE 右辺ベクトルに直接組み込む離散化を定式化する．
+%   Aslam (2004) の Extension PDE により，界面 Γ を跨いで圧力場を
+%   滑らかに延長し，CCD ステンシルの Gibbs 振動を除去する．
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Ghost Fluid Method (GFM) による鋭利な界面処理}
+\subsection{Extension PDE による界面越し場延長}
 \label{sec:gfm}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-GFM~\cite{Fedkiw1999} は界面 $\Gamma$ を数学的不連続面として扱い，
-§~\ref{sec:csf} の界面ジャンプ条件（式~\eqref{eq:gfm_jump}）を PPE の右辺に直接組み込む手法である．
-CSF 体積力は予測子ステップ（Step~5）から完全に除去される．代わりに，ジャンプ条件が PPE の右辺ベクトルへの補正項として組み込まれる．
-これにより，CSF モデル誤差 $\Ord{\varepsilon^2}$ が本質的に除去される．
+% NOTE: \label{sec:gfm} は §10 以降（検証実験）が参照するため変更不可．
+% 節の内容は Extension PDE に完全に置き換えた（GFM は廃止）．
 
-\subsubsection{ゴースト圧力置換と PPE 右辺補正}
+本節では，Aslam (2004)~\cite{Aslam2004} の \textbf{Extension PDE} を用いて
+界面 $\Gamma$ を跨いで圧力場を滑らかに延長する手法を述べる（詳細は §~\ref{sec:extension_pde} 参照）．
+CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ を用いて $\Ord{h^6}$ の1・2階微分を
+同時求解するが，界面を跨ぐ不連続場に適用すると Gibbs 振動を引き起こし精度が著しく低下する．
+Extension PDE はこれを PPE 求解前に解消する前処理として機能する．
 
-GFM では，界面を挟む格子点ペア $(i,\,i+1)$ を考える．相 1 側（$\phi_i > 0$）の PPE ステンシルで参照する相 2 ノード $i+1$ の圧力を，ジャンプ条件を加えた「ゴースト値」で置換する：
+\subsubsection{Extension PDE の定式化}
+
+スカラー場 $q$（圧力増分 $\delta p$ 等）を液相側（$\phi < 0$）から気相側（$\phi \ge 0$）へ滑らかに延長する
+偏微分方程式は（付録~\ref{sec:extension_pde} も参照）：
 \begin{equation}
-  \tilde{p}_{i+1}^{\text{ghost}} = p_{i+1} + [p]_\Gamma = p_{i+1} + \frac{\kappa_f}{We}
-  \label{eq:gfm_ghost_p}
+  \frac{\partial q}{\partial \tau} + \mathrm{sgn}(\phi)\,\hat{\bm{n}}\cdot\bnabla q = 0
+  \label{eq:extension_pde_main}
 \end{equation}
-ここで $\kappa_f$ は界面における曲率（フェイス補間値）である．この置換により，PPE の行列係数は変化せず，右辺ベクトル $\mathbf{b}$ に補正項が加わる形となる：
-\begin{equation}
-  b_i^{\mathrm{GFM}} = b_i - \left(\frac{1}{\rho}\right)_{i+1/2}^{\!\mathrm{harm}} \frac{\kappa_f}{We \cdot h^2}
-  \quad \text{（界面を右に持つセル $i$ に対して）}
-  \label{eq:gfm_rhs_correction}
-\end{equation}
-ここで $(1/\rho)_{i+1/2}^{\mathrm{harm}} = 2/(\rho_i + \rho_{i+1})$ は界面フェイスの調和平均密度逆数（PPE 演算子との整合性；付録~\ref{app:rhie_chow_full} 参照）であり，符号は界面の向き（$\phi_i > 0$ か $\phi_i < 0$ か）に従う．この補正は各軸方向について独立に適用する．
+ここで $\tau$ は仮想時間，$\hat{\bm{n}} = \bnabla\phi/|\bnabla\phi|$ は界面法線ベクトルであり，
+$\mathrm{sgn}(\phi) = +1$（気相）$/-1$（液相）が延長方向を定める．
+液相側（ソース相）の値を固定したまま，気相側（ターゲット相）を仮想時間前進させることで
+$\nabla q \cdot \hat{\bm{n}} = 0$（法線方向勾配ゼロ）の定常解へ収束する．
 
-\subsubsection{DCCD 散逸との組み合わせ：PPE 右辺の構成}
+\subsubsection{CCD との整合性}
 
-予測子ステップで CSF 体積力が除去されるため，$\bu^*$ の PPE 右辺は DCCD フィルタ済み（§~\ref{sec:dccd_decoupling}，$\varepsilon_d=1/4$）セル中心発散に GFM 補正を加えた形となる：
-\begin{equation}
-  q_h = \frac{1}{\Delta t}\left(D_x^{(1)} \tilde{u}^* + D_y^{(1)} \tilde{v}^*\right) + b^{\mathrm{GFM}}
-  \label{eq:gfm_ccd_div}
-\end{equation}
-ここで $\tilde{u}^*,\tilde{v}^*$ は DCCD フィルタ適用済み予測速度（式~\eqref{eq:dccd_ppe_rhs}），$b^{\mathrm{GFM}}$ は式~\eqref{eq:gfm_rhs_correction} の界面補正項である．
-Rhie--Chow 面速度補間は不要であり，チェッカーボード抑制は DCCD 散逸機構（§~\ref{sec:dccd_decoupling}）が担う．
+式~\eqref{eq:extension_pde_main} を仮想時間前進により解くと，延長後の場 $q_{\mathrm{ext}}$ は
+界面近傍で $C^\infty$ に近い滑らかな分布を持つ（詳細は §~\ref{sec:extension_pde} の図~\ref{fig:extension_schematic} 参照）．
+この滑らかな場 $q_{\mathrm{ext}}$ に対して CCD 演算子 $D^{(1)}, D^{(2)}$ を適用することで：
+\begin{itemize}
+  \item 界面直近まで $\Ord{h^6}$ 精度の圧力勾配 $\bnabla(\delta p)$ が得られる
+  \item 速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p)$ の離散化誤差が低減される
+  \item Balanced-Force 条件（§~\ref{sec:balanced_force}）と整合した圧力勾配評価が実現される
+\end{itemize}
 
-\subsubsection{CCD との数学的相性と今後の課題}
+\subsubsection{アルゴリズムへの組み込み}
 
-本節で示した GFM 定式化（式~\eqref{eq:gfm_ghost_p}--\eqref{eq:gfm_rhs_correction}）は，圧力のゴースト値置換のみを扱う．
-速度場を界面越しに滑らかに拡張する \textbf{Extension PDE}（$\partial q/\partial\tau \pm \mathbf{n}\cdot\bnabla q = 0$）を各相について解くことで，
-CCD のステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い滑らかな場を参照できるようになる．
-これにより\textbf{界面直近まで $\Ord{h^6}$ 精度が維持される}可能性がある．
-Extension PDE の実装は本稿の現スコープ外であり，今後の課題とする（§~\ref{sec:future_work}）．
+時刻ループ内での適用箇所（§~\ref{sec:algorithm}）：
+\begin{enumerate}
+  \item \textbf{PPE 求解前（Step 5c）：} 前時刻圧力 $p^n$ に Extension PDE を適用して $p^n_{\mathrm{ext}}$ を構築し，
+        IPC Predictor の $-\bnabla p^n$ 項に使用する
+  \item \textbf{Corrector 前（Step 7 前）：} 圧力増分 $\delta p$ に Extension PDE を適用して $\delta p_{\mathrm{ext}}$ を構築し，
+        速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する
+\end{enumerate}
+
+実装詳細（離散化，仮想時間刻み，イテレーション数）は §~\ref{sec:extension_pde} および
+\texttt{twophase.levelset.field\_extender.FieldExtender} クラスを参照のこと．
+
+% ─────────────────────────────────────────────────────────────────────────────
+% Backward-compatibility labels for §10 cross-references (GFM equations removed)
+% §10 以降が参照するため，ラベルのみ保持する（本文中の式は廃止）
+\phantomsection\label{eq:gfm_rhs_correction}%
+\phantomsection\label{eq:gfm_ccd_div}%
+% ─────────────────────────────────────────────────────────────────────────────
 
 % ═══════════════════════════════════════════════════════════════════════════════

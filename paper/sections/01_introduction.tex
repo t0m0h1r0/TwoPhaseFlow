@@ -15,10 +15,10 @@
 格子を細分化しても寄生流れの下限が消えない（§~\ref{sec:failure_modes}，§~\ref{sec:balanced_force}）．
 
 \textbf{本稿の技術的中核はこの問題の根本的解決にある．}
-Ghost Fluid Method（GFM，§~\ref{sec:gfm}）により界面を数学的不連続として扱い，
-Young--Laplace ジャンプ条件 $[p]_\Gamma = \sigma\kappa$ を PPE に直接組み込むことで，
-CSF 体積力を予測子ステップから完全に除去する．
-これにより CSF 近似誤差 $\Ord{\varepsilon^2}$ という寄生流れの物理的下限が本質的に排除される．
+Extension PDE（§~\ref{sec:extension_pde}）により圧力場を界面越しに滑らかに延長し，
+CCD ステンシルが界面近傍でも滑らかな場を参照できるようにすることで，
+Gibbs 振動を除去し圧力勾配精度を $\Ord{h^6}$ に維持する．
+これにより CSF + Balanced-Force の寄生流れ抑制がさらに強化される．
 さらに結合コンパクト差分法（CCD，$\Ord{h^6}$，第~\ref{sec:CCD}章）による高精度曲率計算と
 $\Ord{h^6}$ 精度の圧力求解により，数値離散化誤差成分を界面処理精度が律速する水準まで低減する．
 
@@ -182,8 +182,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         曲率 $\kappa$ の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
         デルタ関数的な集中力をどう離散化するかが精度を決定する．
 
-        \textbf{→ 本稿の対処：} GFM（Ghost Fluid Method，§~\ref{sec:gfm}）により
-        Young--Laplace ジャンプ条件を PPE に直接組み込み，CSF 近似誤差を除去する．
+        \textbf{→ 本稿の対処：} Extension PDE（§~\ref{sec:extension_pde}）により
+        圧力場を界面越しに滑らかに延長し，CCD ステンシルの Gibbs 振動を除去する．
         曲率 $\kappa$ は CCD 法による $\Ord{h^6}$ 精度評価（第~\ref{sec:CCD}章）で求める．
 
   \item \textbf{非圧縮条件の高精度維持}：
@@ -211,8 +211,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         離散レベルで $\Ord{h^2}$ の不整合誤差が体積力として残り，
         人工的な速度場を駆動する（§~\ref{sec:balanced_force} 参照）．
 
-        \textbf{→ 本稿の対処：} GFM（§~\ref{sec:gfm}）により CSF 体積力を除去し，
-        CSF 近似誤差 $\Ord{\varepsilon^2}$ という寄生流れの物理的下限を排除する．
+        \textbf{→ 本稿の対処：} Extension PDE（§~\ref{sec:extension_pde}）により CCD 圧力勾配の界面 Gibbs 振動を除去し，
+        CSF + Balanced-Force の寄生流れ抑制をさらに強化する．
         CCD 法（第~\ref{sec:CCD}章）による $\Ord{h^6}$ 精度の曲率計算と圧力求解により，
         数値離散化誤差成分を界面処理精度が律速する水準まで低減する．
 \end{enumerate}
@@ -233,7 +233,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 この誤差は圧力場と速度場を通じてフィードバックループを形成し，数値的な「流れ」として固定化する．
 具体的には，``圧力ジャンプ条件 $[p]=\sigma\kappa$'' を離散的に正確に満足しないために発生する．
 
-\textbf{本稿の対処：} GFM（§~\ref{sec:gfm}）により CSF 体積力を除去し寄生流れの物理的下限を排除する．
+\textbf{本稿の対処：} Extension PDE（§~\ref{sec:extension_pde}）により CCD 圧力勾配の Gibbs 振動を除去し，CSF + Balanced-Force の寄生流れ抑制をさらに強化する．
 CCD 法による高精度な $\kappa$ 計算（$\Ord{h^6}$）がこれを支える．
 
 \paragraph{失敗例2：質量損失（Mass Loss）}
@@ -338,18 +338,19 @@ Fran{\c{c}}ois ら~\cite{Francois2006} が VOF 枠組みで体系化した．
 寄生流れの物理的下限として残留し，格子精緻化だけでは本質的に除去できない
 （§~\ref{sec:balanced_force} に詳述）．
 
-第二は Ghost Fluid Method（GFM）により界面を数学的不連続として扱い，
-CSF 体積力を完全に除去するアプローチである．
+第二は Extension PDE（Aslam 2004）により圧力場を界面越しに滑らかに延長し，
+CCD ステンシルが界面近傍でも滑らかな場を参照できるようにするアプローチである．
 Desjardins ら~\cite{Desjardins2008} は GFM と高次 Level Set の組み合わせで
 密度不連続を界面で鋭く扱う手法を示した．
 
-本稿は後者の路線に立ち，GFM（§~\ref{sec:gfm}）により CSF 近似誤差の下限自体を排除する．
-本稿の新規性は，GFM を CCD 法（$\Ord{h^6}$）と組み合わせる点にある：
+本稿は CCD 高次精度との整合を重視し，Extension PDE（§~\ref{sec:extension_pde}）により CCD ステンシルが界面越しに滑らかな場を参照できるようにする．
+本稿の新規性は，Extension PDE を CCD 法（$\Ord{h^6}$）と組み合わせる点にある：
 CCD は同一3点ステンシルで $\Ord{h^6}$ の1・2階微分を提供し，
 曲率計算と圧力求解の両方を高精度化する．
 さらに Dissipative CCD（$\varepsilon_d = 1/4$）がコロケート格子のチェッカーボード不安定を
-スキーム内部で抑制することで，Rhie--Chow 補正を不要とし，
-PPE 右辺を CCD 発散 $+$ GFM ジャンプ補正のみから構成する
+スキーム内部で抑制し，CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
+表面張力と圧力勾配の離散化整合性を保ちながら，Extension PDE で圧力場を界面越しに延長して
+CCD の $\Ord{h^6}$ 精度を界面近傍まで維持する
 簡潔かつ数学的に整合した定式化を実現する（§~\ref{sec:dccd_decoupling}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -454,7 +455,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force（参考）
    & 4, 6 \\
 8  & 圧力 Poisson 方程式
-   & 変密度 PPE 導出，CCD 離散化，GFM 界面処理，境界条件・安定性
+   & 変密度 PPE 導出，CCD 離散化，Extension PDE 界面処理，境界条件・安定性
    & 7 \\
 9  & 完全アルゴリズム
    & 離散演算子マッピング・7ステップフロー・タイムステップ制御
@@ -482,7 +483,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
   \item \textbf{前提知識の確認：}
         単相 Navier--Stokes 方程式の基礎，Projection 法による圧力--速度分離，有限差分法の基本概念
   \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
-        One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}，歴史的導入）から GFM（§~\ref{sec:gfm}）への移行，CLS 法，Dissipative CCD 移流スキーム
+        One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}）+ Extension PDE（§~\ref{sec:extension_pde}）による CCD 高次精度の維持，CLS 法，Dissipative CCD 移流スキーム
   \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}--\ref{sec:pressure}章）：
         CCD 法，界面適合格子，Rhie--Chow 補正，変密度 PPE 求解
   \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：

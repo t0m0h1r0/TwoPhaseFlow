@@ -16,7 +16,7 @@
 
 まず，次元を持つ（アスタリスク $^*$ 付きの）変数を用いて，
 非圧縮性流体の運動量保存則（Navier--Stokes 方程式）を記述する．
-表面張力項 $\bm{f}_\sigma^*$ の離散化方針は§~\ref{sec:csf}で概説し，詳細は§~\ref{sec:gfm}（GFM）および付録~\ref{app:csf_full}（CSF）で述べる．
+表面張力項 $\bm{f}_\sigma^*$ の離散化方針は§~\ref{sec:csf}で概説し，詳細は§~\ref{sec:csf}および付録~\ref{app:csf_full}（CSF）で述べる．
 \begin{equation}
  \rho^*\!\left(\pd{\bu^*}{t^*}+\bu^*\cdot\bnabla^*\bu^*\right)
  =-\bnabla^* p^* + \bnabla^*\cdot\!\left[\mu^*(\bnabla^*\bu^*+(\bnabla^*\bu^*)^T)\right]
@@ -116,7 +116,7 @@ $Re, Fr, We$ の形の無次元係数に変換される．
     \]
     ここで，フルード数 $Fr \equiv U/\sqrt{gL}$ が現れる．
 
-    \item \textbf{表面張力項}:（無次元数 $We$ の導出には CSF 体積力形式 $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を用いるが，得られる $1/We$ は GFM のジャンプ条件~\eqref{eq:gfm_jump} にも共通する）
+    \item \textbf{表面張力項}:（無次元数 $We$ の導出には CSF 体積力形式 $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を用いるが，得られる $1/We$ は Young--Laplace ジャンプ条件~\eqref{eq:gfm_jump} にも共通する）
     \begin{align*}
       \sigma\kappa^*\bnabla^*\psi
       &= \sigma \left(\frac{1}{L}\kappa\right) \left(\frac{1}{L}\bnabla\psi\right)

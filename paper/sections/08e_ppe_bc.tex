@@ -37,10 +37,10 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         単純算術平均（$(\rho_L+\rho_R)/2$ の逆数）と比較して，
         調和平均 $2/(\rho_L+\rho_R)$ は界面フラックスに物理的根拠を持ち，
         条件数の過大評価を防ぐ（付録~\ref{app:fvm_face_coeff}）．
-  \item \textbf{GFM によるジャンプの明示的処理（§~\ref{sec:gfm}）：}
-        CSF 体積力を用いず Young--Laplace ジャンプ $[p]_\Gamma = \kappa/We$ を
-        右辺補正として組み込むことで，圧力場が界面で鋭利に保たれ，
-        反復ソルバーの残差フロアへの影響が最小化される．
+  \item \textbf{Extension PDE による界面越し圧力延長（§~\ref{sec:extension_pde}）：}
+        PPE 求解前に圧力場を Extension PDE で界面越しに滑らかに延長することで，
+        CCD ステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い場を参照でき，
+        Gibbs 振動が除去されて反復ソルバーの収束が安定化される．
   \item \textbf{ゲージ固定点の対称性（KL-11；§~\ref{sec:pinpoint}）：}
         ピン固定点を中心ノード $(N/2, N/2)$ に設定することで（コーナーピン禁止），
         高密度比条件下でもグローバル非対称性 $O(\|\mathrm{rhs}\|)$ を回避する

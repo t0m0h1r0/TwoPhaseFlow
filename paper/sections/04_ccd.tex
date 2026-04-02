@@ -41,11 +41,11 @@
 $p=2$（2次中心差分）では誤差が格子幅 $h$ に依存せず残留する（$h \to 0$ でゼロにならない）．
 $p=6$ の CCD 法では数値離散化誤差が $h^4$ に比例するため，格子を細分化するにつれて急速に減衰する．
 
-\textbf{注意（GFM + CCD 実装の場合）：}
-本稿では表面張力をGhost Fluid Method（GFM，§~\ref{sec:gfm}）で離散化し，
-$\bnabla p$ の評価に CCD 演算子を用いる（第~\ref{sec:pressure}章）．
-GFM はシャープインターフェース法であるため，CSF 型の正則化誤差 $\Ord{\varepsilon^2}$ を持たず，
-CCD の $\Ord{h^6}$ 微分精度が寄生流れ抑制に直接寄与する．
+\textbf{注意（Extension PDE + CCD 実装の場合）：}
+CCD 演算子は滑らかな入力場を前提として $\Ord{h^6}$ 精度を発揮する．
+本稿では圧力場に Extension PDE（§~\ref{sec:extension_pde}）を適用し，
+界面を跨いで滑らかに延長した圧力場に対して CCD 勾配 $\bnabla p$ を評価する（第~\ref{sec:pressure}章）．
+これにより CCD の高次精度が寄生流れ抑制に直接寄与する．
 定量的な閾値と格子収束テストの詳細は §~\ref{sec:grid_convergence} を参照のこと．
 \end{tcolorbox}
 
