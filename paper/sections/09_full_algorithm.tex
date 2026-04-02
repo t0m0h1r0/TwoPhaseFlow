@@ -209,7 +209,9 @@ $n \ge 1$ で AB2 に移行する（寄生根減衰により全体精度 $\Ord{\
 Step 5 完了後：対流項 $\mathcal{C}^n_{i,j}$（$x$ 成分：$u^n D_x^{(1)}u^n + v^n D_y^{(1)}u^n$，$y$ 成分同様）
 をバッファに保存し（AB2 の $n-1$ 項として次ステップで利用；追加メモリ：$2N_xN_y$ 実数値），
 速度場 $\bu^n$ は上書きして次の Corrector で $\bu^{n+1}$ に進める．
-陰的項に $\bm{u}^*$ が含まれるため，各方向を ADI スウィープで解く．
+上式は CN の「解きたい方程式」であり，$D_y^{(1)} u^*$ 等のクロス項も形式上は陰的側に現れる．
+実際の ADI スウィープでは各方向の対角項のみを陰的に解き，クロス項は $\bu^n$ で陽的に評価する
+（$R^{\text{explicit}}_x$ に含まれる）．
 ADI の陰的係数には完全な CCD 6次演算子（§~\ref{sec:time_int} の $\mathcal{L}_{\text{visc},x}$）の代わりに
 2次中心差分の分割係数 $\tilde\lambda^\pm \equiv \mu^\pm/\Delta x^2$ を用いる．
 
@@ -330,32 +332,37 @@ $p^{n+1}$ は次ステップの IPC Predictor で $p^n$ として使用される
   \]
   $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ ならば収束として反復終了 $\rightarrow$ Step 6.5
 
-  \item[(6.4)] \textbf{圧力の更新（陰的 Euler ステップ）：}
-  \[
-    \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_{\mathrm{CCD}}^{\rho}\bigr)\delta p^{m+1}
-    = \delta p^m + \Delta\tau\,q
-  \]
-  \textbf{スウィープ型実装（推奨，$O(\Delta\tau^2)$ 分割誤差あり；注意~\ref{warn:ppe_splitting}）：}
+  \item[(6.4)] \textbf{補正の求解（欠陥補正 Step 2，低次演算子 $L_L$ による方向分離スウィープ）：}
+
+  欠陥 $d^m = q - \mathcal{L}_{\mathrm{CCD}}^{\rho}\delta p^m$（Step 6.2--6.3 で算出）に対し，
+  低次演算子 $L_L = L_{L,x} + L_{L,y}$（2次 FD 三重対角，式~\eqref{eq:ll_split}）で
+  補正量を求解する（§~\ref{sec:dc_sweep}）：
 
   \medskip
   Step A（$x$ 方向 Thomas 法，各行 $j$ 独立）：
   \[
-    \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_{\mathrm{CCD}}^{\rho,x}\bigr)\,\tilde{p}^{\,\cdot,j}
-    = \delta p^{m,\cdot,j} + \Delta\tau\,q^{\cdot,j}
+    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,x}\bigr]\,\tilde{p}^{\,\cdot,j}
+    = d^{m,\cdot,j}
     \quad \forall\, j = 0,\dots,N_y-1
   \]
-  各行に対して CCD ブロック Thomas 法（付録~\ref{app:ccd_elliptic}）を適用；
   Neumann 境界は §~\ref{sec:ccd_neumann_bc} の手順で $\tilde{p}'_0 = 0$ を強制代入．
 
   Step B（$y$ 方向 Thomas 法，各列 $i$ 独立）：
   \[
-    \bigl(\mathbf{I} + \Delta\tau\,\mathcal{L}_{\mathrm{CCD}}^{\rho,y}\bigr)\,\delta p^{m+1,i,\cdot}
+    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,y}\bigr]\,\delta p_{\mathrm{corr}}^{i,\cdot}
     = \tilde{p}^{\,i,\cdot}
     \quad \forall\, i = 0,\dots,N_x-1
   \]
 
-  Krylov 型実装（分割誤差なし）：GMRES/CG 法で式~\eqref{eq:pseudo_linear} を直接解く；
-  matrix-free 積ベクトルに (6.2) の CCD スウィープを利用する（注意~\ref{warn:ppe_splitting} Approach 2）．
+  \textbf{解の更新（欠陥補正 Step 3）：}
+  $\delta p^{m+1} = \delta p^m + \omega\,\delta p_{\mathrm{corr}}$
+  （$\omega = \Delta\tau$；§~\ref{sec:dc_terminology}）．
+
+  \medskip
+  \noindent 注：Krylov 型実装（分割誤差なし）では GMRES/CG 法で
+  $\mathcal{L}_{\mathrm{CCD}}^{\rho}\delta p = q$ を直接解く；
+  matrix-free 積ベクトルに (6.2) の CCD スウィープを利用する
+  （注意~\ref{warn:ppe_splitting} Approach 2）．
 
   $m \leftarrow m+1$ として (6.2) へ戻る
 \end{enumerate}
