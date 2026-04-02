@@ -15,6 +15,9 @@
 線形系の求解には方向分離が容易な低次演算子 $L_L$（2次精度 FD）を用いて
 $\mathcal{O}(N^2)$ コストを維持する．
 
+§~\ref{sec:ccd_poisson_matrix} で CCD 空間離散化スキームを選択済みであり，
+本節はその CCD 系を解く\textbf{線形ソルバ}の選択に特化する（ソルバ比較は §~\ref{sec:dc_comparison}）．
+
 \noindent\textbf{なぜ $L_H$ を直接解かないのか：}
 $L_H$ は CCD ブロック Thomas 法に基づく密結合演算子であり，
 帯幅が広く $x$-$y$ 方向の結合が強いため ADI 的な方向分離が成立せず，
@@ -83,6 +86,13 @@ $y$ スウィープでは $N_x$ 本の $N_y$ 節点三重対角系が，
 1反復あたりの総計算量は $\mathcal{O}(N^2)$（$N = N_x = N_y$）であり，
 Krylov 法（GMRES 等）の1ステップと同オーダーだが Thomas 法の定数係数が小さく実測コストが低い．
 
+\noindent\textbf{注（緩和係数 $\omega$ と仮想時間刻み $\Delta\tau$ の等価性）：}%
+\label{sec:dc_terminology}%
+式~\eqref{eq:dc_three_step} の $\omega$ と式~\eqref{eq:dc_sweep_x} の $\Delta\tau$ は
+$[\frac{1}{\Delta\tau}\mathbf{I} - L_L]\,\delta p = d$ を整理すると
+$\delta p = \Delta\tau[\mathbf{I} - \Delta\tau L_L]^{-1}d$，すなわち $\omega = \Delta\tau$ の関係にある
+（厳密な導出は付録~\ref{app:dc_convergence_theory}）．
+
 \subsubsection{収束先の精度保証}
 \label{sec:dc_accuracy}
 
@@ -105,12 +115,13 @@ $k \geq 3$ で $\Ord{h^6}$ に漸近する
 反復行列のスペクトル解析（付録~\ref{app:dc_convergence_theory}）により，
 $\omega$ の最適値と収束速度が理論的に導かれる．
 
-\subsubsection{PPE 求解法の比較}
+\subsubsection{CCD-PPE 線形ソルバの比較}
 \label{sec:dc_comparison}
 
-表~\ref{tab:dc_ppe_methods} に本稿で使用可能な PPE 求解法を比較する．
-欠陥補正法を標準ソルバとして採用し，
-LGMRES/直接 LU はデバッグ・検証用途に限定する．
+表~\ref{tab:dc_ppe_methods} に，§~\ref{sec:ccd_poisson_matrix} で選択した CCD 空間離散化を前提として，
+使用可能な\textbf{線形ソルバ}を比較する
+（空間離散化スキーム自体の比較は §~\ref{sec:ccd_vs_fvm}）．
+欠陥補正法を標準ソルバとして採用し，LGMRES/直接 LU はデバッグ・検証用途に限定する．
 
 \begin{table}[htbp]
 \centering
@@ -120,56 +131,20 @@ LGMRES/直接 LU はデバッグ・検証用途に限定する．
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{lcccc}
 \toprule
-手法 & 空間精度 & 行列構築 & 1反復コスト & 用途 \\
+手法 & 空間精度 & 行列構築 & 行列記憶量 & 求解コスト \\
 \midrule
-BiCGSTAB（FVM） & $\Ord{h^2}$ & 必要 & $\mathcal{O}(N^2)$ & テスト専用 \\
-LGMRES + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & 検証用 \\
-直接 LU + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^3)$ & 検証用 \\
-\textbf{欠陥補正法（本稿標準）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & $\boldsymbol{\mathcal{O}(N^2)}$ & \textbf{本番} \\
+BiCGSTAB（FVM） & $\Ord{h^2}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
+LGMRES + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
+直接 LU + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^{2.5})$ & $\mathcal{O}(N^3)$（1回） \\
+\textbf{欠陥補正法（本稿標準）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & \textbf{—} & $\boldsymbol{\mathcal{O}(N^2)}\times k$\textbf{反復} \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-\noindent 注：欠陥補正法は右辺残差に $L_H$（CCD, $\Ord{h^6}$），
-左辺に $L_L$（FD, $\Ord{h^2}$）を用いる（§~\ref{sec:dc_algorithm}）．
-行列不要（matrix-free）で $\mathcal{O}(N^2)$/反復．
+\noindent 注：$k$ = 収束までの反復回数（実測で $k=3$--$5$，§~\ref{sec:dc_accuracy}）．
+直接 LU の行列記憶量は2次元スパース LU 因子の fill-in による（$\mathcal{O}(N^{2.5})$）．
+欠陥補正法は行列構築・保持が不要（matrix-free）であり，
 Thomas 係数の導出は付録~\ref{app:sweep_thomas_coeff}，
 収束理論は付録~\ref{app:dc_convergence_theory} を参照．
 \end{table}
 
-\subsubsection{用語の統一と対応関係}
-\label{sec:dc_terminology}
-
-本稿における欠陥補正法関連の用語を以下に整理する．
-
-\begin{table}[htbp]
-\centering
-\small
-\caption{欠陥補正法の用語定義と対応関係}
-\label{tab:dc_terminology}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lll}
-\toprule
-用語 & 定義 & 備考 \\
-\midrule
-欠陥（Defect） & $d^{(k)} = b - L_H\,p^{(k)}$ &
-  高精度演算子 $L_H$ で評価した残差 \\
-補正（Correction） & $\delta p^{(k+1)}$：$L_L\,\delta p = d$ の解 &
-  低次演算子 $L_L$ の逆作用 \\
-方向分離スイープ & $x$/$y$ 方向の逐次 Thomas 法 &
-  $L_L$ の因子分解実行手順 \\
-  （Directional Sweep） & （式~\eqref{eq:dc_sweep_x}--\eqref{eq:dc_sweep_y}） & \\
-仮想時間刻み & $\Delta\tau$：$1/\Delta\tau$ は $L_L$ の対角シフト &
-  欠陥補正の緩和係数 $\omega$ と \\
-  （Virtual Time Step） & （式~\eqref{eq:dc_sweep_x}） &
-  数学的に等価$^{\dagger}$ \\
-\bottomrule
-\end{tabular}
-
-\smallskip
-\noindent $^{\dagger}$
-式~\eqref{eq:dc_three_step} の $\omega$ と仮想時間法の $\Delta\tau$ は
-$[\frac{1}{\Delta\tau}\mathbf{I} - L_L]\,\delta p = d$ を $\delta p = \Delta\tau\,[\mathbf{I} - \Delta\tau L_L]^{-1} d$ と整理することで
-$\omega = \Delta\tau$ の関係にあることが確認できる
-（厳密な導出は付録~\ref{app:dc_convergence_theory}）．
-\end{table}
