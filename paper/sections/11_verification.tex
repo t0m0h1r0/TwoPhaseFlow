@@ -18,7 +18,7 @@
   \item[\textbf{本章}]
     \textbf{物理的整合性} — 組み上げた NS ソルバが物理法則を正しく記述するか
   \item[\textbf{第~\ref{sec:validation}章}]
-    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（GFM 統合後に実施）
+    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（Extension PDE 統合後に実施）
 \end{enumerate}
 第~\ref{sec:numerical_integrity}章では CCD 微分演算子の $\Ord{h^6}$ 精度，
 PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
@@ -31,14 +31,22 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 本章は\textbf{単相ナビエ・ストークスソルバ}（$\rho = \mathrm{const.}$）の物理的整合性を対象とする．
 高密度比（$\rho_l/\rho_g \gg 1$）における界面横断時の整合性，
 および二相流における質量保存性（密度加重）は，
-GFM 統合後の第~\ref{sec:validation}章にて定量的に検証する．
+Extension PDE 統合後の第~\ref{sec:validation}章にて定量的に検証する．
 
-検証は以下の 4 段階で，物理的複雑さを段階的に引き上げて構成される：
+検証は物理的複雑さを段階的に引き上げ，以下の6段階で構成される：
 \begin{enumerate}[noitemsep]
-  \item 力学的バランス——静止流体における重力・表面張力の釣合（§\ref{sec:force_balance}）
-  \item 保存則——運動エネルギー減衰と非圧縮条件の維持（§\ref{sec:ns_conservation}）
-  \item 総合精度——NS 方程式の時間・空間収束次数（§\ref{sec:ns_time_accuracy}）
-  \item 移流・圧力干渉——高レイノルズ数での対流不安定性に対する DCCD の効果（§\ref{sec:advection_pressure_coupling}）
+  \item \textbf{§~\ref{sec:force_balance}（力学的バランス）：}
+        静止流体における重力・表面張力の釣合．
+  \item \textbf{§~\ref{sec:ns_conservation}（保存則）：}
+        運動エネルギー減衰と非圧縮条件の維持．
+  \item \textbf{§~\ref{sec:ns_time_accuracy}（総合精度）：}
+        NS 方程式の時間・空間収束次数．
+  \item \textbf{§~\ref{sec:advection_pressure_coupling}（移流・圧力干渉）：}
+        高レイノルズ数での DCCD 安定化効果．
+  \item \textbf{§~\ref{sec:interface_crossing}（界面通過）：}
+        密度不連続を跨ぐ Corrector の整合性（二相統合後に実施）．
+  \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
+        全コンポーネントの精度を統合し，律速段階を特定する．
 \end{enumerate}
 
 \noindent
