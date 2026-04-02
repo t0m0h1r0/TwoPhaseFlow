@@ -63,7 +63,8 @@
 \caption{計算コンポーネント検証結果の総括}
 \label{tab:verification_summary}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{llll}
+\small
+\begin{tabular}{lp{0.14\linewidth}p{0.18\linewidth}l}
 \toprule
 コンポーネント & 期待精度 & 実測精度 & 備考 \\
 \midrule
@@ -74,11 +75,11 @@ DCCD 移流（不連続） & TV 低減 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 曲率（正弦波，$\phi$ 直接） & $\Ord{h^5}$ & $\Ord{h^{5.0}}$ & CCD 微分精度のベースライン \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ が上界 \\
 CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
-Extension PDE 場延長（1D） & $\Ord{h^1}$ & \textit{（実験値 TBD）} & 上風1次精度（数値実験は今後） \\
-Extension PDE + CSF（Laplace） & $\Ord{h^1}$ & \textit{（実験値 TBD）} & Young--Laplace ジャンプ（今後実施） \\
+Extension PDE 場延長（1D） & $\Ord{h^1}$ & {（実験値 TBD）} & 上風1次精度（数値実験は今後） \\
+Extension PDE + CSF（Laplace） & $\Ord{h^1}$ & {（実験値 TBD）} & Young--Laplace ジャンプ（今後実施） \\
 PPE（欠陥補正 $k{=}3$，Dirichlet） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ超収束 \\
 PPE（Neumann + ゲージ固定） & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ & 境界スキーム $\Ord{h^5}$ が律速 \\
-PPE（変密度 $\rho_l/\rho_g{=}1000$） & $\Ord{h^6}$ & \textit{（実験値 TBD）} & 条件数悪化時の収束確認 \\
+PPE（変密度 $\rho_l/\rho_g{=}1000$） & $\Ord{h^6}$ & {（実験値 TBD）} & 条件数悪化時の収束確認 \\
 TVD-RK3         & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$ & ODE テストで確認 \\
 AB2（初回 Euler 付き） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & 初回 Euler の影響は寄生根で減衰 \\
 \bottomrule
