@@ -16,17 +16,17 @@
 界面を跨ぐ速度連続性と圧力勾配の滑らかさを定量的に検証する．
 
 \noindent\textbf{評価対象：}
-GFM 不連続面処理（§\ref{sec:gfm}）による速度補正項 $\bnabla p / \rho$ の
-界面両側での整合性．
+Extension PDE（§\ref{sec:gfm}）による圧力延長後の速度補正項 $\bnabla p / \rho$ が
+界面両側で整合することの検証．
 
 \noindent\textbf{前提となる検証済み結果：}
 \begin{itemize}[noitemsep]
-  \item GFM Laplace 圧力跳び誤差 $1.8\%$（$N=128$）：§~\ref{sec:verify_gfm}（表~\ref{tab:gfm_laplace}）
-  \item CCD-PPE 変密度 Poisson 格子収束 $\Ord{h^7}$：§~\ref{sec:verify_ppe}
+  \item Extension PDE 場延長精度：§~\ref{sec:verify_extension_pde}（表~\ref{tab:gfm_laplace}；結果 TBD）
+  \item CCD-PPE 変密度 Poisson 格子収束：§~\ref{sec:verify_ppe_varrho}（結果 TBD）
 \end{itemize}
 
 \noindent\textbf{結論：}
 密度比 $10^3$ における界面通過時の速度連続性の定量的検証は，
-GFM を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
+Extension PDE を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）が
 この検証を包含する初の統合テストとなる．

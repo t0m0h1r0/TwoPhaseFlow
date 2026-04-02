@@ -49,8 +49,39 @@ DCCD & $0.05$ & 250 & $1.7091 \times 10^{1}$ & 安定 \\
 \end{tabular}
 \end{table}
 
-\noindent\textbf{結論：}
-$N=64$ では CCD・DCCD ともに安定であり，$E_k$ の差は $0.01\%$ 以下．
-DCCD フィルタは低解像度で過剰な数値散逸を導入しないことを確認した．
-DCCD の安定化効果は Nyquist 近傍のモードが励起される高解像度（$N \geq 128$）で
-顕在化する（§\ref{sec:dccd_dissipation_bench} の TV 抑制参照）．
+\noindent\textbf{結論（$N=64$）：}
+CCD・DCCD ともに安定であり，$E_k$ の差は $0.01\%$ 以下．
+DCCD フィルタは低解像度で過剰な数値散逸を導入しない．
+
+\paragraph{高解像度での DCCD 安定化効果}
+
+$N=64$ では Nyquist 近傍モードが十分に励起されず，
+CCD と DCCD の差が顕在化しない．
+$N \geq 128$ では非線形エネルギーカスケードにより格子スケール振動が成長し，
+DCCD の安定化効果が本質的となる（§\ref{sec:dccd_dissipation_bench} の TV 抑制参照）．
+
+\begin{table}[htbp]
+\centering
+\caption{二重剪断層テスト：高解像度での CCD vs DCCD（$\mathit{Re}=1000$，$T=0.5$）}
+\label{tab:highre_dccd_hires}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llcrrc}
+\toprule
+$N$ & スキーム & $\varepsilon_d$ & ステップ数 & $E_k(T)$ & 状態 \\
+\midrule
+\multirow{2}{*}{128}
+ & CCD  & $0.00$ & 1000 & \textit{（実験値 TBD）} & \textit{TBD} \\
+ & DCCD & $0.05$ & 1000 & \textit{（実験値 TBD）} & \textit{TBD} \\
+\midrule
+\multirow{2}{*}{256}
+ & CCD  & $0.00$ & 4000 & \textit{（実験値 TBD）} & \textit{TBD} \\
+ & DCCD & $0.05$ & 4000 & \textit{（実験値 TBD）} & \textit{TBD} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{期待される結論：}
+$N \geq 128$ で CCD（$\varepsilon_d=0$）はチェッカーボード振動が成長し不安定化する一方，
+DCCD（$\varepsilon_d=0.05$）は安定に計算を完了する．
+$E_k$ 差は $N=64$ と同程度（$< 0.1\%$）であり，物理的散逸を過度に増加させないことが
+確認される見込みである．
