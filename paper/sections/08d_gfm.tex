@@ -46,12 +46,12 @@
 $\hat{\bm{n}} = \bnabla\phi/|\bnabla\phi|$ は界面法線ベクトルであり，
 $\mathrm{sgn}(\phi) = +1$（気相）$/-1$（液相）が延長方向を定める．
 液相側（ソース相）の値を固定したまま，気相側（ターゲット相）を仮想時間前進させることで
-$\nabla q \cdot \hat{\bm{n}} = 0$（法線方向勾配ゼロ）の定常解へ収束する．
+$\bnabla q \cdot \hat{\bm{n}} = 0$（法線方向勾配ゼロ）の定常解へ収束する．
 
 \subsubsection{CCD との整合性}
 
 最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により構成された延長後の場 $q_{\mathrm{ext}}$ は，
-定常解 $\nabla q \cdot \hat{\bm{n}} = 0$ を $\Ord{h^6}$ 精度で満たすため，
+定常解 $\bnabla q \cdot \hat{\bm{n}} = 0$ を $\Ord{h^6}$ 精度で満たすため，
 界面近傍で $C^\infty$ に近い滑らかな分布を持つ（図~\ref{fig:extension_schematic}）．
 この滑らかな場 $q_{\mathrm{ext}}$ に対して CCD 演算子 $D^{(1)}, D^{(2)}$ を適用することで：
 \begin{itemize}
