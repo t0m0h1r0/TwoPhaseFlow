@@ -302,14 +302,13 @@ $L_L^{-1}L_H$ のスペクトル半径が 1 を超え，反復が発散する．
 これは \textbf{smoothed Heaviside による一括解法の本質的限界}であり，
 DC の反復構造や前処理の選択では解消できない．
 
-\noindent\textbf{解決方針：GFM による分相解法}
-この問題は§~\ref{sec:extension_pde}の最近接点 Hermite 補間に着想した
-Ghost Fluid Method（GFM, §~\ref{sec:gfm}）により解決が見込まれる．
-GFM では各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を解き，
-界面上のジャンプ条件 $[p] = \sigma\kappa$ を Hermite 延長で課す．
+\noindent\textbf{解決方針：分相 PPE 解法}
+各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
+界面上のジャンプ条件 $[p] = \sigma\kappa$ を最近接点 Hermite 補間
+（§~\ref{sec:field_extension}）で課すことが考えられる．
 これにより不連続係数を横切るステンシルが排除され，
 各相の CCD 離散化が $\Ord{h^6}$ の設計精度を回復する．
-GFM の実装と検証は今後の主要課題であり，§~\ref{sec:conclusion}で議論する．
+分相 PPE 解法の実装と検証は今後の主要課題であり，§~\ref{sec:conclusion}で議論する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{AB2 時間積分精度}

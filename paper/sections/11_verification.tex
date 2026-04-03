@@ -18,7 +18,7 @@
   \item[\textbf{本章}]
     \textbf{物理的整合性} — 組み上げた NS ソルバが物理法則を正しく記述するか
   \item[\textbf{第~\ref{sec:validation}章}]
-    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（GFM 統合後に実施）
+    \textbf{二相流ベンチマーク} — 公表参照解との定量比較
 \end{enumerate}
 第~\ref{sec:numerical_integrity}章では CCD 微分演算子の $\Ord{h^6}$ 精度，
 PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
@@ -40,9 +40,9 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
         CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$）と
         Galilean 不変性．
   \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
-        smoothed Heaviside の破綻閾値と GFM 必要性の数値的根拠．
+        smoothed Heaviside の破綻閾値と分相 PPE 解法の必要性の数値的根拠．
   \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
-        全コンポーネントの実測精度を統合し，律速段階と GFM 導入の展望を示す．
+        全コンポーネントの実測精度を統合し，律速段階と今後の展望を示す．
 \end{enumerate}
 
 \noindent
@@ -69,7 +69,7 @@ DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $
 静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$\\
 Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$\\
 PPE 破綻限界 & DC 発散の閾値 & 残差履歴 & 閾値の特定\\
-GFM 精度回復 & 密度比非依存 & 格子収束 & $\Ord{h^2}$ 確認\\
+分相 PPE 精度回復 & 密度比非依存 & 格子収束 & $\Ord{h^2}$ 確認\\
 \bottomrule
 \end{tabular}
 \end{table}

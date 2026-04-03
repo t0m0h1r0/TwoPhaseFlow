@@ -339,10 +339,10 @@ Fran{\c{c}}ois ら~\cite{Francois2006} が VOF 枠組みで体系化した．
 
 第二は Extension PDE（Aslam 2004）により圧力場を界面越しに滑らかに延長し，
 CCD ステンシルが界面近傍でも滑らかな場を参照できるようにするアプローチである．
-Desjardins ら~\cite{Desjardins2008} は GFM と高次 Level Set の組み合わせで
-密度不連続を界面で鋭く扱う手法を示した．
+Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set の組み合わせで
+密度不連続を界面で鋭く扱う手法を示しており，界面越し場延長の有効性を裏付けている．
 
-本稿は CCD 高次精度との整合を重視し，最近接点 Hermite 補間（§~\ref{sec:extension_pde}）により
+本稿は CCD 高次精度との整合を重視し，最近接点 Hermite 補間（§~\ref{sec:field_extension}）により
 CCD ステンシルが界面越しに $\Ord{h^6}$ 精度で滑らかな場を参照できるようにする．
 本稿の新規性は，Extension PDE の定常解を仮想時間前進を経由せず CCD の Hermite データ
 $(f,f',f'')$ から直接構成し，界面越し場延長を $\Ord{h}$（上風差分）から $\Ord{h^6}$ へ引き上げる点にある：
