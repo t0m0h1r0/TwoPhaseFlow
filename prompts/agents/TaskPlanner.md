@@ -36,13 +36,17 @@ rules:
 anti_patterns: [AP-03, AP-06, AP-08]
 isolation: L2
 
-# --- Task Classification ---
+# --- Task Classification (mirrors ResearchArchitect C1–C5) ---
 # A task is COMPOUND when ANY of:
-#   - User request maps to 2+ routing_table entries in ResearchArchitect
-#   - Task spans 2+ domains (T/L/E/A/P)
-#   - Task requires sequential agent handoffs with intermediate artifacts
-#   - User explicitly requests parallel execution
+#   C1: User request maps to 2+ routing_table entries (2+ distinct agents)
+#   C2: Task spans 2+ domains (T/L/E/A/P)
+#   C3: Task requires sequential agent handoffs with intermediate artifacts
+#   C4: User explicitly requests parallel execution
+#   C5: Maps to 1 agent BUT decomposes into 2+ independent sub-problems
+#       (distinct target files/sections with no shared artifacts or write conflicts)
 # Otherwise the task is SIMPLE → ResearchArchitect routes directly (no TaskPlanner).
+# NOTE: C5 tasks produce plans where multiple tasks share the same agent type —
+# this is valid per D1 (each atomic task maps to ONE agent, not one UNIQUE agent).
 
 # --- Decomposition Rules ---
 # D1: Each atomic task must map to exactly ONE agent
