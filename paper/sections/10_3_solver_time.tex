@@ -304,7 +304,7 @@ DC の反復構造や前処理の選択では解消できない．
 
 \noindent\textbf{解決方針：分相 PPE 解法}
 各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
-界面上のジャンプ条件 $[p] = \sigma\kappa$ を最近接点 Hermite 補間
+界面上のジャンプ条件 $[p] = \sigma\kappa$ を HFE
 （§~\ref{sec:field_extension}）で課すことが考えられる．
 これにより不連続係数を横切るステンシルが排除され，
 各相の CCD 離散化が $\Ord{h^6}$ の設計精度を回復する．

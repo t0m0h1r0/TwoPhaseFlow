@@ -11,7 +11,7 @@
 本章では，変密度 PPE の導出（§~\ref{sec:projection_derivation}），
 CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
-最近接点 Hermite 補間による界面越し場延長（§~\ref{sec:field_extension}），
+HFE（§~\ref{sec:field_extension}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を順に論じた．
 以下に，各コンポーネントの精度を整理する．
 
@@ -27,11 +27,11 @@ CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + 最近接点 Hermite 延長 & $\Ord{h^6}$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + HFE & $\Ord{h^6}$ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-界面越し場延長 & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
+HFE & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
 \midrule
 \textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
 \textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
@@ -40,7 +40,7 @@ Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\D
 
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
-全体の空間精度を律速する．界面越し場延長は CCD Hermite 補間（§~\ref{sec:extension_pde_disc}）
+全体の空間精度を律速する．HFE は CCD Hermite 補間（§~\ref{sec:extension_pde_disc}）
 により $\Ord{h^6}$ を達成しており，律速要因ではない．
 \end{table}
 
@@ -48,7 +48,7 @@ Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\D
 \begin{enumerate}
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        界面越し場延長は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により $\Ord{h^6}$ を達成し，
+        HFE は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により $\Ord{h^6}$ を達成し，
         律速要因ではない．全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
 
   \item \textbf{時間精度：}

@@ -8,9 +8,9 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 §\ref{sec:verify_spatial} で確認した CCD/DCCD 微分演算子を用いて構成される
-界面処理パイプライン（CLS 移流→再初期化→界面越し Hermite 延長）を検証する．
+界面処理パイプライン（CLS 移流→再初期化→HFE）を検証する．
 界面移流の形状保持性能と質量保存性（§\ref{sec:verify_cls_advection}），
-界面越し場延長の精度（§\ref{sec:verify_field_extension}），
+HFE の精度（§\ref{sec:verify_field_extension}），
 動的非一様格子上での保存型再マッピング（§\ref{sec:cls_conservation}）の順に確認する．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -90,12 +90,12 @@ DCCD 移流と再初期化の組み合わせは，質量保存誤差 $\Ord{10^{-
 $L_\infty$ 形状誤差は界面厚み $\varepsilon$ により律速される．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{界面越し場延長の精度（上風 vs Hermite）}
+\subsubsection{HFE の精度検証（上風 vs Hermite）}
 \label{sec:verify_field_extension}
 \label{sec:verify_gfm}% backward-compat label (§10+ cross-references)
 % ─────────────────────────────────────────────────────────────────────────────
 
-本節では 2 つのテストで界面越し場延長（§\ref{sec:field_extension}）の精度を確認する：
+本節では 2 つのテストで HFE（§\ref{sec:field_extension}）の精度を確認する：
 (a) 場延長の収束次数，(b) Young--Laplace ジャンプの再現精度．
 
 % ── テスト (a): 場延長の収束次数 ──────────────────────────────────────────────
@@ -104,7 +104,7 @@ $L_\infty$ 形状誤差は界面厚み $\varepsilon$ により律速される．
 
 \noindent\textbf{目的：}
 上風差分ベースライン（Aslam~2004）が $\Ord{h^1}$ であることを確認し，
-最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）と同一条件で比較する．
+HFE（§~\ref{sec:extension_pde_disc}）と同一条件で比較する．
 本テストは CSF モデルの滑らか圧力（連続，ジャンプなし）を想定した設定であり，
 Hermite 補間が精度を発揮できる正しい適用事例である．
 
@@ -148,7 +148,7 @@ $N$ & $L^\infty$ 誤差 & 次数 & & $L^\infty$ 誤差 & 次数 \\
 \centering
 \includegraphics[width=0.72\linewidth]{figures/hermite_extension_convergence}
 \caption{場延長収束テスト．上風差分（赤）は $\Ord{h^1}$ で収束．
-最近接点 Hermite 補間（青）は $\Ord{h^7}$（$\geq \Ord{h^6}$）で収束し，
+HFE（青）は $\Ord{h^7}$（$\geq \Ord{h^6}$）で収束し，
 $N=128$ でほぼ機械精度に到達する．}
 \label{fig:hermite_extension_convergence}
 \end{figure}
@@ -157,7 +157,7 @@ $N=128$ でほぼ機械精度に到達する．}
 上風差分ベースライン実装において $\Ord{h^1}$ の正確な1次収束を確認した．
 誤差の支配要因は，上風スキームが界面値を最近傍ソースセル $q(0.5-h)$ からサンプリングする
 $\Ord{h}$ 誤差（$q(0.5-h) - q(0.5) = h\,q'(0.5) + \Ord{h^2}$）である．
-最近接点 Hermite 補間は CCD の $(f, f', f'')$ データを用いて $x_\Gamma = 0.5$ を
+HFE は CCD の $(f, f', f'')$ データを用いて $x_\Gamma = 0.5$ を
 直接補間し，$\Ord{h^6}$（実測 $\Ord{h^7}$）精度を達成した（表~\ref{tab:field_extension_convergence}，図~\ref{fig:hermite_extension_convergence}）．
 上風差分との誤差比は $N=128$ で $\sim 10^5$ 倍の改善である．
 
@@ -234,7 +234,7 @@ $N = 32$ の破綻は，界面厚み $\varepsilon = 1.5h$ に対して半径 $R 
 $N = 64 \to 128$ での収束次数 $\approx 5.8$ は，
 CCD 曲率（$\Ord{h^5}$）と CSF ボリューム力の高次精度が寄与していることを示唆する．
 圧力跳び精度の律速は CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）であり，
-テスト (a) で示した上風差分の $\Ord{h^1}$ 制限は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）に
+テスト (a) で示した上風差分の $\Ord{h^1}$ 制限は HFE（§~\ref{sec:extension_pde_disc}）に
 切り替えることで解消済みである．
 
 % ─────────────────────────────────────────────────────────────────────────────

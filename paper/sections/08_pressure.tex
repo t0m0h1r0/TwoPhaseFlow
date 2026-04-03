@@ -16,9 +16,9 @@
   \item \textbf{§~\ref{sec:defect_correction_main}（欠陥補正法）}：
         「高精度で評価し，低精度で解く」原理により $\Ord{h^6}$ 精度を保ったまま
         $\mathcal{O}(N^2)$ コストで求解する．
-  \item \textbf{§~\ref{sec:field_extension}（界面越し場延長）}：
+  \item \textbf{§~\ref{sec:field_extension}（Hermite 場延長法）}：
         Young--Laplace 不連続による CCD の Gibbs 振動を，
-        最近接点 Hermite 補間（$\Ord{h^6}$）による界面越し場延長で PPE 求解前に除去する．
+        Hermite 場延長法（HFE, $\Ord{h^6}$）で PPE 求解前に除去する．
   \item \textbf{§~\ref{sec:ppe_bc_stability}（境界条件と安定性）}：
         全周 Neumann 境界の零モード対策と高密度比における条件数を整理する．
 \end{enumerate}
@@ -86,10 +86,10 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
   \item \textbf{外力 $\bm{F}_\text{ext}^{n+1}$} には重力項と CSF 体積力
         $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方が含まれる
         （式~\eqref{eq:NS_dimless_cls}；CSF は Predictor に保持）．
-  \item \textbf{$\bnabla p^n$ の評価前} に界面越し Hermite 延長（§~\ref{sec:field_extension}，Step 5c）で
+  \item \textbf{$\bnabla p^n$ の評価前} に HFE（§~\ref{sec:field_extension}，Step 5c）で
         $p^n_{\mathrm{ext}}$ を構築する．
   \item \textbf{$\bnabla(\delta p)$ の評価前} に
-        界面越し Hermite 延長（§~\ref{sec:field_extension}，Step 7 前処理）で $\delta p_{\mathrm{ext}}$ を構築する．
+        HFE（§~\ref{sec:field_extension}，Step 7 前処理）で $\delta p_{\mathrm{ext}}$ を構築する．
   \item \textbf{$\rho^{n+1}$} は CLS 移流（§~\ref{sec:algorithm}，Step 1）で事前に更新済み．
   \item \textbf{時間離散化：} 本節の導出は Backward Euler 形式で統一したが，
         対流項は実装で AB2（式~\eqref{eq:predictor_ab2_ipc}），
