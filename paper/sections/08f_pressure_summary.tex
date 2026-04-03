@@ -31,25 +31,25 @@ PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + Extension PDE
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-Extension PDE（界面越し場延長） & CSF + Extension PDE（Aslam 2004） & $\Ord{h^1}$（界面近傍†） & — \\
+界面越し場延長 & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
 \midrule
-\textbf{全体（空間律速：Extension PDE 界面延長†）} & & $\boldsymbol{\Ord{h^1}}$（界面近傍） & — \\
+\textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
 \textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-\noindent†\ Extension PDE（§~\ref{sec:extension_pde}）により界面直近の圧力場を滑らかに延長するが，
-界面近傍（1–2格子幅以内）では Extension PDE の収束次数（一次精度，上風有限差分）が
-全体の空間精度を律速する．平滑領域では全コンポーネント $\Ord{h^5}$ 以上が確保される．
+\noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
+全体の空間精度を律速する．界面越し場延長は CCD Hermite 補間（§~\ref{sec:extension_pde_disc}）
+により $\Ord{h^6}$ を達成しており，律速要因ではない．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
 \begin{enumerate}
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        Extension PDE（§~\ref{sec:extension_pde}）により界面直近の CCD Gibbs 振動を除去したが，
-        Extension PDE 自体の一次精度（上風 FD）が界面近傍の律速段階となる．
+        界面越し場延長は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により $\Ord{h^6}$ を達成し，
+        律速要因ではない．全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
 
   \item \textbf{時間精度：}
         AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．

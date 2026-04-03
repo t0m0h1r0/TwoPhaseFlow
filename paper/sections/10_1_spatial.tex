@@ -164,10 +164,23 @@ $N$ & A: $\phi$ 直接 & 次数 & B: ロジット経由 & 次数 & C: $\psi$ 直
 円形界面（$R = 0.25$）では経路 B の収束は $\Ord{h^1}$ にとどまり，
 界面厚み $\varepsilon = \Ord{h}$ が精度の上界を規定した．
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/curvature_3path}
+\caption{曲率 $\kappa$ の格子収束：3 経路比較．
+(a) 円形界面（$R=0.25$，$\kappa_\mathrm{exact}=4$）：
+経路 A（$\phi$ 直接）は $\Ord{h^5}$ を維持するが，
+経路 B（ロジット逆変換）と C（$\psi$ 直接）は界面厚み $\varepsilon=\Ord{h}$ が精度を律速する．
+(b) 正弦波状界面：経路 A/B は $N \leq 64$ で同等精度を示す．}
+\label{fig:curvature_3path}
+\end{figure}
+
 \noindent\textbf{結論：}
 本稿では経路 B を採用する．
-Extension PDE（§\ref{sec:gfm}）の上風1次精度 $\Ord{h^1}$ が界面近傍で支配的であるため，
-曲率計算経路の選択は全体精度に影響しない．
+最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により
+Extension PDE は $\Ord{h^6}$ を達成するため，界面近傍の精度律速は
+CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）となる．
+曲率計算経路の選択は CSF 律速の下では全体精度に影響しない．
 なお，曲率の計算式（式~\eqref{eq:curvature_2d}）は
 $\kappa = (\phi_{xx}\phi_y^2 - 2\phi_{xy}\phi_x\phi_y + \phi_{yy}\phi_x^2)/|\bnabla\phi|^3$
 であり，混合微分 $D_{xy}^{(11)}$ を含む．
