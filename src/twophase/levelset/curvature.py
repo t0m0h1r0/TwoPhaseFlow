@@ -86,7 +86,7 @@ class CurvatureCalculator(ICurvatureCalculator):
     dccd_eps : DCCD filter strength (0 = no filter, default 0.05)
     """
 
-    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps: float,
+    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps,
                  dccd_eps: float = _DCCD_EPS_D):
         self.xp = backend.xp
         self.ccd = ccd

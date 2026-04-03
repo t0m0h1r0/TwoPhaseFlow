@@ -97,7 +97,11 @@ def invert_heaviside(xp, psi, eps: float):
     """
     import numpy as np
 
-    phi_max = eps * np.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
+    # Broadcast eps to the shape of psi so that both scalar and 2-D
+    # array eps (local grid-spacing-based ε_field) work uniformly.
+    eps_arr = xp.asarray(eps) * xp.ones_like(psi)
+
+    phi_max = eps_arr * np.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
 
     phi = xp.empty_like(psi, dtype=float)
 
@@ -106,14 +110,14 @@ def invert_heaviside(xp, psi, eps: float):
     sat_high = psi >= 1.0 - _DELTA_CLAMP
     standard = ~sat_low & ~sat_high
 
-    # Step 2: saturated regions -> +/- phi_max
-    phi[sat_low] = -phi_max
-    phi[sat_high] = phi_max
+    # Step 2: saturated regions -> +/- phi_max (element-wise for array eps)
+    phi[sat_low] = -phi_max[sat_low]
+    phi[sat_high] = phi_max[sat_high]
 
     # Step 3: standard region -> analytic logit
     if xp.any(standard):
         psi_std = psi[standard]
-        phi[standard] = eps * xp.log(psi_std / (1.0 - psi_std))
+        phi[standard] = eps_arr[standard] * xp.log(psi_std / (1.0 - psi_std))
 
     # Newton fallback (eq. newton_inversion, section 3b eq.66):
     # For points near saturation boundary where analytic inversion
@@ -124,11 +128,12 @@ def invert_heaviside(xp, psi, eps: float):
     if xp.any(near_sat):
         phi_ns = phi[near_sat]
         psi_ns = psi[near_sat]
+        eps_ns = eps_arr[near_sat]
         for _ in range(2):
-            H_k = 1.0 / (1.0 + xp.exp(-phi_ns / eps))
-            dH_k = (1.0 / eps) * H_k * (1.0 - H_k)
+            H_k = 1.0 / (1.0 + xp.exp(-phi_ns / eps_ns))
+            dH_k = (1.0 / eps_ns) * H_k * (1.0 - H_k)
             phi_ns = phi_ns - (H_k - psi_ns) / dH_k
-        phi[near_sat] = xp.clip(phi_ns, -phi_max, phi_max)
+        phi[near_sat] = xp.clip(phi_ns, -phi_max[near_sat], phi_max[near_sat])
 
     return phi
 
