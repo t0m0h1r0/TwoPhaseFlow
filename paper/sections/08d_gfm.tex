@@ -28,6 +28,9 @@
         GFM では各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
         界面のジャンプ条件 $[p] = \sigma\kappa$ を本節の Hermite 補間で課すことで，
         不連続係数を横切るステンシルを排除し CCD の $\Ord{h^6}$ 精度を回復する．
+        本節は Hermite 補間による界面越し場延長の実現に専念し，
+        GFM 分相解法の破綻挙動の定量的記録は §~\ref{sec:varrho_ppe_limitation} に，
+        実装は今後の課題として §~\ref{sec:future_work} に記す．
 \end{enumerate}
 
 \subsubsection{背景：Extension PDE の定常解と最近接点 Hermite 補間}

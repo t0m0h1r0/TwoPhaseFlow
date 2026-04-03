@@ -193,7 +193,8 @@ $N \geq 256$ で負の収束次数が観測されるのは，遷移層幅 $\vare
 実用上は CSF の $\delta_\varepsilon$ 重みにより飽和領域の曲率誤差は抑制されるが，極端な高解像度では Path B の精度天井に留意が必要である．
 
 この高解像度での発散は，logit 飽和域で CCD 微分が高周波振動を拾うことに起因する．
-対策として，CCD 微分の出力に DCCD 散逸フィルタ（$\varepsilon_d = 0.05$，§~\ref{sec:dccd_filter_theory}）を適用する．
+対策として，\textbf{経路 B 専用}の後処理として CCD 微分の出力に DCCD 散逸フィルタ
+（$\varepsilon_d = 0.05$，§~\ref{sec:dccd_filter_theory}）を適用する．
 表~\ref{tab:curvature_dccd_comparison} に結果を示す．
 
 \begin{table}[htbp]
