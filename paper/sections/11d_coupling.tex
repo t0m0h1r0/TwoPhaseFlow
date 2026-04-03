@@ -86,6 +86,76 @@ $N = 128$，$\rho_l/\rho_g = 5$ で寄生流れの成長比が 5.3 に達する
 §~\ref{sec:interface_crossing} の破綻限界テストと整合する．
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{HFE と smoothed Heaviside の適合性}
+\label{sec:hfe_smoothed_heaviside}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{目的：}
+§~\ref{sec:twophase_static_longterm} の静止液滴テストに
+HFE（§~\ref{sec:field_extension}）を組み込み，
+圧力勾配 $\bnabla p$ の評価精度と寄生流れへの効果を検証する．
+§~\ref{sec:verify_field_extension} ではコンポーネント単体で
+$\Ord{h^6}$（1D）/$\Ord{h^3}$（2D）の精度を確認したが，
+本テストは NS パイプライン内での動的効果を測定する．
+
+\noindent\textbf{手順とパラメタ：}
+§~\ref{sec:twophase_static_longterm} と同一条件（$R=0.25$，$\mathit{We} = 10$，
+非増分投影法，200 ステップ）で以下の 2 条件を比較する：
+\begin{enumerate}[noitemsep]
+  \item \textbf{HFE OFF}：PPE 解 $p$ に CCD 微分を直接適用
+  \item \textbf{HFE ON}：$p$ をソース相（液体側）から Hermite 延長した後に CCD 微分
+\end{enumerate}
+
+\noindent\textbf{結果：}
+
+\begin{table}[htbp]
+\centering
+\caption{HFE ON/OFF 比較（静止液滴，非増分投影，200 ステップ）}
+\label{tab:hfe_ns_effect}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{rrrccc}
+\toprule
+$\rho_l/\rho_g$ & $N$ & HFE &
+$\|\bu_{\mathrm{para}}\|_\infty^{\mathrm{peak}}$ &
+$\Delta p$ 相対誤差 \\
+\midrule
+2 & 64  & ---  & $2.9 \times 10^{-4}$ & $1.2\%$ \\
+2 & 64  & ON   & $9.4 \times 10^{0}$  & $916\%$ \\
+2 & 128 & ---  & $6.3 \times 10^{-4}$ & $1.0\%$ \\
+2 & 128 & ON   & $9.7 \times 10^{0}$  & $370\%$ \\
+\midrule
+5 & 64  & ---  & $1.7 \times 10^{-4}$ & $1.2\%$ \\
+5 & 64  & ON   & $9.6 \times 10^{0}$  & $916\%$ \\
+5 & 128 & ---  & $6.3 \times 10^{-4}$ & $1.0\%$ \\
+5 & 128 & ON   & $9.3 \times 10^{0}$  & $367\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{結論（HFE は smoothed Heaviside 圧力場に有害）：}
+HFE を適用すると寄生流れが 4 桁以上増大し，Laplace 圧精度が完全に破綻する．
+これは smoothed Heaviside PPE 解法の圧力場が
+$\varepsilon$-正則化により\textbf{既に滑らか}であることに起因する：
+CCD 微分演算子は滑らかな圧力遷移を正しく捕捉できるため，
+HFE による延長は改善をもたらさない．
+むしろ HFE がターゲット相の圧力値をソース相の値で上書きすることで
+界面近傍に人為的な勾配不連続が導入され，逆効果となる．
+
+\noindent
+この結果は HFE の適用範囲を明確に規定する：
+\begin{enumerate}[noitemsep]
+  \item \textbf{smoothed Heaviside + 非増分投影}：
+        HFE は不要（有害）．圧力場は $\varepsilon$-正則化で滑らか．
+  \item \textbf{増分投影法（IPC）}：
+        $p^n$ は Young--Laplace ジャンプ $[p] = \sigma\kappa$ を持つため，
+        HFE による延長が\textbf{必須}（§~\ref{sec:coupling_limitations}）．
+  \item \textbf{分相 PPE 解法}：
+        各相で定密度 PPE を解くため圧力場は相ごとに滑らかだが，
+        界面上のジャンプ条件を HFE で課す必要がある
+        （§~\ref{sec:split_ppe_recovery}）．
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Galilean 不変性テスト}
 \label{sec:galilean_invariance}
 % ─────────────────────────────────────────────────────────────────────────────
