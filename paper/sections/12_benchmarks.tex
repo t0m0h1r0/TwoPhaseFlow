@@ -3,9 +3,9 @@
 % §12  二相流ベンチマーク（Validation）
 %
 %   §12.1: Rayleigh–Taylor 不安定性（σ=0）— 変密度 NS の動的能力
-%   §12.2: 静止液滴テスト — Laplace 圧と寄生流れの格子収束
-%   §12.3: 毛細管波 — Prosperetti 解析解との比較
-%   §12.4: 気泡上昇 — Hysing et al. (2009) との比較
+%   §12.2: 静止液滴テスト — CSF + CCD 高次曲率による Laplace 圧均衡
+%   §12.3: HFE 除去実験 — 界面越し場延長が寄生流れに与える効果
+%   §12.4: CSF 一括解法の動的限界と今後の展望
 
 \section{二相流ベンチマーク}
 \label{sec:validation}
@@ -15,30 +15,32 @@
 % 導入：§11 からの接続
 % ─────────────────────────────────────────────────────────────────────────────
 
-第~\ref{sec:verification}章の物理的整合性検証により，以下が確立された：
+第~\ref{sec:verification}章の物理的整合性検証により，
+現行ソルバ（CSF + smoothed Heaviside 一括解法 + HFE）の
+能力と限界が確立された：
 \begin{enumerate}[noitemsep]
   \item 単相 NS ソルバは設計精度を完全に実現している
         （Kovasznay $\Ord{h^{3.96}}$，TGV $\Ord{\Delta t^2}$）
-  \item smoothed Heaviside 一括解法は
-        移動界面＋表面張力（§~\ref{sec:galilean_invariance}）および
-        $\rho_l/\rho_g \geq 10$（§~\ref{sec:varrho_grid_convergence}）で破綻する
-  \item 分相 PPE 解法は密度比非依存の $\Ord{h^2}$ を
-        コンポーネントレベルで実証済みである（§~\ref{sec:split_ppe_recovery}）
+  \item 低密度比（$\rho_l/\rho_g \leq 5$）かつ静止界面の二相流は
+        200 ステップ以上安定に動作する（§~\ref{sec:twophase_static_longterm}）
+  \item $\rho_l/\rho_g \geq 10$ では変密度 PPE が発散し，
+        移動界面＋表面張力（$\sigma > 0$）では IPC の
+        $\bnabla p^n$ 評価が 2 ステップで破綻する（§~\ref{sec:coupling_limitations}）
 \end{enumerate}
 
 \noindent
-本章では HFE（§~\ref{sec:field_extension}）を組み込んだ NS ソルバに対し，
-物理ベンチマークによる定量的検証（validation）を行う．
+本章ではこの能力範囲内で物理ベンチマークによる定量的検証を行い，
+HFE（§~\ref{sec:field_extension}）の動的効果を実証する．
 ベンチマークは物理的複雑さの段階的引き上げにより 4 テストで構成される：
 \begin{enumerate}[noitemsep]
   \item \textbf{§~\ref{sec:val_rt}（RT 不安定，$\sigma = 0$）：}
-        変密度 NS ソルバの大変形追跡能力を検証する基盤テスト
+        変密度 NS ソルバの大変形追跡能力
   \item \textbf{§~\ref{sec:val_static_drop}（静止液滴）：}
-        Laplace 圧精度と寄生流れ抑制を高密度比で検証
-  \item \textbf{§~\ref{sec:val_capwave}（毛細管波）：}
-        動的界面上の表面張力連成を Prosperetti 解析解で定量評価
-  \item \textbf{§~\ref{sec:val_rising_bubble}（気泡上昇）：}
-        全物理機構が連成する実問題での総合ベンチマーク
+        CSF + CCD 高次曲率による Laplace 圧と寄生流れの格子収束
+  \item \textbf{§~\ref{sec:val_hfe_ablation}（HFE 除去実験）：}
+        界面越し場延長が寄生流れに与える効果の定量的実証
+  \item \textbf{§~\ref{sec:val_density_limit}（密度比限界）：}
+        CSF 一括解法の動的破綻閾値と分相 PPE 解法の展望
 \end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -50,9 +52,8 @@
 \noindent\textbf{目的：}
 密度差と重力による界面不安定性を追跡し，
 変密度 NS ソルバが大変形を伴う非線形現象を正しく記述することを検証する．
-$\sigma = 0$ であるため界面越し場延長の圧力ジャンプ処理は不要であり，
-§~\ref{sec:galilean_invariance} テスト A（Galilean 不変性，$\sigma = 0$）の
-物理的帰結として位置付けられる．
+$\sigma = 0$ であるため HFE の圧力ジャンプ処理は不要であり，
+CLS 界面追跡と変密度 PPE の基盤能力検証として位置付けられる．
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
@@ -115,65 +116,34 @@ $t > 1.5$ の非線形段階では
 DCCD 移流の散逸に起因する実用上十分な精度である．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{静止液滴テスト（高密度比）}
+\subsection{静止液滴テスト}
 \label{sec:val_static_drop}
 \label{sec:bench_droplet}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \noindent\textbf{目的：}
-分相 PPE 解法（§~\ref{sec:split_ppe_recovery}）を組み込んだ NS ソルバで
-高密度比（$\rho_l/\rho_g = 1000$）の静止液滴を計算し，
-(1)~Laplace 圧精度，(2)~寄生流れの格子収束，
-(3)~密度比非依存性を検証する．
+CSF 表面張力モデルと CCD 高次曲率（$\Ord{h^6}$）の組み合わせによる
+Laplace 圧精度と寄生流れの格子収束を定量化する．
 
-§~\ref{sec:twophase_static_longterm} では smoothed Heaviside で
-$\rho_l/\rho_g \leq 5$ に限定されていた．
-§~\ref{sec:varrho_grid_convergence} で $\rho_l/\rho_g \geq 10$ の
-PPE 発散が確認されており，本テストは
-分相 PPE 解法がこの限界を除去することの\textbf{最初の動的実証}となる．
+\noindent\textbf{§~\ref{sec:twophase_static_longterm} との関係：}
+§~\ref{sec:twophase_static_longterm} では多ステップ安定性を
+$\rho_l/\rho_g = 2, 5$ で確認した．
+本テストではその格子収束特性をより細かい格子列で評価する．
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
   \item 正方形領域 $[0,1]^2$，中心 $(0.5, 0.5)$ に $R = 0.25$ の静止液滴
-  \item $\rho_l/\rho_g = 10, 100, 1000$；$\mathit{We} = 1$；壁面 BC；重力なし
-  \item 分相 PPE＋HFE IPC＋欠陥補正法
-  \item 格子：$N = 32, 64, 128$；200 ステップ
+  \item $\rho_l/\rho_g = 2$；$\mathit{We} = 10$；壁面 BC；重力なし
+  \item CSF 表面張力 + HFE 付き非増分投影法
+  \item 格子：$N = 32, 48, 64, 96, 128$；200 ステップ
 \end{itemize}
 
-\noindent\textbf{検証指標：}
-\begin{enumerate}[noitemsep]
-  \item Laplace 圧 $|\Delta p| = |p_{\mathrm{in}} - p_{\mathrm{out}}|$ と
-        理論値 $\sigma/R$ の相対誤差（目標 $< 1\%$，$N \geq 64$）
-  \item 寄生流れ振幅 $\|\bu_{\mathrm{para}}\|_\infty / (\sigma/\mu_l)$ の
-        格子収束（$\Ord{h^2}$ 以上を期待）
-  \item 密度比 $\rho_l/\rho_g = 10$--$1000$ で精度が変化しないこと
-\end{enumerate}
-
-\noindent\textbf{§~\ref{sec:split_ppe_recovery} との関係：}
-§~\ref{sec:split_ppe_recovery} では PPE の単独精度
-（解析的 RHS に対する $L^\infty$ 誤差）を検証した．
-本テストでは PPE を NS パイプライン全体に組み込み，
-時間積分を伴う\textbf{動的整合性}を検証する．
-
-\begin{tcolorbox}[resultbox, title={分相 PPE 解法の理論的予測}]
-§~\ref{sec:split_ppe_recovery} の結果に基づく予測：
-分相 PPE 解法は密度比非依存の $\Ord{h^2}$ 格子収束を実現し，
-$N = 64$ で $\|\bu_{\mathrm{para}}\|_\infty / (\sigma/\mu_l) \lesssim 10^{-5}$
-（Hysing et al.~\cite{Hysing2009} 水準）が期待される．
-CSF（§~\ref{sec:val_static_drop_csf}）との直接比較により，
-CCD 高次曲率が寄生流れ係数を低減する効果も定量化できる．
-\end{tcolorbox}
-
-\paragraph{CSF ベースライン（参考）}
-\label{sec:val_static_drop_csf}
-
-分相 PPE 解法との比較のため，smoothed Heaviside + CSF による
-低密度比（$\rho_l/\rho_g = 2$）の格子収束結果を参考として示す．
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
-\caption{CSF 静止液滴の格子収束（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，200 ステップ，参考）}
-\label{tab:static_convergence_csf}
+\caption{CSF 静止液滴の格子収束（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，200 ステップ）}
+\label{tab:static_convergence}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{rcc}
 \toprule
@@ -193,117 +163,169 @@ $\Delta p$ 相対誤差 \\
 \centering
 \includegraphics[width=\linewidth]{figures/ch12_static_droplet_convergence.png}
 \caption{%
-  CSF 静止液滴の格子収束（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，参考）．
+  CSF 静止液滴の格子収束（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$）．
   CSF モデル誤差 $\Ord{\varepsilon^2}$ により寄生流れは単調な格子収束を示さない．}
 \label{fig:static_droplet_convergence}
 \end{figure}
 
-\noindent
-CSF では Laplace 圧誤差が $1\%$ 前後に留まり，
-寄生流れは $\Ord{\varepsilon^2}$ モデル誤差により単調な格子収束を示さない
-（§~\ref{sec:error_budget}）．
-分相 PPE 解法はこのモデル誤差を原理的に除去し，
-$\Ord{h^2}$（FD PPE）または $\Ord{h^6}$（CCD PPE）の
-格子収束を回復する．
+Laplace 圧は $N = 64$ 以上で相対誤差 $1.3\%$ 以内に収まる．
+寄生流れは $N = 48$ から $N = 64$ で 1 桁低下するが，
+$N \geq 96$ では CSF の $\Ord{\varepsilon^2}$ モデル誤差が律速し
+単調な格子収束を示さない（図~\ref{fig:static_droplet_convergence}）．
+これは CSF 正則化 $\delta_\varepsilon$ が有限幅の体積力を生成し，
+格子精緻化に対して $\varepsilon = 1.5h$ で界面幅が縮小するため，
+寄生流れの駆動力と分布が格子依存的に変化することに起因する．
+
+\noindent\textbf{結論：}
+CSF + CCD-PPE パイプラインは $\rho_l/\rho_g = 2$ で
+Laplace 圧を $1\%$ 精度で再現し，200 ステップにわたり安定に動作する．
+寄生流れの収束特性は CSF モデル誤差に律速されており，
+CCD の高次曲率精度は収束\textit{次数}ではなく
+収束\textit{係数}の低減に寄与する（§~\ref{sec:error_budget}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{毛細管波 — Prosperetti 解析解との比較}
-\label{sec:val_capwave}
+\subsection{HFE 除去実験：界面越し場延長の効果}
+\label{sec:val_hfe_ablation}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \noindent\textbf{目的：}
-粘性・表面張力・圧力の\textbf{動的連成}が正しいことを，
-毛細管波（capillary wave）の振動周期と減衰率に関する
-Prosperetti (1981) \cite{Prosperetti1981} の線形解析解との定量比較によって確認する．
+§~\ref{sec:field_extension} で定式化した HFE（Hermite 場延長法）が
+NS パイプライン内で寄生流れと圧力精度に与える効果を
+除去実験（ablation study）により直接定量化する．
+§~\ref{sec:verify_field_extension} ではコンポーネント単体の
+$\Ord{h^6}$（1D）/$\Ord{h^3}$（2D）精度を確認したが，
+本テストは動的 NS パイプライン全体での効果を測定する．
+
+\noindent\textbf{設定：}
+§~\ref{sec:val_static_drop} と同一の静止液滴（$R = 0.25$，$\rho_l/\rho_g = 2$，$\mathit{We} = 10$）で
+以下の 3 条件を比較する．
+\begin{enumerate}[noitemsep]
+  \item \textbf{HFE}：毎ステップ PPE 求解前に $p^n$ を
+        最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）で界面越しに延長．
+        IPC の $\bnabla p^n$ 評価に延長後の滑らかな $p^n_{\mathrm{ext}}$ を使用．
+  \item \textbf{Upwind}：最近傍ソースセル値による 0 次延長
+        （Aslam~2004~\cite{Aslam2004} 相当，$\Ord{h^1}$）．
+  \item \textbf{None}：延長なし．$p^n$ をそのまま CCD 微分に供する
+        （界面ジャンプを横切る Gibbs 振動が発生）．
+\end{enumerate}
+格子 $N = 64, 128$，非増分投影法，200 ステップ．
+ステップ 1 では $p^0 = 0$ のため 3 条件は同一であり，
+差異はステップ 2 以降の非零圧力場 $p^n$ に対する延長の有無から生じる．
+
+\noindent\textbf{検証指標：}
+\begin{enumerate}[noitemsep]
+  \item 寄生流れ $\|\bu_{\mathrm{para}}\|_\infty$ の時間発展（3 条件を重ね描き）
+  \item Laplace 圧 $\Delta p$ の相対誤差の時間発展
+  \item 200 ステップ後の各指標の定量比較
+\end{enumerate}
+
+\noindent\textbf{結果：}
+
+% TODO: 実験実行後にテーブルと図を挿入
+% experiments/ch12_hfe_ablation.py の実行結果を反映
+
+\begin{table}[htbp]
+\centering
+\caption{HFE 除去実験：200 ステップ後の寄生流れと Laplace 圧精度
+  （$\rho_l/\rho_g = 2$，$\mathit{We} = 10$）}
+\label{tab:hfe_ablation}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llccc}
+\toprule
+$N$ & 延長手法 & $\|\bu_{\mathrm{para}}\|_\infty^{\mathrm{peak}}$ &
+$\Delta p$ 相対誤差 & 安定 \\
+\midrule
+64  & None    & (pending) & (pending) & --- \\
+64  & Upwind  & (pending) & (pending) & --- \\
+64  & HFE     & (pending) & (pending) & --- \\
+\midrule
+128 & None    & (pending) & (pending) & --- \\
+128 & Upwind  & (pending) & (pending) & --- \\
+128 & HFE     & (pending) & (pending) & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%\begin{figure}[htbp]
+%\centering
+%\includegraphics[width=\linewidth]{figures/ch12_hfe_ablation.pdf}
+%\caption{HFE 除去実験：寄生流れの時間発展（$N = 64$）．}
+%\label{fig:hfe_ablation}
+%\end{figure}
+
+\noindent\textbf{期待される知見：}
+\begin{itemize}[noitemsep]
+  \item ``None'' では CCD が $p^n$ の界面ジャンプを直接微分するため
+        Gibbs 振動が $\bnabla p^n$ に混入し，寄生流れが最も大きくなる
+  \item ``Upwind'' は $\Ord{h^1}$ 精度で延長するため部分的に改善される
+  \item ``HFE'' は $\Ord{h^3}$（2D）精度の延長により最大の改善を達成する
+\end{itemize}
 
 \noindent
-本テストは移動界面上の表面張力（$\sigma > 0$）を含み，
-§~\ref{sec:galilean_invariance} テスト B で破綻した条件を
-HFE＋分相 PPE 解法が克服することの動的実証となる．
-解析解が存在するため，数値誤差を厳密に定量化できる．
+ただし $\rho_l/\rho_g = 2$ では Young--Laplace ジャンプ $\Delta p = \sigma\kappa$ が
+小さいため，3 条件の差が限定的になる可能性がある．
+密度比増大時の効果は §~\ref{sec:val_density_limit} で評価する．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CSF 一括解法の動的限界と今後の展望}
+\label{sec:val_density_limit}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{目的：}
+NS パイプライン全体（CLS 移流→物性値更新→PPE→Corrector）での
+CSF + smoothed Heaviside 一括解法の動的破綻閾値を確認し，
+§~\ref{sec:interface_crossing} の PPE 単体テストとの整合性を検証する．
+
+\noindent\textbf{§~\ref{sec:interface_crossing} との関係：}
+§~\ref{sec:interface_crossing} では PPE の製造解テストにおいて
+$\rho_l/\rho_g \geq 10$ で欠陥補正が発散することを確認した．
+本テストは Predictor→PPE→Corrector の\textbf{完全な時間積分ループ}での
+破綻挙動を記録する．
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
-  \item 計算領域 $[0, \lambda] \times [0, 2\lambda]$（$\lambda = 1$），
-        周期 BC（$x$），壁面 BC（$y$）
-  \item 水平界面 $y = \lambda$ に微小正弦波擾乱
-        $\eta(x,0) = \eta_0 \sin(2\pi x / \lambda)$（$\eta_0/\lambda = 10^{-2}$）
-  \item $\rho_l/\rho_g = 2$，$\mu_l = \mu_g = \mu$（等粘性）
-  \item Laplace 数 $La = \rho_l \sigma \lambda / \mu_l^2$：
-        $La = 10$（過減衰）および $La = 3000$（振動域）
-  \item 格子：$N_x = 64$（$\lambda / h = 64$），$N_y = 128$
+  \item §~\ref{sec:val_static_drop} と同一の静止液滴
+        （$R = 0.25$，$\mathit{We} = 10$，壁面 BC，重力なし）
+  \item $N = 64$（固定），HFE 有効，200 ステップ（または発散まで）
+  \item 密度比スイープ：$\rho_l/\rho_g = 2, 3, 5, 10$
 \end{itemize}
 
-\noindent\textbf{Prosperetti 解析解：}
-線形化した 2 流体 NS 方程式に正弦波解 $\eta \propto e^{st}$ を仮定すると，
-成長率 $s$ は 4 次の分散方程式の根として得られる \cite{Prosperetti1981}：
-\begin{equation}
-  \left(s + 2\nu k^2\right)^2 + \frac{\sigma k^3}{\rho_l + \rho_g}
-  = 4\nu^2 k^4 \sqrt{1 + \frac{s}{\nu k^2}}
-  \label{eq:prosperetti_dispersion}
-\end{equation}
+\noindent\textbf{結果：}
 
-\noindent\textbf{検証指標：}
-\begin{itemize}[noitemsep]
-  \item 界面変位振幅 $\eta(t)$ の時間発展を
-        式~\eqref{eq:prosperetti_dispersion} の数値根と比較
-  \item 振動周期・減衰率の相対誤差 $< 1\%$
-\end{itemize}
+% TODO: 実験実行後にテーブルを挿入
+% experiments/ch12_density_sweep.py の実行結果を反映
 
-\noindent\textbf{HFE の役割：}
-$\sigma > 0$ の移動界面では
-IPC の $\bnabla p^n$ が界面の圧力ジャンプ $[p] = \sigma\kappa$ を横切る．
-§~\ref{sec:galilean_invariance} テスト B で
-この問題が 2 ステップでの発散を引き起こすことを確認した．
-分相 PPE 解法は各相内で定密度 Laplacian を解くことでジャンプを回避し，
-HFE が IPC の $\bnabla p^n$ を滑らかに保つ
-（式~\eqref{eq:p_extension_ipc}）．
-本テストは\textbf{この修正が動的問題で機能する最初の実証}となる．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{気泡上昇ベンチマーク — Hysing et al. (2009)}
-\label{sec:val_rising_bubble}
-\label{sec:bench_bubble}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{目的：}
-表面張力・重力・粘性・密度差が同時に作用する現実的な問題で，
-HFE を組み込んだ NS ソルバの総合的な安定性と精度を検証する．
-Hysing ら \cite{Hysing2009} による複数グループの独立検証に基づく
-「数値的参照解」と定量比較する．
-
-\noindent\textbf{設定（Test Case 1）：}
-\begin{itemize}[noitemsep]
-  \item 計算領域 $[0, 1] \times [0, 2]$，気泡中心 $(0.5, 0.5)$，$R = 0.25$
-  \item $\rho_l / \rho_g = 10$，$\mu_l / \mu_g = 10$，$Re = 35$，$\mathit{We} = 10$（$Fr^2 = 1$）
-  \item スリップ BC（側面・底面），自由面 BC（上面）
-  \item 格子：$64 \times 128$（収束確認：$128 \times 256$）
-\end{itemize}
-
-\noindent\textbf{参照値（Hysing et al.~\cite{Hysing2009}）：}
-\begin{center}
+\begin{table}[htbp]
+\centering
+\caption{CSF 一括解法の密度比限界（$N = 64$，HFE 有効，200 ステップ）}
+\label{tab:density_limit}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcccc}
+\begin{tabular}{rccccl}
 \toprule
-指標 & TP2D & FreeLIFE & MooNMD & 参照値 \\
+$\rho_l/\rho_g$ & $\|\bu_{\mathrm{para}}\|_\infty$ &
+$\Delta p$ 相対誤差 & 質量誤差 &
+$\|\bnabla\cdot\bu\|_\infty$ & 判定 \\
 \midrule
-$V_c(t{=}3)$ & $0.2417$ & $0.2421$ & $0.2414$ & $\approx 0.2417$ \\
-$C_{\mathrm{circ}}(t{=}3)$ & $0.9011$ & $0.9013$ & $0.9015$ & $\approx 0.9013$ \\
-$y_c(t{=}3)$ & $1.0816$ & $1.0810$ & $1.0812$ & $\approx 1.0813$ \\
+  2 & (pending) & (pending) & (pending) & (pending) & --- \\
+  3 & (pending) & (pending) & (pending) & (pending) & --- \\
+  5 & (pending) & (pending) & (pending) & (pending) & --- \\
+ 10 & (pending) & (pending) & (pending) & (pending) & --- \\
 \bottomrule
 \end{tabular}
-\end{center}
-グループ間の差 $\Delta V_c \approx 0.001$（$\approx 0.4\%$）が
-本ベンチマークの不確かさであり，この範囲内に収まることを合格基準とする．
+\end{table}
 
-\noindent\textbf{HFE の役割：}
-$\rho_l/\rho_g = 10$ は §~\ref{sec:varrho_grid_convergence} で
-smoothed Heaviside の PPE が発散を開始する閾値であり，
-分相 PPE 解法なしでは安定な計算が不可能である．
-また，気泡の変形に伴い界面曲率が空間的に変化するため，
-CCD 高次曲率 $\kappa$（$\Ord{h^6}$）の精度がジャンプ条件
-$[p]_\Gamma = \sigma\kappa/\mathit{We}$ を通じて
-圧力場精度に直接寄与する．
-本テストは CCD＋HFE の設計思想が
-現実的な問題で有効であることの総合的な検証となる．
+\noindent\textbf{期待される結果：}
+§~\ref{sec:interface_crossing} の PPE 単体テストとの整合性から，
+$\rho_l/\rho_g = 2, 3, 5$ では 200 ステップの安定動作が期待され，
+$\rho_l/\rho_g = 10$ では PPE 欠陥補正の発散により
+計算が破綻すると予測される．
 
+\noindent\textbf{今後の展望：}
+§~\ref{sec:split_ppe_recovery} で実証した分相 PPE 解法は，
+各相で定密度 PPE を独立に解き界面ジャンプ条件を HFE で課すことで
+$\rho_l/\rho_g = 1000$ でも $\Ord{h^2}$ を回復する．
+分相 PPE の NS パイプラインへの統合により，
+毛細管波（Prosperetti~\cite{Prosperetti1981} 解析解），
+気泡上昇（Hysing~ら~\cite{Hysing2009} 参照解），
+RT 不安定（$\sigma > 0$）の完全なベンチマークが実施可能となる．
+これは §~\ref{sec:conclusion} で議論する今後の主要課題である．
