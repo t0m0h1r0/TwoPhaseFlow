@@ -17,8 +17,10 @@
         「高精度で評価し，低精度で解く」原理により $\Ord{h^6}$ 精度を保ったまま
         $\mathcal{O}(N^2)$ コストで求解する．
   \item \textbf{§~\ref{sec:field_extension}（Hermite 場延長法）}：
-        Young--Laplace 不連続による CCD の Gibbs 振動を，
-        Hermite 場延長法（HFE, $\Ord{h^6}$）で PPE 求解前に除去する．
+        将来の分相 PPE 解法に向けた基盤技術として，
+        Hermite 場延長法（HFE, $\Ord{h^6}$）による界面越し場延長を定式化する．
+        現行の CSF + smoothed Heaviside ソルバでは使用しない
+        （§~\ref{sec:ppe_discretization_choice}）．
   \item \textbf{§~\ref{sec:ppe_bc_stability}（境界条件と安定性）}：
         全周 Neumann 境界の零モード対策と高密度比における条件数を整理する．
 \end{enumerate}

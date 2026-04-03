@@ -10,7 +10,8 @@
 本稿では，気液二相流の高精度数値シミュレーションに必要な数学的・数値的基盤を，
 学部生・大学院生を主な読者として体系的に解説した．
 本稿の技術的中核は\textbf{寄生流れの根本的抑制}にあり，
-CCD $O(h^6)$ による高精度曲率計算，HFE による高精度な界面処理，
+CCD $O(h^6)$ による高精度曲率計算，
+FD 直接法 PPE + CCD 勾配による Balanced-Force 条件の $O(h^6)$ 維持，
 および DCCD 散逸機構がその主要手段である（§\ref{sec:intro}）．
 各章の設計方針を整理する前に，「なぜこの組み合わせが必要か」を再確認する．
 
@@ -82,7 +83,6 @@ CCD $O(h^6)$ による高精度曲率計算，HFE による高精度な界面処
 
   \item[\textbf{第\ref{sec:collocate}章：圧力--速度連成と DCCD 散逸}]
         コロケート格子でのチェッカーボード不安定のメカニズム（$2\Delta x$ モード解析）を示し，
-        HFE（§\ref{sec:field_extension}）により CCD の Gibbs 振動が除去される下で，
         Dissipative CCD 散逸（$\varepsilon_d=1/4$，§\ref{sec:dccd_decoupling}）によるチェッカーボード
         抑制の設計原理を示した．Rhie--Chow 補正（付録~\ref{app:rhie_chow_full}）および
         Balanced-Force 条件（§\ref{sec:balanced_force}）の理論的根拠を参照収録した．
@@ -90,12 +90,16 @@ CCD $O(h^6)$ による高精度曲率計算，HFE による高精度な界面処
   \item[\textbf{第\ref{sec:pressure}章：変密度圧力 Poisson 方程式}]
         変密度 IPC Projection 法から
         変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を導出し，
-        \textbf{欠陥補正法}（§\ref{sec:defect_correction_main}）を
-        本稿の標準求解手法として定式化した：
-        CCD 演算子（$\Ord{h^6}$）で残差を評価し，
-        低次 FD 演算子の方向分離スイープで $\mathcal{O}(N)$ コストの補正を行う．
-        実装詳細は付録~\ref{sec:ppe_pseudotime} に示す．
-        FVM 版（§\ref{sec:fvm_face_coeff}）は調和平均係数の動機づけとして参照的に示した．
+        FD 直接法による PPE 求解と CCD 勾配の併用
+        （§\ref{sec:ppe_discretization_choice}）を本稿の標準求解手法として採用した：
+        PPE を 2 次精度 FD で厳密に解き（残差ゼロ），
+        速度補正の勾配に CCD $\Ord{h^6}$ を適用することで
+        Balanced-Force 条件を $\Ord{h^6}$ 精度で維持する．
+        CCD PPE の欠陥補正法（§\ref{sec:defect_correction_main}）も定式化したが，
+        $L_L^{-1} L_H$ の不定性により定常反復法では収束不能であり
+        （§\ref{sec:ppe_discretization_choice}），
+        将来の Krylov 法前処理との組み合わせに向けた基盤技術として位置づける．
+        HFE（§\ref{sec:field_extension}）は分相 PPE 解法の基盤技術として定式化・検証した．
 
   \item[\textbf{第\ref{sec:algorithm}章：完全アルゴリズムフロー}]
         NS 方程式の各項と離散ソルバーの対応関係（§\ref{sec:algo_operator_map}），
@@ -113,8 +117,9 @@ CCD $O(h^6)$ による高精度曲率計算，HFE による高精度な界面処
 第\ref{sec:pressure}章の表\ref{tab:accuracy_summary}に整理した通りである．
 ここでは，その設計上のトレードオフを技術的貢献の観点から振り返る．
 主要な精度設計上のトレードオフとして，
-（1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速；低波数近似 $H\approx1-\varepsilon_d k^2h^2$ より導出）と高次で統一され，
-HFE（§\ref{sec:field_extension}）により Gibbs 振動は除去されるが，
+（1）空間精度は CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速）と高次で統一され，
+PPE は FD 直接法 $\Ord{h^2}$ + CCD 勾配 $\Ord{h^6}$ の併用で
+Balanced-Force 条件を $\Ord{h^6}$ 精度で維持するが，
 CSF $O(\varepsilon^2)$ モデル誤差の根本的除去には分相 PPE 解法（§\ref{sec:future_work}）が必要である（付録~\ref{app:csf_full}）；
 （2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
 さらなる高次化には $O(\Delta t^3)$ 以上の高次 Projection 法（例：Guermond--Shen 2006）への移行が必要である，

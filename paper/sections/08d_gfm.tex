@@ -16,17 +16,22 @@ HFE は Aslam (2004)~\cite{Aslam2004} の Extension PDE の定常解を，
 CCD の Hermite データ $(f, f', f'')$ から仮想時間反復を経由せず直接構成し，
 $\Ord{h^6}$ 精度の界面越し場延長を実現する手法である．
 
-\paragraph{なぜ界面越し場延長が必要か.}
-CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ で $\Ord{h^6}$ の微分を求解する．
-しかし二相流では，圧力場が Young--Laplace 則 $[p]_\Gamma = \sigma\kappa$ に従う
+\noindent\textbf{現行ソルバにおける位置づけ．}
+現行の CSF + smoothed Heaviside 一括解法では，圧力場 $p$ は
+$\varepsilon$-regularized な滑らかな場であり，界面ジャンプを持たない．
+この場合 HFE は不要であり，むしろ有害である
+（§~\ref{sec:ppe_discretization_choice} で定量的に実証）．
+HFE が有効なのは，\textbf{分相 PPE 解法}（§~\ref{sec:split_ppe_motivation}）のように
+各相で独立に PPE を解き，圧力場が Young--Laplace ジャンプ $[p]_\Gamma = \sigma\kappa$ を
+陽に持つ場合である．
+本節では将来の分相 PPE 解法に向けた\textbf{基盤技術}として HFE を定式化する．
+
+\paragraph{なぜ分相 PPE 解法に界面越し場延長が必要か.}
+分相 PPE 解法では各相で定数密度の PPE を独立に解くため，
+圧力場が Young--Laplace 則 $[p]_\Gamma = \sigma\kappa$ に従う
 不連続を持つ（式~\eqref{eq:young_laplace_jump}）．
-CSF モデルは $\delta_\varepsilon$ 正則化により体積力を $2\varepsilon$ 幅に分散させるが，
-\textbf{PPE の解 $p$ 自体は $\varepsilon$ 内で急峻な勾配を持つ}%
-\footnote{CSF の $\delta_\varepsilon$ は運動方程式の表面張力項を正則化するものであり，
-PPE の解の勾配を $\varepsilon$ スケールで平坦化するわけではない．
-Smoothed Heaviside 一括解法では $p$ は $\varepsilon$-regularized な滑らかな場となるが，
-IPC や分相 PPE 解法では $p$ は界面で真のジャンプ $\sigma\kappa$ を持つ．}．
-このため界面を跨ぐ CCD ステンシルは Gibbs 振動を引き起こし精度が著しく低下する．
+CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ で $\Ord{h^6}$ の微分を求解するが，
+界面を跨ぐステンシルは Gibbs 振動を引き起こし精度が著しく低下する．
 
 HFE はこの問題を根本的に解消する：
 ソース相（例：液相）の場の値を界面法線方向にターゲット相へ $\Ord{h^6}$ 精度で延長し，
