@@ -52,8 +52,18 @@ Predictor（AB2 + CN）+ PPE + Corrector の結合時間精度．
 \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/ch11_tgv_temporal}
+\caption{NS 時間精度：Taylor--Green 渦の $L^\infty$ 速度誤差 vs $\Delta t$（$N=64$，$\mathit{Re}=100$）．
+$\Delta t \geq 0.0125$ で理論通りの $\Ord{\Delta t^2}$ 勾配に乗る．
+$\Delta t \leq 0.006$ では丸め誤差のフロアにより見かけ上の次数が低下．}
+\label{fig:tgv_temporal}
+\end{figure}
+
 \noindent\textbf{結論：}
-$\Delta t \geq 0.0125$ で精確な $\Ord{\Delta t^2}$ 収束を確認した（次数 $1.98$--$2.00$）．
+$\Delta t \geq 0.0125$ で精確な $\Ord{\Delta t^2}$ 収束を確認した
+（次数 $1.98$--$2.00$；図~\ref{fig:tgv_temporal}）．
 AB2（$\Ord{\Delta t^2}$）+ IPC 分割誤差（$\Ord{\Delta t^2}$，van Kan 1986）の理論と一致する．
 $\Delta t \leq 0.006$ では丸め誤差のフロア（$\sim 10^{-12}$）に接近し見かけ上の次数が低下する．
 
@@ -103,8 +113,17 @@ $N$ & NS 残差 $\|R\|_\infty$ & 次数 & $\|\bnabla\cdot\bu\|_\infty$ & 次数 
 \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/ch11_kovasznay_convergence}
+\caption{Kovasznay 流の CCD 離散化 NS 残差の格子収束（$\mathit{Re}=40$）．
+NS 運動量残差（青丸）は $\Ord{h^{3.8}}$，
+連続方程式残差（赤四角）は $\Ord{h^{5.9}}$ で収束する．}
+\label{fig:kovasznay_convergence}
+\end{figure}
+
 \noindent\textbf{結論：}
-連続方程式残差は $\Ord{h^{5.97}}$（CCD 内部精度 $\Ord{h^6}$ に整合）．
+連続方程式残差は $\Ord{h^{5.97}}$（CCD 内部精度 $\Ord{h^6}$ に整合；図~\ref{fig:kovasznay_convergence}）．
 NS 運動量残差は $\Ord{h^{3.96}}$：非線形対流項 $\bu \cdot \bnabla\bu$ がディリクレ境界近傍で
 CCD 境界スキーム（$\Ord{h^5}$）の誤差を非線形に増幅するため，
 実効精度は $\Ord{h^4}$ 程度となる．

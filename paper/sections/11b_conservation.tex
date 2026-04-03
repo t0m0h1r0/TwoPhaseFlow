@@ -50,12 +50,22 @@ $2.0$ & $9.110793 \times 10^{0}$ & $9.110793 \times 10^{0}$ & $2.8 \times 10^{-1
 \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch11_tgv_energy}
+\caption{Taylor--Green 渦の運動エネルギー保存性（$N=64$，$\mathit{Re}=100$）．
+(a)~数値解と解析解 $E_k(0)\,e^{-4\nu t}$ が完全に重なる．
+(b)~$\|\bnabla\cdot\bu\|_\infty$ は初期過渡を除き $\Ord{10^{-13}}$ に維持され，
+許容値 $10^{-10}$ を 3 桁以上下回る．}
+\label{fig:tgv_energy}
+\end{figure}
+
 \noindent\textbf{結論：}
 運動エネルギーの最大相対誤差は $2.8 \times 10^{-10}$（$t = 2.0$）であり，
-目標の $10^{-4}$ を 6 桁以上下回る．
+目標の $10^{-4}$ を 6 桁以上下回る（図~\ref{fig:tgv_energy}(a)）．
 CCD-PPE 投影ステップは各タイムステップで
 $\|\bnabla\cdot\bu\|_\infty < 10^{-13}$ を維持し，
-離散非圧縮条件が計算機精度水準で成立する．
+離散非圧縮条件が計算機精度水準で成立する（図~\ref{fig:tgv_energy}(b)）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{離散非圧縮条件の定量評価}

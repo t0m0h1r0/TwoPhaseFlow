@@ -70,8 +70,8 @@ CCD 曲率 + CSF 体積力 + 変密度 PPE（$\bnabla\cdot({\rho^{-1}}\bnabla p)
 \begin{itemize}[noitemsep]
   \item 計算領域 $[0,1]^2$，壁面境界条件，重力なし
   \item 静止液滴 $R = 0.25$，$\rho_l/\rho_g = 1000$，$\mathit{We} = 1$
-  \item CSF 体積力 $\bm{f}_\sigma = (\sigma/\mathit{We})\,\kappa\,\bnabla\psi / \rho$
-  \item 単ステップ投影：$\bu^* = \Delta t\,\bm{f}_\sigma$ → 変密度 PPE → Corrector
+  \item CSF 体積力 $\bm{f}_\sigma = (\sigma/\mathit{We})\,\kappa\,\bnabla\psi$
+  \item 単ステップ投影：$\bu^* = \Delta t\,\bm{f}_\sigma / \rho$ → 変密度 PPE → Corrector
   \item 格子 $N = 32, 64, 128$，厳密解 $\Delta p = \sigma / R = 4.0$
 \end{itemize}
 
@@ -96,8 +96,10 @@ $N$ & $\Delta p$ & 相対誤差 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 
 \noindent\textbf{結論：}
 $N = 128$ で $\Delta p = 4.01$（相対誤差 $0.2\%$），
 §~\ref{sec:verify_field_extension}（表~\ref{tab:field_extension_laplace}）の結果と整合する．
-$\Delta p$ の格子収束は $\Ord{h^{5.8}}$（CCD-PPE の $\Ord{h^6}$ 精度を反映）．
-$N = 32$ では $R/h = 8$ と界面ステンシルの解像度が不足し，圧力跳びが不正確となる．
+$N = 64 \to 128$ での $\Delta p$ 相対誤差の収束次数は $5.75$ であり，
+CCD-PPE の $\Ord{h^6}$ 精度を反映している%
+\footnote{$N = 32$（$R/h = 8$）は界面が十分に解像されず漸近領域外にあるため，
+収束次数の算出には $N \geq 64$ のデータのみを使用した．}．
 
 寄生流れ振幅の格子収束（Balanced-Force 条件下での $\Ord{h^2}$）は，
 時間積分による定常化が必要であり，

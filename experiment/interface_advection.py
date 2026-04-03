@@ -53,6 +53,17 @@ ZAL_SLOT_H     = 0.25   # slot height (from y = cy − R upward)
 SV_CX, SV_CY  = 0.5, 0.75
 SV_R           = 0.15
 
+SNAP_DIR = os.path.join(os.path.dirname(__file__), "..", "results", "ch10_cls_advection")
+
+
+def _save_snapshot(name, N, X, Y, psi0, psi_T):
+    """Save ψ fields for plot-only regeneration."""
+    os.makedirs(SNAP_DIR, exist_ok=True)
+    np.savez(os.path.join(SNAP_DIR, f"{name}_N{N}_snapshot.npz"),
+             X=X, Y=Y, psi0=psi0, psi_T=psi_T, N=N)
+    print(f"  Snapshot: {SNAP_DIR}/{name}_N{N}_snapshot.npz")
+
+
 # ── Grid / solver factory ─────────────────────────────────────────────────────
 
 def _make_grid_ccd_adv(N: int):
@@ -180,12 +191,14 @@ def test_zalesak(N: int, make_figure: bool = False):
 
     if make_figure:
         _fig_zalesak(X, Y, psi0, psi_T, N)
+        _save_snapshot("zalesak", N, X, Y, psi0, psi_T)
 
     return vol_err, shape_err
 
 
 def _fig_zalesak(X, Y, psi0, psi_T, N):
-    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4),
+                             gridspec_kw={"width_ratios": [1, 1], "wspace": 0.25})
     levels = [0.5]
     for ax, psi, title in [(axes[0], psi0, "Initial (t=0)"),
                             (axes[1], psi_T, "After 1 rev (t=T)")]:
@@ -196,11 +209,12 @@ def _fig_zalesak(X, Y, psi0, psi_T, N):
         ax.set_aspect("equal")
         ax.set_title(f"{title}\n$N={N}$")
         ax.set_xlabel("$x$"); ax.set_ylabel("$y$")
-    fig.colorbar(c, ax=axes, label=r"$\psi$")
+    fig.subplots_adjust(right=0.88)
+    cax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
+    fig.colorbar(c, cax=cax, label=r"$\psi$")
     out = os.path.join(os.path.dirname(__file__), "..", "paper", "figures",
                        f"zalesak_N{N}.pdf")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    fig.tight_layout()
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  Figure: {out}")
@@ -233,6 +247,7 @@ def test_single_vortex(N: int, make_figure: bool = False):
 
     if make_figure:
         _fig_single_vortex(X, Y, psi0, psi_T, N)
+        _save_snapshot("single_vortex", N, X, Y, psi0, psi_T)
 
     return vol_err, shape_err
 
