@@ -63,15 +63,15 @@ CCD 微分演算子のフリーストリーム保存（§\ref{sec:gcl_verificati
 Balanced-Force 条件下で寄生流れが格子収束することを確認する．
 
 \noindent\textbf{評価対象：}
-Extension PDE（§\ref{sec:gfm}）＋ CSF Balanced-Force 離散化の二相流統合テスト．
+界面越し Hermite 延長（§\ref{sec:gfm}）＋ CSF Balanced-Force 離散化の二相流統合テスト．
 
 \noindent\textbf{現状と課題：}
 界面越し Hermite 延長による圧力延長精度は §~\ref{sec:verify_field_extension}（表~\ref{tab:gfm_laplace}）にて
 $N = 128$ で相対誤差 $0.2\%$ の Laplace 圧力跳びを確認済みである．
-Extension PDE と Balanced-Force 条件の組み合わせにより，
+界面越し Hermite 延長と Balanced-Force 条件の組み合わせにより，
 寄生流れ振幅の格子収束（$\Ord{h^2}$）を達成する設計である
 （§\ref{sec:ccd_balanced_force} 参照）．
 
 \noindent\textbf{結論：}
-定量的検証は Extension PDE 統合後の第~\ref{sec:validation}章の
+定量的検証は界面越し Hermite 延長を統合した第~\ref{sec:validation}章の
 静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて実施する．

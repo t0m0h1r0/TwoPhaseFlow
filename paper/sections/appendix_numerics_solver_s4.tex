@@ -20,7 +20,7 @@ PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散
 CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}）の低次極限に対応する．
 
 Rhie--Chow 補正済み発散の完全な定義および旧 Balanced-Force 定式化は
-付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + Extension PDE（§\ref{sec:gfm}）により
+付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + 最近接点 Hermite 延長（§\ref{sec:gfm}）により
 Rhie--Chow 補正を代替する．
 
 \subsubsection{FVM 積分論理}
@@ -233,9 +233,9 @@ PPE 右辺の発散計算には，必ずこのフェイス速度の発散 $\nabl
 を使用しなければならない
 （セル中心発散の代用はチェッカーボードの逆流を招く）．
 
-\noindent\textbf{注：本稿（CSF + Extension PDE + DCCD 定式化）では}
+\noindent\textbf{注：本稿（CSF + 最近接点 Hermite 延長 + DCCD 定式化）では}
 DCCD フィルタ（§\ref{sec:dccd_decoupling}）が PPE 右辺のチェッカーボード対策を担い，
-Extension PDE（§\ref{sec:gfm}）が界面越し圧力延長を行う．
+最近接点 Hermite 補間（§\ref{sec:gfm}）が界面越し圧力延長を行う．
 CSF 体積力は Predictor に保持される（§\ref{sec:ccd_balanced_force}）ため，
 Rhie--Chow 発散補正（式~\eqref{eq:rc-face-balanced-app}）は不要である．
 
