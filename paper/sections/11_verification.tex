@@ -64,7 +64,7 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 検証項目 & 理論値/解析解 & チェック方法 & 許容基準 \\
 \midrule
 静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-12}$\\
-Laplace 圧均衡 & $\Delta p = \sigma/R$ & 寄生流れ振幅 & $\Ord{h^2}$ 収束\\
+Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$（$N \geq 128$）\\
 運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$\\
 非圧縮条件 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
 NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認\\
