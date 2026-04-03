@@ -175,6 +175,9 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 - Must not attempt to solve user problems directly
 - Must run GIT-01 Step 0 (auto-switch + origin/main sync → meta-ops.md GIT-01)
   on every user-issued request before routing — no exceptions
+- Must enumerate concrete sub-problems before classifying complexity (C1–C5).
+  A task that maps to one agent but contains 2+ independent sub-problems is
+  COMPOUND (C5) and must be routed to TaskPlanner — not dispatched directly
 
 **STOP**
 - Ambiguous intent → ask user to clarify; do not guess
@@ -190,8 +193,9 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 **PURPOSE**
 Decomposes compound user requests into dependency-aware, staged execution plans.
 Receives HAND-01 from ResearchArchitect when a task is classified as COMPOUND
-(multi-agent or multi-domain). Outputs structured plan YAML with parallel/sequential
-stages. Does NOT execute any task — only plans and dispatches.
+(C1–C5: multi-agent, multi-domain, OR single-agent with 2+ independent sub-problems).
+Outputs structured plan YAML with parallel/sequential stages.
+Does NOT execute any task — only plans and dispatches.
 
 **INPUTS**
 - docs/02_ACTIVE_LEDGER.md (current phase, open items, INTEGRITY_MANIFEST)
