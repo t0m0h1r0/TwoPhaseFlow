@@ -11,7 +11,7 @@
 本章では，変密度 PPE の導出（§~\ref{sec:projection_derivation}），
 CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
-Extension PDE による界面越し場延長（§~\ref{sec:gfm}），
+最近接点 Hermite 補間による界面越し場延長（§~\ref{sec:gfm}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を順に論じた．
 以下に，各コンポーネントの精度を整理する．
 
@@ -27,7 +27,7 @@ Extension PDE による界面越し場延長（§~\ref{sec:gfm}），
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + Extension PDE & $\Ord{h^6}$ & — \\
+PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + 最近接点 Hermite 延長 & $\Ord{h^6}$ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
