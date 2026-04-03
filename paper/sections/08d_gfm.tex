@@ -15,9 +15,20 @@
 
 本節では，Aslam (2004)~\cite{Aslam2004} の \textbf{Extension PDE}（界面越し場延長 PDE）の概念に基づき，
 \textbf{最近接点 Hermite 補間}によって $\Ord{h^6}$ 精度で界面越し場延長を実現する手法を述べる．
-CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ を用いて $\Ord{h^6}$ の1・2階微分を
-同時求解するが，界面を跨ぐ不連続場に適用すると Gibbs 振動を引き起こし精度が著しく低下する．
-界面越し場延長はこれを PPE 求解前に解消する前処理として機能する．
+本手法には2つの役割がある：
+\begin{enumerate}[noitemsep]
+  \item \textbf{Gibbs 振動の除去：}
+        CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ で $\Ord{h^6}$ の微分を求解するが，
+        界面を跨ぐ不連続場に適用すると Gibbs 振動を引き起こし精度が著しく低下する．
+        界面越し場延長はこれを PPE 求解前に解消する前処理として機能する．
+  \item \textbf{変密度 PPE の収束性回復（GFM 分相解法への基盤）：}
+        smoothed Heaviside 密度場で変密度 PPE を一括解法で解くと，
+        $1/\rho$ のジャンプを横切るステンシルの $\Ord{1}$ 離散化誤差により
+        欠陥補正法が発散する（$\rho_l/\rho_g \geq 10$；§~\ref{sec:varrho_ppe_limitation}）．
+        GFM では各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
+        界面のジャンプ条件 $[p] = \sigma\kappa$ を本節の Hermite 補間で課すことで，
+        不連続係数を横切るステンシルを排除し CCD の $\Ord{h^6}$ 精度を回復する．
+\end{enumerate}
 
 \subsubsection{背景：Extension PDE の定常解と最近接点 Hermite 補間}
 
