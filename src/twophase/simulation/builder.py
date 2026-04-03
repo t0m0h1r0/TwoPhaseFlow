@@ -56,6 +56,7 @@ from ..pressure.gfm import GFMCorrector
 from ..pressure.dccd_ppe_filter import DCCDPPEFilter
 from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
 from ..levelset.field_extender import FieldExtender
+from ..levelset.closest_point_extender import ClosestPointExtender
 from ..time_integration.cfl import CFLCalculator
 from .boundary_condition import BoundaryConditionHandler
 from .diagnostics import DiagnosticsReporter
@@ -184,12 +185,16 @@ class SimulationBuilder:
             gfm_corrector = GFMCorrector(backend, grid, config.fluid.We)
             dccd_ppe_filter = DCCDPPEFilter(backend, grid, ccd, bc_type=config.numerics.bc_type)
             ppe_rhs_gfm = PPERHSBuilderGFM(dccd_ppe_filter, gfm_corrector)
-        # Extension PDE (Aslam 2004): smooth pressure across Γ for CCD gradient
-        field_extender = None
-        if config.numerics.n_extend > 0:
+        # Field extension across Γ: smooth pressure for CCD gradient
+        method = config.numerics.extension_method
+        if method == "hermite":
+            field_extender = ClosestPointExtender(backend, grid, ccd)
+        elif method == "upwind" and config.numerics.n_extend > 0:
             field_extender = FieldExtender(
                 backend, grid, ccd, n_iter=config.numerics.n_extend,
             )
+        else:
+            field_extender = None
 
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,
