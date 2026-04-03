@@ -203,7 +203,9 @@ $N$ & 上風 $\Delta p$ & Hermite $\Delta p$ & 相対誤差 & 収束次数 \\
  64 & $3.52$  & $3.52$ & $1.21 \times 10^{-1}$ & --- \\
 128 & $4.01$  & $4.01$ & $2.2 \times 10^{-3}$  & $5.8$ \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize *$N=32$: 粗格子で界面幅 $\varepsilon$ が円弧を解像できず曲率が不正確} \\
+\multicolumn{5}{l}{\footnotesize *$N=32$: 粗格子で界面幅 $\varepsilon$ が円弧を解像できず曲率が不正確．} \\
+\multicolumn{5}{l}{\footnotesize \phantom{*}符号反転は $\varepsilon = 3\Delta x$ が $R=0.25$ の約38\%に達し，$\delta_\varepsilon$ 正則化の仮定が破綻するため．} \\
+\multicolumn{5}{l}{\footnotesize \phantom{*}CSF 体積力の積分で対向界面からの寄与が重複し，正味の力の方向が反転する．} \\
 \multicolumn{5}{l}{\footnotesize 上風と Hermite は全格子で完全一致（$p^0=0$ 延長が no-op のため）}
 \end{tabular}
 \end{table}
@@ -225,6 +227,8 @@ $2.2 \times 10^{-3}$（$< 0.3\%$）を達成した．
 上風差分と Hermite は全格子で完全一致した．
 これは初回ステップでは $p^0 = 0$ の延長が恒等操作となるためであり，
 延長手法の選択は CSF + CCD-PPE の精度に影響しないことを確認した．
+なお，本テストでは初期圧力 $p^0=0$ であるため，圧力延長は実質的に恒等操作となり，上風差分と Hermite 補間の差異は生じない．
+両手法の差が顕在化するのは非零初期圧力場を持つ動的問題であり，これは§~\ref{sec:verification}章の結合検証に委ねる．
 $N = 32$ の破綻は，界面厚み $\varepsilon = 1.5h$ に対して半径 $R = 0.25$ を解像する
 格子点数が不足し，CCD 曲率が大幅に過大評価されることに起因する．
 $N = 64 \to 128$ での収束次数 $\approx 5.8$ は，
