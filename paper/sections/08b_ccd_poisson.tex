@@ -54,10 +54,6 @@ $y$ 方向も同様に：
   \label{eq:L_CCD_2d_full}
 \end{equation}
 
-\noindent\textbf{大域行列形式（スパース直接法）：}
-式~\eqref{eq:L_CCD_2d_full} の点ごと演算子は，クロネッカー積スパース行列
-$\mathbf{L}_{\mathrm{CCD}}^{\rho}$（式~\eqref{eq:L_CCD_2d_kron}）として陽に組み立て，
-スパース LU 法で直接求解できる（付録~\ref{app:ccd_kronecker}，\ref{app:ccd_lu_direct}）．
 Matrix-Free 評価手順（各反復で Thomas 法を $x$・$y$ 方向に交互適用，$O(N_x N_y)$）は
 付録~\ref{sec:ccd_matrix_free_eval} を参照のこと．
 
