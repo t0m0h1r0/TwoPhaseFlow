@@ -8,14 +8,15 @@ Tests:
   Manufactured solution p* = sin(πx)sin(πy).
   Density field ρ(x,y) = ρ_g + (ρ_l - ρ_g) H_ε(φ_0),
   φ_0 = sqrt((x-0.5)²+(y-0.5)²) - 0.25 (circular interface).
-  RHS q computed analytically from ∇·(1/ρ ∇p*).
 
-  Uses defect correction: L_H = CCD variable-density (matrix-free, O(h⁶)),
-  L_L = FD variable-density 5-point (sparse direct, O(h²)).
+  Solver: Defect correction (DC) with k=3 iterations.
+    L_H = CCD variable-density product-rule (matrix-free, O(h⁶)).
+    L_L = FD variable-density product-rule 5-point (sparse direct LU, O(h²)).
+  NOTE: LGMRES is NOT used — it fails for interface-type density fields.
 
 Expected:
   ρ_l/ρ_g = 1: matches Dirichlet test (O(h⁶+))
-  Higher density ratios: O(h⁶) maintained but absolute error grows.
+  Higher density ratios: convergence limited by DC with interface density.
 """
 
 import sys, pathlib
@@ -23,7 +24,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse.linalg import spsolve, lgmres, LinearOperator, spilu
+from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
@@ -97,22 +98,13 @@ def eval_LH_varrho(p, rho, ccd, backend):
 # ── L_L: FD variable-density product-rule Laplacian (O(h²)) ─────────────────
 
 def build_fd_varrho_product_rule_dirichlet(Nx, Ny, hx, hy, rho):
-    """Build FD product-rule ∇·(1/ρ ∇p) with Dirichlet BC.
-
-    Same mathematical structure as L_H (CCD):
-      L p = (1/ρ)(∂²p/∂x² + ∂²p/∂y²) − (∂ₓρ/ρ²)(∂ₓp) − (∂ᵧρ/ρ²)(∂ᵧp)
-
-    but with 2nd-order FD stencils for all derivatives.
-    This ensures L_L and L_H differ only in derivative order,
-    not in the operator structure, giving good DC convergence.
-    """
+    """Build FD product-rule ∇·(1/ρ ∇p) with Dirichlet BC."""
     nx, ny = Nx + 1, Ny + 1
     n = nx * ny
 
     def idx(i, j):
         return i * ny + j
 
-    # Precompute FD density gradients (interior only, central difference)
     drho_dx = np.zeros_like(rho)
     drho_dy = np.zeros_like(rho)
     for i in range(1, Nx):
@@ -134,22 +126,15 @@ def build_fd_varrho_product_rule_dirichlet(Nx, Ny, hx, hy, rho):
                 cx = drho_dx[i, j] / rho[i, j]**2
                 cy = drho_dy[i, j] / rho[i, j]**2
 
-                # (1/ρ) ∂²p/∂x²: central difference
                 rows.append(k); cols.append(idx(i+1, j)); vals.append(inv_rho / hx**2)
                 rows.append(k); cols.append(idx(i-1, j)); vals.append(inv_rho / hx**2)
-
-                # (1/ρ) ∂²p/∂y²: central difference
                 rows.append(k); cols.append(idx(i, j+1)); vals.append(inv_rho / hy**2)
                 rows.append(k); cols.append(idx(i, j-1)); vals.append(inv_rho / hy**2)
 
-                # center from Laplacian
                 center = -2.0 * inv_rho / hx**2 - 2.0 * inv_rho / hy**2
 
-                # −(∂ₓρ/ρ²)(∂ₓp): central difference for ∂ₓp
                 rows.append(k); cols.append(idx(i+1, j)); vals.append(-cx / (2.0 * hx))
                 rows.append(k); cols.append(idx(i-1, j)); vals.append( cx / (2.0 * hx))
-
-                # −(∂ᵧρ/ρ²)(∂ᵧp): central difference for ∂ᵧp
                 rows.append(k); cols.append(idx(i, j+1)); vals.append(-cy / (2.0 * hy))
                 rows.append(k); cols.append(idx(i, j-1)); vals.append( cy / (2.0 * hy))
 
@@ -158,44 +143,27 @@ def build_fd_varrho_product_rule_dirichlet(Nx, Ny, hx, hy, rho):
     return sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
 
 
-# ── Matrix-free LGMRES solve (variable-density) ─────────────────────────────
+# ── Defect Correction solver ────────────────────────────────────────────────
 
-def solve_varrho_lgmres(rhs, rho, ccd, backend, L_L_mat, tol=1e-12, maxiter=500):
-    """Solve L_H p = rhs via LGMRES with ILU-preconditioned FD operator.
-
-    L_H is CCD variable-density (O(h⁶)), applied matrix-free.
-    FD operator (O(h²)) serves as preconditioner.
-    """
+def solve_varrho_dc(rhs, rho, ccd, backend, L_L_mat, k_max=3):
+    """Defect correction: d^(k) = b − L_H p^(k); L_L δp = d^(k); p^(k+1) = p^(k) + δp."""
     shape = rhs.shape
-    N = shape[0] - 1
-    n = shape[0] * shape[1]
+    p = np.zeros_like(rhs)
 
-    def matvec(p_flat):
-        p = p_flat.reshape(shape)
+    for k in range(k_max):
         Lp = eval_LH_varrho(p, rho, ccd, backend)
-        # Enforce Dirichlet BC rows
-        Lp[0, :] = p[0, :]; Lp[-1, :] = p[-1, :]
-        Lp[:, 0] = p[:, 0]; Lp[:, -1] = p[:, -1]
-        return Lp.ravel()
+        d = rhs - Lp
+        # Enforce Dirichlet BC on defect
+        d[0, :] = 0.0; d[-1, :] = 0.0
+        d[:, 0] = 0.0; d[:, -1] = 0.0
 
-    A_op = LinearOperator((n, n), matvec=matvec, dtype=float)
+        dp = spsolve(L_L_mat, d.ravel()).reshape(shape)
+        p = p + dp
+        # Enforce Dirichlet BC on solution
+        p[0, :] = 0.0; p[-1, :] = 0.0
+        p[:, 0] = 0.0; p[:, -1] = 0.0
 
-    # ILU preconditioner from L_L
-    try:
-        ilu = spilu(L_L_mat.tocsc())
-        M_op = LinearOperator((n, n), matvec=ilu.solve, dtype=float)
-    except Exception:
-        M_op = None
-
-    rhs_flat = rhs.ravel().copy()
-
-    p_flat, info = lgmres(A_op, rhs_flat, M=M_op, rtol=tol, maxiter=maxiter,
-                          atol=max(1e-14, tol * np.linalg.norm(rhs_flat)))
-
-    if info != 0:
-        print(f"    [WARN] LGMRES info={info} (non-convergence)")
-
-    return p_flat.reshape(shape)
+    return p
 
 
 # ── Main experiment ──────────────────────────────────────────────────────────
@@ -205,6 +173,7 @@ def run_experiment():
 
     Ns = [16, 32, 64, 128]
     density_ratios = [1, 10, 100, 1000]
+    k_dc = 3
 
     all_results = {dr: [] for dr in density_ratios}
 
@@ -212,7 +181,7 @@ def run_experiment():
         rho_l = float(dr)
         rho_g = 1.0
 
-        print(f"\n--- ρ_l/ρ_g = {dr} ---")
+        print(f"\n--- ρ_l/ρ_g = {dr} (DC k={k_dc}) ---")
         print(f"  {'N':>5} | {'h':>8} | {'L∞ error':>12} | {'order':>6}")
         print("  " + "-" * 43)
 
@@ -233,11 +202,11 @@ def run_experiment():
             rhs[0, :] = 0.0; rhs[-1, :] = 0.0
             rhs[:, 0] = 0.0; rhs[:, -1] = 0.0
 
-            # Build FD variable-density Laplacian (preconditioner)
+            # Build FD variable-density Laplacian
             L_L = build_fd_varrho_product_rule_dirichlet(N, N, h, h, rho)
 
-            # LGMRES with FD preconditioner
-            p_dc = solve_varrho_lgmres(rhs, rho, ccd, backend, L_L)
+            # Defect correction with k iterations
+            p_dc = solve_varrho_dc(rhs, rho, ccd, backend, L_L, k_max=k_dc)
 
             err_Li = float(np.max(np.abs(p_dc - p_exact)))
             all_results[dr].append({"N": N, "h": h, "Li": err_Li})
@@ -290,7 +259,7 @@ def save_latex_table(all_results, density_ratios, Ns):
 
 def main():
     print("\n" + "=" * 80)
-    print("  【10-14】Variable-Density PPE Convergence Verification")
+    print("  【10-14】Variable-Density PPE Convergence (Defect Correction k=3)")
     print("=" * 80)
 
     density_ratios = [1, 10, 100, 1000]
