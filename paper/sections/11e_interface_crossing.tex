@@ -26,8 +26,19 @@
   \item CCD-PPE 変密度 Poisson 格子収束：§~\ref{sec:verify_ppe_varrho}（$\rho_{\max}/\rho_{\min}{\approx}999$ で $\Ord{h^{5.8}}$）
 \end{itemize}
 
+\noindent\textbf{変密度 PPE の破綻と GFM の必要性：}
+§~\ref{sec:varrho_ppe_limitation} で示した通り，
+smoothed Heaviside 密度場を用いた変密度 PPE は $\rho_l/\rho_g \geq 10$ で
+欠陥補正法が発散し，現行の一括解法では界面通過テストを実施できない．
+根本原因は $1/\rho$ のジャンプを横切る FD/CCD ステンシルの $\Ord{1}$ 離散化誤差であり，
+これを解消するには各相で定数密度 PPE を独立に解く
+\textbf{GFM}（Ghost Fluid Method，§~\ref{sec:gfm_jump}）の導入が必要である．
+GFM では界面のジャンプ条件 $[p] = \sigma\kappa$ を
+最近接点 Hermite 補間（§~\ref{sec:extension_pde}）で課し，
+不連続係数を横切るステンシルを排除することで CCD の $\Ord{h^6}$ 精度を回復する．
+
 \noindent\textbf{結論：}
 密度比 $10^3$ における界面通過時の速度連続性の定量的検証は，
-界面越し Hermite 延長を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
+GFM を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）が
 この検証を包含する初の統合テストとなる．
