@@ -1,96 +1,85 @@
 % paper/sections/11d_coupling.tex
 %
-% §11.4  移流・圧力干渉のロバスト性
+% §11.4  二相流時間積分：CLS↔PPE 結合検証
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{移流・圧力干渉のロバスト性}
+\subsection{二相流時間積分：CLS↔PPE 結合検証}
 \label{sec:advection_pressure_coupling}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§\ref{sec:ns_time_accuracy} までの検証は中程度のレイノルズ数（$\mathit{Re} = 40$--$100$）で実施した．
-実際の二相流シミュレーションでは $\mathit{Re} = \Ord{10^3}$ に達しうるため，
-高レイノルズ数で対流項が支配的となる条件下での安定性を確認する必要がある．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{高レイノルズ数二重剪断層}
-\label{sec:highre_dccd}
-% ─────────────────────────────────────────────────────────────────────────────
+§\ref{sec:force_balance}--§\ref{sec:ns_time_accuracy} では単相 NS ソルバの整合性を確認した．
+§~\ref{sec:bf_static_droplet} の Laplace 圧テストは変密度 PPE が\textbf{1ステップ}で正しく機能することを
+示したが，圧力場はほぼゼロから始まる初期条件であり，Hermite 延長は実質的に no-op であった．
+本節では，\textbf{多ステップ時間積分}で非零圧力場における Hermite 延長・CLS 移流・変密度 PPE の
+結合が正しく機能するかを検証する．
 
 \noindent\textbf{目的：}
-高レイノルズ数で対流項が支配的な条件下で，
-DCCD フィルタが NS ソルバに過剰な数値散逸を導入しないことを確認する．
+完全な二相流タイムステップループ
+（CLS 界面移流 → 物性値更新 → 変密度 PPE → Hermite 延長 → Corrector）が
+物理的整合性を維持することの確認．特に以下を検証する：
+\begin{enumerate}[noitemsep]
+  \item 移動界面の存在下で $\bnabla\cdot\bu = 0$ が維持されるか（CLS↔PPE 結合）
+  \item 非零圧力場での Hermite 延長が動的問題で機能するか（§~\ref{sec:verify_field_extension} 静的テストの拡張）
+  \item 低密度比での CSF 体積力と変密度 PPE の整合性
+\end{enumerate}
 
-\noindent\textbf{評価対象：}
-DCCD フィルタの 2 次元 NS 方程式における安定性・散逸特性
-（§\ref{sec:verify_dccd_dissipation} の 1D 結果の 2D 拡張）．
-
-\noindent\textbf{手順とパラメタ：}
+\noindent\textbf{前提となる検証済み結果（§~\ref{sec:numerical_integrity}章）：}
 \begin{itemize}[noitemsep]
-  \item 二重剪断層：$[0, 2\pi]^2$，周期境界，単相流，$\mathit{Re} = 1000$
-  \item 薄い剪断層（$\delta = \pi/15$）＋微小擾乱（$\varepsilon_0 = 0.05\sin x$）
-  \item $N = 64$，$\Delta t = 0.002$，AB2+IPC，$T = 0.5$
-  \item 比較対象：CCD（$\varepsilon_d = 0$，フィルタなし）vs DCCD（$\varepsilon_d = 0.05$）
-  \item 評価指標：$T=0.5$ での運動エネルギー $E_k$ の差，安定性
+  \item CLS 質量保存誤差：§~\ref{sec:cls_conservation_bench}（$N{=}256$ で $\Ord{10^{-5}}$）
+  \item 界面越し Hermite 延長精度：§~\ref{sec:verify_field_extension}（$N{=}128$ で相対誤差 $2.2 \times 10^{-3}$）
+  \item 変密度 PPE（滑らか密度場）：§~\ref{sec:verify_ppe_varrho}（$\rho_{\max}/\rho_{\min}{\approx}999$ で $\Ord{h^{5.8}}$）
+  \item AB2 時間精度：§~\ref{sec:time_accuracy_table}（$\Ord{\Delta t^2}$）
 \end{itemize}
 
-\noindent\textbf{結果：}
+\subsubsection{セットアップ}
+
+\begin{itemize}[noitemsep]
+  \item \textbf{計算領域}：$[0,1]^2$，壁面境界条件（$\bu = \bm{0}$）
+  \item \textbf{初期条件}：円形液滴（$R = 0.25$，中心 $(0.5, 0.5)$），初速 $\bu_0 = (1, 0)^T$（一様移流）
+  \item \textbf{密度比}：$\rho_l/\rho_g = 2$，$5$（合格期待），$10$（警告期待）
+  \item \textbf{パラメータ}：$We = 10$，$Re = 100$，$Fr^{-1} = 0$（重力なし）
+  \item \textbf{格子}：$N = 32, 64, 128$
+  \item \textbf{積分時間}：$T = 0.5$（CFL $= 0.5$ 基準の $\Delta t$）
+  \item \textbf{評価指標}：$\|\bnabla\cdot\bu\|_\infty$ の時系列，質量誤差の時系列，$\Delta p$ 相対誤差
+\end{itemize}
+
+\subsubsection{合否基準}
 
 \begin{table}[htbp]
 \centering
-\caption{二重剪断層テスト：CCD vs DCCD の安定性比較（$N=64$，$\mathit{Re}=1000$，$T=0.5$）}
-\label{tab:highre_dccd}
+\caption{二相流時間積分テストの合否基準}
+\label{tab:twophase_ti_criteria}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcrrc}
+\begin{tabular}{clll}
 \toprule
-スキーム & $\varepsilon_d$ & ステップ数 & $E_k(T)$ & 状態 \\
+$\rho_l/\rho_g$ & 判定 & $\|\bnabla\cdot\bu\|_\infty$ & 質量誤差 \\
 \midrule
-CCD  & $0.00$ & 250 & $1.7092 \times 10^{1}$ & 安定 \\
-DCCD & $0.05$ & 250 & $1.7091 \times 10^{1}$ & 安定 \\
+$2$ & PASS 期待 & $< 10^{-8}$ & $< 10^{-4}$ \\
+$5$ & PASS 期待 & $< 10^{-8}$ & $< 10^{-4}$ \\
+$10$ & WARN（精度低下許容） & $< 10^{-4}$ & $< 10^{-3}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.62\linewidth]{figures/ch11_highre_dccd}
-\caption{二重剪断層の運動エネルギー履歴（$N=64$，$\mathit{Re}=1000$）．
-CCD（$\varepsilon_d = 0$）と DCCD（$\varepsilon_d = 0.05$）が
-ほぼ重なり，両者の $E_k$ 差は $0.01\%$ 以下である．}
-\label{fig:highre_dccd}
-\end{figure}
+\noindent\textbf{§~\ref{sec:bf_static_droplet} との違い：}
+§~\ref{sec:bf_static_droplet}（Laplace 圧）は単ステップ投影で圧力初期値ゼロから始めるため
+Hermite 延長が no-op となる特殊条件であった．
+本テストは多ステップ積分で前ステップの非零圧力場を Hermite 延長した後に
+$-\bnabla p^n$ を Predictor に渡す通常運転条件の初の検証である．
+$\rho_l/\rho_g = 10$ での精度劣化の兆候は §~\ref{sec:interface_crossing} の
+破綻限界定量化テストへの橋渡しとなる．
 
-\noindent\textbf{結論（$N=64$）：}
-CCD・DCCD ともに安定であり，$E_k$ の差は $0.01\%$ 以下（図~\ref{fig:highre_dccd}）．
-DCCD フィルタは低解像度で過剰な数値散逸を導入しない．
+\subsubsection{予測結果と技術的根拠}
 
-\paragraph{高解像度での DCCD 安定化効果}
+§~\ref{sec:verify_ppe_varrho} で確認した通り，
+変密度 PPE 欠陥補正は\textbf{滑らかな密度場}（$C^\infty$）では $\rho_{\max}/\rho_{\min} \approx 999$
+においても $\Ord{h^{5.8}}$ を維持する（§~\ref{sec:varrho_ppe_limitation}）．
+一方，界面型（smoothed Heaviside）密度場では $1/\rho$ のジャンプにより
+$\rho_l/\rho_g \geq 10$ で発散することが予測される．
+$\rho_l/\rho_g \leq 5$ は遷移層幅 $\varepsilon = 1.5h$ 内のジャンプが
+$5/1 = 5$ 倍程度にとどまり，欠陥補正の収束が維持される可能性が高い．
 
-$N=64$ では Nyquist 近傍モードが十分に励起されず，
-CCD と DCCD の差が顕在化しない．
-$N \geq 128$ では非線形エネルギーカスケードにより格子スケール振動が成長し，
-DCCD の安定化効果が本質的となる（§\ref{sec:dccd_dissipation_bench} の TV 抑制参照）．
-
-\begin{table}[htbp]
-\centering
-\caption{二重剪断層テスト：高解像度での CCD vs DCCD（$\mathit{Re}=1000$，$T=0.5$）}
-\label{tab:highre_dccd_hires}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{llcrrc}
-\toprule
-$N$ & スキーム & $\varepsilon_d$ & ステップ数 & $E_k(T)$ & 状態 \\
-\midrule
-\multirow{2}{*}{128}
- & CCD  & $0.00$ & 1000 & $1.7092 \times 10^{1}$ & 安定 \\
- & DCCD & $0.05$ & 1000 & $1.7108 \times 10^{1}$ & 安定 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\noindent\textbf{結論：}
-$N = 128$ においても CCD・DCCD の双方が安定であり，$E_k$ 差は $0.09\%$ で
-$N = 64$ と同程度である．
-DCCD フィルタは $E_k$ をわずかに保存する傾向（数値散逸が物理散逸より小さい）を示すが，
-差異は微小であり過度な散逸は導入されていない．
-$N = 256$ 以上での検証（チ���ッカーボード不安定化の閾値特定）は計算コストの制約上，
-今後の課題とする．
-なお，本テストケースでは CCD（フィルタなし）でも安定な解が得られており，
-DCCD フィルタの安定化効果が顕在化する条件（高 $Re$，高密度比，粗格子）での検証は今後の課題である．
+\begin{tcolorbox}[mybox, title={実験状況：計画}]
+本テストは実験スクリプト（\texttt{experiment/ch11/exp11\_4\_twophase\_ti.py}）の実装後に実施予定である．
+上記の予測結果は §~\ref{sec:verify_ppe_varrho} および §~\ref{sec:varrho_ppe_limitation} の
+コンポーネント検証結果からの外挿に基づく．
+\end{tcolorbox}

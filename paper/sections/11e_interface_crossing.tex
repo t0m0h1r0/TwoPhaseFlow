@@ -1,44 +1,103 @@
 % paper/sections/11e_interface_crossing.tex
 %
-% §11.5  不連続界面通過時の整合性
+% §11.5  変密度 PPE の破綻限界と GFM 必要性の定量化
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{不連続界面通過時の整合性}
+\subsection{変密度 PPE の破綻限界と GFM 必要性の定量化}
 \label{sec:interface_crossing}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§\ref{sec:force_balance}--§\ref{sec:advection_pressure_coupling} では
-単相 NS ソルバの物理的整合性を確認し，
-§~\ref{sec:bf_static_droplet} では変密度 PPE による Laplace 圧均衡を単ステップレベルで検証した．
-二相流の\textbf{時間積分}では，密度比 $\rho_l/\rho_g \gg 1$ の界面を跨ぐ
-圧力勾配の整合性が追加の検証課題となる．
+§~\ref{sec:advection_pressure_coupling} では $\rho_l/\rho_g \leq 10$ での
+二相流時間積分を検証し，高密度比側で精度劣化の兆候を記録する．
+本節では密度比をさらに系統的に増大させ，
+smoothed Heaviside 一括解法の\textbf{破綻閾値}を定量的に特定する．
+これは「失敗を肯定的に記録する」実験であり，GFM 導入の数値的根拠を提供する．
 
 \noindent\textbf{目的：}
-密度比 $\rho_l/\rho_g = 1000$ の二相場において，
-界面を跨ぐ速度連続性と圧力勾配の滑らかさを定量的に検証する．
+\begin{enumerate}[noitemsep]
+  \item smoothed Heaviside 密度場での変密度 PPE が $\rho_l/\rho_g \geq \Ord{10}$ で
+        発散することを定量データで示す
+  \item 破綻閾値を特定し，GFM が必要となる密度比条件を明確にする
+  \item §~\ref{sec:varrho_ppe_limitation}（§~\ref{sec:numerical_integrity}章）の
+        「界面型密度場での検証は今後の課題」を本節で実施する
+\end{enumerate}
 
-\noindent\textbf{評価対象：}
-界面越し Hermite 延長（§\ref{sec:gfm}）による圧力延長後の速度補正項 $\bnabla p / \rho$ が
-界面両側で整合することの検証．
+\noindent\textbf{§~\ref{sec:varrho_ppe_limitation} との関係：}
+§~\ref{sec:varrho_ppe_limitation} では\textbf{滑らかな密度場}
+（$\rho = 1 + A\sin\pi x\cos\pi y$）での収束性を確認し，
+「界面型密度場は状況が根本的に異なる」と述べた．
+本節はその補完として，界面型（smoothed Heaviside）密度場に対する
+製造解テストをパラメトリックスイープ形式で実施する．
 
-\noindent\textbf{前提となる検証済み結果：}
+\subsubsection{セットアップ：密度比パラメトリックスイープ}
+
 \begin{itemize}[noitemsep]
-  \item 界面越し Hermite 延長精度：§~\ref{sec:verify_field_extension}（表~\ref{tab:field_extension_laplace}；$N{=}128$ で相対誤差 $0.2\%$）
-  \item CCD-PPE 変密度 Poisson 格子収束：§~\ref{sec:verify_ppe_varrho}（$\rho_{\max}/\rho_{\min}{\approx}999$ で $\Ord{h^{5.8}}$）
+  \item \textbf{計算領域}：$[0,1]^2$，壁面境界条件
+  \item \textbf{初期条件}：静止円形液滴（$R = 0.25$，中心 $(0.5, 0.5)$）
+  \item \textbf{製造解}：$p^* = \sin\pi x\sin\pi y$（Laplace 圧テストと同一）
+  \item \textbf{密度場}：$\rho = \rho_g + (\rho_l - \rho_g)H_\varepsilon(\phi)$，$\varepsilon = 1.5h$
+  \item \textbf{密度比}：$\rho_l/\rho_g = 2, 5, 10, 20, 50, 100$
+  \item \textbf{格子}：$N = 64$（固定）
+  \item \textbf{欠陥補正}：$k = 3$ 固定
+  \item \textbf{評価指標}：DC 残差履歴 $\|r_k\|_\infty$（各反復），$\Delta p$ 相対誤差
 \end{itemize}
 
-\noindent\textbf{変密度 PPE の破綻と GFM の必要性：}
-§~\ref{sec:varrho_ppe_limitation} で示した通り，
-smoothed Heaviside 密度場を用いた変密度 PPE は $\rho_l/\rho_g \geq 10$ で
-欠陥補正法が発散し，現行の一括解法では界面通過テストを実施できない．
-根本原因は $1/\rho$ のジャンプを横切る FD/CCD ステンシルの $\Ord{1}$ 離散化誤差であり，
-これを解消するには各相で定数密度 PPE を独立に解く
-\textbf{GFM}（Ghost Fluid Method，§~\ref{sec:gfm}）の導入が必要である．
-GFM では界面のジャンプ条件 $[p] = \sigma\kappa$ を
-最近接点 Hermite 補間（§~\ref{sec:extension_pde}）で課し，
-不連続係数を横切るステンシルを排除することで CCD の $\Ord{h^6}$ 精度を回復する．
+\subsubsection{予測結果}
+
+§~\ref{sec:varrho_ppe_limitation} の分析（スペクトル半径 $> 1$ となる条件）から
+以下の結果を予測する：
+
+\begin{table}[htbp]
+\centering
+\caption{変密度 PPE 破綻限界スイープの予測結果（$N=64$，$k=3$）}
+\label{tab:varrho_breakdown_sweep}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{clll}
+\toprule
+$\rho_l/\rho_g$ & DC 収束 & $\Delta p$ 相対誤差 & 判定 \\
+\midrule
+$2$  & 収束 & $< 5\%$  & PASS \\
+$5$  & 収束 & $< 10\%$ & PASS \\
+$10$ & 遅化（境界） & $\Ord{10^{-2}}$ 程度 & WARN \\
+$20$ & 発散 & — & EXPECTED FAILURE \\
+$50$ & 発散 & — & EXPECTED FAILURE \\
+$100$& 発散 & — & EXPECTED FAILURE \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{合否基準（「失敗」が合格）：}
+\begin{itemize}[noitemsep]
+  \item $\rho_l/\rho_g \leq 5$：DC 収束（$\|r_3\| / \|r_0\| < 10^{-4}$） → PASS
+  \item $\rho_l/\rho_g \geq 20$：DC 発散（$\|r_k\|$ が増大） → \textbf{EXPECTED FAILURE}
+  \item 破綻閾値が $\rho_l/\rho_g = 10 \pm 5$ の範囲に特定できること → 本節の合格基準
+\end{itemize}
+
+\subsubsection{技術的根拠と GFM への接続}
+
+\noindent\textbf{なぜ破綻するか（理論的説明）：}
+$1/\rho$ が遷移層幅 $\varepsilon = 1.5h$ で $\rho_l/\rho_g$ 倍のジャンプを持つとき，
+界面を横切る FD/CCD ステンシルは $\Ord{1}$ の打ち切り誤差を生じる（§~\ref{sec:ppe_condition_number}）．
+欠陥補正の低次前処理 $L_L^{-1}$ も同じステンシルで構成されるため，
+反復行列 $I - L_L^{-1}L_H$ のスペクトル半径が 1 を超えて発散する
+（反復回数 $k$ の増大や緩和係数 $\omega < 1$ による収束回復は不可能）．
+
+\noindent\textbf{破綻の解決策：GFM 分相解法：}
+各相で定数密度の PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
+界面上のジャンプ条件 $[p] = \sigma\kappa$ を
+最近接点 Hermite 補間（§~\ref{sec:extension_pde}）で課す
+\textbf{GFM}（Ghost Fluid Method，§~\ref{sec:gfm}）が必要である．
+GFM は不連続係数を横切るステンシルを排除するため，
+$\rho_l/\rho_g$ によらず CCD の $\Ord{h^6}$ 精度が回復される．
+GFM の実装と検証は今後の最優先課題である（§~\ref{sec:future_work}）．
 
 \noindent\textbf{結論：}
-密度比 $10^3$ における界面通過時の速度連続性の定量的検証は，
-GFM を統合した全二相 NS ソルバの完成後に実施する（§\ref{sec:future_work}）．
-第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）が
-この検証を包含する初の統合テストとなる．
+本節のパラメトリックスイープにより，
+smoothed Heaviside 一括解法の適用可能範囲（$\rho_l/\rho_g \lesssim 5$–$10$）と
+GFM が必要となる密度比条件（$\rho_l/\rho_g \geq 10$）が定量的に特定される．
+これは精度バジェット（§~\ref{sec:error_budget}）における
+「二相流拡張では GFM 導入が不可欠」という結論を数値的根拠で裏付ける．
+
+\begin{tcolorbox}[mybox, title={実験状況：計画}]
+本テストは実験スクリプト（\texttt{experiment/ch11/exp11\_5\_varrho\_breakdown.py}）の実装後に実施予定である．
+上記の予測結果は §~\ref{sec:varrho_ppe_limitation} の欠陥補正収束解析からの外挿に基づく．
+\end{tcolorbox}

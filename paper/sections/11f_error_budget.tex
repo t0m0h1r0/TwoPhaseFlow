@@ -79,7 +79,15 @@ CCD-PPE の採用が全体的な高精度化に不可欠な要素であること
 本稿の範囲外とする．}．
 したがって本章では角運動量保存の独立検証は実施しない．
 
-\paragraph{変密度 PPE の収束性と GFM 導入の必要性}
+\paragraph{二相流時間積分（§~\ref{sec:advection_pressure_coupling}）との接続}
+
+§~\ref{sec:advection_pressure_coupling} の二相流時間積分テスト（$\rho_l/\rho_g \leq 10$）により，
+CLS 移流・変密度 PPE・Hermite 延長・Corrector が多ステップで結合した状態での
+$\|\bnabla\cdot\bu\|_\infty < 10^{-8}$（$\rho_l/\rho_g \leq 5$）と
+質量誤差 $< 10^{-4}$ が確認される見込みである．
+$\rho_l/\rho_g = 10$ での精度劣化は以下の変密度 PPE 破綻問題に直結する．
+
+\paragraph{変密度 PPE の破綻限界と GFM 導入の必要性（§~\ref{sec:interface_crossing}との接続）}
 
 上記の精度バジェットは\textbf{単相 NS ソルバ}および\textbf{滑らか密度場}での検証に基づく．
 二相流の本質的な困難は，密度場 $\rho(\psi) = \rho_g + (\rho_l - \rho_g)H_\varepsilon(\phi)$ が

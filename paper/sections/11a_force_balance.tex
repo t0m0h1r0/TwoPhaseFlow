@@ -109,3 +109,7 @@ Balanced-Force 不整合が高解像度で顕在化するためである（§~\r
 寄生流れ振幅の格子収束（Balanced-Force 条件下での $\Ord{h^2}$）は，
 時間積分による定常化が必要であり，
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて検証する．
+また，$N = 256$ での増大は PPE ソルバ（FD $\Ord{h^2}$）と
+Corrector の CCD 圧力勾配との Balanced-Force 不整合に起因する（§~\ref{sec:balanced_force}）；
+この不整合が多ステップ時間積分において累積するかを
+§~\ref{sec:advection_pressure_coupling} の二相流時間積分テストで確認する．
