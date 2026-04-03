@@ -199,48 +199,45 @@ def make_figure(snapshots):
 
         # Density
         ax = axes[0, i]
-        im = ax.pcolormesh(x1d, y1d, rho_s.T, cmap='Blues',
-                           vmin=vmin_rho, vmax=vmax_rho, shading='auto')
+        im_rho = ax.pcolormesh(x1d, y1d, rho_s.T, cmap='Blues',
+                               vmin=vmin_rho, vmax=vmax_rho, shading='auto')
         ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='r', linewidths=1.5)
-        if i == 3:
-            plt.colorbar(im, ax=ax, label=r'$\rho$', shrink=0.8)
         ax.set_title(f'$t={t_snap:.1f}$', fontsize=11)
         ax.set_xlabel('$x$')
-        ax.set_ylabel('$y$' if i == 0 else '')
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
         # Pressure
         ax = axes[1, i]
-        im2 = ax.pcolormesh(x1d, y1d, p_s.T, cmap='RdBu_r',
-                            vmin=-vmax_p, vmax=vmax_p, shading='auto')
+        im_p = ax.pcolormesh(x1d, y1d, p_s.T, cmap='RdBu_r',
+                             vmin=-vmax_p, vmax=vmax_p, shading='auto')
         ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='k', linewidths=1.2)
-        if i == 3:
-            plt.colorbar(im2, ax=ax, label='$p$', shrink=0.8)
         ax.set_xlabel('$x$')
-        ax.set_ylabel('$p(x,y)$' if i == 0 else '')
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
         # Velocity magnitude
         ax = axes[2, i]
-        im3 = ax.pcolormesh(x1d, y1d, vm_s.T, cmap='hot_r',
-                            vmin=0, vmax=vmax_vm, shading='auto')
+        im_vm = ax.pcolormesh(x1d, y1d, vm_s.T, cmap='hot_r',
+                              vmin=0, vmax=vmax_vm, shading='auto')
         ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='w', linewidths=1.2)
-        if i == 3:
-            plt.colorbar(im3, ax=ax, label=r'$\|\mathbf{u}\|$', shrink=0.8)
         ax.set_xlabel('$x$')
-        ax.set_ylabel(r'$\|\mathbf{u}(x,y)\|$' if i == 0 else '')
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
-    axes[0, 0].set_ylabel('密度場 $\\rho(x,y)$', fontsize=11)
-    axes[1, 0].set_ylabel('圧力場 $p(x,y)$', fontsize=11)
-    axes[2, 0].set_ylabel(r'速度 $\|\mathbf{u}(x,y)\|$', fontsize=11)
+    # Row labels
+    axes[0, 0].set_ylabel(r'Density $\rho(x,y)$', fontsize=11)
+    axes[1, 0].set_ylabel(r'Pressure $p(x,y)$', fontsize=11)
+    axes[2, 0].set_ylabel(r'Velocity $\|\mathbf{u}(x,y)\|$', fontsize=11)
+
+    # Shared colorbars — one per row → equal panel sizes
+    fig.colorbar(im_rho, ax=axes[0, :].tolist(), label=r'$\rho$', shrink=0.7)
+    fig.colorbar(im_p,   ax=axes[1, :].tolist(), label='$p$',      shrink=0.7)
+    fig.colorbar(im_vm,  ax=axes[2, :].tolist(), label=r'$\|\mathbf{u}\|$', shrink=0.7)
 
     plt.suptitle(
-        r'RT不安定性: $64\times256$, $At=0.5$, $\sigma=0$'
-        '\n赤線 = 界面 ($\\psi=0.5$)',
+        r'RT instability: $64\times256$, $At=0.5$, $\sigma=0$'
+        '\n(red line = interface $\\psi=0.5$)',
         fontsize=13
     )
     plt.tight_layout()

@@ -127,41 +127,46 @@ def make_figure(phi, p_off, vm_off, hist_off, p_on, vm_on, hist_on):
     x1d = np.linspace(0, 1, Ng)
     y1d = np.linspace(0, 1, Ng)
 
-    def _plot_field(ax, data, phi, cmap, label, title, vmax=None):
+    def _plot_field(ax, data, phi, cmap, title, vmax=None):
         if vmax is None:
             vmax = max(abs(data.min()), abs(data.max()), 1e-12)
         im = ax.pcolormesh(x1d, y1d, data.T, cmap=cmap,
                            vmin=-vmax if cmap == 'RdBu_r' else 0,
                            vmax=vmax, shading='auto')
         ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k', linewidths=1.5)
-        plt.colorbar(im, ax=ax, label=label, shrink=0.85)
         ax.set_title(title, fontsize=10)
         ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
         ax.set_aspect('equal')
+        return im
+
+    # Shared scales across both rows for fair comparison
+    vmax_p = max(abs(p_off.min()), abs(p_off.max()), abs(p_on.min()), abs(p_on.max()))
+    vmax_u = max(vm_off.max(), vm_on.max(), 1e-10)
 
     # Row 0: HFE OFF
-    vmax_p = max(abs(p_off.min()), abs(p_off.max()), abs(p_on.min()), abs(p_on.max()))
-    _plot_field(axes[0, 0], p_off, phi, 'RdBu_r', '$p$',
-                f'HFE OFF — 圧力場\n$\\|\\mathbf{{u}}\\|_\\infty={vm_off.max():.2e}$',
-                vmax=vmax_p)
-    vmax_u = max(vm_off.max(), 1e-10)
-    _plot_field(axes[0, 1], vm_off, phi, 'hot_r', r'$\|\mathbf{u}\|$',
-                f'HFE OFF — 寄生流れ速度\npeak={vm_off.max():.2e}',
-                vmax=vmax_u)
+    im_p0 = _plot_field(axes[0, 0], p_off, phi, 'RdBu_r',
+                        f'HFE OFF — Pressure\n$\\|\\mathbf{{u}}\\|_\\infty={vm_off.max():.2e}$',
+                        vmax=vmax_p)
+    im_u0 = _plot_field(axes[0, 1], vm_off, phi, 'hot_r',
+                        f'HFE OFF — Parasitic velocity\npeak={vm_off.max():.2e}',
+                        vmax=vmax_u)
 
     # Row 1: HFE ON
-    _plot_field(axes[1, 0], p_on, phi, 'RdBu_r', '$p$',
-                f'HFE ON — 圧力場\n$\\|\\mathbf{{u}}\\|_\\infty={vm_on.max():.2e}$',
-                vmax=vmax_p)
-    vmax_u_on = max(vm_on.max(), 1e-10)
-    _plot_field(axes[1, 1], vm_on, phi, 'hot_r', r'$\|\mathbf{u}\|$',
-                f'HFE ON — 寄生流れ速度\npeak={vm_on.max():.2e}',
-                vmax=vmax_u_on)
+    im_p1 = _plot_field(axes[1, 0], p_on, phi, 'RdBu_r',
+                        f'HFE ON — Pressure\n$\\|\\mathbf{{u}}\\|_\\infty={vm_on.max():.2e}$',
+                        vmax=vmax_p)
+    im_u1 = _plot_field(axes[1, 1], vm_on, phi, 'hot_r',
+                        f'HFE ON — Parasitic velocity\npeak={vm_on.max():.2e}',
+                        vmax=vmax_u)
+
+    # Shared colorbars — one per column, placed to the right of all rows
+    fig.colorbar(im_p0, ax=axes[:, 0].tolist(), label='$p$', shrink=0.6)
+    fig.colorbar(im_u0, ax=axes[:, 1].tolist(), label=r'$\|\mathbf{u}\|$', shrink=0.6)
 
     ratio = vm_on.max() / max(vm_off.max(), 1e-30)
     plt.suptitle(
-        f'HFE ON vs OFF: $\\rho_l/\\rho_g=2$, $N=64$, {N_STEPS} ステップ\n'
-        f'寄生流れ増大比: {ratio:.1e}×',
+        f'HFE ON vs OFF: $\\rho_l/\\rho_g=2$, $N=64$, {N_STEPS} steps\n'
+        f'Parasitic velocity ratio ON/OFF: {ratio:.1e}x',
         fontsize=12, y=1.01
     )
     plt.tight_layout()
