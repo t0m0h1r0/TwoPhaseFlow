@@ -18,7 +18,7 @@
   \item[\textbf{本章}]
     \textbf{物理的整合性} — 組み上げた NS ソルバが物理法則を正しく記述するか
   \item[\textbf{第~\ref{sec:validation}章}]
-    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（界面越し Hermite 延長統合後に実施）
+    \textbf{二相流ベンチマーク} — 公表参照解との定量比較（GFM 統合後に実施）
 \end{enumerate}
 第~\ref{sec:numerical_integrity}章では CCD 微分演算子の $\Ord{h^6}$ 精度，
 PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
@@ -28,27 +28,21 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 解析解が既知の物理問題で整合性を検証する．
 
 \noindent\textbf{本章のスコープ：}
-本章は単相 NS ソルバの物理的整合性（§~\ref{sec:force_balance}--§~\ref{sec:ns_time_accuracy}）に加え，
-現行実装の範囲内で実施可能な\textbf{低密度比二相流時間積分}（§~\ref{sec:advection_pressure_coupling}，
-$\rho_l/\rho_g \leq 10$）と，smoothed Heaviside 一括解法の
-\textbf{破綻限界の定量化}（§~\ref{sec:interface_crossing}）を対象とする．
-高密度比（$\rho_l/\rho_g \gg 10$）での界面通過検証は GFM 実装後に実施し
-（§~\ref{sec:future_work}），第~\ref{sec:validation}章の物理ベンチマークへ接続する．
-
-検証は物理的複雑さを段階的に引き上げ，以下の6段階で構成される：
+検証は物理的複雑さを段階的に引き上げ，以下の 6 段階で構成される：
 \begin{enumerate}[noitemsep]
   \item \textbf{§~\ref{sec:force_balance}（力学的バランス）：}
         静止流体における重力・表面張力の釣合．
   \item \textbf{§~\ref{sec:ns_conservation}（保存則）：}
         運動エネルギー減衰と非圧縮条件の維持．
   \item \textbf{§~\ref{sec:ns_time_accuracy}（総合精度）：}
-        NS 方程式の時間・空間収束次数．
-  \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流時間積分）：}
-        CLS↔PPE 結合の整合性（$\rho_l/\rho_g \leq 10$，多ステップ積分）．
-  \item \textbf{§~\ref{sec:interface_crossing}（変密度 PPE 破綻限界）：}
-        smoothed Heaviside 一括解法の適用限界の定量化と GFM 必要性の数値的根拠．
+        NS 方程式の時間・空間収束次数と高 Re 安定性．
+  \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流結合）：}
+        CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$）と
+        Galilean 不変性．
+  \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
+        smoothed Heaviside の破綻閾値と GFM 必要性の数値的根拠．
   \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
-        全コンポーネントの精度を統合し，律速段階と現行実装の限界を特定する．
+        全コンポーネントの実測精度を統合し，律速段階と GFM 導入の展望を示す．
 \end{enumerate}
 
 \noindent
@@ -66,13 +60,16 @@ $\rho_l/\rho_g \leq 10$）と，smoothed Heaviside 一括解法の
 検証項目 & 理論値/解析解 & チェック方法 & 許容基準 \\
 \midrule
 静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-12}$\\
-Laplace 圧均衡（単ステップ） & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$（$N \geq 128$）\\
+Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$（$N \geq 128$）\\
 運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$\\
 非圧縮条件 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
 NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認\\
 NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認\\
-二相流時間積分（$\rho_l/\rho_g \leq 5$） & CLS 質量保存，div$(\bu)=0$ & 時系列 & 表~\ref{tab:twophase_ti_criteria}\\
-PPE 破綻限界（$\rho_l/\rho_g = 2$--$100$） & DC 収束・発散の閾値 & 残差履歴 & 表~\ref{tab:varrho_breakdown_sweep}\\
+DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$\\
+静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$\\
+Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$\\
+PPE 破綻限界 & DC 発散の閾値 & 残差履歴 & 閾値の特定\\
+GFM 精度回復 & 密度比非依存 & 格子収束 & $\Ord{h^2}$ 確認\\
 \bottomrule
 \end{tabular}
 \end{table}

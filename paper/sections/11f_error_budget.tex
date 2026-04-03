@@ -10,62 +10,89 @@
 \label{sec:error_budget}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本ソルバは複数の数値スキームを組み合わせて構成される．
-各コンポーネントの空間・時間精度を一覧化し，
-なぜ高次精度スキームが全体精度向上に寄与するかを説明する．
+本章の検証結果を統合し，各コンポーネントの実測精度を一覧化する．
 物理的な多相流ベンチマーク（静止液滴・毛細管波・気泡上昇）は §\ref{sec:validation} で扱う．
 
 \begin{table}[htbp]
 \centering
-\caption{各コンポーネントの精度オーダーと役割}
+\caption{コンポーネント精度一覧（実測値）}
 \label{tab:error_budget}
 \renewcommand{\arraystretch}{1.35}
-\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{28mm}>{\raggedright\arraybackslash}p{48mm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{22mm}>{\raggedright\arraybackslash}p{22mm}>{\raggedright\arraybackslash}p{16mm}>{\raggedright\arraybackslash}p{38mm}}
 \toprule
-コンポーネント & 空間精度 & 時間精度 & 誤差が影響する物理量 \\
+コンポーネント & 設計精度 & 実測精度 & 検証箇所 & 誤差が影響する物理量 \\
 \midrule
-Dissipative CCD 移流（CLS） & $\Ord{\varepsilon_d h^2}$（フィルタ律速） & $\Ord{\Delta t^3}$（RK3） & 界面位置，体積保存誤差 \\
-CCD 法（曲率 $\kappa$） & $\Ord{h^6}$ & — & 表面張力体積力 $\sigma\kappa\bnabla\psi$ \\
-CCD 法（速度微分） & $\Ord{h^6}$ & — & 粘性項 $\bnabla\bu$ の評価 \\
-CCD-PPE（圧力 Poisson） & $\Ord{h^6}$ & — & 速度 Corrector $\bnabla p/\rho$ \\
-Corrector（速度更新） & $\Ord{h^6}$（PPE 依存） & — & 速度場の無発散補正 \\
-Crank--Nicolson（粘性） & $\Ord{h^2}$（ADI 対角）/ $\Ord{h^6}$（非対角） & $\Ord{\Delta t^2}$ & 粘性拡散の時間更新 \\
-NS 対流項（Predictor） & $\Ord{h^6}$（CCD） & $\Ord{\Delta t^2}$（AB2） & 対流による運動量移送 \\
-IPC スプリッティング誤差 & — & $\Ord{\Delta t^2}$（van Kan 1986） & 全体時間精度の律速段階 \\
-\midrule
-\textbf{全体（空間律速）} & \multicolumn{1}{>{\raggedright\arraybackslash}p{28mm}}{$\boldsymbol{\Ord{h^2}}$（CSF $\Ord{\varepsilon^2}$）} & $\boldsymbol{\Ord{\Delta t^2}}$（AB2+IPC） & \\
+CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
+CCD-PPE（単相） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & §~\ref{sec:verify_ppe} & 圧力場，速度補正 \\
+CCD-PPE（$\varrho{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
+DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2.1}}$ & §~\ref{sec:verify_ccd_convergence} & 界面位置，体積保存 \\
+CCD 曲率 $\kappa$ & $\Ord{h^6}$ & $\Ord{h^{5.9}}$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
+AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
+NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & §~\ref{sec:kovasznay} & NS 運動量残差 \\
+CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\textbf{精度設計のまとめ：}
+% ─────────────────────────────────────────────────────────────────────────────
+\paragraph{律速段階の特定}
 \label{sec:accuracy_summary}
-本稿の数値手法は，圧力 Poisson ソルバ（CCD-PPE，$\Ord{h^6}$），曲率計算（CCD，$\Ord{h^6}$），
-粘性項（ADI Crank--Nicolson：対角 $\Ord{h^2}$・非対角クロス項 $\Ord{h^6}$，§\ref{sec:algorithm} 参照），
-界面移流（Dissipative CCD，$\Ord{\varepsilon_d h^2}$，フィルタ律速）を実装している．
 
-\begin{itemize}[noitemsep]
-  \item \textbf{全体空間精度律速：}
-        CSF モデルの近似誤差 $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ が現状の律速段階である．
-        CCD-PPE（$\Ord{h^6}$）はこれより高次であり，
-        Dissipative CCD は $\Ord{\varepsilon_d h^2}$（$\varepsilon_d=0.05$ で CSF 誤差の約 $1/20$）で
-        CSF 誤差と同次だが係数が抑制されている．
-        したがって，界面厚み $\varepsilon$ の縮小が精度向上の主要な鍵である．
-  \item \textbf{寄生流れへの直接効果（Balanced-Force なしの場合）：}
-        Balanced-Force 条件を適用しない場合，寄生流れ $\|\bu_{\text{spur}}\| \sim \sigma C_\kappa h^{p_\kappa}$ は
-        曲率精度次数 $p_\kappa$ に直接依存し，CCD（$p_\kappa=6$）は2次手法と比べ
-        $h=1/64$ で $(1/64)^4 \approx 10^{-7}$ 倍の抑制効果を持つ．
-        しかし，\textbf{Balanced-Force 条件下（§\ref{sec:balanced_force}）では}，圧力勾配と
-        表面張力に同一の CCD 演算子を用いることで離散化誤差成分が相殺されるため，
-        有効な寄生流れはどちらの手法でも CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$
-        によって律速される（収束次数の改善ではなく収束係数の大幅な低減；§\ref{sec:bench_droplet} 参照）．
-  \item \textbf{時間精度：} AB2+IPC スキームにより全体時間精度 $\Ord{\Delta t^2}$ を達成している
-        （§\ref{sec:time_accuracy_table} 参照）．
-        さらなる高次化（$\Ord{\Delta t^3}$ 以上）には IPC を超える高次 Projection 法が必要であり，
-        これは今後の課題として §\ref{sec:future_work} で展望する．
-\end{itemize}
-本稿の精度設計は「各誤差経路の物理的役割」を踏まえた総合的な選択であり，
-CCD-PPE の採用が全体的な高精度化に不可欠な要素であることが確認できる（詳細は第~\ref{sec:pressure}章参照）．
+\noindent\textbf{単相 NS ソルバ：}
+空間精度は CCD 境界スキーム（$\Ord{h^4}$--$\Ord{h^5}$）が
+非線形対流項で増幅され $\Ord{h^{3.96}}$（§~\ref{sec:kovasznay}）．
+時間精度は AB2+IPC の $\Ord{\Delta t^2}$ が律速
+（van Kan 1986）．
+各コンポーネントの設計精度は NS パイプライン全体でほぼ完全に発現しており，
+単相ソルバとしての精度は設計通りである．
+
+\noindent\textbf{二相流（$\rho_l/\rho_g \leq 5$，smoothed Heaviside）：}
+空間精度は CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ が律速する
+（表~\ref{tab:bf_laplace}）．
+CCD-PPE（$\Ord{h^6}$）は CSF より高次であり，
+変密度 PPE は界面近傍で $\Ord{h^{1\text{--}2}}$ に劣化するが
+CSF と同次である（表~\ref{tab:varrho_convergence}）．
+静止界面は 200 ステップ以上安定に動作する
+（表~\ref{tab:static_longterm}）が，
+移動界面＋表面張力では IPC の $\bnabla p^n$ 評価が界面ジャンプで
+破綻する（表~\ref{tab:galilean}）．
+
+\noindent\textbf{二相流（$\rho_l/\rho_g \geq 10$）：}
+変密度 PPE の欠陥補正が発散し，使用不可（表~\ref{tab:varrho_breakdown}）．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\paragraph{CCD 高次精度の意義}
+
+CCD の $\Ord{h^6}$ 精度は現状の CSF 近似（$\Ord{h^2}$）のもとでは
+\textbf{直接的な全体精度向上には寄与しない}．
+しかし以下の 2 つの経路で本質的な役割を果たす：
+\begin{enumerate}[noitemsep]
+  \item \textbf{寄生流れの係数低減：}
+        Balanced-Force 条件下では収束\textit{次数}は CSF 律速で $\Ord{h^2}$ だが，
+        収束\textit{係数}は曲率精度に比例する．
+        CCD（$p_\kappa = 6$）は 2 次法と比べ $h = 1/64$ で
+        $(1/64)^4 \approx 10^{-7}$ 倍の係数低減効果を持つ
+        （§~\ref{sec:balanced_force}）．
+  \item \textbf{GFM 導入後の精度回復：}
+        GFM は CSF の $\Ord{h^2}$ モデル誤差を原理的に除去し，
+        各相の PPE を独立に解くことで
+        CCD の $\Ord{h^6}$ 設計精度を回復する
+        （§~\ref{sec:interface_crossing}）．
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\paragraph{§~\ref{sec:validation}章への接続}
+
+§~\ref{sec:twophase_static_longterm} で低密度比の静止界面二相流が安定動作することを確認し，
+§~\ref{sec:galilean_invariance} で移動界面＋表面張力には圧力場の分相延長が必要であることを
+特定した．
+§~\ref{sec:interface_crossing} で smoothed Heaviside の破綻限界を定量化し，
+\textbf{すべての密度比で GFM が必要}であるとの結論を得た．
+§~\ref{sec:gfm_ppe_recovery} では GFM 分相解法により
+$\rho_l/\rho_g = 1000$ でも $\Ord{h^2}$ 格子収束が回復されることを実証した
+（表~\ref{tab:gfm_convergence}）．
+第~\ref{sec:validation}章では GFM を統合した完全な NS ソルバで
+静止液滴・毛細管波・気泡上昇・RT 不安定の物理ベンチマークに挑む．
 
 \noindent\textbf{検証対象外の保存量：}
 角運動量はコロケート格子上の離散 NS ソルバでは一般に厳密保存されない%
@@ -78,39 +105,3 @@ CCD-PPE の採用が全体的な高精度化に不可欠な要素であること
 角運動量保存の厳密な検証にはスタガード格子への拡張が必要であり，
 本稿の範囲外とする．}．
 したがって本章では角運動量保存の独立検証は実施しない．
-
-\paragraph{二相流時間積分（§~\ref{sec:advection_pressure_coupling}）との接続}
-
-§~\ref{sec:advection_pressure_coupling} の二相流時間積分テスト（$\rho_l/\rho_g \leq 10$）により，
-CLS 移流・変密度 PPE・Hermite 延長・Corrector が多ステップで結合した状態での
-$\|\bnabla\cdot\bu\|_\infty < 10^{-8}$（$\rho_l/\rho_g \leq 5$）と
-質量誤差 $< 10^{-4}$ が確認される見込みである．
-$\rho_l/\rho_g = 10$ での精度劣化は以下の変密度 PPE 破綻問題に直結する．
-
-\paragraph{変密度 PPE の破綻限界と GFM 導入の必要性（§~\ref{sec:interface_crossing}との接続）}
-
-上記の精度バジェットは\textbf{単相 NS ソルバ}および\textbf{滑らか密度場}での検証に基づく．
-二相流の本質的な困難は，密度場 $\rho(\psi) = \rho_g + (\rho_l - \rho_g)H_\varepsilon(\phi)$ が
-界面を挟んで $\rho_l/\rho_g$ 倍のジャンプを持つことにある．
-
-§~\ref{sec:varrho_ppe_limitation} で詳述した通り，
-このジャンプを横切る FD/CCD ステンシルは $\Ord{1}$ の離散化誤差を生じ，
-変密度 PPE の欠陥補正法は $\rho_l/\rho_g \geq 10$ で\textbf{発散}する．
-この破綻は DC の反復構造や前処理の選択では解消できない本質的限界であり，
-\textbf{smoothed Heaviside による一括解法の根本的な制約}である．
-
-解決の鍵は，§~\ref{sec:extension_pde} の最近接点 Hermite 補間に着想した
-\textbf{Ghost Fluid Method}（GFM，§~\ref{sec:gfm}）の導入にある．
-GFM では各相で定数密度の PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
-界面のジャンプ条件 $[p] = \sigma\kappa$ を Hermite 延長で課す．
-これにより不連続係数を横切るステンシルが排除され，
-各相の CCD 離散化が $\Ord{h^6}$ の設計精度を回復するとともに，
-CSF の $\Ord{h^2}$ モデル誤差も原理的に除去される．
-GFM の実装と検証は本稿の今後の最優先課題である（§~\ref{sec:future_work}）．
-
-\noindent
-以上の精度バジェットは，単相 NS ソルバの各経路が設計通りの精度で機能し，
-全体精度が CSF モデル誤差 $\Ord{h^2}$（空間）と IPC 分割誤差 $\Ord{\Delta t^2}$（時間）で律速されることを示している．
-\textbf{二相流への拡張では GFM 導入が不可欠}であり，
-次章ではその前段として，CSF ベースの現行ソルバによる
-静止液滴・毛細管波・気泡上昇・RT 不安定の物理ベンチマーク設定を示す．

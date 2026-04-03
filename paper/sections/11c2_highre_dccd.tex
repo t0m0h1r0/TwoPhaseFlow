@@ -1,0 +1,58 @@
+% paper/sections/11c2_highre_dccd.tex
+%
+% §11.3c  高 Re 安定性：DCCD フィルタの非侵襲性
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsubsection{高 Re 安定性：DCCD フィルタの非侵襲性}
+\label{sec:highre_dccd}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{目的：}
+DCCD の 10 次選択的散逸（§~\ref{sec:dccd_filter_theory}）が，
+高 Reynolds 数流れにおいて物理的精度を損なわないことを NS パイプライン全体で確認する．
+
+\noindent\textbf{評価対象：}
+CCD（$\varepsilon_d = 0$，フィルタなし）と
+DCCD（$\varepsilon_d = 0.05$，10 次フィルタ）の
+運動エネルギー保存性・安定性の比較．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item 二重剪断層（Double shear layer）：
+        $u = \tanh\bigl((y - \pi/2)/\delta\bigr)$（$y \leq \pi$），
+        $u = \tanh\bigl((3\pi/2 - y)/\delta\bigr)$（$y > \pi$），
+        $v = \varepsilon_0\sin x$，$\delta = \pi/15$，$\varepsilon_0 = 0.05$
+  \item 計算領域 $[0, 2\pi]^2$，周期境界条件
+  \item $\mathit{Re} = 1000$（$\nu = 10^{-3}$），$T = 0.5$
+  \item 格子 $N = 64, 128, 256$，AB2+IPC，Spectral PPE
+\end{itemize}
+
+\noindent\textbf{結果：}
+
+\begin{table}[htbp]
+\centering
+\caption{高 Re 二重剪断層テスト：CCD vs DCCD（$\mathit{Re} = 1000$）}
+\label{tab:highre_dccd}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{rlrcl}
+\toprule
+$N$ & スキーム & $E_k(T)$ & $|E_k^{\text{CCD}} - E_k^{\text{DCCD}}| / E_k^{\text{CCD}}$ & 判定 \\
+\midrule
+  64 & CCD\, ($\varepsilon_d{=}0$)    & $1.709 \times 10^{1}$ & \multirow{2}{*}{$6 \times 10^{-5}$} & 安定 \\
+  64 & DCCD ($\varepsilon_d{=}0.05$) & $1.709 \times 10^{1}$ &  & 安定 \\
+\midrule
+ 128 & CCD\, ($\varepsilon_d{=}0$)    & $1.709 \times 10^{1}$ & \multirow{2}{*}{$9 \times 10^{-4}$} & 安定 \\
+ 128 & DCCD ($\varepsilon_d{=}0.05$) & $1.711 \times 10^{1}$ &  & 安定 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{結論：}
+$N = 64, 128$ の両格子で CCD と DCCD の $E_k(T)$ 相対差は $10^{-4}$--$10^{-3}$ 以下であり，
+DCCD の 10 次選択的散逸が低波数の物理モード（渦構造）を保存していることを確認した
+（§~\ref{sec:dccd_filter_theory} の分散関係解析と整合）．
+DCCD フィルタが物理的精度を損なわずに Nyquist モード近傍の高周波雑音のみを選択的に減衰する
+\textbf{非侵襲性}が，NS パイプライン全体で成立する．
+
+\noindent
+以上により，§~\ref{sec:advection_pressure_coupling} 以降の二相流テストでは
+DCCD を標準スキームとして使用する．
