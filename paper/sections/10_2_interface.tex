@@ -163,18 +163,20 @@ $\Ord{h}$ 誤差（$q(0.5-h) - q(0.5) = h\,q'(0.5) + \Ord{h^2}$）である．
 
 % ── テスト (b): Young-Laplace ジャンプ精度 ───────────────────────────────────
 
-\paragraph{(b) Young--Laplace ジャンプ精度（静止液滴）}
+\paragraph{(b) Young--Laplace ジャンプ精度（静止液滴：上風 vs Hermite）}
 
 \noindent\textbf{目的：}
-Extension PDE + CSF + CCD-PPE パイプライン全体が
+CSF + CCD-PPE パイプライン全体が
 Young--Laplace 条件 $\Delta p = \kappa/\mathit{We}$ を精度よく再現することを確認する．
+上風差分（\texttt{FieldExtender}）と最近接点 Hermite（\texttt{ClosestPointExtender}）の
+両パイプラインで同一条件の比較を行い，Hermite がリグレッションを生じないことを検証する．
 Heaviside 正則化 $H_\varepsilon$ による密度場補間の間接検証も兼ねる．
 
 \noindent\textbf{評価対象：}
-上風差分ベースライン（\texttt{FieldExtender}）による $p^n$ 延長後の CCD-PPE 求解で得られる圧力跳び精度．
-実シミュレーションでは \texttt{ClosestPointExtender}（Hermite）が使用されるが，
-本テストの静止液滴（初回ステップ）では圧力はまだ連続近似されていないため，
-Hermite の高次精度は CSF 正則化誤差 $\Ord{h^2}$ に隠れる．
+初期圧力 $p^0 = 0$ を界面越しに延長した後 CCD-PPE を求解し，
+得られた圧力場（延長前の生解）から $\Delta p$ を計測する．
+静止液滴の初回ステップでは $p^0 = 0$ の延長は
+いずれの手法でも恒等操作（no-op）であるため，PPE 解は手法によらず一致する．
 $\varepsilon/h$ 感度（CCD 曲率の $\varepsilon$ 依存性）．
 
 \noindent\textbf{手順とパラメタ：}
@@ -182,7 +184,7 @@ $\varepsilon/h$ 感度（CCD 曲率の $\varepsilon$ 依存性）．
   \item 計算領域 $[0,1]^2$，半径 $R = 0.25$ の円形液滴（$\rho_l/\rho_g = 1000$），静止状態
   \item 解析解 $\Delta p = \kappa/\mathit{We} = 1/(R \cdot \mathit{We})$（$\mathit{We} = 1$ の場合 $\Delta p = 4.0$）
   \item 格子 $N = 32, 64, 128$
-  \item $n_{\text{ext}} = 5$ ステップの Extension PDE を PPE 求解前に適用
+  \item 各格子で上風差分（$n_{\text{ext}} = 5$）と Hermite の両方を実行
   \item $\varepsilon$ 感度評価：$\varepsilon/h = 0.5$--$4.0$（$N = 128$ で実施）
 \end{itemize}
 
@@ -190,18 +192,19 @@ $\varepsilon/h$ 感度（CCD 曲率の $\varepsilon$ 依存性）．
 
 \begin{table}[htbp]
 \centering
-\caption{Laplace 圧力跳び $\Delta p = \kappa/\mathit{We}$（解析解 $4.0$）：Extension PDE + CSF}
+\caption{Laplace 圧力跳び $\Delta p = \kappa/\mathit{We}$（解析解 $4.0$）：上風 vs Hermite + CSF}
 \label{tab:field_extension_laplace}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rrrr}
+\begin{tabular}{rp{1.6cm}p{1.6cm}rr}
 \toprule
-$N$ & Ext.PDE + CSF $\Delta p$ & 相対誤差 & 収束次数 \\
+$N$ & 上風 $\Delta p$ & Hermite $\Delta p$ & 相対誤差 & 収束次数 \\
 \midrule
- 32 & $-9.34$\textsuperscript{*}  & --- & --- \\
- 64 & $3.42$  & $1.45 \times 10^{-1}$ & --- \\
-128 & $3.96$  & $9.09 \times 10^{-3}$ & $4.0$ \\
+ 32 & $-9.30$\textsuperscript{*} & $-9.30$\textsuperscript{*} & --- & --- \\
+ 64 & $3.52$  & $3.52$ & $1.21 \times 10^{-1}$ & --- \\
+128 & $4.01$  & $4.01$ & $2.2 \times 10^{-3}$  & $5.8$ \\
 \bottomrule
-\multicolumn{4}{l}{\footnotesize *$N=32$: 粗格子で界面幅 $\varepsilon$ が円弧を解像できず曲率が不正確}
+\multicolumn{5}{l}{\footnotesize *$N=32$: 粗格子で界面幅 $\varepsilon$ が円弧を解像できず曲率が不正確} \\
+\multicolumn{5}{l}{\footnotesize 上風と Hermite は全格子で完全一致（$p^0=0$ 延長が no-op のため）}
 \end{tabular}
 \end{table}
 \phantomsection\label{tab:gfm_laplace}% backward-compat: §11 uses this label
@@ -209,23 +212,26 @@ $N$ & Ext.PDE + CSF $\Delta p$ & 相対誤差 & 収束次数 \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/field_extension_verification}
-\caption{Young--Laplace 圧力跳び検証（上風差分 Extension PDE + CSF）．
-$N=128$ で解析解 $\Delta p = 4.0$ に対し相対誤差 $0.9\%$を達成．
+\caption{Young--Laplace 圧力跳び検証（CSF + CCD-PPE）．
+$N=128$ で解析解 $\Delta p = 4.0$ に対し相対誤差 $0.2\%$ を達成．
+上風差分と Hermite は初回ステップで完全一致する（本文参照）．
 場延長収束の比較（上風 vs Hermite）は図~\ref{fig:hermite_extension_convergence} を参照．}
 \label{fig:field_extension_verification}
 \end{figure}
 
 \noindent\textbf{結論：}
 $N = 64$ 以上では Laplace 圧力跳びが安定に収束し，$N = 128$ で相対誤差
-$9.1 \times 10^{-3}$（$< 1\%$）を達成した．
+$2.2 \times 10^{-3}$（$< 0.3\%$）を達成した．
+上風差分と Hermite は全格子で完全一致した．
+これは初回ステップでは $p^0 = 0$ の延長が恒等操作となるためであり，
+延長手法の選択は CSF + CCD-PPE の精度に影響しないことを確認した．
 $N = 32$ の破綻は，界面厚み $\varepsilon = 1.5h$ に対して半径 $R = 0.25$ を解像する
 格子点数が不足し，CCD 曲率が大幅に過大評価されることに起因する．
-$N = 64 \to 128$ での収束次数 $\approx 4.0$ は，
+$N = 64 \to 128$ での収束次数 $\approx 5.8$ は，
 CCD 曲率（$\Ord{h^5}$）と CSF ボリューム力の高次精度が寄与していることを示唆する．
 圧力跳び精度の律速は CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）であり，
-テスト (a) で示した $\Ord{h^1}$ 制限は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）に
-切り替えることで解消される．実シミュレーションでは Hermite が使用されるため，
-場延長が $\Delta p$ 精度の律速段階となることはない．
+テスト (a) で示した上風差分の $\Ord{h^1}$ 制限は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）に
+切り替えることで解消済みである．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{CLS 保存性評価：動的非一様格子上での保存型再マッピング}
