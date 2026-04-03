@@ -90,10 +90,13 @@ class NumericsConfig:
     # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
     # Default: 'csf' for backward compatibility; 'gfm' is production (§8e)
     surface_tension_model: str = "csf"
-    # Extension PDE (Aslam 2004): smooth δp and p^n across Γ before CCD gradient.
-    # Eliminates Gibbs oscillations in CCD ∇p at the interface.
-    # n_extend = 0 disables; typical value 5 (covers CCD stencil width).
-    n_extend: int = 0
+    # Field extension across Γ: smooth δp and p^n before CCD gradient.
+    # extension_method = 'hermite'  : ClosestPointExtender, O(h^6) [default]
+    # extension_method = 'upwind'   : FieldExtender (Aslam 2004), O(h^1) [legacy]
+    # extension_method = 'none'     : disabled
+    # n_extend: pseudo-time iterations used only when method='upwind'.
+    extension_method: str = "hermite"
+    n_extend: int = 5
 
     def __post_init__(self) -> None:
         assert self.bc_type in ("wall", "periodic"), (
@@ -106,6 +109,10 @@ class NumericsConfig:
         assert self.surface_tension_model in ("gfm", "csf"), (
             f"surface_tension_model は 'gfm' または 'csf' でなければならない: "
             f"'{self.surface_tension_model}'"
+        )
+        assert self.extension_method in ("hermite", "upwind", "none"), (
+            f"extension_method は 'hermite', 'upwind', または 'none' でなければならない: "
+            f"'{self.extension_method}'"
         )
         if self.advection_scheme == "dissipative_ccd" and self.epsilon_factor < 1.2:
             warnings.warn(
