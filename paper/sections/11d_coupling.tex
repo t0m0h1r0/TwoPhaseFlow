@@ -46,7 +46,9 @@ CSF 体積力と PPE による圧力場の
 \begin{itemize}[noitemsep]
   \item §~\ref{sec:bf_static_droplet} と同一の静止液滴（$R = 0.25$，壁面 BC，重力なし）
   \item $\rho_l/\rho_g = 2, 5$，$\mathit{We} = 10$
-  \item 非増分投影法（non-incremental projection）：毎ステップ $p$ を再計算
+  \item 非増分投影法（non-incremental projection）：毎ステップ $p$ を再計算．
+        本テストでは IPC の $\bnabla p^n$ 項を除去し，
+        力バランスへの寄与を単純化するために非増分形式を用いる
   \item $N = 64, 128$，$\Delta t = 0.25\,h$，200 ステップ
 \end{itemize}
 

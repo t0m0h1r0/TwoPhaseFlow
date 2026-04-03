@@ -13,6 +13,15 @@
 \end{equation}
 （式~\eqref{eq:cls_advection}の再掲）を数値的に解く離散化スキームを示す．
 
+\noindent\textbf{設計上の注意：}
+§~\ref{sec:dissipative_ccd} で導入した DCCD フィルタは本章でも再利用するが，
+動作モードが異なる．
+速度・圧力場では界面適応スイッチ $S(\psi) = (2\psi-1)^2$ により
+界面上でフィルタを OFF にしたが，CLS 移流では $\psi \approx 0.5$（界面）付近こそ
+安定化が最も必要な領域であるため，\textbf{一様強度}
+$\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
+（詳細は §~\ref{sec:advection_dccd_design}）．
+
 \begin{enumerate}
   \item \textbf{§~\ref{sec:advection_motivation}（Dissipative CCD の設計根拠）：}
         WENO5 が CLS 界面と相性が悪い理由を示し，
@@ -41,7 +50,7 @@ WENO5（Weighted Essentially Non-Oscillatory 5次精度）スキーム~\cite{Jia
 衝撃波・接触不連続面を含む圧縮性流体力学における数値振動（Gibbs 現象）を
 強力に抑制するために設計された．
 ステンシル内の\textbf{滑らかさ指標}（$\beta_k$，式~\eqref{eq:weno5_beta}）が
-不連続を検知すると，その方向の重みを $\Ord{\varepsilon^2}$ まで低減して
+不連続を検知すると，その方向の重みを $\Ord{\varepsilon_{\mathrm{w}}^2}$（$\varepsilon_{\mathrm{w}}$：WENO5 の滑らかさ指標に用いる小パラメータ；界面幅 $\varepsilon$ とは無関係）まで低減して
 \textbf{非線形散逸}を自動的に投入する機構がスキームの中核にある．
 
 \medskip

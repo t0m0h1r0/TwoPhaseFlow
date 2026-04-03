@@ -4,6 +4,8 @@
 %
 \subsection{境界条件と数値安定性}
 \label{sec:ppe_bc_stability}
+
+PPE に適用する境界条件の種類と，その実装上の注意点を以下にまとめる．
 \begin{itemize}
     \item \textbf{固体壁・流入出：} $\partial p/\partial n = 0$（ノイマン条件）．CCD ブロック方程式への組み込み手順（境界行を $p'_0=0$ で置き換え，変密度項の消滅）は §~\ref{sec:ccd_neumann_bc} を参照．
     \item \textbf{自由表面：} $p = p_{\mathrm{atm}}$（ディリクレ条件）

@@ -6,6 +6,11 @@
 \label{sec:time_int}
 % ─────────────────────────────────────────────────────────────────────────────
 
+\noindent
+本節では，CLS 移流だけでなく\textbf{NS 方程式系全体}の時間積分フレームワークを扱う．
+CLS 移流・再初期化には TVD-RK3（§~\ref{sec:time_int}.1），
+NS 運動量方程式には AB2 + IPC + Crank--Nicolson（§~\ref{sec:ab2_ipc}）を用いる．
+
 \subsubsection{3次 TVD Runge--Kutta 法（CLS 移流・再初期化のみ）}
 
 \textbf{CLS 移流ステップ（界面追跡）および CLS 再初期化の仮想時間積分}に，

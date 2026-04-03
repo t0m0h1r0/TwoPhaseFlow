@@ -23,6 +23,12 @@
 図~\ref{fig:ns_solvers} に，NS 方程式の各項と本手法で用いる離散ソルバーの対応を示す．
 コロケート格子（セル中心）上で圧力・速度・界面変数すべてが同一点に配置され，
 DCCD 散逸（$\varepsilon_d=1/4$，§~\ref{sec:dccd_decoupling}）によりチェッカーボード不安定を内在的に抑制する．
+なお，DCCD フィルタの散逸パラメータ $\varepsilon_d$ は用途ごとに異なる値を取る：
+\begin{itemize}[noitemsep]
+  \item \textbf{CLS 移流}（§~\ref{sec:advection_motivation}）：$\varepsilon_d = 0.05$（界面プロファイル保持のため低散逸）
+  \item \textbf{PPE 右辺・Corrector 発散}（§~\ref{sec:dccd_decoupling}）：$\varepsilon_d = 1/4$（チェッカーボード完全抑制）
+  \item \textbf{曲率計算の DCCD フィルタ}（§~\ref{sec:curvature}）：$\varepsilon_d = 0.05$（高次微分の精度保持）
+\end{itemize}
 
 %%% ── 図：NS各項とソルバーの対応 ─────────────────────────────────────────
 \begin{figure}[htbp]
