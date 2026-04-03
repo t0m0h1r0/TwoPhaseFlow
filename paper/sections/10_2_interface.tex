@@ -66,6 +66,24 @@ $L_\infty$ 誤差はスロット角部・界面不連続部で遷移幅 $\vareps
 精度の上界を規定するため単調減少しない場合がある．
 質量保存誤差は $N = 256$ で $\Ord{10^{-5}}$ に達した．
 
+\begin{figure}[htbp]
+\centering
+\begin{minipage}[t]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/zalesak_N128}
+  \centerline{\small (a) Zalesak スロット円板}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/single_vortex_N128}
+  \centerline{\small (b) 単一渦テスト}
+\end{minipage}
+\caption{CLS 界面移流テスト（$N=128$，DCCD $\varepsilon_d=0.05$）．
+左列：初期状態，右列：1 回転 / 時間反転後．
+赤実線：$\psi=0.5$ 等値線（計算結果），黒破線：解析解．}
+\label{fig:cls_advection_snapshots}
+\end{figure}
+
 \noindent\textbf{結論：}
 DCCD 移流と再初期化の組み合わせは，質量保存誤差 $\Ord{10^{-5}}$（$N=256$）を達成し，
 保存性が良好であることを確認した．
@@ -85,8 +103,8 @@ $L_\infty$ 形状誤差は界面厚み $\varepsilon$ により律速される．
 \paragraph{(a) Extension PDE 場延長の収束テスト（1次元）}
 
 \noindent\textbf{目的：}
-Extension PDE が界面越しに場を法線方向定数延長する際，
-上風1次精度 $\Ord{h^1}$ を界面近傍で示すことを定量確認する．
+Aslam~(2004) の上風1次差分によるベースライン実装が $\Ord{h^1}$ であることを定量確認し，
+最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）との比較基準を確立する．
 
 \noindent\textbf{評価対象：}
 \texttt{FieldExtender.extend()} による $\phi<0$ 側から $\phi>0$ 側への場延長精度．
@@ -122,10 +140,11 @@ $N$ & $h$ & $L^\infty$ 誤差（延長帯） & 収束次数 \\
 \end{table}
 
 \noindent\textbf{結論：}
-界面近傍延長帯において $\Ord{h^1}$ の正確な1次収束が確認された．
+ベースライン（上風差分）実装において $\Ord{h^1}$ の正確な1次収束が確認された．
 誤差の支配要因は，上風スキームが界面値を最近傍ソースセル $q(0.5-h)$ からサンプリングする際の
 $\Ord{h}$ 誤差（$q(0.5-h) - q(0.5) = h\,q'(0.5^{-}) + \Ord{h^2}$）である．
-この結果は §~\ref{sec:pressure_accuracy_summary} の精度まとめ（表~\ref{tab:accuracy_summary}）と整合する．
+最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）はこのサンプリング誤差を CCD データの
+$\Ord{h^6}$ 補間に置き換えることで精度を大幅に改善する．
 
 % ── テスト (b): Young-Laplace ジャンプ精度 ───────────────────────────────────
 
@@ -168,6 +187,15 @@ $N$ & Ext.PDE + CSF $\Delta p$ & 相対誤差 & 収束次数 \\
 \end{tabular}
 \end{table}
 \phantomsection\label{tab:gfm_laplace}% backward-compat: §11 uses this label
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/extension_pde_verification}
+\caption{Extension PDE 検証．
+(a) 場延長の $L^\infty$ 誤差は $\Ord{h^{1.0}}$ で正確に収束（上風1次精度の理論値に一致）．
+(b) Young--Laplace 圧力跳び：$N=128$ で解析解 $\Delta p = 4.0$ に対し相対誤差 $0.9\%$．}
+\label{fig:extension_pde_verification}
+\end{figure}
 
 \noindent\textbf{結論：}
 $N = 64$ 以上では Laplace 圧力跳びが安定に収束し，$N = 128$ で相対誤差

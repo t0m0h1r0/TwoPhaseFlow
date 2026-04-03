@@ -67,6 +67,16 @@ $128$ & $1/128$ & $5.02 \times 10^{-5}$ & $2.52 \times 10^{-9}$ & $1.02 \times 1
 \end{tabular}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.72\linewidth]{figures/dc_iteration_convergence}
+\caption{欠陥補正反復回数 $k$ と格子収束特性．
+$k=1$ では $\Ord{h^2}$（FD 支配），$k=2$ で $\Ord{h^4}$，
+$k \geq 3$ で CCD の $\Ord{h^7}$ 精度が発現する．
+破線は参照勾配．}
+\label{fig:dc_iteration_convergence}
+\end{figure}
+
 $k=1$ では $L_L$（$\Ord{h^2}$）が支配的，$k=2$ で $\Ord{h^4}$，
 $k \geq 3$ で CCD 精度が完全に発現し $\Ord{h^7}$ に達した．
 超収束（$p \approx 7$）はディリクレ解析解が境界上でゼロであるため
