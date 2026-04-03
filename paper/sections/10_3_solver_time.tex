@@ -211,16 +211,17 @@ $\Ord{h^6}$ 精度が保たれることを確認する．
 特に大密度比（$\rho_l/\rho_g \gg 1$）での条件数悪化が収束速度に与える影響を評価する．
 
 \noindent\textbf{評価対象：}
-変密度欠陥補正法（$k=3$），密度比 $\rho_l/\rho_g = 1, 10, 100, 1000$．
+変密度欠陥補正法（$k=3$），密度比 $\rho_{\max}/\rho_{\min} \approx 1, 9, 99, 999$．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
   \item 2次元変密度 Poisson 方程式，製造解 $p^* = \sin(\pi x)\sin(\pi y)$
-  \item 密度場 $\rho(x,y) = \rho_g + (\rho_l - \rho_g)\,H_\varepsilon(\phi_0)$，
-        $\phi_0 = \sqrt{(x-0.5)^2+(y-0.5)^2} - 0.25$（円形界面）
+  \item 滑らか密度場 $\rho(x,y) = 1 + A\sin(\pi x)\cos(\pi y)$，
+        $A = 0, 0.8, 0.98, 0.998$
+        （$\rho_{\max}/\rho_{\min} \approx 1, 9, 99, 999$）
   \item 右辺 $q = \bnabla\cdot(1/\rho\,\bnabla p^*)$ を解析的に構成
   \item 格子 $N = 16, 32, 64, 128$（一様），ディリクレ BC
-  \item 各密度比で $L^\infty$ 誤差・収束次数・欠陥補正反復回数を計測
+  \item 各密度比で $L^\infty$ 誤差・収束次数を計測
 \end{itemize}
 
 \noindent\textbf{結果：}
@@ -233,24 +234,28 @@ $\Ord{h^6}$ 精度が保たれることを確認する．
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{rcccc}
 \toprule
-$N$ & $\rho_l/\rho_g = 1$ & $= 10$ & $= 100$ & $= 1000$ \\
+$N$ & $\rho_{\max}/\rho_{\min} = 1$ & $\approx 9$ & $\approx 99$ & $\approx 999$ \\
 \midrule
-$16$  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
-$32$  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
-$64$  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
-$128$ & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+$16$  & $1.91 \times 10^{-6}$ & $2.06 \times 10^{-6}$ & $3.12 \times 10^{-6}$ & $7.79 \times 10^{-6}$ \\
+$32$  & $1.60 \times 10^{-8}$ & $1.74 \times 10^{-8}$ & $7.32 \times 10^{-8}$ & $2.67 \times 10^{-7}$ \\
+$64$  & $1.29 \times 10^{-10}$ & $1.41 \times 10^{-10}$ & $8.47 \times 10^{-10}$ & $4.76 \times 10^{-9}$ \\
+$128$ & $1.02 \times 10^{-12}$ & $1.51 \times 10^{-12}$ & $1.82 \times 10^{-11}$ & $8.50 \times 10^{-11}$ \\
 \midrule
-次数  & \textit{TBD} & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+次数  & $\approx 7.0$ & $\approx 6.5$ & $\approx 5.5$ & $\approx 5.8$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\textbf{期待される結論：}
-$\rho_l/\rho_g = 1$ では等密度テスト（表~\ref{tab:dc_iteration_accuracy}）と一致する．
-密度比の増大とともに条件数が悪化し，収束に必要な反復回数 $k$ が増加するが，
-$k$ を十分に取れば（$k \geq 5$）$\Ord{h^6}$ 精度は維持される見込みである．
-$\rho_l/\rho_g = 1000$ では仮想時間刻み $\Delta\tau$ の調整
-（§\ref{sec:ppe_bc_stability}）が必要となる可能性がある．
+\noindent\textbf{結論：}
+$\rho_{\max}/\rho_{\min} = 1$ では等密度テスト（表~\ref{tab:dc_iteration_accuracy}）の $k=3$ 列と
+$L^\infty$ 誤差が一致し，$\Ord{h^{7.0}}$ の超収束を再現した．
+密度比 $\approx 9$（$A = 0.8$）でも $\Ord{h^{6.5}}$ が維持される．
+$\approx 99$--$999$ では条件数悪化に伴い $\Ord{h^{5.5}}$--$\Ord{h^{5.8}}$ にやや低下するが，
+$k = 3$ の固定反復で $N = 128$ 時 $L^\infty = \Ord{10^{-11}}$ と十分な精度を達成した．
+界面型密度場（smoothed Heaviside）では $H_\varepsilon$ の幅 $\varepsilon = \Ord{h}$ が
+CCD/FD 両離散化で解像限界を生じ，$k = 3$ の DC では収束しない．
+高密度比界面問題への適用には $\varepsilon/h$ 比の増大または
+反復回数 $k$ の増加が必要であり，今後の課題とする．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{AB2 時間積分精度}

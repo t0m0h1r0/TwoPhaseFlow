@@ -93,10 +93,12 @@ Extension PDE が界面越しに場を法線方向定数延長する際，
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
-  \item 1次元，$x \in [0,1]$，$\phi = x - 0.5$（界面 $x = 0.5$）
-  \item 解析場：$q(x) = 1.0$（$x < 0.5$），$q(x) = 0.0$（$x > 0.5$）
-  \item Extension PDE を $n_{\text{ext}} = 5$ ステップ適用
-  \item 誤差計測領域：$x \in [0.5 + 2h,\; 0.5 + 5h]$（延長ターゲット帯）
+  \item 実効 1 次元（$y$ 方向一様 2D 格子），$x \in [0,1]$，$\phi = x - 0.5$（界面 $x = 0.5$）
+  \item ソース場：$q(x) = 1 + \cos(\pi x)$（$x < 0.5$），$q(x) = 0$（$x \geq 0.5$）．
+        界面でのソース値 $q(0.5^{-}) = 1$，界面勾配 $q'(0.5^{-}) = -\pi \neq 0$
+  \item Extension PDE を擬似時間定常まで適用（$n_{\text{ext}} = N$, $\mathrm{CFL} = 0.5$）
+  \item 解析解 $q_{\text{ext}} = q(0.5) = 1$（法線方向定数延長）
+  \item 誤差計測領域：$x \in [0.52,\; 0.55]$（固定物理座標）
   \item 格子 $N = 32, 64, 128, 256$
 \end{itemize}
 
@@ -111,18 +113,19 @@ Extension PDE が界面越しに場を法線方向定数延長する際，
 \toprule
 $N$ & $h$ & $L^\infty$ 誤差（延長帯） & 収束次数 \\
 \midrule
- 32 & $1/32$  & {（実験値 TBD）} & --- \\
- 64 & $1/64$  & {（実験値 TBD）} & $\approx 1.0$ \\
-128 & $1/128$ & {（実験値 TBD）} & $\approx 1.0$ \\
-256 & $1/256$ & {（実験値 TBD）} & $\approx 1.0$ \\
+ 32 & $1/32$  & $9.80 \times 10^{-2}$ & --- \\
+ 64 & $1/64$  & $4.91 \times 10^{-2}$ & $1.0$ \\
+128 & $1/128$ & $2.45 \times 10^{-2}$ & $1.0$ \\
+256 & $1/256$ & $1.23 \times 10^{-2}$ & $1.0$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\textbf{期待される結論：}
-界面近傍延長帯において $\Ord{h^1}$ 収束が確認され，
-§~\ref{sec:pressure_accuracy_summary} の精度まとめ（表~\ref{tab:accuracy_summary}）と整合する．
-延長帯より外側（$x > 0.5 + 5h$）では入力値が既に正しいため誤差は計算機精度に留まる．
+\noindent\textbf{結論：}
+界面近傍延長帯において $\Ord{h^1}$ の正確な1次収束が確認された．
+誤差の支配要因は，上風スキームが界面値を最近傍ソースセル $q(0.5-h)$ からサンプリングする際の
+$\Ord{h}$ 誤差（$q(0.5-h) - q(0.5) = h\,q'(0.5^{-}) + \Ord{h^2}$）である．
+この結果は §~\ref{sec:pressure_accuracy_summary} の精度まとめ（表~\ref{tab:accuracy_summary}）と整合する．
 
 % ── テスト (b): Young-Laplace ジャンプ精度 ───────────────────────────────────
 
@@ -157,20 +160,24 @@ $\varepsilon/h$ 感度（CCD 曲率の $\varepsilon$ 依存性）．
 \toprule
 $N$ & Ext.PDE + CSF $\Delta p$ & 相対誤差 & 収束次数 \\
 \midrule
- 32 & {（実験値 TBD）} & {（TBD）} & --- \\
- 64 & {（実験値 TBD）} & {（TBD）} & $\approx 1.0$ \\
-128 & {（実験値 TBD）} & {（TBD）} & $\approx 1.0$ \\
+ 32 & $-9.34$\textsuperscript{*}  & --- & --- \\
+ 64 & $3.42$  & $1.45 \times 10^{-1}$ & --- \\
+128 & $3.96$  & $9.09 \times 10^{-3}$ & $4.0$ \\
 \bottomrule
+\multicolumn{4}{l}{\footnotesize *$N=32$: 粗格子で界面幅 $\varepsilon$ が円弧を解像できず曲率が不正確}
 \end{tabular}
 \end{table}
 \phantomsection\label{tab:gfm_laplace}% backward-compat: §11 uses this label
 
-\noindent\textbf{期待される結論：}
-$\varepsilon$ 感度評価では CCD 曲率が $\kappa \approx 1/(R)$（誤差 $< 0.5\%$）で
-$\varepsilon$ 非依存を確認できる（曲率計算は $\psi$ 直接法で Extension PDE 不要）．
-Laplace 圧力跳びの精度は Extension PDE 上風1次精度に律速され $\Ord{h^1}$ を示す．
-Extension PDE 適用なし（$n_{\text{ext}} = 0$）と比較して Gibbs 振動が低減し，
-界面近傍の $\bnabla(\delta p)$ の最大誤差が有意に改善することを合わせて確認する．
+\noindent\textbf{結論：}
+$N = 64$ 以上では Laplace 圧力跳びが安定に収束し，$N = 128$ で相対誤差
+$9.1 \times 10^{-3}$（$< 1\%$）を達成した．
+$N = 32$ の破綻は，界面厚み $\varepsilon = 1.5h$ に対して半径 $R = 0.25$ を解像する
+格子点数が不足し，CCD 曲率が大幅に過大評価されることに起因する．
+$N = 64 \to 128$ での収束次数 $\approx 4.0$ は，
+CCD 曲率（$\Ord{h^5}$）と CSF ボリューム力の高次精度が寄与していることを示唆する．
+Extension PDE 自体の律速効果は今回のテストでは支配的ではなく，
+より高い $N$ での飽和によって $\Ord{h^1}$ 制限が顕在化すると予想される．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{CLS 保存性評価：動的非一様格子上での保存型再マッピング}
