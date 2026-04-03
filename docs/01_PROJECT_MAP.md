@@ -18,7 +18,11 @@ src/twophase/
 │   ├── flow_state.py           # FlowState dataclass (velocity, psi, rho, mu, kappa, pressure)
 │   ├── grid.py                 # Grid — node-centered, metric tensors, density fn
 │   └── components.py           # Component registry helpers
+├── hfe/                        # Hermite Field Extension (§08d)
+│   ├── hermite_interp.py       # hermite5_coeffs / hermite5_eval — O(h⁶) Hermite polynomial
+│   └── field_extension.py      # HermiteFieldExtension — 2-D tensor-product extension via CCD data
 ├── interfaces/                 # Abstract interfaces (DIP)
+│   ├── field_extension.py      # IFieldExtension — field extension across Γ
 │   ├── levelset.py             # ILevelSetAdvection, IReinitializer, ICurvatureCalculator
 │   ├── ns_terms.py             # INSTerm — marker interface for NS RHS terms
 │   └── ppe_solver.py           # IPPESolver — solve(rhs, rho, dt, p_init) → p
