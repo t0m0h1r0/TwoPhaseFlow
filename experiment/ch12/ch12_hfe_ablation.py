@@ -14,7 +14,7 @@ This script documents the experimental design and will be executed
 once the NS pipeline supports configurable extension methods.
 
 Usage:
-    python experiments/ch12_hfe_ablation.py
+    python experiment/ch12/ch12_hfe_ablation.py
 """
 
 # ── Experimental Design (to be connected to NS pipeline) ────────────────

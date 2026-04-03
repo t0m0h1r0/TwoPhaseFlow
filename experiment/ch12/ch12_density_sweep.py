@@ -11,7 +11,7 @@ Density ratios: rho_l/rho_g = 2, 3, 5, 10
 Requires: Full NS pipeline (SimulationBuilder) — NOT yet runnable.
 
 Usage:
-    python experiments/ch12_density_sweep.py
+    python experiment/ch12/ch12_density_sweep.py
 """
 
 EXPERIMENT_SPEC = {

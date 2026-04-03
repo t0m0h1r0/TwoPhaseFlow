@@ -6,12 +6,12 @@ Test (a): 1D field extension convergence — upwind O(h^1) vs Hermite O(h^6)
 Test (c): 2D field extension convergence — circular interface, tensor-product
 
 Usage:
-    python experiments/hfe_verification.py
+    python experiment/hfe_verification.py
 
 Outputs:
-    experiments/results/hfe_1d_convergence.txt
-    experiments/results/hfe_2d_convergence.txt
-    experiments/figures/hfe_convergence.pdf
+    experiment/results_hfe/hfe_1d_convergence.txt
+    experiment/results_hfe/hfe_2d_convergence.txt
+    experiment/figures_hfe/hfe_convergence.pdf
 """
 
 import sys
