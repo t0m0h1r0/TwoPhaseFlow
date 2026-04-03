@@ -25,7 +25,7 @@
 \midrule
 1 & CLS 移流（DCCD+RK3） & DCCD 散逸特性，CLS 形状・質量保存 & §\ref{sec:verify_dccd_dissipation}, \ref{sec:dccd_dissipation_bench}, \ref{sec:verify_cls_advection} \\
 2 & 再初期化 & CLS 移流テストに含む & §\ref{sec:verify_cls_advection} \\
-3 & 物性値更新（$\rho, \mu$） & Extension PDE Young--Laplace 精度で間接検証 & §\ref{sec:verify_gfm} \\
+3 & 物性値更新（$\rho, \mu$） & 界面越し Hermite 延長 Young--Laplace 精度で間接検証 & §\ref{sec:verify_gfm} \\
 4 & 曲率 $\kappa$（CCD） & 3 経路比較＋混合微分の間接検証 & §\ref{sec:verify_curvature} \\
 5 & Predictor（AB2+CN） & §\ref{sec:verification} で結合検証 & — \\
 6 & PPE（欠陥補正） & $k$ vs 精度，Neumann BC，変密度 & §\ref{sec:verify_ppe}, \ref{sec:verify_ppe_neumann}, \ref{sec:verify_ppe_varrho} \\
@@ -42,7 +42,7 @@
   \item \textbf{§~\ref{sec:verify_spatial}（空間離散化）：}
         CCD/DCCD 収束性・GCL・散逸特性．
   \item \textbf{§~\ref{sec:verify_interface}（界面処理）：}
-        CLS 移流・保存性・Extension PDE 圧力延長．
+        CLS 移流・保存性・界面越し Hermite 延長．
   \item \textbf{§~\ref{sec:verify_solver}（ソルバと時間発展）：}
         PPE 欠陥補正・TVD-RK3．
 \end{enumerate}

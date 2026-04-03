@@ -8,9 +8,9 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 §\ref{sec:verify_spatial} で確認した CCD/DCCD 微分演算子を用いて構成される
-界面処理パイプライン（CLS 移流→再初期化→Extension PDE 圧力延長）を検証する．
+界面処理パイプライン（CLS 移流→再初期化→界面越し Hermite 延長）を検証する．
 界面移流の形状保持性能と質量保存性（§\ref{sec:verify_cls_advection}），
-Extension PDE による圧力場延長の精度（§\ref{sec:verify_extension_pde}），
+界面越し場延長の精度（§\ref{sec:verify_extension_pde}），
 動的非一様格子上での保存型再マッピング（§\ref{sec:cls_conservation}）の順に確認する．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -90,12 +90,12 @@ DCCD 移流と再初期化の組み合わせは，質量保存誤差 $\Ord{10^{-
 $L_\infty$ 形状誤差は界面厚み $\varepsilon$ により律速される．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{Extension PDE による圧力延長の精度}
+\subsubsection{界面越し場延長の精度（上風 vs Hermite）}
 \label{sec:verify_extension_pde}
 \label{sec:verify_gfm}% backward-compat label (§10+ cross-references)
 % ─────────────────────────────────────────────────────────────────────────────
 
-本節では 2 つのテストで Extension PDE（§\ref{sec:gfm}）の精度を確認する：
+本節では 2 つのテストで界面越し場延長（§\ref{sec:gfm}）の精度を確認する：
 (a) 場延長の収束次数，(b) Young--Laplace ジャンプの再現精度．
 
 % ── テスト (a): 場延長の収束次数 ──────────────────────────────────────────────
