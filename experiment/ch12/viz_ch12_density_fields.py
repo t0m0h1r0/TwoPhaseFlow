@@ -121,6 +121,10 @@ def make_figure(results):
     all_p = np.concatenate([r['p'].ravel() for r in results])
     vmax_p = float(np.percentile(np.abs(all_p), 99)) * 1.05
 
+    vmax_u = float(max(r['vel_mag'].max() for r in results))
+    im_p_last = None
+    im_u_last = None
+
     for i, r in enumerate(results):
         rho_l = r['rho_l']
         phi = r['phi']
@@ -129,36 +133,36 @@ def make_figure(results):
 
         # Top row: pressure fields
         ax = axes[0, i]
-        im = ax.pcolormesh(x1d, y1d, p.T, cmap='RdBu_r',
-                           vmin=-vmax_p, vmax=vmax_p, shading='auto')
+        im_p = ax.pcolormesh(x1d, y1d, p.T, cmap='RdBu_r',
+                             vmin=-vmax_p, vmax=vmax_p, shading='auto')
         ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k', linewidths=1.5)
-        if i == len(results) - 1:
-            plt.colorbar(im, ax=ax, label='$p$', shrink=0.9)
         ax.set_title(fr'$\rho_l/\rho_g={int(rho_l)}$' + '\n'
-                     fr'$\Delta p_{{meas}}={r["dp_meas"]:.3f}$', fontsize=10)
-        ax.set_xlabel('$x$'); ax.set_ylabel('$y$' if i == 0 else '')
+                     fr'$\Delta p_\mathrm{{meas}}={r["dp_meas"]:.3f}$', fontsize=10)
+        ax.set_xlabel('$x$')
         ax.set_aspect('equal')
         if i > 0:
             ax.set_yticklabels([])
+        im_p_last = im_p
 
         # Bottom row: velocity magnitude
         ax = axes[1, i]
-        vmax_u = float(max(r['vel_mag'].max() for r in results))
-        im2 = ax.pcolormesh(x1d, y1d, vm.T, cmap='hot_r',
-                            vmin=0, vmax=vmax_u, shading='auto')
+        im_u = ax.pcolormesh(x1d, y1d, vm.T, cmap='hot_r',
+                             vmin=0, vmax=vmax_u, shading='auto')
         ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='w', linewidths=1.5)
-        if i == len(results) - 1:
-            plt.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$', shrink=0.9)
         ax.set_title(fr'$\|\mathbf{{u}}\|_\infty={vm.max():.2e}$', fontsize=10)
-        ax.set_xlabel('$x$'); ax.set_ylabel(r'$\|\mathbf{u}\|$' if i == 0 else '')
+        ax.set_xlabel('$x$')
         ax.set_aspect('equal')
         if i > 0:
             ax.set_yticklabels([])
+        im_u_last = im_u
 
-    axes[0, 0].set_ylabel('圧力場 $p(x,y)$', fontsize=11)
-    axes[1, 0].set_ylabel(r'寄生流れ $\|\mathbf{u}(x,y)\|$', fontsize=11)
+    # Shared colorbars — one per row, placed right of all columns → equal panel sizes
+    axes[0, 0].set_ylabel('Pressure $p(x,y)$', fontsize=11)
+    axes[1, 0].set_ylabel(r'Parasitic velocity $\|\mathbf{u}(x,y)\|$', fontsize=11)
+    fig.colorbar(im_p_last, ax=axes[0, :].tolist(), label='$p$', shrink=0.8)
+    fig.colorbar(im_u_last, ax=axes[1, :].tolist(), label=r'$\|\mathbf{u}\|$', shrink=0.8)
 
-    plt.suptitle(r'密度比スイープ: $N=64$, $We=10$, 200ステップ — 全ケース安定',
+    plt.suptitle(r'Density ratio sweep: $N=64$, $We=10$, 200 steps — all stable',
                  fontsize=12)
     plt.tight_layout()
 

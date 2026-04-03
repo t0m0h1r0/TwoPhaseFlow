@@ -119,21 +119,19 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
     ax.contour(x1d, y1d, psi.T, levels=[0.5], colors='w', linewidths=1.0,
                linestyles='--')
     plt.colorbar(im, ax=ax, label='$p$')
-    ax.set_title(r'圧力場 $p(x,y)$' + '\n' + r'($N=64$, step=200)', fontsize=11)
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
-
-    # Exact Δp = σ/(R·We) = 1/(0.25·10) = 0.4
     dp_exact = SIGMA / (R * WE)
     inside = phi > 3.0 / N
     outside = phi < -3.0 / N
     dp_meas = float(np.mean(p[inside]) - np.mean(p[outside]))
     ax.set_title(
-        r'圧力場 $p(x,y)$' + '\n'
+        r'Pressure $p(x,y)$' + '\n'
         fr'$\Delta p_\mathrm{{exact}}={dp_exact:.3f}$,'
         fr' $\Delta p_\mathrm{{meas}}={dp_meas:.3f}$',
         fontsize=10
     )
+    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
+    ax.set_aspect('equal')
+    plt.colorbar(im, ax=ax, label='$p$')
 
     # ── Panel B: Velocity magnitude (parasitic currents) ──
     ax = axes[1]
@@ -141,11 +139,11 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
     im2 = ax.pcolormesh(x1d, y1d, vel_mag.T, cmap='hot_r', vmin=0, vmax=vmax_u,
                         shading='auto')
     ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='w', linewidths=1.5)
-    plt.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$')
-    ax.set_title(r'寄生流れ速度 $\|\mathbf{u}(x,y)\|$' + '\n'
+    ax.set_title(r'Parasitic velocity $\|\mathbf{u}(x,y)\|$' + '\n'
                  fr'$\|\mathbf{{u}}\|_\infty={vmax_u:.2e}$', fontsize=10)
     ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
     ax.set_aspect('equal')
+    plt.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$')
 
     # ── Panel C: Velocity time history ──
     ax = axes[2]
@@ -153,11 +151,11 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
     ax.semilogy(steps, u_max_hist, 'b-', linewidth=1.2)
     ax.set_xlabel('Time step')
     ax.set_ylabel(r'$\|\mathbf{u}\|_\infty$')
-    ax.set_title(r'寄生流れ時間発展' + '\n' + '(200 ステップ)', fontsize=10)
+    ax.set_title('Parasitic velocity history\n(200 steps)', fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(0, N_STEPS)
 
-    plt.suptitle(r'静止液滴テスト: $\rho_l/\rho_g=2$, $We=10$, $N=64$',
+    plt.suptitle(r'Static droplet: $\rho_l/\rho_g=2$, $We=10$, $N=64$',
                  fontsize=12, y=1.01)
     plt.tight_layout()
 
