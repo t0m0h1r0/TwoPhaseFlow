@@ -16,11 +16,12 @@ PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散
 \end{equation}
 よくある実装ミス：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$．
 \textbf{本稿の実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ccd_poisson_matrix}）であり，$\Ord{h^6}$ を達成する．
-式~\eqref{eq:af_exact} は GFM 補正項の調和平均密度逆数（式~\eqref{eq:gfm_rhs_correction}）と一致する（§\ref{sec:gfm}）．
+式~\eqref{eq:af_exact} は FVM における界面越し面係数の標準形であり，
+CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}）の低次極限に対応する．
 
 Rhie--Chow 補正済み発散の完全な定義および旧 Balanced-Force 定式化は
-付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + GFM により
-Rhie--Chow 補正を代替する（式~\eqref{eq:gfm_ccd_div}）．
+付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + Extension PDE（§\ref{sec:gfm}）により
+Rhie--Chow 補正を代替する．
 
 \subsubsection{FVM 積分論理}
 
