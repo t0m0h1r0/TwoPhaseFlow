@@ -22,7 +22,7 @@ DCCD の選択的高波数減衰の有効性を間接的に評価する．
 \end{equation}
 を以下の条件で解く：
 \begin{itemize}[noitemsep]
-  \item 格子 $N=256$，周期境界，CFL $=0.4$，時間積分 RK4，1 周期（$T=1$）
+  \item 格子 $N=256$，周期境界，CFL $=0.4$，時間積分 RK4\footnote{本検証では CCD 空間離散化の特性を分離して評価するため RK4 を使用した．実ソルバでは TVD-RK3 を採用しており（式~\eqref{eq:tvd_rk3}），時間積分スキームの違いによる散逸特性への影響は微小である．}，1 周期（$T=1$）
   \item 初期条件 3 種：Square（不連続矩形パルス），Triangle（$C^0$ 三角波），Smooth tanh
   \item 比較スキーム：O2（2次中心差分），O4（4次），CCD（6次），
         DCCD（CCD $+$ 10次選択フィルタ，$\alpha_f=0.4$），WENO5

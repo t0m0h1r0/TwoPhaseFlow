@@ -136,11 +136,11 @@ $Re, Fr, We$ の形の無次元係数に変換される．
 共通因子 $[\rho_l U^2/L]$ が全ての項に現れる：
 \begin{align}
  &\underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{\text{共通因子}} \!\!
- \rho\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \notag \\
+ \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right) \notag \\
  &= - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}_{}\bnabla p
    + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{1}{Re}\,
-     \bnabla\cdot\!\bigl[\mu(\bnabla\bu+\bnabla\bu^T)\bigr]
-   - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\rho}{Fr^2}\hat{\bm z}
+     \bnabla\cdot\!\bigl[\mu(\psi)(\bnabla\bu+\bnabla\bu^T)\bigr]
+   - \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\rho(\psi)}{Fr^2}\hat{\bm z}
    + \underbrace{\left[\frac{\rho_l U^2}{L}\right]}{}\frac{\kappa\bnabla\psi}{We}
  \label{eq:NS_assembled}
 \end{align}
@@ -148,8 +148,8 @@ $Re, Fr, We$ の形の無次元係数に変換される．
 
 \begin{equation}
  \rho(\psi)\!\left(\pd{\bu}{t}+\bu\cdot\bnabla\bu\right)
- =-\bnabla p+\frac{1}{Re}\,\bnabla\cdot\!\left[\mu\,(\bnabla\bu+\bnabla\bu^T)\right]
- -\frac{\rho}{Fr^2}\hat{\bm z}+\frac{\kappa\,\bnabla\psi}{We}
+ =-\bnabla p+\frac{1}{Re}\,\bnabla\cdot\!\left[\mu(\psi)\,(\bnabla\bu+\bnabla\bu^T)\right]
+ -\frac{\rho(\psi)}{Fr^2}\hat{\bm z}+\frac{\kappa\,\bnabla\psi}{We}
  \label{eq:NS_dimless_cls}
 \end{equation}
 

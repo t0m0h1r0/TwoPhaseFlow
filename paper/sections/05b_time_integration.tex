@@ -59,13 +59,14 @@ Predictor ステップの離散式は：
 \end{equation}
 ここで $\mathcal{C}(\bu,q) = \bu\cdot\bnabla q$（対流演算子），$\mathcal{D}$ は完全粘性応力演算子
 （式~\eqref{eq:viscous_full_x}）．
-体積力 $\bm{f}^{n+1}$ は重力項のみで構成する：
+体積力 $\bm{f}^{n+1}$ は重力と CSF 表面張力の合計で構成する：
 \begin{equation*}
   \bm{f}^{n+1} = - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
+  + \frac{1}{\mathrm{We}}\,\kappa^{n+1}\bnabla\psi^{n+1}
 \end{equation*}
-（重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
-2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$）．
-\textbf{表面張力は CSF 体積力 $\kappa\bnabla\psi/\mathrm{We}$ として Predictor に含まれる}（§~\ref{sec:csf}）．
+ここで $\bm{f}^{n+1}$ は重力と CSF 表面張力 $(\kappa/\mathrm{We})\bnabla\psi$ の合計である．
+重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
+2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$（§~\ref{sec:csf}）．
 圧力場には最近接点 Hermite 補間（§~\ref{sec:extension_pde}）を適用し，CCD 勾配が $\Ord{h^6}$ 精度を維持できるよう
 界面を跨いで滑らかに延長する（§~\ref{sec:algorithm} 参照）．
 対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
