@@ -144,7 +144,7 @@ CCD の $\Ord{h^6}$ 精度を二相流で回復するには，
 $\rho_l/\rho_g = 2$--$5$ でも界面近傍の精度は $\Ord{h^{1}}$--$\Ord{h^{2}}$ に劣化しており，
 低密度比だから一括解法で十分ということはない．
 分相 PPE 解法は各相で定数密度の PPE を独立に解き，
-界面のジャンプ条件を Hermite 延長（§~\ref{sec:field_extension}）で課すことで，
+界面のジャンプ条件を HFE（§~\ref{sec:field_extension}）で課すことで，
 不連続係数を横切るステンシルを完全に排除する．
 次節で分相 PPE 解法による精度回復を実証する．
 
@@ -166,7 +166,7 @@ Smoothed Heaviside 一括解法が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
 \begin{equation}
   \nabla^2 p_k = \rho_k \, q \qquad \text{（$\rho_k$ は定数）}
 \end{equation}
-を独立に解き，界面のジャンプ条件は Hermite 延長で課す．
+を独立に解き，界面のジャンプ条件は HFE で課す．
 $\rho_k$ が定数であるため，離散化演算子は密度ジャンプの影響を受けない．
 
 \noindent\textbf{手順とパラメタ：}
