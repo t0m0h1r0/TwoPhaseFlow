@@ -1,0 +1,6 @@
+# 2D HFE convergence (circular interface)
+# N  Linf_error
+32  3.537545e-06
+64  4.719371e-07
+128  5.948374e-08
+256  7.481924e-09

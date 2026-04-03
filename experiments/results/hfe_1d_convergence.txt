@@ -1,0 +1,6 @@
+# 1D field extension convergence: upwind vs Hermite
+# N  upwind_Linf  hermite_Linf
+32  9.801714e-02  0.000000e+00
+64  4.906767e-02  0.000000e+00
+128  2.454123e-02  0.000000e+00
+256  1.227154e-02  0.000000e+00
