@@ -32,7 +32,7 @@ smoothed Heaviside 密度場を用いた変密度 PPE は $\rho_l/\rho_g \geq 10
 欠陥補正法が発散し，現行の一括解法では界面通過テストを実施できない．
 根本原因は $1/\rho$ のジャンプを横切る FD/CCD ステンシルの $\Ord{1}$ 離散化誤差であり，
 これを解消するには各相で定数密度 PPE を独立に解く
-\textbf{GFM}（Ghost Fluid Method，§~\ref{sec:gfm_jump}）の導入が必要である．
+\textbf{GFM}（Ghost Fluid Method，§~\ref{sec:gfm}）の導入が必要である．
 GFM では界面のジャンプ条件 $[p] = \sigma\kappa$ を
 最近接点 Hermite 補間（§~\ref{sec:extension_pde}）で課し，
 不連続係数を横切るステンシルを排除することで CCD の $\Ord{h^6}$ 精度を回復する．
