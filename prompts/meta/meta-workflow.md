@@ -154,6 +154,16 @@ If, during FAST-TRACK execution, any of the following is discovered:
 When TaskPlanner decomposes a COMPOUND task into a multi-stage plan, the following
 rules govern parallel and sequential execution within and across stages.
 
+A task is COMPOUND when ANY of the C1–C5 criteria holds (see ResearchArchitect.md):
+  C1: maps to 2+ distinct agents
+  C2: spans 2+ domains
+  C3: requires sequential handoffs with intermediate artifacts
+  C4: user explicitly requests parallel execution
+  C5: maps to 1 agent BUT decomposes into 2+ independent sub-problems
+      (distinct target files/sections with no shared artifacts or write conflicts)
+C5 ensures that single-agent tasks with parallelizable sub-problems are NOT
+short-circuited as SIMPLE. In C5 plans, multiple tasks may share the same agent type.
+
 ## Parallel Eligibility (PE)
 
 | Rule | Description |
