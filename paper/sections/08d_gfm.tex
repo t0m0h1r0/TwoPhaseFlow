@@ -7,6 +7,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Hermite 場延長法（HFE）：$\Ord{h^6}$ 界面越し場延長}
 \label{sec:field_extension}
+\label{sec:hfe}% canonical label
 \label{sec:extension_pde}% backward-compat: §1–§9 cross-refs
 \label{sec:gfm}% backward-compat: §10–§12 cross-refs（将来ラベル移行後に削除）
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -191,8 +192,17 @@ HFE は同一の定常解を CCD データから直接構成することで
         速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する
 \end{enumerate}
 
+\medskip
+\noindent\textbf{本節のまとめと位置づけ．}
+HFE を本章（§8）で定式化した理由は，CCD の Hermite データを基盤とする場延長理論が
+PPE 離散化（§~\ref{sec:pressure}）および Balanced-Force 条件（§~\ref{sec:balanced_force}）と
+密接に関連するためである．
+§~\ref{sec:split_ppe_motivation} で議論する分相 PPE 解法では，界面上の圧力ジャンプ処理に
+HFE が不可欠となり，高密度比シミュレーション（$\rho_l/\rho_g > 10$）への
+推奨アップグレードパスとして位置づけられる．
+
 % ─────────────────────────────────────────────────────────────────────────────
-% Backward-compatibility labels（将来ラベル移行後に削除）
+% backward-compat: rename to HFE in final draft
 \phantomsection\label{eq:gfm_rhs_correction}%
 \phantomsection\label{eq:gfm_ccd_div}%
 % ─────────────────────────────────────────────────────────────────────────────

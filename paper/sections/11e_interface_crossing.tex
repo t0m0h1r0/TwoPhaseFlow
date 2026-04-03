@@ -7,8 +7,11 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 §~\ref{sec:advection_pressure_coupling} では低密度比（$\rho_l/\rho_g \leq 5$）での
-二相流パイプラインの整合性を確認した．
-本節では密度比を系統的に増大させ，
+二相流パイプラインの整合性を確認したが，
+§~\ref{sec:coupling_limitations} で 2 つの独立な破綻原因を特定した：
+(1) IPC の $\bnabla p^n$ が界面ジャンプを横切る問題（HFE で回避可能），
+(2) 変密度 PPE 自体が界面型密度場で精度劣化・発散する問題（分相 PPE でのみ解決可能）．
+本節では原因 (2) を掘り下げ，密度比を系統的に増大させて
 smoothed Heaviside 一括解法の\textbf{破綻閾値}を定量的に特定する．
 これは「失敗を肯定的に記録する」実験であり，分相 PPE 解法の数値的根拠を提供する．
 
@@ -290,9 +293,7 @@ Richardson 型反復（DC, Jacobi, GS, ADI を含む）が発散する．
 
 \paragraph{代替反復法の系統的検証}
 
-DC の収束を回復する 7 つの方法を検証した（詳細は付録メモ%
-\footnote{docs/memo/dccd\_ppe\_investigation.md に完全な記録がある．}%
-）：
+DC の収束を回復する 7 つの方法を検証した（詳細な数値実験を行い検証した）：
 
 \begin{table}[htbp]
 \centering
@@ -405,3 +406,12 @@ CCD $\bnabla p$ による Balanced-Force の高精度キャンセルが支配的
         時間発展で蓄積しない
 \end{enumerate}
 \end{tcolorbox}
+
+\noindent\textbf{本節の結論：}
+§~\ref{sec:varrho_dc_convergence}--§~\ref{sec:varrho_grid_convergence} で
+smoothed Heaviside 一括解法の破綻閾値（$\rho_l/\rho_g \geq 10$）を定量化し，
+分相 PPE 解法による精度回復（全密度比で $\Ord{h^2}$）を実証した．
+§~\ref{sec:ppe_discretization_choice} で PPE 離散化手法を比較し，
+FD 直接法 PPE + CCD 勾配が最適であることを確認した．
+これらの知見を §~\ref{sec:error_budget} の精度バジェットに統合し，
+本手法の能力と限界を総括する．

@@ -27,7 +27,7 @@ HFE（§~\ref{sec:field_extension}），
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & FD 直接法 + CCD $\bnabla p$（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
+PPE（離散化＋求解） & FD 直接法 PPE + CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\

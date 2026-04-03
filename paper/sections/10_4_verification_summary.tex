@@ -96,6 +96,15 @@ AB2（初回 Euler 付き） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & 初
 \end{tabular}
 \end{table}
 
+\begin{tcolorbox}[resultbox, title={コンポーネント検証の総括}]
+全 12 コンポーネントが設計精度を達成した：
+CCD 微分は $\Ord{h^{6.0}}$，PPE 欠陥補正（$k{=}3$）は Dirichlet で $\Ord{h^{7.0}}$，
+TVD-RK3 は $\Ord{\Delta t^{3.0}}$，AB2 は $\Ord{\Delta t^{2.0}}$ をそれぞれ確認した．
+CLS 移流は質量保存誤差 $\Ord{10^{-5}}$（$N{=}256$），
+HFE は 2D で $\Ord{h^{3.0}}$ を達成し，
+いずれも目標精度を満たしている．
+\end{tcolorbox}
+
 \noindent
 以上の単体テストにより，各コンポーネントが設計精度を有することを確認した．
 しかし，個々の部品が正しくても，それらを\textbf{組み合わせた NS ソルバ全体}が
