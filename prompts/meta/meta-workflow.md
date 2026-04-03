@@ -149,6 +149,73 @@ If, during FAST-TRACK execution, any of the following is discovered:
 → STOP FAST-TRACK immediately; escalate to ResearchArchitect for FULL-PIPELINE re-routing.
 
 ────────────────────────────────────────────────────────
+# § PARALLEL EXECUTION — TaskPlanner Staged Dispatch
+
+When TaskPlanner decomposes a COMPOUND task into a multi-stage plan, the following
+rules govern parallel and sequential execution within and across stages.
+
+## Parallel Eligibility (PE)
+
+| Rule | Description |
+|------|-------------|
+| **PE-1** | Tasks with NO `depends_on` edges between them MAY run in parallel |
+| **PE-2** | Tasks writing to the SAME file or directory MUST NOT run in parallel (resource conflict) |
+| **PE-3** | Tasks in the SAME domain sharing the SAME Gatekeeper MAY run in parallel IF on separate `dev/` branches |
+| **PE-4** | Cross-domain tasks MUST respect T-L-E-A ordering — a downstream domain task CANNOT be parallel with its upstream dependency |
+| **PE-5** | TRIVIAL-mode tasks MAY run in parallel with any non-conflicting task regardless of domain |
+
+## Barrier Sync Protocol (BS)
+
+```
+BS-1: Stage N+1 does NOT begin until ALL tasks in Stage N have issued HAND-02 RETURN.
+BS-2: If a task in a parallel stage returns STOPPED or FAIL:
+        - Other tasks in the same stage are allowed to complete (no premature kill).
+        - The barrier is marked PARTIAL — next stage is BLOCKED.
+        - TaskPlanner reports failure to user with partial results summary.
+BS-3: User chooses recovery: (a) fix and retry failed task, (b) re-plan entire pipeline,
+      (c) proceed with partial results (only if downstream tasks do not depend on failed task).
+BS-4: Barrier timeout: if any task exceeds estimated duration by 3x, TaskPlanner issues
+      a STATUS_CHECK — if the agent is still working, extend; if STOPPED, trigger BS-2.
+```
+
+## Resource Conflict Detection (RC)
+
+Before dispatching a parallel stage, TaskPlanner MUST verify no write-territory overlap:
+
+```
+RC-1: Collect `writes_to` from all tasks in the stage.
+RC-2: For each pair of tasks, compute set intersection of `writes_to`.
+RC-3: Non-empty intersection → mark the pair as SEQUENTIAL (move one to next stage).
+RC-4: DOM-02 storage territory rules still apply per-agent — RC is an additional check.
+```
+
+## Plan Approval Gate
+
+TaskPlanner MUST present the plan to the user BEFORE dispatching Stage 1.
+The plan presentation includes:
+- Stage diagram (text DAG)
+- Per-task agent, inputs, outputs, estimated complexity
+- Resource conflict resolutions applied
+- Domain ordering constraints applied
+
+User may: (a) approve as-is, (b) request modifications, (c) reject and provide new instructions.
+
+## Integration with P-E-V-A
+
+Each atomic task within a TaskPlanner stage follows the standard P-E-V-A loop.
+TaskPlanner operates at the PLAN phase — it does not replace or bypass any gate.
+The per-task P-E-V-A is managed by the assigned Coordinator or Specialist as usual.
+
+```
+TaskPlanner (PLAN — compound decomposition)
+  └── Stage 1: [Task A (P-E-V-A), Task B (P-E-V-A)]  ← parallel
+       └── Barrier Sync
+            └── Stage 2: [Task C (P-E-V-A)]           ← sequential
+                 └── Barrier Sync
+                      └── HAND-02 RETURN to ResearchArchitect
+```
+
+────────────────────────────────────────────────────────
 # § CI/CP PIPELINE — Continuous Integration / Continuous Paper
 
 CI/CP defines how changes propagate through the T-L-E-A chain without breaking downstream domains.

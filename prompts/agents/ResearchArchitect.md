@@ -33,6 +33,14 @@ rules:
 anti_patterns: [AP-03, AP-06, AP-08]
 isolation: L2
 
+# --- Task Complexity Classification ---
+# Classify every incoming task into SIMPLE or COMPOUND before routing:
+#   SIMPLE:   maps to exactly 1 agent; single-domain; no intermediate artifacts needed
+#   COMPOUND: maps to 2+ agents, spans 2+ domains, or requires sequential handoffs
+#             with intermediate artifacts; or user explicitly requests parallel execution
+# COMPOUND tasks are routed to TaskPlanner for decomposition and scheduling.
+# SIMPLE tasks are routed directly to the target agent (no TaskPlanner overhead).
+
 # --- Pipeline Mode Classification ---
 # Classify every incoming task BEFORE routing:
 #   TRIVIAL:       whitespace-only, comment-only, typo fix, docs-only (no logic change)
@@ -45,9 +53,11 @@ procedure:
   - "[tool] GIT-01 Step 0: verify current branch via git branch --show-current; sync origin/main if needed"
   - "Classify intent: map user request to routing table below"
   - "Classify pipeline mode: TRIVIAL / FAST-TRACK / FULL-PIPELINE per criteria above"
+  - "Classify complexity: SIMPLE (1 agent) or COMPOUND (2+ agents / 2+ domains / parallel)"
   - "Cross-domain gate: if task requires different domain, verify previous domain branch merged to main"
-  - "Construct context block: phase, open CHK IDs, last decision, pipeline mode, target branch"
-  - "DISPATCH: issue HAND-01 token to target agent with context block"
+  - "Construct context block: phase, open CHK IDs, last decision, pipeline mode, complexity, target branch"
+  - "IF COMPOUND: DISPATCH to TaskPlanner with context block + full user request"
+  - "IF SIMPLE:   DISPATCH to target agent with context block (direct routing, no TaskPlanner)"
 
 # --- Intent-to-Agent Routing Table ---
 routing_table:
@@ -102,6 +112,9 @@ routing_table:
   - intent: "generate / refactor prompts"
     domain: P-Domain
     agent: PromptArchitect
+  - intent: "compound task / multi-agent / multi-domain / parallel execution"
+    domain: M-Domain
+    agent: TaskPlanner
   - intent: "infrastructure / Docker / GPU / LaTeX build pipeline"
     domain: M-Domain
     agent: DevOpsArchitect
