@@ -37,8 +37,8 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         単純算術平均（$(\rho_L+\rho_R)/2$ の逆数）と比較して，
         調和平均 $2/(\rho_L+\rho_R)$ は界面フラックスに物理的根拠を持ち，
         条件数の過大評価を防ぐ（付録~\ref{app:fvm_face_coeff}）．
-  \item \textbf{Extension PDE による界面越し圧力延長（§~\ref{sec:extension_pde}）：}
-        PPE 求解前に圧力場を Extension PDE で界面越しに滑らかに延長することで，
+  \item \textbf{最近接点 Hermite 補間による界面越し圧力延長（§~\ref{sec:extension_pde}）：}
+        PPE 求解前に圧力場を最近接点 Hermite 補間で界面越しに $\Ord{h^6}$ 精度で延長することで，
         CCD ステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い場を参照でき，
         Gibbs 振動が除去されて反復ソルバーの収束が安定化される．
   \item \textbf{ゲージ固定点の対称性（KL-11；§~\ref{sec:pinpoint}）：}
