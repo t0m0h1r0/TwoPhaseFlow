@@ -30,7 +30,7 @@
         Extension PDE のベースライン（上風差分）実装は場延長収束テストで $\Ord{h^{1.0}}$ を確認した．
         最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）への切り替えにより $\Ord{h^6}$ が達成される．
         Young--Laplace 静止液滴テストでは $N = 128$ で相対誤差 $0.9\%$ を達成した
-        （§\ref{sec:verify_extension_pde}）．
+        （§\ref{sec:verify_field_extension}）．
   \item \textbf{PPE 求解：}
         欠陥補正法は $k=3$ 回の反復で CCD 演算子の $\Ord{h^6}$ 精度を完全に発現させた（§\ref{sec:verify_ppe}）．
         FD 直接法と比較して $N=128$ で $4{,}900$ 万倍高精度であり，コスト増は $3.4$ 倍に過ぎない．
@@ -55,7 +55,7 @@
         第~\ref{sec:verification}章の Taylor--Green 渦テスト（§\ref{sec:ns_conservation}，§\ref{sec:ns_time_accuracy}）で
         NS ソルバ全体の時間精度 $\Ord{\Delta t^2}$ として結合的に検証される．
   \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
-        §\ref{sec:verify_extension_pde}(b) の Young--Laplace テストにおいて密度場 $\rho(\psi)$ の補間が
+        §\ref{sec:verify_field_extension}(b) の Young--Laplace テストにおいて密度場 $\rho(\psi)$ の補間が
         Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
   \item \textbf{Block Thomas 直接解法：}
         全 CCD テスト（§\ref{sec:verify_ccd_convergence}--§\ref{sec:verify_curvature}）が
