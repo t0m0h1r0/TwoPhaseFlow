@@ -311,15 +311,47 @@ PaperCorrector, ErrorAnalyzer, PromptCompressor, ResultAuditor
 **Experimental micro-agents (→ prompts/agents/_experimental/, NOT YET OPERATIONAL):**
 EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner
 
-**Each generated prompt must:**
-1. Use Q1 Standard Template: `# PURPOSE / # INPUTS / # RULES / # PROCEDURE / # OUTPUT / # STOP`
-   - RULES: derived from meta-roles.md AUTHORITY + CONSTRAINTS + RULE_MANIFEST
-   - PROCEDURE: derived from meta-workflow.md domain pipelines (ordering) +
-     meta-ops.md operation IDs only (GIT-xx, BUILD-xx, etc.) — NOT full syntax blocks +
-     meta-ops.md HAND-01/02/03 roles (DISPATCHER/RETURNER/ACCEPTOR) — NOT full token templates +
-     meta-ops.md AUDIT-01/02 (inject for ConsistencyAuditor PROCEDURE only)
-   - **JIT enforcement:** Agent prompts must NOT embed full operation parameter blocks or
-     success criteria tables copied from meta-ops.md. Include operation ID + trigger condition
+**Each generated prompt must use YAML format** (inheriting `prompts/agents/_base.yaml`):
+
+**Q1 YAML Template:**
+```yaml
+# {AgentName} — {Domain} {Role}
+# inherits: _base.yaml
+# domain_rules: docs/00_GLOBAL_RULES.md §{section}
+
+purpose: >
+  {1-3 lines — role, deliverables, what NOT to do}
+
+scope:
+  writes: [{paths}]
+  reads: [{paths}]
+  forbidden: [{paths}]
+
+primitives:  # ONLY overrides from _base defaults
+  {key}: {value}
+
+rules:
+  domain: [{rule IDs from meta-roles.md}]
+  on_demand:  # agent-specific ONLY (common ones in _base)
+    {ID}: "{path}"
+
+anti_patterns: [{AP-IDs from meta-antipatterns.md}]
+isolation: {L0-L3}
+
+procedure:  # HAND-03 pre and HAND-02 post are implicit from _base
+  - "{step description}"
+
+output:
+  - "{artifact description}"
+
+stop:
+  - "{trigger} → {action}"
+```
+
+**Generation rules:**
+1. **Inherit _base.yaml** — do NOT repeat axiom citations, common primitives, common rules, HAND-03/HAND-02 steps
+2. **JIT enforcement:** Agent prompts must NOT embed full operation parameter blocks or
+   success criteria tables copied from meta-ops.md. Include operation ID + trigger condition
      only. Inject the JIT reference rule: "If a specific operation is required, consult
      prompts/meta/meta-ops.md for canonical syntax." (→ meta-ops.md §JIT COMMAND REFERENCE)
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).

@@ -36,3 +36,9 @@ If input is too long:
   DO NOT remove a class that has passed tests unless the user explicitly says "delete it".
 - **Algorithm Fidelity** — fixes MUST restore paper-exact behavior. Deviation = bug.
 - **A3 Traceability** — Equation → Discretization → Code chain is mandatory.
+
+## AGENT PROMPT SYSTEM
+- Agent prompts are YAML-format files in `prompts/agents/*.md`.
+- All agents inherit `prompts/agents/_base.yaml` (shared axioms, primitives, rules, procedure pre/post).
+- Agent files contain ONLY overrides and domain-specific content.
+- To understand an agent: read `_base.yaml` FIRST, then the agent file.

@@ -1,0 +1,33 @@
+# _base.yaml — Universal Agent Foundation
+# All agent prompts implicitly inherit this file.
+# Agents define ONLY overrides and domain-specific content.
+# To understand an agent: read _base.yaml FIRST, then the agent file.
+
+axioms: "A1–A10 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
+
+primitives_default:
+  classify_before_act: true
+  scope_creep: reject
+  uncertainty_action: stop
+  evidence_required: always
+  tool_delegate_numerics: true
+
+rules_always:
+  - STOP_CONDITIONS
+  - DOM-02_CONTAMINATION_GUARD
+  - SCOPE_BOUNDARIES
+
+on_demand_common:
+  HAND-03: "prompts/meta/meta-ops.md §HAND-03"
+  GIT-SP:  "prompts/meta/meta-ops.md §GIT-SP"
+  HAND-01: "prompts/meta/meta-ops.md §HAND-01"
+  HAND-02: "prompts/meta/meta-ops.md §HAND-02"
+
+procedure_pre:
+  - "Run HAND-03 acceptance check (→ meta-ops.md §HAND-03)"
+  - "Verify write scope via DOM-02 before any file write"
+
+procedure_post:
+  - "Issue HAND-02 RETURN on completion"
+
+recovery: "→ meta-workflow.md §STOP-RECOVER MATRIX"
