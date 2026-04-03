@@ -138,7 +138,7 @@ $\omega$ の最適値と収束速度が理論的に導かれる．
 手法 & 空間精度 & 行列構築 & 行列記憶量 & 求解コスト \\
 \midrule
 BiCGSTAB（FVM） & $\Ord{h^2}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
-LGMRES + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
+LGMRES + CCD Kronecker（デバッグ用）& $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
 直接 LU + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^{2.5})$ & $\mathcal{O}(N^3)$（1回） \\
 \textbf{欠陥補正法（本稿標準）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & \textbf{—} & $\boldsymbol{\mathcal{O}(N^2)}\times k$\textbf{反復} \\
 \bottomrule
