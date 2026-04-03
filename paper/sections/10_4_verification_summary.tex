@@ -28,7 +28,9 @@
         CLS 保存型再マッピングは LS 非保存補間に比べ質量誤差を 1--2 桁低減した
         （§\ref{sec:cls_conservation}）．
         上風差分ベースライン（Aslam 2004）は場延長収束テストで $\Ord{h^{1.0}}$ を確認した．
-        HFE（§~\ref{sec:extension_pde_disc}）への切り替えにより $\Ord{h^6}$ が達成される．
+        HFE（§~\ref{sec:extension_pde_disc}）への切り替えにより
+        1 次元で $\Ord{h^6}$，2 次元テンソル積で $\Ord{h^3}$ が達成された
+        （表~\ref{tab:hfe_2d_convergence}）．
         Young--Laplace 静止液滴テストでは上風・Hermite 両パイプラインで完全一致し，
         $N = 128$ で相対誤差 $2.2\times10^{-3}$ を達成した（§\ref{sec:verify_field_extension}）．
   \item \textbf{PPE 求解：}
@@ -81,6 +83,7 @@ DCCD 移流（不連続） & TV 低減 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ が上界 \\
 CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
 場延長・ベースライン（1D）& $\Ord{h^1}$ & $\Ord{h^{1.0}}$ & 上風差分；Hermite 補間†で $\Ord{h^6}$ へ改善（次行参照） \\
+HFE 2D（製造解） & $\Ord{h^6}$† & $\Ord{h^{3.0}}$ & テンソル積逐次補間；$N{=}256$ で $7.5 \times 10^{-9}$ \\
 HFE + CSF（Laplace） & $\Ord{h^6}$† & 相対誤差 $2.2\times10^{-3}$ & $N{=}128{,}256$ で単調収束；DCCD 曲率フィルタ有効 \\
 PPE（欠陥補正 $k{=}3$，Dirichlet） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ超収束 \\
 PPE（Neumann + ゲージ固定） & $\Ord{h^5}$ & $\Ord{h^{5.0}}$ & 境界スキーム $\Ord{h^5}$ が律速 \\
