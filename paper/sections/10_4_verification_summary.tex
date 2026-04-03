@@ -81,7 +81,7 @@ DCCD 移流（不連続） & TV 低減 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 CLS 質量保存    & 保存的     & $\Ord{10^{-5}}$ ($N=256$) & 形状誤差は $\varepsilon$ が上界 \\
 CLS 保存型再マッピング & LS 比改善 & 85 倍（$K=10$） & 動的非一様格子 \\
 場延長・ベースライン（1D）& $\Ord{h^1}$ & $\Ord{h^{1.0}}$ & 上風差分；Hermite 補間で $\Ord{h^6}$ へ改善 \\
-Hermite 延長 + CSF（Laplace） & $\Ord{h^6}$† & 相対誤差 $0.2\%$ & $N{=}128$, $\Delta p = 4.01$；$N{=}256$ で CSF $\delta_\varepsilon$ 精度低下 \\
+Hermite 延長 + CSF（Laplace） & $\Ord{h^6}$† & 相対誤差 $0.2\%$ & $N{=}128{,}256$ で単調収束；DCCD 曲率フィルタ有効 \\
 PPE（欠陥補正 $k{=}3$，Dirichlet） & $\Ord{h^6}$ & $\Ord{h^{7.0}}$ & ディリクレ超収束 \\
 PPE（Neumann + ゲージ固定） & $\Ord{h^5}$ & $\Ord{h^{5.0}}$ & 境界スキーム $\Ord{h^5}$ が律速 \\
 PPE（変密度 $\rho_{\max}/\rho_{\min}{\approx}999$） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & 条件数悪化でやや低下 \\
