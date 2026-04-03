@@ -40,15 +40,15 @@ HFE & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
 
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
-全体の空間精度を律速する．HFE は CCD Hermite 補間（§~\ref{sec:extension_pde_disc}）
-により $\Ord{h^6}$ を達成しており，律速要因ではない．
+全体の空間精度を律速する．HFE（§~\ref{sec:extension_pde_disc}）は
+$\Ord{h^6}$ を達成しており，律速要因ではない．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
 \begin{enumerate}
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        HFE は最近接点 Hermite 補間（§~\ref{sec:extension_pde_disc}）により $\Ord{h^6}$ を達成し，
+        HFE（§~\ref{sec:extension_pde_disc}）は $\Ord{h^6}$ を達成しており，
         律速要因ではない．全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
 
   \item \textbf{時間精度：}
