@@ -35,7 +35,7 @@
 寄生流れが有界に留まり Laplace 圧均衡が維持されることを確認する．
 
 \noindent\textbf{§~\ref{sec:bf_static_droplet} との違い：}
-§~\ref{sec:bf_static_droplet} では $p^0 = 0$（Hermite 延長は実質 no-op）の
+§~\ref{sec:bf_static_droplet} では $p^0 = 0$（HFE は実質 no-op）の
 単ステップ投影であった．
 本テストでは 200 ステップの時間積分を行い，
 毎ステップ変密度 PPE を解き直す．
@@ -173,16 +173,16 @@ $\Ord{1}$ の打ち切り誤差を生じることにある
 項目 3 の破綻には\textbf{2 つの独立な原因}がある：
 \begin{enumerate}[noitemsep]
   \item IPC の $\bnabla p^n$ が界面の圧力ジャンプ $\Delta p = \sigma\kappa$ を横切る
-        → Hermite 延長で回避可能（式~\eqref{eq:p_extension_ipc}）
+        → HFE で回避可能（式~\eqref{eq:p_extension_ipc}）
   \item 変密度 PPE 自体が界面型密度場で精度劣化・発散する
         → 分相 PPE 解法でのみ解決可能（§~\ref{sec:interface_crossing}）
 \end{enumerate}
 
-Hermite 延長のみ（分相 PPE なし）で IPC を修正した追試では，
+HFE のみ（分相 PPE なし）で IPC を修正した追試では，
 テスト B の発散は\textbf{解消されなかった}（$N = 64, 128$ の両方で 2 ステップで発散）．
 これは原因 2（変密度 PPE の不安定性）が支配的であり，
 $\bnabla p^n$ の精度を改善するだけでは不十分であることを示す．
-完全な解決には，\textbf{IPC の Hermite 延長と分相 PPE の両方}が必要である：
+完全な解決には，\textbf{IPC の HFE と分相 PPE の両方}が必要である：
 \begin{equation}
   p^n_{\text{ext}} = \begin{cases}
     p^n & (\text{source phase}) \\
