@@ -40,7 +40,7 @@ HFE（§~\ref{sec:field_extension}）の動的効果を実証する．
   \item \textbf{§~\ref{sec:val_hfe_ablation}（HFE 適合性）：}
         HFE が有効/有害となる条件の NS パイプラインレベルでの確認
   \item \textbf{§~\ref{sec:val_density_limit}（密度比限界）：}
-        CSF 一括解法の動的破綻閾値と分相 PPE 解法の展望
+        CSF 一括解法の動的破綻閾値と §~\ref{sec:conclusion} への接続
 \end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -245,14 +245,10 @@ HFE による延長は改善をもたらさない．
 界面近傍に人為的な勾配不連続が導入され，結果は逆効果となる．
 
 \noindent\textbf{HFE が有効となる条件：}
-\begin{enumerate}[noitemsep]
-  \item \textbf{増分投影法（IPC）}：
-        $p^n$ は Young--Laplace ジャンプ $[p] = \sigma\kappa$ を持つため，
-        HFE による延長が\textbf{必須}（§~\ref{sec:coupling_limitations}）．
-  \item \textbf{分相 PPE 解法}：
-        各相で定密度 PPE を解く際に，界面のジャンプ条件を
-        HFE で課す必要がある（§~\ref{sec:split_ppe_recovery}）．
-\end{enumerate}
+HFE は $p$ が界面で真のジャンプ $[p] = \sigma\kappa$ を持つ場合に有効である．
+現行ソルバのうち，\textbf{増分投影法（IPC）}では
+$p^n$ が Young--Laplace ジャンプを持つため HFE による延長が必須となる
+（§~\ref{sec:coupling_limitations}）．
 
 \begin{figure}[htbp]
 \centering
@@ -276,7 +272,7 @@ HFE ON で寄生流れが約 9000 倍に増大し（§~\ref{sec:hfe_smoothed_hea
 HFE が圧力場に\textbf{真のジャンプ}が存在する場合にのみ有効であることを実証した．
 §~\ref{sec:val_static_drop} で用いた smoothed Heaviside + 非増分投影法は
 $\varepsilon$-正則化により圧力のジャンプを解消しており，HFE は不要である．
-IPC または分相 PPE の実装（§~\ref{sec:conclusion}）により
+IPC の実装（§~\ref{sec:conclusion}）により
 HFE の $\Ord{h^6}$ 精度が活用可能となる．
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -348,11 +344,8 @@ $\rho_l/\rho_g \geq 10$ かつ移動界面を伴う動的問題では
 条件数の増大による誤差蓄積が予想される（§~\ref{sec:ppe_condition_number}）．
 
 \noindent\textbf{今後の展望：}
-§~\ref{sec:split_ppe_recovery} で実証した分相 PPE 解法は，
-各相で定密度 PPE を独立に解き界面ジャンプ条件を HFE で課すことで
-$\rho_l/\rho_g = 1000$ でも $\Ord{h^2}$ を回復する．
-分相 PPE の NS パイプラインへの統合により，
+本章のベンチマークは CSF + smoothed Heaviside 一括解法が動作する範囲に限定されている．
 毛細管波（Prosperetti~\cite{Prosperetti1981} 解析解），
 気泡上昇（Hysing~ら~\cite{Hysing2009} 参照解），
-RT 不安定（$\sigma > 0$）の完全なベンチマークが実施可能となる．
-これは §~\ref{sec:conclusion} で議論する今後の主要課題である．
+$\sigma > 0$ の RT 不安定など，より挑戦的な問題への拡張については
+§~\ref{sec:conclusion} で議論する．
