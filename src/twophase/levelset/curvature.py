@@ -36,6 +36,37 @@ if TYPE_CHECKING:
 
 
 _EPS_NORM = 1e-3   # regularisation floor for |∇φ| (paper §3.5 recommended value)
+_DCCD_EPS_D = 0.05  # DCCD filter strength for curvature derivatives (§10.1.3)
+
+
+def _dccd_filter_1d(xp, f, ax: int, ndim: int, N_ax: int, eps_d: float):
+    """Apply 3-point DCCD dissipative filter along axis ``ax``."""
+    result = xp.copy(f)
+    sl_c = [slice(None)] * ndim
+    sl_m = [slice(None)] * ndim
+    sl_p = [slice(None)] * ndim
+    sl_c[ax] = slice(1, N_ax)
+    sl_m[ax] = slice(0, N_ax - 1)
+    sl_p[ax] = slice(2, N_ax + 1)
+    w_c = 1.0 - 2.0 * eps_d
+    w_n = eps_d
+    result[tuple(sl_c)] = w_c * f[tuple(sl_c)] + w_n * (f[tuple(sl_m)] + f[tuple(sl_p)])
+    # Neumann ghost at boundaries
+    for bdry, nbr in [(0, 1), (N_ax, N_ax - 1)]:
+        sl_b = [slice(None)] * ndim
+        sl_n = [slice(None)] * ndim
+        sl_b[ax] = bdry
+        sl_n[ax] = nbr
+        result[tuple(sl_b)] = (w_c + w_n) * f[tuple(sl_b)] + w_n * f[tuple(sl_n)]
+    return result
+
+
+def _dccd_filter_nd(xp, f, grid, eps_d: float):
+    """Apply DCCD filter along all spatial axes."""
+    result = f
+    for ax in range(grid.ndim):
+        result = _dccd_filter_1d(xp, result, ax, grid.ndim, grid.N[ax], eps_d)
+    return result
 
 
 # DO NOT DELETE — passed tests 2026-03-27
@@ -49,15 +80,18 @@ class CurvatureCalculator(ICurvatureCalculator):
 
     Parameters
     ----------
-    backend : Backend
-    ccd     : CCDSolver — constructor injection
-    eps     : interface thickness ε (used for H_ε inversion)
+    backend  : Backend
+    ccd      : CCDSolver — constructor injection
+    eps      : interface thickness ε (used for H_ε inversion)
+    dccd_eps : DCCD filter strength (0 = no filter, default 0.05)
     """
 
-    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps: float):
+    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps: float,
+                 dccd_eps: float = _DCCD_EPS_D):
         self.xp = backend.xp
         self.ccd = ccd
         self.eps = eps
+        self.dccd_eps = dccd_eps
 
     def compute(self, psi) -> "array":
         """Compute curvature field κ.
@@ -78,11 +112,14 @@ class CurvatureCalculator(ICurvatureCalculator):
         # Invert ψ → φ (§3.6)
         phi = invert_heaviside(xp, psi, eps)
 
-        # First and second derivatives via CCD
+        # First and second derivatives via CCD + optional DCCD filter
         d1 = []   # ∂φ/∂x_i
         d2 = []   # ∂²φ/∂x_i²
         for ax in range(ndim):
             g1, g2 = ccd.differentiate(phi, ax)
+            if self.dccd_eps > 0:
+                g1 = _dccd_filter_nd(xp, g1, ccd.grid, self.dccd_eps)
+                g2 = _dccd_filter_nd(xp, g2, ccd.grid, self.dccd_eps)
             d1.append(g1)
             d2.append(g2)
 
@@ -108,6 +145,8 @@ class CurvatureCalculator(ICurvatureCalculator):
 
         # Mixed derivative φ_xy via sequential CCD: differentiate d1[0] along y
         phi_xy, _ = ccd.differentiate(d1[0], 1)
+        if self.dccd_eps > 0:
+            phi_xy = _dccd_filter_nd(self.xp, phi_xy, ccd.grid, self.dccd_eps)
 
         numerator = (phi_y**2 * phi_xx
                      - 2.0 * phi_x * phi_y * phi_xy

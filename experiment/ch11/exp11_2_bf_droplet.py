@@ -73,11 +73,10 @@ def static_droplet_ppe_test(N, R=0.25, rho_l=1000.0, rho_g=1.0, sigma=1.0, We=1.
     u_star = dt * (sigma / We) * kappa * grad_psi[0] / rho
     v_star = dt * (sigma / We) * kappa * grad_psi[1] / rho
 
-    # PPE RHS: divergence of (f_σ/ρ) via FD (balanced-force consistent)
-    rhs = np.zeros_like(psi)
-    rhs[1:N, :] += (u_star[1:N, :] - u_star[0:N-1, :]) / h
-    rhs[:, 1:N] += (v_star[:, 1:N] - v_star[:, 0:N-1]) / h
-    rhs /= dt
+    # PPE RHS: divergence of u* via CCD (O(h⁶) consistent with spatial discretization)
+    du_dx, _ = ccd.differentiate(u_star, 0)
+    dv_dy, _ = ccd.differentiate(v_star, 1)
+    rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
 
     # Variable-coefficient PPE: ∇·((1/ρ)∇p) = RHS
     ppe_builder = PPEBuilder(backend, grid, bc_type='wall')
@@ -115,7 +114,7 @@ def main():
     print("  【11-1b】Static Droplet: Balanced-Force + Parasitic Currents")
     print("=" * 80 + "\n")
 
-    Ns = [32, 64, 128]
+    Ns = [32, 64, 128, 256]
     dp_exact = 4.0
     results = []
 

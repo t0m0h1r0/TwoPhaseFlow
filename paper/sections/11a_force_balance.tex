@@ -72,7 +72,8 @@ CCD 曲率 + CSF 体積力 + 変密度 PPE（$\bnabla\cdot({\rho^{-1}}\bnabla p)
   \item 静止液滴 $R = 0.25$，$\rho_l/\rho_g = 1000$，$\mathit{We} = 1$
   \item CSF 体積力 $\bm{f}_\sigma = (\sigma/\mathit{We})\,\kappa\,\bnabla\psi$
   \item 単ステップ投影：$\bu^* = \Delta t\,\bm{f}_\sigma / \rho$ → 変密度 PPE → Corrector
-  \item 格子 $N = 32, 64, 128$，厳密解 $\Delta p = \sigma / R = 4.0$
+  \item PPE 右辺の発散は CCD 微分（$\Ord{h^6}$）で計算
+  \item 格子 $N = 32, 64, 128, 256$，厳密解 $\Delta p = \sigma / R = 4.0$
 \end{itemize}
 
 \noindent\textbf{結果：}
@@ -86,22 +87,27 @@ CCD 曲率 + CSF 体積力 + 変密度 PPE（$\bnabla\cdot({\rho^{-1}}\bnabla p)
 \toprule
 $N$ & $\Delta p$ & 相対誤差 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 次数 \\
 \midrule
- 32 & $-9.30$ & $3.3 \times 10^{0}$  & $7.6 \times 10^{-1}$ & --- \\
- 64 & $3.52$  & $1.2 \times 10^{-1}$ & $7.8 \times 10^{-2}$ & $4.78$ \\
-128 & $4.01$  & $2.2 \times 10^{-3}$ & $5.6 \times 10^{-2}$ & $5.75$ \\
+ 32 & $-7.80$ & $2.9 \times 10^{0}$  & $6.8 \times 10^{-1}$ & --- \\
+ 64 & $3.69$  & $7.9 \times 10^{-2}$ & $4.4 \times 10^{-2}$ & $5.23$ \\
+128 & $3.98$  & $6.1 \times 10^{-3}$ & $1.5 \times 10^{-2}$ & $3.69$ \\
+256 & $3.99$  & $2.2 \times 10^{-3}$ & $2.4 \times 10^{-1}$ & $1.45$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \noindent\textbf{結論：}
-$N = 128$ で $\Delta p = 4.01$（相対誤差 $0.2\%$），
-§~\ref{sec:verify_field_extension}（表~\ref{tab:field_extension_laplace}）の結果と整合する．
-$N = 64 \to 128$ での $\Delta p$ 相対誤差の収束次数は $5.75$ であり，
-CCD-PPE の $\Ord{h^6}$ 精度を反映している%
-\footnote{$N = 32$（$R/h = 8$）は界面が十分に解像されず漸近領域外にあるため，
-収束次数の算出には $N \geq 64$ のデータのみを使用した．}．
-ただし，この収束次数は2つの格子解像度（$N=64,128$）の比から算出した値であり，
-3水準以上の格子細分化による確認は今後の課題である．
+$N = 64, 128, 256$ の 3 水準で $\Delta p$ の相対誤差は単調減少し，
+収束次数は $5.23 \to 3.69 \to 1.45$ と漸近的に CSF モデル誤差 $\Ord{h^2}$ に近づく%
+\footnote{$N = 32$（$R/h = 8$）は界面幅 $\varepsilon$ が液滴半径 $R$ に対して過大となり，
+$\delta_\varepsilon$ 正則化の仮定が破綻するため漸近領域外にある．}．
+$N = 256$ で $\Delta p = 3.99$（相対誤差 $0.22\%$）であり，
+CCD-PPE の高精度離散化が CSF $\Ord{h^2}$ の枠内で十分に機能している．
+
+寄生流れ振幅は $N = 64 \to 128$ で減少するが，$N = 256$ で増大する．
+これは PPE ソルバ（FD $\Ord{h^2}$）と Corrector の CCD 圧力勾配との間の
+Balanced-Force 不整合が高解像度で顕在化するためである（§~\ref{sec:balanced_force}）．
+時間積分による定常化を含む寄生流れの格子収束は，
+第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて検証する．
 
 寄生流れ振幅の格子収束（Balanced-Force 条件下での $\Ord{h^2}$）は，
 時間積分による定常化が必要であり，

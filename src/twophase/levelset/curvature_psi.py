@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ..interfaces.levelset import ICurvatureCalculator
+from .curvature import _dccd_filter_nd, _DCCD_EPS_D
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -51,6 +52,7 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
     ccd      : CCDSolver -- constructor injection (A3 traceability: eq.curvature_psi_2d)
     psi_min  : float -- threshold for interface region (default 0.01, section 3b)
     gaussian_filter : bool -- apply 3x3 Gaussian smoothing on kappa (section 3b line 286)
+    dccd_eps : float -- DCCD filter strength for derivatives (0 = no filter, default 0.05)
     """
 
     def __init__(
@@ -59,11 +61,13 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         ccd: "CCDSolver",
         psi_min: float = 0.01,
         gaussian_filter: bool = False,
+        dccd_eps: float = _DCCD_EPS_D,
     ):
         self.xp = backend.xp
         self.ccd = ccd
         self.psi_min = psi_min
         self.gaussian_filter = gaussian_filter
+        self.dccd_eps = dccd_eps
 
     def compute(self, psi) -> "array":
         """Compute curvature field kappa directly from psi.
@@ -80,11 +84,14 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         ccd = self.ccd
         ndim = ccd.ndim
 
-        # CCD derivatives of psi (O(h^6) accuracy)
+        # CCD derivatives of psi (O(h^6) accuracy) + optional DCCD filter
         d1 = []  # d psi / d x_i
         d2 = []  # d^2 psi / d x_i^2
         for ax in range(ndim):
             g1, g2 = ccd.differentiate(psi, ax)
+            if self.dccd_eps > 0:
+                g1 = _dccd_filter_nd(xp, g1, ccd.grid, self.dccd_eps)
+                g2 = _dccd_filter_nd(xp, g2, ccd.grid, self.dccd_eps)
             d1.append(g1)
             d2.append(g2)
 
@@ -118,6 +125,8 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
 
         # Mixed derivative psi_xy via sequential CCD
         psi_xy, _ = ccd.differentiate(d1[0], 1)
+        if self.dccd_eps > 0:
+            psi_xy = _dccd_filter_nd(self.xp, psi_xy, ccd.grid, self.dccd_eps)
 
         numerator = (psi_y**2 * psi_xx
                      - 2.0 * psi_x * psi_y * psi_xy
