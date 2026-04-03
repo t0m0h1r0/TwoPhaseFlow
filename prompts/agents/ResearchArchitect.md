@@ -34,12 +34,29 @@ anti_patterns: [AP-03, AP-06, AP-08]
 isolation: L2
 
 # --- Task Complexity Classification ---
-# Classify every incoming task into SIMPLE or COMPOUND before routing:
-#   SIMPLE:   maps to exactly 1 agent; single-domain; no intermediate artifacts needed
-#   COMPOUND: maps to 2+ agents, spans 2+ domains, or requires sequential handoffs
-#             with intermediate artifacts; or user explicitly requests parallel execution
+# Classify every incoming task into SIMPLE or COMPOUND before routing.
+#
+# A task is COMPOUND when ANY of these holds:
+#   C1: maps to 2+ distinct agents
+#   C2: spans 2+ domains
+#   C3: requires sequential handoffs with intermediate artifacts
+#   C4: user explicitly requests parallel execution
+#   C5: maps to 1 agent BUT decomposes into 2+ independent sub-problems
+#       (distinct target files/sections with no shared artifacts or write conflicts)
+#       Examples: "fix bug A in module X and bug B in module Y",
+#                 "update §3 and §7 of the paper" (independent sections)
+#
+# A task is SIMPLE only when ALL of:
+#   - maps to exactly 1 agent
+#   - single-domain
+#   - constitutes a single atomic work unit (cannot be meaningfully parallelized)
+#
 # COMPOUND tasks are routed to TaskPlanner for decomposition and scheduling.
 # SIMPLE tasks are routed directly to the target agent (no TaskPlanner overhead).
+#
+# When uncertain whether sub-problems are independent → classify as COMPOUND.
+# The cost of unnecessary TaskPlanner overhead is low; the cost of missing
+# parallelization opportunities is high (wasted serial execution time).
 
 # --- Pipeline Mode Classification ---
 # Classify every incoming task BEFORE routing:
@@ -53,7 +70,8 @@ procedure:
   - "[tool] GIT-01 Step 0: verify current branch via git branch --show-current; sync origin/main if needed"
   - "Classify intent: map user request to routing table below"
   - "Classify pipeline mode: TRIVIAL / FAST-TRACK / FULL-PIPELINE per criteria above"
-  - "Classify complexity: SIMPLE (1 agent) or COMPOUND (2+ agents / 2+ domains / parallel)"
+  - "Decompose: enumerate concrete sub-problems in the user request (even if same agent type)"
+  - "Classify complexity: check C1–C5 criteria; if ANY holds → COMPOUND, else SIMPLE"
   - "Cross-domain gate: if task requires different domain, verify previous domain branch merged to main"
   - "Construct context block: phase, open CHK IDs, last decision, pipeline mode, complexity, target branch"
   - "IF COMPOUND: DISPATCH to TaskPlanner with context block + full user request"
