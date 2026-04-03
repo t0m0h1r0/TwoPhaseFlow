@@ -24,8 +24,8 @@ PPE 演算子の条件数に直接影響する．
 なお，条件数の悪化にとどまらず，界面型密度場（smoothed Heaviside）では
 変密度 PPE 自体が $\rho_l/\rho_g \geq 10$ で発散する本質的問題が存在する
 （§~\ref{sec:varrho_ppe_limitation}）．
-以下の安定化戦略は条件数の緩和に有効だが，この発散問題の根本的解決には
-§~\ref{sec:gfm} の GFM 分相解法が必要である．
+以下の安定化戦略は条件数の緩和に有効だが，この発散問題の根本的解決は
+今後の課題として §~\ref{sec:future_work} で議論する．
 可変係数演算子 $\mathcal{L}_h$ の係数 $a_{i+1/2} = 2/(\rho_i+\rho_{i+1})$ は，
 液相（$\rho \approx \rho_l$）と気相（$\rho \approx \rho_g$）の格子フェイスで
 $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
@@ -44,7 +44,7 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         （2値の場合，両者は同一の式を与える）．
         この係数は界面フラックスに物理的根拠を持ち，
         条件数の過大評価を防ぐ（付録~\ref{app:fvm_face_coeff}）．
-  \item \textbf{最近接点 Hermite 補間による界面越し圧力延長（§~\ref{sec:gfm}・§~\ref{sec:extension_pde}）：}
+  \item \textbf{最近接点 Hermite 補間による界面越し圧力延長（§~\ref{sec:field_extension}）：}
         PPE 求解前に圧力場を最近接点 Hermite 補間で界面越しに $\Ord{h^6}$ 精度で延長することで，
         CCD ステンシル $(i-2,\ldots,i+2)$ が界面直近まで $C^\infty$ に近い場を参照でき，
         Gibbs 振動が除去されて反復ソルバーの収束が安定化される．

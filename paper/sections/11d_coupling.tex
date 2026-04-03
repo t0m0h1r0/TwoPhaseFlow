@@ -15,7 +15,7 @@
         §~\ref{sec:bf_static_droplet} の単ステップ投影を多ステップに拡張
   \item \textbf{Galilean 不変性}（§~\ref{sec:galilean_invariance}）：
         移動界面下での CLS↔PPE 結合
-  \item \textbf{結合の限界と GFM への接続}（§~\ref{sec:coupling_limitations}）：
+  \item \textbf{結合の限界と今後の課題}（§~\ref{sec:coupling_limitations}）：
         テスト結果から特定された限界の整理
 \end{enumerate}
 
@@ -152,7 +152,7 @@ $\Ord{1}$ の打ち切り誤差を生じることにある
 この問題は顕在化しない．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{結合の限界と GFM への接続}
+\subsubsection{結合の限界と今後の課題}
 \label{sec:coupling_limitations}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -175,14 +175,14 @@ $\Ord{1}$ の打ち切り誤差を生じることにある
   \item IPC の $\bnabla p^n$ が界面の圧力ジャンプ $\Delta p = \sigma\kappa$ を横切る
         → Hermite 延長で回避可能（式~\eqref{eq:p_extension_ipc}）
   \item 変密度 PPE 自体が界面型密度場で精度劣化・発散する
-        → GFM 分相解法でのみ解決可能（§~\ref{sec:interface_crossing}）
+        → 分相 PPE 解法でのみ解決可能（§~\ref{sec:interface_crossing}）
 \end{enumerate}
 
-Hermite 延長のみ（GFM なし）で IPC を修正した追試では，
+Hermite 延長のみ（分相 PPE なし）で IPC を修正した追試では，
 テスト B の発散は\textbf{解消されなかった}（$N = 64, 128$ の両方で 2 ステップで発散）．
 これは原因 2（変密度 PPE の不安定性）が支配的であり，
 $\bnabla p^n$ の精度を改善するだけでは不十分であることを示す．
-完全な解決には，\textbf{IPC の Hermite 延長と GFM 分相 PPE の両方}が必要である：
+完全な解決には，\textbf{IPC の Hermite 延長と分相 PPE の両方}が必要である：
 \begin{equation}
   p^n_{\text{ext}} = \begin{cases}
     p^n & (\text{source phase}) \\
@@ -190,6 +190,6 @@ $\bnabla p^n$ の精度を改善するだけでは不十分であることを示
   \end{cases}
   \label{eq:p_extension_ipc}
 \end{equation}
-GFM 分相 PPE による精度回復は §~\ref{sec:gfm_ppe_recovery} で実証し，
-移動界面＋表面張力の完全な動的検証は GFM 統合後に
+分相 PPE による精度回復は §~\ref{sec:split_ppe_recovery} で実証し，
+移動界面＋表面張力の完全な動的検証は
 第~\ref{sec:validation}章のベンチマークで実施する．

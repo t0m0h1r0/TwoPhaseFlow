@@ -6,31 +6,35 @@
 %   滑らかに延長し，CCD ステンシルの Gibbs 振動を除去する．
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{界面越し場延長：最近接点 Hermite 補間による $\Ord{h^6}$ 実現}
-\label{sec:gfm}
-\label{sec:extension_pde}% backward-compat: §1/§2/§4/§5/§7/§8/§9 cross-refs
+\label{sec:field_extension}
+\label{sec:extension_pde}% backward-compat: §1–§9 cross-refs
+\label{sec:gfm}% backward-compat: §10–§12 cross-refs（将来ラベル移行後に削除）
 % ═══════════════════════════════════════════════════════════════════════════════
-
-% NOTE: \label{sec:gfm} は §10 以降（検証実験）が参照するため変更不可．
-% \label{sec:extension_pde} は §1～§9 からの参照を受けるため両方保持する．
 
 本節では，Aslam (2004)~\cite{Aslam2004} の \textbf{Extension PDE}（界面越し場延長 PDE）の概念に基づき，
 \textbf{最近接点 Hermite 補間}によって $\Ord{h^6}$ 精度で界面越し場延長を実現する手法を述べる．
-本手法には2つの役割がある：
+
+\paragraph{なぜ界面越し場延長が必要か.}
+CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ で $\Ord{h^6}$ の微分を求解する．
+しかし二相流では，圧力場が Young--Laplace 則 $[p]_\Gamma = \sigma\kappa$ に従う
+不連続を持つため（式~\eqref{eq:young_laplace_jump}），
+界面を跨ぐ CCD ステンシルは Gibbs 振動を引き起こし精度が著しく低下する．
+
+界面越し場延長はこの問題を根本的に解消する：
+ソース相（例：液相）の場の値を界面法線方向にターゲット相へ $\Ord{h^6}$ 精度で延長し，
+CCD が界面近傍でも滑らかな場に対して演算できるようにする．
+具体的な適用箇所は以下の通りである：
 \begin{enumerate}[noitemsep]
-  \item \textbf{Gibbs 振動の除去：}
-        CCD 法は同一ステンシル $(i-2,\ldots,i+2)$ で $\Ord{h^6}$ の微分を求解するが，
-        界面を跨ぐ不連続場に適用すると Gibbs 振動を引き起こし精度が著しく低下する．
-        界面越し場延長はこれを PPE 求解前に解消する前処理として機能する．
-  \item \textbf{変密度 PPE の収束性回復（GFM 分相解法への基盤）：}
-        smoothed Heaviside 密度場で変密度 PPE を一括解法で解くと，
-        $1/\rho$ のジャンプを横切るステンシルの $\Ord{1}$ 離散化誤差により
-        欠陥補正法が発散する（$\rho_l/\rho_g \geq 10$；§~\ref{sec:varrho_ppe_limitation}）．
-        GFM では各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を独立に解き，
-        界面のジャンプ条件 $[p] = \sigma\kappa$ を本節の Hermite 補間で課すことで，
-        不連続係数を横切るステンシルを排除し CCD の $\Ord{h^6}$ 精度を回復する．
-        本節は Hermite 補間による界面越し場延長の実現に専念し，
-        GFM 分相解法の破綻挙動の定量的記録は §~\ref{sec:varrho_ppe_limitation} に，
-        実装は今後の課題として §~\ref{sec:future_work} に記す．
+  \item \textbf{圧力場の前処理：}
+        PPE 求解前に $p^n$ を界面越しに延長し，IPC Predictor の $-\bnabla p^n$ 項から
+        Gibbs 振動を除去する．
+  \item \textbf{圧力増分の後処理：}
+        PPE で得られた $\delta p$ を界面越しに延長し，速度補正
+        $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ の精度を維持する．
+  \item \textbf{変密度 PPE の精度改善：}
+        界面近傍で $1/\rho$ が急変する領域において，延長済みの滑らかな場を用いることで
+        CCD の離散化誤差を低減する（変密度 PPE の収束性限界については
+        §~\ref{sec:varrho_ppe_limitation} で定量的に記録する）．
 \end{enumerate}
 
 \subsubsection{背景：Extension PDE の定常解と最近接点 Hermite 補間}
@@ -171,8 +175,7 @@ Aslam~(2004)~\cite{Aslam2004} の元論文では，式~\eqref{eq:extension_pde_m
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-% Backward-compatibility labels for §10 cross-references (GFM equations removed)
-% §10 以降が参照するため，ラベルのみ保持する（本文中の式は廃止）
+% Backward-compatibility labels（将来ラベル移行後に削除）
 \phantomsection\label{eq:gfm_rhs_correction}%
 \phantomsection\label{eq:gfm_ccd_div}%
 % ─────────────────────────────────────────────────────────────────────────────

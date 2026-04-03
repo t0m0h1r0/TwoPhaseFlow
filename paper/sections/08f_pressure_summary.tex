@@ -2,7 +2,7 @@
 %
 % §8 章末まとめ：精度バランスと設計上のトレードオフ
 % ※ 旧所在: 08c_ccd_poisson.tex（§8.2 内）→ §8 章末に移動（CHK-087: R5）
-%   理由：GFM（§8.4）・BC（§8.5）を全て読んだ後に精度全体像を示す構成に変更
+%   理由：界面越し場延長（§8.4）・BC（§8.5）を全て読んだ後に精度全体像を示す構成に変更
 %% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{本章のまとめ：精度バランスと設計上のトレードオフ}
 \label{sec:pressure_accuracy_summary}
@@ -11,7 +11,7 @@
 本章では，変密度 PPE の導出（§~\ref{sec:projection_derivation}），
 CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
-最近接点 Hermite 補間による界面越し場延長（§~\ref{sec:gfm}），
+最近接点 Hermite 補間による界面越し場延長（§~\ref{sec:field_extension}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を順に論じた．
 以下に，各コンポーネントの精度を整理する．
 
