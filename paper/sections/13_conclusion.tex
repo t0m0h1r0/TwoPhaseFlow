@@ -24,7 +24,7 @@ CCD $O(h^6)$ による高精度曲率計算，GFM による鋭利な界面処理
 低次移流による界面にじみ & Dissipative CCD + TVD-RK3（第\ref{sec:advection}章）\\
 曲率計算誤差 $\to$ 寄生流れ & CCD 法 $O(h^6)$（第\ref{sec:CCD}章）\\
 チェッカーボード圧力振動 & DCCD 散逸（$\varepsilon_d=1/4$，§\ref{sec:dccd_decoupling}，第\ref{sec:collocate}章）\\
-変密度 PPE の収束悪化 & GFM 分相解法（§\ref{sec:gfm_jump}，§\ref{sec:varrho_ppe_limitation}）\\
+変密度 PPE の収束悪化 & GFM 分相解法（§\ref{sec:gfm}，§\ref{sec:varrho_ppe_limitation}）\\
 格子粗さによる界面解像不足 & Level Set 連動非一様格子（第\ref{sec:grid}章）\\
 \hline
 \end{tabular}
@@ -114,7 +114,8 @@ CCD $O(h^6)$ による高精度曲率計算，GFM による鋭利な界面処理
 ここでは，その設計上のトレードオフを技術的貢献の観点から振り返る．
 主要な精度設計上のトレードオフとして，
 （1）空間精度は CCD-PPE $\Ord{h^6}$・CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速；低波数近似 $H\approx1-\varepsilon_d k^2h^2$ より導出）と高次で統一され，
-GFM 採用により CSF $O(\varepsilon^2)$ モデル誤差が除去された（§\ref{sec:gfm}，付録~\ref{app:csf_full}）；
+最近接点 Hermite 補間（§\ref{sec:gfm}）により Gibbs 振動は除去されるが，
+CSF $O(\varepsilon^2)$ モデル誤差の根本的除去には GFM 分相解法（§\ref{sec:future_work}）が必要である（付録~\ref{app:csf_full}）；
 （2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
 さらなる高次化には $O(\Delta t^3)$ 以上の高次 Projection 法（例：Guermond--Shen 2006）への移行が必要である，
 の2点が挙げられる（詳細は§\ref{sec:pressure_accuracy_summary}参照）．

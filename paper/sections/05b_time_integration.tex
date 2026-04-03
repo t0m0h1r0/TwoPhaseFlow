@@ -64,7 +64,7 @@ Predictor ステップの離散式は：
   \bm{f}^{n+1} = - \frac{\rho^{n+1}}{Fr^2}\hat{\bm{y}}
   + \frac{1}{\mathrm{We}}\,\kappa^{n+1}\bnabla\psi^{n+1}
 \end{equation*}
-ここで $\bm{f}^{n+1}$ は重力と CSF 表面張力 $(\kappa/\mathrm{We})\bnabla\psi$ の合計である．
+ここで第1項が重力，第2項が CSF 表面張力 $(\kappa/\mathrm{We})\bnabla\psi$ を表す．
 重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
 2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$（§~\ref{sec:csf}）．
 圧力場には最近接点 Hermite 補間（§~\ref{sec:extension_pde}）を適用し，CCD 勾配が $\Ord{h^6}$ 精度を維持できるよう
