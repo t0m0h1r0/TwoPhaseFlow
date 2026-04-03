@@ -5,134 +5,109 @@ Paper ref: §11.1.2 — Surface tension equilibrium + parasitic currents
 
 Static droplet: R=0.25, ρ_l/ρ_g=1000, We=1, no gravity.
 Verifies: Laplace pressure Δp = σ/R = 4.0
-Measures: parasitic current convergence with grid refinement.
+Measures: parasitic current magnitude and grid convergence.
 
-NOTE: This is a PPE-level test. Full two-phase simulation is suspended (CHK-059).
-We verify the pressure jump using the GFM PPE correction on a frozen interface.
+Uses variable-coefficient PPE (PPEBuilder) and CCD-CSF body force,
+consistent with §10.2 Young-Laplace infrastructure.
 """
 
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy.sparse import lil_matrix
-from scipy.sparse.linalg import splu
+import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.curvature import CurvatureCalculator
-from twophase.levelset import heaviside as hs_mod
+from twophase.levelset.heaviside import heaviside
+from twophase.pressure.ppe_builder import PPEBuilder
 
 OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_bf_droplet"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
 def static_droplet_ppe_test(N, R=0.25, rho_l=1000.0, rho_g=1.0, sigma=1.0, We=1.0):
-    """PPE-only test: solve for pressure with CSF body force on static droplet.
+    """Single-step projection test on a static droplet.
 
-    The pressure field should satisfy Δp ≈ σ/R across the interface.
-    Deviation from exact Laplace balance produces residual velocity (parasitic current).
+    Pipeline:
+      1. Compute CSF body force f_σ = (σ/We) κ ∇ψ / ρ
+      2. Predictor: u* = dt · f_σ (from zero velocity)
+      3. PPE: ∇·((1/ρ)∇δp) = ∇·u*/dt  (variable-coefficient)
+      4. Corrector: u = u* − (dt/ρ)∇δp
+      5. Measure Δp and parasitic current ||u||_∞
     """
     backend = Backend(use_gpu=False)
     h = 1.0 / N
+    eps = 1.5 * h
 
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
-    ccd = CCDSolver(grid, backend, bc_type="dirichlet")
+    ccd = CCDSolver(grid, backend, bc_type='wall')
 
     X, Y = grid.meshgrid()
     xc, yc = 0.5, 0.5
 
-    # Signed distance function
-    phi = np.sqrt((X - xc)**2 + (Y - yc)**2) - R
+    # Signed distance: φ > 0 inside (liquid)
+    dist = np.sqrt((X - xc)**2 + (Y - yc)**2)
+    phi = R - dist
 
     # Smoothed Heaviside and density
-    eps = 1.5 * h
-    xp = backend.xp
-    H = np.asarray(backend.to_host(hs_mod.heaviside(xp, xp.asarray(phi), eps)))
-    rho = rho_g + (rho_l - rho_g) * H
+    psi = heaviside(np, phi, eps)
+    rho = rho_g + (rho_l - rho_g) * psi
 
     # Curvature via CCD
-    curv_calc = CurvatureCalculator(backend, ccd, eps=eps)
-    kappa = np.asarray(backend.to_host(curv_calc.compute(xp.asarray(phi))))
+    curv_calc = CurvatureCalculator(backend, ccd, eps)
+    kappa = curv_calc.compute(psi)
 
-    # CSF body force: f_σ = (σ/We) κ ∇H
-    delta_fn = np.asarray(backend.to_host(hs_mod.delta(xp, xp.asarray(phi), eps)))
-    dphi_dx, _ = ccd.differentiate(xp.asarray(phi), axis=0)
-    dphi_dy, _ = ccd.differentiate(xp.asarray(phi), axis=1)
-    dphi_dx = np.asarray(backend.to_host(dphi_dx))
-    dphi_dy = np.asarray(backend.to_host(dphi_dy))
+    # CSF body force: f_σ = (σ/We) κ ∇ψ
+    grad_psi = []
+    for ax in range(2):
+        dpsi, _ = ccd.differentiate(psi, ax)
+        grad_psi.append(dpsi)
 
-    grad_H_x = delta_fn * dphi_dx
-    grad_H_y = delta_fn * dphi_dy
+    # Predictor: u* = dt · f_σ / ρ  (dt=1 arbitrary, cancels in projection)
+    dt = 1.0
+    u_star = dt * (sigma / We) * kappa * grad_psi[0] / rho
+    v_star = dt * (sigma / We) * kappa * grad_psi[1] / rho
 
-    f_sigma_x = (sigma / We) * kappa * grad_H_x
-    f_sigma_y = (sigma / We) * kappa * grad_H_y
+    # PPE RHS: divergence of (f_σ/ρ) via FD (balanced-force consistent)
+    rhs = np.zeros_like(psi)
+    rhs[1:N, :] += (u_star[1:N, :] - u_star[0:N-1, :]) / h
+    rhs[:, 1:N] += (v_star[:, 1:N] - v_star[:, 0:N-1]) / h
+    rhs /= dt
 
-    # For a balanced static droplet, the PPE should solve:
-    # ∇·((1/ρ)∇p) = ∇·((1/ρ) f_σ)
-    # which gives p = p_in inside, p_out outside, Δp = σκ/We
+    # Variable-coefficient PPE: ∇·((1/ρ)∇p) = RHS
+    ppe_builder = PPEBuilder(backend, grid, bc_type='wall')
+    triplet, A_shape = ppe_builder.build(rho)
+    data, rows, cols = triplet
+    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
 
-    # Simplified approach: measure pressure from a single-step projection
-    # u* = dt * f_σ/ρ (predictor from zero velocity with surface tension only)
-    dt = 1.0  # arbitrary, cancels out
-    u_star = dt * f_sigma_x / rho
-    v_star = dt * f_sigma_y / rho
-
-    # Divergence of u*
-    du_dx, _ = ccd.differentiate(xp.asarray(u_star), axis=0)
-    dv_dy, _ = ccd.differentiate(xp.asarray(v_star), axis=1)
-    div_star = np.asarray(backend.to_host(du_dx)) + np.asarray(backend.to_host(dv_dy))
-
-    # Solve PPE: ∇²p = (ρ/dt)∇·u* using FD Poisson with Neumann-like BC
-    n_inner = (N - 1)**2
-    def idx(i, j): return (i-1)*(N-1) + (j-1)
-
-    A = lil_matrix((n_inner, n_inner))
-    b = np.zeros(n_inner)
-    for i in range(1, N):
-        for j in range(1, N):
-            k = idx(i, j)
-            A[k, k] = -4.0/h**2
-            if i > 1: A[k, idx(i-1, j)] = 1.0/h**2
-            if i < N-1: A[k, idx(i+1, j)] = 1.0/h**2
-            if j > 1: A[k, idx(i, j-1)] = 1.0/h**2
-            if j < N-1: A[k, idx(i, j+1)] = 1.0/h**2
-            b[k] = rho[i, j] * div_star[i, j] / dt
-
-    lu = splu(A.tocsc())
-    p_inner = lu.solve(b)
-    p = np.zeros((N+1, N+1))
-    p[1:N, 1:N] = p_inner.reshape((N-1, N-1))
+    rhs_vec = rhs.ravel().copy()
+    rhs_vec[ppe_builder._pin_dof] = 0.0
+    p = spsolve(A, rhs_vec).reshape(psi.shape)
 
     # Measure Laplace pressure jump
-    # Interior pressure: average p where phi < -2h (well inside droplet)
-    mask_in = phi[1:N, 1:N] < -2*h
-    mask_out = phi[1:N, 1:N] > 2*h
-    p_inner_vals = p[1:N, 1:N]
-
-    if np.any(mask_in) and np.any(mask_out):
-        p_in = np.mean(p_inner_vals[mask_in])
-        p_out = np.mean(p_inner_vals[mask_out])
-        delta_p = p_in - p_out
+    inside  = phi >  3 * h
+    outside = phi < -3 * h
+    if np.any(inside) and np.any(outside):
+        dp = float(np.mean(p[inside]) - np.mean(p[outside]))
     else:
-        delta_p = np.nan
+        dp = float('nan')
 
-    laplace_exact = sigma / (R * We)  # = 4.0
-    laplace_err = abs(delta_p - laplace_exact) / laplace_exact if not np.isnan(delta_p) else np.nan
+    dp_exact = sigma / (R * We)   # = 4.0
+    rel_err = abs(dp - dp_exact) / dp_exact if not np.isnan(dp) else float('nan')
 
-    # Parasitic velocity (corrected velocity after projection)
-    dp_dx, _ = ccd.differentiate(xp.asarray(p), axis=0)
-    dp_dy, _ = ccd.differentiate(xp.asarray(p), axis=1)
-    dp_dx = np.asarray(backend.to_host(dp_dx))
-    dp_dy = np.asarray(backend.to_host(dp_dy))
-
+    # Corrector: u = u* − (dt/ρ)∇p  → parasitic current
+    dp_dx, _ = ccd.differentiate(p, 0)
+    dp_dy, _ = ccd.differentiate(p, 1)
     u_corr = u_star - dt / rho * dp_dx
     v_corr = v_star - dt / rho * dp_dy
-    u_para = np.max(np.sqrt(u_corr**2 + v_corr**2))
+    u_para = float(np.max(np.sqrt(u_corr**2 + v_corr**2)))
 
-    return delta_p, laplace_err, u_para, kappa
+    return dp, rel_err, u_para
 
 
 def main():
@@ -141,39 +116,53 @@ def main():
     print("=" * 80 + "\n")
 
     Ns = [32, 64, 128]
+    dp_exact = 4.0
     results = []
 
-    print(f"  {'N':>5} {'Δp':>10} {'Δp_exact':>10} {'rel_err':>10} {'||u_para||':>12} {'order':>8}")
-    print("  " + "-" * 65)
+    print(f"  {'N':>5} {'Δp':>10} {'Δp_exact':>10} {'rel_err':>10} "
+          f"{'||u_para||':>12} {'寄生流れ次数':>14}")
+    print("  " + "-" * 75)
 
     for N in Ns:
-        delta_p, laplace_err, u_para, kappa = static_droplet_ppe_test(N)
-        results.append({"N": N, "delta_p": delta_p, "err": laplace_err, "u_para": u_para})
+        dp, rel_err, u_para = static_droplet_ppe_test(N)
+        results.append({"N": N, "dp": dp, "rel_err": rel_err, "u_para": u_para})
 
         order_str = "---"
         if len(results) > 1:
             r0, r1 = results[-2], results[-1]
             if r0["u_para"] > 0 and r1["u_para"] > 0:
-                s = np.log(r1["u_para"]/r0["u_para"]) / np.log((1.0/r1["N"])/(1.0/r0["N"]))
+                s = np.log(r0["u_para"] / r1["u_para"]) / np.log(
+                    float(r1["N"]) / r0["N"])
                 order_str = f"{s:.2f}"
 
-        print(f"  {N:>5} {delta_p:>10.4f} {'4.0000':>10} {laplace_err:>10.3e} "
-              f"{u_para:>12.3e} {order_str:>8}")
+        print(f"  {N:>5} {dp:>10.4f} {dp_exact:>10.1f} {rel_err:>10.3e} "
+              f"{u_para:>12.3e} {order_str:>14}")
+
+    # Pressure error convergence
+    print("\n  Δp 相対誤差 収束次数:")
+    for i in range(1, len(results)):
+        r0, r1 = results[i-1], results[i]
+        if r0["rel_err"] > 1e-14 and r1["rel_err"] > 1e-14:
+            order = np.log(r0["rel_err"] / r1["rel_err"]) / np.log(
+                float(r1["N"]) / r0["N"])
+            print(f"    {r0['N']}→{r1['N']}: order = {order:.2f}")
 
     # Save LaTeX table
     with open(OUT / "table_bf_droplet.tex", "w") as fp:
         fp.write("% Auto-generated by exp11_2_bf_droplet.py\n")
         fp.write("\\begin{tabular}{rrrrc}\n\\toprule\n")
-        fp.write("$N$ & $\\Delta p$ & 相対誤差 & $\\|\\bu_{\\mathrm{para}}\\|_\\infty$ & 収束次数 \\\\\n")
+        fp.write("$N$ & $\\Delta p$ & 相対誤差 & "
+                 "$\\|\\bu_{\\mathrm{para}}\\|_\\infty$ & 寄生流れ次数 \\\\\n")
         fp.write("\\midrule\n")
         for i, r in enumerate(results):
             order = "---"
             if i > 0:
                 r0 = results[i-1]
                 if r0["u_para"] > 0 and r["u_para"] > 0:
-                    s = np.log(r["u_para"]/r0["u_para"]) / np.log((1.0/r["N"])/(1.0/r0["N"]))
+                    s = np.log(r0["u_para"] / r["u_para"]) / np.log(
+                        float(r["N"]) / r0["N"])
                     order = f"${s:.2f}$"
-            fp.write(f"{r['N']} & ${r['delta_p']:.3f}$ & ${r['err']:.2e}$ "
+            fp.write(f"{r['N']} & ${r['dp']:.2f}$ & ${r['rel_err']:.1e}$ "
                      f"& ${r['u_para']:.2e}$ & {order} \\\\\n")
         fp.write("\\bottomrule\n\\end{tabular}\n")
     print(f"\n  Saved: {OUT / 'table_bf_droplet.tex'}")
