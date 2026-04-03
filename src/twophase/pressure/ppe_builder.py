@@ -103,33 +103,53 @@ class PPEBuilder:
                    for ax in range(ndim)]
 
         for ax in range(ndim):
-            h = float(self.grid.L[ax] / self.grid.N[ax])
-            h2 = h * h
             N_ax = self.N[ax]
-
-            # Indices of all interior faces along ax
-            # Face i+½ between nodes i and i+1 in axis ax
             idx_L, idx_R = self._face_indices[ax]  # flat node indices
 
             rho_L = rho_host.ravel()[idx_L]
             rho_R = rho_host.ravel()[idx_R]
             a_f = 2.0 / (rho_L + rho_R)   # harmonic mean face coefficient
-            coeff = a_f / h2
 
-            if self.bc_type == 'periodic':
-                # Periodic BC: all nodes have full cell volume — no boundary doubling.
-                coeff_for_L = coeff
-                coeff_for_R = coeff
-            else:
-                # Node-centred FVM boundary correction (§FVM):
-                # Boundary nodes have a control volume of width h/2 along the
-                # axis, not h.  This halves the effective h² denominator → doubles
-                # the face-coefficient *contribution to the boundary node equation*.
+            if not self.grid.uniform:
+                # Non-uniform grid: per-face local spacings from grid.coords.
+                # Face between node k and k+1:
+                #   d_face[k] = x[k+1] − x[k]  (gradient denominator)
+                #   dv[i] = control volume width at node i:
+                #     boundary: (x[1]−x[0])/2 or (x[N]−x[N-1])/2
+                #     interior: (x[i+1]−x[i-1])/2
+                coords = np_host.asarray(self.grid.coords[ax])
+                d_face = coords[1:] - coords[:-1]          # (N_ax,) face widths
+                dv = np_host.empty(len(coords))
+                dv[0]    = (coords[1] - coords[0]) / 2.0
+                dv[-1]   = (coords[-1] - coords[-2]) / 2.0
+                dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+
                 stride = strides[ax]
                 ax_idx_L = (idx_L // stride) % self.shape_field[ax]
                 ax_idx_R = (idx_R // stride) % self.shape_field[ax]
-                coeff_for_L = np_host.where(ax_idx_L == 0,    2.0 * coeff, coeff)
-                coeff_for_R = np_host.where(ax_idx_R == N_ax, 2.0 * coeff, coeff)
+                d_f  = d_face[ax_idx_L]    # face width for this face
+                dv_L = dv[ax_idx_L]         # control volume of left node
+                dv_R = dv[ax_idx_R]         # control volume of right node
+
+                # Face flux coefficient: a_f / d_face, divided by control volume
+                coeff_for_L = a_f / d_f / dv_L
+                coeff_for_R = a_f / d_f / dv_R
+            else:
+                h = float(self.grid.L[ax] / N_ax)
+                h2 = h * h
+                coeff = a_f / h2
+
+                if self.bc_type == 'periodic':
+                    coeff_for_L = coeff
+                    coeff_for_R = coeff
+                else:
+                    # Node-centred boundary correction:
+                    # Boundary nodes have control volume h/2 → coefficient doubles.
+                    stride = strides[ax]
+                    ax_idx_L = (idx_L // stride) % self.shape_field[ax]
+                    ax_idx_R = (idx_R // stride) % self.shape_field[ax]
+                    coeff_for_L = np_host.where(ax_idx_L == 0,    2.0 * coeff, coeff)
+                    coeff_for_R = np_host.where(ax_idx_R == N_ax, 2.0 * coeff, coeff)
 
             # L → R contribution (enters L's equation row)
             data_list.append(coeff_for_L)

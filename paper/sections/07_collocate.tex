@@ -203,8 +203,9 @@ CCD 法では $D_x^{(1)}, D_y^{(1)}$（第~\ref{sec:CCD}章）を統一使用す
 演算子の不一致は式~\eqref{eq:bf_operator_mismatch} の $\Ord{h^2}$ 残差を生じ，
 正帰還ループを通じて計算の発散を招く．
 \textbf{本稿の CSF + Balanced-Force 定式化（§~\ref{sec:csf}，§~\ref{sec:rc_balanced_force}）では，
-この Balanced-Force 条件を適用し，さらに HFE（§~\ref{sec:field_extension}）により
-界面近傍の圧力勾配を $\Ord{h^6}$ 精度で維持する（§~\ref{sec:dccd_decoupling} 参照）．}
+$\bnabla p$ と $\kappa\bnabla\psi$ に同一の CCD $\Ord{h^6}$ 演算子を使用し，
+この Balanced-Force 条件を $\Ord{h^6}$ 精度で維持する
+（§~\ref{sec:ppe_discretization_choice}，§~\ref{sec:dccd_decoupling} 参照）．}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Rhie--Chow 補正への表面張力項の拡張：フェイス速度への Balanced-Force 反映}
@@ -324,5 +325,6 @@ PPE 右辺には $\varepsilon_d = 1/4$（チェッカーボード完全除去）
 
 \medskip
 DCCD 散逸（$\varepsilon_d = 1/4$）による内在的デカップリング抑制は，スキーム固有の機構として $2\Delta x$ モードを除去する．
-CSF + Balanced-Force（§~\ref{sec:csf}，§~\ref{sec:rc_balanced_force}）と HFE（§~\ref{sec:field_extension}）の組み合わせにより，
+CSF + Balanced-Force（§~\ref{sec:csf}，§~\ref{sec:rc_balanced_force}）と
+FD 直接法 PPE + CCD 勾配（§~\ref{sec:ppe_discretization_choice}）の組み合わせにより，
 表面張力の離散化が高精度かつ数学的に整合した形式に帰着する．

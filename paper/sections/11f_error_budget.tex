@@ -58,6 +58,13 @@ CSF と同次である（表~\ref{tab:varrho_convergence}）．
 移動界面＋表面張力では IPC の $\bnabla p^n$ 評価が界面ジャンプで
 破綻する（表~\ref{tab:galilean}）．
 
+\noindent\textbf{PPE 離散化：}
+CCD PPE の欠陥補正は $L_L^{-1} L_H$ の不定性により
+定常反復法では収束不能であり（§~\ref{sec:ppe_discretization_choice}），
+FD 直接法 + CCD 勾配を採用する．
+投影不整合 $\Ord{h^4}$ は有界であり寄生流れへの影響は
+Balanced-Force のキャンセル精度 $\Ord{h^6}$ に対して二次的である．
+
 \noindent\textbf{二相流（$\rho_l/\rho_g \geq 10$）：}
 変密度 PPE の欠陥補正が発散し，使用不可（表~\ref{tab:varrho_breakdown}）．
 

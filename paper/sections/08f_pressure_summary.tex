@@ -27,11 +27,11 @@ HFE（§~\ref{sec:field_extension}），
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & CCD 微分形式 + 欠陥補正法 + HFE & $\Ord{h^6}$ & — \\
+PPE（離散化＋求解） & FD 直接法 + CCD $\bnabla p$（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-HFE & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
+HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
 \midrule
 \textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
 \textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
@@ -40,8 +40,9 @@ HFE & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
 
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
-全体の空間精度を律速する．HFE（§~\ref{sec:extension_pde_disc}）は
-$\Ord{h^6}$ を達成しており，律速要因ではない．
+全体の空間精度を律速する．\\
+\noindent‡\ PPE 自体は FD $\Ord{h^2}$，速度補正の勾配は CCD $\Ord{h^6}$
+（§~\ref{sec:ppe_discretization_choice}）．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
