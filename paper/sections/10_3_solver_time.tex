@@ -262,12 +262,50 @@ $L^\infty$ 誤差が一致し，$\Ord{h^{7.0}}$ の超収束を再現した．
 密度比 $\approx 9$（$A = 0.8$）でも $\Ord{h^{6.5}}$ が維持される．
 $\approx 99$--$999$ では条件数悪化に伴い $\Ord{h^{5.5}}$--$\Ord{h^{5.8}}$ にやや低下するが，
 $k = 3$ の固定反復で $N = 128$ 時 $L^\infty = \Ord{10^{-11}}$ と十分な精度を達成した．
-\paragraph{注意：界面型密度場における収束性の限界}
-界面型密度場（smoothed Heaviside）では $H_\varepsilon$ の幅 $\varepsilon = \Ord{h}$ が
-CCD/FD 両離散化で解像限界を生じ，$k = 3$ の DC では収束しない．
-高密度比界面問題への適用には $\varepsilon/h$ 比の増大または
-反復回数 $k$ の増加が必要であり，今後の課題とする．
-これは本手法の現時点での制限事項であり，§~\ref{sec:conclusion}で今後の課題として議論する．
+\paragraph{注意：界面型密度場における収束性の破綻と解決方針}
+\label{sec:varrho_ppe_limitation}
+
+上記の収束結果は\textbf{滑らかな密度場}（$\rho = 1 + A\sin\pi x\cos\pi y$）における検証であり，
+\textbf{界面型密度場}（$\rho = \rho_g + (\rho_l - \rho_g) H_\varepsilon(\phi)$）では状況が根本的に異なる．
+
+界面型密度場で製造解テスト（$p^* = \sin\pi x\sin\pi y$，$\rho_l/\rho_g = 10, 100, 1000$）を実施したところ，
+欠陥補正法は \textbf{$\rho_l/\rho_g \geq 10$ で発散}した（表~\ref{tab:varrho_interface_divergence}）．
+FD 前処理の直接解（DC をスキップ）でも同様に非収束であり，
+反復回数 $k$ の増大や緩和係数 $\omega < 1$ の導入によっても収束は得られなかった．
+
+\begin{table}[htbp]
+\centering
+\caption{界面型密度場での変密度 PPE 収束テスト（DC $k=3$，$N=64$）}
+\label{tab:varrho_interface_divergence}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{rcl}
+\toprule
+$\rho_l/\rho_g$ & $L^\infty$ 誤差 & 状態 \\
+\midrule
+$1$    & $1.3 \times 10^{-10}$ & 収束（$\Ord{h^{7.0}}$） \\
+$10$   & $1.3$                 & 非収束（振動） \\
+$100$  & $1.1 \times 10^{5}$   & 発散 \\
+$1000$ & $3.7 \times 10^{3}$   & 発散 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{原因：}
+界面型密度場では $1/\rho$ が界面を挟んで $\rho_l/\rho_g$ 倍のジャンプを持つ．
+FD/CCD を問わず，このジャンプを横切るステンシルは $\Ord{1}$ の離散化誤差を生じる．
+DC の前処理 $L_L$（FD $\Ord{h^2}$）も同一の問題を抱えるため，
+$L_L^{-1}L_H$ のスペクトル半径が 1 を超え，反復が発散する．
+これは \textbf{smoothed Heaviside による一括解法の本質的限界}であり，
+DC の反復構造や前処理の選択では解消できない．
+
+\noindent\textbf{解決方針：GFM による分相解法}
+この問題は§~\ref{sec:extension_pde}の最近接点 Hermite 補間に着想した
+Ghost Fluid Method（GFM, §~\ref{sec:gfm_jump}）により解決が見込まれる．
+GFM では各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を解き，
+界面上のジャンプ条件 $[p] = \sigma\kappa$ を Hermite 延長で課す．
+これにより不連続係数を横切るステンシルが排除され，
+各相の CCD 離散化が $\Ord{h^6}$ の設計精度を回復する．
+GFM の実装と検証は今後の主要課題であり，§~\ref{sec:conclusion}で議論する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{AB2 時間積分精度}
