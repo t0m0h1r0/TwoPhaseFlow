@@ -296,7 +296,7 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
 
 | Domain | Agent |
 |--------|-------|
-| Routing | ResearchArchitect |
+| Routing | ResearchArchitect, TaskPlanner |
 | Theory | TheoryArchitect, TheoryAuditor |
 | Code | CodeWorkflowCoordinator, CodeArchitect, CodeCorrector, CodeReviewer, TestRunner |
 | Experiment | ExperimentRunner, SimulationAnalyst |

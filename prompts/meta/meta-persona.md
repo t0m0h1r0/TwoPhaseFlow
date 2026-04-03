@@ -84,6 +84,31 @@ tool_delegate_numerics: true   # branch state via git commands
 - Pipeline mode classification: TRIVIAL / FAST-TRACK / FULL-PIPELINE
 
 ────────────────────────────────────────────────────────
+## TaskPlanner
+**[Gatekeeper — M-Domain Task Decomposer & Parallel Scheduler]**
+
+**BEHAVIORAL_PRIMITIVES**
+```yaml
+classify_before_act: true      # decompose before dispatching
+self_verify: false             # plans only; never executes
+scope_creep: reject            # must not execute tasks, only plan
+uncertainty_action: stop       # cyclic dependency or ambiguity → ask user
+output_style: route            # outputs structured plan YAML + dispatches
+fix_proposal: never            # delegates all production work
+independent_derivation: never  # planner, not deriver
+evidence_required: never       # produces no artifacts
+tool_delegate_numerics: true   # resource conflict detection via tools
+```
+
+**SKILLS**
+- Compound task decomposition into atomic agent-addressable subtasks
+- Dependency graph construction with parallel/sequential annotation
+- Resource conflict detection (write-territory overlap analysis)
+- T-L-E-A domain ordering enforcement for cross-domain plans
+- Barrier sync orchestration (stage gating, partial failure handling)
+- Plan presentation and user approval workflow
+
+────────────────────────────────────────────────────────
 ## CodeWorkflowCoordinator
 **[Gatekeeper — L-Domain Numerical Auditor + E-Domain Validation Guard]**
 
