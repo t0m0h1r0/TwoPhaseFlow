@@ -32,6 +32,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.curvature import CurvatureCalculator
+from twophase.levelset.reinitialize import Reinitializer
 from twophase.pressure.ppe_builder import PPEBuilder
 
 OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_rising_bubble"
@@ -64,6 +65,7 @@ def run():
     ppb = PPEBuilder(backend, grid, bc_type='wall')
     curv_calc = CurvatureCalculator(backend, ccd, eps)
     ls_adv = DissipativeCCDAdvection(backend, grid, ccd)
+    reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4)
 
     X, Y = grid.meshgrid()
 
@@ -80,6 +82,7 @@ def run():
         arr[:, 0] = 0.0; arr[:, -1] = 0.0
 
     dt_visc = 0.25 * h**2 / (MU / RHO_G)
+    dt_cap = np.sqrt(min(RHO_G, RHO_L) * h**3 / (8 * np.pi * SIGMA))
 
     snapshots = []
     snap_idx = 0
@@ -100,15 +103,18 @@ def run():
 
     print(f"  Running rising bubble: {NX}x{NY}, T={T_FINAL}")
     print(f"  rho_l={RHO_L}, rho_g={RHO_G}, mu={MU}, sigma={SIGMA}, g={G_ACC}")
+    print(f"  dt_visc={dt_visc:.5f}, dt_cap={dt_cap:.5f}")
 
     while t < T_FINAL and step < 500000:
         u_max = max(float(np.max(np.abs(u))), float(np.max(np.abs(v))), 1e-10)
-        dt = min(0.2 * h / u_max, dt_visc, T_FINAL - t, 0.005)
+        dt = min(0.2 * h / u_max, dt_visc, dt_cap, T_FINAL - t)
         if dt < 1e-10:
             break
 
-        # 1. Advect level set
+        # 1. Advect level set + reinitialize every 5 steps
         psi = np.asarray(ls_adv.advance(psi, [u, v], dt))
+        if step % 5 == 0:
+            psi = np.asarray(reinit.reinitialize(psi))
         rho = RHO_L + (RHO_G - RHO_L) * psi
 
         # 2. Curvature and CSF force
