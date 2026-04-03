@@ -21,6 +21,11 @@
 
 気液界面を挟む密度比 $\rho_l/\rho_g \approx 10^3$（水/空気相当）は
 PPE 演算子の条件数に直接影響する．
+なお，条件数の悪化にとどまらず，界面型密度場（smoothed Heaviside）では
+変密度 PPE 自体が $\rho_l/\rho_g \geq 10$ で発散する本質的問題が存在する
+（§~\ref{sec:varrho_ppe_limitation}）．
+以下の安定化戦略は条件数の緩和に有効だが，この発散問題の根本的解決には
+§~\ref{sec:gfm} の GFM 分相解法が必要である．
 可変係数演算子 $\mathcal{L}_h$ の係数 $a_{i+1/2} = 2/(\rho_i+\rho_{i+1})$ は，
 液相（$\rho \approx \rho_l$）と気相（$\rho \approx \rho_g$）の格子フェイスで
 $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
@@ -47,10 +52,9 @@ $O(\rho_l/\rho_g)$ の比率を持つため，行列の条件数は
         ピン固定点を中心ノード $(N/2, N/2)$ に設定することで（コーナーピン禁止），
         高密度比条件下でもグローバル非対称性 $O(\|\mathrm{rhs}\|)$ を回避する
         （ASM-008 対称性修正，2026-03-22 適用済み）．
-  \item \textbf{LGMRES の頑健性：}
-        CCD 境界スキームによる非対称性の強い行列でも LGMRES（拡張 Krylov 部分空間法）は
-        標準 GMRES より頑健に収束する（付録~\ref{app:ccd_lu_direct}）．
-        収束しない場合は最良反復解を返す．
+  \item \textbf{LU 直接法：}
+        CCD 境界スキームによる非対称性の強い行列に対しては，
+        スパース LU 分解による直接法が確実に解を返す（付録~\ref{app:ccd_lu_direct}）．
 \end{itemize}
 
 \subsubsection{全周 Neumann 境界における零モード対策}
