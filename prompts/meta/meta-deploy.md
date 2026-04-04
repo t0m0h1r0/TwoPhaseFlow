@@ -308,8 +308,9 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
 **Deprecated agents (→ prompts/agents/_deprecated/):**
 PaperCorrector, ErrorAnalyzer, PromptCompressor, ResultAuditor
 
-**Experimental micro-agents (→ prompts/agents/_experimental/, NOT YET OPERATIONAL):**
-EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner
+**Micro-agents (→ prompts/agents/, OPERATIONAL — activated 2026-04-04):**
+EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner, ErrorAnalyzer, ResultAuditor
+Prerequisites satisfied: artifacts/{T,L,E,Q}/ created; interface/signals/ created; DDA enforcement embedded in each agent's procedure.
 
 **Each generated prompt must use YAML format** (inheriting `prompts/agents/_base.yaml`):
 

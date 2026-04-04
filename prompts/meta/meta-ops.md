@@ -95,6 +95,15 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | SimulationAnalyst | GIT-SP | RETURNER |
 | Specialist | DevOpsArchitect | GIT-SP | RETURNER |
 | Specialist | DiagnosticArchitect | GIT-SP | RETURNER + DISPATCHER (re-issues HAND-01 after Gatekeeper approval) |
+| Micro-Agent (T) | EquationDeriver | GIT-SP | RETURNER |
+| Micro-Agent (T) | SpecWriter | GIT-SP | RETURNER |
+| Micro-Agent (L) | CodeArchitectAtomic | GIT-SP | RETURNER |
+| Micro-Agent (L) | LogicImplementer | GIT-SP | RETURNER |
+| Micro-Agent (L) | ErrorAnalyzer | GIT-SP | RETURNER |
+| Micro-Agent (L) | RefactorExpert | GIT-SP | RETURNER |
+| Micro-Agent (E) | TestDesigner | GIT-SP | RETURNER |
+| Micro-Agent (E) | VerificationRunner | GIT-SP, TEST-01, EXP-01, EXP-02 | RETURNER |
+| Micro-Agent (Q) | ResultAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 
 **Handoff roles:**
 - DISPATCHER: sends HAND-01 (DISPATCH token) when delegating to a specialist
