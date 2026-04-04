@@ -11,6 +11,8 @@ CCD ベースのソルバーのみをサポート（FVM は精度不足のため
     - "pseudotime": CCD Kronecker + LGMRES 反復（デフォルト・本番用）
     - "ccd_lu":     CCD Kronecker + 常時直接 LU（デバッグ・検証用）
     - "sweep":      CCD 仮想時間スウィープ（行列不要・大規模用）
+    - "iim":        IIM-CCD 界面補正（界面ジャンプ対応）
+    - "iterative":  離散化×反復法の組合せ研究用（{ccd,3pt}×{explicit,gs,adi}）
 
 新しいソルバーを追加する場合は:
     1. IPPESolver を実装した新クラスを作成
@@ -56,6 +58,7 @@ def create_ppe_solver(
     from .ppe_solver_ccd_lu import PPESolverCCDLU
     from .ppe_solver_sweep import PPESolverSweep
     from .ppe_solver_iim import PPESolverIIM
+    from .ppe_solver_iterative import PPESolverIterative
 
     solver_type = config.solver.ppe_solver_type
 
@@ -70,8 +73,11 @@ def create_ppe_solver(
     elif solver_type == "iim":
         # IIM-CCD: CCD Kronecker + IIM 界面補正 (docs/notes/iim_ccd_note.tex)
         return PPESolverIIM(backend, config, grid, ccd=ccd)
+    elif solver_type == "iterative":
+        # 研究用: 離散化×反復法の組合せ（config で選択）
+        return PPESolverIterative(backend, config, grid, ccd=ccd)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'pseudotime', 'ccd_lu', 'sweep', または 'iim' を指定してください。"
+            " 'pseudotime', 'ccd_lu', 'sweep', 'iim', または 'iterative' を指定してください。"
         )

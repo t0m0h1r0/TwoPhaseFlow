@@ -1,0 +1,580 @@
+"""
+Configurable iterative PPE solver — research toolkit.
+
+Provides 6 combinations of discretization × iteration method for the
+variable-density Pressure Poisson Equation:
+
+    ∇·(1/ρ ∇p) = q_h
+
+Discretization (residual evaluation accuracy):
+    "ccd"  — 6th-order CCD operator (§8b); smoother uses FD → defect correction
+    "3pt"  — 2nd-order 3-point central difference
+
+Iteration method (smoother / update strategy):
+    "explicit"      — explicit pseudo-time: p += Δτ R
+    "gauss_seidel"  — red-black Gauss-Seidel on FD operator
+    "adi"           — ADI (Thomas solver per axis, same as PPESolverSweep)
+
+LTS (local time stepping, §8d eq:dtau_lts):
+    Δτᵢⱼ = C_τ · ρᵢⱼ · h² / 2
+
+All methods accept p_init for warm-start.  The last solution is stored
+in ``last_solution`` so that one solver's output can be passed as
+``p_init`` to another solver for continuation:
+
+    p = solver_a.solve(rhs, rho, dt)
+    p = solver_b.solve(rhs, rho, dt, p_init=p)   # continue from solver_a
+
+Gauge fix: centre node (N//2, N//2) pinned to 0.
+Boundary: Neumann ∂p/∂n = 0 — boundary nodes are identity in all smoothers
+(same convention as PPESolverSweep).
+
+Convergence check follows PPESolverSweep: only pin node zeroed from the
+residual norm; boundary residual is included for CCD (CCD evaluates
+at boundaries) and naturally zero for 3pt (interior-only stencil).
+"""
+
+from __future__ import annotations
+import warnings
+import numpy as np
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..backend import Backend
+    from ..config import SimulationConfig
+    from ..core.grid import Grid
+    from ..ccd.ccd_solver import CCDSolver
+
+from ..interfaces.ppe_solver import IPPESolver
+
+
+class PPESolverIterative(IPPESolver):
+    """Configurable iterative PPE solver.
+
+    Parameters
+    ----------
+    backend        : Backend
+    config         : SimulationConfig  (pseudo_tol, pseudo_maxiter, pseudo_c_tau,
+                     ppe_discretization, ppe_iteration_method)
+    grid           : Grid
+    ccd            : CCDSolver (constructor injection; auto-built if needed)
+    discretization : override for config.solver.ppe_discretization
+    method         : override for config.solver.ppe_iteration_method
+    """
+
+    def __init__(
+        self,
+        backend: "Backend",
+        config: "SimulationConfig",
+        grid: "Grid",
+        ccd: "CCDSolver | None" = None,
+        discretization: str | None = None,
+        method: str | None = None,
+    ) -> None:
+        self.xp = backend.xp
+        self.backend = backend
+        self.ndim = grid.ndim
+        self.grid = grid
+        self.tol = config.solver.pseudo_tol
+        self.maxiter = config.solver.pseudo_maxiter
+        self.c_tau = config.solver.pseudo_c_tau
+
+        self.discretization = discretization or getattr(
+            config.solver, "ppe_discretization", "ccd"
+        )
+        self.method = method or getattr(
+            config.solver, "ppe_iteration_method", "adi"
+        )
+
+        assert self.discretization in ("ccd", "3pt"), (
+            f"ppe_discretization must be 'ccd' or '3pt': '{self.discretization}'"
+        )
+        assert self.method in ("explicit", "gauss_seidel", "adi"), (
+            f"ppe_iteration_method must be 'explicit', 'gauss_seidel', or 'adi': "
+            f"'{self.method}'"
+        )
+
+        # CCD solver (needed for CCD discretization)
+        if self.discretization == "ccd":
+            if ccd is not None:
+                self.ccd = ccd
+            else:
+                from ..ccd.ccd_solver import CCDSolver as _CCD
+                self.ccd = _CCD(grid, backend)
+        else:
+            self.ccd = ccd  # may still be passed; stored but unused
+
+        self._h = [grid.L[ax] / grid.N[ax] for ax in range(grid.ndim)]
+        self._h_min = min(self._h)
+
+        # Pin node — centre of domain, same as PPESolverSweep / _CCDPPEBase
+        pin_idx = tuple(ni // 2 for ni in grid.N)
+        self._pin_dof = int(np.ravel_multi_index(pin_idx, grid.shape))
+
+        # Last state for handoff: p and per-axis derivatives (dp, d2p)
+        self.last_solution = None
+        self._last_state: dict | None = None
+
+    # ── IPPESolver ────────────────────────────────────────────────────────
+
+    def solve(
+        self,
+        rhs,
+        rho,
+        dt: float,
+        p_init=None,
+    ):
+        """Solve PPE iteratively.
+
+        Parameters
+        ----------
+        rhs    : array, shape ``grid.shape`` — (1/Δt) ∇·u*_RC
+        rho    : array, shape ``grid.shape`` — density field
+        dt     : float (unused; kept for interface compliance)
+        p_init : array, dict, or None — warm-start initial guess.
+                 - None → zeros (IPC incremental δp⁰ = 0)
+                 - array → use as initial p
+                 - dict  → state from ``get_state()``; keys:
+                   ``'p'``, ``'dp'`` (list of per-axis 1st deriv),
+                   ``'d2p'`` (list of per-axis 2nd deriv).
+                   Derivatives are used for the first residual evaluation
+                   when the receiving solver uses CCD discretization,
+                   avoiding a re-differentiation of the 3pt-quality p.
+
+        Returns
+        -------
+        p : array, shape ``grid.shape``
+        """
+        xp = self.xp
+        shape = self.grid.shape
+        pin = self._pin_dof
+
+        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
+
+        # LTS: Δτᵢⱼ = C_τ · ρᵢⱼ · h_min² / 2  (§8d eq:dtau_lts)
+        # For explicit pseudo-time, stability requires c_eff < 2/(max spectral ratio):
+        #   - 3pt FD:  λ_max ≈ 8/(ρh²) → c_eff < 0.5   (safety 0.45)
+        #   - CCD:     λ_max ≈ 2(Nπ/L)²/ρ → c_eff < 2/π² ≈ 0.203 (safety 0.19)
+        # GS/ADI are implicitly stable; use the user-specified C_τ.
+        if self.method == "explicit":
+            c_limit = 0.19 if self.discretization == "ccd" else 0.45
+            c_eff = min(self.c_tau, c_limit)
+        else:
+            c_eff = self.c_tau
+        dtau = c_eff * rho_np * (self._h_min ** 2) / 2.0
+
+        # Unpack initial state (dict from get_state() or plain array)
+        if isinstance(p_init, dict):
+            p = np.asarray(self.backend.to_host(p_init["p"]), dtype=float)
+        elif p_init is not None:
+            p = np.asarray(self.backend.to_host(p_init), dtype=float)
+        else:
+            p = np.zeros(shape, dtype=float)
+
+        # Density gradient (frozen during iteration)
+        if self.discretization == "ccd":
+            rho_dev = xp.asarray(rho_np)
+            drho: list[np.ndarray] = []
+            for ax in range(self.ndim):
+                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
+                drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+        else:
+            drho = self._drho_3pt(rho_np)
+
+        # Per-axis derivatives of p (updated each iteration for state output)
+        last_dp: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
+        last_d2p: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
+
+        converged = False
+        residual = np.inf
+        for _ in range(self.maxiter):
+            # ── Residual R = rhs − L(p) ─────────────────────────────
+            # Always use this solver's own discretization for residual,
+            # even when p_init came from a different discretization.
+            if self.discretization == "ccd":
+                R, dp_list, d2p_list = self._residual_ccd(
+                    p, rhs_np, rho_np, drho,
+                )
+            else:
+                R, dp_list, d2p_list = self._residual_3pt(
+                    p, rhs_np, rho_np, drho,
+                )
+            last_dp = dp_list
+            last_d2p = d2p_list
+
+            # Convergence check — only pin excluded (same as PPESolverSweep)
+            R_chk = R.ravel().copy()
+            R_chk[pin] = 0.0
+            residual = float(np.sqrt(np.dot(R_chk, R_chk)))
+            if residual < self.tol:
+                converged = True
+                break
+
+            # ── Update step ──────────────────────────────────────────
+            # Sign convention: L has negative eigenvalues (Laplacian), so the
+            # correct pseudo-time update is p -= Δτ R (damped iteration on the
+            # positive-definite system −L p = −rhs).  Negate R for smoothers.
+            neg_R = -R
+            if self.method == "explicit":
+                p = self._step_explicit(p, neg_R, dtau, pin)
+            elif self.method == "gauss_seidel":
+                p = self._step_gauss_seidel(p, neg_R, rho_np, drho, dtau, pin)
+            elif self.method == "adi":
+                p = self._step_adi(p, neg_R, rho_np, drho, dtau, pin)
+
+        if not converged:
+            warnings.warn(
+                f"PPESolverIterative({self.discretization},{self.method}): "
+                f"not converged after {self.maxiter} iterations "
+                f"(residual={residual:.3e}, tol={self.tol:.3e}).",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        if not np.isfinite(p).all():
+            warnings.warn(
+                "PPESolverIterative: non-finite values detected. "
+                "Check the density field or reduce pseudo_c_tau.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        result = self.backend.to_device(p)
+        self.last_solution = result
+        self._last_state = {
+            "p": result,
+            "dp": [self.backend.to_device(d) for d in last_dp],
+            "d2p": [self.backend.to_device(d) for d in last_d2p],
+        }
+        return result
+
+    def get_state(self) -> dict:
+        """Return the last solution state for handoff to another solver.
+
+        Returns
+        -------
+        state : dict with keys:
+            ``'p'``   — pressure field (array, shape ``grid.shape``)
+            ``'dp'``  — list of 1st derivatives per axis [∂p/∂x, ∂p/∂y, ...]
+            ``'d2p'`` — list of 2nd derivatives per axis [∂²p/∂x², ∂²p/∂y², ...]
+
+        Usage::
+
+            state = solver_3pt.get_state()
+            p = solver_ccd.solve(rhs, rho, dt, p_init=state)
+        """
+        if self._last_state is None:
+            raise RuntimeError(
+                "No state available. Call solve() first."
+            )
+        return self._last_state
+
+    # ── Diagnostic ───────────────────────────────────────────────────────
+
+    def compute_residual(self, p, rhs, rho) -> float:
+        """Return ‖L(p) − rhs‖₂ (diagnostic, same as _CCDPPEBase).
+
+        Pin node is excluded from the norm (gauge constraint).
+        """
+        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
+        p_np = np.asarray(self.backend.to_host(p), dtype=float)
+
+        if self.discretization == "ccd":
+            xp = self.xp
+            rho_dev = xp.asarray(rho_np)
+            drho = []
+            for ax in range(self.ndim):
+                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
+                drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+            R, _, _ = self._residual_ccd(p_np, rhs_np, rho_np, drho)
+        else:
+            drho = self._drho_3pt(rho_np)
+            R, _, _ = self._residual_3pt(p_np, rhs_np, rho_np, drho)
+
+        R_flat = R.ravel().copy()
+        R_flat[self._pin_dof] = 0.0
+        return float(np.sqrt(np.dot(R_flat, R_flat)))
+
+    # ── Density gradient (3pt) ───────────────────────────────────────────
+
+    def _drho_3pt(self, rho_np: np.ndarray) -> list[np.ndarray]:
+        """Compute ∂ρ/∂x_i via 3-point central difference (O(h²)).
+
+        Interior: central difference.  Boundary: 2nd-order one-sided stencil.
+        """
+        drho: list[np.ndarray] = []
+        for ax in range(self.ndim):
+            h = self._h[ax]
+            dr = np.zeros_like(rho_np)
+            # Interior central difference
+            slc_p = [slice(None)] * self.ndim
+            slc_m = [slice(None)] * self.ndim
+            slc_c = [slice(None)] * self.ndim
+            slc_p[ax] = slice(2, None)
+            slc_m[ax] = slice(None, -2)
+            slc_c[ax] = slice(1, -1)
+            dr[tuple(slc_c)] = (
+                rho_np[tuple(slc_p)] - rho_np[tuple(slc_m)]
+            ) / (2.0 * h)
+            # Left boundary: (-3f0 + 4f1 - f2) / (2h)
+            s0 = [slice(None)] * self.ndim; s0[ax] = 0
+            s1 = [slice(None)] * self.ndim; s1[ax] = 1
+            s2 = [slice(None)] * self.ndim; s2[ax] = 2
+            dr[tuple(s0)] = (
+                -3.0 * rho_np[tuple(s0)]
+                + 4.0 * rho_np[tuple(s1)]
+                - rho_np[tuple(s2)]
+            ) / (2.0 * h)
+            # Right boundary: (3fN - 4fN-1 + fN-2) / (2h)
+            sN = [slice(None)] * self.ndim; sN[ax] = -1
+            sNm1 = [slice(None)] * self.ndim; sNm1[ax] = -2
+            sNm2 = [slice(None)] * self.ndim; sNm2[ax] = -3
+            dr[tuple(sN)] = (
+                3.0 * rho_np[tuple(sN)]
+                - 4.0 * rho_np[tuple(sNm1)]
+                + rho_np[tuple(sNm2)]
+            ) / (2.0 * h)
+            drho.append(dr)
+        return drho
+
+    # ── Residual computation ─────────────────────────────────────────────
+
+    def _residual_ccd(
+        self,
+        p: np.ndarray,
+        rhs_np: np.ndarray,
+        rho_np: np.ndarray,
+        drho: list[np.ndarray],
+    ) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
+        """R = rhs − L_CCD(p), CCD differentiation (O(h⁶)).
+
+        Returns (R, dp_list, d2p_list) where dp_list[ax] and d2p_list[ax]
+        are the per-axis 1st and 2nd derivatives of p.
+        """
+        xp = self.xp
+        shape = self.grid.shape
+        p_dev = xp.asarray(p)
+        rho_dev = xp.asarray(rho_np)
+        Lp = xp.zeros(shape, dtype=float)
+        dp_list: list[np.ndarray] = []
+        d2p_list: list[np.ndarray] = []
+        for ax in range(self.ndim):
+            dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
+            drho_dev = xp.asarray(drho[ax])
+            Lp += d2p_ax / rho_dev - (drho_dev / rho_dev ** 2) * dp_ax
+            dp_list.append(np.asarray(self.backend.to_host(dp_ax), dtype=float))
+            d2p_list.append(np.asarray(self.backend.to_host(d2p_ax), dtype=float))
+        return rhs_np - np.asarray(self.backend.to_host(Lp)), dp_list, d2p_list
+
+    def _residual_3pt(
+        self,
+        p: np.ndarray,
+        rhs_np: np.ndarray,
+        rho_np: np.ndarray,
+        drho: list[np.ndarray],
+    ) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray]]:
+        """R = rhs − L_FD(p), 3-point central difference (O(h²)).
+
+        Returns (R, dp_list, d2p_list).
+        Interior only: boundary Lp = 0 (boundary equations are identity in
+        all smoothers, so boundary residual does not affect the iteration).
+        """
+        shape = self.grid.shape
+        Lp = np.zeros(shape, dtype=float)
+        dp_list: list[np.ndarray] = []
+        d2p_list: list[np.ndarray] = []
+        for ax in range(self.ndim):
+            h = self._h[ax]
+            h2 = h * h
+            slc_p = [slice(None)] * self.ndim
+            slc_m = [slice(None)] * self.ndim
+            slc_c = [slice(None)] * self.ndim
+            slc_p[ax] = slice(2, None)
+            slc_m[ax] = slice(None, -2)
+            slc_c[ax] = slice(1, -1)
+            # d²p/dx²
+            d2p = np.zeros(shape, dtype=float)
+            d2p[tuple(slc_c)] = (
+                p[tuple(slc_p)] - 2.0 * p[tuple(slc_c)] + p[tuple(slc_m)]
+            ) / h2
+            # dp/dx
+            dp_ax = np.zeros(shape, dtype=float)
+            dp_ax[tuple(slc_c)] = (
+                p[tuple(slc_p)] - p[tuple(slc_m)]
+            ) / (2.0 * h)
+            Lp += d2p / rho_np - (drho[ax] / rho_np ** 2) * dp_ax
+            dp_list.append(dp_ax)
+            d2p_list.append(d2p)
+        return rhs_np - Lp, dp_list, d2p_list
+
+    # ── Smoothers ────────────────────────────────────────────────────────
+
+    def _step_explicit(
+        self,
+        p: np.ndarray,
+        R: np.ndarray,
+        dtau: np.ndarray,
+        pin: int,
+    ) -> np.ndarray:
+        """Explicit pseudo-time: p += Δτ R.
+
+        Boundary values are frozen (Neumann BC enforced implicitly).
+        """
+        # Only update interior; boundary stays at initial value
+        p = p.copy()
+        for ax in range(self.ndim):
+            s0 = [slice(None)] * self.ndim; s0[ax] = 0
+            sN = [slice(None)] * self.ndim; sN[ax] = -1
+            R[tuple(s0)] = 0.0
+            R[tuple(sN)] = 0.0
+        p += dtau * R
+        p.ravel()[pin] = 0.0
+        return p
+
+    def _step_gauss_seidel(
+        self,
+        p: np.ndarray,
+        R: np.ndarray,
+        rho: np.ndarray,
+        drho: list[np.ndarray],
+        dtau: np.ndarray,
+        pin: int,
+    ) -> np.ndarray:
+        """Red-black Gauss-Seidel on (1/Δτ − L_FD) δp = R, then p += δp.
+
+        FD stencil (product-rule form):
+            (1/Δτ + 2/(ρhx²) + 2/(ρhy²)) δp[i,j]
+            = R[i,j]
+              + (1/(ρhx²) − dρx/(2ρ²hx)) δp[i−1,j]
+              + (1/(ρhx²) + dρx/(2ρ²hx)) δp[i+1,j]
+              + (1/(ρhy²) − dρy/(2ρ²hy)) δp[i,j−1]
+              + (1/(ρhy²) + dρy/(2ρ²hy)) δp[i,j+1]
+
+        Boundary nodes: identity (δp = 0 at walls).
+        """
+        shape = self.grid.shape
+        Nx, Ny = shape
+        hx, hy = self._h[0], self._h[1]
+
+        inv_rho = 1.0 / rho
+        ax_c = inv_rho / (hx * hx)
+        ay_c = inv_rho / (hy * hy)
+        bx = drho[0] / (rho ** 2 * 2.0 * hx)
+        by = drho[1] / (rho ** 2 * 2.0 * hy)
+
+        diag = 1.0 / dtau + 2.0 * ax_c + 2.0 * ay_c
+        c_xm = ax_c - bx
+        c_xp = ax_c + bx
+        c_ym = ay_c - by
+        c_yp = ay_c + by
+
+        dp = np.zeros(shape, dtype=float)
+        pin_ij = np.unravel_index(pin, shape)
+
+        # Red-black sweep (color 0 = red, 1 = black)
+        for color in range(2):
+            for i in range(1, Nx - 1):
+                j_start = 1 + ((i + 1 + color) % 2)
+                for j in range(j_start, Ny - 1, 2):
+                    if i == pin_ij[0] and j == pin_ij[1]:
+                        continue
+                    rhs_ij = R[i, j]
+                    rhs_ij += c_xm[i, j] * dp[i - 1, j]
+                    rhs_ij += c_xp[i, j] * dp[i + 1, j]
+                    rhs_ij += c_ym[i, j] * dp[i, j - 1]
+                    rhs_ij += c_yp[i, j] * dp[i, j + 1]
+                    dp[i, j] = rhs_ij / diag[i, j]
+
+        p = p + dp
+        p.ravel()[pin] = 0.0
+        return p
+
+    def _step_adi(
+        self,
+        p: np.ndarray,
+        R: np.ndarray,
+        rho: np.ndarray,
+        drho: list[np.ndarray],
+        dtau: np.ndarray,
+        pin: int,
+    ) -> np.ndarray:
+        """ADI: x-sweep → y-sweep via Thomas solver.
+
+        Same algorithm as PPESolverSweep._sweep_1d.
+        """
+        q = self._thomas_sweep(R, rho, drho[0], dtau, axis=0)
+        q.ravel()[pin] = 0.0
+        dp = self._thomas_sweep(q, rho, drho[1], dtau, axis=1)
+        dp.ravel()[pin] = 0.0
+        p = p + dp
+        p.ravel()[pin] = 0.0
+        return p
+
+    # ── Thomas sweep (vectorized, identical to PPESolverSweep._sweep_1d) ─
+
+    def _thomas_sweep(
+        self,
+        rhs_2d: np.ndarray,
+        rho: np.ndarray,
+        drho_ax: np.ndarray,
+        dtau: np.ndarray,
+        axis: int,
+    ) -> np.ndarray:
+        """Solve (1/Δτ − L_FD_axis) q = rhs via Thomas algorithm.
+
+        LHS operator (2nd-order FD):
+            (L_FD q)[i] = (1/ρ[i])(q[i−1]−2q[i]+q[i+1])/h²
+                          − (∂ρ/∂x[i]/ρ[i]²)(q[i+1]−q[i−1])/(2h)
+
+        Boundary nodes (i=0, i=N): identity (δq = 0 at walls).
+        All cross-sections solved simultaneously (vectorized Thomas).
+        """
+        N = self.grid.N[axis]
+        h = self.grid.L[axis] / N
+        h2 = h * h
+
+        rhs_f = np.moveaxis(rhs_2d, axis, 0)
+        rho_f = np.moveaxis(rho, axis, 0)
+        drho_f = np.moveaxis(drho_ax, axis, 0)
+        dtau_f = np.moveaxis(dtau, axis, 0)
+
+        n = N + 1
+
+        inv_dtau = 1.0 / dtau_f
+        inv_rho_h2 = 1.0 / (rho_f * h2)
+        drho_h = drho_f / (rho_f ** 2 * 2.0 * h)
+
+        a = np.empty_like(rhs_f)
+        b = np.empty_like(rhs_f)
+        c = np.empty_like(rhs_f)
+
+        a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]
+        b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
+        c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
+
+        a[0] = 0.0;  b[0] = 1.0;  c[0] = 0.0
+        a[-1] = 0.0; b[-1] = 1.0; c[-1] = 0.0
+
+        rhs_m = rhs_f.copy()
+        rhs_m[0] = 0.0
+        rhs_m[-1] = 0.0
+
+        # Forward elimination
+        c_p = np.zeros_like(rhs_f)
+        r_p = np.zeros_like(rhs_f)
+        c_p[0] = c[0] / b[0]
+        r_p[0] = rhs_m[0] / b[0]
+        for i in range(1, n):
+            denom = b[i] - a[i] * c_p[i - 1]
+            c_p[i] = c[i] / denom
+            r_p[i] = (rhs_m[i] - a[i] * r_p[i - 1]) / denom
+
+        # Back substitution
+        q = np.empty_like(rhs_f)
+        q[-1] = r_p[-1]
+        for i in range(n - 2, -1, -1):
+            q[i] = r_p[i] - c_p[i] * q[i + 1]
+
+        return np.moveaxis(q, 0, axis)
