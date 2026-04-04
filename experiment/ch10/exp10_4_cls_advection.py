@@ -224,9 +224,9 @@ def plot_results(zalesak_res, vortex_res):
     ax.legend(fontsize=7); ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "cls_advection.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "cls_advection.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'cls_advection.eps'}")
+    print(f"  Saved: {OUT / 'cls_advection.pdf'}")
 
 
 def save_tables(zalesak_res, vortex_res):

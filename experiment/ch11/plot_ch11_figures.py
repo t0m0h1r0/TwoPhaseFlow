@@ -5,10 +5,10 @@ Reads pre-computed NPZ data where available; recomputes inline otherwise.
 Outputs to paper/figures/.
 
 Figures:
-  1. ch11_tgv_energy.eps          — §11.2 TGV energy conservation
-  2. ch11_tgv_temporal.eps        — §11.3a temporal convergence
-  3. ch11_kovasznay_convergence.eps — §11.3b Kovasznay spatial convergence
-  4. ch11_highre_dccd.eps          — §11.4 double shear layer CCD vs DCCD
+  1. ch11_tgv_energy.pdf          — §11.2 TGV energy conservation
+  2. ch11_tgv_temporal.pdf        — §11.3a temporal convergence
+  3. ch11_kovasznay_convergence.pdf — §11.3b Kovasznay spatial convergence
+  4. ch11_highre_dccd.pdf          — §11.4 double shear layer CCD vs DCCD
 """
 
 import sys
@@ -85,7 +85,7 @@ def fig_tgv_energy():
     ax2.legend(loc="upper right")
 
     fig.tight_layout()
-    out = FIGOUT / "ch11_tgv_energy.eps"
+    out = FIGOUT / "ch11_tgv_energy.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"  OK  {out}")
@@ -128,7 +128,7 @@ def fig_tgv_temporal():
     ax.legend(loc="lower right")
 
     fig.tight_layout()
-    out = FIGOUT / "ch11_tgv_temporal.eps"
+    out = FIGOUT / "ch11_tgv_temporal.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"  OK  {out}")
@@ -178,7 +178,7 @@ def fig_kovasznay():
     ax.legend(loc="upper right")
 
     fig.tight_layout()
-    out = FIGOUT / "ch11_kovasznay_convergence.eps"
+    out = FIGOUT / "ch11_kovasznay_convergence.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"  OK  {out}")
@@ -225,7 +225,7 @@ def fig_highre_dccd():
                     fontsize=9, color=COLORS["red"], ha="right")
 
     fig.tight_layout()
-    out = FIGOUT / "ch11_highre_dccd.eps"
+    out = FIGOUT / "ch11_highre_dccd.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"  OK  {out}")

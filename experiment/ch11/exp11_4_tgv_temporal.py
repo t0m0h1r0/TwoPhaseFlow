@@ -56,9 +56,9 @@ def _plot_tgv_temporal(results, N, Re):
         ax.legend()
         ax.grid(True, which="both", alpha=0.3)
         fig.tight_layout()
-        fig.savefig(OUT / "tgv_temporal_convergence.eps", dpi=150, bbox_inches="tight")
+        fig.savefig(OUT / "tgv_temporal_convergence.pdf", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"  Saved: {OUT / 'tgv_temporal_convergence.eps'}")
+        print(f"  Saved: {OUT / 'tgv_temporal_convergence.pdf'}")
     except ImportError:
         pass
 

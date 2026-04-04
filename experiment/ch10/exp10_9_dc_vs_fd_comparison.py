@@ -233,9 +233,9 @@ def save_plot(results_fd, results_dc):
     ax.set_yscale("log")
 
     fig.tight_layout()
-    fig.savefig(OUT / "dc_vs_fd_comparison.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "dc_vs_fd_comparison.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'dc_vs_fd_comparison.eps'}")
+    print(f"  Saved: {OUT / 'dc_vs_fd_comparison.pdf'}")
 
 
 def main():

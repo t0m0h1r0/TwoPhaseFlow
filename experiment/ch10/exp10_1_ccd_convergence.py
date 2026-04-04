@@ -275,7 +275,7 @@ def main():
         ["sin (periodic)", "exp (wall)"],
         ["d1x_Li", "d2x_Li"],
         "CCD Differentiation Convergence",
-        "ccd_convergence.eps",
+        "ccd_convergence.pdf",
     )
 
     # Save raw data
@@ -298,7 +298,7 @@ if __name__ == "__main__":
             ["sin (periodic)", "exp (wall)"],
             ["d1x_Li", "d2x_Li"],
             "CCD Differentiation Convergence",
-            "ccd_convergence.eps",
+            "ccd_convergence.pdf",
         )
         print("  --plot-only done.")
     else:

@@ -49,10 +49,10 @@ procedure:
   - "[self_verify] Run all 4 sanity checks (SC-1: dp≈4σ/d, SC-2: convergence slope, SC-3: symmetry, SC-4: mass conservation)"
   - "[evidence_required] Package results (CSV, JSON, numpy) with check verdicts"
   - "Any FAIL → do not forward; STOP"
-  - "Generate EPS graphs in experiment/ch{N}/results/{experiment_name}/; script must support --plot-only re-plot from saved NPZ data"
+  - "Generate PDF graphs in experiment/ch{N}/results/{experiment_name}/; script must support --plot-only re-plot from saved NPZ data"
 
 output:
-  - "experiment/ch{N}/results/{experiment_name}/ — raw data (NPZ) + EPS graphs colocated"
+  - "experiment/ch{N}/results/{experiment_name}/ — raw data (NPZ) + PDF graphs colocated"
   - "Sanity check results (all 4 mandatory checks)"
   - "Data package for PaperWriter (on Validation Guard PASS only)"
 

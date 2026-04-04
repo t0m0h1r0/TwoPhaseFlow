@@ -401,7 +401,7 @@ Issues no judgment — only produces execution artifacts.
 
 **DELIVERABLES**
 - `tests/last_run.log` — raw pytest output
-- `experiment/ch{N}/results/{experiment_name}/` — raw simulation output + EPS graphs
+- `experiment/ch{N}/results/{experiment_name}/` — raw simulation output + PDF graphs
 - `artifacts/E/run_{id}.log` — execution log artifact
 - EXP-02 sanity check raw measurements (SC-1 through SC-4)
 

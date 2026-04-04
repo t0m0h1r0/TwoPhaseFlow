@@ -7,8 +7,8 @@ Runs static droplet at N=64, 50 steps with two conditions:
 
 Shows why HFE must NOT be applied to smoothed-Heaviside solver pressure fields.
 
-Output: results/ch12_static_droplet/ch12_hfe_comparison_fields.eps
-        paper/figures/ch12_hfe_comparison_fields.eps
+Output: results/ch12_static_droplet/ch12_hfe_comparison_fields.pdf
+        paper/figures/ch12_hfe_comparison_fields.pdf
 """
 
 import sys, pathlib
@@ -171,7 +171,7 @@ def make_figure(phi, p_off, vm_off, hist_off, p_on, vm_on, hist_on):
     )
     plt.tight_layout()
 
-    fname = "ch12_hfe_comparison_fields.eps"
+    fname = "ch12_hfe_comparison_fields.pdf"
     fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
     fig.savefig(OUT_FIG / fname, dpi=150, bbox_inches="tight")
     plt.close(fig)

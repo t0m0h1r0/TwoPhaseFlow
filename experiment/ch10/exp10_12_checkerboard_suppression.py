@@ -249,9 +249,9 @@ def save_plot(div_results):
     plt.colorbar(im, ax=ax, label="Log ratio")
 
     fig.tight_layout()
-    fig.savefig(OUT / "checkerboard_suppression.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "checkerboard_suppression.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"\n  Saved: {OUT / 'checkerboard_suppression.eps'}")
+    print(f"\n  Saved: {OUT / 'checkerboard_suppression.pdf'}")
 
 
 def save_latex_table(test_a, test_b, test_c):

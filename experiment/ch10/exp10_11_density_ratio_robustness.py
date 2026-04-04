@@ -252,9 +252,9 @@ def save_plot(results):
     ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "density_ratio_robustness.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "density_ratio_robustness.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'density_ratio_robustness.eps'}")
+    print(f"  Saved: {OUT / 'density_ratio_robustness.pdf'}")
 
 
 def main():

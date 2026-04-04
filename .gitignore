@@ -51,19 +51,20 @@ build/
 # OS依存ファイル
 .DS_Store
 Thumbs.db
+**/*.eps
 
 # TeX関連の一時ファイル
-**/*.bbl
-**/*.blg
-**/*.xdv
-**/*.aux
-**/*.log
-**/*.toc
-**/*.out
-**/*.pdf
-**/*.synctex.gz
-**/*.fls
-**/*.fdb_latexmk
+paper/*.bbl
+paper/*.blg
+paper/*.xdv
+paper/*.aux
+paper/*.log
+paper/*.toc
+paper/*.out
+paper/*.pdf
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk
 
 .continue/
 .pytest_cache/
