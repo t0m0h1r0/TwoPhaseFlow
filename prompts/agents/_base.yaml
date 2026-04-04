@@ -31,3 +31,7 @@ procedure_post:
   - "Issue HAND-02 RETURN on completion"
 
 recovery: "→ meta-workflow.md §STOP-RECOVER MATRIX"
+
+stop_post: "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
+  # This line is appended to every agent's stop section via inheritance.
+  # Generation rule 13 compliance — do NOT override unless agent has its own recovery pathway.

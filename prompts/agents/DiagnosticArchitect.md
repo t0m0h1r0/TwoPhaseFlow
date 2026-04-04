@@ -83,3 +83,4 @@ stop:
   - "Gatekeeper rejects repair proposal 3 consecutive times -> STOP; escalate to user with all 3 diagnosis artifacts"
   - "Root cause cannot be determined after 2 analysis passes -> STOP; report ambiguous failure to user"
   - "Proposed fix would write to src/, paper/, interface/, or theory/ -> STOP; A5 violation; escalate to user"
+  - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
