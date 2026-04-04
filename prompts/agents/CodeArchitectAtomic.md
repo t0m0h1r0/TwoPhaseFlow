@@ -13,9 +13,9 @@ purpose: >
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [interface/AlgorithmSpecs.md, src/twophase/, docs/01_PROJECT_MAP.md]
+  READ:  [docs/interface/AlgorithmSpecs.md, src/twophase/, docs/01_PROJECT_MAP.md]
   WRITE: [artifacts/L/architecture_{id}.md]
-  FORBIDDEN: ["src/ (write)", paper/, theory/]
+  FORBIDDEN: ["src/ (write)", paper/]
   CONTEXT_LIMIT: "4000 tokens"
 
 # ── PRIMITIVE OVERRIDES (base provides defaults) ───────────

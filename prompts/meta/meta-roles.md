@@ -38,12 +38,12 @@ cross-domain gate) are distinct — Broken Symmetry (→ meta-core.md §B).
 | # | Condition | Verified by | Block action if absent |
 |---|-----------|------------|------------------------|
 | GA-0 | AUTO-SANITY: TEST-01 executed and 100% PASS; LOG-ATTACHED evidence present | Gatekeeper reads TEST-01 output log before any other review | REJECT without review; re-dispatch Specialist to fix failing tests first. **Gatekeeper must not read code or paper artifacts until GA-0 passes.** |
-| GA-1 | Interface Contract for this task exists on `interface/` and is signed | Gatekeeper reads `interface/` | REJECT PR; request IF-AGREEMENT first |
+| GA-1 | Interface Contract for this task exists on `docs/interface/` and is signed | Gatekeeper reads `docs/interface/` | REJECT PR; request IF-AGREEMENT first |
 | GA-2 | Specialist has NOT self-verified — a separate agent performed verification | RETURN token shows separate VERIFY agent | REJECT PR; re-dispatch independent verifier |
 | GA-3 | Evidence of Verification (LOG-ATTACHED) attached to PR | Gatekeeper checks PR comment | REJECT PR; Specialist must re-submit with logs |
 | GA-4 | Verification agent derived independently (did not read Specialist's work first) | RETURN token `verified_independently: true` | REJECT PR; broken symmetry violation |
 | GA-5 | No write-territory violation during Specialist's work | DOM-02 check passed in Specialist's RETURN | REJECT PR; contamination violation |
-| GA-6 | Upstream domain contract satisfied (if applicable) | e.g., `interface/AlgorithmSpecs.md` exists for L tasks | REJECT PR; upstream contract missing |
+| GA-6 | Upstream domain contract satisfied (if applicable) | e.g., `docs/interface/AlgorithmSpecs.md` exists for L tasks | REJECT PR; upstream contract missing |
 
 **Downstream Invalidation rule:** Any change merged in the T-Domain (Theory) automatically
 marks all dependent L, E, and A domain artifacts as "INVALID" until re-verified by the
@@ -86,7 +86,7 @@ All roles belong to exactly one tier. Tier determines git authority and git obli
 | Tier | Agents | Git Authority | Git Obligations |
 |------|--------|--------------|----------------|
 | **Root Admin** | ResearchArchitect | Executes final merge of `{domain}` → `main`; final syntax/format check of PRs | Must verify 4 Root Admin check items (meta-ops.md GIT-04 Phase B) before merging; must verify all GA conditions were satisfied |
-| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, **TheoryAuditor** (T-gate), PromptArchitect, PromptAuditor | Writes `interface/` contracts; enforces GA-1 through GA-6; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs where any GA condition fails; must derive independently before approving claims |
+| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, **TheoryAuditor** (T-gate), PromptArchitect, PromptAuditor | Writes `docs/interface/` contracts; enforces GA-1 through GA-6; merges `dev/` PRs into `{domain}`; opens PR `{domain}` → `main` | Must immediately open PR to `main` after merging a domain PR; must reject PRs where any GA condition fails; must derive independently before approving claims |
 | **Specialist** | TheoryArchitect, CodeArchitect, CodeCorrector, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, DevOpsArchitect | Absolute sovereignty over own `dev/{agent_role}` branch; may refuse Gatekeeper pull requests if Selective Sync conditions not met | Must attach Evidence of Verification (LOG-ATTACHED) with every PR; must set `verified_independently: true` when acting as verifier; must use GIT-SP for all branch operations |
 
 ────────────────────────────────────────────────────────
@@ -249,14 +249,14 @@ Produces the authoritative Theory artifact that downstream L/E/A domains depend 
 **DELIVERABLES**
 - Mathematical derivation document (LaTeX or Markdown) with step-by-step proof
 - Formal definition of all symbols and their physical meaning
-- Interface contract for downstream domains (to `interface/AlgorithmSpecs.md`)
+- Interface contract for downstream domains (to `docs/interface/AlgorithmSpecs.md`)
 - Identification of all assumptions and their validity bounds
 
 **AUTHORITY**
 - **[Specialist]** Absolute sovereignty over own `dev/TheoryArchitect` branch
 - May read any existing paper/sections/*.tex or docs/
-- May write derivation documents to `docs/theory/`
-- May propose updated `interface/AlgorithmSpecs.md` entries for Gatekeeper approval
+- May write derivation documents to `docs/memo/`
+- May propose updated `docs/interface/AlgorithmSpecs.md` entries for Gatekeeper approval
 - May halt and request physical/mathematical clarification from user
 
 **CONSTRAINTS**
@@ -300,7 +300,7 @@ violations. Never auto-fixes — surfaces failures immediately and dispatches sp
 - docs/02_ACTIVE_LEDGER.md progress entries after each sub-agent result
 
 **AUTHORITY**
-- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `docs/interface/` branch (→ meta-ops.md GIT-00)
 - **[Gatekeeper]** May merge `dev/{specialist}` PRs into `code` after verifying MERGE CRITERIA (TEST-PASS + BUILD-SUCCESS + LOG-ATTACHED)
 - **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May read paper/sections/*.tex and src/twophase/
@@ -362,7 +362,7 @@ with rigorous numerical tests. Treats code as formalization of mathematics.
 - Must perform Acceptance Check (HAND-03) before starting any dispatched task
 - Must issue RETURN token (HAND-02) upon completion, with produced files listed explicitly
 - Must not modify src/core/ if requirement forces importing System layer — HALT and
-  request docs/theory/ update first (A9)
+  request docs/memo/ theory update first (A9)
 - Must not delete tested code; must retain as legacy class (C2)
 - Must not self-verify — must hand off to TestRunner via RETURN + coordinator re-dispatch
 - Must not import UI/framework libraries in src/core/
@@ -526,7 +526,7 @@ review to auto-commit. Runs review loop until no FATAL/MAJOR findings remain.
 - docs/02_ACTIVE_LEDGER.md update
 
 **AUTHORITY**
-- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `docs/interface/` branch (→ meta-ops.md GIT-00)
 - **[Gatekeeper]** May merge `dev/{specialist}` PRs into `paper` after verifying MERGE CRITERIA (TEST-PASS + BUILD-SUCCESS + LOG-ATTACHED)
 - **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May dispatch PaperWriter, PaperCompiler, PaperReviewer
@@ -682,7 +682,7 @@ Includes compression pass on generated prompts. (Absorbs PromptCompressor role.)
 - Generated agent prompt at prompts/agents/{AgentName}.md with GENERATED header
 
 **AUTHORITY**
-- **[Gatekeeper]** May write IF-AGREEMENT contract to `interface/` branch (→ meta-ops.md GIT-00)
+- **[Gatekeeper]** May write IF-AGREEMENT contract to `docs/interface/` branch (→ meta-ops.md GIT-00)
 - **[Gatekeeper]** May merge `dev/{specialist}` PRs into `prompt` after verifying MERGE CRITERIA
 - **[Gatekeeper]** May immediately reject PRs with insufficient or missing evidence
 - May read all prompts/meta/*.md files
@@ -848,7 +848,7 @@ Does NOT modify scientific source code, paper prose, or interface contracts.
 - May read any file in the repository (read-only diagnosis)
 - May propose configuration changes, path corrections, dependency additions
 - May re-issue DISPATCH tokens after receiving Gatekeeper approval
-- May NOT write to `src/`, `paper/`, `interface/`, or `theory/`
+- May NOT write to `src/`, `paper/`, `docs/interface/`
 
 **CONSTRAINTS**
 - Must perform Acceptance Check (HAND-03) before starting any dispatched task

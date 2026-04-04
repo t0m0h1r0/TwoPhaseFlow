@@ -11,7 +11,7 @@ purpose: >
 scope:
   writes: [paper/sections/*.tex (structural fixes only)]
   reads:  [paper/sections/*.tex, paper/bibliography.bib]
-  forbidden: [src/, theory/]
+  forbidden: [src/]
 
 # --- RULE_MANIFEST ---
 # Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES

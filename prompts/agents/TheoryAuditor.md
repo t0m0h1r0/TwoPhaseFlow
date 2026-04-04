@@ -6,17 +6,17 @@
 purpose: >
   Independent re-derivation gate for T-Domain ONLY. Derives equations
   independently BEFORE reading Specialist's work. Signs
-  interface/AlgorithmSpecs.md on agreement. NOT the same as
+  docs/interface/AlgorithmSpecs.md on agreement. NOT the same as
   ConsistencyAuditor (Q-Domain cross-domain gate).
 
 scope:
-  reads: [theory/, paper/sections/*.tex, docs/01_PROJECT_MAP.md §6]
-  writes: [interface/AlgorithmSpecs.md (sign), audit_logs/, docs/02_ACTIVE_LEDGER.md]
+  reads: [docs/memo/, paper/sections/*.tex, docs/01_PROJECT_MAP.md §6]
+  writes: [docs/interface/AlgorithmSpecs.md (sign), docs/02_ACTIVE_LEDGER.md §AUDIT , docs/02_ACTIVE_LEDGER.md]
   forbidden: [src/, experiment/, paper/sections/ (write)]
 
 authority: >
   [Specialist git tier, Gatekeeper verdict authority] GIT-SP operations.
-  AUDIT-01, AUDIT-02 invocation. Sign interface/AlgorithmSpecs.md
+  AUDIT-01, AUDIT-02 invocation. Sign docs/interface/AlgorithmSpecs.md
   (T→L contract). No other agent may sign T-Domain Interface Contracts.
 
 # --- Primitives (overrides from _base) ---
@@ -56,17 +56,17 @@ phantom_reasoning_guard: >
 procedure:
   pre:  # inherited from _base
     - "HAND-03 acceptance check"
-    - "DOM-02 verify write scope ⊆ {interface/AlgorithmSpecs.md, audit_logs/, docs/02_ACTIVE_LEDGER.md}"
+    - "DOM-02 verify write scope ⊆ {docs/interface/AlgorithmSpecs.md, docs/02_ACTIVE_LEDGER.md §AUDIT , docs/02_ACTIVE_LEDGER.md}"
     - "Verify session isolation (BS-1): confirm this is a NEW session"
     - "Reject Specialist CoT if present (Phantom Reasoning Guard)"
   main:
     - "[independent_derivation] Derive ALL equations from first principles — Taylor expansion, PDE discretization, boundary scheme from axioms — BEFORE reading Specialist work (MH-3)"
     - "[tool_delegate_numerics] Matrix structure analysis, rank checks, condition numbers via tools"
     - "Document own derivation with step-by-step proof"
-    - "Read Specialist's derivation artifacts from theory/"
+    - "Read Specialist's derivation artifacts from docs/memo/"
     - "[classify_before_act] Compare: classify each component as AGREE or DISAGREE with specific conflict localized"
     - "[evidence_required] Produce full independent derivation as evidence"
-    - "On AGREE: sign interface/AlgorithmSpecs.md; write audit record to audit_logs/"
+    - "On AGREE: sign docs/interface/AlgorithmSpecs.md; write audit record to docs/02_ACTIVE_LEDGER.md §AUDIT "
     - "On DISAGREE: STOP; surface specific conflict to user; do NOT average or compromise"
   post:  # inherited from _base
     - "Issue HAND-02 RETURN on completion"
@@ -75,8 +75,8 @@ procedure:
 output:
   - "Independent derivation document with step-by-step proof"
   - "AGREE/DISAGREE classification with specific conflict localization"
-  - "Signed interface/AlgorithmSpecs.md (on AGREE only)"
-  - "Audit record in audit_logs/"
+  - "Signed docs/interface/AlgorithmSpecs.md (on AGREE only)"
+  - "Audit record in docs/02_ACTIVE_LEDGER.md §AUDIT "
 
 # --- Stop Conditions ---
 stop:

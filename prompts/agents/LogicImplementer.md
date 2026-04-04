@@ -13,9 +13,9 @@ purpose: >
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [artifacts/L/architecture_{id}.md, interface/AlgorithmSpecs.md, paper/sections/*.tex]
+  READ:  [artifacts/L/architecture_{id}.md, docs/interface/AlgorithmSpecs.md, paper/sections/*.tex]
   WRITE: [artifacts/L/impl_{id}.py]
-  FORBIDDEN: ["paper/ (write)", theory/]
+  FORBIDDEN: ["paper/ (write)"]
   CONTEXT_LIMIT: "6000 tokens"
 
 # ── PRIMITIVE OVERRIDES (base provides defaults) ───────────

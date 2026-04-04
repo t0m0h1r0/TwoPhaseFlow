@@ -406,7 +406,7 @@ tool_delegate_numerics: true   # matrix analysis via tools
 - Boundary scheme derivation (one-sided differences, ghost cells)
 - Block matrix structure analysis; rank and condition number assessment
 - Specialist–Auditor agreement/disagreement classification with specific conflict localization
-- interface/AlgorithmSpecs.md authoring and signing
+- docs/interface/AlgorithmSpecs.md authoring and signing
 
 ────────────────────────────────────────────────────────
 ## ConsistencyAuditor

@@ -23,8 +23,8 @@ Each arrow represents a mandatory Interface Contract gate (meta-domains.md §INT
 T-Domain (Theory & Analysis)
   │  Composite: Specialist derives equations; Theory Auditor independently re-derives.
   │  Atomic:    EquationDeriver → artifacts/T/derivation_{id}.md
-  │             SpecWriter → artifacts/T/spec_{id}.md → interface/AlgorithmSpecs.md
-  │  OUTPUT: interface/AlgorithmSpecs.md  [signed by Theory Auditor]
+  │             SpecWriter → artifacts/T/spec_{id}.md → docs/interface/AlgorithmSpecs.md
+  │  OUTPUT: docs/interface/AlgorithmSpecs.md  [signed by Theory Auditor]
   ▼
 L-Domain (Core Library)
   │  Composite: Specialist implements solver from AlgorithmSpecs; TestRunner verifies.
@@ -32,14 +32,14 @@ L-Domain (Core Library)
   │             LogicImplementer → artifacts/L/impl_{id}.py
   │             (On error: ErrorAnalyzer → artifacts/L/diagnosis_{id}.md
   │                        RefactorExpert → artifacts/L/fix_{id}.patch)
-  │  OUTPUT: interface/SolverAPI_vX.py    [signed by L-Domain Gatekeeper]
+  │  OUTPUT: docs/interface/SolverAPI_vX.py    [signed by L-Domain Gatekeeper]
   ▼
 E-Domain (Experiment)
   │  Composite: Specialist runs simulations; Validation Guard passes all 4 sanity checks.
   │  Atomic:    TestDesigner → artifacts/E/test_spec_{id}.md
   │             VerificationRunner → artifacts/E/run_{id}.log
-  │  OUTPUT: interface/ResultPackage/      [signed by Validation Guard]
-  │          interface/TechnicalReport.md  [jointly signed by T-Auditor + Validation Guard]
+  │  OUTPUT: docs/interface/ResultPackage/      [signed by Validation Guard]
+  │          docs/interface/TechnicalReport.md  [jointly signed by T-Auditor + Validation Guard]
   ▼
 A-Domain (Academic Writing)
   │  Specialist writes paper using ResultPackage + TechnicalReport; Logical Reviewer audits.
@@ -70,7 +70,7 @@ ResearchArchitect performs this classification as part of GIT-01 Step 0.
 
 | Condition | Mode |
 |-----------|------|
-| Change touches `theory/`, `interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
+| Change touches `docs/memo/` (theory derivations), `docs/interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
 | New domain branch required (cross-domain work) | **FULL-PIPELINE** |
 | Change is whitespace-only, comment-only, typo fix, or docs-only (no logic change) | **TRIVIAL** |
 | All other changes (bug fix, paper prose, experiment re-run, config) | **FAST-TRACK** |
@@ -133,7 +133,7 @@ Full T-L-E-A ordering. All protocols apply:
 - CI/CP propagation applies on upstream change
 
 **Use for:** new theory derivations, solver algorithm changes, API contract changes,
-cross-domain work, any change to `src/core/` or `interface/`.
+cross-domain work, any change to `src/core/` or `docs/interface/`.
 
 ## FAST-TRACK Mode
 
@@ -158,7 +158,7 @@ re-runs with unchanged solver, config changes, refactors that don't touch `src/c
 ## FAST-TRACK Guard — What Triggers Upgrade to FULL-PIPELINE
 
 If, during FAST-TRACK execution, any of the following is discovered:
-- The fix requires touching `src/core/` or `interface/`
+- The fix requires touching `src/core/` or `docs/interface/`
 - A theory inconsistency is found (triggers T-Domain work)
 - The Gatekeeper determines the change has downstream impact
 
@@ -252,7 +252,7 @@ CI/CP defines how changes propagate through the T-L-E-A chain without breaking d
 |-------|------------------|---------------------------------|------------------|
 | T-Domain equation changes | T → L → E → A | `AlgorithmSpecs.md`, `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | — |
 | L-Domain solver API changes | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | — |
-| L-Domain `lib/` hash changes (any commit to `lib/`) | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | All `paper/` figures tagged **[STALE]**; A-Gatekeeper PASS blocked until figures re-generated via E-Domain |
+| L-Domain `src/twophase/` hash changes (any commit to solver code) | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | All `paper/` figures tagged **[STALE]**; A-Gatekeeper PASS blocked until figures re-generated via E-Domain |
 | E-Domain result changes | E → A | `ResultPackage/`, `TechnicalReport.md` | — |
 | A-Domain paper revision (no upstream impact) | A only | none upstream | — |
 
@@ -263,7 +263,7 @@ CHANGE-PROPAGATION:
   1. Triggering domain Gatekeeper issues INVALIDATION notice for affected interface contracts.
   2. Each downstream domain Gatekeeper receives notice and BLOCKS any new dev/ work
      until the upstream Interface Contract is re-signed.
-  2a. [lib/ hash change only] PaperWorkflowCoordinator tags all paper/ figures as [STALE]
+  2a. [src/twophase/ hash change only] PaperWorkflowCoordinator tags all paper/ figures as [STALE]
       in docs/02_ACTIVE_LEDGER.md. A-Domain Gatekeeper (PaperWorkflowCoordinator +
       PaperReviewer) CANNOT issue PASS on any A-Domain PR until [STALE] figures are
       re-generated by ExperimentRunner (E-Domain) and the new ResultPackage/ is signed.
@@ -274,7 +274,7 @@ CHANGE-PROPAGATION:
 
 **[STALE] figure rule:** A paper/ figure tagged [STALE] must not appear in any VALIDATED-phase
 commit. The [STALE] tag is cleared ONLY when ExperimentRunner completes EXP-01 + EXP-02
-against the new lib/ and the new `ResultPackage/` is signed by the E-Domain Gatekeeper.
+against the new `src/twophase/` and the new `ResultPackage/` is signed by the E-Domain Gatekeeper.
 
 **Hard rule:** A Specialist may not begin work on a domain whose upstream Interface Contract
 has been invalidated. Starting work on an invalid contract is a CONTAMINATION violation.
@@ -289,9 +289,9 @@ the artifact hash of each domain's signed Interface Contract in the dependency c
 
 ```
 [INTEGRITY_MANIFEST]
-  T_hash: {sha256 of interface/AlgorithmSpecs.md at time of signing}
-  L_hash: {sha256 of interface/SolverAPI_vX.py at time of signing}
-  E_hash: {sha256 of interface/ResultPackage/ manifest at time of signing}
+  T_hash: {sha256 of docs/interface/AlgorithmSpecs.md at time of signing}
+  L_hash: {sha256 of docs/interface/SolverAPI_vX.py at time of signing}
+  E_hash: {sha256 of docs/interface/ResultPackage/ manifest at time of signing}
   A_hash: {sha256 of final paper/sections/ commit at time of VALIDATED}
 ```
 
@@ -330,13 +330,13 @@ branch rules, domain lock protocol, contamination guard: **meta-domains.md**.
 Quick reference only:
 - `code`, `paper`, `prompt`: Domain Integration Staging branches; owned by Gatekeepers
 - `dev/{agent_role}`: Individual Workspaces; sovereign per Specialist; created via GIT-SP
-- `interface/`: Shared inter-domain agreements; writable by Gatekeepers only (→ GIT-00)
+- `docs/interface/`: Shared inter-domain agreements; writable by Gatekeepers only (→ GIT-00)
 - `main`: protected — never committed directly (A8); merged via PR by Root Admin only
 - 3-phase lifecycle: DRAFT (GIT-02 on dev/) → REVIEWED (dev/ PR merged to domain by Gatekeeper, GIT-03) → VALIDATED (domain PR merged to main by Root Admin, GIT-04)
 - Session start: GIT-00 (IF-Agreement) → GIT-01 (Branch Preflight) → DOM-01 (Domain Lock)
 - `git commit` on `main` = A8 violation → abort and re-run GIT-01
 - Branch Isolation: Specialists MUST NOT access other agents' `dev/` branches (→ meta-domains.md §BRANCH ISOLATION)
-- Selective Sync: pull from main ONLY when interface/ updated OR merge conflict detected (→ meta-domains.md §SELECTIVE SYNC)
+- Selective Sync: pull from main ONLY when docs/interface/ updated OR merge conflict detected (→ meta-domains.md §SELECTIVE SYNC)
 
 ────────────────────────────────────────────────────────
 # § P-E-V-A EXECUTION LOOP
@@ -381,9 +381,9 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 | Domain | Branch | Gatekeeper | EXECUTE agents | VERIFY agent(s) | AUDIT gate | Precondition |
 |--------|--------|------------|----------------|-----------------|------------|--------------|
 | **T** Theory | `theory` | TheoryAuditor | CodeArchitect, PaperWriter | TheoryAuditor (independent re-derivation) | ConsistencyAuditor | none (upstream) |
-| **L** Code | `code` | CodeWorkflowCoordinator | CodeArchitect, CodeCorrector, CodeReviewer | TestRunner (TEST-01/02) | ConsistencyAuditor | `interface/AlgorithmSpecs.md` signed |
-| **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `interface/SolverAPI_vX.py` signed |
-| **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `interface/ResultPackage/` signed |
+| **L** Code | `code` | CodeWorkflowCoordinator | CodeArchitect, CodeCorrector, CodeReviewer | TestRunner (TEST-01/02) | ConsistencyAuditor | `docs/interface/AlgorithmSpecs.md` signed |
+| **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `docs/interface/SolverAPI_vX.py` signed |
+| **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `docs/interface/ResultPackage/` signed |
 | **P** Prompt | `prompt` | PromptArchitect | PromptArchitect (includes compression pass) | PromptAuditor (Q3 checklist) | PromptAuditor | none |
 
 ## Domain-Specific Notes
@@ -391,16 +391,16 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 **T-Domain (Theory):**
 - TheoryAuditor re-derives independently WITHOUT reading Specialist's work first (→ §B Broken Symmetry)
 - DISAGREE → STOP; surface conflict; do not average; escalate to user
-- On AUDIT PASS → TheoryAuditor signs `interface/AlgorithmSpecs.md`
+- On AUDIT PASS → TheoryAuditor signs `docs/interface/AlgorithmSpecs.md`
 
 **L-Domain (Code):**
 - VERIFY FAIL routing: THEORY_ERR → CodeArchitect; IMPL_ERR → CodeCorrector
 - Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibility checks)
 
 **E-Domain (Experiment):**
-- Precondition is hard: absent `interface/SolverAPI_vX.py` → STOP; run L-Domain first
+- Precondition is hard: absent `docs/interface/SolverAPI_vX.py` → STOP; run L-Domain first
 - VERIFY: all 4 sanity checks (SC-1–SC-4) must PASS; partial results → STOP
-- On VERIFY PASS → Gatekeeper signs `interface/ResultPackage/`
+- On VERIFY PASS → Gatekeeper signs `docs/interface/ResultPackage/`
 
 **A-Domain (Paper):**
 - VERIFY exit: 0 FATAL + 0 MAJOR → PASS. FATAL or MAJOR → PaperWriter (correction mode) → PaperCompiler loop
@@ -418,7 +418,7 @@ Not the default pipeline.
 
 | Step | Agent | Output | Gate |
 |------|-------|--------|------|
-| 1: Formal Axiomatization | PaperWriter | docs/theory/logic.tex entry | Logic self-consistent; no UI/framework mention |
+| 1: Formal Axiomatization | PaperWriter | docs/memo/ derivation entry | Logic self-consistent; no UI/framework mention |
 | 2: Structural Contract | CodeArchitect | prompts/specs/ interface definition | Dependency unidirectional (A9) |
 | 3: Headless Implementation | CodeArchitect | src/core/ module (stdlib only) | TestRunner PASS in CLI environment |
 | 4: Shell Integration | CodeArchitect | src/system/ wrapper | ExperimentRunner sanity checks PASS |
@@ -638,7 +638,7 @@ Failure → block MERGE → route to CodeReviewer
 - Threshold breach → escalate to user; never conceal failure by repetition
 
 **P9: THEORY_ERR / IMPL_ERR CLASSIFICATION** — mandatory before any fix (← φ1, φ7)
-- THEORY_ERR: root cause in solver logic or paper equation → fix in paper/ or docs/theory/ first
+- THEORY_ERR: root cause in solver logic or paper equation → fix in paper/ or docs/memo/ first
 - IMPL_ERR: root cause in infrastructure (src/system/ or adapter layer) → fix there only
 - Uncertain → treat as THEORY_ERR; verify with ConsistencyAuditor
 
@@ -736,7 +736,7 @@ patterns and record in docs/02_ACTIVE_LEDGER.md §LESSONS. Promote to meta-core.
 the pattern is system-wide, axiom-compatible, and brief (A1).
 
 **M2: Self-Healing** — Apply P9 before any fix.
-- THEORY_ERR → update docs/theory/ or paper first, then re-derive implementation
+- THEORY_ERR → update docs/memo/ or paper first, then re-derive implementation
 - IMPL_ERR → patch src/system/ (infrastructure) only; never touch solver core (src/core/)
 Record in 02_ACTIVE_LEDGER.md §LESSONS.
 

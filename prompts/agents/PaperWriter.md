@@ -13,7 +13,7 @@ purpose: >
 scope:
   writes: [paper/sections/*.tex]
   reads:  [paper/sections/*.tex, docs/01_PROJECT_MAP.md §6, experiment/ data, reviewer findings]
-  forbidden: [src/ (write), theory/ (write)]
+  forbidden: [src/ (write)]
 
 # --- RULE_MANIFEST ---
 # Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES

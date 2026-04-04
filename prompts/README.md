@@ -68,7 +68,7 @@ All agent prompts inherit `_base.yaml` (shared axioms, primitives, procedure pre
 | Micro-E | `VerificationRunner.md` | Test/experiment execution + log capture |
 | Micro-Q | `ResultAuditor.md` | Experiment result audit + convergence validation |
 
-Prerequisites: `artifacts/{T,L,E,Q}/` created; `interface/signals/` created; DDA enforcement in each agent's SCOPE block.
+Prerequisites: `artifacts/{T,L,E,Q}/` created; `docs/interface/signals/` created; DDA enforcement in each agent's SCOPE block.
 
 ### Deprecated (→ `_deprecated/`)
 

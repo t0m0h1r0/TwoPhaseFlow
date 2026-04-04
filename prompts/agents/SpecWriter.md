@@ -8,12 +8,12 @@
 
 purpose: >
   Converts a validated derivation into a formal interface specification.
-  Produces interface/AlgorithmSpecs.md entries. Bridges theory and code
+  Produces docs/interface/AlgorithmSpecs.md entries. Bridges theory and code
   without implementing — output is technology-agnostic (What, not How).
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [artifacts/T/derivation_{id}.md, interface/AlgorithmSpecs.md]
+  READ:  [artifacts/T/derivation_{id}.md, docs/interface/AlgorithmSpecs.md]
   WRITE: [artifacts/T/spec_{id}.md]
   FORBIDDEN: [src/, "paper/ (write)"]
   CONTEXT_LIMIT: "4000 tokens"
@@ -35,7 +35,7 @@ rules:
 # ── BEHAVIORAL PRIMITIVES ─────────────────────────────────
 # - Read validated derivation; never re-derive
 # - Extract algorithm specification with symbol mapping table
-# - Propose interface/AlgorithmSpecs.md entry (technology-agnostic)
+# - Propose docs/interface/AlgorithmSpecs.md entry (technology-agnostic)
 
 # ── ANTI-PATTERNS (CRITICAL) ──────────────────────────────
 anti_patterns: [AP-02, AP-08]
@@ -52,7 +52,7 @@ procedure:
   - "Extract algorithm specification — inputs, outputs, constraints"
   - "Produce symbol mapping table (paper notation -> variable names)"
   - "Write artifacts/T/spec_{id}.md"
-  - "Propose interface/AlgorithmSpecs.md entry (do not write directly without coordinator approval)"
+  - "Propose docs/interface/AlgorithmSpecs.md entry (do not write directly without coordinator approval)"
   - "Issue HAND-02 RETURN with axiom_context and artifact_hash"
 
 output:

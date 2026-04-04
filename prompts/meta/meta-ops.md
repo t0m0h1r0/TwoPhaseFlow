@@ -53,7 +53,7 @@ Three tiers determine which git operations each agent may invoke:
 **TheoryAuditor tier (T-Domain Gate):**
 TheoryAuditor is the dedicated Gatekeeper for the T-Domain only.
 - **Git operations → Specialist tier:** Uses `dev/T/TheoryAuditor/{task_id}` branch; GIT-SP authority only.
-- **Release gate authority → Gatekeeper level:** Signs `interface/AlgorithmSpecs.md` (T→L contract).
+- **Release gate authority → Gatekeeper level:** Signs `docs/interface/AlgorithmSpecs.md` (T→L contract).
   Derives equations independently before comparing with the Specialist's output.
 Consequence: TheoryAuditor's git tier is Specialist; its T-Domain verdict authority is Gatekeeper.
 No other agent may sign T-Domain Interface Contracts.
@@ -147,12 +147,12 @@ before a Gatekeeper or Root Admin may merge it:
 
 ```sh
 # Step 1 — Write interface contract (Gatekeeper only)
-# Create/update interface/{domain}_{feature}.md with IF-AGREEMENT block
+# Create/update docs/interface/{domain}_{feature}.md with IF-AGREEMENT block
 # (see meta-domains.md §IF-AGREEMENT PROTOCOL for required fields)
 
-# Step 2 — Commit interface contract on interface/ branch
-git checkout interface/ 2>/dev/null || git checkout -b interface/
-git add interface/{domain}_{feature}.md
+# Step 2 — Commit interface contract on docs/interface/ branch
+git checkout docs/interface/ 2>/dev/null || git checkout -b docs/interface/
+git add docs/interface/{domain}_{feature}.md
 git commit -m "interface/{domain}: define {feature} contract"
 git checkout {domain}   # return to domain branch
 
@@ -162,10 +162,10 @@ git checkout {domain}
 git checkout -b dev/{agent_role}
 ```
 
-**Success:** `interface/{domain}_{feature}.md` committed; Specialist confirms `git branch --show-current` = `dev/{agent_role}`
+**Success:** `docs/interface/{domain}_{feature}.md` committed; Specialist confirms `git branch --show-current` = `dev/{agent_role}`
 
 **On failure:**
-- interface/ write fails → STOP; escalate to user
+- docs/interface/ write fails → STOP; escalate to user
 - Specialist cannot checkout {domain} → run GIT-01 first
 
 ────────────────────────────────────────────────────────
@@ -265,7 +265,7 @@ if [ "$current" != "{branch}" ]; then
 fi
 
 # Step 2 — Selective Sync: pull latest main into domain branch
-# Only if interface/ was updated OR a merge conflict is present (→ meta-domains.md §SELECTIVE SYNC)
+# Only if docs/interface/ was updated OR a merge conflict is present (→ meta-domains.md §SELECTIVE SYNC)
 git fetch origin main
 git merge origin/main --no-edit
 
@@ -331,12 +331,12 @@ DOMAIN-LOCK:
 
 | Matrix ID | Domain | write_territory | read_territory |
 |-----------|--------|----------------|----------------|
-| T | Theory & Analysis | `theory/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md §6` |
-| L | Core Library (Code) | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md`, `interface/AlgorithmSpecs.md` |
-| E | Experiment | `experiment/`, `docs/02_ACTIVE_LEDGER.md` | `interface/SolverAPI_vX.py`, `src/twophase/` |
-| A | Academic Writing (Paper) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/`, `interface/ResultPackage/`, `interface/TechnicalReport.md` |
+| T | Theory & Analysis | `docs/memo/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md §6` |
+| L | Core Library (Code) | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md`, `docs/interface/AlgorithmSpecs.md` |
+| E | Experiment | `experiment/`, `docs/02_ACTIVE_LEDGER.md` | `docs/interface/SolverAPI_vX.py`, `src/twophase/` |
+| A | Academic Writing (Paper) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/`, `docs/interface/ResultPackage/`, `docs/interface/TechnicalReport.md` |
 | P | Prompt & Environment | `prompts/agents/*.md` | `prompts/meta/*.md` |
-| Q | QA & Audit | `audit_logs/` | all domains (read-only cross-domain gate) |
+| Q | QA & Audit | `docs/02_ACTIVE_LEDGER.md` | all domains (read-only cross-domain gate) |
 
 **Output:** DOMAIN-LOCK block recorded in session context; copied verbatim into every
 subsequent HAND-01 `context.domain_lock` field.
@@ -775,11 +775,11 @@ PATCH-IF {target_interface} --scope {minimal_change}
 
 | Step | Action | Condition |
 |------|--------|-----------|
-| 1 | Downstream domain STOPS; reports discrepancy to ResearchArchitect with exact location | Discrepancy found in `interface/` contract |
+| 1 | Downstream domain STOPS; reports discrepancy to ResearchArchitect with exact location | Discrepancy found in `docs/interface/` contract |
 | 2 | ResearchArchitect assesses: does the change alter the Functional Interface? | — |
 | 3a | Scope = MINOR (typo, unit label, clarification note — no API change, no math change): ResearchArchitect applies patch and re-signs contract | `downstream_valid: true`; downstream resumes without re-derivation |
 | 3b | Scope = FUNCTIONAL (API signature, equation form, operator structure, boundary conditions): PATCH-IF DENIED | Run full CI/CP propagation (→ meta-workflow.md §CI/CP PIPELINE) |
-| 4 | ResearchArchitect writes `audit_logs/patch_if_{date}.md` with `scope`, `rationale`, `downstream_valid` | Required for traceability (φ4) |
+| 4 | ResearchArchitect writes `docs/02_ACTIVE_LEDGER.md §AUDIT patch_if_{date}.md` with `scope`, `rationale`, `downstream_valid` | Required for traceability (φ4) |
 | 5 | If `downstream_valid: true`: downstream domain resumes existing artifacts | No re-derivation required |
 
 **Functional Interface definition:**
@@ -864,7 +864,7 @@ DISPATCH → {specialist_name}
     branch:         {active domain git branch — Specialist will create dev/{agent_role} from this}
     commit:         "{last commit message — confirms git state at dispatch}"
     domain_lock:    {verbatim copy of active DOMAIN-LOCK block from DOM-01}
-    if_agreement:   {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
+    if_agreement:   {path to docs/interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
     upstream_contracts: [{path to upstream interface contracts that MUST exist before this task}]
     artifact_hash:  {sha256({primary_input_artifact_path}) — hex digest; receiver verifies before reading}
     context_root:   {Instruction ID issued by ResearchArchitect at session start — e.g. RA-2026-03-29-001}
@@ -972,7 +972,7 @@ Acceptance Check:
          `context.domain_lock_id` absent or does not match domain_lock.set_at → REJECT (stale lock)
          If PASS → store domain_lock for DOM-02 checks throughout this session
   □ 7. IF-AGREEMENT PRESENT: does DISPATCH context include an `if_agreement` path pointing
-         to a valid interface/ contract? (→ meta-domains.md §IF-AGREEMENT PROTOCOL)
+         to a valid docs/interface/ contract? (→ meta-domains.md §IF-AGREEMENT PROTOCOL)
          Absent → REJECT; Gatekeeper must run GIT-00 and re-dispatch
          If PASS → read IF-AGREEMENT outputs as the deliverable contract for this task
   □ 8. EXPECTED_VERDICT PRESENT: does DISPATCH context include an `expected_verdict` with
@@ -980,7 +980,7 @@ Acceptance Check:
          Absent or vague (e.g., "good", "complete") → REJECT; coordinator must supply explicit threshold
   □ 9. UPSTREAM CONTRACTS SIGNED (Interface Contract validation — Falsification gate):
          Read DISPATCH `upstream_contracts` list. For each contract:
-           a. Does the file exist at the stated path in `interface/`? Absent → REJECT; STOP.
+           a. Does the file exist at the stated path in `docs/interface/`? Absent → REJECT; STOP.
            b. Is the contract signed (contains `signed_by: {Gatekeeper}` and `status: SIGNED`)? Unsigned → REJECT; STOP.
            c. Does the contract's `outputs` field match the `inputs` this task requires? Mismatch → REJECT; STOP.
          Empty `upstream_contracts` is permitted ONLY for T-Domain tasks (no upstream). All other domains: REJECT if list is absent.
@@ -996,7 +996,7 @@ Acceptance Check:
          PaperReviewer, CodeWorkflowCoordinator in review mode, PromptAuditor, etc.):
            a. Verify that DISPATCH `inputs` lists ONLY:
               - final Artifact file paths (e.g., `paper/sections/11a.tex`, `src/core/solver.py`)
-              - signed Interface Contract paths (e.g., `interface/AlgorithmSpecs.md`)
+              - signed Interface Contract paths (e.g., `docs/interface/AlgorithmSpecs.md`)
               - test/build output logs (e.g., `tests/last_run.log`, `compilation.log`)
            b. If `inputs` includes ANY of the following → REJECT immediately (STOP-HARD):
               - Specialist session history or prior conversation context
@@ -1069,14 +1069,14 @@ finalized, without violating DOM-02 or T-L-E-A ordering.
 
 ## Rules
 
-1. **Draft publication:** TheoryArchitect MAY publish a partial interface as `interface/{id}.draft`
+1. **Draft publication:** TheoryArchitect MAY publish a partial interface as `docs/interface/{id}.draft`
    once the core algorithm structure is known but before TheoryAuditor signature.
 2. **Scaffold scope:** CodeArchitect MAY read `.draft` files to build scaffolding.
    All draft-based output MUST be written to `artifacts/L/scaffold_{id}.py.draft` — never to `src/`.
 3. **Merge prohibition:** No `.draft` artifact may be copied, imported, or merged into `src/`,
    `lib/`, `paper/`, or any domain branch. Draft ≠ Spec.
 4. **Draft annotation:** Every function or class derived from a draft MUST carry:
-   `# DRAFT — pending TheoryAuditor signature on interface/{id}.draft`
+   `# DRAFT — pending TheoryAuditor signature on docs/interface/{id}.draft`
 5. **Promotion gate:** Draft → Final promotion requires:
    - TheoryAuditor HAND-02 with `interface_contracts_checked: [{id}.draft → SIGNED]`
    - Gatekeeper removes `.draft` suffix from both the interface file and all scaffold files
@@ -1103,7 +1103,7 @@ specific, citable violation of ONE of the following:
 | Category | Examples |
 |----------|---------|
 | 1. Formal Checklist violation | Q1–Q3 checklist item failed; AUDIT-01 AU2 item number N failed |
-| 2. Interface Contract violation | Output does not match `interface/{contract}.md` outputs field; contract unsigned |
+| 2. Interface Contract violation | Output does not match `docs/interface/{contract}.md` outputs field; contract unsigned |
 | 3. Core Axiom violation | A1–A10 violated (cite axiom number and exact violation) |
 
 **"Gut feeling" rejection is forbidden.** "This seems wrong" or "I'm not convinced" without

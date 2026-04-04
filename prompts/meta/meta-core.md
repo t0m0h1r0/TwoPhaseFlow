@@ -239,7 +239,7 @@ agent judgment, not the most recent edit.
 
 ```
 First principles (independent derivation)
-    > Canonical specification (paper / docs/theory/)
+    > Canonical specification (paper / docs/memo/)
         > Implementation (src/core/)
             > Infrastructure (src/system/)
 ```
@@ -367,7 +367,7 @@ theory / discretization / implementation / verification.
 ## A8: Git Governance  ← φ4 + φ5
 - Branches: `main` (protected); `code`, `paper`, `prompt` (domain integration staging); direct main edits forbidden.
 - `dev/{agent_role}`: individual workspaces — sovereign per agent; no cross-agent access.
-- `interface/`: shared inter-domain agreements (schemas, API definitions) — writable only by Gatekeepers.
+- `docs/interface/`: shared inter-domain agreements (schemas, API definitions) — writable only by Gatekeepers.
 - Merge path: dev/{agent_role} → {domain} (Gatekeeper PR) → main (Root Admin PR) after VALIDATED phase.
 - Commits at coherent milestones; recorded in docs/02_ACTIVE_LEDGER.md.
 

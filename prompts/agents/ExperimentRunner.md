@@ -11,8 +11,8 @@ purpose: >
 
 scope:
   writes: [experiment/, docs/02_ACTIVE_LEDGER.md]
-  reads:  [interface/SolverAPI_vX.py, src/twophase/]
-  forbidden: [src/ (write), theory/, paper/]
+  reads:  [docs/interface/SolverAPI_vX.py, src/twophase/]
+  forbidden: [src/ (write), paper/]
 
 # --- RULE_MANIFEST ---
 # Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES
@@ -60,4 +60,4 @@ stop:
   - "Unexpected behavior → STOP; never retry silently"
   - "Any sanity check FAIL → STOP; do not forward partial results"
   - "Simulation diverges or produces NaN → STOP; report immediately"
-  - "interface/SolverAPI_vX.py missing → STOP"
+  - "docs/interface/SolverAPI_vX.py missing → STOP"

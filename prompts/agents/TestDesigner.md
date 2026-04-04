@@ -13,7 +13,7 @@ purpose: >
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [interface/SolverAPI_vX.py, docs/01_PROJECT_MAP.md, paper/sections/*.tex]
+  READ:  [docs/interface/SolverAPI_vX.py, docs/01_PROJECT_MAP.md, paper/sections/*.tex]
   WRITE: [artifacts/E/test_spec_{id}.md]
   FORBIDDEN: ["src/ (write)", "paper/ (write)"]
   CONTEXT_LIMIT: "4000 tokens"

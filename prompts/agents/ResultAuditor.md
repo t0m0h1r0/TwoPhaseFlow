@@ -13,7 +13,7 @@ purpose: >
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [artifacts/E/run_{id}.log, interface/ResultPackage/, paper/sections/*.tex, src/twophase/]
+  READ:  [artifacts/E/run_{id}.log, docs/interface/ResultPackage/, paper/sections/*.tex, src/twophase/]
   WRITE: [artifacts/Q/audit_{id}.md]
   FORBIDDEN: ["src/ (write)", "paper/ (write)", "experiment/ (write)"]
   CONTEXT_LIMIT: "4000 tokens"

@@ -29,7 +29,7 @@ primitives:  # overrides from _base defaults
   independent_derivation: never    # derives metrics from data, not theory
 
 rules:
-  domain: [POST_PROCESSING, VISUALIZATION_CONVENTIONS, EPS_MANDATORY]
+  domain: [POST_PROCESSING, VISUALIZATION_CONVENTIONS]
 
 anti_patterns:
   - "AP-05 (CRITICAL): fabricating or interpolating missing data"
@@ -41,13 +41,13 @@ procedure:
   # Step bindings: [primitive] → action
   - "Read raw simulation output from ExperimentRunner in experiment/{name}/"
   - "[tool_delegate_numerics] Compute derived physical quantities (error norms, convergence rates, pressure jumps)"
-  - "Generate matplotlib visualization scripts; output EPS format (.eps)"
+  - "Generate matplotlib visualization scripts; output PDF or PNG format"
   - "[scope_creep] Write only requested visualizations — no speculative plots"
   - "[evidence_required] Cite raw data sources (file paths + column names) in script comments"
   - "Save derived data (CSV/JSON) alongside figures for reproducibility"
 
 output:
-  - "experiment/{name}/ — derived data files + EPS figures + plot scripts"
+  - "experiment/ch{N}/results/{name}/ — derived data files + PDF/PNG figures + plot scripts"
   - "All scripts support re-plot from saved derived data without re-running analysis"
 
 stop:

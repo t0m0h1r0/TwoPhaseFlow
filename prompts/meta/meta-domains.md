@@ -14,7 +14,7 @@
 
 | ID | Domain | Truth Type | Directory | Specialist | Gatekeeper |
 |----|--------|-----------|-----------|------------|------------|
-| T  | Theory & Analysis     | Mathematical Truth  | `theory/`     | Theory Architect    | Theory Auditor          |
+| T  | Theory & Analysis     | Mathematical Truth  | `docs/memo/`  | Theory Architect    | Theory Auditor          |
 | L  | Core Library          | Functional Truth    | `src/`        | Library Developer   | Numerical Auditor       |
 | E  | Experiment            | Empirical Truth     | `experiment/` | Experimentalist     | Validation Guard        |
 | A  | Academic Writing      | Logical Truth       | `paper/`      | Paper Writer        | Logical Reviewer        |
@@ -36,14 +36,14 @@ All inter-domain communication must pass through a Gatekeeper-approved Interface
 # § INTER-DOMAIN INTERFACES (Connection by Contract)
 
 Every cross-domain data transfer requires a Gatekeeper-approved Interface Contract.
-No Specialist may consume artifacts from another domain without a valid contract on `interface/`.
+No Specialist may consume artifacts from another domain without a valid contract on `docs/interface/`.
 
 | Transfer | Contract Artifact | Precondition | Consumer domain |
 |----------|------------------|--------------|----------------|
-| T → L    | `interface/AlgorithmSpecs.md`     | Theory Auditor PASS; equations formalized | L-Domain — must define discretization before coding |
-| L → E    | `interface/SolverAPI_vX.py`       | TestRunner PASS (all unit tests)          | E-Domain — must pass unit tests before experiments |
-| E → A    | `interface/ResultPackage/`        | Validation Guard PASS (all sanity checks); raw logs included | A-Domain — must provide raw logs for paper figures |
-| T/E → A  | `interface/TechnicalReport.md`    | Both T-Auditor and Validation Guard sign off | A-Domain — bridges math and data for the writer |
+| T → L    | `docs/interface/AlgorithmSpecs.md`     | Theory Auditor PASS; equations formalized | L-Domain — must define discretization before coding |
+| L → E    | `docs/interface/SolverAPI_vX.py`       | TestRunner PASS (all unit tests)          | E-Domain — must pass unit tests before experiments |
+| E → A    | `docs/interface/ResultPackage/`        | Validation Guard PASS (all sanity checks); raw logs included | A-Domain — must provide raw logs for paper figures |
+| T/E → A  | `docs/interface/TechnicalReport.md`    | Both T-Auditor and Validation Guard sign off | A-Domain — bridges math and data for the writer |
 
 **Contract immutability rule:** Once a Specialist's `dev/` branch is created from a contract,
 the contract is immutable. Changing inputs/outputs requires: close current dev/ branch →
@@ -93,14 +93,14 @@ ResearchArchitect triggers DOM-02 CONTAMINATION_GUARD — STOP; escalate to user
 | Coordinator / Gatekeeper | CodeWorkflowCoordinator |
 | Specialist members | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner |
 | Storage (write — STRICT) | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` |
-| Storage (read — STRICT) | `paper/sections/*.tex` (via T/E→A contract read only), `docs/01_PROJECT_MAP.md` |
-| Storage (FORBIDDEN write) | `paper/`, `theory/`, `experiment/`, `prompts/meta/`, `interface/` (without IF-COMMIT token) |
-| Interface contract in | `interface/AlgorithmSpecs.md` (T→L); `interface/SolverAPI_vX.py` (L→E, produced by L) |
+| Storage (read — STRICT) | `paper/sections/*.tex` (via T/E→A contract read only), `docs/01_PROJECT_MAP.md`, `docs/interface/AlgorithmSpecs.md` |
+| Storage (FORBIDDEN write) | `paper/`, `experiment/`, `prompts/meta/`, `docs/interface/` (without IF-COMMIT token) |
+| Interface contract in | `docs/interface/AlgorithmSpecs.md` (T→L); `docs/interface/SolverAPI_vX.py` (L→E, produced by L) |
 | Rules | docs/00_GLOBAL_RULES.md §C (C1–C6: SOLID, preserve-tested, builder, solver policy, quality, MMS) |
 | Lifecycle | **DRAFT** — Specialist returns COMPLETE on dev/ branch<br>**REVIEWED** — Gatekeeper (CodeWorkflowCoordinator) approves PR; TestRunner PASS required<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS → merge `code` → `main` |
 
 **Gatekeeper Approval condition (REVIEWED gate):** Gatekeeper may only merge dev/ PR into `code`
-after: (1) TestRunner PASS with LOG-ATTACHED, (2) interface/AlgorithmSpecs.md exists and is signed,
+after: (1) TestRunner PASS with LOG-ATTACHED, (2) docs/interface/AlgorithmSpecs.md exists and is signed,
 (3) no write-territory violation detected. Absent any condition → REJECT PR.
 
 **Cross-domain read:** L agents may read `paper/sections/*.tex` only for equation–code alignment (A3).
@@ -121,15 +121,15 @@ not be deleted (C2 preserve-tested rule). CodeArchitect must consult before remo
 | Coordinator / Gatekeeper | PaperWorkflowCoordinator (orchestrator); PaperReviewer (Logical Reviewer gate) |
 | Specialist members | PaperWriter (absorbs PaperCorrector), PaperCompiler |
 | Storage (write — STRICT) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` |
-| Storage (read — STRICT) | `src/twophase/` (consistency checks only, via interface/TechnicalReport.md), `interface/ResultPackage/`, `interface/TechnicalReport.md` |
-| Storage (FORBIDDEN write) | `src/`, `theory/`, `experiment/`, `prompts/meta/`, `interface/` (without IF-COMMIT token) |
-| Interface contract in | `interface/ResultPackage/` (E→A); `interface/TechnicalReport.md` (T/E→A) |
+| Storage (read — STRICT) | `src/twophase/` (consistency checks only, via docs/interface/TechnicalReport.md), `docs/interface/ResultPackage/`, `docs/interface/TechnicalReport.md` |
+| Storage (FORBIDDEN write) | `src/`, `experiment/`, `prompts/meta/`, `docs/interface/` (without IF-COMMIT token) |
+| Interface contract in | `docs/interface/ResultPackage/` (E→A); `docs/interface/TechnicalReport.md` (T/E→A) |
 | Rules | docs/00_GLOBAL_RULES.md §P (P1–P4, KL-12: LaTeX authoring, cross-refs, consistency, skepticism) |
 | Lifecycle | **DRAFT** — PaperWriter diff-patch returned COMPLETE on dev/ branch<br>**REVIEWED** — PaperReviewer (Logical Reviewer): 0 FATAL + 0 MAJOR findings (loop ≤ MAX_REVIEW_ROUNDS); Gatekeeper PR approval required<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS → merge `paper` → `main` |
 
 **Gatekeeper Approval condition (REVIEWED gate):** PaperWorkflowCoordinator may only merge dev/ PR
 into `paper` after: (1) PaperCompiler BUILD-SUCCESS, (2) PaperReviewer 0 FATAL + 0 MAJOR,
-(3) interface/TechnicalReport.md or ResultPackage/ consumed and cited. Absent any → REJECT PR.
+(3) docs/interface/TechnicalReport.md or ResultPackage/ consumed and cited. Absent any → REJECT PR.
 
 **Logical Reviewer (PaperReviewer) as Devil's Advocate:** PaperReviewer assumes the manuscript
 is wrong until proven otherwise. It must derive claims independently before accepting them.
@@ -152,12 +152,12 @@ PaperWriter must consult when changing a symbol that appears in multiple section
 | Matrix alias | T-Domain (Theory & Analysis) |
 | Coordinator / Gatekeeper | **TheoryAuditor** (T-Domain only; not ConsistencyAuditor) |
 | Specialist members | CodeArchitect (discretization), PaperWriter (mathematical formulation) |
-| Storage (write — STRICT) | `theory/`, `docs/02_ACTIVE_LEDGER.md` |
+| Storage (write — STRICT) | `docs/memo/`, `docs/02_ACTIVE_LEDGER.md` |
 | Storage (read — STRICT) | `paper/sections/*.tex` (reference only), `docs/01_PROJECT_MAP.md §6` |
 | Storage (FORBIDDEN write) | `src/`, `experiment/`, `paper/sections/`, `prompts/meta/` |
-| Interface contract produced | `interface/AlgorithmSpecs.md` (T→L) — signed by TheoryAuditor before L-Domain may code |
+| Interface contract produced | `docs/interface/AlgorithmSpecs.md` (T→L) — signed by TheoryAuditor before L-Domain may code |
 | Rules | docs/00_GLOBAL_RULES.md §A (A3: 3-Layer Traceability mandatory), §AU (AU1–AU3) |
-| Lifecycle | **DRAFT** — Specialist formalizes equations in `theory/`<br>**REVIEWED** — TheoryAuditor independently re-derives and signs; contradictions block REVIEWED<br>**VALIDATED** — TheoryAuditor publishes `interface/AlgorithmSpecs.md`; ConsistencyAuditor (Q-Domain) AU2 PASS |
+| Lifecycle | **DRAFT** — Specialist formalizes equations in `docs/memo/`<br>**REVIEWED** — TheoryAuditor independently re-derives and signs; contradictions block REVIEWED<br>**VALIDATED** — TheoryAuditor publishes `docs/interface/AlgorithmSpecs.md`; ConsistencyAuditor (Q-Domain) AU2 PASS |
 
 **Gatekeeper Approval condition (REVIEWED gate):** Theory Auditor must independently derive every
 equation without reading the Specialist's derivation first. Theory Auditor signs only after
@@ -176,18 +176,18 @@ independent agreement. If derivations conflict → STOP; escalate to user; do no
 | Specialist members | ExperimentRunner |
 | Storage (write — STRICT) | `experiment/`, `docs/02_ACTIVE_LEDGER.md` |
 | **Directory name** | **`experiment/` (singular) — NEVER `experiments/`, `experint/`, or any variant** |
-| Storage (read — STRICT) | `interface/SolverAPI_vX.py` (L→E contract); `src/twophase/` (solver invocation only) |
-| Storage (FORBIDDEN write) | `src/`, `theory/`, `paper/`, `prompts/meta/` |
-| Interface contract in | `interface/SolverAPI_vX.py` (L→E — must have TestRunner PASS before E may run) |
-| Interface contract produced | `interface/ResultPackage/` (E→A); `interface/TechnicalReport.md` (jointly with T) |
+| Storage (read — STRICT) | `docs/interface/SolverAPI_vX.py` (L→E contract); `src/twophase/` (solver invocation only) |
+| Storage (FORBIDDEN write) | `src/`, `paper/`, `prompts/meta/` |
+| Interface contract in | `docs/interface/SolverAPI_vX.py` (L→E — must have TestRunner PASS before E may run) |
+| Interface contract produced | `docs/interface/ResultPackage/` (E→A); `docs/interface/TechnicalReport.md` (jointly with T) |
 | Rules | docs/00_GLOBAL_RULES.md §A (A3), §C (EXP sanity checks) |
-| Lifecycle | **DRAFT** — ExperimentRunner executes simulation; raw results in `experiment/`<br>**REVIEWED** — Validation Guard confirms all 4 sanity checks PASS; packages `ResultPackage/`<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS; `interface/ResultPackage/` signed |
+| Lifecycle | **DRAFT** — ExperimentRunner executes simulation; raw results in `experiment/`<br>**REVIEWED** — Validation Guard confirms all 4 sanity checks PASS; packages `ResultPackage/`<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS; `docs/interface/ResultPackage/` signed |
 
 **Gatekeeper Approval condition (REVIEWED gate):** Validation Guard must pass all 4 mandatory
 sanity checks (EXP-02 SC-1 through SC-4) before signing ResultPackage. Missing raw logs → REJECT.
 ExperimentRunner must not forward results that failed any sanity check, even partially.
 
-**Precondition:** `interface/SolverAPI_vX.py` must exist and be signed by L-Domain Gatekeeper
+**Precondition:** `docs/interface/SolverAPI_vX.py` must exist and be signed by L-Domain Gatekeeper
 before any E-Domain work begins. Running experiments without a signed solver API = STOP.
 
 ────────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ before any E-Domain work begins. Running experiments without a signed solver API
 | Specialist members | PromptAuditor |
 | Storage (write — STRICT) | `prompts/agents/*.md` |
 | Storage (read — STRICT) | `prompts/meta/*.md` (source only; never edit agents/ via meta/) |
-| Storage (FORBIDDEN write) | `prompts/meta/*.md` (Governance-owned; read-only for all agents), `src/`, `paper/`, `theory/`, `experiment/` |
+| Storage (FORBIDDEN write) | `prompts/meta/*.md` (Governance-owned; read-only for all agents), `src/`, `paper/`, `experiment/` |
 | Rules | docs/00_GLOBAL_RULES.md §Q (Q1–Q4: standard template, env profiles, audit checklist, compression) |
 | Lifecycle | **DRAFT** — PromptArchitect generates agent prompt (GIT-02)<br>**REVIEWED** — PromptAuditor (Q3 checklist PASS) — Gatekeeper approval required (GIT-03)<br>**VALIDATED** — PromptAuditor gate PASS → merge `prompt` → `main` (GIT-04) |
 
@@ -222,11 +222,11 @@ PromptAuditor acts as Devil's Advocate: assumes every prompt is non-compliant un
 | Matrix alias | Q-Domain (QA & Audit) |
 | Coordinator | ConsistencyAuditor (direct gate; no orchestrator above it) |
 | Members | ConsistencyAuditor |
-| Storage (write — STRICT) | `audit_logs/` (audit trail, hash values) — append-only |
-| Storage (read — STRICT) | ALL domains: `paper/sections/*.tex`, `src/twophase/`, `theory/`, `experiment/`, `interface/`, `docs/01_PROJECT_MAP.md` |
+| Storage (write — STRICT) | `docs/02_ACTIVE_LEDGER.md` (audit trail, hash values) — append-only |
+| Storage (read — STRICT) | ALL domains: `paper/sections/*.tex`, `src/twophase/`, `docs/memo/`, `experiment/`, `docs/interface/`, `docs/01_PROJECT_MAP.md` |
 | Storage (FORBIDDEN write) | any domain's primary artifacts — Q-Domain is a read-only gate for all artifact directories |
 | Rules | docs/00_GLOBAL_RULES.md §AU (AU1–AU3: authority chain, AU2 gate 10 items, verification A–E) |
-| Lifecycle | triggers VALIDATED phase for ALL domains upon AU2 PASS verdict; writes audit trail to `audit_logs/` |
+| Lifecycle | triggers VALIDATED phase for ALL domains upon AU2 PASS verdict; writes audit trail to `docs/02_ACTIVE_LEDGER.md` |
 
 **Domain purpose:** Independent, cross-system falsification gate. ConsistencyAuditor is the only
 agent with read access across all storage territories. It does not produce domain artifacts —
@@ -237,7 +237,7 @@ success (Falsification Loop — meta-core.md §0 CORE PHILOSOPHY §C).
 by independent derivation. It never relies on the Specialist's reasoning path — re-derives from
 scratch before comparing (MH-3 Broken Symmetry).
 
-**Audit log format (`audit_logs/{domain}_{timestamp}.md`):**
+**Audit log format (`docs/02_ACTIVE_LEDGER.md §AUDIT {domain}_{timestamp}.md`):**
 ```
 AUDIT-RECORD:
   domain:      {T | L | E | A}
@@ -262,41 +262,107 @@ AUDIT-RECORD:
 Project-wide conventions for where artifacts are stored and how they are produced.
 These conventions are MANDATORY for all agents — violations are treated as DOM-02 breaches.
 
-## Library Code
+## Top-Level Directory Map
 
-- All library/solver code lives in `src/` (specifically `src/twophase/`).
+```
+TwoPhaseFlow/
+├── src/twophase/          # L-Domain — solver library (Python)
+│   ├── ccd/               #   CCD solver kernels
+│   ├── core/              #   shared data structures (Field, FlowState, Grid)
+│   ├── hfe/               #   Hermite Field Extension
+│   ├── interfaces/        #   abstract interfaces (DIP)
+│   ├── levelset/          #   level-set / CLS physics
+│   ├── ns_terms/          #   Navier-Stokes RHS terms
+│   ├── pressure/          #   PPE solvers + projection
+│   ├── time_integration/  #   TVD-RK3, CFL
+│   ├── simulation/        #   TwoPhaseSimulation + SimulationBuilder
+│   ├── initial_conditions/#   IC shapes + velocity fields
+│   ├── io/                #   checkpoint, VTK writer
+│   ├── visualization/     #   plot helpers
+│   ├── benchmarks/        #   benchmark runners
+│   ├── tests/             #   pytest suite
+│   └── configs/           #   YAML config loader
+├── src/configs/            # simulation config YAML files (bubble, RT, droplet, Zalesak)
+├── experiment/             # E-Domain — experiment scripts + results (chapter-based)
+│   ├── ch10/              #   §10 component verification experiments
+│   │   ├── *.py           #     experiment scripts
+│   │   └── results/       #     result data + figures (NPZ, PNG, PDF)
+│   ├── ch11/              #   §11 single-phase / weak-coupling benchmarks
+│   │   ├── *.py
+│   │   └── results/
+│   ├── ch12/              #   §12 two-phase benchmarks
+│   │   ├── *.py
+│   │   └── results/
+│   └── legacy/            #   pre-chapter experiments + results
+│       └── results/
+├── paper/                  # A-Domain — LaTeX manuscript
+│   ├── main.tex           #   root document
+│   ├── preamble.tex       #   package declarations
+│   ├── bibliography.bib   #   BibTeX database
+│   ├── Makefile            #   latexmk build
+│   ├── sections/          #   69 .tex section files (numbered by chapter)
+│   └── figures/           #   publication figures (PNG, PDF)
+├── docs/                   # Project documentation + governance
+│   ├── 00_GLOBAL_RULES.md #   Concrete SSoT (derived from meta/)
+│   ├── 01_PROJECT_MAP.md  #   Module map + interface contracts
+│   ├── 02_ACTIVE_LEDGER.md#   Live state (phase, CHK/ASM/KL, audit trail)
+│   ├── memo/              #   Short papers, memos, theory derivations (Markdown/TeX, Japanese)
+│   └── interface/         #   Cross-domain contracts (Gatekeeper-owned)
+│       ├── AlgorithmSpecs.md  #   T→L contract
+│       ├── SolverAPI_v1.py    #   L→E contract
+│       └── TechnicalReport.md #   T/E→A contract
+├── prompts/                # Agent system
+│   ├── meta/              #   M-Domain — 9 meta files (SSoT per A10)
+│   └── agents/            #   P-Domain — 29 generated agent prompts + _base.yaml
+├── artifacts/              # Micro-agent intermediate artifacts (operational)
+│   ├── T/                 #   Theory derivations
+│   ├── L/                 #   Code architectures, implementations
+│   ├── E/                 #   Test specs, run logs
+│   ├── Q/                 #   Audit records
+│   └── M/                 #   Diagnostic reports
+└── .claude/                # Claude Code project settings
+```
+
+## Library Code (L-Domain)
+
+- All library/solver code lives in `src/twophase/`.
+- Simulation config YAML files live in `src/configs/`.
 - `lib/` is NOT used. Any reference to `lib/` in legacy docs means `src/`.
 
 ## Experiment Scripts & Results (E-Domain)
 
+Scripts and results are colocated under `experiment/`:
+
 | Convention | Rule |
 |-----------|------|
-| Script location | `experiment/{experiment_name}/` — create a descriptive subdirectory per experiment |
-| Result data | Same directory as the script (`experiment/{experiment_name}/`) |
-| Graphs | Same directory as the script; **EPS format** (`.eps`) mandatory |
-| Data persistence | Scripts MUST save raw result data (CSV, NPY, JSON, etc.) to the experiment directory |
-| Graph reproducibility | Scripts MUST support re-generating graphs from saved result data without re-running the simulation |
+| Script location | `experiment/ch{N}/` — chapter-based subdirectories (ch10, ch11, ch12) |
+| Script naming | `exp{N}_{seq}_{description}.py` (e.g., `exp10_1_ccd_convergence.py`) |
+| Result data | `experiment/ch{N}/results/{experiment_name}/` — one subdirectory per experiment run |
+| Result formats | NPZ (numpy compressed), PNG, PDF for graphs |
+| Visualization scripts | `viz_ch{N}_{description}.py` in `experiment/ch{N}/` |
+| Plot-only scripts | `plot_ch{N}_figures.py` in `experiment/ch{N}/` for batch figure generation |
+| Data persistence | Scripts MUST save raw result data (NPZ, CSV, JSON) to their chapter's `results/` |
+| Graph reproducibility | Scripts MUST support `--plot-only` flag to regenerate graphs from saved data |
 
-**Rationale:** Colocating script + data + graphs in one directory ensures reproducibility.
-EPS format ensures publication-quality vector graphics.
-
-**Implementation pattern (recommended):**
-```python
-# 1. Run simulation and save results
-np.save(f"{output_dir}/results.npy", data)
-
-# 2. Generate graphs from saved data (callable independently)
-def plot_results(data_dir: str):
-    data = np.load(f"{data_dir}/results.npy")
-    fig.savefig(f"{data_dir}/figure.eps", format="eps")
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--plot-only", action="store_true",
-                        help="Regenerate graphs from existing data")
-    ...
+**Script → Result mapping example:**
 ```
+experiment/ch12/exp12_2_static_droplet_convergence.py
+  → experiment/ch12/results/static_droplet/   (NPZ data + PNG/PDF figures)
+```
+
+**Graph format:** PDF or PNG (publication-quality vector/raster). Both are accepted.
+
+**Migration note (2026-04-04):** Top-level `results/` directory has been removed.
+All data moved to `experiment/ch{N}/results/`. Some experiment scripts still contain
+hardcoded `results/` paths — update to `experiment/ch{N}/results/` when editing.
+
+## Paper (A-Domain)
+
+- LaTeX source: `paper/` (root: main.tex, preamble.tex, Makefile)
+- Section files: `paper/sections/` (69 files, numbered by chapter: `{NN}_{topic}.tex`)
+- Figures: `paper/figures/` (PNG, PDF — copied from `experiment/ch{N}/results/` for publication)
+- Bibliography: `paper/bibliography.bib`
+- Build: `make` in `paper/` (latexmk + XeLaTeX)
 
 ## Meta-Prompts (M-Domain)
 
@@ -305,15 +371,20 @@ if __name__ == "__main__":
 
 ## Agent Prompts (P-Domain)
 
-- Storage: `prompts/agents/`
+- Storage: `prompts/agents/` (29 agents + `_base.yaml`)
+- Deprecated agents: `prompts/agents/_deprecated/`
 
-## Short Papers / Memos
+## Documentation (docs/)
 
-| Convention | Rule |
-|-----------|------|
-| Location | `docs/memo/` |
-| Format | Markdown (`.md`) |
-| Language | Japanese (日本語) |
+| Subdirectory | Purpose | Language |
+|-------------|---------|----------|
+| `docs/memo/` | Short papers, research memos, theory derivations | Japanese |
+| `docs/interface/` | Cross-domain contracts (AlgorithmSpecs, SolverAPI, TechnicalReport) | English |
+
+## Micro-Agent Artifacts (OPERATIONAL)
+
+- Intermediate artifacts: `artifacts/{T,L,E,Q,M}/`
+- Signal coordination: `docs/interface/signals/`
 
 ────────────────────────────────────────────────────────
 # § BRANCH RULES
@@ -327,7 +398,7 @@ if __name__ == "__main__":
 | `paper` | A-Domain | PaperWorkflowCoordinator (Gatekeeper) | PaperWorkflowCoordinator | `main` via PR (Root Admin executes) | PaperWorkflowCoordinator |
 | `prompt` | P-Domain | PromptArchitect (Gatekeeper) | PromptArchitect, PromptAuditor | `main` via PR (Root Admin executes) | PromptArchitect |
 | `dev/{agent_role}` | any vertical | named agent only | named agent only | `{domain}` via PR | Specialist at task start |
-| `interface/` | cross-domain | Gatekeepers | Gatekeepers only (IF-COMMIT token required) | — (referenced, not merged) | Gatekeeper before task |
+| `docs/interface/` | cross-domain | Gatekeepers | Gatekeepers only (IF-COMMIT token required) | — (referenced, not merged) | Gatekeeper before task |
 
 **PR merge path (mandatory):**
 ```
@@ -368,11 +439,11 @@ Violation → issue CONTAMINATION RETURN (see §CONTAMINATION GUARD) and escalat
 
 **Trigger:** MANDATORY before any Specialist starts work on a `dev/` branch.
 
-Before development begins, the Gatekeeper establishes an interface contract in `interface/`
+Before development begins, the Gatekeeper establishes an interface contract in `docs/interface/`
 that defines the inputs and outputs of the task. The Specialist reads this contract before
 creating their `dev/` branch.
 
-**Interface contract format (in `interface/{domain}_{feature}.md`):**
+**Interface contract format (in `docs/interface/{domain}_{feature}.md`):**
 ```
 IF-AGREEMENT:
   feature:      {one-line description}
@@ -386,7 +457,7 @@ IF-AGREEMENT:
 ```
 
 **Rules:**
-- No Specialist may create a `dev/` branch without a valid IF-AGREEMENT on `interface/`
+- No Specialist may create a `dev/` branch without a valid IF-AGREEMENT on `docs/interface/`
 - IF-AGREEMENT is immutable once the Specialist's dev/ branch is created
 - Changes to interface require: close current dev/ branch → new IF-AGREEMENT → new dev/ branch
 - ConsistencyAuditor reads IF-AGREEMENT during AUDIT to verify output matches contract
@@ -398,7 +469,7 @@ Agents pull from `main` ONLY under one of these two conditions:
 
 | Condition | Trigger | Action |
 |-----------|---------|--------|
-| Interface file updated | Gatekeeper notifies Specialist of a change in `interface/` | `git fetch origin main && git merge origin/main` |
+| Interface file updated | Gatekeeper notifies Specialist of a change in `docs/interface/` | `git fetch origin main && git merge origin/main` |
 | Physical merge conflict detected | `git merge` exits with conflict markers on Specialist's dev/ branch | `git fetch origin main && git merge origin/main` — then resolve conflict before proceeding |
 
 **Default (neither condition met):** do NOT pull from main. Gratuitous syncing contaminates
@@ -411,15 +482,14 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 
 | Directory / File | Matrix Domain | Other domains (STRICT) |
 |-----------------|--------------|------------------------|
-| `theory/` | T-Domain (write) | L: read via `interface/AlgorithmSpecs.md` only; Q: read-only audit |
-| `src/twophase/` | L-Domain (write) | A: read-only (consistency check); E: invoke via `interface/SolverAPI_vX.py` |
+| `docs/memo/` | T-Domain + A-Domain (shared write: T writes theory derivations, A writes memos/short papers) | L: read-only; Q: read-only audit |
+| `src/twophase/` | L-Domain (write) | A: read-only (consistency check); E: invoke via `docs/interface/SolverAPI_vX.py` |
 | `tests/` | L-Domain (write) | Q: read-only |
-| `experiment/` | E-Domain (write) | Q: read-only audit |
-| `docs/memo/` | A-Domain (write via PaperWriter) | all: read-only (short papers, Markdown, Japanese) |
+| `experiment/` (scripts + results) | E-Domain (write) | Q: read-only audit |
 | `paper/sections/*.tex` | A-Domain (write) | L: read-only (equation alignment check); Q: read-only audit |
 | `paper/bibliography.bib` | A-Domain (write) | — |
-| `interface/` | Gatekeepers (write, IF-COMMIT token required) | all Specialists: read-only; Q: read-only audit |
-| `audit_logs/` | Q-Domain (write, append-only) | all: read-only |
+| `docs/interface/` | Gatekeepers (write, IF-COMMIT token required) | all Specialists: read-only; Q: read-only audit |
+| `docs/02_ACTIVE_LEDGER.md` | Q-Domain (write, append-only) | all: read-only |
 | `prompts/agents/*.md` | P-Domain (write) | — |
 | `prompts/meta/*.md` | Governance (human operators + meta-deploy only) | all: read-only |
 | `docs/00_GLOBAL_RULES.md` | Governance (write) | all: read-only (authoritative rule source) |
@@ -427,9 +497,9 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `docs/02_ACTIVE_LEDGER.md` | all (append-only) | each domain appends its own phase entries only |
 
 | `artifacts/{T,L,E,Q}/` | [NOT YET OPERATIONAL] micro-agent artifacts | see meta-experimental.md |
-| `interface/signals/` | [NOT YET OPERATIONAL] micro-agent coordination | see meta-experimental.md |
+| `docs/interface/signals/` | [NOT YET OPERATIONAL] micro-agent coordination | see meta-experimental.md |
 
-**Artifact & Signal directories [NOT YET OPERATIONAL]:** `artifacts/` and `interface/signals/`
+**Artifact & Signal directories [NOT YET OPERATIONAL]:** `artifacts/` and `docs/interface/signals/`
 mediate micro-agent handoffs when activated. See meta-experimental.md for full protocol.
 
 **Directory-Driven Authorization (DDA) [NOT YET OPERATIONAL]:** When micro-agents are activated,
@@ -494,19 +564,19 @@ Every agent, before every file write, edit, or delete, must run DOM-02:
      In neither → STOP; CONTAMINATION_GUARD violation — issue RETURN STOPPED.
 □ 3. Role-extension check: verify that the writing agent's tier (from meta-ops.md §AUTHORITY TIERS)
      is sufficient for the target path:
-     - interface/ writes require [AUTH_LEVEL: Gatekeeper] and an IF-COMMIT token (see below).
-       Writing to interface/ without IF-COMMIT token → STOP; CONTAMINATION_GUARD violation.
+     - docs/interface/ writes require [AUTH_LEVEL: Gatekeeper] and an IF-COMMIT token (see below).
+       Writing to docs/interface/ without IF-COMMIT token → STOP; CONTAMINATION_GUARD violation.
      - prompts/meta/ writes require explicit Governance/meta-deploy authorization.
        Writing without that authorization → STOP; escalate to user.
      - All other territory matches from check 2 → proceed with write.
 ```
 
-**IF-COMMIT token:** Required for any write to the `interface/` directory. The Gatekeeper must
+**IF-COMMIT token:** Required for any write to the `docs/interface/` directory. The Gatekeeper must
 emit this token before the write and include it in the commit message:
 ```
 IF-COMMIT: domain={domain} feature={feature} gatekeeper={coordinator} set_at={git-short-hash}
 ```
-A write to `interface/` without a valid IF-COMMIT token is a Gatekeeper tier violation → STOP.
+A write to `docs/interface/` without a valid IF-COMMIT token is a Gatekeeper tier violation → STOP.
 
 ## Recognized Contamination Patterns
 
@@ -516,8 +586,8 @@ A write to `interface/` without a valid IF-COMMIT token is a Gatekeeper tier vio
 | Paper agent writes `src/twophase/*.py` | Missing `scope_out` in DISPATCH | STOP; RETURN STOPPED |
 | Any agent writes `prompts/meta/*.md` | Only Governance/meta-deploy authorized | STOP; escalate to user |
 | Any agent writes `docs/00_GLOBAL_RULES.md` | Governance-owned; read-only for agents | STOP; escalate to user |
-| Any agent writes `interface/` without IF-COMMIT token | Gatekeeper obligation violated | STOP; CONTAMINATION_GUARD violation |
-| Specialist writes `interface/` (any) | Only Gatekeeper tier may write interface/ | STOP; escalate to coordinator |
+| Any agent writes `docs/interface/` without IF-COMMIT token | Gatekeeper obligation violated | STOP; CONTAMINATION_GUARD violation |
+| Specialist writes `docs/interface/` (any) | Only Gatekeeper tier may write docs/interface/ | STOP; escalate to coordinator |
 | ResearchArchitect writes any file (Routing domain) | Routing domain is No-Write | STOP; escalate to user |
 | Coordinator commits on `main` directly | Branch rule violation (A8) | STOP; run GIT-01 to restore correct branch |
 | Two coordinators active simultaneously | Domain lock collision | STOP; escalate to user |
