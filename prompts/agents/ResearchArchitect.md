@@ -136,6 +136,9 @@ routing_table:
   - intent: "infrastructure / Docker / GPU / LaTeX build pipeline"
     domain: M-Domain
     agent: DevOpsArchitect
+  - intent: "diagnose blocked pipeline / self-heal recoverable error"
+    domain: M-Domain
+    agent: DiagnosticArchitect
 
 output:
   - "Routing decision (target agent + rationale)"

@@ -48,6 +48,7 @@ Agent files contain ONLY overrides and domain-specific content.
 | Prompt (P) | `PromptAuditor.md` | Q3 checklist audit |
 | Audit (Q) | `ConsistencyAuditor.md` | Cross-domain AU2 gate (absorbs ResultAuditor) |
 | Infra (M) | `DevOpsArchitect.md` | Docker, GPU, CI/CD, LaTeX build pipeline |
+| Infra (M) | `DiagnosticArchitect.md` | Self-healing: intercepts recoverable STOP conditions; Gatekeeper-approved auto-repair |
 
 All agent prompts inherit `_base.yaml` (shared axioms, primitives, procedure pre/post).
 
@@ -187,8 +188,9 @@ Step 4: AUDIT                                         [ConsistencyAuditor]
 | Prompt (P) | **PromptAuditor** | Independent audit of prompt compliance (Q3 checklist) |
 | Audit (Q) | **ConsistencyAuditor** | Cross-domain falsification gate; AU2 verdict; reads all domains |
 | Infra (M) | **DevOpsArchitect** | Docker, GPU, LaTeX build pipeline, infrastructure automation |
+| Infra (M) | **DiagnosticArchitect** | Self-healing Specialist; intercepts BLOCKED/STOPPED pipeline errors; proposes Gatekeeper-approved auto-repair for ERR-R1–R4; escalates ERR-N1–N4 to user |
 
-19 agents total.
+20 agents total.
 
 ---
 
@@ -262,9 +264,15 @@ flowchart TD
         PAud -->|PASS/FAIL| PArc
     end
 
-    subgraph Infra["M-Domain (infrastructure)"]
+    subgraph Infra["M-Domain (infrastructure + self-healing)"]
         DOA[DevOpsArchitect]
+        DA[DiagnosticArchitect<br/>Self-Healing]
     end
+
+    CWC -.->|BLOCKED: ERR-R1-R4| DA
+    PWC -.->|BLOCKED: ERR-R1-R4| DA
+    DA -->|fix proposal| CWC
+    DA -->|fix proposal| PWC
 
     CON[ConsistencyAuditor<br/>Q-Domain AU2 Gate]
 

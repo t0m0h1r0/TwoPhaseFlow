@@ -94,6 +94,7 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
 | Specialist | SimulationAnalyst | GIT-SP | RETURNER |
 | Specialist | DevOpsArchitect | GIT-SP | RETURNER |
+| Specialist | DiagnosticArchitect | GIT-SP | RETURNER + DISPATCHER (re-issues HAND-01 after Gatekeeper approval) |
 
 **Handoff roles:**
 - DISPATCHER: sends HAND-01 (DISPATCH token) when delegating to a specialist
