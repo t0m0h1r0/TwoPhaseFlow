@@ -109,3 +109,10 @@ CCD 法は「既知の関数 $f$ の微分値 $f', f''$ を高精度に求める
 \end{itemize}
 
 数学的構造の詳細（射影行列 $\mathbf{E}_1, \mathbf{E}_2$，演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の定義，変密度 Poisson 演算子の導出）は付録~\ref{app:ccd_elliptic} を参照されたい．
+
+\medskip
+\noindent\textbf{標準 CCD の残された課題：数値散逸の欠如．}
+以上で述べた標準 CCD は，係数の中心対称性によってあらゆる波数モードを\textbf{振幅減衰なく}伝播させる．
+これは高精度スキームとして理想的な一方，非線形の気液二相流では対流項の非線形相互作用によって
+格子スケール（$kh \approx \pi$）の高周波ノイズが蓄積し，最終的に計算が発散するという問題を引き起こす．
+次節（§~\ref{sec:dissipative_ccd}）ではこの欠点を補う\textbf{散逸的 CCD（Dissipative CCD）}を導入する．
