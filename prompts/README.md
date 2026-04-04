@@ -93,6 +93,11 @@ All agent prompts inherit `_base.yaml` (shared axioms, primitives, procedure pre
 | Domain Sovereignty | meta-domains.md STORAGE SOVEREIGNTY | 00 section A (A9) | 01 (module map) |
 | Interface Contracts | meta-domains.md INTER-DOMAIN INTERFACES | -- | 01 (contract registry) |
 | AP-01--AP-08 Antipatterns | meta-antipatterns.md | -- | 02 FEEDBACK |
+| GA-0 Auto-Sanity Gate | meta-roles.md §GATEKEEPER APPROVAL | -- | -- |
+| artifact_hash (HAND-01/02) | meta-ops.md §HAND-01, §HAND-02 | -- | -- |
+| AUDIT-03 Adversarial Edge-Case | meta-ops.md §AUDIT-03 | 00 section AU (AUDIT-03) | -- |
+| Interface Drafting (.draft) | meta-ops.md §INTERFACE DRAFTING | -- | -- |
+| DiagnosticArchitect ERR-R/N | meta-roles.md §DiagnosticArchitect | -- | -- |
 
 ---
 
@@ -151,7 +156,10 @@ Step 4: AUDIT                                         [ConsistencyAuditor]
 |------|---------------|---------|
 | TRIVIAL | DOM-02 only | Typos, comments, whitespace |
 | FAST-TRACK | Reduced (no IF-Agreement, no AU2) | Bug fixes, prose, refactors |
-| FULL-PIPELINE | All gates | Theory, solver core, cross-domain |
+| FULL-PIPELINE | All gates incl. GA-0, AUDIT-03 | Theory, solver core, cross-domain |
+
+**GA-0 (Auto-Sanity Gate):** TEST-01 must be 100% PASS with LOG-ATTACHED before Gatekeeper
+reads any code or paper artifact. Gatekeeper rejects immediately without review if GA-0 fails.
 
 ---
 

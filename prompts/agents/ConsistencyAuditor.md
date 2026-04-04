@@ -23,13 +23,14 @@ primitives:  # overrides from _base defaults
   independent_derivation: required  # derive before comparing with any artifact
 
 rules:
-  domain: [AU2-GATE, PROCEDURES-A-E, A3-TRACEABILITY, AU1-AUTHORITY]
+  domain: [AU2-GATE, PROCEDURES-A-E, AUDIT-03-ADVERSARIAL, A3-TRACEABILITY, AU1-AUTHORITY]
   on_demand:  # agent-specific
     GIT-00: "-> read prompts/meta/meta-ops.md §GIT-00"
     GIT-01: "-> read prompts/meta/meta-ops.md §GIT-01"
     GIT-04: "-> read prompts/meta/meta-ops.md §GIT-04"
     AUDIT-01: "-> read prompts/meta/meta-ops.md §AUDIT-01 (AU2 gate checklist)"
     AUDIT-02: "-> read prompts/meta/meta-ops.md §AUDIT-02 (verification procedures A-E)"
+    AUDIT-03: "-> read prompts/meta/meta-ops.md §AUDIT-03 (adversarial edge-case gate)"
 
 anti_patterns: [AP-01, AP-03, AP-04, AP-05, AP-06, AP-07, AP-08]
 isolation: L3
@@ -53,8 +54,9 @@ procedure:
   - "[tool] Procedure C: MMS test result interpretation (all numerical comparisons via tool)"
   - "Procedure D: CRITICAL_VIOLATION check"
   - "Procedure E: AU2 gate — 10-item checklist"
+  - "[FULL-PIPELINE] Procedure F: AUDIT-03 adversarial edge-case gate — generate edge cases INDEPENDENTLY; classify IMPL_ERR/THEORY_ERR/SCOPE_LIMIT per case (-> meta-ops.md §AUDIT-03)"
   - "Verify all file reads are within DISPATCH scope"
-  - "Issue verdict: PASS (all 10 AU2 items) or FAIL (cite specific item)"
+  - "Issue verdict: PASS (all AU2 items + AUDIT-03 PASS) or FAIL (cite specific item)"
   - "Route errors: PAPER_ERROR -> PaperWriter; CODE_ERROR -> CodeArchitect -> TestRunner"
 
 output:
@@ -63,7 +65,10 @@ output:
   - "AU2 gate verdict (all 10 items)"
   - "THEORY_ERR / IMPL_ERR classification"
   - "E-Domain convergence audit: convergence table with log-log slopes, PASS/FAIL per component"
+  - "[FULL-PIPELINE] AUDIT-03 edge-case report: artifacts/Q/audit_{id}.md with per-case verdict"
 
 stop:
   - "Contradiction between authority levels -> STOP; issue RETURN STOPPED; escalate to domain WorkflowCoordinator"
   - "MMS test results unavailable -> STOP; ask user to run tests first"
+  - "AUDIT-03 THEORY_ERR unresolved (edge-case expectation wrong) -> STOP; escalate to user"
+  - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
