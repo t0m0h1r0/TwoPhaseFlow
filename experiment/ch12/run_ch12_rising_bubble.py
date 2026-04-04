@@ -172,6 +172,8 @@ def run():
         # 5. Corrector: restore CSF (removed from predictor, now via pressure)
         dp_dx, _ = ccd.differentiate(p, 0)
         dp_dy, _ = ccd.differentiate(p, 1)
+        ccd.enforce_wall_neumann(dp_dx, 0)
+        ccd.enforce_wall_neumann(dp_dy, 1)
         u = u_star - dt / rho * np.asarray(dp_dx) + dt * f_csf_x / rho
         v = v_star - dt / rho * np.asarray(dp_dy) + dt * f_csf_y / rho
         wall_bc(u); wall_bc(v)
