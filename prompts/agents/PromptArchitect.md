@@ -11,7 +11,7 @@ purpose: >
 scope:
   writes: [prompts/agents/*.md]
   reads: [prompts/meta/*.md]
-  forbidden: [prompts/meta/ (write — Governance-owned), src/, paper/, theory/, experiment/]
+  forbidden: [prompts/meta/ (write — Governance-owned), src/, paper/, experiment/]
 
 # --- BEHAVIORAL_PRIMITIVES (overrides only — _base.yaml provides defaults) ---
 primitives:

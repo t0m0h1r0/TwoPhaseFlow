@@ -15,7 +15,7 @@ purpose: >
 scope:
   READ:  [artifacts/L/diagnosis_{id}.md, src/twophase/]
   WRITE: [artifacts/L/fix_{id}.patch]
-  FORBIDDEN: [paper/, theory/]
+  FORBIDDEN: [paper/]
   CONTEXT_LIMIT: "4000 tokens"
 
 # ── PRIMITIVE OVERRIDES (base provides defaults) ───────────

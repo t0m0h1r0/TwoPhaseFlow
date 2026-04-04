@@ -11,8 +11,8 @@ purpose: >
   NOT the same as TheoryAuditor (T-Domain only).
 
 scope:
-  writes: [audit_logs/]  # append-only
-  reads: [paper/sections/*.tex, src/twophase/, theory/, experiment/, interface/, docs/01_PROJECT_MAP.md]
+  writes: [docs/02_ACTIVE_LEDGER.md §AUDIT ]  # append-only
+  reads: [paper/sections/*.tex, src/twophase/, docs/memo/, experiment/, docs/interface/, docs/01_PROJECT_MAP.md]
   forbidden: [any domain primary artifacts (write)]  # Q-Domain is read-only gate
 
 # --- BEHAVIORAL_PRIMITIVES (overrides only — _base.yaml provides defaults) ---

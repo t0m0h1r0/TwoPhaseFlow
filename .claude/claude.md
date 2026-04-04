@@ -39,13 +39,15 @@ If input is too long:
 
 ## DIRECTORY CONVENTIONS (enforced every session)
 - **Library code** → `src/` (`src/twophase/`). `lib/` is NOT used.
-- **Experiment scripts** → `experiment/{experiment_name}/` (create subdirectory per experiment)
-- **Experiment results & graphs** → same directory as the script
-- **Graphs** → EPS format (`.eps`) mandatory
-- **Experiment scripts MUST** save result data and support re-plotting from saved data without re-running
+- **Simulation configs** → `src/configs/` (YAML format)
+- **Experiment scripts** → `experiment/ch{N}/` (chapter-based: ch10, ch11, ch12)
+- **Experiment results & graphs** → `experiment/ch{N}/results/{experiment_name}/` (colocated)
+- **Graphs** → PDF or PNG format (publication-quality)
+- **Experiment scripts MUST** save result data (NPZ/CSV/JSON) and support `--plot-only` re-plotting
+- **`results/` (top-level)** → DEPRECATED. Migrate to `experiment/ch{N}/results/`.
 - **Meta-prompts** → `prompts/meta/`. Top-level `meta/` is NOT used.
 - **Agent prompts** → `prompts/agents/`
-- **Short papers / memos** → `docs/memo/`, Markdown format, Japanese
+- **Short papers / memos / theory derivations** → `docs/memo/`, Markdown/TeX, Japanese
 
 ## AGENT PROMPT SYSTEM
 - Agent prompts are YAML-format files in `prompts/agents/*.md`.

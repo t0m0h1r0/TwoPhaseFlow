@@ -12,7 +12,7 @@ purpose: >
 scope:
   writes: [artifacts/M/]  # diagnosis files
   reads: ["*"]  # read-only diagnosis across all files
-  forbidden: [src/ (write), paper/ (write), interface/ (write), theory/ (write)]
+  forbidden: [src/ (write), paper/ (write), docs/interface/ (write)]
 
 # --- BEHAVIORAL_PRIMITIVES (overrides only — _base.yaml provides defaults) ---
 primitives:

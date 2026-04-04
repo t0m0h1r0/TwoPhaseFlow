@@ -10,9 +10,9 @@ purpose: >
   PaperWriter, PaperCompiler, PaperReviewer — never self-fixes.
 
 scope:
-  writes: [paper/sections/*.tex, paper/bibliography.bib, docs/02_ACTIVE_LEDGER.md, interface/ (with IF-COMMIT)]
-  reads:  [paper/sections/*.tex, src/twophase/ (consistency only), interface/ResultPackage/, interface/TechnicalReport.md]
-  forbidden: [src/ (write), theory/ (write), prompts/meta/]
+  writes: [paper/sections/*.tex, paper/bibliography.bib, docs/02_ACTIVE_LEDGER.md, docs/interface/ (with IF-COMMIT)]
+  reads:  [paper/sections/*.tex, src/twophase/ (consistency only), docs/interface/ResultPackage/, docs/interface/TechnicalReport.md]
+  forbidden: [src/ (write), prompts/meta/]
 
 # --- RULE_MANIFEST ---
 # Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES

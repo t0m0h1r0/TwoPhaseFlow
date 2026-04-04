@@ -64,21 +64,21 @@ Create these directories if absent. **Naming rule: NO leading numbers, NO dots i
 
 ```sh
 # Vertical domain directories
-mkdir -p theory/        # T-Domain — Mathematical Truth
-mkdir -p lib/           # L-Domain alias (solver source lives in src/twophase/ but lib/ is the T-L interface landing)
-mkdir -p experiment/    # E-Domain — Empirical Truth (raw runs, configs)
+mkdir -p docs/memo/     # T-Domain — Mathematical Truth (theory derivations + short papers)
+mkdir -p src/twophase/  # L-Domain — Functional Truth (solver library)
+mkdir -p experiment/    # E-Domain — Empirical Truth (scripts + results, chapter-based)
 mkdir -p paper/         # A-Domain — Logical Truth (LaTeX sources)
 
 # Horizontal governance directories
-mkdir -p meta/          # M-Domain — Constitution + inter-domain protocols (= prompts/meta/)
-mkdir -p prompts/       # P-Domain — Agent intelligence and tooling
-mkdir -p audit_logs/    # Q-Domain — Audit trails, hash values
+mkdir -p prompts/meta/  # M-Domain — Constitution + inter-domain protocols (SSoT per A10)
+mkdir -p prompts/agents/# P-Domain — Agent intelligence and tooling
 
-# Interface contracts directory
-mkdir -p interface/     # Cross-domain contracts (Gatekeeper-owned; IF-COMMIT token required)
-
-# Documentation (clean names — no numbers, no dots)
+# Cross-domain contracts + project documentation
+mkdir -p docs/interface/# Cross-domain contracts (Gatekeeper-owned; IF-COMMIT token required)
 mkdir -p docs/          # Concrete SSoT + project context
+
+# Micro-agent artifacts
+mkdir -p artifacts/{T,L,E,Q,M}/
 ```
 
 **FORBIDDEN naming patterns:**
@@ -310,7 +310,7 @@ PaperCorrector, ErrorAnalyzer, PromptCompressor, ResultAuditor
 
 **Micro-agents (→ prompts/agents/, OPERATIONAL — activated 2026-04-04):**
 EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner, ErrorAnalyzer, ResultAuditor
-Prerequisites satisfied: artifacts/{T,L,E,Q}/ created; interface/signals/ created; DDA enforcement embedded in each agent's procedure.
+Prerequisites satisfied: artifacts/{T,L,E,Q}/ created; docs/interface/signals/ created; DDA enforcement embedded in each agent's procedure.
 
 **Each generated prompt must use YAML format** (inheriting `prompts/agents/_base.yaml`):
 
@@ -493,11 +493,11 @@ Required elements:
 - Write `prompts/README.md` (from Stage 6)
 - Write `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md`
   (only if missing or if `--force` flag given; existing files preserve project state)
-- Write `interface/` directory skeleton with placeholder contracts if absent:
-  - `interface/AlgorithmSpecs.md` (T→L contract template)
-  - `interface/SolverAPI_v1.py` (L→E contract template)
-  - `interface/TechnicalReport.md` (T/E→A contract template)
-- Write `audit_logs/` directory if absent
+- Write `docs/interface/` directory skeleton with placeholder contracts if absent:
+  - `docs/interface/AlgorithmSpecs.md` (T→L contract template)
+  - `docs/interface/SolverAPI_v1.py` (L→E contract template)
+  - `docs/interface/TechnicalReport.md` (T/E→A contract template)
+- Write `docs/02_ACTIVE_LEDGER.md` directory if absent
 - Output audit results (Stage 5 verdict per agent)
 - Output deployment notes
 
@@ -519,7 +519,7 @@ Pass only if ALL are true:
 7. README.md matches 9-section structure (includes Mermaid agent interaction diagram)
 8. Deployment is simple: one bootstrap file, one command
 9. Matrix architecture present: T/L/E/A domains + M/P/Q horizontal domains referenced in generated prompts
-10. Interface Contract scaffolding present: interface/ directory + AlgorithmSpecs.md + SolverAPI_v1.py + TechnicalReport.md templates emitted
+10. Interface Contract scaffolding present: docs/interface/ directory + AlgorithmSpecs.md + SolverAPI_v1.py + TechnicalReport.md templates emitted
 11. Directory naming: no new files created with leading-number prefixes (legacy exceptions allowed)
 12. §0 CORE PHILOSOPHY embedded: Sovereign Domains (§A), Broken Symmetry (§B), Falsification Loop (§C) referenced in ResearchArchitect and ConsistencyAuditor prompts
 13. Atomic micro-agent DDA scope: All 9 micro-agents include SCOPE (DDA) block with READ/WRITE/FORBIDDEN/CONTEXT_LIMIT

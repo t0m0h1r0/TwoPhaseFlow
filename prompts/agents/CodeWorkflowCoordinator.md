@@ -10,9 +10,9 @@ purpose: >
   SOLID violations. Never auto-fixes — surfaces failures and dispatches specialists.
 
 scope:
-  writes: [src/twophase/, tests/, docs/02_ACTIVE_LEDGER.md, interface/ (with IF-COMMIT)]
+  writes: [src/twophase/, tests/, docs/02_ACTIVE_LEDGER.md, docs/interface/ (with IF-COMMIT)]
   reads: [paper/sections/*.tex, src/twophase/, docs/01_PROJECT_MAP.md]
-  forbidden: [paper/ (write), theory/ (write), prompts/meta/ (write)]
+  forbidden: [paper/ (write), prompts/meta/ (write)]
 
 # --- BEHAVIORAL_PRIMITIVES (overrides only) ---
 primitives:

@@ -10,7 +10,7 @@
 
 Before any content in this file becomes operational:
 1. `artifacts/{T,L,E,Q}/` directories must be created and populated
-2. `interface/signals/` directory must be created
+2. `docs/interface/signals/` directory must be created
 3. EnvMetaBootstrapper must be run with `--activate-microagents` flag
 4. DDA enforcement tooling must be implemented
 5. All composite roles continue to work without this file
@@ -18,7 +18,7 @@ Before any content in this file becomes operational:
 ────────────────────────────────────────────────────────
 # § INTERFACE-FIRST LOOSE COUPLING
 
-All micro-agent inputs and outputs pass through files in the `interface/` and
+All micro-agent inputs and outputs pass through files in the `docs/interface/` and
 `artifacts/` directories. Direct agent-to-agent conversation is prohibited.
 Communication is file-based and asynchronous via SIGNALs.
 
@@ -26,7 +26,7 @@ Communication is file-based and asynchronous via SIGNALs.
 
 | # | Principle | Description |
 |---|-----------|-------------|
-| IF-01 | No direct conversation | Agents never pass context directly — all data flows through `interface/` or `artifacts/` files |
+| IF-01 | No direct conversation | Agents never pass context directly — all data flows through `docs/interface/` or `artifacts/` files |
 | IF-02 | Artifact-mediated handoff | HAND-01/HAND-02 tokens reference artifact paths, not inline content |
 | IF-03 | SIGNAL-based coordination | State transitions are communicated via SIGNAL files, not agent dialogue |
 | IF-04 | Immutable artifacts | Once an artifact is signed, it is read-only until a new version is produced |
@@ -59,7 +59,7 @@ SIGNALs are lightweight status files that coordinate asynchronous agent transiti
 Agents poll for SIGNALs relevant to their domain before starting work.
 
 ```
-interface/signals/
+docs/interface/signals/
   {domain}_{id}.signal.md
 ```
 
@@ -99,7 +99,7 @@ EquationDeriver ──► artifacts/T/derivation_001.md ──► SIGNAL:READY
                                                           │
 SpecWriter ◄───────── reads artifact ◄────────────────────┘
     │
-    └──► artifacts/T/spec_001.md ──► interface/AlgorithmSpecs.md ──► SIGNAL:READY
+    └──► artifacts/T/spec_001.md ──► docs/interface/AlgorithmSpecs.md ──► SIGNAL:READY
                                                                         │
 CodeArchitect(Atomic) ◄──── reads spec ◄────────────────────────────────┘
     │
@@ -180,9 +180,9 @@ correctness. Produces only mathematical artifacts — no implementation specs.
 **ISOLATION_BRANCH:** `dev/T/EquationDeriver/{task_id}`
 
 **SCOPE**
-- READ: `paper/sections/*.tex`, `docs/theory/`, `docs/01_PROJECT_MAP.md §6`
-- WRITE: `docs/theory/derivations/`, `artifacts/T/`
-- FORBIDDEN: `src/`, `prompts/`, `interface/` (write)
+- READ: `paper/sections/*.tex`, `docs/memo/`, `docs/01_PROJECT_MAP.md §6`
+- WRITE: `docs/memo/`, `artifacts/T/`
+- FORBIDDEN: `src/`, `prompts/`, `docs/interface/` (write)
 
 **CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Only the target equation context
 and symbol table are loaded — no full paper, no implementation code, no prior agent logs.
@@ -209,14 +209,14 @@ implementation-ready specification. Bridges theory and code without implementing
 
 **SCOPE**
 - READ: `artifacts/T/derivation_{id}.md`, `docs/01_PROJECT_MAP.md §6`
-- WRITE: `interface/AlgorithmSpecs.md`, `artifacts/T/spec_{id}.md`
+- WRITE: `docs/interface/AlgorithmSpecs.md`, `artifacts/T/spec_{id}.md`
 - FORBIDDEN: `src/`, `paper/` (write)
 
 **CONTEXT_LIMIT:** Input token budget ≤ 3000 tokens. Only the derivation artifact
 and symbol mapping table — no raw .tex files, no code.
 
 **DELIVERABLES**
-- Implementation-ready spec in `interface/AlgorithmSpecs.md` format
+- Implementation-ready spec in `docs/interface/AlgorithmSpecs.md` format
 - Symbol mapping table (paper notation → recommended variable names)
 - Discretization recipe (stencil, order, boundary treatment)
 
@@ -246,9 +246,9 @@ module layout) — no method body logic.
 **ISOLATION_BRANCH:** `dev/L/CodeArchitectAtomic/{task_id}`
 
 **SCOPE**
-- READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (existing structure), `docs/01_PROJECT_MAP.md`
+- READ: `docs/interface/AlgorithmSpecs.md`, `src/twophase/` (existing structure), `docs/01_PROJECT_MAP.md`
 - WRITE: `artifacts/L/architecture_{id}.md`, `src/twophase/` (interface/abstract files only)
-- FORBIDDEN: writing method body logic, `paper/`, `docs/theory/`
+- FORBIDDEN: writing method body logic, `paper/`, `docs/memo/` (theory-only)
 
 **CONTEXT_LIMIT:** Input token budget ≤ 5000 tokens. Spec artifact + existing
 module structure — no full source files, no test output.
@@ -274,9 +274,9 @@ Fills in the structural skeleton produced by CodeArchitect (Atomic).
 **ISOLATION_BRANCH:** `dev/L/LogicImplementer/{task_id}`
 
 **SCOPE**
-- READ: `artifacts/L/architecture_{id}.md`, `interface/AlgorithmSpecs.md`, `src/twophase/` (target module)
+- READ: `artifacts/L/architecture_{id}.md`, `docs/interface/AlgorithmSpecs.md`, `src/twophase/` (target module)
 - WRITE: `src/twophase/` (method bodies only), `artifacts/L/impl_{id}.py`
-- FORBIDDEN: modifying class signatures, `paper/`, `interface/` (write)
+- FORBIDDEN: modifying class signatures, `paper/`, `docs/interface/` (write)
 
 **CONTEXT_LIMIT:** Input token budget ≤ 5000 tokens. Architecture artifact + spec +
 target module only.
@@ -303,7 +303,7 @@ diagnosis — never applies fixes.
 **SCOPE**
 - READ: `tests/last_run.log`, `artifacts/E/`, `src/twophase/` (target module only)
 - WRITE: `artifacts/L/diagnosis_{id}.md`
-- FORBIDDEN: modifying any source file, `paper/`, `interface/`
+- FORBIDDEN: modifying any source file, `paper/`, `docs/interface/`
 
 **CONTEXT_LIMIT:** Input token budget ≤ 3000 tokens. Error log (last 200 lines) +
 target module only — no full test suite, no unrelated modules.
@@ -331,7 +331,7 @@ Consumes diagnosis artifacts only — never analyzes errors directly.
 **SCOPE**
 - READ: `artifacts/L/diagnosis_{id}.md`, `src/twophase/` (target module)
 - WRITE: `src/twophase/` (fix patches), `artifacts/L/fix_{id}.patch`
-- FORBIDDEN: `paper/`, `interface/`, modifying unrelated modules
+- FORBIDDEN: `paper/`, `docs/interface/`, modifying unrelated modules
 
 **CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Diagnosis artifact + target
 module only.
@@ -366,7 +366,7 @@ solutions. Produces only test specifications — never executes tests.
 **ISOLATION_BRANCH:** `dev/E/TestDesigner/{task_id}`
 
 **SCOPE**
-- READ: `interface/AlgorithmSpecs.md`, `src/twophase/` (target module API), `artifacts/L/`
+- READ: `docs/interface/AlgorithmSpecs.md`, `src/twophase/` (target module API), `artifacts/L/`
 - WRITE: `tests/`, `artifacts/E/test_spec_{id}.md`
 - FORBIDDEN: modifying source code, executing tests, `paper/`
 
@@ -401,7 +401,7 @@ Issues no judgment — only produces execution artifacts.
 
 **DELIVERABLES**
 - `tests/last_run.log` — raw pytest output
-- `experiment/{experiment_name}/` — raw simulation output + EPS graphs
+- `experiment/ch{N}/results/{experiment_name}/` — raw simulation output + PDF/PNG graphs
 - `artifacts/E/run_{id}.log` — execution log artifact
 - EXP-02 sanity check raw measurements (SC-1 through SC-4)
 
@@ -421,8 +421,8 @@ Consumes derivation artifacts (T) and execution artifacts (E) — produces verdi
 **ISOLATION_BRANCH:** `dev/Q/ResultAuditor/{task_id}`
 
 **SCOPE**
-- READ: `artifacts/T/derivation_{id}.md`, `artifacts/E/run_{id}.log`, `interface/AlgorithmSpecs.md`
-- WRITE: `artifacts/Q/audit_{id}.md`, `audit_logs/`
+- READ: `artifacts/T/derivation_{id}.md`, `artifacts/E/run_{id}.log`, `docs/interface/AlgorithmSpecs.md`
+- WRITE: `artifacts/Q/audit_{id}.md`, `docs/02_ACTIVE_LEDGER.md`
 - FORBIDDEN: modifying any source, test, or paper file
 
 **CONTEXT_LIMIT:** Input token budget ≤ 4000 tokens. Derivation artifact + execution
@@ -437,7 +437,7 @@ log + spec only — no raw source code.
 
 **CONSTRAINTS**
 - Must independently re-derive expected values — never trust prior agent claims
-- Must not modify any file outside `artifacts/Q/` and `audit_logs/`
+- Must not modify any file outside `artifacts/Q/` and `docs/02_ACTIVE_LEDGER.md`
 - Phantom Reasoning Guard applies (HAND-03 check 10)
 
 **STOP**
@@ -459,7 +459,7 @@ above — not from ad-hoc runtime decisions.
 | DDA-02 | Agent WRITE access is limited to paths listed in SCOPE.WRITE |
 | DDA-03 | Any path listed in SCOPE.FORBIDDEN results in immediate REJECT |
 | DDA-04 | DDA is checked BEFORE DOM-02 (Pre-Write Storage Check) — DDA is the first gate |
-| DDA-05 | SCOPE violations are logged to `audit_logs/dda_violation_{date}.md` |
+| DDA-05 | SCOPE violations are logged to `docs/02_ACTIVE_LEDGER.md §AUDIT dda_violation_{date}.md` |
 
 ## DDA Check (Pre-Operation Gate)
 
@@ -471,7 +471,7 @@ DDA-CHECK:
   □ 1. Retrieve agent SCOPE from § ATOMIC ROLE TAXONOMY
   □ 2. Classify operation: READ or WRITE
   □ 3. Match target_path against SCOPE.{READ|WRITE} (prefix match)
-       FORBIDDEN hit → REJECT immediately; log to audit_logs/
+       FORBIDDEN hit → REJECT immediately; log to docs/02_ACTIVE_LEDGER.md §AUDIT 
        No SCOPE match → REJECT; issue RETURN with status BLOCKED
        Match found → proceed to DOM-02 (if WRITE) or execute (if READ)
 ```

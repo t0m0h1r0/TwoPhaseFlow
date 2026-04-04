@@ -13,7 +13,7 @@ purpose: >
 
 # ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  READ:  [theory/, paper/sections/*.tex, docs/01_PROJECT_MAP.md §6]
+  READ:  [docs/memo/, paper/sections/*.tex, docs/01_PROJECT_MAP.md §6]
   WRITE: [artifacts/T/derivation_{id}.md]
   FORBIDDEN: [src/, experiment/, "paper/ (write)"]
   CONTEXT_LIMIT: "4000 tokens"

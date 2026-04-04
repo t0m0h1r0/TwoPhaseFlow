@@ -55,7 +55,7 @@ isolation: L2     # tool-mediated verification
 # --- Pipeline Mode Classification ---
 #   TRIVIAL:       whitespace-only, comment-only, typo fix, docs-only
 #   FAST-TRACK:    bug fix, paper prose, experiment re-run, config
-#   FULL-PIPELINE: touches theory/, interface/*.md, src/core/; or new domain branch
+#   FULL-PIPELINE: touches docs/memo/ (theory), docs/interface/*.md, src/core/; or new domain branch
 # When uncertain -> classify one level higher.
 
 procedure:

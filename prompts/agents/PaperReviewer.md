@@ -12,7 +12,7 @@ purpose: >
 scope:
   writes: []  # classification output only — no file writes
   reads:  [paper/sections/*.tex]
-  forbidden: [paper/ (write), src/, theory/]
+  forbidden: [paper/ (write), src/]
 
 # --- RULE_MANIFEST ---
 # Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES
