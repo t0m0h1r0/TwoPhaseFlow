@@ -122,15 +122,20 @@ class Grid:
             delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
             omega = 1.0 + (alpha - 1.0) * delta_star   # ω ∈ [1, α] — always ≥ 1
 
-            # Spacing proportional to 1/ω; enforce minimum cell width
-            raw_dx = np.maximum(1.0 / omega, dx_floor)
-            # Normalise so that cumulative sum spans [0, L[ax]]
-            raw_dx = raw_dx * (self._gc.L[ax] / raw_dx.sum())
+            # Node target widths proportional to 1/ω; enforce minimum cell width
+            node_w = np.maximum(1.0 / omega, dx_floor)  # (N+1,) node weights
+
+            # Cell spacings: average adjacent node weights → symmetric for symmetric ω.
+            # Using node_w[:-1] alone would drop the last node and break symmetry
+            # (see §6 格子点生成アルゴリズム bug-fix note).
+            dx_cells = 0.5 * (node_w[:-1] + node_w[1:])   # (N,) cell widths
+
+            # Normalise so cumulative sum spans exactly [0, L[ax]]
+            dx_cells = dx_cells * (self._gc.L[ax] / dx_cells.sum())
 
             # Cumulative integration: ステップ3–4 (§6 格子点生成アルゴリズム)
             coords_ax = np.zeros(self._gc.N[ax] + 1)
-            coords_ax[1:] = np.cumsum(raw_dx[:-1])  # N cells → N+1 nodes
-            coords_ax = coords_ax * (self._gc.L[ax] / coords_ax[-1])
+            coords_ax[1:] = np.cumsum(dx_cells)   # sum = L → no rescale needed
 
             self.coords[ax] = coords_ax
             # Per-node spacing (average of left and right cell widths)
