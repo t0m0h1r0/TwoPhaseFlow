@@ -29,13 +29,14 @@ def backend():
     return Backend(use_gpu=False)
 
 
-def make_setup(N=16, backend=None):
+def make_setup(N=16, backend=None, iim_backend="lu"):
     if backend is None:
         backend = Backend(use_gpu=False)
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(
             ppe_solver_type="iim",
+            iim_backend=iim_backend,
             pseudo_tol=1e-10,
             pseudo_maxiter=500,
         ),
@@ -330,3 +331,113 @@ class TestPPESolverIIM:
             dp = p_in - p_out
             expected = sigma / R
             assert dp > 0, f"Interior should be higher pressure, got dp={dp:.6f}"
+
+
+# ─�� Test 4: Jump Decomposition backend ──────────────────────────────────
+
+class TestPPESolverIIMDecomp:
+    """Jump decomposition (decomp) backend tests."""
+
+    def _make_decomp_solver(self, N, backend):
+        cfg = SimulationConfig(
+            grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+            solver=SolverConfig(
+                ppe_solver_type="iim",
+                iim_mode="nearest", iim_backend="decomp",
+                pseudo_tol=1e-8, pseudo_maxiter=500, pseudo_c_tau=2.0,
+            ),
+        )
+        grid = Grid(cfg.grid, backend)
+        ccd = CCDSolver(grid, backend)
+        solver = PPESolverIIM(backend, cfg, grid, ccd=ccd)
+        return solver, grid, ccd
+
+    def test_decomp_returns_finite(self, backend):
+        """Decomp backend returns finite pressure field."""
+        solver, grid, _ = self._make_decomp_solver(16, backend)
+        phi = make_circular_levelset(grid, R=0.25)
+        kappa = np.ones(grid.shape) / 0.25
+        rho = np.where(phi < 0, 1000.0, 1.0)
+        xp = backend.xp
+        p = solver.solve(
+            xp.asarray(np.zeros(grid.shape)), xp.asarray(rho), dt=0.001,
+            phi=xp.asarray(phi), kappa=xp.asarray(kappa), sigma=0.07,
+        )
+        p_np = np.asarray(backend.to_host(p))
+        assert np.isfinite(p_np).all()
+
+    def test_decomp_produces_smooth_field(self, backend):
+        """Decomp backend produces smooth field with sharp jump at interface.
+
+        For rhs=0, the solution of L(p)=0 is constant everywhere.
+        The decomp adds a sharp jump σκ·(1-H) at recovery, producing:
+            p_inside ≈ const + σκ, p_outside ≈ const.
+        The transition occurs only in the 1-2 cell interface band.
+        """
+        N = 32
+        solver, grid, _ = self._make_decomp_solver(N, backend)
+        R = 0.25
+        sigma = 0.07
+        phi = make_circular_levelset(grid, R=R)
+        kappa = np.ones(grid.shape) / R
+        rho = np.where(phi < 0, 1000.0, 1.0)
+        xp = backend.xp
+
+        p = solver.solve(
+            xp.asarray(np.zeros(grid.shape)), xp.asarray(rho), dt=0.001,
+            phi=xp.asarray(phi), kappa=xp.asarray(kappa), sigma=sigma,
+        )
+        p_np = np.asarray(backend.to_host(p))
+
+        h = grid.L[0] / grid.N[0]
+        interior = phi < -3 * h
+        exterior = phi > 3 * h
+
+        # Interior should be approximately constant (low std)
+        assert np.std(p_np[interior]) < 0.1, "Interior not smooth"
+        # Exterior should be approximately constant
+        assert np.std(p_np[exterior]) < 0.1, "Exterior not smooth"
+        # |p| should be bounded
+        assert np.max(np.abs(p_np)) < 1.0, "|p|_max blew up"
+
+    def test_decomp_density_independent(self, backend):
+        """Decomp solution is independent of density ratio for rhs=0."""
+        R = 0.25
+        sigma = 0.07
+        N = 16
+        results = []
+
+        for ratio in [10, 100, 1000]:
+            solver, grid, _ = self._make_decomp_solver(N, backend)
+            phi = make_circular_levelset(grid, R=R)
+            kappa = np.ones(grid.shape) / R
+            rho = np.where(phi < 0, float(ratio), 1.0)
+            xp = backend.xp
+
+            p = solver.solve(
+                xp.asarray(np.zeros(grid.shape)), xp.asarray(rho), dt=0.001,
+                phi=xp.asarray(phi), kappa=xp.asarray(kappa), sigma=sigma,
+            )
+            results.append(np.asarray(backend.to_host(p)))
+
+        # All density ratios should produce the same result (for rhs=0)
+        np.testing.assert_allclose(results[0], results[1], atol=1e-6)
+        np.testing.assert_allclose(results[0], results[2], atol=1e-6)
+
+    def test_decomp_high_density_ratio(self, backend):
+        """Decomp handles ρ_l/ρ_g = 1000 without blowup."""
+        solver, grid, _ = self._make_decomp_solver(32, backend)
+        phi = make_circular_levelset(grid, R=0.25)
+        kappa = np.ones(grid.shape) / 0.25
+        rho = np.where(phi < 0, 1000.0, 1.0)
+        xp = backend.xp
+
+        p = solver.solve(
+            xp.asarray(np.zeros(grid.shape)), xp.asarray(rho), dt=0.001,
+            phi=xp.asarray(phi), kappa=xp.asarray(kappa), sigma=0.07,
+        )
+        p_np = np.asarray(backend.to_host(p))
+        assert np.isfinite(p_np).all()
+        assert np.max(np.abs(p_np)) < 100.0, (
+            f"|p|_max = {np.max(np.abs(p_np)):.2f} — solution blew up"
+        )

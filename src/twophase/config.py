@@ -145,7 +145,7 @@ class SolverConfig:
 
     # ppe_solver_type="iim" 用: IIM correction mode + solve backend
     iim_mode: str = "hermite"    # "nearest" (C_0 only) or "hermite" (C_0,C_1,C_2)
-    iim_backend: str = "lu"      # "lu" (Kronecker+direct) or "dc" (defect correction)
+    iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
     def __post_init__(self) -> None:
         _valid_types = ("pseudotime", "ccd_lu", "sweep", "iim", "iterative")
@@ -166,8 +166,8 @@ class SolverConfig:
             assert self.iim_mode in ("nearest", "hermite"), (
                 f"iim_mode must be 'nearest' or 'hermite': '{self.iim_mode}'"
             )
-            assert self.iim_backend in ("lu", "dc"), (
-                f"iim_backend must be 'lu' or 'dc': '{self.iim_backend}'"
+            assert self.iim_backend in ("decomp", "lu", "dc"), (
+                f"iim_backend must be 'decomp', 'lu', or 'dc': '{self.iim_backend}'"
             )
 
 
