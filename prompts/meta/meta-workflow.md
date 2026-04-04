@@ -455,6 +455,11 @@ Every STOP is recoverable — the question is WHO resolves it and WHERE the pipe
 | PaperCompiler BUILD-FAIL | STOP-SOFT | PaperWorkflowCoordinator → PaperCompiler | Parse log; apply surgical fix; re-compile | VERIFY |
 | GPU/environment error | STOP-SOFT | User → DevOpsArchitect | Fix environment; re-run experiment | EXECUTE |
 
+| HAND token malformed (missing required field) | STOP-SOFT | DiagnosticArchitect | Re-emit corrected HAND token (ERR-R3); Gatekeeper approves | PLAN |
+| BUILD-FAIL — missing dependency or config error | STOP-SOFT | DiagnosticArchitect | Propose install/config fix (ERR-R2); Gatekeeper approves; retry | EXECUTE |
+| Wrong write path caught before commit (pre-DOM-02) | STOP-SOFT | DiagnosticArchitect | Propose corrected path (ERR-R1); Gatekeeper approves; Specialist retries | EXECUTE |
+| GIT conflict on non-logic file (.gitignore, config) | STOP-SOFT | DiagnosticArchitect | Propose merge resolution (ERR-R4); Gatekeeper approves | PRE-CHECK |
+
 ## Recovery Protocol
 
 1. **Agent triggers STOP:** Issue RETURN token with `status: STOPPED` and `issues` field citing the specific trigger.
@@ -467,6 +472,37 @@ Every STOP is recoverable — the question is WHO resolves it and WHERE the pipe
 5. **If Recovery Agent is "User":** Coordinator issues RETURN STOPPED to user with full context; awaits user input.
 
 **Hard rule:** A coordinator that encounters a STOP trigger NOT listed in this matrix must escalate to User — do not improvise recovery paths.
+
+## DiagnosticArchitect Self-Healing Flow
+
+When the Recovery Agent column is **DiagnosticArchitect**, the coordinator uses the following sub-protocol instead of the standard Recovery Protocol above:
+
+```
+Coordinator
+  │── HAND-01 → DiagnosticArchitect (STOP trigger + error class ERR-R?)
+  │
+  DiagnosticArchitect
+  │── Classify: RECOVERABLE or NON-RECOVERABLE
+  │   If NON-RECOVERABLE → HAND-02 STOPPED to coordinator → escalate to User
+  │── Write artifacts/M/diagnosis_{id}.md
+  │── HAND-01 → Gatekeeper (fix proposal)
+  │
+  Gatekeeper
+  │── Review fix proposal (DOM-02 + scope check only)
+  │── HAND-02 PASS → DiagnosticArchitect     OR    HAND-02 FAIL → DiagnosticArchitect
+  │                                                  (increment repair round counter)
+  DiagnosticArchitect
+  │── On PASS: HAND-01 → originally blocked agent (fix applied; resume at Resume Point)
+  │── On FAIL (round < 3): propose revised fix → back to Gatekeeper
+  │── On FAIL (round = 3): HAND-02 STOPPED → coordinator → User
+  │
+  Coordinator
+  └── Pipeline resumes at Resume Point OR escalates to User
+```
+
+**Gatekeeper scope in DiagnosticArchitect flow:** Gatekeeper reviews fix proposals for
+DOM-02 compliance and safety only — NOT for scientific correctness. Scientific correctness
+checks (GA-4, GA-6) do not apply to diagnostic fix proposals.
 
 ────────────────────────────────────────────────────────
 # § HANDOFF RULES
