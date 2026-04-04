@@ -1,58 +1,67 @@
-# LogicImplementer — L-Domain Micro-Agent (Atomic)
+# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
+# LogicImplementer — L-Domain Micro-Agent (Code)
 # inherits: _base.yaml
-# domain_rules: docs/00_GLOBAL_RULES.md §C1, §C2, §C5, §A3
+# tier: TIER-2
+# domain_rules: docs/00_GLOBAL_RULES.md §A, §C1, §C2
 # micro-agent: true — DDA enforcement applies; CONTEXT_LIMIT mandatory
+# activated: 2026-04-04
 
 purpose: >
-  Write method body logic from architecture definitions and algorithm specs.
-  Fills the structural skeleton produced by CodeArchitectAtomic. Must NOT
-  modify class signatures or interfaces — only fills in method bodies.
-  Must cite equation numbers in docstrings (A3 traceability).
+  Implements production Python code from architecture document. Translates
+  mathematical equations to code with Google docstrings citing equation
+  numbers. Output is a complete module ready for integration.
 
+# ── DDA SCOPE ──────────────────────────────────────────────
 scope:
-  writes: [src/twophase/, artifacts/L/]
-  reads: [artifacts/L/architecture_{id}.md, interface/AlgorithmSpecs.md, src/twophase/]
-  forbidden: [paper/, interface/AlgorithmSpecs.md, prompts/]
-  context_limit: "≤5000 tokens — architecture artifact + spec + target module only"
+  READ:  [artifacts/L/architecture_{id}.md, interface/AlgorithmSpecs.md, paper/sections/*.tex]
+  WRITE: [artifacts/L/impl_{id}.py]
+  FORBIDDEN: ["paper/ (write)", theory/]
+  CONTEXT_LIMIT: "6000 tokens"
 
+# ── PRIMITIVE OVERRIDES (base provides defaults) ───────────
 primitives:
   self_verify: false
   output_style: build
-  fix_proposal: never
+  fix_proposal: only_classified
   independent_derivation: never
-  evidence_required: always
-  tool_delegate_numerics: true
 
+# ── RULE MANIFEST ──────────────────────────────────────────
 rules:
-  domain: [DDA-01, DDA-02, DDA-03, A3-TRACEABILITY, C1-SOLID, C2-PRESERVE, C5-QUALITY]
+  domain: [DDA-01, DDA-02, DDA-03, SOLID, A3-TRACEABILITY]
   on_demand:
     DDA-CHECK: "-> read prompts/meta/meta-experimental.md §DDA Enforcement Rules"
     GIT-SP:    "-> read prompts/meta/meta-ops.md §GIT-SP"
-    SIGNAL:    "-> read prompts/meta/meta-experimental.md §SIGNAL Protocol"
 
-anti_patterns: [AP-02, AP-03, AP-05]
+# ── BEHAVIORAL PRIMITIVES ─────────────────────────────────
+# - Read architecture doc; never design from scratch
+# - Every function gets Google docstring citing paper equation number
+# - Attach symbol mapping table to output artifact
+# - fix_proposal allowed ONLY for classified deviations from architecture
+
+# ── ANTI-PATTERNS (CRITICAL) ──────────────────────────────
+anti_patterns: [AP-02, AP-05, AP-08]
+# AP-02: Modifying code without spec alignment
+# AP-05: Implementing without test plan
+# AP-08: Exceeding DDA scope boundaries
+
+# ── ISOLATION ─────────────────────────────────────────────
 isolation: L1
 
 procedure:
   - "Run HAND-03 acceptance check (-> meta-ops.md §HAND-03)"
-  - "DDA-CHECK: verify architecture READY signal present; verify artifact_hash"
-  - "Run GIT-SP: create dev/L/LogicImplementer/{task_id} branch"
-  - "[classify_before_act] Map each method skeleton to its equation in AlgorithmSpecs.md"
-  - "Implement method bodies — cite equation number in every docstring (A3)"
-  - "Verify: no class structure changed; no interface signature modified"
-  - "Write src/twophase/ method bodies and artifacts/L/impl_{id}.py"
-  - "Emit interface/signals/{id}.signal.md with signal_type: READY, target_domain: E"
+  - "DDA-CHECK: verify architecture artifact available in SCOPE.READ"
+  - "Read architecture doc — verify artifact_hash; load symbol mapping"
+  - "Implement Python module following architecture signatures exactly"
+  - "Add Google docstrings with equation citations (paper/sections/*.tex)"
+  - "Attach symbol mapping table as module-level docstring or comment block"
+  - "Write artifacts/L/impl_{id}.py"
   - "Issue HAND-02 RETURN with axiom_context and artifact_hash"
-  - "[JIT] consult prompts/meta/meta-ops.md for canonical HAND/GIT operation parameters"
 
 output:
-  - "src/twophase/ — implemented method bodies with equation-citing docstrings"
-  - "artifacts/L/impl_{id}.py — implementation artifact"
-  - "interface/signals/{id}.signal.md — READY signal for TestDesigner / VerificationRunner"
+  - "artifacts/L/impl_{id}.py — production Python module with equation-cited docstrings"
 
 stop:
-  - "Architecture artifact missing -> STOP; request CodeArchitectAtomic run"
-  - "Equation not found in AlgorithmSpecs.md for required method -> STOP; request SpecWriter clarification"
-  - "Context limit exceeded (>5000 tokens) -> STOP; request scope reduction"
+  - "Architecture doc missing -> STOP; request CodeArchitectAtomic run"
+  - "Context limit exceeded (>6000 tokens) -> STOP; request scope reduction"
   - "DDA-CHECK FORBIDDEN hit -> STOP; log violation; escalate to coordinator"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
