@@ -1005,6 +1005,35 @@ Coordinator                          Specialist
 ```
 
 ────────────────────────────────────────────────────────
+# § INTERFACE DRAFTING — Speculative Parallel Execution Protocol
+
+**Purpose:** Allow downstream agents to begin scaffold work while upstream theory is still being
+finalized, without violating DOM-02 or T-L-E-A ordering.
+
+## Rules
+
+1. **Draft publication:** TheoryArchitect MAY publish a partial interface as `interface/{id}.draft`
+   once the core algorithm structure is known but before TheoryAuditor signature.
+2. **Scaffold scope:** CodeArchitect MAY read `.draft` files to build scaffolding.
+   All draft-based output MUST be written to `artifacts/L/scaffold_{id}.py.draft` — never to `src/`.
+3. **Merge prohibition:** No `.draft` artifact may be copied, imported, or merged into `src/`,
+   `lib/`, `paper/`, or any domain branch. Draft ≠ Spec.
+4. **Draft annotation:** Every function or class derived from a draft MUST carry:
+   `# DRAFT — pending TheoryAuditor signature on interface/{id}.draft`
+5. **Promotion gate:** Draft → Final promotion requires:
+   - TheoryAuditor HAND-02 with `interface_contracts_checked: [{id}.draft → SIGNED]`
+   - Gatekeeper removes `.draft` suffix from both the interface file and all scaffold files
+   - Standard GIT-SP + PR flow applies from this point
+6. **Draft expiry:** If TheoryAuditor issues FAIL on the draft, all corresponding scaffold files
+   MUST be deleted. Coordinator issues DOM-01 cleanup dispatch to CodeArchitect.
+
+## What This Does NOT Change
+
+- T-L-E-A ordering is still enforced for **merges to domain branches**.
+- DOM-02 contamination guard applies at all times — `.draft` artifacts are quarantined in `artifacts/`.
+- GA-6 (upstream contract satisfied) still blocks final PR merge until interface is SIGNED (not DRAFT).
+
+────────────────────────────────────────────────────────
 # § AUDIT EXIT CRITERIA — Deadlock Prevention
 
 **Purpose:** Prevent infinite skepticism loops. An Auditor (Gatekeeper) that never passes any

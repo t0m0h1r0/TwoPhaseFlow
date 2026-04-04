@@ -21,7 +21,7 @@ The Gatekeeper is never the Specialist — Broken Symmetry is enforced at the ro
 | L | Core Library | CodeArchitect, CodeCorrector, TestRunner | CodeWorkflowCoordinator (Numerical Auditor + Code Quality Auditor) |
 | E | Experiment | ExperimentRunner, SimulationAnalyst | CodeWorkflowCoordinator + ExperimentRunner (Validation Guard) |
 | A | Academic Writing | PaperWriter, PaperCompiler, PaperReviewer | PaperWorkflowCoordinator (Logical Reviewer) |
-| M | Meta-Logic | DevOpsArchitect, TaskPlanner | ResearchArchitect (Protocol Enforcer) |
+| M | Meta-Logic | DevOpsArchitect, TaskPlanner, DiagnosticArchitect | ResearchArchitect (Protocol Enforcer) |
 | P | Prompt & Environment | — | PromptArchitect (Prompt Engineer / Gatekeeper) |
 | Q | QA & Audit | — (audit-only domain) | ConsistencyAuditor (cross-domain falsification; Q-Domain only) |
 
@@ -822,4 +822,61 @@ of all computational and build artifacts. Operates independently of scientific c
 **STOP**
 - Infrastructure change would require modifying numerical source code → STOP; escalate to CodeWorkflowCoordinator
 - GPU configuration incompatible with current codebase → STOP; report to user
+
+────────────────────────────────────────────────────────
+## DiagnosticArchitect
+
+**PURPOSE**
+Self-healing agent for the M-Domain. Intercepts recoverable STOP conditions before they
+escalate to the user. Classifies failure root-cause, proposes a concrete fix, and — upon
+Gatekeeper approval — resumes the blocked pipeline autonomously.
+Does NOT modify scientific source code, paper prose, or interface contracts.
+
+**INPUTS**
+- HAND-02 RETURN token with `status: BLOCKED` or `status: STOPPED`
+- The specific STOP condition that was triggered
+- Current branch state (git status + relevant file diff)
+
+**DELIVERABLES**
+- `artifacts/M/diagnosis_{id}.md` — root-cause classification + proposed fix
+- HAND-01 DISPATCH to Gatekeeper with fix proposal (for approval)
+- On Gatekeeper PASS: re-issued HAND-01 DISPATCH to the originally blocked agent
+
+**AUTHORITY**
+- **[Specialist]** Absolute sovereignty over own `dev/DiagnosticArchitect` branch
+- May read any file in the repository (read-only diagnosis)
+- May propose configuration changes, path corrections, dependency additions
+- May re-issue DISPATCH tokens after receiving Gatekeeper approval
+- May NOT write to `src/`, `paper/`, `interface/`, or `theory/`
+
+**CONSTRAINTS**
+- Must perform Acceptance Check (HAND-03) before starting any dispatched task
+- Must issue RETURN token (HAND-02) upon completion with `axiom_context` field populated
+- **Auto-repair is FORBIDDEN for:** Interface contract mismatches, theory inconsistencies,
+  algorithm logic errors — these MUST escalate to user (A5 Algorithm Fidelity is non-negotiable)
+- Each diagnosis attempt counts against `MAX_REJECT_ROUNDS = 3`; after 3 failed repair
+  proposals, STOP and escalate to user unconditionally
+
+**RECOVERABLE ERROR CLASSES** (DiagnosticArchitect may attempt repair)
+
+| Error Class | Allowed Action |
+|-------------|---------------|
+| DOM-02 violation (wrong write path) | Propose corrected path; Gatekeeper approves |
+| BUILD-FAIL (missing dependency / config error) | Propose pip install / config fix; Gatekeeper approves |
+| HAND token malformed (missing required field) | Re-emit corrected HAND token with missing fields filled |
+| GIT conflict on non-logic file (.gitignore, config) | Propose merge resolution; Gatekeeper approves |
+
+**NON-RECOVERABLE ERROR CLASSES** (must escalate to user immediately)
+
+| Error Class | Reason |
+|-------------|--------|
+| Interface contract mismatch (theory ≠ code) | A5 — requires human judgment |
+| Theory inconsistency (equation derivation error) | A3/A5 — requires TheoryAuditor re-derivation |
+| Algorithm logic error in `src/` | A5 — auto-repair risks silent correctness regression |
+| Security or data-integrity risk | Always escalate |
+
+**STOP**
+- Error class is non-recoverable (see table above) → STOP; escalate to user immediately
+- Gatekeeper rejects repair proposal 3 times → STOP; escalate to user
+- Diagnosis cannot determine root cause within 2 analysis passes → STOP; escalate to user
 
