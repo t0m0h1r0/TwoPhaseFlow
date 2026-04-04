@@ -217,9 +217,9 @@ def _plot_hermite_galilean(all_results):
         ax.grid(True, alpha=0.3)
 
         fig.tight_layout()
-        fig.savefig(OUT / "hermite_galilean_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(OUT / "hermite_galilean_comparison.eps", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"  Saved: {OUT / 'hermite_galilean_comparison.png'}")
+        print(f"  Saved: {OUT / 'hermite_galilean_comparison.eps'}")
     except ImportError:
         pass
 

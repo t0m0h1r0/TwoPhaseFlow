@@ -208,9 +208,9 @@ def plot_results(conv_results, var_rho_res):
     ax.legend(fontsize=7); ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "ppe_convergence.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "ppe_convergence.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'ppe_convergence.png'}")
+    print(f"  Saved: {OUT / 'ppe_convergence.eps'}")
 
 
 def save_tables(conv_results, var_rho_res):

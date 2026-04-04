@@ -120,9 +120,9 @@ def save_plot(results):
     ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "ab2_ode_convergence.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "ab2_ode_convergence.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'ab2_ode_convergence.png'}")
+    print(f"  Saved: {OUT / 'ab2_ode_convergence.eps'}")
 
 
 def main():

@@ -181,9 +181,9 @@ def _plot_highre_dccd(results, N, dt, T_end):
             ax.set_aspect('equal')
 
         fig.tight_layout()
-        fig.savefig(OUT / "highre_dccd_comparison.png", dpi=150, bbox_inches="tight")
+        fig.savefig(OUT / "highre_dccd_comparison.eps", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"\n  Saved: {OUT / 'highre_dccd_comparison.png'}")
+        print(f"\n  Saved: {OUT / 'highre_dccd_comparison.eps'}")
     except ImportError:
         pass
 

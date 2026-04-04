@@ -242,9 +242,9 @@ def plot_all(xi, H_results, checker_results, adv_results):
     ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "dccd_dissipation.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "dccd_dissipation.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'dccd_dissipation.png'}")
+    print(f"  Saved: {OUT / 'dccd_dissipation.eps'}")
 
 
 def main():
