@@ -206,9 +206,9 @@ def plot_results(time_res, spacetime_res, ode_res):
     ax.legend(fontsize=7); ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "tvd_rk3_convergence.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "tvd_rk3_convergence.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'tvd_rk3_convergence.eps'}")
+    print(f"  Saved: {OUT / 'tvd_rk3_convergence.pdf'}")
 
 
 def print_and_save(time_res, spacetime_res, ode_res):

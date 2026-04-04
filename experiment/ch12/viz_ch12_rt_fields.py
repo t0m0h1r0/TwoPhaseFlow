@@ -6,8 +6,8 @@ Re-runs RT instability (64×256, T=2.5) with 2D snapshot saving:
   - pressure field p(x,y) at t=1.5, 2.5
   - velocity magnitude |u|(x,y) at t=1.5, 2.5
 
-Output: results/ch12_rt/ch12_rt_fields.eps
-        paper/figures/ch12_rt_fields.eps
+Output: results/ch12_rt/ch12_rt_fields.pdf
+        paper/figures/ch12_rt_fields.pdf
 """
 
 import sys, pathlib
@@ -242,7 +242,7 @@ def make_figure(snapshots):
     )
     plt.tight_layout()
 
-    fname = "ch12_rt_fields.eps"
+    fname = "ch12_rt_fields.pdf"
     fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
     fig.savefig(OUT_FIG / fname, dpi=150, bbox_inches="tight")
     plt.close(fig)

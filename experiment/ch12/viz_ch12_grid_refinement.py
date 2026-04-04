@@ -5,8 +5,8 @@ Static droplet (R=0.25, rho_l/rho_g=2, We=10), N=64, T=0.5.
 Compares parasitic currents with uniform (alpha=1) vs interface-fitted (alpha=2,4) grids.
 PPE solved by defect correction (PPESolverSweep, section 8d) -- fully CCD-consistent.
 
-Output: results/ch12_grid_refinement/ch12_grid_refinement.eps
-        paper/figures/ch12_grid_refinement.eps
+Output: results/ch12_grid_refinement/ch12_grid_refinement.pdf
+        paper/figures/ch12_grid_refinement.pdf
 """
 
 import sys, pathlib
@@ -220,7 +220,7 @@ def make_figure(results):
         fontsize=12
     )
 
-    fname = "ch12_grid_refinement.eps"
+    fname = "ch12_grid_refinement.pdf"
     fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
     fig.savefig(OUT_FIG / fname, dpi=150, bbox_inches="tight")
     plt.close(fig)

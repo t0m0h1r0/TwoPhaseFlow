@@ -286,7 +286,7 @@ TwoPhaseFlow/
 ├── experiment/             # E-Domain — experiment scripts + results (chapter-based)
 │   ├── ch10/              #   §10 component verification experiments
 │   │   ├── *.py           #     experiment scripts
-│   │   └── results/       #     result data + figures (NPZ, EPS)
+│   │   └── results/       #     result data + figures (NPZ, PDF)
 │   ├── ch11/              #   §11 single-phase / weak-coupling benchmarks
 │   │   ├── *.py
 │   │   └── results/
@@ -338,7 +338,7 @@ Scripts and results are colocated under `experiment/`:
 | Script location | `experiment/ch{N}/` — chapter-based subdirectories (ch10, ch11, ch12) |
 | Script naming | `exp{N}_{seq}_{description}.py` (e.g., `exp10_1_ccd_convergence.py`) |
 | Result data | `experiment/ch{N}/results/{experiment_name}/` — one subdirectory per experiment run |
-| Result formats | NPZ (numpy compressed), **EPS** for graphs (MANDATORY — no PNG/PDF) |
+| Result formats | NPZ (numpy compressed), **PDF** for graphs (MANDATORY — no PNG/EPS) |
 | Visualization scripts | `viz_ch{N}_{description}.py` in `experiment/ch{N}/` |
 | Plot-only scripts | `plot_ch{N}_figures.py` in `experiment/ch{N}/` for batch figure generation |
 | Data persistence | Scripts MUST save raw result data (NPZ, CSV, JSON) to their chapter's `results/` |
@@ -347,11 +347,11 @@ Scripts and results are colocated under `experiment/`:
 **Script → Result mapping example:**
 ```
 experiment/ch12/exp12_2_static_droplet_convergence.py
-  → experiment/ch12/results/static_droplet/   (NPZ data + EPS figures)
+  → experiment/ch12/results/static_droplet/   (NPZ data + PDF figures)
 ```
 
-**Graph format: EPS ONLY** (publication-quality vector). PNG and PDF are NOT accepted.
-Use `fig.savefig(path.with_suffix('.eps'), format='eps')` in all experiment scripts.
+**Graph format: PDF ONLY** (publication-quality vector). PNG and EPS are NOT accepted.
+Use `fig.savefig('*.pdf')` in all experiment scripts.
 
 **Migration note (2026-04-04):** Top-level `results/` directory has been removed.
 All data moved to `experiment/ch{N}/results/`. Some experiment scripts still contain
@@ -361,7 +361,7 @@ hardcoded `results/` paths — update to `experiment/ch{N}/results/` when editin
 
 - LaTeX source: `paper/` (root: main.tex, preamble.tex, Makefile)
 - Section files: `paper/sections/` (69 files, numbered by chapter: `{NN}_{topic}.tex`)
-- Figures: `paper/figures/` (EPS — copied from `experiment/ch{N}/results/` for publication)
+- Figures: `paper/figures/` (PDF — copied from `experiment/ch{N}/results/` for publication)
 - Bibliography: `paper/bibliography.bib`
 - Build: `make` in `paper/` (latexmk + XeLaTeX)
 
@@ -392,7 +392,7 @@ hardcoded `results/` paths — update to `experiment/ch{N}/results/` when editin
 
 | Branch | Matrix Domain | Owned by | May commit | Merge target | Created by |
 |--------|--------------|----------|------------|--------------|------------|
-| `main` | — | system | never directly | — | Root Admin |
+| `main` | ��� | system | never directly | — | Root Admin |
 | `theory` | T-Domain | TheoryAuditor (Gatekeeper) | TheoryAuditor, CodeArchitect (on dev/) | `main` via PR (Root Admin executes) | TheoryAuditor |
 | `code` | L-Domain | CodeWorkflowCoordinator (Gatekeeper) | CodeWorkflowCoordinator | `main` via PR (Root Admin executes) | CodeWorkflowCoordinator |
 | `experiment` | E-Domain | CodeWorkflowCoordinator (Gatekeeper) | CodeWorkflowCoordinator, ExperimentRunner (on dev/) | `main` via PR (Root Admin executes) | CodeWorkflowCoordinator |

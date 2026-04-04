@@ -252,9 +252,9 @@ def save_plot(errors, Ns, Ks):
     ax.legend(fontsize=8, ncol=2)
     ax.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
-    fig.savefig(OUT / "dc_iteration_accuracy.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "dc_iteration_accuracy.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'dc_iteration_accuracy.eps'}")
+    print(f"  Saved: {OUT / 'dc_iteration_accuracy.pdf'}")
 
 
 def main():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate field_extension_verification.eps (§10.2 Figure 9).
+"""Generate field_extension_verification.pdf (§10.2 Figure 9).
 
 Reads hermite_data.npz produced by exp10_ext_pde_hermite.py.
 Two-panel figure:
@@ -72,7 +72,7 @@ ax_b.set_xlim(55, 140)
 ax_b.grid(True, which="both", ls=":", alpha=0.4)
 
 fig.tight_layout()
-out = FIGDIR / "field_extension_verification.eps"
+out = FIGDIR / "field_extension_verification.pdf"
 fig.savefig(out, dpi=150, bbox_inches="tight")
 print(f"Saved: {out}")
 plt.close(fig)

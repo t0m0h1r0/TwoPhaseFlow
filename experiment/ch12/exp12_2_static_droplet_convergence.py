@@ -186,10 +186,10 @@ def make_figures(results):
     ax.invert_xaxis()
 
     plt.tight_layout()
-    fig.savefig(OUT / "static_droplet_convergence.eps", dpi=150,
+    fig.savefig(OUT / "static_droplet_convergence.pdf", dpi=150,
                 bbox_inches="tight")
     plt.close(fig)
-    print(f"  Figure saved: {OUT / 'static_droplet_convergence.eps'}")
+    print(f"  Figure saved: {OUT / 'static_droplet_convergence.pdf'}")
 
     # ── Time history of parasitic current for each N ──
     fig2, ax2 = plt.subplots(figsize=(7, 5))
@@ -201,10 +201,10 @@ def make_figures(results):
     ax2.set_title("Parasitic Current Time History", fontsize=13)
     ax2.legend(fontsize=10)
     ax2.grid(True, alpha=0.3)
-    fig2.savefig(OUT / "parasitic_time_history.eps", dpi=150,
+    fig2.savefig(OUT / "parasitic_time_history.pdf", dpi=150,
                  bbox_inches="tight")
     plt.close(fig2)
-    print(f"  Figure saved: {OUT / 'parasitic_time_history.eps'}")
+    print(f"  Figure saved: {OUT / 'parasitic_time_history.pdf'}")
 
 
 def main():

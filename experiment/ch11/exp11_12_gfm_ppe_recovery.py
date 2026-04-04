@@ -216,9 +216,9 @@ def _plot_gfm_recovery(sweep_results, conv_results_1000):
         ax2.invert_xaxis()
 
         fig.tight_layout()
-        fig.savefig(OUT / "gfm_recovery_comparison.eps", dpi=150, bbox_inches="tight")
+        fig.savefig(OUT / "gfm_recovery_comparison.pdf", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"  Saved: {OUT / 'gfm_recovery_comparison.eps'}")
+        print(f"  Saved: {OUT / 'gfm_recovery_comparison.pdf'}")
     except ImportError:
         pass
 

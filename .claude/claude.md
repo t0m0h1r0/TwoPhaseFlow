@@ -42,7 +42,7 @@ If input is too long:
 - **Simulation configs** → `src/configs/` (YAML format)
 - **Experiment scripts** → `experiment/ch{N}/` (chapter-based: ch10, ch11, ch12)
 - **Experiment results & graphs** → `experiment/ch{N}/results/{experiment_name}/` (colocated)
-- **Graphs** → **EPS format ONLY** (publication-quality vector; `savefig('*.eps', format='eps')`)
+- **Graphs** → **PDF format ONLY** (publication-quality vector; `savefig('*.pdf')`)
 - **Experiment scripts MUST** save result data (NPZ/CSV/JSON) and support `--plot-only` re-plotting
 - **`results/` (top-level)** → DEPRECATED. Migrate to `experiment/ch{N}/results/`.
 - **Meta-prompts** → `prompts/meta/`. Top-level `meta/` is NOT used.

@@ -199,9 +199,9 @@ def plot_results(res_ccd, res_cd2, res_sin):
     ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "curvature_accuracy.eps", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "curvature_accuracy.pdf", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'curvature_accuracy.eps'}")
+    print(f"  Saved: {OUT / 'curvature_accuracy.pdf'}")
 
 
 def print_and_save(res_ccd, res_cd2, res_sin):
