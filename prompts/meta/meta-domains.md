@@ -15,7 +15,7 @@
 | ID | Domain | Truth Type | Directory | Specialist | Gatekeeper |
 |----|--------|-----------|-----------|------------|------------|
 | T  | Theory & Analysis     | Mathematical Truth  | `theory/`     | Theory Architect    | Theory Auditor          |
-| L  | Core Library          | Functional Truth    | `lib/`        | Library Developer   | Numerical Auditor       |
+| L  | Core Library          | Functional Truth    | `src/`        | Library Developer   | Numerical Auditor       |
 | E  | Experiment            | Empirical Truth     | `experiment/` | Experimentalist     | Validation Guard        |
 | A  | Academic Writing      | Logical Truth       | `paper/`      | Paper Writer        | Logical Reviewer        |
 
@@ -122,7 +122,7 @@ not be deleted (C2 preserve-tested rule). CodeArchitect must consult before remo
 | Specialist members | PaperWriter (absorbs PaperCorrector), PaperCompiler |
 | Storage (write — STRICT) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` |
 | Storage (read — STRICT) | `src/twophase/` (consistency checks only, via interface/TechnicalReport.md), `interface/ResultPackage/`, `interface/TechnicalReport.md` |
-| Storage (FORBIDDEN write) | `src/`, `lib/`, `theory/`, `experiment/`, `prompts/meta/`, `interface/` (without IF-COMMIT token) |
+| Storage (FORBIDDEN write) | `src/`, `theory/`, `experiment/`, `prompts/meta/`, `interface/` (without IF-COMMIT token) |
 | Interface contract in | `interface/ResultPackage/` (E→A); `interface/TechnicalReport.md` (T/E→A) |
 | Rules | docs/00_GLOBAL_RULES.md §P (P1–P4, KL-12: LaTeX authoring, cross-refs, consistency, skepticism) |
 | Lifecycle | **DRAFT** — PaperWriter diff-patch returned COMPLETE on dev/ branch<br>**REVIEWED** — PaperReviewer (Logical Reviewer): 0 FATAL + 0 MAJOR findings (loop ≤ MAX_REVIEW_ROUNDS); Gatekeeper PR approval required<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS → merge `paper` → `main` |
@@ -154,7 +154,7 @@ PaperWriter must consult when changing a symbol that appears in multiple section
 | Specialist members | CodeArchitect (discretization), PaperWriter (mathematical formulation) |
 | Storage (write — STRICT) | `theory/`, `docs/02_ACTIVE_LEDGER.md` |
 | Storage (read — STRICT) | `paper/sections/*.tex` (reference only), `docs/01_PROJECT_MAP.md §6` |
-| Storage (FORBIDDEN write) | `src/`, `lib/`, `experiment/`, `paper/sections/`, `prompts/meta/` |
+| Storage (FORBIDDEN write) | `src/`, `experiment/`, `paper/sections/`, `prompts/meta/` |
 | Interface contract produced | `interface/AlgorithmSpecs.md` (T→L) — signed by TheoryAuditor before L-Domain may code |
 | Rules | docs/00_GLOBAL_RULES.md §A (A3: 3-Layer Traceability mandatory), §AU (AU1–AU3) |
 | Lifecycle | **DRAFT** — Specialist formalizes equations in `theory/`<br>**REVIEWED** — TheoryAuditor independently re-derives and signs; contradictions block REVIEWED<br>**VALIDATED** — TheoryAuditor publishes `interface/AlgorithmSpecs.md`; ConsistencyAuditor (Q-Domain) AU2 PASS |
@@ -174,7 +174,7 @@ independent agreement. If derivations conflict → STOP; escalate to user; do no
 | Matrix alias | E-Domain (Experiment) |
 | Coordinator / Gatekeeper | CodeWorkflowCoordinator (experiment orchestration); ExperimentRunner (Validation Guard for sanity) |
 | Specialist members | ExperimentRunner |
-| Storage (write — STRICT) | `experiment/`, `results/`, `docs/02_ACTIVE_LEDGER.md` |
+| Storage (write — STRICT) | `experiment/`, `docs/02_ACTIVE_LEDGER.md` |
 | **Directory name** | **`experiment/` (singular) — NEVER `experiments/`, `experint/`, or any variant** |
 | Storage (read — STRICT) | `interface/SolverAPI_vX.py` (L→E contract); `src/twophase/` (solver invocation only) |
 | Storage (FORBIDDEN write) | `src/`, `theory/`, `paper/`, `prompts/meta/` |
@@ -255,6 +255,65 @@ AUDIT-RECORD:
 - THEORY_ERROR → Theory Architect → Theory Auditor (T-Domain)
 - EXPERIMENT_ERROR → ExperimentRunner → Validation Guard (E-Domain)
 - Authority conflict → escalate to domain coordinator → user
+
+────────────────────────────────────────────────────────
+# § ARTIFACT & DIRECTORY CONVENTIONS
+
+Project-wide conventions for where artifacts are stored and how they are produced.
+These conventions are MANDATORY for all agents — violations are treated as DOM-02 breaches.
+
+## Library Code
+
+- All library/solver code lives in `src/` (specifically `src/twophase/`).
+- `lib/` is NOT used. Any reference to `lib/` in legacy docs means `src/`.
+
+## Experiment Scripts & Results (E-Domain)
+
+| Convention | Rule |
+|-----------|------|
+| Script location | `experiment/{experiment_name}/` — create a descriptive subdirectory per experiment |
+| Result data | Same directory as the script (`experiment/{experiment_name}/`) |
+| Graphs | Same directory as the script; **EPS format** (`.eps`) mandatory |
+| Data persistence | Scripts MUST save raw result data (CSV, NPY, JSON, etc.) to the experiment directory |
+| Graph reproducibility | Scripts MUST support re-generating graphs from saved result data without re-running the simulation |
+
+**Rationale:** Colocating script + data + graphs in one directory ensures reproducibility.
+EPS format ensures publication-quality vector graphics.
+
+**Implementation pattern (recommended):**
+```python
+# 1. Run simulation and save results
+np.save(f"{output_dir}/results.npy", data)
+
+# 2. Generate graphs from saved data (callable independently)
+def plot_results(data_dir: str):
+    data = np.load(f"{data_dir}/results.npy")
+    fig.savefig(f"{data_dir}/figure.eps", format="eps")
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--plot-only", action="store_true",
+                        help="Regenerate graphs from existing data")
+    ...
+```
+
+## Meta-Prompts (M-Domain)
+
+- Storage: `prompts/meta/` — this is the SSoT per A10.
+- `meta/` at project root is NOT used. Never create a top-level `meta/` directory.
+
+## Agent Prompts (P-Domain)
+
+- Storage: `prompts/agents/`
+
+## Short Papers / Memos
+
+| Convention | Rule |
+|-----------|------|
+| Location | `docs/memo/` |
+| Format | Markdown (`.md`) |
+| Language | Japanese (日本語) |
 
 ────────────────────────────────────────────────────────
 # § BRANCH RULES
@@ -356,7 +415,7 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `src/twophase/` | L-Domain (write) | A: read-only (consistency check); E: invoke via `interface/SolverAPI_vX.py` |
 | `tests/` | L-Domain (write) | Q: read-only |
 | `experiment/` | E-Domain (write) | Q: read-only audit |
-| `results/` | E-Domain (write via ExperimentRunner) | A: read via `interface/ResultPackage/` only |
+| `docs/memo/` | A-Domain (write via PaperWriter) | all: read-only (short papers, Markdown, Japanese) |
 | `paper/sections/*.tex` | A-Domain (write) | L: read-only (equation alignment check); Q: read-only audit |
 | `paper/bibliography.bib` | A-Domain (write) | — |
 | `interface/` | Gatekeepers (write, IF-COMMIT token required) | all Specialists: read-only; Q: read-only audit |

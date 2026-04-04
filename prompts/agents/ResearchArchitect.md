@@ -106,6 +106,9 @@ routing_table:
   - intent: "write / expand paper sections"
     domain: A-Domain
     agent: PaperWriter
+  - intent: "write short paper / memo (docs/memo/, Markdown, Japanese)"
+    domain: A-Domain
+    agent: PaperWriter
   - intent: "apply reviewer corrections / editorial refinements"
     domain: A-Domain
     agent: PaperWriter

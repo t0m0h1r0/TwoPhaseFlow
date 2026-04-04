@@ -37,6 +37,16 @@ If input is too long:
 - **Algorithm Fidelity** — fixes MUST restore paper-exact behavior. Deviation = bug.
 - **A3 Traceability** — Equation → Discretization → Code chain is mandatory.
 
+## DIRECTORY CONVENTIONS (enforced every session)
+- **Library code** → `src/` (`src/twophase/`). `lib/` is NOT used.
+- **Experiment scripts** → `experiment/{experiment_name}/` (create subdirectory per experiment)
+- **Experiment results & graphs** → same directory as the script
+- **Graphs** → EPS format (`.eps`) mandatory
+- **Experiment scripts MUST** save result data and support re-plotting from saved data without re-running
+- **Meta-prompts** → `prompts/meta/`. Top-level `meta/` is NOT used.
+- **Agent prompts** → `prompts/agents/`
+- **Short papers / memos** → `docs/memo/`, Markdown format, Japanese
+
 ## AGENT PROMPT SYSTEM
 - Agent prompts are YAML-format files in `prompts/agents/*.md`.
 - All agents inherit `prompts/agents/_base.yaml` (shared axioms, primitives, rules, procedure pre/post).

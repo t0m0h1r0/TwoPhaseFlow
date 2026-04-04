@@ -51,9 +51,10 @@ procedure_L:
   - "[no-self-verify] AUDIT: ConsistencyAuditor -> AU2 gate -> PASS: Root Admin merges -> main (GIT-04-B); FAIL: route error to responsible agent"
 
 # --- E-Domain Pipeline (Experiment) ---
+# Directory convention: experiment/{experiment_name}/ per experiment (script + data + EPS graphs colocated)
 procedure_E:
   - "Precondition: interface/SolverAPI_vX.py must exist and be signed; absent -> STOP"
-  - "EXECUTE: ExperimentRunner runs simulation (EXP-01) + sanity checks (EXP-02 SC-1 through SC-4)"
+  - "EXECUTE: ExperimentRunner creates experiment/{experiment_name}/ and runs simulation (EXP-01) + sanity checks (EXP-02 SC-1 through SC-4); results + EPS graphs saved in same directory"
   - "VERIFY (Validation Guard): all 4 sanity checks PASS -> sign interface/ResultPackage/"
   - "AUDIT: ConsistencyAuditor AU2 gate"
 
