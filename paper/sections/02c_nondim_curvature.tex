@@ -400,6 +400,10 @@ $H_\varepsilon(\phi) = 1/(1+e^{-\phi/\varepsilon})$ は狭義単調増加
 数学的に厳密に同一の曲率が得られる．
 CLS 法における具体的な計算手順・数値的安定性・実装戦略は
 §~\ref{sec:curvature_direct_psi_cls}（第~\ref{sec:levelset}章）で述べる．
+なお，$\phi$ と $\psi$ は数学的に等価な曲率を与えるが，
+実装では $\psi$（平滑ヘヴィサイド関数）から直接計算する方が有利である：
+$\psi$ は移流後も $[0,1]$ に値が収まり再初期化による Eikonal 条件 $|\bnabla\phi|=1$
+の維持が不要となるため，境界近傍での数値安定性が高い（詳細は §~\ref{sec:curvature_direct_psi_cls}）．
 
 \paragraph{曲率の数値的安定化（実装クイックスタート）}
 \label{par:curvature_stab}

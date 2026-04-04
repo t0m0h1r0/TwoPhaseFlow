@@ -57,3 +57,37 @@ HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\
         対流（AB2），粘性（Crank--Nicolson），Projection（IPC）の3要素が統一されている．
 \end{enumerate}
 \end{tcolorbox}
+
+\begin{tcolorbox}[mybox, title={設計選択の根拠：なぜ FD（$\Ord{h^2}$）で PPE を解き，CCD（$\Ord{h^6}$）で速度補正するのか}]
+\label{box:ppe_design_rationale}
+本稿の PPE 求解戦略（FD 直接法 + CCD 勾配）は，以下の3つの原則から帰結する．
+
+\begin{enumerate}
+  \item \textbf{精度律速の所在：CSF モデル誤差 $\Ord{h^2}$}．
+        全体の空間精度は CSF 正則化 $\delta_\varepsilon$（$\varepsilon=\Ord{h}$）による
+        モデル誤差 $\Ord{\varepsilon^2}=\Ord{h^2}$ で律速される（表~\ref{tab:accuracy_summary}†）．
+        PPE 離散化を $\Ord{h^6}$（CCD-Poisson）に高精度化しても，全体精度の向上には寄与しない．
+        FD $\Ord{h^2}$ は精度バランスの観点から\textbf{十分}である．
+
+  \item \textbf{Balanced-Force 整合性：同一演算子の強制}．
+        Balanced-Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
+        \textbf{同一の離散微分演算子}を使用することで，静止液滴での寄生流れを離散レベルで消去する
+        （§~\ref{sec:rc_balanced_force}）．
+        速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に CCD $\Ord{h^6}$ を使い，
+        表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
+        この整合性を $\Ord{h^6}$ 精度で保証する．PPE 自体の求解精度（FD $\Ord{h^2}$）とは独立した要件である．
+
+  \item \textbf{直接法による残差ゼロ保証}．
+        FD の5点ステンシル Poisson 演算子を LU 分解（直接法）で解くことで，
+        離散残差は機械精度まで消去される．反復法では許容残差 $\epsilon_{\mathrm{tol}}$ が
+        圧力場の系統誤差として残り，Projection ステップの速度場に累積する．
+        直接法はこの系統誤差を原理的に排除する（§~\ref{sec:defect_correction_main}参照）．
+\end{enumerate}
+
+\noindent\textbf{将来展望（分相 PPE への移行）：}
+Smoothed Heaviside 一括法の適用限界（§~\ref{sec:interface_crossing}）を超える
+高密度比・高 Re 数条件では，界面ジャンプ条件を厳密に扱う分相 PPE 解法への移行が必要となる．
+その際は FD 直接法の代わりに CCD-Poisson（§~\ref{sec:ccd_poisson_matrix}）＋
+HFE（§~\ref{sec:field_extension}）による $\Ord{h^6}$ 精度の分相 PPE が候補となる
+（§~\ref{sec:split_ppe_motivation}）．
+\end{tcolorbox}

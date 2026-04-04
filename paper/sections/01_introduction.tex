@@ -17,11 +17,13 @@
 \textbf{本稿の技術的中核はこの問題の根本的解決にある．}
 結合コンパクト差分法（CCD，$\Ord{h^6}$，第~\ref{sec:CCD}章）による高精度曲率計算と，
 FD 直接法による PPE 求解＋CCD $\Ord{h^6}$ 勾配の併用
-（§~\ref{sec:ppe_discretization_choice}）により，
+（§~\ref{sec:ppe_discretization_choice}，
+  第~\ref{sec:interface_crossing}節にて Smoothed Heaviside 法の限界と対比しながら詳述）により，
 Balanced-Force 条件を $\Ord{h^6}$ 精度で維持し，
 数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
 さらに Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発し，
-将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）における
+将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，
+  第~\ref{sec:interface_crossing}節で動機・定式化を詳述）における
 界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した．
 
 本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
@@ -240,7 +242,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 \textbf{本稿の対処：}
 CCD 法による高精度な $\kappa$ 計算（$\Ord{h^6}$）と
 Balanced-Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の CCD 演算子を使用）により
-寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}）．
+寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
 
 \paragraph{失敗例2：質量損失（Mass Loss）}
 \textbf{症状：} 時間が経つにつれて液滴が小さくなり，最終的に消える．
@@ -359,12 +361,12 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
         速度補正の勾配には CCD $\Ord{h^6}$ を適用する．
         CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
         表面張力と圧力勾配に\textbf{同一の CCD 演算子}を使用し，
-        離散化整合性を $\Ord{h^6}$ 精度で確保する（§~\ref{sec:ppe_discretization_choice}）．
+        離散化整合性を $\Ord{h^6}$ 精度で確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
   \item \textbf{Dissipative CCD 移流}：
         $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
         スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}）．
 \end{enumerate}
-さらに，将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）に向けた基盤技術として，
+さらに，将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節）に向けた基盤技術として，
 Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
 HFE は Extension PDE（Aslam 2004）の定常解を CCD の Hermite データ $(f,f',f'')$ から
 仮想時間前進を経由せず直接構成し，界面越し場延長精度を
