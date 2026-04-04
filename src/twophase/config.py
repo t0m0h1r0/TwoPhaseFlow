@@ -130,7 +130,7 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # ソルバー種別: "pseudotime"（CCD+LGMRES反復）/ "ccd_lu"（CCD直接法）/ "sweep"（CCD仮想時間スウィープ）
+    # ソルバー種別: "pseudotime" / "ccd_lu" / "sweep" / "iim" / "iterative"
     ppe_solver_type: str = "pseudotime"
     # LGMRES パラメータ（ppe_solver_type="pseudotime" 時に使用）
     pseudo_tol: float = 1e-8
@@ -139,11 +139,25 @@ class SolverConfig:
     # 仮想時間スウィープソルバーの密度係数: Δτᵢⱼ = C_τ·ρᵢⱼ·h²/2 (§8d eq:dtau_lts)
     pseudo_c_tau: float = 2.0
 
+    # ppe_solver_type="iterative" 用: 離散化 × 反復法の組合せ
+    ppe_discretization: str = "ccd"        # "ccd" (O(h⁶)) or "3pt" (O(h²))
+    ppe_iteration_method: str = "adi"      # "explicit", "gauss_seidel", "adi"
+
     def __post_init__(self) -> None:
-        assert self.ppe_solver_type in ("pseudotime", "ccd_lu", "sweep"), (
-            f"ppe_solver_type は 'pseudotime', 'ccd_lu', または 'sweep' でなければならない: "
+        _valid_types = ("pseudotime", "ccd_lu", "sweep", "iim", "iterative")
+        assert self.ppe_solver_type in _valid_types, (
+            f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"
         )
+        if self.ppe_solver_type == "iterative":
+            assert self.ppe_discretization in ("ccd", "3pt"), (
+                f"ppe_discretization must be 'ccd' or '3pt': "
+                f"'{self.ppe_discretization}'"
+            )
+            assert self.ppe_iteration_method in ("explicit", "gauss_seidel", "adi"), (
+                f"ppe_iteration_method must be 'explicit', 'gauss_seidel', or 'adi': "
+                f"'{self.ppe_iteration_method}'"
+            )
 
 
 # ── メイン設定クラス ─────────────────────────────────────────────────────────
