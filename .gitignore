@@ -61,7 +61,7 @@ paper/*.aux
 paper/*.log
 paper/*.toc
 paper/*.out
-paper/*.pdf
+paper/main.pdf
 paper/*.synctex.gz
 paper/*.fls
 paper/*.fdb_latexmk
