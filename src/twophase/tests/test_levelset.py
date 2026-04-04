@@ -21,6 +21,8 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside, delta, invert_heaviside, update_properties
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi, _gaussian_3x3
+from twophase.levelset.normal_filter import NormalVectorFilter, kappa_from_normals
+from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 from twophase.levelset.advection import LevelSetAdvection
 from twophase.levelset.reinitialize import Reinitializer
 
@@ -366,3 +368,281 @@ def test_curvature_psi_with_gaussian(backend):
             f"Gaussian-filtered curvature: got {kappa_mean:.4f}, "
             f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
         )
+
+
+# ── Test 8: NormalVectorFilter ───────────────────────────────────────────
+
+
+def _circle_setup(N=64, R=0.25):
+    """Return (X, Y, phi, eps) for a circle of radius R on [0,1]^2."""
+    X, Y = np.meshgrid(np.linspace(0, 1, N + 1), np.linspace(0, 1, N + 1),
+                       indexing='ij')
+    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    eps = 1.5 / N
+    return X, Y, phi, eps
+
+
+def test_normal_filter_output_normalized(backend):
+    """Filtered normals must satisfy |n*| = 1 everywhere (at least near interface)."""
+    N = 64
+    _, _, phi, eps = _circle_setup(N)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    nf = NormalVectorFilter(backend, ccd, eps, alpha=0.05)
+    psi = heaviside(xp, phi, eps)
+
+    d1x, _ = ccd.differentiate(phi, 0)
+    d1y, _ = ccd.differentiate(phi, 1)
+
+    nx, ny = nf.apply([d1x, d1y], phi)
+
+    norm = np.sqrt(np.array(nx)**2 + np.array(ny)**2)
+    near_iface = np.abs(phi) < 3 * eps
+    if np.sum(near_iface) > 0:
+        max_dev = float(np.max(np.abs(norm[near_iface] - 1.0)))
+        assert max_dev < 1e-6, f"|n*| deviation from 1: {max_dev:.2e}"
+
+
+def test_normal_filter_smooths_noisy_field(backend):
+    """Filter reduces variance of a noisy normal near the interface.
+
+    Noise is injected directly into the derivative arrays (simulating
+    truncation-error oscillations in CCD), not into phi.  This is the
+    realistic use-case: phi stays smooth (kept by reinitialization) but
+    small interface oscillations appear in the computed normals.
+    """
+    N = 64
+    _, _, phi, eps = _circle_setup(N)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    d1x, _ = ccd.differentiate(phi, 0)
+    d1y, _ = ccd.differentiate(phi, 1)
+
+    # Add noise directly to derivative arrays near the interface
+    rng = np.random.default_rng(42)
+    near_iface = np.abs(phi) < 3 * eps
+    noise_amp = 0.05   # ~5% of unit-normal magnitude
+    d1x_noisy = d1x + noise_amp * rng.standard_normal(d1x.shape) * near_iface
+    d1y_noisy = d1y + noise_amp * rng.standard_normal(d1y.shape) * near_iface
+
+    # Clean normals (reference)
+    grad_norm_clean = np.sqrt(d1x**2 + d1y**2 + 1e-6**2)
+    nx_clean = d1x / grad_norm_clean
+
+    # Noisy normals (before filter)
+    grad_norm_noisy = np.sqrt(d1x_noisy**2 + d1y_noisy**2 + 1e-6**2)
+    nx_noisy = d1x_noisy / grad_norm_noisy
+
+    # Apply filter to noisy derivatives; use clean phi for interface weight
+    nf = NormalVectorFilter(backend, ccd, eps, alpha=0.05)
+    nx_f, _ = nf.apply([d1x_noisy, d1y_noisy], phi)
+
+    err_before = float(np.std((nx_noisy - nx_clean)[near_iface]))
+    err_after = float(np.std((np.array(nx_f) - nx_clean)[near_iface]))
+    assert err_after < err_before, (
+        f"Normal filter did not reduce noise: before={err_before:.4e}, after={err_after:.4e}"
+    )
+
+
+def test_kappa_from_normals_circle(backend):
+    """kappa_from_normals recovers κ ≈ -1/R for a clean circle (no filter)."""
+    N = 64
+    R = 0.25
+    _, _, phi, eps = _circle_setup(N, R)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    d1x, _ = ccd.differentiate(phi, 0)
+    d1y, _ = ccd.differentiate(phi, 1)
+    grad_norm = np.sqrt(d1x**2 + d1y**2 + 1e-3**2)
+    nx = d1x / grad_norm
+    ny = d1y / grad_norm
+
+    kappa = kappa_from_normals(xp, ccd, [nx, ny])
+
+    near_iface = np.abs(phi) < 2 * eps
+    assert np.sum(near_iface) > 0
+    kappa_mean = float(np.mean(np.array(kappa)[near_iface]))
+    kappa_theory = -1.0 / R
+    rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+    assert rel_err < 0.05, (
+        f"kappa_from_normals circle: got {kappa_mean:.4f}, "
+        f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+    )
+
+
+def test_curvature_calculator_with_normal_filter(backend):
+    """CurvatureCalculator + NormalVectorFilter: κ ≈ -1/R for circle (8% tolerance)."""
+    N = 64
+    R = 0.25
+    _, _, phi, eps = _circle_setup(N, R)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    nf = NormalVectorFilter(backend, ccd, eps, alpha=0.05)
+    curv = CurvatureCalculator(backend, ccd, eps, normal_filter=nf)
+    psi = heaviside(xp, phi, eps)
+
+    kappa = curv.compute(psi)
+
+    near_iface = np.abs(phi) < 2 * eps
+    assert np.sum(near_iface) > 0
+    kappa_mean = float(np.mean(np.array(kappa)[near_iface]))
+    kappa_theory = -1.0 / R
+    rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+    assert rel_err < 0.08, (
+        f"CurvatureCalculator+NormalFilter: got {kappa_mean:.4f}, "
+        f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+    )
+
+
+# ── Test 9: InterfaceLimitedFilter (HFE) ─────────────────────────────────
+
+
+def test_hfe_filter_circle_curvature_preserved(backend):
+    """HFE filter does not significantly distort κ for a clean circle."""
+    N = 64
+    R = 0.25
+    _, _, phi, eps = _circle_setup(N, R)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    curv = CurvatureCalculator(backend, ccd, eps)
+    psi = heaviside(xp, phi, eps)
+    kappa_ref = curv.compute(psi)
+
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = hfe.apply(kappa_ref, psi)
+
+    near_iface = np.abs(phi) < 2 * eps
+    assert np.sum(near_iface) > 0
+    kappa_mean = float(np.mean(np.array(kappa_filt)[near_iface]))
+    kappa_theory = -1.0 / R
+    rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+    assert rel_err < 0.08, (
+        f"HFE-filtered curvature: got {kappa_mean:.4f}, "
+        f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+    )
+
+
+def test_hfe_filter_reduces_noise_on_kappa(backend):
+    """HFE filter damps high-frequency noise added directly to κ.
+
+    Noise is modulated by 4ψ(1-ψ) (smooth, matches filter weight) to
+    avoid sharp-mask artifacts that would create spurious large Laplacians.
+    """
+    N = 64
+    _, _, phi, eps = _circle_setup(N)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    curv = CurvatureCalculator(backend, ccd, eps)
+    psi = heaviside(xp, phi, eps)
+    psi_arr = np.array(psi)
+    kappa_clean = np.array(curv.compute(psi))
+
+    # Inject noise modulated by the smooth interface weight 4ψ(1-ψ)
+    # (avoids sharp boundaries that cause large spurious CCD Laplacians)
+    rng = np.random.default_rng(99)
+    w_inject = 4.0 * psi_arr * (1.0 - psi_arr)   # O(1), smooth
+    noise_amp = 0.5 * float(np.max(np.abs(kappa_clean)))
+    kappa_noisy = kappa_clean + noise_amp * rng.standard_normal(kappa_clean.shape) * w_inject
+
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = np.array(hfe.apply(xp.asarray(kappa_noisy), psi))
+
+    near_iface = w_inject > 0.1
+    err_before = float(np.std((kappa_noisy - kappa_clean)[near_iface]))
+    err_after = float(np.std((kappa_filt - kappa_clean)[near_iface]))
+    assert err_after < err_before, (
+        f"HFE filter did not reduce κ noise: before={err_before:.4e}, after={err_after:.4e}"
+    )
+
+
+def test_hfe_filter_zero_far_from_interface(backend):
+    """HFE filter leaves κ unchanged far from interface (w≈0 away from ψ=0.5)."""
+    N = 64
+    _, _, phi, eps = _circle_setup(N)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    psi = heaviside(xp, phi, eps)
+    kappa = xp.ones_like(psi)  # dummy field — any constant works
+
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = hfe.apply(kappa, psi)
+
+    # Far from interface: ψ ≈ 0 or 1, so w = 4ψ(1-ψ) ≈ 0
+    far_mask = (np.array(psi) < 0.01) | (np.array(psi) > 0.99)
+    if np.sum(far_mask) > 0:
+        delta_far = float(np.max(np.abs(np.array(kappa_filt)[far_mask] - 1.0)))
+        assert delta_far < 1e-10, f"HFE filter modified κ far from interface: Δ={delta_far:.2e}"
+
+
+def test_curvature_calculator_with_kappa_filter(backend):
+    """CurvatureCalculator + InterfaceLimitedFilter: κ ≈ -1/R for circle."""
+    N = 64
+    R = 0.25
+    _, _, phi, eps = _circle_setup(N, R)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    curv = CurvatureCalculator(backend, ccd, eps, kappa_filter=hfe)
+    psi = heaviside(xp, phi, eps)
+
+    kappa = curv.compute(psi)
+
+    near_iface = np.abs(phi) < 2 * eps
+    assert np.sum(near_iface) > 0
+    kappa_mean = float(np.mean(np.array(kappa)[near_iface]))
+    kappa_theory = -1.0 / R
+    rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
+    assert rel_err < 0.08, (
+        f"CurvatureCalculator+HFEFilter: got {kappa_mean:.4f}, "
+        f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
+    )
+
+
+def test_hfe_filter_d2_precomputed_matches_ccd(backend):
+    """d2_list pre-computed path gives identical result to CCD-computed path."""
+    N = 64
+    _, _, phi, eps = _circle_setup(N)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    curv = CurvatureCalculator(backend, ccd, eps)
+    psi = heaviside(xp, phi, eps)
+    kappa = curv.compute(psi)
+
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+
+    # Path 1: CCD computed internally
+    kappa_a = hfe.apply(kappa, psi)
+
+    # Path 2: pre-computed d2 passed in
+    d2_list = [ccd.differentiate(kappa, ax)[1] for ax in range(ccd.ndim)]
+    kappa_b = hfe.apply(kappa, psi, d2_list=d2_list)
+
+    diff = float(xp.max(xp.abs(xp.asarray(kappa_a) - xp.asarray(kappa_b))))
+    assert diff < 1e-12, f"d2_list path differs from CCD path: max diff = {diff:.2e}"

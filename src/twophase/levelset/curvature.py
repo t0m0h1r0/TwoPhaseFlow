@@ -25,7 +25,7 @@ grid points far from the interface where |∇φ| ≈ 0.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from .heaviside import invert_heaviside
 from ..interfaces.levelset import ICurvatureCalculator
@@ -33,6 +33,8 @@ from ..interfaces.levelset import ICurvatureCalculator
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+    from .normal_filter import NormalVectorFilter
+    from .curvature_filter import InterfaceLimitedFilter
 
 
 _EPS_NORM = 1e-3   # regularisation floor for |∇φ| (paper §3.5 recommended value)
@@ -86,12 +88,21 @@ class CurvatureCalculator(ICurvatureCalculator):
     dccd_eps : DCCD filter strength (0 = no filter, default 0.05)
     """
 
-    def __init__(self, backend: "Backend", ccd: "CCDSolver", eps,
-                 dccd_eps: float = _DCCD_EPS_D):
+    def __init__(
+        self,
+        backend: "Backend",
+        ccd: "CCDSolver",
+        eps,
+        dccd_eps: float = _DCCD_EPS_D,
+        normal_filter: Optional["NormalVectorFilter"] = None,
+        kappa_filter: Optional["InterfaceLimitedFilter"] = None,
+    ):
         self.xp = backend.xp
         self.ccd = ccd
         self.eps = eps
         self.dccd_eps = dccd_eps
+        self.normal_filter = normal_filter    # optional: NormalVectorFilter
+        self.kappa_filter = kappa_filter      # optional: InterfaceLimitedFilter
 
     def compute(self, psi) -> "array":
         """Compute curvature field κ.
@@ -128,10 +139,21 @@ class CurvatureCalculator(ICurvatureCalculator):
         grad_norm = xp.sqrt(xp.maximum(grad_sq, _EPS_NORM ** 2))
         grad_cube = grad_norm ** 3
 
-        if ndim == 2:
+        if self.normal_filter is not None:
+            # Filter n = ∇φ/|∇φ|, then κ = -∇·n* via CCD divergence.
+            # This path replaces the Hessian formula when filtering is active.
+            from .normal_filter import kappa_from_normals
+            n_filtered = self.normal_filter.apply(d1, phi)
+            kappa = kappa_from_normals(xp, ccd, n_filtered)
+        elif ndim == 2:
             kappa = self._kappa_2d(xp, d1, d2, ccd, phi, grad_cube)
         else:
             kappa = self._kappa_3d(xp, d1, d2, ccd, phi, grad_sq, grad_cube)
+
+        if self.kappa_filter is not None:
+            # HFE filter: κ* = κ − C h² 4ψ(1−ψ) ∇²κ
+            from .curvature_filter import InterfaceLimitedFilter
+            kappa = self.kappa_filter.apply(kappa, psi)
 
         return kappa
 
