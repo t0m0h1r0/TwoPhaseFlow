@@ -143,6 +143,10 @@ class SolverConfig:
     ppe_discretization: str = "ccd"        # "ccd" (O(h⁶)) or "3pt" (O(h²))
     ppe_iteration_method: str = "adi"      # "explicit", "gauss_seidel", "adi"
 
+    # ppe_solver_type="iim" 用: IIM correction mode + solve backend
+    iim_mode: str = "hermite"    # "nearest" (C_0 only) or "hermite" (C_0,C_1,C_2)
+    iim_backend: str = "lu"      # "lu" (Kronecker+direct) or "dc" (defect correction)
+
     def __post_init__(self) -> None:
         _valid_types = ("pseudotime", "ccd_lu", "sweep", "iim", "iterative")
         assert self.ppe_solver_type in _valid_types, (
@@ -157,6 +161,13 @@ class SolverConfig:
             assert self.ppe_iteration_method in ("explicit", "gauss_seidel", "adi"), (
                 f"ppe_iteration_method must be 'explicit', 'gauss_seidel', or 'adi': "
                 f"'{self.ppe_iteration_method}'"
+            )
+        if self.ppe_solver_type == "iim":
+            assert self.iim_mode in ("nearest", "hermite"), (
+                f"iim_mode must be 'nearest' or 'hermite': '{self.iim_mode}'"
+            )
+            assert self.iim_backend in ("lu", "dc"), (
+                f"iim_backend must be 'lu' or 'dc': '{self.iim_backend}'"
             )
 
 

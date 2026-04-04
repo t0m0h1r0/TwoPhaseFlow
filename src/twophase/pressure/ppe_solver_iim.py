@@ -1,52 +1,44 @@
 """
-IIM-CCD PPE solver — Immersed Interface Method correction for CCD operator.
+IIM-CCD PPE solver — Immersed Interface Method for sharp-interface PPE.
 
-Motivation
-----------
-The standard CCD PPE operator (L^ρ p = q) assumes p is smooth everywhere.
-When pressure jumps at the interface (GFM: [p] = σκ ≠ 0), near-interface
-stencils mix Phase-1 and Phase-2 pressure values, producing an O([p]/h²)
-discretisation error that dominates and causes time-marching instability.
+Solves the variable-density PPE with explicit pressure jump [p]=σκ
+at the interface, enabling sharp-interface (split-PPE) treatment
+while maintaining CCD O(h^6) accuracy away from the interface.
 
-Key idea (IIM, LeVeque & Li 1994 applied to the CCD operator)
-------------------------------------------------------------
-For a Phase-1 cell (φ < 0) whose stencil touches Phase-2 cells (φ_k > 0):
-the CCD equation uses p_k^+ (gas pressure), but the Phase-1 equation should
-use p_k^- = p_k^+ − [p] = p_k^+ − σκ.  Moving the discrepancy to the RHS:
+Theory (docs/memo/IIM_CCD_PPE_ShortPaper.md):
+    The CCD operator assumes smooth p. At a sharp interface where
+    [p]=σκ ≠ 0, near-interface stencils produce O([p]/h²) error.
+    The IIM correction moves this discrepancy to the RHS:
 
-    L^ρ p = q + Δq,
+        L^ρ p = q + Δq
 
-    Δq_i = +σκ_i · Σ_{k: φ_k > 0} L^ρ_{i,k}     (Phase-1 rows)
-    Δq_i = −σκ_i · Σ_{k: φ_k < 0} L^ρ_{i,k}     (Phase-2 rows)
+    Two correction modes:
+        "nearest" — zeroth-order: Δq from [p]=σκ only. Robust, O(h^2).
+        "hermite" — high-order: Δq from [p],[p'],[p'']. O(h^6) if κ
+                    is sufficiently accurate.
 
-In matrix-vector form (eq. 6 of iim_ccd_note.tex):
+    Solver backends:
+        "lu"    — CCD Kronecker + direct LU (default, guaranteed accuracy)
+        "dc"    — Defect Correction (matrix-free sweeps, large-scale)
 
-    Δq = σκ ⊙ [m⁻ ⊙ (L^ρ m⁺) − m⁺ ⊙ (L^ρ m⁻)]
+Architecture:
+    PPESolverIIM(IPPESolver):
+        Composes IIMStencilCorrector + either _CCDPPEBase (LU) or
+        PPESolverSweep-style DC iteration. Accepts phi, kappa, sigma
+        as keyword arguments to solve().
 
-where m⁺ = (φ > 0), m⁻ = (φ < 0) as float vectors.
-
-This correction requires only one sparse matrix-vector product and no
-modification of L^ρ itself.  Only the zeroth-order jump [p] = σκ is used
-(first-order [p'_n] correction deferred to future work).
-
-Architecture
-------------
-PPESolverIIM(_CCDPPEBase):
-    Inherits Kronecker-product operator assembly from _CCDPPEBase (OCP).
-    Overrides solve() to accept phi, kappa, sigma as optional kwargs.
-    Falls back to standard CCD-LU when phi is None (sigma=0 or no interface).
-    solve strategy: always-direct sparse LU (same as PPESolverCCDLU).
-
-Usage
------
+Usage:
     solver = PPESolverIIM(backend, config, grid, ccd=ccd)
+
+    # With IIM correction:
     p = solver.solve(rhs, rho, dt, phi=phi, kappa=kappa, sigma=sigma)
 
-    # Without correction (behaves identically to PPESolverCCDLU):
+    # Without correction (falls back to standard CCD-LU):
     p = solver.solve(rhs, rho, dt)
 """
 
 from __future__ import annotations
+
 import warnings
 import numpy as np
 from typing import TYPE_CHECKING
@@ -57,16 +49,17 @@ if TYPE_CHECKING:
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
 
-from .ppe_solver_pseudotime import _CCDPPEBase
+from ..interfaces.ppe_solver import IPPESolver
+from .iim import IIMStencilCorrector
 
 
-class PPESolverIIM(_CCDPPEBase):
-    """CCD Kronecker-product PPE solver with IIM interface correction.
+class PPESolverIIM(IPPESolver):
+    """CCD PPE solver with IIM interface correction.
 
-    Extends the standard CCD-LU solver by adding the zeroth-order IIM
-    correction Δq = σκ ⊙ [m⁻ ⊙ (L m⁺) − m⁺ ⊙ (L m⁻)] to the RHS
-    before solving, so that the pressure jump [p] = σκ is correctly
-    accounted for without modifying the operator or falling back to FD.
+    Supports two solve backends and two correction modes, configured
+    via SimulationConfig:
+        config.solver.iim_mode     : "nearest" | "hermite"
+        config.solver.iim_backend  : "lu" | "dc"
 
     Parameters
     ----------
@@ -76,7 +69,47 @@ class PPESolverIIM(_CCDPPEBase):
     ccd     : CCDSolver (constructor injection; auto-built if None)
     """
 
-    # ── IPPESolver interface ──────────────────────────────────────────
+    def __init__(
+        self,
+        backend: "Backend",
+        config: "SimulationConfig",
+        grid: "Grid",
+        ccd: "CCDSolver | None" = None,
+    ) -> None:
+        self.xp = backend.xp
+        self.backend = backend
+        self.grid = grid
+        self.ndim = grid.ndim
+        self.tol = config.solver.pseudo_tol
+        self.maxiter = config.solver.pseudo_maxiter
+
+        if ccd is not None:
+            self.ccd = ccd
+        else:
+            from ..ccd.ccd_solver import CCDSolver as _CCD
+            self.ccd = _CCD(grid, backend)
+
+        # IIM configuration (with defaults for backward compat)
+        self._iim_mode = getattr(config.solver, "iim_mode", "hermite")
+        self._iim_backend = getattr(config.solver, "iim_backend", "lu")
+
+        # IIM corrector
+        self._corrector = IIMStencilCorrector(grid, mode=self._iim_mode)
+
+        # Pre-compute 1D CCD matrices for Kronecker assembly (LU backend)
+        if self._iim_backend == "lu":
+            self._D1: list = []
+            self._D2: list = []
+            for ax in range(self.ndim):
+                d1, d2 = self._build_1d_ccd_matrices(ax)
+                self._D1.append(d1)
+                self._D2.append(d2)
+
+        # Sweep parameters (DC backend)
+        self._c_tau = getattr(config.solver, "pseudo_c_tau", 2.0)
+        self._h_min = min(grid.L[ax] / grid.N[ax] for ax in range(grid.ndim))
+
+    # ── IPPESolver interface ─────────────────────────────────────────────
 
     def solve(
         self,
@@ -93,186 +126,300 @@ class PPESolverIIM(_CCDPPEBase):
 
         Parameters
         ----------
-        rhs    : array, shape grid.shape — RHS (1/Δt) ∇·u*_RC
+        rhs    : array, shape grid.shape — RHS (1/Δt) ∇·u*
         rho    : array, shape grid.shape — density field
-        dt     : float — time step (passed through for LSP; unused by direct LU)
-        p_init : optional warm-start (ignored by direct LU; accepted for LSP)
-        phi    : optional array, shape grid.shape — level-set φ (signed distance)
-                 Required for IIM correction; if None the correction is skipped.
-        kappa  : optional array, shape grid.shape — interface curvature κ
-                 Required for IIM correction; if None the correction is skipped.
-        sigma  : float — surface tension coefficient σ (dimensional)
-                 If 0.0 the correction is skipped even when phi/kappa are given.
+        dt     : float — time step
+        p_init : optional warm-start
+        phi    : optional array — level-set φ (signed distance)
+        kappa  : optional array — interface curvature κ
+        sigma  : float — surface tension coefficient σ
 
         Returns
         -------
         p : array, shape grid.shape
         """
+        if self._iim_backend == "lu":
+            return self._solve_lu(rhs, rho, dt, p_init,
+                                  phi=phi, kappa=kappa, sigma=sigma)
+        else:
+            return self._solve_dc(rhs, rho, dt, p_init,
+                                  phi=phi, kappa=kappa, sigma=sigma)
+
+    # ── LU backend (Kronecker + direct solve) ────────────────────────────
+
+    def _solve_lu(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
+        """Assemble CCD Kronecker operator, apply IIM correction, direct LU."""
+        import scipy.sparse as sp
+        import scipy.sparse.linalg as spla
+
         shape = self.grid.shape
         n = int(np.prod(shape))
 
-        # Step 1: build variable-density CCD operator L^ρ (before pin)
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
+
+        # CCD operator assembly
         xp = self.xp
         drho_np = []
         for ax in range(self.ndim):
             drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
             drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
-        # Step 2: base RHS
-        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
+        # RHS vector
+        rhs_flat = rhs_np.ravel().copy()
 
-        # Step 3: IIM correction Δq
+        # IIM correction
         if phi is not None and kappa is not None and sigma > 0.0:
-            delta_q = self._compute_iim_correction(phi, kappa, sigma, L_sparse)
-            rhs_np = rhs_np + delta_q
+            phi_np = np.asarray(self.backend.to_host(phi), dtype=float)
+            kap_np = np.asarray(self.backend.to_host(kappa), dtype=float)
 
-        # Step 4: pin centre node (gauge fix)
+            # For hermite mode, compute pressure gradients from previous step
+            dp_dx, dp_dy = None, None
+            if self._iim_mode == "hermite" and p_init is not None:
+                p_prev = xp.asarray(
+                    np.asarray(self.backend.to_host(p_init), dtype=float)
+                )
+                dp_dx_dev, _ = self.ccd.differentiate(p_prev, 0)
+                dp_dy_dev, _ = self.ccd.differentiate(p_prev, 1)
+                dp_dx = np.asarray(self.backend.to_host(dp_dx_dev), dtype=float)
+                dp_dy = np.asarray(self.backend.to_host(dp_dy_dev), dtype=float)
+
+            delta_q = self._corrector.compute_correction(
+                L_sparse, phi_np, kap_np, sigma, rho_np, rhs_np,
+                dp_dx=dp_dx, dp_dy=dp_dy,
+            )
+            rhs_flat += delta_q
+
+        # Pin centre node (gauge fix)
         pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
-        import scipy.sparse as sp
+        pin_dof = int(np.ravel_multi_index(pin_idx, shape))
         L_lil = L_sparse.tolil()
         L_lil[pin_dof, :] = 0.0
         L_lil[pin_dof, pin_dof] = 1.0
         L_pinned = L_lil.tocsr()
-        rhs_np[pin_dof] = 0.0
+        rhs_flat[pin_dof] = 0.0
 
-        # Step 5: direct LU solve
-        p0 = (
-            np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
-            if p_init is not None
-            else np.zeros(n)
-        )
-        p_flat = self._solve_linear_system(L_pinned, rhs_np, p0)
+        # Direct LU solve
+        p_flat = spla.spsolve(L_pinned, rhs_flat)
 
         if not np.isfinite(p_flat).all():
             warnings.warn(
-                f"{type(self).__name__}: solver returned non-finite values.",
-                RuntimeWarning,
-                stacklevel=2,
+                "PPESolverIIM(lu): solver returned non-finite values.",
+                RuntimeWarning, stacklevel=2,
             )
 
         return self.backend.to_device(p_flat.reshape(shape))
 
-    # ── Abstract method implementation (direct LU) ────────────────────
+    # ── DC backend (matrix-free defect correction sweeps) ────────────────
 
-    def _solve_linear_system(
-        self,
-        L_pinned,
-        rhs_np: np.ndarray,
-        p0: np.ndarray,
-    ) -> np.ndarray:
-        """Direct LU solve (spsolve / SuperLU).
+    def _solve_dc(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
+        """Defect correction with IIM: high-order CCD residual + FD sweeps.
 
-        p0 is accepted for LSP compliance but ignored by direct solvers.
+        The IIM correction is applied within the CCD residual evaluation
+        at each DC iteration (§5 of the short paper):
+            d^(k) = b^{IIM} - L_H^{IIM} p^(k)
         """
-        import scipy.sparse.linalg as spla
-        return spla.spsolve(L_pinned, rhs_np)
+        xp = self.xp
+        shape = self.grid.shape
 
-    # ── IIM correction ────────────────────────────────────────────────
+        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
 
-    def _compute_iim_correction(
+        phi_np = kap_np = None
+        if phi is not None and kappa is not None and sigma > 0.0:
+            phi_np = np.asarray(self.backend.to_host(phi), dtype=float)
+            kap_np = np.asarray(self.backend.to_host(kappa), dtype=float)
+
+        # LTS virtual time step
+        dtau = self._c_tau * rho_np * (self._h_min ** 2) / 2.0
+
+        # Initial guess
+        p = (
+            np.zeros(shape, dtype=float)
+            if p_init is None
+            else np.asarray(self.backend.to_host(p_init), dtype=float)
+        )
+
+        # Density gradients (frozen during iteration)
+        rho_dev = xp.asarray(rho_np)
+        drho: list[np.ndarray] = []
+        for ax in range(self.ndim):
+            drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
+            drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+
+        # Gauge pin
+        pin_idx = tuple(ni // 2 for ni in self.grid.N)
+        pin_dof = int(np.ravel_multi_index(pin_idx, shape))
+
+        converged = False
+        for iteration in range(self.maxiter):
+            # CCD residual: R = q_h - L_CCD(p)
+            p_dev = xp.asarray(p)
+            Lp = xp.zeros(shape, dtype=float)
+            dp_arrays = []
+            for ax in range(self.ndim):
+                dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
+                drho_dev = xp.asarray(drho[ax])
+                Lp += d2p_ax / rho_dev - (drho_dev / rho_dev ** 2) * dp_ax
+                dp_arrays.append(
+                    np.asarray(self.backend.to_host(dp_ax), dtype=float)
+                )
+
+            R = rhs_np - np.asarray(self.backend.to_host(Lp))
+
+            # Add IIM correction to residual
+            if phi_np is not None and sigma > 0.0:
+                # Build operator on-the-fly for correction computation
+                # (only needed for sparse element access at crossings)
+                L_sparse = self._build_sparse_operator_from_drho(
+                    rho_np, drho,
+                )
+                dp_dx = dp_arrays[0] if len(dp_arrays) > 0 else None
+                dp_dy = dp_arrays[1] if len(dp_arrays) > 1 else None
+
+                delta_q = self._corrector.compute_correction(
+                    L_sparse, phi_np, kap_np, sigma, rho_np, rhs_np,
+                    dp_dx=dp_dx, dp_dy=dp_dy,
+                )
+                R += delta_q.reshape(shape)
+
+            # Convergence check
+            R_chk = R.ravel().copy()
+            R_chk[pin_dof] = 0.0
+            residual = float(np.sqrt(np.dot(R_chk, R_chk)))
+            if residual < self.tol:
+                converged = True
+                break
+
+            # x-sweep: (1/Δτ - L_FD_x) q = R
+            q = self._sweep_1d(R, rho_np, drho[0], dtau, axis=0)
+            q.ravel()[pin_dof] = 0.0
+
+            # y-sweep: (1/Δτ - L_FD_y) Δp = q
+            dp = self._sweep_1d(q, rho_np, drho[1], dtau, axis=1)
+            dp.ravel()[pin_dof] = 0.0
+
+            p = p + dp
+            p.ravel()[pin_dof] = 0.0
+
+        if not converged:
+            warnings.warn(
+                f"PPESolverIIM(dc): did not converge in {self.maxiter} "
+                f"iterations (residual={residual:.3e}, tol={self.tol:.3e}).",
+                RuntimeWarning, stacklevel=2,
+            )
+
+        if not np.isfinite(p).all():
+            warnings.warn(
+                "PPESolverIIM(dc): non-finite values detected.",
+                RuntimeWarning, stacklevel=2,
+            )
+
+        return self.backend.to_device(p)
+
+    # ── Thomas sweep (identical to PPESolverSweep._sweep_1d) ─────────────
+
+    def _sweep_1d(
         self,
-        phi,
-        kappa,
-        sigma: float,
-        L_sparse,
+        rhs_2d: np.ndarray,
+        rho: np.ndarray,
+        drho: np.ndarray,
+        dtau: np.ndarray,
+        axis: int,
     ) -> np.ndarray:
-        """Compute IIM RHS correction using direct (nearest-neighbour) stencil.
+        """(1/Δτ - L_FD_axis) q = rhs via vectorised Thomas solver."""
+        N = self.grid.N[axis]
+        h = self.grid.L[axis] / N
+        h2 = h * h
 
-        Derivation (iim_ccd_note.tex §2):
-          For a Phase-1 cell (i,j) whose immediate neighbour (i±1,j) or (i,j±1)
-          is in Phase 2, the CCD D2 stencil term L[(i,j),(i±1,j)] * p_(i±1,j)
-          uses Phase-2 pressure but should use Phase-1.
-          Correction: add L[(i,j),(nbr)] * [p] to RHS at (i,j), where [p] = σκ.
+        rhs_f = np.moveaxis(rhs_2d, axis, 0)
+        rho_f = np.moveaxis(rho, axis, 0)
+        drho_f = np.moveaxis(drho, axis, 0)
+        dtau_f = np.moveaxis(dtau, axis, 0)
 
-        Only immediate face-neighbours are corrected (nearest-neighbour IIM).
-        This avoids the non-local artefacts that arise when using L @ mask_phase,
-        since the CCD D2 matrix is effectively dense (block-tridiagonal solve).
+        n = N + 1
 
-        Parameters
-        ----------
-        phi      : array, shape grid.shape — level-set (φ > 0 = gas)
-        kappa    : array, shape grid.shape — curvature (κ > 0 inside bubble)
-        sigma    : float — surface tension coefficient
-        L_sparse : scipy sparse (n×n) — assembled L^ρ before pin
+        inv_dtau = 1.0 / dtau_f
+        inv_rho_h2 = 1.0 / (rho_f * h2)
+        drho_h = drho_f / (rho_f ** 2 * 2.0 * h)
 
-        Returns
-        -------
-        delta_q : np.ndarray, shape (n,) — RHS correction
-        """
+        a = np.empty_like(rhs_f)
+        b = np.empty_like(rhs_f)
+        c = np.empty_like(rhs_f)
+
+        a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]
+        b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
+        c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
+
+        a[0] = 0.0;  b[0] = 1.0;  c[0] = 0.0
+        a[-1] = 0.0; b[-1] = 1.0; c[-1] = 0.0
+
+        rhs_m = rhs_f.copy()
+        rhs_m[0] = 0.0
+        rhs_m[-1] = 0.0
+
+        c_p = np.zeros_like(rhs_f)
+        r_p = np.zeros_like(rhs_f)
+
+        c_p[0] = c[0] / b[0]
+        r_p[0] = rhs_m[0] / b[0]
+        for i in range(1, n):
+            denom = b[i] - a[i] * c_p[i - 1]
+            c_p[i] = c[i] / denom
+            r_p[i] = (rhs_m[i] - a[i] * r_p[i - 1]) / denom
+
+        q = np.empty_like(rhs_f)
+        q[-1] = r_p[-1]
+        for i in range(n - 2, -1, -1):
+            q[i] = r_p[i] - c_p[i] * q[i + 1]
+
+        return np.moveaxis(q, 0, axis)
+
+    # ── Kronecker operator assembly ──────────────────────────────────────
+
+    def _build_1d_ccd_matrices(self, axis: int):
+        """Build 1D CCD derivative matrices D1, D2 for the given axis."""
+        n_pts = self.grid.N[axis] + 1
+        I = np.eye(n_pts)
+        if axis == 0:
+            d1, d2 = self.ccd.differentiate(I, axis=0)
+            return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
+        else:
+            d1, d2 = self.ccd.differentiate(I, axis=1)
+            return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
+
+    def _build_sparse_operator(self, rho_np, drho_np):
+        """Assemble L_CCD^ρ via Kronecker products."""
         import scipy.sparse as sp
 
-        phi_np  = np.asarray(self.backend.to_host(phi),   dtype=float)
-        kap_np  = np.asarray(self.backend.to_host(kappa), dtype=float)
-        shape   = self.grid.shape       # (Nx, Ny)
-        Nx, Ny  = shape
-        n       = Nx * Ny
+        shape = self.grid.shape
+        Nx, Ny = shape
 
-        phi_flat = phi_np.ravel()
-        kap_flat = kap_np.ravel()
-        delta_q  = np.zeros(n)
+        D2x_full = sp.kron(sp.csr_matrix(self._D2[0]), sp.eye(Ny), format='csr')
+        D2y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(self._D2[1]), format='csr')
+        D1x_full = sp.kron(sp.csr_matrix(self._D1[0]), sp.eye(Ny), format='csr')
+        D1y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(self._D1[1]), format='csr')
 
-        # Convert L to LIL for O(1) row access
-        L_lil = L_sparse.tolil()
+        rho_flat = rho_np.ravel()
+        inv_rho = sp.diags(1.0 / rho_flat, format='csr')
+        coeff_x = sp.diags(drho_np[0].ravel() / rho_flat ** 2, format='csr')
+        coeff_y = sp.diags(drho_np[1].ravel() / rho_flat ** 2, format='csr')
 
-        # ── x-direction crossings ────────────────────────────────────────────
-        # Face between (i,j) and (i+1,j): crossing when sign(φ) differs
-        for i in range(Nx - 1):
-            for j in range(Ny):
-                idx_L = i * Ny + j        # flat index of left cell  (i,  j)
-                idx_R = (i + 1) * Ny + j  # flat index of right cell (i+1,j)
-                phi_L = phi_flat[idx_L]
-                phi_R = phi_flat[idx_R]
-                if phi_L * phi_R >= 0.0:
-                    continue              # same phase — no crossing
+        L = (inv_rho @ (D2x_full + D2y_full)
+             - coeff_x @ D1x_full
+             - coeff_y @ D1y_full)
+        return L.tocsr()
 
-                # Average curvature at the interface crossing
-                # (use harmonic mean so kappa at exact zero-crossing is smooth)
-                abs_L = abs(phi_L); abs_R = abs(phi_R)
-                kap_iface = (abs_R * kap_flat[idx_L] + abs_L * kap_flat[idx_R]) / (abs_L + abs_R + 1e-30)
-                jump = sigma * kap_iface   # [p] = σκ
-
-                # Determine which cell is Phase 1 (liquid, φ<0) and Phase 2 (gas, φ>0)
-                # Phase-1 cell's equation uses Phase-2 neighbour → +jump correction
-                # Phase-2 cell's equation uses Phase-1 neighbour → -jump correction
-                if phi_L < 0.0:
-                    # Left = liquid (Ph1), Right = gas (Ph2)
-                    L_coeff = float(L_lil[idx_L, idx_R])   # L[(i,j),(i+1,j)]
-                    R_coeff = float(L_lil[idx_R, idx_L])   # L[(i+1,j),(i,j)]
-                    delta_q[idx_L] += + L_coeff * jump
-                    delta_q[idx_R] += - R_coeff * jump
-                else:
-                    # Left = gas (Ph2), Right = liquid (Ph1)
-                    L_coeff = float(L_lil[idx_L, idx_R])
-                    R_coeff = float(L_lil[idx_R, idx_L])
-                    delta_q[idx_L] += - L_coeff * jump
-                    delta_q[idx_R] += + R_coeff * jump
-
-        # ── y-direction crossings ────────────────────────────────────────────
-        for i in range(Nx):
-            for j in range(Ny - 1):
-                idx_B = i * Ny + j        # flat index of bottom cell (i, j  )
-                idx_T = i * Ny + (j + 1)  # flat index of top cell    (i, j+1)
-                phi_B = phi_flat[idx_B]
-                phi_T = phi_flat[idx_T]
-                if phi_B * phi_T >= 0.0:
-                    continue
-
-                abs_B = abs(phi_B); abs_T = abs(phi_T)
-                kap_iface = (abs_T * kap_flat[idx_B] + abs_B * kap_flat[idx_T]) / (abs_B + abs_T + 1e-30)
-                jump = sigma * kap_iface
-
-                if phi_B < 0.0:
-                    B_coeff = float(L_lil[idx_B, idx_T])
-                    T_coeff = float(L_lil[idx_T, idx_B])
-                    delta_q[idx_B] += + B_coeff * jump
-                    delta_q[idx_T] += - T_coeff * jump
-                else:
-                    B_coeff = float(L_lil[idx_B, idx_T])
-                    T_coeff = float(L_lil[idx_T, idx_B])
-                    delta_q[idx_B] += - B_coeff * jump
-                    delta_q[idx_T] += + T_coeff * jump
-
-        return delta_q
+    def _build_sparse_operator_from_drho(self, rho_np, drho_list):
+        """Build sparse operator for DC backend (uses pre-computed drho)."""
+        # For DC mode, we need to build CCD matrices on-the-fly
+        if not hasattr(self, '_D1'):
+            self._D1 = []
+            self._D2 = []
+            for ax in range(self.ndim):
+                d1, d2 = self._build_1d_ccd_matrices(ax)
+                self._D1.append(d1)
+                self._D2.append(d2)
+        return self._build_sparse_operator(rho_np, drho_list)
