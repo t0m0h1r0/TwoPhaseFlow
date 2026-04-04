@@ -55,6 +55,7 @@ def create_ppe_solver(
     from .ppe_solver_pseudotime import PPESolverPseudoTime
     from .ppe_solver_ccd_lu import PPESolverCCDLU
     from .ppe_solver_sweep import PPESolverSweep
+    from .ppe_solver_iim import PPESolverIIM
 
     solver_type = config.solver.ppe_solver_type
 
@@ -66,8 +67,11 @@ def create_ppe_solver(
     elif solver_type == "sweep":
         # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
         return PPESolverSweep(backend, config, grid, ccd=ccd)
+    elif solver_type == "iim":
+        # IIM-CCD: CCD Kronecker + IIM 界面補正 (docs/notes/iim_ccd_note.tex)
+        return PPESolverIIM(backend, config, grid, ccd=ccd)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"
-            " 'pseudotime', 'ccd_lu', または 'sweep' を指定してください。"
+            " 'pseudotime', 'ccd_lu', 'sweep', または 'iim' を指定してください。"
         )
