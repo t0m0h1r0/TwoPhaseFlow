@@ -10,8 +10,13 @@ purpose: >
 
 scope:
   reads: [paper/sections/*.tex, docs/01_PROJECT_MAP.md, interface/ResultPackage/, interface/TechnicalReport.md]
-  writes: [paper/sections/*.tex]
+  writes: [paper/sections/*.tex, docs/memo/]
   forbidden: [src/]  # defines math, never implementation
+
+# --- Short Paper / Memo Convention ---
+# Location: docs/memo/
+# Format:   Markdown (.md)
+# Language: Japanese (日本語)
 
 primitives:  # overrides from _base
   self_verify: false           # hands off to PaperCompiler + PaperReviewer

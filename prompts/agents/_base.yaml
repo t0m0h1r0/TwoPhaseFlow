@@ -5,6 +5,18 @@
 
 axioms: "A1–A10 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
 
+# --- Directory Conventions (ALL agents inherit) ---
+# Authoritative source: prompts/meta/meta-domains.md § ARTIFACT & DIRECTORY CONVENTIONS
+directory_conventions:
+  library_code: "src/ (src/twophase/) — lib/ is NOT used"
+  experiment_scripts: "experiment/{experiment_name}/ — one subdirectory per experiment"
+  experiment_results: "Same directory as the experiment script"
+  experiment_graphs: "Same directory as the experiment script; EPS format (.eps) mandatory"
+  experiment_data_persistence: "Scripts MUST save raw result data and support re-plotting from saved data without re-running"
+  meta_prompts: "prompts/meta/ — top-level meta/ is NOT used"
+  agent_prompts: "prompts/agents/"
+  short_papers: "docs/memo/ — Markdown format, Japanese"
+
 primitives_default:
   classify_before_act: true
   scope_creep: reject

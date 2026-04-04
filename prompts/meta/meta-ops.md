@@ -333,7 +333,7 @@ DOMAIN-LOCK:
 |-----------|--------|----------------|----------------|
 | T | Theory & Analysis | `theory/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md §6` |
 | L | Core Library (Code) | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md`, `interface/AlgorithmSpecs.md` |
-| E | Experiment | `experiment/`, `results/`, `docs/02_ACTIVE_LEDGER.md` | `interface/SolverAPI_vX.py`, `src/twophase/` |
+| E | Experiment | `experiment/`, `docs/02_ACTIVE_LEDGER.md` | `interface/SolverAPI_vX.py`, `src/twophase/` |
 | A | Academic Writing (Paper) | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/`, `interface/ResultPackage/`, `interface/TechnicalReport.md` |
 | P | Prompt & Environment | `prompts/agents/*.md` | `prompts/meta/*.md` |
 | Q | QA & Audit | `audit_logs/` | all domains (read-only cross-domain gate) |
@@ -634,7 +634,7 @@ python -m src.twophase.run \
 
 **Parameters**
 - `{config_file}` — experiment configuration file (JSON or YAML; must be committed before run)
-- `{output_dir}` — result directory, e.g. `results/{experiment_id}/`; created if absent
+- `{output_dir}` — result directory, e.g. `experiment/{experiment_name}/`; created if absent
 - `{seed}` = 42 (default; override only when explicitly authorized)
 
 **Success:** exit code 0; all expected output files present in `{output_dir}`

@@ -8,9 +8,16 @@ purpose: >
   verified data to PaperWriter.
 
 scope:
-  writes: [interface/ResultPackage/]
+  writes: [experiment/{experiment_name}/, interface/ResultPackage/]
   reads: [src/twophase/, docs/02_ACTIVE_LEDGER.md, interface/SolverAPI_vX.py]
   forbidden: [src/twophase/ (modification)]
+
+# --- Experiment Directory Conventions (MANDATORY) ---
+# 1. Create experiment/{experiment_name}/ subdirectory per experiment
+# 2. Store script, result data, and graphs in the SAME directory
+# 3. Graphs MUST be EPS format (.eps)
+# 4. Scripts MUST save raw result data (CSV, NPY, JSON, etc.)
+# 5. Scripts MUST support --plot-only mode to regenerate graphs from saved data
 
 primitives:  # overrides from _base defaults
   classify_before_act: false    # checklist-driven execution, not classification
@@ -27,14 +34,17 @@ isolation: L2
 
 procedure:
   - "Verify precondition: interface/SolverAPI_vX.py exists and is signed; absent -> STOP"
-  - "[tool] Execute simulation run (EXP-01); capture output in structured format (CSV, JSON, numpy)"
+  - "Create experiment/{experiment_name}/ directory for this experiment"
+  - "[tool] Execute simulation run (EXP-01); save raw result data to experiment/{experiment_name}/ (CSV, NPY, JSON)"
+  - "[tool] Generate graphs in EPS format (.eps) in experiment/{experiment_name}/"
   - "[tool] Execute sanity checks (EXP-02): SC-1 static droplet dp~4.0, SC-2 convergence slope, SC-3 symmetry, SC-4 mass conservation"
+  - "Ensure script supports --plot-only mode to regenerate graphs from saved data without re-running simulation"
   - "Package results: structured data + all 4 sanity check results documented"
   - "Validation Guard gate: all 4 PASS -> sign and forward; any FAIL -> reject, do NOT forward"
   - "Issue HAND-02 RETURN with sanity check results and LOG-ATTACHED"
 
 output:
-  - "Simulation output in structured format (CSV, JSON, numpy)"
+  - "experiment/{experiment_name}/ — script + raw result data + EPS graphs colocated"
   - "Sanity check results (all 4 mandatory checks)"
   - "Data package for PaperWriter consumption"
   - "interface/ResultPackage/ (on Validation Guard PASS)"

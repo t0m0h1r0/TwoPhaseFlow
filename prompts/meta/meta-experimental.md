@@ -394,14 +394,14 @@ Issues no judgment — only produces execution artifacts.
 
 **SCOPE**
 - READ: `tests/`, `src/twophase/`, `artifacts/E/test_spec_{id}.md`
-- WRITE: `tests/last_run.log`, `results/`, `artifacts/E/run_{id}.log`
+- WRITE: `tests/last_run.log`, `experiment/{experiment_name}/`, `artifacts/E/run_{id}.log`
 - FORBIDDEN: modifying source or test code, interpreting results, `paper/`
 
 **CONTEXT_LIMIT:** Input token budget ≤ 2000 tokens. Test spec + execution command only.
 
 **DELIVERABLES**
 - `tests/last_run.log` — raw pytest output
-- `results/{experiment_id}/` — raw simulation output
+- `experiment/{experiment_name}/` — raw simulation output + EPS graphs
 - `artifacts/E/run_{id}.log` — execution log artifact
 - EXP-02 sanity check raw measurements (SC-1 through SC-4)
 

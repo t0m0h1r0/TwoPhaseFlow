@@ -9,7 +9,7 @@ purpose: >
   ResultAuditor's role. Must tee all output to log files.
 
 scope:
-  writes: [tests/last_run.log, results/, artifacts/E/]
+  writes: [tests/last_run.log, experiment/{experiment_name}/, artifacts/E/]
   reads: [tests/, src/twophase/, artifacts/E/test_spec_{id}.md]
   forbidden: [src/twophase/ write, tests/ write except last_run.log, paper/, prompts/]
   context_limit: "≤2000 tokens — test spec + execution command only; no source analysis"
@@ -48,7 +48,7 @@ procedure:
 output:
   - "tests/last_run.log — raw pytest output"
   - "artifacts/E/run_{id}.log — execution log artifact"
-  - "results/{experiment_id}/ — raw simulation output (if EXP-01 task)"
+  - "experiment/{experiment_name}/ — raw simulation output + EPS graphs (if EXP-01 task)"
   - "interface/signals/{id}.signal.md — READY signal for ResultAuditor"
 
 stop:
