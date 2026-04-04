@@ -91,7 +91,7 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | PaperReviewer | GIT-SP | RETURNER |
 | Specialist | TheoryArchitect | GIT-SP | RETURNER |
 | Specialist | TheoryAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
-| Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02 | RETURNER |
+| Specialist | ConsistencyAuditor | GIT-SP, AUDIT-01, AUDIT-02, AUDIT-03 | RETURNER |
 | Specialist | SimulationAnalyst | GIT-SP | RETURNER |
 | Specialist | DevOpsArchitect | GIT-SP | RETURNER |
 | Specialist | DiagnosticArchitect | GIT-SP | RETURNER + DISPATCHER (re-issues HAND-01 after Gatekeeper approval) |
