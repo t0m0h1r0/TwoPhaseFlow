@@ -77,6 +77,22 @@ ResearchArchitect performs this classification as part of GIT-01 Step 0.
 
 When uncertain → classify one level higher (TRIVIAL→FAST-TRACK, FAST-TRACK→FULL-PIPELINE; φ1).
 
+## Gatekeeper Intensity by Pipeline Mode
+
+Every pipeline mode carries a fixed Gatekeeper protocol. Gatekeepers must not escalate intensity
+beyond the assigned tier for low-risk modes (φ2 Minimal Footprint), and must not reduce intensity
+below the assigned tier for high-risk modes (φ1 Conservative Classification).
+
+| Pipeline Mode | Gatekeeper Protocol               | Independent Re-derivation |
+|---------------|-----------------------------------|---------------------------|
+| TRIVIAL       | Lint + DOM-02 scope-check only    | NONE                      |
+| FAST-TRACK    | Standard P-E-V-A loop; GA-2/3/5  | SUMMARY only (not full)   |
+| FULL-PIPELINE | Full AU2 gate + all GA conditions | MANDATORY (GA-4)          |
+
+**Violation:** Applying FULL-PIPELINE intensity to a TRIVIAL task is a φ2 violation.
+Applying TRIVIAL intensity to a FULL-PIPELINE task is a φ1 violation and an A5 (Algorithm Fidelity) risk.
+
+────────────────────────────────────────────────────────
 ## TRIVIAL Mode (NEW — minimal overhead for non-logic changes)
 
 Streamlined path for changes that cannot affect correctness. Designed to eliminate

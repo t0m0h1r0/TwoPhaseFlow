@@ -857,6 +857,10 @@ RETURN → {coordinator_or_requester}
     # false = symmetry broken; Gatekeeper must reject PR (GA-4 condition)
   interface_contracts_checked: [{contract_path}: SIGNED | UNSIGNED | MISSING]
     # List ALL upstream contracts that were required for this task; Gatekeeper verifies (GA-6)
+  axiom_context:        "{phase} | {branch} | {key constraint} | {key finding}"
+    # REQUIRED. ≤100 tokens. The ONLY state the next agent needs; omit derivation steps and logs.
+    # Must include: any open CHK IDs that block the next agent, and the binding constraint.
+    # Format example: "Phase: BOOTSTRAP_COMPLETE | Branch: main | Constraint: GFM unsigned | Finding: DCCD Tier-2 verified"
   issues:               [{issue description requiring coordinator decision}] | none
   next:                 {recommended next step — coordinator decides; this is advisory only}
 ```
@@ -874,6 +878,8 @@ RETURN → {coordinator_or_requester}
 - `verdict` = PASS only if the agent's own success criterion is met (e.g., tests pass, audit passes)
 - `verified_independently` must be explicitly set — default is `false`; omission = broken symmetry violation
 - `interface_contracts_checked` must list all upstream contracts; a MISSING contract blocks Gatekeeper approval (GA-6)
+- `axiom_context` is **required**; omission is a protocol violation. Coordinator must reject incomplete RETURN tokens.
+- `axiom_context` must NOT include intermediate reasoning, full diffs, or raw logs — compress to the minimum needed by the next agent
 - `issues` must be specific enough for the coordinator to make a decision without re-reading everything
 - STOPPED status must include the exact STOP condition that was triggered
 
