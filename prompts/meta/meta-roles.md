@@ -37,6 +37,7 @@ cross-domain gate) are distinct — Broken Symmetry (→ meta-core.md §B).
 
 | # | Condition | Verified by | Block action if absent |
 |---|-----------|------------|------------------------|
+| GA-0 | AUTO-SANITY: TEST-01 executed and 100% PASS; LOG-ATTACHED evidence present | Gatekeeper reads TEST-01 output log before any other review | REJECT without review; re-dispatch Specialist to fix failing tests first. **Gatekeeper must not read code or paper artifacts until GA-0 passes.** |
 | GA-1 | Interface Contract for this task exists on `interface/` and is signed | Gatekeeper reads `interface/` | REJECT PR; request IF-AGREEMENT first |
 | GA-2 | Specialist has NOT self-verified — a separate agent performed verification | RETURN token shows separate VERIFY agent | REJECT PR; re-dispatch independent verifier |
 | GA-3 | Evidence of Verification (LOG-ATTACHED) attached to PR | Gatekeeper checks PR comment | REJECT PR; Specialist must re-submit with logs |

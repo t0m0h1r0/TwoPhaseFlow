@@ -704,6 +704,49 @@ Five procedures, applied in sequence when verifying mathematical claims:
 Do not resolve authority conflicts by preference — derive and escalate (φ3, A9).
 
 ────────────────────────────────────────────────────────
+## AUDIT-03: Adversarial Edge-Case Gate
+
+**Authorized:** ConsistencyAuditor
+**[AUTH_LEVEL: Specialist]**
+**Trigger:** MANDATORY as part of AUDIT-01 item 4 (experiment reproducibility) for FULL-PIPELINE tasks;
+             OPTIONAL for FAST-TRACK tasks (Gatekeeper may invoke at discretion)
+**Phase:** AUDIT
+
+**Purpose:** Verify that the artifact is not merely correct under normal inputs, but resistant to
+boundary conditions and degenerate cases. The auditor attempts to *break* the artifact before
+certifying it. A passing AUDIT-03 means the artifact survived adversarial probing — not just
+that it works for the happy path.
+
+| Step | Action | Output |
+|------|--------|--------|
+| 1 | Identify the artifact's functional boundary conditions (input extremes, singular cases, zero-density regions, interface coinciding with grid boundary, etc.) | `edge_case_list_{id}.md` in `artifacts/Q/` |
+| 2 | For each edge case: predict expected behavior from theory (T-Domain) | Expected outcome per case |
+| 3 | For each edge case: probe the artifact (run test, trace code path, or derive analytically) | Actual outcome per case |
+| 4 | Compare expected vs. actual: PASS if all match; FAIL if any diverge | Per-case verdict |
+| 5 | FAIL cases → classify as: THEORY_ERR (wrong expectation) / IMPL_ERR (artifact wrong) / SCOPE_LIMIT (known limitation, documented) | Classification + routing |
+
+**Edge case categories for code artifacts:**
+- Zero-value inputs (ρ → 0, μ → 0, Δt → 0)
+- Large contrast ratios (ρ_l / ρ_g > 1000)
+- Interface at domain boundary (level-set exactly on grid edge)
+- Pathological geometry (perfectly flat interface, sphere of radius h)
+
+**Edge case categories for paper artifacts:**
+- Equations evaluated at their domain boundaries
+- Limiting cases that should recover known simpler results
+- Sign conventions at negative coordinate values
+
+**Verdict:**
+- All edge cases PASS or SCOPE_LIMIT (documented) → `AUDIT-03: PASS`
+- Any IMPL_ERR → `AUDIT-03: FAIL` → route to responsible Specialist (CODE_ERROR → CodeArchitect; PAPER_ERROR → PaperWriter)
+- Any unresolved THEORY_ERR → `AUDIT-03: FAIL` → STOP; escalate to user
+
+**Rules:**
+- ConsistencyAuditor generates edge cases INDEPENDENTLY — must not use Specialist's own test suite as the source
+- `SCOPE_LIMIT` is valid ONLY when the limitation is explicitly documented in the interface contract or paper
+- AUDIT-03 results are appended to `artifacts/Q/audit_{id}.md`; Gatekeeper verifies before issuing GA verdict
+
+────────────────────────────────────────────────────────
 ## PATCH-IF: Interface Patch Protocol (Agile Synchronization)
 
 **Authorized:** ResearchArchitect (with explicit user confirmation)
@@ -814,6 +857,7 @@ DISPATCH → {specialist_name}
     domain_lock:    {verbatim copy of active DOMAIN-LOCK block from DOM-01}
     if_agreement:   {path to interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
     upstream_contracts: [{path to upstream interface contracts that MUST exist before this task}]
+    artifact_hash:  {sha256({primary_input_artifact_path}) — hex digest; receiver verifies before reading}
     context_root:   {Instruction ID issued by ResearchArchitect at session start — e.g. RA-2026-03-29-001}
     domain_lock_id: {DOM-01 lock ID or set_at hash — proof of active lock acquired this session}
     expected_verdict: {explicit success criterion with measurable threshold — e.g. "AU2 PASS: all 10 items", "convergence slope ≥ 1.8"}
@@ -828,6 +872,7 @@ DISPATCH → {specialist_name}
 - `domain_lock` must be present — a DISPATCH without domain_lock is malformed; specialist must REJECT (HAND-03 check 6)
 - `matrix_domain` must identify the vertical domain (T/L/E/A) or horizontal domain (P/Q/M) for this task
 - `upstream_contracts` must list all Interface Contracts from upstream domains that must be signed before this task begins (T→L: AlgorithmSpecs.md; L→E: SolverAPI_vX.py; E→A: ResultPackage/)
+- `artifact_hash` must be computed from the primary input artifact at dispatch time (`sha256sum {path}`); receiver MUST verify before reading — mismatch = STOP; report tamper/corruption to coordinator
 - `gatekeeper_approval_required: true` is always present — signals that HAND-03 check 9 applies
 - `context_root` must be the Instruction ID from the originating ResearchArchitect routing decision; never omit
 - `domain_lock_id` must match the `set_at` field of the active DOMAIN-LOCK; a DISPATCH with a stale or absent lock ID is malformed
@@ -849,6 +894,7 @@ DISPATCH → {specialist_name}
 RETURN → {coordinator_or_requester}
   status:               COMPLETE | PARTIAL | BLOCKED | STOPPED
   produced:             [{file_path}: {one-line description}, ...] | none
+  artifact_hash:        {sha256({primary_produced_artifact_path}) — hex digest; Gatekeeper verifies before GA-1 check}
   git:
     branch:             {branch}
     commit:             "{commit message of last commit}" | "no-commit"
@@ -879,6 +925,7 @@ RETURN → {coordinator_or_requester}
 - `verdict` = PASS only if the agent's own success criterion is met (e.g., tests pass, audit passes)
 - `verified_independently` must be explicitly set — default is `false`; omission = broken symmetry violation
 - `interface_contracts_checked` must list all upstream contracts; a MISSING contract blocks Gatekeeper approval (GA-6)
+- `artifact_hash` must be computed at artifact write time; Gatekeeper verifies against received file before GA-1 — mismatch = STOP; treat as contamination event
 - `axiom_context` is **required**; omission is a protocol violation. Coordinator must reject incomplete RETURN tokens.
 - `axiom_context` must NOT include intermediate reasoning, full diffs, or raw logs — compress to the minimum needed by the next agent
 - `issues` must be specific enough for the coordinator to make a decision without re-reading everything
