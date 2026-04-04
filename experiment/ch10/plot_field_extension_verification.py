@@ -11,8 +11,8 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-DATA = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_ext_pde_hermite" / "hermite_data.npz"
-FIGDIR = pathlib.Path(__file__).resolve().parent.parent.parent / "paper" / "figures"
+DATA = pathlib.Path(__file__).resolve().parent / "results" / "ext_pde_hermite" / "hermite_data.npz"
+FIGDIR = pathlib.Path(__file__).resolve().parent / "results" / "ext_pde_hermite"
 
 d = np.load(DATA)
 

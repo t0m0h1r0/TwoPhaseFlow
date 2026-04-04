@@ -25,7 +25,7 @@ HFE（§~\ref{sec:field_extension}），
 \toprule
 コンポーネント & 手法 & 空間精度 & 時間精度 \\
 \midrule
-CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$ & $\Ord{\Delta t^3}$ \\
+CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
 PPE（離散化＋求解） & FD 直接法 PPE + CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
 NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
@@ -42,7 +42,9 @@ HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
 \noindent‡\ PPE 自体は FD $\Ord{h^2}$，速度補正の勾配は CCD $\Ord{h^6}$
-（§~\ref{sec:ppe_discretization_choice}）．
+（§~\ref{sec:ppe_discretization_choice}）．\\
+\noindent§\ 単位ステップ質量誤差の大域積分推定（§~\ref{sec:dccd_conservation}）；
+局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]

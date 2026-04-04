@@ -28,7 +28,7 @@ from exp10_10_ipc_time_accuracy import (
     ccd_divergence, ccd_gradient, ccd_laplacian, ccd_convection,
 )
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_highre_dccd"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "highre_dccd"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # D10 filter kernel (10th-order selective dissipation, same as dccd_comparison.py)
@@ -143,6 +143,51 @@ def run_shear_layer(N, Re, T_end, dt, eps_d=0.0, label="CCD"):
     }
 
 
+def _plot_highre_dccd(results, N, dt, T_end):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        r_ccd, r_dccd = results[0], results[1]
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+        # Energy history
+        ax = axes[0]
+        for r, c in [(r_ccd, 'r'), (r_dccd, 'b')]:
+            t_arr = np.arange(1, len(r["Ek_history"])+1) * dt
+            ax.plot(t_arr, r["Ek_history"], c, label=f'{r["label"]} (ε_d={r["eps_d"]})')
+        ax.set_xlabel('$t$')
+        ax.set_ylabel('$E_k$')
+        ax.set_title('Kinetic Energy')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Vorticity snapshots
+        for idx, r in enumerate([r_ccd, r_dccd]):
+            ax = axes[idx + 1]
+            if not r["blowup"] and "u_final" in r and r["u_final"] is not None:
+                u_f, v_f = r["u_final"], r["v_final"]
+                h = 2*np.pi / N
+                dvdx = (np.roll(v_f, -1, axis=0) - np.roll(v_f, 1, axis=0)) / (2*h)
+                dudy = (np.roll(u_f, -1, axis=1) - np.roll(u_f, 1, axis=1)) / (2*h)
+                omega = dvdx - dudy
+                ax.contourf(omega[:N, :N].T, levels=50, cmap='RdBu_r')
+                ax.set_title(f'{r["label"]} (ε_d={r["eps_d"]}): ω at t={T_end}')
+            else:
+                ax.text(0.5, 0.5, 'BLOWUP', ha='center', va='center',
+                        fontsize=20, color='red', transform=ax.transAxes)
+                ax.set_title(f'{r["label"]} (ε_d={r["eps_d"]}): BLOWUP')
+            ax.set_aspect('equal')
+
+        fig.tight_layout()
+        fig.savefig(OUT / "highre_dccd_comparison.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"\n  Saved: {OUT / 'highre_dccd_comparison.png'}")
+    except ImportError:
+        pass
+
+
 def main():
     print("\n" + "=" * 80)
     print("  【11-4】High-Re Double Shear Layer: CCD vs DCCD")
@@ -172,48 +217,7 @@ def main():
               f"{r['Ek_final']:>14.6e} {status:>10}")
 
     # Save plot
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-        # Energy history
-        ax = axes[0]
-        for r, c in [(r_ccd, 'r'), (r_dccd, 'b')]:
-            t_arr = np.arange(1, len(r["Ek_history"])+1) * dt
-            ax.plot(t_arr, r["Ek_history"], c, label=f'{r["label"]} (ε_d={r["eps_d"]})')
-        ax.set_xlabel('$t$')
-        ax.set_ylabel('$E_k$')
-        ax.set_title('Kinetic Energy')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # Vorticity snapshots
-        for idx, r in enumerate([r_ccd, r_dccd]):
-            ax = axes[idx + 1]
-            if not r["blowup"]:
-                # Compute vorticity ω = ∂v/∂x - ∂u/∂y via finite differences
-                u_f, v_f = r["u_final"], r["v_final"]
-                h = 2*np.pi / N
-                dvdx = (np.roll(v_f, -1, axis=0) - np.roll(v_f, 1, axis=0)) / (2*h)
-                dudy = (np.roll(u_f, -1, axis=1) - np.roll(u_f, 1, axis=1)) / (2*h)
-                omega = dvdx - dudy
-                im = ax.contourf(omega[:N, :N].T, levels=50, cmap='RdBu_r')
-                ax.set_title(f'{r["label"]} (ε_d={r["eps_d"]}): ω at t={T_end}')
-            else:
-                ax.text(0.5, 0.5, 'BLOWUP', ha='center', va='center',
-                        fontsize=20, color='red', transform=ax.transAxes)
-                ax.set_title(f'{r["label"]} (ε_d={r["eps_d"]}): BLOWUP')
-            ax.set_aspect('equal')
-
-        fig.tight_layout()
-        fig.savefig(OUT / "highre_dccd_comparison.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"\n  Saved: {OUT / 'highre_dccd_comparison.png'}")
-    except ImportError:
-        pass
+    _plot_highre_dccd([r_ccd, r_dccd], N, dt, T_end)
 
     # Save LaTeX table
     with open(OUT / "table_highre_dccd.tex", "w") as fp:
@@ -228,6 +232,36 @@ def main():
         fp.write("\\bottomrule\n\\end{tabular}\n")
     print(f"  Saved: {OUT / 'table_highre_dccd.tex'}")
 
+    # Save data for --plot-only
+    np.savez(OUT / "highre_dccd_data.npz",
+             r_ccd={k: v for k, v in r_ccd.items() if k != "u_final" and k != "v_final"},
+             r_dccd={k: v for k, v in r_dccd.items() if k != "u_final" and k != "v_final"},
+             r_ccd_u_final=r_ccd.get("u_final"),
+             r_ccd_v_final=r_ccd.get("v_final"),
+             r_dccd_u_final=r_dccd.get("u_final"),
+             r_dccd_v_final=r_dccd.get("v_final"),
+             N=N, dt=dt, T_end=T_end)
+    print(f"  All results saved to {OUT}")
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "highre_dccd_data.npz", allow_pickle=True)
+        _r_ccd = _d["r_ccd"].item()
+        _r_dccd = _d["r_dccd"].item()
+        _u_ccd = _d["r_ccd_u_final"]
+        if _u_ccd is not None and _u_ccd.ndim > 0:
+            _r_ccd["u_final"] = _u_ccd
+            _r_ccd["v_final"] = _d["r_ccd_v_final"]
+        _u_dccd = _d["r_dccd_u_final"]
+        if _u_dccd is not None and _u_dccd.ndim > 0:
+            _r_dccd["u_final"] = _u_dccd
+            _r_dccd["v_final"] = _d["r_dccd_v_final"]
+        _plot_highre_dccd([_r_ccd, _r_dccd], int(_d["N"]), float(_d["dt"]), float(_d["T_end"]))
+    else:
+        main()

@@ -30,8 +30,8 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.hfe.field_extension import HermiteFieldExtension
 
-OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_static_droplet"
-OUT_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
+OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
+OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
 OUT_RES.mkdir(parents=True, exist_ok=True)
 OUT_FIG.mkdir(parents=True, exist_ok=True)
 

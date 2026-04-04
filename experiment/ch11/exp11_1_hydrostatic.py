@@ -17,7 +17,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_hydrostatic"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "hydrostatic"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

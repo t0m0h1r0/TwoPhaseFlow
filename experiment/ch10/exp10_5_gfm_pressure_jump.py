@@ -22,7 +22,7 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.gfm import GFMCorrector
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_gfm"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "gfm"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -282,4 +282,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "gfm_data.npz", allow_pickle=True)
+        plot_results(list(_d["gfm"]), list(_d["csf"]), list(_d["eps_sensitivity"]))
+    else:
+        main()

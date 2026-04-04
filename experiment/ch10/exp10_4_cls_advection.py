@@ -23,7 +23,7 @@ from twophase.initial_conditions.shapes import Circle
 from twophase.initial_conditions.velocity_fields import RigidRotation
 from twophase.initial_conditions.builder import InitialConditionBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_cls_advection"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "cls_advection"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -265,4 +265,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "cls_advection_data.npz", allow_pickle=True)
+        plot_results(list(_d["zalesak"]), list(_d["vortex"]))
+    else:
+        main()

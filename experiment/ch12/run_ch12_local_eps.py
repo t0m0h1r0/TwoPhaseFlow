@@ -30,8 +30,8 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_local_eps"
-OUT_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
+OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "local_eps"
+OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "local_eps"
 OUT_RES.mkdir(parents=True, exist_ok=True)
 OUT_FIG.mkdir(parents=True, exist_ok=True)
 
@@ -246,8 +246,38 @@ def main():
         print(f"  {r['label']:<30} {r['final_t']:8.3f} {str(r['blowup']):>7}")
 
     make_figure(results)
+
+    # Save data for --plot-only
+    np.savez(OUT_RES / "local_eps_data.npz",
+             n_results=len(results),
+             **{f"label_{i}": r['label'] for i, r in enumerate(results)},
+             **{f"t_{i}": r['t'] for i, r in enumerate(results)},
+             **{f"yc_{i}": r['yc'] for i, r in enumerate(results)},
+             **{f"vr_{i}": r['vr'] for i, r in enumerate(results)},
+             **{f"ke_{i}": r['ke'] for i, r in enumerate(results)},
+             **{f"blowup_{i}": r['blowup'] for i, r in enumerate(results)})
     print("Done.")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT_RES / "local_eps_data.npz", allow_pickle=True)
+        _n = int(_d["n_results"])
+        _results = []
+        for _i in range(_n):
+            _results.append({
+                'label': str(_d[f"label_{_i}"]),
+                't': _d[f"t_{_i}"],
+                'yc': _d[f"yc_{_i}"],
+                'vr': _d[f"vr_{_i}"],
+                'ke': _d[f"ke_{_i}"],
+                'blowup': bool(_d[f"blowup_{_i}"]),
+            })
+        make_figure(_results)
+    else:
+        main()

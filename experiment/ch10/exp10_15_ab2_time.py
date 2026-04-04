@@ -18,7 +18,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_ab2_time"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "ab2_time"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -139,4 +139,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "ab2_ode_data.npz", allow_pickle=True)
+        save_plot(list(_d["results"]))
+    else:
+        main()

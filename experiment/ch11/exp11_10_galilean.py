@@ -32,7 +32,7 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_galilean"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "galilean"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

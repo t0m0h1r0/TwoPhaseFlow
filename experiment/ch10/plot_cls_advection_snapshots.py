@@ -11,8 +11,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-SNAP_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_cls_advection"
-FIG_DIR  = pathlib.Path(__file__).resolve().parent.parent.parent / "paper" / "figures"
+SNAP_DIR = pathlib.Path(__file__).resolve().parent / "results" / "cls_advection"
+FIG_DIR  = pathlib.Path(__file__).resolve().parent / "results" / "cls_advection"
 
 
 def plot_snapshot(name, title_initial, title_final):

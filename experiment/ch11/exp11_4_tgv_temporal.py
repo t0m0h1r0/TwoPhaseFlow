@@ -27,8 +27,40 @@ from exp10_10_ipc_time_accuracy import (
     run_ab2_ipc,
 )
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_tgv_temporal"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "tgv_temporal"
 OUT.mkdir(parents=True, exist_ok=True)
+
+
+def _plot_tgv_temporal(results, N, Re):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+        dts = [r["dt"] for r in results]
+        errs_u = [r["err_vel"] for r in results]
+        errs_p = [r["err_p"] for r in results]
+
+        ax.loglog(dts, errs_u, "o-", label="$L^\\infty$ velocity", markersize=6)
+        ax.loglog(dts, errs_p, "s-", label="$L^\\infty$ pressure", markersize=6)
+
+        dt_ref = np.array([dts[0], dts[-1]])
+        e0 = errs_u[0]
+        ax.loglog(dt_ref, e0 * (dt_ref/dt_ref[0])**2, "--", color="gray", alpha=0.5, label="$O(\\Delta t^2)$")
+        ax.loglog(dt_ref, e0 * (dt_ref/dt_ref[0])**1, ":", color="gray", alpha=0.5, label="$O(\\Delta t)$")
+
+        ax.set_xlabel("$\\Delta t$")
+        ax.set_ylabel("$L^\\infty$ error")
+        ax.set_title(f"NS System Time Accuracy (N={N}, Re={Re})")
+        ax.legend()
+        ax.grid(True, which="both", alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(OUT / "tgv_temporal_convergence.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: {OUT / 'tgv_temporal_convergence.png'}")
+    except ImportError:
+        pass
 
 
 def main():
@@ -109,39 +141,20 @@ def main():
     print(f"\n  Saved: {OUT / 'table_tgv_temporal.tex'}")
 
     # Save plot
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
+    _plot_tgv_temporal(results, N, Re)
 
-        fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-        dts = [r["dt"] for r in results]
-        errs_u = [r["err_vel"] for r in results]
-        errs_p = [r["err_p"] for r in results]
-
-        ax.loglog(dts, errs_u, "o-", label="$L^\\infty$ velocity", markersize=6)
-        ax.loglog(dts, errs_p, "s-", label="$L^\\infty$ pressure", markersize=6)
-
-        dt_ref = np.array([dts[0], dts[-1]])
-        e0 = errs_u[0]
-        ax.loglog(dt_ref, e0 * (dt_ref/dt_ref[0])**2, "--", color="gray", alpha=0.5, label="$O(\\Delta t^2)$")
-        ax.loglog(dt_ref, e0 * (dt_ref/dt_ref[0])**1, ":", color="gray", alpha=0.5, label="$O(\\Delta t)$")
-
-        ax.set_xlabel("$\\Delta t$")
-        ax.set_ylabel("$L^\\infty$ error")
-        ax.set_title(f"NS System Time Accuracy (N={N}, Re={Re})")
-        ax.legend()
-        ax.grid(True, which="both", alpha=0.3)
-        fig.tight_layout()
-        fig.savefig(OUT / "tgv_temporal_convergence.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  Saved: {OUT / 'tgv_temporal_convergence.png'}")
-    except ImportError:
-        pass
-
-    np.savez(OUT / "tgv_temporal_data.npz", results=results)
+    np.savez(OUT / "tgv_temporal_data.npz", results=results, N=N, Re=Re)
     print(f"  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "tgv_temporal_data.npz", allow_pickle=True)
+        _plot_tgv_temporal(list(_d["results"]), int(_d["N"]), float(_d["Re"]))
+    else:
+        main()

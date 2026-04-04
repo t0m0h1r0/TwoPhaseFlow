@@ -27,7 +27,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_density_ratio"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "density_ratio"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -270,8 +270,26 @@ def main():
     summary = {rr: {k: v for k, v in r.items() if k != "residuals"}
                for rr, r in results.items()}
     np.savez(OUT / "density_ratio_data.npz", summary=summary)
+    # Save residuals separately for --plot-only
+    np.savez(OUT / "density_ratio_residuals.npz",
+             **{f"res_{rr}": np.array(r["residuals"]) for rr, r in results.items()},
+             ratios=np.array(sorted(results.keys())))
     print(f"\n  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "density_ratio_data.npz", allow_pickle=True)
+        _dr = np.load(OUT / "density_ratio_residuals.npz", allow_pickle=True)
+        _summary = _d["summary"].item()
+        _ratios = list(_dr["ratios"])
+        for _rr in _ratios:
+            _summary[_rr]["residuals"] = list(_dr[f"res_{_rr}"])
+        save_plot(_summary)
+    else:
+        main()

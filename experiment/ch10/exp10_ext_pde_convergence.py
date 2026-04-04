@@ -35,7 +35,7 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_ext_pde"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "ext_pde"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

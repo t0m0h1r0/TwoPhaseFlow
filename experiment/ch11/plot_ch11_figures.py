@@ -47,8 +47,8 @@ plt.rcParams.update({
 COLORS = {"blue": "#1f77b4", "red": "#d62728", "green": "#2ca02c",
           "gray": "#7f7f7f", "orange": "#ff7f0e"}
 
-RESULTS = ROOT / "results"
-FIGOUT = ROOT / "paper" / "figures"
+RESULTS = pathlib.Path(__file__).resolve().parent / "results"
+FIGOUT = pathlib.Path(__file__).resolve().parent / "results"
 FIGOUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -56,7 +56,7 @@ FIGOUT.mkdir(parents=True, exist_ok=True)
 # Figure 1: TGV energy conservation (§11.2)
 # ===================================================================
 def fig_tgv_energy():
-    npz = RESULTS / "ch11_tgv_energy" / "tgv_energy_data.npz"
+    npz = RESULTS / "tgv_energy" / "tgv_energy_data.npz"
     if npz.exists():
         d = np.load(npz)
         times, Ek_num, Ek_ex, div_inf = d["times"], d["Ek_numerical"], d["Ek_exact"], d["div_inf"]
@@ -95,7 +95,7 @@ def fig_tgv_energy():
 # Figure 2: Temporal convergence (§11.3a)
 # ===================================================================
 def fig_tgv_temporal():
-    npz = RESULTS / "ch11_tgv_temporal" / "tgv_temporal_data.npz"
+    npz = RESULTS / "tgv_temporal" / "tgv_temporal_data.npz"
     if npz.exists():
         results = list(np.load(npz, allow_pickle=True)["results"])
     else:
@@ -138,7 +138,7 @@ def fig_tgv_temporal():
 # Figure 3: Kovasznay spatial convergence (§11.3b)
 # ===================================================================
 def fig_kovasznay():
-    npz = RESULTS / "ch11_kovasznay" / "kovasznay_data.npz"
+    npz = RESULTS / "kovasznay" / "kovasznay_data.npz"
     if npz.exists():
         results = list(np.load(npz, allow_pickle=True)["results"])
     else:

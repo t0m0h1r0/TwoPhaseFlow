@@ -22,7 +22,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.heaviside import heaviside
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_curvature"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "curvature"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

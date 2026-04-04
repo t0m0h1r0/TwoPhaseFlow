@@ -25,7 +25,7 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.heaviside import heaviside
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_bf_droplet"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "bf_droplet"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

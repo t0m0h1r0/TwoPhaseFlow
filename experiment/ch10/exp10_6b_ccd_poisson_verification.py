@@ -26,7 +26,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.pressure.ppe_solver_pseudotime import PPESolverPseudoTime
 
-OUT = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch10_ppe_verification"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "ppe_verification"
 FIG_OUT = OUT / "figures"
 PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -448,23 +448,68 @@ def fig_c3(all_results):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print("=" * 70)
-    print("  CCD-Poisson Standalone Verification (C-1, C-2, C-3)")
-    print("=" * 70)
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
 
-    Ns_c1, hs, errors, orders, iters, times = test_c1()
-    Ns_c2, c2_results = test_c2()
-    c3_results = test_c3()
+    if _args.plot_only:
+        # Load C-1
+        _d1 = np.load(OUT / "c1.npz", allow_pickle=True)
+        _Ns_c1 = list(_d1["Ns"])
+        _hs = _d1["hs"]
+        _errors = _d1["errors"]
+        _orders = _d1["orders"]
+        _iters = list(_d1["iters"])
+        _times = list(_d1["times"])
 
-    print("\n--- Generating LaTeX tables ---")
-    save_table_c1(Ns_c1, hs, errors, orders, iters, times)
-    save_table_c2(Ns_c2, c2_results)
-    save_table_c3(c3_results)
+        # Load C-2
+        _d2 = np.load(OUT / "c2.npz", allow_pickle=True)
+        _Ns_c2 = list(_d2["Ns"])
+        _c2_results = {}
+        for _N in _Ns_c2:
+            _c2_results[_N] = {
+                "error": float(_d2[f"N{_N}_error"]),
+                "n_iters": int(_d2[f"N{_N}_iters"]),
+                "residuals": _d2[f"N{_N}_residuals"],
+                "r0": float(_d2[f"N{_N}_r0"]),
+            }
 
-    print("\n--- Generating figures ---")
-    fig_c1(Ns_c1, hs, errors, orders, iters, times)
-    fig_c2(Ns_c2, c2_results)
-    fig_c3(c3_results)
+        # Load C-3
+        _d3 = np.load(OUT / "c3.npz", allow_pickle=True)
+        _ratios = list(_d3["ratios"])
+        _Ns_c3 = list(_d3["Ns"])
+        _c3_results = {}
+        for _r in _ratios:
+            _c3_results[_r] = {
+                "Ns": _Ns_c3,
+                "errors": _d3[f"ratio{_r}_errors"],
+                "iters": _d3[f"ratio{_r}_iters"],
+                "rho_l": float(_r),
+                "rho_g": 1.0,
+            }
 
-    print("\nAll C-1/C-2/C-3 tests complete.")
-    print(f"Results in: {OUT}")
+        fig_c1(_Ns_c1, _hs, _errors, _orders, _iters, _times)
+        fig_c2(_Ns_c2, _c2_results)
+        fig_c3(_c3_results)
+    else:
+        print("=" * 70)
+        print("  CCD-Poisson Standalone Verification (C-1, C-2, C-3)")
+        print("=" * 70)
+
+        Ns_c1, hs, errors, orders, iters, times = test_c1()
+        Ns_c2, c2_results = test_c2()
+        c3_results = test_c3()
+
+        print("\n--- Generating LaTeX tables ---")
+        save_table_c1(Ns_c1, hs, errors, orders, iters, times)
+        save_table_c2(Ns_c2, c2_results)
+        save_table_c3(c3_results)
+
+        print("\n--- Generating figures ---")
+        fig_c1(Ns_c1, hs, errors, orders, iters, times)
+        fig_c2(Ns_c2, c2_results)
+        fig_c3(c3_results)
+
+        print("\nAll C-1/C-2/C-3 tests complete.")
+        print(f"Results in: {OUT}")

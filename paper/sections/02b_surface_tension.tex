@@ -5,7 +5,7 @@
 %   CSF モデルの完全な定式化は付録~\ref{app:csf_full} を参照．
 %
 % ── 後方互換ラベル（他章からの参照を維持するため） ──────────────────────────────
-% eq:young-laplace は eq:young_laplace_jump（Young--Laplace 圧力ジャンプ条件）の直前に配置
+% eq:young_laplace_jump は下記 \label で定義
 \phantomsection\label{eq:Heps_def_preview}%
 % eq:delta_eps_def は §3 (03_levelset.tex) に正式定義済み
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -38,7 +38,6 @@ Balanced-Force 条件（§~\ref{sec:balanced_force}）における
 
 一方，界面における圧力場は Young--Laplace 則に従う不連続を持つ．
 界面圧力ジャンプ条件は：
-\phantomsection\label{eq:young-laplace}%
 \begin{equation}
   [p]_\Gamma \equiv p_\text{gas} - p_\text{liq} = \frac{\kappa}{We}
   \label{eq:young_laplace_jump}

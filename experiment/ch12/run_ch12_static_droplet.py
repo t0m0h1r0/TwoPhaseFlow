@@ -37,8 +37,8 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_static_droplet"
-OUT_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
+OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
+OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
 OUT_RES.mkdir(parents=True, exist_ok=True)
 OUT_FIG.mkdir(parents=True, exist_ok=True)
 
@@ -296,8 +296,61 @@ def main():
     conv = exp1_grid_convergence()
     density = exp2_density_sweep()
     exp3_field_viz(conv)
+
+    # Save data for --plot-only
+    _scalar_keys = ('N', 'rho_l', 'n_steps', 'u_max', 'dp_meas', 'dp_exact', 'dp_err', 'div_max')
+    np.savez(OUT_RES / "run_static_droplet_data.npz",
+             n_conv=len(conv), n_density=len(density),
+             **{f"conv_{i}_{k}": np.array(r[k]) for i, r in enumerate(conv)
+                for k in list(_scalar_keys) + ['u_max_hist', 'phi', 'p', 'vel_mag']},
+             **{f"density_{i}_{k}": np.array(r[k]) for i, r in enumerate(density)
+                for k in list(_scalar_keys) + ['phi', 'p', 'vel_mag']})
     print("\nAll experiments complete.")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT_RES / "run_static_droplet_data.npz", allow_pickle=True)
+        _scalar_keys = ('N', 'rho_l', 'n_steps', 'u_max', 'dp_meas', 'dp_exact', 'dp_err', 'div_max')
+        _n_conv = int(_d["n_conv"])
+        _n_density = int(_d["n_density"])
+        _conv = []
+        for _i in range(_n_conv):
+            _r = {k: _d[f"conv_{_i}_{k}"].item() if _d[f"conv_{_i}_{k}"].ndim == 0
+                  else _d[f"conv_{_i}_{k}"] for k in list(_scalar_keys) + ['u_max_hist', 'phi', 'p', 'vel_mag']}
+            _r['N'] = int(_r['N']); _r['n_steps'] = int(_r['n_steps'])
+            _conv.append(_r)
+        _density = []
+        for _i in range(_n_density):
+            _r = {k: _d[f"density_{_i}_{k}"].item() if _d[f"density_{_i}_{k}"].ndim == 0
+                  else _d[f"density_{_i}_{k}"] for k in list(_scalar_keys) + ['phi', 'p', 'vel_mag']}
+            _r['N'] = int(_r['N']); _r['n_steps'] = int(_r['n_steps'])
+            _density.append(_r)
+        exp3_field_viz(_conv)
+        # Re-generate convergence and density figures
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        # convergence plot
+        Ns_arr = np.array([r['N'] for r in _conv])
+        hs = 1.0 / Ns_arr
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        ax1.loglog(hs, [r['u_max'] for r in _conv], 'bo-', label=r'$\|\mathbf{u}\|_\infty$')
+        ax1.loglog(hs, 0.5 * hs**2, 'k--', alpha=0.5, label=r'$O(h^2)$ ref')
+        ax1.set_xlabel('$h = 1/N$'); ax1.set_ylabel(r'$\|\mathbf{u}_\mathrm{para}\|_\infty$')
+        ax1.set_title('Parasitic velocity'); ax1.legend(); ax1.grid(True, which='both', ls='--', alpha=0.4)
+        ax2.semilogx(hs, [r['dp_err']*100 for r in _conv], 'rs-')
+        ax2.set_xlabel('$h = 1/N$'); ax2.set_ylabel(r'$\Delta p$ relative error (%)')
+        ax2.set_title('Laplace pressure error'); ax2.grid(True, which='both', ls='--', alpha=0.4)
+        plt.tight_layout()
+        fname = "ch12_static_droplet_convergence.png"
+        fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: {OUT_RES / fname}")
+    else:
+        main()
