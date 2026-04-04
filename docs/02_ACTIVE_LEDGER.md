@@ -11,7 +11,7 @@
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
 | last_decision | CHK-085 CLOSED 2026-03-31: PaperWriter §8 structural rewrite (Modifications I–IV). (1) main.tex: include reorder §8.1→§8.2(CCD)→§8.3(GFM)→§8.4(BC+stability) — GFM promoted from last to §8.3. (2) 08b_ppe_pseudotime: moved to Appendix E.5 (Modification IV: solver algorithms → appendix); \subsection→\section + \subsubsection→\subsection promotion. (3) 08c_ccd_poisson: Modification I framing paragraph added (coupled p/p'/p'' unknowns, O(h²)→O(h⁶), DCCD checkerboard suppression). (4) 08f_ppe_bc: subsection renamed to §8.4 "境界条件と数値安定性"; \subsubsection condition number analysis added (κ=O(ρ_l/ρ_g·h⁻²), 4 stability strategies: harmonic-mean face coeff, GFM jump, KL-11 gauge pin, LU fallback). (5) 08_pressure: forward reference to Appendix E.5 added. Compile: 167pp, 0 errors, 0 undefined refs. |
-| next_action | CodeArchitect: implement GFM (replace CSF) + DCCD εd=1/4 decoupling (replace Rhie-Chow) per §sec:gfm + §sec:dccd_decoupling |
+| next_action | none — GFM+DCCD implementation cancelled 2026-04-04 (user decision) |
 
 ### Notes
 - External memory structure initialized from scratch — prior state was implicit (no docs/).
