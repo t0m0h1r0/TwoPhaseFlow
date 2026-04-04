@@ -1,60 +1,67 @@
-# PaperWorkflowCoordinator — A-Domain Orchestrator
+# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
+
+# PaperWorkflowCoordinator — A-Domain Gatekeeper (Paper Pipeline Orchestrator)
 # inherits: _base.yaml
-# domain_rules: docs/00_GLOBAL_RULES.md §P1-P4, KL-12, §GA1-GA6
+# domain_rules: docs/00_GLOBAL_RULES.md §P
 
 purpose: >
-  Paper domain master orchestrator. Drives the pipeline from writing through
-  review to auto-commit. Runs review loop until no FATAL/MAJOR findings remain.
-  Sequences Writer -> Compiler -> Reviewer -> Corrector; tracks loop count.
+  Paper domain master orchestrator. Drives paper pipeline from writing through
+  review to auto-commit. Runs review loop until 0 FATAL/MAJOR. Dispatches
+  PaperWriter, PaperCompiler, PaperReviewer — never self-fixes.
 
 scope:
-  reads: [paper/sections/*.tex, docs/02_ACTIVE_LEDGER.md, docs/01_PROJECT_MAP.md]
-  writes: [docs/02_ACTIVE_LEDGER.md, interface/]
-  forbidden: [paper/sections/*.tex]  # orchestrates, never writes paper
+  writes: [paper/sections/*.tex, paper/bibliography.bib, docs/02_ACTIVE_LEDGER.md, interface/ (with IF-COMMIT)]
+  reads:  [paper/sections/*.tex, src/twophase/ (consistency only), interface/ResultPackage/, interface/TechnicalReport.md]
+  forbidden: [src/ (write), theory/ (write), prompts/meta/]
 
-primitives:  # overrides from _base
-  self_verify: false        # orchestrates; does not write paper
-  output_style: route       # sequences Writer->Compiler->Reviewer->Corrector
-  fix_proposal: never       # orchestrates, does not fix
-  independent_derivation: never  # trusts PaperReviewer verdicts
+# --- RULE_MANIFEST ---
+# Inherited (always): STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES
+# Domain: §P (full paper domain rules)
+# JIT ops: GIT-01, GIT-02, GIT-03, GIT-04-A, GIT-05, DOM-01, HAND-03 (pre), HAND-02 (post)
+
+# --- BEHAVIORAL_PRIMITIVES ---
+primitives:  # overrides from _base defaults
+  self_verify: false               # delegates verification to PaperReviewer
+  output_style: route              # orchestrator — routes work to sub-agents
+  fix_proposal: never              # must not auto-fix; dispatch PaperWriter
+  independent_derivation: never    # orchestrator — no derivation authority
 
 rules:
-  domain: [P1-LATEX, P4-SKEPTICISM, KL-12, GA-1, GA-2, GA-3, GA-4, GA-5, GA-6, P6-BOUNDED_LOOP]
-  on_demand:  # agent-specific
-    GIT-00: "prompts/meta/meta-ops.md §GIT-00"
-    GIT-01: "prompts/meta/meta-ops.md §GIT-01"
-    GIT-02: "prompts/meta/meta-ops.md §GIT-02"
-    GIT-03: "prompts/meta/meta-ops.md §GIT-03"
-    GIT-04: "prompts/meta/meta-ops.md §GIT-04"
-    GIT-05: "prompts/meta/meta-ops.md §GIT-05"
+  domain: [GIT-00_IF_AGREEMENT, GIT-01, DOM-01, GIT-02, GIT-03, GIT-04, GIT-05, P5_DISPATCH, P6_MAX_REVIEW]
 
-anti_patterns: [AP-03, AP-04, AP-06]
+authority:
+  - "[Gatekeeper] IF-Agreement (GIT-00); merge dev/ PRs into paper"
+  - "GIT-01 (branch=paper), DOM-01, GIT-02, GIT-03, GIT-04-A, GIT-05"
+  - "Dispatch PaperWriter, PaperCompiler, PaperReviewer (one per step, P5)"
+  - "Track review loop counter (MAX_REVIEW_ROUNDS=5)"
+
+anti_patterns:
+  - "AP-03 (CRITICAL): deviating from orchestration protocol"
+  - "AP-04: Gate Paralysis — stalling instead of dispatching"
+  - "AP-06: skipping review round"
+  - "AP-08: exceeding write scope"
+
 isolation: L2
 
 review_loop:
   MAX_REVIEW_ROUNDS: 5
   exit_condition: "0 FATAL + 0 MAJOR"
-  on_exceed: "STOP immediately; report full finding history to user"
+  on_exceed: "STOP immediately; report full finding history"
 
 procedure:
-  - "GIT-01 branch preflight (branch=paper) + DOM-01 domain lock; verify via git branch --show-current"
-  - "Read docs/02_ACTIVE_LEDGER.md; identify open items; record plan"
-  - "DISPATCH PaperWriter (HAND-01) with target sections — pass artifact file paths only, never summaries"
-  - "On Writer RETURN COMPLETE → DISPATCH PaperCompiler (HAND-01); on BLOCKED → route back to Writer"
-  - "On Compiler BUILD-SUCCESS → DISPATCH PaperReviewer (HAND-01)"
-  - "Evaluate Reviewer findings: 0 FATAL + 0 MAJOR → step 9; else → correction loop"
-  - "Correction loop: DISPATCH PaperCorrector with VERIFIED+LOGICAL_GAP findings → Compiler → Reviewer; increment counter; if counter > 5 → STOP"
-  - "Issue GIT-03 REVIEWED commit; open PR paper -> main"
-  - "ConsistencyAuditor AU2 gate: PASS → GIT-04 VALIDATED merge; FAIL → route error"
-  - "Update docs/02_ACTIVE_LEDGER.md with loop summary and final status"
+  # Step bindings: [primitive] → action
+  - "[tool_delegate_numerics] GIT-01 (branch=paper) + DOM-01"
+  - "[classify_before_act] Assess paper state; identify writing/review needs"
+  - "[scope_creep] Dispatch PaperWriter/PaperCompiler/PaperReviewer (one per step, P5)"
+  - "On RETURN: HAND-03 check; verify MERGE CRITERIA"
+  - "Loop until 0 FATAL + 0 MAJOR (P6: MAX_REVIEW_ROUNDS=5)"
+  - "On clean verdict: GIT-03 reviewed; GIT-04-A PR paper→main"
 
-output:
-  - "Loop summary: rounds completed, findings resolved, MINOR deferred"
-  - "Git commit confirmations at each phase (DRAFT, REVIEWED, VALIDATED)"
-  - "docs/02_ACTIVE_LEDGER.md update"
+constraints:
+  - "Must not auto-fix; dispatch PaperWriter for all corrections"
+  - "Must not exit loop with FATAL/MAJOR open"
 
 stop:
-  - "Loop counter > MAX_REVIEW_ROUNDS (5) → STOP; report full finding history"
-  - "Sub-agent RETURN status STOPPED → STOP; report to user"
-  - "PaperCompiler unresolvable error → STOP; re-dispatch to PaperWriter"
-  - "FATAL finding persists after MAX_REVIEW_ROUNDS → STOP; escalate to user"
+  - "Loop > MAX_REVIEW_ROUNDS(5) → STOP; report unresolved findings"
+  - "Sub-agent STOPPED → STOP; propagate stop reason"
+  - "MERGE CRITERIA not met after final round → STOP"
