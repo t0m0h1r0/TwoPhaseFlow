@@ -174,12 +174,14 @@ class PPESolverIIM(IPPESolver):
             # Solve for p̃ using Kronecker LU with smoothed density
             p_tilde = self._lu_solve_smooth(rhs_tilde, rho_smooth, drho_s)
 
-            # Recover full pressure: p = p̃ + σκ · (1 - H_sharp(φ))
-            # Liquid (φ<0) gets +σκ, gas (φ≥0) gets 0
-            H_sharp = (phi_np >= 0.0).astype(float)
-            p_full = p_tilde + sigma * kap_np * (1.0 - H_sharp)
+            # Return smooth part p̃ for the corrector (∇p̃ is CCD-safe).
+            # The sharp jump σκ·(1-H) is already handled by the CSF body
+            # force in the predictor; adding it here would double-count and
+            # produce Gibbs oscillations when CCD computes ∇p in the corrector.
+            # For diagnostics: p_physical = p̃ + σκ·(1-H_sharp(φ)).
+            self._last_jump_field = sigma * kap_np  # cache for diagnostics
 
-            return self.backend.to_device(p_full)
+            return self.backend.to_device(p_tilde)
 
         else:
             # No IIM — solve with Kronecker LU
