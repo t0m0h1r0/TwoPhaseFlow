@@ -209,11 +209,18 @@ Every generated prompt must include BOTH citation lines below the title heading:
 | 2 | Solver / infra separation | No solver logic mixed with I/O, logging, config |
 | 3 | Layer isolation | No cross-layer edits without authorization |
 | 4 | External memory discipline | All state refs docs/ files by ID; no old filenames |
-| 5 | Stop conditions unambiguous | Every STOP has explicit trigger |
+| 5 | Stop conditions unambiguous | Every STOP has explicit trigger; STOP section ends with: `Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.` (Generation Rule 13) |
 | 6 | Standard template format | PURPOSE / INPUTS / RULES (or CONSTRAINTS) / PROCEDURE / OUTPUT / STOP |
 | 7 | Environment optimization | Appropriate for target |
 | 8 | Backward compatibility | No semantic removal without deprecation note |
 | 9 | Core/System sovereignty (A9) | CodeArchitect includes import auditing mandate; ConsistencyAuditor includes CRITICAL_VIOLATION detection + THEORY_ERR/IMPL_ERR taxonomy |
+
+**Note — per-agent prompt audit:** PromptAuditor.md §q3_checklist contains the 9-item
+per-agent compliance checklist (Q3-1 through Q3-9). This table is the system-level
+deployment validation checklist. Both must pass before any agent prompt is accepted.
+Key per-agent items: Q3-7 (JIT line in PROCEDURE), Q3-8 (no cross-layer leakage),
+Q3-9 (BS-1 note for auditor agents). Behavioral Action Table (formerly Q3-4) is
+**OMITTED** in all generated prompts per Generation Rule 9.
 
 ### Q4 — Compression Rules
 
