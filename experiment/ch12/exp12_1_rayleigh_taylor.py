@@ -42,7 +42,7 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch12_rt"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "rt"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -342,13 +342,18 @@ def main():
     make_figures(result)
 
     # Save data
+    _snap_keys = sorted(result["snapshots"].keys(), key=lambda s: float(s.split("=")[1]))
     np.savez(OUT / "rt_data.npz",
              times=result["times"], amplitudes=result["amplitudes"],
              ke_history=result["ke_history"],
              mass_history=result["mass_history"],
              omega_measured=result["omega_measured"],
              omega_theory=result["omega_theory"],
-             omega_rel_err=result["omega_rel_err"])
+             omega_rel_err=result["omega_rel_err"],
+             mass_0=result["mass_0"],
+             mass_final=result["mass_final"],
+             snap_keys=np.array(_snap_keys),
+             **{f"snap_{i}": result["snapshots"][k]["psi"] for i, k in enumerate(_snap_keys)})
 
     # Save LaTeX table
     with open(OUT / "table_rt.tex", "w") as fp:
@@ -372,4 +377,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "rt_data.npz", allow_pickle=True)
+        _snap_keys = list(_d["snap_keys"])
+        _snapshots = {k: {"psi": _d[f"snap_{i}"], "t": float(k.split("=")[1])}
+                      for i, k in enumerate(_snap_keys)}
+        _result = {
+            "times": _d["times"], "amplitudes": _d["amplitudes"],
+            "snapshots": _snapshots,
+            "omega_measured": float(_d["omega_measured"]),
+            "omega_theory": float(_d["omega_theory"]),
+            "omega_rel_err": float(_d["omega_rel_err"]),
+            "mass_0": float(_d["mass_0"]),
+            "mass_final": float(_d["mass_final"]),
+        }
+        make_figures(_result)
+    else:
+        main()

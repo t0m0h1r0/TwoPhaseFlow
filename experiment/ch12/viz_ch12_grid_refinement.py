@@ -28,8 +28,8 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_grid_refinement"
-OUT_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
+OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "grid_refinement"
+OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "grid_refinement"
 OUT_RES.mkdir(parents=True, exist_ok=True)
 OUT_FIG.mkdir(parents=True, exist_ok=True)
 

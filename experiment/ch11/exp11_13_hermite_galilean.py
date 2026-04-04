@@ -33,7 +33,7 @@ from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.closest_point_extender import ClosestPointExtender
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_hermite_galilean"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "hermite_galilean"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -193,6 +193,37 @@ def run_hermite_galilean(N, rho_l, rho_g, U=1.0, We=10.0,
     }
 
 
+def _plot_hermite_galilean(all_results):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+
+        for r in all_results:
+            if r["N"] == 64:
+                label = f"{'Hermite IPC' if r['use_hermite'] else 'Raw IPC'} (N={r['N']})"
+                style = '-' if r['use_hermite'] else '--'
+                color = 'steelblue' if r['use_hermite'] else 'salmon'
+                t_arr = np.arange(1, len(r['u_para_history']) + 1) * (1.0 / r['n_steps_target'])
+                ax.semilogy(t_arr, r['u_para_history'], style, color=color,
+                           label=label, linewidth=2)
+
+        ax.set_xlabel('$t / T$')
+        ax.set_ylabel('$\\|\\mathbf{u}_{\\mathrm{para}}\\|_\\infty$')
+        ax.set_title('Galilean invariance: Raw IPC vs Hermite IPC ($\\rho_l/\\rho_g=2$, $We=10$, $N=64$)')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        fig.tight_layout()
+        fig.savefig(OUT / "hermite_galilean_comparison.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: {OUT / 'hermite_galilean_comparison.png'}")
+    except ImportError:
+        pass
+
+
 def main():
     print("\n" + "=" * 80)
     print("  【11-13】IPC + Hermite Extension: Galilean Recovery (§11.4d)")
@@ -237,39 +268,27 @@ def main():
     print(f"\n  Saved: {OUT / 'table_hermite_galilean.tex'}")
 
     # ── Plot ──
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
+    _plot_hermite_galilean(all_results)
 
-        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
-
-        for r in all_results:
-            if r["N"] == 64:
-                label = f"{'Hermite IPC' if r['use_hermite'] else 'Raw IPC'} (N={r['N']})"
-                style = '-' if r['use_hermite'] else '--'
-                color = 'steelblue' if r['use_hermite'] else 'salmon'
-                t_arr = np.arange(1, len(r['u_para_history']) + 1) * (1.0 / r['n_steps_target'])
-                ax.semilogy(t_arr, r['u_para_history'], style, color=color,
-                           label=label, linewidth=2)
-
-        ax.set_xlabel('$t / T$')
-        ax.set_ylabel('$\\|\\mathbf{u}_{\\mathrm{para}}\\|_\\infty$')
-        ax.set_title('Galilean invariance: Raw IPC vs Hermite IPC ($\\rho_l/\\rho_g=2$, $We=10$, $N=64$)')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        fig.tight_layout()
-        fig.savefig(OUT / "hermite_galilean_comparison.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  Saved: {OUT / 'hermite_galilean_comparison.png'}")
-    except ImportError:
-        pass
-
-    np.savez(OUT / "hermite_galilean_data.npz", results=[
-        {k: v for k, v in r.items() if k != 'u_para_history'} for r in all_results])
+    np.savez(OUT / "hermite_galilean_data.npz",
+             results=[{k: v for k, v in r.items() if k != 'u_para_history'} for r in all_results],
+             **{f"u_para_hist_{i}": np.array(r['u_para_history']) for i, r in enumerate(all_results)})
     print(f"  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "hermite_galilean_data.npz", allow_pickle=True)
+        _results = list(_d["results"])
+        for _i, _r in enumerate(_results):
+            _r = dict(_r.item()) if hasattr(_r, 'item') else dict(_r)
+            _r['u_para_history'] = list(_d[f"u_para_hist_{_i}"])
+            _results[_i] = _r
+        _plot_hermite_galilean(_results)
+    else:
+        main()

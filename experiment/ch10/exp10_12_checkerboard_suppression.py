@@ -22,7 +22,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_checkerboard"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "checkerboard"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -285,8 +285,24 @@ def main():
              test_a=test_a, test_b_summary={k: v for k, v in test_b.items()
                                              if k not in ("spec_ccd", "spec_dccd")},
              test_c=test_c)
+    # Save spectra separately for --plot-only
+    np.savez(OUT / "checkerboard_spectra.npz",
+             spec_ccd=test_b["spec_ccd"], spec_dccd=test_b["spec_dccd"])
     print(f"\n  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "checkerboard_data.npz", allow_pickle=True)
+        _ds = np.load(OUT / "checkerboard_spectra.npz", allow_pickle=True)
+        _test_b = _d["test_b_summary"].item()
+        _test_b["spec_ccd"] = _ds["spec_ccd"]
+        _test_b["spec_dccd"] = _ds["spec_dccd"]
+        save_plot(_test_b)
+    else:
+        main()

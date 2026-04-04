@@ -20,7 +20,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.heaviside import heaviside
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_curvature"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "curvature"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -255,4 +255,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "curvature_data.npz", allow_pickle=True)
+        plot_results(list(_d["circle_ccd"]), list(_d["circle_cd2"]), list(_d["sinusoidal"]))
+    else:
+        main()

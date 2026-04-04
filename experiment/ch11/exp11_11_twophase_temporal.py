@@ -31,7 +31,7 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_twophase_temporal"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "twophase_temporal"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

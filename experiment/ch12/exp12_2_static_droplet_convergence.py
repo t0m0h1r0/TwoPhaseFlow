@@ -34,7 +34,7 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch12_static_droplet"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
 OUT.mkdir(parents=True, exist_ok=True)
 
 RHO_L = 2.0
@@ -263,9 +263,22 @@ def main():
 
     np.savez(OUT / "convergence_data.npz",
              results=[{k: v for k, v in r.items() if k != "u_max_history"}
-                      for r in results])
+                      for r in results],
+             **{f"u_max_hist_{i}": np.array(r["u_max_history"]) for i, r in enumerate(results)})
     print(f"\n  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "convergence_data.npz", allow_pickle=True)
+        _results = [dict(r.item()) if hasattr(r, 'item') else dict(r) for r in _d["results"]]
+        for _i, _r in enumerate(_results):
+            _r["u_max_history"] = list(_d[f"u_max_hist_{_i}"])
+        make_figures(_results)
+    else:
+        main()

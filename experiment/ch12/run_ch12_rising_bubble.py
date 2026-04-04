@@ -40,8 +40,8 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.pressure.ppe_builder import PPEBuilder
 
-OUT_RES = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_rising_bubble"
-OUT_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
+OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "rising_bubble"
+OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "rising_bubble"
 OUT_RES.mkdir(parents=True, exist_ok=True)
 OUT_FIG.mkdir(parents=True, exist_ok=True)
 
@@ -304,8 +304,34 @@ def main():
     snaps, t_hist, yc, vr, ke = run()
     print(f"\n  Got {len(snaps)} snapshots: {[s['t'] for s in snaps]}")
     make_figure(snaps, t_hist, yc, vr, ke)
+
+    # Save data for --plot-only
+    _snap_fields = ('rho', 'psi', 'p', 'vel_mag')
+    np.savez(OUT_RES / "rising_bubble_data.npz",
+             n_snaps=len(snaps),
+             t_hist=np.array(t_hist),
+             centroid_hist=np.array(yc),
+             rise_vel_hist=np.array(vr),
+             ke_hist=np.array(ke),
+             snap_times=np.array([s['t'] for s in snaps]),
+             **{f"snap_{i}_{k}": snaps[i][k] for i in range(len(snaps)) for k in _snap_fields})
     print("Done.")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT_RES / "rising_bubble_data.npz", allow_pickle=True)
+        _n = int(_d["n_snaps"])
+        _snap_fields = ('rho', 'psi', 'p', 'vel_mag')
+        _snaps = [{'t': float(_d["snap_times"][_i]),
+                   **{k: _d[f"snap_{_i}_{k}"] for k in _snap_fields}}
+                  for _i in range(_n)]
+        make_figure(_snaps, list(_d["t_hist"]), list(_d["centroid_hist"]),
+                    list(_d["rise_vel_hist"]), list(_d["ke_hist"]))
+    else:
+        main()

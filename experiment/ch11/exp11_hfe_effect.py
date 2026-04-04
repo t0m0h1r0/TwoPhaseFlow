@@ -33,7 +33,7 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.hfe.field_extension import HermiteFieldExtension
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_hfe_effect"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "hfe_effect"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

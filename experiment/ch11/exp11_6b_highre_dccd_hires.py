@@ -27,7 +27,7 @@ from exp10_10_ipc_time_accuracy import (
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from exp11_6_highre_dccd import double_shear_ic, d10_filter_2d
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_highre_dccd"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "highre_dccd"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

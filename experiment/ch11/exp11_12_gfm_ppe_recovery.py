@@ -32,7 +32,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_gfm_recovery"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "gfm_recovery"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -179,6 +179,50 @@ def run_comparison(N, rho_l, rho_g):
     }
 
 
+def _plot_gfm_recovery(sweep_results, conv_results_1000):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+        # Left: density ratio sweep (N=64)
+        drs = [r["rho_ratio"] for r in sweep_results]
+        sm_errs = [r["err_smoothed_liq"] for r in sweep_results]
+        gfm_errs = [r["err_gfm_liq"] for r in sweep_results]
+        ax1.semilogy(drs, sm_errs, 'rs-', label='Smoothed Heaviside', markersize=7)
+        ax1.semilogy(drs, gfm_errs, 'bo-', label='GFM per-phase', markersize=7)
+        ax1.set_xscale('log')
+        ax1.set_xlabel('$\\rho_l / \\rho_g$')
+        ax1.set_ylabel('$L^\\infty$ error (liquid interior)')
+        ax1.set_title('PPE accuracy vs density ratio ($N=64$)')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Right: grid convergence (ρ=1000)
+        ns_1000 = [r["N"] for r in conv_results_1000]
+        sm_1000 = [r["err_smoothed_liq"] for r in conv_results_1000]
+        gfm_1000 = [r["err_gfm_liq"] for r in conv_results_1000]
+        ax2.loglog(ns_1000, sm_1000, 'rs-', label='Smoothed Heaviside', markersize=7)
+        ax2.loglog(ns_1000, gfm_1000, 'bo-', label='GFM per-phase', markersize=7)
+        ns_ref = np.array([16, 128])
+        ax2.loglog(ns_ref, gfm_1000[0] * (ns_ref[0]/ns_ref)**2, 'k--', alpha=0.4, label='$O(h^2)$')
+        ax2.set_xlabel('$N$')
+        ax2.set_ylabel('$L^\\infty$ error (liquid interior)')
+        ax2.set_title('Grid convergence ($\\rho_l/\\rho_g = 1000$)')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        ax2.invert_xaxis()
+
+        fig.tight_layout()
+        fig.savefig(OUT / "gfm_recovery_comparison.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"  Saved: {OUT / 'gfm_recovery_comparison.png'}")
+    except ImportError:
+        pass
+
+
 def main():
     print("\n" + "=" * 80)
     print("  【11-12】GFM PPE Recovery: Density-Ratio Independence (§11.5d)")
@@ -281,48 +325,7 @@ def main():
     print(f"  Saved: {OUT / 'table_gfm_convergence.tex'}")
 
     # ── Plot ──
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
-        # Left: density ratio sweep (N=64)
-        drs = [r["rho_ratio"] for r in sweep_results]
-        sm_errs = [r["err_smoothed_liq"] for r in sweep_results]
-        gfm_errs = [r["err_gfm_liq"] for r in sweep_results]
-        ax1.semilogy(drs, sm_errs, 'rs-', label='Smoothed Heaviside', markersize=7)
-        ax1.semilogy(drs, gfm_errs, 'bo-', label='GFM per-phase', markersize=7)
-        ax1.set_xscale('log')
-        ax1.set_xlabel('$\\rho_l / \\rho_g$')
-        ax1.set_ylabel('$L^\\infty$ error (liquid interior)')
-        ax1.set_title('PPE accuracy vs density ratio ($N=64$)')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-
-        # Right: grid convergence (ρ=1000)
-        ns_1000 = [r["N"] for r in conv_results_1000]
-        sm_1000 = [r["err_smoothed_liq"] for r in conv_results_1000]
-        gfm_1000 = [r["err_gfm_liq"] for r in conv_results_1000]
-        ax2.loglog(ns_1000, sm_1000, 'rs-', label='Smoothed Heaviside', markersize=7)
-        ax2.loglog(ns_1000, gfm_1000, 'bo-', label='GFM per-phase', markersize=7)
-        # Reference slope O(h²)
-        ns_ref = np.array([16, 128])
-        ax2.loglog(ns_ref, gfm_1000[0] * (ns_ref[0]/ns_ref)**2, 'k--', alpha=0.4, label='$O(h^2)$')
-        ax2.set_xlabel('$N$')
-        ax2.set_ylabel('$L^\\infty$ error (liquid interior)')
-        ax2.set_title('Grid convergence ($\\rho_l/\\rho_g = 1000$)')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        ax2.invert_xaxis()
-
-        fig.tight_layout()
-        fig.savefig(OUT / "gfm_recovery_comparison.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"  Saved: {OUT / 'gfm_recovery_comparison.png'}")
-    except ImportError:
-        pass
+    _plot_gfm_recovery(sweep_results, conv_results_1000)
 
     np.savez(OUT / "gfm_recovery_data.npz",
              sweep_results=sweep_results,
@@ -332,4 +335,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "gfm_recovery_data.npz", allow_pickle=True)
+        _plot_gfm_recovery(list(_d["sweep_results"]), list(_d["conv_results_1000"]))
+    else:
+        main()

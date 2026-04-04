@@ -17,7 +17,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 
 # ── Output ──────────────────────────────────────────────
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_ccd_convergence"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "ccd_convergence"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── Test functions ──────────────────────────────────────
@@ -287,4 +287,19 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys as _sys
+    if "--plot-only" in _sys.argv:
+        import matplotlib; matplotlib.use("Agg")
+        d = np.load(OUT / "convergence_data.npz", allow_pickle=True)
+        res_sin_per = list(d["sin_periodic"])
+        res_exp_wall = list(d["exp_wall"])
+        plot_convergence(
+            [res_sin_per, res_exp_wall],
+            ["sin (periodic)", "exp (wall)"],
+            ["d1x_Li", "d2x_Li"],
+            "CCD Differentiation Convergence",
+            "ccd_convergence.png",
+        )
+        print("  --plot-only done.")
+    else:
+        main()

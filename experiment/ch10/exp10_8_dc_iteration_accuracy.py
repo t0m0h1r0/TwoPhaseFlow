@@ -26,7 +26,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_dc_iteration"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "dc_iteration"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # ── Analytical solution ──────────────────────────────────────────────────────
@@ -275,4 +275,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "dc_iteration_data.npz", allow_pickle=True)
+        _Ns = list(_d["Ns"])
+        _Ks = list(_d["Ks"])
+        save_plot(_d["errors"].item(), _Ns, _Ks)
+    else:
+        main()

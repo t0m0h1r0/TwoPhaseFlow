@@ -30,7 +30,7 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_ppe_varrho"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "ppe_varrho"
 OUT.mkdir(parents=True, exist_ok=True)
 
 

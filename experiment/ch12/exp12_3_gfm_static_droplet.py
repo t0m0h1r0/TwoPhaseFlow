@@ -34,7 +34,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch12_gfm_droplet"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "gfm_droplet"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -263,4 +263,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "gfm_droplet_data.npz", allow_pickle=True)
+        _rbr = _d["results_by_rho"].item()
+        # Convert string keys back to int
+        _results_by_rho = {int(k): list(v) for k, v in _rbr.items()}
+        make_figures(_results_by_rho)
+    else:
+        main()

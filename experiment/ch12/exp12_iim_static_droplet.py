@@ -39,7 +39,7 @@ from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
 from twophase.pressure.ppe_solver_iim import PPESolverIIM
 
-OUT = pathlib.Path(__file__).resolve().parents[2] / "results" / "ch12_iim"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "iim"
 OUT.mkdir(parents=True, exist_ok=True)
 
 # Physical parameters
@@ -195,6 +195,81 @@ def main():
     plt.close()
     print(f"Field plot:        {field_path}")
 
+    # Save data for --plot-only
+    np.savez(OUT / "iim_data.npz",
+             grids=grids, err_ccd=err_ccd, err_iim=err_iim,
+             p_ccd_64=p_ccd_64, p_iim_64=p_iim_64,
+             phi_64=phi_64, X_64=X_64, Y_64=Y_64)
+    print(f"Data saved:        {OUT / 'iim_data.npz'}")
+
+
+def _plot_iim(data):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    grids = list(data["grids"])
+    err_ccd = list(data["err_ccd"])
+    err_iim = list(data["err_iim"])
+    p_ccd_64 = data["p_ccd_64"]
+    p_iim_64 = data["p_iim_64"]
+    phi_64 = data["phi_64"]
+    X_64 = data["X_64"]
+    Y_64 = data["Y_64"]
+
+    h_vals = [1.0 / N for N in grids]
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.loglog(h_vals, err_ccd, "o--", color="steelblue", label="CCD-LU (no correction)")
+    ax.loglog(h_vals, err_iim, "s-",  color="darkorange", label="IIM-CCD (this work)")
+    h_ref = np.array([h_vals[0], h_vals[-1]])
+    for slope, ls, label in [(2, ":", "O(h²)"), (4, "-.", "O(h⁴)"), (6, "--", "O(h⁶)")]:
+        scale = err_ccd[0] / h_vals[0]**slope
+        ax.loglog(h_ref, scale * h_ref**slope, ls, color="gray", alpha=0.5, label=label)
+    ax.set_xlabel("h = 1/N")
+    ax.set_ylabel("|Δp − Δp_exact| / We")
+    ax.set_title("Static droplet: Laplace pressure error")
+    ax.legend(fontsize=8)
+    ax.grid(True, which="both", alpha=0.3)
+    plt.tight_layout()
+    conv_path = OUT / "iim_convergence.png"
+    plt.savefig(conv_path, dpi=150)
+    plt.close()
+    print(f"Convergence plot: {conv_path}")
+
+    if p_ccd_64 is not None and hasattr(p_ccd_64, 'ndim') and p_ccd_64.ndim > 0:
+        fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+        vmax = max(np.abs(p_ccd_64).max(), np.abs(p_iim_64).max())
+        for ax_, p_, title_ in zip(axes[:2], [p_ccd_64, p_iim_64], ["CCD-LU", "IIM-CCD"]):
+            im = ax_.pcolormesh(X_64, Y_64, p_, cmap="RdBu_r",
+                                vmin=-vmax, vmax=vmax, shading="auto")
+            plt.colorbar(im, ax=ax_)
+            ax_.contour(X_64, Y_64, phi_64, levels=[0], colors="k", linewidths=1)
+            ax_.set_title(title_)
+            ax_.set_aspect("equal")
+        diff = p_iim_64 - p_ccd_64
+        im3 = axes[2].pcolormesh(X_64, Y_64, diff, cmap="RdBu_r",
+                                  vmin=-np.abs(diff).max(), vmax=np.abs(diff).max(),
+                                  shading="auto")
+        plt.colorbar(im3, ax=axes[2])
+        axes[2].contour(X_64, Y_64, phi_64, levels=[0], colors="k", linewidths=1)
+        axes[2].set_title("IIM − CCD-LU")
+        axes[2].set_aspect("equal")
+        plt.suptitle(f"Static droplet pressure (N=64, R=0.25)")
+        plt.tight_layout()
+        field_path = OUT / "pressure_fields_N64.png"
+        plt.savefig(field_path, dpi=150)
+        plt.close()
+        print(f"Field plot:        {field_path}")
+
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "iim_data.npz", allow_pickle=True)
+        _plot_iim(_d)
+    else:
+        main()

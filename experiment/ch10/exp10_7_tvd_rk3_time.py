@@ -19,7 +19,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.time_integration.tvd_rk3 import tvd_rk3
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_tvd_rk3"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "tvd_rk3"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -269,4 +269,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "tvd_rk3_data.npz", allow_pickle=True)
+        plot_results(list(_d["temporal"]), list(_d["spacetime"]), list(_d["ode"]))
+    else:
+        main()

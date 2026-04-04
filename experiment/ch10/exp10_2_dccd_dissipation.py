@@ -18,7 +18,7 @@ from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch10_dccd_dissipation"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "dccd_dissipation"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -281,9 +281,18 @@ def main():
         fp.write("\\bottomrule\n\\end{tabular}\n")
 
     np.savez(OUT / "dissipation_data.npz",
-             xi=xi, checker=checker_results, advection=adv_results)
+             xi=xi, H_results=H_results, checker=checker_results, advection=adv_results)
     print(f"\n  All results saved to {OUT}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "dissipation_data.npz", allow_pickle=True)
+        plot_all(_d["xi"], _d["H_results"].item(), list(_d["checker"]), _d["advection"].item())
+    else:
+        main()

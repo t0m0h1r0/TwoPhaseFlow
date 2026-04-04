@@ -26,7 +26,7 @@ from exp10_10_ipc_time_accuracy import (
     ccd_divergence, ccd_gradient, ccd_laplacian, ccd_convection,
 )
 
-OUT = pathlib.Path(__file__).resolve().parent.parent.parent / "results" / "ch11_tgv_energy"
+OUT = pathlib.Path(__file__).resolve().parent / "results" / "tgv_energy"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -105,6 +105,38 @@ def run_tgv_energy(N=64, T_end=2.0, Re=100.0, dt=0.01):
     return np.array(times), np.array(Ek_numerical), np.array(Ek_exact), np.array(div_inf)
 
 
+def _plot_tgv_energy(times, Ek_num, Ek_ex, div_inf, N, Re):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
+
+        ax1.plot(times, Ek_num, 'b-', label='Numerical $E_k$', linewidth=1.5)
+        ax1.plot(times, Ek_ex, 'r--', label='Exact $E_k(0) e^{-4\\nu t}$', linewidth=1.5)
+        ax1.set_xlabel('$t$')
+        ax1.set_ylabel('$E_k$')
+        ax1.set_title(f'Taylor-Green Energy Decay (N={N}, Re={Re})')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        ax2.semilogy(times, div_inf, 'g-', linewidth=1)
+        ax2.axhline(1e-10, color='r', linestyle='--', alpha=0.5, label='Tolerance $10^{-10}$')
+        ax2.set_xlabel('$t$')
+        ax2.set_ylabel('$\\|\\nabla \\cdot \\mathbf{u}\\|_\\infty$')
+        ax2.set_title('Divergence-Free Constraint')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        fig.tight_layout()
+        fig.savefig(OUT / "tgv_energy_conservation.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"\n  Saved: {OUT / 'tgv_energy_conservation.png'}")
+    except ImportError:
+        print("  (matplotlib not available, skipping plot)")
+
+
 def main():
     print("\n" + "=" * 80)
     print("  【11-2】Taylor-Green Vortex: Energy Conservation + Div-Free")
@@ -137,35 +169,7 @@ def main():
     print(f"  Max ||div u||_inf:         {max_div:.3e} {'PASS' if div_pass else 'FAIL'}")
 
     # Save plot
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 8))
-
-        ax1.plot(times, Ek_num, 'b-', label='Numerical $E_k$', linewidth=1.5)
-        ax1.plot(times, Ek_ex, 'r--', label='Exact $E_k(0) e^{-4\\nu t}$', linewidth=1.5)
-        ax1.set_xlabel('$t$')
-        ax1.set_ylabel('$E_k$')
-        ax1.set_title(f'Taylor-Green Energy Decay (N={N}, Re={Re})')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-
-        ax2.semilogy(times, div_inf, 'g-', linewidth=1)
-        ax2.axhline(1e-10, color='r', linestyle='--', alpha=0.5, label='Tolerance $10^{-10}$')
-        ax2.set_xlabel('$t$')
-        ax2.set_ylabel('$\\|\\nabla \\cdot \\mathbf{u}\\|_\\infty$')
-        ax2.set_title('Divergence-Free Constraint')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-
-        fig.tight_layout()
-        fig.savefig(OUT / "tgv_energy_conservation.png", dpi=150, bbox_inches="tight")
-        plt.close(fig)
-        print(f"\n  Saved: {OUT / 'tgv_energy_conservation.png'}")
-    except ImportError:
-        print("  (matplotlib not available, skipping plot)")
+    _plot_tgv_energy(times, Ek_num, Ek_ex, div_inf, N, Re)
 
     # Save LaTeX table
     with open(OUT / "table_tgv_energy.tex", "w") as fp:
@@ -182,8 +186,21 @@ def main():
     print(f"  Saved: {OUT / 'table_tgv_energy.tex'}")
 
     np.savez(OUT / "tgv_energy_data.npz",
-             times=times, Ek_numerical=Ek_num, Ek_exact=Ek_ex, div_inf=div_inf)
+             times=times, Ek_numerical=Ek_num, Ek_exact=Ek_ex, div_inf=div_inf,
+             N=N, Re=Re)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _parser = argparse.ArgumentParser()
+    _parser.add_argument('--plot-only', action='store_true')
+    _args = _parser.parse_args()
+
+    if _args.plot_only:
+        _d = np.load(OUT / "tgv_energy_data.npz", allow_pickle=True)
+        _plot_tgv_energy(
+            _d["times"], _d["Ek_numerical"], _d["Ek_exact"], _d["div_inf"],
+            int(_d["N"]), float(_d["Re"]),
+        )
+    else:
+        main()
