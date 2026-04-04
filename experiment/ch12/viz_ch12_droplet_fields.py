@@ -5,8 +5,8 @@ Runs static droplet (N=64, 200 steps, ρ_l/ρ_g=2, We=10) and produces:
   - 2D pressure field with interface contour (Laplace pressure jump)
   - 2D velocity magnitude (parasitic currents) with interface contour
 
-Output: results/ch12_static_droplet/ch12_droplet_fields.png
-        paper/figures/ch12_droplet_fields.png
+Output: results/ch12_static_droplet/ch12_droplet_fields.eps
+        paper/figures/ch12_droplet_fields.eps
 """
 
 import sys, pathlib
@@ -159,7 +159,7 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
                  fontsize=12, y=1.01)
     plt.tight_layout()
 
-    fname = "ch12_droplet_fields.png"
+    fname = "ch12_droplet_fields.eps"
     fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
     fig.savefig(OUT_FIG / fname, dpi=150, bbox_inches="tight")
     plt.close(fig)

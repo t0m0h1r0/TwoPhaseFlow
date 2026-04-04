@@ -191,9 +191,9 @@ def make_figures(results_by_rho):
     ax.grid(True, alpha=0.3, which="both")
 
     plt.tight_layout()
-    fig.savefig(OUT / "gfm_droplet_convergence.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "gfm_droplet_convergence.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Figure saved: {OUT / 'gfm_droplet_convergence.png'}")
+    print(f"  Figure saved: {OUT / 'gfm_droplet_convergence.eps'}")
 
 
 def main():

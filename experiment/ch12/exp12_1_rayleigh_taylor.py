@@ -328,9 +328,9 @@ def make_figures(result):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fig.savefig(OUT / "rt_instability.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "rt_instability.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Figure saved: {OUT / 'rt_instability.png'}")
+    print(f"  Figure saved: {OUT / 'rt_instability.eps'}")
 
 
 def main():

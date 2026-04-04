@@ -5,8 +5,8 @@ Runs static droplet at N=64, 200 steps for ρ_l/ρ_g = 2, 3, 5, 10 and produces:
   - 4-panel: pressure field at each density ratio (shows Laplace pressure scaling)
   - Bar chart: ||u||∞ vs density ratio
 
-Output: results/ch12_density_sweep/ch12_density_fields.png
-        paper/figures/ch12_density_fields.png
+Output: results/ch12_density_sweep/ch12_density_fields.eps
+        paper/figures/ch12_density_fields.eps
 """
 
 import sys, pathlib
@@ -166,7 +166,7 @@ def make_figure(results):
                  fontsize=12)
     plt.tight_layout()
 
-    fname = "ch12_density_fields.png"
+    fname = "ch12_density_fields.eps"
     fig.savefig(OUT_RES / fname, dpi=150, bbox_inches="tight")
     fig.savefig(OUT_FIG / fname, dpi=150, bbox_inches="tight")
     plt.close(fig)

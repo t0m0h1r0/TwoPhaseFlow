@@ -244,9 +244,9 @@ def plot_results(gfm_res, csf_res, eps_res):
     ax.grid(True, which="both", alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(OUT / "gfm_pressure_jump.png", dpi=150, bbox_inches="tight")
+    fig.savefig(OUT / "gfm_pressure_jump.eps", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {OUT / 'gfm_pressure_jump.png'}")
+    print(f"  Saved: {OUT / 'gfm_pressure_jump.eps'}")
 
 
 def save_tables(gfm_res, csf_res):

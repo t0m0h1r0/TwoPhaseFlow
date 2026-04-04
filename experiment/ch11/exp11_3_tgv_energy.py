@@ -130,9 +130,9 @@ def _plot_tgv_energy(times, Ek_num, Ek_ex, div_inf, N, Re):
         ax2.grid(True, alpha=0.3)
 
         fig.tight_layout()
-        fig.savefig(OUT / "tgv_energy_conservation.png", dpi=150, bbox_inches="tight")
+        fig.savefig(OUT / "tgv_energy_conservation.eps", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"\n  Saved: {OUT / 'tgv_energy_conservation.png'}")
+        print(f"\n  Saved: {OUT / 'tgv_energy_conservation.eps'}")
     except ImportError:
         print("  (matplotlib not available, skipping plot)")
 
