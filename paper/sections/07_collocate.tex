@@ -9,7 +9,7 @@
 本稿がその解決策として採用する離散化方針を段階的に説明する．
 
 \begin{enumerate}
-  \item \textbf{§~\ref{sec:collocate}.1（格子配置と課題）：}
+  \item \textbf{§~\ref{sec:collocate_layout}（格子配置と課題）：}
         コロケート格子の利点と，$2\Delta x$ チェッカーボード不安定の物理的機構を示す．
   \item \textbf{§~\ref{sec:helmholtz}（Helmholtz 分解）：}
         Projection 法の数学的基礎——任意の速度場の発散フリー成分への射影——を
@@ -24,6 +24,7 @@
 \end{enumerate}
 
 \subsection{コロケート格子の利点と課題}
+\label{sec:collocate_layout}
 本研究では，すべての物理量（速度 $\bu$, 圧力 $p$, レベルセット $\phi, \psi$）を同一の格子点（セル中心）に配置する\textbf{コロケート格子}（collocated grid）を採用する．この配置は，複雑な形状の境界を扱う際に実装が単純であり，高次精度スキーム（例えば本稿のCCD法）をすべての変数に統一的に適用できるという利点を持つ．
 
 しかし，コロケート格子には特有の課題が存在する．それは，\textbf{圧力と速度の数値的な分離（decoupling）}に起因する，非物理的な振動解（チェッカーボードパターン）が発生しうることである．
@@ -287,6 +288,8 @@ CCD の "Combined" な性質（$p', p''$ の同時取得）を Rhie--Chow 補正
 
 \noindent\textbf{(1) 直接フェイス差分：}
 $x_P = x_f - h/2$，$x_E = x_f + h/2$ として
+$p(x_f \pm h/2) = p(x_f) \pm p'(x_f)\tfrac{h}{2} + p''(x_f)\tfrac{h^2}{8} \pm p'''(x_f)\tfrac{h^3}{48} + \Ord{h^4}$
+より $p_E - p_P = p'(x_f)h + p'''(x_f)\tfrac{h^3}{24} + \Ord{h^5}$，したがって
 \begin{equation}
   (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
   \label{eq:rc_face_taylor}
@@ -383,7 +386,9 @@ RC 補正量は $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に
 界面近傍で急峻に変化するため，$D^{(2)}\bm{f}_\sigma$ が界面で大きな値を取る．
 C/RC 補正をこのブラケットに適用すると過大な補正が生じて時間発展で不安定化する
 （§~\ref{sec:bf_static_droplet} の数値実験で確認済み）．
-圧力場 $p$ は PPE で滑らかに投影されるため $p''$ は安定であり，
+圧力場 $p$ は PPE（楕円型方程式，§~\ref{sec:pressure}）で滑らかに投影されるため
+高周波成分が抑制され $p''$ は安定である
+（§~\ref{sec:bf_static_droplet} の数値実験で $f_\sigma$ との安定性差異を定量確認）．
 C/RC は\textbf{圧力ブラケットのみ}に適用する．
 
 \paragraph{計算コスト・安定性}
@@ -473,7 +478,7 @@ DCCD 散逸誤差は $\Ord{\varepsilon_d h^2}$ から $\Ord{\varepsilon_d h^4}$ 
 
 \paragraph{$\varepsilon_d$ の使い分け（3用途）}
 本論文では DCCD フィルタ強度 $\varepsilon_d$ を以下の3用途で使い分ける
-（§~\ref{sec:full_algorithm} の統合アルゴリズムでも参照）：
+（§~\ref{sec:algorithm} の統合アルゴリズムでも参照）：
 \begin{itemize}[noitemsep]
   \item \textbf{CLS 移流}（§~\ref{sec:advection_motivation}）：$\varepsilon_d = 0.05$（界面プロファイル保持のため低散逸）
   \item \textbf{PPE 右辺・Corrector 発散}（本節）：$\varepsilon_d = 1/4$（チェッカーボード完全抑制）
@@ -500,5 +505,5 @@ DCCD 散逸誤差は $\Ord{\varepsilon_d h^2}$ から $\Ord{\varepsilon_d h^4}$ 
 \end{itemize}
 両機構は独立した原因（演算子不整合 vs デカップリング不安定）に作用するため，
 どちらか一方を省略しても寄生流れまたはチェッカーボードが残存する．
-FD 直接法 PPE + CCD 勾配（§~\ref{sec:ppe_discretization_choice}）と合わせた3要素の組み合わせが，
-本稿の圧力求解を数学的に整合した高精度形式に帰着させる根拠である．
+CCD Kronecker 直接法 PPE（§~\ref{sec:ccd_poisson_matrix}，§~\ref{sec:ppe_discretization_choice}）と合わせた
+3要素の組み合わせが，本稿の圧力求解を数学的に整合した高精度形式に帰着させる根拠である．
