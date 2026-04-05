@@ -28,7 +28,7 @@ HFE（§~\ref{sec:field_extension}），
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
 PPE（離散化＋求解） & FD 直接法 PPE + CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
-NS 粘性項 & CCD + Crank--Nicolson & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
+NS 粘性項 & CCD + Crank--Nicolson（陽的交差項 $\Ord{h^6}$；ADI 陰的対角項 $\Ord{h^2}$）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
 HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\Ord{h^6}$ & — \\
@@ -44,7 +44,9 @@ HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\
 \noindent‡\ PPE 自体は FD $\Ord{h^2}$，速度補正の勾配は CCD $\Ord{h^6}$
 （§~\ref{sec:ppe_discretization_choice}）．\\
 \noindent§\ 単位ステップ質量誤差の大域積分推定（§~\ref{sec:dccd_conservation}）；
-局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．
+局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．\\
+\noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（§~\ref{sec:algorithm}）．
+$Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．
 \end{table}
 
 \begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]

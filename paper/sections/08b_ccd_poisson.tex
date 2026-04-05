@@ -69,16 +69,19 @@ CSF 体積力モデルでは，表面張力項 $\sigma\kappa\bnabla\psi$ と PPE
 CCD 演算子 $D^{(1)}$ による
 圧力勾配と表面張力体積力 $(\kappa/We)D^{(1)}\psi$ に\textbf{同一演算子}を使用する
 （式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}）．
-PPE 自体は 2 次精度 FD の直接法で解くが，速度補正の勾配 $\bnabla p$ には
-CCD $D^{(1)}$ を適用する（§~\ref{sec:ppe_discretization_choice}）．
+PPE 自体は欠陥補正法（DC 法，§~\ref{sec:defect_correction_main}）で解く：
+低次演算子 $L_L$（2 次精度 FD）で補正方程式を厳密に求解しつつ，
+収束先の精度は高精度演算子 $L_H$（CCD $\Ord{h^6}$）が保証する（§~\ref{sec:dc_accuracy}）．
+速度補正の勾配 $\bnabla p$ には CCD $D^{(1)}$ を適用する（§~\ref{sec:ppe_discretization_choice}）．
 これにより：
 \begin{itemize}
   \item $\bnabla p$ と $\kappa\bnabla\psi$ の CCD 演算子が同一であるため，
         Balanced-Force 条件が $\Ord{h^6}$ 精度で成立する．
   \item PPE 右辺は DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）のみから構成される
         （Rhie--Chow Balanced-Force 補正はPredictor 段で適用；§~\ref{sec:rc_balanced_force}）．
-  \item 投影不整合（FD PPE と CCD 勾配の差）は $\Ord{h^4}$ であり，
-        反復なし（1 回適用）のため有界に留まる（§~\ref{sec:ppe_discretization_choice}）．
+  \item 投影不整合（FD PPE と CCD 勾配の不整合；$D_\mathrm{CCD}\cdot\bu^{n+1}$残差）は $\Ord{h^2}$ であり，
+        全体精度の律速因子（CSF誤差 $\Ord{h^2}$）と同次のため実用上問題なく，
+        反復なし（1 回適用）のため時間発展で蓄積しない（§~\ref{sec:ppe_discretization_choice}）．
 \end{itemize}
 
 \begin{tcolorbox}[resultbox, title={CCD Balanced-Force による寄生流れ抑制（FVM + CSF との比較）}]
@@ -91,7 +94,7 @@ CCD $D^{(1)}$ を適用する（§~\ref{sec:ppe_discretization_choice}）．
 \hline
 FVM + CSF + Rhie-Chow & 数値離散化誤差 $+$ CSF 物理誤差 & $\Ord{h^2}$（CSF 律速） \\
 CCD + CSF + Balanced-Force & 数値成分低減，CSF 誤差残留 & $\Ord{h^2}$（CSF 律速） \\
-\textbf{FD 直接法 PPE＋CCD 勾配 + DCCD}（本稿） & 数値成分 $\Ord{h^6}$（BF 精度），投影不整合 $\Ord{h^4}$ & $\Ord{h^2}$（CSF 律速）${}^{*}$ \\
+\textbf{FD 直接法 PPE＋CCD 勾配 + DCCD}（本稿） & 数値成分 $\Ord{h^6}$（BF 精度），投影不整合 $\Ord{h^2}$（CSF律速と同次） & $\Ord{h^2}$（CSF 律速）${}^{*}$ \\
 \hline
 \end{tabular}
 \end{center}
