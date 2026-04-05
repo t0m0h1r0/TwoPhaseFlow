@@ -156,7 +156,10 @@ class PPESolverSweep(IPPESolver):
             dp = thomas_sweep_1d(q, rho_np, drho[1], dtau, axis=1, grid=self.grid)
             dp.ravel()[pin_dof] = 0.0
 
-            p = p + dp
+            # Pseudo-time: ∂p/∂τ = Lp − q (steady state → Lp = q).
+            # Implicit step: (1/Δτ − L_FD) dp = Lp − q = −R  → dp = −(1/Δτ−L_FD)⁻¹ R
+            # Thomas sweep solves (1/Δτ−L_FD) dp = R, so the physical correction is −dp.
+            p = p - dp
             p.ravel()[pin_dof] = 0.0
 
         if not converged:
