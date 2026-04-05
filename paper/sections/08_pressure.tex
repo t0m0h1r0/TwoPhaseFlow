@@ -1,29 +1,7 @@
 % paper/sections/08_pressure.tex
-\section{圧力 Poisson 方程式（PPE）の離散化と求解}
-\label{sec:pressure}
-
-本章では，変密度 Projection 法（§~\ref{sec:projection_derivation}）から得られる
-圧力 Poisson 方程式を段階的に構築し，それを高精度・効率的に解く枠組みを整える．
-章の構成は以下の通りである：
-
-\begin{enumerate}
-  \item \textbf{§~\ref{sec:projection_derivation}（PPE の導出）}：
-        変密度 IPC 法の Predictor--PPE--Corrector 3ステップを導出し，
-        可変係数演算子 $\bnabla\cdot(1/\rho\,\bnabla p)$ が生じる理由を示す．
-  \item \textbf{§~\ref{sec:ccd_poisson_matrix}（CCD 離散化）}：
-        PPE を CCD 法で $\Ord{h^6}$ 精度に離散化し，
-        DCCD によるチェッカーボード抑制と界面 Balanced-Force 整合を整える．
-  \item \textbf{§~\ref{sec:defect_correction_main}（欠陥補正法）}：
-        「高精度で評価し，低精度で解く」原理により $\Ord{h^6}$ 精度を保ったまま
-        $\mathcal{O}(N^2)$ コストで求解する．
-  \item \textbf{§~\ref{sec:field_extension}（Hermite 場延長法）}：
-        将来の分相 PPE 解法に向けた基盤技術として，
-        Hermite 場延長法（HFE, $\Ord{h^6}$）による界面越し場延長を定式化する．
-        現行の CSF + smoothed Heaviside ソルバでは使用しない
-        （§~\ref{sec:ppe_discretization_choice}）．
-  \item \textbf{§~\ref{sec:ppe_bc_stability}（境界条件と安定性）}：
-        全周 Neumann 境界の零モード対策と高密度比における条件数を整理する．
-\end{enumerate}
+% 08_pressure.tex — §7.2「変密度投影法の一貫性」として §7 ブロック内に配置
+% (旧 \section{圧力PPE...} は §8 冒頭に移動済み；本ファイルは §7.2 subsection から開始)
+\label{sec:pressure}% backward-compat: 既存 \ref{sec:pressure} を保持
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{変密度 Projection 法の段階的導出}

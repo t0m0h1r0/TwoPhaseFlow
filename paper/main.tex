@@ -27,27 +27,34 @@
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
-\part{空間離散化・時間積分スキーム}
+\part{ナビエ・ストークス方程式の数値計算アルゴリズム――CCD法による物理的一貫性と高解像の両立}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/04_ccd}               %% 第4章：CCD 法（動機・定義・Eq-I・Eq-II 係数導出）
-\input{sections/04b_ccd_bc}           %% 第4章続き（境界条件・ブロック三重対角行列構造）
-\input{sections/04c_ccd_extensions}   %% 第4章続き（非一様格子・2次元拡張・楕円型ソルバー役割）
-\input{sections/04d_dissipative_ccd}  %% 第4章続き：散逸的 CCD フィルタ・S(ψ) 導出・ε_max 設計
+
+%% §5: 計算戦略：スペクトル分解能とコンパクト性の哲学
+\input{sections/04_ccd}               %% §5（CCD基礎を計算戦略章として統合）
+\input{sections/04b_ccd_bc}           %% §5.2続き（境界条件・行列構造）
+\input{sections/06_grid}              %% §5.2続き（界面適合格子の構築）← 格子を先に定義
+\input{sections/04c_ccd_extensions}   %% §5.2続き（CCD の非一様格子適用）← 格子を知った後で適用法を示す
+\input{sections/04d_dissipative_ccd}  %% §5.2続き（DCCD フィルタ設計）
+\input{sections/05b_time_integration} %% §5.3 時間積分の整合性設計
 \clearpage
-\input{sections/05_advection}         %% 第5章：CLS 移流スキーム（Dissipative CCD 設計根拠）
-\input{sections/05b_time_integration} %% 第5章続き：時間積分（TVD-RK3・AB2+IPC・CN法）
-\input{sections/05c_reinitialization} %% 第5章続き：CLS 再初期化・安定性制約
+
+%% §6: 各物理項の空間離散化：CCDエンジンによるモジュール設計
+\input{sections/05_advection}         %% §6（移流項を筆頭節として再配置）
+\input{sections/05c_reinitialization} %% §6.x（CLS再初期化）
 \clearpage
-\input{sections/06_grid}              %% 第6章：界面適合非一様格子
+
+%% §7: 圧力・速度連成：Balanced-Force CCD理論
+\input{sections/07_collocate}         %% §7
+\input{sections/08_pressure}          %% §7.2 変密度投影法（§8から移動）
 \clearpage
-\input{sections/07_collocate}         %% 第7章：圧力--速度連成・Rhie--Chow
-\clearpage
-\input{sections/08_pressure}          %% §8.1 変密度 Projection 法の段階的導出
-\input{sections/08b_ccd_poisson}       %% §8.2 CCD による PPE 離散化（$O(h^6)$・変密度拡張）
-\input{sections/08c_defect_correction} %% §8.3 欠陥補正法（Defect Correction）による効率的 PPE 求解
-\input{sections/08d_gfm}              %% §8.4 Hermite 場延長法（HFE）
-\input{sections/08e_ppe_bc}            %% §8.5 境界条件と数値安定性（零モード・ピン点・条件数）
-\input{sections/08f_pressure_summary}  %% §8.6 本章のまとめ：精度バランスと設計上のトレードオフ
+
+%% §8: 圧力Poisson方程式の解法
+\input{sections/08b_ccd_poisson}       %% §8.1–§8.2（新§8 sectionヘッダーを内包）
+\input{sections/08c_defect_correction} %% §8.2 欠陥補正法
+%%   08d_gfm（HFE）→ 付録 D.4 に移動
+\input{sections/08e_ppe_bc}            %% §8.3 境界条件と数値安定性（旧§8.5）
+\input{sections/08f_pressure_summary}  %% §8のまとめ
 %% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §10.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）
 %% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.6
@@ -94,6 +101,7 @@
 \input{sections/appendix_advection}       %% C.1 WENO5, C.2 DCCD実験, C.3 安定性制約
 
 %% 付録D: 圧力ソルバーと連成解析（§7-8 対応）
-\input{sections/appendix_pressure}        %% D.1 RC/BF, D.2 欠陥補正, D.3 仮想時間, D.4 FVM基準
+\input{sections/appendix_pressure}        %% D.1 欠陥補正理論, D.2 仮想時間, D.3 FVM基準
+\input{sections/08d_gfm}                  %% D.4 Hermite 場延長法（HFE）← 本文§8.4から移動
 
 \end{document}

@@ -11,8 +11,8 @@
 本章では，変密度 PPE の導出（§~\ref{sec:projection_derivation}），
 CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
 欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
-HFE（§~\ref{sec:field_extension}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を順に論じた．
+HFE による界面越し場延長（$\Ord{h^6}$）は付録~D（§~\ref{sec:field_extension}）を参照．
 以下に，各コンポーネントの精度を整理する．
 
 \begin{table}[htbp]
@@ -53,7 +53,7 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \begin{enumerate}
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        HFE（§~\ref{sec:extension_pde_disc}）は $\Ord{h^6}$ を達成しており，
+        HFE（付録~D，§~\ref{sec:extension_pde_disc}）は $\Ord{h^6}$ を達成しており，
         律速要因ではない．全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
 
   \item \textbf{時間精度：}
