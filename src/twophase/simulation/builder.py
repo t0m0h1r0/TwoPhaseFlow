@@ -37,6 +37,7 @@ from typing import Optional, TYPE_CHECKING
 from ..backend import Backend
 from ..config import SimulationConfig
 from ..core.grid import Grid
+from ..core.boundary import BoundarySpec
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..ccd.ccd_solver import CCDSolver
@@ -136,6 +137,11 @@ class SimulationBuilder:
         backend = Backend(use_gpu=config.use_gpu)
 
         grid = Grid(config.grid, backend)
+        bc_spec = BoundarySpec(
+            bc_type=config.numerics.bc_type,
+            shape=grid.shape,
+            N=grid.N,
+        )
         dx_min = min(
             config.grid.L[ax] / config.grid.N[ax]
             for ax in range(config.grid.ndim)
@@ -172,7 +178,9 @@ class SimulationBuilder:
 
         # 圧力ソルバー（注入または factory 経由）
         # ccd を渡すことで PPESolverPseudoTime が CCD matrix-free O(h⁶) を使用できる
-        ppe_solver = self._ppe_solver or create_ppe_solver(config, backend, grid, ccd=ccd)
+        ppe_solver = self._ppe_solver or create_ppe_solver(
+            config, backend, grid, ccd=ccd, bc_spec=bc_spec,
+        )
 
         # 補助演算子
         # Rhie-Chow is always constructed (used in CSF path; retained as legacy in GFM path)

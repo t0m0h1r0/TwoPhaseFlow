@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
+    from ..core.boundary import BoundarySpec
 
 from ..interfaces.ppe_solver import IPPESolver
 
@@ -70,6 +71,7 @@ class PPESolverIterative(IPPESolver):
         ccd: "CCDSolver | None" = None,
         discretization: str | None = None,
         method: str | None = None,
+        bc_spec: "BoundarySpec | None" = None,
     ) -> None:
         self.xp = backend.xp
         self.backend = backend
@@ -107,9 +109,17 @@ class PPESolverIterative(IPPESolver):
         self._h = [grid.L[ax] / grid.N[ax] for ax in range(grid.ndim)]
         self._h_min = min(self._h)
 
-        # Pin node — centre of domain, same as PPESolverSweep / _CCDPPEBase
-        pin_idx = tuple(ni // 2 for ni in grid.N)
-        self._pin_dof = int(np.ravel_multi_index(pin_idx, grid.shape))
+        # 境界条件仕様
+        if bc_spec is not None:
+            self._bc_spec = bc_spec
+        else:
+            from ..core.boundary import BoundarySpec as _BS
+            self._bc_spec = _BS(
+                bc_type=config.numerics.bc_type,
+                shape=grid.shape,
+                N=grid.N,
+            )
+        self._pin_dof = self._bc_spec.pin_dof
 
         # Last state for handoff: p and per-axis derivatives (dp, d2p)
         self.last_solution = None

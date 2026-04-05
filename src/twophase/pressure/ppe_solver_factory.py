@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from ..backend import Backend
     from ..config import SimulationConfig
     from ..core.grid import Grid
+    from ..core.boundary import BoundarySpec
     from ..interfaces.ppe_solver import IPPESolver
 
 
@@ -36,6 +37,7 @@ def create_ppe_solver(
     backend: "Backend",
     grid: "Grid",
     ccd=None,
+    bc_spec: "BoundarySpec | None" = None,
 ) -> "IPPESolver":
     """SimulationConfig の設定に基づいて PPE ソルバーを生成する。
 
@@ -45,6 +47,7 @@ def create_ppe_solver(
     backend : Backend
     grid    : Grid
     ccd     : CCDSolver（オプション）— "pseudotime" ソルバーに注入される
+    bc_spec : BoundarySpec（オプション）— 境界条件仕様；None なら config+grid から自動生成
 
     Returns
     -------
@@ -60,22 +63,31 @@ def create_ppe_solver(
     from .ppe_solver_iim import PPESolverIIM
     from .ppe_solver_iterative import PPESolverIterative
 
+    # BoundarySpec の自動生成（未指定時）
+    if bc_spec is None:
+        from ..core.boundary import BoundarySpec
+        bc_spec = BoundarySpec(
+            bc_type=config.numerics.bc_type,
+            shape=tuple(n + 1 for n in config.grid.N),
+            N=config.grid.N,
+        )
+
     solver_type = config.solver.ppe_solver_type
 
     if solver_type == "pseudotime":
-        return PPESolverPseudoTime(backend, config, grid, ccd=ccd)
+        return PPESolverPseudoTime(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
     elif solver_type == "ccd_lu":
         # CCD Kronecker 積演算子 + 常時 spsolve（SuperLU）— balanced-force 保証
-        return PPESolverCCDLU(backend, config, grid, ccd=ccd)
+        return PPESolverCCDLU(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
     elif solver_type == "sweep":
         # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
-        return PPESolverSweep(backend, config, grid, ccd=ccd)
+        return PPESolverSweep(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
     elif solver_type == "iim":
         # IIM-CCD: CCD Kronecker + IIM 界面補正 (docs/notes/iim_ccd_note.tex)
-        return PPESolverIIM(backend, config, grid, ccd=ccd)
+        return PPESolverIIM(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
     elif solver_type == "iterative":
         # 研究用: 離散化×反復法の組合せ（config で選択）
-        return PPESolverIterative(backend, config, grid, ccd=ccd)
+        return PPESolverIterative(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
     else:
         raise ValueError(
             f"未知の ppe_solver_type: '{solver_type}'。"

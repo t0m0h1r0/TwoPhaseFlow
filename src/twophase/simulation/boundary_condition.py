@@ -36,6 +36,7 @@ class BoundaryConditionHandler:
         ----------
         velocity : VectorField — in-place で修正される
         """
+        # BCType enum と文字列の両方に対応（== は str(Enum) で機能する）
         if self.bc_type == "wall":
             self._apply_wall(velocity)
         elif self.bc_type == "periodic":

@@ -23,6 +23,8 @@ import warnings
 from dataclasses import dataclass, field
 from typing import Tuple
 
+from .core.boundary import BCType
+
 
 # ── サブ設定クラス群 ─────────────────────────────────────────────────────────
 
@@ -83,8 +85,8 @@ class NumericsConfig:
     t_end: float = 1.0
     # 粘性項に Crank-Nicolson（半陰的）スキームを使用（§9）
     cn_viscous: bool = True
-    # 境界条件の種類: 'wall' または 'periodic'
-    bc_type: str = "wall"
+    # 境界条件の種類: BCType.WALL または BCType.PERIODIC
+    bc_type: BCType = BCType.WALL
     # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）
     advection_scheme: str = "dissipative_ccd"
     # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
@@ -99,8 +101,11 @@ class NumericsConfig:
     n_extend: int = 5
 
     def __post_init__(self) -> None:
-        assert self.bc_type in ("wall", "periodic"), (
-            f"bc_type は 'wall' または 'periodic' でなければならない: '{self.bc_type}'"
+        # 文字列からの自動変換（YAML 後方互換）
+        if isinstance(self.bc_type, str):
+            object.__setattr__(self, 'bc_type', BCType(self.bc_type))
+        assert isinstance(self.bc_type, BCType), (
+            f"bc_type は BCType でなければならない: '{self.bc_type}'"
         )
         assert self.advection_scheme in ("dissipative_ccd", "weno5"), (
             f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "

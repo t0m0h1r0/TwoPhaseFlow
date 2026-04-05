@@ -399,53 +399,10 @@ def _weno5_neg(xp, q0, q1, q2, q3, q4):
 def _pad_bc(xp, arr, axis: int, n_ghost: int, bc_type: str):
     """Pad ``arr`` along ``axis`` with ``n_ghost`` ghost cells.
 
-    Implements the ghost-cell strategies from §4 sec:weno5_boundary.
-
-    Parameters
-    ----------
-    xp        : array namespace (numpy or cupy)
-    arr       : array to pad
-    axis      : axis along which to pad
-    n_ghost   : number of ghost cells on each side (3 for WENO5)
-    bc_type   : 'periodic' | 'neumann' | 'outflow' | 'zero'
-
-    Returns
-    -------
-    padded array with shape arr.shape[axis] + 2*n_ghost along ``axis``
+    Thin wrapper delegating to :func:`twophase.core.boundary.pad_ghost_cells`.
+    Kept for backward compatibility (C2: tested code preservation).
     """
-    n = arr.shape[axis]
-
-    def _sl(start, stop=None):
-        # 指定軸のスライスを生成するヘルパー
-        s = [slice(None)] * arr.ndim
-        s[axis] = slice(start, stop)
-        return tuple(s)
-
-    if bc_type == 'periodic':
-        # 周期BC: node-centered グリッドでは node 0 と node n-1 が同一物理点。
-        # ゴーストセルは重複端点を含まない一意なセルを使う（§4 warnbox 精度への影響）。
-        # left  = arr[n-1-n_ghost : n-1]  (arr[Nx-3:Nx])
-        # right = arr[1 : 1+n_ghost]      (arr[1:4])
-        left  = arr[_sl(n - 1 - n_ghost, n - 1)]
-        right = arr[_sl(1, 1 + n_ghost)]
-        return xp.concatenate([left, arr, right], axis=axis)
-
-    elif bc_type == 'neumann':
-        # 対称反射BC: ∂ψ/∂n = 0（偶数次微分を保存する even extension）
-        left  = xp.flip(arr[_sl(0, n_ghost)],        axis=axis)
-        right = xp.flip(arr[_sl(n - n_ghost, n)],    axis=axis)
-        return xp.concatenate([left, arr, right], axis=axis)
-
-    elif bc_type == 'outflow':
-        # 流出BC: 境界値を一定外挿（境界近傍は O(h) に低下, §4 warnbox 精度への影響）
-        left  = xp.repeat(arr[_sl(0, 1)],       n_ghost, axis=axis)
-        right = xp.repeat(arr[_sl(n - 1, n)],   n_ghost, axis=axis)
-        return xp.concatenate([left, arr, right], axis=axis)
-
-    else:  # 'zero' — ゼロゴースト（後方互換デフォルト）
-        shape_pad = list(arr.shape)
-        shape_pad[axis] = n_ghost
-        pad = xp.zeros(shape_pad, dtype=arr.dtype)
-        return xp.concatenate([pad, arr, pad], axis=axis)
+    from ..core.boundary import pad_ghost_cells
+    return pad_ghost_cells(xp, arr, axis, n_ghost, bc_type)
 
 
