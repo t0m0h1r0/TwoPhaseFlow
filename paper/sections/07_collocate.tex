@@ -437,6 +437,36 @@ $\xi = k\Delta x = \pi$（$2\Delta x$ チェッカーボードモード）にお
 $\varepsilon_d = 1/4$ の選択により，$\tilde{\bu}^*$ の $2\Delta x$ モード成分はゼロとなり，PPE 右辺から高周波チェッカーボード駆動項が完全に除去される．
 この操作は CLS 移流スキームに使用する Dissipative CCD（$\varepsilon_d = 0.05$，§~\ref{sec:dccd_filter_theory}）とは独立した，PPE 右辺専用の明示的フィルタ適用ステップである（移流の数値散逸設計とは別に，チェッカーボード除去のみを目的として適用する）．
 
+\paragraph{C/RC-DCCD: CCD $D^{(2)}$ による DCCD 散逸の高次精度化}
+
+DCCD フィルタ（式~\eqref{eq:dccd_filter_physical}）はチェッカーボードを除去する一方，
+滑らかなモードに $\Ord{\varepsilon_d h^2}$ の散逸を加える：
+\[
+  \tilde{u}_i = u_i + \varepsilon_d h^2 u'' + \Ord{h^4}
+\]
+この散逸は CCD 発散の計算時に $\Ord{\varepsilon_d h^2}$ の誤差として伝播する：
+$D^{(1)}_\mathrm{CCD}(\tilde{u}) = D^{(1)}_\mathrm{CCD}(u) + \varepsilon_d h^2 u''' + \Ord{h^4}$．
+
+§~\ref{sec:rc_high_order} の C/RC と同じ着想で，CCD が $D^{(1)}$ と同時に返す $D^{(2)}$
+を活用してこの誤差を補正できる．
+$D^{(2)}_\mathrm{CCD}(\tilde{u})$ は計算済み（\texttt{differentiate} の第2返り値）であり，
+そのフェイス差分で $u'''$ を推定する：
+\begin{equation}
+  q_h^* = \frac{1}{\Delta t}\sum_\mathrm{ax}
+    \left[
+      D^{(1)}_\mathrm{CCD}\tilde{u}^*_\mathrm{ax}
+      - \varepsilon_d h^2 \cdot
+        \frac{(D^{(2)}_\mathrm{CCD}\tilde{u}^*_\mathrm{ax})_{i+1}
+              - (D^{(2)}_\mathrm{CCD}\tilde{u}^*_\mathrm{ax})_{i-1}}{2h}
+    \right]
+  \label{eq:crc_dccd}
+\end{equation}
+$D^{(2)}$ はフィルタ済み $\tilde{u}^*$ から計算されるため，
+チェッカーボード成分はゼロ（$\tilde{u}^*$ が既に除去済み）であり，
+補正によるチェッカーボード再導入は起こらない．
+DCCD 散逸誤差は $\Ord{\varepsilon_d h^2}$ から $\Ord{\varepsilon_d h^4}$ に改善される．
+\textbf{追加の CCD 呼び出しは不要}である．
+
 なお，速度補正ステップ（式~\eqref{eq:corrector}）は\textbf{フィルタ前}の $\bu^*$ に適用される．
 補正後の $\bu^{n+1}$ はフィルタ済み発散がゼロとなるが，非フィルタ発散には $2\Delta x$ モードが残存しうる．
 この残存モードは次タイムステップの DCCD フィルタで除去されるため，時間発展的に整合性が保たれる．
