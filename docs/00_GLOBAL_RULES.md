@@ -82,6 +82,8 @@ Every new major component must follow this pattern to maintain dependency inject
 
 FVM-based solvers (BiCGSTAB, FVM LU) are deprecated — O(h²) accuracy insufficient for CCD pipeline.
 
+**FD usage policy:** This is a CCD research project. FD (finite difference) solvers/operators may appear in experiment scripts **only as labeled comparison baselines**, never as proposed fixes or solutions to CCD-related issues. All primary solvers, correctors, and spatial operators must be CCD-based.
+
 ### C5 — General Code Quality
 
 - Google-style docstrings with equation number citations mandatory for all numerical methods
