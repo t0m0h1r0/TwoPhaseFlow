@@ -59,16 +59,42 @@ $|a_i|+|c_i| = 2/(\rho_i h^2)$ となり，$|b_i| - |a_i| - |c_i| = 1/\Delta\tau
 行列は\textbf{厳密対角優位}（strict diagonal dominance）を満たし，
 ピボッティングなしの Thomas 法は数値的に安定である（$b_i - a_i c_{i-1}/b_{i-1} > 0$）．
 
-\subsubsection*{境界節点（Neumann BC）}
+\subsubsection*{境界節点（Neumann BC：ゴーストセル反射）}
 
-壁面節点（$i=0$ および $i=N$）では圧力増分をゼロとする Neumann 境界条件を適用する：
+壁面節点（$i=0$ および $i=N$）では\textbf{ゴーストセル反射}により Neumann 条件
+$\partial p/\partial n|_\text{wall} = 0$ を厳密に離散化する．
+左壁（$i=0$）のゴーストセル則 $q_{-1} = q_1$ を式~\eqref{eq:lfd_x_disc} に代入すると
+$\nabla\rho \cdot \nabla p$ 交差項（反対称差分 $q_1 - q_{-1}$）が消滅し，
+境界スタンシルは：
 \begin{equation}
-  a_0 = 0,\quad b_0 = 1,\quad c_0 = 0,\quad R_0 = 0
-  \qquad\text{（および $i=N$ も同様）}
-  \label{eq:sweep_bc}
+  (\mathcal{L}_{FD,x}\,q)_0 = \frac{2(q_1 - q_0)}{\rho_0\,h^2}
+  \label{eq:lfd_bc_ghost}
 \end{equation}
-これはスウィープの増分量 $\Delta_{(m)}$ が壁面で変化しないことを意味し（$\Delta_{(m)}|_\text{wall} = 0$），
-Neumann 圧力境界条件（$\partial p/\partial n|_\text{wall} = 0$）の弱い形式に対応する．
+$(1/\Delta\tau - \mathcal{L}_{FD,x})$ を整理した三重対角係数は：
+\begin{align}
+  &\text{左壁 }(i=0):\quad
+    a_0 = 0,\quad
+    b_0 = \tfrac{1}{\Delta\tau_0} + \tfrac{2}{\rho_0 h^2},\quad
+    c_0 = -\tfrac{2}{\rho_0 h^2},\quad
+    R_0 \text{ そのまま}
+  \label{eq:sweep_bc_left}\\
+  &\text{右壁 }(i=N):\quad
+    a_N = -\tfrac{2}{\rho_N h^2},\quad
+    b_N = \tfrac{1}{\Delta\tau_N} + \tfrac{2}{\rho_N h^2},\quad
+    c_N = 0,\quad
+    R_N \text{ そのまま}
+  \label{eq:sweep_bc_right}
+\end{align}
+境界での右辺 $R_{0/N}$ はゼロに落とさず残差をそのまま与えるため，
+補正量 $\delta p$ も壁面 Neumann 条件（$\partial\,\delta p/\partial n = 0$）を自然に満足する．
+
+\noindent\textit{旧実装（$b_0=1$，$c_0=0$，$R_0=0$）との比較：}
+旧実装は壁面増分を強制ゼロとする弱形式であり，境界の CCD Laplacian 評価
+（CCD は $\partial p/\partial n=0$ を片側コンパクトスタンシルで実装）との整合が取れない．
+現行の Neumann ゴーストセル BC は $L_H$（CCD）と $L_L$（FD）が壁面での
+$\partial p/\partial n = 0$ を\textbf{同一の物理的条件}として共有するため，
+DC 反復が収束した後に解 $p^*$ が自然な壁面 Neumann 条件を満足する
+（\texttt{FDPPEMatrix}，\texttt{thomas\_sweep\_1d} 参照）．
 
 \subsubsection*{ゲージ固定}
 
