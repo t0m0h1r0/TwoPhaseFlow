@@ -251,13 +251,9 @@ class PPESolverSweep(IPPESolver):
         c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]        # − 1/(ρh²) − ρx/(2ρ²h)
 
         # 境界ノード: 恒等（Δq 壁面 = 0）
-        a[0]  = 0.0;  b[0]  = 1.0;  c[0]  = 0.0
-        a[-1] = 0.0;  b[-1] = 1.0;  c[-1] = 0.0
-
-        # RHS: 境界はゼロ（壁面では増分更新しない）
         rhs_m = rhs_f.copy()
-        rhs_m[0]  = 0.0
-        rhs_m[-1] = 0.0
+        from ..core.boundary import apply_thomas_neumann
+        apply_thomas_neumann(a, b, c, rhs_m)
 
         # ── Thomas 前進消去 ────────────────────────────────────────
         c_p = np.zeros_like(rhs_f)    # 修正上対角

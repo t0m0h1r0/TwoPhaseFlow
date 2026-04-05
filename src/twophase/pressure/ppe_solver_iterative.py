@@ -564,12 +564,9 @@ class PPESolverIterative(IPPESolver):
         b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
         c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
 
-        a[0] = 0.0;  b[0] = 1.0;  c[0] = 0.0
-        a[-1] = 0.0; b[-1] = 1.0; c[-1] = 0.0
-
         rhs_m = rhs_f.copy()
-        rhs_m[0] = 0.0
-        rhs_m[-1] = 0.0
+        from ..core.boundary import apply_thomas_neumann
+        apply_thomas_neumann(a, b, c, rhs_m)
 
         # Forward elimination
         c_p = np.zeros_like(rhs_f)
