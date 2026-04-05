@@ -1,7 +1,8 @@
 # GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# 00_GLOBAL_RULES — Common Constitution for Scientific Computing Agents
-# PROJECT-INDEPENDENT, AUTHORITATIVE SSoT for all concrete implementation rules.
+# 00_GLOBAL_RULES — Universal Constitution for Scientific Computing Agents
+# PROJECT-INDEPENDENT, AUTHORITATIVE SSoT for universal rules applicable to ANY project.
 # Derived from: prompts/meta/meta-core.md, meta-persona.md, meta-roles.md, meta-workflow.md, meta-ops.md
+# Project-specific rules (CFD/CCD): docs/03_PROJECT_RULES.md (derived from prompts/meta/meta-project.md)
 # Project state (module map, ASM-IDs): docs/01_PROJECT_MAP.md
 # Live state (phase, CHK/KL registers): docs/02_ACTIVE_LEDGER.md
 
@@ -71,33 +72,15 @@ Never delete code that passed tests. Superseded implementations must be retained
 `SimulationBuilder` is the sole construction path (ASM-001). Direct `__init__` construction of `TwoPhaseSimulation` is forbidden.
 Every new major component must follow this pattern to maintain dependency injection and testability.
 
-### C4 — Implicit Solver Policy
-
-| System Type | Primary Solver | Fallback | Notes |
-|-------------|---------------|---------|-------|
-| Global PPE (default) | CCD Kronecker + LGMRES | *(none)* | "pseudotime"; returns best iterate on non-convergence |
-| Global PPE (debug) | CCD Kronecker + direct LU | — | "ccd_lu"; guaranteed solution, O(n^1.5) memory |
-| Global PPE (large-scale) | CCD sweep (matrix-free) | — | "sweep"; defect correction + Thomas (O(N) per iter) |
-| Banded/block-tridiag (CCD) | Direct LU | — | O(N) fill-in; efficient |
-
-FVM-based solvers (BiCGSTAB, FVM LU) are deprecated — O(h²) accuracy insufficient for CCD pipeline.
-
-**FD usage policy:** This is a CCD research project. FD (finite difference) solvers/operators may appear in experiment scripts **only as labeled comparison baselines**, never as proposed fixes or solutions to CCD-related issues. All primary solvers, correctors, and spatial operators must be CCD-based.
-
-### C5 — General Code Quality
+### C4 — General Code Quality
 
 - Google-style docstrings with equation number citations mandatory for all numerical methods
 - Import auditing: no UI/framework imports in `src/core/` (A9 enforcement)
 - Symbol mapping table (paper notation → Python variable) required for every new module
 - Backward compatibility adapters required when superseding existing code
 
-### C6 — MMS Test Standard
-
-All new numerical modules must be verified by Method of Manufactured Solutions (MMS):
-- Grid sizes N=[32, 64, 128, 256]
-- Required output: convergence table (N | L∞ error | log-log slope)
-- Acceptance: all slopes ≥ expected_order − 0.2
-- CCD boundary-limited orders: d1 ≥ 3.5, d2 ≥ 2.5 on L∞ (ASM-004)
+**Project-specific code rules** (solver policy, MMS standard, experiment toolkit, etc.)
+are in docs/03_PROJECT_RULES.md (§PR-1 through §PR-6), derived from prompts/meta/meta-project.md.
 
 ────────────────────────────────────────────────────────
 ## § P — Paper Domain Rules
@@ -192,7 +175,7 @@ All agent prompts must use exactly this structure:
 
 Every generated prompt must include BOTH citation lines below the title heading:
 - `(All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
-- Domain citation (Code: `§C1–C6`; Paper: `§P1–P4, KL-12`; Prompt: `§Q1–Q4`; Audit: `§AU1–AU3`)
+- Domain citation (Code: `§C1–C4 + §PR-1–PR-6`; Paper: `§P1–P4, KL-12`; Prompt: `§Q1–Q4`; Audit: `§AU1–AU3`)
 
 ### Q2 — Environment Profiles
 

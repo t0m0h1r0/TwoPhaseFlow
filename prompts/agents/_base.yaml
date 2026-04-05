@@ -4,6 +4,7 @@
 # To understand an agent: read _base.yaml FIRST, then the agent file.
 
 axioms: "A1–A10 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
+project_rules: "PR-1–PR-6 apply to this project (docs/03_PROJECT_RULES.md, SSoT: prompts/meta/meta-project.md)"
 
 # --- Directory Conventions (ALL agents inherit) ---
 # Authoritative source: prompts/meta/meta-domains.md § ARTIFACT & DIRECTORY CONVENTIONS

@@ -139,6 +139,9 @@ Layer 3 — Orchestration (Process)
   meta-workflow.md     — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
   meta-deploy.md       — DEPLOY: EnvMetaBootstrapper, composition system, tiered generation        ← updated on system structure changes
 
+Layer P — Project Profile (project-specific, swappable)
+  meta-project.md      — PROJECT: project-type rules, solver policy, tooling conventions          ← replaced when project changes
+
 Layer S — Safety & Evolution (cross-cutting, loaded selectively)
   meta-antipatterns.md — AVOID: known failure modes with detection + mitigation per agent role    ← updated when new patterns observed
 
@@ -183,6 +186,7 @@ T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
 | meta-ops.md | 2 — Dynamic Execution | EXECUTE — canonical commands and handoff protocols | tooling changes |
 | meta-workflow.md | 3 — Orchestration | HOW — pipelines, coordination protocols | process matures |
 | meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper, composition, tiered generation | system structure changes |
+| meta-project.md | P — Project Profile | PROJECT — project-type rules, solver policy, tooling | project changes |
 | meta-antipatterns.md | S — Safety & Evolution | AVOID — known failure modes, detection, mitigation | new pattern observed |
 | meta-experimental.md | X — Experimental | FUTURE — micro-agent architecture (NOT YET OPERATIONAL) | activation decision |
 

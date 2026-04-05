@@ -26,16 +26,16 @@ If input is too long:
 - prompts/agents/ResearchArchitect.md
 - docs/02_ACTIVE_LEDGER.md (phase, branch, last decision, open CHKs)
 - docs/01_PROJECT_MAP.md (module map, interface contracts, numerical reference)
-- docs/00_GLOBAL_RULES.md (axioms A1–A10, domain rules)
+- docs/00_GLOBAL_RULES.md (universal axioms A1–A10, universal code rules C1–C4)
+- docs/03_PROJECT_RULES.md (project-specific rules PR-1–PR-6: CCD primacy, solver policy, MMS, toolkit, fidelity, PPE)
 
 ## CODING RULES (enforced every session)
-- **SOLID principles are MANDATORY** — before writing or modifying any class/function,
-  check §C1 of docs/00_GLOBAL_RULES.md. Report violations in `[SOLID-X]` format and fix them.
-- **Never delete tested code** — superseded implementations must be retained as legacy classes
-  per §C2 of docs/00_GLOBAL_RULES.md. Register in docs/01_PROJECT_MAP.md §8 (Legacy Class Register).
-  DO NOT remove a class that has passed tests unless the user explicitly says "delete it".
-- **Algorithm Fidelity** — fixes MUST restore paper-exact behavior. Deviation = bug.
-- **A3 Traceability** — Equation → Discretization → Code chain is mandatory.
+- **Universal rules** → docs/00_GLOBAL_RULES.md §C (C1–C4: SOLID, preserve-tested, builder, quality)
+- **Project rules** → docs/03_PROJECT_RULES.md §PR (PR-1–PR-6: CCD primacy, solver policy, MMS, toolkit, fidelity, PPE)
+- **SOLID audit** — report violations in `[SOLID-X]` format and fix before proceeding (C1)
+- **Never delete tested code** — retain as legacy class; register in docs/01_PROJECT_MAP.md §8 (C2)
+- **Algorithm Fidelity** — fixes MUST restore paper-exact behavior; deviation = bug (PR-5)
+- **A3 Traceability** — Equation → Discretization → Code chain is mandatory
 
 ## DIRECTORY CONVENTIONS (enforced every session)
 - **Library code** → `src/` (`src/twophase/`). `lib/` is NOT used.
@@ -44,6 +44,14 @@ If input is too long:
 - **Experiment results & graphs** → `experiment/ch{N}/results/{experiment_name}/` (colocated)
 - **Graphs** → **PDF format ONLY** (publication-quality vector; `savefig('*.pdf')`)
 - **Experiment scripts MUST** save result data (NPZ/CSV/JSON) and support `--plot-only` re-plotting
+- **Experiment scripts MUST** use `twophase.experiment` toolkit (`src/twophase/experiment/`):
+  - `apply_style()` for unified rcParams (call once at top)
+  - `experiment_dir(__file__)` for output directory
+  - `experiment_argparser()` for `--plot-only` argparse
+  - `save_results()` / `load_results()` for NPZ I/O
+  - `save_figure()` for PDF output
+  - `field_panel()`, `convergence_loglog()`, `time_history()`, `summary_text()` for plotting
+  - Direct matplotlib calls are OK for custom layouts, but style/IO/save must go through the toolkit
 - **`results/` (top-level)** → DEPRECATED. Migrate to `experiment/ch{N}/results/`.
 - **Meta-prompts** → `prompts/meta/`. Top-level `meta/` is NOT used.
 - **Agent prompts** → `prompts/agents/`
