@@ -177,7 +177,10 @@ def run(N: int, use_crc: bool):
         v_star = v + dt / rho * f_csf_y
 
         # PPE RHS: DCCD-filtered CCD divergence (§7.5 eq:dccd_ppe_rhs)
-        div_rhs = dccd_filt.compute_filtered_divergence([u_star, v_star])
+        # C/RC-DCCD: use d2 to reduce filter dissipation O(ε_d h²) → O(ε_d h⁴)
+        div_rhs = dccd_filt.compute_filtered_divergence(
+            [u_star, v_star], crc_dccd=use_crc,
+        )
 
         rhs_field = np.asarray(div_rhs).reshape(grid.shape) / dt
         p = np.asarray(ppe_solver.solve(rhs_field, rho, dt, p_init=p))
