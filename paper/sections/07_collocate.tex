@@ -1,23 +1,26 @@
 % paper/sections/07_collocate.tex
-\section{コロケート格子と圧力速度連成問題}
+\section{圧力・速度連成：Balanced-Force CCD 理論}
 \label{sec:collocate}
 
 §~\ref{sec:grid_gen} で構築した界面適合非一様格子上に，
 すべての流体変数（$\bu, p, \psi$）を同一格子点に配置する
 \textbf{コロケート配置}を採用する．
-本章では，コロケート格子固有の圧力速度デカップリング問題を整理し，
-本稿がその解決策として採用する離散化方針を段階的に説明する．
+本章は「いかに物理的な釣り合いを離散化で表現するか」という数学的設計に集中する．
 
 \begin{enumerate}
-  \item \textbf{§~\ref{sec:collocate_layout}（格子配置と課題）：}
-        コロケート格子の利点と，$2\Delta x$ チェッカーボード不安定の物理的機構．
-  \item \textbf{§~\ref{sec:helmholtz}（Helmholtz 分解）：}
-        Projection 法の数学的基礎（等密度場；変密度への拡張は第~\ref{sec:pressure}章）．
+  \item \textbf{§~\ref{sec:collocate_layout}（コロケート格子と DCCD 散逸の役割）：}
+        コロケート格子の利点と $2\Delta x$ チェッカーボード問題，
+        DCCD 内在的散逸（$\varepsilon_d=1/4$）による本質的安定化機構．
+  \item \textbf{§~\ref{sec:helmholtz}（Projection 法の基礎：等密度場）：}
+        Helmholtz 分解による発散フリー射影の幾何学的意味を示す（等密度場での定式化）．
+        変密度場への拡張（可変係数演算子 $\bnabla\cdot(1/\rho\,\bnabla p)$ の導出）は
+        §~\ref{sec:projection_derivation} で行う．
   \item \textbf{§~\ref{sec:checkerboard_solution}（解決策の概観）：}
         二機構（Balanced-Force + DCCD 散逸）の役割分担．
-  \item \textbf{§~\ref{sec:balanced_force}（Balanced-Force 条件）：}
-        演算子不整合の除去と Rhie--Chow Balanced-Force 拡張（式~\eqref{eq:rc-face-balanced}），
-        C/RC 高次精度化（§~\ref{sec:rc_high_order}）．
+  \item \textbf{§~\ref{sec:balanced_force}（Balanced-Force 条件：演算子の完全一致原理）：}
+        圧力勾配演算子と界面張力演算子を「全く同じ CCD 演算子」で構成することで
+        離散レベルで静止液滴の釣り合いを完全に達成する設計思想．
+        演算子不一致がもたらす寄生流れの定量的解析．
   \item \textbf{§~\ref{sec:dccd_decoupling}（DCCD 散逸機構）：}
         $\varepsilon_d=1/4$ 散逸による $2\Delta x$ モード除去と C/RC-DCCD 補正．
 \end{enumerate}
@@ -93,6 +96,12 @@ PPE は可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\
 \subsection{チェッカーボード問題の解決策の概観}
 \label{sec:checkerboard_solution}
 % ═══════════════════════════════════════════════════════════════════════════════
+
+コロケート格子の不安定性には\textbf{異なる 2 つの原因}が存在するため，
+それぞれ独立した機構で対処する：
+\emph{演算子不整合}（Balanced-Force 条件で解消）と
+\emph{格子スケールデカップリング}（DCCD 散逸で解消）である．
+どちらか一方のみでは寄生流れまたはチェッカーボードが残存する．
 
 コロケート格子における $2\Delta x$ チェッカーボード不安定の解消には，
 Rhie と Chow~\cite{RhieChow1983} によるフェイス速度補間が標準的に用いられる
@@ -249,61 +258,10 @@ Rhie--Chow 補正と Balanced-Force 条件の独立性については付録~\ref
 CCD の "Combined" な性質（$p', p''$ の同時取得）を Rhie--Chow 補正に活用するため，
 この手法を \textbf{C/RC}（CCD-enhanced Rhie--Chow Correction）と呼ぶ．
 
-\paragraph{Rhie--Chow 補正項のテイラー展開}
-
-フェイス $f$（$x_P$ と $x_E$ の中点，$x_f = (x_P+x_E)/2$，$x_E - x_P = h$）での各勾配評価：
-
-\noindent\textbf{(1) 直接フェイス差分：}
-$x_P = x_f - h/2$，$x_E = x_f + h/2$ として
-$p(x_f \pm h/2) = p(x_f) \pm p'(x_f)\tfrac{h}{2} + p''(x_f)\tfrac{h^2}{8} \pm p'''(x_f)\tfrac{h^3}{48} + \Ord{h^4}$
-より $p_E - p_P = p'(x_f)h + p'''(x_f)\tfrac{h^3}{24} + \Ord{h^5}$，したがって
-\begin{equation}
-  (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_face_taylor}
-\end{equation}
-
-\noindent\textbf{(2) CCD 勾配の算術平均：}
-CCD は各セル中心で $\Ord{h^6}$ 精度の1階微分を返す：
-$(D^{(1)}_\mathrm{CCD}\,p)_P = p'(x_P) + \Ord{h^6}$，
-$(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
-算術平均のテイラー展開：
-\begin{equation}
-  \overline{(\nabla p)}_f \equiv \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
-    = p'(x_f) + \frac{h^2}{8}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_avg_taylor}
-\end{equation}
-$p'(x_P), p'(x_E)$ の偶数次項（$p''$ を含む）が相殺し，主誤差項は $(h^2/8)p'''$ である．
-セル中心の CCD 精度は $\Ord{h^6}$ だが，算術平均のフェイス補間精度は $\Ord{h^2}$ に低下する点に注意する．
-
-\noindent\textbf{(3) Rhie--Chow 検出項（差）：}
-\begin{equation}
-  (\nabla p)_f - \overline{(\nabla p)}_f
-  = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
-  = -\frac{h^2}{12}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_detection_taylor}
-\end{equation}
-補正量は $\Ord{\Delta t \cdot h^2}$ である．
-滑らかな圧力場に対しては CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，
-CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
-一方，チェッカーボード場（波長 $2h$）では補正量が $\Ord{1}$ となり非物理振動を除去する．
-すなわち，低波数成分は CCD $\Ord{h^6}$ で処理し，高波数成分のみ $\Ord{h^2}$ で減衰する
-\textbf{スペクトル選択的フィルタ}として機能する．
-
-\paragraph{$p'''$ 係数の不整合と CCD $p''$ による相殺}
-
-式~\eqref{eq:rc_detection_taylor} の $\Ord{h^2}$ 誤差の根本原因は，
-フェイス差分の $p'''$ 係数 $1/24$ とセル中心平均の係数 $1/8$ の\textbf{不一致}にある．
-$p'''$ を陽的に計算して引き去る（Richardson 型補正）のではなく，
-セル中心平均の有効係数を $1/8$ から $1/24$ に\textbf{調整}すれば，
-$1/24 - 1/24 = 0$ として $p'''$ が自然に消去される．
-
-CCD は $p' = D^{(1)}_\mathrm{CCD}\,p$ と $p'' = D^{(2)}_\mathrm{CCD}\,p$ を同時に返す．
-$p''$ のフェイス差分は：
-\begin{equation}
-  \frac{p''_E - p''_P}{h} = p'''(x_f) + \frac{h^2}{24}p^{(5)}(x_f) + \Ord{h^4}
-  \label{eq:d2_face_diff}
-\end{equation}
-これを用いて\textbf{補正済みセル中心平均}を定義する：
+テイラー展開により（付録~\ref{app:crc_taylor} 参照），
+算術平均 $\overline{(\nabla p)}_f$ の $p'''$ 係数は $1/8$ であるのに対し
+フェイス差分の係数は $1/24$ であり，$\Ord{h^2}$ の不整合が生じる（スペクトル選択的フィルタ特性）．
+CCD が同時に返す $p'' = D^{(2)}_\mathrm{CCD}\,p$ を用いた\textbf{補正済みセル中心平均}：
 \begin{equation}
   \overline{(\nabla p)}_f^{\,*}
   \equiv
@@ -311,26 +269,8 @@ $p''$ のフェイス差分は：
   + \underbrace{\frac{h}{12}\bigl(p''_P - p''_E\bigr)}_{\text{C/RC 補正項}}
   \label{eq:rc_avg_corrected}
 \end{equation}
-補正項のテイラー展開は：
-\[
-  \frac{h}{12}(p''_P - p''_E)
-  = \frac{h}{12}\bigl(-h\,p''' + \Ord{h^3}\bigr)
-  = -\frac{h^2}{12}p''' + \Ord{h^4}
-\]
-よって補正済み平均の $p'''$ 係数は：
-\[
-  \frac{h^2}{8} + \left(-\frac{h^2}{12}\right)
-  = h^2\left(\frac{1}{8} - \frac{1}{12}\right)
-  = \frac{h^2}{24}
-\]
-フェイス差分と\textbf{同一の係数 $1/24$} に一致し，検出項は：
-\begin{equation}
-  (\nabla p)_f - \overline{(\nabla p)}_f^{\,*}
-  = \left(\frac{1}{24} - \frac{1}{24}\right)h^2 p'''
-  + \frac{h^4}{720}p^{(5)}(x_f) + \Ord{h^6}
-  = \Ord{h^4}
-  \label{eq:rc_crc_bracket}
-\end{equation}
+を定義すると，$p'''$ 係数が $1/24$ に揃い，検出項が $\Ord{h^2}$ から $\Ord{h^4}$ に改善される
+（付録~\ref{app:crc_taylor}，式~\eqref{eq:rc_crc_bracket}）．
 
 \paragraph{補正後の Rhie--Chow フェイス速度}
 
@@ -461,17 +401,11 @@ DCCD 散逸誤差は $\Ord{\varepsilon_d h^2}$ から $\Ord{\varepsilon_d h^4}$ 
 \footnote{SAT の完全実装は今後の課題である（§~\ref{sec:future_work}参照）．}．
 
 \medskip
-\noindent\textbf{二機構の相補性：} 本稿の寄生流れ・デカップリング対策は，
-目的の異なる二つの機構が役割分担する構成である：
-\begin{itemize}[noitemsep]
-  \item \textbf{Balanced-Force 条件}（§~\ref{sec:balanced_force}，§~\ref{sec:rc_balanced_force}）：
-        CSF 体積力 $(\kappa/We)\bnabla\psi$ と圧力勾配 $\bnabla p$ に\textbf{同一の CCD 演算子}を適用することで，
-        \emph{演算子不整合}に起因する寄生流れを離散レベルで消去する．
-  \item \textbf{DCCD 散逸}（$\varepsilon_d = 1/4$，本節）：
-        速度発散の高周波成分（$2\Delta x$ チェッカーボードモード）を PPE 右辺から事前除去することで，
-        \emph{コロケート格子の構造的な圧力-速度デカップリング}を内在的に抑制する．
-\end{itemize}
-両機構は独立した原因（演算子不整合 vs デカップリング不安定）に作用するため，
-どちらか一方を省略しても寄生流れまたはチェッカーボードが残存する．
-欠陥補正法（FD 直接法 PPE + CCD 勾配；§~\ref{sec:defect_correction_main}，§~\ref{sec:ppe_discretization_choice}）と合わせた
-3要素の組み合わせが，本稿の圧力求解を数学的に整合した高精度形式に帰着させる根拠である．
+以上で本章の定式化を完了した．
+コロケート格子・Projection 法の幾何学的基礎（§~\ref{sec:helmholtz}），
+変密度への拡張（§~\ref{sec:projection_derivation}），
+Balanced-Force 条件（§~\ref{sec:balanced_force}），
+DCCD 散逸によるデカップリング抑制（§~\ref{sec:dccd_decoupling}）の4要素が
+揃って初めて §~\ref{sec:ppe_solve}章（次章）の PPE 求解が意味を持つ．
+次章では，§~\ref{sec:projection_derivation} で導出した可変係数 PPE を
+いかに高精度・低コストで解くかを論じる．

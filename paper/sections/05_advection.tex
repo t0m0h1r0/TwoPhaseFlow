@@ -3,15 +3,34 @@
 % §5  CLS 移流の離散化：Dissipative CCD スキームの設計根拠（§5.1）
 %     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
 %
-\section{CLS 移流の離散化}
-\label{sec:advection}
+\section{各物理項の空間離散化：CCDエンジンによるモジュール設計}
+\label{sec:discretization_modules}
+\label{sec:advection}% backward-compat: 既存 \ref{sec:advection} を保持
 
-本章では，第~\ref{sec:levelset}章で導入した CLS 移流方程式
+本章では，§~\ref{sec:strategy} で設計した CCD エンジンを各物理項に適用し，
+それぞれどのような恩恵を得るかを詳述する．
+CLS 移流方程式（§~\ref{sec:levelset}，式~\eqref{eq:cls_advection}の再掲）は
 \begin{equation}
   \frac{\partial\psi}{\partial t} + \bnabla\cdot(\psi\bm{u}) = 0
   \label{eq:cls_advection_ref}
 \end{equation}
-（式~\eqref{eq:cls_advection}の再掲）を数値的に解く離散化スキームを示す．
+である．
+
+\noindent\textbf{本章の対象範囲（注）：}
+現時点では移流・再初期化・安定性制約を詳述する．
+界面張力項（CSF モデルへの CCD 適用）および粘性項（変密度場での Hermite 評価）は
+「各物理項の空間離散化」の全体ビジョンの一部であり，今後の課題として位置づける
+（§~\ref{sec:future_work}）．
+
+\begin{enumerate}
+  \item \textbf{§~\ref{sec:advection_motivation}（移流項：DCCDによる「情報の選別」）：}
+        単なる数値散逸ではなく，高周波ノイズのみを狙い撃ちし物理的な界面構造を
+        無傷で保つ「スペクトルフィルタ」としての DCCD を設計する．
+  \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化）：}
+        再初期化方程式の圧縮項を Dissipative CCD と Crank--Nicolson 法で離散化する．
+  \item \textbf{§~\ref{sec:stability}（安定性制約）：}
+        時間刻み $\Delta t$ の CFL・拡散安定条件と推奨値をまとめる．
+\end{enumerate}
 
 \noindent\textbf{設計上の注意：}
 §~\ref{sec:dissipative_ccd} で導入した DCCD フィルタは本章でも再利用するが，
@@ -22,21 +41,8 @@
 $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 （詳細は §~\ref{sec:advection_dccd_design}）．
 
-\begin{enumerate}
-  \item \textbf{§~\ref{sec:advection_motivation}（Dissipative CCD の設計根拠）：}
-        WENO5 が CLS 界面と相性が悪い理由を示し，
-        CCD フィルタによる安定化の設計を述べる．
-  \item \textbf{§~\ref{sec:cls_compression}（圧縮項の離散化）：}
-        再初期化方程式の圧縮項 $\bnabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ を
-        Dissipative CCD と Crank--Nicolson 法で離散化する．
-  \item \textbf{§~\ref{sec:time_int}（時間積分スキーム）：}
-        CLS 移流・再初期化には TVD-RK3，NS 方程式には AB2 + IPC を採用する根拠を示す．
-  \item \textbf{§~\ref{sec:stability}（安定性制約）：}
-        時間刻み $\Delta t$ の CFL・拡散安定条件と推奨値をまとめる．
-\end{enumerate}
-
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{Dissipative CCD による CLS 移流の安定化：設計根拠}
+\subsection{移流項：DCCDによる「情報の選別」}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
