@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
+    from ..core.boundary import BoundarySpec
 
 from ..interfaces.ppe_solver import IPPESolver
 from .iim import IIMStencilCorrector
@@ -55,6 +56,7 @@ class PPESolverIIM(IPPESolver):
         config: "SimulationConfig",
         grid: "Grid",
         ccd: "CCDSolver | None" = None,
+        bc_spec: "BoundarySpec | None" = None,
     ) -> None:
         self.xp = backend.xp
         self.backend = backend
@@ -68,6 +70,17 @@ class PPESolverIIM(IPPESolver):
         else:
             from ..ccd.ccd_solver import CCDSolver as _CCD
             self.ccd = _CCD(grid, backend)
+
+        # 境界条件仕様
+        if bc_spec is not None:
+            self._bc_spec = bc_spec
+        else:
+            from ..core.boundary import BoundarySpec as _BS
+            self._bc_spec = _BS(
+                bc_type=config.numerics.bc_type,
+                shape=grid.shape,
+                N=grid.N,
+            )
 
         self._iim_mode = getattr(config.solver, "iim_mode", "hermite")
         self._iim_backend = getattr(config.solver, "iim_backend", "decomp")
@@ -204,8 +217,7 @@ class PPESolverIIM(IPPESolver):
         shape = self.grid.shape
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, shape))
+        pin_dof = self._bc_spec.pin_dof
         L_lil = L_sparse.tolil()
         L_lil[pin_dof, :] = 0.0
         L_lil[pin_dof, pin_dof] = 1.0
@@ -261,8 +273,7 @@ class PPESolverIIM(IPPESolver):
             )
             rhs_flat += delta_q
 
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, shape))
+        pin_dof = self._bc_spec.pin_dof
         L_lil = L_sparse.tolil()
         L_lil[pin_dof, :] = 0.0
         L_lil[pin_dof, pin_dof] = 1.0
@@ -302,8 +313,7 @@ class PPESolverIIM(IPPESolver):
             drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
             drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
 
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, shape))
+        pin_dof = self._bc_spec.pin_dof
 
         converged = False
         residual = float('inf')

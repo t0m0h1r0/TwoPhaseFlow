@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
+    from ..core.boundary import BoundarySpec
 
 
 class PPEBuilder:
@@ -45,7 +46,13 @@ class PPEBuilder:
     bc_type : 'wall' (Neumann) or 'periodic'
     """
 
-    def __init__(self, backend: "Backend", grid: "Grid", bc_type: str = "wall"):
+    def __init__(
+        self,
+        backend: "Backend",
+        grid: "Grid",
+        bc_type: str = "wall",
+        bc_spec: "BoundarySpec | None" = None,
+    ):
         self.backend = backend
         self.xp = backend.xp
         self.grid = grid
@@ -57,14 +64,10 @@ class PPEBuilder:
         # Total degrees of freedom = number of grid nodes
         self.n_dof = int(np.prod(self.shape_field))
 
-        # Pressure gauge pin DOF.
-        # Wall BC: pin the *centre* node (N[ax]//2 along each axis) so that the
-        # pin is invariant under all symmetries of the square/cubic domain
-        # (x-flip, y-flip, diagonal swap).  Pinning corner node 0 breaks
-        # x-flip and y-flip symmetry, driving spurious non-antisymmetric
-        # pressure gradients that excite parasitic currents.
-        # Periodic BC: pin node 0 (any node is equivalent by translational symmetry).
-        if bc_type == 'wall':
+        # Pressure gauge pin DOF (via BoundarySpec).
+        if bc_spec is not None:
+            self._pin_dof = bc_spec.pin_dof
+        elif bc_type == 'wall':
             centre_idx = tuple(n // 2 for n in self.N)
             self._pin_dof = int(np.ravel_multi_index(centre_idx, self.shape_field))
         else:

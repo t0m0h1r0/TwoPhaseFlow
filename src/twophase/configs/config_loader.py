@@ -256,7 +256,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "cfl_number":     config.numerics.cfl_number,
         "t_end":          config.numerics.t_end,
         "cn_viscous":       config.numerics.cn_viscous,
-        "bc_type":          config.numerics.bc_type,
+        "bc_type":          config.numerics.bc_type.value,
         "advection_scheme": config.numerics.advection_scheme,
         # SolverConfig
         "ppe_solver_type":  config.solver.ppe_solver_type,
