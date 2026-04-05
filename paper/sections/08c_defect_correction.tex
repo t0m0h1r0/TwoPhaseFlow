@@ -68,6 +68,11 @@ $L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン固定）を
   \delta p^{(k+1)} = L_L^{-1}\,d^{(k)}
   \label{eq:dc_step2_lu}
 \end{equation}
+$L_L$ の Neumann BC はゴーストセル反射 $p_{-1}=p_1$（左壁）で離散化し，
+境界スタンシル $2(p_1-p_0)/(\rho h^2)$ を与える（付録~\ref{app:sweep_thomas_coeff} 参照）．
+これにより壁面での $\nabla\rho\cdot\nabla p$ 交差項が消滅し，
+$L_H$（CCD）と $L_L$（FD）が同一の物理的 Neumann 条件を共有するため
+DC 反復の不整合が防がれる（実装：\texttt{FDPPEMatrix}）．
 2次元 $N\times N$ 格子では LU 因子化のコストは $\mathcal{O}(N^{1.5})$（スパース帯行列の fill-in），
 因子化後の前進・後退代入は $\mathcal{O}(N^{1.5})$ であり，
 反復ごとに LU 因子化は不要（$\rho$ が変化しない限り1回の組み立てで繰り返し使用）．
