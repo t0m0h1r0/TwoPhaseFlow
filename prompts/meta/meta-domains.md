@@ -96,7 +96,7 @@ ResearchArchitect triggers DOM-02 CONTAMINATION_GUARD — STOP; escalate to user
 | Storage (read — STRICT) | `paper/sections/*.tex` (via T/E→A contract read only), `docs/01_PROJECT_MAP.md`, `docs/interface/AlgorithmSpecs.md` |
 | Storage (FORBIDDEN write) | `paper/`, `experiment/`, `prompts/meta/`, `docs/interface/` (without IF-COMMIT token) |
 | Interface contract in | `docs/interface/AlgorithmSpecs.md` (T→L); `docs/interface/SolverAPI_vX.py` (L→E, produced by L) |
-| Rules | docs/00_GLOBAL_RULES.md §C (C1–C6: SOLID, preserve-tested, builder, solver policy, quality, MMS) |
+| Rules | docs/00_GLOBAL_RULES.md §C (C1–C4: SOLID, preserve-tested, builder, quality) + docs/03_PROJECT_RULES.md §PR (PR-1–PR-6: CCD primacy, solver policy, MMS, toolkit, fidelity, PPE) |
 | Lifecycle | **DRAFT** — Specialist returns COMPLETE on dev/ branch<br>**REVIEWED** — Gatekeeper (CodeWorkflowCoordinator) approves PR; TestRunner PASS required<br>**VALIDATED** — ConsistencyAuditor (Q-Domain) AU2 PASS → merge `code` → `main` |
 
 **Gatekeeper Approval condition (REVIEWED gate):** Gatekeeper may only merge dev/ PR into `code`
@@ -278,6 +278,7 @@ TwoPhaseFlow/
 │   ├── simulation/        #   TwoPhaseSimulation + SimulationBuilder
 │   ├── initial_conditions/#   IC shapes + velocity fields
 │   ├── io/                #   checkpoint, VTK writer
+│   ├── experiment/        #   experiment infra toolkit (style, I/O, plots, figure save)
 │   ├── visualization/     #   plot helpers
 │   ├── benchmarks/        #   benchmark runners
 │   ├── tests/             #   pytest suite
@@ -352,6 +353,9 @@ experiment/ch12/exp12_2_static_droplet_convergence.py
 
 **Graph format: PDF ONLY** (publication-quality vector). PNG and EPS are NOT accepted.
 Use `fig.savefig('*.pdf')` in all experiment scripts.
+
+**Infrastructure toolkit:** Experiment scripts MUST use `twophase.experiment` — see
+docs/03_PROJECT_RULES.md §PR-4 (derived from prompts/meta/meta-project.md §PR-4) for full API table.
 
 **Migration note (2026-04-04):** Top-level `results/` directory has been removed.
 All data moved to `experiment/ch{N}/results/`. Some experiment scripts still contain
