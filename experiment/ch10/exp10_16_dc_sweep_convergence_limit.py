@@ -152,7 +152,8 @@ def dc_sweep_solve(rhs, rho, drho_x, drho_y, ccd, backend,
         dp = thomas_sweep(q, rho, drho_y, dtau, h, axis=1)
         dp.ravel()[pin_dof] = 0.0
 
-        p = p + dp
+        # Pseudo-time sign: Thomas solves (1/Δτ−L_FD) dp = R, physical update is −dp
+        p = p - dp
         p.ravel()[pin_dof] = 0.0
 
     return p, residuals, maxiter, False
@@ -171,33 +172,46 @@ def dc_lu_solve(rhs, rho, drho_x, drho_y, ccd, backend, h, N, tol, maxiter, pin_
     def idx(i, j):
         return i * ny + j
 
+    # FD matrix with Neumann BC (ghost-cell reflection at walls).
+    # Boundary rows: two-sided ghost folds in, drx/dry vanishes at walls.
+    h2 = h * h
     rows, cols, vals = [], [], []
     for i in range(nx):
         for j in range(ny):
             k = idx(i, j)
-            if i == 0 or i == N or j == 0 or j == N:
-                rows.append(k); cols.append(k); vals.append(1.0)
-            else:
-                inv_rho = 1.0 / rho[i, j]
-                drx = drho_x[i, j] / rho[i, j]**2
-                dry = drho_y[i, j] / rho[i, j]**2
-                cx_m = inv_rho / h**2 + drx / (2*h)
-                cx_p = inv_rho / h**2 - drx / (2*h)
-                cy_m = inv_rho / h**2 + dry / (2*h)
-                cy_p = inv_rho / h**2 - dry / (2*h)
-                cc = -2.0 * inv_rho / h**2 - 2.0 * inv_rho / h**2
-                rows.append(k); cols.append(idx(i-1, j)); vals.append(cx_m)
-                rows.append(k); cols.append(idx(i+1, j)); vals.append(cx_p)
-                rows.append(k); cols.append(idx(i, j-1)); vals.append(cy_m)
-                rows.append(k); cols.append(idx(i, j+1)); vals.append(cy_p)
-                rows.append(k); cols.append(k);            vals.append(cc)
+            inv_rho = 1.0 / rho[i, j]
+            inv_rho_sq = inv_rho * inv_rho
+            cc = 0.0
 
-    L_L = sparse.csr_matrix((vals, (rows, cols)), shape=(n_dof, n_dof))
+            for axis, coord, drho_ax, nb_lo, nb_hi in [
+                (0, i, drho_x[i, j], idx(i-1, j), idx(i+1, j)),
+                (1, j, drho_y[i, j], idx(i, j-1), idx(i, j+1)),
+            ]:
+                coeff_bc = 2.0 * inv_rho / h2
+                if 0 < coord < N:
+                    dr = drho_ax * inv_rho_sq
+                    cm = inv_rho / h2 + dr / (2*h)
+                    cp = inv_rho / h2 - dr / (2*h)
+                    rows.append(k); cols.append(nb_lo); vals.append(cm); cc -= cm
+                    rows.append(k); cols.append(nb_hi); vals.append(cp); cc -= cp
+                elif coord == 0:
+                    rows.append(k); cols.append(nb_hi); vals.append(coeff_bc); cc -= coeff_bc
+                else:
+                    rows.append(k); cols.append(nb_lo); vals.append(coeff_bc); cc -= coeff_bc
+
+            rows.append(k); cols.append(k); vals.append(cc)
+
+    # Gauge pin in COO — remove null space (constant mode); single CSR build.
+    pin_mask = [r != pin_dof for r in rows]
+    rows_p = [r for r, m in zip(rows, pin_mask) if m]
+    cols_p = [c for c, m in zip(cols, pin_mask) if m]
+    vals_p = [v for v, m in zip(vals, pin_mask) if m]
+    rows_p.append(pin_dof); cols_p.append(pin_dof); vals_p.append(1.0)
+    L_L = sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n_dof, n_dof))
 
     shape = rhs.shape
     p = np.zeros(shape, dtype=float)
     residuals = []
-    omega = 0.3  # relaxation — needed for stability (cf. exp10_11)
 
     for k in range(maxiter):
         Lp = eval_LH(p, rho, drho_x, drho_y, ccd, backend)
@@ -212,8 +226,10 @@ def dc_lu_solve(rhs, rho, drho_x, drho_y, ccd, backend, h, N, tol, maxiter, pin_
         if res > 1e20 or np.isnan(res):
             return p, residuals, k + 1, False
 
+        # DC + direct LU: L_FD dp = d (Neumann BC).
+        # Sign: L_FD^{-1} d has same sign as d/λ_FD; both negative → dp > 0 toward p*.
         dp = spsolve(L_L, d_flat).reshape(shape)
-        p = p + omega * dp
+        p = p + dp
         p.ravel()[pin_dof] = 0.0
 
     return p, residuals, maxiter, False
