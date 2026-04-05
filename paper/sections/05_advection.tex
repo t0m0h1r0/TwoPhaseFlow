@@ -36,7 +36,7 @@ CLS 移流方程式（§~\ref{sec:levelset}，式~\eqref{eq:cls_advection}の再
 §~\ref{sec:dissipative_ccd} で導入した DCCD フィルタは本章でも再利用するが，
 動作モードが異なる．
 速度・圧力場では界面適応スイッチ $S(\psi) = (2\psi-1)^2$ により
-界面上でフィルタを OFF にしたが，CLS 移流では $\psi \approx 0.5$（界面）付近こそ
+界面上でフィルタを OFF にしたが（§~\ref{sec:dccd_decoupling}），CLS 移流では $\psi \approx 0.5$（界面）付近こそ
 安定化が最も必要な領域であるため，\textbf{一様強度}
 $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 （詳細は §~\ref{sec:advection_dccd_design}）．

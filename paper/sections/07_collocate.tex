@@ -1,6 +1,7 @@
 % paper/sections/07_collocate.tex
 \section{圧力・速度連成：Balanced-Force CCD 理論}
 \label{sec:collocate}
+\label{sec:pressure}% backward-compat: §7–§12 での「第~\ref{sec:pressure}章」参照を §7 に解決
 
 §~\ref{sec:grid_gen} で構築した界面適合非一様格子上に，
 すべての流体変数（$\bu, p, \psi$）を同一格子点に配置する
@@ -13,8 +14,9 @@
         DCCD 内在的散逸（$\varepsilon_d=1/4$）による本質的安定化機構．
   \item \textbf{§~\ref{sec:helmholtz}（Projection 法の基礎：等密度場）：}
         Helmholtz 分解による発散フリー射影の幾何学的意味を示す（等密度場での定式化）．
-        変密度場への拡張（可変係数演算子 $\bnabla\cdot(1/\rho\,\bnabla p)$ の導出）は
-        §~\ref{sec:projection_derivation} で行う．
+  \item \textbf{§~\ref{sec:projection_derivation}（変密度 Projection 法の段階的導出）：}
+        等密度 Helmholtz 分解を変密度場へ拡張し，
+        可変係数 PPE $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ を導出する．
   \item \textbf{§~\ref{sec:checkerboard_solution}（解決策の概観）：}
         二機構（Balanced-Force + DCCD 散逸）の役割分担．
   \item \textbf{§~\ref{sec:balanced_force}（Balanced-Force 条件：演算子の完全一致原理）：}
@@ -54,7 +56,7 @@ $2h$ 波長成分が不可視であることは中心差分と本質的に同じ
 % ═══════════════════════════════════════════════════════════════════════════════
 
 Projection 法は，Helmholtz--Hodge 分解に基づく速度場の射影操作である．
-本節ではまず等密度場で原理を示し，変密度への拡張は第~\ref{sec:pressure}章で行う．
+本節ではまず等密度場で原理を示し，変密度への拡張は §~\ref{sec:projection_derivation} で行う．
 
 \subsubsection{Helmholtz 分解と Projection 法}
 
@@ -90,7 +92,7 @@ Navier--Stokes 方程式を時間離散化して得られる中間速度 $\bu^*$
 気液二相流では $\rho$ が界面をまたいで 2--3 桁変化するため，
 速度補正は $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\bnabla p^{n+1}$ となり，
 PPE は可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\Delta t)\bnabla\cdot\bu^*$ に変わる．
-段階的な導出は第~\ref{sec:pressure}章（§~\ref{sec:projection_derivation}）で行う．
+段階的な導出は §~\ref{sec:projection_derivation} で行う．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{チェッカーボード問題の解決策の概観}
