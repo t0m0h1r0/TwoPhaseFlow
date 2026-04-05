@@ -276,7 +276,8 @@ Rhie--Chow 補正と Balanced-Force 条件の独立性については付録~\ref
 % ─────────────────────────────────────────────────────────────────────────────
 
 前節の Rhie--Chow 補正（式~\eqref{eq:rc-face-balanced}）は $\Ord{h^2}$ のフィルタリング効果を持つ．
-本節では，この補正項の空間精度を CCD の $p'''$ 情報を活用して $\Ord{h^4}$ に改善できることを示す．
+本節では，CCD が同時に返す $p''$ の情報を用いて，
+\textbf{追加計算コストゼロ}で空間精度を $\Ord{h^4}$ に改善できることを示す．
 
 \paragraph{Rhie--Chow 補正項のテイラー展開}
 
@@ -315,45 +316,71 @@ CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
 すなわち，低波数成分は CCD $\Ord{h^6}$ で処理し，高波数成分のみ $\Ord{h^2}$ で減衰する
 \textbf{スペクトル選択的フィルタ}として機能する．
 
-\paragraph{Richardson 型補正による $\Ord{h^4}$ 化}
+\paragraph{$p'''$ 係数の不整合と CCD $p''$ による相殺}
 
-式~\eqref{eq:rc_detection_taylor} の主項は $-h^2/12 \cdot p'''(x_f)$ である．
-CCD は $p' = D^{(1)}_\mathrm{CCD}\,p$ と $p'' = D^{(2)}_\mathrm{CCD}\,p$ を同時に返すため，
-$p''$ をもう一度 CCD で微分すれば $p''' = D^{(1)}_\mathrm{CCD}(p'')$ が $\Ord{h^6}$ で得られる．
-フェイス中点値を算術平均で近似すると：
-\[
-  \bar{p}'''_f = \frac{1}{2}(p'''_P + p'''_E) = p'''(x_f) + \Ord{h^2}
-\]
-この推定値を用いて RC 検出項を補正すると：
+式~\eqref{eq:rc_detection_taylor} の $\Ord{h^2}$ 誤差の根本原因は，
+フェイス差分の $p'''$ 係数 $1/24$ とセル中心平均の係数 $1/8$ の\textbf{不一致}にある．
+$p'''$ を陽的に計算して引き去る（Richardson 型補正）のではなく，
+セル中心平均の有効係数を $1/8$ から $1/24$ に\textbf{調整}すれば，
+$1/24 - 1/24 = 0$ として $p'''$ が自然に消去される．
+
+CCD は $p' = D^{(1)}_\mathrm{CCD}\,p$ と $p'' = D^{(2)}_\mathrm{CCD}\,p$ を同時に返す．
+$p''$ のフェイス差分は：
 \begin{equation}
-  \underbrace{(\nabla p)_f - \overline{(\nabla p)}_f}_{=\;-\frac{h^2}{12}p''' + \Ord{h^4}}
-  \;+\; \frac{h^2}{12}\bar{p}'''_f
-  \;=\; \Ord{h^4}
-  \label{eq:rc_richardson_correction}
+  \frac{p''_E - p''_P}{h} = p'''(x_f) + \frac{h^2}{24}p^{(5)}(x_f) + \Ord{h^4}
+  \label{eq:d2_face_diff}
 \end{equation}
-$h^2/12 \cdot \bar{p}'''_f$ の補正項自体が $\Ord{h^2}$ であり，
-式~\eqref{eq:rc_detection_taylor} の主項 $-h^2/12 \cdot p'''$ を正確に打ち消す．
+これを用いて\textbf{補正済みセル中心平均}を定義する：
+\begin{equation}
+  \overline{(\nabla p)}_f^{\,*}
+  \equiv
+  \underbrace{\frac{1}{2}\bigl(p'_P + p'_E\bigr)}_{\text{算術平均}}
+  + \underbrace{\frac{h}{12}\bigl(p''_P - p''_E\bigr)}_{\text{CCD $p''$ 補正項}}
+  \label{eq:rc_avg_corrected}
+\end{equation}
+補正項のテイラー展開は：
+\[
+  \frac{h}{12}(p''_P - p''_E)
+  = \frac{h}{12}\bigl(-h\,p''' + \Ord{h^3}\bigr)
+  = -\frac{h^2}{12}p''' + \Ord{h^4}
+\]
+よって補正済み平均の $p'''$ 係数は：
+\[
+  \frac{h^2}{8} + \left(-\frac{h^2}{12}\right)
+  = h^2\left(\frac{1}{8} - \frac{1}{12}\right)
+  = \frac{h^2}{24}
+\]
+フェイス差分と\textbf{同一の係数 $1/24$} に一致し，検出項は：
+\begin{equation}
+  (\nabla p)_f - \overline{(\nabla p)}_f^{\,*}
+  = \left(\frac{1}{24} - \frac{1}{24}\right)h^2 p'''
+  + \frac{h^4}{720}p^{(5)}(x_f) + \Ord{h^6}
+  = \Ord{h^4}
+  \label{eq:rc_d2fd_bracket}
+\end{equation}
 
 \paragraph{補正後の Rhie--Chow フェイス速度}
 
-式~\eqref{eq:rc-face-balanced} の各検出項に同様の補正を加えると：
+式~\eqref{eq:rc-face-balanced} のセル中心平均を $\overline{(\cdot)}_f^{\,*}$
+（式~\eqref{eq:rc_avg_corrected}）に置換する：
 \begin{equation}
   u_f = \bar{u}_f
     - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
     \Biggl[
-      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}_f
-            + \tfrac{h^2}{12}\overline{p^{n\prime\prime\prime}}_f\Bigr)
-      - \Bigl((\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f
-            + \tfrac{h^2}{12}\overline{(\bm{f}_\sigma)'''}_f\Bigr)
+      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}^{\,*}_f\Bigr)
+      - \Bigl((\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}^{\,*}_f\Bigr)
     \Biggr]
   \label{eq:rc-face-balanced-ho}
 \end{equation}
 各括弧内の検出項が $\Ord{h^4}$ となるため，
 RC 補正量は $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される．
 
-\paragraph{計算コスト}
-追加コストは各軸あたり CCD 1 回（$p''$ の微分）のみである．
-2次元問題では CCD 2 回の追加で済み，PPE 解法コストに比して無視可能である．
+\paragraph{計算コスト・安定性}
+CCD は 1 回の呼び出しで $p'$ と $p''$ を同時に返す（§~\ref{sec:ccd_def}）ため，
+\textbf{追加の CCD 呼び出しは一切不要}である．
+実装上は，標準 RC のブラケットに $h/12 \cdot (p''_E - p''_P)$ を加算するだけでよい．
+標準 RC の構造（フェイス勾配 $(p_E-p_P)/h$，算術平均 $\frac{1}{2}(p'_P+p'_E)$）が保持されるため，
+チェッカーボードに対する $\Ord{1}$ の減衰能力も維持される．
 
 \paragraph{数値検証}
 この収束次数の改善は §~\ref{sec:verify_rc_bracket}（格子収束試験）で数値的に確認する．
