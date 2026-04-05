@@ -222,6 +222,26 @@ class PPEBuilder:
 
         return (data, rows, cols), (n, n)
 
+    def prepare_rhs(self, rhs_field):
+        """Prepare the RHS vector for the PPE solve.
+
+        Zeros the pin DOF and (for periodic BC) all ghost-node DOFs.
+        Returns a flat 1-D array suitable for ``spsolve(A, rhs_vec)``.
+
+        Parameters
+        ----------
+        rhs_field : array, shape ``grid.shape``
+
+        Returns
+        -------
+        rhs_vec : np.ndarray, shape (n_dof,)
+        """
+        rhs_vec = np.asarray(self.backend.to_host(rhs_field)).ravel().copy()
+        rhs_vec[self._pin_dof] = 0.0
+        if self.bc_type == 'periodic' and self._periodic_image_dofs is not None:
+            rhs_vec[self._periodic_image_dofs] = 0.0
+        return rhs_vec
+
     # ── Index array pre-computation ───────────────────────────────────────
 
     def _build_index_arrays(self) -> None:
