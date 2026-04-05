@@ -271,6 +271,95 @@ Rhie--Chow 補正と Balanced-Force 条件の独立性については付録~\ref
 コード実装の整合性確認と静止液滴テストによる検証手順は第~\ref{sec:impl_collocate}章にまとめる．
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CCD を活用した Rhie--Chow 補正の高次精度化}
+\label{sec:rc_high_order}
+% ─────────────────────────────────────────────────────────────────────────────
+
+前節の Rhie--Chow 補正（式~\eqref{eq:rc-face-balanced}）は $\Ord{h^2}$ のフィルタリング効果を持つ．
+本節では，この補正項の空間精度を CCD の $p'''$ 情報を活用して $\Ord{h^4}$ に改善できることを示す．
+
+\paragraph{Rhie--Chow 補正項のテイラー展開}
+
+フェイス $f$（$x_P$ と $x_E$ の中点，$x_f = (x_P+x_E)/2$，$x_E - x_P = h$）での各勾配評価：
+
+\noindent\textbf{(1) 直接フェイス差分：}
+$x_P = x_f - h/2$，$x_E = x_f + h/2$ として
+\begin{equation}
+  (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_face_taylor}
+\end{equation}
+
+\noindent\textbf{(2) CCD 勾配の算術平均：}
+CCD は各セル中心で $\Ord{h^6}$ 精度の1階微分を返す：
+$(D^{(1)}_\mathrm{CCD}\,p)_P = p'(x_P) + \Ord{h^6}$，
+$(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
+算術平均のテイラー展開：
+\begin{equation}
+  \overline{(\nabla p)}_f \equiv \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
+    = p'(x_f) + \frac{h^2}{8}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_avg_taylor}
+\end{equation}
+奇数次項が相殺し，$\Ord{h^2}$ の精度で $p'(x_f)$ を近似する点に注意する（$\Ord{h^6}$ ではない）．
+
+\noindent\textbf{(3) Rhie--Chow 検出項（差）：}
+\begin{equation}
+  (\nabla p)_f - \overline{(\nabla p)}_f
+  = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
+  = -\frac{h^2}{12}p'''(x_f) + \Ord{h^4}
+  \label{eq:rc_detection_taylor}
+\end{equation}
+補正量は $\Ord{\Delta t \cdot h^2}$ である．
+滑らかな圧力場に対しては CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，
+CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
+一方，チェッカーボード場（波長 $2h$）では補正量が $\Ord{1}$ となり非物理振動を除去する．
+すなわち，低波数成分は CCD $\Ord{h^6}$ で処理し，高波数成分のみ $\Ord{h^2}$ で減衰する
+\textbf{スペクトル選択的フィルタ}として機能する．
+
+\paragraph{Richardson 型補正による $\Ord{h^4}$ 化}
+
+式~\eqref{eq:rc_detection_taylor} の主項は $-h^2/12 \cdot p'''(x_f)$ である．
+CCD は $p' = D^{(1)}_\mathrm{CCD}\,p$ と $p'' = D^{(2)}_\mathrm{CCD}\,p$ を同時に返すため，
+$p''$ をもう一度 CCD で微分すれば $p''' = D^{(1)}_\mathrm{CCD}(p'')$ が $\Ord{h^6}$ で得られる．
+フェイス中点値を算術平均で近似すると：
+\[
+  \bar{p}'''_f = \frac{1}{2}(p'''_P + p'''_E) = p'''(x_f) + \Ord{h^2}
+\]
+この推定値を用いて RC 検出項を補正すると：
+\begin{equation}
+  \underbrace{(\nabla p)_f - \overline{(\nabla p)}_f}_{=\;-\frac{h^2}{12}p''' + \Ord{h^4}}
+  \;+\; \frac{h^2}{12}\bar{p}'''_f
+  \;=\; \Ord{h^4}
+  \label{eq:rc_richardson_correction}
+\end{equation}
+$h^2/12 \cdot \bar{p}'''_f$ の補正項自体が $\Ord{h^2}$ であり，
+式~\eqref{eq:rc_detection_taylor} の主項 $-h^2/12 \cdot p'''$ を正確に打ち消す．
+
+\paragraph{補正後の Rhie--Chow フェイス速度}
+
+式~\eqref{eq:rc-face-balanced} の各検出項に同様の補正を加えると：
+\begin{equation}
+  u_f = \bar{u}_f
+    - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
+    \Biggl[
+      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}_f
+            + \tfrac{h^2}{12}\overline{p^{n\prime\prime\prime}}_f\Bigr)
+      - \Bigl((\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f
+            + \tfrac{h^2}{12}\overline{(\bm{f}_\sigma)'''}_f\Bigr)
+    \Biggr]
+  \label{eq:rc-face-balanced-ho}
+\end{equation}
+各括弧内の検出項が $\Ord{h^4}$ となるため，
+RC 補正量は $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される．
+
+\paragraph{計算コスト}
+追加コストは各軸あたり CCD 1 回（$p''$ の微分）のみである．
+2次元問題では CCD 2 回の追加で済み，PPE 解法コストに比して無視可能である．
+
+\paragraph{数値検証}
+この収束次数の改善は §~\ref{sec:verify_rc_bracket}（格子収束試験）で数値的に確認する．
+静止液滴問題への適用は §~\ref{sec:bf_static_droplet} で報告する．
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{DCCD 内在的散逸によるデカップリング抑制（Rhie--Chow 補正の代替）}
 \label{sec:dccd_decoupling}
 % ─────────────────────────────────────────────────────────────────────────────
