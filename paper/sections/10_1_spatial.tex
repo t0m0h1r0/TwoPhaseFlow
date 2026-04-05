@@ -235,12 +235,12 @@ CSF モデル誤差が $\Ord{h^2}$ であることを考慮すれば，曲率の
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:rc_high_order} で導出した CCD $p''$ 係数相殺補正（式~\eqref{eq:rc_d2fd_bracket}）が，
+§~\ref{sec:rc_high_order} で導出した C/RC 補正（式~\eqref{eq:rc_crc_bracket}）が，
 RC 検出項（ブラケット）の収束次数を $\Ord{h^2}$ から $\Ord{h^4}$ に改善することを数値的に確認する．
 
 \noindent\textbf{評価対象：}
-RC ブラケット $(\nabla p)_f - \overline{(\nabla p)}_f$（式~\eqref{eq:rc_detection_taylor}），
-および補正済みブラケット $(\nabla p)_f - \overline{(\nabla p)}_f^{\,*}$（式~\eqref{eq:rc_d2fd_bracket}）．
+標準 RC ブラケット $(\nabla p)_f - \overline{(\nabla p)}_f$（式~\eqref{eq:rc_detection_taylor}），
+および C/RC ブラケット $(\nabla p)_f - \overline{(\nabla p)}_f^{\,*}$（式~\eqref{eq:rc_crc_bracket}）．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
@@ -253,12 +253,12 @@ RC ブラケット $(\nabla p)_f - \overline{(\nabla p)}_f$（式~\eqref{eq:rc_d
 
 \begin{table}[htbp]
 \centering
-\caption{RC ブラケットの格子収束：標準形 $\Ord{h^2}$ vs CCD $p''$ 補正形 $\Ord{h^4}$}
+\caption{RC ブラケットの格子収束：標準 RC $\Ord{h^2}$ vs C/RC $\Ord{h^4}$}
 \label{tab:rc_bracket_convergence}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{rcccccc}
 \toprule
-$N$ & $\|\text{std}\|_\infty$ & 次数 & $\|\text{d2fd}\|_\infty$ & 次数 & 改善倍率 \\
+$N$ & $\|\text{std}\|_\infty$ & 次数 & $\|\text{C/RC}\|_\infty$ & 次数 & 改善倍率 \\
 \midrule
  16 & $7.89 \times 10^{-2}$ & ---  & $2.05 \times 10^{-4}$ & ---  & $385\times$ \\
  32 & $2.01 \times 10^{-2}$ & 1.97 & $1.29 \times 10^{-5}$ & 3.99 & $1553\times$ \\
@@ -270,7 +270,7 @@ $N$ & $\|\text{std}\|_\infty$ & 次数 & $\|\text{d2fd}\|_\infty$ & 次数 & 改
 
 \noindent\textbf{結論：}
 標準ブラケットは理論通り $\Ord{h^2}$ で収束する．
-CCD $p''$ による係数相殺補正は収束次数を\textbf{正確に} $\Ord{h^4}$ に引き上げ，
+C/RC 補正は収束次数を\textbf{正確に} $\Ord{h^4}$ に引き上げ，
 $N = 128$ で約 25000 倍の改善を達成する．
 CCD が $p'$ と同時に返す $p''$ のみを使用するため，\textbf{追加の CCD 呼び出しは一切不要}である．
 
