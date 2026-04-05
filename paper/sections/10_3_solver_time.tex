@@ -112,6 +112,16 @@ $128$ & $5.02 \times 10^{-5}$ & $2.0$ & & $1.02 \times 10^{-12}$ & $7.0$ & $4.9 
 欠陥補正法は $k=3$ 回の反復で CCD の $\Ord{h^6}$ 精度を発現させる．
 $N=128$ で FD 直接法の $3.4$ 倍のコストで $4{,}900$ 万倍高精度．
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ppe_convergence}
+\caption{PPE 格子収束：欠陥補正 $k=3$（等密度・変密度）．
+  等密度では $\Ord{h^6}$ 収束を達成する．
+  変密度（$\rho_l/\rho_g=1000$）では平滑密度場で $\Ord{h^5}$，界面型密度場では精度が制限される
+  （§~\ref{sec:verify_ppe_varrho} 参照）．}
+\label{fig:ppe_convergence}
+\end{figure}
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{TVD-RK3 時間発展精度}
 \label{sec:verify_tvd_rk3}
@@ -151,6 +161,14 @@ $n = 16, 32, 64, 128, 256, 512$ ステップで $\Delta t$ を精緻化し，収
 
 \noindent\textbf{結論：}
 $n \geq 16$ の安定領域で $p \approx 3.00$ の正確な 3 次収束を確認した．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/tvd_rk3_convergence}
+\caption{TVD-RK3 の ODE 時間精度（$dq/dt=-q$，$T=1$）．
+  $n \geq 16$ で $\Ord{\Delta t^3}$ の正確な収束を示す．}
+\label{fig:tvd_rk3_convergence}
+\end{figure}
 
 % §10.3.3（旧 10_3a_dc_iteration_accuracy.tex）は上記 paragraph (a) に統合済み．
 \label{sec:dc_iteration_accuracy}% backward-compat label
@@ -355,3 +373,11 @@ $n \geq 16$ で $p \approx 2.0$ の正確な 2 次収束を確認した．
 初回 Euler ステップ（$n=0$）の $\Ord{\Delta t}$ 寄与は寄生根減衰（$|\rho_2|=0.5$）により
 数ステップで無視できるレベルに減衰し，全体精度 $\Ord{\Delta t^2}$ に影響しない
 （§\ref{sec:ab2_ipc} 参照）．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/ab2_ode_convergence}
+\caption{AB2 の ODE 時間精度（$dq/dt=-q$，$T=1$，初回 Euler）．
+  $n \geq 16$ で $\Ord{\Delta t^2}$ 収束を示す．TVD-RK3（図~\ref{fig:tvd_rk3_convergence}）と同一テスト問題．}
+\label{fig:ab2_ode_convergence}
+\end{figure}
