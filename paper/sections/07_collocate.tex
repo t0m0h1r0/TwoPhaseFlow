@@ -271,13 +271,15 @@ Rhie--Chow 補正と Balanced-Force 条件の独立性については付録~\ref
 コード実装の整合性確認と静止液滴テストによる検証手順は第~\ref{sec:impl_collocate}章にまとめる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{CCD を活用した Rhie--Chow 補正の高次精度化}
+\subsubsection{C/RC: CCD-enhanced Rhie--Chow 補正}
 \label{sec:rc_high_order}
 % ─────────────────────────────────────────────────────────────────────────────
 
 前節の Rhie--Chow 補正（式~\eqref{eq:rc-face-balanced}）は $\Ord{h^2}$ のフィルタリング効果を持つ．
-本節では，CCD が同時に返す $p''$ の情報を用いて，
-\textbf{追加計算コストゼロ}で空間精度を $\Ord{h^4}$ に改善できることを示す．
+本節では，CCD が $p'$ と同時に返す $p''$ を用いて，
+\textbf{追加計算コストゼロ}で空間精度を $\Ord{h^4}$ に改善する手法を導出する．
+CCD の "Combined" な性質（$p', p''$ の同時取得）を Rhie--Chow 補正に活用するため，
+この手法を \textbf{C/RC}（CCD-enhanced Rhie--Chow Correction）と呼ぶ．
 
 \paragraph{Rhie--Chow 補正項のテイラー展開}
 
@@ -335,7 +337,7 @@ $p''$ のフェイス差分は：
   \overline{(\nabla p)}_f^{\,*}
   \equiv
   \underbrace{\frac{1}{2}\bigl(p'_P + p'_E\bigr)}_{\text{算術平均}}
-  + \underbrace{\frac{h}{12}\bigl(p''_P - p''_E\bigr)}_{\text{CCD $p''$ 補正項}}
+  + \underbrace{\frac{h}{12}\bigl(p''_P - p''_E\bigr)}_{\text{C/RC 補正項}}
   \label{eq:rc_avg_corrected}
 \end{equation}
 補正項のテイラー展開は：
@@ -356,7 +358,7 @@ $p''$ のフェイス差分は：
   = \left(\frac{1}{24} - \frac{1}{24}\right)h^2 p'''
   + \frac{h^4}{720}p^{(5)}(x_f) + \Ord{h^6}
   = \Ord{h^4}
-  \label{eq:rc_d2fd_bracket}
+  \label{eq:rc_crc_bracket}
 \end{equation}
 
 \paragraph{補正後の Rhie--Chow フェイス速度}

@@ -627,7 +627,7 @@ def plot(results):
     ax00.loglog(hs, std_Linf,  "o-",  color="C0", lw=2, ms=7, label="Standard $O(h^2)$")
     ax00.loglog(hs, cor_Linf,  "s--", color="C3", lw=1.5, ms=6, label="Richardson $O(h^4)$")
     ax00.loglog(hs, herm_Linf, "D:",  color="C2", lw=1.5, ms=6, label="Hermite $O(h^4)$")
-    ax00.loglog(hs, d2fd_Linf, "^-",  color="C4", lw=2, ms=7, label="d2fd $O(h^4)$")
+    ax00.loglog(hs, d2fd_Linf, "^-",  color="C4", lw=2, ms=7, label="C/RC $O(h^4)$")
 
     # Reference slopes
     h_ref = np.array([hs[0], hs[-1]])
@@ -663,7 +663,7 @@ def plot(results):
     ax01.loglog(hs, std_L2,  "o-",  color="C0", lw=2, ms=7, label="Standard $O(h^2)$")
     ax01.loglog(hs, cor_L2,  "s--", color="C3", lw=1.5, ms=6, label="Richardson $O(h^4)$")
     ax01.loglog(hs, herm_L2, "D:",  color="C2", lw=1.5, ms=6, label="Hermite $O(h^4)$")
-    ax01.loglog(hs, d2fd_L2, "^-",  color="C4", lw=2, ms=7, label="d2fd $O(h^4)$")
+    ax01.loglog(hs, d2fd_L2, "^-",  color="C4", lw=2, ms=7, label="C/RC $O(h^4)$")
     ax01.loglog(h_ref, std_L2[0] * (h_ref / h_ref[0])**2,
                 ":", color="C0", alpha=0.4, label="$h^2$ ref")
     ax01.loglog(h_ref, cor_L2[0] * (h_ref / h_ref[0])**4,
@@ -677,7 +677,7 @@ def plot(results):
     mode_colors = {"std": "C0", "rich": "C3", "herm": "C2", "d2fd": "C4"}
     mode_styles = {"std": "-", "rich": "--", "herm": ":", "d2fd": "-."}
     mode_labels = {"std": "standard", "rich": "Richardson", "herm": "Hermite",
-                   "d2fd": "d2fd"}
+                   "d2fd": "C/RC"}
     for tag in sorted(droplet.keys()):
         r = droplet[tag]
         N_val = int(r["N"])
@@ -714,8 +714,8 @@ def plot(results):
     ax11.set_title("Part 2: Static droplet results", fontsize=10, pad=20)
 
     fig.suptitle(
-        "Rhie-Chow high-order correction: Standard vs Richardson ($p'''$) vs Hermite ($p''$)\n"
-        "bracket convergence $O(h^2) \\to O(h^4)$; Hermite = zero extra CCD cost",
+        "Rhie-Chow high-order correction: Standard vs Richardson vs Hermite vs C/RC\n"
+        "C/RC: $O(h^2) \\to O(h^4)$, zero extra CCD cost, stable",
         fontsize=10, y=1.01,
     )
     fig.savefig(FIG_PATH, format="pdf", bbox_inches="tight")

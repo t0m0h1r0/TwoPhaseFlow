@@ -112,31 +112,31 @@ Balanced-Force 不整合が高解像度で顕在化するためである（§~\r
 時間積分による定常化が必要であり，
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて検証する．
 
-\paragraph{CCD $p''$ 係数相殺補正の効果}
+\paragraph{C/RC 補正の効果}
 
-§~\ref{sec:rc_high_order} の CCD $p''$ による RC ブラケット係数相殺補正を
+§~\ref{sec:rc_high_order} の C/RC（CCD-enhanced Rhie--Chow）補正を
 多ステップ静止液滴（400 ステップ，$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，
 Rhie--Chow Balanced-Force 拡張有効）に適用した結果を示す．
 
 \begin{table}[htbp]
 \centering
-\caption{CCD $p''$ 係数相殺補正の寄生流れへの効果（400 ステップ後）}
-\label{tab:rc_d2fd_droplet}
+\caption{C/RC 補正の寄生流れへの効果（400 ステップ後）}
+\label{tab:rc_crc_droplet}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{clccr}
 \toprule
 $N$ & RC 方式 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 相対誤差 & 寄生流れ低減率 \\
 \midrule
 32 & 標準 $\Ord{h^2}$       & $2.51 \times 10^{-2}$ & $0.58\%$ & --- \\
-32 & $p''$ 補正 $\Ord{h^4}$  & $2.49 \times 10^{-2}$ & $0.42\%$ & $\mathbf{-0.8\%}$ \\
+32 & C/RC $\Ord{h^4}$         & $2.49 \times 10^{-2}$ & $0.42\%$ & $\mathbf{-0.8\%}$ \\
 \midrule
 64 & 標準 $\Ord{h^2}$       & $5.49 \times 10^{-4}$ & $1.23\%$ & --- \\
-64 & $p''$ 補正 $\Ord{h^4}$  & $4.24 \times 10^{-4}$ & $1.23\%$ & $\mathbf{-23\%}$ \\
+64 & C/RC $\Ord{h^4}$         & $4.24 \times 10^{-4}$ & $1.23\%$ & $\mathbf{-23\%}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-$N = 64$ では $p''$ 係数相殺補正により寄生流れ振幅が 23\% 低減し，
+$N = 64$ では C/RC 補正により寄生流れ振幅が 23\% 低減し，
 $\Delta p$ 精度は同等に維持される．
 $N = 32$ でも $\Delta p$ が改善（$0.58\% \to 0.42\%$）しており，
 標準 RC の構造を保持したまま補正を加算する方式が壁境界でも安定に動作することを示している．
