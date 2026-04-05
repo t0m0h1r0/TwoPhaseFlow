@@ -359,31 +359,18 @@ $p^{n+1}$ は次ステップの IPC Predictor で $p^n$ として使用される
   \]
   $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ ならば収束として反復終了 $\rightarrow$ Step 6.5
 
-  \item[(6.4)] \textbf{補正の求解（欠陥補正 Step 2，低次演算子 $L_L$ による方向分離スウィープ）：}
+  \item[(6.4)] \textbf{補正の求解（欠陥補正 Step 2，低次演算子 $L_L$ による直接 LU）：}
 
   欠陥 $d^m = q - \mathcal{L}_{\mathrm{CCD}}^{\rho}\delta p^m$（Step 6.2--6.3 で算出）に対し，
-  低次演算子 $L_L = L_{L,x} + L_{L,y}$（2次 FD 三重対角，式~\eqref{eq:ll_split}）で
-  補正量を求解する（§~\ref{sec:dc_sweep}）：
-
-  \medskip
-  Step A（$x$ 方向 Thomas 法，各行 $j$ 独立）：
+  低次演算子 $L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン）を
+  スパース行列として組み立て，直接 LU 法で厳密に補正量を求解する（§~\ref{sec:dc_sweep}）：
   \[
-    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,x}\bigr]\,\tilde{p}^{\,\cdot,j}
-    = d^{m,\cdot,j}
-    \quad \forall\, j = 0,\dots,N_y-1
-  \]
-  Neumann 境界は §~\ref{sec:ccd_neumann_bc} の手順で $\tilde{p}'_0 = 0$ を強制代入．
-
-  Step B（$y$ 方向 Thomas 法，各列 $i$ 独立）：
-  \[
-    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,y}\bigr]\,\delta p_{\mathrm{corr}}^{i,\cdot}
-    = \tilde{p}^{\,i,\cdot}
-    \quad \forall\, i = 0,\dots,N_x-1
+    \delta p_{\mathrm{corr}} = L_L^{-1}\,d^m
   \]
 
   \textbf{解の更新（欠陥補正 Step 3）：}
   $\delta p^{m+1} = \delta p^m + \omega\,\delta p_{\mathrm{corr}}$
-  （$\omega = \Delta\tau$；§~\ref{sec:dc_terminology}）．
+  （$\omega \in (0, 0.833)$；付録~\ref{app:dc_convergence_theory}）．
 
   \medskip
   \noindent 注：Krylov 型実装（分割誤差なし）では GMRES/CG 法で

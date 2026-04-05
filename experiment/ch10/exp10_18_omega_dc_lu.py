@@ -109,12 +109,19 @@ def build_fd_laplacian(rho, drho_x, drho_y, h, N, pin_dof):
 
 # ── DC + LU with ω relaxation ─────────────────────────────────────────────
 
+_STATUS_CONVERGED = "conv"
+_STATUS_STAGNATED = "stag"
+_STATUS_DIVERGED  = "divg"
+
+
 def dc_lu_omega_solve(rhs, rho, drho_x, drho_y, ccd, backend,
                       h, N, tol, maxiter, pin_dof, omega):
     """DC + direct LU with ω-relaxation.
 
     p ← p + ω L_FD^{-1} (q − L_H p)
     収束条件: ω < 2 / max_k(λ_H/λ_FD) = 0.833
+    Returns: (p, residuals, n_iters, status)
+      status: 'conv' | 'stag' | 'divg'
     """
     L_FD = build_fd_laplacian(rho, drho_x, drho_y, h, N, pin_dof)
 
@@ -132,15 +139,19 @@ def dc_lu_omega_solve(rhs, rho, drho_x, drho_y, ccd, backend,
         residuals.append(res)
 
         if res < tol:
-            return p, residuals, k + 1, True
+            return p, residuals, k + 1, _STATUS_CONVERGED
         if res > 1e20 or np.isnan(res):
-            return p, residuals, k + 1, False
+            return p, residuals, k + 1, _STATUS_DIVERGED
+        # Plateau: last 10 iters show <1% total reduction
+        if k >= 10 and residuals[-10] > 0:
+            if res / residuals[-10] > 0.99:
+                return p, residuals, k + 1, _STATUS_STAGNATED
 
         dp = spsolve(L_FD, d_flat).reshape(shape)
         p = p + omega * dp
         p.ravel()[pin_dof] = 0.0
 
-    return p, residuals, maxiter, False
+    return p, residuals, maxiter, _STATUS_STAGNATED
 
 
 # ── Experiment ───────────────────────────────────────────────────────────────
@@ -152,7 +163,7 @@ def run_experiment():
     density_ratios = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
     grid_sizes     = [32, 64]
     tol     = 1e-8
-    maxiter = 300
+    maxiter = 150
 
     all_results = {}
 
@@ -192,18 +203,20 @@ def run_experiment():
 
             row = f"  {rho_ratio:>8}"
             for omega in omegas:
-                p_sol, res_list, n_it, conv = dc_lu_omega_solve(
+                p_sol, res_list, n_it, status = dc_lu_omega_solve(
                     rhs, rho, drho_x, drho_y, ccd, backend,
                     h, N, tol, maxiter, pin_dof, omega,
                 )
-                tag = f"{n_it:3d}{'✓' if conv else '✗'}"
+                sym = {"conv": "✓", "stag": "~", "divg": "✗"}[status]
+                tag = f"{n_it:3d}{sym}"
                 row += f"  {tag:>9}"
 
                 key = f"N{N}_r{rho_ratio}_w{omega:.2f}"
                 all_results[key] = {
                     "N": N, "h": h, "rho_ratio": rho_ratio, "omega": omega,
                     "iters":      n_it,
-                    "converged":  int(conv),
+                    "converged":  int(status == _STATUS_CONVERGED),
+                    "stagnated":  int(status == _STATUS_STAGNATED),
                     "final_res":  res_list[-1] if res_list else np.nan,
                     "residuals":  np.array(res_list),
                 }
@@ -229,6 +242,7 @@ def plot_results(all_results):
         ax = axes[0]
         mat_iters = np.full((len(omegas), len(density_ratios)), np.nan)
         mat_conv  = np.zeros((len(omegas), len(density_ratios)), dtype=bool)
+        mat_stag  = np.zeros((len(omegas), len(density_ratios)), dtype=bool)
         for ri, rr in enumerate(density_ratios):
             for wi, w in enumerate(omegas):
                 key = f"N{N}_r{rr}_w{w:.2f}"
@@ -236,15 +250,18 @@ def plot_results(all_results):
                     v = all_results[key]
                     mat_iters[wi, ri] = v["iters"] if v["converged"] else np.nan
                     mat_conv[wi, ri]  = bool(v["converged"])
+                    mat_stag[wi, ri]  = bool(v.get("stagnated", 0))
 
         im = ax.imshow(mat_iters, aspect="auto", origin="lower",
-                       cmap="viridis_r", vmin=1, vmax=300)
-        # Mark non-converged
+                       cmap="viridis_r", vmin=1, vmax=150)
+        # Mark non-converged: ~ for stagnated, ✗ for diverged
         for wi in range(len(omegas)):
             for ri in range(len(density_ratios)):
                 if not mat_conv[wi, ri]:
-                    ax.text(ri, wi, "✗", ha="center", va="center",
-                            fontsize=9, color="red")
+                    sym = "~" if mat_stag[wi, ri] else "✗"
+                    col = "orange" if mat_stag[wi, ri] else "red"
+                    ax.text(ri, wi, sym, ha="center", va="center",
+                            fontsize=9, color=col)
 
         ax.set_xticks(range(len(density_ratios)))
         ax.set_xticklabels([str(r) for r in density_ratios], rotation=45, ha="right")
@@ -264,7 +281,7 @@ def plot_results(all_results):
                 continue
             v = all_results[key]
             res = v["residuals"]
-            style = "-" if v["converged"] else "--"
+            style = "-" if v["converged"] else (":" if v.get("stagnated") else "--")
             ax2.semilogy(range(1, len(res)+1), res, style,
                          color=COLORS[ci % len(COLORS)],
                          label=rf"$\omega={w}, \rho_l/\rho_g={rr}$")

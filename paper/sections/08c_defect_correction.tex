@@ -55,48 +55,30 @@ $L_H$ は CCD ブロック Thomas 法に基づく密結合演算子であり，
         高精度演算子 $L_H$ で評価した残差．
   \item $\delta p^{(k+1)}$：補正量（correction）— 低次演算子 $L_L$ の逆作用で得る．
   \item $\omega$：緩和係数（relaxation parameter）—
-        仮想時間刻み $\Delta\tau$ と数学的に等価（§~\ref{sec:dc_terminology}）．
+        収束条件 $\omega < 2/r_{\max} = 0.833$ の詳細は付録~\ref{app:dc_convergence_theory}．
 \end{itemize}
 
-\subsubsection{方向分離スイープと Thomas 法}
+\subsubsection{Step~2 の求解：直接 LU 法}
 \label{sec:dc_sweep}
 
-Step~2 の補正方程式 $L_L\,\delta p = d$ において，
-$L_L$ を $x$・$y$ 方向の1次元演算子に因子分解する：
+Step~2 の補正方程式 $L_L\,\delta p = d$ は，
+$L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン固定）を
+スパース行列として組み立て，\textbf{直接 LU 法}（\texttt{scipy.sparse.linalg.spsolve}）で厳密に求解する：
 \begin{equation}
-  L_L = L_{L,x} + L_{L,y}
-  \label{eq:ll_split}
+  \delta p^{(k+1)} = L_L^{-1}\,d^{(k)}
+  \label{eq:dc_step2_lu}
 \end{equation}
-ここで $L_{L,x}$，$L_{L,y}$ はそれぞれ $x$・$y$ 方向の
-変密度 FD 三重対角演算子（式~\eqref{eq:lfd_x_disc}）である．
-この分離により，補正 Step~2 は2段の\textbf{方向分離スイープ（Directional Sweep）}に帰着する：
-\begin{align}
-  \text{$x$ スウィープ：}\quad
-    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,x}\bigr]\,q &= d^{(k)}
-    \label{eq:dc_sweep_x} \\
-  \text{$y$ スウィープ：}\quad
-    \bigl[\tfrac{1}{\Delta\tau}\,\mathbf{I} - L_{L,y}\bigr]\,\delta p^{(k+1)} &= q
-    \label{eq:dc_sweep_y}
-\end{align}
-この2段スイープは近似分解（ADI 型分裂）であり，分裂誤差 $\Ord{\Delta\tau^2}\,L_{L,x}L_{L,y}$ が生じる．
-この誤差は外側の欠陥修正反復により各スイープで吸収されるため，収束解には影響しない．
+2次元 $N\times N$ 格子では LU 因子化のコストは $\mathcal{O}(N^{1.5})$（スパース帯行列の fill-in），
+因子化後の前進・後退代入は $\mathcal{O}(N^{1.5})$ であり，
+反復ごとに LU 因子化は不要（$\rho$ が変化しない限り1回の組み立てで繰り返し使用）．
 
-各スウィープは独立な三重対角系のバッチであり，
-Thomas 法（付録~\ref{app:sweep_thomas_coeff}）により $\mathcal{O}(N)$ で求解される．
-$x$ スウィープでは $N_y$ 本の $N_x$ 節点三重対角系が，
-$y$ スウィープでは $N_x$ 本の $N_y$ 節点三重対角系が，
-それぞれベクトル化された並列 Thomas 法で一括処理される．
-1反復あたりの総計算量は $\mathcal{O}(N^2)$（$N = N_x = N_y$）であり，
-Krylov 法（GMRES 等）の1ステップと同オーダーだが Thomas 法の定数係数が小さく実測コストが低い．
-
-\noindent\textbf{注（緩和係数 $\omega$ と仮想時間刻み $\Delta\tau$ の等価性）：}%
-\label{sec:dc_terminology}%
-式~\eqref{eq:dc_three_step} の $\omega$ と式~\eqref{eq:dc_sweep_x} の $\Delta\tau$ は
-$[\frac{1}{\Delta\tau}\mathbf{I} - L_L]\,\delta p = d$ を整理すると
-$\delta p = \Delta\tau[\mathbf{I} - \Delta\tau L_L]^{-1}d$，すなわち $\omega = \Delta\tau$ の関係にある
-（厳密な導出は付録~\ref{app:dc_convergence_theory}）．
-ここで $\omega$ および $\Delta\tau$ はいずれも無次元化された量であり，次元的整合性は保たれている．
-厳密には，$\omega$ は方向分離スキーム（式~\eqref{eq:dc_sweep_x}）の $\Delta\tau$ に吸収される形で作用する．
+\noindent\textbf{Step~2 の求解器の選択について：}
+方向分離（ADI 型）スイープを Step~2 に用いる実装も可能だが，
+2次元 ADI の反復行列固有値解析（付録~\ref{app:dc_convergence_theory}，
+および §\ref{sec:verify_dc_spectral} の数値実験）により，
+滑らかモードの有効補正が $\mathcal{O}(\Delta\tau^2)$ = $\mathcal{O}(h^4)$/反復に留まり，
+$N = 32$ で $\mathcal{O}(N^4) \approx 10^6$ 反復が必要となることが示された．
+したがって本稿では ADI スイープを Step~2 の主要ソルバとして採用しない．
 
 \subsubsection{収束先の精度保証}
 \label{sec:dc_accuracy}
@@ -118,7 +100,10 @@ $k$ を増やすごとに $L_H$ の高次精度が発現し，
 $k \geq 3$ で $\Ord{h^6}$ に漸近する
 （定量的検証は §~\ref{sec:dc_iteration_accuracy} に示す）．
 反復行列のスペクトル解析（付録~\ref{app:dc_convergence_theory}）により，
-$\omega$ の最適値と収束速度が理論的に導かれる．
+$\omega$ の最適値と収束速度が理論的に導かれる：
+$\omega \in (0,\, 0.833)$ が収束に必要であり，
+$\omega \in \{0.3, 0.5, 0.7\}$ はいずれも等密度条件で良好な収束を示す
+（実験検証: §\ref{sec:verify_dc_spectral}）．
 
 \subsubsection{CCD-PPE 線形ソルバの比較}
 \label{sec:dc_comparison}
@@ -146,10 +131,10 @@ LGMRES + CCD Kronecker（デバッグ用）& $\Ord{h^6}$ & 必要 & $\mathcal{O}
 \end{tabular}
 
 \smallskip
-\noindent 注：$k$ = 収束までの反復回数（実測で $k=3$--$5$，§~\ref{sec:dc_accuracy}）．
-直接 LU の行列記憶量は2次元スパース LU 因子の fill-in による（$\mathcal{O}(N^{2.5})$）．
-欠陥補正法は行列構築・保持が不要（matrix-free）であり，
-Thomas 係数の導出は付録~\ref{app:sweep_thomas_coeff}，
-収束理論は付録~\ref{app:dc_convergence_theory} を参照．
+\noindent 注：$k$ = 欠陥補正の外側反復回数（実測で $k=3$--$5$，§~\ref{sec:dc_accuracy}）；
+Step~2 は直接 LU で厳密求解．
+欠陥補正法の $L_H$ 評価は行列フリー；
+収束理論（$\omega_{\max} = 0.833$）は付録~\ref{app:dc_convergence_theory}，
+Step~2 の ADI 代替案の失敗分析は §~\ref{sec:verify_dc_spectral} を参照．
 \end{table}
 
