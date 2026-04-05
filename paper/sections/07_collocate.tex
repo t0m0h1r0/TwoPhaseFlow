@@ -363,19 +363,28 @@ $p''$ のフェイス差分は：
 
 \paragraph{補正後の Rhie--Chow フェイス速度}
 
-式~\eqref{eq:rc-face-balanced} のセル中心平均を $\overline{(\cdot)}_f^{\,*}$
-（式~\eqref{eq:rc_avg_corrected}）に置換する：
+式~\eqref{eq:rc-face-balanced} の圧力ブラケットのセル中心平均を
+$\overline{(\cdot)}_f^{\,*}$（式~\eqref{eq:rc_avg_corrected}）に置換する：
 \begin{equation}
   u_f = \bar{u}_f
     - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
     \Biggl[
       \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}^{\,*}_f\Bigr)
-      - \Bigl((\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}^{\,*}_f\Bigr)
+      - \Bigl((\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f\Bigr)
     \Biggr]
   \label{eq:rc-face-balanced-ho}
 \end{equation}
-各括弧内の検出項が $\Ord{h^4}$ となるため，
+圧力ブラケットの検出項が $\Ord{h^4}$ となるため，
 RC 補正量は $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される．
+
+\medskip
+\noindent\textbf{注（$\bm{f}_\sigma$ ブラケットへの非適用）：}
+表���張力体積力 $\bm{f}_\sigma = (\kappa/We)\,D^{(1)}_\mathrm{CCD}\psi$ は
+界面近傍で急峻に変化するため，$D^{(2)}\bm{f}_\sigma$ が界面で大きな値を取る．
+C/RC 補正をこのブラケットに適用す���と過大な補正が生じ���時間発���で不安定化する
+（§~\ref{sec:bf_static_droplet} の数値実験で確認済み）．
+圧力場 $p$ は PPE で滑らかに投影されるため $p''$ は安定であり，
+C/RC は\textbf{圧力ブラケットのみ}に適用する．
 
 \paragraph{計算コスト・安定性}
 CCD は 1 回の呼び出しで $p'$ と $p''$ を同時に返す（§~\ref{sec:ccd_def}）ため，
