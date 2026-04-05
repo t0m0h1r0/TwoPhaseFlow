@@ -10,12 +10,11 @@ Three solve backends:
     "decomp"  — Jump decomposition: p = p̃ + σκ·H_ε(φ), solve smooth p̃
                 via CCD+DC on smoothed density. Recommended for sharp ρ.
 
-The "decomp" backend (jump decomposition) works by:
-    1. Decompose pressure: p = p̃ + p_jump, where p_jump = σκ · H_ε(φ)
-    2. p̃ is continuous (no jump) → CCD safe
-    3. Substitute into PPE: L^ρ̃ p̃ = rhs - L^ρ̃ p_jump
-    4. Solve for p̃ using standard CCD + defect correction
-    5. Recover: p = p̃ + σκ · H(φ)  (sharp Heaviside for final result)
+Architecture:
+    Inherits _CCDPPEBase for CCD matrix assembly (Kronecker products,
+    1D CCD matrices, pin-node setup).  Overrides solve() with IIM-specific
+    dispatch to three backends.  _solve_linear_system is not used (the
+    Template Method pattern of _CCDPPEBase is bypassed).
 
 Usage:
     solver = PPESolverIIM(backend, config, grid, ccd=ccd)
@@ -35,12 +34,14 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..core.boundary import BoundarySpec
 
-from ..interfaces.ppe_solver import IPPESolver
+from .ppe_solver_pseudotime import _CCDPPEBase
 from .iim import IIMStencilCorrector
 
 
-class PPESolverIIM(IPPESolver):
+class PPESolverIIM(_CCDPPEBase):
     """CCD PPE solver with IIM interface correction.
+
+    Inherits Kronecker-product matrix assembly from _CCDPPEBase.
 
     Parameters
     ----------
@@ -48,6 +49,7 @@ class PPESolverIIM(IPPESolver):
     config  : SimulationConfig
     grid    : Grid
     ccd     : CCDSolver (constructor injection; auto-built if None)
+    bc_spec : BoundarySpec (optional)
     """
 
     def __init__(
@@ -58,47 +60,16 @@ class PPESolverIIM(IPPESolver):
         ccd: "CCDSolver | None" = None,
         bc_spec: "BoundarySpec | None" = None,
     ) -> None:
-        self.xp = backend.xp
-        self.backend = backend
-        self.grid = grid
-        self.ndim = grid.ndim
-        self.tol = config.solver.pseudo_tol
-        self.maxiter = config.solver.pseudo_maxiter
-
-        if ccd is not None:
-            self.ccd = ccd
-        else:
-            from ..ccd.ccd_solver import CCDSolver as _CCD
-            self.ccd = _CCD(grid, backend)
-
-        # 境界条件仕様
-        if bc_spec is not None:
-            self._bc_spec = bc_spec
-        else:
-            from ..core.boundary import BoundarySpec as _BS
-            self._bc_spec = _BS(
-                bc_type=config.numerics.bc_type,
-                shape=grid.shape,
-                N=grid.N,
-            )
+        super().__init__(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
 
         self._iim_mode = getattr(config.solver, "iim_mode", "hermite")
         self._iim_backend = getattr(config.solver, "iim_backend", "decomp")
         self._corrector = IIMStencilCorrector(grid, mode=self._iim_mode)
 
-        # Pre-compute 1D CCD matrices (needed for LU and decomp backends)
-        if self._iim_backend in ("lu", "decomp"):
-            self._D1: list = []
-            self._D2: list = []
-            for ax in range(self.ndim):
-                d1, d2 = self._build_1d_ccd_matrices(ax)
-                self._D1.append(d1)
-                self._D2.append(d2)
-
         self._c_tau = getattr(config.solver, "pseudo_c_tau", 2.0)
         self._h_min = min(grid.L[ax] / grid.N[ax] for ax in range(grid.ndim))
 
-    # ── IPPESolver interface ─────────────────────────────────────────────
+    # ── IPPESolver interface (overrides _CCDPPEBase.solve) ───────────────
 
     def solve(
         self,
@@ -122,19 +93,15 @@ class PPESolverIIM(IPPESolver):
             return self._solve_dc(rhs, rho, dt, p_init,
                                   phi=phi, kappa=kappa, sigma=sigma)
 
+    def _solve_linear_system(self, L_pinned, rhs_np, p0):
+        """Direct LU solve (used by _assemble_pinned_system path)."""
+        import scipy.sparse.linalg as spla
+        return spla.spsolve(L_pinned, rhs_np)
+
     # ── Jump Decomposition backend ───────────────────────────────────────
 
     def _solve_decomp(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
-        """Jump decomposition: p = p̃ + σκ·H_ε(φ).
-
-        1. Smooth ρ with H_ε(φ) to avoid CCD Gibbs on density
-        2. Compute jump field p_jump = σκ · H_ε(φ)
-        3. Evaluate L^ρ̃(p_jump) via CCD (smooth field → no Gibbs)
-        4. Solve L^ρ̃(p̃) = rhs - L^ρ̃(p_jump) via DC sweeps
-        5. Return p = p̃ + σκ · H_sharp(φ) (sharp jump in output)
-
-        Falls back to standard DC when phi/kappa/sigma not provided.
-        """
+        """Jump decomposition: p = p̃ + σκ·H_ε(φ)."""
         xp = self.xp
         shape = self.grid.shape
         h = self._h_min
@@ -142,69 +109,41 @@ class PPESolverIIM(IPPESolver):
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
 
-        # Determine if IIM is active
         has_iim = (phi is not None and kappa is not None and sigma > 0.0)
 
         if has_iim:
             phi_np = np.asarray(self.backend.to_host(phi), dtype=float)
             kap_np = np.asarray(self.backend.to_host(kappa), dtype=float)
 
-            # Extract phase densities from the density field
             rho_l = float(np.max(rho_np))
             rho_g = float(np.min(rho_np))
 
-            # Smoothed Heaviside for operator construction (ε = 1.5h)
             eps = 1.5 * h
             H_smooth = 0.5 * (1.0 + np.tanh(phi_np / (2.0 * eps)))
-
-            # Smoothed density for CCD operator (no Gibbs in Dρ)
             rho_smooth = rho_l + (rho_g - rho_l) * H_smooth
-
-            # Jump field: p_jump = σκ · (1 - H_ε(φ))
-            # Adds σκ to liquid side (φ<0, H≈0), 0 to gas side (φ>0, H≈1)
-            # So p_liquid = p̃ + σκ, p_gas = p̃ → [p] = p_in - p_out = σκ
             p_jump = sigma * kap_np * (1.0 - H_smooth)
 
-            # Evaluate L^ρ̃(p_jump) via CCD
             from .ccd_ppe_utils import precompute_density_gradients, compute_ccd_laplacian
             drho_s = precompute_density_gradients(rho_smooth, self.ccd, self.backend)
             Lp_jump = compute_ccd_laplacian(
                 p_jump, rho_smooth, drho_s, self.ccd, self.backend,
             )
 
-            Lp_jump_np = np.asarray(self.backend.to_host(Lp_jump))
-
-            # Modified RHS for smooth part: rhs_tilde = rhs - L^ρ̃(p_jump)
-            rhs_tilde = rhs_np - Lp_jump_np
-
-            # Solve for p̃ using Kronecker LU with smoothed density
+            rhs_tilde = rhs_np - Lp_jump
             p_tilde = self._lu_solve_smooth(rhs_tilde, rho_smooth, drho_s)
-
-            # Return smooth part p̃ for the corrector (∇p̃ is CCD-safe).
-            # The sharp jump σκ·(1-H) is already handled by the CSF body
-            # force in the predictor; adding it here would double-count and
-            # produce Gibbs oscillations when CCD computes ∇p in the corrector.
-            # For diagnostics: p_physical = p̃ + σκ·(1-H_sharp(φ)).
-            self._last_jump_field = sigma * kap_np  # cache for diagnostics
+            self._last_jump_field = sigma * kap_np
 
             return self.backend.to_device(p_tilde)
-
         else:
-            # No IIM — solve with Kronecker LU
             from .ccd_ppe_utils import precompute_density_gradients
             drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
             p = self._lu_solve_smooth(rhs_np, rho_np, drho)
             return self.backend.to_device(p)
 
     def _lu_solve_smooth(self, rhs_np, rho_np, drho_np):
-        """Kronecker LU solve for smooth fields.
-
-        Assembles the CCD operator with the given density, pins the
-        centre node, and solves via direct sparse LU.
-        """
+        """Kronecker LU solve for smooth fields."""
         import scipy.sparse.linalg as spla
 
-        shape = self.grid.shape
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
         from ..core.boundary import pin_sparse_row
@@ -222,7 +161,7 @@ class PPESolverIIM(IPPESolver):
                 RuntimeWarning, stacklevel=2,
             )
 
-        return p_flat.reshape(shape)
+        return p_flat.reshape(self.grid.shape)
 
     # ── LU backend (legacy RHS correction) ───────────────────────────────
 
@@ -231,7 +170,6 @@ class PPESolverIIM(IPPESolver):
         import scipy.sparse.linalg as spla
 
         shape = self.grid.shape
-        n = int(np.prod(shape))
         xp = self.xp
 
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
@@ -277,7 +215,6 @@ class PPESolverIIM(IPPESolver):
 
     def _solve_dc(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
         """DC with RHS correction (legacy approach)."""
-        xp = self.xp
         shape = self.grid.shape
 
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
@@ -310,7 +247,7 @@ class PPESolverIIM(IPPESolver):
             R = rhs_np - Lp
 
             if phi_np is not None and sigma > 0.0:
-                L_sparse = self._build_sparse_operator_from_drho(rho_np, drho)
+                L_sparse = self._build_sparse_operator(rho_np, drho)
                 delta_q = self._corrector.compute_correction(
                     L_sparse, phi_np, kap_np, sigma, rho_np, rhs_np,
                     dp_dx=dp_arrays[0] if dp_arrays else None,
@@ -334,43 +271,3 @@ class PPESolverIIM(IPPESolver):
                 f"PPESolverIIM(dc): did not converge ({residual:.3e}).",
                 RuntimeWarning, stacklevel=2)
         return self.backend.to_device(p)
-
-    # ── Thomas sweep ─────────────────────────────────────────────────────
-
-    # _sweep_1d は thomas_sweep.thomas_sweep_1d に統合済み
-
-    # ── Kronecker operator assembly (LU backend) ─────────────────────────
-
-    def _build_1d_ccd_matrices(self, axis):
-        n_pts = self.grid.N[axis] + 1
-        I = np.eye(n_pts)
-        if axis == 0:
-            d1, d2 = self.ccd.differentiate(I, axis=0)
-            return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
-        else:
-            d1, d2 = self.ccd.differentiate(I, axis=1)
-            return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
-
-    def _build_sparse_operator(self, rho_np, drho_np):
-        import scipy.sparse as sp
-        Nx, Ny = self.grid.shape
-        D2x_full = sp.kron(sp.csr_matrix(self._D2[0]), sp.eye(Ny), format='csr')
-        D2y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(self._D2[1]), format='csr')
-        D1x_full = sp.kron(sp.csr_matrix(self._D1[0]), sp.eye(Ny), format='csr')
-        D1y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(self._D1[1]), format='csr')
-        rho_flat = rho_np.ravel()
-        inv_rho = sp.diags(1.0 / rho_flat, format='csr')
-        coeff_x = sp.diags(drho_np[0].ravel() / rho_flat**2, format='csr')
-        coeff_y = sp.diags(drho_np[1].ravel() / rho_flat**2, format='csr')
-        L = inv_rho @ (D2x_full + D2y_full) - coeff_x @ D1x_full - coeff_y @ D1y_full
-        return L.tocsr()
-
-    def _build_sparse_operator_from_drho(self, rho_np, drho_list):
-        if not hasattr(self, '_D1'):
-            self._D1 = []
-            self._D2 = []
-            for ax in range(self.ndim):
-                d1, d2 = self._build_1d_ccd_matrices(ax)
-                self._D1.append(d1)
-                self._D2.append(d2)
-        return self._build_sparse_operator(rho_np, drho_list)
