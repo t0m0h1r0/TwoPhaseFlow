@@ -177,17 +177,27 @@ class DCCDPPEFilter:
 
         return result
 
-    def compute_filtered_divergence(self, vel: List) -> "array":
+    def compute_filtered_divergence(
+        self, vel: List, crc_dccd: bool = False,
+    ) -> "array":
         """Filter velocity and compute CCD divergence.
 
         Implements Eq. dccd_ppe_rhs:
             q_h = D_x^(1) u_tilde* + D_y^(1) v_tilde*
 
+        When ``crc_dccd=True``, applies C/RC-DCCD correction to reduce
+        the DCCD filter dissipation error from O(ε_d h²) to O(ε_d h⁴)
+        using the D²_CCD output that is already returned by differentiate()
+        at zero extra CCD cost:
+
+            q_h* = q_h − ε_d h² Σ_ax FD_ax(D²_CCD(ũ*_ax))
+
         Note: the 1/dt factor is NOT included; caller must apply it.
 
         Parameters
         ----------
-        vel : list of velocity component arrays (u*, v*, ...)
+        vel       : list of velocity component arrays (u*, v*, ...)
+        crc_dccd  : bool — if True, apply C/RC-DCCD correction (default False)
 
         Returns
         -------
@@ -198,7 +208,40 @@ class DCCDPPEFilter:
 
         div = xp.zeros_like(vel_filt[0])
         for ax in range(self.ndim):
-            du_dax, _ = self.ccd.differentiate(vel_filt[ax], ax)
+            du_dax, d2u_dax = self.ccd.differentiate(vel_filt[ax], ax)
             div = div + du_dax
+
+            if crc_dccd:
+                # C/RC-DCCD: subtract ε_d h² · ∂/∂x_ax(D²_CCD(ũ*_ax))
+                # using central FD of the already-computed d2.
+                h = float(self.grid.L[ax] / self.grid.N[ax])
+                d2_np = xp.asarray(d2u_dax)
+                N_ax = self.grid.N[ax]
+
+                def sl(idx, _ax=ax):
+                    s = [slice(None)] * self.ndim
+                    s[_ax] = idx
+                    return tuple(s)
+
+                if self.bc_type == 'periodic':
+                    # Central FD with periodic wrap
+                    d2_ip1 = xp.roll(d2_np, -1, axis=ax)
+                    d2_im1 = xp.roll(d2_np,  1, axis=ax)
+                else:
+                    # Central FD; one-sided at boundaries
+                    d2_ip1 = xp.zeros_like(d2_np)
+                    d2_im1 = xp.zeros_like(d2_np)
+                    inner = [slice(None)] * self.ndim
+                    inner[ax] = slice(1, N_ax)
+                    d2_ip1[tuple(inner)] = d2_np[sl(slice(2, N_ax + 1))]
+                    d2_im1[tuple(inner)] = d2_np[sl(slice(0, N_ax - 1))]
+                    # Boundaries: one-sided
+                    d2_ip1[sl(0)] = d2_np[sl(1)]
+                    d2_im1[sl(0)] = d2_np[sl(0)]
+                    d2_ip1[sl(N_ax)] = d2_np[sl(N_ax)]
+                    d2_im1[sl(N_ax)] = d2_np[sl(N_ax - 1)]
+
+                dd2_dx = (d2_ip1 - d2_im1) / (2.0 * h)
+                div = div - EPS_D * h**2 * dd2_dx
 
         return div
