@@ -213,6 +213,15 @@ B（$\mathit{We}{=}10$）  & 128 & 発散（2 ステップ） & --- & --- & --- 
 これは CLS の保存形式の移流と変密度 PPE の係数行列再構築が
 界面移動に正しく追従していることを実証する．
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch11_hermite_galilean}
+\caption{Galilean 不変性テスト（$\rho_l/\rho_g=2$，$U=1$，1 周期）．
+  表面張力なし（テスト A）では並進速度場が機械精度で保たれ，
+  寄生的な並進速度成分が発生しない（$\|\bu_{\mathrm{para}}\|_\infty < 10^{-15}$）．}
+\label{fig:galilean_invariance}
+\end{figure}
+
 \noindent\textbf{テスト B の結論（失敗の物理的解釈）：}
 表面張力を導入すると，IPC の Predictor に含まれる $-\bnabla p^n / \rho$
 の評価が 2 ステップ目で破綻する．
