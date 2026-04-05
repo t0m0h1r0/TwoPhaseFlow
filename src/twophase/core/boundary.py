@@ -79,6 +79,42 @@ class BoundarySpec:
         return int(np.ravel_multi_index(centre_idx, reduced_shape))
 
 
+def apply_thomas_neumann(a, b, c, rhs) -> None:
+    """Thomas 法の壁 Neumann BC: 両端を恒等行 (Δq=0) に設定する。
+
+    ADI/sweep 型 PPE ソルバーの共通パターン。
+    境界ノード i=0, i=-1 で a=0, b=1, c=0, rhs=0 とし、
+    壁面での圧力増分を凍結する。
+
+    Parameters
+    ----------
+    a, b, c : ndarray — 3重対角の下・主・上対角（in-place 変更）
+    rhs     : ndarray — 右辺ベクトル（in-place 変更）
+    """
+    a[0] = 0.0;  b[0] = 1.0;  c[0] = 0.0
+    a[-1] = 0.0; b[-1] = 1.0; c[-1] = 0.0
+    rhs[0] = 0.0
+    rhs[-1] = 0.0
+
+
+def pin_sparse_row(L_lil, rhs_flat, pin_dof: int) -> None:
+    """疎行列のゲージピン行を恒等行に設定する。
+
+    PPE の null space を除去するために、pin_dof 行を
+    ``L[pin, :] = 0, L[pin, pin] = 1, rhs[pin] = 0``
+    に書き換える。
+
+    Parameters
+    ----------
+    L_lil    : scipy.sparse.lil_matrix — in-place 変更
+    rhs_flat : ndarray (1D) — in-place 変更
+    pin_dof  : int — ピン対象の DOF インデックス
+    """
+    L_lil[pin_dof, :] = 0.0
+    L_lil[pin_dof, pin_dof] = 1.0
+    rhs_flat[pin_dof] = 0.0
+
+
 def pad_ghost_cells(xp, arr, axis: int, n_ghost: int, bc_type: str):
     """配列にゴーストセルを付加する。
 

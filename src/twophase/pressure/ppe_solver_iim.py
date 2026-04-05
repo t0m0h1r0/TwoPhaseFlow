@@ -217,14 +217,12 @@ class PPESolverIIM(IPPESolver):
         shape = self.grid.shape
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
+        from ..core.boundary import pin_sparse_row
         pin_dof = self._bc_spec.pin_dof
         L_lil = L_sparse.tolil()
-        L_lil[pin_dof, :] = 0.0
-        L_lil[pin_dof, pin_dof] = 1.0
-        L_pinned = L_lil.tocsr()
-
         rhs_flat = rhs_np.ravel().copy()
-        rhs_flat[pin_dof] = 0.0
+        pin_sparse_row(L_lil, rhs_flat, pin_dof)
+        L_pinned = L_lil.tocsr()
 
         p_flat = spla.spsolve(L_pinned, rhs_flat)
 
@@ -273,12 +271,11 @@ class PPESolverIIM(IPPESolver):
             )
             rhs_flat += delta_q
 
+        from ..core.boundary import pin_sparse_row
         pin_dof = self._bc_spec.pin_dof
         L_lil = L_sparse.tolil()
-        L_lil[pin_dof, :] = 0.0
-        L_lil[pin_dof, pin_dof] = 1.0
+        pin_sparse_row(L_lil, rhs_flat, pin_dof)
         L_pinned = L_lil.tocsr()
-        rhs_flat[pin_dof] = 0.0
 
         p_flat = spla.spsolve(L_pinned, rhs_flat)
 
@@ -383,12 +380,9 @@ class PPESolverIIM(IPPESolver):
         a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]
         b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
         c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
-        a[0] = 0.0;  b[0] = 1.0;  c[0] = 0.0
-        a[-1] = 0.0; b[-1] = 1.0; c[-1] = 0.0
-
         rhs_m = rhs_f.copy()
-        rhs_m[0] = 0.0
-        rhs_m[-1] = 0.0
+        from ..core.boundary import apply_thomas_neumann
+        apply_thomas_neumann(a, b, c, rhs_m)
 
         c_p = np.zeros_like(rhs_f)
         r_p = np.zeros_like(rhs_f)

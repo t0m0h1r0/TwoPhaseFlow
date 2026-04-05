@@ -298,11 +298,10 @@ class _CCDPPEBase(IPPESolver):
             pin_dof = self._bc_spec.pin_dof
             rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
 
+        from ..core.boundary import pin_sparse_row
         L_lil = L_sparse.tolil()
-        L_lil[pin_dof, :] = 0.0
-        L_lil[pin_dof, pin_dof] = 1.0
+        pin_sparse_row(L_lil, rhs_np, pin_dof)
         L_pinned = L_lil.tocsr()
-        rhs_np[pin_dof] = 0.0
 
         return L_pinned, rhs_np
 
