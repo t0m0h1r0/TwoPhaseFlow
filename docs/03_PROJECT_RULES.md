@@ -43,9 +43,17 @@ All new numerical modules: MMS verification required.
 - Acceptance: slopes >= expected_order - 0.2
 - CCD boundary-limited: d1 >= 3.5, d2 >= 2.5 on L_inf (ASM-004)
 
-### PR-4 — Experiment Infrastructure Toolkit (MANDATORY)
+### PR-4 — Experiment Data Output (MANDATORY)
 
-Experiment scripts MUST use `twophase.experiment` (`src/twophase/experiment/`):
+Every experiment script MUST:
+1. **Save raw data** (NPZ/CSV) before plotting — results must be reproducible without re-running the simulation.
+2. **Support `--plot-only`** — regenerate PDF graphs from saved data without computation.
+3. **Output PDF graphs** to `experiment/ch{N}/results/{experiment_name}/` (colocated with data).
+4. **Never present results without saved data** — if asked for results, the data file must already exist.
+
+Violation = data loss risk. Re-running expensive simulations (CCD-LU, N=64+) wastes hours.
+
+When available, use `twophase.experiment` (`src/twophase/experiment/`):
 `apply_style()`, `experiment_dir()`, `experiment_argparser()`, `save_results()`,
 `load_results()`, `save_figure()`, `field_panel()`, `convergence_loglog()`,
 `time_history()`, `latex_convergence_table()`, `summary_text()`.
