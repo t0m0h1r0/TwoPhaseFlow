@@ -123,8 +123,13 @@ class PPESolverSweep(IPPESolver):
         rho_np  = np.asarray(self.backend.to_host(rho),  dtype=float)
         rhs_np  = np.asarray(self.backend.to_host(rhs),  dtype=float)
 
-        # LTS: Δτᵢⱼ = C_τ · ρᵢⱼ · h_min² / 2  (§8d eq:dtau_lts)
-        dtau = self.c_tau * rho_np * (self._h_min ** 2) / 2.0   # shape=grid.shape
+        from .ccd_ppe_utils import (
+            precompute_density_gradients, compute_ccd_laplacian,
+            compute_lts_dtau, check_convergence,
+        )
+        from .thomas_sweep import thomas_sweep_1d
+
+        dtau = compute_lts_dtau(rho_np, self.c_tau, self._h_min)
 
         # 初期値（IPC 増分法: δp⁰ = 0）
         p = (
@@ -133,42 +138,22 @@ class PPESolverSweep(IPPESolver):
             else np.asarray(self.backend.to_host(p_init), dtype=float)
         )
 
-        # 密度勾配（CCD; 反復中は凍結）
-        rho_dev = xp.asarray(rho_np)
-        drho: list[np.ndarray] = []
-        for ax in range(self.grid.ndim):
-            drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-            drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
-
-        # ゲージピン
+        drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
         pin_dof = self._bc_spec.pin_dof
 
         converged = False
         for _ in range(self.maxiter):
-            # ── CCD 残差 R = q_h − L_CCD(δp)  (O(h⁶)) ─────────────
-            p_dev = xp.asarray(p)
-            Lp = xp.zeros(shape, dtype=float)
-            for ax in range(self.grid.ndim):
-                dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
-                drho_dev = xp.asarray(drho[ax])
-                Lp += d2p_ax / rho_dev - (drho_dev / rho_dev ** 2) * dp_ax
+            Lp = compute_ccd_laplacian(p, rho_np, drho, self.ccd, self.backend)
+            R = rhs_np - Lp
 
-            R = rhs_np - np.asarray(self.backend.to_host(Lp))
-
-            # ピンノードを残差から除外して収束判定
-            R_chk = R.ravel().copy()
-            R_chk[pin_dof] = 0.0
-            residual = float(np.sqrt(np.dot(R_chk, R_chk)))
-            if residual < self.tol:
-                converged = True
+            residual, converged = check_convergence(R, pin_dof, self.tol)
+            if converged:
                 break
 
-            # ── x スウィープ: (1/Δτ − L_FD_x) q = R ────────────────
-            q = self._sweep_1d(R, rho_np, drho[0], dtau, axis=0)
+            q = thomas_sweep_1d(R, rho_np, drho[0], dtau, axis=0, grid=self.grid)
             q.ravel()[pin_dof] = 0.0
 
-            # ── y スウィープ: (1/Δτ − L_FD_y) Δp = q ───────────────
-            dp = self._sweep_1d(q, rho_np, drho[1], dtau, axis=1)
+            dp = thomas_sweep_1d(q, rho_np, drho[1], dtau, axis=1, grid=self.grid)
             dp.ravel()[pin_dof] = 0.0
 
             p = p + dp
@@ -192,84 +177,4 @@ class PPESolverSweep(IPPESolver):
 
         return self.backend.to_device(p)
 
-    # ── Thomas スウィープ ─────────────────────────────────────────────────
-
-    def _sweep_1d(
-        self,
-        rhs_2d: np.ndarray,
-        rho: np.ndarray,
-        drho: np.ndarray,
-        dtau: np.ndarray,
-        axis: int,
-    ) -> np.ndarray:
-        """(1/Δτ − L_FD_axis) q = rhs を axis 方向の Thomas 法で解く。
-
-        全断面を同時に処理するベクトル化 Thomas 法。
-        LHS 演算子（FD 2次精度）:
-            (L_FD_axis q)[i] = (1/ρ[i])(q[i-1]−2q[i]+q[i+1])/h²
-                               − (∂ρ/∂x[i]/ρ[i]²)(q[i+1]−q[i-1])/(2h)
-
-        境界ノード (i=0, i=N): 恒等（Neumann BC — 壁面では増分ゼロ）。
-
-        Parameters
-        ----------
-        rhs_2d : shape ``grid.shape`` — RHS
-        rho    : shape ``grid.shape`` — 密度
-        drho   : shape ``grid.shape`` — ρ の axis 方向微分（CCD）
-        dtau   : shape ``grid.shape`` — LTS 仮想時間刻み Δτᵢⱼ
-        axis   : int — Thomas を適用する軸（0=x, 1=y）
-
-        Returns
-        -------
-        q : shape ``grid.shape``
-        """
-        N = self.grid.N[axis]
-        h = self.grid.L[axis] / N
-        h2 = h * h
-
-        # 解く軸を先頭に移動: (N+1, batch)
-        rhs_f  = np.moveaxis(rhs_2d, axis, 0)
-        rho_f  = np.moveaxis(rho,    axis, 0)
-        drho_f = np.moveaxis(drho,   axis, 0)
-        dtau_f = np.moveaxis(dtau,   axis, 0)
-
-        n = N + 1  # ノード数
-
-        # 係数: (N+1, batch)
-        inv_dtau = 1.0 / dtau_f                          # 1/Δτᵢⱼ
-        inv_rho_h2 = 1.0 / (rho_f * h2)                 # 1/(ρ h²)
-        drho_h = drho_f / (rho_f ** 2 * 2.0 * h)        # ∂ρ/∂x / (ρ² 2h)
-
-        # 3重対角係数 (N+1, batch)
-        a = np.empty_like(rhs_f)   # 下対角 (p[i-1])
-        b = np.empty_like(rhs_f)   # 主対角 (p[i])
-        c = np.empty_like(rhs_f)   # 上対角 (p[i+1])
-
-        # 内部ノード 1..N-1
-        a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]        # − 1/(ρh²) + ρx/(2ρ²h)
-        b[1:-1] =  inv_dtau[1:-1]   + 2.0 * inv_rho_h2[1:-1]  # 1/Δτ + 2/(ρh²)
-        c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]        # − 1/(ρh²) − ρx/(2ρ²h)
-
-        # 境界ノード: 恒等（Δq 壁面 = 0）
-        rhs_m = rhs_f.copy()
-        from ..core.boundary import apply_thomas_neumann
-        apply_thomas_neumann(a, b, c, rhs_m)
-
-        # ── Thomas 前進消去 ────────────────────────────────────────
-        c_p = np.zeros_like(rhs_f)    # 修正上対角
-        r_p = np.zeros_like(rhs_f)    # 修正 RHS
-
-        c_p[0] = c[0] / b[0]
-        r_p[0] = rhs_m[0] / b[0]
-        for i in range(1, n):
-            denom   = b[i] - a[i] * c_p[i - 1]
-            c_p[i]  = c[i] / denom
-            r_p[i]  = (rhs_m[i] - a[i] * r_p[i - 1]) / denom
-
-        # ── 後退代入 ───────────────────────────────────────────────
-        q = np.empty_like(rhs_f)
-        q[-1] = r_p[-1]
-        for i in range(n - 2, -1, -1):
-            q[i] = r_p[i] - c_p[i] * q[i + 1]
-
-        return np.moveaxis(q, 0, axis)
+    # _sweep_1d は thomas_sweep.thomas_sweep_1d に統合済み

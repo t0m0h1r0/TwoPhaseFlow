@@ -162,17 +162,17 @@ class PPESolverIterative(IPPESolver):
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
 
-        # LTS: Δτᵢⱼ = C_τ · ρᵢⱼ · h_min² / 2  (§8d eq:dtau_lts)
-        # For explicit pseudo-time, stability requires c_eff < 2/(max spectral ratio):
-        #   - 3pt FD:  λ_max ≈ 8/(ρh²) → c_eff < 0.5   (safety 0.45)
-        #   - CCD:     λ_max ≈ 2(Nπ/L)²/ρ → c_eff < 2/π² ≈ 0.203 (safety 0.19)
-        # GS/ADI are implicitly stable; use the user-specified C_τ.
+        from .ccd_ppe_utils import (
+            precompute_density_gradients, compute_lts_dtau, check_convergence,
+        )
+
+        # LTS: stability limit for explicit pseudo-time
         if self.method == "explicit":
             c_limit = 0.19 if self.discretization == "ccd" else 0.45
             c_eff = min(self.c_tau, c_limit)
         else:
             c_eff = self.c_tau
-        dtau = c_eff * rho_np * (self._h_min ** 2) / 2.0
+        dtau = compute_lts_dtau(rho_np, c_eff, self._h_min)
 
         # Unpack initial state (dict from get_state() or plain array)
         if isinstance(p_init, dict):
@@ -184,11 +184,7 @@ class PPESolverIterative(IPPESolver):
 
         # Density gradient (frozen during iteration)
         if self.discretization == "ccd":
-            rho_dev = xp.asarray(rho_np)
-            drho: list[np.ndarray] = []
-            for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-                drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
         else:
             drho = self._drho_3pt(rho_np)
 
@@ -213,12 +209,8 @@ class PPESolverIterative(IPPESolver):
             last_dp = dp_list
             last_d2p = d2p_list
 
-            # Convergence check — only pin excluded (same as PPESolverSweep)
-            R_chk = R.ravel().copy()
-            R_chk[pin] = 0.0
-            residual = float(np.sqrt(np.dot(R_chk, R_chk)))
-            if residual < self.tol:
-                converged = True
+            residual, converged = check_convergence(R, pin, self.tol)
+            if converged:
                 break
 
             # ── Update step ──────────────────────────────────────────
@@ -291,21 +283,16 @@ class PPESolverIterative(IPPESolver):
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
         p_np = np.asarray(self.backend.to_host(p), dtype=float)
 
+        from .ccd_ppe_utils import precompute_density_gradients, check_convergence
         if self.discretization == "ccd":
-            xp = self.xp
-            rho_dev = xp.asarray(rho_np)
-            drho = []
-            for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-                drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
             R, _, _ = self._residual_ccd(p_np, rhs_np, rho_np, drho)
         else:
             drho = self._drho_3pt(rho_np)
             R, _, _ = self._residual_3pt(p_np, rhs_np, rho_np, drho)
 
-        R_flat = R.ravel().copy()
-        R_flat[self._pin_dof] = 0.0
-        return float(np.sqrt(np.dot(R_flat, R_flat)))
+        residual, _ = check_convergence(R, self._pin_dof, 0.0)
+        return residual
 
     # ── Density gradient (3pt) ───────────────────────────────────────────
 
@@ -363,20 +350,11 @@ class PPESolverIterative(IPPESolver):
         Returns (R, dp_list, d2p_list) where dp_list[ax] and d2p_list[ax]
         are the per-axis 1st and 2nd derivatives of p.
         """
-        xp = self.xp
-        shape = self.grid.shape
-        p_dev = xp.asarray(p)
-        rho_dev = xp.asarray(rho_np)
-        Lp = xp.zeros(shape, dtype=float)
-        dp_list: list[np.ndarray] = []
-        d2p_list: list[np.ndarray] = []
-        for ax in range(self.ndim):
-            dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
-            drho_dev = xp.asarray(drho[ax])
-            Lp += d2p_ax / rho_dev - (drho_dev / rho_dev ** 2) * dp_ax
-            dp_list.append(np.asarray(self.backend.to_host(dp_ax), dtype=float))
-            d2p_list.append(np.asarray(self.backend.to_host(d2p_ax), dtype=float))
-        return rhs_np - np.asarray(self.backend.to_host(Lp)), dp_list, d2p_list
+        from .ccd_ppe_utils import compute_ccd_laplacian_with_derivatives
+        Lp, dp_list, d2p_list = compute_ccd_laplacian_with_derivatives(
+            p, rho_np, drho, self.ccd, self.backend,
+        )
+        return rhs_np - Lp, dp_list, d2p_list
 
     def _residual_3pt(
         self,
@@ -524,64 +502,7 @@ class PPESolverIterative(IPPESolver):
 
     # ── Thomas sweep (vectorized, identical to PPESolverSweep._sweep_1d) ─
 
-    def _thomas_sweep(
-        self,
-        rhs_2d: np.ndarray,
-        rho: np.ndarray,
-        drho_ax: np.ndarray,
-        dtau: np.ndarray,
-        axis: int,
-    ) -> np.ndarray:
-        """Solve (1/Δτ − L_FD_axis) q = rhs via Thomas algorithm.
-
-        LHS operator (2nd-order FD):
-            (L_FD q)[i] = (1/ρ[i])(q[i−1]−2q[i]+q[i+1])/h²
-                          − (∂ρ/∂x[i]/ρ[i]²)(q[i+1]−q[i−1])/(2h)
-
-        Boundary nodes (i=0, i=N): identity (δq = 0 at walls).
-        All cross-sections solved simultaneously (vectorized Thomas).
-        """
-        N = self.grid.N[axis]
-        h = self.grid.L[axis] / N
-        h2 = h * h
-
-        rhs_f = np.moveaxis(rhs_2d, axis, 0)
-        rho_f = np.moveaxis(rho, axis, 0)
-        drho_f = np.moveaxis(drho_ax, axis, 0)
-        dtau_f = np.moveaxis(dtau, axis, 0)
-
-        n = N + 1
-
-        inv_dtau = 1.0 / dtau_f
-        inv_rho_h2 = 1.0 / (rho_f * h2)
-        drho_h = drho_f / (rho_f ** 2 * 2.0 * h)
-
-        a = np.empty_like(rhs_f)
-        b = np.empty_like(rhs_f)
-        c = np.empty_like(rhs_f)
-
-        a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]
-        b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
-        c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
-
-        rhs_m = rhs_f.copy()
-        from ..core.boundary import apply_thomas_neumann
-        apply_thomas_neumann(a, b, c, rhs_m)
-
-        # Forward elimination
-        c_p = np.zeros_like(rhs_f)
-        r_p = np.zeros_like(rhs_f)
-        c_p[0] = c[0] / b[0]
-        r_p[0] = rhs_m[0] / b[0]
-        for i in range(1, n):
-            denom = b[i] - a[i] * c_p[i - 1]
-            c_p[i] = c[i] / denom
-            r_p[i] = (rhs_m[i] - a[i] * r_p[i - 1]) / denom
-
-        # Back substitution
-        q = np.empty_like(rhs_f)
-        q[-1] = r_p[-1]
-        for i in range(n - 2, -1, -1):
-            q[i] = r_p[i] - c_p[i] * q[i + 1]
-
-        return np.moveaxis(q, 0, axis)
+    def _thomas_sweep(self, rhs_2d, rho, drho_ax, dtau, axis):
+        """Thin wrapper — delegates to thomas_sweep.thomas_sweep_1d."""
+        from .thomas_sweep import thomas_sweep_1d
+        return thomas_sweep_1d(rhs_2d, rho, drho_ax, dtau, axis, self.grid)

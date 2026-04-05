@@ -166,18 +166,11 @@ class PPESolverIIM(IPPESolver):
             p_jump = sigma * kap_np * (1.0 - H_smooth)
 
             # Evaluate L^ρ̃(p_jump) via CCD
-            rho_s_dev = xp.asarray(rho_smooth)
-            drho_s: list[np.ndarray] = []
-            for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(rho_s_dev, ax)
-                drho_s.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
-
-            p_jump_dev = xp.asarray(p_jump)
-            Lp_jump = xp.zeros(shape, dtype=float)
-            for ax in range(self.ndim):
-                dp_ax, d2p_ax = self.ccd.differentiate(p_jump_dev, ax)
-                drho_dev = xp.asarray(drho_s[ax])
-                Lp_jump += d2p_ax / rho_s_dev - (drho_dev / rho_s_dev**2) * dp_ax
+            from .ccd_ppe_utils import precompute_density_gradients, compute_ccd_laplacian
+            drho_s = precompute_density_gradients(rho_smooth, self.ccd, self.backend)
+            Lp_jump = compute_ccd_laplacian(
+                p_jump, rho_smooth, drho_s, self.ccd, self.backend,
+            )
 
             Lp_jump_np = np.asarray(self.backend.to_host(Lp_jump))
 
@@ -198,11 +191,8 @@ class PPESolverIIM(IPPESolver):
 
         else:
             # No IIM — solve with Kronecker LU
-            rho_dev = xp.asarray(rho_np)
-            drho: list[np.ndarray] = []
-            for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-                drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+            from .ccd_ppe_utils import precompute_density_gradients
+            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
             p = self._lu_solve_smooth(rhs_np, rho_np, drho)
             return self.backend.to_device(p)
 
@@ -247,10 +237,8 @@ class PPESolverIIM(IPPESolver):
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
 
-        drho_np = []
-        for ax in range(self.ndim):
-            drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
-            drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+        from .ccd_ppe_utils import precompute_density_gradients
+        drho_np = precompute_density_gradients(rho_np, self.ccd, self.backend)
 
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
         rhs_flat = rhs_np.ravel().copy()
@@ -300,31 +288,26 @@ class PPESolverIIM(IPPESolver):
             phi_np = np.asarray(self.backend.to_host(phi), dtype=float)
             kap_np = np.asarray(self.backend.to_host(kappa), dtype=float)
 
-        dtau = self._c_tau * rho_np * (self._h_min ** 2) / 2.0
+        from .ccd_ppe_utils import (
+            precompute_density_gradients, compute_ccd_laplacian_with_derivatives,
+            compute_lts_dtau, check_convergence,
+        )
+        from .thomas_sweep import thomas_sweep_1d
+
+        dtau = compute_lts_dtau(rho_np, self._c_tau, self._h_min)
         p = (np.zeros(shape, dtype=float) if p_init is None
              else np.asarray(self.backend.to_host(p_init), dtype=float))
 
-        rho_dev = xp.asarray(rho_np)
-        drho: list[np.ndarray] = []
-        for ax in range(self.ndim):
-            drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-            drho.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
-
+        drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
         pin_dof = self._bc_spec.pin_dof
 
         converged = False
         residual = float('inf')
         for _ in range(self.maxiter):
-            p_dev = xp.asarray(p)
-            Lp = xp.zeros(shape, dtype=float)
-            dp_arrays = []
-            for ax in range(self.ndim):
-                dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
-                drho_dev = xp.asarray(drho[ax])
-                Lp += d2p_ax / rho_dev - (drho_dev / rho_dev**2) * dp_ax
-                dp_arrays.append(np.asarray(self.backend.to_host(dp_ax), dtype=float))
-
-            R = rhs_np - np.asarray(self.backend.to_host(Lp))
+            Lp, dp_arrays, _ = compute_ccd_laplacian_with_derivatives(
+                p, rho_np, drho, self.ccd, self.backend,
+            )
+            R = rhs_np - Lp
 
             if phi_np is not None and sigma > 0.0:
                 L_sparse = self._build_sparse_operator_from_drho(rho_np, drho)
@@ -335,16 +318,13 @@ class PPESolverIIM(IPPESolver):
                 )
                 R += delta_q.reshape(shape)
 
-            R_chk = R.ravel().copy()
-            R_chk[pin_dof] = 0.0
-            residual = float(np.sqrt(np.dot(R_chk, R_chk)))
-            if residual < self.tol:
-                converged = True
+            residual, converged = check_convergence(R, pin_dof, self.tol)
+            if converged:
                 break
 
-            q = self._sweep_1d(R, rho_np, drho[0], dtau, axis=0)
+            q = thomas_sweep_1d(R, rho_np, drho[0], dtau, axis=0, grid=self.grid)
             q.ravel()[pin_dof] = 0.0
-            dp = self._sweep_1d(q, rho_np, drho[1], dtau, axis=1)
+            dp = thomas_sweep_1d(q, rho_np, drho[1], dtau, axis=1, grid=self.grid)
             dp.ravel()[pin_dof] = 0.0
             p = p + dp
             p.ravel()[pin_dof] = 0.0
@@ -357,48 +337,7 @@ class PPESolverIIM(IPPESolver):
 
     # ── Thomas sweep ─────────────────────────────────────────────────────
 
-    def _sweep_1d(self, rhs_2d, rho, drho, dtau, axis):
-        """(1/Δτ - L_FD_axis) q = rhs via vectorised Thomas solver."""
-        N = self.grid.N[axis]
-        h = self.grid.L[axis] / N
-        h2 = h * h
-
-        rhs_f = np.moveaxis(rhs_2d, axis, 0)
-        rho_f = np.moveaxis(rho, axis, 0)
-        drho_f = np.moveaxis(drho, axis, 0)
-        dtau_f = np.moveaxis(dtau, axis, 0)
-        n = N + 1
-
-        inv_dtau = 1.0 / dtau_f
-        inv_rho_h2 = 1.0 / (rho_f * h2)
-        drho_h = drho_f / (rho_f ** 2 * 2.0 * h)
-
-        a = np.empty_like(rhs_f)
-        b = np.empty_like(rhs_f)
-        c = np.empty_like(rhs_f)
-
-        a[1:-1] = -inv_rho_h2[1:-1] + drho_h[1:-1]
-        b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
-        c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
-        rhs_m = rhs_f.copy()
-        from ..core.boundary import apply_thomas_neumann
-        apply_thomas_neumann(a, b, c, rhs_m)
-
-        c_p = np.zeros_like(rhs_f)
-        r_p = np.zeros_like(rhs_f)
-        c_p[0] = c[0] / b[0]
-        r_p[0] = rhs_m[0] / b[0]
-        for i in range(1, n):
-            denom = b[i] - a[i] * c_p[i - 1]
-            c_p[i] = c[i] / denom
-            r_p[i] = (rhs_m[i] - a[i] * r_p[i - 1]) / denom
-
-        q = np.empty_like(rhs_f)
-        q[-1] = r_p[-1]
-        for i in range(n - 2, -1, -1):
-            q[i] = r_p[i] - c_p[i] * q[i + 1]
-
-        return np.moveaxis(q, 0, axis)
+    # _sweep_1d は thomas_sweep.thomas_sweep_1d に統合済み
 
     # ── Kronecker operator assembly (LU backend) ─────────────────────────
 
