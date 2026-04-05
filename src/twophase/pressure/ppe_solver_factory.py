@@ -60,6 +60,7 @@ def create_ppe_solver(
     from .ppe_solver_pseudotime import PPESolverPseudoTime
     from .ppe_solver_ccd_lu import PPESolverCCDLU
     from .ppe_solver_sweep import PPESolverSweep
+    from .ppe_solver_dc_omega import PPESolverDCOmega
     from .ppe_solver_iim import PPESolverIIM
     from .ppe_solver_iterative import PPESolverIterative
 
@@ -82,6 +83,10 @@ def create_ppe_solver(
     elif solver_type == "sweep":
         # 行列不要・仮想時間スウィープ（§8d）— LTS + 欠陥補正
         return PPESolverSweep(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
+    elif solver_type == "dc_omega":
+        # Under-relaxed DC sweep: omega < 0.81 for convergence (exp10_18)
+        omega = getattr(config.solver, "pseudo_omega", 0.5)
+        return PPESolverDCOmega(backend, config, grid, omega=omega, ccd=ccd, bc_spec=bc_spec)
     elif solver_type == "iim":
         # IIM-CCD: CCD Kronecker + IIM 界面補正 (docs/notes/iim_ccd_note.tex)
         return PPESolverIIM(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
