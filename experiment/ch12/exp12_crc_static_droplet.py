@@ -49,6 +49,7 @@ OUT_DIR = pathlib.Path(__file__).resolve().parent / "results" / "crc_static_drop
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 NPZ_PATH = OUT_DIR / "crc_static_droplet_data.npz"
 FIG_PATH = OUT_DIR / "crc_static_droplet.pdf"
+FIG_FIELDS_PATH = OUT_DIR / "crc_static_droplet_fields.pdf"
 
 # ── Physical parameters ──────────────────────────────────────────────────────
 R       = 0.25
@@ -352,6 +353,65 @@ def plot(results):
     plt.close(fig)
 
 
+# ── 2-D field plots ──────────────────────────────────────────────────────────
+
+def plot_fields(results):
+    """2-D spatial panels: velocity magnitude and pressure for all cases."""
+    cases = [
+        ("N32_std", "N=32  standard"),
+        ("N32_crc", "N=32  C/RC"),
+        ("N64_std", "N=64  standard"),
+        ("N64_crc", "N=64  C/RC"),
+    ]
+
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    fig.subplots_adjust(hspace=0.4, wspace=0.3)
+
+    for col, (tag, label) in enumerate(cases):
+        r = results[tag]
+        phi = np.asarray(r["phi_raw"])
+        vel = np.asarray(r["vel_mag"])
+        pres = np.asarray(r["p"])
+        N_val = int(r["N"])
+        # Use interior nodes only (0..N-1 in each dim, skip periodic ghost)
+        phi  = phi[:N_val, :N_val]
+        vel  = vel[:N_val, :N_val]
+        pres = pres[:N_val, :N_val]
+
+        # ── Row 0: velocity magnitude ──
+        ax = axes[0, col]
+        im = ax.imshow(vel.T, origin="lower", extent=[0, 1, 0, 1],
+                       cmap="hot_r", aspect="equal")
+        ax.contour(np.linspace(0, 1, N_val), np.linspace(0, 1, N_val),
+                   phi.T, levels=[0], colors="cyan", linewidths=1.0)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        ax.set_title(label, fontsize=9)
+        if col == 0:
+            ax.set_ylabel(r"$|\mathbf{u}|$", fontsize=10)
+        ax.set_xticks([]); ax.set_yticks([])
+
+        # ── Row 1: pressure ──
+        ax = axes[1, col]
+        p_range = max(abs(pres.min()), abs(pres.max()))
+        im = ax.imshow(pres.T, origin="lower", extent=[0, 1, 0, 1],
+                       cmap="RdBu_r", vmin=-p_range, vmax=p_range, aspect="equal")
+        ax.contour(np.linspace(0, 1, N_val), np.linspace(0, 1, N_val),
+                   phi.T, levels=[0], colors="k", linewidths=1.0)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        if col == 0:
+            ax.set_ylabel(r"$p$", fontsize=10)
+        ax.set_xticks([]); ax.set_yticks([])
+
+    fig.suptitle(
+        "Static droplet 2-D fields — standard RC vs C/RC\n"
+        "cyan/black contour: $\\phi=0$ interface",
+        fontsize=10,
+    )
+    fig.savefig(FIG_FIELDS_PATH, format="pdf", bbox_inches="tight")
+    print(f"Saved fields figure → {FIG_FIELDS_PATH}")
+    plt.close(fig)
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 def main():
@@ -365,6 +425,7 @@ def main():
         results = compute_all()
         save_npz(results)
     plot(results)
+    plot_fields(results)
 
 
 if __name__ == "__main__":
