@@ -111,3 +111,39 @@ Balanced-Force 不整合が高解像度で顕在化するためである（§~\r
 寄生流れ振幅の格子収束（Balanced-Force 条件下での $\Ord{h^2}$）は，
 時間積分による定常化が必要であり，
 第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて検証する．
+
+\paragraph{Rhie--Chow Richardson 補正の効果}
+
+§~\ref{sec:rc_high_order} の CCD $p'''$ による RC ブラケット補正を
+多ステップ静止液滴（400 ステップ，$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，
+Rhie--Chow Balanced-Force 拡張有効）に適用した結果を示す．
+
+\begin{table}[htbp]
+\centering
+\caption{RC Richardson 補正の寄生流れへの効果（400 ステップ後）}
+\label{tab:rc_richardson_droplet}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{clccr}
+\toprule
+$N$ & RC 方式 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 相対誤差 & 寄生流れ低減率 \\
+\midrule
+32 & 標準 $\Ord{h^2}$       & $2.51 \times 10^{-2}$ & $0.58\%$ & --- \\
+32 & 補正 $\Ord{h^4}$       & $2.55 \times 10^{-2}$ & $2.44\%$ & $-1.6\%$（悪���） \\
+\midrule
+64 & 標準 $\Ord{h^2}$       & $5.49 \times 10^{-4}$ & $1.23\%$ & --- \\
+64 & 補正 $\Ord{h^4}$       & $4.29 \times 10^{-4}$ & $1.23\%$ & $\mathbf{-22\%}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$N = 64$ では Richardson 補正により寄生流れ振幅が 22\% 低減する一方，
+$\Delta p$ 精度は同等に維持される．
+$N = 32$ での悪化は，低解像度における壁境界処理と
+CCD $p'''$ の精度低下（$R/h = 8$）が原因であり，
+§~\ref{sec:verify_rc_bracket} の周期境界収束テストで確認した $\Ord{h^4}$ 挙動とは矛盾しない
+（壁境界 + 界面存在下では CCD 境界スキームの打ち切り誤差が支配的となる）．
+
+この結果は，RC 補正の高次精度化が十分な解像度（$R/h \geq 16$）において
+寄生流れ抑制に寄���することを示唆しており，
+CCD の $p'''$ 情報が従来の FD ベースの RC 実装では原理的に得られない
+\textbf{追加自由度}として有効に活用されている．
