@@ -6,15 +6,24 @@ ADI/sweep 型 PPE ソルバー（sweep, iim, iterative）で重複していた
 
 アルゴリズム:
   (1/Δτ − L_FD_axis) q = rhs を各軸の断面ごとに同時に解く。
-  壁面 Neumann BC は恒等行（apply_thomas_neumann）で処理。
+
+境界条件 (Neumann ∂p/∂n = 0):
+  ゴーストセル反射 q[-1] = q[1], q[N+1] = q[N-1] を適用。
+  反対称差分が消えるため, 密度勾配項は境界で 0 になる。
+
+  左壁 i=0:  a[0]=0,         b[0]=1/Δτ+2/(ρh²), c[0]=-2/(ρh²),   rhs 不変
+  右壁 i=N:  a[-1]=-2/(ρh²), b[-1]=1/Δτ+2/(ρh²), c[-1]=0,         rhs 不変
+
+CCD との整合性:
+  CCD は境界で片側コンパクトスタンシルを用いる（Neumann 強制なし）。
+  FD でも正しい Neumann 行を設定することで, DC 反復後に p が
+  ∂p/∂n ≈ 0 を自然に満足し, CCD ラプラシアンとの不整合を防ぐ。
 """
 
 from __future__ import annotations
 
 import numpy as np
 from typing import TYPE_CHECKING
-
-from ..core.boundary import apply_thomas_neumann
 
 if TYPE_CHECKING:
     from ..core.grid import Grid
@@ -69,8 +78,18 @@ def thomas_sweep_1d(
     b[1:-1] = inv_dtau[1:-1] + 2.0 * inv_rho_h2[1:-1]
     c[1:-1] = -inv_rho_h2[1:-1] - drho_h[1:-1]
 
+    # Neumann BC (Neumann ∂p/∂n=0): ゴーストセル反射 → 密度勾配項は消える
+    # 左壁 i=0
+    a[0] = 0.0
+    b[0] = inv_dtau[0] + 2.0 * inv_rho_h2[0]
+    c[0] = -2.0 * inv_rho_h2[0]
+    # 右壁 i=N
+    a[-1] = -2.0 * inv_rho_h2[-1]
+    b[-1] = inv_dtau[-1] + 2.0 * inv_rho_h2[-1]
+    c[-1] = 0.0
+
     rhs_m = rhs_f.copy()
-    apply_thomas_neumann(a, b, c, rhs_m)
+    # rhs at boundaries is kept unchanged (R[0], R[-1] drive the correction)
 
     # 前進消去
     c_p = np.zeros_like(rhs_f)

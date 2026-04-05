@@ -80,11 +80,17 @@ class BoundarySpec:
 
 
 def apply_thomas_neumann(a, b, c, rhs) -> None:
-    """Thomas 法の壁 Neumann BC: 両端を恒等行 (Δq=0) に設定する。
+    """[DEPRECATED] 境界行を恒等行 (Δq=0) に凍結する。
 
-    ADI/sweep 型 PPE ソルバーの共通パターン。
-    境界ノード i=0, i=-1 で a=0, b=1, c=0, rhs=0 とし、
-    壁面での圧力増分を凍結する。
+    .. warning::
+        この関数は Neumann BC を正しく実装していない。
+        恒等行 (a=0, b=1, c=0, rhs=0) を設定するため, 境界ノードの
+        圧力増分が 0 に凍結される（Dirichlet-zero 補正）。
+        CCD の片側コンパクトスタンシルとの不整合が生じるため,
+        PPE の Thomas sweep には使用しないこと。
+
+        正しい Neumann 行は thomas_sweep.thomas_sweep_1d 内で直接設定される。
+        この関数は後方互換のためにのみ残存する。
 
     Parameters
     ----------
