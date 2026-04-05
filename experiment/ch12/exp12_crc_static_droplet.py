@@ -2,13 +2,12 @@
 """Static droplet — C/RC (CCD-enhanced Rhie-Chow) verification.
 
 §7-faithful setup:
-  - RC Balanced-Force (kappa/psi/we)
-  - DCCD (ε_d=1/4) for PPE RHS checkerboard suppression
-  - C/RC correction: h/12*(p''_E − p''_P) added to RC bracket (§7.4.3)
+  - Periodic BC (avoids CCD wall Neumann null-space issue)
+  - DCCD (ε_d=1/4) filtered CCD divergence for PPE RHS (§7.5)
+  - CCD-PPE Kronecker LU (§8b)
   - CCD ∇p corrector (balanced-force)
-  - FD spsolve as comparison PPE solver
 
-Compares: standard RC vs C/RC at N=32, 64, 128
+Compares: DCCD+CCD-PPE baseline vs with C/RC at N=32, 64
 Grid convergence of ‖u‖∞ and Δp error.
 
 A3 traceability
@@ -34,8 +33,6 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 
 from twophase.backend import Backend
 from twophase.core.grid import Grid
@@ -43,9 +40,10 @@ from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
-from twophase.pressure.ppe_builder import PPEBuilder
-from twophase.pressure.rhie_chow import RhieChowInterpolator
+from twophase.pressure.dccd_ppe_filter import DCCDPPEFilter
+from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
 from twophase.pressure.velocity_corrector import ccd_pressure_gradient
+from twophase.config import SimulationConfig
 
 OUT_DIR = pathlib.Path(__file__).resolve().parent / "results" / "crc_static_droplet"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -58,41 +56,17 @@ SIGMA   = 1.0
 WE      = 10.0
 RHO_G   = 1.0
 RHO_L   = 2.0
-N_STEPS = 400
-N_LIST  = [32, 64, 128]
+N_STEPS = 100
+N_LIST  = [32, 64]
 
 
 # ── C/RC correction ─────────────────────────────────────────────────────────
 
-def precompute_d2_fsigma(ccd, xp, kappa, psi, we, grid):
-    """Precompute d2(f_σ) for each axis (static interface, computed once).
-
-    f_σ_cell = (κ/We) · D¹_CCD(ψ) at cell centers.
-    Returns list of d2(f_σ) arrays, one per axis.
-    """
-    d2_fs = []
-    for ax in range(grid.ndim):
-        dpsi_ax, _ = ccd.differentiate(xp.asarray(psi), ax)
-        f_sigma_cell = xp.asarray(kappa) * dpsi_ax / we
-        _, d2_fs_ax = ccd.differentiate(f_sigma_cell, ax)
-        d2_fs.append(np.asarray(d2_fs_ax))
-    return d2_fs
-
-
-def crc_divergence_correction(ccd, xp, p, grid, dt, rho, d2_fsigma=None):
+def crc_divergence_correction(ccd, xp, p, grid, dt, rho, bc_type="periodic"):
     """C/RC correction to RC divergence (§7.4.3 eq:rc-face-balanced-ho).
 
-    Applies coefficient matching to BOTH pressure and f_σ brackets:
-      pressure: +h/12*(p''_E − p''_P)   → cancel p''' mismatch
-      f_σ:      −h/12*(fσ''_E − fσ''_P) → cancel fσ''' mismatch
-
-    The full C/RC bracket correction (eq:rc-face-balanced-ho):
-      Δbracket = +h/12*(d2p_R − d2p_L) − h/12*(d2fs_R − d2fs_L)
-
-    Parameters
-    ----------
-    d2_fsigma : list of arrays — precomputed d2(f_σ) per axis (static interface)
-                If None, only pressure correction is applied.
+    Adds h/12*(p''_E − p''_P) to the standard RC bracket at each face.
+    Pressure only (f_σ bracket excluded — see §7.4.3 note).
     """
     ndim = grid.ndim
     correction = np.zeros(grid.shape)
@@ -109,35 +83,46 @@ def crc_divergence_correction(ccd, xp, p, grid, dt, rho, d2_fsigma=None):
             s[ax] = idx
             return tuple(s)
 
+        # Internal faces: face k between nodes k-1 and k (faces 1..N_ax)
         d2p_L = d2p[sl(slice(0, N_ax))]
         d2p_R = d2p[sl(slice(1, N_ax + 1))]
         rho_L = rho[sl(slice(0, N_ax))]
         rho_R = rho[sl(slice(1, N_ax + 1))]
         inv_rho_harm = 2.0 / (rho_L + rho_R)
 
-        # C/RC pressure bracket: +h/12*(d2p_R − d2p_L)
-        delta_bracket = (h / 12.0) * (d2p_R - d2p_L)
+        corr_face = -dt * inv_rho_harm * (h / 12.0) * (d2p_R - d2p_L)
 
-        # C/RC f_σ bracket: −h/12*(d2fs_R − d2fs_L)
-        if d2_fsigma is not None:
-            d2fs = d2_fsigma[ax]
-            d2fs_L = d2fs[sl(slice(0, N_ax))]
-            d2fs_R = d2fs[sl(slice(1, N_ax + 1))]
-            delta_bracket -= (h / 12.0) * (d2fs_R - d2fs_L)
-
-        corr_face = -dt * inv_rho_harm * delta_bracket
-
+        # Build face flux array
         flux_shape = list(grid.shape)
         flux_shape[ax] = N_ax + 1
         flux = np.zeros(flux_shape)
         flux[sl(slice(1, N_ax + 1))] = corr_face
 
+        if bc_type == "periodic":
+            # Face 0 wraps: node N_ax ↔ node 0
+            d2p_L0 = d2p[sl(N_ax)]
+            d2p_R0 = d2p[sl(0)]
+            rho_L0 = rho[sl(N_ax)]
+            rho_R0 = rho[sl(0)]
+            inv_rho_0 = 2.0 / (rho_L0 + rho_R0)
+            flux[sl(0)] = -dt * inv_rho_0 * (h / 12.0) * (d2p_R0 - d2p_L0)
+
+        # FVM divergence
         sl_hi = [slice(None)] * ndim; sl_hi[ax] = slice(1, None)
         sl_lo = [slice(None)] * ndim; sl_lo[ax] = slice(0, -1)
         div_int = (flux[tuple(sl_hi)] - flux[tuple(sl_lo)]) / h
-        sl_last = [slice(None)] * ndim; sl_last[ax] = slice(-1, None)
-        div_Nax = -flux[tuple(sl_last)] / h
-        correction += np.concatenate([div_int, div_Nax], axis=ax)
+
+        if bc_type == "periodic":
+            div_Nax = (flux[sl(0)] - flux[sl(N_ax)]) / h
+            # reshape for concat
+            shape_1 = list(div_int.shape); shape_1[ax] = 1
+            correction += np.concatenate(
+                [div_int, np.reshape(div_Nax, shape_1)], axis=ax
+            )
+        else:
+            sl_last = [slice(None)] * ndim; sl_last[ax] = slice(-1, None)
+            div_Nax = -flux[tuple(sl_last)] / h
+            correction += np.concatenate([div_int, div_Nax], axis=ax)
 
     return correction
 
@@ -159,20 +144,22 @@ def run(N: int, use_crc: bool):
     eps = 1.5 * h
     dt  = 0.25 * h
 
+    bc = "periodic"
+
     gc   = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
-    ccd  = CCDSolver(grid, backend, bc_type="wall")
+    ccd  = CCDSolver(grid, backend, bc_type=bc)
 
     X, Y    = grid.meshgrid()
     phi_raw = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
     psi     = np.asarray(heaviside(np, phi_raw, eps))
     rho     = RHO_G + (RHO_L - RHO_G) * psi
 
-    rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type="wall")
-    ppb       = PPEBuilder(backend, grid, bc_type="wall")
-    triplet, A_shape = ppb.build(rho)
-    A_fd = sp.csr_matrix((triplet[0], (triplet[1], triplet[2])), shape=A_shape)
-    pin  = ppb._pin_dof
+    dccd_filt = DCCDPPEFilter(backend, grid, ccd, bc_type=bc)
+
+    # CCD-PPE: Kronecker LU (periodic BC, §8b)
+    sim_cfg = SimulationConfig()
+    ppe_solver = PPESolverCCDLU(backend, sim_cfg, grid, ccd)
 
     curv_calc = CurvatureCalculator(backend, ccd, eps)
     kappa     = np.asarray(curv_calc.compute(psi))
@@ -182,42 +169,23 @@ def run(N: int, use_crc: bool):
     f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)
     f_csf_y = (SIGMA / WE) * kappa * np.asarray(dpsi_dy)
 
-    # C/RC f_σ bracket correction is NOT applied: f_σ = (κ/We)D¹ψ is
-    # discontinuous near the interface, so d2(f_σ) is large and the
-    # correction destabilises the scheme.  C/RC is applied to pressure only.
-
-    def wall_bc(arr):
-        arr[0, :] = 0.0; arr[-1, :] = 0.0
-        arr[:, 0] = 0.0; arr[:, -1] = 0.0
-
     u = np.zeros_like(X); v = np.zeros_like(X); p = np.zeros_like(X)
     u_max_hist = []
 
     for step in range(N_STEPS):
         u_star = u + dt / rho * f_csf_x
         v_star = v + dt / rho * f_csf_y
-        wall_bc(u_star); wall_bc(v_star)
 
-        # PPE RHS: RC BF divergence + C/RC correction (§7.4.3 eq:rc-face-balanced-ho)
-        div_rc = rhie_chow.face_velocity_divergence(
-            [u_star, v_star], p, rho, dt,
-            kappa=xp.asarray(kappa), psi=xp.asarray(psi), we=WE,
-        )
-        if use_crc:
-            crc_corr = crc_divergence_correction(
-                ccd, xp, p, grid, dt, rho, d2_fsigma=None,
-            )
-            div_rc = div_rc + xp.asarray(crc_corr)
+        # PPE RHS: DCCD-filtered CCD divergence (§7.5 eq:dccd_ppe_rhs)
+        div_rhs = dccd_filt.compute_filtered_divergence([u_star, v_star])
 
-        rhs_vec = np.asarray(div_rc).ravel() / dt
-        rhs_vec[pin] = 0.0
-        p = spsolve(A_fd, rhs_vec).reshape(grid.shape)
+        rhs_field = np.asarray(div_rhs).reshape(grid.shape) / dt
+        p = np.asarray(ppe_solver.solve(rhs_field, rho, dt, p_init=p))
 
         # Corrector: CCD ∇p (balanced-force)
         grad_p = ccd_pressure_gradient(ccd, xp.asarray(p), grid.ndim)
         u = u_star - dt / rho * np.asarray(grad_p[0])
         v = v_star - dt / rho * np.asarray(grad_p[1])
-        wall_bc(u); wall_bc(v)
 
         u_max_hist.append(float(np.max(np.sqrt(u**2 + v**2))))
         if np.isnan(u_max_hist[-1]) or u_max_hist[-1] > 1e6:

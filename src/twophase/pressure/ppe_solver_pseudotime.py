@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
+    from ..core.boundary import BoundarySpec
 
 from ..interfaces.ppe_solver import IPPESolver
 
@@ -97,6 +98,7 @@ class _CCDPPEBase(IPPESolver):
         config: "SimulationConfig",
         grid: "Grid",
         ccd: "CCDSolver | None" = None,
+        bc_spec: "BoundarySpec | None" = None,
     ) -> None:
         self.xp = backend.xp
         self.backend = backend
@@ -110,6 +112,17 @@ class _CCDPPEBase(IPPESolver):
         else:
             from ..ccd.ccd_solver import CCDSolver as _CCDSolver
             self.ccd = _CCDSolver(grid, backend)
+
+        # 境界条件仕様（pin DOF 等の共通導出）
+        if bc_spec is not None:
+            self._bc_spec = bc_spec
+        else:
+            from ..core.boundary import BoundarySpec as _BS
+            self._bc_spec = _BS(
+                bc_type=config.numerics.bc_type,
+                shape=grid.shape,
+                N=grid.N,
+            )
 
         # Pre-compute 1D CCD derivative matrices once per axis
         self._D1: list = []
@@ -146,15 +159,23 @@ class _CCDPPEBase(IPPESolver):
         p : array, shape ``grid.shape``
         """
         shape = self.grid.shape
-        n = int(np.prod(shape))
+
+        if self._periodic:
+            Nx, Ny = self.grid.N
+            n_reduced = Nx * Ny
+        else:
+            n_reduced = int(np.prod(shape))
 
         L_pinned, rhs_np = self._assemble_pinned_system(rhs, rho)
 
-        p0 = (
-            np.asarray(self.backend.to_host(p_init), dtype=float).ravel()
-            if p_init is not None
-            else np.zeros(n)
-        )
+        if p_init is not None:
+            p_host = np.asarray(self.backend.to_host(p_init), dtype=float)
+            if self._periodic:
+                p0 = p_host[:Nx, :Ny].ravel()
+            else:
+                p0 = p_host.ravel()
+        else:
+            p0 = np.zeros(n_reduced)
 
         p_flat = self._solve_linear_system(L_pinned, rhs_np, p0)
 
@@ -166,7 +187,17 @@ class _CCDPPEBase(IPPESolver):
                 stacklevel=2,
             )
 
-        return self.backend.to_device(p_flat.reshape(shape))
+        if self._periodic:
+            # Expand N×N → (N+1)×(N+1): node N = node 0
+            p_red = p_flat.reshape(Nx, Ny)
+            p_full = np.empty(shape)
+            p_full[:Nx, :Ny] = p_red
+            p_full[Nx, :Ny] = p_red[0, :]
+            p_full[:Nx, Ny] = p_red[:, 0]
+            p_full[Nx, Ny] = p_red[0, 0]
+            return self.backend.to_device(p_full)
+        else:
+            return self.backend.to_device(p_flat.reshape(shape))
 
     @abstractmethod
     def _solve_linear_system(
@@ -225,8 +256,7 @@ class _CCDPPEBase(IPPESolver):
 
         rhs_dev = xp.asarray(self.backend.to_host(rhs))
         residual = Lp - rhs_dev
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
+        pin_dof = self._bc_spec.pin_dof
         residual_arr = np.asarray(self.backend.to_host(residual))
         residual_arr.ravel()[pin_dof] = 0.0
         return float(np.sqrt(np.sum(residual_arr ** 2)))
@@ -238,6 +268,9 @@ class _CCDPPEBase(IPPESolver):
 
         Shared by all subclasses; eliminates duplication between
         PPESolverPseudoTime and PPESolverCCDLU.
+
+        For periodic BC the operator is N²×N² (nodes 0..N-1 per axis).
+        The RHS is trimmed to N×N and the pin is in the reduced space.
 
         Returns
         -------
@@ -253,21 +286,35 @@ class _CCDPPEBase(IPPESolver):
 
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
-        # Pin center node — invariant under all square-domain symmetries
-        pin_idx = tuple(ni // 2 for ni in self.grid.N)
-        pin_dof = int(np.ravel_multi_index(pin_idx, self.grid.shape))
+        if self._periodic:
+            # Reduced DOF space: N×N
+            Nx, Ny = self.grid.N
+            reduced_shape = (Nx, Ny)
+            pin_dof = self._bc_spec.pin_dof_in_shape(reduced_shape)
+
+            rhs_full = np.asarray(self.backend.to_host(rhs), dtype=float)
+            rhs_np = rhs_full[:Nx, :Ny].ravel()
+        else:
+            pin_dof = self._bc_spec.pin_dof
+            rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
+
         L_lil = L_sparse.tolil()
         L_lil[pin_dof, :] = 0.0
         L_lil[pin_dof, pin_dof] = 1.0
         L_pinned = L_lil.tocsr()
-
-        rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
         rhs_np[pin_dof] = 0.0
 
         return L_pinned, rhs_np
 
+    @property
+    def _periodic(self) -> bool:
+        return getattr(self.ccd, 'bc_type', 'wall') == 'periodic'
+
     def _build_1d_ccd_matrices(self, axis: int):
         """Build 1D CCD derivative matrices D1, D2 for the given axis.
+
+        For wall BC: (N+1)×(N+1) matrices (all nodes independent).
+        For periodic BC: N×N matrices (nodes 0..N-1; node N = node 0).
 
         Parameters
         ----------
@@ -275,20 +322,53 @@ class _CCDPPEBase(IPPESolver):
 
         Returns
         -------
-        D1 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(1)} matrix
-        D2 : np.ndarray, shape (n_pts, n_pts) — D_axis^{(2)} matrix
+        D1 : np.ndarray — D_axis^{(1)} matrix
+        D2 : np.ndarray — D_axis^{(2)} matrix
         """
-        n_pts = self.grid.N[axis] + 1
-        I = np.eye(n_pts)
+        n_full = self.grid.N[axis] + 1
 
-        if axis == 0:
-            d1, d2 = self.ccd.differentiate(I, axis=0)
-            return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
+        if self._periodic:
+            # Periodic: N unique DOFs per axis (0..N-1).  Node N = node 0.
+            # We build a "probing" matrix that maps N-DOF input to (N+1)-node
+            # field (copying DOF 0 to node N), differentiates, and extracts
+            # the N unique output rows/columns.
+            N_ax = self.grid.N[axis]
+            if axis == 0:
+                # Probe: each column j is a (N+1)-node field with 1 at node j
+                # and node N copies node 0.  Shape: (N+1, N_ax).
+                I_per = np.zeros((n_full, N_ax))
+                for j in range(N_ax):
+                    I_per[j, j] = 1.0
+                I_per[N_ax, 0] = 1.0
+                d1, d2 = self.ccd.differentiate(I_per, axis=0)
+                # d1 shape: (N+1, N_ax).  Take rows 0..N_ax-1.
+                return np.asarray(d1, dtype=float)[:N_ax, :], np.asarray(d2, dtype=float)[:N_ax, :]
+            else:
+                # axis=1: CCD expects shape[1] = N+1.
+                # Probe: (N_ax, N+1) where row j has 1 at column j,
+                # and column N copies column 0.
+                N_other = self.grid.N[0] + 1  # full size of axis 0
+                I_per = np.zeros((N_ax, n_full))
+                for j in range(N_ax):
+                    I_per[j, j] = 1.0
+                I_per[0, N_ax] = 1.0  # column N = column 0 for input
+                # But we need shape (*, N+1) for axis=1 differentiation.
+                # Reshape: (N_ax, N+1) — each of N_ax "batch" items along axis 0.
+                d1, d2 = self.ccd.differentiate(I_per, axis=1)
+                # d1 shape: (N_ax, N+1).  Output[j, i] = D_y e_j evaluated at node i.
+                # We want D1[i, j] = (D_y e_j)[i], so transpose.
+                # Take rows 0..N_ax-1 from the transposed result.
+                d1_np = np.asarray(d1, dtype=float)[:, :N_ax]  # (N_ax, N_ax)
+                d2_np = np.asarray(d2, dtype=float)[:, :N_ax]
+                return d1_np.T, d2_np.T
         else:
-            # axis=1: differentiate returns d1[k,j] = (D_y^{(1)} e_k)[j]
-            # Transpose to recover D1[j,k] = (D_y^{(1)} e_k)[j]
-            d1, d2 = self.ccd.differentiate(I, axis=1)
-            return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
+            I = np.eye(n_full)
+            if axis == 0:
+                d1, d2 = self.ccd.differentiate(I, axis=0)
+                return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
+            else:
+                d1, d2 = self.ccd.differentiate(I, axis=1)
+                return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
 
     def _build_sparse_operator(self, rho_np, drho_np):
         """Assemble the sparse L_CCD^ρ matrix via Kronecker products.
@@ -301,33 +381,50 @@ class _CCDPPEBase(IPPESolver):
         (row) index → kron(D2x, I_y); D2y acts on the fast (column)
         index → kron(I_x, D2y).  See KL-08 (docs/LESSONS.md).
 
+        For periodic BC, the operator uses N×N DOFs per axis (nodes 0..N-1),
+        and rho/drho are trimmed to N×N accordingly.
+
         Parameters
         ----------
-        rho_np  : np.ndarray, shape ``grid.shape``
-        drho_np : list of np.ndarray (one per axis)
+        rho_np  : np.ndarray, shape ``grid.shape`` (N+1, N+1)
+        drho_np : list of np.ndarray (one per axis), shape ``grid.shape``
 
         Returns
         -------
-        L : scipy.sparse.csr_matrix, shape (n, n)
+        L : scipy.sparse.csr_matrix
+            Wall:     shape ((N+1)², (N+1)²)
+            Periodic: shape (N², N²)
         """
         import scipy.sparse as sp
-
-        shape = self.grid.shape
-        Nx, Ny = shape
 
         D1x = self._D1[0]
         D2x = self._D2[0]
         D1y = self._D1[1]
         D2y = self._D2[1]
 
-        D2x_full = sp.kron(sp.csr_matrix(D2x), sp.eye(Ny), format='csr')
-        D2y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(D2y), format='csr')
-        D1x_full = sp.kron(sp.csr_matrix(D1x), sp.eye(Ny), format='csr')
-        D1y_full = sp.kron(sp.eye(Nx), sp.csr_matrix(D1y), format='csr')
+        # Matrix dimension per axis (N for periodic, N+1 for wall)
+        mx = D1x.shape[0]
+        my = D1y.shape[0]
 
-        rho_flat = rho_np.ravel()
-        drho_x_flat = drho_np[0].ravel()
-        drho_y_flat = drho_np[1].ravel() if self.ndim > 1 else np.zeros_like(rho_flat)
+        D2x_full = sp.kron(sp.csr_matrix(D2x), sp.eye(my), format='csr')
+        D2y_full = sp.kron(sp.eye(mx), sp.csr_matrix(D2y), format='csr')
+        D1x_full = sp.kron(sp.csr_matrix(D1x), sp.eye(my), format='csr')
+        D1y_full = sp.kron(sp.eye(mx), sp.csr_matrix(D1y), format='csr')
+
+        # For periodic BC, trim rho/drho to N×N (nodes 0..N-1)
+        if self._periodic:
+            Nx, Ny = self.grid.N
+            rho_trimmed = rho_np[:Nx, :Ny]
+            drho_x_trimmed = drho_np[0][:Nx, :Ny]
+            drho_y_trimmed = drho_np[1][:Nx, :Ny] if self.ndim > 1 else np.zeros_like(rho_trimmed)
+        else:
+            rho_trimmed = rho_np
+            drho_x_trimmed = drho_np[0]
+            drho_y_trimmed = drho_np[1] if self.ndim > 1 else np.zeros_like(rho_trimmed)
+
+        rho_flat = rho_trimmed.ravel()
+        drho_x_flat = drho_x_trimmed.ravel()
+        drho_y_flat = drho_y_trimmed.ravel()
 
         inv_rho = sp.diags(1.0 / rho_flat, format='csr')
         coeff_x = sp.diags(drho_x_flat / rho_flat ** 2, format='csr')
