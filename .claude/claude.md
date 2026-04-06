@@ -8,7 +8,7 @@
 
 ## ALWAYS DO
 - Only use explicitly mentioned files (e.g., @file.py)
-- If logs are long → summarize to max 20 lines
+- If logs are long → summarize to max 5 lines (tail only)
 - Focus ONLY on the error or question
 - Prefer minimal context over completeness
 
@@ -16,46 +16,38 @@
 - Be concise
 - No repetition
 - No full code unless requested
+- **File updates: `diff` format preferred — never re-output entire files**
+- Reasoning: max 3 bullet points
 
 ## HARD LIMIT
 If input is too long:
 → IGNORE most of it
 → Extract only the final error message
 
-## FIRST TASK
-- prompts/agents/ResearchArchitect.md
-- docs/02_ACTIVE_LEDGER.md (phase, branch, last decision, open CHKs)
-- docs/01_PROJECT_MAP.md (module map, interface contracts, numerical reference)
-- docs/00_GLOBAL_RULES.md (universal axioms A1–A10, universal code rules C1–C4)
-- docs/03_PROJECT_RULES.md (project-specific rules PR-1–PR-6: CCD primacy, solver policy, MMS, toolkit, fidelity, PPE)
+## EXECUTION STEP 0 (session start)
+1. Read `docs/02_ACTIVE_LEDGER.md` → identify current Phase / Branch / open CHKs
+2. Load additional files ONLY if the current task demands it:
+   - Code changes → `docs/00_GLOBAL_RULES.md §C` + `docs/03_PROJECT_RULES.md`
+   - Dependency/interface resolution → `docs/01_PROJECT_MAP.md`
+   - Agent routing / full initialization → `prompts/agents/ResearchArchitect.md` + all above
+3. Do NOT pre-load any file not required by the current task
 
 ## CODING RULES (enforced every session)
-- **Universal rules** → docs/00_GLOBAL_RULES.md §C (C1–C4: SOLID, preserve-tested, builder, quality)
-- **Project rules** → docs/03_PROJECT_RULES.md §PR (PR-1–PR-6: CCD primacy, solver policy, MMS, toolkit, fidelity, PPE)
-- **SOLID audit** — report violations in `[SOLID-X]` format and fix before proceeding (C1)
-- **Never delete tested code** — retain as legacy class; register in docs/01_PROJECT_MAP.md §8 (C2)
+- Full rules in `docs/00_GLOBAL_RULES.md §C` (C1–C4) and `docs/03_PROJECT_RULES.md §PR` (PR-1–PR-6)
+- **SOLID audit** — report violations as `[SOLID-X]` and fix before proceeding (C1)
+- **Never delete tested code** — retain as legacy class; register in `docs/01_PROJECT_MAP.md §8` (C2)
 - **Algorithm Fidelity** — fixes MUST restore paper-exact behavior; deviation = bug (PR-5)
 - **A3 Traceability** — Equation → Discretization → Code chain is mandatory
 
 ## DIRECTORY CONVENTIONS (enforced every session)
-- **Library code** → `src/` (`src/twophase/`). `lib/` is NOT used.
-- **Simulation configs** → `src/configs/` (YAML format)
-- **Experiment scripts** → `experiment/ch{N}/` (chapter-based: ch10, ch11, ch12)
-- **Experiment results & graphs** → `experiment/ch{N}/results/{experiment_name}/` (colocated)
-- **Graphs** → **PDF format ONLY** (publication-quality vector; `savefig('*.pdf')`)
-- **Experiment scripts MUST** save result data (NPZ/CSV/JSON) and support `--plot-only` re-plotting
-- **Experiment scripts MUST** use `twophase.experiment` toolkit (`src/twophase/experiment/`):
-  - `apply_style()` for unified rcParams (call once at top)
-  - `experiment_dir(__file__)` for output directory
-  - `experiment_argparser()` for `--plot-only` argparse
-  - `save_results()` / `load_results()` for NPZ I/O
-  - `save_figure()` for PDF output
-  - `field_panel()`, `convergence_loglog()`, `time_history()`, `summary_text()` for plotting
-  - Direct matplotlib calls are OK for custom layouts, but style/IO/save must go through the toolkit
-- **`results/` (top-level)** → DEPRECATED. Migrate to `experiment/ch{N}/results/`.
-- **Meta-prompts** → `prompts/meta/`. Top-level `meta/` is NOT used.
-- **Agent prompts** → `prompts/agents/`
-- **Short papers / memos / theory derivations** → `docs/memo/`, Markdown/TeX, Japanese
+- Full conventions in `prompts/agents/_base.yaml §directory_conventions`
+- Key rules:
+  - Library code → `src/twophase/` (`lib/` is NOT used)
+  - Experiment scripts → `experiment/ch{N}/`; results colocated in `experiment/ch{N}/results/{name}/`
+  - Graphs → **PDF only** (`savefig('*.pdf')`)
+  - Experiment scripts MUST use `twophase.experiment` toolkit and support `--plot-only`
+  - `results/` (top-level) → DEPRECATED
+  - Meta-prompts → `prompts/meta/`; Agent prompts → `prompts/agents/`
 
 ## AGENT PROMPT SYSTEM
 - Agent prompts are YAML-format files in `prompts/agents/*.md`.
