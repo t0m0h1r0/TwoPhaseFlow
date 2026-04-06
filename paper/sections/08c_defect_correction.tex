@@ -84,12 +84,7 @@ DC 反復の不整合が防がれる（実装：\texttt{FDPPEMatrix}）．
 反復ごとに LU 因子化は不要（$\rho$ が変化しない限り1回の組み立てで繰り返し使用）．
 
 \noindent\textbf{Step~2 の求解器の選択について：}
-方向分離（ADI 型）スイープを Step~2 に用いる実装も可能だが，
-2次元 ADI の反復行列固有値解析（付録~\ref{app:dc_convergence_theory}，
-および §\ref{sec:verify_dc_spectral} の数値実験）により，
-滑らかモードの有効補正が $\mathcal{O}(\Delta\tau^2)$ = $\mathcal{O}(h^4)$/反復に留まり，
-$N = 32$ で $\mathcal{O}(N^4) \approx 10^6$ 反復が必要となることが示された．
-したがって本稿では ADI スイープを Step~2 の主要ソルバとして採用しない．
+方向分離（ADI 型）スイープとの比較解析（理論・数値実験）は §~\ref{sec:verify_dc_spectral} および付録~\ref{app:dc_convergence_theory} を参照．
 
 \subsubsection{収束先の精度保証}
 \label{sec:dc_accuracy}

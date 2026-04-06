@@ -18,6 +18,8 @@
 分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）の基盤として整備する．
 
 \begin{enumerate}
+  \item \textbf{§~\ref{sec:ccd_elliptic}（CCD の楕円型ソルバーとしての役割）}：
+        微分スキームとしての CCD が楕円型方程式の陰的ソルバーにもなる双対的役割を示す．
   \item \textbf{§~\ref{sec:ccd_poisson_matrix}（変密度対応 CCD-PPE の構築）}：
         PPE を CCD 法で $\Ord{h^6}$ 精度に離散化し，
         DCCD によるチェッカーボード抑制と界面 Balanced-Force 整合を整える．
@@ -28,6 +30,24 @@
         全周 Neumann 境界の零モード対策と高密度比における条件数を整理する．
         HFE による界面越し場延長の定式化は付録~D を参照．
 \end{enumerate}
+
+%% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CCD 法の楕円型ソルバーとしての双対的役割}
+\label{sec:ccd_elliptic}
+%% ═══════════════════════════════════════════════════════════════════════════════
+
+CCD 法は「既知の関数 $f$ の微分値 $f', f''$ を高精度に求めるスキーム」（役割1）に加えて，
+\textbf{楕円型方程式の陰的ソルバー}（役割2）としても機能する．
+
+\begin{itemize}
+  \item \textbf{役割1（微分演算子）：} 既知の $f$（$\phi$，$\bu$ など）から $\Ord{h^6}$ 精度の
+        $f', f'', f_{xy}$ を求める．曲率計算・粘性項評価に使用．
+  \item \textbf{役割2（楕円型ソルバー）：} 未知の圧力 $p$ に対して CCD を適用し，
+        $\Ord{h^6}$ 精度の演算子 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ を構成する（§~\ref{sec:ccd_poisson_matrix}）．
+\end{itemize}
+
+数学的構造の詳細（射影行列 $\mathbf{E}_1, \mathbf{E}_2$，演算子行列 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ の定義，
+変密度 Poisson 演算子の導出）は付録~\ref{app:ccd_elliptic} を参照されたい．
 
 %% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{CCD-Poisson 演算子の行列構造と変密度拡張}
