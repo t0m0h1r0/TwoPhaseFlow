@@ -11,13 +11,14 @@
 高精度・効率的に解く枠組みを整える．
 
 \noindent\textbf{本章の設計方針（先行提示）：}
-現行実装では\textbf{FD 直接法 PPE + CCD 勾配}を採用する
-（根拠は本章末尾 §~\ref{sec:pressure_accuracy_summary} の設計選択の根拠を参照）．
+本章の PPE 解法の基本フレームワークは\textbf{欠陥補正法（DC，§~\ref{sec:defect_correction_main}）}である；
+§~\ref{sec:ppe_discretization_choice} の収束解析に基づき現行実装では k=1（FD 直接解に等価）を採用する
+（根拠は本章末尾 §~\ref{sec:pressure_accuracy_summary} を参照）．
 §~\ref{sec:ccd_poisson_matrix} の CCD-Poisson 完全定式化は，
-将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）の基盤として提示する．
+分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）の基盤として整備する．
 
 \begin{enumerate}
-  \item \textbf{§~\ref{sec:ccd_poisson_matrix}（変密度対応 CCD-PPE の構築，将来の分相 PPE 向け）}：
+  \item \textbf{§~\ref{sec:ccd_poisson_matrix}（変密度対応 CCD-PPE の構築）}：
         PPE を CCD 法で $\Ord{h^6}$ 精度に離散化し，
         DCCD によるチェッカーボード抑制と界面 Balanced-Force 整合を整える．
   \item \textbf{§~\ref{sec:defect_correction_main}（欠陥補正法）}：

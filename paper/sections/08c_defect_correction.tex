@@ -9,10 +9,10 @@
 \label{sec:defect_correction_main}
 
 \noindent\textbf{本節の位置づけ：}
-§~\ref{sec:ccd_poisson_matrix}（将来の分相 PPE 解法向け）の CCD 演算子 $L_H$ を
-効率的に求解する枠組みを示す．変密度界面での DC 収束条件の詳細は
-§~\ref{sec:ppe_discretization_choice} を参照；
-現行の一括解法では反復なし（$k=1$，FD 直接法）を採用する．
+本節で示す欠陥補正法（DC）は変密度 PPE 求解の基本フレームワークである．
+§~\ref{sec:ppe_discretization_choice} の収束解析に基づき，現行実装では
+k=1（FD 直接解に等価）を使用する；k$\geq$3 では $\Ord{h^6}$ 精度に漸近する
+（§~\ref{sec:dc_accuracy}；分相 PPE 基盤としての CCD 演算子は §~\ref{sec:ccd_poisson_matrix}）．
 
 本節では，§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）を
 「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する
@@ -139,7 +139,7 @@ LGMRES/直接 LU はデバッグ・検証用途に限定する．
 BiCGSTAB（FVM） & $\Ord{h^2}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
 LGMRES + CCD Kronecker（デバッグ用）& $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
 直接 LU + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^{2.5})$ & $\mathcal{O}(N^3)$（1回） \\
-\textbf{欠陥補正法（CCD-PPE 向け，将来実装）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & \textbf{—} & $\boldsymbol{\mathcal{O}(N^2)}\times k$\textbf{反復} \\
+\textbf{欠陥補正法（DC）（本稿採用，現行 k=1）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & \textbf{—} & $\boldsymbol{\mathcal{O}(N^2)}\times k$\textbf{反復} \\
 \bottomrule
 \end{tabular}
 

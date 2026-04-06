@@ -27,7 +27,7 @@ HFE による界面越し場延長（$\Ord{h^6}$）は付録~D（§~\ref{sec:fie
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & FD 直接法 PPE + CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
+PPE（離散化＋求解） & 欠陥補正法 PPE（k=1）+ CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
 NS 粘性項 & CCD + Crank--Nicolson（陽的交差項 $\Ord{h^6}$；ADI 陰的対角項 $\Ord{h^2}$）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
@@ -41,8 +41,7 @@ HFE（分相 PPE 基盤） & 最近接点 Hermite 補間（CCD データ） & $\
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
-\noindent‡\ PPE 自体は FD $\Ord{h^2}$，速度補正の勾配は CCD $\Ord{h^6}$
-（§~\ref{sec:ppe_discretization_choice}）．\\
+\noindent‡\ DC k=1 では実効 $\Ord{h^2}$（§~\ref{sec:ppe_discretization_choice}）；k$\geq$3 で $\Ord{h^6}$（§~\ref{sec:dc_accuracy}）；速度補正の勾配は CCD $\Ord{h^6}$．\\
 \noindent§\ 単位ステップ質量誤差の大域積分推定（§~\ref{sec:dccd_conservation}）；
 局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（§~\ref{sec:algorithm}）．
@@ -62,16 +61,16 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \end{enumerate}
 \end{tcolorbox}
 
-\begin{tcolorbox}[mybox, title={設計選択の根拠：なぜ FD（$\Ord{h^2}$）で PPE を解き，CCD（$\Ord{h^6}$）で速度補正するのか}]
+\begin{tcolorbox}[mybox, title={設計選択の根拠：欠陥補正法（DC）PPE と CCD 勾配の整合設計}]
 \label{box:ppe_design_rationale}
-本稿の PPE 求解戦略（FD 直接法 + CCD 勾配）は，以下の3つの原則から帰結する．
+本稿の PPE 求解戦略（DC 欠陥補正法 + CCD 勾配）は，以下の3つの原則から帰結する．
 
 \begin{enumerate}
   \item \textbf{精度律速の所在：CSF モデル誤差 $\Ord{h^2}$}．
         全体の空間精度は CSF 正則化 $\delta_\varepsilon$（$\varepsilon=\Ord{h}$）による
         モデル誤差 $\Ord{\varepsilon^2}=\Ord{h^2}$ で律速される（表~\ref{tab:accuracy_summary}†）．
-        PPE 離散化を $\Ord{h^6}$（CCD-Poisson）に高精度化しても，全体精度の向上には寄与しない．
-        FD $\Ord{h^2}$ は精度バランスの観点から\textbf{十分}である．
+        DC k=1（実効 $\Ord{h^2}$）は精度バランスの観点から\textbf{十分}であり，
+        k$\geq$3 での $\Ord{h^6}$ 達成は将来の高精度実装として確保される（§~\ref{sec:dc_accuracy}）．
 
   \item \textbf{Balanced-Force 整合性：同一演算子の強制}．
         Balanced-Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
@@ -79,11 +78,11 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
         （§~\ref{sec:rc_balanced_force}）．
         速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に CCD $\Ord{h^6}$ を使い，
         表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
-        この整合性を $\Ord{h^6}$ 精度で保証する．PPE 自体の求解精度（FD $\Ord{h^2}$）とは独立した要件である．
+        この整合性を $\Ord{h^6}$ 精度で保証する．DC 自体の反復回数とは独立した要件である．
 
   \item \textbf{直接法による残差ゼロ保証}．
-        FD の5点ステンシル Poisson 演算子を LU 分解（直接法）で解くことで，
-        離散残差は機械精度まで消去される．反復法では許容残差 $\epsilon_{\mathrm{tol}}$ が
+        DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を LU 分解（直接法）で厳密に解くことで，
+        DC 反復の各ステップで $L_L$ の離散残差は機械精度まで消去される．反復法では許容残差 $\epsilon_{\mathrm{tol}}$ が
         圧力場の系統誤差として残り，Projection ステップの速度場に累積する．
         直接法はこの系統誤差を原理的に排除する（§~\ref{sec:defect_correction_main}参照）．
 \end{enumerate}
@@ -91,7 +90,7 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \noindent\textbf{将来展望（分相 PPE への移行）：}
 Smoothed Heaviside 一括法の適用限界（§~\ref{sec:interface_crossing}）を超える
 高密度比・高 Re 数条件では，界面ジャンプ条件を厳密に扱う分相 PPE 解法への移行が必要となる．
-その際は FD 直接法の代わりに CCD-Poisson（§~\ref{sec:ccd_poisson_matrix}）＋
+その際は DC 法に加え CCD-Poisson（§~\ref{sec:ccd_poisson_matrix}）＋
 HFE（§~\ref{sec:field_extension}）による $\Ord{h^6}$ 精度の分相 PPE が候補となる
 （§~\ref{sec:split_ppe_motivation}）．
 \end{tcolorbox}

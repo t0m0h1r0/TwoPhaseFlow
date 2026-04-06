@@ -5,7 +5,8 @@
 
 本章では，二相流 NS 方程式の数値計算における「精度」の真の意味を再定義し，
 なぜ CCD 法が不可避な選択であるかを論理的に提示する．
-空間離散化から時間積分まで，一貫した設計思想を示す．
+空間離散化スキームの設計原理と格子構築を示す
+（散逸フィルタと時間積分は第~\ref{sec:stabilize_time}章）．
 
 \begin{enumerate}
   \item \textbf{§~\ref{sec:locality}（局所性の重要性）：}
@@ -21,11 +22,8 @@
   \item \textbf{§~\ref{sec:ccd_metric}（CCD の非一様格子への適用）：}
         §~\ref{sec:grid} の格子メトリクスを用いた座標変換法と，
         2次元混合偏微分 $\partial^2/\partial x\partial y$ の CCD 離散化を示す．
-  \item \textbf{§~\ref{sec:dissipative_ccd}（散逸的 CCD）：}
-        高周波不安定性の回避と界面適応フィルタ制御の設計を述べる．
-  \item \textbf{§~\ref{sec:time_int}（時間積分の整合性設計）：}
-        空間 $\Ord{h^6}$ のポテンシャルを殺さないための
-        TVD-RK3 と Crank--Nicolson の採用根拠を示す．
+  \item \textbf{第~\ref{sec:stabilize_time}章（数値安定化と時間積分）：}
+        散逸的 CCD フィルタおよび TVD-RK3/AB2+IPC 時間積分を扱う．
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────

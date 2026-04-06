@@ -384,9 +384,9 @@ CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & 
 CLS 圧縮（拡散部） & CCD-CN（§~\ref{sec:cls_compression}） & $\Ord{h^6}$ & 無条件安定（陰解法） \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\
 速度・圧力場ノイズ除去 & 散逸的 CCD 適応制御（§~\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\
-圧力 Poisson & FD 直接法 PPE + CCD 勾配（§~\ref{sec:pressure}） & $\Ord{h^2}$/$\Ord{h^6}$† & Balanced-Force 整合性（CCD 統一） \\
+圧力 Poisson & 欠陥補正法 PPE + CCD 勾配（§~\ref{sec:pressure}） & $\Ord{h^2}$/$\Ord{h^6}$† & Balanced-Force 整合性（DC k=1） \\
 \hline
 \end{tabular}
 \end{center}
-{\small †\ PPE 求解は FD $\Ord{h^2}$；速度補正の圧力勾配は CCD $\Ord{h^6}$（§~\ref{sec:pressure_accuracy_summary}）．}
+{\small †\ DC k=1 では実効 $\Ord{h^2}$（§~\ref{sec:ppe_discretization_choice}）；速度補正の圧力勾配は CCD $\Ord{h^6}$（§~\ref{sec:pressure_accuracy_summary}）．}
 \end{tcolorbox}

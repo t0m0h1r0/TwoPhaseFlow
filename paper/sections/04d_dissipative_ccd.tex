@@ -7,6 +7,20 @@
 % 前提知識：CCD の 3 点ステンシル定式化（第 \ref{sec:CCD} 章），
 %            CLS 平衡プロファイル ψ = H_ε(φ)（第 \ref{sec:levelset} 章）
 
+\section{数値安定化と時間積分}
+\label{sec:stabilize_time}
+
+本章では，第~\ref{sec:CCD}章で構築した CCD 空間スキームを実際の二相流シミュレーションで
+安定かつ高精度に動作させるための2つの要素を整備する：
+
+\begin{enumerate}
+  \item \textbf{§~\ref{sec:dissipative_ccd}（散逸的 CCD フィルタ）：}
+        高周波不安定性の回避と界面適応フィルタ制御の設計を述べる．
+  \item \textbf{§~\ref{sec:time_int}（時間積分の整合性設計）：}
+        空間 $\Ord{h^6}$ のポテンシャルを殺さないための
+        TVD-RK3 と Crank--Nicolson の採用根拠を示す．
+\end{enumerate}
+
 \subsection{散逸的 CCD フィルタ：設計原理と界面適応制御}
 \label{sec:dissipative_ccd}
 
