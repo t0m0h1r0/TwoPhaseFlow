@@ -30,16 +30,20 @@
 \part{ナビエ・ストークス方程式の数値計算アルゴリズム――CCD法による物理的一貫性と高解像の両立}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-%% §5: 計算戦略：スペクトル分解能とコンパクト性の哲学
-\input{sections/04_ccd}               %% §5（CCD基礎を計算戦略章として統合）
-\input{sections/04b_ccd_bc}           %% §5.2続き（境界条件・行列構造）
-\input{sections/06_grid}              %% §5.2続き（界面適合格子の構築）← 格子を先に定義
-\input{sections/04c_ccd_extensions}   %% §5.2続き（CCD の非一様格子適用）← 格子を知った後で適用法を示す
-\input{sections/04d_dissipative_ccd}  %% §6（数値安定化・時間積分 章ヘッダーを内包）
-\input{sections/05b_time_integration} %% §6続き（時間積分）
+%% §5: CCD法の定式化（CCD スキーム＋DCCD フィルタ）
+\input{sections/04_ccd}               %% §5（CCD 基礎・設計原理）
+\input{sections/04b_ccd_bc}           %% §5続き（境界条件・行列構造）
+\input{sections/04d_dissipative_ccd}  %% §5続き（DCCD フィルタ：CCD 安定化変種）
+
+%% §6: 界面適合非一様格子（格子設計＋CCD の非一様格子適用）
+\input{sections/06_grid}              %% §6（界面適合格子の構築 章ヘッダーを内包）
+\input{sections/04c_ccd_extensions}   %% §6続き（CCD の非一様格子適用）← 格子を知った後で
+
+%% §7: 時間積分スキームの設計
+\input{sections/05b_time_integration} %% §7（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）
 \clearpage
 
-%% §7: 各物理項の空間離散化：CCDエンジンによるモジュール設計
+%% §8: 各物理項の空間離散化：CCDエンジンによるモジュール設計
 \input{sections/05_advection}         %% §6（移流項を筆頭節として再配置）
 \input{sections/05c_reinitialization} %% §6.x（CLS再初期化）
 \clearpage
