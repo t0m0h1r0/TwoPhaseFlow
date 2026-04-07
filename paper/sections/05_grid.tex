@@ -166,6 +166,58 @@ $\omega(\phi) > 1$ となる界面近傍では $\Delta\tilde{x} = \Delta\xi/\ome
 逆に界面から遠い領域（$\omega \approx 1$）では均一な格子幅が保たれる．
 正規化（ステップ4）により，格子の総長が常に $L$ に一致することが保証される．
 
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=stealth, font=\small]
+% --- (a) 一様格子 ---
+\begin{scope}[shift={(0,0)}]
+  \node[above] at (2.5,2.3) {\textbf{(a) 一様格子}};
+  \draw[gray!30] (0,0) grid[step=0.5] (5,2);
+  \draw[thick] (0,0) rectangle (5,2);
+  % 界面（円弧）
+  \draw[blue, ultra thick] (2.5,1) circle [radius=0.7];
+  \node[blue] at (2.5,0.1) {$\Gamma$};
+\end{scope}
+
+% --- (b) 密度関数 ---
+\begin{scope}[shift={(6.5,0)}]
+  \node[above] at (2,2.3) {\textbf{(b) 密度関数 $\delta^*_\varepsilon(\phi)$}};
+  \draw[->] (0,0) -- (4.2,0) node[right] {$x$};
+  \draw[->] (0,0) -- (0,2.3) node[above] {$\omega(x)$};
+  % 密度関数プロファイル
+  \draw[red, ultra thick, smooth] plot[domain=0:4, samples=80]
+    (\x, {0.4 + 1.6*exp(-(\x-2)^2/0.15)});
+  \draw[dashed, gray] (0,0.4) -- (4,0.4) node[right, gray] {$1$};
+  \draw[dashed, gray] (2,0) -- (2,2.0);
+  \node[below] at (2,0) {$\Gamma$};
+  \node[red, right] at (2.3,1.8) {$\alpha$};
+\end{scope}
+
+% --- (c) 非一様格子 ---
+\begin{scope}[shift={(0,-3.5)}]
+  \node[above] at (2.5,2.3) {\textbf{(c) 界面適合非一様格子}};
+  % 非一様格子線（x方向：界面近傍で密）
+  \foreach \x in {0, 0.45, 0.85, 1.2, 1.5, 1.7, 1.82, 1.92, 2.0, 2.08, 2.16, 2.24,
+                   2.32, 2.42, 2.52, 2.64, 2.76, 2.88, 3.0, 3.1, 3.18, 3.3, 3.5, 3.8, 4.15, 4.55, 5.0}
+    \draw[gray!50] (\x,0) -- (\x,2);
+  % 非一様格子線（y方向：界面近傍で密）
+  \foreach \y in {0, 0.25, 0.45, 0.58, 0.68, 0.76, 0.84, 0.92, 1.0, 1.08, 1.16, 1.24, 1.32, 1.42, 1.55, 1.75, 2.0}
+    \draw[gray!50] (0,\y) -- (5,\y);
+  \draw[thick] (0,0) rectangle (5,2);
+  % 界面（円弧）
+  \draw[blue, ultra thick] (2.5,1) circle [radius=0.7];
+  \node[blue] at (2.5,0.1) {$\Gamma$};
+  % 注釈矢印
+  \draw[<-, thick, red!70!black] (2.5,1.8) -- (3.8,2.5) node[right] {格子集中};
+\end{scope}
+\end{tikzpicture}
+\caption{界面適合非一様格子の生成過程．
+(a) 初期の一様格子．
+(b) 界面 $\Gamma$ 近傍で密度関数 $\omega(x)$ がピーク値 $\alpha$ をとる．
+(c) 生成された非一様格子：界面付近で格子が自動的に集中する．}
+\label{fig:grid_transform}
+\end{figure}
+
 \subsection{2次元格子生成への拡張}
 \label{sec:grid_2d}
 
@@ -174,37 +226,20 @@ $\omega(\phi) > 1$ となる界面近傍では $\Delta\tilde{x} = \Delta\xi/\ome
 
 \subsubsection{テンソル積格子の生成手順}
 
-\begin{tcolorbox}[algbox, title={2次元格子点生成アルゴリズム（テンソル積）}]
-\textbf{前処理（ブートストラップ手順）：}
-格子生成には Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
-循環参照を次のように解消する：
-\begin{enumerate}
-  \item まず一様格子（$N_x \times N_y$ 等間隔格子）上で $\phi^{(0)}_{i,j}$ を計算する
-        （界面形状が解析的に与えられる場合は直接代入；そうでない場合は
-        一様格子上の符号付き距離関数として初期化）．
-  \item 以下のステップで非一様格子を生成する（$\phi^{(0)}$ は一様格子上の値を使用）．
-  \item 以後の時間発展では，界面が大きく移動した場合に格子を再生成することができる
-        （その際はステップ1の $\phi^{(0)}$ を最新の $\phi^n$ で置き換える）．
-\end{enumerate}
+2次元テンソル積格子は，$x$ 方向と $y$ 方向の1次元格子（§~\ref{sec:grid_gen}）を独立に生成し，
+その直積として構成する．各方向の密度関数は：
+\begin{align*}
+  \omega^x_i &= 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^x_i), &
+  \bar{\phi}^x_i &= \min_j |\phi^{(0)}_{i,j}| \\
+  \omega^y_j &= 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^y_j), &
+  \bar{\phi}^y_j &= \min_i |\phi^{(0)}_{i,j}|
+\end{align*}
+で与えられ，§~\ref{sec:grid_gen} のステップ2--5で物理座標 $\{x_i\}$, $\{y_j\}$ と
+メトリクス係数 $\{J_x|_i\}$, $\{J_y|_j\}$ を得る．
 
-\textbf{$x$ 方向格子：}
-\begin{enumerate}
-  \item $x$ 方向の密度関数 $\omega^x_i = 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^x_i)$ を計算する．
-        ここで $\bar{\phi}^x_i = \min_j |\phi^{(0)}_{i,j}|$（列 $i$ における界面までの最短距離）または
-        $\bar{\phi}^x_i = (1/N_y)\sum_j \phi^{(0)}_{i,j}$（列平均）を用いる．
-  \item §~\ref{sec:grid_gen}のステップ2--5で物理座標 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$ を計算する．
-\end{enumerate}
-
-\textbf{$y$ 方向格子：}
-\begin{enumerate}
-  \item $y$ 方向の密度関数 $\omega^y_j = 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^y_j)$ を計算する．
-        ここで $\bar{\phi}^y_j = \min_i |\phi^{(0)}_{i,j}|$（行 $j$ における界面までの最短距離）を用いる．
-  \item 同様の積分・正規化・メトリクス係数計算を実行し，$\{y_j\}$ と $\{J_y|_j\}$ を得る．
-\end{enumerate}
-
-\textbf{出力：} $N_x \times N_y$ の非一様格子 $\{(x_i, y_j)\}$ と
-メトリクス係数 $\{J_x|_i\}$，$\{J_y|_j\}$（2次元に適用する際は $J_x$ は $i$ のみに，$J_y$ は $j$ のみに依存）．
-\end{tcolorbox}
+格子生成には初期 Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価自体に格子が必要であるという
+循環参照が存在する．この解消を含む完全な初期化シーケンス（ブートストラップ処理）は
+§~\ref{sec:bootstrap} で述べる．
 
 \paragraph{テンソル積格子の仮定と制限}
 テンソル積格子は「$x$ 方向格子と $y$ 方向格子の直積」であるため，以下の特性を持つ：
@@ -271,10 +306,9 @@ def build_2d_grid(phi0, Nx, Ny, Lx, Ly, alpha, eps_g):
 \subsection{時間変化格子と ALE 効果}
 \label{sec:grid_ale}
 
-格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$（問題定義として与えられた Level Set 場）から
-§~\ref{sec:grid_gen} のアルゴリズムで生成する．
-この「\textbf{格子ブートストラップ}」操作——初期 $\phi^{(0)}$ を用いて一度だけ格子を構築すること——は
-シミュレーション開始前に一度だけ実行され，以降の時間発展では格子を更新しない：
+格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$ から
+§~\ref{sec:grid_gen} のアルゴリズムで生成する（初期化手順全体は §~\ref{sec:bootstrap} 参照）．
+格子の時間更新に関して，以下の 2 つのモードを用意する：
 
 \begin{tcolorbox}[mybox, title={格子使用モードの選択}]
 \label{box:grid_modes}
