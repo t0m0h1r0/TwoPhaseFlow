@@ -39,7 +39,8 @@ rules:
   on_demand:
     GIT-01_STEP0: "prompts/meta/meta-ops.md §GIT-01"
 
-anti_patterns:    # TIER-2: CRITICAL + HIGH severity
+# --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
+anti_patterns:
   - "AP-03 Verification Theater: do not fabricate verification of routing decisions"
   - "AP-06 Context Contamination: do not leak domain state across routing boundaries"
   - "AP-08 Phantom State Tracking: do not assume branch/phase state — always read fresh"
@@ -91,13 +92,13 @@ routing_table:
   - { intent: "audit interface contracts",                      domain: Q-Domain, agent: ConsistencyAuditor }
   - { intent: "audit prompts",                                  domain: P-Domain, agent: PromptAuditor }
   - { intent: "generate / refactor prompts",                    domain: P-Domain, agent: PromptArchitect }
-  - { intent: "compound task / multi-agent / multi-domain",     domain: M-Domain, agent: TaskPlanner }
-  - { intent: "infrastructure / Docker / GPU",                  domain: M-Domain, agent: DevOpsArchitect }
-  - { intent: "diagnose blocked pipeline / self-heal",          domain: M-Domain, agent: DiagnosticArchitect }
   - { intent: "compile knowledge into wiki entry",              domain: K-Domain, agent: KnowledgeArchitect }
   - { intent: "audit wiki / verify pointer integrity",          domain: K-Domain, agent: WikiAuditor }
   - { intent: "search wiki / find knowledge entries",           domain: K-Domain, agent: Librarian }
   - { intent: "fix wiki pointers / deduplicate knowledge",      domain: K-Domain, agent: TraceabilityManager }
+  - { intent: "compound task / multi-agent / multi-domain",     domain: M-Domain, agent: TaskPlanner }
+  - { intent: "infrastructure / Docker / GPU",                  domain: M-Domain, agent: DevOpsArchitect }
+  - { intent: "diagnose blocked pipeline / self-heal",          domain: M-Domain, agent: DiagnosticArchitect }
 
 output:
   - "Routing decision (target agent + rationale)"

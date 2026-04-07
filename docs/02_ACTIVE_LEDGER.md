@@ -16,6 +16,7 @@
 | last_decision | CHK-091 CLOSED 2026-04-07: KnowledgeArchitect first 10 wiki entries. theory/: WIKI-T-001(CCD), T-002(DCCD), T-003(Projection), T-004(Balanced-Force), T-005(DC-PPE). paper/: WIKI-P-001(Narrative), P-002(Accuracy). cross-domain/: WIKI-X-001(DCCD map), X-002(CCD dual role). code/: WIKI-L-001(Algorithm). All [[REF-ID]] cross-references resolve. K-Domain operational. |
 | last_decision | CHK-092 CLOSED 2026-04-07: KnowledgeArchitect §1–§3 wiki entries (6 new). theory/: WIKI-T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck). paper/: WIKI-P-003(Problem Statement). cross-domain/: WIKI-X-003(Sign Conventions). Total wiki: 16 entries. All [[REF-ID]] resolve. |
 | last_decision | CHK-093 CLOSED 2026-04-08: KnowledgeArchitect §11 experiment wiki entries (6 new). experiment/: WIKI-E-001(CCD/DCCD spatial), E-002(Curvature+HFE), E-003(LS transport), E-004(RC+PPE solver), E-005(Time integration), E-006(Young-Laplace). 17 experiments compiled into 6 thematic entries. All [[REF-ID]] cross-references resolve. Total wiki: 22 entries. |
+| last_decision | CHK-094 CLOSED 2026-04-08: EnvMetaBootstrapper full re-deployment (Target: Claude). 33 agent prompts regenerated (24 composite + 9 micro). meta-domains.md K-Domain consolidation propagated. DiagnosticArchitect prompt aligned with meta-roles.md. README.md regenerated (9 sections, Mermaid diagram with K-Domain subgraph). Missing dirs created: docs/interface/signals/, prompts/agents/_deprecated/. Q3 validation 9/9 PASS. |
 | next_action | Address WIKI-P-001 narrative issues (bridge paragraphs for S5→S6, S6→S7, S7→S8) |
 
 ### Notes
@@ -45,6 +46,7 @@
 | CHK-091 | CLOSED | wiki | KnowledgeArchitect 10 wiki entries 2026-04-07. First K-Domain compilation: 5 theory + 2 paper + 2 cross-domain + 1 code. All [[REF-ID]] pointers resolve. docs/wiki/ operational. |
 | CHK-092 | CLOSED | wiki | KnowledgeArchitect §1–§3 wiki entries 2026-04-07. 6 new entries: T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck), P-003(Problem Statement), X-003(Sign Conventions). Total: 16 entries. |
 | CHK-093 | CLOSED | wiki | KnowledgeArchitect §11 experiment wiki 2026-04-08. 6 thematic entries (E-001–E-006) covering 17 experiments. Topics: CCD/DCCD spatial accuracy, curvature+HFE, LS transport, RC+PPE solver, time integration, Young-Laplace. Total wiki: 22 entries. |
+| CHK-094 | CLOSED | deploy | EnvMetaBootstrapper 2026-04-08 (Target: Claude). Full regeneration: 33 agents (24 composite + 9 micro). K-Domain consolidation propagated. DiagnosticArchitect aligned. README.md 9-section regeneration. Q3 9/9 PASS. |
 
 ## §2 — Math / Code Audit Register
 
