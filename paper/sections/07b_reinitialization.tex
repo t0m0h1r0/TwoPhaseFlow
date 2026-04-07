@@ -161,3 +161,10 @@ $\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性は分散関係 $\omega\pro
   \item 問題によっては圧力 $p$ から $p + p_0$（静水圧 $p_0 = \rho g z$）を分離する
         動的圧力（kinematic pressure）分割で寄生流れを抑制しつつ $\Delta t$ を拡大
 \end{itemize}
+
+以上で，CCD エンジン（§~\ref{sec:CCD}），界面適合格子（§~\ref{sec:grid_gen}），
+時間積分フレームワーク（§~\ref{sec:time_int}），
+および CLS 移流・再初期化の空間離散化（本章）が揃った．
+残る中核課題は，コロケート格子上での圧力・速度連成である．
+次章（§~\ref{sec:collocate}）では，Balanced-Force 条件に基づく
+離散レベルでの力の釣り合いの設計と，チェッカーボード不安定の抑制を論じる．
