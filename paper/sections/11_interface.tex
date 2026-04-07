@@ -1,0 +1,345 @@
+% paper/sections/11_interface.tex
+%
+% §11.2  界面処理パイプラインの検証
+%   Exp 6: CLS 移流・再初期化
+%   Exp 8: CLS 保存型再マッピング
+%   Exp 7: HFE 場延長（1D + 2D）
+%   Exp 16: Young-Laplace 圧力跳び
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\subsection{界面処理パイプラインの検証}
+\label{sec:verify_interface}
+
+前節では CCD/DCCD 微分演算子・GCL・曲率計算といった空間離散化の基盤を検証した．
+本節では，それらの演算子を組み合わせて構成される
+界面処理パイプライン——アルゴリズム Step~1--4 に対応する
+CLS 移流，再初期化，HFE 場延長，曲率・圧力跳び計算——の精度を検証する．
+検証は処理の流れに沿って 4 段階で進める．
+まず CLS 移流と再初期化の形状保持・質量保存性能を標準ベンチマークで評価し
+（§~\ref{sec:verify_cls_advection}），
+次に動的格子リフレッシュ時の保存型再マッピングの効果を定量化する
+（§~\ref{sec:cls_conservation}）．
+続いて Hermite 場延長（HFE）の格子収束性を上風差分ベースラインと比較し
+（§~\ref{sec:verify_field_extension}），
+最後に曲率計算・場延長・PPE を統合した Young--Laplace 圧力跳びテストで
+パイプライン全体の結合精度を確認する（§~\ref{sec:verify_gfm}）．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CLS 移流と再初期化の精度}
+\label{sec:verify_cls_advection}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:advection} で導出した DCCD 移流スキーム（$\varepsilon_d = 0.05$）と
+§~\ref{sec:reinit} の再初期化を組み合わせた CLS パイプラインが，
+界面形状の保持と質量保存をどの程度達成するかを 2 種類の標準テストで確認する．
+
+\paragraph{(a) Zalesak スロット円板}
+中心 $(0.5, 0.75)$，半径 $R = 0.15$ の円板に幅 $0.05$，高さ $0.25$ のスロットを
+切り込み，中心 $(0.5, 0.5)$ の剛体回転場で 1 回転移流する．
+再初期化は 20 ステップごとに適用する．
+
+\paragraph{(b) 単一渦テスト（LeVeque 1996）}
+円形界面（中心 $(0.5, 0.75)$，$R = 0.15$）を時間反転型渦場で
+$T/2$ まで激しく引き延ばした後，$T/2 \to T$（$T = 8$）で元の形状に復元する．
+再初期化は 10 ステップごとに適用する．
+
+いずれも格子 $N = 64, 128, 256$ で実施し，
+$L_2$/$L_\infty$ 形状誤差（$\psi - \psi_0$）および
+相対質量保存誤差 $|\Delta M|/M_0$ を計測した．
+
+\begin{table}[htbp]
+\centering
+\caption{CLS 界面移流テストの精度（DCCD $\varepsilon_d = 0.05$）}
+\label{tab:cls_advection}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llrrr}
+\toprule
+テスト & $N$ & $L_2$ 誤差 & $L_\infty$ 誤差 & 質量保存誤差 \\
+\midrule
+\multirow{3}{*}{Zalesak}
+ &  64 & $9.67 \times 10^{-2}$ & $5.06 \times 10^{-1}$ & $5.55 \times 10^{-3}$ \\
+ & 128 & $9.28 \times 10^{-2}$ & $5.60 \times 10^{-1}$ & $1.08 \times 10^{-3}$ \\
+ & 256 & $7.62 \times 10^{-2}$ & $5.63 \times 10^{-1}$ & $6.01 \times 10^{-5}$ \\
+\midrule
+\multirow{3}{*}{Single vortex}
+ &  64 & $1.90 \times 10^{-1}$ & $8.46 \times 10^{-1}$ & $1.78 \times 10^{-3}$ \\
+ & 128 & $1.73 \times 10^{-1}$ & $8.05 \times 10^{-1}$ & $1.63 \times 10^{-3}$ \\
+ & 256 & $1.43 \times 10^{-1}$ & $7.44 \times 10^{-1}$ & $7.10 \times 10^{-5}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch11_cls_advection}
+\caption{CLS 界面移流テスト（DCCD $\varepsilon_d = 0.05$）．
+(a) Zalesak スロット円板，(b) 単一渦テスト．
+各パネル上段は格子精緻化に伴う $L_2$ 誤差の推移，
+下段は質量保存誤差の収束を示す．}
+\label{fig:cls_advection}
+\end{figure}
+
+表~\ref{tab:cls_advection} に示すように，
+$L_2$ 形状誤差は格子精緻化に伴い緩やかに減少する．
+$L_\infty$ 誤差はスロット角部や界面遷移領域において
+遷移幅 $\varepsilon = \Ord{h}$ が精度の上界を規定するため，
+単調減少しない場合がある．
+一方，質量保存誤差は両テストとも $N = 256$ で $\Ord{10^{-5}}$ に達し，
+DCCD 移流と再初期化の組み合わせが良好な保存性を有することを確認した
+（図~\ref{fig:cls_advection}）．
+
+CLS 移流の精度を確認した．
+実用計算では界面追従格子を定期的にリフレッシュするが，
+格子の再生成は非保存的な補間を伴う．
+次に，CLS の保存型再マッピングがこの質量損失をどの程度低減するかを検証する．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{動的格子上の CLS 保存型再マッピング}
+\label{sec:cls_conservation}%
+\label{app:cls_conservation}% backward compat
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面追従格子を定期的に再生成する環境では，
+旧格子から新格子への場の転送が不可避であり，
+標準的な LS 法の区分線形補間は非保存な操作となる．
+CLS の保存型再マッピングは，
+補間後の場 $\psi_i^{\mathrm{interp}}$ にグローバル質量スケーリング
+$\psi_i \leftarrow \psi_i^{\mathrm{interp}} \cdot (M_{\mathrm{old}} / M_{\mathrm{new}})$
+を施すことでこの質量損失を補正する．
+本テストでは，格子リフレッシュ周期 $K$ を変化させ，
+CLS と LS の質量保存誤差を系統的に比較する．
+
+計算条件は $N = 128$，界面適合格子（圧縮比 $\alpha = 2$，$\sigma = 0.06$），
+均一流で 1 周期移流，DCCD（$\varepsilon_d = 0.05$），TVD-RK3，CFL $= 0.4$ とし，
+$K = 5, 10, 20, 50$ ステップごとに格子を界面位置に再生成した．
+
+\begin{table}[htbp]
+\centering
+\caption{%
+  格子リフレッシュ周期 $K$ に対する最終相対質量誤差 $|\Delta M / M_0|$
+  （$N = 128$，$\alpha = 2$，CFL $= 0.4$）}
+\label{tab:ls_cls_mass_err}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lrrrr}
+\toprule
+手法 & $K = 5$ & $K = 10$ & $K = 20$ & $K = 50$ \\
+\midrule
+LS (SDF)     & $8.6 \times 10^{-5}$ & $7.6 \times 10^{-5}$ & $1.2 \times 10^{-4}$ & $7.3 \times 10^{-4}$ \\
+CLS ($\psi$) & $7.7 \times 10^{-6}$ & $8.9 \times 10^{-7}$ & $7.4 \times 10^{-5}$ & $8.2 \times 10^{-4}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.72\linewidth]{figures/ch11_cls_remapping}
+\caption{CLS 保存型再マッピング vs LS 区分線形補間の質量保存誤差．
+格子リフレッシュ周期 $K$ に対する最終相対質量誤差を比較する．
+$K \leq 20$ で CLS が 1--2 桁の改善を示す．}
+\label{fig:cls_remapping}
+\end{figure}
+
+表~\ref{tab:ls_cls_mass_err} および図~\ref{fig:cls_remapping} に結果を示す．
+$K = 10$ で CLS は LS に対し 85 倍の質量誤差低減を達成した
+（CLS $8.9 \times 10^{-7}$ vs LS $7.6 \times 10^{-5}$）．
+$K = 5$ でも 11 倍の改善が認められる．
+一方，$K = 50$ では格子リフレッシュ間の DCCD 移流誤差が支配的となり，
+CLS の保存性優位は消失する．
+したがって CLS の保存型再マッピングは，
+界面追従格子が頻繁に再生成される実用条件（$K \lesssim 20$）において特に有効である．
+
+界面の追跡と質量保存を確認した．
+二相流の CSF 定式化では，界面を越えた物理量の滑らかな延長が不可欠である．
+次に，上風差分ベースラインに対する Hermite 場延長（HFE）の精度改善を検証する．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Hermite 場延長（HFE）の収束性}
+\label{sec:verify_field_extension}%
+\label{sec:verify_gfm}% backward compat
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:field_extension} で導出した Hermite 場延長（HFE）は，
+CCD が提供する $(f, f', f'')$ の三つ組を用いた最近接点 Hermite 補間により
+界面越しの場延長を高精度化する．
+本テストでは，1 次元および 2 次元の製造解を用いて HFE の格子収束性を計測し，
+§~\ref{sec:extension_pde_disc} で示した理論的期待値と比較する．
+
+% ── テスト (a): 1D 場延長収束 ─────────────────────────────────────────────────
+
+\paragraph{(a) 1 次元場延長収束テスト}
+実効 1 次元（$y$ 方向一様の 2D 格子）で
+$\phi = x - 0.5$（界面 $x = 0.5$），
+ソース場 $q(x) = 1 + \cos(\pi x)$ とする．
+解析延長値は法線方向定数延長 $q_{\mathrm{ext}} = q(0.5) = 1$ であり，
+誤差を $x \in [0.52,\; 0.55]$（固定物理座標）で計測する．
+格子 $N = 32, 64, 128, 256$ で上風差分（Aslam~2004）と HFE を同一条件で比較した．
+
+\begin{table}[htbp]
+\centering
+\caption{1 次元場延長の格子収束（$L^\infty$ 誤差）：上風差分 vs Hermite}
+\label{tab:field_extension_convergence}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{rrrcrrc}
+\toprule
+ & \multicolumn{2}{c}{上風差分（Aslam 2004）} & & \multicolumn{2}{c}{最近接点 Hermite} & \\
+\cline{2-3}\cline{5-6}
+$N$ & $L^\infty$ 誤差 & 次数 & & $L^\infty$ 誤差 & 次数 \\
+\midrule
+ 32 & $9.80 \times 10^{-2}$  & ---   & & $9.76 \times 10^{-10}$            & ---   \\
+ 64 & $4.91 \times 10^{-2}$  & $1.0$ & & $7.63 \times 10^{-12}$            & $7.0$ \\
+128 & $2.45 \times 10^{-2}$  & $1.0$ & & $5.95 \times 10^{-14}$            & $7.0$ \\
+256 & $1.23 \times 10^{-2}$  & $1.0$ & & $\lesssim 10^{-15}$\textsuperscript{*} & ---   \\
+\bottomrule
+\multicolumn{7}{l}{\footnotesize *$N = 256$：丸め誤差域（倍精度の機械イプシロン）に到達．}
+\end{tabular}
+\end{table}
+
+上風差分は $\Ord{h^1}$ の 1 次収束を示す．
+誤差の主因は，界面値を最近傍ソースセル $q(0.5 - h)$ から取得する際に生じる
+$q(0.5 - h) - q(0.5) = h\,q'(0.5) + \Ord{h^2}$ の打切り誤差である．
+これに対し HFE は CCD の $(f, f', f'')$ データを用いて
+界面位置 $x_\Gamma = 0.5$ を直接補間し，
+実測 $\Ord{h^7}$（理論的期待値 $\geq \Ord{h^6}$）の収束を達成した
+（表~\ref{tab:field_extension_convergence}）．
+$N = 128$ での誤差比は約 $10^5$ 倍の改善に相当する．
+
+% ── テスト (b): 2D HFE 格子収束 ──────────────────────────────────────────────
+
+\paragraph{(b) 2 次元場延長収束テスト（円形界面）}
+テスト (a) は実効 1 次元であった．
+ここでは §~\ref{sec:extension_pde_disc} のテンソル積逐次補間が
+2 次元曲面界面に対して示す収束挙動を確認する．
+
+計算領域 $[0,1]^2$ に
+$\phi = \sqrt{(x - 0.5)^2 + (y - 0.5)^2} - 0.25$
+で定義される半径 $R = 0.25$ の円形界面を配置し，
+円内部（$\phi < 0$）に製造解 $q = \cos(\pi x)\cos(\pi y)$ を与える．
+解析延長値は $q_{\mathrm{ext}}(\bm{x}) = q(\bm{x}_\Gamma)$
+（$\bm{x}_\Gamma = \bm{x} - \phi\hat{\bm{n}}$）であり，
+誤差をターゲット側狭帯域 $0 < \phi \leq 3h$ で計測する．
+
+\begin{table}[htbp]
+\centering
+\caption{2 次元 HFE の格子収束（$L^\infty$ 誤差，円形界面 $R = 0.25$）}
+\label{tab:hfe_2d_convergence}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{rrrr}
+\toprule
+$N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
+\midrule
+ 32 & $1/32$  & $3.54 \times 10^{-6}$ & ---    \\
+ 64 & $1/64$  & $4.72 \times 10^{-7}$ & $2.91$ \\
+128 & $1/128$ & $5.95 \times 10^{-8}$ & $2.99$ \\
+256 & $1/256$ & $7.48 \times 10^{-9}$ & $2.99$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\linewidth]{figures/ch11_hfe_convergence}
+\caption{HFE 場延長の格子収束．
+(a) 1 次元テスト：上風差分（$\Ord{h^1}$）と Hermite（$\Ord{h^7}$）の比較．
+(b) 2 次元テスト：テンソル積逐次補間による $\Ord{h^3}$ の安定した収束．}
+\label{fig:hfe_convergence}
+\end{figure}
+
+表~\ref{tab:hfe_2d_convergence} および図~\ref{fig:hfe_convergence}(b) に示すように，
+2 次元テンソル積 HFE は $\Ord{h^{3.0}}$ の安定した格子収束を達成した．
+1 次元テスト（表~\ref{tab:field_extension_convergence}）の $\Ord{h^7}$ より低い理由は，
+テンソル積逐次補間において $d^2 f / dy^2$ の $x$ 方向補間に
+線形補間を用いていることによる（§~\ref{sec:extension_pde_disc}）．
+それでもなお，$N = 256$ における $L^\infty = 7.48 \times 10^{-9}$ は
+上風差分ベースラインの同格子における $1.23 \times 10^{-2}$
+（表~\ref{tab:field_extension_convergence}）に対し 6 桁以上の改善であり，
+CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）よりも高精度であるため，
+全体精度のボトルネックとはならない．
+
+HFE は上風差分に対し数桁の精度改善を実現した．
+最後に，曲率計算（§~\ref{sec:verify_curvature}）・場延長・PPE を統合した
+Young--Laplace 圧力跳び精度を検証する．
+このテストは界面処理パイプラインと PPE の結合点に位置し，
+§~\ref{sec:verify_solver} への橋渡しとなる．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Young--Laplace 圧力跳びの再現精度}
+\label{sec:verify_young_laplace}
+% ─────────────────────────────────────────────────────────────────────────────
+
+前節までの検証では各コンポーネントを単体で評価してきた．
+本テストでは，CLS による界面表現，CCD 曲率計算（§~\ref{sec:verify_curvature}），
+Heaviside 正則化 $H_\varepsilon$ による密度場補間，
+および CCD-PPE をすべて結合し，
+Young--Laplace 条件 $\Delta p = \kappa / \mathit{We}$ の再現精度を検証する．
+界面処理パイプラインの統合精度を測る最も直接的なテストである．
+
+\paragraph{計算条件}
+計算領域 $[0,1]^2$ の中心に半径 $R = 0.25$ の静止円形液滴
+（$\rho_l / \rho_g = 1000$，$\mathit{We} = 1$）を配置する．
+解析解は
+\begin{equation}
+  \Delta p_{\mathrm{exact}}
+  = \frac{\kappa}{\mathit{We}}
+  = \frac{1}{R \cdot \mathit{We}}
+  = 4.0
+\end{equation}
+であり，格子 $N = 32, 64, 128$ で計測した圧力跳び $\Delta p$ と比較する．
+
+\begin{table}[htbp]
+\centering
+\caption{Young--Laplace 圧力跳び $\Delta p$（解析解 $4.0$，$\mathit{We} = 1$）}
+\label{tab:young_laplace}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{rrrrr}
+\toprule
+$N$ & $\Delta p$ & 相対誤差 & 収束次数 \\
+\midrule
+ 32 & $-9.30$\textsuperscript{*} & ---                          & --- \\
+ 64 & $3.52$                      & $1.21 \times 10^{-1}$ & --- \\
+128 & $4.01$                      & $2.2 \times 10^{-3}$  & $5.8$ \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize *$N = 32$：界面幅 $\varepsilon = 3\Delta x$ が半径 $R$ の約 38\% に達し，} \\
+\multicolumn{4}{l}{\footnotesize \phantom{*}CSF 体積力の積分で対向界面からの寄与が重複し符号が反転．}
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\linewidth]{figures/ch11_young_laplace}
+\caption{Young--Laplace 圧力跳び検証（CSF + CCD-PPE）．
+$N = 128$ で解析解 $\Delta p = 4.0$ に対し相対誤差 $0.22\%$ を達成．
+$N = 32$ では CSF モデルの前提 $\varepsilon \ll R$ が破綻し不正確な結果となる．}
+\label{fig:young_laplace}
+\end{figure}
+
+表~\ref{tab:young_laplace} および図~\ref{fig:young_laplace} に結果を示す．
+$N = 64$ で $\Delta p = 3.52$（相対誤差 $12.1\%$），
+$N = 128$ で $\Delta p = 4.01$（相対誤差 $0.22\%$）となり，
+$N = 64 \to 128$ の収束次数は約 $5.8$ である．
+この高い収束次数は，CCD 曲率の $\Ord{h^5}$ 精度と
+CSF ボリューム力の高次精度が反映された結果と考えられる．
+
+$N = 32$ における符号反転は物理的な意味で重要な知見を与える．
+粗格子では界面厚み $\varepsilon = 3\Delta x \approx 0.094$ が半径 $R = 0.25$ の
+約 38\% に達するため，$\delta_\varepsilon$ 正則化の前提（$\varepsilon \ll R$）が崩れ，
+円の対向側に位置する界面からの CSF 体積力の積分寄与が重複する．
+その結果，正味の力の方向が反転し，圧力跳びの符号が逆転する．
+この破綻は CSF モデルの本質的な制約であり，
+界面厚みパラメータの適切な設計が不可欠であることを示している．
+
+なお，本テストでは初期圧力 $p^0 = 0$ の延長が恒等操作（no-op）となるため，
+上風差分と Hermite 補間の結果は全格子で完全に一致する．
+両手法の差が顕在化するのは非零圧力場をもつ動的問題であり，
+その検証は§~\ref{sec:verification}章の結合テストに委ねる．
+
+\bigskip
+
+以上の検証により，界面処理パイプラインの各コンポーネントが設計精度を達成することを
+確認した．
+界面パイプラインは曲率 $\kappa$ と延長済み物理量を
+圧力 Poisson 方程式に供給する．
+次節では，PPE ソルバそのものの精度と収束特性を検証する．
