@@ -79,7 +79,7 @@ procedure:
 #       tasks:
 #         - id: T{N}
 #           agent: {agent name}
-#           domain: {T|L|E|A|P|Q|M}
+#           domain: {T|L|E|A|P|Q|M|K}
 #           params: { ... }
 #           inputs: ["{artifact or interface contract}"]
 #           outputs: ["{expected artifact}"]

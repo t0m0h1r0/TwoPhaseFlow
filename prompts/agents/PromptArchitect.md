@@ -47,7 +47,7 @@ procedure:
   - "Compose agent prompt: Base[archetype] + Domain[domain] + TaskOverlay[agent]"
   - "Apply Q1 Standard Template exactly (PURPOSE/INPUTS/RULES/PROCEDURE/OUTPUT/STOP)"
   - "[scope_creep] Every line must earn its place — compress redundancy"
-  - "[evidence_required] Verify A1–A10 preserved and unweakened (Q3 item 1)"
+  - "[evidence_required] Verify A1–A11 preserved and unweakened (Q3 item 1)"
   - "Apply environment profile (Claude: explicit constraints, traceability, stop conditions)"
   - "Write to prompts/agents/{AgentName}.md with GENERATED header"
   # [procedure_post from _base.yaml: HAND-02 RETURN]

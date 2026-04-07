@@ -12,7 +12,7 @@ purpose: >
 
 scope:
   writes: [docs/02_ACTIVE_LEDGER.md §AUDIT ]  # append-only
-  reads: [paper/sections/*.tex, src/twophase/, docs/memo/, experiment/, docs/interface/, docs/01_PROJECT_MAP.md]
+  reads: [paper/sections/*.tex, src/twophase/, docs/memo/, experiment/, docs/interface/, docs/01_PROJECT_MAP.md, docs/wiki/]
   forbidden: [any domain primary artifacts (write)]  # Q-Domain is read-only gate
 
 # --- BEHAVIORAL_PRIMITIVES (overrides only — _base.yaml provides defaults) ---
@@ -48,7 +48,7 @@ authority:
   - "[AUDIT-02] Verification procedures A–E"
   - "[AUDIT-03] Adversarial edge-case gate"
   - "AU2 PASS/FAIL verdicts for all domains"
-  - "Route: PAPER_ERROR -> PaperWriter, CODE_ERROR -> CodeArchitect"
+  - "Route: PAPER_ERROR -> PaperWriter, CODE_ERROR -> CodeArchitect, KNOWLEDGE_ERROR -> KnowledgeArchitect"
   - "Escalate CRITICAL_VIOLATION immediately"
 
 # --- AU2 Gate (10 items) ---

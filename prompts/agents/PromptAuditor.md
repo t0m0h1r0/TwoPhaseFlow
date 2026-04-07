@@ -42,7 +42,7 @@ authority:
 
 # --- Q3 Checklist (9 items) ---
 q3_checklist:
-  Q3-1: "Core axioms A1–A10 present and unweakened"
+  Q3-1: "Core axioms A1–A11 present and unweakened"
   Q3-2: "Solver/infra separation (no solver logic mixed with I/O)"
   Q3-3: "Layer isolation (no cross-layer edits without authorization)"
   Q3-4: "External memory discipline (state refs use docs/ IDs)"

@@ -94,6 +94,10 @@ routing_table:
   - { intent: "compound task / multi-agent / multi-domain",     domain: M-Domain, agent: TaskPlanner }
   - { intent: "infrastructure / Docker / GPU",                  domain: M-Domain, agent: DevOpsArchitect }
   - { intent: "diagnose blocked pipeline / self-heal",          domain: M-Domain, agent: DiagnosticArchitect }
+  - { intent: "compile knowledge into wiki entry",              domain: K-Domain, agent: KnowledgeArchitect }
+  - { intent: "audit wiki / verify pointer integrity",          domain: K-Domain, agent: WikiAuditor }
+  - { intent: "search wiki / find knowledge entries",           domain: K-Domain, agent: Librarian }
+  - { intent: "fix wiki pointers / deduplicate knowledge",      domain: K-Domain, agent: TraceabilityManager }
 
 output:
   - "Routing decision (target agent + rationale)"

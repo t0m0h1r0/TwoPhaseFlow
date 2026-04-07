@@ -3,7 +3,7 @@
 # Agents define ONLY overrides and domain-specific content.
 # To understand an agent: read _base.yaml FIRST, then the agent file.
 
-axioms: "A1–A10 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
+axioms: "A1–A11 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
 project_rules: "PR-1–PR-6 apply to this project (docs/03_PROJECT_RULES.md, SSoT: prompts/meta/meta-project.md)"
 
 # --- Directory Conventions (ALL agents inherit) ---
@@ -35,6 +35,8 @@ on_demand_common:
   GIT-SP:  "prompts/meta/meta-ops.md §GIT-SP"
   HAND-01: "prompts/meta/meta-ops.md §HAND-01"
   HAND-02: "prompts/meta/meta-ops.md §HAND-02"
+  K-COMPILE: "prompts/meta/meta-ops.md §K-COMPILE"
+  K-LINT:    "prompts/meta/meta-ops.md §K-LINT"
 
 procedure_pre:
   - "Run HAND-03 acceptance check (→ meta-ops.md §HAND-03)"

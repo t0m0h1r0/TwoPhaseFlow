@@ -10,7 +10,7 @@ All axioms and domain constraints defined here apply unconditionally to every ag
 No agent may override, weaken, or bypass these rules without explicit user escalation.
 
 ────────────────────────────────────────────────────────
-## § A — Core Axioms A1–A10
+## § A — Core Axioms A1–A11
 
 These axioms are the immutable foundation of all agent behavior. They are compression-exempt (Q4):
 no prompt compression may weaken or remove them.
@@ -27,9 +27,10 @@ no prompt compression may weaken or remove them.
 | A8 | Git Governance | Branches: `main` (protected); `code`, `paper`, `prompt` (domain integration staging); direct main edits forbidden. `dev/{agent_role}`: individual workspaces — sovereign per agent; no cross-agent access. Merge path: dev/{agent_role} → {domain} (Gatekeeper PR) → main (Root Admin PR) after VALIDATED phase. |
 | A9 | Core/System Sovereignty | "The solver core is the master; the infrastructure is the servant." `src/core/` has zero dependency on `src/system/`. Infrastructure may import solver core; solver core must never import infrastructure. Direct access to solver core internals from infrastructure = CRITICAL_VIOLATION — escalate immediately. |
 | A10 | Meta-Governance | `prompts/meta/` is the SINGLE SOURCE OF TRUTH for all system rules and axioms. `docs/` files are DERIVED outputs — never edit docs/ directly to change a rule. Reconstruction of docs/ from prompts/meta/ alone must always be possible. |
+| A11 | Knowledge-First Retrieval | Agents prefer compiled wiki knowledge (`docs/wiki/`) over in-context reasoning. When a wiki entry exists for a topic, read it before deriving from scratch. Wiki entries are compiled from VALIDATED artifacts only. |
 
 **Immutable Zones (meta-workflow.md §META-EVOLUTION GUARDRAILS):**
-- φ-Principles (φ1–φ7) and Axioms A1–A10 are immutable — no modification or weakening permitted.
+- φ-Principles (φ1–φ7) and Axioms A1–A11 are immutable — no modification or weakening permitted.
 - HAND-03 Acceptance Check items (checks 0–8) are immutable.
 - Any proposal to modify an Immutable Zone triggers SYSTEM_PANIC: STOP all pipeline activity; escalate to user.
 
@@ -174,7 +175,7 @@ All agent prompts must use exactly this structure:
 ```
 
 Every generated prompt must include BOTH citation lines below the title heading:
-- `(All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
+- `(All axioms A1–A11 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
 - Domain citation (Code: `§C1–C4 + §PR-1–PR-6`; Paper: `§P1–P4, KL-12`; Prompt: `§Q1–Q4`; Audit: `§AU1–AU3`)
 
 ### Q2 — Environment Profiles
@@ -190,7 +191,7 @@ Every generated prompt must include BOTH citation lines below the title heading:
 
 | # | Check | Pass Criterion |
 |---|-------|---------------|
-| 1 | Core axioms A1–A10 present | All 10 referenced; none weakened |
+| 1 | Core axioms A1–A11 present | All 11 referenced; none weakened |
 | 2 | Solver / infra separation | No solver logic mixed with I/O, logging, config |
 | 3 | Layer isolation | No cross-layer edits without authorization |
 | 4 | External memory discipline | All state refs docs/ files by ID; no old filenames |
