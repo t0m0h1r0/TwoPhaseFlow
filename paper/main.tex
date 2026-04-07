@@ -16,50 +16,50 @@
 \clearpage
 \part{定式化：支配方程式と界面表現}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/01_introduction}      %% 第1章
+\input{sections/01_introduction}      %% §1
 \clearpage
-\input{sections/02_governing}         %% 第2章：変数定義・Two-Fluid→One-Fluid
-\input{sections/02b_surface_tension}   %% 第2章続き：表面張力界面条件とモデル概要
-\input{sections/02c_nondim_curvature} %% 第2章続き：無次元化・界面曲率
+\input{sections/02_governing}         %% §2：変数定義・Two-Fluid→One-Fluid
+\input{sections/02b_surface_tension}   %% §2続き：表面張力界面条件とモデル概要
+\input{sections/02c_nondim_curvature} %% §2続き：無次元化・界面曲率
 \clearpage
-\input{sections/03_levelset}          %% 第3章：CLS 法（なぜ必要か・移流・再初期化）
-\input{sections/03b_levelset_mapping} %% 第3章続き：ψ-φ 関係・逆変換・曲率安定化
+\input{sections/03_levelset}          %% §3：CLS 法（なぜ必要か・移流・再初期化）
+\input{sections/03b_levelset_mapping} %% §3続き：ψ-φ 関係・逆変換・曲率安定化
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
 \part{ナビエ・ストークス方程式の数値計算アルゴリズム――CCD法による物理的一貫性と高解像の両立}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-%% §5: CCD法の定式化（CCD スキーム＋DCCD フィルタ）
-\input{sections/04_ccd}               %% §5（CCD 基礎・設計原理）
-\input{sections/04b_ccd_bc}           %% §5続き（境界条件・行列構造）
-\input{sections/04d_dissipative_ccd}  %% §5続き（DCCD フィルタ：CCD 安定化変種）
+%% §4: CCD法の定式化（CCD スキーム＋DCCD フィルタ）
+\input{sections/04_ccd}               %% §4（CCD 基礎・設計原理）
+\input{sections/04b_ccd_bc}           %% §4続き（境界条件・行列構造）
+\input{sections/04d_dissipative_ccd}  %% §4続き（DCCD フィルタ：CCD 安定化変種）
 
-%% §6: 界面適合非一様格子（格子設計＋CCD の非一様格子適用）
-\input{sections/06_grid}              %% §6（界面適合格子の構築 章ヘッダーを内包）
-\input{sections/04c_ccd_extensions}   %% §6続き（CCD の非一様格子適用）← 格子を知った後で
+%% §5: 界面適合非一様格子（格子設計＋CCD の非一様格子適用）
+\input{sections/05_grid}              %% §5（界面適合格子の構築 章ヘッダーを内包）
+\input{sections/05b_ccd_extensions}   %% §5続き（CCD の非一様格子適用）← 格子を知った後で
 
-%% §7: 時間積分スキームの設計
-\input{sections/05b_time_integration} %% §7（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）
+%% §6: 時間積分スキームの設計
+\input{sections/06_time_integration}  %% §6（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）
 \clearpage
 
-%% §8: 各物理項の空間離散化：CCDエンジンによるモジュール設計
-\input{sections/05_advection}         %% §6（移流項を筆頭節として再配置）
-\input{sections/05c_reinitialization} %% §6.x（CLS再初期化）
+%% §7: 各物理項の空間離散化：CCDエンジンによるモジュール設計
+\input{sections/07_advection}         %% §7（移流項を筆頭節として再配置）
+\input{sections/07b_reinitialization} %% §7続き（CLS再初期化）
 \clearpage
 
-%% §7: 圧力・速度連成：Balanced-Force CCD理論
-\input{sections/07_collocate}         %% §7
-\input{sections/08_pressure}          %% §7.2 変密度投影法（§8から移動）
+%% §8: 圧力・速度連成：Balanced-Force CCD理論
+\input{sections/08_collocate}         %% §8
+\input{sections/08b_pressure}         %% §8.2 変密度投影法
 \clearpage
 
-%% §8: 圧力Poisson方程式の解法
-\input{sections/08b_ccd_poisson}       %% §8.1–§8.2（新§8 sectionヘッダーを内包）
-\input{sections/08c_defect_correction} %% §8.2 欠陥補正法
-%%   08d_gfm（HFE）→ 付録 D.4 に移動
-\input{sections/08e_ppe_bc}            %% §8.3 境界条件と数値安定性（旧§8.5）
-\input{sections/08f_pressure_summary}  %% §8のまとめ
-%% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §10.3.3 に移行済み
+%% §9: 圧力Poisson方程式の解法
+\input{sections/09_ccd_poisson}        %% §9.1–§9.2（sectionヘッダーを内包）
+\input{sections/09b_defect_correction} %% §9.2 欠陥補正法
+%%   appD4_gfm（HFE）→ 付録 D.4 に移動
+\input{sections/09c_ppe_bc}            %% §9.3 境界条件と数値安定性
+\input{sections/09d_pressure_summary}  %% §9のまとめ
+%% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）
 %% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.6
 
@@ -67,23 +67,23 @@
 \clearpage
 \part{統合・検証・展望}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/09_full_algorithm}    %% 第9章
+\input{sections/10_full_algorithm}    %% §10
 \clearpage
-\input{sections/10_implementation}   %% 第10章：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
+\input{sections/11_implementation}   %% §11：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
-\input{sections/11_verification}                    %% 第11章：NS方程式の物理的整合性検証
-\input{sections/11_legacy_component_verification}  %% （レガシースタブ：sec:component_verification ラベル保持）
-\input{sections/11a_force_balance}                 %% §11.1 力学的バランス検証
-\input{sections/11b_conservation}                  %% §11.2 保存則の検証
-\input{sections/11c_time_accuracy}                 %% §11.3 NS方程式の総合精度（時間/空間収束次数）
-\input{sections/11c2_highre_dccd}                  %% §11.3c 高Re安定性：DCCDフィルタの非侵襲性
-\input{sections/11d_coupling}                      %% §11.4 二相流結合の物理的整合性
-\input{sections/11e_interface_crossing}            %% §11.5 Smoothed Heaviside一括解法の適用限界
-\input{sections/11f_error_budget}                  %% §11.6 精度バジェット
+\input{sections/12_verification}                    %% §12：NS方程式の物理的整合性検証
+\input{sections/12_legacy_component_verification}  %% （レガシースタブ：sec:component_verification ラベル保持）
+\input{sections/12a_force_balance}                 %% §12.1 力学的バランス検証
+\input{sections/12b_conservation}                  %% §12.2 保存則の検証
+\input{sections/12c_time_accuracy}                 %% §12.3 NS方程式の総合精度（時間/空間収束次数）
+\input{sections/12c2_highre_dccd}                  %% §12.3c 高Re安定性：DCCDフィルタの非侵襲性
+\input{sections/12d_coupling}                      %% §12.4 二相流結合の物理的整合性
+\input{sections/12e_interface_crossing}            %% §12.5 Smoothed Heaviside一括解法の適用限界
+\input{sections/12f_error_budget}                  %% §12.6 精度バジェット
 \clearpage
-\input{sections/12_benchmarks}           %% 第12章：多相流ベンチマークと物理現象の検証
+\input{sections/13_benchmarks}           %% §13：多相流ベンチマークと物理現象の検証
 \clearpage
-\input{sections/13_conclusion}        %% 第13章（まとめと今後の課題）
+\input{sections/14_conclusion}        %% §14（まとめと今後の課題）
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
@@ -98,14 +98,14 @@
 %% 付録A: 界面数学・CLS 証明（§2-3 対応）
 \input{sections/appendix_interface}       %% A.1–A.5
 
-%% 付録B: CCD 法の係数導出と実装（§4/§8 対応）
+%% 付録B: CCD 法の係数導出と実装（§4 対応）
 \input{sections/appendix_ccd}             %% B.1 係数導出, B.2 境界代替, B.3 精度・楕円型
 
-%% 付録C: 移流スキームと安定性制約（§5-6 対応）
+%% 付録C: 移流スキームと安定性制約（§7 対応）
 \input{sections/appendix_advection}       %% C.1 WENO5, C.2 DCCD実験, C.3 安定性制約
 
-%% 付録D: 圧力ソルバーと連成解析（§7-8 対応）
+%% 付録D: 圧力ソルバーと連成解析（§8-9 対応）
 \input{sections/appendix_pressure}        %% D.1 欠陥補正理論, D.2 仮想時間, D.3 FVM基準
-\input{sections/08d_gfm}                  %% D.4 Hermite 場延長法（HFE）← 本文§8.4から移動
+\input{sections/appD4_gfm}                %% D.4 Hermite 場延長法（HFE）← 本文§9から移動
 
 \end{document}
