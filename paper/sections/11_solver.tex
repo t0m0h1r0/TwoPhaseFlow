@@ -33,7 +33,9 @@ Step~5 の Predictor で用いる AB2（§\ref{sec:verify_ab2}）の時間積分
 （式~\eqref{eq:dc_three_step}）は，
 高次演算子 $L_H$（CCD $\Ord{h^6}$）と低次演算子 $L_L$（FD 5 点 $\Ord{h^2}$）の
 差を反復的に修正することで $L_H$ 相当の精度を達成する．
-この反復回数 $k$ が解の精度をどの程度支配するかを，
+この反復回数 $k$（$p^{(0)} = 0$ を初期値として式~\eqref{eq:dc_three_step}
+の三段ステップを $k$ 回適用；$k=1$ は実質的に $L_L$ の直接解に相当）
+が解の精度をどの程度支配するかを，
 2 次元 Poisson 問題の格子収束試験で確認する．
 
 \paragraph{(a) 反復回数 $k$ と精度の関係}
@@ -71,8 +73,9 @@ $N$ & $h$ & $k=1$ & $k=2$ & $k=3$ & $k=5$ & $k=10$ \\
 \label{fig:dc_k_accuracy}
 \end{figure}
 
-$k = 1$ では欠陥修正が 1 回しか入らないため $L_L$ の打ち切り誤差が支配し，
-収束次数は $\Ord{h^2}$ にとどまる．
+$k = 1$ では初期値 $p^{(0)}=0$ に対する 1 回の反復が
+$p^{(1)} = \omega\,L_L^{-1}b$ を返すのみであり，
+$L_L$ の打ち切り誤差が支配するため収束次数は $\Ord{h^2}$ にとどまる．
 $k = 2$ では中間的な $\Ord{h^4}$ となり，
 $k \ge 3$ で CCD の設計精度が完全に発現して $\Ord{h^7}$ を達成する．
 設計次数 $\Ord{h^6}$ を超える超収束は，Dirichlet 条件下で参照解が境界上で零となるため
@@ -141,11 +144,12 @@ DC の Step~2 を Thomas ADI 方向分離スイープで求解した．
 %
 \begin{equation}
   \mu_{\mathrm{ADI}}
-    \approx 1 + \lambda_H \,\Delta\tau^2
+    \approx 1 + \lambda_{HL} \,\Delta\tau^2
     = 1 + \Ord{h^4}
 \end{equation}
 %
-と見積もられ，$|\mu_{\mathrm{ADI}}| < 1$ を達成するには
+と見積もられる（$\lambda_{HL}$ は $L_H - L_L$ の滑らかモード固有値）．
+$|\mu_{\mathrm{ADI}}| < 1$ を達成するには
 $\Ord{N^4}$ 回（$N=32$ で $\sim 10^6$ 回）の反復が必要となる．
 したがって ADI 方向分離は 2 次元 PPE の DC Step~2 ソルバとしては実用性を欠く．
 
@@ -201,7 +205,7 @@ $\rho_l/\rho_g \ge 5$ ではすべての $\omega$ で停滞する．
 界面近傍で $(\rho_l/\rho_g) \cdot h^2$ に比例する残差床を形成するためであり，
 高密度比条件では Krylov ソルバ（GMRES ＋ FD 前処理）への切り替えが必要となる．
 
-等密度条件での収束特性を確認した．
+DC ソルバの収束領域と密度比依存の限界を確認した．
 次に，実際の PPE 境界条件である全周 Neumann 条件での精度を検証する．
 
 
@@ -289,8 +293,9 @@ $N$ & $\rho_{\max}/\rho_{\min} \approx 1$ & $\approx 9$ & $\approx 99$ & $\appro
  64 & $1.29 \times 10^{-10}$ & $1.41 \times 10^{-10}$ & $8.47 \times 10^{-10}$ & $4.76 \times 10^{-9}$  \\
 128 & $1.02 \times 10^{-12}$ & $1.51 \times 10^{-12}$ & $1.82 \times 10^{-11}$ & $8.50 \times 10^{-11}$ \\
 \midrule
-\multicolumn{1}{c}{次数} & $\approx 7.0$ & $\approx 6.5$ & $\approx 5.5$ & $\approx 5.8$ \\
+\multicolumn{1}{c}{次数$^*$} & $\approx 7.0$ & $\approx 6.5$ & $\approx 5.5$ & $\approx 5.8$ \\
 \bottomrule
+\multicolumn{5}{l}{\footnotesize $^*$ $N=64{\to}128$ のペアによる漸近値．高密度比では前漸近領域で次数が振動する．} \\
 \end{tabular}
 \end{table}
 
@@ -303,7 +308,7 @@ $N$ & $\rho_{\max}/\rho_{\min} \approx 1$ & $\approx 9$ & $\approx 99$ & $\appro
 \end{figure}
 
 等密度（$A=0$）の結果は §~\ref{sec:verify_ppe} の Dirichlet テストと一致し $\Ord{h^7}$ を再現する．
-$\rho_{\max}/\rho_{\min} \approx 999$ においても収束次数は $\Ord{h^{5.8}}$ を維持し，
+$\rho_{\max}/\rho_{\min} \approx 999$ においても漸近収束次数は $\Ord{h^{5.8}}$ を維持し，
 $N=128$ で $L^\infty = \Ord{10^{-11}}$ を達成した．
 密度場が十分に滑らかである限り，CCD の高次精度は密度比によらず発現する．
 
