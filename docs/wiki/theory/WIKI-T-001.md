@@ -18,7 +18,9 @@ consumers:
     usage: "Paper sections reference CCD theory for all spatial discretization"
   - domain: E
     usage: "Convergence verification relies on O(h^6) expectation"
-depends_on: []
+depends_on:
+  - "[[WIKI-T-011]]"
+  - "[[WIKI-T-012]]"
 compiled_by: KnowledgeArchitect
 verified_by: null
 compiled_at: 2026-04-07

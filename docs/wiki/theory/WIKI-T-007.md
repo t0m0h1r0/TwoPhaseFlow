@@ -20,6 +20,7 @@ consumers:
     usage: "Mass conservation is a primary benchmark metric"
 depends_on:
   - "[[WIKI-T-006]]"
+  - "[[WIKI-T-010]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---

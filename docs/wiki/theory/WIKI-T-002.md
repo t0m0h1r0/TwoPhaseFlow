@@ -20,6 +20,7 @@ consumers:
     usage: "Filter strength affects convergence rates and parasitic currents"
 depends_on:
   - "[[WIKI-T-001]]"
+  - "[[WIKI-T-013]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---

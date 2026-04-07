@@ -21,7 +21,8 @@ consumers:
     usage: "Foundation for all subsequent spatial/temporal discretization"
   - domain: A
     usage: "§2 provides the continuous equations discretized in §4–§10"
-depends_on: []
+depends_on:
+  - "[[WIKI-T-010]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---

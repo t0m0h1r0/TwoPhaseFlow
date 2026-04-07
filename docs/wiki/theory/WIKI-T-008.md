@@ -21,6 +21,8 @@ consumers:
 depends_on:
   - "[[WIKI-T-001]]"
   - "[[WIKI-T-007]]"
+  - "[[WIKI-T-010]]"
+  - "[[WIKI-T-018]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---

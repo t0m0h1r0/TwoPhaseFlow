@@ -23,6 +23,7 @@ consumers:
     usage: "Key design argument for monograph's unified CCD approach"
 depends_on:
   - "[[WIKI-T-001]]"
+  - "[[WIKI-T-012]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---
