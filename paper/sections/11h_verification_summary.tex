@@ -15,6 +15,8 @@
         DCCD フィルタは Nyquist モードを完全に抑制する（$H(\pi)=0$）．
         非一様格子（$\alpha=2$）でも $\Ord{h^6}$ が保全され，
         GCL は計算機精度で成立する（§\ref{sec:gcl_verification}）．
+        Rhie--Chow 補正ブラケットは C/RC 形式で $\Ord{h^4}$ を達成し，
+        標準形 $\Ord{h^2}$ に対して $N{=}128$ で 14{,}229 倍の精度向上を確認した（§\ref{sec:verify_rc_bracket}）．
   \item \textbf{DCCD 移流特性：}
         1次元移流比較により，DCCD は不連続プロファイルの TV を CCD の約 $1/3$ に低減し，
         平滑プロファイルでは CCD と同等の精度を維持する（§\ref{sec:dccd_dissipation_bench}）．
@@ -77,6 +79,7 @@
 \midrule
 CCD 微分（周期） & $\Ord{h^6}$ & $\Ord{h^{6.0}}$ & $N = 256$ で丸め誤差到達 \\
 CCD 微分（非一様格子） & $\Ord{h^6}$ & $\Ord{h^6}$（5.86--6.65） & GCL 合格（$5.4 \times 10^{-14}$） \\
+Rhie--Chow C/RC ブラケット & $\Ord{h^4}$ & $\Ord{h^{4.0}}$ & 標準 $\Ord{h^2}$ 比 14{,}229 倍（$N{=}128$） \\
 DCCD フィルタ   & $H(\pi) = 0$ & $H(\pi) = 0$ & チェッカーボード完全抑制 \\
 DCCD 移流（不連続） & TV 低減 & TV: $10.83 \to 3.15$ & CCD 比 $1/3$ \\
 曲率（正弦波，$\phi$ 直接） & $\Ord{h^5}$ & $\Ord{h^{5.0}}$ & CCD 微分精度のベースライン \\
@@ -97,7 +100,7 @@ AB2（初回 Euler 付き） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & 初
 \end{table}
 
 \begin{tcolorbox}[resultbox, title={コンポーネント検証の総括}]
-全 12 コンポーネントが設計精度を達成した：
+全 13 コンポーネントが設計精度を達成した：
 CCD 微分は $\Ord{h^{6.0}}$，PPE 欠陥補正（$k{=}3$）は Dirichlet で $\Ord{h^{7.0}}$，
 TVD-RK3 は $\Ord{\Delta t^{3.0}}$，AB2 は $\Ord{\Delta t^{2.0}}$ をそれぞれ確認した．
 CLS 移流は質量保存誤差 $\Ord{10^{-5}}$（$N{=}256$），
