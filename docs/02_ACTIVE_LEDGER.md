@@ -14,6 +14,7 @@
 | last_decision | CHK-089 CLOSED 2026-04-07: EnvMetaBootstrapper re-deployment (Target: Claude). A1–A10→A1–A11 (A11: Knowledge-First Retrieval). 4 new K-Domain agents generated (KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager). Updated: _base.yaml, 00_GLOBAL_RULES.md §A, ResearchArchitect (K-Domain routing), ConsistencyAuditor (KNOWLEDGE_ERROR routing), PromptAuditor (Q3-1), PromptArchitect (verify step), TaskPlanner (K domain), README.md (4×4 matrix, Mermaid K-Domain subgraph). Q3 validation PASS. |
 | last_decision | CHK-090 CLOSED 2026-04-07: PaperReviewer §4–§10 story structure review. 6 narrative issues identified: (1) S5→S6 bridge weak; (2) S6→S7 bridge missing; (3) S7→S8 bridge missing; (4) S6 forward-refs S7 equations; (5) pressure filter prohibition placement; (6) DCCD cross-reference scatter. S8→S9 bridge strong. Overall "Tool→Application→Assembly" arc is sound. |
 | last_decision | CHK-091 CLOSED 2026-04-07: KnowledgeArchitect first 10 wiki entries. theory/: WIKI-T-001(CCD), T-002(DCCD), T-003(Projection), T-004(Balanced-Force), T-005(DC-PPE). paper/: WIKI-P-001(Narrative), P-002(Accuracy). cross-domain/: WIKI-X-001(DCCD map), X-002(CCD dual role). code/: WIKI-L-001(Algorithm). All [[REF-ID]] cross-references resolve. K-Domain operational. |
+| last_decision | CHK-092 CLOSED 2026-04-07: KnowledgeArchitect §1–§3 wiki entries (6 new). theory/: WIKI-T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck). paper/: WIKI-P-003(Problem Statement). cross-domain/: WIKI-X-003(Sign Conventions). Total wiki: 16 entries. All [[REF-ID]] resolve. |
 | next_action | Address WIKI-P-001 narrative issues (bridge paragraphs for S5→S6, S6→S7, S7→S8) |
 
 ### Notes
@@ -41,6 +42,7 @@
 | CHK-089 | CLOSED | deploy | EnvMetaBootstrapper 2026-04-07 (Target: Claude). A1–A11 propagated; 4 K-Domain agents created; 5 existing agents updated; README.md regenerated with 4×4 matrix + K-Domain Mermaid subgraph. Q3 validation PASS (0 stale A1–A10 refs). |
 | CHK-090 | CLOSED | review | PaperReviewer §4–§10 story structure review 2026-04-07. 6 issues (3 missing bridges, 1 forward-ref, 1 placement, 1 scatter). Overall arc sound. See docs/wiki/paper/WIKI-P-001.md. |
 | CHK-091 | CLOSED | wiki | KnowledgeArchitect 10 wiki entries 2026-04-07. First K-Domain compilation: 5 theory + 2 paper + 2 cross-domain + 1 code. All [[REF-ID]] pointers resolve. docs/wiki/ operational. |
+| CHK-092 | CLOSED | wiki | KnowledgeArchitect §1–§3 wiki entries 2026-04-07. 6 new entries: T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck), P-003(Problem Statement), X-003(Sign Conventions). Total: 16 entries. |
 
 ## §2 — Math / Code Audit Register
 
