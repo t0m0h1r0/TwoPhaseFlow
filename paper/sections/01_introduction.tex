@@ -453,7 +453,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 \caption{本稿の章立て・主な内容・前提章の対応}
 \label{tab:chapter_overview}
 \renewcommand{\arraystretch}{1.35}
-\begin{tabular}{clp{75mm}l}
+\begin{tabular}{clp{68mm}l}
 \toprule
 章 & タイトル（略称） & 主な内容 & 前提章 \\
 \midrule
@@ -467,33 +467,37 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & 保存形界面追跡，再初期化方程式，曲率数値計算
    & 2 \\
 4  & CCD 法
-   & 6次精度コンパクト差分，係数導出，楕円型ソルバーとしての定式化
-     （PPE への応用は第~\ref{sec:pressure}章§~\ref{sec:ppe_pseudotime}で展開）
+   & 6次精度コンパクト差分，係数導出，DCCD フィルタ
    & --- \\
-5  & 時間積分
-   & \raggedright CLS 移流：Dissipative CCD + TVD-RK3（$\Ord{\Delta t^3}$）；
-     NS 対流項：AB2 外挿（$\Ord{\Delta t^2}$），
-     粘性項：Crank--Nicolson（$\Ord{\Delta t^2}$）；IPC スプリッティング $\Ord{\Delta t^2}$；時間刻み制約
-   & 2, 3, 4 \\
-6  & 界面適合格子
+5  & 界面適合格子
    & レベルセット連動格子生成，メトリック係数，ALE 簡略化
    & 3, 4 \\
-7  & 圧力--速度連成
-   & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force（参考）
-   & 4, 6 \\
-8  & 圧力 Poisson 方程式
-   & 変密度 PPE 導出，FD 直接法＋CCD 勾配，HFE（分相 PPE 基盤），境界条件
-   & 7 \\
-9  & 完全アルゴリズム
+6  & 時間積分
+   & \raggedright CLS：TVD-RK3（$\Ord{\Delta t^3}$）；
+     NS：AB2+IPC（$\Ord{\Delta t^2}$），CN 粘性；時間刻み制約
+   & 2, 3, 4 \\
+7  & CLS 移流・再初期化
+   & Dissipative CCD 移流スキーム，圧縮項 DCCD，安定性制約
+   & 3, 4, 6 \\
+8  & 圧力・速度連成
+   & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
+   & 4, 5 \\
+9  & 圧力 Poisson 方程式
+   & CCD-PPE 離散化，欠陥補正法，境界条件，精度総括
+   & 8 \\
+10 & 完全アルゴリズム
    & 離散演算子マッピング・7ステップフロー・タイムステップ制御
    & 全章 \\
-10 & コンポーネント検証
-   & CCD 精度・GCL・CLS 保存性・PPE 収束の単体検証
-   & 9 \\
-11 & 多相流ベンチマーク
-   & 静止液滴・毛細管波・気泡上昇・RT 不安定の物理検証
+11 & コンポーネント検証
+   & CCD 精度・曲率・CLS 保存性・HFE・PPE 収束の単体検証
    & 10 \\
-12 & まとめ
+12 & NS ソルバ検証
+   & 力学的バランス・保存則・時間空間精度・精度バジェット
+   & 11 \\
+13 & 多相流ベンチマーク
+   & 静止液滴・毛細管波・気泡上昇・RT 不安定の物理検証
+   & 12 \\
+14 & まとめ
    & 技術的貢献の整理，今後の拡張方向
    & --- \\
 \bottomrule

@@ -1,4 +1,4 @@
-% paper/sections/04c_ccd_extensions.tex
+% paper/sections/05b_ccd_extensions.tex
 %
 % §4 CCD 法の続き（04_ccd.tex からの分割）
 % 内容：非一様格子拡張・2次元混合偏微分・楕円型ソルバーとしての双対的役割
@@ -26,8 +26,8 @@
 
 \begin{tcolorbox}[warnbox, title={$\partial J/\partial\xi$ の精度：全体精度への影響}]
 式~\eqref{eq:transform_2nd_correct}（第~\ref{sec:grid}章で導出）の右辺第2項には $\partial J/\partial\xi$ が含まれる．
-第~\ref{sec:grid}章 §~\ref{sec:grid_gen} のステップ5では $J_x$ を $\Ord{h^2}$ 中心差分で評価しているため，
-そのままでは $\partial J/\partial\xi$ の精度が $\Ord{h}$ 以下となり，
+$J_x$ を素朴な $\Ord{h^2}$ 中心差分で評価した場合，
+$\partial J/\partial\xi$ の精度が $\Ord{h}$ 以下となり，
 CCD の $\Ord{h^6}$ 空間精度全体が $\Ord{h}$ または $\Ord{h^2}$ に劣化する．
 
 \textbf{解決策：} 座標配列 $x(\xi)$ を「関数値」として CCD に入力し，

@@ -285,8 +285,8 @@ MAC スタガード格子 & $0$（厳密保存） &
 \end{tabular}
 \end{center}
 
-標準 LS は非保存形のため，Projection 法が残す微小な離散発散
-$[\bnabla\cdot\bu]_h = \Ord{\Delta t \cdot h^2/\Delta t} = \Ord{h^2}$ が
+標準 LS は非保存形のため，Projection 法の PPE 空間離散化に起因する離散発散残差
+$[\bnabla\cdot\bu]_h = \Ord{h^2}$（2次精度 PPE の場合）が
 $\phi\,[\bnabla\cdot\bu]_h$ として体積誤差に直結する（§~\ref{sec:why_cls_massloss}）．
 CLS（保存形 + Dissipative CCD）では保存形の発散定理によりこの項が消去され，
 残差は CCD 微分の打ち切り誤差 $\Ord{h^5}$ のみとなる．
