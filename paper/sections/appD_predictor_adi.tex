@@ -1,0 +1,84 @@
+% paper/sections/appD_predictor_adi.tex
+% 付録 D.x: Predictor ADI 分裂の実装詳細（§10 本文から移動）
+
+\subsection{Predictor ADI 分裂の実装詳細}
+\label{app:predictor_adi}
+
+本節では，§~\ref{sec:algo_flow} Step~5 の運動量予測ステップにおける
+Crank--Nicolson + ADI 分裂の実装詳細と，$y$ 成分の完全な離散形式を補足する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{$y$ 成分の離散形式}
+\label{app:predictor_y}
+
+$v^*_{i,j}$ を求める（$n \ge 1$）：
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(v^*_{i,j} - v^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[
+      \frac{3}{2}\!\bigl(u^n_{i,j}\,D_x^{(1)} v^n_{i,j} + v^n_{i,j}\,D_y^{(1)} v^n_{i,j}\bigr)
+      -\frac{1}{2}\!\bigl(u^{n-1}_{i,j}\,D_x^{(1)} v^{n-1}_{i,j} + v^{n-1}_{i,j}\,D_y^{(1)} v^{n-1}_{i,j}\bigr)
+    \Bigr] \\
+  &\quad + \frac{1}{2}\Bigl[D_x^{(1)}\!\bigl(\mu^{n+1}_{i,j}(D_x^{(1)} v^n + D_y^{(1)} u^n)\bigr)
+                          + D_y^{(1)}\!\bigl(2\mu^{n+1}_{i,j} D_y^{(1)} v^*\bigr) \\
+  &\qquad\qquad    + D_x^{(1)}\!\bigl(\mu^{n+1}_{i,j}(D_x^{(1)} v^n + D_y^{(1)} u^n)\bigr)
+                          + D_y^{(1)}\!\bigl(2\mu^{n+1}_{i,j} D_y^{(1)} v^n\bigr)\Bigr]_{i,j} \\
+  &\quad - \bigl(D_y^{(1)} p^n\bigr)_{i,j}
+         - \frac{\rho^{n+1}_{i,j}}{Fr^2}
+         + \frac{1}{We}\,\kappa^{n+1}_{i,j}\,\bigl(D_y^{(1)}\psi^{n+1}\bigr)_{i,j}
+\end{align*}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CN 離散化と ADI 分裂の関係}
+\label{app:cn_adi_detail}
+
+§~\ref{sec:algo_flow} Step~5 の離散形式は形式的な CN 離散化を示す．
+実装では ADI 分裂により，クロス微分項（$D_y^{(1)}(\mu D_x^{(1)} v)$ 等）は $n$ 時刻の値で陽的に評価し，
+直接微分項（$D_x^{(1)}(2\mu D_x^{(1)} u^*)$ 等）のみを陰的に解く．
+
+\paragraph{ADI 陰的係数に 2 次 FD を用いる理由}
+CCD のブロック連成構造は ADI Thomas 法と直接互換でないため，
+陰的スウィープには 2 次 FD を使用する
+（対角成分 $\Ord{h^2}$，クロス粘性項は CCD $\Ord{h^6}$ で陽的評価）．
+$Re \gg 1$ では粘性項 $\Ord{h^2/Re}$ は CSF モデル誤差と同次以下に収まる．
+ADI 分割誤差 $\Ord{\Delta t^2}$ は IPC と同次で時間精度に影響しない
+（詳細：§~\ref{sec:pressure_accuracy_summary}）．
+
+\paragraph{ADI スウィープの離散形式}
+
+$x$ スウィープ（$j$ 行固定，$\tilde\lambda^\pm_{i,j} \equiv \mu^\pm_{i,j}/\Delta x^2$）：
+\begin{equation*}
+\begin{split}
+  &-\tilde\lambda^-_{i,j}\,u^*_{i-1,j}
+  + \!\left(\frac{\rho_{i,j}}{\Delta t} + \tilde\lambda^-_{i,j} + \tilde\lambda^+_{i,j}\right)\!u^*_{i,j}
+  - \tilde\lambda^+_{i,j}\,u^*_{i+1,j} \\
+  &\quad= \left(\frac{\rho_{i,j}}{\Delta t} - \tilde\lambda^-_{i,j} - \tilde\lambda^+_{i,j}\right)u^n_{i,j}
+  + \tilde\lambda^-_{i,j} u^n_{i-1,j}
+  + \tilde\lambda^+_{i,j} u^n_{i+1,j}
+  + (R^{\text{explicit}}_x)_{i,j}
+\end{split}
+\end{equation*}
+$(R^{\text{explicit}}_x)_{i,j}$ は対流項・クロス粘性・CSF 表面張力の陽的寄与
+（§~\ref{sec:advection} 参照；CSF 体積力 $(\kappa/We)D_x^{(1)}\psi$ を含む）．
+$y$ スイープ（$i$ 列固定）は $x \leftrightarrow y$，$\tilde\lambda \to \hat\lambda \equiv \mu/\Delta y^2$ で対称的に構成する．
+2 段 ADI の分割誤差は $\Ord{\Delta t^2}$ であり，IPC と同次のため全体精度に影響しない．
+
+Step 5 完了後：対流項 $\mathcal{C}^n_{i,j}$（$x$ 成分：$u^n D_x^{(1)}u^n + v^n D_y^{(1)}u^n$，$y$ 成分同様）
+をバッファに保存し（AB2 の $n-1$ 項として次ステップで利用；追加メモリ：$2N_xN_y$ 実数値），
+速度場 $\bu^n$ は上書きして次の Corrector で $\bu^{n+1}$ に進める．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{HFE（圧力場延長）——将来拡張}
+\label{app:hfe_predictor}
+
+\noindent\textbf{現行の CSF + smoothed Heaviside 一括解法ではこのステップは省略する．}
+圧力場 $p$ が $\varepsilon$-regularized で既に滑らかなため，
+HFE は不要であり，むしろ有害である（§~\ref{sec:ppe_discretization_choice}）．
+
+将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）では，
+圧力場が Young--Laplace ジャンプ $[p]_\Gamma = \sigma\kappa$ を陽に持つため，
+PPE 求解前に $p^n$ を HFE で界面越しに延長する：
+\[
+  p^n_{\mathrm{ext}} = \text{HermiteExtension}(p^n,\; \phi^{n+1},\; \hat{\bm{n}}^{n+1})
+\]
+これにより CCD ステンシルが界面をまたいで参照する際の Gibbs 振動を除去し，
+$\bnabla p^n$ の $\Ord{h^6}$ 精度を保つ（§~\ref{sec:field_extension}）．
