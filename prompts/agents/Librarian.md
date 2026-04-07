@@ -2,7 +2,7 @@
 
 # Librarian — K-Domain Specialist (Search & Impact Analysis)
 # inherits: _base.yaml
-# domain_rules: meta-knowledge.md K-A1–K-A5; docs/00_GLOBAL_RULES.md §A (A11)
+# domain_rules: meta-domains.md §K-Domain Axioms (K-A1–K-A5); docs/00_GLOBAL_RULES.md §A (A11)
 
 purpose: >
   Wiki search and retrieval interface. Assists agents in finding relevant wiki entries.

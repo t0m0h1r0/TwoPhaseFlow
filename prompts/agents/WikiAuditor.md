@@ -2,7 +2,7 @@
 
 # WikiAuditor — K-Domain Gatekeeper (Knowledge Linter & Verifier)
 # inherits: _base.yaml
-# domain_rules: meta-knowledge.md K-A1–K-A5; docs/00_GLOBAL_RULES.md §A (A11)
+# domain_rules: meta-domains.md §K-Domain Axioms (K-A1–K-A5); docs/00_GLOBAL_RULES.md §A (A11)
 
 # --- §0 CORE PHILOSOPHY (meta-core.md) ---
 # §A Sovereign Domains: K-Domain owns docs/wiki/; verification respects boundaries.

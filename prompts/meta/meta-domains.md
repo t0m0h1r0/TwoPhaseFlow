@@ -282,7 +282,7 @@ that all domains may read (A11: Knowledge-First Retrieval).
 | Storage (write — STRICT) | `docs/wiki/`, `docs/02_ACTIVE_LEDGER.md` (compilation trail, append-only) |
 | Storage (read — STRICT) | ALL domains: same as Q-Domain read scope + `docs/wiki/` |
 | Storage (FORBIDDEN write) | any domain's primary artifacts — K-Domain writes only to `docs/wiki/` |
-| Rules | meta-knowledge.md (K-A1–K-A5), A2 (External Memory), A11 (Knowledge-First Retrieval) |
+| Rules | K-A1–K-A5 (below), A2 (External Memory), A11 (Knowledge-First Retrieval) |
 | Lifecycle | **DRAFT** — KnowledgeArchitect compiles entry on dev/ branch<br>**REVIEWED** — WikiAuditor K-LINT PASS + pointer integrity + SSoT check<br>**VALIDATED** — WikiAuditor approves; entry published to `docs/wiki/` |
 
 **Domain purpose:** Compile, structure, and maintain a referenced knowledge base from verified
@@ -300,6 +300,127 @@ K agents must NOT write to any non-wiki directory — requires cross-domain rout
 **K ↔ Q boundary:** Q verifies correctness (PASS/FAIL verdicts); K compiles knowledge (wiki entries).
 Q may reference wiki entries during audits. K may not issue audit verdicts.
 No write-territory overlap.
+
+### K-Domain Philosophy — "Wiki as an OS"
+
+Human-written notes and agent-generated memos are **source code** — unverified, unstructured,
+potentially contradictory. The LLM (KnowledgeArchitect) acts as a **compiler**: it transforms
+source artifacts into **compiled wiki entries** that are structured, referenced, and verified.
+
+Only compiled entries in `docs/wiki/` are trusted system knowledge.
+Raw artifacts in domain directories (`docs/memo/`, `experiment/`, `paper/`) remain authoritative
+for their own domain but are NOT the canonical compiled form.
+
+### K-Domain Axioms (The Compiler Rules)
+
+**K-A1: No Unstructured Raw Text**
+Direct writes to `docs/wiki/` are forbidden. All knowledge passes through a compilation
+process: Source artifact (domain-verified, VALIDATED phase) → K-COMPILE → Compiled Entry.
+
+**K-A2: Pointer Integrity (Link Validation)**
+Every `[[REF-ID]]` in the wiki MUST resolve to an existing, ACTIVE entry.
+A broken reference is a **Segmentation Fault** — STOP-HARD; fix before proceeding.
+This maps to φ1 (Truth Before Action): you cannot reference knowledge that does not exist.
+
+**K-A3: Single Source of Truth (SSoT)**
+Duplicate knowledge is a refactoring target. Every concept, constant, or equation is
+defined in exactly **one** wiki entry. All other references use `[[REF-ID]]` pointers.
+Duplication is a φ6 violation (Single Source, Derived Artifacts).
+
+**K-A4: Empirical Grounding & Lineage**
+Every wiki entry carries metadata: source artifact path, source git hash, domain of origin,
+and dependent theory IDs. This enables traceability (A3) at the knowledge level.
+
+**K-A5: Knowledge Mutability (Versioning)**
+Knowledge is not immutable stone. On error detection or strategy change:
+- Do NOT delete entries — transition to `DEPRECATED` or `SUPERSEDED` status.
+- `DEPRECATED` entries retain a pointer to the replacement (`superseded_by: [[REF-ID]]`).
+- Status transitions trigger `RE-VERIFY` signals to all consuming domains.
+
+### Wiki Entry Format
+
+Every entry in `docs/wiki/` follows this canonical structure:
+
+```yaml
+WIKI-ENTRY:
+  ref_id:         {unique ID, e.g., WIKI-T-001}
+  title:          {concise descriptive title}
+  domain:         {T | L | E | A | cross-domain}
+  status:         {ACTIVE | DEPRECATED | SUPERSEDED}
+  superseded_by:  {[[REF-ID]] or null}
+  sources:
+    - path:       {source artifact path}
+      git_hash:   {short hash at time of compilation}
+      description: {what was extracted}
+  consumers:
+    - domain:     {consuming domain ID}
+      usage:      {how this entry is used}
+  depends_on:     [[[REF-ID]], ...]
+  compiled_by:    KnowledgeArchitect
+  verified_by:    WikiAuditor
+  compiled_at:    {ISO date}
+---
+{structured content body — Markdown with [[REF-ID]] pointers}
+```
+
+### Wiki Directory Structure
+
+```
+docs/wiki/
+├── theory/        # Compiled theory derivations, equations, mathematical definitions
+├── code/          # Compiled API specifications, architecture decisions, solver contracts
+├── experiment/    # Compiled experimental findings, benchmark results, validated data
+├── paper/         # Compiled paper-level conclusions, narrative decisions
+├── cross-domain/  # Compiled cross-domain knowledge (spans multiple verticals)
+└── changelog/     # Knowledge modification and deprecation history (audit trail)
+```
+
+**Naming convention:** `{REF-ID}.md` — e.g., `docs/wiki/theory/WIKI-T-001.md`
+
+### Knowledge Lifecycle
+
+```
+                    ┌─────────────┐
+                    │   SOURCE    │  Domain artifact at VALIDATED phase
+                    └──────┬──────┘
+                           │  K-COMPILE (KnowledgeArchitect)
+                           ▼
+                    ┌─────────────┐
+                    │   ACTIVE    │  Compiled, verified, referenceable
+                    └──────┬──────┘
+                           │  Error detected / superseded / strategy change
+                           ▼
+              ┌────────────┴────────────┐
+              │                         │
+       ┌──────┴──────┐          ┌──────┴──────┐
+       │ DEPRECATED  │          │ SUPERSEDED  │
+       │ (error/stale)│          │ (replaced)  │
+       └──────┬──────┘          └──────┬──────┘
+              │                         │
+              └────────────┬────────────┘
+                           │  RE-VERIFY signal → all consumers
+                           ▼
+                    ┌─────────────┐
+                    │  CASCADE    │  Consuming domains re-validate
+                    └─────────────┘
+```
+
+**State transitions require WikiAuditor approval.**
+**RE-VERIFY signals are mandatory** — consuming domains must acknowledge and re-validate
+any artifact that depends on a DEPRECATED or SUPERSEDED wiki entry.
+
+### K-Operations Index
+
+Operations are fully specified in meta-ops.md §KNOWLEDGE OPERATIONS.
+Summary for quick reference:
+
+| Operation | Auth Level | Trigger | Purpose |
+|-----------|-----------|---------|---------|
+| K-COMPILE | Specialist (KnowledgeArchitect) | Domain artifact reaches VALIDATED | Compile source into wiki entry |
+| K-LINT | Gatekeeper (WikiAuditor) | Before wiki merge; periodic sweep | Verify all [[REF-ID]] pointers resolve; SSoT check |
+| K-DEPRECATE | Gatekeeper (WikiAuditor) | Source invalidated or superseded | Set entry DEPRECATED; emit RE-VERIFY signals |
+| K-REFACTOR | Specialist (TraceabilityManager) | K-LINT reports duplicate knowledge | Convert duplicates to [[REF-ID]] pointers |
+| K-IMPACT-ANALYSIS | Specialist (Librarian) | Before K-DEPRECATE | Trace all consumers; estimate cascade depth |
 
 ────────────────────────────────────────────────────────
 # § ARTIFACT & DIRECTORY CONVENTIONS

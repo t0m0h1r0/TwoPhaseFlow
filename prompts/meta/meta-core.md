@@ -131,11 +131,9 @@ Layer 1 — Static Foundation (Immutable)
   meta-persona.md — WHO: agent behavioral primitives + skills                                  ← stable only when agent design changes
 
 Layer 2 — Dynamic Execution (Operational)
-  meta-domains.md         — STRUCTURE: 4×4 Matrix domain registry, Interface Contracts, branches, storage, lock protocol ← updated on org change
+  meta-domains.md         — STRUCTURE: 4×4 Matrix domain registry, Interface Contracts, branches, storage, K-Domain axioms ← updated on org/knowledge change
   meta-roles.md           — WHAT: Gatekeeper Approval conditions, per-agent role contracts                               ← updated on role reassignment
   meta-ops.md             — EXECUTE: canonical commands, HAND-xx (with Interface Contract enforcement), handoff protocols ← updated on tooling changes
-  meta-knowledge.md       — KNOWLEDGE: K-Domain axioms, wiki structure, pointer integrity, SSoT, lifecycle               ← updated on knowledge structure changes
-  meta-knowledge-roles.md — K-ROLES: KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager contracts           ← updated on K-role changes
 
 Layer 3 — Orchestration (Process)
   meta-workflow.md     — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
@@ -183,11 +181,9 @@ T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
 |------|-------|----------|-------------|
 | meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A11, LA-1–LA-5, system targets | core values change |
 | meta-persona.md | 1 — Static Foundation | WHO — agent behavioral primitives and skills | agent design principles change |
-| meta-domains.md | 2 — Dynamic Execution | STRUCTURE — domain registry, branches, storage, lock protocol | org structure changes |
-| meta-roles.md | 2 — Dynamic Execution | WHAT — per-agent role contracts | responsibilities shift |
+| meta-domains.md | 2 — Dynamic Execution | STRUCTURE — domain registry, K-Domain axioms (K-A1–K-A5), branches, storage | org/knowledge structure changes |
+| meta-roles.md | 2 — Dynamic Execution | WHAT — per-agent role contracts (all domains incl. K) | responsibilities shift |
 | meta-ops.md | 2 — Dynamic Execution | EXECUTE — canonical commands and handoff protocols | tooling changes |
-| meta-knowledge.md | 2 — Dynamic Execution | KNOWLEDGE — K-Domain axioms, wiki structure, pointer integrity, lifecycle | knowledge structure changes |
-| meta-knowledge-roles.md | 2 — Dynamic Execution | K-ROLES — KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager | K-role changes |
 | meta-workflow.md | 3 — Orchestration | HOW — pipelines, coordination protocols | process matures |
 | meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper, composition, tiered generation | system structure changes |
 | meta-project.md | P — Project Profile | PROJECT — project-type rules, solver policy, tooling | project changes |

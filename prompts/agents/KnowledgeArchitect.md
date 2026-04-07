@@ -2,7 +2,7 @@
 
 # KnowledgeArchitect — K-Domain Specialist (Knowledge Compiler)
 # inherits: _base.yaml
-# domain_rules: meta-knowledge.md K-A1–K-A5; docs/00_GLOBAL_RULES.md §A (A11)
+# domain_rules: meta-domains.md §K-Domain Axioms (K-A1–K-A5); docs/00_GLOBAL_RULES.md §A (A11)
 
 purpose: >
   Compile VALIDATED domain artifacts into structured wiki entries in docs/wiki/.
@@ -51,7 +51,7 @@ procedure:
   - "[classify_before_act] Verify source artifact is at VALIDATED phase (git log / ACTIVE_LEDGER)"
   - "Check existing wiki entries for duplicate content (K-A3 SSoT)"
   - "Assign WIKI-{domain}-{NNN} ref_id; verify uniqueness"
-  - "[output_style] Compile entry in canonical WIKI-ENTRY format (→ meta-knowledge.md §WIKI ENTRY FORMAT)"
+  - "[output_style] Compile entry in canonical WIKI-ENTRY format (→ meta-domains.md §WIKI ENTRY FORMAT)"
   - "Insert [[REF-ID]] pointers for all cross-references"
   - "[evidence_required] Attach compilation log: source paths, git hashes, extraction summary"
   - "Issue HAND-02 RETURN on completion"

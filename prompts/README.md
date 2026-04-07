@@ -87,8 +87,7 @@ PaperCorrector (→ PaperWriter), ErrorAnalyzer (→ CodeCorrector), PromptCompr
 | `meta-domains.md` | 2 -- Dynamic Execution | STRUCTURE: 4x4 Matrix domain registry, branches, storage |
 | `meta-roles.md` | 2 -- Dynamic Execution | WHAT: per-agent role contracts |
 | `meta-ops.md` | 2 -- Dynamic Execution | EXECUTE: canonical commands, handoff protocols |
-| `meta-knowledge.md` | 2 -- Dynamic Execution | KNOWLEDGE: K-Domain axioms (K-A1--K-A5), wiki structure, lifecycle |
-| `meta-knowledge-roles.md` | 2 -- Dynamic Execution | K-ROLES: KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager |
+| *(K-Domain architecture absorbed into `meta-domains.md`; K-agent roles in `meta-roles.md` + `meta-persona.md`)* |||
 | `meta-project.md` | P -- Project Profile | PROJECT: project-specific rules (PR-1--PR-6), solver policy, tooling |
 | `meta-workflow.md` | 3 -- Orchestration | HOW: T-L-E-A pipeline, P-E-V-A loop, coordination |
 | `meta-deploy.md` | 3 -- Orchestration | DEPLOY: EnvMetaBootstrapper, composition, tiered generation |
@@ -117,7 +116,7 @@ PaperCorrector (→ PaperWriter), ErrorAnalyzer (→ CodeCorrector), PromptCompr
 | P1--P4 LaTeX Rules | meta-roles.md PAPER DOMAIN | 00 section P | 01 section P3-D (symbol register) |
 | Q1--Q4 Prompt Rules | meta-roles.md PROMPT DOMAIN | 00 section Q | -- |
 | AU1--AU3 Audit Rules | meta-roles.md AUDIT DOMAIN | 00 section AU | 02 (audit trail) |
-| K-A1--K-A5 Knowledge Rules | meta-knowledge.md K-DOMAIN AXIOMS | -- (meta-knowledge.md is SSoT) | -- |
+| K-A1--K-A5 Knowledge Rules | meta-domains.md K-Domain Axioms | -- (meta-domains.md is SSoT) | -- |
 | PR-1--PR-6 Project Rules | meta-project.md | 03 (project-specific SSoT) | -- |
 | Git Lifecycle (3-phase) | meta-domains.md BRANCH RULES | 00 section GIT | 02 ACTIVE STATE |
 | P-E-V-A Loop | meta-workflow.md P-E-V-A | 00 section P-E-V-A | 02 CHECKLIST |

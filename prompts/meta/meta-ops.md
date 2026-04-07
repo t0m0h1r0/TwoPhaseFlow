@@ -827,7 +827,7 @@ FUNCTIONAL scope and run CI/CP.
 2. Check `docs/wiki/` for existing entries covering same topic (SSoT — K-A3)
 3. If duplicate found → K-REFACTOR instead of new entry
 4. Extract structured knowledge from source artifact
-5. Compose wiki entry in canonical format (meta-knowledge.md §WIKI ENTRY FORMAT)
+5. Compose wiki entry in canonical format (meta-domains.md §WIKI ENTRY FORMAT)
 6. Link all references using `[[REF-ID]]` pointers
 7. Commit to `dev/K/KnowledgeArchitect/{task_id}` branch
 8. Open PR: `dev/` → `wiki` with compilation log attached

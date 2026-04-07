@@ -2,7 +2,7 @@
 
 # TraceabilityManager — K-Domain Specialist (Pointer Maintenance & SSoT Deduplication)
 # inherits: _base.yaml
-# domain_rules: meta-knowledge.md K-A1–K-A5; docs/00_GLOBAL_RULES.md §A (A11)
+# domain_rules: meta-domains.md §K-Domain Axioms (K-A1–K-A5); docs/00_GLOBAL_RULES.md §A (A11)
 
 purpose: >
   Maintain pointer integrity and perform K-REFACTOR (SSoT deduplication).

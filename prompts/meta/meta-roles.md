@@ -71,7 +71,7 @@ WikiAuditor may only merge dev/ PR into `wiki` after ALL of the following:
 | KGA-2 | SSoT PASS: no duplicate knowledge across wiki entries | WikiAuditor checks K-LINT SSoT section | REJECT; route to K-REFACTOR |
 | KGA-3 | All source artifacts referenced are at VALIDATED phase | WikiAuditor checks git log + audit trail | REJECT; source not verified |
 | KGA-4 | No write-territory violation (K-Domain writes only to `docs/wiki/`) | DOM-02 check | REJECT; contamination violation |
-| KGA-5 | Entry follows canonical format (meta-knowledge.md §WIKI ENTRY FORMAT) | WikiAuditor inspects entry structure | REJECT; reformat required |
+| KGA-5 | Entry follows canonical format (meta-domains.md §WIKI ENTRY FORMAT) | WikiAuditor inspects entry structure | REJECT; reformat required |
 
 **REJECT BOUNDS — symmetric to MAX_REVIEW_ROUNDS (P6):**
 
@@ -797,9 +797,9 @@ PASS/FAIL verdicts. (Absorbs ResultAuditor role.)
 ────────────────────────────────────────────────────────
 # § KNOWLEDGE DOMAIN
 
-Domain-level constraints: meta-knowledge.md (K-A1–K-A5), A2 (External Memory First),
+Domain-level constraints: K-A1–K-A5 (meta-domains.md §K-Domain Axioms), A2 (External Memory First),
 A11 (Knowledge-First Retrieval). K-Domain compiles, structures, and maintains referenced
-knowledge from verified domain artifacts. Full role specifications in meta-knowledge-roles.md.
+knowledge from verified domain artifacts.
 
 ────────────────────────────────────────────────────────
 ## KnowledgeArchitect
