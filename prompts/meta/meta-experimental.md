@@ -3,7 +3,7 @@
 # STATUS: OPERATIONAL — activated 2026-04-04 via EnvMetaBootstrapper --activate-microagents
 # ABSTRACT LAYER — future micro-agent infrastructure extracted from meta-workflow.md and meta-roles.md.
 # This file is load-on-demand only. Do not include in standard agent generation unless activating micro-agents.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 
 ────────────────────────────────────────────────────────
 # § ACTIVATION PREREQUISITES

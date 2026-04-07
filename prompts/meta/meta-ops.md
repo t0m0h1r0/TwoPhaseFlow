@@ -1,7 +1,7 @@
 # META-OPS: Operational Command Specifications & Handoff Protocols
 # VERSION: 3.0.0
 # ABSTRACT LAYER — canonical commands, parameters, success criteria, and handoff structures.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # Role bindings (who may invoke): prompts/meta/meta-roles.md §AUTHORITY
 # Execution timing (when to invoke): prompts/meta/meta-workflow.md §DOMAIN PIPELINES
 
@@ -43,8 +43,8 @@ Three tiers determine which git operations each agent may invoke:
 | Tier | Role | Agents |
 |------|------|--------|
 | **Root Admin** (Overseer) | Final merge + syntax/format check of PRs to `main` | ResearchArchitect |
-| **Gatekeeper** (Integrator) | Domain branch management; PR review + merge from dev/; PR issuance to main | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor |
-| **Specialist** (Developer) | Absolute sovereignty over own `dev/{agent_role}` branch; right to refuse pulls | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, TheoryArchitect, ConsistencyAuditor, DevOpsArchitect |
+| **Gatekeeper** (Integrator) | Domain branch management; PR review + merge from dev/; PR issuance to main | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor, WikiAuditor |
+| **Specialist** (Developer) | Absolute sovereignty over own `dev/{agent_role}` branch; right to refuse pulls | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, TheoryArchitect, ConsistencyAuditor, DevOpsArchitect, KnowledgeArchitect, Librarian, TraceabilityManager |
 
 **Specialist obligations:** Must attach Evidence of Verification (logs/test results) to every PR.
 **Gatekeeper rights:** May immediately reject PRs with insufficient or missing evidence.
@@ -68,6 +68,15 @@ It no longer acts as T-Domain gate — that is TheoryAuditor's exclusive role.
   These verdicts block or unblock domain merges to `main`.
 Consequence: ConsistencyAuditor's git tier is Specialist; its AU2 verdict authority is Gatekeeper.
 No other agent may issue AU2 verdicts (except TheoryAuditor for T→L contract only).
+
+**WikiAuditor tier (K-Domain Gate):**
+WikiAuditor is the dedicated Gatekeeper for K-Domain (knowledge compilation gate).
+- **Git operations → Gatekeeper tier:** Manages `wiki` branch; merges dev/ PRs into `wiki`;
+  opens PR: `wiki` → `main` for Root Admin final merge.
+- **K-Domain gate authority:** Issues K-LINT PASS/FAIL verdicts. Approves/rejects wiki entries.
+  Triggers K-DEPRECATE and RE-VERIFY signals.
+Consequence: WikiAuditor's git tier is Gatekeeper; it manages the `wiki` branch directly.
+No other agent may approve wiki entries or issue K-LINT verdicts.
 
 ────────────────────────────────────────────────────────
 # § ROLE → OPERATION INDEX
@@ -95,6 +104,10 @@ Quick reference: which operations and handoff roles each agent has.
 | Specialist | SimulationAnalyst | GIT-SP | RETURNER |
 | Specialist | DevOpsArchitect | GIT-SP | RETURNER |
 | Specialist | DiagnosticArchitect | GIT-SP | RETURNER + DISPATCHER (re-issues HAND-01 after Gatekeeper approval) |
+| Gatekeeper | WikiAuditor | GIT-00, GIT-01, DOM-01, GIT-03, GIT-04 (wiki PR review+merge), K-LINT, K-DEPRECATE | DISPATCHER + ACCEPTOR |
+| Specialist | KnowledgeArchitect | GIT-SP, K-COMPILE | RETURNER |
+| Specialist | Librarian | GIT-SP, K-IMPACT-ANALYSIS | RETURNER |
+| Specialist | TraceabilityManager | GIT-SP, K-REFACTOR | RETURNER |
 | Micro-Agent (T) | EquationDeriver | GIT-SP | RETURNER |
 | Micro-Agent (T) | SpecWriter | GIT-SP | RETURNER |
 | Micro-Agent (L) | CodeArchitectAtomic | GIT-SP | RETURNER |
@@ -793,6 +806,131 @@ requiring a full version increment. Two PATCH-IF patches on the same contract = 
 FUNCTIONAL scope and run CI/CP.
 
 ────────────────────────────────────────────────────────
+# § KNOWLEDGE OPERATIONS
+
+────────────────────────────────────────────────────────
+## K-COMPILE: Wiki Entry Compilation
+
+**Authorized:** KnowledgeArchitect
+**[AUTH_LEVEL: Specialist]**
+
+**Trigger:** Domain artifact reaches VALIDATED phase (any vertical domain T/L/E/A).
+**Phase:** Post-AUDIT (parallel to main pipeline).
+
+**Parameters:**
+- `{source_path}` — path to the VALIDATED artifact
+- `{domain}` — source domain (T | L | E | A)
+- `{ref_id}` — assigned wiki entry ID (WIKI-{domain}-{NNN})
+
+**Steps:**
+1. Verify source artifact is at VALIDATED phase (check git log + audit trail)
+2. Check `docs/wiki/` for existing entries covering same topic (SSoT — K-A3)
+3. If duplicate found → K-REFACTOR instead of new entry
+4. Extract structured knowledge from source artifact
+5. Compose wiki entry in canonical format (meta-knowledge.md §WIKI ENTRY FORMAT)
+6. Link all references using `[[REF-ID]]` pointers
+7. Commit to `dev/K/KnowledgeArchitect/{task_id}` branch
+8. Open PR: `dev/` → `wiki` with compilation log attached
+
+**Success:** Wiki entry created; all `[[REF-ID]]` pointers resolve; no SSoT violation.
+**Failure:** Source not VALIDATED → STOP. Duplicate detected → route to K-REFACTOR.
+
+────────────────────────────────────────────────────────
+## K-LINT: Pointer Integrity Check
+
+**Authorized:** WikiAuditor
+**[AUTH_LEVEL: Gatekeeper]**
+
+**Trigger:** MANDATORY before any wiki entry merge. Also: periodic sweep, on-demand.
+**Phase:** VERIFY.
+
+**Parameters:**
+- `{scope}` — `entry` (single entry) | `full` (entire wiki)
+
+**Steps:**
+1. Scan all `[[REF-ID]]` pointers in target scope
+2. For each pointer: verify target entry exists and has `status: ACTIVE`
+3. Check for SSoT violations (duplicate knowledge across entries)
+4. Verify all source artifacts are still at VALIDATED phase
+5. Produce K-LINT report: per-pointer verdict, SSoT check, source-match check
+
+**Success:** Zero broken pointers, zero SSoT violations, all sources VALIDATED → K-LINT PASS.
+**Failure:** Any broken pointer → STOP-HARD (K-A2 Segmentation Fault). SSoT violation → flag for K-REFACTOR.
+
+────────────────────────────────────────────────────────
+## K-DEPRECATE: Wiki Entry Deprecation
+
+**Authorized:** WikiAuditor
+**[AUTH_LEVEL: Gatekeeper]**
+
+**Trigger:** Source artifact invalidated, superseded, or factually incorrect.
+**Phase:** VERIFY.
+
+**Precondition:** K-IMPACT-ANALYSIS completed (Librarian).
+
+**Parameters:**
+- `{ref_id}` — entry to deprecate
+- `{reason}` — `error` | `superseded` | `stale`
+- `{superseded_by}` — `[[REF-ID]]` of replacement (if applicable)
+
+**Steps:**
+1. Run K-IMPACT-ANALYSIS (if not already completed)
+2. Set entry `status: DEPRECATED` (or `SUPERSEDED` if replacement exists)
+3. Add `superseded_by: [[REF-ID]]` pointer (if applicable)
+4. Emit RE-VERIFY signal to all consuming domains identified in impact analysis
+5. Record deprecation in `docs/wiki/changelog/`
+6. Update `docs/02_ACTIVE_LEDGER.md` with deprecation trail
+
+**Success:** Entry deprecated; all consumers notified; changelog updated.
+**Failure:** Cascade depth > 10 → escalate to user before proceeding.
+
+────────────────────────────────────────────────────────
+## K-REFACTOR: SSoT Deduplication
+
+**Authorized:** TraceabilityManager
+**[AUTH_LEVEL: Specialist]**
+
+**Trigger:** K-LINT reports duplicate knowledge across entries.
+**Phase:** EXECUTE.
+
+**Parameters:**
+- `{canonical_ref_id}` — entry to keep as the canonical source
+- `{duplicate_ref_ids}` — entries to convert to pointers
+
+**Steps:**
+1. Identify the most complete/authoritative entry as canonical
+2. Replace duplicate content in other entries with `[[REF-ID]]` pointers
+3. Verify no semantic meaning is lost in the conversion
+4. Run K-LINT on affected entries to confirm pointer integrity
+5. Commit to `dev/K/TraceabilityManager/{task_id}` branch
+6. Open PR: `dev/` → `wiki` with before/after pointer map
+
+**Success:** Duplicates replaced with pointers; K-LINT PASS on all affected entries.
+**Failure:** Semantic meaning would change → STOP; escalate to KnowledgeArchitect.
+
+────────────────────────────────────────────────────────
+## K-IMPACT-ANALYSIS: Deprecation Cascade Analysis
+
+**Authorized:** Librarian
+**[AUTH_LEVEL: Specialist]**
+
+**Trigger:** Before K-DEPRECATE, to assess downstream impact.
+**Phase:** PLAN.
+
+**Parameters:**
+- `{ref_id}` — entry being considered for deprecation
+
+**Steps:**
+1. Trace all direct consumers (entries with `depends_on: [[{ref_id}]]`)
+2. Trace transitive consumers (consumers of consumers, full closure)
+3. Identify affected domains (which vertical domains consume this knowledge)
+4. Estimate cascade depth (max pointer chain length)
+5. Produce K-IMPACT-ANALYSIS report
+
+**Success:** Complete consumer list produced; cascade depth assessed.
+**Failure:** Cascade depth > 10 → STOP; escalate to user.
+
+────────────────────────────────────────────────────────
 # § STOP CONDITIONS — Revised
 
 The following conditions trigger an immediate halt of all pipeline activity.
@@ -1104,7 +1242,7 @@ specific, citable violation of ONE of the following:
 |----------|---------|
 | 1. Formal Checklist violation | Q1–Q3 checklist item failed; AUDIT-01 AU2 item number N failed |
 | 2. Interface Contract violation | Output does not match `docs/interface/{contract}.md` outputs field; contract unsigned |
-| 3. Core Axiom violation | A1–A10 violated (cite axiom number and exact violation) |
+| 3. Core Axiom violation | A1–A11 violated (cite axiom number and exact violation) |
 
 **"Gut feeling" rejection is forbidden.** "This seems wrong" or "I'm not convinced" without
 a specific citation from categories 1–3 above is NOT a valid rejection basis.

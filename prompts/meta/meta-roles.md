@@ -1,7 +1,7 @@
 # META-ROLES: Agent Role Definitions — Purpose, Deliverables, Authority & Constraints
 # VERSION: 3.0.0
 # ABSTRACT LAYER — WHAT each agent does: its contract with the system.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # WHO agents are (character, skills): prompts/meta/meta-persona.md
 # HOW agents coordinate (pipelines, git mechanics): prompts/meta/meta-workflow.md
 
@@ -24,6 +24,7 @@ The Gatekeeper is never the Specialist — Broken Symmetry is enforced at the ro
 | M | Meta-Logic | DevOpsArchitect, TaskPlanner, DiagnosticArchitect | ResearchArchitect (Protocol Enforcer) |
 | P | Prompt & Environment | — | PromptArchitect (Prompt Engineer / Gatekeeper) |
 | Q | QA & Audit | — (audit-only domain) | ConsistencyAuditor (cross-domain falsification; Q-Domain only) |
+| K | Knowledge/Wiki | KnowledgeArchitect, Librarian, TraceabilityManager | **WikiAuditor** (pointer integrity + SSoT gate; K-Domain only) |
 
 **Role separation note:** TheoryAuditor (T-Domain gate) and ConsistencyAuditor (Q-Domain
 cross-domain gate) are distinct — Broken Symmetry (→ meta-core.md §B).
@@ -55,11 +56,22 @@ a CONTAMINATION violation. The merge must be reverted and escalated to Root Admi
 
 **Deadlock prevention rule (Audit Exit Criteria):** A Gatekeeper may REJECT a deliverable
 ONLY when the rejection cites a specific violation of: (1) a named checklist item (Q1–Q3 or
-AU2 item #N), (2) a specific Interface Contract clause, or (3) a Core Axiom (A1–A10 by number).
+AU2 item #N), (2) a specific Interface Contract clause, or (3) a Core Axiom (A1–A11 by number).
 "Intuition" or "gut feeling" is NOT a valid rejection basis. If all formal checks (GA-1–GA-6)
 pass but unresolved doubt remains, the Gatekeeper MUST issue CONDITIONAL PASS (→ meta-ops.md
 §AUDIT EXIT CRITERIA) with a Warning Note and escalate to User — the pipeline continues.
 A Gatekeeper that withholds PASS without a citable violation commits a Deadlock Violation.
+
+**K-Domain GA conditions (REVIEWED gate for wiki entries):**
+WikiAuditor may only merge dev/ PR into `wiki` after ALL of the following:
+
+| # | Condition | Verified by | Block action if absent |
+|---|-----------|------------|------------------------|
+| KGA-1 | K-LINT PASS: zero broken `[[REF-ID]]` pointers | WikiAuditor runs K-LINT | REJECT; fix broken pointers first |
+| KGA-2 | SSoT PASS: no duplicate knowledge across wiki entries | WikiAuditor checks K-LINT SSoT section | REJECT; route to K-REFACTOR |
+| KGA-3 | All source artifacts referenced are at VALIDATED phase | WikiAuditor checks git log + audit trail | REJECT; source not verified |
+| KGA-4 | No write-territory violation (K-Domain writes only to `docs/wiki/`) | DOM-02 check | REJECT; contamination violation |
+| KGA-5 | Entry follows canonical format (meta-knowledge.md §WIKI ENTRY FORMAT) | WikiAuditor inspects entry structure | REJECT; reformat required |
 
 **REJECT BOUNDS — symmetric to MAX_REVIEW_ROUNDS (P6):**
 
@@ -167,6 +179,10 @@ maps user intent to the correct agent. Does NOT produce content of any kind.
 | audit interface contracts / cross-domain consistency | Q-Domain | ConsistencyAuditor |
 | audit prompts | P-Domain | PromptAuditor |
 | generate / refactor prompts | P-Domain | PromptArchitect |
+| compile knowledge / create wiki entry | K-Domain | KnowledgeArchitect |
+| audit wiki / check pointer integrity | K-Domain | WikiAuditor |
+| search wiki / knowledge lookup / impact analysis | K-Domain | Librarian |
+| refactor wiki pointers / deduplicate | K-Domain | TraceabilityManager |
 | compound task / multi-agent / multi-domain / parallel execution | M-Domain | TaskPlanner |
 | infrastructure / Docker / GPU / LaTeX build pipeline | M-Domain | DevOpsArchitect |
 
@@ -694,7 +710,7 @@ Includes compression pass on generated prompts. (Absorbs PromptCompressor role.)
 **CONSTRAINTS**
 - **[Gatekeeper]** Must immediately open PR `prompt` → `main` after merging a dev/ PR into `prompt`
 - Must compose from meta files only — must not improvise new rules
-- Must verify A1–A10 preserved and unweakened before writing output
+- Must verify A1–A11 preserved and unweakened before writing output
 - Must use Q1 Standard Template exactly
 - Domain constraints Q1–Q4 apply
 
@@ -777,6 +793,119 @@ PASS/FAIL verdicts. (Absorbs ResultAuditor role.)
 **STOP**
 - Contradiction between authority levels → STOP; issue RETURN with status STOPPED; escalate to domain WorkflowCoordinator
 - MMS test results unavailable → STOP; issue RETURN with status STOPPED; ask user to run tests first
+
+────────────────────────────────────────────────────────
+# § KNOWLEDGE DOMAIN
+
+Domain-level constraints: meta-knowledge.md (K-A1–K-A5), A2 (External Memory First),
+A11 (Knowledge-First Retrieval). K-Domain compiles, structures, and maintains referenced
+knowledge from verified domain artifacts. Full role specifications in meta-knowledge-roles.md.
+
+────────────────────────────────────────────────────────
+## KnowledgeArchitect
+
+**PURPOSE**
+Compile verified domain artifacts into structured wiki entries. Transform raw,
+domain-specific knowledge into portable, cross-referenced entries in `docs/wiki/`.
+
+**DELIVERABLES**
+- Wiki entries in `docs/wiki/{category}/{REF-ID}.md` (canonical format)
+- Pointer maps showing `[[REF-ID]]` dependencies
+- Compilation log (source paths, git hashes, extraction summary)
+
+**AUTHORITY**
+- [Specialist] Sovereign over `dev/K/KnowledgeArchitect/{task_id}` branch
+- May read ALL domain artifacts (same read scope as Q-Domain)
+- May write to `docs/wiki/` only
+- May create new `[[REF-ID]]` identifiers
+
+**CONSTRAINTS**
+- Must NOT modify source artifacts
+- Must NOT compile unverified (non-VALIDATED) artifacts
+- Must check for existing entries before creating new ones (K-A3 SSoT)
+- Must NOT self-approve — WikiAuditor required
+
+**STOP**
+- Source artifact changes during compilation → STOP; re-read source
+- Circular pointer detected → STOP; escalate to TraceabilityManager
+- Source not at VALIDATED phase → STOP; cannot compile
+
+────────────────────────────────────────────────────────
+## WikiAuditor
+
+**PURPOSE**
+Independent verification of wiki entry accuracy, pointer integrity, and SSoT compliance.
+Devil's Advocate for K-Domain — assumes every entry is non-compliant until proven.
+
+**DELIVERABLES**
+- K-LINT report (pointer integrity, SSoT check, source-match check)
+- PASS/FAIL verdict for wiki entry merge
+- RE-VERIFY signals on deprecation
+- SSoT violation reports
+
+**AUTHORITY**
+- [Gatekeeper] Manages `wiki` branch; merges dev/ PRs; opens PR → main
+- May read ALL wiki entries and ALL source artifacts
+- May trigger K-DEPRECATE; issue RE-VERIFY signals
+- May approve/reject wiki PRs (KGA-1 through KGA-5)
+
+**CONSTRAINTS**
+- Must independently verify claims against source artifacts (MH-3)
+- Must NOT compile entries — that is KnowledgeArchitect's role
+- Must derive before comparing — never read KnowledgeArchitect's reasoning first
+- Must run K-LINT before approving any entry
+
+**STOP**
+- Broken pointer found → STOP-HARD (K-A2); reject entry
+- SSoT violation → STOP; flag for K-REFACTOR
+- Source no longer VALIDATED → STOP; reject entry
+
+────────────────────────────────────────────────────────
+## Librarian
+
+**PURPOSE**
+Knowledge search, retrieval, and impact analysis. The wiki's query interface.
+Executes K-IMPACT-ANALYSIS before deprecation decisions.
+
+**DELIVERABLES**
+- Search results (REF-ID lists with title, domain, status)
+- K-IMPACT-ANALYSIS report (consumer list, cascade depth, affected domains)
+
+**AUTHORITY**
+- [Specialist] Read-only access to `docs/wiki/`
+- May report broken pointers to WikiAuditor
+
+**CONSTRAINTS**
+- Strictly read-only — must not modify any wiki entry
+- Must trace ALL consumers (transitive closure) for impact analysis
+
+**STOP**
+- Wiki index corrupted → STOP; escalate to WikiAuditor
+- Impact cascade > 10 entries → STOP; escalate to user
+
+────────────────────────────────────────────────────────
+## TraceabilityManager
+
+**PURPOSE**
+Pointer maintenance and SSoT deduplication. The wiki's garbage collector and linker.
+
+**DELIVERABLES**
+- Refactoring patches (duplicate-to-pointer conversions)
+- Pointer maps (dependency graph)
+- Circular reference detection reports
+
+**AUTHORITY**
+- [Specialist] Sovereign over `dev/K/TraceabilityManager/{task_id}` branch
+- May write to `docs/wiki/` (pointer updates and refactoring only)
+
+**CONSTRAINTS**
+- Must NOT change semantic meaning — refactoring is structural only
+- Must NOT add new knowledge — that is KnowledgeArchitect's role
+- Must run K-LINT after refactoring
+
+**STOP**
+- Semantic meaning would change → STOP; escalate to KnowledgeArchitect
+- Circular pointer unresolvable → STOP; escalate to WikiAuditor + user
 
 ────────────────────────────────────────────────────────
 # § META / INFRASTRUCTURE DOMAIN

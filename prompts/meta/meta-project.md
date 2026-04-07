@@ -5,7 +5,7 @@
 # universal system (meta-core.md, meta-domains.md, etc.).
 #
 # Separation principle:
-#   - meta-core.md    → Universal axioms (A1–A10, φ1–φ7) — valid for ANY project
+#   - meta-core.md    → Universal axioms (A1–A11, φ1–φ7) — valid for ANY project
 #   - meta-domains.md → Domain framework (T/L/E/A structure) — valid for ANY multi-domain project
 #   - meta-project.md → THIS file: project-type + project-instance rules — swap this file to change project
 #

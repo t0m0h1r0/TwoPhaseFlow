@@ -121,19 +121,21 @@ failure. The Falsification Loop is the immune system of the project.
 ────────────────────────────────────────────────────────
 # § SYSTEM STRUCTURE
 
-Nine files, one question each. Mixing concerns across files cascades unrelated edits.
+Eleven files, one question each. Mixing concerns across files cascades unrelated edits.
 
 **3-Layer Architecture (one-way dependency — lower layers must NOT import upper):**
 
 ```
 Layer 1 — Static Foundation (Immutable)
-  meta-core.md    — FOUNDATION: §0 CORE PHILOSOPHY, φ1–φ7, A1–A10, LA-1–LA-5, system targets ← stable only when core values change
+  meta-core.md    — FOUNDATION: §0 CORE PHILOSOPHY, φ1–φ7, A1–A11, LA-1–LA-5, system targets ← stable only when core values change
   meta-persona.md — WHO: agent behavioral primitives + skills                                  ← stable only when agent design changes
 
 Layer 2 — Dynamic Execution (Operational)
-  meta-domains.md — STRUCTURE: 4×3 Matrix domain registry, Interface Contracts, branches, storage, lock protocol ← updated on org change
-  meta-roles.md   — WHAT: Gatekeeper Approval conditions, per-agent role contracts                               ← updated on role reassignment
-  meta-ops.md     — EXECUTE: canonical commands, HAND-xx (with Interface Contract enforcement), handoff protocols ← updated on tooling changes
+  meta-domains.md         — STRUCTURE: 4×4 Matrix domain registry, Interface Contracts, branches, storage, lock protocol ← updated on org change
+  meta-roles.md           — WHAT: Gatekeeper Approval conditions, per-agent role contracts                               ← updated on role reassignment
+  meta-ops.md             — EXECUTE: canonical commands, HAND-xx (with Interface Contract enforcement), handoff protocols ← updated on tooling changes
+  meta-knowledge.md       — KNOWLEDGE: K-Domain axioms, wiki structure, pointer integrity, SSoT, lifecycle               ← updated on knowledge structure changes
+  meta-knowledge-roles.md — K-ROLES: KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager contracts           ← updated on K-role changes
 
 Layer 3 — Orchestration (Process)
   meta-workflow.md     — HOW: T-L-E-A pipeline, CI/CP, domain pipelines, coordination protocols   ← updated on process maturity
@@ -149,25 +151,25 @@ Layer X — Experimental (NOT YET OPERATIONAL — load on demand only)
   meta-experimental.md — FUTURE: micro-agent architecture, DDA, SIGNAL protocol, artifact dirs    ← activate when infrastructure ready
 ```
 
-**4×3 Matrix Architecture (the domain model for all work):**
+**4×4 Matrix Architecture (the domain model for all work):**
 
 ```
-                  ┌─────────────────────────────────────────────────────┐
-                  │           HORIZONTAL GOVERNANCE DOMAINS              │
-                  │  M: Meta-Logic  │  P: Prompt&Env  │  Q: QA & Audit  │
-┌─────────────────┼─────────────────┼─────────────────┼─────────────────┤
-│ T  Theory & Analysis  │ Constitutional │ Agent tooling  │ Independent    │
-│    Mathematical Truth  │ routing/protocol│ for T-Domain  │ re-derivation  │
-├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
-│ L  Core Library       │ Constitutional │ Agent tooling  │ Code–theory    │
-│    Functional Truth    │ routing/protocol│ for L-Domain  │ consistency    │
-├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
-│ E  Experiment         │ Constitutional │ Agent tooling  │ Sanity check   │
-│    Empirical Truth     │ routing/protocol│ for E-Domain  │ gate           │
-├─────────────────┼─────────────────┼─────────────────┼─────────────────┤
-│ A  Academic Writing   │ Constitutional │ Agent tooling  │ Logical review │
-│    Logical Truth       │ routing/protocol│ for A-Domain  │ + AU2 gate     │
-└─────────────────┴─────────────────┴─────────────────┴─────────────────┘
+                  ┌───────────────────────────────────────────────────────────────────────┐
+                  │                    HORIZONTAL GOVERNANCE DOMAINS                       │
+                  │  M: Meta-Logic  │  P: Prompt&Env  │  Q: QA & Audit  │  K: Knowledge   │
+┌─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ T  Theory & Analysis  │ Constitutional │ Agent tooling  │ Independent    │ Theory wiki    │
+│    Mathematical Truth  │ routing/protocol│ for T-Domain  │ re-derivation  │ compilation    │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ L  Core Library       │ Constitutional │ Agent tooling  │ Code–theory    │ API/arch wiki  │
+│    Functional Truth    │ routing/protocol│ for L-Domain  │ consistency    │ compilation    │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ E  Experiment         │ Constitutional │ Agent tooling  │ Sanity check   │ Result wiki    │
+│    Empirical Truth     │ routing/protocol│ for E-Domain  │ gate           │ compilation    │
+├─────────────────┼─────────────────┼─────────────────┼─────────────────┼─────────────────┤
+│ A  Academic Writing   │ Constitutional │ Agent tooling  │ Logical review │ Paper wiki     │
+│    Logical Truth       │ routing/protocol│ for A-Domain  │ + AU2 gate     │ compilation    │
+└─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┘
 ```
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
@@ -179,11 +181,13 @@ T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
 
 | File | Layer | Question | Stable when |
 |------|-------|----------|-------------|
-| meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A10, LA-1–LA-5, system targets | core values change |
+| meta-core.md (this file) | 1 — Static Foundation | FOUNDATION — φ1–φ7, A1–A11, LA-1–LA-5, system targets | core values change |
 | meta-persona.md | 1 — Static Foundation | WHO — agent behavioral primitives and skills | agent design principles change |
 | meta-domains.md | 2 — Dynamic Execution | STRUCTURE — domain registry, branches, storage, lock protocol | org structure changes |
 | meta-roles.md | 2 — Dynamic Execution | WHAT — per-agent role contracts | responsibilities shift |
 | meta-ops.md | 2 — Dynamic Execution | EXECUTE — canonical commands and handoff protocols | tooling changes |
+| meta-knowledge.md | 2 — Dynamic Execution | KNOWLEDGE — K-Domain axioms, wiki structure, pointer integrity, lifecycle | knowledge structure changes |
+| meta-knowledge-roles.md | 2 — Dynamic Execution | K-ROLES — KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager | K-role changes |
 | meta-workflow.md | 3 — Orchestration | HOW — pipelines, coordination protocols | process matures |
 | meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper, composition, tiered generation | system structure changes |
 | meta-project.md | P — Project Profile | PROJECT — project-type rules, solver policy, tooling | project changes |
@@ -334,7 +338,7 @@ When two rules appear to conflict, apply this priority order:
 If the conflict remains unresolved after applying all seven: **STOP; escalate to user**.
 
 ────────────────────────────────────────────────────────
-# § AXIOMS — Core Axioms A1–A10
+# § AXIOMS — Core Axioms A1–A11
 
 These behavioral axioms govern ALL agents unconditionally.
 Concrete rule text lives in docs/00_GLOBAL_RULES.md §A.
@@ -391,6 +395,14 @@ NOT to the meta-system's project domains (Code/Paper/Prompt/Audit). See meta-dom
 - Rule change → edit prompts/meta/ first → regenerate docs/ via EnvMetaBootstrapper (meta-deploy.md).
 
 **Expresses:** φ6 (Single Source, Derived Artifacts).
+
+## A11: Knowledge-First Retrieval  ← φ4 (Stateless Agents) + φ6 (Single Source)
+Agents prefer compiled wiki knowledge (docs/wiki/) over internal (in-context) reasoning.
+When a wiki entry exists for a topic, read it before deriving from scratch.
+Wiki entries are compiled from VALIDATED artifacts; internal reasoning is unverifiable.
+
+**Expresses:** φ4 (Stateless Agents) — knowledge lives outside the agent, in the wiki.
+φ6 (Single Source) — wiki entries are the canonical compiled form of domain knowledge.
 
 ────────────────────────────────────────────────────────
 # § SYSTEM OPTIMIZATION TARGETS
@@ -522,7 +534,7 @@ beyond a saturation threshold, compliance falls.
 
 **Hard rule:** Each agent prompt MUST declare a `RULE_BUDGET` (estimated token count
 for all loaded rules). At dispatch time, only rules matching the agent's domain and
-archetypal role (Specialist / Gatekeeper) are loaded. Cross-domain axioms (A1–A10)
+archetypal role (Specialist / Gatekeeper) are loaded. Cross-domain axioms (A1–A11)
 and φ-principles are always included; domain-specific rules for OTHER domains are
 excluded unless the task explicitly crosses domain boundaries.
 
@@ -535,7 +547,7 @@ defined in LA-2. A prompt that passes Stage 4 is considered Rule-Load Compliant.
    than saturation)
 2. Role-specific DELIVERABLES and CONSTRAINTS
 3. Handoff protocol (HAND-01/02/03)
-4. Cross-domain axioms (A1–A10)
+4. Cross-domain axioms (A1–A11)
 5. φ-principles (summarized form acceptable)
 6. Routing/dispatch details (included only for coordinator/Gatekeeper roles)
 

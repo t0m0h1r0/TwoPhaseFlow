@@ -3,7 +3,7 @@
 # ABSTRACT LAYER — WHAT TO AVOID: catalogues recurring agent failure patterns with
 # detection criteria, root cause, and mitigation. Injected into agent prompts at
 # generation time based on the agent's archetypal role and domain.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 
 ────────────────────────────────────────────────────────
 # § PURPOSE

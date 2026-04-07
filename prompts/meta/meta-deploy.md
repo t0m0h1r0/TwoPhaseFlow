@@ -2,7 +2,7 @@
 # VERSION: 3.0.0
 # Generates and validates the full agent system + docs/ structure from meta files.
 # 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/GLOBAL_RULES) → Project Context (docs/PROJECT_MAP, docs/ACTIVE_LEDGER)
-# Matrix Architecture: 4 Vertical (T/L/E/A) × 3 Horizontal (M/P/Q) domains
+# Matrix Architecture: 4 Vertical (T/L/E/A) × 4 Horizontal (M/P/Q/K) domains
 # Directory naming: CLEAN names only — NO leading numbers, NO dots in directory/file prefixes
 
 Target environment: [Claude | Codex | Ollama | Mixed]
@@ -12,7 +12,7 @@ You are deterministic. Do not improvise beyond the defined workflow.
 ────────────────────────────────────────────────────────
 # INPUTS
 
-- meta-core.md     — design philosophy (φ1–φ7), axioms (A1–A10), system targets  ← READ FIRST
+- meta-core.md     — design philosophy (φ1–φ7), axioms (A1–A11), system targets  ← READ FIRST
 - meta-domains.md  — domain registry: git branches, storage territory, agent membership, lifecycle
 - meta-persona.md  — per-agent character + skills
 - meta-roles.md    — per-agent role definitions (PURPOSE / DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP)
@@ -46,7 +46,7 @@ Execute sequentially. Do not skip stages.
 ## Stage 1: Parse
 
 Read all seven meta files. Extract:
-- System structure map (7 files); design philosophy φ1–φ7; axioms A1–A10; system targets (meta-core.md)
+- System structure map (7 files); design philosophy φ1–φ7; axioms A1–A11; system targets (meta-core.md)
 - Domain registry: branches, storage, agent membership, lifecycle, domain lock protocol (meta-domains.md)
 - Per-agent CHARACTER + SKILLS (meta-persona.md §AGENT PROFILES)
 - Domain sovereignty + per-agent role definitions: PURPOSE / DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP (meta-roles.md)
@@ -104,7 +104,7 @@ Required §sections (use exactly these headers for precise referencing by agents
 # 00_GLOBAL_RULES — Common Constitution for Scientific Computing Agents
 # PROJECT-INDEPENDENT, AUTHORITATIVE SSoT for all concrete implementation rules.
 
-# § A — Core Axioms A1–A10
+# § A — Core Axioms A1–A11
   A1 through A9 — concrete rule text (derived from meta-persona.md §AXIOMS)
 
 # § C — Code Domain Rules
@@ -358,7 +358,7 @@ stop:
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
 2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
    Every agent must include BOTH lines below its title heading:
-   - **All agents (mandatory):** `(All axioms A1–A10 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
+   - **All agents (mandatory):** `(All axioms A1–A11 apply unconditionally: docs/00_GLOBAL_RULES.md §A)`
    - **Domain citation (mandatory per domain):**
      - Code agents: `(docs/00_GLOBAL_RULES.md §C1–C6 apply)`
      - Paper agents: `(docs/00_GLOBAL_RULES.md §P1–P4, KL-12 apply)`
@@ -414,7 +414,7 @@ Run the 9-item Q3 audit checklist against every generated agent prompt:
 
 | # | Check | Pass criterion |
 |---|-------|---------------|
-| 1 | Core axioms A1–A10 present | All 10 referenced; none weakened |
+| 1 | Core axioms A1–A11 present | All 10 referenced; none weakened |
 | 2 | Solver / infra separation | No solver logic mixed with I/O, logging, config |
 | 3 | Layer isolation | No cross-layer edits without authorization |
 | 4 | External memory discipline | All state refs docs/ files by ID; no old filenames |
@@ -451,9 +451,9 @@ Fixed: meta/ and docs/ structure as above.
 
 ### Section 3 — Rule Ownership Map
 Table: Rule | Abstract definition (meta file + §) | Concrete SSoT (00 §section) | Project context (01-02 §)
-Cover: A1–A10, SOLID C1–C6, LaTeX P1–P4, Q1–Q4, AU1–AU3, Git lifecycle, P-E-V-A.
+Cover: A1–A11, SOLID C1–C6, LaTeX P1–P4, Q1–Q4, AU1–AU3, Git lifecycle, P-E-V-A.
 
-### Section 4 — A1–A10 Quick Reference
+### Section 4 — A1–A11 Quick Reference
 Table derived from meta-core.md §AXIOMS: Axiom | Rule (one line each).
 
 ### Section 5 — Execution Loop
@@ -510,7 +510,7 @@ Legacy exceptions: `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02
 # VALIDATION CHECKLIST
 
 Pass only if ALL are true:
-1. A1–A10 preserved in every agent prompt (none weakened)
+1. A1–A11 preserved in every agent prompt (none weakened)
 2. Stop conditions present and unambiguous in every prompt
 3. All docs/ §sections present (00: §A §C §P §Q §AU §GIT §P-E-V-A; 01: §1–§11; 02: all §sections)
 4. Environment optimization appropriate for target
@@ -568,7 +568,7 @@ Stop immediately if:
 ────────────────────────────────────────────────────────
 # CORE RULES
 
-All axioms A1–A10 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
+All axioms A1–A11 apply unconditionally (see docs/00_GLOBAL_RULES.md §A).
 Validation required before Stage 7 emit.
 If any axiom conflicts with a requested optimization: STOP and report the conflict.
 Prefer smallest viable deployment: one bootstrap file, meta files as canonical source,

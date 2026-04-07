@@ -3,12 +3,12 @@
 # ABSTRACT LAYER — STRUCTURE: authoritative definition of all system domains.
 # Each domain defines: git branch ownership, storage territory, agent membership,
 # coordinator, applicable rules, and lifecycle phase triggers.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # Role contracts per agent: prompts/meta/meta-roles.md
 # Pipeline execution order: prompts/meta/meta-workflow.md
 
 ────────────────────────────────────────────────────────
-# § MATRIX ARCHITECTURE — 4 Vertical × 3 Horizontal Domains
+# § MATRIX ARCHITECTURE — 4 Vertical × 4 Horizontal Domains
 
 ## Vertical Domains (Practical — each owns one "Truth")
 
@@ -26,6 +26,7 @@
 | M  | Meta-Logic           | The Judiciary          | ResearchArchitect (Protocol Enforcer)|
 | P  | Prompt & Environment | The Infrastructure     | PromptArchitect (Prompt Engineer)   |
 | Q  | QA & Audit           | Internal Affairs       | ConsistencyAuditor (Consistency Auditor)|
+| K  | Knowledge/Wiki       | The Standard Library   | KnowledgeArchitect (Compiler), WikiAuditor (Gate)|
 
 **Sovereignty rule:** Each vertical domain acts as an independent "Corporation."
 All inter-domain communication must pass through a Gatekeeper-approved Interface Contract.
@@ -44,6 +45,11 @@ No Specialist may consume artifacts from another domain without a valid contract
 | L → E    | `docs/interface/SolverAPI_vX.py`       | TestRunner PASS (all unit tests)          | E-Domain — must pass unit tests before experiments |
 | E → A    | `docs/interface/ResultPackage/`        | Validation Guard PASS (all sanity checks); raw logs included | A-Domain — must provide raw logs for paper figures |
 | T/E → A  | `docs/interface/TechnicalReport.md`    | Both T-Auditor and Validation Guard sign off | A-Domain — bridges math and data for the writer |
+| T → K    | `docs/wiki/theory/{REF-ID}.md`         | Theory Auditor PASS; derivation VALIDATED    | K-Domain — compiles theory into wiki |
+| L → K    | `docs/wiki/code/{REF-ID}.md`           | TestRunner PASS; code VALIDATED              | K-Domain — compiles API/architecture knowledge |
+| E → K    | `docs/wiki/experiment/{REF-ID}.md`     | Validation Guard PASS; results VALIDATED     | K-Domain — compiles experimental findings |
+| A → K    | `docs/wiki/paper/{REF-ID}.md`          | Logical Reviewer PASS; paper VALIDATED       | K-Domain — compiles paper-level conclusions |
+| K → all  | `docs/wiki/{category}/{REF-ID}.md`     | WikiAuditor PASS; entry ACTIVE               | All domains — read-only reference (A11) |
 
 **Contract immutability rule:** Once a Specialist's `dev/` branch is created from a contract,
 the contract is immutable. Changing inputs/outputs requires: close current dev/ branch →
@@ -51,6 +57,9 @@ update contract → new IF-AGREEMENT → new dev/ branch (see §IF-AGREEMENT PRO
 
 **QA & Audit scope:** ConsistencyAuditor (Q-Domain) has read access across ALL domains
 and ALL interface contracts for cross-system verification.
+
+**Knowledge scope:** KnowledgeArchitect (K-Domain) has read access across ALL domains
+for compilation purposes. All domains have read access to `docs/wiki/` (A11).
 
 ────────────────────────────────────────────────────────
 # § DOMAIN REGISTRY
@@ -255,6 +264,42 @@ AUDIT-RECORD:
 - THEORY_ERROR → Theory Architect → Theory Auditor (T-Domain)
 - EXPERIMENT_ERROR → ExperimentRunner → Validation Guard (E-Domain)
 - Authority conflict → escalate to domain coordinator → user
+- KNOWLEDGE_ERROR → KnowledgeArchitect → WikiAuditor (K-Domain)
+
+────────────────────────────────────────────────────────
+## Domain: Knowledge / K-Domain (Wiki)
+
+**Matrix position:** Horizontal governance domain K — The Standard Library. Structured knowledge
+compilation spanning all vertical domains. Provides compiled, referenced knowledge entries
+that all domains may read (A11: Knowledge-First Retrieval).
+
+| Property | Value |
+|----------|-------|
+| Git branch | `wiki` (sub-branches: `wiki/{topic}`) |
+| Matrix alias | K-Domain (Knowledge/Wiki) |
+| Coordinator / Gatekeeper | WikiAuditor (direct gate; KnowledgeArchitect as primary executor) |
+| Specialist members | KnowledgeArchitect, Librarian, TraceabilityManager |
+| Storage (write — STRICT) | `docs/wiki/`, `docs/02_ACTIVE_LEDGER.md` (compilation trail, append-only) |
+| Storage (read — STRICT) | ALL domains: same as Q-Domain read scope + `docs/wiki/` |
+| Storage (FORBIDDEN write) | any domain's primary artifacts — K-Domain writes only to `docs/wiki/` |
+| Rules | meta-knowledge.md (K-A1–K-A5), A2 (External Memory), A11 (Knowledge-First Retrieval) |
+| Lifecycle | **DRAFT** — KnowledgeArchitect compiles entry on dev/ branch<br>**REVIEWED** — WikiAuditor K-LINT PASS + pointer integrity + SSoT check<br>**VALIDATED** — WikiAuditor approves; entry published to `docs/wiki/` |
+
+**Domain purpose:** Compile, structure, and maintain a referenced knowledge base from verified
+domain artifacts. K-Domain is the "Standard Library" of the project — it does not produce
+original research but transforms verified findings into portable, cross-referenceable entries.
+
+**Gatekeeper Approval condition (REVIEWED gate):** WikiAuditor may only merge dev/ PR into
+`wiki` after: (1) K-LINT PASS (zero broken pointers), (2) SSoT check PASS (no duplicate
+knowledge), (3) all source artifacts referenced are at VALIDATED phase, (4) no write-territory
+violation detected. Absent any condition → REJECT PR.
+
+**Cross-domain read:** K agents may read ALL domain artifact directories for compilation.
+K agents must NOT write to any non-wiki directory — requires cross-domain routing.
+
+**K ↔ Q boundary:** Q verifies correctness (PASS/FAIL verdicts); K compiles knowledge (wiki entries).
+Q may reference wiki entries during audits. K may not issue audit verdicts.
+No write-territory overlap.
 
 ────────────────────────────────────────────────────────
 # § ARTIFACT & DIRECTORY CONVENTIONS
@@ -308,12 +353,19 @@ TwoPhaseFlow/
 │   ├── 01_PROJECT_MAP.md  #   Module map + interface contracts
 │   ├── 02_ACTIVE_LEDGER.md#   Live state (phase, CHK/ASM/KL, audit trail)
 │   ├── memo/              #   Short papers, memos, theory derivations (Markdown/TeX, Japanese)
-│   └── interface/         #   Cross-domain contracts (Gatekeeper-owned)
-│       ├── AlgorithmSpecs.md  #   T→L contract
-│       ├── SolverAPI_v1.py    #   L→E contract
-│       └── TechnicalReport.md #   T/E→A contract
+│   ├── interface/         #   Cross-domain contracts (Gatekeeper-owned)
+│   │   ├── AlgorithmSpecs.md  #   T→L contract
+│   │   ├── SolverAPI_v1.py    #   L→E contract
+│   │   └── TechnicalReport.md #   T/E→A contract
+│   └── wiki/              #   K-Domain — compiled knowledge wiki
+│       ├── theory/        #     compiled theory derivations
+│       ├── code/          #     compiled API/architecture knowledge
+│       ├── experiment/    #     compiled experimental findings
+│       ├── paper/         #     compiled paper conclusions
+│       ├── cross-domain/  #     compiled cross-domain knowledge
+│       └── changelog/     #     knowledge modification history
 ├── prompts/                # Agent system
-│   ├── meta/              #   M-Domain — 9 meta files (SSoT per A10)
+│   ├── meta/              #   M-Domain — 11 meta files (SSoT per A10)
 │   └── agents/            #   P-Domain — 29 generated agent prompts + _base.yaml
 ├── artifacts/              # Micro-agent intermediate artifacts (operational)
 │   ├── T/                 #   Theory derivations

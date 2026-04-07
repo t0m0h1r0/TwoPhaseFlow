@@ -1,7 +1,7 @@
 # META-WORKFLOW: Inter-Agent Coordination, Task Flow & Evolution
 # VERSION: 3.0.0
 # ABSTRACT LAYER — workflow logic: P-E-V-A loop, domain pipelines, handoff rules, control protocols.
-# FOUNDATION (φ1–φ7, A1–A10): prompts/meta/meta-core.md  ← READ FIRST
+# FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # Domain registry, branch rules, storage sovereignty: prompts/meta/meta-domains.md
 # Canonical operations (GIT/DOM/BUILD/TEST/EXP/HAND/AUDIT): prompts/meta/meta-ops.md
 # Concrete phase/commit format and lifecycle rules: docs/00_GLOBAL_RULES.md §GIT, §P-E-V-A
@@ -51,6 +51,11 @@ Q-Domain (QA & Audit) — cross-cuts all stages
   │  Contradictions found = high-value success (Falsification Loop).
   ▼
 main (VALIDATED + merged by Root Admin)
+
+K-Domain (Knowledge/Wiki) — cross-cuts all stages (parallel, post-validation)
+  │  Triggered by: any domain artifact reaching VALIDATED phase
+  │  KnowledgeArchitect compiles wiki entry; WikiAuditor verifies pointer integrity
+  │  OUTPUT: docs/wiki/{category}/{REF-ID}.md [signed by WikiAuditor]
 ```
 
 **T-L-E-A ordering is mandatory.** No domain may begin work without the upstream Interface
@@ -385,6 +390,7 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 | **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `docs/interface/SolverAPI_vX.py` signed |
 | **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `docs/interface/ResultPackage/` signed |
 | **P** Prompt | `prompt` | PromptArchitect | PromptArchitect (includes compression pass) | PromptAuditor (Q3 checklist) | PromptAuditor | none |
+| **K** Knowledge | `wiki` | WikiAuditor | KnowledgeArchitect (K-COMPILE) | WikiAuditor (K-LINT + pointer check) | WikiAuditor | Any domain artifact at VALIDATED phase |
 
 ## Domain-Specific Notes
 
@@ -409,6 +415,14 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 **P-Domain (Prompt):**
 - PromptArchitect is both Gatekeeper and EXECUTE agent (Broken Symmetry preserved: PromptAuditor is the independent VERIFY agent)
 - AUDIT gate = PromptAuditor (doubles as domain gate for prompt domain)
+
+**K-Domain (Knowledge):**
+- K-COMPILE is triggered when any vertical domain (T/L/E/A) produces a VALIDATED artifact
+- K is a parallel/post-pipeline process — NOT part of the sequential T-L-E-A ordering
+- WikiAuditor independently verifies all claims against source artifacts (Broken Symmetry)
+- K-LINT runs as mandatory pre-merge check; broken pointer = STOP-HARD (K-A2)
+- DEPRECATED wiki entries trigger RE-VERIFY signals to all consuming domains
+- K-Domain does not block the main pipeline — it enriches the knowledge base asynchronously
 
 ────────────────────────────────────────────────────────
 ## Bootstrap Pipeline (new feature only — run before Code Pipeline)
@@ -453,6 +467,9 @@ Every STOP is recoverable — the question is WHO resolves it and WHERE the pipe
 | Token budget exceeded | STOP-SOFT | Coordinator | Compress context or split task; re-dispatch with smaller scope | EXECUTE |
 | Missing input file | STOP-SOFT | Coordinator | Identify which upstream agent should produce it; dispatch | PLAN |
 | PaperCompiler BUILD-FAIL | STOP-SOFT | PaperWorkflowCoordinator → PaperCompiler | Parse log; apply surgical fix; re-compile | VERIFY |
+| K-LINT broken pointer (K-A2) | STOP-HARD | WikiAuditor → TraceabilityManager | Fix or remove broken pointer; re-run K-LINT | VERIFY |
+| SSoT violation (duplicate wiki entry) | STOP-SOFT | WikiAuditor → TraceabilityManager | K-REFACTOR to consolidate duplicates into pointers | EXECUTE |
+| Source artifact invalidated after wiki compilation | STOP-HARD | WikiAuditor | K-DEPRECATE the wiki entry; trigger RE-VERIFY to consumers | PLAN |
 | GPU/environment error | STOP-SOFT | User → DevOpsArchitect | Fix environment; re-run experiment | EXECUTE |
 
 | HAND token malformed (missing required field) | STOP-SOFT | DiagnosticArchitect | Re-emit corrected HAND token (ERR-R3); Gatekeeper approves | PLAN |
@@ -740,6 +757,11 @@ the pattern is system-wide, axiom-compatible, and brief (A1).
 - IMPL_ERR → patch src/system/ (infrastructure) only; never touch solver core (src/core/)
 Record in 02_ACTIVE_LEDGER.md §LESSONS.
 
+**M3: Knowledge Compilation** — On any domain reaching VALIDATED phase: KnowledgeArchitect
+evaluates whether the artifact introduces reusable knowledge. If yes, K-COMPILE produces
+a wiki entry. WikiAuditor verifies pointer integrity and SSoT compliance before publishing.
+K-Domain does not block the main pipeline; it enriches the knowledge base asynchronously.
+
 **Deprecate** if: obsolete, redundant, subsumed, conflicting, or over-specific.
 **Promote** only if: repeated usefulness, structural generality, axiom-compatible, short formulation.
 **Never promote** if: increases ambiguity, breaks solver purity, mixes layers, or weakens reproducibility.
@@ -753,7 +775,7 @@ that modifies or weakens the following **Immutable Zones** must be treated as a 
 
 **Immutable Zone 1: Foundational Principles**
 - All φ-Principles (φ1–φ7) in meta-core.md §DESIGN PHILOSOPHY
-- All Axioms (A1–A10) in meta-core.md §AXIOMS
+- All Axioms (A1–A11) in meta-core.md §AXIOMS
 
 **Immutable Zone 2: Acceptance Check Logic**
 - HAND-03 Acceptance Check items (checks 0–10) in meta-ops.md §HANDOFF PROTOCOL
