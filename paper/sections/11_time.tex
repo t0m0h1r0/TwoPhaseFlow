@@ -20,10 +20,20 @@ Step~5（Predictor）で用いる AB2（§\ref{sec:verify_ab2}）の
 \label{sec:verify_tvd_rk3}
 % ─────────────────────────────────────────────────────────────────────────────
 
+\noindent\textbf{目的：}
 §~\ref{sec:time_int} で導入した TVD-RK3（3 段 Shu--Osher 型 Runge--Kutta）の
-時間精度を，スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$ の初期値問題で確認する．
-$t=1$ における厳密解 $q(1) = e^{-1}$ と数値解の差を
-$n = 16, 32, 64, 128, 256, 512$ ステップの系列で計測した．
+設計時間精度 $\Ord{\Delta t^3}$ をスカラー ODE テストで確認する．
+
+\noindent\textbf{評価対象：}
+TVD-RK3（3 段 Shu--Osher 型 Runge--Kutta）．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$，厳密解 $q(1) = e^{-1}$
+  \item ステップ数 $n = 16, 32, 64, 128, 256, 512$
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -51,11 +61,8 @@ $n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
 \label{fig:tvd_rk3}
 \end{figure}
 
+\noindent\textbf{結論：}
 収束次数はすべての格子幅で $3.00$--$3.02$ を示し，設計通りの $\Ord{\Delta t^3}$ が確認された．
-
-TVD-RK3 は CLS 移流に用いられる．
-NS 方程式の対流項には AB2（Adams--Bashforth 2 段）を採用しており，
-その精度を同一 ODE テストで確認する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -63,9 +70,21 @@ NS 方程式の対流項には AB2（Adams--Bashforth 2 段）を採用してお
 \label{sec:verify_ab2}
 % ─────────────────────────────────────────────────────────────────────────────
 
-§~\ref{sec:ab2_ipc} で導入した AB2（Adams--Bashforth 2 段）は
-多段法であるため初期ステップが必要であり，本テストでは前進 Euler で起動する．
-同一の ODE $\mathrm{d}q/\mathrm{d}t = -q$ に対し，$t=1$ の誤差を計測した．
+\noindent\textbf{目的：}
+§~\ref{sec:ab2_ipc} で導入した AB2（Adams--Bashforth 2 段）の
+設計時間精度 $\Ord{\Delta t^2}$ を確認する．
+
+\noindent\textbf{評価対象：}
+AB2（Adams--Bashforth 2 段）＋前進 Euler 起動．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$，厳密解 $q(1) = e^{-1}$
+  \item 初期ステップは前進 Euler で起動
+  \item ステップ数 $n = 16, 32, 64, 128, 256, 512$
+\end{itemize}
+
+\noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
@@ -94,6 +113,7 @@ $n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
 \label{fig:ab2_time}
 \end{figure}
 
+\noindent\textbf{結論：}
 収束次数は $\Ord{\Delta t^2}$ に漸近し，設計通りの 2 次精度が確認された．
 AB2 の特性方程式が持つ寄生根 $|\rho_2| = 0.5$ は安定領域内にあり，
 前進 Euler による $\Ord{\Delta t}$ の起動誤差は数ステップで減衰する．
