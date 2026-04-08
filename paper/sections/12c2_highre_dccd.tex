@@ -37,17 +37,17 @@ DCCD（$\varepsilon_d = 0.05$，10 次フィルタ）の
 \toprule
 $N$ & スキーム & $E_k(T)$ & $|E_k^{\text{CCD}} - E_k^{\text{DCCD}}| / E_k^{\text{CCD}}$ & 判定 \\
 \midrule
-  64 & CCD\, ($\varepsilon_d{=}0$)    & $1.709 \times 10^{1}$ & \multirow{2}{*}{$6 \times 10^{-5}$} & 安定 \\
-  64 & DCCD ($\varepsilon_d{=}0.05$) & $1.709 \times 10^{1}$ &  & 安定 \\
+  64 & CCD\, ($\varepsilon_d{=}0$)    & $1.709236 \times 10^{1}$ & \multirow{2}{*}{$1.5 \times 10^{-8}$} & 安定 \\
+  64 & DCCD ($\varepsilon_d{=}0.05$) & $1.709236 \times 10^{1}$ &  & 安定 \\
 \midrule
- 128 & CCD\, ($\varepsilon_d{=}0$)    & $1.709 \times 10^{1}$ & \multirow{2}{*}{$9 \times 10^{-4}$} & 安定 \\
- 128 & DCCD ($\varepsilon_d{=}0.05$) & $1.711 \times 10^{1}$ &  & 安定 \\
+ 128 & CCD\, ($\varepsilon_d{=}0$)    & $1.709233 \times 10^{1}$ & \multirow{2}{*}{$8.7 \times 10^{-9}$} & 安定 \\
+ 128 & DCCD ($\varepsilon_d{=}0.05$) & $1.709233 \times 10^{1}$ &  & 安定 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \noindent\textbf{結論：}
-$N = 64, 128$ の両格子で CCD と DCCD の $E_k(T)$ 相対差は $10^{-4}$--$10^{-3}$ 以下であり，
+$N = 64, 128$ の両格子で CCD と DCCD の $E_k(T)$ 相対差は $10^{-8}$--$10^{-9}$ であり，
 DCCD の 10 次選択的散逸が低波数の物理モード（渦構造）を保存していることを確認した
 （§~\ref{sec:dccd_filter_theory} の分散関係解析と整合）．
 DCCD フィルタが物理的精度を損なわずに Nyquist モード近傍の高周波雑音のみを選択的に減衰する

@@ -1,308 +1,94 @@
-% paper/sections/12_benchmarks.tex
+% paper/sections/13_benchmarks.tex
 %
-% §12  二相流ベンチマーク（Validation）
+% §13  二相流ベンチマーク（Validation）— 将来の展望
 %
-%   §12.1: Rayleigh–Taylor 不安定性（σ=0）— 変密度 NS の動的能力
-%   §12.2: 静止液滴テスト — FD PPE + CCD 勾配による Balanced-Force 検証
-%   §12.3: CSF 一括解法の動的限界と今後の展望
+% 分相 PPE 解法の実装後に実施するベンチマーク問題の設定と目標値を記す．
+% 現行の CSF + smoothed Heaviside 解法の範囲内での検証は §12 に収録．
 
-\section{二相流ベンチマーク}
+\section{二相流ベンチマーク：展望}
 \label{sec:validation}
 \label{sec:benchmarks}
 
-% ─────────────────────────────────────────────────────────────────────────────
-% 導入：§11 からの接続
-% ─────────────────────────────────────────────────────────────────────────────
+第~\ref{sec:verification}章で確立した現行ソルバの能力と限界を踏まえ，
+本章では分相 PPE 解法の実装後に実施すべき二相流ベンチマークの
+設定と目標値を整理する．
 
-第~\ref{sec:verification}章の物理的整合性検証により，
-現行ソルバの能力と限界が確立された：
-\begin{enumerate}[noitemsep]
-  \item 単相 NS ソルバは設計精度を完全に実現している
-        （Kovasznay $\Ord{h^{3.96}}$，TGV $\Ord{\Delta t^2}$）
-  \item 低密度比（$\rho_l/\rho_g \leq 5$）かつ静止界面の二相流は
-        200 ステップ以上安定に動作する（§~\ref{sec:twophase_static_longterm}）
-  \item PPE 離散化は FD 直接法 + CCD 勾配が最適であり，
-        Balanced-Force 条件を $\Ord{h^6}$ 精度で維持する
-        （§~\ref{sec:ppe_discretization_choice}）
-  \item HFE は現行の smoothed Heaviside ソルバでは不要（有害）であり，
-        将来の分相 PPE 解法の基盤技術として位置づけられる
-        （§~\ref{sec:ppe_discretization_choice}）
-\end{enumerate}
-
-\noindent
-本章ではこの能力範囲内で物理ベンチマークによる定量的検証を行う．
-ベンチマークは物理的複雑さの段階的引き上げにより 3 テストで構成される：
-\begin{enumerate}[noitemsep]
-  \item \textbf{§~\ref{sec:val_rt}（RT 不安定，$\sigma = 0$）：}
-        変密度 NS ソルバの大変形追跡能力
-  \item \textbf{§~\ref{sec:val_static_drop}（静止液滴）：}
-        FD PPE + CCD 勾配による Laplace 圧と寄生流れの格子収束
-  \item \textbf{§~\ref{sec:val_density_limit}（密度比限界）：}
-        CSF 一括解法の動的破綻閾値と §~\ref{sec:conclusion} への接続
-\end{enumerate}
+現行の smoothed Heaviside + CSF 一括解法は
+静止界面（$\rho_l/\rho_g \leq 10$）で安定動作するが，
+移動界面＋表面張力（§~\ref{sec:galilean_invariance}）や
+高密度比（§~\ref{sec:interface_crossing}）では破綻する．
+以下のベンチマークは，
+分相 PPE 解法（§~\ref{sec:split_ppe_recovery}）と
+HFE（§~\ref{sec:field_extension}）の実装を前提とする．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Rayleigh--Taylor 不安定性}
-\label{sec:val_rt}
-\label{sec:bench_rt}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{目的：}
-密度差と重力による界面不安定性を追跡し，
-変密度 NS ソルバが大変形を伴う非線形現象を正しく記述することを検証する．
-$\sigma = 0$ であるため表面張力処理は不要であり，
-CLS 界面追跡と変密度 PPE の基盤能力検証として位置付けられる．
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item 計算領域 $[0, \lambda] \times [0, 4\lambda]$（$\lambda = 1$），壁面 BC
-  \item 不安定成層：重流体 $\rho_l = 3$（上層），軽流体 $\rho_g = 1$（下層），
-        Atwood 数 $At = 0.5$
-  \item 初期界面擾乱：$y_0(x) = 2 + A_0\sin(2\pi x)$，$A_0 = 0.05$
-  \item $\mu_l = \mu_g = 0.01$，$\sigma = 0$，
-        格子 $64 \times 256$（$h = 1/64$）
-  \item 浮力定式化：$f_{\mathrm{buoy}} = -(\rho - \rho_{\mathrm{ref}})/\rho \cdot g$
-        で静水圧を分離
-\end{itemize}
-
-\noindent\textbf{理論成長率：}
-非粘性 RT 不安定の線形成長率（Chandrasekhar \cite{Chandrasekhar1961}）：
-\begin{equation}
-  \omega_{\mathrm{RT}} = \sqrt{At \cdot g \cdot k}
-  = \sqrt{\pi} \approx 1.7725
-  \label{eq:rt_growth}
-\end{equation}
-
-\noindent\textbf{結果：}
-
-\begin{table}[htbp]
-\centering
-\caption{RT 不安定成長率の比較（$64 \times 256$，$At = 0.5$，$\sigma = 0$）}
-\label{tab:rt_growth}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcc}
-\toprule
- & 成長率 $\omega$ & 理論値との偏差 \\
-\midrule
-非粘性理論~\eqref{eq:rt_growth} & $1.7725$ & --- \\
-数値解（フィット） & $1.82$ & $2.8\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\linewidth]{figures/ch12_rt_instability.png}
-\caption{%
-  Rayleigh--Taylor 不安定の数値解（$64 \times 256$，$\sigma = 0$）．
-  左：擾乱振幅の時間発展（対数スケール）．
-  赤破線が非粘性理論（$\omega_{\mathrm{RT}} = \sqrt{\pi}$），
-  緑点線が線形域での最小二乗フィット（$\omega = 1.82$）．
-  右：界面形状（$\psi = 0.5$ 等高線）の時間スナップショット．
-  $t \approx 1.5$ 以降にバブル--スパイク構造が出現する．}
-\label{fig:rt_instability}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\IfFileExists{figures/ch12_rt_fields.png}{%
-  \includegraphics[width=\linewidth]{figures/ch12_rt_fields.png}%
-}{%
-  \fbox{\parbox{\linewidth}{\centering\vspace{4cm}
-    \texttt{ch12\_rt\_fields.png} --- 生成待ち\\
-    (\texttt{viz\_ch12\_rt\_fields.py} を実行してください)
-  \vspace{4cm}}}%
-}
-\caption{%
-  RT 不安定の 2D 場スナップショット（$64\times256$）．
-  上段：密度場 $\rho(x,y)$（青：軽流体，白：重流体），赤線は界面 ($\psi=0.5$)．
-  中段：圧力場 $p(x,y)$．下段：速度の大きさ $|\bu(x,y)|$．
-  $t=1.5$ のバブル--スパイク分離と $t=2.5$ の非線形ロールアップが明瞭．}
-\label{fig:rt_fields}
-\end{figure}
-
-\noindent\textbf{結論：}
-実測成長率 $\omega = 1.82$ は理論値 $\sqrt{\pi} \approx 1.77$ に対して
-$2.8\%$ の偏差であり，許容基準（$< 5\%$）を満たす．
-図~\ref{fig:rt_fields} の 2D 場は $t=1.5$ でバブル（上昇）とスパイク（落下）の
-分離を明確に示し，$t=2.5$ では Kelvin--Helmholtz ロールアップが出現する．
-速度場は界面近傍で集中し，界面変形と整合する流れ構造を示す
-（図~\ref{fig:rt_instability} 参照）．
-質量保存は $|\Delta m / m_0| = 3.1 \times 10^{-4}$ であり，
-DCCD 移流の散逸に起因する実用上十分な精度である．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{静止液滴テスト}
+\subsection{静止液滴の寄生流れ格子収束}
 \label{sec:val_static_drop}
-\label{sec:bench_droplet}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{目的：}
-FD PPE 直接法＋CCD 勾配（§~\ref{sec:ppe_discretization_choice}）による
-Balanced-Force 条件の実効性を定量化する．
-Laplace 圧精度と寄生流れの格子収束を評価し，
-CSF モデル誤差 $\Ord{\varepsilon^2}$ が全体精度を律速することを確認する．
-
-\noindent\textbf{§~\ref{sec:ppe_discretization_choice} との関係：}
-§~\ref{sec:ppe_discretization_choice} で FD PPE + CCD 勾配が
-寄生流れ $2.3 \times 10^{-4}$（$N = 64$）を達成することを示した．
-本テストではその格子収束特性と密度比依存性を評価する．
+\noindent\textbf{参照：}Popinet (2009)，Francois~ら (2006)
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
-  \item 正方形領域 $[0,1]^2$，中心 $(0.5, 0.5)$ に $R = 0.25$ の静止液滴
-  \item $\rho_l/\rho_g = 2$；$\mathit{We} = 10$；壁面 BC；重力なし
-  \item FD PPE 直接法（\texttt{spsolve}）＋CCD $\Ord{h^6}$ 勾配；
-        非増分投影法；HFE なし
-  \item 格子：$N = 32, 48, 64, 96, 128$；200 ステップ
+  \item 静止液滴 $R = 0.25$，$\rho_l/\rho_g = 1000$，$\mathit{La} = \sigma \rho_l R / \mu^2$
+  \item 格子 $N = 32, 64, 128, 256$，長時間安定性（$T = 10 / (c_\sigma / R)$）
+  \item 分相 PPE 解法 + HFE IPC
 \end{itemize}
 
-\noindent\textbf{結果：}
-
-\begin{table}[htbp]
-\centering
-\caption{CSF 静止液滴の格子収束
-（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，FD PPE + CCD 勾配，200 ステップ）}
-\label{tab:static_convergence}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rccc}
-\toprule
-$N$ & $\|\bu_{\mathrm{para}}\|_\infty^{\mathrm{peak}}$ &
-$\Delta p$ 相対誤差 & $\|\bnabla\cdot\bu\|_\infty$ \\
-\midrule
-32  & $8.9 \times 10^{-3}$ & $0.42\%$ & $2.0 \times 10^{-1}$ \\
-48  & $9.3 \times 10^{-4}$ & $1.32\%$ & $3.1 \times 10^{-2}$ \\
-64  & $2.9 \times 10^{-4}$ & $1.23\%$ & $7.9 \times 10^{-3}$ \\
-96  & $7.1 \times 10^{-4}$ & $1.15\%$ & $1.2 \times 10^{-2}$ \\
-128 & $6.3 \times 10^{-4}$ & $0.97\%$ & $3.3 \times 10^{-2}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/ch12_static_droplet_convergence.png}
-\caption{%
-  CSF 静止液滴の格子収束（$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，FD PPE + CCD 勾配）．
-  左：寄生流れ $\|\bu\|_\infty$ の格子依存性（破線は $\Ord{h^2}$ 参照）．
-  右：Laplace 圧相対誤差．
-  $N = 64$ で最小値 $2.9 \times 10^{-4}$ に達するが，$N \geq 96$ では
-  CSF の $\Ord{\varepsilon^2}$ モデル誤差が律速し単調な収束を示さない．}
-\label{fig:static_droplet_convergence}
-\end{figure}
-
-\noindent
-寄生流れは $N = 48$ から $N = 64$ で 1 桁低下（$9.3 \times 10^{-4} \to 2.9 \times 10^{-4}$）するが，
-$N \geq 96$ では CSF の $\Ord{\varepsilon^2}$ モデル誤差が律速し
-単調な格子収束を示さない（図~\ref{fig:static_droplet_convergence}）．
-これは CSF 正則化 $\delta_\varepsilon$ が有限幅の体積力を生成し，
-格子精緻化に対して $\varepsilon = 1.5h$ で界面幅が縮小するため，
-寄生流れの駆動力と分布が格子依存的に変化することに起因する．
-$\|\bnabla\cdot\bu\|_\infty$ は FD PPE と CCD 勾配の投影不整合（$\Ord{h^4}$）に由来するが，
-寄生流れへの影響は Balanced-Force の $\Ord{h^6}$ キャンセルに対して二次的である
-（§~\ref{sec:ppe_discretization_choice}）．
-
-Laplace 圧は $N = 64$ 以上で相対誤差 $1.3\%$ 以内に収まり，
-$N = 128$ で $0.97\%$ に改善する．
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/ch12_droplet_fields.png}
-\caption{%
-  CSF 静止液滴の 2D 場（$N=64$，$\rho_l/\rho_g=2$，200ステップ，FD PPE + CCD 勾配）．
-  左：圧力場 $p(x,y)$（RdBu カラーマップ，黒線 = 界面 $\phi=0$）．
-  液滴内部（高圧，赤）と外部（低圧，青）の Laplace 圧差
-  $\Delta p_\text{exact}=0.400$，$\Delta p_\text{meas}=0.395$（誤差 1.2\%）．
-  中：寄生流れ速度 $|\bu(x,y)|$（白線 = 界面）．
-  寄生流れは界面近傍に集中し，$\|\bu\|_\infty \approx 2.9 \times 10^{-4}$．
-  右：$\|\bu\|_\infty$ の時間発展（200ステップ安定収束）．}
-\label{fig:droplet_fields}
-\end{figure}
-
-\noindent\textbf{結論：}
-FD PPE 直接法＋CCD 勾配のパイプラインは $\rho_l/\rho_g = 2$ で
-Laplace 圧を $1\%$ 精度で再現し，200 ステップにわたり安定に動作する
-（図~\ref{fig:droplet_fields}）．
-寄生流れは界面近傍に集中し（中段），液滴中心・外部遠方ではほぼゼロである．
-CCD の $\Ord{h^6}$ Balanced-Force により寄生流れは $2.9 \times 10^{-4}$
-（$N = 64$）に抑制されるが，格子収束は CSF モデル誤差 $\Ord{\varepsilon^2}$ に律速される
-（§~\ref{sec:error_budget}）．
+\noindent\textbf{目標：}
+$\|\bu_{\mathrm{para}}\|_\infty$ の格子収束（$\Ord{h^2}$ 以上），
+$\Delta p$ 相対誤差 $< 0.1\%$（$N \geq 128$）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{CSF 一括解法の動的限界と今後の展望}
-\label{sec:val_density_limit}
+\subsection{毛細管波の振動減衰}
+\label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{目的：}
-NS パイプライン全体（CLS 移流→物性値更新→PPE→Corrector）での
-CSF + smoothed Heaviside 一括解法の動的破綻閾値を確認し，
-§~\ref{sec:interface_crossing} の PPE 単体テストとの整合性を検証する．
+\noindent\textbf{参照：}Prosperetti (1981) 解析解
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
-  \item §~\ref{sec:val_static_drop} と同一の静止液滴
-        （$R = 0.25$，$\mathit{We} = 10$，壁面 BC，重力なし）
-  \item $N = 64$（固定），FD PPE 直接法＋CCD 勾配（HFE なし），200 ステップ
-  \item 密度比スイープ：$\rho_l/\rho_g = 2, 3, 5, 10$
+  \item 円形液滴に $l=2$ モードの初期擾乱：$R(\theta) = R_0 (1 + \varepsilon \cos 2\theta)$，$\varepsilon = 0.05$
+  \item $\rho_l/\rho_g = 1000$，$\mathit{Oh} = \mu / \sqrt{\rho_l \sigma R_0}$
+  \item 分相 PPE 解法 + HFE
 \end{itemize}
 
-\noindent\textbf{結果：}
+\noindent\textbf{目標：}
+振動周波数と減衰率の Prosperetti 解析解との一致（相対誤差 $< 5\%$）．
+移動界面＋表面張力の動的結合における CCD パイプラインの精度を検証．
 
-\begin{table}[htbp]
-\centering
-\caption{CSF 一括解法の密度比限界（$N = 64$，FD PPE + CCD 勾配，200 ステップ）}
-\label{tab:density_limit}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rccl}
-\toprule
-$\rho_l/\rho_g$ & $\|\bu_{\mathrm{para}}\|_\infty$ &
-$\Delta p$ 相対誤差 & 判定 \\
-\midrule
-  2 & $2.9 \times 10^{-4}$ & $1.23\%$ & 安定 \\
-  3 & $2.2 \times 10^{-4}$ & $1.23\%$ & 安定 \\
-  5 & $1.7 \times 10^{-4}$ & $1.23\%$ & 安定 \\
- 10 & $1.7 \times 10^{-4}$ & $1.23\%$ & 安定 \\
-\bottomrule
-\end{tabular}
-\end{table}
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{気泡上昇}
+\label{sec:val_rising_bubble}
+% ═══════════════════════════════════════════════════════════════════════════════
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/ch12_density_fields.png}
-\caption{%
-  密度比スイープの 2D 場（$N=64$，200ステップ，FD PPE + CCD 勾配）．
-  上段：圧力場 $p(x,y)$（共通スケール）；黒線 = 界面 $\phi=0$．
-  下段：寄生流れ速度 $|\bu(x,y)|$（共通スケール）．
-  $\Delta p \approx 0.395$ は全ケースで一致（Laplace 圧は $\rho$ 非依存）．
-  寄生流れは密度比増大とともに減少し，全ケースで安定動作を示す．}
-\label{fig:density_fields}
-\end{figure}
+\noindent\textbf{参照：}Hysing~ら (2009) ベンチマーク
 
-\noindent\textbf{観察と考察：}
-$\rho_l/\rho_g = 10$ においても 200 ステップで安定動作が得られた．
-これは §~\ref{sec:interface_crossing} の PPE 製造解テスト
-（DC 欠陥補正が $\rho \geq 10$ で発散）との相違である．
-本実験では FD 直接法（\texttt{spsolve}）を使用しているため，
-DC の収束性問題は顕在化しない（§~\ref{sec:ppe_discretization_choice}）．
-寄生流れは密度比の増大とともに\textbf{減少}しており
-（$2.9 \times 10^{-4}$ → $1.7 \times 10^{-4}$），
-低密度比ほど界面遷移層の密度勾配が急峻となり
-CSF 体積力の不整合が増大することと整合する．
+\noindent\textbf{設定：}
+\begin{itemize}[noitemsep]
+  \item 2D 気泡上昇（Test case 1: $\rho_l/\rho_g = 1000$, $\mu_l/\mu_g = 100$, $\mathit{Re} = 35$, $\mathit{Eo} = 10$）
+  \item $[0, 1] \times [0, 2]$，壁面 BC（上下），slip BC（左右）
+  \item 分相 PPE 解法 + HFE + CLS 移流
+\end{itemize}
 
-\noindent\textbf{動的限界の実証：}
-上昇気泡（$\rho_l = 2$，$\rho_g = 1$，$\mu = 0.01$，$\sigma = 0.1$，
-$g = 1$，$R = 0.25$，$64 \times 128$ 格子）を
-同一パイプライン（CLS 移流 → 変密度 PPE 直接法 → CCD 勾配補正）で
-試行した結果，$t \approx 0.059$，517 ステップで発散した．
-この結果は §~\ref{sec:interface_crossing}（§11.4b：Galilean 移動界面$+\sigma>0$→2ステップ発散）
-の予測と整合する．
-CSF による局所体積力が移動界面上で PPE 右辺に蓄積し，
-圧力修正が有界に収まらない．
+\noindent\textbf{目標：}
+終端上昇速度と気泡形状の Hysing~ら参照値との比較．
+変密度＋移動界面＋表面張力の完全結合を検証．
 
-\noindent\textbf{今後の展望：}
-本章のベンチマークは CSF + smoothed Heaviside 一括解法が動作する範囲に限定されている．
-毛細管波（Prosperetti~\cite{Prosperetti1981} 解析解），
-気泡上昇（Hysing~ら~\cite{Hysing2009} 参照解），
-$\sigma > 0$ の RT 不安定など，移動界面を伴う問題への拡張には
-分相 PPE 解法と HFE（§~\ref{sec:field_extension}）が必要であり，
-§~\ref{sec:conclusion} で議論する．
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Rayleigh--Taylor 不安定性（$\sigma > 0$）}
+\label{sec:val_rt_sigma}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{参照：}Tryggvason (1988)，He~ら (1999)
+
+\noindent\textbf{設定：}
+\begin{itemize}[noitemsep]
+  \item §~\ref{sec:advection_pressure_coupling} の RT テスト（$\sigma = 0$，已完了）を拡張
+  \item $\rho_l/\rho_g = 3$，$\sigma > 0$（Atwood 数 $= 0.5$）
+  \item 分相 PPE 解法 + HFE + CSF/GFM
+\end{itemize}
+
+\noindent\textbf{目標：}
+界面の非線形ロールアップ形状の先行研究との定性的一致．
+$\sigma = 0$（§~\ref{sec:advection_pressure_coupling}）からの定量的差異を表面張力のみに帰属．

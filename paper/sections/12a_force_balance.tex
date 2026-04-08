@@ -41,17 +41,18 @@ NS ソルバ全体の離散力平衡（CCD 微分 + PPE 投影 + 速度補正）
 \toprule
 $N$ & $\|\bu\|_\infty$ & $|p - p_{\mathrm{hydro}}|_\infty$ & 判定 \\
 \midrule
-32  & $8.56 \times 10^{-16}$ & $4.89 \times 10^{-15}$ & 合格 \\
-64  & $2.47 \times 10^{-15}$ & $8.11 \times 10^{-15}$ & 合格 \\
-128 & $3.22 \times 10^{-15}$ & $9.99 \times 10^{-15}$ & 合格 \\
+32  & $2.45 \times 10^{-6}$ & $7.08 \times 10^{-5}$ & 合格 \\
+64  & $2.31 \times 10^{-10}$ & $7.02 \times 10^{-9}$ & 合格 \\
+128 & $6.78 \times 10^{-10}$ & $2.20 \times 10^{-8}$ & 合格 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \noindent\textbf{結論：}
-速度・圧力ともに計算機精度水準（$\Ord{10^{-15}}$）に収まり，
-重力と圧力勾配の離散的釣合が厳密に成立した．
-CCD 微分演算子のフリーストリーム保存（§\ref{sec:gcl_verification}）の直接的帰結．
+$N = 64$ で速度は $\Ord{10^{-10}}$ に収まり，
+IPC による重力と圧力勾配の離散的釣合が 100 ステップにわたり維持された．
+$N = 32$ では CCD 壁面境界スキームの低次精度（$\Ord{h^5}$）に起因する初期誤差が IPC を通じて蓄積するため
+$\Ord{10^{-6}}$ に留まるが，格子精緻化により急速に減衰する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{表面張力均衡と寄生流れ}
@@ -87,60 +88,28 @@ CCD 曲率 + CSF 体積力 + 変密度 PPE（$\bnabla\cdot({\rho^{-1}}\bnabla p)
 \toprule
 $N$ & $\Delta p$ & 相対誤差 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 次数 \\
 \midrule
- 32 & $-7.80$ & $2.9 \times 10^{0}$  & $6.8 \times 10^{-1}$ & --- \\
- 64 & $3.69$  & $7.9 \times 10^{-2}$ & $4.4 \times 10^{-2}$ & $5.23$ \\
-128 & $3.98$  & $6.1 \times 10^{-3}$ & $1.5 \times 10^{-2}$ & $3.69$ \\
-256 & $3.99$  & $2.2 \times 10^{-3}$ & $2.4 \times 10^{-1}$ & $1.45$ \\
+ 32 & $7.72$  & $9.3 \times 10^{-1}$ & $1.7 \times 10^{-3}$ & --- \\
+ 64 & $4.08$  & $2.1 \times 10^{-2}$ & $7.6 \times 10^{-5}$ & $5.47$ \\
+128 & $3.98$  & $6.1 \times 10^{-3}$ & $3.0 \times 10^{-5}$ & $1.79$ \\
+256 & $3.99$  & $2.2 \times 10^{-3}$ & $2.3 \times 10^{-4}$ & $1.45$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \noindent\textbf{結論：}
 $N = 64, 128, 256$ の 3 水準で $\Delta p$ の相対誤差は単調減少し，
-収束次数は $5.23 \to 3.69 \to 1.45$ と漸近的に CSF モデル誤差 $\Ord{h^2}$ に近づく%
-\footnote{$N = 32$（$R/h = 8$）は界面幅 $\varepsilon$ が液滴半径 $R$ に対して過大となり，
+収束次数は $5.47 \to 1.79 \to 1.45$ と漸近的に CSF モデル誤差 $\Ord{h^2}$ に近づく%
+\footnote{$N = 32$ では $\Delta p = 7.72$（負の値から正に反転後もなお過大）であり，
+$R/h = 8$ は界面幅 $\varepsilon$ が液滴半径 $R$ に対して過大で
 $\delta_\varepsilon$ 正則化の仮定が破綻するため漸近領域外にある．}．
 $N = 256$ で $\Delta p = 3.99$（相対誤差 $0.22\%$）であり，
 CCD-PPE の高精度離散化が CSF $\Ord{h^2}$ の枠内で十分に機能している．
 
 寄生流れ振幅は $N = 64 \to 128$ で減少するが，$N = 256$ で増大する．
-これは PPE ソルバ（FD $\Ord{h^2}$）と Corrector の CCD 圧力勾配との間の
-Balanced-Force 不整合が高解像度で顕在化するためである（§~\ref{sec:balanced_force}）．
+これは FD PPE（$\Ord{h^2}$）と CCD 圧力勾配（$\Ord{h^6}$）の間の
+投影不整合が高解像度で顕在化するためである
+（§~\ref{sec:ppe_discretization_choice}，付録参照）．
 この不整合が多ステップ時間積分において累積するかを
 §~\ref{sec:advection_pressure_coupling} の二相流時間積分テストで確認する．
-寄生流れ振幅の格子収束（Balanced-Force 条件下での $\Ord{h^2}$）は，
-時間積分による定常化が必要であり，
-第~\ref{sec:validation}章の静止液滴ベンチマーク（§\ref{sec:val_static_drop}）にて検証する．
 
-\paragraph{C/RC 補正の効果}
-
-§~\ref{sec:rc_high_order} の C/RC（CCD-enhanced Rhie--Chow）補正を
-多ステップ静止液滴（400 ステップ，$\rho_l/\rho_g = 2$，$\mathit{We} = 10$，
-Rhie--Chow Balanced-Force 拡張有効）に適用した結果を示す．
-
-\begin{table}[htbp]
-\centering
-\caption{C/RC 補正の寄生流れへの効果（400 ステップ後）}
-\label{tab:rc_crc_droplet}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{clccr}
-\toprule
-$N$ & RC 方式 & $\|\bu_{\mathrm{para}}\|_\infty$ & $\Delta p$ 相対誤差 & 寄生流れ低減率 \\
-\midrule
-32 & 標準 $\Ord{h^2}$       & $2.51 \times 10^{-2}$ & $0.58\%$ & --- \\
-32 & C/RC $\Ord{h^4}$         & $2.49 \times 10^{-2}$ & $0.42\%$ & $\mathbf{-0.8\%}$ \\
-\midrule
-64 & 標準 $\Ord{h^2}$       & $5.49 \times 10^{-4}$ & $1.23\%$ & --- \\
-64 & C/RC $\Ord{h^4}$         & $4.24 \times 10^{-4}$ & $1.23\%$ & $\mathbf{-23\%}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-$N = 64$ では C/RC 補正により寄生流れ振幅が 23\% 低減し，
-$\Delta p$ 精度は同等に維持される．
-$N = 32$ でも $\Delta p$ が改善（$0.58\% \to 0.42\%$）しており，
-標準 RC の構造を保持したまま補正を加算する方式が壁境界でも安定に動作することを示している．
-
-CCD が $p'$ と同時に返す $p''$ のみを使用するため，追加の CCD 呼び出しは不要であり，
-従来の FD ベースの RC では原理的に得られない\textbf{高次微分情報の活用}が，
-追加コストゼロの精度改善を可能にしている．
+% C/RC 補正の効果 → §12.4.1 の静止液滴テーブルに統合
