@@ -26,6 +26,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "density_sweep"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "density_sweep"
@@ -61,8 +62,10 @@ def run(rho_l):
     ccd = CCDSolver(grid, backend, bc_type='wall')
     ppe_builder = PPEBuilder(backend, grid, bc_type='wall')
     curv_calc = CurvatureCalculator(backend, ccd, eps)
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
 
     X, Y = grid.meshgrid()
+
     phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
     psi = np.asarray(heaviside(np, phi, eps))
     rho = RHO_G + (rho_l - RHO_G) * psi
@@ -70,7 +73,9 @@ def run(rho_l):
     u = np.zeros_like(X)
     v = np.zeros_like(X)
 
-    kappa = curv_calc.compute(psi)
+    xp = backend.xp
+    kappa_raw = curv_calc.compute(psi)
+    kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
     f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)

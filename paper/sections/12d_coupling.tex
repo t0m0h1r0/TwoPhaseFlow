@@ -46,6 +46,7 @@ CSF 体積力と PPE による圧力場の
 \begin{itemize}[noitemsep]
   \item §~\ref{sec:bf_static_droplet} と同一の静止液滴（$R = 0.25$，壁面 BC，重力なし）
   \item $\rho_l/\rho_g = 2, 5$，$\mathit{We} = 10$
+  \item 曲率 $\kappa^*$：InterfaceLimitedFilter（$C = 0.05$）適用
   \item 非増分投影法（non-incremental projection）：毎ステップ $p$ を再計算．
         本テストでは IPC の $\bnabla p^n$ 項を除去し，
         力バランスへの寄与を単純化するために非増分形式を用いる
@@ -89,12 +90,22 @@ $N = 128$，$\rho_l/\rho_g = 5$ で寄生流れの成長比が 5.3 に達する
 §~\ref{sec:interface_crossing} の破綻限界テストと整合する．
 
 % HFE 適合性テスト → 付録~\ref{sec:hfe_smoothed_scope} に移動
-\noindent\textbf{HFE の適用範囲：}
-付録~\ref{sec:hfe_smoothed_scope} の ON/OFF 比較テストにより，
-HFE は smoothed Heaviside 圧力場には\textbf{有害}であることが実証された
-（寄生流れが 4 桁増大，Laplace 圧精度が破綻）．
-HFE は IPC の $\bnabla p^n$ 処理（§~\ref{sec:coupling_limitations}）
-および分相 PPE 解法（§~\ref{sec:split_ppe_recovery}）でのみ有効である．
+\noindent\textbf{HFE フィールド延長と曲率フィルタの区別：}
+本研究では 2 つの界面処理技術を使い分ける：
+\begin{enumerate}[noitemsep]
+  \item \textbf{InterfaceLimitedFilter}（曲率フィルタ）：
+        $\kappa^* = \kappa + C\,h^2\,w(\psi)\,\nabla^2\kappa$．
+        曲率の高周波振動を界面近傍でのみ抑制する．
+        Smoothed Heaviside との併用で安全であり，
+        上記テーブルの全実験で標準適用（$C = 0.05$）．
+  \item \textbf{HFE フィールド延長}：
+        圧力 $p^n$ を界面越しに Hermite 補間で延長する技法（式~\eqref{eq:p_extension_ipc}）．
+        付録~\ref{sec:hfe_smoothed_scope} の ON/OFF 比較により，
+        smoothed Heaviside 圧力場には\textbf{有害}であることが実証された
+        （寄生流れが 4 桁増大）．
+        IPC の $\bnabla p^n$ 処理（§~\ref{sec:coupling_limitations}）
+        および分相 PPE 解法（§~\ref{sec:split_ppe_recovery}）でのみ有効．
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{Galilean 不変性テスト}

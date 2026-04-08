@@ -38,6 +38,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure, COLORS,
@@ -86,6 +87,7 @@ def run(N):
     ccd = CCDSolver(grid, backend, bc_type="wall")
     ppe_builder = PPEBuilder(backend, grid, bc_type="wall")
     curv_calc = CurvatureCalculator(backend, ccd, eps)
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
 
     X, Y = grid.meshgrid()
 
@@ -94,8 +96,10 @@ def run(N):
     psi = np.asarray(heaviside(np, phi, eps))
     rho = RHO_G + (RHO_L - RHO_G) * psi
 
-    # Curvature and CSF force
-    kappa = curv_calc.compute(psi)
+    # HFE-filtered curvature and CSF force
+    xp = backend.xp
+    kappa_raw = curv_calc.compute(psi)
+    kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
     f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)

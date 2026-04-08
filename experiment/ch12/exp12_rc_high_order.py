@@ -46,6 +46,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 from twophase.pressure.rhie_chow import RhieChowInterpolator
 from twophase.pressure.velocity_corrector import ccd_pressure_gradient
 
@@ -222,7 +223,9 @@ def run_droplet(N: int, mode: str = "std"):
     pin  = ppb._pin_dof
 
     curv_calc = CurvatureCalculator(backend, ccd, eps)
-    kappa     = np.asarray(curv_calc.compute(psi))
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_raw = curv_calc.compute(psi)
+    kappa     = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
 
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)

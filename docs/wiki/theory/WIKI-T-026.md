@@ -88,11 +88,31 @@ The harm arises from a **precondition mismatch**: HFE assumes the input field co
 
 This is analogous to the direct pressure filter prohibition (§8c, [[warn:pressure_direct_filter]]): any post-hoc modification of the PPE solution p destroys the divergence-free projection guarantee.
 
+## Critical Distinction: HFE Field Extension vs InterfaceLimitedFilter
+
+Two interface-related techniques share the "HFE" label but are fundamentally different:
+
+| | HFE Field Extension | InterfaceLimitedFilter (Curvature Filter) |
+|---|---|---|
+| **What it does** | Overwrites target-phase field values with source-phase Hermite extrapolation | Applies q* = q + C h² w(ψ) ∇²q (interface-weighted Laplacian smoothing) |
+| **Target field** | Pressure p (or any field with interface jump) | Curvature κ (or any field with interface oscillation) |
+| **Effect on smooth fields** | **Harmful** — creates artificial discontinuity | **Benign** — w(ψ) = 4ψ(1−ψ) → 0 away from interface |
+| **Smoothed Heaviside compatibility** | ✗ Incompatible (4-digit parasitic increase) | ✓ Compatible (neutral to mildly beneficial) |
+| **Source** | `src/twophase/levelset/hermite_extension.py` | `src/twophase/levelset/curvature_filter.py` |
+| **Paper ref** | §9.3, Appendix E.2 | §8c (curvature filtering) |
+
+**Experimental validation (2026-04-09):** InterfaceLimitedFilter(C=0.05) added to all §12 surface-tension experiments (exp12_02, exp12_07, exp12_rc_high_order, viz scripts). Results unchanged within measurement precision (Δp error ≤ 0.22%, parasitic currents O(10⁻⁴)). Confirms curvature filter is safe with smoothed Heaviside.
+
 ## Implementation Guard
 
-HFE should be gated by solver configuration:
+HFE field extension should be gated by solver configuration:
 
     if surface_tension_model == "split_ppe" or projection == "incremental":
-        apply HFE to pressure before CCD gradient
+        apply HFE field extension to pressure before CCD gradient
     else:
-        skip HFE (smoothed Heaviside pressure is already smooth)
+        skip HFE field extension (smoothed Heaviside pressure is already smooth)
+
+InterfaceLimitedFilter (curvature smoothing) should be applied **unconditionally** when surface tension is active:
+
+    if sigma > 0:
+        kappa = InterfaceLimitedFilter(C=0.05).apply(kappa_raw, psi)

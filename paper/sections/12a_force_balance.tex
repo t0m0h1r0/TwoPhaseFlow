@@ -71,7 +71,9 @@ CCD 曲率 + CSF 体積力 + 変密度 PPE（$\bnabla\cdot({\rho^{-1}}\bnabla p)
 \begin{itemize}[noitemsep]
   \item 計算領域 $[0,1]^2$，壁面境界条件，重力なし
   \item 静止液滴 $R = 0.25$，$\rho_l/\rho_g = 1000$，$\mathit{We} = 1$
-  \item CSF 体積力 $\bm{f}_\sigma = (1/\mathit{We})\,\kappa\,\bnabla\psi$（無次元形式では $\sigma$ は $We$ に吸収済み）
+  \item CSF 体積力 $\bm{f}_\sigma = (1/\mathit{We})\,\kappa^*\,\bnabla\psi$（無次元形式では $\sigma$ は $We$ に吸収済み）
+  \item 曲率 $\kappa^*$ は InterfaceLimitedFilter（$C = 0.05$）適用後の値：
+        $\kappa^* = \kappa + C\,h^2\,w(\psi)\,\nabla^2\kappa$，$w(\psi) = 4\psi(1-\psi)$
   \item 単ステップ投影：$\bu^* = \Delta t\,\bm{f}_\sigma / \rho$ → 変密度 PPE → Corrector
   \item PPE 右辺の発散は CCD 微分（$\Ord{h^6}$）で計算
   \item 格子 $N = 32, 64, 128, 256$，厳密解 $\Delta p = \sigma / R = 4.0$

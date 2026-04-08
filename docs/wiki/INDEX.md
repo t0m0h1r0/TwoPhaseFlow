@@ -1,4 +1,4 @@
-# Wiki Index — 49 entries
+# Wiki Index — 50 entries
 
 ## Theory (26)
 
@@ -41,7 +41,7 @@
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 
-## Experiment (7)
+## Experiment (8)
 
 | REF-ID | Title |
 |--------|-------|
@@ -52,6 +52,7 @@
 | [WIKI-E-005](experiment/WIKI-E-005.md) | Time Integration Verification (Exp 11-14, 11-15) |
 | [WIKI-E-006](experiment/WIKI-E-006.md) | Young-Laplace Static Droplet (Exp 11-16) |
 | [WIKI-E-007](experiment/WIKI-E-007.md) | Static Droplet Benchmark: Implementation Protocol, C/RC Results, and Negative Results |
+| [WIKI-E-008](experiment/WIKI-E-008.md) | §12 Integration Tests: Split-PPE Failure Diagnosis and Curvature Filter Validation |
 
 ## Paper (4)
 

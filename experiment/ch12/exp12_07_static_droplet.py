@@ -41,6 +41,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 
 OUT = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet_07"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -58,7 +59,6 @@ GRIDS   = [32, 48, 64, 96, 128]
 # ── PPE solver ───────────────────────────────────────────────────────────────
 
 def _solve_ppe(rhs, rho, ppe_builder):
-    """Solve variable-coefficient PPE: nabla . [(1/rho) nabla p] = rhs."""
     triplet, A_shape = ppe_builder.build(rho)
     data, rows, cols = triplet
     A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
@@ -81,6 +81,7 @@ def run_single(N):
     ccd  = CCDSolver(grid, backend, bc_type='wall')
     ppe_builder = PPEBuilder(backend, grid, bc_type='wall')
     curv_calc   = CurvatureCalculator(backend, ccd, eps)
+    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
 
     X, Y = grid.meshgrid()
     dp_exact = SIGMA / (R * WE)
@@ -93,8 +94,10 @@ def run_single(N):
     u = np.zeros_like(X)
     v = np.zeros_like(X)
 
-    # Precompute CSF (static: curvature does not change)
-    kappa = curv_calc.compute(psi)
+    # Precompute CSF with HFE-filtered curvature
+    xp = backend.xp
+    kappa_raw = curv_calc.compute(psi)
+    kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
     f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)

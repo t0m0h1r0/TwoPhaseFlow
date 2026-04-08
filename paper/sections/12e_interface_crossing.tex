@@ -65,6 +65,11 @@ CCD の設計精度 $\Ord{h^6}$ は界面近傍で回復不能である．
 分相 PPE + DC $k{=}3$（§~\ref{sec:split_ppe_framework}）は
 全密度比で $\Ord{h^{7.0}}$ を達成し，
 この制約を完全に回避する（§~\ref{sec:verify_split_ppe_dc}）．
+ただし分相 PPE は\textbf{相ごとに定密度 Poisson 方程式を個別に解く}手法であり，
+smoothed Heaviside の変密度演算子を定密度に置換するだけでは
+界面での $(\bnabla\rho \cdot \bnabla p)/\rho^2$ 項の欠落により
+速度発散誤差が蓄積する．
+実装には GFM 等の界面ジャンプ処理が不可欠である．
 \end{tcolorbox}
 
 
