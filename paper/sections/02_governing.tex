@@ -142,10 +142,10 @@ Two-Fluid 形式は各相に個別の方程式を解き，界面追跡（Front T
 
 この変換には以下の操作が含まれる：
 \begin{enumerate}
-  \item 各相の\textbf{別々の方程式}（$k=l,g$）が\textbf{1本の方程式} \eqref{eq:NS_onefluid} に統合された．
-  \item 界面での\textbf{応力ジャンプ条件} \eqref{eq:jump_stress} が
+  \item 各相の\textbf{別々の方程式}（$k=l,g$）が\textbf{1本の方程式}~\eqref{eq:NS_onefluid} に統合された．
+  \item 界面での\textbf{応力ジャンプ条件}~\eqref{eq:jump_stress} が
         右辺の\textbf{表面張力項} $\bm{f}_\sigma$（§~\ref{sec:csf}）として吸収された．
-  \item 界面の\textbf{速度連続条件} \eqref{eq:jump_vel} は，
+  \item 界面の\textbf{速度連続条件}~\eqref{eq:jump_vel} は，
         全領域で同一の速度場 $\bu$ を解くことで自動的に満たされる．
 \end{enumerate}
 代償として，$\psi$ の時間発展方程式（第~\ref{sec:levelset}章，CLS 法）を別途解く必要がある．

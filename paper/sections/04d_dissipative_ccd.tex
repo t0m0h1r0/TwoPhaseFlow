@@ -214,8 +214,8 @@ CCD の 1 次微分 $f'_i$ の打ち切り誤差は $TE_\mathrm{I} = -h^6 f^{(7)
 フィルタ項の追加誤差は Fourier 表現から：
 \begin{equation}
   \varepsilon_d^{(i)}\,(f'_{i+1} - 2f'_i + f'_{i-1})
-  \approx \varepsilon_d^{(i)} \cdot h^2 \cdot (f')''_i + O(h^4)
-  = \varepsilon_d^{(i)}\,h^2\,f'''_i + O(h^4)
+  \approx \varepsilon_d^{(i)} \cdot h^2 \cdot (f')''_i + \Ord{h^4}
+  = \varepsilon_d^{(i)}\,h^2\,f'''_i + \Ord{h^4}
   \label{eq:dccd_accuracy_error}
 \end{equation}
 すなわちフィルタは $\Ord{\varepsilon_d\,h^2}$ の追加誤差を導入する（$h$ の2乗）．

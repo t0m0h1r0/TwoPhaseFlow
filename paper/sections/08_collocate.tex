@@ -261,11 +261,11 @@ CCD の "Combined" な性質（$p', p''$ の同時取得）を Rhie--Chow 補正
 この手法を \textbf{C/RC}（CCD-enhanced Rhie--Chow Correction）と呼ぶ．
 
 テイラー展開により（付録~\ref{app:crc_taylor} 参照），
-算術平均 $\overline{(\nabla p)}_f$ の $p'''$ 係数は $1/8$ であるのに対し
+算術平均 $\overline{(\bnabla p)}_f$ の $p'''$ 係数は $1/8$ であるのに対し
 フェイス差分の係数は $1/24$ であり，$\Ord{h^2}$ の不整合が生じる（スペクトル選択的フィルタ特性）．
 CCD が同時に返す $p'' = D^{(2)}_\mathrm{CCD}\,p$ を用いた\textbf{補正済みセル中心平均}：
 \begin{equation}
-  \overline{(\nabla p)}_f^{\,*}
+  \overline{(\bnabla p)}_f^{\,*}
   \equiv
   \underbrace{\frac{1}{2}\bigl(p'_P + p'_E\bigr)}_{\text{算術平均}}
   + \underbrace{\frac{h}{12}\bigl(p''_P - p''_E\bigr)}_{\text{C/RC 補正項}}

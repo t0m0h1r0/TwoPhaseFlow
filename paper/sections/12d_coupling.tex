@@ -56,7 +56,7 @@ CSF 体積力と PPE による圧力場の
 
 \begin{table}[htbp]
 \centering
-\caption{静止液滴長時間安定性（200 ステップ，非増分投影）}
+\caption{静止液滴長時間安定性（200 ステップ，非増分投影，$\rho_l/\rho_g = 2$）\protect\footnotemark}
 \label{tab:static_longterm}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{rrrcccc}
@@ -72,6 +72,8 @@ $\|\bnabla\cdot\bu\|_\infty$ & 安定 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\footnotetext{$\rho_l/\rho_g = 5$ でも同等の安定性を確認したが，
+紙面の制約上 $\rho_l/\rho_g = 2$ のみ掲載する．}
 
 \noindent\textbf{結論：}
 $N = 64$ では $\rho_l/\rho_g = 2, 5$ の両方で 200 ステップにわたり安定に動作し，

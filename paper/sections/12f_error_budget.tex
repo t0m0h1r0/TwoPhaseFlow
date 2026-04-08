@@ -23,11 +23,11 @@
 コンポーネント & 設計精度 & 実測精度 & 検証箇所 & 誤差が影響する物理量 \\
 \midrule
 CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
-CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & §~\ref{sec:verify_ppe} & 圧力場，速度補正 \\
+CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & §~\ref{sec:verify_ppe_varrho} & 圧力場，速度補正 \\
 CCD-PPE（$\varrho{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
 HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{3.0}}$ & §~\ref{sec:verify_field_extension} & IPC $\bnabla p^n$，速度補正 \\
-DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2.1}}$ & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
-CCD 曲率 $\kappa$ & $\Ord{h^6}$ & $\Ord{h^{5.9}}$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
+DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
+CCD 曲率 $\kappa$ & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
 AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
 NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & §~\ref{sec:kovasznay} & NS 運動量残差 \\
 CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
