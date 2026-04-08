@@ -1,4 +1,4 @@
-% paper/sections/11d_coupling.tex
+% paper/sections/12d_coupling.tex
 %
 % §11.4  二相流結合の物理的整合性
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -33,14 +33,12 @@
 §~\ref{sec:bf_static_droplet} の Laplace 圧テスト（1 ステップ投影）を
 多ステップ時間積分に拡張し，
 寄生流れが有界に留まり Laplace 圧均衡が維持されることを確認する．
-
-\noindent\textbf{§~\ref{sec:bf_static_droplet} との違い：}
 §~\ref{sec:bf_static_droplet} では $p^0 = 0$（HFE は実質 no-op）の
-単ステップ投影であった．
-本テストでは 200 ステップの時間積分を行い，
-毎ステップ変密度 PPE を解き直す．
-CSF 体積力と PPE による圧力場の
-\textbf{時間的安定性}が検証対象である．
+単ステップ投影であったのに対し，
+本テストでは 200 ステップの時間積分を行い毎ステップ変密度 PPE を解き直す．
+
+\noindent\textbf{評価対象：}
+CSF 体積力と変密度 PPE の時間的安定性（多ステップ時間積分での Laplace 圧均衡維持）．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
@@ -117,21 +115,28 @@ $N = 128$，$\rho_l/\rho_g = 5$ で寄生流れの成長比が 5.3 に達する
 NS ソルバの離散 Galilean 不変性を検証する．
 物理法則は慣性系の選択に依存しないため，
 静止界面と等速移動界面で同一の結果が得られるべきである．
+さらに，$\sigma = 0$ の動的問題（Rayleigh--Taylor 不安定性）での
+界面成長率を理論値と比較する．
 
-\noindent\textbf{テスト A：表面張力なし（$\sigma = 0$）}
-\begin{itemize}[noitemsep]
-  \item 円形密度界面（$R = 0.25$），$\rho_l/\rho_g = 2$，周期境界
-  \item 初速 $\bu_0 = (U, 0)^T$（$U = 1$），$T = L/U$（1 周期）
-  \item CLS 移流により $\psi$ が移動，変密度 PPE で投影
-  \item 理想結果：$\|\bu - \bu_0\|_\infty = 0$（速度不変）
-\end{itemize}
+\noindent\textbf{評価対象：}
+CLS 界面移流と変密度 PPE 結合の離散 Galilean 不変性．
 
-\noindent\textbf{テスト B：表面張力あり（$\mathit{We} = 10$）}
+\noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
-  \item テスト A と同一条件に CSF 表面張力を追加
-  \item IPC（増分投影法）：Predictor に $-\bnabla p^n$ を含む
-  \item 圧力 $p^0$ を単ステップ投影で初期化（warm start）
-  \item 理想結果：$\Delta p$ が維持され，寄生流れ振幅が静止系と同程度
+  \item \textbf{テスト A（$\sigma = 0$）：}
+        円形密度界面（$R = 0.25$），$\rho_l/\rho_g = 2$，周期境界，
+        初速 $\bu_0 = (U, 0)^T$（$U = 1$），$T = L/U$（1 周期），
+        CLS 移流＋変密度 PPE．
+        理想結果：$\|\bu - \bu_0\|_\infty = 0$
+  \item \textbf{テスト B（$\mathit{We} = 10$）：}
+        テスト A と同一条件に CSF 表面張力を追加，
+        IPC（増分投影法，$-\bnabla p^n$ を含む），
+        $p^0$ を単ステップ投影で初期化（warm start）．
+        理想結果：$\Delta p$ 維持，寄生流れ振幅が静止系と同程度
+  \item \textbf{RT 不安定性（$\sigma = 0$，動的テスト）：}
+        $\rho_l/\rho_g = 3$（$At = 0.5$），$64 \times 256$ 格子，
+        非粘性理論値 $\omega_{\mathrm{RT}} = \sqrt{\pi} \approx 1.77$ と比較
+  \item 格子 $N = 64, 128$
 \end{itemize}
 
 \noindent\textbf{結果：}
@@ -155,8 +160,7 @@ B（$\mathit{We}{=}10$）  & 128 & 発散（2 ステップ） & --- & --- & --- 
 \end{tabular}
 \end{table}
 
-\noindent\textbf{テスト A の結論：}
-表面張力が存在しない場合，CLS 移流と変密度 PPE の結合は
+表面張力が存在しない場合（テスト A），CLS 移流と変密度 PPE の結合は
 \textbf{完全な Galilean 不変性}を達成する．
 速度場は 1 周期にわたり一様流を厳密に維持し（$\|\bu_{\mathrm{para}}\|_\infty < 10^{-15}$），
 離散化に起因する寄生的な力は発生しない．
@@ -172,11 +176,9 @@ B（$\mathit{We}{=}10$）  & 128 & 発散（2 ステップ） & --- & --- & --- 
 \label{fig:galilean_invariance}
 \end{figure}
 
-\noindent\textbf{RT 不安定性（$\sigma = 0$, 動的テスト）：}
-テスト A（Galilean 不変性）は定常並進であったが，
-ここでは物理的に非自明な動的問題として Rayleigh--Taylor 不安定性を検証する．
-$\rho_l/\rho_g = 3$（Atwood 数 $At = 0.5$），$\sigma = 0$，
-$64 \times 256$ 格子での界面成長率は
+テスト A は定常並進であったが，
+Rayleigh--Taylor 不安定性（$\sigma = 0$）を動的テストとして追加実施した．
+$\rho_l/\rho_g = 3$（$At = 0.5$），$64 \times 256$ 格子での界面成長率は
 $\omega_{\mathrm{meas}} = 1.82$（非粘性理論値 $\omega_{\mathrm{RT}} = \sqrt{\pi} \approx 1.77$，
 誤差 2.8\%）であり，CLS↔PPE 結合が動的界面変形でも正しく機能する．
 図~\ref{fig:ch12_rt_fields} に密度・圧力・速度・渦度・流線の時間発展を示す．
@@ -192,8 +194,7 @@ $t = 2.5$ でマッシュルーム型渦構造が形成され，
 \label{fig:ch12_rt_fields}
 \end{figure}
 
-\noindent\textbf{テスト B の結論（失敗の物理的解釈）：}
-表面張力を導入すると，IPC の Predictor に含まれる $-\bnabla p^n / \rho$
+テスト B では表面張力を導入すると IPC の Predictor に含まれる $-\bnabla p^n / \rho$
 の評価が 2 ステップ目で破綻する．
 根本原因は，圧力場 $p^n$ が界面を挟んで $\Delta p = \sigma\kappa$ のジャンプを持ち，
 CCD 微分演算子がこのジャンプを横切るステンシルで
@@ -201,6 +202,15 @@ $\Ord{1}$ の打ち切り誤差を生じることにある
 （§~\ref{sec:ppe_condition_number}）．
 テスト A（$\sigma = 0$）では $\Delta p = 0$ であるため，
 この問題は顕在化しない．
+
+\noindent\textbf{結論：}
+テスト A は $\sigma = 0$ で\textbf{完全な離散 Galilean 不変性}を達成し
+（$\|\bu_{\mathrm{para}}\|_\infty < 10^{-15}$），
+RT 不安定性の成長率は理論値との誤差 2.8\% であり，
+CLS↔PPE 結合が動的界面変形でも正しく機能する．
+一方，テスト B（$\sigma > 0$）では IPC の $\bnabla p^n$ が
+界面の圧力ジャンプを横切るため 2 ステップで発散し，
+分相 PPE 解法の必要性を示す（§~\ref{sec:coupling_limitations}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{結合の限界と今後の課題}
