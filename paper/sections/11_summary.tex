@@ -89,6 +89,8 @@ AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$  
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；ベースライン上風差分は $\Ord{h^1}$．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\
+  \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
+  \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\
 \multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（既知の制限，対策計画あり）．} \\
 \end{tabular}
 \end{table}

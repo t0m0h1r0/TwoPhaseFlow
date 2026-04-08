@@ -26,6 +26,7 @@ PPE 演算子の条件数に直接影響する．
 なお，条件数の悪化にとどまらず，界面型密度場（smoothed Heaviside）では
 変密度 PPE 自体が $\rho_l/\rho_g \geq 10$ で発散する本質的問題が存在する
 （§~\ref{sec:varrho_ppe_limitation}）．
+この本質的制約に対する解決策として，§~\ref{sec:split_ppe_framework} で\textbf{分相 PPE 解法}を定式化する．
 以下の安定化戦略は条件数の緩和に有効だが，この発散問題の根本的解決は
 今後の課題として §~\ref{sec:future_work} で議論する．
 可変係数演算子 $\mathcal{L}_h$ の係数 $a_{i+1/2} = 2/(\rho_i+\rho_{i+1})$ は，

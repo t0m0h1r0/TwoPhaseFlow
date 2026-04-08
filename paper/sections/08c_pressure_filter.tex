@@ -35,6 +35,6 @@ PPE ソルバー（§~\ref{sec:ppe_solve}）に進む前に，
 \label{warn:pressure_direct_filter}
 \texttt{p[:,:] = filter(p)} の形で圧力配列を直接書き換えることは，
 発散自由射影直後に誤差を混入させ，次タイムステップの速度補正を破壊する．
-本稿の \texttt{ppe\_solver\_pseudotime.py} および \texttt{velocity\_corrector.py} では
+本稿の擬似時間 PPE ソルバーおよび速度補正モジュールでは
 この操作を一切行っていないことを確認済みである．
 \end{tcolorbox}

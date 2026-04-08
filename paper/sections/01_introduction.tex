@@ -15,16 +15,15 @@
 格子を細分化しても寄生流れの下限が消えない（§~\ref{sec:failure_modes}，§~\ref{sec:balanced_force}）．
 
 \textbf{本稿の技術的中核はこの問題の根本的解決にある．}
-結合コンパクト差分法（CCD，$\Ord{h^6}$，第~\ref{sec:CCD}章）による高精度曲率計算と，
-FD 直接法による PPE 求解＋CCD $\Ord{h^6}$ 勾配の併用
-（§~\ref{sec:ppe_discretization_choice}，
-  第~\ref{sec:interface_crossing}節にて Smoothed Heaviside 法の限界と対比しながら詳述）により，
+結合コンパクト差分法（CCD，$\Ord{h^6}$，第~\ref{sec:CCD}章以降）による高精度曲率計算と，
+FD 直接法による PPE 求解＋CCD $\Ord{h^6}$ 勾配の併用により，
 Balanced-Force 条件を $\Ord{h^6}$ 精度で維持し，
-数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
-さらに Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発し，
-高密度比（$\rho_l/\rho_g > 5$）対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，
-  第~\ref{sec:interface_crossing}節で動機・定式化・実証を詳述）における
-界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した．
+数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する
+（詳細は §~\ref{sec:ppe_discretization_choice}）．
+さらに Hermite 場延長法（HFE）を開発し，
+高密度比（$\rho_l/\rho_g > 5$）対応の分相 PPE 解法における
+界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した
+（詳細は §~\ref{sec:split_ppe_motivation}）．
 
 本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
 \begin{description}
@@ -388,36 +387,11 @@ PROST 法~\cite{Renardy2002}%
 一般的な CFD テキストが単相流で終わる部分から先—界面追跡・表面張力の離散化・
 変密度圧力求解—を，理論と実装の両面から体系的に解説することを目的とする．
 
-§~\ref{sec:challenges} で述べた4つの困難を克服するため，
-本稿では以下の手法を組み合わせる：
-
-\begin{itemize}
-  \item \textbf{界面追跡：} \textbf{Conservative Level Set (CLS) 法}~\cite{OlssonKreiss2005}
-        により，質量保存性に優れた界面追跡を行う．
-        標準的な Level Set 法の弱点である体積損失を抑制する．
-
-  \item \textbf{移流スキーム：} CLS 移流には \textbf{Dissipative CCD}（散逸的 CCD，§~\ref{sec:advection_motivation}）を採用し，
-        CCD 中心差分のフォン・ノイマン不安定を抑制しながら界面の急峻な変化を安定に移流する．
-
-  \item \textbf{高精度空間微分：} 結合コンパクト差分法（CCD 法，Chu \& Fan~\cite{ChuFan1998}，第~\ref{sec:CCD}章）を用い，
-        曲率計算・圧力 Poisson 方程式の離散化・界面適合格子のメトリック係数評価に必要な
-        1・2 階微分を $\Ord{h^6}$ 精度で一括評価する（同一 3 点ステンシルで $O(N)$ コスト）．
-
-  \item \textbf{界面適合格子：} Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
-        界面近傍のみを自動的に高解像度化する非一様格子を生成する．
-
-  \item \textbf{格子構造：} コロケート格子を採用し，Dissipative CCD の内在的散逸
-        （$\varepsilon_d = 1/4$，§~\ref{sec:dccd_decoupling}）でチェッカーボード不安定を抑制する．
-
-  \item \textbf{時間積分：} CLS 移流・再初期化には 3次 TVD Runge--Kutta を，
-        NS Predictor の対流項には AB2 外挿を（$\Ord{\Delta t^2}$），
-        粘性項には Crank--Nicolson 半陰的処理を（$\Ord{\Delta t^2}$）用いる．
-        NS 全体の時間精度は AB2+IPC により $\Ord{\Delta t^2}$ を達成する
-        （第~\ref{sec:advection}章参照）．
-
-  \item \textbf{圧力求解：} 変密度 IPC（van Kan 1986）に基づいて圧力増分 Poisson 方程式を導き，
-        欠陥補正法（§~\ref{sec:defect_correction_main}）により FD 直接法 + CCD 勾配で求解する．
-\end{itemize}
+§~\ref{sec:challenges} で述べた4つの困難に対する本稿の手法的対処は，
+各困難の説明と対応する「→ 本稿の対処」として同節に整理してある．
+ここでは全体像のみ示す：CLS 法による界面追跡，Dissipative CCD による移流，
+CCD $\Ord{h^6}$ 微分演算子による曲率・PPE 離散化，
+および欠陥補正法による圧力求解（FD 直接法 + CCD 勾配）の組み合わせである．
 
 NS 方程式の各項とそれを処理するソルバーの対応関係は，
 アルゴリズム全体を把握した後の第~\ref{sec:algorithm}章（図~\ref{fig:ns_solvers}）で整理する．

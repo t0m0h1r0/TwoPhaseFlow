@@ -24,7 +24,7 @@ Shu--Osher 型 TVD-RK3 法~\cite{ShuOsher1988} を用いる：
   \label{eq:tvd_rk3}
 \end{align}
 ここで $\mathcal{L}(q)$ は空間演算子であり，
-CLS 移流では式~\eqref{eq:dccd_adv_filter} の Dissipative CCD フラックス発散を用いた
+CLS 移流では式~\eqref{eq:dccd_filter}（§~\ref{sec:dissipative_ccd}）の Dissipative CCD フラックス発散を用いた
 $\mathcal{L}(\psi) = -\tilde{F}$（アルゴリズム~\ref{alg:dccd_adv}，負符号は PDE $\partial\psi/\partial t = -\bnabla\cdot(\psi\mathbf{u})$ に由来；空間演算子 $\mathcal{L}$ の具体的な構成は §~\ref{sec:advection} で詳述する）を指す．
 \textbf{NS 方程式の時間積分には TVD-RK3 は使用しない}（注意~\ref{warn:tvd_rk3_scope}参照）．
 
