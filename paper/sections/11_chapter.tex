@@ -30,9 +30,12 @@
         CLS 移流・保存型再マッピング・HFE 場延長・Young--Laplace 圧力跳び
         ——§~\ref{sec:verify_spatial} で確認した演算子を用いて構成される
         界面処理パイプライン（アルゴリズム Step 1--4）を検証する．
-  \item \textbf{§~\ref{sec:verify_solver}（圧力ソルバと時間積分）：}
-        欠陥補正法・Neumann BC・変密度 PPE・TVD-RK3・AB2
-        ——PPE 求解（Step 6）と時間発展（Step 1, 5）のスキームを検証する．
+  \item \textbf{§~\ref{sec:verify_solver}（圧力ソルバ）：}
+        欠陥補正法・Neumann BC・変密度 PPE
+        ——PPE 求解（Step 6）のスキームを検証する．
+  \item \textbf{§~\ref{sec:verify_time}（時間積分）：}
+        TVD-RK3・AB2
+        ——時間発展（Step 1, 5）のスキーム精度を確認する．
 \end{enumerate}
 §~\ref{sec:verify_summary} に全コンポーネントの検証結果を総括する．
 
@@ -59,12 +62,13 @@
 \midrule
 基盤 & CCD 微分演算子 & 周期 / 壁境界 / 非一様格子 & §\ref{sec:verify_ccd_convergence}, \ref{sec:gcl_verification} \\
 基盤 & Rhie--Chow 補正 & C/RC ブラケット収束次数 & §\ref{sec:verify_rc_bracket} \\
-基盤 & TVD-RK3 / AB2 & ODE 時間精度 & §\ref{sec:verify_tvd_rk3}, \ref{sec:verify_ab2} \\
+基盤 & TVD-RK3 / AB2 & ODE 時間精度 & §\ref{sec:verify_time} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \input{sections/11_spatial}               %% §11.1 空間離散化基盤の検証
 \input{sections/11_interface}             %% §11.2 界面処理パイプラインの検証
-\input{sections/11_solver}                %% §11.3 圧力ソルバと時間積分の検証
-\input{sections/11_summary}               %% §11.4 検証結果の総括
+\input{sections/11_solver}                %% §11.3 圧力ソルバの検証
+\input{sections/11_time}                  %% §11.4 時間積分スキームの検証
+\input{sections/11_summary}               %% §11.5 検証結果の総括

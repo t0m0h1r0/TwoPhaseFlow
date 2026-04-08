@@ -1,6 +1,6 @@
 % paper/sections/11_solver.tex
 %
-% §11.3  圧力ソルバと時間積分の検証
+% §11.3  圧力ソルバの検証
 %   Exp 9+10: DC 反復回数 vs 精度 / DC vs FD
 %   Exp 13:   DC ω 緩和とスペクトル収束
 %   Exp 11:   PPE Neumann BC
@@ -9,7 +9,7 @@
 %   Exp 15:   AB2
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\subsection{圧力ソルバと時間積分の検証}
+\subsection{圧力ソルバの検証}
 \label{sec:verify_solver}
 
 前節の界面処理パイプライン（§~\ref{sec:verify_interface}）により，
@@ -18,9 +18,6 @@
 （§\ref{sec:verify_ppe}，§\ref{sec:verify_dc_spectral}），
 Neumann 境界条件での精度（§\ref{sec:verify_ppe_neumann}），
 変密度条件での収束性と限界（§\ref{sec:verify_ppe_varrho}）を順に検証する．
-最後に，アルゴリズム Step~1 の CLS 移流で用いる TVD-RK3
-（§\ref{sec:verify_tvd_rk3}）と
-Step~5 の Predictor で用いる AB2（§\ref{sec:verify_ab2}）の時間積分精度を確認する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -349,92 +346,6 @@ $[p] = \sigma\kappa$ の圧力跳びを HFE で界面条件として課す方式
 この方式であれば界面横断ステンシルが排除され，
 各相内で §~\ref{sec:verify_ppe} の等密度精度が回復する．
 
-PPE ソルバの空間精度と限界を確認した．
-残る検証項目は，アルゴリズム Step~1（CLS 移流）と Step~5（Predictor）で用いる
-2 つの時間積分スキームである．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{TVD-RK3 時間積分精度}
-\label{sec:verify_tvd_rk3}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:time_int} で導入した TVD-RK3（3 段 Shu--Osher 型 Runge--Kutta）の
-時間精度を，スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$ の初期値問題で確認する．
-$t=1$ における厳密解 $q(1) = e^{-1}$ と数値解の差を
-$n = 16, 32, 64, 128, 256, 512$ ステップの系列で計測した．
-
-\begin{table}[htbp]
-\centering
-\caption{TVD-RK3 の時間精度（$\mathrm{d}q/\mathrm{d}t=-q$，$q(0)=1$）}
-\label{tab:tvd_rk3}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rc cc}
-\toprule
-$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
-\midrule
- 16 & $6.25 \times 10^{-2}$ & $3.55 \times 10^{-5}$  & ---    \\
- 32 & $3.13 \times 10^{-2}$ & $4.39 \times 10^{-6}$  & $3.02$ \\
- 64 & $1.56 \times 10^{-2}$ & $5.46 \times 10^{-7}$  & $3.01$ \\
-128 & $7.81 \times 10^{-3}$ & $6.81 \times 10^{-8}$  & $3.00$ \\
-256 & $3.91 \times 10^{-3}$ & $8.51 \times 10^{-9}$  & $3.00$ \\
-512 & $1.95 \times 10^{-3}$ & $1.06 \times 10^{-9}$  & $3.00$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_tvd_rk3}
-\caption{TVD-RK3 の時間収束．設計通り $\Ord{\Delta t^3}$ の 3 次精度を達成する．}
-\label{fig:tvd_rk3}
-\end{figure}
-
-収束次数はすべての格子幅で $3.00$--$3.02$ を示し，設計通りの $\Ord{\Delta t^3}$ が確認された．
-
-TVD-RK3 は CLS 移流に用いられる．
-NS 方程式の対流項には AB2（Adams--Bashforth 2 段）を採用しており，
-その精度を同一 ODE テストで確認する．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{AB2 時間積分精度}
-\label{sec:verify_ab2}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:ab2_ipc} で導入した AB2（Adams--Bashforth 2 段）は
-多段法であるため初期ステップが必要であり，本テストでは前進 Euler で起動する．
-同一の ODE $\mathrm{d}q/\mathrm{d}t = -q$ に対し，$t=1$ の誤差を計測した．
-
-\begin{table}[htbp]
-\centering
-\caption{AB2 の時間精度（$\mathrm{d}q/\mathrm{d}t=-q$，$q(0)=1$，初期ステップ: 前進 Euler）}
-\label{tab:ab2_time}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rc cc}
-\toprule
-$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
-\midrule
- 16 & $6.25 \times 10^{-2}$ & $1.42 \times 10^{-4}$ & ---    \\
- 32 & $3.13 \times 10^{-2}$ & $3.27 \times 10^{-5}$ & $2.12$ \\
- 64 & $1.56 \times 10^{-2}$ & $7.84 \times 10^{-6}$ & $2.06$ \\
-128 & $7.81 \times 10^{-3}$ & $1.92 \times 10^{-6}$ & $2.03$ \\
-256 & $3.91 \times 10^{-3}$ & $4.73 \times 10^{-7}$ & $2.02$ \\
-512 & $1.95 \times 10^{-3}$ & $1.18 \times 10^{-7}$ & $2.01$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_ab2_time}
-\caption{AB2 の時間収束．寄生根 $|\rho_2| = 0.5$ により Euler 起動の
-  $\Ord{\Delta t}$ 誤差は数ステップで減衰し，全体として $\Ord{\Delta t^2}$ を達成する．}
-\label{fig:ab2_time}
-\end{figure}
-
-収束次数は $\Ord{\Delta t^2}$ に漸近し，設計通りの 2 次精度が確認された．
-AB2 の特性方程式が持つ寄生根 $|\rho_2| = 0.5$ は安定領域内にあり，
-前進 Euler による $\Ord{\Delta t}$ の起動誤差は数ステップで減衰する．
-
-以上で全 17 コンポーネントの単体検証が完了した．次節に結果を総括する．
+以上で PPE ソルバの空間精度と限界を確認した．
+次節では，アルゴリズム Step~1（CLS 移流）と Step~5（Predictor）で用いる
+2 つの時間積分スキームの精度を検証する．
