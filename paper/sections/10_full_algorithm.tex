@@ -226,6 +226,14 @@ CCD 発散から構成される（式~\eqref{eq:dccd_ppe_rhs}）．
 境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
 反復アルゴリズム（Steps 6.0--6.5）の詳細は付録~\ref{app:dc_ppe_detail} 参照．
 
+\noindent\textbf{高密度比への拡張：}
+上記の変密度 PPE（smoothed Heaviside 一括解法）は $\rho_l/\rho_g \leq 5$ で有効であるが，
+$\rho_l/\rho_g \geq 10$ では DC が発散する（§~\ref{sec:interface_crossing}）．
+高密度比では Step~6 を\textbf{分相 PPE 解法}——各相で定数密度 PPE を独立に解き，
+界面ジャンプ条件を HFE（§~\ref{sec:field_extension}）で課す方式——に置換する．
+§~\ref{sec:split_ppe_recovery} にて，分相 PPE が全密度比（$\rho_l/\rho_g = 1$--$1000$）で
+密度比非依存な $\Ord{h^2}$ 収束を達成することを実証した．
+
 % ── Step 7 ──────────────────────────────────────────────────────────────
 \paragraph{Step 7：速度・圧力補正（Corrector，IPC）}
 圧力増分 $\delta p$ を用いて速度と圧力を同時に更新する：

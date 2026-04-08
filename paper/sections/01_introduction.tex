@@ -202,7 +202,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         追加の困難をもたらす．
 
         \textbf{→ 本稿の対処：} CCD product-rule 展開による $\Ord{h^6}$ 変密度 PPE 離散化
-        および仮想時間陰解法（第~\ref{sec:pressure}章），
+        および欠陥補正法（第~\ref{sec:pressure}章），
         DCCD 散逸（$\varepsilon_d = 1/4$，チェッカーボード抑制用；移流用は別値）によるチェッカーボードモードの内在的除去
         （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}，各値の詳細は §~\ref{sec:algorithm}）．
 
@@ -416,7 +416,7 @@ PROST 法~\cite{Renardy2002}%
         （第~\ref{sec:advection}章参照）．
 
   \item \textbf{圧力求解：} 変密度 IPC（van Kan 1986）に基づいて圧力増分 Poisson 方程式を導き，
-        CCD 法で高精度差分化した後，仮想時間陰解法（§~\ref{sec:ppe_pseudotime}）で反復求解する．
+        欠陥補正法（§~\ref{sec:defect_correction_main}）により FD 直接法 + CCD 勾配で求解する．
 \end{itemize}
 
 NS 方程式の各項とそれを処理するソルバーの対応関係は，
@@ -575,7 +575,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 \node[boxr, right=18mm of s3] (s5)
   {5.\ \ 運動量予測\\[1pt]\footnotesize（Predictor）};
 \node[boxr, below=of s5] (s6)
-  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（仮想時間陰解法）};
+  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（欠陥補正法）};
 \node[boxr, below=of s6] (s7)
   {7.\ \ 速度補正\\[1pt]\footnotesize（Corrector）};
 

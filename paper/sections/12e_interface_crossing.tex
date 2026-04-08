@@ -270,24 +270,6 @@ CCD 高次演算子 $L_H$ と低次前処理 $L_L$ の
   \item FD 直接法（\texttt{spsolve}）+ CCD 勾配の併用が最適：
         PPE 残差ゼロ＋$\Ord{h^6}$ Balanced-Force
   \item 投影不整合 $\Ord{h^2}$ は反復なし（1 回適用）のため有界であり，
-        全体精度の律速因子（CSF 誤差 $\Ord{h^2}$）と同次
-\end{enumerate}
-\end{tcolorbox}
-
-%% 以下の詳細解析は付録~\ref{sec:ppe_discretization_choice} に移動：
-%% - 反復行列のスペクトル解析
-%% - 代替反復法7種の比較表
-%% - FD+CCD投影不整合の解析
-%% - Balanced-Force条件の維持
-%% - 定量的3方式比較
-
-\begin{tcolorbox}[resultbox, title={PPE 離散化の選択（要約）}]
-\begin{enumerate}[noitemsep]
-  \item CCD PPE の欠陥補正は $L_L^{-1} L_H$ の不定性により
-        定常反復法では収束不能（密度比非依存の本質的制約）
-  \item FD 直接法（\texttt{spsolve}）+ CCD 勾配の併用が最適：
-        PPE 残差ゼロ＋$\Ord{h^6}$ Balanced-Force
-  \item 投影不整合 $\Ord{h^2}$ は反復なし（1 回適用）のため有界であり，
         全体精度の律速因子（CSF 誤差 $\Ord{h^2}$）と同次のため実用上問題なく，
         時間発展で蓄積しない
 \end{enumerate}
