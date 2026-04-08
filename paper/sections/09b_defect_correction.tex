@@ -9,10 +9,13 @@
 \label{sec:defect_correction_main}
 
 \noindent\textbf{本節の位置づけ：}
-本節で示す欠陥補正法（DC）は変密度 PPE 求解の基本フレームワークである．
-反復回数 $k$ に応じて精度が向上し，$k \geq 3$ で $\Ord{h^6}$ に漸近する
-（§~\ref{sec:dc_accuracy}）．$k$ の選択および FD 直接法 + CCD 勾配の設計根拠は
-§~\ref{sec:pressure_accuracy_summary} にまとめる．
+本節で示す欠陥補正法（DC）は，
+分相 PPE 解法（§~\ref{sec:split_ppe_framework}）の各相内で
+等密度ポアソン方程式を高精度に求解するための基本フレームワークである．
+分相 PPE により各相の PPE は定数密度のラプラシアンとなるため，
+DC の CCD 高次演算子 $L_H$ と FD 低次演算子 $L_L$ のスペクトル不整合が最小化され，
+$k \geq 3$ で $\Ord{h^6}$ に漸近する（§~\ref{sec:dc_accuracy}）．
+$k$ の選択および設計根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
 
 本節では，§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）を
 「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する

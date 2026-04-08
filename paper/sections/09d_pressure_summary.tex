@@ -10,7 +10,9 @@
 
 変密度 PPE の導出（§~\ref{sec:projection_derivation}）は第~\ref{sec:collocate}章で行った．
 本章では，CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
-欠陥補正法による効率的求解（§~\ref{sec:defect_correction_main}），
+分相 PPE 解法（§~\ref{sec:split_ppe_framework}），
+HFE による界面越し場延長（§~\ref{sec:field_extension}），
+各相内の欠陥補正法による求解（§~\ref{sec:defect_correction_main}），
 境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を論じた．
 以下に，各コンポーネントの精度を整理する．
 
@@ -26,11 +28,11 @@
 \midrule
 CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & 欠陥補正法 PPE（k=1）+ CCD 勾配（Balanced-Force） & $\Ord{h^2}$/$\Ord{h^6}$‡ & — \\
+PPE（離散化＋求解） & 分相 PPE + DC $k{=}3$ + CCD 勾配（Balanced-Force） & $\Ord{h^5}$/$\Ord{h^6}$‡ & — \\
 NS 粘性項 & CCD + Crank--Nicolson（陽的交差項 $\Ord{h^6}$；ADI 陰的対角項 $\Ord{h^2}$）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-HFE（分相 PPE 基盤，付録~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & $\Ord{h^6}$ & — \\
+HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & $\Ord{h^6}$ & — \\
 \midrule
 \textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
 \textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
@@ -40,7 +42,7 @@ HFE（分相 PPE 基盤，付録~\ref{sec:field_extension}） & 最近接点 Her
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
-\noindent‡\ DC k=1 では実効 $\Ord{h^2}$（§~\ref{sec:ppe_discretization_choice}）；k$\geq$3 で $\Ord{h^6}$（§~\ref{sec:dc_accuracy}）；速度補正の勾配は CCD $\Ord{h^6}$．\\
+\noindent‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を全密度比で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．\\
 \noindent§\ 単位ステップ質量誤差の大域積分推定（§~\ref{sec:dccd_conservation}）；
 局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（§~\ref{sec:algorithm}）．
@@ -52,7 +54,8 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
         全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
-        HFE（付録~\ref{sec:field_extension}）は分相 PPE 解法の基盤であり，現行一括解法では不使用．
+        分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を全密度比で達成し，
+        HFE（§~\ref{sec:field_extension}）が界面ジャンプ条件を $\Ord{h^6}$ で課す．
 
   \item \textbf{時間精度：}
         AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．
@@ -60,16 +63,18 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \end{enumerate}
 \end{tcolorbox}
 
-\begin{tcolorbox}[mybox, title={設計選択の根拠：欠陥補正法（DC）PPE と CCD 勾配の整合設計}]
+\begin{tcolorbox}[mybox, title={設計選択の根拠：分相 PPE + DC + CCD 勾配の統合設計}]
 \label{box:ppe_design_rationale}
-本稿の PPE 求解戦略（DC 欠陥補正法 + CCD 勾配）は，以下の3つの原則から帰結する．
+本稿の PPE 求解戦略は\textbf{分相 PPE 解法}を主軸とし，以下の3つの原則から帰結する．
 
 \begin{enumerate}
-  \item \textbf{精度律速の所在：CSF モデル誤差 $\Ord{h^2}$}．
-        全体の空間精度は CSF 正則化 $\delta_\varepsilon$（$\varepsilon=\Ord{h}$）による
-        モデル誤差 $\Ord{\varepsilon^2}=\Ord{h^2}$ で律速される（表~\ref{tab:accuracy_summary}†）．
-        DC k=1（実効 $\Ord{h^2}$）は精度バランスの観点から\textbf{十分}であり，
-        k$\geq$3 での $\Ord{h^6}$ 達成は将来の高精度実装として確保される（§~\ref{sec:dc_accuracy}）．
+  \item \textbf{分相 PPE による密度比非依存化}．
+        各相で定数密度の PPE を独立に解き，界面ジャンプ条件 $[p] = \sigma\kappa$ を
+        HFE（§~\ref{sec:field_extension}）で課す（§~\ref{sec:split_ppe_framework}）．
+        界面を横切るステンシルが完全に排除されるため，
+        DC $k{=}3$ は各相内で $\Ord{h^7}$（Dirichlet）/ $\Ord{h^5}$（Neumann BC 律速）を
+        \textbf{全密度比}（$\rho_l/\rho_g = 1$--$1000$）で達成する
+        （§~\ref{sec:verify_split_ppe_dc}）．
 
   \item \textbf{Balanced-Force 整合性：同一演算子の強制}．
         Balanced-Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
@@ -77,21 +82,17 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
         （§~\ref{sec:rc_balanced_force}）．
         速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に CCD $\Ord{h^6}$ を使い，
         表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
-        この整合性を $\Ord{h^6}$ 精度で保証する．DC 自体の反復回数とは独立した要件である．
+        この整合性を $\Ord{h^6}$ 精度で保証する．
 
   \item \textbf{直接法による残差ゼロ保証}．
         DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を LU 分解（直接法）で厳密に解くことで，
-        DC 反復の各ステップで $L_L$ の離散残差は機械精度まで消去される．反復法では許容残差 $\epsilon_{\mathrm{tol}}$ が
-        圧力場の系統誤差として残り，Projection ステップの速度場に累積する．
+        DC 反復の各ステップで $L_L$ の離散残差は機械精度まで消去される．
         直接法はこの系統誤差を原理的に排除する（§~\ref{sec:defect_correction_main}参照）．
 \end{enumerate}
 
-\noindent\textbf{高密度比対応：分相 PPE + HFE．}
-Smoothed Heaviside 一括法は $\rho_l/\rho_g \leq 5$ で有効であるが，
-それを超える高密度比（水--空気系 $\rho_l/\rho_g \approx 830$ 等）では
-界面型密度場により DC が発散する（§~\ref{sec:interface_crossing}）．
-この限界に対し，各相で定数密度 PPE を独立に解き界面ジャンプ条件を
-HFE（§~\ref{sec:field_extension}）で課す分相 PPE 解法を採用する．
-§~\ref{sec:split_ppe_recovery} において，分相 PPE が全密度比
-（$\rho_l/\rho_g = 1$--$1000$）で $\Ord{h^2}$ の密度比非依存な収束を達成することを実証した．
+\noindent\textbf{全体精度の律速：}
+CSF 正則化 $\delta_\varepsilon$（$\varepsilon=\Ord{h}$）によるモデル誤差
+$\Ord{\varepsilon^2}=\Ord{h^2}$ が全体の空間精度を律速する（表~\ref{tab:accuracy_summary}†）．
+分相 PPE + DC $k{=}3$ の $\Ord{h^5}$ は CSF 誤差を十分に上回り，
+PPE ソルバが精度ボトルネックとならないことを保証する．
 \end{tcolorbox}

@@ -1,0 +1,88 @@
+% paper/sections/09b2_split_ppe.tex
+%
+% §9.3  分相 PPE 解法：密度比非依存な高精度 PPE 戦略
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{分相 PPE 解法：密度比非依存な高精度 PPE 戦略}
+\label{sec:split_ppe_framework}
+% backward-compat labels (previously in 12e_interface_crossing.tex)
+\label{sec:split_ppe_motivation}%
+\label{sec:gfm_numerical_motivation}%
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{本節の位置づけ：}
+§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散化は
+等密度ポアソン方程式に対して $\Ord{h^6}$ の設計精度を達成する．
+しかし二相流の PPE は変密度演算子 $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ であり，
+界面を横切るステンシルが $\Ord{1}$ の打ち切り誤差を生じる．
+本節では，この本質的制約を回避する\textbf{分相 PPE 解法}を本稿の主要 PPE 戦略として定式化する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{変密度一括解法の本質的制約}
+\label{sec:monolithic_ppe_limitation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Smoothed Heaviside による一括解法では，遷移層（幅 $\varepsilon = 1.5h$）内で
+$1/\rho$ が $\rho_l/\rho_g$ 倍のジャンプを持つ．
+界面を横切る CCD/FD ステンシルは $\Ord{1}$ の打ち切り誤差を生じ，
+PPE のグリーン関数の非局所性により解全体に伝播する
+（§~\ref{sec:ppe_condition_number}）．
+この誤差は反復回数 $k$ の増大や緩和係数 $\omega$ では回復不能であり，
+smoothed Heaviside 一括解法の\textbf{本質的制約}である：
+%
+\begin{itemize}[noitemsep]
+  \item $\rho_l/\rho_g = 2$--$5$：格子収束次数が $\Ord{h^{0.1}}$--$\Ord{h^{2}}$ に劣化
+  \item $\rho_l/\rho_g \geq 10$：DC が発散（反復行列のスペクトル半径 $> 1$）
+  \item 水--空気系（$\rho_l/\rho_g \approx 830$）：使用不可
+\end{itemize}
+%
+§~\ref{sec:interface_crossing} に定量的な破綻データを示す．
+重要な点として，$\rho_l/\rho_g = 2$--$5$ でも界面近傍の精度は
+CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
+低密度比だから一括解法で十分ということはない．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{分相 PPE 解法の定式化}
+\label{sec:split_ppe_formulation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+分相 PPE 解法の核心は「各相で定数密度のラプラシアンを解く」ことにある．
+Smoothed Heaviside 一括解法が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
+変動係数 $\rho(\psi)$ のまま全領域で解くのに対し，
+分相 PPE 解法は各相 $k$ で
+%
+\begin{equation}
+  \nabla^2 p_k = \rho_k \, q \qquad \text{（$\rho_k$ は定数）}
+  \label{eq:split_ppe}
+\end{equation}
+%
+を独立に解き，界面のジャンプ条件 $[p] = \sigma\kappa$ は
+HFE（§~\ref{sec:field_extension}）で課す．
+$\rho_k$ が定数であるため，各相の離散化演算子は密度ジャンプの影響を一切受けない．
+
+\noindent\textbf{欠陥補正法との関係：}
+式~\eqref{eq:split_ppe} は等密度ポアソン方程式であるから，
+§~\ref{sec:defect_correction_main} の欠陥補正法（DC $k = 3$）を各相内で適用できる．
+等密度条件の下では DC の CCD 高次演算子 $L_H$ と FD 低次演算子 $L_L$ の
+スペクトル不整合が最小化されるため，
+§~\ref{sec:dc_accuracy} の理論が示す $\Ord{h^7}$（Dirichlet 超収束）
+ないし $\Ord{h^5}$（Neumann BC 律速）が\textbf{密度比によらず}回復する．
+
+\begin{tcolorbox}[resultbox, title={分相 PPE + DC $k{=}3$ の精度保証}]
+\begin{enumerate}[noitemsep]
+  \item 各相で定数密度の PPE を独立に解くため，
+        界面を横切るステンシルが\textbf{完全に排除}される
+  \item DC $k{=}3$ は各相内で $\Ord{h^7}$（Dirichlet）/
+        $\Ord{h^5}$（Neumann BC 律速）を達成する
+  \item 上記精度は\textbf{全密度比}（$\rho_l/\rho_g = 1$--$1000$）で不変である
+        （§~\ref{sec:verify_split_ppe_dc} で実証）
+  \item 速度補正の勾配 $\bnabla(\delta p)$ には CCD $\Ord{h^6}$ を適用し，
+        Balanced-Force 整合性を保持する
+\end{enumerate}
+\end{tcolorbox}
+
+\noindent\textbf{HFE の役割：}
+分相 PPE 解法において HFE（§~\ref{sec:field_extension}）は不可欠な基盤技術である．
+IPC の $\bnabla p^n$（Predictor ステップ）および
+$\bnabla(\delta p)$（Corrector ステップ）が界面を横切る前に，
+圧力場を HFE の $\Ord{h^6}$ Hermite 補間で滑らかに延長することで，
+CCD ステンシルが不連続値に触れることを防止する．

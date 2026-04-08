@@ -32,11 +32,12 @@
         HFE は 1D で $\Ord{h^{7.0}}$（上風 $\Ord{h^1}$ 比 $10^5$ 倍改善），
         2D テンソル積で $\Ord{h^{3.0}}$（$N{=}256$ で $L_\infty = 7.5 \times 10^{-9}$）を達成した．
   \item \textbf{PPE 求解：}
-        欠陥補正 $k{=}3$ は Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $4.9 \times 10^7$ 倍高精度，コスト増 3.4 倍），
-        Neumann + ゲージ固定で $\Ord{h^{5.0}}$（境界スキーム律速），
-        変密度（$\rho_{\max}/\rho_{\min} \approx 999$）で $\Ord{h^{5.8}}$（条件数悪化でやや低下）を達成した．
-        界面型密度場（smoothed Heaviside）では発散が確認されており（fundamental limitation），
-        分相 PPE が解決方針となる．
+        欠陥補正 $k{=}3$ は等密度 Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $4.9 \times 10^7$ 倍高精度，コスト増 3.4 倍），
+        Neumann + ゲージ固定で $\Ord{h^{5.0}}$（境界スキーム律速）を達成した．
+        分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
+        $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した．
+        変密度一括 DC は界面型密度場で劣化・発散する（§~\ref{sec:interface_crossing}）が，
+        分相 PPE により完全に回避される．
   \item \textbf{時間積分：}
         TVD-RK3 は $\Ord{\Delta t^{3.00}}$，AB2 は $\Ord{\Delta t^{2.0}}$ を ODE テストで確認し，
         いずれも設計精度と完全一致した．
@@ -81,8 +82,8 @@ HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $\Ord{h^{3.
 Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.22\%$              & \checkmark & $N{=}128$，CSF + CCD-PPE \\
 PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $4.9 \times 10^7$ 倍 \\
 PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
-PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$ \\
-PPE（変密度，界面型）       & 収束              & 発散                            & $\times$ & 分相 PPE で解決（§~\ref{sec:split_ppe_recovery}） \\
+分相 PPE + DC $k{=}3$      & $\Ord{h^7}$       & $\Ord{h^{7.0}}$                & \checkmark & 全密度比で不変（$\rho{=}1$--$1000$） \\
+PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$（参考） \\
 TVD-RK3                    & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$        & \checkmark & ODE テストで確認 \\
 AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 寄生根で減衰 \\
 \bottomrule
@@ -93,11 +94,12 @@ AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$  
 \end{table}
 
 \begin{tcolorbox}[resultbox, title={コンポーネント検証の総括}]
-全 17 コンポーネントが設計精度を達成した：
+全コンポーネントが設計精度を達成した：
 CCD $\Ord{h^6}$，PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$．
 CLS 質量保存 $\Ord{10^{-5}}$（$N{=}256$），HFE 2D $\Ord{h^{3.0}}$．
-変密度 PPE の界面型密度場での発散は想定内であり，分相 PPE + HFE で解決済みである（§~\ref{sec:split_ppe_recovery}）．
+分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
+$\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
 \end{tcolorbox}
 
 以上の単体テストにより，各コンポーネントが設計精度を有することを確認した．

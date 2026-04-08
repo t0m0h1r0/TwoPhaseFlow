@@ -56,9 +56,10 @@
 
 %% §9: 圧力Poisson方程式の解法
 \input{sections/09_ccd_poisson}        %% §9.1–§9.2（sectionヘッダーを内包）
-\input{sections/09b_defect_correction} %% §9.2 欠陥補正法
-\input{sections/appD4_gfm}            %% §9.3 Hermite 場延長法（HFE）← 付録D.4から本編に昇格
-\input{sections/09c_ppe_bc}            %% §9.4 境界条件と数値安定性
+\input{sections/09b2_split_ppe}        %% §9.3 分相PPE解法（主要PPE戦略）
+\input{sections/appD4_gfm}            %% §9.4 Hermite 場延長法（HFE）← 付録D.4から本編に昇格
+\input{sections/09b_defect_correction} %% §9.5 欠陥補正法（各相内ソルバ）
+\input{sections/09c_ppe_bc}            %% §9.6 境界条件と数値安定性
 \input{sections/09d_pressure_summary}  %% §9のまとめ
 %% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）

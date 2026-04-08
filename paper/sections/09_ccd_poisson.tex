@@ -9,14 +9,18 @@
 
 本章では，§~\ref{sec:projection_derivation} で導出した変密度 PPE を
 高精度・効率的に解く枠組みを整える．
+本稿の主要 PPE 戦略は\textbf{分相 PPE 解法}であり，
+各相で定数密度のポアソン方程式を独立に解くことで，
+界面を横切るステンシルを完全に排除し，
+全密度比（$\rho_l/\rho_g = 1$--$1000$）で密度比非依存な高精度を達成する．
 
 \noindent\textbf{本章の構成：}
 CCD による $\Ord{h^6}$ PPE 離散化（§~\ref{sec:ccd_poisson_matrix}），
-欠陥補正法による求解理論（§~\ref{sec:defect_correction_main}），
-分相 PPE 解法の基盤技術である Hermite 場延長法（§~\ref{sec:field_extension}），
+分相 PPE 解法の定式化（§~\ref{sec:split_ppe_framework}），
+その基盤技術である Hermite 場延長法（§~\ref{sec:field_extension}），
+各相内の高精度ソルバとしての欠陥補正法（§~\ref{sec:defect_correction_main}），
 境界条件と安定性（§~\ref{sec:ppe_bc_stability}）を順に示す．
-反復回数 $k$ の選択と FD 直接法 + CCD 勾配の採用根拠は
-§~\ref{sec:pressure_accuracy_summary} にまとめる．
+精度の全体像と設計根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
 
 \begin{enumerate}
   \item \textbf{§~\ref{sec:ccd_elliptic}（CCD の楕円型ソルバーとしての役割）}：
@@ -24,11 +28,14 @@ CCD による $\Ord{h^6}$ PPE 離散化（§~\ref{sec:ccd_poisson_matrix}），
   \item \textbf{§~\ref{sec:ccd_poisson_matrix}（変密度対応 CCD-PPE の構築）}：
         PPE を CCD 法で $\Ord{h^6}$ 精度に離散化し，
         DCCD によるチェッカーボード抑制と界面 Balanced-Force 整合を整える．
-  \item \textbf{§~\ref{sec:defect_correction_main}（欠陥補正法）}：
-        「高精度で評価し，低精度で解く」原理により $\Ord{h^6}$ 精度を保ったまま
-        低コストで求解する．
+  \item \textbf{§~\ref{sec:split_ppe_framework}（分相 PPE 解法）}：
+        各相で定数密度の PPE を独立に解き，HFE で界面ジャンプ条件を課す
+        ——本稿の主要 PPE 戦略．
   \item \textbf{§~\ref{sec:field_extension}（Hermite 場延長法）}：
         分相 PPE 解法の基盤技術として，CCD Hermite データによる $\Ord{h^6}$ 界面越し場延長を定式化する．
+  \item \textbf{§~\ref{sec:defect_correction_main}（欠陥補正法）}：
+        各相内の等密度ポアソンを「高精度で評価し，低精度で解く」原理により $\Ord{h^6}$ 精度を保ったまま
+        低コストで求解する．
   \item \textbf{§~\ref{sec:ppe_bc_stability}（境界条件と数値安定性）}：
         全周 Neumann 境界の零モード対策と高密度比における条件数を整理する．
 \end{enumerate}

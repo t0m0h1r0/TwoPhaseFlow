@@ -7,8 +7,8 @@
 本節では，§~\ref{sec:algo_flow} Step~6 の圧力 Poisson 方程式求解における
 欠陥補正法の反復アルゴリズム（Steps 6.0--6.5）を詳述する．
 
-\noindent\textbf{注：}現行実装では §~\ref{sec:ppe_discretization_choice} の収束解析により k=1 を使用（FD 直接解に等価）；
-k$\geq$3 では $\Ord{h^6}$ 精度に漸近する（§~\ref{sec:dc_accuracy}）．
+\noindent\textbf{注：}分相 PPE 解法（§~\ref{sec:split_ppe_framework}）の各相内で $k{=}3$ を使用し，
+$\Ord{h^7}$（Dirichlet）/ $\Ord{h^5}$（Neumann）を全密度比で達成する（§~\ref{sec:verify_split_ppe_dc}）．
 
 \textbf{入力：} 予測速度 $\bu^*$，密度場 $\rho^{n+1}$，前時刻圧力 $p^n$（IPC 増分との整合に使用），曲率場 $\kappa^{n+1}$（CSF 表面張力に使用），
 仮想時間刻み $\Delta\tau$，収束許容誤差 $\varepsilon_{\mathrm{tol}}$
