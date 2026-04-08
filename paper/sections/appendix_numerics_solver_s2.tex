@@ -88,7 +88,7 @@ $(1/\Delta\tau - \mathcal{L}_{FD,x})$ を整理した三重対角係数は：
 境界での右辺 $R_{0/N}$ はゼロに落とさず残差をそのまま与えるため，
 補正量 $\delta p$ も壁面 Neumann 条件（$\partial\,\delta p/\partial n = 0$）を自然に満足する．
 
-\noindent\textit{旧実装（$b_0=1$，$c_0=0$，$R_0=0$）との比較：}
+\noindent\textbf{旧実装（$b_0=1$，$c_0=0$，$R_0=0$）との比較：}
 旧実装は壁面増分を強制ゼロとする弱形式であり，境界の CCD Laplacian 評価
 （CCD は $\partial p/\partial n=0$ を片側コンパクトスタンシルで実装）との整合が取れない．
 現行の Neumann ゴーストセル BC は $L_H$（CCD）と $L_L$（FD）が壁面での

@@ -6,11 +6,13 @@
 \input{preamble}
 
 \begin{document}
+\hypersetup{pageanchor=false}% suppress duplicate page anchors in front matter
 \pagenumbering{roman}
 \input{sections/00_abstract}
 \tableofcontents
 \clearpage
 \pagenumbering{arabic}
+\hypersetup{pageanchor=true}
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage

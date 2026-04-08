@@ -1,6 +1,7 @@
 % paper/sections/08_collocate.tex
 \section{圧力・速度連成：Balanced-Force CCD 理論}
-\label{sec:collocate}
+\label{sec:collocate}%
+\label{sec:pressure}% backward-compat: referenced from §1,§7,§8c,§10,§14,appendices
 
 §~\ref{sec:grid_gen} で構築した界面適合非一様格子上に，
 すべての流体変数（$\bu, p, \psi$）を同一格子点に配置する
@@ -100,8 +101,8 @@ PPE は可変係数の楕円型方程式 $\bnabla\cdot(1/\rho\,\bnabla p) = (1/\
 
 コロケート格子の不安定性には\textbf{異なる 2 つの原因}が存在するため，
 それぞれ独立した機構で対処する：
-\emph{演算子不整合}（Balanced-Force 条件で解消）と
-\emph{格子スケールデカップリング}（DCCD 散逸で解消）である．
+\textbf{演算子不整合}（Balanced-Force 条件で解消）と
+\textbf{格子スケールデカップリング}（DCCD 散逸で解消）である．
 どちらか一方のみでは寄生流れまたはチェッカーボードが残存する．
 
 コロケート格子における $2\Delta x$ チェッカーボード不安定の解消には，

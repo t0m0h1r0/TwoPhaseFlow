@@ -24,6 +24,8 @@
 \usepackage[hiragino-pron]{zxjafont}
 \let\PackageWarningNoLine\zxjf@save@PkgWarnNL
 \makeatother
+% -- Japanese fonts have no italic; map to upright shape --
+\DeclareFontShape{TU}{HiraginoMinchoProNW3(0)}{m}{it}{<->ssub*HiraginoMinchoProNW3(0)/m/n}{}
 
 % -- Section always starts on new page (skip if immediately after \part) --
 \usepackage{etoolbox}
@@ -51,7 +53,7 @@
 \usepackage{geometry}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
-\usepackage{hyperref}
+\usepackage[plainpages=false,pdfpagelabels,hypertexnames=false]{hyperref}
 \usepackage{cleveref}
 \usepackage{enumitem}
 \usepackage{ragged2e}
