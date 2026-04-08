@@ -347,9 +347,11 @@ $\rho_l/\rho_g \ge 10$ で解が破綻する．
 §~\ref{sec:ppe_condition_number} の条件数解析が予測する挙動と一致する．
 
 解決策として，分相 PPE（phase-split PPE）——各相で等密度の PPE を独立に解き，
-$[p] = \sigma\kappa$ の圧力跳びを HFE で界面条件として課す方式——が考えられる．
+$[p] = \sigma\kappa$ の圧力跳びを HFE で界面条件として課す方式——を採用する．
 この方式であれば界面横断ステンシルが排除され，
 各相内で §~\ref{sec:verify_ppe} の等密度精度が回復する．
+§~\ref{sec:split_ppe_recovery} において，分相 PPE が全密度比（$\rho_l/\rho_g = 1$--$1000$）で
+$\Ord{h^2}$ の密度比非依存な格子収束を達成することを実証した．
 
 以上で PPE ソルバの空間精度と限界を確認した．
 次節では，アルゴリズム Step~1（CLS 移流）と Step~5（Predictor）で用いる

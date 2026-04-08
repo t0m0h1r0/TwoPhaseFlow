@@ -82,7 +82,7 @@ Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.22\%$        
 PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $4.9 \times 10^7$ 倍 \\
 PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
 PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$ \\
-PPE（変密度，界面型）       & 収束              & 発散                            & $\times$ & 分相 PPE で解決予定 \\
+PPE（変密度，界面型）       & 収束              & 発散                            & $\times$ & 分相 PPE で解決（§~\ref{sec:split_ppe_recovery}） \\
 TVD-RK3                    & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$        & \checkmark & ODE テストで確認 \\
 AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 寄生根で減衰 \\
 \bottomrule
@@ -97,7 +97,7 @@ AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$  
 CCD $\Ord{h^6}$，PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$．
 CLS 質量保存 $\Ord{10^{-5}}$（$N{=}256$），HFE 2D $\Ord{h^{3.0}}$．
-変密度 PPE の界面型密度場での発散は想定内であり，分相 PPE で解決予定である．
+変密度 PPE の界面型密度場での発散は想定内であり，分相 PPE + HFE で解決済みである（§~\ref{sec:split_ppe_recovery}）．
 \end{tcolorbox}
 
 以上の単体テストにより，各コンポーネントが設計精度を有することを確認した．

@@ -18,15 +18,15 @@ HFE は Aslam (2004)~\cite{Aslam2004} の Extension PDE の定常解を，
 CCD の Hermite データ $(f, f', f'')$ から仮想時間反復を経由せず直接構成し，
 $\Ord{h^6}$ 精度の界面越し場延長を実現する手法である．
 
-\noindent\textbf{現行ソルバにおける位置づけ．}
-現行の CSF + smoothed Heaviside 一括解法では，圧力場 $p$ は
-$\varepsilon$-regularized な滑らかな場であり，界面ジャンプを持たない．
-この場合 HFE は不要であり，むしろ有害である
-（§~\ref{sec:ppe_discretization_choice} で定量的に実証）．
-HFE が有効なのは，\textbf{分相 PPE 解法}（§~\ref{sec:split_ppe_motivation}）のように
-各相で独立に PPE を解き，圧力場が Young--Laplace ジャンプ $[p]_\Gamma = \sigma\kappa$ を
-陽に持つ場合である．
-本節では将来の分相 PPE 解法に向けた\textbf{基盤技術}として HFE を定式化する．
+\noindent\textbf{ソルバにおける位置づけ．}
+低密度比（$\rho_l/\rho_g \leq 5$）の smoothed Heaviside 一括解法では，
+圧力場 $p$ は $\varepsilon$-regularized な滑らかな場であり，
+HFE は不要である（むしろ有害；§~\ref{sec:ppe_discretization_choice} で実証）．
+高密度比（$\rho_l/\rho_g > 5$）では\textbf{分相 PPE 解法}
+（§~\ref{sec:split_ppe_motivation}，§~\ref{sec:split_ppe_recovery} で実証）を採用し，
+各相で独立に PPE を解く．圧力場が Young--Laplace ジャンプ $[p]_\Gamma = \sigma\kappa$ を
+陽に持つため，HFE による界面越し場延長が\textbf{必須}となる．
+本節ではこの分相 PPE 解法の\textbf{基盤技術}として HFE を定式化する．
 
 \paragraph{なぜ分相 PPE 解法に界面越し場延長が必要か.}
 分相 PPE 解法では各相で定数密度の PPE を独立に解くため，

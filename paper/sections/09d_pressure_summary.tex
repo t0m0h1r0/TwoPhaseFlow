@@ -86,10 +86,12 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
         直接法はこの系統誤差を原理的に排除する（§~\ref{sec:defect_correction_main}参照）．
 \end{enumerate}
 
-\noindent\textbf{将来展望（分相 PPE への移行）：}
-Smoothed Heaviside 一括法の適用限界（§~\ref{sec:interface_crossing}）を超える
-高密度比・高 Re 数条件では，界面ジャンプ条件を厳密に扱う分相 PPE 解法への移行が必要となる．
-その際は DC 法に加え CCD-Poisson（§~\ref{sec:ccd_poisson_matrix}）＋
-HFE（§~\ref{sec:field_extension}）による $\Ord{h^6}$ 精度の分相 PPE が候補となる
-（§~\ref{sec:split_ppe_motivation}）．
+\noindent\textbf{高密度比対応：分相 PPE + HFE．}
+Smoothed Heaviside 一括法は $\rho_l/\rho_g \leq 5$ で有効であるが，
+それを超える高密度比（水--空気系 $\rho_l/\rho_g \approx 830$ 等）では
+界面型密度場により DC が発散する（§~\ref{sec:interface_crossing}）．
+この限界に対し，各相で定数密度 PPE を独立に解き界面ジャンプ条件を
+HFE（§~\ref{sec:field_extension}）で課す分相 PPE 解法を採用する．
+§~\ref{sec:split_ppe_recovery} において，分相 PPE が全密度比
+（$\rho_l/\rho_g = 1$--$1000$）で $\Ord{h^2}$ の密度比非依存な収束を達成することを実証した．
 \end{tcolorbox}

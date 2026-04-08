@@ -74,9 +74,10 @@ Predictor ステップの離散式は：
 ここで第1項が重力，第2項が CSF 表面張力 $(\kappa/\mathrm{We})\bnabla\psi$ を表す．
 重力は式~\eqref{eq:gravity_convention} の定義 $\bm{g}^* = -g\hat{\bm{z}}$ に対応し，
 2次元鉛直問題では $\hat{\bm{z}} = \hat{\bm{y}}$ とする．
-現行の CSF + smoothed Heaviside 一括解法では圧力場が連続であるため，
-CCD 勾配 $\bnabla p$ は HFE なしで $\Ord{h^6}$ 精度を維持する
-（分相 PPE 解法への移行時には HFE（§~\ref{sec:field_extension}）による前処理が必要；§~\ref{sec:algorithm} 参照）．
+低密度比（$\rho_l/\rho_g \leq 5$）の smoothed Heaviside 一括解法では圧力場が連続であるため，
+CCD 勾配 $\bnabla p$ は HFE なしで $\Ord{h^6}$ 精度を維持する．
+高密度比（$\rho_l/\rho_g > 5$）では分相 PPE + HFE（§~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）により
+界面ジャンプを処理する．
 対流項の外挿係数 $(3/2,\,-1/2)$ が AB2 であり，
 前ステップ圧力 $-\bnabla p^n$ の陽的組み込みが IPC の本質である．
 

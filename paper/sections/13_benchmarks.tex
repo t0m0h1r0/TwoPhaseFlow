@@ -1,25 +1,23 @@
 % paper/sections/13_benchmarks.tex
 %
-% §13  二相流ベンチマーク（Validation）— 将来の展望
+% §13  二相流ベンチマーク（Validation）
 %
-% 分相 PPE 解法の実装後に実施するベンチマーク問題の設定と目標値を記す．
+% 分相 PPE + HFE の有効性を物理問題で検証するベンチマークの設定と目標値を記す．
 % 現行の CSF + smoothed Heaviside 解法の範囲内での検証は §12 に収録．
 
-\section{二相流ベンチマーク：展望}
+\section{二相流ベンチマーク：設計と目標}
 \label{sec:validation}
 \label{sec:benchmarks}
 
-第~\ref{sec:verification}章で確立した現行ソルバの能力と限界を踏まえ，
-本章では分相 PPE 解法の実装後に実施すべき二相流ベンチマークの
-設定と目標値を整理する．
+第~\ref{sec:verification}章で確立したソルバの能力と限界を踏まえ，
+本章では分相 PPE + HFE（§~\ref{sec:split_ppe_recovery}）による
+高密度比対応を物理ベンチマークで検証するための設定と目標値を整理する．
 
-現行の smoothed Heaviside + CSF 一括解法は
-静止界面（$\rho_l/\rho_g \leq 10$）で安定動作するが，
-移動界面＋表面張力（§~\ref{sec:galilean_invariance}）や
-高密度比（§~\ref{sec:interface_crossing}）では破綻する．
-以下のベンチマークは，
-分相 PPE 解法（§~\ref{sec:split_ppe_recovery}）と
-HFE（§~\ref{sec:field_extension}）の実装を前提とする．
+§~\ref{sec:interface_crossing} において，smoothed Heaviside 一括解法の破綻閾値
+（$\rho_l/\rho_g \geq 10$ で DC 発散）を定量化し，
+分相 PPE 解法が全密度比（$\rho_l/\rho_g = 1$--$1000$）で
+密度比非依存な $\Ord{h^2}$ 収束を達成することを実証した．
+以下のベンチマークは，この分相 PPE + HFE の枠組みで実施する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{静止液滴の寄生流れ格子収束}

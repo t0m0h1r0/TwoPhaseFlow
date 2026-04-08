@@ -22,8 +22,8 @@ FD 直接法による PPE 求解＋CCD $\Ord{h^6}$ 勾配の併用
 Balanced-Force 条件を $\Ord{h^6}$ 精度で維持し，
 数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
 さらに Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発し，
-将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，
-  第~\ref{sec:interface_crossing}節で動機・定式化を詳述）における
+高密度比（$\rho_l/\rho_g > 5$）対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，
+  第~\ref{sec:interface_crossing}節で動機・定式化・実証を詳述）における
 界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した．
 
 本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
@@ -366,7 +366,7 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
         $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
         スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}）．
 \end{enumerate}
-さらに，将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節）に向けた基盤技術として，
+さらに，高密度比対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節で実証）の基盤技術として，
 Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
 HFE は Extension PDE（Aslam 2004）の定常解を CCD の Hermite データ $(f,f',f'')$ から
 仮想時間前進を経由せず直接構成し，界面越し場延長精度を

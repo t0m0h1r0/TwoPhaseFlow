@@ -65,9 +65,10 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
         $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方が含まれる
         （式~\eqref{eq:NS_dimless_cls}；CSF は Predictor に保持）．
   \item \textbf{$\bnabla p^n$ および $\bnabla(\delta p)$ の評価：}
-        現行の CSF + smoothed Heaviside 一括解法では圧力場が連続的に定義されるため，
-        CCD 勾配を直接適用する．分相 PPE 解法への将来的な移行時には
-        HFE による場延長が必要となる（付録~\ref{sec:field_extension}）．
+        低密度比（$\rho_l/\rho_g \leq 5$）の smoothed Heaviside 一括解法では
+        圧力場が連続的に定義されるため，CCD 勾配を直接適用する．
+        高密度比（$\rho_l/\rho_g > 5$）の分相 PPE 解法では
+        HFE による場延長が必要である（付録~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
   \item \textbf{$\rho^{n+1}$} は CLS 移流（§~\ref{sec:algorithm}，Step 1）で事前に更新済み．
   \item \textbf{時間離散化：} 本節の導出は Backward Euler 形式で統一したが，
         対流項は実装で AB2（式~\eqref{eq:predictor_ab2_ipc}），
