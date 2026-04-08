@@ -17,6 +17,12 @@ from .plot_vector import (
     plot_vorticity,
     plot_streamlines,
 )
+from .plot_fields import (
+    field_with_contour,
+    streamlines_colored,
+    velocity_arrows,
+    symmetric_range,
+)
 from .realtime_viewer import RealtimeViewer
 
 __all__ = [
@@ -27,5 +33,9 @@ __all__ = [
     "plot_velocity",
     "plot_vorticity",
     "plot_streamlines",
+    "field_with_contour",
+    "streamlines_colored",
+    "velocity_arrows",
+    "symmetric_range",
     "RealtimeViewer",
 ]

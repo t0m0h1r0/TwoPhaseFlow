@@ -27,6 +27,7 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.levelset.curvature_filter import InterfaceLimitedFilter
+from twophase.visualization.plot_fields import field_with_contour
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "density_sweep"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "density_sweep"
@@ -131,35 +132,21 @@ def make_figure(results):
     im_u_last = None
 
     for i, r in enumerate(results):
-        rho_l = r['rho_l']
-        phi = r['phi']
-        p = r['p']
-        vm = r['vel_mag']
+        phi, p, vm = r['phi'], r['p'], r['vel_mag']
+        kw = dict(contour_field=phi, contour_level=0.0, contour_lw=1.5)
 
-        # Top row: pressure fields
-        ax = axes[0, i]
-        im_p = ax.pcolormesh(x1d, y1d, p.T, cmap='RdBu_r',
-                             vmin=-vmax_p, vmax=vmax_p, shading='auto')
-        ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k', linewidths=1.5)
-        ax.set_title(fr'$\rho_l/\rho_g={int(rho_l)}$' + '\n'
-                     fr'$\Delta p_\mathrm{{meas}}={r["dp_meas"]:.3f}$', fontsize=10)
-        ax.set_xlabel('$x$')
-        ax.set_aspect('equal')
+        im_p_last = field_with_contour(
+            axes[0, i], x1d, y1d, p, cmap='RdBu_r', vmin=-vmax_p, vmax=vmax_p,
+            contour_color='k',
+            title=fr'$\rho_l/\rho_g={int(r["rho_l"])}$' + '\n'
+                  fr'$\Delta p_\mathrm{{meas}}={r["dp_meas"]:.3f}$', **kw)
+        im_u_last = field_with_contour(
+            axes[1, i], x1d, y1d, vm, cmap='hot_r', vmin=0, vmax=vmax_u,
+            contour_color='w',
+            title=fr'$\|\mathbf{{u}}\|_\infty={vm.max():.2e}$', **kw)
         if i > 0:
-            ax.set_yticklabels([])
-        im_p_last = im_p
-
-        # Bottom row: velocity magnitude
-        ax = axes[1, i]
-        im_u = ax.pcolormesh(x1d, y1d, vm.T, cmap='hot_r',
-                             vmin=0, vmax=vmax_u, shading='auto')
-        ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='w', linewidths=1.5)
-        ax.set_title(fr'$\|\mathbf{{u}}\|_\infty={vm.max():.2e}$', fontsize=10)
-        ax.set_xlabel('$x$')
-        ax.set_aspect('equal')
-        if i > 0:
-            ax.set_yticklabels([])
-        im_u_last = im_u
+            axes[0, i].set_yticklabels([])
+            axes[1, i].set_yticklabels([])
 
     # Shared colorbars — one per row, placed right of all columns → equal panel sizes
     axes[0, 0].set_ylabel('Pressure $p(x,y)$', fontsize=11)

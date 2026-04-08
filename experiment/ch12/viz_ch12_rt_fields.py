@@ -28,6 +28,9 @@ from twophase.levelset.heaviside import heaviside
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.visualization.plot_vector import compute_vorticity_2d
+from twophase.visualization.plot_fields import (
+    field_with_contour, streamlines_colored, symmetric_range,
+)
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "rt"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "rt"
@@ -181,111 +184,62 @@ def run():
 
 def make_figure(snapshots):
     fig, axes = plt.subplots(5, 4, figsize=(16, 26))
-
     rho0 = snapshots[0]['rho']
     x1d = np.linspace(0, 1, rho0.shape[0])
     y1d = np.linspace(0, 4, rho0.shape[1])
+    lim = dict(xlim=(0, 1), ylim=(0.5, 3.5))
 
-    # Scale computation
-    all_rho = np.concatenate([s['rho'].ravel() for s in snapshots])
-    vmin_rho, vmax_rho = float(np.min(all_rho)), float(np.max(all_rho))
+    # Global scales
+    vmin_rho = float(np.min([s['rho'] for s in snapshots]))
+    vmax_rho = float(np.max([s['rho'] for s in snapshots]))
+    vmax_p = symmetric_range([s['p'] for s in snapshots[1:]])
+    vmax_vm = float(np.percentile(
+        np.concatenate([s['vel_mag'].ravel() for s in snapshots[1:]]), 99)) * 1.05
+    vmax_omega = symmetric_range([s['omega'] for s in snapshots[1:]])
 
-    all_p = np.concatenate([s['p'].ravel() for s in snapshots[1:]])
-    vmax_p = float(np.percentile(np.abs(all_p), 98)) * 1.05
-
-    all_vm = np.concatenate([s['vel_mag'].ravel() for s in snapshots[1:]])
-    vmax_vm = float(np.percentile(all_vm, 99)) * 1.05
-
-    all_omega = np.concatenate([s['omega'].ravel() for s in snapshots[1:]])
-    vmax_omega = float(np.percentile(np.abs(all_omega), 98)) * 1.05
-    if vmax_omega < 1e-10:
-        vmax_omega = 1.0
-
+    # Row definitions: (field_key, cmap, vmin, vmax, contour_color, contour_ls, label)
     for i, snap in enumerate(snapshots):
-        t_snap = snap['t']
-        rho_s = snap['rho']
         psi_s = snap['psi']
-        p_s = snap['p']
-        vm_s = snap['vel_mag']
-        omega_s = snap['omega']
-        u_s = snap['u']
-        v_s = snap['v']
+        kw = dict(contour_field=psi_s, contour_level=0.5, **lim)
 
-        # Row 0: Density
-        ax = axes[0, i]
-        im_rho = ax.pcolormesh(x1d, y1d, rho_s.T, cmap='Blues',
-                               vmin=vmin_rho, vmax=vmax_rho, shading='auto')
-        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='r', linewidths=1.5)
-        ax.set_title(f'$t={t_snap:.1f}$', fontsize=11)
-        ax.set_xlabel('$x$')
-        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
-        ax.set_aspect('equal')
-
-        # Row 1: Pressure
-        ax = axes[1, i]
-        im_p = ax.pcolormesh(x1d, y1d, p_s.T, cmap='RdBu_r',
-                             vmin=-vmax_p, vmax=vmax_p, shading='auto')
-        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='k', linewidths=1.2)
-        ax.set_xlabel('$x$')
-        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
-        ax.set_aspect('equal')
-
-        # Row 2: Velocity magnitude
-        ax = axes[2, i]
-        im_vm = ax.pcolormesh(x1d, y1d, vm_s.T, cmap='hot_r',
-                              vmin=0, vmax=vmax_vm, shading='auto')
-        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='w', linewidths=1.2)
-        ax.set_xlabel('$x$')
-        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
-        ax.set_aspect('equal')
-
-        # Row 3: Vorticity
-        ax = axes[3, i]
-        im_om = ax.pcolormesh(x1d, y1d, omega_s.T, cmap='RdBu_r',
-                              vmin=-vmax_omega, vmax=vmax_omega, shading='auto')
-        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='k',
-                   linewidths=1.2, linestyles='--')
-        ax.set_xlabel('$x$')
-        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
-        ax.set_aspect('equal')
-
-        # Row 4: Streamlines colored by speed
-        ax = axes[4, i]
-        speed_s = vm_s.T
-        if float(np.max(np.abs(u_s))) > 1e-10:
-            ax.streamplot(x1d, y1d, u_s.T, v_s.T,
-                          color=speed_s, cmap='viridis',
-                          density=1.5, linewidth=1.0, arrowsize=1.0)
-        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='r',
-                   linewidths=1.5, linestyles='-')
-        ax.set_xlabel('$x$')
-        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
-        ax.set_aspect('equal')
-        ax.set_facecolor('#f8f8f8')
+        im_rho = field_with_contour(
+            axes[0, i], x1d, y1d, snap['rho'], cmap='Blues',
+            vmin=vmin_rho, vmax=vmax_rho, contour_color='r', contour_lw=1.5,
+            title=f'$t={snap["t"]:.1f}$', **kw)
+        im_p = field_with_contour(
+            axes[1, i], x1d, y1d, snap['p'], cmap='RdBu_r',
+            vmin=-vmax_p, vmax=vmax_p, contour_color='k', **kw)
+        im_vm = field_with_contour(
+            axes[2, i], x1d, y1d, snap['vel_mag'], cmap='hot_r',
+            vmin=0, vmax=vmax_vm, contour_color='w', **kw)
+        im_om = field_with_contour(
+            axes[3, i], x1d, y1d, snap['omega'], cmap='RdBu_r',
+            vmin=-vmax_omega, vmax=vmax_omega, contour_color='k',
+            contour_ls='--', **kw)
+        streamlines_colored(
+            axes[4, i], x1d, y1d, snap['u'], snap['v'],
+            contour_field=psi_s, contour_level=0.5, contour_color='r')
+        axes[4, i].set(**lim)
+        axes[4, i].set_xlabel('$x$')
 
     # Row labels
-    axes[0, 0].set_ylabel(r'Density $\rho(x,y)$', fontsize=11)
-    axes[1, 0].set_ylabel(r'Pressure $p(x,y)$', fontsize=11)
-    axes[2, 0].set_ylabel(r'Velocity $\|\mathbf{u}(x,y)\|$', fontsize=11)
-    axes[3, 0].set_ylabel(r'Vorticity $\omega(x,y)$', fontsize=11)
-    axes[4, 0].set_ylabel(r'Streamlines', fontsize=11)
+    for r, label in enumerate([r'Density $\rho(x,y)$', r'Pressure $p(x,y)$',
+                                r'Velocity $\|\mathbf{u}(x,y)\|$',
+                                r'Vorticity $\omega(x,y)$', r'Streamlines']):
+        axes[r, 0].set_ylabel(label, fontsize=11)
 
     # Shared colorbars
-    fig.colorbar(im_rho, ax=axes[0, :].tolist(), label=r'$\rho$', shrink=0.7)
-    fig.colorbar(im_p,   ax=axes[1, :].tolist(), label='$p$',      shrink=0.7)
-    fig.colorbar(im_vm,  ax=axes[2, :].tolist(), label=r'$\|\mathbf{u}\|$', shrink=0.7)
-    fig.colorbar(im_om,  ax=axes[3, :].tolist(), label=r'$\omega$', shrink=0.7)
-    sm = plt.cm.ScalarMappable(cmap='viridis',
-                               norm=plt.Normalize(0, vmax_vm))
+    for im, row, lbl in [(im_rho, 0, r'$\rho$'), (im_p, 1, '$p$'),
+                          (im_vm, 2, r'$\|\mathbf{u}\|$'),
+                          (im_om, 3, r'$\omega$')]:
+        fig.colorbar(im, ax=axes[row, :].tolist(), label=lbl, shrink=0.7)
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(0, vmax_vm))
     sm.set_array([])
-    fig.colorbar(sm, ax=axes[4, :].tolist(),
-                 label=r'$|\mathbf{u}|$', shrink=0.7)
+    fig.colorbar(sm, ax=axes[4, :].tolist(), label=r'$|\mathbf{u}|$', shrink=0.7)
 
     plt.suptitle(
         r'RT instability: $64\times256$, $At=0.5$, $\sigma=0$'
-        '\n(red line = interface $\\psi=0.5$)',
-        fontsize=13
-    )
+        '\n(red line = interface $\\psi=0.5$)', fontsize=13)
     plt.tight_layout()
 
     fname = "ch12_rt_fields.pdf"

@@ -29,6 +29,9 @@ from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
 from twophase.levelset.curvature_filter import InterfaceLimitedFilter
 from twophase.visualization.plot_vector import compute_vorticity_2d
+from twophase.visualization.plot_fields import (
+    field_with_contour, streamlines_colored, velocity_arrows,
+)
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
@@ -114,91 +117,61 @@ def run():
 
 def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist, omega, grid, ccd):
     fig, axes = plt.subplots(2, 3, figsize=(16, 10))
-
-    x1d = X[:, 0]
-    y1d = Y[0, :]
+    x1d, y1d = X[:, 0], Y[0, :]
+    vmax_u = max(float(vel_mag.max()), 1e-10)
 
     # ── (0,0) Pressure field ──
-    ax = axes[0, 0]
-    vmax = max(abs(p.min()), abs(p.max())) * 1.05
-    im = ax.pcolormesh(x1d, y1d, p.T, cmap='RdBu_r', vmin=-vmax, vmax=vmax,
-                       shading='auto')
-    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k', linewidths=1.5)
-    fig.colorbar(im, ax=ax, label='$p$', shrink=0.9)
+    vmax_p = max(abs(p.min()), abs(p.max())) * 1.05
     dp_exact = SIGMA / (R * WE)
-    inside = phi > 3.0 / N
-    outside = phi < -3.0 / N
+    inside, outside = phi > 3.0 / N, phi < -3.0 / N
     dp_meas = float(np.mean(p[inside]) - np.mean(p[outside]))
-    ax.set_title(
-        r'Pressure $p(x,y)$' + '\n'
-        fr'$\Delta p_\mathrm{{exact}}={dp_exact:.3f}$,'
-        fr' $\Delta p_\mathrm{{meas}}={dp_meas:.3f}$',
-        fontsize=10
-    )
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
+    im = field_with_contour(
+        axes[0, 0], x1d, y1d, p, cmap='RdBu_r', vmin=-vmax_p, vmax=vmax_p,
+        contour_field=phi, contour_level=0.0, contour_color='k', contour_lw=1.5,
+        title=f'Pressure $p(x,y)$\n'
+              fr'$\Delta p_\mathrm{{exact}}={dp_exact:.3f}$,'
+              fr' $\Delta p_\mathrm{{meas}}={dp_meas:.3f}$',
+        ylabel='$y$')
+    fig.colorbar(im, ax=axes[0, 0], label='$p$', shrink=0.9)
 
-    # ── (0,1) Velocity magnitude (parasitic currents) ──
-    ax = axes[0, 1]
-    vmax_u = max(vel_mag.max(), 1e-10)
-    im2 = ax.pcolormesh(x1d, y1d, vel_mag.T, cmap='hot_r', vmin=0, vmax=vmax_u,
-                        shading='auto')
-    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='w', linewidths=1.5)
-    ax.set_title(r'Parasitic velocity $\|\mathbf{u}(x,y)\|$' + '\n'
-                 fr'$\|\mathbf{{u}}\|_\infty={vmax_u:.2e}$', fontsize=10)
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
-    fig.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$', shrink=0.9)
+    # ── (0,1) Velocity magnitude ──
+    im2 = field_with_contour(
+        axes[0, 1], x1d, y1d, vel_mag, cmap='hot_r', vmin=0, vmax=vmax_u,
+        contour_field=phi, contour_level=0.0, contour_color='w', contour_lw=1.5,
+        title=r'Parasitic velocity $\|\mathbf{u}(x,y)\|$' + '\n'
+              fr'$\|\mathbf{{u}}\|_\infty={vmax_u:.2e}$',
+        ylabel='$y$')
+    fig.colorbar(im2, ax=axes[0, 1], label=r'$\|\mathbf{u}\|$', shrink=0.9)
 
     # ── (0,2) Velocity time history ──
     ax = axes[0, 2]
-    steps = np.arange(1, len(u_max_hist) + 1)
-    ax.semilogy(steps, u_max_hist, 'b-', linewidth=1.2)
-    ax.set_xlabel('Time step')
-    ax.set_ylabel(r'$\|\mathbf{u}\|_\infty$')
-    ax.set_title('Parasitic velocity history\n(200 steps)', fontsize=10)
+    ax.semilogy(np.arange(1, len(u_max_hist) + 1), u_max_hist, 'b-', lw=1.2)
+    ax.set(xlabel='Time step', ylabel=r'$\|\mathbf{u}\|_\infty$',
+           title='Parasitic velocity history\n(200 steps)', xlim=(0, N_STEPS))
     ax.grid(True, alpha=0.3)
-    ax.set_xlim(0, N_STEPS)
 
-    # ── (1,0) Vorticity field ──
-    ax = axes[1, 0]
+    # ── (1,0) Vorticity ──
     vmax_om = max(abs(float(omega.min())), abs(float(omega.max())), 1e-10) * 1.05
-    im3 = ax.pcolormesh(x1d, y1d, omega.T, cmap='RdBu_r',
-                        vmin=-vmax_om, vmax=vmax_om, shading='auto')
-    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k',
-               linewidths=1.5, linestyles='--')
-    ax.set_title(r'Vorticity $\omega = \partial v/\partial x - \partial u/\partial y$',
-                 fontsize=10)
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
-    fig.colorbar(im3, ax=ax, label=r'$\omega$', shrink=0.9)
+    im3 = field_with_contour(
+        axes[1, 0], x1d, y1d, omega, cmap='RdBu_r', vmin=-vmax_om, vmax=vmax_om,
+        contour_field=phi, contour_level=0.0, contour_color='k',
+        contour_lw=1.5, contour_ls='--',
+        title=r'Vorticity $\omega = \partial v/\partial x - \partial u/\partial y$',
+        ylabel='$y$')
+    fig.colorbar(im3, ax=axes[1, 0], label=r'$\omega$', shrink=0.9)
 
     # ── (1,1) Streamlines ──
-    ax = axes[1, 1]
-    speed = np.sqrt(u**2 + v**2)
-    ax.streamplot(x1d, y1d, u.T, v.T,
-                  color=speed.T, cmap='viridis',
-                  density=2.0, linewidth=1.0, arrowsize=1.0)
-    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='r',
-               linewidths=1.5, linestyles='-')
-    ax.set_title('Streamlines (colored by speed)', fontsize=10)
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
-    ax.set_facecolor('#f8f8f8')
+    streamlines_colored(
+        axes[1, 1], x1d, y1d, u, v, density=2.0,
+        contour_field=phi, contour_level=0.0, contour_color='r')
+    axes[1, 1].set(xlabel='$x$', ylabel='$y$',
+                   title='Streamlines (colored by speed)')
 
-    # ── (1,2) Velocity vectors (quiver) ──
-    ax = axes[1, 2]
-    ax.pcolormesh(x1d, y1d, speed.T, cmap='YlOrRd', vmin=0,
-                  vmax=vmax_u, shading='auto', alpha=0.5)
-    s = 4  # quiver stride
-    ax.quiver(X[::s, ::s], Y[::s, ::s],
-              u[::s, ::s], v[::s, ::s],
-              color='k', alpha=0.8, scale=None)
-    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='r',
-               linewidths=1.5, linestyles='-')
-    ax.set_title('Velocity vectors', fontsize=10)
-    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
-    ax.set_aspect('equal')
+    # ── (1,2) Velocity vectors ──
+    velocity_arrows(
+        axes[1, 2], X, Y, u, v, x1d, y1d,
+        speed_vmax=vmax_u, contour_field=phi, contour_level=0.0)
+    axes[1, 2].set(xlabel='$x$', ylabel='$y$', title='Velocity vectors')
 
     plt.suptitle(r'Static droplet: $\rho_l/\rho_g=2$, $We=10$, $N=64$',
                  fontsize=12, y=1.01)
