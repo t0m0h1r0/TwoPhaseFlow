@@ -55,6 +55,22 @@ $\rho_l/\rho_g = 2$ で $\Ord{h^{1}}$--$\Ord{h^{2}}$，
 $\rho_l/\rho_g = 5$ で $\Ord{h^{0.1}}$--$\Ord{h^{0.3}}$ に劣化した．
 CCD の設計精度 $\Ord{h^6}$ は界面近傍で回復不能である．
 
+図~\ref{fig:ch12_density_fields} に静止液滴の圧力場と寄生電流を
+$\rho_l/\rho_g = 2, 3, 5, 10$ で比較する．
+$\rho_l/\rho_g \leq 10$ では Laplace 圧が正しく維持され（$\Delta p_{\mathrm{meas}} = 0.395$，
+厳密値 $0.400$），寄生流れは $\Ord{10^{-4}}$ で有界である．
+変密度一括解法の適用範囲内であれば，
+密度比の増大は安定性に大きな影響を与えない．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/ch12_density_fields}
+\caption{密度比スイープ：静止液滴の圧力場（上段）と寄生電流（下段）．
+$N = 64$，$\mathit{We} = 10$，200 ステップ．
+$\rho_l/\rho_g = 2, 3, 5, 10$ の全ケースで安定．}
+\label{fig:ch12_density_fields}
+\end{figure}
+
 \begin{tcolorbox}[resultbox, title={Smoothed Heaviside 一括解法の適用限界}]
 \begin{enumerate}[noitemsep]
   \item $\rho_l/\rho_g \leq 5$：DC 収束するが，

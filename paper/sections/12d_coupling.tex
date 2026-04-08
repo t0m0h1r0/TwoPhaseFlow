@@ -172,6 +172,26 @@ B（$\mathit{We}{=}10$）  & 128 & 発散（2 ステップ） & --- & --- & --- 
 \label{fig:galilean_invariance}
 \end{figure}
 
+\noindent\textbf{RT 不安定性（$\sigma = 0$, 動的テスト）：}
+テスト A（Galilean 不変性）は定常並進であったが，
+ここでは物理的に非自明な動的問題として Rayleigh--Taylor 不安定性を検証する．
+$\rho_l/\rho_g = 3$（Atwood 数 $At = 0.5$），$\sigma = 0$，
+$64 \times 256$ 格子での界面成長率は
+$\omega_{\mathrm{meas}} = 1.82$（非粘性理論値 $\omega_{\mathrm{RT}} = \sqrt{\pi} \approx 1.77$，
+誤差 2.8\%）であり，CLS↔PPE 結合が動的界面変形でも正しく機能する．
+図~\ref{fig:ch12_rt_fields} に密度・圧力・速度・渦度・流線の時間発展を示す．
+$t = 2.5$ でマッシュルーム型渦構造が形成され，
+渦度場は巻き込み領域に集中する．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/ch12_rt_fields}
+\caption{Rayleigh--Taylor 不安定性の 2 次元場時間発展（$64\times256$，$At=0.5$，$\sigma=0$）．
+上から：密度 $\rho$，圧力 $p$，速度大きさ $\|\bu\|$，渦度 $\omega$，流線（速度で着色）．
+各列は $t = 0, 1.0, 1.5, 2.5$．赤線は界面 $\psi = 0.5$．}
+\label{fig:ch12_rt_fields}
+\end{figure}
+
 \noindent\textbf{テスト B の結論（失敗の物理的解釈）：}
 表面張力を導入すると，IPC の Predictor に含まれる $-\bnabla p^n / \rho$
 の評価が 2 ステップ目で破綻する．
