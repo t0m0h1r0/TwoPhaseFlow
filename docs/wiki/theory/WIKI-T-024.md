@@ -69,6 +69,41 @@ Even at uniform density: smooth-mode convergence rate 0.9/iteration → ~230 ite
 | GMRES + FD-prec | O(h⁶) target | High density ratio path | **3D upgrade path** |
 | Multigrid + CCD | O(h⁶) target | Unknown | Not investigated |
 
+### Picard Density-Gradient Splitting (Rejected — exp11_14, 2026-04-08)
+
+**Idea**: Split L_H = A − B where A = (1/ρ)Δ (Laplacian-only), B = (1/ρ²)(∇ρ·∇) (coupling). Outer Picard iteration: A p^{k+1} = q + B p^{k}. Inner DC+LU solves A p = f — no ∇ρ term → eigenvalue ratio [1, 2.4] regardless of density ratio → inner DC always converges.
+
+**Result**: Inner DC converges as predicted, but **outer Picard diverges at all ρ_l/ρ_g ≥ 2**. The coupling term B is NOT a small perturbation — its spectral radius ‖A⁻¹B‖ ≈ |∇ρ|/(ρ·k_min) = O(Δρ/(ε·ρ·π)) exceeds 1 at the lowest Fourier mode when the density jump is large. Under-relaxation β < 1 helps marginally but cannot overcome O(1/h) amplification.
+
+| ρ_l/ρ_g | baseline DC (ω=0.5) | Picard-DC (best β) |
+|---------|---------------------|-------------------|
+| 1 | 38 evals ✓ | 66 evals ✓ (β=1.0) — slower |
+| 2 | stall (N=32) | stall — worse than baseline |
+| ≥5 | stall | stall (higher residual floor) |
+
+**Lesson**: Density-gradient splitting is invalid when ∇ρ·∇p is a leading-order term (sharp interface). Only methods that handle the FULL operator L_H without splitting (Krylov, direct) can succeed at high density ratios.
+
+### GMRES + FD-LU Preconditioner (exp11_15, 2026-04-08)
+
+**Idea**: Use GMRES with L_FD^{-1} (spsolve) as preconditioner. CCD operator eval_LH serves as matrix-free matvec. Eigenvalue clustering in [α_min, α_max] should give fast convergence.
+
+**Result**: GMRES hits the **same residual floor** as DC at all density ratios.
+
+| N | ρ_l/ρ_g | DC res floor | GMRES res floor | Observation |
+|---|---------|-------------|-----------------|-------------|
+| 64 | 1 | 9.8e-9 ✓ | 6.7e-9 ✓ | Both converge |
+| 64 | 2 | 8.4e-9 ✓ | 4.4e-9 ✓ | **GMRES 30% faster** (27 vs 39 evals) |
+| 64 | 5 | 2.7e-8 stall | 3.2e-8 stall | Same floor |
+| 64 | 1000 | 1.2e-4 stall | 1.8e-4 stall | Same floor |
+
+**Diagnosis**: The stagnation floor is NOT a solver convergence issue — it's a **formulation-level numerical error**. At the interface, ∇ρ = O(Δρ/ε) = O((ρ_l−ρ_g)/h) amplifies the floating-point evaluation error of CCD-based (1/ρ²)(∇ρ·∇p), creating an irreducible residual floor ∝ (ρ_l/ρ_g)·h². No iterative solver (DC, GMRES, BiCGSTAB, etc.) can break this floor because the OPERATOR EVALUATION itself is the bottleneck.
+
+**Positive finding**: At moderate density ratios (ρ_l/ρ_g = 2, N=64), GMRES converges 30% faster than DC (27 vs 39 evals) — the Krylov polynomial acceleration does help when the floor is below tolerance.
+
 ## Recommended Path for High Density Ratio
 
-DC+LU stalls at ρ_l/ρ_g ≥ 5. GMRES with FD preconditioner avoids ∇ρ mismatch issue and is the natural 3D extension. Requires sparse matrix assembly but avoids splitting error.
+The stagnation floor is a formulation problem, not a solver problem. Solutions must eliminate ∇ρ from the operator:
+
+1. **GFM (Ghost Fluid Method)**: Sharp interface → ρ piecewise constant → ∇ρ = 0 in each phase. Jump condition handles the interface. Eliminates the residual floor entirely.
+2. **Kronecker direct solve**: Assemble full CCD operator as sparse matrix, solve directly with LU. No residual evaluation → no floor. Already documented in app:ccd_kronecker. Cost: O(n^{1.5}).
+3. **Hybrid**: GFM for high density ratio + DC for moderate ratio (ρ_l/ρ_g ≤ 2).
