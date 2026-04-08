@@ -83,15 +83,19 @@ CLS 移流パイプライン（DCCD + 再初期化）．
 \label{fig:cls_advection}
 \end{figure}
 
-図~\ref{fig:cls_advection_2d} に $N = 256$ における界面形状の時間発展を示す．
-Zalesak スロット円板は 1 回転後に初期形状をよく復元し，
-単一渦テストでは $t = T/2$ の激しい引き延ばし後に $t = T$ でほぼ完全に復元している．
+図~\ref{fig:cls_advection_2d} に $N = 128$ における界面形状の時間発展を示す．
+Zalesak スロット円板は 1 回転後に初期形状をよく復元している．
+単一渦テストでは $t = T/2$ の激しい引き延ばし後に $t = T$ で
+界面の大局的な位置は回復するものの，形状の歪みと数値振動が残存しており，
+$L_\infty$ 誤差は $N = 256$ でも 0.74 と大きい（表~\ref{tab:cls_advection}）．
+この精度劣化は CLS 場の急峻な勾配が渦の引き延ばしにより
+格子解像限界を超えることに起因し，今後の改善課題である．
 破線は初期界面位置を表す．
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.95\linewidth]{figures/ch11_cls_advection_2d}
-\caption{CLS 界面移流テストの界面形状（$N = 256$，DCCD $\varepsilon_d = 0.05$）．
+\caption{CLS 界面移流テストの界面形状（$N = 128$，DCCD $\varepsilon_d = 0.05$）．
 (a) Zalesak スロット円板：$t = 0$（初期），$T/2$（半回転），$T$（1 回転）．
 (b) 単一渦テスト：$t = 0$（初期），$T/2$（最大変形），$T$（復元）．
 破線は初期界面，実線は各時刻の界面（$\psi = 0.5$）．
