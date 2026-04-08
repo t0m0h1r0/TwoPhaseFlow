@@ -1,6 +1,6 @@
-# Wiki Index — 48 entries
+# Wiki Index — 49 entries
 
-## Theory (25)
+## Theory (26)
 
 | REF-ID | Title |
 |--------|-------|
@@ -29,6 +29,7 @@
 | [WIKI-T-023](theory/WIKI-T-023.md) | Surface Tension Semi-Implicit Method: Laplace-Beltrami Linearization (Future) |
 | [WIKI-T-024](theory/WIKI-T-024.md) | CCD-PPE Solver Convergence: DC+LU Results, ADI Failure, and Alternative Candidates |
 | [WIKI-T-025](theory/WIKI-T-025.md) | C/RC (CCD-Enhanced Rhie-Chow): O(h^2) to O(h^4) Bracket Correction |
+| [WIKI-T-026](theory/WIKI-T-026.md) | HFE Applicability Scope: Harm Mechanism on Smooth Fields and Valid Use Cases |
 
 ## Cross-Domain (5)
 
