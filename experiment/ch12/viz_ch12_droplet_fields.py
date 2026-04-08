@@ -27,6 +27,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.visualization.plot_vector import compute_vorticity_2d
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet"
@@ -102,23 +103,23 @@ def run():
         u_max_hist.append(float(np.max(np.sqrt(u**2 + v**2))))
 
     vel_mag = np.sqrt(u**2 + v**2)
-    return X, Y, phi, psi, p, u, v, vel_mag, u_max_hist
+    omega = np.asarray(compute_vorticity_2d(u, v, ccd))
+    return X, Y, phi, psi, p, u, v, vel_mag, u_max_hist, omega, grid, ccd
 
 
-def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist, omega, grid, ccd):
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
 
-    # ── Panel A: Pressure field ──
-    ax = axes[0]
     x1d = X[:, 0]
     y1d = Y[0, :]
+
+    # ── (0,0) Pressure field ──
+    ax = axes[0, 0]
     vmax = max(abs(p.min()), abs(p.max())) * 1.05
     im = ax.pcolormesh(x1d, y1d, p.T, cmap='RdBu_r', vmin=-vmax, vmax=vmax,
                        shading='auto')
     ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k', linewidths=1.5)
-    ax.contour(x1d, y1d, psi.T, levels=[0.5], colors='w', linewidths=1.0,
-               linestyles='--')
-    plt.colorbar(im, ax=ax, label='$p$')
+    fig.colorbar(im, ax=ax, label='$p$', shrink=0.9)
     dp_exact = SIGMA / (R * WE)
     inside = phi > 3.0 / N
     outside = phi < -3.0 / N
@@ -131,10 +132,9 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
     )
     ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
     ax.set_aspect('equal')
-    plt.colorbar(im, ax=ax, label='$p$')
 
-    # ── Panel B: Velocity magnitude (parasitic currents) ──
-    ax = axes[1]
+    # ── (0,1) Velocity magnitude (parasitic currents) ──
+    ax = axes[0, 1]
     vmax_u = max(vel_mag.max(), 1e-10)
     im2 = ax.pcolormesh(x1d, y1d, vel_mag.T, cmap='hot_r', vmin=0, vmax=vmax_u,
                         shading='auto')
@@ -143,10 +143,10 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
                  fr'$\|\mathbf{{u}}\|_\infty={vmax_u:.2e}$', fontsize=10)
     ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
     ax.set_aspect('equal')
-    plt.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$')
+    fig.colorbar(im2, ax=ax, label=r'$\|\mathbf{u}\|$', shrink=0.9)
 
-    # ── Panel C: Velocity time history ──
-    ax = axes[2]
+    # ── (0,2) Velocity time history ──
+    ax = axes[0, 2]
     steps = np.arange(1, len(u_max_hist) + 1)
     ax.semilogy(steps, u_max_hist, 'b-', linewidth=1.2)
     ax.set_xlabel('Time step')
@@ -154,6 +154,46 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
     ax.set_title('Parasitic velocity history\n(200 steps)', fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.set_xlim(0, N_STEPS)
+
+    # ── (1,0) Vorticity field ──
+    ax = axes[1, 0]
+    vmax_om = max(abs(float(omega.min())), abs(float(omega.max())), 1e-10) * 1.05
+    im3 = ax.pcolormesh(x1d, y1d, omega.T, cmap='RdBu_r',
+                        vmin=-vmax_om, vmax=vmax_om, shading='auto')
+    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='k',
+               linewidths=1.5, linestyles='--')
+    ax.set_title(r'Vorticity $\omega = \partial v/\partial x - \partial u/\partial y$',
+                 fontsize=10)
+    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
+    ax.set_aspect('equal')
+    fig.colorbar(im3, ax=ax, label=r'$\omega$', shrink=0.9)
+
+    # ── (1,1) Streamlines ──
+    ax = axes[1, 1]
+    speed = np.sqrt(u**2 + v**2)
+    ax.streamplot(x1d, y1d, u.T, v.T,
+                  color=speed.T, cmap='viridis',
+                  density=2.0, linewidth=1.0, arrowsize=1.0)
+    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='r',
+               linewidths=1.5, linestyles='-')
+    ax.set_title('Streamlines (colored by speed)', fontsize=10)
+    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
+    ax.set_aspect('equal')
+    ax.set_facecolor('#f8f8f8')
+
+    # ── (1,2) Velocity vectors (quiver) ──
+    ax = axes[1, 2]
+    ax.pcolormesh(x1d, y1d, speed.T, cmap='YlOrRd', vmin=0,
+                  vmax=vmax_u, shading='auto', alpha=0.5)
+    s = 4  # quiver stride
+    ax.quiver(X[::s, ::s], Y[::s, ::s],
+              u[::s, ::s], v[::s, ::s],
+              color='k', alpha=0.8, scale=None)
+    ax.contour(x1d, y1d, phi.T, levels=[0.0], colors='r',
+               linewidths=1.5, linestyles='-')
+    ax.set_title('Velocity vectors', fontsize=10)
+    ax.set_xlabel('$x$'); ax.set_ylabel('$y$')
+    ax.set_aspect('equal')
 
     plt.suptitle(r'Static droplet: $\rho_l/\rho_g=2$, $We=10$, $N=64$',
                  fontsize=12, y=1.01)
@@ -168,9 +208,9 @@ def make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist):
 
 def main():
     print("viz_ch12_droplet_fields: running N=64 static droplet ...")
-    X, Y, phi, psi, p, u, v, vel_mag, u_max_hist = run()
+    X, Y, phi, psi, p, u, v, vel_mag, u_max_hist, omega, grid, ccd = run()
     print(f"  ||u||_inf = {vel_mag.max():.3e}")
-    make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist)
+    make_figure(X, Y, phi, psi, p, u, v, vel_mag, u_max_hist, omega, grid, ccd)
     print("Done.")
 
 

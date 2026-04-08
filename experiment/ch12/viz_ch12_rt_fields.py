@@ -27,6 +27,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.visualization.plot_vector import compute_vorticity_2d
 
 OUT_RES = pathlib.Path(__file__).resolve().parent / "results" / "rt"
 OUT_FIG = pathlib.Path(__file__).resolve().parent / "results" / "rt"
@@ -90,7 +91,9 @@ def run():
 
     # t=0 snapshot
     snapshots.append({'t': 0.0, 'rho': rho.copy(), 'psi': psi.copy(),
-                      'p': p.copy(), 'vel_mag': np.zeros_like(X)})
+                      'p': p.copy(), 'vel_mag': np.zeros_like(X),
+                      'u': u.copy(), 'v': v.copy(),
+                      'omega': np.zeros_like(X)})
     snap_idx = 1
 
     print(f"  Running RT: {NX}×{NY}, T={T_FINAL}, omega_RT={OMEGA_RT:.4f}")
@@ -148,9 +151,12 @@ def run():
         # Snapshot
         while snap_idx < len(SNAP_TIMES) and t >= SNAP_TIMES[snap_idx]:
             vm = np.sqrt(u**2 + v**2)
+            omega = np.asarray(compute_vorticity_2d(u, v, ccd))
             snapshots.append({'t': float(SNAP_TIMES[snap_idx]),
                                'rho': rho.copy(), 'psi': psi.copy(),
-                               'p': p.copy(), 'vel_mag': vm.copy()})
+                               'p': p.copy(), 'vel_mag': vm.copy(),
+                               'u': u.copy(), 'v': v.copy(),
+                               'omega': omega.copy()})
             print(f"    Snapshot t={SNAP_TIMES[snap_idx]:.1f}, step={step}, "
                   f"KE={ke:.4e}")
             snap_idx += 1
@@ -161,9 +167,12 @@ def run():
     # Capture final snapshot if t=2.5 was missed (loop exits at t>=T_FINAL)
     if snap_idx < len(SNAP_TIMES):
         vm = np.sqrt(u**2 + v**2)
+        omega = np.asarray(compute_vorticity_2d(u, v, ccd))
         snapshots.append({'t': float(t),
                            'rho': rho.copy(), 'psi': psi.copy(),
-                           'p': p.copy(), 'vel_mag': vm.copy()})
+                           'p': p.copy(), 'vel_mag': vm.copy(),
+                           'u': u.copy(), 'v': v.copy(),
+                           'omega': omega.copy()})
         print(f"    Snapshot t={t:.3f} (final), step={step}")
 
     print(f"  Finished: step={step}, t={t:.3f}")
@@ -171,24 +180,26 @@ def run():
 
 
 def make_figure(snapshots):
-    # Use t=0, 1.0, 1.5, 2.5 for density, t=1.5, 2.5 for p and vel
-    fig, axes = plt.subplots(3, 4, figsize=(16, 16))
+    fig, axes = plt.subplots(5, 4, figsize=(16, 26))
 
     rho0 = snapshots[0]['rho']
     x1d = np.linspace(0, 1, rho0.shape[0])
     y1d = np.linspace(0, 4, rho0.shape[1])
 
-    # Row 0: density field ρ at 4 snapshots
+    # Scale computation
     all_rho = np.concatenate([s['rho'].ravel() for s in snapshots])
     vmin_rho, vmax_rho = float(np.min(all_rho)), float(np.max(all_rho))
 
-    # Row 1: pressure p at 4 snapshots
     all_p = np.concatenate([s['p'].ravel() for s in snapshots[1:]])
     vmax_p = float(np.percentile(np.abs(all_p), 98)) * 1.05
 
-    # Row 2: velocity magnitude at 4 snapshots
     all_vm = np.concatenate([s['vel_mag'].ravel() for s in snapshots[1:]])
     vmax_vm = float(np.percentile(all_vm, 99)) * 1.05
+
+    all_omega = np.concatenate([s['omega'].ravel() for s in snapshots[1:]])
+    vmax_omega = float(np.percentile(np.abs(all_omega), 98)) * 1.05
+    if vmax_omega < 1e-10:
+        vmax_omega = 1.0
 
     for i, snap in enumerate(snapshots):
         t_snap = snap['t']
@@ -196,8 +207,11 @@ def make_figure(snapshots):
         psi_s = snap['psi']
         p_s = snap['p']
         vm_s = snap['vel_mag']
+        omega_s = snap['omega']
+        u_s = snap['u']
+        v_s = snap['v']
 
-        # Density
+        # Row 0: Density
         ax = axes[0, i]
         im_rho = ax.pcolormesh(x1d, y1d, rho_s.T, cmap='Blues',
                                vmin=vmin_rho, vmax=vmax_rho, shading='auto')
@@ -207,7 +221,7 @@ def make_figure(snapshots):
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
-        # Pressure
+        # Row 1: Pressure
         ax = axes[1, i]
         im_p = ax.pcolormesh(x1d, y1d, p_s.T, cmap='RdBu_r',
                              vmin=-vmax_p, vmax=vmax_p, shading='auto')
@@ -216,7 +230,7 @@ def make_figure(snapshots):
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
-        # Velocity magnitude
+        # Row 2: Velocity magnitude
         ax = axes[2, i]
         im_vm = ax.pcolormesh(x1d, y1d, vm_s.T, cmap='hot_r',
                               vmin=0, vmax=vmax_vm, shading='auto')
@@ -225,15 +239,47 @@ def make_figure(snapshots):
         ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
         ax.set_aspect('equal')
 
+        # Row 3: Vorticity
+        ax = axes[3, i]
+        im_om = ax.pcolormesh(x1d, y1d, omega_s.T, cmap='RdBu_r',
+                              vmin=-vmax_omega, vmax=vmax_omega, shading='auto')
+        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='k',
+                   linewidths=1.2, linestyles='--')
+        ax.set_xlabel('$x$')
+        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
+        ax.set_aspect('equal')
+
+        # Row 4: Streamlines colored by speed
+        ax = axes[4, i]
+        speed_s = vm_s.T
+        if float(np.max(np.abs(u_s))) > 1e-10:
+            ax.streamplot(x1d, y1d, u_s.T, v_s.T,
+                          color=speed_s, cmap='viridis',
+                          density=1.5, linewidth=1.0, arrowsize=1.0)
+        ax.contour(x1d, y1d, psi_s.T, levels=[0.5], colors='r',
+                   linewidths=1.5, linestyles='-')
+        ax.set_xlabel('$x$')
+        ax.set_xlim(0, 1); ax.set_ylim(0.5, 3.5)
+        ax.set_aspect('equal')
+        ax.set_facecolor('#f8f8f8')
+
     # Row labels
     axes[0, 0].set_ylabel(r'Density $\rho(x,y)$', fontsize=11)
     axes[1, 0].set_ylabel(r'Pressure $p(x,y)$', fontsize=11)
     axes[2, 0].set_ylabel(r'Velocity $\|\mathbf{u}(x,y)\|$', fontsize=11)
+    axes[3, 0].set_ylabel(r'Vorticity $\omega(x,y)$', fontsize=11)
+    axes[4, 0].set_ylabel(r'Streamlines', fontsize=11)
 
-    # Shared colorbars — one per row → equal panel sizes
+    # Shared colorbars
     fig.colorbar(im_rho, ax=axes[0, :].tolist(), label=r'$\rho$', shrink=0.7)
     fig.colorbar(im_p,   ax=axes[1, :].tolist(), label='$p$',      shrink=0.7)
     fig.colorbar(im_vm,  ax=axes[2, :].tolist(), label=r'$\|\mathbf{u}\|$', shrink=0.7)
+    fig.colorbar(im_om,  ax=axes[3, :].tolist(), label=r'$\omega$', shrink=0.7)
+    sm = plt.cm.ScalarMappable(cmap='viridis',
+                               norm=plt.Normalize(0, vmax_vm))
+    sm.set_array([])
+    fig.colorbar(sm, ax=axes[4, :].tolist(),
+                 label=r'$|\mathbf{u}|$', shrink=0.7)
 
     plt.suptitle(
         r'RT instability: $64\times256$, $At=0.5$, $\sigma=0$'
