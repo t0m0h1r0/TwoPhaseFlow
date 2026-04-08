@@ -20,16 +20,16 @@ $\phi = x - 0.5$（界面 $x = 0.5$），
 ソース場 $q(x) = 1 + \cos(\pi x)$ とする．
 解析延長値は法線方向定数延長 $q_{\mathrm{ext}} = q(0.5) = 1$ であり，
 誤差を $x \in [0.52,\; 0.55]$（固定物理座標）で計測する．
-格子 $N = 32, 64, 128, 256$ で上風差分（Aslam~2004）と HFE を同一条件で比較した．
+格子 $N = 32, 64, 128, 256$ で風上差分（Aslam~2004）と HFE を同一条件で比較した．
 
 \begin{table}[htbp]
 \centering
-\caption{1 次元場延長の格子収束（$L^\infty$ 誤差）：上風差分 vs Hermite}
+\caption{1 次元場延長の格子収束（$L^\infty$ 誤差）：風上差分 vs Hermite}
 \label{tab:field_extension_convergence}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{rrrcrrc}
 \toprule
- & \multicolumn{2}{c}{上風差分（Aslam 2004）} & & \multicolumn{2}{c}{最近接点 Hermite} & \\
+ & \multicolumn{2}{c}{風上差分（Aslam 2004）} & & \multicolumn{2}{c}{最近接点 Hermite} & \\
 \cline{2-3}\cline{5-6}
 $N$ & $L^\infty$ 誤差 & 次数 & & $L^\infty$ 誤差 & 次数 \\
 \midrule
@@ -42,7 +42,7 @@ $N$ & $L^\infty$ 誤差 & 次数 & & $L^\infty$ 誤差 & 次数 \\
 \end{tabular}
 \end{table}
 
-上風差分は $\Ord{h^1}$ の 1 次収束を示す．
+風上差分は $\Ord{h^1}$ の 1 次収束を示す．
 誤差の主因は，界面値を最近傍ソースセル $q(0.5 - h)$ から取得する際に生じる
 $q(0.5 - h) - q(0.5) = h\,q'(0.5) + \Ord{h^2}$ の打切り誤差である．
 これに対し HFE は CCD の $(f, f', f'')$ データを用いて
@@ -87,7 +87,7 @@ $N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
 \centering
 \includegraphics[width=0.82\linewidth]{figures/ch11_hfe_convergence}
 \caption{HFE 場延長の格子収束．
-(a) 1 次元テスト：上風差分（$\Ord{h^1}$）と Hermite（$\Ord{h^7}$）の比較．
+(a) 1 次元テスト：風上差分（$\Ord{h^1}$）と Hermite（$\Ord{h^7}$）の比較．
 (b) 2 次元テスト：テンソル積逐次補間による $\Ord{h^3}$ の安定した収束．}
 \label{fig:hfe_convergence}
 \end{figure}
@@ -98,7 +98,7 @@ $N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
 テンソル積逐次補間において $d^2 f / dy^2$ の $x$ 方向補間に
 線形補間を用いていることによる（§~\ref{sec:extension_pde_disc}）．
 それでもなお，$N = 256$ における $L^\infty = 7.48 \times 10^{-9}$ は
-上風差分ベースラインの同格子における $1.23 \times 10^{-2}$
+風上差分ベースラインの同格子における $1.23 \times 10^{-2}$
 （表~\ref{tab:field_extension_convergence}）に対し 6 桁以上の改善であり，
 CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）よりも高精度であるため，
 全体精度のボトルネックとはならない．

@@ -55,22 +55,22 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 \caption{物理的整合性の検証指標と許容基準}
 \label{tab:verification}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{p{38mm}p{38mm}p{30mm}p{22mm}}
+\begin{tabular}{p{32mm}p{34mm}p{26mm}p{20mm}l}
 \toprule
-検証項目 & 理論値/解析解 & チェック方法 & 許容基準 \\
+検証項目 & 理論値/解析解 & チェック方法 & 許容基準 & 節 \\
 \midrule
-静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-12}$\\
-Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$（$N \geq 128$）\\
-運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$\\
-非圧縮条件 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\\
-NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認\\
-NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認\\
-DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$\\
-静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$\\
-HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定\\
-Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$\\
-PPE 破綻限界 & DC 発散の閾値 & 残差履歴 & 閾値の特定\\
-分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$（Dirichlet）確認\\
+静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-12}$ & §\ref{sec:force_balance}\\
+Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$ & §\ref{sec:force_balance}\\
+運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$ & §\ref{sec:ns_conservation}\\
+非圧縮条件 & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$ & §\ref{sec:ns_conservation}\\
+NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
+NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
+DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$ & §\ref{sec:ns_time_accuracy}\\
+静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$ & §\ref{sec:advection_pressure_coupling}\\
+HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & §\ref{sec:advection_pressure_coupling}\\
+Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ & §\ref{sec:advection_pressure_coupling}\\
+PPE 破綻限界 & DC 発散の閾値 & 残差履歴 & 閾値の特定 & §\ref{sec:interface_crossing}\\
+分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:interface_crossing}\\
 \bottomrule
 \end{tabular}
 \end{table}
