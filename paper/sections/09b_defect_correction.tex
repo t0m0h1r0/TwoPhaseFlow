@@ -10,9 +10,9 @@
 
 \noindent\textbf{本節の位置づけ：}
 本節で示す欠陥補正法（DC）は変密度 PPE 求解の基本フレームワークである．
-§~\ref{sec:ppe_discretization_choice} の収束解析に基づき，現行実装では
-k=1（FD 直接解に等価）を使用する；k$\geq$3 では $\Ord{h^6}$ 精度に漸近する
-（§~\ref{sec:dc_accuracy}；分相 PPE 基盤としての CCD 演算子は §~\ref{sec:ccd_poisson_matrix}）．
+反復回数 $k$ に応じて精度が向上し，$k \geq 3$ で $\Ord{h^6}$ に漸近する
+（§~\ref{sec:dc_accuracy}）．$k$ の選択および FD 直接法 + CCD 勾配の設計根拠は
+§~\ref{sec:pressure_accuracy_summary} にまとめる．
 
 本節では，§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）を
 「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する
@@ -26,9 +26,8 @@ $\mathcal{O}(N^2)$ コストを維持する．
 
 \noindent\textbf{なぜ $L_H$ を直接解かないのか：}
 $L_H$ は CCD ブロック Thomas 法に基づく密結合演算子であり，
-帯幅が広く $x$-$y$ 方向の結合が強いため ADI 的な方向分離が成立せず，
-また大域疎行列を陽に構成すると $\mathcal{O}(N^2)$ メモリが必要で大規模格子では非実用的である
-（検証用の直接 LU 法は付録~\ref{app:ccd_lu_direct} 参照）．
+$x$-$y$ 方向の結合が強いため ADI 的な方向分離が成立しない．
+大域疎行列の陽的構成とその直接解法は付録~\ref{app:ccd_lu_direct} に示す．
 
 \subsubsection{アルゴリズム}
 \label{sec:dc_algorithm}
@@ -64,27 +63,22 @@ $L_H$ は CCD ブロック Thomas 法に基づく密結合演算子であり，
         収束条件 $\omega < 2/r_{\max} = 0.833$ の詳細は付録~\ref{app:dc_convergence_theory}．
 \end{itemize}
 
-\subsubsection{Step~2 の求解：直接 LU 法}
+\subsubsection{Step~2 の求解}
 \label{sec:dc_sweep}
 
 Step~2 の補正方程式 $L_L\,\delta p = d$ は，
 $L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン固定）を
-スパース行列として組み立て，\textbf{直接 LU 法}（\texttt{scipy.sparse.linalg.spsolve}）で厳密に求解する：
+\textbf{直接法}で厳密に求解する：
 \begin{equation}
   \delta p^{(k+1)} = L_L^{-1}\,d^{(k)}
   \label{eq:dc_step2_lu}
 \end{equation}
 $L_L$ の Neumann BC はゴーストセル反射 $p_{-1}=p_1$（左壁）で離散化し，
-境界スタンシル $2(p_1-p_0)/(\rho h^2)$ を与える（付録~\ref{app:sweep_thomas_coeff} 参照）．
-これにより壁面での $\bnabla\rho\cdot\bnabla p$ 交差項が消滅し，
-$L_H$（CCD）と $L_L$（FD）が同一の物理的 Neumann 条件を共有するため
-DC 反復の不整合が防がれる（実装：\texttt{FDPPEMatrix}）．
-2次元 $N\times N$ 格子では LU 因子化のコストは $\mathcal{O}(N^{1.5})$（スパース帯行列の fill-in），
-因子化後の前進・後退代入は $\mathcal{O}(N^{1.5})$ であり，
-反復ごとに LU 因子化は不要（$\rho$ が変化しない限り1回の組み立てで繰り返し使用）．
-
-\noindent\textbf{Step~2 の求解器の選択について：}
-方向分離（ADI 型）スイープとの比較解析（理論・数値実験）は §~\ref{sec:verify_dc_spectral} および付録~\ref{app:dc_convergence_theory} を参照．
+$L_H$（CCD）と $L_L$（FD）が同一の物理的 Neumann 条件を共有する
+（境界スタンシルの導出は付録~\ref{app:sweep_thomas_coeff}）．
+直接法の採用は PPE 残差を機械精度まで消去し，
+反復法における許容残差 $\epsilon_\mathrm{tol}$ の系統誤差蓄積を原理的に排除するためである．
+方向分離（ADI 型）スイープとの比較解析は §~\ref{sec:verify_dc_spectral} および付録~\ref{app:dc_convergence_theory} を参照．
 
 \subsubsection{収束先の精度保証}
 \label{sec:dc_accuracy}
@@ -111,38 +105,5 @@ $\omega \in (0,\, 0.833)$ が収束に必要であり，
 $\omega \in \{0.3, 0.5, 0.7\}$ はいずれも等密度条件で良好な収束を示す
 （実験検証: §\ref{sec:verify_dc_spectral}）．
 
-\subsubsection{CCD-PPE 線形ソルバの比較}
-\label{sec:dc_comparison}
-
-表~\ref{tab:dc_ppe_methods} に，§~\ref{sec:ccd_poisson_matrix} で選択した CCD 空間離散化を前提として，
-使用可能な\textbf{線形ソルバ}を比較する
-（空間離散化スキーム自体の比較は §~\ref{sec:ccd_vs_fvm}）．
-CCD-Poisson（§~\ref{sec:ccd_poisson_matrix}，将来の分相 PPE 向け）を解く標準ソルバとして欠陥補正法を示す；
-LGMRES/直接 LU はデバッグ・検証用途に限定する．
-\textbf{現行実装}（変密度界面では DC 反復が収束不能；§~\ref{sec:ppe_discretization_choice}）は $k=1$ の FD 直接法 + CCD 勾配を採用する（§~\ref{sec:ppe_bc_stability}）．
-
-\begin{table}[htbp]
-\centering
-\small
-\caption{PPE 求解法の比較}
-\label{tab:dc_ppe_methods}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcccc}
-\toprule
-手法 & 空間精度 & 行列構築 & 行列記憶量 & 求解コスト \\
-\midrule
-BiCGSTAB（FVM） & $\Ord{h^2}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
-LGMRES + CCD Kronecker（デバッグ用）& $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^2)$ & $\mathcal{O}(N^2)\times k$反復 \\
-直接 LU + CCD Kronecker & $\Ord{h^6}$ & 必要 & $\mathcal{O}(N^{2.5})$ & $\mathcal{O}(N^3)$（1回） \\
-\textbf{欠陥補正法（DC）（本稿採用，現行 k=1）} & $\boldsymbol{\Ord{h^6}}$ & \textbf{不要} & \textbf{—} & $\boldsymbol{\mathcal{O}(N^2)}\times k$\textbf{反復} \\
-\bottomrule
-\end{tabular}
-
-\smallskip
-\noindent 注：$k$ = 欠陥補正の外側反復回数（実測で $k=3$--$5$，§~\ref{sec:dc_accuracy}）；
-Step~2 は直接 LU で厳密求解．
-欠陥補正法の $L_H$ 評価は行列フリー；
-収束理論（$\omega_{\max} = 0.833$）は付録~\ref{app:dc_convergence_theory}，
-Step~2 の ADI 代替案の失敗分析は §~\ref{sec:verify_dc_spectral} を参照．
-\end{table}
+\phantomsection\label{sec:dc_comparison}% backward-compat
 

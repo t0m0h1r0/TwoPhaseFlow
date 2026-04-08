@@ -57,8 +57,8 @@
 %% §9: 圧力Poisson方程式の解法
 \input{sections/09_ccd_poisson}        %% §9.1–§9.2（sectionヘッダーを内包）
 \input{sections/09b_defect_correction} %% §9.2 欠陥補正法
-%%   appD4_gfm（HFE）→ 付録 D.4 に移動
-\input{sections/09c_ppe_bc}            %% §9.3 境界条件と数値安定性
+\input{sections/appD4_gfm}            %% §9.3 Hermite 場延長法（HFE）← 付録D.4から本編に昇格
+\input{sections/09c_ppe_bc}            %% §9.4 境界条件と数値安定性
 \input{sections/09d_pressure_summary}  %% §9のまとめ
 %% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.4 に統合（CHK-088）
@@ -66,7 +66,7 @@
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
-\part{統合・検証・展望}
+\part{精度検証と展望：コンポーネント精度から多相流物理現象へ}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \input{sections/10_full_algorithm}    %% §10（ブートストラップ・DCCDパラメタを統合済み；旧10bは廃止）
 \clearpage
@@ -107,7 +107,7 @@
 
 %% 付録D: 圧力ソルバーと連成解析（§8-9 対応）
 \input{sections/appendix_pressure}        %% D.1 欠陥補正理論, D.2 仮想時間, D.3 FVM基準
-\input{sections/appD4_gfm}                %% D.4 Hermite 場延長法（HFE）← 本文§9から移動
+%%   appD4_gfm（HFE）→ 本文§9に昇格（2026-04-08）
 
 %% 付録E: 検証の補足解析（§12 から移動）
 \input{sections/appendix_verification_details}  %% E.1 PPE離散化選択, E.2 HFE適合性

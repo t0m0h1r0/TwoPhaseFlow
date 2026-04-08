@@ -1,12 +1,13 @@
-% paper/sections/08d_gfm.tex
+% paper/sections/appD4_gfm.tex
 %
-% 付録 D.4  Hermite 場延長法（HFE）
-%   本文§8.4から付録Dへ移動 (2026-04-05)
+% §9.3  Hermite 場延長法（HFE）
+%   付録D.4から本編§9に昇格 (2026-04-08)
+%   理由：分相PPEの基盤技術であり、本編の重要構成要素
 %
 %   Aslam (2004) の Extension PDE の定常解を CCD Hermite データから
 %   直接構成し，界面越し場延長を O(h^6) で実現する．
 % ═══════════════════════════════════════════════════════════════════════════════
-\section{\texorpdfstring{Hermite 場延長法（HFE）：$\Ord{h^6}$ 界面越し場延長}{Hermite 場延長法（HFE）：O(h⁶) 界面越し場延長}}
+\subsection{\texorpdfstring{Hermite 場延長法（HFE）：$\Ord{h^6}$ 界面越し場延長}{Hermite 場延長法（HFE）：O(h⁶) 界面越し場延長}}
 \label{sec:field_extension}
 \label{sec:hfe}% canonical label
 \label{sec:extension_pde}% backward-compat: §1–§9 cross-refs
@@ -195,9 +196,9 @@ HFE は同一の定常解を CCD データから直接構成することで
 
 \medskip
 \noindent\textbf{本節のまとめと位置づけ．}
-HFE を本章（§8）で定式化した理由は，CCD の Hermite データを基盤とする場延長理論が
-PPE 離散化（§~\ref{sec:pressure}）および Balanced-Force 条件（§~\ref{sec:balanced_force}）と
-密接に関連するためである．
+HFE を本章（§~\ref{sec:ppe_solve}）で定式化する理由は，CCD の Hermite データを基盤とする場延長理論が
+PPE 離散化（§~\ref{sec:ccd_poisson_matrix}）および Balanced-Force 条件（§~\ref{sec:balanced_force}）と
+密接に関連し，分相 PPE 解法の不可欠な基盤技術であるためである．
 §~\ref{sec:split_ppe_motivation} で議論する分相 PPE 解法では，界面上の圧力ジャンプ処理に
 HFE が不可欠となり，高密度比シミュレーション（$\rho_l/\rho_g > 10$）への
 推奨アップグレードパスとして位置づけられる．
