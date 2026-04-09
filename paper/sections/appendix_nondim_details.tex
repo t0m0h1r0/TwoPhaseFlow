@@ -133,46 +133,4 @@ $\phi_{xy}=\phi_{yx}$（Schwarz の定理）として
 分子は $\phi_{xx}\phi_y^2 - 2\phi_x\phi_y\phi_{xy} + \phi_{yy}\phi_x^2$ となり，
 式~\eqref{eq:curvature_2d} が得られる．
 
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{具体例：半径 $R$ の円による曲率式の検証}
-\label{sec:curvature_circle_example}
-% ─────────────────────────────────────────────────────────────────────────────
-
-曲率式~\eqref{eq:curvature_2d} が正しいことを，
-最も基本的な例である「円」で検証する．
-
-\paragraph{設定：}
-原点を中心とする半径 $R$ の円を，符号付き距離関数
-\[
-  \phi(x,y) = \sqrt{x^2 + y^2} - R \equiv r - R
-  \quad \left(r \equiv \sqrt{x^2+y^2}\right)
-\]
-で表す（$\phi < 0$：円内部（液相），$\phi > 0$：円外部（気相），$\phi = 0$：界面）．
-
-\paragraph{微分の計算：}
-\begin{align}
-  \phi_x &= \frac{x}{r},\quad \phi_y = \frac{y}{r} \notag \\
-  \phi_{xx} &= \frac{r^2-x^2}{r^3} = \frac{y^2}{r^3},\quad
-  \phi_{yy} = \frac{x^2}{r^3},\quad
-  \phi_{xy} = -\frac{xy}{r^3}
-  \label{eq:circle_deriv}
-\end{align}
-
-\paragraph{式~\eqref{eq:curvature_2d} への代入：}
-
-分母：$\phi_x^2 + \phi_y^2 = 1$（真の符号付き距離関数の性質）．
-分子：
-\begin{align*}
-  &\phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} \\
-  &= \frac{y^2}{r^2}\cdot\frac{y^2}{r^3}
-     - 2\cdot\frac{x}{r}\cdot\frac{y}{r}\cdot\left(-\frac{xy}{r^3}\right)
-     + \frac{x^2}{r^2}\cdot\frac{x^2}{r^3}
-   = \frac{(x^2+y^2)^2}{r^5} = \frac{1}{r}
-\end{align*}
-よって $\kappa = -1/r$．界面 $r = R$ 上では $\kappa = -1/R < 0$
-（液滴内部が液相で $\hat{\bm{n}}$ が外向き，§~\ref{sec:notation} の符号規約と一致）．
-Young--Laplace 則 $[p]=\sigma\kappa$ に代入すると $p_\text{liq} - p_\text{gas} = \sigma/R > 0$
-（液滴内部の圧力が外部より高い）となり，物理的に正しい．
-
-実装確認には，$E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty}$ の $\Ord{h^6}$ 収束テストが有効である
-（§~\ref{sec:verify_curvature} 参照）．
+% 円検証（旧 G.3）は §~\ref{sec:verify_curvature} の数値テストに統合．
