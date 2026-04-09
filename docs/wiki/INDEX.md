@@ -1,6 +1,6 @@
-# Wiki Index — 50 entries
+# Wiki Index — 51 entries
 
-## Theory (26)
+## Theory (27)
 
 | REF-ID | Title |
 |--------|-------|
@@ -30,6 +30,7 @@
 | [WIKI-T-024](theory/WIKI-T-024.md) | CCD-PPE Solver Convergence: DC+LU Results, ADI Failure, and Alternative Candidates |
 | [WIKI-T-025](theory/WIKI-T-025.md) | C/RC (CCD-Enhanced Rhie-Chow): O(h^2) to O(h^4) Bracket Correction |
 | [WIKI-T-026](theory/WIKI-T-026.md) | HFE Applicability Scope: Harm Mechanism on Smooth Fields and Valid Use Cases |
+| [WIKI-T-027](theory/WIKI-T-027.md) | CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix |
 
 ## Cross-Domain (5)
 
