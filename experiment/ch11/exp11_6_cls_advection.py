@@ -42,6 +42,15 @@ def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
     return np.maximum(phi_circle, -phi_slot)
 
 
+_REINIT_THRESHOLD = 1.10   # adaptive reinit trigger: M(τ)/M_ref > θ (§7b)
+
+
+def _adaptive_reinit_needed(xp, psi, M_ref, h, threshold=_REINIT_THRESHOLD):
+    """Check if reinitialization is needed based on volume monitor M(τ)."""
+    M_cur = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
+    return M_ref > 1e-15 and M_cur / M_ref > threshold
+
+
 def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
     backend = Backend(use_gpu=False)
     results = []
@@ -51,6 +60,7 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         eps = 1.5 / N
+        h = 1.0 / N
         X, Y = grid.meshgrid()
 
         phi0 = zalesak_sdf(X, Y)
@@ -65,6 +75,8 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         n_steps = int(T / dt); dt = T / n_steps
         psi = psi0.copy()
         mass0 = float(np.sum(psi))
+        M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+        reinit_count = 0
 
         # Save fields for 2D visualization at selected resolution
         save_2d = (N == save_fields_N)
@@ -76,8 +88,12 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         for step in range(n_steps):
             u, v = vf.compute(X, Y, t=0)
             psi = adv.advance(psi, [u, v], dt)
+            # Fixed-frequency reinit for Zalesak (sharp slot geometry
+            # requires regular profile maintenance; adaptive trigger
+            # M(τ)/M_ref cannot detect local corner degradation)
             if (step + 1) % 20 == 0:
                 psi = reinit.reinitialize(psi)
+                reinit_count += 1
             # Save at quarter and half revolution
             if save_2d and step + 1 == n_steps // 4:
                 fields["zalesak_quarter"] = psi.copy()
@@ -90,7 +106,7 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         mass_err = abs(float(np.sum(psi)) - mass0) / mass0
         err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
         results.append({"N": N, "h": 1.0/N, "L2": err_L2, "mass_err": mass_err})
-        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}")
+        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}, reinits={reinit_count}")
     return results, fields
 
 
@@ -110,6 +126,7 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         eps = 1.5 / N
+        h = 1.0 / N
         X, Y = grid.meshgrid()
 
         phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
@@ -119,6 +136,8 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
 
         T = 8.0; dt = 0.45 / N; n_steps = int(T / dt); dt = T / n_steps
         psi = psi0.copy(); mass0 = float(np.sum(psi))
+        M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+        reinit_count = 0
 
         save_2d = (N == save_fields_N)
         if save_2d:
@@ -129,8 +148,11 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
         for step in range(n_steps):
             u, v = single_vortex_field(X, Y, step * dt, T)
             psi = adv.advance(psi, [u, v], dt)
-            if (step + 1) % 10 == 0:
+            # Adaptive reinit trigger (§7b eq:adaptive_reinit_trigger)
+            if _adaptive_reinit_needed(np, psi, M_ref, h):
                 psi = reinit.reinitialize(psi)
+                M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+                reinit_count += 1
             # Save at max deformation (t = T/2)
             if save_2d and step + 1 == n_steps // 2:
                 fields["vortex_mid"] = psi.copy()
@@ -141,7 +163,7 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
         mass_err = abs(float(np.sum(psi)) - mass0) / mass0
         err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
         results.append({"N": N, "h": 1.0/N, "L2": err_L2, "mass_err": mass_err})
-        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}")
+        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}, reinits={reinit_count}")
     return results, fields
 
 

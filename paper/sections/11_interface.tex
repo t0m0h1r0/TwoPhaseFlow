@@ -43,9 +43,10 @@ CLS 移流パイプライン（DCCD + 再初期化）．
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
   \item (a) Zalesak スロット円板：中心 $(0.5, 0.75)$，$R = 0.15$，
-        スロット幅 $0.05$，高さ $0.25$，剛体回転場で 1 回転，再初期化 20 ステップ毎
+        スロット幅 $0.05$，高さ $0.25$，剛体回転場で 1 回転，再初期化 20 ステップ毎（固定頻度）
   \item (b) 単一渦テスト（LeVeque 1996）：円形界面（中心 $(0.5, 0.75)$，$R = 0.15$），
-        時間反転型渦場，$T = 8$，再初期化 10 ステップ毎
+        時間反転型渦場，$T = 8$，
+        適応的再初期化（$\theta_{\mathrm{reinit}} = 1.10$，§~\ref{sec:adaptive_reinit}）
   \item 格子 $N = 64, 128, 256$
   \item 計測指標：$L_2$/$L_\infty$ 形状誤差（$\psi - \psi_0$），
         相対質量保存誤差 $|\Delta M|/M_0$
@@ -55,7 +56,10 @@ CLS 移流パイプライン（DCCD + 再初期化）．
 
 \begin{table}[htbp]
 \centering
-\caption{CLS 界面移流テストの精度（DCCD $\varepsilon_d = 0.05$，界面重み付き質量補正あり）}
+\caption{CLS 界面移流テストの精度（DCCD $\varepsilon_d = 0.05$，界面重み付き質量補正あり）．
+\textsuperscript{\dag}単一渦テストは適応的再初期化
+（$\theta_{\mathrm{reinit}} = 1.10$，§~\ref{sec:adaptive_reinit}）を使用（再初期化 2--3 回）；
+Zalesak テストは鋭角形状の維持のため固定頻度（20 ステップ毎）を使用}
 \label{tab:cls_advection}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{llrrr}
@@ -67,10 +71,10 @@ CLS 移流パイプライン（DCCD + 再初期化）．
  & 128 & $9.34 \times 10^{-2}$ & $5.53 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
  & 256 & $7.62 \times 10^{-2}$ & $5.62 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
 \midrule
-\multirow{3}{*}{Single vortex}
- &  64 & $1.91 \times 10^{-1}$ & $8.64 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
- & 128 & $1.73 \times 10^{-1}$ & $7.99 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
- & 256 & $1.43 \times 10^{-1}$ & $7.25 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
+\multirow{3}{*}{Single vortex\textsuperscript{\dag}}
+ &  64 & $1.53 \times 10^{-1}$ & $7.80 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
+ & 128 & $8.90 \times 10^{-2}$ & $5.43 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
+ & 256 & $7.49 \times 10^{-2}$ & $4.72 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -94,11 +98,12 @@ $w = 4\psi(1-\psi)$（Olsson--Kreiss 基底）を適用することで
 
 図~\ref{fig:cls_advection_2d} に $N = 128$ における界面形状の時間発展を示す．
 Zalesak スロット円板は 1 回転後に初期形状をよく復元している．
-単一渦テストでは $t = T/2$ の激しい引き延ばし後に $t = T$ で
-界面の大局的な位置は回復するものの，形状の歪みと数値振動が残存しており，
-$L_\infty$ 誤差は $N = 256$ でも 0.73 と大きい（表~\ref{tab:cls_advection}）．
-この精度劣化は CLS 場の急峻な勾配が渦の引き延ばしにより
-格子解像限界を超えることに起因し，今後の改善課題である．
+単一渦テストでは $t = T/2$ の激しい引き延ばし後に $t = T$ で界面を回復する．
+適応的再初期化（§~\ref{sec:adaptive_reinit}）により再初期化回数を 2--3 回に限定することで，
+固定頻度（10 ステップ毎，約 227 回）と比較して $L_2$ 誤差が約 49\% 改善された
+（§~\ref{sec:verify_dccd_conservation}）．
+残存する $L_\infty$ 誤差（$N = 256$ で 0.47）は，CLS 場の急峻な勾配が
+渦の引き延ばしにより格子解像限界を超えることに起因する．
 破線は初期界面位置を表す．
 
 \begin{figure}[htbp]
