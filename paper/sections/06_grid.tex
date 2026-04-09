@@ -249,6 +249,24 @@ $\omega(\phi) > 1$ となる界面近傍では $\Delta\tilde{x} = \Delta\xi/\ome
 
 % Python 実装例は付録から削除（本編 §~\ref{sec:algorithm} の離散形式で代替）．
 
+\subsection{非一様格子上の CLS 演算}
+\label{sec:cls_on_nonuniform}
+
+DCCD フィルタ（§~\ref{sec:dissipative_ccd}）を非一様格子上で適用する際には，
+\textbf{計算空間 $\xi$ 上でフィルタを実行し，事後にメトリクス $J = \partial\xi/\partial x$ を適用}する．
+物理空間 $x$ 上での直接フィルタリングは不均等な格子幅により
+高周波減衰の一様性が崩れるため，ξ 空間一様格子上での操作が必須である．
+CCD ソルバーは計算空間で求解後に \texttt{\_apply\_metric} で物理空間微分を返すため，
+フィルタは計算空間微分 $(f'_\xi, f''_\xi)$ の段階で適用し，
+メトリクス変換はフィルタ適用後に行う（§~\ref{sec:algo_flow}, Step 1--4）．
+
+格子再構築時の CLS 場 $\psi$ の転写には，
+$\psi$ の\textbf{直接線形補間}が $\phi$ 経由の高次補間より優位である．
+$\phi$ 3次補間ではロジット空間でのオーバーシュートと飽和域クリップにより
+質量誤差が $\Ord{10^{-2}}$（3\%）に達するのに対し，
+$\psi$ 線形補間はモノトン性（$\psi \in [0,1]$ 保持）から $\Ord{10^{-5}}$（0.005\%）に抑制される
+（§~\ref{sec:cls_conservation} で定量検証）．
+
 \subsection{時間変化格子と ALE 効果}
 \label{sec:grid_ale}
 
