@@ -1,7 +1,6 @@
 % paper/sections/05b_ccd_extensions.tex
 %
-% §4 CCD 法の続き（04_ccd.tex からの分割）
-% 内容：非一様格子拡張・2次元混合偏微分・楕円型ソルバーとしての双対的役割
+% §6 界面適合格子の続き（CCD の非一様格子拡張・混合偏微分）
 %
 \subsection{非一様格子への拡張：座標変換法}
 \label{sec:ccd_metric}
@@ -18,12 +17,9 @@
 微分計算はすべて計算空間 $\xi$ 上で標準の等間隔 CCD スキームを用いて行い，その結果を連鎖律（chain rule）で物理空間の微分値に変換する．
 
 \textbf{変換公式：}
-物理空間での一次微分 $\partial f/\partial x$ および二次微分 $\partial^2 f/\partial x^2$ は，メトリック係数 $J = \partial \xi / \partial x$ を用いて次のように計算される：
-\begin{align}
-  \pd{f}{x} &= \pd{\xi}{x}\pd{f}{\xi} = J \fp{\xi} \\
-  \pdd{f}{x} &= J \pd{}{x}\!\left(\fp{\xi}\right) + \fp{\xi}\pd{J}{x} = J^2 \fpp{\xi} + J \pd{J}{\xi} \fp{\xi}
-\end{align}
-ここで，$f^{(\cdot)}_\xi$ は計算空間上で CCD 法により求めた微分値である．
+物理空間での一次微分・二次微分は，メトリクス係数 $J_x = \partial \xi / \partial x$ を用いた
+座標変換公式（式~\eqref{eq:transform_1st_correct}, \eqref{eq:transform_2nd_correct}）により，
+計算空間上の CCD 微分値から得る．
 この手法により，複雑な非一様格子係数を導出することなく，一様格子の CCD ソルバーをそのまま再利用できる利点がある．
 
 \medskip

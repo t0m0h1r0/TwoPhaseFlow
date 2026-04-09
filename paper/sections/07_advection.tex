@@ -1,6 +1,6 @@
-% paper/sections/05_advection.tex
+% paper/sections/07_advection.tex
 %
-% §5  CLS 移流の離散化：Dissipative CCD スキームの設計根拠（§5.1）
+% §7  CLS 移流の離散化：Dissipative CCD スキームの設計根拠
 %     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
 %
 \section{CLS 界面追跡の空間離散化：移流・再初期化への CCD 適用}
@@ -154,7 +154,7 @@ $H(\xi) = 1 - 4\varepsilon_d^{\mathrm{adv}}\sin^2(\xi/2) \leq 1$．
 TVD-RK3 の CFL 条件（$\sigma_{\max} \approx 0.91$）が有効 CFL 数 $\sigma H(\xi) \leq \sigma \leq 0.5$ を安定域内に収める．
 典型的な二相流パラメータ（$\mathrm{CFL} \leq 0.5$，$\varepsilon_d^{\mathrm{adv}} = 0.05$）のもとで
 実用的な安定性が得られることが期待される．
-これは設計目標であり，数値実験による検証は今後の課題である．形式的上界は \ref{result:dccd_stability} を参照されたい．
+これは設計目標であり，数値実験による検証は今後の課題である．形式的上界は §~\ref{result:dccd_stability} の結果ボックスを参照されたい．
 
 \begin{tcolorbox}[warnbox, title={移流フィルタの散逸強度：S(ψ) 制御を使わない理由}]
 \label{warn:adv_filter_uniform}
