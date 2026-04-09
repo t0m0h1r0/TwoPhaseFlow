@@ -105,14 +105,23 @@
 %% 付録B: CCD 法の係数導出と実装（§4 対応）
 \input{sections/appendix_ccd}             %% B.1 係数導出, B.2 境界代替, B.3 精度・楕円型
 
-%% 付録C: 移流スキームと安定性制約（§7 対応）
-\input{sections/appendix_advection}       %% C.1 WENO5, C.2 DCCD実験, C.3 安定性制約
+%% 付録C: 格子生成の実装補足（§5 対応）
+\input{sections/appendix_grid_impl}       %% C.1 コサイン型δ, C.2 Python擬似コード
 
-%% 付録D: 圧力ソルバーと連成解析（§8-9 対応）
-\input{sections/appendix_pressure}        %% D.1 欠陥補正理論, D.2 仮想時間, D.3 FVM基準
+%% 付録D: 移流スキームと安定性制約（§7 対応）
+\input{sections/appendix_advection}       %% D.1 WENO5, D.2 DCCD実験, D.3 安定性制約
+
+%% 付録E: 圧力ソルバーと連成解析（§8-9 対応）
+\input{sections/appendix_pressure}        %% E.1 欠陥補正理論, E.2 仮想時間, E.3 FVM基準
 %%   appD4_gfm（HFE）→ 本文§9に昇格（2026-04-08）
 
-%% 付録E: 検証の補足解析（§12 から移動）
-\input{sections/appendix_verification_details}  %% E.1 PPE離散化選択, E.2 HFE適合性
+%% 付録F: 検証の補足解析（§12 から移動）
+\input{sections/appendix_verification_details}  %% F.1 PPE離散化選択, F.2 HFE適合性
+
+%% 付録G: 無次元化の項別導出・曲率展開証明（§2 から移動）
+\input{sections/appendix_nondim_details}        %% G.1 項別無次元化, G.2 曲率2D導出, G.3 円検証
+
+%% 付録H: ブートストラップ初期化シーケンス（§10 から移動）
+\input{sections/appendix_bootstrap}             %% H.1 初期化5段階
 
 \end{document}

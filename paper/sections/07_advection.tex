@@ -51,63 +51,34 @@ $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 \label{sec:advection_weno5_critique}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\paragraph{WENO5 の設計思想と CLS 界面の非適合性．}
-WENO5（Weighted Essentially Non-Oscillatory 5次精度）スキーム~\cite{JiangShu1996}は，
-衝撃波・接触不連続面を含む圧縮性流体力学における数値振動（Gibbs 現象）を
-強力に抑制するために設計された．
-ステンシル内の\textbf{滑らかさ指標}（$\beta_k$，式~\eqref{eq:weno5_beta}）が
-不連続を検知すると，その方向の重みを $\Ord{\varepsilon_{\mathrm{w}}^2}$（$\varepsilon_{\mathrm{w}}$：WENO5 の滑らかさ指標に用いる小パラメータ；界面幅 $\varepsilon$ とは無関係）まで低減して
-\textbf{非線形散逸}を自動的に投入する機構がスキームの中核にある．
+WENO5~\cite{JiangShu1996} は圧縮性流体力学の衝撃波捕捉向けに設計されたスキームであり，
+CLS 界面移流には以下の 3 点で非適合である
+（詳細な定式化と性質は付録~\ref{app:weno5} を参照）：
 
-\medskip
-
-一方，本稿で採用する保存型レベルセット（CLS）法では，界面を滑らかな
-正則化ヘヴィサイド関数 $H_\varepsilon(\phi)$（式~\eqref{eq:Heps_def_preview}）で表現し，
-界面厚みを $2\varepsilon \sim \Ord{h}$ に制御する．
-この枠組みにおいて $\psi = H_\varepsilon(\phi)$ は\textbf{実質的に滑らかな関数}であり，
-移流方程式の解の中に\textbf{真の不連続は存在しない}．
-結果として WENO5 の滑らかさ指標は，
-滑らかな界面プロファイルを「不連続の兆候」と過剰に検知し，
-\textbf{不必要な非線形散逸を常時付加する}こととなる．
-
-この過剰散逸の帰結は以下の 2 点に集約される：
 \begin{enumerate}
-  \item \textbf{界面の非物理的平滑化：}
-        液滴の微細変形，薄液膜の形成，界面の強いせん断巻き込みといった
-        物理的に意味のある界面構造が，数値散逸によって均されてしまう．
-        特に高 $\mathrm{We}$ 数・高 $\mathrm{Re}$ 数流れで顕著となる．
+  \item \textbf{過剰散逸：}
+        CLS の $\psi = H_\varepsilon(\phi)$ は滑らかな関数であり真の不連続を含まないが，
+        WENO5 の滑らかさ指標はこの勾配を「不連続の兆候」と誤検知し，
+        不必要な非線形散逸を常時付加する．
+        結果として界面の微細構造（液膜・せん断巻き込み）が非物理的に平滑化される．
+
   \item \textbf{Balanced-Force 精度の侵食：}
-        第~\ref{sec:balanced_force}章で導く Balanced-Force 条件は，
-        曲率 $\kappa$ の計算と圧力勾配 $\bnabla p$ に\textbf{同一の差分演算子}を
-        用いることで寄生流れを $\Ord{h^6}$ のオーダーまで低減する．
-        WENO5 の非線形重みは $\psi$ の移流精度を適応的に劣化させるため，
-        再初期化後の $\psi$ プロファイル（曲率計算の入力）に振動・ぼやけを残し，
-        Balanced-Force によって確保した高精度を実用上無意味にする危険がある．
+        WENO5 の非線形重みが $\psi$ プロファイルに振動・ぼやけを残すことで，
+        Balanced-Force 条件（§~\ref{sec:balanced_force}）が確保する
+        寄生流れ $\Ord{h^6}$ の高精度を実用上無効化する危険がある．
+
+  \item \textbf{ステンシル非整合：}
+        本フレームワークは全空間離散化に CCD の 3 点コンパクトステンシルを用いるが，
+        WENO5 の 5 点ステンシルを混在させると
+        打ち切り誤差の非整合（$\Ord{h^5}$ が $\Ord{h^6}$ を律速）が生じ，
+        境界条件処理の一元化も失われる．
 \end{enumerate}
 
-\paragraph{CCD との根本的親和性．}
-CCD（結合コンパクト差分，第~\ref{sec:CCD}章）は，
-スペクトル解像度に優れる\textbf{線形・コンパクト・低散逸}スキームである．
-CLS が提供する滑らかな $\psi$ プロファイルは，まさに CCD が最も得意とする対象であり，
-以下の理由から移流項の離散化として自然な選択である．
-
-\begin{description}
-  \item[\upshape(i) 設定界面構造の長時間保持]
-        非線形重み調整をもたない CCD は，
-        設定した $\varepsilon$ のプロファイルを移流中に追加散逸なく維持する．
-        WENO5 が数ステップで界面を $\Ord{h}$ 幅だけ拡散させる状況でも，
-        CCD は高忠実な界面形状を保ち続ける（第~\ref{sec:verification}章参照）．
-  \item[\upshape(ii) 空間離散化スキームの統一]
-        本フレームワークでは PPE（§~\ref{sec:pressure}），粘性項，
-        表面張力の曲率評価，速度場微分の全てに CCD を用いている．
-        移流項に\textbf{同一の 3 点コンパクトステンシル}を採用することで，
-        支配方程式全体の空間離散化が単一の構造で統一される．
-        この統一性は，境界条件の処理を一元化し（§~\ref{sec:ccd_bc}），
-        変数間の数値的干渉を低減する．
-        WENO5 の 5 点ステンシルと CCD の 3 点ステンシルを混在させた場合に生じる
-        \textbf{打ち切り誤差の非整合}（$\Ord{h^5}$ の移流誤差が $\Ord{h^6}$ の圧力精度を
-        律速する非均質な精度階層）を回避できる．
-\end{description}
+\noindent
+CCD は線形・コンパクト・低散逸スキームであり，
+CLS の滑らかな $\psi$ プロファイルに対して界面構造を追加散逸なく長時間保持でき，
+支配方程式全体の空間離散化を単一構造で統一する
+（第~\ref{sec:verification}章で定量的に検証）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{気液界面移流の困難と純 CCD の限界}
@@ -212,36 +183,17 @@ $H(\xi) \approx 1 - \varepsilon_d^{\mathrm{adv}}\xi^2 \approx 1$（精度劣化 
 との使い分けを表~\ref{box:scheme_roles}に整理する．
 \end{tcolorbox}
 
-\begin{tcolorbox}[resultbox, title={TVD-RK3 + Dissipative CCD の安定性上界（形式的導出）}]
+\begin{tcolorbox}[resultbox, title={TVD-RK3 + Dissipative CCD の安定性上界}]
 \label{result:dccd_stability}
-TVD-RK3（式~\eqref{eq:tvd_rk3}）の増幅係数は，
-線形空間演算子の固有値 $\lambda_j = -\mathrm{i}\,u\,\hat{k}^*_j H_j/h$（純虚数；
-$\hat{k}^*_j = \hat{k}^*(\xi_j)$ は無次元 CCD 修正波数，$H_j \equiv H(\xi_j;\varepsilon_d^{\mathrm{adv}})$）
-に対して $g_{\mathrm{RK3}}(-\mathrm{i}\omega) = 1-\mathrm{i}\omega - \omega^2/2 + \mathrm{i}\omega^3/6$
-（$\omega \equiv \sigma H(\xi)\hat{k}^*(\xi)$，$\sigma=u\Delta t/h$）であり，
-$|g_{\mathrm{RK3}}|^2 = 1 - \omega^4/12 + \omega^6/36$
-から安定条件 $|g| \leq 1$ は
-\begin{equation}
-  \omega^4\!\left(\frac{\omega^2}{36} - \frac{1}{12}\right) \leq 0
-  \;\Longleftrightarrow\;
-  |\omega| \leq \sqrt{3}
-  \label{eq:rk3_stability_condition}
-\end{equation}
-すなわち $\sigma \leq \sqrt{3}/\max_\xi\bigl\{H(\xi;\varepsilon_d^{\mathrm{adv}})\,\hat{k}^*(\xi)\bigr\}$ となる．
-無次元修正波数 $\hat{k}^*(\xi)$ は特性方程式（式~\eqref{eq:CCD_I} の Fourier 解析）から求まり，
-$\varepsilon_d^{\mathrm{adv}} = 0.05$ のとき $\max_\xi\{H(\xi)\,\hat{k}^*(\xi)\} \approx 1.9$
-（$\xi \approx 0.8\pi$ 付近，数値計算による）であるから：
+フォン・ノイマン安定性解析（付録~\ref{app:stability_derivation}）により，
+TVD-RK3 + Dissipative CCD（$\varepsilon_d^{\mathrm{adv}} = 0.05$）の
+CFL 上界は
 \begin{equation}
   \sigma_{\max} = \frac{\sqrt{3}}{1.9} \approx 0.91
   \label{eq:cfl_upper_bound}
 \end{equation}
-本稿の CFL $\leq 0.5$（式~\eqref{eq:dt_adv}）はこの上界を十分に下回り，
+と求まる．本稿の CFL $\leq 0.5$（式~\eqref{eq:dt_adv}）はこの上界を十分に下回り，
 \textbf{TVD-RK3 + Dissipative CCD は CFL $\leq 0.5$ のもとで形式的に安定}である．
-
-\textbf{注：} 純 CCD フィルタなし（$H=1$）の場合，
-順 Euler 時間積分では $|g_\text{FE}|^2 = 1+\omega^2 > 1$（全波数で不安定；式~\eqref{eq:ccd_adv_instability}）だが，
-TVD-RK3 では $\sigma_{\max} \approx \sqrt{3}/\hat{k}^*_{\max} \approx \sqrt{3}/2.35 \approx 0.74$（安定）．
-Dissipative フィルタは安定限界の小幅な緩和よりも，Gibbs 振動の抑制（高波数減衰）を主目的とする．
 \end{tcolorbox}
 
 \medskip

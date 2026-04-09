@@ -1,0 +1,67 @@
+% paper/sections/appendix_grid_impl.tex
+%
+% 付録: 格子生成の実装補足（§5 から移動）
+
+\section{格子生成の実装補足}
+\label{app:grid_impl}
+
+\subsection{代替グリッド密度デルタ関数（コサイン型）}
+\label{app:grid_delta_cosine}
+
+ガウス型（式~\eqref{eq:grid_delta}）の代わりに，有限台を持つコサイン型を使うこともある（界面から完全に離れた点で厳密にゼロとなる利点）：
+\[
+  \delta_\varepsilon^*(\phi) =
+  \begin{cases}
+    \dfrac{1}{2\varepsilon_g}\left[1 + \cos\!\left(\dfrac{\pi\phi}{\varepsilon_g}\right)\right] & |\phi| \le \varepsilon_g \\[6pt]
+    0 & |\phi| > \varepsilon_g
+  \end{cases}
+\]
+この場合も $\int_{-\infty}^{\infty}\delta_\varepsilon^*\,d\phi = 1$ が満たされる（$[-\varepsilon_g,+\varepsilon_g]$ 上の積分が1）．
+
+\subsection{2次元格子の実装例（Python 擬似コード）}
+\label{app:grid_2d_impl}
+
+以下の擬似コードは，§~\ref{sec:grid_gen} の格子生成手順の Python 実装例を示す：
+
+\begin{tcolorbox}[algbox, title={格子生成アルゴリズム（擬似コード）}]
+\begin{verbatim}
+import numpy as np
+
+def build_1d_grid(phi_min_row, N, L, alpha, eps_g):
+    """1次元格子生成（行または列の最小|phi|を入力）"""
+    xi = np.linspace(0, L, N)
+    dxi = L / (N - 1)
+    # ガウス型スムーズデルタ関数
+    omega = 1 + (alpha - 1) * np.exp(-phi_min_row**2 / eps_g**2) \
+                             / np.sqrt(np.pi)
+    # 台形則で累積積分
+    x_tilde = np.zeros(N)
+    for i in range(N - 1):
+        x_tilde[i+1] = x_tilde[i] + dxi/2 * (1/omega[i] + 1/omega[i+1])
+    # 領域長 L に正規化
+    x = L * x_tilde / x_tilde[-1]
+    # ステップ5：メトリクス係数は CCD で評価すること（O(h^6) 精度）
+    # 実装：x[i] を入力データとして CCD 連立方程式を解き，
+    #       dx_dxi[i]（1階微分）と d2x_dxi2[i]（2階微分）を同時取得する
+    # Jx = 1.0 / dx_dxi        （dxi/dx）
+    # dJx_dxi = -d2x_dxi2 / dx_dxi**2
+    # 注意：np.gradient(xi, x) は O(h^2) 中心差分であり
+    #       CCD 精度を損なうため使用禁止（詳細は box:grid_jx_accuracy 参照）
+    dx_dxi, d2x_dxi2 = ccd_solve(x, xi)   # CCD: f=x(xi) -> f', f'' 同時求解
+    Jx = 1.0 / dx_dxi
+    dJx_dxi = -d2x_dxi2 / dx_dxi**2
+    return x, Jx, dJx_dxi
+
+def build_2d_grid(phi0, Nx, Ny, Lx, Ly, alpha, eps_g):
+    """2次元テンソル積格子生成"""
+    # x 方向：各列の最小 |phi|
+    phi_min_x = np.min(np.abs(phi0), axis=1)  # shape (Nx,)
+    x, Jx, dJx_dxi = build_1d_grid(phi_min_x, Nx, Lx, alpha, eps_g)
+    # y 方向：各行の最小 |phi|
+    phi_min_y = np.min(np.abs(phi0), axis=0)  # shape (Ny,)
+    y, Jy, dJy_deta = build_1d_grid(phi_min_y, Ny, Ly, alpha, eps_g)
+    # 2次元メッシュ
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    return X, Y, Jx, Jy, dJx_dxi, dJy_deta
+\end{verbatim}
+\end{tcolorbox}

@@ -308,78 +308,22 @@ PPE RHS / Corrector（§~\ref{sec:dccd_decoupling}）
 \end{table}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{散逸強度 \texorpdfstring{$\varepsilon_{d,\max}$}{ε\_d,max} のスペクトル設計}
+\subsubsection{散逸強度 \texorpdfstring{$\varepsilon_{d,\max}$}{ε\_d,max} の設計値}
 \label{sec:dccd_eps_design}
 % ─────────────────────────────────────────────────────────────────────────────
 
-スイッチ関数が決まれば，次は散逸強度の上限 $\varepsilon_{d,\max}$ を設計する問題となる．
-設計の指針は以下の 2 つの要求の\textbf{同時達成}である：
-\begin{enumerate}[label=(\alph*)]
-  \item \textbf{精度保存：} 低波数域（長波長の物理情報）は CCD の $\Ord{h^6}$ 精度を損なわない．
-  \item \textbf{高周波抑制：} ナイキスト近傍（$\xi \gtrsim 2\pi/3$，波長 $\lesssim 3h$）を
-        有意に減衰させる．
-\end{enumerate}
-
-\medskip
-\noindent\textbf{定量的設計．}
-
-フィルタ伝達関数 $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ において，
-低波数（$\xi \leq \xi_L$）での精度要求を：
-\begin{equation}
-  |H(\xi_L;\varepsilon_d) - 1| = 4\varepsilon_d\sin^2\!\left(\frac{\xi_L}{2}\right) \leq \delta_\mathrm{acc}
-  \label{eq:accuracy_req}
-\end{equation}
-高波数（$\xi = \pi$）での減衰要求を：
-\begin{equation}
-  H(\pi;\varepsilon_d) = 1 - 4\varepsilon_d \leq 1 - D_\mathrm{target}
-  \quad\Leftrightarrow\quad
-  \varepsilon_d \geq \frac{D_\mathrm{target}}{4}
-  \label{eq:damping_req}
-\end{equation}
-と定式化する．典型的な二相流計算では，$\xi_L = \pi/3$（波長 $\geq 6h$ を精度保存），
-$\delta_\mathrm{acc} = 0.05$（5\% 以内の振幅変化を許容），
-$D_\mathrm{target} = 0.20$（ナイキスト成分を 20\% 減衰）とする：
-
-\begin{tcolorbox}[resultbox, title={$\varepsilon_{d,\max}$ の設計値と設計根拠}]
-\label{box:eps_design}
-精度要求（式~\eqref{eq:accuracy_req}，$\xi_L = \pi/3$，$\delta_\mathrm{acc}=0.05$）から：
-\begin{equation}
-  4\varepsilon_d\sin^2(\pi/6) = 4\varepsilon_d\cdot\frac{1}{4} = \varepsilon_d \;\leq\; 0.05
-  \label{eq:eps_bound_accuracy}
-\end{equation}
-
-減衰要求（式~\eqref{eq:damping_req}，$D_\mathrm{target}=0.20$）から：
-\begin{equation}
-  \varepsilon_d \;\geq\; \frac{0.20}{4} = 0.05
-  \label{eq:eps_bound_damping}
-\end{equation}
-
-両制約が $\varepsilon_{d,\max} = 0.05$ で\textbf{等号達成}：
-
+フィルタ伝達関数 $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ に対し，
+低波数精度保存（波長 $\geq 6h$ で劣化 $\leq 5\%$）と
+高周波抑制（ナイキスト成分 20\% 減衰）の同時要求から，
+両制約が等号で一致する設計点が得られる
+（スペクトル設計の詳細は §~\ref{sec:dccd_filter_theory} 参照）：
 \begin{equation}
   \boxed{\varepsilon_{d,\max} = 0.05}
   \label{eq:eps_max}
 \end{equation}
-
-\textbf{解釈：}
-波長 $6h$ 以上（物理的に意味ある成分）の精度劣化は最大 5\%，
-ナイキスト成分（波長 $2h$）は 20\% 減衰する．
-より強い安定化が必要な場合（高密度比・高 Reynolds 数計算）は
-$\varepsilon_{d,\max} = 0.10$〜$0.20$ まで拡張できるが，
-この場合は波長 $6h$ の精度劣化も 10〜20\% に増加することに注意する．
-
-\medskip
-\textbf{安定性制約の確認：}
-$\varepsilon_{d,\max} = 0.05 \leq 0.25$（式~\eqref{eq:dccd_transfer} の安定限界 $1/4$）を満足する．$\square$
-\end{tcolorbox}
-
-\noindent\textbf{フィルタ伝達関数の波数プロファイル（$\varepsilon_d = 0.05$）：}
-\begin{align*}
-  H(0;\, 0.05)     &= 1.00 \quad (\xi = 0,\text{ DC 成分，変化なし}) \\
-  H(\pi/3;\, 0.05) &= 1 - 4(0.05)\sin^2(\pi/6) = 1 - 0.05 = 0.95 \quad (\text{波長}\ 6h,\ 5\%\ \text{減衰}) \\
-  H(2\pi/3;\, 0.05)&= 1 - 4(0.05)\sin^2(\pi/3) = 1 - 0.15 = 0.85 \quad (\text{波長}\ 3h,\ 15\%\ \text{減衰}) \\
-  H(\pi;\, 0.05)   &= 1 - 4(0.05) = 0.80 \quad (\text{波長}\ 2h,\ 20\%\ \text{減衰})
-\end{align*}
+安定性制約 $\varepsilon_{d,\max} \leq 0.25$（式~\eqref{eq:dccd_transfer}）を満足する．
+より強い安定化が必要な場合は $\varepsilon_{d,\max} = 0.10$〜$0.20$ まで拡張可能だが，
+低波数精度も同率で劣化する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{適応散逸制御則と実装アルゴリズム}
@@ -451,40 +395,11 @@ $f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
 \label{sec:bootstrap}
 % ═════════════════════════════════════════════════════════════════════════════
 
-シミュレーション開始前に，以下の初期化シーケンス（ブートストラップ処理）を一度だけ実行する．
-格子生成には Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
-循環参照を，一様格子による仮評価で解消する．
-
-\begin{tcolorbox}[algbox, title={ブートストラップ処理：初期化シーケンス}]
-\begin{enumerate}
-  \item \textbf{一様格子上での $\phi^{(0)}$ 計算：}
-        $N_x \times N_y$ 等間隔格子上で $\phi^{(0)}_{i,j}$ を計算する
-        （界面形状が解析的に与えられる場合は直接代入；そうでない場合は
-        一様格子上の符号付き距離関数として初期化）．
-  \item \textbf{非一様格子の生成（§~\ref{sec:grid_2d}）：}
-        $\phi^{(0)}$ から界面適合非一様格子を生成する：
-        \begin{enumerate}
-          \item $x$ 方向の密度関数 $\omega^x_i = 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^x_i)$ を計算し，
-                §~\ref{sec:grid_gen} のステップ2--5で物理座標 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$ を得る．
-          \item $y$ 方向も同様に $\{y_j\}$ と $\{J_y|_j\}$ を得る．
-        \end{enumerate}
-  \item \textbf{CLS 変数の初期化：}
-        非一様格子上で $\psi^{(0)}_{i,j} = H_\varepsilon(\phi^{(0)}_{i,j})$ を評価し，
-        必要に応じて CLS 再初期化（§~\ref{sec:reinit}）を数ステップ実行して
-        $|\bnabla\phi| \approx 1$ を確保する．
-  \item \textbf{CCD 演算子の構築：}
-        非一様格子のメトリクス係数を用いて CCD ブロック三重対角行列
-        （§~\ref{sec:ccd_matrix}）を組み立て，LU 分解を事前計算する．
-  \item \textbf{初期圧力場の設定：}
-        静的平衡条件 $p^{(0)} = \sigma\kappa_0$（Young--Laplace 圧力）を初期値として設定する．
-        曲率 $\kappa_0$ は $\psi^{(0)}$ から CCD 微分を用いて評価する．
-\end{enumerate}
-
-\textbf{出力：}
-非一様格子 $\{(x_i, y_j)\}$，メトリクス係数 $\{J_x|_i, J_y|_j\}$，
-CLS 場 $\psi^{(0)}$，CCD 演算子（LU 分解済み），初期圧力場 $p^{(0)}$．
-\end{tcolorbox}
-
+シミュレーション開始前に，一様格子上の仮 $\phi^{(0)}$ 評価
+$\to$ 非一様格子生成（§~\ref{sec:grid_2d}）
+$\to$ CLS 初期化・CCD 演算子構築・Young--Laplace 初期圧力設定
+の 5 段階ブートストラップを一度だけ実行する
+（格子--界面の循環参照を解消；詳細は付録~\ref{app:bootstrap} 参照）．
 格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）については
 §~\ref{sec:grid_ale} を参照されたい．
 

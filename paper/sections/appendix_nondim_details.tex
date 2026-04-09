@@ -1,0 +1,178 @@
+% paper/sections/appendix_nondim_details.tex
+%
+% 付録F: 無次元化の項別導出（§2c から移動）
+%   本編 §~\ref{sec:nondim} の式~\eqref{eq:NS_dimless_cls} を導く際の
+%   各項の変換過程を詳述する．
+
+\section{無次元 Navier--Stokes 方程式の項別導出}
+\label{app:nondim_details}
+
+本付録では，§~\ref{sec:nondim} で提示した無次元 NS 方程式~\eqref{eq:NS_dimless_cls}
+の導出過程を，各項ごとに詳述する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{各項の無次元化}
+\label{sec:nondim_items}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:nondim} で導入した無次元化変数を，
+次元系方程式~\eqref{eq:NS_dim} の各項に代入し，変換する．
+各項に慣性力スケール $\rho_l U^2 / L$ が現れることを確認する．
+
+\begin{itemize}
+    \item \textbf{非定常項（時間微分項）}:
+    \[
+      \rho^* \pd{\bu^*}{t^*}
+      = (\rho_l\rho)\,\pd{(U\bu)}{\frac{L}{U}t}
+      = \left[\frac{\rho_l U^2}{L}\right]\,\rho\,\pd{\bu}{t}
+    \]
+
+    \item \textbf{移流項}:
+    \[
+      \rho^* (\bu^* \cdot \bnabla^*) \bu^*
+      = (\rho_l\rho) \left( (U\bu) \cdot \left(\frac{1}{L}\bnabla\right) \right) (U\bu)
+      = \left[\frac{\rho_l U^2}{L}\right] \rho(\bu\cdot\bnabla)\bu
+    \]
+
+    \item \textbf{圧力勾配項}:
+    \[
+      \bnabla^* p^* = \left(\frac{1}{L}\bnabla\right) (\rho_l U^2 p)
+      = \left[\frac{\rho_l U^2}{L}\right] \bnabla p
+    \]
+
+    \item \textbf{粘性項}:
+    \begin{align*}
+     \bnabla^*\cdot\bigl[\mu^*(\bnabla^*\bu^* + (\bnabla^*\bu^*)^T)\bigr]
+     &= \frac{1}{L}\bnabla\cdot\left[
+         (\mu_l\mu)\left(\frac{U}{L}\bnabla\bu + \frac{U}{L}(\bnabla\bu)^T\right)
+        \right] \\
+     &= \left[\frac{\mu_l U}{L^2}\right]\bnabla\cdot\bigl[\mu(\bnabla\bu+(\bnabla\bu)^T)\bigr] \\
+     &= \left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{\mu_l}{\rho_l U L}\right)}_{=1/Re}
+        \bnabla\cdot\bigl[\mu(\bnabla\bu+(\bnabla\bu)^T)\bigr]
+    \end{align*}
+    ここで，レイノルズ数 $Re \equiv \rho_l U L / \mu_l$ が現れる．
+
+    \item \textbf{重力項}:（座標規約 \eqref{eq:gravity_convention} より $\bm{g}^* = -g\hat{\bm{z}}$）
+    \[
+      \rho^* \bm{g}^*
+      = (\rho_l\rho) (-g\hat{\bm{z}})
+      = -\left[\frac{\rho_l U^2}{L}\right]
+        \underbrace{\left(\frac{gL}{U^2}\right)}_{=1/Fr^2}
+        \rho \hat{\bm z}
+    \]
+    ここで，フルード数 $Fr \equiv U/\sqrt{gL}$ が現れる．
+
+    \item \textbf{表面張力項}:（無次元数 $We$ の導出には CSF 体積力形式 $\bm{f}_\sigma^* = \sigma\kappa^*\bnabla^*\psi$ を用いるが，得られる $1/We$ は Young--Laplace ジャンプ条件~\eqref{eq:young_laplace_jump} にも共通する）
+    \begin{align*}
+      \sigma\kappa^*\bnabla^*\psi
+      &= \sigma \left(\frac{1}{L}\kappa\right) \left(\frac{1}{L}\bnabla\psi\right)
+       = \frac{\sigma}{L^2}\kappa\bnabla\psi \\
+      &= \left[\frac{\rho_l U^2}{L}\right]
+         \underbrace{\left(\frac{\sigma}{\rho_l U^2 L}\right)}_{=1/We}
+         \kappa\bnabla\psi
+    \end{align*}
+    ここで，ウェーバー数 $We \equiv \rho_l U^2 L / \sigma$ が現れる．
+\end{itemize}
+
+上記の各項を元の方程式~\eqref{eq:NS_dim} に代入すると，
+共通因子 $[\rho_l U^2/L]$ が全ての項に現れ，
+両辺をこの因子で割ることで式~\eqref{eq:NS_dimless_cls} が得られる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{2次元曲率式の展開導出}
+\label{app:curvature_2d_derivation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:curvature} の曲率式~\eqref{eq:curvature_2d} の導出過程を示す．
+式~\eqref{eq:curvature_div} を2次元 $(x,y)$ 系で展開する．
+$\bnabla\phi = (\phi_x, \phi_y)$，
+$|\bnabla\phi| = \sqrt{\phi_x^2 + \phi_y^2}$ として：
+\[
+  \kappa = -\left( \pd{n_x}{x} + \pd{n_y}{y} \right)
+  = -\left(
+      \pd{}{x}\frac{\phi_x}{\sqrt{\phi_x^2+\phi_y^2}}
+      + \pd{}{y}\frac{\phi_y}{\sqrt{\phi_x^2+\phi_y^2}}
+    \right)
+\]
+
+第一項 $\pd{n_x}{x}$ の計算：
+$f/g$ の微分は $(f'g - fg')/g^2$ である．
+$f=\phi_x$，$g=\sqrt{\phi_x^2+\phi_y^2}$ とすると，
+\begin{itemize}
+    \item $f' = \phi_{xx}$
+    \item $g' = \dfrac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{\sqrt{\phi_x^2+\phi_y^2}}$
+    \quad（連鎖律による）
+\end{itemize}
+商の微分公式に代入すると：
+\begin{equation}
+ \pd{n_x}{x}
+ = \frac{
+     \overbrace{\phi_{xx}}^{f'}
+     \overbrace{(\phi_x^2+\phi_y^2)^{1/2}}^{g}
+     -
+     \overbrace{\phi_x}^{f}
+     \overbrace{\left(\dfrac{\phi_x\phi_{xx} + \phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{1/2}}\right)}^{g'}
+   }{\underbrace{\phi_x^2+\phi_y^2}_{g^2}}
+ \label{eq:dnx_dx_raw}
+\end{equation}
+通分・整理すると：
+\begin{equation}
+ \pd{n_x}{x}
+ = \frac{\phi_{xx}\phi_y^2 - \phi_x\phi_y\phi_{xy}}{(\phi_x^2+\phi_y^2)^{3/2}}
+ \label{eq:dnx_dx}
+\end{equation}
+同様に $y$ 方向（対称性 $x \leftrightarrow y$）：
+\begin{equation}
+  \pd{n_y}{y}
+  = \frac{\phi_{yy}\phi_x^2 - \phi_y\phi_x\phi_{yx}}{(\phi_x^2+\phi_y^2)^{3/2}}
+  \label{eq:dny_dy}
+\end{equation}
+$\phi_{xy}=\phi_{yx}$（Schwarz の定理）として
+式~\eqref{eq:dnx_dx} と式~\eqref{eq:dny_dy} を加算すると，
+分子は $\phi_{xx}\phi_y^2 - 2\phi_x\phi_y\phi_{xy} + \phi_{yy}\phi_x^2$ となり，
+式~\eqref{eq:curvature_2d} が得られる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{具体例：半径 $R$ の円による曲率式の検証}
+\label{sec:curvature_circle_example}
+% ─────────────────────────────────────────────────────────────────────────────
+
+曲率式~\eqref{eq:curvature_2d} が正しいことを，
+最も基本的な例である「円」で検証する．
+
+\paragraph{設定：}
+原点を中心とする半径 $R$ の円を，符号付き距離関数
+\[
+  \phi(x,y) = \sqrt{x^2 + y^2} - R \equiv r - R
+  \quad \left(r \equiv \sqrt{x^2+y^2}\right)
+\]
+で表す（$\phi < 0$：円内部（液相），$\phi > 0$：円外部（気相），$\phi = 0$：界面）．
+
+\paragraph{微分の計算：}
+\begin{align}
+  \phi_x &= \frac{x}{r},\quad \phi_y = \frac{y}{r} \notag \\
+  \phi_{xx} &= \frac{r^2-x^2}{r^3} = \frac{y^2}{r^3},\quad
+  \phi_{yy} = \frac{x^2}{r^3},\quad
+  \phi_{xy} = -\frac{xy}{r^3}
+  \label{eq:circle_deriv}
+\end{align}
+
+\paragraph{式~\eqref{eq:curvature_2d} への代入：}
+
+分母：$\phi_x^2 + \phi_y^2 = 1$（真の符号付き距離関数の性質）．
+分子：
+\begin{align*}
+  &\phi_y^2\,\phi_{xx} - 2\phi_x\phi_y\,\phi_{xy} + \phi_x^2\,\phi_{yy} \\
+  &= \frac{y^2}{r^2}\cdot\frac{y^2}{r^3}
+     - 2\cdot\frac{x}{r}\cdot\frac{y}{r}\cdot\left(-\frac{xy}{r^3}\right)
+     + \frac{x^2}{r^2}\cdot\frac{x^2}{r^3}
+   = \frac{(x^2+y^2)^2}{r^5} = \frac{1}{r}
+\end{align*}
+よって $\kappa = -1/r$．界面 $r = R$ 上では $\kappa = -1/R < 0$
+（液滴内部が液相で $\hat{\bm{n}}$ が外向き，§~\ref{sec:notation} の符号規約と一致）．
+Young--Laplace 則 $[p]=\sigma\kappa$ に代入すると $p_\text{liq} - p_\text{gas} = \sigma/R > 0$
+（液滴内部の圧力が外部より高い）となり，物理的に正しい．
+
+実装確認には，$E_\kappa(h) \equiv \|\kappa_h - (-1/R)\|_{L^\infty}$ の $\Ord{h^6}$ 収束テストが有効である
+（§~\ref{sec:verify_curvature} 参照）．

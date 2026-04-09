@@ -1,0 +1,46 @@
+% paper/sections/appendix_stability_analysis.tex
+%
+% TVD-RK3 + Dissipative CCD のフォン・ノイマン安定性解析（§5 本文から移動）
+
+\section{TVD-RK3 + Dissipative CCD の安定性解析}
+\label{app:stability_derivation}
+
+本節では，§~\ref{sec:advection_dccd_design} の Result~\ref{result:dccd_stability} で
+引用した CFL 上界 $\sigma_{\max} \approx 0.91$ の導出を示す．
+
+\medskip
+\noindent\textbf{増幅係数の導出．}
+TVD-RK3（式~\eqref{eq:tvd_rk3}）の増幅係数は，
+線形空間演算子の固有値 $\lambda_j = -\mathrm{i}\,u\,\hat{k}^*_j H_j/h$（純虚数；
+$\hat{k}^*_j = \hat{k}^*(\xi_j)$ は無次元 CCD 修正波数，$H_j \equiv H(\xi_j;\varepsilon_d^{\mathrm{adv}})$）
+に対して
+\[
+  g_{\mathrm{RK3}}(-\mathrm{i}\omega) = 1-\mathrm{i}\omega - \frac{\omega^2}{2} + \frac{\mathrm{i}\omega^3}{6}
+\]
+（$\omega \equiv \sigma H(\xi)\hat{k}^*(\xi)$，$\sigma=u\Delta t/h$）であり，
+$|g_{\mathrm{RK3}}|^2 = 1 - \omega^4/12 + \omega^6/36$
+から安定条件 $|g| \leq 1$ は
+\begin{equation}
+  \omega^4\!\left(\frac{\omega^2}{36} - \frac{1}{12}\right) \leq 0
+  \;\Longleftrightarrow\;
+  |\omega| \leq \sqrt{3}
+  \label{eq:rk3_stability_condition}
+\end{equation}
+
+\medskip
+\noindent\textbf{CFL 上界の評価．}
+式~\eqref{eq:rk3_stability_condition} から
+$\sigma \leq \sqrt{3}/\max_\xi\bigl\{H(\xi;\varepsilon_d^{\mathrm{adv}})\,\hat{k}^*(\xi)\bigr\}$ となる．
+無次元修正波数 $\hat{k}^*(\xi)$ は特性方程式（式~\eqref{eq:CCD_I} の Fourier 解析）から求まり，
+$\varepsilon_d^{\mathrm{adv}} = 0.05$ のとき $\max_\xi\{H(\xi)\,\hat{k}^*(\xi)\} \approx 1.9$
+（$\xi \approx 0.8\pi$ 付近，数値計算による）であるから：
+\[
+  \sigma_{\max} = \frac{\sqrt{3}}{1.9} \approx 0.91
+\]
+
+\medskip
+\noindent\textbf{フィルタなしの場合との比較．}
+純 CCD フィルタなし（$H=1$）の場合，
+順 Euler 時間積分では $|g_\text{FE}|^2 = 1+\omega^2 > 1$（全波数で不安定；式~\eqref{eq:ccd_adv_instability}）だが，
+TVD-RK3 では $\sigma_{\max} \approx \sqrt{3}/\hat{k}^*_{\max} \approx \sqrt{3}/2.35 \approx 0.74$（安定）．
+Dissipative フィルタは安定限界の小幅な緩和よりも，Gibbs 振動の抑制（高波数減衰）を主目的とする．

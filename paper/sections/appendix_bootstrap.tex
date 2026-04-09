@@ -1,0 +1,39 @@
+% paper/sections/appendix_bootstrap.tex
+% 付録H: ブートストラップ初期化シーケンス（§10 から移動）
+
+\section{ブートストラップ処理：初期化シーケンス}
+\label{app:bootstrap}
+
+シミュレーション開始前に，以下の初期化シーケンス（ブートストラップ処理）を一度だけ実行する．
+格子生成には Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
+循環参照を，一様格子による仮評価で解消する．
+
+\begin{tcolorbox}[algbox, title={ブートストラップ処理：初期化シーケンス}]
+\begin{enumerate}
+  \item \textbf{一様格子上での $\phi^{(0)}$ 計算：}
+        $N_x \times N_y$ 等間隔格子上で $\phi^{(0)}_{i,j}$ を計算する
+        （界面形状が解析的に与えられる場合は直接代入；そうでない場合は
+        一様格子上の符号付き距離関数として初期化）．
+  \item \textbf{非一様格子の生成（§~\ref{sec:grid_2d}）：}
+        $\phi^{(0)}$ から界面適合非一様格子を生成する：
+        \begin{enumerate}
+          \item $x$ 方向の密度関数 $\omega^x_i = 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^x_i)$ を計算し，
+                §~\ref{sec:grid_gen} のステップ2--5で物理座標 $\{x_i\}$ とメトリクス係数 $\{J_x|_i\}$ を得る．
+          \item $y$ 方向も同様に $\{y_j\}$ と $\{J_y|_j\}$ を得る．
+        \end{enumerate}
+  \item \textbf{CLS 変数の初期化：}
+        非一様格子上で $\psi^{(0)}_{i,j} = H_\varepsilon(\phi^{(0)}_{i,j})$ を評価し，
+        必要に応じて CLS 再初期化（§~\ref{sec:reinit}）を数ステップ実行して
+        $|\bnabla\phi| \approx 1$ を確保する．
+  \item \textbf{CCD 演算子の構築：}
+        非一様格子のメトリクス係数を用いて CCD ブロック三重対角行列
+        （§~\ref{sec:ccd_matrix}）を組み立て，LU 分解を事前計算する．
+  \item \textbf{初期圧力場の設定：}
+        静的平衡条件 $p^{(0)} = \sigma\kappa_0$（Young--Laplace 圧力）を初期値として設定する．
+        曲率 $\kappa_0$ は $\psi^{(0)}$ から CCD 微分を用いて評価する．
+\end{enumerate}
+
+\textbf{出力：}
+非一様格子 $\{(x_i, y_j)\}$，メトリクス係数 $\{J_x|_i, J_y|_j\}$，
+CLS 場 $\psi^{(0)}$，CCD 演算子（LU 分解済み），初期圧力場 $p^{(0)}$．
+\end{tcolorbox}

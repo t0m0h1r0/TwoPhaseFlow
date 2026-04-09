@@ -89,3 +89,39 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
 得られた線形系は欠陥補正法（§~\ref{sec:defect_correction_main}）で効率的に解く．
 FVM との等価性・調和平均の根拠は §~\ref{sec:fvm_face_coeff} 参照．
 実装詳細（仮想時間刻み・ゲージ固定）は付録~\ref{sec:ppe_pseudotime} 参照．
+
+% ─────────────────────────────────────────────────────────────────────────────
+% 圧力場へのフィルタ適用禁止（旧 08c_pressure_filter.tex から統合）
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{tcolorbox}[warnbox, title={圧力場へのフィルタ適用禁止}]
+\label{sec:dccd_pressure_nofilt}%
+\label{warn:pressure_direct_filter}%
+PPE ソルバー（§~\ref{sec:ppe_solve}）に進む前に，
+フィルタ適用に関する重要な制約を明確にしておく．
+§~\ref{sec:dccd_filter_theory} で導入した DCCD フィルタを圧力場に直接適用してはならない．
+
+圧力場 $p$ に対する直接的なフィルタ適用は，
+速度修正ステップ $\bm{u}^{n+1} = \bm{u}^* - \Delta t\,\tilde{\bnabla}p$（§~\ref{sec:pressure}）が
+\textbf{発散自由条件} $\bnabla^{\mathrm{RC}}\cdot\bm{u}^{n+1} = 0$ を満たすよう設計されているためであり，
+フィルタによる $p$ の書き換えはこの条件を破壊する．
+
+圧力関連ノイズへの対処が必要な場合，以下の代替処理が保全性を保ちながら有効である：
+\begin{enumerate}
+  \item \textbf{圧力勾配のフィルタリング：}
+        NS 右辺に現れる $\bnabla p$（CCD 微分として評価）に対して DCCD フィルタを適用する．
+        $p$ 自体は書き換えず，PPE の構造と発散自由性への影響がない．
+  \item \textbf{PPE 右辺の正則化：}
+        ポアソン方程式 $\bnabla^2 p = \bnabla^{\mathrm{RC}}\cdot\bm{u}^*/\Delta t$ の
+        右辺 $q = \bnabla^{\mathrm{RC}}\cdot\bm{u}^*/\Delta t$（式~\eqref{eq:rc_divergence}）に
+        軽微なフィルタを適用して $p$ 求解前に平滑化する．
+        これはポアソンソルバーの収束安定化にも寄与し，
+        §~\ref{sec:ppe_pseudotime} の擬似時間ソルバーでは
+        反復減衰によって自然に実現される．
+\end{enumerate}
+
+\noindent\textbf{実装上の禁忌：}
+\texttt{p[:,:] = filter(p)} の形で圧力配列を直接書き換えることは，
+発散自由射影直後に誤差を混入させ，次タイムステップの速度補正を破壊する．
+本稿の擬似時間 PPE ソルバーおよび速度補正モジュールでは
+この操作を一切行っていないことを確認済みである．
+\end{tcolorbox}

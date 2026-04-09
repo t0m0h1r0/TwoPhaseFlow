@@ -9,7 +9,10 @@
 %%   appendix_numerics_schemes_s3.tex, appC2_interface_advection.tex
 %%   理由: 本文から参照ゼロ (§11 と重複)
 
-%% C.2 安定性制約（毛管波 CFL + ALE 効果を統合）
+%% C.2 TVD-RK3 + Dissipative CCD 安定性解析（§5 本文から移動）
+\input{sections/appendix_stability_analysis}   %% フォン・ノイマン解析による CFL 上界導出
+
+%% C.3 安定性制約（毛管波 CFL + ALE 効果を統合）
 \section{安定性制約}
 \label{app:stability_constraints}
 \input{sections/appendix_numerics_solver_s1}   %% C.3.1 毛管波 CFL + C.3.2 ALE 効果（統合）

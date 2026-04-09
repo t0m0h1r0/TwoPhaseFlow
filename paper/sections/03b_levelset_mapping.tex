@@ -188,116 +188,24 @@ $\varepsilon_{\textup{eff}} \gg \varepsilon$ は
 数値拡散による過度な界面幅増大を示す診断指標となる．
 
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{曲率の数値計算と安定化：再初期化との接続}
+\subsection{曲率の数値的安定性}
 \label{sec:curvature_stab}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-第~\ref{sec:governing}章 §~\ref{sec:curvature}（式~\eqref{eq:curvature_2d}）で曲率の展開式を導出し，
-§~\ref{sec:csf} の~\ref{par:curvature_stab} で実装クイックスタート（分母クランプ式~\eqref{eq:curvature_clamped}）を提示した．
-\textbf{本節の目的}は，そのクランプが「なぜ必要か」を CLS 再初期化の文脈から説明することである：
-ゼロ除算は再初期化の不完全性に起因するため，クランプは応急処置であり，
-根本的な保証は再初期化の品質にある——この因果関係を以下で定量的に示す．
-なお，前節の $\psi$ 直接法（式~\eqref{eq:curvature_psi_2d}）を用いる場合は
-Eikonal 条件への依存が解消されるため，本節の正則化は不要となる．
+$\psi$ 直接法（式~\eqref{eq:curvature_psi_2d}，定理~\ref{thm:curvature_invariance}）を用いる場合，
+曲率計算は Eikonal 条件 $|\bnabla\phi|=1$ に依存しない．
+界面近傍（$\psi_{\min} < \psi < 1-\psi_{\min}$，推奨 $\psi_{\min}=0.01$）で
+式~\eqref{eq:curvature_psi_2d} を適用し，
+界面遠方（$|\bnabla\psi| \to 0$）では $\kappa = 0$ とする．
+CCD 法（第~\ref{sec:CCD}章）は解法過程で $\psi, \psi', \psi''$ を
+同時に $\Ord{h^6}$ 精度で算出するため，追加計算は不要である．
 
-曲率の定義と2次元展開式の導出は §~\ref{sec:curvature}（式~\eqref{eq:curvature_2d}）を参照．ここでは CLS 変数 $\psi$ を用いた曲率評価の適用手順のみを示す．
-数学的には厳密であるが，数値計算で直接使用するには注意が必要である．
-問題の核心は\textbf{分母 $(\phi_x^2+\phi_y^2)^{3/2}$ のゼロ除算リスク}であり，
-これは CLS 再初期化の品質（Eikonal 条件 $|\bnabla\phi|=1$ の維持）と
-密接に関連した実装上の重要課題である——以下に詳述する．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{ゼロ除算の発生メカニズム：再初期化の不完全性との関係}
-% ─────────────────────────────────────────────────────────────────────────────
-
-真の符号付き距離関数 $\phi$ であれば，Eikonal 条件 $|\bnabla\phi|=1$ が
-至るところで成立するため，分母は常に $1^{3/2}=1$ となりゼロ除算は起きない．
-しかし，数値計算では再初期化の不完全性により $|\bnabla\phi|$ が局所的に小さくなることがある．
-この場合，式~\eqref{eq:curvature_2d} の分母 $(\phi_x^2+\phi_y^2)^{3/2}$ がゼロに近づき，
-$\kappa$ が非物理的な大値をとって表面張力項が発散する．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{ゼロ除算の回避：分母への下限値の導入}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\paragraph{ゼロ除算の回避（必須実装）}
-式~\eqref{eq:curvature_2d} の数値実装では，分母にゼロ除算防止のための
-\textbf{下限値 $\varepsilon_{\text{norm}}^2$} を加える（式~\eqref{eq:curvature_clamped}，§~\ref{sec:curvature} 参照）．
-$|\bnabla\phi|^2 \gg \varepsilon_{\text{norm}}^2$ の正常な界面近傍では元の式と同一の結果を与え，
-$|\bnabla\phi|^2 \lesssim \varepsilon_{\text{norm}}^2$ の特異点付近では
-分母が $\varepsilon_{\text{norm}}^3$ に固定されて $\kappa$ が有界に保たれる．
-再初期化が正常なら $|\bnabla\phi| \approx 1$ であるため，
-$\varepsilon_{\text{norm}} = 10^{-3} \sim 10^{-4}$（次元なし）で十分である．
-$\varepsilon_{\text{norm}}$ が大きすぎると曲率の系統的過小評価が生じ，
-相対誤差は $\Ord{\varepsilon_{\text{norm}}^2/|\bnabla\phi|^2}$ 程度となる．
-\textbf{推奨値：} $\varepsilon_{\text{norm}} = 10^{-3}$．
-密度比 $\rho_l/\rho_g \gg 1$ で Eikonal 誤差が大きい場合は $10^{-2}$ も検討する．
-
-$|\bnabla\phi|^2 = 1 + \delta^2$（$\delta$ は Eikonal 誤差）の場合，$|\bnabla\phi|^2 \gg \varepsilon_{\text{norm}}^2$ のとき $\max$ は $|\bnabla\phi|^2$ を選ぶので：
-\begin{align*}
-  \kappa_{\text{reg}} &= -\frac{\text{分子}}{(1+\delta^2)^{3/2}}
-  \approx -\frac{\text{分子}}{1} \cdot \left(1 - \frac{3}{2}\delta^2 + \cdots\right)
-\end{align*}
-Eikonal 誤差 $\delta \ll 1$ のとき曲率への影響は $\Ord{\delta^2}$ に留まり，
-再初期化が概ね正常に機能している限り高精度が維持される．
-すなわち，\textbf{曲率精度の第一の保証は正則化ではなく，再初期化の品質（Eikonal 条件の維持）にある}．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{曲率計算の実装チェックリスト}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\begin{tcolorbox}[algbox, title={曲率計算の実装チェックリスト}]
-
-\textbf{推奨経路（$\psi$ 直接法）}——定理~\ref{thm:curvature_invariance}（§~\ref{sec:curvature_direct_psi}）に基づき，
-ロジット逆変換を省略して $\psi$ の微分値から曲率を直接計算する：
-
-\begin{enumerate}
-  \item \textbf{1次・2次微分の計算：}
-        移流後の $\psi^{n+1}$ に対して
-        $\psi_x, \psi_y, \psi_{xx}, \psi_{yy}, \psi_{xy}$ を CCD 法（第~\ref{sec:CCD}章）で
-        $\Ord{h^6}$ 精度で計算する（CCD は解法過程で同時に算出）．
-
-  \item \textbf{適用領域の判定：}
-        界面近傍（$\psi_{\min} < \psi < 1-\psi_{\min}$，推奨 $\psi_{\min}=0.01$）の
-        格子点のみを曲率計算の対象とし，界面遠方では $\kappa = 0$ とする．
-
-  \item \textbf{曲率の計算：}
-        式~\eqref{eq:curvature_psi_2d} で $\kappa$ を計算する．
-
-  \item \textbf{（オプション）プロファイル品質監視：}
-        実効界面厚み $\varepsilon_{\textup{eff}}$（式~\eqref{eq:epsilon_eff}）を
-        評価し，$\varepsilon_{\textup{eff}}/\varepsilon$ が設計値から大きく逸脱していないか確認する．
-
-  \item \textbf{（オプション）ガウシアンフィルタ：}
-        $\kappa$ に $3\times 3$ ガウシアンフィルタを適用して
-        高周波数ノイズを低減する．高密度比問題では特に有効．
-
-  \item \textbf{単体テスト（半径 $R$ の円）：}
-        解析値 $\kappa = -1/R$ との誤差 $E_\kappa(h) = \Ord{h^6}$ 収束を
-        $N = 16, 32, 64, 128$ で確認する（§~\ref{sec:curvature_circle_example}）．
-\end{enumerate}
-
-\medskip
-\textbf{代替経路（$\phi$ 経由）}——将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）で
-HFE（§~\ref{sec:field_extension}）を使用する場合：
-\begin{enumerate}
-  \item ロジット逆変換（§~\ref{sec:newton_inversion}）で $\phi^{n+1}$ を取得．
-  \item CCD 法で $\phi$ の1次微分を計算し，界面法線 $\hat{\bm{n}} = \bnabla\phi/|\bnabla\phi|$ を求める．
-  \item HFE（§~\ref{sec:extension_pde_disc}）により，
-        圧力場 $\delta p$ を界面越しに $\Ord{h^6}$ 精度で延長する．
-  \item 延長後の滑らかな場に対して CCD $\bnabla(\delta p)$ を適用し，$\Ord{h^6}$ 精度の速度補正を得る．
-\end{enumerate}
-\end{tcolorbox}
-
-\noindent\textbf{注：HFE について．}
-界面 $\Gamma$ では Young--Laplace 則により圧力場に不連続が生じる（§~\ref{sec:csf}）．
-分相 PPE 解法では各相の PPE を独立に解くため，圧力場がこの不連続を陽に持つ．
-この不連続をそのまま高次差分で微分すると振動誤差が発生するため，
-HFE（§~\ref{sec:field_extension}）により圧力場を界面越しに滑らかに延長する．
-逆変換で得た $\phi$ は，この延長操作で界面法線 $\hat{\bm{n}} = \bnabla\phi/|\bnabla\phi|$ を
-計算するために使用する．
-なお，現行の CSF + smoothed Heaviside 一括解法では圧力場が既に滑らかなため
-HFE は不要であり，むしろ有害である（§~\ref{sec:ppe_discretization_choice}）．
+$\phi$ 経由で曲率を計算する場合は，再初期化の不完全性により
+分母 $|\bnabla\phi|$ が局所的に小さくなるリスクがある．
+この場合は分母クランプ（式~\eqref{eq:curvature_clamped}，$\varepsilon_{\text{norm}} = 10^{-3}$）で
+$\kappa$ を有界に保つ．曲率精度の第一の保証は正則化ではなく
+再初期化の品質（Eikonal 条件の維持）にある——
+Eikonal 誤差 $\delta \ll 1$ のとき曲率への影響は $\Ord{\delta^2}$ に留まる．
 
 \medskip
 以上で界面追跡に必要な CLS 法の定式化がすべて整った．
