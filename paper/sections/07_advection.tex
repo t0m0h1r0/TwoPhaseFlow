@@ -212,116 +212,18 @@ CCD そのものは $\sum_i f'_i\,h \approx [f]_0^L$（発散定理）を $\Ord{
 （WENO5 の完全な保存性との比較：付録~\ref{app:weno5}；
 定式化§~\ref{app:weno5_formulation}，再構成係数§~\ref{app:weno5_coef}，Lax-Friedrichs 分割§~\ref{app:lf_splitting}）．
 
-\begin{tcolorbox}[warnbox, title={TVD 性の欠如と ψ のクランプ処置}]
-\label{warn:adv_clamp}
-
-WENO5 + TVD-RK3 は TVD 性（Total Variation Diminishing）により
-$\psi \in [0,1]$ を自動保証する．
-Dissipative CCD は線形フィルタであり TVD 性を持たないため，
-界面近傍での Gibbs 振動が抑制不足になると $\psi$ が $[0,1]$ を
-逸脱する可能性がある．
-
-\textbf{対処：} 各 TVD-RK3 ステージ完了後に
+DCCD は TVD 性を持たないため，各 RK3 ステージ完了後に値域制限が必要である：
 \begin{equation}
-  \psi_i \leftarrow \max\bigl(0,\, \min(1,\, \psi_i)\bigr)
+  \psi_i \leftarrow \max(0,\,\min(1,\,\psi_i))
   \label{eq:psi_clamp}
 \end{equation}
-のクランプを適用する．クランプによる質量誤差は $\Ord{h^2}$ であり，
-Dissipative CCD の移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$
-と同オーダーのため，全体精度のボトルネックにならない．
-クランプ後の質量変化は第~\ref{sec:verification}章の体積保存ベンチマークで定量確認すること．
-\end{tcolorbox}
+\label{warn:adv_clamp}%
+これは $\psi \in [0,1]$ の物理的制約と数値安定性の双方を保証する
+（完全なアルゴリズムは §~\ref{sec:algo_flow}, Step 1）．
 
-\begin{tcolorbox}[warnbox, title={線形 CCD 移流の残余リスクと既知の失敗モード}]
-\label{warn:adv_risks}
-
-Dissipative CCD とクランプ処置（式~\eqref{eq:psi_clamp}）は
-TVD 欠如リスクを実用的に抑制するが，
-以下の 2 点はスキームの\textbf{設計上の固有制限}として明示しておく．
-
-\medskip
-\noindent\textbf{(A) 非線形エイリアシングの蓄積．}
-線形スキームである CCD は振幅の自律的減衰機能を持たない．
-移流項 $\bnabla\cdot(\psi\bm{u})$ の非線形相互作用（$\psi$ と $\bm{u}$ の積）は，
-低波数 $\to$ 高波数へのエネルギーカスケードを生成し，
-格子スケールのノイズとして蓄積する．
-本フレームワークではこれに対して二重の対策を施している：
-\begin{itemize}
-  \item Dissipative CCD フィルタ（$\varepsilon_d^{\mathrm{adv}} = 0.05$）が
-        高波数成分（$\xi \to \pi$）を各ステップで 20\%\ 減衰させる
-        （$H(\pi;\,0.05) = 0.80$，式~\eqref{eq:eps_adv}）；
-  \item DCCD 散逸機構（§~\ref{sec:checkerboard_solution}）が
-        コロケート格子上でのチェッカーボード励起を独立に抑制する．
-\end{itemize}
-高 $\mathrm{Re}$ 数・高解像度（$N \geq 256$）ケースにおいて
-これらの対策が十分かどうかは，第~\ref{sec:verification}章の
-乱流混合ベンチマークで評価すること
-（現時点では層流・中低 $\mathrm{Re}$ 数の検証にとどまる）．
-
-\medskip
-\noindent\textbf{(B) 極薄界面設定時の破綻．}
-界面厚みを格子幅に極限まで近づけた設定
-（$\varepsilon \to h$，すなわち $\varepsilon_{\mathrm{factor}} \to 1.0$）では，
-$\psi$ プロファイルがほぼ step 関数に退化し，
-CCD の高精度近似前提（関数の十分な滑らかさ）が成立しなくなる．
-この条件下では Dissipative CCD の散逸補正が不十分となり，
-激しい振動とクランプによる質量損失が急増する．
-
-\textbf{安全な運用範囲：} $\varepsilon_{\mathrm{factor}} \geq 1.5$
-（デフォルト値）を推奨する．
-$\varepsilon_{\mathrm{factor}} < 1.2$ かつ流れが非線形に強い場合
-（$\mathrm{We} > 100$，密度比 $> 100$）は
-計算破綻のリスクがあり，
-WENO5（性質まとめ：付録~\ref{app:weno5_summary}，境界処理：付録~\ref{app:weno5_boundary}）への
-フォールバックを検討すること．
-\end{tcolorbox}
-
-\medskip
-\noindent\textbf{アルゴリズムの概要（1 次元，TVD-RK3 第 1 ステージ）：}
-
-\begin{tcolorbox}[algbox, title={Dissipative CCD による CLS 移流アルゴリズム（1D)}]
-\label{alg:dccd_adv}
-
-\textbf{入力：} $\{\psi_i^n\}$，$\{u_i^n\}$，散逸強度 $\varepsilon_d^{\mathrm{adv}}$
-
-\begin{enumerate}
-  \item \textbf{フラックス場の構成：}
-        各格子点 $i$ で $f_i = \psi_i \cdot u_i$．
-
-  \item \textbf{CCD 求解（Eq-I + Eq-II システム）：}
-        §~\ref{sec:ccd_matrix} のブロック Thomas 法で
-        $\{f'_i\} = \{(\partial(\psi u)/\partial x)_i\}$ を得る．
-
-  \item \textbf{Dissipative フィルタの適用（一様 $\varepsilon_d^{\mathrm{adv}}$）：}
-        内点 $i = 1,\ldots,N-2$：
-        \[
-          \tilde{F}_i = f'_i + \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
-        \]
-        周期 BC：折り返しインデックスで $i=0,N-1$ にも同様に適用．
-        壁面 BC：境界点はフィルタ前の $f'$ 値を使用（§~\ref{sec:dccd_bc}）．
-
-  \item \textbf{TVD-RK3 第 1 ステージ更新：}
-        \[
-          \psi_i^{(1)} = \psi_i^n - \Delta t\,\tilde{F}_i
-        \]
-
-  \item \textbf{クランプ：} $\psi_i^{(1)} = \max(0,\min(1,\psi_i^{(1)}))$ （式~\eqref{eq:psi_clamp}）．
-
-  \item 第 2・第 3 RK ステージでステップ 1--5 を繰り返す（式~\eqref{eq:tvd_rk3}）．
-\end{enumerate}
-
-\textbf{2 次元への拡張：} 次元分割法（dimensional splitting）を適用し，
-$x$ 方向フラックス $\psi u$ と $y$ 方向フラックス $\psi v$ に独立に
-1 次元手順を実行する：
-\[
-  \tilde{F}_{x,ij} = \left[\frac{\partial(\psi u)}{\partial x}\right]_{ij}^{\text{filtered}},
-  \quad
-  \tilde{F}_{y,ij} = \left[\frac{\partial(\psi v)}{\partial y}\right]_{ij}^{\text{filtered}}
-\]
-\[
-  \psi_{ij}^{(1)} = \psi_{ij}^n - \Delta t\!\left(\tilde{F}_{x,ij} + \tilde{F}_{y,ij}\right)
-\]
-\end{tcolorbox}
+\label{alg:dccd_adv}%
+完全な CLS 移流の離散アルゴリズム（TVD-RK3 + DCCD フィルタ）は
+§~\ref{sec:algo_flow}（Step 1）にまとめる．
 
 \begin{tcolorbox}[mybox, title={本稿の空間離散化スキームの役割分担}]
 \label{box:scheme_roles}

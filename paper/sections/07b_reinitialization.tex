@@ -65,55 +65,9 @@ $M_2$ を両辺に乗じることで：
 Thomas アルゴリズムで $\Ord{N}$ に求解できる．ここで $\psi^{**}$ は
 圧縮項の陽的処理後の中間値である．
 
-\begin{tcolorbox}[algbox, title={CLS 再初期化の Dissipative CCD スキーム（1 仮想時間ステップ）}]
-\label{alg:cls_reinit_dccd}
-
-\textbf{入力：} $\{\psi_i^\tau\}$，$\varepsilon$（界面幅），$\varepsilon_d^{\mathrm{comp}}$，$\Delta\tau$
-
-\begin{enumerate}
-  \item \textbf{法線ベクトルの評価：}
-        CCD + Dissipative フィルタ（§~\ref{sec:dissipative_ccd}，$S(\psi)$ 制御）で
-        $\{\bnabla\psi_i^\tau\}$ を計算；$\hat{n}_{x,i} = (\partial\psi/\partial x)_i / (|\bnabla\psi_i| + \delta)$．
-
-  \item \textbf{圧縮フラックス（陽解法，Dissipative CCD）：}
-        $g_i = \psi_i^\tau(1-\psi_i^\tau)\hat{n}_{x,i}$；
-        CCD + 一様フィルタ（式~\eqref{eq:comp_ccd}--\eqref{eq:comp_filter}）で $\tilde{G}_{x,i}$ を計算；
-        $y$ 方向も同様に $\tilde{G}_{y,i}$．
-
-  \item \textbf{圧縮ステージ（陽的更新）：}
-        \[
-          \psi_i^{**} = \psi_i^\tau - \Delta\tau\!\left(\tilde{G}_{x,i} + \tilde{G}_{y,i}\right)
-        \]
-        クランプ：$\psi_i^{**} = \max(0,\min(1,\psi_i^{**}))$．
-
-  \item \textbf{拡散ステージ（CN 陰解法，式~\eqref{eq:comp_cn_system}）：}
-        右辺 $\bm{r} = (M_2 + \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{**}$ を計算；
-        三重対角システム $(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2)\psi^{\tau+1} = \bm{r}$
-        を Thomas アルゴリズムで求解（各方向独立に）．
-
-  \item \textbf{クランプ：} $\psi_i^{\tau+1} = \max(0,\min(1,\psi_i^{\tau+1}))$．
-\end{enumerate}
-
-\textbf{仮想時間刻みの決定（放物・双曲の両条件を満たす）：}
-\begin{equation}
-  \Delta\tau = \min\!\left(
-    \frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon},\quad
-    0.5\,h
-  \right)
-  \label{eq:dtau_reinit_def}
-\end{equation}
-ここで $N_{\mathrm{dim}}$ は空間次元数（2D では $N_{\mathrm{dim}}=2$）．
-第1項は拡散スケール $\varepsilon$ を分解するための放物型精度条件（CN 陰解法は無条件安定であるが，$\Delta\tau \gg h^2/\varepsilon$ のとき仮想時間の時間分解が粗くなるため；安全率 0.5 を含む），
-第2項は圧縮項の双曲 CFL（特性速度 $\max|1-2\psi| = 1$ から $\Delta\tau \leq h$，安全率 0.5 を含む）．
-$\varepsilon \sim h$ のとき放物条件 $\Delta\tau \sim h/(4N_{\mathrm{dim}})$ が双曲条件 $0.5h$ より厳しくなり支配する．
-
-\textbf{ステップ数と停止基準：}
-本実装では固定ステップ数 $n_{\mathrm{reinit}}$（デフォルト 4）を実行する．
-$n_{\mathrm{reinit}} = 4$，$\Delta\tau \approx 0.5h$ のとき仮想積分時間 $\tau_{\mathrm{total}} \approx 2h$ となり，
-界面プロファイルの形状修復に必要な仮想拡散距離 $\Ord{\varepsilon} \sim \Ord{h}$ を確保する．
-ただし，分裂誤差により界面厚みは平衡値 $\varepsilon$ に収束せず，
-呼び出し毎に約 40\% 膨張する（§~\ref{sec:dgr_thickness}）．
-\end{tcolorbox}
+\label{alg:cls_reinit_dccd}%
+完全な再初期化の離散スキーム（圧縮 DCCD + CN 拡散 + DGR 厚み補正）は
+§~\ref{sec:algo_flow}（Step 2）にまとめる．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
