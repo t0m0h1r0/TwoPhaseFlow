@@ -21,7 +21,7 @@ class DGRReinitializer(IReinitializer):
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float, **kwargs):
+                 eps: float):
         self.xp = backend.xp
         self.grid = grid
         self.ccd = ccd

@@ -58,19 +58,9 @@ class RisingBubbleBenchmark:
         self.verbose = verbose
 
     def _make_config(self):
-        """シミュレーション設定を構築する。"""
-        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
-        return SimulationConfig(
-            grid=GridConfig(ndim=2, N=(self.N, 2 * self.N), L=(1.0, 2.0)),
-            fluid=FluidConfig(Re=35.0, Fr=1.0, We=10.0, rho_ratio=0.1, mu_ratio=0.1),
-            numerics=NumericsConfig(
-                epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
-                t_end=self.t_end, bc_type="wall",
-            ),
-            solver=SolverConfig(
-                ppe_solver_type="ccd_lu",
-            ),
-        )
+        """Build SimulationConfig for the rising bubble."""
+        from .presets import rising_bubble_config
+        return rising_bubble_config(N=self.N, t_end=self.t_end)
 
     def run(self, save_checkpoints: bool = False,
             checkpoint_dir: str = "checkpoints/rising_bubble") -> Dict[str, Any]:

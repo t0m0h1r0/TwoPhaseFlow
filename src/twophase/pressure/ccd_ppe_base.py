@@ -174,44 +174,16 @@ class _CCDPPEBase(IPPESolver):
     # ── Diagnostic: CCD operator residual ────────────────────────────────
 
     def compute_residual(self, p, rhs, rho) -> float:
-        """Return ‖L_CCD^ρ p − rhs‖₂ (for tests / diagnostics).
+        """Return ||L_CCD^rho p - rhs||_2 (diagnostic only).
 
-        **Diagnostic only — not part of the solve pipeline.**
-        This method is not called by production code. Use it in tests or
-        one-off validation scripts to verify PPE solve quality.
-        The pin node (center, N//2,N//2) is excluded from the residual
-        since it carries a gauge constraint, not a PDE equation.
-
-        Parameters
-        ----------
-        p   : array, shape ``grid.shape`` — pressure field
-        rhs : array, shape ``grid.shape`` — PPE RHS
-        rho : array, shape ``grid.shape`` — density field
-
-        Returns
-        -------
-        residual : float
+        Delegates to ppe_diagnostics.ccd_ppe_residual().
+        Kept for backward compatibility (tests call solver.compute_residual()).
         """
-        xp = self.xp
-        shape = self.grid.shape
-        rho_dev = xp.asarray(self.backend.to_host(rho))
-        drho = []
-        for ax in range(self.ndim):
-            drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-            drho.append(drho_ax)
-
-        p_dev = xp.asarray(self.backend.to_host(p))
-        Lp = xp.zeros(shape, dtype=p_dev.dtype)
-        for ax in range(self.ndim):
-            dp_ax, d2p_ax = self.ccd.differentiate(p_dev, ax)
-            Lp += d2p_ax / rho_dev - (drho[ax] / rho_dev ** 2) * dp_ax
-
-        rhs_dev = xp.asarray(self.backend.to_host(rhs))
-        residual = Lp - rhs_dev
-        pin_dof = self._bc_spec.pin_dof
-        residual_arr = np.asarray(self.backend.to_host(residual))
-        residual_arr.ravel()[pin_dof] = 0.0
-        return float(np.sqrt(np.sum(residual_arr ** 2)))
+        from .ppe_diagnostics import ccd_ppe_residual
+        return ccd_ppe_residual(
+            p, rhs, rho, self.ccd, self.backend, self._bc_spec,
+            self.grid.shape, self.ndim,
+        )
 
     # ── Private helpers ───────────────────────────────────────────────────
 

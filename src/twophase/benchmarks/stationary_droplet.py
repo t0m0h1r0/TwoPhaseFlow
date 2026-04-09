@@ -81,30 +81,10 @@ class StationaryDropletBenchmark:
 
     def _make_config(self, N: int):
         """Build SimulationConfig for the given resolution."""
-        from ..config import (
-            SimulationConfig, GridConfig, FluidConfig,
-            NumericsConfig, SolverConfig,
-        )
-        return SimulationConfig(
-            grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-            fluid=FluidConfig(
-                Re=self.Re,
-                Fr=self.FR,
-                We=self.WE,
-                rho_ratio=self.RHO_RATIO,
-                mu_ratio=self.RHO_RATIO,  # μ_ratio ≈ ρ_ratio for same kinematic viscosity
-            ),
-            numerics=NumericsConfig(
-                epsilon_factor=1.5,
-                reinit_steps=4,
-                cfl_number=0.25,
-                t_end=self.t_end,
-                cn_viscous=True,
-                bc_type="wall",
-            ),
-            solver=SolverConfig(
-                ppe_solver_type="ccd_lu",
-            ),
+        from .presets import stationary_droplet_config
+        return stationary_droplet_config(
+            N=N, t_end=self.t_end, Re=self.Re,
+            We=self.WE, Fr=self.FR, rho_ratio=self.RHO_RATIO,
         )
 
     # ── Single-resolution run ────────────────────────────────────────────

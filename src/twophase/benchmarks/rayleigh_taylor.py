@@ -50,18 +50,9 @@ class RayleighTaylorBenchmark:
         self.Re = Re
 
     def _make_config(self):
-        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
-        return SimulationConfig(
-            grid=GridConfig(ndim=2, N=(self.N, 4 * self.N), L=(0.5, 2.0)),
-            fluid=FluidConfig(Re=self.Re, Fr=1.0, We=1e6, rho_ratio=0.2, mu_ratio=0.2),
-            numerics=NumericsConfig(
-                epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
-                t_end=self.t_end, bc_type="wall",
-            ),
-            solver=SolverConfig(
-                ppe_solver_type="pseudotime", pseudo_tol=1e-10, pseudo_maxiter=500,
-            ),
-        )
+        """Build SimulationConfig for the Rayleigh-Taylor instability."""
+        from .presets import rayleigh_taylor_config
+        return rayleigh_taylor_config(N=self.N, t_end=self.t_end, Re=self.Re)
 
     def run(self, verbose: bool = True) -> Dict[str, Any]:
         """ベンチマークを実行する。

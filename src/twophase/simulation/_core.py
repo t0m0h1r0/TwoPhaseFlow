@@ -201,18 +201,6 @@ class TwoPhaseSimulation:
 
     # ── ステップ別プライベートメソッド ────────────────────────────────────────
 
-    def _build_flow_state(self) -> FlowState:
-        """現在のフィールドから FlowState を構築する。"""
-        ndim = self.config.grid.ndim
-        return FlowState(
-            velocity=[self.velocity[ax] for ax in range(ndim)],
-            psi=self.psi.data,
-            rho=self.rho.data,
-            mu=self.mu.data,
-            kappa=self.kappa.data,
-            pressure=self.pressure.data,
-        )
-
     def _build_flow_state_with_pressure(self, pressure) -> FlowState:
         """延長済み圧力を使った FlowState を構築する（Extension PDE 用）。"""
         ndim = self.config.grid.ndim

@@ -24,6 +24,8 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING, Tuple
 
+from .metrics import compute_metrics
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..config import GridConfig
@@ -151,51 +153,13 @@ class Grid:
     # ── Private helpers ───────────────────────────────────────────────────
 
     def _build_metrics(self, ccd=None) -> None:
-        """Compute CCD metrics J = ∂ξ/∂x and dJ/dξ for each axis.
+        """Compute CCD metrics J = dxi/dx and dJ/dxi for each axis.
 
-        For a uniform grid J = 1/h (constant) and dJ/dξ = 0.
-        For non-uniform grids J varies along the axis.
-
-        The chain rule (§4.9) gives:
-            ∂f/∂x   = J · (∂f/∂ξ)
-            ∂²f/∂x² = J² · (∂²f/∂ξ²) + J · (dJ/dξ) · (∂f/∂ξ)
-
-        When ``ccd`` is provided and the grid is non-uniform, metrics are
-        evaluated with CCD (O(h⁶)) via differentiate_raw(x_coords, axis)
-        as required by §6 Step 5 and box:grid_jx_accuracy.  Without CCD
-        (uniform grid or fallback) O(h²) central differences are used.
-
-        Parameters
-        ----------
-        ccd : CCDSolver or None — O(h⁶) solver for metric computation
+        Delegates to core.metrics.compute_metrics() (SRP extraction).
         """
-        self.J: list[np.ndarray] = []
-        self.dJ_dxi: list[np.ndarray] = []
-
-        for ax in range(self.ndim):
-            if ccd is not None and not self.uniform:
-                # §6 Step 5: differentiate coordinate array x_i in ξ-space via CCD
-                # differentiate_raw returns d/d(x_unif) where x_unif has spacing L/N.
-                # For the domain convention used here (L=1 assumed by _apply_metric),
-                # d1_raw ≈ dx_phys/dξ and J = ∂ξ/∂x_phys = 1/d1_raw.
-                coords_ax = np.asarray(self.coords[ax])
-                d1_raw, d2_raw = ccd.differentiate_raw(coords_ax, axis=ax)
-                # J = ∂ξ/∂x_phys;  ∂J/∂ξ from implicit differentiation of J = 1/d1
-                J_ax = 1.0 / d1_raw
-                dJ_ax = -d2_raw / (d1_raw ** 2)
-            else:
-                # O(h²) central-difference fallback (uniform grid or no CCD)
-                dxi = 1.0 / self.N[ax]
-                h = self.h[ax]  # physical spacing per node
-                J_ax = dxi / h   # = ∂ξ/∂x = (1/N) / (dx)
-
-                dJ_ax = np.zeros_like(J_ax)
-                dJ_ax[1:-1] = (J_ax[2:] - J_ax[:-2]) / (2.0 * dxi)
-                dJ_ax[0] = (J_ax[1] - J_ax[0]) / dxi
-                dJ_ax[-1] = (J_ax[-1] - J_ax[-2]) / dxi
-
-            self.J.append(J_ax)
-            self.dJ_dxi.append(dJ_ax)
+        self.J, self.dJ_dxi = compute_metrics(
+            self.coords, self.h, self.N, self.ndim, self.uniform, ccd,
+        )
 
     # ── Convenience ──────────────────────────────────────────────────────
 
