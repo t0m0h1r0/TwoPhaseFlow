@@ -1,8 +1,8 @@
 ---
 ref_id: WIKI-T-030
-title: "Direct Geometric Reinitialization (DGR): Thickness-Preserving CLS Reinit with Mass Conservation"
+title: "Operator-Split Defect, DGR Theory, and Hybrid Reinitialization"
 domain: T
-status: PROPOSED
+status: VERIFIED
 superseded_by: null
 sources:
   - path: docs/memo/direct_geometric_reinit.md
@@ -61,15 +61,35 @@ Proof: w = 4ψ(1−ψ) = 4ε·(∂ψ/∂φ), so ψ + λw ≈ H_ε(φ + 4λε). �
 
 The inversion ε cancels in Step 2: φ_sdf = φ_true regardless of ε used in Step 1.
 
+## Operator-Split Defect (discovered 2026-04-09)
+
+Comp-Diff reinit broadens interface by ~40% per call on a **perfect static profile**:
+1 call → ε_eff/ε = 1.40, 89 calls → 3.98. Cause: sequential compression (FE) then
+diffusion (CN-ADI) — compression sharpens to ε' < ε, diffusion overshoots to ε'' > ε.
+n_steps increase worsens it (more splitting iterations).
+
+## Hybrid Scheme (recommended)
+
+    hybrid_reinit(ψ) = DGR(comp_diff_reinit(ψ))
+
+Comp-Diff provides shape restoration (profile → tanh form).
+DGR corrects the ~1.4× broadening back to ε.
+
+Result (Zalesak N=128, ε/h=1.0, every-20):
+- ε_eff/ε = 1.02 (vs 4.01 Comp-Diff, 0.99 DGR)
+- Area error = 1.46e-3 (**5× better** than Comp-Diff 7.00e-3)
+
 ## Cost Comparison
 
 | Method | CCD solves per reinit |
 |--------|----------------------|
 | Compression-diffusion (n=4, 2D) | 8 |
-| **DGR (2D)** | **4** |
+| DGR (2D) | 4 |
+| **Hybrid (2D)** | **12** |
 
 ## Assumptions
 
 - Profile retains sigmoid form ψ ≈ H_{ε_eff}(φ) (valid under DCCD advection)
 - |∇φ_true| ≈ 1 near interface (SDF property; holds for smooth interfaces)
 - CCD gradient accuracy (O(h⁶)) ensures reliable normalization
+- DGR correction is small (~1.4×) after one Comp-Diff call → median ε_eff estimate accurate

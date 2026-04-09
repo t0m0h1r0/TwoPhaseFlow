@@ -115,6 +115,8 @@ class Reinitializer(IReinitializer):
         """
         if self._method == 'dgr':
             return self._reinitialize_dgr(psi)
+        if self._method == 'hybrid':
+            return self._reinitialize_hybrid(psi)
         if self._unified:
             return self._reinitialize_unified(psi)
         return self._reinitialize_split(psi)
@@ -222,6 +224,23 @@ class Reinitializer(IReinitializer):
                 q = q + ((M_old - M_new) / W) * w
                 q = xp.clip(q, 0.0, 1.0)
 
+        return q
+
+    # ── Hybrid: Comp-Diff (shape) + DGR (thickness) ─────────────────────
+
+    def _reinitialize_hybrid(self, psi) -> "array":
+        """Hybrid reinitialization: shape restoration + thickness correction.
+
+        Step 1: Operator-split compression-diffusion restores the sigmoid
+                profile shape but introduces ~1.4× thickness broadening.
+        Step 2: DGR corrects the broadened thickness back to ε.
+
+        This avoids both failure modes:
+          - Comp-diff alone: ε_eff drifts to ~4ε over many calls
+          - DGR alone: no shape restoration → interface position errors
+        """
+        q = self._reinitialize_split(psi)
+        q = self._reinitialize_dgr(q)
         return q
 
     # ── Direct Geometric Reinitialization (WIKI-T-030) ───────────────────

@@ -1,4 +1,4 @@
-# Wiki Index — 56 entries
+# Wiki Index — 57 entries
 
 ## Theory (30)
 
@@ -33,7 +33,7 @@
 | [WIKI-T-027](theory/WIKI-T-027.md) | CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix |
 | [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
-| [WIKI-T-030](theory/WIKI-T-030.md) | Direct Geometric Reinitialization (DGR): Thickness-Preserving CLS Reinit |
+| [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 
 ## Cross-Domain (5)
 
@@ -45,7 +45,7 @@
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 
-## Experiment (10)
+## Experiment (11)
 
 | REF-ID | Title |
 |--------|-------|
@@ -59,6 +59,7 @@
 | [WIKI-E-008](experiment/WIKI-E-008.md) | §12 Integration Tests: Split-PPE Failure Diagnosis and Curvature Filter Validation |
 | [WIKI-E-009](experiment/WIKI-E-009.md) | CLS Shape Preservation: Parameter Study and Adaptive Reinitialization |
 | [WIKI-E-010](experiment/WIKI-E-010.md) | Zalesak Slotted Disk: DCCD Damping Sensitivity on Sharp Geometry |
+| [WIKI-E-011](experiment/WIKI-E-011.md) | Hybrid Reinitialization: Splitting Defect Discovery and Comp-Diff + DGR Fix |
 
 ## Paper (4)
 

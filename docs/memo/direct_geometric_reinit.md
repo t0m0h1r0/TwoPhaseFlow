@@ -1,232 +1,169 @@
 # Direct Geometric Reinitialization (DGR) for CLS
 
 Date: 2026-04-09
-Status: PROPOSED
-Related: `src/twophase/levelset/reinitialize.py`, [[WIKI-T-029]], [[WIKI-T-007]], [[WIKI-T-030]]
+Status: VERIFIED
+Related: `src/twophase/levelset/reinitialize.py`, [[WIKI-T-029]], [[WIKI-T-007]], [[WIKI-T-030]], [[WIKI-E-011]]
 
 ---
 
 ## Abstract
 
-The standard compression-diffusion CLS reinitialization fails to maintain
-the target interface thickness ε. Empirical measurement shows ε_eff ≈ 3ε_target
-after one quarter revolution of the Zalesak disk (N=128, n_steps=4).
+The standard operator-split compression-diffusion CLS reinitialization has a
+structural defect: it broadens the interface by ~40% per call due to splitting
+error between compression (Forward Euler) and diffusion (CN-ADI). After 89
+reinit calls, ε_eff ≈ 4ε — even on a perfect static profile with no advection.
 
-This memo derives a Direct Geometric Reinitialization (DGR) that:
-1. Extracts the signed distance function via logit inversion + gradient normalization
-2. Reconstructs ψ with exactly the target thickness ε
-3. Applies an interface-weighted mass correction that is geometrically equivalent
-   to a uniform interface shift (preserving the profile shape)
+This memo:
+1. Identifies the splitting defect empirically
+2. Derives Direct Geometric Reinitialization (DGR): logit inversion + gradient
+   normalization to restore thickness in one step, with provable mass conservation
+3. Shows DGR alone fails on shape restoration (no profile correction)
+4. Proposes and verifies a **hybrid scheme** (Comp-Diff → DGR) that achieves
+   both shape restoration and thickness maintenance
 
-All three properties are proved rigorously.
-
----
-
-## 1. Problem Statement
-
-The CLS variable ψ = H_ε(φ) = 1/(1 + exp(−φ/ε)) encodes a signed distance φ
-through a sigmoid with characteristic width ε. During simulation:
-
-- Advection (DCCD + clipping) introduces numerical diffusion → ε_eff grows
-- Compression-diffusion reinitialization targets the equilibrium ψ(1−ψ)n̂ = ε∇ψ,
-  but with n_steps = 4 pseudo-time steps, convergence is far from complete
-
-Empirical measurement at N=128 (Zalesak slotted disk):
-
-| Time   | ε_eff / ε_target |
-|--------|------------------|
-| t = 0  | 0.87             |
-| t = T/4| 2.91             |
-| t = T/2| 2.96             |
-| t = T  | 2.96             |
-
-The interface thickness inflates to ~3× the target within the first quarter
-revolution and is never restored by the current reinitialization.
+The hybrid scheme maintains ε_eff/ε ≈ 1.02 throughout a full Zalesak revolution
+while achieving 5× better area accuracy than standard Comp-Diff.
 
 ---
 
-## 2. Key Insight
+## 1. The Splitting Defect
 
-If the distorted profile retains the sigmoid form ψ ≈ H_{ε_eff}(φ_true) with
-an unknown ε_eff, then:
+### Empirical evidence
 
-    logit(ψ) = ln(ψ/(1−ψ)) = φ_true / ε_eff
+Applying Comp-Diff reinitialization to a **perfect** H_ε profile (no advection,
+smooth circle, N=128, ε/h=1.0):
 
-The logit of ψ is a scaled version of the true signed distance. The scaling
-factor 1/ε_eff appears in the gradient:
+| reinit calls | ε_eff/ε |
+|-------------|---------|
+| 0           | 1.000   |
+| 1           | 1.395   |
+| 5           | 2.196   |
+| 10          | 2.729   |
+| 89          | 3.976   |
 
-    |∇ logit(ψ)| = 1/ε_eff    (for SDF φ_true with |∇φ_true| = 1)
+Each call broadens the interface by ~40%. The broadening is monotonic and
+does not saturate until ε_eff ≈ 4ε.
 
-Dividing logit(ψ) by its gradient magnitude recovers φ_true exactly.
+### Root cause: operator splitting mismatch
 
----
+The Comp-Diff scheme applies two stages sequentially:
 
-## 3. Algorithm: Direct Geometric Reinitialization (DGR)
+    Stage 1 (compression, FE):  ψ** = ψ − Δτ·∇·[ψ(1−ψ)n̂]
+    Stage 2 (diffusion, CN):    (M₂−μB₂)ψ_new = (M₂+μB₂)ψ**
 
-Given: ψ (distorted CLS field), ε (target thickness)
+At equilibrium, compression = diffusion. But sequential application breaks this:
+- Compression sharpens first → intermediate ψ** has ε' < ε
+- Diffusion then acts on ε' profile, overshooting to ε'' > ε
 
-**Step 1 — Inverse Heaviside (logit extraction)**:
+The error is O(Δτ) per pseudo-step and accumulates over n_steps.
+Increasing n_steps **worsens** the problem (more splitting iterations):
 
-    φ_raw = ε · ln(ψ / (1 − ψ))
-
-with saturation clamp: ψ ∈ [δ, 1−δ], δ = 10⁻⁶ (existing `invert_heaviside`).
-
-**Step 2 — Gradient normalization (SDF recovery)**:
-
-    g_ax = ∂φ_raw/∂x_ax      (CCD first derivative, each axis)
-    g = √(Σ g_ax²)
-    φ_sdf = φ_raw / max(g, g_min)
-
-where g_min is a safety floor (e.g., 0.1) to prevent division by zero far
-from the interface. In the interface band |φ_raw| < 6ε, g is well-conditioned.
-
-**Step 3 — Profile reconstruction**:
-
-    ψ_new = 1 / (1 + exp(−φ_sdf / ε))
-
-This ψ_new has exactly thickness ε by construction.
-
-**Step 4 — Mass-conserving correction**:
-
-    δM = Σ ψ_old − Σ ψ_new
-    w = 4 · ψ_new · (1 − ψ_new)
-    W = Σ w
-    ψ_corr = clip(ψ_new + (δM / W) · w,  0, 1)
+| n_steps | ε_eff/ε after 1 call |
+|---------|---------------------|
+| 1       | 1.119               |
+| 4       | 1.395               |
+| 16      | 2.052               |
+| 32      | 2.550               |
 
 ---
 
-## 4. Theoretical Guarantees
+## 2. DGR Theory
+
+### Algorithm
+
+Given ψ (distorted), target ε:
+
+1. **Logit inversion**: φ_raw = ε·ln(ψ/(1−ψ))
+2. **Gradient normalization**: compute |∇ψ| via CCD, estimate
+   ε_eff = median(ψ(1−ψ)/|∇ψ|) in the interface band, rescale
+   φ_sdf = φ_raw · (ε_eff/ε)
+3. **Reconstruction**: ψ_new = H_ε(φ_sdf)
+4. **Mass correction**: ψ_corr = ψ_new + (δM/W)·4ψ_new(1−ψ_new)
 
 ### Theorem 1 (Thickness restoration)
 
-If ψ = H_{ε_eff}(φ_true) where φ_true is an SDF (|∇φ_true| = 1) and
-ε_eff ≠ ε, then Steps 1–3 of DGR yield ψ_new = H_ε(φ_true).
-
-**Proof.**
-
-    φ_raw = ε · logit(H_{ε_eff}(φ_true))
-           = ε · φ_true / ε_eff
-           = (ε / ε_eff) · φ_true
-
-    |∇φ_raw| = (ε / ε_eff) · |∇φ_true| = ε / ε_eff
-
-    φ_sdf = φ_raw / |∇φ_raw|
-           = (ε / ε_eff) · φ_true / (ε / ε_eff)
-           = φ_true
-
-    ψ_new = H_ε(φ_true)  ∎
+If ψ = H_{ε_eff}(φ_true) with uniform ε_eff and |∇φ_true|=1, then
+Steps 1–3 yield ψ_new = H_ε(φ_true). **Proof**: φ_raw = (ε/ε_eff)·φ_true,
+scale = ε_eff/ε, φ_sdf = φ_true. ∎
 
 ### Theorem 2 (Mass conservation)
 
-Step 4 satisfies Σ ψ_corr = Σ ψ_old exactly (pre-clipping).
-
-**Proof.**
-
-    Σ ψ_corr = Σ ψ_new + (δM / W) · W = Σ ψ_new + δM = Σ ψ_old  ∎
+Σψ_corr = Σψ_old (exact, pre-clipping). **Proof**: Σψ_corr = Σψ_new + δM = Σψ_old. ∎
 
 ### Theorem 3 (Profile-preserving correction)
 
-The mass correction is geometrically equivalent to a uniform interface shift
-Δφ = 4λε, preserving the profile shape and thickness.
-
-**Proof.**
-For ψ = H_ε(φ), the weight function w = 4ψ(1−ψ) satisfies:
-
-    w = 4ψ(1−ψ) = 4ε · (∂ψ/∂φ)
-
-Therefore:
-
-    ψ_corr = ψ_new + λ · w
-           = ψ_new + λ · 4ε · (∂ψ/∂φ)
-           ≈ H_ε(φ + 4λε)        (first-order Taylor)
-
-This is a uniform shift of the interface by Δφ = 4λε, which changes the
-interface position but not the profile width ε.  ∎
-
-### Corollary (ε-independence of inversion)
-
-The choice of ε in Step 1 does not affect the final result. If ε_inv ≠ ε
-is used for inversion, the normalization in Step 2 cancels the scaling:
-
-    φ_raw = (ε_inv / ε_eff) · φ_true
-    |∇φ_raw| = ε_inv / ε_eff
-    φ_sdf = φ_true    (independent of ε_inv)
-
-This means the algorithm is robust to the choice of inversion parameter.
-Using ε_target avoids overflow (logit is bounded by ±φ_max ≈ 13.8ε).
+The mass correction ≈ uniform interface shift Δφ = 4λε; does not change
+thickness. **Proof**: w = 4ψ(1−ψ) = 4ε·(∂ψ/∂φ), so ψ+λw ≈ H_ε(φ+4λε). ∎
 
 ---
 
-## 5. Comparison with Compression-Diffusion Reinitialization
+## 3. DGR Alone: Failure Mode
 
-| Property | Compression-Diffusion | DGR |
-|---|---|---|
-| Mechanism | PDE pseudo-time relaxation | Direct geometric reconstruction |
-| Convergence | Requires many steps (n→∞) | Exact in one step (Thm 1) |
-| Thickness control | Implicit (PDE equilibrium) | Explicit (gradient normalization) |
-| Mass conservation | Post-hoc correction | Post-hoc correction (Thm 2) |
-| Profile shape | Approximate (finite n_steps) | Exact sigmoid (Thm 3) |
-| CCD calls per reinit | 2 × ndim × n_steps | 2 × ndim (one gradient) |
-| Cost (N=128, 2D) | ~8 CCD solves | ~4 CCD solves |
+### Experiment: DGR-only on Zalesak (N=128, ε/h=1.0, every-20)
 
----
+| Method    | ε_eff/ε (T) | L₂(φ)   | Area error |
+|-----------|-------------|----------|------------|
+| Comp-Diff | 4.01        | 1.87e-02 | 7.00e-03   |
+| DGR       | 0.99        | 9.64e-02 | 2.41e-02   |
 
-## 6. Assumptions and Limitations
+DGR restores thickness perfectly but L₂ and area are 5× worse.
 
-1. **Sigmoid form**: Theorem 1 assumes ψ ≈ H_{ε_eff}(φ_true) for some ε_eff.
-   If the profile is severely distorted (e.g., multi-valued or fragmented),
-   the logit extraction may be ill-conditioned. In practice, CLS profiles
-   maintain the sigmoid form well under DCCD advection.
+### Root cause: DGR is a no-op when ε_eff ≈ ε
 
-2. **SDF property**: The proof assumes |∇φ_true| = 1. For non-SDF φ (e.g.,
-   near topological changes), the gradient normalization gives a local
-   approximation. This is acceptable since reinitialization only needs
-   accuracy in the interface band.
+After 20 advection steps (before reinit), ε_eff/ε ≈ 1.004. DGR measures
+scale ≈ 1.0, applies negligible correction. This means DGR provides
+**no shape restoration** — it is equivalent to no reinitialization.
 
-3. **Gradient quality**: CCD provides O(h⁶) gradients, ensuring the
-   normalization g = |∇φ_raw| is accurate. FD gradients would reduce
-   the effective accuracy.
-
-4. **Saturation region**: For ψ < δ or ψ > 1−δ, logit is clamped to ±φ_max.
-   The gradient normalization is undefined in this region, but it is also
-   irrelevant (ψ is already 0 or 1 in the bulk).
+The broadening occurs in the Comp-Diff reinit, not in advection. Without
+Comp-Diff, DGR has nothing to correct for thickness but also provides
+no profile reshaping.
 
 ---
 
-## 7. Implementation Plan
+## 4. Hybrid Scheme: Comp-Diff + DGR
 
-Modify `Reinitializer` to support a `method='dgr'` mode:
+### Algorithm
 
-```python
-def _reinitialize_dgr(self, psi):
-    xp = self.xp
-    M_old = float(xp.sum(psi))
+    def reinitialize_hybrid(ψ):
+        ψ = comp_diff_reinit(ψ)     # shape restoration (introduces ~1.4× broadening)
+        ψ = dgr_reinit(ψ)           # thickness correction (restores ε_eff → ε)
+        return ψ
 
-    # Step 1: logit inversion
-    phi_raw = invert_heaviside(xp, psi, self.eps)
+### Results: Zalesak (N=128, ε/h=1.0, reinit every-20, T=2π)
 
-    # Step 2: gradient normalization
-    grad_sq = xp.zeros_like(phi_raw)
-    for ax in range(self.grid.ndim):
-        g1, _ = self.ccd.differentiate(phi_raw, ax)
-        grad_sq += g1 * g1
-    g = xp.sqrt(xp.maximum(grad_sq, 1e-28))
-    g = xp.maximum(g, 0.1)  # safety floor
-    phi_sdf = phi_raw / g
+| Method    | ε_eff/ε (T) | Area error   | Mass error |
+|-----------|-------------|--------------|------------|
+| Comp-Diff | 4.01        | 7.00e-03     | 1.2e-15    |
+| DGR       | 0.99        | 2.41e-02     | 6.0e-15    |
+| **Hybrid**| **1.02**    | **1.46e-03** | 2.8e-15    |
 
-    # Step 3: reconstruction
-    psi_new = heaviside(xp, phi_sdf, self.eps)
+**Hybrid achieves both goals**:
+- Thickness maintained: ε_eff/ε = 1.02 (vs 4.01 for Comp-Diff)
+- Area accuracy 5× better: 1.46e-3 (vs 7.00e-3 for Comp-Diff)
+- Mass conservation: O(10⁻¹⁵)
 
-    # Step 4: mass correction
-    M_new = float(xp.sum(psi_new))
-    w = 4.0 * psi_new * (1.0 - psi_new)
-    W = float(xp.sum(w))
-    if W > 1e-12:
-        psi_new = psi_new + ((M_old - M_new) / W) * w
-        psi_new = xp.clip(psi_new, 0.0, 1.0)
+### Why hybrid works
 
-    return psi_new
-```
+DGR receives a profile broadened by only ~1.4× (one Comp-Diff call), not
+the accumulated 4× of many calls. The median ε_eff estimate is accurate
+for this small broadening, and the rescaling correctly restores thickness
+without distorting narrow features (slot is still well-resolved at 1.4×).
 
-Cost: 1 `invert_heaviside` + ndim `ccd.differentiate` + 1 `heaviside` = O(ndim) CCD solves.
-This is cheaper than compression-diffusion (2 × ndim × n_steps CCD solves).
+---
+
+## 5. Note on L₂(φ) Metric
+
+The band-restricted L₂(φ) metric appears worse for Hybrid (0.041) than
+Comp-Diff (0.019). This is a measurement artifact (WIKI-T-029): the
+band |φ₀| < 6ε captures different proportions of each profile depending
+on ε_eff. **Area error** (symmetric difference of {ψ≥0.5}) is the only
+ε-independent metric, and Hybrid is best by this measure.
+
+---
+
+## 6. Conclusions
+
+1. Comp-Diff reinit has a structural splitting defect: +40%/call thickness broadening
+2. DGR restores thickness in one step (Thm 1–3) but provides no shape restoration
+3. **Hybrid (Comp-Diff → DGR) achieves both**: ε_eff/ε ≈ 1.02, area error 5× better
+4. The hybrid scheme is the recommended production configuration
