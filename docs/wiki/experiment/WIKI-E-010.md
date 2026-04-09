@@ -44,60 +44,61 @@ N=128, Zalesak slotted disk (slot width=0.05, R=0.15), rigid rotation 1 revoluti
 
 ### S1: Advection εd — monotonic improvement
 
-| εd_adv | L₂        | Δ       |
-|--------|-----------|---------|
-| 0.000  | 8.962e-02 | −4.1%   |
-| 0.010  | 9.008e-02 | −3.7%   |
-| 0.025  | 9.112e-02 | −2.6%   |
-| 0.050  | 9.350e-02 | baseline|
+| εd_adv | L₂(ψ)    | L₂(φ)    | Δφ      |
+|--------|-----------|----------|---------|
+| 0.000  | 8.962e-02 | 2.437e-02 | −1.5%  |
+| 0.010  | 9.008e-02 | 2.440e-02 | −1.4%  |
+| 0.025  | 9.112e-02 | 2.450e-02 | −1.0%  |
+| 0.050  | 9.350e-02 | 2.474e-02 | baseline|
 
-εd=0 is stable and improves accuracy. 4.1% effect vs 2.1% on smooth circle — sharp corners have higher-frequency content (λ≈3–6h vs λ≈9.4h).
+φ-space: εd effect is only 1.5% (vs 4.1% in ψ-space). ψ-space overstated the DCCD impact because the ψ metric is gradient-sensitive.
 
 ### S2: Reinit compression εd — must retain
 
-| εd_reinit | L₂        | Δ       |
-|-----------|-----------|---------|
-| 0.000     | 9.429e-02 | +0.8%   |
-| 0.050     | 9.350e-02 | baseline|
+| εd_reinit | L₂(φ)    | Δφ      |
+|-----------|----------|---------|
+| 0.000     | 2.481e-02 | +0.3%  |
+| 0.050     | 2.474e-02 | baseline|
 
-Removing filter worsens results. Compression flux ψ(1−ψ)n̂ concentrates at the interface, amplifying CCD oscillations.
+Conclusion unchanged: removing compression DCCD slightly worsens results.
 
 ### S3: Reinit frequency — every-20 optimal for sharp geometry
 
-| Frequency | L₂        | reinits | Δ       |
-|-----------|-----------|---------|---------|
-| every 10  | 9.774e-02 | 178     | +4.5%   |
-| every 20  | 9.350e-02 | 89      | baseline|
-| every 40  | 1.747e-01 | 44      | +86.9%  |
-| every 80  | 2.564e-01 | 22      | +174%   |
+| Frequency | L₂(ψ)    | L₂(φ)    | Δφ       |
+|-----------|-----------|----------|----------|
+| every 10  | 9.774e-02 | 2.512e-02 | +1.5%   |
+| every 20  | 9.350e-02 | 2.474e-02 | baseline |
+| every 40  | 1.747e-01 | 2.573e-02 | +4.0%   |
+| every 80  | 2.564e-01 | 1.152e-01 | +366%   |
 
-Sharp slot corners require regular profile maintenance. Contrast: smooth circle benefits from adaptive reinit (2–3 calls, −49%).
+φ-space reveals every-40 is only 4% worse (vs 87% in ψ-space) — the ψ metric exaggerated the profile-broadening effect. Only every-80 shows true catastrophic failure.
 
-### S4: Combined best — 10.7% improvement
+### S4: Combined best — 26.8% improvement in φ-space
 
-| Configuration                    | L₂        | Δ       |
-|----------------------------------|-----------|---------|
-| εd_adv=0, ε/h=1.0, every-20     | 8.350e-02 | **−10.7%** |
-| εd_adv=0, ε/h=1.5, every-20     | 8.962e-02 | −4.1%   |
-| baseline (all defaults)          | 9.350e-02 | —       |
+| Configuration                    | L₂(ψ)    | Δψ         | L₂(φ)    | Δφ         |
+|----------------------------------|-----------|------------|----------|------------|
+| εd_adv=0, ε/h=1.0, every-20     | 8.350e-02 | −10.7%     | 1.810e-02 | **−26.8%** |
+| εd_adv=0, ε/h=1.5, every-20     | 8.962e-02 | −4.1%      | 2.437e-02 | −1.5%      |
+| baseline (all defaults)          | 9.350e-02 | —          | 2.474e-02 | —          |
 
-## Revised Understanding
+**Critical revision**: ψ-space showed 10.7% improvement; φ-space shows **26.8%**. The dominant factor is ε/h=1.0 (−25.3% alone in φ), not εd reduction (−1.5%).
 
-Error hierarchy for **sharp geometry** (Zalesak) differs from smooth circle:
+## Revised Understanding (φ-space corrected)
 
-| Factor               | Zalesak (sharp)          | Smooth circle (WIKI-E-009) |
-|----------------------|--------------------------|----------------------------|
-| Reinit frequency     | **dominant** (every-20 mandatory) | dominant (adaptive →−49%) |
-| Interface ε          | ~7%                      | ~15%                       |
-| Advection DCCD       | ~4%                      | ~2%                        |
-| Reinit DCCD          | beneficial (keep)        | ~0%                        |
+Error hierarchy for **sharp geometry** (Zalesak), measured in φ-space:
 
-Key difference: global volume monitor M(τ) cannot detect local corner degradation → adaptive reinit fails for sharp geometry.
+| Factor               | Zalesak L₂(φ) Δ     | Smooth circle L₂(φ) Δ (WIKI-E-009) |
+|----------------------|----------------------|--------------------------------------|
+| Interface ε (1.5→1.0)| **−25.3% (dominant)**| −32.6% (dominant)                    |
+| Reinit frequency     | mandatory (every-20) | adaptive →−21.4%                     |
+| Advection DCCD       | −1.5%                | −0.7%                                |
+| Reinit DCCD          | keep (stability)     | ~0%                                  |
 
-## Recommendation
+**Hierarchy inversion**: In ψ-space, adaptive reinit appeared dominant (+49%); in φ-space, **interface thickness ε is the dominant factor** for both smooth and sharp geometry. The ψ-space metric inflated the reinit contribution because reinitialization reshapes the ψ profile (affecting ||Δψ||) without necessarily moving the interface position (which ||Δφ|| measures).
 
-- **εd_adv=0** is safe for CLS advection (no stability issue observed)
-- **εd_reinit=0.05** must be retained for compression stability
-- **every-20 reinit** is optimal for Zalesak-class sharp features
-- **ε/h=1.0** improves corner resolution (additional 6.8% on top of εd=0)
-- For mixed-geometry simulations: use default εd=0.05 unless sharp-feature accuracy is priority
+## Recommendation (revised)
+
+- **ε/h=1.0** is the highest-priority improvement (−25% in φ-space)
+- **εd_adv reduction** has minimal benefit in φ-space (−1.5%) — not worth the stability risk
+- **every-20 reinit** remains necessary for Zalesak (every-80 catastrophic)
+- **ψ-space L₂ should not be used for cross-ε comparisons** (see [[WIKI-T-029]])

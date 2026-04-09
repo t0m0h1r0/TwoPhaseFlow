@@ -20,7 +20,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
-from twophase.levelset.heaviside import heaviside
+from twophase.levelset.heaviside import heaviside, invert_heaviside
 from twophase.initial_conditions.velocity_fields import RigidRotation
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
@@ -105,8 +105,14 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
 
         mass_err = abs(float(np.sum(psi)) - mass0) / mass0
         err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-        results.append({"N": N, "h": 1.0/N, "L2": err_L2, "mass_err": mass_err})
-        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}, reinits={reinit_count}")
+        phi_final = invert_heaviside(np, psi, eps)
+        band = np.abs(phi0) < 6 * eps
+        err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
+        area0 = float(np.sum(psi0 >= 0.5))
+        area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+        results.append({"N": N, "h": 1.0/N, "L2": err_L2, "L2_phi": err_L2_phi,
+                         "area_err": area_err, "mass_err": mass_err})
+        print(f"  N={N:>4}: L2ψ={err_L2:.3e}, L2φ={err_L2_phi:.3e}, area={area_err:.2e}, reinits={reinit_count}")
     return results, fields
 
 
@@ -162,8 +168,14 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
 
         mass_err = abs(float(np.sum(psi)) - mass0) / mass0
         err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-        results.append({"N": N, "h": 1.0/N, "L2": err_L2, "mass_err": mass_err})
-        print(f"  N={N:>4}: L2={err_L2:.3e}, mass_err={mass_err:.3e}, reinits={reinit_count}")
+        phi_final = invert_heaviside(np, psi, eps)
+        band = np.abs(phi0) < 6 * eps
+        err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
+        area0 = float(np.sum(psi0 >= 0.5))
+        area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+        results.append({"N": N, "h": 1.0/N, "L2": err_L2, "L2_phi": err_L2_phi,
+                         "area_err": area_err, "mass_err": mass_err})
+        print(f"  N={N:>4}: L2ψ={err_L2:.3e}, L2φ={err_L2_phi:.3e}, area={area_err:.2e}, reinits={reinit_count}")
     return results, fields
 
 

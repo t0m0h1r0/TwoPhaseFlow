@@ -23,7 +23,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
-from twophase.levelset.heaviside import heaviside
+from twophase.levelset.heaviside import heaviside, invert_heaviside
 from twophase.initial_conditions.velocity_fields import RigidRotation
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
@@ -85,9 +85,21 @@ def run_zalesak(eps_d_adv=0.05, eps_d_reinit=0.05, reinit_every=20,
             reinit_count += 1
 
     mass_err = abs(float(np.sum(psi)) - mass0) / mass0
-    err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
+    err_L2_psi = float(np.sqrt(np.mean((psi - psi0)**2)))
+
+    # φ-space L₂ (interface band |φ₀| < 6ε) — ε-independent metric
+    phi_final = invert_heaviside(np, psi, eps)
+    band = np.abs(phi0) < 6 * eps
+    err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
+
+    # Area error: symmetric difference of {ψ ≥ 0.5}
+    area0 = float(np.sum(psi0 >= 0.5))
+    area_final = float(np.sum(psi >= 0.5))
+    area_err = abs(area_final - area0) / max(area0, 1.0)
+
     return {
-        "L2": err_L2, "mass_err": mass_err, "reinit_count": reinit_count,
+        "L2": err_L2_psi, "L2_phi": err_L2_phi, "area_err": area_err,
+        "mass_err": mass_err, "reinit_count": reinit_count,
         "eps_d_adv": eps_d_adv, "eps_d_reinit": eps_d_reinit,
         "reinit_every": reinit_every, "eps_over_h": eps_over_h,
     }
@@ -101,7 +113,7 @@ def sweep_adv_epsd():
     for ed in values:
         r = run_zalesak(eps_d_adv=ed)
         results.append(r)
-        print(f"  εd_adv={ed:.3f}: L2={r['L2']:.4e}, mass_err={r['mass_err']:.2e}")
+        print(f"  εd_adv={ed:.3f}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e}")
     return results
 
 
@@ -113,7 +125,7 @@ def sweep_reinit_epsd():
     for ed in values:
         r = run_zalesak(eps_d_reinit=ed)
         results.append(r)
-        print(f"  εd_reinit={ed:.3f}: L2={r['L2']:.4e}, mass_err={r['mass_err']:.2e}")
+        print(f"  εd_reinit={ed:.3f}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e}")
     return results
 
 
@@ -125,7 +137,7 @@ def sweep_reinit_freq():
     for freq in values:
         r = run_zalesak(reinit_every=freq)
         results.append(r)
-        print(f"  every {freq:>3}: L2={r['L2']:.4e}, mass_err={r['mass_err']:.2e}, reinits={r['reinit_count']}")
+        print(f"  every {freq:>3}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e}, reinits={r['reinit_count']}")
     return results
 
 
@@ -139,12 +151,12 @@ def sweep_combined(best_adv, best_reinit, best_freq):
         results.append(r)
         print(f"  εd_adv={best_adv:.3f}, εd_reinit={best_reinit:.3f}, "
               f"every={best_freq}, ε/h={eps_over_h:.1f}: "
-              f"L2={r['L2']:.4e}, mass_err={r['mass_err']:.2e}")
+              f"L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e}")
 
     # Also run baseline for comparison
     baseline = run_zalesak()
     results.append(baseline)
-    print(f"  BASELINE (default):  L2={baseline['L2']:.4e}")
+    print(f"  BASELINE (default):  L2ψ={baseline['L2']:.4e}, L2φ={baseline['L2_phi']:.4e}")
     return results
 
 
@@ -156,48 +168,48 @@ def plot_all(s1, s2, s3, s4):
     # S1: advection εd
     ax = axes[0, 0]
     eds = [r["eps_d_adv"] for r in s1]
-    l2s = [r["L2"] for r in s1]
-    ax.bar(range(len(eds)), l2s, color=COLORS[0], alpha=0.8)
+    l2_phi = [r["L2_phi"] for r in s1]
+    ax.bar(range(len(eds)), l2_phi, color=COLORS[0], alpha=0.8)
     ax.set_xticks(range(len(eds)))
     ax.set_xticklabels([f"{e:.3f}" for e in eds], fontsize=7)
     ax.set_xlabel(r"$\varepsilon_{d,\mathrm{adv}}$")
-    ax.set_ylabel(r"$L_2$ error")
+    ax.set_ylabel(r"$L_2(\phi)$")
     ax.set_title("S1: advection $\\varepsilon_d$", fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 
     # S2: reinit compression εd
     ax = axes[0, 1]
     eds = [r["eps_d_reinit"] for r in s2]
-    l2s = [r["L2"] for r in s2]
-    ax.bar(range(len(eds)), l2s, color=COLORS[1], alpha=0.8)
+    l2_phi = [r["L2_phi"] for r in s2]
+    ax.bar(range(len(eds)), l2_phi, color=COLORS[1], alpha=0.8)
     ax.set_xticks(range(len(eds)))
     ax.set_xticklabels([f"{e:.3f}" for e in eds], fontsize=7)
     ax.set_xlabel(r"$\varepsilon_{d,\mathrm{reinit}}$")
-    ax.set_ylabel(r"$L_2$ error")
+    ax.set_ylabel(r"$L_2(\phi)$")
     ax.set_title("S2: reinit compression $\\varepsilon_d$", fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 
     # S3: reinit frequency
     ax = axes[1, 0]
     freqs = [r["reinit_every"] for r in s3]
-    l2s = [r["L2"] for r in s3]
-    ax.bar(range(len(freqs)), l2s, color=COLORS[2], alpha=0.8)
+    l2_phi = [r["L2_phi"] for r in s3]
+    ax.bar(range(len(freqs)), l2_phi, color=COLORS[2], alpha=0.8)
     ax.set_xticks(range(len(freqs)))
     ax.set_xticklabels([str(f) for f in freqs], fontsize=7)
     ax.set_xlabel("Reinit interval (steps)")
-    ax.set_ylabel(r"$L_2$ error")
+    ax.set_ylabel(r"$L_2(\phi)$")
     ax.set_title("S3: reinit frequency", fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 
-    # S4: combined
+    # S4: combined (φ-space enables fair cross-ε comparison)
     ax = axes[1, 1]
     labels = [f"ε/h={r['eps_over_h']:.1f}" for r in s4[:-1]] + ["baseline"]
-    l2s = [r["L2"] for r in s4]
+    l2_phi = [r["L2_phi"] for r in s4]
     colors_s4 = [COLORS[3]] * (len(s4) - 1) + ["gray"]
-    ax.bar(range(len(l2s)), l2s, color=colors_s4, alpha=0.8)
-    ax.set_xticks(range(len(l2s)))
+    ax.bar(range(len(l2_phi)), l2_phi, color=colors_s4, alpha=0.8)
+    ax.set_xticks(range(len(l2_phi)))
     ax.set_xticklabels(labels, fontsize=7)
-    ax.set_ylabel(r"$L_2$ error")
+    ax.set_ylabel(r"$L_2(\phi)$")
     ax.set_title("S4: combined best", fontsize=9)
     ax.grid(axis="y", alpha=0.3)
 

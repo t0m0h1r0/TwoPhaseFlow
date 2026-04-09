@@ -1,6 +1,6 @@
-# Wiki Index — 54 entries
+# Wiki Index — 55 entries
 
-## Theory (28)
+## Theory (29)
 
 | REF-ID | Title |
 |--------|-------|
@@ -32,6 +32,7 @@
 | [WIKI-T-026](theory/WIKI-T-026.md) | HFE Applicability Scope: Harm Mechanism on Smooth Fields and Valid Use Cases |
 | [WIKI-T-027](theory/WIKI-T-027.md) | CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix |
 | [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
+| [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
 
 ## Cross-Domain (5)
 

@@ -20,7 +20,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
-from twophase.levelset.heaviside import heaviside
+from twophase.levelset.heaviside import heaviside, invert_heaviside
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -103,7 +103,13 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
 
     mass_err = abs(float(np.sum(psi)) - mass0) / max(mass0, 1e-15)
     err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-    return {"L2": err_L2, "mass_err": mass_err, "reinit_count": reinit_count}
+    phi_final = invert_heaviside(np, psi, eps)
+    band = np.abs(phi0) < 6 * eps
+    err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
+    area0 = float(np.sum(psi0 >= 0.5))
+    area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+    return {"L2": err_L2, "L2_phi": err_L2_phi, "area_err": area_err,
+            "mass_err": mass_err, "reinit_count": reinit_count}
 
 
 def _rk3_reinit_step(psi, reinit):
@@ -188,7 +194,7 @@ def test_p1_eps_d(N=128):
         elapsed = time.time() - t0
         r["eps_d"] = ed
         results.append(r)
-        print(f"  eps_d={ed:.3f}: L2={r['L2']:.4e}, mass={r['mass_err']:.2e} ({elapsed:.0f}s)")
+        print(f"  eps_d={ed:.3f}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e} ({elapsed:.0f}s)")
     return results
 
 
@@ -205,7 +211,7 @@ def test_p2_eps(N=128):
         elapsed = time.time() - t0
         r["eps_ratio"] = er
         results.append(r)
-        print(f"  eps/h={er:.2f}: L2={r['L2']:.4e}, mass={r['mass_err']:.2e} ({elapsed:.0f}s)")
+        print(f"  eps/h={er:.2f}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, area={r['area_err']:.2e} ({elapsed:.0f}s)")
     return results
 
 
@@ -229,7 +235,7 @@ def test_p3_adaptive(N=128):
         elapsed = time.time() - t0
         r["name"] = name
         results.append(r)
-        print(f"  {name:>16}: L2={r['L2']:.4e}, mass={r['mass_err']:.2e}, "
+        print(f"  {name:>16}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, "
               f"reinits={r['reinit_count']} ({elapsed:.0f}s)")
     return results
 
@@ -252,7 +258,7 @@ def test_p4_rk3_reinit(N=128):
         elapsed = time.time() - t0
         r["name"] = name
         results.append(r)
-        print(f"  {name:>12}: L2={r['L2']:.4e}, mass={r['mass_err']:.2e} ({elapsed:.0f}s)")
+        print(f"  {name:>12}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e} ({elapsed:.0f}s)")
     return results
 
 
@@ -278,7 +284,7 @@ def test_combined_best(N=128):
         elapsed = time.time() - t0
         r["name"] = label
         results.append(r)
-        print(f"  {label:>16}: L2={r['L2']:.4e}, mass={r['mass_err']:.2e}, "
+        print(f"  {label:>16}: L2ψ={r['L2']:.4e}, L2φ={r['L2_phi']:.4e}, "
               f"reinits={r['reinit_count']} ({elapsed:.0f}s)")
     return results
 
@@ -393,11 +399,14 @@ def main():
     plot_all(p1, p2, p3, p4, combined)
 
     # Summary
-    baseline = combined[0]["L2"]
-    print(f"\n=== Final Summary (baseline L2={baseline:.4e}) ===")
+    baseline_psi = combined[0]["L2"]
+    baseline_phi = combined[0]["L2_phi"]
+    print(f"\n=== Final Summary (baseline L2ψ={baseline_psi:.4e}, L2φ={baseline_phi:.4e}) ===")
     for r in combined:
-        impr = (1.0 - r["L2"] / baseline) * 100
-        print(f"  {r['name']:>16}: L2={r['L2']:.4e} ({impr:+.1f}%)")
+        impr_psi = (1.0 - r["L2"] / baseline_psi) * 100
+        impr_phi = (1.0 - r["L2_phi"] / baseline_phi) * 100
+        print(f"  {r['name']:>16}: L2ψ={r['L2']:.4e} ({impr_psi:+.1f}%), "
+              f"L2φ={r['L2_phi']:.4e} ({impr_phi:+.1f}%)")
 
 
 if __name__ == "__main__":

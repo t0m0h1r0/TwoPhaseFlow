@@ -27,7 +27,7 @@ compiled_at: 2026-04-09
 
 ## Key Finding
 
-**Fixed-frequency reinitialization is the dominant shape error source** — not DCCD damping. Switching from fixed every-10-steps (227 reinits) to adaptive M(τ)-triggered (2 reinits) halves L₂ error. Combined with thinner interface (ε=1.0h), total improvement is **59%**.
+**Interface thickness ε is the dominant shape error source in φ-space** — reinitialization frequency is secondary. The original ψ-space analysis overstated the reinit contribution because ψ-L₂ is ε-dependent ([[WIKI-T-029]]). In φ-space: ε/h=1.5→1.0 gives **−32.6%**, adaptive reinit gives **−21.4%**, combined **−47.0%**.
 
 ## Experiment Design
 
@@ -44,67 +44,75 @@ Single vortex (LeVeque 1996), N=128, deform + time-reverse (T=8.0). Four paramet
 
 ### P1: ε_d — Negligible Impact
 
-| ε_d | L₂ | Δ vs baseline |
-|---|---|---|
-| 0.050 | 1.735e-01 | baseline |
-| 0.025 | 1.759e-01 | -1.4% |
-| 0.010 | 1.761e-01 | -1.5% |
-| 0.000 | 1.772e-01 | -2.1% |
-
-**DCCD high-frequency damping does NOT cause shape error.** Even ε_d=0 (pure CCD, no filter) gives similar L₂. The DCCD transfer function H(π)=0.80 is irrelevant because the interface profile is O(ε)-wide (resolved by ~3 cells), not at Nyquist.
-
-### P2: ε/h — Moderate Improvement
-
-| ε/h | L₂ | Δ |
-|---|---|---|
-| 2.00 | 1.856e-01 | -7.0% |
-| 1.50 | 1.735e-01 | baseline |
-| 1.00 | 1.476e-01 | **+14.9%** |
-| 0.75 | 1.292e-01 | **+25.6%** |
-
-Thinner interface resolves filament features better. ε=1.0h is a safe choice; ε=0.75h may cause under-resolution issues.
-
-### P3: Adaptive Reinit — Dominant Improvement
-
-| Strategy | L₂ | Reinit count | Δ |
+| ε_d | L₂(ψ) | L₂(φ) | Δφ |
 |---|---|---|---|
-| fixed-10 | 1.735e-01 | 227 | baseline |
-| fixed-20 | 1.750e-01 | 113 | -0.9% |
-| adaptive-1.05 | 1.184e-01 | 3 | **+31.8%** |
-| **adaptive-1.10** | **8.896e-02** | **2** | **+48.7%** |
-| adaptive-1.20 | 1.192e-01 | 2 | +31.3% |
-| no-reinit | 6.700e-02 | 0 | +61.4% |
+| 0.050 | 1.735e-01 | 3.427e-02 | baseline |
+| 0.025 | 1.755e-01 | 3.451e-02 | −0.7% |
+| 0.010 | 1.762e-01 | 3.449e-02 | −0.6% |
+| 0.000 | 1.775e-01 | 3.452e-02 | −0.7% |
 
-**The single vortex only needs 2 reinits out of 2270 steps.** Fixed every-10-steps performs 227 unnecessary reinits, each degrading the interface. The adaptive trigger M(τ)/M_ref > 1.10 is optimal: strict enough to preserve the profile, loose enough to avoid over-reinitialization.
+Negligible in both metrics. DCCD damping is irrelevant for smooth CLS profiles.
 
-### P4: TVD-RK3 Reinit — Marginal/Negative
+### P2: ε/h — **Dominant** Improvement (φ-space corrected)
 
-| Config | L₂ | Δ |
-|---|---|---|
-| FE-4step | 1.735e-01 | baseline |
-| RK3-4step | 1.948e-01 | **-12.3%** (worse!) |
-| FE-8step | 1.776e-01 | -2.4% |
-| RK3-2step | 1.640e-01 | +5.5% |
+| ε/h | L₂(ψ) | Δψ | L₂(φ) | Δφ |
+|---|---|---|---|---|
+| 2.00 | 1.856e-01 | −7.0% | 4.524e-02 | −32.0% |
+| 1.50 | 1.735e-01 | baseline | 3.427e-02 | baseline |
+| 1.00 | 1.475e-01 | +15.0% | 2.310e-02 | **+32.6%** |
+| 0.75 | 1.292e-01 | +25.6% | 1.777e-02 | **+48.1%** |
 
-RK3-4step is worse because 3× more RHS evaluations = 3× more diffusion per reinit call. The temporal accuracy gain is outweighed by the additional processing. RK3 is only beneficial with fewer steps (RK3-2step).
+**ψ-space understated this by 2×.** In φ-space, ε/h=1.0 gives 32.6% improvement (vs 15.0% in ψ). This is because thinner ε has steeper ψ gradients, inflating ||Δψ|| even when the interface position is accurate.
+
+### P3: Adaptive Reinit — Important but Not Dominant
+
+| Strategy | L₂(ψ) | Δψ | L₂(φ) | Δφ |
+|---|---|---|---|---|
+| fixed-10 | 1.735e-01 | baseline | 3.427e-02 | baseline |
+| fixed-20 | 1.750e-01 | −0.9% | 3.429e-02 | −0.0% |
+| adaptive-1.05 | 1.184e-01 | +31.8% | 2.986e-02 | +12.9% |
+| **adaptive-1.10** | **8.896e-02** | **+48.7%** | **2.696e-02** | **+21.4%** |
+| adaptive-1.20 | 1.192e-01 | +31.3% | 2.990e-02 | +12.8% |
+| no-reinit | 6.700e-02 | +61.4% | 2.341e-02 | +31.7% |
+
+**ψ-space overstated adaptive reinit by 2.3×** (48.7% → 21.4%). Much of the ψ-L₂ improvement comes from avoiding profile reshaping (a ψ artifact), not from better interface positioning.
+
+### P4: TVD-RK3 Reinit — RK3-2step beneficial in φ-space
+
+| Config | L₂(ψ) | Δψ | L₂(φ) | Δφ |
+|---|---|---|---|---|
+| FE-4step | 1.735e-01 | baseline | 3.427e-02 | baseline |
+| RK3-4step | 1.910e-01 | −10.1% | 3.206e-02 | +6.4% |
+| FE-8step | 1.790e-01 | −3.2% | 3.494e-02 | −2.0% |
+| RK3-2step | 1.690e-01 | +2.6% | 2.950e-02 | **+13.9%** |
+
+RK3-4step: ψ-space showed it worse; φ-space shows it **better** (+6.4%). RK3-2step is clearly beneficial in both metrics.
 
 ### Combined
 
-| Config | L₂ | Δ vs baseline | Reinits |
+| Config | L₂(ψ) | Δψ | L₂(φ) | Δφ | Reinits |
+|---|---|---|---|---|---|
+| baseline | 1.735e-01 | — | 3.427e-02 | — | 227 |
+| best-eps | 1.475e-01 | +15.0% | 2.310e-02 | **+32.6%** | 227 |
+| best-adaptive | 8.896e-02 | +48.7% | 2.696e-02 | +21.4% | 2 |
+| combined-123 | 9.395e-02 | +45.9% | 2.000e-02 | **+41.7%** | 2 |
+| **combined-all** | **7.099e-02** | **+59.1%** | **1.817e-02** | **+47.0%** | 4 |
+
+## Revised Understanding (φ-space corrected, WIKI-T-029)
+
+The original ψ-space hierarchy was **misleading**. φ-space reveals the true error structure:
+
+| Factor | ψ-space Δ | φ-space Δ | Discrepancy |
 |---|---|---|---|
-| baseline | 1.735e-01 | — | 227 |
-| combined-123 (ε=1.0h + ε_d=0.01 + adaptive-1.10) | 9.395e-02 | **+45.8%** | 2 |
-| **combined-all** (+ RK3) | **7.099e-02** | **+59.1%** | 4 |
+| **Interface ε** (1.5→1.0) | +15.0% | **+32.6%** | ψ understated 2.2× |
+| **Adaptive reinit** | +48.7% | +21.4% | ψ overstated 2.3× |
+| **DCCD filter** | −2.1% | −0.7% | Both negligible |
 
-## Revised Understanding
+**Root cause of discrepancy**: ψ = H_ε(φ) has ε-dependent gradients. Changing ε changes ||Δψ|| even for identical interface displacement. Reinitialization reshapes the ψ profile (affecting ||Δψ||) without necessarily moving the interface (which ||Δφ|| measures). See [[WIKI-T-029]] for the theoretical derivation.
 
-The initial hypothesis (DCCD damping → shape loss) was **wrong**. The actual shape error hierarchy:
+## Recommendation (revised)
 
-1. **Reinitialization frequency** (~49% of error): each reinit slightly distorts the profile
-2. **Interface thickness** (~15% of error): thicker ε → less resolution of fine features
-3. **Advection scheme** (~34%): inherent limitation of CCD + single-vortex filament resolution
-4. **DCCD filter** (~2%): negligible; Nyquist damping doesn't affect O(ε)-wide profiles
-
-## Recommendation
-
-For production: use **adaptive reinit with M(τ)/M_ref > 1.10 trigger** + ε = 1.0h. This gives ~50% shape improvement with better mass conservation and 20% faster computation (fewer reinit calls).
+1. **ε/h=1.0** is the highest-priority improvement (−32.6% in φ-space)
+2. **Adaptive reinit (1.10)** is secondary but still valuable (−21.4%)
+3. **Combined** yields −47.0% in φ-space
+4. **Use L₂(φ) as primary metric** for all CLS shape comparisons ([[WIKI-T-029]])
