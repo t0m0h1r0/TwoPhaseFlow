@@ -37,6 +37,8 @@ CLS 移流，再初期化，HFE 場延長，曲率・圧力跳び計算——の
 
 \noindent\textbf{評価対象：}
 CLS 移流パイプライン（DCCD + 再初期化）．
+速度場は解析的に与え（NS 方程式は解かない），
+界面輸送の精度を単独で評価する．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
@@ -225,7 +227,10 @@ Young--Laplace 条件 $\Delta p = \kappa / \mathit{We}$ の再現精度を検証
 界面処理パイプラインの統合精度を測る最も直接的なテストである．
 
 \noindent\textbf{評価対象：}
-CLS 界面 + CCD 曲率 + $H_\varepsilon$ 密度補間 + CCD-PPE の結合精度．
+CCD 曲率計算の精度．界面近傍の平均曲率 $\bar{\kappa}$ から
+$\Delta p = \bar{\kappa}/\mathit{We}$ を評価する（PPE は解かない）．
+NS ソルバを用いた圧力場からの Laplace 圧検証は
+§~\ref{sec:bf_static_droplet} で行う．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
