@@ -1,6 +1,6 @@
-# Wiki Index — 51 entries
+# Wiki Index — 52 entries
 
-## Theory (27)
+## Theory (28)
 
 | REF-ID | Title |
 |--------|-------|
@@ -31,6 +31,7 @@
 | [WIKI-T-025](theory/WIKI-T-025.md) | C/RC (CCD-Enhanced Rhie-Chow): O(h^2) to O(h^4) Bracket Correction |
 | [WIKI-T-026](theory/WIKI-T-026.md) | HFE Applicability Scope: Harm Mechanism on Smooth Fields and Valid Use Cases |
 | [WIKI-T-027](theory/WIKI-T-027.md) | CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix |
+| [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
 
 ## Cross-Domain (5)
 
