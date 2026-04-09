@@ -1,6 +1,6 @@
 % paper/sections/11_summary.tex
 %
-% §11.4  検証結果の総括
+% §11.5  検証結果の総括
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{検証結果の総括}
 \label{sec:verify_summary}
@@ -27,7 +27,8 @@
         DCCD 安定化により $\Ord{h^2}$ の単調収束を達成した．
         CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）が全体精度の律速である．
   \item \textbf{界面処理：}
-        CLS 質量保存誤差は $\Ord{10^{-5}}$（$N{=}256$），
+        CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
+        面積誤差は $\Ord{10^{-4}}$（$N{=}256$，単一渦），
         保存型再マッピングは LS 非保存補間比で 85 倍改善（$K{=}10$），
         HFE は 1D で $\Ord{h^{7.0}}$（上風 $\Ord{h^1}$ 比 $10^5$ 倍改善），
         2D テンソル積で $\Ord{h^{3.0}}$（$N{=}256$ で $L_\infty = 7.5 \times 10^{-9}$）を達成した．
@@ -50,7 +51,7 @@
         第~\ref{sec:verification}章の Taylor--Green 渦テストで
         NS ソルバ全体の時間精度 $\Ord{\Delta t^2}$ として結合検証される．
   \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
-        Young--Laplace テスト（§\ref{sec:verify_field_extension}）において
+        Young--Laplace テスト（§\ref{sec:verify_young_laplace}）において
         密度場 $\rho(\psi)$ の補間が Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
   \item \textbf{Block Thomas 直接解法：}
         全 CCD テスト（§\ref{sec:verify_ccd_convergence}--§\ref{sec:verify_curvature}）が
@@ -75,7 +76,8 @@ DCCD フィルタ              & $H(\pi) = 0$       & $H(\pi) = 0$              
 DCCD 移流（不連続）        & TV 低減            & TV: $10.83 \to 3.15$           & \checkmark & CCD 比 $1/3$ \\
 Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$                & \checkmark & 標準 $\Ord{h^2}$ 比 24{,}876 倍 \\
 曲率（正弦波，$\phi$ 直接）& $\Ord{h^5}$        & $\Ord{h^{5.0}}$                & \checkmark & ベースライン \\
-CLS 質量保存               & 保存的             & $\Ord{10^{-5}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
+CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
+CLS 面積精度               & 格子収束           & $\Ord{10^{-4}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
 CLS 保存型再マッピング     & LS 比改善          & 85 倍（$K{=}10$）              & \checkmark & 動的非一様格子 \\
 HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 上風比 $10^5$ 倍改善 \\
 HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $\Ord{h^{3.0}}$ & $\triangle$\textsuperscript{‡} & テンソル積逐次補間 \\
@@ -99,7 +101,7 @@ AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$  
 全コンポーネントが設計精度を達成した：
 CCD $\Ord{h^6}$，PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$．
-CLS 質量保存 $\Ord{10^{-5}}$（$N{=}256$），HFE 2D $\Ord{h^{3.0}}$．
+CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），HFE 2D $\Ord{h^{3.0}}$．
 分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
 $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
 \end{tcolorbox}

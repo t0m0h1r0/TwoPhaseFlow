@@ -70,7 +70,7 @@ DCCD 散逸によりチェッカーボード不安定を内在的に抑制する
 \end{tikzpicture}
 \caption{NS 方程式の各項と対応ソルバーの概要．
 対流項は CCD + AB2（陽的），粘性項は CCD + Crank--Nicolson（半陰的），
-圧力項は FD 直接法 PPE + CCD 勾配（Projection），
+圧力項は欠陥補正法 PPE（DC，$k{=}3$）+ CCD 勾配（Projection），
 表面張力は CSF 体積力として Predictor に含む．}
 \label{fig:ns_solvers}
 \end{figure}
