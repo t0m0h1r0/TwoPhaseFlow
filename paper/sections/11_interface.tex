@@ -133,6 +133,39 @@ $\varepsilon/h = 1.0$ と DGR 厚み補正の併用（単一渦）により
 Zalesak テストでは DGR がスロット構造を破壊するため不適用とし，
 従来の固定頻度再初期化のみで $\varepsilon/h = 1.0$ を採用した．
 
+\paragraph{非一様格子上の CLS 移流}
+
+上記の一様格子テストに加え，界面適合非一様格子（§~\ref{sec:grid}）上での
+CLS 移流精度を Zalesak 1 回転テスト（$N = 128$，$\varepsilon/h = 0.5$）で検証した．
+表~\ref{tab:cls_nonuniform} に一様格子との比較を示す．
+
+\begin{table}[htbp]
+\centering
+\caption{Zalesak スロット円板：一様格子 vs 非一様格子の CLS 移流精度
+（$N = 128$，$\varepsilon/h = 0.5$，固定頻度再初期化 20 ステップ毎）}
+\label{tab:cls_nonuniform}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lrrr}
+\toprule
+格子 & $L_2(\phi)$ 誤差 & 面積誤差 & 質量保存誤差 \\
+\midrule
+一様              & $1.05 \times 10^{-2}$ & $3.2 \times 10^{-4}$ & $\Ord{10^{-15}}$ \\
+非一様 $\alpha=2$ & $3.74 \times 10^{-2}$ & $1.5 \times 10^{-2}$ & $5.1 \times 10^{-5}$ \\
+非一様 $\alpha=3$ & $3.72 \times 10^{-2}$ & $5.4 \times 10^{-2}$ & $\Ord{10^{-15}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+非一様格子では界面近傍の解像度が高まるものの，
+格子リフレッシュ時の $\psi$ 再マッピング（§~\ref{sec:cls_conservation}）に伴う
+補間誤差がスロット角部で蓄積し，形状精度が約 3.5 倍低下する．
+$\alpha = 2$ では保存型再マッピングの質量補正が $5.1 \times 10^{-5}$ の残差を残すが，
+$\alpha = 3$ では界面帯域の集中度が十分高く
+$\Ord{10^{-15}}$ に回復する．
+非一様格子の恩恵は主に曲率計算の精度向上と PPE 界面近傍の解像度確保
+（§~\ref{sec:verify_curvature}，§~\ref{sec:verify_split_ppe_dc}）に現れ，
+移流精度自体は一様格子が優位である．
+
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{DCCD の質量保存性と形状誤差の解析}
