@@ -123,6 +123,76 @@ class UniformFlow(VelocityField):
         return tuple(np.full_like(c, v) for c, v in zip(coords, self.velocity))
 
 
+class SingleVortex(VelocityField):
+    """Time-reversible single-vortex deformation field (LeVeque 1996).
+
+    Velocity field::
+
+        u = -sin(pi*x)^2 * sin(2*pi*y) * cos(pi*t/T)
+        v =  sin(pi*y)^2 * sin(2*pi*x) * cos(pi*t/T)
+
+    The field reverses at t = T/2 and returns the interface to its
+    initial shape at t = T, providing a quantitative advection error metric.
+
+    Parameters
+    ----------
+    period : float
+        Reversal period T (default 1.0).
+    """
+
+    def __init__(self, period: float = 1.0) -> None:
+        if period <= 0.0:
+            raise ValueError("SingleVortex: period must be positive.")
+        self.period = float(period)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
+        if len(coords) != 2:
+            raise ValueError("SingleVortex.compute: only 2-D grids are supported.")
+        X, Y = coords
+        T = self.period
+        cos_t = np.cos(np.pi * t / T)
+        u = -(np.sin(np.pi * X) ** 2) * np.sin(2.0 * np.pi * Y) * cos_t
+        v =  (np.sin(np.pi * Y) ** 2) * np.sin(2.0 * np.pi * X) * cos_t
+        return (u, v)
+
+
+class DoubleShearLayer(VelocityField):
+    """Double shear layer velocity field (2-D).
+
+    Velocity field on domain [0, 2*pi]^2::
+
+        u = tanh((y - pi/2) / delta)   for y <= pi
+            tanh((3*pi/2 - y) / delta)  for y > pi
+        v = eps * sin(x)
+
+    Standard benchmark for inviscid Kelvin-Helmholtz instability.
+
+    Parameters
+    ----------
+    delta : float
+        Shear layer thickness parameter (default 0.05).
+    eps : float
+        Perturbation amplitude (default 0.05).
+    """
+
+    def __init__(self, delta: float = 0.05, eps: float = 0.05) -> None:
+        self.delta = float(delta)
+        self.eps = float(eps)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
+        if len(coords) != 2:
+            raise ValueError("DoubleShearLayer.compute: only 2-D grids are supported.")
+        X, Y = coords
+        d = self.delta
+        u = np.where(
+            Y <= np.pi,
+            np.tanh((Y - np.pi / 2.0) / d),
+            np.tanh((3.0 * np.pi / 2.0 - Y) / d),
+        )
+        v = self.eps * np.sin(X)
+        return (u, v)
+
+
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────
 
 def velocity_field_from_dict(d: dict) -> VelocityField:
@@ -167,7 +237,16 @@ def velocity_field_from_dict(d: dict) -> VelocityField:
     if field_type == "uniform":
         return UniformFlow(velocity=d["velocity"])
 
+    if field_type == "single_vortex":
+        return SingleVortex(period=float(d.get("period", 1.0)))
+
+    if field_type == "double_shear_layer":
+        return DoubleShearLayer(
+            delta=float(d.get("delta", 0.05)),
+            eps=float(d.get("eps", 0.05)),
+        )
+
     raise ValueError(
         f"Unknown velocity_field type '{field_type}'. "
-        "Supported: 'rigid_rotation', 'uniform'."
+        "Supported: 'rigid_rotation', 'uniform', 'single_vortex', 'double_shear_layer'."
     )

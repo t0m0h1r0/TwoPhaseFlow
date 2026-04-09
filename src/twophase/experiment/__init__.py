@@ -43,6 +43,11 @@ from .plots import (
     latex_convergence_table,
     summary_text,
 )
+from .convergence import (
+    compute_convergence_rates,
+    convergence_table,
+    error_norms,
+)
 
 __all__ = [
     "apply_style",
@@ -54,4 +59,5 @@ __all__ = [
     "save_figure",
     "field_panel", "convergence_loglog", "time_history",
     "latex_convergence_table", "summary_text",
+    "compute_convergence_rates", "convergence_table", "error_norms",
 ]

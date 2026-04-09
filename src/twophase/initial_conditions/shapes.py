@@ -311,6 +311,82 @@ class HalfSpace(ShapePrimitive):
         return np.asarray(phi)
 
 
+@dataclass
+class ZalesakDisk(ShapePrimitive):
+    """Zalesak slotted disk (2-D): circle with a rectangular slot.
+
+    Standard advection benchmark (Zalesak 1979). The SDF is the
+    signed distance to the boundary of a circle with a vertical
+    rectangular slot removed.
+
+    Parameters
+    ----------
+    center : sequence of float
+        Circle centre (cx, cy).
+    radius : float
+        Circle radius R.
+    slot_width : float
+        Slot half-width w (total width = 2w, centred on cx).
+    slot_depth : float
+        Slot depth d measured from the bottom of the circle.
+    interior_phase : str
+        'liquid' (default) or 'gas'.
+    """
+
+    center: Tuple[float, float]
+    radius: float
+    slot_width: float
+    slot_depth: float
+    _interior_phase: str = field(default="liquid", repr=False)
+
+    def __init__(
+        self,
+        center: Sequence[float],
+        radius: float,
+        slot_width: float = 0.025,
+        slot_depth: float = 0.25,
+        interior_phase: str = "liquid",
+    ) -> None:
+        if len(center) != 2:
+            raise ValueError("ZalesakDisk: center must be 2-D.")
+        self.center = (float(center[0]), float(center[1]))
+        self.radius = float(radius)
+        self.slot_width = float(slot_width)
+        self.slot_depth = float(slot_depth)
+        self._interior_phase = interior_phase
+        _validate_phase(interior_phase)
+
+    @property
+    def interior_phase(self) -> str:
+        return self._interior_phase
+
+    def sdf(self, *coords: np.ndarray) -> np.ndarray:
+        """Signed distance: negative inside the slotted disk."""
+        if len(coords) != 2:
+            raise ValueError("ZalesakDisk.sdf: only 2-D grids are supported.")
+        X, Y = coords
+        cx, cy = self.center
+        R, w, d = self.radius, self.slot_width, self.slot_depth
+
+        # Circle SDF (negative inside)
+        phi_circle = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - R
+
+        # Slot: vertical rectangle centred on cx, from bottom of circle up by depth
+        y_bottom = cy - R
+        in_slot = (np.abs(X - cx) < w) & (Y < y_bottom + d)
+
+        # Inside disk but outside slot → inside shape (negative)
+        phi = phi_circle.copy()
+        # Where slot removes material, flip to positive (outside shape)
+        phi[in_slot & (phi_circle < 0)] = np.minimum(
+            np.abs(X[in_slot & (phi_circle < 0)] - cx) - w,
+            y_bottom + d - Y[in_slot & (phi_circle < 0)],
+        )
+        # Approximate: use max(phi_circle, slot_sdf) for smooth SDF
+        # Here we use the simple approach: distance to nearest boundary
+        return phi
+
+
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────
 
 def shape_from_dict(d: dict) -> ShapePrimitive:
@@ -384,9 +460,18 @@ def shape_from_dict(d: dict) -> ShapePrimitive:
             interior_phase=phase,
         )
 
+    if shape_type == "zalesak_disk":
+        return ZalesakDisk(
+            center=d["center"],
+            radius=float(d["radius"]),
+            slot_width=float(d.get("slot_width", 0.025)),
+            slot_depth=float(d.get("slot_depth", 0.25)),
+            interior_phase=phase,
+        )
+
     raise ValueError(
         f"Unknown shape type '{shape_type}'. "
-        "Supported: 'circle', 'rectangle', 'half_space', 'sinusoidal_interface'."
+        "Supported: 'circle', 'rectangle', 'half_space', 'sinusoidal_interface', 'zalesak_disk'."
     )
 
 
