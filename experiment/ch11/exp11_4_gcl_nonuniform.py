@@ -41,11 +41,14 @@ def convergence_test(Ns, alpha):
         grid = Grid(gc, backend)
 
         if alpha > 1.0:
+            # Build CCD on uniform grid first → use for O(h⁶) metric computation
+            ccd_uniform = CCDSolver(grid, backend, bc_type="wall")
             X0, Y0 = np.meshgrid(
                 np.linspace(0, 1, N + 1), np.linspace(0, 1, N + 1), indexing="ij")
             phi_init = np.sqrt((X0 - 0.5)**2 + (Y0 - 0.5)**2) - 0.25
-            grid.update_from_levelset(phi_init, eps=0.05)
+            grid.update_from_levelset(phi_init, eps=0.05, ccd=ccd_uniform)
 
+        # Rebuild CCD on (now possibly non-uniform) grid
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
 
@@ -82,10 +85,11 @@ def gcl_test(Ns, alpha=2.0):
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha)
         grid = Grid(gc, backend)
 
+        ccd_uniform = CCDSolver(grid, backend, bc_type="wall")
         X0, Y0 = np.meshgrid(
             np.linspace(0, 1, N + 1), np.linspace(0, 1, N + 1), indexing="ij")
         phi_init = np.sqrt((X0 - 0.5)**2 + (Y0 - 0.5)**2) - 0.25
-        grid.update_from_levelset(phi_init, eps=0.05)
+        grid.update_from_levelset(phi_init, eps=0.05, ccd=ccd_uniform)
 
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()

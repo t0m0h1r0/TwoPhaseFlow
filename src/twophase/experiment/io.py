@@ -57,7 +57,7 @@ def load_results(path: str | pathlib.Path) -> dict[str, Any]:
 
     Restores nested structure and converts 0-d arrays to Python scalars.
     """
-    data = np.load(path, allow_pickle=False)
+    data = np.load(path, allow_pickle=True)
     results: dict[str, Any] = {}
     for fullkey, val in data.items():
         val = _maybe_scalar(val)
