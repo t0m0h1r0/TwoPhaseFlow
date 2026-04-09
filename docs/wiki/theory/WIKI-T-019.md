@@ -18,7 +18,7 @@ consumers:
   - domain: L
     usage: "NormalVectorFilter, InterfaceLimitedFilter in levelset/ modules"
   - domain: A
-    usage: "Filter theory referenced from §5 (DCCD) and §8 (PPE stability)"
+    usage: "Filter theory referenced from §4 (DCCD) and §8 (PPE stability)"
 depends_on:
   - "[[WIKI-T-002]]"
   - "[[WIKI-T-008]]"

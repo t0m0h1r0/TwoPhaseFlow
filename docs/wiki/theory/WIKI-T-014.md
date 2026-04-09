@@ -12,7 +12,7 @@ consumers:
   - domain: L
     usage: "Timestep controller uses Δt_σ formula for capillary CFL limit"
   - domain: A
-    usage: "Appendix C.3 referenced from §6 (time integration, stability constraints)"
+    usage: "Appendix C.3 referenced from §5 (time integration, stability constraints)"
   - domain: E
     usage: "Timestep selection in all two-phase experiments"
 depends_on:

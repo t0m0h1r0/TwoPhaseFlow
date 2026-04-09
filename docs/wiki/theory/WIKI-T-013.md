@@ -15,7 +15,7 @@ consumers:
   - domain: L
     usage: "advection.py WENO5 kernel (_weno5_pos/_weno5_neg); DCCD filter implementation"
   - domain: A
-    usage: "Appendix C.1–C.2 referenced from §5 (advection motivation)"
+    usage: "Appendix C.1–C.2 referenced from §7 (advection motivation)"
   - domain: E
     usage: "Benchmark results inform scheme selection for CLS advection"
 depends_on:
