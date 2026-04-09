@@ -14,75 +14,109 @@ src/twophase/
 │   ├── ccd_solver.py           # CCDSolver — 1D block-tridiag LU (O(h⁶)/O(h⁵))
 │   └── block_tridiag.py        # Block tridiagonal matrix assembly
 ├── core/                       # Shared data structures
-│   ├── field.py                # Field wrapper
+│   ├── field.py                # ScalarField, VectorField wrappers
 │   ├── flow_state.py           # FlowState dataclass (velocity, psi, rho, mu, kappa, pressure)
-│   ├── grid.py                 # Grid — node-centered, metric tensors, density fn
-│   └── components.py           # Component registry helpers
+│   ├── grid.py                 # Grid — node-centered, interface-fitted, metric tensors
+│   ├── metrics.py              # compute_metrics() — CCD/FD metric computation (SRP extraction)
+│   ├── boundary.py             # BCType enum, BoundarySpec, pad_ghost_cells
+│   └── components.py           # SimulationComponents dataclass (17 fields)
 ├── hfe/                        # Hermite Field Extension (§08d)
 │   ├── hermite_interp.py       # hermite5_coeffs / hermite5_eval — O(h⁶) Hermite polynomial
-│   └── field_extension.py      # HermiteFieldExtension — 2-D tensor-product extension via CCD data
+│   └── field_extension.py      # HermiteFieldExtension — 2-D tensor-product extension via CCD
 ├── interfaces/                 # Abstract interfaces (DIP)
-│   ├── field_extension.py      # IFieldExtension — field extension across Γ
+│   ├── field_extension.py      # IFieldExtension — extend(field_data, phi, n_hat)
 │   ├── levelset.py             # ILevelSetAdvection, IReinitializer, ICurvatureCalculator
 │   ├── ns_terms.py             # INSTerm — marker interface for NS RHS terms
 │   └── ppe_solver.py           # IPPESolver — solve(rhs, rho, dt, p_init) → p
-├── levelset/                   # Level-set / CLS physics (§03)
-│   ├── advection.py            # LevelSetAdvection (WENO5 + TVD-RK3)
-│   ├── curvature.py            # CurvatureCalculator (CCD 6th-order, §02c)
-│   ├── heaviside.py            # Heaviside H̃ and delta δ̃ functions
-│   └── reinitialize.py         # Reinitializer (pseudo-time PDE, §05c) + ReinitializerWENO5 (legacy)
+├── levelset/                   # Level-set / CLS physics (§03, §05)
+│   ├── advection.py            # LevelSetAdvection (WENO5), DissipativeCCDAdvection (§05)
+│   ├── curvature.py            # CurvatureCalculator (legacy, C2)
+│   ├── curvature_psi.py        # CurvatureCalculatorPsi — direct ψ-based (active)
+│   ├── curvature_filter.py     # InterfaceLimitedFilter for curvature smoothing
+│   ├── normal_filter.py        # NormalVectorFilter + kappa_from_normals
+│   ├── compact_filters.py      # Compact difference filters
+│   ├── heaviside.py            # Heaviside H̃, delta δ̃, property update, mass correction
+│   ├── reinitialize.py         # Reinitializer (facade) + ReinitializerWENO5 (legacy C2)
+│   ├── reinit_ops.py           # Shared reinitialization operations (pure functions)
+│   ├── reinit_split.py         # SplitReinitializer — compression + CN-ADI (§05c)
+│   ├── reinit_unified.py       # UnifiedDCCDReinitializer — combined RHS (WIKI-T-028)
+│   ├── reinit_dgr.py           # DGRReinitializer + HybridReinitializer (WIKI-T-030)
+│   ├── field_extender.py       # FieldExtender (upwind FD) + NullFieldExtender
+│   └── closest_point_extender.py # ClosestPointExtender (Hermite interpolation)
 ├── ns_terms/                   # Navier-Stokes RHS terms (§02)
 │   ├── convection.py           # ConvectionTerm — u·∇u
 │   ├── gravity.py              # GravityTerm — (1/Fr²) ρ̃ ĝ
 │   ├── surface_tension.py      # SurfaceTensionTerm — (1/We) κ ∇H̃ (CSF, §02b)
 │   ├── viscous.py              # ViscousTerm — (1/Re) ∇·(μ̃(∇u + ∇uᵀ))
-│   └── predictor.py            # Predictor — u* = uⁿ + dt Σ Fᵢ (§09)
+│   └── predictor.py            # Predictor — AB2 + IPC + CN viscous (§09)
 ├── pressure/                   # Pressure / projection (§07, §08)
-│   ├── ppe_builder.py          # PPE RHS assembly: (1/dt) ∇ᴿᶜ·u*
-│   ├── ppe_solver_ccd_lu.py    # PPESolverCCDLU — CCD Laplacian + sparse LU (PRODUCTION)
+│   ├── ccd_ppe_base.py         # _CCDPPEBase — Template Method for CCD solvers
+│   ├── ccd_ppe_utils.py        # CCD Laplacian evaluation helpers
+│   ├── ppe_solver_ccd_lu.py    # PPESolverCCDLU — CCD Kronecker + sparse LU (PRODUCTION)
 │   ├── ppe_solver_iim.py       # PPESolverIIM — CCD + IIM interface correction
 │   ├── ppe_solver_iterative.py # PPESolverIterative — research toolkit
 │   ├── ppe_solver_factory.py   # Registry-based factory (OCP)
-│   ├── ccd_ppe_base.py         # _CCDPPEBase — Template Method for CCD solvers
-│   ├── rhie_chow.py            # RhieChowInterpolation — face velocity (§07)
+│   ├── ppe_builder.py          # PPE FVM matrix assembly (legacy solvers only)
+│   ├── fd_ppe_matrix.py        # FDPPEMatrix — FD Laplacian matrix
+│   ├── dccd_ppe_filter.py      # DCCDPPEFilter — dissipative CCD filter for GFM
+│   ├── ppe_rhs_gfm.py          # PPERHSBuilderGFM — GFM-corrected PPE RHS
+│   ├── gfm.py                  # GFMCorrector — Ghost Fluid Method jump correction
+│   ├── rhie_chow.py            # RhieChowInterpolator — face velocity + balanced-force (§07)
 │   ├── velocity_corrector.py   # VelocityCorrector — u^{n+1} = u* − dt ∇p (§09)
+│   ├── thomas_sweep.py         # Thomas sweep for ADI solvers
+│   ├── ppe_diagnostics.py      # ccd_ppe_residual() — diagnostic (SRP extraction)
+│   ├── iim/                    # Immersed Interface Method sub-package
+│   │   ├── jump_conditions.py  # IIM jump condition computation
+│   │   └── stencil_corrector.py # IIM stencil correction
 │   └── legacy/                 # C2-retained legacy solvers (§8 register)
-│       ├── ppe_solver.py       # PPESolver — FVM BiCGSTAB (PR-1 violation)
-│       ├── ppe_solver_lu.py    # PPESolverLU — FVM direct LU (PR-1 violation)
-│       ├── ppe_solver_pseudotime.py # PPESolverPseudoTime — LGMRES (PR-6 violation)
-│       ├── ppe_solver_sweep.py # PPESolverSweep — ADI sweep (impractical N>=32)
+│       ├── ppe_solver.py       # PPESolver — FVM BiCGSTAB (PR-1)
+│       ├── ppe_solver_lu.py    # PPESolverLU — FVM direct LU (PR-1)
+│       ├── ppe_solver_pseudotime.py # PPESolverPseudoTime — LGMRES (PR-6)
+│       ├── ppe_solver_sweep.py # PPESolverSweep — ADI sweep
 │       └── ppe_solver_dc_omega.py # PPESolverDCOmega — under-relaxed ADI
 ├── time_integration/           # Time stepping (§05b)
-│   ├── tvd_rk3.py              # TVD-RK3 integrator
+│   ├── tvd_rk3.py              # TVD-RK3 integrator (+ post_stage callback)
 │   └── cfl.py                  # CFL condition + dt selection
 ├── simulation/                 # Simulation orchestration
-│   ├── _core.py                # TwoPhaseSimulation — step_forward() loop
-│   ├── boundary_condition.py   # BoundaryCondition (no-slip, periodic, etc.)
+│   ├── _core.py                # TwoPhaseSimulation — step_forward() 7-step loop
+│   ├── boundary_condition.py   # BoundaryConditionHandler (BCType enum)
 │   ├── builder.py              # SimulationBuilder — SOLE construction path (ASM-001)
-│   └── diagnostics.py          # Diagnostics / convergence monitoring
+│   └── diagnostics.py          # Runtime diagnostics / convergence monitoring
+├── diagnostics/                # Reusable analysis functions (extracted from experiments)
+│   ├── field_diagnostics.py    # kinetic_energy, divergence (Linf/L2)
+│   └── interface_diagnostics.py # measure_eps_eff, interface_area, parasitic_current, tracking
 ├── configs/
-│   └── config_loader.py        # YAML → SimulationConfig
+│   └── config_loader.py        # YAML → SimulationConfig (auto-derived _known keys)
 ├── initial_conditions/
-│   ├── builder.py              # ICBuilder — shapes + velocity_fields
-│   ├── shapes.py               # Circle, Rectangle, HalfSpace, Sinusoidal interface
-│   └── velocity_fields.py      # RigidRotation, UniformFlow
+│   ├── builder.py              # ICBuilder — shapes + velocity_fields composition
+│   ├── shapes.py               # Circle, Rectangle, HalfSpace, Sinusoidal, ZalesakDisk
+│   └── velocity_fields.py      # RigidRotation, UniformFlow, SingleVortex, DoubleShearLayer
 ├── io/
-│   ├── checkpoint.py           # Checkpoint save/load
+│   ├── checkpoint.py           # Checkpoint save/load (HDF5/NPZ)
 │   ├── serializers.py          # Field serialization helpers
 │   └── vtk_writer.py           # VTK / VTR + PVD writer
 ├── visualization/
-│   ├── plot_scalar.py
-│   ├── plot_vector.py
-│   └── realtime_viewer.py
-├── benchmarks/                 # Benchmark runners (§10b)
-│   ├── run_all_benchmarks.py
-│   ├── rising_bubble.py
-│   ├── rayleigh_taylor.py
-│   ├── stationary_droplet.py
-│   └── zalesak_disk.py
-├── backend.py                  # Compute backend injection (CPU/GPU)
+│   ├── plot_scalar.py          # Scalar field colormaps, contours
+│   ├── plot_vector.py          # Velocity/vorticity, streamlines
+│   ├── plot_fields.py          # Multi-panel overlay, symmetric ranges
+│   └── realtime_viewer.py      # Live display during simulation
+├── benchmarks/                 # Benchmark runners + reference solutions
+│   ├── run_all_benchmarks.py   # Orchestration
+│   ├── rising_bubble.py        # Buoyancy-driven flow (Hysing 2009)
+│   ├── rayleigh_taylor.py      # Interfacial instability
+│   ├── stationary_droplet.py   # Laplace pressure accuracy
+│   ├── zalesak_disk.py         # Advection scheme quality
+│   ├── presets.py              # Config factory functions (DRY)
+│   └── analytical_solutions.py # TGV, Kovasznay, hydrostatic, MMS
+├── experiment/                 # Experiment script toolkit
+│   ├── style.py                # Matplotlib theme (colors, fonts)
+│   ├── io.py                   # Result save/load + argparse
+│   ├── figure.py               # Multi-panel layout helpers
+│   ├── plots.py                # Convergence tables, time histories, LaTeX
+│   └── convergence.py          # Convergence rate computation, error norms
+├── backend.py                  # Compute backend injection (CPU/GPU, xp namespace)
 ├── config.py                   # SimulationConfig — sub-config composition root (ASM-007)
-└── tests/                      # pytest suite — 98 tests, all passing (2026-03-27)
+└── tests/                      # pytest suite — 154 tests passing (2026-04-10)
     ├── test_ccd.py
     ├── test_config.py
     ├── test_grid.py

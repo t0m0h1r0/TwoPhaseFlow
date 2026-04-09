@@ -18,9 +18,13 @@ from .rising_bubble import RisingBubbleBenchmark
 from .zalesak_disk import ZalesakDiskBenchmark
 from .rayleigh_taylor import RayleighTaylorBenchmark
 
+from . import analytical_solutions, presets
+
 __all__ = [
     "StationaryDropletBenchmark",
     "RisingBubbleBenchmark",
     "ZalesakDiskBenchmark",
     "RayleighTaylorBenchmark",
+    "analytical_solutions",
+    "presets",
 ]

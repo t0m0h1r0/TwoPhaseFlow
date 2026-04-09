@@ -8,6 +8,12 @@ Each benchmark's _make_config() delegates here to eliminate duplication.
 from __future__ import annotations
 from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
 
+__all__ = [
+    "rising_bubble_config",
+    "stationary_droplet_config",
+    "rayleigh_taylor_config",
+]
+
 
 def rising_bubble_config(
     N: int = 64,

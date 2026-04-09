@@ -10,6 +10,8 @@ Equations (section 4.9):
 """
 
 from __future__ import annotations
+
+__all__ = ["compute_metrics"]
 import numpy as np
 from typing import TYPE_CHECKING, Tuple, List
 

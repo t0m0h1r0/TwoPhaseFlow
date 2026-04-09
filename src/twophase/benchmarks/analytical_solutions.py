@@ -8,6 +8,13 @@ and MMS verification. Centralised here to eliminate duplication.
 from __future__ import annotations
 import numpy as np
 
+__all__ = [
+    "tgv_velocity", "tgv_pressure", "tgv_kinetic_energy",
+    "kovasznay_lambda", "kovasznay_velocity", "kovasznay_pressure",
+    "hydrostatic_pressure",
+    "mms_sine_pressure", "mms_sine_laplacian",
+]
+
 
 # ── Taylor-Green Vortex (2-D, periodic) ──────────────────────────────────────
 

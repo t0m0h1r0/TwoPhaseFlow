@@ -67,10 +67,13 @@ class DiagnosticsReporter:
     def _compute_eps_eff_ratio(self, xp, sim) -> float | None:
         """Compute mean eps_eff / eps near the interface (section 3b eq. epsilon_eff).
 
-        eps_eff_i = psi_i * (1 - psi_i) / |nabla psi|_i
+        Uses MEAN over band psi(1-psi) > 0.1, returns RATIO to nominal eps.
+        Designed for real-time CLI output during simulation.
 
-        Near the interface (psi ~ 0.5), eps_eff should approximate the
-        design value eps.  eps_eff >> eps indicates numerical diffusion.
+        For offline analysis with median-based robustness, use instead:
+            diagnostics.interface_diagnostics.measure_eps_eff()
+        which returns the absolute eps_eff (not ratio) using median over
+        the 0.05 < psi < 0.95 band.
 
         Returns
         -------
