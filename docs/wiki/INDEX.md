@@ -1,4 +1,4 @@
-# Wiki Index — 60 entries
+# Wiki Index — 66 entries
 
 ## Theory (30)
 
@@ -73,7 +73,7 @@
 | [WIKI-P-003](paper/WIKI-P-003.md) | Problem Statement: Four Failure Modes and Three-Pillar Solution |
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 
-## Code (7)
+## Code (13)
 
 | REF-ID | Title |
 |--------|-------|
@@ -84,3 +84,9 @@
 | [WIKI-L-005](code/WIKI-L-005.md) | PPE Solver Verification Scripts (Exp 11-9, 11-10, 11-11, 11-12, 11-13) |
 | [WIKI-L-006](code/WIKI-L-006.md) | Time Integration Verification Scripts (Exp 11-14, 11-15) |
 | [WIKI-L-007](code/WIKI-L-007.md) | Rhie-Chow & Young-Laplace Pipeline Scripts (Exp 11-5, 11-16) |
+| [WIKI-L-008](code/WIKI-L-008.md) | Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
+| [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 5 Abstractions Enabling DIP Throughout the Library |
+| [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
+| [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
+| [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
+| [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
