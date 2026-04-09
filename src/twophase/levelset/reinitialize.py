@@ -125,7 +125,8 @@ class Reinitializer(IReinitializer):
         """Operator-split reinitialization (legacy, pre-WIKI-T-028)."""
         xp = self.xp
         q  = xp.copy(psi)
-        M_old = float(xp.sum(q))
+        dV = xp.asarray(self.grid.cell_volumes())
+        M_old = float(xp.sum(q * dV))
 
         for _ in range(self.n_steps):
             # Stage 1: compression (Forward Euler, Dissipative CCD)
@@ -140,9 +141,9 @@ class Reinitializer(IReinitializer):
 
         # ── Interface-weighted mass correction (Olsson-Kreiss basis) ──
         if self._mass_correction:
-            M_new = float(xp.sum(q))
+            M_new = float(xp.sum(q * dV))
             w = 4.0 * q * (1.0 - q)
-            W = float(xp.sum(w))
+            W = float(xp.sum(w * dV))
             if W > 1e-12:
                 q = q + ((M_old - M_new) / W) * w
                 q = xp.clip(q, 0.0, 1.0)
@@ -158,7 +159,8 @@ class Reinitializer(IReinitializer):
         """
         xp = self.xp
         q  = xp.copy(psi)
-        M_old = float(xp.sum(q))
+        dV = xp.asarray(self.grid.cell_volumes())
+        M_old = float(xp.sum(q * dV))
 
         for _ in range(self.n_steps):
             # Step 1: gradient, Laplacian, normal (single CCD call per axis)
@@ -179,16 +181,7 @@ class Reinitializer(IReinitializer):
             eps_d = self._eps_d_comp
             for ax in range(self.grid.ndim):
                 flux_ax = psi_1mpsi * n_hat[ax]
-                g_prime, _ = self.ccd.differentiate(flux_ax, ax)
-                g_prime_pad = _pad_bc(xp, g_prime, ax, 1, self._bc)
-                sl_c  = _sl(q.ndim, ax, 1, -1)
-                sl_p1 = _sl(q.ndim, ax, 2, None)
-                sl_m1 = _sl(q.ndim, ax, 0, -2)
-                g_tilde = (g_prime_pad[sl_c]
-                           + eps_d * (g_prime_pad[sl_p1]
-                                      - 2.0 * g_prime_pad[sl_c]
-                                      + g_prime_pad[sl_m1]))
-                C = C + g_tilde
+                C = C + self._filtered_divergence(flux_ax, ax, eps_d)
 
             # Step 3: diffusion from CCD d2 (reuses Step 1 output)
             D = self.eps * d2psi_sum
@@ -196,8 +189,8 @@ class Reinitializer(IReinitializer):
             # Step 4: combined RHS with Lagrange conservation correction
             R = -C + D
             w = 4.0 * q * (1.0 - q)
-            W = float(xp.sum(w))
-            R_sum = float(xp.sum(R))
+            W = float(xp.sum(w * dV))
+            R_sum = float(xp.sum(R * dV))
             if W > 1e-12:
                 R = R - (R_sum / W) * w
 
@@ -206,10 +199,10 @@ class Reinitializer(IReinitializer):
             q_clipped = xp.clip(q_star, 0.0, 1.0)
 
             # Post-clip mass repair
-            delta_M = float(xp.sum(q_star)) - float(xp.sum(q_clipped))
+            delta_M = float(xp.sum(q_star * dV)) - float(xp.sum(q_clipped * dV))
             if abs(delta_M) > 1e-15:
                 w_clip = 4.0 * q_clipped * (1.0 - q_clipped)
-                W_clip = float(xp.sum(w_clip))
+                W_clip = float(xp.sum(w_clip * dV))
                 if W_clip > 1e-12:
                     q_clipped = q_clipped + (delta_M / W_clip) * w_clip
                     q_clipped = xp.clip(q_clipped, 0.0, 1.0)
@@ -217,9 +210,9 @@ class Reinitializer(IReinitializer):
 
         # Final mass correction for accumulated residuals
         if self._mass_correction:
-            M_new = float(xp.sum(q))
+            M_new = float(xp.sum(q * dV))
             w = 4.0 * q * (1.0 - q)
-            W = float(xp.sum(w))
+            W = float(xp.sum(w * dV))
             if W > 1e-12:
                 q = q + ((M_old - M_new) / W) * w
                 q = xp.clip(q, 0.0, 1.0)
@@ -259,7 +252,8 @@ class Reinitializer(IReinitializer):
         See WIKI-T-030 for proofs.
         """
         xp = self.xp
-        M_old = float(xp.sum(psi))
+        dV = xp.asarray(self.grid.cell_volumes())
+        M_old = float(xp.sum(psi * dV))
 
         # Compute |∇ψ| via CCD
         grad_sq = xp.zeros_like(psi)
@@ -287,30 +281,53 @@ class Reinitializer(IReinitializer):
         psi_new = heaviside(xp, phi_sdf, self.eps)
 
         # Step 4: mass-conserving correction (Thm 2 + Thm 3)
-        M_new = float(xp.sum(psi_new))
+        M_new = float(xp.sum(psi_new * dV))
         w = 4.0 * psi_new * (1.0 - psi_new)
-        W = float(xp.sum(w))
+        W = float(xp.sum(w * dV))
         if W > 1e-12:
             psi_new = psi_new + ((M_old - M_new) / W) * w
             psi_new = xp.clip(psi_new, 0.0, 1.0)
 
         return psi_new
 
+    # ── Dissipative filter helper ───────────────────────────────────────
+
+    def _filtered_divergence(self, flux, ax, eps_d):
+        """CCD derivative + dissipative filter along one axis.
+
+        On uniform grids the filter operates in x-space.
+        On non-uniform grids the filter operates in ξ-space then applies J.
+        """
+        xp = self.xp
+        sl_c  = _sl(flux.ndim, ax, 1, -1)
+        sl_p1 = _sl(flux.ndim, ax, 2, None)
+        sl_m1 = _sl(flux.ndim, ax, 0, -2)
+
+        if self.grid.uniform:
+            g_prime, _ = self.ccd.differentiate(flux, ax)
+            g_pad = _pad_bc(xp, g_prime, ax, 1, self._bc)
+            return (g_pad[sl_c]
+                    + eps_d * (g_pad[sl_p1] - 2.0 * g_pad[sl_c]
+                               + g_pad[sl_m1]))
+        else:
+            g_xi, _ = self.ccd.differentiate(flux, ax, apply_metric=False)
+            g_xi_pad = _pad_bc(xp, g_xi, ax, 1, self._bc)
+            F_xi = (g_xi_pad[sl_c]
+                    + eps_d * (g_xi_pad[sl_p1] - 2.0 * g_xi_pad[sl_c]
+                               + g_xi_pad[sl_m1]))
+            J_1d = xp.asarray(self.grid.J[ax])
+            shape_J = [1] * flux.ndim
+            shape_J[ax] = -1
+            return J_1d.reshape(shape_J) * F_xi
+
     # ── Stage 1: Dissipative CCD compression divergence ──────────────────
 
     def _dccd_compression_div(self, psi, ccd: "CCDSolver"):
-        """Compute ∇·[ψ(1−ψ) n̂] with Dissipative CCD filter.
-
-        Implements alg:cls_reinit_dccd Steps 1–2 (§05c_reinitialization):
-          g_ax  = ψ(1−ψ) n̂_ax
-          g'_ax = D¹_CCD(g_ax)           (CCD first derivative)
-          G̃_ax  = g'_ax + ε_d (g'_{ax,i+1} − 2g'_{ax,i} + g'_{ax,i−1})
-        """
+        """Compute ∇·[ψ(1−ψ) n̂] with Dissipative CCD filter."""
         xp   = self.xp
         ndim = self.grid.ndim
         eps_d = self._eps_d_comp
 
-        # Gradient of ψ for n̂
         dpsi = []
         for ax in range(ndim):
             g1, _ = ccd.differentiate(psi, ax)
@@ -325,18 +342,7 @@ class Reinitializer(IReinitializer):
 
         for ax in range(ndim):
             flux_ax = psi_1mpsi * n_hat[ax]
-            # CCD divergence of flux
-            g_prime, _ = ccd.differentiate(flux_ax, ax)
-            # Dissipative filter (eq:comp_filter)
-            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, self._bc)
-            sl_c  = _sl(psi.ndim, ax, 1, -1)
-            sl_p1 = _sl(psi.ndim, ax, 2, None)
-            sl_m1 = _sl(psi.ndim, ax, 0, -2)
-            g_tilde = (g_prime_pad[sl_c]
-                       + eps_d * (g_prime_pad[sl_p1]
-                                  - 2.0 * g_prime_pad[sl_c]
-                                  + g_prime_pad[sl_m1]))
-            div_total = div_total + g_tilde
+            div_total = div_total + self._filtered_divergence(flux_ax, ax, eps_d)
 
         return div_total
 
@@ -416,8 +422,8 @@ class Reinitializer(IReinitializer):
 
     def volume_monitor(self, psi) -> float:
         """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""
-        dV = self.grid.cell_volume()
-        return float(self.xp.sum(psi * (1.0 - psi))) * dV
+        dV = self.xp.asarray(self.grid.cell_volumes())
+        return float(self.xp.sum(psi * (1.0 - psi) * dV))
 
 
 # ── Legacy WENO5 implementation (retained for comparison / validation) ────────
@@ -529,5 +535,5 @@ class ReinitializerWENO5(IReinitializer):
         return xp.concatenate([pad, div_interior, pad], axis=axis)
 
     def volume_monitor(self, psi) -> float:
-        dV = self.grid.cell_volume()
-        return float(self.xp.sum(psi * (1.0 - psi))) * dV
+        dV = self.xp.asarray(self.grid.cell_volumes())
+        return float(self.xp.sum(psi * (1.0 - psi) * dV))

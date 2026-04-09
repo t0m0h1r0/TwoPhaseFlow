@@ -107,6 +107,7 @@ class CCDSolver:
         axis: int,
         bc_left: Optional[Tuple[float, float]] = None,
         bc_right: Optional[Tuple[float, float]] = None,
+        apply_metric: bool = True,
     ):
         """Compute first and second derivatives along ``axis``.
 
@@ -120,19 +121,22 @@ class CCDSolver:
         axis    : spatial axis to differentiate (0, 1, or 2)
         bc_left : (f'₀, f''₀) override (testing only; default=compact BC)
         bc_right: (f'_N, f''_N) override (testing only; default=compact BC)
+        apply_metric : bool — if False, return ξ-space derivatives without
+                       metric transformation (for non-uniform filter operations)
 
         Returns
         -------
-        d1 : array, same shape as ``data`` — ∂data/∂x_axis
-        d2 : array, same shape as ``data`` — ∂²data/∂x_axis²
+        d1 : array, same shape as ``data`` — ∂data/∂x_axis (or ∂data/∂ξ)
+        d2 : array, same shape as ``data`` — ∂²data/∂x_axis² (or ∂²data/∂ξ²)
         """
         if self.bc_type == "periodic" and bc_left is None and bc_right is None:
-            return self._differentiate_periodic(data, axis)
+            return self._differentiate_periodic(data, axis,
+                                                apply_metric=apply_metric)
 
         d1, d2 = self._differentiate_wall_raw(data, axis, bc_left, bc_right)
 
         # Non-uniform grid: transform from ξ-space back to x-space (§4.9)
-        if not self.grid.uniform:
+        if not self.grid.uniform and apply_metric:
             d1, d2 = self._apply_metric(d1, d2, axis)
 
         return d1, d2
@@ -334,7 +338,7 @@ class CCDSolver:
         lu, piv = lu_factor(A)
         return {'lu': lu, 'piv': piv, 'h': h, 'N': N}
 
-    def _differentiate_periodic(self, data, axis: int):
+    def _differentiate_periodic(self, data, axis: int, apply_metric: bool = True):
         """Periodic CCD differentiation using the pre-factorised block-circulant solver.
 
         Nodes 0..N-1 are solved via the 2N×2N system; node N receives a copy
@@ -386,7 +390,7 @@ class CCDSolver:
         d1 = xp.moveaxis(d1_flat_xp.reshape(orig_shape), 0, axis)
         d2 = xp.moveaxis(d2_flat_xp.reshape(orig_shape), 0, axis)
 
-        if not self.grid.uniform:
+        if not self.grid.uniform and apply_metric:
             d1, d2 = self._apply_metric(d1, d2, axis)
 
         return d1, d2

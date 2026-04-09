@@ -208,6 +208,13 @@ class Grid:
         """Approximate uniform cell volume (product of mean spacings)."""
         return float(np.prod([L / N for L, N in zip(self.L, self.N)]))
 
+    def cell_volumes(self) -> np.ndarray:
+        """Per-node control volumes, shape ``self.shape``."""
+        vol = self.h[0].copy()
+        for ax in range(1, self.ndim):
+            vol = np.expand_dims(vol, axis=ax) * self.h[ax]
+        return vol
+
     def __repr__(self) -> str:
         h_str = " × ".join(
             f"{self.L[ax]/self.N[ax]:.4g}" for ax in range(self.ndim)

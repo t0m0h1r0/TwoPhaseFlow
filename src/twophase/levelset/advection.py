@@ -287,6 +287,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         mass_correction: bool = False,
     ):
         self.xp = backend.xp
+        self._grid = grid
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
         self._ccd = ccd
         self._bc = bc
@@ -317,7 +318,8 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
         q0 = xp.copy(psi)
         if self._mass_correction:
-            M_old = float(xp.sum(q0))
+            dV = xp.asarray(self._grid.cell_volumes())
+            M_old = float(xp.sum(q0 * dV))
         q1 = xp.clip(q0 + dt * L(q0), 0.0, 1.0)
         q2 = xp.clip(0.75 * q0 + 0.25 * (q1 + dt * L(q1)), 0.0, 1.0)
         q_new = xp.clip(
@@ -327,9 +329,10 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
         # ── Interface-weighted mass correction (WIKI-T-027) ──
         if self._mass_correction:
-            M_new = float(xp.sum(q_new))
+            dV = xp.asarray(self._grid.cell_volumes())
+            M_new = float(xp.sum(q_new * dV))
             w = 4.0 * q_new * (1.0 - q_new)
-            W = float(xp.sum(w))
+            W = float(xp.sum(w * dV))
             if W > 1e-12:
                 q_new = q_new + ((M_old - M_new) / W) * w
                 q_new = xp.clip(q_new, 0.0, 1.0)
@@ -348,22 +351,37 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
             # Step 1: advective flux f_i = ψ_i · u_ax,i
             f = psi * vel[ax]
 
-            # Step 2: CCD first derivative f'_i ≈ ∂f/∂x_ax
-            fp, _ = self._ccd.differentiate(f, axis=ax)
-
-            # Step 3: Dissipative filter
-            #   F̃_i = f'_i + ε_d (f'_{i+1} − 2f'_i + f'_{i-1})
-            fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
-            n = fp.shape[ax]
+            n = f.shape[ax]
 
             def _sl(start, stop, _ax=ax):
-                s = [slice(None)] * fp.ndim
+                s = [slice(None)] * f.ndim
                 s[_ax] = slice(start, stop)
                 return tuple(s)
 
-            fp_p1 = fp_pad[_sl(2, n + 2)]   # f'_{i+1}
-            fp_m1 = fp_pad[_sl(0, n)]        # f'_{i-1}
-            F_tilde = fp + self._eps_d * (fp_p1 - 2.0 * fp + fp_m1)
+            if self._grid.uniform:
+                # Step 2: CCD first derivative f'_i ≈ ∂f/∂x_ax
+                fp, _ = self._ccd.differentiate(f, axis=ax)
+                # Step 3: Dissipative filter in x-space (uniform)
+                fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
+                fp_p1 = fp_pad[_sl(2, n + 2)]
+                fp_m1 = fp_pad[_sl(0, n)]
+                F_tilde = fp + self._eps_d * (fp_p1 - 2.0 * fp + fp_m1)
+            else:
+                # Step 2: CCD derivative in ξ-space (no metric)
+                fp_xi, _ = self._ccd.differentiate(f, axis=ax,
+                                                   apply_metric=False)
+                # Step 3: Dissipative filter in ξ-space, then apply metric J
+                fp_xi_pad = _pad_bc(xp, fp_xi, ax, 1, self._bc)
+                fp_xi_p1 = fp_xi_pad[_sl(2, n + 2)]
+                fp_xi_m1 = fp_xi_pad[_sl(0, n)]
+                F_tilde_xi = (fp_xi
+                              + self._eps_d * (fp_xi_p1 - 2.0 * fp_xi
+                                               + fp_xi_m1))
+                # ∂f/∂x = J · (∂f/∂ξ)
+                J_1d = xp.asarray(self._grid.J[ax])
+                shape_J = [1] * f.ndim
+                shape_J[ax] = -1
+                F_tilde = J_1d.reshape(shape_J) * F_tilde_xi
 
             # Step 4: accumulate −∂(ψu)/∂x_ax
             result -= F_tilde
