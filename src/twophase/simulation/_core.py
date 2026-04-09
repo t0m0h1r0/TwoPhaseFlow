@@ -42,6 +42,7 @@ from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
 from ..levelset.heaviside import update_properties, invert_heaviside
+from ..levelset.field_extender import NullFieldExtender
 
 
 class TwoPhaseSimulation:
@@ -96,7 +97,10 @@ class TwoPhaseSimulation:
         obj._bc_handler    = c.bc_handler
         obj._diagnostics   = c.diagnostics
         obj._ppe_rhs_gfm   = c.ppe_rhs_gfm  # None when CSF mode
-        obj._field_ext     = c.field_extender  # None when disabled
+        obj._field_ext     = c.field_extender  # NullFieldExtender when disabled
+        obj._needs_phi     = (c.field_extender is not None
+                              and not isinstance(c.field_extender, NullFieldExtender)
+                              ) or (c.ppe_rhs_gfm is not None)
 
         # 状態変数
         obj.time = 0.0
@@ -170,16 +174,12 @@ class TwoPhaseSimulation:
 
         # Step 5: 予測速度 u*（AB2+IPC: state.pressure = p^n を使用）
         # Extension PDE: p^n を界面越しに延長してから IPC ∇p^n を CCD で計算
-        # （docs/extension_pde_ccd.md §4.3 Step 5c）
-        if self._field_ext is not None:
-            n_hat = self._field_ext.compute_normal(self.phi.data)
-            p_ext = self._field_ext.extend(
-                self.pressure.data, self.phi.data, n_hat,
-            )
-            # 延長済み p^n を FlowState に渡す（self.pressure は変更しない）
-            state = self._build_flow_state_with_pressure(p_ext)
-        else:
-            state = self._build_flow_state()
+        # （NullFieldExtender の場合は p^n をそのまま返す）
+        n_hat = self._field_ext.compute_normal(self.phi.data)
+        p_ext = self._field_ext.extend(
+            self.pressure.data, self.phi.data, n_hat,
+        )
+        state = self._build_flow_state_with_pressure(p_ext)
         vel_star = self._step_predictor(state, dt)
 
         # Step 5b: 壁面 BC を u* に適用（wall BC のみ）
@@ -292,14 +292,11 @@ class TwoPhaseSimulation:
         絶対圧力 p^{n+1} の勾配ではなく δp の勾配である点に注意．
 
         Extension PDE (Aslam 2004): δp を界面越しに滑らかに延長してから
-        CCD ∇(δp) を計算する．これにより CCD ステンシルが界面を跨いでも
-        Gibbs 振動が発生しない（docs/extension_pde_ccd.md §4.3 Step 6b）．
+        CCD ∇(δp) を計算する（NullFieldExtender の場合は δp をそのまま返す）．
         """
         ndim = self.config.grid.ndim
-        # Extension PDE: smooth δp across Γ before CCD gradient
-        if self._field_ext is not None:
-            n_hat = self._field_ext.compute_normal(self.phi.data)
-            delta_p = self._field_ext.extend(delta_p, self.phi.data, n_hat)
+        n_hat = self._field_ext.compute_normal(self.phi.data)
+        delta_p = self._field_ext.extend(delta_p, self.phi.data, n_hat)
         vel_new = self.vel_corrector.correct(vel_star, delta_p, self.rho.data, dt)
         for ax in range(ndim):
             self.velocity[ax] = vel_new[ax]
@@ -323,5 +320,5 @@ class TwoPhaseSimulation:
         # ψ→φ internally, so this is a second inversion.  Eliminating it
         # would require passing pre-computed φ through ICurvatureCalculator,
         # which is too invasive for this change.
-        if self._ppe_rhs_gfm is not None or self._field_ext is not None:
+        if self._needs_phi:
             self.phi.data = invert_heaviside(self.backend.xp, self.psi.data, self.eps)

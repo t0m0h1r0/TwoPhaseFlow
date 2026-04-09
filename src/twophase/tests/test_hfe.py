@@ -169,7 +169,7 @@ class TestHFE2D:
             q = xp.cos(np.pi * X) * xp.cos(np.pi * Y)
 
             # Extend
-            q_ext = hfe.extend(q, phi, source_sign=-1.0)
+            q_ext = hfe.extend(q, phi)
 
             # Exact extension: q at closest interface point
             r = xp.sqrt((X - cx)**2 + (Y - cy)**2)
@@ -210,7 +210,7 @@ class TestHFE2D:
         phi = xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
         q = xp.cos(np.pi * X) * xp.cos(np.pi * Y)
 
-        q_ext = hfe.extend(q, phi, source_sign=-1.0)
+        q_ext = hfe.extend(q, phi)
 
         source = phi < 0
         assert xp.allclose(q_ext[source], q[source]), (

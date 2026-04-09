@@ -183,3 +183,17 @@ class FieldExtender:
         # Blend: use original phase's value where available
         q_ext = np.where(phi < 0, q_gas, q_liq)
         return q_ext
+
+
+class NullFieldExtender:
+    """No-op field extender (Null Object pattern).
+
+    Used when field extension is disabled. All methods are safe to call
+    but produce no effect — extend() returns input unchanged.
+    """
+
+    def compute_normal(self, phi):
+        return None
+
+    def extend(self, field_data, phi, n_hat=None):
+        return field_data

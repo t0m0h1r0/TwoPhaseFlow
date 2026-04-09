@@ -56,7 +56,7 @@ from ..pressure.velocity_corrector import VelocityCorrector
 from ..pressure.gfm import GFMCorrector
 from ..pressure.dccd_ppe_filter import DCCDPPEFilter
 from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
-from ..levelset.field_extender import FieldExtender
+from ..levelset.field_extender import FieldExtender, NullFieldExtender
 from ..levelset.closest_point_extender import ClosestPointExtender
 from ..time_integration.cfl import CFLCalculator
 from .boundary_condition import BoundaryConditionHandler
@@ -203,7 +203,7 @@ class SimulationBuilder:
                 backend, grid, ccd, n_iter=config.numerics.n_extend,
             )
         else:
-            field_extender = None
+            field_extender = NullFieldExtender()
 
         cfl_calc = CFLCalculator(
             backend, grid, config.numerics.cfl_number,

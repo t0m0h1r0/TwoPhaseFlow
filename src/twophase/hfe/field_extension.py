@@ -23,10 +23,8 @@ Symbol mapping (paper → code):
     (f, f', f'')    → (val, d1, d2) from CCD
 
 Sign convention:
-    source_sign defines the sign of φ in the source phase.
-    Source: φ * source_sign > 0  (same sign)
-    Interface: φ = 0
-    Target: φ * source_sign < 0  (opposite sign)
+    Source is liquid (φ < 0), target is gas (φ ≥ 0).
+    Extension overwrites target-phase values within narrow band.
 
 Caller contract:
     The input field_data must be smooth (C^6) in the neighborhood of the
@@ -86,11 +84,17 @@ class HermiteFieldExtension(IFieldExtension):
         self,
         field_data: np.ndarray,
         phi: np.ndarray,
-        source_sign: float = -1.0,
+        n_hat=None,
     ) -> np.ndarray:
         """Extend field_data from source phase across Γ.
 
         See IFieldExtension.extend for full docstring.
+
+        Parameters
+        ----------
+        field_data : array — scalar field to extend
+        phi        : array — signed-distance function
+        n_hat      : ignored (normals are computed internally via CCD)
 
         The input field_data should be smooth near the interface for
         accurate CCD derivatives. Source-phase values are preserved
@@ -125,6 +129,8 @@ class HermiteFieldExtension(IFieldExtension):
         hy = float(grid.L[1] / grid.N[1])
 
         # Target-phase points within narrow band
+        # Default: source is liquid (φ < 0), extend into gas (φ ≥ 0)
+        source_sign = -1.0
         is_target = (phi * source_sign) < 0.0
         dist_cells = xp.abs(phi) / min(hx, hy)
         in_band = is_target & (dist_cells <= self.band_cells)

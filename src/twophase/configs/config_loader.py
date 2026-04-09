@@ -182,18 +182,12 @@ def load_config(
         pseudo_c_tau=_f("pseudo_c_tau", 2.0),
     )
 
-    # 未知キーの警告
-    _known = {
-        "ndim", "N", "L", "alpha_grid", "dx_min_floor", "eps_g_factor",
-        "Re", "Fr", "We", "rho_ratio", "mu_ratio",
-        "epsilon_factor", "reinit_steps", "cfl_number", "t_end", "cn_viscous", "bc_type",
-        "advection_scheme",
-        "ppe_solver_type", "pseudo_tol", "pseudo_maxiter",
-        "pseudo_c_tau",
-        # legacy keys (ignored but no warning)
-        "bicgstab_tol", "bicgstab_maxiter",
-        "use_gpu",
-    }
+    # 未知キーの警告 — auto-derived from dataclass fields (DRY)
+    from dataclasses import fields as _dc_fields
+    _known = set()
+    for _dc in (GridConfig, FluidConfig, NumericsConfig, SolverConfig):
+        _known |= {f.name for f in _dc_fields(_dc)}
+    _known |= {"use_gpu", "bicgstab_tol", "bicgstab_maxiter"}  # legacy keys
     for key in raw:
         if key not in _known:
             import warnings

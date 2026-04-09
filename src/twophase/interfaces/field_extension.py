@@ -26,7 +26,7 @@ class IFieldExtension(ABC):
         q           → field_data
         φ           → phi
         q_ext       → return value
-        n̂           → computed internally from ∇φ/|∇φ|
+        n̂           → n_hat (pre-computed or computed internally from ∇φ/|∇φ|)
     """
 
     @abstractmethod
@@ -34,7 +34,7 @@ class IFieldExtension(ABC):
         self,
         field_data: "array",
         phi: "array",
-        source_sign: float,
+        n_hat=None,
     ) -> "array":
         """Extend field_data from the source phase across Γ.
 
@@ -44,14 +44,13 @@ class IFieldExtension(ABC):
             Scalar field to extend (e.g. pressure p^n or increment δp).
         phi : array, shape grid.shape
             Signed-distance function. |∇φ| ≈ 1 (SDF condition).
-        source_sign : float
-            Sign of φ in the source phase.
-            -1.0 → source is liquid (φ < 0), extend into gas (φ ≥ 0).
-            +1.0 → source is gas (φ > 0), extend into liquid (φ ≤ 0).
+        n_hat : list of arrays or None
+            Pre-computed interface normals (∇φ/|∇φ|).
+            None → implementation computes normals internally.
 
         Returns
         -------
         field_ext : array, same shape as field_data
             Extended field. Equals field_data in the source phase;
-            smoothly extended in the target phase with O(h^6) accuracy.
+            smoothly extended in the target phase.
         """

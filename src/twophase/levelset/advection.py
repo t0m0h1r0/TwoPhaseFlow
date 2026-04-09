@@ -48,6 +48,7 @@ import numpy as np
 from typing import List, TYPE_CHECKING
 
 from ..interfaces.levelset import ILevelSetAdvection
+from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
 
 if TYPE_CHECKING:
@@ -98,17 +99,7 @@ class LevelSetAdvection(ILevelSetAdvection):
         psi_new : updated ψ array
         """
         xp = self.xp
-
-        def L(q):
-            return self._rhs(q, velocity_components)
-
-        # TVD-RK3 (Shu-Osher scheme, §8 Eq. 79–81)
-        q0 = xp.copy(psi)
-        q1 = q0 + dt * L(q0)
-        q2 = 0.75 * q0 + 0.25 * (q1 + dt * L(q1))
-        q_new = (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * L(q2))
-
-        # Clamp to [0, 1] to suppress overshoots
+        q_new = tvd_rk3(xp, psi, dt, lambda q: self._rhs(q, velocity_components))
         return xp.clip(q_new, 0.0, 1.0)
 
     # ── RHS: −u·∇ψ via WENO5 ─────────────────────────────────────────────
@@ -312,23 +303,18 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         """
         xp = self.xp
 
-        def L(q):
-            return self._rhs(q, velocity_components)
-
-        # TVD-RK3 (Shu-Osher) with ψ ∈ [0,1] clamp after each stage
-        # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
-        q0 = xp.copy(psi)
         if self._mass_correction:
             dV = xp.asarray(self._grid.cell_volumes())
-            M_old = float(xp.sum(q0 * dV))
-        q1 = xp.clip(q0 + dt * L(q0), 0.0, 1.0)
-        q2 = xp.clip(0.75 * q0 + 0.25 * (q1 + dt * L(q1)), 0.0, 1.0)
-        q_new = xp.clip(
-            (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * L(q2)),
-            0.0, 1.0,
+            M_old = float(xp.sum(psi * dV))
+
+        # TVD-RK3 with ψ ∈ [0,1] clamp after each stage
+        # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
+        q_new = tvd_rk3(
+            xp, psi, dt,
+            lambda q: self._rhs(q, velocity_components),
+            post_stage=lambda q: xp.clip(q, 0.0, 1.0),
         )
 
-        # ── Interface-weighted mass correction (WIKI-T-027) ──
         if self._mass_correction:
             q_new = apply_mass_correction(xp, q_new, dV, M_old)
 

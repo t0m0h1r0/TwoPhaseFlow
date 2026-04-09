@@ -12,6 +12,8 @@ TwoPhaseSimulation から分離した独立モジュール。
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from ..core.boundary import BCType
+
 if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.field import VectorField
@@ -26,7 +28,8 @@ class BoundaryConditionHandler:
     """
 
     def __init__(self, config: "SimulationConfig") -> None:
-        self.bc_type = config.numerics.bc_type
+        bc = config.numerics.bc_type
+        self.bc_type = BCType(bc) if isinstance(bc, str) else bc
         self.ndim = config.grid.ndim
 
     def apply(self, velocity: "VectorField") -> None:
@@ -36,10 +39,9 @@ class BoundaryConditionHandler:
         ----------
         velocity : VectorField — in-place で修正される
         """
-        # BCType enum と文字列の両方に対応（== は str(Enum) で機能する）
-        if self.bc_type == "wall":
+        if self.bc_type is BCType.WALL:
             self._apply_wall(velocity)
-        elif self.bc_type == "periodic":
+        elif self.bc_type is BCType.PERIODIC:
             self._apply_periodic(velocity)
 
     def _boundary_slices(self, ax: int):

@@ -39,14 +39,19 @@ src/twophase/
 │   └── predictor.py            # Predictor — u* = uⁿ + dt Σ Fᵢ (§09)
 ├── pressure/                   # Pressure / projection (§07, §08)
 │   ├── ppe_builder.py          # PPE RHS assembly: (1/dt) ∇ᴿᶜ·u*
-│   ├── ppe_solver.py           # PPESolverBiCGSTAB — FVM (TESTING ONLY, ~O(h²))
-│   ├── ppe_solver_ccd_lu.py    # PPESolverCCDLU — CCD Laplacian + sparse LU
-│   ├── ppe_solver_lu.py        # PPESolverLU — FVM matrix + sparse LU
-│   ├── ppe_solver_pseudotime.py# PPESolverPseudoTime — CCD + pseudo-time (PRODUCTION, §08d)
-│   ├── ppe_solver_sweep.py     # PPESolverSweep — alternating-direction sweep
-│   ├── ppe_solver_factory.py   # Factory: "pseudotime" | "bicgstab" | "sweep" | ...
+│   ├── ppe_solver_ccd_lu.py    # PPESolverCCDLU — CCD Laplacian + sparse LU (PRODUCTION)
+│   ├── ppe_solver_iim.py       # PPESolverIIM — CCD + IIM interface correction
+│   ├── ppe_solver_iterative.py # PPESolverIterative — research toolkit
+│   ├── ppe_solver_factory.py   # Registry-based factory (OCP)
+│   ├── ccd_ppe_base.py         # _CCDPPEBase — Template Method for CCD solvers
 │   ├── rhie_chow.py            # RhieChowInterpolation — face velocity (§07)
-│   └── velocity_corrector.py   # VelocityCorrector — u^{n+1} = u* − dt ∇p (§09)
+│   ├── velocity_corrector.py   # VelocityCorrector — u^{n+1} = u* − dt ∇p (§09)
+│   └── legacy/                 # C2-retained legacy solvers (§8 register)
+│       ├── ppe_solver.py       # PPESolver — FVM BiCGSTAB (PR-1 violation)
+│       ├── ppe_solver_lu.py    # PPESolverLU — FVM direct LU (PR-1 violation)
+│       ├── ppe_solver_pseudotime.py # PPESolverPseudoTime — LGMRES (PR-6 violation)
+│       ├── ppe_solver_sweep.py # PPESolverSweep — ADI sweep (impractical N>=32)
+│       └── ppe_solver_dc_omega.py # PPESolverDCOmega — under-relaxed ADI
 ├── time_integration/           # Time stepping (§05b)
 │   ├── tvd_rk3.py              # TVD-RK3 integrator
 │   └── cfl.py                  # CFL condition + dt selection
@@ -245,6 +250,12 @@ Never hardcode pin index (0,0).
 | Legacy class | File | Superseded by | Reason kept |
 |---|---|---|---|
 | `ReinitializerWENO5` | `src/twophase/levelset/reinitialize.py` | `Reinitializer` (DCCD+CN) | Cross-validation vs paper §5c scheme |
+| `PPESolver` | `src/twophase/pressure/legacy/ppe_solver.py` | `PPESolverCCDLU` | FVM BiCGSTAB reference (PR-1 violation) |
+| `PPESolverLU` | `src/twophase/pressure/legacy/ppe_solver_lu.py` | `PPESolverCCDLU` | FVM direct LU reference (PR-1 violation) |
+| `PPESolverPseudoTime` | `src/twophase/pressure/legacy/ppe_solver_pseudotime.py` | `PPESolverCCDLU` | CCD+LGMRES baseline (PR-6 violation) |
+| `PPESolverSweep` | `src/twophase/pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
+| `PPESolverDCOmega` | `src/twophase/pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
+| `CurvatureCalculator` | `src/twophase/levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
 
 ────────────────────────────────────────────────────────
 # §9 — Paper Structure Reference (P2)
