@@ -43,6 +43,7 @@ def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
 
 
 _REINIT_THRESHOLD = 1.10   # adaptive reinit trigger: M(τ)/M_ref > θ (§7b)
+_DGR_INTERVAL = 20         # independent DGR thickness correction interval (§7b)
 
 
 def _adaptive_reinit_needed(xp, psi, M_ref, h, threshold=_REINIT_THRESHOLD):
@@ -59,8 +60,8 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
-        eps = 1.5 / N
         h = 1.0 / N
+        eps = 1.0 * h
         X, Y = grid.meshgrid()
 
         phi0 = zalesak_sdf(X, Y)
@@ -94,6 +95,9 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
             if (step + 1) % 20 == 0:
                 psi = reinit.reinitialize(psi)
                 reinit_count += 1
+            # NOTE: DGR not applied for Zalesak — global ε_eff rescaling
+            # fills narrow slot features (WIKI-E-011). DGR is safe only
+            # for smooth interfaces (single vortex below).
             # Save at quarter and half revolution
             if save_2d and step + 1 == n_steps // 4:
                 fields["zalesak_quarter"] = psi.copy()
@@ -131,14 +135,15 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
-        eps = 1.5 / N
         h = 1.0 / N
+        eps = 1.0 * h
         X, Y = grid.meshgrid()
 
         phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
         psi0 = heaviside(np, phi0, eps)
         adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05, mass_correction=True)
         reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4, bc="zero")
+        dgr = Reinitializer(backend, grid, ccd, eps, bc="zero", method='dgr')
 
         T = 8.0; dt = 0.45 / N; n_steps = int(T / dt); dt = T / n_steps
         psi = psi0.copy(); mass0 = float(np.sum(psi))
@@ -159,6 +164,9 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
                 psi = reinit.reinitialize(psi)
                 M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
                 reinit_count += 1
+            # Independent DGR thickness correction (§7b, WIKI-T-030)
+            if (step + 1) % _DGR_INTERVAL == 0:
+                psi = dgr.reinitialize(psi)
             # Save at max deformation (t = T/2)
             if save_2d and step + 1 == n_steps // 2:
                 fields["vortex_mid"] = psi.copy()

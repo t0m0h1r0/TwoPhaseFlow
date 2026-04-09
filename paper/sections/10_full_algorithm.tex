@@ -170,6 +170,23 @@ $n_{\mathrm{reinit}} = 4$，$\theta_{\mathrm{reinit}} = 1.10$
 （§~\ref{sec:cls_compression}，アルゴリズム~\ref{alg:cls_reinit_dccd}）．
 固定頻度の再初期化は不要な呼び出しを多数発生させ形状精度を劣化させるため推奨しない
 （§~\ref{sec:verify_dccd_conservation}）．
+ただし Zalesak 型の鋭い幾何形状では，適応トリガーが局所的角劣化を検知できないため，
+固定頻度（20 ステップ毎）を併用する．
+
+\paragraph{Step 2b：DGR 厚み補正（独立適用）}
+演算子分裂の構造的膨張（§~\ref{sec:dgr_thickness}）を補正するため，
+20 物理ステップ毎に Direct Geometric Reinitialization を適用する：
+\[
+  \varepsilon_{\mathrm{eff}} = \mathrm{median}\!\left[\frac{\psi(1-\psi)}{|\bnabla\psi|}\right]_{\text{band}},
+  \quad
+  \phi_{\mathrm{sdf}} = \varepsilon\ln\!\left(\frac{\psi}{1-\psi}\right)
+    \cdot\frac{\varepsilon_{\mathrm{eff}}}{\varepsilon},
+  \quad
+  \psi \leftarrow H_\varepsilon(\phi_{\mathrm{sdf}})
+\]
+この補正は形状再初期化（Step 2）とは独立であり，界面位置を変えず厚みのみ復元する．
+ただし，スロット等の界面幅に近い狭い構造を含む場合は適用しない
+（グローバル $\varepsilon_{\mathrm{eff}}$ 推定が構造を破壊するため；§~\ref{sec:dgr_thickness}）．
 
 % ── Step 3 ──────────────────────────────────────────────────────────────
 \paragraph{Step 3：グリッド・物性更新}

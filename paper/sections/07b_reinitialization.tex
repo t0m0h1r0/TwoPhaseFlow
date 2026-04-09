@@ -110,7 +110,9 @@ $\varepsilon \sim h$ のとき放物条件 $\Delta\tau \sim h/(4N_{\mathrm{dim}}
 \textbf{ステップ数と停止基準：}
 本実装では固定ステップ数 $n_{\mathrm{reinit}}$（デフォルト 4）を実行する．
 $n_{\mathrm{reinit}} = 4$，$\Delta\tau \approx 0.5h$ のとき仮想積分時間 $\tau_{\mathrm{total}} \approx 2h$ となり，
-界面プロファイル $\psi = H_\varepsilon(\phi)$ の整形に必要な仮想拡散距離 $\Ord{\varepsilon} \sim \Ord{h}$ を十分確保する．
+界面プロファイルの形状修復に必要な仮想拡散距離 $\Ord{\varepsilon} \sim \Ord{h}$ を確保する．
+ただし，分裂誤差により界面厚みは平衡値 $\varepsilon$ に収束せず，
+呼び出し毎に約 40\% 膨張する（§~\ref{sec:dgr_thickness}）．
 \end{tcolorbox}
 
 
@@ -191,6 +193,61 @@ $\psi = H_\varepsilon(\phi)$ の平衡形からの逸脱に比例して増大す
 単一渦テスト（$N = 128$）において，この適応トリガーにより
 再初期化回数が 227 回（固定 10 ステップ毎）から\textbf{2 回}に激減し，
 $L_2$ 形状誤差が 49\% 改善された（§~\ref{sec:verify_dccd_conservation}）．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{演算子分裂の構造的界面膨張と Direct Geometric 厚み補正}
+\label{sec:dgr_thickness}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\textbf{分裂誤差による界面膨張．}
+演算子分裂スキーム~\eqref{eq:cls_reinit_split} は，
+圧縮（陽解法 FE）と拡散（CN-ADI）を\textbf{逐次適用}する．
+平衡では両項が釣り合うが，逐次実行では：
+(1) 圧縮が先に界面を鋭化 $\varepsilon' < \varepsilon$，
+(2) 拡散が鋭化後のプロファイルに対して過大に作用 $\varepsilon'' > \varepsilon$，
+という $\Ord{\Delta\tau}$ の分裂誤差が生じる．
+数値検証により，\textbf{完全な平衡プロファイル} $\psi = H_\varepsilon(\phi)$
+（移流なし）に再初期化を適用するだけで，
+1回あたり $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.4$
+の膨張が確認された（§~\ref{sec:verify_dccd_conservation}）．
+89回の累積で $\varepsilon_{\mathrm{eff}} \approx 4\varepsilon$ に達する．
+$n_{\mathrm{reinit}}$ を増加させると分裂反復が増え，膨張は悪化する．
+
+\textbf{Direct Geometric Reinitialization（DGR）．}
+この構造的膨張を補正するため，logit 逆変換と勾配正規化に基づく
+厚み補正を形状再初期化とは\textbf{独立に}適用する：
+\begin{enumerate}
+  \item 実効厚の推定：界面帯域（$0.05 < \psi < 0.95$）で
+    $\varepsilon_{\mathrm{eff}} = \mathrm{median}\!\left[\psi(1-\psi)/|\bnabla\psi|\right]$
+  \item 逆変換：$\phi_{\mathrm{raw}} = \varepsilon\,\ln[\psi/(1-\psi)]$
+  \item 再スケール：$\phi_{\mathrm{sdf}} = \phi_{\mathrm{raw}} \cdot (\varepsilon_{\mathrm{eff}}/\varepsilon)$
+  \item 再構成：$\psi_{\mathrm{new}} = H_\varepsilon(\phi_{\mathrm{sdf}})$
+  \item 質量補正：$\psi \leftarrow \psi_{\mathrm{new}} + \dfrac{\delta M}{\sum w}\,w$，
+    $w = 4\psi_{\mathrm{new}}(1-\psi_{\mathrm{new}})$
+\end{enumerate}
+
+この補正は，$\psi = H_{\varepsilon_{\mathrm{eff}}}(\phi_{\mathrm{true}})$ の
+形のプロファイルに対して厳密に $\psi_{\mathrm{new}} = H_\varepsilon(\phi_{\mathrm{true}})$
+を復元する（定理~1：$\phi_{\mathrm{raw}} = (\varepsilon/\varepsilon_{\mathrm{eff}})\phi_{\mathrm{true}}$ と
+$|\bnabla\phi_{\mathrm{raw}}| = \varepsilon/\varepsilon_{\mathrm{eff}}$ より）．
+質量補正は界面の一様シフト $\Delta\phi = 4\lambda\varepsilon$ に相当し，
+プロファイル幅 $\varepsilon$ を変化させない（定理~3）．
+
+\textbf{運用：}
+DGR は形状修復（圧縮--拡散）とは独立に，物理時間 20 ステップ毎に適用する．
+形状再初期化が界面プロファイルを tanh 形に整形し，
+DGR がその直後（または独立に）界面厚を $\varepsilon$ に復元する．
+単一渦テスト（$N=128$, $\varepsilon/h=1.0$）で
+$\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ を全時刻で維持し，
+面積誤差を従来比 24 倍改善した（§~\ref{sec:verify_dccd_conservation}）．
+
+\textbf{適用制限：}
+DGR のグローバル $\varepsilon_{\mathrm{eff}}$ 推定は
+界面厚の膨張と狭い形状特徴（スロット等）を区別できない．
+Zalesak スロット円板のように界面幅 $\sim 6\varepsilon$ の狭い構造を含む場合，
+DGR がスロット内部を液相に充填してしまうため\textbf{適用してはならない}．
+鋭い幾何形状には従来の圧縮--拡散再初期化（固定頻度）を使用する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
