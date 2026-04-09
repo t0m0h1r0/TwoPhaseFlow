@@ -8,10 +8,10 @@ sources:
   - path: paper/sections/04_ccd.tex
     git_hash: 7328bf1
     description: "Section 4 opening, roadmap, CCD motivation"
-  - path: paper/sections/05_grid.tex
+  - path: paper/sections/06_grid.tex
     git_hash: 7328bf1
     description: "Section 5 opening, grid design"
-  - path: paper/sections/06_time_integration.tex
+  - path: paper/sections/05_time_integration.tex
     git_hash: 7328bf1
     description: "Section 6 time integration framework"
   - path: paper/sections/07_advection.tex
@@ -92,8 +92,8 @@ DCCD appears in S4 (definition), S7 (CLS advection), S8 (checkerboard), S10 (par
 
 ## Structural Anomalies
 
-- **File 05b header says "04c"**: Naming inconsistency; CCD extensions placed in S5 but conceptually S4 material
-- **Duplicate opening in 05_grid.tex**: Lines 6-8 and 10-13 are near-identical; delete one
+- **File 06b header says "04c"**: Naming inconsistency; CCD extensions placed in S5 but conceptually S4 material
+- **Duplicate opening in 06_grid.tex**: Lines 6-8 and 10-13 are near-identical; delete one
 - **DC k=1 stated 6 times**: Redundant across S9 intro, S9.3, S9.5, S9 summary, S10 Step 6, S10 Step 6 detail; 3 mentions suffice
 - **Accuracy table in S9d omits density-ratio limitation**: kappa(L_h) = O(rho_l/rho_g / h^2) divergence at rho_l/rho_g >= 10 not noted in tab:accuracy_summary
 - **C/RC-DCCD (eq:crc_dccd)**: Defined in S8 but not referenced in S10 algorithm flow; clarify if active or theoretical only

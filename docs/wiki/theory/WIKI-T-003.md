@@ -5,7 +5,7 @@ domain: T
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: paper/sections/06_time_integration.tex
+  - path: paper/sections/05_time_integration.tex
     git_hash: 7328bf1
     description: "Time integration taxonomy: TVD-RK3, AB2+IPC, CN, accuracy table"
   - path: paper/sections/08b_pressure.tex

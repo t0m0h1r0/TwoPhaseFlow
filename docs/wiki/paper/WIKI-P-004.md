@@ -14,9 +14,9 @@ sources:
   - path: paper/sections/04_ccd.tex
   - path: paper/sections/04b_ccd_bc.tex
   - path: paper/sections/04d_dissipative_ccd.tex
-  - path: paper/sections/05_grid.tex
-  - path: paper/sections/05b_ccd_extensions.tex
-  - path: paper/sections/06_time_integration.tex
+  - path: paper/sections/06_grid.tex
+  - path: paper/sections/06b_ccd_extensions.tex
+  - path: paper/sections/05_time_integration.tex
   - path: paper/sections/07_advection.tex
   - path: paper/sections/07b_reinitialization.tex
   - path: paper/sections/08_collocate.tex
@@ -59,8 +59,8 @@ compiled_by: PaperReviewer
 - **Action**: Clarify derivation or replace with standard IPC splitting error analysis
 
 ### M-2: Warnbox contradicts Step 5 implementation (§4 ext)
-- **File**: 05b_ccd_extensions.tex:28
-- **Issue**: Claims Step 5 uses O(h²) central difference; actual Step 5 (05_grid.tex:114) uses CCD O(h⁶)
+- **File**: 06b_ccd_extensions.tex:28
+- **Issue**: Claims Step 5 uses O(h²) central difference; actual Step 5 (06_grid.tex:114) uses CCD O(h⁶)
 - **Action**: Rewrite to hypothetical form: "If J_x were evaluated with O(h²)..."
 
 ### M-3: File header mismatch (§8)
@@ -94,8 +94,8 @@ compiled_by: PaperReviewer
 | m-1 | 02b_surface_tension.tex:45 | TODO: "rename to HFE in final draft" |
 | m-2 | 02b_surface_tension.tex:9 | Orphaned label `eq:Heps_def_preview` — verify usage |
 | m-3 | 01_introduction.tex:493 | Table §10/§11 mismatch (→ M-6) |
-| m-4 | 05_grid.tex:4-12 | Opening paragraph duplicated |
-| m-5 | 06_time_integration.tex:0, 05b_ccd_extensions.tex:0 | File header vs filename mismatch |
+| m-4 | 06_grid.tex:4-12 | Opening paragraph duplicated |
+| m-5 | 05_time_integration.tex:0, 06b_ccd_extensions.tex:0 | File header vs filename mismatch |
 | m-6 | 08_collocate.tex:0 | File header `07_collocate` vs filename `08_collocate` |
 | m-7 | 07b_reinitialization.tex:110 | n_reinit=4 default lacks convergence reference |
 | m-8 | Cross-file | ε_d values (0.05, 0.05, 1/4) scattered; §10 has summary table |

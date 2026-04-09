@@ -8,7 +8,7 @@ sources:
   - path: paper/sections/09d_pressure_summary.tex
     git_hash: 7328bf1
     description: "Definitive accuracy summary table (tab:accuracy_summary)"
-  - path: paper/sections/06_time_integration.tex
+  - path: paper/sections/05_time_integration.tex
     git_hash: 7328bf1
     description: "Time accuracy table (sec:time_accuracy_table)"
   - path: paper/sections/07_advection.tex

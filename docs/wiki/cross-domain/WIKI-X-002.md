@@ -11,7 +11,7 @@ sources:
   - path: paper/sections/09_ccd_poisson.tex
     git_hash: 7328bf1
     description: "CCD as elliptic solver (sec:ccd_elliptic)"
-  - path: paper/sections/05_grid.tex
+  - path: paper/sections/06_grid.tex
     git_hash: 7328bf1
     description: "Metric computation as self-referential CCD application"
 consumers:
