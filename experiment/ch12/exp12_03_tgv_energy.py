@@ -105,17 +105,15 @@ def run(N):
     def ek_exact(t):
         return np.pi**2 * np.exp(-4.0 * NU * t)
 
-    # Kinetic energy (trapezoidal integration on periodic grid)
-    def kinetic_energy(u, v):
-        # Exclude endpoint (duplicate of start for periodic)
-        ui, vi = u[:-1, :-1], v[:-1, :-1]
-        return 0.5 * float(np.sum(ui**2 + vi**2)) * h**2
+    # Kinetic energy / divergence — delegate to library
+    from twophase.diagnostics import kinetic_energy_periodic, divergence_linf
 
-    # Divergence
+    def kinetic_energy(u, v):
+        return kinetic_energy_periodic([u, v], h)
+
     def compute_div(u, v):
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        return np.asarray(du_dx) + np.asarray(dv_dy)
+        from twophase.diagnostics.field_diagnostics import _compute_divergence
+        return _compute_divergence([u, v], ccd)
 
     # Compute nonlinear RHS:  N(u,v) = -(u·∇)u + ν∇²u
     def rhs_func(u, v):

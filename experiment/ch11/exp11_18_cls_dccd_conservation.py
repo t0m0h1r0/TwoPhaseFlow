@@ -23,6 +23,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.levelset.heaviside import heaviside
+from twophase.initial_conditions.velocity_fields import SingleVortex
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -36,11 +37,8 @@ OUT = experiment_dir(__file__)
 # ── Shared velocity field ─────────────────────────────────────────────────
 
 def single_vortex_field(X, Y, t, T):
-    """LeVeque (1996) single vortex with time-reversal."""
-    c = np.cos(np.pi * t / T)
-    u = -2 * np.sin(np.pi * X)**2 * np.sin(np.pi * Y) * np.cos(np.pi * Y) * c
-    v =  2 * np.sin(np.pi * Y)**2 * np.sin(np.pi * X) * np.cos(np.pi * X) * c
-    return u, v
+    """LeVeque (1996) single vortex — delegates to library."""
+    return SingleVortex(period=T).compute(X, Y, t=t)
 
 
 # ── Test A: DCCD sum property ─────────────────────────────────────────────

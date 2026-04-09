@@ -64,11 +64,9 @@ def fft_poisson(rhs, h):
 
 
 def exact_solution(X, Y, t):
-    """TGV exact solution at time t."""
-    decay = np.exp(-2.0 * NU * t)
-    u = np.sin(X) * np.cos(Y) * decay
-    v = -np.cos(X) * np.sin(Y) * decay
-    return u, v
+    """TGV exact solution at time t — delegates to library."""
+    from twophase.benchmarks.analytical_solutions import tgv_velocity
+    return tgv_velocity(X, Y, t, NU)
 
 
 def compute_rhs(u, v, ccd):

@@ -91,9 +91,9 @@ def initial_condition(X, Y):
 
 
 def kinetic_energy(u, v, h):
-    """E_k = (h²/2) * sum(u² + v²) on N interior points."""
-    ui, vi = u[:-1, :-1], v[:-1, :-1]
-    return 0.5 * h**2 * float(np.sum(ui**2 + vi**2))
+    """E_k on periodic grid — delegates to library."""
+    from twophase.diagnostics import kinetic_energy_periodic
+    return kinetic_energy_periodic([u, v], h)
 
 
 def run_simulation(N, eps_d):

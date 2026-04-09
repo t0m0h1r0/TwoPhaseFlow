@@ -21,7 +21,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.levelset.heaviside import heaviside, invert_heaviside
-from twophase.initial_conditions.velocity_fields import RigidRotation
+from twophase.initial_conditions.velocity_fields import RigidRotation, SingleVortex
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -33,13 +33,9 @@ OUT = experiment_dir(__file__)
 
 
 def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
-    phi_circle = np.sqrt((X - center[0])**2 + (Y - center[1])**2) - R
-    slot_x_min, slot_x_max = center[0] - slot_w / 2, center[0] + slot_w / 2
-    slot_y_max = center[1] - R + slot_h
-    dx = np.maximum(slot_x_min - X, X - slot_x_max)
-    dy = np.maximum(-1e10 - Y, Y - slot_y_max)
-    phi_slot = np.maximum(dx, dy)
-    return np.maximum(phi_circle, -phi_slot)
+    """Zalesak slotted disk SDF — delegates to library."""
+    from twophase.initial_conditions.shapes import ZalesakDisk
+    return ZalesakDisk(center=center, radius=R, slot_width=slot_w, slot_depth=slot_h).sdf(X, Y)
 
 
 _REINIT_THRESHOLD = 1.10   # adaptive reinit trigger: M(τ)/M_ref > θ (§7b)
@@ -118,13 +114,6 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
     return results, fields
 
 
-def single_vortex_field(X, Y, t, T):
-    c = np.cos(np.pi * t / T)
-    u = -2 * np.sin(np.pi * X)**2 * np.sin(np.pi * Y) * np.cos(np.pi * Y) * c
-    v =  2 * np.sin(np.pi * Y)**2 * np.sin(np.pi * X) * np.cos(np.pi * X) * c
-    return u, v
-
-
 def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
     backend = Backend(use_gpu=False)
     results = []
@@ -155,7 +144,7 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
             fields["vortex_Y"] = Y.copy()
 
         for step in range(n_steps):
-            u, v = single_vortex_field(X, Y, step * dt, T)
+            u, v = SingleVortex(period=T).compute(X, Y, t=step * dt)
             psi = adv.advance(psi, [u, v], dt)
             # Adaptive hybrid reinit trigger (§7b eq:adaptive_reinit_trigger)
             # Hybrid = comp-diff (shape) + DGR (thickness): ε_eff/ε ≈ 1.02.

@@ -42,15 +42,17 @@ NPZ = OUT / "data.npz"
 # --------------------------------------------------------------------------- #
 RE = 40.0
 NU = 1.0 / RE
-LAMBDA = RE / 2.0 - np.sqrt(RE**2 / 4.0 + 4.0 * np.pi**2)
+from twophase.benchmarks.analytical_solutions import (
+    kovasznay_lambda, kovasznay_velocity, kovasznay_pressure,
+)
+LAMBDA = kovasznay_lambda(RE)
 N_LIST = [16, 32, 64, 128]
 
 
 def exact_fields(X, Y):
-    """Evaluate exact Kovasznay u, v, p on meshgrid arrays."""
-    u = 1.0 - np.exp(LAMBDA * X) * np.cos(2.0 * np.pi * Y)
-    v = LAMBDA / (2.0 * np.pi) * np.exp(LAMBDA * X) * np.sin(2.0 * np.pi * Y)
-    p = -0.5 * np.exp(2.0 * LAMBDA * X)
+    """Evaluate exact Kovasznay u, v, p — delegates to library."""
+    u, v = kovasznay_velocity(X, Y, RE)
+    p = kovasznay_pressure(X, Y, RE)
     return u, v, p
 
 

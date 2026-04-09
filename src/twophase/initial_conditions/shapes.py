@@ -343,7 +343,7 @@ class ZalesakDisk(ShapePrimitive):
         self,
         center: Sequence[float],
         radius: float,
-        slot_width: float = 0.025,
+        slot_width: float = 0.05,
         slot_depth: float = 0.25,
         interior_phase: str = "liquid",
     ) -> None:
@@ -361,7 +361,11 @@ class ZalesakDisk(ShapePrimitive):
         return self._interior_phase
 
     def sdf(self, *coords: np.ndarray) -> np.ndarray:
-        """Signed distance: negative inside the slotted disk."""
+        """Signed distance: negative inside the slotted disk.
+
+        Uses CSG intersection: disk AND NOT slot.
+            phi = max(phi_circle, -phi_slot)
+        """
         if len(coords) != 2:
             raise ValueError("ZalesakDisk.sdf: only 2-D grids are supported.")
         X, Y = coords
@@ -371,20 +375,17 @@ class ZalesakDisk(ShapePrimitive):
         # Circle SDF (negative inside)
         phi_circle = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - R
 
-        # Slot: vertical rectangle centred on cx, from bottom of circle up by depth
-        y_bottom = cy - R
-        in_slot = (np.abs(X - cx) < w) & (Y < y_bottom + d)
+        # Rectangular slot SDF: centred on cx, extends from bottom of circle
+        # up by slot_depth. The slot has half-width w.
+        slot_x_min = cx - w / 2.0
+        slot_x_max = cx + w / 2.0
+        slot_y_max = cy - R + d
+        dx = np.maximum(slot_x_min - X, X - slot_x_max)
+        dy = np.maximum(-1e10 - Y, Y - slot_y_max)  # open bottom
+        phi_slot = np.maximum(dx, dy)
 
-        # Inside disk but outside slot → inside shape (negative)
-        phi = phi_circle.copy()
-        # Where slot removes material, flip to positive (outside shape)
-        phi[in_slot & (phi_circle < 0)] = np.minimum(
-            np.abs(X[in_slot & (phi_circle < 0)] - cx) - w,
-            y_bottom + d - Y[in_slot & (phi_circle < 0)],
-        )
-        # Approximate: use max(phi_circle, slot_sdf) for smooth SDF
-        # Here we use the simple approach: distance to nearest boundary
-        return phi
+        # CSG: circle AND NOT slot → max(phi_circle, -phi_slot)
+        return np.maximum(phi_circle, -phi_slot)
 
 
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────

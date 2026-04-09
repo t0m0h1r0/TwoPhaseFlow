@@ -28,13 +28,9 @@ OUT = experiment_dir(__file__)
 
 
 def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
-    phi_circle = np.sqrt((X - center[0])**2 + (Y - center[1])**2) - R
-    slot_x_min, slot_x_max = center[0] - slot_w / 2, center[0] + slot_w / 2
-    slot_y_max = center[1] - R + slot_h
-    dx = np.maximum(slot_x_min - X, X - slot_x_max)
-    dy = np.maximum(-1e10 - Y, Y - slot_y_max)
-    phi_slot = np.maximum(dx, dy)
-    return np.maximum(phi_circle, -phi_slot)
+    """Zalesak slotted disk SDF — delegates to library."""
+    from twophase.initial_conditions.shapes import ZalesakDisk
+    return ZalesakDisk(center=center, radius=R, slot_width=slot_w, slot_depth=slot_h).sdf(X, Y)
 
 
 _REINIT_THRESHOLD = 1.10
