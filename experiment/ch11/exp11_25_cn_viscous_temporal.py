@@ -14,6 +14,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
+from scipy.sparse.linalg import gmres, LinearOperator
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
@@ -30,14 +31,18 @@ OUT = experiment_dir(__file__)
 # -- Physical parameters ------------------------------------------------------
 NU = 0.01
 T_FINAL = 1.0
-N_GRID = 64          # fixed spatial resolution (high enough that spatial error << temporal)
+N_GRID = 64          # fixed spatial resolution (periodic BC -> CCD essentially exact)
 
 
 # -- Exact solution ------------------------------------------------------------
 
 def exact_solution(X, Y, t):
-    """u(x,y,t) = exp(-2*nu*pi^2*t) * sin(pi*x) * sin(pi*y)."""
-    return np.exp(-2.0 * NU * np.pi**2 * t) * np.sin(np.pi * X) * np.sin(np.pi * Y)
+    """u(x,y,t) = exp(-8*pi^2*nu*t) * sin(2*pi*x) * sin(2*pi*y).
+
+    Periodic BC compatible; eigenvalue = -8*pi^2*nu.
+    """
+    k = 2.0 * np.pi
+    return np.exp(-2.0 * k**2 * NU * t) * np.sin(k * X) * np.sin(k * Y)
 
 
 # -- CN time stepper via fixed-point iteration ---------------------------------
@@ -49,35 +54,32 @@ def ccd_laplacian(u, ccd):
     return d2x + d2y
 
 
-def cn_step(u, ccd, dt, n_iter=50):
-    """One Crank-Nicolson time step via fixed-point iteration.
+def cn_step(u, ccd, dt):
+    """One Crank-Nicolson time step via GMRES.
 
     Solves:  (I - dt*nu/2 * L) u^{n+1} = u^n + (dt*nu/2) * L u^n
-    via:     u^{n+1}_{k+1} = u^n + (dt*nu/2)(L u^n + L u^{n+1}_k)
-
-    Boundary points (u=0 on walls) are re-enforced each iteration.
+    using GMRES with CCD Laplacian as a matrix-free operator.
     """
+    shape = u.shape
+    n = u.size
     lap_n = ccd_laplacian(u, ccd)
-    rhs = u + 0.5 * dt * NU * lap_n
+    rhs_2d = u + 0.5 * dt * NU * lap_n
 
-    u_new = u.copy()
-    for _ in range(n_iter):
-        lap_new = ccd_laplacian(u_new, ccd)
-        u_new = rhs + 0.5 * dt * NU * lap_new
-        # enforce Dirichlet BC u=0 on all walls
-        u_new[0, :] = 0.0; u_new[-1, :] = 0.0
-        u_new[:, 0] = 0.0; u_new[:, -1] = 0.0
+    def matvec(v_flat):
+        v = v_flat.reshape(shape)
+        lap_v = ccd_laplacian(v, ccd)
+        return (v - 0.5 * dt * NU * lap_v).flatten()
 
-    return u_new
+    A_op = LinearOperator((n, n), matvec=matvec)
+    u_new_flat, info = gmres(A_op, rhs_2d.flatten(), x0=u.flatten(),
+                             atol=1e-14, restart=50, maxiter=200)
+    return u_new_flat.reshape(shape)
 
 
 def euler_step(u, ccd, dt):
     """One explicit (forward) Euler time step."""
     lap = ccd_laplacian(u, ccd)
-    u_new = u + dt * NU * lap
-    u_new[0, :] = 0.0; u_new[-1, :] = 0.0
-    u_new[:, 0] = 0.0; u_new[:, -1] = 0.0
-    return u_new
+    return u + dt * NU * lap
 
 
 # -- Test A: temporal convergence ----------------------------------------------
@@ -86,7 +88,7 @@ def temporal_convergence():
     backend = Backend(use_gpu=False)
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
-    ccd = CCDSolver(grid, backend, bc_type="wall")
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
     X, Y = grid.meshgrid()
 
     u0 = exact_solution(X, Y, 0.0)
@@ -119,7 +121,7 @@ def stability_test():
     backend = Backend(use_gpu=False)
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
-    ccd = CCDSolver(grid, backend, bc_type="wall")
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
     X, Y = grid.meshgrid()
 
     h = 1.0 / N_GRID
@@ -134,11 +136,15 @@ def stability_test():
     for cfl in cfl_targets:
         dt = cfl * h**2 / NU
 
-        # CN
+        # CN (GMRES-based)
         u = u0.copy()
         stable = True
         for _ in range(n_steps):
-            u = cn_step(u, ccd, dt)
+            try:
+                u = cn_step(u, ccd, dt)
+            except Exception:
+                stable = False
+                break
             if not np.all(np.isfinite(u)):
                 stable = False
                 break

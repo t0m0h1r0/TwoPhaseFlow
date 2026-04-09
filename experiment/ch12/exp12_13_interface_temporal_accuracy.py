@@ -64,20 +64,27 @@ def exact_solution(X, Y, t, mu):
 
 # -- CN time stepper with variable viscosity ------------------------------------
 
-def cn_variable_mu_step(u, mu, ccd, dt, n_iter=30):
-    """One Crank-Nicolson step for u_t = mu(x) * u_yy via fixed-point iteration."""
-    _, d2y_n = ccd.differentiate(u, axis=1)
-    d2y_n = np.asarray(d2y_n)
-    rhs_n = mu * d2y_n
-    rhs_half = u + 0.5 * dt * rhs_n
+def cn_variable_mu_step(u, mu, ccd, dt):
+    """One Crank-Nicolson step for u_t = mu(x) * u_yy via GMRES.
 
-    u_new = u.copy()
-    for _ in range(n_iter):
-        _, d2y_new = ccd.differentiate(u_new, axis=1)
-        d2y_new = np.asarray(d2y_new)
-        rhs_new = mu * d2y_new
-        u_new = rhs_half + 0.5 * dt * rhs_new
-    return u_new
+    Solves: (I - dt/2 * mu * D²_y) u^{n+1} = u^n + dt/2 * mu * D²_y u^n
+    """
+    from scipy.sparse.linalg import gmres, LinearOperator
+
+    shape = u.shape
+    n = u.size
+    _, d2y_n = ccd.differentiate(u, axis=1)
+    rhs_2d = u + 0.5 * dt * mu * np.asarray(d2y_n)
+
+    def matvec(v_flat):
+        v = v_flat.reshape(shape)
+        _, d2y_v = ccd.differentiate(v, axis=1)
+        return (v - 0.5 * dt * mu * np.asarray(d2y_v)).flatten()
+
+    A_op = LinearOperator((n, n), matvec=matvec)
+    u_new_flat, _ = gmres(A_op, rhs_2d.flatten(), x0=u.flatten(),
+                          atol=1e-13, restart=50, maxiter=200)
+    return u_new_flat.reshape(shape)
 
 
 # -- Test A: temporal convergence -----------------------------------------------

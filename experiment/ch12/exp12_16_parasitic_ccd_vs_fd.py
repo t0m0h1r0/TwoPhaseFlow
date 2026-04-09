@@ -88,35 +88,38 @@ def fd_gradient(f, h):
 # -- PPE solver ----------------------------------------------------------------
 
 def _build_fd_laplacian(N, h):
-    """Build 2nd-order FD Laplacian for N x N grid with Neumann BC (pin [0,0])."""
-    n = N * N
+    """Build 2nd-order FD Laplacian for (N+1)x(N+1) grid with Neumann BC.
+
+    Pin at center node (N/2, N/2) for gauge fixing.
+    """
+    M = N + 1  # nodes per direction
+    n = M * M
     h2 = h * h
     rows, cols, vals = [], [], []
-    for j in range(N):
-        for i in range(N):
-            idx = j * N + i
+    for j in range(M):
+        for i in range(M):
+            idx = j * M + i
             diag = 0.0
-            # x-direction
             if i > 0:
                 rows.append(idx); cols.append(idx - 1); vals.append(1.0 / h2)
                 diag -= 1.0 / h2
-            if i < N - 1:
+            if i < M - 1:
                 rows.append(idx); cols.append(idx + 1); vals.append(1.0 / h2)
                 diag -= 1.0 / h2
-            # y-direction
             if j > 0:
-                rows.append(idx); cols.append(idx - N); vals.append(1.0 / h2)
+                rows.append(idx); cols.append(idx - M); vals.append(1.0 / h2)
                 diag -= 1.0 / h2
-            if j < N - 1:
-                rows.append(idx); cols.append(idx + N); vals.append(1.0 / h2)
+            if j < M - 1:
+                rows.append(idx); cols.append(idx + M); vals.append(1.0 / h2)
                 diag -= 1.0 / h2
             rows.append(idx); cols.append(idx); vals.append(diag)
     A = sp.csr_matrix((vals, (rows, cols)), shape=(n, n))
-    # Pin pressure at (0, 0)
-    pin = 0
+    # Pin at center
+    pin = (N // 2) * M + (N // 2)
+    A = A.tolil()
     A[pin, :] = 0
     A[pin, pin] = 1.0
-    A.eliminate_zeros()
+    A = A.tocsr()
     return A, pin
 
 
@@ -132,10 +135,10 @@ def _solve_ppe_ccd(rhs, rho, ppe_builder):
 
 def _solve_ppe_fd(rhs, N, h, pin):
     """Solve PPE using 2nd-order FD Laplacian (constant rho=1)."""
-    A, _ = _build_fd_laplacian(N, h)
+    A, pin_idx = _build_fd_laplacian(N, h)
     rhs_vec = rhs.ravel().copy()
-    rhs_vec[pin] = 0.0
-    return spsolve(A, rhs_vec).reshape((N, N))
+    rhs_vec[pin_idx] = 0.0
+    return spsolve(A, rhs_vec).reshape((N + 1, N + 1))
 
 
 # -- Wall BC helper -------------------------------------------------------------
@@ -328,7 +331,7 @@ def make_figures(results_ccd, results_fd):
     r_fd_64 = next((r for r in results_fd if r["N"] == 64), results_fd[-1])
     N64 = r_ccd_64["N"]
     h64 = r_ccd_64["h"]
-    x1d = np.linspace(0.5 * h64, 1.0 - 0.5 * h64, N64)
+    x1d = np.linspace(0, 1.0, N64 + 1)
     Xm, Ym = np.meshgrid(x1d, x1d, indexing="ij")
 
     # Plot FD field as background, CCD contour overlay
