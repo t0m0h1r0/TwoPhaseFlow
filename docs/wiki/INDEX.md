@@ -1,4 +1,4 @@
-# Wiki Index — 57 entries
+# Wiki Index — 58 entries
 
 ## Theory (30)
 
@@ -35,7 +35,7 @@
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 
-## Cross-Domain (5)
+## Cross-Domain (6)
 
 | REF-ID | Title |
 |--------|-------|
@@ -44,6 +44,7 @@
 | [WIKI-X-003](cross-domain/WIKI-X-003.md) | Sign Conventions and Variable Definitions: phi, psi, kappa, n_hat |
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
+| [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
 
 ## Experiment (11)
 
