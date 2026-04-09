@@ -85,20 +85,21 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
             grid.update_from_levelset(phi_cur, eps, ccd=ccd)
             new_coords = grid.coords
 
-            # 3. Interpolate φ from old grid → new grid
-            interp = RegularGridInterpolator(
-                old_coords, phi_cur, method="cubic",
-                bounds_error=False, fill_value=None,
-            )
+            # 3. Interpolate ψ directly from old grid → new grid
+            #    (linear is monotone → no overshoot → near-perfect mass;
+            #     see docs/memo/conservative_remapping_theory.md §10)
             X_new, Y_new = grid.meshgrid()
             pts = np.stack([X_new.ravel(), Y_new.ravel()], axis=-1)
-            phi_new = interp(pts).reshape(X_new.shape)
-
-            # 4. φ → ψ on new grid + mass correction for interpolation loss
-            dV_old = dV.copy()  # save old volumes
-            dV = grid.cell_volumes()
+            interp = RegularGridInterpolator(
+                old_coords, psi, method="linear",
+                bounds_error=False, fill_value=None,
+            )
+            dV_old = dV.copy()
             M_before = float(np.sum(psi * dV_old))
-            psi = heaviside(np, phi_new, eps)
+            psi = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
+
+            # 4. Small mass correction for interpolation residual
+            dV = grid.cell_volumes()
             M_after = float(np.sum(psi * dV))
             w = 4.0 * psi * (1.0 - psi)
             W = float(np.sum(w * dV))
