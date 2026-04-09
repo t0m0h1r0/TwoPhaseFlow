@@ -8,6 +8,9 @@ sources:
   - path: docs/memo/cls_dccd_conservation_theory.md
     git_hash: null
     description: "Full theoretical analysis memo with proofs, spectral analysis, and implementation plan"
+  - path: docs/memo/cls_shape_preservation.md
+    git_hash: null
+    description: "Shape preservation study — over-reinitialization as dominant error source"
   - path: src/twophase/levelset/advection.py
     git_hash: null
     description: "DissipativeCCDAdvection — DCCD advection (periodic sum property verified)"
@@ -132,6 +135,25 @@ The three theoretical claims about mass-loss sources are **all confirmed**. Howe
 
 **Recommended path**: keep operator-split scheme + WIKI-T-027 mass correction (proven O(10⁻¹⁵) mass + best shape accuracy). The theoretical findings remain valuable for understanding the mass-loss mechanism and for future semi-implicit formulations that could preserve both properties.
 
+## Shape Error Hierarchy (exp11_19, 2026-04-09)
+
+Follow-up study revealed that **DCCD damping is NOT a shape error source** — the dominant source is over-reinitialization. See [[WIKI-E-009]] and `docs/memo/cls_shape_preservation.md` for full analysis.
+
+| Source | L₂ contribution | Evidence |
+|---|---|---|
+| **Over-reinitialization** | ~49% | adaptive (2 reinits) vs fixed-10 (227 reinits) |
+| Interface thickness | ~15% | ε=1.0h vs 1.5h |
+| Advection (inherent) | ~34% | no-reinit residual at N=128 |
+| DCCD damping | ~2% | ε_d=0.0 vs 0.05 nearly identical |
+
+**Why DCCD damping is irrelevant:** The CLS profile ψ = H_ε(φ) has spectral content at λ ≥ 2πε ≈ 9.4h. DCCD damping at this wavelength is only 2% (H(0.67) = 0.98). The 20% Nyquist damping targets wavelengths the interface does not occupy.
+
+**Recommended production configuration:**
+- Adaptive reinit: M(τ)/M_ref > 1.10 trigger (replaces fixed every-10-steps)
+- ε = 1.0h (thinner interface)
+- ε_d = 0.05 (unchanged — no benefit from reduction)
+- Operator-split + T-027 mass correction (unchanged)
+
 ## Status
 
-VERIFIED — all three theoretical claims experimentally confirmed. Unified scheme implemented (`unified_dccd=True`) but operator-split + T-027 mass correction remains the recommended production path. See `experiment/ch11/exp11_18_cls_dccd_conservation.py`.
+VERIFIED — all theoretical claims confirmed (exp11_18). Shape error hierarchy established (exp11_19). Production recommendation: operator-split + T-027 mc + adaptive reinit + ε=1.0h.

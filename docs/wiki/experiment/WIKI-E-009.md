@@ -8,6 +8,9 @@ sources:
   - path: experiment/ch11/exp11_19_shape_preservation.py
     git_hash: null
     description: "4-priority parameter study: eps_d, eps/h, adaptive reinit, RK3 pseudo-time"
+  - path: docs/memo/cls_shape_preservation.md
+    git_hash: null
+    description: "Short paper with full analysis, physical interpretation, and recommendations"
 consumers:
   - domain: L
     description: "Reinitializer — adaptive trigger recommended for production"
