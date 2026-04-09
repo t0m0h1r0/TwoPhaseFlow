@@ -1,15 +1,15 @@
 """
-レベルセット演算子の抽象インターフェース。
+Abstract interfaces for level-set operators.
 
-OCP（開放閉鎖原則）に基づき、レベルセット演算子の切り替えを可能にする。
-DIP（依存性逆転原則）に基づき、TwoPhaseSimulation は具象クラスではなく
-これらのインターフェースに依存する。
+Based on OCP (Open/Closed Principle): enables swapping level-set operators.
+Based on DIP (Dependency Inversion): TwoPhaseSimulation depends on these
+interfaces, not on concrete classes.
 
-各インターフェースの実装を切り替えることで:
-    - 時間積分スキームの変更（TVD-RK3 → RK4）
-    - 再初期化アルゴリズムの変更
-    - 曲率計算方法の変更
-が、TwoPhaseSimulation 本体を変更せずに実現できる。
+Swapping implementations allows changing:
+    - Time integration scheme (TVD-RK3 -> RK4)
+    - Reinitialization algorithm
+    - Curvature computation method
+without modifying TwoPhaseSimulation itself.
 """
 
 from __future__ import annotations
@@ -21,9 +21,11 @@ if TYPE_CHECKING:
 
 
 class ILevelSetAdvection(ABC):
-    """CLS 場の移流演算子の抽象インターフェース。
+    """Abstract interface for CLS field advection operators.
 
-    実装: LevelSetAdvection（WENO5 + TVD-RK3）
+    Implementations:
+        - LevelSetAdvection        (WENO5 + TVD-RK3, reference scheme)
+        - DissipativeCCDAdvection  (DCCD + TVD-RK3, paper-primary §5)
     """
 
     @abstractmethod
@@ -33,55 +35,59 @@ class ILevelSetAdvection(ABC):
         velocity_components: List,
         dt: float,
     ) -> "array":
-        """CLS 場 ψ を時間 dt だけ移流させる。
+        """Advect CLS field psi by time step dt.
 
         Parameters
         ----------
-        psi                 : CLS 場 ψ ∈ [0,1]
-        velocity_components : 速度成分リスト [u, v[, w]]
-        dt                  : タイムステップ幅
+        psi                 : CLS field psi in [0, 1]
+        velocity_components : velocity component list [u, v[, w]]
+        dt                  : time step size
 
         Returns
         -------
-        psi_new : 移流後の CLS 場
+        psi_new : advected CLS field
         """
 
 
 class IReinitializer(ABC):
-    """CLS 場の再初期化演算子の抽象インターフェース。
+    """Abstract interface for CLS field reinitialization operators.
 
-    実装: Reinitializer（疑似時間 PDE, §3.4）
+    Implementations:
+        - Reinitializer      (DCCD + CN-ADI, paper §5c; methods: split/unified/dgr/hybrid)
+        - ReinitializerWENO5 (WENO5 + TVD-RK3, legacy — DO NOT DELETE)
     """
 
     @abstractmethod
     def reinitialize(self, psi: "array") -> "array":
-        """CLS 場を平衡プロファイルに再初期化する。
+        """Reinitialize CLS field to equilibrium profile.
 
         Parameters
         ----------
-        psi : 移流後の CLS 場 ψ
+        psi : post-advection CLS field psi
 
         Returns
         -------
-        psi_new : 再初期化後の CLS 場
+        psi_new : reinitialized CLS field
         """
 
 
 class ICurvatureCalculator(ABC):
-    """界面曲率計算の抽象インターフェース。
+    """Abstract interface for interface curvature computation.
 
-    実装: CurvatureCalculator（CCD 6次精度微分, §2.6）
+    Implementations:
+        - CurvatureCalculator    (phi-based, CCD O(h^6), §2.6 — legacy, DO NOT DELETE)
+        - CurvatureCalculatorPsi (psi-direct, §3b — recommended)
     """
 
     @abstractmethod
     def compute(self, psi: "array") -> "array":
-        """CLS 場 ψ から界面曲率 κ を計算する。
+        """Compute interface curvature kappa from CLS field psi.
 
         Parameters
         ----------
-        psi : CLS 場 ψ ∈ [0,1]
+        psi : CLS field psi in [0, 1]
 
         Returns
         -------
-        kappa : 界面曲率 κ（ψ と同形状の配列）
+        kappa : interface curvature (same shape as psi)
         """

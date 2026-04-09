@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from ..interfaces.levelset import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
-from .heaviside import heaviside, invert_heaviside
+from .heaviside import heaviside, invert_heaviside, apply_mass_correction
 
 
 def _sl(ndim: int, axis: int, start, stop) -> tuple:
@@ -73,8 +73,10 @@ class Reinitializer(IReinitializer):
         self.n_steps = n_steps
         self._bc     = bc
         self._eps_d_comp = float(eps_d_comp)
-        self._unified = unified_dccd
         self._mass_correction = mass_correction
+        # Canonical method dispatch: unified_dccd=True → method='unified'
+        if unified_dccd and method == 'split':
+            method = 'unified'
         self._method = method
         self._h      = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
@@ -90,7 +92,7 @@ class Reinitializer(IReinitializer):
         # Store: (thomas_factors, modified_diag, super_diag) per axis
         # (not needed in unified DCCD mode, but kept for operator-split path)
         self._cn_factors: List[Tuple] = []
-        if not unified_dccd:
+        if self._method in ('split', 'hybrid'):
             for ax in range(ndim):
                 self._cn_factors.append(self._build_cn_factors(ax))
 
@@ -113,13 +115,16 @@ class Reinitializer(IReinitializer):
         After all steps, an interface-weighted mass correction is applied
         to compensate for clipping losses (WIKI-T-027).
         """
-        if self._method == 'dgr':
-            return self._reinitialize_dgr(psi)
-        if self._method == 'hybrid':
-            return self._reinitialize_hybrid(psi)
-        if self._unified:
-            return self._reinitialize_unified(psi)
-        return self._reinitialize_split(psi)
+        dispatch = {
+            'split': self._reinitialize_split,
+            'unified': self._reinitialize_unified,
+            'dgr': self._reinitialize_dgr,
+            'hybrid': self._reinitialize_hybrid,
+        }
+        handler = dispatch.get(self._method)
+        if handler is None:
+            raise ValueError(f"Unknown reinit method: {self._method!r}")
+        return handler(psi)
 
     def _reinitialize_split(self, psi) -> "array":
         """Operator-split reinitialization (legacy, pre-WIKI-T-028)."""
@@ -141,12 +146,7 @@ class Reinitializer(IReinitializer):
 
         # ── Interface-weighted mass correction (Olsson-Kreiss basis) ──
         if self._mass_correction:
-            M_new = float(xp.sum(q * dV))
-            w = 4.0 * q * (1.0 - q)
-            W = float(xp.sum(w * dV))
-            if W > 1e-12:
-                q = q + ((M_old - M_new) / W) * w
-                q = xp.clip(q, 0.0, 1.0)
+            q = apply_mass_correction(xp, q, dV, M_old)
 
         return q
 
@@ -210,12 +210,7 @@ class Reinitializer(IReinitializer):
 
         # Final mass correction for accumulated residuals
         if self._mass_correction:
-            M_new = float(xp.sum(q * dV))
-            w = 4.0 * q * (1.0 - q)
-            W = float(xp.sum(w * dV))
-            if W > 1e-12:
-                q = q + ((M_old - M_new) / W) * w
-                q = xp.clip(q, 0.0, 1.0)
+            q = apply_mass_correction(xp, q, dV, M_old)
 
         return q
 
@@ -281,12 +276,7 @@ class Reinitializer(IReinitializer):
         psi_new = heaviside(xp, phi_sdf, self.eps)
 
         # Step 4: mass-conserving correction (Thm 2 + Thm 3)
-        M_new = float(xp.sum(psi_new * dV))
-        w = 4.0 * psi_new * (1.0 - psi_new)
-        W = float(xp.sum(w * dV))
-        if W > 1e-12:
-            psi_new = psi_new + ((M_old - M_new) / W) * w
-            psi_new = xp.clip(psi_new, 0.0, 1.0)
+        psi_new = apply_mass_correction(xp, psi_new, dV, M_old)
 
         return psi_new
 

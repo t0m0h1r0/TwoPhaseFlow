@@ -48,6 +48,7 @@ import numpy as np
 from typing import List, TYPE_CHECKING
 
 from ..interfaces.levelset import ILevelSetAdvection
+from .heaviside import apply_mass_correction
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -329,13 +330,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
         # ── Interface-weighted mass correction (WIKI-T-027) ──
         if self._mass_correction:
-            dV = xp.asarray(self._grid.cell_volumes())
-            M_new = float(xp.sum(q_new * dV))
-            w = 4.0 * q_new * (1.0 - q_new)
-            W = float(xp.sum(w * dV))
-            if W > 1e-12:
-                q_new = q_new + ((M_old - M_new) / W) * w
-                q_new = xp.clip(q_new, 0.0, 1.0)
+            q_new = apply_mass_correction(xp, q_new, dV, M_old)
 
         return q_new
 

@@ -94,8 +94,17 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
             pts = np.stack([X_new.ravel(), Y_new.ravel()], axis=-1)
             phi_new = interp(pts).reshape(X_new.shape)
 
-            # 4. φ → ψ on new grid
+            # 4. φ → ψ on new grid + mass correction for interpolation loss
+            dV_old = dV.copy()  # save old volumes
+            dV = grid.cell_volumes()
+            M_before = float(np.sum(psi * dV_old))
             psi = heaviside(np, phi_new, eps)
+            M_after = float(np.sum(psi * dV))
+            w = 4.0 * psi * (1.0 - psi)
+            W = float(np.sum(w * dV))
+            if W > 1e-12:
+                psi = psi + ((M_before - M_after) / W) * w
+                psi = np.clip(psi, 0.0, 1.0)
 
             # 5. Rebuild solvers on new grid
             ccd = CCDSolver(grid, backend, bc_type="wall")

@@ -138,6 +138,32 @@ def invert_heaviside(xp, psi, eps: float):
     return phi
 
 
+def apply_mass_correction(xp, q, dV, M_target: float):
+    """Interface-weighted mass correction (WIKI-T-027).
+
+    Adjusts q so that ∫q dV = M_target, distributing the correction
+    proportionally to w = 4q(1−q) (peaked at the interface).
+
+    Parameters
+    ----------
+    xp       : array namespace
+    q        : array — CLS field ψ ∈ [0, 1]
+    dV       : array or scalar — cell volumes
+    M_target : float — target mass ∫ψ dV
+
+    Returns
+    -------
+    q_corrected : array — mass-corrected and clipped to [0, 1]
+    """
+    M_new = float(xp.sum(q * dV))
+    w = 4.0 * q * (1.0 - q)
+    W = float(xp.sum(w * dV))
+    if W > 1e-12:
+        q = q + ((M_target - M_new) / W) * w
+        q = xp.clip(q, 0.0, 1.0)
+    return q
+
+
 def update_properties(xp, psi, rho_l: float, rho_g: float,
                       mu_l: float, mu_g: float):
     """Compute density and viscosity fields from ψ.

@@ -1,4 +1,4 @@
-# Wiki Index — 58 entries
+# Wiki Index — 60 entries
 
 ## Theory (30)
 
@@ -34,6 +34,7 @@
 | [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
+| [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
 
 ## Cross-Domain (6)
 
@@ -61,6 +62,7 @@
 | [WIKI-E-009](experiment/WIKI-E-009.md) | CLS Shape Preservation: Parameter Study and Adaptive Reinitialization |
 | [WIKI-E-010](experiment/WIKI-E-010.md) | Zalesak Slotted Disk: DCCD Damping Sensitivity on Sharp Geometry |
 | [WIKI-E-011](experiment/WIKI-E-011.md) | Hybrid Reinitialization: Splitting Defect Discovery and Comp-Diff + DGR Fix |
+| [WIKI-E-012](experiment/WIKI-E-012.md) | Non-Uniform Grid Zalesak: Volume-Weighted Fix Verification |
 
 ## Paper (4)
 

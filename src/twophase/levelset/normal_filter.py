@@ -26,6 +26,8 @@ Integration point in pipeline:
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from .heaviside import delta as _delta_eps_func
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
@@ -126,7 +128,7 @@ class NormalVectorFilter:
         w = grad_norm   # w = |∇φ| ≈ 1 for a good SDF
 
         # ── Interface mask via δ_ε(φ) ─────────────────────────────────────
-        w_delta = _delta_eps(xp, phi, self.eps)
+        w_delta = _delta_eps_func(xp, phi, self.eps)
         w_delta_max = float(xp.max(w_delta))
         if w_delta_max < 1e-30:
             # No interface — return unmodified normals
@@ -184,13 +186,3 @@ def kappa_from_normals(xp, ccd: "CCDSolver", n_filtered: List):
     return -div_n
 
 
-# ── Private utility ───────────────────────────────────────────────────────
-
-def _delta_eps(xp, phi, eps: float):
-    """Smoothed delta function δ_ε(φ) = (1/ε) H(1-H).
-
-    Inline copy to avoid circular import with heaviside.py.
-    Identical to levelset.heaviside.delta().
-    """
-    H = 1.0 / (1.0 + xp.exp(-phi / eps))
-    return (1.0 / eps) * H * (1.0 - H)
