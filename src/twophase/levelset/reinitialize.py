@@ -62,13 +62,15 @@ class Reinitializer(IReinitializer):
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
                  eps: float, n_steps: int = 4, bc: str = 'zero',
                  unified_dccd: bool = False,
-                 mass_correction: bool = True):
+                 mass_correction: bool = True,
+                 eps_d_comp: float = _EPS_D_COMP):
         self.xp      = backend.xp
         self.grid    = grid
         self.ccd     = ccd
         self.eps     = eps
         self.n_steps = n_steps
         self._bc     = bc
+        self._eps_d_comp = float(eps_d_comp)
         self._unified = unified_dccd
         self._mass_correction = mass_correction
         self._h      = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
@@ -167,7 +169,7 @@ class Reinitializer(IReinitializer):
             # Step 2: compression divergence with DCCD
             psi_1mpsi = q * (1.0 - q)
             C = xp.zeros_like(q)
-            eps_d = _EPS_D_COMP
+            eps_d = self._eps_d_comp
             for ax in range(self.grid.ndim):
                 flux_ax = psi_1mpsi * n_hat[ax]
                 g_prime, _ = self.ccd.differentiate(flux_ax, ax)
@@ -229,7 +231,7 @@ class Reinitializer(IReinitializer):
         """
         xp   = self.xp
         ndim = self.grid.ndim
-        eps_d = _EPS_D_COMP
+        eps_d = self._eps_d_comp
 
         # Gradient of ψ for n̂
         dpsi = []
