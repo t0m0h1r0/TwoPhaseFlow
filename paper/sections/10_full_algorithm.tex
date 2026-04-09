@@ -149,17 +149,27 @@ Step & 処理 & 手法 & 参照 \\
 （DCCD は TVD 性を持たないため必須；注意~\ref{warn:adv_clamp}）．
 
 % ── Step 2 ──────────────────────────────────────────────────────────────
-\paragraph{Step 2：再初期化}
-移流後の $\psi^*$ を式~\eqref{eq:cls_reinit_iso} で整形する：
-$\psi^{n+1} = \mathrm{Reinitialize}(\psi^*,\; n_{\mathrm{reinit}})$．
+\paragraph{Step 2��再初期化（適応トリガー）}
+体積モニタ $M = \int\psi(1-\psi)\,\mathrm{d}V$ が閾値を超えた場合にのみ再初期化を実行する
+（§~\ref{sec:adaptive_reinit}，式~\eqref{eq:adaptive_reinit_trigger}）：
+\[
+  \text{if}\quad M / M_{\mathrm{ref}} > \theta_{\mathrm{reinit}}
+  \quad\Longrightarrow\quad
+  \psi^{n+1} = \mathrm{Reinitialize}(\psi^*,\; n_{\mathrm{reinit}})
+  \quad\text{else}\quad
+  \psi^{n+1} = \psi^*
+\]
 \begin{equation}
   \Delta\tau = \min\!\left(
-    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放物安定条件}},\;
+    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放���安定条件}},\;
     \underbrace{0.5\,h}_{\text{双曲 CFL}}
   \right)
   \tag{\ref{eq:dtau_reinit_def} 再掲}
 \end{equation}
-デフォルト $n_{\mathrm{reinit}} = 4$（§~\ref{sec:cls_compression}，アルゴリズム~\ref{alg:cls_reinit_dccd}）．
+$n_{\mathrm{reinit}} = 4$，$\theta_{\mathrm{reinit}} = 1.10$
+（§~\ref{sec:cls_compression}，アルゴリズム~\ref{alg:cls_reinit_dccd}）．
+固定頻度の再初期化は不要な呼び出しを多数発生させ形状精度を劣化させるため推奨しない
+（§~\ref{sec:verify_dccd_conservation}）．
 
 % ── Step 3 ──────────────────────────────────────────────────────────────
 \paragraph{Step 3：グリッド・物性更新}

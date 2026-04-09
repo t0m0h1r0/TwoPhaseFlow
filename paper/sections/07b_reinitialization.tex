@@ -108,10 +108,90 @@ Thomas アルゴリズムで $\Ord{N}$ に求解できる．ここで $\psi^{**}
 $\varepsilon \sim h$ のとき放物条件 $\Delta\tau \sim h/(4N_{\mathrm{dim}})$ が双曲条件 $0.5h$ より厳しくなり支配する．
 
 \textbf{ステップ数と停止基準：}
-本実装では収束判定は行わず，固定ステップ数 $n_{\mathrm{reinit}}$（デフォルト 4）を実行する．
+本実装では固定ステップ数 $n_{\mathrm{reinit}}$（デフォルト 4）を実行する．
 $n_{\mathrm{reinit}} = 4$，$\Delta\tau \approx 0.5h$ のとき仮想積分時間 $\tau_{\mathrm{total}} \approx 2h$ となり，
 界面プロファイル $\psi = H_\varepsilon(\phi)$ の整形に必要な仮想拡散距離 $\Ord{\varepsilon} \sim \Ord{h}$ を十分確保する．
 \end{tcolorbox}
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{Dissipative CCD 移流の離散的質量保存性}
+\label{sec:dccd_mass_conservation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+CLS 移流方程式（式~\eqref{eq:cls_advection}）の保存形
+$\partial\psi/\partial t + \bnabla\cdot(\psi\bm{u}) = 0$ は，
+領域積分により $\mathrm{d}/\mathrm{d}t \int\psi\,\mathrm{d}V = 0$
+（周期／壁面 BC）を保証する．
+離散化においても，空間演算子が
+$\sum_i [\bnabla\cdot(\psi\bm{u})]_i = 0$
+を満たせば質量は厳密に保存される．
+
+\textbf{CCD 周期系の零和性．}
+周期境界条件下のブロック巡回行列 CCD 系では，
+RHS の Eq-I（1階微分）が反対称ステンシル $\propto (f_{i+1} - f_{i-1})$，
+Eq-II（2階微分）が対称ステンシル $\propto (f_{i-1} - 2f_i + f_{i+1})$ を持ち，
+ともに全格子点の和が厳密に零となる．
+連立方程式 $A\bm{x} = \bm{b}$ の $\bm{b}$ が零和であり $A$ が正則であるから，
+$\sum_i d_{1,i} = 0$，$\sum_i d_{2,i} = 0$ が厳密に成立する%
+\footnote{RHS の各成分は反対称/対称ステンシルから構成され，
+周期和は零．非特異な係数行列を通しても零和性は保存される．}．
+
+Dissipative CCD フィルタ
+$\tilde{f}'_i = d_{1,i} + \varepsilon_d(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})$
+の全点和は，2階差分のテレスコーピングにより：
+\begin{equation}
+  \sum_i \tilde{f}'_i = \sum_i d_{1,i}
+  + \varepsilon_d\underbrace{\sum_i(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})}_{= 0}
+  = 0
+  \label{eq:dccd_zero_sum}
+\end{equation}
+\textbf{DCCD 空間演算子は周期 BC で離散的に質量を厳密に保存する}．
+実験（§~\ref{sec:verify_dccd_conservation}）において
+$|\sum_i \tilde{f}'_i| < 3 \times 10^{-13}$（機械精度）を確認した．
+
+\textbf{演算子分裂による質量損失メカニズム．}
+再初期化方程式~\eqref{eq:cls_reinit_split} は連続形で保存的（両辺が発散形）であるが，
+離散化において圧縮項（DCCD + 陽解法）と拡散項（CN-ADI + CCD Eq-II）が
+\textbf{異なる離散演算子}を使用する．
+平衡プロファイル $\psi(1-\psi)\hat{\bm{n}} = \varepsilon\bnabla\psi$ では
+連続形で両項が厳密に釣り合うが，
+圧縮側の DCCD フィルタと拡散側の CN 行列は異なるスペクトル応答を持つため，
+離散的には残差が生じる．
+この残差が繰り返し蓄積し，再初期化 1 回あたり $\Ord{10^{-3}}$--$\Ord{10^{-5}}$ の質量誤差を生む．
+事後的な界面重み付き補正（Olsson--Kreiss 基底 $w = 4\psi(1-\psi)$，
+§~\ref{sec:verify_cls_advection}）でこの損失を機械精度 $\Ord{10^{-15}}$ まで修復する．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{適応的再初期化トリガー}
+\label{sec:adaptive_reinit}
+% ─────────────────────────────────────────────────────────────────────────────
+
+固定頻度の再初期化（例：10 ステップ毎）は過剰な再初期化を引き起こし，
+形状精度を大幅に劣化させることが数値実験で判明した
+（§~\ref{sec:verify_dccd_conservation}）．
+Dissipative CCD のスペクトル減衰は界面プロファイルの波長
+$\lambda_{\min} \approx 2\pi\varepsilon \approx 9.4h$ に対して僅か 2\% であり，
+高周波減衰は形状誤差に寄与しない．
+支配的な形状誤差源は，各再初期化呼び出しにおける
+圧縮--拡散ステップの累積的プロファイル歪みである．
+
+そこで，再初期化の呼び出しを体積モニタ $M(\tau) = \int \psi(1-\psi)\,\mathrm{d}V$
+に基づく適応的トリガーに置き換える：
+\begin{equation}
+  \text{再初期化の実行条件：}\quad
+  \frac{M(\tau)}{M_{\mathrm{ref}}} > \theta_{\mathrm{reinit}}
+  \label{eq:adaptive_reinit_trigger}
+\end{equation}
+ここで $M_{\mathrm{ref}}$ は直前の再初期化直後の $M$ 値，
+$\theta_{\mathrm{reinit}} = 1.10$ は閾値パラメタである．
+$M(\tau)$ は界面プロファイルの太り度を表し，
+$\psi = H_\varepsilon(\phi)$ の平衡形からの逸脱に比例して増大する．
+単一渦テスト（$N = 128$）において，この適応トリガーにより
+再初期化回数が 227 回（固定 10 ステップ毎）から\textbf{2 回}に激減し，
+$L_2$ 形状誤差が 49\% 改善された（§~\ref{sec:verify_dccd_conservation}）．
+
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{安定性制約（時間刻みの決定）}

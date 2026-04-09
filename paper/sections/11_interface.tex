@@ -117,16 +117,93 @@ $L_2$ 形状誤差は格子精緻化に伴い緩やかに減少する．
 $L_\infty$ 誤差はスロット角部や界面遷移領域において
 遷移幅 $\varepsilon = \Ord{h}$ が精度の上界を規定するため，
 単調減少しない場合がある．
-一方，質量保存誤差は両テストとも $N = 256$ で $\Ord{10^{-5}}$ に達し，
-DCCD 移流と再初期化の組み合わせが良好な保存性を有することを確認した
-（図~\ref{fig:cls_advection}）．
-$L_2$ 誤差の格子収束次数は，DCCD スキームの理論精度（§~\ref{sec:dissipative_ccd}）に対応した
-$\Ord{h^6}$ である．
+質量保存誤差は界面重み付き補正により
+両テストとも全格子で機械精度 $\Ord{10^{-15}}$ に達した
+（表~\ref{tab:cls_advection}，§~\ref{sec:dccd_mass_conservation}）．
 
 \noindent\textbf{結論：}
-質量保存誤差は両テストとも $N = 256$ で $\Ord{10^{-5}}$ に達し，
-$L_2$ 誤差の格子収束次数は DCCD の理論精度に対応した $\Ord{h^6}$ である．
+質量保存誤差は界面重み付き補正（Olsson--Kreiss 基底）により $\Ord{10^{-15}}$ に到達した．
+$L_2$ 形状誤差は格子精緻化に伴い緩やかに減少する．
 $L_\infty$ 誤差は遷移幅 $\varepsilon = \Ord{h}$ が精度上界を規定するため単調減少しない場合がある．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{DCCD の質量保存性と形状誤差の解析}
+\label{sec:verify_dccd_conservation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{目的：}
+§~\ref{sec:dccd_mass_conservation} の理論（DCCD 空間演算子の離散的質量保存性）を
+数値的に検証するとともに，CLS の形状誤差の支配的要因を特定する．
+
+\noindent\textbf{評価対象：}
+(i) DCCD 空間演算子の全点和 $|\sum_i \tilde{f}'_i|$，
+(ii) 再初期化頻度と形状精度の関係，
+(iii) DCCD フィルタ強度 $\varepsilon_d$ と形状精度の関係．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item \textbf{テスト A（DCCD 零和性）：}
+        滑らかな周期場を DCCD 演算子に入力し，$|\sum_i \tilde{f}'_i|$ を計測
+  \item \textbf{テスト B（形状保持パラメタスタディ，$N = 128$，単一渦）：}
+        \begin{itemize}[noitemsep]
+          \item P1: $\varepsilon_d \in \{0.05, 0.025, 0.01, 0\}$（フィルタ強度）
+          \item P2: $\varepsilon/h \in \{2.0, 1.5, 1.0, 0.75\}$（界面厚み）
+          \item P3: 適応的再初期化（$\theta_{\mathrm{reinit}} \in \{1.05, 1.10, 1.20\}$）
+                vs 固定頻度（10, 20 ステップ毎）vs 再初期化なし
+        \end{itemize}
+\end{itemize}
+
+\noindent\textbf{結果：}
+
+テスト A：周期 BC で $|\sum_i \tilde{f}'_i| < 3 \times 10^{-13}$（機械精度）を確認し，
+式~\eqref{eq:dccd_zero_sum} の理論を支持した（壁面 BC でも $\Ord{10^{-14}}$）．
+
+テスト B の形状誤差分析結果を表~\ref{tab:shape_hierarchy} に示す．
+
+\begin{table}[htbp]
+\centering
+\caption{CLS 形状誤差の要因分解（単一渦テスト，$N = 128$，$L_2$ 形状誤差）}
+\label{tab:shape_hierarchy}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llrr}
+\toprule
+要因 & 条件変更 & $L_2$ 誤差 & ベースラインとの差 \\
+\midrule
+ベースライン & $\varepsilon_d = 0.05$，$\varepsilon = 1.5h$，固定10ステップ毎
+  & $1.74 \times 10^{-1}$ & --- \\
+\midrule
+P1: $\varepsilon_d = 0$ & フィルタ除去
+  & $1.77 \times 10^{-1}$ & $-2\%$ \\
+P2: $\varepsilon = 1.0h$ & 界面薄化
+  & $1.48 \times 10^{-1}$ & $+15\%$ \\
+P3: 適応 $\theta = 1.10$ & 再初期化 227 → 2 回
+  & $8.90 \times 10^{-2}$ & $+49\%$ \\
+P1+P2+P3 併用 & 全パラメタ最適化
+  & $9.40 \times 10^{-2}$ & $+46\%$ \\
+再初期化なし & ---
+  & $6.70 \times 10^{-2}$ & $+61\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+形状誤差の支配的要因は\textbf{過剰な再初期化}であり（ベースライン比 49\% の改善），
+DCCD フィルタの高周波減衰は僅か 2\% の寄与に留まる．
+これは CLS プロファイルのスペクトル特性から説明できる：
+界面プロファイル $\psi = H_\varepsilon(\phi)$ の特性波長は
+$\lambda_{\min} \approx 2\pi\varepsilon \approx 9.4h$
+であり，この波長でのフィルタ伝達関数は $H(2\pi h / 9.4h) \approx 0.98$（2\% 減衰のみ）．
+ナイキスト波長（$2h$）での 20\% 減衰は，界面がそのスケールにエネルギーを持たないため無関係である．
+
+適応的再初期化（§~\ref{sec:adaptive_reinit}，式~\eqref{eq:adaptive_reinit_trigger}）は
+体積モニタ $M(\tau)/M_{\mathrm{ref}} > 1.10$ の条件で
+再初期化呼び出しを 2270 ステップ中 2 回のみに抑え，
+固定頻度（227 回）と比較して形状誤差を半減させた．
+
+\noindent\textbf{結論：}
+DCCD 空間演算子の離散的質量保存性（§~\ref{sec:dccd_mass_conservation}）を機械精度で確認した．
+形状誤差の支配的要因は過剰な再初期化（49\%）であり，DCCD 減衰（2\%）ではない．
+適応的再初期化（$\theta = 1.10$）への置換を推奨する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
