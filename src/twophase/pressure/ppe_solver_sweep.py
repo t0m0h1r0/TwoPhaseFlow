@@ -47,8 +47,17 @@ if TYPE_CHECKING:
 from ..interfaces.ppe_solver import IPPESolver
 
 
+# DO NOT DELETE — retained per C2
+# Limitation: ADI double-sweep is O(h⁴)/iter, impractical at N>=32
+# (project_ccd_ppe_solver_analysis, 2026-04-05)
+# Superseded by: PPESolverCCDLU (Kronecker LU direct solve, §8c)
+# Retained for: reference implementation of matrix-free pseudo-time PPE
 class PPESolverSweep(IPPESolver):
-    """行列不要・仮想時間スウィープ PPE ソルバー（O(h⁶)，§8d）。
+    """Matrix-free pseudo-time sweep PPE solver (§8d).
+
+    Known limitation: ADI composition squares the effective preconditioner
+    damping, yielding O(h⁴) correction per iteration. Convergence is
+    impractical at N>=32. Use PPESolverCCDLU for production.
 
     Parameters
     ----------

@@ -55,6 +55,9 @@ if TYPE_CHECKING:
 from ..interfaces.ppe_solver import IPPESolver
 
 
+# DO NOT DELETE — passed tests 2026-04-05
+# Superseded by: PPESolverSweep(omega=...) in ppe_solver_sweep.py
+# Retained for: cross-validation and regression baseline
 class PPESolverDCOmega(IPPESolver):
     """Thomas ADI DC sweep with under-relaxation omega ∈ (0, 1].
 
