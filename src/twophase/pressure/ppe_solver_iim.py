@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..core.boundary import BoundarySpec
 
-from .ppe_solver_pseudotime import _CCDPPEBase
+from .ccd_ppe_base import _CCDPPEBase
 from .iim import IIMStencilCorrector
 
 

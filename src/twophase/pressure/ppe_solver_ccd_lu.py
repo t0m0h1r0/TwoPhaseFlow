@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
 
-from .ppe_solver_pseudotime import _CCDPPEBase
+from .ccd_ppe_base import _CCDPPEBase
 
 
 class PPESolverCCDLU(_CCDPPEBase):

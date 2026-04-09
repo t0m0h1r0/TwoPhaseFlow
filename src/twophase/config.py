@@ -135,9 +135,10 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # ソルバー種別: "pseudotime" / "ccd_lu" / "sweep" / "iim" / "iterative"
-    ppe_solver_type: str = "pseudotime"
-    # LGMRES パラメータ（ppe_solver_type="pseudotime" 時に使用）
+    # Solver type: "ccd_lu" (production, PR-6) / "pseudotime" (legacy) /
+    #   "sweep" (legacy) / "dc_omega" (legacy) / "iim" / "iterative"
+    ppe_solver_type: str = "ccd_lu"
+    # LGMRES parameters (ppe_solver_type="pseudotime" only, legacy)
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
 
@@ -153,7 +154,7 @@ class SolverConfig:
     iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
     def __post_init__(self) -> None:
-        _valid_types = ("pseudotime", "ccd_lu", "sweep", "iim", "iterative")
+        _valid_types = ("ccd_lu", "pseudotime", "sweep", "dc_omega", "iim", "iterative")
         assert self.ppe_solver_type in _valid_types, (
             f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"
@@ -188,7 +189,7 @@ class SimulationConfig:
             grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
             fluid=FluidConfig(Re=100., Fr=1., We=10.),
             numerics=NumericsConfig(t_end=2.0, cfl_number=0.3),
-            solver=SolverConfig(ppe_solver_type="pseudotime"),
+            solver=SolverConfig(ppe_solver_type="ccd_lu"),
         )
     """
 

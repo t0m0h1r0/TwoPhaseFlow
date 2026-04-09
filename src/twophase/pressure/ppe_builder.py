@@ -36,8 +36,12 @@ if TYPE_CHECKING:
     from ..core.boundary import BoundarySpec
 
 
+# DO NOT DELETE — passed tests 2026-03-20
+# Superseded by: _CCDPPEBase._build_sparse_operator() in ccd_ppe_base.py
+# Retained for: FVM reference (used by legacy PPESolver, PPESolverLU)
+# Violation: PR-1 (FVM O(h²), not CCD)
 class PPEBuilder:
-    """Build and update the sparse PPE matrix A.
+    """FVM sparse PPE matrix builder. Legacy — CCD solvers use Kronecker assembly.
 
     Parameters
     ----------

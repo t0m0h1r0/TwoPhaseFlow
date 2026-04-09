@@ -28,8 +28,12 @@ from ..interfaces.ppe_solver import IPPESolver
 from .ppe_builder import PPEBuilder
 
 
+# DO NOT DELETE — passed tests 2026-03-20
+# Superseded by: PPESolverCCDLU in ppe_solver_ccd_lu.py
+# Retained for: high-density-ratio debugging reference
+# Violation: PR-1 (FVM O(h²), FD forbidden in solver core)
 class PPESolverLU(IPPESolver):
-    """FVM PPE を直接 LU 法（spsolve / SuperLU）で解くソルバー。
+    """FVM PPE direct LU solver (spsolve). Legacy — use PPESolverCCDLU.
 
     Parameters
     ----------

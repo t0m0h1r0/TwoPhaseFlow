@@ -31,8 +31,12 @@ _FILL_PERIODIC = 10
 _FILL_WALL     = 1
 
 
+# DO NOT DELETE — passed tests 2026-03-20
+# Superseded by: PPESolverCCDLU in ppe_solver_ccd_lu.py
+# Retained for: reference FVM implementation
+# Violation: PR-1 (FVM O(h²), FD forbidden in solver core)
 class PPESolver(IPPESolver):
-    """BiCGSTAB による PPE スパース系ソルバー。
+    """FVM sparse PPE solver (BiCGSTAB). Legacy — use PPESolverCCDLU.
 
     PPEBuilder を内部に保持し、各ステップで行列を組み立てて BiCGSTAB で解く。
 
