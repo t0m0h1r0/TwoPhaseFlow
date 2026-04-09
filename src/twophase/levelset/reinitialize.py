@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 from ..interfaces.levelset import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
+from .heaviside import heaviside, invert_heaviside
 
 
 def _sl(ndim: int, axis: int, start, stop) -> tuple:
@@ -63,7 +64,8 @@ class Reinitializer(IReinitializer):
                  eps: float, n_steps: int = 4, bc: str = 'zero',
                  unified_dccd: bool = False,
                  mass_correction: bool = True,
-                 eps_d_comp: float = _EPS_D_COMP):
+                 eps_d_comp: float = _EPS_D_COMP,
+                 method: str = 'split'):
         self.xp      = backend.xp
         self.grid    = grid
         self.ccd     = ccd
@@ -73,6 +75,7 @@ class Reinitializer(IReinitializer):
         self._eps_d_comp = float(eps_d_comp)
         self._unified = unified_dccd
         self._mass_correction = mass_correction
+        self._method = method
         self._h      = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
         # ── Pseudo-time step (eq:dtau_reinit_def) ────────────────────────
@@ -110,6 +113,8 @@ class Reinitializer(IReinitializer):
         After all steps, an interface-weighted mass correction is applied
         to compensate for clipping losses (WIKI-T-027).
         """
+        if self._method == 'dgr':
+            return self._reinitialize_dgr(psi)
         if self._unified:
             return self._reinitialize_unified(psi)
         return self._reinitialize_split(psi)
@@ -218,6 +223,59 @@ class Reinitializer(IReinitializer):
                 q = xp.clip(q, 0.0, 1.0)
 
         return q
+
+    # ── Direct Geometric Reinitialization (WIKI-T-030) ───────────────────
+
+    def _reinitialize_dgr(self, psi) -> "array":
+        """Direct Geometric Reinitialization (DGR).
+
+        Restores interface thickness to ε in one step:
+          1. Estimate effective ε_eff from median of ψ(1−ψ)/|∇ψ|
+             in the interface band (robust to corner spikes)
+          2. Compute φ_raw = ε·logit(ψ) and rescale:
+             φ_sdf = φ_raw · (ε_eff / ε) to recover true SDF
+          3. Reconstruct ψ_new = H_ε(φ_sdf)
+          4. Interface-weighted mass correction
+
+        See WIKI-T-030 for proofs.
+        """
+        xp = self.xp
+        M_old = float(xp.sum(psi))
+
+        # Compute |∇ψ| via CCD
+        grad_sq = xp.zeros_like(psi)
+        for ax in range(self.grid.ndim):
+            g1, _ = self.ccd.differentiate(psi, ax)
+            grad_sq = grad_sq + g1 * g1
+        grad_psi = xp.sqrt(xp.maximum(grad_sq, 1e-28))
+
+        # Estimate ε_eff from interface band (0.05 < ψ < 0.95)
+        # Identity: ε_eff = ψ(1−ψ) / |∇ψ| for ψ = H_{ε_eff}(φ)
+        band = (psi > 0.05) & (psi < 0.95)
+        psi_1mpsi = psi * (1.0 - psi)
+        if xp.any(band):
+            eps_local = psi_1mpsi[band] / xp.maximum(grad_psi[band], 1e-14)
+            eps_eff = float(xp.median(eps_local))
+        else:
+            eps_eff = self.eps  # fallback
+
+        # φ_raw = (ε/ε_eff)·φ_true → rescale to recover φ_true
+        phi_raw = invert_heaviside(xp, psi, self.eps)
+        scale = eps_eff / self.eps if eps_eff > 1e-14 else 1.0
+        phi_sdf = phi_raw * scale
+
+        # Reconstruct ψ with target thickness ε
+        psi_new = heaviside(xp, phi_sdf, self.eps)
+
+        # Step 4: mass-conserving correction (Thm 2 + Thm 3)
+        M_new = float(xp.sum(psi_new))
+        w = 4.0 * psi_new * (1.0 - psi_new)
+        W = float(xp.sum(w))
+        if W > 1e-12:
+            psi_new = psi_new + ((M_old - M_new) / W) * w
+            psi_new = xp.clip(psi_new, 0.0, 1.0)
+
+        return psi_new
 
     # ── Stage 1: Dissipative CCD compression divergence ──────────────────
 

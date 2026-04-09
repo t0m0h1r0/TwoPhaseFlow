@@ -1,6 +1,6 @@
-# Wiki Index — 55 entries
+# Wiki Index — 56 entries
 
-## Theory (29)
+## Theory (30)
 
 | REF-ID | Title |
 |--------|-------|
@@ -33,6 +33,7 @@
 | [WIKI-T-027](theory/WIKI-T-027.md) | CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix |
 | [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
+| [WIKI-T-030](theory/WIKI-T-030.md) | Direct Geometric Reinitialization (DGR): Thickness-Preserving CLS Reinit |
 
 ## Cross-Domain (5)
 
