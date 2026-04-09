@@ -48,4 +48,21 @@ This is a post-hoc approximation of the Lagrange multiplier method in Olsson & K
 
 ## Implementation (2026-04-09)
 
-Applied to both advection (`DissipativeCCDAdvection.advance()`, opt-in via `mass_correction=True`) and reinitialization (`Reinitializer.reinitialize()`, always-on). Results: mass error reduced from O(10^-3) to **machine precision O(10^-15)** with negligible impact on shape error L₂. See full analysis in `docs/memo/cls_reinit_mass_conservation.md`.
+Applied to both advection (`DissipativeCCDAdvection.advance()`, opt-in via `mass_correction=True`) and reinitialization (`Reinitializer.reinitialize()`, always-on). Results: mass error reduced from O(10^-3) to **machine precision O(10^-15)** with negligible impact on shape error L₂.
+
+### Key Discovery: Accidental Error Cancellation
+
+Before the fix, reinitialization accidentally **added** mass (+21.57 cumulative, N=128 Zalesak) that partially cancelled advection losses (-38.48). Fixing reinit alone made mass error *worse* (1.08e-3 → 2.36e-3). Both advection and reinit corrections were required.
+
+### Grid Convergence (Single Vortex)
+
+| N | L₂ | L∞ | L₂ order |
+|---:|:------:|:------:|:--------:|
+| 64 | 1.91e-1 | 8.64e-1 | — |
+| 128 | 1.73e-1 | 7.99e-1 | 0.14 |
+| 256 | 1.43e-1 | 7.25e-1 | 0.28 |
+| 512 | 1.05e-1 | 7.00e-1 | 0.44 |
+
+Shape error convergence is slow (~O(h^0.4)) due to CLS filaments thinning below grid resolution during vortex stretching — a resolution limit, not a conservation issue.
+
+See full analysis in `docs/memo/cls_reinit_mass_conservation.md`.

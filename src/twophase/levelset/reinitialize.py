@@ -60,13 +60,17 @@ class Reinitializer(IReinitializer):
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float, n_steps: int = 4, bc: str = 'zero'):
+                 eps: float, n_steps: int = 4, bc: str = 'zero',
+                 unified_dccd: bool = False,
+                 mass_correction: bool = True):
         self.xp      = backend.xp
         self.grid    = grid
         self.ccd     = ccd
         self.eps     = eps
         self.n_steps = n_steps
         self._bc     = bc
+        self._unified = unified_dccd
+        self._mass_correction = mass_correction
         self._h      = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
         # ── Pseudo-time step (eq:dtau_reinit_def) ────────────────────────
@@ -79,22 +83,37 @@ class Reinitializer(IReinitializer):
         # ── Pre-compute CN Thomas factorizations per axis ─────────────────
         # A_L = M₂ − μ B₂  (LHS of CN solve)
         # Store: (thomas_factors, modified_diag, super_diag) per axis
+        # (not needed in unified DCCD mode, but kept for operator-split path)
         self._cn_factors: List[Tuple] = []
-        for ax in range(ndim):
-            self._cn_factors.append(self._build_cn_factors(ax))
+        if not unified_dccd:
+            for ax in range(ndim):
+                self._cn_factors.append(self._build_cn_factors(ax))
 
     # ── Public API ────────────────────────────────────────────────────────
 
     def reinitialize(self, psi) -> "array":
-        """Run n_steps operator-split pseudo-time steps on ψ.
+        """Run n_steps pseudo-time steps on ψ.
 
-        Each step:
+        Two modes (selected by ``unified_dccd`` constructor flag):
+
+        **Operator-split** (default, legacy):
           1. Compression  — explicit FE with Dissipative CCD divergence
           2. Diffusion    — CN ADI solve (x-sweep, y-sweep, …)
 
+        **Unified DCCD** (WIKI-T-028):
+          Combined RHS = −C + D with Lagrange conservation correction.
+          Eliminates operator-splitting mismatch that breaks equilibrium
+          identity ψ(1−ψ)n̂ = ε∇ψ.
+
         After all steps, an interface-weighted mass correction is applied
-        to compensate for discretization and clipping losses (WIKI-T-027).
+        to compensate for clipping losses (WIKI-T-027).
         """
+        if self._unified:
+            return self._reinitialize_unified(psi)
+        return self._reinitialize_split(psi)
+
+    def _reinitialize_split(self, psi) -> "array":
+        """Operator-split reinitialization (legacy, pre-WIKI-T-028)."""
         xp = self.xp
         q  = xp.copy(psi)
         M_old = float(xp.sum(q))
@@ -111,12 +130,90 @@ class Reinitializer(IReinitializer):
             q = xp.clip(q_new, 0.0, 1.0)
 
         # ── Interface-weighted mass correction (Olsson-Kreiss basis) ──
-        M_new = float(xp.sum(q))
-        w = 4.0 * q * (1.0 - q)           # peaks at ψ=0.5, zero at ψ=0,1
-        W = float(xp.sum(w))
-        if W > 1e-12:
-            q = q + ((M_old - M_new) / W) * w
-            q = xp.clip(q, 0.0, 1.0)
+        if self._mass_correction:
+            M_new = float(xp.sum(q))
+            w = 4.0 * q * (1.0 - q)
+            W = float(xp.sum(w))
+            if W > 1e-12:
+                q = q + ((M_old - M_new) / W) * w
+                q = xp.clip(q, 0.0, 1.0)
+
+        return q
+
+    def _reinitialize_unified(self, psi) -> "array":
+        """Unified DCCD reinitialization (WIKI-T-028).
+
+        Combined RHS eliminates operator-splitting mismatch:
+          R = −D_DCCD[ψ(1−ψ)n̂] + ε·Σ_ax ψ''_ax
+        with Lagrange conservation correction and two-stage clip repair.
+        """
+        xp = self.xp
+        q  = xp.copy(psi)
+        M_old = float(xp.sum(q))
+
+        for _ in range(self.n_steps):
+            # Step 1: gradient, Laplacian, normal (single CCD call per axis)
+            dpsi = []
+            d2psi_sum = xp.zeros_like(q)
+            for ax in range(self.grid.ndim):
+                g1, g2 = self.ccd.differentiate(q, ax)
+                dpsi.append(g1)
+                d2psi_sum += g2
+
+            grad_sq   = sum(g * g for g in dpsi)
+            safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
+            n_hat     = [g / safe_grad for g in dpsi]
+
+            # Step 2: compression divergence with DCCD
+            psi_1mpsi = q * (1.0 - q)
+            C = xp.zeros_like(q)
+            eps_d = _EPS_D_COMP
+            for ax in range(self.grid.ndim):
+                flux_ax = psi_1mpsi * n_hat[ax]
+                g_prime, _ = self.ccd.differentiate(flux_ax, ax)
+                g_prime_pad = _pad_bc(xp, g_prime, ax, 1, self._bc)
+                sl_c  = _sl(q.ndim, ax, 1, -1)
+                sl_p1 = _sl(q.ndim, ax, 2, None)
+                sl_m1 = _sl(q.ndim, ax, 0, -2)
+                g_tilde = (g_prime_pad[sl_c]
+                           + eps_d * (g_prime_pad[sl_p1]
+                                      - 2.0 * g_prime_pad[sl_c]
+                                      + g_prime_pad[sl_m1]))
+                C = C + g_tilde
+
+            # Step 3: diffusion from CCD d2 (reuses Step 1 output)
+            D = self.eps * d2psi_sum
+
+            # Step 4: combined RHS with Lagrange conservation correction
+            R = -C + D
+            w = 4.0 * q * (1.0 - q)
+            W = float(xp.sum(w))
+            R_sum = float(xp.sum(R))
+            if W > 1e-12:
+                R = R - (R_sum / W) * w
+
+            # Step 5: update with two-stage clip repair
+            q_star = q + self.dtau * R          # mass-conserving (pre-clip)
+            q_clipped = xp.clip(q_star, 0.0, 1.0)
+
+            # Post-clip mass repair
+            delta_M = float(xp.sum(q_star)) - float(xp.sum(q_clipped))
+            if abs(delta_M) > 1e-15:
+                w_clip = 4.0 * q_clipped * (1.0 - q_clipped)
+                W_clip = float(xp.sum(w_clip))
+                if W_clip > 1e-12:
+                    q_clipped = q_clipped + (delta_M / W_clip) * w_clip
+                    q_clipped = xp.clip(q_clipped, 0.0, 1.0)
+            q = q_clipped
+
+        # Final mass correction for accumulated residuals
+        if self._mass_correction:
+            M_new = float(xp.sum(q))
+            w = 4.0 * q * (1.0 - q)
+            W = float(xp.sum(w))
+            if W > 1e-12:
+                q = q + ((M_old - M_new) / W) * w
+                q = xp.clip(q, 0.0, 1.0)
 
         return q
 
@@ -152,7 +249,7 @@ class Reinitializer(IReinitializer):
             # CCD divergence of flux
             g_prime, _ = ccd.differentiate(flux_ax, ax)
             # Dissipative filter (eq:comp_filter)
-            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, 'neumann')
+            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, self._bc)
             sl_c  = _sl(psi.ndim, ax, 1, -1)
             sl_p1 = _sl(psi.ndim, ax, 2, None)
             sl_m1 = _sl(psi.ndim, ax, 0, -2)

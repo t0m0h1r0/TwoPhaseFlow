@@ -86,8 +86,14 @@ All downstream processes (curvature, HFE, CSF, material properties, PPE) benefit
 
 ## Relation to WIKI-T-027
 
-[[WIKI-T-027]] proposed post-hoc interface-weighted mass correction (now implemented). This entry addresses the **root cause** (operator-splitting mismatch) rather than the symptom (mass drift). The two approaches are complementary: unified DCCD eliminates the dominant mass-loss mechanism, while the Lagrange correction handles residual clip-induced losses.
+[[WIKI-T-027]] post-hoc interface-weighted mass correction is now **implemented and validated** (2026-04-09). Key findings from WIKI-T-027 implementation:
+
+- Mass error: O(10^-3) → **O(10^-15)** (machine precision) for both Zalesak and single vortex
+- **Accidental error cancellation discovered**: old reinit added +21.57 mass (N=128 Zalesak), partially cancelling advection loss of -38.48. Both corrections required.
+- Shape error L₂ unchanged; grid convergence ~O(h^0.4) for single vortex (filament resolution limit)
+
+This entry (T-028) proposes the **root cause** fix (unified DCCD reinitialization) to eliminate the operator-splitting mismatch. The two approaches are complementary: unified DCCD would eliminate the dominant mass-loss mechanism at the PDE level, while the Lagrange correction (T-027, implemented) handles residual clip-induced losses.
 
 ## Status
 
-PROPOSED — theoretical analysis complete, implementation pending. See full derivations and proofs in `docs/memo/cls_dccd_conservation_theory.md`.
+PROPOSED — theoretical analysis complete, implementation pending. The symptom-level fix (T-027) is deployed and effective. See full derivations in `docs/memo/cls_dccd_conservation_theory.md`.
