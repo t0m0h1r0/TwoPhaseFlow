@@ -1,6 +1,6 @@
-# Wiki Index — 66 entries
+# Wiki Index — 70 entries
 
-## Theory (30)
+## Theory (31)
 
 | REF-ID | Title |
 |--------|-------|
@@ -36,7 +36,7 @@
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 | [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
 
-## Cross-Domain (6)
+## Cross-Domain (7)
 
 | REF-ID | Title |
 |--------|-------|
@@ -46,8 +46,9 @@
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
+| [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 
-## Experiment (11)
+## Experiment (14)
 
 | REF-ID | Title |
 |--------|-------|
@@ -63,8 +64,10 @@
 | [WIKI-E-010](experiment/WIKI-E-010.md) | Zalesak Slotted Disk: DCCD Damping Sensitivity on Sharp Geometry |
 | [WIKI-E-011](experiment/WIKI-E-011.md) | Hybrid Reinitialization: Splitting Defect Discovery and Comp-Diff + DGR Fix |
 | [WIKI-E-012](experiment/WIKI-E-012.md) | Non-Uniform Grid Zalesak: Volume-Weighted Fix Verification |
+| [WIKI-E-013](experiment/WIKI-E-013.md) | Gap-Filling Component Verification: Spatial, Interface, Solver, Time (§11 Additions) |
+| [WIKI-E-014](experiment/WIKI-E-014.md) | Gap-Filling NS Physical Consistency: CFL, Parasitic Flow, Temporal Degradation (§12 Additions) |
 
-## Paper (4)
+## Paper (5)
 
 | REF-ID | Title |
 |--------|-------|
@@ -72,6 +75,7 @@
 | [WIKI-P-002](paper/WIKI-P-002.md) | Accuracy Summary: Component-Level Precision Map |
 | [WIKI-P-003](paper/WIKI-P-003.md) | Problem Statement: Four Failure Modes and Three-Pillar Solution |
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
+| [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 
 ## Code (13)
 
