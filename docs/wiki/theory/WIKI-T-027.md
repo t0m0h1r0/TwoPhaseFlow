@@ -2,7 +2,7 @@
 ref_id: WIKI-T-027
 title: "CLS Reinitialization Mass Conservation: Problem Analysis and Proposed Fix"
 domain: T
-status: PROPOSED
+status: ACTIVE
 superseded_by: null
 sources:
   - path: docs/memo/cls_reinit_mass_conservation.md
@@ -46,6 +46,6 @@ This is a post-hoc approximation of the Lagrange multiplier method in Olsson & K
 
 **Advantage over global scaling** (`psi *= M_old/M_new`): correction is concentrated at the interface, avoiding interface smearing in bulk regions.
 
-## Status
+## Implementation (2026-04-09)
 
-PROPOSED — not yet implemented. See full analysis in `docs/memo/cls_reinit_mass_conservation.md`.
+Applied to both advection (`DissipativeCCDAdvection.advance()`, opt-in via `mass_correction=True`) and reinitialization (`Reinitializer.reinitialize()`, always-on). Results: mass error reduced from O(10^-3) to **machine precision O(10^-15)** with negligible impact on shape error L₂. See full analysis in `docs/memo/cls_reinit_mass_conservation.md`.

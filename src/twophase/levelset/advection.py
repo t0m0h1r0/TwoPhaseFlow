@@ -284,12 +284,14 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         ccd: "CCDSolver",
         bc: str = 'periodic',
         eps_d: float = _EPS_D_ADV,
+        mass_correction: bool = False,
     ):
         self.xp = backend.xp
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
         self._ccd = ccd
         self._bc = bc
         self._eps_d = float(eps_d)
+        self._mass_correction = mass_correction
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -314,12 +316,24 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         # TVD-RK3 (Shu-Osher) with ψ ∈ [0,1] clamp after each stage
         # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
         q0 = xp.copy(psi)
+        if self._mass_correction:
+            M_old = float(xp.sum(q0))
         q1 = xp.clip(q0 + dt * L(q0), 0.0, 1.0)
         q2 = xp.clip(0.75 * q0 + 0.25 * (q1 + dt * L(q1)), 0.0, 1.0)
         q_new = xp.clip(
             (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * L(q2)),
             0.0, 1.0,
         )
+
+        # ── Interface-weighted mass correction (WIKI-T-027) ──
+        if self._mass_correction:
+            M_new = float(xp.sum(q_new))
+            w = 4.0 * q_new * (1.0 - q_new)
+            W = float(xp.sum(w))
+            if W > 1e-12:
+                q_new = q_new + ((M_old - M_new) / W) * w
+                q_new = xp.clip(q_new, 0.0, 1.0)
+
         return q_new
 
     # ── RHS: −∇·(ψu) via Dissipative CCD ────────────────────────────────

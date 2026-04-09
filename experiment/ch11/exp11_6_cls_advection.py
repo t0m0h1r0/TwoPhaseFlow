@@ -58,7 +58,7 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
 
         T = 2 * np.pi
         vf = RigidRotation(center=(0.5, 0.5), period=T)
-        adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05)
+        adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05, mass_correction=True)
         reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4, bc="zero")
 
         dt = 0.45 / N
@@ -114,7 +114,7 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
 
         phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
         psi0 = heaviside(np, phi0, eps)
-        adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05)
+        adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05, mass_correction=True)
         reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4, bc="zero")
 
         T = 8.0; dt = 0.45 / N; n_steps = int(T / dt); dt = T / n_steps

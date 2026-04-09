@@ -91,9 +91,13 @@ class Reinitializer(IReinitializer):
         Each step:
           1. Compression  — explicit FE with Dissipative CCD divergence
           2. Diffusion    — CN ADI solve (x-sweep, y-sweep, …)
+
+        After all steps, an interface-weighted mass correction is applied
+        to compensate for discretization and clipping losses (WIKI-T-027).
         """
         xp = self.xp
         q  = xp.copy(psi)
+        M_old = float(xp.sum(q))
 
         for _ in range(self.n_steps):
             # Stage 1: compression (Forward Euler, Dissipative CCD)
@@ -105,6 +109,14 @@ class Reinitializer(IReinitializer):
             for ax in range(self.grid.ndim):
                 q_new = self._cn_diffusion_axis(q_new, ax)
             q = xp.clip(q_new, 0.0, 1.0)
+
+        # ── Interface-weighted mass correction (Olsson-Kreiss basis) ──
+        M_new = float(xp.sum(q))
+        w = 4.0 * q * (1.0 - q)           # peaks at ψ=0.5, zero at ψ=0,1
+        W = float(xp.sum(w))
+        if W > 1e-12:
+            q = q + ((M_old - M_new) / W) * w
+            q = xp.clip(q, 0.0, 1.0)
 
         return q
 

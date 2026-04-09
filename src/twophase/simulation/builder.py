@@ -155,7 +155,8 @@ class SimulationBuilder:
         # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
         _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
         if config.numerics.advection_scheme == "dissipative_ccd":
-            ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc)
+            ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc,
+                                                   mass_correction=True)
         else:  # "weno5"
             ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
         ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
