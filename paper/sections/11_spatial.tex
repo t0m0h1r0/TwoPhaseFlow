@@ -493,3 +493,44 @@ C/RC の実装に\textbf{追加の CCD 呼び出しは一切不要}である．
 C/RC は正確に $\Ord{h^4}$ を達成し，$N = 128$ で標準比約 25000 倍の改善を示す．
 CCD は 1 回の求解で $p'$ と $p''$ を同時に返すため，
 追加の CCD 呼び出しは一切不要（ゼロコスト精度改善）である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{2D 混合偏微分の CCD 精度}
+\label{sec:verify_mixed_partial}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:ccd_metric} で述べた逐次 CCD 適用による
+混合偏微分 $\partial^2 f / \partial x \partial y$ の精度を検証する．
+テスト関数 $f(x,y) = \sin(2\pi x)\cos(2\pi y)$
+（厳密解 $f_{xy} = -4\pi^2 \cos(2\pi x)\sin(2\pi y)$）に対し，
+$\partial_x \to \partial_y$ と $\partial_y \to \partial_x$ の両順序で
+$L_\infty$ 誤差と収束次数を測定した（$N = 16$--$256$）．
+
+\begin{table}[htbp]
+\centering
+\caption{混合偏微分 $\partial^2 f / \partial x \partial y$ の格子収束}
+\label{tab:mixed_partial}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{rcccc}
+\toprule
+$N$ & $L_\infty$（周期） & 次数 & $L_\infty$（壁） & 次数 \\
+\midrule
+ 16 & $3.23 \times 10^{-5}$ & ---  & $3.59 \times 10^{-3}$ & --- \\
+ 32 & $4.85 \times 10^{-7}$ & 6.06 & $1.12 \times 10^{-4}$ & 5.01 \\
+ 64 & $7.51 \times 10^{-9}$ & 6.01 & $3.79 \times 10^{-6}$ & 4.88 \\
+128 & $1.18 \times 10^{-10}$ & 6.00 & $1.21 \times 10^{-7}$ & 4.97 \\
+256 & $1.50 \times 10^{-11}$ & 2.97\textsuperscript{*} & $3.80 \times 10^{-9}$ & 4.99 \\
+\bottomrule
+\multicolumn{5}{l}{\footnotesize \textsuperscript{*}$N{=}256$ は丸め誤差到達．} \\
+\end{tabular}
+\end{table}
+
+適用順序の交換による誤差（可換性誤差）は全条件で $\Ord{10^{-12}}$ 以下であり，
+演算子の可換性が機械精度で成立している．
+
+\noindent\textbf{結論：}
+逐次 CCD 適用による混合偏微分は周期境界で $\Ord{h^{6.0}}$，
+壁境界で $\Ord{h^{5.0}}$（境界スキーム律速）を達成した．
+これは非対角粘性項 $\partial_y(\mu\,\partial_x u)$ の離散化に
+必要な精度要件を満たしている．

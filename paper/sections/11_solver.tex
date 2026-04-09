@@ -345,3 +345,49 @@ $\rho_{\max}/\rho_{\min} \approx 999$ でも $\Ord{h^{5.8}}$ を維持した
 界面型密度分布（smoothed Heaviside）では $\rho_l/\rho_g \geq 10$ で
 DC が発散する本質的限界があり（§~\ref{sec:interface_crossing}），
 これが分相 PPE 解法を必要とする根拠となっている．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{圧力場フィルタ適用禁止の定量的根拠}
+\label{sec:verify_pressure_filter}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:dccd_pressure_nofilt} で DCCD フィルタの圧力場への適用を禁止した
+根拠を定量的に実証する．
+製造解 $p = \sin(2\pi x)\sin(2\pi y)$（周期境界）に対し，
+フィルタなしの CCD ラプラシアン精度と，DCCD フィルタ適用後のラプラシアン誤差を比較した．
+
+\noindent\textbf{結果：}
+フィルタなしの CCD ラプラシアンは厳密解に対して $\Ord{h^{6.0}}$ で収束する．
+一方，DCCD フィルタ（$\varepsilon_d = 0.25$）を適用すると，
+$\bnabla^2 p - \bnabla^2 \tilde{p}$（$\tilde{p}$: フィルタ後）の $L_\infty$ ノルムが
+$\Ord{h^{2.0}}$ の発散誤差を生じる（$N = 32$: $1.51$，$N = 256$: $2.38 \times 10^{-2}$）．
+$\varepsilon_d = 0.05$ でも同じ $\Ord{h^{2.0}}$ のスケーリングが確認された．
+
+この誤差は速度補正ステップにおいて
+$\bnabla \cdot \bu^{n+1}_{\mathrm{filtered}} =
+(\bnabla^2 p - \bnabla^2 \tilde{p})/\Delta t \neq 0$
+となり，非圧縮条件を $\Ord{h^2}$ で破壊する．
+したがって，§~\ref{sec:dccd_pressure_nofilt} の禁止規則は必須である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{PPE 条件数のスケーリング}
+\label{sec:verify_ppe_condition}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:ppe_bc_stability} で議論した変密度 PPE の条件数スケーリング
+$\kappa \approx \Ord{(\rho_l/\rho_g) / h^2}$ を数値的に確認する．
+FVM 変密度ラプラシアン（Neumann 境界，中心ゲージ固定）の条件数を
+$N = 8$--$64$，$\rho_l/\rho_g = 1$--$1000$ で測定した．
+
+\noindent\textbf{結果：}
+等密度（$\rho_l/\rho_g = 1$）では $\kappa \propto N^{3.0}$（$\Ord{h^{-2}}$ に対応する
+離散ラプラシアンの固有値分布に整合）．
+$\rho_l/\rho_g \geq 10$ では，界面近傍の密度コントラストが
+高周波固有モードを選択的に増幅し，$\kappa$ は $N$ に対する指数が
+3--6 に増大する．
+特に $\rho_l/\rho_g = 1000$，$N = 64$ では $\kappa \approx 2.2 \times 10^7$ に達し，
+これが §~\ref{sec:varrho_dc_convergence} で報告した DC 発散の直接的原因である．
+
+\noindent\textbf{結論：}
+高密度比での条件数悪化は $\Ord{(\rho_l/\rho_g)/h^2}$ を超えるスケーリングを示し，
+分相 PPE 解法（§~\ref{sec:split_ppe_framework}）による条件数低減の必要性を裏付ける．

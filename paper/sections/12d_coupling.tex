@@ -212,6 +212,21 @@ CLS↔PPE 結合が動的界面変形でも正しく機能する．
 界面の圧力ジャンプを横切るため 2 ステップで発散し，
 分相 PPE 解法の必要性を示す（§~\ref{sec:coupling_limitations}）．
 
+\paragraph{毛細管 CFL スケーリングの検証}
+
+§~\ref{sec:dccd_adaptive} の毛細管波 CFL 制約
+$\Delta t_\sigma = \sqrt{(\rho_l + \rho_g)\Delta x^3 / (2\pi\sigma)}$
+（$\Delta t_\sigma \propto \Delta x^{3/2}$）を
+CCD 離散化された 1D 毛細管波 PDE
+$\eta_{tt} = -(\sigma/(\rho_l{+}\rho_g))\eta_{xxx}$
+の安定限界で検証した（$N = 32$--$256$，RK4，2 分探索）．
+
+測定されたスケーリング指数は $\mathbf{1.505}$（理論値 $3/2 = 1.500$）であり，
+$\Delta t_{\max} / \Delta t_\sigma$ の比率は全 $N$ で $0.40 \pm 0.01$ と一定であった．
+CCD 離散化系の安定限界は理論値の約 40\% であり，
+§~\ref{sec:algo_flow} Step 0 の $C_{\mathrm{CFL}} = 0.45$ は
+毛細管安定性を含めて十分な安全マージンを持つ．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{結合の限界と今後の課題}
 \label{sec:coupling_limitations}

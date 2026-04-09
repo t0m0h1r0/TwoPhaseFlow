@@ -47,9 +47,9 @@
 \noindent\textbf{間接的に検証されるコンポーネント：}
 上記の単体テストに加え，以下の構成要素は本章のテストまたは第~\ref{sec:verification}章の結合テストで間接的に検証される．
 \begin{itemize}[noitemsep]
-  \item \textbf{Crank--Nicolson 粘性項（$\Ord{\Delta t^2}$）・ADI 分裂誤差（$\Ord{\Delta t^2}$）：}
-        第~\ref{sec:verification}章の Taylor--Green 渦テストで
-        NS ソルバ全体の時間精度 $\Ord{\Delta t^2}$ として結合検証される．
+  \item \textbf{Crank--Nicolson 粘性項（$\Ord{\Delta t^2}$）：}
+        §~\ref{sec:verify_cn_viscous} で独立に $\Ord{\Delta t^{2.0}}$ と無条件安定性を確認済み．
+        ADI 分裂誤差は第~\ref{sec:verification}章の Taylor--Green 渦テストで結合検証される．
   \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
         Young--Laplace テスト（§\ref{sec:verify_young_laplace}）において
         密度場 $\rho(\psi)$ の補間が Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
@@ -88,6 +88,17 @@ PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$          
 PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$（参考） \\
 TVD-RK3                    & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$        & \checkmark & ODE テストで確認 \\
 AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 寄生根で減衰 \\
+\midrule
+\multicolumn{5}{l}{\textit{追加検証（ギャップ充填）}} \\
+\midrule
+混合偏微分 $\partial_{xy}$（周期）& $\Ord{h^6}$  & $\Ord{h^{6.0}}$                & \checkmark & 逐次 CCD；可換性 $\Ord{10^{-12}}$ \\
+混合偏微分 $\partial_{xy}$（壁）  & $\Ord{h^5}$  & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
+DGR 冪等性                 & $\varepsilon_{\mathrm{eff}}/\varepsilon = 1$ & 1.000 & \checkmark & 100 回適用で不変 \\
+DGR 厚み制御               & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ & 1.03（DGR 20 step 毎） & \checkmark & DGR なし 3.97 vs あり 1.03 \\
+WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \checkmark & 界面幅保存は同等 \\
+CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
+圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
+PPE 条件数                 & $\kappa \propto \rho/h^2$ & $\kappa \propto N^3 \cdot \rho$ & \checkmark & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；ベースライン風上差分は $\Ord{h^1}$．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\
@@ -99,11 +110,16 @@ AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$  
 
 \begin{tcolorbox}[resultbox, title={コンポーネント検証の総括}]
 全コンポーネントが設計精度を達成した：
-CCD $\Ord{h^6}$，PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
-TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$．
-CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），HFE 2D $\Ord{h^{3.0}}$．
+CCD $\Ord{h^6}$（混合偏微分 $\partial_{xy}$ を含む），
+PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
+TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
+CN $\Ord{\Delta t^{2.0}}$（無条件安定）．
+CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），
+DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D $\Ord{h^{3.0}}$．
 分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
 $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
+圧力場フィルタ禁止の必要性（$\Ord{h^2}$ 発散誤差）および
+PPE 条件数の密度比依存性を定量的に実証した．
 \end{tcolorbox}
 
 以上の単体テストにより，各コンポーネントが設計精度を有することを確認した．

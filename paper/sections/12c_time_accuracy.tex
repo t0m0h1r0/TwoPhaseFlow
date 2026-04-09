@@ -129,3 +129,61 @@ NS 運動量残差は $\Ord{h^{3.97}}$：非線形対流項 $\bu \cdot \bnabla\b
 CCD 境界スキーム（$\Ord{h^5}$）の誤差を非線形に増幅するため，
 実効精度は $\Ord{h^4}$ 程度となる．
 $N=128$ で NS 残差は $4.2 \times 10^{-7}$ に達し，十分な空間精度を確認した．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{交差微分粘性項の CFL 制約}
+\label{sec:cross_viscous_cfl}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:time_int} で陽的に処理した交差微分粘性項
+$\partial_y(\mu\,\partial_y u)$ の安定性制約
+$\Delta t \leq C_{\mathrm{cross}} \cdot h^2 / (\Delta\mu/\rho)$
+を検証する．$N = 64$，$\rho = 1$，円形界面（$R = 0.25$，$\varepsilon = 1.5h$）上で
+前進 Euler 200 ステップの安定限界を 2 分探索で特定した．
+
+\begin{table}[htbp]
+\centering
+\caption{交差微分粘性 CFL 定数 $C_{\mathrm{cross}} = \Delta t_{\mathrm{crit}} \cdot \Delta\mu / (\rho h^2)$}
+\label{tab:cross_viscous_cfl}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{rccc}
+\toprule
+$\mu_l / \mu_g$ & $\Delta t_{\mathrm{crit}}$ & $C_{\mathrm{cross}}$ \\
+\midrule
+    1 & $5.85 \times 10^{-5}$ & 0.240 \\
+   10 & $5.71 \times 10^{-6}$ & 0.210 \\
+  100 & $5.71 \times 10^{-7}$ & 0.232 \\
+ 1000 & $5.71 \times 10^{-8}$ & 0.234 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$C_{\mathrm{cross}}$ は $\mu_l/\mu_g = 10$--$1000$ で 10\% 以内の変動に収まり，
+$\Delta t_{\mathrm{crit}} \propto h^2 / \Delta\mu$ のスケーリングが確認された．
+§~\ref{sec:algo_flow} Step 0 の CFL 制御は $C_{\mathrm{CFL}} = 0.45$ を用いるが，
+これは本制約値 $C_{\mathrm{cross}} \approx 0.23$ よりも保守的であり，
+全粘度比で安定動作を保証する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{界面近傍の時間精度劣化}
+\label{sec:interface_temporal_degradation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:time_int} は，可変粘性 $\tilde\mu$ の界面遷移領域で
+時間精度が $\Ord{\Delta t^2}$ から $\Ord{\Delta t}$ に劣化すると予測した．
+2D 拡散テスト
+$u_t = \tilde\mu(x) \cdot \partial_{yy} u$
+（$\mu_l/\mu_g = 100$，$\varepsilon = 3h$，$N = 64$，周期境界，$T = 0.1$）で
+バルク（$|x - 0.5| > 6\varepsilon$）と界面近傍（$|x - 0.5| < 3\varepsilon$）の
+$L_\infty$ 時間収束を CN + GMRES で測定した．
+
+$\Delta t = T/20 \to T/40$ の最初の細分化ステップにおいて，
+バルク領域は $\Ord{\Delta t^{1.9}}$，
+界面領域は $\Ord{\Delta t^{1.7}}$ の収束次数を示した．
+界面でのわずかな精度劣化は $\tilde\mu$ の急変に伴う
+離散化誤差に起因する．
+さらなる細分化では空間離散化誤差が顕在化するため，
+高い $\Delta t$ 分解能での時間収束次数測定は
+空間解像度 $N \gg 64$ を必要とする．
+本テストは精度劣化の定性的傾向を確認するにとどまる．

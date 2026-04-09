@@ -31,6 +31,15 @@ CCD 曲率 $\kappa$ & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ & §~\ref{sec:verify_curvatu
 AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
 NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & §~\ref{sec:kovasznay} & NS 運動量残差 \\
 CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
+\midrule
+\multicolumn{5}{l}{\textit{追加検証}} \\
+\midrule
+混合偏微分 $\partial_{xy}$ & $\Ord{h^6}$ & $\Ord{h^{6.0}}$（周期） & §~\ref{sec:verify_mixed_partial} & 交差粘性項 \\
+CN 粘性項 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & §~\ref{sec:verify_cn_viscous} & 粘性時間積分 \\
+DGR 厚み制御 & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1$ & 1.03 & §~\ref{sec:verify_dgr} & 界面厚維持 \\
+CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 11\times$ & §~\ref{sec:force_balance} & Balanced-Force 効果 \\
+交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.23$ & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
+毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.505$ & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
 \bottomrule
 \end{tabular}
 \end{table}
