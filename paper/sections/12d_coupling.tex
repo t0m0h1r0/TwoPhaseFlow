@@ -258,7 +258,9 @@ HFE のみ（分相 PPE なし）で IPC を修正した追試では，
 テスト B の発散は\textbf{解消されなかった}（$N = 64, 128$ の両方で 2 ステップで発散）．
 これは原因 2（変密度 PPE の不安定性）が支配的であり，
 $\bnabla p^n$ の精度を改善するだけでは不十分であることを示す．
-完全な解決には，\textbf{IPC の HFE と分相 PPE の両方}が必要である：
+完全な解決には，\textbf{IPC の HFE と分相 PPE の両方}が必要である%
+\footnote{HFE は smoothed Heaviside 圧力場には有害だが（前述），
+分相 PPE 採用時には各相内で圧力が滑らかとなるため HFE の延長が有効に機能する．}：
 \begin{equation}
   p^n_{\text{ext}} = \begin{cases}
     p^n & (\text{source phase}) \\

@@ -149,7 +149,7 @@ Step & 処理 & 手法 & 参照 \\
 （DCCD は TVD 性を持たないため必須；注意~\ref{warn:adv_clamp}）．
 
 % ── Step 2 ──────────────────────────────────────────────────────────────
-\paragraph{Step 2��再初期化（適応トリガー）}
+\paragraph{Step 2：再初期化（適応トリガー）}
 体積モニタ $M = \int\psi(1-\psi)\,\mathrm{d}V$ が閾値を超えた場合にのみ再初期化を実行する
 （§~\ref{sec:adaptive_reinit}，式~\eqref{eq:adaptive_reinit_trigger}）：
 \[
@@ -161,7 +161,7 @@ Step & 処理 & 手法 & 参照 \\
 \]
 \begin{equation}
   \Delta\tau = \min\!\left(
-    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放���安定条件}},\;
+    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放物安定条件}},\;
     \underbrace{0.5\,h}_{\text{双曲 CFL}}
   \right)
   \label{eq:dtau_reinit_def}
