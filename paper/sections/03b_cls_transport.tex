@@ -1,0 +1,275 @@
+% paper/sections/03b_cls_transport.tex
+\subsection{保存形移流方程式}
+\label{sec:cls_advection}
+
+§~\ref{sec:why_cls} で示した質量保存問題を解決するため，CLS 法（\cite{OlssonKreiss2005}）では
+界面指標 $\psi(\bm{x}, t)$（平滑化ヘヴィサイド関数）の移流方程式を\textbf{保存形}で記述する：
+\begin{equation}
+  \pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0
+  \label{eq:cls_advection}
+\end{equation}
+この式を解くことで，全領域積分 $\int \psi \, dV$（すなわち液相体積）の保存性が向上する．
+
+\begin{tcolorbox}[resultbox, title={保存形の体積保全性：発散定理の直接適用と離散精度}]
+保存形移流方程式~\eqref{eq:cls_advection} を領域 $\Omega$ で積分し，
+\textbf{Gauss の発散定理}を $\bnabla\cdot(\psi\bu)$ に直接適用すると：
+\[
+  \frac{d}{dt}\int_\Omega\psi\,dV
+  = -\int_\Omega\bnabla\cdot(\psi\bu)\,dV
+  = -\oint_{\partial\Omega}\psi\bu\cdot\hat{\bm{n}}\,dS
+\]
+これは $\bnabla\cdot\bu$ の値に\textbf{無関係}に成立する．
+壁面境界（$\bu\cdot\hat{\bm{n}}=0$）または周期境界では右辺がゼロとなり，
+$\int\psi\,dV = \text{const}$ が\textbf{速度場の発散条件に依存せず}保証される．
+
+これが非保存形（式~\eqref{eq:ls_noncons}）との本質的な差異である：
+非保存形では $\bu\cdot\bnabla\phi \equiv \bnabla\cdot(\phi\bu) - \phi\bnabla\cdot\bu$
+の等価性に $\bnabla\cdot\bu=0$ が必要であり，
+離散発散 $[\bnabla\cdot\bu]_h\neq 0$ が体積ドリフトに直結する（§~\ref{sec:why_cls_massloss}）．
+
+\textbf{離散実装における精度：}
+\begin{itemize}
+  \item 本稿の主実装では CLS 移流に Dissipative CCD（§~\ref{sec:advection_motivation}）を使用する．
+        CCD は $\Ord{h^6}$ 精度の点微分を用いて $\partial(\psi u)/\partial x$ を評価し，
+        発散定理 $\sum_i f'_i\,h \approx [f]_0^L$ を $\Ord{h^6}$ 精度で満たすため，
+        1ステップあたりの体積保存誤差は $\Ord{h^5\,\Delta t}$（$N \propto h^{-1}$ 点での積算）となる
+        （フィルタ自体は周期 BC での総和がゼロ，§~\ref{sec:advection_motivation}）．
+  \item 圧力 Poisson 求解前の中間速度 $\bu^*$（§~\ref{sec:algorithm}）を CLS 移流に用いると，
+        壁面法線速度が厳密にゼロでない場合に境界フラックスへの誤差が生じうる．
+        本実装では $\bu^n$（前時刻，発散自由）を使用する．
+  \item 第~\ref{sec:verification}章のベンチマーク（体積保存誤差 $< 0.1\%$）で実際の保存性を定量確認すること．
+\end{itemize}
+
+\medskip\noindent\textbf{CLS が標準 LS より優れる理由：誤差オーダーの比較}
+
+コロケート格子 + Dissipative CCD では MAC スタガード格子と異なり
+「厳密な離散発散フリー」は保証されない．
+しかし，以下の誤差オーダー比較が CLS の優位性を示す：
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{3.5cm}p{4.5cm}p{5cm}}
+\hline
+方法 & 体積変化率（1ステップあたり） & 主な誤差源 \\
+\hline
+標準 LS（非保存形） & $\Ord{\Delta t \cdot h^q}$（$q=2\text{~}4$） &
+  $\phi[\bnabla\cdot\bu]_h$ の非キャンセル項 \\
+CLS（保存形 + Dissipative CCD） & $\Ord{h^5 \cdot \Delta t}$ &
+  CCD 打ち切り誤差（$N$ 点積算，$\Ord{h^6}$ → 全体 $\Ord{h^5}$） \\
+MAC スタガード格子 & $0$（厳密保存） &
+  構造的な離散発散フリー保証 \\
+\hline
+\end{tabular}
+\end{center}
+
+標準 LS は非保存形のため，Projection 法の PPE 空間離散化に起因する離散発散残差
+$[\bnabla\cdot\bu]_h = \Ord{h^2}$（2次精度 PPE の場合）が
+$\phi\,[\bnabla\cdot\bu]_h$ として体積誤差に直結する（§~\ref{sec:why_cls_massloss}）．
+CLS（保存形 + Dissipative CCD）では保存形の発散定理によりこの項が消去され，
+残差は CCD 微分の打ち切り誤差 $\Ord{h^5}$ のみとなる．
+格子を細分化するほど（$h \to 0$）体積保存が改善するという格子収束性が保証される点が重要である．
+\end{tcolorbox}
+
+\subsection{再初期化方程式（等方拡散形）}
+\label{sec:reinit}
+
+移流によって $\psi$ のプロファイルが崩れるため，界面厚さを一定に保つ再初期化を行う．
+CLS 法における再初期化は以下の圧縮・拡散方程式を仮想時間 $\tau$ 方向に解くことで実現される：
+\begin{equation}
+ \pd{\psi}{\tau} + \bnabla\cdot\bigl(\psi(1-\psi)\hat{\bm n}\bigr) = \bnabla\cdot\bigl(\varepsilon\,\bnabla\psi\bigr)
+ \label{eq:cls_reinit_iso}
+\end{equation}
+
+ここで法線ベクトルは，幾何学的精度を保つため，符号付き距離関数 $\phi$ から $\hat{\bm n} = \bnabla \phi / |\bnabla \phi|$ として計算する．
+
+式~\eqref{eq:cls_reinit_iso} は「定常解として $\psi = H_\varepsilon(\phi)$ を持つように逆算して構成した」という
+設計原理に基づく．圧縮項 $\bnabla\cdot(\psi(1-\psi)\hat{\bm{n}})$ と拡散項 $\bnabla\cdot(\varepsilon\bnabla\psi)$ が
+ちょうど釣り合う不動点が $H_\varepsilon$ であることの代数的証明は付録~\ref{app:cls_fixed_point} を参照のこと．
+
+\textbf{界面位置（$\psi=0.5$ 等値面）の準不動性．}
+$\psi = 0.5$ では圧縮項係数 $(1-2\psi) = 0$ が恒等的に消え，
+定常プロファイル $H_\varepsilon$ の変曲点条件 $H_\varepsilon''(0)=0$ も加わり，
+定常状態では $\partial\psi/\partial\tau\big|_{\psi=0.5} = 0$ が厳密に成立する
+（代数的証明：付録~\ref{app:cls_fixed_point}）．
+移流誤差 $\Ord{h^5\Delta t}$ による過渡寄与を定量化すると，
+$\varepsilon \sim h$・$N_\tau = \Ord{1}$（典型 2〜5 回）の設定で
+1タイムステップあたりの界面ずれは $\Ord{h^3\Delta t}$ に留まる——
+Sussman 再初期化（式~\eqref{eq:sussman_reinit}）の $\Ord{\Delta t\cdot h^2}$ より1次低く，
+実用上は界面位置固定とみなせる（詳細：付録~\ref{app:cls_fixed_point}）．
+
+右辺の拡散項係数 $\varepsilon$ は，数値的な界面厚さを決定する重要なパラメータである．
+数値計算上はグリッド解像度に応じた有限の界面厚みが必要であり，以下のスケーリングを用いる：
+\begin{equation}
+  \varepsilon = C_\varepsilon \, \Delta x_{\min} \quad (C_\varepsilon \approx 1.0 \sim 2.0)
+  \label{eq:eps_scaling}
+\end{equation}
+
+\paragraph{非一様格子における $\Delta x_{\min}$ の定義}
+非一様格子を使う場合，
+$\Delta x_{\min}$ は\textbf{界面が現在存在する領域}（$|\phi| \lesssim 3\varepsilon$ 付近）での
+局所最小格子幅として設定する：
+\[
+  \Delta x_{\min}
+  \;=\; \min_{(i,j):\,|\phi_{i,j}| \le 3\varepsilon}\!\bigl(\Delta x_{i,j},\,\Delta y_{i,j}\bigr)
+\]
+$\varepsilon$ は再初期化方程式の拡散係数として機能し，
+その拡散効果が有意な範囲は $|\phi| \lesssim 3\varepsilon$ に限定される
+（$\psi_{\mathrm{eq}}(\phi) = H_\varepsilon(\phi)$ が $|\phi| > 3\varepsilon$ で飽和するため
+$\partial\psi/\partial\tau \approx 0$）．
+遠方の粗格子点では $\psi(1-\psi) \approx 0$ となり再初期化の影響を受けない．
+なお，界面が移動するシミュレーションでは
+$\Delta x_{\min}$ を\textbf{毎タイムステップで界面位置に基づいて更新}する必要がある．
+
+CLS 変数 $\psi$ の定常プロファイルは，$\phi$ を用いた滑らかなヘヴィサイド関数として定義される：
+\begin{equation}
+  \psi_{\text{eq}}(\phi) = H_\varepsilon(\phi) = \frac{1}{1 + e^{-\phi/\varepsilon}}
+  \label{eq:psi_equilibrium}
+\end{equation}
+この関数は $\phi \in [-3\varepsilon, +3\varepsilon]$ の範囲で $\psi$ が 0 から 1 へと滑らかに遷移し，
+界面の数値的厚さは約 $2\varepsilon$（より厳密には95\%遷移幅 $\approx 6\varepsilon$）となる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{平滑化デルタ関数 \texorpdfstring{$\delta_\varepsilon$}{δ\_ε} と界面近似}
+\label{sec:smoothed_delta}
+% ─────────────────────────────────────────────────────────────────────────────
+
+$H_\varepsilon$ の微分は閉形式で得られ，界面近傍にのみ集中するピーク関数を与える：
+\begin{equation}
+  \delta_\varepsilon(\phi) \equiv H_\varepsilon'(\phi)
+  = \frac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr)
+  = \frac{1}{\varepsilon}\psi(1-\psi)
+  \label{eq:delta_eps_def}
+\end{equation}
+$\delta_\varepsilon$ は偶関数（$\delta_\varepsilon(\phi) = \delta_\varepsilon(-\phi)$）であり，
+$\phi=0$（界面）で最大値 $1/(4\varepsilon)$ をとり，$|\phi| \gg \varepsilon$ で急速に減衰する．
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=1.0]
+  %% 左：ヘヴィサイド関数
+  \begin{scope}[xshift=-45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（a）ヘヴィサイド関数 $H_\varepsilon(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$H_\varepsilon$};
+    \draw[very thick, blue2, domain=-2:2, samples=80]
+      plot (\x, {1.8/(1+exp(-3*\x))});
+    \node[font=\scriptsize, blue2] at (1.4, 1.65) {$H_\varepsilon(\phi)$};
+    \draw[dashed, gray] (-2.2, 1.8) -- (2.2, 1.8) node[right, font=\scriptsize, gray]{$1$};
+    \draw[dashed, gray] (-2.2, 0)   -- (2.2, 0)   node[right, font=\scriptsize, gray]{$0$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \node[font=\scriptsize] at (-1.3, 0.9) {液相};
+    \node[font=\scriptsize] at (1.3,  0.9) {気相};
+  \end{scope}
+  %% 右：デルタ関数（微分）
+  \begin{scope}[xshift=45mm]
+    \node[font=\small\bfseries, text=navy] at (0, 2.8) {（b）微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$};
+    \draw[->] (-2.2,0) -- (2.2,0) node[right, font=\small]{$\phi$};
+    \draw[->] (0,-0.3) -- (0, 2.5) node[above, font=\small]{$\delta_\varepsilon$};
+    \draw[very thick, red2, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)});
+    \fill[red2!15, domain=-2:2, samples=80]
+      plot (\x, {2.0*exp(-3*\x*\x)}) -- (2, 0) -- (-2, 0) -- cycle;
+    \node[font=\scriptsize, red2] at (0.6, 1.8) {$\delta_\varepsilon(\phi)$};
+    \node[font=\scriptsize, red2] at (0.15, -0.25) {$\phi{=}0$};
+    \draw[<->, thick, darkgray]
+      (-0.6, -0.15) -- (0.6, -0.15) node[midway, below, font=\scriptsize]{幅 $\approx 2\varepsilon$};
+    \node[font=\scriptsize, darkgray] at (1.6, 0.3) {界面外 $\approx 0$};
+    \node[font=\scriptsize] at (0, 1.0) {$\int\delta_\varepsilon\,d\phi = 1$};
+  \end{scope}
+  %% 微分矢印
+  \draw[-Stealth, very thick, navy] (-0.8, 1.4) -- (0.8, 1.4)
+        node[midway, above, font=\small, navy]{$\dfrac{d}{d\phi}$};
+\end{tikzpicture}
+\caption{（a）CLS 変数 $\psi = H_\varepsilon(\phi)$（滑らかヘヴィサイド関数）．
+界面 $\phi=0$ を中心に 0 から 1 へ連続的に変化する．
+（b）その微分 $\delta_\varepsilon(\phi) = H_\varepsilon'(\phi)$ は界面近傍にのみ集中した
+ピーク（ディラックデルタ関数の滑らか版）を形成する．}
+\label{fig:heaviside_delta}
+\end{figure}
+
+$\delta_\varepsilon$ は CLS 変数 $\psi$ の勾配と以下の関係にある：
+\begin{equation}
+  |\bnabla\psi| = |H_\varepsilon'(\phi)|\,|\bnabla\phi|
+               = \delta_\varepsilon(\phi)\,|\bnabla\phi|
+               \approx \delta_\varepsilon(\phi)
+  \label{eq:grad_psi_delta}
+\end{equation}
+最後の近似は $|\bnabla\phi|\approx 1$（Eikonal 条件）による．
+すなわち，\textbf{$|\bnabla\psi|$ が界面ディラックデルタ $\delta_s$ の滑らかな近似}となる．
+この性質は，表面張力の体積力表現（CSF モデル，付録~\ref{app:csf_full}）や
+HFE（§~\ref{sec:field_extension}；分相 PPE 解法の基盤技術）における界面検出など，
+界面処理手法に共通する基盤である．
+
+\textbf{近似精度}（付録~\ref{app:csf_delta_precision} に証明）：
+Eikonal 条件 $|\bnabla\phi|=1$ のもとで，法線座標のテイラー展開と
+$\delta_\varepsilon$ の偶関数性から：
+\[
+  \int_\Omega f\,|\bnabla\psi|\,dV - \int_\Gamma f\,dA_\Gamma
+  = \Ord{\varepsilon^2\,\kappa^2\,\|f\|_{L^\infty}}
+\]
+$\varepsilon \sim \Delta x$ の設定では誤差は $\Ord{\Delta x^2}$ である．
+
+\textbf{$\varepsilon$ が小さすぎる場合（$\varepsilon \ll \Delta x$）：}
+界面が格子幅より薄くなり，密度・粘性の急激な変化が数値微分を困難にして
+圧力 Poisson 方程式の係数行列が悪条件化し数値振動が生じる．
+
+\textbf{$\varepsilon$ が大きすぎる場合（$\varepsilon \gg \Delta x$）：}
+界面が人工的に厚くなり，曲率計算の精度が劣化するとともに
+移流時の「にじみ」が積み重なって質量保存誤差が増大する．
+
+\textbf{適正値（$\varepsilon \approx 1\text{--}2 \, \Delta x$）：}
+界面が約 $2\text{--}4$ グリッドにわたって滑らかに変化することで，
+物性の急変を緩和しつつ界面形状を解像度限界まで鮮明に保つ最適なバランスが実現される．
+
+$C_\varepsilon$ を適切に設定することで，界面は約 $2\varepsilon$（すなわち数グリッド分）の厚さを持つ滑らかな遷移層として維持される．
+
+\begin{tcolorbox}[mybox, title={実装ガイド：再初期化の定量的運用}]
+\textbf{仮想時間刻み：} $\Delta s = \min(h_x, h_y)$ として，安定条件（\ref{warn:cls_dtau_stability}）から
+推奨値 $\Delta\tau = 0.125\Delta s$（2次元拡散安定限界 $\Delta s/6$ より約25\%小さく，安全余裕を確保）．
+
+\medskip
+\noindent\textbf{収束モニター：} $M(\tau) = \int_\Omega \psi(1-\psi)\,dV$ を使用する．
+基準値
+\begin{equation}
+  M_{\mathrm{ref}} = \int_\Omega H_\varepsilon(\phi_0)\bigl(1-H_\varepsilon(\phi_0)\bigr)\,dV
+  \label{eq:M_ref_def}
+\end{equation}
+に対して $M(\tau)/M_{\mathrm{ref}}$ が閾値（例：$1.05$）を超えたときのみ再初期化を実行する
+（適応的再初期化）．軽微な乱れでは3～5ステップ，界面トポロジー変化直後は10～20ステップ程度が目安．
+
+\medskip
+\noindent\textbf{終了判定（再初期化ループの停止条件）：}
+再初期化ループを反復ごとに以下の条件でチェックし，いずれかを満たしたとき停止する：
+\begin{enumerate}
+  \item \textbf{残差収束：}
+        $\|\psi^{m+1} - \psi^m\|_{L^\infty} < \delta_{\tau}$（推奨：$\delta_\tau = 10^{-4}\,\Delta s$）
+  \item \textbf{ステップ数上限：}
+        $m \ge N_{\tau,\max}$（推奨：$N_{\tau,\max} = 5$ 通常，$N_{\tau,\max} = 20$ トポロジー変化後）
+\end{enumerate}
+物理タイムステップあたりの再初期化ステップ数（1-5 程度）が少なすぎる場合は
+$M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
+
+\noindent\textbf{トレードオフ：}
+再初期化不足 → プロファイル崩れ・曲率誤差増大；
+再初期化過剰 → 界面位置の微小移動・体積誤差蓄積．
+\end{tcolorbox}
+
+\paragraph{仮想時間刻み $\Delta\tau$ の安定性条件}
+\label{warn:cls_dtau_stability}
+再初期化方程式~\eqref{eq:cls_reinit_iso} を TVD-RK3 で仮想時間積分する場合，
+$\Delta\tau$ の選択に安定性制約が存在する．
+再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
+それぞれの安定条件は以下の通りである．
+双曲型成分（CFL 条件）では，フラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値が $1$ であるから
+$\Delta\tau_{\text{hyp}} \le \Delta s$（$\Delta s = \min(h_x, h_y)$）．
+放物型成分（拡散安定条件）では，2次元で
+$\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
+実用的な安定条件はこれらの最小値：
+\[
+  \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{4\varepsilon}\right)
+\]
+典型的なパラメータ $\varepsilon = 1.5\Delta s$ では $(\Delta s)^2/(4\varepsilon) = \Delta s/6 \approx 0.167\Delta s$ となり，
+拡散型成分の制約が支配的である．
+\textbf{推奨値：} $\Delta\tau = 0.125\Delta s$
+（安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
+

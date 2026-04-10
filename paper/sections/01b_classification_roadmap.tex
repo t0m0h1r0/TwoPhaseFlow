@@ -1,0 +1,309 @@
+% paper/sections/01b_classification_roadmap.tex
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{界面捕捉法の分類と本稿の手法の位置付け}
+\label{sec:interface_methods}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+気液界面を数値的に追跡する手法は，大きく以下の3種類に分類される．
+それぞれに一長一短があり，本稿の Conservative Level Set (CLS) 法は
+それらの欠点を補う位置づけにある．
+
+\begin{description}
+  \item[\textbf{VOF（Volume of Fluid）法}~\cite{HirtNichols1981}]
+        各セル内の液相体積分率 $F \in [0,1]$ を輸送変数とする．
+        保存形の輸送方程式を解くため\textbf{質量保存性に優れる}が，
+        界面の幾何学的情報（法線 $\hat{\bm n}$，曲率 $\kappa$）を $F$ から
+        再構成する精度が限られる．寄生流れが生じやすい．
+
+  \item[\textbf{標準 Level Set（LS）法}~\cite{OsherSethian1988}]
+        界面からの符号付き距離関数 $\phi$（$|\bnabla\phi|=1$）を輸送変数とする．
+        $\hat{\bm n} = \bnabla\phi$，$\kappa = -\bnabla\cdot\hat{\bm n}$ と簡潔に書けるため
+        \textbf{幾何計算精度が高い}．しかし移流方程式が非保存形のため，
+        数値積分誤差が\textbf{質量損失}として蓄積するという根本的問題がある．
+
+  \item[\textbf{Conservative Level Set（CLS）法}~\cite{OlssonKreiss2005}（\textbf{本稿採用}）]
+        $\phi$ を滑らかなヘヴィサイド関数 $\psi = H_\varepsilon(\phi) \in [0,1]$ に変換し，
+        \textbf{保存形}の移流方程式を解く．
+        VOF の質量保存性と標準 LS の幾何計算精度を両立する．
+        ただし，幾何量（法線・曲率）の計算に $\phi$ を要するため，
+        $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
+        解析的に求まる（第~\ref{sec:levelset}章参照）．
+\end{description}
+
+3手法の特性を表~\ref{tab:method_comparison}に比較する．
+CLS 法は質量保存性と幾何精度の両立という点で，最もバランスが良い手法の一つである．
+
+\begin{table}[htbp]
+\centering
+\caption{界面捕捉3手法の特性比較}
+\label{tab:method_comparison}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\hline
+特性               & VOF & 標準 LS & CLS（本稿） \\
+\hline
+質量保存性         & 優  & 劣      & 優 \\
+曲率計算精度       & 劣  & 優      & 優 \\
+実装の簡潔さ       & 優  & 優      & 可$^*$ \\
+界面形状の鮮鋭さ   & 可  & 優      & 優 \\
+\hline
+\end{tabular}
+
+{\footnotesize $^*$ CLS は $\psi \leftrightarrow \phi$ 変換（ロジット関数）・再初期化 PDE・
+保存形フラックスの実装が追加で必要なため，標準 LS に比べやや複雑．
+ただし逆変換は解析的（Newton 法不要）であり，再初期化コストは $O(N_\text{reinit})$ 反復に収まる（第~\ref{sec:levelset}章参照）．}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{寄生流れ抑制手法の先行研究と本稿の位置付け}
+\label{sec:prior_work_spurious}
+% ─────────────────────────────────────────────────────────────────────────────
+
+寄生流れ抑制に対する従来アプローチは大きく二つに分類される．
+第一は CSF モデルの枠組み内で演算子整合性を確保する Balanced-Force 条件であり，
+Fran{\c{c}}ois ら~\cite{Francois2006} が VOF 枠組みで体系化した．
+しかし CSF モデルでは界面遷移層 $\varepsilon$ に起因する近似誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ が
+寄生流れの物理的下限として残留し，格子精緻化だけでは本質的に除去できない
+（§~\ref{sec:balanced_force} に詳述）．
+
+第二は Extension PDE（Aslam 2004）により圧力場を界面越しに滑らかに延長し，
+CCD ステンシルが界面近傍でも滑らかな場を参照できるようにするアプローチである．
+Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set の組み合わせで
+密度不連続を界面で鋭く扱う手法を示しており，界面越し場延長の有効性を裏付けている．
+
+本稿は CCD 高次精度との整合を重視し，以下の 3 つの柱で寄生流れを抑制する：
+\begin{enumerate}[noitemsep]
+  \item \textbf{CCD $\Ord{h^6}$ 微分演算子}：
+        同一3点ステンシルで $\Ord{h^6}$ の1・2階微分を提供し，
+        曲率計算と圧力勾配の両方を高精度化する（第~\ref{sec:CCD}章）．
+  \item \textbf{FD 直接法 PPE + CCD 勾配}：
+        2 次精度 FD の PPE を直接法で厳密に解き（残差ゼロ），
+        速度補正の勾配には CCD $\Ord{h^6}$ を適用する．
+        CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
+        表面張力と圧力勾配に\textbf{同一の CCD 演算子}を使用し，
+        離散化整合性を $\Ord{h^6}$ 精度で確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
+  \item \textbf{Dissipative CCD 移流}：
+        $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
+        スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}）．
+\end{enumerate}
+さらに，高密度比対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節で実証）の基盤技術として，
+Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
+HFE は Extension PDE（Aslam 2004）の定常解を CCD の Hermite データ $(f,f',f'')$ から
+仮想時間前進を経由せず直接構成し，界面越し場延長精度を
+$\Ord{h}$（風上差分）から $\Ord{h^6}$ へ引き上げる．
+以上により，簡潔かつ数学的に整合した定式化を実現する．
+
+なお，寄生流れ低減に対しては Height-Function 曲率推定~\cite{Popinet2009}%
+（VOF 法で $\Ord{h^2}$ 以上を実現），CLSVOF 法~\cite{Sussman2000}，
+PROST 法~\cite{Renardy2002}%
+等の手法も提案されている．
+本研究はレベルセット法の枠組み内での高精度化を目指す点でこれらとは異なるアプローチを採る．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{本稿のアプローチ・構成・学習ロードマップ}
+\label{sec:roadmap}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿は，気液二相流の CFD を初めて学ぶ読者のための橋渡し教材として設計されている．
+一般的な CFD テキストが単相流で終わる部分から先—界面追跡・表面張力の離散化・
+変密度圧力求解—を，理論と実装の両面から体系的に解説することを目的とする．
+
+§~\ref{sec:challenges} で述べた4つの困難に対する本稿の手法的対処は，
+各困難の説明と対応する「→ 本稿の対処」として同節に整理してある．
+ここでは全体像のみ示す：CLS 法による界面追跡，Dissipative CCD による移流，
+CCD $\Ord{h^6}$ 微分演算子による曲率・PPE 離散化，
+および欠陥補正法による圧力求解（FD 直接法 + CCD 勾配）の組み合わせである．
+
+NS 方程式の各項とそれを処理するソルバーの対応関係は，
+アルゴリズム全体を把握した後の第~\ref{sec:algorithm}章（図~\ref{fig:ns_solvers}）で整理する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{対象読者と前提知識}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿を効果的に読み進めるために，以下の前提知識を持っていることが望ましい．
+\begin{itemize}
+  \item \textbf{流体力学の基礎：}
+        非圧縮性 Navier--Stokes 方程式，連続の式，Reynolds 数・Froude 数・Weber 数の概念
+  \item \textbf{数値解析の基礎：}
+        有限差分法（1次・2次精度の中心差分，前進差分）の概念，
+        Taylor 展開，線形代数（連立方程式の反復解法）
+  \item \textbf{単相流の数値計算（推奨）：}
+        Chorin の Projection 法（圧力--速度分離），スタガード格子または
+        コロケート格子の概念，陽的・陰的時間積分の基礎
+\end{itemize}
+これらに不安がある読者は，まず単相流の標準的な CFD テキストで基礎を固めた上で，
+気液二相流の直接数値シミュレーションに関する標準的テキスト
+（例：Tryggvason ら~\cite{Tryggvason2011}）を参照することを推奨する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{各章の概要と依存関係}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿の章立てと各章の主な内容，および読み進める上での前提章を
+表~\ref{tab:chapter_overview}に示す．
+
+\begin{table}[htbp]
+\centering
+\caption{本稿の章立て・主な内容・前提章の対応}
+\label{tab:chapter_overview}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{clp{68mm}l}
+\toprule
+章 & タイトル（略称） & 主な内容 & 前提章 \\
+\midrule
+1  & はじめに
+   & 問題背景，失敗例，手法概観，本稿の読み方
+   & --- \\
+2  & 支配方程式
+   & One-Fluid モデル，CSF 表面張力，無次元化，曲率定義
+   & --- \\
+3  & CLS 法
+   & 保存形界面追跡，再初期化方程式，曲率数値計算
+   & 2 \\
+4  & CCD 法
+   & 6次精度コンパクト差分，係数導出，DCCD フィルタ
+   & --- \\
+5  & 界面適合格子
+   & レベルセット連動格子生成，メトリック係数，ALE 簡略化
+   & 3, 4 \\
+6  & 時間積分
+   & \raggedright CLS：TVD-RK3（$\Ord{\Delta t^3}$）；
+     NS：AB2+IPC（$\Ord{\Delta t^2}$），CN 粘性；時間刻み制約
+   & 2, 3, 4 \\
+7  & CLS 移流・再初期化
+   & Dissipative CCD 移流スキーム，圧縮項 DCCD，安定性制約
+   & 3, 4, 6 \\
+8  & 圧力・速度連成
+   & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
+   & 4, 5 \\
+9  & 圧力 Poisson 方程式
+   & CCD-PPE 離散化，欠陥補正法，境界条件，精度総括
+   & 8 \\
+10 & 完全アルゴリズム
+   & 離散演算子マッピング・7ステップフロー・タイムステップ制御
+   & 全章 \\
+11 & コンポーネント検証
+   & CCD 精度・曲率・CLS 保存性・HFE・PPE 収束の単体検証
+   & 10 \\
+12 & NS ソルバ検証
+   & 力学的バランス・保存則・時間空間精度・精度バジェット
+   & 11 \\
+13 & 多相流ベンチマーク
+   & 静止液滴・毛細管波・気泡上昇・RT 不安定の物理検証
+   & 12 \\
+14 & まとめ
+   & 技術的貢献の整理，今後の拡張方向
+   & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{学習ロードマップとアルゴリズム全体像}
+\label{sec:algo_overview}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿の内容は，以下の6ステップで段階的に習得することを推奨する（表~\ref{tab:chapter_overview}の章構成と対応）．
+\begin{enumerate}
+  \item \textbf{前提知識の確認：}
+        単相 Navier--Stokes 方程式の基礎，Projection 法による圧力--速度分離，有限差分法の基本概念
+  \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
+        One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
+  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}--\ref{sec:pressure}章）：
+        CCD 法，界面適合格子，Rhie--Chow 補正，変密度 PPE 求解
+  \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
+        7ステップ離散計算フローの統合実装
+  \item \textbf{コンポーネント検証}（第~\ref{sec:verification}章）：
+        CCD 精度・GCL・Zalesak 円板・PPE の単体検証
+  \item \textbf{多相流ベンチマーク}（第~\ref{sec:validation}章）：
+        静止液滴・毛細管波・気泡上昇・Rayleigh--Taylor 不安定の物理検証
+\end{enumerate}
+
+以降の章を読み進める前に，各時間ステップで何が行われるかの実装の地図を把握しておくことが
+不可欠である．アルゴリズム全体は（1）界面移流・再初期化・物性更新・曲率計算という
+界面サブシステム（Step 1--4）と，（2）Predictor・PPE 求解・Corrector という
+流体力学サブシステム（Step 5--7）の7ステップで構成される．
+両サブシステムは物性値 $\rho,\mu$ と曲率 $\kappa$ を介して結合する．
+各ステップの離散方程式・実装上の注意・収束判定の詳細は第~\ref{sec:algorithm}章で述べる．
+
+上記7ステップの関係を図~\ref{fig:algo_flow}に示す．
+
+%%% ── 図：1タイムステップのフロー（高レベル概観版） ──────────────────────
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=5mm and 18mm,
+  %% 界面サブシステム用ボックス（青系）
+  box/.style={draw=navy!70, fill=lightblue, rounded corners=5pt,
+              font=\small\bfseries, inner sep=6pt,
+              minimum width=42mm, minimum height=13mm, align=center},
+  %% 流体力学サブシステム用ボックス（赤系）
+  boxr/.style={draw=red2!70, fill=red2!8, rounded corners=5pt,
+               font=\small\bfseries, inner sep=6pt,
+               minimum width=42mm, minimum height=13mm, align=center},
+  %% 矢印スタイル
+  arr/.style={-Stealth, thick, darkgray!80},
+  cross/.style={-Stealth, thick, teal2!80, dashed, line width=1.2pt},
+  lbl/.style={font=\scriptsize\bfseries, text=darkgray},
+  %% 章参照ラベル
+  chap/.style={font=\scriptsize\itshape, text=darkgray!65},
+]
+
+%% ── 列見出し ──────────────────────────────────────────────────────────
+\node[font=\normalsize\bfseries, text=navy]
+  (hdL) at (0, 0) {界面サブシステム};
+\node[font=\normalsize\bfseries, text=red2]
+  (hdR) at (62mm, 0) {流体力学サブシステム};
+
+%% ── 左列：界面サブシステム（ステップ1--4）──────────────────────────────
+\node[box, below=8mm of hdL] (s1)
+  {1.\ \ CLS 移流\\[1pt]\footnotesize（Dissipative CCD）};
+\node[box, below=of s1] (s2)
+  {2.\ \ 再初期化\\[1pt]\footnotesize（CLS 法）};
+\node[box, below=of s2] (s3)
+  {3.\ \ 物性更新\\[1pt]\footnotesize（$\rho,\,\mu,\,\phi$）};
+\node[box, below=of s3] (s4)
+  {4.\ \ 曲率計算\\[1pt]\footnotesize（CCD 法）};
+
+%% ── 右列：流体力学サブシステム（ステップ5--7）──────────────────────────
+\node[boxr, right=18mm of s3] (s5)
+  {5.\ \ 運動量予測\\[1pt]\footnotesize（Predictor）};
+\node[boxr, below=of s5] (s6)
+  {6.\ \ 圧力 Poisson 求解\\[1pt]\footnotesize（欠陥補正法）};
+\node[boxr, below=of s6] (s7)
+  {7.\ \ 速度補正\\[1pt]\footnotesize（Corrector）};
+
+%% ── 矢印：左列（界面サブシステム内）────────────────────────────────────
+\draw[arr] (s1) -- (s2);
+\draw[arr] (s2) -- (s3);
+\draw[arr] (s3) -- (s4);
+
+%% ── 矢印：右列（流体力学サブシステム内）──────────────────────────────────
+\draw[arr] (s5) -- (s6);
+\draw[arr] (s6) -- (s7);
+
+%% ── 結合矢印（界面 → 流体力学）──────────────────────────────────────────
+\draw[cross] (s3.east)
+  -- node[lbl, above, yshift=1pt]{$\rho,\;\mu$} (s5.west);
+\draw[cross] (s4.east)
+  -- node[lbl, below, yshift=-1pt]{$\kappa$} (s5.south west);
+
+%% ── 時間ループ矢印 ───────────────────────────────────────────────────────
+\draw[arr]
+  (s7.east) -- ++(5mm, 0)
+  |- node[lbl, near start, right, xshift=1mm]{\small $t^{n+1} \to t^{n+2}$}
+  (s1.east);
+
+%% ── 離散詳細は第9章の注記 ────────────────────────────────────────────────
+\node[chap, below=6mm of s7, xshift=25mm]
+  {\textup{（各ステップの完全な離散方程式は第~\ref{sec:algorithm}章参照）}};
+
+\end{tikzpicture}
+\caption{1タイムステップの処理フロー（概念図）．
+界面サブシステム（CLS 移流・再初期化・物性更新・曲率計算，ステップ1--4）と
+流体力学ソルバー（Predictor--PPE--Corrector，ステップ5--7）が，
+物性値 $\rho,\,\mu$ および曲率 $\kappa$ を通じて結合している．
+各ステップの離散方程式・実装詳細は第~\ref{sec:algorithm}章（完全アルゴリズムフロー）で述べる．}
+\label{fig:algo_flow}
+\end{figure}

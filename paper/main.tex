@@ -18,14 +18,16 @@
 \clearpage
 \part{定式化：支配方程式と界面表現}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/01_introduction}      %% §1
+\input{sections/01_introduction}                %% §1（動機・困難・失敗例）
+\input{sections/01b_classification_roadmap}     %% §1続き（手法分類・ロードマップ）
 \clearpage
 \input{sections/02_governing}         %% §2：変数定義・Two-Fluid→One-Fluid
 \input{sections/02b_surface_tension}   %% §2続き：表面張力界面条件とモデル概要
 \input{sections/02c_nondim_curvature} %% §2続き：無次元化・界面曲率
 \clearpage
-\input{sections/03_levelset}          %% §3：CLS 法（なぜ必要か・移流・再初期化）
-\input{sections/03b_levelset_mapping} %% §3続き：ψ-φ 関係・逆変換・曲率安定化
+\input{sections/03_levelset}          %% §3：CLS 法（なぜ必要か）
+\input{sections/03b_cls_transport}    %% §3続き：保存形移流・再初期化方程式
+\input{sections/03c_levelset_mapping} %% §3続き：ψ-φ 関係・逆変換・曲率安定化
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
@@ -71,7 +73,8 @@
 \clearpage
 \part{精度検証と展望：コンポーネント精度から多相流物理現象へ}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/10_full_algorithm}    %% §10（ブートストラップ・DCCDパラメタを統合済み；旧10bは廃止）
+\input{sections/10_full_algorithm}    %% §10（演算子マッピング・7ステップアルゴリズム）
+\input{sections/10b_dccd_bootstrap}  %% §10続き（DCCDパラメタ・ブートストラップ・タイムステップ）
 \clearpage
 \input{sections/11_chapter}            %% §11：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
