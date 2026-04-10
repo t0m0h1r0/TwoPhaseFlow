@@ -68,11 +68,14 @@ class TwoPhaseNSSolver:
         alpha_grid: float = 1.0,
         eps_g_factor: float = 2.0,
         dx_min_floor: float = 1e-6,
+        use_local_eps: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
         self.bc_type = bc_type
         self._alpha_grid = alpha_grid
+        self._eps_factor = eps_factor
+        self._use_local_eps = use_local_eps
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -87,9 +90,13 @@ class TwoPhaseNSSolver:
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
         self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
-        self._curv = CurvatureCalculator(self._backend, self._ccd, self._eps)
+
+        # Curvature uses local eps_field when use_local_eps=True on non-uniform grids
+        eps_curv = self._make_eps_field() if use_local_eps and alpha_grid > 1.0 else self._eps
+        self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
         self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+        # Reinit uses conservative scalar eps (Option C: memo §4.2)
         self._reinit = Reinitializer(
             self._backend, self._grid, self._ccd, self._eps, n_steps=reinit_steps
         )
@@ -107,6 +114,7 @@ class TwoPhaseNSSolver:
             alpha_grid=getattr(g, "alpha_grid", 1.0),
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
+            use_local_eps=getattr(g, "use_local_eps", False),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -129,6 +137,12 @@ class TwoPhaseNSSolver:
         return float(min(
             np.min(self._grid.h[ax]) for ax in range(self._grid.ndim)
         ))
+
+    def _make_eps_field(self) -> np.ndarray:
+        """ε(x) = eps_factor · max(h_x(i), h_y(j)) at each node."""
+        hx = self._grid.h[0][:, np.newaxis]
+        hy = self._grid.h[1][np.newaxis, :]
+        return self._eps_factor * np.maximum(hx, hy)
 
     # ── grid rebuild ─────────────────────────────────────────────────────
 
@@ -186,6 +200,10 @@ class TwoPhaseNSSolver:
 
         # 7. Update meshgrid cache
         self.X, self.Y = new_X, new_Y
+
+        # 8. Update curvature eps_field for local-eps mode
+        if self._use_local_eps:
+            self._curv.eps = self._make_eps_field()
 
         return psi, u, v
 

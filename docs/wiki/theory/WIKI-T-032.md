@@ -2,7 +2,7 @@
 ref_id: WIKI-T-032
 title: "Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids"
 domain: T
-status: PROPOSED
+status: VERIFIED
 superseded_by: null
 sources:
   - path: "docs/memo/spatially_varying_epsilon_theory.md"
