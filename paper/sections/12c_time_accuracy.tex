@@ -6,7 +6,7 @@
 \label{sec:ns_time_accuracy}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§\ref{sec:ns_conservation} で保存則の物理的整合性を確認した．
+§~\ref{sec:ns_conservation} で保存則の物理的整合性を確認した．
 本節では一歩進めて，NS ソルバ全体の\textbf{収束次数}——
 時間精度 $\Ord{\Delta t^p}$ と空間精度 $\Ord{h^q}$ ——を定量的に確認する．
 コンポーネント単体（第~\ref{sec:numerical_integrity}章）の精度が
@@ -25,7 +25,7 @@ Predictor（AB2 + CN）+ PPE + Corrector の結合時間精度．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
-  \item §\ref{sec:energy_conservation} と同一の Taylor--Green 渦（$\mathit{Re}=100$）
+  \item §~\ref{sec:energy_conservation} と同一の Taylor--Green 渦（$\mathit{Re}=100$）
   \item $N = 64$ に固定（空間誤差を十分に小さくする）
   \item $\Delta t$ を系統的に変化させ（$n = 5, 10, 20, 40, 80, 160$ ステップ），
         $T = 0.5$ における $L^\infty(\bu)$ を計測
@@ -118,8 +118,8 @@ $N$ & NS 残差 $\|R\|_\infty$ & 次数 & $\|\bnabla\cdot\bu\|_\infty$ & 次数 
 \centering
 \includegraphics[width=0.62\linewidth]{figures/ch11_kovasznay_convergence}
 \caption{Kovasznay 流の CCD 離散化 NS 残差の格子収束（$\mathit{Re}=40$）．
-NS 運動量残差（青丸）は $\Ord{h^{3.8}}$，
-連続方程式残差（赤四角）は $\Ord{h^{5.9}}$ で収束する．}
+NS 運動量残差（青丸）は $\Ord{h^{3.97}}$，
+連続方程式残差（赤四角）は $\Ord{h^{5.98}}$ で収束する．}
 \label{fig:kovasznay_convergence}
 \end{figure}
 

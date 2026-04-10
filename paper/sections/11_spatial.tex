@@ -9,11 +9,11 @@
 本稿の全離散演算子は §~\ref{sec:ccd_def} で導入した CCD（Combined Compact Difference）法を基盤としている．
 CCD は 1 回のブロック三重対角求解で $f'$ と $f''$ を同時に得る 6 次精度コンパクト差分であり，
 この演算子の精度が後段のすべてのコンポーネント——移流・圧力勾配・曲率・Rhie--Chow 補正——の精度上界を規定する．
-本節では，まず CCD 微分演算子そのものの格子収束性を確認し（§\ref{sec:verify_ccd_convergence}），
-非一様格子への適用性と幾何学的保存則を検証した後（§\ref{sec:gcl_verification}），
-DCCD フィルタの散逸設計（§\ref{sec:verify_dccd_dissipation}，§\ref{sec:dccd_dissipation_bench}），
-曲率計算への応用精度（§\ref{sec:verify_curvature}），
-Rhie--Chow 補正の高次精度化（§\ref{sec:verify_rc_bracket}）を順に検証する．
+本節では，まず CCD 微分演算子そのものの格子収束性を確認し（§~\ref{sec:verify_ccd_convergence}），
+非一様格子への適用性と幾何学的保存則を検証した後（§~\ref{sec:gcl_verification}），
+DCCD フィルタの散逸設計（§~\ref{sec:verify_dccd_dissipation}，§~\ref{sec:dccd_dissipation_bench}），
+曲率計算への応用精度（§~\ref{sec:verify_curvature}），
+Rhie--Chow 補正の高次精度化（§~\ref{sec:verify_rc_bracket}）を順に検証する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{CCD微分演算子の格子収束}
