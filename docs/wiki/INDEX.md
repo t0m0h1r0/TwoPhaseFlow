@@ -1,6 +1,6 @@
-# Wiki Index — 76 entries
+# Wiki Index — 77 entries
 
-## Theory (31)
+## Theory (32)
 
 | REF-ID | Title |
 |--------|-------|
@@ -35,6 +35,7 @@
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 | [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
+| [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 
 ## Cross-Domain (8)
 
