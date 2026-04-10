@@ -6,17 +6,26 @@
 \label{sec:advection_pressure_coupling}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§\ref{sec:force_balance}--§\ref{sec:ns_time_accuracy} では単相 NS ソルバの整合性を確認した．
+§~\ref{sec:force_balance}--§~\ref{sec:ns_time_accuracy} では単相 NS ソルバの整合性を確認した．
 本節では CLS 界面移流と変密度 PPE を結合した\textbf{二相流パイプライン}が
 物理的整合性を維持するかを検証する．
+
+\noindent\textbf{主要な発見（先行告知）：}
+静止界面と $\sigma = 0$ の移動界面は正しく動作するが，
+\textbf{移動界面＋表面張力（$\sigma > 0$）は 2 ステップで発散する}
+（Galilean テスト B，§~\ref{sec:galilean_invariance}）．
+根本原因は，IPC の $\bnabla p^n$ が界面の圧力ジャンプ $\Delta p = \sigma\kappa$ を横切り，
+CCD の界面横断ステンシルが $\Ord{1}$ の打ち切り誤差を生じることにある．
+この限界は分相 PPE 解法により解決される（§~\ref{sec:coupling_limitations}）．
+
 検証は複雑度の段階的な引き上げにより 3 テストで構成される：
 \begin{enumerate}[noitemsep]
   \item \textbf{静止液滴の長時間安定性}（§~\ref{sec:twophase_static_longterm}）：
         §~\ref{sec:bf_static_droplet} の単ステップ投影を多ステップに拡張
   \item \textbf{Galilean 不変性}（§~\ref{sec:galilean_invariance}）：
-        移動界面下での CLS↔PPE 結合
+        移動界面下での CLS↔PPE 結合（$\sigma = 0$ は成功，$\sigma > 0$ は破綻）
   \item \textbf{結合の限界と今後の課題}（§~\ref{sec:coupling_limitations}）：
-        テスト結果から特定された限界の整理
+        テスト結果から特定された限界の整理と解決策
 \end{enumerate}
 
 \noindent\textbf{本節の範囲：}

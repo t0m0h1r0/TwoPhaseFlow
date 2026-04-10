@@ -96,7 +96,7 @@ Step & 処理 & 手法 & 参照 \\
 \hline
 1 & CLS 移流       & TVD-RK3 + DCCD（$\varepsilon_d=0.05$）       & §~\ref{sec:advection_motivation} \\
 2 & 再初期化        & 仮想時間ステッピング                            & §~\ref{sec:cls_compression} \\
-3 & 物性更新        & $\psi\!\to\!\phi$ logit + 線形補間              & §~\ref{sec:why_cls} \\
+3 & 物性更新        & $\psi\!\to\!\phi$ logit + 線形補間              & §~\ref{sec:levelset_mapping} \\
 4 & 曲率計算        & CCD 高次微分                                   & §~\ref{sec:curvature} \\
 5 & Predictor      & AB2 + CN/ADI + IPC + CSF                       & §~\ref{sec:ab2_ipc} \\
 6 & PPE 求解       & DC + LU（$k\!=\!3$）                            & §~\ref{sec:ppe_solve} \\
@@ -214,6 +214,7 @@ $\phi^{n+1}$ の CCD 微分から曲率を求める（式~\eqref{eq:curvature_2d
                            {\max\!\bigl(\phi_x^2 + \phi_y^2,\;
                             \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
 \end{equation*}
+ここで $\varepsilon_{\text{norm}} = 10^{-12}$（ゼロ除算回避のための微小正則化定数）である．
 
 % ── Step 5 ──────────────────────────────────────────────────────────────
 \paragraph{Step 5：運動量予測（Predictor，AB2 + CN/ADI + IPC）}

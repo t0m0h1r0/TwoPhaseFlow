@@ -21,22 +21,30 @@
 得られた収束次数 $p$ を理論的期待値と比較することで，
 離散化の実装が設計仕様と整合するかを判定する．
 
-検証は，アルゴリズム内部の依存関係に沿って 4 段階で構成する．
+検証は，アルゴリズム内部の\textbf{依存関係}に沿って 4 段階で構成する．
+テスト順序はアルゴリズム Step 番号順ではなく，\textbf{論理的依存の下流から上流}
+（基盤演算子 $\to$ 組立パイプライン $\to$ ソルバ $\to$ 時間積分）に従う．
+これにより，不合格が生じた場合にその原因を依存グラフの中で局所化できる．
 \begin{enumerate}
   \item \textbf{§~\ref{sec:verify_spatial}（空間離散化基盤）：}
-        CCD/DCCD 微分演算子・非一様格子 GCL・曲率計算・Rhie--Chow 補正
-        ——全離散演算子の基盤となる最下層を検証する．
+        CCD/DCCD 微分演算子・非一様格子 GCL・曲率計算・Rhie--Chow 補正．
+        ここが不合格であれば，以降の全テストの前提が崩壊する．
   \item \textbf{§~\ref{sec:verify_interface}（界面処理パイプライン）：}
-        CLS 移流・保存型再マッピング・HFE 場延長・Young--Laplace 圧力跳び
-        ——§~\ref{sec:verify_spatial} で確認した演算子を用いて構成される
-        界面処理パイプライン（アルゴリズム Step 1--4）を検証する．
+        CLS 移流・保存型再マッピング・HFE 場延長・Young--Laplace 圧力跳び．
+        §~\ref{sec:verify_spatial} の演算子を組み合わせた
+        Step 1--4 のパイプラインを検証する．不合格であれば組立段階の誤りを示す．
   \item \textbf{§~\ref{sec:verify_solver}（圧力ソルバ）：}
-        欠陥補正法・Neumann BC・変密度 PPE
-        ——PPE 求解（Step 6）のスキームを検証する．
+        欠陥補正法・Neumann BC・分相 PPE・変密度 PPE．
+        PPE 求解（Step 6）のスキームを検証する．
   \item \textbf{§~\ref{sec:verify_time}（時間積分）：}
-        TVD-RK3・AB2
-        ——時間発展（Step 1, 5）のスキーム精度を確認する．
+        TVD-RK3・AB2・Crank--Nicolson．
+        時間発展（Step 1, 5）のスキーム精度と安定性を確認する．
 \end{enumerate}
+
+\noindent
+本章は個々の部品を\textbf{単体で}テストするため，
+部品間の相互作用（時間分裂誤差・PPE--速度結合・界面--圧力干渉）は検出できない．
+これらの結合効果は次章（第~\ref{sec:verification}章）の統合テストで検証する．
 §~\ref{sec:verify_summary} に全コンポーネントの検証結果を総括する．
 
 表~\ref{tab:component_algorithm_map} に，
