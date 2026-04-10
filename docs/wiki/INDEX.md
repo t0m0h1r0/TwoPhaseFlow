@@ -1,4 +1,4 @@
-# Wiki Index — 75 entries
+# Wiki Index — 76 entries
 
 ## Theory (31)
 
@@ -49,7 +49,7 @@
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 
-## Experiment (17)
+## Experiment (18)
 
 | REF-ID | Title |
 |--------|-------|
@@ -70,6 +70,7 @@
 | [WIKI-E-015](experiment/WIKI-E-015.md) | §13 Benchmark Suite: 3 Physical Validation Experiments (Pruned from 8) |
 | [WIKI-E-016](experiment/WIKI-E-016.md) | §13 Benchmark Execution Results: 1 PASS, 1 PARTIAL, 1 FAIL |
 | [WIKI-E-017](experiment/WIKI-E-017.md) | NS Pipeline Per-Timestep Grid Rebuild Integration Test (Exp 11-29) |
+| [WIKI-E-018](experiment/WIKI-E-018.md) | Non-Uniform Grid NS Convergence: Static Droplet Multi-Resolution (Exp 12-17) |
 
 ## Paper (5)
 
