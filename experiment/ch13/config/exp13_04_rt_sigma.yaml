@@ -69,3 +69,11 @@ initial_velocity: null
 
 boundary_condition:
   type: wall
+
+sweep:
+  - label: "sigma=0.00"
+    overrides: {physics.sigma: 0.0}
+  - label: "sigma=0.02"
+    overrides: {physics.sigma: 0.02}
+  - label: "sigma=0.05"
+    overrides: {physics.sigma: 0.05}

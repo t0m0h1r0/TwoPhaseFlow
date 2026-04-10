@@ -77,3 +77,22 @@ initial_velocity:
 boundary_condition:
   type: couette
   gamma_dot: 2.0
+
+# σ = μ_g × γ̇ × R / Ca = 0.1 × 2.0 × 0.25 / Ca = 0.05 / Ca
+sweep:
+  - label: "lam1_Ca0.1"
+    overrides: {physics.lambda_mu: 1.0, physics.sigma: 0.500}
+  - label: "lam1_Ca0.2"
+    overrides: {physics.lambda_mu: 1.0, physics.sigma: 0.250}
+  - label: "lam1_Ca0.3"
+    overrides: {physics.lambda_mu: 1.0, physics.sigma: 0.1667}
+  - label: "lam1_Ca0.4"
+    overrides: {physics.lambda_mu: 1.0, physics.sigma: 0.125}
+  - label: "lam5_Ca0.1"
+    overrides: {physics.lambda_mu: 5.0, physics.sigma: 0.500}
+  - label: "lam5_Ca0.2"
+    overrides: {physics.lambda_mu: 5.0, physics.sigma: 0.250}
+  - label: "lam5_Ca0.3"
+    overrides: {physics.lambda_mu: 5.0, physics.sigma: 0.1667}
+  - label: "lam5_Ca0.4"
+    overrides: {physics.lambda_mu: 5.0, physics.sigma: 0.125}

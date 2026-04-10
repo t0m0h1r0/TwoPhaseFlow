@@ -113,6 +113,7 @@ class ExperimentConfig:
     initial_condition: dict = field(default_factory=dict)
     initial_velocity: dict | None = None
     boundary_condition: dict | None = None
+    sweep: list | None = None  # list of {label, overrides} dicts
 
     # ── override support ─────────────────────────────────────────────────
 
@@ -177,6 +178,7 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
         initial_condition=dict(raw.get("initial_condition", {})),
         initial_velocity=raw.get("initial_velocity") or None,
         boundary_condition=raw.get("boundary_condition") or None,
+        sweep=raw.get("sweep") or None,
     )
 
 

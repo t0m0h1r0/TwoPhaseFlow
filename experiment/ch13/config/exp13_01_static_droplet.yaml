@@ -57,3 +57,13 @@ initial_velocity: null
 
 boundary_condition:
   type: wall
+
+sweep:
+  - label: "N=32"
+    overrides: {grid.NX: 32, grid.NY: 32}
+  - label: "N=64"
+    overrides: {grid.NX: 64, grid.NY: 64}
+  - label: "N=128"
+    overrides: {grid.NX: 128, grid.NY: 128}
+  - label: "N=256"
+    overrides: {grid.NX: 256, grid.NY: 256}
