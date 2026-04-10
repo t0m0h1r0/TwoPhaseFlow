@@ -48,31 +48,27 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 11\times$ & §~\ref{sec:force_
 \paragraph{律速段階の特定}
 \label{sec:accuracy_summary}
 
-\noindent\textbf{単相 NS ソルバ：}
-空間精度は CCD 境界スキーム（$\Ord{h^4}$--$\Ord{h^5}$）が
-非線形対流項で増幅され $\Ord{h^{3.96}}$（§~\ref{sec:kovasznay}）．
-時間精度は AB2+IPC の $\Ord{\Delta t^2}$ が律速
-（van Kan 1986）．
-各コンポーネントの設計精度は NS パイプライン全体でほぼ完全に発現しており，
-単相ソルバとしての精度は設計通りである．
+\begin{description}[style=nextline,leftmargin=2em]
+  \item[\textbf{単相 NS ソルバ}（設計精度をほぼ完全に発現）]
+    \begin{itemize}[noitemsep]
+      \item 空間律速：CCD 境界スキーム $\Ord{h^5}$ $\times$ 非線形増幅 → 実効 $\Ord{h^{3.96}}$（§~\ref{sec:kovasznay}）
+      \item 時間律速：AB2+IPC $\Ord{\Delta t^2}$
+    \end{itemize}
 
-\noindent\textbf{二相流（$\rho_l/\rho_g \leq 5$，smoothed Heaviside）：}
-空間精度は CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ が律速する
-（表~\ref{tab:bf_laplace}）．
-CCD-PPE（$\Ord{h^6}$）は CSF より高次であり，
-変密度一括 PPE は界面近傍で $\Ord{h^{1\text{--}2}}$ に劣化するが
-CSF と同次である（§~\ref{sec:interface_crossing}）．
-静止界面は 200 ステップ以上安定に動作する
-（表~\ref{tab:static_longterm}）が，
-移動界面＋表面張力では IPC の $\bnabla p^n$ 評価が界面ジャンプで
-破綻する（表~\ref{tab:galilean}）．
+  \item[\textbf{二相流（$\rho_l/\rho_g \leq 5$，smoothed Heaviside）}]
+    \begin{itemize}[noitemsep]
+      \item 空間律速：\textbf{CSF モデル誤差 $\Ord{h^2}$}（CCD-PPE $\Ord{h^6}$ は過剰）
+      \item 変密度一括 PPE：界面近傍で $\Ord{h^{1\text{--}2}}$ に劣化（CSF と同次）
+      \item 静止界面：200 ステップ安定（表~\ref{tab:static_longterm}）
+      \item 移動界面＋$\sigma > 0$：\textbf{IPC 発散}（$\bnabla p^n$ が界面ジャンプを横断）
+    \end{itemize}
 
-\noindent\textbf{PPE 離散化：}
-CCD PPE の欠陥補正は $L_L^{-1} L_H$ の不定性により
-定常反復法では収束不能であり（§~\ref{sec:ppe_discretization_choice}），
-FD 直接法 + CCD 勾配を採用する．
-投影不整合 $\Ord{h^2}$ は有界であり（§~\ref{sec:interface_crossing}），
-CSF モデル誤差 $\Ord{h^2}$ と同次のため全体精度を律速しない．
+  \item[\textbf{PPE 離散化}]
+    \begin{itemize}[noitemsep]
+      \item CCD PPE 欠陥補正は $L_L^{-1} L_H$ 不定性で収束不能 → FD 直接法 + CCD 勾配を採用
+      \item 投影不整合 $\Ord{h^2}$：CSF と同次のため全体精度を律速しない
+    \end{itemize}
+\end{description}
 
 \noindent\textbf{二相流（$\rho_l/\rho_g \geq 10$）：}
 変密度一括 PPE の欠陥補正は発散する（表~\ref{tab:varrho_breakdown}）が，

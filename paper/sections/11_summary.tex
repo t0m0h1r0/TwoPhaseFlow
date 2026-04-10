@@ -137,6 +137,10 @@ PPE 条件数の密度比依存性を定量的に実証した．
   \item \textbf{界面--圧力相互作用}：曲率由来の圧力跳びが移流と共鳴しないか
   \item \textbf{密度比依存性}：$\rho_l/\rho_g \gg 1$ で精度が劣化・発散しないか
 \end{itemize}
-次章（第~\ref{sec:verification}章）では，Taylor--Green 渦・静止液滴・
-Rayleigh--Taylor 不安定性など解析解が既知の問題を用いて，
-7 ステップ全体の統合検証を行う．
+次章（第~\ref{sec:verification}章）では，以下の対応で各結合効果を検出する：
+\begin{itemize}[noitemsep]
+  \item 時間分裂誤差 → Taylor--Green 渦の運動エネルギー減衰（§~\ref{sec:energy_conservation}）
+  \item PPE--速度結合 → 静止液滴の Laplace 圧維持（§~\ref{sec:twophase_static_longterm}）
+  \item 界面--圧力相互作用 → Galilean 不変性＋RT 不安定性（§~\ref{sec:galilean_invariance}）
+  \item 密度比依存性 → 変密度 PPE の破綻限界（§~\ref{sec:interface_crossing}）
+\end{itemize}
