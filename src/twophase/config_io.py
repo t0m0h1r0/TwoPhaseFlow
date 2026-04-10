@@ -45,6 +45,9 @@ class GridCfg:
     LX: float = 1.0
     LY: float = 1.0
     bc_type: str = "wall"   # "wall" or "periodic"
+    alpha_grid: float = 1.0       # interface-fitted concentration (1.0 = uniform)
+    eps_g_factor: float = 2.0     # grid density Gaussian width factor
+    dx_min_floor: float = 1e-6    # minimum cell width floor
 
 
 @dataclass
@@ -189,6 +192,9 @@ def _parse_grid(d: dict) -> GridCfg:
         LX=float(d.get("LX", 1.0)),
         LY=float(d.get("LY", 1.0)),
         bc_type=str(d.get("bc_type", "wall")),
+        alpha_grid=float(d.get("alpha_grid", 1.0)),
+        eps_g_factor=float(d.get("eps_g_factor", 2.0)),
+        dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
     )
 
 

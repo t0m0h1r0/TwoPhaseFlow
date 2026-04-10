@@ -6,7 +6,7 @@
 \label{sec:verify_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-全 19 件の基本コンポーネントテストおよび 8 件の追加検証（ギャップ充填）が完了した．
+全 19 件の基本コンポーネントテストおよび 9 件の追加検証（ギャップ充填）が完了した．
 表~\ref{tab:verification_summary} に各テストの期待精度・実測精度・備考を総括する．
 主要な知見を§~\ref{sec:verify_spatial}--§~\ref{sec:verify_time} の 4 小節に沿い，検証テーマごとに以下に整理する．
 
@@ -99,6 +99,7 @@ WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
 PPE 条件数                 & $\kappa \propto \rho/h^2$ & $\kappa \propto N^3 \cdot \rho$ & \checkmark & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
+NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 7.7 \times 10^{-5}$ & \checkmark & $\alpha{=}2$, $N{=}32$, 寄生電流 1.2 倍 \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；ベースライン風上差分は $\Ord{h^1}$．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\

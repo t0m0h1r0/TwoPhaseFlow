@@ -95,31 +95,40 @@ class DiagnosticCollector:
         u: np.ndarray,
         v: np.ndarray,
         p: np.ndarray,
+        dV: np.ndarray | None = None,
     ) -> None:
-        """Record diagnostics for the current timestep."""
-        h = self.h
+        """Record diagnostics for the current timestep.
+
+        Parameters
+        ----------
+        dV : ndarray or None
+            Per-node control volumes.  When ``None``, falls back to
+            ``h**2`` (uniform grid).
+        """
+        if dV is None:
+            dV = np.full(psi.shape, self.h ** 2)
         rho = self.rho_g + (self.rho_l - self.rho_g) * psi
 
         # Initialise reference volume on first call
         if self._V0 is None:
-            self._V0 = max(float(np.sum(psi) * h ** 2), 1e-30)
+            self._V0 = max(float(np.sum(psi * dV)), 1e-30)
 
         self.times.append(t)
 
         for m in self.metrics:
             if m == "volume_conservation":
-                V = float(np.sum(psi) * h ** 2)
+                V = float(np.sum(psi * dV))
                 self._data[m].append(abs(V - self._V0) / self._V0)
 
             elif m == "kinetic_energy":
-                ke = 0.5 * float(np.sum(rho * (u ** 2 + v ** 2)) * h ** 2)
+                ke = 0.5 * float(np.sum(rho * (u ** 2 + v ** 2) * dV))
                 self._data[m].append(ke)
 
             elif m == "mean_rise_velocity":
                 gas = psi < 0.5
-                vol_gas = float(np.sum(gas) * h ** 2)
+                vol_gas = float(np.sum(dV[gas]))
                 vm = (
-                    float(np.sum(v[gas]) * h ** 2) / vol_gas
+                    float(np.sum(v[gas] * dV[gas])) / vol_gas
                     if vol_gas > 1e-12
                     else 0.0
                 )
@@ -127,11 +136,11 @@ class DiagnosticCollector:
 
             elif m == "bubble_centroid":
                 gas = psi < 0.5
-                vol_gas = float(np.sum(gas) * h ** 2)
+                vol_gas = float(np.sum(dV[gas]))
                 if vol_gas > 1e-12:
-                    xc = float(np.sum(self.X[gas]) * h ** 2) / vol_gas
-                    yc = float(np.sum(self.Y[gas]) * h ** 2) / vol_gas
-                    vc = float(np.sum(v[gas]) * h ** 2) / vol_gas
+                    xc = float(np.sum(self.X[gas] * dV[gas])) / vol_gas
+                    yc = float(np.sum(self.Y[gas] * dV[gas])) / vol_gas
+                    vc = float(np.sum(v[gas] * dV[gas])) / vol_gas
                 else:
                     xc = yc = vc = float("nan")
                 self._data["xc"].append(xc)
@@ -142,7 +151,7 @@ class DiagnosticCollector:
                 self._data[m].append(_deformation(psi))
 
             elif m == "interface_amplitude":
-                self._data[m].append(_interface_amplitude(psi, self.Y, h))
+                self._data[m].append(_interface_amplitude(psi, self.Y, self.h))
 
             elif m == "laplace_pressure":
                 if self.sigma > 0.0 and self.R > 0.0:

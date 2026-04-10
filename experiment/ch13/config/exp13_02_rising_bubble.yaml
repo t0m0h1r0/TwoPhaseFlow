@@ -9,6 +9,7 @@ grid:
   LX: 1.0
   LY: 2.0
   bc_type: wall
+  alpha_grid: 2.0
 
 physics:
   rho_l: 10.0

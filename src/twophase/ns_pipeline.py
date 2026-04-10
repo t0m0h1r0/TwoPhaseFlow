@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import numpy as np
 import scipy.sparse as sp
+from scipy.interpolate import RegularGridInterpolator
 from scipy.sparse.linalg import spsolve
 
 from .backend import Backend
 from .config import GridConfig
 from .core.grid import Grid
 from .ccd.ccd_solver import CCDSolver
-from .levelset.heaviside import heaviside
+from .levelset.heaviside import heaviside, invert_heaviside, apply_mass_correction
 from .levelset.advection import DissipativeCCDAdvection
 from .levelset.curvature import CurvatureCalculator
 from .levelset.reinitialize import Reinitializer
@@ -64,16 +65,25 @@ class TwoPhaseNSSolver:
         hfe_C: float = 0.05,
         reinit_steps: int = 4,
         use_gpu: bool = False,
+        alpha_grid: float = 1.0,
+        eps_g_factor: float = 2.0,
+        dx_min_floor: float = 1e-6,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
         self.bc_type = bc_type
+        self._alpha_grid = alpha_grid
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
 
         self._backend = Backend(use_gpu=use_gpu)
-        gc = GridConfig(ndim=2, N=(NX, NY), L=(LX, LY))
+        gc = GridConfig(
+            ndim=2, N=(NX, NY), L=(LX, LY),
+            alpha_grid=alpha_grid,
+            eps_g_factor=eps_g_factor,
+            dx_min_floor=dx_min_floor,
+        )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
         self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
@@ -91,7 +101,13 @@ class TwoPhaseNSSolver:
     def from_config(cls, cfg: "ExperimentConfig") -> "TwoPhaseNSSolver":
         """Construct from an :class:`ExperimentConfig`."""
         g = cfg.grid
-        return cls(g.NX, g.NY, g.LX, g.LY, bc_type=g.bc_type)
+        return cls(
+            g.NX, g.NY, g.LX, g.LY,
+            bc_type=g.bc_type,
+            alpha_grid=getattr(g, "alpha_grid", 1.0),
+            eps_g_factor=getattr(g, "eps_g_factor", 2.0),
+            dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
+        )
 
     # ── properties ────────────────────────────────────────────────────────
 
@@ -106,6 +122,72 @@ class TwoPhaseNSSolver:
     @property
     def backend(self):
         return self._backend
+
+    @property
+    def h_min(self) -> float:
+        """Minimum local grid spacing (accounts for non-uniform refinement)."""
+        return float(min(
+            np.min(self._grid.h[ax]) for ax in range(self._grid.ndim)
+        ))
+
+    # ── grid rebuild ─────────────────────────────────────────────────────
+
+    def _rebuild_grid(
+        self, psi: np.ndarray, u: np.ndarray, v: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Rebuild interface-fitted grid and remap fields.
+
+        No-op when ``alpha_grid <= 1.0``.
+
+        Returns remapped (psi, u, v).
+        """
+        if self._alpha_grid <= 1.0:
+            return psi, u, v
+
+        # 1. Convert psi -> signed-distance phi for grid density function
+        phi = invert_heaviside(np, psi, self._eps)
+
+        # 2. Save old grid state for interpolation
+        old_coords = [c.copy() for c in self._grid.coords]
+        old_h = [h.copy() for h in self._grid.h]
+
+        # 3. Compute old cell volumes for mass correction
+        dV_old = old_h[0].copy()
+        for ax in range(1, self._grid.ndim):
+            dV_old = np.expand_dims(dV_old, axis=ax) * old_h[ax]
+        M_before = float(np.sum(psi * dV_old))
+
+        # 4. Rebuild grid (mutates coords, h, J, dJ_dxi in-place)
+        self._grid.update_from_levelset(phi, self._eps, ccd=self._ccd)
+
+        # 5. Remap psi, u, v from old grid to new grid
+        new_X, new_Y = self._grid.meshgrid()
+        pts = np.stack([new_X.ravel(), new_Y.ravel()], axis=-1)
+
+        psi = np.clip(
+            RegularGridInterpolator(
+                old_coords, psi, method="linear",
+                bounds_error=False, fill_value=None,
+            )(pts).reshape(new_X.shape),
+            0.0, 1.0,
+        )
+        u = RegularGridInterpolator(
+            old_coords, u, method="linear",
+            bounds_error=False, fill_value=None,
+        )(pts).reshape(new_X.shape)
+        v = RegularGridInterpolator(
+            old_coords, v, method="linear",
+            bounds_error=False, fill_value=None,
+        )(pts).reshape(new_X.shape)
+
+        # 6. Mass correction for psi
+        dV_new = self._grid.cell_volumes()
+        psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
+
+        # 7. Update meshgrid cache
+        self.X, self.Y = new_X, new_Y
+
+        return psi, u, v
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -201,7 +283,7 @@ class TwoPhaseNSSolver:
         cfl: float = 0.15,
     ) -> float:
         """CFL + viscous + capillary timestep limit."""
-        h = self._h
+        h = self.h_min if self._alpha_grid > 1.0 else self._h
         mu_max = max(
             filter(None, [physics.mu, physics.mu_l, physics.mu_g])
         )
@@ -272,6 +354,10 @@ class TwoPhaseNSSolver:
         psi = np.asarray(self._adv.advance(psi, [u, v], dt))
         if step_index % 2 == 0:
             psi = np.asarray(self._reinit.reinitialize(psi))
+
+        # ── 1b. Grid rebuild (interface-fitted) ────────────────────────
+        psi, u, v = self._rebuild_grid(psi, u, v)
+
         rho = rho_g + (rho_l - rho_g) * psi
 
         # Variable viscosity (recomputed after advection so μ tracks ψ)
@@ -475,7 +561,15 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         t += dt
         step += 1
 
-        diag.collect(t, psi, u, v, p)
+        # Update diagnostic references for dynamic grids
+        if solver._alpha_grid > 1.0:
+            diag.X = solver.X
+            diag.Y = solver.Y
+            dV = solver._grid.cell_volumes()
+        else:
+            dV = None
+
+        diag.collect(t, psi, u, v, p, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             snaps.append({"t": float(t), "psi": psi.copy()})
