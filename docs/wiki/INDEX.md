@@ -1,4 +1,4 @@
-# Wiki Index — 70 entries
+# Wiki Index — 73 entries
 
 ## Theory (31)
 
@@ -36,7 +36,7 @@
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 | [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
 
-## Cross-Domain (7)
+## Cross-Domain (8)
 
 | REF-ID | Title |
 |--------|-------|
@@ -47,8 +47,9 @@
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
+| [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 
-## Experiment (14)
+## Experiment (15)
 
 | REF-ID | Title |
 |--------|-------|
@@ -66,6 +67,7 @@
 | [WIKI-E-012](experiment/WIKI-E-012.md) | Non-Uniform Grid Zalesak: Volume-Weighted Fix Verification |
 | [WIKI-E-013](experiment/WIKI-E-013.md) | Gap-Filling Component Verification: Spatial, Interface, Solver, Time (§11 Additions) |
 | [WIKI-E-014](experiment/WIKI-E-014.md) | Gap-Filling NS Physical Consistency: CFL, Parasitic Flow, Temporal Degradation (§12 Additions) |
+| [WIKI-E-015](experiment/WIKI-E-015.md) | §13 Benchmark Suite: 8 Physical Validation Experiments with Reference Solutions |
 
 ## Paper (5)
 
@@ -77,7 +79,7 @@
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 
-## Code (13)
+## Code (14)
 
 | REF-ID | Title |
 |--------|-------|
@@ -94,3 +96,4 @@
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
 | [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
+| [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
