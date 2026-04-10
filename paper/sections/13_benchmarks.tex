@@ -1,49 +1,25 @@
 % paper/sections/13_benchmarks.tex
 %
-% §13  二相流ベンチマーク（Validation）
+% §13  二相流ベンチマーク（Validation）— 3 experiments
 %
-% 分相 PPE + HFE の有効性を物理問題で検証するベンチマークの設定と目標値を記す．
-% 現行の CSF + smoothed Heaviside 解法の範囲内での検証は §12 に収録．
 
-\section{二相流ベンチマーク：設計と目標}
+\section{二相流ベンチマーク}
 \label{sec:validation}
 \label{sec:benchmarks}
 
-第~\ref{sec:verification}章で確立したソルバの能力と限界を踏まえ，
-本章では分相 PPE + HFE（§~\ref{sec:split_ppe_recovery}）による
-高密度比対応を物理ベンチマークで検証するための設定と目標値を整理する．
+第~\ref{sec:verification}章では構成要素ごとの精度と
+NS 連成における物理的整合性を検証した．
+本章では，公開ベンチマークとの定量比較により
+ソルバの物理予測能力を評価する．
 
-§~\ref{sec:interface_crossing} において，smoothed Heaviside 一括解法の破綻閾値
-（$\rho_l/\rho_g \geq 10$ で DC 発散）を定量化した．
-本章の §~\ref{sec:val_static_drop}–§~\ref{sec:val_taylor_deformation} では，
-現行の一括 PPE + HFE + balanced-force CSF パイプラインを用いた
-物理ベンチマークを実施する．
-§~\ref{sec:val_static_drop}–§~\ref{sec:val_rt_sigma}（単体問題）には
-中密度比（$\rho_l/\rho_g \leq 100$）を採用し，
-§~\ref{sec:val_droplet_collision}–§~\ref{sec:val_taylor_deformation}（多体・複合問題）では
-$\rho_l/\rho_g = 3$--$10$ の範囲で多様な物理を検証する．
-完全な高密度比（$\rho_l/\rho_g = 1000$）での分相 PPE + HFE 統合実装は
-今後の課題であり，§~\ref{sec:conclusion} で述べる．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{静止液滴の寄生流れ格子収束}
-\label{sec:val_static_drop}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{参照：}Popinet (2009)，Francois~ら (2006)
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item 静止液滴 $R = 0.25$，中心 $(0.5, 0.5)$，$\rho_l/\rho_g = 100$，$\sigma = 1.0$，重力なし
-  \item 格子 $N \in \{32,\,64,\,128,\,256\}$，各格子 500 ステップ
-  \item ドメイン $[0,1]\times[0,1]$，壁面 BC（全周）
-  \item balanced-force CSF + HFE（InterfaceLimitedFilter）
-\end{itemize}
-
-\noindent\textbf{目標：}
-$\|\bu_{\mathrm{para}}\|_\infty$ の格子収束（$\Ord{h^2}$ 以上），
-Laplace 圧力誤差 $|\Delta p_\mathrm{sim} - \sigma/R| / (\sigma/R) < 0.1\%$
-（$N \geq 128$）．表面張力力の balanced-force 離散化精度を格子系統的に検証する．
+§~\ref{sec:verification}の結果から，balanced-force CSF + 一括 PPE パイプラインは
+$\rho_l/\rho_g \leq 10$ で安定に動作する．
+本章の 3 ベンチマークはこの範囲内で，
+§~\ref{sec:verification}にない物理——
+毛細管振動（§~\ref{sec:val_capillary}），
+浮力駆動物体運動（§~\ref{sec:val_rising_bubble}），
+せん断変形（§~\ref{sec:val_taylor_deformation}）——を
+それぞれ解析解または公開 DNS データと比較する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{毛細管波の振動減衰}
@@ -69,6 +45,11 @@ Laplace 圧力誤差 $|\Delta p_\mathrm{sim} - \sigma/R| / (\sigma/R) < 0.1\%$
 \end{equation}
 $l=2$ のとき $\omega_0 \approx 6.82$，$\beta \approx 0.048$，$T_0 \approx 0.92$．
 
+\noindent\textbf{検証の意義：}
+§~\ref{sec:capillary_cfl}は毛細管 CFL の安定性限界（$\Delta t_\sigma \propto h^{3/2}$）
+を検証するが，表面張力による振動周期や粘性減衰率の物理的精度は測定していない．
+本ベンチマークは復元力としての表面張力と散逸の結合精度を検証する．
+
 \noindent\textbf{目標：}
 変形量 $D(t) = (L-B)/(L+B)$ の振動周期誤差 $< 10\%$，
 減衰率誤差 $< 20\%$，体積保存誤差 $< 0.5\%$．
@@ -78,121 +59,28 @@ $l=2$ のとき $\omega_0 \approx 6.82$，$\beta \approx 0.048$，$T_0 \approx 0
 \label{sec:val_rising_bubble}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{参照：}Hysing~ら (2009) Test Case 1
+\noindent\textbf{参照：}Hysing~ら (2009) Test Case~1
 
 \noindent\textbf{設定：}
 \begin{itemize}[noitemsep]
   \item 気泡 $R = 0.25$，中心 $(0.5,\,0.5)$，ドメイン $[0,1]\times[0,2]$，壁面 BC
   \item $\mathit{Re} = 35$，$\mathit{Eo} = 10$，$\rho_l/\rho_g = 10$
         （Hysing 原典は 1000；$\rho_l/\rho_g = 1000$ には分相 PPE が必要）
-  \item 導出：$\sigma = g\rho_l d^2 / \mathit{Eo} = 0.25$，
+  \item 導出：$\sigma = g\rho_l d^2 / \mathit{Eo} = 0.225$，
         $\mu = \rho_l\sqrt{gd}\,d / \mathit{Re} \approx 0.101$
   \item 格子 $64 \times 128$，$T_\mathrm{final} = 3.0$
 \end{itemize}
 
+\noindent\textbf{検証の意義：}
+§~\ref{sec:verification}に浮力駆動物体運動のテストは存在しない．
+RT 不安定性（§~\ref{sec:advection_pressure_coupling}）は界面全体の不安定性であり，
+個体としての気泡の終端速度・形状変化とは異なる物理量を測定する．
+本ベンチマークは浮力と表面張力の結合を動的に検証する．
+
 \noindent\textbf{目標：}
 気泡重心高さ $y_c(t)$，上昇速度 $v_c(t)$，真円度 $C(t)$ の時系列を計測し，
-Hysing 参照値（$\rho_l/\rho_g = 1000$ での端末速度・形状）と定性的に比較する．
+Hysing 参照値と定性的に比較する．
 体積保存誤差 $< 0.5\%$．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Rayleigh--Taylor 不安定性（\texorpdfstring{$\sigma > 0$}{sigma > 0}）}
-\label{sec:val_rt_sigma}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{参照：}Tryggvason (1988)，He~ら (1999)
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item 初期界面 $y = 2 + 0.05\sin(2\pi x)$（単一モード，$k = 2\pi$），
-        $\rho_l = 3$，$\rho_g = 1$，$\mu = 0.01$，$g = 1$
-  \item ドメイン $[0,1]\times[0,4]$，壁面 BC，格子 $64\times256$，$T_\mathrm{final} = 3.0$
-  \item $\sigma \in \{0.00,\,0.02,\,0.05\}$ スイープ
-\end{itemize}
-
-\noindent\textbf{理論成長率（} $k = 2\pi$ \textbf{モード）：}
-\begin{equation}
-  \omega^2 = \frac{g k (\rho_l - \rho_g) - \sigma k^3}{\rho_l + \rho_g},
-  \qquad k_c = \sqrt{\frac{g(\rho_l-\rho_g)}{\sigma}}
-  \label{eq:rt_sigma_growth}
-\end{equation}
-$\sigma = 0.05$ では $k = 6.28 \approx k_c = 6.32$（限界安定）．
-
-\noindent\textbf{目標：}
-線形成長率 $\omega_\mathrm{sim}$ と理論値 $\omega_\mathrm{theory}$ の誤差 $< 20\%$，
-$\sigma$ 増大による成長抑制の定量確認，$\sigma=0$ ケースは §~\ref{sec:advection_pressure_coupling}
-の結果と整合することを確認する．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{二液滴の正面衝突}
-\label{sec:val_droplet_collision}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{参照：}Nobari \& Tryggvason (1996)，Pan \& Kawachi (2007)
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item 等径液滴 2 個，$R = 0.25$，中心 $(0.5,\,0.65)$ および $(0.5,\,1.35)$，
-        初速 $\pm v_0$（$y$ 軸方向）
-  \item ドメイン $[0,1]\times[0,2]$，壁面 BC（全周）
-  \item $\rho_l/\rho_g = 5$，$\mu = 0.02$（均一粘度），$\sigma = 1.0$，重力なし
-  \item Weber 数 $\mathit{We} = \rho_l v_0^2 (2R)/\sigma \in \{0.5,\,2.0,\,5.0\}$
-  \item 格子 $64 \times 128$，$T_\mathrm{final} = 2.0$
-\end{itemize}
-
-\noindent\textbf{目標：}
-We $\ll 1$ ではトポロジー変化（合体）後の液量保存誤差 $|\Delta V|/V_0 < 0.1\%$，
-合体後半径 $R_\mathrm{final}/R_0 \to 2^{1/3} \approx 1.26$（質量保存則）を検証．
-We $\gg 1$ ではバウンス挙動と最大変形量 $D_{\max}$ を計測し，
-高密度比での balanced-force 射影法の安定性と CLS 自然合体機能を確認する．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{二気泡の Drafting--Kissing--Tumbling（DKT）}
-\label{sec:val_two_bubble_dkt}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{参照：}Esmaeeli \& Tryggvason (1998)，Krishna \& van Baten (1999)
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item 同径気泡 2 個，$R = 0.25$；後続気泡 $(0.5,\,0.5)$，先行気泡 $(0.5,\,1.1)$
-        （間隙 $\approx 0.1R$）
-  \item ドメイン $[0,1]\times[0,4]$，壁面 BC（全周）
-  \item $\mathit{Re} = 35$，$\mathit{Eo} = 10$，$\rho_l/\rho_g = 5$
-        （$\sigma$ および $\mu$ を Re, Eo, $g=1$ から導出）
-  \item 格子 $64 \times 256$，$T_\mathrm{final} = 8.0$
-\end{itemize}
-
-\noindent\textbf{目標：}
-気泡間 $y$ 方向距離 $\Delta y(t)$ の時系列から drafting（後続気泡加速），
-kissing（近接），tumbling（横方向分離）の 3 段階を観測する．
-先行気泡の終端速度が §~\ref{sec:val_rising_bubble} 単一気泡値と一致し，
-後続気泡のピーク速度が単一気泡値の 1.2 倍以上になることを確認する．
-各気泡の体積保存誤差 $|\Delta V|/V_0 < 0.5\%$．
-
-% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{気泡群の集団上昇（\texorpdfstring{$N=9$}{N=9}，周期境界）}
-\label{sec:val_bubble_swarm}
-% ═══════════════════════════════════════════════════════════════════════════════
-
-\noindent\textbf{参照：}Tryggvason~ら (2001)，Bunner \& Tryggvason (2002)
-
-\noindent\textbf{設定：}
-\begin{itemize}[noitemsep]
-  \item $3\times3$ 配置の気泡 $N=9$（$R=0.25$），微小乱数擾乱で対称性を破る
-  \item ドメイン $[0,3]\times[0,3]$，\textbf{二重周期 BC}（全周）
-  \item $\mathit{Re} = 50$，$\mathit{Eo} = 4$，$\rho_l/\rho_g = 3$
-  \item ボイド率 $\alpha = N\pi R^2 / (L_x L_y) \approx 0.196$
-  \item 格子 $128\times128$，$T_\mathrm{final} = 10$
-\end{itemize}
-
-\noindent\textbf{目標：}
-気相の平均上昇速度 $U_\mathrm{swarm}$ と単一気泡終端速度 $U_\mathrm{single}$
-（§~\ref{sec:val_rising_bubble}）の比 $U_\mathrm{swarm}/U_\mathrm{single}$ を
-ボイド率 $\alpha$ の関数として計測し，
-Tryggvason~ら (2001) の DNS 結果と定性的に比較する．
-全気泡の総液相体積保存誤差 $|\Delta V|/V_0 < 1\%$，
-長時間安定（気泡が周期境界から逃走しない）を確認する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{線形せん断流中の液滴変形（Taylor 変形）}
@@ -221,8 +109,11 @@ Tryggvason~ら (2001) の DNS 結果と定性的に比較する．
 \end{equation}
 ただし $L$，$B$ はそれぞれ液滴の長軸・短軸．
 
+\noindent\textbf{検証の意義：}
+中性浮力により重力効果を完全に排除し，表面張力と粘性の結合精度を分離検証する．
+粘度比 $\lambda = 1$ と $\lambda = 5$ の比較により，
+界面を跨ぐ粘度不連続の離散化精度（variable viscosity $\mu(\psi)$）を評価する．
+
 \noindent\textbf{目標：}
 定常変形量 $D_\mathrm{ss}$ と解析値 $D_\mathrm{theory}$ の相対誤差
 $|D_\mathrm{ss} - D_\mathrm{theory}|/D_\mathrm{theory} < 10\%$（$\mathit{Ca} \leq 0.3$）．
-$\lambda = 1$ および $\lambda = 5$ の両粘度比で検証することで，
-界面を跨ぐ粘度不連続と表面張力の動的結合精度を独立に評価する．

@@ -149,21 +149,13 @@ class TwoPhaseNSSolver:
         """Build initial (u, v) from config ``initial_velocity`` section.
 
         If ``initial_velocity`` is absent, returns zero fields.
-        If the velocity-field object has a ``compute_with_psi`` method
-        (e.g. :class:`DropletPairApproach`), ``psi`` is forwarded to it.
         """
         if cfg.initial_velocity is None:
             return np.zeros_like(self.X), np.zeros_like(self.Y)
 
-        # inject grid spacing so velocity fields can compute eps internally
         spec = dict(cfg.initial_velocity)
-        spec.setdefault("_h", self._h)
         vf = velocity_field_from_dict(spec)
-
-        if psi is not None and hasattr(vf, "compute_with_psi"):
-            u, v = vf.compute_with_psi(self.X, self.Y, psi)
-        else:
-            u, v = vf.compute(self.X, self.Y)
+        u, v = vf.compute(self.X, self.Y)
         return np.asarray(u), np.asarray(v)
 
     # ── boundary-condition hook factory ──────────────────────────────────
