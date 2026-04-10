@@ -102,7 +102,9 @@ $\rho_l/\rho_g = 2, 3, 5, 10$ の全ケースで安定．}
 \begin{tcolorbox}[resultbox, title={Smoothed Heaviside 一括解法の適用限界}]
 \begin{enumerate}[noitemsep]
   \item $\rho_l/\rho_g \leq 5$：DC 収束するが，
-        格子収束次数は $\Ord{h^{0.1}}$--$\Ord{h^{2}}$ に劣化
+        格子収束次数は $\Ord{h^{0.1}}$--$\Ord{h^{2}}$ に劣化．
+        ただし CSF モデル誤差自体が $\Ord{h^2}$ であるため
+        （§~\ref{sec:bf_static_droplet}），全体精度のボトルネックにはならない
   \item $\rho_l/\rho_g \geq 10$：DC 発散（反復行列のスペクトル半径 $> 1$）
   \item 水--空気系（$\rho_l/\rho_g \approx 830$）：使用不可
 \end{enumerate}

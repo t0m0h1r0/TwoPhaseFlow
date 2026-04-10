@@ -27,10 +27,13 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 本章では，Predictor--PPE--Corrector パイプライン全体を単一の NS ソルバとして動作させ，
 解析解が既知の物理問題で整合性を検証する．
 なお，本章のテストでは\textbf{成功と同時に限界も明らかになる}：
-単相 NS ソルバは設計精度を完全に達成する一方，
-二相流では smoothed Heaviside 一括解法が密度比 $\rho_l/\rho_g \geq 10$ で破綻し，
-移動界面＋表面張力（$\sigma > 0$）では IPC が 2 ステップで発散する．
-これらの限界は §~\ref{sec:interface_crossing} で定量化し，
+単相 NS ソルバは設計精度を完全に達成し（§~\ref{sec:ns_time_accuracy}），
+低密度比（$\rho_l/\rho_g \leq 5$）の二相流は静止界面で安定動作する
+（§~\ref{sec:advection_pressure_coupling}）一方，
+§~\ref{sec:interface_crossing} の定量分析により
+smoothed Heaviside 一括解法が $\rho_l/\rho_g \geq 10$ で破綻することを示す．
+また §~\ref{sec:galilean_invariance} で移動界面＋表面張力（$\sigma > 0$）では
+IPC が 2 ステップで発散することを実証し，
 分相 PPE 解法による解決策を提示する．
 
 \noindent\textbf{本章のスコープ：}
