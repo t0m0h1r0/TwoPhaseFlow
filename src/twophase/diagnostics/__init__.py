@@ -12,6 +12,8 @@ from .interface_diagnostics import (
     find_interface_crossing,
 )
 
+from .collector import DiagnosticCollector
+
 __all__ = [
     "kinetic_energy",
     "kinetic_energy_periodic",
@@ -21,4 +23,5 @@ __all__ = [
     "interface_area",
     "parasitic_current_linf",
     "find_interface_crossing",
+    "DiagnosticCollector",
 ]

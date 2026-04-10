@@ -25,7 +25,7 @@ run:
   print_every: 500
 
 output:
-  dir: results/exp13_02
+  dir: results/exp13_01
   save_npz: true
   figures:
     - type: time_series

@@ -84,8 +84,9 @@ def _snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
     t_val = snap["t"]
 
     g = cfg.grid
-    X = np.linspace(0, g.LX, g.NX, endpoint=False) + g.LX / (2 * g.NX)
-    Y = np.linspace(0, g.LY, g.NY, endpoint=False) + g.LY / (2 * g.NY)
+    # Grid has NX+1 nodes (node-centred)
+    X = np.linspace(0, g.LX, g.NX + 1)
+    Y = np.linspace(0, g.LY, g.NY + 1)
 
     title = spec.get("title", f"ψ at t = {t_val:.3f}")
     xlabel = spec.get("xlabel", "x")
