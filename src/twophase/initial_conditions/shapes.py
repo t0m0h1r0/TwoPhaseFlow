@@ -312,6 +312,72 @@ class HalfSpace(ShapePrimitive):
 
 
 @dataclass
+class PerturbedCircle(ShapePrimitive):
+    """Circular region with a modal radial perturbation.
+
+    The boundary is defined as::
+
+        r(θ) = R₀ (1 + ε cos(l θ))
+
+    where ``l`` is the angular mode number.  The SDF is approximated as::
+
+        φ(x, y) = |x − c| − r(θ(x, y))
+
+    (valid when ε ≪ 1; sufficient for ε ≤ 0.1).
+
+    Parameters
+    ----------
+    center : sequence of float
+        Centre coordinates (cx, cy).
+    radius : float
+        Mean radius R₀.
+    epsilon : float
+        Perturbation amplitude ε (|ε| < 1).
+    mode : int
+        Angular mode number l ≥ 1.
+    interior_phase : str
+        'liquid' (default) or 'gas'.
+    """
+
+    center: tuple
+    radius: float
+    epsilon: float
+    mode: int
+    _interior_phase: str = field(default="liquid", repr=False)
+
+    def __init__(
+        self,
+        center,
+        radius: float,
+        epsilon: float = 0.05,
+        mode: int = 2,
+        interior_phase: str = "liquid",
+    ) -> None:
+        self.center = tuple(center)
+        self.radius = float(radius)
+        self.epsilon = float(epsilon)
+        self.mode = int(mode)
+        self._interior_phase = interior_phase
+        _validate_phase(interior_phase)
+
+    @property
+    def interior_phase(self) -> str:
+        return self._interior_phase
+
+    def sdf(self, *coords: np.ndarray) -> np.ndarray:
+        if len(coords) != 2:
+            raise ValueError("PerturbedCircle.sdf: only 2-D grids supported.")
+        X, Y = coords
+        cx, cy = self.center
+        dx = X - cx
+        dy = Y - cy
+        r = np.sqrt(dx ** 2 + dy ** 2)
+        theta = np.arctan2(dy, dx)
+        r_boundary = self.radius * (1.0 + self.epsilon * np.cos(self.mode * theta))
+        return r - r_boundary
+
+
+@dataclass
 class ZalesakDisk(ShapePrimitive):
     """Zalesak slotted disk (2-D): circle with a rectangular slot.
 
@@ -461,6 +527,15 @@ def shape_from_dict(d: dict) -> ShapePrimitive:
             interior_phase=phase,
         )
 
+    if shape_type == "perturbed_circle":
+        return PerturbedCircle(
+            center=d["center"],
+            radius=float(d["radius"]),
+            epsilon=float(d.get("epsilon", 0.05)),
+            mode=int(d.get("mode", 2)),
+            interior_phase=phase,
+        )
+
     if shape_type == "zalesak_disk":
         return ZalesakDisk(
             center=d["center"],
@@ -472,7 +547,8 @@ def shape_from_dict(d: dict) -> ShapePrimitive:
 
     raise ValueError(
         f"Unknown shape type '{shape_type}'. "
-        "Supported: 'circle', 'rectangle', 'half_space', 'sinusoidal_interface', 'zalesak_disk'."
+        "Supported: 'circle', 'rectangle', 'half_space', 'sinusoidal_interface', "
+        "'perturbed_circle', 'zalesak_disk'."
     )
 
 

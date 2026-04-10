@@ -1,0 +1,73 @@
+# §13.6 Two-bubble Drafting-Kissing-Tumbling (DKT)
+# Reference: Esmaeeli & Tryggvason (1998)
+# Physics: ρ_l/ρ_g=1000, Re=35, Eo=10 (same as §13.3 but two bubbles)
+# Two bubbles vertically aligned: centers at (1.0, 0.5) and (1.0, 1.1)
+
+grid:
+  NX:  64
+  NY: 256
+  LX: 2.0
+  LY: 8.0
+  bc_type: wall
+
+physics:
+  rho_l: 1000.0
+  rho_g:    1.0
+  g_acc:    1.0
+  Re:      35.0
+  Eo:      10.0
+  d_ref:    0.5     # bubble diameter
+  # Derived: σ ≈ 24.5, μ ≈ 10.12
+
+run:
+  T_final:    5.0
+  max_steps:  500000
+  cfl:        0.15
+  snap_times: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  print_every: 200
+
+output:
+  dir: results/exp13_06
+  save_npz: true
+  figures:
+    - type: snapshot
+      title: "Two-bubble DKT — t=0"
+      t_idx: 0
+      file: snapshot_t0.pdf
+
+    - type: snapshot
+      title: "Two-bubble DKT — final"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+    - type: time_series
+      title: "Volume conservation |ΔV|/V₀"
+      x: times
+      y: [volume_conservation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "|ΔV|/V₀"
+      yscale: log
+      file: volume_conservation.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - mean_rise_velocity
+
+initial_condition:
+  type: union
+  shapes:
+    - type: circle
+      center: [1.0, 0.5]
+      radius: 0.25
+      interior_phase: gas
+    - type: circle
+      center: [1.0, 1.1]
+      radius: 0.25
+      interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

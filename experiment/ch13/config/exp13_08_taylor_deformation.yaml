@@ -1,0 +1,79 @@
+# §13.8 Taylor droplet deformation in linear shear flow
+# Reference: Taylor (1932, 1934)
+# Physics: ρ_l = ρ_g = 1 (neutrally buoyant), Couette shear BC
+# Analytical: D_theory = (19λ+16)/(16λ+16) × Ca  (small-Ca limit)
+# Sweep: Ca ∈ {0.1, 0.2, 0.3, 0.4}, λ ∈ {1, 5} — controlled by run script
+
+grid:
+  NX: 128
+  NY: 128
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+
+physics:
+  rho_l: 1.0
+  rho_g: 1.0
+  g_acc: 0.0
+  mu_g:  0.1
+  # λ = 1 base case (mu_l = lambda_mu * mu_g)
+  lambda_mu: 1.0
+  # Ca = 0.2 base case; sigma = mu_g * gamma_dot * R / Ca
+  Ca:        0.2
+  gamma_dot: 2.0    # shear rate γ̇ = 2U/Ly with U=1, Ly=1
+  R_ref:     0.25   # droplet radius
+
+run:
+  T_final:    5.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  print_every: 200
+
+output:
+  dir: results/exp13_08
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Droplet deformation D(t)  (Ca=0.2, λ=1)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: taylor
+        Ca: 0.2
+        lambda_mu: 1.0
+      file: deformation_time.pdf
+
+    - type: snapshot
+      title: "Taylor deformation — final (Ca=0.2, λ=1)"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+    - type: deformation_comparison
+      title: "D vs. Ca  (λ=1)"
+      Ca_vals: [0.1, 0.2, 0.3, 0.4]
+      lambda_mu: 1.0
+      file: deformation_vs_Ca.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: liquid
+
+initial_velocity:
+  type: couette_shear
+  gamma_dot: 2.0
+  LY: 1.0
+
+boundary_condition:
+  type: couette
+  gamma_dot: 2.0

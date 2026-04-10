@@ -1,0 +1,294 @@
+"""Experiment configuration I/O for §13 benchmarks.
+
+``ExperimentConfig`` is the single source of truth for a config-driven
+simulation run.  It is loaded from YAML via :func:`load_experiment_config`.
+
+YAML top-level sections
+-----------------------
+grid            GridCfg      — grid geometry and resolution
+physics         PhysicsCfg   — fluid properties (direct or derived)
+run             RunCfg       — time integration parameters
+output          OutputCfg    — save paths and figure specs
+diagnostics     list[str]    — metrics to collect (see DiagnosticCollector)
+initial_condition  dict      — forwarded to InitialConditionBuilder
+initial_velocity   dict|null — forwarded to velocity_field_from_dict
+boundary_condition dict|null — BC type and parameters
+
+Derived physics
+---------------
+If the physics section includes non-dimensional parameters, they are
+resolved before constructing PhysicsCfg:
+
+    Re         → mu    = rho_l * sqrt(g_acc * d_ref) * d_ref / Re
+    Eo         → sigma = g_acc * (rho_l - rho_g) * d_ref**2 / Eo
+    Ca         → sigma = mu_g * gamma_dot * R_ref / Ca
+    lambda_mu  → mu_l  = lambda_mu * mu_g  (then mu = mu_g as fallback)
+"""
+
+from __future__ import annotations
+
+import copy
+import math
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+
+# ── sub-config classes ───────────────────────────────────────────────────────
+
+@dataclass
+class GridCfg:
+    NX: int = 64
+    NY: int = 64
+    LX: float = 1.0
+    LY: float = 1.0
+    bc_type: str = "wall"   # "wall" or "periodic"
+
+
+@dataclass
+class PhysicsCfg:
+    rho_l: float = 1.0
+    rho_g: float = 1.0
+    sigma: float = 0.0
+    mu: float = 0.01            # uniform viscosity (fallback)
+    mu_l: float | None = None   # liquid viscosity for variable-μ
+    mu_g: float | None = None   # gas   viscosity for variable-μ
+    g_acc: float = 0.0
+    rho_ref: float | None = None
+    # Derived-parameter cache (for override + re-resolution)
+    _lambda_mu: float | None = None  # mu_l / mu_g  (stored for override)
+
+    def with_lambda_mu(self, lambda_mu: float) -> "PhysicsCfg":
+        """Return a copy with mu_l = lambda_mu * mu_g applied."""
+        import copy
+        obj = copy.copy(self)
+        if obj.mu_g is not None:
+            object.__setattr__(obj, "mu_l", lambda_mu * obj.mu_g)
+        object.__setattr__(obj, "_lambda_mu", lambda_mu)
+        return obj
+
+
+@dataclass
+class RunCfg:
+    T_final: float | None = None
+    max_steps: int = 100_000
+    cfl: float = 0.15
+    snap_times: list = field(default_factory=list)
+    print_every: int = 100
+    dt_fixed: float | None = None
+
+
+@dataclass
+class OutputCfg:
+    dir: str = "results"
+    save_npz: bool = True
+    figures: list = field(default_factory=list)
+
+
+# ── master config ────────────────────────────────────────────────────────────
+
+@dataclass
+class ExperimentConfig:
+    """Complete experiment configuration.
+
+    Parameters
+    ----------
+    grid : GridCfg
+    physics : PhysicsCfg
+    run : RunCfg
+    output : OutputCfg
+    diagnostics : list of str
+    initial_condition : dict   forwarded to InitialConditionBuilder
+    initial_velocity : dict or None
+    boundary_condition : dict or None
+    """
+
+    grid: GridCfg = field(default_factory=GridCfg)
+    physics: PhysicsCfg = field(default_factory=PhysicsCfg)
+    run: RunCfg = field(default_factory=RunCfg)
+    output: OutputCfg = field(default_factory=OutputCfg)
+    diagnostics: list = field(default_factory=list)
+    initial_condition: dict = field(default_factory=dict)
+    initial_velocity: dict | None = None
+    boundary_condition: dict | None = None
+
+    # ── override support ─────────────────────────────────────────────────
+
+    def override(self, **kwargs) -> "ExperimentConfig":
+        """Return a shallow copy with top-level or nested fields replaced.
+
+        Supports dot-notation for one level of nesting::
+
+            cfg2 = cfg.override(**{"physics.rho_l": 500.0, "run.T_final": 5.0})
+
+        Special case: ``physics.lambda_mu`` triggers mu_l = lambda_mu × mu_g.
+        """
+        obj = copy.copy(self)
+        for key, val in kwargs.items():
+            if key == "physics.lambda_mu":
+                new_ph = obj.physics.with_lambda_mu(float(val))
+                object.__setattr__(obj, "physics", new_ph)
+            elif "." in key:
+                section, attr = key.split(".", 1)
+                sub = copy.copy(getattr(obj, section))
+                object.__setattr__(sub, attr, val)
+                object.__setattr__(obj, section, sub)
+            else:
+                object.__setattr__(obj, key, val)
+        return obj
+
+    # ── class-method loader ──────────────────────────────────────────────
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> "ExperimentConfig":
+        """Load from a YAML file."""
+        with open(path) as fh:
+            raw = yaml.safe_load(fh)
+        return _parse_raw(raw)
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "ExperimentConfig":
+        """Construct from a plain dict (already loaded from YAML)."""
+        return _parse_raw(raw)
+
+
+# ── convenience loader ───────────────────────────────────────────────────────
+
+def load_experiment_config(path: str | Path) -> ExperimentConfig:
+    """Load :class:`ExperimentConfig` from a YAML file."""
+    return ExperimentConfig.from_yaml(path)
+
+
+# ── parsing helpers ──────────────────────────────────────────────────────────
+
+def _parse_raw(raw: dict) -> ExperimentConfig:
+    grid = _parse_grid(raw.get("grid", {}))
+    physics = _parse_physics(raw.get("physics", {}))
+    run = _parse_run(raw.get("run", {}))
+    output = _parse_output(raw.get("output", {}))
+    return ExperimentConfig(
+        grid=grid,
+        physics=physics,
+        run=run,
+        output=output,
+        diagnostics=list(raw.get("diagnostics", [])),
+        initial_condition=dict(raw.get("initial_condition", {})),
+        initial_velocity=raw.get("initial_velocity") or None,
+        boundary_condition=raw.get("boundary_condition") or None,
+    )
+
+
+def _parse_grid(d: dict) -> GridCfg:
+    return GridCfg(
+        NX=int(d.get("NX", 64)),
+        NY=int(d.get("NY", 64)),
+        LX=float(d.get("LX", 1.0)),
+        LY=float(d.get("LY", 1.0)),
+        bc_type=str(d.get("bc_type", "wall")),
+    )
+
+
+def _parse_physics(d: dict) -> PhysicsCfg:
+    """Parse physics section, resolving derived parameters."""
+    rho_l = float(d.get("rho_l", 1.0))
+    rho_g = float(d.get("rho_g", 1.0))
+    g_acc = float(d.get("g_acc", 0.0))
+    rho_ref = _opt_float(d.get("rho_ref"))
+
+    # ── viscosity ─────────────────────────────────────────────────────
+    mu_g_raw = _opt_float(d.get("mu_g"))
+    mu_l_raw = _opt_float(d.get("mu_l"))
+    mu_raw   = _opt_float(d.get("mu"))
+
+    # Derived: lambda_mu = mu_l / mu_g
+    lambda_mu = _opt_float(d.get("lambda_mu"))
+    if lambda_mu is not None and mu_g_raw is not None:
+        mu_l_raw = lambda_mu * mu_g_raw
+
+    # Derived: Re = rho_l * sqrt(g * d_ref) * d_ref / mu
+    Re = _opt_float(d.get("Re"))
+    d_ref = _opt_float(d.get("d_ref"))
+    if Re is not None and d_ref is not None and g_acc > 0.0:
+        mu_derived = rho_l * math.sqrt(g_acc * d_ref) * d_ref / Re
+        if mu_raw is None:
+            mu_raw = mu_derived
+        if mu_g_raw is None:
+            mu_g_raw = mu_derived
+        if mu_l_raw is None:
+            mu_l_raw = mu_derived
+
+    # Fallback: mu = mu_g = mu_l if only one is given
+    if mu_raw is None:
+        if mu_g_raw is not None:
+            mu_raw = mu_g_raw
+        elif mu_l_raw is not None:
+            mu_raw = mu_l_raw
+        else:
+            mu_raw = 0.01  # last-resort default
+
+    if mu_g_raw is None and mu_l_raw is None:
+        # uniform viscosity — leave both None so variable-μ path is skipped
+        pass
+    elif mu_g_raw is None:
+        mu_g_raw = mu_raw
+    elif mu_l_raw is None:
+        mu_l_raw = mu_raw
+
+    # ── surface tension ───────────────────────────────────────────────
+    sigma_raw = _opt_float(d.get("sigma"))
+
+    # Derived: Eo = g * (rho_l - rho_g) * d_ref**2 / sigma
+    Eo = _opt_float(d.get("Eo"))
+    if Eo is not None and d_ref is not None and g_acc > 0.0:
+        sigma_raw = g_acc * (rho_l - rho_g) * d_ref ** 2 / Eo
+
+    # Derived: Ca = mu_g * gamma_dot * R_ref / sigma
+    Ca = _opt_float(d.get("Ca"))
+    R_ref = _opt_float(d.get("R_ref")) or (d_ref / 2.0 if d_ref else None)
+    gamma_dot = _opt_float(d.get("gamma_dot"))
+    if Ca is not None and mu_g_raw is not None and gamma_dot is not None and R_ref is not None:
+        sigma_raw = mu_g_raw * gamma_dot * R_ref / Ca
+
+    if sigma_raw is None:
+        sigma_raw = 0.0
+
+    return PhysicsCfg(
+        rho_l=rho_l,
+        rho_g=rho_g,
+        sigma=sigma_raw,
+        mu=mu_raw,
+        mu_l=mu_l_raw,
+        mu_g=mu_g_raw,
+        g_acc=g_acc,
+        rho_ref=rho_ref,
+    )
+
+
+def _parse_run(d: dict) -> RunCfg:
+    snap_raw = d.get("snap_times", [])
+    if snap_raw is None:
+        snap_raw = []
+    return RunCfg(
+        T_final=_opt_float(d.get("T_final")),
+        max_steps=int(d.get("max_steps", 100_000)),
+        cfl=float(d.get("cfl", 0.15)),
+        snap_times=[float(x) for x in snap_raw],
+        print_every=int(d.get("print_every", 100)),
+        dt_fixed=_opt_float(d.get("dt_fixed")),
+    )
+
+
+def _parse_output(d: dict) -> OutputCfg:
+    return OutputCfg(
+        dir=str(d.get("dir", "results")),
+        save_npz=bool(d.get("save_npz", True)),
+        figures=list(d.get("figures", [])),
+    )
+
+
+def _opt_float(val: Any) -> float | None:
+    if val is None:
+        return None
+    return float(val)

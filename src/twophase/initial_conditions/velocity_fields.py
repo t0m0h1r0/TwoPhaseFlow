@@ -193,6 +193,97 @@ class DoubleShearLayer(VelocityField):
         return (u, v)
 
 
+class CouetteShear(VelocityField):
+    """Linear Couette shear velocity field (2-D).
+
+    Velocity field::
+
+        u(x, y) = γ̇ (y − y_mid)
+        v(x, y) = 0
+
+    where ``y_mid = LY / 2`` (domain mid-plane) and ``γ̇ = gamma_dot``.
+    This drives u = −U at y = 0 and u = +U at y = LY with U = γ̇ LY / 2.
+
+    Parameters
+    ----------
+    gamma_dot : float
+        Shear rate γ̇  (1/time).
+    LY : float
+        Domain height (used to compute y_mid).
+    """
+
+    def __init__(self, gamma_dot: float, LY: float) -> None:
+        self.gamma_dot = float(gamma_dot)
+        self.LY = float(LY)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> tuple:
+        if len(coords) != 2:
+            raise ValueError("CouetteShear.compute: only 2-D grids supported.")
+        X, Y = coords
+        y_mid = 0.5 * self.LY
+        u = self.gamma_dot * (Y - y_mid)
+        v = np.zeros_like(Y)
+        return (u, v)
+
+
+class DropletPairApproach(VelocityField):
+    """Opposing-velocity field for a head-on two-droplet collision (2-D).
+
+    Each droplet is given a uniform velocity directed toward the domain
+    centre along the x-axis.  The droplet phase masks are determined
+    from the ψ field (ψ < 0.5 = gas) passed via :meth:`compute_with_psi`.
+
+    Parameters
+    ----------
+    U0 : float
+        Approach speed (magnitude); droplet on the left gets +U0,
+        droplet on the right gets −U0.
+    axis : int
+        Axis of approach: 0 = x (default), 1 = y.
+    cx : float
+        Domain centre x-coordinate (used to split left/right).
+    cy : float
+        Domain centre y-coordinate (used when axis=1).
+    """
+
+    def __init__(
+        self,
+        U0: float,
+        axis: int = 0,
+        cx: float = 0.5,
+        cy: float = 0.5,
+    ) -> None:
+        self.U0 = float(U0)
+        self.axis = int(axis)
+        self.cx = float(cx)
+        self.cy = float(cy)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> tuple:
+        """Return zero velocity (use compute_with_psi for proper ICs)."""
+        return tuple(np.zeros_like(c) for c in coords)
+
+    def compute_with_psi(
+        self, X: np.ndarray, Y: np.ndarray, psi: np.ndarray
+    ) -> tuple:
+        """Assign ±U0 to gas-phase cells based on which side of domain centre they are on.
+
+        Parameters
+        ----------
+        X, Y : ndarray   grid coordinates
+        psi : ndarray    CLS field (ψ < 0.5 = gas bubble/droplet)
+        """
+        gas = psi < 0.5
+        u = np.zeros_like(X)
+        v = np.zeros_like(Y)
+        if self.axis == 0:
+            u[gas & (X < self.cx)] = +self.U0
+            u[gas & (X >= self.cx)] = -self.U0
+        else:
+            v[gas & (Y < self.cy)] = +self.U0
+            v[gas & (Y >= self.cy)] = -self.U0
+        return (u, v)
+
+
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────
 
 def velocity_field_from_dict(d: dict) -> VelocityField:
@@ -246,7 +337,22 @@ def velocity_field_from_dict(d: dict) -> VelocityField:
             eps=float(d.get("eps", 0.05)),
         )
 
+    if field_type == "couette_shear":
+        return CouetteShear(
+            gamma_dot=float(d["gamma_dot"]),
+            LY=float(d["LY"]),
+        )
+
+    if field_type == "droplet_pair_approach":
+        return DropletPairApproach(
+            U0=float(d["U0"]),
+            axis=int(d.get("axis", 0)),
+            cx=float(d.get("cx", 0.5)),
+            cy=float(d.get("cy", 0.5)),
+        )
+
     raise ValueError(
         f"Unknown velocity_field type '{field_type}'. "
-        "Supported: 'rigid_rotation', 'uniform', 'single_vortex', 'double_shear_layer'."
+        "Supported: 'rigid_rotation', 'uniform', 'single_vortex', 'double_shear_layer', "
+        "'couette_shear', 'droplet_pair_approach'."
     )

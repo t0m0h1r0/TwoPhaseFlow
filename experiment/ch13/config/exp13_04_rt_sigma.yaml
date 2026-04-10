@@ -1,0 +1,71 @@
+# §13.4 Rayleigh-Taylor instability with surface tension (σ sweep)
+# Reference: Tryggvason (1988)
+# Physics: ρ_l=3, ρ_g=1, μ=0.01, g=1; k=2π mode
+# σ sweep: {0.0, 0.02, 0.05} — controlled by run script via override
+# k_c = sqrt(g*(ρ_l−ρ_g)/σ); theoretical growth rate ω² = gk(ρ_l−ρ_g)/(ρ_l+ρ_g) − σk³/(ρ_l+ρ_g)
+
+grid:
+  NX:  64
+  NY: 256
+  LX: 1.0
+  LY: 4.0
+  bc_type: wall
+
+physics:
+  rho_l: 3.0
+  rho_g: 1.0
+  sigma: 0.0       # overridden in sweep
+  mu:    0.01
+  g_acc: 1.0
+
+run:
+  T_final:    3.0
+  max_steps:  500000
+  cfl:        0.15
+  snap_times: [0.0, 1.0, 2.0, 3.0]
+  print_every: 200
+
+output:
+  dir: results/exp13_04
+  save_npz: true
+  figures:
+    - type: snapshot
+      title: "RT instability — t=0 (σ=0)"
+      t_idx: 0
+      file: snapshot_t0.pdf
+
+    - type: snapshot
+      title: "RT instability — t=3 (σ=0)"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+    - type: time_series
+      title: "Interface amplitude η(t)"
+      x: times
+      y: [interface_amplitude]
+      labels: ["σ=0 (sim)"]
+      xlabel: "t"
+      ylabel: "η = max |y_int − y_mid|"
+      analytical:
+        formula: rt_exponential
+        omega: 0.707   # sqrt(g*k*(ρ_l-ρ_g)/(ρ_l+ρ_g)) at σ=0
+        eta0: 0.05
+      file: rt_growth.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - interface_amplitude
+
+initial_condition:
+  type: sinusoidal_interface
+  axis: 1
+  mean: 2.0
+  amplitude: 0.05
+  wavelength: 1.0
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
