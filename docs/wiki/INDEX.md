@@ -1,4 +1,4 @@
-# Wiki Index — 82 entries
+# Wiki Index — 83 entries
 
 ## Theory (32)
 
@@ -86,12 +86,13 @@
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 
-## Meta (2)
+## Meta (3)
 
 | REF-ID | Title |
 |--------|-------|
 | [WIKI-M-001](meta/WIKI-M-001.md) | Agent Meta System: v5.1 Concurrency-Aware Worktree Model |
 | [WIKI-M-002](meta/WIKI-M-002.md) | Agent Meta System: v4.1 3-Pillar Protocol (Schema-in-Code + CoVe + JIT) |
+| [WIKI-M-003](meta/WIKI-M-003.md) | Agent Meta System: v5.2 LLM-Specific Hardening (AP-09/10 + Two-Path Gate + Structural Enforcement) |
 
 ## Code (15)
 
