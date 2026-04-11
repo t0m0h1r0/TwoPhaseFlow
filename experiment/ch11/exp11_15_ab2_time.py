@@ -14,6 +14,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
+from twophase.backend import Backend
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -25,7 +26,14 @@ OUT = experiment_dir(__file__)
 
 
 def ab2_ode_test():
-    T = 1.0; q_exact = np.exp(-T)
+    # Scalar ODE dq/dt = -q with Backend() for opt-in symmetry — the inner
+    # loop is Python-float arithmetic (no arrays), so CPU and GPU backends
+    # are bit-identical; Backend() presence just aligns this script with the
+    # rest of ch11 for GPU opt-in tracking.
+    backend = Backend()
+    xp = backend.xp
+    T = 1.0
+    q_exact = float(xp.exp(xp.asarray(-T)))
     n_list = [16, 32, 64, 128, 256, 512]
     results = []
 

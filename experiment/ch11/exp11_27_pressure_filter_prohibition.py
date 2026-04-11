@@ -32,14 +32,14 @@ OUT = experiment_dir(__file__)
 
 # ── Manufactured fields ─────────────────────────────────────────────────────
 
-def manufactured_pressure(X, Y):
+def manufactured_pressure(xp, X, Y):
     """p(x,y) = sin(2*pi*x) * sin(2*pi*y)."""
-    return np.sin(2 * np.pi * X) * np.sin(2 * np.pi * Y)
+    return xp.sin(2 * np.pi * X) * xp.sin(2 * np.pi * Y)
 
 
-def exact_laplacian_p(X, Y):
+def exact_laplacian_p(xp, X, Y):
     """Exact: nabla^2 p = -8*pi^2 * sin(2*pi*x) * sin(2*pi*y)."""
-    return -8.0 * np.pi**2 * np.sin(2 * np.pi * X) * np.sin(2 * np.pi * Y)
+    return -8.0 * np.pi**2 * xp.sin(2 * np.pi * X) * xp.sin(2 * np.pi * Y)
 
 
 # ── DCCD 3-point filter ────────────────────────────────────────────────────
@@ -76,7 +76,8 @@ def run_benchmark():
     dt = 1.0  # dt cancels in the ratio, arbitrary
 
     results = {"N": N_values, "eps_d": eps_d_values}
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
 
     for eps_d in eps_d_values:
         linf_list = []
@@ -89,9 +90,9 @@ def run_benchmark():
             X, Y = grid.meshgrid()
 
             # Manufactured pressure
-            p = manufactured_pressure(X, Y)
+            p = manufactured_pressure(xp, X, Y)
 
-            # DCCD-filtered pressure
+            # DCCD-filtered pressure (pure slice+broadcast ops, xp-native)
             p_filt = dccd_filter_2d(p, eps_d)
 
             # CCD Laplacians: nabla^2 p and nabla^2 p_filt
@@ -105,12 +106,12 @@ def run_benchmark():
 
             # Divergence error = (1/dt)(lap_p - lap_pf) in corrected velocity
             # Since dt=1, divergence error = lap_p - lap_pf
-            div_err = np.abs(lap_p - lap_pf)
+            div_err = xp.abs(lap_p - lap_pf)
 
             # Exclude periodic-image boundary row/col for clean interior norms
             interior = div_err[1:-1, 1:-1]
-            linf = float(np.max(interior))
-            l2 = float(np.sqrt(np.mean(interior**2)))
+            linf = float(xp.max(interior))
+            l2 = float(xp.sqrt(xp.mean(interior**2)))
 
             linf_list.append(linf)
             l2_list.append(l2)
@@ -118,11 +119,12 @@ def run_benchmark():
             print(f"  eps_d={eps_d:.2f}, N={N:>4}: "
                   f"||div_err||_inf={linf:.4e}, ||div_err||_2={l2:.4e}")
 
-            # Store 2D error field for contour plot (N=64, eps_d=0.25)
+            # Store 2D error field for contour plot (N=64, eps_d=0.25).
+            # Host-convert so load_results/plot don't need a GPU to render.
             if N == 64 and eps_d == 0.25:
-                results["contour_X"] = X
-                results["contour_Y"] = Y
-                results["contour_div_err"] = div_err
+                results["contour_X"] = backend.to_host(X)
+                results["contour_Y"] = backend.to_host(Y)
+                results["contour_div_err"] = backend.to_host(div_err)
 
         results[f"linf_eps{eps_d}"] = linf_list
         results[f"l2_eps{eps_d}"] = l2_list
@@ -135,14 +137,14 @@ def run_benchmark():
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="periodic")
         X, Y = grid.meshgrid()
-        p = manufactured_pressure(X, Y)
-        lap_exact = exact_laplacian_p(X, Y)
+        p = manufactured_pressure(xp, X, Y)
+        lap_exact = exact_laplacian_p(xp, X, Y)
 
         _, d2px = ccd.differentiate(p, axis=0)
         _, d2py = ccd.differentiate(p, axis=1)
         lap_ccd = d2px + d2py
 
-        err = float(np.max(np.abs(lap_ccd[1:-1, 1:-1] - lap_exact[1:-1, 1:-1])))
+        err = float(xp.max(xp.abs(lap_ccd[1:-1, 1:-1] - lap_exact[1:-1, 1:-1])))
         linf_ccd.append(err)
         print(f"    N={N:>4}: ||lap_ccd - lap_exact||_inf = {err:.4e}")
 
