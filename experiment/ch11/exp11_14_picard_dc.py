@@ -24,8 +24,6 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
@@ -80,7 +78,7 @@ def eval_coupling(p, rho, drho_x, drho_y, ccd, backend):
 
 # ── FD matrices ────────────────────────────────────────────────────────────
 
-def build_fd_laplacian_only(rho, h, N, pin_dof):
+def build_fd_laplacian_only(rho, h, N, pin_dof, backend):
     """FD for (1/ρ)Δp — NO ∇ρ terms."""
     nx = ny = N + 1; n = nx * ny
     rows, cols, vals = [], [], []
@@ -107,10 +105,10 @@ def build_fd_laplacian_only(rho, h, N, pin_dof):
     cols_p = [c for c, m in zip(cols, pin_mask) if m]
     vals_p = [v for v, m in zip(vals, pin_mask) if m]
     rows_p.append(pin_dof); cols_p.append(pin_dof); vals_p.append(1.0)
-    return sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
+    return backend.sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
 
 
-def build_fd_full(rho, drho_x, drho_y, h, N, pin_dof):
+def build_fd_full(rho, drho_x, drho_y, h, N, pin_dof, backend):
     """FD for full (1/ρ)Δp - (1/ρ²)(∇ρ·∇p) — for baseline DC."""
     nx = ny = N + 1; n = nx * ny
     rows, cols, vals = [], [], []
@@ -138,7 +136,7 @@ def build_fd_full(rho, drho_x, drho_y, h, N, pin_dof):
     cols_p = [c for c, m in zip(cols, pin_mask) if m]
     vals_p = [v for v, m in zip(vals, pin_mask) if m]
     rows_p.append(pin_dof); cols_p.append(pin_dof); vals_p.append(1.0)
-    return sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
+    return backend.sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
 
 
 # ── Solvers ────────────────────────────────────────────────────────────────
@@ -146,7 +144,8 @@ def build_fd_full(rho, drho_x, drho_y, h, N, pin_dof):
 def dc_lu_baseline(rhs, rho, drho_x, drho_y, ccd, backend, h, N,
                    tol, maxiter, pin_dof, omega):
     """Standard DC+LU (exp11_13 baseline)."""
-    L_FD = build_fd_full(rho, drho_x, drho_y, h, N, pin_dof)
+    spsolve = backend.sparse_linalg.spsolve
+    L_FD = build_fd_full(rho, drho_x, drho_y, h, N, pin_dof, backend)
     p = np.zeros_like(rhs); residuals = []
     for k in range(maxiter):
         Lp = eval_LH_full(p, rho, drho_x, drho_y, ccd, backend)
@@ -159,7 +158,9 @@ def dc_lu_baseline(rhs, rho, drho_x, drho_y, ccd, backend, h, N,
             return p, residuals, k + 1, "divg"
         if k >= 10 and residuals[-10] > 0 and res / residuals[-10] > 0.99:
             return p, residuals, k + 1, "stag"
-        dp = spsolve(L_FD, d.ravel()).reshape(rhs.shape)
+        dp = np.asarray(backend.to_host(
+            spsolve(L_FD, backend.xp.asarray(d.ravel()))
+        )).reshape(rhs.shape)
         p = p + omega * dp; p.ravel()[pin_dof] = 0.0
     return p, residuals, maxiter, "stag"
 
@@ -177,7 +178,8 @@ def picard_dc(rhs, rho, drho_x, drho_y, ccd, backend, h, N,
     beta : float
         Outer Picard under-relaxation (1.0 = no relaxation).
     """
-    L_FD_lap = build_fd_laplacian_only(rho, h, N, pin_dof)
+    spsolve = backend.sparse_linalg.spsolve
+    L_FD_lap = build_fd_laplacian_only(rho, h, N, pin_dof, backend)
     p = np.zeros_like(rhs)
     residuals = []
     total_evals = 0
@@ -208,7 +210,9 @@ def picard_dc(rhs, rho, drho_x, drho_y, ccd, backend, h, N,
             Ap = eval_LH_laplacian(p_inner, rho, ccd, backend)
             total_evals += 1
             d_inner = inner_rhs - Ap; d_inner.ravel()[pin_dof] = 0.0
-            dp = spsolve(L_FD_lap, d_inner.ravel()).reshape(rhs.shape)
+            dp = np.asarray(backend.to_host(
+                spsolve(L_FD_lap, backend.xp.asarray(d_inner.ravel()))
+            )).reshape(rhs.shape)
             p_inner = p_inner + omega_inner * dp
             p_inner.ravel()[pin_dof] = 0.0
 
@@ -222,7 +226,7 @@ def picard_dc(rhs, rho, drho_x, drho_y, ccd, backend, h, N,
 # ── Experiment ─────────────────────────────────────────────────────────────
 
 def run_experiment():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     density_ratios = [1, 2, 5, 10, 50, 100, 1000]
     betas = [0.05, 0.1, 0.3, 0.5, 0.7, 1.0]
     grid_sizes = [32, 64]
@@ -238,7 +242,10 @@ def run_experiment():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
-        xp = backend.xp; X, Y = grid.meshgrid()
+        xp = backend.xp
+        X_dev, Y_dev = grid.meshgrid()
+        X = np.asarray(backend.to_host(X_dev))
+        Y = np.asarray(backend.to_host(Y_dev))
         p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
         pin_dof = (N // 2) * (N + 1) + (N // 2)
         phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25

@@ -328,6 +328,9 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         psi_new : updated ψ array, clipped to [0, 1]
         """
         xp = self.xp
+        # Ensure inputs are on the correct device (no-op on CPU; host→device on GPU).
+        psi = xp.asarray(psi)
+        velocity_components = [xp.asarray(vc) for vc in velocity_components]
 
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)

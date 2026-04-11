@@ -41,7 +41,8 @@ class UnifiedDCCDReinitializer(IReinitializer):
 
     def reinitialize(self, psi):
         xp = self.xp
-        q = xp.copy(psi)
+        # Ensure psi is on the correct device (no-op on CPU).
+        q = xp.asarray(psi).copy()
         dV = self._dV
         M_old = xp.sum(q * dV)
 

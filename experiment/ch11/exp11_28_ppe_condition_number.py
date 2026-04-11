@@ -13,7 +13,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy import sparse
+from twophase.backend import Backend
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -39,10 +39,11 @@ def density_field(N, h, rho_l, rho_g):
 
 # -- FVM Laplacian assembly ----------------------------------------------------
 
-def assemble_fvm_laplacian(N, rho, h):
+def assemble_fvm_laplacian(N, rho, h, backend):
     """Assemble 2D variable-density FVM Laplacian with Neumann BC + center gauge.
 
     Operator: nabla . (1/rho nabla p), discretised with harmonic-mean face coeff.
+    Matrix is assembled on host (Python lists) then converted to backend sparse.
     """
     n_total = (N + 1) ** 2
     rows, cols, vals = [], [], []
@@ -81,21 +82,24 @@ def assemble_fvm_laplacian(N, rho, h):
 
             rows.append(node); cols.append(node); vals.append(diag)
 
-    L = sparse.csr_matrix((vals, (rows, cols)), shape=(n_total, n_total))
+    import scipy.sparse as _sp_sparse  # always CPU for assembly
+    L_cpu = _sp_sparse.csr_matrix((vals, (rows, cols)), shape=(n_total, n_total))
 
-    # Gauge fix: pin center node
+    # Gauge fix: pin center node (on CPU lil for indexed assignment)
     center = idx(N // 2, N // 2)
-    L = L.tolil()
-    L[center, :] = 0
-    L[center, center] = 1.0
-    L = L.tocsr()
+    L_lil = L_cpu.tolil()
+    L_lil[center, :] = 0
+    L_lil[center, center] = 1.0
+    L_cpu = L_lil.tocsr()
 
-    return L
+    # Convert to backend sparse (no-op on CPU; moves to device on GPU)
+    return backend.sparse.csr_matrix(L_cpu)
 
 
 # -- Benchmark -----------------------------------------------------------------
 
 def run_benchmark():
+    backend = Backend()
     Ns = [8, 16, 32, 64]
     rho_ratios = [1, 10, 100, 1000]
     results = []
@@ -117,10 +121,10 @@ def run_benchmark():
         for rr in rho_ratios:
             rho_l, rho_g = float(rr), 1.0
             rho = density_field(N, h, rho_l, rho_g)
-            L = assemble_fvm_laplacian(N, rho, h)
+            L = assemble_fvm_laplacian(N, rho, h, backend)
 
-            # Condition number (dense for small matrices)
-            L_dense = L.toarray()
+            # Condition number (dense for small matrices); always on host
+            L_dense = np.asarray(backend.to_host(L.toarray()))
             cond = float(np.linalg.cond(L_dense))
             row_data[f"cond_{rr}"] = cond
             line += f"  {cond:>12.2e}"
