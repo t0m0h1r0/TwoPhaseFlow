@@ -71,6 +71,11 @@ $N$ & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{
         （$\alpha = 4$，リビルドなし）と対照的であり，
         毎ステップの格子リビルドにより格子が常に界面に整合するため，
         CCD の離散化誤差が低減されると考えられる．
+        なお $\alpha = 1$（一様格子）で寄生電流が
+        $N = 48 \to 64$ で非単調に増大する挙動（$1.9 \times 10^{-1} \to 9.5 \times 10^{-1}$）は，
+        §~\ref{sec:bf_static_droplet} で観察された FD-PPE（$\Ord{h^2}$）と
+        CCD 圧力勾配（$\Ord{h^6}$）の間の投影不整合が高解像度で顕在化する現象と整合する
+        （§~\ref{sec:ppe_discretization_choice} 参照）．
   \item \textbf{質量保存の劇的改善：}
         $\alpha = 2$ の質量誤差は $\alpha = 1$ の 100--300 倍良好であった
         （$N = 64$: $2.6 \times 10^{-7}$ vs $9.6 \times 10^{-5}$）．
