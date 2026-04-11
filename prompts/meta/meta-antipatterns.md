@@ -27,6 +27,7 @@ designed to be self-checkable within a single turn.
 # § ANTI-PATTERN CATALOGUE
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-01" version="5.1.0" axiom_refs="phi1,A3">
 ## AP-01: Reviewer Hallucination
 
 **Summary:** Reviewer reports an error that does not exist in the actual artifact.
@@ -49,8 +50,11 @@ from cached or partial context.
 trust in the review process.
 
 **Inject:** PaperReviewer, ConsistencyAuditor, TheoryAuditor, PromptAuditor, ResultAuditor
+<see_also>meta-roles.md §COVE MANDATE, AP-03, AP-05</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-02" version="5.1.0" axiom_refs="phi5,A4">
 ## AP-02: Scope Creep Through Helpfulness
 
 **Summary:** Agent modifies files or adds improvements beyond what was dispatched.
@@ -75,8 +79,11 @@ introduce bugs that no test covers (because the test was designed for the dispat
 
 **Inject:** CodeArchitect, CodeCorrector, CodeReviewer, PaperWriter, PaperCorrector,
 RefactorExpert, LogicImplementer
+<see_also>meta-core.md §φ2 Minimal Footprint, meta-core.md §A4 Separation</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-03" version="5.1.0" axiom_refs="phi1,A3,A6">
 ## AP-03: Verification Theater
 
 **Summary:** Agent claims to have verified something without actually performing
@@ -103,8 +110,11 @@ This is the single most dangerous anti-pattern because it silently disables the 
 
 **Inject:** ConsistencyAuditor, TheoryAuditor, PaperReviewer, TestRunner,
 ExperimentRunner, ResultAuditor, CodeWorkflowCoordinator
+<see_also>meta-roles.md §COVE MANDATE, meta-ops.md §HAND-03 check 6 (Phantom Reasoning Guard)</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-04" version="5.1.0" axiom_refs="phi5,A8,A6">
 ## AP-04: Gate Paralysis
 
 **Summary:** Gatekeeper repeatedly rejects deliverables without enabling progress,
@@ -132,8 +142,11 @@ wastes tokens on repeated cycles that produce no new information.
 
 **Inject:** ConsistencyAuditor, TheoryAuditor, CodeWorkflowCoordinator,
 PaperWorkflowCoordinator, PaperReviewer, PromptAuditor
+<see_also>meta-workflow.md §AUDIT EXIT CRITERIA, STOP-07 (MAX_REVIEW_ROUNDS)</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-05" version="5.1.0" axiom_refs="phi1,A5,A3">
 ## AP-05: Convergence Fabrication
 
 **Summary:** Agent reports numerical results (convergence rates, error norms, slopes)
@@ -161,8 +174,11 @@ through the entire T-L-E-A pipeline and may end up in the published paper.
 
 **Inject:** TestRunner, ExperimentRunner, ResultAuditor, VerificationRunner,
 ConsistencyAuditor, SimulationAnalyst
+<see_also>meta-core.md §A5 Solver Purity, meta-ops.md §EXP-01, §TEST-01</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-06" version="5.1.0" axiom_refs="phi4,A2,A4">
 ## AP-06: Context Contamination via Summary
 
 **Summary:** Downstream agent receives a natural-language summary of an upstream agent's
@@ -189,8 +205,11 @@ framing into the Auditor's context. The Auditor no longer derives independently.
 
 **Inject:** ConsistencyAuditor, TheoryAuditor, PaperReviewer, ResultAuditor,
 CodeWorkflowCoordinator, PaperWorkflowCoordinator
+<see_also>meta-ops.md §HAND-03 check 6, meta-experimental.md §L0-L3 Isolation Levels</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-07" version="5.1.0" axiom_refs="phi7,A4">
 ## AP-07: Premature Classification
 
 **Summary:** Agent classifies an error or issue without sufficient evidence, then
@@ -217,8 +236,11 @@ agent/domain, wasting a full pipeline cycle before the error is discovered.
 
 **Inject:** CodeCorrector, ErrorAnalyzer, ConsistencyAuditor, PaperReviewer,
 CodeWorkflowCoordinator
+<see_also>meta-core.md §φ7 Classification Precedes Action</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-08" version="5.1.0" axiom_refs="phi4,A2">
 ## AP-08: Phantom State Tracking
 
 **Summary:** Agent relies on in-context memory of mutable state (branch name, loop
@@ -245,6 +267,8 @@ counter was not externalized.
 exceeded MAX_REVIEW_ROUNDS without escalation; wrong file assumption = missing artifact.
 
 **Inject:** ALL agents (universal anti-pattern)
+<see_also>meta-core.md §φ4 Stateless Agents, §A2 External Memory First</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § INJECTION RULES FOR EnvMetaBootstrapper

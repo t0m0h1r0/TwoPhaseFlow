@@ -4,6 +4,17 @@
 # ABSTRACT LAYER — micro-agent definitions extracted from meta-workflow.md and meta-roles.md.
 # FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 
+<meta_section id="META-EXPERIMENTAL" version="5.1.0" axiom_refs="phi4,phi5,phi6,A2,A4">
+<purpose>Micro-agent architecture + hierarchical L0–L3 isolation policy + Directory-Driven Authorization (DDA). Constitutional-adjacent: L0–L3 levels are referenced by every Coordinator dispatch decision.</purpose>
+<authority>Coordinators (ResearchArchitect, TaskPlanner, CodeWorkflowCoordinator, PaperWorkflowCoordinator) consult this file to determine the isolation level for each HAND-01. Micro-agents (EquationDeriver, SpecWriter, LogicImplementer, etc.) inherit their SCOPE + CONTEXT_LIMIT from here.</authority>
+<rules>
+- MUST NOT modify the L0–L3 definitions without a CHK-tracked MetaEvolutionArchitect session (constitutional).
+- MUST use L3 for cross-domain handoffs and AU2 verification.
+- MUST NOT invent new isolation levels beyond L0–L3 (closed set).
+- DDA enforcement is atomic — one micro-agent = one directory = one operation (see §DIRECTORY-DRIVEN AUTHORIZATION).
+</rules>
+<see_also>meta-core.md §B (Broken Symmetry), meta-ops.md §HAND-03 check 7, meta-persona.md §ATOMIC MICRO-AGENT PROFILES, meta-roles.md §MATRIX ROLE PAIRS</see_also>
+
 ────────────────────────────────────────────────────────
 # § HIERARCHICAL ISOLATION POLICY
 
@@ -227,3 +238,4 @@ The tool wrapper intercepts reads/writes outside the agent's declared SCOPE and 
 | Specialist | TestDesigner | GIT-SP |
 | Specialist | VerificationRunner | GIT-SP, TEST-01, EXP-01, EXP-02 |
 | Specialist | ResultAuditor | GIT-SP, AUDIT-01, AUDIT-02 |
+</meta_section>

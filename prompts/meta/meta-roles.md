@@ -10,7 +10,15 @@
 # See meta-ops.md §HAND-03. This applies unconditionally — it is not repeated per agent.
 
 ────────────────────────────────────────────────────────
+<meta_section id="SCHEMA-IN-CODE" version="5.1.0" axiom_refs="A8,phi6" immutable="true">
 # § SCHEMA-IN-CODE — HandoffEnvelope Type Definitions (SSoT)
+
+<purpose>Single Source of Truth for the HandoffEnvelope and its three payload shapes. Part of STOP-02 Immutable Zone when read as a constitutional contract (φ6 Single Source).</purpose>
+<authority>Authoritative for every agent that emits or receives a HAND token. NO external `schemas/*.json` file may be loaded at runtime (FORBIDDEN by meta-deploy.md §FORBIDDEN directory).</authority>
+
+<tool_declaration name="emit_hand01" input="Hand01Payload" output="HandoffEnvelope" idempotent="false" handoff_type="HAND-01"/>
+<tool_declaration name="emit_hand02" input="Hand02Payload" output="HandoffEnvelope" idempotent="false" handoff_type="HAND-02"/>
+<tool_declaration name="run_hand03" input="HandoffEnvelope" output="Hand03Payload" idempotent="true" handoff_type="HAND-03"/>
 
 All HAND-01 / HAND-02 / HAND-03 tokens MUST conform to the following TypeScript interfaces.
 No external JSON schema file is required — this section IS the canonical schema definition.
@@ -71,8 +79,20 @@ schema-invalid. Under `concurrency_profile == "worktree"`: schema-invalid token 
 Under `legacy`: schema-invalid → STOP-SOFT during v5.0→v5.1 transition; target is full REJECT.
 No external schema file (`schemas/hand_schema.json`) is loaded at runtime — this section is the SSoT.
 
+<see_also>meta-ops.md §HAND-01, §HAND-02, §HAND-03, meta-deploy.md §FORBIDDEN directory, meta-roles.md §COVE MANDATE</see_also>
+</meta_section>
+
 ────────────────────────────────────────────────────────
+<meta_section id="COVE-MANDATE" version="5.1.0" axiom_refs="A3,A6,phi1,phi7">
 # § COVE MANDATE — Chain-of-Verification (Mandatory for ALL Specialist roles)
+
+<purpose>Mandatory post-production self-verification. Runs INSIDE the EXECUTE phase, AFTER artifact generation and BEFORE HAND-02 emission.</purpose>
+<authority>Every Specialist role (TheoryArchitect, CodeArchitect, CodeCorrector, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, DevOpsArchitect, KnowledgeArchitect, Librarian, TraceabilityManager, and all Micro-Agent Specialists). Non-negotiable.</authority>
+<thought_process optional="false">
+  Q1 (logical): internal contradictions? unsound derivations? numerically inconsistent?
+  Q2 (axiom): A1–A11 / SOLID / P1–P4 compliance? is the check surfacing a real axiom engagement or generic language?
+  Q3 (scope): does the artifact satisfy the binding IF-AGREEMENT `outputs` field exactly?
+</thought_process>
 
 **Applies to:** TheoryArchitect, CodeArchitect, CodeCorrector, TestRunner, ExperimentRunner,
 SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, DevOpsArchitect,
@@ -109,6 +129,17 @@ tokens where the CoVe summary contains generic language not tied to the specific
 **Integration with P-E-V-A:** CoVe runs inside the EXECUTE phase, immediately before HAND-02.
 It does NOT replace the VERIFY phase (VERIFY = independent agent; CoVe = Specialist self-check).
 See meta-workflow.md §P-E-V-A EXECUTION LOOP.
+
+<rules>
+- MUST execute all 3 steps (generate 3 adversarial Qs → self-correct → finalize) BEFORE emitting HAND-02.
+- MUST NOT generate pro-forma "no issues found" answers (AP-03 Verification Theater — Gatekeeper will reject).
+- MUST target Q1 logical, Q2 axiom, Q3 scope — no substitution, no merging.
+- MUST place ONLY the CoVe-corrected artifact in the HAND-02 payload; original flawed artifact discarded.
+- MUST append `CoVe: Q1={pass|corrected}, Q2={pass|corrected}, Q3={pass|corrected}` to HAND-02 `detail` field.
+</rules>
+<stop_conditions>STOP-02, STOP-07</stop_conditions>
+<see_also>meta-ops.md §HAND-02, meta-antipatterns.md AP-03, meta-workflow.md §P-E-V-A EXECUTION LOOP</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § MATRIX ROLE PAIRS — 4-Domain Specialist / Gatekeeper Map

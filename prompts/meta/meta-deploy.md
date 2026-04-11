@@ -65,7 +65,7 @@ Execute sequentially. Do not skip stages.
 
 ## Stage 1: Parse
 
-Read all seven meta files. Extract:
+Read all ten meta files. Extract:
 - System structure map (7 files); design philosophy φ1–φ7; axioms A1–A11; system targets (meta-core.md)
 - Domain registry: branches, storage, agent membership, lifecycle, domain lock protocol (meta-domains.md)
 - Per-agent CHARACTER + SKILLS (meta-persona.md §AGENT PROFILES)
@@ -75,6 +75,51 @@ Read all seven meta files. Extract:
 - Handoff protocol specs: HAND-01 (DISPATCH), HAND-02 (RETURN), HAND-03 (Acceptance Check) (meta-ops.md)
 - Command format; Role → Operation + Handoff role index (meta-ops.md §COMMAND FORMAT, §ROLE → OPERATION INDEX)
 - Environment profiles Q2; deployment workflow; validation checklist (meta-deploy.md)
+
+### Stage 1b: XML-Aware Parse (v1.1 Hybrid Architecture)
+
+Introduced by MetaEvolutionArchitect v1.1 (CHK-NEW-5 / Phase P5).
+
+Meta files now carry XML `meta_section` wrappers around every structural unit. The bootstrapper MUST:
+
+**Scope exclusions.** The following files are NOT subject to Stage 1b checks (they are documentation of the parser itself):
+- `prompts/meta/meta-deploy.md` — THIS file; describes the parser in prose + code blocks, so its tag references are not schema tags.
+- `prompts/meta/_hybrid-template.md` — leading-underscore convention marks a non-consumed reference file; skip from both parse and generate stages.
+
+All other `prompts/meta/*.md` files are in-scope for the checks below.
+
+1. **Closed-vocabulary allow-list check (scoped).** For each in-scope file, scan ONLY the text inside `meta_section` open/close boundaries. The set of child tags found MUST be a subset of the frozen allow-list:
+
+   ```
+   meta_section, purpose, authority, rules, tool_use, tool_declaration,
+   parameters, procedure, thought_process, stop_conditions, see_also
+   ```
+
+   HTML inline tags (`br`, `b`, `i`, `sup`, `sub`) that appear in markdown table cells or prose OUTSIDE a `meta_section` body are NOT schema tags and are NOT subject to the allow-list. Placeholder notation in prose like "invoke git-sp.sh branch commit-message" using angle-bracket placeholders is allowed outside `meta_section` blocks.
+
+   Any unknown tag INSIDE a `meta_section` → **STOP-02** (SYSTEM_PANIC: Immutable Zone / schema modification without CHK authorization). Abort bootstrapper run.
+
+2. **Tag balance check (scoped).** For every in-scope file, count `meta_section` opens and closes; they must match exactly. Mismatch → **STOP-02**.
+
+3. **`<meta_section id="…">` discovery.** Parse each opening tag to extract `id`, `version`, `axiom_refs`, optional `immutable`. Each `id` must be unique across all meta files. Duplicate id → **STOP-02**.
+
+4. **`immutable="true"` body-diff gate.** For every section carrying `immutable="true"` (axiom layer, HAND-03 logic, SCHEMA-IN-CODE), extract the body lines between open/close tags and `diff` against `git show HEAD:prompts/meta/{file}` body from the last bootstrapper-verified generation. Non-empty diff → **STOP-02** SYSTEM_PANIC (axiom drift).
+
+5. **Eager `$ref` resolution.** Scan every `<parameters format="json">` block for `"$ref": "meta-*.md#…"` pointers. For each ref:
+   - Verify the target file exists.
+   - Verify the target anchor (e.g., `SCHEMA-IN-CODE::Hand02Payload`) resolves to a concrete section/identifier (grep within meta-roles.md §SCHEMA-IN-CODE for the named interface).
+   - Any dangling ref → abort bootstrapper run; do NOT write any agent prompt.
+   - Emit `schema_resolution_report.json` as a generation artifact listing every ref + resolved target + verification hash. Empty dangling list is a gate.
+
+6. **RFC-2119 rules check.** For every `<rules>` bullet, verify it begins with `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, or `MAY` (or `- MUST`, `- MUST NOT`, etc.). Non-conformant bullets → STOP-SOFT with a fix-up recommendation; do not abort, but include the warning in `schema_resolution_report.json`.
+
+7. **Legacy anchor preservation.** For every wrapped section, verify the legacy markdown heading (e.g., `## HAND-01:`, `## φ1:`, `## AP-03:`) is still present INSIDE the `<meta_section>` block. Missing heading → STOP-02 (structural drift).
+
+8. **Backward compatibility.** v1.1 bootstrapper runs against files that may or may not have been converted. The XML-aware checks fire per-file — files without `<meta_section>` wrappers pass through to the legacy text-pattern parser unchanged. This is the v1.1 → v1.2 transition window.
+
+**Parser allow-list → STOP mapping:** unknown tag, unbalanced open/close, duplicate id, immutable body drift, dangling `$ref` → STOP-02. RFC-2119 violations → STOP-SOFT.
+
+**Report artifact:** every run emits `schema_resolution_report.json` to the bootstrapper working directory with fields: `vocab_check`, `balance_check`, `id_registry`, `immutable_diff_results`, `ref_resolution_results`, `rfc2119_violations`, `timestamp`. Absence of this file after a run → STOP-SOFT (missing evidence).
 
 ## Stage 2: Initialize Directory Structure + docs/ (3-Layer Architecture)
 
@@ -381,6 +426,12 @@ stop:
    success criteria tables copied from meta-ops.md. Include operation ID + trigger condition
      only. Inject the JIT reference rule: "If a specific operation is required, consult
      prompts/meta/meta-ops.md for canonical syntax." (→ meta-ops.md §JIT COMMAND REFERENCE)
+
+**v1.1 Hybrid architecture (MetaEvolutionArchitect CHK-NEW-0..5):**
+- Meta files are now XML-shelled. When generating an agent prompt, extract only the `<purpose>`, `<authority>`, `<rules>`, `<stop_conditions>`, and `<see_also>` content of sections that match the agent's role; XML tags themselves MAY be passed through to the generated prompt for structural attention (Claude profile) OR stripped (Ollama profile, aggressive compression).
+- `<tool_use>` / `<tool_declaration>` / `<parameters format="json">` blocks are reserved for the v1.2 tool-use flip; when `_base.yaml :: handoff_mode == "text"`, emit them as comments for forward reference only.
+- `<meta_section immutable="true">` blocks (axiom layer, HAND-03, SCHEMA-IN-CODE) MUST be inlined in a byte-identical form; no paraphrasing, no summarization. Immutable bodies are protected by the §Stage 1b body-diff gate.
+- `$ref` pointers (`meta-roles.md#SCHEMA-IN-CODE::Hand02Payload`) are resolved by the bootstrapper at generation time (see §Stage 1b step 5). Under Claude profile the resolved body is inlined at the ref site; under Ollama the ref string is preserved verbatim for JIT retrieval.
    Exception: Prompt domain agents use `# CONSTRAINTS` instead of `# RULES` (internal variant, not a defect).
 2. Cite docs/00_GLOBAL_RULES.md §sections for domain rules.
    Every agent must include BOTH lines below its title heading:

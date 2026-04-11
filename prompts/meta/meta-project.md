@@ -12,6 +12,16 @@
 # Derived output: docs/03_PROJECT_RULES.md (generated, not manually edited)
 # FOUNDATION: meta-core.md §AXIOMS  ← READ FIRST
 
+<meta_section id="META-PROJECT" version="5.1.0" axiom_refs="phi6,A7,A10">
+<purpose>Project-specific profile (PR-1…PR-6). Swappable by design — replacing this file and regenerating `docs/03_PROJECT_RULES.md` retargets the entire ecosystem at a new research project without touching universal files.</purpose>
+<authority>The Root Admin (ResearchArchitect) edits this file only when onboarding a new project type or instance. All other agents consult `docs/03_PROJECT_RULES.md` (generated from this file).</authority>
+<rules>
+- MUST NOT reference project-specific rules from meta-core.md / meta-domains.md / meta-ops.md (separation principle — keep universal files project-agnostic).
+- MUST regenerate `docs/03_PROJECT_RULES.md` after any PR-{N} edit.
+- PR-IDs are LOCAL to this file — do not clash with A-{N} (axioms), C-{N} (code), P-{N} (paper), Q-{N} (prompt), AU-{N} (audit).
+</rules>
+<see_also>docs/03_PROJECT_RULES.md (generated), meta-core.md §A, meta-deploy.md §Stage 2</see_also>
+
 ────────────────────────────────────────────────────────
 # § PROJECT IDENTITY
 
@@ -121,3 +131,4 @@ To adapt this system for a different project:
 
 The PR-{N} numbering is local to this file. Universal rules use A-{N} (axioms),
 C-{N} (code, universal), P-{N} (paper), Q-{N} (prompt), AU-{N} (audit).
+</meta_section>

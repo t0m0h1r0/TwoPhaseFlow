@@ -12,6 +12,12 @@ meta_version: "5.1.0"
 #                CHK-114) and revert the same way if problems occur.
 concurrency_profile: "worktree"
 
+# Handoff emission mode. See MetaEvolutionArchitect v1.1 (CHK-NEW-0 / Phase P0).
+#   "text"     — v5.1.0 behavior: HAND-01/02/03 emitted as JSON blocks in prose.
+#   "tool_use" — v1.2+ (reserved): HAND tokens emitted via function calls (emit_hand01/02, run_hand03).
+# Flipping to "tool_use" is OUT OF SCOPE for v1.1 — dual emission triggers reserved STOP-12.
+handoff_mode: "text"
+
 axioms: "A1–A11 apply unconditionally (docs/00_GLOBAL_RULES.md §A) + v5.1 sub-axioms φ4.1 / A8.1 (meta-core.md)"
 project_rules: "PR-1–PR-6 apply to this project (docs/03_PROJECT_RULES.md, SSoT: prompts/meta/meta-project.md)"
 
