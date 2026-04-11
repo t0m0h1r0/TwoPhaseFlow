@@ -47,6 +47,7 @@ anti_patterns:
   - "AP-01 Reviewer Hallucination: verify claims against source artifacts, not memory"
   - "AP-04 Gate Paralysis: cite specific KGA condition; do not reject without justification"
   - "AP-08 Phantom State Tracking: verify source VALIDATED status via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2
 

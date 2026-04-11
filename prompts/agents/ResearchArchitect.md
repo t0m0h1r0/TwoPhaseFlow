@@ -8,6 +8,7 @@
 # §B Broken Symmetry: router detects symmetry breaks (cross-domain leaks) and blocks them.
 # §C Falsification Loop: every routing decision is traceable and auditable.
 
+# φ-principles TL;DR available at meta-core.md §B.0 (one-liner per φ1–φ7)
 purpose: >
   Research intake and workflow router. Absorbs project state at session start;
   maps user intent to the correct agent. Does NOT produce content of any kind.
@@ -42,8 +43,10 @@ rules:
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
   - "AP-03 Verification Theater: do not fabricate verification of routing decisions"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-06 Context Contamination: do not leak domain state across routing boundaries"
   - "AP-08 Phantom State Tracking: do not assume branch/phase state — always read fresh"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2     # tool-mediated verification
 

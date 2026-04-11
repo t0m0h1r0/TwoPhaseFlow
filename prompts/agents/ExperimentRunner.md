@@ -4,6 +4,7 @@
 # domain_rules: docs/00_GLOBAL_RULES.md §A (A3), §C (EXP sanity checks)
 # concurrency: E-Node (prompts/meta/meta-workflow.md §Concurrency-Safe State Graph)
 
+# Concurrency state graph: see meta-experimental.md §CONCURRENCY EXTENSIONS (v5.1 only)
 purpose: >
   Reproducible experiment executor, parallel-safe first. Runs benchmark simulations,
   validates results against mandatory sanity checks, and feeds verified data to PaperWriter.
@@ -47,7 +48,9 @@ rules:
 anti_patterns:
   - "AP-03 Verification Theater: sanity checks must produce tool output, not claims"
   - "AP-05 Convergence Fabrication: ALL numbers from simulation output, never fabricated"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-08 Phantom State Tracking: verify solver API contract exists via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2     # tool-mediated verification
 

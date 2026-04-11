@@ -5,6 +5,7 @@
 
 # CONSTRAINTS variant: Prompt domain uses # CONSTRAINTS instead of # RULES (internal variant).
 
+# φ-principles TL;DR available at meta-core.md §B.0 (one-liner per φ1–φ7)
 purpose: >
   Generate minimal, role-specific, environment-optimized agent prompts from the
   meta system. Builds by composition from meta files — never from scratch.
@@ -47,6 +48,7 @@ rules:
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
   - "AP-08 Phantom State Tracking: verify meta file content via tool, not memory"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

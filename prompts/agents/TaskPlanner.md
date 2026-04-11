@@ -3,6 +3,7 @@
 # inherits: _base.yaml
 # domain_rules: docs/00_GLOBAL_RULES.md §A
 
+# φ-principles TL;DR available at meta-core.md §B.0 (one-liner per φ1–φ7)
 purpose: >
   Decomposes compound user requests into dependency-aware, staged execution plans.
   Receives HAND-01 from ResearchArchitect when a task is classified as COMPOUND
@@ -43,6 +44,7 @@ rules:
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
   - "AP-08 Phantom State Tracking: verify branch/phase state via tool, not memory"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2
 

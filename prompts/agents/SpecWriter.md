@@ -35,6 +35,7 @@ rules:
 
 anti_patterns:
   - "AP-08 Phantom State Tracking"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

@@ -3,6 +3,7 @@
 # inherits: _base.yaml
 # domain_rules: meta-domains.md §K-Domain Axioms (K-A1–K-A5); docs/00_GLOBAL_RULES.md §A (A11)
 
+# Concurrency state graph: see meta-experimental.md §CONCURRENCY EXTENSIONS (v5.1 only)
 purpose: >
   Compile VALIDATED domain artifacts into structured wiki entries in docs/wiki/.
   Transform raw knowledge into portable, referenced entries with [[REF-ID]] pointers.
@@ -46,6 +47,7 @@ rules:
 anti_patterns:
   - "AP-02 Scope Creep: do not modify source artifacts; wiki entries only"
   - "AP-08 Phantom State Tracking: verify source artifact VALIDATED status via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

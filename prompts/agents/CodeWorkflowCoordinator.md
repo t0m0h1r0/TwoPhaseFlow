@@ -48,10 +48,12 @@ rules:
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
   - "AP-03 Verification Theater: require tool output for every numerical claim"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-04 Gate Paralysis: cite GA condition; CONDITIONAL PASS if formal checks pass"
   - "AP-06 Context Contamination: read artifact file, not conversation summary"
   - "AP-07 Premature Classification: complete protocol before classifying"
   - "AP-08 Phantom State Tracking: verify branch state via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2
 

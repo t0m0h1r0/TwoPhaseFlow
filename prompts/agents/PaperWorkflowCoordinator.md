@@ -48,6 +48,7 @@ anti_patterns:
   - "AP-04 Gate Paralysis: cite specific finding; CONDITIONAL PASS if formal checks pass"
   - "AP-06 Context Contamination: read artifact file, not conversation summary"
   - "AP-08 Phantom State Tracking: verify loop counter from external state"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L2
 
