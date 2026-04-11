@@ -32,7 +32,7 @@ OUT = experiment_dir(__file__)
 
 def convergence_test(Ns, alpha):
     """Convergence of CCD on non-uniform grid with given alpha."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     results = []
 
@@ -43,6 +43,7 @@ def convergence_test(Ns, alpha):
         if alpha > 1.0:
             # Build CCD on uniform grid first → use for O(h⁶) metric computation
             ccd_uniform = CCDSolver(grid, backend, bc_type="wall")
+            # phi_init built on host; update_from_levelset internally to_host()s it.
             X0, Y0 = np.meshgrid(
                 np.linspace(0, 1, N + 1), np.linspace(0, 1, N + 1), indexing="ij")
             phi_init = np.sqrt((X0 - 0.5)**2 + (Y0 - 0.5)**2) - 0.25
@@ -52,9 +53,9 @@ def convergence_test(Ns, alpha):
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
 
-        f = np.sin(np.pi * X) * np.ones_like(Y)
-        fx_exact = np.pi * np.cos(np.pi * X) * np.ones_like(Y)
-        fxx_exact = -(np.pi**2) * np.sin(np.pi * X) * np.ones_like(Y)
+        f = xp.sin(np.pi * X) * xp.ones_like(Y)
+        fx_exact = np.pi * xp.cos(np.pi * X) * xp.ones_like(Y)
+        fxx_exact = -(np.pi**2) * xp.sin(np.pi * X) * xp.ones_like(Y)
 
         d1, d2 = ccd.differentiate(f, axis=0)
         s = slice(2, -2)
@@ -77,7 +78,7 @@ def convergence_test(Ns, alpha):
 
 def gcl_test(Ns, alpha=2.0):
     """GCL: differentiate f=1 on non-uniform grid, measure spurious derivative."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     results = []
 
@@ -86,6 +87,7 @@ def gcl_test(Ns, alpha=2.0):
         grid = Grid(gc, backend)
 
         ccd_uniform = CCDSolver(grid, backend, bc_type="wall")
+        # phi_init built on host; update_from_levelset internally to_host()s it.
         X0, Y0 = np.meshgrid(
             np.linspace(0, 1, N + 1), np.linspace(0, 1, N + 1), indexing="ij")
         phi_init = np.sqrt((X0 - 0.5)**2 + (Y0 - 0.5)**2) - 0.25
@@ -94,7 +96,7 @@ def gcl_test(Ns, alpha=2.0):
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
 
-        f_const = np.ones_like(X)
+        f_const = xp.ones_like(X)
         d1x, _ = ccd.differentiate(f_const, axis=0)
         d1y, _ = ccd.differentiate(f_const, axis=1)
 
