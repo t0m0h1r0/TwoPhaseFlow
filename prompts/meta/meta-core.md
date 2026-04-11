@@ -276,7 +276,7 @@ single shared brain.
 When two or more Claude Code sessions run concurrently against the same repository, each session's mutation domain MUST be the Cartesian product of its own worktree and a branch-level lock it owns. Two sessions writing through the same `HEAD` is a φ4 violation by transitivity: the in-session effect becomes a shared mutable variable, and "state that lives only in a conversation" (φ4) gains a second invisible writer.
 
 **Operational bindings:**
-- A session identifies itself with a UUID v4 `session_id` in every handoff envelope (`prompts/meta/schemas/hand_schema.json :: session_id`).
+- A session identifies itself with a UUID v4 `session_id` in every handoff envelope (→ `meta-roles.md §SCHEMA-IN-CODE :: HandoffEnvelope.session_id`).
 - A session mutates files only inside `git worktree add ../wt/{session_id}/{branch_slug}` (→ `meta-ops.md §GIT-WORKTREE-ADD`).
 - A session acquires `docs/locks/{branch_slug}.lock.json` via O_EXCL before any write (→ `meta-ops.md §LOCK-ACQUIRE`).
 
