@@ -10,7 +10,7 @@ meta_version: "5.1.0"
 #   "worktree" — v5.1.0 Concurrency-Aware: GIT-WORKTREE-ADD, LOCK-ACQUIRE/RELEASE, GIT-ATOMIC-PUSH,
 #                STOP-09/10/11 enforced. Flip in a dedicated single-line commit (Phase D.3 of
 #                CHK-114) and revert the same way if problems occur.
-concurrency_profile: "legacy"
+concurrency_profile: "worktree"
 
 axioms: "A1–A11 apply unconditionally (docs/00_GLOBAL_RULES.md §A) + v5.1 sub-axioms φ4.1 / A8.1 (meta-core.md)"
 project_rules: "PR-1–PR-6 apply to this project (docs/03_PROJECT_RULES.md, SSoT: prompts/meta/meta-project.md)"
