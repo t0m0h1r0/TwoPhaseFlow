@@ -1,5 +1,5 @@
 # META-WORKFLOW: Inter-Agent Coordination, Task Flow & Evolution
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 # ABSTRACT LAYER — workflow logic: P-E-V-A loop, domain pipelines, handoff rules, control protocols.
 # FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # Domain registry, branch rules, storage sovereignty: prompts/meta/meta-domains.md
@@ -262,8 +262,8 @@ Master execution frame for ALL domain work. No phase may be skipped.
 | Phase | Responsibility | Agent | Output | git phase |
 |-------|---------------|-------|--------|-----------|
 | PLAN | Define scope, success criteria, stop conditions | Coordinator or ResearchArchitect | task scope (temp_work_log) | — |
-| EXECUTE | Produce the artifact | Specialist (CodeArchitect, PaperWriter, PromptArchitect…) | code / patch / paper / prompt | DRAFT commit |
-| VERIFY | Confirm artifact meets spec | TestRunner / PaperCompiler+Reviewer / PromptAuditor | PASS or FAIL verdict | REVIEWED commit on PASS |
+| EXECUTE | Produce artifact; run CoVe self-check before HAND-02 | Specialist (CodeArchitect, PaperWriter, PromptArchitect…) | code / patch / paper / prompt | DRAFT commit |
+| VERIFY | Confirm artifact meets spec (independent agent) | TestRunner / PaperCompiler+Reviewer / PromptAuditor | PASS or FAIL verdict | REVIEWED commit on PASS |
 | AUDIT | Gate check; cross-system consistency | ConsistencyAuditor / PromptAuditor | AU2 gate verdict (10 items) | VALIDATED commit + merge on PASS |
 
 Rules:
@@ -272,6 +272,17 @@ Rules:
 - Loop counter tracked per phase (P6); MAX_REVIEW_ROUNDS = 5
 - AUDIT agent must be independent of EXECUTE agent (φ7)
 - PLAN always starts with ResearchArchitect loading docs/02_ACTIVE_LEDGER.md
+
+**CoVe (Chain-of-Verification) — Standard V-phase prerequisite (Pillar 2):**
+CoVe is the Specialist's mandatory self-check inside EXECUTE, run immediately before issuing HAND-02.
+Full spec: meta-roles.md §COVE MANDATE. Summary:
+1. Generate 3 adversarial questions (logic, axiom compliance, scope/IF-Agreement fidelity).
+2. Derive answers independently; correct the artifact for any flaw found.
+3. Place ONLY the corrected artifact in HAND-02 payload; append `"CoVe: Q1=..., Q2=..., Q3=..."` to `detail`.
+
+CoVe does NOT replace VERIFY. VERIFY remains an independent agent check (§B Broken Symmetry).
+The Gatekeeper MUST reject any HAND-02 token where the `detail` field is absent or lacks the CoVe
+summary — a missing summary signals incomplete EXECUTE. Action: return to EXECUTE, do not advance to VERIFY.
 
 ────────────────────────────────────────────────────────
 # § LEDGER UPDATE CADENCE

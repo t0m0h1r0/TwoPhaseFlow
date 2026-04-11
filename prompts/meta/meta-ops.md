@@ -1,9 +1,11 @@
 # META-OPS: Operational Command Specifications & Handoff Protocols
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 # ABSTRACT LAYER — canonical commands, parameters, success criteria, and handoff structures.
 # FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # Role bindings (who may invoke): prompts/meta/meta-roles.md §AUTHORITY
 # Execution timing (when to invoke): prompts/meta/meta-workflow.md §DOMAIN PIPELINES
+# HandoffEnvelope schema (TypeScript interfaces, SSoT): meta-roles.md §SCHEMA-IN-CODE
+# DEPRECATED: prompts/meta/schemas/hand_schema.json — do NOT reference; schema is inline above.
 
 ────────────────────────────────────────────────────────
 # § PHILOSOPHY
@@ -11,6 +13,15 @@
 Operations (GIT-xx, BUILD-xx, TEST-xx, EXP-xx): canonical commands. meta-roles.md = WHO; meta-workflow.md = WHEN; this file = exact command. Improvised variants are violations.
 
 Handoff protocols (HAND-xx): informal handoffs bypass the verification layer and break traceability (φ4). Canonical tokens make every transfer auditable.
+
+**JIT (Just-In-Time) Load Policy:** Agents MUST NOT load this entire file at session start.
+Load only the section required for the current action immediately before executing it:
+- GIT-xx operations: load only the specific GIT-xx section when the git action is triggered.
+- HAND-xx tokens: load §HANDOFF PROTOCOL → specific HAND-xx section when issuing/receiving a token.
+- AUDIT-xx: load only when ConsistencyAuditor or TheoryAuditor is dispatched.
+- Full-file load is permitted ONLY for EnvMetaBootstrapper (Stage 1 parse) and PromptArchitect audits.
+JIT reference hint embedded in every generated agent prompt: "If a specific operation is required,
+consult prompts/meta/meta-ops.md for canonical syntax." Full details remain here; agents carry pointer only.
 
 **Parameter notation:** `{param}` required; `[param]` optional; `{branch}` = `code` | `paper` | `prompt`; `{summary}` = specific one-line description.
 
@@ -106,7 +117,7 @@ git worktree add "../wt/${SESSION_ID}/${BRANCH_SLUG}" "${BRANCH}"
 ```
 
 The wrapper enforces:
-- `SESSION_ID` is the UUID v4 emitted by the authoring Claude Code session (matches `session_id` in `prompts/meta/schemas/hand_schema.json`).
+- `SESSION_ID` is the UUID v4 emitted by the authoring Claude Code session (matches `session_id` in `HandoffEnvelope` → meta-roles.md §SCHEMA-IN-CODE).
 - The worktree path MUST be **outside the repository root** (`../wt/...`). Any attempt to create a worktree at `$REPO_ROOT/wt/...` or inside `$REPO_ROOT/.worktrees/...` → **STOP-09** base-directory destruction.
 - `git checkout` inside an existing session worktree is **forbidden** for the purpose of switching branches — use a new worktree instead. Swapping HEAD inside a live worktree is the exact φ4 violation that triggered the Phase A.1 recovery incident recorded in `docs/02_ACTIVE_LEDGER.md §1 CHK-114`.
 - `git rev-parse --git-common-dir` resolves the shared `.git` directory from either the main checkout or any worktree transparently — downstream path resolution (EnvMetaBootstrapper, meta path discovery) MUST use this form instead of `.git` literal.
@@ -325,7 +336,7 @@ PY
 Post-conditions:
 1. `docs/locks/{branch_slug}.lock.json` exists and contains this session's UUID. Atomicity is provided by `O_EXCL` at the filesystem level — no race window.
 2. A matching row is appended to `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY` in the first commit that produces any write on this branch (registry is append-only; see §4 of that file).
-3. Any `HandoffEnvelope` (→ `prompts/meta/schemas/hand_schema.json`) produced during the held period carries `branch_lock_acquired: true`.
+3. Any `HandoffEnvelope` (→ meta-roles.md §SCHEMA-IN-CODE) produced during the held period carries `branch_lock_acquired: true`.
 
 Failure modes:
 - `O_EXCL` refuses (file already exists) → another session holds the lock → **STOP-10** foreign lock. The agent halts, issues HAND-02 `status: REJECT, stop_code: "STOP-10"`, and does NOT attempt to delete or overwrite the existing lock file.
@@ -663,7 +674,7 @@ DISPATCH → {specialist}
   inputs:                 [{artifact_paths}]
   constraints:            [{scope_out}, expected_verdict: {measurable}]
   branch:                 {dev/{domain}/{agent_id}/{task_id}}
-  # v5.1 structured-output required fields — see prompts/meta/schemas/hand_schema.json
+  # v5.1 structured-output required fields — schema: meta-roles.md §SCHEMA-IN-CODE Hand01Payload
   session_id:             {UUID v4 of the emitting Claude Code session}
   branch_lock_acquired:   {true|false — MUST be true if target will write}
   verification_hash:      {sha256 hex of canonicalized payload}
@@ -678,7 +689,7 @@ Fields derivable at tool-call time or enforced by env wrapper:
 `phase`, `matrix_domain`, `branch`, `commit`, `domain_lock`, `if_agreement`,
 `upstream_contracts`, `artifact_hash`, `context_root`, `domain_lock_id`, `gatekeeper_approval_required`.
 
-> **v5.1 formalization:** the long-standing `artifact_hash` placeholder is now canonically the `verification_hash` field in the HandoffEnvelope schema (`prompts/meta/schemas/hand_schema.json`). Wrappers that previously injected `artifact_hash` SHOULD emit `verification_hash` instead; readers SHOULD accept either spelling during the v5.0 → v5.1 transition window.
+> **v5.1 formalization:** the long-standing `artifact_hash` placeholder is now canonically the `verification_hash` field in `HandoffEnvelope` (→ meta-roles.md §SCHEMA-IN-CODE). Wrappers that previously injected `artifact_hash` SHOULD emit `verification_hash` instead; readers SHOULD accept either spelling during the v5.0 → v5.1 transition window.
 
 **Rules:**
 - `task` must be achievable in a single agent session (P5)
@@ -697,7 +708,7 @@ RETURN → {requester}
   produced:               [{file_paths}] | none
   issues:                 [{blocker}] | none      # FAIL/REJECT only
   detail:                 {optional: self-eval — only when explicitly requested in DISPATCH}
-  # v5.1 structured-output required fields — see prompts/meta/schemas/hand_schema.json
+  # v5.1 structured-output required fields — schema: meta-roles.md §SCHEMA-IN-CODE Hand02Payload
   session_id:             {UUID v4 — matches the DISPATCH that produced this}
   branch_lock_acquired:   {true while writes are in progress; set false once LOCK-RELEASE completes}
   verification_hash:      {sha256 hex of canonicalized payload}
@@ -749,7 +760,7 @@ Acceptance Check:
   □ 7. STRUCTURED OUTPUT SCHEMA (v5.1 — universal):
          Verify the DISPATCH envelope carries non-empty `session_id` (UUID v4), `branch_lock_acquired` (boolean),
          `verification_hash` (sha256 hex, 64 chars), and `timestamp` (ISO 8601 UTC), conformant to
-         `prompts/meta/schemas/hand_schema.json :: HandoffEnvelope`.
+         `HandoffEnvelope` (→ meta-roles.md §SCHEMA-IN-CODE).
          Under `_base.yaml :: concurrency_profile == "worktree"`, additionally require `branch_lock_acquired: true`
          for any DISPATCH that will produce writes (empty-write tasks like pure routing MAY set false).
          Legacy (`concurrency_profile == "legacy"`) envelopes: these fields SHOULD still be populated for
