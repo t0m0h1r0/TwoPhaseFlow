@@ -434,6 +434,8 @@ Any reasoning not recorded in docs/02_ACTIVE_LEDGER.md is non-existent to the sy
 An agent's in-context conclusions that are not externalized are lost at session end (φ4).
 The ACTIVE_LEDGER is the single shared memory — if it is not there, it did not happen.
 
+**Cadence clarification:** The Ledger is the truth at session boundaries and VALIDATED checkpoints — not at every intra-session step. Intra-session state lives in `artifacts/temp_work_log.json` until batch-flushed (→ meta-workflow.md §LEDGER UPDATE CADENCE).
+
 **Corollary:** Before acting on a prior conclusion, verify it is present in the Ledger.
 If absent, re-derive or re-classify — do not rely on recall.
 
