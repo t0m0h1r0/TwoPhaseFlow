@@ -80,8 +80,15 @@ def test_ppe_solve_residual(backend):
 
     製造解 p = cos(πx)cos(πy) に対応する RHS を使用。
     CCD 境界スキームの零空間問題を避けるため滑らかな RHS を使用。
+
+    Note: the pinned CCD PPE operator has a near-null space at very small
+    grids (N ≤ 16 gives cond(L) ~ 1e17 in FP64 — the LU solver then becomes
+    sensitive to the reordering heuristic and differs between scipy 1.13
+    and scipy 1.17). We use N=24 — well past the conditioning cliff, where
+    rel_res ≈ 1.5e-3 on both stacks — and a 5e-3 ceiling that leaves ~3×
+    headroom. Convergence is verified separately in §11 experiments.
     """
-    N = 16
+    N = 24
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
     )
@@ -103,7 +110,7 @@ def test_ppe_solve_residual(backend):
     residual = solver.compute_residual(p, rhs, rho)
     rhs_norm = float(np.linalg.norm(rhs.ravel()))
     rel_res = residual / max(rhs_norm, 1e-14)
-    assert rel_res < 1e-2, f"CCD PPE 相対残差 {rel_res:.3e} > 1e-2"
+    assert rel_res < 5e-3, f"CCD PPE 相対残差 {rel_res:.3e} > 5e-3"
 
 
 # ── Test 3: CCD PPE + velocity corrector — 非発散速度場保存 ──────────────
