@@ -20,6 +20,20 @@ from __future__ import annotations
 import numpy as np
 
 
+def _xp_of(arr):
+    """Return the array namespace (numpy or cupy) matching ``arr``.
+
+    Uses :func:`cupy.get_array_module` when cupy is available, else numpy.
+    This lets :class:`DiagnosticCollector` stay constructor-compatible while
+    operating natively on whichever backend the simulation chose.
+    """
+    try:
+        import cupy
+        return cupy.get_array_module(arr)
+    except ImportError:
+        return np
+
+
 class DiagnosticCollector:
     """Accumulate per-step diagnostic metrics.
 
@@ -105,30 +119,35 @@ class DiagnosticCollector:
             Per-node control volumes.  When ``None``, falls back to
             ``h**2`` (uniform grid).
         """
+        xp = _xp_of(psi)
         if dV is None:
-            dV = np.full(psi.shape, self.h ** 2)
+            dV = xp.full(psi.shape, self.h ** 2)
+        elif _xp_of(dV) is not xp:
+            dV = xp.asarray(dV)
+        X = xp.asarray(self.X)
+        Y = xp.asarray(self.Y)
         rho = self.rho_g + (self.rho_l - self.rho_g) * psi
 
         # Initialise reference volume on first call
         if self._V0 is None:
-            self._V0 = max(float(np.sum(psi * dV)), 1e-30)
+            self._V0 = max(float(xp.sum(psi * dV)), 1e-30)
 
         self.times.append(t)
 
         for m in self.metrics:
             if m == "volume_conservation":
-                V = float(np.sum(psi * dV))
+                V = float(xp.sum(psi * dV))
                 self._data[m].append(abs(V - self._V0) / self._V0)
 
             elif m == "kinetic_energy":
-                ke = 0.5 * float(np.sum(rho * (u ** 2 + v ** 2) * dV))
+                ke = 0.5 * float(xp.sum(rho * (u ** 2 + v ** 2) * dV))
                 self._data[m].append(ke)
 
             elif m == "mean_rise_velocity":
                 gas = psi < 0.5
-                vol_gas = float(np.sum(dV[gas]))
+                vol_gas = float(xp.sum(xp.where(gas, dV, 0.0)))
                 vm = (
-                    float(np.sum(v[gas] * dV[gas])) / vol_gas
+                    float(xp.sum(xp.where(gas, v * dV, 0.0))) / vol_gas
                     if vol_gas > 1e-12
                     else 0.0
                 )
@@ -136,11 +155,11 @@ class DiagnosticCollector:
 
             elif m == "bubble_centroid":
                 gas = psi < 0.5
-                vol_gas = float(np.sum(dV[gas]))
+                vol_gas = float(xp.sum(xp.where(gas, dV, 0.0)))
                 if vol_gas > 1e-12:
-                    xc = float(np.sum(self.X[gas] * dV[gas])) / vol_gas
-                    yc = float(np.sum(self.Y[gas] * dV[gas])) / vol_gas
-                    vc = float(np.sum(v[gas] * dV[gas])) / vol_gas
+                    xc = float(xp.sum(xp.where(gas, X * dV, 0.0))) / vol_gas
+                    yc = float(xp.sum(xp.where(gas, Y * dV, 0.0))) / vol_gas
+                    vc = float(xp.sum(xp.where(gas, v * dV, 0.0))) / vol_gas
                 else:
                     xc = yc = vc = float("nan")
                 self._data["xc"].append(xc)
@@ -157,8 +176,16 @@ class DiagnosticCollector:
                 if self.sigma > 0.0 and self.R > 0.0:
                     inside = psi > 0.5
                     outside = psi < 0.5
-                    p_in = float(np.mean(p[inside])) if np.any(inside) else 0.0
-                    p_out = float(np.mean(p[outside])) if np.any(outside) else 0.0
+                    n_in = float(xp.sum(inside))
+                    n_out = float(xp.sum(outside))
+                    p_in = (
+                        float(xp.sum(xp.where(inside, p, 0.0))) / n_in
+                        if n_in > 0 else 0.0
+                    )
+                    p_out = (
+                        float(xp.sum(xp.where(outside, p, 0.0))) / n_out
+                        if n_out > 0 else 0.0
+                    )
                     dp_sim = p_in - p_out
                     dp_th = self.sigma / self.R
                     err = abs(dp_sim - dp_th) / dp_th if dp_th > 0 else 0.0
@@ -182,9 +209,22 @@ class DiagnosticCollector:
 
 # ── per-metric helpers ────────────────────────────────────────────────────────
 
-def _deformation(psi: np.ndarray) -> float:
-    """D = (L−B)/(L+B) from second moments of the ψ > 0.5 region."""
-    mask = psi > 0.5
+def _to_host(arr):
+    """Return a numpy copy of ``arr`` regardless of its backend."""
+    getter = getattr(arr, "get", None)
+    if callable(getter):
+        return getter()
+    return np.asarray(arr)
+
+
+def _deformation(psi) -> float:
+    """D = (L−B)/(L+B) from second moments of the ψ > 0.5 region.
+
+    Syncs to host once: argwhere + Python reductions are cheaper on the
+    CPU for this once-per-step metric than a device scatter.
+    """
+    psi_h = _to_host(psi)
+    mask = psi_h > 0.5
     if not np.any(mask):
         return 0.0
     idx = np.argwhere(mask)
@@ -201,17 +241,23 @@ def _deformation(psi: np.ndarray) -> float:
     return float((L - B) / (L + B)) if (L + B) > 1e-12 else 0.0
 
 
-def _interface_amplitude(psi: np.ndarray, Y: np.ndarray, h: float) -> float:
-    """Approximate amplitude of ψ = 0.5 isoline deviation from domain centre."""
-    NY = psi.shape[1]
-    y_mid = Y.mean()
+def _interface_amplitude(psi, Y, h: float) -> float:
+    """Approximate amplitude of ψ = 0.5 isoline deviation from domain centre.
+
+    Syncs to host once: the nested Python loop over columns is ill-suited
+    to a device; one sync per step is acceptable for a diagnostic.
+    """
+    psi_h = _to_host(psi)
+    Y_h = _to_host(Y)
+    NY = psi_h.shape[1]
+    y_mid = Y_h.mean()
     best = 0.0
-    for i in range(psi.shape[0]):
-        col = psi[i, :]
+    for i in range(psi_h.shape[0]):
+        col = psi_h[i, :]
         for j in range(NY - 1):
             if (col[j] - 0.5) * (col[j + 1] - 0.5) < 0:
                 frac = (0.5 - col[j]) / (col[j + 1] - col[j])
-                y_int = Y[i, j] + frac * h
+                y_int = Y_h[i, j] + frac * h
                 best = max(best, abs(y_int - y_mid))
                 break
     return best

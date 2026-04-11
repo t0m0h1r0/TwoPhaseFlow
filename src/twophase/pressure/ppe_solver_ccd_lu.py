@@ -55,6 +55,8 @@ class PPESolverCCDLU(_CCDPPEBase):
 
         ``p0`` (warm-start guess) is accepted for interface compatibility
         but ignored — direct solvers do not use an initial guess.
+
+        Runs on the active device via :meth:`_CCDPPEBase._spsolve`:
+        scipy on CPU, cupyx.scipy on GPU.
         """
-        import scipy.sparse.linalg as spla
-        return spla.spsolve(L_pinned, rhs_np)
+        return self._spsolve(L_pinned, rhs_np)

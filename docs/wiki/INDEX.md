@@ -1,4 +1,4 @@
-# Wiki Index — 78 entries
+# Wiki Index — 79 entries
 
 ## Theory (32)
 
@@ -84,7 +84,7 @@
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 
-## Code (14)
+## Code (15)
 
 | REF-ID | Title |
 |--------|-------|
@@ -102,3 +102,4 @@
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
 | [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
 | [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
+| [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
