@@ -169,7 +169,9 @@ class CCDSolver:
         shape[axis] = -1
         data_nd = arr.reshape(shape)
         d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
-        return np.asarray(d1_nd).ravel(), np.asarray(d2_nd).ravel()
+        d1_host = self.backend.to_host(d1_nd)
+        d2_host = self.backend.to_host(d2_nd)
+        return np.asarray(d1_host).ravel(), np.asarray(d2_host).ravel()
 
     def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
         """Wall-BC CCD solve in ξ-space, no metric transformation.

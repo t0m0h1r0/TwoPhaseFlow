@@ -83,7 +83,7 @@ fi
 echo "--- Installing twophase package (editable) ---"
 source "${VENV_DIR}/bin/activate"
 pip install --upgrade pip setuptools wheel -q
-pip install -e "${REMOTE_DIR}/src" -q
+pip install -e "${REMOTE_DIR}/src[gpu]" -q
 pip install matplotlib h5py pyyaml -q
 
 echo "--- Verifying installation ---"
@@ -109,6 +109,7 @@ cmd_run() {
     ssh "${REMOTE_HOST}" bash -s <<RUN
 set -euo pipefail
 source "${VENV_DIR}/bin/activate"
+export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
 echo "--- Starting: ${script} ---"
 time ${PYTHON} "${script}"
@@ -124,6 +125,7 @@ cmd_run_all() {
     ssh "${REMOTE_HOST}" bash -s <<RUNALL
 set -euo pipefail
 source "${VENV_DIR}/bin/activate"
+export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
 
 failed=0

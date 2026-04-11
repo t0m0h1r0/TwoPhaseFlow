@@ -6,7 +6,7 @@ constructors and never import numpy or cupy directly in hot paths.
 
 Usage::
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()                 # honours TWOPHASE_USE_GPU env var
     xp = backend.xp                     # numpy or cupy
     sp = backend.scipy.sparse           # scipy.sparse or cupyx.scipy.sparse
     la = backend.scipy.linalg           # scipy.linalg or cupyx.scipy.linalg
@@ -16,6 +16,10 @@ Usage::
 The ``scipy`` namespace is lazily resolved on first access and cached.
 """
 
+from __future__ import annotations
+
+import os
+import sys
 from functools import cached_property
 
 
@@ -30,12 +34,20 @@ class Backend:
         ``"gpu"`` or ``"cpu"``.
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, use_gpu: bool | None = None):
+        if use_gpu is None:
+            use_gpu = os.environ.get("TWOPHASE_USE_GPU", "0") == "1"
         if use_gpu and self._cupy_available():
             import cupy as cp
             self.xp = cp
             self.device = "gpu"
         else:
+            if use_gpu:
+                print(
+                    "WARNING: TWOPHASE_USE_GPU=1 but CuPy/CUDA unavailable; "
+                    "falling back to NumPy",
+                    file=sys.stderr,
+                )
             import numpy as np
             self.xp = np
             self.device = "cpu"
@@ -96,8 +108,10 @@ class Backend:
     # ── Host/device transfer helpers ─────────────────────────────────────
 
     def to_host(self, arr):
-        """Transfer array to CPU (no-op on CPU backend)."""
-        return arr.get() if self.device == "gpu" else arr
+        """Transfer array to CPU (no-op on CPU backend or for NumPy inputs)."""
+        if self.device == "gpu" and hasattr(arr, "get"):
+            return arr.get()
+        return arr
 
     def asnumpy(self, arr):
         """CuPy-idiomatic alias of :meth:`to_host`."""

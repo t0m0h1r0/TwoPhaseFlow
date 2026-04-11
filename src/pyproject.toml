@@ -10,13 +10,13 @@ requires-python = ">=3.9"
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.11",
-    "cupy-cuda12x",
 ]
 
 [project.optional-dependencies]
 vis  = ["matplotlib>=3.7"]
 io   = ["h5py>=3.9", "pyyaml>=6.0"]
 dev  = ["pytest>=7", "pytest-cov"]
+gpu  = ["cupy-cuda12x"]
 all  = ["matplotlib>=3.7", "h5py>=3.9", "pyyaml>=6.0"]
 
 [tool.setuptools.packages.find]
