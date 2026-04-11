@@ -11,6 +11,9 @@ sources:
   - path: docs/memo/cls_shape_preservation.md
     git_hash: null
     description: "Shape preservation study — over-reinitialization as dominant error source"
+  - path: docs/memo/asm_122a_split_gpu_drift.md
+    git_hash: null
+    description: "ASM-122-A root-cause diagnosis — Split GPU/CPU pointwise drift is chaos-amplified FP noise (FUNDAMENTAL)"
   - path: src/twophase/levelset/advection.py
     git_hash: null
     description: "DissipativeCCDAdvection — DCCD advection (periodic sum property verified)"
@@ -26,7 +29,7 @@ depends_on:
   - "[[WIKI-T-002]]: DCCD filter theory (transfer function, spectral properties)"
   - "[[WIKI-T-007]]: CLS transport and reinitialization theory"
   - "[[WIKI-T-027]]: Post-hoc mass correction (symptom-level fix, superseded by this analysis)"
-tags: [CLS, DCCD, mass-conservation, reinitialization, operator-splitting, Lagrange-multiplier]
+tags: [CLS, DCCD, mass-conservation, reinitialization, operator-splitting, Lagrange-multiplier, GPU-drift]
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-09
 ---
@@ -154,6 +157,22 @@ Follow-up study revealed that **DCCD damping is NOT a shape error source** — t
 - ε_d = 0.05 (unchanged — no benefit from reduction)
 - Operator-split + T-027 mass correction (unchanged)
 
+## GPU/CPU Pointwise Drift (ASM-122-A, CHK-124)
+
+`SplitReinitizer` on the GPU backend drifts pointwise from the CPU reference by up to ~3% (max_rel 3–7%) on long exp11_21 Zalesak runs, while `L₂_ψ` matches to 4 sig figs and mass/slot metrics are identical. `HybridReinitizer` on the same inputs drifts only ~1e-9. CHK-124 reproduced this at N=64 / 800 steps (`scripts/asm_122a_probe.py`) and ran a 5-probe binary search to isolate the source.
+
+**Classification: FUNDAMENTAL.** No structural root cause exists. Three falsifications:
+
+1. **Clip-boundary chaos** — the dead-band clip probe produces byte-identical output to baseline at every checkpoint. The clip is never hit on the Zalesak interior, so it cannot be the amplifier.
+2. **CN-ADI dense-inverse** (CHK-122) — forcing the GPU through the Python Thomas sweep drops max_rel by only 14% (3.25% → 2.79%).
+3. **CCD wall-BC cached inverse** (CHK-119) — routing via `lu_solve` instead of `A_inv_dev @ rhs` drops max_rel by only 13% (3.25% → 2.84%).
+
+**Additivity cross-check falsifies any linear structural interpretation:** combining CN-ADI-CPU + CCD-no-ainv together _increases_ drift (max_rel 3.25% → 3.74%, L₂ doubles). The two matmul perturbations do not compose linearly — they seed two different chaotic trajectories.
+
+**Mechanism:** the drift is chaos-amplified FP noise. Every GPU `solve`/`lu_solve`/`matmul` injects O(1e-14 to 1e-11) relative rounding disagreement with NumPy; the DCCD compression + CN-ADI diffusion on a Zalesak slot edge has a Lyapunov exponent ≈ ln(e)/20 steps, so a 1e-15 seed is amplified by ~e^40 over 800 steps. Hybrid escapes because DGR (invert_heaviside → rescale → heaviside) is a Lyapunov-contractive projection onto the canonical ε-thickness family `H_ε(φ)`, applied once per reinit cycle — the same cadence at which noise is injected.
+
+**PR-5 carve-out:** Pointwise drift of O(1e-2) at the Zalesak slot edge on `method=split` GPU is documented as a carve-out from strict bit-exactness. `L₂_ψ`, `mass_err`, `slot_ψ`, and all physical conclusions are preserved across CPU/GPU. See `docs/memo/asm_122a_split_gpu_drift.md` for the full diagnosis, probe matrix, and the architectural rationale for why any structural fix would need to replace `method=split` with `method=hybrid` rather than patch individual ops.
+
 ## Status
 
-VERIFIED — all theoretical claims confirmed (exp11_18). Shape error hierarchy established (exp11_19). Production recommendation: operator-split + T-027 mc + adaptive reinit + ε=1.0h.
+VERIFIED — all theoretical claims confirmed (exp11_18). Shape error hierarchy established (exp11_19). GPU/CPU drift classified FUNDAMENTAL (CHK-124, 2026-04-11). Production recommendation: operator-split + T-027 mc + adaptive reinit + ε=1.0h (unchanged).
