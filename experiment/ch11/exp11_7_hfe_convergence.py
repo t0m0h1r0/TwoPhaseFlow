@@ -30,7 +30,8 @@ OUT = experiment_dir(__file__)
 
 def run_1d_hfe_test(Ns=[32, 64, 128, 256]):
     """1D HFE: upwind vs Hermite on phi=x-0.5, q=1+cos(pi*x)."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     res_upwind, res_hermite = [], []
 
     for N in Ns:
@@ -44,10 +45,10 @@ def run_1d_hfe_test(Ns=[32, 64, 128, 256]):
         phi = X - 0.5
 
         # Source field (smooth)
-        q = 1.0 + np.cos(np.pi * X)
+        q = 1.0 + xp.cos(np.pi * X)
 
         # Exact extension: q_ext = q(x_Gamma) = q(0.5) = 1 + cos(pi*0.5) = 1
-        q_ext_exact = np.ones_like(X)
+        q_ext_exact = xp.ones_like(X)
 
         # Measurement band: 0.52 <= x <= 0.55
         band = (X >= 0.52) & (X <= 0.55)
@@ -57,7 +58,7 @@ def run_1d_hfe_test(Ns=[32, 64, 128, 256]):
             from twophase.levelset.field_extender import FieldExtender
             ext_up = FieldExtender(backend, grid, ccd, n_ext=5, method="upwind")
             q_ext_up = ext_up.extend(q.copy(), phi)
-            err_up = float(np.max(np.abs(q_ext_up[band] - q_ext_exact[band])))
+            err_up = float(xp.max(xp.abs(q_ext_up[band] - q_ext_exact[band])))
         except Exception:
             err_up = float("nan")
 
@@ -66,7 +67,7 @@ def run_1d_hfe_test(Ns=[32, 64, 128, 256]):
             from twophase.levelset.closest_point_extender import ClosestPointExtender
             ext_h = ClosestPointExtender(backend, grid, ccd)
             q_ext_h = ext_h.extend(q.copy(), phi)
-            err_h = float(np.max(np.abs(q_ext_h[band] - q_ext_exact[band])))
+            err_h = float(xp.max(xp.abs(q_ext_h[band] - q_ext_exact[band])))
         except Exception:
             err_h = float("nan")
 
@@ -85,7 +86,8 @@ def run_1d_hfe_test(Ns=[32, 64, 128, 256]):
 
 def run_2d_hfe_test(Ns=[32, 64, 128, 256]):
     """2D HFE: circular interface, q=cos(pi*x)*cos(pi*y)."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
 
     for N in Ns:
@@ -95,14 +97,14 @@ def run_2d_hfe_test(Ns=[32, 64, 128, 256]):
         h = 1.0 / N
         X, Y = grid.meshgrid()
 
-        phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
-        q = np.cos(np.pi * X) * np.cos(np.pi * Y)
+        phi = xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
+        q = xp.cos(np.pi * X) * xp.cos(np.pi * Y)
 
         # Exact: q_ext(x) = q(x_Gamma) where x_Gamma = x - phi * n_hat
-        r = np.maximum(np.sqrt((X - 0.5)**2 + (Y - 0.5)**2), 1e-14)
+        r = xp.maximum(xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2), 1e-14)
         nx = (X - 0.5) / r; ny = (Y - 0.5) / r
         xg = X - phi * nx; yg = Y - phi * ny
-        q_ext_exact = np.cos(np.pi * xg) * np.cos(np.pi * yg)
+        q_ext_exact = xp.cos(np.pi * xg) * xp.cos(np.pi * yg)
 
         # Target band: 0 < phi <= 3h
         band = (phi > 0) & (phi <= 3 * h)
@@ -111,7 +113,7 @@ def run_2d_hfe_test(Ns=[32, 64, 128, 256]):
             from twophase.levelset.closest_point_extender import ClosestPointExtender
             ext = ClosestPointExtender(backend, grid, ccd)
             q_ext = ext.extend(q.copy(), phi)
-            err = float(np.max(np.abs(q_ext[band] - q_ext_exact[band])))
+            err = float(xp.max(xp.abs(q_ext[band] - q_ext_exact[band])))
         except Exception:
             err = float("nan")
 
