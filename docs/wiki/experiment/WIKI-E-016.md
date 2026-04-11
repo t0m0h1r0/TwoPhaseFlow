@@ -9,7 +9,11 @@ depends_on: [WIKI-E-015, WIKI-L-014, WIKI-X-007]
 
 # §13 Benchmark Execution Results
 
-## Result Summary
+**Note (2026-04-11):** Results below are the **uniform-grid (α=1) baseline**.
+Non-uniform grid reruns with rebuild frequency calibration documented in
+[[WIKI-E-020]]. Paper §13.4 reflects the non-uniform results.
+
+## Result Summary (uniform grid baseline)
 
 | Exp | Name | Status | Key Metric |
 |-----|------|--------|------------|

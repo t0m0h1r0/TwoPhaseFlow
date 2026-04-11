@@ -126,7 +126,7 @@ class FDPPEMatrix:
         rows, cols, vals = self._assemble(rho_np, drho_x, drho_y)
         return csr_matrix((vals, (rows, cols)), shape=(self._n_dof, self._n_dof))
 
-    def factorize(self, rho) -> "scipy.sparse.linalg.SuperLU":
+    def factorize(self, rho):
         """Build and SuperLU-factorize the pinned matrix.
 
         Parameters
@@ -135,12 +135,17 @@ class FDPPEMatrix:
 
         Returns
         -------
-        SuperLU object — call `.solve(rhs_flat)` to apply L_FD^{-1}.
+        SuperLU object — call ``.solve(rhs_flat)`` to apply L_FD^{-1}.
+        Runs on the active device: CPU → scipy SuperLU, GPU → cuDSS via
+        ``cupyx.scipy.sparse.linalg.splu``.
         """
-        from scipy.sparse.linalg import splu
-        return splu(self.build(rho))
+        L_host = self.build(rho)
+        if self.backend.is_gpu():
+            L_dev = self.backend.sparse.csc_matrix(L_host.tocsc())
+            return self.backend.sparse_linalg.splu(L_dev)
+        return self.backend.sparse_linalg.splu(L_host.tocsc())
 
-    def build_helmholtz_filter(self, rho, alpha: float) -> "scipy.sparse.linalg.SuperLU":
+    def build_helmholtz_filter(self, rho, alpha: float):
         """Factorize the FD Helmholtz filter (I − α L_FD) with pin row = identity.
 
         Applying this filter after each DC step stabilises divergence:
@@ -161,19 +166,23 @@ class FDPPEMatrix:
 
         Returns
         -------
-        SuperLU object — call `.solve(p_flat)` to apply the filter.
+        SuperLU object — call ``.solve(p_flat)`` to apply the filter. The
+        factor lives on the active device.
         """
-        from scipy import sparse
-        from scipy.sparse.linalg import splu
+        import scipy.sparse as _sp_host
 
         L_raw = self.build_raw(rho)
         n = self._n_dof
         pin = self._pin_dof
 
-        F = sparse.eye(n, format="lil") - alpha * L_raw.tolil()
+        F = _sp_host.eye(n, format="lil") - alpha * L_raw.tolil()
         F[pin, :] = 0.0
         F[pin, pin] = 1.0
-        return splu(F.tocsr())
+        F_host = F.tocsc()
+        if self.backend.is_gpu():
+            F_dev = self.backend.sparse.csc_matrix(F_host)
+            return self.backend.sparse_linalg.splu(F_dev)
+        return self.backend.sparse_linalg.splu(F_host)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 

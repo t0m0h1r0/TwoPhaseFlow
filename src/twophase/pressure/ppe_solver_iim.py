@@ -94,9 +94,12 @@ class PPESolverIIM(_CCDPPEBase):
                                   phi=phi, kappa=kappa, sigma=sigma)
 
     def _solve_linear_system(self, L_pinned, rhs_np, p0):
-        """Direct LU solve (used by _assemble_pinned_system path)."""
-        import scipy.sparse.linalg as spla
-        return spla.spsolve(L_pinned, rhs_np)
+        """Direct LU solve (used by _assemble_pinned_system path).
+
+        Delegates to :meth:`_CCDPPEBase._spsolve` so the GPU path uses
+        :func:`cupyx.scipy.sparse.linalg.spsolve`.
+        """
+        return self._spsolve(L_pinned, rhs_np)
 
     # ── Jump Decomposition backend ───────────────────────────────────────
 
@@ -142,8 +145,6 @@ class PPESolverIIM(_CCDPPEBase):
 
     def _lu_solve_smooth(self, rhs_np, rho_np, drho_np):
         """Kronecker LU solve for smooth fields."""
-        import scipy.sparse.linalg as spla
-
         L_sparse = self._build_sparse_operator(rho_np, drho_np)
 
         from ..core.boundary import pin_sparse_row
@@ -153,7 +154,7 @@ class PPESolverIIM(_CCDPPEBase):
         pin_sparse_row(L_lil, rhs_flat, pin_dof)
         L_pinned = L_lil.tocsr()
 
-        p_flat = spla.spsolve(L_pinned, rhs_flat)
+        p_flat = self._spsolve(L_pinned, rhs_flat)
 
         if not np.isfinite(p_flat).all():
             warnings.warn(
@@ -167,8 +168,6 @@ class PPESolverIIM(_CCDPPEBase):
 
     def _solve_lu(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
         """CCD Kronecker + RHS correction + direct LU."""
-        import scipy.sparse.linalg as spla
-
         shape = self.grid.shape
         xp = self.xp
 
@@ -203,7 +202,7 @@ class PPESolverIIM(_CCDPPEBase):
         pin_sparse_row(L_lil, rhs_flat, pin_dof)
         L_pinned = L_lil.tocsr()
 
-        p_flat = spla.spsolve(L_pinned, rhs_flat)
+        p_flat = self._spsolve(L_pinned, rhs_flat)
 
         if not np.isfinite(p_flat).all():
             warnings.warn("PPESolverIIM(lu): non-finite values.",

@@ -48,7 +48,8 @@ def _adaptive_reinit_needed(xp, psi, M_ref, h, threshold=_REINIT_THRESHOLD):
 
 
 def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
     fields = {}
     for N in Ns:
@@ -60,7 +61,7 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         X, Y = grid.meshgrid()
 
         phi0 = zalesak_sdf(X, Y)
-        psi0 = heaviside(np, phi0, eps)
+        psi0 = heaviside(xp, phi0, eps)
 
         T = 2 * np.pi
         vf = RigidRotation(center=(0.5, 0.5), period=T)
@@ -71,16 +72,16 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
         dt = 0.45 / N
         n_steps = int(T / dt); dt = T / n_steps
         psi = psi0.copy()
-        mass0 = float(np.sum(psi))
-        M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+        mass0 = float(xp.sum(psi))
+        M_ref = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
         reinit_count = 0
 
         # Save fields for 2D visualization at selected resolution
         save_2d = (N == save_fields_N)
         if save_2d:
-            fields["zalesak_init"] = psi0.copy()
-            fields["zalesak_X"] = X.copy()
-            fields["zalesak_Y"] = Y.copy()
+            fields["zalesak_init"] = backend.to_host(psi0).copy()
+            fields["zalesak_X"] = backend.to_host(X).copy()
+            fields["zalesak_Y"] = backend.to_host(Y).copy()
 
         for step in range(n_steps):
             u, v = vf.compute(X, Y, t=0)
@@ -94,20 +95,20 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
                 reinit_count += 1
             # Save at quarter and half revolution
             if save_2d and step + 1 == n_steps // 4:
-                fields["zalesak_quarter"] = psi.copy()
+                fields["zalesak_quarter"] = backend.to_host(psi).copy()
             if save_2d and step + 1 == n_steps // 2:
-                fields["zalesak_half"] = psi.copy()
+                fields["zalesak_half"] = backend.to_host(psi).copy()
 
         if save_2d:
-            fields["zalesak_final"] = psi.copy()
+            fields["zalesak_final"] = backend.to_host(psi).copy()
 
-        mass_err = abs(float(np.sum(psi)) - mass0) / mass0
-        err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-        phi_final = invert_heaviside(np, psi, eps)
-        band = np.abs(phi0) < 6 * eps
-        err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
-        area0 = float(np.sum(psi0 >= 0.5))
-        area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+        mass_err = abs(float(xp.sum(psi)) - mass0) / mass0
+        err_L2 = float(xp.sqrt(xp.mean((psi - psi0)**2)))
+        phi_final = invert_heaviside(xp, psi, eps)
+        band = xp.abs(phi0) < 6 * eps
+        err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0[band])**2)))
+        area0 = float(xp.sum(psi0 >= 0.5))
+        area_err = abs(float(xp.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
         results.append({"N": N, "h": 1.0/N, "L2": err_L2, "L2_phi": err_L2_phi,
                          "area_err": area_err, "mass_err": mass_err})
         print(f"  N={N:>4}: L2ψ={err_L2:.3e}, L2φ={err_L2_phi:.3e}, area={area_err:.2e}, reinits={reinit_count}")
@@ -115,7 +116,8 @@ def run_zalesak(Ns=[64, 128, 256], save_fields_N=128):
 
 
 def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
     fields = {}
     for N in Ns:
@@ -126,46 +128,46 @@ def run_single_vortex(Ns=[64, 128, 256], save_fields_N=128):
         eps = 1.0 * h
         X, Y = grid.meshgrid()
 
-        phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
-        psi0 = heaviside(np, phi0, eps)
+        phi0 = xp.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
+        psi0 = heaviside(xp, phi0, eps)
         adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05, mass_correction=True)
         reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4, bc="zero",
                                method='hybrid')
 
         T = 8.0; dt = 0.45 / N; n_steps = int(T / dt); dt = T / n_steps
-        psi = psi0.copy(); mass0 = float(np.sum(psi))
-        M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+        psi = psi0.copy(); mass0 = float(xp.sum(psi))
+        M_ref = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
         reinit_count = 0
 
         save_2d = (N == save_fields_N)
         if save_2d:
-            fields["vortex_init"] = psi0.copy()
-            fields["vortex_X"] = X.copy()
-            fields["vortex_Y"] = Y.copy()
+            fields["vortex_init"] = backend.to_host(psi0).copy()
+            fields["vortex_X"] = backend.to_host(X).copy()
+            fields["vortex_Y"] = backend.to_host(Y).copy()
 
         for step in range(n_steps):
             u, v = SingleVortex(period=T).compute(X, Y, t=step * dt)
             psi = adv.advance(psi, [u, v], dt)
             # Adaptive hybrid reinit trigger (§7b eq:adaptive_reinit_trigger)
             # Hybrid = comp-diff (shape) + DGR (thickness): ε_eff/ε ≈ 1.02.
-            if _adaptive_reinit_needed(np, psi, M_ref, h):
+            if _adaptive_reinit_needed(xp, psi, M_ref, h):
                 psi = reinit.reinitialize(psi)
-                M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+                M_ref = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
                 reinit_count += 1
             # Save at max deformation (t = T/2)
             if save_2d and step + 1 == n_steps // 2:
-                fields["vortex_mid"] = psi.copy()
+                fields["vortex_mid"] = backend.to_host(psi).copy()
 
         if save_2d:
-            fields["vortex_final"] = psi.copy()
+            fields["vortex_final"] = backend.to_host(psi).copy()
 
-        mass_err = abs(float(np.sum(psi)) - mass0) / mass0
-        err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-        phi_final = invert_heaviside(np, psi, eps)
-        band = np.abs(phi0) < 6 * eps
-        err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
-        area0 = float(np.sum(psi0 >= 0.5))
-        area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+        mass_err = abs(float(xp.sum(psi)) - mass0) / mass0
+        err_L2 = float(xp.sqrt(xp.mean((psi - psi0)**2)))
+        phi_final = invert_heaviside(xp, psi, eps)
+        band = xp.abs(phi0) < 6 * eps
+        err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0[band])**2)))
+        area0 = float(xp.sum(psi0 >= 0.5))
+        area_err = abs(float(xp.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
         results.append({"N": N, "h": 1.0/N, "L2": err_L2, "L2_phi": err_L2_phi,
                          "area_err": area_err, "mass_err": mass_err})
         print(f"  N={N:>4}: L2ψ={err_L2:.3e}, L2φ={err_L2_phi:.3e}, area={area_err:.2e}, reinits={reinit_count}")

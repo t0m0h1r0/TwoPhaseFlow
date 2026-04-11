@@ -16,7 +16,6 @@ from __future__ import annotations
 import numpy as np
 import scipy.sparse as sp
 from scipy.interpolate import RegularGridInterpolator
-from scipy.sparse.linalg import spsolve
 
 from .backend import Backend
 from .config import GridConfig
@@ -141,11 +140,17 @@ class TwoPhaseNSSolver:
             np.min(self._grid.h[ax]) for ax in range(self._grid.ndim)
         ))
 
-    def _make_eps_field(self) -> np.ndarray:
-        """ε(x) = eps_factor · max(h_x(i), h_y(j)) at each node."""
-        hx = self._grid.h[0][:, np.newaxis]
-        hy = self._grid.h[1][np.newaxis, :]
-        return self._eps_factor * np.maximum(hx, hy)
+    def _make_eps_field(self):
+        """ε(x) = eps_factor · max(h_x(i), h_y(j)) at each node.
+
+        Returns a device-native array in ``backend.xp`` so it can be
+        multiplied against device fields in the hot loop without any
+        host↔device traffic.
+        """
+        xp = self._backend.xp
+        hx = xp.asarray(self._grid.h[0])[:, None]
+        hy = xp.asarray(self._grid.h[1])[None, :]
+        return self._eps_factor * xp.maximum(hx, hy)
 
     # ── grid rebuild ─────────────────────────────────────────────────────
 
@@ -449,12 +454,17 @@ class TwoPhaseNSSolver:
 
     def _solve_ppe(self, rhs: np.ndarray, rho: np.ndarray) -> np.ndarray:
         triplet, A_shape = self._ppb.build(rho)
-        A = sp.csr_matrix(
+        A_host = sp.csr_matrix(
             (triplet[0], (triplet[1], triplet[2])), shape=A_shape
         )
         rhs_vec = rhs.ravel().copy()
         rhs_vec[self._ppb._pin_dof] = 0.0
-        return spsolve(A, rhs_vec).reshape(rho.shape)
+        if self._backend.is_gpu():
+            A_dev = self._backend.sparse.csr_matrix(A_host)
+            rhs_dev = self._backend.xp.asarray(rhs_vec)
+            p_dev = self._backend.sparse_linalg.spsolve(A_dev, rhs_dev)
+            return np.asarray(self._backend.to_host(p_dev)).reshape(rho.shape)
+        return self._backend.sparse_linalg.spsolve(A_host, rhs_vec).reshape(rho.shape)
 
 
 # ── IC normalisation helper ───────────────────────────────────────────────────

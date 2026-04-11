@@ -19,7 +19,7 @@ from twophase.config import GridConfig
 def setup_2d():
     N = 32
     gcfg = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
-    be = Backend()
+    be = Backend(use_gpu=False)
     grid = Grid(gcfg, be)
     ccd = CCDSolver(grid, be, bc_type='wall')
     X, Y = grid.meshgrid()
@@ -33,7 +33,7 @@ def test_extension_reduces_gibbs(setup_2d):
     from twophase.levelset.field_extender import FieldExtender
 
     N, grid, ccd, X, Y = setup_2d
-    ext = FieldExtender(Backend(), grid, ccd, n_iter=10)
+    ext = FieldExtender(Backend(use_gpu=False), grid, ccd, n_iter=10)
 
     dist = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
     R = 0.25
@@ -69,7 +69,7 @@ def test_extension_preserves_constant(setup_2d):
     from twophase.levelset.field_extender import FieldExtender
 
     N, grid, ccd, X, Y = setup_2d
-    ext = FieldExtender(Backend(), grid, ccd, n_iter=5)
+    ext = FieldExtender(Backend(use_gpu=False), grid, ccd, n_iter=5)
 
     phi = X - 0.5
     q = np.full_like(X, 3.14)
@@ -85,7 +85,7 @@ def test_source_phase_frozen(setup_2d):
     from twophase.levelset.field_extender import FieldExtender
 
     N, grid, ccd, X, Y = setup_2d
-    ext = FieldExtender(Backend(), grid, ccd, n_iter=10)
+    ext = FieldExtender(Backend(use_gpu=False), grid, ccd, n_iter=10)
 
     phi = X - 0.5  # liquid at x<0.5 (φ<0)
     q = np.where(X < 0.5, 4.0, 0.0)

@@ -25,7 +25,7 @@ from twophase.levelset.closest_point_extender import ClosestPointExtender
 def setup_2d():
     N = 64
     gcfg = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
-    be = Backend()
+    be = Backend(use_gpu=False)
     grid = Grid(gcfg, be)
     ccd = CCDSolver(grid, be, bc_type='wall')
     X, Y = grid.meshgrid()
@@ -37,7 +37,7 @@ def setup_2d():
 def test_constant_field_unchanged(setup_2d):
     """Extending a constant field must not modify it."""
     N, grid, ccd, X, Y = setup_2d
-    ext = ClosestPointExtender(Backend(), grid, ccd)
+    ext = ClosestPointExtender(Backend(use_gpu=False), grid, ccd)
 
     phi = X - 0.5   # planar interface at x=0.5
     q = np.full_like(X, 3.14)
@@ -53,7 +53,7 @@ def test_constant_field_unchanged(setup_2d):
 def test_source_phase_frozen(setup_2d):
     """Extension must not modify the source phase (φ<0 region)."""
     N, grid, ccd, X, Y = setup_2d
-    ext = ClosestPointExtender(Backend(), grid, ccd)
+    ext = ClosestPointExtender(Backend(use_gpu=False), grid, ccd)
 
     phi = X - 0.5
     q = np.where(X < 0.5, 2.0 + np.sin(4*np.pi*Y), 0.0)
@@ -74,7 +74,7 @@ def test_hermite_convergence_order():
     Exact extended field: q_ext = q(0.5) = 1  (constant-normal extension).
     Error measured in [0.52, 0.55] (extension band).
     """
-    be = Backend()
+    be = Backend(use_gpu=False)
     errors = []
     Ns = [32, 64, 128, 256]
 
@@ -120,7 +120,7 @@ def test_smooth_extension_bounded_gradient(setup_2d):
     the extended field should have CCD gradients comparable to the source.
     """
     N, grid, ccd, X, Y = setup_2d
-    ext = ClosestPointExtender(Backend(), grid, ccd)
+    ext = ClosestPointExtender(Backend(use_gpu=False), grid, ccd)
 
     dist = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
     R = 0.25

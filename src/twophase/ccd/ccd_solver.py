@@ -169,7 +169,9 @@ class CCDSolver:
         shape[axis] = -1
         data_nd = arr.reshape(shape)
         d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
-        return np.asarray(d1_nd).ravel(), np.asarray(d2_nd).ravel()
+        d1_host = self.backend.to_host(d1_nd)
+        d2_host = self.backend.to_host(d2_nd)
+        return np.asarray(d1_host).ravel(), np.asarray(d2_host).ravel()
 
     def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
         """Wall-BC CCD solve in ξ-space, no metric transformation.
@@ -314,10 +316,9 @@ class CCDSolver:
         with wrap-around neighbours.
 
         The resulting 2N×2N block-circulant system is pre-factorised once
-        using scipy dense LU.  At solve time each batch column is solved in
-        one call via lu_solve.
+        using the backend's LU (scipy on CPU, cupyx.scipy on GPU). The factors
+        live on the active device; solve-time runs entirely device-native.
         """
-        from scipy.linalg import lu_factor
         N = n_pts - 1   # number of unique nodes (node N is the periodic image of node 0)
         assert N >= 3, f"Need ≥ 3 unique nodes for periodic CCD; got {N}"
 
@@ -326,25 +327,26 @@ class CCDSolver:
         upper_blk = np.array([[_ALPHA1, -_B1 * h],
                                [-_B2 / h,  _BETA2]])  # right-neighbour coupling
 
-        # Build 2N × 2N block-circulant matrix
-        A = np.zeros((2 * N, 2 * N))
+        # Build 2N × 2N block-circulant matrix on host (small, one-time build).
+        A_host = np.zeros((2 * N, 2 * N))
         for i in range(N):
-            A[2*i:2*i+2, 2*i:2*i+2] += np.eye(2)                        # diagonal
+            A_host[2*i:2*i+2, 2*i:2*i+2] += np.eye(2)                        # diagonal
             j_lo = (i - 1) % N
-            A[2*i:2*i+2, 2*j_lo:2*j_lo+2] += lower_blk                  # left  (wrap at i=0)
+            A_host[2*i:2*i+2, 2*j_lo:2*j_lo+2] += lower_blk                  # left  (wrap at i=0)
             j_hi = (i + 1) % N
-            A[2*i:2*i+2, 2*j_hi:2*j_hi+2] += upper_blk                  # right (wrap at i=N-1)
+            A_host[2*i:2*i+2, 2*j_hi:2*j_hi+2] += upper_blk                  # right (wrap at i=N-1)
 
-        lu, piv = lu_factor(A)
+        # Factor on the active device.
+        A_dev = self.xp.asarray(A_host)
+        lu, piv = self.backend.linalg.lu_factor(A_dev)
         return {'lu': lu, 'piv': piv, 'h': h, 'N': N}
 
     def _differentiate_periodic(self, data, axis: int, apply_metric: bool = True):
         """Periodic CCD differentiation using the pre-factorised block-circulant solver.
 
         Nodes 0..N-1 are solved via the 2N×2N system; node N receives a copy
-        of node 0 (periodic image).
+        of node 0 (periodic image). Runs entirely on the active device.
         """
-        from scipy.linalg import lu_solve
         xp = self.xp
         info = self._periodic_solvers[axis]
         h = info['h']
@@ -358,37 +360,36 @@ class CCDSolver:
         batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
         f_full = f_full.reshape(n_pts, batch_size)  # (N+1, batch)
 
-        # Host copy for the scipy solve (N unique nodes only; node N = node 0)
-        f_host = np.asarray(f_full)[:N, :]       # (N, batch)
+        # N unique nodes only; node N = node 0 (periodic image).
+        f_unique = f_full[:N, :]                 # (N, batch) — device-native view
 
-        # Build RHS (2N × batch): all N nodes use the interior stencil with wrap-around
-        rhs = np.zeros((2 * N, batch_size))
-        for i in range(N):
-            ip1 = (i + 1) % N
-            im1 = (i - 1) % N
-            rhs[2*i,   :] = (_A1 / h)         * (f_host[ip1] - f_host[im1])
-            rhs[2*i+1, :] = (_A2 / (h * h))   * (f_host[im1] - 2.0 * f_host[i] + f_host[ip1])
+        # Build RHS (2N × batch) device-native using a vectorised roll/slice pattern.
+        f_im1 = xp.roll(f_unique, 1, axis=0)     # f[(i-1) mod N]
+        f_ip1 = xp.roll(f_unique, -1, axis=0)    # f[(i+1) mod N]
+        rhs_d1 = (_A1 / h) * (f_ip1 - f_im1)                         # (N, batch)
+        rhs_d2 = (_A2 / (h * h)) * (f_im1 - 2.0 * f_unique + f_ip1)  # (N, batch)
 
-        # Solve (2N × batch): lu_solve handles multiple RHS columns at once
-        x = lu_solve((info['lu'], info['piv']), rhs)   # (2N, batch)
+        rhs = xp.empty((2 * N, batch_size), dtype=f_unique.dtype)
+        rhs[0::2, :] = rhs_d1
+        rhs[1::2, :] = rhs_d2
+
+        # Solve (2N × batch) on the active device.
+        x = self.backend.linalg.lu_solve((info['lu'], info['piv']), rhs)
 
         # Extract d1 (even rows) and d2 (odd rows) for nodes 0..N-1
         d1_inner = x[0::2, :]   # (N, batch)
         d2_inner = x[1::2, :]   # (N, batch)
 
         # Full (N+1, batch) arrays: node N = node 0 (periodic image)
-        d1_flat = np.empty((N + 1, batch_size))
-        d2_flat = np.empty((N + 1, batch_size))
+        d1_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
+        d2_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
         d1_flat[:N, :] = d1_inner
         d2_flat[:N, :] = d2_inner
         d1_flat[N, :] = d1_inner[0, :]
         d2_flat[N, :] = d2_inner[0, :]
 
-        # Convert back to device and restore original field shape
-        d1_flat_xp = xp.asarray(d1_flat)
-        d2_flat_xp = xp.asarray(d2_flat)
-        d1 = xp.moveaxis(d1_flat_xp.reshape(orig_shape), 0, axis)
-        d2 = xp.moveaxis(d2_flat_xp.reshape(orig_shape), 0, axis)
+        d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
+        d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
 
         if not self.grid.uniform and apply_metric:
             d1, d2 = self._apply_metric(d1, d2, axis)

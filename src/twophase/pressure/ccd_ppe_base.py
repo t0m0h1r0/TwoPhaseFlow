@@ -84,6 +84,14 @@ class _CCDPPEBase(IPPESolver):
             self._D1.append(d1)
             self._D2.append(d2)
 
+        # Operator cache (2 slots — LRU). Hit pattern: iterative backends
+        # (IIM defect-correction, pseudotime) that call _assemble_pinned_system
+        # repeatedly with the same ρ within a single outer solve. Outer step
+        # loop reuses are tracked via the explicit invalidate_cache() hook.
+        # Keys are id() of the rho array to avoid host syncs on the key.
+        self._L_cache: list = []      # list[(key, L_pinned, rhs_shape)]
+        self._cache_capacity = 2
+
     # ── IPPESolver implementation (Template Method) ───────────────────────
 
     def solve(
@@ -151,6 +159,29 @@ class _CCDPPEBase(IPPESolver):
         else:
             return self.backend.to_device(p_flat.reshape(shape))
 
+    # ── Device-aware spsolve helper (for subclasses) ─────────────────────
+
+    def _spsolve(self, L_host_sparse, rhs_host: np.ndarray) -> np.ndarray:
+        """Device-aware sparse LU solve.
+
+        Accepts a host scipy CSR matrix and host numpy RHS (the layout
+        produced by :meth:`_assemble_pinned_system`). On GPU transfers
+        both to the device, runs :func:`cupyx.scipy.sparse.linalg.spsolve`,
+        and returns a host numpy result so the Template Method pipeline
+        continues to operate in host space. On CPU delegates directly to
+        :func:`scipy.sparse.linalg.spsolve`.
+
+        Centralising the transfer here keeps subclasses trivially
+        backend-agnostic and preserves bit-exact behaviour on the NumPy
+        path (PR-5).
+        """
+        if self.backend.is_gpu():
+            L_dev = self.backend.sparse.csr_matrix(L_host_sparse)
+            rhs_dev = self.backend.xp.asarray(rhs_host)
+            p_dev = self.backend.sparse_linalg.spsolve(L_dev, rhs_dev)
+            return np.asarray(self.backend.to_host(p_dev))
+        return self.backend.sparse_linalg.spsolve(L_host_sparse, rhs_host)
+
     @abstractmethod
     def _solve_linear_system(
         self,
@@ -196,38 +227,77 @@ class _CCDPPEBase(IPPESolver):
         For periodic BC the operator is N²×N² (nodes 0..N-1 per axis).
         The RHS is trimmed to N×N and the pin is in the reduced space.
 
+        The operator matrix is cached by ``id(rho)`` so that iterative
+        backends (IIM-DC, pseudotime) that re-enter the pipeline with the
+        same ρ within a single outer solve skip the expensive Kronecker
+        rebuild. The RHS is never cached (it differs between iterations).
+
         Returns
         -------
         L_pinned : scipy.sparse.csr_matrix, shape (n, n)
         rhs_np   : np.ndarray, shape (n,)
         """
-        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         xp = self.xp
-        drho_np = []
-        for ax in range(self.ndim):
-            drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
-            drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
 
-        L_sparse = self._build_sparse_operator(rho_np, drho_np)
+        # ── Cache lookup (key = id(rho)) ─────────────────────────────────
+        rho_key = id(rho)
+        L_pinned = None
+        for k, L_cached, _ in self._L_cache:
+            if k == rho_key:
+                L_pinned = L_cached
+                break
 
+        if L_pinned is None:
+            rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+            drho_np = []
+            for ax in range(self.ndim):
+                drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
+                drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+
+            L_sparse = self._build_sparse_operator(rho_np, drho_np)
+
+            if self._periodic:
+                Nx, Ny = self.grid.N
+                reduced_shape = (Nx, Ny)
+                pin_dof = self._bc_spec.pin_dof_in_shape(reduced_shape)
+            else:
+                pin_dof = self._bc_spec.pin_dof
+
+            from ..core.boundary import pin_sparse_row
+            # Pin the operator only; the RHS pin is applied below on the
+            # live rhs vector so different RHSs can reuse the same L.
+            L_lil = L_sparse.tolil()
+            dummy_rhs = np.zeros(L_lil.shape[0])
+            pin_sparse_row(L_lil, dummy_rhs, pin_dof)
+            L_pinned = L_lil.tocsr()
+
+            # Insert into LRU (simple: append + drop oldest)
+            self._L_cache.append((rho_key, L_pinned, None))
+            if len(self._L_cache) > self._cache_capacity:
+                self._L_cache.pop(0)
+
+        # ── Build RHS vector (always fresh) ──────────────────────────────
         if self._periodic:
-            # Reduced DOF space: N×N
             Nx, Ny = self.grid.N
-            reduced_shape = (Nx, Ny)
-            pin_dof = self._bc_spec.pin_dof_in_shape(reduced_shape)
-
             rhs_full = np.asarray(self.backend.to_host(rhs), dtype=float)
             rhs_np = rhs_full[:Nx, :Ny].ravel()
+            pin_dof = self._bc_spec.pin_dof_in_shape((Nx, Ny))
         else:
             pin_dof = self._bc_spec.pin_dof
             rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
-
-        from ..core.boundary import pin_sparse_row
-        L_lil = L_sparse.tolil()
-        pin_sparse_row(L_lil, rhs_np, pin_dof)
-        L_pinned = L_lil.tocsr()
+        rhs_np[pin_dof] = 0.0
 
         return L_pinned, rhs_np
+
+    def invalidate_cache(self) -> None:
+        """Drop all cached operator matrices.
+
+        Call after ρ has been recomputed between outer solves to force a
+        rebuild on the next :meth:`solve` invocation. Not required for
+        correctness of a single solve — the cache keys on ``id(rho)`` which
+        changes whenever the caller passes a freshly-allocated array.
+        """
+        self._L_cache.clear()
 
     @property
     def _periodic(self) -> bool:
@@ -250,33 +320,40 @@ class _CCDPPEBase(IPPESolver):
         """
         n_full = self.grid.N[axis] + 1
 
+        # CCD runs on the active device but the 1-D matrices are consumed by
+        # scipy.sparse on the host side below, so the results are transferred
+        # via ``backend.to_host`` (a no-op on CPU, ``.get()`` on GPU).
+        _h = self.backend.to_host
+
         if self._periodic:
             N_ax = self.grid.N[axis]
             if axis == 0:
-                I_per = np.zeros((n_full, N_ax))
+                I_per = self.xp.zeros((n_full, N_ax))
                 for j in range(N_ax):
                     I_per[j, j] = 1.0
                 I_per[N_ax, 0] = 1.0
                 d1, d2 = self.ccd.differentiate(I_per, axis=0)
-                return np.asarray(d1, dtype=float)[:N_ax, :], np.asarray(d2, dtype=float)[:N_ax, :]
+                return (np.asarray(_h(d1), dtype=float)[:N_ax, :],
+                        np.asarray(_h(d2), dtype=float)[:N_ax, :])
             else:
-                N_other = self.grid.N[0] + 1
-                I_per = np.zeros((N_ax, n_full))
+                I_per = self.xp.zeros((N_ax, n_full))
                 for j in range(N_ax):
                     I_per[j, j] = 1.0
                 I_per[0, N_ax] = 1.0
                 d1, d2 = self.ccd.differentiate(I_per, axis=1)
-                d1_np = np.asarray(d1, dtype=float)[:, :N_ax]
-                d2_np = np.asarray(d2, dtype=float)[:, :N_ax]
+                d1_np = np.asarray(_h(d1), dtype=float)[:, :N_ax]
+                d2_np = np.asarray(_h(d2), dtype=float)[:, :N_ax]
                 return d1_np.T, d2_np.T
         else:
-            I = np.eye(n_full)
+            I = self.xp.eye(n_full)
             if axis == 0:
                 d1, d2 = self.ccd.differentiate(I, axis=0)
-                return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
+                return (np.asarray(_h(d1), dtype=float),
+                        np.asarray(_h(d2), dtype=float))
             else:
                 d1, d2 = self.ccd.differentiate(I, axis=1)
-                return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
+                return (np.asarray(_h(d1), dtype=float).T,
+                        np.asarray(_h(d2), dtype=float).T)
 
     def _build_sparse_operator(self, rho_np, drho_np):
         """Assemble the sparse L_CCD^ρ matrix via Kronecker products.

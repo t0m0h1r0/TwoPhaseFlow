@@ -35,46 +35,21 @@ A3 traceability
 § Solver backend
 ─────────────────
   Both filters perform 1-D tridiagonal solves (one per axis) via
-  scipy.linalg.solve_banded with LAPACK's dgbsv.
-  Input/output arrays are kept in the caller's xp namespace;
-  solve is performed in NumPy (CPU) regardless of backend.
+  :meth:`Backend.solve_banded_batched`:
+    - CPU: delegates to ``scipy.linalg.solve_banded`` (LAPACK dgbsv).
+    - GPU: delegates to :func:`twophase.linalg_backend.thomas_batched`
+      — a device-native batched Thomas sweep (stable because the
+      Helmholtz/Padé LHS are strictly diagonally dominant).
+  Both paths keep arrays in the caller's ``xp`` namespace throughout.
 """
 
 from __future__ import annotations
 import numpy as np
-from scipy.linalg import solve_banded
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
-
-
-# ── Shared helper ─────────────────────────────────────────────────────────────
-
-def _banded_solve_along_axis(ab: np.ndarray, rhs: np.ndarray, ax: int) -> np.ndarray:
-    """Apply 1-D banded solve along axis ``ax`` of ``rhs``.
-
-    Parameters
-    ----------
-    ab  : (3, n) banded matrix in solve_banded format (l=u=1):
-              ab[0, 1:]  = upper diagonal
-              ab[1, :]   = main  diagonal
-              ab[2, :-1] = lower diagonal
-    rhs : ndarray of arbitrary shape; axis ``ax`` has length n.
-
-    Returns
-    -------
-    x : ndarray, same shape as rhs.
-    """
-    n = rhs.shape[ax]
-    # Move the target axis to front: shape (n, *batch)
-    moved = np.moveaxis(rhs, ax, 0)
-    batch_shape = moved.shape[1:]
-    rhs_2d = moved.reshape(n, -1)                 # (n, batch)
-    x_2d = solve_banded((1, 1), ab, rhs_2d)       # (n, batch)
-    x_moved = x_2d.reshape((n,) + batch_shape)    # (n, *batch)
-    return np.moveaxis(x_moved, 0, ax)             # restore original order
 
 
 # ── Helmholtz κ filter ────────────────────────────────────────────────────────
@@ -124,21 +99,25 @@ class HelmholtzKappaFilter:
         ccd: "CCDSolver",
         alpha: float = 1.0,
     ):
+        self.backend = backend
         self.xp = backend.xp
         self.alpha = alpha
         grid = ccd.grid
         ndim = ccd.ndim
 
         # Pre-build banded matrices (one per axis); coefficients are constant
+        # and the LHS lives on the active device so solve_banded_batched has
+        # nothing to transfer.
+        xp = self.xp
         self._ab: dict[int, np.ndarray] = {}
         for ax in range(ndim):
             n = grid.N[ax] + 1
             a = alpha                 # h² cancels: −α × (Δf/h²) × h² = −α Δf
-            main = np.full(n, 1.0 + 2.0 * a)
+            main = xp.full(n, 1.0 + 2.0 * a)
             main[0]  = 1.0 + a       # Neumann BC: ghost = boundary value
             main[-1] = 1.0 + a
-            off = np.full(n - 1, -a)
-            ab = np.zeros((3, n))
+            off = xp.full(n - 1, -a)
+            ab = xp.zeros((3, n))
             ab[0, 1:]  = off         # upper (shifted right in solve_banded)
             ab[1, :]   = main
             ab[2, :-1] = off         # lower (shifted left  in solve_banded)
@@ -151,6 +130,8 @@ class HelmholtzKappaFilter:
     def apply(self, q, psi):
         """Apply Helmholtz filter to scalar field q, blended at interface.
 
+        Runs entirely in the active ``xp`` namespace (no host copies).
+
         Parameters
         ----------
         q   : array  — curvature field κ
@@ -161,19 +142,17 @@ class HelmholtzKappaFilter:
         κ_out : array — filtered field (same namespace as q)
         """
         xp = self.xp
-        q_np   = np.asarray(q)
-        psi_np = np.asarray(psi)
+        q_dev = xp.asarray(q)
+        psi_dev = xp.asarray(psi)
 
         # ── Operator-splitting: solve per axis ──────────────────────────
-        q_filt = q_np.copy()
+        q_filt = q_dev.copy()
         for ax in range(self._ndim):
-            q_filt = _banded_solve_along_axis(self._ab[ax], q_filt, ax)
+            q_filt = self.backend.solve_banded_batched(self._ab[ax], q_filt, ax)
 
         # ── Interface-band blending ──────────────────────────────────────
-        w = 4.0 * psi_np * (1.0 - psi_np)   # peaks at 1 when ψ=0.5
-        q_out = w * q_filt + (1.0 - w) * q_np
-
-        return xp.asarray(q_out)
+        w = 4.0 * psi_dev * (1.0 - psi_dev)   # peaks at 1 when ψ=0.5
+        return w * q_filt + (1.0 - w) * q_dev
 
 
 # ── Padé compact filter (Lele 1992 / Kim 2010) ───────────────────────────────
@@ -216,6 +195,7 @@ class LeleCompactFilter:
         xi_c: float | None = None,
         alpha_f: float | None = None,
     ):
+        self.backend = backend
         self.xp = backend.xp
         grid = ccd.grid
         ndim = ccd.ndim
@@ -237,18 +217,19 @@ class LeleCompactFilter:
         self.xi_c = float(xi_c) if xi_c is not None else None
         self._ndim = ndim
 
-        # ── Pre-build banded matrices (one per axis) ────────────────────
+        # ── Pre-build banded matrices (one per axis) on the active device ─
         af = self.alpha_f
+        xp = self.xp
         self._ab_lhs: dict[int, np.ndarray] = {}
         self._rhs_coeff: dict[int, tuple] = {}  # (a0, a1) per axis
         for ax in range(ndim):
             n = grid.N[ax] + 1
             # LHS: (α_f, 1, α_f) tridiagonal
-            main = np.ones(n)
+            main = xp.ones(n)
             main[0]  = 1.0 + af    # Neumann ghost: left
             main[-1] = 1.0 + af    # Neumann ghost: right
-            off = np.full(n - 1, af)
-            ab = np.zeros((3, n))
+            off = xp.full(n - 1, af)
+            ab = xp.zeros((3, n))
             ab[0, 1:]  = off
             ab[1, :]   = main
             ab[2, :-1] = off
@@ -262,6 +243,8 @@ class LeleCompactFilter:
     def apply(self, f):
         """Apply Padé compact filter to scalar field f along every axis.
 
+        Runs entirely in the active ``xp`` namespace.
+
         Parameters
         ----------
         f : array  — field to filter (φ, n_i, or κ)
@@ -271,24 +254,24 @@ class LeleCompactFilter:
         f̂ : array — filtered field (same namespace as f)
         """
         xp = self.xp
-        f_np = np.asarray(f)
-        f_filt = f_np.copy()
+        f_dev = xp.asarray(f)
+        f_filt = f_dev.copy()
 
         for ax in range(self._ndim):
             f_filt = self._apply_axis(f_filt, ax)
 
-        return xp.asarray(f_filt)
+        return f_filt
 
     # ── Private ────────────────────────────────────────────────────────────
 
-    def _apply_axis(self, f: np.ndarray, ax: int) -> np.ndarray:
-        n = f.shape[ax]
+    def _apply_axis(self, f, ax: int):
+        xp = self.xp
         a01 = self._rhs_coeff[ax]
 
         # Build RHS: a01 * f_j + (a01/2) * (f_{j-1} + f_{j+1})
-        # Using np.roll for periodic neighbours (then fix boundaries)
-        f_prev = np.roll(f, 1,  axis=ax)  # f_{j-1}
-        f_next = np.roll(f, -1, axis=ax)  # f_{j+1}
+        # Using xp.roll for periodic neighbours (then fix boundaries)
+        f_prev = xp.roll(f, 1,  axis=ax)  # f_{j-1}
+        f_next = xp.roll(f, -1, axis=ax)  # f_{j+1}
 
         rhs = a01 * f + (a01 / 2.0) * (f_prev + f_next)
 
@@ -299,9 +282,8 @@ class LeleCompactFilter:
         slNm = [slice(None)] * f.ndim; slNm[ax] = -2
 
         # At j=0: f_prev used f_N (from roll) — replace with f_0 (ghost)
-        # rhs[0] = a01*f[0] + (a01/2)*(f[0] + f[1])  (ghost=f[0])
         rhs[tuple(sl0)] = a01 * f[tuple(sl0)] + (a01 / 2.0) * (f[tuple(sl0)] + f[tuple(sl1)])
         # At j=N: f_next used f_0 (from roll) — replace with f_N (ghost)
         rhs[tuple(slN)] = a01 * f[tuple(slN)] + (a01 / 2.0) * (f[tuple(slNm)] + f[tuple(slN)])
 
-        return _banded_solve_along_axis(self._ab_lhs[ax], rhs, ax)
+        return self.backend.solve_banded_batched(self._ab_lhs[ax], rhs, ax)

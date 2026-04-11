@@ -1,4 +1,4 @@
-# Wiki Index — 78 entries
+# Wiki Index — 80 entries
 
 ## Theory (32)
 
@@ -50,7 +50,7 @@
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 
-## Experiment (19)
+## Experiment (20)
 
 | REF-ID | Title |
 |--------|-------|
@@ -73,6 +73,7 @@
 | [WIKI-E-017](experiment/WIKI-E-017.md) | NS Pipeline Per-Timestep Grid Rebuild Integration Test (Exp 11-29) |
 | [WIKI-E-018](experiment/WIKI-E-018.md) | Non-Uniform Grid NS Convergence: Static Droplet Multi-Resolution (Exp 12-17) |
 | [WIKI-E-019](experiment/WIKI-E-019.md) | Local Epsilon Validation: Fixed ε vs ε(x) on Non-Uniform Grids (Exp 12-18) |
+| [WIKI-E-020](experiment/WIKI-E-020.md) | Grid Rebuild Frequency Calibration: Interface Motion vs Stale-Grid Tradeoff |
 
 ## Paper (5)
 
@@ -84,7 +85,7 @@
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 
-## Code (14)
+## Code (15)
 
 | REF-ID | Title |
 |--------|-------|
@@ -102,3 +103,4 @@
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
 | [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
 | [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
+| [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |

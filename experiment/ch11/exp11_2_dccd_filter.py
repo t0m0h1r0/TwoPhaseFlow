@@ -43,14 +43,15 @@ def transfer_function_analysis():
 
 
 def checkerboard_test():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
     for N in [32, 64, 128]:
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="periodic")
         X, Y = grid.meshgrid()
-        checker = (-1.0) ** (np.round(X * N).astype(int) + np.round(Y * N).astype(int))
+        checker = (-1.0) ** (xp.round(X * N).astype(int) + xp.round(Y * N).astype(int))
 
         d1_ccd, _ = ccd.differentiate(checker, axis=0)
 
@@ -62,8 +63,8 @@ def checkerboard_test():
             d1_ccd[1, :] - 2 * d1_ccd[0, :] + d1_ccd[-1, :])
         d1_f[-1, :] = d1_f[0, :]
 
-        rms_before = float(np.sqrt(np.mean(d1_ccd**2)))
-        rms_after = float(np.sqrt(np.mean(d1_f**2)))
+        rms_before = float(xp.sqrt(xp.mean(d1_ccd**2)))
+        rms_after = float(xp.sqrt(xp.mean(d1_f**2)))
         ratio = rms_after / rms_before if rms_before > 0 else 0
         results.append({"N": N, "rms_ccd": rms_before, "rms_dccd": rms_after,
                          "reduction": ratio})

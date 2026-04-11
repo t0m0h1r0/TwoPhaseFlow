@@ -96,12 +96,13 @@ class ClosestPointExtender:
 
         φ is smooth after reinitialisation → CCD gives O(h^6) normals.
         """
+        xp = self.xp
         dphi = []
         for ax in range(self.ndim):
             d1, _ = self.ccd.differentiate(phi, ax)
             dphi.append(d1)
         grad_sq = sum(g * g for g in dphi)
-        grad_norm = np.maximum(np.sqrt(np.maximum(grad_sq, 1e-28)), 1e-14)
+        grad_norm = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
         return [g / grad_norm for g in dphi]
 
     def extend(self, q, phi, n_hat=None):
@@ -130,13 +131,16 @@ class ClosestPointExtender:
             n_hat = self.compute_normal(phi)
         q_liq = self.extend(q,  phi,  n_hat)
         q_gas = self.extend(q, -phi, [-n for n in n_hat])
-        return np.where(phi < 0, q_gas, q_liq)
+        return self.xp.where(phi < 0, q_gas, q_liq)
 
     # ── 2-D implementation ────────────────────────────────────────────────
 
     def _extend_2d(self, q, phi, n_hat):
-        coords_x = self.grid.coords[0]   # 1-D, length Nx = N[0]+1
-        coords_y = self.grid.coords[1]   # 1-D, length Ny = N[1]+1
+        xp = self.xp
+        # Move coords to the active device so that mixed numpy/cupy arithmetic
+        # with phi is avoided. self.grid.coords stays on host (metric path).
+        coords_x = xp.asarray(self.grid.coords[0])   # 1-D, length Nx = N[0]+1
+        coords_y = xp.asarray(self.grid.coords[1])   # 1-D, length Ny = N[1]+1
         Nx = len(coords_x)
         Ny = len(coords_y)
 
@@ -147,18 +151,18 @@ class ClosestPointExtender:
         q_xyy, q_xxyy = self.ccd.differentiate(q_yy, axis=0)
 
         # ── Step 2: Closest-point coordinates (O(h^6) accuracy) ───────────
-        XX, YY = np.meshgrid(coords_x, coords_y, indexing='ij')  # (Nx, Ny)
-        xc = np.clip(XX - phi * n_hat[0], coords_x[0], coords_x[-1])
-        yc = np.clip(YY - phi * n_hat[1], coords_y[0], coords_y[-1])
+        XX, YY = xp.meshgrid(coords_x, coords_y, indexing='ij')  # (Nx, Ny)
+        xc = xp.clip(XX - phi * n_hat[0], coords_x[0], coords_x[-1])
+        yc = xp.clip(YY - phi * n_hat[1], coords_y[0], coords_y[-1])
 
         # ── Step 3: Bracket left indices via searchsorted ─────────────────
         # ix: largest i with coords_x[i] ≤ xc[i,j] for each target point
-        ix = (np.searchsorted(coords_x, xc.ravel(), side='right')
+        ix = (xp.searchsorted(coords_x, xc.ravel(), side='right')
               .reshape(Nx, Ny) - 1)
-        iy = (np.searchsorted(coords_y, yc.ravel(), side='right')
+        iy = (xp.searchsorted(coords_y, yc.ravel(), side='right')
               .reshape(Nx, Ny) - 1)
-        ix = np.clip(ix, 0, Nx - 2)
-        iy = np.clip(iy, 0, Ny - 2)
+        ix = xp.clip(ix, 0, Nx - 2)
+        iy = xp.clip(iy, 0, Ny - 2)
 
         # One-sided fallback: ensure bracket-right is strictly source-side.
         # x_Γ is ON the interface; the initial bracket [ix, ix+1] may straddle it,
@@ -167,21 +171,21 @@ class ClosestPointExtender:
         # Error bound: each shift adds ≤ h to extrapolation distance → O(h^6)
         # is maintained up to total extrapolation distance ≤ 3h (§8.4).
         for _ in range(3):
-            ix1 = np.clip(ix + 1, 0, Nx - 1)
-            ix = np.where(phi[ix1, iy] >= 0, np.clip(ix - 1, 0, Nx - 2), ix)
-        ix1 = np.clip(ix + 1, 0, Nx - 1)
+            ix1 = xp.clip(ix + 1, 0, Nx - 1)
+            ix = xp.where(phi[ix1, iy] >= 0, xp.clip(ix - 1, 0, Nx - 2), ix)
+        ix1 = xp.clip(ix + 1, 0, Nx - 1)
 
         for _ in range(3):
-            iy1 = np.clip(iy + 1, 0, Ny - 1)
-            iy = np.where(phi[ix, iy1] >= 0, np.clip(iy - 1, 0, Ny - 2), iy)
-        iy1 = np.clip(iy + 1, 0, Ny - 1)
+            iy1 = xp.clip(iy + 1, 0, Ny - 1)
+            iy = xp.where(phi[ix, iy1] >= 0, xp.clip(iy - 1, 0, Ny - 2), iy)
+        iy1 = xp.clip(iy + 1, 0, Ny - 1)
 
         # ── Step 4: Hermite spacings and normalised coordinates ────────────
         # All shapes (Nx, Ny) via fancy indexing into 1-D coord arrays.
         hx = coords_x[ix1] - coords_x[ix]
         hy = coords_y[iy1] - coords_y[iy]
-        tx = (xc - coords_x[ix]) / np.maximum(hx, 1e-30)
-        ty = (yc - coords_y[iy]) / np.maximum(hy, 1e-30)
+        tx = (xc - coords_x[ix]) / xp.maximum(hx, 1e-30)
+        ty = (yc - coords_y[iy]) / xp.maximum(hy, 1e-30)
 
         # ── Step 5: Tensor-product Hermite5 ──────────────────────────────
         # At y-row iy: Hermite5_x in q → val0; in q_y → dval0; in q_yy → ddval0
@@ -212,4 +216,4 @@ class ClosestPointExtender:
                        val1, hy * dval1, hy*hy * ddval1)
 
         # ── Step 7: Assemble: keep source phase unchanged ─────────────────
-        return np.where(phi >= 0, q_interp, q)
+        return xp.where(phi >= 0, q_interp, q)
