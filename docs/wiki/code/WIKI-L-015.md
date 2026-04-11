@@ -107,6 +107,48 @@ in `src/twophase/tests/test_linalg_backend.py`.
   `pressure/ppe_solver_ccd_lu.py`, `levelset/compact_filters.py`
 - Memo: `docs/memo/cupy_optimization_guidelines.md`
 
+## GPU opt-in experiment catalog (ch11)
+
+All ch11 experiments have been migrated to `Backend()` (default: GPU when available)
+across four refactor batches. Two distinct patterns emerged:
+
+### Pattern A — Hybrid CPU/GPU
+
+Used when the experiment calls `scipy.sparse.spsolve` (CPU-only) for defect-correction
+or GMRES loops, but CCD evaluation runs on device.
+
+Protocol:
+1. `X, Y = grid.meshgrid()` → force to host via `backend.to_host(X)` before FD/DC pipelines
+2. `eval_LH(p)` still routes CCD through device (`xp.asarray(p)` + `backend.to_host(Lp)`)
+3. `scipy.sparse.spsolve` receives host arrays; result stays on host for the DC iteration
+4. Comment `# hybrid layout: DC on host, CCD on device` marks the boundary
+
+Established by `exp11_9` (dc_k_accuracy, batch 1 / CHK-110).
+
+### Pattern B — Full xp
+
+Used when no `scipy.sparse` solver is needed. All arrays built via `xp.*`; 1D slices
+host-converted only at `save_results` boundary (numpy cannot consume CuPy arrays).
+
+### Experiment catalog
+
+| Exp | Name | Pattern | Batch / CHK | Notes |
+|-----|------|---------|-------------|-------|
+| exp11_3 | curvature_3path | B | batch1 / CHK-110 | `heaviside(xp, ...)` |
+| exp11_4 | gcl_nonuniform | B | batch2 / CHK-111 | |
+| exp11_8 | cls_remapping | B | batch2 / CHK-111 | |
+| exp11_9 | dc_k_accuracy | **A** | batch1 / CHK-110 | Introduced hybrid pattern |
+| exp11_10 | dc_vs_fd | **A** | batch3 / CHK-113 | Same hybrid as exp11_9 |
+| exp11_11 | ppe_neumann | **A** | batch3 / CHK-113 | Neumann BC + gauge-pin DC |
+| exp11_12 | varrho_ppe | **A** | batch4 / CHK-115 | |
+| exp11_13 | dc_omega_map | **A** | batch4 / CHK-115 | ω-sweep across density ratios |
+| exp11_14 | tvd_rk3 | B | batch2 / CHK-111 | |
+| exp11_15 | gmres_dc | **A** | batch4 / CHK-115 | scipy GMRES on host |
+| exp11_16 | young_laplace | B | batch1 / CHK-110 | |
+| exp11_17 | dccd_advection_1d | B | batch3 / CHK-113 | `initial_conditions(xp=xp)` |
+| exp11_18 | cls_dccd_conservation | B | batch4 / CHK-115 | First GPU exerciser of `DissipativeCCDAdvection._rhs` |
+| exp11_26 | weno5_vs_dccd | B | batch3 / CHK-113 | First GPU exerciser of `LevelSetAdvection._rhs` |
+
 ## Related entries
 
 - [[WIKI-L-001]] Algorithm overview — parent of all L-Domain entries
