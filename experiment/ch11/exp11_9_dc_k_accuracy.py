@@ -68,7 +68,7 @@ def defect_correction(rhs, ccd, backend, L_L, k_max):
 
 
 def run_experiment():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     Ns = [8, 16, 32, 64, 128]; Ks = [1, 2, 3, 5, 10]
     errors = {k: [] for k in Ks}
 
@@ -77,8 +77,12 @@ def run_experiment():
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N
+        # Defect-correction loop below goes through scipy.sparse.spsolve,
+        # so p_exact / rhs are kept on host; CCD evaluation in eval_LH
+        # still runs on device via xp.asarray(p) internally.
         X, Y = grid.meshgrid()
-        p_exact = np.sin(np.pi * X) * np.sin(np.pi * Y)
+        X_h = backend.to_host(X); Y_h = backend.to_host(Y)
+        p_exact = np.sin(np.pi * X_h) * np.sin(np.pi * Y_h)
         rhs = -2.0 * np.pi**2 * p_exact
         rhs[0,:] = 0; rhs[-1,:] = 0; rhs[:,0] = 0; rhs[:,-1] = 0
         L_L = build_fd_laplacian_dirichlet(N, h)

@@ -33,7 +33,8 @@ OUT = experiment_dir(__file__)
 
 
 def run_laplace_test(Ns=[32, 64, 128]):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     R = 0.25; kappa_exact = 1.0 / R; Dp_exact = kappa_exact  # We=1
     results = []
 
@@ -45,16 +46,16 @@ def run_laplace_test(Ns=[32, 64, 128]):
         X, Y = grid.meshgrid()
 
         # Level-set: positive inside droplet
-        phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-        psi = heaviside(np, phi, eps)
+        phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+        psi = heaviside(xp, phi, eps)
 
         # Curvature
         curv_calc = CurvatureCalculator(backend, ccd, eps)
         kappa = curv_calc.compute(psi)
 
         # Measure kappa near interface
-        near = np.abs(phi) < 3 * h
-        kappa_mean = float(np.mean(kappa[near])) if np.any(near) else float("nan")
+        near = xp.abs(phi) < 3 * h
+        kappa_mean = float(xp.mean(kappa[near])) if bool(xp.any(near)) else float("nan")
 
         # Pressure jump = kappa (for We=1)
         # Measure: max(p) - min(p) proxy from kappa integration

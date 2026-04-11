@@ -30,22 +30,23 @@ apply_style()
 OUT = experiment_dir(__file__)
 
 
-def curvature_cd2(phi, grid):
+def curvature_cd2(phi, grid, xp):
     h = [float(grid.L[ax]) / grid.N[ax] for ax in range(grid.ndim)]
-    phi_x = np.zeros_like(phi); phi_y = np.zeros_like(phi)
+    phi_x = xp.zeros_like(phi); phi_y = xp.zeros_like(phi)
     phi_x[1:-1, :] = (phi[2:, :] - phi[:-2, :]) / (2 * h[0])
     phi_y[:, 1:-1] = (phi[:, 2:] - phi[:, :-2]) / (2 * h[1])
-    phi_xx = np.zeros_like(phi); phi_yy = np.zeros_like(phi); phi_xy = np.zeros_like(phi)
+    phi_xx = xp.zeros_like(phi); phi_yy = xp.zeros_like(phi); phi_xy = xp.zeros_like(phi)
     phi_xx[1:-1, :] = (phi[2:, :] - 2*phi[1:-1, :] + phi[:-2, :]) / h[0]**2
     phi_yy[:, 1:-1] = (phi[:, 2:] - 2*phi[:, 1:-1] + phi[:, :-2]) / h[1]**2
     phi_xy[1:-1, 1:-1] = (phi[2:, 2:] - phi[2:, :-2] - phi[:-2, 2:] + phi[:-2, :-2]) / (4*h[0]*h[1])
-    grad_mag = np.sqrt(phi_x**2 + phi_y**2 + 1e-12)
+    grad_mag = xp.sqrt(phi_x**2 + phi_y**2 + 1e-12)
     kappa = -(phi_y**2 * phi_xx - 2*phi_x*phi_y*phi_xy + phi_x**2 * phi_yy) / grad_mag**3
     return kappa
 
 
 def circle_convergence(R=0.25, center=(0.5, 0.5)):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     Ns = [16, 32, 64, 128, 256]
     kappa_exact = 1.0 / R
     res_ccd, res_cd2 = [], []
@@ -56,21 +57,21 @@ def circle_convergence(R=0.25, center=(0.5, 0.5)):
         ccd = CCDSolver(grid, backend, bc_type="wall")
         eps = 1.5 / N
         X, Y = grid.meshgrid()
-        phi = R - np.sqrt((X - center[0])**2 + (Y - center[1])**2)
-        psi = heaviside(np, phi, eps)
+        phi = R - xp.sqrt((X - center[0])**2 + (Y - center[1])**2)
+        psi = heaviside(xp, phi, eps)
 
         kappa_ccd = CurvatureCalculator(backend, ccd, eps).compute(psi)
-        kappa_cd2_val = curvature_cd2(phi, grid)
+        kappa_cd2_val = curvature_cd2(phi, grid, xp)
 
         h = 1.0 / N
-        near = np.abs(phi) < 3 * h
-        if np.any(near):
+        near = xp.abs(phi) < 3 * h
+        if bool(xp.any(near)):
             res_ccd.append({"N": N, "h": h,
-                "Li": float(np.max(np.abs(kappa_ccd[near] - kappa_exact))),
-                "L2": float(np.sqrt(np.mean((kappa_ccd[near] - kappa_exact)**2)))})
+                "Li": float(xp.max(xp.abs(kappa_ccd[near] - kappa_exact))),
+                "L2": float(xp.sqrt(xp.mean((kappa_ccd[near] - kappa_exact)**2)))})
             res_cd2.append({"N": N, "h": h,
-                "Li": float(np.max(np.abs(kappa_cd2_val[near] - kappa_exact))),
-                "L2": float(np.sqrt(np.mean((kappa_cd2_val[near] - kappa_exact)**2)))})
+                "Li": float(xp.max(xp.abs(kappa_cd2_val[near] - kappa_exact))),
+                "L2": float(xp.sqrt(xp.mean((kappa_cd2_val[near] - kappa_exact)**2)))})
 
     for res in [res_ccd, res_cd2]:
         for i in range(1, len(res)):
@@ -83,7 +84,8 @@ def circle_convergence(R=0.25, center=(0.5, 0.5)):
 
 
 def sinusoidal_test(A=0.05):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     Ns = [32, 64, 128, 256]
     results = []
 
@@ -93,21 +95,21 @@ def sinusoidal_test(A=0.05):
         ccd = CCDSolver(grid, backend, bc_type="wall")
         eps = 1.5 / N
         X, Y = grid.meshgrid()
-        y_if = 0.5 + A * np.sin(2 * np.pi * X)
+        y_if = 0.5 + A * xp.sin(2 * np.pi * X)
         phi = y_if - Y
-        psi = heaviside(np, phi, eps)
+        psi = heaviside(xp, phi, eps)
         kappa_ccd = CurvatureCalculator(backend, ccd, eps).compute(psi)
 
-        f_p = A * 2 * np.pi * np.cos(2 * np.pi * X)
-        f_pp = -A * (2 * np.pi)**2 * np.sin(2 * np.pi * X)
+        f_p = A * 2 * np.pi * xp.cos(2 * np.pi * X)
+        f_pp = -A * (2 * np.pi)**2 * xp.sin(2 * np.pi * X)
         kappa_exact = -f_pp / (1 + f_p**2)**1.5
 
         h = 1.0 / N
-        near = np.abs(phi) < 3 * h
-        if np.any(near):
+        near = xp.abs(phi) < 3 * h
+        if bool(xp.any(near)):
             results.append({"N": N, "h": h,
-                "Li": float(np.max(np.abs(kappa_ccd[near] - kappa_exact[near]))),
-                "L2": float(np.sqrt(np.mean((kappa_ccd[near] - kappa_exact[near])**2)))})
+                "Li": float(xp.max(xp.abs(kappa_ccd[near] - kappa_exact[near]))),
+                "L2": float(xp.sqrt(xp.mean((kappa_ccd[near] - kappa_exact[near])**2)))})
 
     for i in range(1, len(results)):
         r0, r1 = results[i-1], results[i]
