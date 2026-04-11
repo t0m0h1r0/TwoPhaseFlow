@@ -91,6 +91,29 @@ The wrapper enforces: creates `dev/{domain}/{agent_id}/{task_id}`, updates `docs
 **Commit format:** `{domain}/{agent_id}: {summary}`
 
 ────────────────────────────────────────────────────────
+## GIT-WORKTREE-ADD: Session-Isolated Working Tree (v5.1)
+
+**Authorized:** Any agent under `concurrency_profile == "worktree"`  |  **[AUTH_LEVEL: Specialist]**
+**Trigger:** First Git action whenever two or more Claude Code sessions may run concurrently against this repository. Replaces plain `git checkout -b` branch creation in that mode.
+**Phase:** Start of EXECUTE, before GIT-SP.
+**Gated by:** `_base.yaml :: concurrency_profile` (no-op when `legacy`).
+
+```sh
+# Canonical form: worktree rooted in a sibling directory of the main checkout.
+BRANCH_SLUG="$(echo "${BRANCH}" | tr '/' '-')"
+git worktree add "../wt/${SESSION_ID}/${BRANCH_SLUG}" "${BRANCH}"
+# All subsequent writes for this session happen inside that directory.
+```
+
+The wrapper enforces:
+- `SESSION_ID` is the UUID v4 emitted by the authoring Claude Code session (matches `session_id` in `prompts/meta/schemas/hand_schema.json`).
+- The worktree path MUST be **outside the repository root** (`../wt/...`). Any attempt to create a worktree at `$REPO_ROOT/wt/...` or inside `$REPO_ROOT/.worktrees/...` → **STOP-09** base-directory destruction.
+- `git checkout` inside an existing session worktree is **forbidden** for the purpose of switching branches — use a new worktree instead. Swapping HEAD inside a live worktree is the exact φ4 violation that triggered the Phase A.1 recovery incident recorded in `docs/02_ACTIVE_LEDGER.md §1 CHK-114`.
+- `git rev-parse --git-common-dir` resolves the shared `.git` directory from either the main checkout or any worktree transparently — downstream path resolution (EnvMetaBootstrapper, meta path discovery) MUST use this form instead of `.git` literal.
+
+**Post-condition:** After `GIT-WORKTREE-ADD`, the agent is expected to issue `LOCK-ACQUIRE {branch}` (→ §LOCK-ACQUIRE) before any writes.
+
+────────────────────────────────────────────────────────
 ## GIT-00: Interface Agreement Pre-flight
 
 **Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, WikiAuditor)
@@ -189,6 +212,31 @@ git checkout {branch}
 On merge conflict → STOP; report to user. Post-merge failure → `git revert -m 1 HEAD`; STOP.
 
 ────────────────────────────────────────────────────────
+## GIT-ATOMIC-PUSH: Fetch-Rebase-Push Under Concurrency (v5.1)
+
+**Authorized:** Any agent under `concurrency_profile == "worktree"`  |  **[AUTH_LEVEL: Specialist]**
+**Trigger:** Any `git push` issued while another Claude Code session may be pushing to the same remote. Replaces raw `git push` in worktree mode.
+**Phase:** End of HAND-02 `produced:` emission, before `lock_released: true`.
+**Gated by:** `_base.yaml :: concurrency_profile` (no-op when `legacy`; raw `git push` in GIT-04 still applies).
+
+```sh
+git fetch origin
+git rebase "origin/${BASE_BRANCH}"        # typically origin/main
+git push origin "${BRANCH}"
+```
+
+Semantics:
+- `fetch` + `rebase` are **mandatory** before the push. Skipping them is a STOP-05 equivalent and forbidden.
+- If `rebase` reports conflicts → **STOP-11** atomic-push conflict. This is classified **STOP-SOFT** (not HARD): rebase conflicts are a legitimate, expected outcome of concurrent development and require human review, not panic. The agent:
+  1. Runs `git rebase --abort` to restore the pre-rebase state;
+  2. Issues HAND-02 with `status: FAIL`, `stop_code: "STOP-11"`, `lock_released: false` (the lock is retained so no other session steals it while the conflict is being resolved);
+  3. Reports the conflicting paths in `issues` and waits for human intervention.
+- If the remote has been force-pushed or history has diverged non-linearly → do NOT attempt `--force-with-lease`. Abort and escalate.
+- On success, the push is atomic with respect to the specific commit range created by the rebase.
+
+Composition with LOCK-RELEASE: GIT-ATOMIC-PUSH finishes before LOCK-RELEASE. A lock held while pushing guarantees that no other session on the same branch can race the push.
+
+────────────────────────────────────────────────────────
 ## GIT-05: Sub-branch Operations
 
 **Authorized:** CodeWorkflowCoordinator, PaperWorkflowCoordinator  |  **[AUTH_LEVEL: Gatekeeper]**
@@ -239,6 +287,76 @@ On failure: branch doesn't match known domain → STOP; report to user.
 **Failure modes:**
 - DOMAIN-LOCK absent → STOP signal; request domain lock from coordinator
 - Target path outside write_territory → CONTAMINATION_GUARD error; notify coordinator
+
+────────────────────────────────────────────────────────
+## LOCK-ACQUIRE: Branch Semaphore Acquisition (v5.1)
+
+**Authorized:** every agent (universal) under `concurrency_profile == "worktree"`  |  **[AUTH_LEVEL: universal]**
+**Trigger:** MANDATORY before the first write to any branch owned by the session. Composes **on top of** DOM-01/DOM-02 territory guards — branch lock gates coarse-grained ownership, territory gates fine-grained path filtering. Both must hold for a write to proceed.
+**Gated by:** `_base.yaml :: concurrency_profile` (legacy mode: DOM-01/02 alone apply).
+
+```sh
+BRANCH_SLUG="$(echo "${BRANCH}" | tr '/' '-')"
+LOCK_FILE="docs/locks/${BRANCH_SLUG}.lock.json"
+
+python3 - <<'PY'
+import os, json, uuid, datetime, sys
+path = os.environ["LOCK_FILE"]
+payload = {
+  "branch":       os.environ["BRANCH"],
+  "branch_slug":  os.environ["BRANCH_SLUG"],
+  "session_id":   os.environ["SESSION_ID"],
+  "worktree_path": os.environ.get("WORKTREE_PATH", ""),
+  "holder_agent": os.environ["HOLDER_AGENT"],
+  "acquired_at":  datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
+  "expires_at":   (datetime.datetime.utcnow() + datetime.timedelta(hours=24)).isoformat(timespec="seconds") + "Z",
+  "meta_version": "5.1.0",
+}
+# O_EXCL: fails if another session already holds the lock.
+try:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+except FileExistsError:
+    sys.stderr.write("STOP-10 foreign lock: " + path + "\n"); sys.exit(10)
+with os.fdopen(fd, "w") as f:
+    json.dump(payload, f, indent=2)
+PY
+```
+
+Post-conditions:
+1. `docs/locks/{branch_slug}.lock.json` exists and contains this session's UUID. Atomicity is provided by `O_EXCL` at the filesystem level — no race window.
+2. A matching row is appended to `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY` in the first commit that produces any write on this branch (registry is append-only; see §4 of that file).
+3. Any `HandoffEnvelope` (→ `prompts/meta/schemas/hand_schema.json`) produced during the held period carries `branch_lock_acquired: true`.
+
+Failure modes:
+- `O_EXCL` refuses (file already exists) → another session holds the lock → **STOP-10** foreign lock. The agent halts, issues HAND-02 `status: REJECT, stop_code: "STOP-10"`, and does NOT attempt to delete or overwrite the existing lock file.
+- Stale lock (`expires_at` in the past) → do NOT auto-reclaim. See `docs/locks/README.md` for the human-initiated `--force` recovery procedure; record rationale in §4.
+- Lock acquired but registry entry missing, or vice versa → **STOP-10 CONTAMINATION_GUARD** (divergence between ephemeral and canonical state).
+
+────────────────────────────────────────────────────────
+## LOCK-RELEASE: Branch Semaphore Release (v5.1)
+
+**Authorized:** the session that owns the lock (and only that session)  |  **[AUTH_LEVEL: universal]**
+**Trigger:** MANDATORY at HAND-02 emission when the specialist has finished all writes on the branch. For GIT-ATOMIC-PUSH, release happens **after** a successful push (lock covers the push too).
+
+```sh
+BRANCH_SLUG="$(echo "${BRANCH}" | tr '/' '-')"
+LOCK_FILE="docs/locks/${BRANCH_SLUG}.lock.json"
+
+python3 - <<'PY'
+import os, json, sys
+path = os.environ["LOCK_FILE"]
+with open(path) as f:
+    data = json.load(f)
+if data.get("session_id") != os.environ["SESSION_ID"]:
+    sys.stderr.write("STOP-10 foreign lock force: " + path + "\n"); sys.exit(10)
+os.remove(path)
+PY
+```
+
+Semantics:
+- Ownership is verified by `session_id` equality BEFORE the file is removed. Any other session that attempts this (e.g., via mistaken re-dispatch) hits STOP-10 immediately.
+- The corresponding registry row in `docs/02_ACTIVE_LEDGER.md §4` is **NOT deleted** — it is updated with `released_at`. The registry is an append-only audit log; a past acquire/release pair is evidence, not noise.
+- After release, a new session may call LOCK-ACQUIRE on the same branch and proceed.
 
 ────────────────────────────────────────────────────────
 # § BUILD OPERATIONS
@@ -504,8 +622,12 @@ Hard rule: at most ONE PATCH-IF per Interface Contract version. Two patches = FU
 | STOP-06 | Context leakage | Downstream consumes upstream conversation history | Context Leakage Violation → re-dispatch |
 | STOP-07 | Loop > MAX_REVIEW_ROUNDS | P-E-V-A loop exceeds 5 iterations | STOPPED → escalate to user |
 | STOP-08 | Hash mismatch (INTEGRITY_MANIFEST) | Upstream contract hash ≠ recorded | CONTAMINATION → CI/CP re-propagation |
+| STOP-09 | Base-directory destruction (v5.1) | Worktree created inside `$REPO_ROOT` or non-sibling path; tool attempts to write outside the assigned worktree | SYSTEM_PANIC → escalate; worktree removal requires human review (`docs/locks/README.md`) |
+| STOP-10 | Foreign branch-lock force (v5.1) | `LOCK-ACQUIRE` collides with existing lock owned by another `session_id`, OR `LOCK-RELEASE` attempted without ownership match, OR divergence between `docs/locks/*.lock.json` and `docs/02_ACTIVE_LEDGER.md §4` | CONTAMINATION RETURN → agent halts, HAND-02 `status: REJECT, stop_code: STOP-10`, no destructive recovery; human adjudicates |
+| STOP-11 | Atomic-push rebase conflict (v5.1) | `GIT-ATOMIC-PUSH` rebase step reports conflicts against `origin/{base}` | **STOP-SOFT** — `git rebase --abort`; HAND-02 `status: FAIL, stop_code: STOP-11, lock_released: false`; human resolves rebase, agent resumes with lock still held |
 
 Branch validation enforced by `scripts/git-sp.sh`; `main` branch → wrapper returns SYSTEM_PANIC.
+STOP-09/10/11 are v5.1-only and only fire when `_base.yaml :: concurrency_profile == "worktree"`.
 
 ────────────────────────────────────────────────────────
 # § COMMAND FORMAT
@@ -536,16 +658,27 @@ Every transfer of control between agents must use these canonical tokens. Inform
 
 ```
 DISPATCH → {specialist}
-  task:         {one-sentence objective}
-  inputs:       [{artifact_paths}]
-  constraints:  [{scope_out}, expected_verdict: {measurable}]
-  target:       {expected deliverable — matches IF-AGREEMENT outputs}
+  task:                   {one-sentence objective}
+  target:                 {expected deliverable — matches IF-AGREEMENT outputs}
+  inputs:                 [{artifact_paths}]
+  constraints:            [{scope_out}, expected_verdict: {measurable}]
+  branch:                 {dev/{domain}/{agent_id}/{task_id}}
+  # v5.1 structured-output required fields — see prompts/meta/schemas/hand_schema.json
+  session_id:             {UUID v4 of the emitting Claude Code session}
+  branch_lock_acquired:   {true|false — MUST be true if target will write}
+  verification_hash:      {sha256 hex of canonicalized payload}
+  timestamp:              {ISO 8601 UTC}
+  # Optional:
+  worktree_path:          {../wt/{session_id}/{branch_slug} — when concurrency_profile=="worktree"}
+  parent_envelope_hash:   {sha256 of the HAND that caused this dispatch, building an audit chain}
 ```
 
 **§HAND-01-ENV ENVIRONMENTAL METADATA (injected by wrapper; not LLM payload)**
 Fields derivable at tool-call time or enforced by env wrapper:
 `phase`, `matrix_domain`, `branch`, `commit`, `domain_lock`, `if_agreement`,
 `upstream_contracts`, `artifact_hash`, `context_root`, `domain_lock_id`, `gatekeeper_approval_required`.
+
+> **v5.1 formalization:** the long-standing `artifact_hash` placeholder is now canonically the `verification_hash` field in the HandoffEnvelope schema (`prompts/meta/schemas/hand_schema.json`). Wrappers that previously injected `artifact_hash` SHOULD emit `verification_hash` instead; readers SHOULD accept either spelling during the v5.0 → v5.1 transition window.
 
 **Rules:**
 - `task` must be achievable in a single agent session (P5)
@@ -560,10 +693,18 @@ Fields derivable at tool-call time or enforced by env wrapper:
 
 ```
 RETURN → {requester}
-  status:    SUCCESS | FAIL | REJECT
-  produced:  [{file_paths}] | none
-  issues:    [{blocker}] | none      # FAIL/REJECT only
-  detail:    {optional: self-eval — only when explicitly requested in DISPATCH}
+  status:                 SUCCESS | FAIL | REJECT
+  produced:               [{file_paths}] | none
+  issues:                 [{blocker}] | none      # FAIL/REJECT only
+  detail:                 {optional: self-eval — only when explicitly requested in DISPATCH}
+  # v5.1 structured-output required fields — see prompts/meta/schemas/hand_schema.json
+  session_id:             {UUID v4 — matches the DISPATCH that produced this}
+  branch_lock_acquired:   {true while writes are in progress; set false once LOCK-RELEASE completes}
+  verification_hash:      {sha256 hex of canonicalized payload}
+  timestamp:              {ISO 8601 UTC}
+  # Optional (v5.1 concurrency fields):
+  lock_released:          {true|false — true on SUCCESS; false on FAIL to retain lock for retry/conflict resolution (e.g., STOP-11)}
+  stop_code:              {STOP-xx — REQUIRED when status != SUCCESS}
 ```
 
 | Status | Meaning | Coordinator action |
@@ -605,6 +746,16 @@ Acceptance Check:
          If inputs include Specialist session history, intermediate derivation notes, or chain-of-thought → REJECT immediately (STOP-HARD).
          Auditor's FIRST action after PASS: perform independent derivation BEFORE opening artifact.
          "Verified by comparison only" = broken symmetry → STOP-HARD.
+  □ 7. STRUCTURED OUTPUT SCHEMA (v5.1 — universal):
+         Verify the DISPATCH envelope carries non-empty `session_id` (UUID v4), `branch_lock_acquired` (boolean),
+         `verification_hash` (sha256 hex, 64 chars), and `timestamp` (ISO 8601 UTC), conformant to
+         `prompts/meta/schemas/hand_schema.json :: HandoffEnvelope`.
+         Under `_base.yaml :: concurrency_profile == "worktree"`, additionally require `branch_lock_acquired: true`
+         for any DISPATCH that will produce writes (empty-write tasks like pure routing MAY set false).
+         Legacy (`concurrency_profile == "legacy"`) envelopes: these fields SHOULD still be populated for
+         traceability; schema-invalid envelopes degrade to STOP-SOFT rather than REJECT during the v5.0→v5.1
+         transition window.
+         Schema-invalid AND worktree profile → REJECT (STOP-10 equivalent: divergent lock state).
          Auditor evaluates the Artifact only — not Specialist process quality.
          Cross-domain dispatch to Auditor/Gatekeeper: coordinator MUST invoke L3 isolation.
          Within-domain verification MAY use L1. (→ meta-experimental.md §HIERARCHICAL ISOLATION POLICY)

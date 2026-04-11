@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://two-phase-flow/prompts/meta/schemas/hand_schema.json",
+  "title": "HandoffEnvelope",
+  "description": "Canonical Structured Output schema for HAND-01 / HAND-02 / HAND-03 tokens defined in prompts/meta/meta-ops.md. Introduced in meta v5.1.0 (Concurrency-Aware). Enforced by wrapper at envelope construction time; agents MUST emit fields conformant to this schema in their HAND token body.",
+  "$comment": "v5.1 is a documentation + wrapper-hint artifact; runtime validator lives at harness layer in v5.2. A10 SSoT: prompts/meta/ — this file is a derived projection of HAND-xx definitions in meta-ops.md §HAND-01..03.",
+  "type": "object",
+  "required": [
+    "hand_type",
+    "session_id",
+    "branch_lock_acquired",
+    "verification_hash",
+    "timestamp",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "hand_type": {
+      "type": "string",
+      "enum": ["HAND-01", "HAND-02", "HAND-03"],
+      "description": "Token kind. HAND-01 = DISPATCH (coordinator → specialist), HAND-02 = RETURN (specialist → coordinator), HAND-03 = Acceptance check (auditor → coordinator)."
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4 identifying the Claude Code session / workspace that authored this envelope. Used by LOCK-ACQUIRE / LOCK-RELEASE to attribute branch ownership. Required under concurrency_profile=='worktree'; still required under 'legacy' for traceability."
+    },
+    "branch_lock_acquired": {
+      "type": "boolean",
+      "description": "Whether the authoring session holds an exclusive lock on the working branch at the moment this envelope is constructed. MUST be true for any HAND that produces writes (HAND-02 SUCCESS). HAND-01 may set false when dispatching to an agent that will acquire the lock itself."
+    },
+    "verification_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 (hex, lowercase, 64 chars) over the canonical serialization of 'payload'. Allows downstream consumers to detect envelope tampering or drift between handoffs. Supersedes the placeholder artifact_hash in meta-ops.md §HAND-01-ENV."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp at envelope construction (e.g., 2026-04-11T12:34:56Z)."
+    },
+    "meta_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Meta-system version that produced this envelope. Expected value for schema-draft envelopes: '5.1.0'."
+    },
+    "payload": {
+      "oneOf": [
+        { "$ref": "#/definitions/Hand01Payload" },
+        { "$ref": "#/definitions/Hand02Payload" },
+        { "$ref": "#/definitions/Hand03Payload" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "hand_type": { "const": "HAND-01" } } },
+      "then": { "properties": { "payload": { "$ref": "#/definitions/Hand01Payload" } } }
+    },
+    {
+      "if": { "properties": { "hand_type": { "const": "HAND-02" } } },
+      "then": { "properties": { "payload": { "$ref": "#/definitions/Hand02Payload" } } }
+    },
+    {
+      "if": { "properties": { "hand_type": { "const": "HAND-03" } } },
+      "then": { "properties": { "payload": { "$ref": "#/definitions/Hand03Payload" } } }
+    }
+  ],
+  "definitions": {
+    "Hand01Payload": {
+      "type": "object",
+      "description": "DISPATCH token body. Source: meta-ops.md §HAND-01.",
+      "required": ["task", "target", "inputs", "constraints", "branch"],
+      "additionalProperties": false,
+      "properties": {
+        "task": {
+          "type": "string",
+          "description": "One-sentence task description bound to a CHK-id."
+        },
+        "target": {
+          "type": "string",
+          "description": "Target agent name (e.g., CodeArchitect, TaskPlanner)."
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File paths the target agent MAY read."
+        },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Scope constraints, stop conditions, axiom references."
+        },
+        "branch": {
+          "type": "string",
+          "description": "Target git branch. Under concurrency_profile=='worktree' this branch MUST have an active lock owned by session_id before target agent begins writes."
+        },
+        "worktree_path": {
+          "type": "string",
+          "description": "Optional. Under 'worktree' profile, absolute or repo-relative path to the git worktree where writes will occur. Convention: ../wt/{session_id}/{branch_slug}."
+        },
+        "chk_id": {
+          "type": "string",
+          "pattern": "^CHK-[0-9]{3,}$"
+        },
+        "parent_envelope_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional. verification_hash of the HAND token that caused this dispatch, forming an audit chain."
+        }
+      }
+    },
+    "Hand02Payload": {
+      "type": "object",
+      "description": "RETURN token body. Source: meta-ops.md §HAND-02.",
+      "required": ["status", "produced", "issues"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SUCCESS", "FAIL", "REJECT"],
+          "description": "Specialist outcome. SUCCESS = artifacts produced and self-verified. FAIL = attempted but blocked (see issues). REJECT = refused due to stop condition / scope violation."
+        },
+        "produced": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of file paths written. MAY be empty on FAIL/REJECT. Each path MUST lie within the domain lock's write_territory (DOM-01/DOM-02)."
+        },
+        "issues": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Blocker descriptions. MUST be empty on SUCCESS."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Optional self-evaluation, convergence numbers, diff stats."
+        },
+        "lock_released": {
+          "type": "boolean",
+          "description": "Under 'worktree' profile: whether this RETURN concurrently releases the branch lock. Default true on SUCCESS, false on FAIL (for retry)."
+        },
+        "chk_id": {
+          "type": "string",
+          "pattern": "^CHK-[0-9]{3,}$"
+        },
+        "stop_code": {
+          "type": "string",
+          "pattern": "^STOP-[0-9]{2}$",
+          "description": "Present only on FAIL/REJECT. References meta-ops.md §STOP-RECOVER row."
+        }
+      }
+    },
+    "Hand03Payload": {
+      "type": "object",
+      "description": "Acceptance check result. Source: meta-ops.md §HAND-03. 7-item checklist (6 legacy + 1 v5.1 addition).",
+      "required": ["checks", "verdict"],
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "required": ["id", "passed"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": [
+                  "C1_scope_within_territory",
+                  "C2_no_forbidden_writes",
+                  "C3_independent_derivation_present",
+                  "C4_evidence_attached",
+                  "C5_diff_first_output",
+                  "C6_no_scope_creep",
+                  "C7_structured_output_schema_valid"
+                ]
+              },
+              "passed": { "type": "boolean" },
+              "note": { "type": "string" }
+            }
+          },
+          "description": "C7 is new in v5.1: session_id + branch_lock_acquired + verification_hash present and schema-valid."
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["PASS", "REJECT"]
+        },
+        "reviewed_envelope_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "verification_hash of the HAND-02 being audited."
+        }
+      }
+    }
+  }
+}

@@ -269,6 +269,21 @@ single shared brain.
 **Expresses:** A2 (external memory first), A8 (git governance).
 **Corollary:** If information is not in docs/ or git, it does not exist to the system.
 
+### φ4.1: Session-Isolated State (v5.1)
+
+**Derived corollary of φ4 — NOT a new axiom.**
+
+When two or more Claude Code sessions run concurrently against the same repository, each session's mutation domain MUST be the Cartesian product of its own worktree and a branch-level lock it owns. Two sessions writing through the same `HEAD` is a φ4 violation by transitivity: the in-session effect becomes a shared mutable variable, and "state that lives only in a conversation" (φ4) gains a second invisible writer.
+
+**Operational bindings:**
+- A session identifies itself with a UUID v4 `session_id` in every handoff envelope (`prompts/meta/schemas/hand_schema.json :: session_id`).
+- A session mutates files only inside `git worktree add ../wt/{session_id}/{branch_slug}` (→ `meta-ops.md §GIT-WORKTREE-ADD`).
+- A session acquires `docs/locks/{branch_slug}.lock.json` via O_EXCL before any write (→ `meta-ops.md §LOCK-ACQUIRE`).
+
+**Why a sub-axiom and not φ8:** the concurrent-session case is the logical closure of "state is external" under multiple writers. Introducing a new φ8 would inflate the axiom surface without changing the truth conditions. Existing φ1–φ7 are unchanged; v5.1 is operational, not foundational.
+
+**Historical precedent:** see `docs/02_ACTIVE_LEDGER.md §1 CHK-114` for the two Phase-A recovery incidents (HEAD@{1} force-checkout and mid-edit working-tree swap) that empirically motivated φ4.1.
+
 ────────────────────────────────────────────────────────
 
 ## φ5: Bounded Autonomy
@@ -374,6 +389,20 @@ theory / discretization / implementation / verification.
 - `docs/interface/`: shared inter-domain agreements (schemas, API definitions) — writable only by Gatekeepers.
 - Merge path: dev/{agent_role} → {domain} (Gatekeeper PR) → main (Root Admin PR) after VALIDATED phase.
 - Commits at coherent milestones; recorded in docs/02_ACTIVE_LEDGER.md.
+
+### A8.1: Worktree-First Parallelism (v5.1)
+
+**Operational extension of A8 — NOT a replacement.**
+
+When `_base.yaml :: concurrency_profile == "worktree"`, git branch isolation alone is insufficient; sessions MUST additionally be isolated in **file-system space** via `git worktree`. Same-branch concurrent `HEAD` mutation is forbidden structurally, not merely by convention.
+
+- Branch-level ownership: one session at a time per branch, enforced by `docs/locks/{branch_slug}.lock.json` (O_EXCL atomic create) + canonical audit row in `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`.
+- Filesystem-level isolation: writes happen inside `../wt/{session_id}/{branch_slug}` (repo-external sibling), never at the primary checkout.
+- Remote safety: `git push` is replaced by `GIT-ATOMIC-PUSH` (fetch + rebase + push); rebase conflicts = STOP-SOFT, not panic.
+- New STOP codes: **STOP-09** (base-directory destruction), **STOP-10** (foreign branch-lock force / ledger-file divergence), **STOP-11** (atomic-push rebase conflict). See `meta-ops.md § STOP CONDITIONS`.
+- Backward compatibility: when `concurrency_profile == "legacy"`, A8.1 is dormant and classic A8 applies verbatim. This lets other active branches (`refactor/ch11-gpu-optin-batch4` etc.) keep their existing workflow unchanged during v5.1 rollout.
+
+A8.1 is gated; A8 is unconditional. Removing the gate is a Phase D.3 single-line feature-flag flip, not a core revision.
 
 ## A9: Core/System Sovereignty  ← φ3 (Layered Authority)
 "The solver core is the master; the infrastructure is the servant."

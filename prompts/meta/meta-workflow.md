@@ -138,9 +138,46 @@ A task is COMPOUND when ANY C1–C5 criterion holds (see ResearchArchitect.md).
 - **BS-1:** Stage N+1 does NOT begin until ALL tasks in Stage N issue HAND-02 RETURN.
 - **BS-2:** Any STOPPED/FAIL in a parallel stage → barrier PARTIAL; next stage BLOCKED.
 - **BS-3:** User chooses: (a) fix + retry, (b) re-plan, (c) proceed with partial results.
-- **BS-4:** Task exceeds 3× estimated duration → STATUS_CHECK; still working=extend, STOPPED=trigger BS-2.
+- **BS-4:** Task exceeds 3× estimated duration → STATUS_CHECK; still working=extend, STOPPED=trigger BS-2. Under `concurrency_profile == "worktree"`: any task holding a branch lock >24 h past its `acquired_at` is a STATUS_CHECK candidate, and if stale → **STOP-10** (`meta-ops.md § STOP CONDITIONS`). Stale locks are NEVER silently reclaimed (see `docs/locks/README.md`).
 - **RC-1/2/3:** Collect `writes_to` per task; non-empty intersection → make SEQUENTIAL.
 - **RC-4:** DOM-02 rules still apply per-agent; RC is an additional pre-dispatch check.
+- **RC-5 (v5.1):** Under `concurrency_profile == "worktree"`, `writes_to` conflict is additionally guarded by the BRANCH_LOCK_REGISTRY pre-check (`docs/02_ACTIVE_LEDGER.md §4`): a task whose branch already appears in §4 under another session MUST NOT be dispatched. RC-5 composes with RC-1/2/3 — both path-level AND branch-level must be collision-free.
+
+## Concurrency-Safe State Graph (v5.1)
+
+Introduced by CHK-114. Promotes the pre-existing implicit T-L-E-A pipeline (rule PE-4) to a named **Node** abstraction, and attaches mandatory lock bindings to each node. Applies ONLY when `_base.yaml :: concurrency_profile == "worktree"`; under `legacy` this section is descriptive, not enforced.
+
+A **Node** is one step of the T-L-E-A pipeline viewed through the concurrency lens:
+- **Pre**: `LOCK-ACQUIRE {branch}` (`meta-ops.md §LOCK-ACQUIRE`). If the branch is already locked by another `session_id` → STOP-10.
+- **Body**: the node-specific work (see each node below). The P-E-V-A phase loop (§P-E-V-A Loop) runs inside the body; nodes do NOT replace P-E-V-A, they wrap it with concurrency semantics.
+- **Post**: `LOCK-RELEASE {branch}` after HAND-02 is emitted. `GIT-ATOMIC-PUSH` (if pushing) runs BEFORE `LOCK-RELEASE`, inside the lock.
+
+### T-Node (Theory)
+**Body:** derive from first principles → cross-verify with an independent auditor (TheoryAuditor). HAND-02 payload's `verification_hash` covers the derivation document's canonical serialization. No code writes; scope_out forbids `src/` and `experiment/` (DOM-02 unchanged).
+**Lock scope:** a `dev/T/{agent_id}/{task_id}` branch in a dedicated worktree.
+**Success criterion:** TheoryAuditor independent re-derivation PASS + schema-valid HAND-02.
+
+### L-Node (Library)
+**Body:** worktree-local implementation → Reflexion loop (the existing P-E-V-A cycle at §P-E-V-A Loop, max 5 iterations per φ5 Bounded Autonomy) → GIT-ATOMIC-PUSH → HAND-02. Test evidence (MMS / convergence / pytest) is emitted as structured output; `verification_hash` covers the diff.
+**Lock scope:** a `dev/L/{agent_id}/{task_id}` branch in `../wt/{session_id}/dev-L-{agent_id}-{task_id}`.
+**Success criterion:** pytest PASS + convergence order meets target (from IF-AGREEMENT) + schema-valid HAND-02.
+
+### E-Node (Experiment)
+**Body:** execute simulation run → SC-1..SC-4 sanity checks (delegated to ExperimentRunner `self_verify: true`) → package results → emit HAND-02 with `verification_hash` covering the result package. Any failed sanity check → STOP within the node; no forward push.
+**Lock scope:** a `dev/E/{agent_id}/{task_id}` branch; typically short-lived (hours not days).
+**Success criterion:** all 4 sanity checks PASS + schema-valid HAND-02.
+
+### A-Node (Audit — A-Domain: Academic Writing + Audit)
+**Body:** paper-side writes (classify finding → diff-only LaTeX patches → verdict table) OR cross-domain audit (independent re-derivation per HAND-03 check 6) → HAND-02 with `verification_hash` covering the patch.
+**Lock scope:** `dev/A/{agent_id}/{task_id}`; classify findings before acquiring the lock to minimise held time.
+**Success criterion:** PaperCompiler BUILD-02 PASS (if writing) OR all AU-2 items green (if auditing) + schema-valid HAND-02.
+
+### Inter-node synchronization
+Nodes synchronize through two shared artifacts:
+1. **`docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`** — canonical lock state across all sessions.
+2. **`docs/locks/{branch_slug}.lock.json`** — ephemeral O_EXCL guard used by the tool wrapper.
+
+Divergence between the two → STOP-10 CONTAMINATION_GUARD. All four node types are peers in this model; none holds priority. The T→L→E→A ordering constraint of PE-4 is unchanged.
 
 ## Plan Approval Gate
 
@@ -342,6 +379,9 @@ Every STOP is recoverable — the question is WHO resolves it and WHERE the pipe
 | BUILD-FAIL — missing dependency or config error | STOP-SOFT | DiagnosticArchitect | Propose install/config fix (ERR-R2); Gatekeeper approves; retry | EXECUTE |
 | Wrong write path caught before commit (pre-DOM-02) | STOP-SOFT | DiagnosticArchitect | Propose corrected path (ERR-R1); Gatekeeper approves; Specialist retries | EXECUTE |
 | GIT conflict on non-logic file (.gitignore, config) | STOP-SOFT | DiagnosticArchitect | Propose merge resolution (ERR-R4); Gatekeeper approves | PRE-CHECK |
+| STOP-09: base-directory destruction (v5.1) | STOP-HARD | User | Inspect the rogue worktree / write path; do NOT auto-delete (may contain real work). Verify `../wt/` convention violated. Manual worktree removal with rationale in `docs/02_ACTIVE_LEDGER.md §4`. | PRE-CHECK |
+| STOP-10: foreign branch-lock force (v5.1) | STOP-HARD | User | Holding session_id vs. attempting session_id mismatch. Confirm lock ownership via `docs/02_ACTIVE_LEDGER.md §4` + `docs/locks/*.lock.json`. `LOCK-RELEASE --force` only after verifying holder session is actually crashed (see `docs/locks/README.md`). Never overwrite a live lock. | PRE-CHECK |
+| STOP-11: atomic-push rebase conflict (v5.1) | STOP-SOFT | User (for conflict resolution) + Specialist (resumes) | `git rebase --abort` already run by the wrapper. Human resolves rebase against `origin/{base}` in the session's worktree. Specialist retains the branch lock during resolution (`lock_released: false` on HAND-02 FAIL). After user `git rebase --continue` + tests, Specialist re-runs GIT-ATOMIC-PUSH. | EXECUTE |
 
 ## Recovery Protocol
 
