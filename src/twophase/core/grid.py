@@ -78,8 +78,13 @@ class Grid:
 
         2-D: returns (X, Y) each shape ``(N[0]+1, N[1]+1)``.
         3-D: returns (X, Y, Z) each shape ``(N[0]+1, N[1]+1, N[2]+1)``.
+
+        Output arrays live on the backend device: NumPy on CPU backend,
+        CuPy on GPU backend.  ``self.coords`` stays on host for the
+        metric-building path; conversion happens only at this boundary.
         """
-        return np.meshgrid(*self.coords, indexing="ij")
+        xp = self.xp
+        return xp.meshgrid(*[xp.asarray(c) for c in self.coords], indexing="ij")
 
     def update_from_levelset(
         self,
