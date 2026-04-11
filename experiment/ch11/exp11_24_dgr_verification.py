@@ -36,51 +36,53 @@ OUT = experiment_dir(__file__)
 
 def make_circle_psi(grid, backend, R=0.25, eps_factor=1.0):
     """Create tanh-profile CLS field for a circle of radius R."""
+    xp = backend.xp
     X, Y = grid.meshgrid()
     h = grid.L[0] / grid.N[0]
     eps = eps_factor * h
-    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
-    psi = heaviside(np, phi, eps)
+    phi = xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    psi = heaviside(xp, phi, eps)
     return psi, eps
 
 
 def make_broadened_psi(grid, backend, R=0.25, eps_nominal=None, broadening=1.4):
     """Create a circle whose interface thickness is broadened by a factor."""
+    xp = backend.xp
     X, Y = grid.meshgrid()
     h = grid.L[0] / grid.N[0]
     if eps_nominal is None:
         eps_nominal = h
     eps_broad = broadening * eps_nominal
-    phi = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
-    psi = heaviside(np, phi, eps_broad)
+    phi = xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - R
+    psi = heaviside(xp, phi, eps_broad)
     return psi
 
 
-def measure_eps_eff(psi, ccd, eps):
+def measure_eps_eff(psi, ccd, eps, xp=np):
     """Estimate effective interface thickness from psi(1-psi)/|grad psi|.
 
     For a perfect tanh profile: psi(1-psi)/|grad psi| = eps everywhere
     in the interface band. Returns eps_eff/eps ratio.
     """
-    grad_sq = np.zeros_like(psi)
+    grad_sq = xp.zeros_like(psi)
     for ax in range(2):
         g1, _ = ccd.differentiate(psi, ax)
         grad_sq = grad_sq + g1 * g1
-    grad_mag = np.sqrt(np.maximum(grad_sq, 1e-28))
+    grad_mag = xp.sqrt(xp.maximum(grad_sq, 1e-28))
 
     product = psi * (1.0 - psi)
     mask = (psi > 0.05) & (psi < 0.95) & (grad_mag > 1e-10)
-    if not np.any(mask):
+    if not bool(xp.any(mask)):
         return 1.0  # fallback
     eps_local = product[mask] / grad_mag[mask]
-    eps_eff = float(np.median(eps_local))
+    eps_eff = float(xp.median(eps_local))
     return eps_eff / eps
 
 
-def area_from_psi(psi, grid):
+def area_from_psi(psi, grid, xp=np):
     """Compute enclosed area as integral of psi * dV."""
-    dV = np.asarray(grid.cell_volumes())
-    return float(np.sum(psi * dV))
+    dV = xp.asarray(grid.cell_volumes())
+    return float(xp.sum(psi * dV))
 
 
 # ── Test A: Static DGR-only stability ────────────────────────────────────────
@@ -90,13 +92,14 @@ def test_a_dgr_stability(N=128, n_applications=100):
 
     A correct tanh profile should be a fixed point of DGR.
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
 
     psi, eps = make_circle_psi(grid, backend, R=0.25, eps_factor=1.0)
-    area0 = area_from_psi(psi, grid)
+    area0 = area_from_psi(psi, grid, xp)
 
     reinit_dgr = Reinitializer(
         backend, grid, ccd, eps, n_steps=1, bc="zero", method="dgr",
@@ -104,7 +107,7 @@ def test_a_dgr_stability(N=128, n_applications=100):
 
     ratios = []
     area_errors = []
-    ratio0 = measure_eps_eff(psi, ccd, eps)
+    ratio0 = measure_eps_eff(psi, ccd, eps, xp)
     ratios.append(ratio0)
     area_errors.append(0.0)
     print(f"\n=== Test A: DGR stability (N={N}, {n_applications} applications) ===")
@@ -112,8 +115,8 @@ def test_a_dgr_stability(N=128, n_applications=100):
 
     for k in range(1, n_applications + 1):
         psi = reinit_dgr.reinitialize(psi)
-        ratio = measure_eps_eff(psi, ccd, eps)
-        area_err = abs(area_from_psi(psi, grid) - area0) / area0
+        ratio = measure_eps_eff(psi, ccd, eps, xp)
+        area_err = abs(area_from_psi(psi, grid, xp) - area0) / area0
         ratios.append(ratio)
         area_errors.append(area_err)
         if k % 20 == 0 or k == 1:
@@ -136,7 +139,8 @@ def test_b_dgr_ablation(N=128, broadening_factors=None):
     if broadening_factors is None:
         broadening_factors = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0]
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -146,7 +150,7 @@ def test_b_dgr_ablation(N=128, broadening_factors=None):
 
     # Reference: correct-thickness circle
     psi_ref, _ = make_circle_psi(grid, backend, R=0.25, eps_factor=1.0)
-    area_exact = area_from_psi(psi_ref, grid)
+    area_exact = area_from_psi(psi_ref, grid, xp)
 
     reinit_dgr = Reinitializer(
         backend, grid, ccd, eps, n_steps=1, bc="zero", method="dgr",
@@ -161,12 +165,12 @@ def test_b_dgr_ablation(N=128, broadening_factors=None):
     for bf in broadening_factors:
         psi_broad = make_broadened_psi(grid, backend, R=0.25,
                                        eps_nominal=eps, broadening=bf)
-        ratio_before = measure_eps_eff(psi_broad, ccd, eps)
-        area_before = abs(area_from_psi(psi_broad, grid) - area_exact) / area_exact
+        ratio_before = measure_eps_eff(psi_broad, ccd, eps, xp)
+        area_before = abs(area_from_psi(psi_broad, grid, xp) - area_exact) / area_exact
 
         psi_restored = reinit_dgr.reinitialize(psi_broad)
-        ratio_after = measure_eps_eff(psi_restored, ccd, eps)
-        area_after = abs(area_from_psi(psi_restored, grid) - area_exact) / area_exact
+        ratio_after = measure_eps_eff(psi_restored, ccd, eps, xp)
+        area_after = abs(area_from_psi(psi_restored, grid, xp) - area_exact) / area_exact
 
         improvement = area_before / area_after if area_after > 1e-15 else float("inf")
 
@@ -195,7 +199,8 @@ def test_c_dgr_frequency(N=128, n_total=200, dgr_freqs=None):
     if dgr_freqs is None:
         dgr_freqs = [0, 5, 10, 20, 50]  # 0 = no DGR (control)
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -204,7 +209,7 @@ def test_c_dgr_frequency(N=128, n_total=200, dgr_freqs=None):
     eps = h
 
     psi_init, _ = make_circle_psi(grid, backend, R=0.25, eps_factor=1.0)
-    area_exact = area_from_psi(psi_init, grid)
+    area_exact = area_from_psi(psi_init, grid, xp)
 
     print(f"\n=== Test C: DGR frequency study (N={N}, {n_total} split reinits) ===")
 
@@ -219,7 +224,7 @@ def test_c_dgr_frequency(N=128, n_total=200, dgr_freqs=None):
         )
 
         psi = psi_init.copy()
-        ratios = [measure_eps_eff(psi, ccd, eps)]
+        ratios = [measure_eps_eff(psi, ccd, eps, xp)]
         area_errs = [0.0]
 
         for k in range(1, n_total + 1):
@@ -227,8 +232,8 @@ def test_c_dgr_frequency(N=128, n_total=200, dgr_freqs=None):
             if freq > 0 and k % freq == 0:
                 psi = reinit_dgr.reinitialize(psi)
             if k % 10 == 0 or k == n_total:
-                ratio = measure_eps_eff(psi, ccd, eps)
-                area_err = abs(area_from_psi(psi, grid) - area_exact) / area_exact
+                ratio = measure_eps_eff(psi, ccd, eps, xp)
+                area_err = abs(area_from_psi(psi, grid, xp) - area_exact) / area_exact
                 ratios.append(ratio)
                 area_errs.append(area_err)
 
