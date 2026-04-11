@@ -38,7 +38,7 @@ rules:
     GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:

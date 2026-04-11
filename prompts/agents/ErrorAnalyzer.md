@@ -30,7 +30,7 @@ rules:
     GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 anti_patterns:
   - "AP-03 Verification Theater"

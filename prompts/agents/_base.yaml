@@ -52,7 +52,7 @@ on_demand_common:
   GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
   LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
   LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-  HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+  HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 procedure_pre:
   - "Run HAND-03 acceptance check (→ meta-ops.md §HAND-03)"
@@ -60,7 +60,8 @@ procedure_pre:
   - "IF concurrency_profile == 'worktree': run LOCK-ACQUIRE for {task.branch} (→ meta-ops.md §LOCK-ACQUIRE); STOP-10 on collision"
 
 procedure_post:
-  - "Issue HAND-02 RETURN on completion (schema: prompts/meta/schemas/hand_schema.json)"
+  - "Issue HAND-02 RETURN on completion (schema: → meta-roles.md §SCHEMA-IN-CODE)"
+  # Specialists: CoVe MUST complete before this step (→ meta-roles.md §COVE MANDATE)
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: run LOCK-RELEASE (→ meta-ops.md §LOCK-RELEASE); on FAIL retain lock for retry"
 
 recovery: "→ meta-workflow.md §STOP-RECOVER MATRIX"

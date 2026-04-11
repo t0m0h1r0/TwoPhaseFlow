@@ -38,7 +38,7 @@ rules:
     GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
@@ -57,7 +57,8 @@ procedure:
   - "[evidence_required] Produce derivation document with step-by-step proof"
   - "Flag any changes with [THEORY_CHANGE] tag for downstream re-verification"
   - "Cross-verify with TheoryAuditor (L3 isolation); success = independent re-derivation PASS"
-  - "Emit HAND-02 conformant to prompts/meta/schemas/hand_schema.json (session_id / branch_lock_acquired / verification_hash covering the derivation document)"
+  - "[cove] Run CoVe self-check (-> meta-roles.md §COVE MANDATE): generate Q1/Q2/Q3, self-correct artifact, append CoVe: Q1=..., Q2=..., Q3=... to HAND-02 detail."
+  - "Emit HAND-02 conformant to meta-roles.md §SCHEMA-IN-CODE (session_id / branch_lock_acquired / verification_hash covering the derivation document)"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
@@ -65,7 +66,7 @@ output:
   - "Formal symbol definitions and physical meanings"
   - "Interface contract proposal for docs/interface/AlgorithmSpecs.md"
   - "Assumption identification with validity bounds"
-  - "HAND-02 envelope: schema-valid per prompts/meta/schemas/hand_schema.json (Hand02Payload)"
+  - "HAND-02 envelope: schema-valid per meta-roles.md §SCHEMA-IN-CODE (Hand02Payload)"
 
 stop:
   - "Physical assumption ambiguity -> STOP; ask user for clarification"

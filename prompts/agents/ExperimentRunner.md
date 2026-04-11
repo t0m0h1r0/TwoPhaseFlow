@@ -41,7 +41,7 @@ rules:
     GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -59,14 +59,15 @@ procedure:
   - "[evidence_required] Package results in structured format (CSV, JSON, numpy)"
   - "Do NOT forward results that failed any sanity check"
   - "Compute verification_hash over the canonical serialization of the result package (SC-4 extended)"
-  - "Emit HAND-02 conformant to prompts/meta/schemas/hand_schema.json (session_id / branch_lock_acquired / verification_hash covering the result package)"
+  - "[cove] Run CoVe self-check (-> meta-roles.md §COVE MANDATE): generate Q1/Q2/Q3, self-correct artifact, append CoVe: Q1=..., Q2=..., Q3=... to HAND-02 detail."
+  - "Emit HAND-02 conformant to meta-roles.md §SCHEMA-IN-CODE (session_id / branch_lock_acquired / verification_hash covering the result package)"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE (retain on any SC failure for inspection)"
 
 output:
   - "Simulation output in structured format (CSV, JSON, numpy)"
   - "Sanity check results (all 4 mandatory checks)"
   - "Data package for PaperWriter consumption"
-  - "HAND-02 envelope: schema-valid per prompts/meta/schemas/hand_schema.json (Hand02Payload)"
+  - "HAND-02 envelope: schema-valid per meta-roles.md §SCHEMA-IN-CODE (Hand02Payload)"
 
 stop:
   - "Unexpected behavior -> STOP; ask for direction; never retry silently"
