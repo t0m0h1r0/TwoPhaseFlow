@@ -32,18 +32,18 @@ OUT = experiment_dir(__file__)
 
 # -- Test function -------------------------------------------------------------
 
-def _test_func(x, y):
+def _test_func(x, y, xp=np):
     """f = sin(2πx) cos(2πy) and exact mixed partial."""
     k = 2 * np.pi
-    f = np.sin(k * x) * np.cos(k * y)
-    fxy = -(k**2) * np.cos(k * x) * np.sin(k * y)
+    f = xp.sin(k * x) * xp.cos(k * y)
+    fxy = -(k**2) * xp.cos(k * x) * xp.sin(k * y)
     return f, fxy
 
 
 # -- Convergence study ---------------------------------------------------------
 
 def run_convergence(bc_type, Ns):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     results = []
 
@@ -53,7 +53,7 @@ def run_convergence(bc_type, Ns):
         ccd = CCDSolver(grid, backend, bc_type=bc_type)
 
         X, Y = grid.meshgrid()
-        f, fxy_exact = _test_func(X, Y)
+        f, fxy_exact = _test_func(X, Y, xp)
 
         # Order 1: ∂x then ∂y
         d1x, _ = ccd.differentiate(f, axis=0)

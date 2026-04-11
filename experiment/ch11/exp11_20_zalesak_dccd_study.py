@@ -49,7 +49,8 @@ def run_zalesak(eps_d_adv=0.05, eps_d_reinit=0.05, reinit_every=20,
 
     Returns dict: {L2, mass_err, reinit_count, params}
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -57,8 +58,12 @@ def run_zalesak(eps_d_adv=0.05, eps_d_reinit=0.05, reinit_every=20,
     eps = eps_over_h * h
     X, Y = grid.meshgrid()
 
-    phi0 = zalesak_sdf(X, Y)
-    psi0 = heaviside(np, phi0, eps)
+    # ZalesakDisk.sdf uses np.maximum (host-only); build phi0 on host then
+    # promote to device.
+    X_h, Y_h = backend.to_host(X), backend.to_host(Y)
+    phi0_h = zalesak_sdf(X_h, Y_h)
+    phi0 = xp.asarray(phi0_h)
+    psi0 = heaviside(xp, phi0, eps)
 
     T = 2 * np.pi
     vf = RigidRotation(center=(0.5, 0.5), period=T)
@@ -70,7 +75,7 @@ def run_zalesak(eps_d_adv=0.05, eps_d_reinit=0.05, reinit_every=20,
     dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
     psi = psi0.copy()
-    mass0 = float(np.sum(psi))
+    mass0 = float(xp.sum(psi))
     reinit_count = 0
 
     for step in range(n_steps):
@@ -80,17 +85,17 @@ def run_zalesak(eps_d_adv=0.05, eps_d_reinit=0.05, reinit_every=20,
             psi = reinit.reinitialize(psi)
             reinit_count += 1
 
-    mass_err = abs(float(np.sum(psi)) - mass0) / mass0
-    err_L2_psi = float(np.sqrt(np.mean((psi - psi0)**2)))
+    mass_err = abs(float(xp.sum(psi)) - mass0) / mass0
+    err_L2_psi = float(xp.sqrt(xp.mean((psi - psi0)**2)))
 
     # φ-space L₂ (interface band |φ₀| < 6ε) — ε-independent metric
-    phi_final = invert_heaviside(np, psi, eps)
-    band = np.abs(phi0) < 6 * eps
-    err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
+    phi_final = invert_heaviside(xp, psi, eps)
+    band = xp.abs(phi0) < 6 * eps
+    err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0[band])**2)))
 
     # Area error: symmetric difference of {ψ ≥ 0.5}
-    area0 = float(np.sum(psi0 >= 0.5))
-    area_final = float(np.sum(psi >= 0.5))
+    area0 = float(xp.sum(psi0 >= 0.5))
+    area_final = float(xp.sum(psi >= 0.5))
     area_err = abs(area_final - area0) / max(area0, 1.0)
 
     return {

@@ -44,6 +44,7 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
     reinit_mode: ('fixed', freq) or ('adaptive', threshold)
     rk3_reinit:  if True, use TVD-RK3 for reinit pseudo-time steps
     """
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -51,8 +52,8 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
     eps = eps_over_h * h
     X, Y = grid.meshgrid()
 
-    phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
-    psi0 = heaviside(np, phi0, eps)
+    phi0 = xp.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
+    psi0 = heaviside(xp, phi0, eps)
 
     adv = DissipativeCCDAdvection(
         backend, grid, ccd, bc="zero", eps_d=eps_d, mass_correction=True,
@@ -68,10 +69,10 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
     T_final = 8.0; dt = 0.45 / N
     n_steps = int(T_final / dt); dt = T_final / n_steps
     psi = psi0.copy()
-    mass0 = float(np.sum(psi))
+    mass0 = float(xp.sum(psi))
 
     # Volume monitor baseline for adaptive trigger
-    M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+    M_ref = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
     reinit_count = 0
 
     for step in range(n_steps):
@@ -86,7 +87,7 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
                 do_reinit = True
         elif reinit_mode[0] == 'adaptive':
             threshold = reinit_mode[1]
-            M_cur = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+            M_cur = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
             if M_ref > 1e-15 and M_cur / M_ref > threshold:
                 do_reinit = True
 
@@ -98,15 +99,15 @@ def run_vortex(N, eps_over_h, eps_d, reinit_mode, reinit_n_steps,
             else:
                 psi = reinit.reinitialize(psi)
             reinit_count += 1
-            M_ref = float(np.sum(psi * (1.0 - psi))) * (h ** 2)
+            M_ref = float(xp.sum(psi * (1.0 - psi))) * (h ** 2)
 
-    mass_err = abs(float(np.sum(psi)) - mass0) / max(mass0, 1e-15)
-    err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-    phi_final = invert_heaviside(np, psi, eps)
-    band = np.abs(phi0) < 6 * eps
-    err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0[band])**2)))
-    area0 = float(np.sum(psi0 >= 0.5))
-    area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+    mass_err = abs(float(xp.sum(psi)) - mass0) / max(mass0, 1e-15)
+    err_L2 = float(xp.sqrt(xp.mean((psi - psi0)**2)))
+    phi_final = invert_heaviside(xp, psi, eps)
+    band = xp.abs(phi0) < 6 * eps
+    err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0[band])**2)))
+    area0 = float(xp.sum(psi0 >= 0.5))
+    area_err = abs(float(xp.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
     return {"L2": err_L2, "L2_phi": err_L2_phi, "area_err": area_err,
             "mass_err": mass_err, "reinit_count": reinit_count}
 
@@ -116,13 +117,18 @@ def _rk3_reinit_step(psi, reinit):
 
     Uses Reinitializer with n_steps=1 as a single FE step builder,
     then combines via Shu-Osher TVD-RK3 weights.
+
+    NOTE (CHK-116): post-dd7bd1b the public ``Reinitializer`` is a facade and
+    no longer carries ``ccd`` / ``dtau`` / ``_bc`` directly. Reach through
+    ``reinit._strategy`` (SplitReinitializer) which still exposes them.
     """
     xp = reinit.xp
-    dtau = reinit.dtau
+    strategy = reinit._strategy
+    dtau = strategy.dtau
 
     def L(q):
         """Compute RHS = -compression + diffusion for one step."""
-        ccd = reinit.ccd
+        ccd = strategy.ccd
         ndim = reinit.grid.ndim
         eps_val = reinit.eps
 
@@ -139,13 +145,15 @@ def _rk3_reinit_step(psi, reinit):
         n_hat = [g / safe_grad for g in dpsi]
 
         # Compression with DCCD
-        from twophase.levelset.reinitialize import _EPS_D_COMP, _pad_bc, _sl
+        from twophase.levelset.reinitialize import _EPS_D_COMP
+        from twophase.levelset.reinit_ops import _sl
+        from twophase.levelset.advection import _pad_bc
         psi_1mpsi = q * (1.0 - q)
         C = xp.zeros_like(q)
         for ax in range(ndim):
             flux_ax = psi_1mpsi * n_hat[ax]
             g_prime, _ = ccd.differentiate(flux_ax, ax)
-            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, reinit._bc)
+            g_prime_pad = _pad_bc(xp, g_prime, ax, 1, strategy._bc)
             sl_c = _sl(q.ndim, ax, 1, -1)
             sl_p1 = _sl(q.ndim, ax, 2, None)
             sl_m1 = _sl(q.ndim, ax, 0, -2)
@@ -183,7 +191,7 @@ def _rk3_reinit_step(psi, reinit):
 # ── P1: eps_d study ───────────────────────────────────────────────────────
 
 def test_p1_eps_d(N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     eps_ds = [0.05, 0.025, 0.01, 0.0]
     results = []
     print(f"\n=== P1: eps_d Study (N={N}) ===")
@@ -200,7 +208,7 @@ def test_p1_eps_d(N=128):
 # ── P2: eps study ─────────────────────────────────────────────────────────
 
 def test_p2_eps(N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     eps_ratios = [2.0, 1.5, 1.0, 0.75]
     results = []
     print(f"\n=== P2: eps/h Study (N={N}) ===")
@@ -217,7 +225,7 @@ def test_p2_eps(N=128):
 # ── P3: adaptive reinit ──────────────────────────────────────────────────
 
 def test_p3_adaptive(N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     configs = [
         ("fixed-10",     ('fixed', 10)),
         ("fixed-20",     ('fixed', 20)),
@@ -242,7 +250,7 @@ def test_p3_adaptive(N=128):
 # ── P4: TVD-RK3 reinit ──────────────────────────────────────────────────
 
 def test_p4_rk3_reinit(N=128):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     configs = [
         ("FE-4step",   4, False),
         ("RK3-4step",  4, True),
@@ -265,7 +273,7 @@ def test_p4_rk3_reinit(N=128):
 
 def test_combined_best(N=128):
     """Run with best parameters from each study combined."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     configs = [
         # (label, eps_ratio, eps_d, reinit_mode, n_steps, rk3)
         ("baseline",       1.5,  0.05,  ('fixed', 10),      4, False),
