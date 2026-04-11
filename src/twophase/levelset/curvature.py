@@ -120,6 +120,9 @@ class CurvatureCalculator(ICurvatureCalculator):
         ndim = ccd.ndim
         eps = self.eps
 
+        # Ensure psi is on the correct device (no-op on CPU).
+        psi = xp.asarray(psi)
+
         # Invert ψ → φ (§3.6)
         phi = invert_heaviside(xp, psi, eps)
 

@@ -376,10 +376,13 @@ class TwoPhaseNSSolver:
         if rho_ref is None:
             rho_ref = 0.5 * (rho_l + rho_g)
 
+        # Helper: device→host, safe for both numpy and cupy arrays.
+        def _h(arr): return np.asarray(self._backend.to_host(arr))
+
         # ── 1. Advect ψ + reinitialize ─────────────────────────────────
-        psi = np.asarray(self._adv.advance(psi, [u, v], dt))
+        psi = _h(self._adv.advance(psi, [u, v], dt))
         if step_index % 2 == 0:
-            psi = np.asarray(self._reinit.reinitialize(psi))
+            psi = _h(self._reinit.reinitialize(psi))
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         if self._alpha_grid > 1.0 and (step_index % self._rebuild_freq == 0):
@@ -396,13 +399,11 @@ class TwoPhaseNSSolver:
         # ── 2. Curvature + balanced-force CSF ──────────────────────────
         if sigma > 0.0:
             kappa_raw = self._curv.compute(psi)
-            kappa = np.asarray(
-                self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
-            )
+            kappa = _h(self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
-            f_x = sigma * kappa * np.asarray(dpsi_dx)
-            f_y = sigma * kappa * np.asarray(dpsi_dy)
+            f_x = sigma * kappa * _h(dpsi_dx)
+            f_y = sigma * kappa * _h(dpsi_dy)
         else:
             f_x = f_y = np.zeros_like(psi)
 
@@ -411,10 +412,10 @@ class TwoPhaseNSSolver:
         du_dy, du_yy = ccd.differentiate(u, 1)
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
-        du_dx = np.asarray(du_dx); du_xx = np.asarray(du_xx)
-        du_dy = np.asarray(du_dy); du_yy = np.asarray(du_yy)
-        dv_dx = np.asarray(dv_dx); dv_xx = np.asarray(dv_xx)
-        dv_dy = np.asarray(dv_dy); dv_yy = np.asarray(dv_yy)
+        du_dx = _h(du_dx); du_xx = _h(du_xx)
+        du_dy = _h(du_dy); du_yy = _h(du_yy)
+        dv_dx = _h(dv_dx); dv_xx = _h(dv_xx)
+        dv_dy = _h(dv_dy); dv_yy = _h(dv_yy)
 
         conv_u = -(u * du_dx + v * du_dy)
         conv_v = -(u * dv_dx + v * dv_dy)
@@ -431,11 +432,11 @@ class TwoPhaseNSSolver:
         # ── 4. PPE (balanced-force) ─────────────────────────────────────
         du_s_dx, _ = ccd.differentiate(u_star, 0)
         dv_s_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (np.asarray(du_s_dx) + np.asarray(dv_s_dy)) / dt
+        rhs = (_h(du_s_dx) + _h(dv_s_dy)) / dt
         if sigma > 0.0:
             df_x, _ = ccd.differentiate(f_x / rho, 0)
             df_y, _ = ccd.differentiate(f_y / rho, 1)
-            rhs += np.asarray(df_x) + np.asarray(df_y)
+            rhs += _h(df_x) + _h(df_y)
         p = self._solve_ppe(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
@@ -444,8 +445,8 @@ class TwoPhaseNSSolver:
         if self.bc_type == "wall":
             ccd.enforce_wall_neumann(dp_dx, 0)
             ccd.enforce_wall_neumann(dp_dy, 1)
-        u = u_star - dt / rho * np.asarray(dp_dx) + dt * f_x / rho
-        v = v_star - dt / rho * np.asarray(dp_dy) + dt * f_y / rho
+        u = u_star - dt / rho * _h(dp_dx) + dt * f_x / rho
+        v = v_star - dt / rho * _h(dp_dy) + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
         return psi, u, v, p
