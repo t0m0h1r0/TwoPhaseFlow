@@ -992,43 +992,25 @@ and break audit traceability (φ4).
 **Trigger:** When delegating a task to a specialist
 
 ```
-DISPATCH → {specialist_name}
-  task:            {one-sentence objective — what must be produced, not how}
-  inputs:          [{file_or_artifact_1}, {file_or_artifact_2}, ...]
-  scope_out:       [{explicitly excluded — prevents overreach}]
-  context:
-    phase:          {PLAN | EXECUTE | VERIFY | AUDIT}
-    matrix_domain:  {T | L | E | A | P | Q | M}
-    branch:         {active domain git branch — Specialist will create dev/{agent_role} from this}
-    commit:         "{last commit message — confirms git state at dispatch}"
-    domain_lock:    {verbatim copy of active DOMAIN-LOCK block from DOM-01}
-    if_agreement:   {path to docs/interface/{domain}_{feature}.md — MANDATORY for Specialist dispatch}
-    upstream_contracts: [{path to upstream interface contracts that MUST exist before this task}]
-    artifact_hash:  {sha256({primary_input_artifact_path}) — hex digest; receiver verifies before reading}
-    context_root:   {Instruction ID issued by ResearchArchitect at session start — e.g. RA-2026-03-29-001}
-    domain_lock_id: {DOM-01 lock ID or set_at hash — proof of active lock acquired this session}
-    expected_verdict: {explicit success criterion with measurable threshold — e.g. "AU2 PASS: all 10 items", "convergence slope ≥ 1.8"}
-    gatekeeper_approval_required: true
-  expects:         {deliverable description — must match IF-AGREEMENT outputs field}
+DISPATCH → {specialist}
+  task:         {one-sentence objective}
+  inputs:       [{artifact_paths}]
+  constraints:  [{scope_out}, expected_verdict: {measurable}]
+  target:       {expected deliverable — matches IF-AGREEMENT outputs}
 ```
+
+**§HAND-01-ENV ENVIRONMENTAL METADATA (injected by wrapper; not LLM payload)**
+Fields derivable at tool-call time or enforced by the env wrapper on DISPATCH receipt:
+`phase`, `matrix_domain`, `branch`, `commit`, `domain_lock`, `if_agreement`,
+`upstream_contracts`, `artifact_hash`, `context_root`, `domain_lock_id`,
+`gatekeeper_approval_required`.
 
 **Rules**
 - `task` must be achievable in a single agent session (P5: one objective per step)
-- `scope_out` must be non-empty when there is a plausible adjacent task to exclude
-- `commit` must match `git log --oneline -1` at dispatch time
-- `domain_lock` must be present — a DISPATCH without domain_lock is malformed; specialist must REJECT (HAND-03 check 6)
-- `matrix_domain` must identify the vertical domain (T/L/E/A) or horizontal domain (P/Q/M) for this task
-- `upstream_contracts` must list all Interface Contracts from upstream domains that must be signed before this task begins (T→L: AlgorithmSpecs.md; L→E: SolverAPI_vX.py; E→A: ResultPackage/)
-- `artifact_hash` must be computed from the primary input artifact at dispatch time (`sha256sum {path}`); receiver MUST verify before reading — mismatch = STOP; report tamper/corruption to coordinator
-- `gatekeeper_approval_required: true` is always present — signals that HAND-03 check 9 applies
-- `context_root` must be the Instruction ID from the originating ResearchArchitect routing decision; never omit
-- `domain_lock_id` must match the `set_at` field of the active DOMAIN-LOCK; a DISPATCH with a stale or absent lock ID is malformed
-- `expected_verdict` must be measurable — vague criteria such as "looks good" are not acceptable
-- Coordinator must not dispatch if its own RETURN token (from a previous step) has
-  unresolved issues — resolve first, then dispatch
-- When dispatching to an Auditor/Gatekeeper role: `inputs` must list ONLY final Artifact
-  paths and Interface Contract paths — never Specialist reasoning, scratch notes, or
-  intermediate derivations (Phantom Reasoning Guard → meta-core.md §B, HAND-03 check 10)
+- `constraints.expected_verdict` must be measurable (e.g., "AU2 PASS: all 10 items", "convergence slope ≥ 1.8")
+- Coordinator must not dispatch if its own RETURN token has unresolved issues
+- When dispatching to an Auditor/Gatekeeper: `inputs` must list ONLY final artifact paths and Interface Contract paths — never Specialist reasoning or intermediate derivations (→ HAND-03 check 10)
+- `target` must match the IF-AGREEMENT outputs field for this task
 
 ────────────────────────────────────────────────────────
 ## HAND-02: RETURN Token
@@ -1038,45 +1020,27 @@ DISPATCH → {specialist_name}
 **Trigger:** When the specialist's task is complete (or BLOCKED/STOPPED)
 
 ```
-RETURN → {coordinator_or_requester}
-  status:               COMPLETE | PARTIAL | BLOCKED | STOPPED
-  produced:             [{file_path}: {one-line description}, ...] | none
-  artifact_hash:        {sha256({primary_produced_artifact_path}) — hex digest; Gatekeeper verifies before GA-1 check}
-  git:
-    branch:             {branch}
-    commit:             "{commit message of last commit}" | "no-commit"
-  verdict:              PASS | FAIL | N/A
-  verified_independently: true | false
-    # true  = this agent derived its verification without first reading the Specialist's reasoning
-    # false = symmetry broken; Gatekeeper must reject PR (GA-4 condition)
-  interface_contracts_checked: [{contract_path}: SIGNED | UNSIGNED | MISSING]
-    # List ALL upstream contracts that were required for this task; Gatekeeper verifies (GA-6)
-  axiom_context:        "{phase} | {branch} | {key constraint} | {key finding}"
-    # REQUIRED. ≤100 tokens. The ONLY state the next agent needs; omit derivation steps and logs.
-    # Must include: any open CHK IDs that block the next agent, and the binding constraint.
-    # Format example: "Phase: BOOTSTRAP_COMPLETE | Branch: main | Constraint: GFM unsigned | Finding: DCCD Tier-2 verified"
-  issues:               [{issue description requiring coordinator decision}] | none
-  next:                 {recommended next step — coordinator decides; this is advisory only}
+RETURN → {requester}
+  status:    SUCCESS | FAIL | REJECT
+  produced:  [{file_paths}] | none
+  issues:    [{blocker}] | none      # FAIL/REJECT only
+  detail:    {optional: self-eval — only when explicitly requested in DISPATCH}
 ```
 
 **Status meanings**
 | Status | Meaning | Coordinator action |
-|--------|---------|--------------------|
-| COMPLETE | All deliverables produced; no blocking issues | Continue pipeline; check GA conditions |
-| PARTIAL | Some deliverables produced; issues prevent full completion | Review issues; decide |
-| BLOCKED | Cannot proceed — missing input, authorization, or information | Resolve blocker; re-dispatch |
-| STOPPED | STOP condition triggered; human judgment required | Report to user |
+|--------|---------|-----|
+| SUCCESS | All deliverables produced; verdict PASS | Continue pipeline; check GA conditions |
+| FAIL | Work attempted but verdict FAIL (tests/audit failed) | Review issues; decide |
+| REJECT | HAND-03 rejected, STOPPED, or wrapper-level refusal | Resolve blocker or escalate to user |
+
+Mapping from prior schema: COMPLETE+PASS→SUCCESS; PARTIAL/BLOCKED/STOPPED→FAIL or REJECT based on cause.
 
 **Rules**
-- `produced` must list concrete file paths, not vague descriptions
-- `verdict` = PASS only if the agent's own success criterion is met (e.g., tests pass, audit passes)
-- `verified_independently` must be explicitly set — default is `false`; omission = broken symmetry violation
-- `interface_contracts_checked` must list all upstream contracts; a MISSING contract blocks Gatekeeper approval (GA-6)
-- `artifact_hash` must be computed at artifact write time; Gatekeeper verifies against received file before GA-1 — mismatch = STOP; treat as contamination event
-- `axiom_context` is **required**; omission is a protocol violation. Coordinator must reject incomplete RETURN tokens.
-- `axiom_context` must NOT include intermediate reasoning, full diffs, or raw logs — compress to the minimum needed by the next agent
-- `issues` must be specific enough for the coordinator to make a decision without re-reading everything
-- STOPPED status must include the exact STOP condition that was triggered
+- `produced` must list concrete file paths
+- `issues` is required for FAIL or REJECT; must be specific enough to act on
+- `detail` is optional — only include when DISPATCH explicitly requested self-evaluation
+- REJECT must include the exact HAND-03 check or STOP condition that was triggered
 
 ────────────────────────────────────────────────────────
 ## HAND-03: Acceptance Check
@@ -1153,12 +1117,9 @@ Acceptance Check:
 **On REJECT or QUERY:**
 Issue a RETURN token immediately with:
 ```
-status:   BLOCKED
+status:   REJECT
 produced: none
-git:      branch={current}, commit="no-commit"
-verdict:  N/A
-issues:   ["Acceptance Check failed: {check number} — {specific reason}"]
-next:     "Coordinator must resolve before re-dispatching"
+issues:   ["Acceptance Check failed: check {N} — {specific reason}"]
 ```
 
 **On all checks PASS:** proceed with assigned task.
@@ -1167,36 +1128,17 @@ next:     "Coordinator must resolve before re-dispatching"
 ## Handoff Sequence Diagram
 
 ```
-Coordinator                          Specialist
-    │                                    │
-    │──── HAND-01 (DISPATCH) ──────────► │
-    │                                    │ HAND-03: Acceptance Check
-    │                                    │   □ tier authorized?      ← AUTH_LEVEL check (check 0)
-    │                                    │   □ sender authorized?
-    │                                    │   □ task in scope?
-    │                                    │   □ inputs available?
-    │                                    │   □ git state valid?
-    │                                    │   □ context consistent?
-    │                                    │   □ domain lock present?  ← DOM-01 output
-    │                                    │   □ expected_verdict set? ← measurable criterion
-    │                                    │   □ upstream contracts?   ← T-L-E-A ordering (check 9)
-    │                                    │   □ phantom guard?        ← auditor inputs clean (check 10)
-    │                                    │
-    │         [REJECT if any fails]      │
-    │◄─── HAND-02 (status: BLOCKED) ─── │
-    │                                    │
-    │         [PASS → work begins]       │
-    │                                    │  ... execute task ...
-    │                                    │
-    │◄─── HAND-02 (RETURN) ──────────── │
-    │  status / produced / git /         │
-    │  verdict / issues / next           │
-    │                                    │
-    │ Review issues                      │
-    │ If COMPLETE + verdict PASS:        │
-    │   → continue pipeline              │
-    │ If BLOCKED/STOPPED:                │
-    │   → resolve or escalate to user    │
+Coordinator                     Specialist
+    │                               │
+    │──── HAND-01 (DISPATCH) ──────►│
+    │                               │ HAND-03: checks 2,3,5,7,9,10 (semantic)
+    │       [REJECT if any fail]    │
+    │◄─── HAND-02 (status:REJECT) ──│
+    │       [PASS → work begins]    │ ... execute task ...
+    │◄─── HAND-02 (RETURN) ─────────│
+    │  status / produced / issues   │
+    │ SUCCESS → continue pipeline   │
+    │ FAIL/REJECT → resolve/escalate│
 ```
 
 ────────────────────────────────────────────────────────
