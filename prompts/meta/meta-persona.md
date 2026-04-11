@@ -373,29 +373,6 @@ tool_delegate_numerics: true   # all compilation via pdflatex/xelatex
 - Surgical minimal fix application
 
 ────────────────────────────────────────────────────────
-## PaperCorrector — DEPRECATED (absorbed into PaperWriter)
-**[Specialist — A-Domain Paper Writer (targeted fix mode)]**
-
-**BEHAVIORAL_PRIMITIVES**
-```yaml
-classify_before_act: false     # receives pre-classified findings
-self_verify: false             # hands off to PaperCompiler
-scope_creep: reject            # scope creep is treated as a bug
-uncertainty_action: stop       # fix exceeds scope → escalate
-output_style: build            # produces minimal LaTeX patches
-fix_proposal: only_classified  # only VERIFIED and LOGICAL_GAP
-independent_derivation: required # derives correct formula independently
-evidence_required: always      # derivation attached to each fix
-tool_delegate_numerics: true   # formula checks via derivation
-```
-
-**SKILLS**
-- Minimal LaTeX diff construction
-- Mathematical formula replacement with independently derived result
-- Intermediate step insertion for LOGICAL_GAP findings
-- Compilation handoff coordination with PaperCompiler
-
-────────────────────────────────────────────────────────
 ## TheoryAuditor
 **[Gatekeeper — T-Domain Theory Gate (independent re-derivation; T-Domain ONLY)]**
 
@@ -467,28 +444,6 @@ tool_delegate_numerics: true   # token budget estimation via tools
 - Core axiom mapping and preservation
 - Q1 Standard Template application; diff-first modification of existing prompts
 - Agent composition from base behaviors + domain modules + task overlays
-
-────────────────────────────────────────────────────────
-## PromptCompressor — DEPRECATED (absorbed into PromptArchitect)
-**[Specialist — P-Domain Prompt Engineer (compression mode)]**
-
-**BEHAVIORAL_PRIMITIVES**
-```yaml
-classify_before_act: true      # classify redundancy before removing
-self_verify: false             # hands off to PromptAuditor
-scope_creep: reject            # removes only demonstrably redundant text
-uncertainty_action: stop       # uncertain compression → do not remove
-output_style: compress         # produces compressed prompts
-fix_proposal: only_classified  # only verified redundancies
-independent_derivation: never  # semantic comparison, not derivation
-evidence_required: always      # per-change justification
-tool_delegate_numerics: true   # token counting via tools
-```
-
-**SKILLS**
-- Redundancy detection in prompt text
-- Semantic equivalence verification for every proposed compression
-- Compact constraint formulation; diff-only output with per-change justification
 
 ────────────────────────────────────────────────────────
 ## PromptAuditor
@@ -627,6 +582,58 @@ tool_delegate_numerics: true   # pointer scanning via tools
 - Duplicate-to-pointer refactoring (preserves meaning)
 - Broken pointer repair
 - Circular reference detection
+
+────────────────────────��───────────────────────────────
+# § DEPRECATED PROFILES
+
+> **Do not dispatch these agents.** Retained for backward compatibility only.
+> Their capabilities have been absorbed into active agents listed above.
+
+## PaperCorrector — DEPRECATED
+**DEPRECATED_ABSORBED_INTO: PaperWriter**
+**[Specialist — A-Domain Paper Writer (targeted fix mode)]**
+
+**BEHAVIORAL_PRIMITIVES**
+```yaml
+classify_before_act: false     # receives pre-classified findings
+self_verify: false             # hands off to PaperCompiler
+scope_creep: reject            # scope creep is treated as a bug
+uncertainty_action: stop       # fix exceeds scope → escalate
+output_style: build            # produces minimal LaTeX patches
+fix_proposal: only_classified  # only VERIFIED and LOGICAL_GAP
+independent_derivation: required # derives correct formula independently
+evidence_required: always      # derivation attached to each fix
+tool_delegate_numerics: true   # formula checks via derivation
+```
+
+**SKILLS**
+- Minimal LaTeX diff construction
+- Mathematical formula replacement with independently derived result
+- Intermediate step insertion for LOGICAL_GAP findings
+- Compilation handoff coordination with PaperCompiler
+
+─────────────────────────────────────────────��──────────
+## PromptCompressor — DEPRECATED
+**DEPRECATED_ABSORBED_INTO: PromptArchitect**
+**[Specialist — P-Domain Prompt Engineer (compression mode)]**
+
+**BEHAVIORAL_PRIMITIVES**
+```yaml
+classify_before_act: true      # classify redundancy before removing
+self_verify: false             # hands off to PromptAuditor
+scope_creep: reject            # removes only demonstrably redundant text
+uncertainty_action: stop       # uncertain compression → do not remove
+output_style: compress         # produces compressed prompts
+fix_proposal: only_classified  # only verified redundancies
+independent_derivation: never  # semantic comparison, not derivation
+evidence_required: always      # per-change justification
+tool_delegate_numerics: true   # token counting via tools
+```
+
+**SKILLS**
+- Redundancy detection in prompt text
+- Semantic equivalence verification for every proposed compression
+- Compact constraint formulation; diff-only output with per-change justification
 
 ────────────────────────────────────────────────────────
 # § ATOMIC MICRO-AGENT PROFILES → meta-experimental.md

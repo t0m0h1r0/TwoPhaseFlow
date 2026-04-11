@@ -145,8 +145,8 @@ Layer P — Project Profile (project-specific, swappable)
 Layer S — Safety & Evolution (cross-cutting, loaded selectively)
   meta-antipatterns.md — AVOID: known failure modes with detection + mitigation per agent role    ← updated when new patterns observed
 
-Layer X — Experimental (NOT YET OPERATIONAL — load on demand only)
-  meta-experimental.md — FUTURE: micro-agent architecture, DDA, SIGNAL protocol, artifact dirs    ← activate when infrastructure ready
+Layer X — Operational (load on demand only — activates DDA+SIGNAL+micro-agent scope enforcement; standard agents do NOT load this file at session start)
+  meta-experimental.md — micro-agent architecture, DDA, SIGNAL protocol, artifact dirs    ← load only for micro-agent dispatch or atomic decomposition tasks
 ```
 
 **4×4 Matrix Architecture (the domain model for all work):**
@@ -188,7 +188,7 @@ T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
 | meta-deploy.md | 3 — Orchestration | DEPLOY — EnvMetaBootstrapper, composition, tiered generation | system structure changes |
 | meta-project.md | P — Project Profile | PROJECT — project-type rules, solver policy, tooling | project changes |
 | meta-antipatterns.md | S — Safety & Evolution | AVOID — known failure modes, detection, mitigation | new pattern observed |
-| meta-experimental.md | X — Experimental | FUTURE — micro-agent architecture (NOT YET OPERATIONAL) | activation decision |
+| meta-experimental.md | X — Operational (on demand) | micro-agent architecture, DDA, SIGNAL protocol | micro-agent infrastructure changes |
 
 **Separation rule:** WHO (character) is intrinsic. WHAT (contract) can be reassigned without touching
 character. HOW (process) can be improved without changing identity or contracts.
@@ -210,6 +210,7 @@ resolve the conflict by returning to these principles.
 ────────────────────────────────────────────────────────
 
 ## φ1: Truth Before Action
+> **TL;DR:** Evidence before action — stop and read before you fix.
 
 Every action requires derivation, not assumption.
 Before fixing: classify. Before classifying: derive. Before deriving: read.
@@ -225,6 +226,7 @@ more damage than a transparent stop.
 ────────────────────────────────────────────────────────
 
 ## φ2: Minimal Footprint
+> **TL;DR:** Do exactly what is authorized — scope creep is a traceability violation.
 
 Do exactly what is authorized. No more.
 
@@ -238,6 +240,7 @@ is not helpfulness; it is a traceability violation.
 ────────────────────────────────────────────────────────
 
 ## φ3: Layered Authority
+> **TL;DR:** When sources conflict, the hierarchy resolves it — first principles win over code.
 
 Truth has a hierarchy. When sources conflict, the hierarchy resolves it — not
 agent judgment, not the most recent edit.
@@ -259,6 +262,7 @@ in a lower layer when the cause is in a higher layer is always wrong.
 ────────────────────────────────────────────────────────
 
 ## φ4: Stateless Agents, Persistent State
+> **TL;DR:** If it's not in docs/ or git, it doesn't exist to the system.
 
 Agents are stateless processors. All state lives in external files and git history.
 
@@ -288,6 +292,7 @@ When two or more Claude Code sessions run concurrently against the same reposito
 ────────────────────────────────────────────────────────
 
 ## φ5: Bounded Autonomy
+> **TL;DR:** Every workflow has hard gates — human judgment at decision boundaries, not around them.
 
 Agents are powerful, but autonomy must be earned through evidence — not granted
 by default. Every workflow has hard gates:
@@ -305,6 +310,7 @@ is applied at the right moments, with full evidence.
 ────────────────────────────────────────────────────────
 
 ## φ6: Single Source, Derived Artifacts
+> **TL;DR:** Change the source in prompts/meta/; never patch a derived artifact directly.
 
 Every rule has exactly one canonical home. Derived files are outputs, not inputs.
 Change the source; regenerate the derivative. Never patch a derivative directly.
@@ -320,6 +326,7 @@ overwrite the patch, destroying the fix without notice.
 ────────────────────────────────────────────────────────
 
 ## φ7: Classification Precedes Action
+> **TL;DR:** Reviewers classify; correctors act — merging these roles destroys the audit trail.
 
 Every corrective action requires prior classification. Classification requires
 independent reading. You cannot fix what you have not classified; you cannot

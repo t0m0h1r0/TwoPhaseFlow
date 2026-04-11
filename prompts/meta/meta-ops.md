@@ -30,24 +30,20 @@ consult prompts/meta/meta-ops.md for canonical syntax." Full details remain here
 # § AUTHORITY TIERS
 
 <purpose>Role → git authority tier matrix. JIT candidate: load via `on_demand_common` only when a role needs to verify its tier before invoking a GIT-xx operation.</purpose>
-<authority>Gatekeeper roles (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor, WikiAuditor) reference this table when authorizing PR merges. Specialists reference it once per session to confirm GIT-SP is their only granted operation.</authority>
+<authority>Full tier table with Git Authority + Git Obligations: → `meta-roles.md §AUTHORITY TIERS` (canonical SSoT).</authority>
 
-| Tier | Agents | Obligations |
-|------|--------|-------------|
-| **Root Admin** | ResearchArchitect | Final merge + syntax/format check of PRs to `main` |
-| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor, WikiAuditor | Domain branch management; PR review + merge from dev/; PR issuance to main |
-| **Specialist** | CodeArchitect, CodeCorrector, CodeReviewer, TestRunner, ExperimentRunner, SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, TheoryArchitect, ConsistencyAuditor, DevOpsArchitect, KnowledgeArchitect, Librarian, TraceabilityManager | Absolute sovereignty over own `dev/{agent_role}` branch; must attach Evidence of Verification to every PR |
-
-- **TheoryAuditor:** git tier = Specialist (`dev/T/TheoryAuditor/`); T-Domain verdict authority = Gatekeeper. Signs `docs/interface/AlgorithmSpecs.md`. No other agent may sign T-Domain Interface Contracts.
-- **ConsistencyAuditor:** git tier = Specialist (`dev/Q/ConsistencyAuditor/`); AU2 verdict authority = Gatekeeper. Never commits to domain branches (Broken Symmetry).
-- **WikiAuditor:** git tier = Gatekeeper. Manages `wiki` branch; issues K-LINT verdicts. No other agent may approve wiki entries.
+> **Tier summary (quick JIT lookup — full table in `meta-roles.md §AUTHORITY TIERS`):**
+> - **Root Admin:** ResearchArchitect — final merge to `main` + PR syntax/format check
+> - **Gatekeeper:** CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor, WikiAuditor, TheoryAuditor (T-gate) — domain branch management, PR review/merge
+> - **Specialist:** all others — `dev/{agent_role}` sovereignty + Evidence of Verification on every PR
+>
+> Special: TheoryAuditor = Specialist git + Gatekeeper verdict; ConsistencyAuditor = Specialist git + Gatekeeper AU2; WikiAuditor = Gatekeeper (wiki branch).
 
 <rules>
-- MUST NOT invoke any GIT-xx operation without first confirming the operation is listed in this role's tier obligations (Gatekeepers) or in §ROLE → OPERATION INDEX (Specialists).
-- MUST NOT paraphrase, add, or remove rows from this table outside a CHK-tracked MetaEvolutionArchitect session.
+- MUST NOT invoke any GIT-xx operation beyond the tier's obligations listed in `meta-roles.md §AUTHORITY TIERS`.
 - Root Admin tier MUST remain exactly one agent (ResearchArchitect) — two Root Admins is a STOP-02 Immutable Zone violation.
 </rules>
-<see_also>§ROLE → OPERATION INDEX, §GIT OPERATIONS, meta-roles.md, meta-domains.md §DOMAIN-LOCK</see_also>
+<see_also>§ROLE → OPERATION INDEX, §GIT OPERATIONS, meta-roles.md §AUTHORITY TIERS, meta-domains.md §DOMAIN-LOCK</see_also>
 </meta_section>
 
 ────────────────────────────────────────────────────────
@@ -382,8 +378,19 @@ Post-conditions:
 
 Failure modes:
 - `O_EXCL` refuses (file already exists) → another session holds the lock → **STOP-10** foreign lock. The agent halts, issues HAND-02 `status: REJECT, stop_code: "STOP-10"`, and does NOT attempt to delete or overwrite the existing lock file.
-- Stale lock (`expires_at` in the past) → do NOT auto-reclaim. See `docs/locks/README.md` for the human-initiated `--force` recovery procedure; record rationale in §4.
+- Stale lock (`expires_at` in the past) → do NOT auto-reclaim. Human-initiated `--force` procedure (inline below); record rationale in §4.
 - Lock acquired but registry entry missing, or vice versa → **STOP-10 CONTAMINATION_GUARD** (divergence between ephemeral and canonical state).
+
+### Stale Lock Recovery (human-initiated `--force` only)
+
+A lock is stale when `expires_at` has passed AND no active process holds the branch. Agents MUST halt; only a human may execute these steps.
+
+1. **Confirm stale:** verify `expires_at < $(date -u +%Y-%m-%dT%H:%M:%SZ)` AND the holder agent session is no longer active.
+2. **Record rationale:** append a FORCED_RECOVERY entry to `docs/02_ACTIVE_LEDGER.md §4` with timestamp, stale `session_id`, and reason.
+3. **Remove stale lock:** `rm docs/locks/{branch_slug}.lock.json`
+4. **Re-acquire:** run LOCK-ACQUIRE normally — the next session acquires a fresh lock with `O_EXCL`.
+
+> Verbose reference: `docs/locks/README.md` (if present). This inline procedure is the operational minimum.
 
 <rules>
 - MUST invoke LOCK-ACQUIRE before the first write on any `dev/*` branch when `concurrency_profile == "worktree"`.
@@ -589,6 +596,19 @@ All 10 items must pass. A single FAIL blocks merge.
 | E | Authority chain conflict: MMS-passing code > docs/01_PROJECT_MAP.md §6 > paper | Definitive verdict on wrong artifact |
 
 Procedure E only when A–D produce conflicting evidence. Resolve by derivation, not preference.
+
+**Procedure A — Two-Path Requirement (self-consistency gate):**
+When a derivation yields ≥2 plausible interpretations of the governing equation or stencil
+(ambiguous PDE form, conflicting index conventions, sign ambiguity), derive via TWO independent
+paths before concluding:
+- Path 1: direct Taylor expansion from the governing PDE
+- Path 2: operator algebra (e.g., matrix form or spectral analysis)
+
+If both paths agree → proceed with PASS.
+If paths disagree → **STOP-HARD** (authority conflict); emit HAND-02 `status: REJECT` citing
+the specific disagreement. Do NOT average or pick one path — escalate to user.
+This requirement is **conditional**: single-path derivation is sufficient when the equation
+interpretation is unambiguous (no competing readings in context).
 
 ────────────────────────────────────────────────────────
 ## AUDIT-03: Adversarial Edge-Case Gate

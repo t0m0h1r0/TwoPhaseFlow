@@ -128,6 +128,9 @@ To adapt this system for a different project:
 2. Regenerate docs/03_PROJECT_RULES.md from the new meta-project.md
 3. Update _base.yaml `project_rules` reference if PR-IDs change
 4. Universal files (meta-core.md, meta-domains.md, meta-ops.md, etc.) require NO changes
+5. **Verification (EnvMetaBootstrapper Stage 2):** After regeneration, confirm all PR-IDs
+   referenced in _base.yaml exist in the new docs/03_PROJECT_RULES.md:
+   `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal the count defined in meta-project.md.
 
 The PR-{N} numbering is local to this file. Universal rules use A-{N} (axioms),
 C-{N} (code, universal), P-{N} (paper), Q-{N} (prompt), AU-{N} (audit).
