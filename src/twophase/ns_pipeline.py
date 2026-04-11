@@ -183,7 +183,10 @@ class TwoPhaseNSSolver:
         self._grid.update_from_levelset(phi, self._eps, ccd=self._ccd)
 
         # 5. Remap psi, u, v from old grid to new grid
-        new_X, new_Y = self._grid.meshgrid()
+        # RegularGridInterpolator is scipy-based: always needs host arrays.
+        new_X_dev, new_Y_dev = self._grid.meshgrid()
+        new_X = np.asarray(self._backend.to_host(new_X_dev))
+        new_Y = np.asarray(self._backend.to_host(new_Y_dev))
         pts = np.stack([new_X.ravel(), new_Y.ravel()], axis=-1)
 
         psi = np.clip(
@@ -206,8 +209,8 @@ class TwoPhaseNSSolver:
         dV_new = self._grid.cell_volumes()
         psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
 
-        # 7. Update meshgrid cache
-        self.X, self.Y = new_X, new_Y
+        # 7. Update meshgrid cache (keep device arrays for downstream ops).
+        self.X, self.Y = new_X_dev, new_Y_dev
 
         # 8. Update curvature eps_field for local-eps mode
         if self._use_local_eps:
