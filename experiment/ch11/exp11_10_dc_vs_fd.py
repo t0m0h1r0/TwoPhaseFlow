@@ -56,7 +56,7 @@ def build_fd_lap(N, h):
 
 
 def run_comparison():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     Ns = [8, 16, 32, 64, 128]
     res_fd, res_dc = [], []
 
@@ -64,6 +64,9 @@ def run_comparison():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N; X, Y = grid.meshgrid()
+        # Defect-correction loop uses scipy.sparse.spsolve (CPU-only); keep
+        # p_exact / rhs on host while eval_LH still routes CCD through device.
+        X = backend.to_host(X); Y = backend.to_host(Y)
         p_exact = np.sin(np.pi * X) * np.sin(np.pi * Y)
         rhs = -2 * np.pi**2 * p_exact
         rhs[0,:]=0; rhs[-1,:]=0; rhs[:,0]=0; rhs[:,-1]=0

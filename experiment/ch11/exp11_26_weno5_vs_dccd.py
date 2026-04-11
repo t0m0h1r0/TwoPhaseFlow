@@ -38,10 +38,10 @@ OUT = experiment_dir(__file__)
 
 # ── Initial condition ────────────────────────────────────────────────────────
 
-def cls_profile(x, eps):
+def cls_profile(x, eps, xp=np):
     """CLS tanh profile: two back-to-back interfaces at x=0.25 and x=0.75."""
-    return 0.5 * (np.tanh((x - 0.25) / (2 * eps))
-                  - np.tanh((x - 0.75) / (2 * eps)))
+    return 0.5 * (xp.tanh((x - 0.25) / (2 * eps))
+                  - xp.tanh((x - 0.75) / (2 * eps)))
 
 
 # ── Advection routines ──────────────────────────────────────────────────────
@@ -75,10 +75,11 @@ def advect_ccd(q0, ccd, dt, n_steps, eps_d=0.0):
 
 def advect_weno5(q0, grid, backend, dt, n_steps):
     """Advect with WENO5 (LevelSetAdvection._rhs) + RK4."""
+    xp = backend.xp
     weno = LevelSetAdvection(backend, grid, bc="periodic")
     q = q0.copy()
     c = 1.0
-    vel = [c * np.ones_like(q), np.zeros_like(q)]
+    vel = [c * xp.ones_like(q), xp.zeros_like(q)]
 
     for _ in range(n_steps):
         def rhs(q_in):
@@ -133,7 +134,8 @@ def run_benchmark():
         n_steps = int(T / dt)
         dt = T / n_steps  # adjust for exact periodicity
 
-        backend = Backend(use_gpu=False)
+        backend = Backend()
+        xp = backend.xp
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="periodic")
@@ -142,8 +144,8 @@ def run_benchmark():
 
         for eps in eps_values:
             key = f"N{N}_eps{eps}"
-            q0_1d = cls_profile(x, eps)
-            q0 = np.tile(q0_1d[:, None], (1, N + 1))
+            q0_1d = cls_profile(x, eps, xp)
+            q0 = xp.tile(q0_1d[:, None], (1, N + 1))
             q_exact = q0.copy()
 
             print(f"\n  Running N={N}, eps={eps} ...")
@@ -161,22 +163,28 @@ def run_benchmark():
             ccd_1d = q_ccd[:, mid]
             dccd_1d = q_dccd[:, mid]
 
-            # L2 errors
-            L2_weno = float(np.sqrt(np.mean((weno_1d - exact_1d) ** 2)))
-            L2_ccd = float(np.sqrt(np.mean((ccd_1d - exact_1d) ** 2)))
-            L2_dccd = float(np.sqrt(np.mean((dccd_1d - exact_1d) ** 2)))
+            # L2 errors (device reductions, float() forces host sync)
+            L2_weno = float(xp.sqrt(xp.mean((weno_1d - exact_1d) ** 2)))
+            L2_ccd = float(xp.sqrt(xp.mean((ccd_1d - exact_1d) ** 2)))
+            L2_dccd = float(xp.sqrt(xp.mean((dccd_1d - exact_1d) ** 2)))
 
-            # Interface widths
-            eps_weno = measure_interface_width(x, weno_1d, eps)
-            eps_ccd = measure_interface_width(x, ccd_1d, eps)
-            eps_dccd = measure_interface_width(x, dccd_1d, eps)
+            # Interface widths need scipy.optimize.curve_fit (CPU-only) —
+            # host-convert the 1D profiles at the call boundary.
+            x_host     = backend.to_host(x)
+            exact_host = backend.to_host(exact_1d)
+            weno_host  = backend.to_host(weno_1d)
+            ccd_host   = backend.to_host(ccd_1d)
+            dccd_host  = backend.to_host(dccd_1d)
+            eps_weno = measure_interface_width(x_host, weno_host, eps)
+            eps_ccd = measure_interface_width(x_host, ccd_host, eps)
+            eps_dccd = measure_interface_width(x_host, dccd_host, eps)
 
             results[key] = {
-                "x": x,
-                "exact": exact_1d,
-                "weno5": weno_1d,
-                "ccd": ccd_1d,
-                "dccd": dccd_1d,
+                "x": x_host,
+                "exact": exact_host,
+                "weno5": weno_host,
+                "ccd": ccd_host,
+                "dccd": dccd_host,
                 "L2_weno5": L2_weno,
                 "L2_ccd": L2_ccd,
                 "L2_dccd": L2_dccd,
