@@ -1,7 +1,7 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
 # Supersedes: ACTIVE_STATE.md, CHECKLIST.md, ASSUMPTION_LEDGER.md, LESSONS.md
-# Last updated: 2026-04-08
+# Last updated: 2026-04-11
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -77,6 +77,7 @@
 | CHK-104 | CLOSED | wiki | KnowledgeArchitect shape preservation knowledge 2026-04-09. Memo: docs/memo/cls_shape_preservation.md. WIKI-T-028 updated (shape error hierarchy). WIKI-E-009 source pointer added. |
 | CHK-105 | CLOSED | paper | PaperWriter CLS-DCCD theory + shape findings 2026-04-09. §7b: 2 subsections (DCCD mass proof + adaptive reinit). §10: Step 2 adaptive trigger. §11.2: DCCD conservation verification section + table + text fix (O(10^-5)→O(10^-15)). exp11_6 re-run verified. Compile: 186pp, 0 errors, 0 undef refs. |
 | CHK-111 | CLOSED | review | PaperReviewer §11–§13 end-to-end review 2026-04-11. 18 .tex files (§11 delta since CHK-096 + §12 first-pass + §13 first-pass). Counts: 0 Fatal / 4 Major / 7 Minor / 2 Style. 7 independent derivations PASS (DCCD zero-sum, θ=1.10, mass wording, interface temporal degradation, split-PPE cross-chapter, Prosperetti, PR-5 two-mode IPC). Major batch (commit 603d1e5, merged via 2918219): M-1 §12.3c CFL 目的/結論 structure (12c_time_accuracy.tex); M-2 §12.5b 目的 insertion (12e2_nonuniform_grid.tex); M-3 capillary wave PARTIAL verdict + failure attribution (13_benchmarks.tex); M-4 rising bubble interpolation-diffusion mechanism (3 sentences, cross-link to §12.5b parasitic current). Side fix: preamble.tex missing `\bx` macro (pre-existing bug from commit 54c936c blocking compile) — 1-line addition. Wiki: WIKI-P-006 created. Minor/Style batch (this commit): m-2 delete 12_legacy_component_verification.tex (0 refs confirmed) + main.tex include removed; m-3 04_ccd.tex:100 sec:grid_convergence → sec:verify_ccd_convergence retarget + stale backward-compat label removed from 12_verification.tex; m-5 §12.6→§13 bridge factual correction (prior text cited wrong benchmarks); m-6 §13 opening clarifies one-batch PPE is used because ρ_l/ρ_g ≤ 10 range makes split-PPE unnecessary; S-1 12d_coupling.tex: 先行告知 → 概要; 4 pre-existing broken refs fixed (sec:val_static_drop×3 → sec:bf_static_droplet, sec:curvature_invariance → thm:curvature_invariance). Skipped as false-positives: m-1 (11_summary.tex 判定 column legend already present at line 108), m-4/Style-2 (Ord{h^7} vs Ord{h^{7.0}} is intentional theoretical/measured convention). Compile: 195pp, 0 errors, 0 undefined refs. |
+| CHK-114 | OPEN | meta | Meta v5.1.0 Concurrency-Aware refactor 2026-04-11 on branch meta/v5.1-concurrency-aware. Scope: Worktree-based session isolation + ACTIVE_LEDGER branch-lock semaphore + JSON Schema HAND envelopes + T/L/E/A Node layer in meta-workflow. Adds new §4 BRANCH_LOCK_REGISTRY (this file), prompts/meta/schemas/hand_schema.json (Commit 1 · 55d6ade, label inside the commit msg says CHK-106 which was a false-positive — CHK-106 was already OPEN for the CuPy backend refactor on feat/cupy-backend; correct id is CHK-114). Sub-axioms φ4.1 Session-Isolated State + A8.1 Worktree-First Parallelism under meta-core.md (φ1–φ7 / A1–A11 unchanged, verified by grep count gates). Feature flag `concurrency_profile: legacy → worktree` gates rollout; Phase D.3 flip commit is single-line revertible. Plan: /Users/tomohiro/.claude/plans/optimized-popping-platypus.md. Deliverable: HAND-01/02/03 structured output + GIT-WORKTREE-ADD / GIT-ATOMIC-PUSH / LOCK-ACQUIRE / LOCK-RELEASE protocols in meta-ops.md + STOP-09/10/11. Concurrency incident during Phase A.1 (HEAD@{1} checkout by another session moved my first commit to refactor/ch11-gpu-optin-batch4 @ 55d6ade; recovered via selective path-stash + branch -f + reset --hard HEAD~1; other session's exp11_12/13/15/18 WIP preserved in stash@{0}). |
 
 ## §2 — Math / Code Audit Register
 
@@ -153,6 +154,21 @@
 | CHK-086 | CLOSED | paper | PaperWriter §8 narrative/redundancy audit 2026-03-31 (F1–F10, 10 findings): F1 §8.2.1 1D matrix algebra removed (→app C.3 already has eq:L_CCD_def_app). F2 §8.2.2 Neumann BC algbox moved to app C.3 (sec:ccd_neumann_bc). F3 §8.2.3 matrix-free algbox moved to app C.3 (sec:ccd_matrix_free_eval). F4 §8.2.4 Balanced-Force CSF/RC rewritten → GFM-consistent table (CSF era → app). F5 §8.3 accuracy table: CSF row → GFM row + footnote; warnbox: CSF→GFM. F6 p^0 init block (3 bullets) moved to app E.5. F7 interface precision analysis condensed to 2 sentences. F8 redundant \subsection{Projection法とPPE} removed. F9 Neumann unit test moved to app C.3 (sec:ccd_neumann_unit_test). F10 FVM periodic BC moved to app E.4 (sec:fvm_periodic). Compile: 164pp (−3pp), 0 errors, 0 duplicate labels. |
 | CHK-088 | CLOSED | review+fix | PaperReviewer+PaperCorrector §5 audit 2026-03-31: 4 MAJOR + 4 MINOR fixed. [M-1] eq:ccd_adv_instability+eq:dccd_adv_amp: k*/k→ĥk*(ξ) notation fix (ξ² factor missing); resultbox stability derivation notation unified. [M-2] 05b predictor CSF body force→GFM (f=gravity only; ST via b^GFM in PPE); clamp error comparison CSF→DCCD filter error. [M-3] 05c compression CFL: flux max ψ(1-ψ)≤1/4→characteristic speed |1-2ψ|≤1; Δτ≤4h→Δτ≤h. [M-4] 「ここで」clause moved after equation (M-1 fix). [m-1,m-2] code refs removed (NumericsConfig.epsilon_factor, config.numerics.reinit_steps). [m-3] sec:failure_modes ref prefixed with §1. [m-4] CSF annotation resolved by M-2. Compile: 162pp, 0 errors, 0 undefined refs. |
 | CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
+
+## §4 — Branch Lock Registry (v5.1)
+
+Introduced by CHK-114 (meta v5.1.0-Concurrency-Aware). Canonical registry of branch-level exclusive locks held by active Claude Code sessions. Protocol: `prompts/meta/meta-ops.md §LOCK-ACQUIRE` / `§LOCK-RELEASE`. Ephemeral per-lock files: `docs/locks/{branch_slug}.lock.json` (O_EXCL atomic create). Cross-check: if registry row and ephemeral file disagree → **STOP-10** CONTAMINATION_GUARD. Stale locks (>24 h past `expires_at`) are not auto-reclaimed; humans inspect the holding session's worktree + branch state before explicit `LOCK-RELEASE --force` with rationale in this registry.
+
+| branch | session_id | worktree_path | acquired_at | expires_at | holder_agent | released_at | notes |
+|---|---|---|---|---|---|---|---|
+| _(empty — no active locks; populated by LOCK-ACQUIRE once concurrency_profile is flipped to worktree in Phase D.3 of CHK-114)_ | | | | | | | |
+
+### §4 Format reference
+- `branch_slug` = `branch` with `/` replaced by `-` (filesystem-safe key used for the ephemeral lock file name)
+- Timestamps: ISO 8601 UTC (e.g., `2026-04-11T12:34:56Z`)
+- Default TTL: 24 h (expires_at = acquired_at + 24h)
+- `session_id` is the UUID v4 emitted by the authoring Claude Code session; it matches the `session_id` field of the HandoffEnvelope (`prompts/meta/schemas/hand_schema.json`)
+- On `LOCK-RELEASE`, set `released_at` (do NOT delete the row — audit trail is append-only)
 
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
