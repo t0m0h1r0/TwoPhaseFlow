@@ -131,10 +131,15 @@ $\rho_l/\rho_g \geq 10$（smoothed H） & $\times$ & §~\ref{sec:interface_cross
 §~\ref{sec:verify_split_ppe_dc} では分相 PPE + DC $k{=}3$ により
 $\rho_l/\rho_g = 1000$ でも $\Ord{h^{7.0}}$ 格子収束が達成されることを実証した
 （表~\ref{tab:split_ppe_dc_convergence}）．
-第~\ref{sec:validation}章では現行ソルバの動作範囲内（$\rho_l/\rho_g \leq 5$，
-静止界面＋CSF）で RT 不安定と静止液滴の物理ベンチマークを実施し，
-HFE（§~\ref{sec:field_extension}）の除去実験と
-密度比スイープにより本手法の能力と限界を定量化する．
+第~\ref{sec:validation}章では本章で確立した動作範囲内
+（$\rho_l/\rho_g \leq 10$，$\sigma$ 有限で静的または低速移動界面）において
+物理ベンチマーク 3 件を実施する：
+毛管波の振動減衰（Prosperetti 解析解との比較），
+気泡上昇（Hysing ら 2009 Test Case 1），
+および線形せん断流中の液滴変形（Taylor 1932）．
+いずれも表面張力・粘性・浮力の結合を定量検証するものであり，
+§~\ref{sec:nonuniform_grid_ns} で検証した非一様格子パイプラインと
+§~\ref{sec:local_eps_validation} の空間可変 $\varepsilon$ を併用する．
 
 \noindent\textbf{検証対象外の保存量：}
 角運動量はコロケート格子上の離散 NS ソルバでは一般に厳密保存されない%
