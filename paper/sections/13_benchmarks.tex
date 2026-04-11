@@ -117,3 +117,91 @@ Hysing 参照値と定性的に比較する．
 \noindent\textbf{目標：}
 定常変形量 $D_\mathrm{ss}$ と解析値 $D_\mathrm{theory}$ の相対誤差
 $|D_\mathrm{ss} - D_\mathrm{theory}|/D_\mathrm{theory} < 10\%$（$\mathit{Ca} \leq 0.3$）．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{実行結果}
+\label{sec:val_results}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本章のベンチマークは §~\ref{sec:nonuniform_grid_ns}--§~\ref{sec:local_eps_validation}
+で検証した非一様格子パイプラインで実行した：
+界面適合格子（$\alpha = 2$），空間可変 $\varepsilon(\bx) = 1.5\,h_\mathrm{local}(\bx)$，
+毎 $K$ ステップ格子リビルド．
+リビルド頻度 $K$ は界面運動特性に応じて実験別に校正した（表~\ref{tab:ch13_rebuild_freq}）．
+
+\begin{table}[htbp]
+\centering
+\caption{実験別のリビルド頻度校正}
+\label{tab:ch13_rebuild_freq}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\toprule
+実験 & 界面運動 & $K$ \\
+\midrule
+毛管波（§~\ref{sec:val_capillary}） & 定在振動（初期位置付近） & 20 \\
+気泡上昇（§~\ref{sec:val_rising_bubble}） & 連続移動 $\Delta y \sim 0.1$/T=3 & 5 \\
+Taylor 変形（§~\ref{sec:val_taylor_deformation}） & 非対称変形 & 1（範囲外） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+毎ステップリビルド（$K = 1$）は短時間テストでは最良だが，
+長時間（$>10^4$ ステップ）では線形補間の誤差が累積する．
+校正された $K$ により補間呼出が $1/K$ に減少し，
+誤差累積と数値拡散を抑制する．
+一方，移動界面（気泡）では $K$ が大きすぎると
+界面が格子の精細領域から外れる期間が長くなり物理が破綻するため，
+界面運動量に応じた校正が必要である．
+
+\paragraph{毛管波（§~\ref{sec:val_capillary}）．}
+$K = 20$ で 24{,}350 ステップ（$T = 10.0$）を安定に計算した．
+運動エネルギーは $l = 2$ モードに整合する振動パターンを示し（図~\ref{fig:ch13_capillary}），
+体積保存誤差は $|\Delta V|/V_0 = 1.74 \times 10^{-2}$（一様格子 $1.89 \times 10^{-2}$ と同水準）．
+非一様格子の質量補正が一様格子と同等の精度を維持できることを確認した．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/ch13_capillary_wave}
+\caption{毛管波：変形量 $D(t)$ と Prosperetti 解析解の比較．
+$N=64$，$T = 10.0$，$\alpha = 2$，$K = 20$．
+体積保存誤差 $|\Delta V|/V_0 = 1.74\%$．}
+\label{fig:ch13_capillary}
+\end{figure}
+
+\paragraph{気泡上昇（§~\ref{sec:val_rising_bubble}）．}
+$K = 20$ では気泡の移動速度に対してリビルド頻度が低すぎ，
+$y_c$ が初期 0.5 から 0.077 に急降下し物理が破綻した
+（気泡の界面が精細領域から外れ，曲率計算が stale な格子上で劣化）．
+$K = 5$ に下げたところ，単調上昇（$y_c : 0.5 \to 0.586$）が回復し
+体積保存も良好（$|\Delta V|/V_0 = 7.5 \times 10^{-4}$）．
+上昇速度は $v_\mathrm{rise} \approx 0.04$（一様格子ベースラインの $\sim 1/4$）と
+補間誤差による数値拡散で減衰しているが，気泡形状・軌跡は定性的に正しい
+（図~\ref{fig:ch13_bubble}）．
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/ch13_rise_velocity}\hfill
+\includegraphics[width=0.48\linewidth]{figures/ch13_bubble_snapshot}
+\caption{気泡上昇：（左）上昇速度 $v_c(t)$，（右）$t = 3.0$ のスナップショット．
+$N = 64 \times 128$，$\alpha = 2$，$K = 5$．
+$y_c: 0.5 \to 0.586$，$|\Delta V|/V_0 = 7.5 \times 10^{-4}$．}
+\label{fig:ch13_bubble}
+\end{figure}
+
+\paragraph{Taylor 変形（§~\ref{sec:val_taylor_deformation}）．}
+8 ケース（$\mathrm{Ca} \in \{0.1,0.2,0.3,0.4\}$，$\lambda \in \{1,5\}$）全てが
+$t < 0.05$ で blow-up した．
+根本原因は明示粘性 CFL 制約で，Couette BC により初期から $u_\mathrm{max} = 1.0$
+が強制されるため，$N = 128$ の細格子では $\Delta t_\nu \sim h^2/(4\nu)$ が
+対流非線形性を収束させるには小さすぎる．
+これは §~\ref{sec:verify_cn_viscous} で検証済みの Crank--Nicolson 陰解法が
+\texttt{TwoPhaseNSSolver} に未統合であることに起因する既知の制限で，
+本ベンチマークは\textbf{非一様格子の適用範囲外}とする
+（粘性項の陰解法化は将来課題）．
+
+\noindent\textbf{総括：}
+3 ベンチマークのうち毛管波と気泡上昇は非一様格子パイプラインで
+安定に実行でき，体積保存・定性的な物理（振動・上昇）を再現した．
+Taylor 変形は明示粘性 CFL 制約により非一様格子でも依然 blow-up し，
+陰解法化が必要である．
