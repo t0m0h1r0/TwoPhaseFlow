@@ -7,6 +7,16 @@
 # Role contracts per agent: prompts/meta/meta-roles.md
 # Pipeline execution order: prompts/meta/meta-workflow.md
 
+<meta_section id="META-DOMAINS" version="5.1.0" axiom_refs="A4,A9,phi3,phi5">
+<purpose>Authoritative 4×4 domain registry (T/L/E/A × M/P/Q/K). Defines branch ownership, write territories, agent membership, and DOMAIN-LOCK / DOM-02 guards. JIT-consulted when a Coordinator establishes a domain lock or when an Auditor verifies write-territory compliance.</purpose>
+<authority>Gatekeepers set domain locks from this registry. Specialists consult it ONLY to confirm their own write territory before GIT-SP. DDA enforcement is handled by meta-experimental.md.</authority>
+<rules>
+- MUST NOT extend or modify the 4×4 matrix outside a CHK-tracked MetaEvolutionArchitect or EnvMetaBootstrapper session.
+- MUST treat `write_territory` entries as exclusive — overlap between two domains is a STOP-03 Domain Lock violation.
+- MUST NOT create new top-level matrix cells (T/L/E/A × M/P/Q/K) — the 4×4 shape is constitutional.
+</rules>
+<see_also>meta-ops.md §DOM-01, §DOM-02, meta-roles.md §MATRIX ROLE PAIRS, meta-experimental.md §DIRECTORY-DRIVEN AUTHORIZATION</see_also>
+
 ────────────────────────────────────────────────────────
 # § MATRIX ARCHITECTURE — 4 Vertical × 4 Horizontal Domains
 
@@ -784,3 +794,4 @@ RETURN → {coordinator}
              active domain={domain}; write_territory={write_territory_list}"]
   next:    "Coordinator must verify scope_out and re-dispatch with correct storage boundaries"
 ```
+</meta_section>

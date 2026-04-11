@@ -177,6 +177,169 @@ Introduced by CHK-114 (meta v5.1.0-Concurrency-Aware). Canonical registry of bra
 ## Format reference
 `CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
 
+## §5 — Evolution Log (MetaEvolutionArchitect v1.1)
+
+Introduced 2026-04-11 by the MetaEvolutionArchitect v1.1 Hybrid Architecture refactor. One entry per phase (P0–P5). Captures token/structure deltas, axiom mapping, red-team guards, and rollback plans for the XML Shell + JSON Core + Tool-Use + JIT retrofit applied to `prompts/meta/*.md`. Full design: `.claude/plans/synthetic-bubbling-lemon.md`.
+
+```yaml
+- entry_id: EVO-001
+  phase: P0
+  chk_id: CHK-NEW-0
+  files:
+    - prompts/meta/_hybrid-template.md (CREATED, 149 lines — non-consumed reference)
+    - prompts/agents/_base.yaml (ADD handoff_mode key, default "text")
+    - prompts/meta/meta-ops.md §STOP CONDITIONS (RESERVE STOP-12)
+  lines_delta: +149 (_hybrid-template.md) + additive entries elsewhere
+  axiom_mapping: [A10, phi6, phi7]
+  stop_conditions_touched: [STOP-12 reserved]
+  breaking_changes: none
+  bootstrapper_compat: mechanical (additive; _hybrid-template.md has leading underscore → skipped)
+  red_team_findings:
+    - { vector: handoff_mode_default_text, guard: "no tool_use flip in v1.1", verified: true }
+    - { vector: STOP-12_not_yet_active, guard: "gated by handoff_mode == tool_use", verified: true }
+  schema_ssot_preserved: true
+  rollback_plan: "git revert; remove _hybrid-template.md; delete handoff_mode key; drop STOP-12 row"
+
+- entry_id: EVO-002
+  phase: P1
+  chk_id: CHK-NEW-1
+  files:
+    - prompts/meta/meta-ops.md §HAND-01/02/03 (WRAP)
+  section: "§HANDOFF PROTOCOL — HAND-01 / HAND-02 / HAND-03"
+  meta_sections_added: 3 (HAND-01 op, HAND-02 op, HAND-03 immutable)
+  axiom_mapping: [A8, A6, phi4, phi4.1, phi7]
+  stop_conditions_referenced: [STOP-02, STOP-03, STOP-06, STOP-07, STOP-10, STOP-11, STOP-12]
+  additions_per_section:
+    - purpose, authority, rules (RFC-2119), tool_use reference, parameters $ref, procedure (HAND-02 only), thought_process, stop_conditions, see_also
+  breaking_changes: none (legacy ## HAND-0N: headers preserved inside wraps)
+  bootstrapper_compat: mechanical (additive; legacy grep anchors intact)
+  red_team_findings:
+    - { vector: prose_drift_in_rules, guard: rfc2119_prefix, verified: true }
+    - { vector: HAND-03_immutable_body_drift, guard: immutable_attr + body-diff gate (P5 parser), verified: true }
+    - { vector: dangling_ref, guard: $ref to meta-roles.md#SCHEMA-IN-CODE::HandNNPayload verified, verified: true }
+  schema_ssot_preserved: true
+  rollback_plan: "git revert CHK-NEW-1 commit; re-diff prompts/agents/ after regen"
+  reviewer: [PromptAuditor, ConsistencyAuditor]
+
+- entry_id: EVO-003
+  phase: P2
+  chk_id: CHK-NEW-2
+  files:
+    - prompts/meta/meta-ops.md §AUTHORITY TIERS (WRAP)
+    - prompts/meta/meta-ops.md §GIT OPERATIONS (OUTER WRAP)
+    - prompts/meta/meta-ops.md §GIT-SP (WRAP)
+    - prompts/meta/meta-ops.md §LOCK-ACQUIRE (WRAP)
+    - prompts/meta/meta-ops.md §LOCK-RELEASE (WRAP)
+  meta_sections_added: 5
+  axiom_mapping: [A8, A8.1, A9, phi3, phi4.1]
+  stop_conditions_referenced: [STOP-01, STOP-05, STOP-10, STOP-11]
+  purpose: "Declare JIT loading discipline for bulk ops primitives. GIT-* and AUTHORITY TIERS become on-demand via _base.yaml on_demand_common (already referenced there); wrappers document the posture."
+  breaking_changes: none
+  bootstrapper_compat: mechanical
+  token_savings_est_claude: "~300–450 tokens per Gatekeeper prompt when JIT is observed by regenerated agents (verification deferred to post-regen diff)"
+  red_team_findings:
+    - { vector: authority_table_squat, guard: "explicit MUST NOT modify outside CHK", verified: true }
+    - { vector: LOCK-ACQUIRE_bypass, guard: "rules bullet: MUST invoke before first write", verified: true }
+  schema_ssot_preserved: true
+  rollback_plan: "git revert CHK-NEW-2 commit"
+
+- entry_id: EVO-004
+  phase: P3
+  chk_id: CHK-NEW-3
+  files:
+    - prompts/meta/meta-workflow.md §STOP-RECOVER MATRIX (OUTER WRAP)
+  meta_sections_added: 1
+  axiom_mapping: [A8, phi4, phi4.1, phi5]
+  stop_conditions_referenced: [STOP-09, STOP-10, STOP-11]
+  purpose: "Pointer discipline: STOP-09/10/11 trigger definitions remain SSoT in meta-ops.md §STOP CONDITIONS. Workflow matrix adds recovery recipes only, never redefines triggers. Dedup realized as see_also rather than deletion (recovery context has distinct workflow-level value)."
+  breaking_changes: none
+  bootstrapper_compat: mechanical
+  red_team_findings:
+    - { vector: trigger_redefinition, guard: "rules bullet: MUST NOT redefine STOP-xx in this file", verified: true }
+    - { vector: auto_delete_on_STOP-09_10, guard: "rules bullet: MUST NOT auto-delete", verified: true }
+  schema_ssot_preserved: true
+  rollback_plan: "git revert CHK-NEW-3 commit"
+
+- entry_id: EVO-005
+  phase: P4
+  chk_id: CHK-NEW-4
+  files:
+    - prompts/meta/meta-roles.md §SCHEMA-IN-CODE (WRAP + immutable + 3 tool_declaration siblings)
+    - prompts/meta/meta-roles.md §COVE MANDATE (WRAP + thought_process)
+    - prompts/meta/meta-antipatterns.md (WRAP each AP-01..AP-08, 8 individual meta_sections)
+    - prompts/meta/meta-domains.md (OUTER WRAP)
+    - prompts/meta/meta-persona.md (OUTER WRAP)
+    - prompts/meta/meta-project.md (OUTER WRAP)
+    - prompts/meta/meta-experimental.md (OUTER WRAP)
+  meta_sections_added: 14 (2 + 8 + 1 + 1 + 1 + 1)
+  axiom_mapping:
+    SCHEMA-IN-CODE: [A8, phi6, immutable]
+    COVE-MANDATE: [A3, A6, phi1, phi7]
+    AP-01..AP-08: [phi1, phi3, phi4, phi5, phi7, A2, A3, A4, A5, A6, A8]
+    META-DOMAINS: [A4, A9, phi3, phi5]
+    META-PERSONA: [phi3, phi5, phi7]
+    META-PROJECT: [phi6, A7, A10]
+    META-EXPERIMENTAL: [phi4, phi5, phi6, A2, A4]
+  breaking_changes: none (all wraps additive; legacy anchors preserved)
+  bootstrapper_compat: mechanical (includes 3 new tool_declaration siblings in §SCHEMA-IN-CODE — documented in meta-deploy.md §v1.1 Hybrid architecture)
+  red_team_findings:
+    - { vector: SCHEMA-IN-CODE_drift, guard: immutable_attr + body-diff gate, verified: true }
+    - { vector: AP_injection_list_drift, guard: "Inject: field preserved verbatim per AP", verified: true }
+    - { vector: AP_tag_squatting, guard: "each AP-0N has unique id attribute", verified: true }
+  schema_ssot_preserved: true (no schemas/ directory created — FORBIDDEN by meta-deploy.md §104)
+  rollback_plan: "git revert CHK-NEW-4 commit (14 wraps rolled back atomically)"
+
+- entry_id: EVO-006
+  phase: P5
+  chk_id: CHK-NEW-5
+  files:
+    - prompts/meta/meta-core.md §DESIGN PHILOSOPHY (IMMUTABLE WRAP, body byte-identical)
+    - prompts/meta/meta-core.md §AXIOMS (IMMUTABLE WRAP, body byte-identical)
+    - prompts/meta/meta-deploy.md §Stage 1b (NEW: XML-Aware Parse specification)
+    - prompts/meta/meta-deploy.md §Generation rules (EXTENDED: v1.1 Hybrid architecture notes)
+  meta_sections_added: 2 immutable (DESIGN-PHILOSOPHY wraps phi1..phi7; AXIOMS wraps A1..A11)
+  axiom_mapping: [phi1..phi7, A1..A11, A10]
+  axiom_preservation_verification:
+    - "grep -c '^## φ' meta-core.md == 7 ✓"
+    - "grep -cE '^## A[0-9]+' meta-core.md == 11 ✓"
+    - "body bytes between immutable wraps unchanged (to be re-verified at every regen by bootstrapper body-diff gate)"
+  breaking_changes: none (all legacy anchors preserved; bootstrapper §Stage 1 Parse extended, not replaced)
+  bootstrapper_compat: xml_aware_required (for STRICT enforcement of immutable + $ref eager resolution + RFC-2119 + closed-vocab allow-list)
+  bootstrapper_backward_compat: "Stage 1b checks fire per-file; files without meta_section wrappers pass through legacy text-pattern parser unchanged"
+  parser_spec_additions:
+    - closed_vocab_allowlist_scoped_to_meta_section_bodies
+    - tag_balance_check_per_file
+    - unique_id_registry
+    - immutable_body_diff_gate → STOP-02
+    - eager_$ref_resolution + schema_resolution_report.json artifact
+    - rfc2119_rules_bullet_check → STOP-SOFT
+    - legacy_anchor_preservation_check → STOP-02
+    - scope_exclusions: [meta-deploy.md, _hybrid-template.md]
+  red_team_findings:
+    - { vector: axiom_body_paraphrase, guard: immutable_attr + body-diff, verified: true }
+    - { vector: tag_squatting_in_wraps, guard: scoped_closed_vocab_allowlist, verified: true }
+    - { vector: dangling_ref_to_renamed_interface, guard: eager_resolution_at_regen, verified: true }
+    - { vector: unclosed_meta_section, guard: per_file_tag_balance_check, verified: true }
+  schema_ssot_preserved: true
+  rollback_plan: "git revert CHK-NEW-5; re-run previous bootstrapper (v1.0); confirm regen produces P4-state agents"
+  reviewer: [PromptAuditor, TheoryAuditor, ConsistencyAuditor]
+  post_gate_status:
+    phi_count: 7 ✓
+    A_count: 11 ✓
+    HAND_headers_preserved: 3 ✓
+    AP_headers_preserved: 8 ✓
+    immutable_wraps_count: 3 (DESIGN-PHILOSOPHY, AXIOMS, HAND-03, SCHEMA-IN-CODE)
+    meta_section_tag_balance_in_scope_files: 25/25 (all balanced)
+```
+
+**Plan reference:** `.claude/plans/synthetic-bubbling-lemon.md` (design + red-team + verification gates)
+
+**Deferred verification (requires fresh Claude session to execute meta-deploy.md):**
+- Full regen of 33 agent prompts under `prompts/agents/`
+- `git diff prompts/agents/` mechanical-diff check (P1–P4) + XML-aware extraction (P5)
+- `schema_resolution_report.json` generation artifact
+- Token budget measurement (Claude profile target: 15–20% reduction on generated prompts)
+
 ────────────────────────────────────────────────────────
 # § ASSUMPTIONS
 

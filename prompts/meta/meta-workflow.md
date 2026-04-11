@@ -357,7 +357,18 @@ Rules: Step 1 immutable once Step 2 begins; Step 3 must not reference Step 4 art
 CRITICAL_VIOLATION if Step 4 bypasses Step 2 contract to access Step 3 internals (A9).
 
 ────────────────────────────────────────────────────────
+<meta_section id="STOP-RECOVER-MATRIX" version="5.1.0" axiom_refs="A8,phi4,phi4.1,phi5">
 # § STOP-RECOVER MATRIX
+
+<purpose>Workflow-level recovery pathway for every STOP condition. Answers WHO resolves and WHERE the pipeline resumes. Trigger definitions are SSoT in meta-ops.md §STOP CONDITIONS — this matrix does NOT redefine them.</purpose>
+<authority>Consulted by the Coordinator that receives a STOPPED HAND-02. Specialist triggers the STOP; Coordinator consults this matrix; recovery agent dispatched.</authority>
+<rules>
+- MUST look up the STOP trigger here BEFORE issuing any recovery dispatch.
+- MUST NOT redefine STOP-xx trigger semantics in this file — only the recovery recipe (who, action, resume point) lives here.
+- For STOP-09/10/11 (v5.1 concurrency STOPs): trigger definitions and immediate response are in meta-ops.md §STOP CONDITIONS; this matrix only adds the workflow-level recovery recipe.
+- MUST NOT auto-delete worktrees, locks, or files as part of recovery — human review required for all STOP-09/10 cases.
+</rules>
+<see_also>meta-ops.md §STOP CONDITIONS (trigger + immediate action SSoT), meta-ops.md §LOCK-ACQUIRE, meta-ops.md §LOCK-RELEASE, docs/locks/README.md</see_also>
 
 When an agent triggers a STOP condition, this matrix defines the recovery pathway.
 Every STOP is recoverable — the question is WHO resolves it and WHERE the pipeline resumes.
@@ -437,6 +448,7 @@ Coordinator
 **Gatekeeper scope in DiagnosticArchitect flow:** Gatekeeper reviews fix proposals for
 DOM-02 compliance and safety only — NOT for scientific correctness. Scientific correctness
 checks (GA-4, GA-6) do not apply to diagnostic fix proposals.
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § HANDOFF RULES

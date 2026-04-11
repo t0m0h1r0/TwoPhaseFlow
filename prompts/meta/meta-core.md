@@ -201,6 +201,7 @@ Layer 1 must not reference Layer 2 or Layer 3. Any cross-layer upward dependency
 structural violation — fix at source (φ6).
 
 ────────────────────────────────────────────────────────
+<meta_section id="DESIGN-PHILOSOPHY" version="5.1.0" axiom_refs="phi1,phi2,phi3,phi4,phi5,phi6,phi7" immutable="true">
 # § DESIGN PHILOSOPHY
 
 Seven foundational principles. When a rule is ambiguous or two rules conflict,
@@ -347,8 +348,10 @@ When two rules appear to conflict, apply this priority order:
 7. φ4 (Stateless Agents) — will the result be reproducible from external state alone?
 
 If the conflict remains unresolved after applying all seven: **STOP; escalate to user**.
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AXIOMS" version="5.1.0" axiom_refs="A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11" immutable="true">
 # § AXIOMS — Core Axioms A1–A11
 
 These behavioral axioms govern ALL agents unconditionally.
@@ -428,6 +431,7 @@ Wiki entries are compiled from VALIDATED artifacts; internal reasoning is unveri
 
 **Expresses:** φ4 (Stateless Agents) — knowledge lives outside the agent, in the wiki.
 φ6 (Single Source) — wiki entries are the canonical compiled form of domain knowledge.
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § SYSTEM OPTIMIZATION TARGETS

@@ -26,7 +26,11 @@ consult prompts/meta/meta-ops.md for canonical syntax." Full details remain here
 **Parameter notation:** `{param}` required; `[param]` optional; `{branch}` = `code` | `paper` | `prompt`; `{summary}` = specific one-line description.
 
 ────────────────────────────────────────────────────────
+<meta_section id="AUTHORITY-TIERS" version="5.1.0" axiom_refs="A8,A9,phi3">
 # § AUTHORITY TIERS
+
+<purpose>Role → git authority tier matrix. JIT candidate: load via `on_demand_common` only when a role needs to verify its tier before invoking a GIT-xx operation.</purpose>
+<authority>Gatekeeper roles (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect, PromptAuditor, WikiAuditor) reference this table when authorizing PR merges. Specialists reference it once per session to confirm GIT-SP is their only granted operation.</authority>
 
 | Tier | Agents | Obligations |
 |------|--------|-------------|
@@ -37,6 +41,14 @@ consult prompts/meta/meta-ops.md for canonical syntax." Full details remain here
 - **TheoryAuditor:** git tier = Specialist (`dev/T/TheoryAuditor/`); T-Domain verdict authority = Gatekeeper. Signs `docs/interface/AlgorithmSpecs.md`. No other agent may sign T-Domain Interface Contracts.
 - **ConsistencyAuditor:** git tier = Specialist (`dev/Q/ConsistencyAuditor/`); AU2 verdict authority = Gatekeeper. Never commits to domain branches (Broken Symmetry).
 - **WikiAuditor:** git tier = Gatekeeper. Manages `wiki` branch; issues K-LINT verdicts. No other agent may approve wiki entries.
+
+<rules>
+- MUST NOT invoke any GIT-xx operation without first confirming the operation is listed in this role's tier obligations (Gatekeepers) or in §ROLE → OPERATION INDEX (Specialists).
+- MUST NOT paraphrase, add, or remove rows from this table outside a CHK-tracked MetaEvolutionArchitect session.
+- Root Admin tier MUST remain exactly one agent (ResearchArchitect) — two Root Admins is a STOP-02 Immutable Zone violation.
+</rules>
+<see_also>§ROLE → OPERATION INDEX, §GIT OPERATIONS, meta-roles.md, meta-domains.md §DOMAIN-LOCK</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § ROLE → OPERATION INDEX
@@ -83,10 +95,25 @@ Atomic micro-agent DDA enforcement → meta-experimental.md.
 Gatekeeper may IMMEDIATELY REJECT a PR that is missing any of these three artifacts.
 
 ────────────────────────────────────────────────────────
+<meta_section id="GIT-OPERATIONS" version="5.1.0" axiom_refs="A8,phi4.1">
 # § GIT OPERATIONS
 
+<purpose>Canonical shell-level git primitives. JIT-loaded via `_base.yaml :: on_demand_common`. Agents do NOT inline this section at generation time.</purpose>
+<authority>Every agent that writes files on a `dev/*` branch. Tier-gated by §AUTHORITY TIERS + §ROLE → OPERATION INDEX.</authority>
+<rules>
+- MUST invoke the documented shell wrapper (`scripts/git-sp.sh`, `scripts/git-atomic-push.sh`, etc.) — never direct `git commit`, `git push`, or `git merge` to `main`.
+- MUST verify branch != `main` before any write (wrappers also enforce; redundancy intentional).
+- MUST consult this section only on demand (JIT) when an operation is actually about to run.
+- MUST NOT copy the shell commands into agent prompts as static inline text.
+</rules>
+<see_also>§AUTHORITY TIERS, §LOCK-ACQUIRE, §LOCK-RELEASE, §STOP CONDITIONS, _base.yaml §on_demand_common</see_also>
+
 ────────────────────────────────────────────────────────
+<meta_section id="GIT-SP" version="5.1.0" axiom_refs="A8,phi4.1">
 ## GIT-SP: Specialist Branch + Commit
+
+<purpose>Mandatory single-path commit wrapper for all Specialist writes.</purpose>
+<authority>All Specialists (see §ROLE → OPERATION INDEX).</authority>
 
 **Authorized:** All Specialists (see ROLE→OPERATION INDEX)
 **[AUTH_LEVEL: Specialist]**
@@ -100,6 +127,16 @@ scripts/git-sp.sh {domain} {agent_id} {task_id}
 The wrapper enforces: creates `dev/{domain}/{agent_id}/{task_id}`, updates `docs/01_PROJECT_MAP.md` active task, SYSTEM_PANIC on `main` branch.
 
 **Commit format:** `{domain}/{agent_id}: {summary}`
+
+<rules>
+- MUST invoke `scripts/git-sp.sh` for every file write inside the locked branch.
+- MUST NOT bypass GIT-SP even for "one-line" edits — STOP-05 triggers otherwise.
+- MUST verify branch != "main" before the wrapper runs (wrapper enforces this too; defense-in-depth).
+- SHOULD batch writes inside a single GIT-SP invocation when they form one logical change.
+</rules>
+<stop_conditions>STOP-01, STOP-05</stop_conditions>
+<see_also>§GIT-00, §GIT-WORKTREE-ADD, §STOP CONDITIONS</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 ## GIT-WORKTREE-ADD: Session-Isolated Working Tree (v5.1)
@@ -258,6 +295,7 @@ Composition with LOCK-RELEASE: GIT-ATOMIC-PUSH finishes before LOCK-RELEASE. A l
 ```
 
 `{parent}` = `code` or `paper` (never `main`). Sub-branches merge only to parent; parent reaches `main` via GIT-04.
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § DOMAIN OPERATIONS
@@ -300,7 +338,11 @@ On failure: branch doesn't match known domain → STOP; report to user.
 - Target path outside write_territory → CONTAMINATION_GUARD error; notify coordinator
 
 ────────────────────────────────────────────────────────
+<meta_section id="LOCK-ACQUIRE" version="5.1.0" axiom_refs="A8,phi4.1,A8.1">
 ## LOCK-ACQUIRE: Branch Semaphore Acquisition (v5.1)
+
+<purpose>v5.1 concurrency primitive — coarse-grained branch-level exclusion via `docs/locks/*.lock.json` + `O_EXCL` atomicity. Composes ON TOP OF DOM-01/DOM-02 territory guards.</purpose>
+<authority>Every agent (universal) under `concurrency_profile == "worktree"`. No-op under `legacy` profile.</authority>
 
 **Authorized:** every agent (universal) under `concurrency_profile == "worktree"`  |  **[AUTH_LEVEL: universal]**
 **Trigger:** MANDATORY before the first write to any branch owned by the session. Composes **on top of** DOM-01/DOM-02 territory guards — branch lock gates coarse-grained ownership, territory gates fine-grained path filtering. Both must hold for a write to proceed.
@@ -343,8 +385,22 @@ Failure modes:
 - Stale lock (`expires_at` in the past) → do NOT auto-reclaim. See `docs/locks/README.md` for the human-initiated `--force` recovery procedure; record rationale in §4.
 - Lock acquired but registry entry missing, or vice versa → **STOP-10 CONTAMINATION_GUARD** (divergence between ephemeral and canonical state).
 
+<rules>
+- MUST invoke LOCK-ACQUIRE before the first write on any `dev/*` branch when `concurrency_profile == "worktree"`.
+- MUST NOT auto-reclaim stale locks — human-initiated `--force` only, with rationale recorded in `docs/02_ACTIVE_LEDGER.md §4`.
+- MUST NOT delete or overwrite a foreign lock file on STOP-10 — halt and REJECT.
+- MUST append a matching row to `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY` in the first commit on the locked branch.
+</rules>
+<stop_conditions>STOP-10</stop_conditions>
+<see_also>§LOCK-RELEASE, §GIT-WORKTREE-ADD, §GIT-ATOMIC-PUSH, docs/locks/README.md, meta-roles.md §SCHEMA-IN-CODE (HandoffEnvelope.branch_lock_acquired)</see_also>
+</meta_section>
+
 ────────────────────────────────────────────────────────
+<meta_section id="LOCK-RELEASE" version="5.1.0" axiom_refs="A8,phi4.1,A8.1">
 ## LOCK-RELEASE: Branch Semaphore Release (v5.1)
+
+<purpose>v5.1 concurrency primitive — release the branch semaphore acquired by LOCK-ACQUIRE. Ownership-verified; append-only audit log.</purpose>
+<authority>Only the session that owns the lock (identified by `session_id`). Any other caller triggers STOP-10.</authority>
 
 **Authorized:** the session that owns the lock (and only that session)  |  **[AUTH_LEVEL: universal]**
 **Trigger:** MANDATORY at HAND-02 emission when the specialist has finished all writes on the branch. For GIT-ATOMIC-PUSH, release happens **after** a successful push (lock covers the push too).
@@ -368,6 +424,16 @@ Semantics:
 - Ownership is verified by `session_id` equality BEFORE the file is removed. Any other session that attempts this (e.g., via mistaken re-dispatch) hits STOP-10 immediately.
 - The corresponding registry row in `docs/02_ACTIVE_LEDGER.md §4` is **NOT deleted** — it is updated with `released_at`. The registry is an append-only audit log; a past acquire/release pair is evidence, not noise.
 - After release, a new session may call LOCK-ACQUIRE on the same branch and proceed.
+
+<rules>
+- MUST verify `session_id` ownership BEFORE removing the lock file.
+- MUST NOT force-release a foreign lock — STOP-10 immediately.
+- MUST update `released_at` in `docs/02_ACTIVE_LEDGER.md §4` rather than deleting the row (append-only audit log).
+- MUST run at HAND-02 SUCCESS emission; MUST NOT run on FAIL (lock retained for retry or human resolution, e.g., STOP-11).
+</rules>
+<stop_conditions>STOP-10, STOP-11</stop_conditions>
+<see_also>§LOCK-ACQUIRE, §HAND-02, §GIT-ATOMIC-PUSH, docs/locks/README.md</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 # § BUILD OPERATIONS
@@ -636,9 +702,11 @@ Hard rule: at most ONE PATCH-IF per Interface Contract version. Two patches = FU
 | STOP-09 | Base-directory destruction (v5.1) | Worktree created inside `$REPO_ROOT` or non-sibling path; tool attempts to write outside the assigned worktree | SYSTEM_PANIC → escalate; worktree removal requires human review (`docs/locks/README.md`) |
 | STOP-10 | Foreign branch-lock force (v5.1) | `LOCK-ACQUIRE` collides with existing lock owned by another `session_id`, OR `LOCK-RELEASE` attempted without ownership match, OR divergence between `docs/locks/*.lock.json` and `docs/02_ACTIVE_LEDGER.md §4` | CONTAMINATION RETURN → agent halts, HAND-02 `status: REJECT, stop_code: STOP-10`, no destructive recovery; human adjudicates |
 | STOP-11 | Atomic-push rebase conflict (v5.1) | `GIT-ATOMIC-PUSH` rebase step reports conflicts against `origin/{base}` | **STOP-SOFT** — `git rebase --abort`; HAND-02 `status: FAIL, stop_code: STOP-11, lock_released: false`; human resolves rebase, agent resumes with lock still held |
+| STOP-12 | Dual handoff emission (RESERVED) | Same session emits both a text-format HAND-01/02/03 AND the corresponding `emit_hand01/02` / `run_hand03` tool call — audit trail forks | **RESERVED / NOT YET ACTIVE** — reserved by MetaEvolutionArchitect v1.1 (CHK-NEW-0). Fires only once `_base.yaml :: handoff_mode` supports `"tool_use"` (v1.2). Current v5.1.0 action: log-only; no panic, no reject. |
 
 Branch validation enforced by `scripts/git-sp.sh`; `main` branch → wrapper returns SYSTEM_PANIC.
 STOP-09/10/11 are v5.1-only and only fire when `_base.yaml :: concurrency_profile == "worktree"`.
+STOP-12 is reserved by v1.1 (Hybrid refactor) and becomes active only when `handoff_mode == "tool_use"` (v1.2+).
 
 ────────────────────────────────────────────────────────
 # § COMMAND FORMAT
@@ -662,7 +730,11 @@ Every transfer of control between agents must use these canonical tokens. Inform
 - HAND-03: Acceptance Check — receiver's first action before any work
 
 ────────────────────────────────────────────────────────
+<meta_section id="HAND-01" version="5.1.0" axiom_refs="A8,A6,phi4,phi4.1">
 ## HAND-01: DISPATCH Token
+
+<purpose>DISPATCH token — Coordinator → Specialist delegation with binding task contract.</purpose>
+<authority>Sender: Coordinators and ResearchArchitect (initial routing). Receiver: any Specialist being delegated to.</authority>
 
 **Sent by:** Coordinators, ResearchArchitect (initial routing)
 **Received by:** Any specialist being delegated to
@@ -691,14 +763,38 @@ Fields derivable at tool-call time or enforced by env wrapper:
 
 > **v5.1 formalization:** the long-standing `artifact_hash` placeholder is now canonically the `verification_hash` field in `HandoffEnvelope` (→ meta-roles.md §SCHEMA-IN-CODE). Wrappers that previously injected `artifact_hash` SHOULD emit `verification_hash` instead; readers SHOULD accept either spelling during the v5.0 → v5.1 transition window.
 
-**Rules:**
-- `task` must be achievable in a single agent session (P5)
-- `constraints.expected_verdict` must be measurable (e.g., "AU2 PASS: all 10 items")
-- When dispatching to an Auditor/Gatekeeper: `inputs` must list ONLY final artifact paths + Interface Contract paths — never Specialist reasoning or intermediate derivations (→ HAND-03 check 6)
-- `target` must match IF-AGREEMENT outputs field
+<rules>
+- MUST describe a `task` achievable in a single agent session (P5 of meta-workflow.md).
+- MUST set `constraints.expected_verdict` to a measurable predicate (e.g., "AU2 PASS: all 10 items").
+- MUST list in `inputs` ONLY final artifact paths + signed Interface Contract paths when dispatching to an Auditor or Gatekeeper — never Specialist reasoning or intermediate derivations (enforced by HAND-03 check 6).
+- MUST set `target` to a value that matches the `outputs` field of the binding IF-AGREEMENT.
+- MUST populate `session_id`, `branch_lock_acquired`, `verification_hash`, `timestamp` (v5.1 envelope fields).
+- MUST set `branch_lock_acquired: true` when the target will produce writes under `concurrency_profile == "worktree"`.
+- MUST NOT emit both a text-format HAND-01 block AND a `emit_hand01()` tool call in the same session (reserved STOP-12; active only when `handoff_mode == "tool_use"`).
+</rules>
+<tool_use>
+  <!-- SSoT: meta-roles.md #SCHEMA-IN-CODE::Hand01Payload (DO NOT duplicate payload body) -->
+  function emit_hand01(payload: Hand01Payload): HandoffEnvelope
+</tool_use>
+<parameters format="json">
+  { "$ref": "meta-roles.md#SCHEMA-IN-CODE::Hand01Payload",
+    "required": ["task", "target", "inputs", "constraints", "branch", "session_id", "branch_lock_acquired", "verification_hash", "timestamp"],
+    "optional": ["chk_id", "worktree_path", "parent_envelope_hash"] }
+</parameters>
+<thought_process optional="true">
+  Before DISPATCH: is the task genuinely single-agent-single-session, or are you smuggling a compound job?
+  Does `expected_verdict` name a concrete measurement, or does it paraphrase "looks good"?
+</thought_process>
+<stop_conditions>STOP-02, STOP-03, STOP-06, STOP-10</stop_conditions>
+<see_also>§HAND-02, §HAND-03, meta-roles.md §SCHEMA-IN-CODE, meta-workflow.md §STOP-RECOVER MATRIX</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="HAND-02" version="5.1.0" axiom_refs="A8,A6,phi4,phi4.1">
 ## HAND-02: RETURN Token
+
+<purpose>RETURN token — Specialist → Coordinator handback after EXECUTE + CoVe.</purpose>
+<authority>Sender: any Specialist. Receiver: the Coordinator that issued the matching HAND-01.</authority>
 
 **Sent by:** Any specialist  |  **Received by:** The coordinator that issued the DISPATCH
 
@@ -724,10 +820,46 @@ RETURN → {requester}
 | FAIL | Work attempted; verdict FAIL | Review issues; decide |
 | REJECT | HAND-03 rejected, STOPPED, or wrapper refusal | Resolve blocker or escalate |
 
-`produced` must list concrete file paths. `issues` required for FAIL/REJECT. `detail` only when DISPATCH requested self-evaluation.
+<rules>
+- MUST populate `produced[]` with concrete written paths on SUCCESS (empty list forbidden).
+- MUST leave `issues[]` empty on SUCCESS and non-empty on FAIL or REJECT.
+- MUST set `stop_code` (pattern `^STOP-[0-9]{2}$`) when `status != SUCCESS`.
+- MUST set `lock_released: true` on SUCCESS and `false` on FAIL when `concurrency_profile == "worktree"` (FAIL retains lock for retry/conflict resolution, e.g., STOP-11).
+- MUST populate `session_id`, `branch_lock_acquired`, `verification_hash`, `timestamp` (v5.1 envelope fields).
+- SHOULD populate `detail` only when the matching HAND-01 explicitly requested self-evaluation.
+- MUST complete CoVe (meta-roles.md §COVE MANDATE) BEFORE emission — no exceptions for Specialist roles.
+- MUST NOT emit both a text-format HAND-02 block AND a `emit_hand02()` tool call in the same session (reserved STOP-12; active only when `handoff_mode == "tool_use"`).
+</rules>
+<tool_use>
+  <!-- SSoT: meta-roles.md #SCHEMA-IN-CODE::Hand02Payload (DO NOT duplicate payload body) -->
+  function emit_hand02(payload: Hand02Payload): HandoffEnvelope
+</tool_use>
+<parameters format="json">
+  { "$ref": "meta-roles.md#SCHEMA-IN-CODE::Hand02Payload",
+    "required": ["status", "produced", "issues", "session_id", "branch_lock_acquired", "verification_hash", "timestamp"],
+    "status_enum": ["SUCCESS", "FAIL", "REJECT"],
+    "stop_code_required_when": "status != SUCCESS" }
+</parameters>
+<procedure>
+  1. Complete CoVe (§COVE MANDATE in meta-roles.md) — Q1 logical, Q2 axiom, Q3 scope.
+  2. Canonicalize the payload → sha256 → `verification_hash`.
+  3. Emit the RETURN envelope (`handoff_mode == "text"` → JSON block in prose; `handoff_mode == "tool_use"` → `emit_hand02()` function call, v1.2+ only).
+  4. IF `status == SUCCESS` AND `concurrency_profile == "worktree"`: invoke §LOCK-RELEASE.
+</procedure>
+<thought_process optional="true">
+  Have you independently verified each `produced` path exists and is non-empty, or did you trust the plan?
+  Does any `issues[]` entry paraphrase a rule rather than name a concrete, reproducible failure?
+</thought_process>
+<stop_conditions>STOP-02, STOP-07, STOP-10, STOP-11</stop_conditions>
+<see_also>§HAND-01, §HAND-03, §LOCK-RELEASE, meta-roles.md §COVE MANDATE, meta-workflow.md §STOP-RECOVER MATRIX</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="HAND-03" version="5.1.0" axiom_refs="A8,A6,phi4,phi7" immutable="true">
 ## HAND-03: Acceptance Check
+
+<purpose>Acceptance Check — mandatory first action of any DISPATCH receiver. Part of STOP-02 Immutable Zone: logic body byte-locked.</purpose>
+<authority>Performed by EVERY agent (Specialist and Coordinator) upon receiving a DISPATCH, before any work. Non-negotiable.</authority>
 
 **Performed by:** Every agent upon receiving DISPATCH, before any work  |  **Trigger:** MANDATORY
 
@@ -774,6 +906,32 @@ Acceptance Check:
 ```
 
 **On REJECT:** Issue RETURN immediately: `status: REJECT; produced: none; issues: ["Acceptance Check failed: check {N} — {reason}"]`
+
+<rules>
+- MUST run all 7 checks (C1 scope, C2 inputs, C3 context, C4 IF-AGREEMENT, C5 upstream contracts, C6 phantom-reasoning guard, C7 structured-output schema) before any other action.
+- MUST emit HAND-02 `status: REJECT` immediately if any check fails — no partial execution permitted.
+- MUST NOT paraphrase or simplify the 7 check definitions above; their text is part of the STOP-02 Immutable Zone.
+- Auditor and Gatekeeper receivers MUST perform an independent derivation BEFORE opening the artifact under review (C6 — "Verified by comparison only" = broken symmetry).
+- Under `_base.yaml :: concurrency_profile == "worktree"`: schema-invalid envelopes (C7 fail) MUST REJECT (STOP-10). Under `legacy`: schema-invalid degrade to STOP-SOFT during the v5.0→v5.1 transition.
+</rules>
+<tool_use>
+  <!-- SSoT: meta-roles.md #SCHEMA-IN-CODE::Hand03Payload — idempotent audit; no side effects -->
+  function run_hand03(envelope: HandoffEnvelope): { verdict: "PASS" | "REJECT"; checks: Array<{id, passed, note?}> }
+</tool_use>
+<parameters format="json">
+  { "$ref": "meta-roles.md#SCHEMA-IN-CODE::Hand03Payload",
+    "required": ["checks", "verdict"],
+    "checks_count": 7,
+    "verdict_enum": ["PASS", "REJECT"] }
+</parameters>
+<thought_process optional="true">
+  Q1 (logical): does any check presuppose information not present in the envelope?
+  Q2 (axiom): is C6 being run as a real independent derivation, or as token-level comparison?
+  Q3 (scope): does the receiving role's PURPOSE (meta-roles.md) actually cover this task?
+</thought_process>
+<stop_conditions>STOP-02, STOP-03, STOP-06, STOP-10</stop_conditions>
+<see_also>§HAND-01, §HAND-02, meta-roles.md §SCHEMA-IN-CODE, meta-roles.md §COVE MANDATE, meta-experimental.md §HIERARCHICAL ISOLATION POLICY</see_also>
+</meta_section>
 
 ────────────────────────────────────────────────────────
 ## Handoff Sequence Diagram

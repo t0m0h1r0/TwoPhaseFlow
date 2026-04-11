@@ -6,6 +6,16 @@
 # Coordination (HOW — pipelines, git mechanics): prompts/meta/meta-workflow.md
 # System structure (7-file architecture map): prompts/meta/meta-core.md §SYSTEM STRUCTURE
 
+<meta_section id="META-PERSONA" version="5.1.0" axiom_refs="phi3,phi5,phi7">
+<purpose>Behavioral primitives and archetypal character roles. JIT-loaded per agent by EnvMetaBootstrapper at generation time. Agents do NOT inline this file wholesale at runtime.</purpose>
+<authority>Every generated agent prompt inherits one archetypal role (Specialist / Gatekeeper / Auditor / Coordinator / Micro-Agent) from this file. Archetypal assignment is frozen by meta-deploy.md §Stage 3.</authority>
+<rules>
+- MUST NOT edit archetypal role assignment without a CHK-tracked MetaEvolutionArchitect session.
+- MUST treat behavioral primitives as declarative constraints — agents assert compliance, not simulate personality.
+- MUST reference φ1–φ7 axioms for motivation; do not duplicate axiom bodies here.
+</rules>
+<see_also>meta-core.md §φ, §A, §B (Broken Symmetry), meta-roles.md §MATRIX ROLE PAIRS, meta-experimental.md §ATOMIC ROLE TAXONOMY</see_also>
+
 ────────────────────────────────────────────────────────
 # § DESIGN PHILOSOPHY → meta-core.md
 
@@ -625,3 +635,4 @@ Micro-agent behavioral primitives (EquationDeriver, SpecWriter, CodeArchitectAto
 LogicImplementer, ErrorAnalyzer, RefactorExpert, TestDesigner, VerificationRunner,
 ResultAuditor) are defined in meta-experimental.md alongside their SCOPE and
 CONTEXT_LIMIT definitions. Load only when activating micro-agent infrastructure.
+</meta_section>
