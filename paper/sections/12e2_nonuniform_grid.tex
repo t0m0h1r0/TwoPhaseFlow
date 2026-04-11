@@ -6,9 +6,15 @@
 \label{sec:nonuniform_grid_ns}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§~\ref{sec:grid_ale} で設計した界面適合格子（格子密度関数
-$\omega(\phi) = 1 + (\alpha{-}1)\,\delta^*(\phi)$）は，
-§~\ref{sec:verify_ns_grid_rebuild} で短時間（100 ステップ，$N{=}32$）の安定性を確認した．
+\noindent\textbf{目的：}
+§~\ref{sec:grid_ale} で設計した界面適合格子が NS パイプライン全体と結合した際に
+静止液滴の質量保存・parasitic current・Laplace 圧力に与える影響を定量化し，
+一様格子比で有意な劣化・改善がないことを確認する．
+
+\noindent\textbf{評価対象：}
+格子密度関数 $\omega(\phi) = 1 + (\alpha{-}1)\,\delta^*(\phi)$
+（$\alpha = 2$，界面適合）と一様格子（$\alpha = 1$）を同一条件下で比較する．
+§~\ref{sec:verify_ns_grid_rebuild} で短時間（100 ステップ，$N{=}32$）の安定性は既確認のため，
 本節では解像度を $N = 32, 48, 64$ に拡張し，200 ステップの
 静止液滴テストで格子収束性を評価する．
 
