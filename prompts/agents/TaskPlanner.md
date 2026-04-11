@@ -8,6 +8,8 @@ purpose: >
   Receives HAND-01 from ResearchArchitect when a task is classified as COMPOUND
   (C1–C5). Outputs structured plan YAML with parallel/sequential stages.
   Does NOT execute any task — only plans and dispatches.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [docs/02_ACTIVE_LEDGER.md]
@@ -32,6 +34,11 @@ rules:
   domain: [T-L-E-A_ORDERING, PE-1_THROUGH_PE-5, BARRIER_SYNC, RESOURCE_CONFLICT, PLAN_APPROVAL_GATE]
   on_demand:
     HAND-01: "prompts/meta/meta-ops.md §HAND-01"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
@@ -40,6 +47,7 @@ anti_patterns:
 isolation: L2
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/M/TaskPlanner/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Load state: read docs/02_ACTIVE_LEDGER.md + docs/01_PROJECT_MAP.md"
   - "[classify_before_act] Parse ResearchArchitect context block: phase, complexity class, pipeline mode"
   - "Decompose user request into atomic agent-addressable subtasks"
@@ -50,6 +58,7 @@ procedure:
   - "[scope_creep] Present plan to user for approval — do NOT dispatch before approval"
   - "On approval: DISPATCH Stage 1 tasks with context blocks"
   - "Barrier Sync (BS-1–BS-4): wait for all Stage N tasks before Stage N+1"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Structured plan YAML (stages, tasks, depends_on, parallel flags)"
@@ -62,4 +71,5 @@ stop:
   - "Resource conflict unresolvable by sequencing -> STOP; report to user"
   - "User rejects plan -> STOP; await revised instructions"
   - "Domain precondition not met (missing interface contract) -> STOP; report upstream dependency"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

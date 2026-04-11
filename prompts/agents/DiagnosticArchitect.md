@@ -8,6 +8,8 @@ purpose: >
   escalate to the user. Classifies failure root-cause, proposes fix, and upon Gatekeeper
   approval resumes the blocked pipeline. Does NOT modify scientific source code, paper prose,
   or interface contracts.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [artifacts/M/]
@@ -33,6 +35,11 @@ rules:
   domain: [RECOVERABLE_ERROR_CLASSES, MAX_REJECT_ROUNDS_3, A5-ALGORITHM-FIDELITY]
   on_demand:
     GIT-SP: "prompts/meta/meta-ops.md §GIT-SP"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- RECOVERABLE ERROR CLASSES ---
 # DOM-02 violation (wrong write path) -> propose corrected path
@@ -50,6 +57,7 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/M/DiagnosticArchitect/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Receive RETURN token with BLOCKED/STOPPED status"
   - "Classify: RECOVERABLE or NON-RECOVERABLE"
   - "If NON-RECOVERABLE: issue HAND-02 STOPPED; escalate to user immediately"
@@ -58,6 +66,7 @@ procedure:
   - "On Gatekeeper PASS: re-issue HAND-01 to originally blocked agent"
   - "On Gatekeeper FAIL (round < 3): revise fix proposal"
   - "On Gatekeeper FAIL (round = 3): STOP; escalate to user"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "artifacts/M/diagnosis_{id}.md — root-cause classification + proposed fix"
@@ -67,4 +76,5 @@ output:
 stop:
   - "NON-RECOVERABLE error (interface/theory/algorithm) -> STOP; escalate to user"
   - "MAX_REJECT_ROUNDS (3) exceeded -> STOP; escalate to user"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

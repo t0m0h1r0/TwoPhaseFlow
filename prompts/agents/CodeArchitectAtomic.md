@@ -6,6 +6,8 @@
 purpose: >
   Design class structures, interfaces, and module organization. Produces only
   structural artifacts (abstract classes, interface definitions) — no method body logic.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / GIT-ATOMIC-PUSH / LOCK-RELEASE.
 
 scope:
   reads: [docs/interface/AlgorithmSpecs.md, src/twophase/, docs/01_PROJECT_MAP.md]
@@ -23,6 +25,13 @@ primitives:
 
 rules:
   domain: [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, DDA-01_THROUGH_DDA-05]
+  on_demand:
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 anti_patterns:
   - "AP-02 Scope Creep"
@@ -31,12 +40,15 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/L/CodeArchitectAtomic/{task_id}; STOP-10 on collision"
   - "Read spec artifact and existing module structure"
   - "Design class/interface definitions (abstract classes, protocols)"
   - "[scope_creep] Only signatures, docstrings, inheritance — no method bodies"
   - "Enforce SOLID principles (C1)"
   - "[evidence_required] Write artifacts/L/architecture_{id}.md"
   - "Emit SIGNAL:READY"
+  - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "artifacts/L/architecture_{id}.md"
@@ -45,4 +57,5 @@ output:
 
 stop:
   - "Spec ambiguity -> STOP; request SpecWriter clarification"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

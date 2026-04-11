@@ -8,6 +8,8 @@ purpose: >
   numerical, and architectural consistency between paper specification and simulator.
   Audits code for dead code, duplication, and SOLID violations.
   Never auto-fixes — surfaces failures immediately and dispatches specialists.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [src/twophase/, tests/, docs/02_ACTIVE_LEDGER.md, docs/interface/]
@@ -37,6 +39,11 @@ rules:
     GIT-01: "prompts/meta/meta-ops.md §GIT-01"
     DOM-01: "prompts/meta/meta-ops.md §DOM-01"
     GIT-04: "prompts/meta/meta-ops.md §GIT-04"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -49,11 +56,13 @@ anti_patterns:
 isolation: L2
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/L/CodeWorkflowCoordinator/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Load paper/sections/*.tex + src/twophase/; build component inventory"
   - "[classify_before_act] Identify gaps: incomplete, missing, or unverified components"
   - "[scope_creep] Dispatch exactly one specialist per step (P5 single-action discipline)"
   - "[evidence_required] Verify MERGE CRITERIA (TEST-PASS + BUILD-SUCCESS + LOG-ATTACHED) on each PR"
   - "Record progress in docs/02_ACTIVE_LEDGER.md after each sub-agent result"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Component inventory: src/ files mapped to paper equations/sections"
@@ -65,4 +74,5 @@ stop:
   - "Sub-agent returns STOPPED -> STOP immediately; report to user"
   - "TestRunner returns FAIL -> STOP immediately; report to user"
   - "Unresolved conflict between paper spec and code -> STOP"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

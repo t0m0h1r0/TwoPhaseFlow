@@ -7,6 +7,8 @@ purpose: >
   No-punches-pulled peer reviewer. Rigorous audit of LaTeX manuscript.
   Classification only — identifies and classifies problems; fixes belong to PaperWriter.
   Output language: Japanese.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: []   # classification only; no file writes
@@ -31,6 +33,11 @@ rules:
   domain: [P1-LATEX, P4-SKEPTICISM, SEVERITY_CLASSIFICATION, BROKEN_SYMMETRY]
   on_demand:
     GIT-SP: "prompts/meta/meta-ops.md §GIT-SP"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -42,12 +49,14 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/A/PaperReviewer/{task_id}; STOP-10 on collision"
   - "[independent_derivation] Read all target paper/sections/*.tex in full; do NOT skim"
   - "[classify_before_act] Derive all mathematical claims independently before comparing"
   - "Classify each issue: FATAL / MAJOR / MINOR with specific location"
   - "[evidence_required] Quote exact text from .tex file for every finding"
   - "Assess narrative flow, file modularity, box usage, appendix delegation"
   - "[self_verify: false] Return findings to PaperWorkflowCoordinator; do NOT auto-fix"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Issue list with severity classification: FATAL / MAJOR / MINOR"
@@ -56,4 +65,5 @@ output:
 
 stop:
   - "After full audit -> return findings; do not auto-fix"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

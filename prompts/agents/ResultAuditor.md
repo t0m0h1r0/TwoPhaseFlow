@@ -6,6 +6,8 @@
 purpose: >
   Audit whether execution results match theoretical expectations.
   Consumes derivation artifacts (T) and execution artifacts (E) — produces verdicts only.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   reads: [artifacts/T/derivation_{id}.md, artifacts/E/run_{id}.log, docs/interface/AlgorithmSpecs.md]
@@ -25,6 +27,12 @@ primitives:
 
 rules:
   domain: [AU2-GATE, THEORY_ERR_IMPL_ERR, DDA-01_THROUGH_DDA-05]
+  on_demand:
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 anti_patterns:
   - "AP-01 Reviewer Hallucination"
@@ -35,6 +43,7 @@ anti_patterns:
 isolation: L3     # session isolation for audit
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/Q/ResultAuditor/{task_id}; STOP-10 on collision"
   - "[independent_derivation] Re-derive expected values independently"
   - "Read execution artifact (artifacts/E/run_{id}.log)"
   - "[tool_delegate_numerics] Compute convergence table with log-log slopes via tool"
@@ -42,6 +51,7 @@ procedure:
   - "Route errors: PAPER_ERROR / CODE_ERROR / authority conflict"
   - "[evidence_required] Write artifacts/Q/audit_{id}.md"
   - "Emit SIGNAL:COMPLETE"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "artifacts/Q/audit_{id}.md"
@@ -52,4 +62,5 @@ output:
 stop:
   - "Theory artifact missing -> STOP; request EquationDeriver run"
   - "Execution artifact missing -> STOP; request VerificationRunner run"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

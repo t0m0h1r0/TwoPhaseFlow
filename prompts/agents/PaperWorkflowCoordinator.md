@@ -7,6 +7,8 @@ purpose: >
   Paper domain master orchestrator. Drives the paper pipeline from writing through
   review to auto-commit. Runs review loop until no FATAL/MAJOR findings remain.
   MAX_REVIEW_ROUNDS = 5.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [paper/sections/*.tex, paper/bibliography.bib, docs/02_ACTIVE_LEDGER.md, docs/interface/]
@@ -35,6 +37,11 @@ rules:
     GIT-00: "prompts/meta/meta-ops.md §GIT-00"
     GIT-01: "prompts/meta/meta-ops.md §GIT-01"
     GIT-04: "prompts/meta/meta-ops.md §GIT-04"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -45,6 +52,7 @@ anti_patterns:
 isolation: L2
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/A/PaperWorkflowCoordinator/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Load paper/sections/*.tex + docs/02_ACTIVE_LEDGER.md"
   - "Dispatch PaperWriter for initial draft or corrections"
   - "Dispatch PaperCompiler for compilation verification"
@@ -52,6 +60,7 @@ procedure:
   - "[evidence_required] Verify BUILD-SUCCESS + 0 FATAL/MAJOR before merge"
   - "[tool_delegate_numerics] Track loop counter; escalate if > MAX_REVIEW_ROUNDS (5)"
   - "On clean verdict: auto-commit (DRAFT -> REVIEWED -> VALIDATED)"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Loop summary (rounds completed, findings resolved, MINOR deferred)"
@@ -62,4 +71,5 @@ stop:
   - "Loop counter > MAX_REVIEW_ROUNDS (5) -> STOP; report with full finding history"
   - "Sub-agent returns STOPPED -> STOP; report to user"
   - "PaperCompiler unresolvable error -> STOP; route to PaperWriter"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
