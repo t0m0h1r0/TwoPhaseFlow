@@ -320,33 +320,40 @@ class _CCDPPEBase(IPPESolver):
         """
         n_full = self.grid.N[axis] + 1
 
+        # CCD runs on the active device but the 1-D matrices are consumed by
+        # scipy.sparse on the host side below, so the results are transferred
+        # via ``backend.to_host`` (a no-op on CPU, ``.get()`` on GPU).
+        _h = self.backend.to_host
+
         if self._periodic:
             N_ax = self.grid.N[axis]
             if axis == 0:
-                I_per = np.zeros((n_full, N_ax))
+                I_per = self.xp.zeros((n_full, N_ax))
                 for j in range(N_ax):
                     I_per[j, j] = 1.0
                 I_per[N_ax, 0] = 1.0
                 d1, d2 = self.ccd.differentiate(I_per, axis=0)
-                return np.asarray(d1, dtype=float)[:N_ax, :], np.asarray(d2, dtype=float)[:N_ax, :]
+                return (np.asarray(_h(d1), dtype=float)[:N_ax, :],
+                        np.asarray(_h(d2), dtype=float)[:N_ax, :])
             else:
-                N_other = self.grid.N[0] + 1
-                I_per = np.zeros((N_ax, n_full))
+                I_per = self.xp.zeros((N_ax, n_full))
                 for j in range(N_ax):
                     I_per[j, j] = 1.0
                 I_per[0, N_ax] = 1.0
                 d1, d2 = self.ccd.differentiate(I_per, axis=1)
-                d1_np = np.asarray(d1, dtype=float)[:, :N_ax]
-                d2_np = np.asarray(d2, dtype=float)[:, :N_ax]
+                d1_np = np.asarray(_h(d1), dtype=float)[:, :N_ax]
+                d2_np = np.asarray(_h(d2), dtype=float)[:, :N_ax]
                 return d1_np.T, d2_np.T
         else:
-            I = np.eye(n_full)
+            I = self.xp.eye(n_full)
             if axis == 0:
                 d1, d2 = self.ccd.differentiate(I, axis=0)
-                return np.asarray(d1, dtype=float), np.asarray(d2, dtype=float)
+                return (np.asarray(_h(d1), dtype=float),
+                        np.asarray(_h(d2), dtype=float))
             else:
                 d1, d2 = self.ccd.differentiate(I, axis=1)
-                return np.asarray(d1, dtype=float).T, np.asarray(d2, dtype=float).T
+                return (np.asarray(_h(d1), dtype=float).T,
+                        np.asarray(_h(d2), dtype=float).T)
 
     def _build_sparse_operator(self, rho_np, drho_np):
         """Assemble the sparse L_CCD^ρ matrix via Kronecker products.
