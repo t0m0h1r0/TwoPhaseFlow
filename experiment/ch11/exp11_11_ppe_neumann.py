@@ -64,7 +64,7 @@ def pin_gauge(L, rhs_flat, pin_dof, pin_val):
 
 
 def run_experiment():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     Ns = [8, 16, 32, 64, 128]; k_dc = 3
     results = []
 
@@ -72,6 +72,9 @@ def run_experiment():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N; X, Y = grid.meshgrid()
+        # Defect-correction loop uses scipy.sparse.spsolve (CPU-only); keep
+        # p_exact / rhs on host while eval_LH still routes CCD through device.
+        X = backend.to_host(X); Y = backend.to_host(Y)
         p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
         rhs = -2 * np.pi**2 * p_exact
 

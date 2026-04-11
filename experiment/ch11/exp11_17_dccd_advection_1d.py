@@ -29,16 +29,16 @@ apply_style()
 OUT = experiment_dir(__file__)
 
 
-def initial_conditions(x, ic_type):
+def initial_conditions(x, ic_type, xp=np):
     if ic_type == "square":
-        return np.where((x >= 0.25) & (x <= 0.75), 1.0, 0.0)
+        return xp.where((x >= 0.25) & (x <= 0.75), 1.0, 0.0)
     elif ic_type == "triangle":
-        return np.where((x >= 0.25) & (x <= 0.5), 4*(x-0.25),
-               np.where((x > 0.5) & (x <= 0.75), 4*(0.75-x), 0.0))
+        return xp.where((x >= 0.25) & (x <= 0.5), 4*(x-0.25),
+               xp.where((x > 0.5) & (x <= 0.75), 4*(0.75-x), 0.0))
     elif ic_type == "smooth":
         eps = 0.02
-        return 0.5 * (np.tanh((x - 0.25) / eps) - np.tanh((x - 0.75) / eps))
-    return np.zeros_like(x)
+        return 0.5 * (xp.tanh((x - 0.25) / eps) - xp.tanh((x - 0.75) / eps))
+    return xp.zeros_like(x)
 
 
 def advect_ccd(q0, ccd, grid, backend, N, dt, n_steps, eps_d=0.0):
@@ -69,11 +69,11 @@ def advect_ccd(q0, ccd, grid, backend, N, dt, n_steps, eps_d=0.0):
     return q
 
 
-def advect_o2(q0, h, dt, n_steps):
+def advect_o2(q0, h, dt, n_steps, xp=np):
     """2nd-order central difference + RK4."""
     q = q0.copy()
     def rhs(q_in):
-        flux = np.zeros_like(q_in)
+        flux = xp.zeros_like(q_in)
         flux[1:-1, :] = -(q_in[2:, :] - q_in[:-2, :]) / (2*h)
         flux[0, :] = -(q_in[1, :] - q_in[-1, :]) / (2*h)
         flux[-1, :] = flux[0, :]
@@ -89,7 +89,8 @@ def run_benchmark():
     N = 256; h = 1.0 / N; cfl = 0.4; T = 1.0
     dt = cfl * h; n_steps = int(T / dt); dt = T / n_steps
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
@@ -100,31 +101,37 @@ def run_benchmark():
     results = {}
 
     for ic in ic_types:
-        q0_1d = initial_conditions(x, ic)
-        q0 = np.tile(q0_1d[:, None], (1, N+1))  # 2D uniform in y
+        q0_1d = initial_conditions(x, ic, xp)
+        q0 = xp.tile(q0_1d[:, None], (1, N+1))  # 2D uniform in y
         q_exact = q0.copy()  # periodic, T=1
 
         # O2
-        q_o2 = advect_o2(q0.copy(), h, dt, n_steps)
+        q_o2 = advect_o2(q0.copy(), h, dt, n_steps, xp=xp)
         # CCD
         q_ccd = advect_ccd(q0.copy(), ccd, grid, backend, N, dt, n_steps, eps_d=0.0)
         # DCCD
         q_dccd = advect_ccd(q0.copy(), ccd, grid, backend, N, dt, n_steps, eps_d=0.05)
 
         mid = N // 2
+        # Host-convert 1D slices for save_results (np.savez cannot consume cupy).
+        x_h     = backend.to_host(x)
+        exact_h = backend.to_host(q_exact[:, mid])
+        o2_h    = backend.to_host(q_o2[:, mid])
+        ccd_h   = backend.to_host(q_ccd[:, mid])
+        dccd_h  = backend.to_host(q_dccd[:, mid])
         results[ic] = {
-            "x": x,
-            "exact": q_exact[:, mid],
-            "o2": q_o2[:, mid],
-            "ccd": q_ccd[:, mid],
-            "dccd": q_dccd[:, mid],
-            "L2_o2": float(np.sqrt(np.mean((q_o2[:, mid] - q_exact[:, mid])**2))),
-            "L2_ccd": float(np.sqrt(np.mean((q_ccd[:, mid] - q_exact[:, mid])**2))),
-            "L2_dccd": float(np.sqrt(np.mean((q_dccd[:, mid] - q_exact[:, mid])**2))),
-            "TV_exact": float(np.sum(np.abs(np.diff(q_exact[:, mid])))),
-            "TV_o2": float(np.sum(np.abs(np.diff(q_o2[:, mid])))),
-            "TV_ccd": float(np.sum(np.abs(np.diff(q_ccd[:, mid])))),
-            "TV_dccd": float(np.sum(np.abs(np.diff(q_dccd[:, mid])))),
+            "x": x_h,
+            "exact": exact_h,
+            "o2": o2_h,
+            "ccd": ccd_h,
+            "dccd": dccd_h,
+            "L2_o2": float(xp.sqrt(xp.mean((q_o2[:, mid] - q_exact[:, mid])**2))),
+            "L2_ccd": float(xp.sqrt(xp.mean((q_ccd[:, mid] - q_exact[:, mid])**2))),
+            "L2_dccd": float(xp.sqrt(xp.mean((q_dccd[:, mid] - q_exact[:, mid])**2))),
+            "TV_exact": float(xp.sum(xp.abs(xp.diff(q_exact[:, mid])))),
+            "TV_o2": float(xp.sum(xp.abs(xp.diff(q_o2[:, mid])))),
+            "TV_ccd": float(xp.sum(xp.abs(xp.diff(q_ccd[:, mid])))),
+            "TV_dccd": float(xp.sum(xp.abs(xp.diff(q_dccd[:, mid])))),
         }
         r = results[ic]
         print(f"\n  {ic}:")
