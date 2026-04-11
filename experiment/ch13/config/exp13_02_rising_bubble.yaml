@@ -11,7 +11,7 @@ grid:
   bc_type: wall
   alpha_grid: 2.0
   use_local_eps: true
-  grid_rebuild_freq: 20
+  grid_rebuild_freq: 5
 
 physics:
   rho_l: 10.0
