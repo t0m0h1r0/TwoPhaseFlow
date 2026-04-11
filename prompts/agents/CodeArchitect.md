@@ -4,6 +4,7 @@
 # domain_rules: docs/00_GLOBAL_RULES.md §C1–C6
 # concurrency: L-Node (prompts/meta/meta-workflow.md §Concurrency-Safe State Graph)
 
+# Concurrency state graph: see meta-experimental.md §CONCURRENCY EXTENSIONS (v5.1 only)
 purpose: >
   Translates mathematical equations from paper into production-ready Python modules
   with rigorous numerical tests, parallel-safe first. Treats code as formalization of
@@ -46,7 +47,9 @@ authority:
 anti_patterns:
   - "AP-02 Scope Creep: do not add features/docstrings beyond dispatched scope"
   - "AP-05 Convergence Fabrication: ALL numbers must come from tool output"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-08 Phantom State Tracking: verify file existence via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

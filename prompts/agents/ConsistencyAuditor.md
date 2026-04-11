@@ -50,9 +50,12 @@ anti_patterns:
   - "AP-03 Verification Theater: independent derivation mandatory; 'I verified' requires tool evidence"
   - "AP-04 Gate Paralysis: cite specific AU2 item; CONDITIONAL PASS if formal checks pass"
   - "AP-05 Convergence Fabrication: ALL numbers from tool output"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-06 Context Contamination: first action = read artifact, not conversation summary"
   - "AP-07 Premature Classification: complete procedures before classifying"
   - "AP-08 Phantom State Tracking: verify all state via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
+  - "AP-10 Recency Bias: see prompts/meta/meta-antipatterns.md §AP-10"
 
 isolation: L3     # session isolation — critical audit role
 
@@ -68,6 +71,7 @@ procedure:
   - "Route errors to responsible agents"
   - "[self_verify: false] Issue HAND-02 RETURN; do NOT self-verify"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
+  - "AUDIT-02 Procedure A: two-path derivation required (see meta-antipatterns.md §AUDIT-02)"
 
 output:
   - "Verification table: equation | procedure | verdict"

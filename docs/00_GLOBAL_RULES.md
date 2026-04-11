@@ -36,6 +36,35 @@ no prompt compression may weaken or remove them.
 
 **English-First rule:** All agents reason and output in English. Japanese output only on explicit user request.
 
+**φ-Principles TL;DR (full text: prompts/meta/meta-core.md §DESIGN PHILOSOPHY):**
+- φ1 Truth Before Action — evidence before action; stop and read before you fix.
+- φ2 Minimal Footprint — do exactly what is authorized.
+- φ3 Layered Authority — when sources conflict, the hierarchy resolves it.
+- φ4 Stateless Agents — if it is not in `docs/` or git, it does not exist.
+- φ5 Bounded Autonomy — every workflow has hard gates.
+- φ6 Single Source, Derived Artifacts — change the source, never patch the derived.
+- φ7 Classification Precedes Action — reviewers classify; correctors act.
+
+────────────────────────────────────────────────────────
+## § AP — Anti-Patterns Quick Reference
+
+Full catalogue: `prompts/meta/meta-antipatterns.md`.
+
+| ID | Name | Severity | v |
+|----|------|----------|---|
+| AP-01 | Reviewer Hallucination | HIGH | 5.1 |
+| AP-02 | Scope Creep | MEDIUM | 5.1 |
+| AP-03 | Verification Theater | CRITICAL | 5.1 |
+| AP-04 | Gate Paralysis | HIGH | 5.1 |
+| AP-05 | Convergence Fabrication | CRITICAL | 5.1 |
+| AP-06 | Context Contamination | HIGH | 5.1 |
+| AP-07 | Premature Classification | MEDIUM | 5.1 |
+| AP-08 | Phantom State Tracking | MEDIUM | 5.1 |
+| AP-09 | Context Collapse | HIGH | 5.2 |
+| AP-10 | Recency Bias | MEDIUM | 5.2 |
+
+`STRUCTURAL ENFORCEMENT` gatekeeper check is active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT).
+
 ────────────────────────────────────────────────────────
 ## § C — Code Domain Rules
 

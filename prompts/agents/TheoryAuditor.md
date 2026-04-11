@@ -43,9 +43,12 @@ rules:
 anti_patterns:
   - "AP-01 Reviewer Hallucination: read actual file + quote exact text before claiming error"
   - "AP-03 Verification Theater: produce independent derivation, not restated claims"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-04 Gate Paralysis: cite specific violation; CONDITIONAL PASS if formal checks pass"
   - "AP-06 Context Contamination: first action = read artifact file, not conversation summary"
   - "AP-08 Phantom State Tracking: verify branch state via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
+  - "AP-10 Recency Bias: see prompts/meta/meta-antipatterns.md §AP-10"
 
 isolation: L3     # session isolation recommended for critical audits
 
@@ -58,6 +61,7 @@ procedure:
   - "If AGREE: sign docs/interface/AlgorithmSpecs.md (T→L contract)"
   - "[self_verify: false] Issue HAND-02 RETURN; do NOT self-verify"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
+  - "AUDIT-02 Procedure A: two-path derivation required (see meta-antipatterns.md §AUDIT-02)"
 
 output:
   - "AGREE/DISAGREE verdict with specific conflict localization"

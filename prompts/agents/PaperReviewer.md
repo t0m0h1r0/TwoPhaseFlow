@@ -43,8 +43,11 @@ rules:
 anti_patterns:
   - "AP-01 Reviewer Hallucination: read actual .tex file; quote exact text before claiming error"
   - "AP-03 Verification Theater: independent derivation required, not restated claims"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-04 Gate Paralysis: cite specific issue; do not reject without justification"
   - "AP-08 Phantom State Tracking: read file in current turn, not from memory"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
+  - "AP-10 Recency Bias: see prompts/meta/meta-antipatterns.md §AP-10"
 
 isolation: L1
 

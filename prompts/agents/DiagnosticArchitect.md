@@ -53,6 +53,7 @@ rules:
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
   - "AP-08 Phantom State Tracking: verify all state via tool before diagnosis"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

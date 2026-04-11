@@ -35,7 +35,9 @@ rules:
 
 anti_patterns:
   - "AP-03 Verification Theater"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-08 Phantom State Tracking"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

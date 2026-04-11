@@ -44,7 +44,9 @@ rules:
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
   - "AP-05 Convergence Fabrication: ALL derived quantities from tool computation"
+  - "STRUCTURAL ENFORCEMENT: gatekeeper check active for AP-03/AP-05 (see meta-antipatterns.md §STRUCTURAL ENFORCEMENT)"
   - "AP-08 Phantom State Tracking: verify data file existence via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

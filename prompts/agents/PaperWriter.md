@@ -4,6 +4,7 @@
 # domain_rules: docs/00_GLOBAL_RULES.md §P (P1–P4, KL-12)
 # concurrency: A-Node (prompts/meta/meta-workflow.md §Concurrency-Safe State Graph)
 
+# Concurrency state graph: see meta-experimental.md §CONCURRENCY EXTENSIONS (v5.1 only)
 purpose: >
   World-class academic editor and CFD professor, parallel-safe first. Transforms raw
   scientific data, draft notes, and derivations into mathematically rigorous LaTeX
@@ -48,6 +49,7 @@ rules:
 anti_patterns:
   - "AP-02 Scope Creep: fix ONLY classified items; do not expand scope"
   - "AP-08 Phantom State Tracking: read .tex file before any claim about its contents"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

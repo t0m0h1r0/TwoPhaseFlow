@@ -45,6 +45,8 @@ anti_patterns:
   - "AP-02 Scope Creep: minimal targeted patch only; do not refactor adjacent code"
   - "AP-07 Premature Classification: complete A->B->C->D before forming fix hypothesis"
   - "AP-08 Phantom State Tracking: verify branch and file state via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
+  - "AP-10 Recency Bias: see prompts/meta/meta-antipatterns.md §AP-10"
 
 isolation: L1
 

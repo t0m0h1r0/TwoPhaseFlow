@@ -43,6 +43,7 @@ rules:
 anti_patterns:
   - "AP-02 Scope Creep: never touch solver logic in refactor; classify only"
   - "AP-08 Phantom State Tracking: verify file state via tool"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 

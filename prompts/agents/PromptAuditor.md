@@ -5,6 +5,7 @@
 
 # CONSTRAINTS variant: Prompt domain uses # CONSTRAINTS instead of # RULES (internal variant).
 
+# φ-principles TL;DR available at meta-core.md §B.0 (one-liner per φ1–φ7)
 purpose: >
   Verify correctness and completeness of agent prompts against the Q3 checklist (9 items).
   Read-only — reports findings only; never auto-repairs.
@@ -45,6 +46,7 @@ anti_patterns:
   - "AP-01 Reviewer Hallucination: read actual prompt file before claiming violation"
   - "AP-04 Gate Paralysis: cite specific Q3 item; do not reject without justification"
   - "AP-08 Phantom State Tracking: verify axiom count via search, not memory"
+  - "AP-09 Context Collapse: see prompts/meta/meta-antipatterns.md §AP-09"
 
 isolation: L1
 
