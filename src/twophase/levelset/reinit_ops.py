@@ -92,10 +92,19 @@ def dccd_compression_div(xp, psi, ccd, grid, bc, eps_d):
     return div_total
 
 
-def build_cn_factors(grid, eps: float, dtau: float, axis: int):
+def build_cn_factors(grid, eps: float, dtau: float, axis: int, backend=None):
     """Pre-compute Thomas factors for A_L = M₂ − μ B₂ along ``axis``.
 
-    Returns (factors, modified_diag, super_diag) as numpy float64 arrays.
+    Returns (factors, modified_diag, super_diag, A_inv_dev) where the
+    fourth element is a device-side dense inverse used by the GPU hot
+    path of :func:`cn_diffusion_axis`. ``A_inv_dev`` is ``None`` on CPU.
+
+    The dense-inverse trick mirrors CHK-117/119 for the CCD wall solver:
+    ``cuSOLVER`` LU dispatch overhead dominates a per-call solve, so we
+    pre-compute ``A_inv`` once at construction and reduce the GPU hot
+    path to a single ``cuBLAS`` DGEMM (``A_inv_dev @ rhs_flat``). The
+    Thomas factors are kept for the CPU path so PR-5 bit-exactness is
+    preserved on the NumPy backend.
     """
     h = float(grid.L[axis] / grid.N[axis])
     mu = eps * dtau / (2.0 * h**2)
@@ -116,13 +125,23 @@ def build_cn_factors(grid, eps: float, dtau: float, axis: int):
         factors[i - 1] = sub[i - 1] / m[i - 1]
         m[i] -= factors[i - 1] * sup[i - 1]
 
-    return factors, m, sup
+    A_inv_dev = None
+    if backend is not None and backend.is_gpu():
+        A = np.diag(main) + np.diag(sup, k=1) + np.diag(sub, k=-1)
+        A_inv = np.linalg.solve(A, np.eye(n))
+        A_inv_dev = backend.xp.asarray(A_inv)
+
+    return factors, m, sup, A_inv_dev
 
 
 def cn_diffusion_axis(xp, psi, axis, eps, dtau, h, cn_factors):
     """One CN diffusion half-step along ``axis`` (ADI sweep).
 
     Solves: (M₂ − μ B₂) ψ_new = (M₂ + μ B₂) ψ   per 1-D pencil.
+
+    GPU path uses the cached dense inverse from :func:`build_cn_factors`
+    (one cuBLAS DGEMM, O(n²) per pencil instead of 2n sequential kernel
+    launches). CPU path keeps the Python Thomas sweep for bit-exactness.
     """
     mu = eps * dtau / (2.0 * h**2)
     d_R = 1.0 - 6.0 * mu
@@ -136,16 +155,24 @@ def cn_diffusion_axis(xp, psi, axis, eps, dtau, h, cn_factors):
     rhs[0] = d_R * psi_t[0] + 2.0 * c_R * psi_t[1]
     rhs[-1] = 2.0 * c_R * psi_t[-2] + d_R * psi_t[-1]
 
-    thomas_f, m_diag, sup = cn_factors
+    thomas_f, m_diag, sup, A_inv_dev = cn_factors
 
-    d = xp.array(rhs)
-    for i in range(1, n):
-        d[i] = d[i] - thomas_f[i - 1] * d[i - 1]
+    if A_inv_dev is not None:
+        # GPU hot path: dense matmul (CHK-117/119 idiom).
+        batch_shape = rhs.shape[1:]
+        rhs_flat = rhs.reshape(n, -1)
+        x_flat = A_inv_dev @ rhs_flat
+        x = x_flat.reshape((n,) + batch_shape)
+    else:
+        # CPU bit-exact path: original Python Thomas sweep.
+        d = xp.array(rhs)
+        for i in range(1, n):
+            d[i] = d[i] - thomas_f[i - 1] * d[i - 1]
 
-    x = xp.empty_like(d)
-    x[-1] = d[-1] / xp.asarray(m_diag[-1])
-    for i in range(n - 2, -1, -1):
-        x[i] = (d[i] - xp.asarray(sup[i]) * x[i + 1]) / xp.asarray(m_diag[i])
+        x = xp.empty_like(d)
+        x[-1] = d[-1] / xp.asarray(m_diag[-1])
+        for i in range(n - 2, -1, -1):
+            x[i] = (d[i] - xp.asarray(sup[i]) * x[i + 1]) / xp.asarray(m_diag[i])
 
     return xp.moveaxis(x, 0, axis)
 

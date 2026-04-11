@@ -73,8 +73,11 @@ def run_zalesak_case(N, eps_ratio, method, reinit_freq=20):
     mass0 = float(xp.sum(psi))
     reinit_count = 0
 
+    # RigidRotation is time-independent; hoist (u, v) out of the step loop
+    # (saves ~10k vf.compute calls per case; CPU bit-exact verified).
+    u, v = vf.compute(X, Y, t=0.0)
+
     for step in range(n_steps):
-        u, v = vf.compute(X, Y, t=0)
         psi = adv.advance(psi, [u, v], dt)
         if (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)

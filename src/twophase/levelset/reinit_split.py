@@ -43,7 +43,8 @@ class SplitReinitializer(IReinitializer):
 
         self._cn_factors: List[Tuple] = []
         for ax in range(grid.ndim):
-            self._cn_factors.append(build_cn_factors(grid, eps, self.dtau, ax))
+            self._cn_factors.append(
+                build_cn_factors(grid, eps, self.dtau, ax, backend))
 
         self._dV = self.xp.asarray(grid.cell_volumes())
 
