@@ -186,19 +186,53 @@ Introduced 2026-04-11 by the MetaEvolutionArchitect v1.1 Hybrid Architecture ref
   phase: P0
   chk_id: CHK-NEW-0
   files:
-    - prompts/meta/_hybrid-template.md (CREATED, 149 lines — non-consumed reference)
     - prompts/agents/_base.yaml (ADD handoff_mode key, default "text")
     - prompts/meta/meta-ops.md §STOP CONDITIONS (RESERVE STOP-12)
-  lines_delta: +149 (_hybrid-template.md) + additive entries elsewhere
+    - prompts/meta/meta-deploy.md §Stage 1b Appendix: Worked Examples (NEW — see EVO-001-fix)
+  lines_delta: additive entries across 3 files
   axiom_mapping: [A10, phi6, phi7]
   stop_conditions_touched: [STOP-12 reserved]
   breaking_changes: none
-  bootstrapper_compat: mechanical (additive; _hybrid-template.md has leading underscore → skipped)
+  bootstrapper_compat: mechanical
   red_team_findings:
     - { vector: handoff_mode_default_text, guard: "no tool_use flip in v1.1", verified: true }
     - { vector: STOP-12_not_yet_active, guard: "gated by handoff_mode == tool_use", verified: true }
   schema_ssot_preserved: true
-  rollback_plan: "git revert; remove _hybrid-template.md; delete handoff_mode key; drop STOP-12 row"
+  rollback_plan: "git revert; delete handoff_mode key; drop STOP-12 row; revert meta-deploy.md Stage 1b Appendix"
+
+- entry_id: EVO-001-fix
+  phase: P0-correction
+  chk_id: CHK-NEW-0
+  correction_date: 2026-04-11
+  issue: |
+    The original P0 created prompts/meta/_hybrid-template.md (149 lines) as a
+    "non-consumed reference file" with the XML vocabulary table, attribute rules,
+    3 worked examples, and a red-team recap. This was a phi6 (Single Source)
+    violation: the closed-vocab allow-list existed in BOTH meta-deploy.md §Stage 1b
+    step 1 AND _hybrid-template.md §1 — two canonical homes for one rule.
+    Additionally, the "leading-underscore = non-consumed" convention was invented
+    for this single file and not backed by any other repo usage.
+  fix:
+    - DELETED prompts/meta/_hybrid-template.md
+    - ABSORBED the XML vocabulary into meta-deploy.md §Stage 1b step 1 (flat
+      comma-separated list replaced by rich Required/Contents/Notes table — the
+      single canonical home for the allow-list)
+    - ABSORBED meta_section attribute rules into meta-deploy.md §Stage 1b step 3
+      (id discovery now lists all 4 attributes inline)
+    - ABSORBED the 3 worked examples (HAND-02, GIT-SP, axiom wrap) into a new
+      subsection meta-deploy.md §Stage 1b Appendix: Worked Examples (between
+      Stage 1b and Stage 2)
+    - REMOVED _hybrid-template.md from the Scope exclusions list (no longer
+      needed; the leading-underscore convention was dropped)
+  net_result: |
+    meta-deploy.md is now the sole canonical home for the v1.1 Hybrid vocabulary
+    and examples. No external underscore-prefixed reference files remain. phi6
+    compliance restored.
+  tag_balance_check: 25/25 meta_section wraps still balanced across 9 in-scope files (no regression)
+  schema_ssot_preserved: true
+  red_team_findings:
+    - { vector: phi6_dual_canonical_home, guard: "allow-list absorbed into meta-deploy.md only", verified: true }
+    - { vector: invented_leading_underscore_convention, guard: "dropped; no such files remain", verified: true }
 
 - entry_id: EVO-002
   phase: P1

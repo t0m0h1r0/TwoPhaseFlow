@@ -82,26 +82,39 @@ Introduced by MetaEvolutionArchitect v1.1 (CHK-NEW-5 / Phase P5).
 
 Meta files now carry XML `meta_section` wrappers around every structural unit. The bootstrapper MUST:
 
-**Scope exclusions.** The following files are NOT subject to Stage 1b checks (they are documentation of the parser itself):
-- `prompts/meta/meta-deploy.md` — THIS file; describes the parser in prose + code blocks, so its tag references are not schema tags.
-- `prompts/meta/_hybrid-template.md` — leading-underscore convention marks a non-consumed reference file; skip from both parse and generate stages.
+**Scope exclusions.** `prompts/meta/meta-deploy.md` — THIS file — is NOT subject to Stage 1b checks because it describes the parser in prose + code-fenced XML examples (see §Stage 1b Appendix). Its tag references are specification text, not schema wraps. All other `prompts/meta/*.md` files are in-scope.
 
-All other `prompts/meta/*.md` files are in-scope for the checks below.
+1. **Closed-vocabulary allow-list check (scoped).** For each in-scope file, scan ONLY the text inside `meta_section` open/close boundaries. Child tags found MUST be a subset of the frozen allow-list:
 
-1. **Closed-vocabulary allow-list check (scoped).** For each in-scope file, scan ONLY the text inside `meta_section` open/close boundaries. The set of child tags found MUST be a subset of the frozen allow-list:
+   | Tag | Required inside `meta_section`? | Contents | Notes |
+   |---|---|---|---|
+   | `meta_section` | yes (outer wrapper) | all other tags | carries attributes `id`, `version`, `axiom_refs`, optional `immutable` |
+   | `purpose` | yes | one-line intent | no nesting |
+   | `authority` | optional | who may invoke / caller constraints | free prose, ≤ 3 lines |
+   | `rules` | yes | RFC-2119 bullets | each bullet MUST begin with `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, or `MAY` |
+   | `tool_use` | optional | TypeScript function signature | SSoT reference only — never duplicate payload bodies |
+   | `tool_declaration` | optional | function name + I/O types + idempotency | siblings of `tool_use` for group declarations |
+   | `parameters` | optional | JSON with `$ref` + required/enum constraints | `format="json"` attribute required |
+   | `procedure` | yes (where operational) | ordered steps | reference rules/axioms by id; ≤ 2 lines prose per step |
+   | `thought_process` | optional | CoVe hints (Q1 logical, Q2 axiom, Q3 scope) | ≤ 5 lines; `optional="true"` attribute permitted |
+   | `stop_conditions` | optional | STOP-xx ids only, comma-separated | NEVER redefine STOP bodies here (SSoT: meta-ops.md §STOP CONDITIONS) |
+   | `see_also` | optional | `§anchor` pointers to sibling sections / `meta-*.md` files | JIT retrieval hooks |
 
-   ```
-   meta_section, purpose, authority, rules, tool_use, tool_declaration,
-   parameters, procedure, thought_process, stop_conditions, see_also
-   ```
+   HTML inline tags (`br`, `b`, `i`, `sup`, `sub`) in markdown table cells or prose OUTSIDE a `meta_section` body are NOT schema tags and are NOT subject to the allow-list. Placeholder notation in prose using angle-bracket tokens is allowed outside `meta_section` blocks.
 
-   HTML inline tags (`br`, `b`, `i`, `sup`, `sub`) that appear in markdown table cells or prose OUTSIDE a `meta_section` body are NOT schema tags and are NOT subject to the allow-list. Placeholder notation in prose like "invoke git-sp.sh branch commit-message" using angle-bracket placeholders is allowed outside `meta_section` blocks.
+   **Single-level nesting rule:** `<rules><rule>…</rule></rules>` is FORBIDDEN. The parser uses line-anchored regex, not full XML parsing.
 
    Any unknown tag INSIDE a `meta_section` → **STOP-02** (SYSTEM_PANIC: Immutable Zone / schema modification without CHK authorization). Abort bootstrapper run.
 
 2. **Tag balance check (scoped).** For every in-scope file, count `meta_section` opens and closes; they must match exactly. Mismatch → **STOP-02**.
 
-3. **`<meta_section id="…">` discovery.** Parse each opening tag to extract `id`, `version`, `axiom_refs`, optional `immutable`. Each `id` must be unique across all meta files. Duplicate id → **STOP-02**.
+3. **`<meta_section id="…">` discovery.** Parse each opening tag to extract attributes:
+   - `id="HAND-02"` — REQUIRED; must match a legacy anchor (`HAND-02`, `A8`, `phi4`, `AP-03`, …)
+   - `version="5.1.0"` — REQUIRED; matches `meta_version` in `_base.yaml`
+   - `axiom_refs="A8,A6,phi4,phi4.1"` — REQUIRED; comma-separated, no spaces, constitutional traceability
+   - `immutable="true"` — OPTIONAL; applied to wraps around φ1–φ7, A1–A11, HAND-03 logic, SCHEMA-IN-CODE. Triggers the body-diff gate in step 4.
+
+   Each `id` must be unique across all in-scope meta files. Duplicate id → **STOP-02**.
 
 4. **`immutable="true"` body-diff gate.** For every section carrying `immutable="true"` (axiom layer, HAND-03 logic, SCHEMA-IN-CODE), extract the body lines between open/close tags and `diff` against `git show HEAD:prompts/meta/{file}` body from the last bootstrapper-verified generation. Non-empty diff → **STOP-02** SYSTEM_PANIC (axiom drift).
 
@@ -120,6 +133,92 @@ All other `prompts/meta/*.md` files are in-scope for the checks below.
 **Parser allow-list → STOP mapping:** unknown tag, unbalanced open/close, duplicate id, immutable body drift, dangling `$ref` → STOP-02. RFC-2119 violations → STOP-SOFT.
 
 **Report artifact:** every run emits `schema_resolution_report.json` to the bootstrapper working directory with fields: `vocab_check`, `balance_check`, `id_registry`, `immutable_diff_results`, `ref_resolution_results`, `rfc2119_violations`, `timestamp`. Absence of this file after a run → STOP-SOFT (missing evidence).
+
+### Stage 1b Appendix: Worked Examples
+
+Three canonical example shapes for the allow-list above. Anyone adding or editing a `meta_section` wrap in `prompts/meta/*.md` MUST model it on one of these three. These examples are illustrative prose — they are NOT parsed by the bootstrapper (meta-deploy.md is excluded from Stage 1b via §Scope exclusions).
+
+**Example A — Operational section (HAND-02 style).** Use for sections that define a protocol or runtime action.
+
+```xml
+<meta_section id="HAND-02" version="5.1.0" axiom_refs="A8,A6,phi4,phi4.1">
+  <purpose>RETURN token. Specialist → Coordinator handback after EXECUTE + CoVe.</purpose>
+  <authority>Sender: any Specialist. Receiver: the Coordinator that issued the matching HAND-01.</authority>
+  <rules>
+    - MUST populate `produced[]` with concrete written paths on SUCCESS (empty list forbidden).
+    - MUST leave `issues[]` empty on SUCCESS and non-empty on FAIL or REJECT.
+    - MUST set `stop_code` (pattern `^STOP-[0-9]{2}$`) when `status != SUCCESS`.
+    - MUST set `lock_released: true` on SUCCESS and `false` on FAIL when `concurrency_profile == "worktree"`.
+    - SHOULD populate `detail` only when the matching HAND-01 requested self-evaluation.
+    - MUST NOT emit both a text-format HAND-02 block AND a `emit_hand02()` tool call in the same session (STOP-12 reserved).
+  </rules>
+  <tool_use>
+    <!-- SSoT: meta-roles.md #SCHEMA-IN-CODE::Hand02Payload (DO NOT duplicate payload body) -->
+    function emit_hand02(payload: Hand02Payload): HandoffEnvelope
+  </tool_use>
+  <parameters format="json">
+    {
+      "$ref": "meta-roles.md#SCHEMA-IN-CODE::Hand02Payload",
+      "required": ["status", "produced", "issues", "session_id", "branch_lock_acquired", "verification_hash", "timestamp"],
+      "status_enum": ["SUCCESS", "FAIL", "REJECT"],
+      "stop_code_when": "status != SUCCESS"
+    }
+  </parameters>
+  <procedure>
+    1. Complete CoVe (see_also: meta-roles.md §COVE MANDATE) — Q1 logical, Q2 axiom, Q3 scope.
+    2. Canonicalize payload → sha256 → `verification_hash`.
+    3. Emit envelope (`handoff_mode == "text"` in v5.1.0 → JSON block; `handoff_mode == "tool_use"` → function call, v1.2 only).
+    4. If SUCCESS AND `concurrency_profile == "worktree"`: invoke LOCK-RELEASE (see_also: meta-ops.md §LOCK-RELEASE).
+  </procedure>
+  <thought_process optional="true">
+    Before emitting: have you derived each `produced` path independently, or are you trusting the plan?
+    Does any `issues[]` entry paraphrase a rule rather than name a concrete failure?
+  </thought_process>
+  <stop_conditions>STOP-02, STOP-10, STOP-11, STOP-12</stop_conditions>
+  <see_also>§HAND-01, §HAND-03, §LOCK-RELEASE, meta-workflow.md §STOP-RECOVER MATRIX</see_also>
+</meta_section>
+```
+
+**Example B — JIT primitive (GIT-SP style).** Use for ops primitives that agents load on demand rather than inline.
+
+```xml
+<meta_section id="GIT-SP" version="5.1.0" axiom_refs="A8,phi4.1">
+  <purpose>Single-path commit primitive. All file writes go through `scripts/git-sp.sh`.</purpose>
+  <authority>All Specialist and Coordinator roles that write files. Gatekeepers invoke it for their own artifacts.</authority>
+  <rules>
+    - MUST invoke `scripts/git-sp.sh` for every file write inside the locked branch.
+    - MUST NOT bypass GIT-SP even for "one-line" edits — STOP-05 triggers otherwise.
+    - MUST verify branch name != "main" before the wrapper runs (wrapper enforces this too).
+    - SHOULD batch writes inside a single GIT-SP invocation when they form one logical change.
+  </rules>
+  <procedure>
+    1. Resolve target branch from `_base.yaml :: task.branch`.
+    2. Invoke `scripts/git-sp.sh {branch} {commit-message}` with the staged paths.
+    3. On wrapper failure: capture stderr → HAND-02 `issues[]`; do not retry blindly.
+  </procedure>
+  <stop_conditions>STOP-01, STOP-05</stop_conditions>
+  <see_also>§GIT-00, §GIT-WORKTREE-ADD, §STOP CONDITIONS</see_also>
+</meta_section>
+```
+
+JIT hook: agents load GIT-SP only when `_base.yaml :: on_demand_common.GIT-SP` is explicitly looked up. No inline duplication in generated agent prompts.
+
+**Example C — Constitutional wrap (immutable; axiom style).** Use for φ-principles, axioms, HAND-03 logic, and SCHEMA-IN-CODE. Body between tags MUST be byte-identical to the pre-refactor content.
+
+```xml
+<meta_section id="phi2" version="5.1.0" axiom_refs="phi2" immutable="true">
+  <purpose>φ2 — Minimal Footprint. Constitutional principle; DO NOT paraphrase.</purpose>
+## φ2: Minimal Footprint
+  {{ body lines — BYTE-IDENTICAL to pre-refactor meta-core.md §φ2 }}
+  <see_also>§A1 (Token Economy), §A6 (Diff-First Output)</see_also>
+</meta_section>
+```
+
+Rules specific to `immutable="true"` wraps:
+1. The legacy markdown heading (e.g., `## φ2: Minimal Footprint`) stays **inside** the `meta_section` so grep anchors (`grep -c '^## φ'`) still count 7.
+2. Body text between the heading and `see_also` / closing tag is byte-identical; trailing whitespace and blank lines preserved.
+3. Step 4 of §Stage 1b (body-diff gate) runs `diff` against `git show HEAD:{file}` for every `immutable="true"` wrap. Non-empty diff → STOP-02 SYSTEM_PANIC.
+4. No `rules` / `procedure` / `tool_use` inside constitutional wraps — axioms are declarative, not operational.
 
 ## Stage 2: Initialize Directory Structure + docs/ (3-Layer Architecture)
 
