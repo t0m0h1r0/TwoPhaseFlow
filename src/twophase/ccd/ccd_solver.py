@@ -216,8 +216,12 @@ class CCDSolver:
         rhs[n_int - 1, 0, :] -= UN[0, 0] * fpN + UN[0, 1] * fppN
         rhs[n_int - 1, 1, :] -= UN[1, 0] * fpN + UN[1, 1] * fppN
 
-        # Solve block tridiagonal
-        sol = info['solver'].solve(rhs)           # (n_int, 2, batch)
+        # Solve the (2·n_int × 2·n_int) dense system in one lu_solve call.
+        # Matches the _differentiate_periodic pattern: fully device-native,
+        # 2 kernel launches per CCD call (was ~1200 with block-Thomas).
+        rhs_flat = rhs.reshape(2 * n_int, -1)                           # (2·n_int, batch)
+        x_flat = self.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+        sol = x_flat.reshape(n_int, 2, -1)                              # (n_int, 2, batch)
 
         # Assemble full derivative arrays
         d1_flat = xp.zeros((n_pts, batch_size))
@@ -292,6 +296,61 @@ class CCDSolver:
         lower[0] = np.zeros((2, 2))
 
         # Absorb right boundary (i=N-1 row couples with i=N)
+        diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
+        upper[-1] = np.zeros((2, 2))
+
+        # Assemble the (2·n_int × 2·n_int) block-banded matrix and factor
+        # once on the active device. Same layout convention as
+        # _build_axis_solver_periodic: row 2i / 2i+1 correspond to d1 / d2
+        # at interior node i+1.
+        A_host = np.zeros((2 * n_int, 2 * n_int))
+        for i in range(n_int):
+            A_host[2*i:2*i+2, 2*i:2*i+2] = diag[i]
+            if i >= 1:
+                A_host[2*i:2*i+2, 2*(i-1):2*(i-1)+2] = lower[i]
+            if i <= n_int - 2:
+                A_host[2*i:2*i+2, 2*(i+1):2*(i+1)+2] = upper[i]
+
+        A_dev = self.xp.asarray(A_host)
+        lu, piv = self.backend.linalg.lu_factor(A_dev)
+
+        return {
+            'lu': lu,
+            'piv': piv,
+            'h': h,
+            'N': N,
+            'n_int': n_int,
+            'L0': L0,
+            'UN': UN,
+            'bc_left': bc_left,
+            'bc_right': bc_right,
+        }
+
+    # DO NOT DELETE — CHK-117 legacy reference.
+    # Pre-dense-LU block-Thomas path retained per C2 (never delete tested
+    # code). Not wired to any call site; kept for auditability + rollback.
+    # Uses BlockTridiagSolver — which is why the import at the top stays.
+    def _build_axis_solver_legacy(self, n_pts: int, h: float) -> dict:
+        N = n_pts - 1
+        n_int = N - 1
+        assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
+
+        bc_left = _boundary_coeffs_left(h, n_pts)
+        bc_right = _boundary_coeffs_right(h, n_pts)
+
+        L0 = np.array([[_ALPHA1, _B1 * h],
+                        [_B2 / h, _BETA2]])
+        UN = np.array([[_ALPHA1, -_B1 * h],
+                        [-_B2 / h, _BETA2]])
+
+        diag  = [np.eye(2) for _ in range(n_int)]
+        lower = [np.array([[_ALPHA1, _B1 * h],
+                            [_B2 / h, _BETA2]]) for _ in range(n_int)]
+        upper = [np.array([[_ALPHA1, -_B1 * h],
+                            [-_B2 / h, _BETA2]]) for _ in range(n_int)]
+
+        diag[0] = diag[0] + lower[0] @ bc_left['M']
+        lower[0] = np.zeros((2, 2))
         diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
         upper[-1] = np.zeros((2, 2))
 

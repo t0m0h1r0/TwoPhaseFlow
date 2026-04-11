@@ -126,18 +126,22 @@ def main():
         warmup=5, reps=args.reps,
     ))
 
-    # 4. block_tridiag.solve isolated
-    # Build a representative RHS matching the real shape
+    # 4. Inner linear solve isolated.
+    # Post-CHK-117: wall-BC path uses a single dense (2·n_int)² LU factor
+    # via backend.linalg.lu_solve, same pattern as periodic. Benchmark
+    # that directly instead of the retired BlockTridiagSolver.
     info = ccd._solvers[0] if args.bc == "wall" else None
     if info is not None:
         n_int = info["n_int"]
-        batch = args.N + 1  # matches f[N+1, N+1] batch dim along axis 0
-        rhs = xp.zeros((n_int, 2, batch))
-        solver = info["solver"]
+        batch = args.N + 1
+        rhs_flat = xp.zeros((2 * n_int, batch))
+        lu = info["lu"]
+        piv = info["piv"]
+        lu_solve = backend.linalg.lu_solve
 
         results.append(time_block(
-            "block_tridiag.solve",
-            lambda: solver.solve(rhs),
+            "wall LU lu_solve",
+            lambda: lu_solve((lu, piv), rhs_flat),
             warmup=5, reps=args.reps,
         ))
 
@@ -197,7 +201,7 @@ def main():
         print(f"  ccd.diff 2-axes : 3× per advance   = {3 * results[2].us_per_call / advance_us * 100:.1f}% "
               f"(3× {results[2].us_per_call:.1f} us = {3 * results[2].us_per_call:.1f} us)")
         if args.bc == "wall":
-            print(f"  block_tridiag   : 6× per advance   = {6 * results[3].us_per_call / advance_us * 100:.1f}% "
+            print(f"  wall lu_solve   : 6× per advance   = {6 * results[3].us_per_call / advance_us * 100:.1f}% "
                   f"(6× {results[3].us_per_call:.1f} us = {6 * results[3].us_per_call:.1f} us)")
             print(f"  filter stencil  : 6× per advance   = {6 * results[4].us_per_call / advance_us * 100:.1f}% "
                   f"(6× {results[4].us_per_call:.1f} us = {6 * results[4].us_per_call:.1f} us)")
