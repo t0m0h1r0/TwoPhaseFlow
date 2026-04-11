@@ -216,11 +216,20 @@ class CCDSolver:
         rhs[0]  -= info['L0_dev'] @ bc_lo                                # (2, batch)
         rhs[-1] -= info['UN_dev'] @ bc_hi                                # (2, batch)
 
-        # Solve the (2·n_int × 2·n_int) dense system in one lu_solve call.
-        # Matches the _differentiate_periodic pattern: fully device-native,
-        # 2 kernel launches per CCD call (was ~1200 with block-Thomas).
+        # Solve the (2·n_int × 2·n_int) dense system.
+        # GPU path (CHK-119): A_inv_dev @ rhs_flat — one cuBLAS DGEMM
+        #   (~57 us on RTX 3080 Ti vs ~989 us for lu_solve; cuSOLVER
+        #   dispatch overhead dominated the cost). A_inv_dev is computed
+        #   once at construction in _build_axis_solver.
+        # CPU path: retain lu_solve (scipy triangular solve) for PR-5
+        #   CPU bit-exactness — matmul rounding differs from back-subst.
         rhs_flat = rhs.reshape(2 * n_int, -1)                            # (2·n_int, batch)
-        x_flat = self.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+        if self.backend.device == "gpu":
+            x_flat = info['A_inv_dev'] @ rhs_flat                        # (2·n_int, batch)
+        else:
+            x_flat = self.backend.linalg.lu_solve(
+                (info['lu'], info['piv']), rhs_flat
+            )
         sol = x_flat.reshape(n_int, 2, -1)                               # (n_int, 2, batch)
 
         # Assemble full derivative arrays into a single (2, n_pts, batch)
@@ -314,12 +323,26 @@ class CCDSolver:
         A_dev = self.xp.asarray(A_host)
         lu, piv = self.backend.linalg.lu_factor(A_dev)
 
+        # Round 5 (CHK-119): explicit inverse A_inv_dev = A^{-1} cached on
+        # device. Computed once at construction; the GPU hot path uses
+        # A_inv_dev @ rhs_flat (one cuBLAS DGEMM, ~57 us on RTX 3080 Ti)
+        # instead of lu_solve (~989 us, cuSOLVER dispatch overhead dominated).
+        # CPU path keeps lu_solve to preserve PR-5 CPU bit-exactness.
+        # lu / piv kept in info dict for _build_axis_solver_legacy + audit.
+        xp = self.xp
+        if self.backend.device == "gpu":
+            A_inv_dev = self.backend.linalg.lu_solve(
+                (lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype)
+            )
+        else:
+            A_inv_dev = None
+
         # Round 4 (CHK-118): cache the tiny static boundary coefficients on
         # device so the hot path never re-uploads them per CCD call. Kept
         # alongside the numpy originals so _build_axis_solver_legacy and the
         # _left_boundary_legacy / _right_boundary_legacy helpers still work.
-        xp = self.xp
         info_dev = {
+            'A_inv_dev':      A_inv_dev,
             'L0_dev':         xp.asarray(L0),
             'UN_dev':         xp.asarray(UN),
             'M_left_dev':     xp.asarray(bc_left['M']),
