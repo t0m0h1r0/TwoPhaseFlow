@@ -31,7 +31,7 @@ OUT = experiment_dir(__file__)
 
 def rc_bracket_test(Ns):
     """Compare standard and C/RC bracket accuracy."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     k = 2 * np.pi
     res_std, res_crc = [], []
@@ -43,16 +43,14 @@ def rc_bracket_test(Ns):
         h = 1.0 / N
 
         X, Y = grid.meshgrid()
-        p = np.cos(k * X) * np.cos(k * Y)
+        p = xp.cos(k * X) * xp.cos(k * Y)
 
         # CCD derivatives
-        dp_dx, d2p_dx2 = ccd.differentiate(xp.asarray(p), axis=0)
-        dp_dx = np.asarray(backend.to_host(dp_dx))
-        d2p_dx2 = np.asarray(backend.to_host(d2p_dx2))
+        dp_dx, d2p_dx2 = ccd.differentiate(p, axis=0)
 
         # Exact face gradient at x_{i+1/2}
         x_face = X[:-1, :] + h / 2
-        dp_dx_exact = -k * np.sin(k * x_face) * np.cos(k * Y[:-1, :])
+        dp_dx_exact = -k * xp.sin(k * x_face) * xp.cos(k * Y[:-1, :])
 
         # Standard RC bracket: (p_{i+1} - p_i) / h
         dp_std = (p[1:, :] - p[:-1, :]) / h
@@ -62,8 +60,8 @@ def rc_bracket_test(Ns):
         # This is the Richardson-corrected form
         dp_crc = (p[1:, :] - p[:-1, :]) / h - h / 24.0 * (d2p_dx2[1:, :] - d2p_dx2[:-1, :])
 
-        err_std = float(np.max(np.abs(dp_std - dp_dx_exact)))
-        err_crc = float(np.max(np.abs(dp_crc - dp_dx_exact)))
+        err_std = float(xp.max(xp.abs(dp_std - dp_dx_exact)))
+        err_crc = float(xp.max(xp.abs(dp_crc - dp_dx_exact)))
 
         res_std.append({"N": N, "h": h, "Li": err_std})
         res_crc.append({"N": N, "h": h, "Li": err_crc})
