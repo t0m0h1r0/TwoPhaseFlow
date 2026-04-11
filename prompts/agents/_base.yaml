@@ -3,7 +3,16 @@
 # Agents define ONLY overrides and domain-specific content.
 # To understand an agent: read _base.yaml FIRST, then the agent file.
 
-axioms: "A1–A11 apply unconditionally (docs/00_GLOBAL_RULES.md §A)"
+meta_version: "5.1.0"
+# Feature flag controlling concurrency-awareness. See prompts/meta/meta-core.md §φ4.1 / §A8.1
+# and prompts/meta/meta-ops.md §GIT-WORKTREE-ADD / §LOCK-ACQUIRE.
+#   "legacy"   — v5.0 behavior: DOM-01/DOM-02 alone gate writes; branch isolation via GIT-SP only.
+#   "worktree" — v5.1.0 Concurrency-Aware: GIT-WORKTREE-ADD, LOCK-ACQUIRE/RELEASE, GIT-ATOMIC-PUSH,
+#                STOP-09/10/11 enforced. Flip in a dedicated single-line commit (Phase D.3 of
+#                CHK-114) and revert the same way if problems occur.
+concurrency_profile: "legacy"
+
+axioms: "A1–A11 apply unconditionally (docs/00_GLOBAL_RULES.md §A) + v5.1 sub-axioms φ4.1 / A8.1 (meta-core.md)"
 project_rules: "PR-1–PR-6 apply to this project (docs/03_PROJECT_RULES.md, SSoT: prompts/meta/meta-project.md)"
 
 # --- Directory Conventions (ALL agents inherit) ---
@@ -29,6 +38,7 @@ rules_always:
   - STOP_CONDITIONS
   - DOM-02_CONTAMINATION_GUARD
   - SCOPE_BOUNDARIES
+  - BRANCH_LOCK_CHECK    # v5.1: read docs/02_ACTIVE_LEDGER.md §4 + docs/locks/ before any write when concurrency_profile == "worktree"
 
 on_demand_common:
   HAND-03: "prompts/meta/meta-ops.md §HAND-03"
@@ -37,13 +47,21 @@ on_demand_common:
   HAND-02: "prompts/meta/meta-ops.md §HAND-02"
   K-COMPILE: "prompts/meta/meta-ops.md §K-COMPILE"
   K-LINT:    "prompts/meta/meta-ops.md §K-LINT"
+  # v5.1 concurrency primitives (gated by concurrency_profile == "worktree"):
+  GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+  GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
+  LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+  LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+  HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 procedure_pre:
   - "Run HAND-03 acceptance check (→ meta-ops.md §HAND-03)"
   - "Verify write scope via DOM-02 before any file write"
+  - "IF concurrency_profile == 'worktree': run LOCK-ACQUIRE for {task.branch} (→ meta-ops.md §LOCK-ACQUIRE); STOP-10 on collision"
 
 procedure_post:
-  - "Issue HAND-02 RETURN on completion"
+  - "Issue HAND-02 RETURN on completion (schema: prompts/meta/schemas/hand_schema.json)"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: run LOCK-RELEASE (→ meta-ops.md §LOCK-RELEASE); on FAIL retain lock for retry"
 
 recovery: "→ meta-workflow.md §STOP-RECOVER MATRIX"
 
