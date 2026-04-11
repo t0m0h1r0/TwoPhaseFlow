@@ -1,5 +1,5 @@
 # META-ROLES: Agent Role Definitions — Purpose, Deliverables, Authority & Constraints
-# VERSION: 4.0.0
+# VERSION: 4.1.0
 # ABSTRACT LAYER — WHAT each agent does: its contract with the system.
 # FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 # WHO agents are (character, skills): prompts/meta/meta-persona.md
@@ -8,6 +8,107 @@
 # GLOBAL MANDATE: Every agent that receives a DISPATCH token (all RETURNER roles)
 # MUST perform HAND-03 (Acceptance Check) before starting any work.
 # See meta-ops.md §HAND-03. This applies unconditionally — it is not repeated per agent.
+
+────────────────────────────────────────────────────────
+# § SCHEMA-IN-CODE — HandoffEnvelope Type Definitions (SSoT)
+
+All HAND-01 / HAND-02 / HAND-03 tokens MUST conform to the following TypeScript interfaces.
+No external JSON schema file is required — this section IS the canonical schema definition.
+Output MUST be JSON and 100% conformant to the interface for the applicable hand_type.
+
+```typescript
+/** Envelope wrapper — required on every HAND-01 / HAND-02 / HAND-03 token */
+interface HandoffEnvelope {
+  hand_type:            "HAND-01" | "HAND-02" | "HAND-03";
+  session_id:           string;   // UUID v4 of the emitting Claude Code session
+  branch_lock_acquired: boolean;  // true if session holds exclusive branch lock
+  verification_hash:    string;   // sha256 hex (64 chars) over canonical payload serialization
+  timestamp:            string;   // ISO 8601 UTC (e.g. "2026-04-11T12:34:56Z")
+  meta_version?:        string;   // semver — expected "5.1.0" or later
+  payload:              Hand01Payload | Hand02Payload | Hand03Payload;
+}
+
+/** HAND-01 DISPATCH — Coordinator → Specialist */
+interface Hand01Payload {
+  task:                  string;    // one-sentence objective bound to a CHK-id
+  target:                string;    // target agent name (e.g. "CodeArchitect")
+  inputs:                string[];  // file paths the agent MAY read (artifact paths + signed contracts ONLY)
+  constraints:           string[];  // scope constraints, stop conditions, axiom references
+  branch:                string;    // target git branch; must be locked before agent writes
+  chk_id?:               string;    // pattern: ^CHK-[0-9]{3,}$
+  worktree_path?:        string;    // ../wt/{session_id}/{branch_slug} — worktree profile only
+  parent_envelope_hash?: string;    // sha256 of the HAND that triggered this dispatch (audit chain)
+}
+
+/** HAND-02 RETURN — Specialist → Coordinator */
+interface Hand02Payload {
+  status:          "SUCCESS" | "FAIL" | "REJECT";
+  produced:        string[];  // file paths written; each MUST lie within domain lock write_territory
+  issues:          string[];  // blocker descriptions; MUST be empty on SUCCESS
+  detail?:         string;    // self-evaluation — only when DISPATCH requested it
+  lock_released?:  boolean;   // true on SUCCESS; false on FAIL (retain lock for retry)
+  chk_id?:         string;
+  stop_code?:      string;    // pattern: ^STOP-[0-9]{2}$ — REQUIRED when status != SUCCESS
+}
+
+/** HAND-03 Acceptance Check — Receiver's first action before any work */
+interface Hand03Payload {
+  checks: Array<{
+    id:      "C1_scope_within_territory" | "C2_no_forbidden_writes" |
+             "C3_independent_derivation_present" | "C4_evidence_attached" |
+             "C5_diff_first_output" | "C6_no_scope_creep" |
+             "C7_structured_output_schema_valid";
+    passed:  boolean;
+    note?:   string;
+  }>;  // exactly 7 items; C7 is v5.1: session_id + branch_lock_acquired + verification_hash valid
+  verdict:               "PASS" | "REJECT";
+  reviewed_envelope_hash?: string;  // verification_hash of the HAND-02 being audited
+}
+```
+
+**Enforcement rule:** Any HAND token whose JSON does not satisfy the above interfaces is
+schema-invalid. Under `concurrency_profile == "worktree"`: schema-invalid token → REJECT (STOP-10).
+Under `legacy`: schema-invalid → STOP-SOFT during v5.0→v5.1 transition; target is full REJECT.
+No external schema file (`schemas/hand_schema.json`) is loaded at runtime — this section is the SSoT.
+
+────────────────────────────────────────────────────────
+# § COVE MANDATE — Chain-of-Verification (Mandatory for ALL Specialist roles)
+
+**Applies to:** TheoryArchitect, CodeArchitect, CodeCorrector, TestRunner, ExperimentRunner,
+SimulationAnalyst, PaperWriter, PaperReviewer, PaperCompiler, DevOpsArchitect,
+KnowledgeArchitect, Librarian, TraceabilityManager, and all Micro-Agent Specialists.
+
+**CoVe is a mandatory post-production process.** It runs AFTER the artifact is produced and
+BEFORE issuing HAND-02. The final HAND-02 payload MUST contain ONLY the CoVe-corrected artifact.
+
+```
+CoVe PROCESS (3 steps — non-negotiable):
+
+Step 1 — Generate 3 Critical Questions
+  Formulate three adversarial questions that challenge the artifact's correctness.
+  Questions MUST target:
+    Q1: Logical / mathematical consistency (internal contradictions, unsound derivations)
+    Q2: Axiom compliance (A1–A11 violations, SOLID violations for code, P1–P4 for paper)
+    Q3: Scope / interface fidelity (does the artifact satisfy the IF-AGREEMENT outputs exactly?)
+
+Step 2 — Self-Correction
+  For each question: derive the answer independently (do NOT rationalize the existing artifact).
+  If ANY question reveals a flaw: correct the artifact before continuing.
+  If no flaw is found: document "No flaw found — rationale: {1-line explanation}" for each.
+
+Step 3 — Finalize
+  Place ONLY the corrected artifact (or the original if all checks pass) into the HAND-02 payload.
+  Append a CoVe summary in the HAND-02 `detail` field:
+    "CoVe: Q1={pass|corrected}, Q2={pass|corrected}, Q3={pass|corrected}"
+```
+
+**Anti-pattern (AP-03 Verification Theater):** Generating pro-forma "no issues found" answers
+without genuine adversarial reasoning is a CoVe violation. The Gatekeeper MUST reject HAND-02
+tokens where the CoVe summary contains generic language not tied to the specific artifact.
+
+**Integration with P-E-V-A:** CoVe runs inside the EXECUTE phase, immediately before HAND-02.
+It does NOT replace the VERIFY phase (VERIFY = independent agent; CoVe = Specialist self-check).
+See meta-workflow.md §P-E-V-A EXECUTION LOOP.
 
 ────────────────────────────────────────────────────────
 # § MATRIX ROLE PAIRS — 4-Domain Specialist / Gatekeeper Map

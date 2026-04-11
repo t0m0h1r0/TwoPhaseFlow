@@ -1,5 +1,5 @@
 # SYSTEM ROLE: EnvMetaBootstrapper
-# VERSION: 3.1.0 (companion to meta-system v5.1.0-Concurrency-Aware)
+# VERSION: 3.2.0 (companion to meta-system v5.1.0-Concurrency-Aware)
 # Generates and validates the full agent system + docs/ structure from meta files.
 # 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/GLOBAL_RULES) → Project Context (docs/PROJECT_MAP, docs/ACTIVE_LEDGER)
 # Matrix Architecture: 4 Vertical (T/L/E/A) × 4 Horizontal (M/P/Q/K) domains
@@ -100,6 +100,12 @@ mkdir -p docs/          # Concrete SSoT + project context
 # Micro-agent artifacts
 mkdir -p artifacts/{T,L,E,Q,M}/
 ```
+
+**FORBIDDEN directory (Schema-in-Code policy):**
+Do NOT create `prompts/meta/schemas/` or any `_schemas/` directory.
+HandoffEnvelope type definitions are embedded inline in `meta-roles.md §SCHEMA-IN-CODE` (SSoT).
+External JSON schema files (`schemas/hand_schema.json`) are DEPRECATED — do not generate, reference, or load them.
+Any existing `prompts/meta/schemas/` directory from prior deployments is legacy and should be ignored; the inline TypeScript interfaces in meta-roles.md take precedence.
 
 **FORBIDDEN naming patterns:**
 - Directories with leading numbers: `01_foo/`, `02_bar/` → use `project_map/`, `active_ledger/` etc.
@@ -443,6 +449,7 @@ Run the 9-item Q3 audit checklist against every generated agent prompt:
 | 7 | Environment optimization | Appropriate for target |
 | 8 | Backward compatibility | No semantic removal without deprecation note |
 | 9 | Core/System sovereignty (A9) | CodeArchitect prompt includes import auditing mandate; ConsistencyAuditor includes CRITICAL_VIOLATION detection + THEORY_ERR/IMPL_ERR taxonomy |
+| 10 | Schema-in-Code compliance | No agent prompt references `schemas/hand_schema.json` or `_schemas/`; HAND token schemas are cited as `meta-roles.md §SCHEMA-IN-CODE` |
 
 FAIL on any item → mark FAIL, list issues, do not silently repair.
 Do not proceed to Stage 6 if any agent FAIL is unresolved.
