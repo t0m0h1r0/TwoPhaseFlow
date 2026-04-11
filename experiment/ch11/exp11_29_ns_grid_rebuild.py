@@ -55,7 +55,10 @@ def run_case(alpha_grid: float, label: str, backend: "Backend") -> dict:
         alpha_grid=alpha_grid,
         use_gpu=backend.is_gpu(),
     )
-    X, Y = solver.X, solver.Y
+    # Convert meshgrid to host arrays for numpy-based IC construction.
+    # solver.psi_from_phi expects a numpy array (np.asarray inside).
+    X = np.asarray(backend.to_host(solver.X))
+    Y = np.asarray(backend.to_host(solver.Y))
     R = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
     psi = solver.psi_from_phi(0.25 - R)
     u = np.zeros_like(psi)
