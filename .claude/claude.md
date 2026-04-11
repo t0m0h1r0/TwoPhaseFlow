@@ -48,6 +48,7 @@ If input is too long:
   - Experiment scripts MUST use `twophase.experiment` toolkit and support `--plot-only`
   - `results/` (top-level) → DEPRECATED
   - Meta-prompts → `prompts/meta/`; Agent prompts → `prompts/agents/`
+  - **Experiment execution default = remote server `python`**: use `make run EXP=<path>` (remote) or `make run-local EXP=<path>` (local fallback). Direct `python3 experiment/…` invocation is discouraged — it silently runs locally.
 
 ## AGENT PROMPT SYSTEM
 - Agent prompts are YAML-format files in `prompts/agents/*.md`.

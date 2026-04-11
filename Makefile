@@ -2,18 +2,22 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help push pull setup run run-all ssh cycle plot
+.PHONY: help push pull setup run run-all ssh cycle plot run-local cycle-local
 
 help:
-	@echo "Remote experiment targets:"
-	@echo "  make push              Sync codebase to remote"
-	@echo "  make pull              Sync results from remote"
-	@echo "  make setup             One-time remote environment setup"
-	@echo "  make run EXP=<path>    Run single experiment on remote"
-	@echo "  make run-all CH=<chN>  Run all experiments in chapter"
-	@echo "  make cycle EXP=<path>  Push + run + pull (full cycle)"
-	@echo "  make plot EXP=<path>   Local re-plot with --plot-only"
-	@echo "  make ssh               SSH into remote project directory"
+	@echo "Experiment execution — DEFAULT TARGET: remote server '$$(grep ^REMOTE_HOST remote.conf | cut -d= -f2 | tr -d '\"')'"
+	@echo ""
+	@echo "Remote (default):"
+	@echo "  make run EXP=<path>         Run single experiment on remote"
+	@echo "  make run-all CH=<chN>       Run all experiments in chapter on remote"
+	@echo "  make cycle EXP=<path>       Push + run + pull (full remote cycle)"
+	@echo "  make push / pull            Sync code / results"
+	@echo "  make setup                  One-time remote environment setup"
+	@echo "  make ssh                    SSH into remote project directory"
+	@echo ""
+	@echo "Local fallback:"
+	@echo "  make run-local EXP=<path>   Run locally (no ssh, no rsync)"
+	@echo "  make plot EXP=<path>        Re-plot only from cached .npz"
 
 push:
 	./remote.sh push
@@ -44,3 +48,11 @@ cycle:
 plot:
 	@test -n "$(EXP)" || { echo "Usage: make plot EXP=experiment/ch11/exp11_X.py"; exit 1; }
 	python3 $(EXP) --plot-only
+
+# Local full-run fallback (no ssh, no rsync) — use when iterating without GPU/remote
+run-local:
+	@test -n "$(EXP)" || { echo "Usage: make run-local EXP=experiment/ch11/exp11_X.py"; exit 1; }
+	python3 $(EXP)
+
+# Local cycle shortcut: identical to run-local (kept for symmetry with `cycle`)
+cycle-local: run-local
