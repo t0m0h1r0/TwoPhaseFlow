@@ -194,12 +194,15 @@ class CCDSolver:
         batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
         f = f.reshape(n_pts, batch_size)         # (N+1, batch)
 
-        # Build interior RHS
-        rhs = xp.zeros((n_int, 2, batch_size))
-        for idx in range(n_int):
-            i = idx + 1
-            rhs[idx, 0, :] = (_A1 / h) * (f[i + 1] - f[i - 1])
-            rhs[idx, 1, :] = (_A2 / (h * h)) * (f[i - 1] - 2.0 * f[i] + f[i + 1])
+        # Build interior RHS — vectorised over interior nodes i=1..n_int.
+        # Interior index idx=0..n_int-1 maps to node i=idx+1, so
+        #   f[i-1] → f[0:n_int],  f[i] → f[1:n_int+1],  f[i+1] → f[2:n_int+2].
+        f_m1 = f[0:n_int]
+        f_0  = f[1:n_int + 1]
+        f_p1 = f[2:n_int + 2]
+        d1_rhs = (_A1 / h) * (f_p1 - f_m1)                        # (n_int, batch)
+        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)      # (n_int, batch)
+        rhs = xp.stack((d1_rhs, d2_rhs), axis=1)                  # (n_int, 2, batch)
 
         # Boundary values (compact or prescribed)
         fp0, fpp0 = self._left_boundary(info, f, h, bc_left)
