@@ -79,7 +79,7 @@ def build_fd_varrho(N, h, rho):
 
 
 def run_smooth_density():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     Ns = [16, 32, 64, 128]; k_dc = 3
     cases = [
         {"label": "1", "A": 0.0},
@@ -98,6 +98,9 @@ def run_smooth_density():
             gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
             grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
             h = 1.0 / N; X, Y = grid.meshgrid()
+            # DC loop uses scipy.sparse.spsolve (CPU-only); keep arrays on host,
+            # eval_LH_varrho routes CCD through device.
+            X = backend.to_host(X); Y = backend.to_host(Y)
             p_exact = np.sin(np.pi * X) * np.sin(np.pi * Y)
             rho = 1.0 + A * np.sin(np.pi * X) * np.cos(np.pi * Y)
 
