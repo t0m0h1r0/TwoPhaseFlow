@@ -59,6 +59,17 @@ K-Domain (Knowledge/Wiki) — parallel, post-validation
 **T-L-E-A ordering is mandatory.** No domain begins work without the upstream Interface Contract signed.
 Exceptions require explicit user authorization. Continuous Paper mode: → §CI/CP PIPELINE.
 
+### Worked Example: Bug fix in Laplacian stencil (FULL-PIPELINE)
+
+| Step | Agent | Task (HAND-01 `task` field) | HAND-02 `status` | STOP if violated |
+|------|-------|----------------------------|------------------|-----------------|
+| 1 | TheoryAuditor | Re-derive 6th-order CCD Laplacian stencil from governing PDE | SUCCESS + AlgorithmSpecs.md signed | STOP-02 if stencil contradicts existing derivation |
+| 2 | CodeArchitect | Revise `src/twophase/ccd/laplacian.py` per new AlgorithmSpecs.md | SUCCESS + SolverAPI signed | STOP-03 if spec–code mismatch remains |
+| 3 | ExperimentRunner | Run MMS test `experiment/ch11/test_ccd_laplacian.py`; attach log | SUCCESS + ResultPackage signed | STOP-05 if MMS order < 5.8 |
+| 4 | ConsistencyAuditor | AU2 gate: theory ↔ code ↔ MMS cross-check | AU2 PASS | STOP-04 if any discrepancy unfixed |
+| 5 | PaperWriter | Update §3.2 stencil description to match new derivation | SUCCESS + diff attached | STOP-06 if paper contradicts ResultPackage |
+| 6 | Root Admin | Merge domain PR to `main` after GA-0–GA-6 all satisfied | (merge) | STOP-02 if any GA unsatisfied |
+
 ────────────────────────────────────────────────────────
 # § PIPELINE MODE — TRIVIAL / FAST-TRACK / FULL-PIPELINE
 
@@ -143,41 +154,8 @@ A task is COMPOUND when ANY C1–C5 criterion holds (see ResearchArchitect.md).
 - **RC-4:** DOM-02 rules still apply per-agent; RC is an additional pre-dispatch check.
 - **RC-5 (v5.1):** Under `concurrency_profile == "worktree"`, `writes_to` conflict is additionally guarded by the BRANCH_LOCK_REGISTRY pre-check (`docs/02_ACTIVE_LEDGER.md §4`): a task whose branch already appears in §4 under another session MUST NOT be dispatched. RC-5 composes with RC-1/2/3 — both path-level AND branch-level must be collision-free.
 
-## Concurrency-Safe State Graph (v5.1)
-
-Introduced by CHK-114. Promotes the pre-existing implicit T-L-E-A pipeline (rule PE-4) to a named **Node** abstraction, and attaches mandatory lock bindings to each node. Applies ONLY when `_base.yaml :: concurrency_profile == "worktree"`; under `legacy` this section is descriptive, not enforced.
-
-A **Node** is one step of the T-L-E-A pipeline viewed through the concurrency lens:
-- **Pre**: `LOCK-ACQUIRE {branch}` (`meta-ops.md §LOCK-ACQUIRE`). If the branch is already locked by another `session_id` → STOP-10.
-- **Body**: the node-specific work (see each node below). The P-E-V-A phase loop (§P-E-V-A Loop) runs inside the body; nodes do NOT replace P-E-V-A, they wrap it with concurrency semantics.
-- **Post**: `LOCK-RELEASE {branch}` after HAND-02 is emitted. `GIT-ATOMIC-PUSH` (if pushing) runs BEFORE `LOCK-RELEASE`, inside the lock.
-
-### T-Node (Theory)
-**Body:** derive from first principles → cross-verify with an independent auditor (TheoryAuditor). HAND-02 payload's `verification_hash` covers the derivation document's canonical serialization. No code writes; scope_out forbids `src/` and `experiment/` (DOM-02 unchanged).
-**Lock scope:** a `dev/T/{agent_id}/{task_id}` branch in a dedicated worktree.
-**Success criterion:** TheoryAuditor independent re-derivation PASS + schema-valid HAND-02.
-
-### L-Node (Library)
-**Body:** worktree-local implementation → Reflexion loop (the existing P-E-V-A cycle at §P-E-V-A Loop, max 5 iterations per φ5 Bounded Autonomy) → GIT-ATOMIC-PUSH → HAND-02. Test evidence (MMS / convergence / pytest) is emitted as structured output; `verification_hash` covers the diff.
-**Lock scope:** a `dev/L/{agent_id}/{task_id}` branch in `../wt/{session_id}/dev-L-{agent_id}-{task_id}`.
-**Success criterion:** pytest PASS + convergence order meets target (from IF-AGREEMENT) + schema-valid HAND-02.
-
-### E-Node (Experiment)
-**Body:** execute simulation run → SC-1..SC-4 sanity checks (delegated to ExperimentRunner `self_verify: true`) → package results → emit HAND-02 with `verification_hash` covering the result package. Any failed sanity check → STOP within the node; no forward push.
-**Lock scope:** a `dev/E/{agent_id}/{task_id}` branch; typically short-lived (hours not days).
-**Success criterion:** all 4 sanity checks PASS + schema-valid HAND-02.
-
-### A-Node (Audit — A-Domain: Academic Writing + Audit)
-**Body:** paper-side writes (classify finding → diff-only LaTeX patches → verdict table) OR cross-domain audit (independent re-derivation per HAND-03 check 6) → HAND-02 with `verification_hash` covering the patch.
-**Lock scope:** `dev/A/{agent_id}/{task_id}`; classify findings before acquiring the lock to minimise held time.
-**Success criterion:** PaperCompiler BUILD-02 PASS (if writing) OR all AU-2 items green (if auditing) + schema-valid HAND-02.
-
-### Inter-node synchronization
-Nodes synchronize through two shared artifacts:
-1. **`docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`** — canonical lock state across all sessions.
-2. **`docs/locks/{branch_slug}.lock.json`** — ephemeral O_EXCL guard used by the tool wrapper.
-
-Divergence between the two → STOP-10 CONTAMINATION_GUARD. All four node types are peers in this model; none holds priority. The T→L→E→A ordering constraint of PE-4 is unchanged.
+> Under `concurrency_profile == "worktree"` (v5.1), each node also acquires/releases a
+> branch lock — see **§ CONCURRENCY EXTENSIONS (v5.1 only)** below for full node semantics.
 
 ## Plan Approval Gate
 
@@ -238,6 +216,49 @@ T → L → E → A: each hash recorded only after upstream is locked.
 Gatekeeper MUST verify hash continuity before issuing PASS. Mismatch = CONTAMINATION → CI/CP re-propagation.
 Fresh deployment: all hashes `{pending}` — treat as missing contract; block downstream work.
 Hash mismatch action: (1) issue CONTAMINATION notice, (2) STOP downstream dev/, (3) trigger CI/CP re-propagation.
+
+────────────────────────────────────────────────────────
+# § CONCURRENCY EXTENSIONS (v5.1 only — worktree profile)
+
+> **Load condition:** applies ONLY when `_base.yaml :: concurrency_profile == "worktree"`.
+> Under `legacy` profile this section is descriptive, not enforced.
+> Standard agents do NOT need to read this section at session start.
+
+Introduced by CHK-114. Promotes the T-L-E-A pipeline nodes (rule PE-4) to a **Node**
+abstraction with mandatory lock bindings. Each node wraps the P-E-V-A loop with
+concurrency semantics; P-E-V-A itself is unchanged.
+
+**Node structure (all four T/L/E/A nodes share this pattern):**
+- **Pre**: `LOCK-ACQUIRE {branch}` (`meta-ops.md §LOCK-ACQUIRE`). Collision with another `session_id` → STOP-10.
+- **Body**: node-specific work; P-E-V-A loop runs inside.
+- **Post**: `LOCK-RELEASE {branch}` after HAND-02 emitted; `GIT-ATOMIC-PUSH` runs BEFORE release, inside the lock.
+
+### T-Node (Theory)
+**Body:** derive → TheoryAuditor independent re-derivation. `verification_hash` covers derivation document. No code writes; `src/` and `experiment/` forbidden (DOM-02).
+**Lock scope:** `dev/T/{agent_id}/{task_id}` branch in dedicated worktree.
+**Success criterion:** TheoryAuditor re-derivation PASS + schema-valid HAND-02.
+
+### L-Node (Library)
+**Body:** implementation → Reflexion loop (P-E-V-A, max 5 iterations per φ5) → GIT-ATOMIC-PUSH → HAND-02. Test evidence (MMS / convergence / pytest) as structured output; `verification_hash` covers diff.
+**Lock scope:** `dev/L/{agent_id}/{task_id}` branch in `../wt/{session_id}/dev-L-{agent_id}-{task_id}`.
+**Success criterion:** pytest PASS + convergence order ≥ target + schema-valid HAND-02.
+
+### E-Node (Experiment)
+**Body:** simulation run → SC-1..SC-4 sanity checks → package results → HAND-02. Failed sanity check → STOP inside node; no forward push.
+**Lock scope:** `dev/E/{agent_id}/{task_id}`; typically short-lived (hours not days).
+**Success criterion:** all 4 sanity checks PASS + schema-valid HAND-02.
+
+### A-Node (Academic Writing + Audit)
+**Body:** classify finding → diff-only LaTeX patches → verdict table → HAND-02 (`verification_hash` covers patch). OR: cross-domain audit (independent re-derivation per HAND-03 check 6).
+**Lock scope:** `dev/A/{agent_id}/{task_id}`; classify BEFORE acquiring lock to minimise held time.
+**Success criterion:** BUILD-02 PASS (writing) OR all AU-2 items green (auditing) + schema-valid HAND-02.
+
+### Inter-node synchronization
+Nodes synchronize through two shared artifacts:
+1. `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY` — canonical lock state across all sessions.
+2. `docs/locks/{branch_slug}.lock.json` — ephemeral O_EXCL guard.
+
+Divergence between the two → STOP-10 CONTAMINATION_GUARD. T→L→E→A ordering (PE-4) is unchanged.
 
 ────────────────────────────────────────────────────────
 # § GIT BRANCH GOVERNANCE → meta-domains.md

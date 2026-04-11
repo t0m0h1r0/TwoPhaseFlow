@@ -1,6 +1,6 @@
 # META-EXPERIMENTAL: Micro-Agent Architecture
 # VERSION: 2.0.0
-# STATUS: OPERATIONAL — hierarchical isolation policy is the canonical routing default
+# STATUS: OPERATIONAL — load on demand; see meta-core.md §SYSTEM STRUCTURE for load policy
 # ABSTRACT LAYER — micro-agent definitions extracted from meta-workflow.md and meta-roles.md.
 # FOUNDATION (φ1–φ7, A1–A11): prompts/meta/meta-core.md  ← READ FIRST
 
@@ -18,17 +18,10 @@
 ────────────────────────────────────────────────────────
 # § HIERARCHICAL ISOLATION POLICY
 
-Cross-domain handoffs and AU2 MUST use L3. Intra-domain approval MAY use L1.
-ResearchArchitect dispatches use L1 (intra-domain) or L3 (cross-domain).
-
-| Level | Name | Context sharing | Use when |
-|-------|------|-----------------|----------|
-| L0 | No isolation | Same conversation | Same-agent iterative loops (CodeCorrector retry) |
-| L1 | Soft Isolation | Specialist ↔ Gatekeeper within same domain MAY share context | Intra-domain verify (TestRunner, PaperCompiler) |
-| L2 | Tool-mediated | Shared context + numerical diff delegated to tools | Convergence / diff audits |
-| L3 | Hard Isolation | New Claude Code worktree session; zero context transfer | Cross-domain handoff OR final AU2 gate OR ConsistencyAuditor |
-
-**φ7 rationale (broken symmetry):** isolation level is the primary architectural choice, not an afterthought. When dispatching to an Auditor/Gatekeeper across a domain boundary, the coordinator MUST invoke L3. Within-domain verification MAY use L1.
+> **SSoT:** Isolation levels L0–L3 are defined in `meta-core.md §B.1` (canonical).
+> Summary: L0=same context, L1=prompt-boundary, L2=tool-mediated, L3=session-isolated.
+> Cross-domain handoffs and AU2 MUST use L3. Intra-domain approval MAY use L1.
+> ResearchArchitect dispatches use L1 (intra-domain) or L3 (cross-domain).
 
 ────────────────────────────────────────────────────────
 # § INTERFACE-FIRST LOOSE COUPLING

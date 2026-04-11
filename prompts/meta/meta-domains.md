@@ -684,13 +684,14 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `docs/01_PROJECT_MAP.md` | Governance (write) | all: read-only; append entries via coordinator |
 | `docs/02_ACTIVE_LEDGER.md` | all (append-only) | each domain appends its own phase entries only |
 
-| `artifacts/{T,L,E,Q}/` | [NOT YET OPERATIONAL] micro-agent artifacts | see meta-experimental.md |
-| `docs/interface/signals/` | [NOT YET OPERATIONAL] micro-agent coordination | see meta-experimental.md |
+| `artifacts/{T,L,E,Q}/` | [OPERATIONAL — activate with micro-agent dispatch] micro-agent artifacts | see meta-experimental.md |
+| `docs/interface/signals/` | [OPERATIONAL — activate with micro-agent dispatch] micro-agent coordination | see meta-experimental.md |
 
-**Artifact & Signal directories [NOT YET OPERATIONAL]:** `artifacts/` and `docs/interface/signals/`
-mediate micro-agent handoffs when activated. See meta-experimental.md for full protocol.
+**Artifact & Signal directories (load on demand):** `artifacts/` and `docs/interface/signals/`
+mediate micro-agent handoffs when activated. Created on first micro-agent dispatch.
+See meta-experimental.md for full protocol.
 
-**Directory-Driven Authorization (DDA) [NOT YET OPERATIONAL]:** When micro-agents are activated,
+**Directory-Driven Authorization (DDA — load on demand):** When micro-agents are activated,
 file access is restricted per SCOPE (READ / WRITE / FORBIDDEN) defined in
 meta-experimental.md § ATOMIC ROLE TAXONOMY. See meta-experimental.md § DDA for rules DDA-01–DDA-05.
 

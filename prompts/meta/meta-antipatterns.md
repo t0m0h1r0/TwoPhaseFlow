@@ -108,6 +108,12 @@ looks like verification but adds zero epistemic value.
 **Severity if unmitigated:** CRITICAL — false verification passes bugs through the gate.
 This is the single most dangerous anti-pattern because it silently disables the audit system.
 
+**§ STRUCTURAL ENFORCEMENT (Gatekeeper layer):** Self-check criteria above rely on agent
+self-reporting. Gatekeepers MUST apply a complementary structural check: **reject any
+HAND-02 where a numerical result appears in `detail` but no tool invocation appears in
+the session transcript.** CoVe Q1 answers containing numbers not traceable to tool output
+are rejected regardless of agent self-report.
+
 **Inject:** ConsistencyAuditor, TheoryAuditor, PaperReviewer, TestRunner,
 ExperimentRunner, ResultAuditor, CodeWorkflowCoordinator
 <see_also>meta-roles.md §COVE MANDATE, meta-ops.md §HAND-03 check 6 (Phantom Reasoning Guard)</see_also>
@@ -171,6 +177,12 @@ what the LLM expects to see — and it can generate it without running any code.
 
 **Severity if unmitigated:** CRITICAL — fabricated results that look correct propagate
 through the entire T-L-E-A pipeline and may end up in the published paper.
+
+**§ STRUCTURAL ENFORCEMENT (Gatekeeper layer):** Self-check criteria above rely on agent
+self-reporting. Gatekeepers MUST apply a complementary structural check: **reject any
+HAND-02 where `produced[]` contains numerical data but `tool_evidence[]` is absent or
+empty.** A convergence table in `detail` without a corresponding log file path in
+`tool_evidence` is rejected regardless of agent confidence claim.
 
 **Inject:** TestRunner, ExperimentRunner, ResultAuditor, VerificationRunner,
 ConsistencyAuditor, SimulationAnalyst
@@ -271,14 +283,78 @@ exceeded MAX_REVIEW_ROUNDS without escalation; wrong file assumption = missing a
 </meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-09" version="5.2.0" axiom_refs="phi4,A2,A1">
+## AP-09: Context Collapse
+
+**Summary:** In long sessions, constraints established early in the conversation are
+forgotten. The agent applies rules correctly for the first few turns then silently drops
+them — scope boundaries, STOP conditions, and domain restrictions gradually disappear.
+
+**Root cause:** LLM attention over long contexts degrades for early tokens. Instructions
+set at session start are effectively lower-weighted by turn 10+. The agent does not
+"decide" to ignore constraints — it simply fails to retrieve them.
+
+**Detection criteria (self-checkable):**
+- A STOP condition or scope boundary stated at session start is absent from agent reasoning
+  after 5+ turns without re-reading
+- Agent takes an action that would have been rejected if the original constraints were active
+- Agent says "I'll go ahead and..." without re-checking the mandate from HAND-01
+
+**Mitigation:**
+1. Re-read `SCOPE_BOUNDARIES` from the governing context (HAND-01 or _base.yaml) every 5 turns
+2. Re-read STOP conditions before each HAND-02 emission
+3. If a constraint was established >5 turns ago and you have not re-read it: re-read now before proceeding
+4. Use tool verification (git branch, file read) rather than relying on in-context recall of earlier steps
+
+**Severity if unmitigated:** HIGH — scope violations, missed STOP conditions, and
+silent constraint drops enable exactly the class of failure that AU2 is designed to catch.
+
+**Inject:** ALL agents (universal — context collapse affects every role in long sessions)
+<see_also>meta-core.md §φ4 Stateless Agents, §LA-3, meta-ops.md §STOP CONDITIONS</see_also>
+</meta_section>
+
+────────────────────────────────────────────────────────
+<meta_section id="AP-10" version="5.2.0" axiom_refs="phi1,phi7,A3">
+## AP-10: Recency Bias in Classification
+
+**Summary:** The most recently seen evidence disproportionately influences the agent's
+classification decision. The agent changes its classification without new evidence, or
+ignores earlier evidence still in context that contradicts the recent observation.
+
+**Root cause:** LLM attention is recency-weighted. A Gatekeeper that performs
+independent re-derivation at turn 1 and then encounters a "plausible explanation" from
+the Specialist at turn 4 may silently revise its verdict toward the Specialist's framing
+without explicitly re-deriving.
+
+**Detection criteria (self-checkable):**
+- Classification changed between turns without new artifact read or derivation
+- Current classification contradicts earlier evidence that is still visible in context
+- Agent cites "based on the above" (recent turn) while earlier derivation gives a different answer
+- Gatekeeper's AGREE/DISAGREE verdict flips after reading Specialist's response, without re-deriving
+
+**Mitigation:**
+1. Re-derive classification from ALL evidence at each decision point, not from the most recent message
+2. If classification differs from your earlier derivation: explicitly state what changed and why
+3. Gatekeeper: reading a Specialist's justification does NOT constitute re-derivation —
+   derive again from primary sources before revising verdict
+4. Document your earlier classification result and compare explicitly
+
+**Severity if unmitigated:** MEDIUM — classification drift degrades audit quality; in
+the worst case causes a Gatekeeper to accept a flawed deliverable it initially rejected correctly.
+
+**Inject:** CodeCorrector, ErrorAnalyzer, ConsistencyAuditor, TheoryAuditor, PaperReviewer
+<see_also>meta-core.md §φ1 Truth Before Action, §φ7 Classification Precedes Action, AP-03</see_also>
+</meta_section>
+
+────────────────────────────────────────────────────────
 # § INJECTION RULES FOR EnvMetaBootstrapper
 
 When generating agent prompts (meta-deploy.md Stage 3):
 
 1. Collect all anti-patterns where the agent appears in the `inject` list
 2. For TIER-1 (MINIMAL) prompts: inject only AP severity=CRITICAL (AP-03, AP-05)
-3. For TIER-2 (STANDARD) prompts: inject AP severity=CRITICAL + HIGH
-4. For TIER-3 (FULL) prompts: inject all applicable APs
+3. For TIER-2 (STANDARD) prompts: inject AP severity=CRITICAL + HIGH (includes AP-09)
+4. For TIER-3 (FULL) prompts: inject all applicable APs (includes AP-10)
 5. Injection format in generated prompt:
 
 ```markdown
