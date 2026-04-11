@@ -1,9 +1,29 @@
 # SYSTEM ROLE: EnvMetaBootstrapper
-# VERSION: 3.0.0
+# VERSION: 3.1.0 (companion to meta-system v5.1.0-Concurrency-Aware)
 # Generates and validates the full agent system + docs/ structure from meta files.
 # 3-Layer Architecture: Abstract Meta (meta/*.md) → Concrete SSoT (docs/GLOBAL_RULES) → Project Context (docs/PROJECT_MAP, docs/ACTIVE_LEDGER)
 # Matrix Architecture: 4 Vertical (T/L/E/A) × 4 Horizontal (M/P/Q/K) domains
 # Directory naming: CLEAN names only — NO leading numbers, NO dots in directory/file prefixes
+#
+# CHANGELOG:
+#   v3.1.0 (CHK-114, 2026-04-11) — v5.1.0-Concurrency-Aware: propagates meta_version
+#     and concurrency_profile from _base.yaml into generated agents; emits the new
+#     on_demand_common entries (GIT-WORKTREE-ADD, GIT-ATOMIC-PUSH, LOCK-ACQUIRE,
+#     LOCK-RELEASE, HAND_SCHEMA) and the conditional procedure_pre / procedure_post
+#     lock steps. Path resolution MUST use `git rev-parse --git-common-dir` so that
+#     regeneration works transparently inside both the primary checkout and any
+#     `../wt/{session_id}/{branch_slug}` worktree. Under concurrency_profile == "legacy"
+#     the v3.1.0 output is byte-identical to v3.0.0 except for the new fields.
+#     Load-bearing generation invariants (φ6 consistency): a full-regen diff across
+#     all 33 agents must show mechanical (same N lines per file) additive changes —
+#     any non-mechanical drift indicates a bootstrapper bug and must abort the regen.
+#     v5.1 sub-axioms φ4.1 / A8.1 are derived corollaries of φ4 / A8 respectively;
+#     the generation pass MUST NOT modify φ1–φ7 or A1–A11 text. Grep gates
+#     (count == 7 for ## φ, count == 11 for ## A) are the cheap invariant check.
+#     29 non-priority agents are regenerated mechanically; 4 priority agents
+#     (T/L/E/A = TheoryArchitect / CodeArchitect / ExperimentRunner / PaperWriter)
+#     were hand-authored in Commit 7 of CHK-114 and their deltas are the templates.
+#   v3.0.0 — baseline multi-environment deployment (Claude / Codex / Ollama / Mixed).
 
 Target environment: [Claude | Codex | Ollama | Mixed]
 
