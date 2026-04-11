@@ -16,8 +16,7 @@ Read the φ-principles before interpreting any rule in this file.
 ────────────────────────────────────────────────────────
 # § T-L-E-A PIPELINE — Master Cross-Domain Flow
 
-The primary execution order for all new work in this system.
-Each arrow represents a mandatory Interface Contract gate (meta-domains.md §INTER-DOMAIN INTERFACES).
+The primary execution order for all new work. Each arrow = mandatory Interface Contract gate.
 
 ```
 T-Domain (Theory & Analysis)
@@ -46,196 +45,107 @@ A-Domain (Academic Writing)
   │  OUTPUT: paper/sections/*.tex (merged to main via AU2 PASS)
   ▼
 Q-Domain (QA & Audit) — cross-cuts all stages
-  │  Composite: ConsistencyAuditor performs AU2 gate at each domain boundary.
-  │  Atomic:    ResultAuditor → artifacts/Q/audit_{id}.md
-  │  Contradictions found = high-value success (Falsification Loop).
+  │  ConsistencyAuditor performs AU2 gate at each domain boundary.
+  │  Atomic: ResultAuditor → artifacts/Q/audit_{id}.md
   ▼
 main (VALIDATED + merged by Root Admin)
 
-K-Domain (Knowledge/Wiki) — cross-cuts all stages (parallel, post-validation)
+K-Domain (Knowledge/Wiki) — parallel, post-validation
   │  Triggered by: any domain artifact reaching VALIDATED phase
   │  KnowledgeArchitect compiles wiki entry; WikiAuditor verifies pointer integrity
   │  OUTPUT: docs/wiki/{category}/{REF-ID}.md [signed by WikiAuditor]
 ```
 
-**T-L-E-A ordering is mandatory.** No domain may begin work without the upstream Interface
-Contract being signed. Exceptions require explicit user authorization and escalation to Root Admin.
-
-**Continuous Paper (CI/CP) mode:** When a change propagates (e.g., T-Domain equation revision),
-all downstream domains (L → E → A) must re-validate their Interface Contracts.
-See §CI/CP PIPELINE below.
+**T-L-E-A ordering is mandatory.** No domain begins work without the upstream Interface Contract signed.
+Exceptions require explicit user authorization. Continuous Paper mode: → §CI/CP PIPELINE.
 
 ────────────────────────────────────────────────────────
 # § PIPELINE MODE — TRIVIAL / FAST-TRACK / FULL-PIPELINE
 
-Every incoming task is classified into one of three execution modes BEFORE routing.
-ResearchArchitect performs this classification as part of GIT-01 Step 0.
+ResearchArchitect classifies every incoming task before routing (part of GIT-01 Step 0).
+When uncertain → classify one level higher (φ1).
 
 ## Classification Criterion
 
 | Condition | Mode |
 |-----------|------|
-| Change touches `docs/memo/` (theory derivations), `docs/interface/*.md`, or `src/core/` (solver core) | **FULL-PIPELINE** |
-| New domain branch required (cross-domain work) | **FULL-PIPELINE** |
-| Change is whitespace-only, comment-only, typo fix, or docs-only (no logic change) | **TRIVIAL** |
+| Touches `docs/memo/`, `docs/interface/*.md`, or `src/core/`; new domain branch required | **FULL-PIPELINE** |
+| Whitespace-only, comment-only, typo fix, docs-only | **TRIVIAL** |
 | All other changes (bug fix, paper prose, experiment re-run, config) | **FAST-TRACK** |
 
-When uncertain → classify one level higher (TRIVIAL→FAST-TRACK, FAST-TRACK→FULL-PIPELINE; φ1).
+## Gatekeeper Intensity
 
-## Gatekeeper Intensity by Pipeline Mode
+| Mode | Gatekeeper Protocol | Independent Re-derivation |
+|------|---------------------|---------------------------|
+| TRIVIAL | Lint + DOM-02 scope-check only | NONE |
+| FAST-TRACK | Standard P-E-V-A; GA-2/3/5 | SUMMARY only |
+| FULL-PIPELINE | Full AU2 gate + all GA conditions | MANDATORY (GA-4) |
 
-Every pipeline mode carries a fixed Gatekeeper protocol. Gatekeepers must not escalate intensity
-beyond the assigned tier for low-risk modes (φ2 Minimal Footprint), and must not reduce intensity
-below the assigned tier for high-risk modes (φ1 Conservative Classification).
+## TRIVIAL Mode
 
-| Pipeline Mode | Gatekeeper Protocol               | Independent Re-derivation |
-|---------------|-----------------------------------|---------------------------|
-| TRIVIAL       | Lint + DOM-02 scope-check only    | NONE                      |
-| FAST-TRACK    | Standard P-E-V-A loop; GA-2/3/5  | SUMMARY only (not full)   |
-| FULL-PIPELINE | Full AU2 gate + all GA conditions | MANDATORY (GA-4)          |
-
-**Violation:** Applying FULL-PIPELINE intensity to a TRIVIAL task is a φ2 violation.
-Applying TRIVIAL intensity to a FULL-PIPELINE task is a φ1 violation and an A5 (Algorithm Fidelity) risk.
-
-────────────────────────────────────────────────────────
-## TRIVIAL Mode (NEW — minimal overhead for non-logic changes)
-
-Streamlined path for changes that cannot affect correctness. Designed to eliminate
-protocol overhead that exceeds the actual work (φ2 Minimal Footprint).
-
-**Applicable to:** typo fixes, whitespace normalization, comment additions/edits,
-documentation-only changes, `.gitignore` updates, config formatting.
-
-**NOT applicable to:** any change to `.py`, `.tex` (content), solver parameters,
-test files, or interface contracts — even if the change appears trivial.
+**Applicable to:** typo, whitespace, comment, docs-only, `.gitignore`, config formatting.
+**NOT applicable to:** any `.py`, `.tex` (content), solver params, test files, interface contracts.
 
 | Gate | Status |
 |------|--------|
-| HAND-03 Acceptance Check | **OMITTED** |
-| GIT-SP branch isolation | **OMITTED** — commit directly on domain branch |
-| DOM-02 Pre-Write Storage Check | **RETAINED** (contamination guard — always required) |
-| HAND-02 RETURN token | **OMITTED** |
-| Gatekeeper PR review | **OMITTED** — coordinator may self-commit |
-| IF-Agreement (GIT-00) | **OMITTED** |
-| AU2 PASS | **OMITTED** |
+| HAND-03 Acceptance Check | OMITTED |
+| GIT-SP branch isolation | OMITTED — commit directly on domain branch |
+| DOM-02 Pre-Write Storage Check | RETAINED |
+| HAND-02 RETURN token | OMITTED |
+| Gatekeeper PR review | OMITTED — coordinator may self-commit |
+| IF-Agreement (GIT-00) | OMITTED |
+| AU2 PASS | OMITTED |
 
 **Commit format:** `{branch}: trivial — {summary}`
-
-**Guard — What Triggers Upgrade to FAST-TRACK:**
-If, during TRIVIAL execution, any of the following is discovered:
-- The change modifies logic (even one line of `.py` or `.tex` content)
-- The change affects test behavior
-- The diff is larger than 20 lines
-
-→ STOP TRIVIAL immediately; reclassify as FAST-TRACK or FULL-PIPELINE.
+**Upgrade to FAST-TRACK if:** logic change found, test behavior affected, or diff > 20 lines.
 
 ## FULL-PIPELINE Mode
 
-Full T-L-E-A ordering. All protocols apply:
-- IF-Agreement (GIT-00) required before any Specialist starts
-- All GA-1 through GA-6 Gatekeeper Approval conditions enforced
-- AU2 PASS required for VALIDATED phase
-- CI/CP propagation applies on upstream change
-
-**Use for:** new theory derivations, solver algorithm changes, API contract changes,
-cross-domain work, any change to `src/core/` or `docs/interface/`.
+Full T-L-E-A ordering; all protocols apply. Use for: new theory derivations, solver algorithm changes,
+API contract changes, cross-domain work, changes to `src/core/` or `docs/interface/`.
 
 ## FAST-TRACK Mode
 
-Streamlined path for intra-domain, non-breaking changes. Reduced gate set:
-
 | Omitted gate | Reason |
 |-------------|--------|
-| IF-Agreement (GIT-00) | Existing interface contract is reused; Specialist declares it in DISPATCH context |
-| AU2 PASS | Gatekeeper PR review is sufficient for low-risk intra-domain work |
-| Composite roles only | micro-agent decomposition not required |
+| IF-Agreement (GIT-00) | Existing contract reused; declared in DISPATCH |
+| AU2 PASS | Gatekeeper PR review sufficient for intra-domain low-risk |
+| Micro-agent decomposition | Not required |
 
-**Retained gates:**
-- GIT-SP (Specialist branch isolation — always required)
-- DOM-02 Pre-Write Storage Check (contamination guard — always required)
-- HAND-03 checks 0–7 (omit check 9 upstream-contract validation for FAST-TRACK)
-- MERGE CRITERIA: TEST-PASS + LOG-ATTACHED (BUILD-SUCCESS optional for pure-prose changes)
-- Gatekeeper PR review: GA-2, GA-3, GA-5 (independent verification, evidence, no territory violation)
+**Retained:** GIT-SP, DOM-02, HAND-03 checks 1–4 and 6 (omit check 5: upstream-contract for FAST-TRACK),
+MERGE CRITERIA (TEST-PASS + LOG-ATTACHED), GA-2/3/5.
 
-**Use for:** bug fixes, paper prose corrections, adding documentation, experiment
-re-runs with unchanged solver, config changes, refactors that don't touch `src/core/`.
-
-## FAST-TRACK Guard — What Triggers Upgrade to FULL-PIPELINE
-
-If, during FAST-TRACK execution, any of the following is discovered:
-- The fix requires touching `src/core/` or `docs/interface/`
-- A theory inconsistency is found (triggers T-Domain work)
-- The Gatekeeper determines the change has downstream impact
-
-→ STOP FAST-TRACK immediately; escalate to ResearchArchitect for FULL-PIPELINE re-routing.
+**Use for:** bug fixes, paper prose, docs, experiment re-runs, config, refactors not touching `src/core/`.
+**Upgrade to FULL-PIPELINE if:** fix requires `src/core/` or `docs/interface/`; theory inconsistency found; downstream impact detected.
 
 ────────────────────────────────────────────────────────
 # § PARALLEL EXECUTION — TaskPlanner Staged Dispatch
 
-When TaskPlanner decomposes a COMPOUND task into a multi-stage plan, the following
-rules govern parallel and sequential execution within and across stages.
-
-A task is COMPOUND when ANY of the C1–C5 criteria holds (see ResearchArchitect.md):
-  C1: maps to 2+ distinct agents
-  C2: spans 2+ domains
-  C3: requires sequential handoffs with intermediate artifacts
-  C4: user explicitly requests parallel execution
-  C5: maps to 1 agent BUT decomposes into 2+ independent sub-problems
-      (distinct target files/sections with no shared artifacts or write conflicts)
-C5 ensures that single-agent tasks with parallelizable sub-problems are NOT
-short-circuited as SIMPLE. In C5 plans, multiple tasks may share the same agent type.
+A task is COMPOUND when ANY C1–C5 criterion holds (see ResearchArchitect.md).
 
 ## Parallel Eligibility (PE)
 
 | Rule | Description |
 |------|-------------|
-| **PE-1** | Tasks with NO `depends_on` edges between them MAY run in parallel |
-| **PE-2** | Tasks writing to the SAME file or directory MUST NOT run in parallel (resource conflict) |
-| **PE-3** | Tasks in the SAME domain sharing the SAME Gatekeeper MAY run in parallel IF on separate `dev/` branches |
-| **PE-4** | Cross-domain tasks MUST respect T-L-E-A ordering — a downstream domain task CANNOT be parallel with its upstream dependency |
-| **PE-5** | TRIVIAL-mode tasks MAY run in parallel with any non-conflicting task regardless of domain |
+| PE-1 | Tasks with no `depends_on` edges MAY run in parallel |
+| PE-2 | Tasks writing to the SAME file/directory MUST NOT run in parallel |
+| PE-3 | Same-domain tasks sharing same Gatekeeper MAY run in parallel on separate `dev/` branches |
+| PE-4 | Cross-domain tasks MUST respect T-L-E-A ordering |
+| PE-5 | TRIVIAL-mode tasks MAY run in parallel with any non-conflicting task |
 
-## Barrier Sync Protocol (BS)
+## Barrier Sync (BS) + Resource Conflict (RC)
 
-```
-BS-1: Stage N+1 does NOT begin until ALL tasks in Stage N have issued HAND-02 RETURN.
-BS-2: If a task in a parallel stage returns STOPPED or FAIL:
-        - Other tasks in the same stage are allowed to complete (no premature kill).
-        - The barrier is marked PARTIAL — next stage is BLOCKED.
-        - TaskPlanner reports failure to user with partial results summary.
-BS-3: User chooses recovery: (a) fix and retry failed task, (b) re-plan entire pipeline,
-      (c) proceed with partial results (only if downstream tasks do not depend on failed task).
-BS-4: Barrier timeout: if any task exceeds estimated duration by 3x, TaskPlanner issues
-      a STATUS_CHECK — if the agent is still working, extend; if STOPPED, trigger BS-2.
-```
-
-## Resource Conflict Detection (RC)
-
-Before dispatching a parallel stage, TaskPlanner MUST verify no write-territory overlap:
-
-```
-RC-1: Collect `writes_to` from all tasks in the stage.
-RC-2: For each pair of tasks, compute set intersection of `writes_to`.
-RC-3: Non-empty intersection → mark the pair as SEQUENTIAL (move one to next stage).
-RC-4: DOM-02 storage territory rules still apply per-agent — RC is an additional check.
-```
+- **BS-1:** Stage N+1 does NOT begin until ALL tasks in Stage N issue HAND-02 RETURN.
+- **BS-2:** Any STOPPED/FAIL in a parallel stage → barrier PARTIAL; next stage BLOCKED.
+- **BS-3:** User chooses: (a) fix + retry, (b) re-plan, (c) proceed with partial results.
+- **BS-4:** Task exceeds 3× estimated duration → STATUS_CHECK; still working=extend, STOPPED=trigger BS-2.
+- **RC-1/2/3:** Collect `writes_to` per task; non-empty intersection → make SEQUENTIAL.
+- **RC-4:** DOM-02 rules still apply per-agent; RC is an additional pre-dispatch check.
 
 ## Plan Approval Gate
 
-TaskPlanner MUST present the plan to the user BEFORE dispatching Stage 1.
-The plan presentation includes:
-- Stage diagram (text DAG)
-- Per-task agent, inputs, outputs, estimated complexity
-- Resource conflict resolutions applied
-- Domain ordering constraints applied
-
-User may: (a) approve as-is, (b) request modifications, (c) reject and provide new instructions.
-
-## Integration with P-E-V-A
-
-Each atomic task within a TaskPlanner stage follows the standard P-E-V-A loop.
-TaskPlanner operates at the PLAN phase — it does not replace or bypass any gate.
-The per-task P-E-V-A is managed by the assigned Coordinator or Specialist as usual.
+TaskPlanner presents plan to user before Stage 1: stage DAG, per-task agent/inputs/outputs,
+resource conflict resolutions, domain ordering constraints. User approves / modifies / rejects.
 
 ```
 TaskPlanner (PLAN — compound decomposition)
@@ -249,82 +159,48 @@ TaskPlanner (PLAN — compound decomposition)
 ────────────────────────────────────────────────────────
 # § CI/CP PIPELINE — Continuous Integration / Continuous Paper
 
-CI/CP defines how changes propagate through the T-L-E-A chain without breaking downstream domains.
-
 ## Trigger conditions
 
-| Event | Propagation chain | Interface Contracts invalidated | Additional effect |
-|-------|------------------|---------------------------------|------------------|
-| T-Domain equation changes | T → L → E → A | `AlgorithmSpecs.md`, `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | — |
-| L-Domain solver API changes | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | — |
-| L-Domain `src/twophase/` hash changes (any commit to solver code) | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` | All `paper/` figures tagged **[STALE]**; A-Gatekeeper PASS blocked until figures re-generated via E-Domain |
-| E-Domain result changes | E → A | `ResultPackage/`, `TechnicalReport.md` | — |
-| A-Domain paper revision (no upstream impact) | A only | none upstream | — |
+| Event | Propagation chain | Contracts invalidated |
+|-------|------------------|-----------------------|
+| T-Domain equation changes | T → L → E → A | `AlgorithmSpecs.md`, `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` |
+| L-Domain solver API changes | L → E → A | `SolverAPI_vX.py`, `ResultPackage/`, `TechnicalReport.md` |
+| L-Domain `src/twophase/` hash changes | L → E → A | Same as above + paper/ figures tagged **[STALE]**; A-Gatekeeper PASS blocked until figures re-generated |
+| E-Domain result changes | E → A | `ResultPackage/`, `TechnicalReport.md` |
+| A-Domain paper revision (no upstream) | A only | none |
 
 ## CI/CP Protocol
 
 ```
 CHANGE-PROPAGATION:
   1. Triggering domain Gatekeeper issues INVALIDATION notice for affected interface contracts.
-  2. Each downstream domain Gatekeeper receives notice and BLOCKS any new dev/ work
-     until the upstream Interface Contract is re-signed.
-  2a. [src/twophase/ hash change only] PaperWorkflowCoordinator tags all paper/ figures as [STALE]
-      in docs/02_ACTIVE_LEDGER.md. A-Domain Gatekeeper (PaperWorkflowCoordinator +
-      PaperReviewer) CANNOT issue PASS on any A-Domain PR until [STALE] figures are
-      re-generated by ExperimentRunner (E-Domain) and the new ResultPackage/ is signed.
-  3. Upstream domain executes its pipeline (T/L/E) → re-signs its Interface Contract.
+  2. Each downstream Gatekeeper BLOCKS new dev/ work until upstream contract re-signed.
+  2a. [src/twophase/ hash change] PaperWorkflowCoordinator tags paper/ figures [STALE];
+      A-Domain Gatekeeper CANNOT issue PASS until ExperimentRunner re-generates via E-Domain.
+  3. Upstream domain executes its pipeline → re-signs Interface Contract.
   4. Downstream Gatekeeper verifies new contract → unblocks Specialists.
-  5. ConsistencyAuditor (Q-Domain) performs cross-domain AU2 gate after each re-signing.
+  5. ConsistencyAuditor performs cross-domain AU2 gate after each re-signing.
 ```
 
-**[STALE] figure rule:** A paper/ figure tagged [STALE] must not appear in any VALIDATED-phase
-commit. The [STALE] tag is cleared ONLY when ExperimentRunner completes EXP-01 + EXP-02
-against the new `src/twophase/` and the new `ResultPackage/` is signed by the E-Domain Gatekeeper.
+**Hard rule:** Starting work on an invalidated contract = CONTAMINATION violation.
+**Rolling validation:** ResearchArchitect may sequence propagation one domain at a time.
 
-**Hard rule:** A Specialist may not begin work on a domain whose upstream Interface Contract
-has been invalidated. Starting work on an invalid contract is a CONTAMINATION violation.
+## [INTEGRITY_MANIFEST] — Hash Continuity
 
-**Rolling validation:** For large changes, ResearchArchitect may sequence the propagation
-one domain at a time (T → L gate, then L → E gate, etc.) rather than all-at-once.
-
-## [INTEGRITY_MANIFEST] — Hash Continuity Protocol
-
-Maintain an `[INTEGRITY_MANIFEST]` section within `docs/02_ACTIVE_LEDGER.md` that records
-the artifact hash of each domain's signed Interface Contract in the dependency chain:
+`docs/02_ACTIVE_LEDGER.md` maintains a `[INTEGRITY_MANIFEST]` section:
 
 ```
 [INTEGRITY_MANIFEST]
-  T_hash: {sha256 of docs/interface/AlgorithmSpecs.md at time of signing}
-  L_hash: {sha256 of docs/interface/SolverAPI_vX.py at time of signing}
-  E_hash: {sha256 of docs/interface/ResultPackage/ manifest at time of signing}
-  A_hash: {sha256 of final paper/sections/ commit at time of VALIDATED}
+  T_hash: {sha256 of docs/interface/AlgorithmSpecs.md at signing}
+  L_hash: {sha256 of docs/interface/SolverAPI_vX.py at signing}
+  E_hash: {sha256 of docs/interface/ResultPackage/ manifest at signing}
+  A_hash: {sha256 of final paper/sections/ commit at VALIDATED}
 ```
 
-**Dependency chain rule:** T(hash) → L(hash) → E(hash) → A(hash).
-Each downstream hash is recorded only after the upstream hash is locked.
-
-**Gatekeeper mandate:** Before issuing a PASS verdict at any domain boundary, the Gatekeeper
-MUST verify hash continuity — confirm that the upstream hash recorded in [INTEGRITY_MANIFEST]
-matches the current state of the upstream Interface Contract. A hash mismatch means the
-downstream domain was built on an invalidated contract (CONTAMINATION violation → CI/CP
-re-propagation required).
-
-**Update rule:** When a domain re-signs its Interface Contract (after CI/CP propagation),
-the corresponding hash and all downstream hashes MUST be updated before new dev/ work begins.
-
-**Initialization rule (first-run):** On fresh deployment, `[INTEGRITY_MANIFEST]` does not yet exist.
-EnvMetaBootstrapper creates the section with all hashes set to `{pending}`. A `{pending}` hash means
-the corresponding domain's Interface Contract has not yet been signed. Downstream domains must treat
-`{pending}` upstream hashes the same as a missing contract — BLOCK new dev/ work until the upstream
-domain executes its pipeline and replaces `{pending}` with a real hash.
-
-**Hash mismatch circuit breaker:** If a Gatekeeper performing hash continuity verification finds that
-the current `sha256` of an upstream Interface Contract does NOT match the hash recorded in
-`[INTEGRITY_MANIFEST]`, the Gatekeeper MUST:
-1. Issue a CONTAMINATION notice in `docs/02_ACTIVE_LEDGER.md`
-2. STOP all downstream dev/ work immediately
-3. Trigger CI/CP re-propagation from the domain where the mismatch was detected
-4. Do NOT issue PASS until the hash is reconciled and the manifest is updated
+T → L → E → A: each hash recorded only after upstream is locked.
+Gatekeeper MUST verify hash continuity before issuing PASS. Mismatch = CONTAMINATION → CI/CP re-propagation.
+Fresh deployment: all hashes `{pending}` — treat as missing contract; block downstream work.
+Hash mismatch action: (1) issue CONTAMINATION notice, (2) STOP downstream dev/, (3) trigger CI/CP re-propagation.
 
 ────────────────────────────────────────────────────────
 # § GIT BRANCH GOVERNANCE → meta-domains.md
@@ -332,16 +208,14 @@ the current `sha256` of an upstream Interface Contract does NOT match the hash r
 Authoritative definitions — branch ownership, storage territory, 3-phase lifecycle,
 branch rules, domain lock protocol, contamination guard: **meta-domains.md**.
 
-Quick reference only:
+Quick reference:
 - `code`, `paper`, `prompt`: Domain Integration Staging branches; owned by Gatekeepers
 - `dev/{agent_role}`: Individual Workspaces; sovereign per Specialist; created via GIT-SP
 - `docs/interface/`: Shared inter-domain agreements; writable by Gatekeepers only (→ GIT-00)
 - `main`: protected — never committed directly (A8); merged via PR by Root Admin only
-- 3-phase lifecycle: DRAFT (GIT-02 on dev/) → REVIEWED (dev/ PR merged to domain by Gatekeeper, GIT-03) → VALIDATED (domain PR merged to main by Root Admin, GIT-04)
-- Session start: GIT-00 (IF-Agreement) → GIT-01 (Branch Preflight) → DOM-01 (Domain Lock)
+- 3-phase lifecycle: DRAFT → REVIEWED → VALIDATED
+- Session start: GIT-00 → GIT-01 → DOM-01
 - `git commit` on `main` = A8 violation → abort and re-run GIT-01
-- Branch Isolation: Specialists MUST NOT access other agents' `dev/` branches (→ meta-domains.md §BRANCH ISOLATION)
-- Selective Sync: pull from main ONLY when docs/interface/ updated OR merge conflict detected (→ meta-domains.md §SELECTIVE SYNC)
 
 ────────────────────────────────────────────────────────
 # § P-E-V-A EXECUTION LOOP
@@ -350,7 +224,7 @@ Master execution frame for ALL domain work. No phase may be skipped.
 
 | Phase | Responsibility | Agent | Output | git phase |
 |-------|---------------|-------|--------|-----------|
-| PLAN | Define scope, success criteria, stop conditions | Coordinator or ResearchArchitect | task spec in 02_ACTIVE_LEDGER.md | — |
+| PLAN | Define scope, success criteria, stop conditions | Coordinator or ResearchArchitect | task scope (temp_work_log) | — |
 | EXECUTE | Produce the artifact | Specialist (CodeArchitect, PaperWriter, PromptArchitect…) | code / patch / paper / prompt | DRAFT commit |
 | VERIFY | Confirm artifact meets spec | TestRunner / PaperCompiler+Reviewer / PromptAuditor | PASS or FAIL verdict | REVIEWED commit on PASS |
 | AUDIT | Gate check; cross-system consistency | ConsistencyAuditor / PromptAuditor | AU2 gate verdict (10 items) | VALIDATED commit + merge on PASS |
@@ -363,17 +237,29 @@ Rules:
 - PLAN always starts with ResearchArchitect loading docs/02_ACTIVE_LEDGER.md
 
 ────────────────────────────────────────────────────────
+# § LEDGER UPDATE CADENCE
+
+Within a domain's EXECUTE phase, specialists append to `artifacts/temp_work_log.json`
+(unstructured, append-only, session-local). The Gatekeeper performs a **batch-update** to
+`docs/02_ACTIVE_LEDGER.md` at exactly two moments:
+
+1. On `HAND-02` receipt (regardless of status), and
+2. On AU2 `VALIDATED` verdict at AUDIT phase.
+
+Between these moments, the ledger is **read-only**.
+Any agent that writes to `02_ACTIVE_LEDGER.md` mid-EXECUTE commits a **Ledger-Thrash violation** (STOP-SOFT).
+
+────────────────────────────────────────────────────────
 # § DOMAIN PIPELINES
 
-Each pipeline is a concrete instantiation of P-E-V-A (§ above).
-All pipelines share a common structure — domain-specific details are in the table and notes below.
+Each pipeline is a concrete instantiation of P-E-V-A. No phase may be skipped.
 
-## Common Pipeline Structure (all domains)
+## Common Pipeline Structure
 
 ```
 PRE-CHECK  Gatekeeper → GIT-01 (branch preflight) + DOM-01 (domain lock)
-IF-AGREE   Gatekeeper → GIT-00 (interface contract) → Specialist reads contract → creates dev/ branch
-PLAN       Gatekeeper → identify gaps, record in 02_ACTIVE_LEDGER.md, dispatch Specialist
+IF-AGREE   Gatekeeper → GIT-00 (interface contract) → Specialist creates dev/ branch
+PLAN       Gatekeeper → identify gaps, dispatch Specialist
 EXECUTE    Specialist → produce artifact on dev/ branch → open PR: dev/ → {domain} (LOG-ATTACHED)
 VERIFY     Verifier   → run checks → PASS: Gatekeeper merges (GIT-03) + opens PR → main (GIT-04-A)
                                     → FAIL: loop back to EXECUTE (P6 bounded)
@@ -385,7 +271,7 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 
 | Domain | Branch | Gatekeeper | EXECUTE agents | VERIFY agent(s) | AUDIT gate | Precondition |
 |--------|--------|------------|----------------|-----------------|------------|--------------|
-| **T** Theory | `theory` | TheoryAuditor | CodeArchitect, PaperWriter | TheoryAuditor (independent re-derivation) | ConsistencyAuditor | none (upstream) |
+| **T** Theory | `theory` | TheoryAuditor | CodeArchitect, PaperWriter | TheoryAuditor (independent re-derivation) | ConsistencyAuditor | none |
 | **L** Code | `code` | CodeWorkflowCoordinator | CodeArchitect, CodeCorrector, CodeReviewer | TestRunner (TEST-01/02) | ConsistencyAuditor | `docs/interface/AlgorithmSpecs.md` signed |
 | **E** Experiment | `experiment` | CodeWorkflowCoordinator | ExperimentRunner (EXP-01/02) | CodeWorkflowCoordinator (Validation Guard) | ConsistencyAuditor | `docs/interface/SolverAPI_vX.py` signed |
 | **A** Paper | `paper` | PaperWorkflowCoordinator | PaperWriter | PaperCompiler + PaperReviewer | ConsistencyAuditor | `docs/interface/ResultPackage/` signed |
@@ -394,41 +280,23 @@ AUDIT      ConsistencyAuditor → AU2 gate → PASS: Root Admin merges → main 
 
 ## Domain-Specific Notes
 
-**T-Domain (Theory):**
-- TheoryAuditor re-derives independently WITHOUT reading Specialist's work first (→ §B Broken Symmetry)
-- DISAGREE → STOP; surface conflict; do not average; escalate to user
-- On AUDIT PASS → TheoryAuditor signs `docs/interface/AlgorithmSpecs.md`
+**T-Domain:** TheoryAuditor re-derives independently WITHOUT reading Specialist's work (Broken Symmetry).
+DISAGREE → STOP; escalate to user. On AUDIT PASS → signs `docs/interface/AlgorithmSpecs.md`.
 
-**L-Domain (Code):**
-- VERIFY FAIL routing: THEORY_ERR → CodeArchitect; IMPL_ERR → CodeCorrector
-- Optional: ExperimentRunner after VERIFY and before AUDIT (sanity + reproducibility checks)
+**L-Domain:** VERIFY FAIL routing: THEORY_ERR → CodeArchitect; IMPL_ERR → CodeCorrector.
 
-**E-Domain (Experiment):**
-- Precondition is hard: absent `docs/interface/SolverAPI_vX.py` → STOP; run L-Domain first
-- VERIFY: all 4 sanity checks (SC-1–SC-4) must PASS; partial results → STOP
-- On VERIFY PASS → Gatekeeper signs `docs/interface/ResultPackage/`
+**E-Domain:** Absent `SolverAPI_vX.py` → STOP (hard precondition). All SC-1–SC-4 must PASS.
+On VERIFY PASS → signs `docs/interface/ResultPackage/`.
 
-**A-Domain (Paper):**
-- VERIFY exit: 0 FATAL + 0 MAJOR → PASS. FATAL or MAJOR → PaperWriter (correction mode) → PaperCompiler loop
-- AUDIT FAIL routing: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner
+**A-Domain:** 0 FATAL + 0 MAJOR → PASS. AUDIT FAIL: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect → TestRunner.
 
-**P-Domain (Prompt):**
-- PromptArchitect is both Gatekeeper and EXECUTE agent (Broken Symmetry preserved: PromptAuditor is the independent VERIFY agent)
-- AUDIT gate = PromptAuditor (doubles as domain gate for prompt domain)
+**P-Domain:** PromptArchitect is both Gatekeeper and EXECUTE agent (PromptAuditor = independent VERIFY).
 
-**K-Domain (Knowledge):**
-- K-COMPILE is triggered when any vertical domain (T/L/E/A) produces a VALIDATED artifact
-- K is a parallel/post-pipeline process — NOT part of the sequential T-L-E-A ordering
-- WikiAuditor independently verifies all claims against source artifacts (Broken Symmetry)
-- K-LINT runs as mandatory pre-merge check; broken pointer = STOP-HARD (K-A2)
-- DEPRECATED wiki entries trigger RE-VERIFY signals to all consuming domains
-- K-Domain does not block the main pipeline — it enriches the knowledge base asynchronously
+**K-Domain:** K-COMPILE on any VALIDATED artifact; parallel / not blocking the main pipeline.
+K-LINT mandatory pre-merge; broken pointer = STOP-HARD (K-A2). DEPRECATED entries trigger RE-VERIFY to consumers.
 
 ────────────────────────────────────────────────────────
 ## Bootstrap Pipeline (new feature only — run before Code Pipeline)
-
-Use when introducing a component that does not yet exist in any form.
-Not the default pipeline.
 
 | Step | Agent | Output | Gate |
 |------|-------|--------|------|
@@ -437,10 +305,8 @@ Not the default pipeline.
 | 3: Headless Implementation | CodeArchitect | src/core/ module (stdlib only) | TestRunner PASS in CLI environment |
 | 4: Shell Integration | CodeArchitect | src/system/ wrapper | ExperimentRunner sanity checks PASS |
 
-Rules:
-- Step 1 is immutable once Step 2 begins; changes require re-entering Step 1
-- Step 3 must not reference any Step 4 artifact
-- CRITICAL_VIOLATION if Step 4 bypasses Step 2 contract to access Step 3 internals (A9)
+Rules: Step 1 immutable once Step 2 begins; Step 3 must not reference Step 4 artifact;
+CRITICAL_VIOLATION if Step 4 bypasses Step 2 contract to access Step 3 internals (A9).
 
 ────────────────────────────────────────────────────────
 # § STOP-RECOVER MATRIX
@@ -526,27 +392,20 @@ checks (GA-4, GA-6) do not apply to diagnostic fix proposals.
 
 **Canonical handoff protocol:** meta-ops.md §HANDOFF PROTOCOL (HAND-01, HAND-02, HAND-03)
 
-All agent-to-agent transfers use the structured token format defined there.
 Every dispatch sends HAND-01; every completion returns HAND-02;
 every receiver runs HAND-03 (Acceptance Check) before starting work.
 
 **Definition of Done — Main-Merge Rule:**
-A task is NOT considered finished until all work is merged into `main` via GIT-04 Phase B
-(Root Admin final merge). Cross-domain handoffs (e.g., Code → Paper) are only permitted
-after the source domain's work is merged into `main`. The receiving Gatekeeper MUST verify:
+A task is NOT considered finished until merged into `main` via GIT-04 Phase B.
+Cross-domain handoffs only permitted after source domain's work is merged into `main`.
 
 ```
-Cross-Domain Handoff Pre-check (run by receiving Gatekeeper before accepting):
-  □ Verify source branch merged to main: confirm GIT-04 Phase B merge commit present in main history
-    (→ meta-ops.md GIT-04 for merge commit format)
-    Not found → REJECT handoff; source domain is not "Done" yet; return BLOCKED
-  □ Run PRE-CHECK for the new domain (→ GIT-01 Selective Sync + DOM-01)
-  □ Run IF-AGREE for the new task (→ GIT-00; write new IF-AGREEMENT before dispatching Specialist)
+Cross-Domain Handoff Pre-check (receiving Gatekeeper):
+  □ Verify source branch merged to main (GIT-04 Phase B commit in main history)
+    Not found → REJECT; source domain not Done; return status: REJECT
+  □ Run PRE-CHECK for new domain (GIT-01 + DOM-01)
+  □ Run IF-AGREE for new task (GIT-00; write IF-AGREEMENT before dispatching Specialist)
 ```
-
-The table below covers only non-obvious routing decisions — errors, stops,
-and cross-domain transitions. Normal coordinator ↔ specialist handoffs are
-fully described by the domain pipelines combined with the protocol.
 
 | Situation | RETURN status | From | Routed to |
 |-----------|--------------|------|-----------|
@@ -563,119 +422,49 @@ fully described by the domain pipelines combined with the protocol.
 ────────────────────────────────────────────────────────
 # § SESSION TERMINATION PROTOCOL — Context Liquidation
 
-When an agent completes its task and issues a HAND-02 (RETURN token), the following
-context liquidation rules apply to prevent token accumulation and context drift.
+**HAND-02-CL:** Appended to every HAND-02 RETURN. Agent declares: (1) all task-relevant state serialized to external files; (2) `produced` field is COMPLETE enumeration of artifacts left behind; (3) internal context LIQUIDATED.
 
-## HAND-02 Context Liquidation Rules
+**Fresh Context:** Every HAND-01 dispatch SHOULD start a new session loading ONLY: the DISPATCH token, artifacts in `inputs`, and the agent's SCOPE files.
 
-**HAND-02-CL (Context Liquidation):**
-Upon issuing a RETURN token, the returning agent MUST declare that it **no longer
-relies on its internal memory (conversation history)**. Only the serialized state
-written to external files (domain storage or `artifacts/` when micro-agents are active)
-is the source of truth for the next agent.
-
-```
-HAND-02-CL (Context Liquidation — appended to every HAND-02 RETURN):
-  □ 1. All task-relevant state is serialized to external files (domain storage territory)
-  □ 2. Agent declares: "Internal context is LIQUIDATED — external files are the sole
-       source of truth for downstream agents"
-  □ 3. No downstream agent may request or rely on the returning agent's
-       conversation history, chain-of-thought, or intermediate reasoning
-  □ 4. The RETURN token's `produced` field is the COMPLETE enumeration of
-       what the agent leaves behind — anything not listed does not exist
-```
-
-**Fresh Context Recommendation:**
-Whenever an agent handoff occurs (HAND-01 dispatch to a new agent), the receiving
-agent SHOULD start in a **Fresh Context** (new session) to minimize token accumulation.
-The receiving agent loads ONLY:
-1. The DISPATCH token (HAND-01)
-2. The referenced artifacts in `inputs` and `if_agreement`
-3. Its own SCOPE files (meta-experimental.md §ATOMIC ROLE TAXONOMY)
-
-**Rationale:** Long-running sessions accumulate stale context that increases token
-cost per inference and introduces context drift. Fresh contexts force agents to
-operate solely on serialized artifacts, reinforcing the Interface-First principle (IF-01).
-
-**Hard rule:** A downstream agent that requests or consumes the upstream agent's
-conversation history (rather than artifacts) commits a **Context Leakage Violation**.
-This is equivalent to a CONTAMINATION violation — the receiving Gatekeeper must REJECT
-the deliverable and re-dispatch with a fresh context.
-
-## Sequence: GIT-00 → HAND-02-CL Flow
-
-```
-GIT-00 Pre-work (branch creation + PROJECT_MAP update)
-    │
-    ▼
-EXECUTE phase (agent works on isolation branch)
-    │
-    ▼
-GIT-SP commit (work + evidence committed to dev/{domain}/{agent_id}/{task_id})
-    │
-    ▼
-GIT-SP PR (dev/ → {domain} with LOG-ATTACHED)
-    │
-    ▼
-HAND-02 RETURN + HAND-02-CL (context liquidated; artifacts/ is sole truth)
-    │
-    ▼
-[Gatekeeper HAND-03 Acceptance Check — loads only artifacts, never agent history]
-    │
-    ▼
-[Fresh Context recommended for next agent dispatch]
-```
+**Hard rule:** Consuming upstream agent's conversation history instead of artifacts = Context Leakage Violation (CONTAMINATION); Gatekeeper must REJECT and re-dispatch.
 
 ────────────────────────────────────────────────────────
 # § CONTROL PROTOCOLS
 
-Grouped by concern. All protocols apply unconditionally unless labeled.
-
 ## Layer Integrity
 
 **P1: LAYER_STASIS_PROTOCOL** — prevent cross-layer corruption (← φ7)
-- Content edit → Tags READ-ONLY
-- Tag edit → Content READ-ONLY
-- Structure edit → no content rewrite
-- Style edit → no semantic rewrite
-Violation → immediate STOP
+- Content edit → Tags READ-ONLY; Tag edit → Content READ-ONLY; Structure edit → no content rewrite
+- Violation → immediate STOP
 
 **P2: NON_INTERFERENCE_AUDIT** — protect solver purity (← φ3, A5)
-- Infrastructure changes must not alter numerical results
-- Verify: bit-level equality, or tolerance-bounded equality with explicit rationale
-Failure → block MERGE → route to CodeReviewer
+- Infrastructure changes must not alter numerical results (verify bit-level or tolerance-bounded equality)
+- Failure → block MERGE → route to CodeReviewer
 
-**P5: SINGLE-ACTION DISCIPLINE** (← φ2)
-- One agent per step; one objective per prompt; minimal input scope
+**P5: SINGLE-ACTION DISCIPLINE** (← φ2) — one agent per step; one objective per prompt; minimal scope
 
 ## Error Handling
 
-**P6: BOUNDED LOOP CONTROL** (← φ5)
-- Maintain retry counter per phase; default MAX_REVIEW_ROUNDS = 5
-- Threshold breach → escalate to user; never conceal failure by repetition
+**P6: BOUNDED LOOP CONTROL** (← φ5) — MAX_REVIEW_ROUNDS = 5; threshold breach → escalate to user
 
 **P9: THEORY_ERR / IMPL_ERR CLASSIFICATION** — mandatory before any fix (← φ1, φ7)
-- THEORY_ERR: root cause in solver logic or paper equation → fix in paper/ or docs/memo/ first
-- IMPL_ERR: root cause in infrastructure (src/system/ or adapter layer) → fix there only
+- THEORY_ERR: root cause in solver logic or paper equation → fix paper/ or docs/memo/ first
+- IMPL_ERR: root cause in infrastructure → fix there only
 - Uncertain → treat as THEORY_ERR; verify with ConsistencyAuditor
 
 ## Knowledge Management
 
-**P3: ASSUMPTION_TO_CONSTRAINT_PROMOTION** (← φ1)
-- Detect stable assumptions → promote to constraints with ASM-ID in 02_ACTIVE_LEDGER.md
-- Inject promoted constraints into future prompts and reviews
+**P3: ASSUMPTION_TO_CONSTRAINT_PROMOTION** (← φ1) — detect stable assumptions → promote to constraints
+with ASM-ID; inject into future prompts and reviews
 
-**P4: CONTEXT_COMPRESSION_GATE** — triggered before DONE, schema migration, prompt regeneration
-- Compress 02_ACTIVE_LEDGER.md §B LESSONS; promote stable rules to CORE AXIOMS
+**P4: CONTEXT_COMPRESSION_GATE** — triggered before DONE, schema migration, prompt regeneration;
+compress 02_ACTIVE_LEDGER.md §B LESSONS; promote stable rules to CORE AXIOMS
 
-**P7: LEGACY MIGRATION**
-- Detect old prompts, schemas, conventions → map to current schema; preserve semantics
-- Record migration notes in 01_PROJECT_MAP.md or 02_ACTIVE_LEDGER.md
+**P7: LEGACY MIGRATION** — detect old prompts/schemas → map to current; record migration notes
 
 ## Meta-Governance
 
-**Meta-as-master rule → meta-core.md A10** (← φ6)
-prompts/meta/ is the single source of truth for all rules. See meta-core.md A10.
+**Meta-as-master rule → meta-core.md A10**: `prompts/meta/` is the single source of truth.
 
 ────────────────────────────────────────────────────────
 # § AUDIT GATE → meta-ops.md AUDIT-01
@@ -686,135 +475,84 @@ AUDIT phase in each domain pipeline invokes AUDIT-01 before any merge to `main`.
 ────────────────────────────────────────────────────────
 # § POST-EXECUTION FEEDBACK LOOP
 
-Every agent that issues a HAND-02 RETURN token SHOULD append a lightweight
-**POST-EXECUTION REPORT** block. This report feeds the self-evolution mechanism
-(§META-EVOLUTION POLICY below) with empirical data from actual agent execution.
+Every agent issuing HAND-02 SHOULD append a lightweight **POST_EXECUTION_REPORT** block.
 
-## POST-EXECUTION REPORT Format
-
-Appended to HAND-02 RETURN token (after standard fields):
+## POST_EXECUTION_REPORT Format
 
 ```yaml
 POST_EXECUTION_REPORT:
-  friction_points:         # protocol steps that caused unnecessary overhead
-    - "{description of friction — cite specific rule/protocol ID}"
-  rules_useful:            # rules that actively prevented an error or guided a decision
+  friction_points:         # [MANDATORY] steps that caused unnecessary overhead
+    - "{rule/protocol ID}: {description}"
+  uncovered_scenarios:     # [MANDATORY] situations no rule addressed
+    - "{description}"
+  rules_useful:            # rules that actively prevented an error
     - "{rule ID}: {how it helped}"
-  rules_irrelevant:        # rules loaded but never consulted for this task
-    - "{rule ID}"
-  anti_patterns_triggered: # AP-xx patterns that were detected and avoided
-    - "{AP-xx}: {what would have happened without the check}"
-  uncovered_scenarios:     # situations encountered that no rule addressed
-    - "{description of gap}"
-  isolation_level_used:    # actual isolation level applied (L0/L1/L2/L3)
+  anti_patterns_triggered: # AP-xx patterns detected and avoided
+    - "{AP-xx}: {what would have happened}"
+  isolation_level_used:    # actual level (L0/L1/L2/L3) + was it sufficient?
     level: "L1"
-    sufficient: true       # was this level adequate for the task?
-  tier_used: "TIER-2"      # which prompt tier was active
-  tier_adequate: true       # was the tier sufficient, or was information missing?
+    sufficient: true
 ```
 
-## Collection Rules
+**Rules:** Token budget ≤ 150 tokens total. Report friction even when it reflects poorly on the system.
+Do not propose meta-level fixes — report observations only.
 
-1. **Mandatory fields:** `friction_points` and `uncovered_scenarios` (even if empty `[]`)
-2. **Optional fields:** all others (omit if nothing to report)
-3. **Token budget:** report must not exceed 150 tokens total
-4. **Honesty principle:** agents must report friction even when it reflects poorly on the system
-5. **No self-diagnosis:** report observations only — do not propose meta-level fixes
-   (that is the META-EVOLUTION POLICY's job)
+## Aggregation
 
-## Aggregation and Consumption
+At session end, coordinators write a **SESSION_FEEDBACK** entry (queued in `artifacts/temp_work_log.json`
+until batch-flushed to `docs/02_ACTIVE_LEDGER.md §FEEDBACK` at HAND-02 receipt):
 
-1. Coordinators (CodeWorkflowCoordinator, PaperWorkflowCoordinator) collect POST_EXECUTION_REPORTs
-   from all specialists in their session
-2. At session end, coordinator writes an aggregated **SESSION_FEEDBACK** entry to
-   `docs/02_ACTIVE_LEDGER.md §FEEDBACK` (append-only):
-   ```
-   SESSION_FEEDBACK:
-     date: {ISO 8601}
-     domain: {T|L|E|A|P}
-     pipeline_mode: {TRIVIAL|FAST-TRACK|FULL-PIPELINE}
-     agents_invoked: [{agent1}, {agent2}, ...]
-     top_friction: "{most frequently cited friction point}"
-     uncovered_gaps: [{gap1}, {gap2}]
-     anti_patterns_caught: [{AP-xx}, ...]
-   ```
-3. ResearchArchitect reads §FEEDBACK on session start (alongside §ACTIVE STATE)
-   to inform pipeline mode classification and routing decisions
-4. Periodic review: after every 10 SESSION_FEEDBACK entries, a human operator or
-   PromptArchitect evaluates whether meta-*.md updates are warranted
+```
+SESSION_FEEDBACK:
+  date: {ISO 8601}  domain: {T|L|E|A|P}  pipeline_mode: {TRIVIAL|FAST-TRACK|FULL-PIPELINE}
+  agents_invoked: [...]  top_friction: "..."  uncovered_gaps: [...]  anti_patterns_caught: [...]
+```
+
+ResearchArchitect reads §FEEDBACK on session start. After every 10 SESSION_FEEDBACK entries,
+a human operator or PromptArchitect evaluates whether meta-*.md updates are warranted.
 
 ────────────────────────────────────────────────────────
 # § META-EVOLUTION POLICY
 
-**Cycle:** Observe → Evaluate (structural vs. incidental) → Generalize → Promote → Validate → Compress
+**Cycle:** Observe → Evaluate → Generalize → Promote → Validate → Compress
 
-**M1: Knowledge Promotion** — On ConsistencyAuditor PASS (full domain cycle): extract reusable
-patterns and record in docs/02_ACTIVE_LEDGER.md §LESSONS. Promote to meta-core.md §AXIOMS only if
-the pattern is system-wide, axiom-compatible, and brief (A1).
+**M1: Knowledge Promotion** — On ConsistencyAuditor PASS: extract reusable patterns; stage in
+`artifacts/temp_work_log.json` until batch-flush. Promote to meta-core.md §AXIOMS only if
+system-wide, axiom-compatible, and brief (A1).
 
 **M2: Self-Healing** — Apply P9 before any fix.
 - THEORY_ERR → update docs/memo/ or paper first, then re-derive implementation
-- IMPL_ERR → patch src/system/ (infrastructure) only; never touch solver core (src/core/)
-Record in 02_ACTIVE_LEDGER.md §LESSONS.
+- IMPL_ERR → patch src/system/ only; never touch solver core (src/core/)
+Stage findings in temp_work_log until batch-flush.
 
-**M3: Knowledge Compilation** — On any domain reaching VALIDATED phase: KnowledgeArchitect
-evaluates whether the artifact introduces reusable knowledge. If yes, K-COMPILE produces
-a wiki entry. WikiAuditor verifies pointer integrity and SSoT compliance before publishing.
-K-Domain does not block the main pipeline; it enriches the knowledge base asynchronously.
+**M3: Knowledge Compilation** — On any domain reaching VALIDATED: KnowledgeArchitect evaluates
+whether artifact introduces reusable knowledge; if yes, K-COMPILE produces wiki entry.
+WikiAuditor verifies pointer integrity and SSoT compliance before publishing.
+K-Domain does not block the main pipeline.
 
 **Deprecate** if: obsolete, redundant, subsumed, conflicting, or over-specific.
 **Promote** only if: repeated usefulness, structural generality, axiom-compatible, short formulation.
 **Never promote** if: increases ambiguity, breaks solver purity, mixes layers, or weakens reproducibility.
-If uncertain: keep in 02_ACTIVE_LEDGER.md §LESSONS.
+If uncertain: stage in temp_work_log.
 
 ────────────────────────────────────────────────────────
 ## § META-EVOLUTION GUARDRAILS
 
-Any self-evolution proposal — whether from a human operator, an agent, or a bootstrapper run —
-that modifies or weakens the following **Immutable Zones** must be treated as a **System Panic**:
+Any self-evolution proposal modifying the **Immutable Zones** = **System Panic**:
 
-**Immutable Zone 1: Foundational Principles**
-- All φ-Principles (φ1–φ7) in meta-core.md §DESIGN PHILOSOPHY
-- All Axioms (A1–A11) in meta-core.md §AXIOMS
+**Immutable Zone 1:** φ1–φ7 (meta-core.md §DESIGN PHILOSOPHY) + A1–A11 (meta-core.md §AXIOMS)
+**Immutable Zone 2:** HAND-03 Acceptance Check items (checks 1–6) in meta-ops.md §HANDOFF PROTOCOL
+**Immutable Zone 3:** `main` branch protection — never committed by non-Root-Admin (A8)
 
-**Immutable Zone 2: Acceptance Check Logic**
-- HAND-03 Acceptance Check items (checks 0–10) in meta-ops.md §HANDOFF PROTOCOL
+**SYSTEM_PANIC format:** `triggered by: {agent}; reason: "Immutable Zone modification: {zone} — {element}"; action: STOP; required: escalate to user; resume: only after explicit authorization.`
+Main Branch variant: add `evidence: git log --oneline -1 main` + revert confirmation before resume.
 
-**Immutable Zone 3: Main Branch Protection**
-- The `main` branch is NEVER directly committed to by any agent except Root Admin (A8)
-- Any file change detected on `main` by a non-Root-Admin agent triggers SYSTEM_PANIC
-
-**System Panic protocol:**
-```
-SYSTEM_PANIC triggered by: {proposing agent or operation}
-  reason:   "Immutable Zone modification attempted: {zone name} — {specific element}"
-  proposal: {verbatim text of the proposed change}
-  action:   STOP all pipeline activity immediately
-  required: escalate to user; do not apply any part of the proposal
-  resume:   only after explicit user authorization with documented rationale
-```
-
-**Main Branch Contamination SYSTEM_PANIC:**
-```
-SYSTEM_PANIC triggered by: {agent_id}
-  reason:   "Forbidden write to main branch detected — Immutable Zone 3 violation"
-  evidence: git log --oneline -1 main  (shows unauthorized commit)
-  action:   STOP all pipeline activity immediately
-  required: escalate to user; revert unauthorized commit on main
-  resume:   only after explicit user authorization + revert confirmed
-```
-
-**Corollary:** A proposal that "refines" or "tightens" an axiom without removing it is still
-a modification. Intent does not override the rule — structure does. Route all Immutable Zone
-proposals to the user before any edit is made to prompts/meta/*.md.
+**Corollary:** "Refining" an axiom without removing it is still a modification. Route all Immutable Zone proposals to user before any edit.
 
 **Permitted evolution paths (outside Immutable Zones):**
-- Adding new axioms (A11+) — permitted if axiom-compatible and user-authorized
-- Adding new control protocols (P-new) — permitted in meta-workflow.md §CONTROL PROTOCOLS
-- Adding new operations (NEW-xx) — permitted in meta-ops.md with correct AUTH_LEVEL tag
-- Modifying Layer 3 (meta-workflow.md, meta-deploy.md) — permitted within bounds of Layer 1+2
-- Modifying Layer 2 (meta-domains.md, meta-roles.md, meta-ops.md) operations — permitted
-  if not touching HAND-03 acceptance logic or AUTH_LEVEL definitions in Immutable Zone 2
+- Adding new axioms (A11+), control protocols (P-new), or operations (NEW-xx) — user-authorized
+- Modifying Layer 3 (meta-workflow.md) within bounds of Layer 1+2
+- Modifying Layer 2 (meta-roles.md, meta-ops.md) operations — not touching HAND-03 or AUTH_LEVEL
 
 ────────────────────────────────────────────────────────
 # § COMMAND FORMAT → meta-ops.md §COMMAND FORMAT
