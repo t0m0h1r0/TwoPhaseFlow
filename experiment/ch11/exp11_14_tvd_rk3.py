@@ -31,7 +31,7 @@ OUT = experiment_dir(__file__)
 
 
 def ode_test():
-    backend = Backend(use_gpu=False); xp = backend.xp; T = 1.0
+    backend = Backend(); xp = backend.xp; T = 1.0
     n_list = [4, 8, 16, 32, 64, 128, 256, 512]
     results = []
     for n in n_list:
@@ -48,10 +48,10 @@ def ode_test():
 
 
 def temporal_convergence(N=256):
-    backend = Backend(use_gpu=False); xp = backend.xp
+    backend = Backend(); xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="periodic")
-    X, Y = grid.meshgrid(); k = 2*np.pi; q0 = np.sin(k*X)
+    X, Y = grid.meshgrid(); k = 2*np.pi; q0 = xp.sin(k*X)
     rhs_fn = lambda q: -1.0 * ccd.differentiate(q, 0)[0]
     T = 1.0; n_list = [10, 20, 40, 80, 160, 320, 640]
     results = []

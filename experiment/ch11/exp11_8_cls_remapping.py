@@ -33,7 +33,8 @@ OUT = experiment_dir(__file__)
 
 def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
     """Compare CLS conservative remapping vs LS interpolation."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
 
     for K in K_values:
@@ -44,13 +45,13 @@ def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
         eps = 1.5 / N
 
         # Interface: circle at center
-        phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
+        phi0 = xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
         grid.update_from_levelset(phi0, eps=0.06)
 
         ccd = CCDSolver(grid, backend, bc_type="wall")
         adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05)
 
-        psi0 = heaviside(np, phi0, eps)
+        psi0 = heaviside(xp, phi0, eps)
 
         # Uniform velocity (1, 0), one period T=1
         dt = 0.4 / N
@@ -59,13 +60,13 @@ def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
 
         # CLS with conservative remapping
         psi_cls = psi0.copy()
-        mass0_cls = float(np.sum(psi_cls))
+        mass0_cls = float(xp.sum(psi_cls))
 
         # LS with standard interpolation (no mass correction)
         psi_ls = psi0.copy()
-        mass0_ls = float(np.sum(psi_ls))
+        mass0_ls = float(xp.sum(psi_ls))
 
-        u = np.ones_like(X); v = np.zeros_like(Y)
+        u = xp.ones_like(X); v = xp.zeros_like(Y)
         vel = [u, v]
 
         for step in range(n_steps):
@@ -74,11 +75,11 @@ def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
 
             if (step + 1) % K == 0:
                 # Regenerate grid from current interface
-                phi_cur = eps * np.log(np.clip(psi_cls, 1e-12, 1 - 1e-12) /
-                                       np.clip(1 - psi_cls, 1e-12, 1 - 1e-12))
+                phi_cur = eps * xp.log(xp.clip(psi_cls, 1e-12, 1 - 1e-12) /
+                                       xp.clip(1 - psi_cls, 1e-12, 1 - 1e-12))
 
                 # CLS: conservative remapping (scale to preserve integral)
-                mass_before = float(np.sum(psi_cls))
+                mass_before = float(xp.sum(psi_cls))
                 # In actual implementation, grid.update_from_levelset + remap
                 # Here we simulate the mass correction
                 if mass_before > 0:
@@ -86,8 +87,8 @@ def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
 
                 # LS: no correction (just continue)
 
-        mass_err_cls = abs(float(np.sum(psi_cls)) - mass0_cls) / mass0_cls
-        mass_err_ls = abs(float(np.sum(psi_ls)) - mass0_ls) / mass0_ls
+        mass_err_cls = abs(float(xp.sum(psi_cls)) - mass0_cls) / mass0_cls
+        mass_err_ls = abs(float(xp.sum(psi_ls)) - mass0_ls) / mass0_ls
         improvement = mass_err_ls / mass_err_cls if mass_err_cls > 0 else float("inf")
 
         results.append({
