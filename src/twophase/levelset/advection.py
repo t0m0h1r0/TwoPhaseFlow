@@ -47,9 +47,22 @@ from __future__ import annotations
 import numpy as np
 from typing import List, TYPE_CHECKING
 
+from ..backend import fuse as _fuse
 from ..interfaces.levelset import ILevelSetAdvection
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
+
+
+@_fuse
+def _dccd_filter_stencil(fp, fp_p1, fp_m1, eps_d):
+    """Dissipative CCD filter (§5 eq:dccd_adv_filter):
+
+        F̃ᵢ = f'ᵢ + ε_d (f'ᵢ₊₁ − 2 f'ᵢ + f'ᵢ₋₁)
+
+    Pure-elementwise — fused into a single CUDA kernel on GPU. On CPU
+    (or when CuPy is unavailable) this runs as plain NumPy.
+    """
+    return fp + eps_d * (fp_p1 - 2.0 * fp + fp_m1)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -278,13 +291,26 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         eps_d: float = _EPS_D_ADV,
         mass_correction: bool = False,
     ):
-        self.xp = backend.xp
+        xp = backend.xp
+        self.xp = xp
         self._grid = grid
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
         self._ccd = ccd
         self._bc = bc
         self._eps_d = float(eps_d)
         self._mass_correction = mass_correction
+
+        self._dV = (xp.asarray(grid.cell_volumes())
+                    if mass_correction else None)
+        if not grid.uniform:
+            self._J_reshaped = []
+            for ax in range(grid.ndim):
+                shape = [1] * grid.ndim
+                shape[ax] = -1
+                self._J_reshaped.append(
+                    xp.asarray(grid.J[ax]).reshape(shape))
+        else:
+            self._J_reshaped = None
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -304,8 +330,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         xp = self.xp
 
         if self._mass_correction:
-            dV = xp.asarray(self._grid.cell_volumes())
-            M_old = float(xp.sum(psi * dV))
+            M_old = xp.sum(psi * self._dV)
 
         # TVD-RK3 with ψ ∈ [0,1] clamp after each stage
         # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
@@ -316,7 +341,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         )
 
         if self._mass_correction:
-            q_new = apply_mass_correction(xp, q_new, dV, M_old)
+            q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
 
         return q_new
 
@@ -342,11 +367,11 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
             if self._grid.uniform:
                 # Step 2: CCD first derivative f'_i ≈ ∂f/∂x_ax
                 fp, _ = self._ccd.differentiate(f, axis=ax)
-                # Step 3: Dissipative filter in x-space (uniform)
+                # Step 3: Dissipative filter in x-space (uniform), fused
                 fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
                 fp_p1 = fp_pad[_sl(2, n + 2)]
                 fp_m1 = fp_pad[_sl(0, n)]
-                F_tilde = fp + self._eps_d * (fp_p1 - 2.0 * fp + fp_m1)
+                F_tilde = _dccd_filter_stencil(fp, fp_p1, fp_m1, self._eps_d)
             else:
                 # Step 2: CCD derivative in ξ-space (no metric)
                 fp_xi, _ = self._ccd.differentiate(f, axis=ax,
@@ -355,14 +380,11 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
                 fp_xi_pad = _pad_bc(xp, fp_xi, ax, 1, self._bc)
                 fp_xi_p1 = fp_xi_pad[_sl(2, n + 2)]
                 fp_xi_m1 = fp_xi_pad[_sl(0, n)]
-                F_tilde_xi = (fp_xi
-                              + self._eps_d * (fp_xi_p1 - 2.0 * fp_xi
-                                               + fp_xi_m1))
+                F_tilde_xi = _dccd_filter_stencil(
+                    fp_xi, fp_xi_p1, fp_xi_m1, self._eps_d,
+                )
                 # ∂f/∂x = J · (∂f/∂ξ)
-                J_1d = xp.asarray(self._grid.J[ax])
-                shape_J = [1] * f.ndim
-                shape_J[ax] = -1
-                F_tilde = J_1d.reshape(shape_J) * F_tilde_xi
+                F_tilde = self._J_reshaped[ax] * F_tilde_xi
 
             # Step 4: accumulate −∂(ψu)/∂x_ax
             result -= F_tilde

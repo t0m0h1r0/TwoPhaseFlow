@@ -45,11 +45,13 @@ class SplitReinitializer(IReinitializer):
         for ax in range(grid.ndim):
             self._cn_factors.append(build_cn_factors(grid, eps, self.dtau, ax))
 
+        self._dV = self.xp.asarray(grid.cell_volumes())
+
     def reinitialize(self, psi):
         xp = self.xp
         q = xp.copy(psi)
-        dV = xp.asarray(self.grid.cell_volumes())
-        M_old = float(xp.sum(q * dV))
+        dV = self._dV
+        M_old = xp.sum(q * dV)
 
         for _ in range(self.n_steps):
             div_comp = dccd_compression_div(
