@@ -11,6 +11,7 @@ grid:
   LY: 1.0
   bc_type: wall
   alpha_grid: 2.0
+  use_local_eps: true
 
 physics:
   rho_l: 1.0

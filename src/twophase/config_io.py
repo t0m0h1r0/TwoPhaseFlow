@@ -48,6 +48,8 @@ class GridCfg:
     alpha_grid: float = 1.0       # interface-fitted concentration (1.0 = uniform)
     eps_g_factor: float = 2.0     # grid density Gaussian width factor
     dx_min_floor: float = 1e-6    # minimum cell width floor
+    use_local_eps: bool = False   # ε(x) = C_ε · h_local(x) for CSF
+    grid_rebuild_freq: int = 1    # rebuild grid every K steps (1 = every step)
 
 
 @dataclass
@@ -195,6 +197,8 @@ def _parse_grid(d: dict) -> GridCfg:
         alpha_grid=float(d.get("alpha_grid", 1.0)),
         eps_g_factor=float(d.get("eps_g_factor", 2.0)),
         dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
+        use_local_eps=bool(d.get("use_local_eps", False)),
+        grid_rebuild_freq=int(d.get("grid_rebuild_freq", 1)),
     )
 
 

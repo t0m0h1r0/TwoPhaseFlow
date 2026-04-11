@@ -69,6 +69,7 @@ class TwoPhaseNSSolver:
         eps_g_factor: float = 2.0,
         dx_min_floor: float = 1e-6,
         use_local_eps: bool = False,
+        grid_rebuild_freq: int = 1,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -76,6 +77,7 @@ class TwoPhaseNSSolver:
         self._alpha_grid = alpha_grid
         self._eps_factor = eps_factor
         self._use_local_eps = use_local_eps
+        self._rebuild_freq = max(1, int(grid_rebuild_freq))
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -115,6 +117,7 @@ class TwoPhaseNSSolver:
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             use_local_eps=getattr(g, "use_local_eps", False),
+            grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -373,8 +376,9 @@ class TwoPhaseNSSolver:
         if step_index % 2 == 0:
             psi = np.asarray(self._reinit.reinitialize(psi))
 
-        # ── 1b. Grid rebuild (interface-fitted) ────────────────────────
-        psi, u, v = self._rebuild_grid(psi, u, v)
+        # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
+        if self._alpha_grid > 1.0 and (step_index % self._rebuild_freq == 0):
+            psi, u, v = self._rebuild_grid(psi, u, v)
 
         rho = rho_g + (rho_l - rho_g) * psi
 

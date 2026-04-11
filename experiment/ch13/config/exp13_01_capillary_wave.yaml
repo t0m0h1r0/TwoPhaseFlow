@@ -10,6 +10,8 @@ grid:
   LY: 1.0
   bc_type: wall
   alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 20
 
 physics:
   rho_l:  10.0
