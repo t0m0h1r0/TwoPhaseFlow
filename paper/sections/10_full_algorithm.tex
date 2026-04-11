@@ -122,7 +122,11 @@ Step & 処理 & 手法 & 参照 \\
           $= (1/\rho)(D_x^{(2)}p + D_y^{(2)}p)
             - (D_x^{(1)}\rho/\rho^2)D_x^{(1)}p
             - (D_y^{(1)}\rho/\rho^2)D_y^{(1)}p$
-          （$\Ord{h^6}$；DC k=3 により実効 $\Ord{h^7}$（Dirichlet）/$\Ord{h^5}$（Neumann），§~\ref{sec:verify_split_ppe_dc}）
+          （演算子単体 $\Ord{h^6}$．
+          分相 PPE 適用時は DC $k{=}3$ により実効 $\Ord{h^7}$（Dirichlet）/$\Ord{h^5}$（Neumann）を達成する
+          ことが §~\ref{sec:verify_split_ppe_dc} で実証されているが，
+          一括 smoothed Heaviside 密度場では界面近傍で $\Ord{h^{1\text{--}2}}$ に劣化し
+          $\rho_l/\rho_g \geq 10$ では DC が発散する；§~\ref{sec:interface_crossing}）
 \end{itemize}
 \end{tcolorbox}
 
@@ -237,6 +241,15 @@ CSF 体積力 $(\kappa/We)\bnabla\psi$ を Predictor に含む
 $y$ 成分は $x \leftrightarrow y$ の対称形（付録~\ref{app:predictor_y}）．
 スタートアップ（$n=0$）のみ対流項を前進 Euler で代用（§~\ref{sec:ab2_ipc}，注意~\ref{warn:ab2_startup}）．
 ADI 分裂の実装詳細（陰的係数の選択，スウィープ形式）は付録~\ref{app:cn_adi_detail} 参照．
+
+\noindent\textbf{注意（移動界面 $+$ 表面張力での発散）：}
+表面張力あり（$\sigma > 0$）の移動界面では，本 Step の $-\bnabla p^n$ 項が
+界面の圧力ジャンプ $\Delta p = \sigma\kappa$ を横断して CCD ステンシル上で
+$\Ord{1}$ の打ち切り誤差を生じ，2 ステップで発散する
+（§~\ref{sec:galilean_invariance}，§~\ref{sec:coupling_limitations}）．
+この場合は分相 PPE 解法（§~\ref{sec:interface_crossing}）と
+HFE による $p^n$ の界面越し延長（式~\eqref{eq:p_extension_ipc}）への
+置換が必要である．
 
 % ── Step 6 ──────────────────────────────────────────────────────────────
 \paragraph{Step 6：圧力 Poisson 方程式の求解（IPC 増分法）}
