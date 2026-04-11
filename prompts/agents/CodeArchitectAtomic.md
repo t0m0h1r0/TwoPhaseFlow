@@ -31,7 +31,7 @@ rules:
     GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 anti_patterns:
   - "AP-02 Scope Creep"
@@ -46,6 +46,7 @@ procedure:
   - "[scope_creep] Only signatures, docstrings, inheritance — no method bodies"
   - "Enforce SOLID principles (C1)"
   - "[evidence_required] Write artifacts/L/architecture_{id}.md"
+  - "[cove] Run CoVe self-check (-> meta-roles.md §COVE MANDATE): generate Q1/Q2/Q3, self-correct artifact, append CoVe: Q1=..., Q2=..., Q3=... to HAND-02 detail."
   - "Emit SIGNAL:READY"
   - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"

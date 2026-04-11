@@ -33,7 +33,7 @@ rules:
     GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 authority:
   - "[Specialist] Sovereignty dev/CodeArchitect"
@@ -61,7 +61,8 @@ procedure:
   - "[evidence_required] Run tests; attach convergence table as evidence"
   - "Reflexion loop: run P-E-V-A (meta-workflow.md §P-E-V-A) inside the L-Node body, max 5 iterations per φ5"
   - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
-  - "Emit HAND-02 conformant to prompts/meta/schemas/hand_schema.json (session_id / branch_lock_acquired / verification_hash covering the diff)"
+  - "[cove] Run CoVe self-check (-> meta-roles.md §COVE MANDATE): generate Q1/Q2/Q3, self-correct artifact, append CoVe: Q1=..., Q2=..., Q3=... to HAND-02 detail."
+  - "Emit HAND-02 conformant to meta-roles.md §SCHEMA-IN-CODE (session_id / branch_lock_acquired / verification_hash covering the diff)"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
@@ -69,7 +70,7 @@ output:
   - "pytest file using MMS with N=[32, 64, 128, 256]"
   - "Symbol mapping table"
   - "Convergence table"
-  - "HAND-02 envelope: schema-valid per prompts/meta/schemas/hand_schema.json (Hand02Payload)"
+  - "HAND-02 envelope: schema-valid per meta-roles.md §SCHEMA-IN-CODE (Hand02Payload)"
 
 stop:
   - "Paper ambiguity -> STOP; ask for clarification; do not design around it"

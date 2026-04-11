@@ -42,7 +42,7 @@ rules:
     GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
     LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
     LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
-    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
+    HAND_SCHEMA:      "meta-roles.md §SCHEMA-IN-CODE"
 
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
@@ -61,14 +61,15 @@ procedure:
   - "[evidence_required] Attach verdict table classifying each finding"
   - "Hand off to PaperCompiler after applying any fix patch (BUILD-02 PASS required before HAND-02)"
   - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
-  - "Emit HAND-02 conformant to prompts/meta/schemas/hand_schema.json (session_id / branch_lock_acquired / verification_hash covering the patch)"
+  - "[cove] Run CoVe self-check (-> meta-roles.md §COVE MANDATE): generate Q1/Q2/Q3, self-correct artifact, append CoVe: Q1=..., Q2=..., Q3=... to HAND-02 detail."
+  - "Emit HAND-02 conformant to meta-roles.md §SCHEMA-IN-CODE (session_id / branch_lock_acquired / verification_hash covering the patch)"
   - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "LaTeX patch (diff-only; no full file rewrite)"
   - "Verdict table classifying each reviewer finding"
   - "For VERIFIED / LOGICAL_GAP: minimal fix with derivation shown"
-  - "HAND-02 envelope: schema-valid per prompts/meta/schemas/hand_schema.json (Hand02Payload)"
+  - "HAND-02 envelope: schema-valid per meta-roles.md §SCHEMA-IN-CODE (Hand02Payload)"
 
 stop:
   - "Ambiguous derivation -> STOP; route to ConsistencyAuditor"
