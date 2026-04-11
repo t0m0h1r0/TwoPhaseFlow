@@ -32,20 +32,20 @@ OUT = experiment_dir(__file__)
 
 # -- Test functions ----------------------------------------------------------
 
-def _sin_test(x, y):
+def _sin_test(x, y, xp):
     k = 2 * np.pi
-    f = np.sin(k * x) * np.sin(k * y)
-    fx = k * np.cos(k * x) * np.sin(k * y)
-    fy = k * np.sin(k * x) * np.cos(k * y)
-    fxx = -(k**2) * np.sin(k * x) * np.sin(k * y)
-    fyy = -(k**2) * np.sin(k * x) * np.sin(k * y)
+    f = xp.sin(k * x) * xp.sin(k * y)
+    fx = k * xp.cos(k * x) * xp.sin(k * y)
+    fy = k * xp.sin(k * x) * xp.cos(k * y)
+    fxx = -(k**2) * xp.sin(k * x) * xp.sin(k * y)
+    fyy = -(k**2) * xp.sin(k * x) * xp.sin(k * y)
     return f, (fx, fy), (fxx, fyy)
 
 
-def _exp_test(x, y):
-    sx, cx = np.sin(np.pi * x), np.cos(np.pi * x)
-    sy, cy = np.sin(np.pi * y), np.cos(np.pi * y)
-    ef = np.exp(sx) * np.exp(cy)
+def _exp_test(x, y, xp):
+    sx, cx = xp.sin(np.pi * x), xp.cos(np.pi * x)
+    sy, cy = xp.sin(np.pi * y), xp.cos(np.pi * y)
+    ef = xp.exp(sx) * xp.exp(cy)
     f = ef
     fx = np.pi * cx * ef
     fxx = ef * np.pi**2 * (-sx + cx**2)
@@ -57,7 +57,7 @@ def _exp_test(x, y):
 # -- Convergence study -------------------------------------------------------
 
 def run_convergence(test_func, bc_type, Ns):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     results = []
 
@@ -67,7 +67,8 @@ def run_convergence(test_func, bc_type, Ns):
         ccd = CCDSolver(grid, backend, bc_type=bc_type)
 
         X, Y = grid.meshgrid()
-        f_exact, (fx_ex, fy_ex), (fxx_ex, fyy_ex) = test_func(X, Y)
+        X, Y = xp.asarray(X), xp.asarray(Y)
+        f_exact, (fx_ex, fy_ex), (fxx_ex, fyy_ex) = test_func(X, Y, xp)
 
         d1x, d2x = ccd.differentiate(f_exact, axis=0)
         d1y, d2y = ccd.differentiate(f_exact, axis=1)
@@ -87,7 +88,7 @@ def run_convergence(test_func, bc_type, Ns):
 
 
 def run_nonuniform(test_func, Ns, alpha=2.0):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
     results = []
 
@@ -105,11 +106,14 @@ def run_nonuniform(test_func, Ns, alpha=2.0):
         # Rebuild CCD on non-uniform grid
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
-        f_exact, (fx_ex, _), (fxx_ex, _) = test_func(X, Y)
+        X, Y = xp.asarray(X), xp.asarray(Y)
+        f_exact, (fx_ex, _), (fxx_ex, _) = test_func(X, Y, xp)
 
         d1x, d2x = ccd.differentiate(f_exact, axis=0)
         s = slice(2, -2)
-        h_eff = float(np.mean([np.mean(grid.h[ax]) for ax in range(2)]))
+        h_eff = float(
+            sum(float(backend.to_host(grid.h[ax]).mean()) for ax in range(2)) / 2
+        )
 
         results.append({
             "N": N, "h": h_eff,
