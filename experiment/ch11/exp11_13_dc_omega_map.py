@@ -95,7 +95,7 @@ def dc_lu_omega(rhs, rho, drho_x, drho_y, ccd, backend, h, N, tol, maxiter, pin_
 
 
 def run_experiment():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     omegas = [0.1, 0.2, 0.3, 0.5, 0.7, 0.83]
     density_ratios = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
     grid_sizes = [32, 64]
@@ -106,6 +106,9 @@ def run_experiment():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         xp = backend.xp; X, Y = grid.meshgrid()
+        # DC loop uses scipy.sparse.spsolve (CPU-only); keep host copies for
+        # FD assembly and spsolve; eval_LH routes CCD through device.
+        X = backend.to_host(X); Y = backend.to_host(Y)
         p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
         pin_dof = (N//2)*(N+1)+(N//2)
         phi = np.sqrt((X-0.5)**2+(Y-0.5)**2) - 0.25; eps = 1.5*h

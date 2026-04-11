@@ -45,7 +45,8 @@ def single_vortex_field(X, Y, t, T):
 
 def test_dccd_sum_property(Ns=[64, 128, 256]):
     """Verify |sum(D_DCCD(psi*u))| for periodic and wall BC."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     results = []
     print("\n=== Test A: DCCD Sum Property ===")
 
@@ -55,21 +56,21 @@ def test_dccd_sum_property(Ns=[64, 128, 256]):
 
         # Smooth periodic field: sum of sines
         X, Y = grid.meshgrid()
-        psi = 0.5 + 0.3 * np.sin(2 * np.pi * X) * np.sin(4 * np.pi * Y)
-        u = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
-        v = -np.cos(2 * np.pi * X) * np.sin(2 * np.pi * Y)
+        psi = 0.5 + 0.3 * xp.sin(2 * np.pi * X) * xp.sin(4 * np.pi * Y)
+        u = xp.sin(2 * np.pi * X) * xp.cos(2 * np.pi * Y)
+        v = -xp.cos(2 * np.pi * X) * xp.sin(2 * np.pi * Y)
 
         # Periodic BC
         ccd_p = CCDSolver(grid, backend, bc_type="periodic")
         adv_p = DissipativeCCDAdvection(backend, grid, ccd_p, bc="periodic")
         rhs_p = adv_p._rhs(psi, [u, v])
-        sum_periodic = abs(float(np.sum(rhs_p)))
+        sum_periodic = abs(float(xp.sum(rhs_p)))
 
         # Wall BC
         ccd_w = CCDSolver(grid, backend, bc_type="wall")
         adv_w = DissipativeCCDAdvection(backend, grid, ccd_w, bc="zero")
         rhs_w = adv_w._rhs(psi, [u, v])
-        sum_wall = abs(float(np.sum(rhs_w)))
+        sum_wall = abs(float(xp.sum(rhs_w)))
 
         results.append({
             "N": N, "h": 1.0/N,
@@ -86,14 +87,15 @@ def test_dccd_sum_property(Ns=[64, 128, 256]):
 def run_single_vortex(N, reinit_freq, unified_dccd, mass_correction,
                       backend, label=""):
     """Run single vortex test and return metrics."""
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
     eps = 1.5 / N
     X, Y = grid.meshgrid()
 
-    phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
-    psi0 = heaviside(np, phi0, eps)
+    phi0 = xp.sqrt((X - 0.5)**2 + (Y - 0.75)**2) - 0.15
+    psi0 = heaviside(xp, phi0, eps)
     adv = DissipativeCCDAdvection(
         backend, grid, ccd, bc="zero", eps_d=0.05, mass_correction=True,
     )
@@ -105,7 +107,7 @@ def run_single_vortex(N, reinit_freq, unified_dccd, mass_correction,
     T = 8.0; dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
     psi = psi0.copy()
-    mass0 = float(np.sum(psi))
+    mass0 = float(xp.sum(psi))
 
     for step in range(n_steps):
         u, v = single_vortex_field(X, Y, step * dt, T)
@@ -113,15 +115,15 @@ def run_single_vortex(N, reinit_freq, unified_dccd, mass_correction,
         if reinit_freq > 0 and (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)
 
-    mass_err = abs(float(np.sum(psi)) - mass0) / max(mass0, 1e-15)
-    err_L2 = float(np.sqrt(np.mean((psi - psi0)**2)))
-    err_Linf = float(np.max(np.abs(psi - psi0)))
+    mass_err = abs(float(xp.sum(psi)) - mass0) / max(mass0, 1e-15)
+    err_L2 = float(xp.sqrt(xp.mean((psi - psi0)**2)))
+    err_Linf = float(xp.max(xp.abs(psi - psi0)))
     return {"L2": err_L2, "Linf": err_Linf, "mass_err": mass_err}
 
 
 def test_convergence(Ns=[64, 128, 256], reinit_freq=10):
     """Test B: grid convergence for 4 configurations."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     configs = [
         ("split",      False, False),
         ("split+mc",   False, True),
@@ -146,7 +148,7 @@ def test_convergence(Ns=[64, 128, 256], reinit_freq=10):
 
 def test_reinit_sensitivity(N=64, freqs=[1, 2, 5, 10, 20]):
     """Test C: mass error vs reinit frequency."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     configs = [
         ("split+mc",   False, True),
         ("unified+mc", True,  True),

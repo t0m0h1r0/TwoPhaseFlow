@@ -159,7 +159,7 @@ def gmres_fd_precond(rhs_flat, rho, drho_x, drho_y, ccd, backend,
 # ── Experiment ─────────────────────────────────────────────────────────────
 
 def run_experiment():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     density_ratios = [1, 2, 5, 10, 50, 100, 1000]
     grid_sizes = [32, 64]
     tol = 1e-8
@@ -173,6 +173,9 @@ def run_experiment():
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         xp = backend.xp; X, Y = grid.meshgrid()
+        # DC/GMRES loops use scipy.sparse (CPU-only); keep host copies.
+        # eval_LH routes CCD through device via xp.asarray + to_host.
+        X = backend.to_host(X); Y = backend.to_host(Y)
         p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
         shape = p_exact.shape
         pin_dof = (N // 2) * (N + 1) + (N // 2)
