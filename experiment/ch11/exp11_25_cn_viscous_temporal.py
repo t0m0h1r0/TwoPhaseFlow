@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
 from scipy.sparse.linalg import gmres, LinearOperator
-from twophase.backend import Backend
+from twophase.backend import Backend  # scipy.sparse.linalg.gmres + LinearOperator stay on CPU
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -47,27 +47,30 @@ def exact_solution(X, Y, t):
 
 # -- CN time stepper via fixed-point iteration ---------------------------------
 
-def ccd_laplacian(u, ccd):
-    """Compute Laplacian = d2x + d2y using CCD."""
-    _, d2x = ccd.differentiate(u, axis=0)
-    _, d2y = ccd.differentiate(u, axis=1)
-    return d2x + d2y
+def ccd_laplacian(u, ccd, backend):
+    """Compute Laplacian = d2x + d2y using CCD (device-aware)."""
+    xp = backend.xp
+    u_dev = xp.asarray(u)
+    _, d2x = ccd.differentiate(u_dev, axis=0)
+    _, d2y = ccd.differentiate(u_dev, axis=1)
+    return np.asarray(backend.to_host(d2x + d2y))
 
 
-def cn_step(u, ccd, dt):
+def cn_step(u, ccd, backend, dt):
     """One Crank-Nicolson time step via GMRES.
 
     Solves:  (I - dt*nu/2 * L) u^{n+1} = u^n + (dt*nu/2) * L u^n
-    using GMRES with CCD Laplacian as a matrix-free operator.
+    using scipy GMRES (always CPU) with CCD Laplacian as matrix-free operator.
+    On GPU backend, matvec transfers u to device for CCD then back to host.
     """
     shape = u.shape
     n = u.size
-    lap_n = ccd_laplacian(u, ccd)
+    lap_n = ccd_laplacian(u, ccd, backend)
     rhs_2d = u + 0.5 * dt * NU * lap_n
 
     def matvec(v_flat):
         v = v_flat.reshape(shape)
-        lap_v = ccd_laplacian(v, ccd)
+        lap_v = ccd_laplacian(v, ccd, backend)
         return (v - 0.5 * dt * NU * lap_v).flatten()
 
     A_op = LinearOperator((n, n), matvec=matvec)
@@ -76,20 +79,22 @@ def cn_step(u, ccd, dt):
     return u_new_flat.reshape(shape)
 
 
-def euler_step(u, ccd, dt):
+def euler_step(u, ccd, backend, dt):
     """One explicit (forward) Euler time step."""
-    lap = ccd_laplacian(u, ccd)
+    lap = ccd_laplacian(u, ccd, backend)
     return u + dt * NU * lap
 
 
 # -- Test A: temporal convergence ----------------------------------------------
 
 def temporal_convergence():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
-    X, Y = grid.meshgrid()
+    X_dev, Y_dev = grid.meshgrid()
+    X = np.asarray(backend.to_host(X_dev))
+    Y = np.asarray(backend.to_host(Y_dev))
 
     u0 = exact_solution(X, Y, 0.0)
     u_ref = exact_solution(X, Y, T_FINAL)
@@ -101,7 +106,7 @@ def temporal_convergence():
         dt = T_FINAL / K
         u = u0.copy()
         for _ in range(K):
-            u = cn_step(u, ccd, dt)
+            u = cn_step(u, ccd, backend, dt)
         err = float(np.sqrt(np.mean((u - u_ref)**2)))
         results.append({"K": K, "dt": dt, "L2": err})
         print(f"  K={K:>4}, dt={dt:.4e}: L2={err:.4e}")
@@ -118,11 +123,13 @@ def temporal_convergence():
 # -- Test B: unconditional stability -------------------------------------------
 
 def stability_test():
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
-    X, Y = grid.meshgrid()
+    X_dev, Y_dev = grid.meshgrid()
+    X = np.asarray(backend.to_host(X_dev))
+    Y = np.asarray(backend.to_host(Y_dev))
 
     h = 1.0 / N_GRID
     u0 = exact_solution(X, Y, 0.0)
@@ -141,7 +148,7 @@ def stability_test():
         stable = True
         for _ in range(n_steps):
             try:
-                u = cn_step(u, ccd, dt)
+                u = cn_step(u, ccd, backend, dt)
             except Exception:
                 stable = False
                 break
@@ -156,7 +163,7 @@ def stability_test():
         u = u0.copy()
         stable = True
         for _ in range(n_steps):
-            u = euler_step(u, ccd, dt)
+            u = euler_step(u, ccd, backend, dt)
             if not np.all(np.isfinite(u)):
                 stable = False
                 break

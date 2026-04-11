@@ -26,6 +26,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from twophase.backend import Backend
 from twophase.ns_pipeline import TwoPhaseNSSolver
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
@@ -46,12 +47,13 @@ DT = 1e-3
 N_STEPS = 100
 
 
-def run_case(alpha_grid: float, label: str) -> dict:
+def run_case(alpha_grid: float, label: str, backend: "Backend") -> dict:
     """Run static droplet with given alpha_grid, return diagnostics."""
     solver = TwoPhaseNSSolver(
         N, N, LX, LY,
         bc_type="wall",
         alpha_grid=alpha_grid,
+        use_gpu=backend.is_gpu(),
     )
     X, Y = solver.X, solver.Y
     R = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
@@ -161,11 +163,12 @@ def main():
     print("  [11-29] NS pipeline + per-timestep grid rebuild")
     print("=" * 60)
 
+    backend = Backend()
     print(f"\n--- Uniform (alpha=1.0) ---")
-    res_uni = run_case(1.0, "uniform")
+    res_uni = run_case(1.0, "uniform", backend)
 
     print(f"\n--- Non-uniform (alpha=2.0) ---")
-    res_nu = run_case(2.0, "non-uniform")
+    res_nu = run_case(2.0, "non-uniform", backend)
 
     # Summary table
     print("\n" + "=" * 70)
