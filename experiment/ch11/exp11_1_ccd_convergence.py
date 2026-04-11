@@ -67,7 +67,6 @@ def run_convergence(test_func, bc_type, Ns):
         ccd = CCDSolver(grid, backend, bc_type=bc_type)
 
         X, Y = grid.meshgrid()
-        X, Y = xp.asarray(X), xp.asarray(Y)
         f_exact, (fx_ex, fy_ex), (fxx_ex, fyy_ex) = test_func(X, Y, xp)
 
         d1x, d2x = ccd.differentiate(f_exact, axis=0)
@@ -106,7 +105,6 @@ def run_nonuniform(test_func, Ns, alpha=2.0):
         # Rebuild CCD on non-uniform grid
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
-        X, Y = xp.asarray(X), xp.asarray(Y)
         f_exact, (fx_ex, _), (fxx_ex, _) = test_func(X, Y, xp)
 
         d1x, d2x = ccd.differentiate(f_exact, axis=0)
