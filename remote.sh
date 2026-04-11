@@ -27,9 +27,12 @@ USAGE
 }
 
 # ── Push codebase to remote (excludes results/) ──────────────────────────────
+# Uses --checksum so a parallel worktree can't silently win a mtime+size
+# tie. (CHK-120: race between worktrees pushing the same paths produced
+# stale remote code that invalidated Round 2-5 GPU measurements.)
 cmd_push() {
     echo "==> Pushing codebase to ${REMOTE_HOST}:${REMOTE_DIR}"
-    rsync -avz --delete \
+    rsync -avz --delete --checksum \
         "${RSYNC_EXCLUDE[@]}" \
         --exclude='experiment/*/results/' \
         "$SCRIPT_DIR/" \

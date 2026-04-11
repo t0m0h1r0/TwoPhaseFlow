@@ -41,6 +41,7 @@ class Backend:
             import cupy as cp
             self.xp = cp
             self.device = "gpu"
+            self._configure_cuda_pools(cp)
         else:
             if use_gpu:
                 print(
@@ -51,6 +52,27 @@ class Backend:
             import numpy as np
             self.xp = np
             self.device = "cpu"
+
+    @staticmethod
+    def _configure_cuda_pools(cp):
+        limit_gb = os.environ.get("TWOPHASE_CUDA_POOL_LIMIT_GB")
+        if limit_gb is not None:
+            try:
+                cp.get_default_memory_pool().set_limit(
+                    size=int(float(limit_gb) * (1024 ** 3))
+                )
+            except Exception as e:
+                print(
+                    f"WARNING: TWOPHASE_CUDA_POOL_LIMIT_GB={limit_gb} "
+                    f"ignored ({e})",
+                    file=sys.stderr,
+                )
+        try:
+            cp.cuda.set_pinned_memory_allocator(
+                cp.cuda.PinnedMemoryPool().malloc
+            )
+        except Exception:
+            pass
 
     @staticmethod
     def _cupy_available() -> bool:
@@ -172,3 +194,28 @@ class Backend:
 
     def __repr__(self) -> str:
         return f"Backend(device='{self.device}')"
+
+
+# ── Module-level cupy.fuse dispatch ──────────────────────────────────────
+
+_FUSE_IMPL = None
+
+
+def fuse(fn):
+    """``cupy.fuse`` decorator on GPU-capable installs, identity on CPU.
+
+    Lazy one-time dispatch. CuPy's fuse wrapper is documented to fall back
+    to eager Python evaluation when called with NumPy inputs, so on
+    NumPy-only CI this is bit-exact with the unfused source.
+
+    Used to collapse short elementwise chains (e.g. the DCCD filter
+    stencil) into a single CUDA kernel launch on the GPU backend.
+    """
+    global _FUSE_IMPL
+    if _FUSE_IMPL is None:
+        try:
+            import cupy as _cp
+            _FUSE_IMPL = _cp.fuse
+        except Exception:
+            _FUSE_IMPL = lambda f: f  # noqa: E731
+    return _FUSE_IMPL(fn)

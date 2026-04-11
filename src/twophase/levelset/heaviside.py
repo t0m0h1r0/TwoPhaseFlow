@@ -138,22 +138,45 @@ def invert_heaviside(xp, psi, eps: float):
     return phi
 
 
-def apply_mass_correction(xp, q, dV, M_target: float):
+def apply_mass_correction(xp, q, dV, M_target):
     """Interface-weighted mass correction (WIKI-T-027).
 
     Adjusts q so that ∫q dV = M_target, distributing the correction
     proportionally to w = 4q(1−q) (peaked at the interface).
+
+    M_target accepts float, numpy scalar, or 0-d array — kept device-side
+    throughout to avoid host sync on the GPU backend.
 
     Parameters
     ----------
     xp       : array namespace
     q        : array — CLS field ψ ∈ [0, 1]
     dV       : array or scalar — cell volumes
-    M_target : float — target mass ∫ψ dV
+    M_target : float | 0-d array — target mass ∫ψ dV
 
     Returns
     -------
     q_corrected : array — mass-corrected and clipped to [0, 1]
+    """
+    M_new = xp.sum(q * dV)                           # 0-d
+    w = 4.0 * q * (1.0 - q)
+    W = xp.sum(w * dV)                               # 0-d
+    # Preserve legacy division order for bit-exactness: (M - M_new) / W,
+    # NOT (M - M_new) * (1/W) — the latter introduces an extra rounding
+    # per call that compounds over long runs. W_safe avoids 0/0 in the
+    # unused branch; gate zeroes the correction when W <= 1e-12.
+    W_safe = xp.where(W > 1e-12, W, 1.0)
+    ratio = (xp.asarray(M_target) - M_new) / W_safe
+    gate = xp.where(W > 1e-12, 1.0, 0.0)
+    q_new = q + (gate * ratio) * w
+    return xp.clip(q_new, 0.0, 1.0)
+
+
+def apply_mass_correction_legacy(xp, q, dV, M_target: float):
+    """Legacy float-gated implementation (pre-CuPy sync removal).
+
+    DO NOT DELETE — reference implementation. Reinstate if any bit-exact
+    regression appears on the NumPy path.
     """
     M_new = float(xp.sum(q * dV))
     w = 4.0 * q * (1.0 - q)

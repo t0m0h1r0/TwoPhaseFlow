@@ -194,42 +194,58 @@ class CCDSolver:
         batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
         f = f.reshape(n_pts, batch_size)         # (N+1, batch)
 
-        # Build interior RHS
-        rhs = xp.zeros((n_int, 2, batch_size))
-        for idx in range(n_int):
-            i = idx + 1
-            rhs[idx, 0, :] = (_A1 / h) * (f[i + 1] - f[i - 1])
-            rhs[idx, 1, :] = (_A2 / (h * h)) * (f[i - 1] - 2.0 * f[i] + f[i + 1])
+        # Build interior RHS — vectorised over interior nodes i=1..n_int.
+        # Interior index idx=0..n_int-1 maps to node i=idx+1, so
+        #   f[i-1] → f[0:n_int],  f[i] → f[1:n_int+1],  f[i+1] → f[2:n_int+2].
+        f_m1 = f[0:n_int]
+        f_0  = f[1:n_int + 1]
+        f_p1 = f[2:n_int + 2]
+        d1_rhs = (_A1 / h) * (f_p1 - f_m1)                        # (n_int, batch)
+        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)      # (n_int, batch)
+        rhs = xp.stack((d1_rhs, d2_rhs), axis=1)                  # (n_int, 2, batch)
 
-        # Boundary values (compact or prescribed)
-        fp0, fpp0 = self._left_boundary(info, f, h, bc_left)
-        fpN, fppN = self._right_boundary(info, f, h, N, bc_right)
+        # Boundary values — each returns a (2, batch) stacked [d1, d2]
+        # contribution, pre-stacked so the subtraction + ghost recovery
+        # below can use batched (2,2) @ (2,batch) matmuls.
+        bc_lo = self._left_boundary(info, f, h, bc_left)                 # (2, batch)
+        bc_hi = self._right_boundary(info, f, h, N, bc_right)            # (2, batch)
 
-        # Subtract boundary coupling from first and last interior RHS rows
-        L0 = xp.asarray(info['L0'])
-        UN = xp.asarray(info['UN'])
-        rhs[0, 0, :] -= L0[0, 0] * fp0 + L0[0, 1] * fpp0
-        rhs[0, 1, :] -= L0[1, 0] * fp0 + L0[1, 1] * fpp0
-        rhs[n_int - 1, 0, :] -= UN[0, 0] * fpN + UN[0, 1] * fppN
-        rhs[n_int - 1, 1, :] -= UN[1, 0] * fpN + UN[1, 1] * fppN
+        # Subtract boundary coupling from the first and last interior rows:
+        # one (2,2) @ (2,batch) matmul per side, using the device-cached
+        # L0_dev / UN_dev blocks. Was 4 scalar-indexed -= ops per side.
+        rhs[0]  -= info['L0_dev'] @ bc_lo                                # (2, batch)
+        rhs[-1] -= info['UN_dev'] @ bc_hi                                # (2, batch)
 
-        # Solve block tridiagonal
-        sol = info['solver'].solve(rhs)           # (n_int, 2, batch)
+        # Solve the (2·n_int × 2·n_int) dense system.
+        # GPU path (CHK-119): A_inv_dev @ rhs_flat — one cuBLAS DGEMM
+        #   (~57 us on RTX 3080 Ti vs ~989 us for lu_solve; cuSOLVER
+        #   dispatch overhead dominated the cost). A_inv_dev is computed
+        #   once at construction in _build_axis_solver.
+        # CPU path: retain lu_solve (scipy triangular solve) for PR-5
+        #   CPU bit-exactness — matmul rounding differs from back-subst.
+        rhs_flat = rhs.reshape(2 * n_int, -1)                            # (2·n_int, batch)
+        if self.backend.device == "gpu":
+            x_flat = info['A_inv_dev'] @ rhs_flat                        # (2·n_int, batch)
+        else:
+            x_flat = self.backend.linalg.lu_solve(
+                (info['lu'], info['piv']), rhs_flat
+            )
+        sol = x_flat.reshape(n_int, 2, -1)                               # (n_int, 2, batch)
 
-        # Assemble full derivative arrays
-        d1_flat = xp.zeros((n_pts, batch_size))
-        d2_flat = xp.zeros((n_pts, batch_size))
-        d1_flat[1:-1] = sol[:, 0, :]
-        d2_flat[1:-1] = sol[:, 1, :]
+        # Assemble full derivative arrays into a single (2, n_pts, batch)
+        # buffer — channel 0 = d1, channel 1 = d2. Using xp.empty instead
+        # of xp.zeros because the full array is overwritten below.
+        out = xp.empty((2, n_pts, batch_size))
+        out[:, 1:-1, :] = sol.transpose(1, 0, 2)                         # (2, n_int, batch)
 
-        # Recover boundary values from compact-BC expressions
-        M_l = xp.asarray(info['bc_left']['M'])
-        d1_flat[0] = M_l[0, 0] * d1_flat[1] + M_l[0, 1] * d2_flat[1] + fp0
-        d2_flat[0] = M_l[1, 0] * d1_flat[1] + M_l[1, 1] * d2_flat[1] + fpp0
+        # Recover boundary values at i=0 and i=N from compact-BC expressions:
+        # [d1_0, d2_0] = M_left @ [d1_1, d2_1] + [fp0, fpp0]
+        # Batched (2,2) @ (2,batch) matmul + (2,batch) add → one update.
+        out[:, 0, :] = info['M_left_dev']  @ out[:, 1, :]     + bc_lo
+        out[:, N, :] = info['M_right_dev'] @ out[:, N - 1, :] + bc_hi
 
-        M_r = xp.asarray(info['bc_right']['M'])
-        d1_flat[N] = M_r[0, 0] * d1_flat[N-1] + M_r[0, 1] * d2_flat[N-1] + fpN
-        d2_flat[N] = M_r[1, 0] * d1_flat[N-1] + M_r[1, 1] * d2_flat[N-1] + fppN
+        d1_flat = out[0]
+        d2_flat = out[1]
 
         # Restore original shape
         d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
@@ -289,6 +305,96 @@ class CCDSolver:
         lower[0] = np.zeros((2, 2))
 
         # Absorb right boundary (i=N-1 row couples with i=N)
+        diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
+        upper[-1] = np.zeros((2, 2))
+
+        # Assemble the (2·n_int × 2·n_int) block-banded matrix and factor
+        # once on the active device. Same layout convention as
+        # _build_axis_solver_periodic: row 2i / 2i+1 correspond to d1 / d2
+        # at interior node i+1.
+        A_host = np.zeros((2 * n_int, 2 * n_int))
+        for i in range(n_int):
+            A_host[2*i:2*i+2, 2*i:2*i+2] = diag[i]
+            if i >= 1:
+                A_host[2*i:2*i+2, 2*(i-1):2*(i-1)+2] = lower[i]
+            if i <= n_int - 2:
+                A_host[2*i:2*i+2, 2*(i+1):2*(i+1)+2] = upper[i]
+
+        A_dev = self.xp.asarray(A_host)
+        lu, piv = self.backend.linalg.lu_factor(A_dev)
+
+        # Round 5 (CHK-119): explicit inverse A_inv_dev = A^{-1} cached on
+        # device. Computed once at construction; the GPU hot path uses
+        # A_inv_dev @ rhs_flat (one cuBLAS DGEMM, ~57 us on RTX 3080 Ti)
+        # instead of lu_solve (~989 us, cuSOLVER dispatch overhead dominated).
+        # CPU path keeps lu_solve to preserve PR-5 CPU bit-exactness.
+        # lu / piv kept in info dict for _build_axis_solver_legacy + audit.
+        xp = self.xp
+        if self.backend.device == "gpu":
+            A_inv_dev = self.backend.linalg.lu_solve(
+                (lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype)
+            )
+        else:
+            A_inv_dev = None
+
+        # Round 4 (CHK-118): cache the tiny static boundary coefficients on
+        # device so the hot path never re-uploads them per CCD call. Kept
+        # alongside the numpy originals so _build_axis_solver_legacy and the
+        # _left_boundary_legacy / _right_boundary_legacy helpers still work.
+        info_dev = {
+            'A_inv_dev':      A_inv_dev,
+            'L0_dev':         xp.asarray(L0),
+            'UN_dev':         xp.asarray(UN),
+            'M_left_dev':     xp.asarray(bc_left['M']),
+            'M_right_dev':    xp.asarray(bc_right['M']),
+            'c_I_left_dev':   xp.asarray(bc_left['c_I']),
+            'c_II_left_dev':  xp.asarray(bc_left['c_II']),
+            'c_I_right_dev':  xp.asarray(bc_right['c_I']),
+            'c_II_right_dev': xp.asarray(bc_right['c_II']),
+            'n_I_left':       len(bc_left['c_I']),
+            'n_II_left':      len(bc_left['c_II']),
+            'n_I_right':      len(bc_right['c_I']),
+            'n_II_right':     len(bc_right['c_II']),
+        }
+
+        return {
+            'lu': lu,
+            'piv': piv,
+            'h': h,
+            'N': N,
+            'n_int': n_int,
+            'L0': L0,
+            'UN': UN,
+            'bc_left': bc_left,
+            'bc_right': bc_right,
+            **info_dev,
+        }
+
+    # DO NOT DELETE — CHK-117 legacy reference.
+    # Pre-dense-LU block-Thomas path retained per C2 (never delete tested
+    # code). Not wired to any call site; kept for auditability + rollback.
+    # Uses BlockTridiagSolver — which is why the import at the top stays.
+    def _build_axis_solver_legacy(self, n_pts: int, h: float) -> dict:
+        N = n_pts - 1
+        n_int = N - 1
+        assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
+
+        bc_left = _boundary_coeffs_left(h, n_pts)
+        bc_right = _boundary_coeffs_right(h, n_pts)
+
+        L0 = np.array([[_ALPHA1, _B1 * h],
+                        [_B2 / h, _BETA2]])
+        UN = np.array([[_ALPHA1, -_B1 * h],
+                        [-_B2 / h, _BETA2]])
+
+        diag  = [np.eye(2) for _ in range(n_int)]
+        lower = [np.array([[_ALPHA1, _B1 * h],
+                            [_B2 / h, _BETA2]]) for _ in range(n_int)]
+        upper = [np.array([[_ALPHA1, -_B1 * h],
+                            [-_B2 / h, _BETA2]]) for _ in range(n_int)]
+
+        diag[0] = diag[0] + lower[0] @ bc_left['M']
+        lower[0] = np.zeros((2, 2))
         diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
         upper[-1] = np.zeros((2, 2))
 
@@ -399,42 +505,81 @@ class CCDSolver:
     # ── Boundary helper methods ───────────────────────────────────────────
 
     def _left_boundary(self, info, f, h, bc_left_override):
-        """Compute the data-dependent part of the left boundary value."""
+        """Compute the data-dependent part of the left boundary value.
+
+        Returns a ``(2, batch)`` stacked array ``[fp0, fpp0]`` — pre-stacked
+        so downstream boundary-subtraction and ghost-recovery math can use
+        a single matmul rather than 4 scalar-indexed ops.
+        """
+        xp = self.xp
+        if bc_left_override is not None:
+            batch = f.shape[1]
+            fp0  = xp.full(batch, float(bc_left_override[0]))
+            fpp0 = xp.full(batch, float(bc_left_override[1]))
+            return xp.stack((fp0, fpp0))                      # (2, batch)
+
+        # Vectorised contraction: (n,) device vector @ (n, batch) → (batch,).
+        # The coefficients are cached on device in _build_axis_solver.
+        c_I  = info['c_I_left_dev']                           # (4,)
+        c_II = info['c_II_left_dev']                          # (4 or 6,)
+        n_II = info['n_II_left']
+        R_I  = c_I  @ f[:4]                                   # (batch,)
+        R_II = c_II @ f[:n_II]                                # (batch,)
+        return xp.stack((R_I, R_II))                          # (2, batch)
+
+    def _right_boundary(self, info, f, h, N, bc_right_override):
+        """Compute the data-dependent part of the right boundary value.
+
+        Returns a ``(2, batch)`` stacked array ``[fpN, fppN]`` — same
+        convention as :meth:`_left_boundary`.
+        """
+        xp = self.xp
+        if bc_right_override is not None:
+            batch = f.shape[1]
+            fpN  = xp.full(batch, float(bc_right_override[0]))
+            fppN = xp.full(batch, float(bc_right_override[1]))
+            return xp.stack((fpN, fppN))                      # (2, batch)
+
+        # The right stencil uses f[N], f[N-1], f[N-2], ..., so build a
+        # reversed view and contract the same way as the left side.
+        c_I_r  = info['c_I_right_dev']                        # (4,)
+        c_II_r = info['c_II_right_dev']                       # (4 or 6,)
+        n_II_r = info['n_II_right']
+        f_rev = f[N::-1]                                      # view, stride -1
+        R_I_r  = c_I_r  @ f_rev[:4]                           # (batch,)
+        R_II_r = c_II_r @ f_rev[:n_II_r]                      # (batch,)
+        return xp.stack((R_I_r, R_II_r))                      # (2, batch)
+
+    # DO NOT DELETE — CHK-118 legacy reference.
+    # Pre-matmul scalar-gather boundary helpers. Retained per C2.
+    def _left_boundary_legacy(self, info, f, h, bc_left_override):
         xp = self.xp
         if bc_left_override is not None:
             batch = f.shape[1]
             fp0  = xp.full(batch, float(bc_left_override[0]))
             fpp0 = xp.full(batch, float(bc_left_override[1]))
             return fp0, fpp0
-
         bc = info['bc_left']
         c_I  = xp.asarray(bc['c_I'])
         c_II = xp.asarray(bc['c_II'])
         R_I  = (c_I[0]*f[0] + c_I[1]*f[1] + c_I[2]*f[2] + c_I[3]*f[3])
         R_II = sum(c_II[k] * f[k] for k in range(len(bc['c_II'])))
-        # Eq-I-bc gives fp0; Eq-II-bc is standalone (no fp1/fpp1 coupling)
-        fp0  = R_I
-        fpp0 = R_II
-        return fp0, fpp0
+        return R_I, R_II
 
-    def _right_boundary(self, info, f, h, N, bc_right_override):
+    def _right_boundary_legacy(self, info, f, h, N, bc_right_override):
         xp = self.xp
         if bc_right_override is not None:
             batch = f.shape[1]
             fpN  = xp.full(batch, float(bc_right_override[0]))
             fppN = xp.full(batch, float(bc_right_override[1]))
             return fpN, fppN
-
         bc = info['bc_right']
         c_I_r  = xp.asarray(bc['c_I'])
         c_II_r = xp.asarray(bc['c_II'])
         R_I_r  = (c_I_r[0]*f[N] + c_I_r[1]*f[N-1]
                   + c_I_r[2]*f[N-2] + c_I_r[3]*f[N-3])
         R_II_r = sum(c_II_r[k] * f[N - k] for k in range(len(bc['c_II'])))
-        # Eq-I-bc gives fpN; Eq-II-bc is standalone (no fp_{N-1}/fpp_{N-1} coupling)
-        fpN  = R_I_r
-        fppN = R_II_r
-        return fpN, fppN
+        return R_I_r, R_II_r
 
     # ── Non-uniform metric transform ──────────────────────────────────────
 
