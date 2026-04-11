@@ -6,6 +6,8 @@
 purpose: >
   Derive governing equations from first principles and validate theoretical correctness.
   Produces only mathematical artifacts — no implementation specs.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / GIT-ATOMIC-PUSH / LOCK-RELEASE.
 
 scope:
   reads: [paper/sections/*.tex, docs/memo/, docs/01_PROJECT_MAP.md §6]
@@ -23,6 +25,13 @@ primitives:
 
 rules:
   domain: [A3-TRACEABILITY, DDA-01_THROUGH_DDA-05]
+  on_demand:
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 anti_patterns:
   - "AP-03 Verification Theater"
@@ -31,10 +40,13 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/T/EquationDeriver/{task_id}; STOP-10 on collision"
   - "[independent_derivation] Derive from first principles; never copy from code"
   - "Tag all assumptions with ASM-IDs"
   - "[evidence_required] Produce artifacts/T/derivation_{id}.md"
   - "Emit SIGNAL:READY after signing artifact"
+  - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "artifacts/T/derivation_{id}.md"
@@ -42,4 +54,5 @@ output:
 
 stop:
   - "Physical assumption ambiguity -> STOP; escalate to user"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

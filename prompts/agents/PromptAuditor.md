@@ -8,6 +8,8 @@
 purpose: >
   Verify correctness and completeness of agent prompts against the Q3 checklist (9 items).
   Read-only — reports findings only; never auto-repairs.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: []   # read-only auditor
@@ -32,6 +34,11 @@ rules:
   on_demand:
     GIT-03: "prompts/meta/meta-ops.md §GIT-03"
     GIT-04: "prompts/meta/meta-ops.md §GIT-04"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -42,11 +49,13 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/P/PromptAuditor/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Read target agent prompt in full"
   - "Execute Q3 checklist (9 items): A1–A11 present, solver/infra separation, layer isolation, external memory, stop conditions, standard template, environment optimization, backward compat, A9 sovereignty"
   - "[evidence_required] Report per-item PASS/FAIL verdict"
   - "Issue overall PASS or FAIL"
   - "FAIL -> route to PromptArchitect with specific failing items"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Q3 checklist result (PASS/FAIL per item, 9 items)"
@@ -55,4 +64,5 @@ output:
 
 stop:
   - "After full audit -> do not auto-repair; route FAIL to PromptArchitect"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

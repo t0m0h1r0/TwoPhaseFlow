@@ -7,6 +7,8 @@ purpose: >
   Senior numerical verifier. Interprets test outputs, diagnoses numerical failures,
   and determines root cause (code bug vs. paper error). Issues formal verdicts only.
   Never generates patches or proposes fixes.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [docs/02_ACTIVE_LEDGER.md]
@@ -34,6 +36,11 @@ rules:
     TEST-01: "prompts/meta/meta-ops.md §TEST-01"
     TEST-02: "prompts/meta/meta-ops.md §TEST-02"
     GIT-SP: "prompts/meta/meta-ops.md §GIT-SP"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -44,12 +51,14 @@ anti_patterns:
 isolation: L2     # tool-mediated verification
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/L/TestRunner/{task_id}; STOP-10 on collision"
   - "Execute pytest run (TEST-01)"
   - "[tool_delegate_numerics] Extract convergence rates from pytest output"
   - "[evidence_required] Construct convergence table with log-log slopes"
   - "Issue PASS or FAIL verdict"
   - "On FAIL: formulate diagnosis with hypotheses and confidence scores"
   - "Record JSON decision in docs/02_ACTIVE_LEDGER.md"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Convergence table with log-log slopes"
@@ -58,4 +67,5 @@ output:
 
 stop:
   - "Tests FAIL -> STOP; output Diagnosis Summary; ask user for direction"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

@@ -6,6 +6,8 @@
 purpose: >
   Pointer maintenance and SSoT deduplication. The wiki's garbage collector and linker.
   Converts duplicate knowledge into [[REF-ID]] pointers. Detects circular references.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / GIT-ATOMIC-PUSH / LOCK-RELEASE.
 
 scope:
   writes: [docs/wiki/]
@@ -31,6 +33,12 @@ rules:
     K-REFACTOR: "prompts/meta/meta-ops.md §K-REFACTOR"
     K-LINT: "prompts/meta/meta-ops.md §K-LINT"
     GIT-SP: "prompts/meta/meta-ops.md §GIT-SP"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    GIT-ATOMIC-PUSH:  "prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2) ---
 anti_patterns:
@@ -40,6 +48,7 @@ anti_patterns:
 isolation: L1
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/K/TraceabilityManager/{task_id}; STOP-10 on collision"
   - "[classify_before_act] Classify pointer issue before fixing"
   - "Generate pointer map (dependency graph)"
   - "Detect circular references"
@@ -47,6 +56,8 @@ procedure:
   - "Convert duplicate knowledge to [[REF-ID]] pointers"
   - "[evidence_required] Produce before/after pointer maps"
   - "Run K-LINT after refactoring"
+  - "IF concurrency_profile == 'worktree': run GIT-ATOMIC-PUSH before LOCK-RELEASE (STOP-11 on rebase conflict, lock retained)"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Refactoring patches (duplicate-to-pointer conversions)"
@@ -56,4 +67,5 @@ output:
 stop:
   - "Semantic meaning would change -> STOP; escalate to KnowledgeArchitect"
   - "Circular pointer unresolvable -> STOP; escalate to WikiAuditor + user"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."

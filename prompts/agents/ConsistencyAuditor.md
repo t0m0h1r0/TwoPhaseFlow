@@ -9,6 +9,8 @@ purpose: >
   coefficients, and matrix structures from first principles. Release gate for all domains.
   Includes E-Domain convergence audit. Absorbs ResultAuditor role.
   Finding a contradiction is a HIGH-VALUE SUCCESS, not a failure.
+  Under concurrency_profile=="worktree", operates inside a session-local worktree
+  wrapped by LOCK-ACQUIRE / LOCK-RELEASE (no push — read/audit-only territory).
 
 scope:
   writes: [docs/02_ACTIVE_LEDGER.md]
@@ -36,6 +38,11 @@ rules:
     AUDIT-01: "prompts/meta/meta-ops.md §AUDIT-01"
     AUDIT-02: "prompts/meta/meta-ops.md §AUDIT-02"
     GIT-SP: "prompts/meta/meta-ops.md §GIT-SP"
+    # v5.1 concurrency (gated by concurrency_profile == "worktree"):
+    GIT-WORKTREE-ADD: "prompts/meta/meta-ops.md §GIT-WORKTREE-ADD"
+    LOCK-ACQUIRE:     "prompts/meta/meta-ops.md §LOCK-ACQUIRE"
+    LOCK-RELEASE:     "prompts/meta/meta-ops.md §LOCK-RELEASE"
+    HAND_SCHEMA:      "prompts/meta/schemas/hand_schema.json"
 
 # --- ANTI-PATTERNS (TIER-2: CRITICAL + HIGH) ---
 anti_patterns:
@@ -53,12 +60,14 @@ isolation: L3     # session isolation — critical audit role
 # Audit is a Black Box test on the final Artifact only.
 
 procedure:
+  - "IF concurrency_profile == 'worktree': GIT-WORKTREE-ADD + LOCK-ACQUIRE on dev/Q/ConsistencyAuditor/{task_id}; STOP-10 on collision"
   - "[independent_derivation] Derive equations independently from first principles BEFORE opening any artifact"
   - "[classify_before_act] Execute AU2 gate (10 items) using Procedures A–E"
   - "Classify: THEORY_ERR / IMPL_ERR / PAPER_ERROR / CODE_ERROR / KNOWLEDGE_ERROR"
   - "[evidence_required] Produce verification table: equation | procedure A | B | C | D | verdict"
   - "Route errors to responsible agents"
   - "[self_verify: false] Issue HAND-02 RETURN; do NOT self-verify"
+  - "IF concurrency_profile == 'worktree' AND status == SUCCESS: LOCK-RELEASE"
 
 output:
   - "Verification table: equation | procedure | verdict"
@@ -68,4 +77,5 @@ output:
 stop:
   - "Contradiction between authority levels -> STOP; escalate to coordinator"
   - "MMS test results unavailable -> STOP; ask user to run tests first"
+  - "STOP-09 (base-dir destruction) / STOP-10 (foreign lock force) / STOP-11 (atomic-push conflict): v5.1 worktree mode only; see meta-ops.md §STOP CONDITIONS"
   - "Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX."
