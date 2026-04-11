@@ -189,32 +189,7 @@ git checkout -b dev/{agent_role}
 **Trigger:** MANDATORY — absolute starting point for ALL Specialist operations
 **Phase:** Before EXECUTE (GIT-00 Pre-work)
 
-GIT-SP is the first operation every Specialist executes before any task work begins.
-It establishes the isolated workspace and ensures traceability.
-
-```sh
-# ── GIT-00 Pre-work (MANDATORY before any file change) ──
-
-# Step 0 — Verify NOT on main (SYSTEM_PANIC guard)
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" = "main" ]; then
-  echo "SYSTEM_PANIC: Agent on main branch — halting all operations"
-  exit 1  # → STOP condition; escalate to user
-fi
-
-# Step 1 — Branch out from domain integration branch to isolation branch
-git checkout {domain}
-git pull origin {domain} --ff-only
-git checkout -b dev/{domain}/{agent_id}/{task_id}
-
-# Step 2 — Update docs/PROJECT_MAP with active task registration
-# Append to docs/01_PROJECT_MAP.md §9 (Active Task Register):
-#   | {task_id} | {agent_id} | dev/{domain}/{agent_id}/{task_id} | IN_PROGRESS | {ISO 8601} |
-
-# Step 3 — Commit the PROJECT_MAP update as first commit on isolation branch
-git add docs/01_PROJECT_MAP.md
-git commit -m "dev/{domain}/{agent_id}/{task_id}: register task in PROJECT_MAP"
-```
+Invoke `scripts/git-sp.sh {domain} {agent_id} {task_id}` — the wrapper enforces branch validation (SYSTEM_PANIC guard), PROJECT_MAP registration, and isolation branch creation.
 
 **Success:** Agent is on `dev/{domain}/{agent_id}/{task_id}` with PROJECT_MAP updated.
 
@@ -261,56 +236,25 @@ SYSTEM_PANIC triggered by: {agent_id}
 ────────────────────────────────────────────────────────
 ## GIT-01: Branch Preflight
 
-**Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect),
-               Root Admin ResearchArchitect (Step 0 auto-switch only — see below)
+**Authorized:** Gatekeepers (CodeWorkflowCoordinator, PaperWorkflowCoordinator, PromptArchitect), Root Admin (auto-switch only)
 **[AUTH_LEVEL: Gatekeeper | Root Admin (Step 0 only)]**
-**Trigger:** MANDATORY — first action of every session, before any GIT-00 dispatch or file edit;
-             ALSO triggered automatically when ResearchArchitect detects a branch/domain mismatch
-             on a user-issued request (Usability Exception — see below)
+**Trigger:** MANDATORY — first action of every session; also auto-triggered by ResearchArchitect on branch/domain mismatch
 **Phase:** Before PLAN
 
 ```sh
-# Step 1 — Branch Validation (Gatekeeper confirms domain integration branch)
-current=$(git branch --show-current)
-if [ "$current" != "{branch}" ]; then
-  # Auto-Switch (Usability Exception): do not block user with wrong-branch error
-  git checkout {branch} 2>/dev/null || git checkout -b {branch}
-fi
-
-# Step 2 — Selective Sync: pull latest main into domain branch
-# Only if docs/interface/ was updated OR a merge conflict is present (→ meta-domains.md §SELECTIVE SYNC)
-git fetch origin main
-git merge origin/main --no-edit
-
-# Step 3 — Confirm
+git checkout {branch} 2>/dev/null || git checkout -b {branch}
+git fetch origin main && git merge origin/main --no-edit
 git branch --show-current
 ```
 
-**Parameters**
 | Param | CodeWorkflowCoordinator | PaperWorkflowCoordinator | PromptArchitect |
 |-------|------------------------|--------------------------|----------------|
 | `{branch}` | `code` | `paper` | `prompt` |
 
-**Auto-Switch (Usability Exception):** When the current branch does not match the target
-domain, Step 1 executes the checkout automatically — the caller must not block on a
-"wrong branch" error at the entry point. The caller derives `{branch}` from the task's
-target domain before invoking GIT-01 (see meta-roles.md for per-role branch mapping).
-
-**Unknown branch detection:** If `git branch --show-current` returns a value that does not
-appear in the domain branch map (`theory` | `code` | `experiment` | `paper` | `prompt` | `main`), report
-CONTAMINATION immediately:
-```
-CONTAMINATION ALERT: current branch '{current}' is not in the domain registry.
-Do not proceed. Escalate to user for branch cleanup.
-```
-
-**Success:** `git branch --show-current` prints `{branch}` — not `main`;
-             `git merge origin/main` exits code 0
-
 **On failure**
-- Checkout result is `main` → **STOP**; do not proceed under any circumstance
+- Result is `main` or unknown branch → **STOP**; report CONTAMINATION; escalate to user
 - Merge conflict → **STOP**; report to user; do not resolve unilaterally
-- `git fetch` network error → **STOP**; report; do not proceed on stale state
+- `git fetch` error → **STOP**; do not proceed on stale state
 
 **Post-success:** immediately run DOM-01 to establish the session domain lock.
 
@@ -325,8 +269,7 @@ Do not proceed. Escalate to user for branch cleanup.
 **Trigger:** MANDATORY — immediately after GIT-01 confirms branch; before any DISPATCH or file edit
 **Phase:** Session start
 
-Establishes the session domain lock. Without it, DOM-02 pre-write checks cannot run
-and HAND-03 check 6 will block all specialists.
+Establishes the session domain lock. Without it, DOM-02 pre-write checks cannot run and specialists will receive a REJECT from the env wrapper.
 
 ```
 DOMAIN-LOCK:
@@ -351,8 +294,7 @@ DOMAIN-LOCK:
 | P | Prompt & Environment | `prompts/agents/*.md` | `prompts/meta/*.md` |
 | Q | QA & Audit | `docs/02_ACTIVE_LEDGER.md` | all domains (read-only cross-domain gate) |
 
-**Output:** DOMAIN-LOCK block recorded in session context; copied verbatim into every
-subsequent HAND-01 `context.domain_lock` field.
+**Output:** DOMAIN-LOCK block recorded in session context (env wrapper injects into DISPATCH metadata).
 
 **On failure:**
 - GIT-01 returned `main` → cannot establish lock; STOP (GIT-01 failure path handles this)
@@ -361,22 +303,15 @@ subsequent HAND-01 `context.domain_lock` field.
 ────────────────────────────────────────────────────────
 ## DOM-02: Pre-Write Storage Check
 
-**Authorized:** every agent (universal obligation — no AUTHORITY restriction)
+**Authorized:** every agent (universal — wrapper-enforced)
 **[AUTH_LEVEL: universal — no tier restriction]**
-**Trigger:** MANDATORY — before every file write, edit, or delete
+**Trigger:** every file write — the tool wrapper intercepts writes outside `domain_lock.write_territory` and returns a DOM-02 error; agents do not pre-check.
 **Phase:** Any
 
-```
-□ 1. Retrieve DOMAIN-LOCK from the DISPATCH token received at session start.
-     Absent → STOP; request domain lock from coordinator; do not write.
-□ 2. Resolve target_path against write_territory (prefix match).
-     Match found   → proceed with write.
-     Read-only hit → STOP; do not write; return read data only; notify coordinator.
-     No match      → STOP; issue CONTAMINATION_GUARD RETURN (see meta-domains.md §CONTAMINATION GUARD).
-```
-
-**Exemptions:** none. `docs/02_ACTIVE_LEDGER.md` is writable by all domains but still
-requires DOM-02 — the check passes because all domains include it in write_territory.
+**Failure modes:**
+- DOMAIN-LOCK absent → STOP signal returned by wrapper; request domain lock from coordinator
+- Target path outside write_territory → CONTAMINATION_GUARD error; notify coordinator
+- `docs/02_ACTIVE_LEDGER.md` is writable by all domains — passes because all domains include it in write_territory
 
 ────────────────────────────────────────────────────────
 ## GIT-02: DRAFT Commit
@@ -942,15 +877,13 @@ All agents must monitor for these conditions continuously.
 | STOP-02 | Immutable Zone modification | Any agent proposes change to φ-principles, axioms, or HAND-03 logic | SYSTEM_PANIC → escalate to user |
 | STOP-03 | Domain lock violation | Agent writes outside its DOMAIN-LOCK territory | CONTAMINATION RETURN → Gatekeeper rejects PR |
 | STOP-04 | Branch isolation breach | Agent accesses another agent's `dev/` branch | CONTAMINATION RETURN → Gatekeeper rejects PR |
-| STOP-05 | GIT-00 Pre-work skipped | Agent begins file changes without executing GIT-SP GIT-00 Pre-work | SYSTEM_PANIC → agent must restart from GIT-00 |
+| STOP-05 | GIT-SP skipped | Agent begins file changes without invoking `scripts/git-sp.sh` | SYSTEM_PANIC → invoke GIT-SP and restart |
 | STOP-06 | Context leakage | Downstream agent consumes upstream agent's conversation history instead of artifacts | Context Leakage Violation → Gatekeeper rejects deliverable + re-dispatch |
 | STOP-07 | Loop > MAX_REVIEW_ROUNDS | P-E-V-A loop exceeds 5 iterations | STOPPED → escalate to user with full history |
 | STOP-08 | Hash mismatch (INTEGRITY_MANIFEST) | Upstream contract hash ≠ recorded hash | CONTAMINATION → CI/CP re-propagation required |
 
 **STOP-01 enforcement (Main Branch Contamination Guard):**
-Every agent MUST check `git branch --show-current` before any file operation.
-If the result is `main`, the agent MUST NOT proceed — trigger SYSTEM_PANIC immediately.
-This check is embedded in GIT-SP GIT-00 Pre-work Step 0 and applies universally.
+Branch validation is enforced by `scripts/git-sp.sh` before any file operation. If the branch is `main`, the wrapper returns SYSTEM_PANIC and halts all pipeline activity.
 
 ────────────────────────────────────────────────────────
 # § COMMAND FORMAT
@@ -1048,39 +981,22 @@ Mapping from prior schema: COMPLETE+PASS→SUCCESS; PARTIAL/BLOCKED/STOPPED→FA
 **Performed by:** Every agent upon receiving a DISPATCH token, before any work begins
 **Trigger:** MANDATORY — first action upon receiving DISPATCH
 
+Env-side preconditions (branch, tier, domain lock, expected_verdict, sender authorization) are enforced by the tool wrapper; agents observe them only as STOP signals. HAND-03 covers the semantic checks the wrapper cannot make.
+
 ```
-Acceptance Check:
-  □ 0. TIER AUTHORIZATION: does Sender.Tier ≥ Required.Tier for the operation being delegated?
-         Derive Sender.Tier from meta-ops.md §AUTHORITY TIERS (Root Admin > Gatekeeper > Specialist).
-         Derive Required.Tier from the [AUTH_LEVEL] tag on the operation in this file.
-         Sender.Tier < Required.Tier → REJECT immediately; issue RETURN with status BLOCKED.
-         (Example: a Specialist cannot dispatch a Gatekeeper-level GIT-03 operation to another agent.)
-  □ 1. SENDER AUTHORIZED: is the sender listed in meta-roles.md AUTHORITY as allowed
-         to dispatch this role? If not → REJECT
-  □ 2. TASK IN SCOPE: does the task fall within this role's PURPOSE in meta-roles.md?
+Acceptance Check (semantic checks — env-enforced preconditions appear as STOP signals):
+  □ 1. TASK IN SCOPE: does the task fall within this role's PURPOSE in meta-roles.md?
          If not → REJECT
-  □ 3. INPUTS AVAILABLE: do all listed input files/artifacts exist and are non-empty?
+  □ 2. INPUTS AVAILABLE: do all listed input files/artifacts exist and are non-empty?
          If not → REJECT
-  □ 4. GIT STATE VALID:
-         - Specialists: `git branch --show-current` = `dev/{agent_role}` (not main, not domain branch directly)
-         - Gatekeepers/Root Admin: run GIT-01 (branch preflight) if not already done this session
-         If Specialist is on main or on a domain branch directly → REJECT; run GIT-SP to create dev/ branch
-  □ 5. CONTEXT CONSISTENT: does `git log --oneline -1` match the `commit` field in
+  □ 3. CONTEXT CONSISTENT: does `git log --oneline -1` match the `commit` field in
          the DISPATCH token? (confirms no intervening changes)
          If mismatch → QUERY sender before proceeding
-  □ 6. DOMAIN LOCK PRESENT: does `context.domain_lock` exist and include `write_territory`?
-         Absent or malformed → REJECT (coordinator must run DOM-01 and re-dispatch)
-         domain_lock.branch ≠ domain portion of git branch → REJECT (branch/domain mismatch)
-         `context.domain_lock_id` absent or does not match domain_lock.set_at → REJECT (stale lock)
-         If PASS → store domain_lock for DOM-02 checks throughout this session
-  □ 7. IF-AGREEMENT PRESENT: does DISPATCH context include an `if_agreement` path pointing
+  □ 4. IF-AGREEMENT PRESENT: does DISPATCH context include an `if_agreement` path pointing
          to a valid docs/interface/ contract? (→ meta-domains.md §IF-AGREEMENT PROTOCOL)
          Absent → REJECT; Gatekeeper must run GIT-00 and re-dispatch
          If PASS → read IF-AGREEMENT outputs as the deliverable contract for this task
-  □ 8. EXPECTED_VERDICT PRESENT: does DISPATCH context include an `expected_verdict` with
-         a measurable criterion?
-         Absent or vague (e.g., "good", "complete") → REJECT; coordinator must supply explicit threshold
-  □ 9. UPSTREAM CONTRACTS SIGNED (Interface Contract validation — Falsification gate):
+  □ 5. UPSTREAM CONTRACTS SIGNED (Interface Contract validation — Falsification gate):
          Read DISPATCH `upstream_contracts` list. For each contract:
            a. Does the file exist at the stated path in `docs/interface/`? Absent → REJECT; STOP.
            b. Is the contract signed (contains `signed_by: {Gatekeeper}` and `status: SIGNED`)? Unsigned → REJECT; STOP.
@@ -1093,7 +1009,7 @@ Acceptance Check:
          verification is not required. Absence of `upstream_contracts` in FAST-TRACK →
          STOP-SOFT (log to docs/02_ACTIVE_LEDGER.md §PROTOCOL-VIOLATION; proceed with
          declaration of reuse).
-  □ 10. PHANTOM REASONING GUARD (Auditor/Gatekeeper roles only):
+  □ 6. PHANTOM REASONING GUARD (Auditor/Gatekeeper roles only):
          If this agent is acting as an Auditor or Gatekeeper (TheoryAuditor, ConsistencyAuditor,
          PaperReviewer, CodeWorkflowCoordinator in review mode, PromptAuditor, etc.):
            a. Verify that DISPATCH `inputs` lists ONLY:
@@ -1105,12 +1021,15 @@ Acceptance Check:
               - Intermediate derivation notes or scratch work
               - Specialist chain-of-thought logs or commentary
               - Draft commentary explaining why the Specialist made a choice
-              Issue RETURN with status BLOCKED; coordinator must re-dispatch with sanitized inputs.
+              Issue RETURN with status REJECT; coordinator must re-dispatch with sanitized inputs.
            c. Auditor's FIRST action after PASS: perform independent derivation or independent
               re-check of the artifact BEFORE opening it. Document this in the RETURN token
-              `audit_method` field. "Verified by comparison only" = broken symmetry → STOP-HARD.
+              `detail` field. "Verified by comparison only" = broken symmetry → STOP-HARD.
            d. The Auditor evaluates the Artifact only. Verdict = Artifact quality, not
               Specialist process quality (meta-core.md §B Phantom Reasoning Guard).
+           e. When dispatching to an Auditor/Gatekeeper across a domain boundary, the
+              coordinator MUST invoke L3 isolation (new worktree session). Within-domain
+              verification MAY use L1. See meta-experimental.md §HIERARCHICAL ISOLATION POLICY.
          If this agent is a Specialist (non-Auditor role): this check is N/A — proceed.
 ```
 
