@@ -102,7 +102,13 @@ class Predictor:
 
         # 注入された依存関係を使用。省略時はデフォルト生成
         self.convection   = convection    or ConvectionTerm(backend)
-        self.viscous      = viscous       or ViscousTerm(backend, config.fluid.Re, config.numerics.cn_viscous)
+        if viscous is None:
+            from .cn_advance import make_cn_advance
+            viscous = ViscousTerm(
+                backend, config.fluid.Re, config.numerics.cn_viscous,
+                cn_advance=make_cn_advance(backend, config.numerics.cn_mode),
+            )
+        self.viscous      = viscous
         self.gravity      = gravity       or GravityTerm(backend, config.fluid.Fr, config.grid.ndim)
         self.surface_tens = surface_tension or SurfaceTensionTerm(backend, config.fluid.We)
 

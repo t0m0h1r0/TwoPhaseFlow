@@ -172,6 +172,7 @@ def load_config(
         cfl_number=_f("cfl_number", 0.3),
         t_end=_f("t_end", 1.0),
         cn_viscous=bool(_get("cn_viscous", True)),
+        cn_mode=str(_get("cn_mode", "picard")),
         bc_type=str(_get("bc_type", "wall")),
         advection_scheme=str(_get("advection_scheme", "dissipative_ccd")),
     )
@@ -250,6 +251,7 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "cfl_number":     config.numerics.cfl_number,
         "t_end":          config.numerics.t_end,
         "cn_viscous":       config.numerics.cn_viscous,
+        "cn_mode":          config.numerics.cn_mode,
         "bc_type":          config.numerics.bc_type.value,
         "advection_scheme": config.numerics.advection_scheme,
         # SolverConfig

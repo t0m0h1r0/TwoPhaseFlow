@@ -33,13 +33,14 @@ returned as an array.
 
 from __future__ import annotations
 import numpy as np
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 from ..interfaces.ns_terms import INSTerm
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+    from .cn_advance import ICNAdvance
 
 
 class ViscousTerm(INSTerm):
@@ -49,13 +50,30 @@ class ViscousTerm(INSTerm):
     ----------
     backend    : Backend
     Re         : Reynolds number
-    cn_viscous : If True, use Crank-Nicolson (half-implicit).
+    cn_viscous : If True, use the CN strategy via ``cn_advance``.
+                 If False, the caller is expected to use ``compute_explicit``
+                 directly (see ``ns_terms/predictor.py``).
+    cn_advance : CN time-advance strategy (Strategy pattern). When None,
+                 defaults to ``PicardCNAdvance`` — the canonical production
+                 behaviour. See ``cn_advance/`` subpackage and
+                 ``docs/memo/extended_cn_impl_design.md``.
     """
 
-    def __init__(self, backend: "Backend", Re: float, cn_viscous: bool = True):
+    def __init__(
+        self,
+        backend: "Backend",
+        Re: float,
+        cn_viscous: bool = True,
+        cn_advance: Optional["ICNAdvance"] = None,
+    ):
         self.xp = backend.xp
         self.Re = Re
         self.cn_viscous = cn_viscous
+        # Lazy import breaks the cn_advance -> viscous typing cycle.
+        if cn_advance is None:
+            from .cn_advance import PicardCNAdvance
+            cn_advance = PicardCNAdvance(backend)
+        self.cn_advance = cn_advance
 
     # ── Explicit evaluation ───────────────────────────────────────────────
 
@@ -92,45 +110,30 @@ class ViscousTerm(INSTerm):
         ccd: "CCDSolver",
         dt: float,
     ) -> List:
-        """Solve the CN system for each velocity component independently.
+        """Delegate the viscous predictor advance to ``self.cn_advance``.
 
-        The diagonal part of V is ν̃ Δu (where ν̃ = μ̃/ρ̃).  The off-diagonal
-        (cross) terms are treated explicitly.
+        The strategy pattern separates the *operator* V(u) (owned here) from
+        the *temporal discretization* (owned by the strategy). See
+        ``cn_advance/`` subpackage for available strategies and
+        ``docs/memo/extended_cn_impl_design.md`` for rationale.
 
-        Solves component-by-component using a direct CCD-based approach:
-        since the spatial operator is applied through CCD which produces
-        the full field at once, we iterate with a simple fixed-point scheme
-        that converges in 1–2 iterations for moderate Δt.
+        When ``self.cn_viscous`` is False this method falls back to a plain
+        forward-Euler step — preserved for API completeness though the
+        production caller in ``ns_terms/predictor.py`` guards the CN branch
+        on ``config.numerics.cn_viscous`` and so never triggers the fallback
+        via this entrypoint.
         """
-        xp = self.xp
-        ndim = len(u_old)
-        Re = self.Re
-
-        # Explicit viscous term at time n
-        visc_n = self._evaluate(u_old, mu, rho, ccd)
-
-        # Initialise u* with the fully-explicit predictor.
-        # Correct formula: u* = u^n + Δt * R / ρ̃
-        # where R = explicit_rhs (force/volume) + ρ̃ * visc_n (force/volume).
-        # Since visc_n = V_α/(Re·ρ̃) is already divided by ρ̃, we write:
-        #   u* = u^n + Δt * (explicit_rhs / ρ̃ + visc_n)
-        u_pred = [
-            u_old[c] + dt * (explicit_rhs[c] / rho + visc_n[c])
-            for c in range(ndim)
-        ]
-
         if not self.cn_viscous:
-            return u_pred
-
-        # One CN correction iteration
-        visc_star = self._evaluate(u_pred, mu, rho, ccd)
-        u_cn = [
-            u_old[c] + dt * (explicit_rhs[c] / rho
-                              + 0.5 * visc_n[c]
-                              + 0.5 * visc_star[c])
-            for c in range(ndim)
-        ]
-        return u_cn
+            # Dead fast-path: explicit Euler using V(u^n). Bit-exact with
+            # the pre-Phase-1 behaviour.
+            visc_n = self._evaluate(u_old, mu, rho, ccd)
+            return [
+                u_old[c] + dt * (explicit_rhs[c] / rho + visc_n[c])
+                for c in range(len(u_old))
+            ]
+        return self.cn_advance.advance(
+            u_old, explicit_rhs, mu, rho, self, ccd, dt,
+        )
 
     # ── Core evaluation ───────────────────────────────────────────────────
 

@@ -85,6 +85,13 @@ class NumericsConfig:
     t_end: float = 1.0
     # 粘性項に Crank-Nicolson（半陰的）スキームを使用（§9）
     cn_viscous: bool = True
+    # CN viscous advance strategy (Strategy pattern, see
+    # src/twophase/ns_terms/cn_advance/ and
+    # docs/memo/extended_cn_impl_design.md).
+    # 'picard' — default, 1-step Picard on CN (Heun). Current production
+    # behaviour, bit-exact with pre-Phase-1 implementation.
+    # Richardson / Implicit / Pade22 variants will be added in later phases.
+    cn_mode: str = "picard"
     # 境界条件の種類: BCType.WALL または BCType.PERIODIC
     bc_type: BCType = BCType.WALL
     # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）

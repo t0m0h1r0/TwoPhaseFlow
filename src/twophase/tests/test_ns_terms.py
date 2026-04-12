@@ -207,3 +207,55 @@ def test_predictor_no_nan(backend):
     vel_star = pred.compute(state, dt=0.01)
     for ax, vs in enumerate(vel_star):
         assert not np.any(np.isnan(vs)), f"NaN in vel_star component {ax}"
+
+
+# ── Test 6: PicardCNAdvance strategy extraction (Phase 1) ────────────────
+
+def test_picard_cn_advance_matches_inlined_heun(backend):
+    """PicardCNAdvance must reproduce the pre-Phase-1 Heun P-C formula
+    bit-for-bit, both when called directly and when dispatched through
+    ViscousTerm.apply_cn_predictor with the default strategy."""
+    from twophase.ns_terms.cn_advance import PicardCNAdvance
+    cfg, grid, ccd, be = make_setup(N=16, backend=backend)
+    visc = ViscousTerm(be, Re=10.0, cn_viscous=True)  # default strategy = PicardCNAdvance
+
+    N = 16
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    u_old = [np.sin(np.pi * X) * np.cos(np.pi * Y),
+             -np.cos(np.pi * X) * np.sin(np.pi * Y)]
+    mu  = np.ones_like(X) * 0.01
+    rho = 0.5 + 0.5 * np.sin(np.pi * X) * np.sin(np.pi * Y)
+    explicit_rhs = [np.zeros_like(X), -rho * 1.0]  # gravity-only RHS
+    dt = 0.005
+
+    # (a) Delegated path through apply_cn_predictor
+    out_delegated = visc.apply_cn_predictor(u_old, explicit_rhs, mu, rho, ccd, dt)
+
+    # (b) Direct strategy invocation
+    strat = PicardCNAdvance(be)
+    out_direct = strat.advance(u_old, explicit_rhs, mu, rho, visc, ccd, dt)
+
+    # (c) Manual Heun reference (frozen formula)
+    visc_n = visc._evaluate(u_old, mu, rho, ccd)
+    u_pred = [u_old[c] + dt*(explicit_rhs[c]/rho + visc_n[c]) for c in range(2)]
+    visc_star = visc._evaluate(u_pred, mu, rho, ccd)
+    out_manual = [
+        u_old[c] + dt*(explicit_rhs[c]/rho + 0.5*visc_n[c] + 0.5*visc_star[c])
+        for c in range(2)
+    ]
+
+    for c in range(2):
+        assert np.array_equal(out_delegated[c], out_direct[c]), (
+            f"Delegated != direct strategy (component {c})")
+        assert np.array_equal(out_direct[c], out_manual[c]), (
+            f"Strategy != manual Heun (component {c})")
+
+
+def test_cn_mode_factory_picard(backend):
+    """make_cn_advance('picard') returns a PicardCNAdvance; unknown modes raise."""
+    from twophase.ns_terms.cn_advance import make_cn_advance, PicardCNAdvance
+    s = make_cn_advance(backend, "picard")
+    assert isinstance(s, PicardCNAdvance)
+    with pytest.raises(ValueError, match="cn_mode"):
+        make_cn_advance(backend, "richardson_picard")  # not yet implemented
