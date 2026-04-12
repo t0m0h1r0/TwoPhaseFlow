@@ -20,7 +20,7 @@ from twophase.levelset.heaviside import heaviside, invert_heaviside
 from twophase.initial_conditions.velocity_fields import RigidRotation
 from twophase.experiment import (
     apply_style, experiment_dir, experiment_argparser,
-    save_results, save_figure,
+    save_results, load_results, save_figure,
 )
 
 apply_style()
@@ -151,6 +151,24 @@ def main():
         ("non-uniform α=2", 2.0, "split"),
         ("non-uniform α=3", 3.0, "split"),
     ]
+    key_map = {
+        "uniform": "uniform",
+        "non-uniform α=2": "nonunif_a2",
+        "non-uniform α=3": "nonunif_a3",
+    }
+
+    if args.plot_only:
+        data = load_results(OUT / "data.npz")
+        print("\n" + "=" * 70)
+        print(f"{'case':>20} {'L2(φ)':>10} {'area_err':>10} {'mass_err':>10}")
+        print("-" * 70)
+        for label, _, _ in cases:
+            k = key_map[label]
+            r = data[k]
+            print(f"{label:>20} {float(r['L2_phi']):>10.3e} "
+                  f"{float(r['area_err']):>10.2e} {float(r['mass_err']):>10.2e}")
+        print("=" * 70)
+        return
 
     all_results = []
     for label, alpha, method in cases:
@@ -170,6 +188,13 @@ def main():
     for r in all_results:
         print(f"{r['label']:>20} {r['L2_phi']:>10.3e} {r['area_err']:>10.2e} {r['mass_err']:>10.2e}")
     print("=" * 70)
+
+    save_results(OUT / "data.npz", {
+        key_map[r["label"]]: {
+            f: r[f] for f in ("alpha", "L2_psi", "L2_phi", "area_err", "mass_err")
+        }
+        for r in all_results
+    })
 
 
 if __name__ == "__main__":
