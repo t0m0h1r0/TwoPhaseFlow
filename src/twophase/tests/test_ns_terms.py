@@ -253,9 +253,115 @@ def test_picard_cn_advance_matches_inlined_heun(backend):
 
 
 def test_cn_mode_factory_picard(backend):
-    """make_cn_advance('picard') returns a PicardCNAdvance; unknown modes raise."""
+    """make_cn_advance('picard') returns a PicardCNAdvance."""
     from twophase.ns_terms.cn_advance import make_cn_advance, PicardCNAdvance
     s = make_cn_advance(backend, "picard")
     assert isinstance(s, PicardCNAdvance)
+
+
+def test_cn_mode_factory_richardson(backend):
+    """make_cn_advance('richardson_picard') wraps PicardCNAdvance."""
+    from twophase.ns_terms.cn_advance import (
+        make_cn_advance, RichardsonCNAdvance, PicardCNAdvance,
+    )
+    s = make_cn_advance(backend, "richardson_picard")
+    assert isinstance(s, RichardsonCNAdvance)
+    assert isinstance(s.base, PicardCNAdvance)
+
+
+def test_cn_mode_factory_unknown_raises(backend):
+    from twophase.ns_terms.cn_advance import make_cn_advance
     with pytest.raises(ValueError, match="cn_mode"):
-        make_cn_advance(backend, "richardson_picard")  # not yet implemented
+        make_cn_advance(backend, "wibble")
+
+
+def test_richardson_cn_lifts_order_on_pure_diffusion(backend):
+    """Self-similarity refinement-ratio test for temporal order.
+
+    On pure diffusion (constant μ, ρ, no explicit_rhs), the spatial
+    discretization error is identical for every run at fixed h, so it
+    cancels in any difference between runs. The temporal error expansion is
+
+        u(dt) - u_exact = C · dt^p + O(dt^{p+1})
+
+    giving the self-similarity ratio
+
+        r(dt, dt/2) = |u(dt) - u(dt/2)| / |u(dt/2) - u(dt/4)|
+                    ≈ 2^p
+
+    so p ≈ log2(r). This bypasses spatial error completely.
+
+    Targets:
+      Picard                : p ≈ 2 (1-step Picard / Heun)
+      Richardson-Picard     : p ≈ 3 (NOT 4). Richardson extrapolation lifts
+                              by +1 order for a general method and by +2
+                              order only when the base is SYMMETRIC
+                              (e.g. trapezoidal rule / true implicit CN /
+                              Padé-(2,2)) whose error expansion is in
+                              EVEN powers of Δt. Heun is an explicit 2-stage
+                              RK and is not symmetric; its expansion has all
+                              powers, so only the leading Δt^2 term is
+                              annihilated. See docs/memo/extended_cn_impl_
+                              design.md §5.2 + Phase 2 note.
+
+    The full O(Δt^4) will arrive in Phase 3 (true ImplicitCNAdvance) or
+    Phase 4 (Pade22CNAdvance); Phase 6 composes Richardson on those to
+    raise the global NS cross-term order.
+    """
+    from twophase.ns_terms.cn_advance import PicardCNAdvance, RichardsonCNAdvance
+    import math
+
+    N = 16
+    L = 1.0
+    nu = 0.05
+    cfg, grid, ccd, be = make_setup(N=N, backend=backend)
+    visc = ViscousTerm(be, Re=1.0 / nu, cn_viscous=True)
+
+    X, Y = np.meshgrid(np.linspace(0, L, N+1), np.linspace(0, L, N+1),
+                       indexing='ij')
+    u0 = np.sin(np.pi * X) * np.sin(np.pi * Y)  # zero at walls
+
+    t_end = 0.02
+    # dt sweep: 4 entries, each a halving. Pick the dts small enough to stay
+    # below explicit viscous CFL h^2/(4·nu) ≈ 1/(4·16²·0.05) ≈ 2e-2.
+    dts = [t_end / n for n in (4, 8, 16, 32)]
+
+    def run(strategy, dt):
+        u = [u0.copy(), np.zeros_like(X)]
+        mu = np.ones_like(X)
+        rho = np.ones_like(X)
+        rhs = [np.zeros_like(X), np.zeros_like(X)]
+        nsteps = int(round(t_end / dt))
+        for _ in range(nsteps):
+            u = strategy.advance(u, rhs, mu, rho, visc, ccd, dt)
+        return u[0]
+
+    picard = PicardCNAdvance(be)
+    richardson = RichardsonCNAdvance(picard)
+
+    sl = (slice(2, -2), slice(2, -2))  # avoid CCD boundary contamination
+
+    sols_p = [run(picard,     dt)[sl] for dt in dts]
+    sols_r = [run(richardson, dt)[sl] for dt in dts]
+
+    # Self-similarity differences (same h, so spatial error cancels)
+    diffs_p = [float(np.max(np.abs(sols_p[i] - sols_p[i+1])))
+               for i in range(len(dts) - 1)]
+    diffs_r = [float(np.max(np.abs(sols_r[i] - sols_r[i+1])))
+               for i in range(len(dts) - 1)]
+
+    # Refinement ratio: diffs[i] / diffs[i+1] ≈ 2^p
+    ratio_p = diffs_p[-2] / diffs_p[-1]
+    ratio_r = diffs_r[-2] / diffs_r[-1]
+    order_p = math.log2(ratio_p)
+    order_r = math.log2(ratio_r)
+
+    assert 1.6 < order_p < 2.6, (
+        f"Picard self-similarity order {order_p:.2f} not ≈ 2, "
+        f"diffs_p={diffs_p}")
+    # Richardson on Heun (non-symmetric base) gains +1 order, not +2 → p ≈ 3
+    assert 2.6 < order_r < 3.6, (
+        f"Richardson-Picard self-similarity order {order_r:.2f} not ≈ 3, "
+        f"diffs_r={diffs_r}")
+    # Richardson's finest difference is strictly smaller than Picard's
+    assert diffs_r[-1] < diffs_p[-1]
