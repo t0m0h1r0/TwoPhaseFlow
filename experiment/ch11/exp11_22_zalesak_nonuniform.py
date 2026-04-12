@@ -34,7 +34,8 @@ def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
 
 
 def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid)
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -42,16 +43,19 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
     eps = eps_ratio * h
     X, Y = grid.meshgrid()
 
-    phi0 = zalesak_sdf(X, Y)
-    psi0 = heaviside(np, phi0, eps)
+    # ZalesakDisk.sdf uses np.maximum (CPU-only) → build on host, promote to device
+    X_h, Y_h = backend.to_host(X), backend.to_host(Y)
+    phi0 = xp.asarray(zalesak_sdf(X_h, Y_h))
+    psi0 = heaviside(xp, phi0, eps)
 
     # For non-uniform: initial grid fitting
     if alpha_grid > 1.0:
         grid.update_from_levelset(phi0, eps, ccd=ccd)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
-        phi0 = zalesak_sdf(X, Y)
-        psi0 = heaviside(np, phi0, eps)
+        X_h, Y_h = backend.to_host(X), backend.to_host(Y)
+        phi0 = xp.asarray(zalesak_sdf(X_h, Y_h))
+        psi0 = heaviside(xp, phi0, eps)
 
     T = 2 * np.pi
     vf = RigidRotation(center=(0.5, 0.5), period=T)
@@ -63,8 +67,8 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
     dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
     psi = psi0.copy()
-    dV = grid.cell_volumes()
-    mass0 = float(np.sum(psi * dV))
+    dV = xp.asarray(grid.cell_volumes())   # grid.cell_volumes() always numpy
+    mass0 = float(xp.sum(psi * dV))
     reinit_count = 0
 
     for step in range(n_steps):
@@ -73,43 +77,48 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
 
         # Rebuild non-uniform grid from current interface
         if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
-            # 1. ψ → φ on OLD grid
-            phi_cur = invert_heaviside(np, psi, eps)
+            # 1. ψ → φ on OLD grid; old_coords always numpy (grid.coords is host)
+            phi_cur = invert_heaviside(xp, psi, eps)
             old_coords = [c.copy() for c in grid.coords]
 
-            # 2. Rebuild grid from φ (coordinates change, array shape unchanged)
-            grid.update_from_levelset(phi_cur, eps, ccd=ccd)
-            new_coords = grid.coords
+            # 2. Compute M_before BEFORE host-converting psi
+            M_before = float(xp.sum(psi * dV))
 
-            # 3. Interpolate ψ directly from old grid → new grid
-            #    (linear is monotone → no overshoot → near-perfect mass;
-            #     see docs/memo/conservative_remapping_theory.md §10)
-            X_new, Y_new = grid.meshgrid()
+            # 3. Rebuild grid from φ (coordinates change, array shape unchanged)
+            grid.update_from_levelset(phi_cur, eps, ccd=ccd)
+
+            # 4. RegularGridInterpolator: scipy is CPU-only — must host-convert
+            X_new_dev, Y_new_dev = grid.meshgrid()
+            X_new = np.asarray(backend.to_host(X_new_dev))
+            Y_new = np.asarray(backend.to_host(Y_new_dev))
             pts = np.stack([X_new.ravel(), Y_new.ravel()], axis=-1)
+            psi_host = np.asarray(backend.to_host(psi))
             interp = RegularGridInterpolator(
-                old_coords, psi, method="linear",
+                old_coords, psi_host, method="linear",
                 bounds_error=False, fill_value=None,
             )
-            dV_old = dV.copy()
-            M_before = float(np.sum(psi * dV_old))
-            psi = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
+            psi_host_new = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
 
-            # 4. Small mass correction for interpolation residual
-            dV = grid.cell_volumes()
-            M_after = float(np.sum(psi * dV))
-            w = 4.0 * psi * (1.0 - psi)
-            W = float(np.sum(w * dV))
+            # 5. Mass correction on host
+            dV_np = np.asarray(grid.cell_volumes())
+            M_after = float(np.sum(psi_host_new * dV_np))
+            w = 4.0 * psi_host_new * (1.0 - psi_host_new)
+            W = float(np.sum(w * dV_np))
             if W > 1e-12:
-                psi = psi + ((M_before - M_after) / W) * w
-                psi = np.clip(psi, 0.0, 1.0)
+                psi_host_new = np.clip(
+                    psi_host_new + ((M_before - M_after) / W) * w, 0.0, 1.0)
 
-            # 5. Rebuild solvers on new grid
+            # 6. Push back to device
+            psi = xp.asarray(psi_host_new)
+            dV = xp.asarray(grid.cell_volumes())
+
+            # 7. Rebuild solvers on new grid
             ccd = CCDSolver(grid, backend, bc_type="wall")
             adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
                                           eps_d=0.05, mass_correction=True)
             reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4,
                                    bc="zero", method=method)
-            X, Y = X_new, Y_new
+            X, Y = X_new_dev, Y_new_dev
 
         if (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)
@@ -117,27 +126,30 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
 
     # Final metrics on current grid
     X, Y = grid.meshgrid()
-    phi0_final_grid = zalesak_sdf(X, Y)
-    psi0_final_grid = heaviside(np, phi0_final_grid, eps)
+    X_h, Y_h = backend.to_host(X), backend.to_host(Y)
+    phi0_final_grid = xp.asarray(zalesak_sdf(X_h, Y_h))
+    psi0_final_grid = heaviside(xp, phi0_final_grid, eps)
 
-    dV_final = grid.cell_volumes()
-    mass_err = abs(float(np.sum(psi * dV_final)) - mass0) / mass0
-    err_L2 = float(np.sqrt(np.mean((psi - psi0_final_grid)**2)))
-    phi_final = invert_heaviside(np, psi, eps)
-    band = np.abs(phi0_final_grid) < 6 * eps
-    if np.any(band):
-        err_L2_phi = float(np.sqrt(np.mean((phi_final[band] - phi0_final_grid[band])**2)))
+    dV_final = xp.asarray(grid.cell_volumes())
+    mass_err = abs(float(xp.sum(psi * dV_final)) - mass0) / mass0
+    err_L2 = float(xp.sqrt(xp.mean((psi - psi0_final_grid)**2)))
+    phi_final = invert_heaviside(xp, psi, eps)
+    band = xp.abs(phi0_final_grid) < 6 * eps
+    if bool(xp.any(band)):
+        err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0_final_grid[band])**2)))
     else:
         err_L2_phi = float('nan')
-    area0 = float(np.sum(psi0_final_grid >= 0.5))
-    area_err = abs(float(np.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
+    area0 = float(xp.sum(psi0_final_grid >= 0.5))
+    area_err = abs(float(xp.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
 
     return {
         "N": N, "eps_ratio": eps_ratio, "alpha": alpha_grid, "method": method,
         "L2_psi": err_L2, "L2_phi": err_L2_phi,
         "area_err": area_err, "mass_err": mass_err,
         "reinits": reinit_count,
-        "psi_final": psi, "psi_init": psi0_final_grid, "X": X, "Y": Y,
+        "psi_final": backend.to_host(psi),
+        "psi_init": backend.to_host(psi0_final_grid),
+        "X": backend.to_host(X), "Y": backend.to_host(Y),
     }
 
 
@@ -170,12 +182,19 @@ def main():
         print("=" * 70)
         return
 
+    from twophase.backend import Backend as _B
+    _probe = _B()
+    _gpu_run = _probe.is_gpu()
+
     all_results = []
     for label, alpha, method in cases:
         print(f"\n--- {label} ---")
         r = run_case(N, eps_ratio, alpha, method)
         print(f"  L2ψ={r['L2_psi']:.3e}, L2φ={r['L2_phi']:.3e}, "
               f"area={r['area_err']:.2e}, mass={r['mass_err']:.2e}")
+        if _gpu_run and alpha > 1.0:
+            print(f"  NOTE [{label}]: ASM-122-A FUNDAMENTAL drift expected in L2_psi "
+                  f"(CHK-124) — non-uniform split reinit over ~900 steps")
         all_results.append({
             "label": label, "alpha": alpha,
             "L2_psi": r["L2_psi"], "L2_phi": r["L2_phi"],
