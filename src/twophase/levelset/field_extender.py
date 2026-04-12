@@ -84,7 +84,8 @@ class FieldExtender:
             d1, _ = self.ccd.differentiate(phi, ax)
             dphi.append(d1)
         grad_sq = sum(g * g for g in dphi)
-        grad_norm = np.maximum(np.sqrt(np.maximum(grad_sq, 1e-28)), 1e-14)
+        xp = self.xp
+        grad_norm = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
         return [g / grad_norm for g in dphi]
 
     def extend(self, q, phi, n_hat=None):
@@ -109,25 +110,32 @@ class FieldExtender:
         h = self._h
         dtau = self._dtau
 
+        xp = self.xp
+
         # sign(φ): +1 in target (φ≥0), -1 in source (φ<0)
         # φ=0 nodes assigned to target to enable interface seeding
-        sign_phi = np.where(phi >= 0, 1.0, -1.0)
+        sign_phi = xp.where(phi >= 0, 1.0, -1.0)
         freeze = (phi < 0)  # source phase: don't modify
 
         # Advection velocity per axis
         a = [sign_phi * n_hat[ax] for ax in range(ndim)]
 
-        q_ext = np.copy(q)
+        # Sanitize: NaN/Inf in q (either phase) causes upwind NaN propagation
+        # at interface-adjacent cells.  Source-phase NaN should not occur in
+        # normal use; 0 is a safe fallback.  Target-phase NaN is replaced by 0
+        # because target values are fully overwritten by the extension anyway.
+        q_safe = xp.where(xp.isfinite(q), q, xp.zeros_like(q))
+        q_ext = xp.copy(q_safe)
 
         for _ in range(self.n_iter):
-            rhs = np.zeros_like(q_ext)
+            rhs = xp.zeros_like(q_ext)
             for ax in range(ndim):
                 h_ax = h[ax]
                 N_ax = self.grid.N[ax]
 
                 # D⁺ (forward) and D⁻ (backward) first-order differences
-                dq_fwd = np.zeros_like(q_ext)
-                dq_bwd = np.zeros_like(q_ext)
+                dq_fwd = xp.zeros_like(q_ext)
+                dq_bwd = xp.zeros_like(q_ext)
 
                 sl_c = [slice(None)] * ndim
                 sl_p = [slice(None)] * ndim
@@ -147,10 +155,10 @@ class FieldExtender:
                 dq_bwd[tuple(sl_N)] = (q_ext[tuple(sl_N)] - q_ext[tuple(sl_Nm1)]) / h_ax
 
                 # Upwind: a > 0 → D⁻, a < 0 → D⁺
-                rhs += a[ax] * np.where(a[ax] > 0, dq_bwd, dq_fwd)
+                rhs += a[ax] * xp.where(a[ax] > 0, dq_bwd, dq_fwd)
 
             q_new = q_ext - dtau * rhs
-            q_new[freeze] = q[freeze]
+            q_new[freeze] = q_safe[freeze]
             q_ext = q_new
 
         return q_ext
@@ -181,7 +189,7 @@ class FieldExtender:
         q_gas = self.extend(q, -phi, [(-n) for n in n_hat])
 
         # Blend: use original phase's value where available
-        q_ext = np.where(phi < 0, q_gas, q_liq)
+        q_ext = self.xp.where(phi < 0, q_gas, q_liq)
         return q_ext
 
 

@@ -97,7 +97,25 @@ def test_source_phase_frozen(setup_2d):
     )
 
 
-# ── Test 4: Builder integration with n_extend ────────────────────────────
+# ── Test 4: NaN in target phase must not propagate ───────────────────────
+
+def test_extend_nan_in_target_phase(setup_2d):
+    """NaN in the target (gas) phase must be replaced, not propagated."""
+    from twophase.levelset.field_extender import FieldExtender
+
+    N, grid, ccd, X, Y = setup_2d
+    ext = FieldExtender(Backend(use_gpu=False), grid, ccd, n_iter=5)
+
+    phi = X - 0.5  # liquid at x<0.5 (phi<0), gas at x>=0.5 (phi>=0)
+    # Realistic case: q is uninitialized (NaN) in the target gas phase
+    q = np.where(X < 0.5, 4.0, np.nan)
+    q_ext = ext.extend(q, phi)
+
+    assert not np.any(np.isnan(q_ext)), "NaN in target phase must not propagate"
+    assert not np.any(np.isinf(q_ext)), "Inf must not appear after extension"
+
+
+# ── Test 5: Builder integration with n_extend ────────────────────────────
 
 def test_builder_with_extension():
     """SimulationBuilder with n_extend>0 must build and run 2 steps."""
