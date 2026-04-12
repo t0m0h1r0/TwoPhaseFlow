@@ -160,12 +160,34 @@ pass bit-exact.
 
 **Key insight**: Richardson extrapolation is *external* to the base scheme. If the base
 scheme is a function $\Phi(\Delta t)$ of $\Delta t$ with expansion
-$u^{n+1} = u(\Delta t) + C_2\Delta t^2 + C_3\Delta t^3 + \dots$,
-then $(4\Phi(\Delta t/2)\circ\Phi(\Delta t/2) - \Phi(\Delta t))/3$ annihilates the
-$\Delta t^2$ error regardless of internal structure (Heun, Picard, implicit, cross-terms,
-gravity, surface tension — all get raised simultaneously because they're all functions of $\Delta t$).
+$u(\Delta t) = u^\star + C_p\Delta t^p + C_{p+1}\Delta t^{p+1} + \dots$,
+then $(4\Phi(\Delta t/2)\circ\Phi(\Delta t/2) - \Phi(\Delta t))/3$ annihilates the leading
+$C_p\Delta t^p$ term, but what remains depends on the base:
 
-This **solves the cross-term order trap** (§2 point 6) for free.
+| Base | Error expansion | Richardson lift |
+|---|---|---|
+| non-symmetric (Heun, general RK) | all powers $\Delta t^2, \Delta t^3, \Delta t^4,\dots$ | **+1 only** → $O(\Delta t^{p+1})$ |
+| symmetric (trapezoidal, midpoint, Padé-(2,2)) | only *even* powers $\Delta t^2, \Delta t^4,\dots$ | **+2** → $O(\Delta t^{p+2})$ |
+
+This is the classical symmetry/parity result. The **PicardCNAdvance base is Heun, not
+symmetric**, so `Richardson(Picard)` is `O(Δt³)`, *not* `O(Δt⁴)` as initially anticipated.
+Verified in Phase 2 by a self-similarity refinement test
+(`src/twophase/tests/test_ns_terms.py::test_richardson_cn_lifts_order_on_pure_diffusion`):
+measured order **3.01** for `RichardsonCNAdvance(PicardCNAdvance)` on pure diffusion.
+
+Concrete orders for the planned strategy family:
+
+| Wrapper × base | Order | Notes |
+|---|---|---|
+| `RichardsonCNAdvance(PicardCNAdvance)` | $O(\Delta t^3)$ | Phase 2 — this ship, one-step order lift only |
+| `RichardsonCNAdvance(ImplicitCNAdvance)` | $O(\Delta t^4)$ | Phase 3+ — true trapezoidal is symmetric, full +2 |
+| `RichardsonCNAdvance(Pade22CNAdvance)` | $O(\Delta t^6)$ | Phase 6 — Padé is symmetric, full +2 from the Padé base at order 4 |
+
+The cross-term order-cap trap (§2 point 6) is still addressed by Richardson — because
+the extrapolation operates on whole-scheme output, explicit cross-terms and
+`explicit_rhs` are lifted along with the diagonal. Phase 2's `Richardson(Picard)`
+gives `O(Δt³)` on *everything* (cross-terms, rhs, diagonal). True $O(\Delta t^4)$ requires
+the symmetric-base path (Phase 3).
 
 ```python
 class RichardsonCNAdvance:
@@ -182,7 +204,7 @@ class RichardsonCNAdvance:
 ```
 
 **Cost**: ~3× base (1 big + 2 half solves)
-**Order**: $O(\Delta t^4)$ on the diagonal *and* on the frozen explicit_rhs contribution
+**Order**: $O(\Delta t^3)$ with the Picard (Heun) base — see table above; upgrade to $O(\Delta t^4)$ requires the symmetric ImplicitCNAdvance base (Phase 3)
 **Stability**: inherits from base (same CFL regime as current Picard, not improved)
 **Risk**: `explicit_rhs` is evaluated at time $n$ and held constant across the
 substeps — this is consistent with how the current IPC+AB2 assembles it and
