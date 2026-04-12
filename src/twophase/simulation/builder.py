@@ -45,7 +45,7 @@ from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature import CurvatureCalculator  # legacy (phi-based)
 from ..levelset.curvature_psi import CurvatureCalculatorPsi  # recommended (psi-direct)
-from ..ns_terms.predictor import Predictor
+from ..time_integration.ab2_predictor import Predictor
 from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.viscous import ViscousTerm
 from ..ns_terms.gravity import GravityTerm
