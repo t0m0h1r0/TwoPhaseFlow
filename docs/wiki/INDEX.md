@@ -1,6 +1,6 @@
-# Wiki Index — 87 entries
+# Wiki Index — 88 entries
 
-## Theory (32)
+## Theory (33)
 
 | REF-ID | Title |
 |--------|-------|
@@ -36,6 +36,7 @@
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
 | [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
+| [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
 
 ## Cross-Domain (8)
 
