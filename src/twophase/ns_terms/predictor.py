@@ -185,7 +185,7 @@ class Predictor:
         # ── 粘性項（CN または陽的） ────────────────────────────────────
         if self.config.numerics.cn_viscous:
             vel_star = self.viscous.apply_cn_predictor(
-                vel_n, None, explicit_rhs, mu, rho, ccd, dt
+                vel_n, explicit_rhs, mu, rho, ccd, dt
             )
         else:
             visc = self.viscous.compute_explicit(vel_n, mu, rho, ccd)

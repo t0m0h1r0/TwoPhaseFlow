@@ -86,7 +86,6 @@ class ViscousTerm(INSTerm):
     def apply_cn_predictor(
         self,
         u_old: List,
-        u_star: List,
         explicit_rhs: List,
         mu: "array",
         rho: "array",
