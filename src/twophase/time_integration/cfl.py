@@ -9,9 +9,14 @@ Active constraints depend on viscous treatment (§8 stability warnbox):
     Capillary CFL:   Δt ≤ sqrt((ρ_l+ρ_g) h³ / (2π σ)) (§8.4 Eq.(dt_sigma))
     Viscous CFL:     Δt ≤ CFL · h² / (4 ν_max)         (explicit viscous only)
 
-The viscous CFL is OMITTED when Crank-Nicolson viscous treatment is used
-(cn_viscous=True, the default), because CN is unconditionally stable and
-does not impose a parabolic time-step restriction.
+The viscous CFL is OMITTED when cn_viscous=True (the default). Note: the
+current cn_viscous=True path (ViscousTerm.apply_cn_predictor) is a 1-step
+Picard iteration on the CN equation — algebraically a Heun predictor-
+corrector — which is O(Δt²) accurate but NOT unconditionally stable. In
+practice the convective and capillary CFL dominate in the target Re regime,
+so the underlying explicit viscous stability limit has not been the binding
+constraint. A true implicit A-stable CN solver is tracked as Phase 3 of the
+Extended CN plan (docs/memo/extended_cn_impl_design.md §1.2).
 
 where ν_max = max(μ̃)/min(ρ̃) is the maximum kinematic viscosity.
 In the dimensionless formulation (ρ_l=1, σ=1/We):
@@ -41,8 +46,11 @@ class CFLCalculator:
     We         : Weber number (for capillary wave CFL).  None disables the
                  capillary constraint (backward-compatible default).
     rho_ratio  : ρ_gas / ρ_liquid (for capillary wave CFL, default 0.0).
-    cn_viscous : If True (default), viscous CFL is omitted — CN is
-                 unconditionally stable (§8 stability warnbox).
+    cn_viscous : If True (default), viscous CFL is omitted. See module
+                 docstring: the current cn_viscous=True path is Heun-type
+                 predictor-corrector (1-step Picard on CN), NOT a true
+                 A-stable implicit CN. Convective/capillary CFL dominate in
+                 practice. See docs/memo/extended_cn_impl_design.md §1.2.
                  If False, viscous CFL is included for explicit treatment.
     """
 
@@ -104,8 +112,10 @@ class CFLCalculator:
 
         dt = dt_conv
 
-        # Viscous CFL — only for explicit viscous treatment (§8 stability warnbox).
-        # Omitted when cn_viscous=True (CN is unconditionally stable).
+        # Viscous CFL — only included for explicit viscous treatment
+        # (cn_viscous=False). The cn_viscous=True path is 1-step Picard on
+        # CN (Heun predictor-corrector) and is NOT truly unconditionally
+        # stable; see module docstring + docs/memo/extended_cn_impl_design.md §1.2.
         if not self._cn_viscous:
             nu_max = float(xp.max(mu / rho))
             nu_max = max(nu_max, 1e-14)
