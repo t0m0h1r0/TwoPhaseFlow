@@ -29,7 +29,7 @@ If input is too long:
 2. Load additional files ONLY if the current task demands it:
    - Code changes → `docs/00_GLOBAL_RULES.md §C` + `docs/03_PROJECT_RULES.md`
    - Dependency/interface resolution → `docs/01_PROJECT_MAP.md`
-   - Agent routing / full initialization → `prompts/agents/ResearchArchitect.md` + all above
+   - Agent routing / full initialization → `prompts/agents-claude/ResearchArchitect.md` + all above
 3. Do NOT pre-load any file not required by the current task
 
 ## CODING RULES (enforced every session)
@@ -40,18 +40,20 @@ If input is too long:
 - **A3 Traceability** — Equation → Discretization → Code chain is mandatory
 
 ## DIRECTORY CONVENTIONS (enforced every session)
-- Full conventions in `prompts/agents/_base.yaml §directory_conventions`
+- Full conventions in `prompts/agents-claude/_base.yaml §directory_conventions`
 - Key rules:
   - Library code → `src/twophase/` (`lib/` is NOT used)
   - Experiment scripts → `experiment/ch{N}/`; results colocated in `experiment/ch{N}/results/{name}/`
   - Graphs → **PDF only** (`savefig('*.pdf')`)
   - Experiment scripts MUST use `twophase.experiment` toolkit and support `--plot-only`
   - `results/` (top-level) → DEPRECATED
-  - Meta-prompts → `prompts/meta/`; Agent prompts → `prompts/agents/`
+  - Meta-prompts → `prompts/meta/`; Agent prompts → `prompts/agents-claude/` (Claude) / `prompts/agents-codex/` (Codex)
   - **Experiment execution default = remote server `python`**: use `make run EXP=<path>` (remote) or `make run-local EXP=<path>` (local fallback). Direct `python3 experiment/…` invocation is discouraged — it silently runs locally.
 
 ## AGENT PROMPT SYSTEM
-- Agent prompts are YAML-format files in `prompts/agents/*.md`.
-- All agents inherit `prompts/agents/_base.yaml` (shared axioms, primitives, rules, procedure pre/post).
+- Agent prompts are YAML-format files, per environment:
+  - Claude: `prompts/agents-claude/*.md` (full verbosity, THOUGHT_PROTOCOL)
+  - Codex: `prompts/agents-codex/*.md` (compressed, diff-first)
+- All agents inherit `prompts/agents-{env}/_base.yaml` (shared axioms, primitives, rules, procedure pre/post).
 - Agent files contain ONLY overrides and domain-specific content.
 - To understand an agent: read `_base.yaml` FIRST, then the agent file.

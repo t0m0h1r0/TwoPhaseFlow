@@ -318,7 +318,7 @@ DOMAIN-LOCK:
 | L | `src/twophase/`, `tests/`, `docs/02_ACTIVE_LEDGER.md` | `paper/sections/*.tex`, `docs/01_PROJECT_MAP.md`, `docs/interface/AlgorithmSpecs.md` |
 | E | `experiment/`, `docs/02_ACTIVE_LEDGER.md` | `docs/interface/SolverAPI_vX.py`, `src/twophase/` |
 | A | `paper/sections/*.tex`, `paper/bibliography.bib`, `docs/02_ACTIVE_LEDGER.md` | `src/twophase/`, `docs/interface/ResultPackage/`, `docs/interface/TechnicalReport.md` |
-| P | `prompts/agents/*.md` | `prompts/meta/*.md` |
+| P | `prompts/agents-{env}/*.md` | `prompts/meta/*.md` |
 | Q | `docs/02_ACTIVE_LEDGER.md` | all domains (read-only) |
 
 On failure: branch doesn't match known domain → STOP; report to user.
@@ -738,7 +738,7 @@ Execute [filename]
 ```
 
 - One command per step (P5). `Initialize` = invoke ResearchArchitect with `docs/02_ACTIVE_LEDGER.md`.
-- `Execute [AgentName]` = invoke by role name. `Execute [filename]` = load from `prompts/agents/{filename}.md`.
+- `Execute [AgentName]` = invoke by role name. `Execute [filename]` = load from `prompts/agents-{env}/{filename}.md`.
 
 ────────────────────────────────────────────────────────
 # § HANDOFF PROTOCOL

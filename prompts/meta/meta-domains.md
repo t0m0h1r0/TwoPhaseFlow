@@ -220,7 +220,7 @@ before any E-Domain work begins. Running experiments without a signed solver API
 | Matrix alias | P-Domain (Prompt & Environment) |
 | Coordinator / Gatekeeper | PromptArchitect (Prompt Engineer; acts as both coordinator and primary executor) |
 | Specialist members | PromptAuditor |
-| Storage (write — STRICT) | `prompts/agents/*.md` |
+| Storage (write — STRICT) | `prompts/agents-claude/*.md`, `prompts/agents-codex/*.md` |
 | Storage (read — STRICT) | `prompts/meta/*.md` (source only; never edit agents/ via meta/) |
 | Storage (FORBIDDEN write) | `prompts/meta/*.md` (Governance-owned; read-only for all agents), `src/`, `paper/`, `experiment/` |
 | Rules | docs/00_GLOBAL_RULES.md §Q (Q1–Q4: standard template, env profiles, audit checklist, compression) |
@@ -559,8 +559,8 @@ hardcoded `results/` paths — update to `experiment/ch{N}/results/` when editin
 
 ## Agent Prompts (P-Domain)
 
-- Storage: `prompts/agents/` (29 agents + `_base.yaml`)
-- Deprecated agents: `prompts/agents/_deprecated/`
+- Storage: `prompts/agents-claude/` (Claude), `prompts/agents-codex/` (Codex) — 25 agents + `_base.yaml` per env
+- Deprecated agents: `prompts/agents-deprecated/`
 
 ## Documentation (docs/)
 
@@ -678,7 +678,7 @@ Violation → RETURN BLOCKED with reason "sync not authorized by Selective Sync 
 | `paper/bibliography.bib` | A-Domain (write) | — |
 | `docs/interface/` | Gatekeepers (write, IF-COMMIT token required) | all Specialists: read-only; Q: read-only audit |
 | `docs/02_ACTIVE_LEDGER.md` | Q-Domain (write, append-only) | all: read-only |
-| `prompts/agents/*.md` | P-Domain (write) | — |
+| `prompts/agents-{env}/*.md` | P-Domain (write) | — |
 | `prompts/meta/*.md` | Governance (human operators + meta-deploy only) | all: read-only |
 | `docs/00_GLOBAL_RULES.md` | Governance (write) | all: read-only (authoritative rule source) |
 | `docs/01_PROJECT_MAP.md` | Governance (write) | all: read-only; append entries via coordinator |

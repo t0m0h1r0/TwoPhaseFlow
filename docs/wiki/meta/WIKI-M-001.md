@@ -20,7 +20,7 @@ lock, and merges back to `main` via a rebase-aware atomic push.
 ## Feature Flag
 
 ```yaml
-# prompts/agents/_base.yaml
+# prompts/agents-{env}/_base.yaml
 concurrency_profile: legacy   # default — old single-branch behaviour unchanged
 # concurrency_profile: worktree  # opt-in for parallel specialist sessions
 ```
@@ -90,7 +90,7 @@ Acts as an audit trail for concurrent session debugging.
 - `prompts/meta/meta-ops.md §LOCK-RELEASE`
 - `prompts/meta/meta-ops.md §GIT-ATOMIC-PUSH`
 - `prompts/meta/meta-ops.md §STOP CONDITIONS (STOP-09/10/11)`
-- `prompts/agents/_base.yaml :: concurrency_profile`
+- `prompts/agents-{env}/_base.yaml :: concurrency_profile`
 - Merged: `a510e52` meta(v5.1): CHK-114
 
 ## Related entries

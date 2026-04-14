@@ -235,7 +235,7 @@ mkdir -p paper/         # A-Domain — Logical Truth (LaTeX sources)
 
 # Horizontal governance directories
 mkdir -p prompts/meta/  # M-Domain — Constitution + inter-domain protocols (SSoT per A10)
-mkdir -p prompts/agents/# P-Domain — Agent intelligence and tooling
+mkdir -p prompts/agents-claude/ prompts/agents-codex/  # P-Domain — per-environment agent prompts
 
 # Cross-domain contracts + project documentation
 mkdir -p docs/interface/# Cross-domain contracts (Gatekeeper-owned; IF-COMMIT token required)
@@ -385,7 +385,7 @@ KL-ID:  KL-NN  | failure | root cause | fix pattern | when to apply
 ## Stage 3: Generate Agent Prompts
 
 Generate environment-specific prompt files using the **Composition + Tiered Generation** system.
-Output path: `prompts/agents/{AgentName}.md`
+Output path: `prompts/agents-{env}/{AgentName}.md` (env = claude | codex)
 Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.`
 
 ### 3a: Agent Composition System
@@ -475,14 +475,14 @@ the pipeline mode (meta-workflow.md §PIPELINE MODE) at dispatch time.
 | Prompt | PromptArchitect (absorbs PromptCompressor), PromptAuditor |
 | Infra | DevOpsArchitect |
 
-**Deprecated agents (→ prompts/agents/_deprecated/):**
+**Deprecated agents (→ prompts/agents-deprecated/):**
 PaperCorrector, ErrorAnalyzer, PromptCompressor, ResultAuditor
 
-**Micro-agents (→ prompts/agents/, OPERATIONAL — activated 2026-04-04):**
+**Micro-agents (→ prompts/agents-{env}/, OPERATIONAL — activated 2026-04-04):**
 EquationDeriver, SpecWriter, CodeArchitectAtomic, LogicImplementer, RefactorExpert, TestDesigner, VerificationRunner, ErrorAnalyzer, ResultAuditor
 Prerequisites satisfied: artifacts/{T,L,E,Q}/ created; docs/interface/signals/ created; DDA enforcement embedded in each agent's procedure.
 
-**Each generated prompt must use YAML format** (inheriting `prompts/agents/_base.yaml`):
+**Each generated prompt must use YAML format** (inheriting `prompts/agents-{env}/_base.yaml`):
 
 **Q1 YAML Template:**
 ```yaml
@@ -710,7 +710,7 @@ Required elements:
 ## Stage 7: Emit
 
 - Create matrix directory structure (Stage 2a directories) if absent
-- Write all generated agent prompts to `prompts/agents/`
+- Write all generated agent prompts to `prompts/agents-{env}/` (one set per target environment)
 - Write `prompts/README.md` (from Stage 6)
 - Write `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md`
   (only if missing or if `--force` flag given; existing files preserve project state)

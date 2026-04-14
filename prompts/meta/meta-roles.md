@@ -468,8 +468,8 @@ Domain constraints: docs/00_GLOBAL_RULES.md §Q (Q1–Q4: standard template, env
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Generated prompt at prompts/agents/{AgentName}.md with GENERATED header |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT to docs/interface/; merge dev/ PRs into `prompt` after MERGE CRITERIA; read all prompts/meta/*.md; write to prompts/agents/{AgentName}.md; apply environment profile (meta-deploy.md §Q2); GIT-01 (`prompt`), GIT-02 |
+| DELIVERABLES | Generated prompt at prompts/agents-{env}/{AgentName}.md with GENERATED header (one per target environment) |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT to docs/interface/; merge dev/ PRs into `prompt` after MERGE CRITERIA; read all prompts/meta/*.md; write to prompts/agents-claude/ and prompts/agents-codex/; apply environment profile (meta-deploy.md §Q2); GIT-01 (`prompt`), GIT-02 |
 | CONSTRAINTS | [Gatekeeper] Must immediately open PR `prompt` → `main` after merging; compose from meta files only — no improvised rules; verify A1–A11 preserved before writing; Q1 Standard Template exactly; Q1–Q4 domain constraints apply |
 | STOP | Axiom conflict in generated prompt → STOP; required meta file missing → STOP |
 

@@ -382,7 +382,7 @@ Triggered when a meta-file edit is detected that does NOT affect Axioms (A1–A1
 - WARM_BOOT requires: no φ1–φ7 / A1–A11 text diff (grep gate: count unchanged)
 - If Axiom text IS modified → full COLD_START required (no fast-path)
 - ConsistencyAuditor AUDIT-TASK token is emitted by Bootstrapper, not the user
-- Hot-Reload = overwrite `prompts/agents/{AgentName}.md` for affected agents only
+- Hot-Reload = overwrite `prompts/agents-{env}/{AgentName}.md` for affected agents only
 
 ────────────────────────────────────────────────────────
 ## Bootstrap Pipeline (new feature only — run before Code Pipeline)

@@ -34,10 +34,15 @@ prompts/meta/
   meta-experimental.md   — Micro-agent architecture (OPERATIONAL)
 ```
 
-### Agent prompts (Layer 2 — generated output)
+### Agent prompts (Layer 2 — generated output, per-environment)
+
+Two parallel directories, generated from the same meta sources:
+
 ```
-prompts/agents/
-  _base.yaml               — Universal agent foundation (inherited by all)
+prompts/agents-claude/    ← Claude: full verbosity, THOUGHT_PROTOCOL, AP self-check table
+prompts/agents-codex/     ← Codex: compressed (~1500 tokens), diff-first, 3-line THOUGHT
+
+  _base.yaml               — Universal agent foundation (per-env; includes SLP-01/RAP-01 defaults)
 
   # Routing (M-Domain)
   ResearchArchitect.md      — Protocol Enforcer / Router
@@ -60,20 +65,20 @@ prompts/agents/
 
   # Paper (A-Domain)
   PaperWorkflowCoordinator.md — Paper Pipeline Orchestrator
-  PaperWriter.md              — Academic Editor (absorbs PaperCorrector)
+  PaperWriter.md              — Academic Editor
   PaperReviewer.md            — Devil's Advocate Reviewer
   PaperCompiler.md            — LaTeX Compliance Engine
 
   # Audit (Q-Domain)
-  ConsistencyAuditor.md      — Cross-Domain Falsification Gate
+  ConsistencyAuditor.md      — Cross-Domain Falsification + Meta-Consistency Guard (SDP-01)
 
   # Prompt (P-Domain)
-  PromptArchitect.md         — Prompt Engineer (absorbs PromptCompressor)
+  PromptArchitect.md         — Prompt Engineer
   PromptAuditor.md           — Q3 Checklist Auditor
 
   # Infrastructure (M-Domain)
   DevOpsArchitect.md         — Docker/CI/GPU Specialist
-  DiagnosticArchitect.md     — Self-Healing Agent
+  DiagnosticArchitect.md     — Self-Healing Agent (RAP-01)
 
   # Knowledge (K-Domain)
   KnowledgeArchitect.md      — Wiki Compiler
@@ -81,16 +86,8 @@ prompts/agents/
   Librarian.md               — Search & Impact Analysis
   TraceabilityManager.md     — Pointer Maintenance
 
-  # Micro-Agents (OPERATIONAL)
-  EquationDeriver.md         — T-Domain: equation derivation
-  SpecWriter.md              — T-Domain: spec generation
-  CodeArchitectAtomic.md     — L-Domain: structural design
-  LogicImplementer.md        — L-Domain: method body logic
-  ErrorAnalyzer.md           — L-Domain: diagnosis only
-  RefactorExpert.md          — L-Domain: targeted fixes
-  TestDesigner.md            — E-Domain: test design
-  VerificationRunner.md      — E-Domain: test execution
-  ResultAuditor.md           — Q-Domain: result audit
+  # Micro-Agents
+  VerificationRunner.md      — Verification Executor (RAP-01)
 ```
 
 ### Docs (Layer 3 — project context)
@@ -236,7 +233,7 @@ Full text: `prompts/meta/meta-core.md §DESIGN PHILOSOPHY`.
 | E | VerificationRunner | Execute tests and simulations |
 | Q | ResultAuditor | Audit results against theory |
 
-### Deprecated (→ prompts/agents/_deprecated/)
+### Deprecated (removed)
 PaperCorrector, PromptCompressor (absorbed into composite agents)
 
 ## 8. Agent Interaction Diagram

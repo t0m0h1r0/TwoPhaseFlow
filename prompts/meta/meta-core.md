@@ -320,7 +320,7 @@ the abstract intent and the concrete rule. The next regeneration will silently
 overwrite the patch, destroying the fix without notice.
 
 **Expresses:** A10 (Meta-Governance).
-**Authority order:** prompts/meta/ > docs/00_GLOBAL_RULES.md > prompts/agents/.
+**Authority order:** prompts/meta/ > docs/00_GLOBAL_RULES.md > prompts/agents-{env}/.
 **Corollary:** If a rule needs to change, find its home in prompts/meta/ and change it there.
 
 ────────────────────────────────────────────────────────
