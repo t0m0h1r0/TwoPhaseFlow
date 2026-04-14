@@ -179,7 +179,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
    & 4, 5 \\
 9  & 圧力 Poisson 方程式
-   & CCD-PPE 離散化，欠陥補正法，境界条件，精度総括
+   & 分相 PPE 解法，HFE，欠陥補正法，境界条件，精度総括
    & 8 \\
 10 & 完全アルゴリズム
    & 離散演算子マッピング・7ステップフロー・タイムステップ制御
@@ -212,7 +212,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
   \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
         One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
   \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}--\ref{sec:pressure}章）：
-        CCD 法，界面適合格子，Rhie--Chow 補正，変密度 PPE 求解
+        CCD 法，界面適合格子，Rhie--Chow 補正，分相 PPE による圧力求解
   \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
         7ステップ離散計算フローの統合実装
   \item \textbf{コンポーネント検証}（第~\ref{sec:verification}章）：

@@ -190,7 +190,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         \textbf{→ 本稿の対処：}
         曲率 $\kappa$ は CCD 法による $\Ord{h^6}$ 精度評価（第~\ref{sec:CCD}章）で求め，
         Balanced-Force 条件（§~\ref{sec:balanced_force}）により
-        圧力勾配と表面張力の離散化を $\Ord{h^6}$ 精度で整合させる．
+        滑らかな領域で圧力勾配と表面張力の離散化を高次に整合させる．
 
   \item \textbf{非圧縮条件の高精度維持}：
         速度場の発散をゼロに保つ圧力場を毎ステップ正確に求解する必要がある．
@@ -218,7 +218,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         人工的な速度場を駆動する（§~\ref{sec:balanced_force} 参照）．
 
         \textbf{→ 本稿の対処：}
-        CCD 法（第~\ref{sec:CCD}章）による $\Ord{h^6}$ 精度の曲率計算と
+        CCD 法（第~\ref{sec:CCD}章）による滑らかな領域での高次曲率計算と
         CCD 勾配による Balanced-Force 条件（§~\ref{sec:balanced_force}）により，
         $\bnabla p$ と $\kappa\bnabla\psi$ を\textbf{同一の CCD 演算子}で評価し，
         数値離散化誤差成分を CSF モデル誤差が律速する水準まで低減する．
