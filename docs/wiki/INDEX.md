@@ -1,4 +1,4 @@
-# Wiki Index — 88 entries
+# Wiki Index — 91 entries
 
 ## Theory (33)
 
@@ -38,7 +38,7 @@
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 | [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
 
-## Cross-Domain (8)
+## Cross-Domain (9)
 
 | REF-ID | Title |
 |--------|-------|
@@ -50,6 +50,7 @@
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
+| [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 
 ## Experiment (20)
 
@@ -87,7 +88,7 @@
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 
-## Meta (7)
+## Meta (8)
 
 | REF-ID | Title |
 |--------|-------|
@@ -98,8 +99,9 @@
 | [WIKI-M-005](meta/WIKI-M-005.md) | Agent Meta System: Dynamic Governance Patterns (MAX_REJECT_ROUNDS + CONDITIONAL_PASS + INTEGRITY_MANIFEST + Phantom Guard) |
 | [WIKI-M-006](meta/WIKI-M-006.md) | Agent Meta System: Micro-Agent Architecture + DDA + SIGNAL Protocol |
 | [WIKI-M-007](meta/WIKI-M-007.md) | Agent Meta System: K-Domain + meta-project Profile Swap Pattern |
+| [WIKI-M-008](meta/WIKI-M-008.md) | Agent Meta System: SLP/RAP/SDP Protocols + Per-Environment Prompt Generation |
 
-## Code (15)
+## Code (16)
 
 | REF-ID | Title |
 |--------|-------|
@@ -118,3 +120,4 @@
 | [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
 | [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
 | [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
+| [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
