@@ -88,10 +88,12 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
         表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
         この整合性を高次に維持する．
 
-  \item \textbf{直接法による残差ゼロ保証}．
-        DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を LU 分解（直接法）で厳密に解くことで，
-        DC 反復の各ステップで $L_L$ の離散残差は機械精度まで消去される．
-        直接法はこの系統誤差を原理的に排除する（§~\ref{sec:defect_correction_main}参照）．
+  \item \textbf{疎行列直接法による Step~2 解法誤差の抑制}．
+        DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を
+        ゲージ固定後の 2D 疎行列 LU などで解くことで，
+        Step~2 の線形解法残差は機械精度近くまで下げられる．
+        方向分離スウィープを用いる場合は近似前処理として扱い，
+        直接法ケースとは残差保証を分ける（§~\ref{sec:defect_correction_main}参照）．
 \end{enumerate}
 
 \noindent\textbf{全体精度の律速：}

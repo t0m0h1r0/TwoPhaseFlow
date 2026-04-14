@@ -136,7 +136,10 @@ CCD 演算子 $D^{(1)}$ による
         Balanced-Force 条件が $\Ord{h^6}$ 精度で成立する．
   \item PPE 右辺は DCCD フィルタ済み発散（式~\eqref{eq:dccd_ppe_rhs}）のみから構成される
         （Rhie--Chow Balanced-Force 補正はPredictor 段で適用；§~\ref{sec:rc_balanced_force}）．
-  \item 投影不整合（FD PPE と CCD 勾配の不整合；$D_\mathrm{CCD}\cdot\bu^{n+1}$残差）は $\Ord{h^2}$ であり，
+  \item 射影で制御される発散は，PPE 右辺に用いた DCCD フィルタ済み発散である．
+        非フィルタ発散 $D_\mathrm{CCD}\cdot\bu^{n+1}$ には格子スケール残差が残りうるため，
+        これを完全な非フィルタ発散自由性とは区別する（§~\ref{sec:dccd_decoupling}）．
+  \item 投影不整合（FD PPE と CCD 勾配の不整合；非フィルタ発散残差）は $\Ord{h^2}$ であり，
         全体精度の律速因子（CSF誤差 $\Ord{h^2}$）と同次のため実用上問題なく，
         DC 反復を収束させない単回補正運用ではこの不整合が残るため，
         本稿では §~\ref{sec:pressure_accuracy_summary} の精度目標に応じて $k=3$ を標準とする．

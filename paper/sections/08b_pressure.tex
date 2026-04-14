@@ -101,14 +101,17 @@ PPE ソルバー（§~\ref{sec:ppe_solve}）に進む前に，
 
 圧力場 $p$ に対する直接的なフィルタ適用は，
 速度修正ステップ $\bu^{n+1} = \bu^* - (\Delta t/\rho^{n+1})\,\bnabla(\delta p)$（§~\ref{sec:pressure}）が
-\textbf{発散自由条件} $\bnabla^{\mathrm{RC}}\cdot\bm{u}^{n+1} = 0$ を満たすよう設計されているためであり，
-フィルタによる $p$ の書き換えはこの条件を破壊する．
+\textbf{採用した離散射影条件}を満たすように構成されているためである．
+本稿では PPE 右辺に Rhie--Chow/DCCD 正則化済みの発散を用いるため，
+射影でゼロにする発散演算子もその正則化を含む離散演算子として解釈する
+（§~\ref{sec:dccd_decoupling}）．
+PPE 求解後に $p$ を直接書き換えると，この解いた線形系と速度補正の対応が崩れる．
 
 圧力関連ノイズへの対処が必要な場合，以下の代替処理が保全性を保ちながら有効である：
 \begin{enumerate}
   \item \textbf{圧力勾配のフィルタリング：}
         NS 右辺に現れる $\bnabla p$（CCD 微分として評価）に対して DCCD フィルタを適用する．
-        $p$ 自体は書き換えず，PPE の構造と発散自由性への影響がない．
+        $p$ 自体は書き換えないため，PPE の線形系そのものは保持される．
   \item \textbf{PPE 右辺の正則化：}
         ポアソン方程式 $\bnabla\cdot(1/\rho\,\bnabla(\delta p)) = \bnabla^{\mathrm{RC}}\cdot\bu^*/\Delta t$ の
         右辺 $s_h = \bnabla^{\mathrm{RC}}\cdot\bu^*/\Delta t$（式~\eqref{eq:rc_divergence}）に
