@@ -9,19 +9,27 @@ usage() {
 Usage: ./remote.sh <command> [args]
 
 Commands:
+  check                 Test SSH reachability of remote (exit 0 = OK)
   push                  Sync codebase to remote (excludes results)
   pull                  Sync results back from remote
   setup                 One-time: install Python, venv, dependencies on remote
   run <script.py>       Run a single experiment on remote
   run-all <ch11|ch12>   Run all experiments in a chapter
+  test [pytest-args]    Run pytest on remote (default: --gpu)
   ssh                   Open an interactive SSH session to remote project dir
 
 Examples:
+  ./remote.sh check
   ./remote.sh push
   ./remote.sh setup
   ./remote.sh run experiment/ch11/exp11_1_ccd_convergence.py
   ./remote.sh run-all ch11
+  ./remote.sh test
+  ./remote.sh test -k test_ccd --gpu
   ./remote.sh pull
+
+Environment:
+  TWOPHASE_FORCE_LOCAL=1   Skip remote check, always fail cmd_check
 USAGE
     exit 1
 }
@@ -153,6 +161,41 @@ echo "All experiments in ${chapter} completed successfully."
 RUNALL
 }
 
+# ── Remote availability check ────────────────────────────────────────────────
+is_remote_available() {
+    if [ "${TWOPHASE_FORCE_LOCAL:-0}" = "1" ]; then
+        return 1
+    fi
+    ssh -o ConnectTimeout="${SSH_TIMEOUT:-5}" -o BatchMode=yes \
+        "${REMOTE_HOST}" true 2>/dev/null
+}
+
+cmd_check() {
+    if is_remote_available; then
+        echo "Remote '${REMOTE_HOST}' is reachable."
+        return 0
+    else
+        echo "Remote '${REMOTE_HOST}' is NOT reachable."
+        return 1
+    fi
+}
+
+# ── Run pytest on remote ────────────────────────────────────────────────────
+cmd_test() {
+    local extra_args="${*:---gpu}"
+
+    echo "==> Running pytest on ${REMOTE_HOST} with args: ${extra_args}"
+    ssh "${REMOTE_HOST}" bash -s -- ${extra_args} <<'TEST'
+set -euo pipefail
+source /root/TwoPhaseFlow/.venv/bin/activate
+export TWOPHASE_USE_GPU=1
+cd /root/TwoPhaseFlow/src
+echo "--- pytest $* ---"
+python -m pytest twophase/tests "$@" -v --tb=short
+echo "--- pytest finished ---"
+TEST
+}
+
 # ── Interactive SSH ──────────────────────────────────────────────────────────
 cmd_ssh() {
     echo "==> Opening SSH session to ${REMOTE_HOST}:${REMOTE_DIR}"
@@ -161,11 +204,13 @@ cmd_ssh() {
 
 # ── Dispatch ─────────────────────────────────────────────────────────────────
 case "${1:-}" in
+    check)    cmd_check ;;
     push)     cmd_push ;;
     pull)     cmd_pull ;;
     setup)    cmd_setup ;;
     run)      shift; cmd_run "$@" ;;
     run-all)  shift; cmd_run_all "$@" ;;
+    test)     shift; cmd_test "$@" ;;
     ssh)      cmd_ssh ;;
     *)        usage ;;
 esac
