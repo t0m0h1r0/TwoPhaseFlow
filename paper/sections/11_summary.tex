@@ -47,7 +47,7 @@
   \item \textbf{PPE 演算子特性：}
         CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 3.43$（FD の $4.0$ と比較）であり，
         2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
-        §~\ref{sec:dc_ppe_iteration} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
+        §~\ref{sec:defect_correction_main} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
   \item \textbf{再初期化界面シフト：}
         CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
         10 回累積で略線形蓄積（${\approx}8$--$9$ 倍）することを確認した．
@@ -118,7 +118,7 @@ CCD $D^{(2)}$ スペクトル半径 & $\rho h^2 \approx 3.43$ & $3.43$          
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\
   \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
   \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{§}§~\ref{sec:time_integration}：$\mu_l/\mu_g \gg 1$ では陽的交差微分項の打切り誤差 $\Ord{\mu_{\max}\,\Delta t}$ が支配する．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{§}§~\ref{sec:time_int}：$\mu_l/\mu_g \gg 1$ では陽的交差微分項の打切り誤差 $\Ord{\mu_{\max}\,\Delta t}$ が支配する．} \\
 \multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（既知の制限，対策計画あり）．} \\
 \end{tabular}
 \end{table}
@@ -129,7 +129,7 @@ CCD $\Ord{h^6}$（混合偏微分 $\partial_{xy}$ を含む），
 PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
 CN $\Ord{\Delta t^{2.0}}$（無条件安定），
-交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_integration} の予測と一致）．
+交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_int} の予測と一致）．
 CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 3.43$（反復 PPE 放棄の根拠）．
 CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），
 DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D $\Ord{h^{3.0}}$．
