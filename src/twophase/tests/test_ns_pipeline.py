@@ -12,8 +12,8 @@ Tests cover:
 import numpy as np
 import pytest
 
-from twophase.ns_pipeline import TwoPhaseNSSolver
-from twophase.config_io import GridCfg, _parse_grid
+from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.simulation.config_io import GridCfg, _parse_grid
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ def test_step_nonuniform_no_nan():
 
 def test_dt_max_nonuniform():
     """dt_max must be smaller on non-uniform grid (h_min < h_uniform)."""
-    from twophase.config_io import PhysicsCfg
+    from twophase.simulation.config_io import PhysicsCfg
 
     s_uniform = _make_solver(alpha_grid=1.0)
     s_nonunif = _make_solver(alpha_grid=2.0)

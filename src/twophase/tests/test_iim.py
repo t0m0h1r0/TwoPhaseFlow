@@ -19,9 +19,9 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.pressure.iim.jump_conditions import JumpConditionCalculator
-from twophase.pressure.iim.stencil_corrector import IIMStencilCorrector
-from twophase.pressure.ppe_solver_iim import PPESolverIIM
+from twophase.ppe.iim.jump_conditions import JumpConditionCalculator
+from twophase.ppe.iim.stencil_corrector import IIMStencilCorrector
+from twophase.ppe import PPESolverIIM
 
 
 @pytest.fixture
@@ -265,7 +265,7 @@ class TestPPESolverIIM:
         assert np.isfinite(p_np).all()
 
         # Compare with PPESolverCCDLU
-        from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
+        from twophase.ppe.ccd_lu import PPESolverCCDLU
         solver_lu = PPESolverCCDLU(be, cfg, grid, ccd=ccd)
         p_lu = solver_lu.solve(xp.asarray(rhs), xp.asarray(rho), dt=0.001)
         p_lu_np = np.asarray(be.to_host(p_lu))

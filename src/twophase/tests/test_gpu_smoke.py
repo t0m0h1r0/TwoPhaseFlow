@@ -119,7 +119,7 @@ def test_lele_compact_filter_gpu_matches_cpu(tiny_grid_factory, cpu_backend, gpu
 
 def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
     """Direct PPE solve on a 24x24 static droplet RHS."""
-    from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
+    from twophase.ppe.ccd_lu import PPESolverCCDLU
 
     def _build(backend):
         cfg = SimulationConfig(

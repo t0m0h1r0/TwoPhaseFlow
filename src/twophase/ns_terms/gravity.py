@@ -26,7 +26,7 @@ consistent with the predictor in predictor.py which adds (dt/ρ̃) * F_body.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from ..interfaces.ns_terms import INSTerm
+from .interfaces import INSTerm
 
 if TYPE_CHECKING:
     from ..backend import Backend

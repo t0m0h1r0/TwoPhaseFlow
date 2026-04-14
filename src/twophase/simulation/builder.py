@@ -16,7 +16,7 @@ SimulationBuilder — TwoPhaseSimulation の構築を担うビルダー。
 
 使用例（カスタム PPEソルバーを注入）::
 
-    from twophase.pressure.ppe_solver_pseudotime import PPESolverPseudoTime
+    from twophase.ppe.interfaces import  # (removed) PPESolverPseudoTime
     from twophase.simulation.builder import SimulationBuilder
 
     solver = PPESolverPseudoTime(backend, config, grid)
@@ -50,12 +50,12 @@ from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.viscous import ViscousTerm
 from ..ns_terms.gravity import GravityTerm
 from ..ns_terms.surface_tension import SurfaceTensionTerm
-from ..pressure.rhie_chow import RhieChowInterpolator
-from ..pressure.ppe_solver_factory import create_ppe_solver
-from ..pressure.velocity_corrector import VelocityCorrector
-from ..pressure.gfm import GFMCorrector
-from ..pressure.dccd_ppe_filter import DCCDPPEFilter
-from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
+from ..spatial.rhie_chow import RhieChowInterpolator
+from ..ppe.factory import create_ppe_solver
+from ..coupling.velocity_corrector import VelocityCorrector
+from ..coupling.gfm import GFMCorrector
+from ..spatial.dccd_ppe_filter import DCCDPPEFilter
+from ..coupling.ppe_rhs_gfm import PPERHSBuilderGFM
 from ..levelset.field_extender import FieldExtender, NullFieldExtender
 from ..levelset.closest_point_extender import ClosestPointExtender
 from ..time_integration.cfl import CFLCalculator
@@ -63,8 +63,8 @@ from .boundary_condition import BoundaryConditionHandler
 from .diagnostics import DiagnosticsReporter
 
 if TYPE_CHECKING:
-    from ..interfaces.ppe_solver import IPPESolver
-    from ..interfaces.ns_terms import INSTerm
+    from ..ppe.interfaces import IPPESolver
+    from ..ns_terms.interfaces import INSTerm
     from ._core import TwoPhaseSimulation
 
 

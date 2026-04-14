@@ -120,7 +120,7 @@ def test_extend_nan_in_target_phase(setup_2d):
 def test_builder_with_extension():
     """SimulationBuilder with n_extend>0 must build and run 2 steps."""
     from twophase.simulation.builder import SimulationBuilder
-    from twophase.initial_conditions import InitialConditionBuilder, Circle
+    from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
     from twophase.config import (
         SimulationConfig, GridConfig, FluidConfig,
         NumericsConfig, SolverConfig,
@@ -134,7 +134,7 @@ def test_builder_with_extension():
             t_end=0.1, bc_type="wall", advection_scheme="dissipative_ccd",
             surface_tension_model="csf", n_extend=5,
         ),
-        solver=SolverConfig(ppe_solver_type="pseudotime"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),
     )
     sim = SimulationBuilder(cfg).build()
 

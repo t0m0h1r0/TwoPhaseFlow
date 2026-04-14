@@ -176,7 +176,7 @@ def test_surface_tension_localised(backend):
 
 def test_predictor_no_nan(backend):
     """Predictor must not produce NaN for a simple flow."""
-    from twophase.ns_terms.predictor import Predictor
+    from twophase.time_integration.ab2_predictor import Predictor
     N = 16
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
@@ -215,7 +215,7 @@ def test_picard_cn_advance_matches_inlined_heun(backend):
     """PicardCNAdvance must reproduce the pre-Phase-1 Heun P-C formula
     bit-for-bit, both when called directly and when dispatched through
     ViscousTerm.apply_cn_predictor with the default strategy."""
-    from twophase.ns_terms.cn_advance import PicardCNAdvance
+    from twophase.time_integration.cn_advance import PicardCNAdvance
     cfg, grid, ccd, be = make_setup(N=16, backend=backend)
     visc = ViscousTerm(be, Re=10.0, cn_viscous=True)  # default strategy = PicardCNAdvance
 
@@ -254,14 +254,14 @@ def test_picard_cn_advance_matches_inlined_heun(backend):
 
 def test_cn_mode_factory_picard(backend):
     """make_cn_advance('picard') returns a PicardCNAdvance."""
-    from twophase.ns_terms.cn_advance import make_cn_advance, PicardCNAdvance
+    from twophase.time_integration.cn_advance import make_cn_advance, PicardCNAdvance
     s = make_cn_advance(backend, "picard")
     assert isinstance(s, PicardCNAdvance)
 
 
 def test_cn_mode_factory_richardson(backend):
     """make_cn_advance('richardson_picard') wraps PicardCNAdvance."""
-    from twophase.ns_terms.cn_advance import (
+    from twophase.time_integration.cn_advance import (
         make_cn_advance, RichardsonCNAdvance, PicardCNAdvance,
     )
     s = make_cn_advance(backend, "richardson_picard")
@@ -270,7 +270,7 @@ def test_cn_mode_factory_richardson(backend):
 
 
 def test_cn_mode_factory_unknown_raises(backend):
-    from twophase.ns_terms.cn_advance import make_cn_advance
+    from twophase.time_integration.cn_advance import make_cn_advance
     with pytest.raises(ValueError, match="cn_mode"):
         make_cn_advance(backend, "wibble")
 
@@ -308,7 +308,7 @@ def test_richardson_cn_lifts_order_on_pure_diffusion(backend):
     Phase 4 (Pade22CNAdvance); Phase 6 composes Richardson on those to
     raise the global NS cross-term order.
     """
-    from twophase.ns_terms.cn_advance import PicardCNAdvance, RichardsonCNAdvance
+    from twophase.time_integration.cn_advance import PicardCNAdvance, RichardsonCNAdvance
     import math
 
     N = 16

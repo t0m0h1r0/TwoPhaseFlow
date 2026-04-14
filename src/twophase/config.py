@@ -142,14 +142,11 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # Solver type: "ccd_lu" (production, PR-6) / "pseudotime" (legacy) /
-    #   "sweep" (legacy) / "dc_omega" (legacy) / "iim" / "iterative"
+    # Solver type: "ccd_lu" (production) / "iim" / "iterative"
     ppe_solver_type: str = "ccd_lu"
-    # LGMRES parameters (ppe_solver_type="pseudotime" only, legacy)
+    # Solver tolerances (used by ccd_lu, iim, iterative)
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
-
-    # 仮想時間スウィープソルバーの密度係数: Δτᵢⱼ = C_τ·ρᵢⱼ·h²/2 (§8d eq:dtau_lts)
     pseudo_c_tau: float = 2.0
 
     # ppe_solver_type="iterative" 用: 離散化 × 反復法の組合せ
@@ -161,7 +158,7 @@ class SolverConfig:
     iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
     def __post_init__(self) -> None:
-        _valid_types = ("ccd_lu", "pseudotime", "sweep", "dc_omega", "iim", "iterative")
+        _valid_types = ("ccd_lu", "iim", "iterative")
         assert self.ppe_solver_type in _valid_types, (
             f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"

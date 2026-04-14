@@ -26,11 +26,10 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.pressure.ppe_builder import PPEBuilder
-from twophase.pressure.ppe_solver_pseudotime import PPESolverPseudoTime
-from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
-from twophase.pressure.rhie_chow import RhieChowInterpolator
-from twophase.pressure.velocity_corrector import VelocityCorrector
+from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.ppe.ccd_lu import PPESolverCCDLU
+from twophase.spatial.rhie_chow import RhieChowInterpolator
+from twophase.coupling.velocity_corrector import VelocityCorrector
 
 
 @pytest.fixture
@@ -151,103 +150,6 @@ def test_divergence_free_projection(backend):
     )
 
 
-# ── Test 4: PPESolverPseudoTime (CCD matrix-free) — 一様密度 ──────────────
-
-def test_ccd_ppe_solve_uniform_density(backend):
-    """CCD matrix-free PPE ソルバーが一様密度で収束し NaN を返さないこと。"""
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
-
-    rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(7).standard_normal(grid.shape)
-    rhs -= rhs.mean()
-    rhs[0, 0] = 0.0
-
-    # LGMRES → LU fallback is expected for highly asymmetric CCD operators
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        p = solver.solve(rhs, rho, dt=0.01)
-    assert not np.any(np.isnan(p)), "CCD PPE が NaN を返した"
-    assert np.isfinite(p).all(), "CCD PPE が inf を返した"
-
-    # NOTE: algebraic residual check (‖L_CCD^ρ p − rhs‖₂) is intentionally
-    # omitted here.  The CCD 2D Laplacian matrix (D2x_full + D2y_full) built
-    # via Kronecker products has an 8-dimensional null space for typical grid
-    # sizes (e.g. rank 17/25 for N=4), making spsolve return an inaccurate
-    # solution with residual ≈ O(rhs_norm).  A redesigned solver that handles
-    # null-space deflation explicitly is required for a meaningful residual
-    # check; see §8b and ARCHITECTURE.md for context.
-
-
-# ── Test 5: PPESolverPseudoTime (CCD matrix-free) — 変密度 ────────────────
-
-def test_ccd_ppe_solve_variable_density(backend):
-    """CCD matrix-free PPE ソルバーが変密度ケースで収束すること。"""
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=1000, ppe_solver_type="pseudotime"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
-
-    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
-                       indexing='ij')
-    rho = 0.1 + 0.9 * (0.5 + 0.5 * np.tanh(10 * (X - 0.5)))
-
-    rhs = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
-    rhs -= rhs.mean()
-    rhs[0, 0] = 0.0
-
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        p = solver.solve(rhs, rho, dt=0.01)
-
-    assert not np.any(np.isnan(p)), "CCD PPE が NaN を返した（変密度）"
-    assert np.isfinite(p).all(), "CCD PPE が inf を返した（変密度）"
-
-
-# ── Test 6: IPC 増分法 — p_init=None でゼロ初期化 ─────────────────────────
-
-def test_ccd_ppe_ipc_zero_init(backend):
-    """IPC 増分法: p_init=None（ゼロ初期化）で CCD PPE が収束すること（§4 sec:ipc_derivation）。"""
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-8, pseudo_maxiter=500, ppe_solver_type="pseudotime"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverPseudoTime(backend, cfg, grid, ccd=ccd)
-
-    rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(42).standard_normal(grid.shape)
-    rhs -= rhs.mean()
-    rhs[0, 0] = 0.0
-
-    # LGMRES → LU fallback is expected for highly asymmetric CCD operators
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        # IPC: p_init=None → ゼロ初期化（圧力増分 δp を求解）
-        delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
-    assert not np.any(np.isnan(delta_p)), "CCD PPE IPC が NaN を返した"
-
-    # ウォームスタート（p_init=delta_p → 既収束解から再スタート）でも有限値を返すこと。
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        p2 = solver.solve(rhs, rho, dt=0.01, p_init=delta_p)
-    assert not np.any(np.isnan(p2)), "ウォームスタート CCD PPE が NaN を返した"
-    assert not np.any(np.isinf(p2)), "ウォームスタート CCD PPE が Inf を返した"
-
-
 # ── Test 5: Rhie-Chow 発散補正 ────────────────────────────────────────────
 
 def test_rhie_chow_divergence(backend):
@@ -284,108 +186,6 @@ def test_rhie_chow_divergence(backend):
     assert not np.any(np.isnan(div_rc)), "Rhie-Chow 発散が NaN を含む"
 
 
-# ── Test 8: PPESolverSweep — 一様密度での収束 ────────────────────────────
-
-def test_sweep_ppe_uniform_density(backend):
-    """スウィープ PPE ソルバーが一様密度で収束し有限値を返すこと（§8d）。"""
-    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
-
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=500, pseudo_c_tau=2.0,
-                            ppe_solver_type="sweep"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
-
-    rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(7).standard_normal(grid.shape)
-    rhs -= rhs.mean()
-
-    # Sweep solver may not converge for random RHS; LU fallback ensures finite result
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        p = solver.solve(rhs, rho, dt=0.01)
-    assert np.isfinite(p).all(), "PPESolverSweep が非有限値を返した（一様密度）"
-
-
-# ── Test 9: PPESolverSweep — 変密度での収束 ──────────────────────────────
-
-def test_sweep_ppe_variable_density(backend):
-    """スウィープ PPE ソルバーが変密度ケースで有限値を返すこと（§8d LTS）。"""
-    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
-    import warnings
-
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-5, pseudo_maxiter=1000, pseudo_c_tau=2.0,
-                            ppe_solver_type="sweep"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
-
-    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
-                       indexing='ij')
-    rho = 0.1 + 0.9 * (0.5 + 0.5 * np.tanh(10 * (X - 0.5)))
-
-    rhs = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
-    rhs -= rhs.mean()
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        p = solver.solve(rhs, rho, dt=0.01)
-
-    assert np.isfinite(p).all(), "PPESolverSweep が非有限値を返した（変密度）"
-
-
-# ── Test 10: PPESolverSweep — IPC ゼロ初期値 ─────────────────────────────
-
-def test_sweep_ppe_ipc_zero_init(backend):
-    """IPC 増分法: p_init=None でスウィープ PPE ソルバーが有限値を返すこと。"""
-    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
-
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-6, pseudo_maxiter=500, pseudo_c_tau=2.0,
-                            ppe_solver_type="sweep"),
-    )
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend)
-    solver = PPESolverSweep(backend, cfg, grid, ccd=ccd)
-
-    rho = np.ones(grid.shape)
-    rhs = np.random.default_rng(42).standard_normal(grid.shape)
-    rhs -= rhs.mean()
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        delta_p = solver.solve(rhs, rho, dt=0.01, p_init=None)
-    assert np.isfinite(delta_p).all(), "PPESolverSweep IPC が非有限値を返した"
-
-
-# ── Test 11: PPESolverSweep — ファクトリ経由で構築 ────────────────────────
-
-def test_sweep_ppe_factory(backend):
-    """ppe_solver_factory が 'sweep' 種別で PPESolverSweep を返すこと。"""
-    from twophase.pressure.ppe_solver_factory import create_ppe_solver
-    from twophase.pressure.ppe_solver_sweep import PPESolverSweep
-
-    N = 16
-    cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(ppe_solver_type="sweep"),
-    )
-    grid = Grid(cfg.grid, backend)
-
-    solver = create_ppe_solver(cfg, backend, grid)
-    assert isinstance(solver, PPESolverSweep)
-
-
 
 # ── Test C-1: CCD-Poisson MMS 格子収束 (等密度) ──────────────────────────
 
@@ -414,7 +214,7 @@ def test_ccd_ppe_convergence_order(backend):
     """
     import warnings
     import scipy.sparse.linalg as spla
-    from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
+    from twophase.ppe.ccd_lu import PPESolverCCDLU
 
     # テスト格子サイズ (N=128 は LU 所要時間 ~60s のため省略)
     Ns = [8, 16, 32, 64]
@@ -525,7 +325,7 @@ def test_ccd_ppe_variable_density_convergence_order(backend):
     """
     import warnings
     import scipy.sparse.linalg as spla
-    from twophase.pressure.ppe_solver_ccd_lu import PPESolverCCDLU
+    from twophase.ppe.ccd_lu import PPESolverCCDLU
 
     # テスト格子サイズ
     Ns = [8, 16, 32, 64]

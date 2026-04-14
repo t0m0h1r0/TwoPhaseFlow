@@ -14,7 +14,7 @@ The result is an array of shape ``grid.shape`` for each velocity component.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from ..interfaces.ns_terms import INSTerm
+from .interfaces import INSTerm
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver

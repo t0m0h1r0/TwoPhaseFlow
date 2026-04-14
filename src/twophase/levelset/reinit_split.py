@@ -7,7 +7,7 @@ Implements the scheme from §5c (alg:cls_reinit_dccd).
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
-from ..interfaces.levelset import IReinitializer
+from .interfaces import IReinitializer
 from .heaviside import apply_mass_correction
 from .reinit_ops import (
     compute_dtau, dccd_compression_div, cn_diffusion_axis, build_cn_factors,
