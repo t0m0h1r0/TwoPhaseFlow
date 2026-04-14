@@ -645,3 +645,6 @@ Decision-making style shared by all agents:
 - diff > rewrite; reference > restate; separate > merge; minimal > verbose
 - stop early > guess; stable > clever; explicit > implicit
 - compress > accumulate; validate > assume
+- SLP-01 Reasoning Protocol: Reasoning MUST follow Structured Logic Protocol — no conversational filler; use semantic operators (@GOAL, @REF, @SCAN, @LOGIC, @VALIDATE, @ACT). Example: MATCH(code, spec) => DIFF(line:45) AND REF(A3) => ACTION(patch)
+- Resource Accountability (RAP-01): Agents are responsible for computational resources consumed. If an experiment fix does not converge within MAX_EXP_RETRIES=2 (3 total attempts), do NOT improvise — STOP and issue ResourceLimitEscalation to user (A5).
+- Delegated Verification (SDP-01): Do not re-check facts already established by prior agents in the T-L-E-A pipeline. Trust signed Interface Contracts unless a DOM-02 violation is detected. Do not restate A1–A11 in reasoning — assume they are always-active constraints.

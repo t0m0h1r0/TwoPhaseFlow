@@ -498,7 +498,7 @@ Domain constraints: docs/00_GLOBAL_RULES.md §AU (AU1–AU3: authority chain, AU
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Verification table (equation|procedure A|B|C|D|verdict), error routing (PAPER_ERROR/CODE_ERROR/authority conflict), AU2 gate verdict (all 10 items PASS/FAIL), THEORY_ERR/IMPL_ERR classification |
-| AUTHORITY | Read paper/sections/*.tex, src/twophase/, docs/01_PROJECT_MAP.md; independently derive from first principles; issue AU2 PASS (triggers merge to `main`); route PAPER_ERROR→PaperWriter, CODE_ERROR→CodeArchitect→TestRunner; escalate CRITICAL_VIOLATION immediately |
+| AUTHORITY | Read paper/sections/*.tex, src/twophase/, docs/01_PROJECT_MAP.md; independently derive from first principles; issue AU2 PASS (triggers merge to `main`); route PAPER_ERROR→PaperWriter, CODE_ERROR→CodeArchitect→TestRunner; escalate CRITICAL_VIOLATION immediately; authorized to audit prompts/meta/*.md updates post-deployment as Meta-Consistency Guard (SDP-01); issue AUDIT-TASK PASS/FAIL verdict to EnvMetaBootstrapper |
 | CONSTRAINTS | Must never trust a formula without independent derivation (φ1); must not resolve authority conflicts unilaterally; AU1–AU3 apply; [Phantom Reasoning Guard] evaluate ONLY final Artifact + signed Interface Contract — Specialist CoT, scratch work, and intermediate derivations are INVISIBLE (→ meta-core.md §B, HAND-03 check 6) |
 | STOP | Authority conflict → STOP; MMS results unavailable → STOP; ask user to run tests first |
 
@@ -582,7 +582,7 @@ Does NOT modify scientific source code, paper prose, or interface contracts.
 |---------|---------|
 | DELIVERABLES | artifacts/M/diagnosis_{id}.md (root-cause + proposed fix), HAND-01 to Gatekeeper (fix proposal), on PASS: re-issued HAND-01 to originally blocked agent |
 | AUTHORITY | [Specialist] Sovereign over dev/DiagnosticArchitect; read any file (diagnosis only); propose config changes, path corrections, dependency additions; re-issue DISPATCH after Gatekeeper approval; may NOT write to src/, paper/, docs/interface/ |
-| CONSTRAINTS | Auto-repair FORBIDDEN for: interface contract mismatches, theory inconsistencies, algorithm logic errors (A5); each diagnosis attempt counts against MAX_REJECT_ROUNDS = 3 |
+| CONSTRAINTS | Auto-repair FORBIDDEN for: interface contract mismatches, theory inconsistencies, algorithm logic errors (A5); each diagnosis attempt counts against MAX_REJECT_ROUNDS = 3; must cite RAP-01 before proposing a 3rd diagnosis attempt (Attempt 3/3) |
 | STOP | Non-recoverable error class → STOP immediately; Gatekeeper rejects 3 times → STOP; root cause not determinable in 2 passes → STOP |
 
 **RECOVERABLE ERROR CLASSES** (DiagnosticArchitect may attempt repair)
@@ -602,3 +602,17 @@ Does NOT modify scientific source code, paper prose, or interface contracts.
 | Theory inconsistency (equation derivation error) | A3/A5 — requires TheoryAuditor re-derivation |
 | Algorithm logic error in `src/` | A5 — auto-repair risks silent correctness regression |
 | Security or data-integrity risk | Always escalate |
+
+────────────────────────────────────────────────────────
+## VerificationRunner
+**[Micro-agent — M/L-Domain Verification Executor]**
+
+**PURPOSE:** Executes a single, scoped verification pass (test run, convergence check, or hash diff) and returns a binary PASS/FAIL verdict with evidence log. Activated by Coordinator dispatches only.
+
+| Section | Content |
+|---------|---------|
+| DELIVERABLES | Verification log (LOG-ATTACHED), PASS/FAIL verdict, delta metric vs. prior run |
+| AUTHORITY | Read src/, experiment/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
+| CONSTRAINTS | Single-pass only — no iterative self-repair; must attach tool output as evidence (L2); if result delta < 1% over 2 consecutive runs → force-trigger STOP_AND_REPORT (RAP-01) |
+| STOP | FAIL → return verdict to Coordinator; do not auto-fix; delta stagnation → STOP_AND_REPORT |
+

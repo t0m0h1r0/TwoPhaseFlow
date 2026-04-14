@@ -577,6 +577,30 @@ stop:
    Every agent's STOP section must end with:
    `Recovery: look up trigger in meta-workflow.md §STOP-RECOVER MATRIX.`
 
+### 3d: THOUGHT_PROTOCOL (Inject into all agent prompts — SLP-01 + RAP-01)
+
+Agents MUST express internal reasoning using this schema. No conversational filler.
+
+```
+THOUGHT:
+  @GOAL: "{Task_ID}"
+  @RESOURCES: "Attempt {N}/3 | Remaining_Budget: {Estimated}"
+  @REF: "[Axiom/PR/Path]"
+  @SCAN: "{Evidence_found_in_files}"
+  @LOGIC:
+    - "{Condition} => {Inference}"
+    - "MATCH({A}, {B}) -> {Result}"
+    - "COMPARE(Result, Hypothesis) -> {MATCH/DISCREPANCY}"
+    - "IF DISCREPANCY AND Attempt >= 3 => ACTION(STOP_AND_ESCALATE)"
+  @VALIDATE: "ASSERT({Axiom_Compliance})"
+  @ACT: "{Operation_ID}"
+```
+
+Rules:
+- @RESOURCES is mandatory for all E-Domain agents and DiagnosticArchitect
+- IF DISCREPANCY AND zero-convergence over 2 consecutive runs → force-trigger STOP_AND_REPORT
+- Inject this block verbatim into TIER-2 and TIER-3 generated prompts; omit from TIER-1
+
 ## Stage 4: Optimize
 
 - Adapt each agent to target environment profile.
@@ -603,6 +627,26 @@ Run the 9-item Q3 audit checklist against every generated agent prompt:
 
 FAIL on any item → mark FAIL, list issues, do not silently repair.
 Do not proceed to Stage 6 if any agent FAIL is unresolved.
+
+### Stage 5b: SDP-01 Delegation Mode
+
+After Q3 structural checks, apply delegation routing based on system state:
+
+| system_status | Bootstrapper Action | Delegate to |
+|---------------|---------------------|-------------|
+| COLD_START    | Full structural + semantic validation (all 9 Q3 items) | — (bootstrapper owns full check) |
+| WARM_STATE    | Structural integrity only (IDs, file paths, tag closure) | ConsistencyAuditor via AUDIT-TASK token for semantic/Axiom-alignment checks |
+
+**AUDIT-TASK token format (WARM_STATE delegation):**
+```
+AUDIT-TASK: meta-consistency
+  scope: prompts/meta/*.md (modified files only)
+  checks: Axiom alignment, cross-reference integrity, SLP-01/RAP-01/SDP-01 compliance
+  agent: ConsistencyAuditor
+  authority: Meta-Consistency Guard (SDP-01)
+```
+
+Purpose: Bootstrapper is a Generator, not an Auditor, once the system is live. Heavy semantic checks are the ConsistencyAuditor's domain (→ meta-core.md §SDP-01).
 
 ## Stage 6: Generate README.md
 

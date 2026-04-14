@@ -347,6 +347,35 @@ the worst case causes a Gatekeeper to accept a flawed deliverable it initially r
 </meta_section>
 
 ────────────────────────────────────────────────────────
+<meta_section id="AP-11" version="5.3.0" axiom_refs="A5,phi4">
+## AP-11: Resource Sunk-Cost Fallacy
+
+**Summary:** Agent repeatedly applies minor fixes to a fundamentally broken experiment rather than stopping and escalating. Each failed attempt consumes resources while the probability of success does not increase.
+
+**Root cause:** Agents optimized for task completion resist marking a task as STOPPED. After a large investment (tokens, computation), they continue tweaking parameters rather than acknowledging a fundamental hypothesis failure.
+
+**Detection criteria (self-checkable):**
+- Attempt_Count > 2 AND primary metric shows no improvement
+- Fix logic = "minor parameter tweak" after a major convergence failure
+- Two consecutive runs show < 1% delta in the primary metric
+- Experiment results contradict a core theoretical assumption from T-Domain
+
+**Mitigation (RAP-01):**
+1. MAX_EXP_RETRIES = 2 (3 total attempts including initial run)
+2. After Attempt 3 with no convergence: emit ResourceLimitEscalation to user — do NOT improvise a 4th fix
+3. Abandonment criteria (any one triggers STOP):
+   - Zero-Convergence: two consecutive runs with < 1% metric improvement
+   - Hypothesis-Collapse: result contradicts a T-Domain theoretical assumption
+   - Cost-Exceedance: estimated next-fix cost > 50% of session budget
+4. Recovery: user re-evaluates hypothesis before any new attempt
+
+**Severity if unmitigated:** HIGH — infinite retry loops waste GPU/token budget and mask fundamental algorithm errors that require theory-level corrections (A5).
+
+**Inject:** ExperimentRunner, DiagnosticArchitect, VerificationRunner, SimulationAnalyst
+<see_also>meta-core.md §RAP-01, A5 (Human Judgment), meta-roles.md §DiagnosticArchitect</see_also>
+</meta_section>
+
+────────────────────────────────────────────────────────
 # § INJECTION RULES FOR EnvMetaBootstrapper
 
 When generating agent prompts (meta-deploy.md Stage 3):
@@ -354,7 +383,7 @@ When generating agent prompts (meta-deploy.md Stage 3):
 1. Collect all anti-patterns where the agent appears in the `inject` list
 2. For TIER-1 (MINIMAL) prompts: inject only AP severity=CRITICAL (AP-03, AP-05)
 3. For TIER-2 (STANDARD) prompts: inject AP severity=CRITICAL + HIGH (includes AP-09)
-4. For TIER-3 (FULL) prompts: inject all applicable APs (includes AP-10)
+4. For TIER-3 (FULL) prompts: inject all applicable APs (includes AP-10, AP-11)
 5. Injection format in generated prompt:
 
 ```markdown

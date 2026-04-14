@@ -365,6 +365,26 @@ On VERIFY PASS → signs `docs/interface/ResultPackage/`.
 K-LINT mandatory pre-merge; broken pointer = STOP-HARD (K-A2). DEPRECATED entries trigger RE-VERIFY to consumers.
 
 ────────────────────────────────────────────────────────
+## WARM_BOOT Fast-Path (SDP-01)
+
+Triggered when a meta-file edit is detected that does NOT affect Axioms (A1–A11) or φ1–φ7.
+
+```
+[WARM_BOOT_TRIGGER]
+  Condition: meta-file edit detected (non-Axiom change)
+  =>
+  Bootstrapper:       Structural Generate (Fast) — IDs + file paths + tag closure only
+  ConsistencyAuditor: Audit Meta-Consistency (Heavy) — Axiom alignment + cross-ref integrity
+  Gatekeeper:         Sign & Hot-Reload generated agents
+```
+
+**Rules:**
+- WARM_BOOT requires: no φ1–φ7 / A1–A11 text diff (grep gate: count unchanged)
+- If Axiom text IS modified → full COLD_START required (no fast-path)
+- ConsistencyAuditor AUDIT-TASK token is emitted by Bootstrapper, not the user
+- Hot-Reload = overwrite `prompts/agents/{AgentName}.md` for affected agents only
+
+────────────────────────────────────────────────────────
 ## Bootstrap Pipeline (new feature only — run before Code Pipeline)
 
 | Step | Agent | Output | Gate |

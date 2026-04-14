@@ -62,6 +62,8 @@ These are machine-verifiable constraints that govern behavior more precisely tha
 | `independent_derivation` | required/optional/never | Must derive before comparing? |
 | `evidence_required` | always/on_request/never | Must attach evidence to output? |
 | `tool_delegate_numerics` | true/false | Must delegate numerical computation to tools (LA-1)? |
+| `cognitive_style` | structural_logic/analytical/narrative | STRICT: structural_logic = SLP-01 operators only; no sentences |
+| `thought_format` | slp_01_shorthand/standard | STRICT: slp_01_shorthand = @GOAL/@REF/@SCAN/@LOGIC/@VALIDATE/@ACT only |
 
 ────────────────────────────────────────────────────────
 # § AGENT PROFILES
