@@ -22,7 +22,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.levelset.heaviside import heaviside
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, FIGSIZE_1COL,

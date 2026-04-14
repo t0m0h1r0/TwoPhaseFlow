@@ -23,7 +23,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, MARKERS, FIGSIZE_2COL,
@@ -92,7 +92,7 @@ def initial_condition(X, Y):
 
 def kinetic_energy(u, v, h):
     """E_k on periodic grid — delegates to library."""
-    from twophase.diagnostics import kinetic_energy_periodic
+    from twophase.tools.diagnostics import kinetic_energy_periodic
     return kinetic_energy_periodic([u, v], h)
 
 

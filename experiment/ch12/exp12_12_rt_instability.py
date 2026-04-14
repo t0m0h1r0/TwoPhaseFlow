@@ -44,8 +44,8 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.advection import DissipativeCCDAdvection
-from twophase.pressure.ppe_builder import PPEBuilder
-from twophase.experiment import (
+from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure, COLORS,
 )

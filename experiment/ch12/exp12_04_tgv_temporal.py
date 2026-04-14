@@ -23,7 +23,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, MARKERS, FIGSIZE_2COL,
@@ -65,7 +65,7 @@ def fft_poisson(rhs, h):
 
 def exact_solution(X, Y, t):
     """TGV exact solution at time t — delegates to library."""
-    from twophase.benchmarks.analytical_solutions import tgv_velocity
+    from twophase.tools.benchmarks.analytical_solutions import tgv_velocity
     return tgv_velocity(X, Y, t, NU)
 
 

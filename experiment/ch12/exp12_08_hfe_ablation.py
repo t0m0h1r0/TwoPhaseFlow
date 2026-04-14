@@ -35,7 +35,7 @@ Usage
   python experiment/ch12/exp12_08_hfe_ablation.py --plot-only
 """
 
-import sys, pathlib, argparse
+import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
@@ -48,7 +48,11 @@ from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
-from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.tools.experiment import (
+    apply_style, experiment_dir, experiment_argparser,
+    save_results, load_results, save_figure,
+)
 
 # Try importing optional modules (may not exist yet)
 try:
@@ -58,8 +62,7 @@ except ImportError:
     _HAS_FILTER = False
     print("[WARN] InterfaceLimitedFilter not available — only baseline will run")
 
-OUT = pathlib.Path(__file__).resolve().parent / "results" / "hfe_ablation"
-OUT.mkdir(parents=True, exist_ok=True)
+OUT = experiment_dir(__file__, "hfe_ablation")
 NPZ_PATH = OUT / "hfe_ablation_data.npz"
 FIG_PATH = OUT / "hfe_ablation.pdf"
 
@@ -209,22 +212,14 @@ def compute_all():
 # ── I/O ──────────────────────────────────────────────────────────────────────
 
 def save_npz(results):
-    flat = {}
-    for label, r in results.items():
-        key = label.replace("=", "_").replace(".", "p")
-        for k, v in r.items():
-            flat[f"{key}__{k}"] = np.asarray(v)
-    np.savez(NPZ_PATH, **flat)
-    print(f"  Saved data -> {NPZ_PATH}")
+    save_results(NPZ_PATH, results)
 
 
 def load_npz():
-    data = np.load(NPZ_PATH, allow_pickle=False)
-    results = {}
-    for fullkey, val in data.items():
-        key, subkey = fullkey.split("__", 1)
-        results.setdefault(key, {})[subkey] = val
+    results = load_results(NPZ_PATH)
     for r in results.values():
+        if not isinstance(r, dict):
+            continue
         for k in ("u_max", "dp_meas", "dp_exact", "dp_err", "C",
                   "kappa_mean", "kappa_std", "kappa_raw_std"):
             if k in r:
@@ -235,8 +230,7 @@ def load_npz():
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
 def plot(results):
-    import matplotlib
-    matplotlib.use("Agg")
+    apply_style()
     import matplotlib.pyplot as plt
 
     labels = [f"C={C:.2f}" if C > 0 else "no filter" for C in C_LIST
@@ -342,9 +336,7 @@ def plot(results):
         fontsize=10, y=1.003,
     )
 
-    fig.savefig(FIG_PATH, format="pdf", bbox_inches="tight")
-    print(f"  Figure saved: {FIG_PATH}")
-    plt.close(fig)
+    save_figure(FIG_PATH, fig)
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
@@ -362,9 +354,7 @@ def main():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--plot-only", action="store_true")
-    args = parser.parse_args()
+    args = experiment_argparser("HFE ablation study").parse_args()
 
     if args.plot_only:
         results = load_npz()

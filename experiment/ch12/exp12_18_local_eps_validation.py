@@ -34,8 +34,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from twophase.ns_pipeline import TwoPhaseNSSolver
-from twophase.experiment import (
+from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
 )
@@ -70,7 +70,7 @@ def run_case(N: int, alpha_grid: float, use_local_eps: bool, label: str) -> dict
     dV0 = solver._grid.cell_volumes()
     M0 = float(np.sum(psi * dV0))
 
-    from twophase.config_io import PhysicsCfg
+    from twophase.simulation.config_io import PhysicsCfg
     ph = PhysicsCfg(rho_l=RHO_L, rho_g=RHO_G, sigma=SIGMA, mu=MU)
     dt = solver.dt_max(u, u, ph, cfl=0.10)
 
