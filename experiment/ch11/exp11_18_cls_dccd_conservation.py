@@ -23,8 +23,8 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.levelset.heaviside import heaviside
-from twophase.initial_conditions.velocity_fields import SingleVortex
-from twophase.experiment import (
+from twophase.simulation.initial_conditions.velocity_fields import SingleVortex
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, FIGSIZE_2COL,

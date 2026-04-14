@@ -20,7 +20,7 @@ from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.time_integration.tvd_rk3 import tvd_rk3
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     FIGSIZE_WIDE,

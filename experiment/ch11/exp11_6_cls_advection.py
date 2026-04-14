@@ -21,8 +21,8 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.levelset.heaviside import heaviside, invert_heaviside
-from twophase.initial_conditions.velocity_fields import RigidRotation, SingleVortex
-from twophase.experiment import (
+from twophase.simulation.initial_conditions.velocity_fields import RigidRotation, SingleVortex
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, FIGSIZE_2COL,
@@ -34,7 +34,7 @@ OUT = experiment_dir(__file__)
 
 def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
     """Zalesak slotted disk SDF — delegates to library."""
-    from twophase.initial_conditions.shapes import ZalesakDisk
+    from twophase.simulation.initial_conditions.shapes import ZalesakDisk
     return ZalesakDisk(center=center, radius=R, slot_width=slot_w, slot_depth=slot_h).sdf(X, Y)
 
 

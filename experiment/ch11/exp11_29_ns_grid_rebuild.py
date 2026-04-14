@@ -27,8 +27,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
-from twophase.ns_pipeline import TwoPhaseNSSolver
-from twophase.experiment import (
+from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
 )
