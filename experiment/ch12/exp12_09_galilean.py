@@ -41,7 +41,7 @@ Usage
   python experiment/ch12/exp12_09_galilean.py --plot-only
 """
 
-import sys, pathlib, argparse
+import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
@@ -51,6 +51,10 @@ from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
+from twophase.tools.experiment import (
+    apply_style, experiment_dir, experiment_argparser,
+    save_results, load_results, save_figure,
+)
 
 try:
     from twophase.levelset.advection import DissipativeCCDAdvection
@@ -59,8 +63,7 @@ except ImportError:
     _HAS_ADVECTION = False
     print("[WARN] DissipativeCCDAdvection not available")
 
-OUT = pathlib.Path(__file__).resolve().parent / "results" / "galilean"
-OUT.mkdir(parents=True, exist_ok=True)
+OUT = experiment_dir(__file__, "galilean")
 NPZ_PATH = OUT / "galilean_data.npz"
 FIG_PATH = OUT / "galilean.pdf"
 
@@ -233,8 +236,7 @@ def run_test_b(N):
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
 def plot(results):
-    import matplotlib
-    matplotlib.use("Agg")
+    apply_style()
     import matplotlib.pyplot as plt
 
     test_a = results.get("test_a")
@@ -345,31 +347,22 @@ def plot(results):
         fontsize=11,
     )
 
-    fig.savefig(FIG_PATH, format="pdf", bbox_inches="tight")
-    print(f"  Figure saved: {FIG_PATH}")
-    plt.close(fig)
+    save_figure(FIG_PATH, fig)
 
 
 # ── I/O ──────────────────────────────────────────────────────────────────────
 
 def save_npz(results):
-    flat = {}
-    for test_name, r in results.items():
-        if r is None:
-            continue
-        for k, v in r.items():
-            flat[f"{test_name}__{k}"] = np.asarray(v)
-    np.savez(NPZ_PATH, **flat)
-    print(f"  Saved data -> {NPZ_PATH}")
+    # Filter out None entries before saving
+    filtered = {k: v for k, v in results.items() if v is not None}
+    save_results(NPZ_PATH, filtered)
 
 
 def load_npz():
-    data = np.load(NPZ_PATH, allow_pickle=False)
-    results = {}
-    for fullkey, val in data.items():
-        test_name, subkey = fullkey.split("__", 1)
-        results.setdefault(test_name, {})[subkey] = val
+    results = load_results(NPZ_PATH)
     for r in results.values():
+        if not isinstance(r, dict):
+            continue
         for k in ("shape_err", "mass_err", "dt", "T_total"):
             if k in r:
                 r[k] = float(r[k])
@@ -397,9 +390,7 @@ def main():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--plot-only", action="store_true")
-    args = parser.parse_args()
+    args = experiment_argparser("Galilean invariance test").parse_args()
 
     if args.plot_only:
         results = load_npz()

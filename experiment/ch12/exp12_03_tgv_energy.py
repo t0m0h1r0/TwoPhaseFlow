@@ -35,7 +35,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure, COLORS,
 )
@@ -106,13 +106,13 @@ def run(N):
         return np.pi**2 * np.exp(-4.0 * NU * t)
 
     # Kinetic energy / divergence — delegate to library
-    from twophase.diagnostics import kinetic_energy_periodic, divergence_linf
+    from twophase.tools.diagnostics import kinetic_energy_periodic, divergence_linf
 
     def kinetic_energy(u, v):
         return kinetic_energy_periodic([u, v], h)
 
     def compute_div(u, v):
-        from twophase.diagnostics.field_diagnostics import _compute_divergence
+        from twophase.tools.diagnostics.field_diagnostics import _compute_divergence
         return _compute_divergence([u, v], ccd)
 
     # Compute nonlinear RHS:  N(u,v) = -(u·∇)u + ν∇²u

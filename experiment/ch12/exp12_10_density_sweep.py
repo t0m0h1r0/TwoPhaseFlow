@@ -34,9 +34,9 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.ppe.ppe_builder import PPEBuilder
 from twophase.levelset.heaviside import heaviside
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure, COLORS, MARKERS,
 )

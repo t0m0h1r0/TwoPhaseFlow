@@ -27,7 +27,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.experiment import (
+from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     COLORS, MARKERS, FIGSIZE_2COL,
@@ -42,7 +42,7 @@ NPZ = OUT / "data.npz"
 # --------------------------------------------------------------------------- #
 RE = 40.0
 NU = 1.0 / RE
-from twophase.benchmarks.analytical_solutions import (
+from twophase.tools.benchmarks.analytical_solutions import (
     kovasznay_lambda, kovasznay_velocity, kovasznay_pressure,
 )
 LAMBDA = kovasznay_lambda(RE)

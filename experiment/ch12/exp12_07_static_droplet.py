@@ -27,7 +27,7 @@ Usage
   python experiment/ch12/exp12_07_static_droplet.py --plot-only
 """
 
-import sys, pathlib, argparse
+import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
@@ -40,11 +40,15 @@ from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
-from twophase.pressure.ppe_builder import PPEBuilder
+from twophase.ppe.ppe_builder import PPEBuilder
 from twophase.levelset.curvature_filter import InterfaceLimitedFilter
+from twophase.tools.experiment import (
+    apply_style, experiment_dir, experiment_argparser,
+    save_results, load_results, save_figure,
+)
 
-OUT = pathlib.Path(__file__).resolve().parent / "results" / "static_droplet_07"
-OUT.mkdir(parents=True, exist_ok=True)
+OUT = experiment_dir(__file__, "static_droplet_07")
+NPZ_PATH = OUT / "convergence_data.npz"
 
 # ── Physical parameters ─────────────────────────────────────────────────────
 RHO_L   = 2.0
@@ -160,8 +164,7 @@ def run_single(N):
 
 def make_figures(results):
     """Generate convergence and time-history plots."""
-    import matplotlib
-    matplotlib.use("Agg")
+    apply_style()
     import matplotlib.pyplot as plt
 
     Ns       = [r["N"] for r in results]
@@ -198,9 +201,7 @@ def make_figures(results):
     ax.legend(); ax.grid(True, alpha=0.3, which="both"); ax.invert_xaxis()
 
     plt.tight_layout()
-    fig.savefig(OUT / "convergence.pdf", dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  Figure saved: {OUT / 'convergence.pdf'}")
+    save_figure(OUT / "convergence.pdf", fig)
 
     # ── Time history ──
     fig2, ax2 = plt.subplots(figsize=(7, 5))
@@ -211,9 +212,7 @@ def make_figures(results):
     ax2.set_ylabel(r"$\|\mathbf{u}_{\mathrm{para}}\|_\infty$")
     ax2.set_title("Parasitic Current Time History")
     ax2.legend(); ax2.grid(True, alpha=0.3)
-    fig2.savefig(OUT / "parasitic_history.pdf", dpi=150, bbox_inches="tight")
-    plt.close(fig2)
-    print(f"  Figure saved: {OUT / 'parasitic_history.pdf'}")
+    save_figure(OUT / "parasitic_history.pdf", fig2)
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -274,26 +273,23 @@ def main():
     print(f"\n  Table saved: {OUT / 'table_convergence.tex'}")
 
     # Save raw data
-    np.savez(
-        OUT / "convergence_data.npz",
-        results=[{k: v for k, v in r.items() if k != "u_max_history"}
-                 for r in results],
-        **{f"u_max_hist_{i}": r["u_max_history"] for i, r in enumerate(results)},
-    )
-    print(f"  Data saved: {OUT / 'convergence_data.npz'}")
+    save_data = {}
+    for i, r in enumerate(results):
+        save_data[f"u_max_hist_{i}"] = r["u_max_history"]
+    save_data["results"] = [{k: v for k, v in r.items() if k != "u_max_history"}
+                            for r in results]
+    save_results(NPZ_PATH, save_data)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--plot-only", action="store_true")
-    args = parser.parse_args()
+    args = experiment_argparser("Static droplet grid convergence").parse_args()
 
     if args.plot_only:
-        d = np.load(OUT / "convergence_data.npz", allow_pickle=True)
+        d = load_results(NPZ_PATH)
         _results = [dict(r.item()) if hasattr(r, 'item') else dict(r)
                     for r in d["results"]]
-        for _i, _r in enumerate(_results):
-            _r["u_max_history"] = list(d[f"u_max_hist_{_i}"])
+        for _i in range(len(_results)):
+            _results[_i]["u_max_history"] = list(d[f"u_max_hist_{_i}"])
         make_figures(_results)
     else:
         main()
