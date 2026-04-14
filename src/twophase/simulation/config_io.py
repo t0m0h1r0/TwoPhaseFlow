@@ -81,6 +81,7 @@ class RunCfg:
     snap_times: list = field(default_factory=list)
     print_every: int = 100
     dt_fixed: float | None = None
+    cn_viscous: bool = False
 
 
 @dataclass
