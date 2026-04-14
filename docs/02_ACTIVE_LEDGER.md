@@ -399,9 +399,9 @@ Full detail for each assumption (scope, risk, rationale).
 |---|---|---|---|---|
 | ASM-001 | `SimulationBuilder` is the sole construction path — no direct `__init__` construction | `src/twophase/` | HIGH | ACTIVE |
 | ASM-002 | PPE Kronecker-product Laplacian has an 8-dimensional null space — `‖Lp−q‖₂` is NOT a valid pass/fail metric | `src/twophase/pressure/` | HIGH | ACTIVE |
-| ASM-003 | `"pseudotime"` PPE solver (CCD Laplacian) is the consistent production solver; `"bicgstab"` (FVM matrix) is testing-only and approximate O(h²) | `src/twophase/pressure/` | HIGH | ACTIVE |
+| ASM-003 | **SUPERSEDED 2026-04-15:** CCD Kronecker PPE is indefinite (2 wrong-sign eigenvalues per axis). CCD-LU restricted to ch11 smooth-RHS component tests. ch12+ integration uses FD PPE (`PPEBuilder`+`spsolve`) or DC sweep. See PR-2 update. | `src/twophase/pressure/` | HIGH | DEPRECATED |
 | ASM-004 | CCD boundary-limited orders: d1 ≥ 3.5 on L∞ is PASS; d2 ≥ 2.5 on L∞ is PASS — NOT interior O(h⁶)/O(h⁵) | `src/twophase/ccd/` | MEDIUM | ACTIVE |
-| ASM-005 | Global PPE sparse system: LGMRES primary, `spsolve` (sparse LU) automatic fallback on non-convergence | `src/twophase/pressure/` | MEDIUM | ACTIVE |
+| ASM-005 | **SUPERSEDED 2026-04-15:** LGMRES prohibited for PPE (PR-6). Production PPE: FD `spsolve` (ch12+) or DC sweep. CCD Kronecker+LGMRES no longer recommended. | `src/twophase/pressure/` | MEDIUM | DEPRECATED |
 | ASM-006 | Banded/block-tridiagonal systems (CCD Thomas, Helmholtz sweeps): direct LU — O(N) fill-in, efficient | `src/twophase/ccd/` | LOW | ACTIVE |
 | ASM-007 | `SimulationConfig` is pure sub-config composition — no monolithic config class | `src/twophase/` | MEDIUM | ACTIVE |
 | ASM-008 | Three symmetry-breaking root causes identified and fixed (2026-03-22): (1) Rhie-Chow FVM div at wall node N_ax, (2) PPE gauge pin at center (N/2,N/2), (3) capillary CFL safety factor | `src/twophase/` | HIGH | FIXED |
