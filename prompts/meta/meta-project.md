@@ -56,14 +56,22 @@ comparison baselines**, never as proposed fixes or solutions to CCD-related issu
 
 ## PR-2 — Implicit Solver Policy
 
+**CCD PPE indefiniteness (2026-04-15):** CCD 1D D2 matrix has 2 wrong-sign
+eigenvalues (modes k=N-1, N) per axis. The Kronecker-product PPE operator is
+therefore indefinite. CCD-LU blows up for general RHS; DC+FD-LU stalls at
+O(h²). See `project_ccd_ppe_indefinite.md` for derivation.
+
 | System Type | Primary Solver | Notes |
 |-------------|---------------|-------|
-| Global PPE (default) | CCD Kronecker + LGMRES | "pseudotime"; returns best iterate on non-convergence |
-| Global PPE (debug) | CCD Kronecker + direct LU | "ccd_lu"; guaranteed solution, O(n^1.5) memory |
-| Global PPE (large-scale) | CCD sweep (matrix-free) | defect correction + Thomas (O(N) per iter) |
+| Global PPE (ch11 component tests) | CCD Kronecker + direct LU | "ccd_lu"; smooth-RHS only; **NOT for integration tests** |
+| Global PPE (ch12/ch13 integration) | FD 5-point Laplacian + spsolve | negative-definite; stable for arbitrary RHS |
+| Global PPE (production, via Builder) | DC sweep or FD spsolve | per SolverConfig; never CCD Kronecker+LU |
 | Banded/block-tridiag (CCD) | Direct LU | O(N) fill-in; efficient |
 
-FVM-based solvers (BiCGSTAB, FVM LU) are deprecated — O(h^2) accuracy insufficient for CCD pipeline.
+**Policy:** CCD Kronecker+LU (`PPESolverCCDLU`) is restricted to ch11
+component-level unit tests with smooth manufactured RHS. For ch12+ integration
+simulations (droplet, RT, etc.), use FD PPE (`PPEBuilder` + `spsolve`) or
+DC sweep. FVM-based iterative solvers (BiCGSTAB) remain deprecated.
 
 ## PR-3 — MMS Verification Standard
 
@@ -118,6 +126,11 @@ Paper equation (paper/sections/*.tex)
 
 PPE must use defect correction (DC k=3) + LU direct solve per §8c.
 LGMRES is prohibited for PPE due to convergence instability with CCD operators.
+
+**Chapter scope (2026-04-15):**
+- ch11 (component tests): CCD Kronecker+LU allowed for smooth manufactured RHS
+- ch12+ (integration tests): FD PPE (`PPEBuilder`+`spsolve`) or DC sweep only
+- `PPESolverCCDLU` must NOT appear in ch12+ integration scripts
 
 ───────────────────────────────────────────────���────────
 # § PORTABILITY NOTES
