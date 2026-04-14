@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..viscous import ViscousTerm
+    from ...ns_terms.viscous import ViscousTerm
     from ...ccd.ccd_solver import CCDSolver
     from ...backend import Backend
 

@@ -55,7 +55,7 @@ from typing import List, TYPE_CHECKING
 from .base import ICNAdvance
 
 if TYPE_CHECKING:
-    from ..viscous import ViscousTerm
+    from ...ns_terms.viscous import ViscousTerm
     from ...ccd.ccd_solver import CCDSolver
 
 

@@ -91,7 +91,7 @@ class Predictor:
         # 注入された依存関係を使用。省略時はデフォルト生成
         self.convection   = convection    or ConvectionTerm(backend)
         if viscous is None:
-            from ..ns_terms.cn_advance import make_cn_advance
+            from .cn_advance import make_cn_advance
             viscous = ViscousTerm(
                 backend, config.fluid.Re, config.numerics.cn_viscous,
                 cn_advance=make_cn_advance(backend, config.numerics.cn_mode),

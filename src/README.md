@@ -69,20 +69,26 @@ src/twophase/
 │   ├── convection.py       — −(u·∇)u                                   (§9)
 │   ├── viscous.py          — ∇·[μ̃(∇u)^sym]/(ρ̃ Re), CN or explicit     (§9)
 │   ├── gravity.py          — −ẑ/Fr²                                    (§9)
-│   ├── surface_tension.py  — κ ∇ψ / We (CSF model)                    (§2.3)
-│   └── predictor.py        — assembles all terms → u*                  (§9.1 Step 5)
+│   └── surface_tension.py  — κ ∇ψ / We (CSF model)                    (§2.3)
 │
 ├── pressure/
-│   ├── rhie_chow.py        — face-velocity RC interpolation            (§7.3, §8.4)
-│   ├── ppe_builder.py      — variable-density PPE matrix assembly      (§8.3)
-│   ├── ppe_solver.py       — BiCGSTAB with ILU(0)                      (§8.4)
-│   ├── ppe_solver_pseudotime.py — pseudo-time implicit solver (default) (§8.4)
-│   ├── ppe_solver_factory.py    — create_ppe_solver(config, backend, grid)
-│   └── velocity_corrector.py — u^{n+1} = u* − (Δt/ρ̃)∇p              (§9.1 Step 7)
+│   ├── solvers/            — PPE solver implementations
+│   │   ├── ccd_lu.py       — CCD Kronecker + sparse LU (production)    (§8)
+│   │   ├── iim.py          — CCD + IIM interface correction             (§8d)
+│   │   ├── iterative.py    — configurable research toolkit              (§8)
+│   │   └── factory.py      — create_ppe_solver() registry (OCP)
+│   ├── rhie_chow.py        — face-velocity RC interpolation            (§7.3)
+│   ├── velocity_corrector.py — u^{n+1} = u* − (Δt/ρ̃)∇p              (§9.1 Step 7)
+│   ├── gfm.py              — Ghost Fluid Method jump correction         (§8d)
+│   └── legacy/             — C2-retained legacy solvers
 │
 ├── time_integration/
+│   ├── ab2_predictor.py    — Predictor: AB2 + IPC + CN viscous          (§9.1 Step 5)
 │   ├── tvd_rk3.py          — TVD-RK3 (Shu-Osher)                      (§4 Eq.79–81)
-│   └── cfl.py              — convective + viscous CFL                  (§4 Eq.84)
+│   ├── cfl.py              — convective + viscous CFL                  (§4 Eq.84)
+│   └── cn_advance/         — CN viscous advance strategies (Strategy)
+│       ├── picard_cn.py    — PicardCNAdvance (Heun, production default)
+│       └── richardson_cn.py — RichardsonCNAdvance (O(Δt³))
 │
 ├── visualization/
 │   ├── plot_scalar.py      — 2D scalar field plots

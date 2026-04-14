@@ -48,22 +48,24 @@ src/twophase/
 │   ├── gravity.py              # GravityTerm — (1/Fr²) ρ̃ ĝ
 │   ├── surface_tension.py      # SurfaceTensionTerm — (1/We) κ ∇H̃ (CSF, §02b)
 │   ├── viscous.py              # ViscousTerm — (1/Re) ∇·(μ̃(∇u + ∇uᵀ))
-│   └── predictor.py            # Predictor — AB2 + IPC + CN viscous (§09)
+│   ├── predictor.py            # C2 re-export → time_integration/ab2_predictor.Predictor
+│   └── cn_advance.py           # C2 re-export → time_integration/cn_advance/
 ├── pressure/                   # Pressure / projection (§07, §08)
-│   ├── ccd_ppe_base.py         # _CCDPPEBase — Template Method for CCD solvers
-│   ├── ccd_ppe_utils.py        # CCD Laplacian evaluation helpers
-│   ├── ppe_solver_ccd_lu.py    # PPESolverCCDLU — CCD Kronecker + sparse LU (PRODUCTION)
-│   ├── ppe_solver_iim.py       # PPESolverIIM — CCD + IIM interface correction
-│   ├── ppe_solver_iterative.py # PPESolverIterative — research toolkit
-│   ├── ppe_solver_factory.py   # Registry-based factory (OCP)
+│   ├── solvers/                # PPE solver implementations
+│   │   ├── ccd_ppe_base.py     # _CCDPPEBase — Template Method for CCD solvers
+│   │   ├── ccd_ppe_utils.py    # CCD Laplacian evaluation helpers
+│   │   ├── ccd_lu.py           # PPESolverCCDLU — CCD Kronecker + sparse LU (PRODUCTION)
+│   │   ├── iim.py              # PPESolverIIM — CCD + IIM interface correction
+│   │   ├── iterative.py        # PPESolverIterative — research toolkit
+│   │   ├── factory.py          # Registry-based factory (OCP)
+│   │   ├── fd_ppe_matrix.py    # FDPPEMatrix — FD Laplacian matrix
+│   │   └── thomas_sweep.py     # Thomas sweep for ADI solvers
 │   ├── ppe_builder.py          # PPE FVM matrix assembly (legacy solvers only)
-│   ├── fd_ppe_matrix.py        # FDPPEMatrix — FD Laplacian matrix
 │   ├── dccd_ppe_filter.py      # DCCDPPEFilter — dissipative CCD filter for GFM
 │   ├── ppe_rhs_gfm.py          # PPERHSBuilderGFM — GFM-corrected PPE RHS
 │   ├── gfm.py                  # GFMCorrector — Ghost Fluid Method jump correction
 │   ├── rhie_chow.py            # RhieChowInterpolator — face velocity + balanced-force (§07)
 │   ├── velocity_corrector.py   # VelocityCorrector — u^{n+1} = u* − dt ∇p (§09)
-│   ├── thomas_sweep.py         # Thomas sweep for ADI solvers
 │   ├── ppe_diagnostics.py      # ccd_ppe_residual() — diagnostic (SRP extraction)
 │   ├── iim/                    # Immersed Interface Method sub-package
 │   │   ├── jump_conditions.py  # IIM jump condition computation
@@ -75,8 +77,13 @@ src/twophase/
 │       ├── ppe_solver_sweep.py # PPESolverSweep — ADI sweep
 │       └── ppe_solver_dc_omega.py # PPESolverDCOmega — under-relaxed ADI
 ├── time_integration/           # Time stepping (§05b)
+│   ├── ab2_predictor.py        # Predictor — AB2 + IPC + CN viscous (§09)
 │   ├── tvd_rk3.py              # TVD-RK3 integrator (+ post_stage callback)
-│   └── cfl.py                  # CFL condition + dt selection
+│   ├── cfl.py                  # CFL condition + dt selection
+│   └── cn_advance/             # CN viscous advance strategies (Strategy pattern)
+│       ├── base.py             # ICNAdvance protocol
+│       ├── picard_cn.py        # PicardCNAdvance — Heun predictor-corrector
+│       └── richardson_cn.py    # RichardsonCNAdvance — Richardson extrapolation
 ├── simulation/                 # Simulation orchestration
 │   ├── _core.py                # TwoPhaseSimulation — step_forward() 7-step loop
 │   ├── boundary_condition.py   # BoundaryConditionHandler (BCType enum)
@@ -290,6 +297,15 @@ Never hardcode pin index (0,0).
 | `PPESolverSweep` | `src/twophase/pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
 | `PPESolverDCOmega` | `src/twophase/pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
 | `CurvatureCalculator` | `src/twophase/levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
+| `cn_advance` re-export | `src/twophase/ns_terms/cn_advance.py` (stub) | `time_integration/cn_advance/` | C2 re-export |
+| `PPESolverCCDLU` re-export | `src/twophase/pressure/ppe_solver_ccd_lu.py` (stub) | `pressure/solvers/ccd_lu.py` | C2 re-export |
+| `PPESolverIIM` re-export | `src/twophase/pressure/ppe_solver_iim.py` (stub) | `pressure/solvers/iim.py` | C2 re-export |
+| `PPESolverIterative` re-export | `src/twophase/pressure/ppe_solver_iterative.py` (stub) | `pressure/solvers/iterative.py` | C2 re-export |
+| `create_ppe_solver` re-export | `src/twophase/pressure/ppe_solver_factory.py` (stub) | `pressure/solvers/factory.py` | C2 re-export |
+| `_CCDPPEBase` re-export | `src/twophase/pressure/ccd_ppe_base.py` (stub) | `pressure/solvers/ccd_ppe_base.py` | C2 re-export |
+| `FDPPEMatrix` re-export | `src/twophase/pressure/fd_ppe_matrix.py` (stub) | `pressure/solvers/fd_ppe_matrix.py` | C2 re-export |
+| `ccd_ppe_utils` re-export | `src/twophase/pressure/ccd_ppe_utils.py` (stub) | `pressure/solvers/ccd_ppe_utils.py` | C2 re-export |
+| `thomas_sweep` re-export | `src/twophase/pressure/thomas_sweep.py` (stub) | `pressure/solvers/thomas_sweep.py` | C2 re-export |
 
 ────────────────────────────────────────────────────────
 # §9 — Paper Structure Reference (P2)

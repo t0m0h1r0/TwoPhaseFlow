@@ -40,7 +40,7 @@ from ..interfaces.ns_terms import INSTerm
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
-    from .cn_advance import ICNAdvance
+    from ..time_integration.cn_advance import ICNAdvance
 
 
 class ViscousTerm(INSTerm):
@@ -71,7 +71,7 @@ class ViscousTerm(INSTerm):
         self.cn_viscous = cn_viscous
         # Lazy import breaks the cn_advance -> viscous typing cycle.
         if cn_advance is None:
-            from .cn_advance import PicardCNAdvance
+            from ..time_integration.cn_advance import PicardCNAdvance
             cn_advance = PicardCNAdvance(backend)
         self.cn_advance = cn_advance
 
