@@ -208,19 +208,21 @@ $\max_\xi H(\xi;\varepsilon_d^{\mathrm{adv}})|\hat{k}^*(\xi)| \approx 1.9$
 
 \medskip
 \noindent\textbf{質量保存性．}
-フィルタ項 $\varepsilon_d^{\mathrm{adv}}(f'_{i+1}-2f'_i+f'_{i-1})$ の周期境界での総和は
+周期境界のブロック巡回 CCD 系では，CCD で得た一次微分場 $f'_i$ の全点和が
+離散的にゼロとなる（§~\ref{sec:dccd_mass_conservation}）．
+さらにフィルタ項 $\varepsilon_d^{\mathrm{adv}}(f'_{i+1}-2f'_i+f'_{i-1})$ の周期和も
 \[
   \sum_i \varepsilon_d^{\mathrm{adv}}\!\left(f'_{i+1} - 2f'_i + f'_{i-1}\right)
   = \varepsilon_d^{\mathrm{adv}}\!\left(\sum_i f'_{i+1} - 2\sum_i f'_i + \sum_i f'_{i-1}\right) = 0
 \]
-（添字のシフト対称性より）．
-すなわち\textbf{フィルタ項そのものは総質量に寄与しない}（周期 BC）．
-CCD そのものは $\sum_i f'_i\,h \approx [f]_0^L$（発散定理）を $\Ord{h^6}$ 精度で近似するため，
-各格子点での点別打ち切り誤差は $\Ord{h^6}$ であり，
-これを領域全体で積分すると $\sum_i \Ord{h^6}\cdot h = N\cdot h \cdot \Ord{h^6} = \Ord{h^6 \cdot L}$ となる．
-したがって，clamp や事後補正を含まない半離散演算子としての質量保存誤差は
-$\Ord{h^6\,\Delta t}$ となる
-（WENO5 の完全な保存性との比較：付録~\ref{app:weno5}；
+（添字のシフト対称性より）である．
+したがって，周期境界・一様格子・値域制限なしの半離散演算子では，
+DCCD フィルタ済み発散の総和はゼロとなる．
+一方，非周期境界や非一様格子では境界フラックス近似，メトリクス，体積重みの扱いに依存し，
+一般には保存形 FVM のような厳密テレスコーピングは保証されない．
+また，RK ステージ後の clamp や再初期化は別の非保存誤差を生むため，
+実運用では §~\ref{sec:dccd_mass_conservation} の質量補正を併用する
+（WENO5 の保存形定式化との比較：付録~\ref{app:weno5}；
 定式化§~\ref{app:weno5_formulation}，再構成係数§~\ref{app:weno5_coef}，Lax-Friedrichs 分割§~\ref{app:lf_splitting}）．
 
 DCCD は TVD 性を持たないため，各 RK3 ステージ完了後に値域制限が必要である：

@@ -21,8 +21,11 @@ $k$ の選択および設計根拠は §~\ref{sec:pressure_accuracy_summary} に
 「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する
 \textbf{欠陥補正法（Defect Correction Method）}~\cite{Stetter1978} を示す：
 残差（欠陥）の評価には $L_H$ を用いて $\Ord{h^6}$ 精度を確保し，
-線形系の求解には方向分離が容易な低次演算子 $L_L$（2次精度 FD）を用いて
-$\mathcal{O}(N^2)$ コストを維持する．
+線形系の求解には低次演算子 $L_L$（2次精度 FD）を用いる．
+2次元の $L_L$ はブロック三重対角の疎行列であり，
+標準設定では疎行列直接法で Step~2 の解法誤差を抑える．
+方向分離スウィープは低コストな近似代替として扱い，
+直接法ケースとは残差保証を分ける．
 
 §~\ref{sec:ccd_poisson_matrix} で CCD 空間離散化スキームを選択済みであり，
 本節はその CCD 系を解く\textbf{線形ソルバ}の選択に特化する（収束特性の定量検証は §~\ref{sec:dc_iteration_accuracy}）．

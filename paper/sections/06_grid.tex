@@ -4,8 +4,12 @@
 
 本章では，界面近傍を高密度化した非一様格子（界面適合格子）上で
 CCD 差分演算子（第~\ref{sec:CCD}章）を適用するための座標変換理論を整備する．
-一様計算空間 $\xi$ 上では CCD スキームがそのまま成立し，
-物理空間 $x$ への変換はメトリクス係数 $\partial\xi/\partial x$ を乗じるだけでよい．
+一様計算空間 $\xi$ 上では CCD スキームがそのまま成立する．
+物理空間 $x$ への変換では，一階微分にメトリクス係数 $J=\partial\xi/\partial x$ を乗じ，
+二階微分にはさらに $\partial J/\partial\xi$ を含む連鎖律を用いる
+（式~\eqref{eq:transform_1st_correct}, \eqref{eq:transform_2nd_correct}）．
+メトリクスの精度は格子生成の求積精度にも依存するため，
+標準の台形則生成で保証できる範囲は §~\ref{sec:grid_gen} で明示する．
 
 \begin{enumerate}
   \item \textbf{§~\ref{sec:grid}.1（格子密度関数）：}

@@ -322,8 +322,9 @@ $h/12 \cdot (p''_P - p''_E)$ を加算するだけでよい．
 
 Balanced-Force 条件（§~\ref{sec:balanced_force}，§~\ref{sec:rc_balanced_force}）は演算子不整合を除去するが，
 $2\Delta x$ チェッカーボードモードへの感受性はコロケート格子の構造的な問題として残る．
-本節では，Dissipative CCD（§~\ref{sec:dissipative_ccd}）の内在的散逸がこのモードを
-スキーム固有の機構として直接除去する仕組みを示す．
+本節では，Dissipative CCD（§~\ref{sec:dissipative_ccd}）に基づく明示的な 3 点フィルタを
+PPE 右辺の発散評価に用い，周期・一様格子の理想化ではこのモードを除去し，
+境界近傍や非一様格子では近似的に抑制する仕組みを示す．
 PPE 右辺は DCCD フィルタ済み CCD 発散（式~\eqref{eq:dccd_ppe_rhs}）から構成される．
 
 \paragraph{散逸フィルタによる $2\Delta x$ モード除去}
