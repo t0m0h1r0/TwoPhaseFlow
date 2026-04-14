@@ -33,9 +33,10 @@ Balanced-Force 条件の離散化整合性を高精度に維持し，
   \item[DCCD 散逸によるチェッカーボード抑制]%
         （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}）\mbox{}\\
         コロケート格子上の $2\Delta x$ モードを Dissipative CCD のスペクトル散逸で内在的に除去
-  \item[CCD-PPE + 欠陥補正法]%
+  \item[分相 PPE + 欠陥補正法 + CCD 勾配]%
         （第~\ref{sec:pressure}章）\mbox{}\\
-        変密度 Poisson 方程式を $\Ord{h^6}$ 精度で求解し，Corrector の速度補正精度を保証
+        各相内の定密度 Poisson 方程式に DC $k=3$ を適用し，
+        CCD 勾配による Corrector の速度補正精度を高める
   \item[非一様格子]%
         （第~\ref{sec:grid}章）\mbox{}\\
         界面近傍を自動的に高解像度化し，界面処理の空間分解能を効率的に確保
@@ -201,8 +202,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         （チェッカーボード不安定，第~\ref{sec:failure_modes}節失敗例3参照）が
         追加の困難をもたらす．
 
-        \textbf{→ 本稿の対処：} CCD product-rule 展開による $\Ord{h^6}$ 変密度 PPE 離散化
-        および欠陥補正法（第~\ref{sec:pressure}章），
+        \textbf{→ 本稿の対処：} 分相 PPE 解法と欠陥補正法（DC $k=3$）による
+        高密度比に強い圧力補正（第~\ref{sec:pressure}章），
         DCCD 散逸（$\varepsilon_d = 1/4$，チェッカーボード抑制用；移流用は別値）によるチェッカーボードモードの内在的除去
         （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}，各値の詳細は §~\ref{sec:algorithm}）．
 
