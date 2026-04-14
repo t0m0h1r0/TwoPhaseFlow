@@ -33,8 +33,6 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 
 # ── sub-config classes ───────────────────────────────────────────────────────
 
@@ -150,8 +148,9 @@ class ExperimentConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> "ExperimentConfig":
         """Load from a YAML file."""
+        yaml = _require_pyyaml()
         with open(path) as fh:
-            raw = yaml.safe_load(fh)
+            raw = yaml.safe_load(fh) or {}
         return _parse_raw(raw)
 
     @classmethod
@@ -165,6 +164,18 @@ class ExperimentConfig:
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
     """Load :class:`ExperimentConfig` from a YAML file."""
     return ExperimentConfig.from_yaml(path)
+
+
+def _require_pyyaml() -> Any:
+    """Import PyYAML only when YAML loading is requested."""
+    try:
+        import yaml
+        return yaml
+    except ImportError:
+        raise ImportError(
+            "PyYAML is required to load experiment YAML files. "
+            "Install it with `pip install pyyaml` or `pip install twophase[io]`."
+        )
 
 
 # ── parsing helpers ──────────────────────────────────────────────────────────
@@ -208,63 +219,10 @@ def _parse_physics(d: dict) -> PhysicsCfg:
     rho_g = float(d.get("rho_g", 1.0))
     g_acc = float(d.get("g_acc", 0.0))
     rho_ref = _opt_float(d.get("rho_ref"))
-
-    # ── viscosity ─────────────────────────────────────────────────────
-    mu_g_raw = _opt_float(d.get("mu_g"))
-    mu_l_raw = _opt_float(d.get("mu_l"))
-    mu_raw   = _opt_float(d.get("mu"))
-
-    # Derived: lambda_mu = mu_l / mu_g
-    lambda_mu = _opt_float(d.get("lambda_mu"))
-    if lambda_mu is not None and mu_g_raw is not None:
-        mu_l_raw = lambda_mu * mu_g_raw
-
-    # Derived: Re = rho_l * sqrt(g * d_ref) * d_ref / mu
-    Re = _opt_float(d.get("Re"))
     d_ref = _opt_float(d.get("d_ref"))
-    if Re is not None and d_ref is not None and g_acc > 0.0:
-        mu_derived = rho_l * math.sqrt(g_acc * d_ref) * d_ref / Re
-        if mu_raw is None:
-            mu_raw = mu_derived
-        if mu_g_raw is None:
-            mu_g_raw = mu_derived
-        if mu_l_raw is None:
-            mu_l_raw = mu_derived
 
-    # Fallback: mu = mu_g = mu_l if only one is given
-    if mu_raw is None:
-        if mu_g_raw is not None:
-            mu_raw = mu_g_raw
-        elif mu_l_raw is not None:
-            mu_raw = mu_l_raw
-        else:
-            mu_raw = 0.01  # last-resort default
-
-    if mu_g_raw is None and mu_l_raw is None:
-        # uniform viscosity — leave both None so variable-μ path is skipped
-        pass
-    elif mu_g_raw is None:
-        mu_g_raw = mu_raw
-    elif mu_l_raw is None:
-        mu_l_raw = mu_raw
-
-    # ── surface tension ───────────────────────────────────────────────
-    sigma_raw = _opt_float(d.get("sigma"))
-
-    # Derived: Eo = g * (rho_l - rho_g) * d_ref**2 / sigma
-    Eo = _opt_float(d.get("Eo"))
-    if Eo is not None and d_ref is not None and g_acc > 0.0:
-        sigma_raw = g_acc * (rho_l - rho_g) * d_ref ** 2 / Eo
-
-    # Derived: Ca = mu_g * gamma_dot * R_ref / sigma
-    Ca = _opt_float(d.get("Ca"))
-    R_ref = _opt_float(d.get("R_ref")) or (d_ref / 2.0 if d_ref else None)
-    gamma_dot = _opt_float(d.get("gamma_dot"))
-    if Ca is not None and mu_g_raw is not None and gamma_dot is not None and R_ref is not None:
-        sigma_raw = mu_g_raw * gamma_dot * R_ref / Ca
-
-    if sigma_raw is None:
-        sigma_raw = 0.0
+    mu_raw, mu_l_raw, mu_g_raw = _resolve_viscosity(d, rho_l, g_acc, d_ref)
+    sigma_raw = _resolve_surface_tension(d, rho_l, rho_g, g_acc, d_ref, mu_g_raw)
 
     return PhysicsCfg(
         rho_l=rho_l,
@@ -276,6 +234,77 @@ def _parse_physics(d: dict) -> PhysicsCfg:
         g_acc=g_acc,
         rho_ref=rho_ref,
     )
+
+
+def _resolve_viscosity(
+    d: dict,
+    rho_l: float,
+    g_acc: float,
+    d_ref: float | None,
+) -> tuple[float, float | None, float | None]:
+    """Resolve uniform and phase viscosities from direct or derived inputs."""
+    mu_g = _opt_float(d.get("mu_g"))
+    mu_l = _opt_float(d.get("mu_l"))
+    mu = _opt_float(d.get("mu"))
+
+    lambda_mu = _opt_float(d.get("lambda_mu"))
+    if lambda_mu is not None and mu_g is not None:
+        mu_l = lambda_mu * mu_g
+
+    re_num = _opt_float(d.get("Re"))
+    if re_num is not None and d_ref is not None and g_acc > 0.0:
+        mu_derived = rho_l * math.sqrt(g_acc * d_ref) * d_ref / re_num
+        if mu is None:
+            mu = mu_derived
+        if mu_g is None:
+            mu_g = mu_derived
+        if mu_l is None:
+            mu_l = mu_derived
+
+    if mu is None:
+        if mu_g is not None:
+            mu = mu_g
+        elif mu_l is not None:
+            mu = mu_l
+        else:
+            mu = 0.01
+
+    if mu_g is None and mu_l is None:
+        return mu, None, None
+    if mu_g is None:
+        mu_g = mu
+    if mu_l is None:
+        mu_l = mu
+    return mu, mu_l, mu_g
+
+
+def _resolve_surface_tension(
+    d: dict,
+    rho_l: float,
+    rho_g: float,
+    g_acc: float,
+    d_ref: float | None,
+    mu_g: float | None,
+) -> float:
+    """Resolve surface tension from direct sigma, Eotvos number, or Ca."""
+    sigma = _opt_float(d.get("sigma"))
+
+    eo_num = _opt_float(d.get("Eo"))
+    if eo_num is not None and d_ref is not None and g_acc > 0.0:
+        sigma = g_acc * (rho_l - rho_g) * d_ref ** 2 / eo_num
+
+    ca_num = _opt_float(d.get("Ca"))
+    r_ref = _opt_float(d.get("R_ref")) or (d_ref / 2.0 if d_ref else None)
+    gamma_dot = _opt_float(d.get("gamma_dot"))
+    if (
+        ca_num is not None
+        and mu_g is not None
+        and gamma_dot is not None
+        and r_ref is not None
+    ):
+        sigma = mu_g * gamma_dot * r_ref / ca_num
+
+    return 0.0 if sigma is None else sigma
 
 
 def _parse_run(d: dict) -> RunCfg:

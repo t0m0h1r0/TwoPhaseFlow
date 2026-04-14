@@ -123,3 +123,35 @@ def test_config_loader_advection_scheme_no_unknown_key_warning():
         )
     finally:
         os.unlink(path)
+
+
+def test_config_loader_roundtrips_extended_solver_and_numerics_fields():
+    """Fields known to dataclasses must not be silently dropped by YAML I/O."""
+    load_config, save_config = _require_config_loader()
+
+    cfg_orig = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(32, 32), L=(1.0, 1.0)),
+        numerics=NumericsConfig(
+            surface_tension_model="gfm",
+            extension_method="none",
+            n_extend=7,
+        ),
+    )
+    cfg_orig.solver.ppe_solver_type = "iterative"
+    cfg_orig.solver.ppe_discretization = "3pt"
+    cfg_orig.solver.ppe_iteration_method = "gauss_seidel"
+
+    with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as f:
+        path = f.name
+
+    try:
+        save_config(cfg_orig, path)
+        cfg_loaded, _, _ic, _vf = load_config(path)
+        assert cfg_loaded.numerics.surface_tension_model == "gfm"
+        assert cfg_loaded.numerics.extension_method == "none"
+        assert cfg_loaded.numerics.n_extend == 7
+        assert cfg_loaded.solver.ppe_solver_type == "iterative"
+        assert cfg_loaded.solver.ppe_discretization == "3pt"
+        assert cfg_loaded.solver.ppe_iteration_method == "gauss_seidel"
+    finally:
+        os.unlink(path)

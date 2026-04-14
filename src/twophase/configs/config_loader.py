@@ -65,6 +65,8 @@ YAML は従来のフラット形式（後方互換）とネスト形式の両方
 
 from __future__ import annotations
 import os
+import warnings
+from dataclasses import fields as _dc_fields
 from typing import Any, Dict, Tuple
 
 
@@ -124,88 +126,116 @@ def load_config(
     )
 
     raw = load_config_dict(path)
+    output_cfg, ic_cfg, vf_cfg = _pop_side_sections(raw)
+    _coerce_tuple_keys(raw, ("N", "L"))
 
-    # 出力設定を分離
-    output_cfg = _default_output_config()
-    if "output" in raw:
-        output_cfg.update(raw.pop("output"))
-
-    # 初期条件設定を分離（存在しなければ None）
-    ic_cfg = raw.pop("initial_condition", None)
-
-    # 速度場設定を分離（存在しなければ None）
-    vf_cfg = raw.pop("velocity_field", None)
-
-    # タプル変換
-    for key in ("N", "L"):
-        if key in raw and isinstance(raw[key], list):
-            raw[key] = tuple(raw[key])
-
-    def _get(key, default):
-        return raw.get(key, default)
-
-    def _f(key, default):
-        """_get + float() キャスト（PyYAML が 1.0e10 を str として返す問題に対処）。"""
-        return float(_get(key, default))
-
-    def _i(key, default):
-        return int(_get(key, default))
-
-    grid = GridConfig(
-        ndim=_i("ndim", 2),
-        N=_get("N", (64, 64)),
-        L=_get("L", (1.0, 1.0)),
-        alpha_grid=_f("alpha_grid", 1.0),
-        dx_min_floor=_f("dx_min_floor", 1e-6),
-        eps_g_factor=_f("eps_g_factor", 2.0),
-    )
-    fluid = FluidConfig(
-        Re=_f("Re", 100.0),
-        Fr=_f("Fr", 1.0),
-        We=_f("We", 10.0),
-        rho_ratio=_f("rho_ratio", 0.001),
-        mu_ratio=_f("mu_ratio", 0.01),
-    )
-    numerics = NumericsConfig(
-        epsilon_factor=_f("epsilon_factor", 1.5),
-        reinit_steps=_i("reinit_steps", 4),
-        cfl_number=_f("cfl_number", 0.3),
-        t_end=_f("t_end", 1.0),
-        cn_viscous=bool(_get("cn_viscous", True)),
-        cn_mode=str(_get("cn_mode", "picard")),
-        bc_type=str(_get("bc_type", "wall")),
-        advection_scheme=str(_get("advection_scheme", "dissipative_ccd")),
-    )
-    solver = SolverConfig(
-        ppe_solver_type=str(_get("ppe_solver_type", "pseudotime")),
-        pseudo_tol=_f("pseudo_tol", 1e-8),
-        pseudo_maxiter=_i("pseudo_maxiter", 500),
-        pseudo_c_tau=_f("pseudo_c_tau", 2.0),
-    )
-
-    # 未知キーの警告 — auto-derived from dataclass fields (DRY)
-    from dataclasses import fields as _dc_fields
-    _known = set()
-    for _dc in (GridConfig, FluidConfig, NumericsConfig, SolverConfig):
-        _known |= {f.name for f in _dc_fields(_dc)}
-    _known |= {"use_gpu", "bicgstab_tol", "bicgstab_maxiter"}  # legacy keys
-    for key in raw:
-        if key not in _known:
-            import warnings
-            warnings.warn(
-                f"YAML に未知のキー '{key}' があります（無視します）。",
-                UserWarning,
-                stacklevel=2,
-            )
+    grid = _build_grid_config(raw, GridConfig)
+    fluid = _build_fluid_config(raw, FluidConfig)
+    numerics = _build_numerics_config(raw, NumericsConfig)
+    solver = _build_solver_config(raw, SolverConfig)
+    _warn_unknown_keys(raw, (GridConfig, FluidConfig, NumericsConfig, SolverConfig))
 
     config = SimulationConfig(
         grid=grid,
         fluid=fluid,
         numerics=numerics,
         solver=solver,
-        use_gpu=_get("use_gpu", False),
+        use_gpu=raw.get("use_gpu", False),
     )
     return config, output_cfg, ic_cfg, vf_cfg
+
+
+def _pop_side_sections(raw: Dict[str, Any]) -> Tuple[Dict[str, Any], Any, Any]:
+    """Remove non-SimulationConfig sections from the raw YAML dict."""
+    output_cfg = _default_output_config()
+    if "output" in raw:
+        output_cfg.update(raw.pop("output"))
+    ic_cfg = raw.pop("initial_condition", None)
+    vf_cfg = raw.pop("velocity_field", None)
+    return output_cfg, ic_cfg, vf_cfg
+
+
+def _coerce_tuple_keys(raw: Dict[str, Any], keys: Tuple[str, ...]) -> None:
+    """Convert YAML lists that map to tuple-valued config fields."""
+    for key in keys:
+        if key in raw and isinstance(raw[key], list):
+            raw[key] = tuple(raw[key])
+
+
+def _get_float(raw: Dict[str, Any], key: str, default: float) -> float:
+    """Read a float, accepting YAML loaders that parse scientific notation as str."""
+    return float(raw.get(key, default))
+
+
+def _get_int(raw: Dict[str, Any], key: str, default: int) -> int:
+    """Read an integer config value."""
+    return int(raw.get(key, default))
+
+
+def _build_grid_config(raw: Dict[str, Any], GridConfig):
+    return GridConfig(
+        ndim=_get_int(raw, "ndim", 2),
+        N=raw.get("N", (64, 64)),
+        L=raw.get("L", (1.0, 1.0)),
+        alpha_grid=_get_float(raw, "alpha_grid", 1.0),
+        dx_min_floor=_get_float(raw, "dx_min_floor", 1e-6),
+        eps_g_factor=_get_float(raw, "eps_g_factor", 2.0),
+    )
+
+
+def _build_fluid_config(raw: Dict[str, Any], FluidConfig):
+    return FluidConfig(
+        Re=_get_float(raw, "Re", 100.0),
+        Fr=_get_float(raw, "Fr", 1.0),
+        We=_get_float(raw, "We", 10.0),
+        rho_ratio=_get_float(raw, "rho_ratio", 0.001),
+        mu_ratio=_get_float(raw, "mu_ratio", 0.01),
+    )
+
+
+def _build_numerics_config(raw: Dict[str, Any], NumericsConfig):
+    return NumericsConfig(
+        epsilon_factor=_get_float(raw, "epsilon_factor", 1.5),
+        reinit_steps=_get_int(raw, "reinit_steps", 4),
+        cfl_number=_get_float(raw, "cfl_number", 0.3),
+        t_end=_get_float(raw, "t_end", 1.0),
+        cn_viscous=bool(raw.get("cn_viscous", True)),
+        cn_mode=str(raw.get("cn_mode", "picard")),
+        bc_type=str(raw.get("bc_type", "wall")),
+        advection_scheme=str(raw.get("advection_scheme", "dissipative_ccd")),
+        surface_tension_model=str(raw.get("surface_tension_model", "csf")),
+        extension_method=str(raw.get("extension_method", "hermite")),
+        n_extend=_get_int(raw, "n_extend", 5),
+    )
+
+
+def _build_solver_config(raw: Dict[str, Any], SolverConfig):
+    return SolverConfig(
+        ppe_solver_type=str(raw.get("ppe_solver_type", "pseudotime")),
+        pseudo_tol=_get_float(raw, "pseudo_tol", 1e-8),
+        pseudo_maxiter=_get_int(raw, "pseudo_maxiter", 500),
+        pseudo_c_tau=_get_float(raw, "pseudo_c_tau", 2.0),
+        ppe_discretization=str(raw.get("ppe_discretization", "ccd")),
+        ppe_iteration_method=str(raw.get("ppe_iteration_method", "adi")),
+        iim_mode=str(raw.get("iim_mode", "hermite")),
+        iim_backend=str(raw.get("iim_backend", "decomp")),
+    )
+
+
+def _warn_unknown_keys(raw: Dict[str, Any], config_types: Tuple[type, ...]) -> None:
+    """Warn for keys not owned by any config dataclass."""
+    known = set()
+    for config_type in config_types:
+        known |= {f.name for f in _dc_fields(config_type)}
+    known |= {"use_gpu", "bicgstab_tol", "bicgstab_maxiter"}  # legacy keys
+
+    for key in raw:
+        if key not in known:
+            warnings.warn(
+                f"YAML に未知のキー '{key}' があります（無視します）。",
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 def _default_output_config() -> Dict[str, Any]:
@@ -230,8 +260,16 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
     path   : 保存先 YAML ファイルのパス
     """
     yaml = _require_pyyaml()
+    d = _config_to_flat_dict(config)
 
-    d: Dict[str, Any] = {
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(d, f, default_flow_style=False, allow_unicode=True)
+
+
+def _config_to_flat_dict(config: "SimulationConfig") -> Dict[str, Any]:
+    """Flatten SimulationConfig into the legacy YAML key layout."""
+    return {
         # GridConfig
         "ndim":         config.grid.ndim,
         "N":            list(config.grid.N),
@@ -246,26 +284,29 @@ def config_to_yaml(config: "SimulationConfig", path: str) -> None:
         "rho_ratio": config.fluid.rho_ratio,
         "mu_ratio":  config.fluid.mu_ratio,
         # NumericsConfig
-        "epsilon_factor": config.numerics.epsilon_factor,
-        "reinit_steps":   config.numerics.reinit_steps,
-        "cfl_number":     config.numerics.cfl_number,
-        "t_end":          config.numerics.t_end,
-        "cn_viscous":       config.numerics.cn_viscous,
-        "cn_mode":          config.numerics.cn_mode,
-        "bc_type":          config.numerics.bc_type.value,
-        "advection_scheme": config.numerics.advection_scheme,
+        "epsilon_factor":        config.numerics.epsilon_factor,
+        "reinit_steps":          config.numerics.reinit_steps,
+        "cfl_number":            config.numerics.cfl_number,
+        "t_end":                 config.numerics.t_end,
+        "cn_viscous":            config.numerics.cn_viscous,
+        "cn_mode":               config.numerics.cn_mode,
+        "bc_type":               config.numerics.bc_type.value,
+        "advection_scheme":      config.numerics.advection_scheme,
+        "surface_tension_model": config.numerics.surface_tension_model,
+        "extension_method":      config.numerics.extension_method,
+        "n_extend":              config.numerics.n_extend,
         # SolverConfig
-        "ppe_solver_type":  config.solver.ppe_solver_type,
-        "pseudo_tol":       config.solver.pseudo_tol,
-        "pseudo_maxiter":   config.solver.pseudo_maxiter,
-        "pseudo_c_tau":     config.solver.pseudo_c_tau,
+        "ppe_solver_type":       config.solver.ppe_solver_type,
+        "pseudo_tol":            config.solver.pseudo_tol,
+        "pseudo_maxiter":        config.solver.pseudo_maxiter,
+        "pseudo_c_tau":          config.solver.pseudo_c_tau,
+        "ppe_discretization":    config.solver.ppe_discretization,
+        "ppe_iteration_method":  config.solver.ppe_iteration_method,
+        "iim_mode":              config.solver.iim_mode,
+        "iim_backend":           config.solver.iim_backend,
         # ハードウェア
         "use_gpu": config.use_gpu,
     }
-
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.dump(d, f, default_flow_style=False, allow_unicode=True)
 
 
 # save_config は config_to_yaml の別名（テスト互換性のため）
