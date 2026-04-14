@@ -1,23 +1,23 @@
-\section{\texorpdfstring{$\psi \to \phi$}{ψ→φ} 逆変換におけるニュートン法の二次収束証明}
+\section{\texorpdfstring{$\psi \to \phi$}{ψ→φ} 逆変換におけるニュートン法の局所二次収束}
 \label{app:newton_quad_conv}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本稿の §\ref{sec:newton_inversion} で述べたように，
 $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
 ほとんどの格子点で解析的に求まる（残差ゼロ，ニュートン法不要）．
-ニュートン法（式~\eqref{eq:newton_inversion}）が実用的に必要になるのは
-$\psi_i \to 0$ または $\psi_i \to 1$ の\textbf{飽和領域のみ}（界面から $15\varepsilon$ 以遠，
-全格子点の $\mathcal{O}(e^{-15})$ 以下の割合）である．
-以下の証明はこの飽和域の少数の格子点に対する数学的完全性のために掲載する．
+ニュートン法（式~\eqref{eq:newton_inversion}）は実装の主経路ではなく，
+ロジット逆変換の診断・補助としてのみ用いる．
+以下の証明は，ニュートン法を使う場合に成立する標準的な局所収束条件を明示するために掲載する．
 
-\textbf{本証明のスコープ：} 以下の二次収束証明は，実装上の飽和処理（clamp）により
-$|\phi^{(k)}| \le \phi_{\max}$（$\phi_{\max} = 15\varepsilon$ 程度）の有界区間内に
-反復が閉じ込められる場合に成立する．この有界性は，ニュートン法の初期値を
-$\phi^{(0)} = \phi_{\max}\,\mathrm{sign}(\psi_i - 0.5)$（飽和限界）から開始することで
-実装上保証される．有界区間外（数学的には $\psi \in (0,1)$ 全体）での収束解析は
-Kelley \cite{Kelley2003} 等のニュートン法標準テキストを参照のこと．
+\textbf{本証明のスコープ：} 以下の二次収束証明は，
+真の解 $\phi^*$ の近傍に初期値があり，かつ
+$H_\varepsilon'(\phi)$ が小さすぎない局所区間内で反復が進む場合に成立する．
+実装上の飽和処理（clamp）は $|\phi| \le \phi_{\max}$ に制限して
+オーバーフローを防ぐための防御策であり，
+それだけで大域収束や二次収束を保証するものではない．
+大域的な収束解析は Kelley \cite{Kelley2003} 等のニュートン法標準テキストを参照のこと．
 
-以下では，この飽和有界区間においてニュートン法が二次収束することを厳密に示す．
+以下では，上記の局所区間においてニュートン法が二次収束することを示す．
 
 \subsection*{前提}
 
@@ -43,15 +43,14 @@ $\Ord{e_k^2}$ の寄与を吸収した主要項として）：
   \item $F'(\phi) = H_\varepsilon'(\phi) = \dfrac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr) > 0$
         （$H_\varepsilon \in (0,1)$ であるから常に正）．
 
-  \item 飽和処理により $|\phi| \le \phi_{\max}$ に制限されているとき，
-        $H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max})) > 0$ が保証されるから
+  \item 局所区間 $I$ 上で $H_\varepsilon'(\phi)$ が小さすぎないとき，
         $F'$ は有限の正の下界 $F'_{\min} > 0$ を持つ：
         \[
-          F'_{\min} = \frac{1}{\varepsilon}H_\varepsilon(\phi_{\max})\bigl(1-H_\varepsilon(\phi_{\max})\bigr) > 0
+          F'_{\min} = \inf_{\phi\in I} \frac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr) > 0
         \]
 
   \item $F''(\phi) = \dfrac{1}{\varepsilon^2}H_\varepsilon(1-H_\varepsilon)(1-2H_\varepsilon)$ は
-        $\phi \in [-\phi_{\max}, \phi_{\max}]$ 上で有界である（$H_\varepsilon \in [0,1]$ の連続関数）．
+        局所区間 $I$ 上で有界である（$H_\varepsilon \in [0,1]$ の連続関数）．
         $H_\varepsilon(1-H_\varepsilon) \le 1/4$ かつ $|1-2H_\varepsilon| \le 1$ であるから，
         $\|F''\|_\infty \le 1/(4\varepsilon^2)$ が成立する．
 \end{itemize}
@@ -59,7 +58,6 @@ $\Ord{e_k^2}$ の寄与を吸収した主要項として）：
 以上より，収束定数
 \[
   C = \frac{\|F''\|_\infty}{2 F'_{\min}}
-    = \frac{1}{8\varepsilon^2} \cdot \frac{\varepsilon}{H_\varepsilon(\phi_{\max})(1-H_\varepsilon(\phi_{\max}))}
     < \infty
 \]
 は有限であり，
@@ -70,9 +68,11 @@ $\Ord{e_k^2}$ の寄与を吸収した主要項として）：
 
 \subsection*{実装上の含意}
 
-飽和処理の閾値 $\delta_{\text{clamp}} = 10^{-6}$，$\phi_{\max} = 15\varepsilon$ の設定下では，
-飽和領域の格子点数は全体の $\mathcal{O}(e^{-\phi_{\max}/\varepsilon}) = \mathcal{O}(e^{-15})$ 以下であり
-（界面から $15\varepsilon$ 以遠の点），曲率計算にも寄与しない．
-したがって実際の計算コストは無視できるレベルである．
+飽和領域（$\psi \to 0,1$）では $H_\varepsilon'$ が小さくなり，
+Newton 更新は丸め誤差に敏感になる．
+したがって本稿の実装ではロジット逆変換を主手法とし，
+$\psi$ を $[\delta_{\text{clamp}},1-\delta_{\text{clamp}}]$ に制限して
+$|\phi|\le\phi_{\max}$ に飽和させる．
+界面から遠い飽和領域は曲率計算にも寄与しないため，Newton 反復に依存しない．
 
 % ═══════════════════════════════════════════════════════════════════════════════

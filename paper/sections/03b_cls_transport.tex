@@ -65,9 +65,10 @@ MAC スタガード格子 & $0$（厳密保存） &
 標準 LS は非保存形のため，Projection 法の PPE 空間離散化に起因する離散発散残差
 $[\bnabla\cdot\bu]_h = \Ord{h^2}$（2次精度 PPE の場合）が
 $\phi\,[\bnabla\cdot\bu]_h$ として体積誤差に直結する（§~\ref{sec:why_cls_massloss}）．
-CLS（保存形 + Dissipative CCD）では保存形の発散定理によりこの項が消去され，
-残差は CCD 微分の打ち切り誤差 $\Ord{h^5}$ のみとなる．
-格子を細分化するほど（$h \to 0$）体積保存が改善するという格子収束性が保証される点が重要である．
+CLS（保存形 + Dissipative CCD）では保存形の発散定理によりこの項が連続レベルで消去される．
+離散残差は CCD 微分の打ち切り誤差，境界フラックス，値域制限，再初期化補正に分かれ，
+周期・壁面境界の滑らかな移流段階では CCD 微分の打ち切り誤差 $\Ord{h^5}$ が主成分となる．
+格子を細分化するほど（$h \to 0$）体積保存が改善する格子収束性を期待できる点が重要である．
 \end{tcolorbox}
 
 \subsection{再初期化方程式（等方拡散形）}
@@ -256,8 +257,12 @@ $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
 
 \paragraph{仮想時間刻み $\Delta\tau$ の安定性条件}
 \label{warn:cls_dtau_stability}
-再初期化方程式~\eqref{eq:cls_reinit_iso} を TVD-RK3 で仮想時間積分する場合，
-$\Delta\tau$ の選択に安定性制約が存在する．
+以下は，圧縮項と拡散項をともに陽的に扱う場合の参考安定条件である．
+本稿の標準実装では，第~\ref{sec:advection}章で述べるように
+圧縮項を Dissipative CCD で陽的に処理し，拡散項を Crank--Nicolson で半陰的に処理する．
+したがって実際の運用では，拡散項の陽的 CFL は CN 処理により緩和される．
+完全陽解法として再初期化方程式~\eqref{eq:cls_reinit_iso} を TVD-RK3 で仮想時間積分する場合，
+$\Delta\tau$ には以下の安定性制約が存在する．
 再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
 それぞれの安定条件は以下の通りである．
 双曲型成分（CFL 条件）では，フラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値が $1$ であるから
@@ -270,6 +275,7 @@ $\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
 \]
 典型的なパラメータ $\varepsilon = 1.5\Delta s$ では $(\Delta s)^2/(4\varepsilon) = \Delta s/6 \approx 0.167\Delta s$ となり，
 拡散型成分の制約が支配的である．
-\textbf{推奨値：} $\Delta\tau = 0.125\Delta s$
+\textbf{完全陽解法での参考値：} $\Delta\tau = 0.125\Delta s$
 （安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
-
+標準の圧縮 DCCD + CN 拡散スキームにおける具体的な更新式と制約は
+§~\ref{sec:cls_compression} および §~\ref{sec:algo_flow}（Step 2）で改めて定義する．
