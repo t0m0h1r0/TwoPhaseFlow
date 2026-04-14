@@ -25,9 +25,10 @@
         $\phi$ を滑らかなヘヴィサイド関数 $\psi = H_\varepsilon(\phi) \in [0,1]$ に変換し，
         \textbf{保存形}の移流方程式を解く．
         VOF の質量保存性と標準 LS の幾何計算精度を両立する．
-        ただし，幾何量（法線・曲率）の計算に $\phi$ を要するため，
-        $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
-        解析的に求まる（第~\ref{sec:levelset}章参照）．
+        本稿では曲率は $\psi$ 微分から直接計算する一方，
+        法線計算や HFE などで $\phi$ が必要な場合には
+        $\psi \to \phi$ の逆変換をロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
+        解析的に行う（第~\ref{sec:levelset}章参照）．
 \end{description}
 
 3手法の特性を表~\ref{tab:method_comparison}に比較する．
@@ -82,9 +83,11 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
         CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
         表面張力と圧力勾配に\textbf{同一の CCD 演算子}を使用し，
         離散化整合性を $\Ord{h^6}$ 精度で確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
-  \item \textbf{Dissipative CCD 移流}：
-        $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
-        スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}）．
+  \item \textbf{Dissipative CCD によるモード選択}：
+        CLS 移流では小さな散逸（$\varepsilon_d=0.05$）で界面プロファイルを保ち，
+        PPE 右辺・Corrector 発散では $\varepsilon_d = 1/4$ により
+        コロケート格子のチェッカーボード不安定をスキーム内部で抑制する
+        （§~\ref{sec:dccd_decoupling}）．
 \end{enumerate}
 さらに，高密度比対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節で実証）の基盤技術として，
 Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
@@ -164,19 +167,19 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 4  & CCD 法
    & 6次精度コンパクト差分，係数導出，DCCD フィルタ
    & --- \\
-5  & 界面適合格子
-   & レベルセット連動格子生成，メトリック係数，ALE 簡略化
-   & 3, 4 \\
-6  & 時間積分
+5  & 時間積分
    & \raggedright CLS：TVD-RK3（$\Ord{\Delta t^3}$）；
      NS：AB2+IPC（$\Ord{\Delta t^2}$），CN 粘性；時間刻み制約
    & 2, 3, 4 \\
+6  & 界面適合格子
+   & レベルセット連動格子生成，メトリック係数，ALE 簡略化
+   & 3, 4 \\
 7  & CLS 移流・再初期化
    & Dissipative CCD 移流スキーム，圧縮項 DCCD，安定性制約
-   & 3, 4, 6 \\
+   & 3, 4, 5 \\
 8  & 圧力・速度連成
    & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
-   & 4, 5 \\
+   & 4, 6 \\
 9  & 圧力 Poisson 方程式
    & CCD-PPE 離散化，欠陥補正法，境界条件，精度総括
    & 8 \\
