@@ -8,7 +8,9 @@
   \pd{\psi}{t} + \bnabla\cdot(\psi\,\bu) = 0
   \label{eq:cls_advection}
 \end{equation}
-この式を解くことで，全領域積分 $\int \psi \, dV$（すなわち液相体積）の保存性が向上する．
+本稿の符号規約では $\psi\approx0$ が液相，$\psi\approx1$ が気相であるため，
+閉じた計算領域で $\int \psi \, dV$（気相体積に対応）が保存されれば，
+補体として液相体積も保存される．
 
 \begin{tcolorbox}[resultbox, title={保存形の体積保全性：発散定理の直接適用と離散精度}]
 保存形移流方程式~\eqref{eq:cls_advection} を領域 $\Omega$ で積分し，
