@@ -102,9 +102,11 @@ $\tilde{f}'_i = d_{1,i} + \varepsilon_d(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})$
   = 0
   \label{eq:dccd_zero_sum}
 \end{equation}
-\textbf{DCCD 空間演算子は周期 BC で離散的に質量を厳密に保存する}．
+\textbf{DCCD 空間演算子自体は周期 BC で離散的に質量を厳密に保存する}．
 実験（§~\ref{sec:verify_dccd_conservation}）において
 $|\sum_i \tilde{f}'_i| < 3 \times 10^{-13}$（機械精度）を確認した．
+ただし，時間積分後の値域制限（式~\eqref{eq:psi_clamp}）や再初期化の演算子分裂は
+別の非保存誤差を生むため，実アルゴリズムでは後述の界面重み付き補正で総量を戻す．
 
 \textbf{演算子分裂による質量損失メカニズム．}
 再初期化方程式~\eqref{eq:cls_reinit_split} は連続形で保存的（両辺が発散形）であるが，

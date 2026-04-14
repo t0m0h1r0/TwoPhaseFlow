@@ -241,7 +241,7 @@ $\Ord{\varepsilon_d^{(i)}\,h^2} = \Ord{S(\psi_i)\varepsilon_{d,\max}h^2} \xright
 
 \begin{tcolorbox}[warnbox, title={Dissipative-CCD フィルタの適用範囲（実装上の注意）}]
 フィルタ係数 $\varepsilon_d^{(i)}$ は CLS 変数 $\psi^n$（現時刻）から各タイムステップで計算する．
-$\psi$ の更新（CLS 移流ステップ，7 段アルゴリズムのステップ 3，§~\ref{sec:algorithm}）が
+$\psi$ の更新（CLS 移流・再初期化ステップ，§~\ref{sec:algorithm}）が
 CCD 演算（ステップ 5, 6）より前に完了していることを確認すること．
 これは本稿の 7 段アルゴリズム（図~\ref{fig:ns_solvers}）では自動的に保証されている．
 \end{tcolorbox}

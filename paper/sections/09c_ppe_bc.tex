@@ -26,9 +26,9 @@ PPE 演算子の条件数に直接影響する．
 なお，条件数の悪化にとどまらず，界面型密度場（smoothed Heaviside）では
 変密度 PPE 自体が $\rho_l/\rho_g \geq 10$ で発散する本質的問題が存在する
 （§~\ref{sec:varrho_ppe_limitation}）．
-この本質的制約に対する解決策として，§~\ref{sec:split_ppe_framework} で\textbf{分相 PPE 解法}を定式化する．
-以下の安定化戦略は条件数の緩和に有効だが，この発散問題の根本的解決は
-今後の課題として §~\ref{sec:future_work} で議論する．
+この本質的制約に対する解決策として，§~\ref{sec:split_ppe_framework} で\textbf{分相 PPE 解法}を定式化した．
+以下の安定化戦略は，smoothed Heaviside 一括解法を低密度比で用いる場合の条件数緩和策である．
+水--空気級の高密度比では一括解法を主戦略とせず，分相 PPE と界面ジャンプ条件を用いる．
 可変係数演算子 $\mathcal{L}_h$ の係数 $a_{i+1/2} = 2/(\rho_i+\rho_{i+1})$ は，
 液相（$\rho \approx \rho_l$）と気相（$\rho \approx \rho_g$）の格子フェイスで
 $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
@@ -47,10 +47,10 @@ $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
         （2値の場合，両者は同一の式を与える）．
         この係数は界面フラックスに物理的根拠を持ち，
         条件数の過大評価を防ぐ（付録~\ref{app:fvm_face_coeff}）．
-  \item \textbf{FD 直接法 PPE + CCD 勾配（§~\ref{sec:ppe_discretization_choice}）：}
-        PPE を 2 次精度 FD の直接法で厳密に解き（残差ゼロ），
-        速度補正の勾配に CCD $\Ord{h^6}$ を適用する．
-        Balanced-Force 条件が $\Ord{h^6}$ 精度で維持される．
+  \item \textbf{分相 PPE + DC $k{=}3$ + CCD 勾配（§~\ref{sec:split_ppe_framework}）：}
+        高密度比では各相内の定数密度 PPE を DC で解き，
+        速度補正の勾配に CCD を適用する．
+        Balanced-Force 条件は圧力勾配と表面張力勾配に同じ CCD 演算子を使う範囲で維持される．
   \item \textbf{ゲージ固定点の対称性（§~\ref{sec:pinpoint}）：}
         ピン固定点を中心ノード $(N/2, N/2)$ に設定することで（コーナーピン禁止），
         高密度比条件下でもグローバル非対称性 $\Ord{\|\mathrm{rhs}\|}$ を回避する．

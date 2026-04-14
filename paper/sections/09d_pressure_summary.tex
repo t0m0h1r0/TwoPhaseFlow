@@ -26,25 +26,26 @@ HFE による界面越し場延長（§~\ref{sec:field_extension}），
 \toprule
 コンポーネント & 手法 & 空間精度 & 時間精度 \\
 \midrule
-CLS 移流（界面追跡） & Dissipative CCD + TVD-RK3 & $\Ord{h^5}$§ & $\Ord{\Delta t^3}$ \\
+CLS 移流 & DCCD + TVD-RK3 & CCD $\Ord{h^6}$；filter $\Ord{\varepsilon_d h^2}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE（離散化＋求解） & 分相 PPE + DC $k{=}3$ + CCD 勾配（Balanced-Force） & $\Ord{h^5}$/$\Ord{h^6}$‡ & — \\
-NS 粘性項 & CCD + Crank--Nicolson（陽的交差項 $\Ord{h^6}$；ADI 陰的対角項 $\Ord{h^2}$）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
+PPE & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^5}$/$\Ord{h^6}$‡ & — \\
+NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & $\Ord{h^6}$ & — \\
+HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & 条件付き $\Ord{h^6}$ & — \\
 \midrule
 \textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
-\textbf{全体（時間律速：AB2+IPC 整合）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
+\textbf{全体（時間律速：均質流域）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
-\noindent‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を全密度比で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．\\
-\noindent§\ 単位ステップ質量誤差の大域積分推定（§~\ref{sec:dccd_conservation}）；
-局所切断誤差は $\Ord{h^6}$（CCD）から $\Ord{\varepsilon_d h^2}$（DCCD フィルタ）が加わった実効精度．\\
+\noindent‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．\\
+\noindent§\ CCD 微分の局所切断誤差は $\Ord{h^6}$ だが，
+固定強度 DCCD フィルタは滑らかなモードに $\Ord{\varepsilon_d h^2}$ の修正を加える．
+質量積分誤差や形状誤差は別指標であり，この局所次数と混同しない．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（§~\ref{sec:algorithm}）．
 $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．
 \end{table}
@@ -54,12 +55,14 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
   \item \textbf{空間精度：}
         全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
         全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
-        分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を全密度比で達成し，
-        HFE（§~\ref{sec:field_extension}）が界面ジャンプ条件を $\Ord{h^6}$ で課す．
+        分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成し，
+        HFE（§~\ref{sec:field_extension}）はジャンプ補正済み片側データを延長し，
+        CCD ステンシルが不連続値を跨がないようにする．
 
   \item \textbf{時間精度：}
-        AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．
-        対流（AB2），粘性（Crank--Nicolson），Projection（IPC）の3要素が統一されている．
+        均質流域では AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．
+        変粘性界面で交差粘性項を陽的に扱う場合，または表面張力卓越時に
+        RC 補正の時刻ずれが支配する場合は $\Ord{\Delta t}$ 成分が残る．
 \end{enumerate}
 \end{tcolorbox}
 
@@ -69,20 +72,21 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 
 \begin{enumerate}
   \item \textbf{分相 PPE による密度比非依存化}．
-        各相で定数密度の PPE を独立に解き，界面ジャンプ条件 $[p] = \sigma\kappa$ を
-        HFE（§~\ref{sec:field_extension}）で課す（§~\ref{sec:split_ppe_framework}）．
-        界面を横切るステンシルが完全に排除されるため，
+        各相で定数密度の PPE を解き，界面では圧力ジャンプと法線フラックス条件を課す
+        （§~\ref{sec:split_ppe_framework}）．
+        HFE（§~\ref{sec:field_extension}）は，そのジャンプ補正済み片側データを界面越しに延長する．
+        界面を横切るステンシルが排除されるため，
         DC $k{=}3$ は各相内で $\Ord{h^7}$（Dirichlet）/ $\Ord{h^5}$（Neumann BC 律速）を
-        \textbf{全密度比}（$\rho_l/\rho_g = 1$--$1000$）で達成する
+        密度比に直接依存しない形で達成する
         （§~\ref{sec:verify_split_ppe_dc}）．
 
   \item \textbf{Balanced-Force 整合性：同一演算子の強制}．
         Balanced-Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
-        \textbf{同一の離散微分演算子}を使用することで，静止液滴での寄生流れを離散レベルで消去する
+        \textbf{同一の離散微分演算子}を使用することで，演算子不一致に由来する寄生流れ成分を抑える
         （§~\ref{sec:rc_balanced_force}）．
         速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に CCD $\Ord{h^6}$ を使い，
         表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
-        この整合性を $\Ord{h^6}$ 精度で保証する．
+        この整合性を高次に維持する．
 
   \item \textbf{直接法による残差ゼロ保証}．
         DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を LU 分解（直接法）で厳密に解くことで，
