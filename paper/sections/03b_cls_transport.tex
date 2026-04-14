@@ -262,7 +262,7 @@ $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
 
 \paragraph{仮想時間刻み $\Delta\tau$ の安定性条件}
 \label{warn:cls_dtau_stability}
-再初期化方程式~\eqref{eq:cls_reinit_iso} を TVD-RK3 で仮想時間積分する場合，
+再初期化方程式~\eqref{eq:cls_reinit_iso} の圧縮項と拡散項をともに明示的に仮想時間積分する場合，
 $\Delta\tau$ の選択に安定性制約が存在する．
 再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
 それぞれの安定条件は以下の通りである．
@@ -278,3 +278,7 @@ $\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
 拡散型成分の制約が支配的である．
 \textbf{推奨値：} $\Delta\tau = 0.125\Delta s$
 （安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
+ただし本稿の統合アルゴリズムでは，圧縮項を陽的 DCCD で扱い，
+拡散項を Crank--Nicolson 半陰的処理へ回す（§~\ref{sec:cls_compression}）．
+したがって上記の放物型制約は，3章での陽的再初期化理解のための参考条件であり，
+標準実装の時間刻み制約は第~\ref{sec:discretization_modules}章で再定義する．

@@ -77,12 +77,13 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
   \item \textbf{CCD $\Ord{h^6}$ 微分演算子}：
         同一3点ステンシルで $\Ord{h^6}$ の1・2階微分を提供し，
         曲率計算と圧力勾配の両方を高精度化する（第~\ref{sec:CCD}章）．
-  \item \textbf{FD 直接法 PPE + CCD 勾配}：
-        2 次精度 FD の PPE を直接法で厳密に解き（残差ゼロ），
+  \item \textbf{分相 PPE + 欠陥補正法 + CCD 勾配}：
+        分相 PPE により各相内を定数密度 Poisson 問題として扱い，
+        DC $k=3$ で高次演算子 $L_H$ の残差を低減する．
         速度補正の勾配には CCD $\Ord{h^6}$ を適用する．
         CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
         表面張力と圧力勾配に\textbf{同一の CCD 演算子}を使用し，
-        離散化整合性を $\Ord{h^6}$ 精度で確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
+        平滑領域での離散化整合性を高次に保つ（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
   \item \textbf{Dissipative CCD によるモード選択}：
         CLS 移流では小さな散逸（$\varepsilon_d=0.05$）で界面プロファイルを保ち，
         PPE 右辺・Corrector 発散では $\varepsilon_d = 1/4$ により
@@ -115,7 +116,7 @@ PROST 法~\cite{Renardy2002}%
 各困難の説明と対応する「→ 本稿の対処」として同節に整理してある．
 ここでは全体像のみ示す：CLS 法による界面追跡，Dissipative CCD による移流，
 CCD $\Ord{h^6}$ 微分演算子による曲率・PPE 離散化，
-および欠陥補正法による圧力求解（FD 直接法 + CCD 勾配）の組み合わせである．
+および分相 PPE + 欠陥補正法 + CCD 勾配による圧力求解の組み合わせである．
 
 NS 方程式の各項とそれを処理するソルバーの対応関係は，
 アルゴリズム全体を把握した後の第~\ref{sec:algorithm}章（図~\ref{fig:ns_solvers}）で整理する．
