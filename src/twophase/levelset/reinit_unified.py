@@ -7,7 +7,7 @@ Combined RHS eliminates operator-splitting mismatch.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from ..interfaces.levelset import IReinitializer
+from .interfaces import IReinitializer
 from .heaviside import apply_mass_correction
 from .reinit_ops import compute_dtau, compute_gradient_normal, filtered_divergence
 

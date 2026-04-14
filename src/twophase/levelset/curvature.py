@@ -28,7 +28,7 @@ from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 
 from .heaviside import invert_heaviside
-from ..interfaces.levelset import ICurvatureCalculator
+from .interfaces import ICurvatureCalculator
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver

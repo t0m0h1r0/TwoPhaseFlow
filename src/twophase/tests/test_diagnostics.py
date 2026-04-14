@@ -13,7 +13,7 @@ Tests cover:
 import numpy as np
 import pytest
 
-from twophase.diagnostics.collector import DiagnosticCollector
+from twophase.tools.diagnostics.collector import DiagnosticCollector
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

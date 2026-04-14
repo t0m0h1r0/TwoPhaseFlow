@@ -37,7 +37,7 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 
-from ..interfaces.field_extension import IFieldExtension
+from .interfaces import IFieldExtension
 from .hermite_interp import hermite5_coeffs, hermite5_eval
 
 if TYPE_CHECKING:

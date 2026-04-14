@@ -35,7 +35,7 @@ from __future__ import annotations
 import numpy as np
 from typing import List, Optional, TYPE_CHECKING
 
-from ..interfaces.ns_terms import INSTerm
+from .interfaces import INSTerm
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver

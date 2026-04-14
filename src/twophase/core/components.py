@@ -15,12 +15,12 @@ if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
-    from ..interfaces.levelset import ILevelSetAdvection, IReinitializer, ICurvatureCalculator
-    from ..interfaces.ppe_solver import IPPESolver
-    from ..ns_terms.predictor import Predictor
-    from ..pressure.rhie_chow import RhieChowInterpolator
-    from ..pressure.velocity_corrector import VelocityCorrector
-    from ..pressure.ppe_rhs_gfm import PPERHSBuilderGFM
+    from ..levelset.interfaces import ILevelSetAdvection, IReinitializer, ICurvatureCalculator
+    from ..ppe.interfaces import IPPESolver
+    from ..time_integration.ab2_predictor import Predictor
+    from ..spatial.rhie_chow import RhieChowInterpolator
+    from ..coupling.velocity_corrector import VelocityCorrector
+    from ..coupling.ppe_rhs_gfm import PPERHSBuilderGFM
     from ..levelset.field_extender import FieldExtender
     from ..time_integration.cfl import CFLCalculator
     from ..simulation.boundary_condition import BoundaryConditionHandler

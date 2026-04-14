@@ -23,9 +23,9 @@ from twophase.config import (
 )
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
-from twophase.pressure.gfm import GFMCorrector
-from twophase.pressure.dccd_ppe_filter import DCCDPPEFilter
-from twophase.pressure.ppe_rhs_gfm import PPERHSBuilderGFM
+from twophase.coupling.gfm import GFMCorrector
+from twophase.spatial.dccd_ppe_filter import DCCDPPEFilter
+from twophase.coupling.ppe_rhs_gfm import PPERHSBuilderGFM
 
 
 @pytest.fixture
@@ -198,7 +198,7 @@ def test_gfm_pipeline_builds_and_runs():
     """SimulationBuilder with surface_tension_model='gfm' must build and
     run 2 steps without NaN/Inf."""
     from twophase.simulation.builder import SimulationBuilder
-    from twophase.initial_conditions import InitialConditionBuilder, Circle
+    from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
 
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)),
@@ -212,7 +212,7 @@ def test_gfm_pipeline_builds_and_runs():
             advection_scheme="dissipative_ccd",
             surface_tension_model="gfm",
         ),
-        solver=SolverConfig(ppe_solver_type="pseudotime"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),
     )
     sim = SimulationBuilder(cfg).build()
 
@@ -255,7 +255,7 @@ def test_gfm_laplace_pressure_sign():
     GFM incorporates this as PPE RHS correction (Eq. gfm_rhs_correction).
     """
     from twophase.simulation.builder import SimulationBuilder
-    from twophase.initial_conditions import InitialConditionBuilder, Circle
+    from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
 
     N = 32
     R = 0.25
@@ -273,7 +273,7 @@ def test_gfm_laplace_pressure_sign():
             advection_scheme="dissipative_ccd",
             surface_tension_model="gfm",
         ),
-        solver=SolverConfig(ppe_solver_type="pseudotime"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),
     )
     sim = SimulationBuilder(cfg).build()
 

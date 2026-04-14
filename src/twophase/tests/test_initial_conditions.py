@@ -16,7 +16,7 @@ Coverage
 import numpy as np
 import pytest
 
-from ..initial_conditions import (
+from ..simulation.initial_conditions import (
     InitialConditionBuilder,
     Circle,
     Rectangle,

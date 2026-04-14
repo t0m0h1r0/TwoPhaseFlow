@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 
-from ..interfaces.levelset import IReinitializer
+from .interfaces import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
 from .heaviside import apply_mass_correction
 from .reinit_ops import volume_monitor as _volume_monitor

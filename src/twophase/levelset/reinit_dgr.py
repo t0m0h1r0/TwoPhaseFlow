@@ -5,7 +5,7 @@ Direct Geometric Reinitialization (DGR, WIKI-T-030) and Hybrid strategies.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from ..interfaces.levelset import IReinitializer
+from .interfaces import IReinitializer
 from .heaviside import heaviside, invert_heaviside, apply_mass_correction
 
 if TYPE_CHECKING:

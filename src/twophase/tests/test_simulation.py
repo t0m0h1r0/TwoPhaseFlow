@@ -34,7 +34,7 @@ from twophase.config import (
 )
 from twophase.simulation.builder import SimulationBuilder
 from twophase.simulation._core import TwoPhaseSimulation
-from twophase.initial_conditions import InitialConditionBuilder, Circle
+from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
 
 
 # ── Benchmark parameters (§10.3 Benchmark 1) ──────────────────────────────────
@@ -69,7 +69,7 @@ def _make_sim() -> TwoPhaseSimulation:
             bc_type="wall",
             advection_scheme="dissipative_ccd",
         ),
-        solver=SolverConfig(ppe_solver_type="pseudotime"),   # CCD Kronecker + LGMRES
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),   # CCD Kronecker + LGMRES
     )
     sim = SimulationBuilder(cfg).build()
 

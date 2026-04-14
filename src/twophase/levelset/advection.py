@@ -48,7 +48,7 @@ import numpy as np
 from typing import List, TYPE_CHECKING
 
 from ..backend import fuse as _fuse
-from ..interfaces.levelset import ILevelSetAdvection
+from .interfaces import ILevelSetAdvection
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
 

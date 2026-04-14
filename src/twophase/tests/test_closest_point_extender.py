@@ -147,7 +147,7 @@ def test_smooth_extension_bounded_gradient(setup_2d):
 def test_builder_hermite_extension():
     """SimulationBuilder with extension_method='hermite' must build and run."""
     from twophase.simulation.builder import SimulationBuilder
-    from twophase.initial_conditions import InitialConditionBuilder, Circle
+    from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
     from twophase.config import (
         SimulationConfig, GridConfig, FluidConfig,
         NumericsConfig, SolverConfig,
@@ -161,7 +161,7 @@ def test_builder_hermite_extension():
             t_end=0.1, bc_type="wall", advection_scheme="dissipative_ccd",
             surface_tension_model="csf", extension_method="hermite",
         ),
-        solver=SolverConfig(ppe_solver_type="pseudotime"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu"),
     )
     sim = SimulationBuilder(cfg).build()
 

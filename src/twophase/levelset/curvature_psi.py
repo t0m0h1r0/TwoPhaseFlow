@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ..interfaces.levelset import ICurvatureCalculator
+from .interfaces import ICurvatureCalculator
 from .curvature import _dccd_filter_nd, _DCCD_EPS_D
 
 if TYPE_CHECKING:

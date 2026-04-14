@@ -44,13 +44,13 @@ from ..ns_terms.viscous import ViscousTerm
 from ..ns_terms.gravity import GravityTerm
 from ..ns_terms.surface_tension import SurfaceTensionTerm
 from ..core.flow_state import FlowState
-from ..pressure.velocity_corrector import ccd_pressure_gradient
+from ..coupling.velocity_corrector import ccd_pressure_gradient
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from ..config import SimulationConfig
-    from ..interfaces.ns_terms import INSTerm
+    from ..ns_terms.interfaces import INSTerm
 
 
 class Predictor:
