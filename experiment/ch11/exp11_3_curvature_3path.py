@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[11-3] Curvature kappa computation -- three-path comparison.
+"""[11-3] Curvature kappa computation -- grid convergence.
 
 Validates: Ch2c -- Curvature formula kappa = -div(grad(phi)/|grad(phi)|).
 
@@ -7,7 +7,7 @@ Tests:
   (a) Circle R=0.25, kappa_exact=4: CCD vs CD2 convergence
   (b) Sinusoidal interface y=0.5+0.05*sin(2*pi*x): variable curvature
 
-Expected: CCD path O(h^4-5) near interface; CD2 O(h^2).
+Expected: monotone convergence of the current CLS curvature pipeline.
 """
 
 import sys, pathlib
@@ -168,7 +168,7 @@ def plot_all(res_ccd, res_cd2, res_sin):
 
 
 def main():
-    args = experiment_argparser("[11-3] Curvature 3-path").parse_args()
+    args = experiment_argparser("[11-3] Curvature convergence").parse_args()
     if args.plot_only:
         d = load_results(OUT / "data.npz")
         plot_all(d["circle_ccd"], d["circle_cd2"], d["sinusoidal"])
