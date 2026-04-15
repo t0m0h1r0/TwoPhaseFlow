@@ -1,4 +1,4 @@
-# Wiki Index — 91 entries
+# Wiki Index — 96 entries
 
 ## Theory (33)
 
@@ -52,7 +52,7 @@
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 
-## Experiment (20)
+## Experiment (21)
 
 | REF-ID | Title |
 |--------|-------|
@@ -76,8 +76,9 @@
 | [WIKI-E-018](experiment/WIKI-E-018.md) | Non-Uniform Grid NS Convergence: Static Droplet Multi-Resolution (Exp 12-17) |
 | [WIKI-E-019](experiment/WIKI-E-019.md) | Local Epsilon Validation: Fixed ε vs ε(x) on Non-Uniform Grids (Exp 12-18) |
 | [WIKI-E-020](experiment/WIKI-E-020.md) | Grid Rebuild Frequency Calibration: Interface Motion vs Stale-Grid Tradeoff |
+| [WIKI-E-021](experiment/WIKI-E-021.md) | Ch12 Re-Run Result Deltas: 3 Changed Values, 1 Reversed Finding |
 
-## Paper (6)
+## Paper (7)
 
 | REF-ID | Title |
 |--------|-------|
@@ -87,8 +88,9 @@
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
+| [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 
-## Meta (8)
+## Meta (9)
 
 | REF-ID | Title |
 |--------|-------|
@@ -100,8 +102,9 @@
 | [WIKI-M-006](meta/WIKI-M-006.md) | Agent Meta System: Micro-Agent Architecture + DDA + SIGNAL Protocol |
 | [WIKI-M-007](meta/WIKI-M-007.md) | Agent Meta System: K-Domain + meta-project Profile Swap Pattern |
 | [WIKI-M-008](meta/WIKI-M-008.md) | Agent Meta System: SLP/RAP/SDP Protocols + Per-Environment Prompt Generation |
+| [WIKI-M-009](meta/WIKI-M-009.md) | Chapter Re-Run Methodology and Filename Normalization Convention |
 
-## Code (16)
+## Code (17)
 
 | REF-ID | Title |
 |--------|-------|
@@ -121,3 +124,4 @@
 | [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
 | [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
 | [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
+| [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
