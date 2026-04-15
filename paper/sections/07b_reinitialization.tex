@@ -104,7 +104,7 @@ $\tilde{f}'_i = d_{1,i} + \varepsilon_d(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})$
 \end{equation}
 \textbf{DCCD 空間演算子自体は周期 BC で離散的に質量を厳密に保存する}．
 実験（§~\ref{sec:verify_dccd_conservation}）において
-$|\sum_i \tilde{f}'_i| < 3 \times 10^{-13}$（機械精度）を確認した．
+$|\sum_i \tilde{f}'_i| < 5 \times 10^{-13}$（$N{=}256$ での最大値；浮動小数点丸めの蓄積に整合）を確認した．
 ただし，時間積分後の値域制限（式~\eqref{eq:psi_clamp}）や再初期化の演算子分裂は
 別の非保存誤差を生むため，実アルゴリズムでは後述の界面重み付き補正で総量を戻す．
 

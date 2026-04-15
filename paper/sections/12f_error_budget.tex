@@ -18,33 +18,36 @@
 \caption{コンポーネント精度一覧（実測値）}
 \label{tab:error_budget}
 \renewcommand{\arraystretch}{1.35}
-\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{22mm}>{\raggedright\arraybackslash}p{22mm}>{\raggedright\arraybackslash}p{16mm}>{\raggedright\arraybackslash}p{38mm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{32mm}>{\raggedright\arraybackslash}p{22mm}>{\raggedright\arraybackslash}p{22mm}c>{\raggedright\arraybackslash}p{14mm}>{\raggedright\arraybackslash}p{32mm}}
 \toprule
-コンポーネント & 設計精度 & 実測精度 & 検証箇所 & 誤差が影響する物理量 \\
+コンポーネント & 設計精度 & 実測精度 & 判定 & 検証箇所 & 誤差が影響する物理量 \\
 \midrule
-CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
-CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & §~\ref{sec:verify_ppe_varrho} & 圧力場，速度補正 \\
-CCD-PPE（$\varrho{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
-HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{3.0}}$ & §~\ref{sec:verify_field_extension} & IPC $\bnabla p^n$，速度補正 \\
-DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
-CCD 曲率 $\kappa$ & $\Ord{h^6}$ & $\Ord{h^{5.0}}$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
-AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
-NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & §~\ref{sec:kovasznay} & NS 運動量残差 \\
-CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
+CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & \checkmark & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
+CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & \checkmark & §~\ref{sec:verify_ppe_varrho} & 圧力場，速度補正 \\
+CCD-PPE（$\varrho{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & $\triangle$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
+HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{5.8}}$\textsuperscript{$\P$} & $\triangle$ & §~\ref{sec:verify_field_extension} & IPC $\bnabla p^n$，速度補正 \\
+DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & \checkmark & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
+CCD 曲率 $\kappa$（CLS） & $\Ord{h^6}$\textsuperscript{$\|$} & $\Ord{h^{1.0}}$ & $\triangle$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
+AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & \checkmark & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
+NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & \checkmark & §~\ref{sec:kovasznay} & NS 運動量残差 \\
+CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & \checkmark & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
 \midrule
-\multicolumn{5}{l}{\textit{追加検証}} \\
+\multicolumn{6}{l}{\textit{追加検証}} \\
 \midrule
-混合偏微分 $\partial_{xy}$ & $\Ord{h^6}$ & $\Ord{h^{6.0}}$（周期） & §~\ref{sec:verify_mixed_partial} & 交差粘性項 \\
-CN 粘性項（対角） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & §~\ref{sec:verify_cn_viscous} & 粘性時間積分 \\
-交差粘性項（陽的） & $\Ord{\Delta t}$\textsuperscript{$\ddagger$} & $\Ord{\Delta t^{1.0}}$ & §~\ref{sec:verify_cross_viscous} & 界面近傍で律速 \\
-CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$ & §~\ref{sec:verify_ccd_spectral_radius} & FD 比 2.4 倍 \\
-DGR 厚み制御 & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1$ & 1.03 & §~\ref{sec:verify_dgr} & 界面厚維持 \\
-CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & §~\ref{sec:force_balance} & Balanced-Force 効果 \\
-交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.22$ & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
-毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.82$ & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
+混合偏微分 $\partial_{xy}$ & $\Ord{h^6}$ & $\Ord{h^{6.0}}$（周期） & \checkmark & §~\ref{sec:verify_mixed_partial} & 交差粘性項 \\
+CN 粘性項（対角） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & \checkmark & §~\ref{sec:verify_cn_viscous} & 粘性時間積分 \\
+交差粘性項（陽的） & $\Ord{\Delta t}$\textsuperscript{$\ddagger$} & $\Ord{\Delta t^{1.0}}$ & \checkmark & §~\ref{sec:verify_cross_viscous} & 界面近傍で律速 \\
+CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$ & \checkmark & §~\ref{sec:verify_ccd_spectral_radius} & FD 比 2.4 倍 \\
+DGR 厚み制御 & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1$ & 1.03 & \checkmark & §~\ref{sec:verify_dgr} & 界面厚維持 \\
+CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\ref{sec:force_balance} & Balanced-Force 効果 \\
+交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.22$ & \checkmark & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
+毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.82$ & \checkmark & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}DCCD 散逸パラメータ $\varepsilon_d$ によらず界面の CLS プロファイル幅が支配する誤差（§~\ref{sec:highre_dccd}）．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\ddagger$}$\mu_l/\mu_g \gg 1$ で陽的交差微分項が $\Ord{\mu_{\max}\Delta t}$ の打切り誤差を生じる（§~\ref{sec:time_int}）．} \\
+\multicolumn{6}{l}{\footnotesize \textsuperscript{$\dagger$}DCCD 散逸パラメータ $\varepsilon_d$ によらず界面の CLS プロファイル幅が支配する誤差（§~\ref{sec:highre_dccd}）．} \\
+\multicolumn{6}{l}{\footnotesize \textsuperscript{$\ddagger$}$\mu_l/\mu_g \gg 1$ で陽的交差微分項が $\Ord{\mu_{\max}\Delta t}$ の打切り誤差を生じる（§~\ref{sec:time_int}）．} \\
+\multicolumn{6}{l}{\footnotesize \textsuperscript{$\P$}$N\le128$ で $p=6.33,\,5.79$；$N{=}256$ で補間精度床（$L_\infty{=}4.6\times10^{-11}$）に到達（条件付き合格；§~\ref{sec:verify_summary}）．} \\
+\multicolumn{6}{l}{\footnotesize \textsuperscript{$\|$}CCD 演算子単体は $\Ord{h^6}$ だが，CLS パイプライン（$\varepsilon{=}1.5h$ 正則化＋$|\phi|<3h$ 評価帯）では $\Ord{h^1}$ が律速．} \\
+\multicolumn{6}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格（表~\ref{tab:verification_summary} の判定基準に準拠）．} \\
 \end{tabular}
 \end{table}
 
