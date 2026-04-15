@@ -5,9 +5,9 @@ domain: E
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_3_curvature_3path.py
+  - path: experiment/ch11/exp11_03_curvature_3path.py
     description: "Curvature κ = −div(∇φ/|∇φ|) convergence: CCD vs CD2"
-  - path: experiment/ch11/exp11_7_hfe_convergence.py
+  - path: experiment/ch11/exp11_07_hfe_convergence.py
     description: "Hermite field extension convergence: 1D and 2D"
 consumers:
   - domain: T

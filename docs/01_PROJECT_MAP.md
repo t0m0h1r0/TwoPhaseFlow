@@ -309,24 +309,26 @@ Never hardcode pin index (0,0).
 
 ────────────────────────────────────────────────────────
 # §9 — Paper Structure Reference (P2)
-# WARNING: filename ≠ chapter number. Consult main.tex comments (%% 第N章) for chapter order.
+# Section filenames follow the chapter prefix convention used in main.tex:
+# `{NN}_topic.tex` for the chapter head and `{NN}{letter}_topic.tex` for continuations.
 
 | File(s) | Chapter | Content |
 |---|---|---|
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges, novelty table |
 | `02_governing.tex` + `02b_surface_tension.tex` + `02c_nondim_curvature.tex` | §2 | One-Fluid NS, CSF, Heaviside, ψ-convention |
-| `03_levelset.tex` + `03b_levelset_mapping.tex` | §3 | CLS advection, reinitialization |
-| `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_ccd_extensions.tex` + `04d_dissipative_ccd.tex` | §4 | O(h⁶), block Thomas, boundary scheme, dissipative filter |
-| `05_advection.tex` + `05b_time_integration.tex` + `05c_reinitialization.tex` | §5 | CLS advection, TVD-RK3/AB2+IPC, CFL |
-| `06_grid.tex` | §6 | Non-uniform interface-fitted grid |
-| `07_collocate.tex` | §7 | Rhie-Chow, Balanced-Force |
-| `08_pressure.tex` + `08b_ccd_poisson.tex` + `08c_defect_correction.tex` + `08d_gfm.tex` + `08e_ppe_bc.tex` + `08f_pressure_summary.tex` | §8 | Variable-density PPE, defect correction, GFM, BC |
-| `09_full_algorithm.tex` | §9 | 7-step loop diagram, operator mapping, timestep control |
-| `10_implementation.tex` + `10b_spatial.tex` + `10c_interface.tex` + `10d_solver_time.tex` + `10e_verification_summary.tex` | §10 | CCD/DCCD/curvature/CLS/GFM/PPE/RK3 mathematical verification |
-| `11_verification.tex` + `11a`–`11f` | §11 | NS physical consistency: force balance, conservation, time/space accuracy, coupling, error budget |
-| `12_benchmarks.tex` | §12 | Multi-phase flow benchmarks (static drop, capillary wave, rising bubble, RT) |
-| `13_conclusion.tex` | §13 | Summary, future work |
+| `03_levelset.tex` + `03b_cls_transport.tex` + `03c_levelset_mapping.tex` | §3 | CLS advection, reinitialization, ψ-φ mapping |
+| `04_ccd.tex` + `04b_ccd_bc.tex` + `04d_dissipative_ccd.tex` | §4 | O(h⁶), block Thomas, boundary scheme, dissipative filter |
+| `05_time_integration.tex` | §5 | TVD-RK3/AB2+IPC, CFL |
+| `06_grid.tex` + `06b_ccd_extensions.tex` | §6 | Non-uniform interface-fitted grid and CCD extension |
+| `07_advection.tex` + `07b_reinitialization.tex` | §7 | Conservative advection and CLS reinitialization |
+| `08_collocate.tex` + `08b_pressure.tex` + `08c_pressure_filter.tex` | §8 | Collocated-grid pressure coupling, Rhie-Chow, pressure-filter limits |
+| `09_ccd_poisson.tex` + `09b_split_ppe.tex` + `09c_hfe.tex` + `09d_defect_correction.tex` + `09e_ppe_bc.tex` + `09f_pressure_summary.tex` | §9 | Variable-density PPE, split-PPE, HFE, defect correction, BC |
+| `10_full_algorithm.tex` + `10b_dccd_bootstrap.tex` | §10 | Full solver loop, operator mapping, DCCD bootstrap, timestep control |
+| `11_component_verification.tex` + `11a`–`11g` | §11 | Component-level mathematical verification |
+| `12_verification.tex` + `12a`–`12h` | §12 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
+| `13_benchmarks.tex` | §13 | Multi-phase flow benchmarks (capillary wave, rising bubble, Taylor deformation) |
+| `14_conclusion.tex` | §14 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |
 
 ### §9b — LaTeX Notation Conventions (MANDATORY, enforced 2026-04-01)

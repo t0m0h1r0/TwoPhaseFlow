@@ -5,11 +5,11 @@ domain: E
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_1_ccd_convergence.py
+  - path: experiment/ch11/exp11_01_ccd_convergence.py
     description: "CCD convergence: periodic/wall BC, uniform/non-uniform grid"
-  - path: experiment/ch11/exp11_2_dccd_filter.py
+  - path: experiment/ch11/exp11_02_dccd_filter.py
     description: "DCCD filter transfer function and checkerboard suppression"
-  - path: experiment/ch11/exp11_4_gcl_nonuniform.py
+  - path: experiment/ch11/exp11_04_gcl_nonuniform.py
     description: "GCL compliance and non-uniform grid accuracy"
 consumers:
   - domain: T

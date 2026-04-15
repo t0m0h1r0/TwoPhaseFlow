@@ -22,7 +22,7 @@ Examples:
   ./remote.sh check
   ./remote.sh push
   ./remote.sh setup
-  ./remote.sh run experiment/ch11/exp11_1_ccd_convergence.py
+  ./remote.sh run experiment/ch11/exp11_01_ccd_convergence.py
   ./remote.sh run-all ch11
   ./remote.sh test
   ./remote.sh test -k test_ccd --gpu
@@ -109,7 +109,7 @@ SETUP
 
 # ── Run a single experiment ──────────────────────────────────────────────────
 cmd_run() {
-    local script="${1:?Error: provide a script path, e.g. experiment/ch11/exp11_1_ccd_convergence.py}"
+    local script="${1:?Error: provide a script path, e.g. experiment/ch11/exp11_01_ccd_convergence.py}"
 
     if [ ! -f "${SCRIPT_DIR}/${script}" ]; then
         echo "Error: ${script} not found locally. Check the path."

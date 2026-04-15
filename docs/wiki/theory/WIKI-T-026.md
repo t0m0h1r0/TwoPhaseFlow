@@ -14,7 +14,7 @@ sources:
   - path: paper/sections/09b2_split_ppe.tex
     git_hash: 93a1b79
     description: "Split-phase PPE formulation where HFE is essential"
-  - path: paper/sections/12d_coupling.tex
+  - path: paper/sections/12e_coupling.tex
     git_hash: 93a1b79
     description: "HFE scope statement with experimental evidence"
 consumers:

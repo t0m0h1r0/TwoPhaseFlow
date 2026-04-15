@@ -18,11 +18,11 @@ sources:
   - path: paper/sections/12a_force_balance.tex
   - path: paper/sections/12b_conservation.tex
   - path: paper/sections/12c_time_accuracy.tex
-  - path: paper/sections/12c2_highre_dccd.tex
-  - path: paper/sections/12d_coupling.tex
-  - path: paper/sections/12e_interface_crossing.tex
-  - path: paper/sections/12e2_nonuniform_grid.tex
-  - path: paper/sections/12f_error_budget.tex
+  - path: paper/sections/12d_highre_dccd.tex
+  - path: paper/sections/12e_coupling.tex
+  - path: paper/sections/12f_interface_crossing.tex
+  - path: paper/sections/12g_nonuniform_grid.tex
+  - path: paper/sections/12h_error_budget.tex
   - path: paper/sections/13_benchmarks.tex
 depends_on:
   - WIKI-P-004  # CHK-096 §1–§11 review (precursor, §11 delta only)
@@ -56,7 +56,7 @@ CHK-096 (2026-04-08, WIKI-P-004) covered §1–§11 with 0F / 7M / 14m / 3S find
 ## Major findings (all patched in CHK-111)
 
 - **M-1** [12c_time_accuracy.tex:134](../../../paper/sections/12c_time_accuracy.tex) §12.3c CFL subsection lacked 目的/結論 structure. **Fix**: added explicit `\noindent\textbf{目的：}` + `手順：` + `結論：` markers.
-- **M-2** [12e2_nonuniform_grid.tex:5](../../../paper/sections/12e2_nonuniform_grid.tex) §12.5b opened directly with 手順, no 目的. **Fix**: inserted 目的/評価対象 block before existing 手順.
+- **M-2** [12g_nonuniform_grid.tex:5](../../../paper/sections/12g_nonuniform_grid.tex) §12.5b opened directly with 手順, no 目的. **Fix**: inserted 目的/評価対象 block before existing 手順.
 - **M-3** [13_benchmarks.tex:157](../../../paper/sections/13_benchmarks.tex) capillary wave volume error 1.74% declared success while stated acceptance was `<0.5%`. **Fix**: reworded to PARTIAL verdict, attributed to global long-time accumulation (not non-uniform grid specific), noted uniform-grid baseline is comparable.
 - **M-4** [13_benchmarks.tex:178](../../../paper/sections/13_benchmarks.tex) rising bubble v_rise 1/4 dissipation blamed on "interpolation diffusion" without mechanism. **Fix**: added 3-sentence explanation (grid rebuild linear interpolation smooths velocity gradient → effective numerical viscosity → reduced terminal velocity; cross-linked to §12.5b parasitic current observation).
 
@@ -66,13 +66,13 @@ CHK-096 (2026-04-08, WIKI-P-004) covered §1–§11 with 0F / 7M / 14m / 3S find
 - **m-2** [12_legacy_component_verification.tex](../../../paper/sections/12_legacy_component_verification.tex) pure label stub with **0** `\ref{sec:component_verification}` sites in paper/ — safe to delete
 - **m-3** [12_verification.tex:12](../../../paper/sections/12_verification.tex) `\label{sec:grid_convergence}` is referenced from [04_ccd.tex:100](../../../paper/sections/04_ccd.tex) but semantic target (curvature convergence) lives in §10.1 — retarget 04_ccd.tex ref or rename label
 - **m-4** split-PPE notation drift: §12 uses `$\Ord{h^{7.0}}$`, §11/§9 use `$\Ord{h^7}$` — standardize to `$\Ord{h^7}$` (8 sites)
-- **m-5** [12f_error_budget.tex:134](../../../paper/sections/12f_error_budget.tex) §12→§13 bridge needs one sentence explicitly stating §13 benchmarks operate within proven range
+- **m-5** [12h_error_budget.tex:134](../../../paper/sections/12h_error_budget.tex) §12→§13 bridge needs one sentence explicitly stating §13 benchmarks operate within proven range
 - **m-6** [13_benchmarks.tex:15](../../../paper/sections/13_benchmarks.tex) monolithic PPE choice not justified — add sentence explaining σ=0/low-ρ conditions make split-PPE unnecessary
 - **m-7** (§13 from Phase C agent) — subsumed by m-6 above
 
 ## Style findings
 
-- **S-1** [12d_coupling.tex:13](../../../paper/sections/12d_coupling.tex) 「先行告知」→「発見概要」 rewording
+- **S-1** [12e_coupling.tex:13](../../../paper/sections/12e_coupling.tex) 「先行告知」→「発見概要」 rewording
 - **S-2** notation drift (tracked under m-4)
 
 ## Independent derivations performed
@@ -87,7 +87,7 @@ CHK-096 (2026-04-08, WIKI-P-004) covered §1–§11 with 0F / 7M / 14m / 3S find
 
 ## PR-5 Algorithm Fidelity verdict
 
-**PASS**. "Moving interface + σ>0 diverges at step 2" claim is consistent across 4 sites in §12 (12_verification:29, 12d_coupling:15/170/225) and both independent root causes are explicitly distinguished.
+**PASS**. "Moving interface + σ>0 diverges at step 2" claim is consistent across 4 sites in §12 (12_verification:29, 12e_coupling:15/170/225) and both independent root causes are explicitly distinguished.
 
 ## Dead-weight recommendations
 
