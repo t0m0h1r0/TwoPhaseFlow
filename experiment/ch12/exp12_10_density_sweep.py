@@ -41,6 +41,21 @@ from twophase.tools.experiment import (
     save_results, load_results, save_figure, COLORS, MARKERS,
 )
 
+try:
+    from twophase.levelset.curvature import CurvatureCalculator
+    from twophase.levelset.curvature_filter import InterfaceLimitedFilter
+    _HAS_CURVATURE = True
+except ImportError:
+    _HAS_CURVATURE = False
+
+try:
+    from twophase.simulation.visualization.plot_fields import (
+        field_with_contour, symmetric_range,
+    )
+    _HAS_PLOT_FIELDS = True
+except ImportError:
+    _HAS_PLOT_FIELDS = False
+
 OUT = experiment_dir(__file__, "10_density_sweep")
 
 R = 0.25  # interface radius
@@ -173,6 +188,156 @@ def make_figures(sweep, conv_2, conv_5):
     save_figure(fig, OUT / "density_sweep.pdf")
 
 
+def _run_droplet_snapshot(rho_l, rho_g=1.0, N=64, n_steps=50):
+    """Run a short static droplet simulation and return field data."""
+    if not _HAS_CURVATURE:
+        raise RuntimeError("CurvatureCalculator not available; cannot run droplet snapshot")
+
+    backend = Backend(use_gpu=False)
+    h = 1.0 / N
+    eps = 1.5 * h
+    dt = 0.25 * h
+
+    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+    grid = Grid(gc, backend)
+    ccd = CCDSolver(grid, backend, bc_type='wall')
+    ppe_builder = PPEBuilder(backend, grid, bc_type='wall')
+    curv_calc = CurvatureCalculator(backend, ccd, eps)
+
+    X, Y = grid.meshgrid()
+    phi = 0.25 - np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
+    psi = np.asarray(heaviside(np, phi, eps))
+    rho = rho_g + (rho_l - rho_g) * psi
+
+    u = np.zeros_like(X)
+    v = np.zeros_like(X)
+
+    # CSF surface tension force
+    kappa = curv_calc.compute(psi)
+    kappa = np.asarray(kappa)
+    dpsi_dx, _ = ccd.differentiate(psi, 0)
+    dpsi_dy, _ = ccd.differentiate(psi, 1)
+    SIGMA, WE = 1.0, 10.0
+    f_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)
+    f_y = (SIGMA / WE) * kappa * np.asarray(dpsi_dy)
+
+    def wall_bc(arr):
+        arr[0, :] = 0; arr[-1, :] = 0
+        arr[:, 0] = 0; arr[:, -1] = 0
+
+    p = np.zeros_like(X)
+    for _ in range(n_steps):
+        u_star = u + dt / rho * f_x
+        v_star = v + dt / rho * f_y
+        wall_bc(u_star); wall_bc(v_star)
+
+        du_dx, _ = ccd.differentiate(u_star, 0)
+        dv_dy, _ = ccd.differentiate(v_star, 1)
+        rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
+
+        triplet, A_shape = ppe_builder.build(rho)
+        data, rows, cols = triplet
+        A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
+        rhs_vec = rhs.ravel().copy()
+        rhs_vec[ppe_builder._pin_dof] = 0.0
+        p = spsolve(A, rhs_vec).reshape(rho.shape)
+
+        dp_dx, _ = ccd.differentiate(p, 0)
+        dp_dy, _ = ccd.differentiate(p, 1)
+        u = u_star - dt / rho * np.asarray(dp_dx)
+        v = v_star - dt / rho * np.asarray(dp_dy)
+        wall_bc(u); wall_bc(v)
+
+    x1d = np.linspace(0, 1, N)
+    y1d = np.linspace(0, 1, N)
+    return {
+        "rho_ratio": rho_l / rho_g,
+        "p": p, "u": u, "v": v, "psi": psi,
+        "x1d": x1d, "y1d": y1d,
+    }
+
+
+def run_field_snapshots():
+    """Run short static droplet simulations for density ratios {2,3,5,10}."""
+    ratios = [2, 3, 5, 10]
+    snapshots = []
+    for dr in ratios:
+        print(f"  Field snapshot: rho_l/rho_g = {dr} ...", flush=True)
+        snap = _run_droplet_snapshot(rho_l=float(dr), rho_g=1.0, N=64, n_steps=50)
+        snapshots.append(snap)
+    return snapshots
+
+
+def make_field_figure(snapshots):
+    """2×4 panel figure: pressure (top) and velocity magnitude (bottom)."""
+    if not _HAS_PLOT_FIELDS:
+        print("  WARNING: plot_fields not available; skipping field figure")
+        return
+
+    apply_style()
+
+    ratios = [s["rho_ratio"] for s in snapshots]
+    n = len(snapshots)
+
+    fig, axes = plt.subplots(2, n, figsize=(3.5 * n, 7))
+
+    # Compute shared color ranges per row
+    p_vmax = max(symmetric_range(s["p"]) for s in snapshots)
+    speed_vmax = max(float(np.max(np.sqrt(s["u"] ** 2 + s["v"] ** 2)))
+                     for s in snapshots)
+
+    im_p = None
+    im_v = None
+
+    for col, snap in enumerate(snapshots):
+        dr = snap["rho_ratio"]
+        x1d, y1d = snap["x1d"], snap["y1d"]
+        speed = np.sqrt(snap["u"] ** 2 + snap["v"] ** 2)
+
+        # Top row: pressure
+        ax_p = axes[0, col]
+        im_p = field_with_contour(
+            ax_p, x1d, y1d, snap["p"],
+            cmap="RdBu_r",
+            vmin=-p_vmax, vmax=p_vmax,
+            contour_field=snap["psi"],
+            contour_level=0.5,
+            title=rf"$\rho_l/\rho_g = {int(dr)}$",
+            xlabel="$x$",
+            ylabel="$y$" if col == 0 else "",
+        )
+        ax_p.set_aspect("equal")
+
+        # Bottom row: velocity magnitude (parasitic currents)
+        ax_v = axes[1, col]
+        im_v = field_with_contour(
+            ax_v, x1d, y1d, speed,
+            cmap="viridis",
+            vmin=0.0, vmax=speed_vmax,
+            contour_field=snap["psi"],
+            contour_level=0.5,
+            title="",
+            xlabel="$x$",
+            ylabel="$y$" if col == 0 else "",
+        )
+        ax_v.set_aspect("equal")
+
+    # Row labels on leftmost column
+    axes[0, 0].set_ylabel("Pressure $p$\n$y$", fontsize=10)
+    axes[1, 0].set_ylabel("Speed $|\\mathbf{u}|$\n$y$", fontsize=10)
+
+    # Shared colorbars
+    if im_p is not None:
+        fig.colorbar(im_p, ax=axes[0, :].tolist(), shrink=0.8, label="$p$")
+    if im_v is not None:
+        fig.colorbar(im_v, ax=axes[1, :].tolist(), shrink=0.8,
+                     label=r"$|\mathbf{u}|$")
+
+    plt.tight_layout()
+    save_figure(fig, OUT / "density_fields",
+                also_to="paper/figures/ch12_density_fields.pdf")
+
+
 def main():
     print("\n" + "=" * 70)
     print("  exp12_10  Density Ratio Sweep (MMS round-trip)")
@@ -206,6 +371,17 @@ def main():
     conv_2 = run_grid_convergence(2.0)
     conv_5 = run_grid_convergence(5.0)
 
+    # -- Field snapshots for density ratio visualization --
+    print("\n  Field snapshots (static droplet, 50 steps each):")
+    snapshots = run_field_snapshots()
+
+    # Flatten snapshot arrays for npz storage
+    snap_save = {}
+    for i, snap in enumerate(snapshots):
+        for k, v in snap.items():
+            snap_save[f"snap_{i}_{k}"] = v
+    snap_save["n_snap"] = len(snapshots)
+
     # Save
     save_results(OUT / "density_sweep.npz", {
         "sweep": {f"r{i}_{k}": v for i, r in enumerate(sweep)
@@ -216,9 +392,11 @@ def main():
                    for k, v in r.items()},
         "n_sweep": len(sweep),
         "n_conv": len(conv_2),
+        **snap_save,
     })
 
     make_figures(sweep, conv_2, conv_5)
+    make_field_figure(snapshots)
     print(f"\n  All results saved to {OUT}")
 
 
@@ -249,5 +427,18 @@ if __name__ == "__main__":
         conv_2 = _rebuild_list(d, "conv_2", n_conv)
         conv_5 = _rebuild_list(d, "conv_5", n_conv)
         make_figures(sweep, conv_2, conv_5)
+        # Rebuild snapshots if present
+        n_snap = int(d.get("n_snap", 0))
+        if n_snap > 0:
+            snap_keys = ["rho_ratio", "p", "u", "v", "psi", "x1d", "y1d"]
+            snapshots = []
+            for i in range(n_snap):
+                snap = {}
+                for k in snap_keys:
+                    key = f"snap_{i}_{k}"
+                    if key in d:
+                        snap[k] = d[key]
+                snapshots.append(snap)
+            make_field_figure(snapshots)
     else:
         main()

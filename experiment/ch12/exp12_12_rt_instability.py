@@ -49,6 +49,9 @@ from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure, COLORS,
 )
+from twophase.simulation.visualization.plot_fields import (
+    field_with_contour, streamlines_colored, symmetric_range,
+)
 
 OUT = experiment_dir(__file__, "12_rt_instability")
 
@@ -125,7 +128,12 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
     snapshot_times = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5]
     next_snap_idx = 0
 
-    snapshots["t_0p0"] = {"psi": psi.copy(), "t": 0.0}
+    snapshots["t_0p0"] = {
+        "psi": psi.copy(), "t": 0.0,
+        "p": np.zeros_like(X),
+        "u": u.copy(), "v": v.copy(),
+        "rho": rho.copy(),
+    }
     next_snap_idx = 1
 
     t = 0.0
@@ -210,7 +218,11 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
         # Snapshots
         if next_snap_idx < len(snapshot_times) and t >= snapshot_times[next_snap_idx]:
             key = f"t_{snapshot_times[next_snap_idx]:.1f}".replace(".", "p")
-            snapshots[key] = {"psi": psi.copy(), "t": t}
+            snapshots[key] = {
+                "psi": psi.copy(), "t": t,
+                "p": p.copy(), "u": u.copy(), "v": v.copy(),
+                "rho": rho.copy(),
+            }
             next_snap_idx += 1
 
         if step % 500 == 0 or step <= 3:
@@ -261,6 +273,8 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
         "n_steps": step,
         "Nx": Nx,
         "Ny": Ny,
+        "Lx": Lx,
+        "Ly": Ly,
         "snapshots": snapshots,
     }
 
@@ -341,6 +355,98 @@ def make_figures(result):
         save_figure(fig2, OUT / "rt_kinetic_energy.pdf")
 
 
+def make_rt_field_figure(result):
+    """Generate 5-row × 4-column field visualization for the paper."""
+    apply_style()
+
+    Nx = int(result.get("Nx", 64))
+    Ny = int(result.get("Ny", 256))
+    Lx = float(result.get("Lx", 1.0))
+    Ly = float(result.get("Ly", 4.0))
+    x1d = np.linspace(0, Lx, Nx)
+    y1d = np.linspace(0, Ly, Ny)
+
+    snap_t_select = [0.0, 1.0, 1.5, 2.5]
+    col_labels = ["$t=0$", "$t=1.0$", "$t=1.5$", "$t=2.5$"]
+    row_labels = [
+        r"Density $\rho$",
+        r"Pressure $p$",
+        r"Speed $|\mathbf{u}|$",
+        r"Vorticity $\omega$",
+        r"Streamlines",
+    ]
+
+    snapshots = result.get("snapshots", {})
+    snap_by_t = {snap["t"]: snap for snap in snapshots.values()}
+
+    # find closest stored snapshot to each requested time
+    stored_ts = np.array(sorted(snap_by_t.keys()))
+    selected = []
+    for t_req in snap_t_select:
+        idx = np.argmin(np.abs(stored_ts - t_req))
+        selected.append(snap_by_t[stored_ts[idx]])
+
+    n_rows, n_cols = 5, 4
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 16))
+
+    h_x = Lx / Nx
+    h_y = Ly / Ny
+
+    for col, snap in enumerate(selected):
+        psi = snap["psi"]
+        p   = snap.get("p",   np.zeros((Nx, Ny)))
+        u   = snap.get("u",   np.zeros((Nx, Ny)))
+        v   = snap.get("v",   np.zeros((Nx, Ny)))
+        rho = snap.get("rho", np.zeros((Nx, Ny)))
+
+        speed = np.sqrt(u**2 + v**2)
+        dv_dx = np.gradient(v, h_x, axis=0)
+        du_dy = np.gradient(u, h_y, axis=1)
+        omega = dv_dx - du_dy
+
+        fields = [rho, p, speed, omega]
+        cmaps  = ["RdBu_r", "RdYlBu_r", "viridis", "RdBu_r"]
+
+        for row in range(4):
+            ax = axes[row, col]
+            fld = fields[row]
+            cmap = cmaps[row]
+            if row == 3:  # vorticity: symmetric
+                vmax = symmetric_range(omega)
+                vmin = -vmax
+            else:
+                vmin, vmax = fld.min(), fld.max()
+            field_with_contour(
+                ax, x1d, y1d, fld.T, psi.T,
+                cmap=cmap, vmin=vmin, vmax=vmax,
+                contour_levels=[0.5],
+                contour_colors=["k"],
+                contour_linewidths=[1.0],
+            )
+            ax.set_ylim(0.5, 3.5)
+            if col == 0:
+                ax.set_ylabel(row_labels[row], fontsize=9)
+            else:
+                ax.set_yticklabels([])
+            if row == 0:
+                ax.set_title(col_labels[col], fontsize=10)
+            if row < 3:
+                ax.set_xticklabels([])
+
+        # Row 4: streamlines
+        ax = axes[4, col]
+        streamlines_colored(ax, x1d, y1d, u.T, v.T, speed.T)
+        ax.set_ylim(0.5, 3.5)
+        if col == 0:
+            ax.set_ylabel(row_labels[4], fontsize=9)
+        else:
+            ax.set_yticklabels([])
+
+    plt.tight_layout()
+    save_figure(fig, OUT / "rt_fields",
+                also_to="paper/figures/ch12_rt_fields.pdf")
+
+
 def main():
     print("\n" + "=" * 70)
     print("  exp12_12  Rayleigh-Taylor Instability Benchmark")
@@ -348,14 +454,19 @@ def main():
 
     result = run_rt(Nx=64, Ny=256, T_final=2.5)
     make_figures(result)
+    make_rt_field_figure(result)
 
     # Save results (snapshots stored separately)
     snapshots = result.pop("snapshots", {})
     snap_data = {}
     snap_keys = sorted(snapshots.keys(), key=lambda s: snapshots[s]["t"])
     for i, key in enumerate(snap_keys):
-        snap_data[f"snap_{i}"] = snapshots[key]["psi"]
-        snap_data[f"snap_{i}_t"] = snapshots[key]["t"]
+        snap_data[f"snap_{i}"]     = snapshots[key]["psi"]
+        snap_data[f"snap_{i}_t"]   = snapshots[key]["t"]
+        snap_data[f"snap_{i}_p"]   = snapshots[key].get("p",   np.zeros_like(snapshots[key]["psi"]))
+        snap_data[f"snap_{i}_u"]   = snapshots[key].get("u",   np.zeros_like(snapshots[key]["psi"]))
+        snap_data[f"snap_{i}_v"]   = snapshots[key].get("v",   np.zeros_like(snapshots[key]["psi"]))
+        snap_data[f"snap_{i}_rho"] = snapshots[key].get("rho", np.zeros_like(snapshots[key]["psi"]))
     snap_data["snap_keys"] = np.array(snap_keys)
     snap_data["n_snaps"] = len(snap_keys)
 
@@ -377,7 +488,14 @@ if __name__ == "__main__":
             psi = d.get(f"snap_{i}")
             t_val = d.get(f"snap_{i}_t", 0.0)
             if psi is not None:
-                snapshots[key] = {"psi": psi, "t": float(t_val)}
+                snapshots[key] = {
+                    "psi": psi,
+                    "t": float(t_val),
+                    "p":   d.get(f"snap_{i}_p",   np.zeros_like(psi)),
+                    "u":   d.get(f"snap_{i}_u",   np.zeros_like(psi)),
+                    "v":   d.get(f"snap_{i}_v",   np.zeros_like(psi)),
+                    "rho": d.get(f"snap_{i}_rho", np.zeros_like(psi)),
+                }
 
         result = {
             "times": d["times"],
@@ -388,8 +506,13 @@ if __name__ == "__main__":
             "omega_rel_err": float(d["omega_rel_err"]),
             "mass_0": float(d["mass_0"]),
             "mass_final": float(d["mass_final"]),
+            "Nx": int(d.get("Nx", 64)),
+            "Ny": int(d.get("Ny", 256)),
+            "Lx": float(d.get("Lx", 1.0)),
+            "Ly": float(d.get("Ly", 4.0)),
             "snapshots": snapshots,
         }
         make_figures(result)
+        make_rt_field_figure(result)
     else:
         main()
