@@ -1,5 +1,6 @@
-# Probe: capillary wave on UNIFORM grid (alpha=1, no rebuild)
-# Isolates whether blowup is caused by grid rebuild or by σ>0 moving interface
+# Probe: alpha=2 no-rebuild with CFL=0.05 (halved)
+# Tests H4: whether step-439 blowup is a capillary CFL violation
+# If stable → CFL constraint too loose; if still blows → not CFL-related
 
 grid:
   NX: 64
@@ -7,8 +8,8 @@ grid:
   LX: 1.0
   LY: 1.0
   bc_type: wall
-  alpha_grid: 1.0
-  use_local_eps: false
+  alpha_grid: 2.0
+  use_local_eps: true
   grid_rebuild_freq: 0
 
 physics:
@@ -19,24 +20,24 @@ physics:
   g_acc:   0.0
 
 run:
-  T_final:    10.0
-  max_steps:  500000
-  cfl:        0.10
-  snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
-  print_every: 500
+  T_final:    1.0
+  max_steps:  50000
+  cfl:        0.05
+  snap_times: [0.0, 0.5, 1.0]
+  print_every: 200
 
 output:
-  dir: results/exp13_01_uniform
+  dir: results/exp13_01_alpha2_lowcfl
   save_npz: true
   figures:
     - type: time_series
-      title: "Capillary wave uniform grid — D(t)"
+      title: "Capillary wave alpha=2 CFL=0.05 — D(t)"
       x: times
       y: [deformation]
       labels: ["Simulation"]
       xlabel: "t"
       ylabel: "D = (L-B)/(L+B)"
-      file: capillary_uniform.pdf
+      file: capillary_alpha2_lowcfl.pdf
 
 diagnostics:
   - volume_conservation

@@ -9,9 +9,9 @@ grid:
   LX: 1.0
   LY: 2.0
   bc_type: wall
-  alpha_grid: 2.0
-  use_local_eps: true
-  grid_rebuild_freq: 0     # Rebuild disabled — metric discontinuity causes blowup
+  alpha_grid: 1.0          # Uniform grid — α>1 causes CCD metric instability
+  use_local_eps: false
+  grid_rebuild_freq: 0
 
 physics:
   rho_l: 10.0
