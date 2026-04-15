@@ -19,7 +19,3 @@ sandbox_mode = "danger-full-access"
 # Enable temporarily with: codex --web-search <task>
 web_search = false
 
-[shell_environment_policy]
-# Inherit the login shell environment so TWOPHASE_USE_GPU, SSH agent socket,
-# PATH (with conda/venv), and remote.conf credentials are all available.
-inherit = true
