@@ -149,8 +149,9 @@ def mms_source(X, Y, t, mu):
     ut = -DECAY * E * np.sin(k * X) * np.sin(k * Y)
 
     # ∂μ/∂x via finite central difference (same grid, no CCD needed for source)
-    h = X[0, 1] - X[0, 0] if X.ndim == 2 else X[1] - X[0]
-    dmu_dx = np.gradient(mu, h, axis=1) if mu.ndim == 2 else np.gradient(mu, h)
+    # Grid uses indexing="ij": axis=0 is x, axis=1 is y
+    h = X[1, 0] - X[0, 0] if X.ndim == 2 else X[1] - X[0]
+    dmu_dx = np.gradient(mu, h, axis=0) if mu.ndim == 2 else np.gradient(mu, h)
 
     L_cross = E * k * (dmu_dx * np.sin(k * X) * np.cos(k * Y)
                        + 2.0 * mu * k * np.cos(k * X) * np.cos(k * Y))
