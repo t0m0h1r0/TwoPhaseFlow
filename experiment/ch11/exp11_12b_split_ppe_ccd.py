@@ -80,6 +80,7 @@ def eval_LH_varrho(p, rho, ccd, backend):
 
 def build_fd_laplacian_dirichlet(N, h, backend):
     """FD 5-point for Lap(p), Dirichlet BC (constant-density)."""
+    import scipy.sparse as sp_cpu
     nx = ny = N + 1; n = nx * ny
     rows, cols, vals = [], [], []
     for i in range(nx):
@@ -92,11 +93,14 @@ def build_fd_laplacian_dirichlet(N, h, backend):
                     rows.append(k); cols.append((i + di) * ny + (j + dj))
                     vals.append(1.0 / h**2)
                 rows.append(k); cols.append(k); vals.append(-4.0 / h**2)
-    return backend.sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
+    A_cpu = sp_cpu.csr_matrix(
+        (np.array(vals), (np.array(rows), np.array(cols))), shape=(n, n))
+    return backend.sparse.csr_matrix(A_cpu)
 
 
 def build_fd_varrho_dirichlet(N, h, rho, backend):
     """FD for (1/rho)*Lap(p) - (1/rho^2)*(grad rho . grad p), Dirichlet BC."""
+    rho = backend.to_host(rho)  # sparse assembly on CPU
     nx = ny = N + 1; n = nx * ny
     drho_dx = np.zeros_like(rho); drho_dy = np.zeros_like(rho)
     for i in range(1, N):
@@ -124,7 +128,12 @@ def build_fd_varrho_dirichlet(N, h, rho, backend):
                 vals.append(inv_rho / h**2 + cy / (2 * h))
                 center = -4.0 * inv_rho / h**2
                 rows.append(k); cols.append(k); vals.append(center)
-    return backend.sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
+    import scipy.sparse as sp_cpu
+    A_cpu = sp_cpu.csr_matrix(
+        (np.array(vals, dtype=np.float64),
+         (np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32))),
+        shape=(n, n))
+    return backend.sparse.csr_matrix(A_cpu)
 
 
 # ── DC iteration ──────────────────────────────────────────────────────────
