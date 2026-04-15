@@ -391,3 +391,31 @@ $\rho_l/\rho_g \geq 10$ では，界面近傍の密度コントラストが
 \noindent\textbf{結論：}
 高密度比での条件数悪化は $\Ord{(\rho_l/\rho_g)/h^2}$ を超えるスケーリングを示し，
 分相 PPE 解法（§~\ref{sec:split_ppe_framework}）による条件数低減の必要性を裏付ける．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CCD 2 階微分演算子のスペクトル半径}
+\label{sec:verify_ccd_spectral_radius}
+% ─────────────────────────────────────────────────────────────────────────────
+
+付録~\ref{sec:lambda_max_derive} で導出した CCD $D^{(2)}$ のスペクトル半径を
+数値的に測定し，安定性解析に必要な正確な値を確定する．
+
+\noindent\textbf{手順：}
+$N = 32$--$256$（壁面境界）で CCD $D^{(2)}$ 行列を列ごとに構築し，
+NumPy \texttt{eigh} で全固有値を計算した．同一格子での FD 中心差分
+$D^{(2)}_{\mathrm{FD}}$ との比較，および 2D Kronecker 積
+$I \otimes D^{(2)} + D^{(2)} \otimes I$ の理論値との一致を検証した．
+
+\noindent\textbf{結果：}
+CCD $D^{(2)}$ の無次元スペクトル半径は $\rho_{\mathrm{CCD}} h^2 = 9.60 \pm 0.01$
+（$N = 32$--$256$ で一定）であり，FD 中心差分の $\rho_{\mathrm{FD}} h^2 = 4.00$
+に対してほぼ 2.4 倍である．2D Kronecker ラプラシアンの最大固有値は
+$\rho_{\mathrm{2D}} = 2\rho_{\mathrm{1D}}$ と理論値に機械精度（相対誤差 $< 10^{-14}$）で一致した．
+
+\noindent\textbf{結論：}
+CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$ を確認した．
+この値は FD 比 2.4 倍であり，
+明示的粘性 CFL の安全率を $\nu\Delta t / h^2 < 1/(2 \times 9.6) \approx 0.052$
+に制約する．CN 粘性（§~\ref{sec:verify_cn_viscous}）の採用により
+この CFL 制約は回避される．

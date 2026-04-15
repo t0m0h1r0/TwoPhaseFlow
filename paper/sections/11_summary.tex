@@ -6,7 +6,7 @@
 \label{sec:verify_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-全 19 件の基本コンポーネントテストおよび 9 件の追加検証（ギャップ充填）が完了した．
+全 19 件の基本コンポーネントテストおよび 13 件の追加検証（ギャップ充填）が完了した．
 表~\ref{tab:verification_summary} に各テストの期待精度・実測精度・備考を総括する．
 主要な知見を§~\ref{sec:verify_spatial}--§~\ref{sec:verify_time} の 4 小節に沿い，検証テーマごとに以下に整理する．
 
@@ -42,6 +42,15 @@
   \item \textbf{時間積分：}
         TVD-RK3 は $\Ord{\Delta t^{3.00}}$，AB2 は $\Ord{\Delta t^{2.0}}$ を ODE テストで確認し，
         いずれも設計精度と完全一致した．
+        交差微分粘性項の陽的処理は，均一粘性場では $\Ord{\Delta t^2}$ を維持するが，
+        高粘性比（$\mu_l/\mu_g = 100$）界面近傍では $\Ord{\Delta t}$ に劣化することを確認した．
+  \item \textbf{PPE 演算子特性：}
+        CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 9.6$（FD の $4.0$ の 2.4 倍）であり，
+        2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
+        §~\ref{sec:defect_correction_main} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
+  \item \textbf{再初期化界面シフト：}
+        CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
+        10 回累積で略線形蓄積（${\approx}8$--$9$ 倍）することを確認した．
 \end{enumerate}
 
 \noindent\textbf{間接的に検証されるコンポーネント：}
@@ -100,11 +109,16 @@ CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$   
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
 PPE 条件数                 & $\kappa \propto \rho/h^2$ & $\kappa \propto N^3 \cdot \rho$ & \checkmark & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
 NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 7.7 \times 10^{-5}$ & \checkmark & $\alpha{=}2$, $N{=}32$, 寄生電流 1.2 倍 \\
+交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
+交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
+再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
+CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；ベースライン風上差分は $\Ord{h^1}$．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\
   \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
   \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{§}§~\ref{sec:time_int}：$\mu_l/\mu_g \gg 1$ では陽的交差微分項の打切り誤差 $\Ord{\mu_{\max}\,\Delta t}$ が支配する．} \\
 \multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（既知の制限，対策計画あり）．} \\
 \end{tabular}
 \end{table}
@@ -114,7 +128,9 @@ NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\D
 CCD $\Ord{h^6}$（混合偏微分 $\partial_{xy}$ を含む），
 PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
-CN $\Ord{\Delta t^{2.0}}$（無条件安定）．
+CN $\Ord{\Delta t^{2.0}}$（無条件安定），
+交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_int} の予測と一致）．
+CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$（FD 比 2.4 倍；明示的粘性 CFL 制約の根拠）．
 CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），
 DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D $\Ord{h^{3.0}}$．
 分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で

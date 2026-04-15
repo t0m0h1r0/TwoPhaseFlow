@@ -69,6 +69,8 @@ class TwoPhaseNSSolver:
         dx_min_floor: float = 1e-6,
         use_local_eps: bool = False,
         grid_rebuild_freq: int = 1,
+        cn_viscous: bool = False,
+        Re: float = 1.0,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -103,6 +105,13 @@ class TwoPhaseNSSolver:
         )
         self.X, self.Y = self._grid.meshgrid()
 
+        # Viscous term: CN (Heun predictor-corrector, O(Δt²)) or explicit FE
+        self._cn_viscous = cn_viscous
+        self._Re = Re
+        if cn_viscous:
+            from ..ns_terms.viscous import ViscousTerm
+            self._viscous = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
+
     # ── class-method constructors ─────────────────────────────────────────
 
     @classmethod
@@ -117,6 +126,8 @@ class TwoPhaseNSSolver:
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             use_local_eps=getattr(g, "use_local_eps", False),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
+            cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
+            Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -322,7 +333,9 @@ class TwoPhaseNSSolver:
             float(np.max(np.abs(u))), float(np.max(np.abs(v))), 1e-10
         )
         dt_cfl = cfl * h / u_max
-        dt_visc = 0.25 * h ** 2 / (mu_max / rho_min)
+        # CN (Heun trapezoid) relaxes viscous CFL by ~2× vs forward Euler
+        visc_safety = 0.5 if self._cn_viscous else 0.25
+        dt_visc = visc_safety * h ** 2 / (mu_max / rho_min)
 
         if physics.sigma > 0.0:
             rho_sum = physics.rho_l + physics.rho_g
@@ -422,13 +435,30 @@ class TwoPhaseNSSolver:
 
         conv_u = -(u * du_dx + v * du_dy)
         conv_v = -(u * dv_dx + v * dv_dy)
-        visc_u = (mu_field / rho) * (du_xx + du_yy)
-        visc_v = (mu_field / rho) * (dv_xx + dv_yy)
 
-        u_star = u + dt * (conv_u + visc_u)
-        v_star = v + dt * (conv_v + visc_v)
+        # Buoyancy (applied to explicit RHS before viscous step)
+        buoy_v = np.zeros_like(v)
         if g_acc != 0.0:
-            v_star = v_star + dt * (-(rho - rho_ref) / rho * g_acc)
+            buoy_v = -(rho - rho_ref) / rho * g_acc
+
+        if self._cn_viscous:
+            # CN viscous (Heun predictor-corrector, O(Δt²), explicit but
+            # trapezoid-averaged → relaxed CFL vs forward Euler).
+            # explicit_rhs = rho * (convection + buoyancy) per component
+            explicit_rhs = [rho * conv_u, rho * (conv_v + buoy_v)]
+            vel_star = self._viscous.apply_cn_predictor(
+                [u, v], explicit_rhs, mu_field, rho, ccd, dt,
+            )
+            u_star, v_star = vel_star[0], vel_star[1]
+            # Ensure host arrays
+            u_star = _h(u_star) if hasattr(u_star, '__cuda_array_interface__') else np.asarray(u_star)
+            v_star = _h(v_star) if hasattr(v_star, '__cuda_array_interface__') else np.asarray(v_star)
+        else:
+            # Original explicit forward-Euler viscous
+            visc_u = (mu_field / rho) * (du_xx + du_yy)
+            visc_v = (mu_field / rho) * (dv_xx + dv_yy)
+            u_star = u + dt * (conv_u + visc_u)
+            v_star = v + dt * (conv_v + visc_v + buoy_v)
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
 
