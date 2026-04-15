@@ -19,10 +19,11 @@ CLS 移流，再初期化，HFE 場延長，曲率・圧力跳び計算——の
 （§~\ref{sec:verify_cls_advection}），
 次に動的格子リフレッシュ時の保存型再マッピングの効果を定量化する
 （§~\ref{sec:cls_conservation}）．
-続いて Hermite 場延長（HFE）の格子収束性を風上差分ベースラインと比較し
-（§~\ref{sec:verify_field_extension}），
-最後に曲率計算・場延長・PPE を統合した Young--Laplace 圧力跳びテストで
-パイプライン全体の結合精度を確認する（§~\ref{sec:verify_gfm}）．
+続いて Hermite 場延長（HFE）の格子収束性を確認し
+（§~\ref{sec:verify_field_extension}；風上差分経路は NaN のため比較対象外），
+最後に曲率計算と場延長を統合した Young--Laplace 圧力跳びテストで
+パイプラインの結合精度を確認する（§~\ref{sec:verify_gfm}；
+PPE を用いた圧力場検証は §~\ref{sec:bf_static_droplet} で行う）．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +103,8 @@ $w = 4\psi(1-\psi)$（Olsson--Kreiss 基底）を適用することで
 図~\ref{fig:cls_advection_2d} に $N = 128$ における界面形状の時間発展を示す．
 Zalesak スロット円板は 1 回転後に初期形状をよく復元している．
 単一渦テストでは $t = T/2$ の激しい引き延ばし後に $t = T$ で界面を回復する．
-適応的再初期化（§~\ref{sec:adaptive_reinit}）により再初期化回数を 3--4 回に限定し，
+適応的再初期化（§~\ref{sec:adaptive_reinit}，$\theta = 1.10$，$\varepsilon/h = 1.0$）により
+再初期化回数を 3--4 回（$N = 128$）に限定し，
 各呼び出しに DGR 厚み補正（§~\ref{sec:dgr_thickness}）を組み込んだ hybrid モードを使用することで，
 界面厚 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ を維持しつつ
 面積誤差 $\Ord{10^{-3}}$（$N = 256$）を達成した．
@@ -120,7 +122,10 @@ Zalesak スロット円板は 1 回転後に初期形状をよく復元してい
 \end{figure}
 
 表~\ref{tab:cls_advection} に示すように，
-$L_2(\psi)$ 形状誤差および面積誤差は格子精緻化に伴い減少する．
+単一渦テストでは $L_2(\psi)$ 形状誤差および面積誤差が格子精緻化に伴い単調減少する．
+Zalesak テストでは面積誤差は $N{=}256$ で $1.61 \times 10^{-4}$ に改善するが，
+$L_2(\psi)$ はスロット角の不連続性（$\varepsilon$ 律速）により
+$N{=}64 \to 256$ で $8.62 \times 10^{-2} \to 1.19 \times 10^{-1}$ と増加する．
 界面厚 $\varepsilon = h$（旧設定 $1.5h$）の採用により，
 特に単一渦テストで $N = 256$ において $L_2$ が 30\% 改善された．
 質量保存誤差は界面重み付き補正により
@@ -307,7 +312,7 @@ $\lambda_{\min} \approx 2\pi\varepsilon \approx 9.4h$
 
 適応的再初期化（§~\ref{sec:adaptive_reinit}，式~\eqref{eq:adaptive_reinit_trigger}）は
 体積モニタ $M(\tau)/M_{\mathrm{ref}} > 1.10$ の条件で
-再初期化呼び出しを 2270 ステップ中 2 回のみに抑え，
+再初期化呼び出しを 2270 ステップ中 2 回（$N = 128$，$\varepsilon/h = 1.5$）に抑え，
 固定頻度（227 回）と比較して形状誤差を半減させた．
 
 \noindent\textbf{結論：}
