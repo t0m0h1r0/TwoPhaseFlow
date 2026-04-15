@@ -28,10 +28,13 @@ def _sl(ndim: int, axis: int, start, stop) -> tuple:
 
 
 def compute_dtau(grid, eps: float) -> float:
-    """Pseudo-time step (eq:dtau_reinit_def)."""
+    """Pseudo-time step (eq:dtau_reinit_def).
+
+    Uses the actual minimum cell spacing (not the nominal L/N) so that
+    the CFL condition is satisfied on non-uniform grids.
+    """
     ndim = grid.ndim
-    h = [float(grid.L[ax] / grid.N[ax]) for ax in range(ndim)]
-    dx_min = min(h)
+    dx_min = min(float(np.min(grid.h[ax])) for ax in range(ndim))
     dtau_para = 0.5 * dx_min**2 / (2.0 * ndim * eps)
     dtau_hyp = 0.5 * dx_min
     return min(dtau_para, dtau_hyp)
@@ -105,8 +108,12 @@ def build_cn_factors(grid, eps: float, dtau: float, axis: int, backend=None):
     path to a single ``cuBLAS`` DGEMM (``A_inv_dev @ rhs_flat``). The
     Thomas factors are kept for the CPU path so PR-5 bit-exactness is
     preserved on the NumPy backend.
+
+    On non-uniform grids, uses the minimum cell spacing along the axis
+    to ensure the CN stability condition is satisfied everywhere.
+    On uniform grids, min(h) == L/N, preserving bit-exact results.
     """
-    h = float(grid.L[axis] / grid.N[axis])
+    h = float(np.min(grid.h[axis]))
     mu = eps * dtau / (2.0 * h**2)
     n = grid.N[axis] + 1
 
