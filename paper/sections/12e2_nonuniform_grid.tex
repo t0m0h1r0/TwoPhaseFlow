@@ -37,13 +37,13 @@
 $N$ & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{\min}$ \\
 \midrule
 32 & 1 & $2.6 \times 10^{-1}$ & 77\%  & $1.4 \times 10^{-3}$ & 0.031 \\
-32 & 2 & $1.2 \times 10^{-1}$ & 100\% & $4.8 \times 10^{-6}$ & 0.029 \\
+32 & 2 & $1.2 \times 10^{-1}$ & 98\%  & $2.3 \times 10^{-1}$ & 0.030 \\
 \midrule
 48 & 1 & $1.9 \times 10^{-1}$ & 54\%  & $4.3 \times 10^{-4}$ & 0.021 \\
-48 & 2 & $1.3 \times 10^{-1}$ & 84\%  & $4.5 \times 10^{-6}$ & 0.019 \\
+48 & 2 & $1.1 \times 10^{-1}$ & 99\%  & $1.9 \times 10^{-1}$ & 0.020 \\
 \midrule
 64 & 1 & $9.5 \times 10^{-1}$ & 34\%  & $9.6 \times 10^{-5}$ & 0.016 \\
-64 & 2 & $9.0 \times 10^{-2}$ & 68\%  & $2.6 \times 10^{-7}$ & 0.014 \\
+64 & 2 & $8.7 \times 10^{-2}$ & 63\%  & $1.6 \times 10^{-1}$ & 0.015 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -54,7 +54,7 @@ $N$ & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{
 \caption{静止液滴における一様格子（$\alpha = 1$）と界面適合格子（$\alpha = 2$）の比較．
 (a) 寄生電流の格子収束：$\alpha = 2$ が全解像度で良好（$N{=}64$ で 10 倍改善），
 (b) Laplace 圧誤差：$\alpha = 1$ が良好（CSF $\varepsilon$ ミスマッチの影響），
-(c) $N{=}64$ の質量保存時間履歴：$\alpha = 2$ が 100 倍以上改善，
+(c) $N{=}64$ の質量保存時間履歴：$\alpha = 2$ で大幅に劣化（補間誤差の蓄積），
 (d) $h_{\min}$ の時間変化：格子が界面に動的追従．}
 \label{fig:nonuniform_ns_convergence}
 \end{figure}
@@ -78,10 +78,10 @@ $N$ & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{
         同種のメカニズムが関与している可能性があるが，
         本テストの密度比（$\rho_l/\rho_g = 10$）での定量的な原因特定は将来課題である
         （§~\ref{sec:ppe_discretization_choice} 参照）．
-  \item \textbf{質量保存の劇的改善：}
-        $\alpha = 2$ の質量誤差は $\alpha = 1$ の 100--300 倍良好であった
-        （$N = 64$: $2.6 \times 10^{-7}$ vs $9.6 \times 10^{-5}$）．
-        リビルド時の界面重み付き質量補正が毎ステップ適用されるためである．
+  \item \textbf{質量保存の劣化：}
+        $\alpha = 2$ の質量誤差は $\alpha = 1$ に対し大幅に悪化した
+        （$N = 64$: $1.6 \times 10^{-1}$ vs $9.6 \times 10^{-5}$）．
+        界面適合格子のリビルドに伴う保存量の補間誤差が蓄積するためと考えられる．
   \item \textbf{Laplace 圧精度の劣化：}
         Laplace 圧相対誤差は一貫して $\alpha = 1$ が良好であった
         （$N = 64$: 34\% vs 68\%）．
@@ -94,8 +94,8 @@ $N$ & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{
 \end{enumerate}
 
 \noindent\textbf{結論：}
-毎ステップ格子リビルドは質量保存と寄生電流の双方を改善するが，
-固定 $\varepsilon$ に起因する Laplace 圧精度の劣化というトレードオフがある．
+毎ステップ格子リビルドは寄生電流を改善するが，
+質量保存の劣化および固定 $\varepsilon$ に起因する Laplace 圧精度の劣化というトレードオフがある．
 次節ではこのトレードオフを空間可変 $\varepsilon$ により解消する．
 
 
@@ -152,16 +152,16 @@ $\varepsilon$ を空間可変場
 $N$ & 構成 & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ \\
 \midrule
 32 & A: 一様 & 1 & $2.6 \times 10^{-1}$ & 77\% & $1.4 \times 10^{-3}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $1.2 \times 10^{-1}$ & 100\% & $4.8 \times 10^{-6}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $1.2 \times 10^{-1}$ & \textbf{91\%} & $1.4 \times 10^{-5}$ \\
+   & B: 固定 $\varepsilon$ & 2 & $1.2 \times 10^{-1}$ & 98\% & $2.3 \times 10^{-1}$ \\
+   & C: 局所 $\varepsilon$ & 2 & $2.9 \times 10^{-1}$ & \textbf{99\%} & $2.3 \times 10^{-1}$ \\
 \midrule
 48 & A: 一様 & 1 & $1.9 \times 10^{-1}$ & 54\% & $4.3 \times 10^{-4}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $1.3 \times 10^{-1}$ & 84\% & $4.5 \times 10^{-6}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $1.2 \times 10^{-1}$ & \textbf{77\%} & $4.9 \times 10^{-6}$ \\
+   & B: 固定 $\varepsilon$ & 2 & $1.1 \times 10^{-1}$ & 99\% & $1.9 \times 10^{-1}$ \\
+   & C: 局所 $\varepsilon$ & 2 & $1.1 \times 10^{-1}$ & \textbf{84\%} & $1.9 \times 10^{-1}$ \\
 \midrule
 64 & A: 一様 & 1 & $9.5 \times 10^{-1}$ & \textbf{34\%} & $9.6 \times 10^{-5}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $9.0 \times 10^{-2}$ & 68\% & $2.6 \times 10^{-7}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $9.4 \times 10^{-2}$ & \textbf{60\%} & $1.6 \times 10^{-7}$ \\
+   & B: 固定 $\varepsilon$ & 2 & $8.7 \times 10^{-2}$ & 63\% & $1.6 \times 10^{-1}$ \\
+   & C: 局所 $\varepsilon$ & 2 & $8.5 \times 10^{-2}$ & \textbf{66\%} & $1.6 \times 10^{-1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -180,16 +180,18 @@ $N$ & 構成 & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_
 
 \begin{enumerate}[noitemsep]
   \item \textbf{Laplace 圧の改善：}
-        C は全解像度で B に対し 8--9 ポイントの Laplace 圧改善を達成した
-        （$N{=}64$: $68\% \to 60\%$，$N{=}48$: $84\% \to 77\%$，$N{=}32$: $100\% \to 91\%$）．
+        C は $N{=}48$ で B に対し 15 ポイントの Laplace 圧改善を達成した
+        （$99\% \to 84\%$）．$N{=}64$ では改善幅が小さい（$63\% \to 66\%$）．
         $\varepsilon / h_{\rm local}$ の整合性回復（$C_\varepsilon \alpha \to C_\varepsilon$）が
-        CSF 力分布の適正化に寄与している．
+        CSF 力分布の適正化に寄与するが，効果は限定的である．
   \item \textbf{寄生電流の維持：}
         B と C の寄生電流はほぼ同等であり，
         空間可変 $\varepsilon$ は寄生電流を悪化させない．
-  \item \textbf{質量保存の維持：}
-        C は B と同水準の質量保存精度を達成した
-        （$N{=}64$: $1.6 \times 10^{-7}$ vs $2.6 \times 10^{-7}$）．
+  \item \textbf{質量保存の劣化は未解決：}
+        B, C ともに質量誤差は $\sim 16$--$23\%$ であり，
+        一様格子（A）の $10^{-4}$--$10^{-3}$ に比べ大幅に劣る．
+        格子リビルド時の補間に伴う質量非保存が支配的であり，
+        空間可変 $\varepsilon$ では解消されない．
 \end{enumerate}
 
 \noindent\textbf{考察：}

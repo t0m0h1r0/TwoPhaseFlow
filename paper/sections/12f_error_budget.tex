@@ -39,9 +39,9 @@ CN 粘性項（対角） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$ & §~\ref
 交差粘性項（陽的） & $\Ord{\Delta t}$\textsuperscript{$\ddagger$} & $\Ord{\Delta t^{1.0}}$ & §~\ref{sec:verify_cross_viscous} & 界面近傍で律速 \\
 CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$ & §~\ref{sec:verify_ccd_spectral_radius} & FD 比 2.4 倍 \\
 DGR 厚み制御 & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1$ & 1.03 & §~\ref{sec:verify_dgr} & 界面厚維持 \\
-CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 11\times$ & §~\ref{sec:force_balance} & Balanced-Force 効果 \\
-交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.23$ & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
-毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.505$ & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
+CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & §~\ref{sec:force_balance} & Balanced-Force 効果 \\
+交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.22$ & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
+毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.82$ & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}DCCD 散逸パラメータ $\varepsilon_d$ によらず界面の CLS プロファイル幅が支配する誤差（§~\ref{sec:highre_dccd}）．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\ddagger$}$\mu_l/\mu_g \gg 1$ で陽的交差微分項が $\Ord{\mu_{\max}\Delta t}$ の打切り誤差を生じる（§~\ref{sec:time_int}）．} \\
