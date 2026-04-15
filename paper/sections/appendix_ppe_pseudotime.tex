@@ -307,10 +307,10 @@ $\Delta t \sim 10^{-3}$ では $\varepsilon_\mathrm{tol} \leq 10^{-8}$ が目安
   \qquad t \equiv \frac{\Delta\tau\,\lambda}{2}
 \]
 $d\gamma/dt = 0$ を解くと $t^* = 1$（$\gamma_{\min} = 1/2$）．
-CCD Laplacian の最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$ を代入すると：
+CCD Laplacian の最大固有値 $\lambda_{\max} = 9.6\,a_{\max}/h^2$（§~\ref{sec:verify_ccd_spectral_radius}）を代入すると：
 \begin{equation}
   \Delta\tau_{\mathrm{opt}}
-  \approx \frac{0.58\,h^2}{a_{\max}},
+  \approx \frac{0.208\,h^2}{a_{\max}},
   \qquad
   a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
   \label{eq:dtau_opt}
@@ -328,7 +328,7 @@ CCD Laplacian の最大固有値 $\lambda_{\max} \approx 3.43\,a_{\max}/h^2$ を
 \subsection{密度適応型局所時間刻み（Local Time Stepping）}
 \label{sec:lts_dtau}
 
-式~\eqref{eq:dtau_opt} の最適 $\Delta\tau_\mathrm{opt} \approx 0.58\,h^2/a_\mathrm{max}$ は
+式~\eqref{eq:dtau_opt} の最適 $\Delta\tau_\mathrm{opt} \approx 0.208\,h^2/a_\mathrm{max}$ は
 等方格子・一様密度の理想条件下では有効だが，気液二相流では密度が空間的に大きく変化するため，
 単一のグローバル $\Delta\tau$ では以下の問題が生じる．すなわち，同式の
 $a_\mathrm{max} = \max_{i,j} 1/\rho_{i,j}$ を含むため，気体相（低密度 $\rho_\mathrm{gas}$）で
@@ -360,8 +360,8 @@ $C_\tau = 1 \sim 5$ は全領域一様のグローバル係数であり，
 \textbf{グローバル公式との整合性：}
 一様密度（$\rho_{i,j} = \rho_l$）では式~\eqref{eq:dtau_lts} は
 $\Delta\tau = C_\tau\,\rho_l\,h^2/2$ となる．式~\eqref{eq:dtau_opt} の $a_\mathrm{max} = 1/\rho_l$ を代入すると
-$\Delta\tau_\mathrm{opt} \approx 0.58\,h^2\,\rho_l$ であり，
-$C_\tau \approx 1.16$ に相当する範囲で両式は整合する（\ref{box:dtau_impl} の $C_\tau = 1 \sim 5$ の範囲内）．
+$\Delta\tau_\mathrm{opt} \approx 0.208\,h^2\,\rho_l$ であり，
+$C_\tau \approx 0.416$ に相当する範囲で両式は整合する（\ref{box:dtau_impl} の $C_\tau = 1 \sim 5$ の範囲内）．
 
 \textbf{$C_\tau$ の動的増大：}
 反復初期は $C_\tau$ を小さめ（$C_\tau = \mathcal{O}(1)$）に設定して安定性を確保し，

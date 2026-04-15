@@ -6,7 +6,7 @@
 \label{sec:verify_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-全 19 件の基本コンポーネントテストおよび 12 件の追加検証（ギャップ充填）が完了した．
+全 19 件の基本コンポーネントテストおよび 13 件の追加検証（ギャップ充填）が完了した．
 表~\ref{tab:verification_summary} に各テストの期待精度・実測精度・備考を総括する．
 主要な知見を§~\ref{sec:verify_spatial}--§~\ref{sec:verify_time} の 4 小節に沿い，検証テーマごとに以下に整理する．
 
@@ -45,7 +45,7 @@
         交差微分粘性項の陽的処理は，均一粘性場では $\Ord{\Delta t^2}$ を維持するが，
         高粘性比（$\mu_l/\mu_g = 100$）界面近傍では $\Ord{\Delta t}$ に劣化することを確認した．
   \item \textbf{PPE 演算子特性：}
-        CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 3.43$（FD の $4.0$ と比較）であり，
+        CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 9.6$（FD の $4.0$ の 2.4 倍）であり，
         2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
         §~\ref{sec:defect_correction_main} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
   \item \textbf{再初期化界面シフト：}
@@ -112,7 +112,7 @@ NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\D
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
 再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
-CCD $D^{(2)}$ スペクトル半径 & $\rho h^2 \approx 3.43$ & $3.43$                     & \checkmark & FD 比 $4.0$；2D Kronecker 成立 \\
+CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；ベースライン風上差分は $\Ord{h^1}$．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}$\Ord{h^{3.0}}$：設計精度 $\Ord{h^6}$ 未達だが $N{=}256$ で $L_\infty{=}7.5 \times 10^{-9}$；実用上許容．} \\
@@ -130,7 +130,7 @@ PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
 TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
 CN $\Ord{\Delta t^{2.0}}$（無条件安定），
 交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_int} の予測と一致）．
-CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 3.43$（反復 PPE 放棄の根拠）．
+CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$（FD 比 2.4 倍；明示的粘性 CFL 制約の根拠）．
 CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），
 DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D $\Ord{h^{3.0}}$．
 分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
