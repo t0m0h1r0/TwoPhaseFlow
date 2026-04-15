@@ -16,12 +16,11 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.tools.experiment.gpu import l2_norm, sparse_solve_2d
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -33,21 +32,32 @@ OUT = experiment_dir(__file__)
 
 
 def smoothed_heaviside(phi, eps):
-    return 0.5 * (1.0 + np.tanh(phi / (2.0 * eps)))
+    if hasattr(phi, "__cuda_array_interface__"):
+        import cupy as xp
+    else:
+        xp = np
+    return 0.5 * (1.0 + xp.tanh(phi / (2.0 * eps)))
 
 
 def eval_LH(p, rho, drho_x, drho_y, ccd, backend):
     xp = backend.xp; p_dev = xp.asarray(p)
     dp_dx, d2p_dx2 = ccd.differentiate(p_dev, 0)
     dp_dy, d2p_dy2 = ccd.differentiate(p_dev, 1)
-    dp_dx = np.asarray(backend.to_host(dp_dx))
-    dp_dy = np.asarray(backend.to_host(dp_dy))
-    d2p_dx2 = np.asarray(backend.to_host(d2p_dx2))
-    d2p_dy2 = np.asarray(backend.to_host(d2p_dy2))
-    return (d2p_dx2 + d2p_dy2) / rho - (drho_x * dp_dx + drho_y * dp_dy) / rho**2
+    rho_dev = xp.asarray(rho)
+    drho_x_dev = xp.asarray(drho_x)
+    drho_y_dev = xp.asarray(drho_y)
+    return (
+        (d2p_dx2 + d2p_dy2) / rho_dev
+        - (drho_x_dev * dp_dx + drho_y_dev * dp_dy) / rho_dev**2
+    )
 
 
-def build_fd_varrho_neumann(rho, drho_x, drho_y, h, N, pin_dof):
+def build_fd_varrho_neumann(rho, drho_x, drho_y, h, N, pin_dof, backend):
+    import scipy.sparse as sparse
+
+    rho = np.asarray(backend.to_host(rho))
+    drho_x = np.asarray(backend.to_host(drho_x))
+    drho_y = np.asarray(backend.to_host(drho_y))
     nx = ny = N + 1; n = nx * ny
     rows, cols, vals = [], [], []
     for i in range(nx):
@@ -74,22 +84,25 @@ def build_fd_varrho_neumann(rho, drho_x, drho_y, h, N, pin_dof):
     cols_p = [c for c, m in zip(cols, pin_mask) if m]
     vals_p = [v for v, m in zip(vals, pin_mask) if m]
     rows_p.append(pin_dof); cols_p.append(pin_dof); vals_p.append(1.0)
-    return sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
+    mat = sparse.csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
+    return backend.sparse.csr_matrix(mat)
 
 
 def dc_lu_omega(rhs, rho, drho_x, drho_y, ccd, backend, h, N, tol, maxiter, pin_dof, omega):
-    L_FD = build_fd_varrho_neumann(rho, drho_x, drho_y, h, N, pin_dof)
-    p = np.zeros_like(rhs); residuals = []
+    xp = backend.xp
+    L_FD = build_fd_varrho_neumann(rho, drho_x, drho_y, h, N, pin_dof, backend)
+    rhs_dev = xp.asarray(rhs)
+    p = xp.zeros_like(rhs_dev); residuals = []
     for k in range(maxiter):
         Lp = eval_LH(p, rho, drho_x, drho_y, ccd, backend)
-        d = rhs - Lp; d.ravel()[pin_dof] = 0.0
-        res = float(np.sqrt(np.dot(d.ravel(), d.ravel())))
+        d = rhs_dev - Lp; d.ravel()[pin_dof] = 0.0
+        res = l2_norm(backend, d)
         residuals.append(res)
         if res < tol: return p, residuals, k+1, "conv"
         if res > 1e20 or np.isnan(res): return p, residuals, k+1, "divg"
         if k >= 10 and residuals[-10] > 0 and res / residuals[-10] > 0.99:
             return p, residuals, k+1, "stag"
-        dp = spsolve(L_FD, d.ravel()).reshape(rhs.shape)
+        dp = sparse_solve_2d(backend, L_FD, d)
         p = p + omega * dp; p.ravel()[pin_dof] = 0.0
     return p, residuals, maxiter, "stag"
 
@@ -106,12 +119,9 @@ def run_experiment():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         xp = backend.xp; X, Y = grid.meshgrid()
-        # DC loop uses scipy.sparse.spsolve (CPU-only); keep host copies for
-        # FD assembly and spsolve; eval_LH routes CCD through device.
-        X = backend.to_host(X); Y = backend.to_host(Y)
-        p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
+        p_exact = xp.cos(np.pi * X) * xp.cos(np.pi * Y)
         pin_dof = (N//2)*(N+1)+(N//2)
-        phi = np.sqrt((X-0.5)**2+(Y-0.5)**2) - 0.25; eps = 1.5*h
+        phi = xp.sqrt((X-0.5)**2+(Y-0.5)**2) - 0.25; eps = 1.5*h
 
         print(f"\n  N={N}:")
         for rho_ratio in density_ratios:
@@ -120,8 +130,8 @@ def run_experiment():
             rho = 1.0 + (rho_g - 1.0) * H
             drho_x_dev, _ = ccd.differentiate(xp.asarray(rho), 0)
             drho_y_dev, _ = ccd.differentiate(xp.asarray(rho), 1)
-            drho_x = np.asarray(backend.to_host(drho_x_dev))
-            drho_y = np.asarray(backend.to_host(drho_y_dev))
+            drho_x = drho_x_dev
+            drho_y = drho_y_dev
             rhs = eval_LH(p_exact, rho, drho_x, drho_y, ccd, backend)
             rhs.ravel()[pin_dof] = 0.0
 

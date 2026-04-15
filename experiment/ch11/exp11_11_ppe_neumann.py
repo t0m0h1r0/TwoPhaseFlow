@@ -14,12 +14,16 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.tools.experiment.gpu import (
+    fd_laplacian_neumann_2d,
+    max_abs_error,
+    pin_gauge,
+    sparse_solve_2d,
+)
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -36,31 +40,7 @@ def eval_LH(p, ccd, backend):
     for ax in range(2):
         _, d2p = ccd.differentiate(p_dev, ax)
         Lp += d2p
-    return np.asarray(backend.to_host(Lp))
-
-
-def build_fd_neumann(N, h):
-    nx = ny = N + 1; n = nx * ny
-    rows, cols, vals = [], [], []
-    for i in range(nx):
-        for j in range(ny):
-            k = i * ny + j; center = 0.0
-            for coord, lo, hi in [(i, (i-1)*ny+j, (i+1)*ny+j), (j, i*ny+(j-1), i*ny+(j+1))]:
-                if 0 < coord < N:
-                    rows.append(k); cols.append(lo); vals.append(1.0/h**2); center -= 1.0/h**2
-                    rows.append(k); cols.append(hi); vals.append(1.0/h**2); center -= 1.0/h**2
-                elif coord == 0:
-                    rows.append(k); cols.append(hi); vals.append(2.0/h**2); center -= 2.0/h**2
-                else:
-                    rows.append(k); cols.append(lo); vals.append(2.0/h**2); center -= 2.0/h**2
-            rows.append(k); cols.append(k); vals.append(center)
-    return sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
-
-
-def pin_gauge(L, rhs_flat, pin_dof, pin_val):
-    L_lil = L.tolil(); L_lil[pin_dof, :] = 0.0; L_lil[pin_dof, pin_dof] = 1.0
-    rhs_flat[pin_dof] = pin_val
-    return L_lil.tocsr(), rhs_flat
+    return Lp
 
 
 def run_experiment():
@@ -72,26 +52,24 @@ def run_experiment():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N; X, Y = grid.meshgrid()
-        # Defect-correction loop uses scipy.sparse.spsolve (CPU-only); keep
-        # p_exact / rhs on host while eval_LH still routes CCD through device.
-        X = backend.to_host(X); Y = backend.to_host(Y)
-        p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
+        xp = backend.xp
+        p_exact = xp.cos(np.pi * X) * xp.cos(np.pi * Y)
         rhs = -2 * np.pi**2 * p_exact
 
-        L_L = build_fd_neumann(N, h)
-        pin_dof = 0; pin_val = float(p_exact.ravel()[0])
-        rhs_flat = rhs.ravel().copy()
-        L_L_pinned, rhs_flat = pin_gauge(L_L.copy(), rhs_flat, pin_dof, pin_val)
+        L_L = fd_laplacian_neumann_2d(N, h, backend)
+        pin_dof = 0
+        pin_val = float(np.asarray(backend.to_host(p_exact.ravel()[0])))
+        L_L_pinned, _ = pin_gauge(L_L, rhs.ravel(), pin_dof, pin_val, backend)
 
-        p = np.zeros_like(rhs)
+        p = xp.zeros_like(rhs)
         for _ in range(k_dc):
             Lp = eval_LH(p, ccd, backend)
-            d = rhs - Lp; d_flat = d.ravel().copy()
-            d_flat[pin_dof] = pin_val - p.ravel()[pin_dof]
-            dp = spsolve(L_L_pinned, d_flat).reshape(rhs.shape)
+            d = rhs - Lp
+            d.ravel()[pin_dof] = pin_val - p.ravel()[pin_dof]
+            dp = sparse_solve_2d(backend, L_L_pinned, d)
             p = p + dp
 
-        err = float(np.max(np.abs(p - p_exact)))
+        err = max_abs_error(backend, p, p_exact)
         results.append({"N": N, "h": h, "Li": err})
 
         order_str = "---"

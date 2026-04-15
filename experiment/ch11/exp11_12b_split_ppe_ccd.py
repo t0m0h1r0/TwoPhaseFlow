@@ -36,6 +36,14 @@ from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.tools.experiment.gpu import (
+    fd_laplacian_dirichlet_2d,
+    fd_varrho_dirichlet_2d,
+    max_abs_error,
+    sparse_solve_2d,
+    to_float,
+    zero_dirichlet_boundary,
+)
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -48,7 +56,11 @@ R = 0.25
 
 
 def smoothed_heaviside(phi, eps):
-    return 0.5 * (1.0 + np.tanh(phi / (2.0 * eps)))
+    if hasattr(phi, "__cuda_array_interface__"):
+        import cupy as xp
+    else:
+        xp = np
+    return 0.5 * (1.0 + xp.tanh(phi / (2.0 * eps)))
 
 
 # ── CCD operators ─────────────────────────────────────────────────────────
@@ -61,7 +73,7 @@ def eval_LH_const(p, ccd, backend):
     for ax in range(2):
         _, d2p = ccd.differentiate(p_dev, ax)
         Lp += d2p
-    return np.asarray(backend.to_host(Lp))
+    return Lp
 
 
 def eval_LH_varrho(p, rho, ccd, backend):
@@ -73,96 +85,50 @@ def eval_LH_varrho(p, rho, ccd, backend):
         dp, d2p = ccd.differentiate(p_dev, ax)
         drho, _ = ccd.differentiate(rho_dev, ax)
         Lp += d2p / rho_dev - (drho / rho_dev**2) * dp
-    return np.asarray(backend.to_host(Lp))
+    return Lp
 
 
 # ── FD matrices ───────────────────────────────────────────────────────────
 
 def build_fd_laplacian_dirichlet(N, h, backend):
     """FD 5-point for Lap(p), Dirichlet BC (constant-density)."""
-    import scipy.sparse as sp_cpu
-    nx = ny = N + 1; n = nx * ny
-    rows, cols, vals = [], [], []
-    for i in range(nx):
-        for j in range(ny):
-            k = i * ny + j
-            if i == 0 or i == N or j == 0 or j == N:
-                rows.append(k); cols.append(k); vals.append(1.0)
-            else:
-                for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    rows.append(k); cols.append((i + di) * ny + (j + dj))
-                    vals.append(1.0 / h**2)
-                rows.append(k); cols.append(k); vals.append(-4.0 / h**2)
-    A_cpu = sp_cpu.csr_matrix(
-        (np.array(vals), (np.array(rows), np.array(cols))), shape=(n, n))
-    return backend.sparse.csr_matrix(A_cpu)
+    return fd_laplacian_dirichlet_2d(N, h, backend)
 
 
 def build_fd_varrho_dirichlet(N, h, rho, backend):
     """FD for (1/rho)*Lap(p) - (1/rho^2)*(grad rho . grad p), Dirichlet BC."""
-    rho = backend.to_host(rho)  # sparse assembly on CPU
-    nx = ny = N + 1; n = nx * ny
-    drho_dx = np.zeros_like(rho); drho_dy = np.zeros_like(rho)
-    for i in range(1, N):
-        drho_dx[i, :] = (rho[i + 1, :] - rho[i - 1, :]) / (2 * h)
-    for j in range(1, N):
-        drho_dy[:, j] = (rho[:, j + 1] - rho[:, j - 1]) / (2 * h)
-
-    rows, cols, vals = [], [], []
-    for i in range(nx):
-        for j in range(ny):
-            k = i * ny + j
-            if i == 0 or i == N or j == 0 or j == N:
-                rows.append(k); cols.append(k); vals.append(1.0)
-            else:
-                inv_rho = 1.0 / rho[i, j]
-                cx = drho_dx[i, j] / rho[i, j]**2
-                cy = drho_dy[i, j] / rho[i, j]**2
-                rows.append(k); cols.append((i + 1) * ny + j)
-                vals.append(inv_rho / h**2 - cx / (2 * h))
-                rows.append(k); cols.append((i - 1) * ny + j)
-                vals.append(inv_rho / h**2 + cx / (2 * h))
-                rows.append(k); cols.append(i * ny + (j + 1))
-                vals.append(inv_rho / h**2 - cy / (2 * h))
-                rows.append(k); cols.append(i * ny + (j - 1))
-                vals.append(inv_rho / h**2 + cy / (2 * h))
-                center = -4.0 * inv_rho / h**2
-                rows.append(k); cols.append(k); vals.append(center)
-    import scipy.sparse as sp_cpu
-    A_cpu = sp_cpu.csr_matrix(
-        (np.array(vals, dtype=np.float64),
-         (np.array(rows, dtype=np.int32), np.array(cols, dtype=np.int32))),
-        shape=(n, n))
-    return backend.sparse.csr_matrix(A_cpu)
+    return fd_varrho_dirichlet_2d(N, h, rho, backend)
 
 
 # ── DC iteration ──────────────────────────────────────────────────────────
 
 def defect_correction_const(rhs, ccd, backend, L_L, k_max):
     """DC k iterations on constant-density Laplacian (Dirichlet BC)."""
-    spsolve = backend.sparse_linalg.spsolve
-    p = np.zeros_like(rhs)
+    xp = backend.xp
+    rhs_dev = xp.asarray(rhs)
+    p = xp.zeros_like(rhs_dev)
     for _ in range(k_max):
         Lp = eval_LH_const(p, ccd, backend)
         d = rhs - Lp
-        d[0, :] = 0; d[-1, :] = 0; d[:, 0] = 0; d[:, -1] = 0
-        dp = np.asarray(backend.to_host(spsolve(L_L, backend.xp.asarray(d.ravel())))).reshape(rhs.shape)
+        zero_dirichlet_boundary(d)
+        dp = sparse_solve_2d(backend, L_L, d)
         p = p + dp
-        p[0, :] = 0; p[-1, :] = 0; p[:, 0] = 0; p[:, -1] = 0
+        zero_dirichlet_boundary(p)
     return p
 
 
 def defect_correction_varrho(rhs, rho, ccd, backend, L_L, k_max):
     """DC k iterations on variable-density operator (Dirichlet BC)."""
-    spsolve = backend.sparse_linalg.spsolve
-    p = np.zeros_like(rhs)
+    xp = backend.xp
+    rhs_dev = xp.asarray(rhs)
+    p = xp.zeros_like(rhs_dev)
     for _ in range(k_max):
         Lp = eval_LH_varrho(p, rho, ccd, backend)
         d = rhs - Lp
-        d[0, :] = 0; d[-1, :] = 0; d[:, 0] = 0; d[:, -1] = 0
-        dp = np.asarray(backend.to_host(spsolve(L_L, backend.xp.asarray(d.ravel())))).reshape(rhs.shape)
+        zero_dirichlet_boundary(d)
+        dp = sparse_solve_2d(backend, L_L, d)
         p = p + dp
-        p[0, :] = 0; p[-1, :] = 0; p[:, 0] = 0; p[:, -1] = 0
+        zero_dirichlet_boundary(p)
     return p
 
 
@@ -176,15 +142,14 @@ def run_comparison(N, rho_ratio, k_dc=3):
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
-    X_dev, Y_dev = grid.meshgrid()
-    X = np.asarray(backend.to_host(X_dev))
-    Y = np.asarray(backend.to_host(Y_dev))
+    xp = backend.xp
+    X, Y = grid.meshgrid()
 
     # Manufactured solution (Dirichlet: p*=0 on boundary)
-    p_star = np.sin(np.pi * X) * np.sin(np.pi * Y)
+    p_star = xp.sin(np.pi * X) * xp.sin(np.pi * Y)
 
     # Level-set and density
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)  # phi>0 = liquid
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)  # phi>0 = liquid
     rho_g = 1.0 / rho_ratio
     H = smoothed_heaviside(phi, eps)
     rho = 1.0 + (rho_g - 1.0) * (1.0 - H)  # rho_l=1 inside, rho_g outside
@@ -194,38 +159,31 @@ def run_comparison(N, rho_ratio, k_dc=3):
 
     # ── (a) Monolithic DC k=3 (variable-density) ──
     rhs_var = eval_LH_varrho(p_star, rho, ccd, backend)
-    rhs_var[0, :] = 0; rhs_var[-1, :] = 0; rhs_var[:, 0] = 0; rhs_var[:, -1] = 0
+    zero_dirichlet_boundary(rhs_var)
     A_var = build_fd_varrho_dirichlet(N, h, rho, backend)
     try:
         p_mono = defect_correction_varrho(rhs_var, rho, ccd, backend, A_var, k_dc)
-        err_mono = float(np.max(np.abs(p_mono - p_star)))
-        err_mono_liq = float(np.max(np.abs((p_mono - p_star)[liquid_mask]))) \
-            if np.any(liquid_mask) else err_mono
+        err_mono = max_abs_error(backend, p_mono, p_star)
+        err_mono_liq = to_float(backend, xp.max(xp.abs((p_mono - p_star)[liquid_mask]))) \
+            if bool(np.asarray(backend.to_host(xp.any(liquid_mask)))) else err_mono
     except Exception:
         err_mono = float("inf"); err_mono_liq = float("inf")
 
     # ── (b) Split-PPE + FD direct (constant-density) ──
-    rhs_lap = -2.0 * np.pi**2 * np.sin(np.pi * X) * np.sin(np.pi * Y)
-    rhs_lap_flat = rhs_lap.ravel().copy()
-    for i in range(N + 1):
-        for j in range(N + 1):
-            if i == 0 or i == N or j == 0 or j == N:
-                rhs_lap_flat[i * (N + 1) + j] = 0.0
+    rhs_lap = -2.0 * np.pi**2 * xp.sin(np.pi * X) * xp.sin(np.pi * Y)
+    zero_dirichlet_boundary(rhs_lap)
     A_lap = build_fd_laplacian_dirichlet(N, h, backend)
-    p_fd = np.asarray(backend.to_host(
-        backend.sparse_linalg.spsolve(A_lap, backend.xp.asarray(rhs_lap_flat))
-    )).reshape(p_star.shape)
-    err_fd = float(np.max(np.abs(p_fd - p_star)))
-    err_fd_liq = float(np.max(np.abs((p_fd - p_star)[liquid_mask]))) \
-        if np.any(liquid_mask) else err_fd
+    p_fd = sparse_solve_2d(backend, A_lap, rhs_lap)
+    err_fd = max_abs_error(backend, p_fd, p_star)
+    has_liquid = bool(np.asarray(backend.to_host(xp.any(liquid_mask))))
+    err_fd_liq = to_float(backend, xp.max(xp.abs((p_fd - p_star)[liquid_mask]))) \
+        if has_liquid else err_fd
 
     # ── (c) Split-PPE + CCD DC k=3 (constant-density) ──
-    rhs_dc = rhs_lap.copy()
-    rhs_dc[0, :] = 0; rhs_dc[-1, :] = 0; rhs_dc[:, 0] = 0; rhs_dc[:, -1] = 0
-    p_dc = defect_correction_const(rhs_dc, ccd, backend, A_lap, k_dc)
-    err_dc = float(np.max(np.abs(p_dc - p_star)))
-    err_dc_liq = float(np.max(np.abs((p_dc - p_star)[liquid_mask]))) \
-        if np.any(liquid_mask) else err_dc
+    p_dc = defect_correction_const(rhs_lap, ccd, backend, A_lap, k_dc)
+    err_dc = max_abs_error(backend, p_dc, p_star)
+    err_dc_liq = to_float(backend, xp.max(xp.abs((p_dc - p_star)[liquid_mask]))) \
+        if has_liquid else err_dc
 
     return {
         "N": N, "h": h, "rho_ratio": float(rho_ratio),

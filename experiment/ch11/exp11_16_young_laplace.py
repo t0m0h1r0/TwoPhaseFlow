@@ -15,7 +15,6 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid

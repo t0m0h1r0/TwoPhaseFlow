@@ -48,6 +48,17 @@ from .convergence import (
     convergence_table,
     error_norms,
 )
+from .gpu import (
+    fd_laplacian_dirichlet_2d,
+    fd_laplacian_neumann_2d,
+    fd_varrho_dirichlet_2d,
+    l2_norm,
+    max_abs_error,
+    pin_gauge,
+    sparse_solve_2d,
+    to_float,
+    zero_dirichlet_boundary,
+)
 
 __all__ = [
     "apply_style",
@@ -60,4 +71,8 @@ __all__ = [
     "field_panel", "convergence_loglog", "time_history",
     "latex_convergence_table", "summary_text",
     "compute_convergence_rates", "convergence_table", "error_norms",
+    "fd_laplacian_dirichlet_2d", "fd_laplacian_neumann_2d",
+    "fd_varrho_dirichlet_2d", "l2_norm", "max_abs_error",
+    "pin_gauge", "sparse_solve_2d", "to_float",
+    "zero_dirichlet_boundary",
 ]
