@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""[11-28] PPE condition number scaling verification.
+"""[11-28] PPE condition number scaling measurement.
 
-Validates: Ch9c -- condition number kappa = O(rho_ratio / h^2).
+Validates: Ch9c -- empirical condition number growth for interface-density PPE.
 
 Test: Assemble FVM Poisson matrix with variable density (interface-type),
       compute condition number for various N and rho_l/rho_g.
 
-Expected: kappa proportional to rho_ratio * N^2.
+Expected: condition number worsens with grid refinement and density contrast.
 """
 
 import sys, pathlib
