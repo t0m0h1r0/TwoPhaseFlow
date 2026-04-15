@@ -1,59 +1,56 @@
-# 🚨 STRICT CONTEXT CONTROL
+# STRICT CONTEXT CONTROL
 
-## NEVER DO
-- Do NOT read entire files unless explicitly requested
-- Do NOT scan the whole repository
-- Do NOT include full logs or outputs
-- Do NOT include previous conversation history unless required
-
-## ALWAYS DO
-- Only use explicitly mentioned files (e.g., @file.py)
-- If logs are long → summarize to max 5 lines (tail only)
-- Focus ONLY on the error or question
-- Prefer minimal context over completeness
-
-## OUTPUT RULES
-- Be concise
-- No repetition
-- No full code unless requested
-- **File updates: `diff` format preferred — never re-output entire files**
+## Context Rules
+- Do NOT read entire files unless explicitly requested — use offset/limit or Grep
+- Do NOT scan the whole repository — use Glob/Grep for targeted search
+- Logs → summarize to max 5 lines (tail only)
+- Focus ONLY on the error or question; prefer minimal context over completeness
 - Reasoning: max 3 bullet points
+- If input is too long → extract only the final error message
 
-## HARD LIMIT
-If input is too long:
-→ IGNORE most of it
-→ Extract only the final error message
+## Output Rules
+- Be concise — no repetition, no full code unless requested
+- File edits → use Edit tool; never re-output entire files
+- Use `[link text](relative/path)` for file references (VSCode clickable links)
 
-## EXECUTION STEP 0 (session start)
-1. Read `docs/02_ACTIVE_LEDGER.md` → identify current Phase / Branch / open CHKs
-2. Load additional files ONLY if the current task demands it:
+## Session Start
+1. Read `docs/02_ACTIVE_LEDGER.md` (first ~60 lines) → current Phase / Branch / open CHKs
+2. Load additional files ONLY if the task demands it:
    - Code changes → `docs/00_GLOBAL_RULES.md §C` + `docs/03_PROJECT_RULES.md`
    - Dependency/interface resolution → `docs/01_PROJECT_MAP.md`
-   - Agent routing / full initialization → `prompts/agents-claude/ResearchArchitect.md` + all above
-3. Do NOT pre-load any file not required by the current task
+   - Domain knowledge → relevant `prompts/agents-claude/*.md` as reference (not routing)
+3. Do NOT pre-load files not required by the current task
 
-## CODING RULES (enforced every session)
-- Full rules in `docs/00_GLOBAL_RULES.md §C` (C1–C4) and `docs/03_PROJECT_RULES.md §PR` (PR-1–PR-6)
+## Coding Rules
+- Full rules: `docs/00_GLOBAL_RULES.md §C` (C1-C4) + `docs/03_PROJECT_RULES.md §PR` (PR-1-PR-6)
 - **SOLID audit** — report violations as `[SOLID-X]` and fix before proceeding (C1)
-- **Never delete tested code** — retain as legacy class; register in `docs/01_PROJECT_MAP.md §8` (C2)
-- **Algorithm Fidelity** — fixes MUST restore paper-exact behavior; deviation = bug (PR-5)
-- **A3 Traceability** — Equation → Discretization → Code chain is mandatory
+- **Never delete tested code** — retain as legacy; register in `docs/01_PROJECT_MAP.md §8` (C2)
+- **Algorithm Fidelity (PR-5)** — fixes MUST restore paper-exact behavior; deviation = bug
+- **A3 Traceability** — Equation -> Discretization -> Code chain is mandatory
+- **GPU/CuPy backend** — library code uses `backend.xp` for array ops; CPU path must remain bit-exact (PR-5). All ch11 experiments are GPU-opted. ASM-122-A: split-reinit pointwise drift on GPU is FUNDAMENTAL (Lyapunov chaos), not a bug
 
-## DIRECTORY CONVENTIONS (enforced every session)
-- Full conventions in `prompts/agents-claude/_base.yaml §directory_conventions`
-- Key rules:
-  - Library code → `src/twophase/` (`lib/` is NOT used)
-  - Experiment scripts → `experiment/ch{N}/`; results colocated in `experiment/ch{N}/results/{name}/`
-  - Graphs → **PDF only** (`savefig('*.pdf')`)
-  - Experiment scripts MUST use `twophase.experiment` toolkit and support `--plot-only`
-  - `results/` (top-level) → DEPRECATED
-  - Meta-prompts → `prompts/meta/`; Agent prompts → `prompts/agents-claude/` (Claude) / `prompts/agents-codex/` (Codex)
-  - **Experiment execution default = remote server `python`**: use `make run EXP=<path>` (remote) or `make run-local EXP=<path>` (local fallback). Direct `python3 experiment/…` invocation is discouraged — it silently runs locally.
+## Directory Conventions
+- Library code → `src/twophase/` (`lib/` is NOT used)
+- Experiment scripts → `experiment/ch{N}/`; results → `experiment/ch{N}/results/{name}/`
+- Graphs → **PDF only** (`savefig('*.pdf')`)
+- Experiments MUST use `twophase.experiment` toolkit and support `--plot-only`
+- `results/` (top-level) → DEPRECATED
+- Wiki → `docs/wiki/{theory,experiment,cross-domain,paper,code}/` (96+ entries, INDEX at `docs/wiki/INDEX.md`)
+- Memos/derivations → `docs/memo/`
+- Agent prompts → `prompts/agents-claude/` (inherit `_base.yaml`; read as domain reference, not routing)
 
-## AGENT PROMPT SYSTEM
-- Agent prompts are YAML-format files, per environment:
-  - Claude: `prompts/agents-claude/*.md` (full verbosity, THOUGHT_PROTOCOL)
-  - Codex: `prompts/agents-codex/*.md` (compressed, diff-first)
-- All agents inherit `prompts/agents-{env}/_base.yaml` (shared axioms, primitives, rules, procedure pre/post).
-- Agent files contain ONLY overrides and domain-specific content.
-- To understand an agent: read `_base.yaml` FIRST, then the agent file.
+## Execution Workflow
+| Task | Command |
+|---|---|
+| Run experiment (remote GPU) | `make run EXP=<path>` |
+| Run experiment (local CPU) | `make run-local EXP=<path>` |
+| Push + Run + Pull | `make cycle EXP=<path>` |
+| Run all chapter experiments | `make run-all CH=ch11` |
+| Re-plot from cached npz | `make plot EXP=<path>` |
+| Tests (remote GPU) | `make test` |
+| Tests (local CPU) | `make test-local` |
+| SSH into remote | `make ssh` |
+
+- Direct `python3 experiment/...` is discouraged — it silently runs locally
+- After code changes, `make push` before `make run` (remote uses rsync with `--checksum`)
+- Use worktrees (`EnterWorktree`) for isolated feature/fix work; remote dir is shared across worktrees
