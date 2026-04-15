@@ -9,8 +9,8 @@ model = "codex-1"
 # Effort level — matches CLAUDE_CODE_EFFORT_LEVEL=max intent
 model_reasoning_effort = "high"
 
-# Auto-approve safe read/write file ops; confirm network/destructive commands.
-approval_policy = "granular"
+# Auto-approve most ops; agent asks confirmation when needed.
+approval_policy = "on-request"
 
 # Network access is required: make run / make push / make pull all SSH to
 # a remote GPU server (RTX 3080 Ti). Without network, all remote experiment
