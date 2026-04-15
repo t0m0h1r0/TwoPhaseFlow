@@ -49,13 +49,13 @@ Project-specific rules (PR-1–PR-6): `docs/03_PROJECT_RULES.md`.
 ## § P — Paper Domain Rules
 
 ### P1 — LaTeX Authoring
-- Cross-references: `\ref`, `\eqref`, `\autoref` — never hardcode numbers
+- Cross-refs: `\ref`/`\eqref`/`\autoref`; no hardcoded numbers
 - Label prefixes: `sec:`, `eq:`, `fig:`, `tab:`, `alg:`, `app:`
 - tcolorbox: 6 types (mybox/defbox/resultbox/algbox/warnbox/remarkbox) — **never nest**
 - Figures/tables: `[htbp]`; captions below figures, above tables
 
 ### KL-12 — texorpdfstring (xelatex infinite-loop trap)
-Math in section/subsection titles or captions MUST use `\texorpdfstring`.
+Math in section/subsection/caption titles: use `\texorpdfstring`.
 Pre-compile scan: `grep -n "\\section\|\\subsection\|\\caption" paper/sections/*.tex | grep "\$" | grep -v "texorpdfstring"` → zero matches required.
 
 ### P3 — Whole-Paper Consistency
@@ -64,12 +64,12 @@ Pre-compile scan: `grep -n "\\section\|\\subsection\|\\caption" paper/sections/*
 - P3-E: narrative coherence; P3-F: tcolorbox type↔content
 
 ### P4 — Reviewer Skepticism
-Independently verify before applying any reviewer finding. "Reviewer says so" is never sufficient.
+Verify independently before applying reviewer findings. "Reviewer says so" insufficient.
 
 ────────────────────────────────────────────────────────
 ## § AU — Verification Authority Chain
 
-When sources disagree, authority descends:
+On conflict, authority order:
 1. First principles (independent derivation)
 2. MMS-passing code (`src/twophase/`)
 3. Paper equations (`paper/sections/*.tex`)
@@ -79,9 +79,9 @@ Error taxonomy: **THEORY_ERR** (solver/equation) vs **IMPL_ERR** (adapter/infras
 ────────────────────────────────────────────────────────
 ## § Reference (agent prompt system, git lifecycle, prompt rules)
 
-Full details in `prompts/meta/*.md`. Key points:
-- Agent prompts: `prompts/agents-claude/*.md` (read as domain reference)
+`prompts/meta/*.md` for details:
+- Agent prompts: `prompts/agents-claude/*.md` (domain reference)
 - Prompt template: PURPOSE / INPUTS / RULES / PROCEDURE / OUTPUT / STOP
 - Git lifecycle: DRAFT → REVIEWED → VALIDATED → merge to main
-- Merge criteria: tests pass + compile success + logs attached
+- Merge criteria: tests pass + compile + logs attached
 - Execution loop: PLAN → EXECUTE → VERIFY → AUDIT (no phase skipped)
