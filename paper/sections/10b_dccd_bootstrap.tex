@@ -94,8 +94,11 @@ PPE RHS / Corrector（§~\ref{sec:dccd_decoupling}）
           \quad i = 1, \ldots, N-2
         \]
   \item \textbf{後続計算への引き渡し：}
-        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ を曲率計算・速度勾配評価・
-        圧力勾配計算（第~\ref{sec:pressure}章）に用いる．
+        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ を CLS 移流，曲率計算，
+        速度勾配評価に用いる．
+        PPE 右辺・Corrector 発散のチェッカーボード抑制には，
+        本適応制御ではなく $\varepsilon_d=1/4$ の固定フィルタ
+        （§~\ref{sec:dccd_decoupling}）を用いる．
 \end{enumerate}
 
 \textbf{2 次元への拡張：}
@@ -135,16 +138,21 @@ $\to$ CLS 初期化・CCD 演算子構築・Young--Laplace 初期圧力設定
 （詳細な導出は §~\ref{sec:stability} 参照）：
 
 \begin{equation}
-  \Delta t = C_{\mathrm{CFL}} \cdot \min\!\left(
-    \underbrace{\left[\max\!\left(\frac{|u|_{\max}}{\Delta x}+\frac{|v|_{\max}}{\Delta y}\right)\right]^{-1}}_{\Delta t_{\mathrm{adv}}\text{：対流 CFL（式~\eqref{eq:dt_adv}）}},\;
+  \Delta t = \min\!\left(
+    \underbrace{
+      C_{\mathrm{CFL}}
+      \left[\max\!\left(\frac{|u|_{\max}}{\Delta x}
+                       +\frac{|v|_{\max}}{\Delta y}\right)\right]^{-1}
+    }_{\Delta t_{\mathrm{adv}}\text{：対流 CFL（式~\eqref{eq:dt_adv}）}},\;
     \underbrace{\sqrt{\frac{(\rho_l+\rho_g)\,h_{\min}^3}{2\pi\sigma}}}_{\Delta t_\sigma\text{：毛管波制約（式~\eqref{eq:dt_sigma}）}}
   \right)
   \label{eq:dt_full_algo}
 \end{equation}
 
 ここで $C_{\mathrm{CFL}} \le 0.5$ は安全率（デフォルト 0.45），$h_{\min} = \min(\Delta x, \Delta y)$ である．
+表面張力なし（$\sigma=0$）の計算では毛管波制約を除外し，対流 CFL を用いる．
 粘性項は Crank--Nicolson 法（無条件安定）で処理するため，等粘性系では粘性 CFL 制約は不要である．
-ただし大密度比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
+ただし大粘性比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
 陽的処理に起因する実質的な粘性制約が界面近傍で復活する場合がある（§~\ref{sec:stability} 参照）．
 
 \bigskip

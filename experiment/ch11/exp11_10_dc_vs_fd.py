@@ -15,12 +15,16 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np, time
-from scipy import sparse
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.tools.experiment.gpu import (
+    fd_laplacian_dirichlet_2d,
+    max_abs_error,
+    sparse_solve_2d,
+    zero_dirichlet_boundary,
+)
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -37,22 +41,12 @@ def eval_LH(p, ccd, backend):
     for ax in range(2):
         _, d2p = ccd.differentiate(p_dev, ax)
         Lp += d2p
-    return np.asarray(backend.to_host(Lp))
+    return Lp
 
 
-def build_fd_lap(N, h):
-    nx = ny = N + 1; n = nx * ny
-    rows, cols, vals = [], [], []
-    for i in range(nx):
-        for j in range(ny):
-            k = i * ny + j
-            if i == 0 or i == N or j == 0 or j == N:
-                rows.append(k); cols.append(k); vals.append(1.0)
-            else:
-                for di, dj in [(-1,0),(1,0),(0,-1),(0,1)]:
-                    rows.append(k); cols.append((i+di)*ny+(j+dj)); vals.append(1.0/h**2)
-                rows.append(k); cols.append(k); vals.append(-4.0/h**2)
-    return sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
+def sync(backend):
+    if backend.is_gpu():
+        backend.xp.cuda.Stream.null.synchronize()
 
 
 def run_comparison():
@@ -64,31 +58,34 @@ def run_comparison():
         gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
         grid = Grid(gc, backend); ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N; X, Y = grid.meshgrid()
-        # Defect-correction loop uses scipy.sparse.spsolve (CPU-only); keep
-        # p_exact / rhs on host while eval_LH still routes CCD through device.
-        X = backend.to_host(X); Y = backend.to_host(Y)
-        p_exact = np.sin(np.pi * X) * np.sin(np.pi * Y)
+        xp = backend.xp
+        p_exact = xp.sin(np.pi * X) * xp.sin(np.pi * Y)
         rhs = -2 * np.pi**2 * p_exact
-        rhs[0,:]=0; rhs[-1,:]=0; rhs[:,0]=0; rhs[:,-1]=0
-        L_L = build_fd_lap(N, h)
+        zero_dirichlet_boundary(rhs)
+        L_L = fd_laplacian_dirichlet_2d(N, h, backend)
 
         # FD direct
+        sync(backend)
         t0 = time.perf_counter()
-        p_fd = spsolve(L_L, rhs.ravel()).reshape(rhs.shape)
+        p_fd = sparse_solve_2d(backend, L_L, rhs)
+        sync(backend)
         t_fd = (time.perf_counter() - t0) * 1000
 
         # DC k=3
+        sync(backend)
         t0 = time.perf_counter()
-        p = np.zeros_like(rhs)
+        p = xp.zeros_like(rhs)
         for _ in range(3):
             Lp = eval_LH(p, ccd, backend)
-            d = rhs - Lp; d[0,:]=0; d[-1,:]=0; d[:,0]=0; d[:,-1]=0
-            p = p + spsolve(L_L, d.ravel()).reshape(rhs.shape)
-            p[0,:]=0; p[-1,:]=0; p[:,0]=0; p[:,-1]=0
+            d = rhs - Lp
+            zero_dirichlet_boundary(d)
+            p = p + sparse_solve_2d(backend, L_L, d)
+            zero_dirichlet_boundary(p)
+        sync(backend)
         t_dc = (time.perf_counter() - t0) * 1000
 
-        e_fd = float(np.max(np.abs(p_fd - p_exact)))
-        e_dc = float(np.max(np.abs(p - p_exact)))
+        e_fd = max_abs_error(backend, p_fd, p_exact)
+        e_dc = max_abs_error(backend, p, p_exact)
         res_fd.append({"N": N, "h": h, "Li": e_fd, "time_ms": t_fd})
         res_dc.append({"N": N, "h": h, "Li": e_dc, "time_ms": t_dc})
         ratio = e_fd / e_dc if e_dc > 0 else float("inf")

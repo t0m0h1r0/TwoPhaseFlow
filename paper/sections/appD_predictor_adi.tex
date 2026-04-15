@@ -18,10 +18,11 @@ $v^*_{i,j}$ を求める（$n \ge 1$）：
       \frac{3}{2}\!\bigl(u^n_{i,j}\,D_x^{(1)} v^n_{i,j} + v^n_{i,j}\,D_y^{(1)} v^n_{i,j}\bigr)
       -\frac{1}{2}\!\bigl(u^{n-1}_{i,j}\,D_x^{(1)} v^{n-1}_{i,j} + v^{n-1}_{i,j}\,D_y^{(1)} v^{n-1}_{i,j}\bigr)
     \Bigr] \\
-  &\quad + \frac{1}{2}\Bigl[D_x^{(1)}\!\bigl(\mu^{n+1}_{i,j}(D_x^{(1)} v^n + D_y^{(1)} u^n)\bigr)
-                          + D_y^{(1)}\!\bigl(2\mu^{n+1}_{i,j} D_y^{(1)} v^*\bigr) \\
-  &\qquad\qquad    + D_x^{(1)}\!\bigl(\mu^{n+1}_{i,j}(D_x^{(1)} v^n + D_y^{(1)} u^n)\bigr)
-                          + D_y^{(1)}\!\bigl(2\mu^{n+1}_{i,j} D_y^{(1)} v^n\bigr)\Bigr]_{i,j} \\
+  &\quad + \frac{1}{2Re}\bigl[
+      \mathcal{D}_{\mathrm{d},y}(\mu^{n+1}, \bu^*)
+      + \mathcal{D}_{\mathrm{d},y}(\mu^n, \bu^n)
+    \bigr]_{i,j}
+    + \frac{1}{Re}\bigl[\mathcal{D}_{\mathrm{c},y}(\mu^n, \bu^n)\bigr]_{i,j} \\
   &\quad - \bigl(D_y^{(1)} p^n\bigr)_{i,j}
          - \frac{\rho^{n+1}_{i,j}}{Fr^2}
          + \frac{1}{We}\,\kappa^{n+1}_{i,j}\,\bigl(D_y^{(1)}\psi^{n+1}\bigr)_{i,j}
@@ -45,7 +46,7 @@ ADI 分割誤差 $\Ord{\Delta t^2}$ は IPC と同次で時間精度に影響し
 
 \paragraph{ADI スウィープの離散形式}
 
-$x$ スウィープ（$j$ 行固定，$\tilde\lambda^\pm_{i,j} \equiv \mu^\pm_{i,j}/\Delta x^2$）：
+$x$ スウィープ（$j$ 行固定，$\tilde\lambda^\pm_{i,j} \equiv \mu^\pm_{i,j}/(Re\,\Delta x^2)$）：
 \begin{equation*}
 \begin{split}
   &-\tilde\lambda^-_{i,j}\,u^*_{i-1,j}
@@ -57,9 +58,9 @@ $x$ スウィープ（$j$ 行固定，$\tilde\lambda^\pm_{i,j} \equiv \mu^\pm_{i
   + (R^{\text{explicit}}_x)_{i,j}
 \end{split}
 \end{equation*}
-$(R^{\text{explicit}}_x)_{i,j}$ は対流項・クロス粘性・CSF 表面張力の陽的寄与
+$(R^{\text{explicit}}_x)_{i,j}$ は対流項・クロス粘性・圧力勾配・体積力の陽的寄与
 （§~\ref{sec:advection} 参照；CSF 体積力 $(\kappa/We)D_x^{(1)}\psi$ を含む）．
-$y$ スイープ（$i$ 列固定）は $x \leftrightarrow y$，$\tilde\lambda \to \hat\lambda \equiv \mu/\Delta y^2$ で対称的に構成する．
+$y$ スイープ（$i$ 列固定）は $x \leftrightarrow y$，$\tilde\lambda \to \hat\lambda \equiv \mu/(Re\,\Delta y^2)$ で対称的に構成する．
 2 段 ADI の分割誤差は $\Ord{\Delta t^2}$ であり，IPC と同次のため全体精度に影響しない．
 
 Step 5 完了後：対流項 $\mathcal{C}^n_{i,j}$（$x$ 成分：$u^n D_x^{(1)}u^n + v^n D_y^{(1)}u^n$，$y$ 成分同様）

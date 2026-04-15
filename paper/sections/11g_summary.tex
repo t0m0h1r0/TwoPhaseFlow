@@ -25,10 +25,10 @@
         （Triangle: $2.10$ vs $2.04$）．
         CLS 界面変数 $\psi$ は $C^\infty$ 級であり，DCCD の散逸は殆ど影響しない．
   \item \textbf{曲率計算：}
-        経路 A（$\phi$ 直接微分）は $\Ord{h^5}$ の高次収束を示す．
-        経路 B（$\psi \to \phi$ ロジット逆変換）は界面厚み $\varepsilon$ で精度飽和が生じるが，
-        DCCD 安定化により $\Ord{h^2}$ の単調収束を達成した．
-        CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）が全体精度の律速である．
+        現行の CLS 曲率パイプラインは円形・正弦波状界面で誤差を単調に減少させるが，
+        $\varepsilon=1.5h$ の正則化幅と界面近傍評価帯が律速し，
+        $L_\infty$ 実効次数は約 $\Ord{h^1}$ にとどまる．
+        CCD 演算子単体の高次精度は別テストで確認する．
   \item \textbf{界面処理：}
         CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
         面積誤差は $\Ord{10^{-3}}$（$N{=}256$，単一渦），
@@ -69,7 +69,7 @@
         Young--Laplace テスト（§~\ref{sec:verify_young_laplace}）において
         密度場 $\rho(\psi)$ の補間が Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
   \item \textbf{Block Thomas 直接解法：}
-        全 CCD テスト（§~\ref{sec:verify_ccd_convergence}--§~\ref{sec:verify_curvature}）が
+        CCD 微分テスト（§~\ref{sec:verify_ccd_convergence}，§~\ref{sec:verify_mixed_partial}）が
         block Thomas アルゴリズムを介して周期・壁境界で設計通りの高次精度を達成しており，
         その正確性を含意する．
 \end{itemize}
@@ -91,7 +91,7 @@ CCD 微分（非一様格子）    & $\Ord{h^6}$        & 前漸近振動（$p=3
 DCCD フィルタ              & $H(\pi) = 0$       & $H(\pi) = 0$                   & \checkmark & チェッカーボード完全抑制 \\
 DCCD 移流（不連続）        & TV 低減            & TV: CCD $10.96$, DCCD $17.14$  & $\triangle$ & $C^0$ 以上で CCD 同等 \\
 Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$                & \checkmark & 標準 $\Ord{h^2}$ 比 14{,}229 倍 \\
-曲率（正弦波，$\phi$ 直接）& $\Ord{h^5}$        & $\Ord{h^{5.0}}$                & \checkmark & ベースライン \\
+曲率（CLS パイプライン）   & 単調減少          & $\Ord{h^{1.0}}$                & $\triangle$ & $\varepsilon=1.5h$ と評価帯が律速 \\
 CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
 CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
 CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}20\%$ \\
@@ -114,7 +114,7 @@ DGR 厚み制御               & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx
 WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \checkmark & 界面幅保存は同等 \\
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
-PPE 条件数                 & $\kappa \propto \rho/h^2$ & $\kappa \propto N^3 \cdot \rho$ & \checkmark & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
+PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
 NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 2.3 \times 10^{-1}$ & $\triangle$ & $\alpha{=}2$ 補間質量損失；一様 $2.3 \times 10^{-4}$ \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\

@@ -15,12 +15,16 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy import sparse
-from scipy.sparse.linalg import spsolve
 from twophase.backend import Backend
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.tools.experiment.gpu import (
+    fd_laplacian_dirichlet_2d,
+    max_abs_error,
+    sparse_solve_2d,
+    zero_dirichlet_boundary,
+)
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -37,33 +41,20 @@ def eval_LH(p, ccd, backend):
     for ax in range(2):
         _, d2p = ccd.differentiate(p_dev, ax)
         Lp += d2p
-    return np.asarray(backend.to_host(Lp))
-
-
-def build_fd_laplacian_dirichlet(N, h):
-    nx = ny = N + 1; n = nx * ny
-    rows, cols, vals = [], [], []
-    for i in range(nx):
-        for j in range(ny):
-            k = i * ny + j
-            if i == 0 or i == N or j == 0 or j == N:
-                rows.append(k); cols.append(k); vals.append(1.0)
-            else:
-                for di, dj in [(-1,0),(1,0),(0,-1),(0,1)]:
-                    rows.append(k); cols.append((i+di)*ny+(j+dj)); vals.append(1.0/h**2)
-                rows.append(k); cols.append(k); vals.append(-4.0/h**2)
-    return sparse.csr_matrix((vals, (rows, cols)), shape=(n, n))
+    return Lp
 
 
 def defect_correction(rhs, ccd, backend, L_L, k_max):
-    p = np.zeros_like(rhs)
+    xp = backend.xp
+    rhs_dev = xp.asarray(rhs)
+    p = xp.zeros_like(rhs_dev)
     for _ in range(k_max):
         Lp = eval_LH(p, ccd, backend)
         d = rhs - Lp
-        d[0,:] = 0; d[-1,:] = 0; d[:,0] = 0; d[:,-1] = 0
-        dp = spsolve(L_L, d.ravel()).reshape(rhs.shape)
+        zero_dirichlet_boundary(d)
+        dp = sparse_solve_2d(backend, L_L, d)
         p = p + dp
-        p[0,:] = 0; p[-1,:] = 0; p[:,0] = 0; p[:,-1] = 0
+        zero_dirichlet_boundary(p)
     return p
 
 
@@ -77,20 +68,17 @@ def run_experiment():
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         h = 1.0 / N
-        # Defect-correction loop below goes through scipy.sparse.spsolve,
-        # so p_exact / rhs are kept on host; CCD evaluation in eval_LH
-        # still runs on device via xp.asarray(p) internally.
         X, Y = grid.meshgrid()
-        X_h = backend.to_host(X); Y_h = backend.to_host(Y)
-        p_exact = np.sin(np.pi * X_h) * np.sin(np.pi * Y_h)
+        xp = backend.xp
+        p_exact = xp.sin(np.pi * X) * xp.sin(np.pi * Y)
         rhs = -2.0 * np.pi**2 * p_exact
-        rhs[0,:] = 0; rhs[-1,:] = 0; rhs[:,0] = 0; rhs[:,-1] = 0
-        L_L = build_fd_laplacian_dirichlet(N, h)
+        zero_dirichlet_boundary(rhs)
+        L_L = fd_laplacian_dirichlet_2d(N, h, backend)
 
         row = f"  N={N:>4}:"
         for k in Ks:
             p_dc = defect_correction(rhs, ccd, backend, L_L, k)
-            err = float(np.max(np.abs(p_dc - p_exact)))
+            err = max_abs_error(backend, p_dc, p_exact)
             errors[k].append({"N": N, "h": h, "Li": err})
             row += f"  k={k}:{err:.2e}"
         print(row)
