@@ -39,19 +39,22 @@
 - Agent prompts → `prompts/agents-claude/` (read as domain reference, not routing)
 
 ## Execution Workflow
-| Task | Command |
-|---|---|
-| Run experiment (remote GPU) | `make run EXP=<path>` |
-| Run experiment (local CPU) | `make run-local EXP=<path>` |
-| Push + Run + Pull | `make cycle EXP=<path>` |
-| Run all chapter experiments | `make run-all CH=ch11` |
-| Re-plot from cached npz | `make plot EXP=<path>` |
-| Tests (remote GPU) | `make test` |
-| Tests (local CPU) | `make test-local` |
-| SSH into remote | `make ssh` |
+**Remote-first policy: experiments MUST run on the remote GPU server. Local commands are fallback-only (remote explicitly unavailable).**
 
-- Direct `python3 experiment/...` is discouraged — it silently runs locally
-- After code changes, `make push` before `make run` (remote uses rsync with `--checksum`)
+| Task | Command | Priority |
+|---|---|---|
+| Push + Run + Pull (code changed) | `make cycle EXP=<path>` | **preferred** |
+| Run single experiment | `make run EXP=<path>` | default |
+| Run all chapter experiments | `make run-all CH=ch11` | default |
+| Tests | `make test` | default |
+| Re-plot from cached npz | `make plot EXP=<path>` | default |
+| SSH into remote | `make ssh` | — |
+| Run locally (fallback) | `make run-local EXP=<path>` | fallback only |
+| Tests locally (fallback) | `make test-local` | fallback only |
+
+- Do NOT use `python3 experiment/...` directly — bypasses remote and silently runs locally
+- `make run` / `make test` auto-detect remote; fall back to local only when SSH is unreachable
+- After standalone code changes: `make push` then `make run` (rsync uses `--checksum`)
 - Use git worktrees for isolated feature/fix work; remote dir is shared across worktrees
 - **Network required:** `make run` / `make push` / `make pull` all SSH to a remote GPU server.
   Codex must run with `sandbox = "network-enabled"` in `.codex/config.toml`.
