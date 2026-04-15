@@ -16,11 +16,13 @@
         非一様格子で $\Ord{h^6}$（GCL 合格）を達成した．
         DCCD フィルタは Nyquist モードを完全に抑制し（$H(\pi)=0$），
         Rhie--Chow C/RC ブラケットは $\Ord{h^4}$ を達成して
-        標準 $\Ord{h^2}$ に対し $N{=}128$ で 24{,}876 倍の精度向上を確認した．
+        標準 $\Ord{h^2}$ に対し $N{=}128$ で 14{,}229 倍の精度向上を確認した．
   \item \textbf{DCCD 移流特性：}
-        不連続プロファイルの TV を CCD の約 $1/3$ に低減し（$10.83 \to 3.15$），
-        平滑プロファイルでは精度を維持する．
-        この特性が CLS 界面移流への DCCD 適用の根拠となる．
+        2 次散逸（$\varepsilon_d = 0.05$）による DCCD は，
+        不連続プロファイルでは CCD と同程度の TV（$17.14$ vs $10.96$）を示すが，
+        $C^0$ 以上のプロファイルでは CCD と同等の TV を維持する
+        （Triangle: $2.10$ vs $2.04$）．
+        CLS 界面変数 $\psi$ は $C^\infty$ 級であり，DCCD の散逸は殆ど影響しない．
   \item \textbf{曲率計算：}
         経路 A（$\phi$ 直接微分）は $\Ord{h^5}$ の高次収束を示す．
         経路 B（$\psi \to \phi$ ロジット逆変換）は界面厚み $\varepsilon$ で精度飽和が生じるが，
@@ -28,8 +30,9 @@
         CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）が全体精度の律速である．
   \item \textbf{界面処理：}
         CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
-        面積誤差は $\Ord{10^{-4}}$（$N{=}256$，単一渦），
-        保存型再マッピングは LS 非保存補間比で 85 倍改善（$K{=}10$），
+        面積誤差は $\Ord{10^{-3}}$（$N{=}256$，単一渦），
+        保存型再マッピングは $K \leq 20$ で機械精度 $\Ord{10^{-16}}$ を達成
+        （LS は全条件で約 20\% の質量誤差），
         HFE は 1D で $\Ord{h^{7.0}}$（上風 $\Ord{h^1}$ 比 $10^5$ 倍改善），
         2D テンソル積で $\Ord{h^{3.0}}$（$N{=}256$ で $L_\infty = 7.5 \times 10^{-9}$）を達成した．
   \item \textbf{PPE 求解：}
@@ -80,17 +83,17 @@
 \midrule
 CCD 微分（周期）          & $\Ord{h^6}$        & $\Ord{h^{6.0}}$                & \checkmark & $N = 256$ で丸め誤差到達 \\
 CCD 微分（壁境界）        & $\Ord{h^5}$        & $\Ord{h^{5}}$                  & \checkmark & 境界スキームが律速 \\
-CCD 微分（非一様格子）    & $\Ord{h^6}$        & $\Ord{h^6}$（5.86--6.65）      & \checkmark & GCL 合格（$5.4 \times 10^{-14}$） \\
+CCD 微分（非一様格子）    & $\Ord{h^6}$        & $\Ord{h^6}$（5.86--6.65）      & \checkmark & GCL 合格（$2.4 \times 10^{-14}$） \\
 DCCD フィルタ              & $H(\pi) = 0$       & $H(\pi) = 0$                   & \checkmark & チェッカーボード完全抑制 \\
-DCCD 移流（不連続）        & TV 低減            & TV: $10.83 \to 3.15$           & \checkmark & CCD 比 $1/3$ \\
-Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$                & \checkmark & 標準 $\Ord{h^2}$ 比 24{,}876 倍 \\
+DCCD 移流（不連続）        & TV 低減            & TV: CCD $10.96$, DCCD $17.14$  & $\triangle$ & $C^0$ 以上で CCD 同等 \\
+Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$                & \checkmark & 標準 $\Ord{h^2}$ 比 14{,}229 倍 \\
 曲率（正弦波，$\phi$ 直接）& $\Ord{h^5}$        & $\Ord{h^{5.0}}$                & \checkmark & ベースライン \\
 CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
-CLS 面積精度               & 格子収束           & $\Ord{10^{-4}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
-CLS 保存型再マッピング     & LS 比改善          & 85 倍（$K{=}10$）              & \checkmark & 動的非一様格子 \\
+CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
+CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}20\%$ \\
 HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 上風比 $10^5$ 倍改善 \\
 HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $\Ord{h^{3.0}}$ & $\triangle$\textsuperscript{‡} & テンソル積逐次補間 \\
-Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.22\%$              & \checkmark & $N{=}128$，CSF + CCD-PPE \\
+Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.2$--$0.3\%$        & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
 PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $4.9 \times 10^7$ 倍 \\
 PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
 分相 PPE + DC $k{=}3$      & $\Ord{h^7}$       & $\Ord{h^{7.0}}$                & \checkmark & 全密度比で不変（$\rho{=}1$--$1000$） \\
@@ -108,7 +111,7 @@ WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
 PPE 条件数                 & $\kappa \propto \rho/h^2$ & $\kappa \propto N^3 \cdot \rho$ & \checkmark & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
-NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 7.7 \times 10^{-5}$ & \checkmark & $\alpha{=}2$, $N{=}32$, 寄生電流 1.2 倍 \\
+NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 2.3 \times 10^{-1}$ & $\triangle$ & $\alpha{=}2$ 補間質量損失；一様 $2.3 \times 10^{-4}$ \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
 再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
@@ -131,7 +134,7 @@ TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
 CN $\Ord{\Delta t^{2.0}}$（無条件安定），
 交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_int} の予測と一致）．
 CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$（FD 比 2.4 倍；明示的粘性 CFL 制約の根拠）．
-CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-4}}$（$N{=}256$），
+CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-3}}$（$N{=}256$），
 DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D $\Ord{h^{3.0}}$．
 分相 PPE + DC $k{=}3$ は全密度比（$\rho_l/\rho_g = 1$--$1000$）で
 $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
