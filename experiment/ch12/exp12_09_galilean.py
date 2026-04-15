@@ -347,7 +347,7 @@ def plot(results):
         fontsize=11,
     )
 
-    save_figure(FIG_PATH, fig)
+    save_figure(fig, FIG_PATH)
 
 
 # ── I/O ──────────────────────────────────────────────────────────────────────

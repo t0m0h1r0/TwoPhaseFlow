@@ -336,7 +336,7 @@ def plot(results):
         fontsize=10, y=1.003,
     )
 
-    save_figure(FIG_PATH, fig)
+    save_figure(fig, FIG_PATH)
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────

@@ -212,7 +212,7 @@ def make_figures(results):
     ax.legend(); ax.grid(True, alpha=0.3, which="both"); ax.invert_xaxis()
 
     plt.tight_layout()
-    save_figure(OUT / "convergence.pdf", fig)
+    save_figure(fig, OUT / "convergence")
 
     # ── Time history ──
     fig2, ax2 = plt.subplots(figsize=(7, 5))
@@ -223,7 +223,7 @@ def make_figures(results):
     ax2.set_ylabel(r"$\|\mathbf{u}_{\mathrm{para}}\|_\infty$")
     ax2.set_title("Parasitic Current Time History")
     ax2.legend(); ax2.grid(True, alpha=0.3)
-    save_figure(OUT / "parasitic_history.pdf", fig2)
+    save_figure(fig2, OUT / "parasitic_history")
 
 
 # ── Field visualization (N=64 only) ─────────────────────────────────────────
