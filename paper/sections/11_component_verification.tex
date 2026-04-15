@@ -1,4 +1,4 @@
-% paper/sections/11_chapter.tex
+% paper/sections/11_component_verification.tex
 %
 % §11  計算コンポーネントの数学的検証
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -78,10 +78,10 @@ $|p - p_{\mathrm{design}}| < 0.5$ で\textbf{合格}（\checkmark），
 \end{tabular}
 \end{table}
 
-\input{sections/11_spatial}               %% §11.1 空間離散化基盤の検証（CCD/GCL/DCCD）
-\input{sections/11_spatial_geometry}      %% §11.1続き（曲率・Rhie-Chow・混合微分）
-\input{sections/11_interface}             %% §11.2 界面処理パイプラインの検証（CLS/WENO5/DGR/DCCD質量保存）
-\input{sections/11_interface_field}       %% §11.2続き（動的格子再マッピング・HFE・Young-Laplace）
-\input{sections/11_solver}                %% §11.3 圧力ソルバの検証
-\input{sections/11_time}                  %% §11.4 時間積分スキームの検証
-\input{sections/11_summary}               %% §11.5 検証結果の総括
+\input{sections/11a_spatial_discretization} %% §11.1 空間離散化基盤の検証（CCD/GCL/DCCD）
+\input{sections/11b_spatial_geometry}       %% §11.1続き（曲率・Rhie-Chow・混合微分）
+\input{sections/11c_interface_pipeline}     %% §11.2 界面処理パイプラインの検証（CLS/WENO5/DGR/DCCD質量保存）
+\input{sections/11d_interface_field}        %% §11.2続き（動的格子再マッピング・HFE・Young-Laplace）
+\input{sections/11e_pressure_solver}        %% §11.3 圧力ソルバの検証
+\input{sections/11f_time_integration}       %% §11.4 時間積分スキームの検証
+\input{sections/11g_summary}                %% §11.5 検証結果の総括
