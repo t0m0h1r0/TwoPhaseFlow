@@ -363,8 +363,8 @@ def make_rt_field_figure(result):
     Ny = int(result.get("Ny", 256))
     Lx = float(result.get("Lx", 1.0))
     Ly = float(result.get("Ly", 4.0))
-    x1d = np.linspace(0, Lx, Nx)
-    y1d = np.linspace(0, Ly, Ny)
+    x1d = np.linspace(0, Lx, Nx + 1)
+    y1d = np.linspace(0, Ly, Ny + 1)
 
     snap_t_select = [0.0, 1.0, 1.5, 2.5]
     col_labels = ["$t=0$", "$t=1.0$", "$t=1.5$", "$t=2.5$"]
@@ -394,10 +394,10 @@ def make_rt_field_figure(result):
 
     for col, snap in enumerate(selected):
         psi = snap["psi"]
-        p   = snap.get("p",   np.zeros((Nx, Ny)))
-        u   = snap.get("u",   np.zeros((Nx, Ny)))
-        v   = snap.get("v",   np.zeros((Nx, Ny)))
-        rho = snap.get("rho", np.zeros((Nx, Ny)))
+        p   = snap.get("p",   np.zeros((Nx + 1, Ny + 1)))
+        u   = snap.get("u",   np.zeros((Nx + 1, Ny + 1)))
+        v   = snap.get("v",   np.zeros((Nx + 1, Ny + 1)))
+        rho = snap.get("rho", np.zeros((Nx + 1, Ny + 1)))
 
         speed = np.sqrt(u**2 + v**2)
         dv_dx = np.gradient(v, h_x, axis=0)
@@ -417,11 +417,9 @@ def make_rt_field_figure(result):
             else:
                 vmin, vmax = fld.min(), fld.max()
             field_with_contour(
-                ax, x1d, y1d, fld.T, psi.T,
+                ax, x1d, y1d, fld,
                 cmap=cmap, vmin=vmin, vmax=vmax,
-                contour_levels=[0.5],
-                contour_colors=["k"],
-                contour_linewidths=[1.0],
+                contour_field=psi, contour_level=0.5,
             )
             ax.set_ylim(0.5, 3.5)
             if col == 0:
@@ -435,7 +433,7 @@ def make_rt_field_figure(result):
 
         # Row 4: streamlines
         ax = axes[4, col]
-        streamlines_colored(ax, x1d, y1d, u.T, v.T, speed.T)
+        streamlines_colored(ax, x1d, y1d, u, v, contour_field=psi, contour_level=0.5)
         ax.set_ylim(0.5, 3.5)
         if col == 0:
             ax.set_ylabel(row_labels[4], fontsize=9)

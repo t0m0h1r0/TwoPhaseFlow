@@ -248,8 +248,8 @@ def _run_droplet_snapshot(rho_l, rho_g=1.0, N=64, n_steps=50):
         v = v_star - dt / rho * np.asarray(dp_dy)
         wall_bc(u); wall_bc(v)
 
-    x1d = np.linspace(0, 1, N)
-    y1d = np.linspace(0, 1, N)
+    x1d = np.linspace(0, 1, N + 1)
+    y1d = np.linspace(0, 1, N + 1)
     return {
         "rho_ratio": rho_l / rho_g,
         "p": p, "u": u, "v": v, "psi": psi,
