@@ -1,0 +1,29 @@
+# TwoPhaseFlow — Codex project configuration
+# Equivalent to .claude/settings.json for Claude Code.
+# Reference: https://developers.openai.com/codex/config-reference
+
+# Primary coding-optimized model.
+# Alternatives: "o4-mini" (faster/cheaper), "o3" (strongest reasoning)
+model = "codex-1"
+
+# Effort level — matches CLAUDE_CODE_EFFORT_LEVEL=max intent
+model_reasoning_effort = "high"
+
+# Require confirmation before network-touching or destructive operations;
+# auto-approve safe read-only and local file ops.
+approval_policy = "unless-allow-listed"
+
+# Network access is required: make run / make push / make pull all SSH to
+# a remote GPU server (RTX 3080 Ti). Without network, all remote experiment
+# execution is blocked.
+# Set to "workspace-only" if you want file-system isolation but still need SSH.
+sandbox_mode = "network-enabled"
+
+# Disable web search to avoid distractions during focused coding sessions.
+# Enable temporarily with: codex --web-search <task>
+web_search = false
+
+[shell_environment_policy]
+# Inherit the login shell environment so TWOPHASE_USE_GPU, SSH agent socket,
+# PATH (with conda/venv), and remote.conf credentials are all available.
+inherit = true
