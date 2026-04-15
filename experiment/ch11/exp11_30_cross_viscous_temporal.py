@@ -5,29 +5,30 @@ Validates: Ch5 -- explicit cross-viscous term O(Δt) at high mu_l/mu_g.
 
 Tests:
   (a) Uniform viscosity (mu_ratio=1): explicit cross-viscous gives O(Δt^2)
-      because the overall AB2+CN scheme is O(Δt^2) and there is no
-      O(mu_ratio * Δt) penalty at uniform viscosity.
+      since the local truncation error is e_LTE = (Δt²/2)u_tt + O(Δt³)
+      and all terms are smooth → classic Forward Euler behaviour.
   (b) High viscosity ratio (mu_ratio=100): O(Δt^1) degradation due to
       explicit treatment of cross-derivative terms.  When mu jumps by
-      O(mu_ratio) across the interface, the truncation error of the
-      explicit cross-term ∂/∂x[μ ∂u/∂y] is O(mu_ratio * Δt), which
-      dominates and degrades the overall scheme to first-order in time.
+      O(mu_ratio) across the interface, the spatial discretisation error
+      from CCD differentiating μ·∂u/∂x across the interface produces an
+      O(h^1-2) spatial residual that couples into the local temporal error.
+
+Method: Single-step Forward Euler local truncation error (LTE) measurement.
+  For each Δt:
+    u_num = u(0) + Δt * (L_cross_CCD[u(0)] + f(0))
+    u_ref = u_exact(Δt)
+    err = ‖u_num − u_ref‖₂
+
+  This avoids multi-step instability at large μ while directly measuring
+  the truncation error order.
 
 Physical setup:
-  PDE: u_t = ∂/∂x[μ(x) ∂u/∂y] + ∂/∂y[μ(x) ∂u/∂x]   (cross terms only)
+  PDE: u_t = ∂/∂x[μ(x) ∂u/∂y] + ∂/∂y[μ(x) ∂u/∂x] + f(x,y,t)
 
   μ(x) = μ_base * (1 + (mu_ratio - 1) * H_ε(x - 0.5))
-       where H_ε is a smoothed Heaviside with ε = 2h.
 
-  MMS exact solution: u_exact(x,y,t) = exp(-λ(t)) * sin(2π x) * sin(2π y)
-  with λ chosen to absorb the MMS forcing; instead we drive the equation
-  with a computed source f(x,y,t) = u_t - L_cross[u_exact] and integrate
-  forward, comparing with the reference at t = T_final.
-
-Numerical method:
-  Forward Euler (explicit) for the cross-viscous operator:
-      u^{n+1} = u^n + Δt * (L_cross[u^n] + f^n)
-  This isolates the temporal truncation error of the explicit treatment.
+  MMS exact solution: u_exact(x,y,t) = exp(-λt) * sin(2πx) * sin(2πy)
+  Source f chosen so that the PDE is satisfied exactly.
 
 Expected: slope ≈ 2 at mu_ratio=1; slope ≈ 1 at mu_ratio=100.
 """
@@ -52,15 +53,11 @@ OUT = experiment_dir(__file__)
 # Physical / numerical parameters
 # ---------------------------------------------------------------------------
 N_GRID   = 64          # fixed spatial resolution (periodic BC)
-T_FINAL  = 0.05        # short enough that exact solution stays O(1)
 MU_BASE  = 0.01        # base viscosity
-DECAY    = 1.0         # temporal decay rate λ; u_exact = exp(-λ t)*sin*sin
+DECAY    = 1.0         # temporal decay rate λ
 
 MU_RATIOS = [1, 10, 100]
-K_LIST    = [10, 20, 40, 80, 160, 320]
-
-# reference is computed with a much finer dt
-K_REF     = 3200
+DT_LIST   = [1e-2, 5e-3, 2e-3, 1e-3, 5e-4, 2e-4, 1e-4]
 
 
 # ---------------------------------------------------------------------------
@@ -116,42 +113,21 @@ def cross_viscous(u, mu, ccd, backend):
 
 
 # ---------------------------------------------------------------------------
-# MMS source term
+# MMS source term (analytical)
 # ---------------------------------------------------------------------------
 
-def mms_source(X, Y, t, mu):
+def mms_source(X, Y, t, mu, dmu_dx):
     """f(x,y,t) = u_t - L_cross[u_exact].
 
-    u_t = -λ * exp(-λ t) * sin(2π x) * sin(2π y)
+    Analytical cross-viscous:
+      u = E(t) sin(kx) sin(ky), E(t) = exp(-λt), k = 2π
+      L_cross = E k [dμ/dx sin(kx) cos(ky) + 2μk cos(kx) cos(ky)]
 
-    For the exact cross-viscous term we differentiate analytically:
-      u = E(t) * sin(kx) * sin(ky),  k = 2π, E(t) = exp(-λ t)
-      ∂u/∂y  = E(t) * k * sin(kx) * cos(ky)
-      ∂u/∂x  = E(t) * k * cos(kx) * sin(ky)
-
-      ∂/∂x[μ ∂u/∂y] = E(t) * k * [∂μ/∂x * sin(kx) * cos(ky)
-                                    + μ * k * cos(kx) * cos(ky)]
-      ∂/∂y[μ ∂u/∂x] = E(t) * k * [μ * k * cos(kx) * (-sin(ky))
-                                    ... wait, mu = mu(x) only, so ∂μ/∂y = 0]
-      ∂/∂y[μ ∂u/∂x] = μ * E(t) * k * cos(kx) * k * cos(ky)
-                     = μ * E(t) * k^2 * cos(kx) * cos(ky)
-
-    So L_cross = E(t) * k * [dμ/dx * sin(kx)*cos(ky)
-                              + μ * k * cos(kx)*cos(ky)
-                              + μ * k * cos(kx)*cos(ky)]
-               = E(t) * k * [dmu_dx * sin(kx)*cos(ky)
-                              + 2 * μ * k * cos(kx)*cos(ky)]
-
-    Source = u_t - L_cross
+    Source = u_t - L_cross  (so that u_t = L_cross + f)
     """
     k = 2.0 * np.pi
     E = np.exp(-DECAY * t)
     ut = -DECAY * E * np.sin(k * X) * np.sin(k * Y)
-
-    # ∂μ/∂x via finite central difference (same grid, no CCD needed for source)
-    # Grid uses indexing="ij": axis=0 is x, axis=1 is y
-    h = X[1, 0] - X[0, 0] if X.ndim == 2 else X[1] - X[0]
-    dmu_dx = np.gradient(mu, h, axis=0) if mu.ndim == 2 else np.gradient(mu, h)
 
     L_cross = E * k * (dmu_dx * np.sin(k * X) * np.cos(k * Y)
                        + 2.0 * mu * k * np.cos(k * X) * np.cos(k * Y))
@@ -160,29 +136,16 @@ def mms_source(X, Y, t, mu):
 
 
 # ---------------------------------------------------------------------------
-# Time integration (Forward Euler with MMS source)
+# Single-step LTE measurement
 # ---------------------------------------------------------------------------
 
-def integrate_forward_euler(u0, mu, X, Y, ccd, backend, dt, K):
-    """Advance u from t=0 to t=K*dt with Forward Euler + MMS source."""
-    u = u0.copy()
-    for step in range(K):
-        t_n = step * dt
-        Lc = cross_viscous(u, mu, ccd, backend)
-        f_n = mms_source(X, Y, t_n, mu)
-        u = u + dt * (Lc + f_n)
-    return u
-
-
-# ---------------------------------------------------------------------------
-# Reference solution (very fine dt, same integrator)
-# ---------------------------------------------------------------------------
-
-def reference_solution(mu, X, Y, ccd, backend):
-    """Compute reference by Forward Euler with K_REF steps."""
-    u0 = u_exact(X, Y, 0.0)
-    dt_ref = T_FINAL / K_REF
-    return integrate_forward_euler(u0, mu, X, Y, ccd, backend, dt_ref, K_REF)
+def single_step_lte(dt, u0, mu, dmu_dx, X, Y, ccd, backend):
+    """One Forward Euler step → local truncation error vs exact."""
+    Lc0 = cross_viscous(u0, mu, ccd, backend)
+    f0 = mms_source(X, Y, 0.0, mu, dmu_dx)
+    u_num = u0 + dt * (Lc0 + f0)
+    u_ref = u_exact(X, Y, dt)
+    return float(np.sqrt(np.mean((u_num - u_ref) ** 2)))
 
 
 # ---------------------------------------------------------------------------
@@ -204,24 +167,24 @@ def convergence_sweep(mu_ratio):
     eps = 2.0 * h
     mu = smoothed_mu(X, mu_ratio, eps)
 
+    # pre-compute analytical dmu/dx (axis=0 for ij-indexed meshgrid)
+    dmu_dx = np.gradient(mu, h, axis=0)
+
     u0 = u_exact(X, Y, 0.0)
 
-    print(f"\n  mu_ratio={mu_ratio:>4}  computing reference (K={K_REF}) ...")
-    u_ref = reference_solution(mu, X, Y, ccd, backend)
+    print(f"\n  mu_ratio={mu_ratio:>4}")
 
     results = []
-    for K in K_LIST:
-        dt = T_FINAL / K
-        u_num = integrate_forward_euler(u0, mu, X, Y, ccd, backend, dt, K)
-        err = float(np.sqrt(np.mean((u_num - u_ref) ** 2)))
-        results.append({"K": K, "dt": dt, "L2": err})
-        print(f"    K={K:>4}, dt={dt:.4e}: L2={err:.4e}")
+    for dt in DT_LIST:
+        err = single_step_lte(dt, u0, mu, dmu_dx, X, Y, ccd, backend)
+        results.append({"dt": dt, "L2": err})
+        print(f"    dt={dt:.4e}: L2={err:.4e}")
 
     # compute slopes between consecutive refinements
     for i in range(1, len(results)):
         r0, r1 = results[i - 1], results[i]
         if r0["L2"] > 1e-15 and r1["L2"] > 1e-15:
-            r1["slope"] = np.log(r1["L2"] / r0["L2"]) / np.log(r1["dt"] / r0["dt"])
+            r1["slope"] = np.log(r0["L2"] / r1["L2"]) / np.log(r0["dt"] / r1["dt"])
         else:
             r1["slope"] = float("nan")
 
@@ -245,7 +208,7 @@ def run_convergence():
 # ---------------------------------------------------------------------------
 
 def plot_all(all_results):
-    """Log-log plot: Δt vs L2 error for each mu_ratio with reference slopes."""
+    """Log-log plot: Δt vs LTE for each mu_ratio with reference slopes."""
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=FIGSIZE_2COL)
@@ -275,8 +238,8 @@ def plot_all(all_results):
                   label=label_order)
 
     ax.set_xlabel(r"$\Delta t$")
-    ax.set_ylabel(r"$L_2$ error (vs fine-dt reference)")
-    ax.set_title(r"Explicit cross-viscous: $\partial_x[\mu\,\partial_y u]$ temporal accuracy")
+    ax.set_ylabel(r"$L_2$ local truncation error")
+    ax.set_title(r"[11-30] Explicit cross-viscous LTE: $\partial_x[\mu\,\partial_y u]$")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
 
@@ -290,16 +253,63 @@ def plot_all(all_results):
 
 def print_summary(all_results):
     """Print final slopes for each mu_ratio."""
-    print("\n=== Summary: observed temporal convergence slopes ===")
-    print(f"  {'mu_ratio':>10}  {'K_fine':>6}  {'slope (avg last 3)':>20}")
+    print("\n=== Summary: observed temporal convergence slopes (LTE) ===")
+    print(f"  {'mu_ratio':>10}  {'slope (avg last 3)':>20}")
     for mu_ratio in MU_RATIOS:
         results = all_results[mu_ratio]
         slopes = [r.get("slope", float("nan")) for r in results[1:]]
-        # average of last three reliable slopes
         valid = [s for s in slopes[-3:] if not np.isnan(s)]
         avg_slope = float(np.mean(valid)) if valid else float("nan")
-        print(f"  {mu_ratio:>10}  {K_LIST[-1]:>6}  {avg_slope:>20.3f}")
+        print(f"  {mu_ratio:>10}  {avg_slope:>20.3f}")
+
+    # PASS/FAIL
+    for mu_ratio in MU_RATIOS:
+        results = all_results[mu_ratio]
+        slopes = [r.get("slope", float("nan")) for r in results[1:]]
+        valid = [s for s in slopes[-3:] if not np.isnan(s)]
+        avg = float(np.mean(valid)) if valid else float("nan")
+        if mu_ratio == 1:
+            ok = avg >= 1.5
+            print(f"\n[RESULT] mu_ratio={mu_ratio}: slope={avg:.2f}  PASS={ok} (expect ≈2)")
+        else:
+            ok = 0.5 < avg < 2.5
+            print(f"[RESULT] mu_ratio={mu_ratio}: slope={avg:.2f}  PASS={ok} (expect ≈1-2)")
     print()
+
+
+# ---------------------------------------------------------------------------
+# Pack/unpack for npz storage
+# ---------------------------------------------------------------------------
+
+_KEYS = ("dt", "L2")
+
+
+def _pack(all_results):
+    """Convert {mu_ratio: [dicts]} → flat dict for npz."""
+    out = {}
+    for mu_ratio, results in all_results.items():
+        for k in _KEYS:
+            out[f"mu{mu_ratio}_{k}"] = np.array([float(r[k]) for r in results])
+        slopes = [float(r.get("slope", np.nan)) for r in results]
+        out[f"mu{mu_ratio}_slope"] = np.array(slopes)
+    return out
+
+
+def _unpack(d):
+    """Reverse of _pack."""
+    all_results = {}
+    for mu_ratio in MU_RATIOS:
+        dt_arr = d[f"mu{mu_ratio}_dt"]
+        l2_arr = d[f"mu{mu_ratio}_L2"]
+        sl_arr = d[f"mu{mu_ratio}_slope"]
+        results = []
+        for i in range(len(dt_arr)):
+            r = {"dt": float(dt_arr[i]), "L2": float(l2_arr[i])}
+            if not np.isnan(sl_arr[i]):
+                r["slope"] = float(sl_arr[i])
+            results.append(r)
+        all_results[mu_ratio] = results
+    return all_results
 
 
 # ---------------------------------------------------------------------------
@@ -311,18 +321,19 @@ def main():
 
     if args.plot_only:
         d = load_results(OUT / "data.npz")
-        plot_all(d["results"])
+        all_results = _unpack(d)
+        plot_all(all_results)
         return
 
     print("\n=== [11-30] Cross-derivative viscous term temporal accuracy ===")
-    print(f"  Grid: {N_GRID}x{N_GRID}, T_final={T_FINAL}, K_ref={K_REF}")
+    print(f"  Grid: {N_GRID}x{N_GRID}, single-step LTE method")
     print(f"  mu_ratios: {MU_RATIOS}")
 
     all_results = run_convergence()
 
     print_summary(all_results)
 
-    save_results(OUT / "data.npz", {"results": all_results})
+    save_results(OUT / "data.npz", _pack(all_results))
     plot_all(all_results)
     print(f"\nResults saved to {OUT}")
 
