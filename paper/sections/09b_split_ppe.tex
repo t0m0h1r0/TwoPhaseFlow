@@ -30,12 +30,12 @@ PPE のグリーン関数の非局所性により解全体に伝播する
 smoothed Heaviside 一括解法の\textbf{本質的制約}である：
 %
 \begin{itemize}[noitemsep]
-  \item $\rho_l/\rho_g = 2$--$5$：格子収束次数が $\Ord{h^{0.1}}$--$\Ord{h^{2}}$ に劣化
-  \item $\rho_l/\rho_g \geq 10$：DC が発散（反復行列のスペクトル半径 $> 1$）
-  \item 水--空気系（$\rho_l/\rho_g \approx 830$）：使用不可
+  \item $\rho_l/\rho_g = 2$--$5$：高解像度側で格子収束がプラトー化
+  \item $\rho_l/\rho_g = 10$--$100$：DC 発散は再試験では再現しないが，界面型密度場で設計精度は回復しない
+  \item 水--空気系（$\rho_l/\rho_g \approx 830$）：一括 smoothed Heaviside のみでの高精度計算は未保証
 \end{itemize}
 %
-§~\ref{sec:interface_crossing} に定量的な破綻データを示す．
+§~\ref{sec:interface_crossing} に定量的な再試験データを示す．
 重要な点として，$\rho_l/\rho_g = 2$--$5$ でも界面近傍の精度は
 CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
 低密度比だから一括解法で十分ということはない．

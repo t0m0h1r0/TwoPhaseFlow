@@ -129,8 +129,8 @@ Step & 処理 & 手法 & 参照 \\
           分相 PPE 適用時は，液相内部 Dirichlet 評価で DC $k{=}3$ が $\Ord{h^7}$ を回復する
           ことが §~\ref{sec:verify_split_ppe_dc} で実証されているが，
           実運用の Neumann 条件では境界スキームにより $\Ord{h^5}$ が上界となる．
-          一括 smoothed Heaviside 密度場では界面近傍で $\Ord{h^{1\text{--}2}}$ に劣化し
-          $\rho_l/\rho_g \geq 10$ では DC が発散する；§~\ref{sec:interface_crossing}）
+          一括 smoothed Heaviside 密度場では界面近傍で高次精度が失われ，
+          高解像度側で格子収束がプラトー化する；§~\ref{sec:interface_crossing}）
 \end{itemize}
 \end{tcolorbox}
 
@@ -291,8 +291,8 @@ CCD 発散から構成される（式~\eqref{eq:dccd_ppe_rhs}）．
 反復アルゴリズム（Steps 6.0--6.5）の詳細は付録~\ref{app:dc_ppe_detail} 参照．
 
 \noindent\textbf{高密度比への拡張：}
-上記の変密度 PPE（smoothed Heaviside 一括解法）は $\rho_l/\rho_g \leq 5$ で有効であるが，
-$\rho_l/\rho_g \geq 10$ では DC が発散する（§~\ref{sec:interface_crossing}）．
+上記の変密度 PPE（smoothed Heaviside 一括解法）は低--中密度比で実用的に動作するが，
+界面型密度場では高解像度側で格子収束がプラトー化する（§~\ref{sec:interface_crossing}）．
 高密度比では Step~6 を\textbf{分相 PPE 解法}——各相で定数密度 PPE を独立に解き，
 界面ジャンプ条件を HFE（§~\ref{sec:field_extension}）で課す方式——に置換する．
 §~\ref{sec:split_ppe_recovery} では，分相 PPE + DC $k{=}3$ が

@@ -69,6 +69,7 @@ class TwoPhaseNSSolver:
         dx_min_floor: float = 1e-6,
         use_local_eps: bool = False,
         grid_rebuild_freq: int = 1,
+        reinit_every: int = 2,
         cn_viscous: bool = False,
         Re: float = 1.0,
     ) -> None:
@@ -79,6 +80,7 @@ class TwoPhaseNSSolver:
         self._eps_factor = eps_factor
         self._use_local_eps = use_local_eps
         self._rebuild_freq = max(1, int(grid_rebuild_freq))
+        self._reinit_every = int(reinit_every)
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -126,6 +128,7 @@ class TwoPhaseNSSolver:
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             use_local_eps=getattr(g, "use_local_eps", False),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
+            reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
             cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
             Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
         )
@@ -397,7 +400,7 @@ class TwoPhaseNSSolver:
 
         # ── 1. Advect ψ + reinitialize ─────────────────────────────────
         psi = _h(self._adv.advance(psi, [u, v], dt))
-        if step_index % 2 == 0:
+        if self._reinit_every > 0 and step_index % self._reinit_every == 0:
             psi = _h(self._reinit.reinitialize(psi))
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)

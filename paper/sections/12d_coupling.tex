@@ -98,7 +98,7 @@ Laplace 圧は 1.2\% 以内の精度を維持する．
 $N = 128$，$\rho_l/\rho_g = 5$ で寄生流れの成長比が 5.3 に達する
 （判定「条件付」）．
 これは PPE の変密度近似精度が高解像度・高密度比で劣化する兆候であり，
-§~\ref{sec:interface_crossing} の破綻限界テストと整合する．
+§~\ref{sec:interface_crossing} の界面型密度場における格子収束劣化と整合する．
 
 % HFE 適合性テスト → 付録~\ref{sec:hfe_smoothed_scope} に移動
 \noindent\textbf{HFE フィールド延長と曲率フィルタの区別：}
@@ -234,13 +234,13 @@ CLS↔PPE 結合が動的界面変形でも正しく機能する．
 $\Delta t_\sigma = \sqrt{(\rho_l + \rho_g)\Delta x^3 / (2\pi\sigma)}$
 （$\Delta t_\sigma \propto \Delta x^{3/2}$）を
 CCD 離散化された 1D 毛細管波 PDE
-$\eta_{tt} = -(\sigma/(\rho_l{+}\rho_g))\eta_{xxx}$
+$\eta_{tt} = -(\sigma/(\rho_l{+}\rho_g))|D|^3\eta$
 の安定限界で検証した（$N = 32$--$256$，RK4，2 分探索）．
 
-測定されたスケーリング指数は $\mathbf{1.82}$（FD2 理論値 $3/2 = 1.500$ より大）であり，
-$\Delta t_{\max} / \Delta t_\sigma$ の比率は $N = 64$ 以上で $1.6$--$1.8$ に収束した．
-CCD の高精度曲率計算により，数値的な安定限界は FD2 理論値の
-$1.6$ 倍以上に拡大される．
+再試験では測定されたスケーリング指数は $\mathbf{1.500}$ であり，
+理論値 $3/2$ と一致した．
+$\Delta t_{\max} / \Delta t_\sigma$ の比率は全解像度で $1.28$ に保たれ，
+毛細管 CFL 式が安定限界の解像度依存性を正しく捉えることを確認した．
 §~\ref{sec:algo_flow} Step 0 の $C_{\mathrm{CFL}} = 0.45$ は
 毛細管安定性を含めて十分な安全マージンを持つ．
 

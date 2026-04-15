@@ -16,6 +16,24 @@ docs/           Workflow prompts and project state
 pip install -e src/
 ```
 
+## Execution Environment
+
+When working from a sibling git worktree, the reusable local Python environment
+lives in the top checkout:
+
+```bash
+../TwoPhaseFlow/.venv/bin/python
+```
+
+Run expensive experiments on the external Python server through `remote.sh`:
+
+```bash
+./remote.sh check
+./remote.sh push
+./remote.sh run experiment/ch12/exp12_XX_name.py
+./remote.sh pull
+```
+
 ```python
 from twophase import SimulationConfig, SimulationBuilder
 from twophase.config import GridConfig, FluidConfig, NumericsConfig

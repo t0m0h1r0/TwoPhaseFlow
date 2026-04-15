@@ -30,7 +30,7 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 低密度比（$\rho_l/\rho_g \leq 5$）の二相流は静止界面で安定動作する
 （§~\ref{sec:advection_pressure_coupling}）一方，
 §~\ref{sec:interface_crossing} の定量分析により
-smoothed Heaviside 一括解法が $\rho_l/\rho_g \geq 10$ で破綻することを示す．
+smoothed Heaviside 一括解法では界面型密度場で漸近格子収束が失われることを示す．
 また §~\ref{sec:galilean_invariance} で移動界面＋表面張力（$\sigma > 0$）では
 IPC が 2 ステップで発散することを実証し，
 分相 PPE 解法による解決策を提示する．
@@ -48,7 +48,7 @@ IPC が 2 ステップで発散することを実証し，
         CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$），
         HFE の適用範囲検証，Galilean 不変性．
   \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
-        smoothed Heaviside の破綻閾値と分相 PPE 解法の必要性の数値的根拠．
+        smoothed Heaviside 一括解法の格子収束劣化と分相 PPE 解法の必要性の数値的根拠．
   \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
         全コンポーネントの実測精度を統合し，律速段階と今後の展望を示す．
 \end{enumerate}
@@ -77,7 +77,7 @@ DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $
 静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$ & §\ref{sec:advection_pressure_coupling}\\
 HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & §\ref{sec:advection_pressure_coupling}\\
 Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ & §\ref{sec:advection_pressure_coupling}\\
-PPE 破綻限界 & DC 発散の閾値 & 残差履歴 & 閾値の特定 & §\ref{sec:interface_crossing}\\
+PPE 一括解法限界 & 界面型密度場の収束劣化 & 残差履歴・格子収束 & 劣化機構の特定 & §\ref{sec:interface_crossing}\\
 分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:interface_crossing}\\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-6}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．} \\

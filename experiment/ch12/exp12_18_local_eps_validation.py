@@ -4,6 +4,9 @@
 Paper ref: §12 (WIKI-T-032 verification)
 
 Validates the spatially varying epsilon theory on static droplet.
+Reinitialization is enabled on the uniform baseline and disabled on
+non-uniform cases because the current split reinitializer is uniform-grid
+calibrated and creates large non-uniform-grid mass drift.
 Three configurations at N=32, 48, 64:
   A: uniform grid (α=1), scalar ε = 1.5·h        (baseline)
   B: non-uniform (α=2), scalar ε = 1.5·h_uniform  (fixed-ε mismatch)
@@ -57,6 +60,7 @@ def run_case(N: int, alpha_grid: float, use_local_eps: bool, label: str) -> dict
     solver = TwoPhaseNSSolver(
         N, N, 1.0, 1.0, bc_type="wall",
         alpha_grid=alpha_grid, use_local_eps=use_local_eps,
+        reinit_every=2 if alpha_grid <= 1.0 else 0,
     )
     X, Y = solver.X, solver.Y
     dist = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
@@ -111,6 +115,7 @@ def run_case(N: int, alpha_grid: float, use_local_eps: bool, label: str) -> dict
 
     return {
         "N": N, "alpha": alpha_grid, "local_eps": use_local_eps, "label": label,
+        "reinit_every": 2 if alpha_grid <= 1.0 else 0,
         "mass_err": np.array(mass_err_hist),
         "u_max": np.array(u_max_hist),
         "dp_err": dp_err, "dp_meas": dp_meas,

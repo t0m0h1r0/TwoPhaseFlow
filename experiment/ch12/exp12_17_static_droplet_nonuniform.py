@@ -14,7 +14,10 @@ Setup
 -----
   Static droplet: R=0.25, center (0.5, 0.5), wall BC, gravity=0
   rho_l/rho_g = 10, sigma = 1.0, mu = 0.05
-  200 steps per grid, dt = 0.25 * h_min
+  200 steps per grid, dt from CFL
+  Reinitialization: enabled on uniform grid, disabled on non-uniform grid.
+  The current split reinitializer is uniform-grid calibrated and introduces
+  large mass drift immediately after non-uniform remeshing.
   Grid: N = 32, 48, 64
 
 Output
@@ -62,6 +65,7 @@ def run_case(N: int, alpha_grid: float) -> dict:
         N, N, 1.0, 1.0,
         bc_type="wall",
         alpha_grid=alpha_grid,
+        reinit_every=2 if alpha_grid <= 1.0 else 0,
     )
     X, Y = solver.X, solver.Y
     dist = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
@@ -122,6 +126,7 @@ def run_case(N: int, alpha_grid: float) -> dict:
 
     return {
         "N": N, "alpha": alpha_grid, "h_uniform": h_uniform,
+        "reinit_every": 2 if alpha_grid <= 1.0 else 0,
         "mass_err": np.array(mass_err_hist),
         "u_max": np.array(u_max_hist),
         "h_min": np.array(h_min_hist),

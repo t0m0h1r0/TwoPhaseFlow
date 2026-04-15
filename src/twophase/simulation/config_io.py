@@ -82,6 +82,7 @@ class RunCfg:
     print_every: int = 100
     dt_fixed: float | None = None
     cn_viscous: bool = False
+    reinit_every: int = 2
 
 
 @dataclass
@@ -319,6 +320,8 @@ def _parse_run(d: dict) -> RunCfg:
         snap_times=[float(x) for x in snap_raw],
         print_every=int(d.get("print_every", 100)),
         dt_fixed=_opt_float(d.get("dt_fixed")),
+        cn_viscous=bool(d.get("cn_viscous", False)),
+        reinit_every=int(d.get("reinit_every", 2)),
     )
 
 

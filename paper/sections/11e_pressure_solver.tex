@@ -342,8 +342,8 @@ $\rho_{\max}/\rho_{\min} \approx 999$ でも $\Ord{h^{5.8}}$ を維持した
 
 \noindent\textbf{結論：}
 密度場が十分に滑らかである限り，CCD の高次精度は密度比によらず発現する．
-界面型密度分布（smoothed Heaviside）では $\rho_l/\rho_g \geq 10$ で
-DC が発散する本質的限界があり（§~\ref{sec:interface_crossing}），
+界面型密度分布（smoothed Heaviside）では高解像度側で
+漸近格子収束が失われる本質的限界があり（§~\ref{sec:interface_crossing}），
 これが分相 PPE 解法を必要とする根拠となっている．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -387,7 +387,8 @@ $\rho_l/\rho_g \geq 10$ では，界面近傍の密度コントラストが
 高周波固有モードを選択的に増幅し，$\kappa$ は $N$ に対する指数が
 3--6 に増大する．
 特に $\rho_l/\rho_g = 1000$，$N = 64$ では $\kappa \approx 2.2 \times 10^7$ に達し，
-これが §~\ref{sec:varrho_dc_convergence} で報告した DC 発散の直接的原因である．
+これが §~\ref{sec:varrho_dc_convergence} で報告した
+界面型密度場の収束劣化を助長する要因である．
 
 \noindent\textbf{結論：}
 現行の FVM 変密度 PPE 行列では，条件数悪化は
