@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """[11-32] CCD D2 operator spectral radius measurement.
 
-Validates: Ch9 -- spectral radius rho(D2_CCD) approx 3.43/h^2.
+Validates: Ch9 -- spectral radius rho(D2_CCD) approx 9.6/h^2.
 
 Tests:
   (a) 1D: Assemble CCD D2 matrix, compute eigenvalues, measure max|lambda|
-  (b) Verify coefficient: rho * h^2 -> 3.43 as N increases
+  (b) Verify coefficient: rho * h^2 -> 9.6 as N increases
   (c) Compare with FD D2: rho(D2_FD) = 4/h^2
   (d) 2D Kronecker: rho(L_2D) = 2 * rho(L_1D)
 
-Expected: rho(D2_CCD) * h^2 approx 3.43 (vs FD 4.0).
+Expected: rho(D2_CCD) * h^2 approx 9.6 (vs FD 4.0).
 """
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
@@ -29,7 +29,7 @@ apply_style()
 OUT = experiment_dir(__file__)
 
 # Reference value from §9 of the paper
-CCD_SPECTRAL_COEFF_REF = 3.43
+CCD_SPECTRAL_COEFF_REF = 9.6
 FD_SPECTRAL_COEFF_REF  = 4.0
 
 
@@ -106,7 +106,7 @@ def run_1d_study(Ns, backend):
     """
     results = []
     print(f"\n{'='*72}")
-    print(f"  1D Spectral Radius: rho(D2) * h^2  (expect CCD~3.43, FD~4.0)")
+    print(f"  1D Spectral Radius: rho(D2) * h^2  (expect CCD~9.6, FD~4.0)")
     print(f"{'='*72}")
     print(f"  {'N':>6}  {'h':>8}  {'CCD rho*h^2':>14}  {'FD rho*h^2':>12}  {'ratio':>8}")
     print(f"  {'-'*6}  {'-'*8}  {'-'*14}  {'-'*12}  {'-'*8}")
