@@ -12,11 +12,8 @@ model_reasoning_effort = "high"
 # Auto-approve most ops; agent asks confirmation when needed.
 approval_policy = "on-request"
 
-# Network access is required: make run / make push / make pull all SSH to
-# a remote GPU server (RTX 3080 Ti). Without network, all remote experiment
-# execution is blocked.
-# Set to "workspace-only" if you want file-system isolation but still need SSH.
-sandbox_mode = "network-enabled"
+# Full access required: make run/push/pull SSH to remote GPU server.
+sandbox_mode = "danger-full-access"
 
 # Disable web search to avoid distractions during focused coding sessions.
 # Enable temporarily with: codex --web-search <task>
