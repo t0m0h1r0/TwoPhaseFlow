@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""[11-17] DCCD 1D advection benchmark (5-scheme comparison).
+"""[11-17] DCCD 1D advection benchmark (3-scheme comparison).
 
 Validates: Ch4d/Ch7 -- DCCD advection quality for CLS interface.
 
 Test:
   1D linear advection u_t + c*u_x = 0, N=256, CFL=0.4, RK4, T=1.
   Initial conditions: Square (discontinuous), Triangle (C0), Smooth (tanh).
-  Schemes: O2, O4, CCD, DCCD (alpha_f=0.4), WENO5.
+  Schemes: O2, CCD, DCCD (eps_d=0.05).
 
-Expected: DCCD TV~3.15 (vs CCD 10.83) for Square; CCD-level L2 for Smooth.
+Expected: DCCD TV~17.14 (vs CCD 10.96, Exact 2.000) for Square;
+  DCCD L2 ~3 orders larger than CCD for Smooth (see paper Table 11.2).
 """
 
 import sys, pathlib
