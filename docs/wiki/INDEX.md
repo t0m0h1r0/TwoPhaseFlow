@@ -1,4 +1,4 @@
-# Wiki Index — 96 entries
+# Wiki Index — 97 entries
 
 ## Theory (33)
 
@@ -90,7 +90,7 @@
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 
-## Meta (9)
+## Meta (10)
 
 | REF-ID | Title |
 |--------|-------|
@@ -103,6 +103,7 @@
 | [WIKI-M-007](meta/WIKI-M-007.md) | Agent Meta System: K-Domain + meta-project Profile Swap Pattern |
 | [WIKI-M-008](meta/WIKI-M-008.md) | Agent Meta System: SLP/RAP/SDP Protocols + Per-Environment Prompt Generation |
 | [WIKI-M-009](meta/WIKI-M-009.md) | Chapter Re-Run Methodology and Filename Normalization Convention |
+| [WIKI-M-010](meta/WIKI-M-010.md) | Caveman-Compress: Token Reduction for AI Instruction Files |
 
 ## Code (17)
 
