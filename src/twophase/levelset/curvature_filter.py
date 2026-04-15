@@ -86,8 +86,15 @@ class InterfaceLimitedFilter:
         self.ccd = ccd
         self.C = C
 
-        grid = ccd.grid
-        self._h_sq = min(float(grid.L[ax]) / grid.N[ax] for ax in range(grid.ndim)) ** 2
+        # _h_sq is read from grid.h at use-time via property, so it picks
+        # up updated spacings after non-uniform grid rebuild.
+
+    @property
+    def _h_sq(self) -> float:
+        """Minimum cell spacing squared, recomputed from live grid state."""
+        import numpy as _np
+        grid = self.ccd.grid
+        return min(float(_np.min(grid.h[ax])) for ax in range(grid.ndim)) ** 2
 
     # ── Public API ────────────────────────────────────────────────────────
 

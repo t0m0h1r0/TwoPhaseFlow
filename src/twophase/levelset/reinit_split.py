@@ -7,6 +7,8 @@ Implements the scheme from §5c (alg:cls_reinit_dccd).
 from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
+import numpy as np
+
 from .interfaces import IReinitializer
 from .heaviside import apply_mass_correction
 from .reinit_ops import (
@@ -38,7 +40,9 @@ class SplitReinitializer(IReinitializer):
         self._bc = bc
         self._eps_d_comp = float(eps_d_comp)
         self._mass_correction = mass_correction
-        self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
+        # Use actual minimum spacing per axis for CN diffusion coefficient.
+        # On uniform grids min(h[ax]) == L[ax]/N[ax], preserving bit-exactness.
+        self._h = [float(np.min(grid.h[ax])) for ax in range(grid.ndim)]
         self.dtau = compute_dtau(grid, eps)
 
         self._cn_factors: List[Tuple] = []

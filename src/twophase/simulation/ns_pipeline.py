@@ -70,6 +70,7 @@ class TwoPhaseNSSolver:
         use_local_eps: bool = False,
         grid_rebuild_freq: int = 1,
         reinit_every: int = 2,
+        reinit_method: str | None = None,
         cn_viscous: bool = False,
         Re: float = 1.0,
     ) -> None:
@@ -102,8 +103,14 @@ class TwoPhaseNSSolver:
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
         self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
         # Reinit uses conservative scalar eps (Option C: memo §4.2)
+        # On non-uniform grids, SplitReinitializer's CN diffusion assumes
+        # uniform h = L/N, causing catastrophic mass loss (~23%).
+        # Default to DGR on non-uniform grids (no CN diffusion dependency).
+        if reinit_method is None:
+            reinit_method = 'dgr' if alpha_grid > 1.0 else 'split'
         self._reinit = Reinitializer(
-            self._backend, self._grid, self._ccd, self._eps, n_steps=reinit_steps
+            self._backend, self._grid, self._ccd, self._eps,
+            n_steps=reinit_steps, method=reinit_method,
         )
         self.X, self.Y = self._grid.meshgrid()
 
@@ -129,6 +136,7 @@ class TwoPhaseNSSolver:
             use_local_eps=getattr(g, "use_local_eps", False),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
             reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
+            reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", None),
             cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
             Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
         )
