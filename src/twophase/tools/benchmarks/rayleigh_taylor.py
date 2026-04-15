@@ -27,7 +27,7 @@ Rayleigh-Taylor 不安定性ベンチマーク。
 from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
-from ..simulation.initial_conditions import InitialConditionBuilder, SinusoidalInterface
+from twophase.simulation.initial_conditions import InitialConditionBuilder, SinusoidalInterface
 
 
 class RayleighTaylorBenchmark:
@@ -61,7 +61,7 @@ class RayleighTaylorBenchmark:
         -------
         results : スパイク/バブル先端位置の時系列と最終フィールドを含む辞書
         """
-        from ..simulation.builder import SimulationBuilder
+        from twophase.simulation.builder import SimulationBuilder
 
         cfg = self._make_config()
         sim = SimulationBuilder(cfg).build()
@@ -176,7 +176,7 @@ class RayleighTaylorBenchmark:
         # ── 2. 最終 ψ フィールド ───────────────────────────────────────
         sim = results.get("sim")
         if sim is not None:
-            from ..simulation.visualization.plot_scalar import plot_level_set
+            from twophase.simulation.visualization.plot_scalar import plot_level_set
             fig = plot_level_set(
                 results["psi_final"],
                 sim.grid,

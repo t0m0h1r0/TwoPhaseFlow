@@ -30,7 +30,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
 
-from ..simulation.initial_conditions import RigidRotation
+from twophase.simulation.initial_conditions import RigidRotation
 
 
 class ZalesakDiskBenchmark:
@@ -85,8 +85,8 @@ class ZalesakDiskBenchmark:
         -------
         results : L1 誤差・体積誤差・フィールドスナップショットを含む辞書
         """
-        from ..config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
-        from ..simulation.builder import SimulationBuilder
+        from twophase.config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
+        from twophase.simulation.builder import SimulationBuilder
 
         # 1 回転の周期
         T = 1.0 / self.n_rev

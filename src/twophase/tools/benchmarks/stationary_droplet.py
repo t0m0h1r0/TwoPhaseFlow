@@ -37,7 +37,7 @@ Grid convergence study::
 from __future__ import annotations
 import numpy as np
 from typing import Dict, List, Optional, Any
-from ..simulation.initial_conditions import InitialConditionBuilder, Circle
+from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
 
 
 class StationaryDropletBenchmark:
@@ -106,7 +106,7 @@ class StationaryDropletBenchmark:
         if verbose is None:
             verbose = self.verbose
 
-        from ..simulation.builder import SimulationBuilder
+        from twophase.simulation.builder import SimulationBuilder
 
         cfg = self._make_config(self.N)
         sim = SimulationBuilder(cfg).build()
@@ -304,7 +304,7 @@ class StationaryDropletBenchmark:
         # ── 2. Final ψ field ─────────────────────────────────────────────
         sim = results.get("sim")
         if sim is not None:
-            from ..simulation.visualization.plot_scalar import plot_level_set
+            from twophase.simulation.visualization.plot_scalar import plot_level_set
             fig = plot_level_set(
                 np.asarray(sim.backend.to_host(sim.psi.data)),
                 sim.grid,

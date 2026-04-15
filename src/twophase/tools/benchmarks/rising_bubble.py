@@ -25,7 +25,7 @@ Hysing et al. (2009) のテストケース 1 を基にした検証問題。
 from __future__ import annotations
 import numpy as np
 from typing import Dict, Optional, Any
-from ..simulation.initial_conditions import InitialConditionBuilder, Circle
+from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
 
 
 class RisingBubbleBenchmark:
@@ -75,8 +75,8 @@ class RisingBubbleBenchmark:
         -------
         results : 時系列データと最終指標を含む辞書
         """
-        from ..simulation.builder import SimulationBuilder
-        from ..io.checkpoint import CheckpointManager
+        from twophase.simulation.builder import SimulationBuilder
+        from twophase.io.checkpoint import CheckpointManager
 
         cfg = self._make_config()
         sim = SimulationBuilder(cfg).build()
@@ -231,7 +231,7 @@ class RisingBubbleBenchmark:
         # ── 4. 最終フィールド（レベルセット） ──────────────────────────────
         sim = results.get("sim")
         if sim is not None:
-            from ..simulation.visualization.plot_scalar import plot_level_set
+            from twophase.simulation.visualization.plot_scalar import plot_level_set
             fig = plot_level_set(
                 np.asarray(sim.backend.to_host(sim.psi.data)),
                 sim.grid,
