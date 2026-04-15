@@ -62,8 +62,8 @@ def zero_crossing_col(psi, X, N):
         x-coordinate of the ψ=0.5 crossing, or NaN if not found.
     """
     j = N // 2
-    col = np.array(psi[:, j])
-    xcol = np.array(X[:, j])
+    col = np.asarray(psi[:, j].get() if hasattr(psi, 'get') else psi[:, j])
+    xcol = np.asarray(X[:, j].get() if hasattr(X, 'get') else X[:, j])
     for i in range(len(col) - 1):
         a = float(col[i])
         b = float(col[i + 1])
