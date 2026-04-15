@@ -6,8 +6,12 @@
 
 \noindent\textbf{目的：}
 CSF における曲率 $\kappa$（式~\eqref{eq:curvature_2d}）の 3 計算経路の精度を比較し，
-CCD 演算子の全成分（$D_x^{(10)}, D_y^{(01)}, D_{xx}^{(20)}, D_{yy}^{(02)}, D_{xy}^{(11)}$）の
-総合精度を検証する．
+CCD 演算子の全成分
+\[
+  D_x^{(10)},\quad D_y^{(01)},\quad
+  D_{xx}^{(20)},\quad D_{yy}^{(02)},\quad D_{xy}^{(11)}
+\]
+の総合精度を検証する．
 
 \noindent\textbf{評価対象：}
 曲率計算の 3 経路（$\phi$ 直接 / $\psi{\to}\phi$ ロジット / $\psi$ 直接）
@@ -93,9 +97,11 @@ DCCD フィルタ適用により全解像度で単調減少が実現される．
 フィルタの散逸により精度は $\Ord{h^6}$ から $\Ord{h^2}$ に低下するが，
 CSF モデル誤差が $\delta_\varepsilon$ の正則化幅に起因する $\Ord{h^2}$ であることを考慮すれば，
 曲率の $\Ord{h^2}$ 精度は全体精度と整合的であり，安定性と引き換えに実用上の精度損失はない．
-なお，HFE（§~\ref{sec:extension_pde_disc}）は $\Ord{h^6}$ を達成するため，
-界面近傍の精度律速は CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）であり，
-曲率計算経路の選択は全体精度に影響しない．
+なお，HFE（§~\ref{sec:verify_field_extension}）は 1D で $\Ord{h^7}$，
+2D でも $N\le128$ で高次収束を示すが，最高解像度では丸め・補間誤差床の影響を受ける．
+したがって界面近傍の実用的な精度律速は主として
+CSF 正則化 $\delta_\varepsilon$（$\Ord{h^2}$）であるが，
+HFE 2D は条件付き合格として扱う．
 以上の結果から，本実装では DCCD フィルタ（$\varepsilon_d = 0.05$）をデフォルトで有効とする．
 図~\ref{fig:curvature_3path} に 3 経路の収束曲線を示す．
 
