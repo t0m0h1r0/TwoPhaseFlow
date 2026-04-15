@@ -1,4 +1,4 @@
-# Wiki Index — 97 entries
+# Wiki Index — 100 entries
 
 ## Theory (33)
 
@@ -38,7 +38,7 @@
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 | [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
 
-## Cross-Domain (9)
+## Cross-Domain (11)
 
 | REF-ID | Title |
 |--------|-------|
@@ -51,6 +51,8 @@
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
+| [WIKI-X-010](cross-domain/WIKI-X-010.md) | Reinitializer Uniform-Grid Assumption: Verification Design Constraint |
+| [WIKI-X-011](cross-domain/WIKI-X-011.md) | Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
 
 ## Experiment (21)
 
@@ -78,7 +80,7 @@
 | [WIKI-E-020](experiment/WIKI-E-020.md) | Grid Rebuild Frequency Calibration: Interface Motion vs Stale-Grid Tradeoff |
 | [WIKI-E-021](experiment/WIKI-E-021.md) | Ch12 Re-Run Result Deltas: 3 Changed Values, 1 Reversed Finding |
 
-## Paper (7)
+## Paper (8)
 
 | REF-ID | Title |
 |--------|-------|
@@ -89,6 +91,7 @@
 | [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
+| [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
 ## Meta (10)
 

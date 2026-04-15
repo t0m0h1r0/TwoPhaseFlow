@@ -115,7 +115,7 @@ WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
 PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
-NS 毎ステップ格子リビルド  & 安定・質量保存             & $|\Delta M|/M_0 = 2.3 \times 10^{-1}$ & $\triangle$ & $\alpha{=}2$ 補間質量損失；一様 $2.3 \times 10^{-4}$ \\
+NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 2.3 \times 10^{-1}$ & $\triangle$ & $\alpha{=}2$ 補間質量損失；一様 $2.3 \times 10^{-4}$ \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
 再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\

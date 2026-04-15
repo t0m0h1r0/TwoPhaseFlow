@@ -84,8 +84,11 @@ $\|\bnabla\cdot\bu\|_\infty$ & 安定 \\
 \bottomrule
 \end{tabular}
 \end{table}
-\footnotetext{$\rho_l/\rho_g = 5$ でも同等の安定性を確認したが，
-紙面の制約上 $\rho_l/\rho_g = 2$ のみ掲載する．}
+\footnotetext{$\rho_l/\rho_g = 5$，$N = 64$ でも 200 ステップにわたり安定動作を確認
+（$\|\bu_{\mathrm{para}}\|_\infty^{\mathrm{peak}} = 3.1 \times 10^{-4}$，
+$\Delta p$ 相対誤差 $1.4\%$）．
+$N = 128$ では寄生流れの成長比が 5.3 に達し，条件付き安定と判定した．
+紙面の制約上，表には $\rho_l/\rho_g = 2$ のみ掲載する．}
 
 \noindent\textbf{結論：}
 $N = 64$ では $\rho_l/\rho_g = 2, 5$ の両方で 200 ステップにわたり安定に動作し，
@@ -96,7 +99,7 @@ Laplace 圧は 1.2\% 以内の精度を維持する．
 （$\psi$ は移流されず不変であるため）．
 
 $N = 128$，$\rho_l/\rho_g = 5$ で寄生流れの成長比が 5.3 に達する
-（判定「条件付」）．
+（判定「条件付」；数値は脚注参照）．
 これは PPE の変密度近似精度が高解像度・高密度比で劣化する兆候であり，
 §~\ref{sec:interface_crossing} の界面型密度場における格子収束劣化と整合する．
 
