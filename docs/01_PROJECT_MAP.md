@@ -1,7 +1,5 @@
 # 01_PROJECT_MAP — Module Map, Interface Contracts & Numerical Reference
-# PROJECT CONTEXT — fluid project data only. No rule content (rules in docs/00_GLOBAL_RULES.md).
-# Dynamic state (phase, CHK/KL registers) in docs/02_ACTIVE_LEDGER.md.
-# Last updated: 2026-03-28
+# Rules: docs/00_GLOBAL_RULES.md | Live state: docs/02_ACTIVE_LEDGER.md
 
 ────────────────────────────────────────────────────────
 # §1 — Module Map
@@ -155,8 +153,7 @@ Implementations: PPESolverPseudoTime (PRODUCTION), PPESolverSweep, PPESolverCCDL
 PPESolverLU, PPESolverBiCGSTAB (testing only).
 
 ### INSTerm (`interfaces/ns_terms.py`)
-Marker interface only — no unified `compute()` signature.
-SimulationBuilder.with_*() methods enforce type safety at construction time.
+Marker only — SimulationBuilder.with_*() enforces type safety at construction.
 
 ### Level-set interfaces (`interfaces/levelset.py`)
 ```python
@@ -193,25 +190,8 @@ SimulationConfig
 ────────────────────────────────────────────────────────
 # §4 — Construction & SOLID
 
-SimulationBuilder is the sole construction path. Direct `TwoPhaseSimulation.__init__` deleted.
-DIP: backends injected via constructor, not instantiated internally.
-Default-vs-switchable: basic/standard schemes are defaults; alternatives toggled by config.
-Full SOLID rules: see docs/00_GLOBAL_RULES.md §C1 or meta-tasks.md § Code Domain Constraints C1.
-
-────────────────────────────────────────────────────────
-# §5 — Implementation Constraints
-
-### Implicit Solver Policy (ASM-005, ASM-006)
-| System type | Primary | Fallback |
-|---|---|---|
-| Global PPE sparse | LGMRES | spsolve (sparse LU) on non-convergence |
-| Banded/block-tridiagonal | Direct LU | — |
-
-### Algorithm Fidelity
-Fixes MUST restore paper-exact behavior. Deviation = bug. Improvement not in paper = out of scope.
-
-### Backward Compatibility
-When replacing an existing implementation: provide a backward-compatible adapter (A7).
+SimulationBuilder = sole construction path; `TwoPhaseSimulation.__init__` deleted.
+DIP: backends injected via constructor. Full rules: docs/00_GLOBAL_RULES.md §C.
 
 ────────────────────────────────────────────────────────
 # §6 — Numerical Algorithm Reference
@@ -246,26 +226,14 @@ Use physical diagnostics: divergence-free projection, Laplace pressure dp, ‖u�
 ### FVM/CCD Mismatch Fix (ASM-009)
 CCD replaced with FD in velocity_corrector.py and predictor.py IPC term (2026-03-22).
 
-### Node-Centered Grid (face/divergence indexing)
-```
-Face indexing (N+1 nodes: indices 0..N):
-  face[0]  = left wall  → flux = 0 (no-penetration BC)
-  face[N]  = internal   → MUST be computed, NOT left at 0
-  ✓ Correct: faces 1..N   (u_L = u[0:N], u_R = u[1:N+1])
-  ✗ Wrong:   faces 1..N-1 (face N left at 0 → O(1) boundary error)
-
-FVM divergence:
-  ✓ div[k] = (flux[k+1] - flux[k]) / h   (1h spacing)
-  ✗ div[k] = (flux[k+2] - flux[k]) / h   (2h spacing → factor 2 error)
-     Symptom: Δp ≈ 2× Laplace pressure (e.g., 8.6 instead of 4.0)
-
-Array: flux (N+1,) → div_nodes (N,) = (flux[1:] - flux[:-1]) / h; pad zero at END only
-```
+### Node-Centered Grid
+Face indexing uses N+1 nodes (0..N); compute faces 1..N (face[0]=wall, flux=0).
+FVM divergence: `div[k] = (flux[k+1] - flux[k]) / h` (1h spacing — 2h spacing → factor-2 error).
+Array: `flux (N+1,) → (flux[1:] - flux[:-1]) / h`, pad zero at END only.
 
 ### Pin-Node Rule (KL-11)
-All PPE solver code must use dynamic center pin:
+PPE code must use dynamic center pin — never hardcode (0,0):
 `pin_dof = ravel_multi_index(tuple(n//2 for n in grid.N), grid.shape)`
-Never hardcode pin index (0,0).
 
 ────────────────────────────────────────────────────────
 # §7 — Active Assumption Register (summary)
@@ -286,31 +254,28 @@ Never hardcode pin index (0,0).
 
 ────────────────────────────────────────────────────────
 # §8 — C2 Legacy Class Register
-# Rule: docs/00_GLOBAL_RULES.md §C2. Register here; never delete without explicit authorization.
+# Rule: docs/00_GLOBAL_RULES.md §C2. Never delete without explicit authorization.
+
+### Legacy implementations (active reference for cross-validation)
 
 | Legacy class | File | Superseded by | Reason kept |
 |---|---|---|---|
-| `ReinitializerWENO5` | `src/twophase/levelset/reinitialize.py` | `Reinitializer` (DCCD+CN) | Cross-validation vs paper §5c scheme |
-| `PPESolver` | `src/twophase/pressure/legacy/ppe_solver.py` | `PPESolverCCDLU` | FVM BiCGSTAB reference (PR-1 violation) |
-| `PPESolverLU` | `src/twophase/pressure/legacy/ppe_solver_lu.py` | `PPESolverCCDLU` | FVM direct LU reference (PR-1 violation) |
-| `PPESolverPseudoTime` | `src/twophase/pressure/legacy/ppe_solver_pseudotime.py` | `PPESolverCCDLU` | CCD+LGMRES baseline (PR-6 violation) |
-| `PPESolverSweep` | `src/twophase/pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
-| `PPESolverDCOmega` | `src/twophase/pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
-| `CurvatureCalculator` | `src/twophase/levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
-| `cn_advance` re-export | `src/twophase/ns_terms/cn_advance.py` (stub) | `time_integration/cn_advance/` | C2 re-export |
-| `PPESolverCCDLU` re-export | `src/twophase/pressure/ppe_solver_ccd_lu.py` (stub) | `pressure/solvers/ccd_lu.py` | C2 re-export |
-| `PPESolverIIM` re-export | `src/twophase/pressure/ppe_solver_iim.py` (stub) | `pressure/solvers/iim.py` | C2 re-export |
-| `PPESolverIterative` re-export | `src/twophase/pressure/ppe_solver_iterative.py` (stub) | `pressure/solvers/iterative.py` | C2 re-export |
-| `create_ppe_solver` re-export | `src/twophase/pressure/ppe_solver_factory.py` (stub) | `pressure/solvers/factory.py` | C2 re-export |
-| `_CCDPPEBase` re-export | `src/twophase/pressure/ccd_ppe_base.py` (stub) | `pressure/solvers/ccd_ppe_base.py` | C2 re-export |
-| `FDPPEMatrix` re-export | `src/twophase/pressure/fd_ppe_matrix.py` (stub) | `pressure/solvers/fd_ppe_matrix.py` | C2 re-export |
-| `ccd_ppe_utils` re-export | `src/twophase/pressure/ccd_ppe_utils.py` (stub) | `pressure/solvers/ccd_ppe_utils.py` | C2 re-export |
-| `thomas_sweep` re-export | `src/twophase/pressure/thomas_sweep.py` (stub) | `pressure/solvers/thomas_sweep.py` | C2 re-export |
+| `ReinitializerWENO5` | `levelset/reinitialize.py` | `Reinitializer` (DCCD+CN) | Paper §5c cross-validation |
+| `PPESolver` (FVM BiCGSTAB) | `pressure/legacy/ppe_solver.py` | `PPESolverCCDLU` | FVM reference (PR-1) |
+| `PPESolverLU` | `pressure/legacy/ppe_solver_lu.py` | `PPESolverCCDLU` | FVM direct LU reference |
+| `PPESolverPseudoTime` | `pressure/legacy/ppe_solver_pseudotime.py` | `PPESolverCCDLU` | CCD+LGMRES baseline (PR-6) |
+| `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
+| `PPESolverDCOmega` | `pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
+| `CurvatureCalculator` | `levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
+
+### Re-export stubs (backward compat after `pressure/solvers/` restructure)
+
+All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
+`ppe_solver_ccd_lu`, `ppe_solver_iim`, `ppe_solver_iterative`, `ppe_solver_factory`, `ccd_ppe_base`, `fd_ppe_matrix`, `ccd_ppe_utils`, `thomas_sweep`. Also `ns_terms/cn_advance.py` → `time_integration/cn_advance/`.
 
 ────────────────────────────────────────────────────────
 # §9 — Paper Structure Reference (P2)
-# Section filenames follow the chapter prefix convention used in main.tex:
-# `{NN}_topic.tex` for the chapter head and `{NN}{letter}_topic.tex` for continuations.
+# Filenames: `{NN}_topic.tex` (chapter head), `{NN}{letter}_topic.tex` (continuations).
 
 | File(s) | Chapter | Content |
 |---|---|---|
@@ -351,26 +316,12 @@ Never hardcode pin index (0,0).
 | Time accuracy order | `04b_time_schemes.tex` | `00_abstract.tex`, `01_introduction.tex`, `11_conclusion.tex` |
 
 ────────────────────────────────────────────────────────
-# §11 — Matrix Domain Map
-# T/L/E/A directory inventory + current interface contract status
+# §11 — Domain Map
 
-| Domain | Code | Directory | Description | Interface Contract |
-|--------|------|-----------|-------------|-------------------|
-| T — Theory & Analysis | Mathematical Truth | `paper/` (theory sections) | Formal equation derivations, mathematical proofs | `docs/legacy/AlgorithmSpecs.md` (T→L) |
-| L — Core Library | Functional Truth | `src/twophase/` | Solver kernels, numerical modules, tests | `docs/legacy/SolverAPI_v1.py` (L→E) |
-| E — Experiment | Empirical Truth | `experiment/` | Simulation scripts, benchmark results | `docs/legacy/TechnicalReport.md` (T/E→A) |
-| A — Academic Writing | Logical Truth | `paper/` | LaTeX manuscript, sections, bibliography | Signed by ConsistencyAuditor AU2 gate |
-| M — Meta-Logic | Constitutional | `prompts/meta/` | System rules, axioms, agent design (A10: read-only) | — |
-| P — Prompt & Environment | Agent Intelligence | `prompts/` | Generated agent prompts, README | — |
-| Q — QA & Audit | Audit Trails | `docs/02_ACTIVE_LEDGER.md` | Verification logs, AU2 verdicts in CHK register | — |
-
-**Interface Contract Status:**
-
-| Contract | Path | Status | Upstream Domain | Downstream Domain |
-|----------|------|--------|----------------|------------------|
-| AlgorithmSpecs | `docs/legacy/AlgorithmSpecs.md` | pending | T-Domain | L-Domain (CodeArchitect) |
-| SolverAPI v1 | `docs/legacy/SolverAPI_v1.py` | pending | L-Domain | E-Domain (ExperimentRunner) |
-| TechnicalReport | `docs/legacy/TechnicalReport.md` | pending | T-Domain + E-Domain | A-Domain (PaperWriter) |
-
-**Note:** `{pending}` status means the corresponding domain pipeline has not yet been executed.
-Downstream domains must BLOCK new dev/ work until upstream contract is signed (meta-workflow.md §CI/CP).
+| Domain | Directory | Description |
+|--------|-----------|-------------|
+| T — Theory | `paper/` (theory sections) | Equation derivations, proofs |
+| L — Library | `src/twophase/` | Solver kernels, tests |
+| E — Experiment | `experiment/` | Simulation scripts, benchmarks |
+| A — Paper | `paper/` | LaTeX manuscript |
+| K — Knowledge | `docs/wiki/` | Compiled wiki (96+ entries) |

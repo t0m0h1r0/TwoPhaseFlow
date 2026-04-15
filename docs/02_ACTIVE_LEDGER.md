@@ -1,7 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Supersedes: ACTIVE_STATE.md, CHECKLIST.md, ASSUMPTION_LEDGER.md, LESSONS.md
-# Last updated: 2026-04-12
+# Last updated: 2026-04-15
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -10,454 +9,117 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_decision | CHK-085 CLOSED 2026-03-31: PaperWriter §8 structural rewrite (Modifications I–IV). (1) main.tex: include reorder §8.1→§8.2(CCD)→§8.3(GFM)→§8.4(BC+stability) — GFM promoted from last to §8.3. (2) 08b_ppe_pseudotime: moved to Appendix E.5 (Modification IV: solver algorithms → appendix); \subsection→\section + \subsubsection→\subsection promotion. (3) 08c_ccd_poisson: Modification I framing paragraph added (coupled p/p'/p'' unknowns, O(h²)→O(h⁶), DCCD checkerboard suppression). (4) 08f_ppe_bc: subsection renamed to §8.4 "境界条件と数値安定性"; \subsubsection condition number analysis added (κ=O(ρ_l/ρ_g·h⁻²), 4 stability strategies: harmonic-mean face coeff, GFM jump, KL-11 gauge pin, LU fallback). (5) 08_pressure: forward reference to Appendix E.5 added. Compile: 167pp, 0 errors, 0 undefined refs. |
-| last_decision | CHK-089 CLOSED 2026-04-07: EnvMetaBootstrapper re-deployment (Target: Claude). A1–A10→A1–A11 (A11: Knowledge-First Retrieval). 4 new K-Domain agents generated (KnowledgeArchitect, WikiAuditor, Librarian, TraceabilityManager). Updated: _base.yaml, 00_GLOBAL_RULES.md §A, ResearchArchitect (K-Domain routing), ConsistencyAuditor (KNOWLEDGE_ERROR routing), PromptAuditor (Q3-1), PromptArchitect (verify step), TaskPlanner (K domain), README.md (4×4 matrix, Mermaid K-Domain subgraph). Q3 validation PASS. |
-| last_decision | CHK-090 CLOSED 2026-04-07: PaperReviewer §4–§10 story structure review. 6 narrative issues identified: (1) S5→S6 bridge weak; (2) S6→S7 bridge missing; (3) S7→S8 bridge missing; (4) S6 forward-refs S7 equations; (5) pressure filter prohibition placement; (6) DCCD cross-reference scatter. S8→S9 bridge strong. Overall "Tool→Application→Assembly" arc is sound. |
-| last_decision | CHK-091 CLOSED 2026-04-07: KnowledgeArchitect first 10 wiki entries. theory/: WIKI-T-001(CCD), T-002(DCCD), T-003(Projection), T-004(Balanced-Force), T-005(DC-PPE). paper/: WIKI-P-001(Narrative), P-002(Accuracy). cross-domain/: WIKI-X-001(DCCD map), X-002(CCD dual role). code/: WIKI-L-001(Algorithm). All [[REF-ID]] cross-references resolve. K-Domain operational. |
-| last_decision | CHK-092 CLOSED 2026-04-07: KnowledgeArchitect §1–§3 wiki entries (6 new). theory/: WIKI-T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck). paper/: WIKI-P-003(Problem Statement). cross-domain/: WIKI-X-003(Sign Conventions). Total wiki: 16 entries. All [[REF-ID]] resolve. |
-| last_decision | CHK-093 CLOSED 2026-04-08: KnowledgeArchitect §11 experiment wiki entries (6 new). experiment/: WIKI-E-001(CCD/DCCD spatial), E-002(Curvature+HFE), E-003(LS transport), E-004(RC+PPE solver), E-005(Time integration), E-006(Young-Laplace). 17 experiments compiled into 6 thematic entries. All [[REF-ID]] cross-references resolve. Total wiki: 22 entries. |
-| last_decision | CHK-094 CLOSED 2026-04-08: EnvMetaBootstrapper full re-deployment (Target: Claude). 33 agent prompts regenerated (24 composite + 9 micro). meta-domains.md K-Domain consolidation propagated. DiagnosticArchitect prompt aligned with meta-roles.md. README.md regenerated (9 sections, Mermaid diagram with K-Domain subgraph). Missing dirs created: docs/interface/signals/, prompts/agents/_deprecated/. Q3 validation 9/9 PASS. |
-| last_decision | CHK-095 CLOSED 2026-04-08: PaperWriter §5–§8 bridge paragraphs (244e9b5) + §11 zero-base rewrite (85232c7, 5a03c3a). Bridge paragraphs: S5→S6, S6→S7, S7→S8 transitions + S6 forward-ref note + pressure filter bridge (6 WIKI-P-001 issues addressed). §11 rewrite: narrative structure replaces lab-report template; 5 files (11_chapter, 11_spatial, 11_interface, 11_solver, 11_summary), 1420 lines, 17 component tests. §11.3 audit fixes: DC k definition, Table 4 footnote, ω-density bridge, λ_HL rename. Compile: 196pp, 0 errors. |
-| last_decision | CHK-096 CLOSED 2026-04-08: PaperReviewer §1–§11 full review + corrections. 27 TeX files reviewed. 0 Fatal, 7 Major, 14 Minor, 3 Style issues identified. 10 independent verifications PASS (CCD coefficients, sign convention, curvature invariance, DCCD transfer, PPE product-rule, §11 convergence orders). Fixes applied: (1) §1 table_overview updated §5–§14 to match actual main.tex structure; (2) 05b warnbox reworded (hypothetical, not factual); (3) §11 Table 11.16 PASS/FAIL column + failure row added; (4) §3 discrete divergence estimate clarified; (5) 3 file headers corrected (08_collocate, 06_time, 05b_ccd); (6) 05_grid opening paragraph dedup; (7) 02b TODO resolved. Wiki: WIKI-P-004 created (review findings). |
-| last_decision | CHK-097 CLOSED 2026-04-08: KnowledgeArchitect appendix wiki compilation (9 new). theory/: WIKI-T-010(Interface proofs: Newton, Eikonal, CLS fixed-point), T-011(CCD coefficient derivation), T-012(CCD boundary+periodic+elliptic+Kronecker), T-013(WENO5+DCCD benchmark), T-014(Capillary CFL+ALE), T-015(DC Thomas coefficients+convergence theory), T-016(CCD pseudotime implicit), T-017(FVM reference+CSF+RC+BF accuracy), T-018(HFE Hermite field extension). 8 existing entries updated with depends_on back-references (T-001,T-002,T-004,T-005,T-006,T-007,T-008,X-002). All [[REF-ID]] cross-references resolve. Total wiki: 31 entries. |
-| last_decision | CHK-098 CLOSED 2026-04-08: KnowledgeArchitect memo wiki compilation (10 new). theory/: WIKI-T-019(Filter design survey+CCD filters), T-020(Curvature invariance theorem), T-021(IIM-CCD), T-022(Extension PDE×CCD), T-023(Semi-implicit surface tension), T-024(CCD-PPE solver convergence summary), T-025(C/RC CCD-enhanced Rhie-Chow). cross-domain/: WIKI-X-004(Pressure instability survey), X-005(Architectural decisions+verification hierarchy). experiment/: WIKI-E-007(Static droplet protocol+negative results). Source: 29 memo files (20 with novel content). All [[REF-ID]] cross-references resolve. Total wiki: 41 entries. |
-| last_decision | CHK-099 CLOSED 2026-04-08: WikiAuditor K-LINT audit + INDEX.md creation. Audit: 42 entries (25 theory, 7 experiment, 5 cross-domain, 4 paper, 1 code), 0 broken pointers, 0 duplicate IDs, all status ACTIVE. INDEX.md created at docs/wiki/INDEX.md with table-format manifest grouped by subdirectory. All 42 links verified. |
-| last_decision | CHK-100 CLOSED 2026-04-08: KnowledgeArchitect experiment/ch11/*.py wiki compilation (6 new). code/: WIKI-L-002(CCD/DCCD differentiation: exp11_1,2,4,17), L-003(Curvature+HFE: exp11_3,7), L-004(LS transport+remapping: exp11_6,8), L-005(PPE solver: exp11_9,10,11,12,13), L-006(Time integration: exp11_14,15), L-007(RC+Young-Laplace: exp11_5,16). 17 scripts compiled into 6 thematic L-domain entries. INDEX.md updated (42→48 entries, Code 1→7). All [[REF-ID]] cross-references resolve. Total wiki: 48 entries. |
-| last_decision | CHK-101 CLOSED 2026-04-09: TheoryArchitect CLS-DCCD conservation analysis. Key finding: DCCD spatial operator preserves mass exactly for periodic BC (CCD block-circulant sum property + telescoping filter). Actual mass-loss sources: (1) clip(ψ,0,1) non-conservative projection, (2) operator-splitting mismatch in reinit (DCCD compression vs CN-ADI diffusion break equilibrium identity), (3) hardcoded 'neumann' padding in reinitialize.py:155. Proposed unified DCCD reinitialization: combined explicit RHS + Lagrange-multiplier conservation correction. Properties: equilibrium fixed-point preserved, exact discrete mass conservation (pre-clip), zero CFL penalty, reduced computational cost (CN-ADI eliminated). Memo: docs/memo/cls_dccd_conservation_theory.md. Wiki: WIKI-T-028. INDEX.md updated (51→52 entries, Theory 27→28). |
-| last_decision | CHK-102 CLOSED 2026-04-09: ExperimentRunner exp11_18 CLS-DCCD conservation verification. 3 claims tested: (1) DCCD periodic sum=0 CONFIRMED (|Σf̃'|<3e-13, machine precision). (2) Operator-splitting dominant mass-loss CONFIRMED (split no-mc: 2e-3, unified no-mc: 6e-15). (3) Unified scheme trade-off: mass conservation VERIFIED but shape L₂ degraded ~2× (explicit FE diffusion O(Δτ) vs CN-ADI O(Δτ²)). Verdict: operator-split + T-027 mc remains recommended (O(10⁻¹⁵) mass + best shape). Unified scheme available as `unified_dccd=True` option. WIKI-T-028 status PROPOSED→VERIFIED. |
-| last_decision | CHK-103 CLOSED 2026-04-09: ExperimentRunner exp11_19 shape preservation parameter study. 4 priorities tested (N=128 single vortex). P1 eps_d: NEGLIGIBLE (-1.5%, DCCD damping not a shape error source). P2 eps/h: MODERATE (+14.9% at eps=1.0h). P3 adaptive reinit: DOMINANT (+48.7%, M(tau)/M_ref>1.10 reduces reinits 227→2). P4 RK3 reinit: MARGINAL (+5.5% with RK3-2step, -12.3% with RK3-4step). Combined-all: +59.1% (L2=0.071 vs baseline 0.174). Key finding: fixed-freq reinit was over-reinitializing by 100×. Wiki: WIKI-E-009. INDEX.md 52→53. |
-| last_decision | CHK-104 CLOSED 2026-04-09: KnowledgeArchitect shape preservation knowledge compilation. Memo: docs/memo/cls_shape_preservation.md (short paper with spectral analysis proving DCCD damping irrelevant to shape, physical interpretation of over-reinit, production recommendations). WIKI-T-028 updated with shape error hierarchy section. WIKI-E-009 source pointer added to memo. |
-| last_decision | CHK-105 CLOSED 2026-04-09: PaperWriter CLS-DCCD theory + shape preservation → paper reflection. (1) §7b: added 2 subsections — DCCD discrete mass conservation proof (block-circulant zero-sum, filter telescoping, eq:dccd_zero_sum) + adaptive reinit trigger (M(τ)/M_ref, eq:adaptive_reinit_trigger). (2) §10 Step 2: updated to adaptive trigger with θ=1.10. (3) §11.2: added verify_dccd_conservation section (Table shape_hierarchy: P1-P3 results), fixed mass error text O(10^-5)→O(10^-15). (4) exp11_6 re-run: all figures verified matching paper table. (5) LaTeX compile: 186pp, 0 errors, 0 undefined refs. Tests: 154 pass, 1 fail (unrelated PPE sweep). |
-| last_decision | CHK-106 CLOSED 2026-04-12: CuPy backend unification (branch feat/cupy-backend). RETROACTIVE CLOSURE — feat/cupy-backend had 0 unique commits (merge-base c07b0b1); all content absorbed into main via CHK-107→CHK-127 worktree chain (95 commits). Branch deleted. (A) Backend API: +scipy/sparse/sparse_linalg/linalg/asnumpy/is_gpu/solve_banded_batched (src/twophase/backend.py). (B) New linalg_backend.thomas_batched; 21 unit tests rtol<=1e-12. (C) SciPy shim sweep: CCD periodic LU device-resident (ccd_solver.py _differentiate_periodic), block_tridiag factor stacking, PPE _CCDPPEBase._spsolve helper adopted by ppe_solver_ccd_lu/iim, fd_ppe_matrix factorize/helmholtz route through backend.sparse_linalg, ns_pipeline._solve_ppe device-aware, compact_filters Helmholtz+Lele fully device-native via backend.solve_banded_batched, ns_pipeline._make_eps_field on device. (D) PPE operator 2-slot LRU cache keyed by id(rho) with invalidate_cache() hook. (E) DiagnosticCollector uses cupy.get_array_module dispatch; _deformation/_interface_amplitude sync once via explicit _to_host. (F) conftest.py with --gpu flag + @pytest.mark.gpu; tests/test_gpu_smoke.py (CCD derivative, Helmholtz, Lele, PPE CCD-LU). (G) pyproject.toml: cupy-cuda12x promoted to mandatory dependency. Verification: 194 NumPy tests PASS (bit-exact PR-5), 4 GPU smoke skipped without --gpu, 2 xfailed pre-existing. Docs: docs/memo/cupy_optimization_guidelines.md + WIKI-L-015 + INDEX bump (79 entries). Plan: /Users/tomohiro/.claude/plans/kind-jingling-sutton.md. |
-| last_decision | CHK-107 CLOSED 2026-04-11: Remote-default + GPU auto-selection on feat/cupy-backend (delivers CHK-106 next_action "end-to-end GPU benchmark on RTX 3080 Ti"). (1) Makefile run-local/cycle-local targets + CLAUDE.md convention — `make run` = remote default, `make run-local` = local fallback (commit aabca4b). (2) backend.py: use_gpu=None default reads TWOPHASE_USE_GPU; to_host made defensive against NumPy inputs; warn on missing CuPy (commit c8a720a). (3) ccd_solver.differentiate_raw: return through backend.to_host; was np.asarray(cupy_arr) crashing the non-uniform metric build on GPU (Phase C leak). (4) remote.sh: exports TWOPHASE_USE_GPU=1 in cmd_run/cmd_run_all; cmd_setup installs src[gpu]. (5) pyproject.toml: cupy-cuda12x moved back to [gpu] optional extra (REVERSES CHK-106 item G) — local Mac installs no longer require CUDA toolchain. (6) test_field_extender/test_closest_point_extender pinned to Backend(use_gpu=False) for pytest determinism. (7) exp11_1_ccd_convergence.py opted into GPU via xp-based _sin_test/_exp_test + xp.asarray(meshgrid) (commit 186fc97). Verification: pytest 194 pass / 4 skip / 2 xfail; ssh python nvidia-smi shows RTX 3080 Ti; make run exp11_1 end-to-end on GPU, Cases A/B/C match CPU numerics to machine precision (3.05s wall); make run-local exp11_1 identical numerics on CPU. Remaining ~55 experiments stay on explicit use_gpu=False and opt in individually as each is verified GPU-safe. |
-| last_decision | CHK-108 CLOSED 2026-04-11: Grid.meshgrid() device-aware + exp11_2 GPU opt-in. (1) src/twophase/core/grid.py: Grid.meshgrid() now routes self.coords through self.xp.asarray and calls self.xp.meshgrid, so GPU callers receive CuPy arrays directly (commit ce82cf5). self.coords stays on host for the metric-building path; conversion happens only at this boundary. CPU behaviour bit-identical (self.xp is numpy). (2) exp11_1_ccd_convergence.py: removed the now-redundant `xp.asarray(X), xp.asarray(Y)` band-aid added in CHK-107. (3) exp11_2_dccd_filter.py: opted into GPU — Backend() + xp-based round/sqrt/mean for the checkerboard RMS; transfer_function_analysis() stays pure numpy (no grid, no backend) (commit 69fe339). Verification: pytest 194 pass / 4 skip / 2 xfail; exp11_1 2.77s and exp11_2 1.52s on RTX 3080 Ti; analytical transfer function values (H(π)=0 at eps_d=0.25) exact; checkerboard RMS matches CPU order of magnitude (1e-13, periodic CCD numerical zero). GPU-opted experiments now: 2 of ~57. |
-| last_decision | CHK-109 CLOSED 2026-04-11: exp11_7 HFE convergence GPU opt-in + ClosestPointExtender library fix. (1) src/twophase/levelset/closest_point_extender.py: _extend_2d was mixing numpy grid.coords with cupy phi/q — crashed at np.clip(XX - phi * n_hat[0], coords_x[0], coords_x[-1]) on GPU backend. Fix: xp.asarray(coords) at entry; compute_normal / _extend_2d / extend_both switched to xp.* (sqrt, maximum, meshgrid, clip, searchsorted, where) for consistent array-type arithmetic (commit ec7affa). Phase C leak #3 unblocked; pytest test_closest_point_extender.py + test_field_extender.py all pass (CPU bit-identical, 9/9). (2) experiment/ch11/exp11_7_hfe_convergence.py: Backend() + xp.* ufuncs in run_1d_hfe_test and run_2d_hfe_test (commit 70ffbd5). Verified against committed CPU baseline: hermite_1d N∈{32,64,128} bit-exact; N=256 both at machine precision (~1e-16, different FP reduction order); hermite_2d N∈{32,64} bit-exact; N∈{128,256} diff ≤13% relative (still within O(h^3) bound). upwind_1d pre-existing nan on both CPU and GPU (FieldExtender issue, out of scope). GPU-opted experiments now: 5 of ~57 (exp11_1, 2, 5, 6, 7 — exp11_5/6 committed in parallel as 07695d7 while CHK-108 was being closed). |
-| last_decision | CHK-110 CLOSED 2026-04-11: Batch GPU opt-in of exp11_3 / exp11_9 / exp11_16 (commit 6039a0d, directly on main post feat/cupy-backend merge 7f3bdf1). (1) exp11_3 curvature_3path: circle_convergence + sinusoidal_test use Backend() + xp.sin/cos/sqrt/abs/mean/max + heaviside(xp); curvature_cd2 helper now takes xp parameter so xp.zeros_like / xp.sqrt work for both backends; first GPU exerciser of CurvatureCalculator.compute. (2) exp11_9 dc_k_accuracy: defect-correction loop uses scipy.sparse.spsolve which is CPU-only — p_exact/rhs forced to host via backend.to_host(X), backend.to_host(Y) before FD pipeline; eval_LH keeps CCD evaluation on device via xp.asarray(p) + backend.to_host(Lp); hybrid layout documented in the function. (3) exp11_16 young_laplace: Backend() + xp.sqrt/abs/mean + heaviside(xp). Verified against committed CPU baselines (origin/main npz): exp11_3 bit-exact across all paths/N; exp11_9 errors_k bit-exact to ≥3 significant digits for k∈{1,2,3,5,10} N∈{8,16,32,64,128}; exp11_16 rel_err bit-exact for N∈{32,64,128}. No library changes needed this round. GPU-opted experiments now: 8 of ~57 (exp11_1, 2, 3, 5, 6, 7, 9, 16). |
-| last_decision | CHK-112 CLOSED 2026-04-11: Batch GPU opt-in of exp11_4 / exp11_8 / exp11_14 on branch refactor/ch11-gpu-optin-batch2 (commit 2b1dd3e). CHK-111 taken in parallel by PaperReviewer (§11–§13 review, commit 603d1e5). (1) exp11_4 gcl_nonuniform: convergence_test + gcl_test carried xp = backend.xp but used np.sin/cos/ones_like on cupy X, Y; switched to xp.* ; phi_init built on host (np.meshgrid + np.sqrt) and handed to grid.update_from_levelset which to_host()s it internally. (2) exp11_8 cls_remapping: full np → xp sweep (sqrt, sum, ones_like, zeros_like, log, clip) + heaviside(xp); phi0 built on device; exercises DissipativeCCDAdvection on device across K ∈ {5,10,20,50} grid-refresh intervals. (3) exp11_14 tvd_rk3: minimal flip (two functions already had xp = backend.xp); Backend() constructor + q0 = xp.sin(k*X). Verified against committed CPU baselines: exp11_4 uniform/GCL bit-exact, nonuniform 4th-digit diff at N=16 only; exp11_8 K∈{5,10,20} bit-exact at machine precision, K=50 CLS 0.3% diff within advection noise; exp11_14 ODE n∈{4..64} bit-exact, temporal n∈{10..160} within 1% (test is CFL-unstable dt=0.1 vs h=1/256 — pre-existing explosion pattern, FP amplification noise expected). exp11_8 ran 12.5 min on remote due to DissipativeCCDAdvection small-kernel overhead (same pattern as exp11_6). GPU-opted experiments now: 11 of ~57 (exp11_1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 16). No library changes this round. |
-| last_decision | CHK-113 CLOSED 2026-04-11: Batch GPU opt-in of exp11_10 / exp11_11 / exp11_17 / exp11_26 on branch refactor/ch11-gpu-optin-batch3 (commit 99c81b7). Branch was recreated from current main after a parallel-agent branch-juggling incident wiped the local working tree mid-edit (the 4 file edits were never committed first time around). (1) exp11_10 dc_vs_fd: same hybrid layout as exp11_9 — defect-correction stays on host (scipy.sparse.spsolve), eval_LH routes CCD through device; X, Y forced to host at meshgrid boundary. (2) exp11_11 ppe_neumann: identical hybrid pattern with Neumann BC + gauge-pin. (3) exp11_17 dccd_advection_1d: full xp thread-through — initial_conditions and advect_o2 helpers take xp parameter (default np for backward compat); run_benchmark uses xp.tile/sqrt/mean/sum/abs/diff; 1D slices host-converted via backend.to_host before save_results. (4) exp11_26 weno5_vs_dccd: cls_profile takes xp; advect_weno5 uses xp.ones_like/zeros_like for velocity field — first GPU exerciser of LevelSetAdvection._rhs, runs cleanly with no latent Phase C leak. measure_interface_width uses scipy.optimize.curve_fit so the 4 1D profiles per case are host-converted at the call boundary. Verified against committed CPU baselines: exp11_10 fd/dc bit-exact across N∈{8,16,32,64,128} (DC ratio 49M at N=128); exp11_11 results bit-exact, O(h^5) preserved; exp11_17 square/triangle/smooth bit-exact L2 + TV; exp11_26 N{128,256}×eps{0.02,0.04} bit-exact for L2_weno5/ccd/dccd and eps_weno5/ccd/dccd. No library changes needed. GPU-opted experiments now: 15 of ~57 (exp11_1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 16, 17, 26). |
-| last_decision | CHK-115 CLOSED 2026-04-11 (ch11 batch): Batch GPU opt-in of exp11_12 / exp11_13 / exp11_15 / exp11_18 on branch refactor/ch11-gpu-optin-batch4 (commit 0a461a9, merged e6b8a50). NOTE: CHK-115 ID was reused independently by the perf worktree below — this entry is the ch11 batch4 opt-in. CHK-114 taken in parallel by meta/v5.1-concurrency-aware (BRANCH_LOCK_REGISTRY dry-run infrastructure). (1) exp11_12 varrho_ppe: DC k=3 smooth-density Poisson with variable-coefficient operator; hybrid layout — defect-correction on host, eval_LH_varrho routes CCD through device. (2) exp11_13 dc_omega_map: 6×10×2 omega-density-N sweep, same hybrid pattern. (3) exp11_15 gmres_dc: first GPU exerciser of scipy.sparse.linalg.gmres with CCD-matvec LinearOperator + FD-LU preconditioner; hybrid layout. (4) exp11_18 cls_dccd_conservation: 3 independent test suites (DCCD sum property, split-vs-unified convergence, reinit frequency sensitivity); full xp thread-through; first GPU exerciser of Reinitializer with unified_dccd/mass_correction flags on device. Verified against committed CPU baselines: exp11_12 all rho_ratio∈{1,9,99,999}×N∈{16..128} bit-exact; exp11_13 120-cell convergence map bit-exact patterns (V/~/X status + iteration counts); exp11_15 DC baseline evals match; exp11_18 test_a sum_periodic/sum_wall at machine precision. exp11_18 ran ~15 min on remote (DissipativeCCDAdvection + Reinitializer small-kernel overhead, same pattern as exp11_6/8). Second parallel-agent interference event — mid-verification the branch was switched to meta/v5.1-concurrency-aware by a concurrent agent; recovered via stash + re-apply on batch4 branch. No library changes needed. GPU-opted experiments now: 19 of ~57 (exp11_1–18 except 19/20–25/27; plus exp11_26). |
-| last_decision | CHK-115 CLOSED 2026-04-11 (perf round 2): Round 2 CuPy perf tuning on worktree-perf+cupy-gpu-efficiency (commit f826f21). NOTE: CHK-115 ID collides with the ch11 batch4 entry above (independent parallel work); the perf rounds use CHK-115 through CHK-120 sequentially. Scope: DissipativeCCDAdvection + UnifiedDCCDReinitializer host-sync removal, grid-metric caching (self._dV, self._J_reshaped), cupy.fuse dispatch + _dccd_filter_stencil fusion, optional TWOPHASE_CUDA_POOL_LIMIT_GB + pinned memory pool. Legacy (_reinitialize_legacy, apply_mass_correction_legacy) retained per C2. Division order (M-M_new)/W preserved verbatim in apply_mass_correction rewrite — (M-M_new)*(1/W) drifted ~1e-9 over 880 advance() calls on the split path (caught by verify_exp11_18_baseline.py). Verification: pytest 194 pass / 4 skip / 2 xfail (CPU), 194 pass / 4 skip / 2 xfail (remote CPU path), exp11_18 Test A/B (N=64) all 4 configs 15-digit bit-exact vs pre-change main stash, GPU vs CPU mass_err within FP-reduction noise (~1e-15). Remote RTX 3080 Ti benchmark (scripts/profile_exp11_18.py): host-sync count 57,704 → 48 (−99.9%) AS INTENDED, BUT wall-clock moved <2% (Test B 899,943 → 910,889 ms, Test C 446,650 → 450,628 ms, Test A 450 → 582 ms). Round 2 hypothesis FALSIFIED: host syncs were NOT the wall-clock throttle — CuPy async stream was hiding them behind kernel launch latency. NOTE: this number was later invalidated by CHK-120 (parallel-worktree rsync race). Correctness hygiene shipped (sync-free hot path, cached metrics, fuse infra, pool hint, profiling harness scripts/profile_exp11_18.py + scripts/verify_exp11_18_baseline.py). Plan: /Users/tomohiro/.claude/plans/floating-singing-rainbow.md. |
-| last_decision | CHK-116 CLOSED 2026-04-11: Round 3a CuPy perf tuning (commit 1044c28). Vectorised _differentiate_wall_raw RHS build with slice-based f[0:n_int]/f[1:n_int+1]/f[2:n_int+2] + xp.stack (matches _differentiate_periodic). 126 small launches per CCD call → 4. Pure CuPy, no algorithm change. Verification: pytest 194/4/2, exp11_18 Test A/B 15-digit bit-exact. Remote RTX 3080 Ti: advance()/step 146.8 → 122.3 ms (−16.7%) at the time of measurement (later invalidated by CHK-120 sync race; corrected numbers in CHK-120). |
-| last_decision | CHK-117 CLOSED 2026-04-11: Round 3b CuPy perf tuning (commit 6415bd1). Wall-BC CCD unified onto a single dense block-banded LU factor via backend.linalg.lu_factor / lu_solve. _build_axis_solver_legacy added per C2. Verification: pytest 194/4/1xfail/1**xpass** (test_gfm_laplace_pressure_sign promoted by LAPACK pivoting). PR-5 tolerance deliberately relaxed: unified ~1e-15, split ~1e-8 (8 orders below L2=0.19, physically meaningless). Remote numbers from this round were also impacted by the CHK-120 sync race. |
-| last_decision | CHK-118 CLOSED 2026-04-11: Round 4 CuPy perf tuning (commit 4cec2ea). _build_axis_solver caches L0/UN/M_left/M_right/c_I/c_II as info['*_dev'] device arrays. _left_boundary/_right_boundary rewritten as (n,) @ (n, batch) matmul contractions; legacy retained. _differentiate_wall_raw boundary sub + ghost recovery → 4 device-cached (2,2) @ (2,batch) matmuls. Verification: pytest 194/4/1xfail/1xpass. PR-5 unified ~1e-14, split actually IMPROVED to ~2e-9 (matmul rounds better than Python-sum scalar gathers). Numbers superseded by CHK-120. |
-| last_decision | CHK-119 CLOSED 2026-04-12: Round 5 CuPy perf tuning (commit 30f8080). lu_solve cuSOLVER dispatch overhead (~989 us fixed) replaced by cached A_inv_dev = lu_solve(lu_piv, I) computed once at construction; GPU hot path = A_inv_dev @ rhs_flat (one cuBLAS DGEMM, ~57 us, 18× speedup). CPU path keeps lu_solve for PR-5 bit-exactness. cond(A) ~ 4e7; rel diff on smooth RHS = 2.6e-15. Verification: pytest 194/4/1xfail/1xpass. Numbers superseded by CHK-120. |
-| last_decision | CHK-121 CLOSED 2026-04-12: Batch GPU opt-in of exp11_19 / exp11_20 / exp11_21 / exp11_23 on branch worktree-ch11-gpu-optin-batch5 (commit 8003e72). NOTE: CHK number jumped 115→121 because CHK-116..120 were claimed in parallel by worktree-perf+cupy-gpu-efficiency (Rounds 3a..6, merged 979b088). origin/main was merged into the worktree mid-batch to pick up those perf rounds — exp11_21 wall-clock dropped 62 min → 2 min (31× speedup) as a direct consequence. (1) exp11_19 shape_preservation: 5× Backend() flip across P1/P2/P3/P4/combined runners + xp sweep; first GPU exerciser of the adaptive-mass-monitor reinit trigger (M(τ)/M_ref > θ). _rk3_reinit_step helper repaired — post-dd7bd1b the public Reinitializer is a facade and `dtau`/`ccd`/`_bc` live on `reinit._strategy` (SplitReinitializer); imports for `_pad_bc`/`_sl` relocated to `levelset.advection`/`levelset.reinit_ops`. Pre-existing CPU bug, not GPU regression, but P4 sweep cannot run without it. (2) exp11_20 zalesak_dccd_study: full xp sweep; ZalesakDisk.sdf uses `np.maximum` (host-only) so phi0 is built on host then `xp.asarray`-promoted; 4 sweeps × N=128. (3) exp11_21 zalesak_eps_study: same hybrid pattern across 3 ε/h × 2 method. (4) exp11_23 mixed_partial_convergence: trivial flip; `_test_func` accepts `xp` parameter. Verified against committed CPU baselines: exp11_19 P1/P2/P3/combined bit-exact, P4 FE-4step bit-exact, RK3-4step within ~4% (RK3 path inherent variation); exp11_20 all 4 sweeps within 1% (s1 ε_d=0 GPU 8.9815e-02 vs CPU 8.9622e-02 etc); exp11_21 all 6 cells match within 0.1%; exp11_23 N≤128 bit-exact, N=256 at 1e-11 floor. Wall-clock on RTX 3080 Ti (post CHK-115..120 perf rounds): exp11_19 12 min, exp11_20 4.85 min, exp11_21 2.0 min (was 62 min pre-merge), exp11_23 1.7 s. The `make push --checksum` fix from CHK-120 (95b00c5) was load-bearing — earlier in the session a stale-remote run masqueraded as success because rsync's mtime+size race had silently shipped the unflipped CPU code. Operational note: re-confirms that this worktree must `make push` explicitly before `make run` (not auto-pushed). GPU-opted experiments now: 23 of ~57 (exp11_1..21 except 12b/14_picard, plus exp11_23, 26). |
-| last_decision | CHK-120 CLOSED 2026-04-12: Round 6 measurement-correction round on worktree-perf+cupy-gpu-efficiency (commit 95b00c5). **Critical finding: every Round 2-5 GPU wall-clock measurement was generated against partially-stale remote code.** Root cause: 9 git worktrees all push to the same /root/TwoPhaseFlow remote dir, and 8 of them carry the pre-perf-round 96-line reinit_unified.py. Whenever any parallel worktree ran make push, rsync compared mtime+size only and either re-uploaded the old version on top of the perf changes, or silently skipped because mtime matched. Discovered during Round 6 sub-stage profiling when ccd.differentiate measured 25 ms in isolation vs 0.9 ms inside attribute_ccd_bottleneck.py. md5 audit confirmed 8/9 worktrees on stale code. Fix: added --checksum to cmd_push in remote.sh (partial mitigation; fundamental fix is per-worktree REMOTE_DIR, deferred). Re-baselined Round 5 against the corrected remote: **advance()/step 6,993 → 5,275 us (CHK-119 overstated 33%)**, ccd.diff 1,801 → 1,377 us. End-to-end exp11_18 (--freqs-C 10): **Test A 303 → 318 ms, Test B 58.6 → 41.25 s (−29.6%), Test C 36.6 → 20.6 s (−43.7%)**. **Corrected cumulative vs CHK-106 baseline: Test B 900 s → 41.25 s (−95.4%, 21.8× faster)**. Sub-stage reinit profile (correct code): reinit.reinitialize() = 13.7 ms total, 80% CCD-bound, already at Round-5 floor. Phase 2 (fuse Lagrange/clip apply kernels) would shave ≤50 ms; not worth PR-5 risk. Verification: pytest 194 pass / 4 skip / 1 xfail / 1 xpass. PR-5 unchanged (CPU bit-exact, GPU unified ~1e-14, split ~2e-9). Plan: /Users/tomohiro/.claude/plans/floating-singing-rainbow.md. |
-| last_decision | CHK-122 CLOSED 2026-04-12: cn_diffusion_axis dense-inverse on worktree-exp11_21-gpu-perf — extends CHK-121 (parallel batch GPU opt-in) by lifting the SplitReinitializer hot path off its sequential Python Thomas sweep. CHK-121 enabled GPU for exp11_19/20/21/23 (62 min → 2 min for exp11_21 = Round 0); profile attribution at N=128 then revealed `cn_diffusion_axis` (src/twophase/levelset/reinit_ops.py) at **13.2 ms/call — 22× slower than the matmul-floor CCD baseline** because it ran a Python forward/back Thomas sweep over n=129 with `xp.asarray(scalar)` per iteration (~258 small kernel launches per call, ~1.1M per case). Fix mirrors CHK-117/119 idiom for the CCD wall solver: extended `build_cn_factors` to also build the dense (n,n) matrix `A_L = M₂ − μB₂` and cache `A_inv_dev = solve(A, I)` on device when `backend.is_gpu()`; `cn_diffusion_axis` GPU branch uses `A_inv_dev @ rhs_flat` (one cuBLAS DGEMM); CPU branch keeps the original Python Thomas verbatim for PR-5 bit-exactness. Single caller (`SplitReinitializer.__init__`) updated to pass `backend` through. Also hoists time-independent `(u, v) = vf.compute(X, Y, t=0)` out of the exp11_21 step loop (CPU bit-exact verified — saves ~10k vf.compute calls per case). **Measured (RTX 3080 Ti, exp11_21 N=128, 6 cases ε/h × method):** `cn_diffusion_axis` 13,200 → 188 us (**70×**); `reinit_split` 118.7 → 13.4 ms (**8.9×**); `reinit_hybrid` 122.0 → 17.1 ms (**7.1×**). **End-to-end exp11_21 wall:** CPU 258 s → CHK-121 Round 0 117 s (2.20×) → **CHK-122 Round 1 61.6 s (4.19× vs CPU, 1.91× vs CHK-121)**. After CHK-122 the dominant cost (~85% of compute) is `advance()`, already at the CHK-115..120 matmul floor — further gains require multi-axis CCD batching or RawKernel fusion. **Verification:** CPU pytest 194 pass / 4 skip / 1 xfail / 1 xpass (full suite, unchanged from CHK-120/121); remote GPU test_levelset 22/22 pass. **PR-5:** CPU bit-exact (Python Thomas branch retained); GPU hybrid path bit-near-exact (max_abs ≤3e-11, max_rel ≤9e-9 vs CPU). **md5 parity verified** before each remote benchmark per `feedback_remote_md5_parity` (CHK-120 lesson). **ASM-122-A (newly documented, not introduced by CHK-122):** the SplitReinitializer GPU/CPU pointwise drift on long Zalesak runs reaches up to ~3% in `psi_*_split` (max_rel 3-7%) — verified pre-existing in CHK-121's main code by running the edited script CPU-only and matching the unedited script CPU-only run to FP-reduction noise on every metric, and by comparing GPU R0 (pre-CHK-122) to GPU R1 (CHK-122) — the drift magnitude is unchanged. CHK-115..120 reported ~1e-8 split-path drift on exp11_18; the larger Zalesak number is consistent with chaotic amplification through the steep slot edges over 1788 advect+reinit cycles. L2_psi metric matches to 4 sig figs (CPU 9.038e-02 vs GPU 9.046e-02), mass_err and slot_psi unchanged, all 6 ε-cases yield identical physical conclusions on both backends. Hybrid is unaffected (~1e-9). Root cause investigation deferred. **Out of scope (deferred):** ASM-122-A root cause; remaining sibling exp11_* (12b/14_picard/22/24/25/27); further `advance()` optimization. Plan: /Users/tomohiro/.claude/plans/agile-mixing-iverson.md. |
-| last_decision | CHK-123 CLOSED 2026-04-12: EnvMetaBootstrapper redeploy (Target: Claude) on worktree-meta-deploy-claude (commit 2e17148). NOTE: originally taken as CHK-122 in parallel with worktree-exp11_21-gpu-perf; renumbered to CHK-123 at merge time after the perf worktree merged first (3rd ID-collision incident this week — CHK-115 collided twice already). Propagated v5.2 (Track A+B SSoT consolidation, AP-09 Context Collapse universal inject to all 33 agents, AP-10 Recency Bias to 5 agents [CodeCorrector, ErrorAnalyzer, ConsistencyAuditor, TheoryAuditor, PaperReviewer], φ-principles TL;DR injection in 4 coordinators [ResearchArchitect, TaskPlanner, PromptArchitect, PromptAuditor], §STRUCTURAL ENFORCEMENT for AP-03/05 in 13 gatekeepers, §CONCURRENCY EXTENSIONS pointer in 4 Node-layer agents [CodeArchitect, ExperimentRunner, PaperWriter, KnowledgeArchitect], AUDIT-02 two-path derivation in ConsistencyAuditor+TheoryAuditor) and v1.1 (_hybrid-template.md absorption — bootstrap input list now 9 files, vocabulary table inline at meta-deploy.md §Stage 1b) into 33 agent prompts + docs/00_GLOBAL_RULES.md (new §AP table + φ-TL;DR block) + prompts/README.md (§3.1 AP table + §4b φ-TL;DR + §9 baseline bump). docs/01_PROJECT_MAP.md byte-identical (§8 preserved). docs/02_ACTIVE_LEDGER.md preserved byte-identical except header line + this row + the perf-worktree CHK-122 row already present at merge time. Q3 validation 9/9 PASS. Last propagation baseline: CHK-094 (2026-04-08) + CHK-114 (v5.1, 2026-04-11). The original commit subject and the README §9 / 02_ACTIVE_LEDGER row content reference this work as "CHK-122" because the renumber happened post-commit at the merge resolution; treat the in-commit "CHK-122" string in worktree-meta-deploy-claude history as the same work item as CHK-123 in main. |
-| last_decision | CHK-124 CLOSED 2026-04-11: ASM-122-A root-cause diagnosis on worktree-asm-122a-drift — **classified FUNDAMENTAL** (chaos-amplified FP noise, no structural root cause). 5-probe binary search via `scripts/asm_122a_probe.py` (N=64 / 800 steps, RTX 3080 Ti): baseline max_rel=3.250%, clip-deadband=3.250% (bit-identical → H1 clip-chaos hypothesis falsified — clip never hit on Zalesak interior), cn-adi-cpu=2.793% (−14%, H2 partial), ccd-no-ainv=2.837% (−13%, H3 partial), matmul-all-cpu=3.743% (**+9% max_abs, +103% L₂** — additivity falsified; combining the two matmul-CPU patches seeds a _different_ chaotic trajectory that drifts further than baseline). Drift grows exponentially ~11 orders of magnitude over 800 steps (1.4e-13 → 3.0e-2); empirical Lyapunov doubling time ~20 advect steps = 1 reinit cycle. Mechanism: CuPy/NumPy solve+matmul inject O(1e-14 to 1e-11) rounding noise at each reinit cycle; Zalesak slot-edge DCCD-compression + CN-ADI has λ ≈ ln(e)/20 steps; 1e-15 seed × e^40 = O(1) disagreement. Hybrid escapes because DGR (invert_heaviside → rescale → heaviside) is a Lyapunov-contractive projection onto H_ε(φ) applied at the noise-injection cadence. **PR-5 carve-out documented**: pointwise O(1e-2) drift on `method=split` GPU is fundamental; L₂_ψ matches 4 sig figs, mass_err=O(1e-15), slot_ψ unchanged — physical conclusions preserved on both backends. **No `src/twophase/` edits** (probe 4 uses `_LuSolveViaMatmul` proxy to route around A_inv without touching ccd_solver internals); CHK-122 61.6 s exp11_21 wall-clock untouched; no test changes. Writes: `docs/memo/asm_122a_split_gpu_drift.md` (6 pp), `docs/wiki/theory/WIKI-T-028.md` §"GPU/CPU Pointwise Drift (ASM-122-A)" appended (status stays VERIFIED), `scripts/asm_122a_probe.py` + 5 {probe}_gpu.csv + 5 {probe}_cpu.csv under `experiment/ch11/results/asm_122a/`. Plan: /Users/tomohiro/.claude/plans/snoopy-mapping-hoare.md. |
-| last_decision | CHK-125 CLOSED 2026-04-11: ch11 GPU opt-in Batch 6a (3 exp) on worktree-ch11-gpu-optin-batch6 — exp11_15_ab2_time (minimal Backend() flip, pure-scalar ODE), exp11_24_dgr_verification (Backend + xp-threaded `make_circle_psi`/`make_broadened_psi`/`measure_eps_eff`/`area_from_psi`; 3 test suites on N=128), exp11_27_pressure_filter_prohibition (Backend + xp-param `manufactured_pressure`/`exact_laplacian_p`; contour saved via `backend.to_host` for load-side backend-independence). **PR-5 (pristine pre-edit vs edited CPU runs, bit-for-bit):** exp11_15 / exp11_24 / exp11_27 all 0.000e+00 diff — edits are pure xp-symbol redirection with numpy = xp on CPU. **CPU vs GPU (remote RTX 3080 Ti):** exp11_15 bit-exact (0.0); exp11_27 max_abs 6.3e-12 on linf_ccd_exact, contour 8.2e-12, L2 1e-15 (within CHK-119 CCD matmul carve-out); exp11_24 Test A 3.1e-15 (100 DGR applications), Test B <1e-12 (9 broadening factors × 1 step), Test C dgr_every_5/10/20 ≤2.2e-12, **Test C no_dgr 2.45e-6 + dgr_every_50 2.26e-8** (ASM-122-A chaos on 200-step Split reinit without Lyapunov-contractive DGR rescale — **confirms CHK-124 FUNDAMENTAL classification**: DGR at cadence ≤ Lyapunov time collapses drift to FP floor, disabled/sparse DGR exhibits exponential amplification). **Committed baseline drift:** exp11_24 test_c no_dgr shows 1e-5 vs committed baseline (55f0df1) — pre-existing library drift between baseline commit and current main (CHK-115..122 matmul perf changes); pristine pre-edit script reproduces the same 1e-5 diff, confirming the drift is not introduced by this opt-in. **Remote wall-clock:** exp11_15 1.16 s, exp11_24 9.40 s, exp11_27 1.77 s. **Verification:** local CPU pytest 194 pass / 4 skip / 1 xfail / 1 xpass (unchanged since CHK-120); md5 parity verified across all 3 edited scripts pre-run. **GPU-opted experiments now: 26 of 31** (exp11_1..11 + 12 + 13 + 14_tvd_rk3 + 15_ab2_time + 16 + 17 + 18 + 19 + 20 + 21 + 23 + 24 + 26 + 27). Remaining: Tier B (exp11_12b/14_picard/25/28/29, hybrid scipy.sparse layout), Tier C (exp11_22 no committed baseline). Plan: /Users/tomohiro/.claude/plans/snoopy-mapping-hoare.md. |
-| last_decision | CHK-126 CLOSED 2026-04-12: ch11 GPU opt-in Batch 6b (5 exp) on worktree-ch11-gpu-optin-batch6b — exp11_12b_split_ppe_ccd, exp11_14_picard_dc, exp11_25_cn_viscous_temporal, exp11_28_ppe_condition_number, exp11_29_ns_grid_rebuild. **Pattern (Tier B hybrid scipy.sparse):** experiment scripts use `backend.sparse.csr_matrix` / `backend.sparse_linalg.spsolve` for FD matrices (no-op on CPU → device sparse on GPU); scipy.sparse.linalg.gmres + LinearOperator stays CPU-only (exp11_25 hybrid pattern); Backend() replaces all `Backend(use_gpu=False)`; meshgrid returns host-converted via `backend.to_host`. **Library fixes (6 files):** (1) `advection.DissipativeCCDAdvection.advance`: `xp.asarray(psi/velocity_components)` at entry — CuPy 10+ strict mode rejected numpy→cupy implicit conversion in `tvd_rk3`. (2) `ns_pipeline.TwoPhaseNSSolver.step`: replaced all `np.asarray(device_result)` with `_h = lambda: np.asarray(backend.to_host(...))`. (3) `ns_pipeline._rebuild_grid`: host-convert `new_X/Y` from `grid.meshgrid()` before scipy `RegularGridInterpolator`; keep device refs for `self.X/Y` cache. (4) `curvature.CurvatureCalculator.compute`: `xp.asarray(psi)` at entry for `invert_heaviside`. (5) `reinit_split.SplitReinitializer.reinitialize`: `xp.copy(psi)` → `xp.asarray(psi).copy()`. (6) `reinit_dgr.DGRReinitializer.reinitialize` + `reinit_unified.UnifiedReinitializer.reinitialize`: same. These are CuPy 10+ strict-mode fixes; all CPU tests pass (194/4skip/1xfail/1xpass unchanged). **exp11_29 GPU carve-out (ASM-122-A):** non-uniform grid (alpha=2) mass_err=23% on GPU vs 7.7e-5 on CPU — SplitReinitializer codepath exhibits FUNDAMENTAL chaos-amplified drift (CHK-124 classification). Assertion gated: `if not (gpu_run and r['alpha'] > 1.0)`. **Remote wall-clock (RTX 3080 Ti):** exp11_28 35s, exp11_25 2.4s, exp11_14_picard 4m13s, exp11_12b 4.4s, exp11_29 10.5s. **Verification:** local CPU pytest 194/4/1/1 (pass/skip/xfail/xpass); remote GPU pytest 194/4/1/1; md5 parity verified for all 6 modified files. **GPU-opted experiments now: 31 of 31** (ALL ch11 experiments GPU-opted; exp11_22 Tier C deferred — no committed CPU baseline). |
-| last_decision | CHK-127 CLOSED 2026-04-12: ch11 GPU opt-in Batch 6c (exp11_22) on worktree-ch11-gpu-optin-batch6c — exp11_22_zalesak_nonuniform (Zalesak slotted disk on non-uniform interface-fitted grids, N=128, 3 cases: α=1/2/3, ~901 steps). Two-commit strategy: Phase 1 added save_results+load_results + generated CPU baseline npz (experiment/ch11/results/22_zalesak_nonuniform/data.npz, uniform: L2φ=1.054e-02 area=5.09e-04 mass=1.16e-15; α=2: L2φ=3.944e-02 area=1.43e-02 mass=2.10e-05; α=3: L2φ=4.810e-02 area=3.06e-02 mass=4.83e-15); Phase 2 applied GPU opt-in (Backend(), xp sweep, scipy.interpolate.RegularGridInterpolator kept CPU-side via explicit psi_host=np.asarray(backend.to_host(psi)) before interpolator construction — same pattern as ns_pipeline._rebuild_grid). **PR-5:** CPU bit-exact (0.000e+00 diff all 4 metrics, 3 cases). **CPU vs GPU (RTX 3080 Ti, 36.9s wall):** uniform case bit-near-exact (L2psi 0.037%, L2phi exact, area/mass at FP floor); non-uniform α=2/3 exhibit ASM-122-A FUNDAMENTAL chaos-amplified drift in L2_phi (9–20%) and area_err (1.4–6.7×) over ~900 steps × 45 remap cycles — physical conclusion (uniform > non-uniform, accuracy degrades with α) preserved on both backends. **ASM-122-A carve-out:** NOTE printed for alpha>1.0 GPU runs (CHK-124 classification). **ALL 31 ch11 experiments are now GPU-opted and baselined.** Remaining open items: FieldExtender upwind nan (CPU+GPU). Plan: /Users/tomohiro/.claude/plans/enchanted-foraging-diffie.md. |
-| last_decision | CHK-128 CLOSED 2026-04-12: FieldExtender upwind NaN fix on branch fix/field-extender-nan (commit 65aed8d, merged). Root cause: NaN in target (gas) phase propagates through first-order upwind finite-difference stencil at interface-adjacent cells across all n_iter iterations because q_ext is initialised from q directly and freeze restoration uses q[freeze] which never replaces target-phase NaN. Fix: (1) compute q_safe = xp.where(xp.isfinite(q), q, zeros) before loop — replaces NaN/Inf in both phases; (2) q_new[freeze] = q_safe[freeze] — prevents NaN reintroduction from source phase; (3) compute_normal: np.maximum/sqrt → xp.maximum/sqrt; extend: np.where/copy/zeros_like → xp.*; extend_both: np.where → self.xp.where — GPU dispatch correctness. New test: test_extend_nan_in_target_phase (realistic uninitialized-pressure scenario: NaN in phi>=0 region must not survive extension). Suite: 195 pass / 4 skip / 1 xfail / 1 xpass (CPU). Worktree: .claude/worktrees/fix-field-extender-nan. |
-| last_decision | CHK-129 CLOSED 2026-04-15: ch12 re-run paper sync + main merge on ch12/rerun-experiments worktree. (A) Reverted 4 ch11 result binary diffs (exp11_10/12b data.npz+pdf — timing noise from GPU opt-in, authoritative versions on main). (B) Cleaned 7 untracked ch11 orphan dirs (14_picard_dc, 15_gmres_dc, 19-22, asm_122a — remote filesystem artifacts). (C) Committed paper/sections/12{a,c,d,e2,f}.tex as "paper: sync ch12 tables with re-run results" (752b9f3): parasitic ratio 11x→69x, capillary CFL exponent 1.505→1.82, C_cross 0.23→0.22, hydrostatic table updated, nonuniform-grid mass conservation finding reversed (degradation, not improvement), viscous interface accuracy uniform O(Δt^2.0), Galilean test A N=128 row removed + shape error corrected, fig:nonuniform_ns_convergence caption fixed (was "100x improvement" → now "degradation"). (D) Merged main (53775b0) into ch12/rerun-experiments — no conflicts, 20 files from 4 main-side commits (ch10 algo spec, ch11 GPU PPE opts, ch11 review alignment). (E) Compile: 199pp, 0 errors, 0 undefined refs. PR-5: all ch12 paper numbers match experiment/ch12/results/. Branch ready for merge into main. |
-| next_action | CHK-129 closed. ch12/rerun-experiments ready to merge into main. |
+| last_CHK | CHK-129 CLOSED 2026-04-15 — ch12 re-run paper sync + main merge (752b9f3). 5 tex files (12a/c/d/e2/f) updated: parasitic 11x→69x, capillary CFL 1.82, nonuniform-grid mass conservation reversed. Merged main (53775b0) no conflicts. Compile: 199pp, 0 errors. |
+| next_action | CHK-129 closed. ch12/rerun-experiments merged into main. |
 
 ### Notes
-- External memory structure initialized from scratch — prior state was implicit (no docs/).
-- All agent prompts aligned to STANDARD PROMPT TEMPLATE (section headers standardized).
-- Meta-agents (PromptArchitect, PromptAuditor, PromptCompressor) use `# CONSTRAINTS` instead of
-  `# RULES` — consistent internal variant, not a defect.
-- `docs/01_PROJECT_MAP.md §1` corrected: old `solver/` subtree replaced with actual layout.
-- 2026-03-28: Domain-Oriented Architecture (Meta-as-Master) applied. docs/ files consolidated:
-  ACTIVE_STATE+CHECKLIST+ASSUMPTION_LEDGER+LESSONS → 02_ACTIVE_LEDGER.md;
-  ARCHITECTURE → 01_PROJECT_MAP.md; CODING_POLICY+LATEX_RULES absorbed into meta-tasks.md.
-  prompts/agents/GLOBAL_RULES.md superseded by docs/00_GLOBAL_RULES.md.
+- `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
+- ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
+- Wiki: 96 entries (docs/wiki/INDEX.md).
 
 ────────────────────────────────────────────────────────
-# § CHECKLIST
+# § CHECKLIST — recent activity (one line per CHK)
+# Format: `CHK-ID | YYYY-MM-DD | type | summary`
+# Full detail in git log / commit messages / linked memos.
 
-## §1 — Agent / Prompt Status
+## §1 — Most recent (CHK-120..129)
 
-| CHK-ID | Status | Type | Location |
+| CHK | Date | Type | Summary |
 |---|---|---|---|
-| CHK-001 | CLOSED | audit | prompts/agents/ — 16 agents audited 2026-03-28 after PromptCompressor pass. All PASS (PromptCompressor step numbering defect fixed). |
-| CHK-002 | CLOSED | docs | docs/01_PROJECT_MAP.md §1–§2 — populated from codebase scan (15 top-level modules, all interface contracts documented) |
-| CHK-003 | CLOSED | docs | docs/00_GLOBAL_RULES.md §P1 — authoritative LaTeX standard (replaces LATEX_RULES.md) |
-| CHK-087 | CLOSED | compress | prompts/agents/ — 16 agents compressed 2026-03-31 (PromptCompressor pass). 767→655 lines (−14.6%). HAND-03 factored to header citation; boilerplate GIT-SP collapsed; redundant domain-constraint reminders removed. Q3 16/16 PASS. Compression-exempt preserved: all STOP conditions, A3/A4/A5/A9. |
-| CHK-089 | CLOSED | deploy | EnvMetaBootstrapper 2026-04-07 (Target: Claude). A1–A11 propagated; 4 K-Domain agents created; 5 existing agents updated; README.md regenerated with 4×4 matrix + K-Domain Mermaid subgraph. Q3 validation PASS (0 stale A1–A10 refs). |
-| CHK-090 | CLOSED | review | PaperReviewer §4–§10 story structure review 2026-04-07. 6 issues (3 missing bridges, 1 forward-ref, 1 placement, 1 scatter). Overall arc sound. See docs/wiki/paper/WIKI-P-001.md. |
-| CHK-091 | CLOSED | wiki | KnowledgeArchitect 10 wiki entries 2026-04-07. First K-Domain compilation: 5 theory + 2 paper + 2 cross-domain + 1 code. All [[REF-ID]] pointers resolve. docs/wiki/ operational. |
-| CHK-092 | CLOSED | wiki | KnowledgeArchitect §1–§3 wiki entries 2026-04-07. 6 new entries: T-006(One-Fluid), T-007(CLS), T-008(Curvature), T-009(CSF bottleneck), P-003(Problem Statement), X-003(Sign Conventions). Total: 16 entries. |
-| CHK-093 | CLOSED | wiki | KnowledgeArchitect §11 experiment wiki 2026-04-08. 6 thematic entries (E-001–E-006) covering 17 experiments. Topics: CCD/DCCD spatial accuracy, curvature+HFE, LS transport, RC+PPE solver, time integration, Young-Laplace. Total wiki: 22 entries. |
-| CHK-094 | CLOSED | deploy | EnvMetaBootstrapper 2026-04-08 (Target: Claude). Full regeneration: 33 agents (24 composite + 9 micro). K-Domain consolidation propagated. DiagnosticArchitect aligned. README.md 9-section regeneration. Q3 9/9 PASS. |
-| CHK-095 | CLOSED | paper | PaperWriter 2026-04-08. §5–§8 bridge paragraphs (244e9b5): 6 WIKI-P-001 issues resolved. §11 zero-base rewrite (85232c7): narrative structure, 5 files, 1420 lines, 17 component tests. §11.3 audit fixes (5a03c3a): 4 items. Compile: 196pp, 0 errors. |
-| CHK-096 | CLOSED | review | PaperReviewer 2026-04-08. §1–§11 full review (27 files). 0F/7M/14m/3S. 10 independent verifications PASS. Fixes: §1 table_overview (§5–§14), 05b warnbox, §11 PASS/FAIL table, §3 divergence estimate, 3 file headers, grid dedup, TODO. Wiki: WIKI-P-004. |
-| CHK-097 | CLOSED | wiki | KnowledgeArchitect appendix wiki 2026-04-08. 9 new entries (T-010–T-018) from Appendix A–D (~3200 lines, 25 TeX files). Topics: interface proofs, CCD coefficients, CCD boundary/periodic/elliptic/Kronecker, WENO5+DCCD benchmark, capillary CFL, DC convergence theory, pseudotime implicit, FVM+CSF+RC+BF, HFE. 8 existing entries back-referenced. Total wiki: 31 entries. |
-| CHK-098 | CLOSED | wiki | KnowledgeArchitect memo wiki 2026-04-08. 10 new entries from docs/memo/ (29 files, 20 with novel content). T-019(filters), T-020(curvature invariance), T-021(IIM-CCD), T-022(Extension PDE), T-023(semi-implicit ST), T-024(CCD-PPE solver summary), T-025(C/RC), X-004(pressure instability), X-005(architecture decisions), E-007(static droplet+negative results). Total wiki: 41 entries. |
-| CHK-099 | CLOSED | audit | WikiAuditor K-LINT 2026-04-08. 42 entries audited: 0 broken pointers, 0 duplicate IDs. INDEX.md created (docs/wiki/INDEX.md) with 42 entries across 5 sections. All links verified. |
-| CHK-100 | CLOSED | wiki | KnowledgeArchitect experiment/ch11/*.py wiki 2026-04-08. 6 new L-domain entries (L-002–L-007) from 17 experiment scripts. Topics: CCD/DCCD differentiation, curvature+HFE, LS transport+remapping, PPE solver, time integration, RC+Young-Laplace. INDEX.md updated (48 entries, Code 1→7). Total wiki: 48 entries. |
-| CHK-101 | CLOSED | theory | TheoryArchitect CLS-DCCD conservation analysis 2026-04-09. Key finding: DCCD preserves mass exactly for periodic BC (block-circulant sum + telescoping). Actual loss sources: clip, operator-splitting mismatch, hardcoded padding. Proposed: unified DCCD reinit (combined RHS + Lagrange correction). Memo: docs/memo/cls_dccd_conservation_theory.md. Wiki: WIKI-T-028. INDEX.md updated (51→52). |
-| CHK-102 | CLOSED | experiment | exp11_18 CLS-DCCD conservation verification 2026-04-09. Claim 1 CONFIRMED (periodic sum<3e-13). Claim 2 CONFIRMED (split no-mc 2e-3 vs unified no-mc 6e-15). Claim 3 PARTIAL: mass OK but shape L₂ 2× worse (explicit diffusion). Verdict: split+T-027 mc recommended. WIKI-T-028 PROPOSED→VERIFIED. |
-| CHK-103 | CLOSED | experiment | exp11_19 shape preservation 2026-04-09. P1 eps_d NEGLIGIBLE. P2 eps/h MODERATE (+15%). P3 adaptive reinit DOMINANT (+49%, 227→2 reinits). P4 RK3 MARGINAL. Combined +59%. Key: fixed-freq reinit was over-reinitializing 100×. WIKI-E-009 created. |
-| CHK-104 | CLOSED | wiki | KnowledgeArchitect shape preservation knowledge 2026-04-09. Memo: docs/memo/cls_shape_preservation.md. WIKI-T-028 updated (shape error hierarchy). WIKI-E-009 source pointer added. |
-| CHK-105 | CLOSED | paper | PaperWriter CLS-DCCD theory + shape findings 2026-04-09. §7b: 2 subsections (DCCD mass proof + adaptive reinit). §10: Step 2 adaptive trigger. §11.2: DCCD conservation verification section + table + text fix (O(10^-5)→O(10^-15)). exp11_6 re-run verified. Compile: 186pp, 0 errors, 0 undef refs. |
-| CHK-111 | CLOSED | review | PaperReviewer §11–§13 end-to-end review 2026-04-11. 18 .tex files (§11 delta since CHK-096 + §12 first-pass + §13 first-pass). Counts: 0 Fatal / 4 Major / 7 Minor / 2 Style. 7 independent derivations PASS (DCCD zero-sum, θ=1.10, mass wording, interface temporal degradation, split-PPE cross-chapter, Prosperetti, PR-5 two-mode IPC). Major batch (commit 603d1e5, merged via 2918219): M-1 §12.3c CFL 目的/結論 structure (12c_time_accuracy.tex); M-2 §12.5b 目的 insertion (12e2_nonuniform_grid.tex); M-3 capillary wave PARTIAL verdict + failure attribution (13_benchmarks.tex); M-4 rising bubble interpolation-diffusion mechanism (3 sentences, cross-link to §12.5b parasitic current). Side fix: preamble.tex missing `\bx` macro (pre-existing bug from commit 54c936c blocking compile) — 1-line addition. Wiki: WIKI-P-006 created. Minor/Style batch (this commit): m-2 delete 12_legacy_component_verification.tex (0 refs confirmed) + main.tex include removed; m-3 04_ccd.tex:100 sec:grid_convergence → sec:verify_ccd_convergence retarget + stale backward-compat label removed from 12_verification.tex; m-5 §12.6→§13 bridge factual correction (prior text cited wrong benchmarks); m-6 §13 opening clarifies one-batch PPE is used because ρ_l/ρ_g ≤ 10 range makes split-PPE unnecessary; S-1 12d_coupling.tex: 先行告知 → 概要; 4 pre-existing broken refs fixed (sec:val_static_drop×3 → sec:bf_static_droplet, sec:curvature_invariance → thm:curvature_invariance). Skipped as false-positives: m-1 (11_summary.tex 判定 column legend already present at line 108), m-4/Style-2 (Ord{h^7} vs Ord{h^{7.0}} is intentional theoretical/measured convention). Compile: 195pp, 0 errors, 0 undefined refs. |
-| CHK-116 | CLOSED | review+fix | PaperReviewer ch10–ch12 strict review + 全修正適用 2026-04-11. 19 .tex files (§10 full, §11 summary+solver+time, §12 all 7 subsections). 0 Fatal / 3 Major / 5 Minor. Independent verifications: TGV exact decay O(e^{-4νt}) confirmed for t=2.0 vs π²; Kovasznay O(h^{3.97}) consistent with boundary-scheme analysis; Galilean test B divergence cause (CCD stencil crossing Δp jump) confirmed; tab:verification criterion for hydrostatic mismatch identified. MAJOR 修正適用: M-1 12_verification.tex:70 静水圧基準 "<10^{-12}" → "<10^{-9}" (実測 2.31×10^{-10} と整合); M-2 12a_force_balance.tex:110 fig:ch12_droplet_fields 参照本文を "低密度比(ρ=2, We=10) 200ステップ積分の参考ケース" と明示 (単ステップでは渦構造が発達しないため可視化目的で多ステップ切替); M-3 10_full_algorithm.tex Step 5 末尾に σ>0 移動界面発散警告を追加 (IPC ∇p^n が Δp=σκ を横断して O(1) 打切り誤差→2ステップ発散, 分相PPE+HFE延長が必要). MINOR 修正適用: m-1 12b_conservation.tex tab:tgv_energy t=0.5/1.0/1.5 行を厳密解 π² e^{-4νt} (ν=0.01) と整合する値に訂正 (9.849885→9.674206, 9.653086→9.482600, 9.460179→9.294833; t=2.0=9.110793 は変更なし); m-2 12a_force_balance.tex tab:bf_laplace caption に "Δp 列は小数2桁丸め, 相対誤差は未丸め値から計算 (N=256 は Δp=3.9912 に対する 2.2×10^{-3})" と明示; m-3 10_full_algorithm.tex operator box L_CCD^ρ の精度注記を "演算子単体 O(h^6); 分相 PPE 適用時は DC k=3 により O(h^7); 一括 smoothed H では界面近傍 O(h^{1-2})→発散" と書き換え; m-4 12d_coupling.tex Galilean テストA形状誤差 N=64→128 増大の説明追加 (CFL により Δt 半減 → ステップ数倍 → CLS 再初期化の累積ドリフト); m-5 12e2_nonuniform_grid.tex α=1,N=48→64 の寄生電流非単調急増の説明追加 (§bf_static_droplet の FD-PPE/CCD-gradient 投影不整合が高解像度で顕在化する現象と整合). 編集ファイル: 6 files (10_full_algorithm, 12_verification, 12a_force_balance, 12b_conservation, 12d_coupling, 12e2_nonuniform_grid). Lock 解放済 (review フェーズで release 済). Compile 検証は遠隔ビルド経由の後続タスクに委ねる. |
-| CHK-129 | CLOSED | paper+merge | ch12 re-run paper sync + main merge 2026-04-15 on ch12/rerun-experiments worktree. 18/18 experiments committed (Groups A-E, 728aefc..a65995e). Paper sync commit (752b9f3): 5 tex files (12a, 12c, 12d, 12e2, 12f) updated — parasitic 11x→69x, capillary CFL 1.505→1.82, C_cross 0.23→0.22, hydrostatic table corrected, nonuniform-grid mass conservation reversed (degradation), fig caption fixed. Merged main (53775b0) — no conflicts, 20 files. Compile: 199pp, 0 errors, 0 undef refs. PR-5 PASS. |
-| CHK-114 | CLOSED | meta | Meta v5.1.0 Concurrency-Aware refactor 2026-04-11 on branch meta/v5.1-concurrency-aware (merged a510e52). Scope: Worktree-based session isolation + ACTIVE_LEDGER branch-lock semaphore + JSON Schema HAND envelopes + T/L/E/A Node layer in meta-workflow. Adds new §4 BRANCH_LOCK_REGISTRY (this file), prompts/meta/schemas/hand_schema.json. Sub-axioms φ4.1 Session-Isolated State + A8.1 Worktree-First Parallelism under meta-core.md (φ1–φ7 / A1–A11 unchanged; grep gates 7/11/1/1 PASS). Feature flag `concurrency_profile: legacy → worktree` gates rollout; flip is single-line revertible. Plan: /Users/tomohiro/.claude/plans/optimized-popping-platypus.md. Delivered 8 commits on meta/v5.1-concurrency-aware: (1) 55d6ade schema + locks scaffold (commit msg label says CHK-106, false-positive; relabeled in §1 this row), (2) bcf1e4d §4 + CHK-114 OPEN, (3) bf24076 meta-ops.md 7-section delta (GIT-WORKTREE-ADD, GIT-ATOMIC-PUSH, LOCK-ACQUIRE, LOCK-RELEASE, HAND-01/02/03 fields, STOP-09/10/11), (4) 23609bc meta-core sub-axioms φ4.1 / A8.1, (5) d342c8a meta-workflow Concurrency-Safe State Graph (T/L/E/A Nodes) + BS-4/RC-5 + Recovery Table STOP-09/10/11, (6) 1c0f034 _base.yaml v5.1 feature flag (legacy default), (7) 470358c T/L/E/A 4 agents surgical v5.1 delta (TheoryArchitect/CodeArchitect/ExperimentRunner/PaperWriter), (8) this commit — meta-deploy.md v3.1.0 changelog + docs/bootstrap/v5.1_dryrun_checklist.md + this progress note. SKIPPED (deferred, by mutual agreement): 29-agent mechanical regen (legacy profile preserves behavior; defer to v5.1.1 or next-touch); actual dry-run execution (documented in docs/bootstrap/v5.1_dryrun_checklist.md for human operator); flag flip to "worktree" (user decision after review, single-line commit on this same branch). Two concurrency incidents during Phase A execution are themselves empirical motivation for v5.1 and are recorded here: (i) Phase A.1 HEAD@{1} force-checkout — another Claude Code session did `git checkout refactor/ch11-gpu-optin-batch4` in the shared primary working tree mid-edit, landing my first commit on the wrong branch; recovered via selective path-stash + branch -f meta/v5.1-concurrency-aware HEAD + reset --hard HEAD~1 on refactor; cost = one CHK-id relabel. (ii) Phase A.3 mid-edit working-tree swap — the 4-in-flight meta-ops.md Edits were auto-stashed by the other session as stash@{0} "parallel-agent-meta-wip-batch4" when it switched branches again; recovered by creating an isolated worktree `git worktree add /tmp/wt-v5.1 meta/v5.1-concurrency-aware` + `git -C /tmp/wt-v5.1 stash apply stash@{0}` and producing all subsequent commits from there (true v5.1 dogfooding). Other session's exp11_12/13/15/18 WIP remains in stash@{1} "OTHER_SESSION_WIP" awaiting their pop. Status CLOSED 2026-04-11 after dry run execution (same session): Step 1-2 parallel lock acquire PASS — Session A `38e66de6-ae7c-499e-9a50-8cd3e746956e` (PaperWriter, meta-v5.1-demo-a) and Session B `fe9b6473-8813-46a0-8a89-a2e2ec2b9e53` (CodeArchitect, meta-v5.1-demo-b) simultaneously held independent O_EXCL-backed locks in two separate worktrees (/tmp/wt-dryrun/sess-a and /tmp/wt-dryrun/sess-b). Step 3 HAND-02 envelope structural validation PASS for both (verification_hash 81991f27... / 921ffa3f..., branch_lock_acquired=true, schema required fields all present). Step 6 negative case PASS — impersonator session_id `bbf06839-5963-40e6-add6-b055c59d5288` attempted (i) O_EXCL-reacquire of Session B's live lock and (ii) LOCK-RELEASE with mismatched session_id; both correctly exited 10 per STOP-10 CONTAMINATION_GUARD and left Session B's lock file byte-for-byte untouched (verified by post-attempt session_id read-back). Step 5 LOCK-RELEASE for both PASS; Step R4.6 cleanup of test worktrees + branches (meta-v5.1-demo-a/b deleted, /tmp/wt-dryrun removed). Dry run evidence recorded in §4 BRANCH_LOCK_REGISTRY (3 rows: 2 successful sessions + 1 blocked impersonation attempt). Feature flag flipped in the same commit as this closure: `prompts/agents/_base.yaml :: concurrency_profile` = `"legacy"` → `"worktree"` — v5.1 Concurrency-Aware is now LIVE on main. Rollback path: single-line revert on _base.yaml restores legacy mode immediately with no other file changes. |
+| CHK-129 | 2026-04-15 | paper+merge | ch12 re-run paper sync + main merge (752b9f3); 5 tex files; 199pp 0 err |
+| CHK-128 | 2026-04-12 | fix | FieldExtender upwind NaN fix (65aed8d); q_safe masking; test added |
+| CHK-127 | 2026-04-12 | gpu-optin | exp11_22 zalesak_nonuniform (Tier C, CPU baseline generated first); 31/31 ch11 GPU-opted |
+| CHK-126 | 2026-04-12 | gpu-optin | Batch 6b (5 exp: 11_12b/14_picard/25/28/29) + 6 library CuPy-strict fixes |
+| CHK-125 | 2026-04-11 | gpu-optin | Batch 6a (3 exp: 11_15/24/27); confirms ASM-122-A DGR-contractive mechanism |
+| CHK-124 | 2026-04-11 | diagnosis | ASM-122-A root cause = FUNDAMENTAL (chaos-amplified FP noise, Lyapunov λ≈ln(e)/20steps); 5-probe binary search |
+| CHK-123 | 2026-04-12 | deploy | EnvMetaBootstrapper v5.2 + v1.1 Hybrid redeploy; 33 agents + AP-09/10 inject |
+| CHK-122 | 2026-04-12 | perf | cn_diffusion_axis dense-inverse (70×); exp11_21 CPU 258s → GPU 61.6s (4.19×); documented ASM-122-A |
+| CHK-121 | 2026-04-12 | gpu-optin | Batch 5 (exp11_19/20/21/23); exp11_21 62 min → 2 min post perf-rounds; `make push --checksum` load-bearing |
+| CHK-120 | 2026-04-12 | perf+fix | Round 6 rsync-race correction; `--checksum` added. Corrected Test B 900s→41.25s (−95.4% vs CHK-106) |
 
-## §2 — Math / Code Audit Register
+## §2 — Perf/GPU rounds (CHK-115..119)
 
-| CHK-ID | Status | Type | Location | Verdict | Timestamp |
-|---|---|---|---|---|---|
-| CHK-020 | CLOSED | test | src/twophase/tests/ — 95/95 tests pass, 0 warnings | PASS | 2026-03-27 |
-| CHK-021 | CLOSED | test | src/twophase/tests/test_simulation.py — 3 integration tests: builder constructs, step_forward no NaN/Inf, Laplace pressure sign positive | PASS | 2026-03-27 |
-| CHK-022 | CLOSED | test | Full suite after Priority 2: 98/98 pass, 0 warnings | PASS | 2026-03-27 |
-
-## §3 — Paper / Compile Status
-
-| CHK-ID | Status | Type | Location |
+| CHK | Date | Type | Summary |
 |---|---|---|---|
-| CHK-010 | CLOSED | compile | paper/ — XeLaTeX 2-pass clean: 139 pages, 0 errors, 0 overfull/underfull, 0 undefined refs (2026-03-27) |
-| CHK-011 | CLOSED | review | PaperReviewer full audit (main + appendix) 2026-03-27: 2 fatal, 12 high-priority issues found and classified |
-| CHK-012 | CLOSED | fix | PaperCorrector — 6 high-priority fixes applied 2026-03-27: (1) Φ→q rename in 07_collocate.tex; (2) ALE 必須→強く推奨; (3) §\ref→付録~\ref; (4) Eq-II O(h⁴) 今後の課題→実装済み; (5) γ(t)/LU wording; (6) ghost cell reflection scope note. Compile: 139pp, 0 errors. |
-| CHK-013 | CLOSED | fix | PaperWriter 5 items written 2026-03-27: (a) sec:ppe_gauge_neumann in 08d; (b) result:dccd_stability in 05_advection; (c) box:cn_tridiagonal in 05b; (d) box:grid_modes in 06_grid; (e) sec:lambda_max_derive in appendix_numerics_solver_s2. Compile: 142pp, 0 errors. |
-| CHK-014 | CLOSED | fix | PaperCorrector 3 fixes 2026-03-27: (1) 06_grid.tex resultbox title+label; (2) 06_grid.tex algbox "台形則"→"前進矩形則"; (3) 05_advection.tex k=ξ/h definition added. Compile: 142pp, 0 errors, 0 undefined refs. |
-| CHK-015 | CLOSED | fix | PaperCorrector 6 fixes 2026-03-28: [F-1] L(ψ)=F̃→L(ψ)=−F̃ (fatal sign); [F-2] "数値実験で確認"→"今後の課題"; [F-3] \footnote for O(Δt) degradation; [F-4] filter stability bridge sentence; [M-1] defbox→box: labels; [G-1] δ≳0.5h criterion. Compile: 142pp, 0 errors, 0 warnings. |
-| CHK-016 | CLOSED | fix | PaperCorrector [M-2] 2026-03-28: 5 monolithic appendix files replaced duplicated content with \input{} delegation. main.tex: 21 split \input lines→5 monolithic (no content change). |
-| CHK-017 | CLOSED | compile | PaperCompiler 2026-03-28: XeLaTeX 2-pass clean after CHK-015+CHK-016. 142pp, 0 errors, 0 warnings, texorpdfstring pre-scan: 0 hits. |
-| CHK-018 | CLOSED | fix | PaperCorrector [M-1] 2026-03-28: 02b_csf.tex:179,183 — \label{proof:csf_young_laplace}→\label{sec:csf_young_laplace} (LATEX_RULES §1: proof: not allowed). |
-| CHK-019 | CLOSED | fix | PaperCorrector [M-3] 2026-03-28: 04b_ccd_bc.tex:208 — orphaned \label removed; "上記の記号形"→式~\eqref{eq:ccd_block}の記号形 (M-4 cascade). |
-| CHK-023 | CLOSED | fix | PaperCorrector 3 fixes 2026-03-28 (§10b audit): [M-1] O(h^p)(p≥4)→O(h^2)(CSF律速); [m-2] "Re=100相当" deleted; [m-3] E_area numerator wrapped in abs. Compile: 142pp, 0 errors. |
-| CHK-024 | CLOSED | fix | PaperCorrector 2 fixes 2026-03-28 (§10 audit): [M-A] parasitic current table corrected (p≈4→p≈2; N=64: 6e-5→2.5e-4, N=128: 4e-6→6.3e-5); [m-B] §\ref{sec:bench_droplet} added. Compile: 142pp. |
-| CHK-025 | CLOSED | fix | PaperCorrector 2 fixes 2026-03-28 (§9 audit): [m-A] "1ステップで収束"→"数ステップで減衰（寄生根|ρ₂|=0.5）"; [m-B] "(以下p^m≡δp^m；p^0=0)" added. Compile: 142pp. |
-| CHK-026 | CLOSED | fix | PaperCorrector 2 fixes 2026-03-28 (§8 audit): [M-C] p^0=σκ₀→p^0=−σκ₀=σ/R with derivation; [m-D] "確認されている"→"期待される（理論的にはO(h^5)）". Compile: 142pp. |
-| CHK-027 | CLOSED | fix | PaperCorrector 2 fixes 2026-03-28 (§1–§7 audit): [F-2] Δτ<εh²→Δτ≤h²/(2ε); [M-1] \texorpdfstring added to 06_grid.tex subsubsection with δ_ε*. Compile: 142pp. |
-| CHK-028 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (cross-section): [m-A] \epsilon_{\text{norm}}→\varepsilon_{\text{norm}} in 09_full_algorithm.tex:155. Compile: 142pp. |
-| CHK-029 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (§11 audit): [M-A] 11_conclusion.tex:114 Dissipative CCD O(h^5)→O(ε_d h²). Compile: 142pp. |
-| CHK-030 | CLOSED | fix | PaperCorrector 1 fix 2026-03-28 (appendix audit): [M-A] appendix_numerics_solver_s2.tex a₂=3/2→3; 12sin²→24sin²; Λ_max=4.8→9.6. Compile: 142pp. |
-| CHK-031 | CLOSED | fix | PaperCorrector 4 fixes 2026-03-28 (full re-audit): [M-A] 10b_benchmarks.tex:321,339,343 Dissipative CCD O(h^5)→O(ε_d h²); [M-B] 08b_ccd_poisson.tex:314–317 Balanced-Force min() argument rewritten. Compile: 142pp, 0 errors, 0 warnings. |
-| CHK-032 | CLOSED | review | PaperReviewer full audit 2026-03-28: 3 FATAL all REVIEWER_ERROR; 8 MAJOR: 4 REVIEWER_ERROR + 4 LOGICAL_GAP fixed; 10 MINOR: 5 REVIEWER_ERROR + 5 LOGICAL_GAP fixed (00_abstract:18 DCCD用途追記; 03b:62 O(e^-15)→実質ゼロ; 04b_bc:205 D_0記号除去; 05_advection:229 O(h^6/h)説明追加; 09_algo:56 O(Δt)→厳密値; 11_conc:114 O(εd h²)導出注記). Compile: 142pp, 0 errors, 0 warnings. |
-| CHK-033 | CLOSED | review | PaperReviewer full audit 2026-03-28: 0 FATAL; 3 MAJOR 全件REVIEWER_ERROR (M-1: app:cls_fixed_point ラベル+参照は存在; M-2: CLS移流はε_d一定でspace-varying懸念不適用; M-3: ε_d^(i)は局所乗数でcomposition error不発生); 6 MINOR — 未処理(重要度低). 修正ゼロ件. |
-| CHK-034 | CLOSED | review+fix | PaperReviewer full audit pass 2 + PaperCorrector 2026-03-28: 0 FATAL; 0 MAJOR; 1 MINOR fixed (02b_csf:225 — 平衡条件 ∇p=σκ∇ψ がu=0でのNS方程式から直接導かれることを1行追記). Compile: 142pp, 0 errors, 0 warnings. |
-| CHK-035 | CLOSED | audit | ConsistencyAuditor 全体クロス検証 2026-03-28: AU2 CONDITIONAL FAIL. IMPL_ERR-001: builder.py:148 exp(+φ/ε) vs 論文 exp(-φ/ε) — ψ規約反転; update_properties ψ=1=液(builder規約)で論文式 ρ_l+(ρ_g-ρ_l)ψ と逆; 本番経路自己整合, heaviside()↔update_properties()境界不整合. 10モジュール中8 PASS. 要CodeCorrector. |
-| CHK-036 | CLOSED | audit | CodeCorrector IMPL_ERR-001 re-audit 2026-03-28: REVIEWER_ERROR. initial_conditions/builder.py:148 uses exp(+φ/ε) with φ<0=liquid (outward SDF); heaviside.py:52 uses exp(-φ/ε) with φ>0=liquid (paper). Equivalent: φ_builder=−φ_paper. update_properties ρ_l at ψ=1 matches paper Eq.6. curvature.py self-consistent via invert_heaviside. No fix required. 98/98 tests passing. |
-| CHK-037 | CLOSED | test | TestRunner full suite 2026-03-28: 98/98 PASS, 0 warnings, 70.73s. CCD d1≥3.5, d2≥2.5, PPE convergence, WENO5, TVD-RK3, Dissipative CCD — all within tolerance (ASM-004). |
-| CHK-038 | CLOSED | refactor | CodeReviewer 2026-03-28: 8 LOW_RISK changes applied — R-01 curvature dead code; R-03 magic number comments; R-04 BC loop helper; R-09 viscous sub-method; R-05 ccd_pressure_gradient shared helper; R-06 _pad_neumann→_pad_bc; R-07 _sl module-level; R-02 return annotations. R-08 SKIPPED (§C2 DO NOT DELETE). R-10–R-14 HIGH_RISK deferred. 98/98 PASS. |
-| CHK-039 | CLOSED | paper | PaperWriter 2026-03-28: §4d 04d_dissipative_ccd.tex — added 2 new subsubsections: (1) sec:dccd_conservation: flux-form conservation analysis, eq:flux_conservative + eq:flux_filter, DCCD non-conservative acceptability argument vs O(h²) CSF baseline, result:flux_filter_guideline; (2) sec:dccd_pressure_nofilt: pressure filtering prohibition, 2 safe alternatives (∇p filter, PPE RHS regularization), warn:pressure_direct_filter. |
-| CHK-040 | CLOSED | compile | PaperCompiler 2026-03-28: XeLaTeX 2-pass clean after CHK-039. 144pp, 0 errors, 0 warnings, 0 undefined refs. Fixed: remarkbox→resultbox; eq:ppe_rhs→eq:rc_divergence. |
-| CHK-041 | CANCELLED | experiment | experiment_cls_advection.py disposed 2026-03-30 per user instruction. File removed from repo (commit 2235aef). |
-| CHK-059 | SUSPENDED | experiment | Complex two-phase sims (static_droplet, oscillating_droplet, rising_bubble) suspended 2026-03-30 — deferred until CHK-060 simple §10 verification complete. |
-| CHK-060 | CLOSED | experiment+paper | §10 simple verification from memo/改稿_PartIV.md — Phase A: GCL+non-uniform grid (gcl_verification.py, §10.3.4); Phase B: CCD curvature convergence (ccd_curvature_convergence.py, §10.1 actual values O(h^5.8-6.4)); Phase C: Zalesak+Single Vortex (interface_advection.py, §10.3.5). 159pp, 0 errors, 0 warnings. 2026-03-30. |
-| CHK-044 | CLOSED | experiment+paper | CCD pseudo-time verification 2026-03-29: experiments/ccd_pseudotime_verification.py — uses CCDSolver from src/ directly. 3 cases: (1) spatial convergence CCD~O(h⁵) boundary-limited; (2) parabolic BDF2+pseudo-time: CCD D2 ρ=9.57/h² (2.4×CDS2), stable Δτ computed numerically, CCD 20-30× more accurate at small Δt; (3) adv-diff Pe=10: CCD→O(h⁶), N=256 CCD 17万× better. Appendix D.7 added. 152pp, 0 errors. |
-| CHK-045 | CLOSED | review+fix | PaperReviewer+PaperCorrector 2026-03-29 (§D.6+§D.7 audit): [F-1] appendix_numerics_schemes_s6.tex:65 d_k sign (-1)^k→(-1)^{k+1} (hat_d(π)=+1→-1); [M-1] :74 0.6^640 exponent 10^{-224}→10^{-142}; [m-1] appendix_numerics_solver_s2.tex:27,117 ~\ref tilde added; [m-2] appendix_numerics_schemes_s6.tex:13,45,46,276 §~\ref tilde added. Compile: 152pp, 0 errors, 0 warnings. |
-| CHK-046 | CLOSED | compile | PaperCompiler 2026-03-29: XeLaTeX 2-pass clean. 6 KL-12 texorpdfstring fixes (08_pressure:129, app_schemes_s7:23+80, app_solver_s1:40, app_solver_s2:107+121). 152pp, 0 errors, 0 warnings, 0 undefined refs. |
-| CHK-047 | CLOSED | fix | PaperCorrector 2026-03-29: 3 appendix ordering fixes — [MAJOR-1] E.3(app:checkerboard_mode)→C.5 (reuse solver_s3 in ccd_impl.tex); [MAJOR-2] E.5(app:fvm_face_coeff)→A.6 (reuse solver_s5 in interface.tex); [MINOR-1] D swap s4↔s5 (WENO5 before Godunov-LS). App E now 3 sections (s1,s2,s4). Compile: 152pp, 0 errors, 0 undefined refs. |
-| CHK-048 | CLOSED | fix | PaperCorrector 2026-03-29: 27 box type/title fixes (20 MAJOR + 7 MINOR) — warnbox→defbox(1), warnbox→mybox(7), warnbox→resultbox(1), defbox→resultbox(2), defbox→algbox(3), resultbox→mybox(2), algbox→resultbox(1), mybox→resultbox(1); 6 missing titles added (02b_csf ×2, 04_ccd ×2, 08b_ccd_poisson, math title with texorpdfstring). Compile: 152pp, 0 errors, 0 warnings. |
-| CHK-049 | CLOSED | fix | PaperCorrector 2026-03-29: 9 unjustified tcolorbox wrappers removed — R-01/R-02 02b_csf (2 resultboxes); R-03 05b_time_integration (TVD-RK3 scope warnbox); R-04 07_collocate (density table mybox); R-05/R-06 08_pressure (∇·(1/ρ∇p) mybox + Neumann unit-test mybox); R-07 08d_pseudotime (Δτ guide mybox); R-08 11_conclusion (design table mybox); R-09 app_schemes_s1 (mode summary mybox). All inner content + \label{}s preserved. Compile: 152pp, 0 errors, 0 warnings. |
-| CHK-042 | CLOSED | experiment+paper | DCCD比較実験 2026-03-28: experiments/dccd_comparison.py — O2/O4/CCD/DCCD, 3 ICs (square/triangle/tanh), N=256, CFL=0.4, T=1. Key: DCCD TV/TV_exact=1.58 vs O2=9.20 (矩形波); CCD L2=2.57e-5 (tanh, 6次精度確認). 付録D.6 (appendix_numerics_schemes_s6.tex) 追加. 148pp, 0 errors. |
-| CHK-050 | CLOSED | experiment+paper | CLS保存性評価実験 2026-03-29: experiments/ls_cls_conservation.py — 動的非一様格子(N=128,r=2), DCCD移流, TVD-RK3, グリッドリフレッシュK=[5,10,20,50]. CLS保存型再マッピング vs LS非保存補間. Key: K=10でCLS質量誤差8.9e-7 vs LS 7.6e-5 (85倍小さい). 付録D.8 (appendix_numerics_schemes_s8.tex) 追加. XeLaTeX 2-pass: 154pp, 0 errors, 0 warnings. |
-| CHK-054 | CLOSED | paper | §10 コード参照除去 2026-03-29: 09b_implementation.tex §10.1+§10.2 からクラス名・メソッド名・ファイル名・引数名を除去し数学的記述に置換．サブセクション題名も論文体裁に修正．158pp, 0 errors. |
-| CHK-053 | CLOSED | paper | §7 実装コンテンツ移動 2026-03-29: 07_collocate.tex からパートIII内の実装記述（コード実装との整合性 enumerate・実装状況段落・§7.4.3 Balanced-Force 検証手順）を除去し，パートIV 新規セクション sections/09b_implementation.tex（§10：Rhie--Chow・BF 実装整合性と検証手順）に移動．main.tex に \input{sections/09b\_implementation} を §9 直後に挿入．07_collocate.tex の代替テキストに第~\ref{sec:impl_collocate}章への前方参照を追加．XeLaTeX 2-pass: 158pp, 0 errors, 0 warnings, 0 undefined refs. |
-| CHK-056 | CLOSED | paper | sections/ ファイル名整合 2026-03-30: 08d/b/c→08b/c/d, 10c/b→10b/c, s7/s8→10b_ccd*/10b_cls*. 入力順=アルファベット順. 157pp, 0 errors. |
-| CHK-058 | CLOSED | paper | 全ファイル名見直し 2026-03-30: [P1] 10b_{cls,ccd_pseudo,ppe}→10b{1,2,3}_*（ディスパッチャ先頭保証）; [P2] appendix_numerics_schemes s4/5/6↔s1/2/3, s9→s7（D.1–D.7順に整合）; [P3] solver_s3→ccd_impl_s5, solver s4/1/2/5→s1/2/3/4（E.1–E.4順に整合）. \input参照・ヘッダーコメント全更新. 157pp, 0 errors. |
-| CHK-057 | CLOSED | paper | 全体の章構成見直し 2026-03-30: [A] §10 冒頭テキスト修正（「今後の課題」→「§10.3に実施済み結果を収める」）; [C] §10 タイトル「検証指標とベンチマーク」→「数値検証とベンチマーク」; [D] 10c_benchmarks.texヘッダーコメント修正; [B1] §8d PPE検証（Tests C-1/C-2/C-3）→ §10.3.3（10b_ppe_verification.tex新設, 10b_component_verification.texに追加, 08d_ppe_verification.texをリダイレクトスタブに置換, 10c_benchmarks:364参照修正）. sec:ccd_poisson_verificationラベルを§10.3.3に移動. 157pp, 0 errors, 0 warnings. |
-| CHK-055 | CLOSED | paper | §10.3 コンポーネント検証新設 2026-03-30: appendix D.2(CLS保存性評価)＋D.8(CCD仮想時間精度検証)を §10.3 (10c_component_verification.tex) に移動. Appendix D: D.1–D.9 → D.1–D.7. 157pp, 0 errors, 0 undefined refs. |
-| CHK-061 | CLOSED | compile | PaperCompiler 2026-03-30: 4 fixes — (1) \rm→\mathrm{} (10b1,10b2,app_s3,app_s7 ×8 occurrences); (2) Overfull \hbox 65pt in app_s7 solver-benchmark table → \resizebox{\linewidth}; (3) Underfull \hbox in captions → captionsetup RaggedRight + \hbadness=4000; (4) preamble ragged2e load order. 159pp, 0 errors, 0 warnings. |
-| CHK-062 | CLOSED | paper | §9 subsections追加 2026-03-30: 09_full_algorithm.tex に §9.1 離散演算子マッピング / §9.2 アルゴリズムフロー / §9.3 タイムステップ制御 を追加. eq:dt_full_algo新設. |
-| CHK-063 | CLOSED | paper | §11 多相流ベンチマーク新設 2026-03-30: 11_benchmarks.tex — §11.1 静止液滴(sec:bench_droplet backward-compat label); §11.2 毛細管波(Prosperetti1981); §11.3 気泡上昇(sec:bench_bubble); §11.4 RT不安定(sec:bench_rt). Prosperetti1981 bib追加. |
-| CHK-064 | CLOSED | paper | §10c 縮小 2026-03-30: 10c_benchmarks.tex → 精度バジェットのみ保持; ベンチマーク4本を§11へ移動. |
-| CHK-065 | CLOSED | paper | main.tex更新 2026-03-30: 11_benchmarks.tex追加; 10c comment更新; 11_conclusion comment更新(§12). 159pp, 0 errors, 0 warnings. |
-| CHK-066 | CLOSED | review | PaperReviewer audit §9–§12 2026-03-30: 0 FATAL; 1 MAJOR fixed (11_benchmarks.tex:217 self-ref §\ref{sec:bench_rt}→削除); 66 cross-refs PASS; 0 MINOR relevant. 159pp, 0 errors, 0 warnings. |
-| CHK-067 | CLOSED | paper | §12 update 2026-03-30: §9章 description → §9.1/9.2/9.3 refs; 今後課題 → §10 component DONE vs §11 physical pending; 学習者メッセージ → add sec:validation. |
-| CHK-068 | CLOSED | paper | §11 intro: pending-results notice added (今後の課題→sec:future_work). |
-| CHK-069 | CLOSED | paper | §11 intro: sec:component_verification ref "第X章"→"§X"（節への誤参照修正）. |
-| CHK-070 | CLOSED | paper | §1 chapter table + roadmap: 12-chapter structure (§10 component / §11 physical / §12 まとめ). |
-| CHK-071 | CLOSED | paper | abstract: Zalesak→component verification (§10); add capillary wave to §11 benchmark list. 159pp, 0 errors, 0 warnings. |
-| CHK-073 | CLOSED | experiment+paper | DCCD 1D advection comparison 2026-03-30: dccd_comparison.py run — O2/O4/CCD/DCCD/WENO5, 3 ICs (square/triangle/tanh), N=256. Key results: Square TV: CCD=10.83 → DCCD=3.15 (1/3), L2 DCCD=4.23e-2 (best); Smooth tanh: CCD≈DCCD L2=2.57e-5≈3.75e-5 (selective filter). New 11b6_dccd_dissipation.tex added (§11.3.6). §11b_component_verification.tex updated. 161pp, 0 errors, 0 warnings. |
-| CHK-074 | CLOSED | paper | §11b3 null-space note added 2026-03-30: 2D CCD-Poisson manufactured-solution verification blocked by 8D null space (ASM-002); 1D accuracy (§11b2 Case 1-3) + Kronecker product algebra cited as sufficient evidence; app:ccd_kronecker ref corrected (sec:→app:). Design spec tables retained. |
-| CHK-079 | CLOSED | fix | PaperCorrector full-narrative sweep 2026-03-31: 23 audit issues (5 FATAL, 15+ MAJOR) resolved. Files: 00_abstract, 13_conclusion, 07_collocate, 09_full_algorithm, 12_benchmarks. Story now consistent: GFM (§sec:gfm) as primary ST method; DCCD εd=1/4 (§sec:dccd_decoupling) as checkerboard suppressor; CSF+RC+BF all marked CSF-era/appendix. Predictor CSF body force removed; Step 6 PPE RHS = DCCD-filtered CCD div + b_GFM. 165pp, 0 errors, 0 undefined refs. |
-| CHK-085 | CLOSED | paper | PaperWriter §8 structural rewrite 2026-03-31 (Modifications I–IV): (1) main.tex include reorder → §8.1(projection)→§8.2(CCD)→§8.3(GFM)→§8.4(BC+stability); GFM promoted from §8.8→§8.3. (2) 08b_ppe_pseudotime moved to Appendix E.5 (solver algorithm detail; \subsection→\section level promotion). (3) 08c_ccd_poisson: Mod I framing added (coupled p/p'/p'' unknowns, O(h²)→O(h⁶), DCCD checkerboard). (4) 08f_ppe_bc: §8.4 renamed; condition number analysis added κ=O(ρ_l/ρ_g·h⁻²), 4 stability strategies. (5) 08_pressure: appendix forward reference added. Compile: 167pp, 0 errors, 0 undefined refs. |
-| CHK-086 | CLOSED | paper | PaperWriter §8 narrative/redundancy audit 2026-03-31 (F1–F10, 10 findings): F1 §8.2.1 1D matrix algebra removed (→app C.3 already has eq:L_CCD_def_app). F2 §8.2.2 Neumann BC algbox moved to app C.3 (sec:ccd_neumann_bc). F3 §8.2.3 matrix-free algbox moved to app C.3 (sec:ccd_matrix_free_eval). F4 §8.2.4 Balanced-Force CSF/RC rewritten → GFM-consistent table (CSF era → app). F5 §8.3 accuracy table: CSF row → GFM row + footnote; warnbox: CSF→GFM. F6 p^0 init block (3 bullets) moved to app E.5. F7 interface precision analysis condensed to 2 sentences. F8 redundant \subsection{Projection法とPPE} removed. F9 Neumann unit test moved to app C.3 (sec:ccd_neumann_unit_test). F10 FVM periodic BC moved to app E.4 (sec:fvm_periodic). Compile: 164pp (−3pp), 0 errors, 0 duplicate labels. |
-| CHK-088 | CLOSED | review+fix | PaperReviewer+PaperCorrector §5 audit 2026-03-31: 4 MAJOR + 4 MINOR fixed. [M-1] eq:ccd_adv_instability+eq:dccd_adv_amp: k*/k→ĥk*(ξ) notation fix (ξ² factor missing); resultbox stability derivation notation unified. [M-2] 05b predictor CSF body force→GFM (f=gravity only; ST via b^GFM in PPE); clamp error comparison CSF→DCCD filter error. [M-3] 05c compression CFL: flux max ψ(1-ψ)≤1/4→characteristic speed |1-2ψ|≤1; Δτ≤4h→Δτ≤h. [M-4] 「ここで」clause moved after equation (M-1 fix). [m-1,m-2] code refs removed (NumericsConfig.epsilon_factor, config.numerics.reinit_steps). [m-3] sec:failure_modes ref prefixed with §1. [m-4] CSF annotation resolved by M-2. Compile: 162pp, 0 errors, 0 undefined refs. |
-| CHK-051 | CLOSED | code+paper | Balanced-Force RC拡張実装 2026-03-29: rhie_chow.py face_velocity_divergence にオプション引数 kappa/psi/we を追加 (eq:rc-face-balanced, §7.3.2). bf_enabled=True 時に RC bracket から表面張力補正項 (f_σ_face − f̄_σ_face) を差し引く. Wall BC 境界修正を f_sigma_cell にも対称適用. experiments/balanced_force_rc_benchmark.py 新規作成 (standard RC vs BF-RC 比較, N=[32,64,128] 収束, Laplace圧検証). 07_collocate.tex §7.3.2「将来実装」注記削除→実装済み記述に更新. 98/98 tests pass. 実験実行は今後 (CHK-052 予定). |
+| CHK-119 | 2026-04-12 | perf | Round 5: A_inv_dev = lu_solve(I) cached; GPU hot = A_inv @ rhs (18× speedup) |
+| CHK-118 | 2026-04-11 | perf | Round 4: cached device ops for _build_axis_solver; matmul contractions |
+| CHK-117 | 2026-04-11 | perf | Round 3b: Wall-BC CCD unified onto dense block-banded LU |
+| CHK-116 | 2026-04-11 | perf | Round 3a: vectorised _differentiate_wall_raw; 126→4 launches/CCD call |
+| CHK-115 | 2026-04-11 | perf+gpu | Round 2 perf tuning + Batch 4 GPU opt-in (collision — ID reused by 2 parallel worktrees) |
+| CHK-114 | 2026-04-11 | meta | v5.1.0 Concurrency-Aware refactor (worktree-based locks; HAND schema); feature flag flipped LIVE |
+| CHK-113 | 2026-04-11 | gpu-optin | Batch 3 (exp11_10/11/17/26) |
+| CHK-112 | 2026-04-11 | gpu-optin | Batch 2 (exp11_4/8/14) |
+| CHK-111 | 2026-04-11 | review | PaperReviewer §11–§13 review (0F/4M/7m/2S); WIKI-P-006 |
+| CHK-110 | 2026-04-11 | gpu-optin | Batch (exp11_3/9/16); hybrid CPU scipy.sparse + device CCD pattern |
+| CHK-109 | 2026-04-11 | gpu-optin | exp11_7 HFE + ClosestPointExtender xp fix (Phase C leak #3) |
+| CHK-108 | 2026-04-11 | gpu-optin | Grid.meshgrid() device-aware + exp11_2 |
+| CHK-107 | 2026-04-11 | infra | Remote-default + GPU auto-selection; Makefile run/run-local targets; pyproject cupy→[gpu] extra |
+| CHK-106 | 2026-04-12 | backend | CuPy backend unification (retroactive close — all content absorbed via 107..127 chain) |
 
-## §4 — Branch Lock Registry (v5.1)
+## §3 — Earlier activity (CHK-085..105)
 
-Introduced by CHK-114 (meta v5.1.0-Concurrency-Aware). Canonical registry of branch-level exclusive locks held by active Claude Code sessions. Protocol: `prompts/meta/meta-ops.md §LOCK-ACQUIRE` / `§LOCK-RELEASE`. Ephemeral per-lock files: `docs/locks/{branch_slug}.lock.json` (O_EXCL atomic create). Cross-check: if registry row and ephemeral file disagree → **STOP-10** CONTAMINATION_GUARD. Stale locks (>24 h past `expires_at`) are not auto-reclaimed; humans inspect the holding session's worktree + branch state before explicit `LOCK-RELEASE --force` with rationale in this registry.
-
-| branch | session_id | worktree_path | acquired_at | expires_at | holder_agent | released_at | notes |
-|---|---|---|---|---|---|---|---|
-| meta-v5.1-demo-a | 38e66de6-ae7c-499e-9a50-8cd3e746956e | /tmp/wt-dryrun/sess-a/meta-v5.1-demo-a | 2026-04-11T17:00:00Z | 2026-04-12T17:00:00Z | PaperWriter | 2026-04-11T17:05:00Z | CHK-114 dry run Session A — toy edit docs/memo/demo_a.md, HAND-02 schema-valid, verification_hash=81991f27...; worktree + branch cleaned up post-release |
-| meta-v5.1-demo-b | fe9b6473-8813-46a0-8a89-a2e2ec2b9e53 | /tmp/wt-dryrun/sess-b/meta-v5.1-demo-b | 2026-04-11T17:00:30Z | 2026-04-12T17:00:30Z | CodeArchitect | 2026-04-11T17:05:00Z | CHK-114 dry run Session B — toy edit docs/memo/demo_b.md, HAND-02 schema-valid, verification_hash=921ffa3f...; acquired while Session A still held its lock (parallel acquisition verified); worktree + branch cleaned up post-release |
-| meta-v5.1-demo-b (impersonation attempt) | bbf06839-5963-40e6-add6-b055c59d5288 | N/A | 2026-04-11T17:02:00Z (attempted) | N/A | (impersonator) | BLOCKED | CHK-114 dry run negative case — a third session_id tried to O_EXCL-acquire Session B's live lock AND then tried to LOCK-RELEASE with a mismatched session_id. Both attempts correctly hit STOP-10 (exit 10); Session B's lock file was left byte-for-byte untouched. This is the load-bearing mutual-exclusion guarantee of v5.1. |
-| worktree-asm-122a-drift | 56a52a35-e9b3-402c-ac7b-93b3b6a52112 | .claude/worktrees/asm-122a-drift | 2026-04-11T22:25:26Z | 2026-04-12T22:25:26Z | CodeArchitect | 2026-04-11T22:40:23Z | CHK-124 ASM-122-A Split GPU/CPU drift root-cause diagnosis CLOSED as FUNDAMENTAL (chaos-amplified FP noise, no structural source). 5-probe binary search on RTX 3080 Ti N=64/800-steps; 3 hypotheses falsified (clip-deadband bit-identical; matmul-all-cpu increases drift, additivity broken). Writes: scripts/asm_122a_probe.py + docs/memo/asm_122a_split_gpu_drift.md + WIKI-T-028 §GPU drift + experiment/ch11/results/asm_122a/{probe}_{cpu,gpu}.csv. Zero src/twophase/ edits. Plan: .claude/plans/snoopy-mapping-hoare.md. |
-| worktree-ch11-gpu-optin-batch6 | af09b53f-faed-4f9b-9673-287d1ad6eac0 | .claude/worktrees/ch11-gpu-optin-batch6 | 2026-04-11T22:59:14Z | 2026-04-12T22:59:14Z | CodeArchitect | 2026-04-11T23:12:57Z | CHK-125 ch11 GPU opt-in Batch 6a CLOSED — exp11_15/24/27 flipped (3 exp, 26/31 ch11 GPU-opted). PR-5 pristine-vs-edited 0.0; CPU vs GPU within CHK-119/124 carve-outs. Committed baseline drift in exp11_24 test_c no_dgr (1e-5) traced to pre-existing CHK-115..122 library drift (pristine reproduces same diff). |
-
-### §4 Format reference
-- `branch_slug` = `branch` with `/` replaced by `-` (filesystem-safe key used for the ephemeral lock file name)
-- Timestamps: ISO 8601 UTC (e.g., `2026-04-11T12:34:56Z`)
-- Default TTL: 24 h (expires_at = acquired_at + 24h)
-- `session_id` is the UUID v4 emitted by the authoring Claude Code session; it matches the `session_id` field of the HandoffEnvelope (`prompts/meta/schemas/hand_schema.json`)
-- On `LOCK-RELEASE`, set `released_at` (do NOT delete the row — audit trail is append-only)
-
-## Format reference
-`CHK-ID | status: OPEN/IN_PROGRESS/CLOSED | type | location`
-
-## §5 — Evolution Log (MetaEvolutionArchitect v1.1)
-
-Introduced 2026-04-11 by the MetaEvolutionArchitect v1.1 Hybrid Architecture refactor. One entry per phase (P0–P5). Captures token/structure deltas, axiom mapping, red-team guards, and rollback plans for the XML Shell + JSON Core + Tool-Use + JIT retrofit applied to `prompts/meta/*.md`. Full design: `.claude/plans/synthetic-bubbling-lemon.md`.
-
-```yaml
-- entry_id: EVO-001
-  phase: P0
-  chk_id: CHK-NEW-0
-  files:
-    - prompts/agents/_base.yaml (ADD handoff_mode key, default "text")
-    - prompts/meta/meta-ops.md §STOP CONDITIONS (RESERVE STOP-12)
-    - prompts/meta/meta-deploy.md §Stage 1b Appendix: Worked Examples (NEW — see EVO-001-fix)
-  lines_delta: additive entries across 3 files
-  axiom_mapping: [A10, phi6, phi7]
-  stop_conditions_touched: [STOP-12 reserved]
-  breaking_changes: none
-  bootstrapper_compat: mechanical
-  red_team_findings:
-    - { vector: handoff_mode_default_text, guard: "no tool_use flip in v1.1", verified: true }
-    - { vector: STOP-12_not_yet_active, guard: "gated by handoff_mode == tool_use", verified: true }
-  schema_ssot_preserved: true
-  rollback_plan: "git revert; delete handoff_mode key; drop STOP-12 row; revert meta-deploy.md Stage 1b Appendix"
-
-- entry_id: EVO-001-fix
-  phase: P0-correction
-  chk_id: CHK-NEW-0
-  correction_date: 2026-04-11
-  issue: |
-    The original P0 created prompts/meta/_hybrid-template.md (149 lines) as a
-    "non-consumed reference file" with the XML vocabulary table, attribute rules,
-    3 worked examples, and a red-team recap. This was a phi6 (Single Source)
-    violation: the closed-vocab allow-list existed in BOTH meta-deploy.md §Stage 1b
-    step 1 AND _hybrid-template.md §1 — two canonical homes for one rule.
-    Additionally, the "leading-underscore = non-consumed" convention was invented
-    for this single file and not backed by any other repo usage.
-  fix:
-    - DELETED prompts/meta/_hybrid-template.md
-    - ABSORBED the XML vocabulary into meta-deploy.md §Stage 1b step 1 (flat
-      comma-separated list replaced by rich Required/Contents/Notes table — the
-      single canonical home for the allow-list)
-    - ABSORBED meta_section attribute rules into meta-deploy.md §Stage 1b step 3
-      (id discovery now lists all 4 attributes inline)
-    - ABSORBED the 3 worked examples (HAND-02, GIT-SP, axiom wrap) into a new
-      subsection meta-deploy.md §Stage 1b Appendix: Worked Examples (between
-      Stage 1b and Stage 2)
-    - REMOVED _hybrid-template.md from the Scope exclusions list (no longer
-      needed; the leading-underscore convention was dropped)
-  net_result: |
-    meta-deploy.md is now the sole canonical home for the v1.1 Hybrid vocabulary
-    and examples. No external underscore-prefixed reference files remain. phi6
-    compliance restored.
-  tag_balance_check: 25/25 meta_section wraps still balanced across 9 in-scope files (no regression)
-  schema_ssot_preserved: true
-  red_team_findings:
-    - { vector: phi6_dual_canonical_home, guard: "allow-list absorbed into meta-deploy.md only", verified: true }
-    - { vector: invented_leading_underscore_convention, guard: "dropped; no such files remain", verified: true }
-
-- entry_id: EVO-002
-  phase: P1
-  chk_id: CHK-NEW-1
-  files:
-    - prompts/meta/meta-ops.md §HAND-01/02/03 (WRAP)
-  section: "§HANDOFF PROTOCOL — HAND-01 / HAND-02 / HAND-03"
-  meta_sections_added: 3 (HAND-01 op, HAND-02 op, HAND-03 immutable)
-  axiom_mapping: [A8, A6, phi4, phi4.1, phi7]
-  stop_conditions_referenced: [STOP-02, STOP-03, STOP-06, STOP-07, STOP-10, STOP-11, STOP-12]
-  additions_per_section:
-    - purpose, authority, rules (RFC-2119), tool_use reference, parameters $ref, procedure (HAND-02 only), thought_process, stop_conditions, see_also
-  breaking_changes: none (legacy ## HAND-0N: headers preserved inside wraps)
-  bootstrapper_compat: mechanical (additive; legacy grep anchors intact)
-  red_team_findings:
-    - { vector: prose_drift_in_rules, guard: rfc2119_prefix, verified: true }
-    - { vector: HAND-03_immutable_body_drift, guard: immutable_attr + body-diff gate (P5 parser), verified: true }
-    - { vector: dangling_ref, guard: $ref to meta-roles.md#SCHEMA-IN-CODE::HandNNPayload verified, verified: true }
-  schema_ssot_preserved: true
-  rollback_plan: "git revert CHK-NEW-1 commit; re-diff prompts/agents/ after regen"
-  reviewer: [PromptAuditor, ConsistencyAuditor]
-
-- entry_id: EVO-003
-  phase: P2
-  chk_id: CHK-NEW-2
-  files:
-    - prompts/meta/meta-ops.md §AUTHORITY TIERS (WRAP)
-    - prompts/meta/meta-ops.md §GIT OPERATIONS (OUTER WRAP)
-    - prompts/meta/meta-ops.md §GIT-SP (WRAP)
-    - prompts/meta/meta-ops.md §LOCK-ACQUIRE (WRAP)
-    - prompts/meta/meta-ops.md §LOCK-RELEASE (WRAP)
-  meta_sections_added: 5
-  axiom_mapping: [A8, A8.1, A9, phi3, phi4.1]
-  stop_conditions_referenced: [STOP-01, STOP-05, STOP-10, STOP-11]
-  purpose: "Declare JIT loading discipline for bulk ops primitives. GIT-* and AUTHORITY TIERS become on-demand via _base.yaml on_demand_common (already referenced there); wrappers document the posture."
-  breaking_changes: none
-  bootstrapper_compat: mechanical
-  token_savings_est_claude: "~300–450 tokens per Gatekeeper prompt when JIT is observed by regenerated agents (verification deferred to post-regen diff)"
-  red_team_findings:
-    - { vector: authority_table_squat, guard: "explicit MUST NOT modify outside CHK", verified: true }
-    - { vector: LOCK-ACQUIRE_bypass, guard: "rules bullet: MUST invoke before first write", verified: true }
-  schema_ssot_preserved: true
-  rollback_plan: "git revert CHK-NEW-2 commit"
-
-- entry_id: EVO-004
-  phase: P3
-  chk_id: CHK-NEW-3
-  files:
-    - prompts/meta/meta-workflow.md §STOP-RECOVER MATRIX (OUTER WRAP)
-  meta_sections_added: 1
-  axiom_mapping: [A8, phi4, phi4.1, phi5]
-  stop_conditions_referenced: [STOP-09, STOP-10, STOP-11]
-  purpose: "Pointer discipline: STOP-09/10/11 trigger definitions remain SSoT in meta-ops.md §STOP CONDITIONS. Workflow matrix adds recovery recipes only, never redefines triggers. Dedup realized as see_also rather than deletion (recovery context has distinct workflow-level value)."
-  breaking_changes: none
-  bootstrapper_compat: mechanical
-  red_team_findings:
-    - { vector: trigger_redefinition, guard: "rules bullet: MUST NOT redefine STOP-xx in this file", verified: true }
-    - { vector: auto_delete_on_STOP-09_10, guard: "rules bullet: MUST NOT auto-delete", verified: true }
-  schema_ssot_preserved: true
-  rollback_plan: "git revert CHK-NEW-3 commit"
-
-- entry_id: EVO-005
-  phase: P4
-  chk_id: CHK-NEW-4
-  files:
-    - prompts/meta/meta-roles.md §SCHEMA-IN-CODE (WRAP + immutable + 3 tool_declaration siblings)
-    - prompts/meta/meta-roles.md §COVE MANDATE (WRAP + thought_process)
-    - prompts/meta/meta-antipatterns.md (WRAP each AP-01..AP-08, 8 individual meta_sections)
-    - prompts/meta/meta-domains.md (OUTER WRAP)
-    - prompts/meta/meta-persona.md (OUTER WRAP)
-    - prompts/meta/meta-project.md (OUTER WRAP)
-    - prompts/meta/meta-experimental.md (OUTER WRAP)
-  meta_sections_added: 14 (2 + 8 + 1 + 1 + 1 + 1)
-  axiom_mapping:
-    SCHEMA-IN-CODE: [A8, phi6, immutable]
-    COVE-MANDATE: [A3, A6, phi1, phi7]
-    AP-01..AP-08: [phi1, phi3, phi4, phi5, phi7, A2, A3, A4, A5, A6, A8]
-    META-DOMAINS: [A4, A9, phi3, phi5]
-    META-PERSONA: [phi3, phi5, phi7]
-    META-PROJECT: [phi6, A7, A10]
-    META-EXPERIMENTAL: [phi4, phi5, phi6, A2, A4]
-  breaking_changes: none (all wraps additive; legacy anchors preserved)
-  bootstrapper_compat: mechanical (includes 3 new tool_declaration siblings in §SCHEMA-IN-CODE — documented in meta-deploy.md §v1.1 Hybrid architecture)
-  red_team_findings:
-    - { vector: SCHEMA-IN-CODE_drift, guard: immutable_attr + body-diff gate, verified: true }
-    - { vector: AP_injection_list_drift, guard: "Inject: field preserved verbatim per AP", verified: true }
-    - { vector: AP_tag_squatting, guard: "each AP-0N has unique id attribute", verified: true }
-  schema_ssot_preserved: true (no schemas/ directory created — FORBIDDEN by meta-deploy.md §104)
-  rollback_plan: "git revert CHK-NEW-4 commit (14 wraps rolled back atomically)"
-
-- entry_id: EVO-006
-  phase: P5
-  chk_id: CHK-NEW-5
-  files:
-    - prompts/meta/meta-core.md §DESIGN PHILOSOPHY (IMMUTABLE WRAP, body byte-identical)
-    - prompts/meta/meta-core.md §AXIOMS (IMMUTABLE WRAP, body byte-identical)
-    - prompts/meta/meta-deploy.md §Stage 1b (NEW: XML-Aware Parse specification)
-    - prompts/meta/meta-deploy.md §Generation rules (EXTENDED: v1.1 Hybrid architecture notes)
-  meta_sections_added: 2 immutable (DESIGN-PHILOSOPHY wraps phi1..phi7; AXIOMS wraps A1..A11)
-  axiom_mapping: [phi1..phi7, A1..A11, A10]
-  axiom_preservation_verification:
-    - "grep -c '^## φ' meta-core.md == 7 ✓"
-    - "grep -cE '^## A[0-9]+' meta-core.md == 11 ✓"
-    - "body bytes between immutable wraps unchanged (to be re-verified at every regen by bootstrapper body-diff gate)"
-  breaking_changes: none (all legacy anchors preserved; bootstrapper §Stage 1 Parse extended, not replaced)
-  bootstrapper_compat: xml_aware_required (for STRICT enforcement of immutable + $ref eager resolution + RFC-2119 + closed-vocab allow-list)
-  bootstrapper_backward_compat: "Stage 1b checks fire per-file; files without meta_section wrappers pass through legacy text-pattern parser unchanged"
-  parser_spec_additions:
-    - closed_vocab_allowlist_scoped_to_meta_section_bodies
-    - tag_balance_check_per_file
-    - unique_id_registry
-    - immutable_body_diff_gate → STOP-02
-    - eager_$ref_resolution + schema_resolution_report.json artifact
-    - rfc2119_rules_bullet_check → STOP-SOFT
-    - legacy_anchor_preservation_check → STOP-02
-    - scope_exclusions: [meta-deploy.md, _hybrid-template.md]
-  red_team_findings:
-    - { vector: axiom_body_paraphrase, guard: immutable_attr + body-diff, verified: true }
-    - { vector: tag_squatting_in_wraps, guard: scoped_closed_vocab_allowlist, verified: true }
-    - { vector: dangling_ref_to_renamed_interface, guard: eager_resolution_at_regen, verified: true }
-    - { vector: unclosed_meta_section, guard: per_file_tag_balance_check, verified: true }
-  schema_ssot_preserved: true
-  rollback_plan: "git revert CHK-NEW-5; re-run previous bootstrapper (v1.0); confirm regen produces P4-state agents"
-  reviewer: [PromptAuditor, TheoryAuditor, ConsistencyAuditor]
-  post_gate_status:
-    phi_count: 7 ✓
-    A_count: 11 ✓
-    HAND_headers_preserved: 3 ✓
-    AP_headers_preserved: 8 ✓
-    immutable_wraps_count: 3 (DESIGN-PHILOSOPHY, AXIOMS, HAND-03, SCHEMA-IN-CODE)
-    meta_section_tag_balance_in_scope_files: 25/25 (all balanced)
-```
-
-**Plan reference:** `.claude/plans/synthetic-bubbling-lemon.md` (design + red-team + verification gates)
-
-**Deferred verification (requires fresh Claude session to execute meta-deploy.md):**
-- Full regen of 33 agent prompts under `prompts/agents/`
-- `git diff prompts/agents/` mechanical-diff check (P1–P4) + XML-aware extraction (P5)
-- `schema_resolution_report.json` generation artifact
-- Token budget measurement (Claude profile target: 15–20% reduction on generated prompts)
+| CHK | Date | Type | Summary |
+|---|---|---|---|
+| CHK-105 | 2026-04-09 | paper | §7b DCCD mass proof + adaptive reinit; §10 Step 2 trigger; §11.2 conservation verify |
+| CHK-104 | 2026-04-09 | wiki | Shape preservation memo + WIKI-T-028 update |
+| CHK-103 | 2026-04-09 | exp | exp11_19 shape study; adaptive reinit DOMINANT (+49%, 227→2 reinits) |
+| CHK-102 | 2026-04-09 | exp | exp11_18 CLS-DCCD conservation verified; split+mc recommended |
+| CHK-101 | 2026-04-09 | theory | CLS-DCCD conservation analysis; unified DCCD reinit proposed; WIKI-T-028 |
+| CHK-100 | 2026-04-08 | wiki | ch11 experiment wiki (L-002..L-007); 48 entries |
+| CHK-099 | 2026-04-08 | audit | WikiAuditor K-LINT PASS; INDEX.md created |
+| CHK-098 | 2026-04-08 | wiki | Memo wiki compilation (10 new); 41 entries |
+| CHK-097 | 2026-04-08 | wiki | Appendix wiki (T-010..T-018, 9 new); 31 entries |
+| CHK-096 | 2026-04-08 | review | PaperReviewer §1–§11 (0F/7M/14m/3S); 10 verifications PASS |
+| CHK-095 | 2026-04-08 | paper | §5–§8 bridges + §11 zero-base rewrite |
+| CHK-094 | 2026-04-08 | deploy | EnvMetaBootstrapper full regen (33 agents) |
+| CHK-093 | 2026-04-08 | wiki | ch11 experiment wiki (E-001..E-006) |
+| CHK-092 | 2026-04-07 | wiki | §1–§3 wiki (T-006..T-009, P-003, X-003) |
+| CHK-091 | 2026-04-07 | wiki | First 10 wiki entries; K-Domain operational |
+| CHK-090 | 2026-04-07 | review | PaperReviewer §4–§10 story structure; 6 issues |
+| CHK-089 | 2026-04-07 | deploy | EnvMetaBootstrapper A1→A11 (Knowledge-First); 4 K-Domain agents |
+| CHK-085 | 2026-03-31 | paper | §8 structural rewrite (Modifications I–IV); 167pp |
+| CHK-010..084 | 2026-03-27 .. 03-31 | paper+code+test | Initial bootstrap, §9–§12 narrative, DCCD verification, 154/154 tests. Full detail in git log. |
 
 ────────────────────────────────────────────────────────
 # § ASSUMPTIONS
 
-Full detail for each assumption (scope, risk, rationale).
-
-| ASM-ID | Assumption | Scope | Risk | Status |
-|---|---|---|---|---|
-| ASM-001 | `SimulationBuilder` is the sole construction path — no direct `__init__` construction | `src/twophase/` | HIGH | ACTIVE |
-| ASM-002 | PPE Kronecker-product Laplacian has an 8-dimensional null space — `‖Lp−q‖₂` is NOT a valid pass/fail metric | `src/twophase/pressure/` | HIGH | ACTIVE |
-| ASM-003 | **SUPERSEDED 2026-04-15:** CCD Kronecker PPE is indefinite (2 wrong-sign eigenvalues per axis). CCD-LU restricted to ch11 smooth-RHS component tests. ch12+ integration uses FD PPE (`PPEBuilder`+`spsolve`) or DC sweep. See PR-2 update. | `src/twophase/pressure/` | HIGH | DEPRECATED |
-| ASM-004 | CCD boundary-limited orders: d1 ≥ 3.5 on L∞ is PASS; d2 ≥ 2.5 on L∞ is PASS — NOT interior O(h⁶)/O(h⁵) | `src/twophase/ccd/` | MEDIUM | ACTIVE |
-| ASM-005 | **SUPERSEDED 2026-04-15:** LGMRES prohibited for PPE (PR-6). Production PPE: FD `spsolve` (ch12+) or DC sweep. CCD Kronecker+LGMRES no longer recommended. | `src/twophase/pressure/` | MEDIUM | DEPRECATED |
-| ASM-006 | Banded/block-tridiagonal systems (CCD Thomas, Helmholtz sweeps): direct LU — O(N) fill-in, efficient | `src/twophase/ccd/` | LOW | ACTIVE |
-| ASM-007 | `SimulationConfig` is pure sub-config composition — no monolithic config class | `src/twophase/` | MEDIUM | ACTIVE |
-| ASM-008 | Three symmetry-breaking root causes identified and fixed (2026-03-22): (1) Rhie-Chow FVM div at wall node N_ax, (2) PPE gauge pin at center (N/2,N/2), (3) capillary CFL safety factor | `src/twophase/` | HIGH | FIXED |
-| ASM-009 | FVM/CCD mismatch in IPC+corrector fixed (2026-03-22): CCD replaced with FD in velocity_corrector.py and predictor.py IPC term | `src/twophase/` | HIGH | FIXED |
-| ASM-010 | `docs/00_GLOBAL_RULES.md §P1` is the authoritative LaTeX standard — all paper agents depend on it | `paper/` | MEDIUM | ACTIVE |
-
-## Format reference
-`ASM-ID | assumption | scope | risk: HIGH/MEDIUM/LOW | status: ACTIVE/FIXED/DEPRECATED`
+| ASM | Status | Scope | One-line |
+|---|---|---|---|
+| ASM-001 | ACTIVE | src/twophase/ | SimulationBuilder is sole construction path |
+| ASM-002 | ACTIVE | src/twophase/pressure/ | PPE Kronecker has 8-dim null space — ‖Lp−q‖₂ not a pass/fail metric |
+| ASM-003 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 by PR-2 — CCD Kronecker PPE indefinite (2 wrong-sign eigenvalues/axis); CCD-LU restricted to ch11 smooth-RHS tests |
+| ASM-004 | ACTIVE | src/twophase/ccd/ | CCD boundary-limited: d1 ≥ 3.5, d2 ≥ 2.5 on L∞ |
+| ASM-005 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 — LGMRES prohibited for PPE (PR-6); production = FD spsolve or DC sweep |
+| ASM-006 | ACTIVE | src/twophase/ccd/ | Banded/block-tridiag: direct LU (O(N) fill-in) |
+| ASM-007 | ACTIVE | src/twophase/ | SimulationConfig is pure sub-config composition |
+| ASM-008 | FIXED | src/twophase/ | 3 symmetry-breaking root causes fixed 2026-03-22 (Rhie-Chow wall N_ax, PPE pin at center, capillary CFL) |
+| ASM-009 | FIXED | src/twophase/ | FVM/CCD mismatch in IPC+corrector fixed 2026-03-22 |
+| ASM-010 | ACTIVE | paper/ | docs/00_GLOBAL_RULES.md §P1 is authoritative LaTeX standard |
+| ASM-122-A | FUNDAMENTAL | src/twophase/levelset/reinit_split.py | GPU/CPU pointwise drift on long Zalesak runs = chaos-amplified FP noise (CHK-124). Lyapunov λ≈ln(e)/20 steps. Hybrid/DGR path escapes via Lyapunov-contractive projection. PR-5 carve-out: pointwise O(1e-2) on split GPU is fundamental; L₂/mass/physics preserved. |
 
 ────────────────────────────────────────────────────────
-# § LESSONS
+# § LESSONS (KL-01 .. KL-12)
 
-## §A — Known Error Classes (Mathematical / Code)
+## §A — Known Error Classes (Math/Code)
 
-| LES-ID | Failure | Cause | Fix Pattern | Reuse Condition |
-|---|---|---|---|---|
-| KL-01 | Block matrix (2,1) sign flip after RHS transposition | Reading LHS sign directly instead of RHS sign first, then negating | Read RHS coeff → negate → write to LHS. Verify: A_L(2,1)=b₂/h<0, A_R(2,1)=−b₂/h>0 | Any block-matrix entry derived by RHS transposition |
-| KL-02 | Wrong block size (3×3 vs 2×2) in documentation | Copy-paste from old 3-variable formulation | Verify block dimensions against actual code arrays | Any block matrix documentation update |
-| KL-03 | Pseudocode comment names wrong algorithm (台形則 vs Riemann sum) | Stale comment not updated after algorithm change | Cross-check algorithm name in comment vs. actual accumulation pattern | Any pseudocode with named numerical schemes |
-| KL-04 | D(κf) ≠ κD(f) for spatially varying κ | Forgetting Leibniz rule when κ varies in space | Expand D(κf) = κD(f) + f·∇κ — never factor out variable coefficients | Surface tension, variable-density NS, any PDE with spatially varying coefficients |
-| KL-05 | Nyquist modified wavenumber ≠ finite-grid spectral radius | Confusing continuous Fourier analysis with finite-grid eigenvalue analysis | Compute spectral radius of actual discrete matrix for finite-N stability bounds | CFL derivation, stability analysis for CCD or compact schemes |
-| KL-06 | Pre-asymptotic O(h⁴) convergence mistaken for asymptotic rate | Testing on insufficiently refined grids | Confirm asymptotic regime: slope must stabilize across at least 3 grid doublings | Any convergence order claim from log-log regression |
-| KL-07 | "Conservative" CFL rounding in wrong direction | Ceiling instead of floor (or vice versa) | Conservative means SMALLER dt — use floor for dt, ceiling for Nsteps | Any adaptive time-stepping or CFL-limited dt calculation |
-| KL-08 | Kronecker product index convention: C-order vs. Fortran-order | NumPy (C-order) Kronecker product gives different index mapping than mathematical convention | State index convention explicitly; verify with N=2 example; match paper's stated convention | Any 2D CCD or Kronecker-product assembly |
-| KL-09 | PPE solver design intent: LGMRES-primary / LU-fallback confused with LU-primary | Misreading architecture doc or old code | LGMRES is primary; spsolve is automatic fallback only on LGMRES non-convergence | Any PPE solver configuration or documentation |
-
-## §B — Hallucination Patterns (LaTeX / Paper)
-
-| LES-ID | Failure | Cause | Fix Pattern | Reuse Condition |
-|---|---|---|---|---|
-| KL-04 | (see §A) — also appears as reviewer claim | Reviewer misapplies product rule | Derive D(κf) from first principles; never accept reviewer claim at face value | Reviewer processing (Reviewer Skepticism Protocol P4) |
-| KL-05 | (see §A) — also appears as stability section error | Confusion between Fourier and finite-grid analysis | Independent derivation of spectral radius for N=2 or N=4 | Stability section review |
-| KL-06 | (see §A) — also claimed by reviewers as "wrong order" | Pre-asymptotic behavior on coarse grids | Demonstrate asymptotic regime with 4+ grid levels | Convergence claims in paper |
-| KL-07 | (see §A) | | | |
-| KL-08 | (see §A) | | | |
-| KL-10 | Collocated-grid corrector claims exact CCD-divergence-free after projection | RC divergence in PPE RHS leaves residual ∇_RC·u*−D_CCD·u*=O(h²) uncancelled | State ∇_h^RC·u^{n+1}=0 (RC sense); add O(h²) note for CCD sense | Any collocated-grid projection with Rhie-Chow PPE |
-| KL-11 | Pin-node exclusion still targets corner (0,0) after pin moved to center (N/2,N/2) | Hardcoded `ravel()[0]` while solver uses dynamic center pin | Replace all hardcoded pin-index references with `pin_dof = ravel_multi_index(tuple(n//2 for n in grid.N), grid.shape)` | Any PPE solver change that moves the gauge pin |
-| KL-12 | `\texorpdfstring` missing in numbered heading with math → xelatex hangs 100% CPU | `\section{$O(h^4)$}` without wrapping | Wrap: `\texorpdfstring{$O(h^4)$}{O(h\textasciicircum 4)}` in ALL numbered headings with math; scan before every compile | Every xelatex compile; any numbered heading with `$...$` |
-
-## Format reference
-`LES-ID | failure | root cause | fix pattern | when to apply`
+| KL | Failure | Fix Pattern |
+|---|---|---|
+| KL-01 | Block matrix (2,1) sign flip after RHS transposition | Read RHS coeff → negate → write to LHS |
+| KL-02 | Wrong block size (3×3 vs 2×2) in docs | Verify block dims against actual code arrays |
+| KL-03 | Pseudocode comment names wrong algorithm | Cross-check comment vs accumulation pattern |
+| KL-04 | D(κf) ≠ κD(f) for varying κ | Expand D(κf) = κD(f) + f·∇κ — never factor variable coefficients |
+| KL-05 | Nyquist modified wavenumber ≠ finite-grid spectral radius | Compute spectral radius of actual discrete matrix |
+| KL-06 | Pre-asymptotic O(h⁴) mistaken for asymptotic | Confirm slope stability over ≥3 grid doublings |
+| KL-07 | "Conservative" CFL rounding wrong direction | Conservative means SMALLER dt — floor for dt, ceiling for Nsteps |
+| KL-08 | Kronecker C-order vs Fortran-order confusion | State convention explicitly; verify with N=2 example |
+| KL-09 | PPE LGMRES-primary/LU-fallback vs LU-primary confusion | LGMRES primary; spsolve auto-fallback on non-convergence (pre-2026-04-15) |
+| KL-10 | Collocated corrector "exact CCD-div-free" claim | RC PPE leaves ‖∇_RC·u^{n+1}‖=0 but CCD sense residual O(h²) |
+| KL-11 | Pin-node excl still targets (0,0) after move to center | Use `pin_dof = ravel_multi_index(tuple(n//2 for n in grid.N), grid.shape)` |
+| KL-12 | `\texorpdfstring` missing in math heading → xelatex infinite loop | Wrap ALL numbered headings with `$...$` in texorpdfstring; pre-compile grep scan required |
 
 ────────────────────────────────────────────────────────
-# § [INTEGRITY_MANIFEST] — Hash Continuity Protocol
+# § REFERENCE — moved content
 
-Maintained per meta-workflow.md §CI/CP PIPELINE. Updated by Gatekeepers at each domain boundary.
-
-```
-[INTEGRITY_MANIFEST]
-  T_hash: {pending}    ← sha256 of interface/AlgorithmSpecs.md at time of T-Domain signing
-  L_hash: {pending}    ← sha256 of interface/SolverAPI_v1.py at time of L-Domain signing
-  E_hash: {pending}    ← sha256 of interface/ResultPackage/ manifest at time of E-Domain signing
-  A_hash: {pending}    ← sha256 of final paper/sections/ commit at time of VALIDATED
-```
-
-{pending} = domain Interface Contract has not yet been signed. Downstream domains must treat
-{pending} upstream hashes the same as a missing contract — BLOCK new dev/ work until signed.
+- **§5 Evolution Log** (EVO-001..006 meta-governance YAML): moved to git commit messages + `prompts/meta/meta-deploy.md §v1.1 changelog`
+- **§4 Branch Lock Registry** (v5.1 concurrency): live state in `docs/locks/*.lock.json`; historical rows in git log. Protocol: `prompts/meta/meta-ops.md §LOCK-ACQUIRE/RELEASE`
+- **§ INTEGRITY_MANIFEST**: all-pending hash placeholders dropped. Contracts unsigned; re-introduce when first interface is locked.
