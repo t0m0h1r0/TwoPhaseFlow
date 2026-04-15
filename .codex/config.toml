@@ -15,7 +15,3 @@ approval_policy = "on-request"
 # Full access required: make run/push/pull SSH to remote GPU server.
 sandbox_mode = "danger-full-access"
 
-# Disable web search to avoid distractions during focused coding sessions.
-# Enable temporarily with: codex --web-search <task>
-web_search = false
-
