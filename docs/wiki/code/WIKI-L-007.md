@@ -5,7 +5,7 @@ domain: L
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_5_rc_bracket.py
+  - path: experiment/ch11/exp11_05_rc_bracket.py
     git_hash: e2a1b1b
     description: "Rhie-Chow bracket: standard O(h^2) vs C/RC O(h^4)"
   - path: experiment/ch11/exp11_16_young_laplace.py
@@ -26,7 +26,7 @@ compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-08
 ---
 
-## Exp 11-5: RC Bracket (`exp11_5_rc_bracket.py`)
+## Exp 11-5: RC Bracket (`exp11_05_rc_bracket.py`)
 
 **Purpose**: Demonstrate C/RC bracket improves face pressure gradient from O(h^2) to O(h^4).
 

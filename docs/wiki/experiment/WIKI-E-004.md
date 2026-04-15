@@ -5,9 +5,9 @@ domain: E
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_5_rc_bracket.py
+  - path: experiment/ch11/exp11_05_rc_bracket.py
     description: "Rhie-Chow bracket accuracy: standard vs corrected"
-  - path: experiment/ch11/exp11_9_dc_k_accuracy.py
+  - path: experiment/ch11/exp11_09_dc_k_accuracy.py
     description: "Defect correction iteration count vs accuracy"
   - path: experiment/ch11/exp11_10_dc_vs_fd.py
     description: "DC k=3 vs FD direct cost-accuracy comparison"

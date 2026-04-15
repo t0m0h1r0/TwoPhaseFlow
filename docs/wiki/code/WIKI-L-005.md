@@ -5,7 +5,7 @@ domain: L
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_9_dc_k_accuracy.py
+  - path: experiment/ch11/exp11_09_dc_k_accuracy.py
     git_hash: e2a1b1b
     description: "Defect correction: iteration count k vs spatial accuracy"
   - path: experiment/ch11/exp11_10_dc_vs_fd.py
@@ -61,7 +61,7 @@ for _ in range(k_dc):
     p = p + dp
 ```
 
-## Exp 11-9: DC k Accuracy (`exp11_9_dc_k_accuracy.py`)
+## Exp 11-9: DC k Accuracy (`exp11_09_dc_k_accuracy.py`)
 
 **Purpose**: Show DC iteration count k controls spatial order: k=1→O(h^2), k=2→O(h^4), k>=3→O(h^7).
 

@@ -5,10 +5,10 @@ domain: L
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_3_curvature_3path.py
+  - path: experiment/ch11/exp11_03_curvature_3path.py
     git_hash: e2a1b1b
     description: "Curvature computation: circle and sinusoidal interface, CCD vs CD2"
-  - path: experiment/ch11/exp11_7_hfe_convergence.py
+  - path: experiment/ch11/exp11_07_hfe_convergence.py
     git_hash: e2a1b1b
     description: "Hermite Field Extension: 1D and 2D, upwind vs closest-point"
 consumers:
@@ -25,7 +25,7 @@ compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-08
 ---
 
-## Exp 11-3: Curvature Three-Path (`exp11_3_curvature_3path.py`)
+## Exp 11-3: Curvature Three-Path (`exp11_03_curvature_3path.py`)
 
 **Purpose**: Compare CCD-based vs CD2-based curvature computation on two interface geometries.
 
@@ -53,7 +53,7 @@ kappa = -(phi_y**2 * phi_xx - 2*phi_x*phi_y*phi_xy + phi_x**2 * phi_yy) / grad_m
 
 **Key detail**: Error measured only in near-interface band (`abs(phi) < 3*h`), not globally.
 
-## Exp 11-7: HFE Convergence (`exp11_7_hfe_convergence.py`)
+## Exp 11-7: HFE Convergence (`exp11_07_hfe_convergence.py`)
 
 **Purpose**: Compare upwind O(h^1) vs Hermite O(h^6) field extension across interface.
 

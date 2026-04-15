@@ -11,7 +11,7 @@ sources:
     description: "§11 component verification chapter"
   - path: "paper/sections/12_verification.tex"
     description: "§12 NS physical consistency chapter"
-  - path: "paper/sections/12f_error_budget.tex"
+  - path: "paper/sections/12h_error_budget.tex"
     description: "§12.6 error budget"
 consumers:
   - domain: A

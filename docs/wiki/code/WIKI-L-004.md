@@ -5,10 +5,10 @@ domain: L
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_6_cls_advection.py
+  - path: experiment/ch11/exp11_06_cls_advection.py
     git_hash: e2a1b1b
     description: "CLS advection: Zalesak disk and single vortex benchmarks"
-  - path: experiment/ch11/exp11_8_cls_remapping.py
+  - path: experiment/ch11/exp11_08_cls_remapping.py
     git_hash: e2a1b1b
     description: "Conservative remapping on dynamic non-uniform grid"
 consumers:
@@ -24,7 +24,7 @@ compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-08
 ---
 
-## Exp 11-6: CLS Advection (`exp11_6_cls_advection.py`)
+## Exp 11-6: CLS Advection (`exp11_06_cls_advection.py`)
 
 **Purpose**: Validate DCCD advection + reinitialization with two standard benchmarks.
 
@@ -62,7 +62,7 @@ phi = max(phi_circle, -phi_slot)
 
 **Measured quantities**: L2 shape error `sqrt(mean((psi_final - psi_0)^2))` and mass error `|sum(psi_final) - sum(psi_0)| / sum(psi_0)`.
 
-## Exp 11-8: CLS Remapping (`exp11_8_cls_remapping.py`)
+## Exp 11-8: CLS Remapping (`exp11_08_cls_remapping.py`)
 
 **Purpose**: Compare CLS conservative remapping vs LS interpolation on dynamic grid.
 

@@ -5,13 +5,13 @@ domain: L
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_1_ccd_convergence.py
+  - path: experiment/ch11/exp11_01_ccd_convergence.py
     git_hash: e2a1b1b
     description: "CCD convergence: periodic/wall BC, uniform/non-uniform grid"
-  - path: experiment/ch11/exp11_2_dccd_filter.py
+  - path: experiment/ch11/exp11_02_dccd_filter.py
     git_hash: e2a1b1b
     description: "DCCD filter transfer function and checkerboard suppression"
-  - path: experiment/ch11/exp11_4_gcl_nonuniform.py
+  - path: experiment/ch11/exp11_04_gcl_nonuniform.py
     git_hash: e2a1b1b
     description: "GCL compliance and non-uniform grid accuracy"
   - path: experiment/ch11/exp11_17_dccd_advection_1d.py
@@ -42,7 +42,7 @@ All scripts follow the `twophase.experiment` convention:
 4. `save_results(OUT / "data.npz", ...)` / `load_results(...)` — numpy persistence
 5. `save_figure(fig, OUT / "name")` — PDF output
 
-## Exp 11-1: CCD Convergence (`exp11_1_ccd_convergence.py`)
+## Exp 11-1: CCD Convergence (`exp11_01_ccd_convergence.py`)
 
 **Purpose**: Validate O(h^6) spatial accuracy of `CCDSolver.differentiate()`.
 
@@ -58,7 +58,7 @@ All scripts follow the `twophase.experiment` convention:
 
 **Convergence computation**: `compute_slopes()` calculates log-log slopes between successive N values.
 
-## Exp 11-2: DCCD Filter (`exp11_2_dccd_filter.py`)
+## Exp 11-2: DCCD Filter (`exp11_02_dccd_filter.py`)
 
 **Purpose**: Verify DCCD dissipative filter transfer function and Nyquist suppression.
 
@@ -71,7 +71,7 @@ All scripts follow the `twophase.experiment` convention:
 
 **Key detail**: The filter is applied post-CCD as explicit 3-point stencil, not inside `CCDSolver`. Periodic BC handled by wrapping: `d1_f[0] = ... + 0.25 * (d1_ccd[1] - 2*d1_ccd[0] + d1_ccd[-1])`.
 
-## Exp 11-4: GCL Non-uniform (`exp11_4_gcl_nonuniform.py`)
+## Exp 11-4: GCL Non-uniform (`exp11_04_gcl_nonuniform.py`)
 
 **Purpose**: Verify CCD accuracy on interface-fitted non-uniform grids and GCL compliance.
 

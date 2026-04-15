@@ -130,5 +130,5 @@ The filter is expected to become significant for:
 
 **Paper updated:**
 - `paper/sections/12a_force_balance.tex` — curvature filter in methodology
-- `paper/sections/12d_coupling.tex` — HFE field extension vs curvature filter distinction
-- `paper/sections/12e_interface_crossing.tex` — split-PPE GFM requirement note
+- `paper/sections/12e_coupling.tex` — HFE field extension vs curvature filter distinction
+- `paper/sections/12f_interface_crossing.tex` — split-PPE GFM requirement note

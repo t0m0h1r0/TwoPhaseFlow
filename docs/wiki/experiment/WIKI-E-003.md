@@ -5,9 +5,9 @@ domain: E
 status: ACTIVE
 superseded_by: null
 sources:
-  - path: experiment/ch11/exp11_6_cls_advection.py
+  - path: experiment/ch11/exp11_06_cls_advection.py
     description: "CLS advection: Zalesak disk + single vortex"
-  - path: experiment/ch11/exp11_8_cls_remapping.py
+  - path: experiment/ch11/exp11_08_cls_remapping.py
     description: "CLS conservative remapping on dynamic non-uniform grid"
   - path: experiment/ch11/exp11_17_dccd_advection_1d.py
     description: "DCCD 1D advection benchmark: 5-scheme comparison"
