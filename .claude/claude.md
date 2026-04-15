@@ -53,7 +53,8 @@
 | Run locally (fallback) | `make run-local EXP=<path>` | fallback only |
 | Tests locally (fallback) | `make test-local` | fallback only |
 
-- Do NOT use `python3 experiment/...` directly — bypasses remote and silently runs locally
+- Local Python environment: `.venv/` at project root — use `.venv/bin/python3` (or `source .venv/bin/activate`) for any local execution
+- Do NOT use bare `python3 experiment/...` directly — bypasses remote and silently runs locally
 - `make run` / `make test` auto-detect remote; fall back to local only when SSH is unreachable
 - After standalone code changes: `make push` then `make run` (rsync uses `--checksum`)
 - Use worktrees (`EnterWorktree`) for isolated feature/fix work; remote dir is shared across worktrees
