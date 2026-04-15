@@ -1,6 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-04-15
+# Last updated: 2026-04-16
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -9,13 +9,13 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_CHK | CHK-129 CLOSED 2026-04-15 — ch12 re-run paper sync + main merge (752b9f3). 5 tex files (12a/c/d/e2/f) updated: parasitic 11x→69x, capillary CFL 1.82, nonuniform-grid mass conservation reversed. Merged main (53775b0) no conflicts. Compile: 199pp, 0 errors. |
-| next_action | CHK-129 closed. ch12/rerun-experiments merged into main. |
+| last_CHK | CHK-130 CLOSED 2026-04-16 — ch11 reinit non-uniform fix + DGR fallback (4f13e2a). 4 code files: reinit_ops/split use min(grid.h); ns_pipeline DGR default α>1; curvature_filter._h_sq property. exp11_29 mass_err 2.3e-1→2.6e-4 (880×). Paper 11d+11g updated. WIKI-E-017 updated. |
+| next_action | CHK-130 closed. worktree-research-ch11-diagnosis merged. 6 △ experiments remain as documented limitations. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: 96 entries (docs/wiki/INDEX.md).
+- Wiki: 100 entries (docs/wiki/INDEX.md).
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
@@ -26,6 +26,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-130 | 2026-04-16 | fix+paper+merge | ch11 reinit non-uniform fix (4 files); DGR fallback α>1; exp11_29 880× improvement; WIKI-E-017 updated |
 | CHK-129 | 2026-04-15 | paper+merge | ch12 re-run paper sync + main merge (752b9f3); 5 tex files; 199pp 0 err |
 | CHK-128 | 2026-04-12 | fix | FieldExtender upwind NaN fix (65aed8d); q_safe masking; test added |
 | CHK-127 | 2026-04-12 | gpu-optin | exp11_22 zalesak_nonuniform (Tier C, CPU baseline generated first); 31/31 ch11 GPU-opted |
@@ -95,7 +96,7 @@
 | ASM-008 | FIXED | src/twophase/ | 3 symmetry-breaking root causes fixed 2026-03-22 (Rhie-Chow wall N_ax, PPE pin at center, capillary CFL) |
 | ASM-009 | FIXED | src/twophase/ | FVM/CCD mismatch in IPC+corrector fixed 2026-03-22 |
 | ASM-010 | ACTIVE | paper/ | docs/00_GLOBAL_RULES.md §P1 is authoritative LaTeX standard |
-| ASM-122-A | FUNDAMENTAL | src/twophase/levelset/reinit_split.py | GPU/CPU pointwise drift on long Zalesak runs = chaos-amplified FP noise (CHK-124). Lyapunov λ≈ln(e)/20 steps. Hybrid/DGR path escapes via Lyapunov-contractive projection. PR-5 carve-out: pointwise O(1e-2) on split GPU is fundamental; L₂/mass/physics preserved. |
+| ASM-122-A | FUNDAMENTAL | src/twophase/levelset/reinit_split.py | GPU/CPU pointwise drift on long Zalesak runs = chaos-amplified FP noise (CHK-124). Lyapunov λ≈ln(e)/20 steps. Hybrid/DGR path escapes via Lyapunov-contractive projection. PR-5 carve-out: pointwise O(1e-2) on split GPU is fundamental; L₂/mass/physics preserved. DGR default for α>1 in ns_pipeline.py reduces practical impact (CHK-130). |
 
 ────────────────────────────────────────────────────────
 # § LESSONS (KL-01 .. KL-12)
