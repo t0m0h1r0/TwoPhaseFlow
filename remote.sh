@@ -110,20 +110,22 @@ SETUP
 # ── Run a single experiment ──────────────────────────────────────────────────
 cmd_run() {
     local script="${1:?Error: provide a script path, e.g. experiment/ch11/exp11_01_ccd_convergence.py}"
+    shift
+    local extra_args="$*"
 
     if [ ! -f "${SCRIPT_DIR}/${script}" ]; then
         echo "Error: ${script} not found locally. Check the path."
         exit 1
     fi
 
-    echo "==> Running ${script} on ${REMOTE_HOST}"
+    echo "==> Running ${script} ${extra_args} on ${REMOTE_HOST}"
     ssh "${REMOTE_HOST}" bash -s <<RUN
 set -euo pipefail
 source "${VENV_DIR}/bin/activate"
 export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
-echo "--- Starting: ${script} ---"
-time ${PYTHON} "${script}"
+echo "--- Starting: ${script} ${extra_args} ---"
+time ${PYTHON} "${script}" ${extra_args}
 echo "--- Finished: ${script} ---"
 RUN
 }
