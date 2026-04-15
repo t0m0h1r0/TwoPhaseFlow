@@ -125,7 +125,7 @@ def cn_step(u, mu, ccd, backend, dt, X, Y, t_n):
     # Explicit part of RHS
     Au_n = viscous_operator(u, mu, ccd, backend)
     f_mid = mms_source(X, Y, t_n + 0.5 * dt, mu)
-    rhs_2d = u + 0.5 * dt * (Au_n + f_mid)
+    rhs_2d = u + 0.5 * dt * Au_n + dt * f_mid
 
     def matvec(v_flat):
         v = v_flat.reshape(shape)
@@ -135,15 +135,34 @@ def cn_step(u, mu, ccd, backend, dt, X, Y, t_n):
     A_op = LinearOperator((n, n), matvec=matvec)
     u_new_flat, info = gmres(
         A_op, rhs_2d.flatten(), x0=u.flatten(),
-        atol=1e-14, restart=100, maxiter=500,
+        rtol=1e-14, atol=1e-15, restart=200, maxiter=1000,
     )
-    return u_new_flat.reshape(shape)
+    u_new = u_new_flat.reshape(shape)
+    # Enforce periodic duplicate nodes
+    u_new[-1, :] = u_new[0, :]
+    u_new[:, -1] = u_new[:, 0]
+    return u_new
 
 
 # -- Temporal convergence sweep ------------------------------------------------
 
+def _run_cn(K, X, Y, mu, ccd, backend):
+    """Run CN integration with K steps, return final u."""
+    dt = T_FINAL / K
+    u = exact_u(X, Y, 0.0).copy()
+    t = 0.0
+    for _ in range(K):
+        u = cn_step(u, mu, ccd, backend, dt, X, Y, t)
+        t += dt
+    return u
+
+
 def temporal_convergence(X, Y, mu, h):
-    """Sweep over K_LIST, return list of dicts with bulk/interface L2 errors."""
+    """Sweep over K_LIST, return list of dicts with bulk/interface L2 errors.
+
+    Uses a fine-Δt reference solution (K_ref = 4 × K_max) to isolate
+    temporal error from the fixed spatial discretization error.
+    """
     backend = Backend(use_gpu=False)
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
@@ -155,16 +174,15 @@ def temporal_convergence(X, Y, mu, h):
     bulk_mask  = dist > 6.0 * eps   # far from interface
     intf_mask  = dist < 3.0 * eps   # near interface
 
+    # Compute fine-dt reference solution to cancel spatial error
+    K_ref = K_LIST[-1] * 4
+    print(f"  Computing reference solution (K_ref={K_ref}) ...", flush=True)
+    u_ref = _run_cn(K_ref, X, Y, mu, ccd, backend)
+
     results = []
     for K in K_LIST:
         dt = T_FINAL / K
-        u = exact_u(X, Y, 0.0).copy()
-        t = 0.0
-        for _ in range(K):
-            u = cn_step(u, mu, ccd, backend, dt, X, Y, t)
-            t += dt
-
-        u_ref = exact_u(X, Y, T_FINAL)
+        u = _run_cn(K, X, Y, mu, ccd, backend)
         err = u - u_ref
 
         bulk_l2 = float(np.sqrt(np.mean(err[bulk_mask]**2))) if np.any(bulk_mask) else float("nan")
@@ -266,11 +284,13 @@ def main():
     print("\n=== [12-13] Interface Temporal Accuracy Degradation ===")
     print(f"  μ_l/μ_g = {MU_RATIO}, N={N_GRID}, T={T_FINAL}\n")
 
-    # Build grid quantities (CPU-only; backend not needed here)
+    # Build grid quantities — must use (N+1, N+1) node grid matching CCDSolver
     h = 1.0 / N_GRID
-    x1d = np.linspace(0.0, 1.0 - h, N_GRID)   # cell centres, periodic
-    y1d = np.linspace(0.0, 1.0 - h, N_GRID)
-    X, Y = np.meshgrid(x1d, y1d, indexing="ij")   # shape (N, N), x varies along axis 0
+    backend = Backend(use_gpu=False)
+    gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
+    grid = Grid(gc, backend)
+    X, Y = grid.meshgrid()          # shape (N+1, N+1)
+    X, Y = np.asarray(X), np.asarray(Y)
     mu = build_mu(X, h)
 
     results = temporal_convergence(X, Y, mu, h)

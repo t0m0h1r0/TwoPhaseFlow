@@ -248,12 +248,13 @@ def print_summary(results):
     for r in results:
         print(f"  {r['mu_ratio']:>8} | {r['dt_crit']:>10.2e} | {r['C_cross']:>8.3f}")
 
-    c_vals = np.array([r["C_cross"] for r in results])
+    # Exclude μ_l/μ_g=1 (no cross-viscous term) from consistency check
+    c_vals = np.array([r["C_cross"] for r in results if r["mu_ratio"] > 1])
     c_mean = float(np.mean(c_vals))
     c_var  = float((np.max(c_vals) - np.min(c_vals)) / c_mean * 100.0)
     passed = c_var < 10.0
 
-    print(f"\n  C_cross variation: {c_var:.1f}% (< 10% = PASS)")
+    print(f"\n  C_cross (μ_l/μ_g>1): mean={c_mean:.3f}, variation={c_var:.1f}% (< 10% = PASS)")
     print(f"\n[RESULT] Mean C_cross = {c_mean:.3f}")
     print(f"[RESULT] PASS: {passed} (variation < 10%)")
 
