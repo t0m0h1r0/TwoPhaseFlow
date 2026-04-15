@@ -150,7 +150,8 @@ $\Delta t = T/320$ では空間離散化の丸め誤差底に到達した．
 粘性 CFL 数 $\mathrm{CFL}_\nu = \nu\Delta t / h^2 = 0.5$--$10$ で
 CN と前進 Euler を各 10 ステップ比較した結果，
 CN は $\mathrm{CFL}_\nu = 10$ でも $\max|u|$ が単調減少し安定を維持した一方，
-前進 Euler は $\mathrm{CFL}_\nu = 5$ で $\max|u| \approx 10^4$ に発散した．
+前進 Euler は $\mathrm{CFL}_\nu = 5$ で $\max|u| \approx 5.95 \times 10^2$（初期値の約 600 倍），
+$\mathrm{CFL}_\nu = 10$ で $\approx 6.45 \times 10^5$ と急激な不安定成長を示した．
 
 \noindent\textbf{結論：}
 CN は設計通り $\Ord{\Delta t^2}$ を達成し，CFL 制約なしに安定動作する．
