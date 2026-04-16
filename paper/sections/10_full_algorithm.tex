@@ -105,6 +105,125 @@ Step & 処理 & 手法 & 参照 \\
 \end{tabular}
 \end{table}
 
+図~\ref{fig:algo_data_method_flow} は，表~\ref{tab:algo_overview} の同じ
+7 ステップを「受け渡されるデータ」と「そのデータを変換する計算方式」に分けて
+示したものである．ここで $\psi$ は保存形レベルセットの主変数であり，
+$\phi$ は法線計算，HFE，界面厚補正などで必要となる幾何補助量である．
+したがって，単なる $\psi\to\phi\to\psi$ は恒等変換であり，界面プロファイルの
+修復には DGR などの $\phi_{\mathrm{raw}}\to\phi_{\mathrm{sdf}}$ 補正を挟む．
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  data/.style={draw=navy!70, fill=lightblue, rounded corners=3pt,
+               font=\scriptsize, inner sep=4pt, minimum width=24mm,
+               minimum height=7mm, align=center},
+  method/.style={draw=orange2!75, fill=torange, rounded corners=3pt,
+                 font=\scriptsize\bfseries, inner sep=4pt,
+                 minimum width=25mm, minimum height=8mm, align=center},
+  optmethod/.style={draw=purple2!75, fill=tpurple, rounded corners=3pt,
+                    font=\scriptsize\bfseries, inner sep=4pt,
+                    minimum width=28mm, minimum height=8mm, align=center},
+  term/.style={draw=teal2!75, fill=tteal, rounded corners=3pt,
+               font=\scriptsize, inner sep=4pt, minimum width=22mm,
+               minimum height=7mm, align=center},
+  arr/.style={-Stealth, semithick, darkgray!75},
+  auxarr/.style={-Stealth, semithick, dashed, purple2!70},
+  dep/.style={-Stealth, semithick, dashed, teal2!70},
+  lane/.style={font=\scriptsize\bfseries, text=darkgray!75},
+]
+
+\node[lane] at (0, 0.7) {時刻 $n$ のデータ};
+\node[data] (psi0) at (0, 0) {DATA\\$\psi^n$};
+\node[data] (u0) at (0, -1.0) {DATA\\$\bu^n$};
+\node[data] (uold) at (0, -5.0) {DATA\\$\bu^{n-1}$};
+\node[data] (p0) at (0, -7.8) {DATA\\$p^n$};
+
+\node[lane] at (7.5, 0.7) {界面サブシステム};
+\node[method] (adv) at (3.0, -0.5) {METHOD\\CLS 移流};
+\node[data] (psia) at (5.8, -0.5) {DATA\\$\psi^\ast$};
+\node[method] (logit) at (8.6, -0.5) {METHOD\\logit 逆変換};
+\node[data] (phiraw) at (11.4, -0.5) {DATA\\$\phi_{\mathrm{raw}}$};
+\node[optmethod] (dgr) at (14.5, -0.5) {METHOD\\再初期化/DGR};
+\node[data] (psi1) at (17.6, -0.5) {DATA\\$\psi^{n+1}$};
+
+\node[method] (prop) at (5.8, -2.1) {METHOD\\物性補間};
+\node[data] (rhomu) at (8.8, -2.1) {DATA\\$\rho^{n+1},\,\mu^{n+1}$};
+\node[method] (curv) at (5.8, -3.3) {METHOD\\曲率計算};
+\node[data] (kappa) at (8.8, -3.3) {DATA\\$\kappa^{n+1}$};
+\node[data] (phi1) at (17.6, -1.7) {DATA\\必要時 $\phi^{n+1}$};
+
+\node[lane] at (4.4, -4.3) {NS 右辺項};
+\node[method] (conv) at (3.0, -5.0) {METHOD\\AB2 対流};
+\node[term] (convterm) at (5.8, -5.0) {DATA\\移流項};
+\node[method] (visc) at (3.0, -6.2) {METHOD\\粘性評価};
+\node[term] (viscterm) at (5.8, -6.2) {DATA\\粘性項};
+\node[method] (st) at (3.0, -7.4) {METHOD\\CSF};
+\node[term] (stterm) at (5.8, -7.4) {DATA\\表面張力項};
+\node[method] (grav) at (3.0, -8.6) {METHOD\\重力モデル};
+\node[term] (gravterm) at (5.8, -8.6) {DATA\\重力項};
+
+\node[lane] at (14.0, -4.3) {流体力学サブシステム};
+\node[method] (pred) at (9.0, -6.8) {METHOD\\AB2+IPC\\Predictor};
+\node[data] (ustar) at (11.8, -6.8) {DATA\\$\bu^\ast$};
+\node[method] (ppe) at (14.5, -6.8) {METHOD\\PPE};
+\node[data] (dp) at (17.0, -6.8) {DATA\\$\delta p$};
+\node[method] (corr) at (19.5, -6.8) {METHOD\\Corrector};
+\node[data] (u1) at (22.4, -6.8) {DATA\\$\bu^{n+1},\,p^{n+1}$};
+
+\draw[arr] (psi0) -- (adv);
+\draw[arr] (u0) -- (adv);
+\draw[arr] (adv) -- (psia);
+\draw[auxarr] (psia) -- (logit);
+\draw[auxarr] (logit) -- (phiraw);
+\draw[auxarr] (phiraw) -- (dgr);
+\draw[arr] (psia) to[bend right=16] (dgr);
+\draw[arr] (dgr) -- (psi1);
+\draw[auxarr] (psi1) -- (phi1);
+
+\draw[arr] (psi1) -- (prop);
+\draw[arr] (prop) -- (rhomu);
+\draw[arr] (psi1) -- (curv);
+\draw[auxarr] (phi1) |- (curv);
+\draw[arr] (curv) -- (kappa);
+
+\draw[arr] (u0) -- (conv);
+\draw[arr] (uold) -- (conv);
+\draw[arr] (conv) -- (convterm);
+\draw[dep] (u0) -- (visc);
+\draw[dep] (rhomu) |- (visc);
+\draw[arr] (visc) -- (viscterm);
+\draw[dep] (psi1) |- (st);
+\draw[dep] (kappa) |- (st);
+\draw[arr] (st) -- (stterm);
+\draw[dep] (rhomu) |- (grav);
+\draw[arr] (grav) -- (gravterm);
+
+\draw[arr] (convterm) -- (pred);
+\draw[arr] (viscterm) -- (pred);
+\draw[arr] (stterm) -- (pred);
+\draw[arr] (gravterm) -- (pred);
+\draw[arr] (p0) -- (pred);
+\draw[arr] (pred) -- (ustar);
+\draw[arr] (ustar) -- (ppe);
+\draw[dep] (rhomu) -| (ppe);
+\draw[arr] (ppe) -- (dp);
+\draw[arr] (dp) -- (corr);
+\draw[arr] (ustar) to[bend left=18] (corr);
+\draw[dep] (rhomu) -| (corr);
+\draw[arr] (corr) -- (u1);
+
+\end{tikzpicture}%
+}
+\caption{1 タイムステップにおけるデータ依存関係と計算方式の分離図．
+角丸の青色ノードは状態量または導出データ，橙色ノードは計算方式，
+紫色の破線は $\psi$--$\phi$ 変換を含む幾何補助経路を表す．
+$\phi$ は主時間発展変数ではなく，法線，HFE，DGR 厚み補正などのために
+$\psi$ から必要時に再構成される補助量である．}
+\label{fig:algo_data_method_flow}
+\end{figure}
+
 \begin{tcolorbox}[defbox, title={本章で用いる離散演算子の記法}]
 \label{box:operator_notation}
 \begin{itemize}[noitemsep]
