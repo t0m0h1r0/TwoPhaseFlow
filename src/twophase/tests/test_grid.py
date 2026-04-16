@@ -2,10 +2,11 @@
 非一様格子のテスト (core/grid.py §6).
 
 Test 1 — density function shape (test_density_function_paper_formula):
-    paper §6 eq:grid_delta の ω = 1 + (α-1)·δ*(φ) を検証する.
+    paper §6 eq:grid_delta の ω = 1 + (α-1)·exp(-φ²/ε_g²) を検証する.
+    - indicator ∈ [0, 1] (bounded Gaussian; 正規化因子 1/(ε_g√π) は除く)
+    - ω ∈ [1, α] が全点で成立
     - 界面（φ=0）で ω が最大
     - 遠方（|φ|→∞）で ω → 1
-    - ω ≥ 1 が全点で成立
 
 Test 2 — metric convergence via CCD (test_metric_ccd_convergence):
     ccd.differentiate_raw() を用いた J = ∂ξ/∂x の MMS 収束テスト.
@@ -47,7 +48,7 @@ def _make_grid_and_ccd(n, L=1.0):
 # ── Test 1: 密度関数の形状 ────────────────────────────────────────────────────
 
 def test_density_function_paper_formula():
-    """ω(ψ) = 1 + (α-1)·4ψ(1-ψ) の形状を検証する."""
+    """ω = 1 + (α-1)·exp(-φ²/ε_g²) の形状を検証する (indicator ∈ [0,1], ω ∈ [1,α])."""
     backend = _make_backend()
     n = 64
     L = 1.0
@@ -68,17 +69,20 @@ def test_density_function_paper_formula():
 
     grid.update_from_levelset(psi0, eps=eps, ccd=ccd)
 
-    # ω の再計算（grid.py と同じ手順: ψ→φ→Gaussian δ* で検証）
+    # ω の再計算（grid.py と同じ手順: ψ→φ→bounded Gaussian で検証）
     from twophase.levelset.heaviside import invert_heaviside
     phi_check = invert_heaviside(np, psi0, eps)
     eps_g = cfg.grid.eps_g_factor * eps
     phi_1d = np.min(np.abs(phi_check), axis=1)   # axis=0 方向
-    delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
-    indicator_1d = delta_star
+    indicator_1d = np.exp(-(phi_1d ** 2) / (eps_g ** 2))  # bounded ∈ [0, 1]
     omega = 1.0 + (alpha - 1.0) * indicator_1d
 
-    # 検証: ω ≥ 1 かつ界面（indicator 最大点）で最大
+    # 検証: ω ∈ [1, α] かつ界面（indicator 最大点）で最大
     assert np.all(omega >= 1.0 - 1e-12), "ω は全点で ≥ 1 でなければならない"
+    assert np.all(omega <= alpha + 1e-6), (
+        f"ω は全点で ≤ α={alpha} でなければならない (max={omega.max():.4f}). "
+        "indicator が [0,1] を超えていないか確認 (unbounded delta_star バグ)"
+    )
     i_interface = np.argmax(indicator_1d)
     assert omega[i_interface] == pytest.approx(np.max(omega), rel=1e-6), (
         "ω は界面ノードで最大でなければならない"

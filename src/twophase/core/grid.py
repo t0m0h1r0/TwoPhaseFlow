@@ -126,9 +126,10 @@ class Grid:
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
             phi_1d = np.min(np.abs(phi), axis=axes_other)
 
-            # §6 eq:grid_delta: Gaussian delta
-            delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
-            indicator_1d = delta_star
+            # §6 eq:grid_delta: bounded Gaussian indicator ∈ [0, 1]
+            # NOTE: ディラックデルタ正規化因子 1/(ε_g√π) は除去する.
+            # 正規化すると ピーク = 1/(ε_g√π) >> 1 となり ω >> α になる (unbounded bug).
+            indicator_1d = np.exp(-(phi_1d ** 2) / (eps_g ** 2))
 
             omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 
