@@ -60,15 +60,16 @@ def run_case(alpha_grid: float, label: str, backend: "Backend") -> dict:
     X = np.asarray(backend.to_host(solver.X))
     Y = np.asarray(backend.to_host(solver.Y))
     R = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
-    psi = solver.psi_from_phi(0.25 - R)
-    u = np.zeros_like(psi)
-    v = np.zeros_like(psi)
+    xp = backend.xp
+    psi = xp.asarray(solver.psi_from_phi(0.25 - R))
+    u = xp.zeros_like(psi)
+    v = xp.zeros_like(psi)
 
     # Initial mass
     if alpha_grid > 1.0:
         psi, u, v = solver._rebuild_grid(psi, u, v)
     dV0 = solver._grid.cell_volumes()
-    M0 = float(np.sum(psi * dV0))
+    M0 = float(xp.sum(psi * dV0))
 
     times = []
     mass_err = []
