@@ -293,34 +293,30 @@ class TwoPhaseNSSolver:
         if self._alpha_grid <= 1.0:
             return psi, u, v
 
-        # 1. Convert psi -> signed-distance phi for grid density function
-        phi = np.asarray(self._backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
-
-        # 2. Save old grid state for interpolation
+        # 1. Save old grid state for interpolation
         old_coords = [c.copy() for c in self._grid.coords]
         old_h = [h.copy() for h in self._grid.h]
 
-        # 3. Compute old cell volumes for mass correction
+        # 2. Compute old cell volumes for mass correction
         dV_old = old_h[0].copy()
         for ax in range(1, self._grid.ndim):
             dV_old = np.expand_dims(dV_old, axis=ax) * old_h[ax]
         M_before = float(np.sum(psi * dV_old))
 
-        # 4. Rebuild grid (mutates coords, h, J, dJ_dxi in-place)
-        self._grid.update_from_levelset(phi, self._eps, ccd=self._ccd)
+        # 3. Rebuild grid from ψ (mutates coords, h, J, dJ_dxi in-place)
+        self._grid.update_from_levelset(psi, ccd=self._ccd)
 
-        # 5. Remap psi, u, v from old grid to new grid.
-        # Backend-native interpolation path (NumPy/CuPy), no SciPy host detour.
+        # 4. Remap psi, u, v from old grid to new grid.
         remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
         psi = np.clip(np.asarray(self._backend.to_host(remapper.remap(psi))), 0.0, 1.0)
         u = np.asarray(self._backend.to_host(remapper.remap(u)))
         v = np.asarray(self._backend.to_host(remapper.remap(v)))
 
-        # 6. Mass correction for psi
+        # 5. Mass correction for psi
         dV_new = self._grid.cell_volumes()
         psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
 
-        # 7. Update meshgrid cache (keep device arrays for downstream ops).
+        # 6. Update meshgrid cache.
         self.X, self.Y = self._grid.meshgrid()
 
         # 8. Update curvature eps_field for local-eps mode

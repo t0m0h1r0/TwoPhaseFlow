@@ -47,44 +47,42 @@ def _make_grid_and_ccd(n, L=1.0):
 # ── Test 1: 密度関数の形状 ────────────────────────────────────────────────────
 
 def test_density_function_paper_formula():
-    """ω(φ) = 1 + (α-1)·δ*(φ) の形状を検証する（§6 eq:grid_delta）."""
+    """ω(ψ) = 1 + (α-1)·4ψ(1-ψ) の形状を検証する."""
     backend = _make_backend()
     n = 64
     L = 1.0
     alpha = 4.0
-    eps_g_factor = 2.0
 
     cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(n, n), L=(L, L), alpha_grid=alpha,
-                        eps_g_factor=eps_g_factor)
+        grid=GridConfig(ndim=2, N=(n, n), L=(L, L), alpha_grid=alpha)
     )
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
 
-    # 円形界面 φ(i,j) = sqrt((x-0.5)²+(y-0.5)²) - R を一様格子上で構築
+    # 円形界面: φ → ψ = 1/(1+exp(φ/ε)) (ψ=1 outside, ψ=0 inside)
     x = np.linspace(0, L, n + 1)
     X, Y = np.meshgrid(x, x, indexing="ij")
     phi0 = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2) - 0.25
-
     eps = 1.5 * (L / n)
-    grid.update_from_levelset(phi0, eps, ccd=ccd)
+    psi0 = 1.0 / (1.0 + np.exp(-phi0 / eps))
+
+    grid.update_from_levelset(psi0, ccd=ccd)
 
     # ω の再計算（grid.py と同じ手順で検証）
-    eps_g = eps_g_factor * eps
-    phi_1d = np.min(np.abs(phi0), axis=1)   # axis=0 方向
-    delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
-    omega = 1.0 + (alpha - 1.0) * delta_star
+    indicator = psi0 * (1.0 - psi0)
+    indicator_1d = np.max(indicator, axis=1) / 0.25   # axis=0 方向
+    omega = 1.0 + (alpha - 1.0) * indicator_1d
 
-    # 検証: ω ≥ 1 かつ界面（phi_1d 最小点）で最大
+    # 検証: ω ≥ 1 かつ界面（indicator 最大点）で最大
     assert np.all(omega >= 1.0 - 1e-12), "ω は全点で ≥ 1 でなければならない"
-    i_interface = np.argmin(phi_1d)
+    i_interface = np.argmax(indicator_1d)
     assert omega[i_interface] == pytest.approx(np.max(omega), rel=1e-6), (
         "ω は界面ノードで最大でなければならない"
     )
     # 遠方で ω ≈ 1
-    far_mask = np.abs(phi_1d) > 4 * eps_g
+    far_mask = indicator_1d < 0.01
     if np.any(far_mask):
-        assert np.all(omega[far_mask] < 1.01), "遠方の ω は 1 に近くなければならない"
+        assert np.all(omega[far_mask] < 1.04), "遠方の ω は 1 に近くなければならない"
 
     # 格子幅: 界面近傍 < 一様格子幅
     h_uniform = L / n
@@ -208,19 +206,19 @@ def test_update_from_levelset():
 
     backend = _make_backend()
     cfg = SimulationConfig(
-        grid=GridConfig(ndim=2, N=(n, n), L=(L, L), alpha_grid=alpha,
-                        eps_g_factor=2.0)
+        grid=GridConfig(ndim=2, N=(n, n), L=(L, L), alpha_grid=alpha)
     )
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
 
-    # 中央に直線界面 φ(i,j) = |y - 0.5| - 0
+    # 中央に直線界面 ψ = sigmoid(−(y−0.5)/ε)
     x = np.linspace(0, L, n + 1)
     X, Y = np.meshgrid(x, x, indexing="ij")
-    phi0 = Y - 0.5   # 符号付き距離（界面 y=0.5）
-
+    phi0 = Y - 0.5
     eps = 1.5 * (L / n)
-    grid.update_from_levelset(phi0, eps, ccd=ccd)
+    psi0 = 1.0 / (1.0 + np.exp(-phi0 / eps))
+
+    grid.update_from_levelset(psi0, ccd=ccd)
 
     # axis=1（y 方向）で界面ノード付近の格子幅が一様格子幅より小さいこと
     h_uniform = L / n

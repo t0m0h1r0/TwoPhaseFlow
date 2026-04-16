@@ -88,26 +88,30 @@ class Grid:
 
     def update_from_levelset(
         self,
-        phi_data: np.ndarray,
-        eps: float,
+        psi_data: np.ndarray,
+        eps: float = 0.0,
         ccd=None,
     ) -> None:
-        """Rebuild interface-fitted grid given the signed-distance field φ.
+        """Rebuild interface-fitted grid given the Heaviside field ψ.
 
         Only active when ``grid_config.alpha_grid > 1.0``.
 
-        Density function (§6 eq:grid_delta):
-            ω(φ) = 1 + (α−1) · δ*(φ),  δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π)
-        where ε_g = eps_g_factor × ε.  ω ∈ [1, α]: interface dense, bulk coarse.
+        Density function (ψ-based, replacing Gaussian δ*(φ)):
+            indicator(ψ) = 4ψ(1−ψ) ∈ [0, 1]  — peaks at ψ=0.5, zero in bulk
+            ω = 1 + (α−1) · max_j indicator(ψ_{·,j})
+
+        This eliminates the need for signed-distance φ and the ε_g parameter.
+        Bell width of ψ(1−ψ) ≈ 3.5ε (sech² profile), comparable to the former
+        Gaussian δ*(ε_g=2ε) width of ≈ 3.3ε.
 
         Metric coefficients J = ∂ξ/∂x and ∂J/∂ξ are computed with CCD (O(h⁶))
-        when ``ccd`` is provided (§6 Step 5, box:grid_jx_accuracy).  Falls back
-        to O(h²) central differences when ``ccd`` is None.
+        when ``ccd`` is provided.  Falls back to O(h²) central differences
+        when ``ccd`` is None.
 
         Parameters
         ----------
-        phi_data : array of shape ``self.shape``
-        eps      : interface half-width (ε = epsilon_factor × dx_min)
+        psi_data : array of shape ``self.shape`` — Heaviside field ψ ∈ [0, 1]
+        eps      : unused (kept for call-site compatibility)
         ccd      : CCDSolver instance for O(h⁶) metric evaluation (optional)
         """
         alpha = self._gc.alpha_grid
@@ -115,19 +119,15 @@ class Grid:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
-        # ε_g = eps_g_factor × ε  (§6: 推奨 ε_g ≈ 2–4 ε)
-        eps_g = self._gc.eps_g_factor * eps
 
         for ax in range(self.ndim):
-            # 1-D marginal of φ along this axis (minimum |φ| over other axes,
-            # §6 2次元格子生成アルゴリズム: φ̄^x_i = min_j |φ^(0)_{i,j}|)
+            # 1-D marginal: max ψ(1−ψ) over other axes → interface indicator
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            phi_host = np.abs(self.backend.to_host(phi_data))
-            phi_1d = np.min(phi_host, axis=axes_other)
+            psi_host = np.asarray(self.backend.to_host(psi_data))
+            indicator = psi_host * (1.0 - psi_host)         # peaks 0.25 at ψ=0.5
+            indicator_1d = np.max(indicator, axis=axes_other) / 0.25  # [0, 1]
 
-            # Paper §6 eq:grid_delta: ω = 1 + (α−1)·δ*(φ), δ* = Gaussian delta
-            delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
-            omega = 1.0 + (alpha - 1.0) * delta_star   # ω ∈ [1, α] — always ≥ 1
+            omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 
             # Node target widths proportional to 1/ω; enforce minimum cell width
             node_w = np.maximum(1.0 / omega, dx_floor)  # (N+1,) node weights
