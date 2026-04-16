@@ -118,9 +118,9 @@ asymptotic convergence regime.
 
 | Benchmark | α | rebuild_freq | cn_viscous | Status |
 |-----------|---|-------------|------------|--------|
-| Capillary wave | 1.0 | 0 | false | Confirmed stable (April + current) |
-| Rising bubble | 1.0 | 0 | false | Confirmed PASS (April) |
-| Taylor deformation | 1.0 | 0 | true | Testing (was BLOWUP without cn_viscous) |
+| Capillary wave | 1.0 | 0 | false | **PASS** — 15498 steps to T=10.0 |
+| Rising bubble | 1.0 | 0 | false | **PASS** — 4978 steps to T=3.0 |
+| Taylor deformation | 1.0 | 0 | true | **FAIL** — Couette+σ fundamentally unstable |
 
 **Trade-off:** Loses interface-fitted resolution. At N=64, the interface region has
 h = 1/64 ≈ 0.016 everywhere. With α=2.0, interface region had h_min ≈ 0.004 (4× finer).
@@ -163,17 +163,46 @@ These are research topics beyond ch13 scope.
 **Note:** Second-moment D(t) diagnostic is noisy for capillary waves (April 11 finding).
 Fourier modal decomposition needed for quantitative ω₀/β extraction.
 
-### 5.2 Rising Bubble (exp13_02)
+### 5.2 Rising Bubble (exp13_02) — **PASS**
 
-*(Running on remote — expected to match April 11 results)*
+**Config:** α=1.0, N=64×128, T=3.0, CFL=0.15, Re=35, Eo=10  
+**Result:** 4978 steps, **stable to T=3.0**, dt=[3.0e-4, 6.0e-4]
 
-Previous (April 11): T=3.0 stable, v_c = 0.160, |ΔV|/V₀ = 2.87e-5
+| Metric | Value | Assessment |
+|--------|-------|------------|
+| Terminal velocity | v_c = 0.160 | Reaches steady state by t≈2 |
+| Centroid rise | y_c: 0.500 → 0.673 | Physical bubble motion |
+| Vol conservation (T=3) | 3.1e-5 (0.003%) | Outstanding |
+| KE | 0.037 (steady state) | No spurious growth |
 
-### 5.3 Taylor Deformation (exp13_03)
+### 5.3 Taylor Deformation (exp13_03) — **FAIL (Fundamental)**
 
-*(Running on remote — first test with cn_viscous=true)*
+**Tested configurations:**
+- N=128, α=1.0, cn_viscous=true: ALL 8 cases BLOWUP (t < 0.01)
+- N=64, α=1.0, cn_viscous=true: ALL 4 cases BLOWUP (t < 0.03)
 
-Previous (April 11): ALL 8 BLOWUP at t < 0.02 (explicit viscous CFL)
+**Root cause:** Couette BC + CSF surface tension is fundamentally unstable in the
+explicit predictor-corrector scheme. The mechanism:
+
+1. Steps 0-N: Couette flow (KE=0.177) established stably
+2. Step N+1: CSF surface tension force σκ creates velocity perturbation at interface
+3. Step N+2: Convective upwind amplifies perturbation (KE jumps 2-50×)
+4. Steps N+3+: Exponential blowup despite CFL control shrinking dt to ~1e-8
+
+Onset is **resolution-independent** (N=64 and N=128 both fail at similar physical
+times) and **CFL-independent** (dt is correctly bounded but the scheme is linearly
+unstable for this configuration).
+
+**Countermeasures attempted and FAILED:**
+- cn_viscous=true (Heun predictor-corrector) — insufficient
+- N=64 (4× dt headroom) — same instability
+- α=1.0 (uniform grid) — eliminates metric errors but not Couette+σ instability
+
+**Countermeasures requiring future work:**
+- Semi-implicit surface tension (treat σκ implicitly in time)
+- Gradual σ ramp-up from 0 (quasi-static approach)
+- Full implicit coupling (monolithic pressure-velocity-surface tension)
+- Alternative: reduced γ̇ or increased μ (changing the physics)
 
 ---
 
@@ -194,6 +223,18 @@ Previous (April 11): ALL 8 BLOWUP at t < 0.02 (explicit viscous CFL)
 
 1. **Non-uniform grids (α>1) are not viable for ch13** due to CCD metric instability
 2. **Non-incremental projection is stable** for moving interface + σ>0 at ρ≤10
-3. **Uniform grid + cn_viscous** is the viable path for all 3 benchmarks
-4. **exp11_04 △ is the only true blocker** — resolved by using α=1.0
-5. Taylor deformation requires `cn_viscous=true` (explicit viscous CFL at N=128)
+3. **Capillary wave: PASS** — α=1.0 N=64 stable to T=10.0, physics qualitatively correct
+4. **Rising bubble: PASS** — v_c=0.160, |ΔV|/V₀=0.003%, excellent
+5. **Taylor deformation: FAIL** — Couette + explicit CSF is fundamentally unstable
+   - NOT a CFL or resolution issue; requires semi-implicit σκ treatment
+   - Documented as a known limitation of the explicit predictor-corrector scheme
+6. **exp11_04 △ is the primary blocker for capillary/bubble** — resolved by α=1.0
+7. Taylor deformation requires algorithmic change beyond config tuning
+
+### Summary Table
+
+| Benchmark | Status | Key Metric | Blocker |
+|-----------|--------|------------|---------|
+| §13.1 Capillary wave | **PASS** | T=10.0 stable, KE oscillation+decay | exp11_04 (α→1.0) |
+| §13.2 Rising bubble | **PASS** | v_c=0.160, |ΔV|/V₀=0.003% | exp11_04 (α→1.0) |
+| §13.3 Taylor deformation | **FAIL** | All cases blowup at t<0.03 | Explicit CSF + Couette |
