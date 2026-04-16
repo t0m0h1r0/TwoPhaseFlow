@@ -45,10 +45,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from twophase.config_io import load_experiment_config
-from twophase.ns_pipeline import run_simulation
-from twophase.plot_factory import generate_figures
-from twophase.experiment import apply_style, save_results, COLORS
+from twophase.simulation.config_io import load_experiment_config
+from twophase.simulation.ns_pipeline import run_simulation
+from twophase.tools.plot_factory import generate_figures
+from twophase.tools.experiment import apply_style, save_results, COLORS
 
 apply_style()
 

@@ -238,7 +238,42 @@ class TwoPhaseNSSolver:
         if self._use_local_eps:
             self._curv.eps = self._make_eps_field()
 
+        # 9. Velocity re-projection: linear interpolation of (u, v) does not
+        #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
+        #    introduced by the remap.  Without this step the remapped velocity
+        #    has O(h) divergence which drives exponential KE growth.
+        u, v = self._reproject_velocity(psi, u, v)
+
         return psi, u, v
+
+    def _reproject_velocity(
+        self,
+        psi: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Remove divergence from (u, v) via a pressure-Poisson correction."""
+        ccd = self._ccd
+        def _h(arr):
+            return np.asarray(self._backend.to_host(arr))
+
+        rho = np.ones_like(psi)  # unit density for pure projection
+        du_dx, _ = ccd.differentiate(u, 0)
+        dv_dy, _ = ccd.differentiate(v, 1)
+        div = _h(du_dx) + _h(dv_dy)
+
+        # Solve ∇²φ = ∇·u  (unit density)
+        phi_corr = self._solve_ppe(div, rho)
+
+        dp_dx, _ = ccd.differentiate(phi_corr, 0)
+        dp_dy, _ = ccd.differentiate(phi_corr, 1)
+        if self.bc_type == "wall":
+            ccd.enforce_wall_neumann(dp_dx, 0)
+            ccd.enforce_wall_neumann(dp_dy, 1)
+
+        u = u - _h(dp_dx)
+        v = v - _h(dp_dy)
+        return u, v
 
     # ── initial condition / velocity builders ─────────────────────────────
 
