@@ -14,6 +14,10 @@ import numpy as np
 import pytest
 
 from twophase.tools.diagnostics.collector import DiagnosticCollector
+from twophase.tools.diagnostics.interface_diagnostics import (
+    midband_fraction,
+    relative_mass_error,
+)
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -198,3 +202,17 @@ def test_bubble_centroid_centered():
 
     assert abs(xc - 0.5) < 0.05, f"xc should be ~0.5, got {xc}"
     assert abs(yc - 0.5) < 0.05, f"yc should be ~0.5, got {yc}"
+
+
+def test_midband_fraction_basic():
+    psi = np.array([[0.0, 0.2], [0.85, 1.0]], dtype=float)
+    frac = midband_fraction(psi, lo=0.1, hi=0.9)
+    assert frac == pytest.approx(0.5, abs=1e-15)
+
+
+def test_relative_mass_error_zero():
+    psi = np.array([[0.2, 0.4], [0.6, 0.8]], dtype=float)
+    dV = np.ones_like(psi)
+    m0 = float(np.sum(psi * dV))
+    err = relative_mass_error(psi, dV, m0)
+    assert err == pytest.approx(0.0, abs=1e-15)

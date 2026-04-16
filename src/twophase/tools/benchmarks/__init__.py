@@ -17,6 +17,7 @@ from .stationary_droplet import StationaryDropletBenchmark
 from .rising_bubble import RisingBubbleBenchmark
 from .zalesak_disk import ZalesakDiskBenchmark
 from .rayleigh_taylor import RayleighTaylorBenchmark
+from .scaling import mu_from_re, sigma_from_eo, mu_sigma_from_re_eo
 
 from . import analytical_solutions, presets
 
@@ -25,6 +26,9 @@ __all__ = [
     "RisingBubbleBenchmark",
     "ZalesakDiskBenchmark",
     "RayleighTaylorBenchmark",
+    "mu_from_re",
+    "sigma_from_eo",
+    "mu_sigma_from_re_eo",
     "analytical_solutions",
     "presets",
 ]

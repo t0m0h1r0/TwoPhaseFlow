@@ -15,18 +15,21 @@ from __future__ import annotations
 
 import numpy as np
 import scipy.sparse as sp
-from scipy.interpolate import RegularGridInterpolator
+import warnings
 
 from ..backend import Backend
 from ..config import GridConfig
 from ..core.grid import Grid
+from ..core.grid_remap import build_grid_remapper
 from ..ccd.ccd_solver import CCDSolver
-from ..levelset.heaviside import heaviside, invert_heaviside, apply_mass_correction
+from ..levelset.heaviside import apply_mass_correction
+from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.advection import DissipativeCCDAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ppe.ppe_builder import PPEBuilder
+from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
 
@@ -73,6 +76,12 @@ class TwoPhaseNSSolver:
         reinit_method: str | None = None,
         cn_viscous: bool = False,
         Re: float = 1.0,
+        reproject_variable_density: bool = False,
+        reproject_mode: str = "legacy",
+        phi_primary_transport: bool = False,
+        phi_primary_redist_every: int = 4,
+        phi_primary_clip_factor: float = 12.0,
+        phi_primary_heaviside_eps_scale: float = 1.0,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -81,7 +90,49 @@ class TwoPhaseNSSolver:
         self._eps_factor = eps_factor
         self._use_local_eps = use_local_eps
         self._rebuild_freq = max(1, int(grid_rebuild_freq))
+        # Safety fallback for non-uniform dynamic runs:
+        # per-step rebuild (freq=1) is prone to remap/reprojection-driven
+        # instability. Use a conservative default cadence unless caller sets
+        # a value >1 explicitly.
+        if self._alpha_grid > 1.0 and int(grid_rebuild_freq) == 1:
+            self._rebuild_freq = 10
         self._reinit_every = int(reinit_every)
+        self._reproject_variable_density = bool(reproject_variable_density)
+        self._phi_primary_transport = bool(phi_primary_transport)
+        self._phi_primary_redist_every = max(1, int(phi_primary_redist_every))
+        self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
+        self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
+        self._reproject_mode = str(reproject_mode).strip().lower()
+        if self._reproject_mode not in {
+            "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
+        }:
+            raise ValueError(
+                f"Unsupported reproject_mode='{reproject_mode}'. "
+                "Use legacy|variable_density_only|consistent_iim|consistent_gfm."
+            )
+        # Backward compatibility: old flag maps to variable-density-only mode.
+        if self._reproject_variable_density and self._reproject_mode == "legacy":
+            self._reproject_mode = "variable_density_only"
+        self._reproject_warned_fallback = False
+        self._reproject_warned_iim_fail = False
+        self._reproject_warned_iim_reject = False
+        self._reproject_stats = {
+            "calls": 0,
+            "iim_attempts": 0,
+            "iim_accepts": 0,
+            "iim_rejects": 0,
+            "iim_fails": 0,
+            "iim_reject_nonfinite": 0,
+            "iim_reject_divergence": 0,
+            "iim_crossings_total": 0,
+            "iim_crossings_accept": 0,
+            "iim_crossings_reject": 0,
+            "iim_div_base_sum": 0.0,
+            "iim_div_iim_sum": 0.0,
+            "iim_div_iim_accept_sum": 0.0,
+            "iim_div_iim_reject_sum": 0.0,
+            "iim_backtrack_accepts": 0,
+        }
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -96,12 +147,29 @@ class TwoPhaseNSSolver:
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
         self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
+        self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # Curvature uses local eps_field when use_local_eps=True on non-uniform grids
         eps_curv = self._make_eps_field() if use_local_eps and alpha_grid > 1.0 else self._eps
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
         self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+        self._reconstruct_base = HeavisideInterfaceReconstructor(
+            self._backend,
+            ReconstructionConfig(
+                eps=self._eps,
+                eps_scale=1.0,
+                clip_factor=self._phi_primary_clip_factor,
+            ),
+        )
+        self._reconstruct_phi_primary = HeavisideInterfaceReconstructor(
+            self._backend,
+            ReconstructionConfig(
+                eps=self._eps,
+                eps_scale=self._phi_primary_heaviside_eps_scale,
+                clip_factor=self._phi_primary_clip_factor,
+            ),
+        )
         # Reinit uses conservative scalar eps (Option C: memo §4.2)
         # On non-uniform grids, SplitReinitializer's CN diffusion assumes
         # uniform h = L/N, causing catastrophic mass loss (~23%).
@@ -139,6 +207,24 @@ class TwoPhaseNSSolver:
             reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", None),
             cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
             Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
+            reproject_variable_density=getattr(
+                getattr(cfg, "run", g), "reproject_variable_density", False,
+            ),
+            reproject_mode=getattr(
+                getattr(cfg, "run", g), "reproject_mode", "legacy",
+            ),
+            phi_primary_transport=bool(
+                getattr(getattr(cfg, "run", g), "phi_primary_transport", False)
+            ),
+            phi_primary_redist_every=int(
+                getattr(getattr(cfg, "run", g), "phi_primary_redist_every", 4)
+            ),
+            phi_primary_clip_factor=float(
+                getattr(getattr(cfg, "run", g), "phi_primary_clip_factor", 12.0)
+            ),
+            phi_primary_heaviside_eps_scale=float(
+                getattr(getattr(cfg, "run", g), "phi_primary_heaviside_eps_scale", 1.0)
+            ),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -162,6 +248,11 @@ class TwoPhaseNSSolver:
             np.min(self._grid.h[ax]) for ax in range(self._grid.ndim)
         ))
 
+    @property
+    def reproject_stats(self) -> dict:
+        """Return counters for reprojection mode diagnostics."""
+        return dict(self._reproject_stats)
+
     def _make_eps_field(self):
         """ε(x) = eps_factor · max(h_x(i), h_y(j)) at each node.
 
@@ -177,7 +268,12 @@ class TwoPhaseNSSolver:
     # ── grid rebuild ─────────────────────────────────────────────────────
 
     def _rebuild_grid(
-        self, psi: np.ndarray, u: np.ndarray, v: np.ndarray,
+        self,
+        psi: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+        rho_l: float | None = None,
+        rho_g: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Rebuild interface-fitted grid and remap fields.
 
@@ -189,7 +285,7 @@ class TwoPhaseNSSolver:
             return psi, u, v
 
         # 1. Convert psi -> signed-distance phi for grid density function
-        phi = invert_heaviside(np, psi, self._eps)
+        phi = np.asarray(self._backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
 
         # 2. Save old grid state for interpolation
         old_coords = [c.copy() for c in self._grid.coords]
@@ -204,35 +300,19 @@ class TwoPhaseNSSolver:
         # 4. Rebuild grid (mutates coords, h, J, dJ_dxi in-place)
         self._grid.update_from_levelset(phi, self._eps, ccd=self._ccd)
 
-        # 5. Remap psi, u, v from old grid to new grid
-        # RegularGridInterpolator is scipy-based: always needs host arrays.
-        new_X_dev, new_Y_dev = self._grid.meshgrid()
-        new_X = np.asarray(self._backend.to_host(new_X_dev))
-        new_Y = np.asarray(self._backend.to_host(new_Y_dev))
-        pts = np.stack([new_X.ravel(), new_Y.ravel()], axis=-1)
-
-        psi = np.clip(
-            RegularGridInterpolator(
-                old_coords, psi, method="linear",
-                bounds_error=False, fill_value=None,
-            )(pts).reshape(new_X.shape),
-            0.0, 1.0,
-        )
-        u = RegularGridInterpolator(
-            old_coords, u, method="linear",
-            bounds_error=False, fill_value=None,
-        )(pts).reshape(new_X.shape)
-        v = RegularGridInterpolator(
-            old_coords, v, method="linear",
-            bounds_error=False, fill_value=None,
-        )(pts).reshape(new_X.shape)
+        # 5. Remap psi, u, v from old grid to new grid.
+        # Backend-native interpolation path (NumPy/CuPy), no SciPy host detour.
+        remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
+        psi = np.clip(np.asarray(self._backend.to_host(remapper.remap(psi))), 0.0, 1.0)
+        u = np.asarray(self._backend.to_host(remapper.remap(u)))
+        v = np.asarray(self._backend.to_host(remapper.remap(v)))
 
         # 6. Mass correction for psi
         dV_new = self._grid.cell_volumes()
         psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
 
         # 7. Update meshgrid cache (keep device arrays for downstream ops).
-        self.X, self.Y = new_X_dev, new_Y_dev
+        self.X, self.Y = self._grid.meshgrid()
 
         # 8. Update curvature eps_field for local-eps mode
         if self._use_local_eps:
@@ -242,7 +322,14 @@ class TwoPhaseNSSolver:
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
         #    introduced by the remap.  Without this step the remapped velocity
         #    has O(h) divergence which drives exponential KE growth.
-        u, v = self._reproject_velocity(psi, u, v)
+        try:
+            u, v = self._reproject_velocity(
+                psi, u, v, rho_l=rho_l, rho_g=rho_g,
+            )
+        except TypeError:
+            # Backward compatibility for experiment monkey-patches that
+            # replace _reproject_velocity(psi, u, v) with a 3-arg lambda.
+            u, v = self._reproject_velocity(psi, u, v)
 
         return psi, u, v
 
@@ -251,35 +338,148 @@ class TwoPhaseNSSolver:
         psi: np.ndarray,
         u: np.ndarray,
         v: np.ndarray,
+        rho_l: float | None = None,
+        rho_g: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Remove divergence from (u, v) via a pressure-Poisson correction."""
         ccd = self._ccd
         def _h(arr):
             return np.asarray(self._backend.to_host(arr))
+        self._reproject_stats["calls"] += 1
 
-        rho = np.ones_like(psi)  # unit density for pure projection
+        use_varrho = self._reproject_mode in {"variable_density_only"}
+        if self._reproject_mode in {"consistent_gfm"}:
+            if not self._reproject_warned_fallback:
+                warnings.warn(
+                    f"reproject_mode='{self._reproject_mode}' currently uses "
+                    "legacy projection fallback (skeleton mode).",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                self._reproject_warned_fallback = True
+
+        if use_varrho and rho_l is not None and rho_g is not None:
+            rho = rho_g + (rho_l - rho_g) * psi
+        else:
+            rho = np.ones_like(psi)
         du_dx, _ = ccd.differentiate(u, 0)
         dv_dy, _ = ccd.differentiate(v, 1)
         div = _h(du_dx) + _h(dv_dy)
 
-        # Solve ∇²φ = ∇·u  (unit density)
-        phi_corr = self._solve_ppe(div, rho)
+        # Base projection (acceptance baseline).
+        phi_base = self._solve_ppe(div, rho)
 
-        dp_dx, _ = ccd.differentiate(phi_corr, 0)
-        dp_dy, _ = ccd.differentiate(phi_corr, 1)
-        if self.bc_type == "wall":
-            ccd.enforce_wall_neumann(dp_dx, 0)
-            ccd.enforce_wall_neumann(dp_dy, 1)
+        def _apply_phi(phi_sol: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+            dpx, _ = ccd.differentiate(phi_sol, 0)
+            dpy, _ = ccd.differentiate(phi_sol, 1)
+            if self.bc_type == "wall":
+                ccd.enforce_wall_neumann(dpx, 0)
+                ccd.enforce_wall_neumann(dpy, 1)
+            if use_varrho and rho_l is not None and rho_g is not None:
+                uu = u - _h(dpx) / rho
+                vv = v - _h(dpy) / rho
+            else:
+                uu = u - _h(dpx)
+                vv = v - _h(dpy)
+            return uu, vv
 
-        u = u - _h(dp_dx)
-        v = v - _h(dp_dy)
-        return u, v
+        def _div_l2(uu: np.ndarray, vv: np.ndarray) -> float:
+            duu, _ = ccd.differentiate(uu, 0)
+            dvv, _ = ccd.differentiate(vv, 1)
+            dd = _h(duu) + _h(dvv)
+            return float(np.sqrt(np.mean(dd * dd)))
+
+        u_base, v_base = _apply_phi(phi_base)
+        div_base = _div_l2(u_base, v_base)
+
+        if self._reproject_mode == "consistent_iim" and rho_l is not None and rho_g is not None:
+            self._reproject_stats["iim_attempts"] += 1
+            try:
+                # Reprojection-specific IIM: enforce interface consistency by
+                # adding jump-aware RHS correction (sigma=0, flux-jump driven).
+                phi_iface = np.asarray(self._backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
+                n_cross = len(self._reproj_iim.find_interface_crossings(phi_iface))
+                self._reproject_stats["iim_crossings_total"] += int(n_cross)
+                kappa0 = np.zeros_like(psi)
+                A_host = self._build_ppe_matrix(rho)
+                dp0_x, _ = ccd.differentiate(phi_base, 0)
+                dp0_y, _ = ccd.differentiate(phi_base, 1)
+                delta_q = self._reproj_iim.compute_correction(
+                    A_host,
+                    phi_iface,
+                    kappa0,
+                    0.0,   # no Young-Laplace jump for reprojection potential
+                    rho,
+                    div,
+                    dp_dx=_h(dp0_x),
+                    dp_dy=_h(dp0_y),
+                ).reshape(psi.shape)
+                phi_iim = self._solve_ppe(div + delta_q, rho)
+                u_iim, v_iim = _apply_phi(phi_iim)
+                div_iim = _div_l2(u_iim, v_iim)
+                self._reproject_stats["iim_div_base_sum"] += float(div_base)
+                self._reproject_stats["iim_div_iim_sum"] += float(div_iim)
+                finite_ok = np.isfinite(u_iim).all() and np.isfinite(v_iim).all()
+                if finite_ok and div_iim <= 1.05 * max(div_base, 1e-30):
+                    self._reproject_stats["iim_accepts"] += 1
+                    self._reproject_stats["iim_crossings_accept"] += int(n_cross)
+                    self._reproject_stats["iim_div_iim_accept_sum"] += float(div_iim)
+                    return u_iim, v_iim
+                # Backtracking on jump correction strength (line-search style).
+                accepted_bt = False
+                for scale in (0.5, 0.25, 0.125):
+                    phi_bt = self._solve_ppe(div + scale * delta_q, rho)
+                    u_bt, v_bt = _apply_phi(phi_bt)
+                    div_bt = _div_l2(u_bt, v_bt)
+                    finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
+                    if finite_bt and div_bt <= 1.05 * max(div_base, 1e-30):
+                        self._reproject_stats["iim_accepts"] += 1
+                        self._reproject_stats["iim_crossings_accept"] += int(n_cross)
+                        self._reproject_stats["iim_div_iim_accept_sum"] += float(div_bt)
+                        self._reproject_stats["iim_backtrack_accepts"] += 1
+                        return u_bt, v_bt
+                    # Keep the best diagnostic value for rejected candidates.
+                    if np.isfinite(div_bt):
+                        div_iim = min(div_iim, div_bt)
+                    finite_ok = finite_ok or finite_bt
+                    accepted_bt = accepted_bt or (finite_bt and div_bt <= 1.05 * max(div_base, 1e-30))
+                if accepted_bt:
+                    return u_iim, v_iim
+                self._reproject_stats["iim_rejects"] += 1
+                self._reproject_stats["iim_crossings_reject"] += int(n_cross)
+                self._reproject_stats["iim_div_iim_reject_sum"] += float(div_iim)
+                if not finite_ok:
+                    self._reproject_stats["iim_reject_nonfinite"] += 1
+                else:
+                    self._reproject_stats["iim_reject_divergence"] += 1
+                if not self._reproject_warned_iim_reject:
+                    warnings.warn(
+                        "consistent_iim candidate rejected by acceptance gate; "
+                        f"div_base={div_base:.3e}, div_iim={div_iim:.3e}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    self._reproject_warned_iim_reject = True
+                return u_base, v_base
+            except Exception as e:
+                self._reproject_stats["iim_fails"] += 1
+                if not self._reproject_warned_iim_fail:
+                    warnings.warn(
+                        "consistent_iim reprojection failed; fallback to base "
+                        f"variable-density projection. cause={e}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    self._reproject_warned_iim_fail = True
+                return u_base, v_base
+
+        return u_base, v_base
 
     # ── initial condition / velocity builders ─────────────────────────────
 
     def psi_from_phi(self, phi: np.ndarray) -> np.ndarray:
         """Smooth Heaviside ψ = H_ε(φ)."""
-        return np.asarray(heaviside(np, phi, self._eps))
+        return np.asarray(self._backend.to_host(self._reconstruct_base.psi_from_phi(phi)))
 
     def build_ic(self, cfg: "ExperimentConfig") -> np.ndarray:
         """Build initial ψ field from config ``initial_condition`` section.
@@ -441,14 +641,39 @@ class TwoPhaseNSSolver:
         # Helper: device→host, safe for both numpy and cupy arrays.
         def _h(arr): return np.asarray(self._backend.to_host(arr))
 
-        # ── 1. Advect ψ + reinitialize ─────────────────────────────────
-        psi = _h(self._adv.advance(psi, [u, v], dt))
-        if self._reinit_every > 0 and step_index % self._reinit_every == 0:
+        # ── 1. Advect + reinitialize ───────────────────────────────────
+        if self._phi_primary_transport:
+            # Experimental path: transport phi as the primary variable and
+            # reconstruct psi via H_eps(phi) each step.
+            dV_pre = self._grid.cell_volumes()
+            M_pre = float(np.sum(psi * dV_pre))
+            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi)))
+            phi = _h(self._adv.advance(phi, [u, v], dt, clip_bounds=None))
+            # Prevent over-saturation of logit reconstruction.
+            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.clip_phi(phi)))
+            psi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
+            # Re-distance/thickness correction on a controlled cadence to
+            # avoid over-sharpening into near-binary fields.
+            if step_index > 0 and (step_index % self._phi_primary_redist_every == 0):
+                psi = _h(self._reinit.reinitialize(psi))
+                phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi)))
+                psi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
+            psi = np.asarray(apply_mass_correction(np, psi, dV_pre, M_pre))
+        else:
+            psi = _h(self._adv.advance(psi, [u, v], dt))
+        if (not self._phi_primary_transport) and self._reinit_every > 0 and step_index % self._reinit_every == 0:
             psi = _h(self._reinit.reinitialize(psi))
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         if self._alpha_grid > 1.0 and (step_index % self._rebuild_freq == 0):
-            psi, u, v = self._rebuild_grid(psi, u, v)
+            try:
+                psi, u, v = self._rebuild_grid(
+                    psi, u, v, rho_l=rho_l, rho_g=rho_g,
+                )
+            except TypeError:
+                # Backward compatibility for experiment monkey-patches that
+                # replace _rebuild_grid(psi, u, v) with a 3-arg lambda.
+                psi, u, v = self._rebuild_grid(psi, u, v)
 
         rho = rho_g + (rho_l - rho_g) * psi
 
@@ -533,10 +758,7 @@ class TwoPhaseNSSolver:
     # ── private ───────────────────────────────────────────────────────────
 
     def _solve_ppe(self, rhs: np.ndarray, rho: np.ndarray) -> np.ndarray:
-        triplet, A_shape = self._ppb.build(rho)
-        A_host = sp.csr_matrix(
-            (triplet[0], (triplet[1], triplet[2])), shape=A_shape
-        )
+        A_host = self._build_ppe_matrix(rho)
         rhs_vec = rhs.ravel().copy()
         rhs_vec[self._ppb._pin_dof] = 0.0
         if self._backend.is_gpu():
@@ -545,6 +767,12 @@ class TwoPhaseNSSolver:
             p_dev = self._backend.sparse_linalg.spsolve(A_dev, rhs_dev)
             return np.asarray(self._backend.to_host(p_dev)).reshape(rho.shape)
         return self._backend.sparse_linalg.spsolve(A_host, rhs_vec).reshape(rho.shape)
+
+    def _build_ppe_matrix(self, rho: np.ndarray):
+        triplet, A_shape = self._ppb.build(rho)
+        return sp.csr_matrix(
+            (triplet[0], (triplet[1], triplet[2])), shape=A_shape
+        )
 
 
 # ── IC normalisation helper ───────────────────────────────────────────────────

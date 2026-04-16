@@ -140,14 +140,18 @@ class TwoPhaseSimulation:
         self._update_curvature()
 
         while self.time < t_end:
-            dt = self.cfl_calc.compute(
+            dt_nominal = self.cfl_calc.compute(
                 [self.velocity[ax] for ax in range(self.config.grid.ndim)],
                 self.mu.data,
                 self.rho.data,
             )
-            dt = min(dt, t_end - self.time)
+            dt_nominal = min(dt_nominal, t_end - self.time)
 
-            self.step_forward(dt)
+            # Adaptive safety fallback:
+            # If a step produces non-finite state (or raises), rollback and retry
+            # with dt halved. This keeps long runs from hard-failing at the first
+            # unstable CFL estimate.
+            dt = self._step_with_retry(dt_nominal, verbose=verbose)
 
             if verbose and self.step % output_interval == 0:
                 self._diagnostics.report(self, dt)
@@ -156,6 +160,76 @@ class TwoPhaseSimulation:
 
         if verbose:
             print(f"シミュレーション終了 t={self.time:.6f}, step={self.step}")
+
+    def _step_with_retry(self, dt_nominal: float, verbose: bool = False) -> float:
+        """Advance one step with rollback + dt-halving retries.
+
+        Returns
+        -------
+        float
+            Accepted dt used for this step.
+        """
+        xp = self.backend.xp
+        max_retries = 12
+        dt_try = float(dt_nominal)
+
+        # Snapshot (device-side copies) for rollback.
+        psi0 = xp.copy(self.psi.data)
+        rho0 = xp.copy(self.rho.data)
+        mu0 = xp.copy(self.mu.data)
+        kappa0 = xp.copy(self.kappa.data)
+        phi0 = xp.copy(self.phi.data)
+        p0 = xp.copy(self.pressure.data)
+        vel0 = [xp.copy(self.velocity[ax]) for ax in range(self.config.grid.ndim)]
+        vels0 = [xp.copy(self.vel_star[ax]) for ax in range(self.config.grid.ndim)]
+        time0 = float(self.time)
+        step0 = int(self.step)
+
+        for retry in range(max_retries + 1):
+            try:
+                self.step_forward(dt_try)
+                if self._has_nonfinite_state():
+                    raise FloatingPointError("non-finite state after step")
+                return dt_try
+            except Exception:
+                # Roll back all mutable fields + counters before retry.
+                self.psi.data = xp.copy(psi0)
+                self.rho.data = xp.copy(rho0)
+                self.mu.data = xp.copy(mu0)
+                self.kappa.data = xp.copy(kappa0)
+                self.phi.data = xp.copy(phi0)
+                self.pressure.data = xp.copy(p0)
+                for ax in range(self.config.grid.ndim):
+                    self.velocity[ax] = xp.copy(vel0[ax])
+                    self.vel_star[ax] = xp.copy(vels0[ax])
+                self.time = time0
+                self.step = step0
+
+                if retry >= max_retries:
+                    raise
+                dt_try *= 0.5
+                if verbose:
+                    print(
+                        f"[run] step retry {retry + 1}/{max_retries}: "
+                        f"reducing dt to {dt_try:.3e}"
+                    )
+
+        return dt_try
+
+    def _has_nonfinite_state(self) -> bool:
+        """True when any primary field contains NaN/Inf."""
+        xp = self.backend.xp
+        fields = [
+            self.psi.data,
+            self.rho.data,
+            self.mu.data,
+            self.kappa.data,
+            self.phi.data,
+            self.pressure.data,
+        ]
+        fields.extend(self.velocity[ax] for ax in range(self.config.grid.ndim))
+        fields.extend(self.vel_star[ax] for ax in range(self.config.grid.ndim))
+        return any(bool(xp.any(~xp.isfinite(arr))) for arr in fields)
 
     def step_forward(self, dt: float) -> None:
         """タイムステップ dt で 1 ステップ進める（§9.1 の 7 ステップアルゴリズム）。

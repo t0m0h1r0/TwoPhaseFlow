@@ -98,7 +98,7 @@ class LevelSetAdvection(ILevelSetAdvection):
 
     # ── Public API ────────────────────────────────────────────────────────
 
-    def advance(self, psi, velocity_components: List, dt: float):
+    def advance(self, psi, velocity_components: List, dt: float, clip_bounds=(0.0, 1.0)):
         """Advance ψ by one time step using TVD-RK3.
 
         Parameters
@@ -113,7 +113,10 @@ class LevelSetAdvection(ILevelSetAdvection):
         """
         xp = self.xp
         q_new = tvd_rk3(xp, psi, dt, lambda q: self._rhs(q, velocity_components))
-        return xp.clip(q_new, 0.0, 1.0)
+        if clip_bounds is None:
+            return q_new
+        lo, hi = clip_bounds
+        return xp.clip(q_new, lo, hi)
 
     # ── RHS: −u·∇ψ via WENO5 ─────────────────────────────────────────────
 
@@ -314,7 +317,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
     # ── Public API ────────────────────────────────────────────────────────
 
-    def advance(self, psi, velocity_components: List, dt: float):
+    def advance(self, psi, velocity_components: List, dt: float, clip_bounds=(0.0, 1.0)):
         """Advance ψ by one time step using TVD-RK3 with per-stage clamp.
 
         Parameters
@@ -335,12 +338,17 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
 
-        # TVD-RK3 with ψ ∈ [0,1] clamp after each stage
-        # (§5 warn:adv_clamp — Dissipative CCD has no TVD guarantee)
+        # TVD-RK3 with optional per-stage clamp.
+        # Default keeps legacy ψ ∈ [0,1] bound for CLS transport.
+        if clip_bounds is None:
+            post_stage = None
+        else:
+            lo, hi = clip_bounds
+            post_stage = lambda q: xp.clip(q, lo, hi)
         q_new = tvd_rk3(
             xp, psi, dt,
             lambda q: self._rhs(q, velocity_components),
-            post_stage=lambda q: xp.clip(q, 0.0, 1.0),
+            post_stage=post_stage,
         )
 
         if self._mass_correction:
@@ -442,5 +450,4 @@ def _pad_bc(xp, arr, axis: int, n_ghost: int, bc_type: str):
     """
     from ..core.boundary import pad_ghost_cells
     return pad_ghost_cells(xp, arr, axis, n_ghost, bc_type)
-
 

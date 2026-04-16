@@ -83,6 +83,11 @@ class RunCfg:
     dt_fixed: float | None = None
     cn_viscous: bool = False
     reinit_every: int = 2
+    reproject_mode: str = "legacy"
+    phi_primary_transport: bool = False
+    phi_primary_redist_every: int = 4
+    phi_primary_clip_factor: float = 12.0
+    phi_primary_heaviside_eps_scale: float = 1.0
 
 
 @dataclass
@@ -322,6 +327,11 @@ def _parse_run(d: dict) -> RunCfg:
         dt_fixed=_opt_float(d.get("dt_fixed")),
         cn_viscous=bool(d.get("cn_viscous", False)),
         reinit_every=int(d.get("reinit_every", 2)),
+        reproject_mode=str(d.get("reproject_mode", "legacy")),
+        phi_primary_transport=bool(d.get("phi_primary_transport", False)),
+        phi_primary_redist_every=int(d.get("phi_primary_redist_every", 4)),
+        phi_primary_clip_factor=float(d.get("phi_primary_clip_factor", 12.0)),
+        phi_primary_heaviside_eps_scale=float(d.get("phi_primary_heaviside_eps_scale", 1.0)),
     )
 
 

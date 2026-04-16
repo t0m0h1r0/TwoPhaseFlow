@@ -92,3 +92,19 @@ def find_interface_crossing(field, coords_1d, threshold: float = 0.5):
             t = (threshold - f[j]) / (f[j + 1] - f[j])
             return float(c[j] + t * (c[j + 1] - c[j]))
     return float('nan')
+
+
+def midband_fraction(psi, lo: float = 0.1, hi: float = 0.9) -> float:
+    """Fraction of cells with lo < psi < hi (interface-band occupancy)."""
+    q = np.asarray(psi)
+    if q.size == 0:
+        return float("nan")
+    return float(((q > lo) & (q < hi)).mean())
+
+
+def relative_mass_error(psi, dV, mass_ref: float) -> float:
+    """Relative mass error |∫psi dV - mass_ref| / |mass_ref|."""
+    q = np.asarray(psi)
+    vol = np.asarray(dV)
+    m = float(np.sum(q * vol))
+    return float(abs(m - mass_ref) / max(abs(mass_ref), 1e-30))

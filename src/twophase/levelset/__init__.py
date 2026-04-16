@@ -4,6 +4,7 @@ from .reinitialize import Reinitializer, ReinitializerWENO5
 from .curvature_psi import CurvatureCalculatorPsi
 from .curvature import CurvatureCalculator
 from .heaviside import heaviside, invert_heaviside, update_properties
+from .reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from .field_extender import FieldExtender, NullFieldExtender
 from .closest_point_extender import ClosestPointExtender
 
@@ -12,5 +13,6 @@ __all__ = [
     "Reinitializer", "ReinitializerWENO5",
     "CurvatureCalculatorPsi", "CurvatureCalculator",
     "heaviside", "invert_heaviside", "update_properties",
+    "ReconstructionConfig", "HeavisideInterfaceReconstructor",
     "FieldExtender", "NullFieldExtender", "ClosestPointExtender",
 ]

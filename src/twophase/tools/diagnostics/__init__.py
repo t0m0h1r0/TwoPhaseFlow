@@ -10,6 +10,8 @@ from .interface_diagnostics import (
     interface_area,
     parasitic_current_linf,
     find_interface_crossing,
+    midband_fraction,
+    relative_mass_error,
 )
 
 from .collector import DiagnosticCollector
@@ -23,5 +25,7 @@ __all__ = [
     "interface_area",
     "parasitic_current_linf",
     "find_interface_crossing",
+    "midband_fraction",
+    "relative_mass_error",
     "DiagnosticCollector",
 ]

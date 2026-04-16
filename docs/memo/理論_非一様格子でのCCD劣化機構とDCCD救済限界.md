@@ -101,3 +101,26 @@ H(\xi;\varepsilon_d)=1-4\varepsilon_d\sin^2(\xi/2)
 - DCCD は必要条件（高波数抑制）だが十分条件ではない。  
 - 根治には、メトリクス評価・再初期化・幾何/時間結合を同時に整合化する設計が必要。
 
+## 7. 2026-04-16 追記：GPU A/B 実験による反証データ
+`experiment/ch12/exp12_19_gfm_nonuniform_ablation.py` をリモートGPU（`use_gpu=True`）で実行し、  
+`CSF/GFM × 一様/非一様` の4ケースを同一条件で比較した。
+
+- 出力: `experiment/ch12/results/19_gfm_nonuniform_ablation/data.npz`
+- 判定指標: `failed`, `step_fail`, `u_peak`, `dp_err`, `mass_err`
+
+結果は以下の通り。
+
+- `uniform_csf`: `step_fail=8`, `failed=1`
+- `uniform_gfm`: `step_fail=9`, `failed=1`
+- `nonuniform_csf`: `step_fail=9`, `failed=1`
+- `nonuniform_gfm`: `step_fail=10`, `failed=1`
+
+解釈:
+
+1. GFM は破綻ステップを 1–2 ステップ遅延させるが、安定化の十分条件ではない。  
+2. 非一様格子のみが単独原因ではない（`uniform_*` も同様に短時間で破綻）。  
+3. 「DCCD が主因」という仮説は弱く、`E_reinit/geometry`・`E_time-coupling`・PPE/補正結合の寄与が支配的という本稿の立場と整合する。  
+
+したがって、実装優先順位は引き続き
+`E_metric`/`E_reinit/geometry`/`E_time-coupling` の整合化を先行し、  
+DCCD は高波数抑制の補助として扱うべきである。
