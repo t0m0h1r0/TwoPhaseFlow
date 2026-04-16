@@ -38,7 +38,7 @@
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 | [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
 
-## Cross-Domain (11)
+## Cross-Domain (13)
 
 | REF-ID | Title |
 |--------|-------|
@@ -53,8 +53,10 @@
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 | [WIKI-X-010](cross-domain/WIKI-X-010.md) | Reinitializer Uniform-Grid Assumption: Verification Design Constraint |
 | [WIKI-X-011](cross-domain/WIKI-X-011.md) | Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
+| [WIKI-X-012](cross-domain/WIKI-X-012.md) | CCD Metric Instability on Non-Uniform Grids in NS Simulation |
+| [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 
-## Experiment (21)
+## Experiment (22)
 
 | REF-ID | Title |
 |--------|-------|
@@ -79,6 +81,7 @@
 | [WIKI-E-019](experiment/WIKI-E-019.md) | Local Epsilon Validation: Fixed ε vs ε(x) on Non-Uniform Grids (Exp 12-18) |
 | [WIKI-E-020](experiment/WIKI-E-020.md) | Grid Rebuild Frequency Calibration: Interface Motion vs Stale-Grid Tradeoff |
 | [WIKI-E-021](experiment/WIKI-E-021.md) | Ch12 Re-Run Result Deltas: 3 Changed Values, 1 Reversed Finding |
+| [WIKI-E-022](experiment/WIKI-E-022.md) | Ch13 Readiness Investigation: 2/3 Benchmarks PASS, Taylor Deformation FAIL |
 
 ## Paper (8)
 
