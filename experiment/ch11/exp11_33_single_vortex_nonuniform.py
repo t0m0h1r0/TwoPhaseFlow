@@ -53,7 +53,7 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20):
 
     # Initial grid fitting for non-uniform case
     if alpha_grid > 1.0:
-        grid.update_from_levelset(phi0_dev, eps, ccd=ccd)
+        grid.update_from_levelset(psi0, eps, ccd=ccd)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
         phi0_dev = xp.sqrt((X - 0.5) ** 2 + (Y - 0.75) ** 2) - 0.15
@@ -82,11 +82,9 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20):
 
         # Rebuild non-uniform grid
         if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
-            phi_cur = invert_heaviside(xp, psi, eps)
             old_coords = [c.copy() for c in grid.coords]
-
             M_before = float(xp.sum(psi * dV))
-            grid.update_from_levelset(phi_cur, eps, ccd=ccd)
+            grid.update_from_levelset(psi, eps, ccd=ccd)
 
             # GPU-native remap: old_coords → new grid coords (no host transfer)
             remapper = build_grid_remapper(backend, old_coords, grid.coords)
