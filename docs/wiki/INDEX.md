@@ -1,6 +1,6 @@
-# Wiki Index — 113 entries
+# Wiki Index — 114 entries
 
-## Theory (38)
+## Theory (39)
 
 | REF-ID | Title |
 |--------|-------|
@@ -42,6 +42,7 @@
 | [WIKI-T-036](theory/WIKI-T-036.md) | Phi-Primary Transport: Machine-Precision Mass Conservation via SDF Transport |
 | [WIKI-T-037](theory/WIKI-T-037.md) | Grid Remap Interpolation Order Limit: Coarse-to-Fine Upsampling Bottleneck |
 | [WIKI-T-038](theory/WIKI-T-038.md) | Bandwidth Constraint for Non-Uniform Grid Rebuild: eps_g_factor-dt Coupling |
+| [WIKI-T-039](theory/WIKI-T-039.md) | ξ-Space CCD Metric Limitation: Under-Resolution Impossibility for Localized Grids |
 
 ## Cross-Domain (14)
 

@@ -222,3 +222,83 @@ def test_ccd_d2_nullspace_dim(backend):
     assert np.max(np.abs(r_lin)) < 1e-10, (
         f"D2 not annihilating linear functions: max |D2 @ x| = {np.max(np.abs(r_lin)):.3e}"
     )
+
+
+# ── Test 6: Non-uniform grid metric derivative characterization ──────────
+#
+# These tests document the KNOWN LIMITATION of the ξ-space metric approach:
+# when eps_g_factor is fixed, the metric transition spans a fixed number of
+# ξ-cells regardless of N, preventing high-order convergence.
+# See WIKI-T-039 for analysis.
+
+def _make_nonuniform_grid(N, alpha, backend, eps_g_factor=2.0):
+    """Create a non-uniform 2D grid with interface-fitted density at x=0.5."""
+    from twophase.levelset.heaviside import heaviside
+    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
+                    alpha_grid=alpha, eps_g_factor=eps_g_factor)
+    grid = Grid(gc, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    xp = backend.xp
+    X, Y = grid.meshgrid()
+    eps = 0.5 * (1.0 / N)
+    phi = X - 0.5
+    psi = heaviside(xp, phi, eps)
+    grid.update_from_levelset(psi, eps, ccd=ccd)
+    return grid
+
+
+def test_nonuniform_d1_converges(backend):
+    """d1 on non-uniform grid converges (at reduced order due to metric)."""
+    alpha = 2.0
+    Ns = [16, 32, 64]
+    errors = []
+    for N in Ns:
+        grid = _make_nonuniform_grid(N, alpha, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        X, Y = np.meshgrid(grid.coords[0], grid.coords[1], indexing='ij')
+        f = np.sin(np.pi * X)
+        d1, _ = ccd.differentiate(f, axis=0)
+        d1_exact = np.pi * np.cos(np.pi * X)
+        interior = slice(2, -2)
+        err = np.max(np.abs(np.asarray(d1[interior, :]) - d1_exact[interior, :]))
+        errors.append(err)
+
+    slopes = [
+        np.log(errors[i - 1] / errors[i]) / np.log(Ns[i] / Ns[i - 1])
+        for i in range(1, len(Ns))
+    ]
+    mean_slope = np.mean(slopes)
+
+    # d1 = J · f_ξ converges at ~O(h^1) for alpha=2, egf=2 — metric
+    # transition spans ~1 cell in ξ-space (documented limitation).
+    assert mean_slope >= 0.8, (
+        f"Non-uniform d1 convergence order {mean_slope:.2f} < 0.8\n"
+        f"Errors: {errors}\nSlopes: {slopes}"
+    )
+
+
+def test_nonuniform_d2_bounded(backend):
+    """d2 error on non-uniform grid is bounded (but does not converge for fixed egf).
+
+    This documents the known limitation: with eps_g_factor=2 and alpha=2,
+    the metric transition spans ~1 ξ-cell. The d2 error saturates at O(1)
+    because the cross-term J·(dJ/dξ)·f_ξ is under-resolved.
+    """
+    alpha = 2.0
+    Ns = [32, 64, 128]
+    errors = []
+    for N in Ns:
+        grid = _make_nonuniform_grid(N, alpha, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        X, Y = np.meshgrid(grid.coords[0], grid.coords[1], indexing='ij')
+        f = np.sin(np.pi * X)
+        _, d2 = ccd.differentiate(f, axis=0)
+        d2_exact = -(np.pi ** 2) * np.sin(np.pi * X)
+        interior = slice(2, -2)
+        err = np.max(np.abs(np.asarray(d2[interior, :]) - d2_exact[interior, :]))
+        errors.append(err)
+
+    # Errors should be bounded (finite) but not converging to zero
+    for err in errors:
+        assert np.isfinite(err), "d2 error should be finite"
+        assert err < 1.0, f"d2 error {err:.3e} exceeds 1.0 — unexpected blow-up"
