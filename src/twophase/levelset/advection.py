@@ -384,18 +384,21 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
                 fp_m1 = fp_pad[_sl(0, n)]
                 F_tilde = _dccd_filter_stencil(fp, fp_p1, fp_m1, self._eps_d)
             else:
-                # Step 2: CCD derivative in ξ-space (no metric)
+                # Step 2: CCD derivative in ξ-space, then map to x-space
                 fp_xi, _ = self._ccd.differentiate(f, axis=ax,
                                                    apply_metric=False)
-                # Step 3: Dissipative filter in ξ-space, then apply metric J
-                fp_xi_pad = _pad_bc(xp, fp_xi, ax, 1, self._bc)
-                fp_xi_p1 = fp_xi_pad[_sl(2, n + 2)]
-                fp_xi_m1 = fp_xi_pad[_sl(0, n)]
-                F_tilde_xi = _dccd_filter_stencil(
-                    fp_xi, fp_xi_p1, fp_xi_m1, self._eps_d,
+                # Step 3: Apply dissipative filter in x-space (physical).
+                # The filter F̃ᵢ = f'ᵢ + εd(f'ᵢ₊₁−2f'ᵢ+f'ᵢ₋₁) must act on
+                # physical derivatives f'_x = J·f'_ξ.  Filtering f'_ξ then
+                # multiplying by J gives J·F̃_ξ ≠ F̃_x for non-constant J,
+                # making the effective x-space damping non-uniform.
+                fp_x = self._J_reshaped[ax] * fp_xi
+                fp_x_pad = _pad_bc(xp, fp_x, ax, 1, self._bc)
+                fp_x_p1 = fp_x_pad[_sl(2, n + 2)]
+                fp_x_m1 = fp_x_pad[_sl(0, n)]
+                F_tilde = _dccd_filter_stencil(
+                    fp_x, fp_x_p1, fp_x_m1, self._eps_d,
                 )
-                # ∂f/∂x = J · (∂f/∂ξ)
-                F_tilde = self._J_reshaped[ax] * F_tilde_xi
 
             # Step 4: accumulate −∂(ψu)/∂x_ax
             result -= F_tilde
