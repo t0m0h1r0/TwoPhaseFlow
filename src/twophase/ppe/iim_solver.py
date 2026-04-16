@@ -228,7 +228,7 @@ class PPESolverIIM(_CCDPPEBase):
             precompute_density_gradients, compute_ccd_laplacian_with_derivatives,
             compute_lts_dtau, check_convergence,
         )
-        from .thomas_sweep import thomas_sweep_1d
+        from .thomas_sweep_legacy import thomas_sweep_1d
 
         dtau = compute_lts_dtau(rho_np, self._c_tau, self._h_min)
         p = (np.zeros(shape, dtype=float) if p_init is None

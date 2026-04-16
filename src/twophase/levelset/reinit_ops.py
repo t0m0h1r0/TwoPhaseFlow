@@ -6,7 +6,6 @@ All functions take explicit parameters — no class state dependency.
 """
 
 from __future__ import annotations
-import numpy as np
 from typing import TYPE_CHECKING, List, Tuple
 
 from .advection import _pad_bc
@@ -34,7 +33,7 @@ def compute_dtau(grid, eps: float) -> float:
     the CFL condition is satisfied on non-uniform grids.
     """
     ndim = grid.ndim
-    dx_min = min(float(np.min(grid.h[ax])) for ax in range(ndim))
+    dx_min = min(float(grid.h[ax].min()) for ax in range(ndim))
     dtau_para = 0.5 * dx_min**2 / (2.0 * ndim * eps)
     dtau_hyp = 0.5 * dx_min
     return min(dtau_para, dtau_hyp)
@@ -113,7 +112,8 @@ def build_cn_factors(grid, eps: float, dtau: float, axis: int, backend=None):
     to ensure the CN stability condition is satisfied everywhere.
     On uniform grids, min(h) == L/N, preserving bit-exact results.
     """
-    h = float(np.min(grid.h[axis]))
+    import numpy as np
+    h = float(grid.h[axis].min())
     mu = eps * dtau / (2.0 * h**2)
     n = grid.N[axis] + 1
 
@@ -186,5 +186,5 @@ def cn_diffusion_axis(xp, psi, axis, eps, dtau, h, cn_factors):
 
 def volume_monitor(xp, psi, grid) -> float:
     """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""
-    dV = xp.asarray(grid.cell_volumes())
+    dV = grid.cell_volumes()
     return float(xp.sum(psi * (1.0 - psi) * dV))

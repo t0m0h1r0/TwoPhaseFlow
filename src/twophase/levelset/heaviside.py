@@ -95,13 +95,13 @@ def invert_heaviside(xp, psi, eps: float):
     -------
     phi : signed-distance estimate
     """
-    import numpy as np
+    import math
 
     # Broadcast eps to the shape of psi so that both scalar and 2-D
     # array eps (local grid-spacing-based ε_field) work uniformly.
     eps_arr = xp.asarray(eps) * xp.ones_like(psi)
 
-    phi_max = eps_arr * np.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
+    phi_max = eps_arr * math.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
 
     phi = xp.empty_like(psi, dtype=float)
 

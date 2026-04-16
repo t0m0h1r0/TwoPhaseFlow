@@ -30,7 +30,7 @@ class DGRReinitializer(IReinitializer):
     def reinitialize(self, psi):
         xp = self.xp
         psi = xp.asarray(psi)  # Ensure device-native (no-op on CPU).
-        dV = xp.asarray(self.grid.cell_volumes())
+        dV = self.grid.cell_volumes()
         M_old = float(xp.sum(psi * dV))
 
         # Compute |∇ψ| via CCD

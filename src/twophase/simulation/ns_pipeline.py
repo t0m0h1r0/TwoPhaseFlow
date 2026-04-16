@@ -14,7 +14,6 @@ Conventions
 from __future__ import annotations
 
 import numpy as np
-import scipy.sparse as sp
 import warnings
 
 from ..backend import Backend
@@ -245,7 +244,7 @@ class TwoPhaseNSSolver:
     def h_min(self) -> float:
         """Minimum local grid spacing (accounts for non-uniform refinement)."""
         return float(min(
-            np.min(self._grid.h[ax]) for ax in range(self._grid.ndim)
+            self._grid.h[ax].min() for ax in range(self._grid.ndim)
         ))
 
     @property
@@ -308,7 +307,7 @@ class TwoPhaseNSSolver:
         v = np.asarray(self._backend.to_host(remapper.remap(v)))
 
         # 6. Mass correction for psi
-        dV_new = self._grid.cell_volumes()
+        dV_new = np.asarray(self._backend.to_host(self._grid.cell_volumes()))
         psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
 
         # 7. Update meshgrid cache (keep device arrays for downstream ops).
@@ -645,7 +644,7 @@ class TwoPhaseNSSolver:
         if self._phi_primary_transport:
             # Experimental path: transport phi as the primary variable and
             # reconstruct psi via H_eps(phi) each step.
-            dV_pre = self._grid.cell_volumes()
+            dV_pre = np.asarray(self._backend.to_host(self._grid.cell_volumes()))
             M_pre = float(np.sum(psi * dV_pre))
             phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi)))
             phi = _h(self._adv.advance(phi, [u, v], dt, clip_bounds=None))
@@ -769,6 +768,7 @@ class TwoPhaseNSSolver:
         return self._backend.sparse_linalg.spsolve(A_host, rhs_vec).reshape(rho.shape)
 
     def _build_ppe_matrix(self, rho: np.ndarray):
+        import scipy.sparse as sp
         triplet, A_shape = self._ppb.build(rho)
         return sp.csr_matrix(
             (triplet[0], (triplet[1], triplet[2])), shape=A_shape

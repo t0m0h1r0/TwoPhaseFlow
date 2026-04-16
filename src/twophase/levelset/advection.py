@@ -303,7 +303,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         self._eps_d = float(eps_d)
         self._mass_correction = mass_correction
 
-        self._dV = (xp.asarray(grid.cell_volumes())
+        self._dV = (grid.cell_volumes()
                     if mass_correction else None)
         if not grid.uniform:
             self._J_reshaped = []
