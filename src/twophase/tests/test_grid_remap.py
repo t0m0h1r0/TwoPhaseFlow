@@ -9,6 +9,7 @@ from twophase.backend import Backend
 from twophase.core.grid_remap import (
     IdentityGridRemapper,
     build_grid_remapper,
+    remap_field_to_uniform,
 )
 
 
@@ -78,3 +79,36 @@ def test_mapping_info_exports_weights(backend):
         assert np.all(ax0.weight_right <= 1.0 + 1e-14)
         assert np.all(ax1.weight_right >= -1e-14)
         assert np.all(ax1.weight_right <= 1.0 + 1e-14)
+
+
+def test_remap_field_to_uniform_linear_exact(backend):
+    x_src, y_src = _nonuniform_coords()
+    Xs, Ys = np.meshgrid(x_src, y_src, indexing="ij")
+    q_src = 2.0 * Xs - 3.0 * Ys + 1.25
+
+    q_uni, coords, remapper = remap_field_to_uniform(
+        backend=backend,
+        field=q_src,
+        source_coords=[x_src, y_src],
+        domain_lengths=[1.0, 1.0],
+        clip_range=None,
+    )
+    Xt, Yt = np.meshgrid(coords[0], coords[1], indexing="ij")
+    q_exact = 2.0 * Xt - 3.0 * Yt + 1.25
+    np.testing.assert_allclose(q_uni, q_exact, rtol=1e-12, atol=1e-12)
+
+
+def test_remap_field_to_uniform_clips(backend):
+    x_src, y_src = _nonuniform_coords()
+    Xs, Ys = np.meshgrid(x_src, y_src, indexing="ij")
+    q_src = 5.0 * Xs - 2.0  # ranges from -2 to +3
+
+    q_uni, _, _ = remap_field_to_uniform(
+        backend=backend,
+        field=q_src,
+        source_coords=[x_src, y_src],
+        domain_lengths=[1.0, 1.0],
+        clip_range=(0.0, 1.0),
+    )
+    assert np.all(q_uni >= 0.0)
+    assert np.all(q_uni <= 1.0)

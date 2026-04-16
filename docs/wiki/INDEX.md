@@ -1,6 +1,6 @@
-# Wiki Index — 100 entries
+# Wiki Index — 111 entries
 
-## Theory (33)
+## Theory (36)
 
 | REF-ID | Title |
 |--------|-------|
@@ -37,8 +37,11 @@
 | [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 | [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
+| [WIKI-T-034](theory/WIKI-T-034.md) | Consistent IIM Reprojection: Variational Weighted-Hodge Projection for Post-Rebuild Velocity |
+| [WIKI-T-035](theory/WIKI-T-035.md) | Non-Uniform Grid Error Decomposition: 5-Component Taxonomy and DCCD Rescue Limits |
+| [WIKI-T-036](theory/WIKI-T-036.md) | Phi-Primary Transport: Machine-Precision Mass Conservation via SDF Transport |
 
-## Cross-Domain (13)
+## Cross-Domain (14)
 
 | REF-ID | Title |
 |--------|-------|
@@ -55,8 +58,9 @@
 | [WIKI-X-011](cross-domain/WIKI-X-011.md) | Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
 | [WIKI-X-012](cross-domain/WIKI-X-012.md) | CCD Metric Instability on Non-Uniform Grids in NS Simulation |
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
+| [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
 
-## Experiment (22)
+## Experiment (25)
 
 | REF-ID | Title |
 |--------|-------|
@@ -82,6 +86,9 @@
 | [WIKI-E-020](experiment/WIKI-E-020.md) | Grid Rebuild Frequency Calibration: Interface Motion vs Stale-Grid Tradeoff |
 | [WIKI-E-021](experiment/WIKI-E-021.md) | Ch12 Re-Run Result Deltas: 3 Changed Values, 1 Reversed Finding |
 | [WIKI-E-022](experiment/WIKI-E-022.md) | Ch13 Readiness Investigation: 2/3 Benchmarks PASS, Taylor Deformation FAIL |
+| [WIKI-E-023](experiment/WIKI-E-023.md) | Ch12 Non-Uniform Dynamic Gate: Ablation, Stabilization, and Density-Ratio Limits (exp12_19--22) |
+| [WIKI-E-024](experiment/WIKI-E-024.md) | Ch13 Non-Uniform Interface Sharpness Sweep: eps=1.0 Sweet Spot (exp13_90) |
+| [WIKI-E-025](experiment/WIKI-E-025.md) | Ch13 Phi-Primary Transport Trial and Uniformized Visualization (exp13_91, exp13_92) |
 
 ## Paper (8)
 
@@ -111,7 +118,7 @@
 | [WIKI-M-009](meta/WIKI-M-009.md) | Chapter Re-Run Methodology and Filename Normalization Convention |
 | [WIKI-M-010](meta/WIKI-M-010.md) | Caveman-Compress: Token Reduction for AI Instruction Files |
 
-## Code (17)
+## Code (18)
 
 | REF-ID | Title |
 |--------|-------|
@@ -132,3 +139,4 @@
 | [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
 | [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
 | [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
+| [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |

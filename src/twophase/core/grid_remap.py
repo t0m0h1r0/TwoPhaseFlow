@@ -161,6 +161,48 @@ def build_grid_remapper(
     return LinearGridRemapper(backend, source_coords, target_coords)
 
 
+def remap_field_to_uniform(
+    backend,
+    field: np.ndarray,
+    source_coords: list[np.ndarray],
+    domain_lengths: list[float],
+    clip_range: tuple[float, float] | None = (0.0, 1.0),
+) -> tuple[np.ndarray, list[np.ndarray], GridRemapper]:
+    """Remap a field from non-uniform to uniform coordinates.
+
+    Parameters
+    ----------
+    backend : Backend
+        Compute backend (CPU or GPU).
+    field : ndarray
+        Field values on the non-uniform source grid.
+    source_coords : list of 1-D arrays
+        Per-axis node coordinates of the source grid.
+    domain_lengths : list of float
+        Physical domain size per axis (used to build uniform linspace targets).
+    clip_range : (lo, hi) or None
+        If given, clip the remapped field to ``[lo, hi]``.
+
+    Returns
+    -------
+    field_uni : ndarray
+        Remapped field on the uniform target grid.
+    target_coords : list of 1-D arrays
+        Uniform coordinate arrays for each axis.
+    remapper : GridRemapper
+        The remapper instance (for ``mapping_info`` export).
+    """
+    target_coords = [
+        np.linspace(0.0, float(L), len(c))
+        for c, L in zip(source_coords, domain_lengths)
+    ]
+    remapper = build_grid_remapper(backend, source_coords, target_coords)
+    result = np.asarray(remapper.remap(field))
+    if clip_range is not None:
+        result = np.clip(result, clip_range[0], clip_range[1])
+    return result, target_coords, remapper
+
+
 def build_nonuniform_to_uniform_remapper(backend, grid, target_shape: tuple[int, ...] | None = None) -> GridRemapper:
     """Build a remapper from current grid nodes to a uniform plotting grid."""
     ndim = len(grid.coords)

@@ -9,4 +9,5 @@ from .grid_remap import (
     LinearGridRemapper,
     build_grid_remapper,
     build_nonuniform_to_uniform_remapper,
+    remap_field_to_uniform,
 )
