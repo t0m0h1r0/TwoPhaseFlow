@@ -73,7 +73,12 @@ def _make_figure(
 # ── snapshot ──────────────────────────────────────────────────────────────────
 
 def _snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
-    """ψ colour map at a given snapshot index."""
+    """ψ colour map at a given snapshot index.
+
+    When the snapshot carries ``grid_coords`` (non-uniform grid), the field
+    is remapped to a uniform plotting grid via ``remap_field_to_uniform``
+    so that the visual geometry is correct.
+    """
     snaps = results.get("snapshots", [])
     if not snaps:
         raise ValueError("No snapshots in results.")
@@ -84,9 +89,20 @@ def _snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
     t_val = snap["t"]
 
     g = cfg.grid
-    # Grid has NX+1 nodes (node-centred)
-    X = np.linspace(0, g.LX, g.NX + 1)
-    Y = np.linspace(0, g.LY, g.NY + 1)
+
+    if "grid_coords" in snap:
+        # Non-uniform grid: remap to uniform for visualization
+        from ..core.grid_remap import remap_field_to_uniform
+        from ..backend import Backend
+        backend = Backend(use_gpu=False)
+        psi, (X, Y), _ = remap_field_to_uniform(
+            backend, psi, snap["grid_coords"],
+            [g.LX, g.LY], clip_range=(0.0, 1.0),
+        )
+    else:
+        # Uniform grid: linspace coordinates
+        X = np.linspace(0, g.LX, g.NX + 1)
+        Y = np.linspace(0, g.LY, g.NY + 1)
 
     title = spec.get("title", f"ψ at t = {t_val:.3f}")
     xlabel = spec.get("xlabel", "x")

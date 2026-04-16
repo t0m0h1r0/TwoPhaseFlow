@@ -1,0 +1,89 @@
+# §13.3 Rising bubble on static non-uniform grid — Hysing et al. (2009) Case 1 (modified)
+# Non-uniform variant of exp13_02.
+# Strategy: static grid (build once from IC, never rebuild) with mild α=1.2.
+# α≥1.5 causes CCD metric blowup (WIKI-X-012 Mode 2); α=1.2 stable (ratio ~3.4:1).
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.2             # Mild concentration; α≥1.5 blows up (WIKI-X-012 Mode 2)
+  eps_factor: 1.5             # Standard thickness
+  eps_g_factor: 2.0           # Grid density Gaussian width
+  dx_min_floor: 0.006         # Floor limits CCD metric ratio to ~3.4:1
+  use_local_eps: false
+  grid_rebuild_freq: 0        # Static: build once from IC, never rebuild (avoids WIKI-X-012 Mode 1)
+
+physics:
+  rho_l: 10.0
+  rho_g:  1.0
+  g_acc:  1.0
+  Re:     35.0
+  Eo:     10.0
+  d_ref:   0.5
+
+run:
+  T_final:    3.0
+  max_steps:  500000
+  cfl:        0.05            # Conservative for non-uniform CCD
+  snap_times: [0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+  print_every: 500
+  reinit_every: 2
+  reproject_mode: legacy      # No dynamic rebuild → legacy sufficient
+  phi_primary_transport: false
+  kappa_max: 8.0              # Cap κ at 2/R=8 (R=0.25); suppresses CCD metric spikes
+
+output:
+  dir: results/exp13_02_nonuniform
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Bubble rise velocity v_c(t) — non-uniform α=1.2"
+      x: times
+      y: [vc]
+      labels: ["Simulation (α=1.2)"]
+      xlabel: "t"
+      ylabel: "v_c"
+      file: rise_velocity.pdf
+
+    - type: time_series
+      title: "Bubble centroid y_c(t) — non-uniform α=1.2"
+      x: times
+      y: [yc]
+      labels: ["Simulation (α=1.2)"]
+      xlabel: "t"
+      ylabel: "y_c"
+      file: centroid.pdf
+
+    - type: time_series
+      title: "Volume conservation |ΔV|/V₀ — non-uniform α=1.2"
+      x: times
+      y: [volume_conservation]
+      labels: ["Simulation (α=1.2)"]
+      xlabel: "t"
+      ylabel: "|ΔV|/V₀"
+      yscale: log
+      file: volume_conservation.pdf
+
+    - type: snapshot
+      title: "Rising bubble — non-uniform α=1.2"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

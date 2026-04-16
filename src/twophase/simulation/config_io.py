@@ -44,6 +44,7 @@ class GridCfg:
     LY: float = 1.0
     bc_type: str = "wall"   # "wall" or "periodic"
     alpha_grid: float = 1.0       # interface-fitted concentration (1.0 = uniform)
+    eps_factor: float = 1.5       # interface thickness ε = eps_factor × h
     eps_g_factor: float = 2.0     # grid density Gaussian width factor
     dx_min_floor: float = 1e-6    # minimum cell width floor
     use_local_eps: bool = False   # ε(x) = C_ε · h_local(x) for CSF
@@ -88,6 +89,7 @@ class RunCfg:
     phi_primary_redist_every: int = 4
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
+    kappa_max: float | None = None  # curvature cap (None = unlimited)
 
 
 @dataclass
@@ -213,6 +215,7 @@ def _parse_grid(d: dict) -> GridCfg:
         LY=float(d.get("LY", 1.0)),
         bc_type=str(d.get("bc_type", "wall")),
         alpha_grid=float(d.get("alpha_grid", 1.0)),
+        eps_factor=float(d.get("eps_factor", 1.5)),
         eps_g_factor=float(d.get("eps_g_factor", 2.0)),
         dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
         use_local_eps=bool(d.get("use_local_eps", False)),
@@ -332,6 +335,7 @@ def _parse_run(d: dict) -> RunCfg:
         phi_primary_redist_every=int(d.get("phi_primary_redist_every", 4)),
         phi_primary_clip_factor=float(d.get("phi_primary_clip_factor", 12.0)),
         phi_primary_heaviside_eps_scale=float(d.get("phi_primary_heaviside_eps_scale", 1.0)),
+        kappa_max=_opt_float(d.get("kappa_max")),
     )
 
 

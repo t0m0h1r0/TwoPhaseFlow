@@ -82,6 +82,7 @@ class TwoPhaseNSSolver:
         phi_primary_redist_every: int = 4,
         phi_primary_clip_factor: float = 12.0,
         phi_primary_heaviside_eps_scale: float = 1.0,
+        kappa_max: float | None = None,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -89,12 +90,17 @@ class TwoPhaseNSSolver:
         self._alpha_grid = alpha_grid
         self._eps_factor = eps_factor
         self._use_local_eps = use_local_eps
-        self._rebuild_freq = max(1, int(grid_rebuild_freq))
+        # grid_rebuild_freq == 0 → static non-uniform grid (build once from IC,
+        # never rebuild). This avoids rebuild-driven metric discontinuity
+        # (WIKI-X-012 Mode 1) entirely.
+        self._rebuild_freq = int(grid_rebuild_freq)
+        if self._rebuild_freq < 0:
+            self._rebuild_freq = 0
         # Safety fallback for non-uniform dynamic runs:
         # per-step rebuild (freq=1) is prone to remap/reprojection-driven
         # instability. Use a conservative default cadence unless caller sets
         # a value >1 explicitly.
-        if self._alpha_grid > 1.0 and int(grid_rebuild_freq) == 1:
+        if self._alpha_grid > 1.0 and self._rebuild_freq == 1:
             self._rebuild_freq = 10
         self._reinit_every = int(reinit_every)
         self._reproject_variable_density = bool(reproject_variable_density)
@@ -102,6 +108,7 @@ class TwoPhaseNSSolver:
         self._phi_primary_redist_every = max(1, int(phi_primary_redist_every))
         self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
         self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
+        self._kappa_max = float(kappa_max) if kappa_max is not None else None
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
             "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
@@ -199,6 +206,7 @@ class TwoPhaseNSSolver:
             g.NX, g.NY, g.LX, g.LY,
             bc_type=g.bc_type,
             alpha_grid=getattr(g, "alpha_grid", 1.0),
+            eps_factor=getattr(g, "eps_factor", 1.5),
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             use_local_eps=getattr(g, "use_local_eps", False),
@@ -225,6 +233,7 @@ class TwoPhaseNSSolver:
             phi_primary_heaviside_eps_scale=float(
                 getattr(getattr(cfg, "run", g), "phi_primary_heaviside_eps_scale", 1.0)
             ),
+            kappa_max=getattr(getattr(cfg, "run", g), "kappa_max", None),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -665,7 +674,8 @@ class TwoPhaseNSSolver:
             psi = _h(self._reinit.reinitialize(psi))
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
-        if self._alpha_grid > 1.0 and (step_index % self._rebuild_freq == 0):
+        # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
+        if self._alpha_grid > 1.0 and self._rebuild_freq > 0 and (step_index % self._rebuild_freq == 0):
             try:
                 psi, u, v = self._rebuild_grid(
                     psi, u, v, rho_l=rho_l, rho_g=rho_g,
@@ -687,6 +697,8 @@ class TwoPhaseNSSolver:
         if sigma > 0.0:
             kappa_raw = self._curv.compute(psi)
             kappa = _h(self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
+            if self._kappa_max is not None:
+                kappa = np.clip(kappa, -self._kappa_max, self._kappa_max)
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
             f_x = sigma * kappa * _h(dpsi_dx)
@@ -858,6 +870,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     bc_hook = solver.make_bc_hook(cfg)
     ph = cfg.physics
 
+    # Static non-uniform grid: build once from IC, then freeze.
+    # rebuild_freq==0 means the grid is never rebuilt during time-stepping,
+    # avoiding Mode-1 metric discontinuity (WIKI-X-012).
+    if solver._alpha_grid > 1.0 and solver._rebuild_freq == 0:
+        psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
+        print(f"  [static non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
+
     # Initial radius estimate from IC (used only by laplace_pressure metric)
     ic = cfg.initial_condition
     R_ic = float(ic.get("radius", 0.25)) if isinstance(ic, dict) else 0.25
@@ -912,7 +931,10 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         diag.collect(t, psi, u, v, p, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
-            snaps.append({"t": float(t), "psi": psi.copy()})
+            snap_entry = {"t": float(t), "psi": psi.copy()}
+            if solver._alpha_grid > 1.0:
+                snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
+            snaps.append(snap_entry)
             snap_idx += 1
 
         if step % cfg.run.print_every == 0 or step <= 2:
