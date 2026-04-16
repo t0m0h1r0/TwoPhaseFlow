@@ -67,7 +67,7 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
     dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
     psi = psi0.copy()
-    dV = xp.asarray(grid.cell_volumes())   # grid.cell_volumes() always numpy
+    dV = grid.cell_volumes()   # already on device
     mass0 = float(xp.sum(psi * dV))
     reinit_count = 0
 
@@ -100,7 +100,7 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
             psi_host_new = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
 
             # 5. Mass correction on host
-            dV_np = np.asarray(grid.cell_volumes())
+            dV_np = np.asarray(backend.to_host(grid.cell_volumes()))
             M_after = float(np.sum(psi_host_new * dV_np))
             w = 4.0 * psi_host_new * (1.0 - psi_host_new)
             W = float(np.sum(w * dV_np))
@@ -110,7 +110,7 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
 
             # 6. Push back to device
             psi = xp.asarray(psi_host_new)
-            dV = xp.asarray(grid.cell_volumes())
+            dV = grid.cell_volumes()
 
             # 7. Rebuild solvers on new grid
             ccd = CCDSolver(grid, backend, bc_type="wall")
@@ -130,7 +130,7 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
     phi0_final_grid = xp.asarray(zalesak_sdf(X_h, Y_h))
     psi0_final_grid = heaviside(xp, phi0_final_grid, eps)
 
-    dV_final = xp.asarray(grid.cell_volumes())
+    dV_final = grid.cell_volumes()
     mass_err = abs(float(xp.sum(psi * dV_final)) - mass0) / mass0
     err_L2 = float(xp.sqrt(xp.mean((psi - psi0_final_grid)**2)))
     phi_final = invert_heaviside(xp, psi, eps)
