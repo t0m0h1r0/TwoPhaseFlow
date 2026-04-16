@@ -932,7 +932,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         diag.collect(t, psi, u, v, p, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
-            snap_entry = {"t": float(t), "psi": psi.copy()}
+            snap_entry = {
+                "t": float(t),
+                "psi": psi.copy(),
+                "u": u.copy(),
+                "v": v.copy(),
+                "p": p.copy(),
+            }
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
             snaps.append(snap_entry)

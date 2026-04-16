@@ -71,6 +71,17 @@ output:
       t_idx: -1
       file: snapshot_final.pdf
 
+    - type: velocity_snapshot
+      title: "Velocity field"
+      t_idx: -1
+      quiver_stride: 4
+      file: velocity_final.pdf
+
+    - type: pressure_snapshot
+      title: "Pressure field"
+      t_idx: -1
+      file: pressure_final.pdf
+
 diagnostics:
   - volume_conservation
   - kinetic_energy

@@ -67,6 +67,10 @@ def _make_figure(
         return _convergence(spec, results, cfg)
     if fig_type == "deformation_comparison":
         return _deformation_comparison(spec, results, cfg)
+    if fig_type == "velocity_snapshot":
+        return _velocity_snapshot(spec, results, cfg)
+    if fig_type == "pressure_snapshot":
+        return _pressure_snapshot(spec, results, cfg)
     raise ValueError(f"Unknown figure type '{fig_type}'.")
 
 
@@ -121,6 +125,110 @@ def _snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
     ax.set_aspect("equal")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    return fig
+
+
+# ── velocity snapshot ────────────────────────────────────────────────────────
+
+def _velocity_snapshot(
+    spec: dict, results: dict, cfg: "ExperimentConfig"
+) -> plt.Figure:
+    """Speed colour map + quiver arrows + ψ=0.5 contour."""
+    snaps = results.get("snapshots", [])
+    if not snaps:
+        raise ValueError("No snapshots in results.")
+
+    t_idx = int(spec.get("t_idx", -1))
+    snap = snaps[t_idx]
+    psi, u, v = snap["psi"], snap["u"], snap["v"]
+    t_val = snap["t"]
+    g = cfg.grid
+
+    if "grid_coords" in snap:
+        from ..core.grid_remap import remap_field_to_uniform
+        from ..backend import Backend
+        backend = Backend(use_gpu=False)
+        psi, (X, Y), remapper = remap_field_to_uniform(
+            backend, psi, snap["grid_coords"],
+            [g.LX, g.LY], clip_range=(0.0, 1.0),
+        )
+        u = np.asarray(remapper.remap(u))
+        v = np.asarray(remapper.remap(v))
+    else:
+        X = np.linspace(0, g.LX, g.NX + 1)
+        Y = np.linspace(0, g.LY, g.NY + 1)
+
+    speed = np.sqrt(u ** 2 + v ** 2)
+    title = spec.get("title", f"Velocity at t = {t_val:.3f}")
+    cmap = spec.get("cmap", "viridis")
+    stride = int(spec.get("quiver_stride", 4))
+
+    fig, ax = plt.subplots(figsize=(4, 4 * g.LY / g.LX))
+    im = ax.pcolormesh(X, Y, speed.T, cmap=cmap, shading="nearest")
+    if spec.get("colorbar", True):
+        fig.colorbar(im, ax=ax, label="|u|")
+    if spec.get("contour", True):
+        ax.contour(X, Y, psi.T, levels=[0.5], colors="k", linewidths=0.8)
+    s = stride
+    us, vs = u[::s, ::s].T, v[::s, ::s].T
+    sp = np.sqrt(us ** 2 + vs ** 2)
+    sp_safe = np.maximum(sp, 1e-14)
+    ax.quiver(
+        X[::s], Y[::s], us / sp_safe, vs / sp_safe,
+        sp, cmap="hot", alpha=0.8,
+        scale=30, width=0.003,
+    )
+    ax.set_aspect("equal")
+    ax.set_xlabel(spec.get("xlabel", "x"))
+    ax.set_ylabel(spec.get("ylabel", "y"))
+    ax.set_title(title)
+    return fig
+
+
+# ── pressure snapshot ────────────────────────────────────────────────────────
+
+def _pressure_snapshot(
+    spec: dict, results: dict, cfg: "ExperimentConfig"
+) -> plt.Figure:
+    """Pressure colour map + ψ=0.5 contour."""
+    snaps = results.get("snapshots", [])
+    if not snaps:
+        raise ValueError("No snapshots in results.")
+
+    t_idx = int(spec.get("t_idx", -1))
+    snap = snaps[t_idx]
+    psi, p = snap["psi"], snap["p"]
+    t_val = snap["t"]
+    g = cfg.grid
+
+    if "grid_coords" in snap:
+        from ..core.grid_remap import remap_field_to_uniform
+        from ..backend import Backend
+        backend = Backend(use_gpu=False)
+        psi, (X, Y), remapper = remap_field_to_uniform(
+            backend, psi, snap["grid_coords"],
+            [g.LX, g.LY], clip_range=(0.0, 1.0),
+        )
+        p = np.asarray(remapper.remap(p))
+    else:
+        X = np.linspace(0, g.LX, g.NX + 1)
+        Y = np.linspace(0, g.LY, g.NY + 1)
+
+    title = spec.get("title", f"Pressure at t = {t_val:.3f}")
+    cmap = spec.get("cmap", "RdBu_r")
+
+    fig, ax = plt.subplots(figsize=(4, 4 * g.LY / g.LX))
+    im = ax.pcolormesh(X, Y, p.T, cmap=cmap,
+                       vmin=spec.get("vmin"), vmax=spec.get("vmax"),
+                       shading="nearest")
+    if spec.get("colorbar", True):
+        fig.colorbar(im, ax=ax, label="p")
+    if spec.get("contour", True):
+        ax.contour(X, Y, psi.T, levels=[0.5], colors="k", linewidths=0.8)
+    ax.set_aspect("equal")
+    ax.set_xlabel(spec.get("xlabel", "x"))
+    ax.set_ylabel(spec.get("ylabel", "y"))
     ax.set_title(title)
     return fig
 
