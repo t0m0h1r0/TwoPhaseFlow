@@ -90,6 +90,7 @@ class RunCfg:
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
     kappa_max: float | None = None  # curvature cap (None = unlimited)
+    reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid' to override
 
 
 @dataclass
@@ -336,6 +337,7 @@ def _parse_run(d: dict) -> RunCfg:
         phi_primary_clip_factor=float(d.get("phi_primary_clip_factor", 12.0)),
         phi_primary_heaviside_eps_scale=float(d.get("phi_primary_heaviside_eps_scale", 1.0)),
         kappa_max=_opt_float(d.get("kappa_max")),
+        reinit_method=d.get("reinit_method") or None,
     )
 
 

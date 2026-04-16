@@ -178,11 +178,11 @@ class TwoPhaseNSSolver:
             ),
         )
         # Reinit uses conservative scalar eps (Option C: memo §4.2)
-        # On non-uniform grids, SplitReinitializer's CN diffusion assumes
-        # uniform h = L/N, causing catastrophic mass loss (~23%).
-        # Default to DGR on non-uniform grids (no CN diffusion dependency).
+        # DGR is grid-agnostic (cell_volumes() based mass correction, logit inversion).
+        # SplitReinitializer's CN diffusion assumes uniform h = L/N — causes accumulated
+        # diffusion even on uniform grids (transition width grows to ~1.0 vs ε≈0.023).
         if reinit_method is None:
-            reinit_method = 'dgr' if alpha_grid > 1.0 else 'split'
+            reinit_method = 'dgr'  # DGR: all-grid default; use YAML reinit_method: split to override
         self._reinit = Reinitializer(
             self._backend, self._grid, self._ccd, self._eps,
             n_steps=reinit_steps, method=reinit_method,
