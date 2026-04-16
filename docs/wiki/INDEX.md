@@ -1,6 +1,6 @@
-# Wiki Index — 111 entries
+# Wiki Index — 112 entries
 
-## Theory (36)
+## Theory (37)
 
 | REF-ID | Title |
 |--------|-------|
@@ -34,12 +34,13 @@
 | [WIKI-T-028](theory/WIKI-T-028.md) | CLS-DCCD Conservation Theory: Root Cause Analysis and Unified Reinitialization |
 | [WIKI-T-029](theory/WIKI-T-029.md) | CLS Error Metric: ψ-Space L₂ is ε-Dependent — φ-Space Comparison Required |
 | [WIKI-T-030](theory/WIKI-T-030.md) | Operator-Split Defect, DGR Theory, and Hybrid Reinitialization |
-| [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter |
+| [WIKI-T-031](theory/WIKI-T-031.md) | Non-Uniform Grid CLS: Volume-Weighted Mass and X-Space Filter |
 | [WIKI-T-032](theory/WIKI-T-032.md) | Spatially Varying Epsilon: Theory for CSF on Non-Uniform Grids |
 | [WIKI-T-033](theory/WIKI-T-033.md) | Extended Crank–Nicolson × CCD: 4th-Order Viscous Time Integration (Design) |
 | [WIKI-T-034](theory/WIKI-T-034.md) | Consistent IIM Reprojection: Variational Weighted-Hodge Projection for Post-Rebuild Velocity |
 | [WIKI-T-035](theory/WIKI-T-035.md) | Non-Uniform Grid Error Decomposition: 5-Component Taxonomy and DCCD Rescue Limits |
 | [WIKI-T-036](theory/WIKI-T-036.md) | Phi-Primary Transport: Machine-Precision Mass Conservation via SDF Transport |
+| [WIKI-T-037](theory/WIKI-T-037.md) | Grid Remap Interpolation Order Limit: Coarse-to-Fine Upsampling Bottleneck |
 
 ## Cross-Domain (14)
 

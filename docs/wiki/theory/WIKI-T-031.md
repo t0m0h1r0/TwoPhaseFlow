@@ -1,4 +1,4 @@
-# WIKI-T-031: Non-Uniform Grid CLS: Volume-Weighted Mass and Xi-Space Filter
+# WIKI-T-031: Non-Uniform Grid CLS: Volume-Weighted Mass and X-Space Filter
 
 ## Summary
 
@@ -6,7 +6,7 @@ CLS advection and reinitialization on non-uniform (interface-fitted) grids
 require three corrections to the uniform-grid algorithm:
 
 1. **Volume-weighted mass integrals**: `M = sum(psi * dV)` where `dV = prod(h_ax)` per node
-2. **Xi-space dissipative filter**: operate filter on `df/dxi`, then apply metric J = dxi/dx
+2. **X-space dissipative filter**: convert df/dxi to df/dx first, then apply filter stencil
 3. **Per-cell volume array**: `Grid.cell_volumes()` provides the ndarray
 
 ## Theory
@@ -26,25 +26,30 @@ The interface-weighted mass correction becomes:
 
     delta_psi = ((M_old - M_new) / W) * w,   w = 4*psi*(1-psi),  W = sum(w * dV)
 
-### Dissipative filter in computational space
+### Dissipative filter in physical (x) space
 
-The DCCD filter has transfer function:
+The DCCD filter 3-point stencil is:
 
-    H(k_xi) = 1 - 4*eps_d * sin^2(k_xi / 2)
+    F_tilde = f' + eps_d * (f'_{i+1} - 2*f'_i + f'_{i-1})
 
-where `k_xi` is the wavenumber in computational (xi) space.  The 3-point stencil
-`f'_{i+1} - 2f'_i + f'_{i-1}` realizes this transfer function when applied to
-values at uniformly-spaced xi-nodes.
+This stencil must act on **physical-space derivatives** df/dx, not computational
+df/dxi. Rationale: the filter damps numerical oscillations in the physical solution.
+Applying it in xi-space (where node spacing is uniform) and then multiplying by
+J gives physically non-uniform damping because J varies spatially.
 
-On non-uniform physical grids, the CCD solver computes `df/dxi` (xi-space)
-internally, then applies the metric transform `df/dx = J * df/dxi`.  For the
-filter to maintain its designed spectral response:
+**Correct procedure** (commit d30116d):
 
 1. Obtain `df/dxi` via `ccd.differentiate(f, ax, apply_metric=False)`
-2. Apply filter: `F_xi = df/dxi + eps_d * (df/dxi_{i+1} - 2*df/dxi_i + df/dxi_{i-1})`
-3. Transform to physical space: `F = J * F_xi`
+2. Convert to physical space: `df/dx = J * df/dxi`
+3. Apply filter stencil to `df/dx`: `F = df/dx + eps_d * (df/dx_{i+1} - 2*df/dx_i + df/dx_{i-1})`
 
-On uniform grids, `J = N/L` (constant) and this reduces to the original code.
+On uniform grids, `J = N/L` (constant) and this is mathematically equivalent to
+ξ-space filtering — the distinction only matters when J varies.
+
+**Previous (incorrect) approach:** filter applied to df/dxi, then multiplied by J.
+This produced J*F_xi instead of F_x, giving uneven damping across the interface
+where J changes rapidly. Practical effect was <1% on metrics for current test cases,
+but the correction is physically necessary.
 
 ### Grid rebuild: remap ψ directly (not φ)
 
