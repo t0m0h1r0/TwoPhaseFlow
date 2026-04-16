@@ -806,7 +806,14 @@ class TwoPhaseNSSolver:
                 self._ppe_csr_dev = self._backend.sparse.csr_matrix(A_host)
             else:
                 # Subsequent calls: update values in-place, structure unchanged.
-                self._ppe_csr_dev.data[:] = xp.asarray(data_host)
+                # data_host is COO format (may contain duplicate (i,j) entries that
+                # scipy sums during CSR construction).  Must convert to CSR first
+                # to get the same nnz as _ppe_csr_dev.data.
+                A_new = sp.csr_matrix(
+                    (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
+                    shape=(n, n),
+                )
+                self._ppe_csr_dev.data[:] = xp.asarray(A_new.data)
             p_dev = self._backend.sparse_linalg.spsolve(self._ppe_csr_dev, rhs_vec)
             return p_dev.reshape(rho.shape)
         A_host = sp.csr_matrix(
