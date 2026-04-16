@@ -1,6 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-04-16
+# Last updated: 2026-04-17
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -9,8 +9,8 @@
 |---|---|
 | phase | BOOTSTRAP_COMPLETE |
 | branch | main |
-| last_CHK | CHK-130 CLOSED 2026-04-16 — ch11 reinit non-uniform fix + DGR fallback (4f13e2a). 4 code files: reinit_ops/split use min(grid.h); ns_pipeline DGR default α>1; curvature_filter._h_sq property. exp11_29 mass_err 2.3e-1→2.6e-4 (880×). Paper 11d+11g updated. WIKI-E-017 updated. |
-| next_action | CHK-130 closed. worktree-research-ch11-diagnosis merged. 6 △ experiments remain as documented limitations. |
+| last_CHK | CHK-131 CLOSED 2026-04-17 — GPU smoke test 3-fix (782cc80). linalg_backend.py:57 thomas_precompute CuPy TypeError → .get(); test_gpu_smoke.py atol 1e-13→1e-11 (4 assertions). 3 FAILED → 0 FAILED. |
+| next_action | CHK-131 closed. worktree-fix-gpu-smoke-tests merged. GPU smoke suite fully green. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
@@ -22,10 +22,11 @@
 # Format: `CHK-ID | YYYY-MM-DD | type | summary`
 # Full detail in git log / commit messages / linked memos.
 
-## §1 — Most recent (CHK-120..129)
+## §1 — Most recent (CHK-120..131)
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-131 | 2026-04-17 | fix | GPU smoke tests: thomas_precompute .get() fix (linalg_backend.py); atol 1e-13→1e-11 (test_gpu_smoke.py); 3 FAILED → 0 |
 | CHK-130 | 2026-04-16 | fix+paper+merge | ch11 reinit non-uniform fix (4 files); DGR fallback α>1; exp11_29 880× improvement; WIKI-E-017 updated |
 | CHK-129 | 2026-04-15 | paper+merge | ch12 re-run paper sync + main merge (752b9f3); 5 tex files; 199pp 0 err |
 | CHK-128 | 2026-04-12 | fix | FieldExtender upwind NaN fix (65aed8d); q_safe masking; test added |
