@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 sources:
   - path: "src/twophase/core/grid_remap.py"
-    description: "Backend-agnostic grid remapper factory (Identity/Linear)"
+    description: "Backend-agnostic grid remapper factory (Identity/Linear/Cubic)"
   - path: "src/twophase/levelset/reconstruction.py"
     description: "HeavisideInterfaceReconstructor + ReconstructionConfig"
   - path: "src/twophase/tools/benchmarks/scaling.py"
@@ -44,7 +44,7 @@ forced a device round-trip on GPU runs.
 **API:**
 
 ```python
-build_grid_remapper(backend, source_coords, target_coords) -> GridRemapper
+build_grid_remapper(backend, source_coords, target_coords, method="cubic") -> GridRemapper
 build_nonuniform_to_uniform_remapper(backend, grid, target_shape=None) -> GridRemapper
 ```
 
@@ -53,9 +53,15 @@ build_nonuniform_to_uniform_remapper(backend, grid, target_shape=None) -> GridRe
 | Class | Condition | Behaviour |
 |---|---|---|
 | `IdentityGridRemapper` | source == target (atol=1e-14) | No-op `remap(field) -> field` |
-| `LinearGridRemapper` | Otherwise | Separable bilinear interpolation |
+| `LinearGridRemapper` | method="linear" | Separable bilinear interpolation |
+| `CubicGridRemapper` | method="cubic" (default) | Separable 4-point Lagrange cubic |
 
-**GPU capability:** `LinearGridRemapper` uses `backend.xp` throughout —
+**`CubicGridRemapper`** (commit 6e752f6): precomputes per-axis 4-point stencil
+indices and Lagrange basis weights at construction time. Requires >= 4 source
+nodes per axis. Error order O(h^4) vs O(h^2) for linear — but see [[WIKI-T-037]]
+for why this rarely helps in practice for sharp interfaces (eps/h <= 1).
+
+**GPU capability:** All three remappers use `backend.xp` throughout —
 `searchsorted`, `take`, broadcast arithmetic — runs on NumPy or CuPy without
 code change.
 

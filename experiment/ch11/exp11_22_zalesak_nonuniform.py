@@ -9,7 +9,8 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+import matplotlib.pyplot as plt
+from twophase.core.grid_remap import build_grid_remapper
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
@@ -50,7 +51,7 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
 
     # For non-uniform: initial grid fitting
     if alpha_grid > 1.0:
-        grid.update_from_levelset(phi0, eps, ccd=ccd)
+        grid.update_from_levelset(psi0, eps, ccd=ccd)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
         X_h, Y_h = backend.to_host(X), backend.to_host(Y)
@@ -77,48 +78,32 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
 
         # Rebuild non-uniform grid from current interface
         if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
-            # 1. ψ → φ on OLD grid; old_coords always numpy (grid.coords is host)
-            phi_cur = invert_heaviside(xp, psi, eps)
+            # 1. Save old coords; compute M_before on current grid
             old_coords = [c.copy() for c in grid.coords]
-
-            # 2. Compute M_before BEFORE host-converting psi
             M_before = float(xp.sum(psi * dV))
 
-            # 3. Rebuild grid from φ (coordinates change, array shape unchanged)
-            grid.update_from_levelset(phi_cur, eps, ccd=ccd)
+            # 2. Rebuild grid from ψ (coordinates change, array shape unchanged)
+            grid.update_from_levelset(psi, eps, ccd=ccd)
 
-            # 4. RegularGridInterpolator: scipy is CPU-only — must host-convert
-            X_new_dev, Y_new_dev = grid.meshgrid()
-            X_new = np.asarray(backend.to_host(X_new_dev))
-            Y_new = np.asarray(backend.to_host(Y_new_dev))
-            pts = np.stack([X_new.ravel(), Y_new.ravel()], axis=-1)
-            psi_host = np.asarray(backend.to_host(psi))
-            interp = RegularGridInterpolator(
-                old_coords, psi_host, method="linear",
-                bounds_error=False, fill_value=None,
-            )
-            psi_host_new = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
+            # 4. GPU-native remap: old_coords → new grid coords (no host transfer)
+            remapper = build_grid_remapper(backend, old_coords, grid.coords)
+            psi = xp.clip(remapper.remap(psi), 0.0, 1.0)
 
-            # 5. Mass correction on host
-            dV_np = np.asarray(backend.to_host(grid.cell_volumes()))
-            M_after = float(np.sum(psi_host_new * dV_np))
-            w = 4.0 * psi_host_new * (1.0 - psi_host_new)
-            W = float(np.sum(w * dV_np))
-            if W > 1e-12:
-                psi_host_new = np.clip(
-                    psi_host_new + ((M_before - M_after) / W) * w, 0.0, 1.0)
-
-            # 6. Push back to device
-            psi = xp.asarray(psi_host_new)
+            # 5. Mass correction on device
             dV = grid.cell_volumes()
+            M_after = float(xp.sum(psi * dV))
+            w = 4.0 * psi * (1.0 - psi)
+            W = float(xp.sum(w * dV))
+            if W > 1e-12:
+                psi = xp.clip(psi + ((M_before - M_after) / W) * w, 0.0, 1.0)
 
-            # 7. Rebuild solvers on new grid
+            # 6. Rebuild solvers on new grid
             ccd = CCDSolver(grid, backend, bc_type="wall")
             adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
                                           eps_d=0.05, mass_correction=True)
             reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4,
                                    bc="zero", method=method)
-            X, Y = X_new_dev, Y_new_dev
+            X, Y = grid.meshgrid()
 
         if (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)
@@ -199,6 +184,8 @@ def main():
             "label": label, "alpha": alpha,
             "L2_psi": r["L2_psi"], "L2_phi": r["L2_phi"],
             "area_err": r["area_err"], "mass_err": r["mass_err"],
+            "psi_final": r["psi_final"], "psi_init": r["psi_init"],
+            "X": r["X"], "Y": r["Y"],
         })
 
     print("\n" + "=" * 70)
@@ -210,10 +197,41 @@ def main():
 
     save_results(OUT / "data.npz", {
         key_map[r["label"]]: {
-            f: r[f] for f in ("alpha", "L2_psi", "L2_phi", "area_err", "mass_err")
+            f: r[f] for f in (
+                "alpha", "L2_psi", "L2_phi", "area_err", "mass_err",
+                "psi_final", "psi_init", "X", "Y",
+            )
         }
         for r in all_results
     })
+
+    # Visualisation: 1 row per case — initial (dashed) vs final (solid) psi=0.5 contour
+    n = len(all_results)
+    fig, axes = plt.subplots(1, n, figsize=(4.5 * n, 4.5))
+    if n == 1:
+        axes = [axes]
+    for ax, r in zip(axes, all_results):
+        X, Y = r["X"], r["Y"]
+        ax.pcolormesh(X, Y, r["psi_final"], cmap="RdBu_r", vmin=0, vmax=1,
+                      shading="auto")
+        ax.contour(X, Y, r["psi_init"],  levels=[0.5], colors="gray",
+                   linewidths=0.8, linestyles="--", label="initial")
+        ax.contour(X, Y, r["psi_final"], levels=[0.5], colors="k",
+                   linewidths=1.2, label="final")
+        ax.set_aspect("equal")
+        ax.set_title(
+            f"{r['label']}\nL2(phi)={r['L2_phi']:.2e}  area={r['area_err']:.2e}",
+            fontsize=9,
+        )
+        ax.set_xlabel("x"); ax.set_ylabel("y")
+    fig.suptitle(
+        r"Zalesak slotted disk — 1 revolution, non-uniform grid comparison"
+        "\n(dashed=initial, solid=final, N=128)",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    save_figure(fig, OUT / "zalesak_nonuniform")
+    print(f"Saved figure -> {OUT / 'zalesak_nonuniform.pdf'}")
 
 
 if __name__ == "__main__":

@@ -142,13 +142,101 @@ class LinearGridRemapper(GridRemapper):
         return out
 
 
+class CubicGridRemapper(GridRemapper):
+    """Separable 4-point Lagrange cubic remapper for monotone tensor-product grids.
+
+    Uses a 4-point stencil per axis: for target t ∈ [src[left], src[left+1]],
+    the stencil is src[start..start+3] where start = clip(left-1, 0, n-4).
+    Precomputes indices and weights at construction time; interpolation is
+    pure elementwise (GPU-compatible via backend.xp).
+
+    Reduces interpolation error from O(h²/ε²) (linear) to O(h⁴/ε²),
+    critical for sharp Heaviside fields remapped during non-uniform grid rebuild.
+    """
+
+    def __init__(self, backend, source_coords: list[np.ndarray], target_coords: list[np.ndarray]):
+        super().__init__(source_coords, target_coords)
+        self._backend = backend
+        xp = backend.xp
+        self._axis = []
+
+        for ax in range(self.ndim):
+            src = xp.asarray(self.source_coords[ax], dtype=float)
+            tgt = xp.asarray(self.target_coords[ax], dtype=float)
+            if src.ndim != 1 or tgt.ndim != 1:
+                raise ValueError("Coordinates must be 1-D arrays per axis.")
+            n = src.size
+            if n < 4:
+                raise ValueError(f"Axis {ax}: cubic remapper requires >= 4 source nodes.")
+            if bool(xp.any(src[1:] < src[:-1])):
+                raise ValueError("Source coordinates must be monotone non-decreasing.")
+
+            # Find left bracket: src[left] <= tgt < src[left+1]
+            left = xp.searchsorted(src, tgt, side="right") - 1
+            left = xp.clip(left, 0, n - 2)
+
+            # 4-point stencil starting index — shift left when near boundaries
+            # so that start, start+1, start+2, start+3 are all valid indices.
+            start = xp.clip(left - 1, 0, n - 4)
+            i0, i1, i2, i3 = start, start + 1, start + 2, start + 3
+
+            x0 = src[i0]; x1 = src[i1]; x2 = src[i2]; x3 = src[i3]
+            t = tgt
+
+            # Lagrange basis: w_k = ∏_{j≠k}(t−x_j) / ∏_{j≠k}(x_k−x_j)
+            w0 = (t - x1) * (t - x2) * (t - x3) / ((x0 - x1) * (x0 - x2) * (x0 - x3))
+            w1 = (t - x0) * (t - x2) * (t - x3) / ((x1 - x0) * (x1 - x2) * (x1 - x3))
+            w2 = (t - x0) * (t - x1) * (t - x3) / ((x2 - x0) * (x2 - x1) * (x2 - x3))
+            w3 = (t - x0) * (t - x1) * (t - x2) / ((x3 - x0) * (x3 - x1) * (x3 - x2))
+
+            self._axis.append((i0, i1, i2, i3, w0, w1, w2, w3))
+
+    def _interp_axis(self, arr, axis: int):
+        xp = self._backend.xp
+        i0, i1, i2, i3, w0, w1, w2, w3 = self._axis[axis]
+        a0 = xp.take(arr, i0, axis=axis)
+        a1 = xp.take(arr, i1, axis=axis)
+        a2 = xp.take(arr, i2, axis=axis)
+        a3 = xp.take(arr, i3, axis=axis)
+
+        def _reshape(w):
+            s = [1] * arr.ndim
+            s[axis] = w.size
+            return w.reshape(tuple(s))
+
+        return a0 * _reshape(w0) + a1 * _reshape(w1) + a2 * _reshape(w2) + a3 * _reshape(w3)
+
+    def remap(self, field: Any):
+        xp = self._backend.xp
+        out = xp.asarray(field, dtype=float)
+        for ax in range(self.ndim):
+            out = self._interp_axis(out, axis=ax)
+        return out
+
+    def mapping_info(self, include_weights: bool = False) -> dict[str, Any]:
+        return {
+            "type": "cubic_lagrange",
+            "source_coords": [c.copy() for c in self.source_coords],
+            "target_coords": [c.copy() for c in self.target_coords],
+        }
+
+
 def build_grid_remapper(
     backend,
     source_coords: list[np.ndarray],
     target_coords: list[np.ndarray],
     atol: float = 1e-14,
+    method: str = "cubic",
 ) -> GridRemapper:
-    """Factory returning identity or linear remapper."""
+    """Factory returning identity, linear, or cubic remapper.
+
+    Parameters
+    ----------
+    method : {"cubic", "linear"}
+        Interpolation order.  Default "cubic" (4-point Lagrange, O(h⁴) error)
+        is strongly preferred for Heaviside fields on non-uniform grids.
+        Use "linear" only for backward-compatibility testing.
+    """
     same = (
         len(source_coords) == len(target_coords)
         and all(
@@ -158,6 +246,8 @@ def build_grid_remapper(
     )
     if same:
         return IdentityGridRemapper(source_coords, target_coords)
+    if method == "cubic":
+        return CubicGridRemapper(backend, source_coords, target_coords)
     return LinearGridRemapper(backend, source_coords, target_coords)
 
 

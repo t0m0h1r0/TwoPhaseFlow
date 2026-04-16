@@ -64,7 +64,7 @@ def test_mapping_info_exports_weights(backend):
     remapper = build_grid_remapper(backend, [x_src, y_src], [x_tgt, y_tgt])
     info = remapper.mapping_info(include_weights=True)
 
-    assert info["type"] in {"identity", "linear"}
+    assert info["type"] in {"identity", "linear", "cubic_lagrange"}
     assert len(info["source_coords"]) == 2
     assert len(info["target_coords"]) == 2
     if info["type"] == "linear":
