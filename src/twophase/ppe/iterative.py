@@ -430,7 +430,7 @@ class PPESolverIterative(IPPESolver):
         dtau: np.ndarray,
         pin: int,
     ) -> np.ndarray:
-        """Red-black Gauss-Seidel on (1/Δτ − L_FD) δp = R, then p += δp.
+        """Vectorized red-black Gauss-Seidel on (1/Δτ − L_FD) δp = R.
 
         FD stencil (product-rule form):
             (1/Δτ + 2/(ρhx²) + 2/(ρhy²)) δp[i,j]
@@ -439,6 +439,10 @@ class PPESolverIterative(IPPESolver):
               + (1/(ρhx²) + dρx/(2ρ²hx)) δp[i+1,j]
               + (1/(ρhy²) − dρy/(2ρ²hy)) δp[i,j−1]
               + (1/(ρhy²) + dρy/(2ρ²hy)) δp[i,j+1]
+
+        Vectorised: each color pass is a single masked array operation.
+        Red-black property guarantees all neighbors of a given color
+        belong to the opposite color (frozen within that pass).
 
         Boundary nodes: identity (δp = 0 at walls).
         """
@@ -461,19 +465,27 @@ class PPESolverIterative(IPPESolver):
         dp = np.zeros(shape, dtype=float)
         pin_ij = np.unravel_index(pin, shape)
 
+        # Pre-compute red/black masks for interior nodes
+        ii = np.arange(1, Nx - 1)[:, None]
+        jj = np.arange(1, Ny - 1)[None, :]
+
         # Red-black sweep (color 0 = red, 1 = black)
         for color in range(2):
-            for i in range(1, Nx - 1):
-                j_start = 1 + ((i + 1 + color) % 2)
-                for j in range(j_start, Ny - 1, 2):
-                    if i == pin_ij[0] and j == pin_ij[1]:
-                        continue
-                    rhs_ij = R[i, j]
-                    rhs_ij += c_xm[i, j] * dp[i - 1, j]
-                    rhs_ij += c_xp[i, j] * dp[i + 1, j]
-                    rhs_ij += c_ym[i, j] * dp[i, j - 1]
-                    rhs_ij += c_yp[i, j] * dp[i, j + 1]
-                    dp[i, j] = rhs_ij / diag[i, j]
+            mask = ((ii + jj) % 2 == color)
+            # Exclude pin DOF
+            if 1 <= pin_ij[0] < Nx - 1 and 1 <= pin_ij[1] < Ny - 1:
+                mask[pin_ij[0] - 1, pin_ij[1] - 1] = False
+
+            # Interior slice views (all arrays are (Nx, Ny))
+            rhs_update = (
+                R[1:-1, 1:-1]
+                + c_xm[1:-1, 1:-1] * dp[:-2, 1:-1]
+                + c_xp[1:-1, 1:-1] * dp[2:, 1:-1]
+                + c_ym[1:-1, 1:-1] * dp[1:-1, :-2]
+                + c_yp[1:-1, 1:-1] * dp[1:-1, 2:]
+            )
+            update_vals = rhs_update / diag[1:-1, 1:-1]
+            dp[1:-1, 1:-1] = np.where(mask, update_vals, dp[1:-1, 1:-1])
 
         p = p + dp
         p.ravel()[pin] = 0.0

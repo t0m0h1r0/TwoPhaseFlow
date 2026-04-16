@@ -248,11 +248,14 @@ class _CCDPPEBase(IPPESolver):
                 break
 
         if L_pinned is None:
-            rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
+            # CCD differentiate works on device arrays; keep rho on device
+            # to avoid unnecessary host→device→host round-trip.
+            rho_dev = xp.asarray(rho)
             drho_np = []
             for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(xp.asarray(rho_np), ax)
+                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
                 drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
+            rho_np = np.asarray(self.backend.to_host(rho_dev), dtype=float)
 
             L_sparse = self._build_sparse_operator(rho_np, drho_np)
 

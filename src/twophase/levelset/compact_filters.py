@@ -126,6 +126,13 @@ class HelmholtzKappaFilter:
 
         self._ndim = ndim
 
+        # Pre-compute Thomas scalar factors for GPU fast-path.
+        from ..linalg_backend import thomas_precompute
+        self._thomas_factors = {
+            ax: thomas_precompute(self._ab[ax])
+            for ax in range(ndim)
+        }
+
     # ── Public API ─────────────────────────────────────────────────────────
 
     def apply(self, q, psi):
@@ -149,7 +156,10 @@ class HelmholtzKappaFilter:
         # ── Operator-splitting: solve per axis ──────────────────────────
         q_filt = q_dev.copy()
         for ax in range(self._ndim):
-            q_filt = self.backend.solve_banded_batched(self._ab[ax], q_filt, ax)
+            q_filt = self.backend.solve_banded_batched(
+                self._ab[ax], q_filt, ax,
+                factors=self._thomas_factors[ax],
+            )
 
         # ── Interface-band blending ──────────────────────────────────────
         w = 4.0 * psi_dev * (1.0 - psi_dev)   # peaks at 1 when ψ=0.5
@@ -239,6 +249,13 @@ class LeleCompactFilter:
             a01 = (1.0 + 2.0 * af) / 2.0
             self._rhs_coeff[ax] = a01   # RHS = a01/2*(f_{j-1}+f_{j+1}) + a01*f_j
 
+        # Pre-compute Thomas scalar factors for GPU fast-path.
+        from ..linalg_backend import thomas_precompute
+        self._thomas_factors = {
+            ax: thomas_precompute(self._ab_lhs[ax])
+            for ax in range(ndim)
+        }
+
     # ── Public API ─────────────────────────────────────────────────────────
 
     def apply(self, f):
@@ -287,4 +304,7 @@ class LeleCompactFilter:
         # At j=N: f_next used f_0 (from roll) — replace with f_N (ghost)
         rhs[tuple(slN)] = a01 * f[tuple(slN)] + (a01 / 2.0) * (f[tuple(slNm)] + f[tuple(slN)])
 
-        return self.backend.solve_banded_batched(self._ab_lhs[ax], rhs, ax)
+        return self.backend.solve_banded_batched(
+            self._ab_lhs[ax], rhs, ax,
+            factors=self._thomas_factors[ax],
+        )

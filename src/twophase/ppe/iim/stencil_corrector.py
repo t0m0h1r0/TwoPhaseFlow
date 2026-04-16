@@ -99,14 +99,15 @@ class IIMStencilCorrector:
         kappa: np.ndarray,
         sigma: float,
     ) -> np.ndarray:
-        """Zeroth-order IIM correction using only [p] = σκ.
+        """Vectorized zeroth-order IIM correction using only [p] = σκ.
 
         For each interface-crossing face, applies:
             Δq_L += L[L,R] · σκ   (liquid row)
             Δq_R -= L[R,L] · σκ   (gas row)
 
-        Uses direct element access on the sparse operator — only O(N_Γ)
-        entries are touched.
+        Crossing detection and coefficient gathering are fully vectorized.
+        Only the sparse element extraction uses a loop over O(N_Γ)
+        crossing faces (typically N_Γ << N²).
         """
         shape = self.grid.shape
         Nx, Ny = shape
@@ -118,46 +119,48 @@ class IIMStencilCorrector:
 
         L_csr = L_sparse.tocsr()
 
-        for axis, (N_outer, N_inner, stride_outer, stride_inner) in enumerate([
-            (Nx - 1, Ny, Ny, 1),   # x-direction faces
-            (Nx, Ny - 1, Ny, 1),   # y-direction faces
-        ]):
-            for i in range(N_outer):
-                for j in range(N_inner if axis == 0 else N_inner):
-                    if axis == 0:
-                        idx_a = i * Ny + j
-                        idx_b = (i + 1) * Ny + j
-                    else:
-                        idx_a = i * Ny + j
-                        idx_b = i * Ny + (j + 1)
+        # Build face index pairs and detect crossings vectorially.
+        for axis in range(2):
+            if axis == 0:
+                # X-direction faces: (i, i+1) for i in [0, Nx-2], all j
+                idx_a = (np.arange(Nx - 1)[:, None] * Ny
+                         + np.arange(Ny)[None, :]).ravel()
+                idx_b = idx_a + Ny
+            else:
+                # Y-direction faces: (j, j+1) for all i, j in [0, Ny-2]
+                idx_a = (np.arange(Nx)[:, None] * Ny
+                         + np.arange(Ny - 1)[None, :]).ravel()
+                idx_b = idx_a + 1
 
-                    phi_a = phi_flat[idx_a]
-                    phi_b = phi_flat[idx_b]
+            phi_a = phi_flat[idx_a]
+            phi_b = phi_flat[idx_b]
+            cross = (phi_a * phi_b) < 0.0
 
-                    if phi_a * phi_b >= 0.0:
-                        continue  # same phase
+            if not np.any(cross):
+                continue
 
-                    # Interface curvature via distance-weighted interpolation
-                    abs_a = abs(phi_a)
-                    abs_b = abs(phi_b)
-                    kap_iface = (
-                        (abs_b * kap_flat[idx_a] + abs_a * kap_flat[idx_b])
-                        / (abs_a + abs_b + 1e-30)
-                    )
-                    jump_p = sigma * kap_iface  # [p] = σκ
+            # Extract crossing subset
+            ca = idx_a[cross]
+            cb = idx_b[cross]
+            pa = phi_a[cross]
 
-                    # Sparse element access
-                    L_ab = _sparse_element(L_csr, idx_a, idx_b)
-                    L_ba = _sparse_element(L_csr, idx_b, idx_a)
+            abs_a = np.abs(phi_flat[ca])
+            abs_b = np.abs(phi_flat[cb])
+            kap_iface = (
+                (abs_b * kap_flat[ca] + abs_a * kap_flat[cb])
+                / (abs_a + abs_b + 1e-30)
+            )
+            jump_p = sigma * kap_iface
 
-                    if phi_a < 0.0:
-                        # a=liquid, b=gas
-                        delta_q[idx_a] += L_ab * jump_p
-                        delta_q[idx_b] -= L_ba * jump_p
-                    else:
-                        # a=gas, b=liquid
-                        delta_q[idx_a] -= L_ab * jump_p
-                        delta_q[idx_b] += L_ba * jump_p
+            # Sparse element extraction — O(N_Γ) only
+            L_ab = np.array([_sparse_element(L_csr, a, b) for a, b in zip(ca, cb)])
+            L_ba = np.array([_sparse_element(L_csr, b, a) for a, b in zip(ca, cb)])
+
+            # Sign: a<0 means a=liquid → += L_ab·jump, -= L_ba·jump
+            # Sign: a>0 means a=gas   → -= L_ab·jump, += L_ba·jump
+            sign = np.where(pa < 0.0, 1.0, -1.0)
+            np.add.at(delta_q, ca, sign * L_ab * jump_p)
+            np.add.at(delta_q, cb, -sign * L_ba * jump_p)
 
         return delta_q
 

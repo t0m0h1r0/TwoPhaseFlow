@@ -405,16 +405,25 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
 # ── WENO5 reconstruction kernels (vectorised) ─────────────────────────────
 
+@_fuse
 def _weno5_pos(xp, q0, q1, q2, q3, q4):
-    """WENO5 positive flux at i+1/2 from stencil q[i-2..i+2] = q0..q4."""
-    # Smoothness indicators
-    b0 = (13.0/12.0)*(q0 - 2*q1 + q2)**2 + (1.0/4.0)*(q0 - 4*q1 + 3*q2)**2
-    b1 = (13.0/12.0)*(q1 - 2*q2 + q3)**2 + (1.0/4.0)*(q1 - q3)**2
-    b2 = (13.0/12.0)*(q2 - 2*q3 + q4)**2 + (1.0/4.0)*(3*q2 - 4*q3 + q4)**2
+    """WENO5 positive flux at i+1/2 from stencil q[i-2..i+2] = q0..q4.
 
-    a0 = _D0 / (_WENO_EPS + b0)**2
-    a1 = _D1 / (_WENO_EPS + b1)**2
-    a2 = _D2 / (_WENO_EPS + b2)**2
+    Fused into a single CUDA kernel on GPU via ``@_fuse``.
+    Uses explicit multiplication instead of ``**2`` for sm_86 fuse compat.
+    """
+    # Smoothness indicators
+    _t0a = q0 - 2*q1 + q2;  _t0b = q0 - 4*q1 + 3*q2
+    _t1a = q1 - 2*q2 + q3;  _t1b = q1 - q3
+    _t2a = q2 - 2*q3 + q4;  _t2b = 3*q2 - 4*q3 + q4
+    b0 = (13.0/12.0)*_t0a*_t0a + (1.0/4.0)*_t0b*_t0b
+    b1 = (13.0/12.0)*_t1a*_t1a + (1.0/4.0)*_t1b*_t1b
+    b2 = (13.0/12.0)*_t2a*_t2a + (1.0/4.0)*_t2b*_t2b
+
+    _e0 = _WENO_EPS + b0; _e1 = _WENO_EPS + b1; _e2 = _WENO_EPS + b2
+    a0 = _D0 / (_e0*_e0)
+    a1 = _D1 / (_e1*_e1)
+    a2 = _D2 / (_e2*_e2)
     a_sum = a0 + a1 + a2
     w0, w1, w2 = a0/a_sum, a1/a_sum, a2/a_sum
 
@@ -424,15 +433,23 @@ def _weno5_pos(xp, q0, q1, q2, q3, q4):
     return w0*r0 + w1*r1 + w2*r2
 
 
+@_fuse
 def _weno5_neg(xp, q0, q1, q2, q3, q4):
-    """WENO5 negative flux at i+1/2 from stencil q[i-1..i+3] = q0..q4."""
-    b0 = (13.0/12.0)*(q0 - 2*q1 + q2)**2 + (1.0/4.0)*(q0 - 4*q1 + 3*q2)**2
-    b1 = (13.0/12.0)*(q1 - 2*q2 + q3)**2 + (1.0/4.0)*(q1 - q3)**2
-    b2 = (13.0/12.0)*(q2 - 2*q3 + q4)**2 + (1.0/4.0)*(3*q2 - 4*q3 + q4)**2
+    """WENO5 negative flux at i+1/2 from stencil q[i-1..i+3] = q0..q4.
 
-    a0 = _D2 / (_WENO_EPS + b0)**2
-    a1 = _D1 / (_WENO_EPS + b1)**2
-    a2 = _D0 / (_WENO_EPS + b2)**2
+    Fused into a single CUDA kernel on GPU via ``@_fuse``.
+    """
+    _t0a = q0 - 2*q1 + q2;  _t0b = q0 - 4*q1 + 3*q2
+    _t1a = q1 - 2*q2 + q3;  _t1b = q1 - q3
+    _t2a = q2 - 2*q3 + q4;  _t2b = 3*q2 - 4*q3 + q4
+    b0 = (13.0/12.0)*_t0a*_t0a + (1.0/4.0)*_t0b*_t0b
+    b1 = (13.0/12.0)*_t1a*_t1a + (1.0/4.0)*_t1b*_t1b
+    b2 = (13.0/12.0)*_t2a*_t2a + (1.0/4.0)*_t2b*_t2b
+
+    _e0 = _WENO_EPS + b0; _e1 = _WENO_EPS + b1; _e2 = _WENO_EPS + b2
+    a0 = _D2 / (_e0*_e0)
+    a1 = _D1 / (_e1*_e1)
+    a2 = _D0 / (_e2*_e2)
     a_sum = a0 + a1 + a2
     w0, w1, w2 = a0/a_sum, a1/a_sum, a2/a_sum
 

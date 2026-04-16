@@ -154,6 +154,9 @@ class TwoPhaseNSSolver:
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
         self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
+        # Pre-build the fixed sparsity pattern for GPU CSR caching.
+        self._ppe_struct_rows, self._ppe_struct_cols, _ = self._ppb.build_structure()
+        self._ppe_csr_dev = None  # lazily built on first GPU solve
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # Curvature uses local eps_field when use_local_eps=True on non-uniform grids
@@ -584,8 +587,11 @@ class TwoPhaseNSSolver:
         )
         rho_min = physics.rho_g
 
+        xp = self._backend.xp
         u_max = max(
-            float(np.max(np.abs(u))), float(np.max(np.abs(v))), 1e-10
+            float(xp.max(xp.abs(xp.asarray(u)))),
+            float(xp.max(xp.abs(xp.asarray(v)))),
+            1e-10,
         )
         dt_cfl = cfl * h / u_max
         # CN (Heun trapezoid) relaxes viscous CFL by ~2× vs forward Euler
@@ -648,79 +654,90 @@ class TwoPhaseNSSolver:
             rho_ref = 0.5 * (rho_l + rho_g)
 
         # Helper: device→host, safe for both numpy and cupy arrays.
+        # Used ONLY for stage-1 (phi-primary transport) and grid rebuild
+        # which are CPU-bound algorithms.  Stages 2-5 stay device-resident.
         def _h(arr): return np.asarray(self._backend.to_host(arr))
+
+        # Promote inputs to device — no-op on CPU backend.
+        psi = xp.asarray(psi)
+        u = xp.asarray(u)
+        v = xp.asarray(v)
 
         # ── 1. Advect + reinitialize ───────────────────────────────────
         if self._phi_primary_transport:
             # Experimental path: transport phi as the primary variable and
             # reconstruct psi via H_eps(phi) each step.
+            # This path requires host arrays for mass-correction.
+            psi_host = _h(psi)
+            u_host, v_host = _h(u), _h(v)
             dV_pre = np.asarray(self._backend.to_host(self._grid.cell_volumes()))
-            M_pre = float(np.sum(psi * dV_pre))
-            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi)))
-            phi = _h(self._adv.advance(phi, [u, v], dt, clip_bounds=None))
+            M_pre = float(np.sum(psi_host * dV_pre))
+            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi_host)))
+            phi = _h(self._adv.advance(phi, [u_host, v_host], dt, clip_bounds=None))
             # Prevent over-saturation of logit reconstruction.
             phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.clip_phi(phi)))
-            psi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
+            psi_host = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
             # Re-distance/thickness correction on a controlled cadence to
             # avoid over-sharpening into near-binary fields.
             if step_index > 0 and (step_index % self._phi_primary_redist_every == 0):
-                psi = _h(self._reinit.reinitialize(psi))
-                phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi)))
-                psi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
-            psi = np.asarray(apply_mass_correction(np, psi, dV_pre, M_pre))
+                psi_host = _h(self._reinit.reinitialize(psi_host))
+                phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi_host)))
+                psi_host = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
+            psi_host = np.asarray(apply_mass_correction(np, psi_host, dV_pre, M_pre))
+            psi = xp.asarray(psi_host)
         else:
-            psi = _h(self._adv.advance(psi, [u, v], dt))
+            psi = xp.asarray(self._adv.advance(psi, [u, v], dt))
         if (not self._phi_primary_transport) and self._reinit_every > 0 and step_index % self._reinit_every == 0:
-            psi = _h(self._reinit.reinitialize(psi))
+            psi = xp.asarray(self._reinit.reinitialize(psi))
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
         if self._alpha_grid > 1.0 and self._rebuild_freq > 0 and (step_index % self._rebuild_freq == 0):
+            # Grid rebuild is CPU-bound; round-trip through host.
+            psi_h, u_h, v_h = _h(psi), _h(u), _h(v)
             try:
-                psi, u, v = self._rebuild_grid(
-                    psi, u, v, rho_l=rho_l, rho_g=rho_g,
+                psi_h, u_h, v_h = self._rebuild_grid(
+                    psi_h, u_h, v_h, rho_l=rho_l, rho_g=rho_g,
                 )
             except TypeError:
                 # Backward compatibility for experiment monkey-patches that
                 # replace _rebuild_grid(psi, u, v) with a 3-arg lambda.
-                psi, u, v = self._rebuild_grid(psi, u, v)
+                psi_h, u_h, v_h = self._rebuild_grid(psi_h, u_h, v_h)
+            psi, u, v = xp.asarray(psi_h), xp.asarray(u_h), xp.asarray(v_h)
 
+        # All arrays below are device-resident (xp namespace).
         rho = rho_g + (rho_l - rho_g) * psi
 
         # Variable viscosity (recomputed after advection so μ tracks ψ)
         if mu_l is not None and mu_g is not None:
-            mu_field: float | np.ndarray = mu_g + (mu_l - mu_g) * psi
+            mu_field = mu_g + (mu_l - mu_g) * psi
         else:
             mu_field = mu  # scalar or pre-computed array
 
         # ── 2. Curvature + balanced-force CSF ──────────────────────────
         if sigma > 0.0:
             kappa_raw = self._curv.compute(psi)
-            kappa = _h(self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
+            kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
             if self._kappa_max is not None:
-                kappa = np.clip(kappa, -self._kappa_max, self._kappa_max)
+                kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
-            f_x = sigma * kappa * _h(dpsi_dx)
-            f_y = sigma * kappa * _h(dpsi_dy)
+            f_x = sigma * kappa * dpsi_dx
+            f_y = sigma * kappa * dpsi_dy
         else:
-            f_x = f_y = np.zeros_like(psi)
+            f_x = f_y = xp.zeros_like(psi)
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)
         du_dy, du_yy = ccd.differentiate(u, 1)
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
-        du_dx = _h(du_dx); du_xx = _h(du_xx)
-        du_dy = _h(du_dy); du_yy = _h(du_yy)
-        dv_dx = _h(dv_dx); dv_xx = _h(dv_xx)
-        dv_dy = _h(dv_dy); dv_yy = _h(dv_yy)
 
         conv_u = -(u * du_dx + v * du_dy)
         conv_v = -(u * dv_dx + v * dv_dy)
 
         # Buoyancy (applied to explicit RHS before viscous step)
-        buoy_v = np.zeros_like(v)
+        buoy_v = xp.zeros_like(v)
         if g_acc != 0.0:
             buoy_v = -(rho - rho_ref) / rho * g_acc
 
@@ -732,10 +749,8 @@ class TwoPhaseNSSolver:
             vel_star = self._viscous.apply_cn_predictor(
                 [u, v], explicit_rhs, mu_field, rho, ccd, dt,
             )
-            u_star, v_star = vel_star[0], vel_star[1]
-            # Ensure host arrays
-            u_star = _h(u_star) if hasattr(u_star, '__cuda_array_interface__') else np.asarray(u_star)
-            v_star = _h(v_star) if hasattr(v_star, '__cuda_array_interface__') else np.asarray(v_star)
+            u_star = xp.asarray(vel_star[0])
+            v_star = xp.asarray(vel_star[1])
         else:
             # Original explicit forward-Euler viscous
             visc_u = (mu_field / rho) * (du_xx + du_yy)
@@ -748,11 +763,11 @@ class TwoPhaseNSSolver:
         # ── 4. PPE (balanced-force) ─────────────────────────────────────
         du_s_dx, _ = ccd.differentiate(u_star, 0)
         dv_s_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (_h(du_s_dx) + _h(dv_s_dy)) / dt
+        rhs = (du_s_dx + dv_s_dy) / dt
         if sigma > 0.0:
             df_x, _ = ccd.differentiate(f_x / rho, 0)
             df_y, _ = ccd.differentiate(f_y / rho, 1)
-            rhs += _h(df_x) + _h(df_y)
+            rhs = rhs + df_x + df_y
         p = self._solve_ppe(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
@@ -761,24 +776,47 @@ class TwoPhaseNSSolver:
         if self.bc_type == "wall":
             ccd.enforce_wall_neumann(dp_dx, 0)
             ccd.enforce_wall_neumann(dp_dy, 1)
-        u = u_star - dt / rho * _h(dp_dx) + dt * f_x / rho
-        v = v_star - dt / rho * _h(dp_dy) + dt * f_y / rho
+        u = u_star - dt / rho * dp_dx + dt * f_x / rho
+        v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
         return psi, u, v, p
 
     # ── private ───────────────────────────────────────────────────────────
 
-    def _solve_ppe(self, rhs: np.ndarray, rho: np.ndarray) -> np.ndarray:
-        A_host = self._build_ppe_matrix(rho)
-        rhs_vec = rhs.ravel().copy()
+    def _solve_ppe(self, rhs, rho):
+        import scipy.sparse as sp
+        xp = self._backend.xp
+        n = self._ppb.n_dof
+
+        # rho may be a device array — pull to host for coefficient assembly.
+        rho_host = np.asarray(self._backend.to_host(rho))
+        data_host = self._ppb.build_values(rho_host)
+
+        rhs_vec = xp.asarray(rhs).ravel().copy()
         rhs_vec[self._ppb._pin_dof] = 0.0
+
         if self._backend.is_gpu():
-            A_dev = self._backend.sparse.csr_matrix(A_host)
-            rhs_dev = self._backend.xp.asarray(rhs_vec)
-            p_dev = self._backend.sparse_linalg.spsolve(A_dev, rhs_dev)
-            return np.asarray(self._backend.to_host(p_dev)).reshape(rho.shape)
-        return self._backend.sparse_linalg.spsolve(A_host, rhs_vec).reshape(rho.shape)
+            if self._ppe_csr_dev is None:
+                # First call: build full CSR on host, upload structure once.
+                A_host = sp.csr_matrix(
+                    (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
+                    shape=(n, n),
+                )
+                self._ppe_csr_dev = self._backend.sparse.csr_matrix(A_host)
+            else:
+                # Subsequent calls: update values in-place, structure unchanged.
+                self._ppe_csr_dev.data[:] = xp.asarray(data_host)
+            p_dev = self._backend.sparse_linalg.spsolve(self._ppe_csr_dev, rhs_vec)
+            return p_dev.reshape(rho.shape)
+        A_host = sp.csr_matrix(
+            (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
+            shape=(n, n),
+        )
+        rhs_host = np.asarray(self._backend.to_host(rhs_vec))
+        return xp.asarray(
+            self._backend.sparse_linalg.spsolve(A_host, rhs_host).reshape(rho.shape)
+        )
 
     def _build_ppe_matrix(self, rho: np.ndarray):
         import scipy.sparse as sp
@@ -921,6 +959,11 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         t += dt
         step += 1
 
+        # Diagnostics and snapshots require host arrays.
+        _bk = solver._backend
+        _to_h = lambda a: np.asarray(_bk.to_host(a))
+        psi_h, u_h, v_h, p_h = _to_h(psi), _to_h(u), _to_h(v), _to_h(p)
+
         # Update diagnostic references for dynamic grids
         if solver._alpha_grid > 1.0:
             diag.X = solver.X
@@ -929,15 +972,15 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         else:
             dV = None
 
-        diag.collect(t, psi, u, v, p, dV=dV)
+        diag.collect(t, psi_h, u_h, v_h, p_h, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             snap_entry = {
                 "t": float(t),
-                "psi": psi.copy(),
-                "u": u.copy(),
-                "v": v.copy(),
-                "p": p.copy(),
+                "psi": psi_h.copy(),
+                "u": u_h.copy(),
+                "v": v_h.copy(),
+                "p": p_h.copy(),
             }
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]

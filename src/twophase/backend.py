@@ -151,7 +151,8 @@ class Backend:
 
     # ── Batched banded solver (axis-aligned tridiagonal) ────────────────
 
-    def solve_banded_batched(self, ab, rhs, axis: int, l_and_u=(1, 1)):
+    def solve_banded_batched(self, ab, rhs, axis: int, l_and_u=(1, 1),
+                             factors=None):
         """Banded solve along ``axis`` of ``rhs``.
 
         Parameters
@@ -166,6 +167,9 @@ class Backend:
             Lower/upper bandwidth. Currently only ``(1, 1)`` is supported on
             GPU (routed to :func:`linalg_backend.thomas_batched`). On CPU
             all values are supported via :func:`scipy.linalg.solve_banded`.
+        factors : ThomasFactors or None
+            Pre-computed scalar factors (GPU only). See
+            :func:`linalg_backend.thomas_precompute`.
 
         Returns
         -------
@@ -179,7 +183,7 @@ class Backend:
                     f"got {l_and_u}"
                 )
             from .linalg_backend import thomas_batched
-            return thomas_batched(self.xp, ab, rhs, axis)
+            return thomas_batched(self.xp, ab, rhs, axis, factors=factors)
 
         # CPU: scipy.linalg.solve_banded, axis-agnostic wrapper.
         import numpy as _np

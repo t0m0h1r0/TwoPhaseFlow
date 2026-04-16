@@ -226,6 +226,46 @@ class PPEBuilder:
 
         return (data, rows, cols), (n, n)
 
+    def build_structure(self):
+        """Return the fixed sparsity pattern (rows, cols) and metadata.
+
+        The sparsity pattern depends only on grid topology and boundary
+        conditions — it does NOT change with ρ.  Call once at init time.
+
+        Returns
+        -------
+        rows, cols : np.ndarray (int)
+            COO row/column indices (same ordering as ``build_values``).
+        n_dof : int
+        """
+        import numpy as np_host
+
+        # Use a dummy uniform-density field to extract the structural indices.
+        rho_dummy = np_host.ones(self.shape_field)
+        (_data, rows, cols), _shape = self.build(rho_dummy)
+        # Cache the mask/pin structure for build_values.
+        self._struct_rows = rows
+        self._struct_cols = cols
+        self._struct_nnz = len(rows)
+        return rows, cols, self.n_dof
+
+    def build_values(self, rho):
+        """Re-compute only the coefficient values for a new density field.
+
+        Must call ``build_structure()`` first.  Returns the data vector
+        in the same COO ordering as the structure arrays.
+
+        Parameters
+        ----------
+        rho : array, shape ``grid.shape`` (host numpy)
+
+        Returns
+        -------
+        data : np.ndarray, shape (nnz,)
+        """
+        (data, _rows, _cols), _shape = self.build(rho)
+        return data
+
     def prepare_rhs(self, rhs_field):
         """Prepare the RHS vector for the PPE solve.
 

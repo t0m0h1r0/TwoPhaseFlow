@@ -23,8 +23,66 @@ systems.
 
 from __future__ import annotations
 
+from typing import NamedTuple
 
-def thomas_batched(xp, ab, rhs, axis: int):
+
+class ThomasFactors(NamedTuple):
+    """Pre-computed scalar recurrence for a tridiagonal matrix.
+
+    Fields are host (Python float) arrays so that the GPU solve loop
+    never reads scalar elements from device memory.
+    """
+    c_prime: list[float]    # length n, c_prime[n-1] = 0
+    denom_inv: list[float]  # length n, 1 / denom[i]
+    lower: list[float]      # length n, lower[0] unused
+
+
+def thomas_precompute(ab) -> ThomasFactors:
+    """Pre-compute the scalar recurrence from a banded matrix.
+
+    Parameters
+    ----------
+    ab : array-like, shape (3, n)
+        Banded matrix (same layout as ``thomas_batched``).
+        If on GPU, a small (3n float) D2H transfer is performed once.
+
+    Returns
+    -------
+    ThomasFactors
+        Pre-computed factors for ``thomas_batched(..., factors=...)``.
+    """
+    import numpy as np_host
+
+    # Pull to host if needed (small 3×n array).
+    ab_h = np_host.asarray(ab) if not isinstance(ab, np_host.ndarray) else ab
+    ab_h = ab_h.astype(np_host.float64, copy=False)
+
+    n = ab_h.shape[1]
+    upper = ab_h[0]   # upper[0] unused
+    main = ab_h[1]
+    lower = ab_h[2]   # lower[-1] unused
+
+    c_prime = [0.0] * n
+    denom_inv = [0.0] * n
+
+    # i = 0
+    denom_inv[0] = 1.0 / float(main[0])
+    if n > 1:
+        c_prime[0] = float(upper[1]) * denom_inv[0]
+
+    # i = 1 .. n-1
+    for i in range(1, n):
+        denom = float(main[i]) - float(lower[i - 1]) * c_prime[i - 1]
+        denom_inv[i] = 1.0 / denom
+        if i < n - 1:
+            c_prime[i] = float(upper[i + 1]) * denom_inv[i]
+
+    lower_h = [float(lower[i]) for i in range(n)]
+
+    return ThomasFactors(c_prime=c_prime, denom_inv=denom_inv, lower=lower_h)
+
+
+def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None):
     """Sequential Thomas sweep along ``axis``, vectorised across batch dims.
 
     Parameters
@@ -42,6 +100,11 @@ def thomas_batched(xp, ab, rhs, axis: int):
         ``rhs.shape[axis] == n``; batch shape otherwise arbitrary.
     axis : int
         Axis along which to solve.
+    factors : ThomasFactors or None
+        Pre-computed scalar factors from ``thomas_precompute(ab)``.
+        When provided, the scalar recurrence (c_prime, denom) is read
+        from host Python floats instead of device scalar indexing,
+        eliminating per-iteration GPU synchronisation.
 
     Returns
     -------
@@ -64,33 +127,49 @@ def thomas_batched(xp, ab, rhs, axis: int):
     batch_shape = moved.shape[1:]
     d = moved.reshape(n, -1)                       # (n, B)
 
-    # Ensure ab is on the same device as rhs
-    ab_dev = xp.asarray(ab)
-    upper = ab_dev[0]                              # (n,)  upper[0] unused
-    main  = ab_dev[1]                              # (n,)
-    lower = ab_dev[2]                              # (n,)  lower[-1] unused
-
     # Allocate working storage on device
-    c_prime = xp.empty((n,), dtype=d.dtype)
     d_prime = xp.empty_like(d)                     # (n, B)
 
-    # ── Forward elimination ──────────────────────────────────────────
-    # i = 0
-    c_prime[0] = upper[1] / main[0] if n > 1 else xp.asarray(0.0)
-    d_prime[0] = d[0] / main[0]
+    if factors is not None:
+        # ── Fast path: pre-computed host scalars ─────────────────────
+        cp = factors.c_prime
+        di = factors.denom_inv
+        lo = factors.lower
 
-    # i = 1 .. n-1
-    for i in range(1, n):
-        denom = main[i] - lower[i - 1] * c_prime[i - 1]
-        if i < n - 1:
-            c_prime[i] = upper[i + 1] / denom
-        d_prime[i] = (d[i] - lower[i - 1] * d_prime[i - 1]) / denom
+        # Forward elimination — all scalars are Python floats (no device sync)
+        d_prime[0] = d[0] * di[0]
+        for i in range(1, n):
+            d_prime[i] = (d[i] - lo[i - 1] * d_prime[i - 1]) * di[i]
 
-    # ── Back substitution ────────────────────────────────────────────
-    x = xp.empty_like(d)                           # (n, B)
-    x[n - 1] = d_prime[n - 1]
-    for i in range(n - 2, -1, -1):
-        x[i] = d_prime[i] - c_prime[i] * x[i + 1]
+        # Back substitution
+        x = xp.empty_like(d)
+        x[n - 1] = d_prime[n - 1]
+        for i in range(n - 2, -1, -1):
+            x[i] = d_prime[i] - cp[i] * x[i + 1]
+    else:
+        # ── Original path: scalar recurrence on device ───────────────
+        ab_dev = xp.asarray(ab)
+        upper = ab_dev[0]
+        main = ab_dev[1]
+        lower = ab_dev[2]
+
+        c_prime = xp.empty((n,), dtype=d.dtype)
+
+        # Forward elimination
+        c_prime[0] = upper[1] / main[0] if n > 1 else xp.asarray(0.0)
+        d_prime[0] = d[0] / main[0]
+
+        for i in range(1, n):
+            denom = main[i] - lower[i - 1] * c_prime[i - 1]
+            if i < n - 1:
+                c_prime[i] = upper[i + 1] / denom
+            d_prime[i] = (d[i] - lower[i - 1] * d_prime[i - 1]) / denom
+
+        # Back substitution
+        x = xp.empty_like(d)
+        x[n - 1] = d_prime[n - 1]
+        for i in range(n - 2, -1, -1):
+            x[i] = d_prime[i] - c_prime[i] * x[i + 1]
 
     x_moved = x.reshape((n,) + batch_shape)
     return xp.moveaxis(x_moved, 0, axis)

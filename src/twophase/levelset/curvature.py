@@ -29,6 +29,7 @@ from typing import Optional, TYPE_CHECKING
 
 from .heaviside import invert_heaviside
 from .interfaces import ICurvatureCalculator
+from ..backend import fuse as _fuse
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -39,6 +40,16 @@ if TYPE_CHECKING:
 
 _EPS_NORM = 1e-3   # regularisation floor for |∇φ| (paper §3.5 recommended value)
 _DCCD_EPS_D = 0.05  # DCCD filter strength for curvature derivatives (§10.1.3)
+
+
+@_fuse
+def _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube):
+    """κ = −[φ_y² φ_xx − 2 φ_x φ_y φ_xy + φ_x² φ_yy] / |∇φ|³
+
+    Fused into a single CUDA kernel on GPU via ``@_fuse``.
+    """
+    num = phi_y * phi_y * phi_xx - 2.0 * phi_x * phi_y * phi_xy + phi_x * phi_x * phi_yy
+    return -num / grad_cube
 
 
 def _dccd_filter_1d(xp, f, ax: int, ndim: int, N_ax: int, eps_d: float):
@@ -173,10 +184,7 @@ class CurvatureCalculator(ICurvatureCalculator):
         if self.dccd_eps > 0:
             phi_xy = _dccd_filter_nd(self.xp, phi_xy, ccd.grid, self.dccd_eps)
 
-        numerator = (phi_y**2 * phi_xx
-                     - 2.0 * phi_x * phi_y * phi_xy
-                     + phi_x**2 * phi_yy)
-        return -numerator / grad_cube
+        return _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube)
 
     # ── 3-D formula ───────────────────────────────────────────────────────
 

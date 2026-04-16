@@ -46,6 +46,8 @@ class DGRReinitializer(IReinitializer):
         psi_1mpsi = psi * (1.0 - psi)
         if xp.any(band):
             eps_local = psi_1mpsi[band] / xp.maximum(grad_psi[band], 1e-14)
+            # GPU sync point: scalar extraction forces device→host transfer.
+            # Acceptable — DGR runs every reinit_every steps, not every step.
             eps_eff = float(xp.median(eps_local))
         else:
             eps_eff = self.eps
