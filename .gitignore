@@ -70,3 +70,4 @@ paper/*.fdb_latexmk
 .pytest_cache/
 .devcontainer/
 checkpoints/
+.claude/worktrees/
