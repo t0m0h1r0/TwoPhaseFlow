@@ -344,7 +344,9 @@ class TwoPhaseNSSolver:
             # replace _reproject_velocity(psi, u, v) with a 3-arg lambda.
             u, v = self._reproject_velocity(psi, u, v)
 
-        return psi, u, v
+        # Return device arrays — callers expect the same device type as input.
+        xp = self._backend.xp
+        return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
 
     def _reproject_velocity(
         self,
