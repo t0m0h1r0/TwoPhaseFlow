@@ -16,7 +16,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
+from twophase.core.grid_remap import build_grid_remapper
 
 import matplotlib.pyplot as plt
 
@@ -88,33 +88,24 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20):
             M_before = float(xp.sum(psi * dV))
             grid.update_from_levelset(phi_cur, eps, ccd=ccd)
 
-            X_new_dev, Y_new_dev = grid.meshgrid()
-            X_new = np.asarray(backend.to_host(X_new_dev))
-            Y_new = np.asarray(backend.to_host(Y_new_dev))
-            pts = np.stack([X_new.ravel(), Y_new.ravel()], axis=-1)
-            psi_host = np.asarray(backend.to_host(psi))
-            interp = RegularGridInterpolator(
-                old_coords, psi_host, method="linear",
-                bounds_error=False, fill_value=None,
-            )
-            psi_host_new = np.clip(interp(pts).reshape(X_new.shape), 0.0, 1.0)
+            # GPU-native remap: old_coords → new grid coords (no host transfer)
+            remapper = build_grid_remapper(backend, old_coords, grid.coords)
+            psi = xp.clip(remapper.remap(psi), 0.0, 1.0)
 
-            dV_np = np.asarray(backend.to_host(grid.cell_volumes()))
-            M_after = float(np.sum(psi_host_new * dV_np))
-            w = 4.0 * psi_host_new * (1.0 - psi_host_new)
-            W = float(np.sum(w * dV_np))
-            if W > 1e-12:
-                psi_host_new = np.clip(
-                    psi_host_new + ((M_before - M_after) / W) * w, 0.0, 1.0)
-
-            psi = xp.asarray(psi_host_new)
+            # Mass correction on device
             dV = grid.cell_volumes()
+            M_after = float(xp.sum(psi * dV))
+            w = 4.0 * psi * (1.0 - psi)
+            W = float(xp.sum(w * dV))
+            if W > 1e-12:
+                psi = xp.clip(psi + ((M_before - M_after) / W) * w, 0.0, 1.0)
+
             ccd = CCDSolver(grid, backend, bc_type="wall")
             adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
                                           eps_d=0.05, mass_correction=True)
             reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4,
                                    bc="zero", method="split")
-            X, Y = X_new_dev, Y_new_dev
+            X, Y = grid.meshgrid()
 
         if (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)
