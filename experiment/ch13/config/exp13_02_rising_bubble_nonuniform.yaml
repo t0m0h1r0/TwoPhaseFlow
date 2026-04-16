@@ -1,0 +1,111 @@
+# §13.3 Rising bubble — uniform vs non-uniform grid comparison
+# Sweep: α=1.0 (uniform baseline) and α=1.2 (static non-uniform).
+# Same physics, CFL, reinit settings for fair comparison.
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.0             # Overridden per sweep case
+  eps_factor: 1.5
+  eps_g_factor: 2.0
+  dx_min_floor: 0.006
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 10.0
+  rho_g:  1.0
+  g_acc:  1.0
+  Re:     35.0
+  Eo:     10.0
+  d_ref:   0.5
+
+run:
+  T_final:    3.0
+  max_steps:  500000
+  cfl:        0.05
+  snap_times: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+  print_every: 500
+  reinit_every: 2
+  reproject_mode: legacy
+  phi_primary_transport: false
+  kappa_max: 8.0
+
+output:
+  dir: results/exp13_02_nonuniform
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Rise velocity v_c(t)"
+      x: times
+      y: [vc]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "v_c"
+      file: rise_velocity.pdf
+
+    - type: time_series
+      title: "Centroid y_c(t)"
+      x: times
+      y: [yc]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "y_c"
+      file: centroid.pdf
+
+    - type: time_series
+      title: "Volume conservation |ΔV|/V₀"
+      x: times
+      y: [volume_conservation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "|ΔV|/V₀"
+      yscale: log
+      file: volume_conservation.pdf
+
+    - type: snapshot
+      title: "Rising bubble"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+    - type: velocity_snapshot
+      title: "Velocity field"
+      t_idx: -1
+      quiver_stride: 4
+      file: velocity_final.pdf
+
+    - type: pressure_snapshot
+      title: "Pressure field"
+      t_idx: -1
+      file: pressure_final.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
+
+sweep:
+  - label: uniform
+    overrides:
+      grid.alpha_grid: 1.0
+      grid.grid_rebuild_freq: 0
+      run.kappa_max: 8.0
+  - label: nonuniform_a12
+    overrides:
+      grid.alpha_grid: 1.2
+      grid.grid_rebuild_freq: 0
+      run.kappa_max: 8.0

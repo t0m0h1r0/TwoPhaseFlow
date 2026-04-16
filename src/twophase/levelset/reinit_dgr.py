@@ -21,11 +21,12 @@ class DGRReinitializer(IReinitializer):
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float):
+                 eps: float, phi_smooth_C: float = 1e-4):
         self.xp = backend.xp
         self.grid = grid
         self.ccd = ccd
         self.eps = eps
+        self.phi_smooth_C = float(phi_smooth_C)
 
     def reinitialize(self, psi):
         xp = self.xp
@@ -52,6 +53,15 @@ class DGRReinitializer(IReinitializer):
         phi_raw = invert_heaviside(xp, psi, self.eps)
         scale = eps_eff / self.eps if eps_eff > 1e-14 else 1.0
         phi_sdf = phi_raw * scale
+
+        # CCD Laplacian smoothing on φ_sdf (WIKI-T-030 addendum).
+        # ∇²φ ≈ κ = O(1) → C·h²·∇²φ = O(h²) → convergence-preserving.
+        # Damps O(h^5) wall-boundary asymmetry accumulated over ~10^4 steps.
+        if self.phi_smooth_C > 0.0:
+            from .curvature_filter import _ccd_laplacian
+            h_min = min(float(xp.min(xp.asarray(self.grid.h[ax])))
+                        for ax in range(self.grid.ndim))
+            phi_sdf = phi_sdf + self.phi_smooth_C * h_min**2 * _ccd_laplacian(xp, self.ccd, phi_sdf)
 
         psi_new = heaviside(xp, phi_sdf, self.eps)
         psi_new = apply_mass_correction(xp, psi_new, dV, M_old)

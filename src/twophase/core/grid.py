@@ -88,46 +88,48 @@ class Grid:
 
     def update_from_levelset(
         self,
-        phi_data: np.ndarray,
+        psi_data: np.ndarray,
         eps: float,
         ccd=None,
     ) -> None:
-        """Rebuild interface-fitted grid given the signed-distance field φ.
+        """Rebuild interface-fitted grid given the Heaviside field ψ.
 
         Only active when ``grid_config.alpha_grid > 1.0``.
 
-        Density function (§6 eq:grid_delta):
-            ω(φ) = 1 + (α−1) · δ*(φ),  δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π)
-        where ε_g = eps_g_factor × ε.  ω ∈ [1, α]: interface dense, bulk coarse.
-
-        Metric coefficients J = ∂ξ/∂x and ∂J/∂ξ are computed with CCD (O(h⁶))
-        when ``ccd`` is provided (§6 Step 5, box:grid_jx_accuracy).  Falls back
-        to O(h²) central differences when ``ccd`` is None.
+        Internally converts ψ → φ via logit inversion, then applies the
+        paper's Gaussian grid density (§6 eq:grid_delta):
+            δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π),  ε_g = eps_g_factor × ε
+            ω = 1 + (α−1) · δ*(φ̄)
 
         Parameters
         ----------
-        phi_data : array of shape ``self.shape``
-        eps      : interface half-width (ε = epsilon_factor × dx_min)
+        psi_data : array — Heaviside field ψ ∈ [0, 1]
+        eps      : interface half-width ε
         ccd      : CCDSolver instance for O(h⁶) metric evaluation (optional)
         """
+        from ..levelset.heaviside import invert_heaviside
+
         alpha = self._gc.alpha_grid
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
-        # ε_g = eps_g_factor × ε  (§6: 推奨 ε_g ≈ 2–4 ε)
         eps_g = self._gc.eps_g_factor * eps
 
-        for ax in range(self.ndim):
-            # 1-D marginal of φ along this axis (minimum |φ| over other axes,
-            # §6 2次元格子生成アルゴリズム: φ̄^x_i = min_j |φ^(0)_{i,j}|)
-            axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            phi_host = np.abs(self.backend.to_host(phi_data))
-            phi_1d = np.min(phi_host, axis=axes_other)
+        # ψ → φ (logit inversion)
+        psi_host = np.asarray(self.backend.to_host(psi_data))
+        phi = invert_heaviside(np, psi_host, eps)
 
-            # Paper §6 eq:grid_delta: ω = 1 + (α−1)·δ*(φ), δ* = Gaussian delta
+        for ax in range(self.ndim):
+            # 1-D marginal: min |φ| over other axes (§6 φ̄^x_i = min_j |φ_{i,j}|)
+            axes_other = tuple(a for a in range(self.ndim) if a != ax)
+            phi_1d = np.min(np.abs(phi), axis=axes_other)
+
+            # §6 eq:grid_delta: Gaussian delta
             delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
-            omega = 1.0 + (alpha - 1.0) * delta_star   # ω ∈ [1, α] — always ≥ 1
+            indicator_1d = delta_star
+
+            omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 
             # Node target widths proportional to 1/ω; enforce minimum cell width
             node_w = np.maximum(1.0 / omega, dx_floor)  # (N+1,) node weights
