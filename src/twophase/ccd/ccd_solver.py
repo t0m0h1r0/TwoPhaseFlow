@@ -37,6 +37,7 @@ Non-uniform grid (§4.9):
 """
 
 from __future__ import annotations
+import math
 import numpy as np
 from typing import Optional, Tuple, TYPE_CHECKING
 
@@ -191,7 +192,7 @@ class CCDSolver:
         f = xp.moveaxis(data, axis, 0)          # (N+1, *other)
         orig_shape = f.shape
         n_pts = f.shape[0]
-        batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
+        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
         f = f.reshape(n_pts, batch_size)         # (N+1, batch)
 
         # Build interior RHS — vectorised over interior nodes i=1..n_int.
@@ -463,7 +464,7 @@ class CCDSolver:
         f_full = xp.moveaxis(data, axis, 0)      # (N+1, *other)
         orig_shape = f_full.shape
         n_pts = f_full.shape[0]                  # N+1
-        batch_size = int(np.prod(orig_shape[1:])) if len(orig_shape) > 1 else 1
+        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
         f_full = f_full.reshape(n_pts, batch_size)  # (N+1, batch)
 
         # N unique nodes only; node N = node 0 (periodic image).

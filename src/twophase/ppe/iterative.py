@@ -503,6 +503,6 @@ class PPESolverIterative(IPPESolver):
     # ── Thomas sweep (vectorized, identical to PPESolverSweep._sweep_1d) ─
 
     def _thomas_sweep(self, rhs_2d, rho, drho_ax, dtau, axis):
-        """Thin wrapper — delegates to thomas_sweep.thomas_sweep_1d."""
-        from .thomas_sweep import thomas_sweep_1d
+        """Thin wrapper — delegates to thomas_sweep_legacy.thomas_sweep_1d."""
+        from .thomas_sweep_legacy import thomas_sweep_1d
         return thomas_sweep_1d(rhs_2d, rho, drho_ax, dtau, axis, self.grid)

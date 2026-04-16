@@ -44,10 +44,11 @@ A3 traceability
 """
 
 from __future__ import annotations
-import numpy as np
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import numpy as np
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
 
@@ -203,7 +204,7 @@ class LeleCompactFilter:
         # ── Resolve α_f ────────────────────────────────────────────────
         if xi_c is not None:
             # Kim (2010) prescription: H(ξ_c) = 0.5 → α_f = −cos(ξ_c)/2
-            alpha_f = -np.cos(xi_c) / 2.0
+            alpha_f = -math.cos(xi_c) / 2.0
         elif alpha_f is None:
             raise ValueError("Provide xi_c or alpha_f")
 

@@ -1,5 +1,7 @@
 """
-変密度 PPE 用ベクトル化 Thomas スウィープソルバー。
+変密度 PPE 用ベクトル化 Thomas スウィープソルバー (LEGACY).
+
+# DO NOT DELETE — superseded by linalg_backend.thomas_batched; retained per C2.
 
 ADI/sweep 型 PPE ソルバー（sweep, iim, iterative）で重複していた
 1D Thomas 法を集約する。

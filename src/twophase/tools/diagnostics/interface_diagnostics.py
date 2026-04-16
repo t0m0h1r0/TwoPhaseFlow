@@ -56,7 +56,7 @@ def interface_area(xp, psi, grid) -> float:
     -------
     area : float
     """
-    dV = xp.asarray(grid.cell_volumes())
+    dV = grid.cell_volumes()
     return float(xp.sum(psi * dV))
 
 

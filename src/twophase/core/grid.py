@@ -21,6 +21,7 @@ Key equations:
 """
 
 from __future__ import annotations
+import math
 import numpy as np
 from typing import TYPE_CHECKING, Tuple
 
@@ -177,13 +178,14 @@ class Grid:
 
     def cell_volume(self) -> float:
         """Approximate uniform cell volume (product of mean spacings)."""
-        return float(np.prod([L / N for L, N in zip(self.L, self.N)]))
+        return math.prod(L / N for L, N in zip(self.L, self.N))
 
-    def cell_volumes(self) -> np.ndarray:
-        """Per-node control volumes, shape ``self.shape``."""
-        vol = self.h[0].copy()
+    def cell_volumes(self):
+        """Per-node control volumes on device, shape ``self.shape``."""
+        xp = self.xp
+        vol = xp.asarray(self.h[0])
         for ax in range(1, self.ndim):
-            vol = np.expand_dims(vol, axis=ax) * self.h[ax]
+            vol = xp.expand_dims(vol, axis=ax) * xp.asarray(self.h[ax])
         return vol
 
     def __repr__(self) -> str:
