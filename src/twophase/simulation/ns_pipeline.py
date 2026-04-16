@@ -83,6 +83,7 @@ class TwoPhaseNSSolver:
         phi_primary_clip_factor: float = 12.0,
         phi_primary_heaviside_eps_scale: float = 1.0,
         kappa_max: float | None = None,
+        dgr_phi_smooth_C: float = 1e-4,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -186,6 +187,7 @@ class TwoPhaseNSSolver:
         self._reinit = Reinitializer(
             self._backend, self._grid, self._ccd, self._eps,
             n_steps=reinit_steps, method=reinit_method,
+            phi_smooth_C=dgr_phi_smooth_C,
         )
         self.X, self.Y = self._grid.meshgrid()
 
@@ -234,6 +236,9 @@ class TwoPhaseNSSolver:
                 getattr(getattr(cfg, "run", g), "phi_primary_heaviside_eps_scale", 1.0)
             ),
             kappa_max=getattr(getattr(cfg, "run", g), "kappa_max", None),
+            dgr_phi_smooth_C=float(
+                getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
+            ),
         )
 
     # ── properties ────────────────────────────────────────────────────────

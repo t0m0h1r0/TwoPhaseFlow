@@ -41,7 +41,8 @@ class Reinitializer(IReinitializer):
                  unified_dccd: bool = False,
                  mass_correction: bool = True,
                  eps_d_comp: float = _EPS_D_COMP,
-                 method: str = 'split'):
+                 method: str = 'split',
+                 phi_smooth_C: float = 1e-4):
         self.xp = backend.xp
         self.grid = grid
         self.eps = eps
@@ -68,6 +69,7 @@ class Reinitializer(IReinitializer):
             from .reinit_dgr import DGRReinitializer
             self._strategy = DGRReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
+                phi_smooth_C=phi_smooth_C,
             )
         elif method == 'hybrid':
             from .reinit_split import SplitReinitializer
@@ -75,6 +77,7 @@ class Reinitializer(IReinitializer):
             split = SplitReinitializer(**common)
             dgr = DGRReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
+                phi_smooth_C=phi_smooth_C,
             )
             self._strategy = HybridReinitializer(split, dgr)
         else:
