@@ -9,6 +9,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 from twophase.backend import Backend
 from twophase.config import GridConfig
@@ -199,6 +200,8 @@ def main():
             "label": label, "alpha": alpha,
             "L2_psi": r["L2_psi"], "L2_phi": r["L2_phi"],
             "area_err": r["area_err"], "mass_err": r["mass_err"],
+            "psi_final": r["psi_final"], "psi_init": r["psi_init"],
+            "X": r["X"], "Y": r["Y"],
         })
 
     print("\n" + "=" * 70)
@@ -210,10 +213,41 @@ def main():
 
     save_results(OUT / "data.npz", {
         key_map[r["label"]]: {
-            f: r[f] for f in ("alpha", "L2_psi", "L2_phi", "area_err", "mass_err")
+            f: r[f] for f in (
+                "alpha", "L2_psi", "L2_phi", "area_err", "mass_err",
+                "psi_final", "psi_init", "X", "Y",
+            )
         }
         for r in all_results
     })
+
+    # Visualisation: 1 row per case — initial (dashed) vs final (solid) psi=0.5 contour
+    n = len(all_results)
+    fig, axes = plt.subplots(1, n, figsize=(4.5 * n, 4.5))
+    if n == 1:
+        axes = [axes]
+    for ax, r in zip(axes, all_results):
+        X, Y = r["X"], r["Y"]
+        ax.pcolormesh(X, Y, r["psi_final"], cmap="RdBu_r", vmin=0, vmax=1,
+                      shading="auto")
+        ax.contour(X, Y, r["psi_init"],  levels=[0.5], colors="gray",
+                   linewidths=0.8, linestyles="--", label="initial")
+        ax.contour(X, Y, r["psi_final"], levels=[0.5], colors="k",
+                   linewidths=1.2, label="final")
+        ax.set_aspect("equal")
+        ax.set_title(
+            f"{r['label']}\nL2(phi)={r['L2_phi']:.2e}  area={r['area_err']:.2e}",
+            fontsize=9,
+        )
+        ax.set_xlabel("x"); ax.set_ylabel("y")
+    fig.suptitle(
+        r"Zalesak slotted disk — 1 revolution, non-uniform grid comparison"
+        "\n(dashed=initial, solid=final, N=128)",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    save_figure(fig, OUT / "zalesak_nonuniform")
+    print(f"Saved figure -> {OUT / 'zalesak_nonuniform.pdf'}")
 
 
 if __name__ == "__main__":
