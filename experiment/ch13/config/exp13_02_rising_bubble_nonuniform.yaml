@@ -92,7 +92,7 @@ sweep:
     overrides:
       grid.alpha_grid: 1.0
       grid.grid_rebuild_freq: 0
-      run.kappa_max: null
+      run.kappa_max: 8.0
   - label: nonuniform_a12
     overrides:
       grid.alpha_grid: 1.2
