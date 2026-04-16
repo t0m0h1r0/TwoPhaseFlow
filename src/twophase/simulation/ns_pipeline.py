@@ -304,11 +304,12 @@ class TwoPhaseNSSolver:
         old_coords = [c.copy() for c in self._grid.coords]
         old_h = [h.copy() for h in self._grid.h]
 
-        # 2. Compute old cell volumes for mass correction
+        # 2. Compute old cell volumes for mass correction (host-side)
         dV_old = old_h[0].copy()
         for ax in range(1, self._grid.ndim):
             dV_old = np.expand_dims(dV_old, axis=ax) * old_h[ax]
-        M_before = float(np.sum(psi * dV_old))
+        psi_host = np.asarray(self._backend.to_host(psi))
+        M_before = float(np.sum(psi_host * dV_old))
 
         # 3. Rebuild grid from ψ (mutates coords, h, J, dJ_dxi in-place)
         self._grid.update_from_levelset(psi, self._eps, ccd=self._ccd)
