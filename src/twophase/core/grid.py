@@ -89,43 +89,45 @@ class Grid:
     def update_from_levelset(
         self,
         psi_data: np.ndarray,
-        eps: float = 0.0,
+        eps: float,
         ccd=None,
     ) -> None:
         """Rebuild interface-fitted grid given the Heaviside field ψ.
 
         Only active when ``grid_config.alpha_grid > 1.0``.
 
-        Density function (ψ-based, replacing Gaussian δ*(φ)):
-            indicator(ψ) = 4ψ(1−ψ) ∈ [0, 1]  — peaks at ψ=0.5, zero in bulk
-            ω = 1 + (α−1) · max_j indicator(ψ_{·,j})
-
-        This eliminates the need for signed-distance φ and the ε_g parameter.
-        Bell width of ψ(1−ψ) ≈ 3.5ε (sech² profile), comparable to the former
-        Gaussian δ*(ε_g=2ε) width of ≈ 3.3ε.
-
-        Metric coefficients J = ∂ξ/∂x and ∂J/∂ξ are computed with CCD (O(h⁶))
-        when ``ccd`` is provided.  Falls back to O(h²) central differences
-        when ``ccd`` is None.
+        Internally converts ψ → φ via logit inversion, then applies the
+        paper's Gaussian grid density (§6 eq:grid_delta):
+            δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π),  ε_g = eps_g_factor × ε
+            ω = 1 + (α−1) · δ*(φ̄)
 
         Parameters
         ----------
-        psi_data : array of shape ``self.shape`` — Heaviside field ψ ∈ [0, 1]
-        eps      : unused (kept for call-site compatibility)
+        psi_data : array — Heaviside field ψ ∈ [0, 1]
+        eps      : interface half-width ε
         ccd      : CCDSolver instance for O(h⁶) metric evaluation (optional)
         """
+        from ..levelset.heaviside import invert_heaviside
+
         alpha = self._gc.alpha_grid
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
+        eps_g = self._gc.eps_g_factor * eps
+
+        # ψ → φ (logit inversion)
+        psi_host = np.asarray(self.backend.to_host(psi_data))
+        phi = invert_heaviside(np, psi_host, eps)
 
         for ax in range(self.ndim):
-            # 1-D marginal: max ψ(1−ψ) over other axes → interface indicator
+            # 1-D marginal: min |φ| over other axes (§6 φ̄^x_i = min_j |φ_{i,j}|)
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            psi_host = np.asarray(self.backend.to_host(psi_data))
-            indicator = psi_host * (1.0 - psi_host)         # peaks 0.25 at ψ=0.5
-            indicator_1d = np.max(indicator, axis=axes_other) / 0.25  # [0, 1]
+            phi_1d = np.min(np.abs(phi), axis=axes_other)
+
+            # §6 eq:grid_delta: Gaussian delta
+            delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
+            indicator_1d = delta_star
 
             omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 

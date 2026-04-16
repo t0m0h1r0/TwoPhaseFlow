@@ -66,11 +66,15 @@ def test_density_function_paper_formula():
     eps = 1.5 * (L / n)
     psi0 = 1.0 / (1.0 + np.exp(-phi0 / eps))
 
-    grid.update_from_levelset(psi0, ccd=ccd)
+    grid.update_from_levelset(psi0, eps=eps, ccd=ccd)
 
-    # ω の再計算（grid.py と同じ手順で検証）
-    indicator = psi0 * (1.0 - psi0)
-    indicator_1d = np.max(indicator, axis=1) / 0.25   # axis=0 方向
+    # ω の再計算（grid.py と同じ手順: ψ→φ→Gaussian δ* で検証）
+    from twophase.levelset.heaviside import invert_heaviside
+    phi_check = invert_heaviside(np, psi0, eps)
+    eps_g = cfg.grid.eps_g_factor * eps
+    phi_1d = np.min(np.abs(phi_check), axis=1)   # axis=0 方向
+    delta_star = np.exp(-(phi_1d ** 2) / (eps_g ** 2)) / (eps_g * np.sqrt(np.pi))
+    indicator_1d = delta_star
     omega = 1.0 + (alpha - 1.0) * indicator_1d
 
     # 検証: ω ≥ 1 かつ界面（indicator 最大点）で最大
@@ -218,7 +222,7 @@ def test_update_from_levelset():
     eps = 1.5 * (L / n)
     psi0 = 1.0 / (1.0 + np.exp(-phi0 / eps))
 
-    grid.update_from_levelset(psi0, ccd=ccd)
+    grid.update_from_levelset(psi0, eps=eps, ccd=ccd)
 
     # axis=1（y 方向）で界面ノード付近の格子幅が一様格子幅より小さいこと
     h_uniform = L / n
