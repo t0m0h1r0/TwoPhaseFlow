@@ -96,36 +96,34 @@ class Grid:
 
         Only active when ``grid_config.alpha_grid > 1.0``.
 
-        Density function (ψ-based, replacing Gaussian δ*(φ)):
-            indicator(ψ) = 4ψ(1−ψ) ∈ [0, 1]  — peaks at ψ=0.5, zero in bulk
-            ω = 1 + (α−1) · max_j indicator(ψ_{·,j})
-
-        This eliminates the need for signed-distance φ and the ε_g parameter.
-        Bell width of ψ(1−ψ) ≈ 3.5ε (sech² profile), comparable to the former
-        Gaussian δ*(ε_g=2ε) width of ≈ 3.3ε.
-
-        Metric coefficients J = ∂ξ/∂x and ∂J/∂ξ are computed with CCD (O(h⁶))
-        when ``ccd`` is provided.  Falls back to O(h²) central differences
-        when ``ccd`` is None.
+        Computes φ = H_ε⁻¹(ψ) via logit inversion, then uses the regularised
+        delta δ_ε(φ) = ψ(1−ψ)/ε as grid density indicator:
+            ω = 1 + (α−1) · normalised(max_j δ_ε)
 
         Parameters
         ----------
-        psi_data : array of shape ``self.shape`` — Heaviside field ψ ∈ [0, 1]
-        eps      : unused (kept for call-site compatibility)
+        psi_data : array — Heaviside field ψ ∈ [0, 1]
+        eps      : interface thickness ε for logit inversion and δ_ε
         ccd      : CCDSolver instance for O(h⁶) metric evaluation (optional)
         """
+        from ..levelset.heaviside import invert_heaviside, delta as delta_func
+
         alpha = self._gc.alpha_grid
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
 
+        # ψ → φ (logit inversion) → δ_ε(φ) (regularised delta)
+        psi_host = np.asarray(self.backend.to_host(psi_data))
+        phi = invert_heaviside(np, psi_host, eps)
+        delta_field = delta_func(np, phi, eps)
+
         for ax in range(self.ndim):
-            # 1-D marginal: max ψ(1−ψ) over other axes → interface indicator
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            psi_host = np.asarray(self.backend.to_host(psi_data))
-            indicator = psi_host * (1.0 - psi_host)         # peaks 0.25 at ψ=0.5
-            indicator_1d = np.max(indicator, axis=axes_other) / 0.25  # [0, 1]
+            delta_1d = np.max(delta_field, axis=axes_other)
+            d_max = delta_1d.max()
+            indicator_1d = delta_1d / d_max if d_max > 0 else delta_1d
 
             omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 

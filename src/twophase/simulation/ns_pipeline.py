@@ -304,7 +304,7 @@ class TwoPhaseNSSolver:
         M_before = float(np.sum(psi * dV_old))
 
         # 3. Rebuild grid from ψ (mutates coords, h, J, dJ_dxi in-place)
-        self._grid.update_from_levelset(psi, ccd=self._ccd)
+        self._grid.update_from_levelset(psi, self._eps, ccd=self._ccd)
 
         # 4. Remap psi, u, v from old grid to new grid.
         remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)

@@ -73,6 +73,20 @@ def delta(xp, phi, eps: float):
     return (1.0 / eps) * H * (1.0 - H)
 
 
+def heaviside_with_delta(xp, phi, eps: float):
+    """Compute ψ = H_ε(φ) and δ_ε(φ) = dH_ε/dφ in one pass.
+
+    δ_ε = ψ(1−ψ)/ε is a zero-cost byproduct of the Heaviside evaluation.
+
+    Returns
+    -------
+    psi       : array — H_ε(φ) ∈ (0, 1)
+    delta_eps : array — dH_ε/dφ ≥ 0
+    """
+    psi = 1.0 / (1.0 + xp.exp(-phi / eps))
+    return psi, (1.0 / eps) * psi * (1.0 - psi)
+
+
 def invert_heaviside(xp, psi, eps: float):
     """Exact inverse of H_ε with saturation handling (section 3b algbox).
 
