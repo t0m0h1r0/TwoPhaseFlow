@@ -14,7 +14,7 @@ Commands:
   pull                  Sync results back from remote
   setup                 One-time: install Python, venv, dependencies on remote
   run <script.py>       Run a single experiment on remote
-  run-all <ch11|ch12>   Run all experiments in a chapter
+  run-all <ch11|ch12|ch13>  Run all experiments in a chapter
   test [pytest-args]    Run pytest on remote (default: --gpu)
   ssh                   Open an interactive SSH session to remote project dir
 
@@ -141,22 +141,32 @@ source "${VENV_DIR}/bin/activate"
 export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
 
-failed=0
-for script in experiment/${chapter}/exp*.py; do
-    echo ""
-    echo "====== \$(basename \$script) ======"
-    if time ${PYTHON} "\$script"; then
+if [ "${chapter}" = "ch13" ]; then
+    echo "====== ch13 unified runner (run.py --all) ======"
+    if time ${PYTHON} experiment/ch13/run.py --all; then
         echo "  -> OK"
     else
-        echo "  -> FAILED (exit \$?)"
-        failed=\$((failed + 1))
+        echo "  -> FAILED"
+        exit 1
     fi
-done
+else
+    failed=0
+    for script in experiment/${chapter}/exp*.py; do
+        echo ""
+        echo "====== \$(basename \$script) ======"
+        if time ${PYTHON} "\$script"; then
+            echo "  -> OK"
+        else
+            echo "  -> FAILED (exit \$?)"
+            failed=\$((failed + 1))
+        fi
+    done
 
-if [ \$failed -gt 0 ]; then
-    echo ""
-    echo "WARNING: \$failed experiment(s) failed."
-    exit 1
+    if [ \$failed -gt 0 ]; then
+        echo ""
+        echo "WARNING: \$failed experiment(s) failed."
+        exit 1
+    fi
 fi
 echo ""
 echo "All experiments in ${chapter} completed successfully."

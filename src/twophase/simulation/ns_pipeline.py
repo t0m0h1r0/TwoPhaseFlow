@@ -544,12 +544,13 @@ class TwoPhaseNSSolver:
         If ``initial_velocity`` is absent, returns zero fields.
         """
         if cfg.initial_velocity is None:
-            return np.zeros_like(self.X), np.zeros_like(self.Y)
+            return np.zeros(self.X.shape), np.zeros(self.Y.shape)
 
         spec = dict(cfg.initial_velocity)
         vf = velocity_field_from_dict(spec)
         u, v = vf.compute(self.X, self.Y)
-        return np.asarray(u), np.asarray(v)
+        return (np.asarray(self._backend.to_host(u)),
+                np.asarray(self._backend.to_host(v)))
 
     # ── boundary-condition hook factory ──────────────────────────────────
 
@@ -940,8 +941,12 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     ic = cfg.initial_condition
     R_ic = float(ic.get("radius", 0.25)) if isinstance(ic, dict) else 0.25
 
+    _bk0 = solver._backend
     diag = DiagnosticCollector(
-        cfg.diagnostics, solver.X, solver.Y, solver.h,
+        cfg.diagnostics,
+        np.asarray(_bk0.to_host(solver.X)),
+        np.asarray(_bk0.to_host(solver.Y)),
+        solver.h,
         rho_l=ph.rho_l, rho_g=ph.rho_g,
         sigma=ph.sigma, R=R_ic,
     )
@@ -986,9 +991,9 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
 
         # Update diagnostic references for dynamic grids
         if solver._alpha_grid > 1.0:
-            diag.X = solver.X
-            diag.Y = solver.Y
-            dV = solver._grid.cell_volumes()
+            diag.X = _to_h(solver.X)
+            diag.Y = _to_h(solver.Y)
+            dV = _to_h(solver._grid.cell_volumes())
         else:
             dV = None
 
