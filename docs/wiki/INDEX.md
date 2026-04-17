@@ -1,4 +1,4 @@
-# Wiki Index — 122 entries
+# Wiki Index — 123 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (16)
+## Meta (17)
 
 | REF-ID | Title |
 |--------|-------|
@@ -128,6 +128,7 @@
 | [WIKI-M-014](meta/WIKI-M-014.md) | meta-deploy Protocol + EnvMetaBootstrapper Lifecycle: 6-Stage Deployment Workflow |
 | [WIKI-M-015](meta/WIKI-M-015.md) | Pre-Constitutional History + 3-Layer Architecture Birth: Origin of φ-Principles and A1–A11 |
 | [WIKI-M-016](meta/WIKI-M-016.md) | Design Philosophy Synthesis: The 3 Pillars, MH-1..3, LA-1..5, and LLM-Specific Constraints |
+| [WIKI-M-017](meta/WIKI-M-017.md) | Constitutional Layer Complete Reference: φ1–φ7 and A1–A11 Verbatim + STOP Severity + Invariants |
 
 ## Code (18)
 
