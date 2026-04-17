@@ -56,7 +56,7 @@
         陽的粘性 CFL 制約が FD の 2.4 倍厳しいことが確認され，CN 陰的粘性処理の必要性を裏付ける．
   \item \textbf{再初期化界面シフト：}
         CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
-        10 回累積で略線形蓄積（${\approx}8$--$9$ 倍）することを確認した．
+        10 回累積で略線形蓄積（$N{=}256$ で約 $7.6$ 倍；理想値 $10$）することを確認した．
 \end{enumerate}
 
 \noindent\textbf{間接的に検証されるコンポーネント：}
@@ -94,10 +94,10 @@ Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$               
 曲率（CLS パイプライン）   & 単調減少          & $\Ord{h^{1.0}}$                & $\triangle$ & $\varepsilon=1.5h$ と評価帯が律速 \\
 CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
 CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
-CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}20\%$ \\
+CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}18\%$ \\
 HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上経路は廃止済み（§~\ref{sec:verify_interface}）\\
 HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $p=6.33,5.79,2.69$ & $\triangle$\textsuperscript{‡} & 最高解像度で丸め・補間誤差床 \\
-Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.2$--$0.3\%$        & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
+Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.16$--$0.31\%$      & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
 PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $2.4 \times 10^7$ 倍 \\
 PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
 分相 PPE + DC $k{=}3$      & $\Ord{h^7}$       & $\Ord{h^{7.0}}$                & \checkmark & 液相内部で全密度比に不変（$\rho{=}1$--$1000$） \\
