@@ -1,6 +1,5 @@
-# §13.1 Capillary wave decay — α=1.2 (mild non-uniform grid)
-# Reference: Prosperetti (1981)
-# Physics: ρ_l=10, ρ_g=1, μ=0.05, σ=1.0; l=2 perturbation ε=0.05
+# §13.1 Capillary wave decay — α=1.2, reinit=dgr
+# Reference: Prosperetti (1981) — ρ_l=10, ρ_g=1, μ=0.05, σ=1.0, mode=2 perturbation ε=0.05
 
 grid:
   NX: 64
@@ -25,14 +24,14 @@ run:
   cfl:        0.10
   snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
   print_every: 500
-  reinit_method: split
+  reinit_method: dgr
 
 output:
-  dir: results/exp13_01_a1.2
+  dir: results/exp13_01_a1.2_dgr
   save_npz: true
   figures:
     - type: time_series
-      title: "Capillary wave α=1.2 — D(t)"
+      title: "Capillary wave α=1.2 DGR — D(t)"
       x: times
       y: [deformation]
       labels: ["Simulation"]
@@ -43,17 +42,22 @@ output:
         omega0: 6.824
         beta:   0.048
         D0:     0.05
-      file: capillary_a1.2.pdf
+      file: capillary_a1.2_dgr.pdf
 
     - type: snapshot
-      title: "α=1.2 — t=0"
+      title: "α=1.2 DGR — t=0"
       t_idx: 0
       file: snapshot_t0.pdf
 
     - type: snapshot
-      title: "α=1.2 — final"
+      title: "α=1.2 DGR — final"
       t_idx: -1
       file: snapshot_final.pdf
+
+    - type: velocity_snapshot
+      title: "α=1.2 DGR — velocity final"
+      t_idx: -1
+      file: velocity_final.pdf
 
 diagnostics:
   - volume_conservation
