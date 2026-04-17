@@ -544,12 +544,13 @@ class TwoPhaseNSSolver:
         If ``initial_velocity`` is absent, returns zero fields.
         """
         if cfg.initial_velocity is None:
-            return np.zeros_like(self.X), np.zeros_like(self.Y)
+            return np.zeros(self.X.shape), np.zeros(self.Y.shape)
 
         spec = dict(cfg.initial_velocity)
         vf = velocity_field_from_dict(spec)
         u, v = vf.compute(self.X, self.Y)
-        return np.asarray(u), np.asarray(v)
+        return (np.asarray(self._backend.to_host(u)),
+                np.asarray(self._backend.to_host(v)))
 
     # ── boundary-condition hook factory ──────────────────────────────────
 
