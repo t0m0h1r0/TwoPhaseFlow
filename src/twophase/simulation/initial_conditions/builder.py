@@ -114,39 +114,41 @@ class InitialConditionBuilder:
             CLS field ψ ∈ [0, 1], shape ``grid.shape``.
             ψ ≈ 1 in liquid, ψ ≈ 0 in gas.
         """
-        coords = grid.meshgrid()  # tuple of ndarrays
+        coords = grid.meshgrid()  # tuple of ndarrays (numpy or cupy on GPU)
         shape_tuple = grid.shape
+        xp = grid.xp  # array module — np on CPU, cupy on GPU
 
         # 背景フェーズに基づく初期 SDF:
         #   background=gas    → φ_liquid = +∞ (液体領域なし)
         #   background=liquid → φ_liquid = -∞ (全域が液体)
         if self.background_phase == "gas":
-            phi_liquid = np.full(shape_tuple, +np.inf)
+            phi_liquid = xp.full(shape_tuple, +np.inf)
         else:  # "liquid"
-            phi_liquid = np.full(shape_tuple, -np.inf)
+            phi_liquid = xp.full(shape_tuple, -np.inf)
 
         # 気泡（気相領域）の SDF: 初期は +∞（気泡なし）
-        phi_gas = np.full(shape_tuple, +np.inf)
+        phi_gas = xp.full(shape_tuple, +np.inf)
 
         # 各シェイプの SDF を計算し、フェーズ別にユニオン合成（element-wise min）
         for shape in self.shapes:
             phi_s = shape.sdf(*coords)
             if shape.interior_phase == "liquid":
                 # 液体ユニオン: 少なくとも 1 つの液体形状の内側 → 液体
-                phi_liquid = np.minimum(phi_liquid, phi_s)
+                phi_liquid = xp.minimum(phi_liquid, phi_s)
             else:  # "gas"
                 # 気泡ユニオン: 少なくとも 1 つの気泡の内側 → 気体
-                phi_gas = np.minimum(phi_gas, phi_s)
+                phi_gas = xp.minimum(phi_gas, phi_s)
 
         # 最終 SDF: 「液体領域 かつ 気泡外」の領域を液体とする
         #   φ_final = max(φ_liquid, −φ_gas)
         #   φ_final < 0 ⟺ φ_liquid < 0（液体内） かつ −φ_gas < 0（気泡外）
-        phi_final = np.maximum(phi_liquid, -phi_gas)
+        phi_final = xp.maximum(phi_liquid, -phi_gas)
 
         # CLS スムーズ Heaviside: ψ = 1/(1 + exp(φ/ε))
         # ψ → 1 inside (φ < 0), ψ → 0 outside (φ > 0)
-        psi = 1.0 / (1.0 + np.exp(np.clip(phi_final / eps, -500.0, 500.0)))
-        return psi.astype(np.float64)
+        psi = 1.0 / (1.0 + xp.exp(xp.clip(phi_final / eps, -500.0, 500.0)))
+        result = psi.astype(np.float64)
+        return result.get() if xp is not np else result
 
     # ── YAML / dict からの構築 ─────────────────────────────────────────────────
 
