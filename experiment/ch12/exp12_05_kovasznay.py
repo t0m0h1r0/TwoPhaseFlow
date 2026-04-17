@@ -58,7 +58,8 @@ def exact_fields(X, Y):
 
 def compute_residual(N):
     """Compute NS residual for given grid resolution."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     # Shift y-coordinates to [-0.5, 0.5]
@@ -71,19 +72,14 @@ def compute_residual(N):
     # CCD derivatives of u
     du_dx, d2u_dx2 = ccd.differentiate(u, 0)
     du_dy, d2u_dy2 = ccd.differentiate(u, 1)
-    du_dx = np.asarray(du_dx); d2u_dx2 = np.asarray(d2u_dx2)
-    du_dy = np.asarray(du_dy); d2u_dy2 = np.asarray(d2u_dy2)
 
     # CCD derivatives of v
     dv_dx, d2v_dx2 = ccd.differentiate(v, 0)
     dv_dy, d2v_dy2 = ccd.differentiate(v, 1)
-    dv_dx = np.asarray(dv_dx); d2v_dx2 = np.asarray(d2v_dx2)
-    dv_dy = np.asarray(dv_dy); d2v_dy2 = np.asarray(d2v_dy2)
 
     # CCD derivatives of p
     dp_dx, _ = ccd.differentiate(p, 0)
     dp_dy, _ = ccd.differentiate(p, 1)
-    dp_dx = np.asarray(dp_dx); dp_dy = np.asarray(dp_dy)
 
     # NS residuals (steady): R = -convection + viscous - pressure gradient
     R_u = -(u * du_dx + v * du_dy) + NU * (d2u_dx2 + d2u_dy2) - dp_dx
@@ -92,8 +88,8 @@ def compute_residual(N):
 
     # Measure on interior only (exclude boundary stencil error)
     interior = (slice(1, -1), slice(1, -1))
-    err_mom = max(np.max(np.abs(R_u[interior])), np.max(np.abs(R_v[interior])))
-    err_div = np.max(np.abs(R_div[interior]))
+    err_mom = float(max(xp.max(xp.abs(R_u[interior])), xp.max(xp.abs(R_v[interior]))))
+    err_div = float(xp.max(xp.abs(R_div[interior])))
     h = 1.0 / N
 
     return h, err_mom, err_div

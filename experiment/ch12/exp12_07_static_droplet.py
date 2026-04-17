@@ -31,10 +31,9 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
@@ -65,20 +64,22 @@ GRIDS   = [32, 48, 64, 96, 128]
 
 # ── PPE solver ───────────────────────────────────────────────────────────────
 
-def _solve_ppe(rhs, rho, ppe_builder):
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+def _solve_ppe(rhs, rho, ppe_builder, backend):
+    triplet, A_shape = ppe_builder.build(rho)  # always host (numpy) arrays
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 # ── Single-grid simulation ──────────────────────────────────────────────────
 
 def run_single(N):
     """Run static droplet on N x N grid. Return diagnostics dict."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     h   = 1.0 / N
     eps = 1.5 * h
     dt  = 0.25 * h
@@ -94,21 +95,20 @@ def run_single(N):
     dp_exact = SIGMA / (R * WE)
 
     # Initial conditions
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-    psi = np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+    psi = heaviside(xp, phi, eps)
     rho = RHO_G + (RHO_L - RHO_G) * psi
 
-    u = np.zeros_like(X)
-    v = np.zeros_like(X)
+    u = xp.zeros_like(X)
+    v = xp.zeros_like(X)
 
     # Precompute CSF with HFE-filtered curvature
-    xp = backend.xp
     kappa_raw = curv_calc.compute(psi)
-    kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
+    kappa = hfe.apply(kappa_raw, psi)
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
-    f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)
-    f_csf_y = (SIGMA / WE) * kappa * np.asarray(dpsi_dy)
+    f_csf_x = (SIGMA / WE) * kappa * dpsi_dx
+    f_csf_y = (SIGMA / WE) * kappa * dpsi_dy
 
     def wall_bc(arr):
         arr[0, :] = 0.0; arr[-1, :] = 0.0
@@ -125,18 +125,18 @@ def run_single(N):
         # PPE
         du_dx, _ = ccd.differentiate(u_star, 0)
         dv_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
-        p = _solve_ppe(rhs, rho, ppe_builder)
+        rhs = (du_dx + dv_dy) / dt
+        p = _solve_ppe(rhs, rho, ppe_builder, backend)
 
         # Corrector
         dp_dx, _ = ccd.differentiate(p, 0)
         dp_dy, _ = ccd.differentiate(p, 1)
-        u = u_star - dt / rho * np.asarray(dp_dx)
-        v = v_star - dt / rho * np.asarray(dp_dy)
+        u = u_star - dt / rho * dp_dx
+        v = v_star - dt / rho * dp_dy
         wall_bc(u); wall_bc(v)
 
-        vel_mag = np.sqrt(u**2 + v**2)
-        u_max_history.append(float(np.max(vel_mag)))
+        vel_mag = xp.sqrt(u**2 + v**2)
+        u_max_history.append(float(xp.max(vel_mag)))
 
         if np.isnan(u_max_history[-1]) or u_max_history[-1] > 1e6:
             print(f"    [N={N}] BLOWUP at step {step + 1}")
@@ -145,8 +145,8 @@ def run_single(N):
     # Laplace pressure
     inside  = phi >  3 * h
     outside = phi < -3 * h
-    if np.any(inside) and np.any(outside):
-        dp_meas = float(np.mean(p[inside]) - np.mean(p[outside]))
+    if bool(xp.any(inside)) and bool(xp.any(outside)):
+        dp_meas = float(xp.mean(p[inside]) - xp.mean(p[outside]))
     else:
         dp_meas = float('nan')
     dp_err = abs(dp_meas - dp_exact) / dp_exact
@@ -162,12 +162,12 @@ def run_single(N):
         "n_steps": len(u_max_history),
     }
     if N == 64:
-        out["p_field"]   = p
-        out["u_field"]   = u
-        out["v_field"]   = v
-        out["psi_field"] = psi
-        out["X"]         = X
-        out["Y"]         = Y
+        out["p_field"]   = backend.to_host(p)
+        out["u_field"]   = backend.to_host(u)
+        out["v_field"]   = backend.to_host(v)
+        out["psi_field"] = backend.to_host(psi)
+        out["X"]         = backend.to_host(X)
+        out["Y"]         = backend.to_host(Y)
     return out
 
 

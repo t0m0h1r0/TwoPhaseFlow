@@ -54,7 +54,7 @@ CHECKPOINT_INTERVAL = 5   # record every 5 steps
 
 # -- FFT PPE solver (periodic, constant density) -------------------------------
 
-def fft_ppe(rhs, h):
+def fft_ppe(rhs, h, xp=np):
     """Solve ∇²p = rhs on periodic domain via FFT.
 
     Grid has (N+1)×(N+1) points with endpoint duplicating origin.
@@ -62,16 +62,16 @@ def fft_ppe(rhs, h):
     """
     rhs_int = rhs[:-1, :-1]  # N×N interior (exclude duplicate endpoint)
     N = rhs_int.shape[0]
-    kx = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    ky = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    KX, KY = np.meshgrid(kx, ky, indexing="ij")
+    kx = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    ky = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    KX, KY = xp.meshgrid(kx, ky, indexing="ij")
     K2 = KX**2 + KY**2
     K2[0, 0] = 1.0
-    p_hat = np.fft.fft2(rhs_int) / (-K2)
+    p_hat = xp.fft.fft2(rhs_int) / (-K2)
     p_hat[0, 0] = 0.0
-    p_int = np.real(np.fft.ifft2(p_hat))
+    p_int = xp.real(xp.fft.ifft2(p_hat))
     # Pad back to (N+1)×(N+1) with periodic wrapping
-    p = np.zeros_like(rhs)
+    p = xp.zeros_like(rhs)
     p[:-1, :-1] = p_int
     p[-1, :] = p[0, :]
     p[:, -1] = p[:, 0]
@@ -82,7 +82,8 @@ def fft_ppe(rhs, h):
 
 def run(N):
     """Run TGV on N×N periodic grid, return energy/divergence history."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     h = L_DOM / N
     dt = DT
 
@@ -93,11 +94,11 @@ def run(N):
     X, Y = grid.meshgrid()
 
     # Initial conditions (standard TGV)
-    u = np.sin(X) * np.cos(Y)
-    v = -np.cos(X) * np.sin(Y)
+    u = xp.sin(X) * xp.cos(Y)
+    v = -xp.cos(X) * xp.sin(Y)
 
     # IPC: initialize pressure to exact TGV pressure
-    p = -0.25 * (np.cos(2 * X) + np.cos(2 * Y))
+    p = -0.25 * (xp.cos(2 * X) + xp.cos(2 * Y))
 
     # Exact energy: E_k(t) = (1/2) ∫ |u|² dA
     # Over [0,2π]², E_total = ∫ 0.5*(sin²x cos²y + cos²x sin²y) dA = π²
@@ -122,11 +123,6 @@ def run(N):
         dv_dx, d2v_dx2 = ccd.differentiate(v, 0)
         dv_dy, d2v_dy2 = ccd.differentiate(v, 1)
 
-        du_dx = np.asarray(du_dx); d2u_dx2 = np.asarray(d2u_dx2)
-        du_dy = np.asarray(du_dy); d2u_dy2 = np.asarray(d2u_dy2)
-        dv_dx = np.asarray(dv_dx); d2v_dx2 = np.asarray(d2v_dx2)
-        dv_dy = np.asarray(dv_dy); d2v_dy2 = np.asarray(d2v_dy2)
-
         adv_u = -(u * du_dx + v * du_dy)
         adv_v = -(u * dv_dx + v * dv_dy)
         diff_u = NU * (d2u_dx2 + d2u_dy2)
@@ -147,23 +143,23 @@ def run(N):
     ek_hist.append(ek0)
     ek_ex_hist.append(ek_exact(t))
     div0 = compute_div(u, v)
-    div_hist.append(float(np.max(np.abs(div0))))
+    div_hist.append(float(xp.max(xp.abs(div0))))
 
     rhs_u_prev, rhs_v_prev = rhs_func(u, v)
 
     # Euler predictor for step 0 (IPC: include -∇p^n)
     dp_dx_n, _ = ccd.differentiate(p, 0)
     dp_dy_n, _ = ccd.differentiate(p, 1)
-    u_star = u + dt * rhs_u_prev - dt * np.asarray(dp_dx_n)
-    v_star = v + dt * rhs_v_prev - dt * np.asarray(dp_dy_n)
+    u_star = u + dt * rhs_u_prev - dt * dp_dx_n
+    v_star = v + dt * rhs_v_prev - dt * dp_dy_n
 
     # PPE for pressure correction
     div_star = compute_div(u_star, v_star)
-    phi = fft_ppe(div_star / dt, h)
+    phi = fft_ppe(div_star / dt, h, xp)
     dphi_dx, _ = ccd.differentiate(phi, 0)
     dphi_dy, _ = ccd.differentiate(phi, 1)
-    u = u_star - dt * np.asarray(dphi_dx)
-    v = v_star - dt * np.asarray(dphi_dy)
+    u = u_star - dt * dphi_dx
+    v = v_star - dt * dphi_dy
     p = p + phi
     t += dt
 
@@ -171,7 +167,7 @@ def run(N):
         times.append(t)
         ek_hist.append(kinetic_energy(u, v))
         ek_ex_hist.append(ek_exact(t))
-        div_hist.append(float(np.max(np.abs(compute_div(u, v)))))
+        div_hist.append(float(xp.max(xp.abs(compute_div(u, v)))))
 
     rhs_u_curr, rhs_v_curr = rhs_func(u, v)
 
@@ -182,18 +178,16 @@ def run(N):
         dp_dy_n, _ = ccd.differentiate(p, 1)
 
         # AB2 predictor with IPC
-        u_star = (u + dt * (1.5 * rhs_u_curr - 0.5 * rhs_u_prev)
-                  - dt * np.asarray(dp_dx_n))
-        v_star = (v + dt * (1.5 * rhs_v_curr - 0.5 * rhs_v_prev)
-                  - dt * np.asarray(dp_dy_n))
+        u_star = u + dt * (1.5 * rhs_u_curr - 0.5 * rhs_u_prev) - dt * dp_dx_n
+        v_star = v + dt * (1.5 * rhs_v_curr - 0.5 * rhs_v_prev) - dt * dp_dy_n
 
         # PPE for pressure correction
         div_star = compute_div(u_star, v_star)
-        phi = fft_ppe(div_star / dt, h)
+        phi = fft_ppe(div_star / dt, h, xp)
         dphi_dx, _ = ccd.differentiate(phi, 0)
         dphi_dy, _ = ccd.differentiate(phi, 1)
-        u = u_star - dt * np.asarray(dphi_dx)
-        v = v_star - dt * np.asarray(dphi_dy)
+        u = u_star - dt * dphi_dx
+        v = v_star - dt * dphi_dy
         p = p + phi
         t += dt
 
@@ -205,9 +199,9 @@ def run(N):
             times.append(t)
             ek_hist.append(kinetic_energy(u, v))
             ek_ex_hist.append(ek_exact(t))
-            div_hist.append(float(np.max(np.abs(compute_div(u, v)))))
+            div_hist.append(float(xp.max(xp.abs(compute_div(u, v)))))
 
-        if np.isnan(float(np.max(np.abs(u)))) or float(np.max(np.abs(u))) > 1e6:
+        if np.isnan(float(xp.max(xp.abs(u)))) or float(xp.max(xp.abs(u))) > 1e6:
             print(f"    [N={N}] BLOWUP at step {step+1}")
             break
 

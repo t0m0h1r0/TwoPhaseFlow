@@ -32,13 +32,12 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -68,14 +67,15 @@ K_WAV   = 2 * np.pi / LAMBDA
 OMEGA_RT = np.sqrt(AT * G_ACC * K_WAV)  # ~ 1.7725
 
 
-def _solve_ppe(rhs, rho, ppe_builder):
+def _solve_ppe(rhs, rho, ppe_builder, backend):
     """Solve variable-coefficient PPE: nabla . [(1/rho) nabla p] = rhs."""
     triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 def _find_interface_y(psi, Y_col, threshold=0.5):
@@ -92,7 +92,8 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
 
     Uses buoyancy formulation + non-incremental projection + Forward Euler.
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     Lx, Ly = LAMBDA, 4.0 * LAMBDA
     h = Lx / Nx
     eps = 1.5 * h
@@ -106,13 +107,13 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
     X, Y = grid.meshgrid()
 
     # Initial level set: psi=1 for heavy fluid (y > y_interface)
-    y_interface = 2.0 + A0 * np.sin(K_WAV * X)
+    y_interface = 2.0 + A0 * xp.sin(K_WAV * X)
     phi = Y - y_interface
-    psi = np.asarray(heaviside(np, phi, eps))
+    psi = heaviside(xp, phi, eps)
     rho = RHO_G + (RHO_L - RHO_G) * psi
 
-    u = np.zeros_like(X)
-    v = np.zeros_like(X)
+    u = xp.zeros_like(X)
+    v = xp.zeros_like(X)
 
     def wall_bc(arr):
         arr[0, :] = 0.0; arr[-1, :] = 0.0
@@ -124,15 +125,15 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
     mass_history = []
     snapshots = {}
 
-    mass_0 = float(np.sum(psi) * h ** 2)
+    mass_0 = float(xp.sum(psi) * h ** 2)
     snapshot_times = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5]
     next_snap_idx = 0
 
     snapshots["t_0p0"] = {
-        "psi": psi.copy(), "t": 0.0,
-        "p": np.zeros_like(X),
-        "u": u.copy(), "v": v.copy(),
-        "rho": rho.copy(),
+        "psi": backend.to_host(psi), "t": 0.0,
+        "p": np.zeros((Nx + 1, Ny + 1)),
+        "u": backend.to_host(u), "v": backend.to_host(v),
+        "rho": backend.to_host(rho),
     }
     next_snap_idx = 1
 
@@ -149,14 +150,13 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
 
     while t < T_final and step < max_steps:
         # Adaptive dt
-        u_max = max(float(np.max(np.abs(u))), float(np.max(np.abs(v))), 1e-10)
+        u_max = max(float(xp.max(xp.abs(u))), float(xp.max(xp.abs(v))), 1e-10)
         dt_adv = cfl_safety * h / u_max
         dt = min(dt_adv, dt_visc, T_final - t)
         dt = min(dt, 0.002)
 
         # Advect psi
         psi = ls_advection.advance(psi, [u, v], dt)
-        psi = np.asarray(psi)
         rho = RHO_G + (RHO_L - RHO_G) * psi
 
         # Explicit RHS
@@ -164,11 +164,6 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
         du_dy, du_yy = ccd.differentiate(u, 1)
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
-
-        du_dx = np.asarray(du_dx); du_xx = np.asarray(du_xx)
-        du_dy = np.asarray(du_dy); du_yy = np.asarray(du_yy)
-        dv_dx = np.asarray(dv_dx); dv_xx = np.asarray(dv_xx)
-        dv_dy = np.asarray(dv_dy); dv_yy = np.asarray(dv_yy)
 
         conv_u = -(u * du_dx + v * du_dy)
         conv_v = -(u * dv_dx + v * dv_dy)
@@ -185,15 +180,14 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
         # PPE
         du_star_dx, _ = ccd.differentiate(u_star, 0)
         dv_star_dy, _ = ccd.differentiate(v_star, 1)
-        div_ustar = np.asarray(du_star_dx) + np.asarray(dv_star_dy)
-        rhs_ppe = div_ustar / dt
-        p = _solve_ppe(rhs_ppe, rho, ppe_builder)
+        rhs_ppe = (du_star_dx + dv_star_dy) / dt
+        p = _solve_ppe(rhs_ppe, rho, ppe_builder, backend)
 
         # Corrector
         dp_dx, _ = ccd.differentiate(p, 0)
         dp_dy, _ = ccd.differentiate(p, 1)
-        u = u_star - dt / rho * np.asarray(dp_dx)
-        v = v_star - dt / rho * np.asarray(dp_dy)
+        u = u_star - dt / rho * dp_dx
+        v = v_star - dt / rho * dp_dy
         wall_bc(u)
         wall_bc(v)
 
@@ -202,13 +196,13 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
 
         # Diagnostics
         ix_center = Nx // 2
-        psi_col = psi[ix_center, :]
-        Y_col = Y[ix_center, :]
+        psi_col = backend.to_host(psi[ix_center, :])
+        Y_col = backend.to_host(Y[ix_center, :])
         y_if = _find_interface_y(psi_col, Y_col, 0.5)
         amp = abs(y_if - 2.0) if not np.isnan(y_if) else np.nan
 
-        ke = 0.5 * float(np.sum(rho * (u ** 2 + v ** 2)) * h ** 2)
-        mass = float(np.sum(psi) * h ** 2)
+        ke = 0.5 * float(xp.sum(rho * (u ** 2 + v ** 2)) * h ** 2)
+        mass = float(xp.sum(psi) * h ** 2)
 
         times.append(t)
         amplitudes.append(amp)
@@ -219,9 +213,9 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
         if next_snap_idx < len(snapshot_times) and t >= snapshot_times[next_snap_idx]:
             key = f"t_{snapshot_times[next_snap_idx]:.1f}".replace(".", "p")
             snapshots[key] = {
-                "psi": psi.copy(), "t": t,
-                "p": p.copy(), "u": u.copy(), "v": v.copy(),
-                "rho": rho.copy(),
+                "psi": backend.to_host(psi), "t": t,
+                "p": backend.to_host(p), "u": backend.to_host(u),
+                "v": backend.to_host(v), "rho": backend.to_host(rho),
             }
             next_snap_idx += 1
 
@@ -230,7 +224,7 @@ def run_rt(Nx=64, Ny=256, T_final=2.5, cfl_safety=0.2):
             print(f"    step {step:5d}, t={t:.4f}, dt={dt:.5f}, "
                   f"A={amp_str}, KE={ke:.4e}")
 
-        if np.isnan(ke) or ke > 1e6:
+        if np.isnan(ke) or ke > 1e6:  # ke is already a Python float
             print(f"    BLOWUP at step {step}, t={t:.4f}")
             break
 

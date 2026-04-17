@@ -39,10 +39,9 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
@@ -79,20 +78,21 @@ C_LIST  = [0.0, 0.03, 0.05, 0.08]
 
 # ── PPE solver ───────────────────────────────────────────────────────────────
 
-def _solve_ppe(rhs, rho, ppe_builder):
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+def _solve_ppe(rhs, rho, ppe_builder, backend):
+    triplet, A_shape = ppe_builder.build(rho)  # always host (numpy) arrays
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 # ── Single run ───────────────────────────────────────────────────────────────
 
 def run(C: float):
     """Run static droplet with HFE curvature filter strength C."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     xp = backend.xp
 
     h   = 1.0 / N
@@ -109,32 +109,32 @@ def run(C: float):
     dp_exact = SIGMA / (R * WE)
 
     # Initial conditions
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-    psi = np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+    psi = heaviside(xp, phi, eps)
     rho = RHO_G + (RHO_L - RHO_G) * psi
 
     # Curvature (raw + filtered)
-    kappa_raw = np.asarray(curv_calc.compute(psi))
+    kappa_raw = curv_calc.compute(psi)
 
     if C > 0.0 and _HAS_FILTER:
         hfe = InterfaceLimitedFilter(backend, ccd, C=C)
-        kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
+        kappa = hfe.apply(kappa_raw, psi)
     else:
         kappa = kappa_raw.copy()
 
     # CSF body force (static)
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
-    f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)
-    f_csf_y = (SIGMA / WE) * kappa * np.asarray(dpsi_dy)
+    f_csf_x = (SIGMA / WE) * kappa * dpsi_dx
+    f_csf_y = (SIGMA / WE) * kappa * dpsi_dy
 
     def wall_bc(arr):
         arr[0, :] = 0.0; arr[-1, :] = 0.0
         arr[:, 0] = 0.0; arr[:, -1] = 0.0
 
-    u = np.zeros_like(X)
-    v = np.zeros_like(X)
-    p = np.zeros_like(X)
+    u = xp.zeros_like(X)
+    v = xp.zeros_like(X)
+    p = xp.zeros_like(X)
     u_max_hist = []
 
     for _ in range(N_STEPS):
@@ -146,17 +146,17 @@ def run(C: float):
         # PPE
         du_dx, _ = ccd.differentiate(u_star, 0)
         dv_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
-        p = _solve_ppe(rhs, rho, ppe_builder)
+        rhs = (du_dx + dv_dy) / dt
+        p = _solve_ppe(rhs, rho, ppe_builder, backend)
 
         # Corrector
         dp_dx, _ = ccd.differentiate(p, 0)
         dp_dy, _ = ccd.differentiate(p, 1)
-        u = u_star - dt / rho * np.asarray(dp_dx)
-        v = v_star - dt / rho * np.asarray(dp_dy)
+        u = u_star - dt / rho * dp_dx
+        v = v_star - dt / rho * dp_dy
         wall_bc(u); wall_bc(v)
 
-        u_max_hist.append(float(np.max(np.sqrt(u**2 + v**2))))
+        u_max_hist.append(float(xp.max(xp.sqrt(u**2 + v**2))))
         if np.isnan(u_max_hist[-1]) or u_max_hist[-1] > 1e6:
             print(f"  [C={C}] BLOWUP at step={len(u_max_hist)}")
             break
@@ -164,14 +164,14 @@ def run(C: float):
     # Diagnostics
     inside  = phi >  3.0 / N
     outside = phi < -3.0 / N
-    dp_meas = (float(np.mean(p[inside]) - np.mean(p[outside]))
-               if np.any(inside) and np.any(outside) else float('nan'))
+    dp_meas = (float(xp.mean(p[inside]) - xp.mean(p[outside]))
+               if bool(xp.any(inside)) and bool(xp.any(outside)) else float('nan'))
     dp_err  = abs(dp_meas - dp_exact) / dp_exact
 
-    near = np.abs(phi) < 2.0 * eps
-    kappa_mean    = float(np.mean(kappa[near]))     if np.any(near) else float('nan')
-    kappa_std     = float(np.std(kappa[near]))      if np.any(near) else float('nan')
-    kappa_raw_std = float(np.std(kappa_raw[near]))  if np.any(near) else float('nan')
+    near = xp.abs(phi) < 2.0 * eps
+    kappa_mean    = float(xp.mean(kappa[near]))     if bool(xp.any(near)) else float('nan')
+    kappa_std     = float(xp.std(kappa[near]))      if bool(xp.any(near)) else float('nan')
+    kappa_raw_std = float(xp.std(kappa_raw[near]))  if bool(xp.any(near)) else float('nan')
 
     label = f"C={C:.2f}" if C > 0 else "no filter"
     print(f"    [{label}] kappa_mean={kappa_mean:.3f}  "
@@ -181,7 +181,7 @@ def run(C: float):
     return {
         "label":         label,
         "C":             C,
-        "u_max":         float(np.max(np.sqrt(u**2 + v**2))),
+        "u_max":         float(xp.max(xp.sqrt(u**2 + v**2))),
         "u_max_hist":    np.array(u_max_hist),
         "dp_meas":       dp_meas,
         "dp_exact":      dp_exact,
@@ -189,11 +189,11 @@ def run(C: float):
         "kappa_mean":    kappa_mean,
         "kappa_std":     kappa_std,
         "kappa_raw_std": kappa_raw_std,
-        "phi":           phi,
-        "p":             p,
-        "vel_mag":       np.sqrt(u**2 + v**2),
-        "kappa":         kappa,
-        "kappa_raw":     kappa_raw,
+        "phi":           backend.to_host(phi),
+        "p":             backend.to_host(p),
+        "vel_mag":       backend.to_host(xp.sqrt(u**2 + v**2)),
+        "kappa":         backend.to_host(kappa),
+        "kappa_raw":     backend.to_host(kappa_raw),
     }
 
 

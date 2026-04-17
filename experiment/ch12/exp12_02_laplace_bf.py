@@ -27,11 +27,10 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -59,13 +58,14 @@ DP_EXACT = SIGMA / (R * WE)   # = 4.0
 
 # -- PPE solver ----------------------------------------------------------------
 
-def _solve_ppe(rhs, rho, ppe_builder):
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+def _solve_ppe(rhs, rho, ppe_builder, backend):
+    triplet, A_shape = ppe_builder.build(rho)  # always host (numpy) arrays
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 def wall_bc(arr):
@@ -77,7 +77,8 @@ def wall_bc(arr):
 
 def run(N):
     """Single-step balanced-force projection on N×N grid."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     h = 1.0 / N
     eps = 1.5 * h
     dt = 0.25 * h
@@ -92,18 +93,17 @@ def run(N):
     X, Y = grid.meshgrid()
 
     # Level-set and Heaviside
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-    psi = np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+    psi = heaviside(xp, phi, eps)
     rho = RHO_G + (RHO_L - RHO_G) * psi
 
     # HFE-filtered curvature and CSF force
-    xp = backend.xp
     kappa_raw = curv_calc.compute(psi)
-    kappa = np.asarray(hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi)))
+    kappa = hfe.apply(kappa_raw, psi)
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
-    f_csf_x = (SIGMA / WE) * kappa * np.asarray(dpsi_dx)
-    f_csf_y = (SIGMA / WE) * kappa * np.asarray(dpsi_dy)
+    f_csf_x = (SIGMA / WE) * kappa * dpsi_dx
+    f_csf_y = (SIGMA / WE) * kappa * dpsi_dy
 
     # Single-step predictor (zero initial velocity)
     u_star = dt / rho * f_csf_x
@@ -113,33 +113,33 @@ def run(N):
     # PPE
     du_dx, _ = ccd.differentiate(u_star, 0)
     dv_dy, _ = ccd.differentiate(v_star, 1)
-    rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
-    p = _solve_ppe(rhs, rho, ppe_builder)
+    rhs = (du_dx + dv_dy) / dt
+    p = _solve_ppe(rhs, rho, ppe_builder, backend)
 
     # Corrector
     dp_dx, _ = ccd.differentiate(p, 0)
     dp_dy, _ = ccd.differentiate(p, 1)
-    u = u_star - dt / rho * np.asarray(dp_dx)
-    v = v_star - dt / rho * np.asarray(dp_dy)
+    u = u_star - dt / rho * dp_dx
+    v = v_star - dt / rho * dp_dy
     wall_bc(u); wall_bc(v)
 
     # Diagnostics: Laplace pressure jump
     inside = phi > 3 * h
     outside = phi < -3 * h
-    if np.any(inside) and np.any(outside):
-        dp_meas = float(np.mean(p[inside]) - np.mean(p[outside]))
+    if bool(xp.any(inside)) and bool(xp.any(outside)):
+        dp_meas = float(xp.mean(p[inside]) - xp.mean(p[outside]))
     else:
         dp_meas = float("nan")
     dp_rel_err = abs(dp_meas - DP_EXACT) / DP_EXACT
 
     # Parasitic current
-    vel_mag = np.sqrt(u**2 + v**2)
-    u_para_inf = float(np.max(vel_mag))
+    vel_mag = xp.sqrt(u**2 + v**2)
+    u_para_inf = float(xp.max(vel_mag))
 
     # Pressure cross-section at y = 0.5
     mid = N // 2
-    p_cross = np.asarray(p[:, mid]).copy()
-    x_cross = np.asarray(X[:, mid]).copy()
+    p_cross = backend.to_host(p[:, mid]).copy()
+    x_cross = backend.to_host(X[:, mid]).copy()
 
     return {
         "N": N, "h": h,

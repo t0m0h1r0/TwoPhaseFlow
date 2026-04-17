@@ -40,6 +40,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from twophase.backend import Backend
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
@@ -61,25 +62,28 @@ GRIDS = [32, 48, 64]
 
 def run_case(N: int, alpha_grid: float) -> dict:
     """Run static droplet simulation, return diagnostics."""
+    backend = Backend()
+    xp = backend.xp
     solver = TwoPhaseNSSolver(
         N, N, 1.0, 1.0,
         bc_type="wall",
         alpha_grid=alpha_grid,
         eps_g_cells=4.0 if alpha_grid > 1.0 else None,
         reinit_every=2 if alpha_grid <= 1.0 else 0,
+        use_gpu=backend.is_gpu(),
     )
     X, Y = solver.X, solver.Y
-    dist = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
+    dist = xp.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
     psi = solver.psi_from_phi(R - dist)
-    u = np.zeros_like(psi)
-    v = np.zeros_like(psi)
+    u = xp.zeros_like(psi)
+    v = xp.zeros_like(psi)
 
     # Initial grid fit for non-uniform
     if alpha_grid > 1.0:
         psi, u, v = solver._rebuild_grid(psi, u, v)
 
     dV0 = solver._grid.cell_volumes()
-    M0 = float(np.sum(psi * dV0))
+    M0 = float(xp.sum(psi * dV0))
 
     h_uniform = 1.0 / N
     from twophase.simulation.config_io import PhysicsCfg
@@ -97,8 +101,8 @@ def run_case(N: int, alpha_grid: float) -> dict:
             step_index=step,
         )
         dV = solver._grid.cell_volumes()
-        M = float(np.sum(psi * dV))
-        vel_max = float(np.max(np.sqrt(u ** 2 + v ** 2)))
+        M = float(xp.sum(psi * dV))
+        vel_max = float(xp.max(xp.sqrt(u ** 2 + v ** 2)))
 
         mass_err_hist.append(abs(M - M0) / max(abs(M0), 1e-30))
         u_max_hist.append(vel_max)
@@ -115,11 +119,11 @@ def run_case(N: int, alpha_grid: float) -> dict:
 
     # Laplace pressure
     X_f, Y_f = solver.X, solver.Y
-    dist_f = np.sqrt((X_f - 0.5) ** 2 + (Y_f - 0.5) ** 2)
+    dist_f = xp.sqrt((X_f - 0.5) ** 2 + (Y_f - 0.5) ** 2)
     inside = dist_f < R * 0.7
     outside = dist_f > R * 1.5
-    if np.any(inside) and np.any(outside):
-        dp_meas = float(np.mean(p[inside]) - np.mean(p[outside]))
+    if bool(xp.any(inside)) and bool(xp.any(outside)):
+        dp_meas = float(xp.mean(p[inside]) - xp.mean(p[outside]))
     else:
         dp_meas = float("nan")
     dp_exact = SIGMA / R

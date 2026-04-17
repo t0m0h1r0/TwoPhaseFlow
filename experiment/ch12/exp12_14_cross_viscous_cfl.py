@@ -117,7 +117,7 @@ def find_dt_crit(mu_ratio):
 
     Returns dict with keys: mu_ratio, dt_crit, C_cross.
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     h = 1.0 / N
     eps = 1.5 * h
 
@@ -126,13 +126,14 @@ def find_dt_crit(mu_ratio):
     ccd = CCDSolver(grid, backend, bc_type="periodic")
 
     X_dev, Y_dev = grid.meshgrid()
-    X = np.asarray(backend.to_host(X_dev))
-    Y = np.asarray(backend.to_host(Y_dev))
+    X = backend.to_host(X_dev)
+    Y = backend.to_host(Y_dev)
 
     # Viscosity field: circular interface at center, radius R_IFACE
+    # cross_viscous handles GPU internally via xp.asarray, so mu/u0 stay numpy
     mu_l = MU_G * mu_ratio
     phi = R_IFACE - np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
-    H = np.asarray(heaviside(np, phi, eps))
+    H = heaviside(np, phi, eps)
     mu = MU_G + (mu_l - MU_G) * H
 
     # Divergence-free initial velocity

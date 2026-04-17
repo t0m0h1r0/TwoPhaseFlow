@@ -52,7 +52,7 @@ class TwoPhaseNSSolver:
     eps_factor : float   interface thickness  ε = eps_factor × h
     hfe_C : float        InterfaceLimitedFilter coefficient
     reinit_steps : int   inner steps of Reinitializer
-    use_gpu : bool
+    use_gpu : bool | None
     """
 
     def __init__(
@@ -65,7 +65,7 @@ class TwoPhaseNSSolver:
         eps_factor: float = 1.5,
         hfe_C: float = 0.05,
         reinit_steps: int = 4,
-        use_gpu: bool = False,
+        use_gpu: bool | None = None,
         alpha_grid: float = 1.0,
         eps_g_factor: float = 2.0,
         eps_g_cells: float | None = None,
