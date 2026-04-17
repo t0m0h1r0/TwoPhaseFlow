@@ -986,9 +986,9 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
 
         # Update diagnostic references for dynamic grids
         if solver._alpha_grid > 1.0:
-            diag.X = solver.X
-            diag.Y = solver.Y
-            dV = solver._grid.cell_volumes()
+            diag.X = _to_h(solver.X)
+            diag.Y = _to_h(solver.Y)
+            dV = _to_h(solver._grid.cell_volumes())
         else:
             dV = None
 
