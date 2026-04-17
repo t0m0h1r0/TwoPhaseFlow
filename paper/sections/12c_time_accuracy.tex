@@ -83,7 +83,7 @@ CCD 離散化 NS 残差の格子収束特性（非線形項 + 境界スキーム
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
   \item Kovasznay (1948) の 2 次元定常 NS 解析解（$\mathit{Re} = 40$，
-        $\lambda = \mathit{Re}/2 - \sqrt{\mathit{Re}^2/4 + 4\pi^2} \approx -6.42$）：
+        $\lambda = \mathit{Re}/2 - \sqrt{\mathit{Re}^2/4 + 4\pi^2} \approx -0.964$）：
         \begin{align}
           u &= 1 - e^{\lambda x}\cos(2\pi y), &
           v &= \frac{\lambda}{2\pi}\,e^{\lambda x}\sin(2\pi y), &
@@ -128,7 +128,7 @@ NS 運動量残差（青丸）は $\Ord{h^{3.97}}$，
 NS 運動量残差は $\Ord{h^{3.97}}$：非線形対流項 $\bu \cdot \bnabla\bu$ がディリクレ境界近傍で
 CCD 境界スキーム（$\Ord{h^5}$）の誤差を非線形に増幅するため，
 実効精度は $\Ord{h^4}$ 程度となる．
-$N=128$ で NS 残差は $4.2 \times 10^{-7}$ に達し，十分な空間精度を確認した．
+$N=128$ で NS 残差は $4.16 \times 10^{-7}$ に達し，十分な空間精度を確認した．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{交差微分粘性項の CFL 制約}
@@ -167,9 +167,10 @@ $\mu_l / \mu_g$ & $\Delta t_{\mathrm{crit}}$ & $C_{\mathrm{cross}}$ \\
 \noindent\textbf{結論：}
 $C_{\mathrm{cross}}$ は $\mu_l/\mu_g = 10$--$1000$ で 10\% 以内の変動に収まり，
 $\Delta t_{\mathrm{crit}} \propto h^2 / \Delta\mu$ のスケーリングが確認された．
-§~\ref{sec:algo_flow} Step 0 の CFL 制御は $C_{\mathrm{CFL}} = 0.45$ を用いるが，
-これは本制約値 $C_{\mathrm{cross}} \approx 0.23$ よりも保守的であり，
-全粘度比で安定動作を保証する．
+§~\ref{sec:algo_flow} Step 0 の対流 CFL 制御（$C_{\mathrm{CFL}} = 0.45$，AB2 限界値 0.5 に対して保守的）に加え，
+粘度比が大きい系では交差粘性 CFL 制約
+$\Delta t \le C_{\mathrm{cross}}\,h^2/\Delta\mu$（$C_{\mathrm{cross}} \approx 0.22$）を
+別途確認する必要がある．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{界面近傍の時間精度劣化}

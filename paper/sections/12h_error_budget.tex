@@ -29,7 +29,7 @@ HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{5.8}}$\textsuperscript{$\P$} & $\trian
 DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & \checkmark & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
 CCD 曲率 $\kappa$（CLS） & $\Ord{h^6}$\textsuperscript{$\|$} & $\Ord{h^{1.0}}$ & $\triangle$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
 AB2+IPC 時間（単相） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.00}}$ & \checkmark & §~\ref{sec:tgv_temporal} & 全体時間精度 \\
-NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.96}}$ & \checkmark & §~\ref{sec:kovasznay} & NS 運動量残差 \\
+NS 空間（Kovasznay） & $\Ord{h^4}$--$\Ord{h^6}$ & $\Ord{h^{3.97}}$ & \checkmark & §~\ref{sec:kovasznay} & NS 運動量残差 \\
 CSF 表面張力 & $\Ord{\varepsilon^2}$ & $\Ord{h^{1.5\text{--}2}}$ & \checkmark & §~\ref{sec:bf_static_droplet} & Laplace 圧精度 \\
 \midrule
 \multicolumn{6}{l}{\textit{追加検証}} \\
@@ -59,7 +59,7 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\r
 \begin{description}[style=nextline,leftmargin=2em]
   \item[\textbf{単相 NS ソルバ}（設計精度をほぼ完全に発現）]
     \begin{itemize}[noitemsep]
-      \item 空間律速：CCD 境界スキーム $\Ord{h^5}$ $\times$ 非線形増幅 → 実効 $\Ord{h^{3.96}}$（§~\ref{sec:kovasznay}）
+      \item 空間律速：CCD 境界スキーム $\Ord{h^5}$ $\times$ 非線形増幅 → 実効 $\Ord{h^{3.97}}$（§~\ref{sec:kovasznay}）
       \item 時間律速：AB2+IPC $\Ord{\Delta t^2}$
     \end{itemize}
 
