@@ -36,6 +36,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d  # noqa: F401 (imported for potential future use)
 from twophase.core.grid import Grid
 from twophase.config import GridConfig
 from twophase.ccd.ccd_solver import CCDSolver
@@ -125,13 +126,15 @@ def build_fd_laplacian_dirichlet(N, h):
 
 def run_comparison(N, rho_ratio):
     """Compare smoothed-Heaviside and split PPE at given N and density ratio."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     h = 1.0 / N; eps = 1.5 * h
 
     gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="dirichlet")
     X, Y = grid.meshgrid()
+    # FD solver (spsolve) is CPU; convert meshgrid to host
+    X, Y = backend.to_host(X), backend.to_host(Y)
 
     # Manufactured solution (Dirichlet: p*=0 on boundary)
     p_star = np.sin(np.pi * X) * np.sin(np.pi * Y)
@@ -146,7 +149,7 @@ def run_comparison(N, rho_ratio):
     liquid_mask = phi > 3 * h
 
     # ── Method 1: Smoothed Heaviside (variable rho) ──
-    # RHS from CCD O(h^6) evaluation
+    # RHS from CCD O(h^6) evaluation (eval_LH_varrho handles GPU internally)
     rhs_var = eval_LH_varrho(p_star, rho, ccd, backend)
     # Zero Dirichlet BC
     rhs_var_flat = rhs_var.ravel().copy()

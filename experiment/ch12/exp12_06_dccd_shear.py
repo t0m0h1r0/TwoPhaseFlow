@@ -46,19 +46,19 @@ N_LIST = [64, 128]
 EPS_D_LIST = [0.0, 0.05]  # CCD vs DCCD
 
 
-def fft_poisson(rhs, h):
+def fft_poisson(rhs, h, xp=np):
     """Solve ∇²p = rhs on periodic (N+1)-point grid via FFT."""
     rhs_int = rhs[:-1, :-1]
     N = rhs_int.shape[0]
-    kx = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    ky = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    KX, KY = np.meshgrid(kx, ky, indexing="ij")
+    kx = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    ky = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    KX, KY = xp.meshgrid(kx, ky, indexing="ij")
     K2 = KX**2 + KY**2
     K2[0, 0] = 1.0
-    p_hat = np.fft.fft2(rhs_int) / (-K2)
+    p_hat = xp.fft.fft2(rhs_int) / (-K2)
     p_hat[0, 0] = 0.0
-    p_int = np.real(np.fft.ifft2(p_hat))
-    p = np.zeros_like(rhs)
+    p_int = xp.real(xp.fft.ifft2(p_hat))
+    p = xp.zeros_like(rhs)
     p[:-1, :-1] = p_int
     p[-1, :] = p[0, :]
     p[:, -1] = p[:, 0]
@@ -81,12 +81,12 @@ def dccd_filter(df, eps_d, axis):
     return filtered
 
 
-def initial_condition(X, Y):
+def initial_condition(X, Y, xp=np):
     """Double shear layer IC."""
-    u = np.where(Y <= np.pi,
-                 np.tanh((Y - np.pi / 2) / DELTA),
-                 np.tanh((3 * np.pi / 2 - Y) / DELTA))
-    v = EPS0 * np.sin(X)
+    u = xp.where(Y <= np.pi,
+                 xp.tanh((Y - np.pi / 2) / DELTA),
+                 xp.tanh((3 * np.pi / 2 - Y) / DELTA))
+    v = EPS0 * xp.sin(X)
     return u, v
 
 
@@ -98,7 +98,8 @@ def kinetic_energy(u, v, h):
 
 def run_simulation(N, eps_d):
     """Run AB2+projection double shear layer to T_FINAL."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     gc = GridConfig(ndim=2, N=(N, N), L=(L_DOM, L_DOM))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
@@ -106,8 +107,8 @@ def run_simulation(N, eps_d):
     X, Y = grid.meshgrid()
     h = L_DOM / N
 
-    u, v = initial_condition(X, Y)
-    p = np.zeros_like(X)  # IPC: initial pressure = 0 (no analytical p for shear layer)
+    u, v = initial_condition(X, Y, xp)
+    p = xp.zeros_like(X)  # IPC: initial pressure = 0 (no analytical p for shear layer)
     rhs_u_prev, rhs_v_prev = None, None
     t = 0.0
     step = 0
@@ -115,7 +116,7 @@ def run_simulation(N, eps_d):
 
     while t < T_FINAL - 1e-14:
         # CFL-based dt
-        u_max = max(np.max(np.abs(u)), np.max(np.abs(v)), 1e-10)
+        u_max = max(float(xp.max(xp.abs(u))), float(xp.max(xp.abs(v))), 1e-10)
         dt = CFL * h / u_max
         dt = min(dt, T_FINAL - t)
 
@@ -124,11 +125,6 @@ def run_simulation(N, eps_d):
         du_dy, d2u_dy2 = ccd.differentiate(u, 1)
         dv_dx, d2v_dx2 = ccd.differentiate(v, 0)
         dv_dy, d2v_dy2 = ccd.differentiate(v, 1)
-
-        du_dx = np.asarray(du_dx); d2u_dx2 = np.asarray(d2u_dx2)
-        du_dy = np.asarray(du_dy); d2u_dy2 = np.asarray(d2u_dy2)
-        dv_dx = np.asarray(dv_dx); d2v_dx2 = np.asarray(d2v_dx2)
-        dv_dy = np.asarray(dv_dy); d2v_dy2 = np.asarray(d2v_dy2)
 
         # DCCD filter on convective derivatives
         du_dx_f = dccd_filter(du_dx, eps_d, 0)
@@ -149,13 +145,11 @@ def run_simulation(N, eps_d):
         dp_dy_n, _ = ccd.differentiate(p, 1)
 
         if step == 0:
-            u_star = u + dt * rhs_u - dt * np.asarray(dp_dx_n)
-            v_star = v + dt * rhs_v - dt * np.asarray(dp_dy_n)
+            u_star = u + dt * rhs_u - dt * dp_dx_n
+            v_star = v + dt * rhs_v - dt * dp_dy_n
         else:
-            u_star = (u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev)
-                      - dt * np.asarray(dp_dx_n))
-            v_star = (v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev)
-                      - dt * np.asarray(dp_dy_n))
+            u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev) - dt * dp_dx_n
+            v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev) - dt * dp_dy_n
 
         rhs_u_prev = rhs_u
         rhs_v_prev = rhs_v
@@ -163,13 +157,13 @@ def run_simulation(N, eps_d):
         # PPE for pressure correction
         du_star_dx, _ = ccd.differentiate(u_star, 0)
         dv_star_dy, _ = ccd.differentiate(v_star, 1)
-        div_star = np.asarray(du_star_dx) + np.asarray(dv_star_dy)
-        phi = fft_poisson(div_star / dt, h)
+        div_star = du_star_dx + dv_star_dy
+        phi = fft_poisson(div_star / dt, h, xp)
 
         dphi_dx, _ = ccd.differentiate(phi, 0)
         dphi_dy, _ = ccd.differentiate(phi, 1)
-        u = u_star - dt * np.asarray(dphi_dx)
-        v = v_star - dt * np.asarray(dphi_dy)
+        u = u_star - dt * dphi_dx
+        v = v_star - dt * dphi_dy
         p = p + phi
 
         t += dt

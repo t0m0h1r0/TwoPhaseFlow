@@ -163,7 +163,7 @@ def temporal_convergence(X, Y, mu, h):
     Uses a fine-Δt reference solution (K_ref = 4 × K_max) to isolate
     temporal error from the fixed spatial discretization error.
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
@@ -286,11 +286,11 @@ def main():
 
     # Build grid quantities — must use (N+1, N+1) node grid matching CCDSolver
     h = 1.0 / N_GRID
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     gc = GridConfig(ndim=2, N=(N_GRID, N_GRID), L=(1.0, 1.0))
     grid = Grid(gc, backend)
     X, Y = grid.meshgrid()          # shape (N+1, N+1)
-    X, Y = np.asarray(X), np.asarray(Y)
+    X, Y = backend.to_host(X), backend.to_host(Y)
     mu = build_mu(X, h)
 
     results = temporal_convergence(X, Y, mu, h)

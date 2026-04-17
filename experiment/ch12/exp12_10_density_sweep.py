@@ -16,13 +16,12 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -102,12 +101,14 @@ def _build_fd_varrho_dirichlet(N, h, rho):
 
 
 def run_dc_case(N, rho_ratio, k_dc=K_DC):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
     h = 1.0 / N
     eps = 1.5 * h
     grid = Grid(GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)), backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
     X, Y = grid.meshgrid()
+    # DC loop is CPU-based (FD matrix + spsolve); convert meshgrid to host
+    X, Y = backend.to_host(X), backend.to_host(Y)
 
     p_star = np.sin(np.pi * X) * np.sin(np.pi * Y)
     phi = R - np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
@@ -118,6 +119,7 @@ def run_dc_case(N, rho_ratio, k_dc=K_DC):
     _zero_boundary(rhs)
     A = _build_fd_varrho_dirichlet(N, h, rho)
 
+    from scipy.sparse.linalg import spsolve as _spsolve
     p = np.zeros_like(p_star)
     residuals = []
     for k in range(k_dc + 1):
@@ -126,7 +128,7 @@ def run_dc_case(N, rho_ratio, k_dc=K_DC):
         residuals.append(float(np.max(np.abs(res))))
         if k == k_dc:
             break
-        dp = spsolve(A, res.ravel()).reshape(p.shape)
+        dp = _spsolve(A, res.ravel()).reshape(p.shape)
         _zero_boundary(dp)
         p = p + dp
         _zero_boundary(p)
@@ -198,17 +200,19 @@ def make_figures(sweep, conv_2, conv_5):
     save_figure(fig, OUT / "density_sweep")
 
 
-def _solve_ppe(rhs, rho, ppe_builder):
-    data, rows, cols = ppe_builder.build(rho)[0]
-    A_shape = ppe_builder.build(rho)[1]
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+def _solve_ppe(rhs, rho, ppe_builder, backend):
+    triplet, A_shape = ppe_builder.build(rho)
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 def _run_droplet_snapshot(rho_l, rho_g=1.0, N=64, n_steps=50):
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     h = 1.0 / N
     eps = 1.5 * h
     dt = 0.25 * h
@@ -218,40 +222,41 @@ def _run_droplet_snapshot(rho_l, rho_g=1.0, N=64, n_steps=50):
     curv_calc = CurvatureCalculator(backend, ccd, eps)
 
     X, Y = grid.meshgrid()
-    phi = R - np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
-    psi = np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
+    psi = heaviside(xp, phi, eps)
     rho = rho_g + (rho_l - rho_g) * psi
-    u = np.zeros_like(psi)
-    v = np.zeros_like(psi)
+    u = xp.zeros_like(psi)
+    v = xp.zeros_like(psi)
 
-    kappa = np.asarray(curv_calc.compute(psi))
+    kappa = curv_calc.compute(psi)
     dpsi_dx, _ = ccd.differentiate(psi, 0)
     dpsi_dy, _ = ccd.differentiate(psi, 1)
-    f_x = 0.1 * kappa * np.asarray(dpsi_dx)
-    f_y = 0.1 * kappa * np.asarray(dpsi_dy)
+    f_x = 0.1 * kappa * dpsi_dx
+    f_y = 0.1 * kappa * dpsi_dy
 
     def wall_bc(arr):
         arr[0, :] = 0.0; arr[-1, :] = 0.0
         arr[:, 0] = 0.0; arr[:, -1] = 0.0
 
-    p = np.zeros_like(psi)
+    p = xp.zeros_like(psi)
     for _ in range(n_steps):
         u_star = u + dt / rho * f_x
         v_star = v + dt / rho * f_y
         wall_bc(u_star); wall_bc(v_star)
         du_dx, _ = ccd.differentiate(u_star, 0)
         dv_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
-        p = _solve_ppe(rhs, rho, ppe_builder)
+        rhs = (du_dx + dv_dy) / dt
+        p = _solve_ppe(rhs, rho, ppe_builder, backend)
         dp_dx, _ = ccd.differentiate(p, 0)
         dp_dy, _ = ccd.differentiate(p, 1)
-        u = u_star - dt / rho * np.asarray(dp_dx)
-        v = v_star - dt / rho * np.asarray(dp_dy)
+        u = u_star - dt / rho * dp_dx
+        v = v_star - dt / rho * dp_dy
         wall_bc(u); wall_bc(v)
 
     return {
         "rho_ratio": rho_l / rho_g,
-        "p": p, "u": u, "v": v, "psi": psi,
+        "p": backend.to_host(p), "u": backend.to_host(u),
+        "v": backend.to_host(v), "psi": backend.to_host(psi),
         "x1d": np.linspace(0, 1, N + 1),
         "y1d": np.linspace(0, 1, N + 1),
     }

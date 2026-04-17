@@ -26,11 +26,10 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -52,14 +51,15 @@ N_STEPS = 100
 
 # -- PPE solver ---------------------------------------------------------------
 
-def _solve_ppe(rhs, rho, ppe_builder):
+def _solve_ppe(rhs, rho, ppe_builder, backend):
     """Assemble and solve the variable-coefficient PPE."""
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+    triplet, A_shape = ppe_builder.build(rho)  # always host (numpy) arrays
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 # -- Wall BC helper ------------------------------------------------------------
@@ -73,7 +73,8 @@ def wall_bc(arr):
 
 def run(N):
     """Run hydrostatic test on N×N grid, return diagnostics."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     h = 1.0 / N
     dt = 0.1 * h
 
@@ -83,10 +84,10 @@ def run(N):
     ppe_builder = PPEBuilder(backend, grid, bc_type="wall")
 
     X, Y = grid.meshgrid()
-    rho = np.full_like(X, RHO)
+    rho = xp.full_like(X, RHO)
 
-    u = np.zeros_like(X)
-    v = np.zeros_like(X)
+    u = xp.zeros_like(X)
+    v = xp.zeros_like(X)
 
     # IPC: initialize pressure to exact hydrostatic solution
     p = RHO * abs(G_Y) * (1.0 - Y)
@@ -97,28 +98,28 @@ def run(N):
         # IPC Predictor: gravity + pressure gradient from previous step
         dp_dx_n, _ = ccd.differentiate(p, 0)
         dp_dy_n, _ = ccd.differentiate(p, 1)
-        u_star = u - dt / rho * np.asarray(dp_dx_n)
-        v_star = v + dt * G_Y - dt / rho * np.asarray(dp_dy_n)
+        u_star = u - dt / rho * dp_dx_n
+        v_star = v + dt * G_Y - dt / rho * dp_dy_n
         wall_bc(u_star); wall_bc(v_star)
 
         # PPE for pressure correction: ∇·(1/ρ ∇φ) = ∇·u* / dt
         du_dx, _ = ccd.differentiate(u_star, 0)
         dv_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (np.asarray(du_dx) + np.asarray(dv_dy)) / dt
-        phi = _solve_ppe(rhs, rho, ppe_builder)
+        rhs = (du_dx + dv_dy) / dt
+        phi = _solve_ppe(rhs, rho, ppe_builder, backend)
 
         # Corrector
         dphi_dx, _ = ccd.differentiate(phi, 0)
         dphi_dy, _ = ccd.differentiate(phi, 1)
-        u = u_star - dt / rho * np.asarray(dphi_dx)
-        v = v_star - dt / rho * np.asarray(dphi_dy)
+        u = u_star - dt / rho * dphi_dx
+        v = v_star - dt / rho * dphi_dy
         wall_bc(u); wall_bc(v)
 
         # Update pressure (IPC)
         p = p + phi
 
-        vel_mag = np.sqrt(u**2 + v**2)
-        u_max_hist.append(float(np.max(vel_mag)))
+        vel_mag = xp.sqrt(u**2 + v**2)
+        u_max_hist.append(float(xp.max(vel_mag)))
 
         if np.isnan(u_max_hist[-1]) or u_max_hist[-1] > 1e6:
             print(f"    [N={N}] BLOWUP at step {step+1}")
@@ -127,11 +128,11 @@ def run(N):
     # Exact hydrostatic pressure: p_exact = ρ*|g|*(1 - y) + C
     # Shift measured p so that mean matches exact mean
     p_exact = RHO * abs(G_Y) * (1.0 - Y)
-    p_shifted = p - np.mean(p) + np.mean(p_exact)
+    p_shifted = p - xp.mean(p) + xp.mean(p_exact)
 
     # Exclude boundary nodes for clean interior comparison
     s = slice(2, -2)
-    p_err_inf = float(np.max(np.abs(p_shifted[s, s] - p_exact[s, s])))
+    p_err_inf = float(xp.max(xp.abs(p_shifted[s, s] - p_exact[s, s])))
     u_inf_final = u_max_hist[-1]
 
     return {
@@ -140,8 +141,8 @@ def run(N):
         "u_inf_peak": max(u_max_hist),
         "p_err_inf": p_err_inf,
         "u_max_hist": np.array(u_max_hist),
-        "p_profile_center": np.asarray(p_shifted[N // 2, :]).copy(),
-        "y_center": np.asarray(Y[N // 2, :]).copy(),
+        "p_profile_center": backend.to_host(p_shifted[N // 2, :]).copy(),
+        "y_center": backend.to_host(Y[N // 2, :]).copy(),
         "n_steps": len(u_max_hist),
     }
 

@@ -43,23 +43,22 @@ L_DOM = 2.0 * np.pi
 NSTEPS_LIST = [5, 10, 20, 40, 80, 160]
 
 
-def fft_poisson(rhs, h):
+def fft_poisson(rhs, h, xp=np):
     """Solve ∇²p = rhs on periodic (N+1)-point grid via FFT."""
     rhs_int = rhs[:-1, :-1]
     N = rhs_int.shape[0]
-    kx = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    ky = np.fft.fftfreq(N, d=h) * 2 * np.pi
-    KX, KY = np.meshgrid(kx, ky, indexing="ij")
+    kx = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    ky = xp.fft.fftfreq(N, d=h) * 2 * np.pi
+    KX, KY = xp.meshgrid(kx, ky, indexing="ij")
     K2 = KX**2 + KY**2
     K2[0, 0] = 1.0
-    p_hat = np.fft.fft2(rhs_int) / (-K2)
+    p_hat = xp.fft.fft2(rhs_int) / (-K2)
     p_hat[0, 0] = 0.0
-    p_int = np.real(np.fft.ifft2(p_hat))
-    p = np.zeros_like(rhs)
+    p_int = xp.real(xp.fft.ifft2(p_hat))
+    p = xp.zeros_like(rhs)
     p[:-1, :-1] = p_int
     p[-1, :] = p[0, :]
     p[:, -1] = p[:, 0]
-    return p
     return p
 
 
@@ -76,11 +75,6 @@ def compute_rhs(u, v, ccd):
     dv_dx, d2v_dx2 = ccd.differentiate(v, 0)
     dv_dy, d2v_dy2 = ccd.differentiate(v, 1)
 
-    du_dx = np.asarray(du_dx); d2u_dx2 = np.asarray(d2u_dx2)
-    du_dy = np.asarray(du_dy); d2u_dy2 = np.asarray(d2u_dy2)
-    dv_dx = np.asarray(dv_dx); d2v_dx2 = np.asarray(d2v_dx2)
-    dv_dy = np.asarray(dv_dy); d2v_dy2 = np.asarray(d2v_dy2)
-
     conv_u = u * du_dx + v * du_dy
     conv_v = u * dv_dx + v * dv_dy
     visc_u = NU * (d2u_dx2 + d2u_dy2)
@@ -93,7 +87,8 @@ def compute_rhs(u, v, ccd):
 
 def run_simulation(nsteps):
     """Run AB2+IPC TGV to T_FINAL with given number of steps."""
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp = backend.xp
     N = N_GRID
     gc = GridConfig(ndim=2, N=(N, N), L=(L_DOM, L_DOM))
     grid = Grid(gc, backend)
@@ -106,7 +101,7 @@ def run_simulation(nsteps):
     # Initial condition
     u, v = exact_solution(X, Y, 0.0)
     # IPC: initialize pressure to exact TGV pressure
-    p = -0.25 * (np.cos(2 * X) + np.cos(2 * Y))
+    p = -0.25 * (xp.cos(2 * X) + xp.cos(2 * Y))
     rhs_u_prev, rhs_v_prev = None, None
 
     for step in range(nsteps):
@@ -117,11 +112,11 @@ def run_simulation(nsteps):
         dp_dy_n, _ = ccd.differentiate(p, 1)
 
         if step == 0:
-            u_star = u + dt * rhs_u - dt * np.asarray(dp_dx_n)
-            v_star = v + dt * rhs_v - dt * np.asarray(dp_dy_n)
+            u_star = u + dt * rhs_u - dt * dp_dx_n
+            v_star = v + dt * rhs_v - dt * dp_dy_n
         else:
-            u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev) - dt * np.asarray(dp_dx_n)
-            v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev) - dt * np.asarray(dp_dy_n)
+            u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev) - dt * dp_dx_n
+            v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev) - dt * dp_dy_n
 
         rhs_u_prev = rhs_u
         rhs_v_prev = rhs_v
@@ -129,17 +124,17 @@ def run_simulation(nsteps):
         # PPE for pressure correction
         du_star_dx, _ = ccd.differentiate(u_star, 0)
         dv_star_dy, _ = ccd.differentiate(v_star, 1)
-        div_star = np.asarray(du_star_dx) + np.asarray(dv_star_dy)
-        phi = fft_poisson(div_star / dt, h)
+        div_star = du_star_dx + dv_star_dy
+        phi = fft_poisson(div_star / dt, h, xp)
 
         dphi_dx, _ = ccd.differentiate(phi, 0)
         dphi_dy, _ = ccd.differentiate(phi, 1)
-        u = u_star - dt * np.asarray(dphi_dx)
-        v = v_star - dt * np.asarray(dphi_dy)
+        u = u_star - dt * dphi_dx
+        v = v_star - dt * dphi_dy
         p = p + phi
 
     u_ex, v_ex = exact_solution(X, Y, T_FINAL)
-    err = max(np.max(np.abs(u - u_ex)), np.max(np.abs(v - v_ex)))
+    err = float(max(xp.max(xp.abs(u - u_ex)), xp.max(xp.abs(v - v_ex))))
     return dt, err
 
 

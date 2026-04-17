@@ -39,12 +39,11 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
 
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
+from twophase.tools.experiment.gpu import sparse_solve_2d
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
@@ -74,9 +73,9 @@ GRIDS   = [32, 64, 128]
 
 # ── FD derivative helpers ────────────────────────────────────────────────────
 
-def fd_differentiate(f, axis, h):
+def fd_differentiate(f, axis, h, xp=np):
     """2nd-order central difference with periodic extension (then wall-zero BC)."""
-    df = (np.roll(f, -1, axis=axis) - np.roll(f, 1, axis=axis)) / (2.0 * h)
+    df = (xp.roll(f, -1, axis=axis) - xp.roll(f, 1, axis=axis)) / (2.0 * h)
     # Apply wall (Dirichlet zero) BC by zeroing boundary rows/cols
     if axis == 0:
         df[0, :] = 0.0; df[-1, :] = 0.0
@@ -85,9 +84,9 @@ def fd_differentiate(f, axis, h):
     return df
 
 
-def fd_differentiate2(f, axis, h):
+def fd_differentiate2(f, axis, h, xp=np):
     """2nd-order central 2nd derivative with periodic extension (then wall-zero BC)."""
-    d2f = (np.roll(f, -1, axis=axis) - 2.0 * f + np.roll(f, 1, axis=axis)) / h**2
+    d2f = (xp.roll(f, -1, axis=axis) - 2.0 * f + xp.roll(f, 1, axis=axis)) / h**2
     if axis == 0:
         d2f[0, :] = 0.0; d2f[-1, :] = 0.0
     else:
@@ -97,33 +96,34 @@ def fd_differentiate2(f, axis, h):
 
 # ── Curvature via FD (divergence of normal) ──────────────────────────────────
 
-def fd_curvature(psi, h):
+def fd_curvature(psi, h, xp=np):
     """Compute κ = -div(n) via 2nd-order FD on the Heaviside gradient.
 
     n = ∇ψ / |∇ψ|,  κ = -div(n)
     """
-    dpsi_dx = fd_differentiate(psi, 0, h)
-    dpsi_dy = fd_differentiate(psi, 1, h)
-    grad_mag = np.sqrt(dpsi_dx**2 + dpsi_dy**2) + 1e-14
+    dpsi_dx = fd_differentiate(psi, 0, h, xp)
+    dpsi_dy = fd_differentiate(psi, 1, h, xp)
+    grad_mag = xp.sqrt(dpsi_dx**2 + dpsi_dy**2) + 1e-14
 
     nx = dpsi_dx / grad_mag
     ny = dpsi_dy / grad_mag
 
-    dnx_dx = fd_differentiate(nx, 0, h)
-    dny_dy = fd_differentiate(ny, 1, h)
+    dnx_dx = fd_differentiate(nx, 0, h, xp)
+    dny_dy = fd_differentiate(ny, 1, h, xp)
 
     return -(dnx_dx + dny_dy)
 
 
 # ── PPE helper ───────────────────────────────────────────────────────────────
 
-def _solve_ppe(rhs, rho, ppe_builder):
+def _solve_ppe(rhs, rho, ppe_builder, backend):
     triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = triplet
-    A = sp.csr_matrix((data, (rows, cols)), shape=A_shape)
-    rhs_vec = rhs.ravel().copy()
-    rhs_vec[ppe_builder._pin_dof] = 0.0
-    return spsolve(A, rhs_vec).reshape(rho.shape)
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
+    xp = backend.xp
+    rhs_flat = xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
 
 
 # ── Single simulation (CCD or FD) ────────────────────────────────────────────
@@ -142,7 +142,8 @@ def run_single(N, use_fd=False):
     -------
     dict with keys N, h, u_max_peak, u_max_final, u_max_history.
     """
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp  = backend.xp
     h   = 1.0 / N
     eps = 1.5 * h
     dt  = 0.25 * h
@@ -155,29 +156,27 @@ def run_single(N, use_fd=False):
     X, Y = grid.meshgrid()
 
     # Level-set / density
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-    psi = np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+    psi = heaviside(xp, phi, eps)
     rho = RHO_G + (RHO_L - RHO_G) * psi   # uniform when ρ_l = ρ_g = 1
 
     # ── CSF body force ────────────────────────────────────────────────────────
     if use_fd:
-        kappa     = fd_curvature(psi, h)
-        dpsi_dx   = fd_differentiate(psi, 0, h)
-        dpsi_dy   = fd_differentiate(psi, 1, h)
+        kappa     = fd_curvature(psi, h, xp)
+        dpsi_dx   = fd_differentiate(psi, 0, h, xp)
+        dpsi_dy   = fd_differentiate(psi, 1, h, xp)
     else:
         curv_calc = CurvatureCalculator(backend, ccd, eps)
-        kappa     = np.asarray(curv_calc.compute(psi))
-        _dpsi_dx, _ = ccd.differentiate(psi, 0)
-        _dpsi_dy, _ = ccd.differentiate(psi, 1)
-        dpsi_dx   = np.asarray(_dpsi_dx)
-        dpsi_dy   = np.asarray(_dpsi_dy)
+        kappa     = curv_calc.compute(psi)
+        dpsi_dx, _ = ccd.differentiate(psi, 0)
+        dpsi_dy, _ = ccd.differentiate(psi, 1)
 
     f_csf_x = (SIGMA / WE) * kappa * dpsi_dx
     f_csf_y = (SIGMA / WE) * kappa * dpsi_dy
 
     # ── Time loop ─────────────────────────────────────────────────────────────
-    u = np.zeros((N + 1, N + 1))
-    v = np.zeros((N + 1, N + 1))
+    u = xp.zeros((N + 1, N + 1))
+    v = xp.zeros((N + 1, N + 1))
 
     def wall_bc(arr):
         arr[0, :] = 0.0; arr[-1, :] = 0.0
@@ -193,32 +192,28 @@ def run_single(N, use_fd=False):
 
         # PPE divergence: use same derivative type for consistency
         if use_fd:
-            du_dx = fd_differentiate(u_star, 0, h)
-            dv_dy = fd_differentiate(v_star, 1, h)
+            du_dx = fd_differentiate(u_star, 0, h, xp)
+            dv_dy = fd_differentiate(v_star, 1, h, xp)
         else:
-            _du_dx, _ = ccd.differentiate(u_star, 0)
-            _dv_dy, _ = ccd.differentiate(v_star, 1)
-            du_dx = np.asarray(_du_dx)
-            dv_dy = np.asarray(_dv_dy)
+            du_dx, _ = ccd.differentiate(u_star, 0)
+            dv_dy, _ = ccd.differentiate(v_star, 1)
 
         rhs = (du_dx + dv_dy) / dt
-        p   = _solve_ppe(rhs, rho, ppe_builder)
+        p   = _solve_ppe(rhs, rho, ppe_builder, backend)
 
         # Corrector
         if use_fd:
-            dp_dx = fd_differentiate(p, 0, h)
-            dp_dy = fd_differentiate(p, 1, h)
+            dp_dx = fd_differentiate(p, 0, h, xp)
+            dp_dy = fd_differentiate(p, 1, h, xp)
         else:
-            _dp_dx, _ = ccd.differentiate(p, 0)
-            _dp_dy, _ = ccd.differentiate(p, 1)
-            dp_dx = np.asarray(_dp_dx)
-            dp_dy = np.asarray(_dp_dy)
+            dp_dx, _ = ccd.differentiate(p, 0)
+            dp_dy, _ = ccd.differentiate(p, 1)
 
         u = u_star - dt / rho * dp_dx
         v = v_star - dt / rho * dp_dy
         wall_bc(u); wall_bc(v)
 
-        vel_mag = float(np.max(np.sqrt(u**2 + v**2)))
+        vel_mag = float(xp.max(xp.sqrt(u**2 + v**2)))
         u_max_history.append(vel_mag)
 
         if np.isnan(vel_mag) or vel_mag > 1e6:

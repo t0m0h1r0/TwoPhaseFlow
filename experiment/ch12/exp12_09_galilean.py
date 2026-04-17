@@ -80,10 +80,10 @@ N_TRAVERSALS = 1  # number of full domain traversals
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _init_psi(X, Y, eps):
+def _init_psi(X, Y, eps, xp=np):
     """Initialize circular interface psi via smoothed Heaviside."""
-    phi = R - np.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
-    return np.asarray(heaviside(np, phi, eps))
+    phi = R - xp.sqrt((X - 0.5)**2 + (Y - 0.5)**2)
+    return heaviside(xp, phi, eps)
 
 
 # ── Test A: advection with uniform background flow ──────────────────────────
@@ -94,7 +94,8 @@ def run_test_a(N):
         print("  [Test A] SKIPPED — DissipativeCCDAdvection unavailable")
         return None
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp  = backend.xp
     h   = 1.0 / N
     eps = 1.5 * h
     dt  = CFL * h / max(abs(U_BG), abs(V_BG), 1e-14)
@@ -105,12 +106,12 @@ def run_test_a(N):
     advect = DissipativeCCDAdvection(backend, grid, ccd, bc='periodic')
 
     X, Y = grid.meshgrid()
-    psi_0 = _init_psi(X, Y, eps)
+    psi_0 = _init_psi(X, Y, eps, xp)
     psi   = psi_0.copy()
 
     # Uniform velocity field (constant, no projection needed for sigma=0)
-    u = np.full_like(X, U_BG)
-    v = np.full_like(X, V_BG)
+    u = xp.full_like(X, U_BG)
+    v = xp.full_like(X, V_BG)
 
     # Time for one full traversal: T = L / U_BG
     speed = np.sqrt(U_BG**2 + V_BG**2)
@@ -121,35 +122,32 @@ def run_test_a(N):
     print(f"  [Test A] N={N}, dt={dt_actual:.5f}, n_steps={n_steps}, "
           f"T={T_total:.3f}")
 
-    mass_0 = float(np.sum(psi_0))
+    mass_0 = float(xp.sum(psi_0))
     shape_errors = []
     mass_errors  = []
 
     for step in range(n_steps):
-        xp = backend.xp
-        psi = np.asarray(advect.advance(xp.asarray(psi),
-                                        [xp.asarray(u), xp.asarray(v)],
-                                        dt_actual))
+        psi = advect.advance(psi, [u, v], dt_actual)
 
         # Track errors every 10 steps
         if (step + 1) % 10 == 0 or step == n_steps - 1:
-            shape_err = float(np.linalg.norm(psi - psi_0) /
-                              max(np.linalg.norm(psi_0), 1e-14))
-            mass_err  = float(abs(np.sum(psi) - mass_0) / max(mass_0, 1e-14))
+            shape_err = float(xp.linalg.norm(psi - psi_0) /
+                              max(float(xp.linalg.norm(psi_0)), 1e-14))
+            mass_err  = float(abs(float(xp.sum(psi)) - mass_0) / max(mass_0, 1e-14))
             shape_errors.append((step + 1, shape_err))
             mass_errors.append((step + 1, mass_err))
 
     # Final metrics
-    shape_err_final = float(np.linalg.norm(psi - psi_0) /
-                            max(np.linalg.norm(psi_0), 1e-14))
-    mass_err_final  = float(abs(np.sum(psi) - mass_0) / max(mass_0, 1e-14))
+    shape_err_final = float(xp.linalg.norm(psi - psi_0) /
+                            max(float(xp.linalg.norm(psi_0)), 1e-14))
+    mass_err_final  = float(abs(float(xp.sum(psi)) - mass_0) / max(mass_0, 1e-14))
 
     print(f"    shape L2 error = {shape_err_final:.4e}")
     print(f"    mass error     = {mass_err_final:.4e}")
 
     return {
-        "psi_0":       psi_0,
-        "psi_final":   psi,
+        "psi_0":       backend.to_host(psi_0),
+        "psi_final":   backend.to_host(psi),
         "shape_err":   shape_err_final,
         "mass_err":    mass_err_final,
         "shape_hist":  np.array(shape_errors),
@@ -169,7 +167,8 @@ def run_test_b(N):
         print("  [Test B] SKIPPED — DissipativeCCDAdvection unavailable")
         return None
 
-    backend = Backend(use_gpu=False)
+    backend = Backend()
+    xp  = backend.xp
     h   = 1.0 / N
     eps = 1.5 * h
     dt  = CFL * h  # arbitrary (u=0, but we still step)
@@ -180,11 +179,11 @@ def run_test_b(N):
     advect = DissipativeCCDAdvection(backend, grid, ccd, bc='periodic')
 
     X, Y = grid.meshgrid()
-    psi_0 = _init_psi(X, Y, eps)
+    psi_0 = _init_psi(X, Y, eps, xp)
     psi   = psi_0.copy()
 
-    u = np.zeros_like(X)
-    v = np.zeros_like(X)
+    u = xp.zeros_like(X)
+    v = xp.zeros_like(X)
 
     # Same physical time as Test A
     speed_a = np.sqrt(U_BG**2 + V_BG**2)
@@ -195,33 +194,30 @@ def run_test_b(N):
     print(f"  [Test B] N={N}, dt={dt_actual:.5f}, n_steps={n_steps}, "
           f"T={T_total:.3f}")
 
-    mass_0 = float(np.sum(psi_0))
+    mass_0 = float(xp.sum(psi_0))
     shape_errors = []
     mass_errors  = []
 
     for step in range(n_steps):
-        xp = backend.xp
-        psi = np.asarray(advect.advance(xp.asarray(psi),
-                                        [xp.asarray(u), xp.asarray(v)],
-                                        dt_actual))
+        psi = advect.advance(psi, [u, v], dt_actual)
 
         if (step + 1) % 10 == 0 or step == n_steps - 1:
-            shape_err = float(np.linalg.norm(psi - psi_0) /
-                              max(np.linalg.norm(psi_0), 1e-14))
-            mass_err  = float(abs(np.sum(psi) - mass_0) / max(mass_0, 1e-14))
+            shape_err = float(xp.linalg.norm(psi - psi_0) /
+                              max(float(xp.linalg.norm(psi_0)), 1e-14))
+            mass_err  = float(abs(float(xp.sum(psi)) - mass_0) / max(mass_0, 1e-14))
             shape_errors.append((step + 1, shape_err))
             mass_errors.append((step + 1, mass_err))
 
-    shape_err_final = float(np.linalg.norm(psi - psi_0) /
-                            max(np.linalg.norm(psi_0), 1e-14))
-    mass_err_final  = float(abs(np.sum(psi) - mass_0) / max(mass_0, 1e-14))
+    shape_err_final = float(xp.linalg.norm(psi - psi_0) /
+                            max(float(xp.linalg.norm(psi_0)), 1e-14))
+    mass_err_final  = float(abs(float(xp.sum(psi)) - mass_0) / max(mass_0, 1e-14))
 
     print(f"    shape L2 error = {shape_err_final:.4e}")
     print(f"    mass error     = {mass_err_final:.4e}")
 
     return {
-        "psi_0":       psi_0,
-        "psi_final":   psi,
+        "psi_0":       backend.to_host(psi_0),
+        "psi_final":   backend.to_host(psi),
         "shape_err":   shape_err_final,
         "mass_err":    mass_err_final,
         "shape_hist":  np.array(shape_errors),
