@@ -1,16 +1,16 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-04-17
+# Last updated: 2026-04-18
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | BOOTSTRAP_COMPLETE |
-| branch | main |
-| last_CHK | CHK-131 CLOSED 2026-04-17 — GPU smoke test 3-fix (782cc80). linalg_backend.py:57 thomas_precompute CuPy TypeError → .get(); test_gpu_smoke.py atol 1e-13→1e-11 (4 assertions). 3 FAILED → 0 FAILED. |
-| next_action | CHK-131 closed. worktree-fix-gpu-smoke-tests merged. GPU smoke suite fully green. |
+| phase | META_REDESIGN_IN_PROGRESS |
+| branch | meta-v7-lean-kernel |
+| last_CHK | CHK-132 DONE 2026-04-18 — Meta-prompt v7.0.0 "Lean Kernel" redesign. 8 kernel-*.md files + 46 agent files (23×claude + 23×codex; CodeReviewer/VerificationRunner deleted) + 2 _base.yaml. Q3 10-item checklist: ALL PASS. |
+| next_action | PR branch worktree-meta-v7-lean-kernel → main when user approves. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
@@ -22,10 +22,11 @@
 # Format: `CHK-ID | YYYY-MM-DD | type | summary`
 # Full detail in git log / commit messages / linked memos.
 
-## §1 — Most recent (CHK-120..131)
+## §1 — Most recent (CHK-120..132)
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-132 | 2026-04-18 | meta | v7.0.0 "Lean Kernel" redesign: 8 kernel-*.md (constitution/roles/ops/domains/workflow/antipatterns/project/deploy) + 46 agent files (23 claude + 23 codex) + 2 _base.yaml. -56% token target. v6.0.0 features: HAND-04/DYNAMIC-REPLANNING/OP-CONDENSE/EVALUATOR-OPTIMIZER. Branch: meta-v7-lean-kernel |
 | CHK-131 | 2026-04-17 | fix | GPU smoke tests: thomas_precompute .get() fix (linalg_backend.py); atol 1e-13→1e-11 (test_gpu_smoke.py); 3 FAILED → 0 |
 | CHK-130 | 2026-04-16 | fix+paper+merge | ch11 reinit non-uniform fix (4 files); DGR fallback α>1; exp11_29 880× improvement; WIKI-E-017 updated |
 | CHK-129 | 2026-04-15 | paper+merge | ch12 re-run paper sync + main merge (752b9f3); 5 tex files; 199pp 0 err |
