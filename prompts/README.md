@@ -168,6 +168,155 @@ Full text: `prompts/meta/kernel-constitution.md §DESIGN PHILOSOPHY`.
 
 v6.0.0 extensions: PROTO-DEBATE (HAND-04) for contested verdicts; DYNAMIC-REPLANNING (max 2 cycles, AP-12).
 
+## 5b. Agent Interaction Map
+
+全 23 エージェント・7 ドメインの関係とタスク移譲を示す。
+
+**凡例:**
+- `-->` HAND-01/02 通常ハンドオフ
+- `==>` ドメイン間インターフェース契約（署名済み成果物）
+- `-.->` エラー intercept (DiagnosticArchitect)
+- ノード色: 黒=Root Admin、青=Gatekeeper (GK)、緑=Specialist (SP)、赤=Audit gate
+
+```mermaid
+flowchart TD
+    USER(["User"])
+
+    subgraph M["M-Domain — Management"]
+        RA["ResearchArchitect\n[Root Admin · TIER-3]"]
+        TP["TaskPlanner\n[SP · TIER-2]"]
+        DA["DevOpsArchitect\n[SP · TIER-2]"]
+        DIA["DiagnosticArchitect\n[SP · TIER-2]"]
+    end
+
+    subgraph T["T-Domain — Theory"]
+        THA["TheoryArchitect\n[SP · TIER-2]"]
+        TAU["TheoryAuditor\n[GK · TIER-3]"]
+    end
+
+    subgraph LE["L+E-Domain — Code & Experiment"]
+        CWC["CodeWorkflowCoordinator\n[GK · TIER-3]"]
+        CA["CodeArchitect\n[SP · TIER-2]"]
+        CC["CodeCorrector\n[SP · TIER-2]"]
+        TR["TestRunner\n[SP · TIER-2]"]
+        ER["ExperimentRunner\n[SP · TIER-2]"]
+        SA["SimulationAnalyst\n[SP · TIER-2]"]
+    end
+
+    subgraph A["A-Domain — Paper"]
+        PWC["PaperWorkflowCoordinator\n[GK · TIER-3]"]
+        PW["PaperWriter\n[SP · TIER-2]"]
+        PC["PaperCompiler\n[SP · TIER-2]"]
+        PR["PaperReviewer\n[SP · TIER-2]"]
+    end
+
+    subgraph Q["Q-Domain — Audit (cross-domain gate)"]
+        CSA["ConsistencyAuditor\n[GK · TIER-3]"]
+    end
+
+    subgraph P["P-Domain — Prompt"]
+        PA["PromptArchitect\n[GK · TIER-3]"]
+        PAU["PromptAuditor\n[GK · TIER-3]"]
+    end
+
+    subgraph K["K-Domain — Knowledge"]
+        WAU["WikiAuditor\n[GK · TIER-3]"]
+        KA["KnowledgeArchitect\n[SP · TIER-2]"]
+        LIB["Librarian\n[SP · TIER-1]"]
+        TM["TraceabilityManager\n[SP · TIER-1]"]
+    end
+
+    USER --> RA
+
+    %% ResearchArchitect HAND-01 routing (sole entry point)
+    RA -->|"HAND-01: compound"| TP
+    RA -->|"HAND-01: theory"| THA
+    RA -->|"HAND-01: code/exp"| CWC
+    RA -->|"HAND-01: paper"| PWC
+    RA -->|"HAND-01: prompt"| PA
+    RA -->|"HAND-01: wiki"| WAU
+    RA -->|"HAND-01: infra"| DA
+    RA -->|"HAND-04: PROTO-DEBATE"| CSA
+    RA -->|"REPLAN (max 2 cycles)"| RA
+
+    %% T-Domain pipeline
+    THA -->|"derivation artifact"| TAU
+    TAU -->|"DISAGREE: re-derive"| THA
+    TAU ==>|"AlgorithmSpecs.md SIGNED"| CWC
+
+    %% L-Domain pipeline
+    CWC -->|"HAND-01: impl"| CA
+    CWC -->|"HAND-01: fix IMPL_ERR"| CC
+    CA -->|"HAND-01: verify"| TR
+    CC -->|"HAND-01: verify"| TR
+    TR -->|"HAND-02: PASS/FAIL"| CWC
+    CWC ==>|"SolverAPI_vX.py SIGNED"| ER
+
+    %% E-Domain pipeline
+    CWC -->|"EXP-01"| ER
+    ER -->|"raw output"| SA
+    SA -->|"HAND-02"| CWC
+    ER ==>|"ResultPackage/ SIGNED"| PWC
+
+    %% AU2 gates (L+E, A → ConsistencyAuditor)
+    CWC -->|"AU2 gate"| CSA
+    PWC -->|"AU2 gate"| CSA
+    CSA -->|"PASS: merge main"| RA
+
+    %% A-Domain pipeline
+    PWC -->|"HAND-01: write"| PW
+    PWC -->|"HAND-01: compile"| PC
+    PC -->|"BUILD-01 PASS"| PR
+    PR -->|"HAND-02"| PWC
+    PW -->|"HAND-02"| PWC
+
+    %% P-Domain pipeline
+    PA -->|"generated prompts"| PAU
+    PAU -->|"Q3 FAIL"| PA
+    PAU -->|"Q3 PASS"| RA
+
+    %% K-Domain pipeline
+    WAU -->|"K-COMPILE"| KA
+    WAU -->|"K-LINT"| LIB
+    WAU -->|"K-REFACTOR"| TM
+    KA -->|"HAND-02"| WAU
+    LIB -->|"broken pointer"| WAU
+    TM -->|"HAND-02"| WAU
+    SA -->|"K-COMPILE trigger"| WAU
+
+    %% DiagnosticArchitect: error intercept
+    DIA -.->|"ERR-R1..R4 intercept"| CWC
+    DIA -.->|"ERR intercept"| PWC
+
+    classDef rootAdmin fill:#37474f,stroke:#263238,color:#fff,font-weight:bold
+    classDef gatekeeper fill:#1565c0,stroke:#0d47a1,color:#fff
+    classDef specialist fill:#2e7d32,stroke:#1b5e20,color:#fff
+    classDef auditNode fill:#b71c1c,stroke:#7f0000,color:#fff,font-weight:bold
+    classDef userNode fill:#e65100,stroke:#bf360c,color:#fff,font-weight:bold
+
+    class RA rootAdmin
+    class CWC,TAU,PWC,PA,PAU,WAU gatekeeper
+    class TP,DA,DIA,THA,CA,CC,TR,ER,SA,PW,PC,PR,KA,LIB,TM specialist
+    class CSA auditNode
+    class USER userNode
+```
+
+**ドメイン間インターフェース契約チェーン (T → L → E → A → K):**
+
+```
+TheoryAuditor ══ AlgorithmSpecs.md ══► CodeWorkflowCoordinator
+                                              ║
+                                    SolverAPI_vX.py
+                                              ║
+                                       ExperimentRunner ══ ResultPackage/ ══► PaperWorkflowCoordinator
+                                              ║                                         ║
+                                    K-COMPILE trigger                           TechnicalReport.md
+                                              ║                                         ║
+                                         WikiAuditor ◄──────────────────────────────────┘
+```
+
+> Note: このセクションは手動追加。`EnvMetaBootstrapper` 再生成時に上書きされるため、再生成後は再追加が必要。
+
 ## 6. Agent Roster (23 active)
 
 | Domain | Agent | Tier | Role |
