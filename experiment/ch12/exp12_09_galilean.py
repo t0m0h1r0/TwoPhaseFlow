@@ -63,7 +63,7 @@ except ImportError:
     _HAS_ADVECTION = False
     print("[WARN] DissipativeCCDAdvection not available")
 
-OUT = experiment_dir(__file__, "galilean")
+OUT = experiment_dir(__file__)
 NPZ_PATH = OUT / "galilean_data.npz"
 FIG_PATH = OUT / "galilean.pdf"
 

@@ -61,7 +61,7 @@ except ImportError:
     _HAS_FILTER = False
     print("[WARN] InterfaceLimitedFilter not available — only baseline will run")
 
-OUT = experiment_dir(__file__, "hfe_ablation")
+OUT = experiment_dir(__file__)
 NPZ_PATH = OUT / "hfe_ablation_data.npz"
 FIG_PATH = OUT / "hfe_ablation.pdf"
 

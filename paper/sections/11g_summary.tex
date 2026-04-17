@@ -33,13 +33,13 @@
         CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
         面積誤差は $\Ord{10^{-3}}$（$N{=}256$，単一渦），
         保存型再マッピングは $K \leq 20$ で機械精度 $\Ord{10^{-16}}$ を達成
-        （LS は全条件で約 20\% の質量誤差），
+        （LS は全条件で約 18\% の質量誤差），
         HFE は 1D で $\Ord{h^{7.0}}$ を示し，
         2D テンソル積では $N\le128$ で $\Ord{h^{5.8}}$ 以上の高次収束を示した．
-        ただし風上差分ベースラインは現行データで NaN のため比較対象から除外し，
+        ただし風上差分経路は廃止済み（§~\ref{sec:verify_interface}）のため比較対象から除外し，
         2D 最高解像度は丸め・補間誤差床の影響を受ける．
   \item \textbf{PPE 求解：}
-        欠陥補正 $k{=}3$ は等密度 Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $4.9 \times 10^7$ 倍高精度，コスト増 3.4 倍），
+        欠陥補正 $k{=}3$ は等密度 Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $2.4 \times 10^7$ 倍高精度，コスト増 3.0 倍），
         Neumann + ゲージ固定で $\Ord{h^{5.0}}$（境界スキーム律速）を達成した．
         分相 PPE + DC $k{=}3$ は液相内部で全密度比（$\rho_l/\rho_g = 1$--$1000$）に対し
         $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した．
@@ -53,10 +53,10 @@
   \item \textbf{PPE 演算子特性：}
         CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 9.6$（FD の $4.0$ の 2.4 倍）であり，
         2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
-        §~\ref{sec:defect_correction_main} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
+        陽的粘性 CFL 制約が FD の 2.4 倍厳しいことが確認され，CN 陰的粘性処理の必要性を裏付ける．
   \item \textbf{再初期化界面シフト：}
         CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
-        10 回累積で略線形蓄積（${\approx}8$--$9$ 倍）することを確認した．
+        10 回累積で略線形蓄積（$N{=}256$ で約 $7.6$ 倍；理想値 $10$）することを確認した．
 \end{enumerate}
 
 \noindent\textbf{間接的に検証されるコンポーネント：}
@@ -94,11 +94,11 @@ Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$               
 曲率（CLS パイプライン）   & 単調減少          & $\Ord{h^{1.0}}$                & $\triangle$ & $\varepsilon=1.5h$ と評価帯が律速 \\
 CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
 CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
-CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}20\%$ \\
-HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上ベースラインは NaN のため比較対象外 \\
+CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}18\%$ \\
+HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上経路は廃止済み（§~\ref{sec:verify_interface}）\\
 HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $p=6.33,5.79,2.69$ & $\triangle$\textsuperscript{‡} & 最高解像度で丸め・補間誤差床 \\
-Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.2$--$0.3\%$        & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
-PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $4.9 \times 10^7$ 倍 \\
+Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.16$--$0.31\%$      & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
+PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $2.4 \times 10^7$ 倍 \\
 PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
 分相 PPE + DC $k{=}3$      & $\Ord{h^7}$       & $\Ord{h^{7.0}}$                & \checkmark & 液相内部で全密度比に不変（$\rho{=}1$--$1000$） \\
 PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$（参考） \\
@@ -113,20 +113,23 @@ DGR 冪等性                 & $\varepsilon_{\mathrm{eff}}/\varepsilon = 1$ & 1
 DGR 厚み制御               & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ & 1.03（DGR 20 step 毎） & \checkmark & DGR なし 3.97 vs あり 1.03 \\
 WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \checkmark & 界面幅保存は同等 \\
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
-圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
+圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §~\ref{sec:dccd_pressure_nofilt} の禁止規則を実証 \\
 PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
 NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
-再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
+再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}7.6$ 倍（$N{=}256$；理想値 10） \\
 CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分の現行実行結果は NaN のため比較から除外．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分経路は廃止済み（§~\ref{sec:verify_interface}）．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}2D HFE は $N\le128$ で高次収束，$N{=}256$ で $L_\infty{=}4.6 \times 10^{-11}$；最高解像度は丸め・補間誤差床．} \\
   \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
   \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{§}§~\ref{sec:time_int}：$\mu_l/\mu_g \gg 1$ では陽的交差微分項の打切り誤差 $\Ord{\mu_{\max}\,\Delta t}$ が支配する．} \\
-\multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（既知の制限，対策計画あり）．} \\
+\multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格（下記 (a)--(c)），$\times$: 未達（本章では該当なし）．} \\
+\multicolumn{5}{l}{\footnotesize $\triangle$ の類型——\textbf{(a) 設計限界内}（CCD 非一様: 次数は 5--6 だが前漸近振動あり，PPE 条件数: 古典見積り通り）；} \\
+\multicolumn{5}{l}{\footnotesize \quad \textbf{(b) パイプライン律速に非律速}（DCCD 不連続: TV は解析値超だが $C^0$ 以上で同等，曲率: $\Ord{h^1}$ だが CSF $\Ord{h^2}$ より非律速）；} \\
+\multicolumn{5}{l}{\footnotesize \quad \textbf{(c) 精度床到達}（HFE 2D: $N{=}256$ で丸め・補間床，再初期化シフト: 10 回累積で ${\approx}7.6$ 倍（$N{=}256$）だが DGR が補償）．} \\
 \end{tabular}
 }%
 \end{table}

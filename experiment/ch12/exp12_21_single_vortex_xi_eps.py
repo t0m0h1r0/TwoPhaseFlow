@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""[11-35] Zalesak disk — ξ-space eps comparison.
+"""[12-21] Single vortex (LeVeque 1996) — ξ-space eps comparison.
 
 Tests eps_g_cells and eps_xi_cells against the legacy eps_g_factor path.
-N=128, eps/h=0.5, alpha_grid in {1, 2, 3}, method='split'.
+N=128, T=8.0, eps/h=1.5, alpha_grid in {1, 2, 3}.
 
 Cases:
   (a) uniform baseline
@@ -10,6 +10,9 @@ Cases:
   (c) xi-space: alpha=2, eps_g_cells=4
   (d) xi-space full: alpha=2, eps_g_cells=4, eps_xi_cells=1.5
   (e) xi-space full, alpha=3: alpha=3, eps_g_cells=4, eps_xi_cells=1.5
+
+Velocity reverses at T/2 -> shape should recover at T.
+Metrics: L2(psi), L2(phi in band), area_err, mass_err.
 """
 
 import sys, pathlib
@@ -25,7 +28,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.reinitialize import Reinitializer
 from twophase.levelset.heaviside import heaviside, invert_heaviside
-from twophase.simulation.initial_conditions.velocity_fields import RigidRotation
+from twophase.simulation.initial_conditions.velocity_fields import SingleVortex
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -44,13 +47,7 @@ def _make_eps_field(xp, grid, eps_xi_cells, eps_scalar):
     return eps_xi_cells * xp.maximum(hx, hy)
 
 
-def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
-    """Zalesak slotted disk SDF — delegates to library."""
-    from twophase.simulation.initial_conditions.shapes import ZalesakDisk
-    return ZalesakDisk(center=center, radius=R, slot_width=slot_w, slot_depth=slot_h).sdf(X, Y)
-
-
-def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
+def run_case(N, eps_ratio, alpha_grid, reinit_freq=20,
              eps_g_cells=None, eps_xi_cells=None):
     backend = Backend()
     xp = backend.xp
@@ -63,9 +60,8 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
     eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
 
     X, Y = grid.meshgrid()
-    X_h, Y_h = backend.to_host(X), backend.to_host(Y)
-    phi0 = xp.asarray(zalesak_sdf(X_h, Y_h))
-    psi0 = heaviside(xp, phi0, eps_field)
+    phi0_dev = xp.sqrt((X - 0.5) ** 2 + (Y - 0.75) ** 2) - 0.15
+    psi0 = heaviside(xp, phi0_dev, eps_field)
 
     # Initial grid fitting for non-uniform case
     if alpha_grid > 1.0:
@@ -73,30 +69,31 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
         eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
-        X_h, Y_h = backend.to_host(X), backend.to_host(Y)
-        phi0 = xp.asarray(zalesak_sdf(X_h, Y_h))
-        psi0 = heaviside(xp, phi0, eps_field)
+        phi0_dev = xp.sqrt((X - 0.5) ** 2 + (Y - 0.75) ** 2) - 0.15
+        psi0 = heaviside(xp, phi0_dev, eps_field)
 
-    T = 2 * np.pi
-    vf = RigidRotation(center=(0.5, 0.5), period=T)
+    T = 8.0
+    vf = SingleVortex(period=T)
     adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05,
                                   mass_correction=True)
     eps_reinit = float(xp.min(xp.asarray(eps_field))) if eps_xi_cells is not None else eps
     reinit = Reinitializer(backend, grid, ccd, eps_reinit, n_steps=4,
-                           bc="zero", method=method)
+                           bc="zero", method="split")
 
     dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
+    half_step = n_steps // 2
+
     psi = psi0.copy()
     dV = grid.cell_volumes()
     mass0 = float(xp.sum(psi * dV))
-    reinit_count = 0
+    psi_half = None
 
     for step in range(n_steps):
-        u, v = vf.compute(X, Y, t=0)
+        u, v = vf.compute(X, Y, t=step * dt)
         psi = adv.advance(psi, [u, v], dt)
 
-        # Rebuild non-uniform grid from current interface
+        # Rebuild non-uniform grid
         if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
             old_coords = [c.copy() for c in grid.coords]
             M_before = float(xp.sum(psi * dV))
@@ -119,29 +116,29 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
             eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
             eps_reinit = float(xp.min(xp.asarray(eps_field))) if eps_xi_cells is not None else eps
             reinit = Reinitializer(backend, grid, ccd, eps_reinit, n_steps=4,
-                                   bc="zero", method=method)
+                                   bc="zero", method="split")
             X, Y = grid.meshgrid()
 
         if (step + 1) % reinit_freq == 0:
             psi = reinit.reinitialize(psi)
-            reinit_count += 1
 
-    # Final metrics on current grid
-    X, Y = grid.meshgrid()
-    X_h, Y_h = backend.to_host(X), backend.to_host(Y)
-    phi0_final = xp.asarray(zalesak_sdf(X_h, Y_h))
+        if step + 1 == half_step:
+            psi_half = backend.to_host(psi).copy()
+
+    # Final metrics
+    X_f, Y_f = grid.meshgrid()
+    phi0_final = xp.sqrt((X_f - 0.5) ** 2 + (Y_f - 0.75) ** 2) - 0.15
     psi0_final = heaviside(xp, phi0_final, eps_field)
 
     dV_final = grid.cell_volumes()
     mass_err = abs(float(xp.sum(psi * dV_final)) - mass0) / mass0
-    err_L2 = float(xp.sqrt(xp.mean((psi - psi0_final)**2)))
+    err_L2_psi = float(xp.sqrt(xp.mean((psi - psi0_final) ** 2)))
 
     phi_final = invert_heaviside(xp, psi, eps_field)
     band = xp.abs(phi0_final) < 6 * eps_field
-    if bool(xp.any(band)):
-        err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0_final[band])**2)))
-    else:
-        err_L2_phi = float('nan')
+    err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0_final[band]) ** 2))) \
+        if bool(xp.any(band)) else float("nan")
+
     area0 = float(xp.sum(psi0_final >= 0.5))
     area_err = abs(float(xp.sum(psi >= 0.5)) - area0) / max(area0, 1.0)
 
@@ -149,13 +146,12 @@ def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
         "N": N, "eps_ratio": eps_ratio, "alpha": alpha_grid,
         "eps_g_cells": eps_g_cells if eps_g_cells is not None else 0.0,
         "eps_xi_cells": eps_xi_cells if eps_xi_cells is not None else 0.0,
-        "method": method,
-        "L2_psi": err_L2, "L2_phi": err_L2_phi,
+        "L2_psi": err_L2_psi, "L2_phi": err_L2_phi,
         "area_err": area_err, "mass_err": mass_err,
-        "reinits": reinit_count,
-        "psi_final": backend.to_host(psi),
         "psi_init": backend.to_host(psi0_final),
-        "X": backend.to_host(X), "Y": backend.to_host(Y),
+        "psi_half": psi_half,
+        "psi_final": backend.to_host(psi),
+        "X": backend.to_host(X_f), "Y": backend.to_host(Y_f),
     }
 
 
@@ -177,10 +173,42 @@ KEY_MAP = {
 }
 
 
+def plot_results(all_results):
+    """2 rows x N cols: (top) T/2 max deformation, (bottom) T recovered."""
+    n = len(all_results)
+    fig, axes = plt.subplots(2, n, figsize=(4.0 * n, 8))
+
+    for j, r in enumerate(all_results):
+        X, Y = r["X"], r["Y"]
+        for row, (field, ttl) in enumerate([
+            (r["psi_half"],  "T/2 (max deform)"),
+            (r["psi_final"], "T (recovered)"),
+        ]):
+            ax = axes[row, j]
+            if field is not None:
+                ax.pcolormesh(X, Y, field, cmap="RdBu_r", vmin=0, vmax=1,
+                              shading="auto")
+                ax.contour(X, Y, field, levels=[0.5], colors="k",
+                           linewidths=1.0)
+            ax.contour(X, Y, r["psi_init"], levels=[0.5],
+                       colors="gray", linewidths=0.8, linestyles="--")
+            ax.set_aspect("equal")
+            ax.set_title(f"{r['label']}\n{ttl}", fontsize=8)
+            ax.set_xlabel("x"); ax.set_ylabel("y")
+
+    fig.suptitle(
+        r"Single vortex (LeVeque 1996) — $\xi$-space eps comparison"
+        "\n$N=128,\\ T=8$",
+        fontsize=10,
+    )
+    fig.tight_layout()
+    return fig
+
+
 def main():
-    args = experiment_argparser("[11-35] Zalesak xi-space eps").parse_args()
+    args = experiment_argparser("[11-36] Single vortex xi-space eps").parse_args()
     N = 128
-    eps_ratio = 0.5
+    eps_ratio = 1.5
 
     if args.plot_only:
         data = load_results(OUT / "data.npz")
@@ -199,9 +227,10 @@ def main():
     for label, alpha, gc, xc in CASES:
         print(f"\n--- {label} ---")
         r = run_case(N, eps_ratio, alpha, eps_g_cells=gc, eps_xi_cells=xc)
+        r["label"] = label
         print(f"  L2psi={r['L2_psi']:.3e}  L2phi={r['L2_phi']:.3e}  "
               f"area={r['area_err']:.2e}  mass={r['mass_err']:.2e}")
-        all_results.append({"label": label, **r})
+        all_results.append(r)
 
     print("\n" + "=" * 80)
     print(f"{'case':>22} {'L2(psi)':>10} {'L2(phi)':>10} {'area_err':>10} {'mass_err':>10}")
@@ -216,39 +245,15 @@ def main():
             f: r[f] for f in (
                 "alpha", "eps_g_cells", "eps_xi_cells",
                 "L2_psi", "L2_phi", "area_err", "mass_err",
-                "psi_final", "psi_init", "X", "Y",
+                "psi_init", "psi_half", "psi_final", "X", "Y",
             )
         }
         for r in all_results
     })
 
-    # Visualisation: 1 row per case
-    n = len(all_results)
-    fig, axes = plt.subplots(1, n, figsize=(4.0 * n, 4.5))
-    if n == 1:
-        axes = [axes]
-    for ax, r in zip(axes, all_results):
-        X, Y = r["X"], r["Y"]
-        ax.pcolormesh(X, Y, r["psi_final"], cmap="RdBu_r", vmin=0, vmax=1,
-                      shading="auto")
-        ax.contour(X, Y, r["psi_init"],  levels=[0.5], colors="gray",
-                   linewidths=0.8, linestyles="--")
-        ax.contour(X, Y, r["psi_final"], levels=[0.5], colors="k",
-                   linewidths=1.2)
-        ax.set_aspect("equal")
-        ax.set_title(
-            f"{r['label']}\nL2(phi)={r['L2_phi']:.2e}  area={r['area_err']:.2e}",
-            fontsize=8,
-        )
-        ax.set_xlabel("x"); ax.set_ylabel("y")
-    fig.suptitle(
-        r"Zalesak slotted disk — $\xi$-space eps comparison"
-        "\n(dashed=initial, solid=final, N=128)",
-        fontsize=10,
-    )
-    fig.tight_layout()
-    save_figure(fig, OUT / "zalesak_xi_eps")
-    print(f"Saved figure -> {OUT / 'zalesak_xi_eps.pdf'}")
+    fig = plot_results(all_results)
+    save_figure(fig, OUT / "single_vortex_xi_eps")
+    print(f"Saved figure -> {OUT / 'single_vortex_xi_eps.pdf'}")
 
 
 if __name__ == "__main__":

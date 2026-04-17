@@ -11,7 +11,7 @@
 \label{sec:verify_solver}
 
 前節の界面処理パイプライン（§~\ref{sec:verify_interface}）により，
-曲率 $\kappa$ および延長物性場がアルゴリズム Step~5--7 の PPE ソルバに引き渡される．
+曲率 $\kappa$ および延長物性場がアルゴリズム Step~6 の PPE ソルバに引き渡される．
 本節では，PPE ソルバの中核をなす欠陥補正法（DC）の反復特性
 （§~\ref{sec:verify_ppe}），
 Neumann 境界条件での精度（§~\ref{sec:verify_ppe_neumann}），
@@ -76,7 +76,8 @@ $N$ & $h$ & $k=1$ & $k=2$ & $k=3$ & $k=5$ & $k=10$ \\
 
 $k = 1$ では初期値 $p^{(0)}=0$ に対する 1 回の反復が
 $p^{(1)} = \omega\,L_L^{-1}b$ を返すのみであり，
-$L_L$ の打ち切り誤差が支配するため収束次数は $\Ord{h^2}$ にとどまる．
+$L_L$（$\Ord{h^2}$ の低次 FD Laplacian 基底ソルバ；§~\ref{sec:defect_correction_main}）の
+打ち切り誤差が支配するため収束次数は $\Ord{h^2}$ にとどまる．
 $k = 2$ では中間的な $\Ord{h^4}$ となり，
 $k \ge 3$ で CCD の設計精度が完全に発現して $\Ord{h^7}$ を達成する．
 設計次数 $\Ord{h^6}$ を超える超収束は，Dirichlet 条件下で参照解が境界上で零となるため
@@ -387,7 +388,7 @@ $\rho_l/\rho_g \geq 10$ では，界面近傍の密度コントラストが
 高周波固有モードを選択的に増幅し，$\kappa$ は $N$ に対する指数が
 3--6 に増大する．
 特に $\rho_l/\rho_g = 1000$，$N = 64$ では $\kappa \approx 2.2 \times 10^7$ に達し，
-これが §~\ref{sec:varrho_dc_convergence} で報告した
+これが §~\ref{sec:varrho_dc_convergence} で報告する
 界面型密度場の収束劣化を助長する要因である．
 
 \noindent\textbf{結論：}

@@ -20,9 +20,11 @@ CLS 変数 $\psi$ から計算される CCD 曲率
 比較用の 2 次中心差分（CD2）曲率．
 
 \noindent\textbf{手順とパラメタ：}
-曲率は
+CLS 変数 $\psi$ から logit 変換 $\phi = \varepsilon\ln[\psi/(1-\psi)]$ で得られる
+符号付き距離近似 $\phi$ に対して曲率を計算する（§~\ref{sec:levelset_mapping}）．
+計算式は
 $\kappa = -(\phi_{xx}\phi_y^2 - 2\phi_{xy}\phi_x\phi_y + \phi_{yy}\phi_x^2)/|\bnabla\phi|^3$
-に対応する式を用いて計算される．テスト問題は次の 2 つである：
+であり，テスト問題は次の 2 つである：
 \begin{itemize}[noitemsep]
   \item 円形界面：$R=0.25$，$\kappa_{\mathrm{exact}} = 4$，
         CCD 曲率と CD2 曲率を比較する．
@@ -76,6 +78,9 @@ $L_\infty$ 収束は漸近的に $\Ord{h^1}$ 程度である．
 これは評価帯を $|\phi|<3h$ とし，かつ界面厚みを
 $\varepsilon = 1.5h$ としているため，正則化された CLS 曲率の誤差が
 離散微分の形式次数より先に支配的になることを示す．
+$\varepsilon = 1.5h$ は格子精緻化に伴い等比縮小するため，
+CLS プロファイルの滑らかさが格子解像度と連動して変化せず，
+高次演算子の優位性が現れない（CCD と CD2 が同等になる理由）．
 正弦波状界面でも $L_\infty$ 誤差は単調減少するが，
 実測次数は約 $\Ord{h^1}$ にとどまる．
 したがって本テストは CCD 微分演算子単体の高次精度ではなく，

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[11-34] Alpha bandwidth constraint: eps_g_factor sweep for non-uniform grid.
+"""[12-19] Alpha bandwidth constraint: eps_g_factor sweep for non-uniform grid.
 
 Hypothesis: the fine-grid bandwidth W_fine ~ eps_g_factor * eps must exceed
 the interface displacement delta_x = |u_max| * reinit_freq * dt between
