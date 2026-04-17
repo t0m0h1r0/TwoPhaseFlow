@@ -25,6 +25,7 @@ run:
   cfl:        0.10
   snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
   print_every: 500
+  reinit_method: split
 
 output:
   dir: results/exp13_01_a1.0
