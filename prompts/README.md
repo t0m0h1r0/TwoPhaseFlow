@@ -170,13 +170,13 @@ v6.0.0 extensions: PROTO-DEBATE (HAND-04) for contested verdicts; DYNAMIC-REPLAN
 
 ## 5b. Agent Interaction Map
 
-全 23 エージェント・7 ドメインの関係とタスク移譲を示す。
+Shows relationships and task handoffs across all 23 agents and 7 domains.
 
-**凡例:**
-- `-->` HAND-01/02 通常ハンドオフ
-- `==>` ドメイン間インターフェース契約（署名済み成果物）
-- `-.->` エラー intercept (DiagnosticArchitect)
-- ノード色: 黒=Root Admin、青=Gatekeeper (GK)、緑=Specialist (SP)、赤=Audit gate
+**Legend:**
+- `-->` HAND-01/02 normal handoff
+- `==>` cross-domain interface contract (signed artifact)
+- `-.->` error intercept (DiagnosticArchitect)
+- Node color: dark=Root Admin, blue=Gatekeeper (GK), green=Specialist (SP), red=Audit gate
 
 ```mermaid
 flowchart TD
@@ -301,7 +301,7 @@ flowchart TD
     class USER userNode
 ```
 
-**ドメイン間インターフェース契約チェーン (T → L → E → A → K):**
+**Cross-domain Interface Contract Chain (T → L → E → A → K):**
 
 ```
 TheoryAuditor ══ AlgorithmSpecs.md ══► CodeWorkflowCoordinator
@@ -315,7 +315,7 @@ TheoryAuditor ══ AlgorithmSpecs.md ══► CodeWorkflowCoordinator
                                          WikiAuditor ◄──────────────────────────────────┘
 ```
 
-> Note: このセクションは手動追加。`EnvMetaBootstrapper` 再生成時に上書きされるため、再生成後は再追加が必要。
+> Note: This section is manually added. It will be overwritten on `EnvMetaBootstrapper` regeneration — re-add after regenerating.
 
 ## 6. Agent Roster (23 active)
 
