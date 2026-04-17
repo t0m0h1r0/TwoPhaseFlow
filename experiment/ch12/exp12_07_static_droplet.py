@@ -49,7 +49,7 @@ from twophase.simulation.visualization.plot_fields import (
     field_with_contour, streamlines_colored, velocity_arrows, symmetric_range,
 )
 
-OUT = experiment_dir(__file__, "static_droplet_07")
+OUT = experiment_dir(__file__)
 NPZ_PATH = OUT / "convergence_data.npz"
 
 # ── Physical parameters ─────────────────────────────────────────────────────
