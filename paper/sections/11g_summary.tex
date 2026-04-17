@@ -33,7 +33,7 @@
         CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
         面積誤差は $\Ord{10^{-3}}$（$N{=}256$，単一渦），
         保存型再マッピングは $K \leq 20$ で機械精度 $\Ord{10^{-16}}$ を達成
-        （LS は全条件で約 20\% の質量誤差），
+        （LS は全条件で約 18\% の質量誤差），
         HFE は 1D で $\Ord{h^{7.0}}$ を示し，
         2D テンソル積では $N\le128$ で $\Ord{h^{5.8}}$ 以上の高次収束を示した．
         ただし風上差分経路は廃止済み（§~\ref{sec:verify_interface}）のため比較対象から除外し，
@@ -53,7 +53,7 @@
   \item \textbf{PPE 演算子特性：}
         CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 9.6$（FD の $4.0$ の 2.4 倍）であり，
         2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
-        §~\ref{sec:defect_correction_main} の反復ベース PPE ソルバ放棄の根拠が定量的に確認された．
+        陽的粘性 CFL 制約が FD の 2.4 倍厳しいことが確認され，CN 陰的粘性処理の必要性を裏付ける．
   \item \textbf{再初期化界面シフト：}
         CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
         10 回累積で略線形蓄積（${\approx}8$--$9$ 倍）することを確認した．
@@ -113,7 +113,7 @@ DGR 冪等性                 & $\varepsilon_{\mathrm{eff}}/\varepsilon = 1$ & 1
 DGR 厚み制御               & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ & 1.03（DGR 20 step 毎） & \checkmark & DGR なし 3.97 vs あり 1.03 \\
 WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \checkmark & 界面幅保存は同等 \\
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
-圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
+圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §~\ref{sec:dccd_pressure_nofilt} の禁止規則を実証 \\
 PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
 NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\

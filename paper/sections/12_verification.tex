@@ -27,8 +27,8 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 解析解が既知の物理問題で整合性を検証する．
 なお，本章のテストでは\textbf{成功と同時に限界も明らかになる}：
 単相 NS ソルバは設計精度を完全に達成し（§~\ref{sec:ns_time_accuracy}），
-低密度比（$\rho_l/\rho_g \leq 5$）の二相流は静止界面で安定動作する
-（§~\ref{sec:advection_pressure_coupling}）一方，
+低密度比（$\rho_l/\rho_g \leq 5$）の二相流は静止界面で概ね安定動作する
+（§~\ref{sec:advection_pressure_coupling}；$\rho_l/\rho_g{=}5$ では条件付き）一方，
 §~\ref{sec:interface_crossing} の定量分析により
 smoothed Heaviside 一括解法では界面型密度場で漸近格子収束が失われることを示す．
 また §~\ref{sec:galilean_invariance} で移動界面＋表面張力（$\sigma > 0$）では
@@ -44,7 +44,8 @@ IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int
   \item \textbf{§~\ref{sec:ns_conservation}（保存則）：}
         運動エネルギー減衰と非圧縮条件の維持．
   \item \textbf{§~\ref{sec:ns_time_accuracy}（総合精度）：}
-        NS 方程式の時間・空間収束次数，交差微分粘性項の CFL 安定性，
+        NS 方程式の時間・空間収束次数，DCCD フィルタの非侵襲性，
+        交差微分粘性項の CFL 安定性，
         および界面近傍での時間精度劣化の診断を含む．
   \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流結合）：}
         CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$），
@@ -85,9 +86,9 @@ DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $
 HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & §\ref{sec:advection_pressure_coupling}\\
 Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ & §\ref{sec:advection_pressure_coupling}\\
 PPE 一括解法限界 & 界面型密度場の収束劣化 & 残差履歴・格子収束 & 劣化機構の特定 & §\ref{sec:interface_crossing}\\
-分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:interface_crossing}\\
+分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:verify_split_ppe_dc}\\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-6}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-5}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\ddagger$}FFT 直接法 PPE（単相・周期境界）での基準．二相流では CSF ソース項・変密度 PPE の打切り誤差により $\|\bnabla\cdot\bu\|_\infty \sim \Ord{10^{-2}}$ となる場合がある（§~\ref{sec:advection_pressure_coupling}）．} \\
 \end{tabular}
 \end{table}

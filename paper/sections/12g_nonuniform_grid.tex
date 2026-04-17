@@ -266,7 +266,7 @@ $N_{g,\text{cells}} = 4$ の界面適合格子は，CLS 移流の形状精度を
 (2) 計算空間セル数定義（$N_{g,\text{cells}}$）と旧来の
 $\varepsilon_g = C_g \varepsilon$ 定義の性能比較を行う．
 
-\subsubsection{バンド幅スイープ}
+\paragraph{バンド幅スイープ}
 
 格子密度関数の \texttt{eps\_g\_factor} を $[0.5, 8.0]$ の範囲でスイープし，
 Zalesak スロット円板テスト（$N = 128$，$\alpha = 2$）で
@@ -276,7 +276,7 @@ $L_2(\phi)$ 誤差への影響を調べた．
 実測の閾値は \texttt{eps\_g\_factor} $\approx 2.0$ であり，
 $N_{g,\text{cells}} = 4$（\texttt{eps\_g\_factor} $\approx 3.0$）は十分な余裕を持つ．
 
-\subsubsection{$\xi$ 空間 $\varepsilon$ 定義の検証}
+\paragraph{$\xi$ 空間 $\varepsilon$ 定義の検証}
 
 旧定義 $\varepsilon_g = C_g \varepsilon$（物理空間固定）と
 新定義 $N_{g,\text{cells}}$（計算空間セル数固定）を
