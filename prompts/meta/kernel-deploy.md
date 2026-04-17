@@ -140,6 +140,27 @@ Required: all PR-1..PR-6 sections. Verification: `grep -c "^## PR-" docs/03_PROJ
 
 Also generate: `docs/wiki/INDEX.md` if absent.
 
+### 2c: Generate prompts/README.md
+
+Generate (or overwrite) `prompts/README.md` on every bootstrap run.
+Header line: `# GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.`
+
+Required sections in order:
+
+| Section | Source |
+|---------|--------|
+| §1 Architecture Principle | kernel-deploy.md §INPUTS (3-layer stack) |
+| §2 Directory Map | kernel-deploy.md §2a + Stage 3 output paths |
+| §3 Rule Ownership Map | kernel-constitution.md + kernel-roles.md |
+| §4 A1–A11 Quick Reference | kernel-constitution.md §AXIOMS |
+| §4b φ-Principles TL;DR | kernel-constitution.md §DESIGN PHILOSOPHY |
+| §5 Execution Loop | kernel-workflow.md §P-E-V-A |
+| §5b Agent Interaction Map | kernel-domains.md §AGENT INTERACTION MAP (verbatim) |
+| §6 Agent Roster | kernel-roles.md §Agent Profile Table (all 23 agents) |
+| §7 Regeneration Instructions | kernel-deploy.md §PORTABILITY |
+
+§5b MUST be copied verbatim from `kernel-domains.md §AGENT INTERACTION MAP` — do NOT regenerate independently.
+
 ────────────────────────────────────────────────────────
 ## Stage 3: Generate Agent Prompts
 
@@ -266,7 +287,7 @@ Any non-mechanical drift → bootstrapper bug → abort and investigate.
    CHK-{NNN} | IN_PROGRESS | prompt | prompts/agents-{env}/ | regen v7.0.0 | {date}
    ```
 2. Update `§ACTIVE_STATE` with current phase + branch.
-3. Emit HAND-02 to ResearchArchitect: `status: SUCCESS; produced: [schema_resolution_report.json, prompts/agents-claude/, prompts/agents-codex/]`.
+3. Emit HAND-02 to ResearchArchitect: `status: SUCCESS; produced: [schema_resolution_report.json, prompts/agents-claude/, prompts/agents-codex/, prompts/README.md]`.
 
 ────────────────────────────────────────────────────────
 # § PORTABILITY: Retargeting to a New Project
