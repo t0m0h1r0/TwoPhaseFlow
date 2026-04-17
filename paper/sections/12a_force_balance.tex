@@ -41,11 +41,12 @@ NS ソルバ全体の離散力平衡（CCD 微分 + PPE 投影 + 速度補正）
 \toprule
 $N$ & $\|\bu\|_\infty$ & $|p - p_{\mathrm{hydro}}|_\infty$ & 判定 \\
 \midrule
-32  & $2.21 \times 10^{-5}$ & $6.38 \times 10^{-4}$ & 合格 \\
+32  & $2.21 \times 10^{-5}$ & $6.38 \times 10^{-4}$ & 条件付き\textsuperscript{*} \\
 64  & $5.76 \times 10^{-10}$ & $1.75 \times 10^{-8}$ & 合格 \\
 128 & $1.78 \times 10^{-9}$ & $5.78 \times 10^{-8}$ & 合格 \\
 \bottomrule
 \end{tabular}
+{\footnotesize \textsuperscript{*}CCD 壁面境界スキーム（$\Ord{h^5}$）の低次精度に起因する初期誤差が IPC を通じて蓄積するため，$N{=}32$ は基準 $10^{-6}$ を超過（$2.21 \times 10^{-5}$）．$N{\geq}64$ では $\Ord{10^{-10}}$ 以下に急速収束する．}
 \end{table}
 
 \noindent\textbf{結論：}

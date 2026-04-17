@@ -118,7 +118,7 @@ PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3
 NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
-再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
+再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}7.6$ 倍（$N{=}256$；理想値 10） \\
 CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分経路は廃止済み（§~\ref{sec:verify_interface}）．} \\
@@ -129,7 +129,7 @@ CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                    
 \multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格（下記 (a)--(c)），$\times$: 未達（本章では該当なし）．} \\
 \multicolumn{5}{l}{\footnotesize $\triangle$ の類型——\textbf{(a) 設計限界内}（CCD 非一様: 次数は 5--6 だが前漸近振動あり，PPE 条件数: 古典見積り通り）；} \\
 \multicolumn{5}{l}{\footnotesize \quad \textbf{(b) パイプライン律速に非律速}（DCCD 不連続: TV は解析値超だが $C^0$ 以上で同等，曲率: $\Ord{h^1}$ だが CSF $\Ord{h^2}$ より非律速）；} \\
-\multicolumn{5}{l}{\footnotesize \quad \textbf{(c) 精度床到達}（HFE 2D: $N{=}256$ で丸め・補間床，再初期化シフト: 累積で 8--9 倍だが DGR が補償）．} \\
+\multicolumn{5}{l}{\footnotesize \quad \textbf{(c) 精度床到達}（HFE 2D: $N{=}256$ で丸め・補間床，再初期化シフト: 10 回累積で ${\approx}7.6$ 倍（$N{=}256$）だが DGR が補償）．} \\
 \end{tabular}
 }%
 \end{table}

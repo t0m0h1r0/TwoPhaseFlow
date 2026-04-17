@@ -24,7 +24,7 @@
 \midrule
 CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & \checkmark & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
 CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & \checkmark & §~\ref{sec:verify_ppe_varrho} & 圧力場，速度補正 \\
-CCD-PPE（$\rho_l/\rho_g{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & $\triangle$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
+CCD-PPE（$\rho_l/\rho_g{=}2$） & --- & 粗格子: $\Ord{h^{4\text{--}5}}$；$N{>}64$: 収束停止 & $\triangle$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
 HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{5.8}}$\textsuperscript{$\P$} & $\triangle$ & §~\ref{sec:verify_field_extension} & IPC $\bnabla p^n$，速度補正 \\
 DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & \checkmark & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
 CCD 曲率 $\kappa$（CLS） & $\Ord{h^6}$\textsuperscript{$\|$} & $\Ord{h^{1.0}}$ & $\triangle$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\

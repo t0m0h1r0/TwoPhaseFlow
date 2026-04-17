@@ -26,6 +26,11 @@ CLS 移流，再初期化，HFE 場延長，曲率・圧力跳び計算——の
 最後に，曲率計算と場延長を統合した Young--Laplace 圧力跳びテストで
 パイプラインの結合精度を確認する（§~\ref{sec:verify_gfm}；
 PPE を用いた圧力場検証は §~\ref{sec:bf_static_droplet} で行う）．
+なお，§~\ref{sec:verify_cls_advection} と §~\ref{sec:cls_conservation} の間に，
+DCCD と WENO5 の移流精度比較（§~\ref{sec:verify_weno5_vs_dccd}），
+DGR 厚み制御（§~\ref{sec:verify_dgr}），DCCD の離散質量保存性
+（§~\ref{sec:verify_dccd_conservation}），および再初期化ゼロレベルシフト
+（§~\ref{sec:verify_reinit_shift}）を補足的に検証する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
