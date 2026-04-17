@@ -20,9 +20,11 @@
 格子幅 $h$ の系列 $h, h/2, h/4, \ldots$ で $L^\infty$ または $L^2$ 誤差を計測する．
 得られた収束次数 $p$ を理論的期待値 $p_{\mathrm{design}}$ と比較し，
 $|p - p_{\mathrm{design}}| < 0.5$ で\textbf{合格}（\checkmark），
-設計値未達だが全体ボトルネック（CSF $\Ord{h^2}$ 等）より高精度であれば
+設計値未達だが (a)~全体ボトルネック（CSF $\Ord{h^2}$ 等）より高精度，
+(b)~前漸近振動・精度床など既知の理由で設計限界内，
+または (c)~下流パイプラインで非律速であれば
 \textbf{条件付き合格}（$\triangle$），
-それ以外を\textbf{不合格}（$\times$）と判定する．
+それ以外を\textbf{不合格}（$\times$）と判定する（各 $\triangle$ の分類は表~\ref{tab:verification_summary} 脚注に示す）．
 
 検証は，アルゴリズム内部の\textbf{依存関係}に沿って 4 段階で構成する．
 テスト順序はアルゴリズム Step 番号順ではなく，\textbf{論理的依存の下流から上流}
@@ -43,6 +45,15 @@ $|p - p_{\mathrm{design}}| < 0.5$ で\textbf{合格}（\checkmark），
         TVD-RK3・AB2・Crank--Nicolson．
         時間発展スキーム（TVD-RK3・AB2・CN）の精度と安定性を ODE テストで確認する．
 \end{enumerate}
+
+\noindent\textit{略語：}
+CCD（Combined Compact Difference, §~\ref{sec:ccd_def}），
+DCCD（Dissipative CCD, §~\ref{sec:dccd}），
+CLS（Conservative Level Set, §~\ref{sec:heaviside}），
+HFE（Hermite Field Extension, §~\ref{sec:field_extension}），
+DGR（Direct Geometric Reinitialization, §~\ref{sec:dgr_thickness}），
+DC（Defect Correction, §~\ref{sec:defect_correction_main}），
+GCL（Geometric Conservation Law）．
 
 \noindent
 本章は個々の部品を\textbf{単体で}テストするため，
