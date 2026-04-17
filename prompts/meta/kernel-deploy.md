@@ -155,11 +155,45 @@ Required sections in order:
 | §4 A1–A11 Quick Reference | kernel-constitution.md §AXIOMS |
 | §4b φ-Principles TL;DR | kernel-constitution.md §DESIGN PHILOSOPHY |
 | §5 Execution Loop | kernel-workflow.md §P-E-V-A |
-| §5b Agent Interaction Map | kernel-domains.md §AGENT INTERACTION MAP (verbatim) |
+| §5b Agent Interaction Map | generated per rules below |
 | §6 Agent Roster | kernel-roles.md §Agent Profile Table (all 23 agents) |
 | §7 Regeneration Instructions | kernel-deploy.md §PORTABILITY |
 
-§5b MUST be copied verbatim from `kernel-domains.md §AGENT INTERACTION MAP` — do NOT regenerate independently.
+#### §5b Generation Rules (A1 — no static copy; derive from existing kernel data)
+
+Emit a `flowchart TD` Mermaid block. All data is read from existing kernel files — do NOT duplicate.
+
+**Nodes** — from `kernel-roles.md §Agent Profile Table`:
+- One node per agent: `ID["AgentName\n[role · TIER-N]"]`
+- role label: Root Admin (tier=3, ResearchArchitect), GK (Gatekeeper tier=3), SP (Specialist tier≤2)
+
+**Subgraphs** — from `kernel-domains.md §4×4 MATRIX ARCHITECTURE` + `§DOMAIN REGISTRY`:
+- One subgraph per domain (M, T, L+E combined, A, Q, P, K); label `"X-Domain — Name"`
+- Place each agent in its domain's subgraph per the registry `specialists` / `coordinator` fields
+
+**Handoff edges (`-->`)** — from `kernel-roles.md` role contracts (AUTHORITY / DELIVERABLES):
+- ResearchArchitect → each domain entry point: label `"HAND-01: {intent}"`
+- Intra-domain Coordinator → Specialist: label `"HAND-01: {task}"`
+- Specialist → Coordinator return: label `"HAND-02"`
+- Gatekeeper → Gatekeeper (AU2): label `"AU2 gate"`
+- ConsistencyAuditor → ResearchArchitect on PASS: label `"PASS: merge main"`
+- RA self-loop: label `"REPLAN (max 2 cycles)"`; HAND-04 to CSA: label `"HAND-04: PROTO-DEBATE"`
+
+**Interface contract edges (`==>`)** — from `kernel-domains.md §INTER-DOMAIN INTERFACES`:
+- One thick edge per Transfer row: label `"{Contract Artifact} SIGNED"`
+
+**Error intercept edges (`-.->`)** — from `kernel-roles.md §DiagnosticArchitect` AUTHORITY:
+- DiagnosticArchitect -.-> each Coordinator it can intercept
+
+**Styles:**
+```
+classDef rootAdmin fill:#37474f,stroke:#263238,color:#fff,font-weight:bold
+classDef gatekeeper fill:#1565c0,stroke:#0d47a1,color:#fff
+classDef specialist fill:#2e7d32,stroke:#1b5e20,color:#fff
+classDef auditNode  fill:#b71c1c,stroke:#7f0000,color:#fff,font-weight:bold
+classDef userNode   fill:#e65100,stroke:#bf360c,color:#fff,font-weight:bold
+```
+Apply: rootAdmin→RA; gatekeeper→all GKs; specialist→all SPs; auditNode→CSA; userNode→USER.
 
 ────────────────────────────────────────────────────────
 ## Stage 3: Generate Agent Prompts
