@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""[11-33] Single vortex (LeVeque 1996) on non-uniform (interface-fitted) grid.
+"""[11-36] Single vortex (LeVeque 1996) — ξ-space eps comparison.
 
-N=128, T=8.0, eps/h=1.5.  Compares:
-  - uniform (alpha=1)
-  - non-uniform alpha=2
-  - non-uniform alpha=3
+Tests eps_g_cells and eps_xi_cells against the legacy eps_g_factor path.
+N=128, T=8.0, eps/h=1.5, alpha_grid in {1, 2, 3}.
 
-Grid rebuilt every ``reinit_freq`` advection steps from phi = invert_heaviside(psi).
+Cases:
+  (a) uniform baseline
+  (b) legacy alpha=2 (eps_g_factor=2)
+  (c) xi-space: alpha=2, eps_g_cells=4
+  (d) xi-space full: alpha=2, eps_g_cells=4, eps_xi_cells=1.5
+  (e) xi-space full, alpha=3: alpha=3, eps_g_cells=4, eps_xi_cells=1.5
+
 Velocity reverses at T/2 -> shape should recover at T.
-
 Metrics: L2(psi), L2(phi in band), area_err, mass_err.
 """
 
@@ -16,10 +19,8 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 import numpy as np
-from twophase.core.grid_remap import build_grid_remapper
-
 import matplotlib.pyplot as plt
-
+from twophase.core.grid_remap import build_grid_remapper
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
@@ -31,41 +32,53 @@ from twophase.simulation.initial_conditions.velocity_fields import SingleVortex
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
-    COLORS, FIGSIZE_2COL,
 )
 
 apply_style()
 OUT = experiment_dir(__file__)
 
 
-def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
+def _make_eps_field(xp, grid, eps_xi_cells, eps_scalar):
+    """eps(x) = eps_xi_cells * max(hx, hy) or scalar fallback."""
+    if eps_xi_cells is None:
+        return eps_scalar
+    hx = xp.asarray(grid.h[0])[:, None]
+    hy = xp.asarray(grid.h[1])[None, :]
+    return eps_xi_cells * xp.maximum(hx, hy)
+
+
+def run_case(N, eps_ratio, alpha_grid, reinit_freq=20,
+             eps_g_cells=None, eps_xi_cells=None):
     backend = Backend()
     xp = backend.xp
-    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid,
-                    eps_g_cells=eps_g_cells if alpha_grid > 1.0 else None)
+    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
+                    alpha_grid=alpha_grid, eps_g_cells=eps_g_cells)
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
     h = 1.0 / N
     eps = eps_ratio * h
+    eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
 
     X, Y = grid.meshgrid()
     phi0_dev = xp.sqrt((X - 0.5) ** 2 + (Y - 0.75) ** 2) - 0.15
-    psi0 = heaviside(xp, phi0_dev, eps)
+    psi0 = heaviside(xp, phi0_dev, eps_field)
 
     # Initial grid fitting for non-uniform case
     if alpha_grid > 1.0:
         grid.update_from_levelset(psi0, eps, ccd=ccd)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         X, Y = grid.meshgrid()
+        eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
         phi0_dev = xp.sqrt((X - 0.5) ** 2 + (Y - 0.75) ** 2) - 0.15
-        psi0 = heaviside(xp, phi0_dev, eps)
+        psi0 = heaviside(xp, phi0_dev, eps_field)
 
     T = 8.0
     vf = SingleVortex(period=T)
     adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero", eps_d=0.05,
                                   mass_correction=True)
-    reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4, bc="zero",
-                           method="split")
+    eps_reinit = float(xp.min(xp.asarray(eps_field))) if eps_xi_cells is not None else eps
+    reinit = Reinitializer(backend, grid, ccd, eps_reinit, n_steps=4,
+                           bc="zero", method="split")
 
     dt = 0.45 / N
     n_steps = int(T / dt); dt = T / n_steps
@@ -74,8 +87,7 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
     psi = psi0.copy()
     dV = grid.cell_volumes()
     mass0 = float(xp.sum(psi * dV))
-
-    psi_half = None   # snapshot at T/2 (most deformed)
+    psi_half = None
 
     for step in range(n_steps):
         u, v = vf.compute(X, Y, t=step * dt)
@@ -85,13 +97,12 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
         if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
             old_coords = [c.copy() for c in grid.coords]
             M_before = float(xp.sum(psi * dV))
+
             grid.update_from_levelset(psi, eps, ccd=ccd)
 
-            # GPU-native remap: old_coords → new grid coords (no host transfer)
             remapper = build_grid_remapper(backend, old_coords, grid.coords)
             psi = xp.clip(remapper.remap(psi), 0.0, 1.0)
 
-            # Mass correction on device
             dV = grid.cell_volumes()
             M_after = float(xp.sum(psi * dV))
             w = 4.0 * psi * (1.0 - psi)
@@ -102,7 +113,9 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
             ccd = CCDSolver(grid, backend, bc_type="wall")
             adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
                                           eps_d=0.05, mass_correction=True)
-            reinit = Reinitializer(backend, grid, ccd, eps, n_steps=4,
+            eps_field = _make_eps_field(xp, grid, eps_xi_cells, eps)
+            eps_reinit = float(xp.min(xp.asarray(eps_field))) if eps_xi_cells is not None else eps
+            reinit = Reinitializer(backend, grid, ccd, eps_reinit, n_steps=4,
                                    bc="zero", method="split")
             X, Y = grid.meshgrid()
 
@@ -115,14 +128,14 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
     # Final metrics
     X_f, Y_f = grid.meshgrid()
     phi0_final = xp.sqrt((X_f - 0.5) ** 2 + (Y_f - 0.75) ** 2) - 0.15
-    psi0_final = heaviside(xp, phi0_final, eps)
+    psi0_final = heaviside(xp, phi0_final, eps_field)
 
     dV_final = grid.cell_volumes()
     mass_err = abs(float(xp.sum(psi * dV_final)) - mass0) / mass0
     err_L2_psi = float(xp.sqrt(xp.mean((psi - psi0_final) ** 2)))
 
-    phi_final = invert_heaviside(xp, psi, eps)
-    band = xp.abs(phi0_final) < 6 * eps
+    phi_final = invert_heaviside(xp, psi, eps_field)
+    band = xp.abs(phi0_final) < 6 * eps_field
     err_L2_phi = float(xp.sqrt(xp.mean((phi_final[band] - phi0_final[band]) ** 2))) \
         if bool(xp.any(band)) else float("nan")
 
@@ -131,6 +144,8 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
 
     return {
         "N": N, "eps_ratio": eps_ratio, "alpha": alpha_grid,
+        "eps_g_cells": eps_g_cells if eps_g_cells is not None else 0.0,
+        "eps_xi_cells": eps_xi_cells if eps_xi_cells is not None else 0.0,
         "L2_psi": err_L2_psi, "L2_phi": err_L2_phi,
         "area_err": area_err, "mass_err": mass_err,
         "psi_init": backend.to_host(psi0_final),
@@ -140,91 +155,96 @@ def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
     }
 
 
-def plot_results(all_results):
-    """2行×3列: 各ケースの (上) T=T/2 (最大変形), (下) T=T (復元後)."""
-    n = len(all_results)
-    fig, axes = plt.subplots(2, n, figsize=(4.5 * n, 8))
+# ── Case definitions ──────────────────────────────────────────────────────
+CASES = [
+    # (label,              alpha, eps_g_cells, eps_xi_cells)
+    ("uniform",             1.0,  None,  None),
+    ("legacy a=2",          2.0,  None,  None),
+    ("xi-gc4 a=2",          2.0,  4.0,   None),
+    ("xi-gc4+xc1.5 a=2",   2.0,  4.0,   1.5),
+    ("xi-gc4+xc1.5 a=3",   3.0,  4.0,   1.5),
+]
+KEY_MAP = {
+    "uniform":            "uniform",
+    "legacy a=2":         "legacy_a2",
+    "xi-gc4 a=2":         "xi_gc4_a2",
+    "xi-gc4+xc1.5 a=2":  "xi_gc4_xc15_a2",
+    "xi-gc4+xc1.5 a=3":  "xi_gc4_xc15_a3",
+}
 
-    titles = [r["label"] for r in all_results]
-    levels = np.linspace(0, 1, 11)
+
+def plot_results(all_results):
+    """2 rows x N cols: (top) T/2 max deformation, (bottom) T recovered."""
+    n = len(all_results)
+    fig, axes = plt.subplots(2, n, figsize=(4.0 * n, 8))
 
     for j, r in enumerate(all_results):
         X, Y = r["X"], r["Y"]
-
         for row, (field, ttl) in enumerate([
             (r["psi_half"],  "T/2 (max deform)"),
             (r["psi_final"], "T (recovered)"),
         ]):
             ax = axes[row, j]
             if field is not None:
-                ax.pcolormesh(X, Y, field, cmap="RdBu_r", vmin=0, vmax=1, shading="auto")
-                ax.contour(X, Y, field, levels=[0.5], colors="k", linewidths=1.0)
+                ax.pcolormesh(X, Y, field, cmap="RdBu_r", vmin=0, vmax=1,
+                              shading="auto")
+                ax.contour(X, Y, field, levels=[0.5], colors="k",
+                           linewidths=1.0)
             ax.contour(X, Y, r["psi_init"], levels=[0.5],
                        colors="gray", linewidths=0.8, linestyles="--")
             ax.set_aspect("equal")
-            ax.set_title(f"{titles[j]}\n{ttl}", fontsize=9)
+            ax.set_title(f"{r['label']}\n{ttl}", fontsize=8)
             ax.set_xlabel("x"); ax.set_ylabel("y")
 
-    # Metrics table as text below
     fig.suptitle(
-        "Single vortex (LeVeque 1996) — non-uniform grid comparison\n"
-        r"$N=128,\ \varepsilon/h=1.5,\ T=8$",
-        fontsize=11,
+        r"Single vortex (LeVeque 1996) — $\xi$-space eps comparison"
+        "\n$N=128,\\ T=8$",
+        fontsize=10,
     )
     fig.tight_layout()
     return fig
 
 
 def main():
-    args = experiment_argparser("[11-33] Single vortex non-uniform").parse_args()
+    args = experiment_argparser("[11-36] Single vortex xi-space eps").parse_args()
     N = 128
     eps_ratio = 1.5
 
-    cases = [
-        ("uniform",       1.0),
-        ("non-uniform a=2", 2.0),
-        ("non-uniform a=3", 3.0),
-    ]
-    key_map = {
-        "uniform":       "uniform",
-        "non-uniform a=2": "nonunif_a2",
-        "non-uniform a=3": "nonunif_a3",
-    }
-
     if args.plot_only:
         data = load_results(OUT / "data.npz")
-        print("\n" + "=" * 72)
-        print(f"{'case':>20} {'L2(phi)':>10} {'area_err':>10} {'mass_err':>10}")
-        print("-" * 72)
-        for label, _ in cases:
-            k = key_map[label]
+        print("\n" + "=" * 80)
+        print(f"{'case':>22} {'L2(psi)':>10} {'L2(phi)':>10} {'area_err':>10} {'mass_err':>10}")
+        print("-" * 80)
+        for label, *_ in CASES:
+            k = KEY_MAP[label]
             r = data[k]
-            print(f"{label:>20} {float(r['L2_phi']):>10.3e} "
+            print(f"{label:>22} {float(r['L2_psi']):>10.3e} {float(r['L2_phi']):>10.3e} "
                   f"{float(r['area_err']):>10.2e} {float(r['mass_err']):>10.2e}")
-        print("=" * 72)
+        print("=" * 80)
         return
 
     all_results = []
-    for label, alpha in cases:
+    for label, alpha, gc, xc in CASES:
         print(f"\n--- {label} ---")
-        r = run_case(N, eps_ratio, alpha)
+        r = run_case(N, eps_ratio, alpha, eps_g_cells=gc, eps_xi_cells=xc)
         r["label"] = label
         print(f"  L2psi={r['L2_psi']:.3e}  L2phi={r['L2_phi']:.3e}  "
               f"area={r['area_err']:.2e}  mass={r['mass_err']:.2e}")
         all_results.append(r)
 
-    print("\n" + "=" * 72)
-    print(f"{'case':>20} {'L2(phi)':>10} {'area_err':>10} {'mass_err':>10}")
-    print("-" * 72)
+    print("\n" + "=" * 80)
+    print(f"{'case':>22} {'L2(psi)':>10} {'L2(phi)':>10} {'area_err':>10} {'mass_err':>10}")
+    print("-" * 80)
     for r in all_results:
-        print(f"{r['label']:>20} {r['L2_phi']:>10.3e} "
+        print(f"{r['label']:>22} {r['L2_psi']:>10.3e} {r['L2_phi']:>10.3e} "
               f"{r['area_err']:>10.2e} {r['mass_err']:>10.2e}")
-    print("=" * 72)
+    print("=" * 80)
 
     save_results(OUT / "data.npz", {
-        key_map[r["label"]]: {
+        KEY_MAP[r["label"]]: {
             f: r[f] for f in (
-                "alpha", "L2_psi", "L2_phi", "area_err", "mass_err",
+                "alpha", "eps_g_cells", "eps_xi_cells",
+                "L2_psi", "L2_phi", "area_err", "mass_err",
                 "psi_init", "psi_half", "psi_final", "X", "Y",
             )
         }
@@ -232,8 +252,8 @@ def main():
     })
 
     fig = plot_results(all_results)
-    save_figure(fig, OUT / "single_vortex_nonuniform")
-    print(f"Saved figure -> {OUT / 'single_vortex_nonuniform.pdf'}")
+    save_figure(fig, OUT / "single_vortex_xi_eps")
+    print(f"Saved figure -> {OUT / 'single_vortex_xi_eps.pdf'}")
 
 
 if __name__ == "__main__":

@@ -38,7 +38,8 @@ def run_remapping_test(N=128, K_values=[5, 10, 20, 50]):
     results = []
 
     for K in K_values:
-        gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=2.0)
+        gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=2.0,
+                        eps_g_cells=4.0)
         grid = Grid(gc, backend)
 
         X, Y = grid.meshgrid()

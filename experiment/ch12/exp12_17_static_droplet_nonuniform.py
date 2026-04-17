@@ -65,6 +65,7 @@ def run_case(N: int, alpha_grid: float) -> dict:
         N, N, 1.0, 1.0,
         bc_type="wall",
         alpha_grid=alpha_grid,
+        eps_g_cells=4.0 if alpha_grid > 1.0 else None,
         reinit_every=2 if alpha_grid <= 1.0 else 0,
     )
     X, Y = solver.X, solver.Y

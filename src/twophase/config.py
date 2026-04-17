@@ -21,7 +21,7 @@
 from __future__ import annotations
 import warnings
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Optional, Tuple
 
 from .core.boundary import BCType
 
@@ -44,6 +44,9 @@ class GridConfig:
     dx_min_floor: float = 1e-6
     # ガウス型グリッド密度関数の幅: ε_g = eps_g_factor × ε（§6 eq:grid_delta）; 推奨 2–4
     eps_g_factor: float = 2.0
+    # ξ空間セル数で格子密度幅を指定: ε_g = eps_g_cells × (L/N).
+    # 設定時は eps_g_factor を上書き. CCD解像に ≥ 4 が必要 (WIKI-T-039).
+    eps_g_cells: Optional[float] = None
 
     def __post_init__(self) -> None:
         assert self.ndim in (2, 3), f"ndim は 2 か 3 でなければならない: {self.ndim}"
@@ -53,6 +56,10 @@ class GridConfig:
         assert len(self.L) == self.ndim, (
             f"len(L)={len(self.L)} は ndim={self.ndim} と一致しなければならない"
         )
+        if self.eps_g_cells is not None:
+            assert self.eps_g_cells >= 4.0, (
+                f"eps_g_cells={self.eps_g_cells} は CCD 解像に 4 以上が必要"
+            )
 
 
 @dataclass

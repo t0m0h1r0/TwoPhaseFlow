@@ -26,15 +26,20 @@ def _sl(ndim: int, axis: int, start, stop) -> tuple:
     return tuple(s)
 
 
-def compute_dtau(grid, eps: float) -> float:
+def compute_dtau(grid, eps) -> float:
     """Pseudo-time step (eq:dtau_reinit_def).
 
     Uses the actual minimum cell spacing (not the nominal L/N) so that
     the CFL condition is satisfied on non-uniform grids.
+
+    *eps* may be a scalar or an array (ξ-space local eps); the minimum
+    value is used for the CFL bound.
     """
+    import numpy as _np
     ndim = grid.ndim
     dx_min = min(float(grid.h[ax].min()) for ax in range(ndim))
-    dtau_para = 0.5 * dx_min**2 / (2.0 * ndim * eps)
+    eps_min = float(_np.min(eps))
+    dtau_para = 0.5 * dx_min**2 / (2.0 * ndim * eps_min)
     dtau_hyp = 0.5 * dx_min
     return min(dtau_para, dtau_hyp)
 
