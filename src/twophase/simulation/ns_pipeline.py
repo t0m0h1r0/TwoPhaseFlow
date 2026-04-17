@@ -940,8 +940,12 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     ic = cfg.initial_condition
     R_ic = float(ic.get("radius", 0.25)) if isinstance(ic, dict) else 0.25
 
+    _bk0 = solver._backend
     diag = DiagnosticCollector(
-        cfg.diagnostics, solver.X, solver.Y, solver.h,
+        cfg.diagnostics,
+        np.asarray(_bk0.to_host(solver.X)),
+        np.asarray(_bk0.to_host(solver.Y)),
+        solver.h,
         rho_l=ph.rho_l, rho_g=ph.rho_g,
         sigma=ph.sigma, R=R_ic,
     )
