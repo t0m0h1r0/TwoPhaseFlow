@@ -200,7 +200,7 @@ class LevelSetAdvection(ILevelSetAdvection):
         Fplus_p2 = 0.5 * (fp_p2 + alpha * pp_p2)
 
         # Positive WENO5 reconstruction at face i+1/2 (from left)
-        Fp_face = _weno5_pos(xp, Fplus_m2, Fplus_m1, Fplus_0, Fplus_p1, Fplus_p2)
+        Fp_face = _weno5_pos(Fplus_m2, Fplus_m1, Fplus_0, Fplus_p1, Fplus_p2)
 
         # Negative flux stencils: centred at right cell of face (shifted by 1)
         fm_m1 = F_p[sl_ax(2, 2 + i_max)]   # k = i-1
@@ -222,7 +222,7 @@ class LevelSetAdvection(ILevelSetAdvection):
         Fminus_p3 = 0.5 * (fm_p3 - alpha * pm_p3)
 
         # Negative WENO5 reconstruction at face i+1/2 (from right)
-        Fm_face = _weno5_neg(xp, Fminus_m1, Fminus_0, Fminus_p1, Fminus_p2, Fminus_p3)
+        Fm_face = _weno5_neg(Fminus_m1, Fminus_0, Fminus_p1, Fminus_p2, Fminus_p3)
 
         # Total face flux
         flux_face = Fp_face + Fm_face   # shape: n-1 along axis
@@ -409,7 +409,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 # ── WENO5 reconstruction kernels (vectorised) ─────────────────────────────
 
 @_fuse
-def _weno5_pos(xp, q0, q1, q2, q3, q4):
+def _weno5_pos(q0, q1, q2, q3, q4):
     """WENO5 positive flux at i+1/2 from stencil q[i-2..i+2] = q0..q4.
 
     Fused into a single CUDA kernel on GPU via ``@_fuse``.
@@ -437,7 +437,7 @@ def _weno5_pos(xp, q0, q1, q2, q3, q4):
 
 
 @_fuse
-def _weno5_neg(xp, q0, q1, q2, q3, q4):
+def _weno5_neg(q0, q1, q2, q3, q4):
     """WENO5 negative flux at i+1/2 from stencil q[i-1..i+3] = q0..q4.
 
     Fused into a single CUDA kernel on GPU via ``@_fuse``.
