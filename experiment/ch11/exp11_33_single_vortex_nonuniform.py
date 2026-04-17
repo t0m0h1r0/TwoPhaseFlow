@@ -38,10 +38,11 @@ apply_style()
 OUT = experiment_dir(__file__)
 
 
-def run_case(N, eps_ratio, alpha_grid, reinit_freq=20):
+def run_case(N, eps_ratio, alpha_grid, reinit_freq=20, eps_g_cells=4.0):
     backend = Backend()
     xp = backend.xp
-    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid)
+    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid,
+                    eps_g_cells=eps_g_cells if alpha_grid > 1.0 else None)
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
     h = 1.0 / N

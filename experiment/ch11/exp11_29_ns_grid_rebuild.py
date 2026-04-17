@@ -53,6 +53,7 @@ def run_case(alpha_grid: float, label: str, backend: "Backend") -> dict:
         N, N, LX, LY,
         bc_type="wall",
         alpha_grid=alpha_grid,
+        eps_g_cells=4.0 if alpha_grid > 1.0 else None,
         use_gpu=backend.is_gpu(),
     )
     # Convert meshgrid to host arrays for numpy-based IC construction.

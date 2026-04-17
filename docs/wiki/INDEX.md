@@ -1,6 +1,6 @@
-# Wiki Index — 112 entries
+# Wiki Index — 114 entries
 
-## Theory (37)
+## Theory (38)
 
 | REF-ID | Title |
 |--------|-------|
@@ -41,6 +41,7 @@
 | [WIKI-T-035](theory/WIKI-T-035.md) | Non-Uniform Grid Error Decomposition: 5-Component Taxonomy and DCCD Rescue Limits |
 | [WIKI-T-036](theory/WIKI-T-036.md) | Phi-Primary Transport: Machine-Precision Mass Conservation via SDF Transport |
 | [WIKI-T-037](theory/WIKI-T-037.md) | Grid Remap Interpolation Order Limit: Coarse-to-Fine Upsampling Bottleneck |
+| [WIKI-T-038](theory/WIKI-T-038.md) | xi-Space eps Definition for Non-Uniform CCD Grids |
 
 ## Cross-Domain (14)
 
@@ -61,7 +62,7 @@
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
 
-## Experiment (25)
+## Experiment (26)
 
 | REF-ID | Title |
 |--------|-------|
@@ -90,6 +91,7 @@
 | [WIKI-E-023](experiment/WIKI-E-023.md) | Ch12 Non-Uniform Dynamic Gate: Ablation, Stabilization, and Density-Ratio Limits (exp12_19--22) |
 | [WIKI-E-024](experiment/WIKI-E-024.md) | Ch13 Non-Uniform Interface Sharpness Sweep: eps=1.0 Sweet Spot (exp13_90) |
 | [WIKI-E-025](experiment/WIKI-E-025.md) | Ch13 Phi-Primary Transport Trial and Uniformized Visualization (exp13_91, exp13_92) |
+| [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 
 ## Paper (8)
 

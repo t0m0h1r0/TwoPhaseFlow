@@ -34,10 +34,12 @@ def zalesak_sdf(X, Y, center=(0.5, 0.75), R=0.15, slot_w=0.05, slot_h=0.25):
     return ZalesakDisk(center=center, radius=R, slot_width=slot_w, slot_depth=slot_h).sdf(X, Y)
 
 
-def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20):
+def run_case(N, eps_ratio, alpha_grid, method="split", reinit_freq=20,
+             eps_g_cells=4.0):
     backend = Backend()
     xp = backend.xp
-    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid)
+    gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid,
+                    eps_g_cells=eps_g_cells if alpha_grid > 1.0 else None)
     grid = Grid(gc, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
     h = 1.0 / N

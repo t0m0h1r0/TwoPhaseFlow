@@ -60,6 +60,8 @@ def run_case(N: int, alpha_grid: float, use_local_eps: bool, label: str) -> dict
     solver = TwoPhaseNSSolver(
         N, N, 1.0, 1.0, bc_type="wall",
         alpha_grid=alpha_grid, use_local_eps=use_local_eps,
+        eps_g_cells=4.0 if alpha_grid > 1.0 else None,
+        eps_xi_cells=1.5 if use_local_eps else None,
         reinit_every=2 if alpha_grid <= 1.0 else 0,
     )
     X, Y = solver.X, solver.Y
