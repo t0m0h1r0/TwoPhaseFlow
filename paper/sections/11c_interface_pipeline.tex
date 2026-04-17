@@ -140,47 +140,8 @@ Zalesak テストも同様に hybrid モード（固定頻度 20 ステップ毎
 本パラメタでは DGR によるスロット構造への影響は
 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.02$ のため無視できる．
 
-\paragraph{非一様格子上の CLS 移流}
-
-上記の一様格子テストに加え，界面適合非一様格子（§~\ref{sec:grid}）上での
-CLS 移流精度を Zalesak 1 回転テスト（$N = 128$，$\varepsilon/h = 0.5$）で検証した．
-格子密度幅には計算空間セル数定義 $N_{g,\text{cells}} = 4$
-（式~\eqref{eq:eps_g_xi}）を使用する．
-形状誤差の評価には，界面厚 $\varepsilon$ に依存しない $\phi$ 空間
-（符号付き距離関数）の $L_2$ ノルムを用いる
-（$\psi$ 空間 $L_2$ との違いは §~\ref{sec:verify_dccd_conservation} 参照）．
-表~\ref{tab:cls_nonuniform} に一様格子との比較を示す．
-
-\begin{table}[htbp]
-\centering
-\caption{Zalesak スロット円板：一様格子 vs 非一様格子の CLS 移流精度
-（$N = 128$，$\varepsilon/h = 0.5$，$N_{g,\text{cells}} = 4$，固定頻度再初期化 20 ステップ毎）}
-\label{tab:cls_nonuniform}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lrrr}
-\toprule
-格子 & $L_2(\phi)$ 誤差 & 面積誤差 & 質量保存誤差 \\
-\midrule
-一様              & $1.054 \times 10^{-2}$ & $3.18 \times 10^{-4}$ & $\Ord{10^{-15}}$ \\
-非一様 $\alpha=2$ & $1.050 \times 10^{-2}$ & $1.15 \times 10^{-2}$ & $\Ord{10^{-16}}$ \\
-非一様 $\alpha=3$ & $1.040 \times 10^{-2}$ & $1.55 \times 10^{-2}$ & $\Ord{10^{-15}}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-計算空間セル数定義（$N_{g,\text{cells}} = 4$）により，
-非一様格子の $L_2(\phi)$ 誤差は $\alpha = 2,\,3$ の双方で
-一様格子と同等の $1.05 \times 10^{-2}$ を達成した．
-旧定義（$\varepsilon_g = C_g \varepsilon$）では $\alpha = 2$ で
-$L_2(\phi) = 3.94 \times 10^{-2}$ と一様格子の約 3.7 倍に劣化していたが，
-$\xi$ 空間で格子密度関数を十分に解像することでこの劣化が解消された．
-面積誤差は格子リフレッシュ時の $\psi$ 再マッピング
-（§~\ref{sec:cls_conservation}）のスロット角部補間に起因し，
-$1.15\text{--}1.55 \times 10^{-2}$ の残差を残す．
-質量保存は $\alpha = 2$ で機械精度（$\Ord{10^{-16}}$）に改善された．
-非一様格子の恩恵は移流の $L_2(\phi)$ 精度に加え，
-曲率計算の精度向上と PPE 界面近傍の解像度確保
-（§~\ref{sec:verify_curvature}，§~\ref{sec:verify_split_ppe_dc}）に現れる．
+非一様格子上での CLS 移流検証（Zalesak および単一渦テスト）は
+§~\ref{sec:nonuniform_advection} にて，界面適合格子との結合検証として報告する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────

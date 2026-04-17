@@ -115,7 +115,7 @@ WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \
 CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
 圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §8c の禁止規則を実証 \\
 PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
-NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 2.6 \times 10^{-4}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
+NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
 交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
 交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
 再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
@@ -144,7 +144,7 @@ DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D 
 条件付き合格は，非一様格子 CCD，DCCD 不連続移流，HFE 2D，
 再初期化界面シフトである．
 NS 毎ステップ格子リビルドは DGR 再初期化の採用により
-$\alpha{=}2$ でも $|\Delta M|/M_0 = 2.6 \times 10^{-4}$ を達成し合格に昇格した．
+$\alpha{=}2$ でも $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ を達成し合格に昇格した．
 分相 PPE + DC $k{=}3$ は液相内部で全密度比（$\rho_l/\rho_g = 1$--$1000$）に対し
 $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
 圧力場フィルタ禁止の必要性（$\Ord{h^2}$ 発散誤差）および

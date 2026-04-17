@@ -181,3 +181,115 @@ CSF を用いる計算では\textbf{使用してはならない}．
 （Config B）から得られる．
 $\varepsilon(\bx)$ の恩恵はデルタ関数を介さない
 GFM 表面張力（§~\ref{sec:future_work}）との結合で検証する必要がある．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{非一様格子上の CLS 移流精度}
+\label{sec:nonuniform_advection}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{目的：}
+§~\ref{sec:nonuniform_grid_ns} の静止液滴テストでは界面は移動しなかった．
+本節では界面適合格子（$\alpha = 2,\,3$）上で CLS 移流の精度を
+古典的ベンチマーク（Zalesak スロット円板，単一渦テスト）により検証する．
+§~\ref{sec:verify_cls_advection} の一様格子結果と直接比較し，
+計算空間セル数定義（$N_{g,\text{cells}} = 4$）による格子密度幅制御の有効性を確認する．
+
+\noindent\textbf{手順とパラメタ：}
+\begin{itemize}[noitemsep]
+  \item Zalesak：$N = 128$，$\varepsilon/h = 0.5$，1 回転 ($T = 2\pi$)，固定頻度再初期化（20 ステップ毎）
+  \item 単一渦：$N = 128$，$\varepsilon/h = 0.5$，変形＋反転 ($T = 8$)
+  \item 格子密度幅 $N_{g,\text{cells}} = 4$（式~\eqref{eq:eps_g_xi}）
+  \item 毎ステップ格子リビルドと CLS 保存型再マッピング（§~\ref{sec:cls_conservation}）
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{非一様格子上の CLS 移流精度（$N = 128$，$N_{g,\text{cells}} = 4$）．
+$L_2(\phi)$ は符号付き距離関数空間の誤差ノルムであり，界面厚 $\varepsilon$ に依存しない指標である．}
+\label{tab:cls_nonuniform}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llrrr}
+\toprule
+テスト & 格子 & $L_2(\phi)$ 誤差 & 面積誤差 & 質量保存誤差 \\
+\midrule
+\multirow{3}{*}{Zalesak}
+  & 一様              & $1.054 \times 10^{-2}$ & $3.82 \times 10^{-4}$ & $\Ord{10^{-15}}$ \\
+  & 非一様 $\alpha=2$ & $1.053 \times 10^{-2}$ & $1.20 \times 10^{-2}$ & $\Ord{10^{-16}}$ \\
+  & 非一様 $\alpha=3$ & $1.073 \times 10^{-2}$ & $1.55 \times 10^{-2}$ & $\Ord{10^{-15}}$ \\
+\midrule
+\multirow{3}{*}{単一渦}
+  & 一様              & $3.43 \times 10^{-2}$ & $7.17 \times 10^{-2}$ & $\Ord{10^{-15}}$ \\
+  & 非一様 $\alpha=2$ & $3.75 \times 10^{-2}$ & $1.08 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
+  & 非一様 $\alpha=3$ & $3.86 \times 10^{-2}$ & $1.21 \times 10^{-1}$ & $\Ord{10^{-15}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表~\ref{tab:cls_nonuniform} に結果を示す．知見をまとめる：
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Zalesak $L_2(\phi)$ は一様格子と同等：}
+        $\alpha = 2$ で $1.053 \times 10^{-2}$，
+        $\alpha = 3$ で $1.073 \times 10^{-2}$ と，
+        一様格子の $1.054 \times 10^{-2}$ と $2\%$ 以内で一致する．
+        $N_{g,\text{cells}} = 4$ の格子密度幅制御により，
+        計算空間上でのレベルセット界面の十分な解像が保証されている．
+  \item \textbf{面積誤差はリマッピング起因：}
+        非一様格子では毎ステップの格子リビルドに伴う CLS 再マッピング
+        （§~\ref{sec:cls_conservation}）が必要であり，
+        スロット角部の補間誤差が $1.2\text{--}1.6 \times 10^{-2}$ の面積残差を生じる．
+        $L_2(\phi)$（形状誤差の本質的指標）に影響しない．
+  \item \textbf{単一渦は $\alpha$ 増加で微増：}
+        $L_2(\phi)$ は $\alpha = 2$ で一様格子比 $+9\%$，$\alpha = 3$ で $+13\%$．
+        変形＋反転テストでは界面が領域全体に伸長するため，
+        粗い領域のセルサイズが回復精度に影響する．
+  \item \textbf{質量保存は全ケースで機械精度：}
+        CLS の保存型移流が非一様格子上でも正しく機能することを確認した．
+\end{enumerate}
+
+\noindent\textbf{結論：}
+$N_{g,\text{cells}} = 4$ の界面適合格子は，CLS 移流の形状精度を一様格子と同等に維持する．
+面積誤差の増加はリマッピング起因であり，アルゴリズムの精度劣化ではない．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{格子密度幅パラメタの較正}
+\label{sec:grid_calibration}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{目的：}
+§~\ref{sec:nonuniform_advection} では $N_{g,\text{cells}} = 4$ を既定値として使用した．
+本節ではこの値の根拠を示す．
+具体的には，(1) $\varepsilon_g$ のバンド幅スイープにより制約閾値を同定し，
+(2) 計算空間セル数定義（$N_{g,\text{cells}}$）と旧来の
+$\varepsilon_g = C_g \varepsilon$ 定義の性能比較を行う．
+
+\subsubsection{バンド幅スイープ}
+
+格子密度関数の \texttt{eps\_g\_factor} を $[0.5, 8.0]$ の範囲でスイープし，
+Zalesak スロット円板テスト（$N = 128$，$\alpha = 2$）で
+$L_2(\phi)$ 誤差への影響を調べた．
+バンド幅が狭すぎると界面近傍の解像度が不足し，
+レベルセット移流の精度が急激に劣化する．
+実測の閾値は \texttt{eps\_g\_factor} $\approx 2.0$ であり，
+$N_{g,\text{cells}} = 4$（\texttt{eps\_g\_factor} $\approx 3.0$）は十分な余裕を持つ．
+
+\subsubsection{$\xi$ 空間 $\varepsilon$ 定義の検証}
+
+旧定義 $\varepsilon_g = C_g \varepsilon$（物理空間固定）と
+新定義 $N_{g,\text{cells}}$（計算空間セル数固定）を
+Zalesak および単一渦テスト（$\alpha = 1, 2, 3$）で比較した．
+旧定義は $\alpha = 2$ で $L_2(\phi) = 3.94 \times 10^{-2}$ と
+一様格子の約 3.7 倍に劣化するのに対し，
+新定義は $1.053 \times 10^{-2}$ と一様格子と同等を維持する
+（表~\ref{tab:cls_nonuniform}）．
+この差は，$\xi$ 空間で格子密度関数を十分に解像するかどうかに帰着する：
+旧定義は物理空間で $\varepsilon_g$ を固定するため，
+$\alpha > 1$ の圧縮格子では $\xi$ 空間での解像点数が不足し，
+メトリクス係数の精度が低下する．
+
+\noindent\textbf{結論：}
+$N_{g,\text{cells}} = 4$ は格子密度幅の十分性を保証するとともに，
+$\alpha$ に依存しない安定した移流精度を実現する．
+本設定を以降の全非一様格子計算のデフォルトとする．
