@@ -8,8 +8,9 @@ grid:
   LX: 1.0
   LY: 1.0
   bc_type: wall
-  alpha_grid: 1.0
-  use_local_eps: false
+  alpha_grid: 2.0
+  use_local_eps: true
+  dx_min_floor: 0.006
 
 physics:
   rho_l: 1.0
@@ -25,6 +26,7 @@ run:
   T_final:    5.0
   max_steps:  500000
   cfl:        0.10
+  kappa_max:  8.0
   cn_viscous: true
   snap_times: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
   print_every: 200
