@@ -8,11 +8,12 @@
 
 \noindent\textbf{目的：}
 §~\ref{sec:grid_ale} で設計した界面適合格子が NS パイプライン全体と結合した際に
-静止液滴の質量保存・parasitic current・Laplace 圧力に与える影響を定量化する．
+静止液滴の質量保存・寄生電流・Laplace 圧力に与える影響を定量化する．
 
 \noindent\textbf{評価対象：}
-格子密度関数 $\omega(\phi) = 1 + (\alpha{-}1)\,\delta^*(\phi)$
-（$\alpha = 2$，界面適合）と一様格子（$\alpha = 1$）を同一条件下で比較する．
+格子密度関数 $\omega(\phi) = 1 + (\alpha{-}1)\,\varepsilon_g\,\delta_\varepsilon^*(\phi)$
+（$\alpha = 2$，界面適合，$N_{g,\text{cells}} = 4$）と一様格子（$\alpha = 1$）を同一条件下で比較する．
+格子密度幅には計算空間セル数定義（式~\eqref{eq:eps_g_xi}）を使用する．
 §~\ref{sec:verify_ns_grid_rebuild} で短時間（100 ステップ，$N{=}32$）の安定性は既確認のため，
 本節では解像度を $N = 32, 48, 64$ に拡張し，200 ステップの
 静止液滴テストで格子収束性を評価する．
@@ -27,31 +28,31 @@
 \end{itemize}
 
 \noindent
-最後の設定は追試で明らかになった実装上の制約である．
+非一様格子での再初期化無効化は実装上の制約による：
 現行の再初期化器は一様格子幅を仮定しており，非一様格子では
-移流なしの 1 ステップでも $3\times10^{-2}$--$2\times10^{-1}$ の質量ずれを発生させる．
-一方，格子リビルド自体はそのずれを保存するだけで，
-質量悪化の主因ではなかった．
+$3\times10^{-2}$--$2\times10^{-1}$ の質量ずれを生じる
+（格子リビルド自体はそのずれを保存するのみ）．
 
 \noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
-\caption{静止液滴の格子収束性：一様格子 vs 界面適合格子（$t = 200\Delta t$）}
+\caption{静止液滴の格子収束性：一様格子 vs 界面適合格子（$N_{g,\text{cells}} = 4$，$t = 200\Delta t$）．
+$N = 32$ は両格子とも CSF 解像度不足により発散したため除外\textsuperscript{$\dagger$}．}
 \label{tab:nonuniform_ns_convergence}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{ccccccc}
 \toprule
 $N$ & $\alpha$ & 再初期化間隔 & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ & $h_{\min}$ \\
 \midrule
-32 & 1 & 2 & $2.57 \times 10^{-1}$ & 77\%  & $1.43 \times 10^{-3}$ & 0.0312 \\
-32 & 2 & off & $7.70 \times 10^{-2}$ & 5.0\% & $1.71 \times 10^{-5}$ & 0.0226 \\
+48 & 1 & 2 & $4.36 \times 10^{-1}$ & 5.9\%  & $1.86 \times 10^{-4}$ & 0.0208 \\
+48 & 2 & off & $5.59 \times 10^{-3}$ & \textbf{0.10\%} & $1.67 \times 10^{-5}$ & 0.0171 \\
 \midrule
-48 & 1 & 2 & $1.92 \times 10^{-1}$ & 54\%  & $4.34 \times 10^{-4}$ & 0.0208 \\
-48 & 2 & off & $1.58 \times 10^{-1}$ & 1.0\% & $1.34 \times 10^{-4}$ & 0.0142 \\
+64 & 1 & 2 & \multicolumn{4}{c}{発散\textsuperscript{$\dagger$}} \\
+64 & 2 & off & $8.83 \times 10^{-1}$ & 0.88\% & $4.85 \times 10^{-4}$ & 0.0126 \\
 \midrule
-64 & 1 & 2 & $9.53 \times 10^{-1}$ & 34\%  & $9.57 \times 10^{-5}$ & 0.0156 \\
-64 & 2 & off & $9.23 \times 10^{-2}$ & 1.8\% & $5.89 \times 10^{-5}$ & 0.0103 \\
+\multicolumn{7}{l}{\footnotesize \textsuperscript{$\dagger$}$\max|\bu| > 10^{6}$，
+CSF の界面近傍解像度が不足し 200 ステップ到達前に発散．} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -69,85 +70,73 @@ $N$ & $\alpha$ & 再初期化間隔 & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|
 3 つの知見が得られた：
 
 \begin{enumerate}[noitemsep]
-  \item \textbf{寄生電流の改善：}
-        $\alpha = 2$（再初期化 off）は全解像度で寄生電流が小さく，
-        $N = 64$ では一様格子（再初期化 2 ステップ毎）の約 $1/10$ に抑制された
-        （$9.23 \times 10^{-2}$ vs $9.53 \times 10^{-1}$）．
+  \item \textbf{安定性に明確な格差：}
+        一様格子は $N = 32$ および $N = 64$ で CSF 解像度不足により発散し，
+        200 ステップの計算を完了できなかった（$N = 32$ は両格子とも発散）．
+        界面適合格子（$\alpha = 2$，$N_{g,\text{cells}} = 4$）は
+        $N = 48, 64$ で安定に計算を完了した．
+  \item \textbf{寄生電流と Laplace 圧の劇的改善（$N = 48$）：}
+        両格子が比較可能な $N = 48$ において，
+        界面適合格子は寄生電流を 78 倍改善
+        （$5.59 \times 10^{-3}$ vs $4.36 \times 10^{-1}$），
+        Laplace 圧相対誤差を 60 倍改善（$0.10\%$ vs $5.9\%$）した．
         ただし再初期化設定が同時に異なるため，格子適合と再初期化無効化の
         各寄与を本テストだけでは分離できない．
-  \item \textbf{Laplace 圧精度の大幅改善：}
-        固定 $\varepsilon$ のままでも $\alpha = 2$ は
-        Laplace 圧相対誤差を 1--5\% まで下げた．
-        旧版で報告した 60--100\% の悪化は，
-        非一様格子上の再初期化が界面プロファイルを壊した影響が支配的であった．
-        格子適合単独の寄与を定量化するには，
-        一様格子でも再初期化を無効化した対照実験が必要である（今後の課題）．
-  \item \textbf{質量保存は同等以上：}
-        非一様格子の質量誤差は $N=32,64$ で一様格子より小さく，
-        $N=48$ でも同じ桁に収まる．
-        追試により，旧版の 16--23\% の質量悪化は
-        格子リビルド補間ではなく再初期化器の非一様格子非対応に由来することが分かった．
+  \item \textbf{質量保存も改善：}
+        $N = 48$ で非一様格子の質量誤差は一様格子の約 $1/10$
+        （$1.67 \times 10^{-5}$ vs $1.86 \times 10^{-4}$）．
+        $N = 64$ では非一様格子が安定に $4.85 \times 10^{-4}$ を達成したのに対し，
+        一様格子は発散した．
 \end{enumerate}
 
 \noindent\textbf{結論：}
-界面適合格子は，現行再初期化器を非一様格子上で無効化する条件では，
-寄生電流と Laplace 圧精度を同時に改善する．
+界面適合格子（$N_{g,\text{cells}} = 4$）は，
+再初期化を無効化した条件で寄生電流・Laplace 圧精度・安定性を同時に改善する．
+$N_{g,\text{cells}}$ による $\xi$ 空間での格子密度関数の十分な解像が
+メトリクス係数の精度を保証し，§~\ref{sec:cls_on_nonuniform} の移流検証と整合する結果となった．
 残る課題は，非一様格子幅を正しく扱う再初期化器を実装し，
 移動界面でも同じ改善が保たれるかを確認することである．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{\texorpdfstring{空間可変 $\varepsilon$：CSF ミスマッチの是正}{空間可変 epsilon：CSF ミスマッチの是正}}
+\subsection{\texorpdfstring{空間可変 $\varepsilon$ と CSF 表面張力の非互換性}{空間可変 epsilon と CSF 表面張力の非互換性}}
 \label{sec:local_eps_validation}
 % ─────────────────────────────────────────────────────────────────────────────
 
 §~\ref{sec:nonuniform_grid_ns} では，非一様格子で再初期化を無効化した場合，
-固定 $\varepsilon = C_\varepsilon h_{\rm uniform}$ でも Laplace 圧精度が大きく改善した．
-本節では，空間可変 $\varepsilon(\bx)$ がさらに改善を与えるかを検証する．
-
-\noindent\textbf{理論（§6 補遺）：}
-$\varepsilon$ を空間可変場
-\begin{equation}
-  \varepsilon(\bx) = C_\varepsilon \cdot h_{\rm local}(\bx),
-  \quad h_{\rm local}(i,j) = \max(h_x(i),\, h_y(j))
-  \label{eq:local_eps}
-\end{equation}
-で置換する．この設計により以下が保証される：
-\begin{enumerate}[noitemsep]
-  \item \textbf{一定セル数：}界面遷移は全域で $\sim 2C_\varepsilon$ 個の局所セルに収まる
-  \item \textbf{後方互換：}一様格子では $h_{\rm local} = h$ となり従来のスカラー $\varepsilon$ と一致
-  \item \textbf{滑らかさ：}$h_{\rm local}(\bx)$ は格子密度関数 $\omega(\phi)$ を継承して $C^2$
-\end{enumerate}
+固定 $\varepsilon = 1.5\,h_{\rm uniform}$ でも Laplace 圧精度が大きく改善した．
+本節では，§~\ref{sec:cls_on_nonuniform} で導入した空間可変
+$\varepsilon(\bx) = N_{\varepsilon,\text{cells}} \cdot h_{\rm local}(\bx)$
+（式~\eqref{eq:eps_xi_cells}）が CSF 表面張力の文脈でさらに改善を与えるかを検証する．
 
 \noindent\textbf{検証：}
 表~\ref{tab:nonuniform_ns_convergence} と同一条件（$N = 32, 48, 64$，200 ステップ）で
 3 構成を比較した：
 \begin{itemize}[noitemsep]
   \item[\textbf{A:}] 一様格子（$\alpha = 1$），$\varepsilon = 1.5\,h$，再初期化 2 ステップ毎
-  \item[\textbf{B:}] 界面適合（$\alpha = 2$），固定 $\varepsilon = 1.5\,h_{\rm uniform}$，再初期化なし
-  \item[\textbf{C:}] 界面適合（$\alpha = 2$），$\varepsilon(\bx) = 1.5\,h_{\rm local}(\bx)$，再初期化なし
+  \item[\textbf{B:}] 界面適合（$\alpha = 2$，$N_{g,\text{cells}} = 4$），固定 $\varepsilon = 1.5\,h_{\rm uniform}$，再初期化なし
+  \item[\textbf{C:}] 界面適合（$\alpha = 2$，$N_{g,\text{cells}} = 4$），$\varepsilon(\bx) = 1.5\,h_{\rm local}(\bx)$，再初期化なし
 \end{itemize}
 
 \begin{table}[htbp]
 \centering
-\caption{空間可変 $\varepsilon$ の検証結果（$t = 200\Delta t$，静止液滴）}
+\caption{空間可変 $\varepsilon$ の検証結果（$N_{g,\text{cells}} = 4$，$t = 200\Delta t$，静止液滴）．
+$N = 32$ は全構成で発散したため除外\textsuperscript{$\dagger$}．$N = 64$ は A, C が発散．}
 \label{tab:local_eps_validation}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{clcccc}
+\begin{tabular}{clccc}
 \toprule
-$N$ & 構成 & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ \\
+$N$ & 構成 & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_0$ \\
 \midrule
-32 & A: 一様 & 1 & $2.57 \times 10^{-1}$ & 77\% & $1.43 \times 10^{-3}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $7.70 \times 10^{-2}$ & \textbf{5.0\%} & $1.71 \times 10^{-5}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $1.26 \times 10^{-1}$ & 10\% & $1.08 \times 10^{-3}$ \\
+48 & A: 一様 & $4.36 \times 10^{-1}$ & 5.9\% & $1.86 \times 10^{-4}$ \\
+   & B: 固定 $\varepsilon$ & $5.59 \times 10^{-3}$ & \textbf{0.10\%} & $1.67 \times 10^{-5}$ \\
+   & C: 局所 $\varepsilon$ & $5.93 \times 10^{-1}$ & 332\% & $4.32 \times 10^{-4}$ \\
 \midrule
-48 & A: 一様 & 1 & $1.92 \times 10^{-1}$ & 54\% & $4.34 \times 10^{-4}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $1.58 \times 10^{-1}$ & 1.0\% & $1.34 \times 10^{-4}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $9.12 \times 10^{-2}$ & \textbf{0.86\%} & $8.59 \times 10^{-5}$ \\
+64 & A: 一様 & \multicolumn{3}{c}{発散\textsuperscript{$\dagger$}} \\
+   & B: 固定 $\varepsilon$ & $8.83 \times 10^{-1}$ & 0.88\% & $4.85 \times 10^{-4}$ \\
+   & C: 局所 $\varepsilon$ & \multicolumn{3}{c}{発散\textsuperscript{$\dagger$}} \\
 \midrule
-64 & A: 一様 & 1 & $9.53 \times 10^{-1}$ & 34\% & $9.57 \times 10^{-5}$ \\
-   & B: 固定 $\varepsilon$ & 2 & $9.23 \times 10^{-2}$ & 1.8\% & $5.89 \times 10^{-5}$ \\
-   & C: 局所 $\varepsilon$ & 2 & $3.30 \times 10^{-1}$ & \textbf{1.4\%} & $3.81 \times 10^{-5}$ \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$\max|\bu| > 10^{6}$，200 ステップ到達前に発散．} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -157,30 +146,38 @@ $N$ & 構成 & $\alpha$ & $\max|\bu|$ & $\Delta p$ 相対誤差 & $|\Delta M|/M_
 \includegraphics[width=\linewidth]{figures/ch12_local_eps}
 \caption{固定 $\varepsilon$（B）と空間可変 $\varepsilon(\bx)$（C）の比較．
 (a) 寄生電流，(b) Laplace 圧誤差，
-(c)(d) $N{=}64$ の質量保存・寄生電流時間履歴．}
+(c)(d) $N{=}48$ の質量保存・寄生電流時間履歴．}
 \label{fig:local_eps}
 \end{figure}
 
 表~\ref{tab:local_eps_validation} および図~\ref{fig:local_eps} に結果を示す．
 
 \begin{enumerate}[noitemsep]
-  \item \textbf{Laplace 圧の効果は解像度依存：}
-        C は $N=48,64$ で B を改善したが，$N=32$ では悪化した．
-        空間可変 $\varepsilon$ は有効だが，粗格子では局所幅の変動が
-        CSF 力分布に過度に反映される可能性がある．
-  \item \textbf{寄生電流は一様には改善しない：}
-        C は $N=48$ で B より小さいが，$N=32,64$ では B より大きい．
-        寄生電流の主因は $\varepsilon$ ミスマッチだけではなく，
-        PPE 投影・曲率・格子配置の結合誤差を含む．
-  \item \textbf{質量保存は中高解像度で改善：}
-        C は $N=48,64$ で B より質量誤差を下げたが，
-        $N=32$ では悪化した．
-        いずれの場合も旧版で報告した 10\% 級の質量損失は再現しない．
+  \item \textbf{Config C は CSF と非互換：}
+        空間可変 $\varepsilon$ を用いた Config C は，
+        唯一安定な $N = 48$ においても Config B の約 100 倍の寄生電流
+        （$5.93 \times 10^{-1}$ vs $5.59 \times 10^{-3}$）と
+        Laplace 圧の重大な悪化（332\% vs 0.10\%）を示した．
+        $N = 64$ では発散に至る．
+  \item \textbf{デルタ関数振幅の不整合が寄生力を発生させる：}
+        CSF モデルの体積力 $\bm{f}_\sigma = \sigma\kappa\,\delta_\varepsilon(\phi)\,\bnabla\phi$
+        において，$\varepsilon(\bx)$ の空間変動がデルタ関数
+        $\delta_\varepsilon$ の振幅を局所的に変化させる．
+        細かいセル（$\varepsilon$ 小，$\delta_\varepsilon$ 大）と粗いセル
+        （$\varepsilon$ 大，$\delta_\varepsilon$ 小）の境界で力のバランスが崩れ，
+        非物理的な寄生力が発生する（§~\ref{sec:cls_on_nonuniform}，
+        ボックス~\ref{box:eps_xi_csf_warning}）．
+  \item \textbf{Config B の有効性再確認：}
+        固定 $\varepsilon$ の Config B は $N = 48$ で
+        寄生電流 78 倍改善・Laplace 圧 0.10\% を達成しており，
+        $N_{g,\text{cells}} = 4$ の格子適合単独で十分な改善が得られる．
 \end{enumerate}
 
 \noindent\textbf{結論：}
-空間可変 $\varepsilon(\bx) = C_\varepsilon h_{\rm local}(\bx)$ は
-$N=48,64$ で Laplace 圧と質量保存を改善するが，
-寄生電流を一様に下げるわけではない．
-非一様格子の主要な改善は格子適合そのものから得られ，
-局所 $\varepsilon$ は中高解像度での追加補正として位置づけるのが妥当である．
+空間可変 $\varepsilon(\bx)$（式~\eqref{eq:eps_xi_cells}）は
+CSF 表面張力モデルとの組み合わせで寄生流れを著しく増幅させるため，
+CSF を用いる計算では\textbf{使用してはならない}．
+非一様格子の主要な改善は $N_{g,\text{cells}}$ による格子適合と固定 $\varepsilon$ の組み合わせ
+（Config B）から得られる．
+$\varepsilon(\bx)$ の恩恵はデルタ関数を介さない
+GFM 表面張力（§~\ref{sec:future_work}）との結合で検証する必要がある．
