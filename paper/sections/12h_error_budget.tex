@@ -43,7 +43,7 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\r
 交差粘性 CFL & $\Delta t \propto h^2/\Delta\mu$ & $C_{\mathrm{cross}} \approx 0.22$ & \checkmark & §~\ref{sec:cross_viscous_cfl} & 安定性制約 \\
 毛細管 CFL & $\Delta t_\sigma \propto \Delta x^{3/2}$ & 指数 $= 1.500$，比率 $1.28$ & \checkmark & §~\ref{sec:advection_pressure_coupling} & 時間ステップ制限 \\
 \bottomrule
-\multicolumn{6}{l}{\footnotesize \textsuperscript{$\dagger$}DCCD 散逸パラメータ $\varepsilon_d$ によらず界面の CLS プロファイル幅が支配する誤差（§~\ref{sec:highre_dccd}）．} \\
+\multicolumn{6}{l}{\footnotesize \textsuperscript{$\dagger$}DCCD 散逸パラメータ $\varepsilon_d$ によらず界面の CLS プロファイル幅が支配する誤差（§~\ref{sec:verify_cls_advection}）．} \\
 \multicolumn{6}{l}{\footnotesize \textsuperscript{$\ddagger$}$\mu_l/\mu_g \gg 1$ で陽的交差微分項が $\Ord{\mu_{\max}\Delta t}$ の打切り誤差を生じる（§~\ref{sec:time_int}）．} \\
 \multicolumn{6}{l}{\footnotesize \textsuperscript{$\P$}$N\le128$ で $p=6.33,\,5.79$；$N{=}256$ で補間精度床（$L_\infty{=}4.6\times10^{-11}$）に到達（条件付き合格；§~\ref{sec:verify_summary}）．} \\
 \multicolumn{6}{l}{\footnotesize \textsuperscript{$\|$}CCD 演算子単体は $\Ord{h^6}$ だが，CLS パイプライン（$\varepsilon{=}1.5h$ 正則化＋$|\phi|<3h$ 評価帯）では $\Ord{h^1}$ が律速．} \\
@@ -80,7 +80,7 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\r
 
 \noindent\textbf{二相流（高密度比・界面型密度場）：}
 変密度一括 PPE の欠陥補正は再試験では $\rho_l/\rho_g = 100$ まで発散しなかったが，
-高解像度側で漸近格子収束が失われる（表~\ref{tab:varrho_breakdown}）．
+高解像度側で漸近格子収束が失われる（§~\ref{sec:varrho_grid_convergence}）．
 分相 PPE + DC $k{=}3$ は各相内部で $\Ord{h^{7.0}}$ を回復する
 （§~\ref{sec:verify_split_ppe_dc}）．
 

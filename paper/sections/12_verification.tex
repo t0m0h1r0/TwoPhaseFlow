@@ -44,7 +44,8 @@ IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int
   \item \textbf{§~\ref{sec:ns_conservation}（保存則）：}
         運動エネルギー減衰と非圧縮条件の維持．
   \item \textbf{§~\ref{sec:ns_time_accuracy}（総合精度）：}
-        NS 方程式の時間・空間収束次数と高 Re 安定性．
+        NS 方程式の時間・空間収束次数，交差微分粘性項の CFL 安定性，
+        および界面近傍での時間精度劣化の診断を含む．
   \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流結合）：}
         CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$），
         HFE（Hermite 場延長, Hermite Field Extension；§~\ref{sec:field_extension}）の
@@ -52,8 +53,9 @@ IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int
   \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
         smoothed Heaviside 一括解法の格子収束劣化と分相 PPE 解法の必要性の数値的根拠．
   \item \textbf{§~\ref{sec:nonuniform_grid_ns}（界面適合格子の NS 結合）：}
-        非一様格子上での NS ソルバ動作検証，局所 $\varepsilon$ の妥当性，
-        格子密度幅パラメタの較正．
+        非一様格子上での NS ソルバ動作検証（静止液滴），
+        空間可変 $\varepsilon$ と CSF の非互換性診断，
+        CLS 移流精度，格子密度幅パラメタの較正．
   \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
         全コンポーネントの実測精度を統合し，律速段階と今後の展望を示す．
 \end{enumerate}
