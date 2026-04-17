@@ -20,9 +20,11 @@ CLS 変数 $\psi$ から計算される CCD 曲率
 比較用の 2 次中心差分（CD2）曲率．
 
 \noindent\textbf{手順とパラメタ：}
-曲率は
+CLS 変数 $\psi$ から logit 変換 $\phi = \varepsilon\ln[\psi/(1-\psi)]$ で得られる
+符号付き距離近似 $\phi$ に対して曲率を計算する（§~\ref{sec:heaviside}）．
+計算式は
 $\kappa = -(\phi_{xx}\phi_y^2 - 2\phi_{xy}\phi_x\phi_y + \phi_{yy}\phi_x^2)/|\bnabla\phi|^3$
-に対応する式を用いて計算される．テスト問題は次の 2 つである：
+であり，テスト問題は次の 2 つである：
 \begin{itemize}[noitemsep]
   \item 円形界面：$R=0.25$，$\kappa_{\mathrm{exact}} = 4$，
         CCD 曲率と CD2 曲率を比較する．

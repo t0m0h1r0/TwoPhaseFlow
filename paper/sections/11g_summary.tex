@@ -36,7 +36,7 @@
         （LS は全条件で約 20\% の質量誤差），
         HFE は 1D で $\Ord{h^{7.0}}$ を示し，
         2D テンソル積では $N\le128$ で $\Ord{h^{5.8}}$ 以上の高次収束を示した．
-        ただし風上差分ベースラインは現行データで NaN のため比較対象から除外し，
+        ただし風上差分経路は廃止済み（§~\ref{sec:verify_interface}）のため比較対象から除外し，
         2D 最高解像度は丸め・補間誤差床の影響を受ける．
   \item \textbf{PPE 求解：}
         欠陥補正 $k{=}3$ は等密度 Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $4.9 \times 10^7$ 倍高精度，コスト増 3.4 倍），
@@ -95,7 +95,7 @@ Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$               
 CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
 CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
 CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}20\%$ \\
-HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上ベースラインは NaN のため比較対象外 \\
+HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上経路は廃止済み（§~\ref{sec:verify_interface}）\\
 HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $p=6.33,5.79,2.69$ & $\triangle$\textsuperscript{‡} & 最高解像度で丸め・補間誤差床 \\
 Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.2$--$0.3\%$        & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
 PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $4.9 \times 10^7$ 倍 \\
@@ -121,7 +121,7 @@ NS 毎ステップ格子リビルド  & 安定・質量影響評価             
 再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}8$--$9$ 倍 \\
 CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分の現行実行結果は NaN のため比較から除外．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分経路は廃止済み（§~\ref{sec:verify_interface}）．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{‡}2D HFE は $N\le128$ で高次収束，$N{=}256$ で $L_\infty{=}4.6 \times 10^{-11}$；最高解像度は丸め・補間誤差床．} \\
   \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
   \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\

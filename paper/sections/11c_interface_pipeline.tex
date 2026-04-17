@@ -19,8 +19,11 @@ CLS 移流，再初期化，HFE 場延長，曲率・圧力跳び計算——の
 （§~\ref{sec:verify_cls_advection}），
 次に動的格子リフレッシュ時の保存型再マッピングの効果を定量化する
 （§~\ref{sec:cls_conservation}）．
-続いて Hermite 場延長（HFE）の格子収束性を確認し
-（§~\ref{sec:verify_field_extension}；風上差分経路は NaN のため比較対象外），
+続いて Hermite 場延長（HFE）の格子収束性を確認する
+（§~\ref{sec:verify_field_extension}）．
+なお，風上差分による場延長経路は，密度ジャンプを横切る勾配計算で NaN を生じるため
+本実装では廃止済みであり，以降のベンチマーク（§~\ref{sec:verification}）でも使用しない．
+最後に，曲率計算と場延長を統合した Young--Laplace 圧力跳びテストで
 最後に曲率計算と場延長を統合した Young--Laplace 圧力跳びテストで
 パイプラインの結合精度を確認する（§~\ref{sec:verify_gfm}；
 PPE を用いた圧力場検証は §~\ref{sec:bf_static_droplet} で行う）．
@@ -51,19 +54,17 @@ CLS 移流パイプライン（DCCD + 再初期化）．
   \item 格子 $N = 64, 128, 256$
   \item 計測指標：$L_2$/$L_\infty$ 形状誤差（$\psi - \psi_0$），
         相対質量保存誤差 $|\Delta M|/M_0$
+  \item 両テストとも DGR 厚み補正（§~\ref{sec:dgr_thickness}）を組み込んだ hybrid モードで再初期化を実行する．
+        本パラメタでは $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.02$ であり，
+        スロット構造への影響は無視できる
 \end{itemize}
 
 \noindent\textbf{結果：}
 
 \begin{table}[htbp]
 \centering
-\caption{CLS 界面移流テストの精度（DCCD $\varepsilon_d = 0.05$，$\varepsilon/h = 1.0$，界面重み付き質量補正あり）．
-\textsuperscript{\dag}単一渦テストは適応的再初期化
-（$\theta_{\mathrm{reinit}} = 1.10$，§~\ref{sec:adaptive_reinit}）を使用し，
-各再初期化呼び出しに DGR 厚み補正（§~\ref{sec:dgr_thickness}）を組み込む（hybrid モード）；
-Zalesak テストは固定頻度再初期化（20 ステップ毎，hybrid モード）を使用
-（DGR は hybrid 内で実行されるが，本パラメタでは $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.02$
-のためスロット構造への影響は無視できる）}
+\caption{CLS 界面移流テストの精度（DCCD $\varepsilon_d = 0.05$，$\varepsilon/h = 1.0$，
+界面重み付き質量補正あり）．再初期化設定の詳細は本文を参照．}
 \label{tab:cls_advection}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{llrrr}
