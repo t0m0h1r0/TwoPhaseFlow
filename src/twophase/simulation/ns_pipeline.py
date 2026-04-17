@@ -68,8 +68,10 @@ class TwoPhaseNSSolver:
         use_gpu: bool = False,
         alpha_grid: float = 1.0,
         eps_g_factor: float = 2.0,
+        eps_g_cells: float | None = None,
         dx_min_floor: float = 1e-6,
         use_local_eps: bool = False,
+        eps_xi_cells: float | None = None,
         grid_rebuild_freq: int = 1,
         reinit_every: int = 2,
         reinit_method: str | None = None,
@@ -89,7 +91,8 @@ class TwoPhaseNSSolver:
         self.bc_type = bc_type
         self._alpha_grid = alpha_grid
         self._eps_factor = eps_factor
-        self._use_local_eps = use_local_eps
+        self._eps_xi_cells = eps_xi_cells
+        self._use_local_eps = use_local_eps or (eps_xi_cells is not None)
         # grid_rebuild_freq == 0 → static non-uniform grid (build once from IC,
         # never rebuild). This avoids rebuild-driven metric discontinuity
         # (WIKI-X-012 Mode 1) entirely.
@@ -149,6 +152,7 @@ class TwoPhaseNSSolver:
             ndim=2, N=(NX, NY), L=(LX, LY),
             alpha_grid=alpha_grid,
             eps_g_factor=eps_g_factor,
+            eps_g_cells=eps_g_cells,
             dx_min_floor=dx_min_floor,
         )
         self._grid = Grid(gc, self._backend)
@@ -159,8 +163,8 @@ class TwoPhaseNSSolver:
         self._ppe_csr_dev = None  # lazily built on first GPU solve
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
-        # Curvature uses local eps_field when use_local_eps=True on non-uniform grids
-        eps_curv = self._make_eps_field() if use_local_eps and alpha_grid > 1.0 else self._eps
+        # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
+        eps_curv = self._make_eps_field() if self._use_local_eps and alpha_grid > 1.0 else self._eps
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
         self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
@@ -212,8 +216,10 @@ class TwoPhaseNSSolver:
             alpha_grid=getattr(g, "alpha_grid", 1.0),
             eps_factor=getattr(g, "eps_factor", 1.5),
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
+            eps_g_cells=getattr(g, "eps_g_cells", None),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             use_local_eps=getattr(g, "use_local_eps", False),
+            eps_xi_cells=getattr(g, "eps_xi_cells", None),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
             reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
             reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", None),
@@ -270,7 +276,10 @@ class TwoPhaseNSSolver:
         return dict(self._reproject_stats)
 
     def _make_eps_field(self):
-        """ε(x) = eps_factor · max(h_x(i), h_y(j)) at each node.
+        """ε(x) at each node — ξ空間で一定セル数の平滑化幅.
+
+        eps_xi_cells モード: ε(i,j) = eps_xi_cells · max(h_x(i), h_y(j))
+        従来モード:          ε(i,j) = eps_factor  · max(h_x(i), h_y(j))
 
         Returns a device-native array in ``backend.xp`` so it can be
         multiplied against device fields in the hot loop without any
@@ -279,7 +288,8 @@ class TwoPhaseNSSolver:
         xp = self._backend.xp
         hx = xp.asarray(self._grid.h[0])[:, None]
         hy = xp.asarray(self._grid.h[1])[None, :]
-        return self._eps_factor * xp.maximum(hx, hy)
+        factor = self._eps_xi_cells if self._eps_xi_cells is not None else self._eps_factor
+        return factor * xp.maximum(hx, hy)
 
     # ── grid rebuild ─────────────────────────────────────────────────────
 

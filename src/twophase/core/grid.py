@@ -115,13 +115,21 @@ class Grid:
             return  # uniform grid — nothing to do
 
         dx_floor = self._gc.dx_min_floor
-        eps_g = self._gc.eps_g_factor * eps
+        # eps_g: ξ空間セル数指定時は軸ごとに L[ax]/N[ax] ベース (WIKI-T-039 fix)
+        eps_g_cells = self._gc.eps_g_cells
+        eps_g_default = self._gc.eps_g_factor * eps if eps_g_cells is None else None
 
         # ψ → φ (logit inversion)
         psi_host = np.asarray(self.backend.to_host(psi_data))
         phi = invert_heaviside(np, psi_host, eps)
 
         for ax in range(self.ndim):
+            if eps_g_cells is not None:
+                h_uniform = self._gc.L[ax] / self._gc.N[ax]
+                eps_g = eps_g_cells * h_uniform
+            else:
+                eps_g = eps_g_default
+
             # 1-D marginal: min |φ| over other axes (§6 φ̄^x_i = min_j |φ_{i,j}|)
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
             phi_1d = np.min(np.abs(phi), axis=axes_other)
