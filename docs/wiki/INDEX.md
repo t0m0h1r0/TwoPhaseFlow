@@ -1,4 +1,4 @@
-# Wiki Index — 120 entries
+# Wiki Index — 121 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (14)
+## Meta (15)
 
 | REF-ID | Title |
 |--------|-------|
@@ -126,6 +126,7 @@
 | [WIKI-M-012](meta/WIKI-M-012.md) | Agent Roster Evolution (2026-03-27 → 2026-04-14): 12→33→25×2 Milestones and Consolidations |
 | [WIKI-M-013](meta/WIKI-M-013.md) | LEAN_METASTACK_2024 + v1.1 XML Hybrid Format: 232KB→162KB Compression and Constitutional Immutability |
 | [WIKI-M-014](meta/WIKI-M-014.md) | meta-deploy Protocol + EnvMetaBootstrapper Lifecycle: 6-Stage Deployment Workflow |
+| [WIKI-M-015](meta/WIKI-M-015.md) | Pre-Constitutional History + 3-Layer Architecture Birth: Origin of φ-Principles and A1–A11 |
 
 ## Code (18)
 
