@@ -1,4 +1,4 @@
-# Wiki Index — 125 entries
+# Wiki Index — 126 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (19)
+## Meta (20)
 
 | REF-ID | Title |
 |--------|-------|
@@ -131,6 +131,7 @@
 | [WIKI-M-017](meta/WIKI-M-017.md) | Constitutional Layer Complete Reference: φ1–φ7 and A1–A11 Verbatim + STOP Severity + Invariants |
 | [WIKI-M-018](meta/WIKI-M-018.md) | Domain Architecture Complete Reference: 4×4 Matrix, Registry, K-Axioms, Contracts, Storage Sovereignty |
 | [WIKI-M-019](meta/WIKI-M-019.md) | Workflow & Concurrency Protocols: P-E-V-A, Pipeline Modes, STOP-RECOVER MATRIX, v5.1 Concurrency |
+| [WIKI-M-020](meta/WIKI-M-020.md) | Canonical Operations Reference: GIT/DOM/LOCK/HAND/AUDIT/K Ops + HandoffEnvelope Schema + STOP-01..12 |
 
 ## Code (18)
 
