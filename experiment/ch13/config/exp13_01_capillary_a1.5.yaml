@@ -1,0 +1,73 @@
+# §13.1 Capillary wave decay — α=1.5 (moderate non-uniform grid)
+# Reference: Prosperetti (1981)
+# Physics: ρ_l=10, ρ_g=1, μ=0.05, σ=1.0; l=2 perturbation ε=0.05
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    10.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
+  print_every: 500
+
+output:
+  dir: results/exp13_01_a1.5
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave α=1.5 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_a1.5.pdf
+
+    - type: snapshot
+      title: "α=1.5 — t=0"
+      t_idx: 0
+      file: snapshot_t0.pdf
+
+    - type: snapshot
+      title: "α=1.5 — final"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
