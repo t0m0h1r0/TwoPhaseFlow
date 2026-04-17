@@ -75,6 +75,7 @@ def _eval_lh_varrho(p, rho, ccd, backend):
 
 
 def _build_fd_varrho_dirichlet(N, h, rho):
+    import scipy.sparse as sp
     nx = ny = N + 1
     rows, cols, vals = [], [], []
     drho_dx = np.zeros_like(rho)
