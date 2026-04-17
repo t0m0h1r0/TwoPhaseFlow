@@ -32,11 +32,12 @@ PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
 §~\ref{sec:interface_crossing} の定量分析により
 smoothed Heaviside 一括解法では界面型密度場で漸近格子収束が失われることを示す．
 また §~\ref{sec:galilean_invariance} で移動界面＋表面張力（$\sigma > 0$）では
-IPC が 2 ステップで発散することを実証し，
-分相 PPE 解法による解決策を提示する．
+IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int}）が
+2 ステップで発散することを実証し，
+分相 PPE 解法（§~\ref{sec:split_ppe_framework}）による解決策を提示する．
 
 \noindent\textbf{本章のスコープ：}
-検証は物理的複雑さを段階的に引き上げ，以下の 6 段階で構成される：
+検証は物理的複雑さを段階的に引き上げ，以下の 7 段階で構成される：
 \begin{enumerate}[noitemsep]
   \item \textbf{§~\ref{sec:force_balance}（力学的バランス）：}
         静止流体における重力・表面張力の釣合．
@@ -49,6 +50,9 @@ IPC が 2 ステップで発散することを実証し，
         HFE の適用範囲検証，Galilean 不変性．
   \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
         smoothed Heaviside 一括解法の格子収束劣化と分相 PPE 解法の必要性の数値的根拠．
+  \item \textbf{§~\ref{sec:nonuniform_grid_ns}（界面適合格子の NS 結合）：}
+        非一様格子上での NS ソルバ動作検証，局所 $\varepsilon$ の妥当性，
+        格子密度幅パラメタの較正．
   \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
         全コンポーネントの実測精度を統合し，律速段階と今後の展望を示す．
 \end{enumerate}

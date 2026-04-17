@@ -6,7 +6,8 @@
 \label{sec:interface_crossing}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-§~\ref{sec:split_ppe_framework} で分相 PPE 解法を主要 PPE 戦略として定式化し，
+§~\ref{sec:split_ppe_framework} で定式化した分相 PPE 解法は，
+各相で定密度 Poisson 方程式を個別に解くことで密度比に依存しない精度を達成する手法であり，
 §~\ref{sec:verify_split_ppe_dc} でその密度比非依存な精度（$\Ord{h^{7.0}}$）を実証した．
 本節では，変密度 smoothed Heaviside 一括解法を再試験し，
 旧版で報告した「$\rho_l/\rho_g \geq 10$ で DC が発散する」という結果が
@@ -118,11 +119,6 @@ $\rho_l/\rho_g = 2, 3, 5, 10$ の全ケースで安定．}
         各相内部で $\Ord{h^{7.0}}$ を達成するため，
         高密度比・高精度計算では引き続き主要戦略となる
 \end{enumerate}
-ただし分相 PPE は\textbf{相ごとに定密度 Poisson 方程式を個別に解く}手法であり，
-smoothed Heaviside の変密度演算子を定密度に置換するだけでは
-界面での $(\bnabla\rho \cdot \bnabla p)/\rho^2$ 項の欠落により
-速度発散誤差が蓄積する．
-実装には GFM 等の界面ジャンプ処理が不可欠である．
 \end{tcolorbox}
 
 \noindent\textbf{結論：}
@@ -131,3 +127,7 @@ smoothed Heaviside の変密度演算子を定密度に置換するだけでは
 界面型密度場における漸近格子収束の喪失として確認された．
 この制約は界面を横切る CCD/FD ステンシルに由来し，
 高密度比の実用計算では分相 PPE と界面ジャンプ処理を用いるべきである．
+なお，分相 PPE を実運用する際には，smoothed Heaviside の変密度演算子を
+単純に定密度に置換するだけでは界面での
+$(\bnabla\rho \cdot \bnabla p)/\rho^2$ 項の欠落により速度発散誤差が蓄積するため，
+GFM 等の界面ジャンプ処理が不可欠である．

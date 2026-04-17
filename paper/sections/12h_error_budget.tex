@@ -24,7 +24,7 @@
 \midrule
 CCD 微分（内部） & $\Ord{h^6}$ & $\Ord{h^{5.97}}$ & \checkmark & §~\ref{sec:verify_ccd_convergence} & 速度微分，PPE 右辺 \\
 CCD-PPE（変密度） & $\Ord{h^6}$ & $\Ord{h^{5.8}}$ & \checkmark & §~\ref{sec:verify_ppe_varrho} & 圧力場，速度補正 \\
-CCD-PPE（$\varrho{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & $\triangle$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
+CCD-PPE（$\rho_l/\rho_g{=}2$） & --- & $\Ord{h^{1\text{--}2}}$ & $\triangle$ & §~\ref{sec:varrho_grid_convergence} & 変密度圧力場 \\
 HFE 2D 場延長 & $\Ord{h^6}$ & $\Ord{h^{5.8}}$\textsuperscript{$\P$} & $\triangle$ & §~\ref{sec:verify_field_extension} & IPC $\bnabla p^n$，速度補正 \\
 DCCD CLS 移流 & $\Ord{\varepsilon_d h^2}$ & $\Ord{h^{2}}$\textsuperscript{$\dagger$} & \checkmark & §~\ref{sec:verify_cls_advection} & 界面位置，体積保存 \\
 CCD 曲率 $\kappa$（CLS） & $\Ord{h^6}$\textsuperscript{$\|$} & $\Ord{h^{1.0}}$ & $\triangle$ & §~\ref{sec:verify_curvature} & 表面張力体積力 \\
@@ -48,6 +48,7 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\r
 \multicolumn{6}{l}{\footnotesize \textsuperscript{$\P$}$N\le128$ で $p=6.33,\,5.79$；$N{=}256$ で補間精度床（$L_\infty{=}4.6\times10^{-11}$）に到達（条件付き合格；§~\ref{sec:verify_summary}）．} \\
 \multicolumn{6}{l}{\footnotesize \textsuperscript{$\|$}CCD 演算子単体は $\Ord{h^6}$ だが，CLS パイプライン（$\varepsilon{=}1.5h$ 正則化＋$|\phi|<3h$ 評価帯）では $\Ord{h^1}$ が律速．} \\
 \multicolumn{6}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格（表~\ref{tab:verification_summary} の判定基準に準拠）．} \\
+\multicolumn{6}{l}{\footnotesize 検証箇所：§~\ref{sec:verify_ccd_convergence}--§~\ref{sec:verify_dgr} は第~\ref{sec:numerical_integrity}章（コンポーネント検証），それ以外は本章（物理的整合性検証）．} \\
 \end{tabular}
 \end{table}
 
@@ -72,7 +73,7 @@ CCD vs FD 寄生流れ & CCD $\ll$ FD & FD/CCD $= 69\times$ & \checkmark & §~\r
 
   \item[\textbf{PPE 離散化}]
     \begin{itemize}[noitemsep]
-      \item CCD PPE 欠陥補正は $L_L^{-1} L_H$ 不定性で収束不能 → FD 直接法 + CCD 勾配を採用
+      \item CCD PPE 欠陥補正は $L_L^{-1} L_H$（$L_L$: $\Ord{h^2}$ FD 基底ソルバ，$L_H$: CCD 高次演算子）の不定性で収束不能 → FD 直接法 + CCD 勾配を採用
       \item 投影不整合 $\Ord{h^2}$：CSF と同次のため全体精度を律速しない
     \end{itemize}
 \end{description}
