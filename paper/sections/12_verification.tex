@@ -49,8 +49,8 @@ IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int
         および界面近傍での時間精度劣化の診断を含む．
   \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流結合）：}
         CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$），
-        HFE（Hermite 場延長, Hermite Field Extension；§~\ref{sec:field_extension}）の
-        適用範囲検証，Galilean 不変性．
+        HFE と曲率フィルタの使い分け（適合性は付録~\ref{sec:hfe_smoothed_scope}），
+        Galilean 不変性．
   \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
         smoothed Heaviside 一括解法の格子収束劣化と分相 PPE 解法の必要性の数値的根拠．
   \item \textbf{§~\ref{sec:nonuniform_grid_ns}（界面適合格子の NS 結合）：}
@@ -81,14 +81,15 @@ Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$ & 
 非圧縮条件（単相） & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\textsuperscript{$\ddagger$} & §\ref{sec:ns_conservation}\\
 NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
 NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
-DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$ & §\ref{sec:ns_time_accuracy}\\
+DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$ & §\ref{sec:highre_dccd}\\
 静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$ & §\ref{sec:advection_pressure_coupling}\\
-HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & §\ref{sec:advection_pressure_coupling}\\
+HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & 付録~\ref{sec:hfe_smoothed_scope}\\
 Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ & §\ref{sec:advection_pressure_coupling}\\
 PPE 一括解法限界 & 界面型密度場の収束劣化 & 残差履歴・格子収束 & 劣化機構の特定 & §\ref{sec:interface_crossing}\\
-分相 PPE 精度回復 & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:verify_split_ppe_dc}\\
+分相 PPE 精度回復\textsuperscript{$\S$} & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:verify_split_ppe_dc}\\
 \bottomrule
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-5}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．} \\
 \multicolumn{5}{l}{\footnotesize \textsuperscript{$\ddagger$}FFT 直接法 PPE（単相・周期境界）での基準．二相流では CSF ソース項・変密度 PPE の打切り誤差により $\|\bnabla\cdot\bu\|_\infty \sim \Ord{10^{-2}}$ となる場合がある（§~\ref{sec:advection_pressure_coupling}）．} \\
+\multicolumn{5}{l}{\footnotesize \textsuperscript{$\S$}第~\ref{sec:numerical_integrity}章のコンポーネント検証（§~\ref{sec:verify_split_ppe_dc}）で実施．§~\ref{sec:interface_crossing} の診断結果を受けた解決策として本章ロードマップに含める．} \\
 \end{tabular}
 \end{table}
