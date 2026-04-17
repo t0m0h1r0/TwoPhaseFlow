@@ -1,4 +1,4 @@
-# Wiki Index — 118 entries
+# Wiki Index — 119 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (12)
+## Meta (13)
 
 | REF-ID | Title |
 |--------|-------|
@@ -124,6 +124,7 @@
 | [WIKI-M-010](meta/WIKI-M-010.md) | Caveman-Compress: Token Reduction for AI Instruction Files |
 | [WIKI-M-011](meta/WIKI-M-011.md) | Anti-Pattern Catalogue: AP-01..AP-11 — Failure Modes, Detection, and Evolution |
 | [WIKI-M-012](meta/WIKI-M-012.md) | Agent Roster Evolution (2026-03-27 → 2026-04-14): 12→33→25×2 Milestones and Consolidations |
+| [WIKI-M-013](meta/WIKI-M-013.md) | LEAN_METASTACK_2024 + v1.1 XML Hybrid Format: 232KB→162KB Compression and Constitutional Immutability |
 
 ## Code (18)
 
