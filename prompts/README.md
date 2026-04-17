@@ -315,7 +315,7 @@ TheoryAuditor ══ AlgorithmSpecs.md ══► CodeWorkflowCoordinator
                                          WikiAuditor ◄──────────────────────────────────┘
 ```
 
-> Note: This section is manually added. It will be overwritten on `EnvMetaBootstrapper` regeneration — re-add after regenerating.
+> Source: `prompts/meta/kernel-domains.md §AGENT INTERACTION MAP` — edit there, not here.
 
 ## 6. Agent Roster (23 active)
 
