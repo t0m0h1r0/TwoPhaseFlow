@@ -1,4 +1,4 @@
-# Wiki Index — 127 entries
+# Wiki Index — 128 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (21)
+## Meta (22)
 
 | REF-ID | Title |
 |--------|-------|
@@ -133,6 +133,7 @@
 | [WIKI-M-019](meta/WIKI-M-019.md) | Workflow & Concurrency Protocols: P-E-V-A, Pipeline Modes, STOP-RECOVER MATRIX, v5.1 Concurrency |
 | [WIKI-M-020](meta/WIKI-M-020.md) | Canonical Operations Reference: GIT/DOM/LOCK/HAND/AUDIT/K Ops + HandoffEnvelope Schema + STOP-01..12 |
 | [WIKI-M-021](meta/WIKI-M-021.md) | Agent Composition Reconstruction Guide: _base.yaml, BEHAVIORAL_PRIMITIVES, 25 Agent Profiles |
+| [WIKI-M-022](meta/WIKI-M-022.md) | System Reconstruction Runbook: End-to-End Guide to Rebuild and Redeploy All 25 Agents |
 
 ## Code (18)
 
