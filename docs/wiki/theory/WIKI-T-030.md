@@ -21,7 +21,7 @@ depends_on:
   - "[[WIKI-T-029]]: CLS error metric — φ-space comparison required"
 tags: [CLS, reinitialization, thickness, SDF, mass-conservation, DGR]
 compiled_by: KnowledgeArchitect
-compiled_at: 2026-04-09
+compiled_at: 2026-04-18
 ---
 
 ## Key Finding
@@ -87,9 +87,40 @@ Result (Zalesak N=128, ε/h=1.0, every-20):
 | DGR (2D) | 4 |
 | **Hybrid (2D)** | **12** |
 
+## Limitations — DGR Alone Fails for σ>0 Capillary Dynamics (discovered 2026-04-18)
+
+**DGR corrects interface THICKNESS only — not SHAPE.**  Under σ>0 capillary wave
+dynamics (e.g., exp13_01), the advected ψ field develops **interface folds**:
+regions where |∇ψ|→0 inside the band (0.05<ψ<0.95).  A fold means ψ has a local
+extremum within the interface — physically an interface self-intersection or crease.
+
+**Why DGR fails to detect folds**: The median-based ε_eff estimate is robust to
+outliers.  Fold cells (|∇ψ|→0 → ε_local→∞) are outliers in the band — the median
+is unaffected.  DGR computes scale≈1 and returns ψ_new≈ψ — effectively a no-op.
+
+**Cascade mechanism** (confirmed by isolation experiments, exp13_01 α=1.0):
+
+1. Capillary advection creates fold in band at step ~62 (|∇ψ|_min→0)
+2. DGR: median ε_eff unchanged → scale≈1 → fold not repaired
+3. CCD Laplacian over fold → unphysical κ (curvature) spike
+4. CSF force σ·κ·δ·∇ψ → exponential KE growth → blowup (t<0.2, KE>1e6)
+
+**Isolation experiments**:
+
+| Exp | Change | Result |
+|---|---|---|
+| A1 | no reinit | BLOWUP step=114 (fold forms regardless) |
+| A2 | hybrid reinit | **STABLE** T=10 — split corrects fold shape |
+| A3 | σ=0 + DGR | **STABLE** — confirms CSF as amplification mechanism |
+| A4 | DGR every-20 | BLOWUP step=100 (frequency doesn't fix the root cause) |
+
+**Conclusion**: For any simulation with σ>0 where the interface can fold (any
+capillary wave, Rayleigh-Taylor, rising bubble), **use hybrid, not DGR alone**.
+DGR alone is safe only for passive-advection (σ=0) or post-split thickness cleanup.
+
 ## Assumptions
 
 - Profile retains sigmoid form ψ ≈ H_{ε_eff}(φ) (valid under DCCD advection)
-- |∇φ_true| ≈ 1 near interface (SDF property; holds for smooth interfaces)
+- |∇φ_true| ≈ 1 near interface (SDF property; **broken by folds under σ>0**)
 - CCD gradient accuracy (O(h⁶)) ensures reliable normalization
 - DGR correction is small (~1.4×) after one Comp-Diff call → median ε_eff estimate accurate

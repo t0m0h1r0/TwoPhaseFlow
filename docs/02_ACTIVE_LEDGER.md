@@ -8,9 +8,9 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | meta-v7-lean-kernel |
-| last_CHK | CHK-132 DONE 2026-04-18 — Meta-prompt v7.0.0 "Lean Kernel" redesign. 8 kernel-*.md files + 46 agent files (23×claude + 23×codex; CodeReviewer/VerificationRunner deleted) + 2 _base.yaml. Q3 10-item checklist: ALL PASS. |
-| next_action | PR branch worktree-meta-v7-lean-kernel → main when user approves. |
+| branch | worktree-worktree-ch13-dgr-blowup-fix |
+| last_CHK | CHK-133 DONE 2026-04-18 — ch13 DGR blowup root cause identified and fixed. DGR alone fails for sigma>0 capillary dynamics (interface folds undetectable by median eps_eff); all 4 exp13_01 DGR configs changed to hybrid. Tests: 206 passed. WIKI-T-030 updated. |
+| next_action | Merge worktree-ch13-dgr-blowup-fix → main via PR after T=10 remote run confirms no blowup. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
@@ -26,6 +26,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-133 | 2026-04-18 | fix | ch13 DGR blowup: root cause = DGR cannot repair interface folds (|∇ψ|→0) under σ>0 capillary dynamics; global median eps_eff treats folds as outliers → DGR near-no-op → CSF blowup. Fix: reinit_method: hybrid in exp13_01_a{1.0,1.2,1.5,2.0}_dgr.yaml. Isolation exps A1-A4 confirm mechanism. WIKI-T-030 Limitations section added. Tests 206P/7S/2XF. Branch: worktree-ch13-dgr-blowup-fix |
 | CHK-132 | 2026-04-18 | meta | v7.0.0 "Lean Kernel" redesign: 8 kernel-*.md (constitution/roles/ops/domains/workflow/antipatterns/project/deploy) + 46 agent files (23 claude + 23 codex) + 2 _base.yaml. -56% token target. v6.0.0 features: HAND-04/DYNAMIC-REPLANNING/OP-CONDENSE/EVALUATOR-OPTIMIZER. Branch: meta-v7-lean-kernel |
 | CHK-131 | 2026-04-17 | fix | GPU smoke tests: thomas_precompute .get() fix (linalg_backend.py); atol 1e-13→1e-11 (test_gpu_smoke.py); 3 FAILED → 0 |
 | CHK-130 | 2026-04-16 | fix+paper+merge | ch11 reinit non-uniform fix (4 files); DGR fallback α>1; exp11_29 880× improvement; WIKI-E-017 updated |
