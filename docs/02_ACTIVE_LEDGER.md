@@ -9,8 +9,8 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | meta-v7-lean-kernel |
-| last_CHK | CHK-132 IN_PROGRESS 2026-04-18 — Meta-prompt v7.0.0 "Lean Kernel" redesign. 8 kernel-*.md files + 46 agent files (23×claude + 23×codex) + 2 _base.yaml. |
-| next_action | Run Q3 validation checklist (kernel-deploy.md §Stage 4); PR to main when PASS. |
+| last_CHK | CHK-132 DONE 2026-04-18 — Meta-prompt v7.0.0 "Lean Kernel" redesign. 8 kernel-*.md files + 46 agent files (23×claude + 23×codex; CodeReviewer/VerificationRunner deleted) + 2 _base.yaml. Q3 10-item checklist: ALL PASS. |
+| next_action | PR branch worktree-meta-v7-lean-kernel → main when user approves. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
