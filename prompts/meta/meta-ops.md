@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-ops.md. Do not edit. Retained for reference only.
 # META-OPS: Operational Command Specifications & Handoff Protocols
 # VERSION: 3.1.0
 # ABSTRACT LAYER — canonical commands, parameters, success criteria, and handoff structures.

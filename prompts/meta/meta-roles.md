@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-roles.md. Do not edit. Retained for reference only.
 # META-ROLES: Agent Role Definitions — Purpose, Deliverables, Authority & Constraints
 # VERSION: 4.1.0
 # ABSTRACT LAYER — WHAT each agent does: its contract with the system.

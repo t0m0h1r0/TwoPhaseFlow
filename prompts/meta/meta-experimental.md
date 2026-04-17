@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-domains.md §DDA (merged). Do not edit. Retained for reference only.
 # META-EXPERIMENTAL: Micro-Agent Architecture
 # VERSION: 2.0.0
 # STATUS: OPERATIONAL — load on demand; see meta-core.md §SYSTEM STRUCTURE for load policy

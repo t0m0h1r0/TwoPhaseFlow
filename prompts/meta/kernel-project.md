@@ -1,27 +1,25 @@
-# DEPRECATED — v7.0.0: Superseded by kernel-project.md. Do not edit. Retained for reference only.
-# META-PROJECT: Project-Specific Profile
-# VERSION: 1.0.0
+# kernel-project.md — Project-Specific Profile v7.0.0
+# Replaces: meta-project.md (version bump + file references updated to kernel-*.md).
 # ABSTRACT LAYER — PROJECT: rules, conventions, and constraints specific to THIS research project.
-# This file is the SINGLE SOURCE OF TRUTH for project-specific rules that do NOT belong in the
-# universal system (meta-core.md, meta-domains.md, etc.).
+# This file is the SINGLE SOURCE OF TRUTH for project-specific rules.
 #
 # Separation principle:
-#   - meta-core.md    → Universal axioms (A1–A11, φ1–φ7) — valid for ANY project
-#   - meta-domains.md → Domain framework (T/L/E/A structure) — valid for ANY multi-domain project
-#   - meta-project.md → THIS file: project-type + project-instance rules — swap this file to change project
+#   - kernel-constitution.md → Universal axioms (A1–A11, φ1–φ7) — valid for ANY project
+#   - kernel-domains.md      → Domain framework (T/L/E/A structure) — valid for ANY multi-domain project
+#   - kernel-project.md      → THIS file: project-type + project-instance rules — swap this to change project
 #
 # Derived output: docs/03_PROJECT_RULES.md (generated, not manually edited)
-# FOUNDATION: meta-core.md §AXIOMS  ← READ FIRST
+# FOUNDATION: kernel-constitution.md §AXIOMS  ← READ FIRST
 
-<meta_section id="META-PROJECT" version="5.1.0" axiom_refs="phi6,A7,A10">
+<meta_section id="META-PROJECT" version="7.0.0" axiom_refs="phi6,A7,A10">
 <purpose>Project-specific profile (PR-1…PR-6). Swappable by design — replacing this file and regenerating `docs/03_PROJECT_RULES.md` retargets the entire ecosystem at a new research project without touching universal files.</purpose>
 <authority>The Root Admin (ResearchArchitect) edits this file only when onboarding a new project type or instance. All other agents consult `docs/03_PROJECT_RULES.md` (generated from this file).</authority>
 <rules>
-- MUST NOT reference project-specific rules from meta-core.md / meta-domains.md / meta-ops.md (separation principle — keep universal files project-agnostic).
+- MUST NOT reference project-specific rules from kernel-constitution.md / kernel-domains.md / kernel-ops.md (separation principle — keep universal files project-agnostic).
 - MUST regenerate `docs/03_PROJECT_RULES.md` after any PR-{N} edit.
 - PR-IDs are LOCAL to this file — do not clash with A-{N} (axioms), C-{N} (code), P-{N} (paper), Q-{N} (prompt), AU-{N} (audit).
 </rules>
-<see_also>docs/03_PROJECT_RULES.md (generated), meta-core.md §A, meta-deploy.md §Stage 2</see_also>
+<see_also>docs/03_PROJECT_RULES.md (generated), kernel-constitution.md §A, kernel-deploy.md §Stage 2</see_also>
 
 ────────────────────────────────────────────────────────
 # § PROJECT IDENTITY
@@ -40,7 +38,7 @@
 These rules apply to all agents working within this project. They are NOT universal —
 they derive from the research methodology, solver architecture, and tooling decisions
 specific to this CFD project. When this project ends or a new project begins, this file
-is replaced; the universal system (meta-core.md, meta-domains.md) remains unchanged.
+is replaced; the universal system (kernel-constitution.md, kernel-domains.md) remains unchanged.
 
 ## PR-1 — CCD Primacy (FD Usage Policy)
 
@@ -133,18 +131,18 @@ LGMRES is prohibited for PPE due to convergence instability with CCD operators.
 - ch12+ (integration tests): FD PPE (`PPEBuilder`+`spsolve`) or DC sweep only
 - `PPESolverCCDLU` must NOT appear in ch12+ integration scripts
 
-───────────────────────────────────────────────���────────
+────────────────────────────────────────────────────────
 # § PORTABILITY NOTES
 
 To adapt this system for a different project:
 
-1. Replace this file (meta-project.md) with project-appropriate PR-rules
-2. Regenerate docs/03_PROJECT_RULES.md from the new meta-project.md
+1. Replace this file (kernel-project.md) with project-appropriate PR-rules
+2. Regenerate docs/03_PROJECT_RULES.md from the new kernel-project.md
 3. Update _base.yaml `project_rules` reference if PR-IDs change
-4. Universal files (meta-core.md, meta-domains.md, meta-ops.md, etc.) require NO changes
+4. Universal files (kernel-constitution.md, kernel-domains.md, kernel-ops.md, etc.) require NO changes
 5. **Verification (EnvMetaBootstrapper Stage 2):** After regeneration, confirm all PR-IDs
    referenced in _base.yaml exist in the new docs/03_PROJECT_RULES.md:
-   `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal the count defined in meta-project.md.
+   `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal the count defined in kernel-project.md.
 
 The PR-{N} numbering is local to this file. Universal rules use A-{N} (axioms),
 C-{N} (code, universal), P-{N} (paper), Q-{N} (prompt), AU-{N} (audit).

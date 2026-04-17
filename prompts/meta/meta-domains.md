@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-domains.md. Do not edit. Retained for reference only.
 # META-DOMAINS: Domain Registry
 # VERSION: 3.0.0
 # ABSTRACT LAYER — STRUCTURE: authoritative definition of all system domains.

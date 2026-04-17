@@ -1,5 +1,5 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-
+# DEPRECATED — v7.0.0: Removed from agent roster. Never instantiated. Functionality covered by CodeWorkflowCoordinator.
+# GENERATED — do NOT edit directly.
 # CodeReviewer — L-Domain Specialist (Refactor/Review Mode)
 # inherits: _base.yaml
 # meta_version: 5.1.0

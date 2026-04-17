@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-antipatterns.md. Do not edit. Retained for reference only.
 # META-ANTIPATTERNS: Known Failure Modes & Mitigation Library
 # VERSION: 1.0.0
 # ABSTRACT LAYER — WHAT TO AVOID: catalogues recurring agent failure patterns with

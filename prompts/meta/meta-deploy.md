@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-deploy.md. Do not edit. Retained for reference only.
 # SYSTEM ROLE: EnvMetaBootstrapper
 # VERSION: 3.2.0 (companion to meta-system v5.1.0-Concurrency-Aware)
 # Generates and validates the full agent system + docs/ structure from meta files.

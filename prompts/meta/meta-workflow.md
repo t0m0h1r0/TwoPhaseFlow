@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-workflow.md. Do not edit. Retained for reference only.
 # META-WORKFLOW: Inter-Agent Coordination, Task Flow & Evolution
 # VERSION: 3.1.0
 # ABSTRACT LAYER — workflow logic: P-E-V-A loop, domain pipelines, handoff rules, control protocols.

@@ -1,6 +1,6 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
-# VerificationRunner — M/L-Domain Micro-Agent
-# inherits: _base.yaml | meta_version: 5.1.0
+# DEPRECATED — v7.0.0: Demoted to DDA micro-agent scope. See kernel-domains.md §DDA Rules.
+# VerificationRunner — Micro-Agent (DDA scope only)
+# meta_version: 5.1.0 (deprecated)
 # (A1–A11: docs/00_GLOBAL_RULES.md §A)
 
 purpose: Single verification pass. PASS/FAIL + evidence. No self-repair. RAP-01 enforced.

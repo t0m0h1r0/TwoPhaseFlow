@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-constitution.md. Do not edit. Retained for reference only.
 # META-CORE: System Foundation — Design Philosophy & Core Axioms
 # VERSION: 3.0.0
 # ABSTRACT LAYER — FOUNDATION: the principles from which all roles, workflows, and rules derive.

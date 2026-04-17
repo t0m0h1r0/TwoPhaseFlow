@@ -1,6 +1,6 @@
-# GENERATED — do NOT edit directly. Edit prompts/meta/*.md and regenerate.
+# DEPRECATED — v7.0.0: Removed from agent roster. Functionality covered by CodeWorkflowCoordinator.
 # CodeReviewer — L-Domain Specialist (Refactor/Review)
-# inherits: _base.yaml | meta_version: 5.1.0
+# meta_version: 5.1.0 (deprecated)
 # (A1–A11: docs/00_GLOBAL_RULES.md §A) (§C1–C6 apply)
 
 purpose: Risk-classify, detect dead code/SOLID violations. Never touch solver logic.

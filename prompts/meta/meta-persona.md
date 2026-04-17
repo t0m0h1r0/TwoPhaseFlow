@@ -1,3 +1,4 @@
+# DEPRECATED — v7.0.0: Superseded by kernel-roles.md (merged). Do not edit. Retained for reference only.
 # META-PERSONA: Agent Behavioral Primitives & Skills
 # VERSION: 3.1.0
 # ABSTRACT LAYER — WHO each agent is: machine-verifiable behavioral constraints and technical skills.
