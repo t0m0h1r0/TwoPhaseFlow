@@ -1,4 +1,4 @@
-# Wiki Index — 130 entries
+# Wiki Index — 134 entries
 
 ## Theory (40)
 
@@ -108,7 +108,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 
-## Meta (24)
+## Meta (28)
 
 | REF-ID | Title |
 |--------|-------|
@@ -136,6 +136,10 @@
 | [WIKI-M-022](meta/WIKI-M-022.md) | System Reconstruction Runbook: End-to-End Guide to Rebuild and Redeploy All 25 Agents |
 | [WIKI-M-023](meta/WIKI-M-023.md) | Meta-System v6.0.0 Design Specification (Adaptive/Consensus-Aware): PROTO-DEBATE, Dynamic Replanning, Context Condensation, Evaluator-Optimizer |
 | [WIKI-M-024](meta/WIKI-M-024.md) | Derived-Artifact Documentation Pattern: Generating Visual Maps from Kernel Data |
+| [WIKI-M-025](meta/WIKI-M-025.md) | Test-Time Compute Scaling via Extended Thinking |
+| [WIKI-M-026](meta/WIKI-M-026.md) | Optimal CoT Length — Inverted U-Curve and Short-m@k |
+| [WIKI-M-027](meta/WIKI-M-027.md) | Persona Prompting Anti-Pattern: Empirical Evidence |
+| [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 
 ## Code (18)
 
