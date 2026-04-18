@@ -157,13 +157,28 @@ No sweet spot for hybrid: too infrequent → blowup; too frequent → wrong D(t)
 - Split-only: mass correction is a GLOBAL uniform offset applied once; no per-cell scaling. Interface broadens to ~1.4ε but this does not distort the zero-set shape.
 - Hybrid: DGR applies CELL-WISE scale (global median ε_eff) followed by φ-space correction. Even with φ-space correction, the sharpening itself is non-uniform on curved interfaces → zero-set shifts non-uniformly → mode-2 amplified.
 
-**Final conclusion**: For σ>0 capillary wave decay (Prosperetti benchmark):
+**Current status**: For σ>0 capillary wave decay (Prosperetti benchmark):
 1. DGR alone: BLOWUP (fold blowup, CHK-133)
 2. Hybrid+ψ-space: stable but WRONG D(t) + mass injection (3-4× VolCons)
-3. Hybrid+φ-space: stable, correct VolCons, but WRONG D(t) (sharpening error)
-4. **Split-only: CORRECT physics** ← required for ch13 §13.1 capillary wave benchmarks
+3. Hybrid+φ-space: stable, correct VolCons, but WRONG D(t) (mechanism not fully resolved)
+4. **Split-only: CORRECT physics** ← pragmatic fix for ch13 §13.1
 
-For other use cases (Zalesak, passive advection, σ=0 rising bubble), hybrid is appropriate. DGR sharpening error is proportional to interface curvature variation and reinit frequency.
+**Open problem:** Why hybrid+φ-space still gives wrong D(t) is not fully understood.
+Theoretically, DGR sharpening preserves the ψ=0.5 zero-set (ε̄_eff/ε_local > 0 always),
+and φ-space correction adds uniform shift. Candidate mechanism: non-uniform interface
+thickness after sharpening (∝ ε_local/ε̄_eff) → spatially non-uniform CSF force →
+spurious mode-2 driving. Full theoretical explanation pending.
+
+**Applicability of hybrid/DGR:**
+- Zalesak, passive advection, σ=0 rising bubble → hybrid appropriate (static/low curvature)
+- σ>0 high-curvature capillary dynamics → split-only (DGR adds spurious energy)
+- DGR is NOT discarded; it is correct for the cases it was designed for.
+
+**Future directions (not yet implemented):**
+- Per-band-cell DGR: apply local ε_eff(i,j) only within interface band; keep bulk unchanged.
+  Avoids bulk amplification (Set C failure) while correcting non-uniform thickness.
+- Adaptive DGR trigger: call DGR only when ε_eff drifts >5% from ε_target.
+  Reduces call frequency; may reduce accumulated shape error for curved interfaces.
 
 ## Assumptions
 
