@@ -337,7 +337,130 @@ $\phi$ の局所操作を繰り返す全手法に共通の制約であり，
 Eikonal は $\sigma{=}0$ の受動移流・静的形状問題（Zalesak スロット等）では
 体積保存・界面幅・形状復元の全条件を満たす有力手法である．
 将来の改善案として，零点集合近傍（$|\phi_0| < h/2$）の更新をスキップすることで
-離散ゼロセットドリフトを原理的に排除できる（未実装）．
+離散ゼロセットドリフトを原理的に排除できる（CHK-137 で ZSP として実装・検証済み；次節参照）．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{ξ空間符号距離関数法（CHK-137）}
+\label{sec:xi_sdf_reinit}
+% ─────────────────────────────────────────────────────────────────────────────
+
+CHK-136 の失敗原因（Godunov 差分の離散ゼロセットドリフト累積）を根本的に排除するため，
+反復を一切伴わない \textbf{ξ空間符号距離関数（ξ-SDF）法}を提案する．
+本手法は再初期化呼び出しごとに，現在の $\psi$ 場から零点交差を直接検出し，
+格子インデックス空間（$\xi$ 空間）における符号距離を解析的に構築する．
+
+\begin{tcolorbox}[algbox, title={ξ-SDF 再初期化アルゴリズム（CHK-137 Strategy B）}]
+\begin{enumerate}
+  \item \textbf{ロジット反転：}
+        $\phi_{\mathrm{raw}}(i,j) = \varepsilon\ln\!\bigl(\psi(i,j)/(1{-}\psi(i,j))\bigr)$
+        （飽和クランプ付き）
+  \item \textbf{零点交差の検出（線形補間）：}$\phi_{\mathrm{raw}}$ の符号が変化する隣接セル対を探索し，
+        格子座標上の交差位置を線形補間で決定する．
+        $x$-方向（$(i,j)\to(i{+}1,j)$）の交差 $\xi$-座標：
+        \begin{equation}
+          \xi^* = i + \frac{|\phi_{\mathrm{raw}}(i,j)|}{|\phi_{\mathrm{raw}}(i,j)| + |\phi_{\mathrm{raw}}(i{+}1,j)|}
+          \label{eq:xi_crossing_x}
+        \end{equation}
+        $y$-方向（$(i,j)\to(i,j{+}1)$）の交差 $\eta$-座標：
+        \begin{equation}
+          \eta^* = j + \frac{|\phi_{\mathrm{raw}}(i,j)|}{|\phi_{\mathrm{raw}}(i,j)| + |\phi_{\mathrm{raw}}(i,j{+}1)|}
+          \label{eq:xi_crossing_y}
+        \end{equation}
+        全交差位置の集合を $S_\xi = \{(\xi^*_k,\,\eta^*_k)\}_{k=1}^{N_c}$ とする．
+  \item \textbf{ξ距離場の構築：}各セル $(i,j)$ から最近傍零点交差までの
+        ξ空間 Euclid 距離を計算し，$\phi_{\mathrm{raw}}$ の符号を付与する：
+        \begin{equation}
+          \phi_\xi(i,j) = \operatorname{sgn}\!\bigl(\phi_{\mathrm{raw}}(i,j)\bigr)
+          \cdot \min_{(\xi^*,\eta^*)\in S_\xi}
+          \sqrt{(i-\xi^*)^2 + (j-\eta^*)^2}
+          \label{eq:xi_sdf}
+        \end{equation}
+  \item \textbf{$\psi$ 再構成：}定数 $\varepsilon_\xi = \varepsilon/h_{\min}$
+        （インターフェース幅を格子幅比で表したスカラー定数）を用いて
+        \begin{equation}
+          \psi_{\mathrm{new}}(i,j) = H_{\varepsilon_\xi}\!\bigl(\phi_\xi(i,j)\bigr)
+          = \frac{1}{1+\exp\!\bigl(-\phi_\xi(i,j)/\varepsilon_\xi\bigr)}
+          \label{eq:xi_sdf_psi}
+        \end{equation}
+  \item \textbf{$\phi_\xi$-空間質量補正：}
+        $\delta\phi = \Delta M / \int H'_{\varepsilon_\xi}\,dV$，
+        $\phi_\xi \leftarrow \phi_\xi + \delta\phi$，
+        $\psi \leftarrow H_{\varepsilon_\xi}(\phi_\xi)$
+\end{enumerate}
+\end{tcolorbox}
+
+\paragraph*{理論的性質}
+
+\begin{description}
+\item[命題~1（零点集合の完全保存）]
+$\phi_{\mathrm{raw}}(i,j) = 0
+  \;\Longleftrightarrow\; \phi_\xi(i,j) = 0
+  \;\Longleftrightarrow\; \psi_{\mathrm{new}}(i,j) = 0.5$
+
+\textit{証明：}$\phi_{\mathrm{raw}}(i,j)=0$ のとき，
+式~\eqref{eq:xi_crossing_x} の補間分子は 0 となり交差位置 $\xi^* = i$ が得られる
+（すなわち点 $(i,j)$ 自身が $S_\xi$ の元となる）．
+よって式~\eqref{eq:xi_sdf} の最小値は 0 となり $\phi_\xi(i,j) = 0$，
+式~\eqref{eq:xi_sdf_psi} より $\psi = 1/(1+e^0) = 0.5$．逆方向も定義より自明．\qed
+
+\item[命題~2（ξ-SDF 性質：$|\nabla_\xi\phi_\xi|=1$）]
+式~\eqref{eq:xi_sdf} で定義される $\phi_\xi$ は，格子インデックス空間において
+$|\nabla_\xi\phi_\xi|=1$ を満たす真の符号距離関数である（Voronoi 境界を除く）．
+
+\textit{証明：}$d(i,j;S_\xi) = \min_k\sqrt{(i-\xi^*_k)^2+(j-\eta^*_k)^2}$ は
+$\xi$ 空間の点集合 $S_\xi$ への Euclid 距離場であり，
+$|\nabla d|=1$ はほぼすべての点で成立する（距離場の基本性質）．
+$\phi_\xi = \operatorname{sgn}(\phi_{\mathrm{raw}}) \cdot d$ であり，$\operatorname{sgn}$ の符号変化は
+$S_\xi$ 上（$d=0$）でのみ起きるため，$|\nabla_\xi\phi_\xi|=|\nabla d|=1$．\qed
+
+\item[命題~3（無反復 $\Rightarrow$ ドリフト累積なし）]
+ξ-SDF は反復疑似時間積分を行わない．
+各呼び出しの零点集合移動量は線形補間誤差 $O(h^2)$ のみであり，
+Godunov 差分の $O(\Delta\tau\cdot n_{\mathrm{iter}})$ 累積ドリフト（CHK-136 根本原因）を生じない．
+\end{description}
+
+\noindent\textbf{CHK-137 検証結果（Prosperetti ベンチマーク，$\alpha=1.0$，$64\times64$）：}
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\hline
+手法 & $D(T{=}2)$ & $D(T{=}10)$ & 判定 \\
+\hline
+Eikonal（CHK-136，ZSP なし） & 0.245 & — & ✗ \\
+Eikonal + ZSP（Strategy A）   & 0.129 & — & ✗ \\
+\textbf{ξ-SDF（Strategy B，本節）} & \textbf{0.050} & \textbf{0.226} & ✗（$T{=}10$ 未達）\\
+分裂法のみ（参照，CHK-135）   & 0.037 & 0.0036 & ✓ \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent$T{=}2$ では $D=0.050$（閾値 $0.05$ 境界値），$T{=}10$ では $D=0.226$，
+体積誤差 $\Delta V/V_{\max} = 3.5\%$（目標 $<1\%$ 未達）．
+零点集合の離散ドリフトは排除されたが，
+Voronoi 境界付近での界面再配置が呼び出しごとに微小な質量累積誤差を生じ，
+長時間積分（$T{=}10$）で顕在化する．
+$\sigma>0$ 毛管波ベンチマークには\textbf{分裂法単独}を推奨する方針は不変であり，
+ξ-SDF の適用は $\sigma=0$ 問題あるいは短時間積分に限定する．
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{lccccc}
+    \hline
+    方法 & 形状保存 & 界面幅 $\varepsilon$ & $\sigma>0$ 毛管波 & $D(T{=}2)$ & 反復 \\
+    \hline
+    分裂法のみ      & ✓ & ${\sim}1.4\varepsilon$（膨張） & ✓ & 0.037 & あり \\
+    DGR のみ        & ✗ & ✓ & ✗ Blowup & — & なし \\
+    ハイブリッド    & ✓ & ✓ & ✗ & 0.129 & あり \\
+    Eikonal（CHK-136）& ✓ & ✓ & ✗ & 0.245 & あり \\
+    Eikonal+ZSP（CHK-137A）& ✓ & ✓ & ✗ & 0.129 & あり \\
+    \textbf{ξ-SDF（CHK-137B）}& ✓ & ✓（ξ均一）& ✗（$T{=}10$ 未達）& 0.050 & \textbf{なし} \\
+    \hline
+  \end{tabular}
+  \caption{再初期化手法の比較（CHK-137 更新）．WIKI-T-042 参照．}
+  \label{tab:reinit_comparison_chk137}
+\end{table}
 
 
 % ─────────────────────────────────────────────────────────────────────────────
