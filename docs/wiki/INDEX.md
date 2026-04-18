@@ -109,6 +109,7 @@
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
+| [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |
 
 ## Meta (28)
 
