@@ -23,7 +23,7 @@ run:
   T_final:    5.0
   max_steps:  500000
   cfl:        0.10
-  snap_times: [0.0, 1.0, 2.5, 5.0]
+  snap_times: [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
   print_every: 500
   reinit_method: eikonal_xi
   reinit_every: 2
@@ -42,6 +42,22 @@ output:
       xlabel: "t"
       ylabel: "D = (L−B)/(L+B)"
       file: capillary_rho_t5.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
 
 diagnostics:
   - volume_conservation

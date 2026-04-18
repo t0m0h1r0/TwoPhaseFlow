@@ -43,6 +43,22 @@ output:
       ylabel: "D = (L−B)/(L+B)"
       file: capillary_rho_sweep.pdf
 
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
 diagnostics:
   - volume_conservation
   - kinetic_energy

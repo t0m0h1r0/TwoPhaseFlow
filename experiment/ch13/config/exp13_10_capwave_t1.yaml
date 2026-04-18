@@ -47,15 +47,21 @@ output:
         D0:     0.05
       file: capillary_t1.pdf
 
-    - type: snapshot
-      title: "T=1 — t=0"
-      t_idx: 0
-      file: snapshot_t0.pdf
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
 
-    - type: snapshot
-      title: "T=1 — final"
-      t_idx: -1
-      file: snapshot_final.pdf
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
 
 diagnostics:
   - volume_conservation
