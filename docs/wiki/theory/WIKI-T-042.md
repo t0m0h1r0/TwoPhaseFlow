@@ -7,15 +7,15 @@ superseded_by: null
 sources:
   - path: src/twophase/levelset/reinit_eikonal.py
     git_hash: null
-    description: "EikonalReinitializer — Godunov upwind sweep + local-ε reconstruction"
+    description: "EikonalReinitializer — Godunov + ZSP + xi_sdf + fmm modes"
   - path: paper/sections/07b_reinitialization.tex
     git_hash: null
-    description: "§統一再初期化: Eikonal 法 subsection"
+    description: "§ξ空間符号距離関数法（CHK-137）and §FMM（CHK-138）subsections"
 consumers:
   - domain: L
-    description: "reinitialize.py — 'eikonal' method dispatch"
+    description: "reinitialize.py — 'eikonal'/'eikonal_xi'/'eikonal_fmm' dispatch"
   - domain: E
-    description: "exp13_01_a1.0_eikonal.yaml — Prosperetti benchmark verification (CHK-136)"
+    description: "exp13_01_a1.0_eikonal_zsp/xi/fmm — CHK-137/138 Prosperetti benchmarks"
 depends_on:
   - "[[WIKI-T-030]]: DGR theory and hybrid failure on σ>0 capillary waves"
   - "[[WIKI-T-007]]: CLS transport and reinitialization theory"
@@ -83,17 +83,20 @@ on grids where coarse cells outnumber fine cells.
 
 ## Comparison with Split, DGR, Hybrid
 
-| Method | Zero-set | |∇φ|=1 | Local ε | σ>0 capillary | Cost (CCD solves) |
-|--------|----------|---------|---------|---------------|-------------------|
-| Split only | ✓ | ✗ (~1.4×) | ✗ | ✓ correct | 8 |
-| DGR only | ✗ (folds) | ✓ | ✗ | ✗ blowup | 4 |
-| Hybrid (split+DGR) | ✓ | ✓ | ✗ | ✗ wrong D(t) | 12 |
-| **Eikonal (this)** | **✓** | **✓** | **✓** | **pending CHK-136** | **0** |
+| Method | Zero-set | |∇φ|=1 | Width | σ>0 capillary | D(T=2) | VolCons |
+|--------|----------|---------|-------|---------------|--------|---------|
+| Split only | ✓ | ✗ | ~1.4ε | ✓ correct | 0.037 | <1%@T=10 ✓ |
+| DGR only | ✗ (folds) | ✓ | ε | ✗ blowup | — | — |
+| Hybrid | ✓ | ✓ | ε | ✗ wrong D(t) | 0.129 | low |
+| Eikonal/ZSP | ✓ | ✓ | ε | ✗ | 0.129 | low |
+| **ξ-SDF** | **✓** | **✓** | **ε** | **✗ T=10 fails** | **0.050** | **3.5%@T=10** |
+| FMM | ✓ | ✓ (C¹) | ε | ✗ worse | — | 8.2%@T=1 |
 
-**Cost note**: Eikonal uses first-order finite differences only (no CCD solves).
-n_iter=20 iterations on a 64×64 grid ≈ 20×4096 = 82k multiplications.
-Compare: split (8 CCD solves) = 8×64 tridiagonal LU each axis.
-Eikonal is approximately 3-5× cheaper than split.
+**Key insight (CHK-138)**: Width ε is the instability source for σ>0.
+Split-only's ~1.4ε is stabilizing, not a defect.
+
+**Cost note**: Eikonal/ξ-SDF/FMM use no CCD solves (first-order FD or Dijkstra).
+ξ-SDF: O(N²·N_cross) ≈ 1.5ms/call on CPU; suitable for σ=0 problems.
 
 ## Why This Avoids CHK-135 Failure Mode
 
@@ -147,25 +150,133 @@ Eikonal and DGR both explicitly move φ (or ψ) at each cell based on local grad
 which introduces cell-by-cell perturbations that are systematically correlated with
 interface curvature → mode-2 amplification over many calls.
 
+## CHK-137 Verification Results (ZSP + ξ-SDF, T=2/T=10, α=1.0)
+
+Three strategies to fix CHK-136's zero-set drift were implemented and tested.
+
+### Strategy A — Zero-Set Protection (ZSP)
+
+Godunov sweep with frozen band: cells where |φ₀| < h/2 are not updated.
+This prevents zero-set drift from cells near φ=0.
+
+| Metric | ZSP (n_iter=20, every-2) | CHK-136 (no ZSP) |
+|--------|--------------------------|------------------|
+| D(T=2) | 0.129 ✗ | 0.245 ✗ |
+| VolCons | 0.15% | 0.15% |
+
+ZSP halves D(T=2) (0.245→0.129) but does not pass the target <0.05.
+Residual drift: cells at h/2 < |φ| < 3h/2 on curved interfaces still receive
+asymmetric Godunov updates correlated with mode-2 geometry.
+
+### Strategy B — ξ-Space SDF (non-iterative)
+
+Zero-crossings are located by linear interpolation; each cell is assigned the
+minimum ξ-Euclidean distance to the nearest crossing (no iteration):
+```
+φ_ξ(i,j) = sgn(φ_raw) × min_k √((i−ξ*_k)² + (j−η*_k)²)
+ψ = H_{ε_ξ}(φ_ξ),  ε_ξ = ε/h_min
+```
+
+| Metric | ξ-SDF T=2 | ξ-SDF T=10 | Target |
+|--------|-----------|------------|--------|
+| D | 0.050 (borderline) | 0.226 ✗ | <0.02 |
+| VolCons | 1.46% | 3.5% ✗ | <1% |
+
+T=2: borderline pass. T=10: fails both D and VolCons targets.
+Per-call mass conservation is exact (static test: 200 reinit calls, VolCons≈0%).
+Mass drift is entirely from the advection stage when using the ξ-SDF ψ field.
+
+---
+
+## CHK-138 Investigation: FMM and Root Cause Revision
+
+### Fast Marching Method (FMM)
+
+Motivation: ξ-SDF produces a Voronoi-kink-dominated C⁰ distance field.
+Hypothesis: these kinks corrupt 6th-order CCD curvature → spurious κ → VolCons drift.
+Fix: FMM (Sethian 1996) propagates via the Godunov quadratic update, giving a C¹ SDF.
+
+**FMM quadratic update** (2D unit-grid Eikonal):
+```
+if |a_x − a_y| < 1:    d = ½(a_x + a_y + √(2 − (a_x − a_y)²))
+else:                  d = min(a_x, a_y) + 1
+```
+where a_x, a_y are the minimum accepted (frozen) distances from x- and y-neighbors.
+
+**Implementation**: pure NumPy, Dijkstra priority queue, no external dependency.
+Seeds from sub-cell interpolated zero-crossings (same as ξ-SDF Step 2).
+
+### CHK-138 Results
+
+| Metric | FMM (T=1) | ξ-SDF (T=0.5) | split-only (T=10) |
+|--------|-----------|---------------|-------------------|
+| D | 0.024 | 0.008 | 0.0036 ✓ |
+| VolCons | **8.2% ✗** | 0.8% | <1% ✓ |
+| 2nd-deriv noise (φ_xx std in band) | **2.83** (lower) | 3.93 | ~1.65 |
+
+**Key finding**: FMM has _lower_ 2nd-derivative noise than ξ-SDF (2.83 vs 3.93)
+but _worse_ VolCons by 5×. This directly refutes the Voronoi-kink hypothesis.
+
+### Revised Root Cause Hypothesis — Interface Width Effect
+
+The decisive difference between split-only and all geometric methods (ξ-SDF, FMM):
+
+| Method | Effective interface width | σ>0 VolCons |
+|--------|--------------------------|-------------|
+| split-only | ~1.4ε (diffusion broadening) | <1% @T=10 ✓ |
+| ξ-SDF | ε (correct SDF) | 3.5% @T=10 ✗ |
+| FMM | ε (correct SDF) | 8.2% @T=1 ✗ |
+
+**Mechanism**:
+```
+narrow interface (width ε)
+  → surface tension concentrated over O(ε) band
+  → PPE RHS = ∇·u* has large magnitude ~σκ/ρε
+  → PPE residual ∇·u ≠ 0 proportional to 1/ε
+  → ΔV/V₀ ≈ Δt/ρ ∫ψ ∇·u* dV grows with time
+```
+Split-only's 1.4ε interface naturally dilutes the surface tension concentration,
+reducing the PPE residual and providing implicit diffusive regularization.
+
+FMM worsening vs ξ-SDF is attributed to diagonal-cell distance overestimation
+(FMM first-order scheme gives dist ≈ 1.5 at 45° cells where Euclidean = √1.25 ≈ 1.12),
+creating grid-anisotropic ψ fields that generate larger PPE residuals.
+
+### Conclusion
+
+All geometric SDF methods (ξ-SDF, FMM) that produce interface width ≈ ε
+are fundamentally incompatible with σ>0 capillary wave benchmarks using
+6th-order CCD + Projection, unless an additional diffusive regularization step
+is applied post-reconstruction.
+
+**Recommendation**: For σ>0 problems, use split-only. The "accidental" 1.4ε broadening
+is not a defect — it is the mechanism providing numerical stability for surface tension.
+For σ=0 problems (passive advection, Zalesak slot), ξ-SDF and FMM are valid and superior
+(correct ε width + better shape preservation than split-only's ~1.4× expansion).
+
+---
+
 ## Implications and Future Directions
 
-**Status**: Eikonal (n_iter=20, every-2) is equivalent to hybrid+φ-space on σ>0:
-stable, VolCons good, but D(t) wrong.
+**Current status** (post CHK-137/138):
+- σ>0 capillary waves: split-only remains the only working method
+- σ=0 advection: ξ-SDF is suitable (exact zero-set, no drift, correct ε)
 
-**Potential fixes** (not yet implemented):
-1. **Zero-set protection**: Don't update cells where |φ₀| < h/2.
-   Eliminates zero-set drift exactly; preserves |∇φ|→1 correction for off-interface cells.
-   Implementation: mask in `_godunov_sweep` skipping cells near the zero-set.
-2. **Fewer iterations**: n_iter=5 vs 20 reduces per-call drift; may be enough for |∇φ| correction.
-3. **Less frequent reinit**: every-20 instead of every-2; reduces accumulated drift but
-   risks fold blowup (same tradeoff as hybrid in CHK-135 Set D experiments).
-4. **Adaptive trigger**: Only reinit when ε_eff drifts >5% — naturally reduces call frequency.
+**Potential fix for σ>0** (not yet implemented):
+Apply a narrow-band diffusion smoothing step after ξ-SDF reconstruction
+to artificially broaden the interface toward 1.4ε:
+```python
+psi_smooth = split_diffusion_step(psi_sdf, n_steps=2)  # 2 diffusion half-steps
+```
+This would combine ξ-SDF's zero-set preservation with split-only's interface width stability.
+Expected cost: equivalent to 2 split steps (cheaper than full split-only with n=4).
 
 ## Assumptions
 
 - Profile retains sigmoid form near interface (valid under DCCD advection)
-- n_iter=20 provides |∇φ|→1 convergence within the band; however, each call introduces
-  O(Δτ) discrete zero-set drift — 20 iterations is NOT sufficient to avoid accumulated
-  drift over O(10³) reinit calls in σ>0 simulations
+- Split-only's 1.4ε broadening is the stabilizing mechanism for σ>0 problems
+  (hypothesis: not yet confirmed by explicit width-control experiment)
+- FMM diagonal overestimation is O(30%) at 45°; acceptable for σ=0 problems
+  but compounds the interface-width instability for σ>0
 - Roll BC introduces negligible error for interfaces well inside the domain
 - CFL for pseudo-time: Δτ = 0.5·h_min (stability condition for first-order upwind)

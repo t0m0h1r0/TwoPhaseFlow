@@ -437,29 +437,54 @@ Eikonal + ZSP（Strategy A）   & 0.129 & — & ✗ \\
 
 \noindent$T{=}2$ では $D=0.050$（閾値 $0.05$ 境界値），$T{=}10$ では $D=0.226$，
 体積誤差 $\Delta V/V_{\max} = 3.5\%$（目標 $<1\%$ 未達）．
-零点集合の離散ドリフトは排除されたが，
-Voronoi 境界付近での界面再配置が呼び出しごとに微小な質量累積誤差を生じ，
-長時間積分（$T{=}10$）で顕在化する．
+
+\noindent\textbf{CHK-138（Fast Marching Method による検証）：}
+CHK-137 の失敗原因として当初 Voronoi kink 仮説（ξ-SDF の $C^0$ 不連続が
+6次 CCD で増幅 $\to$ $\kappa$ ノイズ $\to$ 体積誤差）を立てた．
+これを検証するため，Sethian (1996) の Fast Marching Method (FMM) を実装した
+（二次 Godunov 更新 $d = \tfrac{1}{2}(a_x+a_y+\sqrt{2-(a_x-a_y)^2})$；反復なし，
+単一前進波で $|\nabla_\xi\phi|=1$ を達成する $C^1$ 場を構築）．
+FMM は 2次微分ノイズを低減する（標準偏差 $3.93\to 2.83$）が，
+$T{=}1$ で体積誤差 $8.2\%$（ξ-SDF の 5 倍超）を示し仮説を反証した．
+静的テスト（advection なし，200 回再初期化）では両手法とも体積誤差 $\approx 0\%$ であり，
+誤差は advection 段階に起因することが確認された．
+
+\noindent\textbf{修正仮説（CHK-138）—界面幅効果：}
+分裂法は拡散 PDE により界面幅が $\varepsilon_{\mathrm{eff}}\approx 1.4\varepsilon$ に広がる．
+この「意図せざる広がり」が表面張力の空間集中を緩和し，
+圧力ポアソン方程式の投影精度不足（$\nabla\cdot\mathbf{u}\neq 0$ 残差）による
+体積誤差を抑制している（式~\eqref{eq:dt_sigma} の毛管波安定条件参照）．
+ξ-SDF および FMM は正確な幅 $\varepsilon$ の界面を生成するが，
+これが $\sigma>0$ 問題での数値的不安定性の原因となる．
+
+\begin{equation}
+  \Delta V / V_0 \approx \frac{\Delta t}{\rho} \int \psi\,\nabla\cdot\mathbf{u}^*\,dV
+  \label{eq:volconsrate}
+\end{equation}
+
+$\nabla\cdot\mathbf{u}^*$ は未投影速度の残留発散であり，
+表面張力が $\varepsilon^{-1}$ スケールで集中するほど PPE の右辺が大きくなる．
 $\sigma>0$ 毛管波ベンチマークには\textbf{分裂法単独}を推奨する方針は不変であり，
-ξ-SDF の適用は $\sigma=0$ 問題あるいは短時間積分に限定する．
+ξ-SDF および FMM の適用は $\sigma=0$ 問題に限定する．
 
 \begin{table}[H]
   \centering
   \small
-  \begin{tabular}{lccccc}
+  \begin{tabular}{lcccccc}
     \hline
-    方法 & 形状保存 & 界面幅 $\varepsilon$ & $\sigma>0$ 毛管波 & $D(T{=}2)$ & 反復 \\
+    方法 & 形状 & 幅 $\varepsilon$ & $\sigma>0$ & $D(T{=}2)$ & VolCons & 反復 \\
     \hline
-    分裂法のみ      & ✓ & ${\sim}1.4\varepsilon$（膨張） & ✓ & 0.037 & あり \\
-    DGR のみ        & ✗ & ✓ & ✗ Blowup & — & なし \\
-    ハイブリッド    & ✓ & ✓ & ✗ & 0.129 & あり \\
-    Eikonal（CHK-136）& ✓ & ✓ & ✗ & 0.245 & あり \\
-    Eikonal+ZSP（CHK-137A）& ✓ & ✓ & ✗ & 0.129 & あり \\
-    \textbf{ξ-SDF（CHK-137B）}& ✓ & ✓（ξ均一）& ✗（$T{=}10$ 未達）& 0.050 & \textbf{なし} \\
+    分裂法のみ & ✓ & ${\sim}1.4\varepsilon$ & ✓ & 0.037 & ${<}1\%$ @$T{=}10$ & あり \\
+    DGR のみ & ✗ & ✓ & ✗ Blowup & — & — & なし \\
+    ハイブリッド & ✓ & ✓ & ✗ & 0.129 & 低 & あり \\
+    Eikonal（CHK-136）& ✓ & ✓ & ✗ & 0.245 & 低 & あり \\
+    Eikonal+ZSP（CHK-137A）& ✓ & ✓ & ✗ & 0.129 & 低 & あり \\
+    ξ-SDF（CHK-137B）& ✓ & ✓ & ✗ & 0.050 & $3.5\%$ @$T{=}10$ & なし \\
+    \textbf{FMM（CHK-138）}& ✓ & ✓ & ✗ & — & $\mathbf{8.2\%}$ @$T{=}1$ & なし \\
     \hline
   \end{tabular}
-  \caption{再初期化手法の比較（CHK-137 更新）．WIKI-T-042 参照．}
-  \label{tab:reinit_comparison_chk137}
+  \caption{再初期化手法の比較（CHK-138 更新）．WIKI-T-042 参照．FMM の悪化は界面幅効果の傍証．}
+  \label{tab:reinit_comparison_chk138}
 \end{table}
 
 
