@@ -203,7 +203,7 @@ class EikonalReinitializer(IReinitializer):
 
         Works on CPU (NumPy array operations). GPU inputs are converted host-side.
         """
-        phi_np = np.asarray(phi_dev)    # (Nx, Ny), CPU
+        phi_np = phi_dev.get() if hasattr(phi_dev, 'get') else np.asarray(phi_dev)
         sgn = np.sign(phi_np)
         Nx, Ny = phi_np.shape
 
