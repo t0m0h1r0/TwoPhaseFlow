@@ -1,0 +1,66 @@
+# Set D2: reinit_every=20 — test if high reinit frequency is cause of wrong D(t)
+# Hypothesis A1: ~920 reinits/period at every-2 injects energy; reducing to every-20 should help
+# Reference: exp13_01_a1.0_dgr.yaml (hybrid, every-2, D saturates at 0.226 — WRONG)
+# Baseline: exp13_01_a1.0.yaml (split, D_final=0.0036 — CORRECT)
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    10.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
+  print_every: 500
+  reinit_method: hybrid
+  reinit_every: 20
+
+output:
+  dir: results/exp13_01_a1.0_d2
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave α=1.0 hybrid every-20 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_d2.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

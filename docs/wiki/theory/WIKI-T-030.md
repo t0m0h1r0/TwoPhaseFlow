@@ -116,9 +116,54 @@ is unaffected.  DGR computes scale≈1 and returns ψ_new≈ψ — effectively a
 | A3 | σ=0 + DGR | **STABLE** — confirms CSF as amplification mechanism |
 | A4 | DGR every-20 | BLOWUP step=100 (frequency doesn't fix the root cause) |
 
-**Conclusion**: For any simulation with σ>0 where the interface can fold (any
-capillary wave, Rayleigh-Taylor, rising bubble), **use hybrid, not DGR alone**.
-DGR alone is safe only for passive-advection (σ=0) or post-split thickness cleanup.
+**Conclusion (CHK-133)**: For any simulation with σ>0 where the interface can fold,
+**use hybrid, not DGR alone**.  DGR alone is safe only for σ=0 or as post-split cleanup.
+
+## Limitations — Hybrid Reinit Also Fails for σ>0 Capillary Waves (discovered 2026-04-18, CHK-135)
+
+**Hybrid reinit (split+DGR) prevents hard blowup but gives wrong physics.**
+After fixing the DGR blowup with hybrid reinit (CHK-133), the 2D results show:
+
+- α=1.0, hybrid every-2: D(t) saturates at 0.226 (should decay to ~0 per Prosperetti)
+- α=1.0, split-only every-2: D_final=0.0036 (correct ✓)
+
+**Root cause — DGR global-median sharpening is non-uniform on curved interfaces:**
+
+After split reinit (ε_eff ≈ 1.4ε), DGR sharpens using global median scale:
+- Compressed ends (|∇ψ| large → ε_local small): over-scaled → interface shifts outward
+- Elongated tips (|∇ψ| small → ε_local large): under-scaled → interface shifts inward
+- Net: mode-2 deformation amplified per DGR call
+
+**This is the sharpening step itself, not the mass correction.**
+Confirmed by implementing φ-space mass correction (CHK-135, 2026-04-18):
+```
+δφ = ΔM / ∫H'_ε dV    (replaces ψ-space λ·4q(1-q) correction)
+```
+Result: VolCons=0.02% (fixed) but D_final=0.227 (unchanged). The sharpening is the cause.
+
+**Frequency sensitivity experiments** (Set D, CHK-135, α=1.0 hybrid):
+
+| Config | reinit_every | t_blowup | D_final | VolCons | Conclusion |
+|---|---|---|---|---|---|
+| every-2 (ψ-space) | 2 | — | 0.226 | 347% | Wrong physics + mass injection |
+| every-2 (φ-space) | 2 | — | 0.227 | 0.02% | Wrong D(t); VolCons fixed |
+| every-20 | 20 | 0.102 | — | — | BLOWUP (fold not prevented) |
+| every-500 | 500 | 0.043 | — | — | BLOWUP (fold at step~62) |
+| split-only | 2 | — | 0.003 | <1% | **Correct ✓** |
+
+No sweet spot for hybrid: too infrequent → blowup; too frequent → wrong D(t) regardless of mass correction method.
+
+**Why split-only works and hybrid does not:**
+- Split-only: mass correction is a GLOBAL uniform offset applied once; no per-cell scaling. Interface broadens to ~1.4ε but this does not distort the zero-set shape.
+- Hybrid: DGR applies CELL-WISE scale (global median ε_eff) followed by φ-space correction. Even with φ-space correction, the sharpening itself is non-uniform on curved interfaces → zero-set shifts non-uniformly → mode-2 amplified.
+
+**Final conclusion**: For σ>0 capillary wave decay (Prosperetti benchmark):
+1. DGR alone: BLOWUP (fold blowup, CHK-133)
+2. Hybrid+ψ-space: stable but WRONG D(t) + mass injection (3-4× VolCons)
+3. Hybrid+φ-space: stable, correct VolCons, but WRONG D(t) (sharpening error)
+4. **Split-only: CORRECT physics** ← required for ch13 §13.1 capillary wave benchmarks
+
+For other use cases (Zalesak, passive advection, σ=0 rising bubble), hybrid is appropriate. DGR sharpening error is proportional to interface curvature variation and reinit frequency.
 
 ## Assumptions
 
