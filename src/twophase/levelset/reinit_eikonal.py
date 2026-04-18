@@ -140,17 +140,19 @@ class EikonalReinitializer(IReinitializer):
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / eps_arr
             W = xp.sum(w * dV)          # device scalar
-            if float(W) > 1e-14:        # one sync: needed for Python guard
-                M_new = xp.sum(psi_new * dV)   # device scalar
-                delta_phi = (M_old - M_new) / W  # device scalar arithmetic
-                phi = phi + delta_phi
-                if self._xi_sdf:
-                    # CHK-140: large delta_phi (from eps_xi mismatch at first reinit)
-                    # can push interface-adjacent liquid cells across zero, creating
-                    # false interior zero-crossings on the next reinit call.
-                    # Clamp: preserve cell phase relative to sgn0.
-                    phi = xp.where(sgn0 * phi < 0, sgn0 * 1e-14, phi)
-                psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
+            # Guard against W≈0 without a Python-level sync (float() would force one).
+            W_safe = xp.where(W > 1e-14, W, 1.0)
+            gate = xp.where(W > 1e-14, 1.0, 0.0)
+            M_new = xp.sum(psi_new * dV)
+            delta_phi = gate * (M_old - M_new) / W_safe
+            phi = phi + delta_phi
+            if self._xi_sdf:
+                # CHK-140: large delta_phi (from eps_xi mismatch at first reinit)
+                # can push interface-adjacent liquid cells across zero, creating
+                # false interior zero-crossings on the next reinit call.
+                # Clamp: preserve cell phase relative to sgn0.
+                phi = xp.where(sgn0 * phi < 0, sgn0 * 1e-14, phi)
+            psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
 
         return psi_new
 
