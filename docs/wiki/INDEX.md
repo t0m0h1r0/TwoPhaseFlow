@@ -1,6 +1,6 @@
 # Wiki Index — 134 entries
 
-## Theory (41)
+## Theory (42)
 
 | REF-ID | Title |
 |--------|-------|
@@ -45,6 +45,7 @@
 | [WIKI-T-039](theory/WIKI-T-039.md) | ξ-Space CCD Metric Limitation: Under-Resolution Impossibility for Localized Grids |
 | [WIKI-T-040](theory/WIKI-T-040.md) | xi-Space eps Definition for Non-Uniform CCD Grids |
 | [WIKI-T-041](theory/WIKI-T-041.md) | Third-Order Time Integration: AB3 + Richardson-CN + Rotational IPC |
+| [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
 
 ## Cross-Domain (14)
 
@@ -98,7 +99,7 @@
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 | [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
 
-## Paper (8)
+## Paper (10)
 
 | REF-ID | Title |
 |--------|-------|
@@ -111,6 +112,7 @@
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 | [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |
+| [WIKI-P-010](paper/WIKI-P-010.md) | 07b_reinitialization: Eikonal Unified Method Section (CHK-136) |
 
 ## Meta (28)
 

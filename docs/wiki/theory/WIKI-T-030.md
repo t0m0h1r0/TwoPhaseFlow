@@ -174,11 +174,22 @@ spurious mode-2 driving. Full theoretical explanation pending.
 - σ>0 high-curvature capillary dynamics → split-only (DGR adds spurious energy)
 - DGR is NOT discarded; it is correct for the cases it was designed for.
 
+**Eikonal-based unified method (CHK-136, WIKI-T-042):**
+Eikonal redistancing (Sussman 1994) was implemented and tested as a unified replacement
+for split+DGR (see `src/twophase/levelset/reinit_eikonal.py`).
+Result (T=2 Prosperetti, α=1.0): VolCons=0.15% ✓, stable ✓, but D(T=2)=0.245 ✗.
+Root cause: discrete Godunov zero-set drift per call accumulates into mode-2 growth —
+analogous to DGR's global-median non-uniformity, different mechanism, same effect.
+**Eikonal is NOT a solution for σ>0** in its current form. Future fix: zero-set protection
+(skip updates for |φ₀| < h/2) to eliminate discrete drift. See WIKI-T-042 for details.
+
 **Future directions (not yet implemented):**
 - Per-band-cell DGR: apply local ε_eff(i,j) only within interface band; keep bulk unchanged.
   Avoids bulk amplification (Set C failure) while correcting non-uniform thickness.
 - Adaptive DGR trigger: call DGR only when ε_eff drifts >5% from ε_target.
   Reduces call frequency; may reduce accumulated shape error for curved interfaces.
+- Eikonal with zero-set protection: skip Godunov update for |φ₀| < h/2.
+  Eliminates discrete drift at the zero-set; may fix σ>0 mode-2 amplification.
 
 ## Assumptions
 

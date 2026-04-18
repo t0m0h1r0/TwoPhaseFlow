@@ -262,6 +262,85 @@ $\sigma > 0$ の毛管波・液滴振動ベンチマークには
 
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{統一再初期化：Eikonal 法（WIKI-T-042）}
+\label{sec:eikonal_reinit}
+% ─────────────────────────────────────────────────────────────────────────────
+
+分裂法（形状回復）と DGR（界面幅補正）を一度に達成する統一アルゴリズムとして，
+\textbf{Eikonal 再初期化}を導入する．
+Eikonal 方程式 \citep{Sussman1994}
+\begin{equation}
+  \frac{\partial\phi}{\partial\tau} + \operatorname{sgn}(\phi_0)\bigl(|\nabla\phi| - 1\bigr) = 0
+  \label{eq:eikonal_pde}
+\end{equation}
+は零点集合（界面位置）を不変に保ちつつ $|\nabla\phi| \to 1$ を回復する（符号距離関数化）．
+これによりフォールド（$|\nabla\phi|\to 0$ 領域）も自然に修正される．
+
+\begin{tcolorbox}[algbox, title={Eikonal 再初期化アルゴリズム（CHK-136）}]
+\begin{enumerate}
+  \item \textbf{ロジット反転：}$\phi = \varepsilon\ln(\psi/(1-\psi))$（飽和クランプ付き）
+  \item \textbf{Eikonal PDE 反復（$n_{\mathrm{iter}}=20$ ステップ）：}
+        Godunov 一次風上差分で式~\eqref{eq:eikonal_pde} を疑似時間積分
+        \begin{equation}
+          \phi^{(k+1)} = \phi^{(k)} - \Delta\tau\,\operatorname{sgn}(\phi_0)\,
+          \bigl(G^{\mathrm{Godunov}}(\phi^{(k)}) - 1\bigr)
+        \end{equation}
+  \item \textbf{セル局所 $\varepsilon$ による再構成：}
+        $\psi(i,j) = H_{\varepsilon(i,j)}(\phi)$，
+        $\varepsilon(i,j) = \varepsilon_\xi\max(h_x(i),\,h_y(j))$
+
+        一様格子では $\varepsilon(i,j) = \varepsilon$（スカラーに帰着）；
+        非一様格子では各セルの物理格子幅に比例した界面幅を実現する．
+  \item \textbf{$\phi$ 空間質量補正：}
+        $\delta\phi = \Delta M / \int H'_\varepsilon\,dV$，
+        $\phi \leftarrow \phi + \delta\phi$，$\psi \leftarrow H_{\varepsilon}(\phi)$
+\end{enumerate}
+\end{tcolorbox}
+
+\noindent\textbf{理論的保証（WIKI-T-031）：}
+\begin{enumerate}
+  \item \textbf{零点集合保存（正確）：}Eikonal PDE はレベル集合の輸送のみを行い，
+        $\phi = 0$ 面を不変に保つ→界面位置（形状）は変化しない．
+  \item \textbf{勾配収束：}十分な反復で $|\nabla\phi|\to 1$ が保証され，
+        界面幅は $\varepsilon(i,j)$ に正確に収束する（DGR のグローバル中央値近似不要）．
+  \item \textbf{質量保存（前クリッピング）：}Step 4 の $\phi$ 空間補正により
+        $\sum\psi_{\mathrm{corr}} = \sum\psi_{\mathrm{old}}$（Thm 2）．
+\end{enumerate}
+
+\noindent\textbf{DGR・分裂法との比較：}
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{lccc}
+    \hline
+    方法 & 形状（零点集合） & 界面幅 $\varepsilon$ & $\sigma>0$ 毛管波 \\
+    \hline
+    分裂法のみ  & ✓ & $\sim 1.4\varepsilon$（膨張） & ✓ 正確 \\
+    DGR のみ    & ✗（フォールド不可） & ✓ & ✗ Blowup \\
+    ハイブリッド & ✓ & ✓ & ✗ $D(t)$ 誤差 \\
+    \textbf{Eikonal}（本法）& ✓（連続形） & ✓ & ✗ $D(t)$ 誤差（CHK-136）\\
+    \hline
+  \end{tabular}
+  \caption{再初期化手法の比較．WIKI-T-042 参照．}
+\end{table}
+
+\noindent\textbf{CHK-136 検証結果（$T=2$，Prosperetti ベンチマーク）：}
+Eikonal 法は体積保存（$\Delta V/V < 0.15\%$）を維持しブローアップも回避するが，
+$D(T{=}2) = 0.245$（参照値 $\approx 0.021$）でハイブリッド法と同一の誤差を示す．
+原因：Godunov 差分の離散誤差により零点集合が各呼び出しでわずかに移動し，
+$\sim 3700$ 回×20 反復の累積で mode-2 変形が成長する．
+これは DGR のグローバル中央値非一様性とは異なるが，同等の系統的誤差を生む．
+$\phi$ の局所操作を繰り返す全手法に共通の制約であり，
+\textbf{$\sigma>0$ 毛管波ベンチマークには分裂法単独}を推奨する．
+
+\noindent\textbf{Eikonal 法の適用範囲：}
+Eikonal は $\sigma{=}0$ の受動移流・静的形状問題（Zalesak スロット等）では
+体積保存・界面幅・形状復元の全条件を満たす有力手法である．
+将来の改善案として，零点集合近傍（$|\phi_0| < h/2$）の更新をスキップすることで
+離散ゼロセットドリフトを原理的に排除できる（未実装）．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{安定性制約（時間刻みの決定）}
 \label{sec:stability}
 % ─────────────────────────────────────────────────────────────────────────────
