@@ -1,0 +1,54 @@
+# CHK-140 検証: Fix 3 (mass correction sign clamp) — 穴消失確認
+# eps_scale=1.4, T=0.1, snap_times 明示 (snap_interval 不使用)
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    0.1
+  max_steps:  1000000
+  cfl:        0.10
+  snap_times: [0.0, 0.05, 0.1]
+  print_every: 200
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+
+output:
+  dir: results/exp13_06_mass_corr_fix_diag
+  save_npz: true
+  figures:
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition:
+  type: wall

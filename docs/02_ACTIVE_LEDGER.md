@@ -9,8 +9,8 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | worktree-ch13-eikonal-improvements |
-| last_CHK | CHK-139 DONE 2026-04-18 — ξ-SDF eps_scale=1.4 fix: D(T=2)=0.028 ✓, VolCons(T=1)=0.80% ✓, VolCons(T=2)=1.38% (marginally over 1%). Root cause confirmed: interface width controls PPE residual. 3 new wiki entries (E-028, X-016, P-012), Sethian1996 bib, paper CHK-139 section. Branch: worktree-ch13-eikonal-improvements |
-| next_action | T=10 long-run for eikonal_xi+eps_scale=1.4 (or accept split-only as σ>0 reference). |
+| last_CHK | CHK-140 DONE 2026-04-18 — xi_sdf interior hole: Fix 4 (isolated sign-flip detection). Verified exp13_07 T=0.1: no hole at t=0.050/0.100. |
+| next_action | WIKI-T-042 + WIKI-E-028 update for CHK-140 true root cause (advection oscillation + isolated flip). Optional: T=5 long-run verification. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
@@ -26,6 +26,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-140 | 2026-04-18 | fix+diag | xi_sdf interior hole: TRUE root cause = WENO5 advection oscillations push psi < 0.5 at isolated deep-interior cells (all 4 neighbors still > 0.5) → φ < 0 → false crossing → φ_sdf ≈ 0 → ψ stuck at 0.5. Onset at call=37 (t≈0.048). Fix 4: isolated sign-flip detection — if φ[i,j]<0 AND min(4-neighbor φ)>0, override sgn0=+1 before pre-clip. 4 xp ops (pad+min+where). exp13_07 verified: T=0.1, no hole at t=0.050/0.100. Fixes 1-3 retained (defense-in-depth). Branch: worktree-ch13-eikonal-improvements |
 | CHK-139 | 2026-04-18 | impl+exp+wiki | ξ-SDF eps_scale=1.4 interface widening: EikonalReinitializer(eps_scale) + Reinitializer + ns_pipeline.from_config chain. T=1: D=0.018 ✓, VolCons=0.80% ✓. T=2: D=0.028 ✓, VolCons=1.38% (target <1% marginally missed). Root cause confirmed (interface width effect). WIKI-E-028/X-016/P-012 created; Sethian1996 bib added; INDEX 136→139. Branch: worktree-ch13-eikonal-improvements |
 | CHK-138 | 2026-04-18 | exp+theory | FMM T=1 quick check: VolCons=8.2% WORSE than ξ-SDF (1.46%@T=2) despite lower φ_xx noise (2.83 vs 3.93). Voronoi kink hypothesis refuted. Revised root cause: interface width ε (narrow band → PPE residual ∝ σκ/ε → ΔV drift). Split-only's ~1.4ε broadening is stabilizing. WIKI-T-042 §CHK-138 + paper CHK-138 FMM section updated. Branch: worktree-ch13-eikonal-improvements |
 | CHK-137 | 2026-04-18 | impl+exp+paper | Two strategies for CHK-136 zero-set drift: A=ZSP (D=0.129, freeze band |φ|<h/2), B=ξ-SDF non-iterative (D=0.050 T=2 borderline, D=0.226 T=10 fail). ξ-SDF proofs: zero-set preservation, |∇_ξφ|=1, no drift. Paper §7b ξ-SDF subsubsection + 4 equations + 3 propositions. WIKI-T-042 §CHK-137. Static test: 200 reinit calls → VolCons≈0% (drift from advection, not reinit). Branch: worktree-ch13-eikonal-improvements |

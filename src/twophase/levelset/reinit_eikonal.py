@@ -123,9 +123,24 @@ class EikonalReinitializer(IReinitializer):
             eps_arr = self._eps_xi
         elif self._xi_sdf:
             # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
-            # Saturate |φ| to 2ε — prevents bulk drift from generating false
-            # zero-crossings in _xi_sdf_phi while preserving sign (CHK-140)
-            phi = xp.sign(phi) * xp.minimum(xp.abs(phi), 2.0 * self._eps)
+            #
+            # Fix 4 (CHK-140): isolated interior sign-flip correction.
+            # Advection oscillations can push psi slightly below 0.5 at isolated
+            # deep-interior cells (all 4 neighbors still positive-phi). If left
+            # uncorrected, xi_sdf detects a false zero-crossing at that cell and
+            # permanently pins ψ = 0.5. Solution: if phi[i,j] < 0 but ALL 4
+            # orthogonal neighbors have phi > 0, the sign flip is spurious —
+            # override sgn0[i,j] = +1 before the pre-clip.
+            _phi_pad = xp.pad(phi, ((1, 1), (1, 1)), mode='edge')
+            _phi_nb_min = xp.minimum(
+                xp.minimum(_phi_pad[1:-1, :-2], _phi_pad[1:-1, 2:]),
+                xp.minimum(_phi_pad[:-2, 1:-1], _phi_pad[2:, 1:-1]),
+            )
+            sgn0 = xp.where((phi < 0) & (_phi_nb_min > 0), 1.0, sgn0)
+            #
+            # Pre-clip: limit |φ| to 2ε so bulk values don't create false crossings.
+            # Use sgn0 (not xp.sign(phi)) to preserve the corrected sign above.
+            phi = sgn0 * xp.minimum(xp.abs(phi), 2.0 * self._eps)
             phi = self._xi_sdf_phi(phi)
             eps_arr = self._eps_xi   # constant in ξ-space (scalar)
         else:
@@ -146,6 +161,12 @@ class EikonalReinitializer(IReinitializer):
                 M_new = xp.sum(psi_new * dV)   # device scalar
                 delta_phi = (M_old - M_new) / W  # device scalar arithmetic
                 phi = phi + delta_phi
+                if self._xi_sdf:
+                    # CHK-140: large delta_phi (from eps_xi mismatch at first reinit)
+                    # can push interface-adjacent liquid cells across zero, creating
+                    # false interior zero-crossings on the next reinit call.
+                    # Clamp: preserve cell phase relative to sgn0.
+                    phi = xp.where(sgn0 * phi < 0, sgn0 * 1e-14, phi)
                 psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
 
         return psi_new
@@ -217,6 +238,7 @@ class EikonalReinitializer(IReinitializer):
         """
         xp = self._xp
         sgn = xp.sign(phi_dev)
+        sgn = xp.where(sgn == 0, 1.0, sgn)  # phi=0 → inside (CHK-140)
         Nx, Ny = phi_dev.shape
 
         cx_parts = []   # list of (n_cross, 2) arrays
