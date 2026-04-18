@@ -1,4 +1,4 @@
-# Wiki Index — 134 entries
+# Wiki Index — 136 entries
 
 ## Theory (42)
 
@@ -99,7 +99,7 @@
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 | [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
 
-## Paper (10)
+## Paper (11)
 
 | REF-ID | Title |
 |--------|-------|
@@ -113,8 +113,9 @@
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 | [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |
 | [WIKI-P-010](paper/WIKI-P-010.md) | 07b_reinitialization: Eikonal Unified Method Section (CHK-136) |
+| [WIKI-P-011](paper/WIKI-P-011.md) | Optimizing Multi-Agent Kernel Prompts with Visible Extended Thinking |
 
-## Meta (28)
+## Meta (29)
 
 | REF-ID | Title |
 |--------|-------|
@@ -146,6 +147,7 @@
 | [WIKI-M-026](meta/WIKI-M-026.md) | Optimal CoT Length — Inverted U-Curve and Short-m@k |
 | [WIKI-M-027](meta/WIKI-M-027.md) | Persona Prompting Anti-Pattern: Empirical Evidence |
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
+| [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
 ## Code (18)
 
