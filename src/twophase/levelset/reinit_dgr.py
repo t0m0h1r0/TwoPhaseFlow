@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .interfaces import IReinitializer
-from .heaviside import heaviside, invert_heaviside, apply_mass_correction
+from .heaviside import heaviside, invert_heaviside
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -73,7 +73,18 @@ class DGRReinitializer(IReinitializer):
             phi_sdf = phi_sdf + self.phi_smooth_C * h_min**2 * _ccd_laplacian(xp, self.ccd, phi_sdf)
 
         psi_new = heaviside(xp, phi_sdf, self.eps)
-        psi_new = apply_mass_correction(xp, psi_new, dV, M_old)
+        # φ-space mass correction: uniform interface shift, no shape distortion.
+        # ψ-space correction (λ·4q(1-q)) shifts interface by δx ∝ 1/|∇ψ| which is
+        # curvature-dependent → systematic mode elongation on oscillating droplets.
+        # φ-space: δφ = ΔM / ∫H'_ε dV; interface shifts uniformly δx = δφ/|∇φ|≈δφ
+        # (since DGR produces |∇φ_sdf|≈1 post-scale). No shape change for curved interfaces.
+        w_phi = psi_new * (1.0 - psi_new) / self.eps  # H'_eps(phi_sdf) = dψ/dφ
+        W = float(xp.sum(w_phi * dV))
+        if W > 1e-14:
+            M_new = float(xp.sum(psi_new * dV))
+            delta_phi = (M_old - M_new) / W
+            phi_sdf = phi_sdf + delta_phi
+            psi_new = heaviside(xp, phi_sdf, self.eps)
         return psi_new
 
 
