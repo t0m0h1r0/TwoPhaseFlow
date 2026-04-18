@@ -116,9 +116,53 @@ is unaffected.  DGR computes scale≈1 and returns ψ_new≈ψ — effectively a
 | A3 | σ=0 + DGR | **STABLE** — confirms CSF as amplification mechanism |
 | A4 | DGR every-20 | BLOWUP step=100 (frequency doesn't fix the root cause) |
 
-**Conclusion**: For any simulation with σ>0 where the interface can fold (any
-capillary wave, Rayleigh-Taylor, rising bubble), **use hybrid, not DGR alone**.
-DGR alone is safe only for passive-advection (σ=0) or post-split thickness cleanup.
+**Conclusion (CHK-133)**: For any simulation with σ>0 where the interface can fold,
+**use hybrid, not DGR alone**.  DGR alone is safe only for σ=0 or as post-split cleanup.
+
+## Limitations — Hybrid Reinit Also Fails for σ>0 Capillary Waves (discovered 2026-04-18, CHK-135)
+
+**Hybrid reinit (split+DGR) prevents hard blowup but gives wrong physics.**
+After fixing the DGR blowup with hybrid reinit (CHK-133), the 2D results show:
+
+- α=1.0, hybrid every-2: D(t) saturates at 0.226 (should decay to ~0 per Prosperetti)
+- α=1.0, split-only every-2: D_final=0.0036 (correct ✓)
+
+**Root cause — DGR mass correction introduces shape error on curved interfaces:**
+
+After split reinit (ε_eff ≈ 1.4ε), DGR sharpens ψ_new = sigmoid(1.4 logit(ψ_split)).
+The sharpened field has less total mass than ψ_split → mass correction adds back via:
+```
+ψ_corr = ψ_new + λ · 4·ψ_new·(1−ψ_new)    where λ = ΔM / ∫w dV
+```
+The interface position shift from this correction is **non-uniform on curved interfaces**:
+```
+δx_interface ≈ λ · 4ψ(1−ψ) / |∇ψ_new|
+```
+At high-curvature regions (tips of mode-2 droplet), |∇ψ_new| is smaller → larger shift.
+At low-curvature regions (sides), shift is smaller. Net effect: tips shift outward more
+than sides → systematic mode-2 elongation per reinit call → D(t) grows unboundedly.
+
+**Frequency sensitivity experiments** (Set D, CHK-135, α=1.0 hybrid):
+
+| Config | reinit_every | t_blowup | D_final | Conclusion |
+|---|---|---|---|---|
+| every-2 | 2 | — (stable) | 0.226 | Wrong physics |
+| every-20 | 20 | 0.102 | — | BLOWUP (fold not prevented) |
+| every-500 | 500 | 0.043 | — | BLOWUP (fold at step~62) |
+| split-only | 2 | — (stable) | 0.003 | **Correct ✓** |
+
+There is no "sweet spot" for hybrid frequency: too infrequent → blowup; too frequent → wrong D(t).
+
+**Why split-only works and hybrid does not:**
+- Split-only (4 iterations compression-diffusion): restores sigmoid shape without applying an explicit scale correction. The mass correction in split is applied uniformly (no DGR scale). The interface thickness broadens to ~1.4ε but this does NOT cause shape errors — the split mass correction is a global offset that shifts the interface uniformly.
+- Hybrid: split + DGR sharpens the interface (scale > 1) then applies a mass correction to compensate the sharpening. This mass correction is curvature-dependent → shape error → energy injection.
+
+**Revised conclusion**: For σ>0 capillary wave decay (Prosperetti benchmark):
+1. DGR alone: BLOWUP (fold blowup, CHK-133)
+2. Hybrid (split+DGR): stable but WRONG D(t) (shape error from DGR mass correction)
+3. **Split-only: CORRECT physics** ← recommended for ch13 §13.1 capillary wave benchmarks
+
+For other use cases (Zalesak, passive advection, σ=0 rising bubble), hybrid may still be appropriate. The DGR mass correction error is proportional to interface curvature and reinit frequency; for nearly-flat or low-curvature interfaces, the error is negligible.
 
 ## Assumptions
 
