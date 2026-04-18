@@ -1,4 +1,5 @@
-# §13.1 Capillary wave decay — α=1.2, reinit=dgr
+# §13.1 Capillary wave decay — α=1.2, reinit=hybrid (split+dgr)
+# Fix: dgr alone fails for capillary waves; hybrid required (WIKI-T-030 §Hybrid Scheme).
 # Reference: Prosperetti (1981) — ρ_l=10, ρ_g=1, μ=0.05, σ=1.0, mode=2 perturbation ε=0.05
 
 grid:
@@ -24,7 +25,7 @@ run:
   cfl:        0.10
   snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
   print_every: 500
-  reinit_method: dgr
+  reinit_method: hybrid
 
 output:
   dir: results/exp13_01_a1.2_dgr

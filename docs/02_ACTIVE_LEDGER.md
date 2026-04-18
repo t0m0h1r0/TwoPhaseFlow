@@ -8,9 +8,9 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | worktree-research-third-order-time-evolution |
+| branch | main |
 | last_CHK | CHK-134 DONE 2026-04-18 — Theory note + WIKI-T-041 on third-order time integration (AB3 + Richardson-CN + Rotational IPC). Design-only; no code changes. Route B chosen over KIO/SDIRK3 for ADI preservation. Reuses existing RichardsonCNAdvance (already O(Δt³)). |
-| next_action | Merge worktree-research-third-order-time-evolution → main via PR. Future CHK: implement Route B (~50 lines library + exp11_30 TGV convergence). |
+| next_action | Next: implement Route B (~50 lines library + exp11_30 TGV convergence). |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.

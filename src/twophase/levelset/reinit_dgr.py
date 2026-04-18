@@ -18,6 +18,13 @@ class DGRReinitializer(IReinitializer):
 
     Restores interface thickness to ε in one step via logit inversion.
     See WIKI-T-030 for proofs.
+
+    Design note: DGR corrects interface THICKNESS only (assumes |∇φ_true|≈1).
+    For simulations with σ>0 and capillary dynamics, the interface develops
+    folds (|∇ψ|→0 in band) that DGR cannot correct (global median scale≈1
+    is insensitive to local outliers). Use HybridReinitializer (split+DGR)
+    to provide shape restoration before DGR's thickness correction.
+    WIKI-T-030 §Hybrid Scheme explicitly recommends hybrid for production.
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
@@ -74,6 +81,13 @@ class HybridReinitializer(IReinitializer):
     """Hybrid: shape restoration (split) + thickness correction (DGR).
 
     Composes SplitReinitializer and DGRReinitializer sequentially.
+    This is the recommended production configuration (WIKI-T-030 §Hybrid Scheme):
+    - SplitReinitializer restores interface shape via compression-diffusion PDE,
+      correcting folds and |∇ψ|=0 regions that DGR cannot handle.
+    - DGRReinitializer then corrects the ~1.4× thickness broadening that
+      SplitReinitializer introduces.
+    Required for σ>0 capillary wave simulations (ch13) where interface folds
+    develop under capillary dynamics and cause CSF blowup without shape correction.
     """
 
     def __init__(self, split: IReinitializer, dgr: IReinitializer):

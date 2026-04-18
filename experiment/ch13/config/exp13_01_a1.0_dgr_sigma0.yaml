@@ -1,0 +1,59 @@
+# §13.1 DGR blowup diagnosis — A3: DGR with sigma=0 (no surface tension)
+# Tests if CSF/kappa amplification is the blowup mechanism
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   0.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    0.5
+  max_steps:  100000
+  cfl:        0.10
+  snap_times: [0.0, 0.25, 0.5]
+  print_every: 100
+  reinit_every: 2
+  reinit_method: dgr
+
+output:
+  dir: results/diag_a3_sigma0
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "A3 DGR sigma=0 — KE(t)"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "t"
+      ylabel: "KE"
+      file: ke_sigma0.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
