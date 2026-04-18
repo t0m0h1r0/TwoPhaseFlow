@@ -1,7 +1,7 @@
 """
 Eikonal-based reinitialization: unified shape + thickness correction.
 
-Theory (WIKI-T-031):
+Theory (WIKI-T-042):
   ∂φ/∂τ + sgn(φ₀)(|∇φ| − 1) = 0  (Sussman et al. 1994)
   ψ(i,j) = H_{ε(i,j)}(φ(i,j)),  ε(i,j) = ε_ξ · max(hₓ(i), h_y(j))
 
@@ -9,6 +9,10 @@ Replaces split (shape) + DGR (thickness) with one PDE + local-ε reconstruction:
   - Eikonal preserves zero-set → shape correct
   - |∇φ|=1 guaranteed → thickness = 2ε per cell → uniform on non-uniform grids
   - No global-median scale → no non-uniform sharpening artefact (CHK-135 root cause)
+
+ZSP (zero-set protection, CHK-137):
+  Cells with |φ₀| < h_min/2 are frozen during the Godunov sweep.
+  Eliminates per-call discrete zero-set drift that accumulated into mode-2 error (CHK-136).
 """
 
 from __future__ import annotations
@@ -37,8 +41,9 @@ class EikonalReinitializer(IReinitializer):
     - No global-median scale → no mode-2 amplification on curved interfaces
     - Cell-local ε naturally handles non-uniform grids
     - Fold cells (|∇φ|→0) are corrected by the Eikonal PDE directly
+    - ZSP: zero-set protection freezes cells near φ=0 → no discrete drift (CHK-137)
 
-    See WIKI-T-031 for proofs and benchmarks.
+    See WIKI-T-042 for proofs and benchmarks.
     """
 
     def __init__(
@@ -51,15 +56,18 @@ class EikonalReinitializer(IReinitializer):
         dtau_factor: float = 0.5,
         mass_correction: bool = True,
         local_eps: bool = True,
+        zsp: bool = True,
     ):
         self._xp = backend.xp
         self._grid = grid
         self._eps = float(eps)
         self._n_iter = n_iter
         self._mass_correction = mass_correction
+        self._zsp = zsp
 
         # Minimum grid spacing (NumPy, host-side — grid.h is always CPU)
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
+        self._h_min = h_min
         self._dtau = dtau_factor * h_min
 
         # ε_ξ = eps / h_min: number of cells spanning the interface
@@ -123,7 +131,11 @@ class EikonalReinitializer(IReinitializer):
     # ── Internal ─────────────────────────────────────────────────────────────
 
     def _godunov_sweep(self, phi, sgn0):
-        """Godunov upwind Eikonal: ∂φ/∂τ + sgn(φ₀)(|∇φ|−1) = 0."""
+        """Godunov upwind Eikonal: ∂φ/∂τ + sgn(φ₀)(|∇φ|−1) = 0.
+
+        ZSP (zero-set protection, CHK-137): cells with |φ₀| < h_min/2 are
+        frozen throughout the sweep to prevent discrete zero-set drift.
+        """
         xp = self._xp
         dtau = self._dtau
         hx_f = self._hx_fwd   # (Nx+1, 1)
@@ -132,6 +144,10 @@ class EikonalReinitializer(IReinitializer):
         hy_b = self._hy_bwd
 
         inside = sgn0 > 0
+
+        # ZSP mask: freeze cells within half a grid cell of the zero-set
+        if self._zsp:
+            zsp_frozen = xp.abs(phi) < 0.5 * self._h_min
 
         for _ in range(self._n_iter):
             # First-order upwind differences (Neumann BC via one-sided)
@@ -158,6 +174,11 @@ class EikonalReinitializer(IReinitializer):
             )
 
             G = xp.sqrt(ax + ay + 1e-14) - 1.0
-            phi = phi - dtau * sgn0 * G
+            phi_new = phi - dtau * sgn0 * G
+
+            if self._zsp:
+                phi = xp.where(zsp_frozen, phi, phi_new)
+            else:
+                phi = phi_new
 
         return phi

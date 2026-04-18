@@ -709,3 +709,42 @@ def test_eikonal_preserves_mass(backend):
 
     vol_err = abs(M1 - M0) / max(M0, 1e-14)
     assert vol_err < 0.005, f"Volume error {vol_err*100:.3f}% > 0.5%"
+
+
+def test_eikonal_zsp_preserves_zero_set(backend):
+    """ZSP=True: zero-set centroid stays within 0.1*eps after 50 reinit calls (CHK-137)."""
+    N = 32
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    from twophase.levelset.reinit_eikonal import EikonalReinitializer
+    reinit = EikonalReinitializer(backend, grid, ccd, eps, n_iter=20,
+                                  mass_correction=False, zsp=True)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    # Flat interface at x=0.5, compressed to simulate post-split broadening (|∇φ|=1/1.4)
+    phi0 = (X - 0.5) / 1.4   # compressed: |∇φ| = 1/1.4 ≠ 1
+    psi0 = heaviside(xp, phi0, eps)
+    dV = grid.cell_volumes()
+    X_dev = xp.asarray(X)
+
+    def x_centroid(psi):
+        q = xp.asarray(psi)
+        w = q * (1.0 - q)
+        W = float(xp.sum(w * dV))
+        return float(xp.sum(X_dev * w * dV)) / max(W, 1e-14)
+
+    x0 = x_centroid(psi0)
+
+    psi = psi0
+    for _ in range(50):
+        psi = reinit.reinitialize(psi)
+
+    x_zsp = x_centroid(psi)
+    assert abs(x_zsp - x0) < 0.1 * eps, (
+        f"ZSP centroid drifted {abs(x_zsp - x0)/eps:.3f}×eps (limit 0.1)"
+    )
