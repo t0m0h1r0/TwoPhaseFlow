@@ -1,0 +1,71 @@
+# §13.1 Capillary wave decay — α=1.0, reinit=eikonal_xi, eps_scale=1.4, T=5 (CHK-140)
+# T=1 ✓: D=0.002, VolCons=0.145% (clean GPU-opt run)
+# snap_interval=0.1 → 51 psi snapshots (psi_t{t:.3f}.pdf) for splitting analysis
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    5.0
+  max_steps:  1000000
+  cfl:        0.10
+  snap_times: [0.0, 5.0]
+  snap_interval: 0.1
+  print_every: 500
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+
+output:
+  dir: results/exp13_01_a1.0_eikonal_xi_wideeps_t5
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave α=1.0 eikonal_xi wideeps=1.4 T=5 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_a1.0_eikonal_xi_wideeps_t5.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

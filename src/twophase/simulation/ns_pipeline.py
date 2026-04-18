@@ -74,12 +74,12 @@ class TwoPhaseNSSolver:
         eps_xi_cells: float | None = None,
         grid_rebuild_freq: int = 1,
         reinit_every: int = 2,
-        reinit_method: str | None = None,
+        reinit_method: str = 'eikonal_xi',
         cn_viscous: bool = False,
         Re: float = 1.0,
         reproject_variable_density: bool = False,
         reproject_mode: str = "legacy",
-        phi_primary_transport: bool = False,
+        phi_primary_transport: bool = True,
         phi_primary_redist_every: int = 4,
         phi_primary_clip_factor: float = 12.0,
         phi_primary_heaviside_eps_scale: float = 1.0,
@@ -190,8 +190,6 @@ class TwoPhaseNSSolver:
         # DGR is grid-agnostic (cell_volumes() based mass correction, logit inversion).
         # SplitReinitializer's CN diffusion assumes uniform h = L/N — causes accumulated
         # diffusion even on uniform grids (transition width grows to ~1.0 vs ε≈0.023).
-        if reinit_method is None:
-            reinit_method = 'dgr'  # DGR: all-grid default; use YAML reinit_method: split to override
         self._reinit = Reinitializer(
             self._backend, self._grid, self._ccd, self._eps,
             n_steps=reinit_steps, method=reinit_method,
@@ -225,7 +223,7 @@ class TwoPhaseNSSolver:
             eps_xi_cells=getattr(g, "eps_xi_cells", None),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
             reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
-            reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", None),
+            reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", 'eikonal_xi'),
             cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
             Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
             reproject_variable_density=getattr(
@@ -235,7 +233,7 @@ class TwoPhaseNSSolver:
                 getattr(cfg, "run", g), "reproject_mode", "legacy",
             ),
             phi_primary_transport=bool(
-                getattr(getattr(cfg, "run", g), "phi_primary_transport", False)
+                getattr(getattr(cfg, "run", g), "phi_primary_transport", True)
             ),
             phi_primary_redist_every=int(
                 getattr(getattr(cfg, "run", g), "phi_primary_redist_every", 4)

@@ -98,6 +98,34 @@ pre-instability dynamics and are used for method comparison.
 
 ---
 
+## Exp13_09: phi-primary Transport Fixes ξ-SDF Center Hole (CHK-140)
+
+### Setup
+
+Stationary perturbed circle ($r=0.25$, mode-2, $\varepsilon=0.05$) on $64\times64$
+uniform wall-BC grid. `reinit_method: eikonal_xi`, `eps_scale=1.4`,
+`phi_primary_transport: true`. $T=0.1$, CFL=0.10, snap at $t \in \{0, 0.05, 0.10\}$.
+
+### Results
+
+| Metric | psi-transport (exp13_08) | phi-primary (exp13_09) |
+|--------|--------------------------|------------------------|
+| ψ≈0.5 center hole at t=0.05 | ✗ present | **✓ absent** |
+| ψ≈0.5 center hole at t=0.10 | ✗ present | **✓ absent** |
+| VolCons max over T=0.1 | 0.82% | **0.00%** |
+| KE final (t=0.10) | — | 0.082 |
+
+### Key finding
+
+phi-primary transport eliminates the latent ξ-SDF center-hole bug by enforcing
+the physical invariant ψ ≈ 0/1 far from the interface via sigmoid saturation at
+every step. Deep interior node has φ = logit(ψ)·ε ≫ 0 even after CCD advection
+oscillations — the sign cannot flip unless the interface physically reaches that node.
+
+Full root-cause analysis in [[WIKI-T-042]] §CHK-140.
+
+---
+
 ## Cross-References
 
 - [[WIKI-T-036]] — Phi-primary transport theory (mass conservation analysis)
