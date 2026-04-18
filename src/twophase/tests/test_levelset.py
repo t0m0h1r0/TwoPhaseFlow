@@ -646,3 +646,66 @@ def test_hfe_filter_d2_precomputed_matches_ccd(backend):
 
     diff = float(xp.max(xp.abs(xp.asarray(kappa_a) - xp.asarray(kappa_b))))
     assert diff < 1e-12, f"d2_list path differs from CCD path: max diff = {diff:.2e}"
+
+
+# ── Test: EikonalReinitializer (CHK-136, WIKI-T-031) ─────────────────────────
+
+def test_eikonal_restores_sdf(backend):
+    """EikonalReinitializer restores |∇φ|≈1 and ε_eff≈ε on a distorted profile."""
+    N = 32
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    from twophase.levelset.reinit_eikonal import EikonalReinitializer
+    reinit = EikonalReinitializer(backend, grid, ccd, eps, n_iter=30)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    # Distorted profile: stretch φ by 2× in x so |∇φ| = 2 before reinit
+    phi0 = 2.0 * (np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25)
+    psi0 = heaviside(xp, phi0, eps)
+
+    psi_r = reinit.reinitialize(psi0)
+
+    # Estimate eps_eff in band via median: eps_local = ψ(1-ψ)/|∇ψ| ≈ eps_eff
+    dpsi_dx, _ = ccd.differentiate(psi_r, 0)
+    dpsi_dy, _ = ccd.differentiate(psi_r, 1)
+    grad_psi = np.sqrt(dpsi_dx**2 + dpsi_dy**2)
+    psi_1mpsi = np.array(psi_r * (1.0 - psi_r))
+    band = psi_1mpsi > 0.05
+    if np.sum(band) > 4:
+        eps_local = psi_1mpsi[band] / np.maximum(grad_psi[band], 1e-14)
+        eps_eff = float(np.median(eps_local))
+        assert abs(eps_eff / eps - 1.0) < 0.15, (
+            f"ε_eff/ε = {eps_eff/eps:.3f} (expected ≈1.0)"
+        )
+
+
+def test_eikonal_preserves_mass(backend):
+    """EikonalReinitializer with mass_correction=True preserves volume to <0.5%."""
+    N = 32
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend)
+    xp = backend.xp
+
+    eps = 1.5 / N
+    from twophase.levelset.reinit_eikonal import EikonalReinitializer
+    reinit = EikonalReinitializer(backend, grid, ccd, eps, n_iter=20,
+                                  mass_correction=True)
+
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    phi0 = np.sqrt((X - 0.5)**2 + (Y - 0.5)**2) - 0.25
+    psi0 = heaviside(xp, phi0, eps)
+    dV = grid.cell_volumes()
+    M0 = float(xp.sum(xp.asarray(psi0) * dV))
+
+    psi_r = reinit.reinitialize(psi0)
+    M1 = float(xp.sum(xp.asarray(psi_r) * dV))
+
+    vol_err = abs(M1 - M0) / max(M0, 1e-14)
+    assert vol_err < 0.005, f"Volume error {vol_err*100:.3f}% > 0.5%"

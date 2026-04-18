@@ -2,10 +2,11 @@
 Conservative Level Set reinitialization — facade + legacy.
 
 Reinitializer is a facade (C2 preserved) that delegates to strategy classes:
-  - SplitReinitializer     (reinit_split.py)   — operator-split comp+diff
+  - SplitReinitializer     (reinit_split.py)    — operator-split comp+diff
   - UnifiedDCCDReinitializer (reinit_unified.py) — combined RHS (WIKI-T-028)
-  - DGRReinitializer       (reinit_dgr.py)     — direct geometric (WIKI-T-030)
-  - HybridReinitializer    (reinit_dgr.py)     — split + DGR composition
+  - DGRReinitializer       (reinit_dgr.py)      — direct geometric (WIKI-T-030)
+  - HybridReinitializer    (reinit_dgr.py)      — split + DGR composition
+  - EikonalReinitializer   (reinit_eikonal.py)  — unified Eikonal + local-ε (WIKI-T-031)
 
 ReinitializerWENO5 is legacy (C2 — DO NOT DELETE).
 """
@@ -80,6 +81,12 @@ class Reinitializer(IReinitializer):
                 phi_smooth_C=phi_smooth_C,
             )
             self._strategy = HybridReinitializer(split, dgr)
+        elif method == 'eikonal':
+            from .reinit_eikonal import EikonalReinitializer
+            self._strategy = EikonalReinitializer(
+                backend=backend, grid=grid, ccd=ccd, eps=eps,
+                n_iter=n_steps, mass_correction=mass_correction,
+            )
         else:
             raise ValueError(f"Unknown reinit method: {method!r}")
 
