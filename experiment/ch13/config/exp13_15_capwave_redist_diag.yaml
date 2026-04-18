@@ -1,0 +1,82 @@
+# CHK-141 diagnostic: phi_primary_transport interior hole at T=1
+# Hypothesis: eikonal_xi redist every 4 steps causes sign-flip at interior
+# cells where CCD phi-advection accumulated phi→0. Test: disable redist.
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    1.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 0.25, 0.5, 0.75, 1.0]
+  print_every: 200
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  phi_primary_heaviside_eps_scale: 1.0
+
+output:
+  dir: results/exp13_15_redist_diag
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave redist_every sweep — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_redist.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
+
+sweep:
+  - label: redist_every_4
+    overrides:
+      run.phi_primary_redist_every: 4
+  - label: redist_every_20
+    overrides:
+      run.phi_primary_redist_every: 20
+  - label: redist_every_100
+    overrides:
+      run.phi_primary_redist_every: 100
+  - label: redist_disabled
+    overrides:
+      run.phi_primary_redist_every: 100000
