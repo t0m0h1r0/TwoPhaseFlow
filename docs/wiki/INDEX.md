@@ -64,6 +64,7 @@
 | [WIKI-X-012](cross-domain/WIKI-X-012.md) | CCD Metric Instability on Non-Uniform Grids in NS Simulation |
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
+| [WIKI-X-015](cross-domain/WIKI-X-015.md) | Numerical Simulation Debugging: Theory-First Root-Cause Methodology |
 
 ## Experiment (27)
 
