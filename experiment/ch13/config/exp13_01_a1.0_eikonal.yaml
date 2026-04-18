@@ -1,9 +1,9 @@
 # §13.1 Capillary wave decay — α=1.0, reinit=eikonal (CHK-136)
 # EikonalReinitializer: Godunov upwind redistancing + local-ε reconstruction.
 # Unified method: replaces split (shape) + DGR (thickness) with single Eikonal PDE.
-# Expected: D_final ≈ 0 (correct physics), VolCons < 1%, no mode-2 amplification.
+# Result (T=2, CHK-136): D(T=2)=0.245 (wrong, same as hybrid), VolCons=0.15% (good).
 # Ref: split-only D_final=0.0036 ✓ (CHK-135); hybrid D_final=0.227 ✗ (CHK-135).
-# Ref: WIKI-T-031 — theory and guarantees.
+# Ref: WIKI-T-042 — theory and guarantees (CHK-136: D=0.245 at T=2, same issue as hybrid).
 
 grid:
   NX: 64
