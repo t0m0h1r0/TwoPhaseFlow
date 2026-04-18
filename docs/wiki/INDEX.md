@@ -1,6 +1,6 @@
 # Wiki Index — 134 entries
 
-## Theory (40)
+## Theory (41)
 
 | REF-ID | Title |
 |--------|-------|
@@ -44,6 +44,7 @@
 | [WIKI-T-038](theory/WIKI-T-038.md) | Bandwidth Constraint for Non-Uniform Grid Rebuild: eps_g_factor-dt Coupling |
 | [WIKI-T-039](theory/WIKI-T-039.md) | ξ-Space CCD Metric Limitation: Under-Resolution Impossibility for Localized Grids |
 | [WIKI-T-040](theory/WIKI-T-040.md) | xi-Space eps Definition for Non-Uniform CCD Grids |
+| [WIKI-T-041](theory/WIKI-T-041.md) | Third-Order Time Integration: AB3 + Richardson-CN + Rotational IPC |
 
 ## Cross-Domain (14)
 

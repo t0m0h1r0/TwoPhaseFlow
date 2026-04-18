@@ -8,24 +8,25 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | worktree-worktree-ch13-dgr-blowup-fix |
-| last_CHK | CHK-133 DONE 2026-04-18 — ch13 DGR blowup root cause identified and fixed. DGR alone fails for sigma>0 capillary dynamics (interface folds undetectable by median eps_eff); all 4 exp13_01 DGR configs changed to hybrid. Tests: 206 passed. WIKI-T-030 updated. |
-| next_action | Merge worktree-ch13-dgr-blowup-fix → main via PR after T=10 remote run confirms no blowup. |
+| branch | worktree-research-third-order-time-evolution |
+| last_CHK | CHK-134 DONE 2026-04-18 — Theory note + WIKI-T-041 on third-order time integration (AB3 + Richardson-CN + Rotational IPC). Design-only; no code changes. Route B chosen over KIO/SDIRK3 for ADI preservation. Reuses existing RichardsonCNAdvance (already O(Δt³)). |
+| next_action | Merge worktree-research-third-order-time-evolution → main via PR. Future CHK: implement Route B (~50 lines library + exp11_30 TGV convergence). |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: 100 entries (docs/wiki/INDEX.md).
+- Wiki: 101 entries (docs/wiki/INDEX.md).
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
 # Format: `CHK-ID | YYYY-MM-DD | type | summary`
 # Full detail in git log / commit messages / linked memos.
 
-## §1 — Most recent (CHK-120..132)
+## §1 — Most recent (CHK-120..134)
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-134 | 2026-04-18 | theory+wiki | Third-order time integration theory note + WIKI-T-041. Paper §5 time-evolution chapters absorbed; rate-limiter taxonomy built (AB2/CN/IPC cap at O(Δt²), cross-visc at O(Δt¹)). Route B recommended: AB3 convection + Richardson(Picard-CN) viscous + AB3 cross-term extrapolation + Rotational IPC (Guermond–Shen 2003). Preserves Peaceman–Rachford ADI tridiagonal. Reuses shipped RichardsonCNAdvance. ~50 lines future library work. 5 new bib entries queued. WIKI: T-003/T-033/T-030 dependencies; INDEX 100→101. Branch: worktree-research-third-order-time-evolution |
 | CHK-133 | 2026-04-18 | fix | ch13 DGR blowup: root cause = DGR cannot repair interface folds (|∇ψ|→0) under σ>0 capillary dynamics; global median eps_eff treats folds as outliers → DGR near-no-op → CSF blowup. Fix: reinit_method: hybrid in exp13_01_a{1.0,1.2,1.5,2.0}_dgr.yaml. Isolation exps A1-A4 confirm mechanism. WIKI-T-030 Limitations section added. Tests 206P/7S/2XF. Branch: worktree-ch13-dgr-blowup-fix |
 | CHK-132 | 2026-04-18 | meta | v7.0.0 "Lean Kernel" redesign: 8 kernel-*.md (constitution/roles/ops/domains/workflow/antipatterns/project/deploy) + 46 agent files (23 claude + 23 codex) + 2 _base.yaml. -56% token target. v6.0.0 features: HAND-04/DYNAMIC-REPLANNING/OP-CONDENSE/EVALUATOR-OPTIMIZER. Branch: meta-v7-lean-kernel |
 | CHK-131 | 2026-04-17 | fix | GPU smoke tests: thomas_precompute .get() fix (linalg_backend.py); atol 1e-13→1e-11 (test_gpu_smoke.py); 3 FAILED → 0 |
