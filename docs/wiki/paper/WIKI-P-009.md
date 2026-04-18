@@ -41,7 +41,7 @@ each DGR call systematically elongates the droplet → D(t) saturates at 0.226 (
 to ~0). Confirmed by frequency sensitivity experiments (Set D, CHK-135): no stable frequency
 exists — too infrequent → blowup; too frequent → wrong D(t).
 
-### New (correct for curved interfaces)
+### New (φ-space, fixes mass conservation; sharpening non-uniformity is separate issue)
 
 ```latex
 \item φ空間質量補正：
@@ -49,11 +49,16 @@ exists — too infrequent → blowup; too frequent → wrong D(t).
   δφ = δM / ∫H'_ε dV，H'_ε = ψ_new(1-ψ_new)/ε
 ```
 
-Since DGR produces `|∇φ_sdf| ≈ 1`, the interface displacement `δx = δφ/|∇φ| ≈ δφ` is
-curvature-independent → uniform shift → no shape change.
+Since DGR produces `|∇φ_sdf| ≈ 1`, the interface displacement from the mass correction
+`δx = δφ/|∇φ| ≈ δφ` is uniform. This fixes VolCons (347% → 0.02%).
 
-Also added a note explaining why the old ψ-space correction fails and directing to
-§verify_capillary_wave for experimental evidence.
+**Note:** Verified (CHK-135) that φ-space correction fixes VolCons but NOT D(t)=0.227.
+Root cause revised: the DGR sharpening step (global median ε_eff applied uniformly)
+is itself non-uniform on curved interfaces → mode-2 amplified regardless of mass correction.
+For σ>0 capillary waves, split-only is the correct approach (no DGR component).
+
+Also updated §適用制限（2）to explain: hybrid+φ-space still gives wrong D(t) due to
+sharpening non-uniformity (compressed ends over-scaled, elongated tips under-scaled).
 
 ---
 
