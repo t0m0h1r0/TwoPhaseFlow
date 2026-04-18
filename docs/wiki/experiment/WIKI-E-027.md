@@ -212,22 +212,38 @@ No sweet spot: increasing frequency → wrong physics; decreasing → blowup.
 | F1 | reinit_every=0 | BLOWUP step=344 | Reinit IS needed for α>1.0 |
 | F2 | split-only | VolCons=21% (wrong) | Split-only also wrong on non-uniform grid |
 
-### Root Cause: DGR Mass Correction on Curved Interfaces
+### Intermediate Fix Attempt: φ-Space Mass Correction
 
-After DGR sharpens the interface (scale>1): mass correction shifts the interface via
-`δx ∝ 1/|∇ψ|`. On curved interfaces (capillary oscillation), high-curvature regions
-have smaller |∇ψ| → larger shift. This systematically elongates the mode-2 droplet.
+Initial hypothesis: ψ-space mass correction `λ·4q(1-q)` causes curvature-dependent shift → mode-2 amplification.
+Fix attempted: replace with φ-space correction `δφ = ΔM / ∫H'_ε dV` (uniform interface shift).
 
-### Revised Fix (CHK-135)
+Result (T=10, hybrid+φ-space, α=1.0):
+- VolCons_max=0.02% ✓ (was 347% — mass injection eliminated)
+- D_final=0.227 ✗ (unchanged — D(t) still wrong)
+- D(t=1.28)=0.468 (10× amplification in first half-period)
 
-| Config | Previous fix (CHK-133) | Revised fix (CHK-135) |
-|---|---|---|
-| exp13_01_a1.0_dgr.yaml | hybrid | **split** |
-| exp13_01_a1.2_dgr.yaml | hybrid | Pending G10 test (grid_rebuild_freq) |
-| exp13_01_a1.5_dgr.yaml | hybrid | Pending G10 test |
-| exp13_01_a2.0_dgr.yaml | hybrid | Pending G10 test |
+**Revised Root Cause: DGR sharpening non-uniformity (not mass correction)**
 
-Verification of split-only fix for α=1.0: T=10 run in progress (expected D_final≈0.0036).
+The DGR global median ε_eff applies a single scale to all cells. On the mode-2 oscillating droplet:
+- Compressed ends: local ε_eff_local < median → over-scaled → interface shifts outward
+- Elongated tips: local ε_eff_local > median → under-scaled → interface shifts inward
+- Net effect: mode-2 deformation amplified per DGR call, regardless of mass correction method.
+The φ-space mass correction correctly fixes mass conservation, but cannot undo the zero-set shift from the sharpening step.
+
+### Final Fix (CHK-135 — verified 2026-04-18)
+
+| Config | CHK-133 fix | Attempted | **Final fix** | D_final | VolCons |
+|---|---|---|---|---|---|
+| a1.0_dgr | hybrid (ψ-space) | hybrid (φ-space) | **split** | 0.003 ✓ | <1% ✓ |
+| a1.2_dgr | hybrid (ψ-space) | hybrid (φ-space) | hybrid (φ-space)* | — | ~0% |
+| a1.5_dgr | hybrid (ψ-space) | — | hybrid (φ-space)* | — | — |
+| a2.0_dgr | hybrid (ψ-space) | — | hybrid (φ-space)* | — | — |
+
+*α>1.0 variants: φ-space correction eliminates mass injection; D(t) accuracy pending deeper investigation.
+α=1.0 split-only verified against exp13_01_a1.0.yaml (same config, D_final=0.0036).
+
+**Split-only is the only correct reinit for σ>0 capillary wave benchmarks.**
+DGR is incompatible with this test case (sharpening non-uniformity amplifies mode-2 per call).
 
 ---
 
