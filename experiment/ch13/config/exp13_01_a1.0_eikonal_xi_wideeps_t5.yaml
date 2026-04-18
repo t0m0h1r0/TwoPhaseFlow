@@ -1,7 +1,6 @@
 # §13.1 Capillary wave decay — α=1.0, reinit=eikonal_xi, eps_scale=1.4, T=5 (CHK-140)
-# T=1 ✓: D=0.018, VolCons=0.802%; T=2 ✓: D=0.028, VolCons=1.38%
-# CHK-140 fix: xi_sdf magnitude filter prevents false zero-crossings in bulk.
-# T=5: verify no splitting artifact.
+# T=1 ✓: D=0.002, VolCons=0.145% (clean GPU-opt run)
+# snap_interval=0.1 → 51 psi snapshots (psi_t{t:.3f}.pdf) for splitting analysis
 
 grid:
   NX: 64
@@ -24,7 +23,8 @@ run:
   T_final:    5.0
   max_steps:  1000000
   cfl:        0.10
-  snap_times: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  snap_times: [0.0, 5.0]
+  snap_interval: 0.1
   print_every: 500
   reinit_method: eikonal_xi
   reinit_every: 2
@@ -48,15 +48,9 @@ output:
         D0:     0.05
       file: capillary_a1.0_eikonal_xi_wideeps_t5.pdf
 
-    - type: snapshot
-      title: "α=1.0 eikonal_xi wideeps=1.4 — t=0"
-      t_idx: 0
-      file: snapshot_t0.pdf
-
-    - type: snapshot
-      title: "α=1.0 eikonal_xi wideeps=1.4 T=5 — final"
-      t_idx: -1
-      file: snapshot_final.pdf
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
 
 diagnostics:
   - volume_conservation
