@@ -1,0 +1,76 @@
+# §13.1 Capillary wave — T=1 base verify, eikonal_xi + phi_primary_transport
+# CHK-140 fix: phi_primary_transport=true + eps_scale=1.4
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    1.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 0.5, 1.0]
+  print_every: 200
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+
+output:
+  dir: results/exp13_10_capwave_t1
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave α=1.0 eikonal_xi — D(t) T=1"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_t1.pdf
+
+    - type: snapshot
+      title: "T=1 — t=0"
+      t_idx: 0
+      file: snapshot_t0.pdf
+
+    - type: snapshot
+      title: "T=1 — final"
+      t_idx: -1
+      file: snapshot_final.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
