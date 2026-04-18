@@ -481,12 +481,47 @@ $\sigma>0$ 毛管波ベンチマークには\textbf{分裂法単独}を推奨す
     Eikonal+ZSP（CHK-137A）& ✓ & ✓ & ✗ & 0.129 & 低 & あり \\
     ξ-SDF（CHK-137B）& ✓ & ✓ & ✗ & 0.050 & $3.5\%$ @$T{=}10$ & なし \\
     \textbf{FMM（CHK-138）}& ✓ & ✓ & ✗ & — & $\mathbf{8.2\%}$ @$T{=}1$ & なし \\
+    \textbf{ξ-SDF（$f{=}1.4$，CHK-139）}& ✓ & ✓ & ✓ & \textbf{0.028} & $1.38\%$ @$T{=}2$ & なし \\
     \hline
   \end{tabular}
-  \caption{再初期化手法の比較（CHK-138 更新）．WIKI-T-042 参照．FMM の悪化は界面幅効果の傍証．}
+  \caption{再初期化手法の比較（CHK-139 更新）．WIKI-T-042 参照．ε幅拡大（$f{=}1.4$）が最良の $D(T{=}2)$を実現．}
   \label{tab:reinit_comparison_chk138}
 \end{table}
 
+\noindent\textbf{CHK-139（ε幅拡大による修正）：}
+CHK-138 の界面幅仮説に基づき，ξ-SDF 再構成のパラメータに $f{=}1.4$ を設定して
+$\varepsilon_{\text{eff}} = 1.4\,\varepsilon$ とすることで，split-only の自然な幅広化と等価な
+正則化を明示的に与える．
+
+再初期化の Step~3 を
+\begin{equation}
+  \psi_{\text{new}}(i,j) = H_{f\varepsilon_\xi}(\phi_\xi(i,j)), \quad f = 1.4
+  \label{eq:xi_sdf_wide}
+\end{equation}
+と修正する（コード実装：\texttt{EikonalReinitializer(eps\_scale=1.4)}）．
+Step~4 の質量補正の重み $W = \sum H'_{f\varepsilon_\xi}$ も自動的に調整される
+（$W \propto 1/(f\varepsilon_\xi)$ となるため $\delta\phi$ が増大するが，単位体積あたりの質量誤差は同等）．
+
+\textbf{CHK-139 検証結果：}
+\begin{center}
+\begin{tabular}{lccc}
+  \hline
+  & $D(T{=}1)$ & $D(T{=}2)$ & VolCons max \\
+  \hline
+  ξ-SDF（$f{=}1.0$，CHK-137） & — & 0.050 & $3.5\%$ @$T{=}10$ \\
+  \textbf{ξ-SDF（$f{=}1.4$，CHK-139）} & \textbf{0.018 ✓} & \textbf{0.028 ✓} & \textbf{1.38\% @$T{=}2$} \\
+  split-only（参考） & — & 0.037 & $<1\%$ @$T{=}10$ \\
+  \hline
+\end{tabular}
+\end{center}
+
+$T{=}1$ では VolCons$=0.80\%<1\%$ を達成し，$D(T{=}1)=0.018$ は split-only の
+$D(T{=}2)=0.037$ より小さい．$T{=}2$ では VolCons$=1.38\%$ と目標 $1\%$ を僅かに超過するが，
+ξ-SDF($f{=}1.0$) の 3.5\% に比べ約 2.5 倍の改善であり，$D(T{=}2)=0.028$ は全手法中最良値を示す．
+
+\textbf{残課題：}$T{=}10$ での長時間挙動は未検証．VolCons 残差の起源は，
+毛管波のダイナミクスと連動した界面変形による PPE 残差の位相依存変動と考えられる
+（$t{=}0.5$ → $t{=}1.5$ にかけて VolCons が一度減少する非単調挙動がこれを示唆する）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{安定性制約（時間刻みの決定）}

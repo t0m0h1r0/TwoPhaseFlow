@@ -85,6 +85,7 @@ class TwoPhaseNSSolver:
         phi_primary_heaviside_eps_scale: float = 1.0,
         kappa_max: float | None = None,
         dgr_phi_smooth_C: float = 1e-4,
+        reinit_eps_scale: float = 1.0,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -112,6 +113,7 @@ class TwoPhaseNSSolver:
         self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
         self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
         self._kappa_max = float(kappa_max) if kappa_max is not None else None
+        self._reinit_eps_scale = float(reinit_eps_scale)
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
             "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
@@ -194,6 +196,7 @@ class TwoPhaseNSSolver:
             self._backend, self._grid, self._ccd, self._eps,
             n_steps=reinit_steps, method=reinit_method,
             phi_smooth_C=dgr_phi_smooth_C,
+            eps_scale=self._reinit_eps_scale,
         )
         self.X, self.Y = self._grid.meshgrid()
 
@@ -246,6 +249,9 @@ class TwoPhaseNSSolver:
             kappa_max=getattr(getattr(cfg, "run", g), "kappa_max", None),
             dgr_phi_smooth_C=float(
                 getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
+            ),
+            reinit_eps_scale=float(
+                getattr(getattr(cfg, "run", g), "reinit_eps_scale", 1.0)
             ),
         )
 

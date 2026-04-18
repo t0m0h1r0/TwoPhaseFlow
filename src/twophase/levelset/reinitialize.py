@@ -43,7 +43,8 @@ class Reinitializer(IReinitializer):
                  mass_correction: bool = True,
                  eps_d_comp: float = _EPS_D_COMP,
                  method: str = 'split',
-                 phi_smooth_C: float = 1e-4):
+                 phi_smooth_C: float = 1e-4,
+                 eps_scale: float = 1.0):
         self.xp = backend.xp
         self.grid = grid
         self.eps = eps
@@ -86,20 +87,21 @@ class Reinitializer(IReinitializer):
             self._strategy = EikonalReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 n_iter=n_steps, mass_correction=mass_correction, zsp=True,
+                eps_scale=eps_scale,
             )
         elif method == 'eikonal_xi':
             from .reinit_eikonal import EikonalReinitializer
             self._strategy = EikonalReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 n_iter=n_steps, mass_correction=mass_correction,
-                zsp=False, xi_sdf=True,
+                zsp=False, xi_sdf=True, eps_scale=eps_scale,
             )
         elif method == 'eikonal_fmm':
             from .reinit_eikonal import EikonalReinitializer
             self._strategy = EikonalReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 n_iter=n_steps, mass_correction=mass_correction,
-                zsp=False, xi_sdf=False, fmm=True,
+                zsp=False, xi_sdf=False, fmm=True, eps_scale=eps_scale,
             )
         else:
             raise ValueError(f"Unknown reinit method: {method!r}")

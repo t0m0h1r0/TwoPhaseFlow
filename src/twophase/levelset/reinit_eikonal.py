@@ -60,6 +60,7 @@ class EikonalReinitializer(IReinitializer):
         zsp: bool = True,
         xi_sdf: bool = False,
         fmm: bool = False,
+        eps_scale: float = 1.0,
     ):
         self._xp = backend.xp
         self._grid = grid
@@ -75,8 +76,9 @@ class EikonalReinitializer(IReinitializer):
         self._h_min = h_min
         self._dtau = dtau_factor * h_min
 
-        # ε_ξ = eps / h_min: number of cells spanning the interface
-        eps_xi = float(eps) / h_min
+        # ε_ξ = eps_scale * eps / h_min: cells spanning the interface
+        # eps_scale > 1 widens the interface (e.g. 1.4 matches split-only's ~1.4ε)
+        eps_xi = float(eps) * float(eps_scale) / h_min
         self._eps_xi = eps_xi
 
         # Precompute spatial arrays on device
