@@ -87,6 +87,13 @@ class Reinitializer(IReinitializer):
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 n_iter=n_steps, mass_correction=mass_correction, zsp=True,
             )
+        elif method == 'eikonal_xi':
+            from .reinit_eikonal import EikonalReinitializer
+            self._strategy = EikonalReinitializer(
+                backend=backend, grid=grid, ccd=ccd, eps=eps,
+                n_iter=n_steps, mass_correction=mass_correction,
+                zsp=False, xi_sdf=True,
+            )
         else:
             raise ValueError(f"Unknown reinit method: {method!r}")
 

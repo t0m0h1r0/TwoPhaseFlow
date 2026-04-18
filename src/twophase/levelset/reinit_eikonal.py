@@ -57,6 +57,7 @@ class EikonalReinitializer(IReinitializer):
         mass_correction: bool = True,
         local_eps: bool = True,
         zsp: bool = True,
+        xi_sdf: bool = False,
     ):
         self._xp = backend.xp
         self._grid = grid
@@ -64,6 +65,7 @@ class EikonalReinitializer(IReinitializer):
         self._n_iter = n_iter
         self._mass_correction = mass_correction
         self._zsp = zsp
+        self._xi_sdf = xi_sdf
 
         # Minimum grid spacing (NumPy, host-side — grid.h is always CPU)
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
@@ -72,6 +74,7 @@ class EikonalReinitializer(IReinitializer):
 
         # ε_ξ = eps / h_min: number of cells spanning the interface
         eps_xi = float(eps) / h_min
+        self._eps_xi = eps_xi
 
         # Precompute spatial arrays on device
         xp = backend.xp
@@ -108,10 +111,16 @@ class EikonalReinitializer(IReinitializer):
         sgn0 = xp.where(xp.abs(phi) < 1e-10, 1.0, sgn0)
 
         # Step 2: Eikonal redistancing — restore |∇φ| = 1
-        phi = self._godunov_sweep(phi, sgn0)
+        if self._xi_sdf:
+            # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
+            phi = self._xi_sdf_phi(phi)
+            eps_arr = self._eps_xi   # constant in ξ-space (scalar)
+        else:
+            # Iterative Godunov sweep with ZSP
+            phi = self._godunov_sweep(phi, sgn0)
+            eps_arr = self._eps_arr
 
-        # Step 3: ψ = H_{ε(i,j)}(φ)  with cell-local ε
-        eps_arr = self._eps_arr
+        # Step 3: ψ = H_{ε}(φ)
         psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
 
         # Step 4: φ-space mass correction — uniform interface shift
@@ -182,3 +191,59 @@ class EikonalReinitializer(IReinitializer):
                 phi = phi_new
 
         return phi
+
+    def _xi_sdf_phi(self, phi_dev):
+        """Non-iterative ξ-SDF: assign each cell the signed ξ-distance to the nearest
+        zero-crossing in the discrete grid (sub-cell interpolated).
+
+        Advantages over Godunov sweep:
+        - No iteration → no per-call discrete zero-set drift (eliminates CHK-136 root cause)
+        - Zero-crossings found from original ψ field → zero-set exactly preserved
+        - |∇_ξ φ_ξ| = 1 by construction (true signed distance function)
+
+        Works on CPU (NumPy array operations). GPU inputs are converted host-side.
+        """
+        phi_np = np.asarray(phi_dev)    # (Nx, Ny), CPU
+        sgn = np.sign(phi_np)
+        Nx, Ny = phi_np.shape
+
+        # Find sub-cell zero-crossings in each axis direction
+        cx_list = []    # (xi_float, eta_float) crossing positions
+
+        # x-direction: (i,j) → (i+1,j)
+        px = phi_np[:-1, :]
+        px1 = phi_np[1:, :]
+        xi_mask = (px * px1) < 0.0
+        if xi_mask.any():
+            ii, jj = np.where(xi_mask)
+            denom = np.abs(px[ii, jj]) + np.abs(px1[ii, jj])
+            alpha = np.abs(px[ii, jj]) / np.where(denom > 0, denom, 1.0)
+            for k in range(len(ii)):
+                cx_list.append((float(ii[k]) + float(alpha[k]), float(jj[k])))
+
+        # y-direction: (i,j) → (i,j+1)
+        py = phi_np[:, :-1]
+        py1 = phi_np[:, 1:]
+        eta_mask = (py * py1) < 0.0
+        if eta_mask.any():
+            ii, jj = np.where(eta_mask)
+            denom = np.abs(py[ii, jj]) + np.abs(py1[ii, jj])
+            alpha = np.abs(py[ii, jj]) / np.where(denom > 0, denom, 1.0)
+            for k in range(len(ii)):
+                cx_list.append((float(ii[k]), float(jj[k]) + float(alpha[k])))
+
+        if not cx_list:
+            return phi_dev   # no interface found; leave φ unchanged
+
+        crossings = np.array(cx_list, dtype=np.float64)   # (N_cross, 2)
+
+        # Vectorised minimum ξ-distance: (Nx, Ny, N_cross) → min over crossings
+        I = np.arange(Nx, dtype=np.float64).reshape(-1, 1, 1)   # (Nx,1,1)
+        J = np.arange(Ny, dtype=np.float64).reshape(1, -1, 1)   # (1,Ny,1)
+        kx = crossings[:, 0].reshape(1, 1, -1)                  # (1,1,N_cross)
+        ky = crossings[:, 1].reshape(1, 1, -1)
+        d = np.sqrt((I - kx) ** 2 + (J - ky) ** 2)             # (Nx,Ny,N_cross)
+        dist_min = np.min(d, axis=2)                             # (Nx,Ny)
+
+        phi_xi = sgn * dist_min
+        return self._xp.asarray(phi_xi)
