@@ -683,26 +683,22 @@ class TwoPhaseNSSolver:
 
         # ── 1. Advect + reinitialize ───────────────────────────────────
         if self._phi_primary_transport:
-            # Experimental path: transport phi as the primary variable and
-            # reconstruct psi via H_eps(phi) each step.
-            # This path requires host arrays for mass-correction.
-            psi_host = _h(psi)
-            u_host, v_host = _h(u), _h(v)
-            dV_pre = np.asarray(self._backend.to_host(self._grid.cell_volumes()))
-            M_pre = float(np.sum(psi_host * dV_pre))
-            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi_host)))
-            phi = _h(self._adv.advance(phi, [u_host, v_host], dt, clip_bounds=None))
-            # Prevent over-saturation of logit reconstruction.
-            phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.clip_phi(phi)))
-            psi_host = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
+            # phi-primary transport path — fully device-resident.
+            # phi_from_psi/clip_phi/psi_from_phi/reinitialize/apply_mass_correction
+            # all accept xp arrays, so no D2H transfers are needed.
+            dV_pre = self._grid.cell_volumes()
+            M_pre = xp.sum(psi * dV_pre)
+            phi = self._reconstruct_phi_primary.phi_from_psi(psi)
+            phi = self._adv.advance(phi, [u, v], dt, clip_bounds=None)
+            phi = self._reconstruct_phi_primary.clip_phi(phi)
+            psi = self._reconstruct_phi_primary.psi_from_phi(phi)
             # Re-distance/thickness correction on a controlled cadence to
             # avoid over-sharpening into near-binary fields.
             if step_index > 0 and (step_index % self._phi_primary_redist_every == 0):
-                psi_host = _h(self._reinit.reinitialize(psi_host))
-                phi = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.phi_from_psi(psi_host)))
-                psi_host = np.asarray(self._backend.to_host(self._reconstruct_phi_primary.psi_from_phi(phi)))
-            psi_host = np.asarray(apply_mass_correction(np, psi_host, dV_pre, M_pre))
-            psi = xp.asarray(psi_host)
+                psi = self._reinit.reinitialize(psi)
+                phi = self._reconstruct_phi_primary.phi_from_psi(psi)
+                psi = self._reconstruct_phi_primary.psi_from_phi(phi)
+            psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
         else:
             psi = xp.asarray(self._adv.advance(psi, [u, v], dt))
         if (not self._phi_primary_transport) and self._reinit_every > 0 and step_index % self._reinit_every == 0:
