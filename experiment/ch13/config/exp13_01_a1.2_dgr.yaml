@@ -32,7 +32,7 @@ output:
   save_npz: true
   figures:
     - type: time_series
-      title: "Capillary wave α=1.2 DGR — D(t)"
+      title: "Capillary wave α=1.2 hybrid — D(t)"
       x: times
       y: [deformation]
       labels: ["Simulation"]
@@ -46,17 +46,17 @@ output:
       file: capillary_a1.2_dgr.pdf
 
     - type: snapshot
-      title: "α=1.2 DGR — t=0"
+      title: "α=1.2 hybrid — t=0"
       t_idx: 0
       file: snapshot_t0.pdf
 
     - type: snapshot
-      title: "α=1.2 DGR — final"
+      title: "α=1.2 hybrid — final"
       t_idx: -1
       file: snapshot_final.pdf
 
     - type: velocity_snapshot
-      title: "α=1.2 DGR — velocity final"
+      title: "α=1.2 hybrid — velocity final"
       t_idx: -1
       file: velocity_final.pdf
 
