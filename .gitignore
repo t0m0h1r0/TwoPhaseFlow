@@ -53,6 +53,12 @@ build/
 Thumbs.db
 **/*.eps
 
+# ---- Experiment output files (regenerable, not tracked) ----
+experiment/**/*.pdf
+experiment/**/*.npz
+experiment/**/*.png
+experiment/**/*.eps
+
 # TeX関連の一時ファイル
 paper/*.bbl
 paper/*.blg
