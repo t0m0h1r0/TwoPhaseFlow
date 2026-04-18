@@ -1,0 +1,80 @@
+# §13.1 Capillary wave — density ratio sweep [1, 10, 100, 1000], T=5
+# eikonal_xi + phi_primary_transport=true (CHK-140 fix), alpha=1.0 uniform
+# NOTE: rho_ratio>=100 bulk PPE condition number risk
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  10.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.0
+
+run:
+  T_final:    5.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_times: [0.0, 1.0, 2.5, 5.0]
+  print_every: 500
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+
+output:
+  dir: results/exp13_14_rho_t5
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave density ratio sweep T=5 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      file: capillary_rho_t5.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
+
+sweep:
+  - label: rho_1
+    overrides:
+      physics.rho_l: 1.0
+      physics.rho_g: 1.0
+  - label: rho_10
+    overrides:
+      physics.rho_l: 10.0
+      physics.rho_g: 1.0
+  - label: rho_100
+    overrides:
+      physics.rho_l: 100.0
+      physics.rho_g: 1.0
+  - label: rho_1000
+    overrides:
+      physics.rho_l: 1000.0
+      physics.rho_g: 1.0
