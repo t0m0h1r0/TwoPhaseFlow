@@ -1,5 +1,8 @@
 # §13.1 Capillary wave decay — α=1.2, reinit=hybrid (split+dgr)
-# Fix: dgr alone fails for capillary waves; hybrid required (WIKI-T-030 §Hybrid Scheme).
+# Fix 1 (CHK-133): dgr alone → fold blowup; changed to hybrid. WIKI-T-030 §Limitations.
+# Fix 2 (CHK-135): hybrid (old DGR ψ-space correction) → VolCons=347% mass injection.
+# Root cause: ψ-space correction shifts curved interface non-uniformly (∝ 1/|∇ψ|).
+# Fixed: DGR now uses φ-space correction (δφ = ΔM/∫H'_ε dV → uniform interface shift).
 # Reference: Prosperetti (1981) — ρ_l=10, ρ_g=1, μ=0.05, σ=1.0, mode=2 perturbation ε=0.05
 
 grid:
