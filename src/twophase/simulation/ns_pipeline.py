@@ -809,40 +809,27 @@ class TwoPhaseNSSolver:
         xp = self._backend.xp
         n = self._ppb.n_dof
 
-        # rho may be a device array — pull to host for coefficient assembly.
-        rho_host = np.asarray(self._backend.to_host(rho))
-        data_host = self._ppb.build_values(rho_host)
-
         rhs_vec = xp.asarray(rhs).ravel().copy()
         rhs_vec[self._ppb._pin_dof] = 0.0
 
+        # Unified path: build_values() is xp-native — returns device array on GPU,
+        # numpy array on CPU. _ppe_struct_rows/cols are similarly xp-typed
+        # (set once at init by build_structure() which calls the same build()).
+        # _ppe_csr_dev: legacy cache — no longer used.
+        data = self._ppb.build_values(rho)
+
         if self._backend.is_gpu():
-            if self._ppe_csr_dev is None:
-                # First call: build full CSR on host, upload structure once.
-                A_host = sp.csr_matrix(
-                    (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
-                    shape=(n, n),
-                )
-                self._ppe_csr_dev = self._backend.sparse.csr_matrix(A_host)
-            else:
-                # Subsequent calls: update values in-place, structure unchanged.
-                # data_host is COO format (may contain duplicate (i,j) entries that
-                # scipy sums during CSR construction).  Must convert to CSR first
-                # to get the same nnz as _ppe_csr_dev.data.
-                A_new = sp.csr_matrix(
-                    (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
-                    shape=(n, n),
-                )
-                self._ppe_csr_dev.data[:] = xp.asarray(A_new.data)
-            p_dev = self._backend.sparse_linalg.spsolve(self._ppe_csr_dev, rhs_vec)
-            return p_dev.reshape(rho.shape)
-        A_host = sp.csr_matrix(
-            (data_host, (self._ppe_struct_rows, self._ppe_struct_cols)),
-            shape=(n, n),
+            A = self._backend.sparse.csr_matrix(
+                (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
+            )
+            return self._backend.sparse_linalg.spsolve(A, rhs_vec).reshape(rho.shape)
+
+        A = sp.csr_matrix(
+            (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
         )
         rhs_host = np.asarray(self._backend.to_host(rhs_vec))
         return xp.asarray(
-            self._backend.sparse_linalg.spsolve(A_host, rhs_host).reshape(rho.shape)
+            self._backend.sparse_linalg.spsolve(A, rhs_host).reshape(rho.shape)
         )
 
     def _build_ppe_matrix(self, rho: np.ndarray):

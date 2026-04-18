@@ -80,67 +80,87 @@ class PPEBuilder:
         # Pre-compute static index arrays for vectorised assembly
         self._build_index_arrays()
 
+        # GPU acceleration (build_values_xp): lazily populated on first call.
+        self._face_indices_dev: dict = {}   # {ax: (idx_L_dev, idx_R_dev)}
+        self._gpu_coeff_cache: dict = {}    # static device arrays (BC masks, non-uniform coeff)
+
     # ── Public API ────────────────────────────────────────────────────────
 
     def build(self, rho) -> tuple:
-        """Build the sparse PPE matrix for the given density field.
+        """Build the sparse PPE matrix COO triplets for the given density field.
+
+        Unified xp implementation: works for both NumPy (CPU) and CuPy (GPU)
+        with the same code path — no separate GPU method required.
+        Static face-index arrays are lazily converted to xp on first call
+        and cached in _face_indices_dev / _gpu_coeff_cache.
 
         Parameters
         ----------
-        rho : array, shape ``grid.shape``
+        rho : array, shape ``grid.shape`` (any device; xp.asarray is applied)
 
         Returns
         -------
-        (data, row, col) : CSR triplet arrays (on host, scipy-compatible)
+        (data, rows, cols) : xp.ndarray  COO triplets (on device when GPU)
         A_shape : (n_dof, n_dof)
-        """
-        import numpy as np_host
 
-        rho_host = self.backend.to_host(rho)
+        Note
+        ----
+        Periodic BC uses np.isin (not in CuPy): rows are pulled to host
+        for that one mask operation, then results converted back to xp.
+        """
+        xp = self.xp
         n = self.n_dof
         ndim = self.ndim
 
-        # Accumulate COO triplets
-        data_list = []
-        row_list  = []
-        col_list  = []
+        rho_arr = xp.asarray(rho)
+        rho_flat = rho_arr.ravel()
 
-        # Strides for extracting per-axis indices from flat indices (C/ij order)
-        strides = [int(np_host.prod(self.shape_field[ax + 1:]))
-                   for ax in range(ndim)]
+        # Lazily upload static face-index arrays to xp (one-time per init).
+        if not self._face_indices_dev:
+            for ax, (idx_L, idx_R) in self._face_indices.items():
+                self._face_indices_dev[ax] = (xp.asarray(idx_L),
+                                              xp.asarray(idx_R))
+
+        data_list: list = []
+        row_list: list  = []
+        col_list: list  = []
+
+        # Scalar strides computed with numpy (no device needed).
+        strides = [int(np.prod(self.shape_field[ax + 1:])) for ax in range(ndim)]
 
         for ax in range(ndim):
             N_ax = self.N[ax]
-            idx_L, idx_R = self._face_indices[ax]  # flat node indices
+            idx_L_xp, idx_R_xp = self._face_indices_dev[ax]   # xp int arrays
 
-            rho_L = rho_host.ravel()[idx_L]
-            rho_R = rho_host.ravel()[idx_R]
+            rho_L = rho_flat[idx_L_xp]
+            rho_R = rho_flat[idx_R_xp]
             a_f = 2.0 / (rho_L + rho_R)   # harmonic mean face coefficient
 
             if not self.grid.uniform:
-                # Non-uniform grid: per-face local spacings from grid.coords.
+                # Non-uniform grid: per-face spacings precomputed once, cached.
                 # Face between node k and k+1:
                 #   d_face[k] = x[k+1] − x[k]  (gradient denominator)
-                #   dv[i] = control volume width at node i:
-                #     boundary: (x[1]−x[0])/2 or (x[N]−x[N-1])/2
-                #     interior: (x[i+1]−x[i-1])/2
-                coords = np_host.asarray(self.grid.coords[ax])
-                d_face = coords[1:] - coords[:-1]          # (N_ax,) face widths
-                dv = np_host.empty(len(coords))
-                dv[0]    = (coords[1] - coords[0]) / 2.0
-                dv[-1]   = (coords[-1] - coords[-2]) / 2.0
-                dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
-
-                stride = strides[ax]
-                ax_idx_L = (idx_L // stride) % self.shape_field[ax]
-                ax_idx_R = (idx_R // stride) % self.shape_field[ax]
-                d_f  = d_face[ax_idx_L]    # face width for this face
-                dv_L = dv[ax_idx_L]         # control volume of left node
-                dv_R = dv[ax_idx_R]         # control volume of right node
-
-                # Face flux coefficient: a_f / d_face, divided by control volume
-                coeff_for_L = a_f / d_f / dv_L
-                coeff_for_R = a_f / d_f / dv_R
+                #   dv[i] = control volume width at node i
+                cache_key = ('nonunif', ax)
+                if cache_key not in self._gpu_coeff_cache:
+                    coords = np.asarray(self.grid.coords[ax])
+                    d_face = coords[1:] - coords[:-1]
+                    dv = np.empty(len(coords))
+                    dv[0]    = (coords[1] - coords[0]) / 2.0
+                    dv[-1]   = (coords[-1] - coords[-2]) / 2.0
+                    dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+                    idx_L_h, idx_R_h = self._face_indices[ax]   # numpy
+                    stride = strides[ax]
+                    ax_idx_L = (idx_L_h // stride) % self.shape_field[ax]
+                    ax_idx_R = (idx_R_h // stride) % self.shape_field[ax]
+                    self._gpu_coeff_cache[cache_key] = (
+                        xp.asarray(d_face[ax_idx_L]),
+                        xp.asarray(dv[ax_idx_L]),
+                        xp.asarray(dv[ax_idx_R]),
+                    )
+                d_f_xp, dv_L_xp, dv_R_xp = self._gpu_coeff_cache[cache_key]
+                coeff_for_L = a_f / d_f_xp / dv_L_xp
+                coeff_for_R = a_f / d_f_xp / dv_R_xp
             else:
                 h = float(self.grid.L[ax] / N_ax)
                 h2 = h * h
@@ -150,79 +170,65 @@ class PPEBuilder:
                     coeff_for_L = coeff
                     coeff_for_R = coeff
                 else:
-                    # Node-centred boundary correction:
-                    # Boundary nodes have control volume h/2 → coefficient doubles.
-                    stride = strides[ax]
-                    ax_idx_L = (idx_L // stride) % self.shape_field[ax]
-                    ax_idx_R = (idx_R // stride) % self.shape_field[ax]
-                    coeff_for_L = np_host.where(ax_idx_L == 0,    2.0 * coeff, coeff)
-                    coeff_for_R = np_host.where(ax_idx_R == N_ax, 2.0 * coeff, coeff)
+                    # Node-centred boundary correction: boundary nodes have
+                    # control volume h/2 → coefficient doubles. Masks cached.
+                    cache_key = ('bc_mask', ax)
+                    if cache_key not in self._gpu_coeff_cache:
+                        idx_L_h, idx_R_h = self._face_indices[ax]
+                        stride = strides[ax]
+                        ax_idx_L = (idx_L_h // stride) % self.shape_field[ax]
+                        ax_idx_R = (idx_R_h // stride) % self.shape_field[ax]
+                        self._gpu_coeff_cache[cache_key] = (
+                            xp.asarray(ax_idx_L == 0),
+                            xp.asarray(ax_idx_R == N_ax),
+                        )
+                    mask_L, mask_R = self._gpu_coeff_cache[cache_key]
+                    coeff_for_L = xp.where(mask_L, 2.0 * coeff, coeff)
+                    coeff_for_R = xp.where(mask_R, 2.0 * coeff, coeff)
 
-            # L → R contribution (enters L's equation row)
-            data_list.append(coeff_for_L)
-            row_list.append(idx_L)
-            col_list.append(idx_R)
-
-            # R → L contribution (enters R's equation row)
-            data_list.append(coeff_for_R)
-            row_list.append(idx_R)
-            col_list.append(idx_L)
-
-            # Diagonal contributions: A[L,L] -= coeff_for_L, A[R,R] -= coeff_for_R
-            data_list.append(-coeff_for_L)
-            row_list.append(idx_L)
-            col_list.append(idx_L)
-
-            data_list.append(-coeff_for_R)
-            row_list.append(idx_R)
-            col_list.append(idx_R)
+            # L → R, R → L, diagonal contributions
+            data_list.extend([coeff_for_L, coeff_for_R, -coeff_for_L, -coeff_for_R])
+            row_list.extend([idx_L_xp, idx_R_xp, idx_L_xp, idx_R_xp])
+            col_list.extend([idx_R_xp, idx_L_xp, idx_L_xp, idx_R_xp])
 
             # Periodic wrap face: connects node (N_ax-1) ↔ node 0
-            # This is the physical periodic boundary — NOT a face to node N_ax (ghost).
             if self.bc_type == 'periodic':
                 idx_wL, idx_wR = self._wrap_face_indices[ax]
-                rho_wL = rho_host.ravel()[idx_wL]
-                rho_wR = rho_host.ravel()[idx_wR]
+                rho_wL = rho_flat[xp.asarray(idx_wL)]
+                rho_wR = rho_flat[xp.asarray(idx_wR)]
                 coeff_w = 2.0 / (rho_wL + rho_wR) / h2
+                idx_wL_xp = xp.asarray(idx_wL)
+                idx_wR_xp = xp.asarray(idx_wR)
+                data_list.extend([coeff_w, coeff_w, -coeff_w, -coeff_w])
+                row_list.extend([idx_wL_xp, idx_wR_xp, idx_wL_xp, idx_wR_xp])
+                col_list.extend([idx_wR_xp, idx_wL_xp, idx_wL_xp, idx_wR_xp])
 
-                data_list.append(coeff_w);  row_list.append(idx_wL); col_list.append(idx_wR)
-                data_list.append(coeff_w);  row_list.append(idx_wR); col_list.append(idx_wL)
-                data_list.append(-coeff_w); row_list.append(idx_wL); col_list.append(idx_wL)
-                data_list.append(-coeff_w); row_list.append(idx_wR); col_list.append(idx_wR)
+        data = xp.concatenate(data_list)
+        rows = xp.concatenate(row_list)
+        cols = xp.concatenate(col_list)
 
-        data = np_host.concatenate(data_list)
-        rows = np_host.concatenate(row_list)
-        cols = np_host.concatenate(col_list)
-
-        # Periodic BC: replace rows of ghost nodes (coordinate = N_ax along any
-        # axis) with identity-minus constraints  p[ghost] = p[source].
-        # These rows are first cleared, then A[ghost, ghost]=1, A[ghost, src]=-1.
+        # Periodic BC: ghost-node rows replaced by identity-minus constraints.
+        # np.isin not in CuPy — pull rows to host for the mask, convert back.
         if self.bc_type == 'periodic':
             img_dofs = self._periodic_image_dofs
             src_dofs = self._periodic_image_sources
-            mask = ~np_host.isin(rows, img_dofs)
-            data = data[mask]
-            rows = rows[mask]
-            cols = cols[mask]
-            # Identity-minus rows: p[ghost] - p[source] = 0
-            data = np_host.concatenate([data,
-                                        np_host.ones(len(img_dofs)),
-                                        -np_host.ones(len(img_dofs))])
-            rows = np_host.concatenate([rows, img_dofs, img_dofs])
-            cols = np_host.concatenate([cols, img_dofs, src_dofs])
+            rows_h = np.asarray(self.backend.to_host(rows))
+            keep = xp.asarray(~np.isin(rows_h, img_dofs))
+            data, rows, cols = data[keep], rows[keep], cols[keep]
+            data = xp.concatenate([data,
+                                    xp.ones(len(img_dofs)),
+                                    -xp.ones(len(img_dofs))])
+            rows = xp.concatenate([rows,
+                                    xp.asarray(img_dofs), xp.asarray(img_dofs)])
+            cols = xp.concatenate([cols,
+                                    xp.asarray(img_dofs), xp.asarray(src_dofs)])
 
-        # Pin one pressure degree of freedom to fix the null space.
-        # p[pin] = 0  →  clear row pin and set diagonal to 1.
+        # Pin one pressure DOF to fix the null space (p[pin] = 0).
         pin = self._pin_dof
-        mask = rows != pin
-        data = data[mask]
-        rows = rows[mask]
-        cols = cols[mask]
-
-        # Add A[pin, pin] = 1
-        data = np_host.append(data, 1.0)
-        rows = np_host.append(rows, pin)
-        cols = np_host.append(cols, pin)
+        keep = rows != pin
+        data = xp.concatenate([data[keep], xp.array([1.0])])
+        rows = xp.concatenate([rows[keep], xp.array([pin], dtype=rows.dtype)])
+        cols = xp.concatenate([cols[keep], xp.array([pin], dtype=cols.dtype)])
 
         return (data, rows, cols), (n, n)
 
@@ -252,19 +258,25 @@ class PPEBuilder:
     def build_values(self, rho):
         """Re-compute only the coefficient values for a new density field.
 
-        Must call ``build_structure()`` first.  Returns the data vector
-        in the same COO ordering as the structure arrays.
+        Must call ``build_structure()`` first. Returns the data vector
+        in the same COO ordering as the cached structure arrays.
+        When the backend is GPU, returns a device (CuPy) array — no D2H of rho.
 
         Parameters
         ----------
-        rho : array, shape ``grid.shape`` (host numpy)
+        rho : array, shape ``grid.shape`` (any device; xp.asarray applied)
 
         Returns
         -------
-        data : np.ndarray, shape (nnz,)
+        data : xp.ndarray, shape (nnz,)
         """
         (data, _rows, _cols), _shape = self.build(rho)
         return data
+
+    def invalidate_gpu_cache(self):
+        """Clear cached device arrays (call after grid rebuild)."""
+        self._face_indices_dev.clear()
+        self._gpu_coeff_cache.clear()
 
     def prepare_rhs(self, rhs_field):
         """Prepare the RHS vector for the PPE solve.
