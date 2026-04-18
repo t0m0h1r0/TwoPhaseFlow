@@ -176,8 +176,8 @@ This is consistent with WIKI-T-030 §Hybrid Scheme ("recommended for production"
 |---|---|---|---|---|
 | a1.0_dgr (hybrid) | 10.00 | 1.43e+00 | False | PASS |
 | a1.2_dgr (hybrid) | 10.00 | 4.18e-02 | False | PASS |
-| a1.5_dgr (hybrid) | *pending* | — | — | — |
-| a2.0_dgr (hybrid) | *pending* | — | — | — |
+| a1.5_dgr (hybrid) | 10.00 | 9.26e-02 | False | PASS |
+| a2.0_dgr (hybrid) | 10.00 | 1.01e-01 | False | PASS |
 
 Test suite: 206 passed, 7 skipped, 2 xfailed. No regressions (2026-04-18).
 
