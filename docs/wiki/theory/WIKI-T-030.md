@@ -16,6 +16,8 @@ consumers:
     description: "reinitialize.py — new DGR method to replace compression-diffusion"
   - domain: E
     description: "exp11_6, exp11_20 — thickness maintenance validation"
+  - domain: E
+    description: "WIKI-E-027 — DGR blowup isolation experiments confirming fold cascade mechanism"
 depends_on:
   - "[[WIKI-T-007]]: CLS transport and reinitialization theory"
   - "[[WIKI-T-029]]: CLS error metric — φ-space comparison required"

@@ -94,6 +94,7 @@
 | [WIKI-E-024](experiment/WIKI-E-024.md) | Ch13 Non-Uniform Interface Sharpness Sweep: eps=1.0 Sweet Spot (exp13_90) |
 | [WIKI-E-025](experiment/WIKI-E-025.md) | Ch13 Phi-Primary Transport Trial and Uniformized Visualization (exp13_91, exp13_92) |
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
+| [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
 
 ## Paper (8)
 
