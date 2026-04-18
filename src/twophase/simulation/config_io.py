@@ -82,6 +82,7 @@ class RunCfg:
     max_steps: int = 100_000
     cfl: float = 0.15
     snap_times: list = field(default_factory=list)
+    snap_interval: float | None = 0.1  # auto-generate snap_times every N time units (None = disabled)
     print_every: int = 100
     dt_fixed: float | None = None
     cn_viscous: bool = False

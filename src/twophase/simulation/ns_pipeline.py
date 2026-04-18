@@ -944,7 +944,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         sigma=ph.sigma, R=R_ic,
     )
     snaps: list[dict] = []
-    snap_times = list(cfg.run.snap_times)
+    if cfg.run.snap_interval is not None and cfg.run.T_final is not None:
+        iv = cfg.run.snap_interval
+        n = int(cfg.run.T_final / iv)
+        auto = [i * iv for i in range(n + 1)]
+        snap_times = sorted(set(list(cfg.run.snap_times) + auto))
+    else:
+        snap_times = list(cfg.run.snap_times)
     snap_idx = 0
 
     T = cfg.run.T_final if cfg.run.T_final is not None else float("inf")
@@ -993,12 +999,18 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         diag.collect(t, psi_h, u_h, v_h, p_h, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
+            _eps = cfg.grid.eps_factor * cfg.grid.LX / cfg.grid.NX
+            _H = np.clip(
+                0.5 * (1 + psi_h / _eps + np.sin(np.pi * psi_h / _eps) / np.pi),
+                0.0, 1.0,
+            )
             snap_entry = {
                 "t": float(t),
                 "psi": psi_h.copy(),
                 "u": u_h.copy(),
                 "v": v_h.copy(),
                 "p": p_h.copy(),
+                "rho": (ph.rho_l * _H + ph.rho_g * (1 - _H)).copy(),
             }
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
