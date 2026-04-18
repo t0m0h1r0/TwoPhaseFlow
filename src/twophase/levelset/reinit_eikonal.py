@@ -42,6 +42,7 @@ class EikonalReinitializer(IReinitializer):
     - Cell-local ε naturally handles non-uniform grids
     - Fold cells (|∇φ|→0) are corrected by the Eikonal PDE directly
     - ZSP: zero-set protection freezes cells near φ=0 → no discrete drift (CHK-137)
+    - FMM: Fast Marching Method — C¹ SDF, no Voronoi kinks (CHK-138)
 
     See WIKI-T-042 for proofs and benchmarks.
     """
@@ -58,6 +59,7 @@ class EikonalReinitializer(IReinitializer):
         local_eps: bool = True,
         zsp: bool = True,
         xi_sdf: bool = False,
+        fmm: bool = False,
     ):
         self._xp = backend.xp
         self._grid = grid
@@ -66,6 +68,7 @@ class EikonalReinitializer(IReinitializer):
         self._mass_correction = mass_correction
         self._zsp = zsp
         self._xi_sdf = xi_sdf
+        self._fmm = fmm
 
         # Minimum grid spacing (NumPy, host-side — grid.h is always CPU)
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
@@ -111,7 +114,11 @@ class EikonalReinitializer(IReinitializer):
         sgn0 = xp.where(xp.abs(phi) < 1e-10, 1.0, sgn0)
 
         # Step 2: Eikonal redistancing — restore |∇φ| = 1
-        if self._xi_sdf:
+        if self._fmm:
+            # Fast Marching Method: C¹ SDF, no Voronoi kinks (CHK-138)
+            phi = self._fmm_phi(phi)
+            eps_arr = self._eps_xi
+        elif self._xi_sdf:
             # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
             phi = self._xi_sdf_phi(phi)
             eps_arr = self._eps_xi   # constant in ξ-space (scalar)
@@ -247,3 +254,97 @@ class EikonalReinitializer(IReinitializer):
 
         phi_xi = sgn * dist_min
         return self._xp.asarray(phi_xi)
+
+    def _fmm_phi(self, phi_dev):
+        """Fast Marching Method (Sethian 1996): single-pass Eikonal solver.
+
+        Avoids Voronoi gradient kinks of ξ-SDF by propagating via the Godunov
+        quadratic update, producing a C¹-smooth signed distance field (CHK-138).
+
+        Algorithm:
+          1. Seed cells adjacent to zero-crossings with sub-cell distances
+          2. Dijkstra-like propagation: process cells in ascending distance order
+          3. Update neighbours using frozen accepted values + quadratic stencil
+
+        Works on CPU (NumPy). GPU inputs are converted host-side.
+        """
+        import heapq
+
+        phi_np = phi_dev.get() if hasattr(phi_dev, 'get') else np.asarray(phi_dev)
+        sgn = np.sign(phi_np)
+        sgn = np.where(np.abs(phi_np) < 1e-10, 1.0, sgn)
+        Nx, Ny = phi_np.shape
+
+        INF = 1e30
+        dist = np.full((Nx, Ny), INF)
+        frozen = np.zeros((Nx, Ny), dtype=bool)
+        heap = []
+
+        def _push(i, j, d):
+            if 0 <= i < Nx and 0 <= j < Ny and not frozen[i, j] and d < dist[i, j]:
+                dist[i, j] = d
+                heapq.heappush(heap, (d, i, j))
+
+        # Seed: cells adjacent to zero-crossings (sub-cell linear interpolation)
+        for axis in range(2):
+            if axis == 0:
+                p, p1 = phi_np[:-1, :], phi_np[1:, :]
+            else:
+                p, p1 = phi_np[:, :-1], phi_np[:, 1:]
+            mask = (p * p1) < 0.0
+            if mask.any():
+                ii, jj = np.where(mask)
+                denom = np.abs(p[ii, jj]) + np.abs(p1[ii, jj])
+                alpha = np.abs(p[ii, jj]) / np.where(denom > 0, denom, 1.0)
+                for k in range(len(ii)):
+                    a = float(alpha[k])
+                    i0, j0 = int(ii[k]), int(jj[k])
+                    if axis == 0:
+                        _push(i0,     j0, a)
+                        _push(i0 + 1, j0, 1.0 - a)
+                    else:
+                        _push(i0, j0,     a)
+                        _push(i0, j0 + 1, 1.0 - a)
+
+        if not heap:
+            return phi_dev
+
+        # FMM propagation: accept minimum-distance cell, update its 4 neighbours
+        while heap:
+            d, i, j = heapq.heappop(heap)
+            if frozen[i, j]:
+                continue
+            frozen[i, j] = True
+
+            for ni, nj in ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)):
+                if not (0 <= ni < Nx and 0 <= nj < Ny) or frozen[ni, nj]:
+                    continue
+
+                # Minimum accepted distance from x-neighbours
+                ax = INF
+                if ni > 0 and frozen[ni - 1, nj]:     ax = min(ax, dist[ni - 1, nj])
+                if ni < Nx - 1 and frozen[ni + 1, nj]: ax = min(ax, dist[ni + 1, nj])
+                # Minimum accepted distance from y-neighbours
+                ay = INF
+                if nj > 0 and frozen[ni, nj - 1]:     ay = min(ay, dist[ni, nj - 1])
+                if nj < Ny - 1 and frozen[ni, nj + 1]: ay = min(ay, dist[ni, nj + 1])
+
+                if ax == INF and ay == INF:
+                    continue
+                elif ax == INF:
+                    d_new = ay + 1.0
+                elif ay == INF:
+                    d_new = ax + 1.0
+                else:
+                    diff = ax - ay
+                    if diff * diff >= 1.0:
+                        # Caustic regime: 1D update from closer neighbour
+                        d_new = min(ax, ay) + 1.0
+                    else:
+                        # Quadratic update: solves (d-ax)²+(d-ay)²=1
+                        d_new = 0.5 * (ax + ay + np.sqrt(2.0 - diff * diff))
+
+                _push(ni, nj, d_new)
+
+        phi_fmm = sgn * dist
+        return self._xp.asarray(phi_fmm)
