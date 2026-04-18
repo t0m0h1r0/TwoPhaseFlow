@@ -123,6 +123,9 @@ class EikonalReinitializer(IReinitializer):
             eps_arr = self._eps_xi
         elif self._xi_sdf:
             # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
+            # Saturate |φ| to 2ε — prevents bulk drift from generating false
+            # zero-crossings in _xi_sdf_phi while preserving sign (CHK-140)
+            phi = xp.sign(phi) * xp.minimum(xp.abs(phi), 2.0 * self._eps)
             phi = self._xi_sdf_phi(phi)
             eps_arr = self._eps_xi   # constant in ξ-space (scalar)
         else:
