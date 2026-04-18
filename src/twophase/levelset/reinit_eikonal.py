@@ -107,7 +107,8 @@ class EikonalReinitializer(IReinitializer):
         xp = self._xp
         psi = xp.asarray(psi)
         dV = self._grid.cell_volumes()
-        M_old = float(xp.sum(psi * dV))
+        # Device scalar — no GPU sync forced here.
+        M_old = xp.sum(psi * dV)
 
         # Step 1: ψ → φ via logit inversion (clamped)
         phi = invert_heaviside(xp, psi, self._eps)
@@ -137,10 +138,10 @@ class EikonalReinitializer(IReinitializer):
         # Works with local eps_arr (per-cell H'_ε).
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / eps_arr
-            W = float(xp.sum(w * dV))
-            if W > 1e-14:
-                M_new = float(xp.sum(psi_new * dV))
-                delta_phi = (M_old - M_new) / W
+            W = xp.sum(w * dV)          # device scalar
+            if float(W) > 1e-14:        # one sync: needed for Python guard
+                M_new = xp.sum(psi_new * dV)   # device scalar
+                delta_phi = (M_old - M_new) / W  # device scalar arithmetic
                 phi = phi + delta_phi
                 psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
 
@@ -202,24 +203,72 @@ class EikonalReinitializer(IReinitializer):
         return phi
 
     def _xi_sdf_phi(self, phi_dev):
-        """Non-iterative ξ-SDF: assign each cell the signed ξ-distance to the nearest
-        zero-crossing in the discrete grid (sub-cell interpolated).
+        """Non-iterative ξ-SDF: signed ξ-distance to nearest zero-crossing.
 
-        Advantages over Godunov sweep:
-        - No iteration → no per-call discrete zero-set drift (eliminates CHK-136 root cause)
-        - Zero-crossings found from original ψ field → zero-set exactly preserved
-        - |∇_ξ φ_ξ| = 1 by construction (true signed distance function)
+        Unified xp implementation — runs on both NumPy (CPU) and CuPy (GPU)
+        with the same code path. All ops (xp.where, xp.stack, xp.concatenate,
+        xp.sqrt, xp.min) are available in both backends.
 
-        Works on CPU (NumPy array operations). GPU inputs are converted host-side.
+        Note: (Nx, Ny, N_cross) distance tensor fits in GPU memory for
+        ch13 grid sizes (N≤128). Chunking not implemented.
+        """
+        xp = self._xp
+        sgn = xp.sign(phi_dev)
+        Nx, Ny = phi_dev.shape
+
+        cx_parts = []   # list of (n_cross, 2) arrays
+
+        # x-direction crossings: (i,j) → (i+1,j)
+        px  = phi_dev[:-1, :]
+        px1 = phi_dev[1:, :]
+        xi_mask = (px * px1) < 0.0
+        if xp.any(xi_mask):
+            ii, jj = xp.where(xi_mask)
+            denom = xp.abs(px[ii, jj]) + xp.abs(px1[ii, jj])
+            alpha = xp.abs(px[ii, jj]) / xp.where(denom > 0, denom, 1.0)
+            cx_parts.append(xp.stack(
+                [ii.astype(xp.float64) + alpha.astype(xp.float64),
+                 jj.astype(xp.float64)],
+                axis=1,
+            ))
+
+        # y-direction crossings: (i,j) → (i,j+1)
+        py  = phi_dev[:, :-1]
+        py1 = phi_dev[:, 1:]
+        eta_mask = (py * py1) < 0.0
+        if xp.any(eta_mask):
+            ii, jj = xp.where(eta_mask)
+            denom = xp.abs(py[ii, jj]) + xp.abs(py1[ii, jj])
+            alpha = xp.abs(py[ii, jj]) / xp.where(denom > 0, denom, 1.0)
+            cx_parts.append(xp.stack(
+                [ii.astype(xp.float64),
+                 jj.astype(xp.float64) + alpha.astype(xp.float64)],
+                axis=1,
+            ))
+
+        if not cx_parts:
+            return phi_dev   # no interface found; leave φ unchanged
+
+        crossings = xp.concatenate(cx_parts, axis=0)   # (N_cross, 2)
+
+        # Vectorised ξ-distance: broadcast (Nx, Ny, N_cross)
+        I  = xp.arange(Nx, dtype=xp.float64).reshape(-1, 1, 1)
+        J  = xp.arange(Ny, dtype=xp.float64).reshape(1, -1, 1)
+        kx = crossings[:, 0].reshape(1, 1, -1)
+        ky = crossings[:, 1].reshape(1, 1, -1)
+        return sgn * xp.min(xp.sqrt((I - kx) ** 2 + (J - ky) ** 2), axis=2)
+
+    def _xi_sdf_phi_cpu(self, phi_dev):
+        """DO NOT DELETE — CPU sequential baseline (CHK-137, bit-exact reference).
+
+        Original implementation using Python for-loops and numpy D2H conversion.
+        Superseded by _xi_sdf_phi() (unified xp); kept for regression testing.
         """
         phi_np = phi_dev.get() if hasattr(phi_dev, 'get') else np.asarray(phi_dev)
         sgn = np.sign(phi_np)
         Nx, Ny = phi_np.shape
 
-        # Find sub-cell zero-crossings in each axis direction
-        cx_list = []    # (xi_float, eta_float) crossing positions
-
-        # x-direction: (i,j) → (i+1,j)
+        cx_list = []
         px = phi_np[:-1, :]
         px1 = phi_np[1:, :]
         xi_mask = (px * px1) < 0.0
@@ -230,7 +279,6 @@ class EikonalReinitializer(IReinitializer):
             for k in range(len(ii)):
                 cx_list.append((float(ii[k]) + float(alpha[k]), float(jj[k])))
 
-        # y-direction: (i,j) → (i,j+1)
         py = phi_np[:, :-1]
         py1 = phi_np[:, 1:]
         eta_mask = (py * py1) < 0.0
@@ -242,19 +290,13 @@ class EikonalReinitializer(IReinitializer):
                 cx_list.append((float(ii[k]), float(jj[k]) + float(alpha[k])))
 
         if not cx_list:
-            return phi_dev   # no interface found; leave φ unchanged
-
-        crossings = np.array(cx_list, dtype=np.float64)   # (N_cross, 2)
-
-        # Vectorised minimum ξ-distance: (Nx, Ny, N_cross) → min over crossings
-        I = np.arange(Nx, dtype=np.float64).reshape(-1, 1, 1)   # (Nx,1,1)
-        J = np.arange(Ny, dtype=np.float64).reshape(1, -1, 1)   # (1,Ny,1)
-        kx = crossings[:, 0].reshape(1, 1, -1)                  # (1,1,N_cross)
+            return phi_dev
+        crossings = np.array(cx_list, dtype=np.float64)
+        I = np.arange(Nx, dtype=np.float64).reshape(-1, 1, 1)
+        J = np.arange(Ny, dtype=np.float64).reshape(1, -1, 1)
+        kx = crossings[:, 0].reshape(1, 1, -1)
         ky = crossings[:, 1].reshape(1, 1, -1)
-        d = np.sqrt((I - kx) ** 2 + (J - ky) ** 2)             # (Nx,Ny,N_cross)
-        dist_min = np.min(d, axis=2)                             # (Nx,Ny)
-
-        phi_xi = sgn * dist_min
+        phi_xi = sgn * np.min(np.sqrt((I - kx) ** 2 + (J - ky) ** 2), axis=2)
         return self._xp.asarray(phi_xi)
 
     def _fmm_phi(self, phi_dev):

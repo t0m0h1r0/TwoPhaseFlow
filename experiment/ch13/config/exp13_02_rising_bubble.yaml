@@ -28,7 +28,7 @@ run:
   max_steps:  500000
   cfl:        0.15
   kappa_max:  8.0
-  snap_times: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+  snap_interval: 0.5
   print_every: 200
 
 output:
@@ -67,6 +67,19 @@ output:
       title: "Rising bubble — t=3.0"
       t_idx: -1
       file: snapshot_final.pdf
+
+    - type: density_snapshot
+      title: "Density — t=3.0"
+      t_idx: -1
+      file: density_final.pdf
+
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
 
 diagnostics:
   - volume_conservation

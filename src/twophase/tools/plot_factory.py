@@ -43,10 +43,13 @@ def generate_figures(cfg: "ExperimentConfig", results: dict, outdir: str | Path)
     for spec in cfg.output.figures:
         fig_type = spec.get("type", "")
         try:
-            fig = _make_figure(fig_type, spec, results, cfg)
-            fname = spec.get("file", f"{fig_type}.pdf")
-            fig.savefig(outdir / fname, bbox_inches="tight")
-            plt.close(fig)
+            if fig_type == "snapshot_series":
+                _snapshot_series(spec, results, cfg, outdir)
+            else:
+                fig = _make_figure(fig_type, spec, results, cfg)
+                fname = spec.get("file", f"{fig_type}.pdf")
+                fig.savefig(outdir / fname, bbox_inches="tight")
+                plt.close(fig)
         except Exception as exc:
             print(f"[plot_factory] WARNING: failed to generate '{fig_type}': {exc}")
 
@@ -71,6 +74,8 @@ def _make_figure(
         return _velocity_snapshot(spec, results, cfg)
     if fig_type == "pressure_snapshot":
         return _pressure_snapshot(spec, results, cfg)
+    if fig_type == "density_snapshot":
+        return _density_snapshot(spec, results, cfg)
     raise ValueError(f"Unknown figure type '{fig_type}'.")
 
 
@@ -231,6 +236,107 @@ def _pressure_snapshot(
     ax.set_ylabel(spec.get("ylabel", "y"))
     ax.set_title(title)
     return fig
+
+
+# ── density snapshot ─────────────────────────────────────────────────────────
+
+def _density_snapshot(
+    spec: dict, results: dict, cfg: "ExperimentConfig"
+) -> plt.Figure:
+    """Density colour map + ψ=0.5 contour at a given snapshot index."""
+    snaps = results.get("snapshots", [])
+    if not snaps:
+        raise ValueError("No snapshots in results.")
+
+    t_idx = int(spec.get("t_idx", -1))
+    snap = snaps[t_idx]
+    psi = snap["psi"]
+    rho = snap.get("rho")
+    t_val = snap["t"]
+    g = cfg.grid
+
+    if "grid_coords" in snap:
+        from ..core.grid_remap import remap_field_to_uniform
+        from ..backend import Backend
+        backend = Backend(use_gpu=False)
+        psi, (X, Y), remapper = remap_field_to_uniform(
+            backend, psi, snap["grid_coords"],
+            [g.LX, g.LY], clip_range=(0.0, 1.0),
+        )
+        if rho is not None:
+            rho = np.asarray(remapper.remap(rho))
+    else:
+        X = np.linspace(0, g.LX, g.NX + 1)
+        Y = np.linspace(0, g.LY, g.NY + 1)
+
+    if rho is None:
+        eps = g.eps_factor * g.LX / g.NX
+        H = np.clip(0.5 * (1 + psi / eps + np.sin(np.pi * psi / eps) / np.pi), 0.0, 1.0)
+        rho = cfg.physics.rho_l * H + cfg.physics.rho_g * (1 - H)
+
+    title = spec.get("title", f"Density at t = {t_val:.3f}")
+    cmap = spec.get("cmap", "RdBu")
+
+    fig, ax = plt.subplots(figsize=(4, 4 * g.LY / g.LX))
+    im = ax.pcolormesh(X, Y, rho.T, cmap=cmap,
+                       vmin=spec.get("vmin"), vmax=spec.get("vmax"),
+                       shading="nearest")
+    if spec.get("colorbar", True):
+        fig.colorbar(im, ax=ax, label="ρ")
+    if spec.get("contour", True):
+        ax.contour(X, Y, psi.T, levels=[0.5], colors="k", linewidths=0.8)
+    ax.set_aspect("equal")
+    ax.set_xlabel(spec.get("xlabel", "x"))
+    ax.set_ylabel(spec.get("ylabel", "y"))
+    ax.set_title(title)
+    return fig
+
+
+# ── snapshot series ──────────────────────────────────────────────────────────
+
+_SERIES_RENDERERS = {
+    "density": lambda snap, cfg: _density_snapshot(
+        {"t_idx": 0}, {"snapshots": [snap]}, cfg
+    ),
+    "velocity": lambda snap, cfg: _velocity_snapshot(
+        {"t_idx": 0}, {"snapshots": [snap]}, cfg
+    ),
+    "psi": lambda snap, cfg: _snapshot(
+        {"t_idx": 0}, {"snapshots": [snap]}, cfg
+    ),
+    "pressure": lambda snap, cfg: _pressure_snapshot(
+        {"t_idx": 0}, {"snapshots": [snap]}, cfg
+    ),
+}
+
+
+def _snapshot_series(
+    spec: dict, results: dict, cfg: "ExperimentConfig", outdir: "Path"
+) -> None:
+    """Save one PDF per snapshot for the requested field.
+
+    YAML spec keys
+    --------------
+    field       : "density" | "velocity" | "psi" | "pressure"
+    file_prefix : filename prefix (e.g. "density_t" → density_t0.500.pdf)
+    """
+    snaps = results.get("snapshots", [])
+    if not snaps:
+        raise ValueError("No snapshots in results.")
+
+    field = spec.get("field", "density")
+    prefix = spec.get("file_prefix", f"{field}_t")
+    renderer = _SERIES_RENDERERS.get(field)
+    if renderer is None:
+        raise ValueError(f"snapshot_series: unknown field '{field}'. "
+                         f"Choose from {list(_SERIES_RENDERERS)}")
+
+    for snap in snaps:
+        t_val = snap["t"]
+        fig = renderer(snap, cfg)
+        fname = f"{prefix}{t_val:.3f}.pdf"
+        fig.savefig(outdir / fname, bbox_inches="tight")
+        plt.close(fig)
 
 
 # ── time series ───────────────────────────────────────────────────────────────

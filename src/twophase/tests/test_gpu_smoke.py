@@ -151,3 +151,41 @@ def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
         gpu_backend.to_host(p_gpu), np.asarray(p_cpu),
         rtol=1e-10, atol=1e-12,
     )
+
+
+def test_ppe_fvm_builder_gpu_matches_cpu(cpu_backend, gpu_backend):
+    """build_values() unified xp path: GPU result matches CPU to rtol=1e-10."""
+    import scipy.sparse as sp
+    from twophase.ppe.ppe_builder import PPEBuilder
+
+    def _build(backend, N=32):
+        from twophase.core.grid import Grid
+        from twophase.config import GridConfig
+        gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+        grid = Grid(gc, backend)
+        ppb = PPEBuilder(backend, grid, bc_type='wall')
+        ppb.build_structure()
+        return ppb
+
+    ppb_cpu = _build(cpu_backend)
+    ppb_gpu = _build(gpu_backend)
+
+    rng = np.random.default_rng(42)
+    rho_np = 1.0 + rng.uniform(0, 1, ppb_cpu.shape_field)
+
+    # CPU reference: build_values() returns numpy array on CPU backend
+    data_cpu = ppb_cpu.build_values(rho_np)
+    n = ppb_cpu.n_dof
+    A_cpu = sp.csr_matrix(
+        (data_cpu, (ppb_cpu._struct_rows, ppb_cpu._struct_cols)), shape=(n, n)
+    ).toarray()
+
+    # GPU: build_values() returns cupy array; _struct_rows/cols are cupy arrays
+    rho_gpu = gpu_backend.xp.asarray(rho_np)
+    data_dev = ppb_gpu.build_values(rho_gpu)
+    data_h = gpu_backend.to_host(data_dev)
+    rows_h = np.asarray(gpu_backend.to_host(ppb_gpu._struct_rows))
+    cols_h = np.asarray(gpu_backend.to_host(ppb_gpu._struct_cols))
+    A_gpu = sp.csr_matrix((data_h, (rows_h, cols_h)), shape=(n, n)).toarray()
+
+    np.testing.assert_allclose(A_gpu, A_cpu, rtol=1e-10, atol=1e-15)
