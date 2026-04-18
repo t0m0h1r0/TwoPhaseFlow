@@ -8,24 +8,29 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | main |
-| last_CHK | CHK-134 DONE 2026-04-18 — Theory note + WIKI-T-041 on third-order time integration (AB3 + Richardson-CN + Rotational IPC). Design-only; no code changes. Route B chosen over KIO/SDIRK3 for ADI preservation. Reuses existing RichardsonCNAdvance (already O(Δt³)). |
-| next_action | Next: implement Route B (~50 lines library + exp11_30 TGV convergence). |
+| branch | worktree-ch13-eikonal-improvements |
+| last_CHK | CHK-139 DONE 2026-04-18 — ξ-SDF eps_scale=1.4 fix: D(T=2)=0.028 ✓, VolCons(T=1)=0.80% ✓, VolCons(T=2)=1.38% (marginally over 1%). Root cause confirmed: interface width controls PPE residual. 3 new wiki entries (E-028, X-016, P-012), Sethian1996 bib, paper CHK-139 section. Branch: worktree-ch13-eikonal-improvements |
+| next_action | T=10 long-run for eikonal_xi+eps_scale=1.4 (or accept split-only as σ>0 reference). |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: 101 entries (docs/wiki/INDEX.md).
+- Wiki: 139 entries (docs/wiki/INDEX.md). T-042/E-028/X-016/P-012 cover CHK-136..139 eikonal work.
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
 # Format: `CHK-ID | YYYY-MM-DD | type | summary`
 # Full detail in git log / commit messages / linked memos.
 
-## §1 — Most recent (CHK-120..134)
+## §1 — Most recent (CHK-120..139)
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-139 | 2026-04-18 | impl+exp+wiki | ξ-SDF eps_scale=1.4 interface widening: EikonalReinitializer(eps_scale) + Reinitializer + ns_pipeline.from_config chain. T=1: D=0.018 ✓, VolCons=0.80% ✓. T=2: D=0.028 ✓, VolCons=1.38% (target <1% marginally missed). Root cause confirmed (interface width effect). WIKI-E-028/X-016/P-012 created; Sethian1996 bib added; INDEX 136→139. Branch: worktree-ch13-eikonal-improvements |
+| CHK-138 | 2026-04-18 | exp+theory | FMM T=1 quick check: VolCons=8.2% WORSE than ξ-SDF (1.46%@T=2) despite lower φ_xx noise (2.83 vs 3.93). Voronoi kink hypothesis refuted. Revised root cause: interface width ε (narrow band → PPE residual ∝ σκ/ε → ΔV drift). Split-only's ~1.4ε broadening is stabilizing. WIKI-T-042 §CHK-138 + paper CHK-138 FMM section updated. Branch: worktree-ch13-eikonal-improvements |
+| CHK-137 | 2026-04-18 | impl+exp+paper | Two strategies for CHK-136 zero-set drift: A=ZSP (D=0.129, freeze band |φ|<h/2), B=ξ-SDF non-iterative (D=0.050 T=2 borderline, D=0.226 T=10 fail). ξ-SDF proofs: zero-set preservation, |∇_ξφ|=1, no drift. Paper §7b ξ-SDF subsubsection + 4 equations + 3 propositions. WIKI-T-042 §CHK-137. Static test: 200 reinit calls → VolCons≈0% (drift from advection, not reinit). Branch: worktree-ch13-eikonal-improvements |
+| CHK-136 | 2026-04-18 | exp+theory | Eikonal Godunov baseline: D(T=2)=0.245 ✗. Root cause: discrete Godunov does not exactly preserve φ=0 contour; per-cell drift ∝ dtau×(1−|∇φ_raw|)/(h) × systematic mode-2 correlation × 37000 reinit calls. Analogous to DGR global-median nonuniformity but different mechanism. WIKI-T-042 §CHK-136 + paper §7b Eikonal method section. Branch: worktree-ch13-eikonal-improvements |
+| CHK-135 | 2026-04-18 | theory+paper | Hybrid reinit wrong D(t)=0.227 on σ>0 capillary waves: root cause = DGR global-median ε_eff applies uniform scale on non-uniform (compressed/elongated) interface → mode-2 amplification per DGR call. Compressed ends over-scaled (outward shift), elongated tips under-scaled (inward). Split-only gives D=0.037 but ~1.4ε interface. Paper DGR limitation section + WIKI-T-042 motivation. Branch: worktree-ch13-eikonal-improvements |
 | CHK-134 | 2026-04-18 | theory+wiki | Third-order time integration theory note + WIKI-T-041. Paper §5 time-evolution chapters absorbed; rate-limiter taxonomy built (AB2/CN/IPC cap at O(Δt²), cross-visc at O(Δt¹)). Route B recommended: AB3 convection + Richardson(Picard-CN) viscous + AB3 cross-term extrapolation + Rotational IPC (Guermond–Shen 2003). Preserves Peaceman–Rachford ADI tridiagonal. Reuses shipped RichardsonCNAdvance. ~50 lines future library work. 5 new bib entries queued. WIKI: T-003/T-033/T-030 dependencies; INDEX 100→101. Branch: worktree-research-third-order-time-evolution |
 | CHK-133 | 2026-04-18 | fix | ch13 DGR blowup: root cause = DGR cannot repair interface folds (|∇ψ|→0) under σ>0 capillary dynamics; global median eps_eff treats folds as outliers → DGR near-no-op → CSF blowup. Fix: reinit_method: hybrid in exp13_01_a{1.0,1.2,1.5,2.0}_dgr.yaml. Isolation exps A1-A4 confirm mechanism. WIKI-T-030 Limitations section added. Tests 206P/7S/2XF. Branch: worktree-ch13-dgr-blowup-fix |
 | CHK-132 | 2026-04-18 | meta | v7.0.0 "Lean Kernel" redesign: 8 kernel-*.md (constitution/roles/ops/domains/workflow/antipatterns/project/deploy) + 46 agent files (23 claude + 23 codex) + 2 _base.yaml. -56% token target. v6.0.0 features: HAND-04/DYNAMIC-REPLANNING/OP-CONDENSE/EVALUATOR-OPTIMIZER. Branch: meta-v7-lean-kernel |

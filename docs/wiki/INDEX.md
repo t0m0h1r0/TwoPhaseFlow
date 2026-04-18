@@ -1,4 +1,4 @@
-# Wiki Index — 136 entries
+# Wiki Index — 139 entries
 
 ## Theory (42)
 
@@ -47,7 +47,7 @@
 | [WIKI-T-041](theory/WIKI-T-041.md) | Third-Order Time Integration: AB3 + Richardson-CN + Rotational IPC |
 | [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
 
-## Cross-Domain (14)
+## Cross-Domain (15)
 
 | REF-ID | Title |
 |--------|-------|
@@ -66,8 +66,9 @@
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
 | [WIKI-X-015](cross-domain/WIKI-X-015.md) | Numerical Simulation Debugging: Theory-First Root-Cause Methodology |
+| [WIKI-X-016](cross-domain/WIKI-X-016.md) | Reinit ε-Scale Propagation Path and σ>0 vs σ=0 Dispatch Policy (CHK-139) |
 
-## Experiment (27)
+## Experiment (28)
 
 | REF-ID | Title |
 |--------|-------|
@@ -98,8 +99,9 @@
 | [WIKI-E-025](experiment/WIKI-E-025.md) | Ch13 Phi-Primary Transport Trial and Uniformized Visualization (exp13_91, exp13_92) |
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 | [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
+| [WIKI-E-028](experiment/WIKI-E-028.md) | Eikonal/ZSP/ξ-SDF/FMM/ε-Widening: Prosperetti Benchmark Results (CHK-136..139) |
 
-## Paper (11)
+## Paper (12)
 
 | REF-ID | Title |
 |--------|-------|
@@ -114,6 +116,7 @@
 | [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |
 | [WIKI-P-010](paper/WIKI-P-010.md) | 07b_reinitialization: Eikonal Unified Method Section (CHK-136) |
 | [WIKI-P-011](paper/WIKI-P-011.md) | Optimizing Multi-Agent Kernel Prompts with Visible Extended Thinking |
+| [WIKI-P-012](paper/WIKI-P-012.md) | 07b_reinitialization: ξ-SDF, FMM, and ε-Widening Sections (CHK-137..139) |
 
 ## Meta (29)
 

@@ -441,7 +441,7 @@ Eikonal + ZSP（Strategy A）   & 0.129 & — & ✗ \\
 \noindent\textbf{CHK-138（Fast Marching Method による検証）：}
 CHK-137 の失敗原因として当初 Voronoi kink 仮説（ξ-SDF の $C^0$ 不連続が
 6次 CCD で増幅 $\to$ $\kappa$ ノイズ $\to$ 体積誤差）を立てた．
-これを検証するため，Sethian (1996) の Fast Marching Method (FMM) を実装した
+これを検証するため，\citep{Sethian1996} の Fast Marching Method (FMM) を実装した
 （二次 Godunov 更新 $d = \tfrac{1}{2}(a_x+a_y+\sqrt{2-(a_x-a_y)^2})$；反復なし，
 単一前進波で $|\nabla_\xi\phi|=1$ を達成する $C^1$ 場を構築）．
 FMM は 2次微分ノイズを低減する（標準偏差 $3.93\to 2.83$）が，
