@@ -83,6 +83,7 @@ class RunCfg:
     cfl: float = 0.15
     snap_times: list = field(default_factory=list)
     snap_interval: float | None = 0.1  # auto-generate snap_times every N time units (None = disabled)
+    reinit_eps_scale: float = 1.0
     print_every: int = 100
     dt_fixed: float | None = None
     cn_viscous: bool = False
@@ -333,6 +334,8 @@ def _parse_run(d: dict) -> RunCfg:
         max_steps=int(d.get("max_steps", 100_000)),
         cfl=float(d.get("cfl", 0.15)),
         snap_times=[float(x) for x in snap_raw],
+        snap_interval=_opt_float(d.get("snap_interval", 0.1)),
+        reinit_eps_scale=float(d.get("reinit_eps_scale", 1.0)),
         print_every=int(d.get("print_every", 100)),
         dt_fixed=_opt_float(d.get("dt_fixed")),
         cn_viscous=bool(d.get("cn_viscous", False)),
