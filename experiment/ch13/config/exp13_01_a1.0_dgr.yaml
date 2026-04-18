@@ -1,6 +1,8 @@
-# §13.1 Capillary wave decay — α=1.0, reinit=hybrid (split+dgr)
-# Fix: dgr alone cannot correct interface folds under capillary dynamics → CSF blowup.
-# hybrid=split(shape)+dgr(thickness) as recommended by WIKI-T-030 §Hybrid Scheme.
+# §13.1 Capillary wave decay — α=1.0, reinit=split
+# Fix 1 (CHK-133): dgr alone → fold blowup; changed to split. WIKI-T-030 §Limitations.
+# Fix 2 (CHK-135): split → wrong D(t) saturation at 0.226 (should decay to ~0).
+# Root cause: DGR mass correction shifts curved interface non-uniformly →
+# systematic mode-2 elongation. Split-only avoids this (confirmed: D_final≈0.0036).
 # Reference: Prosperetti (1981) — ρ_l=10, ρ_g=1, μ=0.05, σ=1.0, mode=2 perturbation ε=0.05
 
 grid:
@@ -26,14 +28,14 @@ run:
   cfl:        0.10
   snap_times: [0.0, 2.5, 5.0, 7.5, 10.0]
   print_every: 500
-  reinit_method: hybrid
+  reinit_method: split
 
 output:
   dir: results/exp13_01_a1.0_dgr
   save_npz: true
   figures:
     - type: time_series
-      title: "Capillary wave α=1.0 hybrid — D(t)"
+      title: "Capillary wave α=1.0 split — D(t)"
       x: times
       y: [deformation]
       labels: ["Simulation"]
@@ -47,17 +49,17 @@ output:
       file: capillary_a1.0_dgr.pdf
 
     - type: snapshot
-      title: "α=1.0 hybrid — t=0"
+      title: "α=1.0 split — t=0"
       t_idx: 0
       file: snapshot_t0.pdf
 
     - type: snapshot
-      title: "α=1.0 hybrid — final"
+      title: "α=1.0 split — final"
       t_idx: -1
       file: snapshot_final.pdf
 
     - type: velocity_snapshot
-      title: "α=1.0 hybrid — velocity final"
+      title: "α=1.0 split — velocity final"
       t_idx: -1
       file: velocity_final.pdf
 
