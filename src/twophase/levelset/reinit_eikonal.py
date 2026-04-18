@@ -123,23 +123,6 @@ class EikonalReinitializer(IReinitializer):
             eps_arr = self._eps_xi
         elif self._xi_sdf:
             # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
-            #
-            # Fix 4 (CHK-140): isolated interior sign-flip correction.
-            # Advection oscillations can push psi slightly below 0.5 at isolated
-            # deep-interior cells (all 4 neighbors still positive-phi). If left
-            # uncorrected, xi_sdf detects a false zero-crossing at that cell and
-            # permanently pins ψ = 0.5. Solution: if phi[i,j] < 0 but ALL 4
-            # orthogonal neighbors have phi > 0, the sign flip is spurious —
-            # override sgn0[i,j] = +1 before the pre-clip.
-            _phi_pad = xp.pad(phi, ((1, 1), (1, 1)), mode='edge')
-            _phi_nb_min = xp.minimum(
-                xp.minimum(_phi_pad[1:-1, :-2], _phi_pad[1:-1, 2:]),
-                xp.minimum(_phi_pad[:-2, 1:-1], _phi_pad[2:, 1:-1]),
-            )
-            sgn0 = xp.where((phi < 0) & (_phi_nb_min > 0), 1.0, sgn0)
-            #
-            # Pre-clip: limit |φ| to 2ε so bulk values don't create false crossings.
-            # Use sgn0 (not xp.sign(phi)) to preserve the corrected sign above.
             phi = sgn0 * xp.minimum(xp.abs(phi), 2.0 * self._eps)
             phi = self._xi_sdf_phi(phi)
             eps_arr = self._eps_xi   # constant in ξ-space (scalar)

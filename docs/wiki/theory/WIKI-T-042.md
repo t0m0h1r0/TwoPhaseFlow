@@ -314,6 +314,85 @@ Scale=1.4 significantly reduces the PPE residual (~5× VolCons reduction vs ξ-S
 but does not fully match split-only's long-time stability. A scale factor f>1.4 might
 further reduce VolCons at the cost of blunting shape preservation.
 
+---
+
+## CHK-140: ξ-SDF Center Hole — ψ-Transport Vulnerability and Fix
+
+### Bug Description
+
+When using `eikonal_xi` reinit with ψ-transport (the default), a diamond-shaped
+ψ≈0.5 artifact appears at the geometric center of a stationary droplet around t≈0.05
+on a 64×64 grid. The hole grows from 1-cell (t=0.05) to 2-cell (t=0.10) and is
+permanent (no self-healing).
+
+### Root Cause
+
+The ξ-SDF algorithm interprets any negative φ = ψ − 0.5 < 0 as a zero-crossing,
+regardless of distance from the physical interface. The mechanism:
+
+1. `DissipativeCCDAdvection` transports ψ ∈ [0,1] with `clip_bounds=(0.0, 1.0)`.
+   The [0,1] clip does NOT prevent ψ from oscillating around 0.5.
+2. At reinit call 37 (t≈0.048), ψ at node (32,32) — the exact geometric center —
+   drops to 0.480 after 2 CCD advection steps, despite being 16 cells from the interface.
+3. ξ-SDF detects a false zero-crossing 0.04 cells from node (32,32), assigns
+   φ_sdf = −0.038 → ψ = σ(−0.038/ε) ≈ 0.5.
+4. Once ψ = 0.5 is set, the center permanently appears as a zero-crossing in all
+   subsequent reinit calls.
+
+**Why is the oscillation so large?** After each reinit, the center is correctly reset
+to ψ = σ(16/ε_xi) ≈ 1.0. But within 2 CCD steps (Δt ≈ 0.0013), ψ drops by ~0.22.
+Investigation confirmed the [0,1] per-stage clip in CCD is insufficient — it only
+prevents values outside [0,1], not oscillations around 0.5 in the interior.
+
+**Grid note**: (NX+1, NY+1) = (65,65) node grid; node (32,32) = (0.5, 0.5) is at the
+exact geometric center. Initial condition is a perturbed circle with r=0.25 → the
+center is 16*h = 16/64 = 0.25 from the interface.
+
+### Why Fixes 1–4 All Failed
+
+| Fix | Content | Why ineffective |
+|-----|---------|-----------------|
+| Fix 1 | `sgn0[|φ|<1e-10] = +1` | threshold too small; spurious φ = −0.02 >> 1e-10 |
+| Fix 2 | `sgn == 0 → +1` in `_xi_sdf_phi` | φ = 0 exactly never occurs |
+| Fix 3 | mass correction sign clamp | delta_phi << 16*h; can't flip center cell |
+| Fix 4 | neighbor-based isolated flip | physically unjustified (user objection) |
+| "案B" | `clip(psi, 0, 1)` post-advection | already done internally by CCD; 0.48 ∈ [0,1] |
+
+### Root Fix: phi-primary Transport
+
+Transport φ = logit(ψ)·ε directly; reconstruct ψ = σ(φ/ε) each step.
+
+**Physical invariant enforced**: Far from the interface, φ ≫ 0 (interior) or φ ≪ 0
+(exterior). σ(φ/ε) then naturally saturates to 1 or 0. This is the invariant that
+ψ-transport violates: ψ ∈ [0,1] after advection, but not necessarily near 0 or 1
+far from the interface.
+
+**Robustness**: Center node has φ = logit(ψ) · ε ≈ 16·ε_xi. CCD oscillations of
+O(ε_xi) are irrelevant — the sign cannot flip unless the interface actually reaches
+the center, which requires physical displacement of ~16 cells.
+
+Config: `phi_primary_transport: true` in `run:` section of YAML.
+
+### CHK-140 Verification (exp13_09)
+
+| Metric | psi-transport (exp13_08) | phi-primary (exp13_09) |
+|--------|--------------------------|------------------------|
+| Center hole t=0.05 | ✗ present | **✓ absent** |
+| Center hole t=0.10 | ✗ present | **✓ absent** |
+| VolCons max | 0.82% | **0.00%** |
+
+Higher KE with phi-primary (max=1.38 vs ~1e-5 at early steps for psi) reflects
+sharper interface activating stronger capillary dynamics — consistent with WIKI-E-025.
+
+### Lesson
+
+The ψ-transport + ξ-SDF combination has a latent vulnerability: any advection
+scheme that allows deep-interior ψ to oscillate within [0,1] can trigger false
+zero-crossings. The invariant "ψ ≈ 0 or 1 far from interface" must be enforced
+actively. phi-primary transport enforces this via the sigmoid saturation at every step.
+
+---
+
 ## Implications and Future Directions
 
 **Current status** (post CHK-139):

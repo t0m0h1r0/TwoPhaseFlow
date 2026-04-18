@@ -9,8 +9,8 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | worktree-ch13-eikonal-improvements |
-| last_CHK | CHK-140 DONE 2026-04-18 — xi_sdf interior hole: Fix 4 (isolated sign-flip detection). Verified exp13_07 T=0.1: no hole at t=0.050/0.100. |
-| next_action | WIKI-T-042 + WIKI-E-028 update for CHK-140 true root cause (advection oscillation + isolated flip). Optional: T=5 long-run verification. |
+| last_CHK | CHK-140 DONE 2026-04-18 — xi_sdf interior hole: TRUE root cause = CCD advection (DissipativeCCDAdvection, NOT WENO5) oscillates ψ around 0.5 at deep interior nodes; clip [0,1] insufficient since 0.48 ∈ [0,1]. Fix: phi_primary_transport=true — transport φ=logit(ψ)·ε, reconstruct ψ=σ(φ/ε) each step; deep interior φ>>0 immune to CCD oscillation. exp13_09: T=0.1 no hole, VolCons=0.00%. Fix 4 (neighbor-based) reverted. WIKI-T-042+WIKI-E-025 updated. |
+| next_action | Optional: T=5 long-run verification with phi_primary_transport. Consider whether phi_primary_transport should be the default for eikonal_xi configs. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
@@ -26,7 +26,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
-| CHK-140 | 2026-04-18 | fix+diag | xi_sdf interior hole: TRUE root cause = WENO5 advection oscillations push psi < 0.5 at isolated deep-interior cells (all 4 neighbors still > 0.5) → φ < 0 → false crossing → φ_sdf ≈ 0 → ψ stuck at 0.5. Onset at call=37 (t≈0.048). Fix 4: isolated sign-flip detection — if φ[i,j]<0 AND min(4-neighbor φ)>0, override sgn0=+1 before pre-clip. 4 xp ops (pad+min+where). exp13_07 verified: T=0.1, no hole at t=0.050/0.100. Fixes 1-3 retained (defense-in-depth). Branch: worktree-ch13-eikonal-improvements |
+| CHK-140 | 2026-04-18 | fix+diag | xi_sdf interior hole: TRUE root cause = DissipativeCCDAdvection (NOT WENO5) oscillates ψ around 0.5 at deep-interior nodes; [0,1] clip insufficient (0.48 ∈ [0,1]). Onset: reinit call 37 (t≈0.048), psi_in=0.480. Fixes 1-4 and 案B all ineffective. Fix: phi_primary_transport=true — φ=logit(ψ)·ε transported; deep interior φ>>0 cannot flip sign. exp13_09 verified: T=0.1 clean (no hole t=0.05/0.10), VolCons=0.00%. Fix 4 reverted. WIKI-T-042 §CHK-140 + WIKI-E-025 exp13_09 added. Branch: worktree-ch13-eikonal-improvements |
 | CHK-139 | 2026-04-18 | impl+exp+wiki | ξ-SDF eps_scale=1.4 interface widening: EikonalReinitializer(eps_scale) + Reinitializer + ns_pipeline.from_config chain. T=1: D=0.018 ✓, VolCons=0.80% ✓. T=2: D=0.028 ✓, VolCons=1.38% (target <1% marginally missed). Root cause confirmed (interface width effect). WIKI-E-028/X-016/P-012 created; Sethian1996 bib added; INDEX 136→139. Branch: worktree-ch13-eikonal-improvements |
 | CHK-138 | 2026-04-18 | exp+theory | FMM T=1 quick check: VolCons=8.2% WORSE than ξ-SDF (1.46%@T=2) despite lower φ_xx noise (2.83 vs 3.93). Voronoi kink hypothesis refuted. Revised root cause: interface width ε (narrow band → PPE residual ∝ σκ/ε → ΔV drift). Split-only's ~1.4ε broadening is stabilizing. WIKI-T-042 §CHK-138 + paper CHK-138 FMM section updated. Branch: worktree-ch13-eikonal-improvements |
 | CHK-137 | 2026-04-18 | impl+exp+paper | Two strategies for CHK-136 zero-set drift: A=ZSP (D=0.129, freeze band |φ|<h/2), B=ξ-SDF non-iterative (D=0.050 T=2 borderline, D=0.226 T=10 fail). ξ-SDF proofs: zero-set preservation, |∇_ξφ|=1, no drift. Paper §7b ξ-SDF subsubsection + 4 equations + 3 propositions. WIKI-T-042 §CHK-137. Static test: 200 reinit calls → VolCons≈0% (drift from advection, not reinit). Branch: worktree-ch13-eikonal-improvements |
