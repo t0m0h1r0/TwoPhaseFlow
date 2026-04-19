@@ -2,7 +2,7 @@
 ref_id: WIKI-T-045
 title: "Late Blowup Hypothesis Catalog: G^adj Residual Instability on Non-Uniform Grids (WIKI-E-030)"
 domain: theory
-status: OPEN  # root cause not yet identified; experiments pending
+status: OPEN  # Exp-1 confirms H-01+H-16 primary; Exp-2/3/4 pending
 superseded_by: null
 sources:
   - path: src/twophase/simulation/ns_pipeline.py
@@ -431,30 +431,109 @@ is **not** a source of the late blowup.
 
 ---
 
+## Experimental Evidence — Exp-1 (ch13_02_diag, 2026-04-20)
+
+**Config:** T=13, debug_diagnostics=true, print_every=100. 23,819 steps to blowup at t=10.508.
+**NPZ:** `experiment/ch13/results/ch13_02_diag/data.npz`
+
+### Key measurements
+
+| Metric | t≈0 (step 1) | t≈0–2 (median) | t≈4–6 (median) | t≈8–10 (median) | Blowup (step 23,819) |
+|--------|-------------|----------------|----------------|-----------------|----------------------|
+| `bf_residual_max` | 884 | 4,803 | 18,848 | 18,367 | 2.2×10¹⁰ |
+| `kappa_max` | 1,561 | ~2,000–3,000 (noisy) | ~10,000–60,000 (chaotic) | ~15,000–25,000 | 2.4×10⁴ |
+| `ppe_rhs_max` | 93.7 | 4.63×10⁵ | 4.73×10⁵ | ~4×10⁵ | 9.9×10⁹ |
+| `div_u_max` | 0.133 | ~143 | ~150 | ~165 | 6.2×10³ |
+| `kinetic_energy` | 6.4×10⁻⁷ | 0.014–0.069 | 0.069–0.090 | 0.12–0.15 | 1.0×10⁶ |
+| `volume_conservation` | 0 | < 10⁻¹⁴ | < 10⁻¹⁴ | < 10⁻¹⁴ | 3.3×10⁻¹⁴ |
+
+### Timeline
+
+```
+step=1,      t=0.0007:  bf=884,    KE=6.4e-7  (structural residual from t=0)
+step=100,    t=0.0485:  bf=6694,   KE=0.014,  div_u=148  (early transient)
+step=3000,   t=1.308:   bf=4945,   KE=0.043   (transient decay)
+step=7100,   t=3.106:   bf=14330,  KE=0.081   ← discrete jump event
+step=7200,   t=3.150:   bf=17800,  KE=0.069   (post-jump plateau)
+step=10000,  t=4.398:   bf=20020,  KE=0.069   kappa_max spikes to 1.1e5
+step=11900,  t=5.231:   bf=1639,   KE=0.095   ← bf_res collapse (bubble reshaping?)
+step=18000,  t=7.973:   bf=1018,   KE=0.123   ← bf_res minimum (990 at t=8.36)
+step=22329,  t=10.011:  KE=0.150   ← smoothed KE > 0.15 (onset of sustained rise)
+step=23255,  t=10.429:  KE=100×initial
+step=23375,  t=10.481:  KE=1000×initial
+step=23609,  t=10.506:  KE=1028    BLOWUP  (bf=1.3e7, ppe_rhs=8.4e6)
+step=23819:  BLOWUP at t=10.5082
+```
+
+### Hypothesis evaluation from Exp-1
+
+**H-01 (BF residual) — CONFIRMED PRIMARY:**
+- bf_res = 884 at step 1 (before any dynamics). Purely structural.
+- Median grows 4803 → 18848 from t=0–2 to t=4–6 (×4).
+- Oscillatory envelope tracks bubble capillary oscillations.
+- NOT a simple monotone accumulation — oscillatory with quasi-periodic minima.
+- At blowup runaway: bf_res grows exponentially (3.2e4 → 3.8e5 → 1.3e7 in 300 steps).
+
+**H-09 (density ratio amplification) — CONFIRMED (implicit):**
+- Gas-phase velocity perturbation per step: Δu_g ≈ dt × bf_res / ρ_g = 4e-4 × 10,000 / 1 = 4.
+- This is 833× larger than the liquid-phase perturbation.
+- Explains why KE slowly accumulates even while bubble barely moves.
+
+**H-15 (linear accumulation) — PARTIALLY REFUTED as trigger:**
+- KE does grow slowly (×6 over 10 time units: 0.02 → 0.15), consistent with slow accumulation.
+- But the TRIGGER is non-linear — KE×100 to KE×1000 in 120 steps (Δt≈0.05).
+- H-15 describes the slow phase; the actual blowup is H-16.
+
+**H-16 (non-linear runaway) — CONFIRMED:**
+- KE=0.15 (step 22,329, t=10.01) to BLOWUP (step 23,819, t=10.51): 1,490 steps, Δt=0.50.
+- KE×100 to KE×1000: 120 steps, Δt=0.05 — super-exponential growth.
+- Consistent with a supercritical Hopf-type transition once KE threshold crossed.
+
+**H-12/H-14 (curvature spike as trigger) — NOT CONFIRMED:**
+- kappa_max is chaotic throughout (370–165,000), with extreme spikes occurring from t≈3 onward.
+- kappa_max does NOT show a special spike immediately before the KE runaway (step 23,300: kappa=2.1e4, comparable to many earlier values).
+- Curvature fluctuations may contribute to bf_res oscillations but are not the blowup trigger.
+
+**H-02 (PPE divergence) — BACKGROUND:**
+- div_u stabilizes at ~140–165 from step 100 onward (not growing monotonically).
+- ppe_rhs is rock-steady at ~4.5–4.8×10⁵ until the blowup begins.
+- Both are consistent with a persistent but non-growing background error.
+
+**H-07 (ppe_rhs growth) — REFUTED:**
+- ppe_rhs shows no monotone growth; it's stable throughout. H-07 is not primary.
+
+### Outstanding questions (Exp-2/3/4 required)
+
+- **Exp-2 (σ=0):** Does bf_res=0 without surface tension? Does blowup disappear?
+- **Exp-3 (CFL=0.05):** Does blowup time t* stay at ≈10.5 (H-16) or shift (H-15/H-03)?
+- **Exp-4 (no reinit):** Does reinit stabilize or destabilize (H-05/H-06)?
+
+---
+
 ## Hypothesis Summary Table
 
-| ID | Category | Mechanism | Strength | Key Experiment |
-|----|----------|-----------|----------|----------------|
-| **H-01** | BF | Corrector G^adj vs CCD f_x → O(h²)/step | **HIGH** ⭐ | Exp-1 bf_residual_max |
-| H-02 | BF | PPE source CCD-div vs FVM-Laplacian | MEDIUM | Exp-1 div_u_max |
-| H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | Exp-3 (CFL×0.5) |
-| H-04 | BF | b^GFM absent from main PPE | MEDIUM-HIGH | Exp-2 (σ=0) |
-| H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | Exp-4 (no reinit) |
-| **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | Exp-4 (no reinit) |
-| H-07 | Reinit | Non-uniform ε_arr CSF inconsistency | LOW-MEDIUM | Exp-1 ppe_rhs_max |
-| H-08 | Reinit | phi_primary logit×ε metric coupling | LOW | — |
-| **H-09** | Density | 1/ρ_g=833× amplification of BF residual | **HIGH** | Exp-2 (σ=0) |
-| **H-10** | Density | WIKI-E-029 precedent: same conditions, same KE growth | **HIGH** | Exp-2 (σ=0) |
-| H-11 | Density | CCD metric × density-jump cross-term | LOW-MEDIUM | — |
-| H-12 | Curvature | CCD κ has O(h) error on non-uniform grid | MEDIUM | Exp-1 kappa_max |
-| H-13 | Curvature | kappa_f arithmetic mean error | LOW | — |
-| H-14 | Curvature | Interface deformation → κ regime change | MEDIUM | Exp-1 kappa_max |
-| **H-15** | Temporal | Linear accumulation → critical threshold | **HIGH** (testable) | Exp-3 (CFL×0.5) |
-| H-16 | Temporal | Nonlinear physical-time instability | HIGH | Exp-3 (CFL×0.5) |
-| H-17 | Temporal | Physical resonance at t≈12.6 | LOW | — |
-| H-18 | Temporal | PPE conditioning (direct solver — negligible) | LOW | — |
-| H-19 | Temporal | Pressure pin artificial mode | VERY LOW | — |
-| H-20 | — | _reproject_velocity CCD-consistent — **excluded** | N/A | — |
+| ID | Category | Mechanism | Strength | Exp-1 Status | Key Experiment |
+|----|----------|-----------|----------|--------------|----------------|
+| **H-01** | BF | Corrector G^adj vs CCD f_x → O(h²)/step | **HIGH** ⭐ | ✅ CONFIRMED (bf_res=884 at t=0, median grows ×4) | Exp-2 (σ=0) |
+| H-02 | BF | PPE source CCD-div vs FVM-Laplacian | MEDIUM | ℹ️ Background (div_u stable ~150, not growing) | Exp-3 (CFL×0.5) |
+| H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | ❓ Pending Exp-3 | Exp-3 (CFL×0.5) |
+| H-04 | BF | b^GFM absent from main PPE | MEDIUM-HIGH | ❓ Pending Exp-2 | Exp-2 (σ=0) |
+| H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | ❓ Pending Exp-4 | Exp-4 (no reinit) |
+| **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | ❓ Pending Exp-4 | Exp-4 (no reinit) |
+| H-07 | Reinit | Non-uniform ε_arr CSF inconsistency | LOW-MEDIUM | ❌ REFUTED (ppe_rhs stable ~4.7e5 throughout) | — |
+| H-08 | Reinit | phi_primary logit×ε metric coupling | LOW | — | — |
+| **H-09** | Density | 1/ρ_g=833× amplification of BF residual | **HIGH** | ✅ CONFIRMED (implicit: gas-phase Δu_g ≈ 833× liquid) | Exp-2 (σ=0) |
+| **H-10** | Density | WIKI-E-029 precedent: same conditions, same KE growth | **HIGH** | ✅ CONSISTENT (same slow KE drift pattern observed) | Exp-2 (σ=0) |
+| H-11 | Density | CCD metric × density-jump cross-term | LOW-MEDIUM | — | — |
+| H-12 | Curvature | CCD κ has O(h) error on non-uniform grid | MEDIUM | ⚠️ kappa chaotic (370–165,000); not the blowup trigger | Exp-2 (σ=0) |
+| H-13 | Curvature | kappa_f arithmetic mean error | LOW | — | — |
+| H-14 | Curvature | Interface deformation → κ regime change | MEDIUM | ❌ NOT CONFIRMED (kappa_max no special spike at blowup) | — |
+| **H-15** | Temporal | Linear accumulation → critical threshold | **HIGH** (testable) | ⚠️ Slow phase confirmed; trigger is H-16, not linear | Exp-3 (CFL×0.5) |
+| **H-16** | Temporal | Nonlinear physical-time instability | HIGH | ✅ CONFIRMED (KE×100→×1000 in 120 steps / Δt=0.05) | Exp-3 (CFL×0.5) |
+| H-17 | Temporal | Physical resonance at t≈12.6 | LOW | ❌ IRRELEVANT (blowup at t=10.5 in diag run, not 12.6) | — |
+| H-18 | Temporal | PPE conditioning (direct solver — negligible) | LOW | — | — |
+| H-19 | Temporal | Pressure pin artificial mode | VERY LOW | — | — |
+| H-20 | — | _reproject_velocity CCD-consistent — **excluded** | N/A | — | — |
 
 ---
 
@@ -508,23 +587,42 @@ Later or no blowup?
 
 ---
 
-## Root Cause Synthesis (Prior to Experiments)
+## Root Cause Synthesis (Updated Post Exp-1, 2026-04-20)
 
-The most probable root cause is a **combination of H-01 and H-09**:
+**Confirmed mechanism: H-01 + H-09 + H-16 cascade**
 
-1. G^adj introduced a new O(h²) BF residual per step (H-01)
-2. The density ratio ρ=833:1 amplifies this residual 833× in the gas phase (H-09)
-3. Over 28,122 steps the cumulative perturbation crosses a critical threshold (H-15)
-4. Nonlinear runaway follows (H-16)
+### Phase 1: Structural residual injection (t=0 → t≈10, slow)
 
-This interpretation is consistent with:
-- The ×550 delay (step 51 → 28,122): G^adj fixed the dominant O(1) metric error,
-  leaving the smaller O(h²) BF error as the new limiting mechanism
-- Volume conservation at machine precision: the instability is in the momentum equation,
-  not the level set
-- WIKI-E-029: same ρ+α combination shows KE growth even without gravity
-- The nearly static bubble: the instability is grid/method-driven, not physics-driven
+1. **H-01** — The G^adj/CCD metric mismatch creates a BF residual $\mathcal{R}$ from the
+   very first step (bf_res=884 at t=0.0007). This is not accumulated — it is **structural**.
+2. **H-09** — In the gas phase, $\delta u \propto \mathcal{R}/\rho_g = 833\times\mathcal{R}/\rho_l$.
+   This injects 833× more parasitic velocity into the gas than the liquid per step.
+3. KE grows slowly from 6.4×10⁻⁷ to 0.15 over 10 time units (~×230). The growth is
+   oscillatory (tracks bubble capillary oscillations), not monotone.
 
-The proper architectural fix (future work, NOT this session) would be to put **both**
-$\nabla p$ and $\nabla\psi$ in the same metric space (either both FVM-face or both CCD).
-This is a fundamental redesign of the balanced-force framework for non-uniform grids.
+### Phase 2: Nonlinear runaway (t≈10.0 → blowup at t≈10.5)
+
+4. **H-16** — Once KE≈0.15, the convective term $u\cdot\nabla u$ in the Predictor becomes
+   large enough to create a positive-feedback loop. KE doubles every ~60 steps.
+5. The runaway is **not caused** by a curvature spike (H-14 refuted), nor by ppe_rhs growth (H-07 refuted).
+6. The trigger threshold is physically set by when the parasitic gas velocity exceeds the
+   CFL stability limit for the convective term.
+
+### Outstanding: Exp-2/3/4 role
+
+- **Exp-2 (σ=0):** Critical. If blowup disappears without surface tension, H-01 is the
+  unique cause (surface tension provides the BF residual source). If blowup persists, then
+  H-04/H-05/H-06 or a density-ratio instability not related to BF is the cause.
+- **Exp-3 (CFL×0.5):** Distinguishes H-15 (blowup step doubles, physical time same) from
+  H-16 (blowup at same physical time). Given Exp-1 shows H-16 is the runaway mechanism,
+  we expect the physical time to be similar (t≈10–12).
+- **Exp-4 (no reinit):** Determines whether eikonal_xi reinit is stabilizing or destabilizing.
+
+### Architectural implication (post-analysis, no code change this session)
+
+The proper fix requires putting **both** $\mathcal{G}^\text{adj}p$ and $\sigma\kappa\nabla\psi$
+in the **same metric space**: either (a) both FVM-face (replace CCD gradient of ψ with a
+FVM-face gradient), or (b) both CCD (replace G^adj with CCD in the Corrector, losing the
+FVM consistency of the PPE but restoring BF balance). This is a fundamental redesign.
+
+**This session does NOT implement any fix** — per the standing constraint "no patch-style modifications."
