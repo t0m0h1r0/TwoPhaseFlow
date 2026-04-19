@@ -604,8 +604,9 @@ class TwoPhaseNSSolver:
         rho_min = physics.rho_g
 
         xp = self._backend.xp
-        _uv_max = xp.stack([xp.max(xp.abs(u)), xp.max(xp.abs(v))])
-        _uv_max = _uv_max.get() if hasattr(_uv_max, "get") else np.asarray(_uv_max)
+        _uv_max = np.asarray(self._backend.to_host(
+            xp.stack([xp.max(xp.abs(u)), xp.max(xp.abs(v))])
+        ))
         u_max = max(float(_uv_max[0]), float(_uv_max[1]), 1e-10)
         dt_cfl = cfl * h / u_max
         # CN (Heun trapezoid) relaxes viscous CFL by ~2× vs forward Euler

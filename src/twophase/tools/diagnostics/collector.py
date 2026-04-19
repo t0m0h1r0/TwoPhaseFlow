@@ -240,7 +240,7 @@ def _deformation(psi) -> float:
         xp.sum(dy * dy) / n_pts,
         xp.sum(dx * dy) / n_pts,
     ])
-    stats = raw.get() if hasattr(raw, "get") else np.asarray(raw)
+    stats = np.asarray(_to_host(raw))
     Ixx, Iyy, Ixy = float(stats[0]), float(stats[1]), float(stats[2])
     disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
     eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
