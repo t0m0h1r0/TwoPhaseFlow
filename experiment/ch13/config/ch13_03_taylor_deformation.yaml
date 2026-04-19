@@ -1,12 +1,12 @@
-# §13.3 線形せん断流中の液滴変形 — Taylor (1932, 1934)
+# §13.3 Droplet deformation in linear shear flow — Taylor (1932, 1934)
 #
-# 解析解: D_theory = (19λ+16)/(16λ+16) × Ca  (小Ca極限)
-# 設定: ρ_l=ρ_g=1（中性浮力），Couette せん断BC
-#   γ̇ = 2 (= 2U/L_y, U=1, L_y=1)
-#   σ = μ_g·γ̇·R/Ca = 0.1·2.0·0.25/Ca = 0.05/Ca
+# Analytical: D_theory = (19*lambda+16)/(16*lambda+16) * Ca  (small-Ca limit)
+# Setup: rho_l=rho_g=1 (neutrally buoyant), Couette shear BC
+#   gamma_dot = 2 (= 2U/Ly, U=1, Ly=1)
+#   sigma = mu_g*gamma_dot*R/Ca = 0.1*2.0*0.25/Ca = 0.05/Ca
 #
-# スウィープ: Ca ∈ {0.1, 0.2, 0.3, 0.4} × λ ∈ {1, 5}  (8ケース)
-# 格子: 128×128, α=2.0
+# Sweep: Ca in {0.1, 0.2, 0.3, 0.4} x lambda in {1, 5}  (8 cases)
+# Grid: 128x128, alpha=2.0
 
 grid:
   NX: 128
@@ -40,7 +40,7 @@ output:
   save_npz: true
   figures:
     - type: time_series
-      title: "§13.3 変形量 D(t)  (Ca=0.2, λ=1)"
+      title: "Taylor deformation D(t)  (Ca=0.2, lambda=1)"
       x: times
       y: [deformation]
       labels: ["Simulation"]
@@ -53,14 +53,14 @@ output:
       file: ch13_taylor_Dt.pdf
 
     - type: snapshot
-      title: "§13.3 Taylor 変形 — 最終時刻 (Ca=0.2, λ=1)"
+      title: "Taylor deformation — final time (Ca=0.2, lambda=1)"
       t_idx: -1
       contour: true
       colorbar: true
       file: ch13_taylor_snapshot.pdf
 
     - type: deformation_comparison
-      title: "§13.3 変形量 D vs Ca  (λ=1)"
+      title: "Deformation D vs Ca  (lambda=1)"
       Ca_vals: [0.1, 0.2, 0.3, 0.4]
       lambda_mu: 1.0
       file: ch13_taylor_blowup.pdf
@@ -85,7 +85,7 @@ boundary_condition:
   type: couette
   gamma_dot: 2.0
 
-# σ = μ_g·γ̇·R/Ca = 0.05/Ca
+# sigma = mu_g*gamma_dot*R/Ca = 0.05/Ca
 sweep:
   - label: "lam1_Ca0.1"
     overrides: {physics.lambda_mu: 1.0, physics.sigma: 0.500}

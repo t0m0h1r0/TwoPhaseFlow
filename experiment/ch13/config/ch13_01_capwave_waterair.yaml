@@ -1,15 +1,15 @@
-# §13.1 毛細管波振動 — 水-空気系（物理的パラメータ）
+# §13.1 Capillary wave oscillation — physically motivated water/air parameters
 #
-# 無次元化: ρ_g=1 (空気), ρ_l=833 (水; 998/1.2≈833), σ=1
-# Oh = μ/sqrt(ρ_l·σ·R) = 0.05/sqrt(833·1·0.25) ≈ 3.5e-3  (~1mm水滴)
+# Non-dimensionalization: rho_g=1 (air), rho_l=833 (water; 998/1.2~833), sigma=1
+# Oh = mu/sqrt(rho_l*sigma*R) = 0.05/sqrt(833*1*0.25) ~ 3.5e-3  (~1mm water drop)
 #
-# 2D Lamb 分散式 (n=2):
-#   ω₀² = n(n²-1)·σ / ((ρ_l+ρ_g)·R³) = 6 / (834·0.015625) = 0.461  →  ω₀ = 0.679
-#   T₀  = 2π/ω₀ ≈ 9.26
-#   β   = (n²-1)·μ / ((ρ_l+ρ_g)·R²) = 3·0.05 / (834·0.0625) = 0.00288
+# 2D Lamb dispersion relation (n=2):
+#   omega_0^2 = n(n^2-1)*sigma / ((rho_l+rho_g)*R^3) = 6/(834*0.015625) = 0.461 => omega_0 = 0.679
+#   T_0  = 2*pi/omega_0 ~ 9.26
+#   beta = (n^2-1)*mu / ((rho_l+rho_g)*R^2) = 3*0.05/(834*0.0625) = 0.00288
 #
-# T_final=8.0 ≈ 0.86·T₀  (約0.86周期)
-# 手法: eikonal_xi 再初期化 + phi_primary_transport + 分相PPE (GFM)
+# T_final=8.0 ~ 0.86*T_0  (~0.86 periods)
+# Method: eikonal_xi reinit + phi_primary_transport + split PPE (GFM)
 
 grid:
   NX: 64
@@ -43,9 +43,9 @@ output:
   dir: results/ch13_01_capwave_waterair
   save_npz: true
   figures:
-    # D(t) vs 2D Lamb 解析解
+    # D(t) vs 2D Lamb analytical solution
     - type: time_series
-      title: "§13.1 毛細管波 D(t) — 水-空気 (ρ=833:1), GFM, α=1.5"
+      title: "Capillary wave D(t) — water/air (rho=833:1), GFM, alpha=1.5"
       x: times
       y: [deformation]
       labels: ["Simulation"]
@@ -58,9 +58,9 @@ output:
         D0:     0.05
       file: ch13_capwave_Dt.pdf
 
-    # KE(t) 対数スケール（寄生渦流の成長の確認）
+    # KE(t) log scale — parasitic current growth
     - type: time_series
-      title: "§13.1 運動エネルギー E_k(t) — 寄生渦流"
+      title: "Kinetic energy $E_k(t)$ — parasitic currents at rho=833:1"
       x: times
       y: [kinetic_energy]
       labels: ["$E_k(t)$"]
@@ -69,42 +69,42 @@ output:
       yscale: log
       file: ch13_capwave_KE.pdf
 
-    # ψ スナップショット4枚（液滴形状の時間発展）
-    # snap_interval=2.0 → t_idx: 0=初期, 1=t≈2, 2=t≈4, 3=t≈6
+    # psi snapshots — droplet shape evolution
+    # snap_interval=2.0 => t_idx: 0=initial, 1=t~2, 2=t~4, 3=t~6
     - type: snapshot
       t_idx: 0
       contour: true
       colorbar: true
-      title: "$t = 0$ (初期: 扁長)"
+      title: "$t = 0$ (prolate)"
       file: ch13_capwave_snap_t0.pdf
 
     - type: snapshot
       t_idx: 1
       contour: true
       colorbar: true
-      title: "$t = 2 \\approx T_0/4$ (円形に近い)"
+      title: "$t = 2 \\approx T_0/4$ (near circular)"
       file: ch13_capwave_snap_t2.pdf
 
     - type: snapshot
       t_idx: 2
       contour: true
       colorbar: true
-      title: "$t = 4 \\approx T_0/2$ (扁平)"
+      title: "$t = 4 \\approx T_0/2$ (oblate)"
       file: ch13_capwave_snap_t4.pdf
 
     - type: snapshot
       t_idx: 3
       contour: true
       colorbar: true
-      title: "$t = 6 \\approx 3T_0/4$ (円形に近い)"
+      title: "$t = 6 \\approx 3T_0/4$ (near circular)"
       file: ch13_capwave_snap_t6.pdf
 
-    # 最終時刻の速度場（寄生渦流パターンの可視化）
+    # Velocity field at final time — parasitic vortex pattern
     - type: velocity_snapshot
       t_idx: -1
       contour: true
       colorbar: true
-      title: "$t = 8$: 速度場（寄生渦流）"
+      title: "$t = 8$: velocity field (parasitic vortex)"
       file: ch13_capwave_vel_final.pdf
 
 diagnostics:

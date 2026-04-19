@@ -1,14 +1,14 @@
-# §13.2 単一気泡上昇 — Hysing et al. (2009) Test Case 1 改変版
+# §13.2 Single rising bubble — Hysing et al. (2009) Test Case 1 (modified)
 #
-# 原典: Hysing et al. (2009) Re=35, Eo=10, ρ_l/ρ_g=1000
-# 改変: ρ_l/ρ_g=10（原典の密度比1000は分相PPEなしでは適用範囲外）
+# Reference: Hysing et al. (2009) Re=35, Eo=10, rho_l/rho_g=1000
+# Modified: rho_l/rho_g=10 (original density ratio 1000 requires split PPE)
 #
-# 物理パラメータ導出 (d_ref = 2R = 0.5):
-#   σ = g·(ρ_l−ρ_g)·d²/Eo = 1.0·9.0·0.25/10 = 0.225
-#   μ = ρ_l·sqrt(g·d)·d / Re = 10·sqrt(0.5)·0.5/35 ≈ 0.101
+# Derived parameters (d_ref = 2R = 0.5):
+#   sigma = g*(rho_l-rho_g)*d^2/Eo = 1.0*9.0*0.25/10 = 0.225
+#   mu    = rho_l*sqrt(g*d)*d / Re = 10*sqrt(0.5)*0.5/35 ~ 0.101
 #
-# 格子: α=1（一様格子），一括PPE
-# 結果: v_c=0.160, Δy=0.173, |ΔV|/V₀=3.09e-5
+# Grid: alpha=1 (uniform), bulk PPE
+# Results: v_c=0.160, Delta_y=0.173, |DV|/V_0=3.09e-5
 
 grid:
   NX:  64
@@ -42,7 +42,7 @@ output:
   save_npz: true
   figures:
     - type: time_series
-      title: "§13.2 気泡上昇速度 v_c(t)"
+      title: "Bubble rise velocity $v_c(t)$  (Re=35, Eo=10, rho=10:1)"
       x: times
       y: [vc]
       labels: ["Simulation"]
@@ -51,7 +51,7 @@ output:
       file: ch13_rise_velocity.pdf
 
     - type: time_series
-      title: "§13.2 気泡重心 y_c(t)"
+      title: "Bubble centroid $y_c(t)$"
       x: times
       y: [yc]
       labels: ["Simulation"]
@@ -60,7 +60,7 @@ output:
       file: ch13_centroid.pdf
 
     - type: time_series
-      title: "§13.2 体積保存 |ΔV|/V₀"
+      title: "Volume conservation $|\\Delta V|/V_0$"
       x: times
       y: [volume_conservation]
       labels: ["Simulation"]
@@ -70,14 +70,14 @@ output:
       file: ch13_bubble_volcons.pdf
 
     - type: snapshot
-      title: "§13.2 気泡上昇 — $t=3.0$"
+      title: "Rising bubble — $t=3.0$"
       t_idx: -1
       contour: true
       colorbar: true
       file: ch13_bubble_snapshot.pdf
 
     - type: velocity_snapshot
-      title: "§13.2 速度場 — $t=3.0$"
+      title: "Rising bubble velocity field — $t=3.0$"
       t_idx: -1
       contour: true
       colorbar: true
