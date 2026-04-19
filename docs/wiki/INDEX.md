@@ -1,6 +1,6 @@
-# Wiki Index — 145 entries
+# Wiki Index — 147 entries
 
-## Theory (43)
+## Theory (44)
 
 | REF-ID | Title |
 |--------|-------|
@@ -47,6 +47,7 @@
 | [WIKI-T-041](theory/WIKI-T-041.md) | Third-Order Time Integration: AB3 + Richardson-CN + Rotational IPC |
 | [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
 | [WIKI-T-043](theory/WIKI-T-043.md) | 2D Lamb 毛細管波分散式と D(t) 変形量計測 |
+| [WIKI-T-044](theory/WIKI-T-044.md) | FVM-CCD Metric Inconsistency: G^adj Face-Average Gradient for Non-Uniform Grids |
 
 ## Cross-Domain (16)
 
@@ -156,7 +157,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (21)
+## Code (22)
 
 | REF-ID | Title |
 |--------|-------|
@@ -181,3 +182,4 @@
 | [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |
 | [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
 | [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |
+| [WIKI-L-022](code/WIKI-L-022.md) | G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
