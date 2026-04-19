@@ -30,7 +30,6 @@ Symbol mapping (paper -> Python):
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-import numpy as np
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -57,6 +56,26 @@ class GFMCorrector:
         self.grid = grid
         self.ndim = grid.ndim
         self.We = We
+
+        if not grid.uniform:
+            import numpy as _np
+            self._d_f:  list = []
+            self._dv_L: list = []
+            self._dv_R: list = []
+            xp = self.xp
+            for ax in range(grid.ndim):
+                coords = _np.asarray(grid.coords[ax])
+                N = grid.N[ax]
+                d_face = coords[1:] - coords[:-1]
+                dv = _np.empty(len(coords))
+                dv[0]    = (coords[1] - coords[0]) / 2.0
+                dv[-1]   = (coords[-1] - coords[-2]) / 2.0
+                dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+                shape_1d = [1] * grid.ndim
+                shape_1d[ax] = N
+                self._d_f.append( xp.asarray(d_face.reshape(shape_1d)))
+                self._dv_L.append(xp.asarray(dv[:N].reshape(shape_1d)))
+                self._dv_R.append(xp.asarray(dv[1:N + 1].reshape(shape_1d)))
 
     def compute_rhs_correction(
         self,
@@ -106,20 +125,7 @@ class GFMCorrector:
             sign_L = xp.where(phi_L > 0, -1.0, 1.0)
 
             if not self.grid.uniform:
-                # Non-uniform: face spacing d_face and per-node control volumes
-                # dv differ → left and right corrections are asymmetric.
-                # Consistent with PPEBuilder.build() non-uniform FVM coefficients.
-                coords = np.asarray(self.grid.coords[ax])
-                d_face = coords[1:] - coords[:-1]        # (N_ax,)
-                dv = np.empty(len(coords))
-                dv[0]    = (coords[1] - coords[0]) / 2.0
-                dv[-1]   = (coords[-1] - coords[-2]) / 2.0
-                dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
-                shape_1d = [1] * self.ndim
-                shape_1d[ax] = N_ax
-                d_f  = xp.asarray(d_face.reshape(shape_1d))
-                dv_L = xp.asarray(dv[:N_ax].reshape(shape_1d))
-                dv_R = xp.asarray(dv[1:N_ax + 1].reshape(shape_1d))
+                d_f, dv_L, dv_R = self._d_f[ax], self._dv_L[ax], self._dv_R[ax]
                 corr_L = xp.where(crosses,  sign_L * inv_rho_f * kappa_f / (We * d_f * dv_L), 0.0)
                 corr_R = xp.where(crosses, -sign_L * inv_rho_f * kappa_f / (We * d_f * dv_R), 0.0)
             else:
