@@ -991,18 +991,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         diag.collect(t, psi_h, u_h, v_h, p_h, dV=dV)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
-            _eps = cfg.grid.eps_factor * cfg.grid.LX / cfg.grid.NX
-            _H = np.clip(
-                0.5 * (1 + psi_h / _eps + np.sin(np.pi * psi_h / _eps) / np.pi),
-                0.0, 1.0,
-            )
             snap_entry = {
                 "t": float(t),
                 "psi": psi_h.copy(),
                 "u": u_h.copy(),
                 "v": v_h.copy(),
                 "p": p_h.copy(),
-                "rho": (ph.rho_l * _H + ph.rho_g * (1 - _H)).copy(),
+                "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
             }
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
