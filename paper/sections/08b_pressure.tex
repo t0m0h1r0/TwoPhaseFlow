@@ -3,6 +3,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{変密度 Projection 法の段階的導出}
 \label{sec:projection_derivation}
+\label{sec:fvm_ccd_corrector}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 第~\ref{sec:collocate}章（§~\ref{sec:helmholtz}）では等密度場を仮定した Helmholtz 分解で
@@ -68,6 +69,20 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
         圧力場が連続的に定義されるため，CCD 勾配を直接適用する．
         高密度比（$\rho_l/\rho_g > 5$）の分相 PPE 解法では
         HFE による場延長が必要である（付録~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
+  \item \textbf{非一様格子（$\alpha>1$）での $\bnabla(\delta p)$：face-average 勾配 $\mathcal{G}^\text{adj}$．}
+        CCD 勾配はメトリクス $J_n = 1/\delta v_i$ を使うが，
+        PPE の FVM Laplacian は $J_f = 1/d_f^{(i)}$ を使う．
+        非一様格子では $J_n \neq J_f$ のため $\mathcal{D}_\text{FVM}(\mathcal{G}_\text{CCD}) \neq \mathcal{L}_\text{FVM}$
+        となり，ステップごとに残差発散が蓄積する（§~\ref{box:fvm_ccd_metric}）．
+        壁面 BC + 非一様格子の速度補正には
+        \[
+          (\mathcal{G}^\text{adj}\,p)_i
+          = \tfrac{1}{2}\!\left[
+              \tfrac{p_{i+1}-p_i}{d_f^{(i)}} + \tfrac{p_i-p_{i-1}}{d_f^{(i-1)}}
+            \right]
+        \]
+        を使用し，$\mathcal{D}_\text{FVM}(\mathcal{G}^\text{adj}) = \mathcal{L}_\text{FVM}$（厳密整合）を保証する．
+        均一格子および周期 BC では CCD を引き続き使用する．
   \item \textbf{$\rho^{n+1}$} は CLS 移流（§~\ref{sec:algorithm}，Step 1）で事前に更新済み．
   \item \textbf{時間離散化：} 本節の導出は Backward Euler 形式で統一したが，
         対流項は実装で AB2（式~\eqref{eq:predictor_ab2_ipc}），
