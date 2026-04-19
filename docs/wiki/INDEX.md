@@ -1,4 +1,4 @@
-# Wiki Index — 147 entries
+# Wiki Index — 148 entries
 
 ## Theory (44)
 
@@ -105,6 +105,7 @@
 | [WIKI-E-028](experiment/WIKI-E-028.md) | Eikonal/ZSP/ξ-SDF/FMM/ε-Widening: Prosperetti Benchmark Results (CHK-136..139) |
 
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
+| [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
 
 ## Paper (12)
 
