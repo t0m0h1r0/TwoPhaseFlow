@@ -71,7 +71,7 @@ IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int
 \caption{物理的整合性の検証指標と許容基準}
 \label{tab:verification}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{p{32mm}p{34mm}p{26mm}p{20mm}l}
+\begin{tabular}{p{32mm}p{34mm}p{26mm}>{\raggedright\arraybackslash}p{20mm}l}
 \toprule
 検証項目 & 理論値/解析解 & チェック方法 & 許容基準 & 節 \\
 \midrule
@@ -88,8 +88,8 @@ Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ &
 PPE 一括解法限界 & 界面型密度場の収束劣化 & 残差履歴・格子収束 & 劣化機構の特定 & §\ref{sec:interface_crossing}\\
 分相 PPE 精度回復\textsuperscript{$\S$} & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:verify_split_ppe_dc}\\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-5}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\ddagger$}FFT 直接法 PPE（単相・周期境界）での基準．二相流では CSF ソース項・変密度 PPE の打切り誤差により $\|\bnabla\cdot\bu\|_\infty \sim \Ord{10^{-2}}$ となる場合がある（§~\ref{sec:advection_pressure_coupling}）．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{$\S$}第~\ref{sec:numerical_integrity}章のコンポーネント検証（§~\ref{sec:verify_split_ppe_dc}）で実施．§~\ref{sec:interface_crossing} の診断結果を受けた解決策として本章ロードマップに含める．} \\
+\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-5}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．}} \\
+\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\ddagger$}FFT 直接法 PPE（単相・周期境界）での基準．二相流では CSF ソース項・変密度 PPE の打切り誤差により $\|\bnabla\cdot\bu\|_\infty \sim \Ord{10^{-2}}$ となる場合がある（§~\ref{sec:advection_pressure_coupling}）．}} \\
+\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\S$}第~\ref{sec:numerical_integrity}章のコンポーネント検証（§~\ref{sec:verify_split_ppe_dc}）で実施．§~\ref{sec:interface_crossing} の診断結果を受けた解決策として本章ロードマップに含める．}} \\
 \end{tabular}
 \end{table}
