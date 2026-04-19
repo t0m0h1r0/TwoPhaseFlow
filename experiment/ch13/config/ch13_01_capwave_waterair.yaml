@@ -1,0 +1,126 @@
+# §13.1 毛細管波振動 — 水-空気系（物理的パラメータ）
+#
+# 無次元化: ρ_g=1 (空気), ρ_l=833 (水; 998/1.2≈833), σ=1
+# Oh = μ/sqrt(ρ_l·σ·R) = 0.05/sqrt(833·1·0.25) ≈ 3.5e-3  (~1mm水滴)
+#
+# 2D Lamb 分散式 (n=2):
+#   ω₀² = n(n²-1)·σ / ((ρ_l+ρ_g)·R³) = 6 / (834·0.015625) = 0.461  →  ω₀ = 0.679
+#   T₀  = 2π/ω₀ ≈ 9.26
+#   β   = (n²-1)·μ / ((ρ_l+ρ_g)·R²) = 3·0.05 / (834·0.0625) = 0.00288
+#
+# T_final=8.0 ≈ 0.86·T₀  (約0.86周期)
+# 手法: eikonal_xi 再初期化 + phi_primary_transport + 分相PPE (GFM)
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:     8.0
+  cfl:         0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_01_capwave_waterair
+  save_npz: true
+  figures:
+    # D(t) vs 2D Lamb 解析解
+    - type: time_series
+      title: "§13.1 毛細管波 D(t) — 水-空気 (ρ=833:1), GFM, α=1.5"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      analytical:
+        formula: prosperetti
+        omega0: 0.679
+        beta:   2.88e-3
+        D0:     0.05
+      file: ch13_capwave_Dt.pdf
+
+    # KE(t) 対数スケール（寄生渦流の成長の確認）
+    - type: time_series
+      title: "§13.1 運動エネルギー E_k(t) — 寄生渦流"
+      x: times
+      y: [kinetic_energy]
+      labels: ["$E_k(t)$"]
+      xlabel: "$t$"
+      ylabel: "Kinetic energy $E_k$"
+      yscale: log
+      file: ch13_capwave_KE.pdf
+
+    # ψ スナップショット4枚（液滴形状の時間発展）
+    # snap_interval=2.0 → t_idx: 0=初期, 1=t≈2, 2=t≈4, 3=t≈6
+    - type: snapshot
+      t_idx: 0
+      contour: true
+      colorbar: true
+      title: "$t = 0$ (初期: 扁長)"
+      file: ch13_capwave_snap_t0.pdf
+
+    - type: snapshot
+      t_idx: 1
+      contour: true
+      colorbar: true
+      title: "$t = 2 \\approx T_0/4$ (円形に近い)"
+      file: ch13_capwave_snap_t2.pdf
+
+    - type: snapshot
+      t_idx: 2
+      contour: true
+      colorbar: true
+      title: "$t = 4 \\approx T_0/2$ (扁平)"
+      file: ch13_capwave_snap_t4.pdf
+
+    - type: snapshot
+      t_idx: 3
+      contour: true
+      colorbar: true
+      title: "$t = 6 \\approx 3T_0/4$ (円形に近い)"
+      file: ch13_capwave_snap_t6.pdf
+
+    # 最終時刻の速度場（寄生渦流パターンの可視化）
+    - type: velocity_snapshot
+      t_idx: -1
+      contour: true
+      colorbar: true
+      title: "$t = 8$: 速度場（寄生渦流）"
+      file: ch13_capwave_vel_final.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

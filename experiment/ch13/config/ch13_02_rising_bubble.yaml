@@ -1,0 +1,100 @@
+# §13.2 単一気泡上昇 — Hysing et al. (2009) Test Case 1 改変版
+#
+# 原典: Hysing et al. (2009) Re=35, Eo=10, ρ_l/ρ_g=1000
+# 改変: ρ_l/ρ_g=10（原典の密度比1000は分相PPEなしでは適用範囲外）
+#
+# 物理パラメータ導出 (d_ref = 2R = 0.5):
+#   σ = g·(ρ_l−ρ_g)·d²/Eo = 1.0·9.0·0.25/10 = 0.225
+#   μ = ρ_l·sqrt(g·d)·d / Re = 10·sqrt(0.5)·0.5/35 ≈ 0.101
+#
+# 格子: α=1（一様格子），一括PPE
+# 結果: v_c=0.160, Δy=0.173, |ΔV|/V₀=3.09e-5
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.0
+  use_local_eps: false
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 10.0
+  rho_g:  1.0
+  g_acc:  1.0
+  Re:    35.0
+  Eo:    10.0
+  d_ref:  0.5
+
+run:
+  T_final:     3.0
+  cfl:         0.15
+  snap_interval: 0.5
+  print_every: 200
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.0
+
+output:
+  dir: results/ch13_02_rising_bubble
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "§13.2 気泡上昇速度 v_c(t)"
+      x: times
+      y: [vc]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$v_c$"
+      file: ch13_rise_velocity.pdf
+
+    - type: time_series
+      title: "§13.2 気泡重心 y_c(t)"
+      x: times
+      y: [yc]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: ch13_centroid.pdf
+
+    - type: time_series
+      title: "§13.2 体積保存 |ΔV|/V₀"
+      x: times
+      y: [volume_conservation]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: ch13_bubble_volcons.pdf
+
+    - type: snapshot
+      title: "§13.2 気泡上昇 — $t=3.0$"
+      t_idx: -1
+      contour: true
+      colorbar: true
+      file: ch13_bubble_snapshot.pdf
+
+    - type: velocity_snapshot
+      title: "§13.2 速度場 — $t=3.0$"
+      t_idx: -1
+      contour: true
+      colorbar: true
+      file: ch13_bubble_velocity.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
