@@ -6,8 +6,8 @@
 # Stokes U_T ~ 2*Drho*g*R^2/(9*mu_l) = 2*832*0.001*0.0625/(9*0.05) ~ 0.231
 # Domain transit time: 1.5/0.231 ~ 6.5 → T_final=20 covers acceleration + terminal + wall
 #
-# alpha=1.5: interface-fitted grid with use_local_eps=true (same as ch13_01 capwave)
-# Note: WIKI-E-022 KE spike was observed at alpha=2, not alpha=1.5
+# alpha=1.0 (uniform): consistent_gfm falls back to skeleton mode with alpha>1 → BLOWUP
+# alpha=1.5 was attempted but caused blowup at step=41 due to GFM/non-uniform incompatibility
 # Method: eikonal_xi + phi_primary_transport + GFM (required for rho=833:1)
 
 grid:
@@ -16,8 +16,8 @@ grid:
   LX: 1.0
   LY: 2.0
   bc_type: wall
-  alpha_grid: 1.5
-  use_local_eps: true
+  alpha_grid: 1.0
+  use_local_eps: false
   grid_rebuild_freq: 0
 
 physics:
@@ -44,7 +44,7 @@ output:
   save_npz: true
   figures:
     - type: time_series
-      title: "Bubble rise velocity $v_c(t)$ — water/air (rho=833:1), Eo~0.2, alpha=1.5"
+      title: "Bubble rise velocity $v_c(t)$ — water/air (rho=833:1), Eo~0.2"
       x: times
       y: [vc]
       labels: ["Simulation"]
