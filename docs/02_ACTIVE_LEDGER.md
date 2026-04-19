@@ -1,6 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-04-18
+# Last updated: 2026-04-19
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -8,14 +8,15 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | worktree-ch13-eikonal-improvements |
-| last_CHK | CHK-140 DONE 2026-04-18 — xi_sdf interior hole: TRUE root cause = CCD advection (DissipativeCCDAdvection, NOT WENO5) oscillates ψ around 0.5 at deep interior nodes; clip [0,1] insufficient since 0.48 ∈ [0,1]. Fix: phi_primary_transport=true — transport φ=logit(ψ)·ε, reconstruct ψ=σ(φ/ε) each step; deep interior φ>>0 immune to CCD oscillation. exp13_09: T=0.1 no hole, VolCons=0.00%. Fix 4 (neighbor-based) reverted. WIKI-T-042+WIKI-E-025 updated. |
-| next_action | Optional: T=5 long-run verification with phi_primary_transport. Consider whether phi_primary_transport should be the default for eikonal_xi configs. |
+| branch | main |
+| last_CHK | CHK-142 DONE 2026-04-19 — Wiki(T-043/E-029/L-019/L-020) + 論文§13毛細管波改稿(水-空気 ρ=833:1, 2D Lamb 公式) + ACTIVE_LEDGER 更新. |
+| next_action | 論文 LaTeX コンパイル確認; capwave-sweep worktree へ GPU opt (CHK-141) をマージ. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: 139 entries (docs/wiki/INDEX.md). T-042/E-028/X-016/P-012 cover CHK-136..139 eikonal work.
+- Wiki: **143 entries** (docs/wiki/INDEX.md). T-043/E-029/L-019/L-020 are 2026-04-19 additions.
+- phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
@@ -26,6 +27,8 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-142 | 2026-04-19 | wiki+paper | Wiki 4新規(T-043:2D Lamb公式, E-029:exp13_17水-空気GFM, L-019:config_io parseバグ, L-020:GPU opt); 論文§13毛細管波改稿(ρ=833:1, 2D Lamb ω₀=0.679, GFM+α=1.5, VolCons=7.55e-15, 寄生渦流制限明記); INDEX 139→143. Branch: main |
+| CHK-141 | 2026-04-19 | perf | GPU最適化3件マージ(362dbd3): PCR Thomas(thomas_batched→_pcr_solve_batched, n=129で258→14カーネル); float(W) D2H同期除去→xp.where; phi_primary_transport D2H/H2D除去. 211テスト全PASS. Branch: worktree-gpu-opt |
 | CHK-140 | 2026-04-18 | fix+diag | xi_sdf interior hole: TRUE root cause = DissipativeCCDAdvection (NOT WENO5) oscillates ψ around 0.5 at deep-interior nodes; [0,1] clip insufficient (0.48 ∈ [0,1]). Onset: reinit call 37 (t≈0.048), psi_in=0.480. Fixes 1-4 and 案B all ineffective. Fix: phi_primary_transport=true — φ=logit(ψ)·ε transported; deep interior φ>>0 cannot flip sign. exp13_09 verified: T=0.1 clean (no hole t=0.05/0.10), VolCons=0.00%. Fix 4 reverted. WIKI-T-042 §CHK-140 + WIKI-E-025 exp13_09 added. Branch: worktree-ch13-eikonal-improvements |
 | CHK-139 | 2026-04-18 | impl+exp+wiki | ξ-SDF eps_scale=1.4 interface widening: EikonalReinitializer(eps_scale) + Reinitializer + ns_pipeline.from_config chain. T=1: D=0.018 ✓, VolCons=0.80% ✓. T=2: D=0.028 ✓, VolCons=1.38% (target <1% marginally missed). Root cause confirmed (interface width effect). WIKI-E-028/X-016/P-012 created; Sethian1996 bib added; INDEX 136→139. Branch: worktree-ch13-eikonal-improvements |
 | CHK-138 | 2026-04-18 | exp+theory | FMM T=1 quick check: VolCons=8.2% WORSE than ξ-SDF (1.46%@T=2) despite lower φ_xx noise (2.83 vs 3.93). Voronoi kink hypothesis refuted. Revised root cause: interface width ε (narrow band → PPE residual ∝ σκ/ε → ΔV drift). Split-only's ~1.4ε broadening is stabilizing. WIKI-T-042 §CHK-138 + paper CHK-138 FMM section updated. Branch: worktree-ch13-eikonal-improvements |
