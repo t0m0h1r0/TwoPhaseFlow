@@ -1,14 +1,13 @@
-# §13.2 Single rising bubble — water/air physically motivated parameters (rev2)
+# §13.2 Single rising bubble — water/air parameters (capwave-aligned, alpha=1.5)
 #
 # Non-dim: rho_g=1 (air), rho_l=833 (water; 998/1.2), sigma=1.0
-# mu_l=0.05, mu_g=0.001 (viscosity ratio ~50; water/air ~55)
-# g_acc=0.001 → Eo = rho_l*g*d_ref^2/sigma = 833*0.001*0.25 = 0.208 (near-spherical)
-# Stokes U_T ~ 2*Drho*g*R^2/(9*mu_l) = 2*832*0.001*0.0625/(9*0.05) ~ 0.231
+# mu=0.05 (same as ch13_01 capwave), g_acc=0.001
+# Eo = rho_l*g*d_ref^2/sigma = 833*0.001*0.25 = 0.208 (near-spherical)
+# Stokes U_T ~ 2*Drho*g*R^2/(9*mu) = 2*832*0.001*0.0625/(9*0.05) ~ 0.231
 # Domain transit time: 1.5/0.231 ~ 6.5 → T_final=20 covers acceleration + terminal + wall
 #
-# alpha=1.0 (uniform): consistent_gfm falls back to skeleton mode with alpha>1 → BLOWUP
-# alpha=1.5 was attempted but caused blowup at step=41 due to GFM/non-uniform incompatibility
-# Method: eikonal_xi + phi_primary_transport + GFM (required for rho=833:1)
+# grid/physics aligned with ch13_01_capwave_waterair: alpha=1.5, use_local_eps=true, mu=0.05
+# Method: eikonal_xi + phi_primary_transport + GFM
 
 grid:
   NX:  64
@@ -16,16 +15,15 @@ grid:
   LX: 1.0
   LY: 2.0
   bc_type: wall
-  alpha_grid: 1.0
-  use_local_eps: false
+  alpha_grid: 1.5
+  use_local_eps: true
   grid_rebuild_freq: 0
 
 physics:
   rho_l: 833.0
   rho_g:   1.0
   sigma:   1.0
-  mu_l:    0.05
-  mu_g:    0.001
+  mu:      0.05
   g_acc:   0.001
 
 run:
