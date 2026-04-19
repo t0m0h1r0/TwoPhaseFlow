@@ -220,19 +220,28 @@ def _to_host(arr):
 def _deformation(psi) -> float:
     """D = (L−B)/(L+B) from second moments of the ψ > 0.5 region.
 
-    Syncs to host once: argwhere + Python reductions are cheaper on the
-    CPU for this once-per-step metric than a device scatter.
+    Fully device-resident: builds index grids on-device and batches the
+    final 3 scalars (Ixx, Iyy, Ixy) into a single D2H transfer.
     """
-    psi_h = _to_host(psi)
-    mask = psi_h > 0.5
-    if not np.any(mask):
+    xp = _xp_of(psi)
+    mask = psi > 0.5
+    n_pts = float(xp.sum(mask))
+    if n_pts < 1.0:
         return 0.0
-    idx = np.argwhere(mask)
-    dy = idx[:, 0] - idx[:, 0].mean()
-    dx = idx[:, 1] - idx[:, 1].mean()
-    Ixx = float(np.mean(dx ** 2))
-    Iyy = float(np.mean(dy ** 2))
-    Ixy = float(np.mean(dx * dy))
+    NX, NY = psi.shape
+    rows = xp.arange(NX, dtype=xp.float64)[:, None] * xp.ones((1, NY), dtype=xp.float64)
+    cols = xp.ones((NX, 1), dtype=xp.float64) * xp.arange(NY, dtype=xp.float64)[None, :]
+    row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_pts
+    col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_pts
+    dy = xp.where(mask, rows - row_mean, 0.0)
+    dx = xp.where(mask, cols - col_mean, 0.0)
+    raw = xp.stack([
+        xp.sum(dx * dx) / n_pts,
+        xp.sum(dy * dy) / n_pts,
+        xp.sum(dx * dy) / n_pts,
+    ])
+    stats = raw.get() if hasattr(raw, "get") else np.asarray(raw)
+    Ixx, Iyy, Ixy = float(stats[0]), float(stats[1]), float(stats[2])
     disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
     eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
     eig2 = 0.5 * (Ixx + Iyy) - np.sqrt(disc)

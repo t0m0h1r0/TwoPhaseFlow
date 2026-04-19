@@ -604,11 +604,9 @@ class TwoPhaseNSSolver:
         rho_min = physics.rho_g
 
         xp = self._backend.xp
-        u_max = max(
-            float(xp.max(xp.abs(xp.asarray(u)))),
-            float(xp.max(xp.abs(xp.asarray(v)))),
-            1e-10,
-        )
+        _uv_max = xp.stack([xp.max(xp.abs(u)), xp.max(xp.abs(v))])
+        _uv_max = _uv_max.get() if hasattr(_uv_max, "get") else np.asarray(_uv_max)
+        u_max = max(float(_uv_max[0]), float(_uv_max[1]), 1e-10)
         dt_cfl = cfl * h / u_max
         # CN (Heun trapezoid) relaxes viscous CFL by ~2× vs forward Euler
         visc_safety = 0.5 if self._cn_viscous else 0.25
@@ -975,22 +973,17 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         t += dt
         step += 1
 
-        # Diagnostics and snapshots require host arrays.
+        # Diagnostics: pass device arrays — collector uses xp for on-device reductions.
         _bk = solver._backend
-        _to_h = lambda a: np.asarray(_bk.to_host(a))
-        psi_h, u_h, v_h, p_h = _to_h(psi), _to_h(u), _to_h(v), _to_h(p)
-
-        # Update diagnostic references for dynamic grids
+        dV_dev = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
         if solver._alpha_grid > 1.0:
-            diag.X = _to_h(solver.X)
-            diag.Y = _to_h(solver.Y)
-            dV = _to_h(solver._grid.cell_volumes())
-        else:
-            dV = None
-
-        diag.collect(t, psi_h, u_h, v_h, p_h, dV=dV)
+            diag.X = np.asarray(_bk.to_host(solver.X))
+            diag.Y = np.asarray(_bk.to_host(solver.Y))
+        diag.collect(t, psi, u, v, p, dV=dV_dev)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
+            _to_h = lambda a: np.asarray(_bk.to_host(a))
+            psi_h, u_h, v_h, p_h = _to_h(psi), _to_h(u), _to_h(v), _to_h(p)
             _eps = cfg.grid.eps_factor * cfg.grid.LX / cfg.grid.NX
             _H = np.clip(
                 0.5 * (1 + psi_h / _eps + np.sin(np.pi * psi_h / _eps) / np.pi),

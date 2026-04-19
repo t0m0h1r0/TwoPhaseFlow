@@ -129,10 +129,8 @@ class NormalVectorFilter:
 
         # ── Interface mask via δ_ε(φ) ─────────────────────────────────────
         w_delta = _delta_eps_func(xp, phi, self.eps)
-        w_delta_max = float(xp.max(w_delta))
-        if w_delta_max < 1e-30:
-            # No interface — return unmodified normals
-            return [g / grad_norm for g in d1_list]
+        w_delta_max = xp.max(w_delta)  # 0-d device array — no GPU→CPU sync
+        # If no interface w_delta≡0 → mask≡False → diffusion applies to no cells → unmodified normals
         mask = w_delta > self.w_threshold_frac * w_delta_max
 
         # ── n = ∇φ / |∇φ| ─────────────────────────────────────────────────
