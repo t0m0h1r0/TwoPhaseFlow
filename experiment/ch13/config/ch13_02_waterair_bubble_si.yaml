@@ -24,8 +24,8 @@ physics:
   g_acc:   9.81     # m/s²
 
 grid:
-  NX:  64
-  NY: 128
+  NX: 128
+  NY: 256
   LX: 20.0e-3   # 20mm = 4R
   LY: 40.0e-3   # 40mm = 8R
   bc_type: wall
