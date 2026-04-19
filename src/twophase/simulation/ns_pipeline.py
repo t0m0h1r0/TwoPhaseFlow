@@ -365,7 +365,7 @@ class TwoPhaseNSSolver:
 
     def _precompute_fvm_grad_spacing(self) -> None:
         import numpy as _np
-        xp = self.xp
+        xp = self._backend.xp
         self._d_face_grad: list = []
         for ax in range(self._grid.ndim):
             d = _np.diff(_np.asarray(self._grid.coords[ax]))
@@ -375,7 +375,7 @@ class TwoPhaseNSSolver:
 
     def _fvm_pressure_grad(self, p: "array", ax: int) -> "array":
         """Face-average gradient: J_face = 1/d_face, consistent with L_FVM and GFM."""
-        xp = self.xp
+        xp = self._backend.xp
         d = self._d_face_grad[ax]
         N = self._grid.N[ax]
 
