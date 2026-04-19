@@ -1,0 +1,71 @@
+# §13.2 Bisection sweep — isolate blowup cause (alpha vs gravity)
+# Base: same as ch13_02_waterair_bubble but T_final=0.10 (just past blowup at t=0.023)
+# Cases:
+#   alpha10 : alpha_grid=1.0 (uniform grid)  — is non-uniform grid causal?
+#   g_low   : g_acc=0.0001  (1/10 gravity)   — is gravity magnitude causal?
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 833.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.001
+
+run:
+  T_final: 0.10
+  cfl: 0.10
+  snap_interval: 0.05
+  print_every: 100
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_02_bisect
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "KE bisect"
+      x: times
+      y: [kinetic_energy]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: ke.pdf
+
+diagnostics:
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
+
+sweep:
+  - label: alpha10
+    overrides:
+      grid.alpha_grid: 1.0
+
+  - label: g_low
+    overrides:
+      physics.g_acc: 0.0001
