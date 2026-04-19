@@ -1,8 +1,9 @@
-# §3.1 Capillary wave — water/air physical parameters, GFM, alpha=1.5, T=8 (1 period)
+# §3.1 Capillary wave — water/air physical parameters, GFM, alpha=1.5, T=8 (~0.86 period)
 # Non-dimensionalization: rho_g=1 (air), rho_l=833 (water), sigma=1
 # Oh = mu/sqrt(rho_l*sigma*R) = 0.05/sqrt(833*1*0.25) = 3.46e-3 ~ real water at ~1mm
-# Prosperetti: omega0 = sqrt(8/(R^3*(rho_l+rho_g))) = 0.784, period T0 ~ 8.01
-# beta = 0.048*(10+1)/(833+1) = 6.33e-4 (nearly undamped at T=24)
+# 2D Lamb: omega0 = sqrt(n(n^2-1)*sigma/((rho_l+rho_g)*R^3)) = sqrt(6/(834*0.015625)) = 0.679
+# period T0 = 2*pi/omega0 ~ 9.26
+# beta_2D = (n^2-1)*mu/((rho_l+rho_g)*R^2) = 3*0.05/(834*0.0625) = 0.00288
 
 grid:
   NX: 64
@@ -45,8 +46,8 @@ output:
       ylabel: "D = (L−B)/(L+B)"
       analytical:
         formula: prosperetti
-        omega0: 0.784
-        beta:   6.33e-4
+        omega0: 0.679
+        beta:   2.88e-3
         D0:     0.05
       file: capillary_waterair_gfm.pdf
 
