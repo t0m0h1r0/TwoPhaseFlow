@@ -299,3 +299,74 @@ $\alpha > 1$ の圧縮格子では $\xi$ 空間での解像点数が不足し，
 $N_{g,\text{cells}} = 4$ は格子密度幅の十分性を保証するとともに，
 $\alpha$ に依存しない安定した移流精度を実現する．
 本設定を以降の全非一様格子計算のデフォルトとする．
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{FVM 整合速度補正（$\mathcal{G}^\text{adj}$）の安定性検証}
+\label{sec:gadjacent_verification}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{目的：}
+§~\ref{sec:fvm_ccd_corrector} で導入した face-average 勾配 $\mathcal{G}^\text{adj}$ が，
+非一様格子（$\alpha = 1.5$）における速度補正の FVM 整合性を回復し，
+ブローアップを解消することを実験で確認する．
+
+\noindent\textbf{根本原因の特定（切り分け実験）：}
+表~\ref{tab:gadjacent_bisect} に，ブローアップ原因を切り分けた 2 ケースのスイープ結果を示す．
+
+\begin{table}[htbp]
+\centering
+\caption{切り分けスイープ：FVM-CCD メトリクス不整合の原因同定
+（ch13\_02\_waterair\_bubble ベース，$T_\text{final}=0.10$，64$\times$128，壁面 BC）．}
+\label{tab:gadjacent_bisect}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llll}
+\toprule
+ラベル & 変更点 & 結果 & 解釈 \\
+\midrule
+ベースライン & $\alpha=1.5$，$g=0.001$ & ブローアップ（ステップ 51，$t\approx0.023$） & — \\
+\texttt{alpha10} & $\alpha=1.0$（均一格子） & 安定（ステップ 82，$t=0.10$ 完走） & 格子が原因 \\
+\texttt{g\_low} & $g=0.0001$（重力 $1/10$） & ブローアップ（ステップ 51，同様） & 重力は無関係 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+非一様格子（$\alpha=1.5$）が唯一の原因と確定した．
+理論解析（§~\ref{sec:fvm_ccd_corrector}，§~\ref{box:fvm_ccd_metric}）により，
+CCD 速度補正の $J_n = 1/\delta v_i$ と PPE の $J_f = 1/d_f^{(i)}$ が乖離
+（$\alpha=1.5$，64$\times$128 で $\max|J_f - J_n|/J_f = 0.774$）し，
+毎ステップ残差発散が速度場に注入されることを導出した．
+
+\noindent\textbf{G^adj 修正の定量的効果：}
+面密度格子（$\alpha=1.5$，64$\times$128，壁面 BC，$\rho_l/\rho_g = 833$，GFM）に
+$\mathcal{G}^\text{adj}$ 速度補正を適用した結果を表~\ref{tab:gadjacent_result} に示す．
+
+\begin{table}[htbp]
+\centering
+\caption{$\mathcal{G}^\text{adj}$ 修正前後の比較（ch13\_02\_waterair\_bubble，$\alpha=1.5$，64$\times$128）．}
+\label{tab:gadjacent_result}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lllll}
+\toprule
+勾配演算子 & ブローアップ & KE @ $t=0.023$ & 安定稼働ステップ数 & 体積保存誤差 \\
+\midrule
+$\mathcal{G}_\text{CCD}$（修正前） & ステップ 51（$t\approx0.023$） & $1.14\times10^{6}$ & 51 & — \\
+$\mathcal{G}^\text{adj}$（修正後） & ステップ 28{,}122（$t\approx12.6$） & $1.41\times10^{-2}$ & 28{,}122 & $4\times10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FVM-CCD メトリクス不整合に起因するブローアップを完全に解消し，
+安定稼働ステップ数を 551 倍改善した．
+体積保存誤差は機械精度（$4\times10^{-15}$）を維持する．
+
+\noindent\textbf{後期ブローアップ（$t\approx12.6$）に関する注記：}
+$\mathcal{G}^\text{adj}$ 修正後のシミュレーションはステップ 28{,}122（$t\approx12.6$）で
+別のブローアップを示した．この時点で気泡重心は $y_c = 0.54$（初期 0.50）と
+ほとんど上昇しておらず，FVM 整合とは異なる機構による不安定性が示唆される．
+詳細な解析は今後の課題である（§~\ref{sec:future_work}）．
+
+\noindent\textbf{結論：}
+$\mathcal{G}^\text{adj}$ による FVM 整合速度補正は，
+$\alpha=1.5$ 非一様格子でのメトリクス不整合ブローアップを根本的に解消する．
+均一格子（$\alpha=1$）と周期 BC ではこの切り替えは不要であり，既存 CCD 勾配を維持する．
