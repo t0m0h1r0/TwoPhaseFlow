@@ -9,13 +9,13 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | main |
-| last_CHK | CHK-143 DONE 2026-04-19 — ch13 config clean-slate(47→3 production configs); WIKI-X-017/L-021 追加; INDEX 143→145. |
-| next_action | §13.1 再実験結果から図をpaper/figures/にコピー; 論文§13.1に snapshot 4-panel + D(t)/KE dual-panel を追加; LaTeX コンパイル確認. |
+| last_CHK | CHK-147 DONE 2026-04-19 — 論文§6b/§8/§8b/§9/§9b/§9f 改稿（G^adj FVM整合性）; 5コミット; コンパイルエラーゼロ. |
+| next_action | b83837r0w 結果確認 → memo §8 に数値記入; §12g も G^adj 整合確認; §13.1 図追加. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: **145 entries** (docs/wiki/INDEX.md). X-017/L-021 are 2026-04-19 additions.
+- Wiki: **147 entries** (docs/wiki/INDEX.md). T-044/L-022 added 2026-04-19 (G^adj FVM theory).
 - phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
 
 ────────────────────────────────────────────────────────
@@ -27,6 +27,10 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-147 | 2026-04-19 | paper | 論文§2-9改稿（G^adj FVM整合性）: §6b に FVM-CCD メトリクス不整合 warnbox 追加; §8b に G^adj 実装注記+label; §8 Balanced-Force CCD 統一宣言に非一様格子例外を追記; §9/§9b/§9f O(h^6) クレームに caveat. 5コミット; xelatex エラーゼロ. Branch: main |
+| CHK-146 | 2026-04-19 | theory+code+wiki | G^adj 実装完了（commits f61e0cd+4706f37）+ 理論文書化: docs/memo/理論_FVM-CCD_メトリクス不整合とGadj圧力勾配.md（ショートペーパー）; WIKI-T-044（理論）; WIKI-L-022（コード）; INDEX 145→147. Branch: gfm-nonuniform worktree |
+| CHK-145 | 2026-04-19 | exp | ch13_02_bisect: alpha10(均一格子)=安定(n=82), g_low(重力1/10)=ブローアップ(n=51). α=1.5 非均一格子が唯一の原因と確定. Branch: gfm-nonuniform worktree |
+| CHK-144 | 2026-04-19 | perf | GFMCorrector.__init__ に face spacing + dv デバイス配列を事前計算（_d_f/_dv_L/_dv_R）; キャッシュ廃止; compute_rhs_correction 簡略化. Branch: gfm-nonuniform worktree |
 | CHK-143 | 2026-04-19 | config+wiki | ch13 config clean-slate: 47 research configs → 3 production configs (ch13_01/02/03, §13.N命名). WIKI-X-017(production config pattern), WIKI-L-021(matplotlib CJK font). INDEX 143→145. Branch: worktree-ch13-rebuild |
 | CHK-142 | 2026-04-19 | wiki+paper | Wiki 4新規(T-043:2D Lamb公式, E-029:exp13_17水-空気GFM, L-019:config_io parseバグ, L-020:GPU opt); 論文§13毛細管波改稿(ρ=833:1, 2D Lamb ω₀=0.679, GFM+α=1.5, VolCons=7.55e-15, 寄生渦流制限明記); INDEX 139→143. Branch: main |
 | CHK-141 | 2026-04-19 | perf | GPU最適化3件マージ(362dbd3): PCR Thomas(thomas_batched→_pcr_solve_batched, n=129で258→14カーネル); float(W) D2H同期除去→xp.where; phi_primary_transport D2H/H2D除去. 211テスト全PASS. Branch: worktree-gpu-opt |
