@@ -84,7 +84,10 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
         Balanced-Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
         \textbf{同一の離散微分演算子}を使用することで，演算子不一致に由来する寄生流れ成分を抑える
         （§~\ref{sec:rc_balanced_force}）．
-        速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に CCD $\Ord{h^6}$ を使い，
+        速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に
+        CCD $\Ord{h^6}$（均一格子）または
+        face-average 勾配 $\mathcal{G}^\text{adj}$（非一様格子 + 壁面 BC；
+        §~\ref{sec:fvm_ccd_corrector}）を使い，
         表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
         この整合性を高次に維持する．
 
