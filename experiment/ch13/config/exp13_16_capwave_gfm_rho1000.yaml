@@ -1,0 +1,83 @@
+# §13.1 Capillary wave — 分相PPE(consistent_gfm)+HFE, rho_ratio=1000, alpha=1.5, T=1
+# CHK-141 follow-up: high density ratio + GFM pressure to avoid bulk PPE instability
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  1000.0
+  rho_g:     1.0
+  sigma:     1.0
+  mu:        0.05
+  g_acc:     0.0
+
+run:
+  T_final:    1.0
+  max_steps:  500000
+  cfl:        0.10
+  snap_interval: 0.25
+  print_every: 200
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/exp13_16_gfm_rho1000
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave GFM rho=1000 alpha=1.5 T=1 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 6.824
+        beta:   0.048
+        D0:     0.05
+      file: capillary_gfm_rho1000.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
