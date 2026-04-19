@@ -1,6 +1,6 @@
-# Wiki Index — 139 entries
+# Wiki Index — 143 entries
 
-## Theory (42)
+## Theory (43)
 
 | REF-ID | Title |
 |--------|-------|
@@ -46,6 +46,7 @@
 | [WIKI-T-040](theory/WIKI-T-040.md) | xi-Space eps Definition for Non-Uniform CCD Grids |
 | [WIKI-T-041](theory/WIKI-T-041.md) | Third-Order Time Integration: AB3 + Richardson-CN + Rotational IPC |
 | [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
+| [WIKI-T-043](theory/WIKI-T-043.md) | 2D Lamb 毛細管波分散式と D(t) 変形量計測 |
 
 ## Cross-Domain (15)
 
@@ -68,7 +69,7 @@
 | [WIKI-X-015](cross-domain/WIKI-X-015.md) | Numerical Simulation Debugging: Theory-First Root-Cause Methodology |
 | [WIKI-X-016](cross-domain/WIKI-X-016.md) | Reinit ε-Scale Propagation Path and σ>0 vs σ=0 Dispatch Policy (CHK-139) |
 
-## Experiment (28)
+## Experiment (29)
 
 | REF-ID | Title |
 |--------|-------|
@@ -100,6 +101,8 @@
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 | [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
 | [WIKI-E-028](experiment/WIKI-E-028.md) | Eikonal/ZSP/ξ-SDF/FMM/ε-Widening: Prosperetti Benchmark Results (CHK-136..139) |
+
+| [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
 
 ## Paper (12)
 
@@ -152,7 +155,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (18)
+## Code (20)
 
 | REF-ID | Title |
 |--------|-------|
@@ -174,3 +177,5 @@
 | [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
 | [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
 | [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |
+| [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |
+| [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
