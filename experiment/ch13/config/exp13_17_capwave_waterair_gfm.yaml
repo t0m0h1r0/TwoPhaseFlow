@@ -1,12 +1,12 @@
-# §3.1 Capillary wave — water/air physical parameters, GFM, alpha=1.5, T=24 (3 periods)
+# §3.1 Capillary wave — water/air physical parameters, GFM, alpha=1.5, T=8 (1 period)
 # Non-dimensionalization: rho_g=1 (air), rho_l=833 (water), sigma=1
 # Oh = mu/sqrt(rho_l*sigma*R) = 0.05/sqrt(833*1*0.25) = 3.46e-3 ~ real water at ~1mm
 # Prosperetti: omega0 = sqrt(8/(R^3*(rho_l+rho_g))) = 0.784, period T0 ~ 8.01
 # beta = 0.048*(10+1)/(833+1) = 6.33e-4 (nearly undamped at T=24)
 
 grid:
-  NX: 128
-  NY: 128
+  NX: 64
+  NY: 64
   LX: 1.0
   LY: 1.0
   bc_type: wall
@@ -22,8 +22,8 @@ physics:
   g_acc:    0.0
 
 run:
-  T_final:    24.0
-  max_steps:  2000000
+  T_final:     8.0
+  max_steps:  500000
   cfl:        0.10
   snap_interval: 2.0
   print_every: 1000
