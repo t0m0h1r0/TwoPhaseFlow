@@ -248,9 +248,7 @@ class TwoPhaseNSSolver:
             dgr_phi_smooth_C=float(
                 getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
             ),
-            reinit_eps_scale=float(
-                getattr(getattr(cfg, "run", g), "reinit_eps_scale", 1.0)
-            ),
+            reinit_eps_scale=float(cfg.run.reinit_eps_scale),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -953,7 +951,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     t = 0.0
     step = 0
 
-    while t < T and step < max_steps:
+    while t < T and (max_steps is None or step < max_steps):
         if cfg.run.dt_fixed is not None:
             dt = min(cfg.run.dt_fixed, T - t)
         else:
