@@ -1,4 +1,4 @@
-# Wiki Index — 143 entries
+# Wiki Index — 145 entries
 
 ## Theory (43)
 
@@ -48,7 +48,7 @@
 | [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
 | [WIKI-T-043](theory/WIKI-T-043.md) | 2D Lamb 毛細管波分散式と D(t) 変形量計測 |
 
-## Cross-Domain (15)
+## Cross-Domain (16)
 
 | REF-ID | Title |
 |--------|-------|
@@ -68,6 +68,7 @@
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
 | [WIKI-X-015](cross-domain/WIKI-X-015.md) | Numerical Simulation Debugging: Theory-First Root-Cause Methodology |
 | [WIKI-X-016](cross-domain/WIKI-X-016.md) | Reinit ε-Scale Propagation Path and σ>0 vs σ=0 Dispatch Policy (CHK-139) |
+| [WIKI-X-017](cross-domain/WIKI-X-017.md) | §13 Production Config Pattern: Research-to-Paper Transition and Runner Invocation |
 
 ## Experiment (29)
 
@@ -155,7 +156,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (20)
+## Code (21)
 
 | REF-ID | Title |
 |--------|-------|
@@ -179,3 +180,4 @@
 | [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |
 | [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |
 | [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
+| [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |

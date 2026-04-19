@@ -9,13 +9,13 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | main |
-| last_CHK | CHK-142 DONE 2026-04-19 — Wiki(T-043/E-029/L-019/L-020) + 論文§13毛細管波改稿(水-空気 ρ=833:1, 2D Lamb 公式) + ACTIVE_LEDGER 更新. |
-| next_action | 論文 LaTeX コンパイル確認; capwave-sweep worktree へ GPU opt (CHK-141) をマージ. |
+| last_CHK | CHK-143 DONE 2026-04-19 — ch13 config clean-slate(47→3 production configs); WIKI-X-017/L-021 追加; INDEX 143→145. |
+| next_action | §13.1 再実験結果から図をpaper/figures/にコピー; 論文§13.1に snapshot 4-panel + D(t)/KE dual-panel を追加; LaTeX コンパイル確認. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: **143 entries** (docs/wiki/INDEX.md). T-043/E-029/L-019/L-020 are 2026-04-19 additions.
+- Wiki: **145 entries** (docs/wiki/INDEX.md). X-017/L-021 are 2026-04-19 additions.
 - phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
 
 ────────────────────────────────────────────────────────
@@ -27,6 +27,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-143 | 2026-04-19 | config+wiki | ch13 config clean-slate: 47 research configs → 3 production configs (ch13_01/02/03, §13.N命名). WIKI-X-017(production config pattern), WIKI-L-021(matplotlib CJK font). INDEX 143→145. Branch: worktree-ch13-rebuild |
 | CHK-142 | 2026-04-19 | wiki+paper | Wiki 4新規(T-043:2D Lamb公式, E-029:exp13_17水-空気GFM, L-019:config_io parseバグ, L-020:GPU opt); 論文§13毛細管波改稿(ρ=833:1, 2D Lamb ω₀=0.679, GFM+α=1.5, VolCons=7.55e-15, 寄生渦流制限明記); INDEX 139→143. Branch: main |
 | CHK-141 | 2026-04-19 | perf | GPU最適化3件マージ(362dbd3): PCR Thomas(thomas_batched→_pcr_solve_batched, n=129で258→14カーネル); float(W) D2H同期除去→xp.where; phi_primary_transport D2H/H2D除去. 211テスト全PASS. Branch: worktree-gpu-opt |
 | CHK-140 | 2026-04-18 | fix+diag | xi_sdf interior hole: TRUE root cause = DissipativeCCDAdvection (NOT WENO5) oscillates ψ around 0.5 at deep-interior nodes; [0,1] clip insufficient (0.48 ∈ [0,1]). Onset: reinit call 37 (t≈0.048), psi_in=0.480. Fixes 1-4 and 案B all ineffective. Fix: phi_primary_transport=true — φ=logit(ψ)·ε transported; deep interior φ>>0 cannot flip sign. exp13_09 verified: T=0.1 clean (no hole t=0.05/0.10), VolCons=0.00%. Fix 4 reverted. WIKI-T-042 §CHK-140 + WIKI-E-025 exp13_09 added. Branch: worktree-ch13-eikonal-improvements |
