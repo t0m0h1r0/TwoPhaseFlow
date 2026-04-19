@@ -200,7 +200,7 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
     physics = _parse_physics(raw.get("physics", {}))
     run = _parse_run(raw.get("run", {}))
     output = _parse_output(raw.get("output", {}))
-    cfg = ExperimentConfig(
+    return ExperimentConfig(
         grid=grid,
         physics=physics,
         run=run,
@@ -211,86 +211,6 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
         boundary_condition=raw.get("boundary_condition") or None,
         sweep=raw.get("sweep") or None,
     )
-    if raw.get("physics", {}).get("dimensional", False):
-        cfg = _to_nondim(cfg)
-    return cfg
-
-
-def _to_nondim(cfg: ExperimentConfig) -> ExperimentConfig:
-    """Convert a dimensional (SI) ExperimentConfig to non-dimensional form.
-
-    Reference scales (capillary, gas-based):
-        L_ref = R_bubble           from initial_condition.radius
-        rho_ref = rho_g            gas density as density scale
-        U_ref = sqrt(sigma / (rho_ref * L_ref))   capillary velocity
-        t_ref = L_ref / U_ref = sqrt(rho_ref * L_ref**3 / sigma)
-        mu_ref = rho_ref * U_ref * L_ref = sqrt(rho_ref * sigma * L_ref)
-
-    After conversion:
-        rho_l* = rho_l / rho_ref,  rho_g* = 1,  sigma* = 1,  g* = g * rho_ref * L_ref**2 / sigma
-    """
-    ph = cfg.physics
-    ic = cfg.initial_condition
-
-    L_ref = float(ic.get("radius", 1.0)) if ic else 1.0
-    rho_ref = ph.rho_g
-    sigma_si = ph.sigma
-    if sigma_si <= 0.0:
-        raise ValueError("dimensional: sigma must be > 0 for non-dimensionalization")
-
-    U_ref = math.sqrt(sigma_si / (rho_ref * L_ref))
-    t_ref = L_ref / U_ref                             # = sqrt(rho_ref * L_ref**3 / sigma_si)
-    mu_ref = rho_ref * U_ref * L_ref                  # = sqrt(rho_ref * sigma_si * L_ref)
-
-    print(
-        f"  [dimensional→nondim]  L_ref={L_ref:.3e} m  "
-        f"U_ref={U_ref:.3e} m/s  t_ref={t_ref:.3e} s\n"
-        f"                        Eo={ph.rho_l*ph.g_acc*(2*L_ref)**2/sigma_si:.3g}  "
-        f"Oh={ph.mu_l/math.sqrt(ph.rho_l*sigma_si*L_ref):.3g}"
-        if ph.mu_l is not None else
-        f"  [dimensional→nondim]  L_ref={L_ref:.3e} m  "
-        f"U_ref={U_ref:.3e} m/s  t_ref={t_ref:.3e} s"
-    )
-
-    # -- physics --
-    mu_l_nd = (ph.mu_l / mu_ref) if ph.mu_l is not None else None
-    mu_g_nd = (ph.mu_g / mu_ref) if ph.mu_g is not None else None
-    mu_nd   = ph.mu / mu_ref
-    ph_nd = PhysicsCfg(
-        rho_l=ph.rho_l / rho_ref,
-        rho_g=1.0,
-        sigma=1.0,
-        mu=mu_nd,
-        mu_l=mu_l_nd,
-        mu_g=mu_g_nd,
-        g_acc=ph.g_acc * rho_ref * L_ref ** 2 / sigma_si,
-        rho_ref=None,
-    )
-
-    # -- grid (LX, LY only; NX/NY/alpha etc. are already dimensionless) --
-    gr = cfg.grid
-    gr_nd = replace(gr, LX=gr.LX / L_ref, LY=gr.LY / L_ref)
-
-    # -- initial condition (center, radius, epsilon) --
-    ic_nd = dict(ic)
-    if "center" in ic_nd:
-        ic_nd["center"] = [float(c) / L_ref for c in ic_nd["center"]]
-    if "radius" in ic_nd:
-        ic_nd["radius"] = float(ic_nd["radius"]) / L_ref  # should be 1.0
-    if "epsilon" in ic_nd:
-        ic_nd["epsilon"] = float(ic_nd["epsilon"]) / L_ref
-
-    # -- run (T_final, snap_interval, snap_times, dt_fixed) --
-    run = cfg.run
-    run_nd = replace(
-        run,
-        T_final=(run.T_final / t_ref) if run.T_final is not None else None,
-        snap_interval=(run.snap_interval / t_ref) if run.snap_interval is not None else None,
-        snap_times=[t / t_ref for t in run.snap_times],
-        dt_fixed=(run.dt_fixed / t_ref) if run.dt_fixed is not None else None,
-    )
-
-    return replace(cfg, physics=ph_nd, grid=gr_nd, initial_condition=ic_nd, run=run_nd)
 
 
 def _parse_grid(d: dict) -> GridCfg:
