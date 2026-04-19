@@ -23,7 +23,6 @@ physics:
 
 run:
   T_final:    2.0
-  max_steps:  500000
   cfl:        0.10
   snap_times: [0.0, 0.5, 1.0, 1.5, 2.0]
   print_every: 500

@@ -24,7 +24,6 @@ physics:
 
 run:
   T_final:    5.0
-  max_steps:  500000
   cfl:        0.10
   kappa_max:  8.0
   cn_viscous: true

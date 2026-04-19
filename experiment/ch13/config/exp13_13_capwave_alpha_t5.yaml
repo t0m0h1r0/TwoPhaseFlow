@@ -21,7 +21,6 @@ physics:
 
 run:
   T_final:    5.0
-  max_steps:  500000
   cfl:        0.10
   snap_interval: 0.5
   print_every: 500

@@ -23,7 +23,6 @@ physics:
 
 run:
   T_final:    24.0
-  max_steps:  2000000
   cfl:        0.10
   snap_interval: 2.0
   print_every: 1000

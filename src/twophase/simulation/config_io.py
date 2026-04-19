@@ -79,10 +79,10 @@ class PhysicsCfg:
 @dataclass
 class RunCfg:
     T_final: float | None = None
-    max_steps: int = 100_000
+    max_steps: int | None = None        # None = no step cap; set explicitly as safety brake only
     cfl: float = 0.15
     snap_times: list = field(default_factory=list)
-    snap_interval: float | None = 0.1  # auto-generate snap_times every N time units (None = disabled)
+    snap_interval: float | None = None  # auto-generate snap_times every N time units (None = disabled)
     reinit_eps_scale: float = 1.0
     print_every: int = 100
     dt_fixed: float | None = None
@@ -329,12 +329,16 @@ def _parse_run(d: dict) -> RunCfg:
     snap_raw = d.get("snap_times", [])
     if snap_raw is None:
         snap_raw = []
+    if d.get("cfl") is not None and d.get("dt_fixed") is not None:
+        raise ValueError(
+            "run: 'cfl' と 'dt_fixed' は排他です。どちらか一方のみ設定してください。"
+        )
     return RunCfg(
         T_final=_opt_float(d.get("T_final")),
-        max_steps=int(d.get("max_steps", 100_000)),
+        max_steps=int(d["max_steps"]) if "max_steps" in d else None,
         cfl=float(d.get("cfl", 0.15)),
         snap_times=[float(x) for x in snap_raw],
-        snap_interval=_opt_float(d.get("snap_interval", 0.1)),
+        snap_interval=_opt_float(d.get("snap_interval")),
         reinit_eps_scale=float(d.get("reinit_eps_scale", 1.0)),
         print_every=int(d.get("print_every", 100)),
         dt_fixed=_opt_float(d.get("dt_fixed")),

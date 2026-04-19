@@ -25,7 +25,6 @@ physics:
 
 run:
   T_final:    3.0
-  max_steps:  500000
   cfl:        0.15
   kappa_max:  8.0
   snap_interval: 0.5
