@@ -103,6 +103,13 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
     arrays = {k: v for k, v in results.items() if isinstance(v, np.ndarray)}
     save_results(npz_path, arrays)
 
+    # Snapshots are list-of-dicts; save separately so --plot-only can access them
+    import pickle
+    snaps = results.get("snapshots")
+    if snaps:
+        with open(outdir / "snapshots.pkl", "wb") as _f:
+            pickle.dump(snaps, _f)
+
     generate_figures(cfg, results, outdir)
     print(f"[{label}] saved → {outdir}")
     return results
@@ -184,6 +191,13 @@ def _plot_only(cfg, label: str, outdir: pathlib.Path) -> None:
         sys.exit(1)
 
     results = dict(np.load(npz_path, allow_pickle=True))
+
+    # Restore snapshots from pickle if available (saved by _run_single)
+    import pickle
+    snap_path = outdir / "snapshots.pkl"
+    if snap_path.exists():
+        with open(snap_path, "rb") as _f:
+            results["snapshots"] = pickle.load(_f)
 
     if cfg.sweep:
         cases = cfg.sweep
