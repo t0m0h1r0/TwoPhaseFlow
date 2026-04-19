@@ -605,7 +605,7 @@ class TwoPhaseNSSolver:
 
         xp = self._backend.xp
         _uv_max = np.asarray(self._backend.to_host(
-            xp.stack([xp.max(xp.abs(u)), xp.max(xp.abs(v))])
+            xp.stack([xp.max(xp.abs(xp.asarray(u))), xp.max(xp.abs(xp.asarray(v)))])
         ))
         u_max = max(float(_uv_max[0]), float(_uv_max[1]), 1e-10)
         dt_cfl = cfl * h / u_max
