@@ -1,0 +1,86 @@
+# §3.1 Capillary wave — water/air physical parameters, GFM, alpha=1.5, T=24 (3 periods)
+# Non-dimensionalization: rho_g=1 (air), rho_l=833 (water), sigma=1
+# Oh = mu/sqrt(rho_l*sigma*R) = 0.05/sqrt(833*1*0.25) = 3.46e-3 ~ real water at ~1mm
+# Prosperetti: omega0 = sqrt(8/(R^3*(rho_l+rho_g))) = 0.784, period T0 ~ 8.01
+# beta = 0.048*(10+1)/(833+1) = 6.33e-4 (nearly undamped at T=24)
+
+grid:
+  NX: 128
+  NY: 128
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:    24.0
+  max_steps:  2000000
+  cfl:        0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/exp13_17_waterair_gfm
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave — water/air (ρ=833:1), GFM, α=1.5 — D(t)"
+      x: times
+      y: [deformation]
+      labels: ["Simulation"]
+      xlabel: "t"
+      ylabel: "D = (L−B)/(L+B)"
+      analytical:
+        formula: prosperetti
+        omega0: 0.784
+        beta:   6.33e-4
+        D0:     0.05
+      file: capillary_waterair_gfm.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: density
+      file_prefix: density_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
