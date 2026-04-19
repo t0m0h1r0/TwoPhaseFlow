@@ -2,7 +2,7 @@
 ref_id: WIKI-T-044
 title: "FVM-CCD Metric Inconsistency: G^adj Face-Average Gradient for Non-Uniform Grids"
 domain: theory
-status: VERIFIED
+status: VERIFIED  # b83837r0w confirmed 2026-04-20
 superseded_by: null
 sources:
   - path: src/twophase/simulation/ns_pipeline.py
@@ -75,8 +75,9 @@ field at every time step as a spurious divergence, accumulating without bound.
 | Metric | Value |
 |--------|-------|
 | max \|J_face − J_node\| / J_face | **0.774** (77%) |
-| Step of KE blowup | **51** (t ≈ 0.023) |
-| KE at blowup | 1.141 × 10⁶ (baseline ~1e-3) |
+| Step of KE blowup (G_CCD, baseline) | **51** (t ≈ 0.023), KE = 1.141 × 10⁶ |
+| KE @ t=0.023 after G^adj fix | **1.41 × 10⁻²** (normal) |
+| Steps until next blowup (G^adj) | **28,122** (t ≈ 12.60) — ×550 improvement |
 
 ### Bisection Experiment (ch13_02_bisect)
 
