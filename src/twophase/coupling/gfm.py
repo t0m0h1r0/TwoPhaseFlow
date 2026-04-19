@@ -30,6 +30,7 @@ Symbol mapping (paper -> Python):
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import numpy as np
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -83,11 +84,6 @@ class GFMCorrector:
         b_gfm = xp.zeros_like(phi)
 
         for ax in range(self.ndim):
-            h = float(self.grid.L[ax] / self.grid.N[ax])
-            h2 = h * h
-
-            # Build slices for left (i) and right (i+1) nodes along axis ax
-            # Interior faces: indices 0..N-1 paired with 1..N
             N_ax = self.grid.N[ax]
             sl_L = [slice(None)] * self.ndim
             sl_R = [slice(None)] * self.ndim
@@ -100,43 +96,38 @@ class GFMCorrector:
             phi_R = phi[sl_R]
 
             # Detect interface-crossing faces: sign(phi_L) != sign(phi_R)
-            # Use strict inequality (< 0); phi = 0 exactly on a node is
-            # measure-zero in floating-point and handled by the level-set
-            # reinitialization which keeps the zero-crossing between nodes.
             crosses = (phi_L * phi_R) < 0.0
 
             if not xp.any(crosses):
                 continue
 
-            # Face-interpolated curvature: arithmetic mean (Eq. gfm_ghost_p)
             kappa_f = 0.5 * (kappa[sl_L] + kappa[sl_R])
-
-            # Harmonic-mean inverse density at face (PPE operator consistency)
-            # (1/rho)^harm = 2 / (rho_L + rho_R)
-            rho_L = rho[sl_L]
-            rho_R = rho[sl_R]
-            inv_rho_f = 2.0 / (rho_L + rho_R)
-
-            # Correction magnitude: (1/rho)^harm * kappa_f / (We * h^2)
-            correction = inv_rho_f * kappa_f / (We * h2)
-
-            # Sign convention (Eq. gfm_rhs_correction):
-            #   Cell i (phi_i > 0, phase 1): b_i -= correction
-            #   Cell i+1 (phi_{i+1} > 0, phase 1): b_{i+1} -= correction
-            # The sign depends on which side is phase 1 (phi > 0).
-            # For cell i where phi_L > 0: interface is to the right -> subtract
-            # For cell i where phi_L < 0: interface is to the right -> add
-            # This is equivalent to: sign = -sign(phi_L) applied to cell i,
-            #                         sign = +sign(phi_L) applied to cell i+1
+            inv_rho_f = 2.0 / (rho[sl_L] + rho[sl_R])
             sign_L = xp.where(phi_L > 0, -1.0, 1.0)
 
-            # Apply correction to left cell (i)
-            corr_L = xp.where(crosses, sign_L * correction, 0.0)
-            # Apply correction to right cell (i+1) with opposite sign
-            corr_R = xp.where(crosses, -sign_L * correction, 0.0)
+            if not self.grid.uniform:
+                # Non-uniform: face spacing d_face and per-node control volumes
+                # dv differ → left and right corrections are asymmetric.
+                # Consistent with PPEBuilder.build() non-uniform FVM coefficients.
+                coords = np.asarray(self.grid.coords[ax])
+                d_face = coords[1:] - coords[:-1]        # (N_ax,)
+                dv = np.empty(len(coords))
+                dv[0]    = (coords[1] - coords[0]) / 2.0
+                dv[-1]   = (coords[-1] - coords[-2]) / 2.0
+                dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+                shape_1d = [1] * self.ndim
+                shape_1d[ax] = N_ax
+                d_f  = xp.asarray(d_face.reshape(shape_1d))
+                dv_L = xp.asarray(dv[:N_ax].reshape(shape_1d))
+                dv_R = xp.asarray(dv[1:N_ax + 1].reshape(shape_1d))
+                corr_L = xp.where(crosses,  sign_L * inv_rho_f * kappa_f / (We * d_f * dv_L), 0.0)
+                corr_R = xp.where(crosses, -sign_L * inv_rho_f * kappa_f / (We * d_f * dv_R), 0.0)
+            else:
+                h2 = (self.grid.L[ax] / N_ax) ** 2
+                correction = inv_rho_f * kappa_f / (We * h2)
+                corr_L = xp.where(crosses,  sign_L * correction, 0.0)
+                corr_R = xp.where(crosses, -sign_L * correction, 0.0)
 
-            # Accumulate into b_gfm
-            # Use slice-based accumulation (no scatter needed for structured grid)
             b_gfm[sl_L] = b_gfm[sl_L] + corr_L
             b_gfm[sl_R] = b_gfm[sl_R] + corr_R
 

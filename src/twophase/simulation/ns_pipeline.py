@@ -374,16 +374,7 @@ class TwoPhaseNSSolver:
             return np.asarray(self._backend.to_host(arr))
         self._reproject_stats["calls"] += 1
 
-        use_varrho = self._reproject_mode in {"variable_density_only"}
-        if self._reproject_mode in {"consistent_gfm"}:
-            if not self._reproject_warned_fallback:
-                warnings.warn(
-                    f"reproject_mode='{self._reproject_mode}' currently uses "
-                    "legacy projection fallback (skeleton mode).",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                self._reproject_warned_fallback = True
+        use_varrho = self._reproject_mode in {"variable_density_only", "consistent_gfm"}
 
         if use_varrho and rho_l is not None and rho_g is not None:
             rho = rho_g + (rho_l - rho_g) * psi
