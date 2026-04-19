@@ -270,9 +270,7 @@ def _density_snapshot(
         Y = np.linspace(0, g.LY, g.NY + 1)
 
     if rho is None:
-        eps = g.eps_factor * g.LX / g.NX
-        H = np.clip(0.5 * (1 + psi / eps + np.sin(np.pi * psi / eps) / np.pi), 0.0, 1.0)
-        rho = cfg.physics.rho_l * H + cfg.physics.rho_g * (1 - H)
+        rho = cfg.physics.rho_l * psi + cfg.physics.rho_g * (1.0 - psi)
 
     title = spec.get("title", f"Density at t = {t_val:.3f}")
     cmap = spec.get("cmap", "RdBu")
