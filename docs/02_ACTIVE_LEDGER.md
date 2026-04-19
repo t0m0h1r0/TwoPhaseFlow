@@ -1,6 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-04-19
+# Last updated: 2026-04-20
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
@@ -9,14 +9,15 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | main |
-| last_CHK | CHK-150 DONE 2026-04-20 — 実験結果を§12g/§13に反映; 後期ブローアップ課題を WIKI-E-030 に記録; INDEX 147→148. |
-| next_action | [OPEN] 後期ブローアップ（t≈12.6, step 28122）の根本原因調査: alpha=1.0 比較実験; Predictor ∇p^n の G^adj 置換検証; 詳細は WIKI-E-030. |
+| last_CHK | CHK-151 DONE 2026-04-20 — worktree-gfm-nonuniform を main へマージ (f7e8db4): G^adj 圧力勾配 + GFM 非一様格子対応 (3 files, 5 commits). |
+| next_action | [OPEN] WIKI-E-030 後期ブローアップ調査継続: Predictor ∇p^n G^adj 置換（仮説 B）または診断量追加（κ_max, CFL, PPE residual）. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
 - Wiki: **148 entries** (docs/wiki/INDEX.md). T-044/L-022 added 2026-04-19; E-030 [OPEN] added 2026-04-20 (G^adj 後期ブローアップ課題).
 - phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
+- G^adj (worktree-gfm-nonuniform) を main にマージ済み (f7e8db4, CHK-151). WIKI-E-030 [OPEN].
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
@@ -27,6 +28,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-151 | 2026-04-20 | merge | worktree-gfm-nonuniform → main マージ (f7e8db4): G^adj 圧力勾配（_fvm_pressure_grad, _precompute_fvm_grad_spacing）+ GFM 非一様格子対応 (d_f/dv_L/dv_R プリコンピュート) + ch13_02_bisect.yaml. 3 files, 140 ins / 48 del. コンフリクトなし. Branch: main |
 | CHK-150 | 2026-04-20 | paper+wiki | 実験結果を論文に反映: §12g に G^adj 検証サブセクション（切り分け表・結果表・後期ブローアップ注記）; §13 格子方針を FVM-CCD 根本原因と G^adj 修正内容に更新. WIKI-E-030 作成（後期ブローアップ課題記録）. INDEX 147→148. コンパイルエラーゼロ. Branch: main |
 | CHK-149 | 2026-04-20 | paper | 論文§12g/§13 実験結果反映 2コミット（417e997, f7f2016）+ LaTeX fix (84c7c01). |
 | CHK-148 | 2026-04-20 | paper | 論文§10改稿: Step 7 Corrector 式を $\mathcal{G}$（均一: CCD, 非一様+壁: G^adj）に更新; 図キャプ "CCD勾配" 修正; 演算子記法ボックスに G^adj 追加. コンパイルエラーゼロ. Branch: main |
