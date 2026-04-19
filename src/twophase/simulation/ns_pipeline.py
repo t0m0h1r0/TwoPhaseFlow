@@ -1066,5 +1066,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
 
     results = {**diag.to_arrays(), "snapshots": snaps}
     if dbg_history:
-        results["debug_diagnostics"] = dbg_history
+        results["debug_diagnostics"] = {
+            k: np.array([d[k] for d in dbg_history]) for k in dbg_history[0]
+        }
     return results
