@@ -502,11 +502,64 @@ step=23819:  BLOWUP at t=10.5082
 **H-07 (ppe_rhs growth) — REFUTED:**
 - ppe_rhs shows no monotone growth; it's stable throughout. H-07 is not primary.
 
-### Outstanding questions (Exp-2/3/4 required)
+### Outstanding questions (Exp-2/3 pending)
 
-- **Exp-2 (σ=0):** Does bf_res=0 without surface tension? Does blowup disappear?
-- **Exp-3 (CFL=0.05):** Does blowup time t* stay at ≈10.5 (H-16) or shift (H-15/H-03)?
-- **Exp-4 (no reinit):** Does reinit stabilize or destabilize (H-05/H-06)?
+- **Exp-2 (σ=0):** Does blowup disappear without surface tension? (H-01 test)
+- **Exp-3 (CFL=0.05):** Does blowup time t* stay same (H-16) or scale with steps (H-15)?
+
+---
+
+## Experimental Evidence — Exp-4 (ch13_02_noreinit, 2026-04-20)
+
+**Config:** T=20, reinit_every=0 (no reinit). 29,928 steps to blowup at t=13.4454.
+**NPZ:** `experiment/ch13/results/ch13_02_noreinit/data.npz`
+
+### Key measurements vs base run
+
+| Time | KE (no reinit) | KE (base, with reinit) | Comment |
+|------|---------------|----------------------|---------|
+| t=5.0 | 0.0814 | ~0.070 (Exp-1 approx) | no reinit slightly higher early |
+| t=8.0 | 0.117 | ~0.12 (Exp-1) | similar |
+| t=10.0 | 0.132 | ~0.12–0.15 (Exp-1) | similar |
+| t=12.0 | 0.178 | ~0.19 (Exp-1) | similar |
+| t=12.5 | 0.180 | **0.59** (base run) | base 3× higher |
+| t=13.0 | 0.216 | [blowup completed] | no reinit still alive |
+| t=13.45 | **BLOWUP** | [blowup at t=12.6] | 0.85 time units later |
+
+- Volume conservation: 1.913×10⁻¹⁴ (machine precision — reinit not needed for volume)
+- Blowup step: 29,928 vs base 28,122 (+1,806 steps)
+- Blowup physical time: 13.45 vs base 12.60 (**Δt = +0.85**)
+
+### Hypothesis evaluation from Exp-4
+
+**H-05 (ξ-SDF reinit as secondary destabilizer) — PARTIALLY CONFIRMED:**
+- Without reinit, blowup occurs 0.85 time units LATER (t=13.45 vs t=12.60 base).
+- At t=12.5: no-reinit KE=0.180 vs base KE≈0.59 — reinit inflates KE by ~3×.
+- Reinit introduces small ξ-SDF shape errors that slightly amplify bf_res (via ψ deformation).
+- **Reinit is a secondary destabilizer** (accelerates blowup by ~7%), NOT the primary cause.
+
+**H-05 as primary cause — REFUTED:**
+- Blowup still occurs at t=13.45 even without any reinit.
+- The primary mechanism (H-01 BF residual) operates independently of reinit.
+
+**H-06 (unverified combination) — PARTIALLY RELEVANT:**
+- The α>1 + σ>0 + eikonal_xi combination is destabilizing, but mainly via H-01.
+- Without eikonal_xi (no reinit), the system is still unstable — H-06 as the SOLE cause is refuted.
+
+**Volume conservation with no reinit — INFORMATIVE:**
+- VolCons stays at machine precision even without reinit.
+- `phi_primary_transport=true` alone is sufficient to maintain volume.
+- This confirms the ξ-SDF reinit is NOT needed for mass conservation — only for SDF quality.
+
+### Decision tree conclusion
+
+```
+Exp-4: blowup at t=13.45 (LATER than base t=12.60)
+  → reinit is DESTABILIZING: accelerates blowup by ~7%
+  → H-05 as secondary contributor: CONFIRMED
+  → H-05/H-06 as primary cause: REFUTED
+  → H-01 is primary (operates without reinit)
+```
 
 ---
 
@@ -518,8 +571,8 @@ step=23819:  BLOWUP at t=10.5082
 | H-02 | BF | PPE source CCD-div vs FVM-Laplacian | MEDIUM | ℹ️ Background (div_u stable ~150, not growing) | Exp-3 (CFL×0.5) |
 | H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | ❓ Pending Exp-3 | Exp-3 (CFL×0.5) |
 | H-04 | BF | b^GFM absent from main PPE | MEDIUM-HIGH | ❓ Pending Exp-2 | Exp-2 (σ=0) |
-| H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | ❓ Pending Exp-4 | Exp-4 (no reinit) |
-| **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | ❓ Pending Exp-4 | Exp-4 (no reinit) |
+| H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | ⚠️ SECONDARY CONFIRMED: no-reinit blowup +0.85t later, KE 3× lower at t=12.5 | Exp-4 done |
+| **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | ⚠️ SECONDARY: still blows up without reinit; H-01 primary | Exp-4 done |
 | H-07 | Reinit | Non-uniform ε_arr CSF inconsistency | LOW-MEDIUM | ❌ REFUTED (ppe_rhs stable ~4.7e5 throughout) | — |
 | H-08 | Reinit | phi_primary logit×ε metric coupling | LOW | — | — |
 | **H-09** | Density | 1/ρ_g=833× amplification of BF residual | **HIGH** | ✅ CONFIRMED (implicit: gas-phase Δu_g ≈ 833× liquid) | Exp-2 (σ=0) |
