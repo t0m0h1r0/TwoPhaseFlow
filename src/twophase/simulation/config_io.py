@@ -96,6 +96,7 @@ class RunCfg:
     kappa_max: float | None = None  # curvature cap (None = unlimited)
     reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid' to override
     dgr_phi_smooth_C: float = 1e-4   # CCD Laplacian smoothing on φ_sdf in DGR reinit
+    debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
 
 @dataclass
@@ -352,6 +353,7 @@ def _parse_run(d: dict) -> RunCfg:
         kappa_max=_opt_float(d.get("kappa_max")),
         reinit_method=d.get("reinit_method") or None,
         dgr_phi_smooth_C=float(d.get("dgr_phi_smooth_C", 1e-4)),
+        debug_diagnostics=bool(d.get("debug_diagnostics", False)),
     )
 
 

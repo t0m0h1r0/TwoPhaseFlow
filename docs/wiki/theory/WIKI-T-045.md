@@ -1,0 +1,530 @@
+---
+ref_id: WIKI-T-045
+title: "Late Blowup Hypothesis Catalog: G^adj Residual Instability on Non-Uniform Grids (WIKI-E-030)"
+domain: theory
+status: OPEN  # root cause not yet identified; experiments pending
+superseded_by: null
+sources:
+  - path: src/twophase/simulation/ns_pipeline.py
+    description: Corrector Step 5 L805–815 — G^adj vs CCD mixed-metric balanced-force
+  - path: src/twophase/coupling/gfm.py
+    description: kappa_f arithmetic mean, non-uniform spacing
+  - path: experiment/ch13/config/ch13_02_waterair_bubble.yaml
+    description: base config for late blowup experiments
+depends_on:
+  - "[[WIKI-T-044]]: FVM-CCD Metric Inconsistency (G^adj theory)"
+  - "[[WIKI-T-004]]: Balanced-Force Condition — same-operator requirement"
+  - "[[WIKI-T-017]]: FVM Reference Methods — PPE Face Coefficients"
+  - "[[WIKI-T-042]]: eikonal_xi reinitialization theory"
+  - "[[WIKI-E-029]]: exp13_17 water-air GFM — KE monotone increase"
+  - "[[WIKI-X-016]]: Dispatch Policy — eikonal_xi α>1 long-time not verified"
+  - "[[WIKI-E-030]]: Observed late blowup at t≈12.6, step 28122"
+consumers:
+  - domain: experiment
+    description: Exp-1(diag), Exp-2(σ=0), Exp-3(CFL×0.5), Exp-4(no reinit) discriminating experiments
+tags: [non_uniform_grid, blowup, balanced_force, hypothesis, parasitic_current, eikonal, density_ratio, late_instability]
+compiled_by: Claude Sonnet 4.6
+compiled_at: "2026-04-20"
+---
+
+# Late Blowup Hypothesis Catalog: G^adj Residual Instability (WIKI-E-030)
+
+## Overview
+
+G^adj (WIKI-T-044) eliminated the early blowup (step 51 → step 28,122: ×550 extension), but a
+**new late blowup emerges at t ≈ 12.60 (step 28,122)** with no physical explanation
+(y_c barely moved: Δy ≈ 0.015; volume conservation: machine precision 4.69×10⁻¹⁵).
+
+G^adj fixed the Corrector's pressure-gradient metric, but introduced a new structural
+inconsistency: **∇p now lives in FVM face-metric space while the CSF force f_σ = σκ∇ψ
+remains in CCD node-metric space**. This catalog enumerates all theoretically plausible
+causes, organized by mechanism category.
+
+### Observation Summary
+
+| Metric | Value |
+|--------|-------|
+| Blowup step / time | 28,122 / t ≈ 12.60 |
+| KE at t=12.50 | 5.93×10⁻¹ (onset of rapid rise) |
+| KE at t=12.60 | 1.04×10⁶ (blowup) |
+| Bubble centroid y_c | 0.5438 (barely moved from 0.50) |
+| Volume conservation | 4.69×10⁻¹⁵ (machine precision — normal) |
+| Grid | 64×128, α=1.5, wall BC |
+| Physics | ρ=833:1, σ=1, μ=0.05, g=0.001 |
+| Method | eikonal_xi + phi_primary_transport + consistent_gfm |
+
+---
+
+## Category I — Balanced-Force Structural Inconsistency
+
+Per-step O(h²) residual injected into velocity field; accumulates over 28k steps.
+
+### H-01 — Corrector Mixed-Metric Balanced-Force Residual ⭐ (Primary candidate)
+
+**Mechanism:**
+The velocity corrector (ns_pipeline.py L814–815) applies:
+
+$$u = u^* - \frac{\Delta t}{\rho} \underbrace{\mathcal{G}^\text{adj}p}_{\text{FVM face-metric}} + \frac{\Delta t}{\rho} \underbrace{f_x}_{\text{CCD node-metric}}$$
+
+where $f_x = \sigma\kappa \cdot (\mathcal{G}_\text{CCD}\psi)$.
+
+**Balanced-force residual at static equilibrium** ($\nabla p = \sigma\kappa\nabla\psi$):
+
+$$\mathcal{R} = \mathcal{G}^\text{adj}p - \sigma\kappa\,\mathcal{G}_\text{CCD}\psi
+= \bigl[\mathcal{G}_\text{CCD}p + O(h^2)\bigr] - \sigma\kappa\,\mathcal{G}_\text{CCD}\psi
+= \underbrace{\mathcal{G}_\text{CCD}(p - \sigma\kappa\psi)}_{O(h^6)} + O(h^2) = O(h^2)$$
+
+On the **uniform grid**: $J_f = J_n$ (both equal $1/h$), so $\mathcal{G}^\text{adj} = \mathcal{G}_\text{CCD}$ and $\mathcal{R} = 0$.
+
+On **non-uniform grid** (α=1.5): WIKI-T-044 confirmed $\max|J_f - J_n|/J_f \approx 77\%$,
+so $\mathcal{R}$ is large. This residual is injected into the velocity field at every step.
+
+**Strength:** HIGH. Structurally certain; the question is whether the accumulation rate
+is sufficient to cause blowup at the observed timescale.
+
+**Discriminating experiment:** Exp-1 (diagnostic): `bf_residual_max` time series.
+If this quantity grows monotonically before t=12.5, H-01 is confirmed as the driver.
+
+---
+
+### H-02 — PPE Source CCD-div vs FVM-Laplacian Inconsistency
+
+**Mechanism:**
+PPE (L795–802): $\text{RHS} = (\nabla \cdot u^*)_\text{CCD} / \Delta t$, but PPE matrix
+$A = \mathcal{L}_\text{FVM}$. The discrete divergence-free constraint $\mathcal{D}_\text{FVM}(\mathcal{G}^\text{adj}p) = \mathcal{L}_\text{FVM}p$ is consistent (WIKI-T-044), but the source $(\nabla\cdot u^*)_\text{CCD}$ uses a different operator. This means the PPE solves:
+
+$$\mathcal{L}_\text{FVM}p = \frac{(\nabla\cdot u^*)_\text{CCD}}{\Delta t}$$
+
+but we need $\mathcal{D}_\text{FVM}(u^*/\Delta t)$ on the RHS for full consistency. The
+residual is $O(h^2)$ per step and accumulates.
+
+**Strength:** MEDIUM. Present on uniform grids too (H-02 is structural to the CCD+FVM
+mixed approach), so if H-02 alone caused the blowup it would occur on uniform grids as well.
+However, non-uniform grids amplify the $O(h^2)$ term.
+
+**Discriminating experiment:** Exp-1: `div_u_max` after Corrector. Sustained non-zero
+divergence growth indicates H-02 contribution.
+
+---
+
+### H-03 — Non-Incremental Projection: O(Δt) Splitting Error
+
+**Mechanism:**
+The current Predictor (L765–771) contains no $\nabla p^n$ term — this is a **non-incremental**
+(standard) projection method. IPC (Incremental Pressure Correction) reduces the splitting
+error to $O(\Delta t^2)$ by including $-\nabla p^n/\rho$ in the Predictor. With the
+non-incremental form, the splitting error is $O(\Delta t)$ per step:
+
+$$\|u^{n+1} - u_\text{exact}^{n+1}\| = O(\Delta t) \cdot O(\text{splitting residual})$$
+
+Over $N = 28{,}122$ steps, the cumulative error is $O(\Delta t \cdot N) = O(1)$ for $\Delta t = \text{CFL} \cdot h/|u|$.
+
+**Strength:** MEDIUM. This is a fundamental accuracy limitation, but the non-incremental
+form is stable in many implementations. More relevant as an amplification factor for H-01.
+
+**Discriminating experiment:** Exp-3 (CFL×0.5): if the blowup step doubles (∝ 1/Δt),
+the splitting error accumulation (H-03) is implicated.
+
+---
+
+### H-04 — `consistent_gfm` Skeleton: b^GFM Absent from Main PPE
+
+**Mechanism:**
+In ns_pipeline.py, `reproject_mode: consistent_gfm` only affects `_reproject_velocity`
+(L406: `use_varrho = mode in {"variable_density_only", "consistent_gfm"}`).
+The **main PPE RHS** (L797–801) uses the CSF balanced-force source:
+
+```python
+rhs = (du_s_dx + dv_s_dy) / dt
+rhs += df_x + df_y   # CSF balanced-force, NOT b^GFM
+```
+
+The GFM pressure-jump condition $[p]_\Gamma = \sigma\kappa$ is **never enforced** in the
+main PPE. Young–Laplace is absent, so the pressure solution is systematically wrong across
+the interface on every step.
+
+**Strength:** MEDIUM-HIGH. This is a design gap, not a metric inconsistency, and it exists
+on uniform grids too (exp13_17 with uniform grid also shows KE growth). But combined with
+non-uniform metric errors, the per-step pressure error near the interface is amplified.
+
+**Discriminating experiment:** Exp-2 (σ=0): if blowup disappears, the interface pressure
+jump (Young-Laplace) is causally linked.
+
+---
+
+## Category II — Level-Set / Reinitialization Accuracy Degradation
+
+### H-05 — ξ-SDF Index-Space Distance ≠ Physical Distance on Non-Uniform Grid
+
+**Mechanism:**
+`_xi_sdf_phi` in `reinit_eikonal.py` computes the SDF using **index-space Euclidean distance**
+$\sqrt{(i-i^*)^2 + (j-j^*)^2}$, not physical-space distance. On a non-uniform grid (α=1.5),
+the physical spacing $h_i$ varies by up to a factor of ~3 across the domain. The ξ-SDF
+systematic overestimates the physical SDF in coarse regions and underestimates in fine regions.
+
+Over 28,000/2 = 14,061 reinit calls, the zero-set of $\phi$ (the interface) drifts
+systematically. Each reinit call introduces an $O(\delta h / h_\text{min})$ error; on α=1.5
+this can be $O(1)$.
+
+**Strength:** MEDIUM. Volume conservation is machine-precision (4.69×10⁻¹⁵), which suggests
+the zero-set is NOT drifting globally. However, local interface shape errors can accumulate
+without global volume change.
+
+**Discriminating experiment:** Exp-4 (no reinit): if late blowup disappears or shifts
+significantly, ξ-SDF reinit is causally linked.
+
+---
+
+### H-06 — WIKI-X-016 Authority: α>1 + σ>0 + eikonal_xi Long-Time "Not Verified"
+
+**Mechanism:**
+WIKI-X-016 Dispatch Policy explicitly states:
+
+> "Any σ, non-uniform grid α>1: split. Reason: Eikonal xi-SDF: σ>0 long-time not verified."
+> "Split-only is still the σ>0 reference method for T>2 until T=10 is verified for eikonal_xi + eps_scale=1.4."
+
+ch13_02_waterair_bubble uses `eikonal_xi + α=1.5 + σ=1 + T=20` — this combination has
+**never been validated** past T=2. The blowup at T≈12.6 may simply be entering an
+uncharted instability regime of the xi-SDF method.
+
+**Strength:** HIGH (as epistemic bound). The combination is explicitly marked "not verified".
+This is not a specific mechanism but a fundamental unknownness.
+
+**Discriminating experiment:** Exp-4 (no reinit): isolates ξ-SDF from the dynamics.
+
+---
+
+### H-07 — Non-Uniform ε_arr Makes CSF Concentration Spatially Inconsistent
+
+**Mechanism:**
+`eps_arr = eps_xi × max(hx, hy)` varies across the non-uniform grid. The CSF force
+magnitude scales as $\sigma\kappa/\varepsilon_\text{arr}$; where $\varepsilon$ is small
+(fine-grid region), the force is stronger. This spatial non-uniformity in the
+surface-tension concentration creates net spurious forces that rotate the bubble and
+generate non-physical flow patterns even in the absence of real dynamics.
+
+**Strength:** LOW-MEDIUM. Volume conservation is fine, suggesting ε_arr variation is
+small relative to other effects.
+
+**Discriminating experiment:** Exp-1 (diagnostic): `ppe_rhs_max` time series captures
+CSF source magnitude growth.
+
+---
+
+### H-08 — phi_primary_transport: logit(ψ)·ε Metric Problem
+
+**Mechanism:**
+With `phi_primary_transport=true`, $\phi = \text{logit}(\psi)\cdot\varepsilon$ is transported
+by CCD. The CCD metric correction on non-uniform grids applies $J = \partial\xi/\partial x$
+to convert ξ-space derivatives to physical-space derivatives. The product
+$\varepsilon(x) \cdot J(x)$ (interface width × metric Jacobian) couples the interface
+sharpness and grid deformation in a non-trivial way near the interface ($|\phi| \sim \varepsilon$).
+
+**Strength:** LOW. The deep-interior ($\phi \gg 0$) stability provided by `phi_primary_transport`
+(CHK-140) is intact. Interface-region errors are small per step.
+
+**Discriminating experiment:** Not directly testable in the current 4 experiments.
+
+---
+
+## Category III — High-Density-Ratio Error Amplification
+
+### H-09 — 1/ρ_g = 833× Amplification of O(h²) BF Residual in Gas Phase
+
+**Mechanism:**
+The BF residual $\mathcal{R}$ from H-01 is injected into the velocity field as:
+
+$$\delta u = -\frac{\Delta t}{\rho}\,\mathcal{R}$$
+
+In the gas phase ($\rho_g = 1$), this is $833\times$ larger than in the liquid phase
+($\rho_l = 833$). Even if $|\mathcal{R}| \sim 10^{-4}$ (small), the gas-phase velocity
+perturbation is $|\delta u| \sim 833 \times 10^{-4} \times \Delta t$. After 28,122 steps:
+
+$$|\Delta u_\text{cumulative}| \sim 833 \times 10^{-4} \times 0.10 \times 28122 \sim 234$$
+
+This rough estimate ($\Delta t \approx 0.1 \times h_\text{min}/|u|$) suggests that even a
+small per-step residual can accumulate to blow up the gas-phase velocity.
+
+**Strength:** HIGH. The density ratio is extreme (833:1). WIKI-E-029 already confirmed
+KE monotone increase in the same ρ=833:1, α=1.5 configuration.
+
+**Discriminating experiment:** Exp-2 (σ=0): removing surface tension eliminates the BF
+residual source. If stable, H-09 combined with H-01 is confirmed.
+
+---
+
+### H-10 — WIKI-E-029 Precedent: Same Configuration Already Shows KE Monotone Increase
+
+**Mechanism:**
+WIKI-E-029 (exp13_17): ρ=833:1, α=1.5, eikonal_xi, GFM, **no gravity** — KE increased
+monotonically from $5\times10^{-6}$ to $0.098$ over T=8 (20,000× increase). The displacement
+$D$ exceeded its initial value at the second peak, indicating non-physical energy injection.
+
+ch13_02 differs only in $g=0.001$ (gravity added). If the same KE growth mechanism operates,
+the current late blowup is the continuation of the same instability observed in exp13_17,
+merely delayed to T≈12.6 by the G^adj fix.
+
+**Strength:** HIGH (empirical precedent). The prior experiment strongly suggests the
+instability is endemic to the ρ=833:1, α=1.5 combination, not specific to bubble rise dynamics.
+
+**Discriminating experiment:** Exp-2 (σ=0) breaks the connection to WIKI-E-029; Exp-1
+(diagnostic) can compare KE growth rate to exp13_17 baseline.
+
+---
+
+### H-11 — CCD Metric Amplification at High-Density Interface
+
+**Mechanism:**
+CCD `apply_metric` applies $J \cdot (\partial/\partial\xi)$ and $J \cdot (dJ/d\xi) \cdot (\partial^2/\partial\xi^2)$
+corrections. At the gas-liquid interface, $\rho$ varies by a factor of 833 over ~3 cells.
+The combination of large $dJ/d\xi$ (non-uniform grid metric gradient) and large $d\rho/dx$
+(interface density jump) creates a cross-coupling term in any operator applied to $\rho$-weighted
+quantities. This affects the CSF force ($f_\sigma \propto \kappa\nabla\psi$) and the
+viscous term ($\mu\nabla^2 u$).
+
+**Strength:** LOW-MEDIUM. This is a higher-order effect; the dominant metric error is captured
+in H-01.
+
+---
+
+## Category IV — Curvature and Surface Tension Accuracy
+
+### H-12 — CCD Curvature κ Has O(h) Error on Non-Uniform Grid
+
+**Mechanism:**
+CCD computes $\kappa = \nabla\cdot(\nabla\psi/|\nabla\psi|)$. The second derivatives
+needed for κ involve $J^2\partial^2/\partial\xi^2 + J(dJ/d\xi)\partial/\partial\xi$ on
+non-uniform grids. The $dJ/d\xi$ term is $O(1)$ for α=1.5 near the interface. The curvature
+error is $O(h)$ rather than the nominal $O(h^6)$ of CCD on uniform grids.
+
+If $|\delta\kappa| \sim O(h)$, then $f_\sigma = \sigma\delta\kappa\nabla\psi$ is a spurious
+force of order $\sigma/L$ ($L$ = domain size). Over time, this drives a slow artificial drift.
+
+**Strength:** MEDIUM. Observable as `kappa_max` growth in Exp-1. If κ_max grows
+monotonically before t=12.5, H-12 is contributing.
+
+**Discriminating experiment:** Exp-1 (diagnostic): `kappa_max` time series.
+
+---
+
+### H-13 — kappa_f Arithmetic Mean: Interface-Position Weighting Error
+
+**Mechanism:**
+In `gfm.py`: `kappa_f = 0.5 * (kappa[sl_L] + kappa[sl_R])`.
+The exact face interpolation should use $\theta = |\phi_L|/(|\phi_L|+|\phi_R|)$:
+$\kappa_f = (1-\theta)\kappa_L + \theta\kappa_R$.
+
+On non-uniform grids, $\theta \neq 0.5$ when the interface does not bisect the face midpoint.
+The error is $O(|\phi_L - \phi_R|) = O(d_f \cdot |\nabla\phi|)$.
+
+**Strength:** LOW. This is a second-order correction on top of H-12.
+
+---
+
+### H-14 — Interface Deformation Induces Curvature Regime Change
+
+**Mechanism:**
+The bubble barely moves (Δy=0.015 over t=0→12.6), but the interface shape may be evolving
+via capillary oscillations. Near t≈12.5, $\kappa_\text{max}$ might reach a threshold where
+the CCD curvature accuracy degrades significantly (e.g., interface becomes too thin or too
+curved relative to the grid resolution).
+
+**Strength:** MEDIUM. Observable in Exp-1. If `kappa_max` spikes at t≈12.5 (not t=12.0),
+the curvature regime change is the trigger.
+
+---
+
+## Category V — Temporal Dynamics and Criticality
+
+### H-15 — Linear Accumulation Reaching Critical Threshold
+
+**Mechanism:**
+If the per-step BF residual energy injection $\varepsilon_\text{res}$ is approximately constant,
+the cumulative kinetic energy grows as $\text{KE}(t) \approx \varepsilon_\text{res} \cdot N_\text{steps}$.
+When $\text{KE}$ exceeds a critical threshold $\text{KE}_\text{crit}$, convective nonlinearity
+takes over and causes exponential runaway. This predicts:
+
+$$N_\text{blowup} \propto \frac{1}{\varepsilon_\text{res}} \propto \frac{1}{\Delta t}$$
+
+**Key prediction:** Halving CFL (Exp-3, CFL=0.05) should approximately **double** the blowup step
+(from ~28k to ~56k). If instead the blowup step remains the same (in physical time t), H-15 is
+disproved and H-16 (physical-time instability) is supported.
+
+**Strength:** HIGH (testable). This is the most cleanly falsifiable hypothesis.
+
+**Discriminating experiment:** Exp-3 (CFL×0.5). Gold-standard test for H-15.
+
+---
+
+### H-16 — Nonlinear KE Runaway: Physical-Time Instability
+
+**Mechanism:**
+The observed KE pattern (gradual increase t=10–12.5, then 44× jump in 0.09 time units,
+then 40,000× jump in 0.01 time units) is consistent with a **supercritical instability**
+in physical time:
+
+$$\frac{d(\text{KE})}{dt} \approx \lambda(\text{KE}) \cdot \text{KE}$$
+
+where $\lambda > 0$ once $\text{KE}$ exceeds a threshold. This would appear at a fixed
+physical time $t^*$ regardless of $\Delta t$ (unlike H-15).
+
+**Key prediction:** Halving CFL should NOT change the blowup physical time $t^*$.
+
+**Discriminating experiment:** Exp-3 (CFL×0.5). Contradicts H-15.
+
+---
+
+### H-17 — Physical Resonance at t≈12.6
+
+**Mechanism:**
+The Stokes terminal velocity estimate: $U_T \approx 2\Delta\rho g R^2 / (9\mu) = 2 \times 832 \times 0.001 \times 0.0625 / (9 \times 0.05) \approx 0.231$.
+Domain transit time: $L_y/U_T = 2/0.231 \approx 8.7$. The time $t \approx 12.6 \approx 1.45$ domain transit times.
+
+An alternative: capillary oscillation period $T_c = 2\pi/\omega_0$ with 2D Lamb frequency
+$\omega_0 = 0.679$ (WIKI-T-043 for $\rho=833:1$): $T_c \approx 9.25$. Then $t \approx 12.6 \approx 1.36 T_c$.
+
+Neither timescale gives a clean integer multiple, making H-17 less convincing.
+
+**Strength:** LOW. Physical timescale coincidence is possible but not supported by
+the nearly-static y_c=0.54 (only 0.04 displacement).
+
+---
+
+### H-18 — PPE Matrix Ill-Conditioning at Late Times
+
+**Mechanism:**
+As the gas-liquid density field evolves, the harmonic-mean PPE matrix $A = \mathcal{L}_\text{FVM}(\rho)$
+changes. The condition number $\kappa(A)$ scales as $\rho_l/\rho_g = 833$ for the
+density-ratio contrast term. If the gas bubble becomes highly deformed at t≈12.6,
+the local condition number near the interface could grow, degrading the direct solver
+accuracy.
+
+**Strength:** LOW. The solver is `spsolve` (direct), not iterative, so condition number
+affects accuracy but not convergence. Machine-precision errors in direct solve are
+$O(\kappa(A) \cdot \varepsilon_\text{machine})$; for κ≈833 this is $\sim 10^{-13}$, still
+below relevant scales.
+
+---
+
+### H-19 — Pressure Pin Constraint Generates Artificial Mode on Non-Uniform Grid
+
+**Mechanism:**
+`rhs_vec[_pin_dof] = 0.0` fixes pressure to zero at one DOF (typically a corner). On a
+non-uniform FVM grid, the eigenvectors of $\mathcal{L}_\text{FVM}$ differ from the uniform
+case. The pin constraint forces a specific eigenvector decomposition that may inject a slow
+drift mode into the pressure field, which propagates into velocity via the Corrector over
+many time steps.
+
+**Strength:** VERY LOW. This would manifest as a slowly growing pressure gradient across the
+domain, which would cause bubble drift (but y_c is nearly static). Likely not a primary cause.
+
+---
+
+### H-20 — `_reproject_velocity` is CCD-Consistent (Excluded)
+
+**Finding:**
+`_reproject_velocity` uses CCD for both `div` (L412–414) and `grad` (L420–424). The
+balanced-force constraint in reprojection is consistent within CCD space. This function
+is **not** a source of the late blowup.
+
+**Strength:** EXCLUDED.
+
+---
+
+## Hypothesis Summary Table
+
+| ID | Category | Mechanism | Strength | Key Experiment |
+|----|----------|-----------|----------|----------------|
+| **H-01** | BF | Corrector G^adj vs CCD f_x → O(h²)/step | **HIGH** ⭐ | Exp-1 bf_residual_max |
+| H-02 | BF | PPE source CCD-div vs FVM-Laplacian | MEDIUM | Exp-1 div_u_max |
+| H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | Exp-3 (CFL×0.5) |
+| H-04 | BF | b^GFM absent from main PPE | MEDIUM-HIGH | Exp-2 (σ=0) |
+| H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | Exp-4 (no reinit) |
+| **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | Exp-4 (no reinit) |
+| H-07 | Reinit | Non-uniform ε_arr CSF inconsistency | LOW-MEDIUM | Exp-1 ppe_rhs_max |
+| H-08 | Reinit | phi_primary logit×ε metric coupling | LOW | — |
+| **H-09** | Density | 1/ρ_g=833× amplification of BF residual | **HIGH** | Exp-2 (σ=0) |
+| **H-10** | Density | WIKI-E-029 precedent: same conditions, same KE growth | **HIGH** | Exp-2 (σ=0) |
+| H-11 | Density | CCD metric × density-jump cross-term | LOW-MEDIUM | — |
+| H-12 | Curvature | CCD κ has O(h) error on non-uniform grid | MEDIUM | Exp-1 kappa_max |
+| H-13 | Curvature | kappa_f arithmetic mean error | LOW | — |
+| H-14 | Curvature | Interface deformation → κ regime change | MEDIUM | Exp-1 kappa_max |
+| **H-15** | Temporal | Linear accumulation → critical threshold | **HIGH** (testable) | Exp-3 (CFL×0.5) |
+| H-16 | Temporal | Nonlinear physical-time instability | HIGH | Exp-3 (CFL×0.5) |
+| H-17 | Temporal | Physical resonance at t≈12.6 | LOW | — |
+| H-18 | Temporal | PPE conditioning (direct solver — negligible) | LOW | — |
+| H-19 | Temporal | Pressure pin artificial mode | VERY LOW | — |
+| H-20 | — | _reproject_velocity CCD-consistent — **excluded** | N/A | — |
+
+---
+
+## Discriminating Experiment Design
+
+### Exp-1: Diagnostic Run (`ch13_02_diag.yaml`)
+Record `bf_residual_max`, `div_u_max`, `kappa_max`, `ppe_rhs_max` every 100 steps, T=13.0.
+
+**Decision tree from Exp-1 results:**
+```
+bf_residual_max grows before t=12.5?
+  YES → H-01 is primary driver (BF residual accumulation)
+  NO  → H-01 is not causal; check kappa_max
+
+kappa_max spikes at t≈12.5?
+  YES → H-12/H-14 (curvature regime change) is the trigger
+  NO  → H-02/H-06 or unknown mechanism
+```
+
+### Exp-2: σ=0 Run (`ch13_02_sigma0.yaml`)
+Remove surface tension. T=20.
+
+**Decision tree:**
+```
+Blowup at similar t≈12.6?
+  YES → Surface tension NOT causal; check H-05/H-06 (reinit) or numerical instability
+  NO  → σ is causal → confirms H-01 + H-09 (BF residual × density amplification)
+```
+
+### Exp-3: CFL×0.5 Run (`ch13_02_cfl005.yaml`)
+CFL=0.05. T=20.
+
+**Decision tree:**
+```
+Blowup step ≈ 56k (physical time ≈ 12.6)?
+  YES (same time) → H-16 (physical-time instability)
+  NO, step ≈ 56k (step doubles but same time) → H-15 (step-linear accumulation)
+  Both? → Mixed accumulation + physical instability
+```
+
+### Exp-4: No Reinit Run (`ch13_02_noreinit.yaml`)
+`reinit_every: 0`. T=20.
+
+**Decision tree:**
+```
+Earlier blowup (t < 12.6)?
+  YES → reinit was stabilizing; H-05/H-06 as destabilizer ruled out
+Later or no blowup?
+  YES → reinit is destabilizing → H-05/H-06 directly implicated
+```
+
+---
+
+## Root Cause Synthesis (Prior to Experiments)
+
+The most probable root cause is a **combination of H-01 and H-09**:
+
+1. G^adj introduced a new O(h²) BF residual per step (H-01)
+2. The density ratio ρ=833:1 amplifies this residual 833× in the gas phase (H-09)
+3. Over 28,122 steps the cumulative perturbation crosses a critical threshold (H-15)
+4. Nonlinear runaway follows (H-16)
+
+This interpretation is consistent with:
+- The ×550 delay (step 51 → 28,122): G^adj fixed the dominant O(1) metric error,
+  leaving the smaller O(h²) BF error as the new limiting mechanism
+- Volume conservation at machine precision: the instability is in the momentum equation,
+  not the level set
+- WIKI-E-029: same ρ+α combination shows KE growth even without gravity
+- The nearly static bubble: the instability is grid/method-driven, not physics-driven
+
+The proper architectural fix (future work, NOT this session) would be to put **both**
+$\nabla p$ and $\nabla\psi$ in the same metric space (either both FVM-face or both CCD).
+This is a fundamental redesign of the balanced-force framework for non-uniform grids.

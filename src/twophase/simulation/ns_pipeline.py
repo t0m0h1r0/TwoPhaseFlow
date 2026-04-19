@@ -86,6 +86,7 @@ class TwoPhaseNSSolver:
         kappa_max: float | None = None,
         dgr_phi_smooth_C: float = 1e-4,
         reinit_eps_scale: float = 1.0,
+        debug_diagnostics: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
         self.LX, self.LY = LX, LY
@@ -198,6 +199,9 @@ class TwoPhaseNSSolver:
         )
         self.X, self.Y = self._grid.meshgrid()
 
+        self._debug_diag = debug_diagnostics
+        self._last_diag: dict = {}
+
         # Viscous term: CN (Heun predictor-corrector, O(Δt²)) or explicit FE
         self._cn_viscous = cn_viscous
         self._Re = Re
@@ -249,6 +253,7 @@ class TwoPhaseNSSolver:
                 getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
             ),
             reinit_eps_scale=float(cfg.run.reinit_eps_scale),
+            debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
         )
 
     # ── properties ────────────────────────────────────────────────────────
@@ -746,11 +751,14 @@ class TwoPhaseNSSolver:
             mu_field = mu  # scalar or pre-computed array
 
         # ── 2. Curvature + balanced-force CSF ──────────────────────────
+        _dbg_kappa_max = 0.0
         if sigma > 0.0:
             kappa_raw = self._curv.compute(psi)
             kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
             if self._kappa_max is not None:
                 kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
+            if self._debug_diag:
+                _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
             f_x = sigma * kappa * dpsi_dx
@@ -799,6 +807,7 @@ class TwoPhaseNSSolver:
             df_x, _ = ccd.differentiate(f_x / rho, 0)
             df_y, _ = ccd.differentiate(f_y / rho, 1)
             rhs = rhs + df_x + df_y
+        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs)))) if self._debug_diag else 0.0
         p = self._solve_ppe(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
@@ -811,10 +820,27 @@ class TwoPhaseNSSolver:
             if self.bc_type == "wall":
                 ccd.enforce_wall_neumann(dp_dx, 0)
                 ccd.enforce_wall_neumann(dp_dy, 1)
+        _dbg_bf_res_max = 0.0
+        if self._debug_diag:
+            _dbg_bf_res_max = float(self._backend.to_host(
+                xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
+                           xp.max(xp.abs(dp_dy - f_y / rho)))
+            ))
         u = u_star - dt / rho * dp_dx + dt * f_x / rho
         v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
+
+        if self._debug_diag:
+            _du_dx2, _ = ccd.differentiate(u, 0)
+            _dv_dy2, _ = ccd.differentiate(v, 1)
+            _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
+            self._last_diag = {
+                "kappa_max": _dbg_kappa_max,
+                "ppe_rhs_max": _dbg_ppe_rhs_max,
+                "bf_residual_max": _dbg_bf_res_max,
+                "div_u_max": _dbg_div_u_max,
+            }
         return psi, u, v, p
 
     # ── private ───────────────────────────────────────────────────────────
@@ -973,6 +999,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
 
     t = 0.0
     step = 0
+    dbg_history: list = []
 
     while t < T and (max_steps is None or step < max_steps):
         if cfg.run.dt_fixed is not None:
@@ -1005,6 +1032,8 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             diag.X = np.asarray(_bk.to_host(solver.X))
             diag.Y = np.asarray(_bk.to_host(solver.Y))
         diag.collect(t, psi, u, v, p, dV=dV_dev)
+        if solver._debug_diag and solver._last_diag:
+            dbg_history.append({"t": t, "step": step, **solver._last_diag})
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             _to_h = lambda a: np.asarray(_bk.to_host(a))
@@ -1025,10 +1054,17 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         if step % cfg.run.print_every == 0 or step <= 2:
             ke = diag.last("kinetic_energy", 0.0)
             print(f"  step={step:5d}  t={t:.4f}  dt={dt:.5f}  KE={ke:.3e}")
+            if solver._debug_diag and solver._last_diag:
+                d = solver._last_diag
+                print(f"          kappa_max={d['kappa_max']:.3e}  ppe_rhs={d['ppe_rhs_max']:.3e}"
+                      f"  bf_res={d['bf_residual_max']:.3e}  div_u={d['div_u_max']:.3e}")
 
         ke = diag.last("kinetic_energy", 0.0)
         if np.isnan(ke) or ke > 1e6:
             print(f"  BLOWUP at step={step}, t={t:.4f}")
             break
 
-    return {**diag.to_arrays(), "snapshots": snaps}
+    results = {**diag.to_arrays(), "snapshots": snaps}
+    if dbg_history:
+        results["debug_diagnostics"] = dbg_history
+    return results
