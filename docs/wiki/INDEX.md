@@ -1,6 +1,6 @@
-# Wiki Index — 148 entries
+# Wiki Index — 149 entries
 
-## Theory (44)
+## Theory (45)
 
 | REF-ID | Title |
 |--------|-------|
@@ -48,6 +48,7 @@
 | [WIKI-T-042](theory/WIKI-T-042.md) | Eikonal-Based Unified Reinitialization — Theory and Guarantees |
 | [WIKI-T-043](theory/WIKI-T-043.md) | 2D Lamb 毛細管波分散式と D(t) 変形量計測 |
 | [WIKI-T-044](theory/WIKI-T-044.md) | FVM-CCD Metric Inconsistency: G^adj Face-Average Gradient for Non-Uniform Grids |
+| [WIKI-T-045](theory/WIKI-T-045.md) | Late Blowup Hypothesis Catalog: G^adj Residual Instability on Non-Uniform Grids (WIKI-E-030) |
 
 ## Cross-Domain (16)
 
