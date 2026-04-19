@@ -2,7 +2,7 @@
 ref_id: WIKI-T-045
 title: "Late Blowup Hypothesis Catalog: G^adj Residual Instability on Non-Uniform Grids (WIKI-E-030)"
 domain: theory
-status: OPEN  # Exp-1 confirms H-01+H-16 primary; Exp-2/3/4 pending
+status: OPEN  # Exp-1 confirms H-01+H-16 primary; Exp-3+Exp-4 done; Exp-2 pending
 superseded_by: null
 sources:
   - path: src/twophase/simulation/ns_pipeline.py
@@ -563,13 +563,63 @@ Exp-4: blowup at t=13.45 (LATER than base t=12.60)
 
 ---
 
+## Experimental Evidence — Exp-3 (ch13_02_cfl005, 2026-04-20)
+
+**Config:** CFL=0.05 (half of baseline CFL=0.1), T=20, no debug_diagnostics.
+**Result:** BLOWUP at step=33,891, t=15.5616. Runtime: 356 min.
+
+### Key metrics
+
+| Metric | Exp-1 (CFL=0.1) | Exp-3 (CFL=0.05) | Ratio |
+|--------|----------------|-----------------|-------|
+| Blowup step | 23,819 | 33,891 | **1.42×** |
+| Blowup time t* | 10.51 | 15.56 | **1.48×** |
+| KE at t=12.5 | ≈0.59 (runaway) | 0.113 (stable) | — |
+| KE at t=15.0 | — | 0.099 (stable) | — |
+| KE at t=15.5 | — | 0.689 (runaway) | — |
+| KE max (blowup) | 1.02×10⁶ | 1.01×10⁶ | ~1× |
+
+H-15 predicted: step ratio ≈ 2.0 (steps double, same physical time).
+H-16 predicted: time ratio ≈ 1.0 (same physical time regardless of Δt).
+
+Neither prediction is met exactly. The result is **between H-15 and H-16**.
+
+### Interpretation
+
+1. **H-16 (non-linear runaway) — CONFIRMED as mechanism, NOT as pure physical-time trigger:**
+   - The non-linear KE runaway pattern is identical (stable for long time → sudden jump at threshold → ×10⁶ blowup).
+   - But the physical blowup time shifts by ×1.48 when Δt is halved → purely physical-time (Δt-independent) instability is refuted.
+
+2. **H-15 (linear accumulation) — REFUTED as primary trigger:**
+   - If BF residual energy injection were purely linear in steps (each step injects a fixed Δu = Δt × R/ρ), then halving Δt would inject half per step but double the steps → same physical time.
+   - Steps ratio 1.42× (not 2×) shows that the accumulated BF energy per step is NOT simply proportional to Δt. Smaller Δt produces slightly more accurate numerics, slowing the BF growth rate.
+   - Conclusion: H-15 describes the slow phase qualitatively but is not the step-proportional accumulation the hypothesis strictly predicts.
+
+3. **H-03 (O(Δt) splitting error) — NOT primary:**
+   - If O(Δt) splitting were dominant, the blowup step would scale exactly as 1/Δt (i.e., 2×). Actual: 1.42×. H-03 is not the primary driver.
+
+4. **H-01 structural nature CONFIRMED:**
+   - Blowup is NOT prevented by halving CFL. This confirms H-01 is structural (metric mismatch exists for all Δt) — it cannot be remedied by timestep reduction.
+
+### Decision tree conclusion
+
+```
+Exp-3: blowup at step=33,891 (1.42×), t=15.56 (1.48×)
+  H-15 prediction (step ≈ 56k): NOT MET → pure linear-step accumulation REFUTED
+  H-16 prediction (same time): NOT MET exactly → pure physical-time instability INCOMPLETE
+  H-01 confirmed structural: CFL halving delays but cannot prevent blowup
+  H-03 NOT primary: splitting error doesn't dominate step scaling
+```
+
+---
+
 ## Hypothesis Summary Table
 
 | ID | Category | Mechanism | Strength | Exp-1 Status | Key Experiment |
 |----|----------|-----------|----------|--------------|----------------|
 | **H-01** | BF | Corrector G^adj vs CCD f_x → O(h²)/step | **HIGH** ⭐ | ✅ CONFIRMED (bf_res=884 at t=0, median grows ×4) | Exp-2 (σ=0) |
 | H-02 | BF | PPE source CCD-div vs FVM-Laplacian | MEDIUM | ℹ️ Background (div_u stable ~150, not growing) | Exp-3 (CFL×0.5) |
-| H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | ❓ Pending Exp-3 | Exp-3 (CFL×0.5) |
+| H-03 | BF | Non-incremental O(Δt) splitting error | MEDIUM | ⚠️ NOT primary: CFL halving gives 1.42× steps, not 2× | Exp-3 done |
 | H-04 | BF | b^GFM absent from main PPE | MEDIUM-HIGH | ❓ Pending Exp-2 | Exp-2 (σ=0) |
 | H-05 | Reinit | ξ-SDF index vs physical distance | MEDIUM | ⚠️ SECONDARY CONFIRMED: no-reinit blowup +0.85t later, KE 3× lower at t=12.5 | Exp-4 done |
 | **H-06** | Reinit | WIKI-X-016: α>1 eikonal long-time unverified | **HIGH** (epistemic) | ⚠️ SECONDARY: still blows up without reinit; H-01 primary | Exp-4 done |
@@ -581,8 +631,8 @@ Exp-4: blowup at t=13.45 (LATER than base t=12.60)
 | H-12 | Curvature | CCD κ has O(h) error on non-uniform grid | MEDIUM | ⚠️ kappa chaotic (370–165,000); not the blowup trigger | Exp-2 (σ=0) |
 | H-13 | Curvature | kappa_f arithmetic mean error | LOW | — | — |
 | H-14 | Curvature | Interface deformation → κ regime change | MEDIUM | ❌ NOT CONFIRMED (kappa_max no special spike at blowup) | — |
-| **H-15** | Temporal | Linear accumulation → critical threshold | **HIGH** (testable) | ⚠️ Slow phase confirmed; trigger is H-16, not linear | Exp-3 (CFL×0.5) |
-| **H-16** | Temporal | Nonlinear physical-time instability | HIGH | ✅ CONFIRMED (KE×100→×1000 in 120 steps / Δt=0.05) | Exp-3 (CFL×0.5) |
+| **H-15** | Temporal | Linear accumulation → critical threshold | **HIGH** (testable) | ⚠️ NOT primary trigger: step×1.42 (not 2×) → linear step-accumulation refuted; slow phase real | Exp-3 done |
+| **H-16** | Temporal | Nonlinear physical-time instability | HIGH | ✅ CONFIRMED + ⚠️ time-shifted: t_blowup=15.56 (1.48× Exp-1's 10.51) → runaway is real but Δt-dependent | Exp-3 done |
 | H-17 | Temporal | Physical resonance at t≈12.6 | LOW | ❌ IRRELEVANT (blowup at t=10.5 in diag run, not 12.6) | — |
 | H-18 | Temporal | PPE conditioning (direct solver — negligible) | LOW | — | — |
 | H-19 | Temporal | Pressure pin artificial mode | VERY LOW | — | — |
@@ -661,15 +711,19 @@ Later or no blowup?
 6. The trigger threshold is physically set by when the parasitic gas velocity exceeds the
    CFL stability limit for the convective term.
 
-### Outstanding: Exp-2/3/4 role
+### Exp-3 results (CFL×0.5, 2026-04-20)
+
+Exp-3 confirms: blowup delayed ×1.48 in time (t=15.56 vs 10.51) but NOT prevented.
+- H-01 structural nature confirmed: timestep reduction cannot fix metric mismatch.
+- H-16 (non-linear runaway) confirmed as mechanism: same KE jump pattern (stable → 10⁶ in ~100 steps).
+- H-15 (linear step accumulation) partially refuted as trigger: step ratio 1.42× (not 2×).
+- H-03 not primary: O(Δt) splitting error does not dominate the step-count scaling.
+
+### Outstanding: Exp-2 role
 
 - **Exp-2 (σ=0):** Critical. If blowup disappears without surface tension, H-01 is the
-  unique cause (surface tension provides the BF residual source). If blowup persists, then
-  H-04/H-05/H-06 or a density-ratio instability not related to BF is the cause.
-- **Exp-3 (CFL×0.5):** Distinguishes H-15 (blowup step doubles, physical time same) from
-  H-16 (blowup at same physical time). Given Exp-1 shows H-16 is the runaway mechanism,
-  we expect the physical time to be similar (t≈10–12).
-- **Exp-4 (no reinit):** Determines whether eikonal_xi reinit is stabilizing or destabilizing.
+  unique cause (surface tension provides the BF residual source f_x = σκ∇ψ). If blowup persists,
+  then another mechanism (H-04, gravity instability) is causal.
 
 ### Architectural implication (post-analysis, no code change this session)
 
