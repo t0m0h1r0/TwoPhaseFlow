@@ -56,6 +56,7 @@ Thumbs.db
 # ---- Experiment output files (regenerable, not tracked) ----
 experiment/**/*.pdf
 experiment/**/*.npz
+experiment/**/*.pkl
 experiment/**/*.png
 experiment/**/*.eps
 

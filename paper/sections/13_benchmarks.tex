@@ -99,6 +99,7 @@ $D(0) = 0.041$（離散化誤差により $\varepsilon = 0.05$ より小），
 実効周期の推定値は $T_0^\mathrm{sim} \approx 11.0$ であり，
 2D Lamb 解析値 $T_0 = 9.26$ に対して 19\% の過大評価となる
 （$N = 64$ での $O(h^1)$ 曲率精度に起因する既知限界）．
+液滴形状の時間発展を図~\ref{fig:ch13_capillary_snaps} に示す．
 
 \smallskip
 \noindent\textit{寄生渦流（制限事項）．}
@@ -111,12 +112,28 @@ HFE フィルタおよび GFM 圧力補正によっても抑制しきれず，
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.72\linewidth]{figures/ch13_capillary_wave_waterair}
-\caption{毛細管波（水-空気系）：変形量 $D(t)$ の時間変化と 2D Lamb 解析解（式~\ref{eq:lamb_capillary}）．
+\includegraphics[width=0.48\linewidth]{figures/ch13_capwave_Dt}\hfill
+\includegraphics[width=0.48\linewidth]{figures/ch13_capwave_KE}
+\caption{（左）毛細管波 $D(t)$ と 2D Lamb 解析解（破線，式~\ref{eq:lamb_capillary}）の比較．
   $N = 64$，$\alpha = 1.5$，$\rho_l/\rho_g = 833$，GFM，$T = 8.0$（9{,}700 ステップ）．
   体積保存誤差 $|\Delta V|/V_0 = 7.55 \times 10^{-15}$（機械精度）；
-  実効振動周期 $\approx 11.0$（Lamb 解析値 $T_0 = 9.26$；19\% 過大，$O(h^1)$ 曲率精度に起因）．}
+  実効振動周期 $\approx 11.0$（Lamb 解析値 $T_0 = 9.26$；19\% 過大）．
+  （右）運動エネルギー $E_k(t)$（対数スケール）：$T = 0$--$8$ での単調増加は
+  $\rho_l/\rho_g = 833$ における寄生渦流の成長を示す．}
 \label{fig:ch13_capillary}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.23\linewidth]{figures/ch13_capwave_snap_t0}\hfill
+\includegraphics[width=0.23\linewidth]{figures/ch13_capwave_snap_t2}\hfill
+\includegraphics[width=0.23\linewidth]{figures/ch13_capwave_snap_t4}\hfill
+\includegraphics[width=0.23\linewidth]{figures/ch13_capwave_snap_t6}
+\caption{モード2毛細管波の液滴形状時間発展（$\psi = 0.5$ 等値線）．
+  左から $t = 0$（扁長・初期），$t \approx 2 \approx T_0/4$（円形遷移），
+  $t \approx 4 \approx T_0/2$（扁平），$t \approx 6 \approx 3T_0/4$（再び円形遷移）．
+  カラーマップは体積分率 $\psi \in [0,1]$（青：気相，赤：液相）．}
+\label{fig:ch13_capillary_snaps}
 \end{figure}
 
 \noindent\textbf{判定：PASS．}
