@@ -9,7 +9,7 @@
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
 | branch | main |
-| last_CHK | CHK-147 DONE 2026-04-19 — 論文§6b/§8/§8b/§9/§9b/§9f 改稿（G^adj FVM整合性）; 5コミット; コンパイルエラーゼロ. |
+| last_CHK | CHK-148 DONE 2026-04-20 — 論文§10 Step 7 Corrector 改稿（G^adj 条件分岐，図キャプ，演算子記法ボックス）; コンパイルエラーゼロ. |
 | next_action | b83837r0w 結果確認 → memo §8 に数値記入; §12g も G^adj 整合確認; §13.1 図追加. |
 
 ### Notes
@@ -27,6 +27,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-148 | 2026-04-20 | paper | 論文§10改稿: Step 7 Corrector 式を $\mathcal{G}$（均一: CCD, 非一様+壁: G^adj）に更新; 図キャプ "CCD勾配" 修正; 演算子記法ボックスに G^adj 追加. コンパイルエラーゼロ. Branch: main |
 | CHK-147 | 2026-04-19 | paper | 論文§2-9改稿（G^adj FVM整合性）: §6b に FVM-CCD メトリクス不整合 warnbox 追加; §8b に G^adj 実装注記+label; §8 Balanced-Force CCD 統一宣言に非一様格子例外を追記; §9/§9b/§9f O(h^6) クレームに caveat. 5コミット; xelatex エラーゼロ. Branch: main |
 | CHK-146 | 2026-04-19 | theory+code+wiki | G^adj 実装完了（commits f61e0cd+4706f37）+ 理論文書化: docs/memo/理論_FVM-CCD_メトリクス不整合とGadj圧力勾配.md（ショートペーパー）; WIKI-T-044（理論）; WIKI-L-022（コード）; INDEX 145→147. Branch: gfm-nonuniform worktree |
 | CHK-145 | 2026-04-19 | exp | ch13_02_bisect: alpha10(均一格子)=安定(n=82), g_low(重力1/10)=ブローアップ(n=51). α=1.5 非均一格子が唯一の原因と確定. Branch: gfm-nonuniform worktree |
