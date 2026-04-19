@@ -221,7 +221,7 @@ $w = 4\psi_{\mathrm{new}}(1-\psi_{\mathrm{new}})$ を使用していた．
 各再初期化呼び出しで系統的に mode-2 変形が増幅し $D(t)$ が正しく減衰しない．
 $\phi$ 空間補正はこの質量保存の問題を解決する（体積保存誤差：$347\% \to 0.02\%$）．
 ただし $D(t)$ の誤差は解消しない――根本原因は質量補正ではなくシャープニングの非一様性である
-（§~\ref{sec:verify_capillary_wave}，CHK-135 参照）．
+（§~\ref{sec:val_capillary}，CHK-135 参照）．
 
 \textbf{運用：}
 DGR は形状修復（圧縮--拡散）とは独立に，物理時間 20 ステップ毎に適用する．
@@ -247,7 +247,7 @@ fold を検出できず事実上何もしないまま返す．
 次ステップの CCD Laplacian が fold セルの上で非物理的な曲率スパイクを生成し，
 CSF 力 $\sigma\kappa\delta_\varepsilon\bnabla\psi$ が指数的に増大して発散する（CHK-133）．
 
-数値実験（§~\ref{sec:verify_capillary_wave}，Prosperetti 1981 ベンチマーク）により：
+数値実験（§~\ref{sec:val_capillary}，Prosperetti 1981 ベンチマーク）により：
 \begin{itemize}
   \item DGR 単独：$t < 0.2$ で発散（運動エネルギー $> 10^6$）
   \item ハイブリッド（分裂再初期化 + DGR，$\phi$ 空間補正）：発散は回避，体積保存は正確，
@@ -268,7 +268,7 @@ $\sigma > 0$ の毛管波・液滴振動ベンチマークには
 
 分裂法（形状回復）と DGR（界面幅補正）を一度に達成する統一アルゴリズムとして，
 \textbf{Eikonal 再初期化}を導入する．
-Eikonal 方程式 \citep{Sussman1994}
+Eikonal 方程式 \cite{Sussman1994}
 \begin{equation}
   \frac{\partial\phi}{\partial\tau} + \operatorname{sgn}(\phi_0)\bigl(|\nabla\phi| - 1\bigr) = 0
   \label{eq:eikonal_pde}
@@ -315,10 +315,10 @@ Eikonal 方程式 \citep{Sussman1994}
     \hline
     方法 & 形状（零点集合） & 界面幅 $\varepsilon$ & $\sigma>0$ 毛管波 \\
     \hline
-    分裂法のみ  & ✓ & $\sim 1.4\varepsilon$（膨張） & ✓ 正確 \\
-    DGR のみ    & ✗（フォールド不可） & ✓ & ✗ Blowup \\
-    ハイブリッド & ✓ & ✓ & ✗ $D(t)$ 誤差 \\
-    \textbf{Eikonal}（本法）& ✓（連続形） & ✓ & ✗ $D(t)$ 誤差（CHK-136）\\
+    分裂法のみ  & $\checkmark$ & $\sim 1.4\varepsilon$（膨張） & $\checkmark$ 正確 \\
+    DGR のみ    & $\times$（フォールド不可） & $\checkmark$ & $\times$ Blowup \\
+    ハイブリッド & $\checkmark$ & $\checkmark$ & $\times$ $D(t)$ 誤差 \\
+    \textbf{Eikonal}（本法）& $\checkmark$（連続形） & $\checkmark$ & $\times$ $D(t)$ 誤差（CHK-136）\\
     \hline
   \end{tabular}
   \caption{再初期化手法の比較．WIKI-T-042 参照．}
@@ -427,10 +427,10 @@ Godunov 差分の $O(\Delta\tau\cdot n_{\mathrm{iter}})$ 累積ドリフト（CH
 \hline
 手法 & $D(T{=}2)$ & $D(T{=}10)$ & 判定 \\
 \hline
-Eikonal（CHK-136，ZSP なし） & 0.245 & — & ✗ \\
-Eikonal + ZSP（Strategy A）   & 0.129 & — & ✗ \\
-\textbf{ξ-SDF（Strategy B，本節）} & \textbf{0.050} & \textbf{0.226} & ✗（$T{=}10$ 未達）\\
-分裂法のみ（参照，CHK-135）   & 0.037 & 0.0036 & ✓ \\
+Eikonal（CHK-136，ZSP なし） & 0.245 & — & $\times$ \\
+Eikonal + ZSP（Strategy A）   & 0.129 & — & $\times$ \\
+\textbf{ξ-SDF（Strategy B，本節）} & \textbf{0.050} & \textbf{0.226} & $\times$（$T{=}10$ 未達）\\
+分裂法のみ（参照，CHK-135）   & 0.037 & 0.0036 & $\checkmark$ \\
 \hline
 \end{tabular}
 \end{center}
@@ -441,7 +441,7 @@ Eikonal + ZSP（Strategy A）   & 0.129 & — & ✗ \\
 \noindent\textbf{CHK-138（Fast Marching Method による検証）：}
 CHK-137 の失敗原因として当初 Voronoi kink 仮説（ξ-SDF の $C^0$ 不連続が
 6次 CCD で増幅 $\to$ $\kappa$ ノイズ $\to$ 体積誤差）を立てた．
-これを検証するため，\citep{Sethian1996} の Fast Marching Method (FMM) を実装した
+これを検証するため，\cite{Sethian1996} の Fast Marching Method (FMM) を実装した
 （二次 Godunov 更新 $d = \tfrac{1}{2}(a_x+a_y+\sqrt{2-(a_x-a_y)^2})$；反復なし，
 単一前進波で $|\nabla_\xi\phi|=1$ を達成する $C^1$ 場を構築）．
 FMM は 2次微分ノイズを低減する（標準偏差 $3.93\to 2.83$）が，
@@ -474,14 +474,14 @@ $\sigma>0$ 毛管波ベンチマークには\textbf{分裂法単独}を推奨す
     \hline
     方法 & 形状 & 幅 $\varepsilon$ & $\sigma>0$ & $D(T{=}2)$ & VolCons & 反復 \\
     \hline
-    分裂法のみ & ✓ & ${\sim}1.4\varepsilon$ & ✓ & 0.037 & ${<}1\%$ @$T{=}10$ & あり \\
-    DGR のみ & ✗ & ✓ & ✗ Blowup & — & — & なし \\
-    ハイブリッド & ✓ & ✓ & ✗ & 0.129 & 低 & あり \\
-    Eikonal（CHK-136）& ✓ & ✓ & ✗ & 0.245 & 低 & あり \\
-    Eikonal+ZSP（CHK-137A）& ✓ & ✓ & ✗ & 0.129 & 低 & あり \\
-    ξ-SDF（CHK-137B）& ✓ & ✓ & ✗ & 0.050 & $3.5\%$ @$T{=}10$ & なし \\
-    \textbf{FMM（CHK-138）}& ✓ & ✓ & ✗ & — & $\mathbf{8.2\%}$ @$T{=}1$ & なし \\
-    \textbf{ξ-SDF（$f{=}1.4$，CHK-139）}& ✓ & ✓ & ✓ & \textbf{0.028} & $1.38\%$ @$T{=}2$ & なし \\
+    分裂法のみ & $\checkmark$ & ${\sim}1.4\varepsilon$ & $\checkmark$ & 0.037 & ${<}1\%$ @$T{=}10$ & あり \\
+    DGR のみ & $\times$ & $\checkmark$ & $\times$ Blowup & — & — & なし \\
+    ハイブリッド & $\checkmark$ & $\checkmark$ & $\times$ & 0.129 & 低 & あり \\
+    Eikonal（CHK-136）& $\checkmark$ & $\checkmark$ & $\times$ & 0.245 & 低 & あり \\
+    Eikonal+ZSP（CHK-137A）& $\checkmark$ & $\checkmark$ & $\times$ & 0.129 & 低 & あり \\
+    ξ-SDF（CHK-137B）& $\checkmark$ & $\checkmark$ & $\times$ & 0.050 & $3.5\%$ @$T{=}10$ & なし \\
+    \textbf{FMM（CHK-138）}& $\checkmark$ & $\checkmark$ & $\times$ & — & $\mathbf{8.2\%}$ @$T{=}1$ & なし \\
+    \textbf{ξ-SDF（$f{=}1.4$，CHK-139）}& $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{0.028} & $1.38\%$ @$T{=}2$ & なし \\
     \hline
   \end{tabular}
   \caption{再初期化手法の比較（CHK-139 更新）．WIKI-T-042 参照．ε幅拡大（$f{=}1.4$）が最良の $D(T{=}2)$を実現．}
@@ -509,7 +509,7 @@ Step~4 の質量補正の重み $W = \sum H'_{f\varepsilon_\xi}$ も自動的に
   & $D(T{=}1)$ & $D(T{=}2)$ & VolCons max \\
   \hline
   ξ-SDF（$f{=}1.0$，CHK-137） & — & 0.050 & $3.5\%$ @$T{=}10$ \\
-  \textbf{ξ-SDF（$f{=}1.4$，CHK-139）} & \textbf{0.018 ✓} & \textbf{0.028 ✓} & \textbf{1.38\% @$T{=}2$} \\
+  \textbf{ξ-SDF（$f{=}1.4$，CHK-139）} & \textbf{0.018 $\checkmark$} & \textbf{0.028 $\checkmark$} & \textbf{1.38\% @$T{=}2$} \\
   split-only（参考） & — & 0.037 & $<1\%$ @$T{=}10$ \\
   \hline
 \end{tabular}
