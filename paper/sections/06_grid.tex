@@ -309,14 +309,14 @@ $\psi$ 線形補間はモノトン性（$\psi \in [0,1]$ 保持）から $\Ord{1
 非一様格子では一様な $\varepsilon = C_\varepsilon h$ の代わりに，
 局所格子幅に比例する空間可変場
 \begin{equation}
-  \varepsilon(\bx) = N_{\varepsilon,\text{cells}} \cdot h_{\rm local}(\bx),
-  \quad h_{\rm local}(i,j) = \max(h_x(i),\, h_y(j))
+  \varepsilon(\bx) = N_{\varepsilon,\text{cells}} \cdot h_{\mathrm{local}}(\bx),
+  \quad h_{\mathrm{local}}(i,j) = \max(h_x(i),\, h_y(j))
   \label{eq:eps_xi_cells}
 \end{equation}
 を用いることができる（$N_{\varepsilon,\text{cells}}$ は $\xi$ 空間でのセル数）．
 界面近傍（細かいセル）では $\varepsilon$ が小さく，遠方（粗いセル）では大きくなるが，
 $\xi$ 空間では常に $N_{\varepsilon,\text{cells}}$ セル幅で Heaviside 遷移が解像される．
-一様格子では $h_{\rm local} = h$ となり従来のスカラー $\varepsilon$ と一致する．
+一様格子では $h_{\mathrm{local}} = h$ となり従来のスカラー $\varepsilon$ と一致する．
 
 \begin{tcolorbox}[warnbox, title={空間可変 $\varepsilon(\bx)$ と CSF 表面張力の非互換性}]
 \label{box:eps_xi_csf_warning}
