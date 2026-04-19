@@ -356,9 +356,38 @@ class TwoPhaseNSSolver:
             # replace _reproject_velocity(psi, u, v) with a 3-arg lambda.
             u, v = self._reproject_velocity(psi, u, v)
 
+        if not self._grid.uniform:
+            self._precompute_fvm_grad_spacing()
+
         # Return device arrays — callers expect the same device type as input.
         xp = self._backend.xp
         return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
+
+    def _precompute_fvm_grad_spacing(self) -> None:
+        import numpy as _np
+        xp = self.xp
+        self._d_face_grad: list = []
+        for ax in range(self._grid.ndim):
+            d = _np.diff(_np.asarray(self._grid.coords[ax]))
+            shape = [1] * self._grid.ndim
+            shape[ax] = -1
+            self._d_face_grad.append(xp.asarray(d.reshape(shape)))
+
+    def _fvm_pressure_grad(self, p: "array", ax: int) -> "array":
+        """Face-average gradient: J_face = 1/d_face, consistent with L_FVM and GFM."""
+        xp = self.xp
+        d = self._d_face_grad[ax]
+        N = self._grid.N[ax]
+
+        def sl(start, stop):
+            s = [slice(None)] * self._grid.ndim
+            s[ax] = slice(start, stop)
+            return tuple(s)
+
+        g_face = (p[sl(1, N + 1)] - p[sl(0, N)]) / d
+        g = xp.zeros_like(p)
+        g[sl(1, N)] = 0.5 * (g_face[sl(0, N - 1)] + g_face[sl(1, N)])
+        return g
 
     def _reproject_velocity(
         self,
@@ -773,11 +802,15 @@ class TwoPhaseNSSolver:
         p = self._solve_ppe(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
-        dp_dx, _ = ccd.differentiate(p, 0)
-        dp_dy, _ = ccd.differentiate(p, 1)
-        if self.bc_type == "wall":
-            ccd.enforce_wall_neumann(dp_dx, 0)
-            ccd.enforce_wall_neumann(dp_dy, 1)
+        if not self._grid.uniform and self.bc_type == "wall":
+            dp_dx = self._fvm_pressure_grad(p, 0)
+            dp_dy = self._fvm_pressure_grad(p, 1)
+        else:
+            dp_dx, _ = ccd.differentiate(p, 0)
+            dp_dy, _ = ccd.differentiate(p, 1)
+            if self.bc_type == "wall":
+                ccd.enforce_wall_neumann(dp_dx, 0)
+                ccd.enforce_wall_neumann(dp_dy, 1)
         u = u_star - dt / rho * dp_dx + dt * f_x / rho
         v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
