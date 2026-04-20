@@ -160,3 +160,12 @@ Phase 1 is a single afternoon of work for the implementing agent; the bulk of CH
 - Pipeline structure: [WIKI-L-001](WIKI-L-001.md) (7-step loop)
 - Cross-domain map: [WIKI-X-018](../cross-domain/WIKI-X-018.md)
 - Related symptom: [WIKI-E-030](../experiment/WIKI-E-030.md), [WIKI-T-045](../theory/WIKI-T-045.md)
+
+## Velocity-side companion (CHK-158 update)
+
+[WIKI-L-024](WIKI-L-024.md) delivers the **velocity-side** FCCD library: `FCCDSolver` / `FCCDConvectionTerm` / `FCCDLevelSetAdvection`. It targets the advection term rather than the pressure-gradient helper this entry plans — it is the *other half* of the H-01 remediation programme.
+
+- WIKI-L-023 (this entry): pressure-side R-1.5 (face-average $\psi$ gradient, reusing `_fvm_pressure_grad`). Fix the CSF/corrector operator mismatch.
+- [WIKI-L-024](WIKI-L-024.md): velocity-side Option B flux divergence (and Option C node-output) — closes the advection-side residual that remains after R-1.5.
+
+The two can be deployed independently: L-023 Phase 1 unblocks WIKI-E-030 for static/quasi-static flows; L-024 Option B is required for the non-zero-velocity case where advective residuals become the binding constraint. Together they implement the full face-locus closure anticipated by [WIKI-T-055](../theory/WIKI-T-055.md) §4.1 (BF-preservation theorem).

@@ -54,12 +54,28 @@ If R-1's PoC fails or proves marginal (CSF floor is the binding constraint), **R
 
 The pivot decision is deferred to the post-PoC review.
 
+## Advection-axis companion (CHK-158 — A-01)
+
+The H-01 row above targets the **gradient-locus** mismatch: $\nabla p$ on the face metric but $\sigma\kappa\nabla\psi$ on the node metric. At non-zero velocity an analogous **advection-axis** mismatch — call it **A-01** — also contributes: node-centred $(\mathbf{u}\cdot\nabla)\mathbf{u}$ is evaluated at a different locus than the gradient terms, so the at-rest cancellation is not preserved once $\mathbf{u} \ne \mathbf{0}$ for quasi-static flows with varying $\kappa$.
+
+| Axis | Source | Remediation | Status |
+|---|---|---|---|
+| H-01 (gradient) | R-0 node/face mismatch on $\nabla p$ vs $\sigma\kappa\nabla\psi$ | R-1.5 (`_fvm_pressure_grad` on $\psi$) / R-1 (FCCD on face) | R-1.5 SPEC [WIKI-L-023](../code/WIKI-L-023.md); R-1 library [WIKI-L-024](../code/WIKI-L-024.md) |
+| **A-01 (advection)** | Node CCD advection vs face-locus pressure/capillary | **A-01-B (FCCD Option B, face flux divergence)** / A-01-C (Option C, node-output Hermite) | Library IMPLEMENTED [WIKI-L-024](../code/WIKI-L-024.md); theory [WIKI-T-055](../theory/WIKI-T-055.md); benchmark verification deferred |
+
+**A-01-B is the advection analogue of R-1 on the gradient axis.** [WIKI-T-055](../theory/WIKI-T-055.md) §4.1 states the **BF-preservation theorem**: when momentum advection uses the Option B face-flux divergence on the same face locus as $\nabla p$ and $\sigma\kappa\nabla\psi$, the discrete residual of the full momentum equation is exactly zero at rest (and is $\mathcal{O}(H^4)$ at non-rest). A-01-B therefore **completes** the H-01 remediation: the full face-locus closure that H-01 alone (gradient only) does not reach.
+
+A-01-C (Option C, node-output via Hermite reconstructor) is the backward-compatible variant: upgrades convection to $\mathcal{O}(H^4)$ without touching AB2 / PPE RHS / CSF / Rhie-Chow. It does *not* preserve BF exactly but is a low-risk drop-in.
+
+Library-level the two axes share a **single** `FCCDSolver` instance per simulation: the LU factorisation of the underlying CCD system is computed once and reused for gradient, face value, divergence, and advection — see [WIKI-L-024](../code/WIKI-L-024.md) §2.1.
+
 ## Cross-references
 
 - Root cause: [WIKI-T-045](../theory/WIKI-T-045.md), [WIKI-E-030](../experiment/WIKI-E-030.md)
 - Current operator: [WIKI-T-044](../theory/WIKI-T-044.md)
 - Immediate alternative: [WIKI-T-052](../theory/WIKI-T-052.md) (R-1.5 theory) + [WIKI-L-023](../code/WIKI-L-023.md) (impl roadmap)
 - Long-term replacement: [WIKI-T-046](../theory/WIKI-T-046.md) (FCCD) + [WIKI-T-050](../theory/WIKI-T-050.md) (non-uniform algebra) + [WIKI-T-051](../theory/WIKI-T-051.md) (wall BC) / [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md)
+- **A-01 advection axis**: [WIKI-T-055](../theory/WIKI-T-055.md) (FCCD advection operator; BF-preservation theorem) + [WIKI-T-056](../theory/WIKI-T-056.md) (Wall Option IV) + [WIKI-L-024](../code/WIKI-L-024.md) (library) + SP-D
 - Balanced-Force principle: [WIKI-T-004](../theory/WIKI-T-004.md)
 - CSF model error floor: [WIKI-T-009](../theory/WIKI-T-009.md), [WIKI-T-017](../theory/WIKI-T-017.md)
 - Companion topology track: [WIKI-X-019](WIKI-X-019.md)
