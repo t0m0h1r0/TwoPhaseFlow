@@ -20,6 +20,8 @@ consumers:
     description: Candidate replacement of CCDSolver when node-face hybrid path is chosen
   - domain: theory
     description: WIKI-T-053 (computable FCCD equations using existing CCD d2 output)
+  - domain: theory
+    description: WIKI-T-054 (matrix form, wall BC rows, periodic block-circulant)
 tags: [ccd, compact_difference, upwind, face_centered, balanced_force, h01_remediation, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"

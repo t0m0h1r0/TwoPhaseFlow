@@ -26,6 +26,8 @@ consumers:
     description: Future FCCDOperator implementation should use q = D_CCD^(2)u as the closure variable
   - domain: cross-domain
     description: WIKI-X-018 R-1 PoC equation set
+  - domain: theory
+    description: WIKI-T-054 (matrix assembly of scalar formulas — composite operator, wall rows, periodic circulant)
 tags: [ccd, fccd, face_gradient, second_derivative_closure, h01_remediation, research_proposal]
 compiled_by: Codex GPT-5
 compiled_at: "2026-04-20"

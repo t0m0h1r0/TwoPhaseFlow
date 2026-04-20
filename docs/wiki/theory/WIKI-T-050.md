@@ -16,6 +16,8 @@ consumers:
     description: WIKI-T-051 (face-locus wall BC requires this metric framework)
   - domain: theory
     description: WIKI-T-053 (executable FCCD equations via CCD second-derivative closure)
+  - domain: theory
+    description: WIKI-T-054 (matrix assembly of non-uniform FCCD operator with θ-weighted bidiagonal matrices)
   - domain: cross-domain
     description: WIKI-X-018 (R-1 FCCD candidate must satisfy non-uniform deployment)
   - domain: future-impl
