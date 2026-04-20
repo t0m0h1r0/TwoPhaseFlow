@@ -21,12 +21,15 @@ from ..config import GridConfig
 from ..core.grid import Grid
 from ..core.grid_remap import build_grid_remapper
 from ..ccd.ccd_solver import CCDSolver
+from ..ccd.fccd import FCCDSolver
 from ..levelset.heaviside import apply_mass_correction
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.advection import DissipativeCCDAdvection
+from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature_filter import InterfaceLimitedFilter
+from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ppe.ppe_builder import PPEBuilder
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
@@ -86,6 +89,9 @@ class TwoPhaseNSSolver:
         kappa_max: float | None = None,
         dgr_phi_smooth_C: float = 1e-4,
         reinit_eps_scale: float = 1.0,
+        ridge_sigma_0: float = 3.0,
+        advection_scheme: str = "dissipative_ccd",
+        convection_scheme: str = "ccd",
         debug_diagnostics: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
@@ -170,7 +176,38 @@ class TwoPhaseNSSolver:
         eps_curv = self._make_eps_field() if self._use_local_eps and alpha_grid > 1.0 else self._eps
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
-        self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+
+        # Advection / convection scheme selection (CHK-160 bridge for FCCD).
+        # One shared FCCDSolver reuses the CCD LU factorisation for both
+        # ψ advection and momentum convection — mirrors builder.py §"one
+        # factorisation, many calls".  All array ops stay on ``backend.xp``;
+        # no host round-trip is added on the hot path.
+        self._advection_scheme = str(advection_scheme)
+        self._convection_scheme = str(convection_scheme)
+        self._fccd_modes = {"fccd_nodal": "node", "fccd_flux": "flux"}
+        needs_fccd = (
+            self._advection_scheme in self._fccd_modes
+            or self._convection_scheme in self._fccd_modes
+        )
+        self._fccd = (
+            FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
+            if needs_fccd else None
+        )
+        if self._advection_scheme in self._fccd_modes:
+            self._adv = FCCDLevelSetAdvection(
+                self._backend, self._grid, self._fccd,
+                mode=self._fccd_modes[self._advection_scheme],
+                mass_correction=True,
+            )
+        else:
+            self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+        self._fccd_conv = (
+            FCCDConvectionTerm(
+                self._backend, self._fccd,
+                mode=self._fccd_modes[self._convection_scheme],
+            )
+            if self._convection_scheme in self._fccd_modes else None
+        )
         self._reconstruct_base = HeavisideInterfaceReconstructor(
             self._backend,
             ReconstructionConfig(
@@ -196,6 +233,7 @@ class TwoPhaseNSSolver:
             n_steps=reinit_steps, method=reinit_method,
             phi_smooth_C=dgr_phi_smooth_C,
             eps_scale=self._reinit_eps_scale,
+            sigma_0=float(ridge_sigma_0),
         )
         self.X, self.Y = self._grid.meshgrid()
 
@@ -253,6 +291,15 @@ class TwoPhaseNSSolver:
                 getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
             ),
             reinit_eps_scale=float(cfg.run.reinit_eps_scale),
+            ridge_sigma_0=float(
+                getattr(getattr(cfg, "run", g), "ridge_sigma_0", 3.0)
+            ),
+            advection_scheme=str(
+                getattr(getattr(cfg, "run", g), "advection_scheme", "dissipative_ccd")
+            ),
+            convection_scheme=str(
+                getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
             debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
         )
 
@@ -772,8 +819,17 @@ class TwoPhaseNSSolver:
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
 
-        conv_u = -(u * du_dx + v * du_dy)
-        conv_v = -(u * dv_dx + v * dv_dy)
+        # Momentum convection: default centred CCD, or FCCD (SP-D §6/§7)
+        # when the user opts in. Both return −(u·∇)u componentwise, so the
+        # AB2 buffer shape and later viscous/buoyancy arithmetic are
+        # unchanged (CHK-158 V9). No D2H is added by this dispatch.
+        if self._fccd_conv is not None:
+            _conv = self._fccd_conv.compute([u, v])
+            conv_u = _conv[0]
+            conv_v = _conv[1]
+        else:
+            conv_u = -(u * du_dx + v * du_dy)
+            conv_v = -(u * dv_dx + v * dv_dy)
 
         # Buoyancy (applied to explicit RHS before viscous step)
         buoy_v = xp.zeros_like(v)
