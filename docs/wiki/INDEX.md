@@ -1,6 +1,6 @@
-# Wiki Index — 149 entries
+# Wiki Index — 155 entries
 
-## Theory (45)
+## Theory (49)
 
 | REF-ID | Title |
 |--------|-------|
@@ -49,8 +49,12 @@
 | [WIKI-T-043](theory/WIKI-T-043.md) | 2D Lamb 毛細管波分散式と D(t) 変形量計測 |
 | [WIKI-T-044](theory/WIKI-T-044.md) | FVM-CCD Metric Inconsistency: G^adj Face-Average Gradient for Non-Uniform Grids |
 | [WIKI-T-045](theory/WIKI-T-045.md) | Late Blowup Hypothesis Catalog: G^adj Residual Instability on Non-Uniform Grids (WIKI-E-030) |
+| [WIKI-T-046](theory/WIKI-T-046.md) | FCCD: Face-Centered Upwind Combined Compact Difference |
+| [WIKI-T-047](theory/WIKI-T-047.md) | Gaussian-ξ Ridge Interface Representation |
+| [WIKI-T-048](theory/WIKI-T-048.md) | Ridge–Eikonal Hybrid Reconstruction: Uniqueness and FMM Coupling |
+| [WIKI-T-049](theory/WIKI-T-049.md) | Notation Disambiguation: ξ_idx vs ξ_ridge vs ω(φ) |
 
-## Cross-Domain (16)
+## Cross-Domain (19)
 
 | REF-ID | Title |
 |--------|-------|
@@ -71,6 +75,8 @@
 | [WIKI-X-015](cross-domain/WIKI-X-015.md) | Numerical Simulation Debugging: Theory-First Root-Cause Methodology |
 | [WIKI-X-016](cross-domain/WIKI-X-016.md) | Reinit ε-Scale Propagation Path and σ>0 vs σ=0 Dispatch Policy (CHK-139) |
 | [WIKI-X-017](cross-domain/WIKI-X-017.md) | §13 Production Config Pattern: Research-to-Paper Transition and Runner Invocation |
+| [WIKI-X-018](cross-domain/WIKI-X-018.md) | H-01 Remediation Map: G^adj Metric Unification via FCCD (SP-A gate) |
+| [WIKI-X-019](cross-domain/WIKI-X-019.md) | Topology-Freedom vs Metric-Rigidity: ξ/φ Role Separation as Design Principle (SP-B) |
 
 ## Experiment (29)
 

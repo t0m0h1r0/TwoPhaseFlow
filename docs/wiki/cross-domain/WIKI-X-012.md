@@ -139,3 +139,5 @@ far outweighs the resolution loss for ch13 validation purposes.
 - [[WIKI-E-018]] — NS non-uniform grid convergence
 - [[WIKI-E-020]] — Grid rebuild frequency calibration
 - [[WIKI-X-013]] — Couette + explicit CSF instability (distinct mechanism)
+- [[WIKI-T-046]] — FCCD (Face-Centered Upwind CCD): proposed face-locus remediation for the metric instability catalogued here
+- [[WIKI-X-018]] — H-01 remediation map (WIKI-E-030 → SP-A)

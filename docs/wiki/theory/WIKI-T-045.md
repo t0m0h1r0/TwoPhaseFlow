@@ -786,3 +786,17 @@ FVM-face gradient), or (b) both CCD (replace G^adj with CCD in the Corrector, lo
 FVM consistency of the PPE but restoring BF balance). This is a fundamental redesign.
 
 **This session does NOT implement any fix** — per the standing constraint "no patch-style modifications."
+
+## Candidate remediations (2026-04-20, CHK-153)
+
+See [[WIKI-X-018]] for the remediation map. Summary:
+
+- **R-0 (current)**: mixed metric — drives the late blow-up; rejected.
+- **R-1 (recommended PoC)**: **FCCD unified on face** — see [[WIKI-T-046]] and
+  [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md). Places $\mathcal{G}p$ and
+  $\sigma\kappa\nabla\psi$ on the same face locus by construction; expected BF residual
+  reduction $\mathcal{O}(h^2) \to \mathcal{O}(h^4)$.
+- **R-2**: Jacobian-weighted face→node interpolation (not drafted).
+- **R-3**: full IIM reprojection ([[WIKI-T-034]]); long-range option.
+
+PoC gate: [[WIKI-T-046]] §PoC programme.

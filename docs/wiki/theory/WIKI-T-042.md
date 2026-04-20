@@ -410,3 +410,14 @@ actively. phi-primary transport enforces this via the sigmoid saturation at ever
   but compounds the interface-width instability for σ>0
 - Roll BC introduces negligible error for interfaces well inside the domain
 - CFL for pseudo-time: Δτ = 0.5·h_min (stability condition for first-order upwind)
+
+## Related research proposals (2026-04-20)
+
+- [[WIKI-T-047]] — Gaussian-ξ ridge interface representation: proposes a topology-change-capable
+  auxiliary field (ξ_ridge) that is orthogonal to the Eikonal strategies catalogued above.
+- [[WIKI-T-048]] — Ridge–Eikonal hybrid reconstruction: reuses the FMM machinery described here,
+  but inherits the CHK-138 σ>0 caveat; requires ε-widening post-reconstruction.
+- [[WIKI-T-049]] — Notation disambiguation: `xi_sdf` (this entry) is an exact Euclidean SDF,
+  distinct from the proposed ξ_ridge.
+- Short papers: [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md),
+  [SP-B](../../memo/short_paper/SP-B_ridge_eikonal_hybrid.md).
