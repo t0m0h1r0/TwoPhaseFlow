@@ -88,8 +88,18 @@ This is the candidate remediation recorded as the open action in [ACTIVE_LEDGER]
 - **PoC-2**: BF residual measurement on the WIKI-E-030 capillary benchmark — compare node-CCD / $\mathcal{G}^{\text{adj}}$ hybrid / FCCD unified.
 - **PoC-3**: Non-uniform stretched-grid convergence with prescribed $h_R/h_L$.
 
+## 後続展開 (CHK-154, 2026-04-20)
+
+§6.3 の 3 つの caveat は以下で個別解決:
+
+- **caveat 1 (非一様格子拡張)** → [WIKI-T-050](WIKI-T-050.md): face-position パラメータ $\theta = h_R / H$ の関数として cancellation coefficients $\mu(\theta), \lambda(\theta), \nu(\theta)$ を導出。$\theta = 1/2$ で $\mu = \nu = 0$, $\lambda = 1/24$ に退化し本文と整合。
+- **caveat 2 (Wall BC)** → [WIKI-T-051](WIKI-T-051.md): 三案 (ghost-cell mirror / one-sided face / ψ-only) を比較し、Neumann 場 (ψ, φ, p) には Option III (ψ-only mirror) を推奨。既存 G^adj wall handling と完全等価。
+- **caveat 3 (PPE 互換)** → 現行 `ns_pipeline._solve_ppe` は `spsolve` 直接ソルバ ([`ppe_builder.py`](../../../src/twophase/ppe/ppe_builder.py)) を使用しており、[WIKI-T-016](WIKI-T-016.md) で扱う pseudotime defect-correction iteration には依存しない。SP-A §6.3(3) の caveat は**現行コードでは非該当**。pseudotime DC 系統 (`_CCDPPEBase` / `PPEFactory`) は §11 component tests のみで使用 ([WIKI-X-009](../cross-domain/WIKI-X-009.md)); production NS pipeline では不要。pseudotime DC を将来再導入する場合は別途 caveat 解決が必要。
+
+並行して即時修正パス [WIKI-T-052](WIKI-T-052.md) (R-1.5 — 既存 `_fvm_pressure_grad` を ψ にも流用、3 行編集 / [WIKI-L-023](../code/WIKI-L-023.md)) が提案された。R-1.5 = FCCD operator with $\mu \equiv \lambda \equiv 0$ に相当 ([WIKI-T-050](WIKI-T-050.md) §"Reduction to G^adj") のため、PoC 完了後の R-1 への移行は単一シンボル置換で完了する。Remediation map 全体は [WIKI-X-018](../cross-domain/WIKI-X-018.md) を参照。
+
 ## References
 
 - Chu, P. C., & Fan, C. (1998). A three-point combined compact difference scheme. *J. Comp. Phys.*, 140(2), 370–399.
 - [SP-A full draft](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md)
-- [WIKI-T-044](WIKI-T-044.md), [WIKI-T-045](WIKI-T-045.md), [WIKI-E-030](../experiment/WIKI-E-030.md), [WIKI-X-018](../cross-domain/WIKI-X-018.md)
+- [WIKI-T-044](WIKI-T-044.md), [WIKI-T-045](WIKI-T-045.md), [WIKI-T-050](WIKI-T-050.md), [WIKI-T-051](WIKI-T-051.md), [WIKI-T-052](WIKI-T-052.md), [WIKI-E-030](../experiment/WIKI-E-030.md), [WIKI-X-018](../cross-domain/WIKI-X-018.md), [WIKI-L-023](../code/WIKI-L-023.md)
