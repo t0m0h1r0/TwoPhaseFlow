@@ -14,6 +14,8 @@ depends_on:
 consumers:
   - domain: theory
     description: WIKI-T-051 (face-locus wall BC requires this metric framework)
+  - domain: theory
+    description: WIKI-T-053 (executable FCCD equations via CCD second-derivative closure)
   - domain: cross-domain
     description: WIKI-X-018 (R-1 FCCD candidate must satisfy non-uniform deployment)
   - domain: future-impl
@@ -136,6 +138,23 @@ The cancellation coefficients remain bounded for all $r > 0$; no divergence on s
 ## Combined-relation closure
 
 The FCCD operator above presupposes face-side estimates $\tilde u''_f$ and $\tilde u'''_f$. In Chu–Fan node-centred CCD these are coupled via a $2N \times 2N$ block-tridiagonal system. For face-centred FCCD, two implementation routes are available:
+
+**PoC closure selected by [WIKI-T-053](WIKI-T-053.md).** The first implementation should not introduce a new $u'''$ unknown. Instead, solve the existing CCD system for the nodal second derivative $q_i=(D_{\mathrm{CCD}}^{(2)}u)_i$, then use
+
+$$
+\tilde u''_f = \theta q_{i-1} + (1-\theta)q_i,
+\qquad
+\tilde u'''_f = \frac{q_i-q_{i-1}}{H}.
+$$
+
+Substitution gives the executable operator
+
+$$
+D^{\mathrm{FCCD,nu}}u_f
+= \frac{u_i-u_{i-1}}{H}
+  - \mu(\theta)H\left[\theta q_{i-1}+(1-\theta)q_i\right]
+  - \lambda(\theta)H(q_i-q_{i-1}).
+$$
 
 1. **Inherit from node-CCD.** Solve the existing CCD system at nodes, then interpolate $u''_n$ and $u'''_n$ to the face $x_f$ using a second-order one-sided or weighted average. This is the simplest route and preserves backward compatibility with [`CCDSolver`](../../../src/twophase/ccd/ccd_solver.py).
 

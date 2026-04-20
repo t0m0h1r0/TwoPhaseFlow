@@ -18,6 +18,8 @@ consumers:
     description: WIKI-X-018 (H-01 remediation map — FCCD as candidate fix)
   - domain: future-impl
     description: Candidate replacement of CCDSolver when node-face hybrid path is chosen
+  - domain: theory
+    description: WIKI-T-053 (computable FCCD equations using existing CCD d2 output)
 tags: [ccd, compact_difference, upwind, face_centered, balanced_force, h01_remediation, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"
@@ -30,6 +32,8 @@ compiled_at: "2026-04-20"
 FCCD is a **face-centred, upwind-limited reformulation of the Chu & Fan (1998) Combined Compact Difference** operator. Primary derivatives are evaluated at cell faces $x_{i-1/2}$ using only the two immediate upwind cell values $\{u_{i-1}, u_i\}$, and fourth-order spatial accuracy is obtained by algebraically cancelling the leading third-derivative truncation term via the coefficient $\lambda = 1/24$.
 
 The full derivation is in [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md). This entry summarises the key equations and positions FCCD within the project’s existing CCD stack.
+
+For the executable PoC equation set, see [WIKI-T-053](WIKI-T-053.md): it interprets the $u'''_f$ correction below as $(q_i-q_{i-1})/\Delta x$ with $q_i=(D_{\mathrm{CCD}}^{(2)}u)_i$, matching the paper's CCD derivation method and avoiding a new third-derivative unknown.
 
 ## Key equations
 

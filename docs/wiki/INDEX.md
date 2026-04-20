@@ -1,6 +1,6 @@
-# Wiki Index — 159 entries
+# Wiki Index — 160 entries
 
-## Theory (52)
+## Theory (53)
 
 | REF-ID | Title |
 |--------|-------|
@@ -56,6 +56,7 @@
 | [WIKI-T-050](theory/WIKI-T-050.md) | FCCD Non-Uniform Generalization: Cancellation Coefficients μ(r), λ(r) |
 | [WIKI-T-051](theory/WIKI-T-051.md) | Face-Centered Wall BC for FCCD: Ghost-Cell, One-Sided, and ψ-Only Variants |
 | [WIKI-T-052](theory/WIKI-T-052.md) | R-1.5: Minimal FVM-Face σκ∇ψ Unification via Existing _fvm_pressure_grad |
+| [WIKI-T-053](theory/WIKI-T-053.md) | FCCD Calculation Equations via CCD Second-Derivative Closure |
 
 ## Cross-Domain (19)
 
