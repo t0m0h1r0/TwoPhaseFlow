@@ -186,7 +186,11 @@ class SimulationBuilder:
                 backend, fccd,
                 mode=adv_mode[config.numerics.convection_scheme],
             )
-        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
+        ls_reinit = Reinitializer(
+            backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc,
+            method=config.numerics.reinit_method,
+            sigma_0=config.numerics.ridge_sigma_0,
+        )
         # Curvature: psi-direct method (section 3b eq. curvature_psi_2d)
         # eliminates logit inversion; falls back to legacy phi-based if configured
         curvature_calc = CurvatureCalculatorPsi(backend, ccd)

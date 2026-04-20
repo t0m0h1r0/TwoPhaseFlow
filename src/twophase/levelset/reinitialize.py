@@ -44,7 +44,8 @@ class Reinitializer(IReinitializer):
                  eps_d_comp: float = _EPS_D_COMP,
                  method: str = 'split',
                  phi_smooth_C: float = 1e-4,
-                 eps_scale: float = 1.0):
+                 eps_scale: float = 1.0,
+                 sigma_0: float = 3.0):
         self.xp = backend.xp
         self.grid = grid
         self.eps = eps
@@ -102,6 +103,15 @@ class Reinitializer(IReinitializer):
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 n_iter=n_steps, mass_correction=mass_correction,
                 zsp=False, xi_sdf=False, fmm=True, eps_scale=eps_scale,
+            )
+        elif method == 'ridge_eikonal':
+            # CHK-159 SP-E: Ridge-Eikonal hybrid on non-uniform grids.
+            from .ridge_eikonal import RidgeEikonalReinitializer
+            self._strategy = RidgeEikonalReinitializer(
+                backend=backend, grid=grid, ccd=ccd, eps=eps,
+                sigma_0=sigma_0,
+                eps_scale=max(eps_scale, 1.4),
+                mass_correction=mass_correction,
             )
         else:
             raise ValueError(f"Unknown reinit method: {method!r}")

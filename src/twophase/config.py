@@ -86,6 +86,12 @@ class NumericsConfig:
     epsilon_factor: float = 1.5
     # 移流ステップあたりの再初期化疑似時間ステップ数
     reinit_steps: int = 4
+    # 再初期化法: 'split'|'unified'|'dgr'|'hybrid'|'eikonal'|'eikonal_xi'
+    #          | 'eikonal_fmm' | 'ridge_eikonal'  (CHK-159, SP-E)
+    # Default 'split' preserves existing behaviour bit-exactly.
+    reinit_method: str = "split"
+    # σ_0 for Ridge-Eikonal (D1, WIKI-T-057) in h_ref units; ignored otherwise.
+    ridge_sigma_0: float = 3.0
     # CFL 数（対流安定性条件）
     cfl_number: float = 0.3
     # 終了時刻
@@ -144,6 +150,17 @@ class NumericsConfig:
         assert self.extension_method in ("hermite", "upwind", "none"), (
             f"extension_method は 'hermite', 'upwind', または 'none' でなければならない: "
             f"'{self.extension_method}'"
+        )
+        _valid_reinit = (
+            "split", "unified", "dgr", "hybrid",
+            "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
+        )
+        assert self.reinit_method in _valid_reinit, (
+            f"reinit_method は {_valid_reinit} のいずれかでなければならない: "
+            f"'{self.reinit_method}'"
+        )
+        assert self.ridge_sigma_0 > 0.0, (
+            f"ridge_sigma_0 > 0 でなければならない: {self.ridge_sigma_0}"
         )
         if self.advection_scheme == "dissipative_ccd" and self.epsilon_factor < 1.2:
             warnings.warn(
