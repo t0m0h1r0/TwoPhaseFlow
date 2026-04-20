@@ -194,10 +194,15 @@ class TwoPhaseNSSolver:
             if needs_fccd else None
         )
         if self._advection_scheme in self._fccd_modes:
+            # mass_correction stays off: the outer step() already applies
+            # w=4ψ(1-ψ) correction on ψ after psi_from_phi; enabling it here
+            # would run the same formula on φ (SDF-valued) under
+            # phi_primary_transport, where w goes negative in the liquid bulk
+            # and scrambles φ.
             self._adv = FCCDLevelSetAdvection(
                 self._backend, self._grid, self._fccd,
                 mode=self._fccd_modes[self._advection_scheme],
-                mass_correction=True,
+                mass_correction=False,
             )
         else:
             self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)

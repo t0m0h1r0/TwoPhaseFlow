@@ -97,6 +97,54 @@ def test_fccd_not_constructed_when_unused():
     assert solver._fccd_conv is None
 
 
+def test_fccd_psi_bimodal_preserved():
+    """Regression: ψ bimodal structure must survive FCCD + phi_primary transport.
+
+    Prior bug: ns_pipeline constructed ``FCCDLevelSetAdvection(
+    mass_correction=True)``.  Under ``phi_primary_transport=True`` the
+    ``advance`` call is on **φ (SDF)**, and the ψ-CLS correction formula
+    ``w = 4q(1-q)`` goes negative in the liquid bulk (φ < 0), scrambling
+    φ every step.  After psi_from_phi the interface smeared to the domain
+    mean V_liq/V_tot ≈ 0.2 within ~6 steps.  Mass integral was preserved
+    by the outer ψ correction, so ``volume_conservation`` passed while
+    the interface was visually gone.
+
+    This test locks in the fix (mass_correction=False in ns_pipeline) with
+    a stronger gate: the bimodal [0, 1] structure of ψ must survive.
+    """
+    solver = TwoPhaseNSSolver(
+        32, 32, L, L, bc_type="wall",
+        alpha_grid=2.0,
+        use_local_eps=True,
+        eps_factor=1.5,
+        grid_rebuild_freq=0,
+        reinit_method="ridge_eikonal",
+        reinit_every=2,
+        reinit_eps_scale=1.4,
+        ridge_sigma_0=3.0,
+        reproject_mode="consistent_gfm",
+        phi_primary_transport=True,
+        advection_scheme="fccd_flux",
+        convection_scheme="fccd_flux",
+    )
+    psi = _mode2_ic(solver)
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+    psi, u, v = solver._rebuild_grid(psi, u, v, rho_l=833.0, rho_g=1.0)
+    for i in range(6):
+        psi, u, v, p = solver.step(
+            psi, u, v, dt=5e-4,
+            rho_l=833.0, rho_g=1.0, sigma=1.0, mu=0.05, step_index=i,
+        )
+    psi_host = np.asarray(solver._backend.to_host(psi))
+    assert float(np.max(psi_host)) > 0.9, (
+        f"ψ max collapsed to {float(np.max(psi_host))!r} — interface vanished"
+    )
+    assert float(np.min(psi_host)) < 0.1, (
+        f"ψ min rose to {float(np.min(psi_host))!r} — interface vanished"
+    )
+
+
 def test_from_config_threads_fccd_keys():
     """YAML → RunCfg → TwoPhaseNSSolver dispatch end-to-end."""
     raw = {
