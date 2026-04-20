@@ -14,8 +14,12 @@ depends_on:
 consumers:
   - domain: theory
     description: WIKI-T-048 (ridge-Eikonal hybrid reconstruction, uniqueness)
+  - domain: theory
+    description: "WIKI-T-057 / WIKI-T-058 (non-uniform-grid extension — CHK-159 SP-E)"
   - domain: cross-domain
     description: WIKI-X-019 (topology-freedom / metric-rigidity role separation)
+  - domain: code
+    description: "WIKI-L-025 (RidgeEikonalReinitializer library — CHK-159)"
 tags: [interface_representation, ridge, morse_theory, topology, gaussian, auxiliary_field, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"

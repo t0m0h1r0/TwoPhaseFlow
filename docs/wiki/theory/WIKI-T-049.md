@@ -16,6 +16,8 @@ depends_on:
 consumers:
   - domain: all
     description: All future memos using ξ / ω / xi_sdf should cross-link here
+  - domain: theory
+    description: "WIKI-T-058 extends the ξ_idx→ξ_ridge distinction with the ξ-space Hessian prohibition (Theorem 2, CHK-159 SP-E)"
 tags: [notation, disambiguation, reference, ridge, grid_density, computational_coordinate]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"
