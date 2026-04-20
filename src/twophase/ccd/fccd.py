@@ -477,42 +477,20 @@ class FCCDSolver:
         return [acc]
 
     def _flux_contribution(self, u_k, phi, axis: int):
-        """Skew-symmetric face flux contribution for one axis (SP-D §7).
+        """Conservative face-flux contribution for one axis (SP-D §7, Option B).
 
-        Returns nodal (−∂/∂x_k (u_k · φ))_i via:
+        Returns nodal ``−∂_k (u_k · φ)`` via:
 
-            F_face = 0.5 [u_k^face · (∂_k φ)_face + (u_k · φ)_face_direct]
-            out = -face_divergence(F_face, axis=k)
+            F_cons(face) = face_value(u_k · φ)
+            out(node)    = − face_divergence(F_cons, axis=k)
 
-        The split is algebraically redundant for the continuous equation
-        but discretely suppresses aliasing. Both halves use FCCD face
-        primitives (face_value + face_gradient).
+        Pure-conservative form (Option B canonical). For the skew-symmetric
+        variant (Option B-sk, SP-D §7.1), average with the non-conservative
+        form ``−u_k · node_gradient(φ)`` at nodes.
         """
-        xp = self.xp
-        _, q_u = self._ccd.differentiate(u_k, axis)
-        _, q_phi = self._ccd.differentiate(phi, axis)
         _, q_prod = self._ccd.differentiate(u_k * phi, axis)
-
-        u_k_face = self.face_value(u_k, axis, q=q_u)
-        dphi_dk_face = self.face_gradient(phi, axis, q=q_phi)
-        prod_face = self.face_value(u_k * phi, axis, q=q_prod)
-
-        F_face_nc = u_k_face * dphi_dk_face        # non-conservative u_k * ∂_k φ
-        F_face_cons_term = prod_face                # conservative u_k * φ (face-interpolated)
-
-        # For skew-symmetric: split the divergence form:
-        #   -∂/∂x_k(u_k φ) ≡ -u_k ∂_k φ - φ ∂_k u_k   (continuity-neutral)
-        # Discretely both forms have subtly different aliasing. The
-        # skew-symmetric choice averages the purely non-conservative
-        # (u_k · ∂φ)_f and the conservative face flux (u_k·φ)_f:
-        F_face = 0.5 * (F_face_nc + F_face_cons_term)
-
-        # For pure flux divergence (conservative only), we'd use prod_face directly;
-        # for pure non-conservative, u_k_face · dphi_dk_face.
-        # The 0.5 average is the standard skew-symmetric choice (Kok 2000;
-        # Ham et al. 2002) that minimises aliasing for energy conservation.
-
-        return -self.face_divergence(F_face, axis)
+        F_cons = self.face_value(u_k * phi, axis, q=q_prod)
+        return -self.face_divergence(F_cons, axis)
 
     # ── Wall BC helpers ─────────────────────────────────────────────────
 
