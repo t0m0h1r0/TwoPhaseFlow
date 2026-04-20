@@ -1,0 +1,103 @@
+# CHK-160 V4 probe — capillary-wave, FCCD × Ridge-Eikonal × α=2 × GFM+HFE stack
+#
+# Plan:  /Users/tomohiro/.claude/plans/execute-researcharchitect-structured-manatee.md
+# Base:  ch13_04_capwave_ridge_alpha2.yaml (kept intact for reproducibility).
+# Delta: ``advection_scheme: fccd_flux`` + ``convection_scheme: fccd_flux``.
+#
+# Minimum stack:
+#   • FCCD           — CHK-158 face-centred compact scheme (ψ advection + momentum convection)
+#   • Ridge-Eikonal  — CHK-159 reinit on non-uniform grid (ε-widening per SP-E §5)
+#   • α=2            — interface-fitted stretch
+#   • GFM+HFE        — ``reproject_mode: consistent_gfm`` + InterfaceLimitedFilter HFE
+#
+# Acceptance: |ΔV/V|(T=8) < 5% on water–air capillary wave.
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:     8.0
+  cfl:         0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: ridge_eikonal
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  ridge_sigma_0: 3.0
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+  advection_scheme: fccd_flux
+  convection_scheme: fccd_flux
+
+output:
+  dir: results/ch13_04_capwave_fullstack_alpha2
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Capillary wave D(t) — FCCD × Ridge-Eikonal × α=2 × GFM+HFE"
+      x: times
+      y: [deformation]
+      labels: ["Fullstack"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      analytical:
+        formula: prosperetti
+        omega0: 0.679
+        beta:   2.88e-3
+        D0:     0.05
+      file: ch13_04_capwave_Dt.pdf
+
+    - type: time_series
+      title: "Volume drift — FCCD×Ridge-Eikonal×α=2 (target |ΔV/V| < 5%)"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|ΔV/V|(t)$"]
+      xlabel: "$t$"
+      ylabel: "$|ΔV/V|$"
+      file: ch13_04_capwave_vol.pdf
+
+    - type: snapshot
+      t_idx: 0
+      contour: true
+      colorbar: true
+      title: "$t=0$ (prolate)"
+      file: ch13_04_capwave_snap_t0.pdf
+
+    - type: snapshot
+      t_idx: -1
+      contour: true
+      colorbar: true
+      title: "$t=T_{\\mathrm{final}}$"
+      file: ch13_04_capwave_snap_tf.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
