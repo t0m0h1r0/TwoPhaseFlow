@@ -38,9 +38,9 @@ WENO5 achieves O(h^5) but uses a 5-point stencil. For CCD-based PPE (O(h^6) pres
 
 At each grid point i, CCD solves simultaneously for f'_i and f''_i from neighboring values {f_{i-1}, f_i, f_{i+1}}:
 
-**Equation-I** (first derivative): alpha_1 f'_{i-1} + f'_i + alpha_1 f'_{i+1} = a_1(f_{i+1}-f_{i-1})/(2h) + b_1(f''_{i+1}-f''_{i-1})h/2
+**Equation-I** (first derivative): alpha_1 f'_{i-1} + f'_i + alpha_1 f'_{i+1} = a_1(f_{i+1}-f_{i-1})/h + b_1 h(f''_{i+1}-f''_{i-1})
 
-**Equation-II** (second derivative): beta_2 f''_{i-1} + f''_i + beta_2 f''_{i+1} = a_2(f_{i+1}-2f_i+f_{i-1})/h^2 + b_2(f'_{i+1}-f'_{i-1})/(2h)
+**Equation-II** (second derivative): beta_2 f''_{i-1} + f''_i + beta_2 f''_{i+1} = a_2(f_{i-1}-2f_i+f_{i+1})/h^2 + b_2(f'_{i+1}-f'_{i-1})/h
 
 ### Coefficients (O(h^6) Taylor matching)
 
