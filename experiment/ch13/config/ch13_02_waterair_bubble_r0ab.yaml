@@ -1,0 +1,140 @@
+# §13.2 R-0 A/B baseline (WIKI-E-030 confirmation, CHK-155)
+# Identical to ch13_02_waterair_bubble.yaml except output.dir.
+# Used to measure R-0 blowup time on the same GPU as R-1.5 result for
+# fair A/B comparison vs the R-1.5 blowup at t=9.62 (blz49hel6).
+#
+# Non-dim: rho_g=1 (air), rho_l=833 (water; 998/1.2), sigma=1.0
+# mu=0.05 (same as ch13_01 capwave), g_acc=0.001
+# Eo = rho_l*g*d_ref^2/sigma = 833*0.001*0.25 = 0.208 (near-spherical)
+# Stokes U_T ~ 2*Drho*g*R^2/(9*mu) = 2*832*0.001*0.0625/(9*0.05) ~ 0.231
+# Domain transit time: 1.5/0.231 ~ 6.5 → T_final=20 covers acceleration + terminal + wall
+#
+# grid/physics aligned with ch13_01_capwave_waterair: alpha=1.5, use_local_eps=true, mu=0.05
+# Method: eikonal_xi + phi_primary_transport + GFM
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 833.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.001
+
+run:
+  T_final: 20.0
+  cfl: 0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_02_waterair_bubble_r0ab
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Bubble rise velocity $v_c(t)$ — water/air (rho=833:1), Eo~0.2"
+      x: times
+      y: [vc]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$v_c$"
+      file: ch13_waterair_vc.pdf
+
+    - type: time_series
+      title: "Bubble centroid $y_c(t)$"
+      x: times
+      y: [yc]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: ch13_waterair_yc.pdf
+
+    - type: time_series
+      title: "Volume conservation $|\\Delta V|/V_0$ (log)"
+      x: times
+      y: [volume_conservation]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: ch13_waterair_volcons.pdf
+
+    - type: time_series
+      title: "Kinetic energy $E_k(t)$"
+      x: times
+      y: [kinetic_energy]
+      labels: ["Simulation"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      file: ch13_waterair_ke.pdf
+
+    - type: snapshot
+      title: "$t = 2$"
+      t_idx: 0
+      contour: true
+      colorbar: true
+      file: ch13_waterair_snap_t02.pdf
+
+    - type: snapshot
+      title: "$t = 6$"
+      t_idx: 2
+      contour: true
+      colorbar: true
+      file: ch13_waterair_snap_t06.pdf
+
+    - type: snapshot
+      title: "$t = 10$"
+      t_idx: 4
+      contour: true
+      colorbar: true
+      file: ch13_waterair_snap_t10.pdf
+
+    - type: snapshot
+      title: "$t = 16$"
+      t_idx: 7
+      contour: true
+      colorbar: true
+      file: ch13_waterair_snap_t16.pdf
+
+    - type: snapshot
+      title: "$t = 20$ (final)"
+      t_idx: -1
+      contour: true
+      colorbar: true
+      file: ch13_waterair_snap_final.pdf
+
+    - type: velocity_snapshot
+      title: "Velocity field $t = 6$"
+      t_idx: 2
+      contour: true
+      colorbar: true
+      file: ch13_waterair_vel_t06.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

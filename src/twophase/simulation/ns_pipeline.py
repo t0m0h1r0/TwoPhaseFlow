@@ -759,8 +759,12 @@ class TwoPhaseNSSolver:
                 kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
             if self._debug_diag:
                 _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
-            dpsi_dx, _ = ccd.differentiate(psi, 0)
-            dpsi_dy, _ = ccd.differentiate(psi, 1)
+            if not self._grid.uniform and self.bc_type == "wall":
+                dpsi_dx = self._fvm_pressure_grad(psi, 0)
+                dpsi_dy = self._fvm_pressure_grad(psi, 1)
+            else:
+                dpsi_dx, _ = ccd.differentiate(psi, 0)
+                dpsi_dy, _ = ccd.differentiate(psi, 1)
             f_x = sigma * kappa * dpsi_dx
             f_y = sigma * kappa * dpsi_dy
         else:
