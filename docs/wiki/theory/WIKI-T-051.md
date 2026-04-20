@@ -17,6 +17,8 @@ consumers:
     description: WIKI-X-018 (R-1 FCCD candidate must satisfy wall-bounded benchmarks)
   - domain: future-impl
     description: FCCD PoC §2 wall-driven benchmarks (ch13_02 capillary wave, lid-driven cavity)
+  - domain: theory
+    description: WIKI-T-054 (explicit matrix rows for Option III — augmented operator with zero wall rows)
 tags: [ccd, fccd, wall_bc, ghost_cell, neumann, one_sided, h01_remediation, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"
@@ -148,8 +150,12 @@ For the immediate H-01 remediation, **Option III alone is sufficient**: all fiel
 ## Open issues
 
 - **Velocity wall (no-slip).** Option I (ghost-cell with $u_{-1} = -u_0$ for Dirichlet zero) is straightforward in 1-D but the 2-D corner closure (where two walls meet) requires careful coupling. Deferred to a future entry tied to FCCD-velocity PoC.
-- **Periodic BC.** No special treatment needed: the Chu–Fan combined relations close periodically, and FCCD inherits this directly. Documented in [WIKI-T-012](WIKI-T-012.md) §periodic.
+- **Periodic BC.** No special treatment needed: the Chu–Fan combined relations close periodically, and FCCD inherits this directly. Documented in [WIKI-T-012](WIKI-T-012.md) §periodic. Formally derived (block-circulant composite + modified wavenumber) in [WIKI-T-054](WIKI-T-054.md) §7.
 - **Inflow / outflow BC.** Not relevant to the H-01 wall-bounded benchmark; deferred.
+
+## Matrix row form (CHK-156 supplement)
+
+[WIKI-T-054](WIKI-T-054.md) §6 spells out the explicit augmented matrix operator $\mathbf{M}^{\text{FCCD,aug}} \in \mathbb{R}^{(N+2) \times (N+1)}$ for Option III: wall-face rows 0 and $N+1$ are all-zero, interior rows $1..N$ inherit $\mathbf{M}^{\text{FCCD}}$. This is the form needed by an implementer that iterates over an augmented face vector; callers that iterate only over interior face indices (the existing pattern at [`ns_pipeline.py:393`](../../../src/twophase/simulation/ns_pipeline.py#L393)) require no augmentation. CCD boundary-row inheritance ($q_0, q_N$ from one-sided stencils at [`ccd_solver.py:611`](../../../src/twophase/ccd/ccd_solver.py#L611)) is treated in [WIKI-T-054](WIKI-T-054.md) §6.
 
 ## References
 

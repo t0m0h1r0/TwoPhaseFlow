@@ -1,6 +1,6 @@
-# Wiki Index — 160 entries
+# Wiki Index — 161 entries
 
-## Theory (53)
+## Theory (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -57,6 +57,7 @@
 | [WIKI-T-051](theory/WIKI-T-051.md) | Face-Centered Wall BC for FCCD: Ghost-Cell, One-Sided, and ψ-Only Variants |
 | [WIKI-T-052](theory/WIKI-T-052.md) | R-1.5: Minimal FVM-Face σκ∇ψ Unification via Existing _fvm_pressure_grad |
 | [WIKI-T-053](theory/WIKI-T-053.md) | FCCD Calculation Equations via CCD Second-Derivative Closure |
+| [WIKI-T-054](theory/WIKI-T-054.md) | FCCD Matrix Formulation: Composite Operator, Wall BC Rows, Periodic Block-Circulant |
 
 ## Cross-Domain (19)
 
