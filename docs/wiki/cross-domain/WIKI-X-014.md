@@ -154,3 +154,12 @@ immediately before numerical failure.
 Non-uniform dynamic interface deployment is feasible with `consistent_iim` + DGR +
 `rebuild_freq` $\ge 10$, bounded by $\rho \le 20$; requires 3-phase on-boarding
 and runtime monitoring of `accept_ratio`/`backtrack_ratio`.
+
+## Related research proposals (2026-04-20)
+
+The $\rho \le 20$ bound and `accept_ratio` mechanics are effects of the H-01 metric
+mismatch ([[WIKI-T-045]], [[WIKI-E-030]]). Candidate remediations raising the bound:
+
+- [[WIKI-T-046]] — FCCD face-unified gradient ([SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md))
+- [[WIKI-X-018]] — H-01 remediation map
+- [[WIKI-T-047]] / [[WIKI-T-048]] — ridge–Eikonal hybrid for topology change ([SP-B](../../memo/short_paper/SP-B_ridge_eikonal_hybrid.md))

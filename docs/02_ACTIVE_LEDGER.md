@@ -8,17 +8,18 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | worktree-worktree-e030-theory |
-| last_CHK | CHK-152 DONE 2026-04-20 — WIKI-E-030 後期ブローアップ根本原因確定: **H-01（G^adj/CCD BF残差）が唯一主因**; Exp-2(σ=0)→安定確認が決定的証拠. H-09(833×増幅)+H-16(非線形暴走)は共役要因. |
-| next_action | [NEXT] worktree-worktree-e030-theory → main マージ. 修正（G^adj と σκ∇ψ の同一メトリクス空間統一）は将来タスク. |
+| branch | worktree-research-arch-ridge-fccd |
+| last_CHK | CHK-153 DONE 2026-04-20 — ResearchArchitect 成果物: SP-A (FCCD) + SP-B (Ridge-Eikonal) + wiki 6件新規 (T-046..T-049, X-018, X-019) + 既存 wiki 4件への cross-link. 論文改訂およびコード変更は判断保留 (PoC後に α/β/γ 決定). |
+| next_action | [NEXT] worktree-research-arch-ridge-fccd の review → main マージ. 次段階 PoC: FCCD 1D + BF残差計測 + Ridge 抽出 2D. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: **149 entries** (docs/wiki/INDEX.md). T-044/L-022 added 2026-04-19; E-030 [OPEN]+T-045 added 2026-04-20.
+- Wiki: **155 entries** (docs/wiki/INDEX.md). T-046..T-049 + X-018/X-019 added 2026-04-20 (CHK-153).
 - phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
 - G^adj (worktree-gfm-nonuniform) を main にマージ済み (f7e8db4, CHK-151).
 - WIKI-E-030 **CLOSED**: 根本原因確定 **H-01（G^adj/CCD BF残差）**唯一主因; Exp-2(σ=0→T=20安定)が決定的証拠. H-09(増幅)+H-16(暴走)は共役. CHK-152 DONE.
+- ResearchArchitect 研究方針評価 **CLOSED** (CHK-153): SP-A (FCCD) + SP-B (Ridge-Eikonal) ショートペーパー + wiki 6件新規. 方針転換 (α/β/γ) 判断は PoC 後.
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
@@ -29,6 +30,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-153 | 2026-04-20 | research+wiki | [DONE] ResearchArchitect 成果物: 5件のユーザー提示 short paper メモを 2 本に集約し, wiki 補完. **SP-A** [docs/memo/short_paper/SP-A_face_centered_upwind_ccd.md](memo/short_paper/SP-A_face_centered_upwind_ccd.md) (離散化軸, Chu-Fan 忠実 + G^adj 整合性節) + **SP-B** [docs/memo/short_paper/SP-B_ridge_eikonal_hybrid.md](memo/short_paper/SP-B_ridge_eikonal_hybrid.md) (位相軸, memos 1-4 統合 + ξ_ridge 記号導入 + CHK-138 σ>0 caveat). 新規 wiki 6件: [T-046](wiki/theory/WIKI-T-046.md) FCCD / [T-047](wiki/theory/WIKI-T-047.md) Gaussian-ξ Ridge / [T-048](wiki/theory/WIKI-T-048.md) Ridge-Eikonal hybrid + uniqueness / [T-049](wiki/theory/WIKI-T-049.md) ξ 記号 disambiguation / [X-018](wiki/cross-domain/WIKI-X-018.md) H-01 remediation map / [X-019](wiki/cross-domain/WIKI-X-019.md) topology/metric 役割分離. 既存 cross-link: T-042 / T-045 / X-012 / X-014. INDEX 149→155. 方針転換 (α/β/γ) 判断保留 — PoC 後に決定. Branch: worktree-research-arch-ridge-fccd. コード変更・論文 .tex 変更なし. |
 | CHK-152 | 2026-04-20 | diag+wiki | [DONE] WIKI-E-030 後期ブローアップ根本原因調査完了. **H-01（Corrector G^adj/CCD BF残差）が唯一主因確定**. 証拠: Exp-1(bf_res=884@step1→構造的), Exp-2(σ=0→T=20安定⭐決定的), Exp-3(CFL×0.5→ブローアップ1.48×遅延、消えず), Exp-4(no reinit→H-05二次確認). 修正要件: G^adj と σκ∇ψ を同一メトリクス空間に統一（将来タスク）. Branch: worktree-worktree-e030-theory |
 | CHK-151 | 2026-04-20 | merge | worktree-gfm-nonuniform → main マージ (f7e8db4): G^adj 圧力勾配（_fvm_pressure_grad, _precompute_fvm_grad_spacing）+ GFM 非一様格子対応 (d_f/dv_L/dv_R プリコンピュート) + ch13_02_bisect.yaml. 3 files, 140 ins / 48 del. コンフリクトなし. Branch: main |
 | CHK-150 | 2026-04-20 | paper+wiki | 実験結果を論文に反映: §12g に G^adj 検証サブセクション（切り分け表・結果表・後期ブローアップ注記）; §13 格子方針を FVM-CCD 根本原因と G^adj 修正内容に更新. WIKI-E-030 作成（後期ブローアップ課題記録）. INDEX 147→148. コンパイルエラーゼロ. Branch: main |
