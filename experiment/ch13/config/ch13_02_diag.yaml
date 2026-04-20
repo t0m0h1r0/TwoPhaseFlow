@@ -1,0 +1,74 @@
+# §13.2 診断実験 — WIKI-E-030 Exp-1
+# base: ch13_02_waterair_bubble.yaml + debug_diagnostics=true, T_final=13.0
+#
+# 目的: bf_residual_max / div_u_max / kappa_max / ppe_rhs_max の時系列を記録し
+#       どの量が t=12.5 以前から増大するかを確認する（H-01, H-02, H-12, H-14, H-16）
+#
+# 期待: bf_residual_max が単調増加 → H-01（BF残差蓄積）が主因
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 833.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.001
+
+run:
+  T_final: 13.0
+  cfl: 0.10
+  snap_interval: 2.0
+  print_every: 100
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+  debug_diagnostics: true
+
+output:
+  dir: results/ch13_02_diag
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "KE(t) — diagnostic run (alpha=1.5, T=13)"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      file: ch13_diag_ke.pdf
+
+    - type: time_series
+      title: "Bubble centroid $y_c(t)$"
+      x: times
+      y: [yc]
+      labels: ["yc"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: ch13_diag_yc.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

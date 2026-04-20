@@ -8,16 +8,17 @@
 | Key | Value |
 |---|---|
 | phase | META_REDESIGN_IN_PROGRESS |
-| branch | main |
-| last_CHK | CHK-151 DONE 2026-04-20 — worktree-gfm-nonuniform を main へマージ (f7e8db4): G^adj 圧力勾配 + GFM 非一様格子対応 (3 files, 5 commits). |
-| next_action | [OPEN] WIKI-E-030 後期ブローアップ調査継続: Predictor ∇p^n G^adj 置換（仮説 B）または診断量追加（κ_max, CFL, PPE residual）. |
+| branch | worktree-worktree-e030-theory |
+| last_CHK | CHK-152 DONE 2026-04-20 — WIKI-E-030 後期ブローアップ根本原因確定: **H-01（G^adj/CCD BF残差）が唯一主因**; Exp-2(σ=0)→安定確認が決定的証拠. H-09(833×増幅)+H-16(非線形暴走)は共役要因. |
+| next_action | [NEXT] worktree-worktree-e030-theory → main マージ. 修正（G^adj と σκ∇ψ の同一メトリクス空間統一）は将来タスク. |
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
 - ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- Wiki: **148 entries** (docs/wiki/INDEX.md). T-044/L-022 added 2026-04-19; E-030 [OPEN] added 2026-04-20 (G^adj 後期ブローアップ課題).
+- Wiki: **149 entries** (docs/wiki/INDEX.md). T-044/L-022 added 2026-04-19; E-030 [OPEN]+T-045 added 2026-04-20.
 - phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
-- G^adj (worktree-gfm-nonuniform) を main にマージ済み (f7e8db4, CHK-151). WIKI-E-030 [OPEN].
+- G^adj (worktree-gfm-nonuniform) を main にマージ済み (f7e8db4, CHK-151).
+- WIKI-E-030 **CLOSED**: 根本原因確定 **H-01（G^adj/CCD BF残差）**唯一主因; Exp-2(σ=0→T=20安定)が決定的証拠. H-09(増幅)+H-16(暴走)は共役. CHK-152 DONE.
 
 ────────────────────────────────────────────────────────
 # § CHECKLIST — recent activity (one line per CHK)
@@ -28,6 +29,7 @@
 
 | CHK | Date | Type | Summary |
 |---|---|---|---|
+| CHK-152 | 2026-04-20 | diag+wiki | [DONE] WIKI-E-030 後期ブローアップ根本原因調査完了. **H-01（Corrector G^adj/CCD BF残差）が唯一主因確定**. 証拠: Exp-1(bf_res=884@step1→構造的), Exp-2(σ=0→T=20安定⭐決定的), Exp-3(CFL×0.5→ブローアップ1.48×遅延、消えず), Exp-4(no reinit→H-05二次確認). 修正要件: G^adj と σκ∇ψ を同一メトリクス空間に統一（将来タスク）. Branch: worktree-worktree-e030-theory |
 | CHK-151 | 2026-04-20 | merge | worktree-gfm-nonuniform → main マージ (f7e8db4): G^adj 圧力勾配（_fvm_pressure_grad, _precompute_fvm_grad_spacing）+ GFM 非一様格子対応 (d_f/dv_L/dv_R プリコンピュート) + ch13_02_bisect.yaml. 3 files, 140 ins / 48 del. コンフリクトなし. Branch: main |
 | CHK-150 | 2026-04-20 | paper+wiki | 実験結果を論文に反映: §12g に G^adj 検証サブセクション（切り分け表・結果表・後期ブローアップ注記）; §13 格子方針を FVM-CCD 根本原因と G^adj 修正内容に更新. WIKI-E-030 作成（後期ブローアップ課題記録）. INDEX 147→148. コンパイルエラーゼロ. Branch: main |
 | CHK-149 | 2026-04-20 | paper | 論文§12g/§13 実験結果反映 2コミット（417e997, f7f2016）+ LaTeX fix (84c7c01). |

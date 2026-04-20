@@ -100,8 +100,14 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
 
     results = run_simulation(cfg)
 
-    arrays = {k: v for k, v in results.items() if isinstance(v, np.ndarray)}
-    save_results(npz_path, arrays)
+    flat: dict = {}
+    for k, v in results.items():
+        if isinstance(v, np.ndarray):
+            flat[k] = v
+        elif isinstance(v, dict):  # e.g. debug_diagnostics: flatten with "/" separator
+            for kk, vv in v.items():
+                flat[f"{k}/{kk}"] = np.asarray(vv)
+    save_results(npz_path, flat)
 
     # Snapshots are list-of-dicts; save separately so --plot-only can access them
     import pickle

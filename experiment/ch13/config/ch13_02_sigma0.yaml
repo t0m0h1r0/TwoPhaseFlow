@@ -1,0 +1,72 @@
+# §13.2 σ=0 実験 — WIKI-E-030 Exp-2
+# base: ch13_02_waterair_bubble.yaml + sigma=0.0
+#
+# 目的: 表面張力を除去してブローアップが消えるか確認（H-01, H-04, H-09, H-10）
+# 期待: 安定 → 表面張力関連（BF残差 × ρ=833:1増幅）が主因
+#       ブローアップ継続 → 表面張力無関係の数値不安定（再初期化、投影法分裂誤差等）
+
+grid:
+  NX:  64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 1.5
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 833.0
+  rho_g:   1.0
+  sigma:   0.0
+  mu:      0.05
+  g_acc:   0.001
+
+run:
+  T_final: 20.0
+  cfl: 0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: eikonal_xi
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_02_sigma0
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "KE(t) — sigma=0 (surface tension off)"
+      x: times
+      y: [kinetic_energy]
+      labels: ["sigma=0"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      file: ch13_sigma0_ke.pdf
+
+    - type: time_series
+      title: "Bubble centroid $y_c(t)$ — sigma=0"
+      x: times
+      y: [yc]
+      labels: ["sigma=0"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: ch13_sigma0_yc.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
