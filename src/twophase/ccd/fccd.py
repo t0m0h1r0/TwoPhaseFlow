@@ -66,9 +66,14 @@ def _face_gradient_kernel(u_lo, u_hi, q_lo, q_hi, inv_H, H_over_24):
 
 
 @_fuse
-def _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_32):
-    """u_f = (u_lo + u_hi)/2 - (H²/32)*(q_lo + q_hi). SP-D §5."""
-    return 0.5 * (u_lo + u_hi) - H_sq_over_32 * (q_lo + q_hi)
+def _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_16):
+    """u_f = (u_lo + u_hi)/2 - (H²/16)*(q_lo + q_hi). SP-D §5.
+
+    Derivation: plain average overshoots by +(H²/8)·u''(x_c); replacing u''
+    with the face average (q_lo + q_hi)/2 yields correction −(H²/8)·(q_lo+q_hi)/2
+    = −(H²/16)·(q_lo + q_hi).
+    """
+    return 0.5 * (u_lo + u_hi) - H_sq_over_16 * (q_lo + q_hi)
 
 
 @_fuse
@@ -145,7 +150,7 @@ class FCCDSolver:
                 "H": H,
                 "inv_H": 1.0 / H,
                 "H_over_24": H / 24.0,
-                "H_sq_over_32": H * H / 32.0,
+                "H_sq_over_16": H * H / 16.0,
                 "H_over_16": H / 16.0,
                 "N_faces": N_faces,
             }
@@ -156,7 +161,7 @@ class FCCDSolver:
             "H": H,
             "inv_H": 1.0 / H,
             "H_over_24": H / 24.0,
-            "H_sq_over_32": H * H / 32.0,
+            "H_sq_over_16": H * H / 16.0,
             # H/16 is applied at NODE positions for R_4; use mean of adjacent faces.
             "H_over_16_node": self._node_H_over_16(H_host),
             "N_faces": N_faces,
@@ -176,10 +181,11 @@ class FCCDSolver:
     def _face_slice(self, u, axis):
         """Return (u_lo, u_hi) slices of a nodal array for face stencil.
 
-        Shape (N, ...) along axis, where N = grid.N[axis].
+        Convention: face[j] = f_{j+1/2} = face between nodes j and j+1,
+        for j = 0, ..., N-1. So u_lo[j] = u[j], u_hi[j] = u[j+1].
 
         Wall BC: u_lo = u[0:N], u_hi = u[1:N+1] — N interior faces.
-        Periodic BC: uses only u[0:N] and wraps via xp.roll.
+        Periodic BC: wraps u[j+1] at j=N-1 back to u[0] via xp.roll(-1).
         """
         xp = self.xp
         u = xp.asarray(u)
@@ -187,8 +193,8 @@ class FCCDSolver:
         if self.bc_type == "periodic":
             N = self.grid.N[axis]
             u_unique = u[:N]
-            u_lo = xp.roll(u_unique, 1, axis=0)
-            u_hi = u_unique
+            u_lo = u_unique
+            u_hi = xp.roll(u_unique, -1, axis=0)
         else:
             u_lo = u[:-1]
             u_hi = u[1:]
@@ -253,11 +259,11 @@ class FCCDSolver:
 
         w = self._weights[axis]
         if w["uniform"]:
-            H_sq_over_32 = w["H_sq_over_32"]
+            H_sq_over_16 = w["H_sq_over_16"]
         else:
-            H_sq_over_32 = self._broadcast_axis0(w["H_sq_over_32"], u_lo.ndim)
+            H_sq_over_16 = self._broadcast_axis0(w["H_sq_over_16"], u_lo.ndim)
 
-        u_f = _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_32)
+        u_f = _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_16)
         return xp.moveaxis(u_f, 0, axis)
 
     def node_gradient(self, u, axis: int, q=None):
@@ -287,12 +293,13 @@ class FCCDSolver:
         N = self.grid.N[axis]
 
         if self.bc_type == "periodic":
-            # Periodic: output has shape (N+1, *rest) with out[N] = out[0]
-            # For interior nodes 0..N-1: out[i] = 0.5*(d_face[i] + d_face[(i+1) mod N])
-            #                                    - (H/16)*(q[i+1] - q[i-1])
-            # d_face is indexed 0..N-1; d_face[(i+1) mod N] uses wrap.
-            d_L = d_face                                   # (N, *rest)
-            d_R = xp.roll(d_face, -1, axis=0)             # d_face[(i+1) mod N]
+            # Periodic: output has shape (N+1, *rest) with out[N] = out[0].
+            # Convention: d_face[j] = f_{j+1/2}, so at node i we need
+            #   d_{f_{i-1/2}} = d_face[i-1]  (→ roll(d_face, +1))
+            #   d_{f_{i+1/2}} = d_face[i]    (direct)
+            # plus q[i-1] = roll(q_unique, +1), q[i+1] = roll(q_unique, -1).
+            d_L = xp.roll(d_face, 1, axis=0)              # d_face[(i-1) mod N]
+            d_R = d_face                                   # d_face[i]
             q_unique = q_moved[:N]
             q_m1 = xp.roll(q_unique, 1, axis=0)
             q_p1 = xp.roll(q_unique, -1, axis=0)
