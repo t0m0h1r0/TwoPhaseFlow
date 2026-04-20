@@ -101,8 +101,14 @@ class NumericsConfig:
     cn_mode: str = "picard"
     # 境界条件の種類: BCType.WALL または BCType.PERIODIC
     bc_type: BCType = BCType.WALL
-    # CLS 移流スキーム: 'dissipative_ccd'（デフォルト, §5）または 'weno5'（参考スキーム）
+    # CLS 移流スキーム:
+    #   'dissipative_ccd' (デフォルト, §5) | 'weno5' | 'fccd_nodal' | 'fccd_flux'
+    # FCCD 変種は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
     advection_scheme: str = "dissipative_ccd"
+    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd_nodal' | 'fccd_flux'
+    # FCCD 変種は face-centered compact; 既定の ConvectionTerm (CCD) と完全互換の
+    # AB2 ブッファ形状を保ちつつ内部だけ FCCD 化する (SP-D §6/§7).
+    convection_scheme: str = "ccd"
     # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
     # Default: 'csf' for backward compatibility; 'gfm' is production (§8e)
     surface_tension_model: str = "csf"
@@ -121,9 +127,15 @@ class NumericsConfig:
         assert isinstance(self.bc_type, BCType), (
             f"bc_type は BCType でなければならない: '{self.bc_type}'"
         )
-        assert self.advection_scheme in ("dissipative_ccd", "weno5"), (
-            f"advection_scheme は 'dissipative_ccd' または 'weno5' でなければならない: "
-            f"'{self.advection_scheme}'"
+        assert self.advection_scheme in (
+            "dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux",
+        ), (
+            f"advection_scheme は 'dissipative_ccd', 'weno5', 'fccd_nodal', "
+            f"'fccd_flux' のいずれか: '{self.advection_scheme}'"
+        )
+        assert self.convection_scheme in ("ccd", "fccd_nodal", "fccd_flux"), (
+            f"convection_scheme は 'ccd', 'fccd_nodal', 'fccd_flux' のいずれか: "
+            f"'{self.convection_scheme}'"
         )
         assert self.surface_tension_model in ("gfm", "csf"), (
             f"surface_tension_model は 'gfm' または 'csf' でなければならない: "
