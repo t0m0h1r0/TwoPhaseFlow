@@ -38,7 +38,6 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 from .interfaces import IFieldExtension
-from .hermite_interp import hermite5_coeffs, hermite5_eval
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -122,11 +121,13 @@ class HermiteFieldExtension(IFieldExtension):
         df_dy, d2f_dy2 = self.ccd.differentiate(field_data, axis=1)
         df_xy, d2f_xy2 = self.ccd.differentiate(df_dx, axis=1)
 
-        # Grid info
-        x_coords = grid.coords[0]
-        y_coords = grid.coords[1]
+        # Grid info (uniform grids only — HFE library constraint)
+        x_coords = xp.asarray(grid.coords[0])
+        y_coords = xp.asarray(grid.coords[1])
         hx = float(grid.L[0] / grid.N[0])
         hy = float(grid.L[1] / grid.N[1])
+        Nx = int(grid.N[0])
+        Ny = int(grid.N[1])
 
         # Target-phase points within narrow band
         # Default: source is liquid (φ < 0), extend into gas (φ ≥ 0)
@@ -135,104 +136,96 @@ class HermiteFieldExtension(IFieldExtension):
         dist_cells = xp.abs(phi) / min(hx, hy)
         in_band = is_target & (dist_cells <= self.band_cells)
 
-        target_indices = xp.argwhere(in_band)
+        # Per-cell closest-point on Γ (vectorised): x_Γ = x - φ·n̂
+        X2, Y2 = xp.meshgrid(x_coords, y_coords, indexing="ij")
+        x_gamma_full = X2 - phi * nx
+        y_gamma_full = Y2 - phi * ny
 
-        for idx in target_indices:
-            i, j = int(idx[0]), int(idx[1])
-            phi_val = float(phi[i, j])
+        # Clamp to domain
+        x_gamma_full = xp.clip(x_gamma_full, float(x_coords[0]), float(x_coords[-1]))
+        y_gamma_full = xp.clip(y_gamma_full, float(y_coords[0]), float(y_coords[-1]))
 
-            # Closest point on Γ: x_Γ = x - φ·n̂  — Eq. (closest_point)
-            x_gamma = x_coords[i] - phi_val * float(nx[i, j])
-            y_gamma = y_coords[j] - phi_val * float(ny[i, j])
-
-            # Clamp to domain
-            x_gamma = max(x_coords[0], min(x_coords[-1], x_gamma))
-            y_gamma = max(y_coords[0], min(y_coords[-1], y_gamma))
-
-            # 2D tensor-product Hermite interpolation at (x_gamma, y_gamma)
-            val = self._interp_2d(
-                x_gamma, y_gamma,
-                x_coords, y_coords, hx, hy,
-                field_data, df_dx, d2f_dx2,
-                df_dy, d2f_dy2, df_xy, d2f_xy2,
-            )
-            result[i, j] = val
-
-        return result
-
-    # ── 2D tensor-product Hermite interpolation ──────────────────────────
-
-    def _interp_2d(
-        self,
-        x_target: float, y_target: float,
-        x_coords: np.ndarray, y_coords: np.ndarray,
-        hx: float, hy: float,
-        field: np.ndarray,
-        df_dx: np.ndarray, d2f_dx2: np.ndarray,
-        df_dy: np.ndarray, d2f_dy2: np.ndarray,
-        df_xy: np.ndarray, d2f_xy2: np.ndarray,
-    ) -> float:
-        """2D tensor-product Hermite interpolation at (x_target, y_target).
-
-        Strategy (§8.4 "2次元への拡張"):
-          1. Find x-bracket [ix_a, ix_b] containing x_target
-          2. At y-rows j_a, j_b: x-direction Hermite → (val, dval/dy, d²val/dy²)
-          3. y-direction Hermite interpolation of the row values
-        """
-        Nx = len(x_coords) - 1
-        Ny = len(y_coords) - 1
-
-        # Natural brackets containing the target point (ξ ∈ [0,1])
-        ix_a = int(np.clip(np.searchsorted(x_coords, x_target) - 1, 0, Nx - 1))
+        # Bracket indices via uniform-grid division (no searchsorted needed)
+        x0 = float(x_coords[0])
+        y0 = float(y_coords[0])
+        ix_a = xp.clip(
+            ((x_gamma_full - x0) / hx).astype(xp.int64), 0, Nx - 2
+        )
+        jy_a = xp.clip(
+            ((y_gamma_full - y0) / hy).astype(xp.int64), 0, Ny - 2
+        )
         ix_b = ix_a + 1
-        jy_a = int(np.clip(np.searchsorted(y_coords, y_target) - 1, 0, Ny - 1))
         jy_b = jy_a + 1
 
-        xi_x = (x_target - x_coords[ix_a]) / hx
+        # Local ξ coordinates in [0, 1]
+        xi_x = (x_gamma_full - x_coords[ix_a]) / hx
+        xi_y = (y_gamma_full - y_coords[jy_a]) / hy
 
-        # Row j_a: x-interpolation
-        val_ja = self._hermite1d_x(ix_a, ix_b, jy_a, xi_x, hx, field, df_dx, d2f_dx2)
-        ddy_ja = self._hermite1d_x(ix_a, ix_b, jy_a, xi_x, hx, df_dy, df_xy, d2f_xy2)
-        d2dy2_ja = self._hermite1d_x_val_only(ix_a, ix_b, jy_a, xi_x, hx, d2f_dy2)
+        # Gather 2×2 stencil for every Hermite primitive (field, df_dx,
+        # d2f_dx2, df_dy, df_xy, d2f_xy2, d2f_dy2) at (ix_a|ix_b, jy_a|jy_b).
+        def _g(arr):
+            return (
+                arr[ix_a, jy_a], arr[ix_b, jy_a],
+                arr[ix_a, jy_b], arr[ix_b, jy_b],
+            )
+        f_aa, f_ba, f_ab, f_bb = _g(field_data)
+        fx_aa, fx_ba, fx_ab, fx_bb = _g(df_dx)
+        fxx_aa, fxx_ba, fxx_ab, fxx_bb = _g(d2f_dx2)
+        fy_aa, fy_ba, fy_ab, fy_bb = _g(df_dy)
+        fxy_aa, fxy_ba, fxy_ab, fxy_bb = _g(df_xy)
+        fxyy_aa, fxyy_ba, fxyy_ab, fxyy_bb = _g(d2f_xy2)
+        fyy_aa, fyy_ba, fyy_ab, fyy_bb = _g(d2f_dy2)
+
+        # Row j_a: x-interpolation of (val, ∂y, ∂yy)
+        val_ja = _hermite5_xp(
+            xp, f_aa, fx_aa, fxx_aa, f_ba, fx_ba, fxx_ba, hx, xi_x
+        )
+        ddy_ja = _hermite5_xp(
+            xp, fy_aa, fxy_aa, fxyy_aa, fy_ba, fxy_ba, fxyy_ba, hx, xi_x
+        )
+        d2dy2_ja = fyy_aa * (1.0 - xi_x) + fyy_ba * xi_x  # linear fallback
 
         # Row j_b: x-interpolation
-        val_jb = self._hermite1d_x(ix_a, ix_b, jy_b, xi_x, hx, field, df_dx, d2f_dx2)
-        ddy_jb = self._hermite1d_x(ix_a, ix_b, jy_b, xi_x, hx, df_dy, df_xy, d2f_xy2)
-        d2dy2_jb = self._hermite1d_x_val_only(ix_a, ix_b, jy_b, xi_x, hx, d2f_dy2)
-
-        # y-interpolation
-        xi_y = (y_target - y_coords[jy_a]) / hy
-        coeffs = hermite5_coeffs(
-            val_ja, ddy_ja, d2dy2_ja,
-            val_jb, ddy_jb, d2dy2_jb,
-            hy,
+        val_jb = _hermite5_xp(
+            xp, f_ab, fx_ab, fxx_ab, f_bb, fx_bb, fxx_bb, hx, xi_x
         )
-        return hermite5_eval(coeffs, xi_y)
-
-    # ── 1D Hermite helpers ───────────────────────────────────────────────
-
-    @staticmethod
-    def _hermite1d_x(
-        ia: int, ib: int, j: int, xi: float, h: float,
-        f: np.ndarray, df: np.ndarray, d2f: np.ndarray,
-    ) -> float:
-        """1D x-direction Hermite interpolation at row j."""
-        coeffs = hermite5_coeffs(
-            float(f[ia, j]), float(df[ia, j]), float(d2f[ia, j]),
-            float(f[ib, j]), float(df[ib, j]), float(d2f[ib, j]),
-            h,
+        ddy_jb = _hermite5_xp(
+            xp, fy_ab, fxy_ab, fxyy_ab, fy_bb, fxy_bb, fxyy_bb, hx, xi_x
         )
-        return hermite5_eval(coeffs, xi)
+        d2dy2_jb = fyy_ab * (1.0 - xi_x) + fyy_bb * xi_x
 
-    @staticmethod
-    def _hermite1d_x_val_only(
-        ia: int, ib: int, j: int, xi: float, h: float,
-        f: np.ndarray,
-    ) -> float:
-        """Linear interpolation fallback for d²f/dy² along x.
+        # y-direction Hermite interpolation of the intermediate rows
+        val_full = _hermite5_xp(
+            xp, val_ja, ddy_ja, d2dy2_ja, val_jb, ddy_jb, d2dy2_jb, hy, xi_y
+        )
 
-        Used when CCD cross-derivatives are not available. Linear
-        interpolation preserves overall order because this term enters
-        as the 2nd-derivative constraint (multiplied by h²) in ξ-space.
-        """
-        return float(f[ia, j]) * (1.0 - xi) + float(f[ib, j]) * xi
+        # Masked scatter: only overwrite in-band target cells
+        return xp.where(in_band, val_full, result)
+
+def _hermite5_xp(xp, fa, dfa, d2fa, fb, dfb, d2fb, h: float, xi):
+    """Array-valued 5th-order Hermite interpolation in ξ-space.
+
+    Closed-form solve of the 6×6 Vandermonde-like system (identical maths
+    to :func:`hermite5_coeffs`) applied elementwise on ``backend.xp``
+    arrays, followed by Horner evaluation at ``xi``.
+    """
+    F0 = fa
+    F1 = h * dfa
+    F2 = h * h * d2fa
+    G0 = fb
+    G1 = h * dfb
+    G2 = h * h * d2fb
+
+    c0 = F0
+    c1 = F1
+    c2 = 0.5 * F2
+
+    A = G0 - c0 - c1 - c2
+    B = G1 - c1 - 2.0 * c2
+    C = G2 - 2.0 * c2
+
+    c3 = (20.0 * A - 8.0 * B + C) / 2.0
+    c4 = (-30.0 * A + 14.0 * B - 2.0 * C) / 2.0
+    c5 = (12.0 * A - 6.0 * B + C) / 2.0
+
+    return c0 + xi * (c1 + xi * (c2 + xi * (c3 + xi * (c4 + xi * c5))))
