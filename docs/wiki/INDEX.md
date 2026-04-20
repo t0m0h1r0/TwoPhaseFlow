@@ -1,6 +1,6 @@
-# Wiki Index — 155 entries
+# Wiki Index — 159 entries
 
-## Theory (49)
+## Theory (52)
 
 | REF-ID | Title |
 |--------|-------|
@@ -53,6 +53,9 @@
 | [WIKI-T-047](theory/WIKI-T-047.md) | Gaussian-ξ Ridge Interface Representation |
 | [WIKI-T-048](theory/WIKI-T-048.md) | Ridge–Eikonal Hybrid Reconstruction: Uniqueness and FMM Coupling |
 | [WIKI-T-049](theory/WIKI-T-049.md) | Notation Disambiguation: ξ_idx vs ξ_ridge vs ω(φ) |
+| [WIKI-T-050](theory/WIKI-T-050.md) | FCCD Non-Uniform Generalization: Cancellation Coefficients μ(r), λ(r) |
+| [WIKI-T-051](theory/WIKI-T-051.md) | Face-Centered Wall BC for FCCD: Ghost-Cell, One-Sided, and ψ-Only Variants |
+| [WIKI-T-052](theory/WIKI-T-052.md) | R-1.5: Minimal FVM-Face σκ∇ψ Unification via Existing _fvm_pressure_grad |
 
 ## Cross-Domain (19)
 
@@ -165,7 +168,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (22)
+## Code (23)
 
 | REF-ID | Title |
 |--------|-------|
@@ -191,3 +194,4 @@
 | [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
 | [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |
 | [WIKI-L-022](code/WIKI-L-022.md) | G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
+| [WIKI-L-023](code/WIKI-L-023.md) | R-1.5 Implementation Roadmap: Minimal FVM-face ψ Gradient (SPEC, code unchanged) |

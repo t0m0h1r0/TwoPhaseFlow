@@ -179,3 +179,18 @@ The guard condition `not self._grid.uniform and self.bc_type == "wall"` ensures 
 - G^adj is 2nd-order accurate; CCD is 6th-order. For smooth pressure fields this accuracy loss is acceptable since the PPE solve is 2nd-order FVM anyway.
 - The consistency proof assumes a 1D FVM divergence operator. In 2D the x and y axes decouple in the collocated projection — the same argument holds axis-by-axis.
 - Grid is static (grid_rebuild_freq=0 in ch13); `_precompute_fvm_grad_spacing()` is called once in `_rebuild_grid`.
+
+---
+
+## 後続発見 (2026-04-20, CHK-152 / CHK-154)
+
+本文書は **射影整合性 (PC: $\mathcal{D}_\text{FVM}(\mathcal{G}^{\text{adj}} p) = \mathcal{L}_\text{FVM} p$)** のみを扱う。
+
+[WIKI-E-030](../experiment/WIKI-E-030.md) 後期ブローアップ調査 (CHK-152) で、**Balanced-Force 整合性 (BF: corrector の $\nabla p$ と $\sigma\kappa\nabla\psi$ が同一演算子で評価される)** は PC とは独立な要件であることが確定。$\mathcal{G}^{\text{adj}}$ は PC を満たすが、現行 corrector では $\sigma\kappa\nabla\psi$ が依然 CCD で評価されるため BF が破れる ([WIKI-T-045](WIKI-T-045.md) H-01)。
+
+H-01 remediation map は [WIKI-X-018](../cross-domain/WIKI-X-018.md) を参照:
+
+- **即時最小修正**: [WIKI-T-052](WIKI-T-052.md) (R-1.5 — 既存 `_fvm_pressure_grad` を ψ にも流用); 実装ロードマップは [WIKI-L-023](../code/WIKI-L-023.md)。$\mathcal{G}^{\text{adj}}$ をそのまま再利用するため本文書のロジックは無変更。
+- **理想解 (高次)**: [WIKI-T-046](WIKI-T-046.md) (FCCD 4 次) + [WIKI-T-050](WIKI-T-050.md) (非一様 cancellation $\mu, \lambda, \nu$) + [WIKI-T-051](WIKI-T-051.md) (face-locus wall BC)。R-1.5 は FCCD with $\mu \equiv \lambda \equiv 0$ の特殊例 ([WIKI-T-050](WIKI-T-050.md) §"Reduction to G^adj") であり、両者は連続的に接続される。
+
+PC と BF の独立性は [WIKI-T-004](WIKI-T-004.md) (Balanced-Force operator-consistency principle) を参照。
