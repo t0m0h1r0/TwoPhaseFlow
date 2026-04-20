@@ -25,10 +25,12 @@ depends_on:
 consumers:
   - domain: code
     description: FCCDOperator PoC implementation (matrix assembly and application path)
+  - domain: theory
+    description: WIKI-T-055 (FCCD advection operator — extends M^FCCD to Options B/C); WIKI-T-056 (Wall Option IV, Dirichlet u — complementary to §6 Option III)
   - domain: cross-domain
     description: WIKI-X-018 (R-1 PoC equation set — matrix form for H-01 remediation)
   - domain: paper
-    description: SP-C short paper (FCCD matrix form and BC integration)
+    description: SP-C short paper (FCCD matrix form and BC integration); SP-D (FCCD advection, consumer of this gradient matrix form)
 tags: [ccd, fccd, matrix_form, composite_operator, wall_bc, periodic_bc, block_circulant, modified_wavenumber, h01_remediation, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-21"
@@ -372,3 +374,6 @@ Since $\mathbf{q}^{\text{per}} = \mathbf{S}^{\text{per}}_{\mathrm{CCD}}\, \mathb
 - [`src/twophase/ccd/ccd_solver.py`](../../../src/twophase/ccd/ccd_solver.py) — Existing block-tridiagonal (wall) and block-circulant (periodic) solvers.
 - [`src/twophase/simulation/ns_pipeline.py:381`](../../../src/twophase/simulation/ns_pipeline.py#L381) — `_fvm_pressure_grad` (current $G^{\text{adj}}$ wall reference).
 - SP-C (new) — Short paper consolidating matrix form + BC integration (this entry is the wiki backing for SP-C).
+- [WIKI-T-055](WIKI-T-055.md) — FCCD advection operator (Options B and C); extends $\mathbf{M}^{\text{FCCD}}$ to the convective term with the new face-value primitive $\mathbf{P}_f$.
+- [WIKI-T-056](WIKI-T-056.md) — FCCD wall Option IV (Dirichlet $u$) via ghost mirror with sign flip; complementary to §6 Option III.
+- SP-D (new) — Short paper for FCCD advection, consumer of this gradient matrix form.

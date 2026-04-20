@@ -1,6 +1,6 @@
-# Wiki Index — 161 entries
+# Wiki Index — 168 entries
 
-## Theory (54)
+## Theory (59)
 
 | REF-ID | Title |
 |--------|-------|
@@ -58,6 +58,11 @@
 | [WIKI-T-052](theory/WIKI-T-052.md) | R-1.5: Minimal FVM-Face σκ∇ψ Unification via Existing _fvm_pressure_grad |
 | [WIKI-T-053](theory/WIKI-T-053.md) | FCCD Calculation Equations via CCD Second-Derivative Closure |
 | [WIKI-T-054](theory/WIKI-T-054.md) | FCCD Matrix Formulation: Composite Operator, Wall BC Rows, Periodic Block-Circulant |
+| [WIKI-T-055](theory/WIKI-T-055.md) | FCCD Advection Operator: Option B Flux-Divergence and Option C Node-Output (Hermite Reconstructor) |
+| [WIKI-T-056](theory/WIKI-T-056.md) | FCCD Wall BC Option IV: Dirichlet Fields (No-Slip Velocity) via Ghost Mirror with Sign Flip |
+| [WIKI-T-057](theory/WIKI-T-057.md) | σ_eff and ε_local Spatial Scaling for Ridge-Eikonal on Non-Uniform Grids |
+| [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD vs FD Fallback |
+| [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
 
 ## Cross-Domain (19)
 
@@ -170,7 +175,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (23)
+## Code (25)
 
 | REF-ID | Title |
 |--------|-------|
@@ -197,3 +202,5 @@
 | [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |
 | [WIKI-L-022](code/WIKI-L-022.md) | G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
 | [WIKI-L-023](code/WIKI-L-023.md) | R-1.5 Implementation Roadmap: Minimal FVM-face ψ Gradient (SPEC, code unchanged) |
+| [WIKI-L-024](code/WIKI-L-024.md) | FCCD Library Module: FCCDSolver, FCCDConvectionTerm, FCCDLevelSetAdvection |
+| [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |

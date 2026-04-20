@@ -15,8 +15,10 @@ depends_on:
 consumers:
   - domain: cross-domain
     description: WIKI-X-019 (ξ/φ role separation as design principle)
-  - domain: future-impl
-    description: Ridge extraction + FMM coupling PoC
+  - domain: theory
+    description: "WIKI-T-059 (non-uniform FMM — physical-space Eikonal quadratic, CHK-159)"
+  - domain: code
+    description: "WIKI-L-025 (RidgeEikonalReinitializer library — CHK-159)"
 tags: [ridge, eikonal, fmm, fsm, uniqueness, viscosity_solution, topology_transition, research_proposal]
 compiled_by: Claude Opus 4.7
 compiled_at: "2026-04-20"

@@ -73,5 +73,13 @@ Whether a project-level interface manager should present the two fields as a **u
 ## Cross-references
 
 - Theory: [WIKI-T-047](../theory/WIKI-T-047.md), [WIKI-T-048](../theory/WIKI-T-048.md), [WIKI-T-049](../theory/WIKI-T-049.md) (notation), [WIKI-T-042](../theory/WIKI-T-042.md)
-- Short paper: [SP-B full draft](../../memo/short_paper/SP-B_ridge_eikonal_hybrid.md)
+- Non-uniform extension (CHK-159): [WIKI-T-057](../theory/WIKI-T-057.md) (σ_eff/ε_local), [WIKI-T-058](../theory/WIKI-T-058.md) (physical-space Hessian), [WIKI-T-059](../theory/WIKI-T-059.md) (non-uniform FMM), [WIKI-L-025](../code/WIKI-L-025.md) (library)
+- Short paper: [SP-B full draft](../../memo/short_paper/SP-B_ridge_eikonal_hybrid.md); [SP-E non-uniform extension](../../memo/short_paper/SP-E_ridge_eikonal_nonuniform_grid.md)
 - Companion principle (discretisation side): [WIKI-X-018](WIKI-X-018.md) (FCCD metric unification)
+
+## CHK rows
+
+| CHK | Delivery | Notes |
+|---|---|---|
+| CHK-158 | FCCD advection library + SP-D | Metric side of the ξ/φ decomposition on non-uniform grids |
+| CHK-159 | Ridge-Eikonal library + SP-E | Topology/metric separation preserved on interface-fitted grids |

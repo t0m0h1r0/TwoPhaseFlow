@@ -154,12 +154,43 @@ class SimulationBuilder:
         # 'zero' は後方互換のデフォルトだが壁面 BC では誤差が大きい
         # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
         _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
+
+        # FCCD shared across momentum + ψ advection (one factorisation, many calls).
+        fccd = None
+        if (
+            config.numerics.advection_scheme.startswith("fccd_")
+            or config.numerics.convection_scheme.startswith("fccd_")
+        ):
+            from ..ccd.fccd import FCCDSolver
+            fccd = FCCDSolver(grid, backend, bc_type=config.numerics.bc_type,
+                              ccd_solver=ccd)
+
+        adv_mode = {"fccd_nodal": "node", "fccd_flux": "flux"}
         if config.numerics.advection_scheme == "dissipative_ccd":
             ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc,
                                                    mass_correction=True)
+        elif config.numerics.advection_scheme in adv_mode:
+            from ..levelset.fccd_advection import FCCDLevelSetAdvection
+            ls_advect = FCCDLevelSetAdvection(
+                backend, grid, fccd,
+                mode=adv_mode[config.numerics.advection_scheme],
+                mass_correction=True,
+            )
         else:  # "weno5"
             ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
-        ls_reinit = Reinitializer(backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc)
+
+        # Auto-inject FCCDConvectionTerm when user did not supply one.
+        if self._convection is None and config.numerics.convection_scheme in adv_mode:
+            from ..ns_terms.fccd_convection import FCCDConvectionTerm
+            self._convection = FCCDConvectionTerm(
+                backend, fccd,
+                mode=adv_mode[config.numerics.convection_scheme],
+            )
+        ls_reinit = Reinitializer(
+            backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc,
+            method=config.numerics.reinit_method,
+            sigma_0=config.numerics.ridge_sigma_0,
+        )
         # Curvature: psi-direct method (section 3b eq. curvature_psi_2d)
         # eliminates logit inversion; falls back to legacy phi-based if configured
         curvature_calc = CurvatureCalculatorPsi(backend, ccd)
