@@ -1,0 +1,107 @@
+# CHK-173 probe - single rising bubble, dynamic alpha=2 grid fitting
+#
+# Dynamic-grid variant of ch13_05_rising_bubble_fullstack_alpha2.yaml.
+# The interface is transported as before, and the interface-fitted grid is
+# rebuilt every step from the current CLS field.
+
+grid:
+  NX: 64
+  NY: 128
+  LX: 1.0
+  LY: 2.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 1
+
+physics:
+  rho_l: 833.0
+  rho_g:   1.0
+  sigma:   1.0
+  mu:      0.05
+  g_acc:   0.001
+
+run:
+  T_final: 20.0
+  cfl: 0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: ridge_eikonal
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  ridge_sigma_0: 3.0
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+  advection_scheme: fccd_flux
+  convection_scheme: fccd_flux
+
+output:
+  dir: results/ch13_05_rising_bubble_fullstack_alpha2_dynamic
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "Bubble rise velocity $v_c(t)$ - dynamic alpha=2 grid"
+      x: times
+      y: [vc]
+      labels: ["Dynamic grid"]
+      xlabel: "$t$"
+      ylabel: "$v_c$"
+      file: ch13_05_dynamic_bubble_vc.pdf
+
+    - type: time_series
+      title: "Bubble centroid $y_c(t)$ - dynamic alpha=2 grid"
+      x: times
+      y: [yc]
+      labels: ["Dynamic grid"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: ch13_05_dynamic_bubble_yc.pdf
+
+    - type: time_series
+      title: "Volume conservation $|\\Delta V|/V_0$"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: ch13_05_dynamic_bubble_volcons.pdf
+
+    - type: time_series
+      title: "Kinetic energy $E_k(t)$"
+      x: times
+      y: [kinetic_energy]
+      labels: ["Dynamic grid"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      file: ch13_05_dynamic_bubble_ke.pdf
+
+    - type: snapshot
+      title: "$t=0$"
+      t_idx: 0
+      contour: true
+      colorbar: true
+      file: ch13_05_dynamic_bubble_snap_t00.pdf
+
+    - type: snapshot
+      title: "$t=T_{\\mathrm{final}}$"
+      t_idx: -1
+      contour: true
+      colorbar: true
+      file: ch13_05_dynamic_bubble_snap_tf.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - bubble_centroid
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

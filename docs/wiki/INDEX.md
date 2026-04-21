@@ -1,4 +1,4 @@
-# Wiki Index — 172 entries
+# Wiki Index — 173 entries
 
 ## Theory (60)
 
@@ -65,7 +65,7 @@
 | [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
 | [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
 
-## Cross-Domain (21)
+## Cross-Domain (22)
 
 | REF-ID | Title |
 |--------|-------|
@@ -88,6 +88,7 @@
 | [WIKI-X-017](cross-domain/WIKI-X-017.md) | §13 Production Config Pattern: Research-to-Paper Transition and Runner Invocation |
 | [WIKI-X-018](cross-domain/WIKI-X-018.md) | H-01 Remediation Map: G^adj Metric Unification via FCCD (SP-A gate) |
 | [WIKI-X-019](cross-domain/WIKI-X-019.md) | Topology-Freedom vs Metric-Rigidity: ξ/φ Role Separation as Design Principle (SP-B) |
+| [WIKI-X-020](cross-domain/WIKI-X-020.md) | Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM (CHK-170) |
 | [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
 | [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
 

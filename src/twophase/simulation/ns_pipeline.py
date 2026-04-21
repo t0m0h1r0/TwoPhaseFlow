@@ -36,7 +36,10 @@ from .velocity_reprojector import (
 )
 from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
 from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
-from .gradient_operator import IGradientOperator, CCDGradientOperator, FVMGradientOperator
+from .gradient_operator import (
+    IGradientOperator, CCDGradientOperator, FVMGradientOperator,
+    IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
+)
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.context import NSComputeContext
@@ -102,6 +105,7 @@ class TwoPhaseNSSolver:
         ridge_sigma_0: float = 3.0,
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
+        face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
@@ -117,12 +121,6 @@ class TwoPhaseNSSolver:
         self._rebuild_freq = int(grid_rebuild_freq)
         if self._rebuild_freq < 0:
             self._rebuild_freq = 0
-        # Safety fallback for non-uniform dynamic runs:
-        # per-step rebuild (freq=1) is prone to remap/reprojection-driven
-        # instability. Use a conservative default cadence unless caller sets
-        # a value >1 explicitly.
-        if self._alpha_grid > 1.0 and self._rebuild_freq == 1:
-            self._rebuild_freq = 10
         self._reinit_every = int(reinit_every)
         self._reproject_variable_density = bool(reproject_variable_density)
         self._phi_primary_transport = bool(phi_primary_transport)
@@ -130,6 +128,7 @@ class TwoPhaseNSSolver:
         self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
         self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
         self._kappa_max = float(kappa_max) if kappa_max is not None else None
+        self._face_flux_projection = bool(face_flux_projection)
         self._reinit_eps_scale = float(reinit_eps_scale)
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
@@ -167,8 +166,10 @@ class TwoPhaseNSSolver:
         # Pressure gradient operator strategy (CCD vs FVM)
         if not self._grid.uniform and bc_type == "wall":
             self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
+            self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
         else:
             self._grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+            self._div_op = CCDDivergenceOperator(self._ccd)
 
         # Advection / convection scheme selection (CHK-160 bridge for FCCD).
         # One shared FCCDSolver reuses the CCD LU factorisation for both
@@ -345,6 +346,9 @@ class TwoPhaseNSSolver:
             ),
             convection_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
+            face_flux_projection=bool(
+                getattr(getattr(cfg, "run", g), "face_flux_projection", False)
             ),
             debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
         )
@@ -644,7 +648,12 @@ class TwoPhaseNSSolver:
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
-        if self._alpha_grid > 1.0 and self._rebuild_freq > 0 and (step_index % self._rebuild_freq == 0):
+        if (
+            self._alpha_grid > 1.0
+            and self._rebuild_freq > 0
+            and step_index > 0
+            and (step_index % self._rebuild_freq == 0)
+        ):
             # Grid rebuild is CPU-bound; round-trip through host.
             psi_h, u_h, v_h = _h(psi), _h(u), _h(v)
             try:
@@ -710,13 +719,9 @@ class TwoPhaseNSSolver:
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
 
         # ── 4. PPE (balanced-force) ─────────────────────────────────────
-        du_s_dx, _ = ccd.differentiate(u_star, 0)
-        dv_s_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (du_s_dx + dv_s_dy) / dt
+        rhs = self._div_op.divergence([u_star, v_star]) / dt
         # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
-        df_x, _ = ccd.differentiate(f_x / rho, 0)
-        df_y, _ = ccd.differentiate(f_y / rho, 1)
-        rhs = rhs + df_x + df_y
+        rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
         _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
         self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
         p = self._ppe_solver.solve(rhs, rho)
@@ -730,14 +735,26 @@ class TwoPhaseNSSolver:
                        xp.max(xp.abs(dp_dy - f_y / rho)))
         ))
         self._step_diag.record_bf_residual(_dbg_bf_res_max)
-        u = u_star - dt / rho * dp_dx + dt * f_x / rho
-        v = v_star - dt / rho * dp_dy + dt * f_y / rho
+        projected_on_faces = (
+            self._face_flux_projection and hasattr(self._div_op, "project")
+        )
+        if projected_on_faces:
+            u, v = self._div_op.project(
+                [u_star, v_star],
+                p,
+                rho,
+                dt,
+                [f_x / rho, f_y / rho],
+            )
+        else:
+            u = u_star - dt / rho * dp_dx + dt * f_x / rho
+            v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
-        _du_dx2, _ = ccd.differentiate(u, 0)
-        _dv_dy2, _ = ccd.differentiate(v, 1)
-        _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
+        _dbg_div_u_max = float(self._backend.to_host(
+            xp.max(xp.abs(self._div_op.divergence([u, v])))
+        ))
         self._step_diag.record_div_u(_dbg_div_u_max)
 
         return psi, u, v, p
@@ -829,12 +846,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     bc_hook = solver.make_bc_hook(cfg)
     ph = cfg.physics
 
-    # Static non-uniform grid: build once from IC, then freeze.
-    # rebuild_freq==0 means the grid is never rebuilt during time-stepping,
-    # avoiding Mode-1 metric discontinuity (WIKI-X-012).
-    if solver._alpha_grid > 1.0 and solver._rebuild_freq == 0:
+    # Non-uniform grid: always fit once to the IC before time-stepping.
+    # rebuild_freq==0 freezes this IC-fitted grid; rebuild_freq>0 then
+    # refreshes it periodically from the transported interface.
+    if solver._alpha_grid > 1.0:
         psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
-        print(f"  [static non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
+        mode = "static" if solver._rebuild_freq == 0 else f"dynamic/{solver._rebuild_freq}"
+        print(f"  [{mode} non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
 
     # Initial radius estimate from IC (used only by laplace_pressure metric)
     ic = cfg.initial_condition
