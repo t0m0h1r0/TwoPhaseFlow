@@ -17,8 +17,12 @@ grid:
 
 physics:
   phases:
-    liquid: {rho: 1000.0, mu: 1.0e-3}
-    gas:    {rho: 1.2,    mu: 1.0e-3}
+    liquid:
+      rho: 1000.0
+      mu: 1.0e-3
+    gas:
+      rho: 1.2
+      mu: 1.0e-3
   surface_tension: 0.072
   gravity: 0.0
 
@@ -50,10 +54,39 @@ output:
   snapshots:
     interval: 9.0
   figures:
-    - time_series: "deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)"
-    - time_series: volume_conservation
-    - snapshot: t_idx=0
-    - snapshot: t_idx=-1
+    - type: time_series
+      title: "Water-air capillary wave: deformation"
+      y: [deformation]
+      labels: ["D(t)"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      analytical:
+        formula: prosperetti
+        omega0: 0.192
+        beta: 5.9e-5
+        D0: 0.05
+      file: deformation.pdf
+
+    - type: time_series
+      title: "Water-air capillary wave: volume drift"
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation]
 
@@ -66,4 +99,5 @@ initial_condition:
   interior_phase: liquid
 
 initial_velocity: null
-boundary_condition: {type: wall}
+boundary_condition:
+  type: wall

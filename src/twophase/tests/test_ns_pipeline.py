@@ -159,14 +159,35 @@ def test_dt_max_nonuniform():
 # ── Test 6: config_io round-trip ─────────────────────────────────────────────
 
 def test_gridcfg_parse_alpha_grid():
-    """_parse_grid reads alpha_grid from dict."""
-    g = _parse_grid({"NX": 64, "NY": 64, "alpha_grid": 3.0, "eps_g_factor": 4.0})
+    """_parse_grid reads canonical interface-fitting settings."""
+    g = _parse_grid({
+        "cells": [64, 64],
+        "domain": {"size": [1.0, 1.0], "boundary": "wall"},
+        "interface_fitting": {
+            "enabled": True,
+            "method": "gaussian_levelset",
+            "alpha": 3.0,
+            "eps_g_factor": 4.0,
+            "schedule": "static",
+        },
+        "interface_width": {"mode": "nominal", "base_factor": 1.5},
+    })
     assert g.alpha_grid == 3.0
     assert g.eps_g_factor == 4.0
     assert g.dx_min_floor == 1e-6  # default
 
 
 def test_gridcfg_default_uniform():
-    """Missing alpha_grid defaults to 1.0."""
-    g = _parse_grid({"NX": 32, "NY": 32})
+    """Disabled interface fitting forces uniform grid."""
+    g = _parse_grid({
+        "cells": [32, 32],
+        "domain": {"size": [1.0, 1.0], "boundary": "wall"},
+        "interface_fitting": {
+            "enabled": False,
+            "method": "none",
+            "alpha": 2.0,
+            "schedule": "static",
+        },
+        "interface_width": {"mode": "nominal", "base_factor": 1.5},
+    })
     assert g.alpha_grid == 1.0

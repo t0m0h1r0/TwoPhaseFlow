@@ -132,8 +132,14 @@ def test_surface_tension_uses_projector_gradient_operator():
         kappa, psi, 2.0, solver._ccd, solver._grad_op,
     )
 
-    np.testing.assert_allclose(force_x, 2.0 * solver._grad_op.gradient(psi, 0))
-    np.testing.assert_allclose(force_y, 2.0 * solver._grad_op.gradient(psi, 1))
+    np.testing.assert_allclose(
+        solver._backend.to_host(force_x),
+        solver._backend.to_host(2.0 * solver._grad_op.gradient(psi, 0)),
+    )
+    np.testing.assert_allclose(
+        solver._backend.to_host(force_y),
+        solver._backend.to_host(2.0 * solver._grad_op.gradient(psi, 1)),
+    )
 
 
 def test_weno5_advection_constructed_from_scheme():
@@ -201,7 +207,8 @@ def test_from_config_threads_fccd_keys():
     """YAML → RunCfg → TwoPhaseNSSolver dispatch end-to-end."""
     raw = {
         "grid": {
-            "NX": N, "NY": N, "LX": L, "LY": L, "bc_type": "wall",
+            "cells": [N, N],
+            "domain": {"size": [L, L], "boundary": "wall"},
             "interface_fitting": {
                 "enabled": True,
                 "method": "gaussian_levelset",
@@ -210,21 +217,29 @@ def test_from_config_threads_fccd_keys():
             },
             "interface_width": {"mode": "local", "base_factor": 1.5},
         },
-        "physics": {"rho_l": 833.0, "rho_g": 1.0, "sigma": 1.0, "mu": 0.05},
+        "physics": {
+            "phases": {
+                "liquid": {"rho": 833.0, "mu": 0.05},
+                "gas": {"rho": 1.0, "mu": 0.05},
+            },
+            "surface_tension": 1.0,
+        },
         "run": {
-            "T_final": 1.0, "cfl": 0.1,
+            "time": {"final": 1.0, "cfl": 0.1},
             "schemes": {
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_flux",
                 "ppe": "fvm_direct",
+                "surface_tension": "csf",
                 "viscous_time": "crank_nicolson",
             },
             "reinitialization": {
                 "method": "ridge_eikonal",
+                "every": 2,
                 "eps_scale": 1.4,
                 "ridge_sigma_0": 3.0,
             },
-            "projection": {"mode": "gfm"},
+            "projection": {"mode": "consistent_gfm"},
             "interface_tracking": {"enabled": True, "method": "phi_primary"},
         },
     }
@@ -242,11 +257,36 @@ def test_from_config_threads_fccd_keys():
 
 def test_from_config_can_disable_interface_tracking():
     raw = {
-        "grid": {"NX": N, "NY": N, "LX": L, "LY": L, "bc_type": "wall"},
-        "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
+        "grid": {
+            "cells": [N, N],
+            "domain": {"size": [L, L], "boundary": "wall"},
+            "interface_fitting": {
+                "enabled": False,
+                "method": "none",
+                "alpha": 1.0,
+                "schedule": "static",
+            },
+            "interface_width": {"mode": "nominal", "base_factor": 1.5},
+        },
+        "physics": {
+            "phases": {
+                "liquid": {"rho": 1.0, "mu": 0.01},
+                "gas": {"rho": 1.0, "mu": 0.01},
+            },
+            "surface_tension": 0.0,
+        },
         "run": {
-            "T_final": 0.1, "cfl": 0.1,
-            "interface_tracking": {"enabled": False},
+            "time": {"final": 0.1, "cfl": 0.1},
+            "reinitialization": {"method": "ridge_eikonal", "every": 2},
+            "interface_tracking": {"enabled": False, "method": "none"},
+            "projection": {"mode": "standard"},
+            "schemes": {
+                "levelset_advection": "dissipative_ccd",
+                "momentum_convection": "ccd",
+                "ppe": "fvm_iterative",
+                "surface_tension": "csf",
+                "viscous_time": "explicit",
+            },
         },
     }
     cfg = ExperimentConfig.from_dict(raw)

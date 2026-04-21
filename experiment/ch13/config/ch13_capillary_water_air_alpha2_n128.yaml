@@ -16,8 +16,12 @@ grid:
 
 physics:
   phases:
-    liquid: {rho: 833.0, mu: 0.05}
-    gas:    {rho: 1.0,   mu: 0.05}
+    liquid:
+      rho: 833.0
+      mu: 0.05
+    gas:
+      rho: 1.0
+      mu: 0.05
   surface_tension: 1.0
   gravity: 0.0
 
@@ -106,4 +110,5 @@ initial_condition:
   interior_phase: liquid
 
 initial_velocity: null
-boundary_condition: {type: wall}
+boundary_condition:
+  type: wall

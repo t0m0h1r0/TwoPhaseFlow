@@ -22,7 +22,7 @@ resolved before constructing PhysicsCfg:
     Re         → mu    = rho_l * sqrt(g_acc * d_ref) * d_ref / Re
     Eo         → sigma = g_acc * (rho_l - rho_g) * d_ref**2 / Eo
     Ca         → sigma = mu_g * gamma_dot * R_ref / Ca
-    lambda_mu  → mu_l  = lambda_mu * mu_g  (legacy mu is mu_g fallback)
+    lambda_mu  → mu_l  = lambda_mu * mu_g
 """
 
 from __future__ import annotations
@@ -111,7 +111,7 @@ class RunCfg:
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
     ppe_solver: str = "fvm_iterative"
-    pressure_scheme: str = "fvm_matrixfree"  # legacy/main alias for ppe_solver
+    pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
     surface_tension_scheme: str = "csf"
     viscous_time_scheme: str = "explicit"
     uccd6_sigma: float = 1.0e-3   # hyperviscosity coefficient for convection_scheme='uccd6'
@@ -235,41 +235,33 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
 
 
 def _parse_grid(d: dict) -> GridCfg:
-    cells = d.get("cells", d.get("N"))
-    if cells is not None:
-        NX, NY = int(cells[0]), int(cells[1])
-    else:
-        NX, NY = int(d.get("NX", 64)), int(d.get("NY", 64))
-    domain = d.get("domain", {}) or {}
-    size = domain.get("size", d.get("size"))
-    if size is not None:
-        LX, LY = float(size[0]), float(size[1])
-    else:
-        LX, LY = float(d.get("LX", 1.0)), float(d.get("LY", 1.0))
-    fitting = d.get("interface_fitting", d.get("fitting", None))
-    adaptation = fitting if fitting is not None else (d.get("adaptation", {}) or {})
-    adaptation = adaptation or {}
-    width = d.get("interface_width", {}) or {}
-    fitting_enabled = _parse_enabled(adaptation.get("enabled", True))
+    cells = d["cells"]
+    NX, NY = int(cells[0]), int(cells[1])
+    domain = d["domain"]
+    size = domain["size"]
+    LX, LY = float(size[0]), float(size[1])
+    fitting = d["interface_fitting"]
+    width = d["interface_width"]
+    fitting_enabled = _parse_enabled(fitting.get("enabled", True))
     fitting_method = _normalize_interface_fitting_method(
-        adaptation.get("method", d.get("interface_fitting_method", "gaussian_levelset"))
+        fitting.get("method", "gaussian_levelset")
     )
     if fitting_method == "none":
         fitting_enabled = False
-    alpha_grid = float(adaptation.get("alpha", d.get("alpha_grid", 1.0)))
+    alpha_grid = float(fitting.get("alpha", 1.0))
     if not fitting_enabled:
         alpha_grid = 1.0
-    eps_factor = float(width.get("base_factor", d.get("eps_factor", 1.5)))
-    eps_g_factor = float(adaptation.get("eps_g_factor", d.get("eps_g_factor", 2.0)))
-    eps_g_cells = _opt_float(adaptation.get("eps_g_cells", d.get("eps_g_cells")))
-    eps_xi_cells = _opt_float(width.get("xi_cells", d.get("eps_xi_cells")))
-    use_local_eps = _parse_interface_width_mode(width, d, eps_xi_cells)
+    eps_factor = float(width.get("base_factor", 1.5))
+    eps_g_factor = float(fitting.get("eps_g_factor", 2.0))
+    eps_g_cells = _opt_float(fitting.get("eps_g_cells"))
+    eps_xi_cells = _opt_float(width.get("xi_cells"))
+    use_local_eps = _parse_interface_width_mode(width, eps_xi_cells)
     return GridCfg(
         NX=NX,
         NY=NY,
         LX=LX,
         LY=LY,
-        bc_type=str(domain.get("boundary", d.get("bc_type", "wall"))),
+        bc_type=str(domain["boundary"]),
         alpha_grid=alpha_grid,
         eps_factor=eps_factor,
         eps_g_factor=eps_g_factor,
@@ -277,9 +269,7 @@ def _parse_grid(d: dict) -> GridCfg:
         dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
         use_local_eps=use_local_eps,
         eps_xi_cells=eps_xi_cells,
-        grid_rebuild_freq=_parse_grid_rebuild(
-            adaptation.get("schedule", adaptation.get("rebuild", d.get("grid_rebuild_freq", 1)))
-        ),
+        grid_rebuild_freq=_parse_grid_rebuild(fitting.get("schedule", "static")),
         interface_fitting_enabled=fitting_enabled,
         interface_fitting_method=("none" if not fitting_enabled else fitting_method),
     )
@@ -287,12 +277,12 @@ def _parse_grid(d: dict) -> GridCfg:
 
 def _parse_physics(d: dict) -> PhysicsCfg:
     """Parse physics section, resolving derived parameters."""
-    phases = d.get("phases", {}) or {}
-    liquid = phases.get("liquid", {}) or {}
-    gas = phases.get("gas", {}) or {}
-    rho_l = float(d.get("rho_l", liquid.get("rho", 1.0)))
-    rho_g = float(d.get("rho_g", gas.get("rho", 1.0)))
-    g_acc = float(d.get("g_acc", d.get("gravity", 0.0)))
+    phases = d["phases"]
+    liquid = phases["liquid"]
+    gas = phases["gas"]
+    rho_l = float(liquid["rho"])
+    rho_g = float(gas["rho"])
+    g_acc = float(d.get("gravity", 0.0))
     rho_ref = _opt_float(d.get("rho_ref"))
     d_ref = _opt_float(d.get("d_ref"))
 
@@ -318,11 +308,11 @@ def _resolve_viscosity(
     d_ref: float | None,
 ) -> tuple[float, float | None, float | None]:
     """Resolve uniform and phase viscosities from direct or derived inputs."""
-    phases = d.get("phases", {}) or {}
-    liquid = phases.get("liquid", {}) or {}
-    gas = phases.get("gas", {}) or {}
-    mu_g = _opt_float(d.get("mu_g", gas.get("mu")))
-    mu_l = _opt_float(d.get("mu_l", liquid.get("mu")))
+    phases = d["phases"]
+    liquid = phases["liquid"]
+    gas = phases["gas"]
+    mu_g = _opt_float(gas["mu"])
+    mu_l = _opt_float(liquid["mu"])
     mu = _opt_float(d.get("mu"))
 
     lambda_mu = _opt_float(d.get("lambda_mu"))
@@ -365,7 +355,7 @@ def _resolve_surface_tension(
     mu_g: float | None,
 ) -> float:
     """Resolve surface tension from direct sigma, Eotvos number, or Ca."""
-    sigma = _opt_float(d.get("sigma", d.get("surface_tension")))
+    sigma = _opt_float(d.get("surface_tension"))
 
     eo_num = _opt_float(d.get("Eo"))
     if eo_num is not None and d_ref is not None and g_acc > 0.0:
@@ -391,17 +381,16 @@ _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
 )
-_REPROJECT_MODES = (
-    "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
+_PROJECTION_MODES = (
+    "standard", "variable_density", "consistent_iim", "consistent_gfm",
 )
-_PPE_SCHEMES = ("fvm_iterative", "fvm_direct")
-_PPE_SCHEME_ALIASES = {
-    "fvm_matrixfree": "fvm_iterative",
-    "matrixfree": "fvm_iterative",
-    "fvm_spsolve": "fvm_direct",
-    "spsolve": "fvm_direct",
+_PROJECTION_TO_REPROJECT_MODE = {
+    "standard": "legacy",
+    "variable_density": "variable_density_only",
+    "consistent_iim": "consistent_iim",
+    "consistent_gfm": "consistent_gfm",
 }
-_PRESSURE_SCHEMES = ("fvm_spsolve", "fvm_matrixfree")
+_PPE_SCHEMES = ("fvm_iterative", "fvm_direct")
 _PPE_TO_PRESSURE_SCHEME = {
     "fvm_iterative": "fvm_matrixfree",
     "fvm_direct": "fvm_spsolve",
@@ -412,130 +401,88 @@ _VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 
 def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
     output = output or {}
-    time_cfg = d.get("time", {}) or {}
-    snapshots = output.get("snapshots", d.get("snapshots", {})) or {}
-    reinit = d.get("reinitialization", {}) or {}
-    transport = d.get("transport", {}) or {}
-    tracking = d.get("interface_tracking", d.get("tracking", None))
-    tracking = tracking if tracking is not None else transport
-    tracking = tracking or {}
-    projection = d.get("projection", {}) or {}
-    schemes = d.get("schemes", {}) or {}
+    time_cfg = d["time"]
+    snapshots = output.get("snapshots", {}) or {}
+    reinit = d["reinitialization"]
+    tracking = d["interface_tracking"]
+    projection = d["projection"]
+    schemes = d["schemes"]
     debug = d.get("debug", {}) or {}
 
-    snap_raw = snapshots.get("times", d.get("snap_times", []))
+    snap_raw = snapshots.get("times", [])
     if snap_raw is None:
         snap_raw = []
-    cfl_raw = time_cfg.get("cfl", d.get("cfl"))
-    dt_fixed_raw = time_cfg.get("dt", d.get("dt_fixed"))
+    cfl_raw = time_cfg.get("cfl")
+    dt_fixed_raw = time_cfg.get("dt")
     if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError(
-            "run: 'cfl' と 'dt_fixed' は排他です。どちらか一方のみ設定してください。"
+            "run.time: 'cfl' and 'dt' are mutually exclusive."
         )
-    advection_scheme = str(
-        schemes.get("levelset_advection", schemes.get(
-            "advection", d.get("advection_scheme", "dissipative_ccd")
-        ))
-    )
+    advection_scheme = str(schemes["levelset_advection"])
     if advection_scheme not in _ADVECTION_SCHEMES:
         raise ValueError(
-            f"run.advection_scheme must be one of {_ADVECTION_SCHEMES}, "
+            f"run.schemes.levelset_advection must be one of {_ADVECTION_SCHEMES}, "
             f"got {advection_scheme!r}"
         )
-    convection_scheme = str(
-        schemes.get("momentum_convection", schemes.get(
-            "convection", d.get("convection_scheme", "ccd")
-        ))
-    )
+    convection_scheme = str(schemes["momentum_convection"])
     if convection_scheme not in _CONVECTION_SCHEMES:
         raise ValueError(
-            f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
+            f"run.schemes.momentum_convection must be one of {_CONVECTION_SCHEMES}, "
             f"got {convection_scheme!r}"
         )
-    ppe_solver_raw = str(
-        schemes.get("ppe", schemes.get(
-            "pressure_poisson", d.get(
-                "ppe_solver", d.get("pressure_scheme", "fvm_iterative")
-            )
-        ))
-    )
-    ppe_solver = _PPE_SCHEME_ALIASES.get(ppe_solver_raw, ppe_solver_raw)
+    ppe_solver = str(schemes["ppe"])
     if ppe_solver not in _PPE_SCHEMES:
-        raise ValueError(
-            f"run.schemes.ppe must be one of {_PPE_SCHEMES}, got {ppe_solver!r}"
-        )
+        raise ValueError(f"run.schemes.ppe must be one of {_PPE_SCHEMES}, got {ppe_solver!r}")
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
-    surface_tension_scheme = str(
-        schemes.get("surface_tension", d.get("surface_tension_scheme", "csf"))
-    )
+    surface_tension_scheme = str(schemes["surface_tension"])
     if surface_tension_scheme not in _SURFACE_TENSION_SCHEMES:
         raise ValueError(
-            f"run.surface_tension_scheme must be one of {_SURFACE_TENSION_SCHEMES}, "
+            f"run.schemes.surface_tension must be one of {_SURFACE_TENSION_SCHEMES}, "
             f"got {surface_tension_scheme!r}"
         )
-    uccd6_sigma = float(schemes.get("uccd6_sigma", d.get("uccd6_sigma", 1.0e-3)))
+    uccd6_sigma = float(schemes.get("uccd6_sigma", 1.0e-3))
     if uccd6_sigma <= 0.0:
         raise ValueError(f"run.uccd6_sigma must be > 0, got {uccd6_sigma}")
-    if "viscous_time" in schemes or "viscous" in schemes:
-        viscous_time_scheme = str(schemes.get("viscous_time", schemes.get("viscous")))
-    else:
-        viscous_time_scheme = (
-            "crank_nicolson" if bool(d.get("cn_viscous", False)) else "explicit"
-        )
+    viscous_time_scheme = str(schemes["viscous_time"])
     if viscous_time_scheme not in _VISCOUS_TIME_SCHEMES:
         raise ValueError(
             "run.schemes.viscous_time must be one of "
             f"{_VISCOUS_TIME_SCHEMES}, got {viscous_time_scheme!r}"
         )
-    reproject_mode = _normalize_reproject_mode(
-        projection.get("mode", d.get("reproject_mode", "legacy"))
-    )
-    reinit_method = reinit.get("method", d.get("reinit_method")) or None
+    reproject_mode = _parse_projection_mode(projection["mode"])
+    reinit_method = reinit["method"]
     if reinit_method is not None and reinit_method not in _REINIT_METHODS:
         raise ValueError(
             f"run.reinitialization.method must be one of {_REINIT_METHODS}, "
             f"got {reinit_method!r}"
         )
-    ridge_sigma_0 = float(reinit.get("ridge_sigma_0", d.get("ridge_sigma_0", 3.0)))
+    ridge_sigma_0 = float(reinit.get("ridge_sigma_0", 3.0))
     if ridge_sigma_0 <= 0.0:
         raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
     return RunCfg(
-        T_final=_opt_float(time_cfg.get("final", d.get("T_final"))),
-        max_steps=int(time_cfg.get("max_steps", d["max_steps"])) if (
-            "max_steps" in time_cfg or "max_steps" in d
-        ) else None,
+        T_final=_opt_float(time_cfg["final"]),
+        max_steps=int(time_cfg["max_steps"]) if "max_steps" in time_cfg else None,
         cfl=float(cfl_raw if cfl_raw is not None else 0.15),
         snap_times=[float(x) for x in snap_raw],
-        snap_interval=_opt_float(snapshots.get("interval", d.get("snap_interval"))),
-        reinit_eps_scale=float(reinit.get("eps_scale", d.get("reinit_eps_scale", 1.0))),
-        print_every=int(time_cfg.get("print_every", d.get("print_every", 100))),
+        snap_interval=_opt_float(snapshots.get("interval")),
+        reinit_eps_scale=float(reinit.get("eps_scale", 1.0)),
+        print_every=int(time_cfg.get("print_every", 100)),
         dt_fixed=_opt_float(dt_fixed_raw),
         cn_viscous=(viscous_time_scheme == "crank_nicolson"),
-        reinit_every=int(reinit.get("every", d.get("reinit_every", 2))),
+        reinit_every=int(reinit["every"]),
         reproject_mode=reproject_mode,
-        phi_primary_transport=_parse_tracking_primary(tracking, d),
-        interface_tracking_enabled=_parse_tracking_enabled(tracking, d),
-        interface_tracking_method=_parse_tracking_method(tracking, d),
-        phi_primary_redist_every=int(
-            tracking.get("redist_every", tracking.get(
-                "phi_redist_every", d.get("phi_primary_redist_every", 4)
-            ))
-        ),
-        phi_primary_clip_factor=float(
-            tracking.get("clip_factor", tracking.get(
-                "phi_clip_factor", d.get("phi_primary_clip_factor", 12.0)
-            ))
-        ),
+        phi_primary_transport=_parse_tracking_primary(tracking),
+        interface_tracking_enabled=_parse_tracking_enabled(tracking),
+        interface_tracking_method=_parse_tracking_method(tracking),
+        phi_primary_redist_every=int(tracking.get("redist_every", 4)),
+        phi_primary_clip_factor=float(tracking.get("clip_factor", 12.0)),
         phi_primary_heaviside_eps_scale=float(
-            tracking.get("heaviside_eps_scale", tracking.get(
-                "phi_heaviside_eps_scale",
-                d.get("phi_primary_heaviside_eps_scale", 1.0),
-            ))
+            tracking.get("heaviside_eps_scale", 1.0)
         ),
-        kappa_max=_opt_float(d.get("kappa_max")),
+        kappa_max=_opt_float(schemes.get("curvature_cap")),
         reinit_method=reinit_method,
         dgr_phi_smooth_C=float(
-            reinit.get("dgr_phi_smooth_C", d.get("dgr_phi_smooth_C", 1e-4))
+            reinit.get("dgr_phi_smooth_C", 1e-4)
         ),
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
@@ -545,12 +492,8 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         surface_tension_scheme=surface_tension_scheme,
         viscous_time_scheme=viscous_time_scheme,
         uccd6_sigma=uccd6_sigma,
-        face_flux_projection=bool(
-            projection.get("face_flux_projection", d.get("face_flux_projection", False))
-        ),
-        debug_diagnostics=bool(
-            debug.get("step_diagnostics", d.get("debug_diagnostics", False))
-        ),
+        face_flux_projection=bool(projection.get("face_flux_projection", False)),
+        debug_diagnostics=bool(debug.get("step_diagnostics", False)),
     )
 
 
@@ -570,19 +513,16 @@ def _opt_float(val: Any) -> float | None:
 
 def _parse_interface_width_mode(
     width: dict,
-    legacy_grid: dict,
     eps_xi_cells: float | None,
 ) -> bool:
-    """Resolve interface-width mode to the legacy local-eps boolean."""
-    mode = width.get("mode")
-    if mode is None:
-        return bool(legacy_grid.get("use_local_eps", False)) or eps_xi_cells is not None
+    """Resolve canonical interface-width mode to the internal local-eps boolean."""
+    mode = width["mode"]
     mode = str(mode).strip().lower()
-    if mode in {"nominal", "global", "uniform"}:
+    if mode == "nominal":
         return False
-    if mode in {"local", "local_cell"}:
+    if mode == "local":
         return True
-    if mode in {"xi_cells", "xi"}:
+    if mode == "xi_cells":
         if eps_xi_cells is None:
             raise ValueError("grid.interface_width.mode='xi_cells' requires xi_cells")
         return True
@@ -593,7 +533,7 @@ def _parse_interface_width_mode(
 
 
 def _parse_grid_rebuild(raw: Any) -> int:
-    """Resolve grid adaptation rebuild policy to the legacy frequency integer."""
+    """Resolve interface-fitting rebuild schedule to the internal frequency."""
     if isinstance(raw, str):
         value = raw.strip().lower()
         if value in {"static", "initial", "initial_only", "never", "off"}:
@@ -604,7 +544,7 @@ def _parse_grid_rebuild(raw: Any) -> int:
             return int(value.removeprefix("every_"))
     freq = int(raw)
     if freq < 0:
-        raise ValueError(f"grid.adaptation.rebuild must be >= 0, got {freq}")
+        raise ValueError(f"grid.interface_fitting.schedule must be >= 0, got {freq}")
     return freq
 
 
@@ -620,15 +560,6 @@ def _parse_enabled(raw: Any) -> bool:
 
 def _normalize_interface_fitting_method(raw: Any) -> str:
     method = str(raw).strip().lower()
-    aliases = {
-        "gaussian": "gaussian_levelset",
-        "levelset_gaussian": "gaussian_levelset",
-        "level_set_gaussian": "gaussian_levelset",
-        "none": "none",
-        "off": "none",
-        "disabled": "none",
-    }
-    method = aliases.get(method, method)
     if method not in {"gaussian_levelset", "none"}:
         raise ValueError(
             "grid.interface_fitting.method must be gaussian_levelset|none, "
@@ -637,27 +568,12 @@ def _normalize_interface_fitting_method(raw: Any) -> str:
     return method
 
 
-def _parse_tracking_method(tracking: dict, legacy_run: dict) -> str:
+def _parse_tracking_method(tracking: dict) -> str:
     """Resolve interface tracking mode to phi_primary|psi_direct|none."""
-    if not _parse_tracking_enabled(tracking, legacy_run):
+    if not _parse_tracking_enabled(tracking):
         return "none"
-    raw = tracking.get("method", tracking.get("primary"))
-    if raw is None:
-        return "phi_primary" if bool(legacy_run.get("phi_primary_transport", False)) else "psi_direct"
+    raw = tracking["method"]
     primary = str(raw).strip().lower()
-    aliases = {
-        "phi": "phi_primary",
-        "logit": "phi_primary",
-        "logit_phi": "phi_primary",
-        "psi": "psi_direct",
-        "heaviside": "psi_direct",
-        "direct": "psi_direct",
-        "none": "none",
-        "off": "none",
-        "frozen": "none",
-        "static": "none",
-    }
-    primary = aliases.get(primary, primary)
     if primary in {"phi_primary", "psi_direct", "none"}:
         return primary
     raise ValueError(
@@ -666,46 +582,21 @@ def _parse_tracking_method(tracking: dict, legacy_run: dict) -> str:
     )
 
 
-def _parse_tracking_enabled(tracking: dict, legacy_run: dict) -> bool:
+def _parse_tracking_enabled(tracking: dict) -> bool:
     if "enabled" in tracking:
         return _parse_enabled(tracking.get("enabled"))
-    method = tracking.get("method")
-    if method is not None and str(method).strip().lower() in {"none", "off", "frozen", "static"}:
-        return False
-    return bool(legacy_run.get("interface_tracking_enabled", True))
+    return str(tracking["method"]).strip().lower() != "none"
 
 
-def _parse_tracking_primary(tracking: dict, legacy_run: dict) -> bool:
-    return _parse_tracking_method(tracking, legacy_run) == "phi_primary"
+def _parse_tracking_primary(tracking: dict) -> bool:
+    return _parse_tracking_method(tracking) == "phi_primary"
 
 
-def _parse_transport_primary(transport: dict, legacy_run: dict) -> bool:
-    """Resolve transport.primary to the legacy phi_primary_transport boolean."""
-    primary = transport.get("primary")
-    if primary is None:
-        return bool(legacy_run.get("phi_primary_transport", False))
-    primary = str(primary).strip().lower()
-    if primary == "phi":
-        return True
-    if primary == "psi":
-        return False
-    raise ValueError(f"run.transport.primary must be 'phi' or 'psi', got {primary!r}")
-
-
-def _normalize_reproject_mode(raw: Any) -> str:
-    """Normalize projection mode aliases used in experiment YAML."""
+def _parse_projection_mode(raw: Any) -> str:
+    """Parse canonical YAML projection mode to the internal solver key."""
     mode = str(raw).strip().lower()
-    aliases = {
-        "none": "legacy",
-        "variable_density": "variable_density_only",
-        "iim": "consistent_iim",
-        "gfm": "consistent_gfm",
-    }
-    mode = aliases.get(mode, mode)
-    if mode not in _REPROJECT_MODES:
+    if mode not in _PROJECTION_MODES:
         raise ValueError(
-            f"run.projection.mode must be one of {_REPROJECT_MODES} "
-            "or aliases none|variable_density|iim|gfm, "
-            f"got {raw!r}"
+            f"run.projection.mode must be one of {_PROJECTION_MODES}, got {raw!r}"
         )
-    return mode
+    return _PROJECTION_TO_REPROJECT_MODE[mode]
