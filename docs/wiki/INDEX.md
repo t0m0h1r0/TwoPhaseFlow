@@ -1,6 +1,6 @@
-# Wiki Index — 168 entries
+# Wiki Index — 170 entries
 
-## Theory (59)
+## Theory (60)
 
 | REF-ID | Title |
 |--------|-------|
@@ -63,6 +63,7 @@
 | [WIKI-T-057](theory/WIKI-T-057.md) | σ_eff and ε_local Spatial Scaling for Ridge-Eikonal on Non-Uniform Grids |
 | [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD vs FD Fallback |
 | [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
+| [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
 
 ## Cross-Domain (19)
 
@@ -175,7 +176,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (25)
+## Code (26)
 
 | REF-ID | Title |
 |--------|-------|
@@ -204,3 +205,4 @@
 | [WIKI-L-023](code/WIKI-L-023.md) | R-1.5 Implementation Roadmap: Minimal FVM-face ψ Gradient (SPEC, code unchanged) |
 | [WIKI-L-024](code/WIKI-L-024.md) | FCCD Library Module: FCCDSolver, FCCDConvectionTerm, FCCDLevelSetAdvection |
 | [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |
+| [WIKI-L-026](code/WIKI-L-026.md) | GPU Matrix-Free FVM PPE Roadmap: Variable-Batched PCR and Device-Resident Krylov |

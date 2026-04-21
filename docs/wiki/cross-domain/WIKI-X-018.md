@@ -69,6 +69,16 @@ A-01-C (Option C, node-output via Hermite reconstructor) is the backward-compati
 
 Library-level the two axes share a **single** `FCCDSolver` instance per simulation: the LU factorisation of the underlying CCD system is computed once and reused for gradient, face value, divergence, and advection — see [WIKI-L-024](../code/WIKI-L-024.md) §2.1.
 
+## Performance-axis companion (P-01)
+
+H-01 and A-01 fix the **locus/metric correctness** of the momentum equation. A separate axis remains: the **performance representation** of the same face-locus FVM algebra.
+
+| Axis | Source | Remediation | Status |
+|---|---|---|---|
+| **P-01 (performance)** | `PPESolverFVMSpsolve.solve` still treats the FVM PPE as a global CSR + `spsolve`, masking line parallelism and encouraging host/device boundaries | **GPU-native FVM projection**: matrix-free face operator $L_{\mathrm{FVM}}=\sum_a D_a A_a G_a$ + variable-batched PCR line preconditioner in Krylov | Theory [WIKI-T-060](../theory/WIKI-T-060.md), code SPEC [WIKI-L-026](../code/WIKI-L-026.md), short paper SP-F |
+
+P-01 is independent of H-01 / A-01 correctness. It does **not** change the FVM equations, only the operator representation and solve strategy. That separation is deliberate: the same face-locus operator family can first be made correct (H-01 / A-01) and then made GPU-efficient (P-01) without reopening the correctness proofs.
+
 ## Cross-references
 
 - Root cause: [WIKI-T-045](../theory/WIKI-T-045.md), [WIKI-E-030](../experiment/WIKI-E-030.md)
@@ -76,6 +86,7 @@ Library-level the two axes share a **single** `FCCDSolver` instance per simulati
 - Immediate alternative: [WIKI-T-052](../theory/WIKI-T-052.md) (R-1.5 theory) + [WIKI-L-023](../code/WIKI-L-023.md) (impl roadmap)
 - Long-term replacement: [WIKI-T-046](../theory/WIKI-T-046.md) (FCCD) + [WIKI-T-050](../theory/WIKI-T-050.md) (non-uniform algebra) + [WIKI-T-051](../theory/WIKI-T-051.md) (wall BC) / [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md)
 - **A-01 advection axis**: [WIKI-T-055](../theory/WIKI-T-055.md) (FCCD advection operator; BF-preservation theorem) + [WIKI-T-056](../theory/WIKI-T-056.md) (Wall Option IV) + [WIKI-L-024](../code/WIKI-L-024.md) (library) + SP-D
+- **P-01 performance axis**: [WIKI-T-060](../theory/WIKI-T-060.md) (GPU-native FVM projection) + [WIKI-L-026](../code/WIKI-L-026.md) (implementation roadmap) + SP-F
 - Balanced-Force principle: [WIKI-T-004](../theory/WIKI-T-004.md)
 - CSF model error floor: [WIKI-T-009](../theory/WIKI-T-009.md), [WIKI-T-017](../theory/WIKI-T-017.md)
 - Companion topology track: [WIKI-X-019](WIKI-X-019.md)

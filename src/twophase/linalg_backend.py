@@ -93,6 +93,74 @@ def _pcr_solve_batched(xp, a_vec, d_vec, c_vec, b_mat):
     return b / d
 
 
+def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat):
+    """Parallel Cyclic Reduction for variable-coefficient batched systems.
+
+    Solves independent tridiagonal systems
+
+        a[i, b] x[i-1, b] + d[i, b] x[i, b] + c[i, b] x[i+1, b] = b[i, b]
+
+    for every batch column ``b`` simultaneously.  Unlike
+    :func:`_pcr_solve_batched`, the tridiagonal coefficients may vary across
+    batch columns.
+
+    Parameters
+    ----------
+    a_mat, d_mat, c_mat : (n, B) xp.ndarray
+        Lower / main / upper diagonals. ``a_mat[0]`` and ``c_mat[n-1]`` are
+        ignored.
+    b_mat : (n, B) xp.ndarray
+        Right-hand side.
+
+    Returns
+    -------
+    x : (n, B) xp.ndarray
+        Solution.
+    """
+    if a_mat.shape != d_mat.shape or a_mat.shape != c_mat.shape:
+        raise ValueError("a_mat, d_mat, c_mat must share the same shape")
+    if b_mat.shape != d_mat.shape:
+        raise ValueError("b_mat must have the same shape as the diagonals")
+
+    n = d_mat.shape[0]
+    n_stages = max(1, math.ceil(math.log2(n)))
+
+    a = xp.asarray(a_mat, dtype=b_mat.dtype).copy()
+    d = xp.asarray(d_mat, dtype=b_mat.dtype).copy()
+    c = xp.asarray(c_mat, dtype=b_mat.dtype).copy()
+    b = xp.asarray(b_mat, dtype=b_mat.dtype).copy()
+
+    idx = xp.arange(n)
+    stride = 1
+    for _ in range(n_stages):
+        d_l = xp.roll(d, stride, axis=0)
+        c_l = xp.roll(c, stride, axis=0)
+        a_l = xp.roll(a, stride, axis=0)
+        b_l = xp.roll(b, stride, axis=0)
+
+        d_r = xp.roll(d, -stride, axis=0)
+        a_r = xp.roll(a, -stride, axis=0)
+        c_r = xp.roll(c, -stride, axis=0)
+        b_r = xp.roll(b, -stride, axis=0)
+
+        has_l = (idx >= stride)[:, None]
+        d_l_safe = xp.where(xp.abs(d_l) > 0, d_l, 1.0)
+        alpha = xp.where(has_l, -a / d_l_safe, 0.0)
+
+        has_r = (idx < n - stride)[:, None]
+        d_r_safe = xp.where(xp.abs(d_r) > 0, d_r, 1.0)
+        beta = xp.where(has_r, -c / d_r_safe, 0.0)
+
+        a = alpha * a_l
+        d = d + alpha * c_l + beta * a_r
+        c = beta * c_r
+        b = b + alpha * b_l + beta * b_r
+
+        stride *= 2
+
+    return b / d
+
+
 class ThomasFactors(NamedTuple):
     """Pre-computed scalar recurrence for a tridiagonal matrix.
 
@@ -257,4 +325,62 @@ def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None)
             x[i] = d_prime[i] - c_prime[i] * x[i + 1]
 
     x_moved = x.reshape((n,) + batch_shape)
+    return xp.moveaxis(x_moved, 0, axis)
+
+
+def tridiag_variable_batched(xp, lower, diag, upper, rhs, axis: int):
+    """Solve tridiagonal systems with per-line coefficients along ``axis``.
+
+    Parameters
+    ----------
+    xp : module
+        Array namespace (numpy or cupy).
+    lower, diag, upper : xp.ndarray
+        Arrays matching ``rhs.shape``.  After moving ``axis`` to the front they
+        encode the lower / main / upper coefficients for every independent line.
+        ``lower[0, ...]`` and ``upper[-1, ...]`` are ignored.
+    rhs : xp.ndarray
+        Right-hand side. ``rhs.shape[axis]`` is the system size.
+    axis : int
+        Axis along which to solve.
+
+    Returns
+    -------
+    x : xp.ndarray
+        Same shape and namespace as ``rhs``.
+    """
+    if lower.shape != rhs.shape or diag.shape != rhs.shape or upper.shape != rhs.shape:
+        raise ValueError("lower, diag, upper, rhs must all have the same shape")
+
+    n = rhs.shape[axis]
+    moved_rhs = xp.moveaxis(rhs, axis, 0)
+    batch_shape = moved_rhs.shape[1:]
+    rhs_2d = moved_rhs.reshape(n, -1)
+
+    lower_2d = xp.moveaxis(lower, axis, 0).reshape(n, -1)
+    diag_2d = xp.moveaxis(diag, axis, 0).reshape(n, -1)
+    upper_2d = xp.moveaxis(upper, axis, 0).reshape(n, -1)
+
+    if _is_cupy(xp):
+        x_2d = _pcr_solve_variable_batched(xp, lower_2d, diag_2d, upper_2d, rhs_2d)
+    else:
+        d_prime = xp.empty_like(rhs_2d)
+        c_prime = xp.empty_like(upper_2d)
+
+        d_prime[0] = rhs_2d[0] / diag_2d[0]
+        if n > 1:
+            c_prime[0] = upper_2d[0] / diag_2d[0]
+
+        for i in range(1, n):
+            denom = diag_2d[i] - lower_2d[i] * c_prime[i - 1]
+            if i < n - 1:
+                c_prime[i] = upper_2d[i] / denom
+            d_prime[i] = (rhs_2d[i] - lower_2d[i] * d_prime[i - 1]) / denom
+
+        x_2d = xp.empty_like(rhs_2d)
+        x_2d[n - 1] = d_prime[n - 1]
+        for i in range(n - 2, -1, -1):
+            x_2d[i] = d_prime[i] - c_prime[i] * x_2d[i + 1]
+
+    x_moved = x_2d.reshape((n,) + batch_shape)
     return xp.moveaxis(x_moved, 0, axis)

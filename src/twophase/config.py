@@ -178,7 +178,7 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # Solver type: "ccd_lu" (production) / "iim" / "iterative"
+    # Solver type: "ccd_lu" (production) / "iim" / "iterative" / "fvm_matrixfree"
     ppe_solver_type: str = "ccd_lu"
     # Solver tolerances (used by ccd_lu, iim, iterative)
     pseudo_tol: float = 1e-8
@@ -194,7 +194,7 @@ class SolverConfig:
     iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
     def __post_init__(self) -> None:
-        _valid_types = ("ccd_lu", "iim", "iterative")
+        _valid_types = ("ccd_lu", "iim", "iterative", "fvm_matrixfree")
         assert self.ppe_solver_type in _valid_types, (
             f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"
