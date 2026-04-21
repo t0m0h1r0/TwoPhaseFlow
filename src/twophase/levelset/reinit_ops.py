@@ -48,6 +48,14 @@ def compute_gradient_normal(xp, psi, ccd: "CCDSolver"):
     """Compute gradient components and unit normal n̂ = ∇ψ/|∇ψ|.
 
     Returns (dpsi, n_hat, safe_grad) where dpsi is list of per-axis gradients.
+
+    The ``safe_grad`` floor is 1e-6 (CHK-168): below this, |∇ψ| is dominated by
+    CCD round-off (ULP-level) and the 1/|∇ψ| amplification would turn the ODD
+    y-flip ULP asymmetry into O(1e-3) noise in n̂.  The interface has
+    |∇ψ| ~ 1/(2ε) ~ O(30), well above the floor, so values near the interface
+    are unchanged (interface bit-exactness preserved on any grid).  The floor
+    affects only the bulk where ψ(1-ψ) → 0 and the n̂ direction is physically
+    undefined.
     """
     ndim = psi.ndim
     dpsi = []
@@ -55,7 +63,7 @@ def compute_gradient_normal(xp, psi, ccd: "CCDSolver"):
         g1, _ = ccd.differentiate(psi, ax)
         dpsi.append(g1)
     grad_sq = sum(g * g for g in dpsi)
-    safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
+    safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-12)), 1e-6)
     n_hat = [g / safe_grad for g in dpsi]
     return dpsi, n_hat, safe_grad
 
