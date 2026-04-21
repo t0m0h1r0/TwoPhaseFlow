@@ -88,8 +88,8 @@
 | [WIKI-X-017](cross-domain/WIKI-X-017.md) | §13 Production Config Pattern: Research-to-Paper Transition and Runner Invocation |
 | [WIKI-X-018](cross-domain/WIKI-X-018.md) | H-01 Remediation Map: G^adj Metric Unification via FCCD (SP-A gate) |
 | [WIKI-X-019](cross-domain/WIKI-X-019.md) | Topology-Freedom vs Metric-Rigidity: ξ/φ Role Separation as Design Principle (SP-B) |
-| [WIKI-X-020](cross-domain/WIKI-X-020.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
-| [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
+| [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
+| [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
 
 ## Experiment (29)
 

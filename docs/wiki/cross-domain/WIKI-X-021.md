@@ -1,108 +1,122 @@
-# WIKI-X-021: N-Robust BF-Consistent Full-Stack Architecture — Unified Role Map for the 10-Method Toolkit
+# WIKI-X-021: N-Scaling of the H-01 Mixed-Metric Residual — 128² Parasitic Blow-up (CHK-173)
 
-## Statement of the principle
+## Context
 
-The 128² parasitic blow-up documented in [WIKI-X-020](WIKI-X-020.md) proves that the $J^3$-scaling of the CSF-PPE pipeline (κ × ∇H × div, each carrying a CCD metric factor $J = 1/h_\text{phys}$) cannot be tamed by a single operator change. A simulation that passes at $N=64$ and blows up at $N=128$ is not "marginally wrong" — it is *not converging* and therefore not a simulation.
+[WIKI-X-018](WIKI-X-018.md) identified **H-01** (mixed CCD-node / FVM-face metric of the CSF-PPE-corrector chain) as the structural cause of late-time blow-up on non-uniform grids at $N = 64$. The Balanced-Force residual $|\text{BF}_\text{res}|$ measured there (≈ 884 on Exp-1 step 1) was taken as an absolute figure; the question of how the residual **scales with the grid refinement parameter $N$** was left implicit.
 
-$N$-independence requires that **all five pipeline stages cooperate on a single discretisation philosophy** — namely, every operator that participates in the balanced-force cancellation at the corrector step must live on the same face locus, and every auxiliary field (SDF, curvature, extension) must be consistent with that locus at $\mathcal{O}(h^k)$ with $k$ matching the target accuracy.
+CHK-173 closes that gap. The same fullstack configuration (`ch13_04_capwave_fullstack_alpha2`, $\alpha_\text{grid}=2$, FCCD + Ridge-Eikonal + GFM + HFE) passes at $N = 64$ to $T = 8$ ([CHK-160](../../02_ACTIVE_LEDGER.md) C7 PASS), but **blows up at $N = 128$ at $t \approx 0.014$ (step 126)** with the classic parasitic-current signature: KE climbing $4.3 \times 10^{-7} \to 1.02 \times 10^{6}$, volume conservation at machine precision, deformation almost unchanged.
 
-The 10-method toolkit developed across the wiki — **BF, CCD, FCCD, CN, AB2, GFM, HFE, IIM, Ridge-Eikonal, FMM** — is sufficient to construct this unified stack. This cross-domain entry is the *role map*: one row per pipeline stage, one column per method responsibility, one link per governing wiki entry.
+This cross-domain entry establishes that **H-01's residual is not $N$-independent** — it grows at least linearly with $N$ through the CCD metric factor $J = 1/h_\text{phys}$ — and refutes two attempted remediation paths (Option A and Option C) that tried to sidestep the [WIKI-X-018](WIKI-X-018.md) R-1.5/R-1 programme.
 
-## Pipeline × Method role map
+## Scaling law
 
-The NS / two-phase predictor-corrector loop executed in [`ns_pipeline.py`](../../../src/twophase/simulation/ns_pipeline.py) runs five stages per step. The table below assigns each method from the toolkit to the stage where it is the *governing* operator, and names the wiki entries that prove correctness of that assignment.
+### CCD metric chain
 
-| Stage | Governing operators | BF-consistency requirement | Relevant wiki |
-|---|---|---|---|
-| **1. Interface reinitialisation** (ψ, φ → SDF) | **Ridge-Eikonal + FMM** with **σ\_eff / ε\_local** | topological freedom (ridge) + metric rigidity (FMM Eikonal), decoupled per [WIKI-X-019](WIKI-X-019.md) | [WIKI-T-047](../theory/WIKI-T-047.md), [WIKI-T-048](../theory/WIKI-T-048.md), [WIKI-T-057](../theory/WIKI-T-057.md), [WIKI-T-059](../theory/WIKI-T-059.md), [WIKI-L-025](../code/WIKI-L-025.md) |
-| **2. Curvature + CSF force** (κ, f = σκ∇ψ) | **CCD** (node) for κ; **HFE** for Young-Laplace jump when split-PPE is active | κ-invariance via ψ-based formula; HFE extends source-side fields before CCD samples them across Γ | [WIKI-T-001](../theory/WIKI-T-001.md), [WIKI-T-008](../theory/WIKI-T-008.md), [WIKI-T-018](../theory/WIKI-T-018.md), [WIKI-T-020](../theory/WIKI-T-020.md) |
-| **3. NS predictor** (u* = u + Δt(-AB2 · conv + CN · visc + buoy)) | **AB2** (explicit convection, $\mathcal{O}(\Delta t^2)$) + **CN** (implicit viscous, $\mathcal{O}(\Delta t^2)$) | time-splitting at the IPC $\mathcal{O}(\Delta t^2)$ floor; independent of the spatial operator | [WIKI-T-003](../theory/WIKI-T-003.md) |
-| **4. PPE** (∇·(1/ρ)∇p = rhs) | **FVM + DC+LU** (R-1.5 today) → **FCCD face operator** (R-1 target) + **IIM** (sharp-jump corrector) | single-locus Laplacian consistent with the corrector gradient; IIM restores high-order accuracy at interface-crossing stencils | [WIKI-T-017](../theory/WIKI-T-017.md), [WIKI-T-021](../theory/WIKI-T-021.md), [WIKI-T-024](../theory/WIKI-T-024.md), [WIKI-T-034](../theory/WIKI-T-034.md), [WIKI-T-046](../theory/WIKI-T-046.md), [WIKI-L-023](../code/WIKI-L-023.md) |
-| **5. Corrector + reprojection** (u = u\* − Δt/ρ · ∇p; post-rebuild projection) | **FCCD gradient** (same face locus as PPE) + **GFM / IIM** reprojection after rebuild | BF identity: $\nabla p = f/\rho$ at rest → *must* share the operator with stage 2's $\nabla_h$; GFM absorbs high-ρ ratio at interface | [WIKI-T-044](../theory/WIKI-T-044.md), [WIKI-T-046](../theory/WIKI-T-046.md), [WIKI-L-024](../code/WIKI-L-024.md), [WIKI-E-029](../experiment/WIKI-E-029.md) |
+[`CCDSolver._apply_metric`](../../../src/twophase/ccd/ccd_solver.py#L587) applies
 
-The **BF-consistency chain** — the one thing that breaks under $J^3$ scaling — is the link between stages 2 and 5: the force $\sigma \kappa \nabla \psi$ constructed from CCD derivatives in stage 2 must be cancelled exactly by $\nabla_h p$ in stage 5 at rest. [WIKI-T-004](../theory/WIKI-T-004.md) is the principle; [WIKI-X-018](WIKI-X-018.md) is the remediation map; [WIKI-X-020](WIKI-X-020.md) is the $N$-scaling evidence that makes the remediation non-optional.
+$$
+\partial_x u = J \cdot \partial_\xi u, \qquad \partial_{xx} u = J^2 \cdot \partial_{\xi\xi} u + J \cdot (dJ/d\xi) \cdot \partial_\xi u, \qquad J = \frac{1}{h_\text{phys}}.
+$$
 
-## Why all ten methods are needed (and none can be removed)
+Every CCD derivative therefore amplifies by a factor $J$. Under $N:64 \to 128$, $h_\text{phys}$ halves on the interface-fitted refined region, so $J$ doubles.
 
-The toolkit is not over-complete. Each method addresses a distinct failure mode that the others do not cover.
+### CSF-PPE pipeline
 
-| Method | What fails without it | Why another method cannot substitute |
-|---|---|---|
-| **BF** (principle) | parasitic currents at rest | this is the governing invariant; other methods are instances of its enforcement |
-| **CCD** | $\mathcal{O}(h^2)$ κ → BF residual floor above CSF floor | FCCD face-operator is $\mathcal{O}(h^4)$ but lives at a different locus and cannot replace κ-on-node; HFE/IIM are interface-crossing tools, not bulk derivatives |
-| **FCCD** | mixed-metric BF residual $\mathcal{O}(h^2)$ — the CHK-173 trigger | CCD node-gradient breaks BF with the FVM Laplacian; plain FVM gradient caps accuracy at $\mathcal{O}(h^2)$ and undoes CCD's purpose |
-| **CN** | viscous CFL $\Delta t \leq h^2 / (2\nu)$ — prohibitive at high μ or fine grids | explicit would demand $\Delta t \sim 10^{-7}$ on 128²; Euler implicit is only $\mathcal{O}(\Delta t)$ and loses the IPC splitting-order match |
-| **AB2** | $\mathcal{O}(\Delta t)$ convection truncation dominates the temporal error | RK3 for convection exists but doubles the force-evaluation count; AB2 is the cheapest scheme that matches CN's temporal order |
-| **GFM** | velocity reprojection after grid rebuild leaks $\mathcal{O}(h)$ divergence at the interface for ρ\_l/ρ\_g = 833 | legacy (uniform ρ) reprojector is unsound at ρ_l/ρ_g ≫ 1; IIM is more costly and targets a stricter invariant |
-| **HFE** | CCD stencils sampling across [p] = σκ produce Gibbs oscillations | Aslam iterative extension costs O(1000×) more sweeps; truncation-based stencils lose accuracy where it matters |
-| **IIM** | jump-aware PPE corrections vanish when ρ-jump is sharp — residual floor at high ratio | HFE is a *field-extension* tool (interface hygiene for CCD inputs); IIM is a *solver correction* (inside the Laplacian) — different axis, complementary |
-| **Ridge-Eikonal** | φ cannot simultaneously carry topology and metric (WIKI-X-019) | DGR/split-reinit cannot handle coalescence/pinch-off; plain Eikonal freezes topology |
-| **FMM** | seed-front propagation for the Eikonal step after ridge extraction | iterative Godunov-upwind diverges on non-uniform grids (CHK-138); FSM is only marginally faster and does not gain accuracy |
+The PPE RHS constructed in [`ns_pipeline.py:744`](../../../src/twophase/simulation/ns_pipeline.py#L744) is
 
-Removing any one row collapses the stack to a lower-order or lower-robustness solver that fails at at least one production benchmark: [WIKI-E-028](../experiment/WIKI-E-028.md) (FMM on Prosperetti), [WIKI-E-029](../experiment/WIKI-E-029.md) (GFM at ρ = 833:1), or [WIKI-E-030](../experiment/WIKI-E-030.md) (H-01 blow-up on α=1.5 grid).
+$$
+\text{rhs}_\text{PPE} \;=\; \underbrace{\frac{1}{\Delta t}\nabla_{\text{CCD}} \cdot u^\star}_{\text{single } J}
+\;+\; \underbrace{\nabla_{\text{CCD}} \cdot \frac{\sigma \kappa_\text{CCD} \, \nabla_{\text{CCD}} H_\varepsilon}{\rho}}_{\text{three nested CCD derivatives}}.
+$$
 
-## Remediation ladder — extending WIKI-X-018 with the N-scaling argument
+Each of the three factors in the CSF branch scales as $J$:
 
-[WIKI-X-018](WIKI-X-018.md) defined the H-01 ladder R-0 → R-1.5 → R-1 → R-2 → R-3. [WIKI-X-020](WIKI-X-020.md) supplied the missing $N$-scaling argument (BF residual $\propto J^3$). Combining the two:
+1. $\kappa_\text{CCD}$ uses CCD second-derivatives in [`curvature_psi.py:118`](../../../src/twophase/levelset/curvature_psi.py#L118) → $J$-scaled.
+2. $\nabla_{\text{CCD}} H_\varepsilon$ is a CCD first-derivative → $J$-scaled; moreover $\varepsilon \propto h_\text{phys}$ (local-$\varepsilon$ field) adds an independent $J$ factor through $|\nabla H_\varepsilon| \propto 1/\varepsilon$.
+3. The outer $\nabla_{\text{CCD}} \cdot$ → $J$-scaled.
 
-| Tier | Deployment | BF residual at constant κ | BF residual at variable κ | $N$-scaling |
+Net: $\text{rhs}_\text{PPE}^{\text{CSF}} \propto J^3$. The corrector gradient $\nabla_{\text{FVM}} p$ has **no $J$ factor** (plain $(p_{i+1} - p_i)/d_\text{face}$). The H-01 residual
+
+$$
+|\text{BF}_\text{res}| \;=\; \bigl|\nabla_{\text{FVM}} p \;-\; f/\rho \bigr|
+$$
+
+therefore inherits the $J^3$ mismatch from the PPE RHS that constructed $p$.
+
+### Empirical verification (V2 probes)
+
+Step-1 diagnostics on `ch13_04_probe_{64,128}.yaml` (fullstack short run, $T_\text{final}=0.01$):
+
+| Metric | $N=64$ | $N=128$ | Ratio | Predicted |
 |---|---|---|---|---|
-| R-0 (current) | FVM-grad + CCD-RHS mixed | $\mathcal{O}(h^2) \cdot J^3$ | $\mathcal{O}(h^2) \cdot J^3$ | *fails at $N=128$* |
-| R-1.5 (immediate) | `_fvm_pressure_grad` on ψ for the corrector | machine precision | $\mathcal{O}(h^2)$ (CSF floor) | $N$-independent at rest |
-| R-1 (target) | FCCD unified face operator, SP-A | machine precision | $\mathcal{O}(h^4)$ uniform, $\mathcal{O}(h^3)$ non-uniform | $N$-independent |
-| R-1 + A-01-B | FCCD advection (flux-divergence) | machine precision + BF-preservation theorem at motion | $\mathcal{O}(h^4)$ off-rest (theorem) | $N$-independent under transport |
-| R-3 (variational) | full IIM reprojection post-corrector | machine precision | $\mathcal{O}(h^4)$ variational | $N$-independent, highest cost |
+| `kappa_max` | 488 | 1020 | 2.09 | 2 (linear $J$) |
+| `ppe_rhs_max` | 67 | 576 | 8.58 | 8 ($J^3$) |
+| `bf_residual_max` | 9.8 | 44 | 4.5 | 2–8 |
 
-The recommendation is unchanged from [WIKI-X-018](WIKI-X-018.md): **R-1.5 now, R-1 as the long-term target**. The CHK-173 evidence raises the urgency: without R-1.5, every scaling study beyond $N=64$ is corrupted by an unbounded-in-$N$ BF residual, and every result at $N=64$ is one grid-refinement away from the parasitic blow-up mode.
+The PPE-RHS ratio 8.58 matches the $J^3$ prediction to one significant digit.
 
-## What WIKI-X-021 is *not*
+## Attempted remediations
 
-This entry does not propose to replace CCD with FVM anywhere. The CCD node operator is retained in:
+CHK-173 tested two paths that **avoided** the [WIKI-X-018](WIKI-X-018.md) R-1.5/R-1 recommendation. Both are recorded here as negative results.
 
-- stage 1 transport coupling via [WIKI-T-036](../theory/WIKI-T-036.md) phi-primary transport,
-- stage 2 curvature κ via [WIKI-T-008](../theory/WIKI-T-008.md) ψ-based formula (invariance theorem, WIKI-T-020),
-- stage 2 HFE field extension as the interpolant of record.
+| Option | Change | Rationale | $N=64$ | $N=128$ | Verdict |
+|---|---|---|---|---|---|
+| **Baseline (R-0)** | FVM PPE + FVM-grad + CCD-RHS | current production | PASS T=8 | blow at $t=0.014$ | $N$-unsafe |
+| **Option A** | FVM PPE + **CCD-grad** + CCD-RHS | restore CCD consistency at corrector | div_u 0.42 → 2.64 (6.3× worse) | div_u 1.38 → 17.2 (12× worse) | **refuted** |
+| **Option C** | **CCD iterative-ADI** PPE + CCD-grad + CCD-RHS (no LU per memory constraint) | full CCD consistency, no Kronecker LU | PPE residual 2.0e+3 @500 iter (tol 1e-8); `bf_res=218`, `div_u=0.88` | PPE residual 2.5e+4 @500 iter; `bf_res=857`, `div_u=2.66` | **refuted** |
 
-What moves to FCCD is *only* the gradient operator on the pressure (stage 5) and — once A-01-B is implemented — the momentum-advection divergence (stage 3 inner loop). Both are face-locus operations that were never CCD-native in the strict sense; they were CCD-*interpolated* onto faces, which is precisely the residual cause of $J^3$.
+### Why Option A fails
 
-Conversely, the entry does not propose to abandon BF for a lower-order stable scheme (e.g. upwind pressure). Lower-order schemes mask the symptom without addressing the cause and make every other high-order component of the stack (CCD, FCCD, HFE, IIM) redundant — a net loss.
+Breaking the projection identity $\mathcal{L}_\text{FVM} = \nabla_\text{FVM} \cdot \nabla_\text{FVM}$: FVM-PPE assumes the FVM gradient operator in the corrector. Substituting $\nabla_\text{CCD} p$ makes $\nabla_\text{CCD} \cdot (u^\star - (\Delta t/\rho) \nabla_\text{CCD} p) \neq \nabla_\text{FVM} \cdot u^\star$, so $\nabla \cdot u \neq 0$ after correction. This is the operator-consistency requirement of [WIKI-T-004](../theory/WIKI-T-004.md) §"Projection identity" applied at the gradient axis.
 
-## Open design questions
+### Why Option C fails
 
-1. **FCCD × IIM composition**: when R-1 is deployed, does the IIM jump correction need to be re-derived on the face locus? [WIKI-T-021](../theory/WIKI-T-021.md) is written for node CCD; a face-locus analogue is undocumented.
-2. **Ridge-Eikonal × FCCD interaction on non-uniform grids**: σ_eff(x) / ε_local(x) are calibrated against node-CCD κ. Whether the same scaling holds when κ is computed with (hypothetical) face-locus FCCD is open.
-3. **GPU-native FCCD corrector**: [WIKI-L-026](../code/WIKI-L-026.md) and [WIKI-T-060](../theory/WIKI-T-060.md) describe the P-01 performance axis for the FVM PPE; the FCCD face-operator equivalent is not yet sketched.
+[WIKI-T-024](../theory/WIKI-T-024.md) §"ADI failure" already theorised that the CCD residual evaluated against a 3-pt ADI-Thomas smoother does not converge: the smoother's eigen-decomposition does not align with the CCD operator's high-order stencil, leaving $\mathcal{O}(1)$ components undamped. The CHK-173 empirical residuals (2.0e+3 and 2.5e+4 after 500 iterations) are direct confirmation. Increasing `pseudo_maxiter` 10× would still not close the 9–12 digit gap to `tol=1e-8`; the smoother would have to be replaced (Krylov + CCD preconditioner, CG/BiCGStab).
 
-These are tractable follow-ups, not blockers — R-1.5 can be deployed today without resolving them.
+## Relation to WIKI-X-018
+
+WIKI-X-021 **extends**, does not replace, the [WIKI-X-018](WIKI-X-018.md) remediation map:
+
+- The [WIKI-X-018](WIKI-X-018.md) R-1.5 path (`_fvm_pressure_grad` on $\psi$, node-face unification via FVM) remains the recommended immediate fix. CHK-173's $J^3$ scaling argument **strengthens** the case: as $N$ grows, the mixed-metric residual grows at least like $N$ (via $\kappa$) and likely like $N^3$ (via the full CSF pipeline), so the 64²-only diagnosis in WIKI-X-018 understates the problem.
+- The [WIKI-X-018](WIKI-X-018.md) R-1 path (FCCD unified face operator, SP-A) is the long-term target. The $J^3$ scaling provides a second motivation: not just constant-factor accuracy improvement, but $N$-robustness.
+- The "stay CCD-side" alternative (Option C in this entry) is **closed**: [WIKI-T-024](../theory/WIKI-T-024.md) predicts and CHK-173 confirms that no matrix-free CCD PPE iteration converges with the available smoothers.
+
+The migration path is therefore unchanged from [WIKI-X-018](WIKI-X-018.md):
+
+> R-1.5 (immediate, 3-line edit) → R-1 (SP-A / FCCD, when PoC succeeds).
+
+## Constraint on "no-LU CCD PPE" design
+
+A recurring user directive during CHK-173 was "stay CCD, avoid LU due to memory". The CHK-173 evidence constrains this as follows:
+
+1. **Direct CCD Kronecker-LU** (`PPESolverCCDLU`): O(N⁴) memory, rejected.
+2. **CCD residual + ADI smoother** (`PPESolverIterative(ccd,adi)`): does not converge — [WIKI-T-024](../theory/WIKI-T-024.md) + CHK-173.
+3. **CCD residual + Gauss–Seidel smoother**: same eigen-mismatch, no reason to expect convergence.
+4. **CCD residual + Krylov (CG/BiCGStab) with CCD preconditioner**: not implemented; open design question.
+5. **FFT-based PPE with CCD modified wavenumbers**: restricted to periodic BC, incompatible with wall.
+
+The practically available paths that are both *CCD-consistent* and *no-LU* are (4) and perhaps a dedicated compact multigrid. Neither is available in the current codebase; implementing one is out of scope for CHK-173.
 
 ## Cross-references
 
-### Principle and scaling evidence
-- [WIKI-T-004](../theory/WIKI-T-004.md) — Balanced-Force operator consistency (principle)
-- [WIKI-X-018](WIKI-X-018.md) — H-01 remediation map (R-1.5 / R-1 / A-01 / P-01)
-- [WIKI-X-019](WIKI-X-019.md) — ξ/φ role separation (topology vs metric)
-- [WIKI-X-020](WIKI-X-020.md) — $J^3$ $N$-scaling evidence (CHK-173); Options A/C refutation
-
-### Stage-wise method anchors
-- Stage 1 reinit: [WIKI-T-042](../theory/WIKI-T-042.md), [WIKI-T-047](../theory/WIKI-T-047.md), [WIKI-T-048](../theory/WIKI-T-048.md), [WIKI-T-057](../theory/WIKI-T-057.md), [WIKI-T-059](../theory/WIKI-T-059.md); code [WIKI-L-025](../code/WIKI-L-025.md); experiments [WIKI-E-028](../experiment/WIKI-E-028.md)
-- Stage 2 curvature/CSF: [WIKI-T-001](../theory/WIKI-T-001.md), [WIKI-T-008](../theory/WIKI-T-008.md), [WIKI-T-018](../theory/WIKI-T-018.md), [WIKI-T-020](../theory/WIKI-T-020.md)
-- Stage 3 time integration: [WIKI-T-003](../theory/WIKI-T-003.md) (IPC + AB2 + CN)
-- Stage 4 PPE: [WIKI-T-017](../theory/WIKI-T-017.md) (FVM), [WIKI-T-021](../theory/WIKI-T-021.md) (IIM-CCD), [WIKI-T-024](../theory/WIKI-T-024.md) (solver convergence + ADI failure), [WIKI-T-034](../theory/WIKI-T-034.md) (IIM reprojection); code [WIKI-L-023](../code/WIKI-L-023.md)
-- Stage 5 corrector: [WIKI-T-044](../theory/WIKI-T-044.md) (G^adj), [WIKI-T-046](../theory/WIKI-T-046.md) (FCCD), [WIKI-T-050](../theory/WIKI-T-050.md) (non-uniform), [WIKI-T-051](../theory/WIKI-T-051.md) (wall BC), [WIKI-T-054](../theory/WIKI-T-054.md) (matrix formulation), [WIKI-T-055](../theory/WIKI-T-055.md) (advection variant); code [WIKI-L-024](../code/WIKI-L-024.md); experiments [WIKI-E-029](../experiment/WIKI-E-029.md), [WIKI-E-030](../experiment/WIKI-E-030.md)
-
-### Short-paper anchors (reading order)
-- [SP-A (face-centred upwind CCD)](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md) — FCCD theory
-- [SP-B (ridge-Eikonal hybrid)](../../memo/short_paper/SP-B_ridge_eikonal_hybrid.md) — stage 1 design
-- [SP-D (FCCD advection)](../../memo/short_paper/SP-D_fccd_advection.md) — A-01-B advection closure
-- [SP-E (non-uniform ridge-Eikonal)](../../memo/short_paper/SP-E_ridge_eikonal_nonuniform_grid.md) — CHK-159
+- Upstream cross-domain: [WIKI-X-018](WIKI-X-018.md) (H-01 remediation map, R-1.5/R-1)
+- Downstream cross-domain: [WIKI-X-022](WIKI-X-022.md) (N-robust full-stack architecture — 10-method role map that uses the CHK-173 evidence as its motivating constraint)
+- Balanced-Force principle: [WIKI-T-004](../theory/WIKI-T-004.md) (operator consistency)
+- FVM reference methods: [WIKI-T-017](../theory/WIKI-T-017.md) (face-coefficient PPE, Rhie-Chow)
+- CCD-PPE solver theory: [WIKI-T-024](../theory/WIKI-T-024.md) (DC+LU results, **ADI failure**) — the theoretical basis that predicts Option C's non-convergence
+- CSF model error floor: [WIKI-T-009](../theory/WIKI-T-009.md)
+- Non-uniform metric: [WIKI-T-057](../theory/WIKI-T-057.md) ($\sigma_\text{eff}/\varepsilon_\text{local}$), [WIKI-T-058](../theory/WIKI-T-058.md) (physical-space Hessian)
+- Current code paths:
+  - Mixed-metric production: [`ns_pipeline.py:168-171`](../../../src/twophase/simulation/ns_pipeline.py#L168) (FVM-grad on non-uniform wall, CCD-grad otherwise)
+  - PPE RHS construction: [`ns_pipeline.py:735-744`](../../../src/twophase/simulation/ns_pipeline.py#L735)
+  - CCD metric factor: [`ccd_solver.py:587-606`](../../../src/twophase/ccd/ccd_solver.py#L587)
+  - FVM gradient operator: [`gradient_operator.py:71-118`](../../../src/twophase/simulation/gradient_operator.py#L71)
 
 ## CHK rows
 
-| CHK | Delivery | Stage(s) |
+| CHK | Delivery | Notes |
 |---|---|---|
-| CHK-152 | open: unify G^adj with σκ∇ψ (R-1 gate) | 5 |
-| CHK-155 | R-1.5 PoC (3-line edit, immediate) | 5 |
-| CHK-158 | A-01 advection companion (FCCD flux-divergence) | 3, 5 |
-| CHK-159 | Ridge-Eikonal non-uniform with σ_eff/ε_local | 1 |
-| CHK-160 | ch13\_04 fullstack $N=64$ $\alpha=2$ PASS T=8 | 1–5 (full stack baseline) |
-| **CHK-173** | **$J^3$ evidence, Options A/C refuted — recorded in [WIKI-X-020](WIKI-X-020.md)** | 2, 4, 5 |
+| CHK-152 | WIKI-X-018 (64²-scale H-01 remediation map) | Foundation |
+| CHK-160 | ch13_04 fullstack $N=64$ $\alpha=2$ PASS | Baseline for $N$-scaling study |
+| CHK-171 | 128² hires + velocity/pressure/psi evolution series | Exposed $N=128$ blow-up |
+| **CHK-173** | **$J^3$ scaling evidence; Options A, C refuted** | **This entry** |
