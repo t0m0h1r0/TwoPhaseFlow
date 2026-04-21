@@ -1,6 +1,6 @@
-# Wiki Index — 185 entries
+# Wiki Index — 189 entries
 
-## Theory (64)
+## Theory (66)
 
 | REF-ID | Title |
 |--------|-------|
@@ -68,8 +68,10 @@
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 | [WIKI-T-063](theory/WIKI-T-063.md) | FCCD Face-Flux PPE: Adjoint Gradient Design, Defect Correction, and IIM/GFM Integration |
 | [WIKI-T-064](theory/WIKI-T-064.md) | ∇·(2μD) Staggered MAC Discretization: Layer Architecture, Shear Stress Corner Placement, and Conservative Discrete Forms |
+| [WIKI-T-065](theory/WIKI-T-065.md) | CLS Complete 1-Step Algorithm: Conservative Transport, ψ↔φ Mapping, Narrow-Band Reinit, and Staged Mass Correction |
+| [WIKI-T-066](theory/WIKI-T-066.md) | Body Force Discretization in Variable-Density Two-Phase NS: f vs f/ρ, Gravity Face Placement, Hydrostatic Split, and BF Consistency |
 
-## Cross-Domain (30)
+## Cross-Domain (32)
 
 | REF-ID | Title |
 |--------|-------|
@@ -103,6 +105,8 @@
 | [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
 | [WIKI-X-029](cross-domain/WIKI-X-029.md) | Balanced-Force Operator Consistency for CCD/FCCD: 7 Design Principles, DCCD Safety Rules, and Rhie-Chow Critique |
 | [WIKI-X-030](cross-domain/WIKI-X-030.md) | Viscous Term Design Guide for CCD/FCCD Two-Phase NS: Bulk-CCD vs Interface-Band Split, Defect Correction, and Implicit Solver Architecture |
+| [WIKI-X-031](cross-domain/WIKI-X-031.md) | Advection Design Guide for CCD/FCCD Two-Phase NS: Conservative Flux Form, Velocity-PPE Consistency, and Scheme Selection per Variable |
+| [WIKI-X-032](cross-domain/WIKI-X-032.md) | Complete 1-Step Time Integration for CLS + Variable-Density CCD NS: Phase Ordering, Geometry Lag Policy, and Operator Splitting Safety |
 
 ## Experiment (29)
 
