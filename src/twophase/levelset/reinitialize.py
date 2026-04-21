@@ -182,7 +182,11 @@ class ReinitializerWENO5(IReinitializer):
             dpsi.append(g1)
             d2psi_sum += g2
         grad_psi_sq = sum(g * g for g in dpsi)
-        safe_grad   = xp.maximum(xp.sqrt(xp.maximum(grad_psi_sq, 1e-28)), 1e-14)
+        # CHK-169: floor 1e-14 → 1e-6, matching reinit_ops.py (CHK-168).
+        # WENO5 compression is less anti-diffusive than DCCD but shares the same
+        # ULP-amplification mechanism at ψ(1-ψ) → 0 bulk nodes; harmonised for
+        # defensive consistency across all reinit variants.
+        safe_grad   = xp.maximum(xp.sqrt(xp.maximum(grad_psi_sq, 1e-12)), 1e-6)
         n_hat = [g / safe_grad for g in dpsi]
         psi_1mpsi = psi * (1.0 - psi)
         alpha = float(xp.max(xp.abs(psi_1mpsi)))
