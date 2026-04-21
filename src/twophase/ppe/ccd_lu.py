@@ -6,7 +6,8 @@ PPESolverPseudoTime via the common base class _CCDPPEBase, but skips
 the iterative phase and solves directly every step.
 
 Uses:
-    - Debugging / reference solutions (force direct LU, ppe_solver_type="ccd_lu")
+    - Debugging / reference solutions only
+      (ppe_solver_type="ccd_lu", allow_kronecker_lu=True)
     - Verifying balanced-force compliance (CCD PPE + CCD corrector consistency)
     - Cases where a guaranteed-accurate baseline is preferred over speed
 

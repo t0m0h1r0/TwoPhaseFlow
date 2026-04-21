@@ -105,7 +105,7 @@ def test_structured_ch13_yaml_sections_round_trip():
             "schemes": {
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_nodal",
-                "ppe": "fvm_spsolve",
+                "ppe": "fvm_direct",
                 "viscous_time": "crank_nicolson",
             },
             "debug": {"step_diagnostics": True},
@@ -125,7 +125,7 @@ def test_structured_ch13_yaml_sections_round_trip():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "fccd_nodal"
-    assert cfg.run.ppe_solver == "fvm_spsolve"
+    assert cfg.run.ppe_solver == "fvm_direct"
     assert cfg.run.viscous_time_scheme == "crank_nicolson"
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True

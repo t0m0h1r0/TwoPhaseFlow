@@ -101,11 +101,11 @@ class RunCfg:
     # and ch12/ch13 PPE policy.
     # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
     # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
-    # ppe_solver       : pressure    — 'fvm_matrixfree'  | 'fvm_spsolve'
+    # ppe_solver       : pressure    — 'fvm_iterative'   | 'fvm_direct'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
-    ppe_solver: str = "fvm_matrixfree"
+    ppe_solver: str = "fvm_iterative"
     viscous_time_scheme: str = "explicit"
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
@@ -357,7 +357,13 @@ _REINIT_METHODS = (
 _REPROJECT_MODES = (
     "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
 )
-_PPE_SCHEMES = ("fvm_matrixfree", "fvm_spsolve")
+_PPE_SCHEMES = ("fvm_iterative", "fvm_direct")
+_PPE_SCHEME_ALIASES = {
+    "fvm_matrixfree": "fvm_iterative",
+    "matrixfree": "fvm_iterative",
+    "fvm_spsolve": "fvm_direct",
+    "spsolve": "fvm_direct",
+}
 _VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 
 
@@ -397,11 +403,12 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
             f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
             f"got {convection_scheme!r}"
         )
-    ppe_solver = str(
+    ppe_solver_raw = str(
         schemes.get("ppe", schemes.get(
-            "pressure_poisson", d.get("ppe_solver", "fvm_matrixfree")
+            "pressure_poisson", d.get("ppe_solver", "fvm_iterative")
         ))
     )
+    ppe_solver = _PPE_SCHEME_ALIASES.get(ppe_solver_raw, ppe_solver_raw)
     if ppe_solver not in _PPE_SCHEMES:
         raise ValueError(
             f"run.schemes.ppe must be one of {_PPE_SCHEMES}, got {ppe_solver!r}"

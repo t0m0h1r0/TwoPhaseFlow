@@ -212,7 +212,7 @@ def test_gfm_pipeline_builds_and_runs():
             advection_scheme="dissipative_ccd",
             surface_tension_model="gfm",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
     )
     sim = SimulationBuilder(cfg).build()
 
@@ -273,7 +273,7 @@ def test_gfm_laplace_pressure_sign():
             advection_scheme="dissipative_ccd",
             surface_tension_model="gfm",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
     )
     sim = SimulationBuilder(cfg).build()
 

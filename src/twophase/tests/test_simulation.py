@@ -69,7 +69,7 @@ def _make_sim() -> TwoPhaseSimulation:
             bc_type="wall",
             advection_scheme="dissipative_ccd",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),   # CCD Kronecker + LGMRES
+        solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
     )
     sim = SimulationBuilder(cfg).build()
 

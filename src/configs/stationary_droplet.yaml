@@ -29,7 +29,7 @@ cfl_number: 0.25
 t_end: 0.1            # 短時間で定常寄生電流を計測
 
 # ── 圧力ソルバー ─────────────────────────────────────────────────
-ppe_solver_type: ccd_lu
+ppe_solver_type: fvm_iterative
 
 # ── 境界条件・移流スキーム ───────────────────────────────────────
 advection_scheme: dissipative_ccd

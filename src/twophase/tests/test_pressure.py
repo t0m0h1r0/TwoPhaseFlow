@@ -228,6 +228,7 @@ def test_ccd_ppe_convergence_order(backend):
                 pseudo_maxiter=5000,
                 pseudo_c_tau=2.0,
                 ppe_solver_type="ccd_lu",
+                allow_kronecker_lu=True,
             ),
         )
         grid = Grid(cfg.grid, backend)
@@ -339,6 +340,7 @@ def test_ccd_ppe_variable_density_convergence_order(backend):
                 pseudo_maxiter=5000,
                 pseudo_c_tau=2.0,
                 ppe_solver_type="ccd_lu",
+                allow_kronecker_lu=True,
             ),
         )
         grid = Grid(cfg.grid, backend)

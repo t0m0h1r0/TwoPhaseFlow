@@ -157,9 +157,26 @@ def test_config_loader_roundtrips_extended_solver_and_numerics_fields():
         os.unlink(path)
 
 
-def test_solver_config_accepts_fvm_matrixfree():
+def test_solver_config_defaults_to_fvm_iterative():
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)),
+    )
+    assert cfg.solver.ppe_solver_type == "fvm_iterative"
+
+
+def test_solver_config_normalizes_legacy_fvm_matrixfree():
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)),
         solver=SolverConfig(ppe_solver_type="fvm_matrixfree"),
     )
-    assert cfg.solver.ppe_solver_type == "fvm_matrixfree"
+    assert cfg.solver.ppe_solver_type == "fvm_iterative"
+
+
+def test_solver_config_rejects_unflagged_kronecker_lu():
+    with pytest.raises(AssertionError, match="allow_kronecker_lu"):
+        SolverConfig(ppe_solver_type="ccd_lu")
+
+
+def test_solver_config_allows_flagged_kronecker_lu():
+    cfg = SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True)
+    assert cfg.ppe_solver_type == "ccd_lu"

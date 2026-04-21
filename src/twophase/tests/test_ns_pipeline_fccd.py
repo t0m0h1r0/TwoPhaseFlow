@@ -111,7 +111,7 @@ def test_pipeline_can_select_direct_fvm_ppe():
 
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
-        ppe_solver="fvm_spsolve",
+        ppe_solver="fvm_direct",
     )
     assert isinstance(solver._ppe_solver, PPESolverFVMSpsolve)
 
@@ -211,7 +211,7 @@ def test_from_config_threads_fccd_keys():
             "schemes": {
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_flux",
-                "ppe": "fvm_spsolve",
+                "ppe": "fvm_direct",
                 "viscous_time": "crank_nicolson",
             },
             "reinitialization": {
@@ -227,7 +227,7 @@ def test_from_config_threads_fccd_keys():
     solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "fccd_flux"
-    assert solver._ppe_solver_name == "fvm_spsolve"
+    assert solver._ppe_solver_name == "fvm_direct"
     assert solver._cn_viscous is True
     assert solver._fccd is not None
     assert solver._fccd_conv is not None

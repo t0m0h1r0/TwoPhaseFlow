@@ -4,10 +4,11 @@ PPE solver factory (OCP + DIP).
 Creates IPPESolver instances based on SimulationConfig.ppe_solver_type.
 
 Active solvers:
-    - "ccd_lu"    : CCD Kronecker + direct LU (production, PR-6 compliant)
+    - "fvm_iterative" : matrix-free FVM PPE + line-preconditioned GMRES
+    - "fvm_direct"    : FVM PPE + sparse direct solve
     - "iim"       : CCD Kronecker + IIM interface correction
     - "iterative" : configurable research toolkit ({ccd,3pt}x{explicit,gs,adi})
-    - "fvm_matrixfree" : matrix-free FVM PPE + line-preconditioned GMRES
+    - "ccd_lu"    : CCD Kronecker + direct LU, restricted reference path
 
 To add a new solver: call register_ppe_solver(name, factory_fn).
 """
@@ -52,6 +53,12 @@ def _make_bc_spec(config, grid):
 # ── Active solver registrations ───────────────────────────────────────────
 
 def _create_ccd_lu(config, backend, grid, ccd, bc_spec):
+    if not bool(getattr(config.solver, "allow_kronecker_lu", False)):
+        raise ValueError(
+            "ccd_lu is a restricted Kronecker-LU reference solver. "
+            "Use ppe_solver_type='fvm_iterative' for normal runs, or set "
+            "allow_kronecker_lu=True only for intentional component/reference use."
+        )
     from .ccd_lu import PPESolverCCDLU
     return PPESolverCCDLU(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
 
@@ -81,7 +88,9 @@ def _create_fvm_matrixfree(config, backend, grid, ccd, bc_spec):
 register_ppe_solver("ccd_lu", _create_ccd_lu)
 register_ppe_solver("iim", _create_iim)
 register_ppe_solver("iterative", _create_iterative)
+register_ppe_solver("fvm_direct", _create_fvm_spsolve)
 register_ppe_solver("fvm_spsolve", _create_fvm_spsolve)
+register_ppe_solver("fvm_iterative", _create_fvm_matrixfree)
 register_ppe_solver("fvm_matrixfree", _create_fvm_matrixfree)
 
 

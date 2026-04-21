@@ -106,7 +106,7 @@ class TwoPhaseNSSolver:
         ridge_sigma_0: float = 3.0,
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
-        ppe_solver: str = "fvm_matrixfree",
+        ppe_solver: str = "fvm_iterative",
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
@@ -157,18 +157,22 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppe_solver_name = str(ppe_solver)
-        if self._ppe_solver_name == "fvm_matrixfree":
+        ppe_solver_aliases = {
+            "fvm_matrixfree": "fvm_iterative",
+            "fvm_spsolve": "fvm_direct",
+        }
+        self._ppe_solver_name = ppe_solver_aliases.get(str(ppe_solver), str(ppe_solver))
+        if self._ppe_solver_name == "fvm_iterative":
             self._ppe_solver = PPESolverFVMMatrixFree(
                 self._backend, None, self._grid, bc_type=bc_type,
             )
-        elif self._ppe_solver_name == "fvm_spsolve":
+        elif self._ppe_solver_name == "fvm_direct":
             self._ppe_solver = PPESolverFVMSpsolve(
                 self._backend, self._grid, bc_type=bc_type,
             )
         else:
             raise ValueError(
-                f"Unsupported ppe_solver='{ppe_solver}'. Use fvm_matrixfree|fvm_spsolve."
+                f"Unsupported ppe_solver='{ppe_solver}'. Use fvm_iterative|fvm_direct."
             )
         self._p_prev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
@@ -379,7 +383,7 @@ class TwoPhaseNSSolver:
                 getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
             ),
             ppe_solver=str(
-                getattr(getattr(cfg, "run", g), "ppe_solver", "fvm_matrixfree")
+                getattr(getattr(cfg, "run", g), "ppe_solver", "fvm_iterative")
             ),
             face_flux_projection=bool(
                 getattr(getattr(cfg, "run", g), "face_flux_projection", False)

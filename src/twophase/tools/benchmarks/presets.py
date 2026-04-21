@@ -30,7 +30,7 @@ def rising_bubble_config(
             epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
             t_end=t_end, bc_type="wall",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),
+        solver=SolverConfig(ppe_solver_type="fvm_iterative"),
     )
 
 
@@ -41,7 +41,8 @@ def stationary_droplet_config(
     We: float = 1.0,
     Fr: float = 1e6,
     rho_ratio: float = 0.001,
-    ppe_solver_type: str = "ccd_lu",
+    ppe_solver_type: str = "fvm_iterative",
+    allow_kronecker_lu: bool = False,
     bc_type: str = "wall",
     cn_viscous: bool = True,
 ) -> SimulationConfig:
@@ -53,7 +54,10 @@ def stationary_droplet_config(
             epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
             t_end=t_end, bc_type=bc_type, cn_viscous=cn_viscous,
         ),
-        solver=SolverConfig(ppe_solver_type=ppe_solver_type),
+        solver=SolverConfig(
+            ppe_solver_type=ppe_solver_type,
+            allow_kronecker_lu=allow_kronecker_lu,
+        ),
     )
 
 
@@ -71,5 +75,5 @@ def rayleigh_taylor_config(
             epsilon_factor=1.5, reinit_steps=4, cfl_number=0.25,
             t_end=t_end, bc_type="wall",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),
+        solver=SolverConfig(ppe_solver_type="fvm_iterative"),
     )

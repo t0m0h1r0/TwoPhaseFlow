@@ -134,7 +134,7 @@ def test_builder_with_extension():
             t_end=0.1, bc_type="wall", advection_scheme="dissipative_ccd",
             surface_tension_model="csf", n_extend=5,
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu"),
+        solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
     )
     sim = SimulationBuilder(cfg).build()
 

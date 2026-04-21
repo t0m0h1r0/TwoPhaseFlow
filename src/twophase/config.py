@@ -178,9 +178,11 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # Solver type: "ccd_lu" (production) / "iim" / "iterative" / "fvm_matrixfree"
-    ppe_solver_type: str = "ccd_lu"
-    # Solver tolerances (used by ccd_lu, iim, iterative)
+    # Solver type: "fvm_iterative" (default) / "fvm_direct" / "iim" / "iterative";
+    # "ccd_lu" is restricted to explicit component/reference use.
+    ppe_solver_type: str = "fvm_iterative"
+    allow_kronecker_lu: bool = False
+    # Solver tolerances (used by iterative FVM, iim, iterative)
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
     pseudo_c_tau: float = 2.0
@@ -194,11 +196,22 @@ class SolverConfig:
     iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
     def __post_init__(self) -> None:
-        _valid_types = ("ccd_lu", "iim", "iterative", "fvm_matrixfree")
+        _aliases = {
+            "fvm_matrixfree": "fvm_iterative",
+            "fvm_spsolve": "fvm_direct",
+        }
+        self.ppe_solver_type = _aliases.get(self.ppe_solver_type, self.ppe_solver_type)
+        _valid_types = ("fvm_iterative", "fvm_direct", "iim", "iterative", "ccd_lu")
         assert self.ppe_solver_type in _valid_types, (
             f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"
         )
+        if self.ppe_solver_type == "ccd_lu":
+            assert self.allow_kronecker_lu, (
+                "ppe_solver_type='ccd_lu' is restricted to explicit "
+                "Kronecker-LU reference/component use. Set "
+                "allow_kronecker_lu=True only when that is intentional."
+            )
         if self.ppe_solver_type == "iterative":
             assert self.ppe_discretization in ("ccd", "3pt"), (
                 f"ppe_discretization must be 'ccd' or '3pt': "
@@ -229,7 +242,7 @@ class SimulationConfig:
             grid=GridConfig(ndim=2, N=(64, 64), L=(1.0, 1.0)),
             fluid=FluidConfig(Re=100., Fr=1., We=10.),
             numerics=NumericsConfig(t_end=2.0, cfl_number=0.3),
-            solver=SolverConfig(ppe_solver_type="ccd_lu"),
+            solver=SolverConfig(ppe_solver_type="fvm_iterative"),
         )
     """
 

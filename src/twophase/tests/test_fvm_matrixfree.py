@@ -18,7 +18,7 @@ def _make_cfg(N=8):
     return SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(
-            ppe_solver_type="fvm_matrixfree",
+            ppe_solver_type="fvm_iterative",
             pseudo_tol=1e-10,
             pseudo_maxiter=200,
             pseudo_c_tau=2.0,
@@ -70,7 +70,7 @@ def test_fvm_matrixfree_solve_matches_direct_fvm():
     np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
 
 
-def test_factory_creates_fvm_matrixfree_solver():
+def test_factory_creates_fvm_iterative_solver():
     backend = Backend(use_gpu=False)
     cfg = _make_cfg(8)
     grid = Grid(cfg.grid, backend)

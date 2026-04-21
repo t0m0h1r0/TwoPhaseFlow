@@ -126,7 +126,7 @@ def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
             grid=GridConfig(ndim=2, N=(24, 24), L=(1.0, 1.0)),
             fluid=FluidConfig(Re=100.0),
             numerics=NumericsConfig(),
-            solver=SolverConfig(ppe_solver_type="ccd_lu"),
+            solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
             use_gpu=backend.is_gpu(),
         )
         grid = Grid(cfg.grid, backend)

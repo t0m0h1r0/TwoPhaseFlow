@@ -26,7 +26,7 @@ cfl_number: 0.25      # CFL 数
 t_end: 3.0            # 終了時刻
 
 # ── 圧力ソルバー ─────────────────────────────────────────────────
-ppe_solver_type: pseudotime   # "pseudotime", "ccd_lu", or "sweep"
+ppe_solver_type: fvm_iterative   # "fvm_iterative" (default) or "fvm_direct"
 pseudo_tol: 1.0e-10
 pseudo_maxiter: 500
 
