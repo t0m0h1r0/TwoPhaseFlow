@@ -29,6 +29,11 @@ from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.transport_strategy import ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport
+from .step_diagnostics import IStepDiagnostics, NullStepDiagnostics, ActiveStepDiagnostics
+from .velocity_reprojector import (
+    IVelocityReprojector, LegacyReprojector, VariableDensityReprojector,
+    ConsistentGFMReprojector, ConsistentIIMReprojector
+)
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
@@ -133,26 +138,6 @@ class TwoPhaseNSSolver:
         # Backward compatibility: old flag maps to variable-density-only mode.
         if self._reproject_variable_density and self._reproject_mode == "legacy":
             self._reproject_mode = "variable_density_only"
-        self._reproject_warned_fallback = False
-        self._reproject_warned_iim_fail = False
-        self._reproject_warned_iim_reject = False
-        self._reproject_stats = {
-            "calls": 0,
-            "iim_attempts": 0,
-            "iim_accepts": 0,
-            "iim_rejects": 0,
-            "iim_fails": 0,
-            "iim_reject_nonfinite": 0,
-            "iim_reject_divergence": 0,
-            "iim_crossings_total": 0,
-            "iim_crossings_accept": 0,
-            "iim_crossings_reject": 0,
-            "iim_div_base_sum": 0.0,
-            "iim_div_iim_sum": 0.0,
-            "iim_div_iim_accept_sum": 0.0,
-            "iim_div_iim_reject_sum": 0.0,
-            "iim_backtrack_accepts": 0,
-        }
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -263,8 +248,25 @@ class TwoPhaseNSSolver:
 
         self.X, self.Y = self._grid.meshgrid()
 
-        self._debug_diag = debug_diagnostics
-        self._last_diag: dict = {}
+        # Step diagnostics strategy (Null Object pattern)
+        self._step_diag = (
+            ActiveStepDiagnostics() if debug_diagnostics else NullStepDiagnostics()
+        )
+
+        # Velocity reprojection strategy (after grid rebuild)
+        if self._reproject_mode == "legacy":
+            self._reprojector: IVelocityReprojector = LegacyReprojector()
+        elif self._reproject_mode == "variable_density_only":
+            self._reprojector = VariableDensityReprojector()
+        elif self._reproject_mode == "consistent_gfm":
+            self._reprojector = ConsistentGFMReprojector()
+        elif self._reproject_mode == "consistent_iim":
+            self._reprojector = ConsistentIIMReprojector(
+                self._reproj_iim,
+                self._reconstruct_base,
+            )
+        else:
+            raise ValueError(f"Unknown reproject_mode: {self._reproject_mode}")
 
         # Viscous term: CN (Heun predictor-corrector, O(Δt²)) or explicit FE
         self._cn_viscous = cn_viscous
@@ -353,7 +355,7 @@ class TwoPhaseNSSolver:
     @property
     def reproject_stats(self) -> dict:
         """Return counters for reprojection mode diagnostics."""
-        return dict(self._reproject_stats)
+        return self._reprojector.stats
 
     def _make_eps_field(self):
         """ε(x) at each node — ξ空間で一定セル数の平滑化幅.
@@ -425,14 +427,11 @@ class TwoPhaseNSSolver:
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
         #    introduced by the remap.  Without this step the remapped velocity
         #    has O(h) divergence which drives exponential KE growth.
-        try:
-            u, v = self._reproject_velocity(
-                psi, u, v, rho_l=rho_l, rho_g=rho_g,
-            )
-        except TypeError:
-            # Backward compatibility for experiment monkey-patches that
-            # replace _reproject_velocity(psi, u, v) with a 3-arg lambda.
-            u, v = self._reproject_velocity(psi, u, v)
+        # Strategy pattern: reprojector encapsulates legacy/variable-density/IIM logic.
+        u, v = self._reprojector.reproject(
+            psi, u, v, self._ppe_solver, self._ccd, self._backend,
+            rho_l=rho_l, rho_g=rho_g,
+        )
 
         if not self._grid.uniform:
             self._precompute_fvm_grad_spacing()
@@ -467,138 +466,6 @@ class TwoPhaseNSSolver:
         g[sl(1, N)] = 0.5 * (g_face[sl(0, N - 1)] + g_face[sl(1, N)])
         return g
 
-    def _reproject_velocity(
-        self,
-        psi: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        rho_l: float | None = None,
-        rho_g: float | None = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Remove divergence from (u, v) via a pressure-Poisson correction."""
-        ccd = self._ccd
-        def _h(arr):
-            return np.asarray(self._backend.to_host(arr))
-        self._reproject_stats["calls"] += 1
-
-        use_varrho = self._reproject_mode in {"variable_density_only", "consistent_gfm"}
-
-        if use_varrho and rho_l is not None and rho_g is not None:
-            rho = rho_g + (rho_l - rho_g) * psi
-        else:
-            rho = np.ones_like(psi)
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        div = _h(du_dx) + _h(dv_dy)
-
-        # Base projection (acceptance baseline).
-        phi_base = self._ppe_solver.solve(div, rho)
-
-        def _apply_phi(phi_sol: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-            dpx, _ = ccd.differentiate(phi_sol, 0)
-            dpy, _ = ccd.differentiate(phi_sol, 1)
-            if self.bc_type == "wall":
-                ccd.enforce_wall_neumann(dpx, 0)
-                ccd.enforce_wall_neumann(dpy, 1)
-            if use_varrho and rho_l is not None and rho_g is not None:
-                uu = u - _h(dpx) / rho
-                vv = v - _h(dpy) / rho
-            else:
-                uu = u - _h(dpx)
-                vv = v - _h(dpy)
-            return uu, vv
-
-        def _div_l2(uu: np.ndarray, vv: np.ndarray) -> float:
-            duu, _ = ccd.differentiate(uu, 0)
-            dvv, _ = ccd.differentiate(vv, 1)
-            dd = _h(duu) + _h(dvv)
-            return float(np.sqrt(np.mean(dd * dd)))
-
-        u_base, v_base = _apply_phi(phi_base)
-        div_base = _div_l2(u_base, v_base)
-
-        if self._reproject_mode == "consistent_iim" and rho_l is not None and rho_g is not None:
-            self._reproject_stats["iim_attempts"] += 1
-            try:
-                # Reprojection-specific IIM: enforce interface consistency by
-                # adding jump-aware RHS correction (sigma=0, flux-jump driven).
-                phi_iface = np.asarray(self._backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
-                n_cross = len(self._reproj_iim.find_interface_crossings(phi_iface))
-                self._reproject_stats["iim_crossings_total"] += int(n_cross)
-                kappa0 = np.zeros_like(psi)
-                A_host = self._ppe_solver.get_matrix(rho)
-                dp0_x, _ = ccd.differentiate(phi_base, 0)
-                dp0_y, _ = ccd.differentiate(phi_base, 1)
-                delta_q = self._reproj_iim.compute_correction(
-                    A_host,
-                    phi_iface,
-                    kappa0,
-                    0.0,   # no Young-Laplace jump for reprojection potential
-                    rho,
-                    div,
-                    dp_dx=_h(dp0_x),
-                    dp_dy=_h(dp0_y),
-                ).reshape(psi.shape)
-                phi_iim = self._ppe_solver.solve(div + delta_q, rho)
-                u_iim, v_iim = _apply_phi(phi_iim)
-                div_iim = _div_l2(u_iim, v_iim)
-                self._reproject_stats["iim_div_base_sum"] += float(div_base)
-                self._reproject_stats["iim_div_iim_sum"] += float(div_iim)
-                finite_ok = np.isfinite(u_iim).all() and np.isfinite(v_iim).all()
-                if finite_ok and div_iim <= 1.05 * max(div_base, 1e-30):
-                    self._reproject_stats["iim_accepts"] += 1
-                    self._reproject_stats["iim_crossings_accept"] += int(n_cross)
-                    self._reproject_stats["iim_div_iim_accept_sum"] += float(div_iim)
-                    return u_iim, v_iim
-                # Backtracking on jump correction strength (line-search style).
-                accepted_bt = False
-                for scale in (0.5, 0.25, 0.125):
-                    phi_bt = self._ppe_solver.solve(div + scale * delta_q, rho)
-                    u_bt, v_bt = _apply_phi(phi_bt)
-                    div_bt = _div_l2(u_bt, v_bt)
-                    finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
-                    if finite_bt and div_bt <= 1.05 * max(div_base, 1e-30):
-                        self._reproject_stats["iim_accepts"] += 1
-                        self._reproject_stats["iim_crossings_accept"] += int(n_cross)
-                        self._reproject_stats["iim_div_iim_accept_sum"] += float(div_bt)
-                        self._reproject_stats["iim_backtrack_accepts"] += 1
-                        return u_bt, v_bt
-                    # Keep the best diagnostic value for rejected candidates.
-                    if np.isfinite(div_bt):
-                        div_iim = min(div_iim, div_bt)
-                    finite_ok = finite_ok or finite_bt
-                    accepted_bt = accepted_bt or (finite_bt and div_bt <= 1.05 * max(div_base, 1e-30))
-                if accepted_bt:
-                    return u_iim, v_iim
-                self._reproject_stats["iim_rejects"] += 1
-                self._reproject_stats["iim_crossings_reject"] += int(n_cross)
-                self._reproject_stats["iim_div_iim_reject_sum"] += float(div_iim)
-                if not finite_ok:
-                    self._reproject_stats["iim_reject_nonfinite"] += 1
-                else:
-                    self._reproject_stats["iim_reject_divergence"] += 1
-                if not self._reproject_warned_iim_reject:
-                    warnings.warn(
-                        "consistent_iim candidate rejected by acceptance gate; "
-                        f"div_base={div_base:.3e}, div_iim={div_iim:.3e}",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
-                    self._reproject_warned_iim_reject = True
-                return u_base, v_base
-            except Exception as e:
-                self._reproject_stats["iim_fails"] += 1
-                if not self._reproject_warned_iim_fail:
-                    warnings.warn(
-                        "consistent_iim reprojection failed; fallback to base "
-                        f"variable-density projection. cause={e}",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
-                    self._reproject_warned_iim_fail = True
-                return u_base, v_base
-
-        return u_base, v_base
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -811,8 +678,8 @@ class TwoPhaseNSSolver:
             kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
             if self._kappa_max is not None:
                 kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-            if self._debug_diag:
-                _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
+            _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
+            self._step_diag.record_kappa(_dbg_kappa_max)
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
             f_x = sigma * kappa * dpsi_dx
@@ -870,7 +737,8 @@ class TwoPhaseNSSolver:
             df_x, _ = ccd.differentiate(f_x / rho, 0)
             df_y, _ = ccd.differentiate(f_y / rho, 1)
             rhs = rhs + df_x + df_y
-        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs)))) if self._debug_diag else 0.0
+        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
+        self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
         p = self._ppe_solver.solve(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
@@ -883,27 +751,21 @@ class TwoPhaseNSSolver:
             if self.bc_type == "wall":
                 ccd.enforce_wall_neumann(dp_dx, 0)
                 ccd.enforce_wall_neumann(dp_dy, 1)
-        _dbg_bf_res_max = 0.0
-        if self._debug_diag:
-            _dbg_bf_res_max = float(self._backend.to_host(
-                xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
-                           xp.max(xp.abs(dp_dy - f_y / rho)))
-            ))
+        _dbg_bf_res_max = float(self._backend.to_host(
+            xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
+                       xp.max(xp.abs(dp_dy - f_y / rho)))
+        ))
+        self._step_diag.record_bf_residual(_dbg_bf_res_max)
         u = u_star - dt / rho * dp_dx + dt * f_x / rho
         v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
-        if self._debug_diag:
-            _du_dx2, _ = ccd.differentiate(u, 0)
-            _dv_dy2, _ = ccd.differentiate(v, 1)
-            _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
-            self._last_diag = {
-                "kappa_max": _dbg_kappa_max,
-                "ppe_rhs_max": _dbg_ppe_rhs_max,
-                "bf_residual_max": _dbg_bf_res_max,
-                "div_u_max": _dbg_div_u_max,
-            }
+        _du_dx2, _ = ccd.differentiate(u, 0)
+        _dv_dy2, _ = ccd.differentiate(v, 1)
+        _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
+        self._step_diag.record_div_u(_dbg_div_u_max)
+
         return psi, u, v, p
 
     # ── private ───────────────────────────────────────────────────────────
@@ -1061,8 +923,9 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             diag.X = np.asarray(_bk.to_host(solver.X))
             diag.Y = np.asarray(_bk.to_host(solver.Y))
         diag.collect(t, psi, u, v, p, dV=dV_dev)
-        if solver._debug_diag and solver._last_diag:
-            dbg_history.append({"t": t, "step": step, **solver._last_diag})
+        dbg_entry = solver._step_diag.last
+        if dbg_entry:
+            dbg_history.append({"t": t, "step": step, **dbg_entry})
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             _to_h = lambda a: np.asarray(_bk.to_host(a))
@@ -1083,8 +946,8 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         if step % cfg.run.print_every == 0 or step <= 2:
             ke = diag.last("kinetic_energy", 0.0)
             print(f"  step={step:5d}  t={t:.4f}  dt={dt:.5f}  KE={ke:.3e}")
-            if solver._debug_diag and solver._last_diag:
-                d = solver._last_diag
+            d = solver._step_diag.last
+            if d:
                 print(f"          kappa_max={d['kappa_max']:.3e}  ppe_rhs={d['ppe_rhs_max']:.3e}"
                       f"  bf_res={d['bf_residual_max']:.3e}  div_u={d['div_u_max']:.3e}")
 
