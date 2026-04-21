@@ -1,7 +1,7 @@
-# CHK-176: 水-空気毛管波 N=128 R-1.5 BF一致スタック
-# Background: WIKI-X-020 (IIM chain), WIKI-X-021 (J³ scaling), WIKI-X-022 (R-1.5 fix)
-# Water-air: rho_l=1000, rho_g=1.2, sigma=0.072
-# Non-uniform grid (α=2.0) required for R-1.5 validation (WIKI-X-021 / CHK-173)
+# CHK-177: 水-空気毛管波 N=128 UCCD6 対流 (WIKI-X-023)
+# Base: ch13_06_capwave_waterair_n128.yaml
+# Variant: convection_scheme=uccd6 (skew-sym CCD + selective hyperviscosity)
+# Purpose: measure late-time BF-residual H-01 impact of UCCD6 on NS velocity.
 
 grid:
   NX: 128
@@ -32,15 +32,14 @@ run:
   phi_primary_transport: true
   reproject_mode: consistent_gfm
   # Per-term discretisation schemes (WIKI-X-023 NS decomposition map).
-  advection_scheme: fccd_flux        # ψ (CLS): FCCD face-centered (SP-D §7)
-  convection_scheme: fccd_flux       # u·∇u : FCCD face-centered
-  # Alternative: convection_scheme: uccd6 + uccd6_sigma for selective hyperviscosity
-  # uccd6_sigma: 1.0e-3
-  pressure_scheme: fvm_spsolve       # PPE  : sparse FVM direct solve
-  surface_tension_scheme: csf        # σκ∇ψ : balanced-force CSF
+  advection_scheme: fccd_flux        # ψ (CLS): FCCD (unchanged baseline)
+  convection_scheme: uccd6           # u·∇u : UCCD6 — skew-sym + hyperviscosity
+  uccd6_sigma: 1.0e-3                # σ ≲ √3 h / (8500 max|u|) for RK3 stability
+  pressure_scheme: fvm_spsolve       # PPE
+  surface_tension_scheme: csf        # σκ∇ψ
 
 output:
-  dir: results/ch13_06_capwave_waterair_n128
+  dir: results/ch13_06_capwave_waterair_n128_uccd6
   save_npz: true
   figures:
     - time_series: "deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)"

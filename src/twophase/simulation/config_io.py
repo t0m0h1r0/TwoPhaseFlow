@@ -97,11 +97,16 @@ class RunCfg:
     reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid'/'ridge_eikonal'
     dgr_phi_smooth_C: float = 1e-4   # CCD Laplacian smoothing on φ_sdf in DGR reinit
     ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
-    # Advection / convection schemes — bridged from SimulationBuilder (CHK-158).
-    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
-    # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
+    # Per-term discretisation schemes — see WIKI-X-023 for the NS decomposition map.
+    # advection_scheme       : ψ (CLS) — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
+    # convection_scheme      : u·∇u    — 'ccd' | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
+    # pressure_scheme        : PPE     — 'fvm_spsolve' | 'fvm_matrixfree'
+    # surface_tension_scheme : σκ∇ψ    — 'csf' | 'none'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
+    pressure_scheme: str = "fvm_spsolve"
+    surface_tension_scheme: str = "csf"
+    uccd6_sigma: float = 1.0e-3   # hyperviscosity coefficient for convection_scheme='uccd6'
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
@@ -334,7 +339,9 @@ def _resolve_surface_tension(
 
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
-_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux")
+_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
+_PRESSURE_SCHEMES = ("fvm_spsolve", "fvm_matrixfree")
+_SURFACE_TENSION_SCHEMES = ("csf", "none")
 
 
 def _parse_run(d: dict) -> RunCfg:
@@ -357,6 +364,21 @@ def _parse_run(d: dict) -> RunCfg:
             f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
             f"got {convection_scheme!r}"
         )
+    pressure_scheme = str(d.get("pressure_scheme", "fvm_spsolve"))
+    if pressure_scheme not in _PRESSURE_SCHEMES:
+        raise ValueError(
+            f"run.pressure_scheme must be one of {_PRESSURE_SCHEMES}, "
+            f"got {pressure_scheme!r}"
+        )
+    surface_tension_scheme = str(d.get("surface_tension_scheme", "csf"))
+    if surface_tension_scheme not in _SURFACE_TENSION_SCHEMES:
+        raise ValueError(
+            f"run.surface_tension_scheme must be one of {_SURFACE_TENSION_SCHEMES}, "
+            f"got {surface_tension_scheme!r}"
+        )
+    uccd6_sigma = float(d.get("uccd6_sigma", 1.0e-3))
+    if uccd6_sigma <= 0.0:
+        raise ValueError(f"run.uccd6_sigma must be > 0, got {uccd6_sigma}")
     ridge_sigma_0 = float(d.get("ridge_sigma_0", 3.0))
     if ridge_sigma_0 <= 0.0:
         raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
@@ -382,6 +404,9 @@ def _parse_run(d: dict) -> RunCfg:
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
+        pressure_scheme=pressure_scheme,
+        surface_tension_scheme=surface_tension_scheme,
+        uccd6_sigma=uccd6_sigma,
         face_flux_projection=bool(d.get("face_flux_projection", False)),
         debug_diagnostics=bool(d.get("debug_diagnostics", False)),
     )

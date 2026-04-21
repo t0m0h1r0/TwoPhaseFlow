@@ -105,6 +105,9 @@ class TwoPhaseNSSolver:
         ridge_sigma_0: float = 3.0,
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
+        pressure_scheme: str = "fvm_spsolve",
+        surface_tension_scheme: str = "csf",
+        uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
@@ -155,7 +158,8 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppe_solver = PPESolverFVMSpsolve(self._backend, self._grid, bc_type=bc_type)
+        self._pressure_scheme = str(pressure_scheme)
+        self._ppe_solver = self._build_ppe_solver(self._pressure_scheme)
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
@@ -207,6 +211,15 @@ class TwoPhaseNSSolver:
             )
             if self._convection_scheme in self._fccd_modes else None
         )
+        # UCCD6 convection (WIKI-X-023): skew-sym CCD + selective hyperviscosity.
+        # Shares the same pre-factored CCD block-LU as FCCD — no extra cost.
+        if self._convection_scheme == "uccd6":
+            from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
+            self._uccd6_conv = UCCD6ConvectionTerm(
+                self._backend, self._grid, self._ccd, sigma=float(uccd6_sigma),
+            )
+        else:
+            self._uccd6_conv = None
         self._reconstruct_base = HeavisideInterfaceReconstructor(
             self._backend,
             ReconstructionConfig(
@@ -291,8 +304,64 @@ class TwoPhaseNSSolver:
         else:
             self._viscous_predictor = ExplicitViscousPredictor(self._backend, Re=Re)
 
-        # Surface tension strategy (always SurfaceTensionForce; checks σ > 0 internally)
-        self._st_force: INSSurfaceTensionStrategy = SurfaceTensionForce(self._backend)
+        # Surface tension strategy — SurfaceTensionForce (CSF) or Null.
+        # 'csf' applies balanced-force κ∇ψ (σ > 0 check internal);
+        # 'none' disables the force entirely (σκ∇ψ and PPE augmentation both off).
+        self._surface_tension_scheme = str(surface_tension_scheme)
+        if self._surface_tension_scheme == "csf":
+            self._st_force: INSSurfaceTensionStrategy = SurfaceTensionForce(self._backend)
+        elif self._surface_tension_scheme == "none":
+            self._st_force = NullSurfaceTensionForce(self._backend)
+        else:
+            raise ValueError(
+                f"Unknown surface_tension_scheme={self._surface_tension_scheme!r}; "
+                "expected 'csf' or 'none'."
+            )
+
+    # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
+
+    def _build_ppe_solver(self, pressure_scheme: str):
+        """Instantiate the PPE solver selected by ``pressure_scheme``.
+
+        ch13 pipeline supports:
+          * 'fvm_spsolve'    : sparse FVM direct solve (production default)
+          * 'fvm_matrixfree' : matrix-free FVM + line-preconditioned GMRES
+                               (needs SimulationConfig; synthesised below)
+
+        CCD-based PPE solvers ('ccd_lu', 'iim') hit the rank-deficient
+        Neumann nullspace documented in WIKI-X-004 / WIKI-T-016; they are
+        available via the SimulationBuilder pipeline (builder.py) but are
+        disabled here to prevent silent divergence in two-phase runs.
+        """
+        if pressure_scheme == "fvm_spsolve":
+            return PPESolverFVMSpsolve(
+                self._backend, self._grid, bc_type=self.bc_type,
+            )
+        if pressure_scheme == "fvm_matrixfree":
+            from types import SimpleNamespace
+            from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
+            from ..core.boundary import BoundarySpec
+            cfg_shim = SimpleNamespace(
+                solver=SimpleNamespace(
+                    pseudo_tol=1e-8,
+                    pseudo_maxiter=500,
+                    pseudo_c_tau=2.0,
+                )
+            )
+            bc_spec = BoundarySpec(
+                bc_type=self.bc_type,
+                shape=tuple(n + 1 for n in self._grid.N),
+                N=self._grid.N,
+            )
+            return PPESolverFVMMatrixFree(
+                self._backend, cfg_shim, self._grid,
+                bc_type=self.bc_type, bc_spec=bc_spec,
+            )
+        raise ValueError(
+            f"Unsupported pressure_scheme={pressure_scheme!r} in TwoPhaseNSSolver. "
+            "Supported: 'fvm_spsolve', 'fvm_matrixfree'. "
+            "For 'ccd_lu'/'iim' use the SimulationBuilder pipeline."
+        )
 
     # ── class-method constructors ─────────────────────────────────────────
 
@@ -346,6 +415,15 @@ class TwoPhaseNSSolver:
             ),
             convection_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
+            pressure_scheme=str(
+                getattr(getattr(cfg, "run", g), "pressure_scheme", "fvm_spsolve")
+            ),
+            surface_tension_scheme=str(
+                getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
+            ),
+            uccd6_sigma=float(
+                getattr(getattr(cfg, "run", g), "uccd6_sigma", 1.0e-3)
             ),
             face_flux_projection=bool(
                 getattr(getattr(cfg, "run", g), "face_flux_projection", False)
@@ -694,13 +772,18 @@ class TwoPhaseNSSolver:
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
 
-        # Momentum convection: default centred CCD, or FCCD (SP-D §6/§7)
-        # when the user opts in. Both return −(u·∇)u componentwise, so the
-        # AB2 buffer shape and later viscous/buoyancy arithmetic are
-        # unchanged (CHK-158 V9). No D2H is added by this dispatch.
+        # Momentum convection: default centred CCD, FCCD (SP-D §6/§7), or
+        # UCCD6 (WIKI-X-023). All three return −(u·∇)u componentwise, so
+        # the AB2 buffer shape and later viscous/buoyancy arithmetic are
+        # unchanged. No host round-trip is added by this dispatch.
         if self._fccd_conv is not None:
             ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
             _conv = self._fccd_conv.compute(ctx)
+            conv_u = _conv[0]
+            conv_v = _conv[1]
+        elif self._uccd6_conv is not None:
+            ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
+            _conv = self._uccd6_conv.compute(ctx)
             conv_u = _conv[0]
             conv_v = _conv[1]
         else:

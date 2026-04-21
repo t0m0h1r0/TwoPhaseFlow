@@ -186,6 +186,13 @@ class SimulationBuilder:
                 backend, fccd,
                 mode=adv_mode[config.numerics.convection_scheme],
             )
+        # Auto-inject UCCD6ConvectionTerm (WIKI-X-023) when user selects 'uccd6'.
+        if self._convection is None and config.numerics.convection_scheme == "uccd6":
+            from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
+            self._convection = UCCD6ConvectionTerm(
+                backend, grid, ccd,
+                sigma=config.numerics.uccd6_sigma,
+            )
         ls_reinit = Reinitializer(
             backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc,
             method=config.numerics.reinit_method,
