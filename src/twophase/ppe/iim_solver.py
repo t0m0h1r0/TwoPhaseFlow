@@ -149,7 +149,9 @@ class PPESolverIIM(_CCDPPEBase):
             p_tilde = self._lu_solve_smooth(rhs_tilde, rho_smooth, drho_s)
             self._last_jump_field = sigma * kap_np
 
-            return self.backend.to_device(p_tilde)
+            # CHK-170: p = p̃ + p_jump (jump decomposition final assembly)
+            p_combined = p_tilde + p_jump
+            return self.backend.to_device(p_combined)
         else:
             from .ccd_ppe_utils import precompute_density_gradients
             drho = precompute_density_gradients(rho_np, self.ccd, self.backend)

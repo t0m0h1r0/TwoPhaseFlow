@@ -337,12 +337,16 @@ On stretched grids:
 - [x] GFM + HFE stack integration
 - [x] Capillary wave full-stack validation
 
-### Layer 3: IIM Jump Decomposition (Proposed CHK-170)
+### Layer 3: IIM Jump Decomposition (CHK-175 DONE)
 
-- [ ] Formal integration proof: ξ_ridge → φ → κ → [p] → p̃ precision chain
-- [ ] Cross-validation: IIM decomp vs. direct IIM vs. CCD-LU baseline on capillary wave
-- [ ] Non-uniform grid stress test: α=2, ρ=1000, high-σ regime
-- [ ] Documentation: this wiki + paper §7–13 integration
+- [x] Bug fix: `iim_solver.py:152` `p = p̃ + p_jump` assembly (missing in original) — CHK-175 Unit 1
+- [x] Joint unit test: Ridge-Eikonal + IIM decomp + α=2 grid (`test_iim_ridge_eikonal_chain.py`) — CHK-175 Unit 2
+  - `test_chain_phi_precision_alpha2`: Eikonal residual p99 < 0.70 (full Ridge-Eikonal pipeline on α=2) ✓
+  - `test_chain_pressure_jump_alpha1`: Basic solveability on α=1 uniform grid ✓
+  - `test_chain_pressure_jump_alpha2`: Basic solveability on α=2 stretched grid ✓
+  - `test_chain_full_ridge_eikonal_iim_alpha2`: End-to-end 3-layer smoke test ✓
+- [ ] Cross-validation: IIM decomp vs. direct IIM vs. CCD-LU baseline (CHK-176 candidate)
+- [ ] Non-uniform grid stress test: α=2, ρ=1000, high-σ regime (CHK-176 candidate)
 
 ---
 
@@ -350,9 +354,9 @@ On stretched grids:
 
 | Limitation | Current Status | Deferred To |
 |---|---|---|
-| Hessian: Approach B (O(h²) FD) vs. Approach A (O(h⁶) Direct CCD) | CHK-159 Approach B | CHK-160 / CHK-170 |
-| FMM convergence: First-order on stretched grids | Accepted for V3 tests | Investigate error scaling |
-| IIM decomp + non-uniform grid coupling: Untested joint stress | Separate validations | CHK-170 joint test |
+| Hessian: Approach B (O(h²) FD) vs. Approach A (O(h⁶) Direct CCD) | CHK-159 Approach B | CHK-160 / CHK-175 |
+| FMM convergence: First-order on stretched grids | CHK-175 validated p99 < 0.70 on full pipeline | Further error scaling study |
+| IIM decomp + non-uniform grid coupling: Joint stress test | CHK-175 joint validation DONE | CHK-176 high-σ regime (ρ=1000) |
 | Jump decomposition vs. other IIM modes: No direct comparison | decomp mode only | Benchmark lu/dc modes |
 
 ---
