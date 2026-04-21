@@ -1,6 +1,6 @@
-# Wiki Index — 173 entries
+# Wiki Index — 175 entries
 
-## Theory (60)
+## Theory (62)
 
 | REF-ID | Title |
 |--------|-------|
@@ -64,6 +64,8 @@
 | [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD vs FD Fallback |
 | [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
 | [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
+| [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
+| [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 
 ## Cross-Domain (22)
 
