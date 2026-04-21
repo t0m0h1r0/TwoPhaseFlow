@@ -1,4 +1,4 @@
-# Wiki Index — 178 entries
+# Wiki Index — 181 entries
 
 ## Theory (62)
 
@@ -67,7 +67,7 @@
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 
-## Cross-Domain (25)
+## Cross-Domain (28)
 
 | REF-ID | Title |
 |--------|-------|
@@ -96,6 +96,9 @@
 | [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 | [WIKI-X-024](cross-domain/WIKI-X-024.md) | Balanced-Force Design for Two-Phase UCCD6-NS (Surface Tension ↔ Pressure Gradient Consistency is the Primary Driver) |
 | [WIKI-X-025](cross-domain/WIKI-X-025.md) | Time Integration Design for Two-Phase UCCD6-NS (Capillary Wave Resolution, Semi-Implicit ST, BF Projection) |
+| [WIKI-X-026](cross-domain/WIKI-X-026.md) | Stiffness-Based Time Integration Policy for Two-Phase UCCD6-NS (When Each Term Forces Implicit Treatment) |
+| [WIKI-X-027](cross-domain/WIKI-X-027.md) | Reinitialization Semantics: Physical Time vs Pseudo Time, φ/ψ Role Separation, and the Three Meanings of Iteration |
+| [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
 
 ## Experiment (29)
 

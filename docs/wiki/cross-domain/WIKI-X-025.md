@@ -176,3 +176,6 @@ i.e. the viscous CFL is removed, advection CFL remains, and the capillary **reso
 - Bänsch (2001) *Numer. Math.* **88** — Laplace–Beltrami semi-implicit root.
 - Denner (2024) *JCP* — fully-coupled implicit interfacial coupling (Level-3 path).
 - Li (2022) *JCP* **458** — fully-implicit jump-condition enforcement (Level-3 path).
+- [WIKI-X-026](WIKI-X-026.md) — stiffness-based policy: the operator-wise diagnostic behind §1's choice of CN-viscous + semi-implicit ST.
+- [WIKI-X-027](WIKI-X-027.md) — reinitialisation semantics (pseudo-τ ≠ physical-t); relevant to the level-set side of the predictor loop.
+- [WIKI-X-028](WIKI-X-028.md) — conservative momentum form $\partial_t(\rho\mathbf u) + \nabla\cdot(\rho\mathbf u\otimes\mathbf u)$ under ρ-jumps; refines §3.1's predictor form.

@@ -205,3 +205,5 @@ embedded inside the discrete operator, not a post-hoc smoothing pass.
 - [WIKI-X-004](WIKI-X-004.md) (PPE instability survey), [WIKI-T-044](../theory/WIKI-T-044.md) (BF residual)
 - [WIKI-X-024](WIKI-X-024.md): **Balanced-force design for two-phase UCCD6-NS** — the BF pair σκ∇ψ ↔ ∇p is the dominant residual source in two-phase flow; UCCD6 is orthogonal to it. Read alongside §2.3 and §5.
 - [WIKI-X-025](WIKI-X-025.md): **Time integration design for two-phase UCCD6-NS** — once UCCD6 and BF are fixed, the Level-2 recommended integrator is AB2 advection + CN viscous + semi-implicit ST + BF projection (capillary Δt is a wave-resolution bound).
+- [WIKI-X-026](WIKI-X-026.md): **Stiffness policy** — per-operator implicit/explicit decision; viscous and capillary force implicit treatment, UCCD6 advection stays explicit.
+- [WIKI-X-028](WIKI-X-028.md): **Conservative momentum form for two-phase** — §2.1 above is single-phase; under ρ-jumps advance $\partial_t(\rho\mathbf u) + \nabla\cdot(\rho\mathbf u\otimes\mathbf u)$ instead of $\rho(\mathbf u\cdot\nabla)\mathbf u$.
