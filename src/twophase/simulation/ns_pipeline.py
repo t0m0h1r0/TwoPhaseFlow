@@ -28,6 +28,7 @@ from ..levelset.advection import DissipativeCCDAdvection
 from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
+from ..levelset.transport_strategy import ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
@@ -237,6 +238,29 @@ class TwoPhaseNSSolver:
             eps_scale=self._reinit_eps_scale,
             sigma_0=float(ridge_sigma_0),
         )
+
+        # Level-set transport strategy (advection + reinit + redistancing)
+        if phi_primary_transport:
+            self._transport = PhiPrimaryTransport(
+                self._backend,
+                {
+                    "redist_every": phi_primary_redist_every,
+                    "clip_factor": phi_primary_clip_factor,
+                    "eps_scale": phi_primary_heaviside_eps_scale,
+                },
+                self._reconstruct_phi_primary,
+                self._adv,
+                self._reinit,
+                self._grid,
+            )
+        else:
+            self._transport = PsiDirectTransport(
+                self._backend,
+                self._adv,
+                self._reinit,
+                reinit_every=reinit_every,
+            )
+
         self.X, self.Y = self._grid.meshgrid()
 
         self._debug_diag = debug_diagnostics
@@ -753,27 +777,8 @@ class TwoPhaseNSSolver:
         v = xp.asarray(v)
 
         # ── 1. Advect + reinitialize ───────────────────────────────────
-        if self._phi_primary_transport:
-            # phi-primary transport path — fully device-resident.
-            # phi_from_psi/clip_phi/psi_from_phi/reinitialize/apply_mass_correction
-            # all accept xp arrays, so no D2H transfers are needed.
-            dV_pre = self._grid.cell_volumes()
-            M_pre = xp.sum(psi * dV_pre)
-            phi = self._reconstruct_phi_primary.phi_from_psi(psi)
-            phi = self._adv.advance(phi, [u, v], dt, clip_bounds=None)
-            phi = self._reconstruct_phi_primary.clip_phi(phi)
-            psi = self._reconstruct_phi_primary.psi_from_phi(phi)
-            # Re-distance/thickness correction on a controlled cadence to
-            # avoid over-sharpening into near-binary fields.
-            if step_index > 0 and (step_index % self._phi_primary_redist_every == 0):
-                psi = self._reinit.reinitialize(psi)
-                phi = self._reconstruct_phi_primary.phi_from_psi(psi)
-                psi = self._reconstruct_phi_primary.psi_from_phi(phi)
-            psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
-        else:
-            psi = xp.asarray(self._adv.advance(psi, [u, v], dt))
-        if (not self._phi_primary_transport) and self._reinit_every > 0 and step_index % self._reinit_every == 0:
-            psi = xp.asarray(self._reinit.reinitialize(psi))
+        # Strategy pattern: transport encapsulates phi-primary vs psi-direct logic
+        psi = self._transport.advance(psi, [u, v], dt, step_index=step_index)
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
