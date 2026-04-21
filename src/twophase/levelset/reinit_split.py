@@ -24,6 +24,25 @@ class SplitReinitializer(IReinitializer):
     Parameters
     ----------
     backend, grid, ccd, eps, n_steps, bc, eps_d_comp, mass_correction
+
+    Notes
+    -----
+    **y-flip symmetry (CHK-168, CHK-169)**
+
+    After the CHK-168 ``safe_grad`` floor fix, a single inner iteration
+    (``n_steps=1``) is y-flip equivariant to ULP on any grid. However,
+    composing ``n_steps=4`` (default) reintroduces O(1e-7) y-flip
+    asymmetry per reinit call because the backward-parabolic compression
+    term ``∇·[ψ(1-ψ)n̂]`` amplifies y-ODD grid-scale modes by a
+    per-iter factor of ~700 (ASM-122-A). This is Lyapunov chaos intrinsic
+    to the scheme, not a bug — the same amplification is observed on
+    α=1 uniform and α=2 stretched grids.
+
+    **For y-flip-symmetric long-time simulations** (e.g. capillary-wave
+    benchmarks with T ≫ τ_reinit), prefer ``method='ridge_eikonal'``
+    in the :class:`Reinitializer` facade. Ridge-Eikonal is ULP
+    y-flip equivariant after CHK-167 and does not carry the
+    Lyapunov chaos issue (no backward-parabolic compression).
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",

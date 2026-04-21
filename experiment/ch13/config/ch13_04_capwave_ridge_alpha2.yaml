@@ -4,6 +4,21 @@
 # Theory: SP-E §5 (ε-widening on non-uniform grids), WIKI-T-057/T-058/T-059.
 # Goal:  |ΔV/V| < 5% over ~0.86 Lamb periods on an α=2 interface-fitted grid.
 # Baseline reference: ch13_01_capwave_waterair.yaml (α=1.5, eikonal_xi).
+#
+# ─────────────────────────────────────────────────────────────────────
+# DEPRECATED for σ>0 + α>1 (CHK-169)
+# ─────────────────────────────────────────────────────────────────────
+# This non-FCCD path blows up at t≈2.85 (KE exponential runaway) due to
+# H-01 CCD/G^adj metric-mismatch BF residual — confirmed WIKI-E-030 Exp-1
+# pattern, amplified by α=2 stretching.
+#
+# Production reference: ch13_04_capwave_fullstack_alpha2.yaml
+#   (FCCD advection + convection, PASS all gates to T=8.0 per CHK-160).
+#
+# This config is preserved for the CHK-167 y-flip symmetry regression
+# (sym_psi_y ≤ 2.5e-15 at t=0.5); do NOT use as a reference for
+# long-time capillary-wave physics.
+# ─────────────────────────────────────────────────────────────────────
 
 grid:
   NX: 64

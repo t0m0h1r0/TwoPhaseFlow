@@ -80,6 +80,11 @@ class FieldExtender(IFieldExtension):
         """Compute interface normal n̂ = ∇φ/|∇φ| via CCD.
 
         φ is smooth (post-reinitialisation) → CCD gives O(h⁶) normals.
+
+        CHK-169 note: floor `1e-14` kept (unlike ψ-space CHK-168 fix). φ is
+        a SDF with |∇φ| ≈ 1 everywhere, so the floor is inactive at the
+        interface and benign in bulk. Raising to 1e-6 would mask legitimate
+        low-gradient regions where HFE extension is most sensitive.
         """
         dphi = []
         for ax in range(self.ndim):

@@ -1,0 +1,94 @@
+# CHK-169 debug-diag probe — bf_residual_max smoking-gun for ch13_04 blowup
+#
+# Purpose: confirm that the ch13_04_capwave_ridge_alpha2.yaml KE blowup at
+# t≈2.85 is the WIKI-E-030 Exp-1 H-01 pattern (CCD/G^adj metric-mismatch
+# BF residual accumulation on α=2 stretched + σ=1 without FCCD).
+#
+# Diff vs ch13_04_capwave_ridge_alpha2.yaml:
+#   run.debug_diagnostics: true      (record bf_residual_max per step)
+#   run.T_final: 3.0                 (blowup at t≈2.85, no need to run to 8)
+#   output.dir: results/..._debug    (isolated output)
+#
+# Expected: bf_residual_max(step=1) > 50 and monotone growth → H-01 confirmed.
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:     3.0
+  cfl:         0.10
+  snap_interval: 1.0
+  print_every: 500
+  reinit_method: ridge_eikonal
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+  debug_diagnostics: true
+
+output:
+  dir: results/ch13_04_capwave_ridge_alpha2_debug
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "BF residual (CHK-169 H-01 smoking-gun probe)"
+      x: times
+      y: [bf_residual_max]
+      labels: ["$\\|\\rho\\mathcal{G}p - \\sigma\\kappa\\nabla\\psi\\|_\\infty$"]
+      xlabel: "$t$"
+      ylabel: "BF residual (log scale)"
+      yscale: log
+      file: ch13_04_debug_bf_residual.pdf
+
+    - type: time_series
+      title: "Kinetic energy (CHK-169 H-01 runaway)"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "KE"
+      yscale: log
+      file: ch13_04_debug_KE.pdf
+
+    - type: time_series
+      title: "Symmetry error (CHK-167 regression check)"
+      x: times
+      y: [sym_psi_y, sym_psi_x]
+      labels: ["y-flip", "x-flip"]
+      xlabel: "$t$"
+      ylabel: "$\\|\\psi - \\mathrm{flip}(\\psi)\\|_\\infty / \\max|\\psi|$"
+      yscale: log
+      file: ch13_04_debug_sym.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+  - symmetry_error
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall

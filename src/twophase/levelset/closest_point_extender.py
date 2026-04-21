@@ -97,6 +97,13 @@ class ClosestPointExtender(IFieldExtension):
         """Compute interface normal n̂ = ∇φ/|∇φ| via CCD (O(h^6)).
 
         φ is smooth after reinitialisation → CCD gives O(h^6) normals.
+
+        CHK-169 note: floor `1e-14` kept (not raised to the `1e-6` used by
+        `reinit_ops.compute_gradient_normal`) because the input is a SDF with
+        |∇φ| ≈ 1 everywhere — the floor is physically inactive, and a higher
+        floor would corrupt n̂ on under-resolved regions where |∇φ| drops
+        to O(1e-2). Differs from ψ-space (CLS) where ψ(1-ψ) → 0 creates a
+        bulk of ULP-level |∇ψ| susceptible to ULP amplification.
         """
         xp = self.xp
         dphi = []

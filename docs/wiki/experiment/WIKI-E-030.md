@@ -284,3 +284,39 @@ step=23819  t=10.508: BLOWUP (bf=2.2e10, KE=1.0e6)
 **確定根本原因**: **H-01（Corrector G^adj/CCD メトリクス不整合）** — σκ∇ψ が CCD メトリクスを使用し G^adj（FVM）と不一致。非一様格子（α=1.5）で O(h²) BF 残差を毎ステップ注入。H-09（ρ=833:1）が気相で 833× 増幅し、H-16（非線形 KE 暴走）が最終的にブローアップを引き起こす。
 
 修正には G^adj と σκ∇ψ を同一メトリクス空間に統一する必要がある（将来タスク）。
+
+---
+
+## α=2 non-FCCD path on ch13_04 (CHK-169, 2026-04-21)
+
+CHK-169 で [experiment/ch13/config/ch13_04_capwave_ridge_alpha2.yaml](../../../experiment/ch13/config/ch13_04_capwave_ridge_alpha2.yaml)（α=2 stretched, σ=1, non-FCCD path）の同質パターンを確認。[experiment/ch13/config/ch13_04_capwave_ridge_alpha2_debug.yaml](../../../experiment/ch13/config/ch13_04_capwave_ridge_alpha2_debug.yaml) に `debug_diagnostics: true` で再走し `bf_residual_max` 時系列を取得。
+
+**結果**: ブローアップ step 4,915, **t = 2.8495**（config 予言と一致）
+
+**bf_residual_max 時系列**（smoking gun）:
+
+| step | t | KE | bf_residual_max | div_u_max | kappa_max |
+|---|---|---|---|---|---|
+| 1 | 0.0006 | 4.97e-06 | **3.335e+03** | 6.56e-01 | 3.14e+03 |
+| 100 | 0.061 | 6.81e-04 | 1.56e+02 | 1.02e-01 | 5.78e+02 |
+| 500 | 0.301 | 6.96e-03 | 1.92e+02 | 4.87e+00 | 5.66e+02 |
+| 1000 | 0.602 | 1.57e-02 | 1.96e+02 | 2.48e-01 | 5.12e+02 |
+| 2000 | 1.202 | 4.54e-02 | 1.90e+02 | 4.27e+00 | 3.59e+02 |
+| 3000 | 1.803 | 8.45e-02 | 2.08e+03 | 2.00e+01 | 2.45e+02 |
+| 4000 | 2.404 | 1.43e-01 | 4.17e+03 | 1.40e+01 | 2.06e+02 |
+| 4500 | 2.705 | 4.53e-01 | 5.87e+03 | 1.37e+01 | 1.63e+02 |
+| 4800 | 2.847 | 1.49e+02 | 1.70e+06 | 8.97e+02 | 7.12e+02 |
+| 4914 | 2.8495 | 1.07e+06 | **1.65e+10** | 8.28e+03 | 3.43e+03 |
+
+**観察**:
+- step 1 で bf_res = 3,335（動力学なし、純構造的）— Exp-1（ch13_02, α=1.5, bf=884）の 3.8× 規模。α 増大で BF 残差が増幅する **H-01 の α スケーリング則** と整合。
+- t=0.6–2.0 で bf_res 振動平衡（146–900, 中央値 ~190）← Exp-1 の t=0–6 と同質。
+- t=2.0–2.7 で bf_res 単調成長 190 → 5,872（非線形暴走の予兆）← H-16 pattern。
+- t=2.85 で bf_res が 5.87×10³ → 1.65×10¹⁰ に 6 orders/ 0.15 時間単位で爆発 ← H-09（ρ=833）増幅。
+
+**結論**: ch13_04 α=2 の KE blowup (t≈2.85) は Exp-1 の H-01 ブローアップと同一メカニズム。**σ>0 + α>1 + non-FCCD** の構造的問題で、FCCD [ch13_04_capwave_fullstack_alpha2.yaml](../../../experiment/ch13/config/ch13_04_capwave_fullstack_alpha2.yaml)（CHK-160 で T=8 全ゲート PASS）が production 解として既に存在。
+
+CHK-169 は
+- (a) [experiment/ch13/config/ch13_04_capwave_ridge_alpha2.yaml](../../../experiment/ch13/config/ch13_04_capwave_ridge_alpha2.yaml) に DEPRECATED ヘッダーを付与（σ>0 + α>1 向けは FCCD fullstack を参照）
+- (b) CHK-167 y-flip regression baseline（sym_psi_y ≤ 2.5e-15 at t=0.5）用途のみ保持
+をもって完了。

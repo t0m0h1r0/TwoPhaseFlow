@@ -55,7 +55,11 @@ class UnifiedDCCDReinitializer(IReinitializer):
                 dpsi.append(g1)
                 d2psi_sum += g2
             grad_sq = sum(g * g for g in dpsi)
-            safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
+            # CHK-169: floor raised from 1e-14 → 1e-6 (same as CHK-168 reinit_ops.py).
+            # ψ(1-ψ) → 0 bulk nodes have |∇ψ| at ULP; without the higher floor, ODD
+            # y-flip noise in ∂ψ/∂y would be amplified 10¹⁴× into n̂_y, then advected
+            # by the backward-parabolic compression term (ASM-122-A).
+            safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-12)), 1e-6)
             n_hat = [g / safe_grad for g in dpsi]
 
             # Step 2: compression divergence with DCCD
@@ -119,7 +123,10 @@ class UnifiedDCCDReinitializer(IReinitializer):
                 dpsi.append(g1)
                 d2psi_sum += g2
             grad_sq = sum(g * g for g in dpsi)
-            safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-28)), 1e-14)
+            # CHK-169: legacy reference path updated to match hot-path floor
+            # (1e-14 → 1e-6) — CHK-102 baseline is preserved as a structural
+            # reference, not a bit-exact target (no test asserts equality).
+            safe_grad = xp.maximum(xp.sqrt(xp.maximum(grad_sq, 1e-12)), 1e-6)
             n_hat = [g / safe_grad for g in dpsi]
             psi_1mpsi = q * (1.0 - q)
             C = xp.zeros_like(q)
