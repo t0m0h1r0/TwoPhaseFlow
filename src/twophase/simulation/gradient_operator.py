@@ -244,9 +244,10 @@ class FVMDivergenceOperator(IDivergenceOperator):
                 s[axis] = slice(start, stop)
                 return tuple(s)
 
-            comp[sl(1, N)] = 0.5 * (face[sl(0, N - 1)] + face[sl(1, N)])
-            comp[sl(0, 1)] = face[sl(0, 1)]
-            comp[sl(N, N + 1)] = face[sl(N - 1, N)]
+            for i in range(N):
+                comp[sl(i + 1, i + 2)] = (
+                    2.0 * face[sl(i, i + 1)] - comp[sl(i, i + 1)]
+                )
             nodal.append(comp)
         return nodal
 
