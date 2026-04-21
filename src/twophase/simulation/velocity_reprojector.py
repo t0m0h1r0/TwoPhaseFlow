@@ -93,6 +93,9 @@ class LegacyReprojector(IVelocityReprojector):
             return np.asarray(backend.to_host(arr))
 
         xp = backend.xp
+        psi = xp.asarray(psi)
+        u = xp.asarray(u)
+        v = xp.asarray(v)
 
         # Base projection: solve PPE with ρ = 1
         du_dx, _ = ccd.differentiate(u, 0)
@@ -143,6 +146,9 @@ class VariableDensityReprojector(IVelocityReprojector):
             return np.asarray(backend.to_host(arr))
 
         xp = backend.xp
+        psi = xp.asarray(psi)
+        u = xp.asarray(u)
+        v = xp.asarray(v)
 
         # Compute density field
         if rho_l is not None and rho_g is not None:
@@ -273,6 +279,9 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             return np.asarray(backend.to_host(arr))
 
         xp = backend.xp
+        psi = xp.asarray(psi)
+        u = xp.asarray(u)
+        v = xp.asarray(v)
 
         # Compute density field
         rho = rho_g + (rho_l - rho_g) * psi
