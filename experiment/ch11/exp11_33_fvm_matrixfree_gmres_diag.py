@@ -20,6 +20,7 @@ from __future__ import annotations
 import pathlib
 import sys
 import time
+import math
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
@@ -133,6 +134,33 @@ def median_time_ms(backend: Backend, fn, repeat: int = 5) -> float:
     return float(np.median(np.asarray(times, dtype=np.float64)))
 
 
+def profile_preconditioner_axes(backend: Backend, solver: PPESolverFVMMatrixFree, probe, repeat: int = 5):
+    xp = backend.xp
+    probe_dev = xp.asarray(probe).copy()
+    probe_dev.ravel()[solver._pin_dof] = 0.0
+
+    axis_times = np.zeros(solver.ndim, dtype=np.float64)
+    for axis, (lower, diag, upper) in enumerate(solver._precond_coeffs):
+        axis_times[axis] = median_time_ms(
+            backend,
+            lambda axis=axis, lower=lower, diag=diag, upper=upper: (
+                backend.solve_tridiagonal_variable_batched(
+                    lower, diag, upper, probe_dev, axis=axis
+                )
+            ),
+            repeat=repeat,
+        )
+
+    total_ms = median_time_ms(
+        backend,
+        lambda: solver.apply_line_preconditioner(probe_dev),
+        repeat=repeat,
+    )
+    overhead_ms = max(total_ms - float(axis_times.sum()), 0.0)
+    shares = axis_times / total_ms if total_ms > 0.0 else np.full_like(axis_times, np.nan)
+    return total_ms, axis_times, overhead_ms, shares
+
+
 def l2_rel_error(backend: Backend, ref, trial) -> float:
     xp = backend.xp
     ref_dev = xp.asarray(ref)
@@ -217,6 +245,7 @@ def run_benchmark():
             "device": backend.device,
             "rho_ratio": rho_ratio,
             "N": np.asarray(Ns, dtype=np.int64),
+            "pcr_stages": np.asarray([math.ceil(math.log2(n + 1)) for n in Ns], dtype=np.int64),
         },
         "direct": {
             "t_solve_ms": np.zeros(len(Ns), dtype=np.float64),
@@ -236,6 +265,11 @@ def run_benchmark():
             "residual": np.zeros(len(Ns), dtype=np.float64),
             "est_apply_share": np.zeros(len(Ns), dtype=np.float64),
             "est_prec_share": np.zeros(len(Ns), dtype=np.float64),
+            "t_prec_axis0_ms": np.full(len(Ns), np.nan, dtype=np.float64),
+            "t_prec_axis1_ms": np.full(len(Ns), np.nan, dtype=np.float64),
+            "t_prec_overhead_ms": np.full(len(Ns), np.nan, dtype=np.float64),
+            "share_prec_axis0": np.full(len(Ns), np.nan, dtype=np.float64),
+            "share_prec_axis1": np.full(len(Ns), np.nan, dtype=np.float64),
         }
 
     print(f"\n{'=' * 112}")
@@ -278,9 +312,12 @@ def run_benchmark():
             probe_p = backend.xp.sin(backend.xp.asarray(rhs_dev))
             apply_ms = median_time_ms(backend, lambda: solver.apply(probe_p), repeat=5)
             prec_ms = np.nan
+            axis_times = np.full(solver.ndim, np.nan, dtype=np.float64)
+            overhead_ms = np.nan
+            axis_shares = np.full(solver.ndim, np.nan, dtype=np.float64)
             if variant["use_prec"]:
-                prec_ms = median_time_ms(
-                    backend, lambda: solver.apply_line_preconditioner(probe_p), repeat=5
+                prec_ms, axis_times, overhead_ms, axis_shares = profile_preconditioner_axes(
+                    backend, solver, probe_p, repeat=5
                 )
 
             p_mf, info, counts, solve_ms = run_gmres_variant(
@@ -310,12 +347,33 @@ def run_benchmark():
             dst["residual"][idx] = res_mf
             dst["est_apply_share"][idx] = apply_share
             dst["est_prec_share"][idx] = prec_share
+            if solver.ndim >= 1:
+                dst["t_prec_axis0_ms"][idx] = axis_times[0]
+                dst["share_prec_axis0"][idx] = axis_shares[0]
+            if solver.ndim >= 2:
+                dst["t_prec_axis1_ms"][idx] = axis_times[1]
+                dst["share_prec_axis1"][idx] = axis_shares[1]
+            dst["t_prec_overhead_ms"][idx] = overhead_ms
 
             print(
                 "  "
                 f"{variant['name']:<21} {N:5d} {solve_ms:12.3f} {apply_ms:12.3f} "
                 f"{prec_ms:11.3f} {counts['matvec']:6d} {counts['prec']:6d} "
                 f"{rel_err:11.3e} {res_mf:11.3e}"
+            )
+
+        for focus in ("prec_t1e8_ct2_r80", "prec_t1e8_ct4_r80"):
+            if focus not in results:
+                continue
+            focus_data = results[focus]
+            print(
+                "  "
+                f"{focus:<21} {'axis':>5} "
+                f"a0={focus_data['t_prec_axis0_ms'][idx]:7.3f} ms "
+                f"a1={focus_data['t_prec_axis1_ms'][idx]:7.3f} ms "
+                f"ovh={focus_data['t_prec_overhead_ms'][idx]:7.3f} ms "
+                f"share=({focus_data['share_prec_axis0'][idx]:.3f},"
+                f"{focus_data['share_prec_axis1'][idx]:.3f})"
             )
 
         print(
