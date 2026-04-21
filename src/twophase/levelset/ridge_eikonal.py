@@ -89,6 +89,15 @@ class NonUniformFMM:
         self._hx_fwd = np.diff(cx)  # length Nx
         self._hy_fwd = np.diff(cy)  # length Ny
 
+    def update_grid(self, grid) -> None:
+        self._grid = grid
+        self._hx = np.asarray(grid.h[0]).astype(np.float64)
+        self._hy = np.asarray(grid.h[1]).astype(np.float64)
+        cx = np.asarray(grid.coords[0]).astype(np.float64)
+        cy = np.asarray(grid.coords[1]).astype(np.float64)
+        self._hx_fwd = np.diff(cx)
+        self._hy_fwd = np.diff(cy)
+
     # -- public -----------------------------------------------------------
 
     def solve(self, phi_np: np.ndarray, extra_seeds=None) -> np.ndarray:
@@ -265,6 +274,16 @@ class RidgeExtractor:
         self._sigma_eff = _sigma_eff_kernel(self._h_field, self._sigma_0, self._h_ref)
 
         # Physical coordinates for distance sums.
+        self._X = xp.asarray(grid.coords[0]).reshape(-1, 1)
+        self._Y = xp.asarray(grid.coords[1]).reshape(1, -1)
+
+    def update_grid(self, grid) -> None:
+        self._grid = grid
+        xp = self._xp
+        hx = xp.asarray(grid.h[0]).reshape(-1, 1)
+        hy = xp.asarray(grid.h[1]).reshape(1, -1)
+        self._h_field = xp.sqrt(hx * hy)
+        self._sigma_eff = _sigma_eff_kernel(self._h_field, self._sigma_0, self._h_ref)
         self._X = xp.asarray(grid.coords[0]).reshape(-1, 1)
         self._Y = xp.asarray(grid.coords[1]).reshape(1, -1)
 
@@ -454,6 +473,19 @@ class RidgeEikonalReinitializer(IReinitializer):
         # Sub-components.
         self._extractor = RidgeExtractor(backend, grid, sigma_0=sigma_0, h_ref=self._h_ref)
         self._fmm = NonUniformFMM(grid)
+
+    def update_grid(self, grid) -> None:
+        self._grid = grid
+        xp = self._xp
+        h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
+        self._h_min = h_min
+        self._eps_xi = self._eps / h_min
+        hx = xp.asarray(grid.h[0]).reshape(-1, 1)
+        hy = xp.asarray(grid.h[1]).reshape(1, -1)
+        self._h_field = xp.sqrt(hx * hy)
+        self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
+        self._extractor.update_grid(grid)
+        self._fmm.update_grid(grid)
 
     # -- public -----------------------------------------------------------
 

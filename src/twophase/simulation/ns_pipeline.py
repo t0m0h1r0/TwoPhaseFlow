@@ -441,6 +441,13 @@ class TwoPhaseNSSolver:
         if self._use_local_eps:
             self._curv.eps = self._make_eps_field()
 
+        # 8b. CHK-159: refresh reinitializer grid caches (Ridge-Eikonal h_min/eps_local/FMM).
+        if hasattr(self._reinit, 'update_grid'):
+            self._reinit.update_grid(self._grid)
+        # 8c. CHK-160: invalidate PPE builder coord cache.
+        if hasattr(self._ppe_solver, 'ppb') and hasattr(self._ppe_solver.ppb, 'invalidate_gpu_cache'):
+            self._ppe_solver.ppb.invalidate_gpu_cache()
+
         # 9. Velocity re-projection: linear interpolation of (u, v) does not
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
         #    introduced by the remap.  Without this step the remapped velocity

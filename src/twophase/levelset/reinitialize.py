@@ -145,6 +145,11 @@ class Reinitializer(IReinitializer):
         """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""
         return _volume_monitor(self.xp, psi, self.grid)
 
+    def update_grid(self, grid) -> None:
+        """Propagate grid update to strategy (CHK-159/160)."""
+        if hasattr(self._strategy, 'update_grid'):
+            self._strategy.update_grid(grid)
+
 
 # ── Legacy WENO5 implementation (retained for comparison / validation) ────────
 #
