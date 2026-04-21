@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from twophase.config import NumericsConfig, SimulationConfig, GridConfig
+from twophase.config import NumericsConfig, SimulationConfig, GridConfig, SolverConfig
 
 
 # ── Test 1: advection_scheme field validation ─────────────────────────────
@@ -155,3 +155,11 @@ def test_config_loader_roundtrips_extended_solver_and_numerics_fields():
         assert cfg_loaded.solver.ppe_iteration_method == "gauss_seidel"
     finally:
         os.unlink(path)
+
+
+def test_solver_config_accepts_fvm_matrixfree():
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)),
+        solver=SolverConfig(ppe_solver_type="fvm_matrixfree"),
+    )
+    assert cfg.solver.ppe_solver_type == "fvm_matrixfree"

@@ -7,6 +7,7 @@ Active solvers:
     - "ccd_lu"    : CCD Kronecker + direct LU (production, PR-6 compliant)
     - "iim"       : CCD Kronecker + IIM interface correction
     - "iterative" : configurable research toolkit ({ccd,3pt}x{explicit,gs,adi})
+    - "fvm_matrixfree" : matrix-free FVM PPE + line-preconditioned GMRES
 
 To add a new solver: call register_ppe_solver(name, factory_fn).
 """
@@ -70,10 +71,18 @@ def _create_fvm_spsolve(config, backend, grid, ccd, bc_spec):
     return PPESolverFVMSpsolve(backend, grid, bc_type=config.numerics.bc_type, bc_spec=bc_spec)
 
 
+def _create_fvm_matrixfree(config, backend, grid, ccd, bc_spec):
+    from .fvm_matrixfree import PPESolverFVMMatrixFree
+    return PPESolverFVMMatrixFree(
+        backend, config, grid, bc_type=config.numerics.bc_type, bc_spec=bc_spec
+    )
+
+
 register_ppe_solver("ccd_lu", _create_ccd_lu)
 register_ppe_solver("iim", _create_iim)
 register_ppe_solver("iterative", _create_iterative)
 register_ppe_solver("fvm_spsolve", _create_fvm_spsolve)
+register_ppe_solver("fvm_matrixfree", _create_fvm_matrixfree)
 
 
 # ── Public factory function ───────────────────────────────────────────────
