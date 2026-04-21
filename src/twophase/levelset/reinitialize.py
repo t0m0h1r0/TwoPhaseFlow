@@ -35,6 +35,27 @@ class Reinitializer(IReinitializer):
     ----------
     backend, grid, ccd, eps, n_steps, bc, unified_dccd, mass_correction,
     eps_d_comp, method
+
+    Notes
+    -----
+    **Method selection guide — y-flip symmetry (CHK-168, CHK-169)**
+
+    ===================  ==========  =================================================
+    method               y-flip      Note
+    ===================  ==========  =================================================
+    ``split`` (default)  single ULP  4-iter composition: ~700×/iter Lyapunov (ASM-122-A)
+    ``unified``          single ULP  Same DCCD chain as split; same Lyapunov caveat
+    ``dgr``              likely ULP  No backward-parabolic term; σ>0 fold caveat (CHK-133)
+    ``hybrid``           contractive DGR projection erases per-call perturbations
+    ``eikonal``          likely ULP  Godunov-upwind, no compression term
+    ``ridge_eikonal``    ULP         CHK-167; recommended for y-flip-critical long-time runs
+    ===================  ==========  =================================================
+
+    For simulations where long-time y-flip symmetry must be preserved
+    (e.g. capillary-wave benchmarks), prefer ``method='ridge_eikonal'``.
+    Note that ridge_eikonal's FMM is CPU-serial; on GPU-primary runs
+    ``split`` is faster but does not guarantee y-flip symmetry after the
+    first reinit composition.
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",

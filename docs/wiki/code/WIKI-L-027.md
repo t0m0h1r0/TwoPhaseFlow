@@ -125,14 +125,32 @@ Full test suite: **293 passed / 15 skipped / 2 xfailed** — zero regression.
   than sharpen grid-scale y-ODD modes. This is a known limitation
   (ASM-122-A) — not a bug.
 
-- The floor-raise was applied only in `reinit_ops.py`. Other
-  `safe_grad = 1e-14` occurrences in:
+- **CHK-169 follow-up (DONE)**: The floor-raise was applied consistently
+  across all ψ-consuming sites:
+    - `src/twophase/levelset/reinit_unified.py:58` (hot path) → **1e-6**
+    - `src/twophase/levelset/reinit_unified.py:122` (legacy baseline) → **1e-6**
+    - `src/twophase/levelset/reinitialize.py:185` (legacy WENO5 facade) → **1e-6**
+
+  The remaining two sites were intentionally kept at `1e-14`:
     - `src/twophase/levelset/closest_point_extender.py:107`
     - `src/twophase/levelset/field_extender.py:90`
-    - `src/twophase/levelset/reinit_unified.py:58, 122`
-    - `src/twophase/levelset/reinitialize.py:185`
 
-  remain at `1e-14` because those sites are not in the split-reinit
-  hot path exercised by CHK-168. They should be audited in a future
-  CHK if similar symmetry issues surface on `unified` / `ridge_eikonal`
-  variants.
+  These consume **SDF φ** (not ψ), and |∇φ| ≈ 1 everywhere — the floor
+  is physically inactive. Raising would mask legitimate
+  low-gradient regions where HFE extension is most sensitive.
+  See `src/twophase/tests/test_reinit_floor_audit.py` for the
+  regression suite covering all 5 sites.
+
+- **CHK-169 also marks** `ch13_04_capwave_ridge_alpha2.yaml`
+  (non-FCCD Ridge-Eikonal on α=2) as deprecated for σ>0 + α>1
+  configurations due to the pre-existing H-01 KE blowup at t≈2.85
+  (WIKI-E-030). Production reference for α=2 + σ>0 is
+  `ch13_04_capwave_fullstack_alpha2.yaml` (FCCD, PASS T=8).
+
+- **Lyapunov chaos (ASM-122-A)**: The 4-iter composition drift is
+  structural — any attempt to dampen (reduce `n_steps`, add hybrid
+  projection) compromises the interface-sharpening physics that
+  motivates split-reinit. For y-flip-critical long-time runs, prefer
+  `method='ridge_eikonal'` (ULP post-CHK-167, no backward-parabolic
+  term).  See the updated
+  `SplitReinitializer` / `Reinitializer` docstrings for guidance.
