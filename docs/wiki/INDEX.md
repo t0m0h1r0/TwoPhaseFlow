@@ -1,6 +1,6 @@
-# Wiki Index — 183 entries
+# Wiki Index — 185 entries
 
-## Theory (63)
+## Theory (64)
 
 | REF-ID | Title |
 |--------|-------|
@@ -67,8 +67,9 @@
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 | [WIKI-T-063](theory/WIKI-T-063.md) | FCCD Face-Flux PPE: Adjoint Gradient Design, Defect Correction, and IIM/GFM Integration |
+| [WIKI-T-064](theory/WIKI-T-064.md) | ∇·(2μD) Staggered MAC Discretization: Layer Architecture, Shear Stress Corner Placement, and Conservative Discrete Forms |
 
-## Cross-Domain (29)
+## Cross-Domain (30)
 
 | REF-ID | Title |
 |--------|-------|
@@ -101,6 +102,7 @@
 | [WIKI-X-027](cross-domain/WIKI-X-027.md) | Reinitialization Semantics: Physical Time vs Pseudo Time, φ/ψ Role Separation, and the Three Meanings of Iteration |
 | [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
 | [WIKI-X-029](cross-domain/WIKI-X-029.md) | Balanced-Force Operator Consistency for CCD/FCCD: 7 Design Principles, DCCD Safety Rules, and Rhie-Chow Critique |
+| [WIKI-X-030](cross-domain/WIKI-X-030.md) | Viscous Term Design Guide for CCD/FCCD Two-Phase NS: Bulk-CCD vs Interface-Band Split, Defect Correction, and Implicit Solver Architecture |
 
 ## Experiment (29)
 
