@@ -1,6 +1,6 @@
-# Wiki Index — 181 entries
+# Wiki Index — 183 entries
 
-## Theory (62)
+## Theory (63)
 
 | REF-ID | Title |
 |--------|-------|
@@ -66,8 +66,9 @@
 | [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
+| [WIKI-T-063](theory/WIKI-T-063.md) | FCCD Face-Flux PPE: Adjoint Gradient Design, Defect Correction, and IIM/GFM Integration |
 
-## Cross-Domain (28)
+## Cross-Domain (29)
 
 | REF-ID | Title |
 |--------|-------|
@@ -99,6 +100,7 @@
 | [WIKI-X-026](cross-domain/WIKI-X-026.md) | Stiffness-Based Time Integration Policy for Two-Phase UCCD6-NS (When Each Term Forces Implicit Treatment) |
 | [WIKI-X-027](cross-domain/WIKI-X-027.md) | Reinitialization Semantics: Physical Time vs Pseudo Time, φ/ψ Role Separation, and the Three Meanings of Iteration |
 | [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
+| [WIKI-X-029](cross-domain/WIKI-X-029.md) | Balanced-Force Operator Consistency for CCD/FCCD: 7 Design Principles, DCCD Safety Rules, and Rhie-Chow Critique |
 
 ## Experiment (29)
 
