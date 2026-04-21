@@ -94,7 +94,7 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
     npz_path = outdir / "data.npz"
 
     ph = cfg.physics
-    print(f"[{label}] σ={ph.sigma:.5f}  μ={ph.mu:.5f}"
+    print(f"[{label}] σ={ph.sigma:.5f}  μ_l/μ_g={ph.mu_l:.5f}/{ph.mu_g:.5f}"
           f"  ρ_l/ρ_g={ph.rho_l / ph.rho_g:.0f}")
     print(f"[{label}] Running simulation...")
 

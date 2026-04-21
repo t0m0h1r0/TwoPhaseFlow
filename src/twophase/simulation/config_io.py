@@ -22,7 +22,7 @@ resolved before constructing PhysicsCfg:
     Re         → mu    = rho_l * sqrt(g_acc * d_ref) * d_ref / Re
     Eo         → sigma = g_acc * (rho_l - rho_g) * d_ref**2 / Eo
     Ca         → sigma = mu_g * gamma_dot * R_ref / Ca
-    lambda_mu  → mu_l  = lambda_mu * mu_g  (then mu = mu_g as fallback)
+    lambda_mu  → mu_l  = lambda_mu * mu_g  (legacy mu is mu_g fallback)
 """
 
 from __future__ import annotations
@@ -48,9 +48,9 @@ class GridCfg:
     eps_g_factor: float = 2.0     # grid density Gaussian width factor
     eps_g_cells: float | None = None  # ξ-space grid density width (cells); overrides eps_g_factor
     dx_min_floor: float = 1e-6    # minimum cell width floor
-    use_local_eps: bool = False   # ε(x) = C_ε · h_local(x) for CSF
+    use_local_eps: bool = False   # ε(x) = C_ε · h_local(x) for curvature/reconstruction
     eps_xi_cells: float | None = None  # ξ-space Heaviside eps width (cells); implies use_local_eps
-    grid_rebuild_freq: int = 1    # rebuild grid every K steps (1 = every step)
+    grid_rebuild_freq: int = 1    # 0 = IC-fitted static, K > 0 = rebuild every K steps
 
 
 @dataclass
@@ -82,7 +82,7 @@ class RunCfg:
     max_steps: int | None = None        # None = no step cap; set explicitly as safety brake only
     cfl: float = 0.15
     snap_times: list = field(default_factory=list)
-    snap_interval: float | None = None  # auto-generate snap_times every N time units (None = disabled)
+    snap_interval: float | None = None  # auto-generate output snapshots every N time units
     reinit_eps_scale: float = 1.0
     print_every: int = 100
     dt_fixed: float | None = None
@@ -206,8 +206,8 @@ def _require_pyyaml() -> Any:
 def _parse_raw(raw: dict) -> ExperimentConfig:
     grid = _parse_grid(raw.get("grid", {}))
     physics = _parse_physics(raw.get("physics", {}))
-    run = _parse_run(raw.get("run", {}))
     output = _parse_output(raw.get("output", {}))
+    run = _parse_run(raw.get("run", {}), raw.get("output", {}))
     return ExperimentConfig(
         grid=grid,
         physics=physics,
@@ -222,20 +222,30 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
 
 
 def _parse_grid(d: dict) -> GridCfg:
+    adaptation = d.get("adaptation", {}) or {}
+    width = d.get("interface_width", {}) or {}
+    alpha_grid = float(adaptation.get("alpha", d.get("alpha_grid", 1.0)))
+    eps_factor = float(width.get("base_factor", d.get("eps_factor", 1.5)))
+    eps_g_factor = float(adaptation.get("eps_g_factor", d.get("eps_g_factor", 2.0)))
+    eps_g_cells = _opt_float(adaptation.get("eps_g_cells", d.get("eps_g_cells")))
+    eps_xi_cells = _opt_float(width.get("xi_cells", d.get("eps_xi_cells")))
+    use_local_eps = _parse_interface_width_mode(width, d, eps_xi_cells)
     return GridCfg(
         NX=int(d.get("NX", 64)),
         NY=int(d.get("NY", 64)),
         LX=float(d.get("LX", 1.0)),
         LY=float(d.get("LY", 1.0)),
         bc_type=str(d.get("bc_type", "wall")),
-        alpha_grid=float(d.get("alpha_grid", 1.0)),
-        eps_factor=float(d.get("eps_factor", 1.5)),
-        eps_g_factor=float(d.get("eps_g_factor", 2.0)),
-        eps_g_cells=_opt_float(d.get("eps_g_cells")),
+        alpha_grid=alpha_grid,
+        eps_factor=eps_factor,
+        eps_g_factor=eps_g_factor,
+        eps_g_cells=eps_g_cells,
         dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
-        use_local_eps=bool(d.get("use_local_eps", False)),
-        eps_xi_cells=_opt_float(d.get("eps_xi_cells")),
-        grid_rebuild_freq=int(d.get("grid_rebuild_freq", 1)),
+        use_local_eps=use_local_eps,
+        eps_xi_cells=eps_xi_cells,
+        grid_rebuild_freq=_parse_grid_rebuild(
+            adaptation.get("rebuild", d.get("grid_rebuild_freq", 1))
+        ),
     )
 
 
@@ -296,7 +306,7 @@ def _resolve_viscosity(
             mu = 0.01
 
     if mu_g is None and mu_l is None:
-        return mu, None, None
+        return mu, mu, mu
     if mu_g is None:
         mu_g = mu
     if mu_l is None:
@@ -335,29 +345,61 @@ def _resolve_surface_tension(
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux")
+_REINIT_METHODS = (
+    "split", "unified", "dgr", "hybrid",
+    "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
+)
+_REPROJECT_MODES = (
+    "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
+)
 
 
-def _parse_run(d: dict) -> RunCfg:
-    snap_raw = d.get("snap_times", [])
+def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
+    output = output or {}
+    snapshots = output.get("snapshots", d.get("snapshots", {})) or {}
+    reinit = d.get("reinitialization", {}) or {}
+    transport = d.get("transport", {}) or {}
+    projection = d.get("projection", {}) or {}
+    schemes = d.get("schemes", {}) or {}
+    debug = d.get("debug", {}) or {}
+
+    snap_raw = snapshots.get("times", d.get("snap_times", []))
     if snap_raw is None:
         snap_raw = []
     if d.get("cfl") is not None and d.get("dt_fixed") is not None:
         raise ValueError(
             "run: 'cfl' と 'dt_fixed' は排他です。どちらか一方のみ設定してください。"
         )
-    advection_scheme = str(d.get("advection_scheme", "dissipative_ccd"))
+    advection_scheme = str(
+        schemes.get("levelset_advection", schemes.get(
+            "advection", d.get("advection_scheme", "dissipative_ccd")
+        ))
+    )
     if advection_scheme not in _ADVECTION_SCHEMES:
         raise ValueError(
             f"run.advection_scheme must be one of {_ADVECTION_SCHEMES}, "
             f"got {advection_scheme!r}"
         )
-    convection_scheme = str(d.get("convection_scheme", "ccd"))
+    convection_scheme = str(
+        schemes.get("momentum_convection", schemes.get(
+            "convection", d.get("convection_scheme", "ccd")
+        ))
+    )
     if convection_scheme not in _CONVECTION_SCHEMES:
         raise ValueError(
             f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
             f"got {convection_scheme!r}"
         )
-    ridge_sigma_0 = float(d.get("ridge_sigma_0", 3.0))
+    reproject_mode = _normalize_reproject_mode(
+        projection.get("mode", d.get("reproject_mode", "legacy"))
+    )
+    reinit_method = reinit.get("method", d.get("reinit_method")) or None
+    if reinit_method is not None and reinit_method not in _REINIT_METHODS:
+        raise ValueError(
+            f"run.reinitialization.method must be one of {_REINIT_METHODS}, "
+            f"got {reinit_method!r}"
+        )
+    ridge_sigma_0 = float(reinit.get("ridge_sigma_0", d.get("ridge_sigma_0", 3.0)))
     if ridge_sigma_0 <= 0.0:
         raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
     return RunCfg(
@@ -365,25 +407,40 @@ def _parse_run(d: dict) -> RunCfg:
         max_steps=int(d["max_steps"]) if "max_steps" in d else None,
         cfl=float(d.get("cfl", 0.15)),
         snap_times=[float(x) for x in snap_raw],
-        snap_interval=_opt_float(d.get("snap_interval")),
-        reinit_eps_scale=float(d.get("reinit_eps_scale", 1.0)),
+        snap_interval=_opt_float(snapshots.get("interval", d.get("snap_interval"))),
+        reinit_eps_scale=float(reinit.get("eps_scale", d.get("reinit_eps_scale", 1.0))),
         print_every=int(d.get("print_every", 100)),
         dt_fixed=_opt_float(d.get("dt_fixed")),
         cn_viscous=bool(d.get("cn_viscous", False)),
-        reinit_every=int(d.get("reinit_every", 2)),
-        reproject_mode=str(d.get("reproject_mode", "legacy")),
-        phi_primary_transport=bool(d.get("phi_primary_transport", False)),
-        phi_primary_redist_every=int(d.get("phi_primary_redist_every", 4)),
-        phi_primary_clip_factor=float(d.get("phi_primary_clip_factor", 12.0)),
-        phi_primary_heaviside_eps_scale=float(d.get("phi_primary_heaviside_eps_scale", 1.0)),
+        reinit_every=int(reinit.get("every", d.get("reinit_every", 2))),
+        reproject_mode=reproject_mode,
+        phi_primary_transport=_parse_transport_primary(transport, d),
+        phi_primary_redist_every=int(
+            transport.get("phi_redist_every", d.get("phi_primary_redist_every", 4))
+        ),
+        phi_primary_clip_factor=float(
+            transport.get("phi_clip_factor", d.get("phi_primary_clip_factor", 12.0))
+        ),
+        phi_primary_heaviside_eps_scale=float(
+            transport.get(
+                "phi_heaviside_eps_scale",
+                d.get("phi_primary_heaviside_eps_scale", 1.0),
+            )
+        ),
         kappa_max=_opt_float(d.get("kappa_max")),
-        reinit_method=d.get("reinit_method") or None,
-        dgr_phi_smooth_C=float(d.get("dgr_phi_smooth_C", 1e-4)),
+        reinit_method=reinit_method,
+        dgr_phi_smooth_C=float(
+            reinit.get("dgr_phi_smooth_C", d.get("dgr_phi_smooth_C", 1e-4))
+        ),
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
-        face_flux_projection=bool(d.get("face_flux_projection", False)),
-        debug_diagnostics=bool(d.get("debug_diagnostics", False)),
+        face_flux_projection=bool(
+            projection.get("face_flux_projection", d.get("face_flux_projection", False))
+        ),
+        debug_diagnostics=bool(
+            debug.get("step_diagnostics", d.get("debug_diagnostics", False))
+        ),
     )
 
 
@@ -399,3 +456,75 @@ def _opt_float(val: Any) -> float | None:
     if val is None:
         return None
     return float(val)
+
+
+def _parse_interface_width_mode(
+    width: dict,
+    legacy_grid: dict,
+    eps_xi_cells: float | None,
+) -> bool:
+    """Resolve interface-width mode to the legacy local-eps boolean."""
+    mode = width.get("mode")
+    if mode is None:
+        return bool(legacy_grid.get("use_local_eps", False)) or eps_xi_cells is not None
+    mode = str(mode).strip().lower()
+    if mode in {"nominal", "global", "uniform"}:
+        return False
+    if mode in {"local", "local_cell"}:
+        return True
+    if mode in {"xi_cells", "xi"}:
+        if eps_xi_cells is None:
+            raise ValueError("grid.interface_width.mode='xi_cells' requires xi_cells")
+        return True
+    raise ValueError(
+        "grid.interface_width.mode must be nominal|local|xi_cells, "
+        f"got {mode!r}"
+    )
+
+
+def _parse_grid_rebuild(raw: Any) -> int:
+    """Resolve grid adaptation rebuild policy to the legacy frequency integer."""
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"static", "initial", "initial_only", "never", "off"}:
+            return 0
+        if value in {"every_step", "dynamic", "each_step"}:
+            return 1
+        if value.startswith("every_"):
+            return int(value.removeprefix("every_"))
+    freq = int(raw)
+    if freq < 0:
+        raise ValueError(f"grid.adaptation.rebuild must be >= 0, got {freq}")
+    return freq
+
+
+def _parse_transport_primary(transport: dict, legacy_run: dict) -> bool:
+    """Resolve transport.primary to the legacy phi_primary_transport boolean."""
+    primary = transport.get("primary")
+    if primary is None:
+        return bool(legacy_run.get("phi_primary_transport", False))
+    primary = str(primary).strip().lower()
+    if primary == "phi":
+        return True
+    if primary == "psi":
+        return False
+    raise ValueError(f"run.transport.primary must be 'phi' or 'psi', got {primary!r}")
+
+
+def _normalize_reproject_mode(raw: Any) -> str:
+    """Normalize projection mode aliases used in experiment YAML."""
+    mode = str(raw).strip().lower()
+    aliases = {
+        "none": "legacy",
+        "variable_density": "variable_density_only",
+        "iim": "consistent_iim",
+        "gfm": "consistent_gfm",
+    }
+    mode = aliases.get(mode, mode)
+    if mode not in _REPROJECT_MODES:
+        raise ValueError(
+            f"run.projection.mode must be one of {_REPROJECT_MODES} "
+            "or aliases none|variable_density|iim|gfm, "
+            f"got {raw!r}"
+        )
+    return mode

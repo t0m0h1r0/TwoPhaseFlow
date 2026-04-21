@@ -97,6 +97,19 @@ def test_fccd_not_constructed_when_unused():
     assert solver._fccd_conv is None
 
 
+def test_weno5_advection_constructed_from_scheme():
+    """YAML-advertised WENO5 path must not silently fall back to DCCD."""
+    from twophase.levelset.advection import LevelSetAdvection
+
+    solver = TwoPhaseNSSolver(
+        N, N, L, L, bc_type="wall",
+        advection_scheme="weno5",
+        convection_scheme="ccd",
+    )
+    assert isinstance(solver._adv, LevelSetAdvection)
+    assert solver._fccd is None
+
+
 def test_fccd_psi_bimodal_preserved():
     """Regression: ψ bimodal structure must survive FCCD + phi_primary transport.
 
@@ -148,19 +161,25 @@ def test_fccd_psi_bimodal_preserved():
 def test_from_config_threads_fccd_keys():
     """YAML → RunCfg → TwoPhaseNSSolver dispatch end-to-end."""
     raw = {
-        "grid": {"NX": N, "NY": N, "LX": L, "LY": L,
-                 "alpha_grid": 2.0, "use_local_eps": True,
-                 "grid_rebuild_freq": 0, "bc_type": "wall"},
+        "grid": {
+            "NX": N, "NY": N, "LX": L, "LY": L, "bc_type": "wall",
+            "adaptation": {"alpha": 2.0, "rebuild": "static"},
+            "interface_width": {"mode": "local", "base_factor": 1.5},
+        },
         "physics": {"rho_l": 833.0, "rho_g": 1.0, "sigma": 1.0, "mu": 0.05},
         "run": {
             "T_final": 1.0, "cfl": 0.1,
-            "advection_scheme": "fccd_flux",
-            "convection_scheme": "fccd_flux",
-            "reinit_method": "ridge_eikonal",
-            "reinit_eps_scale": 1.4,
-            "ridge_sigma_0": 3.0,
-            "reproject_mode": "consistent_gfm",
-            "phi_primary_transport": True,
+            "schemes": {
+                "levelset_advection": "fccd_flux",
+                "momentum_convection": "fccd_flux",
+            },
+            "reinitialization": {
+                "method": "ridge_eikonal",
+                "eps_scale": 1.4,
+                "ridge_sigma_0": 3.0,
+            },
+            "projection": {"mode": "gfm"},
+            "transport": {"primary": "phi"},
         },
     }
     cfg = ExperimentConfig.from_dict(raw)

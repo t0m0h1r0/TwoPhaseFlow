@@ -24,7 +24,7 @@ from ..ccd.ccd_solver import CCDSolver
 from ..ccd.fccd import FCCDSolver
 from ..levelset.heaviside import apply_mass_correction
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
-from ..levelset.advection import DissipativeCCDAdvection
+from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
@@ -179,6 +179,19 @@ class TwoPhaseNSSolver:
         self._advection_scheme = str(advection_scheme)
         self._convection_scheme = str(convection_scheme)
         self._fccd_modes = {"fccd_nodal": "node", "fccd_flux": "flux"}
+        if self._advection_scheme not in {
+            "dissipative_ccd", "weno5", *self._fccd_modes.keys(),
+        }:
+            raise ValueError(
+                "Unsupported advection_scheme="
+                f"'{self._advection_scheme}'. Use dissipative_ccd|weno5|"
+                "fccd_nodal|fccd_flux."
+            )
+        if self._convection_scheme not in {"ccd", *self._fccd_modes.keys()}:
+            raise ValueError(
+                "Unsupported convection_scheme="
+                f"'{self._convection_scheme}'. Use ccd|fccd_nodal|fccd_flux."
+            )
         needs_fccd = (
             self._advection_scheme in self._fccd_modes
             or self._convection_scheme in self._fccd_modes
@@ -198,6 +211,9 @@ class TwoPhaseNSSolver:
                 mode=self._fccd_modes[self._advection_scheme],
                 mass_correction=False,
             )
+        elif self._advection_scheme == "weno5":
+            ls_bc = "periodic" if bc_type == "periodic" else "neumann"
+            self._adv = LevelSetAdvection(self._backend, self._grid, bc=ls_bc)
         else:
             self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
         self._fccd_conv = (
