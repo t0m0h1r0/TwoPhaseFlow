@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from ..time_integration.cn_advance import ICNAdvance
+    from .context import NSComputeContext
 
 
 class ViscousTerm(INSTerm):
@@ -74,6 +75,23 @@ class ViscousTerm(INSTerm):
             from ..time_integration.cn_advance import PicardCNAdvance
             cn_advance = PicardCNAdvance(backend)
         self.cn_advance = cn_advance
+
+    # ── INSTerm interface ────────────────────────────────────────────────
+
+    def compute(self, ctx: "NSComputeContext") -> List:
+        """Compute viscous term via explicit evaluation (Interface implementation).
+
+        Parameters
+        ----------
+        ctx : NSComputeContext
+            Context with velocity, ccd, rho, mu
+
+        Returns
+        -------
+        List[ndarray]
+            Viscous stress per velocity component
+        """
+        return self.compute_explicit(ctx.velocity, ctx.mu, ctx.rho, ctx.ccd)
 
     # ── Explicit evaluation ───────────────────────────────────────────────
 

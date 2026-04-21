@@ -29,6 +29,7 @@ from .interfaces import INSTerm
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+    from .context import NSComputeContext
 
 
 class SurfaceTensionTerm(INSTerm):
@@ -44,19 +45,35 @@ class SurfaceTensionTerm(INSTerm):
         self.xp = backend.xp
         self.We = We
 
-    def compute(self, kappa, psi, ccd: "CCDSolver") -> List:
+    def compute(self, ctx_or_kappa, psi=None, ccd=None) -> List:
         """Compute f_σ = κ ∇ψ / We.
+
+        Supports both new (ctx) and legacy (kappa, psi, ccd) signatures.
 
         Parameters
         ----------
-        kappa : curvature array, shape ``grid.shape``
-        psi   : Conservative Level Set field, shape ``grid.shape``
-        ccd   : CCDSolver for ∇ψ via CCD
+        ctx_or_kappa : NSComputeContext or ndarray
+            Either NSComputeContext (new) or kappa field (legacy)
+        psi : ndarray, optional
+            Only used with legacy signature
+        ccd : CCDSolver, optional
+            Only used with legacy signature
 
         Returns
         -------
         f_sigma : list of arrays, one per spatial dimension
         """
+        # Dispatch based on argument type
+        if psi is not None and ccd is not None:
+            # Legacy signature: compute(kappa, psi, ccd)
+            kappa = ctx_or_kappa
+        else:
+            # New signature: compute(ctx)
+            ctx = ctx_or_kappa
+            kappa = ctx.kappa
+            psi = ctx.psi
+            ccd = ctx.ccd
+
         xp = self.xp
         We = self.We
         ndim = ccd.ndim

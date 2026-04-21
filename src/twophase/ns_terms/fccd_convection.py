@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from ..ccd.fccd import FCCDSolver
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+    from .context import NSComputeContext
 
 
 class FCCDConvectionTerm(INSTerm):
@@ -66,21 +67,31 @@ class FCCDConvectionTerm(INSTerm):
 
     def compute(
         self,
-        velocity_components: List,
+        ctx_or_velocity,
         ccd: "CCDSolver | None" = None,
     ) -> List:
         """Return −(u·∇)u as a list of arrays (one per component).
 
+        Supports both new (ctx) and legacy (velocity_components, ccd) signatures.
+
         Parameters
         ----------
-        velocity_components : list of ``ndim`` node-arrays with shape
-            ``grid.shape``.
+        ctx_or_velocity : NSComputeContext or list
+            Either NSComputeContext (new) or velocity_components list (legacy)
         ccd : CCDSolver | None
-            Ignored; FCCDSolver carries its own internally-shared CCD.
-            Accepted for API parity with ``ConvectionTerm.compute``.
+            Only used with legacy signature (ignored, kept for API parity)
 
         Returns
         -------
         list of ndim arrays (same shape as inputs).
         """
+        # Dispatch based on argument type
+        if isinstance(ctx_or_velocity, list):
+            # Legacy signature: compute(velocity_components, ccd)
+            velocity_components = ctx_or_velocity
+        else:
+            # New signature: compute(ctx)
+            ctx = ctx_or_velocity
+            velocity_components = ctx.velocity
+
         return self._fccd.advection_rhs(velocity_components, mode=self._mode)
