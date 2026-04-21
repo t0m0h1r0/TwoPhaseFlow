@@ -737,8 +737,7 @@ class TwoPhaseNSSolver:
             u = u_star - dt / rho * dp_dx + dt * f_x / rho
             v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
-        if not projected_on_faces:
-            _apply_bc(u, v, bc_hook, self.bc_type)
+        _apply_bc(u, v, bc_hook, self.bc_type)
 
         _dbg_div_u_max = float(self._backend.to_host(
             xp.max(xp.abs(self._div_op.divergence([u, v])))
