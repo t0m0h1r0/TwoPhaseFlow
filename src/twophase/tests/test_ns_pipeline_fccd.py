@@ -254,7 +254,7 @@ def test_from_config_threads_fccd_keys():
                 },
                 "pressure_projection": {
                     "mode": "consistent_gfm",
-                    "solver": {"kind": "direct", "method": "gmres"},
+                    "solver": {"kind": "direct"},
                 },
             },
         },
