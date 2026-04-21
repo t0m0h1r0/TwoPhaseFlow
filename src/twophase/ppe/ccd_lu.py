@@ -37,6 +37,19 @@ from .ccd_ppe_base import _CCDPPEBase
 class PPESolverCCDLU(_CCDPPEBase):
     """CCD Kronecker-product operator + always-direct LU (SuperLU).
 
+    NS role
+    -------
+    Solves the variable-density PPE at Step 6 (§9.1 algorithm):
+
+        ∇·[(1/ρ̃) ∇p] = (1/Δt) ∇·u*
+
+    so that Step 7 corrector recovers divergence-free velocity:
+
+        u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
+
+    Discretisation: CCD Kronecker O(h⁶) + sparse direct LU.
+    Use: ch11 smooth-RHS tests (PR-2).
+
     Parameters
     ----------
     backend : Backend

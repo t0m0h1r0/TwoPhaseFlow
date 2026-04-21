@@ -52,6 +52,20 @@ from .interfaces import IPPESolver
 class PPESolverIterative(IPPESolver):
     """Configurable iterative PPE solver.
 
+    NS role
+    -------
+    Solves the variable-density PPE at Step 6 (§9.1 algorithm):
+
+        ∇·[(1/ρ̃) ∇p] = (1/Δt) ∇·u*
+
+    so that Step 7 corrector recovers divergence-free velocity:
+
+        u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
+
+    Discretisation: CCD or 3-pt FD.
+    Iteration: explicit pseudo-time, Gauss-Seidel, or ADI smoother.
+    Use: research toolkit.
+
     Parameters
     ----------
     backend        : Backend

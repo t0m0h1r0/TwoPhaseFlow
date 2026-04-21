@@ -170,10 +170,11 @@ class VariableDensityReprojector(IVelocityReprojector):
         return dict(self._stats)
 
 
-class ConsistentGFMReprojector(IVelocityReprojector):
+class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
     """GFM reprojector (alias for variable-density with alternative naming).
 
-    Used when reproject_mode='consistent_gfm'.
+    DO NOT DELETE — retained per rule C2. Superseded by VariableDensityReprojector.
+    reproject_mode='consistent_gfm' now directly instantiates VariableDensityReprojector.
     """
 
     def __init__(self) -> None:
@@ -196,6 +197,10 @@ class ConsistentGFMReprojector(IVelocityReprojector):
     @property
     def stats(self) -> Dict[str, float]:
         return self._delegate.stats
+
+
+# Backward compatibility alias
+ConsistentGFMReprojector = ConsistentGFMReprojectorLegacy
 
 
 class ConsistentIIMReprojector(IVelocityReprojector):
@@ -285,7 +290,8 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             v_c = v - dp_dy
             du_c_dx, _ = ccd.differentiate(u_c, 0)
             dv_c_dy, _ = ccd.differentiate(v_c, 1)
-            div_check = np.linalg.norm(du_c_dx + dv_c_dy, ord=2)
+            _sum = du_c_dx + dv_c_dy
+            div_check = float(xp.sqrt(xp.sum(_sum ** 2)))
             return u_c, v_c, float(div_check)
 
         # Base divergence (no IIM correction)
