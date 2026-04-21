@@ -118,8 +118,8 @@ class NonUniformFMM:
         heap: list = []
 
         # CHK-161 B2: FIFO insertion counter neutralises (d,i,j) lex
-        # tie-breaking, which favoured lower (i,j) and biased propagation
-        # direction under y-flip.
+        # tie-breaking, which favoured lower (i,j) and biased FMM
+        # propagation direction under y-flip.
         _push_count = [0]
 
         def _push(i, j, d):
@@ -268,11 +268,6 @@ class RidgeExtractor:
         self._X = xp.asarray(grid.coords[0]).reshape(-1, 1)
         self._Y = xp.asarray(grid.coords[1]).reshape(1, -1)
 
-        # CHK-161 B1: forward cell spacings hx_fwd[i] = x[i+1]-x[i] for the
-        # physical-distance central-FD denominator in extract_ridge_mask.
-        self._hx_fwd_dev = xp.asarray(np.diff(grid.coords[0]))
-        self._hy_fwd_dev = xp.asarray(np.diff(grid.coords[1]))
-
     @property
     def sigma_eff(self):
         return self._sigma_eff
@@ -347,11 +342,19 @@ class RidgeExtractor:
         # already filters most; det check keeps admissible ridge corners).
         ridge_mask = local_max & hess_neg
         # The stock implementation from SP-B §4 also demands ||∇xi|| small.
-        # CHK-161 B1: central-FD uses physical distance x_{i+1}-x_{i-1} =
-        # hx_fwd[i-1]+hx_fwd[i]; previous hx_dev[i]+hx_dev[i-1] was
-        # backward-biased and broke mirror symmetry under index reflection.
-        dx2 = (self._hx_fwd_dev[:-1] + self._hx_fwd_dev[1:]).reshape(-1, 1)
-        dy2 = (self._hy_fwd_dev[:-1] + self._hy_fwd_dev[1:]).reshape(1, -1)
+        # CHK-161 B1: symmetrize central-FD denominator. Original
+        #   denom[i] = h_node[i] + h_node[i-1]
+        # was backward-biased and asymmetric under mirror index reflection
+        # (h_node[N-i] + h_node[N-i-1] ≠ h_node[i] + h_node[i-1] for non-
+        # uniform h_node). Averaging with forward-biased twin yields a
+        # mirror-symmetric denominator that preserves magnitude calibration:
+        #   denom_sym[i] = h_node[i] + 0.5*(h_node[i-1] + h_node[i+1])
+        hx_bwd = xp.roll(hx_dev, 1, axis=0)
+        hx_fwd = xp.roll(hx_dev, -1, axis=0)
+        hy_bwd = xp.roll(hy_dev, 1, axis=1)
+        hy_fwd = xp.roll(hy_dev, -1, axis=1)
+        dx2 = hx_dev[1:-1] + 0.5 * (hx_bwd[1:-1] + hx_fwd[1:-1])
+        dy2 = hy_dev[:, 1:-1] + 0.5 * (hy_bwd[:, 1:-1] + hy_fwd[:, 1:-1])
         gx = xp.zeros_like(xi)
         gy = xp.zeros_like(xi)
         gx[1:-1, :] = (xi[2:, :] - xi[:-2, :]) / dx2
