@@ -26,6 +26,8 @@ class INSSurfaceTensionStrategy(ABC):
         sigma: float,
         ccd: "CCDSolver",
         gradient_op: "IGradientOperator | None" = None,
+        *,
+        grad_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
         """Compute surface tension force components f_x, f_y.
 
@@ -35,8 +37,9 @@ class INSSurfaceTensionStrategy(ABC):
         psi : ndarray  Conservative Level Set field (1 = liquid, 0 = gas)
         sigma : float  surface tension coefficient (checked for σ > 0)
         ccd : CCDSolver  differentiation operator
-        gradient_op : IGradientOperator or None  optional BF-consistent
-            gradient operator for ψ
+        gradient_op, grad_op : IGradientOperator or None
+            Optional BF-consistent gradient operator for ψ. ``grad_op`` is
+            accepted as the R-1.5 alias used by main.
 
         Returns
         -------
@@ -67,11 +70,18 @@ class SurfaceTensionForce(INSSurfaceTensionStrategy):
         sigma: float,
         ccd: "CCDSolver",
         gradient_op: "IGradientOperator | None" = None,
+        *,
+        grad_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
-        """Compute f = σ κ ∇ψ componentwise."""
+        """Compute f = σ κ ∇ψ componentwise.
+
+        R-1.5: If grad_op (FVM) provided, use for ∇ψ on non-uniform grids.
+        """
         if sigma <= 0.0:
             return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
 
+        if grad_op is not None:
+            gradient_op = grad_op
         if gradient_op is None:
             dpsi_dx, _ = ccd.differentiate(psi, 0)
             dpsi_dy, _ = ccd.differentiate(psi, 1)
@@ -99,6 +109,8 @@ class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
         sigma: float,
         ccd: "CCDSolver",
         gradient_op: "IGradientOperator | None" = None,
+        *,
+        grad_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
         """Return zero force fields."""
         return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)

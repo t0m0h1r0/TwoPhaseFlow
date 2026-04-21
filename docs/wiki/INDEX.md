@@ -1,6 +1,6 @@
-# Wiki Index — 173 entries
+# Wiki Index — 176 entries
 
-## Theory (60)
+## Theory (62)
 
 | REF-ID | Title |
 |--------|-------|
@@ -64,8 +64,10 @@
 | [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD vs FD Fallback |
 | [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
 | [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
+| [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
+| [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 
-## Cross-Domain (22)
+## Cross-Domain (23)
 
 | REF-ID | Title |
 |--------|-------|
@@ -91,6 +93,7 @@
 | [WIKI-X-020](cross-domain/WIKI-X-020.md) | Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM (CHK-170) |
 | [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
 | [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
+| [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 
 ## Experiment (29)
 

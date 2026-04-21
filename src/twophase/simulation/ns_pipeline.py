@@ -765,8 +765,9 @@ class TwoPhaseNSSolver:
         if isinstance(self._step_diag, ActiveStepDiagnostics):
             debug_scalars = [xp.max(xp.abs(kappa))]
 
-        # Strategy pattern: surface tension force encapsulates σ > 0 check
-        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd, self._grad_op)
+        # Strategy pattern: surface tension force encapsulates σ > 0 check.
+        # R-1.5: Pass grad_op for FVM-consistent ∇ψ on non-uniform grids.
+        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd, grad_op=self._grad_op)
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)
