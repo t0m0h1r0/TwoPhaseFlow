@@ -647,7 +647,12 @@ class TwoPhaseNSSolver:
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
-        if self._alpha_grid > 1.0 and self._rebuild_freq > 0 and (step_index % self._rebuild_freq == 0):
+        if (
+            self._alpha_grid > 1.0
+            and self._rebuild_freq > 0
+            and step_index > 0
+            and (step_index % self._rebuild_freq == 0)
+        ):
             # Grid rebuild is CPU-bound; round-trip through host.
             psi_h, u_h, v_h = _h(psi), _h(u), _h(v)
             try:
@@ -840,12 +845,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     bc_hook = solver.make_bc_hook(cfg)
     ph = cfg.physics
 
-    # Static non-uniform grid: build once from IC, then freeze.
-    # rebuild_freq==0 means the grid is never rebuilt during time-stepping,
-    # avoiding Mode-1 metric discontinuity (WIKI-X-012).
-    if solver._alpha_grid > 1.0 and solver._rebuild_freq == 0:
+    # Non-uniform grid: always fit once to the IC before time-stepping.
+    # rebuild_freq==0 freezes this IC-fitted grid; rebuild_freq>0 then
+    # refreshes it periodically from the transported interface.
+    if solver._alpha_grid > 1.0:
         psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
-        print(f"  [static non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
+        mode = "static" if solver._rebuild_freq == 0 else f"dynamic/{solver._rebuild_freq}"
+        print(f"  [{mode} non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
 
     # Initial radius estimate from IC (used only by laplace_pressure metric)
     ic = cfg.initial_condition
