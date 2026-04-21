@@ -113,6 +113,13 @@ class TwoPhaseNSSolver:
         convection_scheme: str = "ccd",
         ppe_solver: str = "fvm_iterative",
         pressure_scheme: str | None = None,
+        ppe_iteration_method: str = "gmres",
+        ppe_tolerance: float = 1.0e-8,
+        ppe_max_iterations: int = 500,
+        ppe_restart: int | None = 80,
+        ppe_preconditioner: str = "line_pcr",
+        ppe_pcr_stages: int | None = 4,
+        ppe_c_tau: float = 2.0,
         surface_tension_scheme: str = "csf",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
@@ -192,6 +199,13 @@ class TwoPhaseNSSolver:
         self._ppe_solver_name = self._normalize_ppe_solver(
             pressure_scheme if pressure_scheme is not None else ppe_solver
         )
+        self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
+        self._ppe_tolerance = float(ppe_tolerance)
+        self._ppe_max_iterations = int(ppe_max_iterations)
+        self._ppe_restart = ppe_restart
+        self._ppe_preconditioner = str(ppe_preconditioner).strip().lower()
+        self._ppe_pcr_stages = ppe_pcr_stages
+        self._ppe_c_tau = float(ppe_c_tau)
         self._pressure_scheme = (
             "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
             else "fvm_spsolve"
@@ -415,9 +429,13 @@ class TwoPhaseNSSolver:
             from ..core.boundary import BoundarySpec
             cfg_shim = SimpleNamespace(
                 solver=SimpleNamespace(
-                    pseudo_tol=1e-8,
-                    pseudo_maxiter=500,
-                    pseudo_c_tau=2.0,
+                    pseudo_tol=self._ppe_tolerance,
+                    pseudo_maxiter=self._ppe_max_iterations,
+                    pseudo_c_tau=self._ppe_c_tau,
+                    ppe_iteration_method=self._ppe_iteration_method,
+                    ppe_restart=self._ppe_restart,
+                    ppe_preconditioner=self._ppe_preconditioner,
+                    ppe_pcr_stages=self._ppe_pcr_stages,
                 )
             )
             bc_spec = BoundarySpec(
@@ -498,6 +516,21 @@ class TwoPhaseNSSolver:
             pressure_scheme=str(
                 getattr(getattr(cfg, "run", g), "pressure_scheme", "fvm_matrixfree")
             ),
+            ppe_iteration_method=str(
+                getattr(getattr(cfg, "run", g), "ppe_iteration_method", "gmres")
+            ),
+            ppe_tolerance=float(
+                getattr(getattr(cfg, "run", g), "ppe_tolerance", 1.0e-8)
+            ),
+            ppe_max_iterations=int(
+                getattr(getattr(cfg, "run", g), "ppe_max_iterations", 500)
+            ),
+            ppe_restart=getattr(getattr(cfg, "run", g), "ppe_restart", 80),
+            ppe_preconditioner=str(
+                getattr(getattr(cfg, "run", g), "ppe_preconditioner", "line_pcr")
+            ),
+            ppe_pcr_stages=getattr(getattr(cfg, "run", g), "ppe_pcr_stages", 4),
+            ppe_c_tau=float(getattr(getattr(cfg, "run", g), "ppe_c_tau", 2.0)),
             surface_tension_scheme=str(
                 getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
             ),
