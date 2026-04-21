@@ -202,7 +202,12 @@ def test_from_config_threads_fccd_keys():
     raw = {
         "grid": {
             "NX": N, "NY": N, "LX": L, "LY": L, "bc_type": "wall",
-            "adaptation": {"alpha": 2.0, "rebuild": "static"},
+            "interface_fitting": {
+                "enabled": True,
+                "method": "gaussian_levelset",
+                "alpha": 2.0,
+                "schedule": "static",
+            },
             "interface_width": {"mode": "local", "base_factor": 1.5},
         },
         "physics": {"rho_l": 833.0, "rho_g": 1.0, "sigma": 1.0, "mu": 0.05},
@@ -220,7 +225,7 @@ def test_from_config_threads_fccd_keys():
                 "ridge_sigma_0": 3.0,
             },
             "projection": {"mode": "gfm"},
-            "transport": {"primary": "phi"},
+            "interface_tracking": {"enabled": True, "method": "phi_primary"},
         },
     }
     cfg = ExperimentConfig.from_dict(raw)
@@ -229,5 +234,22 @@ def test_from_config_threads_fccd_keys():
     assert solver._convection_scheme == "fccd_flux"
     assert solver._ppe_solver_name == "fvm_direct"
     assert solver._cn_viscous is True
+    assert solver._interface_tracking_method == "phi_primary"
+    assert solver._interface_tracking_enabled is True
     assert solver._fccd is not None
     assert solver._fccd_conv is not None
+
+
+def test_from_config_can_disable_interface_tracking():
+    raw = {
+        "grid": {"NX": N, "NY": N, "LX": L, "LY": L, "bc_type": "wall"},
+        "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
+        "run": {
+            "T_final": 0.1, "cfl": 0.1,
+            "interface_tracking": {"enabled": False},
+        },
+    }
+    cfg = ExperimentConfig.from_dict(raw)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+    assert solver._interface_tracking_enabled is False
+    assert solver._interface_tracking_method == "none"

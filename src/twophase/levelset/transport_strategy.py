@@ -57,6 +57,22 @@ class ILevelSetTransport(ABC):
         """
 
 
+class StaticInterfaceTransport(ILevelSetTransport):
+    """No-op transport for frozen-interface diagnostics/reference runs."""
+
+    def __init__(self, backend: "Backend"):
+        self.xp = backend.xp
+
+    def advance(
+        self,
+        psi: np.ndarray,
+        velocity: List[np.ndarray],
+        dt: float,
+        step_index: int = 0,
+    ) -> np.ndarray:
+        return self.xp.asarray(psi)
+
+
 class PhiPrimaryTransport(ILevelSetTransport):
     """Phi-primary transport: logit-space advection + mass correction.
 

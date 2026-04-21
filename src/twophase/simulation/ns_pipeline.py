@@ -28,7 +28,10 @@ from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
 from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
-from ..levelset.transport_strategy import ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport
+from ..levelset.transport_strategy import (
+    ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport,
+    StaticInterfaceTransport,
+)
 from .step_diagnostics import IStepDiagnostics, NullStepDiagnostics, ActiveStepDiagnostics
 from .velocity_reprojector import (
     IVelocityReprojector, LegacyReprojector, VariableDensityReprojector,
@@ -97,6 +100,8 @@ class TwoPhaseNSSolver:
         reproject_variable_density: bool = False,
         reproject_mode: str = "legacy",
         phi_primary_transport: bool = True,
+        interface_tracking_enabled: bool = True,
+        interface_tracking_method: str | None = None,
         phi_primary_redist_every: int = 4,
         phi_primary_clip_factor: float = 12.0,
         phi_primary_heaviside_eps_scale: float = 1.0,
@@ -125,7 +130,31 @@ class TwoPhaseNSSolver:
             self._rebuild_freq = 0
         self._reinit_every = int(reinit_every)
         self._reproject_variable_density = bool(reproject_variable_density)
-        self._phi_primary_transport = bool(phi_primary_transport)
+        self._interface_tracking_enabled = bool(interface_tracking_enabled)
+        if not self._interface_tracking_enabled:
+            self._interface_tracking_method = "none"
+        else:
+            if interface_tracking_method is None:
+                interface_tracking_method = (
+                    "phi_primary" if bool(phi_primary_transport) else "psi_direct"
+                )
+            self._interface_tracking_method = str(interface_tracking_method).strip().lower()
+            if self._interface_tracking_method == "phi":
+                self._interface_tracking_method = "phi_primary"
+            elif self._interface_tracking_method == "psi":
+                self._interface_tracking_method = "psi_direct"
+            elif self._interface_tracking_method == "none":
+                self._interface_tracking_enabled = False
+        if self._interface_tracking_method not in {"phi_primary", "psi_direct", "none"}:
+            raise ValueError(
+                "Unsupported interface_tracking_method="
+                f"'{interface_tracking_method}'. Use phi_primary|psi_direct|none."
+            )
+        self._phi_primary_transport = (
+            bool(phi_primary_transport)
+            if self._interface_tracking_method not in {"phi_primary", "psi_direct"}
+            else self._interface_tracking_method == "phi_primary"
+        )
         self._phi_primary_redist_every = max(1, int(phi_primary_redist_every))
         self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
         self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
@@ -271,7 +300,9 @@ class TwoPhaseNSSolver:
         )
 
         # Level-set transport strategy (advection + reinit + redistancing)
-        if phi_primary_transport:
+        if not self._interface_tracking_enabled:
+            self._transport = StaticInterfaceTransport(self._backend)
+        elif self._phi_primary_transport:
             self._transport = PhiPrimaryTransport(
                 self._backend,
                 {
@@ -347,7 +378,9 @@ class TwoPhaseNSSolver:
             eps_xi_cells=getattr(g, "eps_xi_cells", None),
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
             reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
-            reinit_method=getattr(getattr(cfg, "run", g), "reinit_method", 'eikonal_xi'),
+            reinit_method=(
+                getattr(getattr(cfg, "run", g), "reinit_method", None) or "eikonal_xi"
+            ),
             cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
             Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
             reproject_variable_density=getattr(
@@ -358,6 +391,12 @@ class TwoPhaseNSSolver:
             ),
             phi_primary_transport=bool(
                 getattr(getattr(cfg, "run", g), "phi_primary_transport", True)
+            ),
+            interface_tracking_enabled=bool(
+                getattr(getattr(cfg, "run", g), "interface_tracking_enabled", True)
+            ),
+            interface_tracking_method=str(
+                getattr(getattr(cfg, "run", g), "interface_tracking_method", "phi_primary")
             ),
             phi_primary_redist_every=int(
                 getattr(getattr(cfg, "run", g), "phi_primary_redist_every", 4)

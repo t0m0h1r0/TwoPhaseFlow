@@ -17,9 +17,11 @@ grid:
   LX: 1.0
   LY: 1.0
   bc_type: wall
-  adaptation:
+  interface_fitting:
+    enabled: true
+    method: gaussian_levelset
     alpha: 2.0
-    rebuild: static
+    schedule: static
   interface_width:
     mode: local
     base_factor: 1.5
@@ -41,8 +43,12 @@ run:
     every: 2
     eps_scale: 1.4
     ridge_sigma_0: 3.0
-  transport:
-    primary: phi
+  interface_tracking:
+    enabled: true
+    method: phi_primary
+    redist_every: 4
+    clip_factor: 12.0
+    heaviside_eps_scale: 1.0
   projection:
     mode: consistent_gfm
   schemes:

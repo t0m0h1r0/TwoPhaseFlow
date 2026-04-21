@@ -51,6 +51,8 @@ class GridCfg:
     use_local_eps: bool = False   # ε(x) = C_ε · h_local(x) for curvature/reconstruction
     eps_xi_cells: float | None = None  # ξ-space Heaviside eps width (cells); implies use_local_eps
     grid_rebuild_freq: int = 1    # 0 = IC-fitted static, K > 0 = rebuild every K steps
+    interface_fitting_enabled: bool = True
+    interface_fitting_method: str = "gaussian_levelset"
 
 
 @dataclass
@@ -90,6 +92,8 @@ class RunCfg:
     reinit_every: int = 2
     reproject_mode: str = "legacy"
     phi_primary_transport: bool = False
+    interface_tracking_enabled: bool = True
+    interface_tracking_method: str = "psi_direct"
     phi_primary_redist_every: int = 4
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
@@ -227,9 +231,19 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
 
 
 def _parse_grid(d: dict) -> GridCfg:
-    adaptation = d.get("adaptation", {}) or {}
+    fitting = d.get("interface_fitting", d.get("fitting", None))
+    adaptation = fitting if fitting is not None else (d.get("adaptation", {}) or {})
+    adaptation = adaptation or {}
     width = d.get("interface_width", {}) or {}
+    fitting_enabled = _parse_enabled(adaptation.get("enabled", True))
+    fitting_method = _normalize_interface_fitting_method(
+        adaptation.get("method", d.get("interface_fitting_method", "gaussian_levelset"))
+    )
+    if fitting_method == "none":
+        fitting_enabled = False
     alpha_grid = float(adaptation.get("alpha", d.get("alpha_grid", 1.0)))
+    if not fitting_enabled:
+        alpha_grid = 1.0
     eps_factor = float(width.get("base_factor", d.get("eps_factor", 1.5)))
     eps_g_factor = float(adaptation.get("eps_g_factor", d.get("eps_g_factor", 2.0)))
     eps_g_cells = _opt_float(adaptation.get("eps_g_cells", d.get("eps_g_cells")))
@@ -249,8 +263,10 @@ def _parse_grid(d: dict) -> GridCfg:
         use_local_eps=use_local_eps,
         eps_xi_cells=eps_xi_cells,
         grid_rebuild_freq=_parse_grid_rebuild(
-            adaptation.get("rebuild", d.get("grid_rebuild_freq", 1))
+            adaptation.get("schedule", adaptation.get("rebuild", d.get("grid_rebuild_freq", 1)))
         ),
+        interface_fitting_enabled=fitting_enabled,
+        interface_fitting_method=("none" if not fitting_enabled else fitting_method),
     )
 
 
@@ -372,6 +388,9 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
     snapshots = output.get("snapshots", d.get("snapshots", {})) or {}
     reinit = d.get("reinitialization", {}) or {}
     transport = d.get("transport", {}) or {}
+    tracking = d.get("interface_tracking", d.get("tracking", None))
+    tracking = tracking if tracking is not None else transport
+    tracking = tracking or {}
     projection = d.get("projection", {}) or {}
     schemes = d.get("schemes", {}) or {}
     debug = d.get("debug", {}) or {}
@@ -448,18 +467,24 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         cn_viscous=(viscous_time_scheme == "crank_nicolson"),
         reinit_every=int(reinit.get("every", d.get("reinit_every", 2))),
         reproject_mode=reproject_mode,
-        phi_primary_transport=_parse_transport_primary(transport, d),
+        phi_primary_transport=_parse_tracking_primary(tracking, d),
+        interface_tracking_enabled=_parse_tracking_enabled(tracking, d),
+        interface_tracking_method=_parse_tracking_method(tracking, d),
         phi_primary_redist_every=int(
-            transport.get("phi_redist_every", d.get("phi_primary_redist_every", 4))
+            tracking.get("redist_every", tracking.get(
+                "phi_redist_every", d.get("phi_primary_redist_every", 4)
+            ))
         ),
         phi_primary_clip_factor=float(
-            transport.get("phi_clip_factor", d.get("phi_primary_clip_factor", 12.0))
+            tracking.get("clip_factor", tracking.get(
+                "phi_clip_factor", d.get("phi_primary_clip_factor", 12.0)
+            ))
         ),
         phi_primary_heaviside_eps_scale=float(
-            transport.get(
+            tracking.get("heaviside_eps_scale", tracking.get(
                 "phi_heaviside_eps_scale",
                 d.get("phi_primary_heaviside_eps_scale", 1.0),
-            )
+            ))
         ),
         kappa_max=_opt_float(d.get("kappa_max")),
         reinit_method=reinit_method,
@@ -532,6 +557,77 @@ def _parse_grid_rebuild(raw: Any) -> int:
     if freq < 0:
         raise ValueError(f"grid.adaptation.rebuild must be >= 0, got {freq}")
     return freq
+
+
+def _parse_enabled(raw: Any) -> bool:
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in {"true", "yes", "on", "1", "enabled"}:
+            return True
+        if value in {"false", "no", "off", "0", "disabled"}:
+            return False
+    return bool(raw)
+
+
+def _normalize_interface_fitting_method(raw: Any) -> str:
+    method = str(raw).strip().lower()
+    aliases = {
+        "gaussian": "gaussian_levelset",
+        "levelset_gaussian": "gaussian_levelset",
+        "level_set_gaussian": "gaussian_levelset",
+        "none": "none",
+        "off": "none",
+        "disabled": "none",
+    }
+    method = aliases.get(method, method)
+    if method not in {"gaussian_levelset", "none"}:
+        raise ValueError(
+            "grid.interface_fitting.method must be gaussian_levelset|none, "
+            f"got {method!r}"
+        )
+    return method
+
+
+def _parse_tracking_method(tracking: dict, legacy_run: dict) -> str:
+    """Resolve interface tracking mode to phi_primary|psi_direct|none."""
+    if not _parse_tracking_enabled(tracking, legacy_run):
+        return "none"
+    raw = tracking.get("method", tracking.get("primary"))
+    if raw is None:
+        return "phi_primary" if bool(legacy_run.get("phi_primary_transport", False)) else "psi_direct"
+    primary = str(raw).strip().lower()
+    aliases = {
+        "phi": "phi_primary",
+        "logit": "phi_primary",
+        "logit_phi": "phi_primary",
+        "psi": "psi_direct",
+        "heaviside": "psi_direct",
+        "direct": "psi_direct",
+        "none": "none",
+        "off": "none",
+        "frozen": "none",
+        "static": "none",
+    }
+    primary = aliases.get(primary, primary)
+    if primary in {"phi_primary", "psi_direct", "none"}:
+        return primary
+    raise ValueError(
+        "run.interface_tracking.method must be phi_primary|psi_direct|none, "
+        f"got {primary!r}"
+    )
+
+
+def _parse_tracking_enabled(tracking: dict, legacy_run: dict) -> bool:
+    if "enabled" in tracking:
+        return _parse_enabled(tracking.get("enabled"))
+    method = tracking.get("method")
+    if method is not None and str(method).strip().lower() in {"none", "off", "frozen", "static"}:
+        return False
+    return bool(legacy_run.get("interface_tracking_enabled", True))
+
+
+def _parse_tracking_primary(tracking: dict, legacy_run: dict) -> bool:
+    return _parse_tracking_method(tracking, legacy_run) == "phi_primary"
 
 
 def _parse_transport_primary(transport: dict, legacy_run: dict) -> bool:

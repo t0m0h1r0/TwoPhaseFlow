@@ -87,7 +87,12 @@ def test_structured_ch13_yaml_sections_round_trip():
     raw = {
         "grid": {
             "NX": 8, "NY": 8, "LX": 1.0, "LY": 1.0,
-            "adaptation": {"alpha": 2.0, "rebuild": "static"},
+            "interface_fitting": {
+                "enabled": True,
+                "method": "gaussian_levelset",
+                "alpha": 2.0,
+                "schedule": "static",
+            },
             "interface_width": {"mode": "local", "base_factor": 1.5},
         },
         "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
@@ -100,7 +105,13 @@ def test_structured_ch13_yaml_sections_round_trip():
                 "eps_scale": 1.4,
                 "ridge_sigma_0": 2.5,
             },
-            "transport": {"primary": "phi"},
+            "interface_tracking": {
+                "enabled": True,
+                "method": "phi_primary",
+                "redist_every": 5,
+                "clip_factor": 10.0,
+                "heaviside_eps_scale": 1.2,
+            },
             "projection": {"mode": "iim", "face_flux_projection": True},
             "schemes": {
                 "levelset_advection": "fccd_flux",
@@ -115,12 +126,19 @@ def test_structured_ch13_yaml_sections_round_trip():
     cfg = ExperimentConfig.from_dict(raw)
     assert cfg.grid.alpha_grid == 2.0
     assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.grid.interface_fitting_enabled is True
+    assert cfg.grid.interface_fitting_method == "gaussian_levelset"
     assert cfg.grid.use_local_eps is True
     assert cfg.run.snap_interval == 0.25
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
     assert cfg.run.phi_primary_transport is True
+    assert cfg.run.interface_tracking_enabled is True
+    assert cfg.run.interface_tracking_method == "phi_primary"
+    assert cfg.run.phi_primary_redist_every == 5
+    assert cfg.run.phi_primary_clip_factor == 10.0
+    assert cfg.run.phi_primary_heaviside_eps_scale == 1.2
     assert cfg.run.reproject_mode == "consistent_iim"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
@@ -150,6 +168,39 @@ def test_invalid_structured_viscous_time_scheme_rejected():
         ExperimentConfig.from_dict(_minimal({
             "schemes": {"viscous_time": "rk4"},
         }))
+
+
+def test_invalid_interface_tracking_method_rejected():
+    with pytest.raises(ValueError, match="interface_tracking.method"):
+        ExperimentConfig.from_dict(_minimal({
+            "interface_tracking": {"method": "marker_particles"},
+        }))
+
+
+def test_disabled_interface_fitting_forces_uniform_grid():
+    cfg = ExperimentConfig.from_dict({
+        "grid": {
+            "NX": 8, "NY": 8, "LX": 1.0, "LY": 1.0,
+            "interface_fitting": {"enabled": False, "alpha": 2.0},
+        },
+        "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
+        "run": {"T_final": 0.1, "cfl": 0.1},
+    })
+    assert cfg.grid.interface_fitting_enabled is False
+    assert cfg.grid.interface_fitting_method == "none"
+    assert cfg.grid.alpha_grid == 1.0
+
+
+def test_invalid_interface_fitting_method_rejected():
+    with pytest.raises(ValueError, match="interface_fitting.method"):
+        ExperimentConfig.from_dict({
+            "grid": {
+                "NX": 8, "NY": 8, "LX": 1.0, "LY": 1.0,
+                "interface_fitting": {"method": "spline_fit"},
+            },
+            "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
+            "run": {"T_final": 0.1, "cfl": 0.1},
+        })
 
 
 def test_invalid_projection_mode_rejected():
