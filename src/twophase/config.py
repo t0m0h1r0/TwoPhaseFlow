@@ -111,10 +111,14 @@ class NumericsConfig:
     #   'dissipative_ccd' (デフォルト, §5) | 'weno5' | 'fccd_nodal' | 'fccd_flux'
     # FCCD 変種は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
     advection_scheme: str = "dissipative_ccd"
-    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd_nodal' | 'fccd_flux'
-    # FCCD 変種は face-centered compact; 既定の ConvectionTerm (CCD) と完全互換の
-    # AB2 ブッファ形状を保ちつつ内部だけ FCCD 化する (SP-D §6/§7).
+    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
+    # FCCD 変種は face-centered compact (SP-D §6/§7); UCCD6 は 6 次 upwind CCD +
+    # 選択的超粘性 (WIKI-T-062, WIKI-X-023). いずれも ConvectionTerm と完全互換
+    # の AB2 バッファ形状を保つ.
     convection_scheme: str = "ccd"
+    # UCCD6 超粘性係数 σ (convection_scheme='uccd6' 時のみ). TVD-RK3 安定条件
+    # σ ≲ √3 h / (8500 max|u|). 典型値 1e-3 (CFL ~0.1, N=128).
+    uccd6_sigma: float = 1.0e-3
     # 表面張力モデル: 'gfm'（GFM, §8e — 生産用）または 'csf'（CSF, §2b — レガシー）
     # Default: 'csf' for backward compatibility; 'gfm' is production (§8e)
     surface_tension_model: str = "csf"
@@ -139,10 +143,16 @@ class NumericsConfig:
             f"advection_scheme は 'dissipative_ccd', 'weno5', 'fccd_nodal', "
             f"'fccd_flux' のいずれか: '{self.advection_scheme}'"
         )
-        assert self.convection_scheme in ("ccd", "fccd_nodal", "fccd_flux"), (
-            f"convection_scheme は 'ccd', 'fccd_nodal', 'fccd_flux' のいずれか: "
-            f"'{self.convection_scheme}'"
+        assert self.convection_scheme in (
+            "ccd", "fccd_nodal", "fccd_flux", "uccd6",
+        ), (
+            f"convection_scheme は 'ccd', 'fccd_nodal', 'fccd_flux', 'uccd6' "
+            f"のいずれか: '{self.convection_scheme}'"
         )
+        if self.convection_scheme == "uccd6":
+            assert self.uccd6_sigma > 0.0, (
+                f"uccd6_sigma > 0 でなければならない: {self.uccd6_sigma}"
+            )
         assert self.surface_tension_model in ("gfm", "csf"), (
             f"surface_tension_model は 'gfm' または 'csf' でなければならない: "
             f"'{self.surface_tension_model}'"

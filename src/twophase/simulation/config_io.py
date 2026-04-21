@@ -102,15 +102,19 @@ class RunCfg:
     dgr_phi_smooth_C: float = 1e-4   # CCD Laplacian smoothing on φ_sdf in DGR reinit
     ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
     # Stage-wise numerical schemes — bridged from SimulationBuilder (CHK-158)
-    # and ch12/ch13 PPE policy.
+    # and WIKI-X-023 per-term NS decomposition.
     # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
-    # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
-    # ppe_solver       : pressure    — 'fvm_iterative'   | 'fvm_direct'
+    # convection_scheme: momentum    — 'ccd' | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
+    # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct'
+    # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
     ppe_solver: str = "fvm_iterative"
+    pressure_scheme: str = "fvm_matrixfree"  # legacy/main alias for ppe_solver
+    surface_tension_scheme: str = "csf"
     viscous_time_scheme: str = "explicit"
+    uccd6_sigma: float = 1.0e-3   # hyperviscosity coefficient for convection_scheme='uccd6'
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
@@ -365,7 +369,7 @@ def _resolve_surface_tension(
 
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
-_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux")
+_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
 _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
@@ -380,6 +384,12 @@ _PPE_SCHEME_ALIASES = {
     "fvm_spsolve": "fvm_direct",
     "spsolve": "fvm_direct",
 }
+_PRESSURE_SCHEMES = ("fvm_spsolve", "fvm_matrixfree")
+_PPE_TO_PRESSURE_SCHEME = {
+    "fvm_iterative": "fvm_matrixfree",
+    "fvm_direct": "fvm_spsolve",
+}
+_SURFACE_TENSION_SCHEMES = ("csf", "none")
 _VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 
 
@@ -424,7 +434,9 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         )
     ppe_solver_raw = str(
         schemes.get("ppe", schemes.get(
-            "pressure_poisson", d.get("ppe_solver", "fvm_iterative")
+            "pressure_poisson", d.get(
+                "ppe_solver", d.get("pressure_scheme", "fvm_iterative")
+            )
         ))
     )
     ppe_solver = _PPE_SCHEME_ALIASES.get(ppe_solver_raw, ppe_solver_raw)
@@ -432,6 +444,18 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         raise ValueError(
             f"run.schemes.ppe must be one of {_PPE_SCHEMES}, got {ppe_solver!r}"
         )
+    pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
+    surface_tension_scheme = str(
+        schemes.get("surface_tension", d.get("surface_tension_scheme", "csf"))
+    )
+    if surface_tension_scheme not in _SURFACE_TENSION_SCHEMES:
+        raise ValueError(
+            f"run.surface_tension_scheme must be one of {_SURFACE_TENSION_SCHEMES}, "
+            f"got {surface_tension_scheme!r}"
+        )
+    uccd6_sigma = float(schemes.get("uccd6_sigma", d.get("uccd6_sigma", 1.0e-3)))
+    if uccd6_sigma <= 0.0:
+        raise ValueError(f"run.uccd6_sigma must be > 0, got {uccd6_sigma}")
     if "viscous_time" in schemes or "viscous" in schemes:
         viscous_time_scheme = str(schemes.get("viscous_time", schemes.get("viscous")))
     else:
@@ -495,7 +519,10 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
         ppe_solver=ppe_solver,
+        pressure_scheme=pressure_scheme,
+        surface_tension_scheme=surface_tension_scheme,
         viscous_time_scheme=viscous_time_scheme,
+        uccd6_sigma=uccd6_sigma,
         face_flux_projection=bool(
             projection.get("face_flux_projection", d.get("face_flux_projection", False))
         ),
