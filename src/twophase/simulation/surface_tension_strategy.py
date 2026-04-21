@@ -24,6 +24,7 @@ class INSSurfaceTensionStrategy(ABC):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        grad_op=None,
     ) -> Tuple["array", "array"]:
         """Compute surface tension force components f_x, f_y.
 
@@ -33,6 +34,8 @@ class INSSurfaceTensionStrategy(ABC):
         psi : ndarray  Conservative Level Set field (1 = liquid, 0 = gas)
         sigma : float  surface tension coefficient (checked for σ > 0)
         ccd : CCDSolver  differentiation operator
+        grad_op : IGradientOperator, optional
+            R-1.5: If provided, use for FVM-consistent ∇ψ on non-uniform grids
 
         Returns
         -------
@@ -62,13 +65,23 @@ class SurfaceTensionForce(INSSurfaceTensionStrategy):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        grad_op=None,
     ) -> Tuple["array", "array"]:
-        """Compute f = σ κ ∇ψ componentwise."""
+        """Compute f = σ κ ∇ψ componentwise.
+
+        R-1.5: If grad_op (FVM) provided, use for ∇ψ on non-uniform grids.
+        """
         if sigma <= 0.0:
             return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
 
-        dpsi_dx, _ = ccd.differentiate(psi, 0)
-        dpsi_dy, _ = ccd.differentiate(psi, 1)
+        # R-1.5: Use grad_op (FVM) if available, else CCD
+        if grad_op is not None:
+            dpsi_dx = grad_op.gradient(psi, 0)
+            dpsi_dy = grad_op.gradient(psi, 1)
+        else:
+            dpsi_dx, _ = ccd.differentiate(psi, 0)
+            dpsi_dy, _ = ccd.differentiate(psi, 1)
+
         f_x = sigma * kappa * dpsi_dx
         f_y = sigma * kappa * dpsi_dy
         return f_x, f_y
@@ -89,6 +102,7 @@ class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        grad_op=None,
     ) -> Tuple["array", "array"]:
         """Return zero force fields."""
         return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
