@@ -1,6 +1,6 @@
 # CHK-173 debug probe - dynamic alpha=2 grid fitting
 #
-# Short diagnostic variant of ch13_05_rising_bubble_fullstack_alpha2_dynamic.yaml.
+# Short per-step diagnostic variant of ch13_05_rising_bubble_fullstack_alpha2_dynamic.yaml.
 
 grid:
   NX: 64
@@ -10,7 +10,7 @@ grid:
   bc_type: wall
   alpha_grid: 2.0
   use_local_eps: true
-  grid_rebuild_freq: 10
+  grid_rebuild_freq: 1
 
 physics:
   rho_l: 833.0

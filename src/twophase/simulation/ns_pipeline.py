@@ -121,12 +121,6 @@ class TwoPhaseNSSolver:
         self._rebuild_freq = int(grid_rebuild_freq)
         if self._rebuild_freq < 0:
             self._rebuild_freq = 0
-        # Safety fallback for non-uniform dynamic runs:
-        # per-step rebuild (freq=1) is prone to remap/reprojection-driven
-        # instability. Use a conservative default cadence unless caller sets
-        # a value >1 explicitly.
-        if self._alpha_grid > 1.0 and self._rebuild_freq == 1:
-            self._rebuild_freq = 10
         self._reinit_every = int(reinit_every)
         self._reproject_variable_density = bool(reproject_variable_density)
         self._phi_primary_transport = bool(phi_primary_transport)

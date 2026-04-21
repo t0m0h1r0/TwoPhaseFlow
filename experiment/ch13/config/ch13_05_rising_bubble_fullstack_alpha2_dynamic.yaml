@@ -2,7 +2,7 @@
 #
 # Dynamic-grid variant of ch13_05_rising_bubble_fullstack_alpha2.yaml.
 # The interface is transported as before, and the interface-fitted grid is
-# rebuilt every 10 steps from the current CLS field.
+# rebuilt every step from the current CLS field.
 
 grid:
   NX: 64
@@ -12,7 +12,7 @@ grid:
   bc_type: wall
   alpha_grid: 2.0
   use_local_eps: true
-  grid_rebuild_freq: 10
+  grid_rebuild_freq: 1
 
 physics:
   rho_l: 833.0
