@@ -11,12 +11,16 @@ Added dynamic-grid variants:
 - `experiment/ch13/config/ch13_05_rising_bubble_fullstack_alpha2_dynamic.yaml`
 - `experiment/ch13/config/ch13_05_rising_bubble_fullstack_alpha2_dynamic_debug.yaml`
 
-Both set:
+At CHK-173 both set:
 
 ```yaml
 grid:
   grid_rebuild_freq: 10
 ```
+
+CHK-174 supersedes this cadence for the active dynamic variants: both dynamic
+configs now set `grid_rebuild_freq: 1` for per-step interface following. See
+`docs/memo/ch13_05_per_step_grid_rebuild.md`.
 
 Updated `run_simulation()` so all `alpha_grid > 1` cases first fit the
 non-uniform grid to the initial condition. For dynamic cases, rebuilds then
