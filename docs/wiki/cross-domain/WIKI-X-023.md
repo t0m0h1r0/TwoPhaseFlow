@@ -203,3 +203,4 @@ embedded inside the discrete operator, not a post-hoc smoothing pass.
 - [WIKI-T-062](../theory/WIKI-T-062.md) / [SP-H](../../memo/short_paper/SP-H_uccd6_hyperviscosity.md)
 - [WIKI-T-001](../theory/WIKI-T-001.md), [WIKI-T-002](../theory/WIKI-T-002.md), [WIKI-T-046](../theory/WIKI-T-046.md)
 - [WIKI-X-004](WIKI-X-004.md) (PPE instability survey), [WIKI-T-044](../theory/WIKI-T-044.md) (BF residual)
+- [WIKI-X-024](WIKI-X-024.md): **Balanced-force design for two-phase UCCD6-NS** — the BF pair σκ∇ψ ↔ ∇p is the dominant residual source in two-phase flow; UCCD6 is orthogonal to it. Read alongside §2.3 and §5.
