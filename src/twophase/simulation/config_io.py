@@ -102,6 +102,7 @@ class RunCfg:
     # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
+    face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
 
@@ -381,6 +382,7 @@ def _parse_run(d: dict) -> RunCfg:
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
+        face_flux_projection=bool(d.get("face_flux_projection", False)),
         debug_diagnostics=bool(d.get("debug_diagnostics", False)),
     )
 

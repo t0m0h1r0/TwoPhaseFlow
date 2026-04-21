@@ -29,6 +29,16 @@ if TYPE_CHECKING:
     from ..ppe.interfaces import IPPESolver
 
 
+def _device_array(arr, backend: "Backend"):
+    """Return ``arr`` on the active backend device."""
+    return backend.to_device(arr)
+
+
+def _host_array(arr, backend: "Backend") -> np.ndarray:
+    """Return ``arr`` as a NumPy array."""
+    return np.asarray(backend.to_host(arr))
+
+
 class IVelocityReprojector(ABC):
     """Abstract interface for velocity reprojection after grid rebuild."""
 
@@ -89,27 +99,27 @@ class LegacyReprojector(IVelocityReprojector):
         """Reproject with constant ρ = 1."""
         self._stats["calls"] += 1
 
-        def _h(arr):
-            return np.asarray(backend.to_host(arr))
-
         xp = backend.xp
+        psi_d = _device_array(psi, backend)
+        u_d = _device_array(u, backend)
+        v_d = _device_array(v, backend)
 
         # Base projection: solve PPE with ρ = 1
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        div = (du_dx + dv_dy) / 1.0  # dt factor handled outside
+        du_dx, _ = ccd.differentiate(u_d, 0)
+        dv_dy, _ = ccd.differentiate(v_d, 1)
+        div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         # Uniform density matrix
-        rho = np.ones_like(psi)
+        rho = xp.ones_like(psi_d)
         phi = ppe_solver.solve(div, rho)
 
         # Correct velocity
         dp_dx, _ = ccd.differentiate(phi, 0)
         dp_dy, _ = ccd.differentiate(phi, 1)
-        u_proj = u - dp_dx
-        v_proj = v - dp_dy
+        u_proj = u_d - xp.asarray(dp_dx)
+        v_proj = v_d - xp.asarray(dp_dy)
 
-        return np.asarray(u_proj), np.asarray(v_proj)
+        return u_proj, v_proj
 
     @property
     def stats(self) -> Dict[str, float]:
@@ -139,31 +149,31 @@ class VariableDensityReprojector(IVelocityReprojector):
         """Reproject with variable density."""
         self._stats["calls"] += 1
 
-        def _h(arr):
-            return np.asarray(backend.to_host(arr))
-
         xp = backend.xp
+        psi_d = _device_array(psi, backend)
+        u_d = _device_array(u, backend)
+        v_d = _device_array(v, backend)
 
         # Compute density field
         if rho_l is not None and rho_g is not None:
-            rho = rho_g + (rho_l - rho_g) * psi
+            rho = rho_g + (rho_l - rho_g) * psi_d
         else:
-            rho = np.ones_like(psi)
+            rho = xp.ones_like(psi_d)
 
         # Base projection
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        div = (du_dx + dv_dy) / 1.0  # dt factor handled outside
+        du_dx, _ = ccd.differentiate(u_d, 0)
+        dv_dy, _ = ccd.differentiate(v_d, 1)
+        div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         phi = ppe_solver.solve(div, rho)
 
         # Correct velocity
         dp_dx, _ = ccd.differentiate(phi, 0)
         dp_dy, _ = ccd.differentiate(phi, 1)
-        u_proj = u - dp_dx
-        v_proj = v - dp_dy
+        u_proj = u_d - xp.asarray(dp_dx)
+        v_proj = v_d - xp.asarray(dp_dy)
 
-        return np.asarray(u_proj), np.asarray(v_proj)
+        return u_proj, v_proj
 
     @property
     def stats(self) -> Dict[str, float]:
@@ -269,28 +279,28 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             # Fallback to variable-density if densities not provided
             return self._delegate.reproject(psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g)
 
-        def _h(arr):
-            return np.asarray(backend.to_host(arr))
-
         xp = backend.xp
+        psi_d = _device_array(psi, backend)
+        u_d = _device_array(u, backend)
+        v_d = _device_array(v, backend)
 
         # Compute density field
-        rho = rho_g + (rho_l - rho_g) * psi
+        rho = rho_g + (rho_l - rho_g) * psi_d
 
         # Base projection
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        div = (du_dx + dv_dy) / 1.0  # dt factor handled outside
+        du_dx, _ = ccd.differentiate(u_d, 0)
+        dv_dy, _ = ccd.differentiate(v_d, 1)
+        div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         # Helper: apply correction and compute divergence
         def _apply_phi_and_div(phi_field):
             dp_dx, _ = ccd.differentiate(phi_field, 0)
             dp_dy, _ = ccd.differentiate(phi_field, 1)
-            u_c = u - dp_dx
-            v_c = v - dp_dy
+            u_c = u_d - xp.asarray(dp_dx)
+            v_c = v_d - xp.asarray(dp_dy)
             du_c_dx, _ = ccd.differentiate(u_c, 0)
             dv_c_dy, _ = ccd.differentiate(v_c, 1)
-            _sum = du_c_dx + dv_c_dy
+            _sum = xp.asarray(du_c_dx) + xp.asarray(dv_c_dy)
             div_check = float(xp.sqrt(xp.sum(_sum ** 2)))
             return u_c, v_c, float(div_check)
 
@@ -301,12 +311,14 @@ class ConsistentIIMReprojector(IVelocityReprojector):
         # Attempt IIM correction
         self._stats["iim_attempts"] += 1
         try:
-            phi_iface = np.asarray(backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
+            phi_iface = _host_array(self._reconstruct_base.phi_from_psi(psi_d), backend)
             n_cross = len(self._reproj_iim.find_interface_crossings(phi_iface))
             self._stats["iim_crossings_total"] += int(n_cross)
 
             # Compute IIM correction with zero curvature (reprojection mode)
-            kappa0 = np.zeros_like(psi)
+            rho_host = _host_array(rho, backend)
+            div_host = _host_array(div, backend)
+            kappa0 = np.zeros_like(rho_host)
             A_host = ppe_solver.get_matrix(rho)
             dp0_x, _ = ccd.differentiate(phi_base, 0)
             dp0_y, _ = ccd.differentiate(phi_base, 1)
@@ -316,21 +328,24 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                 phi_iface,
                 kappa0,
                 0.0,  # no Young-Laplace jump for reprojection
-                rho,
-                div,
-                dp_dx=_h(dp0_x),
-                dp_dy=_h(dp0_y),
+                rho_host,
+                div_host,
+                dp_dx=_host_array(dp0_x, backend),
+                dp_dy=_host_array(dp0_y, backend),
             )
 
             # Solve corrected PPE
-            phi_iim = ppe_solver.solve(div + delta_q, rho)
+            phi_iim = ppe_solver.solve(div + xp.asarray(delta_q), rho)
             u_iim, v_iim, div_iim = _apply_phi_and_div(phi_iim)
 
             self._stats["iim_div_base_sum"] += float(div_base)
             self._stats["iim_div_iim_sum"] += float(div_iim)
 
             # Acceptance gate: finiteness + divergence reduction
-            finite_ok = np.isfinite(u_iim).all() and np.isfinite(v_iim).all()
+            finite_ok = (
+                np.isfinite(_host_array(u_iim, backend)).all()
+                and np.isfinite(_host_array(v_iim, backend)).all()
+            )
             if finite_ok and div_iim <= 1.05 * max(div_base, 1e-30):
                 self._stats["iim_accepts"] += 1
                 self._stats["iim_crossings_accept"] += int(n_cross)
@@ -343,10 +358,13 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             best_u_bt, best_v_bt = u_iim, v_iim
             for alpha in [0.5, 0.25, 0.1]:
                 delta_q_bt = alpha * delta_q
-                phi_bt = ppe_solver.solve(div + delta_q_bt, rho)
+                phi_bt = ppe_solver.solve(div + xp.asarray(delta_q_bt), rho)
                 u_bt, v_bt, div_bt = _apply_phi_and_div(phi_bt)
 
-                finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
+                finite_bt = (
+                    np.isfinite(_host_array(u_bt, backend)).all()
+                    and np.isfinite(_host_array(v_bt, backend)).all()
+                )
                 if finite_bt and div_bt <= 1.05 * max(div_base, 1e-30):
                     self._stats["iim_accepts"] += 1
                     self._stats["iim_crossings_accept"] += int(n_cross)
