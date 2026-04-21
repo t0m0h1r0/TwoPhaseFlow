@@ -43,7 +43,7 @@ from .gradient_operator import (
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.context import NSComputeContext
-from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
+from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -155,7 +155,10 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppe_solver = PPESolverFVMSpsolve(self._backend, self._grid, bc_type=bc_type)
+        self._ppe_solver = PPESolverFVMMatrixFree(
+            self._backend, None, self._grid, bc_type=bc_type,
+        )
+        self._p_prev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
@@ -464,7 +467,10 @@ class TwoPhaseNSSolver:
         # 8b. CHK-159: refresh reinitializer grid caches (Ridge-Eikonal h_min/eps_local/FMM).
         if hasattr(self._reinit, 'update_grid'):
             self._reinit.update_grid(self._grid)
-        # 8c. CHK-160: invalidate PPE builder coord cache.
+        # 8c. CHK-160/175: refresh PPE coordinate-dependent caches.
+        if hasattr(self._ppe_solver, 'update_grid'):
+            self._ppe_solver.update_grid(self._grid)
+            self._p_prev = None
         if hasattr(self._ppe_solver, 'ppb') and hasattr(self._ppe_solver.ppb, 'invalidate_gpu_cache'):
             self._ppe_solver.ppb.invalidate_gpu_cache()
 
@@ -740,7 +746,8 @@ class TwoPhaseNSSolver:
         rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
         _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
         self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
-        p = self._ppe_solver.solve(rhs, rho)
+        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
+        self._p_prev = p
 
         # ── 5. Corrector ───────────────────────────────────────────────
         # Strategy pattern: gradient operator encapsulates CCD vs FVM logic

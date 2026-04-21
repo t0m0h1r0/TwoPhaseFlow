@@ -55,9 +55,10 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.grid = grid
         self.ndim = grid.ndim
         self.bc_type = bc_type
-        self.tol = config.solver.pseudo_tol
-        self.maxiter = config.solver.pseudo_maxiter
-        self.c_tau = config.solver.pseudo_c_tau
+        solver_cfg = getattr(config, "solver", config)
+        self.tol = getattr(solver_cfg, "pseudo_tol", 1e-8)
+        self.maxiter = getattr(solver_cfg, "pseudo_maxiter", 500)
+        self.c_tau = getattr(solver_cfg, "pseudo_c_tau", 2.0)
         self.restart = min(80, max(20, self.maxiter))
         self.precond_pcr_stages = 4 if self.backend.is_gpu() else None
 
@@ -67,25 +68,6 @@ class PPESolverFVMMatrixFree(IPPESolver):
             centre_idx = tuple(n // 2 for n in grid.N)
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
 
-        self._h_min = min(float(np.min(np.diff(np.asarray(c)))) for c in grid.coords)
-
-        self._d_face: list = []
-        self._dv_node: list = []
-        for ax in range(self.ndim):
-            coords = np.asarray(grid.coords[ax], dtype=np.float64)
-            d_face = coords[1:] - coords[:-1]
-            dv = np.empty_like(coords)
-            dv[0] = d_face[0] / 2.0
-            dv[-1] = d_face[-1] / 2.0
-            dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
-
-            face_shape = [1] * self.ndim
-            node_shape = [1] * self.ndim
-            face_shape[ax] = d_face.size
-            node_shape[ax] = dv.size
-            self._d_face.append(self.xp.asarray(d_face.reshape(face_shape)))
-            self._dv_node.append(self.xp.asarray(dv.reshape(node_shape)))
-
         self._fallback = None
         if self.bc_type != "wall":
             self._fallback = PPESolverFVMSpsolve(
@@ -94,8 +76,22 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
         self._operator_coeffs = None
         self._precond_coeffs = None
+        self._refresh_grid_metrics()
 
-    def solve(self, rhs, rho, dt: float, p_init=None):
+    def update_grid(self, grid: "Grid | None" = None) -> None:
+        """Refresh metric caches after an in-place grid rebuild."""
+        if grid is not None:
+            self.grid = grid
+            self.ndim = grid.ndim
+        self._operator_coeffs = None
+        self._precond_coeffs = None
+        self._refresh_grid_metrics()
+        if self._fallback is not None:
+            self._fallback = PPESolverFVMSpsolve(
+                self.backend, self.grid, bc_type=self.bc_type
+            )
+
+    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FVM PPE with matrix-free GMRES."""
         if self._fallback is not None:
             return self._fallback.solve(rhs, rho, dt, p_init=p_init)
@@ -256,3 +252,25 @@ class PPESolverFVMMatrixFree(IPPESolver):
         sl = [slice(None)] * self.ndim
         sl[axis] = slice(start, stop)
         return tuple(sl)
+
+    def _refresh_grid_metrics(self) -> None:
+        """Build backend-native face and control-volume spacing arrays."""
+        self._h_min = min(
+            float(np.min(np.diff(np.asarray(coord)))) for coord in self.grid.coords
+        )
+        self._d_face = []
+        self._dv_node = []
+        for axis in range(self.ndim):
+            coords = np.asarray(self.grid.coords[axis], dtype=np.float64)
+            d_face = coords[1:] - coords[:-1]
+            dv = np.empty_like(coords)
+            dv[0] = d_face[0] / 2.0
+            dv[-1] = d_face[-1] / 2.0
+            dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+
+            face_shape = [1] * self.ndim
+            node_shape = [1] * self.ndim
+            face_shape[axis] = d_face.size
+            node_shape[axis] = dv.size
+            self._d_face.append(self.xp.asarray(d_face.reshape(face_shape)))
+            self._dv_node.append(self.xp.asarray(dv.reshape(node_shape)))

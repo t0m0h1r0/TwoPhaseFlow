@@ -77,3 +77,18 @@ def test_factory_creates_fvm_matrixfree_solver():
 
     solver = create_ppe_solver(cfg, backend, grid)
     assert isinstance(solver, PPESolverFVMMatrixFree)
+
+
+def test_fvm_matrixfree_update_grid_refreshes_spacing_cache():
+    backend = Backend(use_gpu=False)
+    cfg = _make_cfg(8)
+    grid = Grid(cfg.grid, backend)
+    solver = PPESolverFVMMatrixFree(backend, None, grid, bc_type="wall")
+
+    old_h_min = solver._h_min
+    grid.coords[0] = grid.coords[0] ** 1.2
+    solver.update_grid(grid)
+
+    assert solver._h_min != old_h_min
+    assert solver._operator_coeffs is None
+    assert solver._precond_coeffs is None

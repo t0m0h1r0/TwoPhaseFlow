@@ -97,6 +97,14 @@ def test_fccd_not_constructed_when_unused():
     assert solver._fccd_conv is None
 
 
+def test_pipeline_uses_matrixfree_fvm_ppe():
+    """Stage 4 PPE uses the shared NumPy/CuPy matrix-free FVM solver."""
+    from twophase.ppe.fvm_matrixfree import PPESolverFVMMatrixFree
+
+    solver = TwoPhaseNSSolver(N, N, L, L, bc_type="wall")
+    assert isinstance(solver._ppe_solver, PPESolverFVMMatrixFree)
+
+
 def test_surface_tension_uses_projector_gradient_operator():
     """R-1.5: CSF ∇ψ uses the same gradient operator as pressure correction."""
     solver = TwoPhaseNSSolver(
