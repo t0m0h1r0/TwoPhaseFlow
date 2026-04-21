@@ -446,7 +446,10 @@ class RidgeEikonalReinitializer(IReinitializer):
         M_old = xp.sum(psi * dV)
 
         # Step 1: psi -> phi.
-        phi = invert_heaviside(xp, psi, self._eps)
+        # Use eps_local for consistency with reconstruction (line 479).
+        # This makes reinit idempotent for call 2+, avoiding φ-scale mismatch
+        # that causes wrong ridge detection and FMM seeding (CHK-160 C7).
+        phi = invert_heaviside(xp, psi, self._eps_local)
 
         # Step 2: xi_ridge + ridge mask (for seeding augmentation).
         xi_ridge = self._extractor.compute_xi_ridge(phi)
