@@ -40,13 +40,15 @@ from typing import List, TYPE_CHECKING
 
 import numpy as np
 
+from ..hfe.interfaces import IFieldExtension
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
 
 
-class FieldExtender:
+class FieldExtender(IFieldExtension):
     """Extend fields smoothly across the interface via Extension PDE.
 
     Parameters
@@ -193,7 +195,7 @@ class FieldExtender:
         return q_ext
 
 
-class NullFieldExtender:
+class NullFieldExtender(IFieldExtension):
     """No-op field extender (Null Object pattern).
 
     Used when field extension is disabled. All methods are safe to call
@@ -205,3 +207,7 @@ class NullFieldExtender:
 
     def extend(self, field_data, phi, n_hat=None):
         return field_data
+
+    @property
+    def is_null_extender(self) -> bool:
+        return True

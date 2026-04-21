@@ -19,7 +19,13 @@ DIP（依存性逆転原則）に基づき、SimulationBuilder が NS 各項を
 """
 
 from __future__ import annotations
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import List, TYPE_CHECKING
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from .context import NSComputeContext
 
 
 class INSTerm(ABC):
@@ -30,3 +36,14 @@ class INSTerm(ABC):
     SimulationBuilder の with_*() メソッドはこの型を受け取り、
     カスタム実装の注入を型ヒントレベルで表明する。
     """
+
+    @abstractmethod
+    def compute(self, ctx: 'NSComputeContext') -> List[np.ndarray]:
+        """Compute the NS term contribution.
+
+        Args:
+            ctx: NSComputeContext with velocity, ccd, rho, mu, kappa, psi, fccd
+
+        Returns:
+            List of RHS contributions per equation (u, v, [w])
+        """

@@ -19,6 +19,7 @@ from .interfaces import INSTerm
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+    from .context import NSComputeContext
 
 
 class ConvectionTerm(INSTerm):
@@ -32,17 +33,33 @@ class ConvectionTerm(INSTerm):
     def __init__(self, backend: "Backend"):
         self.xp = backend.xp
 
-    def compute(self, velocity_components: List, ccd: "CCDSolver") -> List:
-        """
+    def compute(self, ctx_or_velocity, ccd=None) -> List:
+        """Compute convection term −(u·∇)u.
+
+        Supports both new (ctx) and legacy (velocity, ccd) signatures.
+
         Parameters
         ----------
-        velocity_components : list of arrays [u, v[, w]], shape ``grid.shape``
-        ccd                 : CCDSolver
+        ctx_or_velocity : NSComputeContext or list
+            Either NSComputeContext (new) or velocity_components list (legacy)
+        ccd : CCDSolver, optional
+            Only used with legacy signature
 
         Returns
         -------
-        conv : list of arrays, same shapes — convective acceleration per component
+        List[ndarray]
+            Convective acceleration per velocity component
         """
+        # Dispatch based on argument type
+        if ccd is not None:
+            # Legacy signature: compute(velocity_components, ccd)
+            velocity_components = ctx_or_velocity
+        else:
+            # New signature: compute(ctx)
+            ctx = ctx_or_velocity
+            velocity_components = ctx.velocity
+            ccd = ctx.ccd
+
         xp = self.xp
         ndim = len(velocity_components)
         result = []

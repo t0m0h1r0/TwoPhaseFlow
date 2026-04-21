@@ -36,6 +36,8 @@ from typing import List, TYPE_CHECKING
 
 import numpy as np
 
+from ..hfe.interfaces import IFieldExtension
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
@@ -63,7 +65,7 @@ def _h5(t, Fa, Ga, Ha, Fb, Gb, Hb):
     return c0 + t*(c1 + t*(c2 + t*(c3 + t*(c4 + t*c5))))
 
 
-class ClosestPointExtender:
+class ClosestPointExtender(IFieldExtension):
     """O(h^6) field extension via closest-point CCD Hermite interpolation.
 
     Drop-in replacement for FieldExtender with the same public API:
