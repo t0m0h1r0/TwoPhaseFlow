@@ -1,4 +1,4 @@
-# Wiki Index — 175 entries
+# Wiki Index — 176 entries
 
 ## Theory (62)
 
@@ -67,7 +67,7 @@
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 
-## Cross-Domain (22)
+## Cross-Domain (23)
 
 | REF-ID | Title |
 |--------|-------|
@@ -93,6 +93,7 @@
 | [WIKI-X-020](cross-domain/WIKI-X-020.md) | Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM (CHK-170) |
 | [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
 | [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
+| [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 
 ## Experiment (29)
 
