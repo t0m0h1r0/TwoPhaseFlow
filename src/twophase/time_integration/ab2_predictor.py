@@ -43,6 +43,7 @@ from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.viscous import ViscousTerm
 from ..ns_terms.gravity import GravityTerm
 from ..ns_terms.surface_tension import SurfaceTensionTerm
+from ..ns_terms.context import NSComputeContext
 from ..core.flow_state import FlowState
 from ..coupling.velocity_corrector import ccd_pressure_gradient
 
@@ -134,8 +135,18 @@ class Predictor:
         kappa = state.kappa
         psi   = state.psi
 
+        # Build context for all NS terms
+        ctx = NSComputeContext(
+            velocity=vel_n,
+            ccd=ccd,
+            rho=rho,
+            mu=mu,
+            kappa=kappa,
+            psi=psi,
+        )
+
         # ── 対流項 C^n = −(u·∇)u （負符号を含む） ──────────────────────────
-        conv_n = self.convection.compute(vel_n, ccd)   # C^n = −(u·∇)u
+        conv_n = self.convection.compute(ctx)   # C^n = −(u·∇)u
 
         # ── AB2 外挿（§4 eq:predictor_ab2_ipc） ──────────────────────────
         # n=0（スタートアップ）: 前進 Euler → ab2_conv = conv_n
@@ -149,13 +160,13 @@ class Predictor:
             ab2_conv = conv_n   # 前進 Euler（n=0）
 
         # ── 重力・表面張力（陽的，t^{n+1}） ─────────────────────────────
-        grav = self.gravity.compute(rho, vel_n[0].shape)   # −ρ̃/Fr² ẑ
+        grav = self.gravity.compute(ctx)   # −ρ̃/Fr² ẑ
         # GFM mode (§8e sec:gfm): surface tension is handled in PPE RHS
         # via GFMCorrector; predictor does NOT include CSF volume force.
         if self.use_gfm:
             st = [self.xp.zeros_like(vel_n[c]) for c in range(ndim)]
         else:
-            st = self.surface_tens.compute(kappa, psi, ccd)  # κ ∇ψ/We (CSF)
+            st = self.surface_tens.compute(ctx)  # κ ∇ψ/We (CSF)
 
         # ── IPC 項 −∇p^n（§4 sec:ipc_derivation） ────────────────────────
         # van Kan (1986) の増分圧力補正：前時刻圧力 p^n を陽的に加える

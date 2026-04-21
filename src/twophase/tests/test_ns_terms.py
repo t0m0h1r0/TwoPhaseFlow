@@ -23,6 +23,7 @@ from twophase.ns_terms.convection import ConvectionTerm
 from twophase.ns_terms.viscous import ViscousTerm
 from twophase.ns_terms.gravity import GravityTerm
 from twophase.ns_terms.surface_tension import SurfaceTensionTerm
+from twophase.ns_terms.context import NSComputeContext
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 
@@ -55,7 +56,8 @@ def test_convection_u_grad_u(backend):
     u = np.ones((N+1, N+1)) * 2.0
     v = np.zeros((N+1, N+1))
 
-    result = conv.compute([u, v], ccd)
+    ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=np.ones_like(u), mu=1.0)
+    result = conv.compute(ctx)
     # -(u·∇)u = -(2*0, 0) = 0 for constant u
     assert np.max(np.abs(result[0])) < 1e-10, "Convection of uniform u should be 0"
     assert np.max(np.abs(result[1])) < 1e-10, "Convection of v=0 should be 0"
@@ -72,7 +74,8 @@ def test_convection_linear_u(backend):
     u = X.copy()
     v = np.zeros_like(u)
 
-    result = conv.compute([u, v], ccd)
+    ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=np.ones_like(u), mu=1.0)
+    result = conv.compute(ctx)
     # -(u·∇)u = -u * ∂u/∂x = -x * 1 = -x
     expected = -X
     err = np.max(np.abs(result[0] - expected))
@@ -120,7 +123,8 @@ def test_gravity_direction(backend):
     grav = GravityTerm(be, Fr=1.0, ndim=2)
 
     rho = np.ones((17, 17))
-    g = grav.compute(rho, rho.shape)
+    ctx = NSComputeContext(velocity=[np.zeros_like(rho), np.zeros_like(rho)], ccd=ccd, rho=rho, mu=1.0)
+    g = grav.compute(ctx)
 
     # x-component must be zero
     assert np.max(np.abs(g[0])) < 1e-14, "Gravity x-component should be 0"
@@ -134,7 +138,8 @@ def test_gravity_froude(backend):
     Fr = 2.0
     grav = GravityTerm(be, Fr=Fr, ndim=2)
     rho = np.ones((17, 17))
-    g = grav.compute(rho, rho.shape)
+    ctx = NSComputeContext(velocity=[np.zeros_like(rho), np.zeros_like(rho)], ccd=ccd, rho=rho, mu=1.0)
+    g = grav.compute(ctx)
     expected = -1.0 / (Fr ** 2)
     assert np.allclose(g[1], expected), f"Gravity scaling with Fr={Fr} failed"
 
@@ -162,7 +167,8 @@ def test_surface_tension_localised(backend):
     psi = heaviside(xp, phi, eps)
     kappa = curv_calc.compute(psi)
 
-    f_st = st.compute(kappa, psi, ccd)
+    ctx = NSComputeContext(velocity=[np.zeros_like(psi), np.zeros_like(psi)], ccd=ccd, rho=np.ones_like(psi), mu=1.0, kappa=kappa, psi=psi)
+    f_st = st.compute(ctx)
 
     # Far from interface (|φ| > 5ε) force should be negligible
     far = np.abs(phi) > 5 * eps

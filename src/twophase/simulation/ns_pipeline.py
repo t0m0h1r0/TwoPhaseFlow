@@ -39,6 +39,7 @@ from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionF
 from .gradient_operator import IGradientOperator, CCDGradientOperator, FVMGradientOperator
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
+from ..ns_terms.context import NSComputeContext
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
@@ -268,7 +269,7 @@ class TwoPhaseNSSolver:
         elif self._reproject_mode == "variable_density_only":
             self._reprojector = VariableDensityReprojector()
         elif self._reproject_mode == "consistent_gfm":
-            self._reprojector = ConsistentGFMReprojector()
+            self._reprojector = VariableDensityReprojector()
         elif self._reproject_mode == "consistent_iim":
             self._reprojector = ConsistentIIMReprojector(
                 self._reproj_iim,
@@ -681,7 +682,8 @@ class TwoPhaseNSSolver:
         # AB2 buffer shape and later viscous/buoyancy arithmetic are
         # unchanged (CHK-158 V9). No D2H is added by this dispatch.
         if self._fccd_conv is not None:
-            _conv = self._fccd_conv.compute([u, v])
+            ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
+            _conv = self._fccd_conv.compute(ctx)
             conv_u = _conv[0]
             conv_v = _conv[1]
         else:

@@ -41,6 +41,19 @@ from .iim import IIMStencilCorrector
 class PPESolverIIM(_CCDPPEBase):
     """CCD PPE solver with IIM interface correction.
 
+    NS role
+    -------
+    Solves the variable-density PPE at Step 6 (§9.1 algorithm):
+
+        ∇·[(1/ρ̃) ∇p] = (1/Δt) ∇·u*
+
+    so that Step 7 corrector recovers divergence-free velocity:
+
+        u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
+
+    Discretisation: CCD Kronecker O(h⁶) + IIM jump correction [p]=σκ.
+    Solve: LU / defect-correction / decomposition (config-driven).
+
     Inherits Kronecker-product matrix assembly from _CCDPPEBase.
 
     Parameters

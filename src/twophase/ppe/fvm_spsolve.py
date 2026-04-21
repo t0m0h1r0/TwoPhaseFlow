@@ -23,6 +23,19 @@ if TYPE_CHECKING:
 class PPESolverFVMSpsolve(IPPESolver):
     """FVM Poisson solver via sparse direct solve (scipy.sparse.linalg.spsolve).
 
+    NS role
+    -------
+    Solves the variable-density PPE at Step 6 (§9.1 algorithm):
+
+        ∇·[(1/ρ̃) ∇p] = (1/Δt) ∇·u*
+
+    so that Step 7 corrector recovers divergence-free velocity:
+
+        u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
+
+    Discretisation: FVM O(h²) harmonic-mean face coefficients.
+    Mandatory for ch12+ (PR-2/PR-6).
+
     Implements the legacy TwoPhaseNSSolver._solve_ppe() path as an IPPESolver.
     Suitable for ch12+ integration; not for ch11 smooth RHS (use PPESolverCCDLU instead).
 
