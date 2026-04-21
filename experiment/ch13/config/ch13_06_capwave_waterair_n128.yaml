@@ -38,7 +38,7 @@ output:
   dir: results/ch13_06_capwave_waterair_n128
   save_npz: true
   figures:
-    - time_series: deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)
+    - time_series: "deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)"
     - time_series: volume_conservation
     - snapshot: t_idx=0
     - snapshot: t_idx=-1
