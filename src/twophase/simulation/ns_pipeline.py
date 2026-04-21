@@ -34,6 +34,9 @@ from .velocity_reprojector import (
     IVelocityReprojector, LegacyReprojector, VariableDensityReprojector,
     ConsistentGFMReprojector, ConsistentIIMReprojector
 )
+from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
+from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
+from .gradient_operator import IGradientOperator, CCDGradientOperator, FVMGradientOperator
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
@@ -160,6 +163,12 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
 
+        # Pressure gradient operator strategy (CCD vs FVM)
+        if not self._grid.uniform and bc_type == "wall":
+            self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
+        else:
+            self._grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+
         # Advection / convection scheme selection (CHK-160 bridge for FCCD).
         # One shared FCCDSolver reuses the CCD LU factorisation for both
         # ψ advection and momentum convection — mirrors builder.py §"one
@@ -268,12 +277,20 @@ class TwoPhaseNSSolver:
         else:
             raise ValueError(f"Unknown reproject_mode: {self._reproject_mode}")
 
-        # Viscous term: CN (Heun predictor-corrector, O(Δt²)) or explicit FE
+        # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = cn_viscous
         self._Re = Re
         if cn_viscous:
             from ..ns_terms.viscous import ViscousTerm
-            self._viscous = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
+            viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
+            self._viscous_predictor: IViscousPredictor = CNViscousPredictor(
+                self._backend, viscous_term
+            )
+        else:
+            self._viscous_predictor = ExplicitViscousPredictor(self._backend, Re=Re)
+
+        # Surface tension strategy (always SurfaceTensionForce; checks σ > 0 internally)
+        self._st_force: INSSurfaceTensionStrategy = SurfaceTensionForce(self._backend)
 
     # ── class-method constructors ─────────────────────────────────────────
 
@@ -433,39 +450,9 @@ class TwoPhaseNSSolver:
             rho_l=rho_l, rho_g=rho_g,
         )
 
-        if not self._grid.uniform:
-            self._precompute_fvm_grad_spacing()
-
         # Return device arrays — callers expect the same device type as input.
         xp = self._backend.xp
         return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
-
-    def _precompute_fvm_grad_spacing(self) -> None:
-        import numpy as _np
-        xp = self._backend.xp
-        self._d_face_grad: list = []
-        for ax in range(self._grid.ndim):
-            d = _np.diff(_np.asarray(self._grid.coords[ax]))
-            shape = [1] * self._grid.ndim
-            shape[ax] = -1
-            self._d_face_grad.append(xp.asarray(d.reshape(shape)))
-
-    def _fvm_pressure_grad(self, p: "array", ax: int) -> "array":
-        """Face-average gradient: J_face = 1/d_face, consistent with L_FVM and GFM."""
-        xp = self._backend.xp
-        d = self._d_face_grad[ax]
-        N = self._grid.N[ax]
-
-        def sl(start, stop):
-            s = [slice(None)] * self._grid.ndim
-            s[ax] = slice(start, stop)
-            return tuple(s)
-
-        g_face = (p[sl(1, N + 1)] - p[sl(0, N)]) / d
-        g = xp.zeros_like(p)
-        g[sl(1, N)] = 0.5 * (g_face[sl(0, N - 1)] + g_face[sl(1, N)])
-        return g
-
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -672,20 +659,16 @@ class TwoPhaseNSSolver:
             mu_field = mu  # scalar or pre-computed array
 
         # ── 2. Curvature + balanced-force CSF ──────────────────────────
-        _dbg_kappa_max = 0.0
-        if sigma > 0.0:
-            kappa_raw = self._curv.compute(psi)
-            kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
-            if self._kappa_max is not None:
-                kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-            _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
-            self._step_diag.record_kappa(_dbg_kappa_max)
-            dpsi_dx, _ = ccd.differentiate(psi, 0)
-            dpsi_dy, _ = ccd.differentiate(psi, 1)
-            f_x = sigma * kappa * dpsi_dx
-            f_y = sigma * kappa * dpsi_dy
-        else:
-            f_x = f_y = xp.zeros_like(psi)
+        # Compute curvature (used for diagnostics + surface tension force)
+        kappa_raw = self._curv.compute(psi)
+        kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
+        if self._kappa_max is not None:
+            kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
+        _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
+        self._step_diag.record_kappa(_dbg_kappa_max)
+
+        # Strategy pattern: surface tension force encapsulates σ > 0 check
+        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd)
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)
@@ -710,22 +693,10 @@ class TwoPhaseNSSolver:
         if g_acc != 0.0:
             buoy_v = -(rho - rho_ref) / rho * g_acc
 
-        if self._cn_viscous:
-            # CN viscous (Heun predictor-corrector, O(Δt²), explicit but
-            # trapezoid-averaged → relaxed CFL vs forward Euler).
-            # explicit_rhs = rho * (convection + buoyancy) per component
-            explicit_rhs = [rho * conv_u, rho * (conv_v + buoy_v)]
-            vel_star = self._viscous.apply_cn_predictor(
-                [u, v], explicit_rhs, mu_field, rho, ccd, dt,
-            )
-            u_star = xp.asarray(vel_star[0])
-            v_star = xp.asarray(vel_star[1])
-        else:
-            # Original explicit forward-Euler viscous
-            visc_u = (mu_field / rho) * (du_xx + du_yy)
-            visc_v = (mu_field / rho) * (dv_xx + dv_yy)
-            u_star = u + dt * (conv_u + visc_u)
-            v_star = v + dt * (conv_v + visc_v + buoy_v)
+        # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
+        u_star, v_star = self._viscous_predictor.predict(
+            u, v, conv_u, conv_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
+        )
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
 
@@ -733,24 +704,18 @@ class TwoPhaseNSSolver:
         du_s_dx, _ = ccd.differentiate(u_star, 0)
         dv_s_dy, _ = ccd.differentiate(v_star, 1)
         rhs = (du_s_dx + dv_s_dy) / dt
-        if sigma > 0.0:
-            df_x, _ = ccd.differentiate(f_x / rho, 0)
-            df_y, _ = ccd.differentiate(f_y / rho, 1)
-            rhs = rhs + df_x + df_y
+        # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
+        df_x, _ = ccd.differentiate(f_x / rho, 0)
+        df_y, _ = ccd.differentiate(f_y / rho, 1)
+        rhs = rhs + df_x + df_y
         _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
         self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
         p = self._ppe_solver.solve(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
-        if not self._grid.uniform and self.bc_type == "wall":
-            dp_dx = self._fvm_pressure_grad(p, 0)
-            dp_dy = self._fvm_pressure_grad(p, 1)
-        else:
-            dp_dx, _ = ccd.differentiate(p, 0)
-            dp_dy, _ = ccd.differentiate(p, 1)
-            if self.bc_type == "wall":
-                ccd.enforce_wall_neumann(dp_dx, 0)
-                ccd.enforce_wall_neumann(dp_dy, 1)
+        # Strategy pattern: gradient operator encapsulates CCD vs FVM logic
+        dp_dx = self._grad_op.gradient(p, 0)
+        dp_dy = self._grad_op.gradient(p, 1)
         _dbg_bf_res_max = float(self._backend.to_host(
             xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
                        xp.max(xp.abs(dp_dy - f_y / rho)))
