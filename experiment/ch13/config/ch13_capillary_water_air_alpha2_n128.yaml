@@ -1,22 +1,10 @@
 # N=128 water-air capillary-flow probe for WIKI-X-020/021/022.
-#
-# Purpose:
-#   Validate the full interface-to-PPE chain at the scaling point where
-#   WIKI-X-021 exposed the old mixed-metric parasitic-current failure.
-#
-# Stack:
-#   - alpha=2 non-uniform, IC-fitted grid
-#   - Ridge-Eikonal + local interface width
-#   - FCCD flux advection/convection
-#   - R-1.5 BF-consistent pressure/CSF gradient path
-#   - GFM-style variable-density reprojection
 
 grid:
-  NX: 128
-  NY: 128
-  LX: 1.0
-  LY: 1.0
-  bc_type: wall
+  cells: [128, 128]
+  domain:
+    size: [1.0, 1.0]
+    boundary: wall
   interface_fitting:
     enabled: true
     method: gaussian_levelset
@@ -27,17 +15,17 @@ grid:
     base_factor: 1.5
 
 physics:
-  rho_l:  833.0
-  rho_g:    1.0
-  sigma:    1.0
-  mu_l:     0.05
-  mu_g:     0.05
-  g_acc:    0.0
+  phases:
+    liquid: {rho: 833.0, mu: 0.05}
+    gas:    {rho: 1.0,   mu: 0.05}
+  surface_tension: 1.0
+  gravity: 0.0
 
 run:
-  T_final: 0.10
-  cfl: 0.10
-  print_every: 20
+  time:
+    final: 0.10
+    cfl: 0.10
+    print_every: 20
   reinitialization:
     method: ridge_eikonal
     every: 2
@@ -55,6 +43,7 @@ run:
     levelset_advection: fccd_flux
     momentum_convection: fccd_flux
     ppe: fvm_iterative
+    surface_tension: csf
     viscous_time: explicit
   debug:
     step_diagnostics: false
@@ -106,10 +95,7 @@ output:
       field: pressure
       file_prefix: pressure_t
 
-diagnostics:
-  - volume_conservation
-  - kinetic_energy
-  - deformation
+diagnostics: [volume_conservation, kinetic_energy, deformation]
 
 initial_condition:
   type: perturbed_circle
@@ -120,6 +106,4 @@ initial_condition:
   interior_phase: liquid
 
 initial_velocity: null
-
-boundary_condition:
-  type: wall
+boundary_condition: {type: wall}

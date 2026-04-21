@@ -86,7 +86,8 @@ def test_ridge_sigma_0_round_trip():
 def test_structured_ch13_yaml_sections_round_trip():
     raw = {
         "grid": {
-            "NX": 8, "NY": 8, "LX": 1.0, "LY": 1.0,
+            "cells": [8, 8],
+            "domain": {"size": [1.0, 1.0], "boundary": "wall"},
             "interface_fitting": {
                 "enabled": True,
                 "method": "gaussian_levelset",
@@ -95,10 +96,15 @@ def test_structured_ch13_yaml_sections_round_trip():
             },
             "interface_width": {"mode": "local", "base_factor": 1.5},
         },
-        "physics": {"rho_l": 1.0, "rho_g": 1.0, "sigma": 0.0, "mu": 0.01},
+        "physics": {
+            "phases": {
+                "liquid": {"rho": 2.0, "mu": 0.03},
+                "gas": {"rho": 1.0, "mu": 0.01},
+            },
+            "surface_tension": 0.0,
+        },
         "run": {
-            "T_final": 0.1,
-            "cfl": 0.1,
+            "time": {"final": 0.1, "cfl": 0.1, "print_every": 7},
             "reinitialization": {
                 "method": "ridge_eikonal",
                 "every": 2,
@@ -117,6 +123,7 @@ def test_structured_ch13_yaml_sections_round_trip():
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_nodal",
                 "ppe": "fvm_direct",
+                "surface_tension": "csf",
                 "viscous_time": "crank_nicolson",
             },
             "debug": {"step_diagnostics": True},
@@ -124,12 +131,22 @@ def test_structured_ch13_yaml_sections_round_trip():
         "output": {"snapshots": {"interval": 0.25}},
     }
     cfg = ExperimentConfig.from_dict(raw)
+    assert cfg.grid.NX == 8
+    assert cfg.grid.NY == 8
+    assert cfg.grid.bc_type == "wall"
     assert cfg.grid.alpha_grid == 2.0
     assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.grid.interface_fitting_enabled is True
     assert cfg.grid.interface_fitting_method == "gaussian_levelset"
     assert cfg.grid.use_local_eps is True
     assert cfg.run.snap_interval == 0.25
+    assert cfg.run.T_final == 0.1
+    assert cfg.run.cfl == 0.1
+    assert cfg.run.print_every == 7
+    assert cfg.physics.rho_l == 2.0
+    assert cfg.physics.rho_g == 1.0
+    assert cfg.physics.mu_l == 0.03
+    assert cfg.physics.mu_g == 0.01
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
@@ -144,6 +161,8 @@ def test_structured_ch13_yaml_sections_round_trip():
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "fccd_nodal"
     assert cfg.run.ppe_solver == "fvm_direct"
+    assert cfg.run.pressure_scheme == "fvm_spsolve"
+    assert cfg.run.surface_tension_scheme == "csf"
     assert cfg.run.viscous_time_scheme == "crank_nicolson"
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True

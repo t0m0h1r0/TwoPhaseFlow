@@ -235,6 +235,17 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
 
 
 def _parse_grid(d: dict) -> GridCfg:
+    cells = d.get("cells", d.get("N"))
+    if cells is not None:
+        NX, NY = int(cells[0]), int(cells[1])
+    else:
+        NX, NY = int(d.get("NX", 64)), int(d.get("NY", 64))
+    domain = d.get("domain", {}) or {}
+    size = domain.get("size", d.get("size"))
+    if size is not None:
+        LX, LY = float(size[0]), float(size[1])
+    else:
+        LX, LY = float(d.get("LX", 1.0)), float(d.get("LY", 1.0))
     fitting = d.get("interface_fitting", d.get("fitting", None))
     adaptation = fitting if fitting is not None else (d.get("adaptation", {}) or {})
     adaptation = adaptation or {}
@@ -254,11 +265,11 @@ def _parse_grid(d: dict) -> GridCfg:
     eps_xi_cells = _opt_float(width.get("xi_cells", d.get("eps_xi_cells")))
     use_local_eps = _parse_interface_width_mode(width, d, eps_xi_cells)
     return GridCfg(
-        NX=int(d.get("NX", 64)),
-        NY=int(d.get("NY", 64)),
-        LX=float(d.get("LX", 1.0)),
-        LY=float(d.get("LY", 1.0)),
-        bc_type=str(d.get("bc_type", "wall")),
+        NX=NX,
+        NY=NY,
+        LX=LX,
+        LY=LY,
+        bc_type=str(domain.get("boundary", d.get("bc_type", "wall"))),
         alpha_grid=alpha_grid,
         eps_factor=eps_factor,
         eps_g_factor=eps_g_factor,
@@ -276,9 +287,12 @@ def _parse_grid(d: dict) -> GridCfg:
 
 def _parse_physics(d: dict) -> PhysicsCfg:
     """Parse physics section, resolving derived parameters."""
-    rho_l = float(d.get("rho_l", 1.0))
-    rho_g = float(d.get("rho_g", 1.0))
-    g_acc = float(d.get("g_acc", 0.0))
+    phases = d.get("phases", {}) or {}
+    liquid = phases.get("liquid", {}) or {}
+    gas = phases.get("gas", {}) or {}
+    rho_l = float(d.get("rho_l", liquid.get("rho", 1.0)))
+    rho_g = float(d.get("rho_g", gas.get("rho", 1.0)))
+    g_acc = float(d.get("g_acc", d.get("gravity", 0.0)))
     rho_ref = _opt_float(d.get("rho_ref"))
     d_ref = _opt_float(d.get("d_ref"))
 
@@ -304,8 +318,11 @@ def _resolve_viscosity(
     d_ref: float | None,
 ) -> tuple[float, float | None, float | None]:
     """Resolve uniform and phase viscosities from direct or derived inputs."""
-    mu_g = _opt_float(d.get("mu_g"))
-    mu_l = _opt_float(d.get("mu_l"))
+    phases = d.get("phases", {}) or {}
+    liquid = phases.get("liquid", {}) or {}
+    gas = phases.get("gas", {}) or {}
+    mu_g = _opt_float(d.get("mu_g", gas.get("mu")))
+    mu_l = _opt_float(d.get("mu_l", liquid.get("mu")))
     mu = _opt_float(d.get("mu"))
 
     lambda_mu = _opt_float(d.get("lambda_mu"))
@@ -348,7 +365,7 @@ def _resolve_surface_tension(
     mu_g: float | None,
 ) -> float:
     """Resolve surface tension from direct sigma, Eotvos number, or Ca."""
-    sigma = _opt_float(d.get("sigma"))
+    sigma = _opt_float(d.get("sigma", d.get("surface_tension")))
 
     eo_num = _opt_float(d.get("Eo"))
     if eo_num is not None and d_ref is not None and g_acc > 0.0:
@@ -395,6 +412,7 @@ _VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 
 def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
     output = output or {}
+    time_cfg = d.get("time", {}) or {}
     snapshots = output.get("snapshots", d.get("snapshots", {})) or {}
     reinit = d.get("reinitialization", {}) or {}
     transport = d.get("transport", {}) or {}
@@ -408,7 +426,9 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
     snap_raw = snapshots.get("times", d.get("snap_times", []))
     if snap_raw is None:
         snap_raw = []
-    if d.get("cfl") is not None and d.get("dt_fixed") is not None:
+    cfl_raw = time_cfg.get("cfl", d.get("cfl"))
+    dt_fixed_raw = time_cfg.get("dt", d.get("dt_fixed"))
+    if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError(
             "run: 'cfl' と 'dt_fixed' は排他です。どちらか一方のみ設定してください。"
         )
@@ -480,14 +500,16 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
     if ridge_sigma_0 <= 0.0:
         raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
     return RunCfg(
-        T_final=_opt_float(d.get("T_final")),
-        max_steps=int(d["max_steps"]) if "max_steps" in d else None,
-        cfl=float(d.get("cfl", 0.15)),
+        T_final=_opt_float(time_cfg.get("final", d.get("T_final"))),
+        max_steps=int(time_cfg.get("max_steps", d["max_steps"])) if (
+            "max_steps" in time_cfg or "max_steps" in d
+        ) else None,
+        cfl=float(cfl_raw if cfl_raw is not None else 0.15),
         snap_times=[float(x) for x in snap_raw],
         snap_interval=_opt_float(snapshots.get("interval", d.get("snap_interval"))),
         reinit_eps_scale=float(reinit.get("eps_scale", d.get("reinit_eps_scale", 1.0))),
-        print_every=int(d.get("print_every", 100)),
-        dt_fixed=_opt_float(d.get("dt_fixed")),
+        print_every=int(time_cfg.get("print_every", d.get("print_every", 100))),
+        dt_fixed=_opt_float(dt_fixed_raw),
         cn_viscous=(viscous_time_scheme == "crank_nicolson"),
         reinit_every=int(reinit.get("every", d.get("reinit_every", 2))),
         reproject_mode=reproject_mode,

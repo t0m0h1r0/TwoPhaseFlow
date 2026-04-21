@@ -1,47 +1,54 @@
-# CHK-176: 水-空気毛管波 N=128 R-1.5 BF一致スタック
-# Background: WIKI-X-020 (IIM chain), WIKI-X-021 (J³ scaling), WIKI-X-022 (R-1.5 fix)
-# Water-air: rho_l=1000, rho_g=1.2, sigma=0.072
-# Non-uniform grid (α=2.0) required for R-1.5 validation (WIKI-X-021 / CHK-173)
+# CHK-176: water-air capillary wave, N=128.
+# Background: WIKI-X-020 / WIKI-X-021 / WIKI-X-022.
 
 grid:
-  NX: 128
-  NY: 128
-  LX: 1.0
-  LY: 1.0
-  bc_type: wall
-  alpha_grid: 2.0
-  use_local_eps: true
-  grid_rebuild_freq: 0
+  cells: [128, 128]
+  domain:
+    size: [1.0, 1.0]
+    boundary: wall
+  interface_fitting:
+    enabled: true
+    method: gaussian_levelset
+    alpha: 2.0
+    schedule: static
+  interface_width:
+    mode: local
+    base_factor: 1.5
 
 physics:
-  rho_l: 1000.0
-  rho_g: 1.2
-  sigma: 0.072
-  mu: 1.0e-3
-  g_acc: 0.0
+  phases:
+    liquid: {rho: 1000.0, mu: 1.0e-3}
+    gas:    {rho: 1.2,    mu: 1.0e-3}
+  surface_tension: 0.072
+  gravity: 0.0
 
 run:
-  T_final: 90.0
-  cfl: 0.10
-  snap_interval: 9.0
-  print_every: 1000
-  reinit_method: ridge_eikonal
-  reinit_every: 2
-  reinit_eps_scale: 1.4
-  ridge_sigma_0: 3.0
-  phi_primary_transport: true
-  reproject_mode: consistent_gfm
-  # Per-term discretisation schemes (WIKI-X-023 NS decomposition map).
-  advection_scheme: fccd_flux        # ψ (CLS): FCCD face-centered (SP-D §7)
-  convection_scheme: fccd_flux       # u·∇u : FCCD face-centered
-  # Alternative: convection_scheme: uccd6 + uccd6_sigma for selective hyperviscosity
-  # uccd6_sigma: 1.0e-3
-  pressure_scheme: fvm_spsolve       # PPE  : sparse FVM direct solve
-  surface_tension_scheme: csf        # σκ∇ψ : balanced-force CSF
+  time:
+    final: 90.0
+    cfl: 0.10
+    print_every: 1000
+  reinitialization:
+    method: ridge_eikonal
+    every: 2
+    eps_scale: 1.4
+    ridge_sigma_0: 3.0
+  interface_tracking:
+    enabled: true
+    method: phi_primary
+  projection:
+    mode: consistent_gfm
+  schemes:
+    levelset_advection: fccd_flux
+    momentum_convection: fccd_flux
+    ppe: fvm_direct
+    surface_tension: csf
+    viscous_time: explicit
 
 output:
   dir: results/ch13_06_capwave_waterair_n128
   save_npz: true
+  snapshots:
+    interval: 9.0
   figures:
     - time_series: "deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)"
     - time_series: volume_conservation
