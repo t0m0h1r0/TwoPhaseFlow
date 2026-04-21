@@ -105,6 +105,7 @@ class TwoPhaseNSSolver:
         ridge_sigma_0: float = 3.0,
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
+        face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
@@ -133,6 +134,7 @@ class TwoPhaseNSSolver:
         self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
         self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
         self._kappa_max = float(kappa_max) if kappa_max is not None else None
+        self._face_flux_projection = bool(face_flux_projection)
         self._reinit_eps_scale = float(reinit_eps_scale)
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
@@ -350,6 +352,9 @@ class TwoPhaseNSSolver:
             ),
             convection_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
+            face_flux_projection=bool(
+                getattr(getattr(cfg, "run", g), "face_flux_projection", False)
             ),
             debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
         )
@@ -724,7 +729,9 @@ class TwoPhaseNSSolver:
                        xp.max(xp.abs(dp_dy - f_y / rho)))
         ))
         self._step_diag.record_bf_residual(_dbg_bf_res_max)
-        projected_on_faces = hasattr(self._div_op, "project")
+        projected_on_faces = (
+            self._face_flux_projection and hasattr(self._div_op, "project")
+        )
         if projected_on_faces:
             u, v = self._div_op.project(
                 [u_star, v_star],
