@@ -236,3 +236,4 @@ $$
 - [WIKI-T-038](../theory/WIKI-T-038.md): HFE curvature smoothing
 - [WIKI-X-004](WIKI-X-004.md): two-phase pressure instability survey
 - [WIKI-X-022](WIKI-X-022.md): 10-method role map for N-robust BF stack
+- [WIKI-X-025](WIKI-X-025.md): **Time-integration design for two-phase UCCD6-NS** — §3.2 below gives the BF PPE operator used by the Level-2 recommended integrator (AB2 advection + CN viscous + semi-implicit ST + BF projection).

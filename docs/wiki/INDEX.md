@@ -1,4 +1,4 @@
-# Wiki Index — 177 entries
+# Wiki Index — 178 entries
 
 ## Theory (62)
 
@@ -67,7 +67,7 @@
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
 | [WIKI-T-062](theory/WIKI-T-062.md) | UCCD6: Sixth-Order Upwind CCD with Order-Preserving Hyperviscosity |
 
-## Cross-Domain (24)
+## Cross-Domain (25)
 
 | REF-ID | Title |
 |--------|-------|
@@ -95,6 +95,7 @@
 | [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
 | [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 | [WIKI-X-024](cross-domain/WIKI-X-024.md) | Balanced-Force Design for Two-Phase UCCD6-NS (Surface Tension ↔ Pressure Gradient Consistency is the Primary Driver) |
+| [WIKI-X-025](cross-domain/WIKI-X-025.md) | Time Integration Design for Two-Phase UCCD6-NS (Capillary Wave Resolution, Semi-Implicit ST, BF Projection) |
 
 ## Experiment (29)
 
