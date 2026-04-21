@@ -38,10 +38,16 @@ if TYPE_CHECKING:
 
 # DO NOT DELETE — passed tests 2026-03-20
 # Superseded by: _CCDPPEBase._build_sparse_operator() in ccd_ppe_base.py
-# Retained for: FVM reference (used by legacy PPESolver, PPESolverLU)
-# Violation: PR-1 (FVM O(h²), not CCD)
+# Retained for: ch12+ integration (PPESolverFVMSpsolve per PR-2)
+# Note: PR-1 (CCD Primacy) is superseded by PR-2 (variable-density FVM for ch12+)
 class PPEBuilder:
-    """FVM sparse PPE matrix builder. Legacy — CCD solvers use Kronecker assembly.
+    """FVM sparse PPE matrix builder for ch12+ integration.
+
+    FVM O(h²) finite-difference Laplacian matrix assembly. Used by
+    PPESolverFVMSpsolve for non-uniform variable-density integration
+    where CCD Kronecker assembly is unavailable. Per PROJECT_RULES PR-2,
+    this is the mandate approach for ch12/ch13 experiments; CCD solvers
+    remain the default for ch11 component tests.
 
     Parameters
     ----------
