@@ -196,6 +196,40 @@ class Backend:
         x_moved = x_2d.reshape((n,) + batch_shape)
         return _np.moveaxis(x_moved, 0, axis)
 
+    def solve_tridiagonal_variable_batched(
+        self,
+        lower,
+        diag,
+        upper,
+        rhs,
+        axis: int,
+        max_stages: int | None = None,
+    ):
+        """Solve independent tridiagonal systems with per-line coefficients.
+
+        Parameters
+        ----------
+        lower, diag, upper : ndarray
+            Arrays matching ``rhs.shape``; coefficients vary across batch lines.
+        rhs : ndarray
+            Right-hand side.
+        axis : int
+            Solve direction.
+        max_stages : int, optional
+            GPU only.  Caps the number of PCR stages; ``None`` keeps the exact
+            ``ceil(log2(n))`` stage count.
+        """
+        from .linalg_backend import tridiag_variable_batched
+        return tridiag_variable_batched(
+            self.xp,
+            lower,
+            diag,
+            upper,
+            rhs,
+            axis,
+            max_stages=max_stages,
+        )
+
     def __repr__(self) -> str:
         return f"Backend(device='{self.device}')"
 
