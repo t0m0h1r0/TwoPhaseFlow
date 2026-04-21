@@ -30,7 +30,7 @@ from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
-from ..ppe.ppe_builder import PPEBuilder
+from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -166,10 +166,7 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
-        # Pre-build the fixed sparsity pattern for GPU CSR caching.
-        self._ppe_struct_rows, self._ppe_struct_cols, _ = self._ppb.build_structure()
-        self._ppe_csr_dev = None  # lazily built on first GPU solve
+        self._ppe_solver = PPESolverFVMSpsolve(self._backend, self._grid, bc_type=bc_type)
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
@@ -471,7 +468,7 @@ class TwoPhaseNSSolver:
         div = _h(du_dx) + _h(dv_dy)
 
         # Base projection (acceptance baseline).
-        phi_base = self._solve_ppe(div, rho)
+        phi_base = self._ppe_solver.solve(div, rho)
 
         def _apply_phi(phi_sol: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             dpx, _ = ccd.differentiate(phi_sol, 0)
@@ -505,7 +502,7 @@ class TwoPhaseNSSolver:
                 n_cross = len(self._reproj_iim.find_interface_crossings(phi_iface))
                 self._reproject_stats["iim_crossings_total"] += int(n_cross)
                 kappa0 = np.zeros_like(psi)
-                A_host = self._build_ppe_matrix(rho)
+                A_host = self._ppe_solver.get_matrix(rho)
                 dp0_x, _ = ccd.differentiate(phi_base, 0)
                 dp0_y, _ = ccd.differentiate(phi_base, 1)
                 delta_q = self._reproj_iim.compute_correction(
@@ -518,7 +515,7 @@ class TwoPhaseNSSolver:
                     dp_dx=_h(dp0_x),
                     dp_dy=_h(dp0_y),
                 ).reshape(psi.shape)
-                phi_iim = self._solve_ppe(div + delta_q, rho)
+                phi_iim = self._ppe_solver.solve(div + delta_q, rho)
                 u_iim, v_iim = _apply_phi(phi_iim)
                 div_iim = _div_l2(u_iim, v_iim)
                 self._reproject_stats["iim_div_base_sum"] += float(div_base)
@@ -532,7 +529,7 @@ class TwoPhaseNSSolver:
                 # Backtracking on jump correction strength (line-search style).
                 accepted_bt = False
                 for scale in (0.5, 0.25, 0.125):
-                    phi_bt = self._solve_ppe(div + scale * delta_q, rho)
+                    phi_bt = self._ppe_solver.solve(div + scale * delta_q, rho)
                     u_bt, v_bt = _apply_phi(phi_bt)
                     div_bt = _div_l2(u_bt, v_bt)
                     finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
@@ -869,7 +866,7 @@ class TwoPhaseNSSolver:
             df_y, _ = ccd.differentiate(f_y / rho, 1)
             rhs = rhs + df_x + df_y
         _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs)))) if self._debug_diag else 0.0
-        p = self._solve_ppe(rhs, rho)
+        p = self._ppe_solver.solve(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
         if not self._grid.uniform and self.bc_type == "wall":
@@ -905,41 +902,7 @@ class TwoPhaseNSSolver:
         return psi, u, v, p
 
     # ── private ───────────────────────────────────────────────────────────
-
-    def _solve_ppe(self, rhs, rho):
-        import scipy.sparse as sp
-        xp = self._backend.xp
-        n = self._ppb.n_dof
-
-        rhs_vec = xp.asarray(rhs).ravel().copy()
-        rhs_vec[self._ppb._pin_dof] = 0.0
-
-        # Unified path: build_values() is xp-native — returns device array on GPU,
-        # numpy array on CPU. _ppe_struct_rows/cols are similarly xp-typed
-        # (set once at init by build_structure() which calls the same build()).
-        # _ppe_csr_dev: legacy cache — no longer used.
-        data = self._ppb.build_values(rho)
-
-        if self._backend.is_gpu():
-            A = self._backend.sparse.csr_matrix(
-                (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
-            )
-            return self._backend.sparse_linalg.spsolve(A, rhs_vec).reshape(rho.shape)
-
-        A = sp.csr_matrix(
-            (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
-        )
-        rhs_host = np.asarray(self._backend.to_host(rhs_vec))
-        return xp.asarray(
-            self._backend.sparse_linalg.spsolve(A, rhs_host).reshape(rho.shape)
-        )
-
-    def _build_ppe_matrix(self, rho: np.ndarray):
-        import scipy.sparse as sp
-        triplet, A_shape = self._ppb.build(rho)
-        return sp.csr_matrix(
-            (triplet[0], (triplet[1], triplet[2])), shape=A_shape
-        )
+    # (PPE solve and matrix build delegated to self._ppe_solver —  see PPESolverFVMSpsolve)
 
 
 # ── IC normalisation helper ───────────────────────────────────────────────────
