@@ -21,13 +21,25 @@ from ..config import GridConfig
 from ..core.grid import Grid
 from ..core.grid_remap import build_grid_remapper
 from ..ccd.ccd_solver import CCDSolver
+from ..ccd.fccd import FCCDSolver
 from ..levelset.heaviside import apply_mass_correction
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.advection import DissipativeCCDAdvection
+from ..levelset.fccd_advection import FCCDLevelSetAdvection
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
+from ..levelset.transport_strategy import ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport
+from .step_diagnostics import IStepDiagnostics, NullStepDiagnostics, ActiveStepDiagnostics
+from .velocity_reprojector import (
+    IVelocityReprojector, LegacyReprojector, VariableDensityReprojector,
+    ConsistentGFMReprojector, ConsistentIIMReprojector
+)
+from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
+from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
+from .gradient_operator import IGradientOperator, CCDGradientOperator, FVMGradientOperator
 from ..levelset.curvature_filter import InterfaceLimitedFilter
-from ..ppe.ppe_builder import PPEBuilder
+from ..ns_terms.fccd_convection import FCCDConvectionTerm
+from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -86,6 +98,9 @@ class TwoPhaseNSSolver:
         kappa_max: float | None = None,
         dgr_phi_smooth_C: float = 1e-4,
         reinit_eps_scale: float = 1.0,
+        ridge_sigma_0: float = 3.0,
+        advection_scheme: str = "dissipative_ccd",
+        convection_scheme: str = "ccd",
         debug_diagnostics: bool = False,
     ) -> None:
         self.NX, self.NY = NX, NY
@@ -126,26 +141,6 @@ class TwoPhaseNSSolver:
         # Backward compatibility: old flag maps to variable-density-only mode.
         if self._reproject_variable_density and self._reproject_mode == "legacy":
             self._reproject_mode = "variable_density_only"
-        self._reproject_warned_fallback = False
-        self._reproject_warned_iim_fail = False
-        self._reproject_warned_iim_reject = False
-        self._reproject_stats = {
-            "calls": 0,
-            "iim_attempts": 0,
-            "iim_accepts": 0,
-            "iim_rejects": 0,
-            "iim_fails": 0,
-            "iim_reject_nonfinite": 0,
-            "iim_reject_divergence": 0,
-            "iim_crossings_total": 0,
-            "iim_crossings_accept": 0,
-            "iim_crossings_reject": 0,
-            "iim_div_base_sum": 0.0,
-            "iim_div_iim_sum": 0.0,
-            "iim_div_iim_accept_sum": 0.0,
-            "iim_div_iim_reject_sum": 0.0,
-            "iim_backtrack_accepts": 0,
-        }
 
         self._h = LX / NX
         self._eps = eps_factor * self._h
@@ -160,17 +155,56 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppb = PPEBuilder(self._backend, self._grid, bc_type=bc_type)
-        # Pre-build the fixed sparsity pattern for GPU CSR caching.
-        self._ppe_struct_rows, self._ppe_struct_cols, _ = self._ppb.build_structure()
-        self._ppe_csr_dev = None  # lazily built on first GPU solve
+        self._ppe_solver = PPESolverFVMSpsolve(self._backend, self._grid, bc_type=bc_type)
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
         eps_curv = self._make_eps_field() if self._use_local_eps and alpha_grid > 1.0 else self._eps
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
-        self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+
+        # Pressure gradient operator strategy (CCD vs FVM)
+        if not self._grid.uniform and bc_type == "wall":
+            self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
+        else:
+            self._grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+
+        # Advection / convection scheme selection (CHK-160 bridge for FCCD).
+        # One shared FCCDSolver reuses the CCD LU factorisation for both
+        # ψ advection and momentum convection — mirrors builder.py §"one
+        # factorisation, many calls".  All array ops stay on ``backend.xp``;
+        # no host round-trip is added on the hot path.
+        self._advection_scheme = str(advection_scheme)
+        self._convection_scheme = str(convection_scheme)
+        self._fccd_modes = {"fccd_nodal": "node", "fccd_flux": "flux"}
+        needs_fccd = (
+            self._advection_scheme in self._fccd_modes
+            or self._convection_scheme in self._fccd_modes
+        )
+        self._fccd = (
+            FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
+            if needs_fccd else None
+        )
+        if self._advection_scheme in self._fccd_modes:
+            # mass_correction stays off: the outer step() already applies
+            # w=4ψ(1-ψ) correction on ψ after psi_from_phi; enabling it here
+            # would run the same formula on φ (SDF-valued) under
+            # phi_primary_transport, where w goes negative in the liquid bulk
+            # and scrambles φ.
+            self._adv = FCCDLevelSetAdvection(
+                self._backend, self._grid, self._fccd,
+                mode=self._fccd_modes[self._advection_scheme],
+                mass_correction=False,
+            )
+        else:
+            self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
+        self._fccd_conv = (
+            FCCDConvectionTerm(
+                self._backend, self._fccd,
+                mode=self._fccd_modes[self._convection_scheme],
+            )
+            if self._convection_scheme in self._fccd_modes else None
+        )
         self._reconstruct_base = HeavisideInterfaceReconstructor(
             self._backend,
             ReconstructionConfig(
@@ -196,18 +230,67 @@ class TwoPhaseNSSolver:
             n_steps=reinit_steps, method=reinit_method,
             phi_smooth_C=dgr_phi_smooth_C,
             eps_scale=self._reinit_eps_scale,
+            sigma_0=float(ridge_sigma_0),
         )
+
+        # Level-set transport strategy (advection + reinit + redistancing)
+        if phi_primary_transport:
+            self._transport = PhiPrimaryTransport(
+                self._backend,
+                {
+                    "redist_every": phi_primary_redist_every,
+                    "clip_factor": phi_primary_clip_factor,
+                    "eps_scale": phi_primary_heaviside_eps_scale,
+                },
+                self._reconstruct_phi_primary,
+                self._adv,
+                self._reinit,
+                self._grid,
+            )
+        else:
+            self._transport = PsiDirectTransport(
+                self._backend,
+                self._adv,
+                self._reinit,
+                reinit_every=reinit_every,
+            )
+
         self.X, self.Y = self._grid.meshgrid()
 
-        self._debug_diag = debug_diagnostics
-        self._last_diag: dict = {}
+        # Step diagnostics strategy (Null Object pattern)
+        self._step_diag = (
+            ActiveStepDiagnostics() if debug_diagnostics else NullStepDiagnostics()
+        )
 
-        # Viscous term: CN (Heun predictor-corrector, O(Δt²)) or explicit FE
+        # Velocity reprojection strategy (after grid rebuild)
+        if self._reproject_mode == "legacy":
+            self._reprojector: IVelocityReprojector = LegacyReprojector()
+        elif self._reproject_mode == "variable_density_only":
+            self._reprojector = VariableDensityReprojector()
+        elif self._reproject_mode == "consistent_gfm":
+            self._reprojector = ConsistentGFMReprojector()
+        elif self._reproject_mode == "consistent_iim":
+            self._reprojector = ConsistentIIMReprojector(
+                self._reproj_iim,
+                self._reconstruct_base,
+            )
+        else:
+            raise ValueError(f"Unknown reproject_mode: {self._reproject_mode}")
+
+        # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = cn_viscous
         self._Re = Re
         if cn_viscous:
             from ..ns_terms.viscous import ViscousTerm
-            self._viscous = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
+            viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
+            self._viscous_predictor: IViscousPredictor = CNViscousPredictor(
+                self._backend, viscous_term
+            )
+        else:
+            self._viscous_predictor = ExplicitViscousPredictor(self._backend, Re=Re)
+
+        # Surface tension strategy (always SurfaceTensionForce; checks σ > 0 internally)
+        self._st_force: INSSurfaceTensionStrategy = SurfaceTensionForce(self._backend)
 
     # ── class-method constructors ─────────────────────────────────────────
 
@@ -253,6 +336,15 @@ class TwoPhaseNSSolver:
                 getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
             ),
             reinit_eps_scale=float(cfg.run.reinit_eps_scale),
+            ridge_sigma_0=float(
+                getattr(getattr(cfg, "run", g), "ridge_sigma_0", 3.0)
+            ),
+            advection_scheme=str(
+                getattr(getattr(cfg, "run", g), "advection_scheme", "dissipative_ccd")
+            ),
+            convection_scheme=str(
+                getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
             debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
         )
 
@@ -280,7 +372,7 @@ class TwoPhaseNSSolver:
     @property
     def reproject_stats(self) -> dict:
         """Return counters for reprojection mode diagnostics."""
-        return dict(self._reproject_stats)
+        return self._reprojector.stats
 
     def _make_eps_field(self):
         """ε(x) at each node — ξ空間で一定セル数の平滑化幅.
@@ -352,180 +444,15 @@ class TwoPhaseNSSolver:
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
         #    introduced by the remap.  Without this step the remapped velocity
         #    has O(h) divergence which drives exponential KE growth.
-        try:
-            u, v = self._reproject_velocity(
-                psi, u, v, rho_l=rho_l, rho_g=rho_g,
-            )
-        except TypeError:
-            # Backward compatibility for experiment monkey-patches that
-            # replace _reproject_velocity(psi, u, v) with a 3-arg lambda.
-            u, v = self._reproject_velocity(psi, u, v)
-
-        if not self._grid.uniform:
-            self._precompute_fvm_grad_spacing()
+        # Strategy pattern: reprojector encapsulates legacy/variable-density/IIM logic.
+        u, v = self._reprojector.reproject(
+            psi, u, v, self._ppe_solver, self._ccd, self._backend,
+            rho_l=rho_l, rho_g=rho_g,
+        )
 
         # Return device arrays — callers expect the same device type as input.
         xp = self._backend.xp
         return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
-
-    def _precompute_fvm_grad_spacing(self) -> None:
-        import numpy as _np
-        xp = self._backend.xp
-        self._d_face_grad: list = []
-        for ax in range(self._grid.ndim):
-            d = _np.diff(_np.asarray(self._grid.coords[ax]))
-            shape = [1] * self._grid.ndim
-            shape[ax] = -1
-            self._d_face_grad.append(xp.asarray(d.reshape(shape)))
-
-    def _fvm_pressure_grad(self, p: "array", ax: int) -> "array":
-        """Face-average gradient: J_face = 1/d_face, consistent with L_FVM and GFM."""
-        xp = self._backend.xp
-        d = self._d_face_grad[ax]
-        N = self._grid.N[ax]
-
-        def sl(start, stop):
-            s = [slice(None)] * self._grid.ndim
-            s[ax] = slice(start, stop)
-            return tuple(s)
-
-        g_face = (p[sl(1, N + 1)] - p[sl(0, N)]) / d
-        g = xp.zeros_like(p)
-        g[sl(1, N)] = 0.5 * (g_face[sl(0, N - 1)] + g_face[sl(1, N)])
-        return g
-
-    def _reproject_velocity(
-        self,
-        psi: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        rho_l: float | None = None,
-        rho_g: float | None = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Remove divergence from (u, v) via a pressure-Poisson correction."""
-        ccd = self._ccd
-        def _h(arr):
-            return np.asarray(self._backend.to_host(arr))
-        self._reproject_stats["calls"] += 1
-
-        use_varrho = self._reproject_mode in {"variable_density_only", "consistent_gfm"}
-
-        if use_varrho and rho_l is not None and rho_g is not None:
-            rho = rho_g + (rho_l - rho_g) * psi
-        else:
-            rho = np.ones_like(psi)
-        du_dx, _ = ccd.differentiate(u, 0)
-        dv_dy, _ = ccd.differentiate(v, 1)
-        div = _h(du_dx) + _h(dv_dy)
-
-        # Base projection (acceptance baseline).
-        phi_base = self._solve_ppe(div, rho)
-
-        def _apply_phi(phi_sol: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-            dpx, _ = ccd.differentiate(phi_sol, 0)
-            dpy, _ = ccd.differentiate(phi_sol, 1)
-            if self.bc_type == "wall":
-                ccd.enforce_wall_neumann(dpx, 0)
-                ccd.enforce_wall_neumann(dpy, 1)
-            if use_varrho and rho_l is not None and rho_g is not None:
-                uu = u - _h(dpx) / rho
-                vv = v - _h(dpy) / rho
-            else:
-                uu = u - _h(dpx)
-                vv = v - _h(dpy)
-            return uu, vv
-
-        def _div_l2(uu: np.ndarray, vv: np.ndarray) -> float:
-            duu, _ = ccd.differentiate(uu, 0)
-            dvv, _ = ccd.differentiate(vv, 1)
-            dd = _h(duu) + _h(dvv)
-            return float(np.sqrt(np.mean(dd * dd)))
-
-        u_base, v_base = _apply_phi(phi_base)
-        div_base = _div_l2(u_base, v_base)
-
-        if self._reproject_mode == "consistent_iim" and rho_l is not None and rho_g is not None:
-            self._reproject_stats["iim_attempts"] += 1
-            try:
-                # Reprojection-specific IIM: enforce interface consistency by
-                # adding jump-aware RHS correction (sigma=0, flux-jump driven).
-                phi_iface = np.asarray(self._backend.to_host(self._reconstruct_base.phi_from_psi(psi)))
-                n_cross = len(self._reproj_iim.find_interface_crossings(phi_iface))
-                self._reproject_stats["iim_crossings_total"] += int(n_cross)
-                kappa0 = np.zeros_like(psi)
-                A_host = self._build_ppe_matrix(rho)
-                dp0_x, _ = ccd.differentiate(phi_base, 0)
-                dp0_y, _ = ccd.differentiate(phi_base, 1)
-                delta_q = self._reproj_iim.compute_correction(
-                    A_host,
-                    phi_iface,
-                    kappa0,
-                    0.0,   # no Young-Laplace jump for reprojection potential
-                    rho,
-                    div,
-                    dp_dx=_h(dp0_x),
-                    dp_dy=_h(dp0_y),
-                ).reshape(psi.shape)
-                phi_iim = self._solve_ppe(div + delta_q, rho)
-                u_iim, v_iim = _apply_phi(phi_iim)
-                div_iim = _div_l2(u_iim, v_iim)
-                self._reproject_stats["iim_div_base_sum"] += float(div_base)
-                self._reproject_stats["iim_div_iim_sum"] += float(div_iim)
-                finite_ok = np.isfinite(u_iim).all() and np.isfinite(v_iim).all()
-                if finite_ok and div_iim <= 1.05 * max(div_base, 1e-30):
-                    self._reproject_stats["iim_accepts"] += 1
-                    self._reproject_stats["iim_crossings_accept"] += int(n_cross)
-                    self._reproject_stats["iim_div_iim_accept_sum"] += float(div_iim)
-                    return u_iim, v_iim
-                # Backtracking on jump correction strength (line-search style).
-                accepted_bt = False
-                for scale in (0.5, 0.25, 0.125):
-                    phi_bt = self._solve_ppe(div + scale * delta_q, rho)
-                    u_bt, v_bt = _apply_phi(phi_bt)
-                    div_bt = _div_l2(u_bt, v_bt)
-                    finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
-                    if finite_bt and div_bt <= 1.05 * max(div_base, 1e-30):
-                        self._reproject_stats["iim_accepts"] += 1
-                        self._reproject_stats["iim_crossings_accept"] += int(n_cross)
-                        self._reproject_stats["iim_div_iim_accept_sum"] += float(div_bt)
-                        self._reproject_stats["iim_backtrack_accepts"] += 1
-                        return u_bt, v_bt
-                    # Keep the best diagnostic value for rejected candidates.
-                    if np.isfinite(div_bt):
-                        div_iim = min(div_iim, div_bt)
-                    finite_ok = finite_ok or finite_bt
-                    accepted_bt = accepted_bt or (finite_bt and div_bt <= 1.05 * max(div_base, 1e-30))
-                if accepted_bt:
-                    return u_iim, v_iim
-                self._reproject_stats["iim_rejects"] += 1
-                self._reproject_stats["iim_crossings_reject"] += int(n_cross)
-                self._reproject_stats["iim_div_iim_reject_sum"] += float(div_iim)
-                if not finite_ok:
-                    self._reproject_stats["iim_reject_nonfinite"] += 1
-                else:
-                    self._reproject_stats["iim_reject_divergence"] += 1
-                if not self._reproject_warned_iim_reject:
-                    warnings.warn(
-                        "consistent_iim candidate rejected by acceptance gate; "
-                        f"div_base={div_base:.3e}, div_iim={div_iim:.3e}",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
-                    self._reproject_warned_iim_reject = True
-                return u_base, v_base
-            except Exception as e:
-                self._reproject_stats["iim_fails"] += 1
-                if not self._reproject_warned_iim_fail:
-                    warnings.warn(
-                        "consistent_iim reprojection failed; fallback to base "
-                        f"variable-density projection. cause={e}",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
-                    self._reproject_warned_iim_fail = True
-                return u_base, v_base
-
-        return u_base, v_base
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -704,27 +631,8 @@ class TwoPhaseNSSolver:
         v = xp.asarray(v)
 
         # ── 1. Advect + reinitialize ───────────────────────────────────
-        if self._phi_primary_transport:
-            # phi-primary transport path — fully device-resident.
-            # phi_from_psi/clip_phi/psi_from_phi/reinitialize/apply_mass_correction
-            # all accept xp arrays, so no D2H transfers are needed.
-            dV_pre = self._grid.cell_volumes()
-            M_pre = xp.sum(psi * dV_pre)
-            phi = self._reconstruct_phi_primary.phi_from_psi(psi)
-            phi = self._adv.advance(phi, [u, v], dt, clip_bounds=None)
-            phi = self._reconstruct_phi_primary.clip_phi(phi)
-            psi = self._reconstruct_phi_primary.psi_from_phi(phi)
-            # Re-distance/thickness correction on a controlled cadence to
-            # avoid over-sharpening into near-binary fields.
-            if step_index > 0 and (step_index % self._phi_primary_redist_every == 0):
-                psi = self._reinit.reinitialize(psi)
-                phi = self._reconstruct_phi_primary.phi_from_psi(psi)
-                psi = self._reconstruct_phi_primary.psi_from_phi(phi)
-            psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
-        else:
-            psi = xp.asarray(self._adv.advance(psi, [u, v], dt))
-        if (not self._phi_primary_transport) and self._reinit_every > 0 and step_index % self._reinit_every == 0:
-            psi = xp.asarray(self._reinit.reinitialize(psi))
+        # Strategy pattern: transport encapsulates phi-primary vs psi-direct logic
+        psi = self._transport.advance(psi, [u, v], dt, step_index=step_index)
 
         # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
         # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
@@ -751,24 +659,16 @@ class TwoPhaseNSSolver:
             mu_field = mu  # scalar or pre-computed array
 
         # ── 2. Curvature + balanced-force CSF ──────────────────────────
-        _dbg_kappa_max = 0.0
-        if sigma > 0.0:
-            kappa_raw = self._curv.compute(psi)
-            kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
-            if self._kappa_max is not None:
-                kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-            if self._debug_diag:
-                _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
-            if not self._grid.uniform and self.bc_type == "wall":
-                dpsi_dx = self._fvm_pressure_grad(psi, 0)
-                dpsi_dy = self._fvm_pressure_grad(psi, 1)
-            else:
-                dpsi_dx, _ = ccd.differentiate(psi, 0)
-                dpsi_dy, _ = ccd.differentiate(psi, 1)
-            f_x = sigma * kappa * dpsi_dx
-            f_y = sigma * kappa * dpsi_dy
-        else:
-            f_x = f_y = xp.zeros_like(psi)
+        # Compute curvature (used for diagnostics + surface tension force)
+        kappa_raw = self._curv.compute(psi)
+        kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
+        if self._kappa_max is not None:
+            kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
+        _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
+        self._step_diag.record_kappa(_dbg_kappa_max)
+
+        # Strategy pattern: surface tension force encapsulates σ > 0 check
+        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd)
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)
@@ -776,30 +676,27 @@ class TwoPhaseNSSolver:
         dv_dx, dv_xx = ccd.differentiate(v, 0)
         dv_dy, dv_yy = ccd.differentiate(v, 1)
 
-        conv_u = -(u * du_dx + v * du_dy)
-        conv_v = -(u * dv_dx + v * dv_dy)
+        # Momentum convection: default centred CCD, or FCCD (SP-D §6/§7)
+        # when the user opts in. Both return −(u·∇)u componentwise, so the
+        # AB2 buffer shape and later viscous/buoyancy arithmetic are
+        # unchanged (CHK-158 V9). No D2H is added by this dispatch.
+        if self._fccd_conv is not None:
+            _conv = self._fccd_conv.compute([u, v])
+            conv_u = _conv[0]
+            conv_v = _conv[1]
+        else:
+            conv_u = -(u * du_dx + v * du_dy)
+            conv_v = -(u * dv_dx + v * dv_dy)
 
         # Buoyancy (applied to explicit RHS before viscous step)
         buoy_v = xp.zeros_like(v)
         if g_acc != 0.0:
             buoy_v = -(rho - rho_ref) / rho * g_acc
 
-        if self._cn_viscous:
-            # CN viscous (Heun predictor-corrector, O(Δt²), explicit but
-            # trapezoid-averaged → relaxed CFL vs forward Euler).
-            # explicit_rhs = rho * (convection + buoyancy) per component
-            explicit_rhs = [rho * conv_u, rho * (conv_v + buoy_v)]
-            vel_star = self._viscous.apply_cn_predictor(
-                [u, v], explicit_rhs, mu_field, rho, ccd, dt,
-            )
-            u_star = xp.asarray(vel_star[0])
-            v_star = xp.asarray(vel_star[1])
-        else:
-            # Original explicit forward-Euler viscous
-            visc_u = (mu_field / rho) * (du_xx + du_yy)
-            visc_v = (mu_field / rho) * (dv_xx + dv_yy)
-            u_star = u + dt * (conv_u + visc_u)
-            v_star = v + dt * (conv_v + visc_v + buoy_v)
+        # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
+        u_star, v_star = self._viscous_predictor.predict(
+            u, v, conv_u, conv_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
+        )
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
 
@@ -807,82 +704,37 @@ class TwoPhaseNSSolver:
         du_s_dx, _ = ccd.differentiate(u_star, 0)
         dv_s_dy, _ = ccd.differentiate(v_star, 1)
         rhs = (du_s_dx + dv_s_dy) / dt
-        if sigma > 0.0:
-            df_x, _ = ccd.differentiate(f_x / rho, 0)
-            df_y, _ = ccd.differentiate(f_y / rho, 1)
-            rhs = rhs + df_x + df_y
-        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs)))) if self._debug_diag else 0.0
-        p = self._solve_ppe(rhs, rho)
+        # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
+        df_x, _ = ccd.differentiate(f_x / rho, 0)
+        df_y, _ = ccd.differentiate(f_y / rho, 1)
+        rhs = rhs + df_x + df_y
+        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
+        self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
+        p = self._ppe_solver.solve(rhs, rho)
 
         # ── 5. Corrector ───────────────────────────────────────────────
-        if not self._grid.uniform and self.bc_type == "wall":
-            dp_dx = self._fvm_pressure_grad(p, 0)
-            dp_dy = self._fvm_pressure_grad(p, 1)
-        else:
-            dp_dx, _ = ccd.differentiate(p, 0)
-            dp_dy, _ = ccd.differentiate(p, 1)
-            if self.bc_type == "wall":
-                ccd.enforce_wall_neumann(dp_dx, 0)
-                ccd.enforce_wall_neumann(dp_dy, 1)
-        _dbg_bf_res_max = 0.0
-        if self._debug_diag:
-            _dbg_bf_res_max = float(self._backend.to_host(
-                xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
-                           xp.max(xp.abs(dp_dy - f_y / rho)))
-            ))
+        # Strategy pattern: gradient operator encapsulates CCD vs FVM logic
+        dp_dx = self._grad_op.gradient(p, 0)
+        dp_dy = self._grad_op.gradient(p, 1)
+        _dbg_bf_res_max = float(self._backend.to_host(
+            xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
+                       xp.max(xp.abs(dp_dy - f_y / rho)))
+        ))
+        self._step_diag.record_bf_residual(_dbg_bf_res_max)
         u = u_star - dt / rho * dp_dx + dt * f_x / rho
         v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
-        if self._debug_diag:
-            _du_dx2, _ = ccd.differentiate(u, 0)
-            _dv_dy2, _ = ccd.differentiate(v, 1)
-            _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
-            self._last_diag = {
-                "kappa_max": _dbg_kappa_max,
-                "ppe_rhs_max": _dbg_ppe_rhs_max,
-                "bf_residual_max": _dbg_bf_res_max,
-                "div_u_max": _dbg_div_u_max,
-            }
+        _du_dx2, _ = ccd.differentiate(u, 0)
+        _dv_dy2, _ = ccd.differentiate(v, 1)
+        _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
+        self._step_diag.record_div_u(_dbg_div_u_max)
+
         return psi, u, v, p
 
     # ── private ───────────────────────────────────────────────────────────
-
-    def _solve_ppe(self, rhs, rho):
-        import scipy.sparse as sp
-        xp = self._backend.xp
-        n = self._ppb.n_dof
-
-        rhs_vec = xp.asarray(rhs).ravel().copy()
-        rhs_vec[self._ppb._pin_dof] = 0.0
-
-        # Unified path: build_values() is xp-native — returns device array on GPU,
-        # numpy array on CPU. _ppe_struct_rows/cols are similarly xp-typed
-        # (set once at init by build_structure() which calls the same build()).
-        # _ppe_csr_dev: legacy cache — no longer used.
-        data = self._ppb.build_values(rho)
-
-        if self._backend.is_gpu():
-            A = self._backend.sparse.csr_matrix(
-                (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
-            )
-            return self._backend.sparse_linalg.spsolve(A, rhs_vec).reshape(rho.shape)
-
-        A = sp.csr_matrix(
-            (data, (self._ppe_struct_rows, self._ppe_struct_cols)), shape=(n, n)
-        )
-        rhs_host = np.asarray(self._backend.to_host(rhs_vec))
-        return xp.asarray(
-            self._backend.sparse_linalg.spsolve(A, rhs_host).reshape(rho.shape)
-        )
-
-    def _build_ppe_matrix(self, rho: np.ndarray):
-        import scipy.sparse as sp
-        triplet, A_shape = self._ppb.build(rho)
-        return sp.csr_matrix(
-            (triplet[0], (triplet[1], triplet[2])), shape=A_shape
-        )
+    # (PPE solve and matrix build delegated to self._ppe_solver —  see PPESolverFVMSpsolve)
 
 
 # ── IC normalisation helper ───────────────────────────────────────────────────
@@ -1036,8 +888,9 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             diag.X = np.asarray(_bk.to_host(solver.X))
             diag.Y = np.asarray(_bk.to_host(solver.Y))
         diag.collect(t, psi, u, v, p, dV=dV_dev)
-        if solver._debug_diag and solver._last_diag:
-            dbg_history.append({"t": t, "step": step, **solver._last_diag})
+        dbg_entry = solver._step_diag.last
+        if dbg_entry:
+            dbg_history.append({"t": t, "step": step, **dbg_entry})
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             _to_h = lambda a: np.asarray(_bk.to_host(a))
@@ -1058,8 +911,8 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         if step % cfg.run.print_every == 0 or step <= 2:
             ke = diag.last("kinetic_energy", 0.0)
             print(f"  step={step:5d}  t={t:.4f}  dt={dt:.5f}  KE={ke:.3e}")
-            if solver._debug_diag and solver._last_diag:
-                d = solver._last_diag
+            d = solver._step_diag.last
+            if d:
                 print(f"          kappa_max={d['kappa_max']:.3e}  ppe_rhs={d['ppe_rhs_max']:.3e}"
                       f"  bf_res={d['bf_residual_max']:.3e}  div_u={d['div_u_max']:.3e}")
 

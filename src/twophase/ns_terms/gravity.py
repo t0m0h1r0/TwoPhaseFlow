@@ -30,6 +30,7 @@ from .interfaces import INSTerm
 
 if TYPE_CHECKING:
     from ..backend import Backend
+    from .context import NSComputeContext
 
 
 class GravityTerm(INSTerm):
@@ -49,19 +50,33 @@ class GravityTerm(INSTerm):
         # Gravity axis: last spatial axis (y in 2-D, z in 3-D)
         self.grav_axis = ndim - 1
 
-    def compute(self, rho, vel_shape) -> List:
+    def compute(self, ctx_or_rho, vel_shape=None) -> List:
         """Return the gravitational acceleration for each velocity component.
+
+        Supports both new (ctx) and legacy (rho, vel_shape) signatures.
 
         Parameters
         ----------
-        rho       : density field, shape ``grid.shape``
-        vel_shape : shape of a single velocity component (= grid.shape)
+        ctx_or_rho : NSComputeContext or ndarray
+            Either NSComputeContext (new) or rho field (legacy)
+        vel_shape : tuple, optional
+            Only used with legacy signature
 
         Returns
         -------
         grav : list of arrays, one per dimension.
                All-zero except the gravity axis which contains −ρ̃/Fr².
         """
+        # Dispatch based on argument type
+        if vel_shape is not None:
+            # Legacy signature: compute(rho, vel_shape)
+            rho = ctx_or_rho
+        else:
+            # New signature: compute(ctx)
+            ctx = ctx_or_rho
+            rho = ctx.rho
+            vel_shape = rho.shape
+
         xp = self.xp
         grav = [xp.zeros(vel_shape) for _ in range(self.ndim)]
         # Gravity force on velocity: ρ̃ a = ρ̃ (−ẑ/Fr²)

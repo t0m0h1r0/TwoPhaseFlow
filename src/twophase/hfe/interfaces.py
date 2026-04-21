@@ -54,3 +54,25 @@ class IFieldExtension(ABC):
             Extended field. Equals field_data in the source phase;
             smoothly extended in the target phase.
         """
+
+    def compute_normal(self, phi: "array"):
+        """Optionally compute interface normal from level-set.
+
+        Default implementation returns None (caller must provide n_hat to extend()).
+
+        Parameters
+        ----------
+        phi : array
+            Signed-distance function
+
+        Returns
+        -------
+        n_hat : None or tuple/list of arrays
+            Optionally pre-computed normals (∇φ/|∇φ|)
+        """
+        return None
+
+    @property
+    def is_null_extender(self) -> bool:
+        """Return True if this is a no-op null extender, False otherwise."""
+        return False

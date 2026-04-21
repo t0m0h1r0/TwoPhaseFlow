@@ -99,7 +99,7 @@ class TwoPhaseSimulation:
         obj._ppe_rhs_gfm   = c.ppe_rhs_gfm  # None when CSF mode
         obj._field_ext     = c.field_extender  # NullFieldExtender when disabled
         obj._needs_phi     = (c.field_extender is not None
-                              and not isinstance(c.field_extender, NullFieldExtender)
+                              and not c.field_extender.is_null_extender
                               ) or (c.ppe_rhs_gfm is not None)
 
         # 状態変数

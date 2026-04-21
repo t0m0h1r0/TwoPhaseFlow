@@ -94,8 +94,14 @@ class RunCfg:
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
     kappa_max: float | None = None  # curvature cap (None = unlimited)
-    reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid' to override
+    reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid'/'ridge_eikonal'
     dgr_phi_smooth_C: float = 1e-4   # CCD Laplacian smoothing on φ_sdf in DGR reinit
+    ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
+    # Advection / convection schemes — bridged from SimulationBuilder (CHK-158).
+    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
+    # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
+    advection_scheme: str = "dissipative_ccd"
+    convection_scheme: str = "ccd"
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
 
@@ -326,6 +332,10 @@ def _resolve_surface_tension(
     return 0.0 if sigma is None else sigma
 
 
+_ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
+_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux")
+
+
 def _parse_run(d: dict) -> RunCfg:
     snap_raw = d.get("snap_times", [])
     if snap_raw is None:
@@ -334,6 +344,21 @@ def _parse_run(d: dict) -> RunCfg:
         raise ValueError(
             "run: 'cfl' と 'dt_fixed' は排他です。どちらか一方のみ設定してください。"
         )
+    advection_scheme = str(d.get("advection_scheme", "dissipative_ccd"))
+    if advection_scheme not in _ADVECTION_SCHEMES:
+        raise ValueError(
+            f"run.advection_scheme must be one of {_ADVECTION_SCHEMES}, "
+            f"got {advection_scheme!r}"
+        )
+    convection_scheme = str(d.get("convection_scheme", "ccd"))
+    if convection_scheme not in _CONVECTION_SCHEMES:
+        raise ValueError(
+            f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
+            f"got {convection_scheme!r}"
+        )
+    ridge_sigma_0 = float(d.get("ridge_sigma_0", 3.0))
+    if ridge_sigma_0 <= 0.0:
+        raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
     return RunCfg(
         T_final=_opt_float(d.get("T_final")),
         max_steps=int(d["max_steps"]) if "max_steps" in d else None,
@@ -353,6 +378,9 @@ def _parse_run(d: dict) -> RunCfg:
         kappa_max=_opt_float(d.get("kappa_max")),
         reinit_method=d.get("reinit_method") or None,
         dgr_phi_smooth_C=float(d.get("dgr_phi_smooth_C", 1e-4)),
+        ridge_sigma_0=ridge_sigma_0,
+        advection_scheme=advection_scheme,
+        convection_scheme=convection_scheme,
         debug_diagnostics=bool(d.get("debug_diagnostics", False)),
     )
 
