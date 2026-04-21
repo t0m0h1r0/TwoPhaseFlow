@@ -97,11 +97,16 @@ class RunCfg:
     reinit_method: str | None = None  # None → auto (DGR); 'split'/'dgr'/'hybrid'/'ridge_eikonal'
     dgr_phi_smooth_C: float = 1e-4   # CCD Laplacian smoothing on φ_sdf in DGR reinit
     ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
-    # Advection / convection schemes — bridged from SimulationBuilder (CHK-158).
+    # Stage-wise numerical schemes — bridged from SimulationBuilder (CHK-158)
+    # and ch12/ch13 PPE policy.
     # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
     # convection_scheme: momentum    — 'ccd'             | 'fccd_nodal' | 'fccd_flux'
+    # ppe_solver       : pressure    — 'fvm_matrixfree'  | 'fvm_spsolve'
+    # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
+    ppe_solver: str = "fvm_matrixfree"
+    viscous_time_scheme: str = "explicit"
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     debug_diagnostics: bool = False  # record bf_residual_max/div_u_max/kappa_max/ppe_rhs_max per step
 
@@ -352,6 +357,8 @@ _REINIT_METHODS = (
 _REPROJECT_MODES = (
     "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
 )
+_PPE_SCHEMES = ("fvm_matrixfree", "fvm_spsolve")
+_VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 
 
 def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
@@ -390,6 +397,26 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
             f"run.convection_scheme must be one of {_CONVECTION_SCHEMES}, "
             f"got {convection_scheme!r}"
         )
+    ppe_solver = str(
+        schemes.get("ppe", schemes.get(
+            "pressure_poisson", d.get("ppe_solver", "fvm_matrixfree")
+        ))
+    )
+    if ppe_solver not in _PPE_SCHEMES:
+        raise ValueError(
+            f"run.schemes.ppe must be one of {_PPE_SCHEMES}, got {ppe_solver!r}"
+        )
+    if "viscous_time" in schemes or "viscous" in schemes:
+        viscous_time_scheme = str(schemes.get("viscous_time", schemes.get("viscous")))
+    else:
+        viscous_time_scheme = (
+            "crank_nicolson" if bool(d.get("cn_viscous", False)) else "explicit"
+        )
+    if viscous_time_scheme not in _VISCOUS_TIME_SCHEMES:
+        raise ValueError(
+            "run.schemes.viscous_time must be one of "
+            f"{_VISCOUS_TIME_SCHEMES}, got {viscous_time_scheme!r}"
+        )
     reproject_mode = _normalize_reproject_mode(
         projection.get("mode", d.get("reproject_mode", "legacy"))
     )
@@ -411,7 +438,7 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         reinit_eps_scale=float(reinit.get("eps_scale", d.get("reinit_eps_scale", 1.0))),
         print_every=int(d.get("print_every", 100)),
         dt_fixed=_opt_float(d.get("dt_fixed")),
-        cn_viscous=bool(d.get("cn_viscous", False)),
+        cn_viscous=(viscous_time_scheme == "crank_nicolson"),
         reinit_every=int(reinit.get("every", d.get("reinit_every", 2))),
         reproject_mode=reproject_mode,
         phi_primary_transport=_parse_transport_primary(transport, d),
@@ -435,6 +462,8 @@ def _parse_run(d: dict, output: dict | None = None) -> RunCfg:
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
+        ppe_solver=ppe_solver,
+        viscous_time_scheme=viscous_time_scheme,
         face_flux_projection=bool(
             projection.get("face_flux_projection", d.get("face_flux_projection", False))
         ),

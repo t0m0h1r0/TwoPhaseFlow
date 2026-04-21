@@ -48,6 +48,8 @@ run:
   schemes:
     levelset_advection: fccd_flux
     momentum_convection: fccd_flux
+    ppe: fvm_matrixfree
+    viscous_time: explicit
   debug:
     step_diagnostics: true
 

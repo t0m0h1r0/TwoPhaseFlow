@@ -44,6 +44,7 @@ from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.context import NSComputeContext
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
+from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -105,6 +106,7 @@ class TwoPhaseNSSolver:
         ridge_sigma_0: float = 3.0,
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
+        ppe_solver: str = "fvm_matrixfree",
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
@@ -155,9 +157,19 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppe_solver = PPESolverFVMMatrixFree(
-            self._backend, None, self._grid, bc_type=bc_type,
-        )
+        self._ppe_solver_name = str(ppe_solver)
+        if self._ppe_solver_name == "fvm_matrixfree":
+            self._ppe_solver = PPESolverFVMMatrixFree(
+                self._backend, None, self._grid, bc_type=bc_type,
+            )
+        elif self._ppe_solver_name == "fvm_spsolve":
+            self._ppe_solver = PPESolverFVMSpsolve(
+                self._backend, self._grid, bc_type=bc_type,
+            )
+        else:
+            raise ValueError(
+                f"Unsupported ppe_solver='{ppe_solver}'. Use fvm_matrixfree|fvm_spsolve."
+            )
         self._p_prev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
@@ -365,6 +377,9 @@ class TwoPhaseNSSolver:
             ),
             convection_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
+            ),
+            ppe_solver=str(
+                getattr(getattr(cfg, "run", g), "ppe_solver", "fvm_matrixfree")
             ),
             face_flux_projection=bool(
                 getattr(getattr(cfg, "run", g), "face_flux_projection", False)

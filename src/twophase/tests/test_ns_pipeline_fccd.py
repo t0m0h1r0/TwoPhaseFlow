@@ -105,6 +105,17 @@ def test_pipeline_uses_matrixfree_fvm_ppe():
     assert isinstance(solver._ppe_solver, PPESolverFVMMatrixFree)
 
 
+def test_pipeline_can_select_direct_fvm_ppe():
+    """Stage 4 PPE direct sparse solve remains selectable for comparisons."""
+    from twophase.ppe.fvm_spsolve import PPESolverFVMSpsolve
+
+    solver = TwoPhaseNSSolver(
+        N, N, L, L, bc_type="wall",
+        ppe_solver="fvm_spsolve",
+    )
+    assert isinstance(solver._ppe_solver, PPESolverFVMSpsolve)
+
+
 def test_surface_tension_uses_projector_gradient_operator():
     """R-1.5: CSF ∇ψ uses the same gradient operator as pressure correction."""
     solver = TwoPhaseNSSolver(
@@ -200,6 +211,8 @@ def test_from_config_threads_fccd_keys():
             "schemes": {
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_flux",
+                "ppe": "fvm_spsolve",
+                "viscous_time": "crank_nicolson",
             },
             "reinitialization": {
                 "method": "ridge_eikonal",
@@ -214,5 +227,7 @@ def test_from_config_threads_fccd_keys():
     solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "fccd_flux"
+    assert solver._ppe_solver_name == "fvm_spsolve"
+    assert solver._cn_viscous is True
     assert solver._fccd is not None
     assert solver._fccd_conv is not None

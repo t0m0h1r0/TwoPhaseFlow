@@ -105,6 +105,8 @@ def test_structured_ch13_yaml_sections_round_trip():
             "schemes": {
                 "levelset_advection": "fccd_flux",
                 "momentum_convection": "fccd_nodal",
+                "ppe": "fvm_spsolve",
+                "viscous_time": "crank_nicolson",
             },
             "debug": {"step_diagnostics": True},
         },
@@ -123,6 +125,9 @@ def test_structured_ch13_yaml_sections_round_trip():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "fccd_nodal"
+    assert cfg.run.ppe_solver == "fvm_spsolve"
+    assert cfg.run.viscous_time_scheme == "crank_nicolson"
+    assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True
 
 
@@ -130,6 +135,20 @@ def test_invalid_structured_reinit_method_rejected():
     with pytest.raises(ValueError, match="reinitialization.method"):
         ExperimentConfig.from_dict(_minimal({
             "reinitialization": {"method": "bogus"},
+        }))
+
+
+def test_invalid_structured_ppe_scheme_rejected():
+    with pytest.raises(ValueError, match="schemes.ppe"):
+        ExperimentConfig.from_dict(_minimal({
+            "schemes": {"ppe": "ccd_lu"},
+        }))
+
+
+def test_invalid_structured_viscous_time_scheme_rejected():
+    with pytest.raises(ValueError, match="schemes.viscous_time"):
+        ExperimentConfig.from_dict(_minimal({
+            "schemes": {"viscous_time": "rk4"},
         }))
 
 

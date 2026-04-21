@@ -60,15 +60,22 @@ class PPESolverFVMSpsolve(IPPESolver):
     ):
         self.backend = backend
         self.xp = backend.xp
+        self.bc_type = bc_type
+        self.bc_spec = bc_spec
         self.ppb = PPEBuilder(backend, grid, bc_type, bc_spec)
+        self._refresh_structure(grid)
 
+    def _refresh_structure(self, grid: "Grid") -> None:
         # Pre-compute sparse structure (CSR row/col indices) once
         # This avoids rebuilding on every solve when only values change
-        import scipy.sparse as sp
         dummy_rho = np.ones(grid.shape, dtype=np.float64)
         triplet, shape = self.ppb.build(dummy_rho)
         self._ppe_struct_rows = triplet[1]  # row indices
         self._ppe_struct_cols = triplet[2]  # col indices
+
+    def update_grid(self, grid: "Grid") -> None:
+        self.ppb = PPEBuilder(self.backend, grid, self.bc_type, self.bc_spec)
+        self._refresh_structure(grid)
 
     def solve(self, rhs: np.ndarray, rho: np.ndarray, dt: float = 0.0, p_init=None) -> np.ndarray:
         """Solve the variable-density PPE via sparse FVM + direct solve.
