@@ -11,7 +11,9 @@ from twophase.simulation.config_io import ExperimentConfig
 
 def _deep_update(base: dict, patch: dict) -> dict:
     for key, value in patch.items():
-        if isinstance(value, dict) and isinstance(base.get(key), dict):
+        if key == "solver":
+            base[key] = value
+        elif isinstance(value, dict) and isinstance(base.get(key), dict):
             _deep_update(base[key], value)
         else:
             base[key] = value
@@ -148,12 +150,7 @@ def test_readable_structured_sections_round_trip():
                 "pressure_projection": {
                     "mode": "consistent_iim",
                     "face_flux_projection": True,
-                    "solver": {
-                        "kind": "direct",
-                        "method": "gmres",
-                        "preconditioner": "none",
-                        "max_iterations": 50,
-                    },
+                    "solver": {"kind": "direct"},
                 },
             },
         },
@@ -179,8 +176,9 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.uccd6_sigma == 2.0e-3
     assert cfg.run.ppe_solver == "fvm_direct"
     assert cfg.run.pressure_scheme == "fvm_spsolve"
+    assert cfg.run.ppe_iteration_method == "none"
     assert cfg.run.ppe_preconditioner == "none"
-    assert cfg.run.ppe_max_iterations == 50
+    assert cfg.run.ppe_max_iterations == 0
     assert cfg.run.surface_tension_scheme == "none"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
@@ -218,7 +216,22 @@ def test_invalid_ppe_iteration_method_rejected():
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
                 "terms": {
-                    "pressure_projection": {"solver": {"method": "lgmres"}},
+                    "pressure_projection": {
+                        "solver": {"kind": "iterative", "method": "lgmres"},
+                    },
+                },
+            },
+        }))
+
+
+def test_direct_ppe_rejects_iterative_options():
+    with pytest.raises(ValueError, match="does not accept iterative options"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "terms": {
+                    "pressure_projection": {
+                        "solver": {"kind": "direct", "method": "gmres"},
+                    },
                 },
             },
         }))

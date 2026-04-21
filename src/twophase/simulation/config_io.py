@@ -472,6 +472,15 @@ def _parse_run(
     )
     ppe_solver = "fvm_iterative" if ppe_kind == "iterative" else "fvm_direct"
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
+    (
+        ppe_iteration_method,
+        ppe_tolerance,
+        ppe_max_iterations,
+        ppe_restart,
+        ppe_preconditioner,
+        ppe_pcr_stages,
+        ppe_c_tau,
+    ) = _parse_ppe_solver_options(ppe_kind, ppe_solver_cfg)
     surface_tension_scheme = _validate_choice(
         surface_tension["model"], _SURFACE_TENSION_SCHEMES,
         "numerics.terms.surface_tension.model",
@@ -500,38 +509,6 @@ def _parse_run(
         "numerics.terms.viscosity.time",
     )
     reproject_mode = _parse_projection_mode(projection["mode"])
-    ppe_iteration_method = _validate_choice(
-        ppe_solver_cfg.get("method", "gmres"), _PPE_ITERATION_METHODS,
-        "numerics.terms.pressure_projection.solver.method",
-    )
-    ppe_preconditioner = _validate_choice(
-        ppe_solver_cfg.get("preconditioner", "line_pcr"),
-        _PPE_PRECONDITIONERS,
-        "numerics.terms.pressure_projection.solver.preconditioner",
-    )
-    ppe_tolerance = float(ppe_solver_cfg.get("tolerance", 1.0e-8))
-    if ppe_tolerance <= 0.0:
-        raise ValueError("numerics.terms.pressure_projection.solver.tolerance must be > 0")
-    ppe_max_iterations = int(ppe_solver_cfg.get("max_iterations", 500))
-    if ppe_max_iterations <= 0:
-        raise ValueError(
-            "numerics.terms.pressure_projection.solver.max_iterations must be > 0"
-        )
-    ppe_restart = (
-        int(ppe_solver_cfg["restart"]) if "restart" in ppe_solver_cfg else None
-    )
-    if ppe_restart is not None and ppe_restart <= 0:
-        raise ValueError("numerics.terms.pressure_projection.solver.restart must be > 0")
-    ppe_pcr_stages = (
-        int(ppe_solver_cfg["pcr_stages"]) if "pcr_stages" in ppe_solver_cfg else None
-    )
-    if ppe_pcr_stages is not None and ppe_pcr_stages <= 0:
-        raise ValueError(
-            "numerics.terms.pressure_projection.solver.pcr_stages must be > 0"
-        )
-    ppe_c_tau = float(ppe_solver_cfg.get("c_tau", 2.0))
-    if ppe_c_tau <= 0.0:
-        raise ValueError("numerics.terms.pressure_projection.solver.c_tau must be > 0")
     reinit_method = reinit["method"]
     if reinit_method is not None and reinit_method not in _REINIT_METHODS:
         raise ValueError(
@@ -605,6 +582,59 @@ def _validate_choice(raw: Any, choices: tuple[str, ...], path: str) -> str:
     if value not in choices:
         raise ValueError(f"{path} must be one of {choices}, got {value!r}")
     return value
+
+
+def _parse_ppe_solver_options(kind: str, solver_cfg: dict) -> tuple[
+    str, float, int, int | None, str, int | None, float
+]:
+    """Parse direct-vs-iterative PPE solver options without mixing semantics."""
+    iterative_keys = {
+        "method", "tolerance", "max_iterations", "restart",
+        "preconditioner", "pcr_stages", "c_tau",
+    }
+    if kind == "direct":
+        present = sorted(iterative_keys.intersection(solver_cfg))
+        if present:
+            raise ValueError(
+                "numerics.terms.pressure_projection.solver.kind='direct' "
+                f"does not accept iterative options: {present}"
+            )
+        return "none", 0.0, 0, None, "none", None, 0.0
+
+    ppe_iteration_method = _validate_choice(
+        solver_cfg.get("method", "gmres"), _PPE_ITERATION_METHODS,
+        "numerics.terms.pressure_projection.solver.method",
+    )
+    ppe_preconditioner = _validate_choice(
+        solver_cfg.get("preconditioner", "line_pcr"),
+        _PPE_PRECONDITIONERS,
+        "numerics.terms.pressure_projection.solver.preconditioner",
+    )
+    ppe_tolerance = float(solver_cfg.get("tolerance", 1.0e-8))
+    if ppe_tolerance <= 0.0:
+        raise ValueError("numerics.terms.pressure_projection.solver.tolerance must be > 0")
+    ppe_max_iterations = int(solver_cfg.get("max_iterations", 500))
+    if ppe_max_iterations <= 0:
+        raise ValueError(
+            "numerics.terms.pressure_projection.solver.max_iterations must be > 0"
+        )
+    ppe_restart = int(solver_cfg["restart"]) if "restart" in solver_cfg else None
+    if ppe_restart is not None and ppe_restart <= 0:
+        raise ValueError("numerics.terms.pressure_projection.solver.restart must be > 0")
+    ppe_pcr_stages = (
+        int(solver_cfg["pcr_stages"]) if "pcr_stages" in solver_cfg else None
+    )
+    if ppe_pcr_stages is not None and ppe_pcr_stages <= 0:
+        raise ValueError(
+            "numerics.terms.pressure_projection.solver.pcr_stages must be > 0"
+        )
+    ppe_c_tau = float(solver_cfg.get("c_tau", 2.0))
+    if ppe_c_tau <= 0.0:
+        raise ValueError("numerics.terms.pressure_projection.solver.c_tau must be > 0")
+    return (
+        ppe_iteration_method, ppe_tolerance, ppe_max_iterations, ppe_restart,
+        ppe_preconditioner, ppe_pcr_stages, ppe_c_tau,
+    )
 
 
 def _parse_interface_width_mode(
