@@ -117,7 +117,10 @@ class PPESolverIIM(_CCDPPEBase):
     # ── Jump Decomposition backend ───────────────────────────────────────
 
     def _solve_decomp(self, rhs, rho, dt, p_init, *, phi, kappa, sigma):
-        """Jump decomposition: p = p̃ + σκ·H_ε(φ)."""
+        """Jump decomposition: p = p̃ + σκ·H_ε(φ).
+
+        DC反復法で p̃ を解く（LU排除）。
+        """
         xp = self.xp
         shape = self.grid.shape
         h = self._h_min
@@ -146,7 +149,8 @@ class PPESolverIIM(_CCDPPEBase):
             )
 
             rhs_tilde = rhs_np - Lp_jump
-            p_tilde = self._lu_solve_smooth(rhs_tilde, rho_smooth, drho_s)
+            # ✅ LU → DC反復法（LU排除）
+            p_tilde = self._dc_solve_smooth(rhs_tilde, rho_smooth, drho_s, p_init=None)
             self._last_jump_field = sigma * kap_np
 
             # CHK-170: p = p̃ + p_jump (jump decomposition final assembly)
@@ -155,7 +159,8 @@ class PPESolverIIM(_CCDPPEBase):
         else:
             from .ccd_ppe_utils import precompute_density_gradients
             drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
-            p = self._lu_solve_smooth(rhs_np, rho_np, drho)
+            # ✅ LU → DC反復法（LU排除）
+            p = self._dc_solve_smooth(rhs_np, rho_np, drho, p_init=p_init)
             return self.backend.to_device(p)
 
     def _lu_solve_smooth(self, rhs_np, rho_np, drho_np):
@@ -178,6 +183,64 @@ class PPESolverIIM(_CCDPPEBase):
             )
 
         return p_flat.reshape(self.grid.shape)
+
+    def _dc_solve_smooth(self, rhs_np, rho_np, drho_np, p_init=None):
+        """DC反復法で smooth field を解く（LU排除）。
+
+        Jump decomposition内で p̃ を反復法で計算するメソッド。
+        Thomas sweep × 2軸（交互方向陰解法）を使用。
+
+        Parameters
+        ----------
+        rhs_np : ndarray  RHS
+        rho_np : ndarray  密度場
+        drho_np : tuple of ndarrays  密度勾配（軸ごと）
+        p_init : ndarray, optional  初期値
+
+        Returns
+        -------
+        p : ndarray  収束した圧力場
+        """
+        shape = self.grid.shape
+        from .ccd_ppe_utils import (
+            compute_ccd_laplacian_with_derivatives,
+            compute_lts_dtau, check_convergence,
+        )
+        from .thomas_sweep_legacy import thomas_sweep_1d
+
+        dtau = compute_lts_dtau(rho_np, self._c_tau, self._h_min)
+        p = (np.zeros(shape, dtype=float) if p_init is None
+             else np.asarray(p_init, dtype=float))
+
+        pin_dof = self._bc_spec.pin_dof
+        converged = False
+        residual = float('inf')
+
+        for iteration in range(self.maxiter):
+            Lp, dp_arrays, _ = compute_ccd_laplacian_with_derivatives(
+                p, rho_np, drho_np, self.ccd, self.backend,
+            )
+            R = rhs_np - Lp
+            residual, converged = check_convergence(R, pin_dof, self.tol)
+
+            if converged:
+                break
+
+            # Thomas sweep × 2軸（交互方向陰解法）
+            q = thomas_sweep_1d(R, rho_np, drho_np[0], dtau, axis=0, grid=self.grid)
+            q.ravel()[pin_dof] = 0.0
+            dp = thomas_sweep_1d(q, rho_np, drho_np[1], dtau, axis=1, grid=self.grid)
+            dp.ravel()[pin_dof] = 0.0
+
+            p = p + dp
+            p.ravel()[pin_dof] = 0.0
+
+        if not converged:
+            warnings.warn(
+                f"PPESolverIIM(decomp+dc): did not converge ({residual:.3e}).",
+                RuntimeWarning, stacklevel=2)
+
+        return p
 
     # ── LU backend (legacy RHS correction) ───────────────────────────────
 

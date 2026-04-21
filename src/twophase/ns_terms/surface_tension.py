@@ -45,10 +45,11 @@ class SurfaceTensionTerm(INSTerm):
         self.xp = backend.xp
         self.We = We
 
-    def compute(self, ctx_or_kappa, psi=None, ccd=None) -> List:
+    def compute(self, ctx_or_kappa, psi=None, sigma=None, ccd=None, grad_op=None) -> List:
         """Compute f_σ = κ ∇ψ / We.
 
-        Supports both new (ctx) and legacy (kappa, psi, ccd) signatures.
+        Supports both new (ctx) and legacy (kappa, psi, sigma, ccd) signatures.
+        R-1.5: grad_op parameter allows FVM-consistent ∇ψ on non-uniform grids.
 
         Parameters
         ----------
@@ -56,8 +57,13 @@ class SurfaceTensionTerm(INSTerm):
             Either NSComputeContext (new) or kappa field (legacy)
         psi : ndarray, optional
             Only used with legacy signature
+        sigma : float, optional
+            Surface tension coefficient (legacy signature, for compatibility)
         ccd : CCDSolver, optional
             Only used with legacy signature
+        grad_op : IGradientOperator, optional
+            Gradient operator for computing ∇ψ (R-1.5). If provided on
+            non-uniform grid, uses FVM-consistent gradient instead of CCD.
 
         Returns
         -------
@@ -65,7 +71,7 @@ class SurfaceTensionTerm(INSTerm):
         """
         # Dispatch based on argument type
         if psi is not None and ccd is not None:
-            # Legacy signature: compute(kappa, psi, ccd)
+            # Legacy signature: compute(kappa, psi, sigma, ccd, grad_op=None)
             kappa = ctx_or_kappa
         else:
             # New signature: compute(ctx)
@@ -80,7 +86,11 @@ class SurfaceTensionTerm(INSTerm):
         result = []
 
         for ax in range(ndim):
-            dpsi_dax, _ = ccd.differentiate(psi, ax)
+            # R-1.5: Use grad_op (FVM) if available, else CCD (legacy)
+            if grad_op is not None:
+                dpsi_dax = grad_op.gradient(psi, ax)
+            else:
+                dpsi_dax, _ = ccd.differentiate(psi, ax)
             result.append(kappa * dpsi_dax / We)
 
         return result

@@ -1,0 +1,57 @@
+# CHK-176: 水-空気毛管波 N=128 R-1.5 BF一致スタック
+# Background: WIKI-X-020 (IIM chain), WIKI-X-021 (J³ scaling), WIKI-X-022 (R-1.5 fix)
+# Water-air: rho_l=1000, rho_g=1.2, sigma=0.072
+# Non-uniform grid (α=2.0) required for R-1.5 validation (WIKI-X-021 / CHK-173)
+
+grid:
+  NX: 128
+  NY: 128
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l: 1000.0
+  rho_g: 1.2
+  sigma: 0.072
+  mu: 1.0e-3
+  g_acc: 0.0
+
+run:
+  T_final: 90.0
+  cfl: 0.10
+  snap_interval: 9.0
+  print_every: 1000
+  reinit_method: ridge_eikonal
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  ridge_sigma_0: 3.0
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+  advection_scheme: fccd_flux
+  convection_scheme: fccd_flux
+
+output:
+  dir: results/ch13_06_capwave_waterair_n128
+  save_npz: true
+  figures:
+    - time_series: "deformation (Prosperetti: omega0=0.192, beta=5.9e-5, D0=0.05)"
+    - time_series: volume_conservation
+    - snapshot: t_idx=0
+    - snapshot: t_idx=-1
+
+diagnostics: [volume_conservation, kinetic_energy, deformation]
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition: {type: wall}
