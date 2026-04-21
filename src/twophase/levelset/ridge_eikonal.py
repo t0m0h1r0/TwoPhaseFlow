@@ -117,10 +117,16 @@ class NonUniformFMM:
         frozen = np.zeros((Nx, Ny), dtype=bool)
         heap: list = []
 
+        # CHK-161 B2: FIFO insertion counter neutralises (d,i,j) lex
+        # tie-breaking, which favoured lower (i,j) and biased propagation
+        # direction under y-flip.
+        _push_count = [0]
+
         def _push(i, j, d):
             if 0 <= i < Nx and 0 <= j < Ny and not frozen[i, j] and d < dist[i, j]:
                 dist[i, j] = d
-                heapq.heappush(heap, (d, i, j))
+                heapq.heappush(heap, (d, _push_count[0], i, j))
+                _push_count[0] += 1
 
         # Physical-coordinate seeding from sign-change crossings (D3, §6).
         hx_fwd = self._hx_fwd  # (Nx-1,)
@@ -164,7 +170,7 @@ class NonUniformFMM:
         hx = self._hx  # per-node spacing array (length Nx)
         hy = self._hy  # per-node spacing array (length Ny)
         while heap:
-            d, i, j = heapq.heappop(heap)
+            d, _, i, j = heapq.heappop(heap)  # CHK-161 B2: skip FIFO counter
             if frozen[i, j]:
                 continue
             frozen[i, j] = True
@@ -262,6 +268,11 @@ class RidgeExtractor:
         self._X = xp.asarray(grid.coords[0]).reshape(-1, 1)
         self._Y = xp.asarray(grid.coords[1]).reshape(1, -1)
 
+        # CHK-161 B1: forward cell spacings hx_fwd[i] = x[i+1]-x[i] for the
+        # physical-distance central-FD denominator in extract_ridge_mask.
+        self._hx_fwd_dev = xp.asarray(np.diff(grid.coords[0]))
+        self._hy_fwd_dev = xp.asarray(np.diff(grid.coords[1]))
+
     @property
     def sigma_eff(self):
         return self._sigma_eff
@@ -336,11 +347,15 @@ class RidgeExtractor:
         # already filters most; det check keeps admissible ridge corners).
         ridge_mask = local_max & hess_neg
         # The stock implementation from SP-B §4 also demands ||∇xi|| small.
-        # FD gradient:
+        # CHK-161 B1: central-FD uses physical distance x_{i+1}-x_{i-1} =
+        # hx_fwd[i-1]+hx_fwd[i]; previous hx_dev[i]+hx_dev[i-1] was
+        # backward-biased and broke mirror symmetry under index reflection.
+        dx2 = (self._hx_fwd_dev[:-1] + self._hx_fwd_dev[1:]).reshape(-1, 1)
+        dy2 = (self._hy_fwd_dev[:-1] + self._hy_fwd_dev[1:]).reshape(1, -1)
         gx = xp.zeros_like(xi)
         gy = xp.zeros_like(xi)
-        gx[1:-1, :] = (xi[2:, :] - xi[:-2, :]) / (hx_dev[1:-1] + xp.roll(hx_dev, 1, axis=0)[1:-1])
-        gy[:, 1:-1] = (xi[:, 2:] - xi[:, :-2]) / (hy_dev[:, 1:-1] + xp.roll(hy_dev, 1, axis=1)[:, 1:-1])
+        gx[1:-1, :] = (xi[2:, :] - xi[:-2, :]) / dx2
+        gy[:, 1:-1] = (xi[:, 2:] - xi[:, :-2]) / dy2
         grad_mag = xp.sqrt(gx * gx + gy * gy)
         tol = 0.5 * xp.max(grad_mag)  # scale-free relative tolerance
         ridge_mask = ridge_mask & (grad_mag < tol + 1e-30)

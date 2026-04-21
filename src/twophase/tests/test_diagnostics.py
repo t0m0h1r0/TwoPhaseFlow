@@ -204,6 +204,49 @@ def test_bubble_centroid_centered():
     assert abs(yc - 0.5) < 0.05, f"yc should be ~0.5, got {yc}"
 
 
+# ── Test 7: symmetry_error (CHK-161) ──────────────────────────────────────────
+
+def test_symmetry_error_centered_circle():
+    """A centred circle is 4-fold symmetric → both flip errors ≈ 0."""
+    X, Y = _make_grid()
+    psi = _circle_psi(X, Y)
+    u = v = p = np.zeros_like(psi)
+
+    diag = DiagnosticCollector(["symmetry_error"], X, Y, H)
+    diag.collect(0.0, psi, u, v, p)
+    assert diag.last("sym_psi_y") < 1e-14
+    assert diag.last("sym_psi_x") < 1e-14
+
+
+def test_symmetry_error_detects_shift():
+    """A y-shifted circle has y-flip error > 0 but x-flip error ≈ 0."""
+    X, Y = _make_grid()
+    psi = _circle_psi(X, Y, cy=0.55)  # shift up
+    u = v = p = np.zeros_like(psi)
+
+    diag = DiagnosticCollector(["symmetry_error"], X, Y, H)
+    diag.collect(0.0, psi, u, v, p)
+    assert diag.last("sym_psi_y") > 0.1    # y-flip broken
+    assert diag.last("sym_psi_x") < 1e-14  # x-flip preserved
+
+
+def test_symmetry_error_velocity_parity():
+    """A stagnation-like flow (u odd in x, v odd in y) → zero parity-aware error."""
+    X, Y = _make_grid()
+    psi = _circle_psi(X, Y)
+    # u(x,y) = x - 0.5 is odd about x=0.5, even in y; v is the mirror.
+    u = (X - 0.5).copy()
+    v = (Y - 0.5).copy()
+    p = np.zeros_like(psi)
+
+    diag = DiagnosticCollector(["symmetry_error"], X, Y, H)
+    diag.collect(0.0, psi, u, v, p)
+    # All six sub-keys must be ≈ 0 for a 4-fold symmetric stagnation flow.
+    for k in ("sym_psi_y", "sym_psi_x",
+              "sym_u_y", "sym_u_x", "sym_v_y", "sym_v_x"):
+        assert diag.last(k) < 1e-13, f"{k} = {diag.last(k)}"
+
+
 def test_midband_fraction_basic():
     psi = np.array([[0.0, 0.2], [0.85, 1.0]], dtype=float)
     frac = midband_fraction(psi, lo=0.1, hi=0.9)

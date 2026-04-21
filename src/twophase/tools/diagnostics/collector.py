@@ -13,6 +13,14 @@ bubble_centroid       (xc, yc, vc) centroid of gas phase  → stores xc, yc, vc
 deformation           D = (L−B)/(L+B) from second moments of ψ > 0.5 region
 interface_amplitude   max vertical deviation of ψ = 0.5 isoline from domain centre
 laplace_pressure      |Δp_sim − σ/R| / (σ/R)  (static-droplet only)
+symmetry_error        parity-aware reflection error under x/y mirror. Each
+                      sub-key is 0 for a 4-fold symmetric flow:
+                        sym_psi_{y,x}  = ‖ψ − flip(ψ)‖∞ / max|ψ|   (ψ even)
+                        sym_u_y        = ‖u − flip_y(u)‖∞ / max|u| (u even in y)
+                        sym_u_x        = ‖u + flip_x(u)‖∞ / max|u| (u odd in x)
+                        sym_v_y        = ‖v + flip_y(v)‖∞ / max|v| (v odd in y)
+                        sym_v_x        = ‖v − flip_x(v)‖∞ / max|v| (v even in x)
+                      (CHK-161 y-flip symmetry audit)
 """
 
 from __future__ import annotations
@@ -58,7 +66,14 @@ class DiagnosticCollector:
             "deformation",
             "interface_amplitude",
             "laplace_pressure",
+            "symmetry_error",
         ]
+    )
+
+    _SYM_SUBKEYS = (
+        "sym_psi_y", "sym_psi_x",
+        "sym_u_y", "sym_u_x",
+        "sym_v_y", "sym_v_x",
     )
 
     def __init__(
@@ -93,9 +108,13 @@ class DiagnosticCollector:
         self._V0: float | None = None  # set on first collect()
 
         # bubble_centroid expands into xc / yc / vc sub-series
+        # symmetry_error expands into sym_{psi,u,v}_{y,x} sub-series (CHK-161)
         for m in list(self.metrics):
             if m == "bubble_centroid":
                 for k in ("xc", "yc", "vc"):
+                    self._data.setdefault(k, [])
+            elif m == "symmetry_error":
+                for k in self._SYM_SUBKEYS:
                     self._data.setdefault(k, [])
             else:
                 self._data.setdefault(m, [])
@@ -171,6 +190,17 @@ class DiagnosticCollector:
 
             elif m == "interface_amplitude":
                 self._data[m].append(_interface_amplitude(psi, self.Y, self.h))
+
+            elif m == "symmetry_error":
+                # CHK-161 parity-aware: each sub-key is 0 for 4-fold symmetric flow.
+                # psi is scalar (even under both flips); u,v are vector components
+                # with axis-specific parity (u odd under x-flip, v odd under y-flip).
+                self._data["sym_psi_y"].append(_symmetry_error(psi, axis=1, parity=+1))
+                self._data["sym_psi_x"].append(_symmetry_error(psi, axis=0, parity=+1))
+                self._data["sym_u_y"].append(_symmetry_error(u, axis=1, parity=+1))
+                self._data["sym_u_x"].append(_symmetry_error(u, axis=0, parity=-1))
+                self._data["sym_v_y"].append(_symmetry_error(v, axis=1, parity=-1))
+                self._data["sym_v_x"].append(_symmetry_error(v, axis=0, parity=+1))
 
             elif m == "laplace_pressure":
                 if self.sigma > 0.0 and self.R > 0.0:
@@ -248,6 +278,21 @@ def _deformation(psi) -> float:
     L = np.sqrt(max(eig1, 1e-30))
     B = np.sqrt(max(eig2, 1e-30))
     return float((L - B) / (L + B)) if (L + B) > 1e-12 else 0.0
+
+
+def _symmetry_error(field, axis: int, parity: int = +1) -> float:
+    """Parity-aware reflection error — CHK-161.
+
+    Returns ‖f − parity · flip_axis(f)‖∞ / (max|f| + 1e-30).
+    parity=+1 → field expected even under the flip (scalar, or aligned component).
+    parity=−1 → field expected odd under the flip (orthogonal vector component).
+    A value of 0 means the expected symmetry is preserved.
+    """
+    xp = _xp_of(field)
+    flipped = xp.flip(field, axis=axis)
+    diff = float(xp.max(xp.abs(field - parity * flipped)))
+    scale = float(xp.max(xp.abs(field))) + 1e-30
+    return diff / scale
 
 
 def _interface_amplitude(psi, Y, h: float) -> float:

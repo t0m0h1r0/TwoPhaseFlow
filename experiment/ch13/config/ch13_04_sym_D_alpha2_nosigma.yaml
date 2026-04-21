@@ -1,0 +1,69 @@
+# CHK-161 symmetry binary-search D — α=2 stretched grid + σ=0 (no surface tension).
+# Isolates momentum / PPE / advection path without capillary forcing.
+# If y-flip error < 1e-10 here → surface tension coupling is asymmetric.
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    0.0               # ← D: no surface tension (was 1.0)
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:     8.0
+  cfl:         0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: ridge_eikonal
+  reinit_every: 2
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_04_sym_D_alpha2_nosigma
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "D: α=2 + σ=0 — symmetry audit"
+      x: times
+      y: [sym_psi_y, sym_psi_x]
+      labels: ["y-flip", "x-flip"]
+      xlabel: "$t$"
+      ylabel: "$\\|\\psi - \\mathrm{flip}\\|_\\infty / \\max|\\psi|$"
+      yscale: log
+      file: ch13_04_sym_D_psi.pdf
+
+    - type: snapshot
+      t_idx: -1
+      contour: true
+      colorbar: true
+      title: "D: $t=T_{\\mathrm{final}}$"
+      file: ch13_04_sym_D_snap_tf.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - symmetry_error
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition:
+  type: wall

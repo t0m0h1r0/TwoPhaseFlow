@@ -74,10 +74,21 @@ output:
       title: "$t=T_{\\mathrm{final}}$"
       file: ch13_04_capwave_snap_tf.pdf
 
+    - type: time_series
+      title: "Symmetry error — ψ flip (CHK-161 y-flip audit)"
+      x: times
+      y: [sym_psi_y, sym_psi_x]
+      labels: ["y-flip (up-down)", "x-flip (left-right)"]
+      xlabel: "$t$"
+      ylabel: "$\\|\\psi - \\mathrm{flip}(\\psi)\\|_\\infty / \\max|\\psi|$"
+      yscale: log
+      file: ch13_04_capwave_sym.pdf
+
 diagnostics:
   - volume_conservation
   - kinetic_energy
   - deformation
+  - symmetry_error
 
 initial_condition:
   type: perturbed_circle

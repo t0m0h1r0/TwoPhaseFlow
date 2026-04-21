@@ -1,0 +1,69 @@
+# CHK-161 symmetry binary-search C — α=2 stretched grid, effectively no reinit.
+# Isolates advection / PPE / GFM / HFE path as potential asymmetry source.
+# If y-flip error < 1e-10 here → reinit is the culprit.
+
+grid:
+  NX: 64
+  NY: 64
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  alpha_grid: 2.0
+  use_local_eps: true
+  grid_rebuild_freq: 0
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu:       0.05
+  g_acc:    0.0
+
+run:
+  T_final:     8.0
+  cfl:         0.10
+  snap_interval: 2.0
+  print_every: 1000
+  reinit_method: ridge_eikonal
+  reinit_every: 10000000       # ← C: effectively never reinit (was 2)
+  reinit_eps_scale: 1.4
+  phi_primary_transport: true
+  reproject_mode: consistent_gfm
+
+output:
+  dir: results/ch13_04_sym_C_alpha2_noreinit
+  save_npz: true
+  figures:
+    - type: time_series
+      title: "C: α=2 + no reinit — symmetry audit"
+      x: times
+      y: [sym_psi_y, sym_psi_x]
+      labels: ["y-flip", "x-flip"]
+      xlabel: "$t$"
+      ylabel: "$\\|\\psi - \\mathrm{flip}\\|_\\infty / \\max|\\psi|$"
+      yscale: log
+      file: ch13_04_sym_C_psi.pdf
+
+    - type: snapshot
+      t_idx: -1
+      contour: true
+      colorbar: true
+      title: "C: $t=T_{\\mathrm{final}}$"
+      file: ch13_04_sym_C_snap_tf.pdf
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - symmetry_error
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition:
+  type: wall
