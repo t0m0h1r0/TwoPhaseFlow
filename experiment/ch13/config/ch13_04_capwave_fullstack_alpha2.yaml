@@ -1,8 +1,9 @@
-# CHK-160 V4 probe — capillary-wave, FCCD × Ridge-Eikonal × α=2 × GFM+HFE stack
+# CHK-171 hires probe — capillary-wave, FCCD × Ridge-Eikonal × α=2 × GFM+HFE stack
+# at 128² with t=1.0 snapshot interval and velocity+pressure series.
 #
-# Plan:  /Users/tomohiro/.claude/plans/execute-researcharchitect-structured-manatee.md
-# Base:  ch13_04_capwave_ridge_alpha2.yaml (kept intact for reproducibility).
-# Delta: ``advection_scheme: fccd_flux`` + ``convection_scheme: fccd_flux``.
+# Baseline: CHK-160 at 64² (T=8 all gates PASS, commit eb64a18).
+# Delta from baseline: NX=NY 64→128, snap_interval 2.0→1.0, add
+# snapshot_series (velocity / pressure / psi) for evolution-time plots.
 #
 # Minimum stack:
 #   • FCCD           — CHK-158 face-centred compact scheme (ψ advection + momentum convection)
@@ -13,8 +14,8 @@
 # Acceptance: |ΔV/V|(T=8) < 5% on water–air capillary wave.
 
 grid:
-  NX: 64
-  NY: 64
+  NX: 128
+  NY: 128
   LX: 1.0
   LY: 1.0
   bc_type: wall
@@ -32,7 +33,7 @@ physics:
 run:
   T_final:     8.0
   cfl:         0.10
-  snap_interval: 2.0
+  snap_interval: 1.0
   print_every: 1000
   reinit_method: ridge_eikonal
   reinit_every: 2
@@ -83,6 +84,18 @@ output:
       colorbar: true
       title: "$t=T_{\\mathrm{final}}$"
       file: ch13_04_capwave_snap_tf.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: ch13_04_capwave_fullstack_alpha2_psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: ch13_04_capwave_fullstack_alpha2_vel_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: ch13_04_capwave_fullstack_alpha2_p_t
 
 diagnostics:
   - volume_conservation
