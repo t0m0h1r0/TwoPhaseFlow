@@ -1,0 +1,117 @@
+# N=128 water-air capillary-flow probe for WIKI-X-020/021/022.
+#
+# Purpose:
+#   Validate the full interface-to-PPE chain at the scaling point where
+#   WIKI-X-021 exposed the old mixed-metric parasitic-current failure.
+#
+# Stack:
+#   - alpha=2 non-uniform, IC-fitted grid
+#   - Ridge-Eikonal + local interface width
+#   - FCCD flux advection/convection
+#   - R-1.5 BF-consistent pressure/CSF gradient path
+#   - GFM-style variable-density reprojection
+
+grid:
+  NX: 128
+  NY: 128
+  LX: 1.0
+  LY: 1.0
+  bc_type: wall
+  adaptation:
+    alpha: 2.0
+    rebuild: static
+  interface_width:
+    mode: local
+    base_factor: 1.5
+
+physics:
+  rho_l:  833.0
+  rho_g:    1.0
+  sigma:    1.0
+  mu_l:     0.05
+  mu_g:     0.05
+  g_acc:    0.0
+
+run:
+  T_final: 0.10
+  cfl: 0.10
+  print_every: 20
+  reinitialization:
+    method: ridge_eikonal
+    every: 2
+    eps_scale: 1.4
+    ridge_sigma_0: 3.0
+  transport:
+    primary: phi
+  projection:
+    mode: consistent_gfm
+  schemes:
+    levelset_advection: fccd_flux
+    momentum_convection: fccd_flux
+  debug:
+    step_diagnostics: true
+
+output:
+  dir: results/ch13_capillary_water_air_alpha2_n128
+  save_npz: true
+  snapshots:
+    interval: 0.01
+  figures:
+    - type: time_series
+      title: "Water-air capillary flow: deformation"
+      x: times
+      y: [deformation]
+      labels: ["D(t)"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      file: deformation.pdf
+
+    - type: time_series
+      title: "Water-air capillary flow: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: time_series
+      title: "Water-air capillary flow: kinetic energy"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - deformation
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+
+boundary_condition:
+  type: wall
