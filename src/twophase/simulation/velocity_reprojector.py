@@ -100,8 +100,8 @@ class LegacyReprojector(IVelocityReprojector):
         div = (du_dx + dv_dy) / 1.0  # dt factor handled outside
 
         # Uniform density matrix
-        rho = np.ones_like(psi)
-        phi = ppe_solver.solve(div, rho)
+        rho = xp.ones_like(psi)
+        phi = xp.asarray(ppe_solver.solve(div, rho))
 
         # Correct velocity
         dp_dx, _ = ccd.differentiate(phi, 0)
@@ -109,7 +109,7 @@ class LegacyReprojector(IVelocityReprojector):
         u_proj = u - dp_dx
         v_proj = v - dp_dy
 
-        return np.asarray(u_proj), np.asarray(v_proj)
+        return u_proj, v_proj
 
     @property
     def stats(self) -> Dict[str, float]:
@@ -148,14 +148,14 @@ class VariableDensityReprojector(IVelocityReprojector):
         if rho_l is not None and rho_g is not None:
             rho = rho_g + (rho_l - rho_g) * psi
         else:
-            rho = np.ones_like(psi)
+            rho = xp.ones_like(psi)
 
         # Base projection
         du_dx, _ = ccd.differentiate(u, 0)
         dv_dy, _ = ccd.differentiate(v, 1)
         div = (du_dx + dv_dy) / 1.0  # dt factor handled outside
 
-        phi = ppe_solver.solve(div, rho)
+        phi = xp.asarray(ppe_solver.solve(div, rho))
 
         # Correct velocity
         dp_dx, _ = ccd.differentiate(phi, 0)
@@ -163,7 +163,7 @@ class VariableDensityReprojector(IVelocityReprojector):
         u_proj = u - dp_dx
         v_proj = v - dp_dy
 
-        return np.asarray(u_proj), np.asarray(v_proj)
+        return u_proj, v_proj
 
     @property
     def stats(self) -> Dict[str, float]:
@@ -295,7 +295,7 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             return u_c, v_c, float(div_check)
 
         # Base divergence (no IIM correction)
-        phi_base = ppe_solver.solve(div, rho)
+        phi_base = xp.asarray(ppe_solver.solve(div, rho))
         u_base, v_base, div_base = _apply_phi_and_div(phi_base)
 
         # Attempt IIM correction
@@ -322,8 +322,9 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                 dp_dy=_h(dp0_y),
             )
 
-            # Solve corrected PPE
-            phi_iim = ppe_solver.solve(div + delta_q, rho)
+            # Solve corrected PPE (wrap delta_q to xp for GPU consistency)
+            delta_q_xp = xp.asarray(delta_q)
+            phi_iim = xp.asarray(ppe_solver.solve(div + delta_q_xp, rho))
             u_iim, v_iim, div_iim = _apply_phi_and_div(phi_iim)
 
             self._stats["iim_div_base_sum"] += float(div_base)
@@ -342,8 +343,8 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             best_div_bt = div_iim
             best_u_bt, best_v_bt = u_iim, v_iim
             for alpha in [0.5, 0.25, 0.1]:
-                delta_q_bt = alpha * delta_q
-                phi_bt = ppe_solver.solve(div + delta_q_bt, rho)
+                delta_q_bt = alpha * delta_q_xp
+                phi_bt = xp.asarray(ppe_solver.solve(div + delta_q_bt, rho))
                 u_bt, v_bt, div_bt = _apply_phi_and_div(phi_bt)
 
                 finite_bt = np.isfinite(u_bt).all() and np.isfinite(v_bt).all()
