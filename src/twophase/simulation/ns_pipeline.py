@@ -724,8 +724,17 @@ class TwoPhaseNSSolver:
                        xp.max(xp.abs(dp_dy - f_y / rho)))
         ))
         self._step_diag.record_bf_residual(_dbg_bf_res_max)
-        u = u_star - dt / rho * dp_dx + dt * f_x / rho
-        v = v_star - dt / rho * dp_dy + dt * f_y / rho
+        if hasattr(self._div_op, "project"):
+            u, v = self._div_op.project(
+                [u_star, v_star],
+                p,
+                rho,
+                dt,
+                [f_x / rho, f_y / rho],
+            )
+        else:
+            u = u_star - dt / rho * dp_dx + dt * f_x / rho
+            v = v_star - dt / rho * dp_dy + dt * f_y / rho
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
