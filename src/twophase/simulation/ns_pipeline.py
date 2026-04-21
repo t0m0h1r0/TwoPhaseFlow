@@ -36,7 +36,10 @@ from .velocity_reprojector import (
 )
 from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
 from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
-from .gradient_operator import IGradientOperator, CCDGradientOperator, FVMGradientOperator
+from .gradient_operator import (
+    IGradientOperator, CCDGradientOperator, FVMGradientOperator,
+    IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
+)
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.context import NSComputeContext
@@ -167,8 +170,10 @@ class TwoPhaseNSSolver:
         # Pressure gradient operator strategy (CCD vs FVM)
         if not self._grid.uniform and bc_type == "wall":
             self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
+            self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
         else:
             self._grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+            self._div_op = CCDDivergenceOperator(self._ccd)
 
         # Advection / convection scheme selection (CHK-160 bridge for FCCD).
         # One shared FCCDSolver reuses the CCD LU factorisation for both
@@ -703,13 +708,9 @@ class TwoPhaseNSSolver:
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
 
         # ── 4. PPE (balanced-force) ─────────────────────────────────────
-        du_s_dx, _ = ccd.differentiate(u_star, 0)
-        dv_s_dy, _ = ccd.differentiate(v_star, 1)
-        rhs = (du_s_dx + dv_s_dy) / dt
+        rhs = self._div_op.divergence([u_star, v_star]) / dt
         # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
-        df_x, _ = ccd.differentiate(f_x / rho, 0)
-        df_y, _ = ccd.differentiate(f_y / rho, 1)
-        rhs = rhs + df_x + df_y
+        rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
         _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
         self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
         p = self._ppe_solver.solve(rhs, rho)
@@ -728,9 +729,9 @@ class TwoPhaseNSSolver:
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
-        _du_dx2, _ = ccd.differentiate(u, 0)
-        _dv_dy2, _ = ccd.differentiate(v, 1)
-        _dbg_div_u_max = float(self._backend.to_host(xp.max(xp.abs(_du_dx2 + _dv_dy2))))
+        _dbg_div_u_max = float(self._backend.to_host(
+            xp.max(xp.abs(self._div_op.divergence([u, v])))
+        ))
         self._step_diag.record_div_u(_dbg_div_u_max)
 
         return psi, u, v, p
