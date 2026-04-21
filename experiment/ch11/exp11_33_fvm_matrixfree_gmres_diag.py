@@ -55,6 +55,7 @@ OUT = experiment_dir(__file__)
 VARIANTS = [
     {"name": "prec_t1e10_ct2_r40", "tol": 1e-10, "c_tau": 2.0, "restart": 40, "use_prec": True},
     {"name": "prec_t1e8_ct2_r40", "tol": 1e-8, "c_tau": 2.0, "restart": 40, "use_prec": True},
+    {"name": "prec_t1e8_ct2_r80", "tol": 1e-8, "c_tau": 2.0, "restart": 80, "use_prec": True},
     {"name": "prec_t1e8_ct1_r40", "tol": 1e-8, "c_tau": 1.0, "restart": 40, "use_prec": True},
     {"name": "prec_t1e8_ct4_r40", "tol": 1e-8, "c_tau": 4.0, "restart": 40, "use_prec": True},
     {"name": "prec_t1e8_ct4_r20", "tol": 1e-8, "c_tau": 4.0, "restart": 20, "use_prec": True},

@@ -58,7 +58,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.tol = config.solver.pseudo_tol
         self.maxiter = config.solver.pseudo_maxiter
         self.c_tau = config.solver.pseudo_c_tau
-        self.restart = min(40, max(10, self.maxiter))
+        self.restart = min(80, max(20, self.maxiter))
 
         if bc_spec is not None:
             self._pin_dof = bc_spec.pin_dof
