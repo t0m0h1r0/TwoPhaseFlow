@@ -93,7 +93,7 @@ def _pcr_solve_batched(xp, a_vec, d_vec, c_vec, b_mat):
     return b / d
 
 
-def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat):
+def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat, max_stages: int | None = None):
     """Parallel Cyclic Reduction for variable-coefficient batched systems.
 
     Solves independent tridiagonal systems
@@ -124,6 +124,8 @@ def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat):
 
     n = d_mat.shape[0]
     n_stages = max(1, math.ceil(math.log2(n)))
+    if max_stages is not None:
+        n_stages = min(n_stages, max(1, int(max_stages)))
 
     a = xp.asarray(a_mat, dtype=b_mat.dtype).copy()
     d = xp.asarray(d_mat, dtype=b_mat.dtype).copy()
@@ -328,7 +330,15 @@ def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None)
     return xp.moveaxis(x_moved, 0, axis)
 
 
-def tridiag_variable_batched(xp, lower, diag, upper, rhs, axis: int):
+def tridiag_variable_batched(
+    xp,
+    lower,
+    diag,
+    upper,
+    rhs,
+    axis: int,
+    max_stages: int | None = None,
+):
     """Solve tridiagonal systems with per-line coefficients along ``axis``.
 
     Parameters
@@ -343,6 +353,9 @@ def tridiag_variable_batched(xp, lower, diag, upper, rhs, axis: int):
         Right-hand side. ``rhs.shape[axis]`` is the system size.
     axis : int
         Axis along which to solve.
+    max_stages : int, optional
+        GPU only.  When provided, caps the number of PCR reduction stages.
+        ``None`` keeps the exact solve with ``ceil(log2(n))`` stages.
 
     Returns
     -------
@@ -362,7 +375,14 @@ def tridiag_variable_batched(xp, lower, diag, upper, rhs, axis: int):
     upper_2d = xp.moveaxis(upper, axis, 0).reshape(n, -1)
 
     if _is_cupy(xp):
-        x_2d = _pcr_solve_variable_batched(xp, lower_2d, diag_2d, upper_2d, rhs_2d)
+        x_2d = _pcr_solve_variable_batched(
+            xp,
+            lower_2d,
+            diag_2d,
+            upper_2d,
+            rhs_2d,
+            max_stages=max_stages,
+        )
     else:
         d_prime = xp.empty_like(rhs_2d)
         c_prime = xp.empty_like(upper_2d)

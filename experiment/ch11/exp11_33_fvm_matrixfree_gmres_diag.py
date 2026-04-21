@@ -54,14 +54,16 @@ OUT = experiment_dir(__file__)
 
 
 VARIANTS = [
-    {"name": "prec_t1e10_ct2_r40", "tol": 1e-10, "c_tau": 2.0, "restart": 40, "use_prec": True},
-    {"name": "prec_t1e8_ct2_r40", "tol": 1e-8, "c_tau": 2.0, "restart": 40, "use_prec": True},
-    {"name": "prec_t1e8_ct2_r80", "tol": 1e-8, "c_tau": 2.0, "restart": 80, "use_prec": True},
-    {"name": "prec_t1e8_ct1_r40", "tol": 1e-8, "c_tau": 1.0, "restart": 40, "use_prec": True},
-    {"name": "prec_t1e8_ct4_r40", "tol": 1e-8, "c_tau": 4.0, "restart": 40, "use_prec": True},
-    {"name": "prec_t1e8_ct4_r20", "tol": 1e-8, "c_tau": 4.0, "restart": 20, "use_prec": True},
-    {"name": "prec_t1e8_ct4_r80", "tol": 1e-8, "c_tau": 4.0, "restart": 80, "use_prec": True},
-    {"name": "noprec_t1e8_r40", "tol": 1e-8, "c_tau": 2.0, "restart": 40, "use_prec": False},
+    {"name": "prec_t1e10_ct2_r40", "tol": 1e-10, "c_tau": 2.0, "restart": 40, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct2_r40", "tol": 1e-8, "c_tau": 2.0, "restart": 40, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct2_r80", "tol": 1e-8, "c_tau": 2.0, "restart": 80, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct2_r80_s6", "tol": 1e-8, "c_tau": 2.0, "restart": 80, "use_prec": True, "precond_stages": 6},
+    {"name": "prec_t1e8_ct2_r80_s4", "tol": 1e-8, "c_tau": 2.0, "restart": 80, "use_prec": True, "precond_stages": 4},
+    {"name": "prec_t1e8_ct1_r40", "tol": 1e-8, "c_tau": 1.0, "restart": 40, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct4_r40", "tol": 1e-8, "c_tau": 4.0, "restart": 40, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct4_r20", "tol": 1e-8, "c_tau": 4.0, "restart": 20, "use_prec": True, "precond_stages": None},
+    {"name": "prec_t1e8_ct4_r80", "tol": 1e-8, "c_tau": 4.0, "restart": 80, "use_prec": True, "precond_stages": None},
+    {"name": "noprec_t1e8_r40", "tol": 1e-8, "c_tau": 2.0, "restart": 40, "use_prec": False, "precond_stages": None},
 ]
 
 
@@ -103,7 +105,15 @@ def make_matrixfree_config(N: int, tol: float, c_tau: float, maxiter: int = 300)
     )
 
 
-def prepare_solver(backend: Backend, N: int, rho_dev, tol: float, c_tau: float, restart: int):
+def prepare_solver(
+    backend: Backend,
+    N: int,
+    rho_dev,
+    tol: float,
+    c_tau: float,
+    restart: int,
+    precond_stages: int | None = None,
+):
     grid = Grid(GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)), backend)
     solver = PPESolverFVMMatrixFree(
         backend,
@@ -112,6 +122,7 @@ def prepare_solver(backend: Backend, N: int, rho_dev, tol: float, c_tau: float, 
         bc_type="wall",
     )
     solver.restart = restart
+    solver.precond_pcr_stages = precond_stages
     rho_xp = backend.xp.asarray(rho_dev)
     solver._operator_coeffs = [
         solver.build_line_coeffs(rho_xp, ax) for ax in range(grid.ndim)
@@ -145,7 +156,12 @@ def profile_preconditioner_axes(backend: Backend, solver: PPESolverFVMMatrixFree
             backend,
             lambda axis=axis, lower=lower, diag=diag, upper=upper: (
                 backend.solve_tridiagonal_variable_batched(
-                    lower, diag, upper, probe_dev, axis=axis
+                    lower,
+                    diag,
+                    upper,
+                    probe_dev,
+                    axis=axis,
+                    max_stages=solver.precond_pcr_stages,
                 )
             ),
             repeat=repeat,
@@ -297,7 +313,15 @@ def run_benchmark():
         )
         p_direct = solver_direct.solve(rhs_dev, rho_dev, dt=0.0)
 
-        _, solver_res = prepare_solver(backend, N, rho_dev, tol=1e-10, c_tau=2.0, restart=40)
+        _, solver_res = prepare_solver(
+            backend,
+            N,
+            rho_dev,
+            tol=1e-10,
+            c_tau=2.0,
+            restart=40,
+            precond_stages=None,
+        )
         results["direct"]["t_solve_ms"][idx] = direct_t
         results["direct"]["residual"][idx] = residual_norm(solver_res, rhs_dev, p_direct)
 
@@ -307,6 +331,7 @@ def run_benchmark():
                 tol=variant["tol"],
                 c_tau=variant["c_tau"],
                 restart=variant["restart"],
+                precond_stages=variant["precond_stages"],
             )
 
             probe_p = backend.xp.sin(backend.xp.asarray(rhs_dev))
@@ -362,7 +387,7 @@ def run_benchmark():
                 f"{rel_err:11.3e} {res_mf:11.3e}"
             )
 
-        for focus in ("prec_t1e8_ct2_r80", "prec_t1e8_ct4_r80"):
+        for focus in ("prec_t1e8_ct2_r80", "prec_t1e8_ct2_r80_s6", "prec_t1e8_ct2_r80_s4", "prec_t1e8_ct4_r80"):
             if focus not in results:
                 continue
             focus_data = results[focus]
@@ -398,7 +423,13 @@ def plot_all(results):
     direct = np.asarray(results["direct"]["t_solve_ms"])
     for idx, name in enumerate(variant_names):
         vals = np.asarray(results[name]["t_solve_ms"])
-        ax.loglog(Ns, vals, f"{MARKERS[idx]}-", color=COLORS[idx], label=name)
+        ax.loglog(
+            Ns,
+            vals,
+            f"{MARKERS[idx % len(MARKERS)]}-",
+            color=COLORS[idx % len(COLORS)],
+            label=name,
+        )
     ax.loglog(Ns, direct, "k--", label="direct_ref")
     ax.set_xlabel("$N$")
     ax.set_ylabel("solve time [ms]")
@@ -409,7 +440,13 @@ def plot_all(results):
     ax = axes[1]
     for idx, name in enumerate(variant_names):
         vals = np.asarray(results[name]["matvec_calls"])
-        ax.semilogx(Ns, vals, f"{MARKERS[idx]}-", color=COLORS[idx], label=name)
+        ax.semilogx(
+            Ns,
+            vals,
+            f"{MARKERS[idx % len(MARKERS)]}-",
+            color=COLORS[idx % len(COLORS)],
+            label=name,
+        )
     ax.set_xlabel("$N$")
     ax.set_ylabel("matvec calls")
     ax.set_title("(b) Krylov work")
@@ -418,7 +455,13 @@ def plot_all(results):
     ax = axes[2]
     for idx, name in enumerate(variant_names):
         vals = np.asarray(results[name]["rel_l2_error"])
-        ax.loglog(Ns, vals, f"{MARKERS[idx]}-", color=COLORS[idx], label=name)
+        ax.loglog(
+            Ns,
+            vals,
+            f"{MARKERS[idx % len(MARKERS)]}-",
+            color=COLORS[idx % len(COLORS)],
+            label=name,
+        )
     ax.set_xlabel("$N$")
     ax.set_ylabel("rel-L2 error vs direct")
     ax.set_title("(c) Parity")

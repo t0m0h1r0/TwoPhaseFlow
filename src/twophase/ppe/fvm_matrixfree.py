@@ -59,6 +59,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.maxiter = config.solver.pseudo_maxiter
         self.c_tau = config.solver.pseudo_c_tau
         self.restart = min(80, max(20, self.maxiter))
+        self.precond_pcr_stages = 4 if self.backend.is_gpu() else None
 
         if bc_spec is not None:
             self._pin_dof = bc_spec.pin_dof
@@ -239,7 +240,12 @@ class PPESolverFVMMatrixFree(IPPESolver):
         z = xp.zeros_like(r_work)
         for axis, (lower, diag, upper) in enumerate(self._precond_coeffs):
             z += self.backend.solve_tridiagonal_variable_batched(
-                lower, diag, upper, r_work, axis=axis
+                lower,
+                diag,
+                upper,
+                r_work,
+                axis=axis,
+                max_stages=self.precond_pcr_stages,
             )
 
         z /= float(self.ndim)
