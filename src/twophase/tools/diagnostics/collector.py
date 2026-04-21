@@ -147,19 +147,21 @@ class DiagnosticCollector:
         Y = xp.asarray(self.Y)
         rho = self.rho_g + (self.rho_l - self.rho_g) * psi
 
+        V_dev = xp.sum(psi * dV)
+        ke_dev = 0.5 * xp.sum(rho * (u ** 2 + v ** 2) * dV)
+        V, ke = [float(x) for x in np.asarray(_to_host(xp.stack([V_dev, ke_dev])))]
+
         # Initialise reference volume on first call
         if self._V0 is None:
-            self._V0 = max(float(xp.sum(psi * dV)), 1e-30)
+            self._V0 = max(V, 1e-30)
 
         self.times.append(t)
 
         for m in self.metrics:
             if m == "volume_conservation":
-                V = float(xp.sum(psi * dV))
                 self._data[m].append(abs(V - self._V0) / self._V0)
 
             elif m == "kinetic_energy":
-                ke = 0.5 * float(xp.sum(rho * (u ** 2 + v ** 2) * dV))
                 self._data[m].append(ke)
 
             elif m == "mean_rise_velocity":

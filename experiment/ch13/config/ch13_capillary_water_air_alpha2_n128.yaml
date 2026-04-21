@@ -57,7 +57,7 @@ run:
     ppe: fvm_iterative
     viscous_time: explicit
   debug:
-    step_diagnostics: true
+    step_diagnostics: false
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128

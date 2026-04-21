@@ -761,8 +761,9 @@ class TwoPhaseNSSolver:
         kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
         if self._kappa_max is not None:
             kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-        _dbg_kappa_max = float(self._backend.to_host(xp.max(xp.abs(kappa))))
-        self._step_diag.record_kappa(_dbg_kappa_max)
+        debug_scalars = None
+        if isinstance(self._step_diag, ActiveStepDiagnostics):
+            debug_scalars = [xp.max(xp.abs(kappa))]
 
         # Strategy pattern: surface tension force encapsulates σ > 0 check
         f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd, self._grad_op)
@@ -802,8 +803,8 @@ class TwoPhaseNSSolver:
         rhs = self._div_op.divergence([u_star, v_star]) / dt
         # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
         rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
-        _dbg_ppe_rhs_max = float(self._backend.to_host(xp.max(xp.abs(rhs))))
-        self._step_diag.record_ppe_rhs(_dbg_ppe_rhs_max)
+        if debug_scalars is not None:
+            debug_scalars.append(xp.max(xp.abs(rhs)))
         p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
         self._p_prev = p
 
@@ -811,11 +812,13 @@ class TwoPhaseNSSolver:
         # Strategy pattern: gradient operator encapsulates CCD vs FVM logic
         dp_dx = self._grad_op.gradient(p, 0)
         dp_dy = self._grad_op.gradient(p, 1)
-        _dbg_bf_res_max = float(self._backend.to_host(
-            xp.maximum(xp.max(xp.abs(dp_dx - f_x / rho)),
-                       xp.max(xp.abs(dp_dy - f_y / rho)))
-        ))
-        self._step_diag.record_bf_residual(_dbg_bf_res_max)
+        if debug_scalars is not None:
+            debug_scalars.append(
+                xp.maximum(
+                    xp.max(xp.abs(dp_dx - f_x / rho)),
+                    xp.max(xp.abs(dp_dy - f_y / rho)),
+                )
+            )
         projected_on_faces = (
             self._face_flux_projection and hasattr(self._div_op, "project")
         )
@@ -833,10 +836,13 @@ class TwoPhaseNSSolver:
 
         _apply_bc(u, v, bc_hook, self.bc_type)
 
-        _dbg_div_u_max = float(self._backend.to_host(
-            xp.max(xp.abs(self._div_op.divergence([u, v])))
-        ))
-        self._step_diag.record_div_u(_dbg_div_u_max)
+        if debug_scalars is not None:
+            debug_scalars.append(xp.max(xp.abs(self._div_op.divergence([u, v]))))
+            dbg = np.asarray(self._backend.to_host(xp.stack(debug_scalars)))
+            self._step_diag.record_kappa(float(dbg[0]))
+            self._step_diag.record_ppe_rhs(float(dbg[1]))
+            self._step_diag.record_bf_residual(float(dbg[2]))
+            self._step_diag.record_div_u(float(dbg[3]))
 
         return psi, u, v, p
 
@@ -973,6 +979,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         if dt < 1e-12:
             break
 
+        step_index = step
+        grid_will_rebuild = (
+            solver._alpha_grid > 1.0
+            and solver._rebuild_freq > 0
+            and step_index > 0
+            and (step_index % solver._rebuild_freq == 0)
+        )
         psi, u, v, p = solver.step(
             psi, u, v, dt,
             rho_l=ph.rho_l,
@@ -984,7 +997,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             mu_l=ph.mu_l,
             mu_g=ph.mu_g,
             bc_hook=bc_hook,
-            step_index=step,
+            step_index=step_index,
         )
         t += dt
         step += 1
@@ -992,7 +1005,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         # Diagnostics: pass device arrays — collector uses xp for on-device reductions.
         _bk = solver._backend
         dV_dev = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
-        if solver._alpha_grid > 1.0:
+        if grid_will_rebuild:
             diag.X = np.asarray(_bk.to_host(solver.X))
             diag.Y = np.asarray(_bk.to_host(solver.Y))
         diag.collect(t, psi, u, v, p, dV=dV_dev)
