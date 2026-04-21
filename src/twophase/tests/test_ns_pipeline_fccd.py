@@ -97,6 +97,26 @@ def test_fccd_not_constructed_when_unused():
     assert solver._fccd_conv is None
 
 
+def test_surface_tension_uses_projector_gradient_operator():
+    """R-1.5: CSF ∇ψ uses the same gradient operator as pressure correction."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L, bc_type="wall",
+        alpha_grid=2.0,
+        grid_rebuild_freq=0,
+    )
+    psi = _mode2_ic(solver)
+    velocity = np.zeros_like(psi)
+    psi, _u, _v = solver._rebuild_grid(psi, velocity, velocity)
+    kappa = np.ones_like(psi)
+
+    force_x, force_y = solver._st_force.compute(
+        kappa, psi, 2.0, solver._ccd, solver._grad_op,
+    )
+
+    np.testing.assert_allclose(force_x, 2.0 * solver._grad_op.gradient(psi, 0))
+    np.testing.assert_allclose(force_y, 2.0 * solver._grad_op.gradient(psi, 1))
+
+
 def test_weno5_advection_constructed_from_scheme():
     """YAML-advertised WENO5 path must not silently fall back to DCCD."""
     from twophase.levelset.advection import LevelSetAdvection

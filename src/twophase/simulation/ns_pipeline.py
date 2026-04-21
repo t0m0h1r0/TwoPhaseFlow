@@ -701,7 +701,7 @@ class TwoPhaseNSSolver:
         self._step_diag.record_kappa(_dbg_kappa_max)
 
         # Strategy pattern: surface tension force encapsulates σ > 0 check
-        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd)
+        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd, self._grad_op)
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)

@@ -12,6 +12,7 @@ from typing import Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
+    from .gradient_operator import IGradientOperator
 
 
 class INSSurfaceTensionStrategy(ABC):
@@ -24,6 +25,7 @@ class INSSurfaceTensionStrategy(ABC):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        gradient_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
         """Compute surface tension force components f_x, f_y.
 
@@ -33,6 +35,8 @@ class INSSurfaceTensionStrategy(ABC):
         psi : ndarray  Conservative Level Set field (1 = liquid, 0 = gas)
         sigma : float  surface tension coefficient (checked for σ > 0)
         ccd : CCDSolver  differentiation operator
+        gradient_op : IGradientOperator or None  optional BF-consistent
+            gradient operator for ψ
 
         Returns
         -------
@@ -62,13 +66,18 @@ class SurfaceTensionForce(INSSurfaceTensionStrategy):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        gradient_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
         """Compute f = σ κ ∇ψ componentwise."""
         if sigma <= 0.0:
             return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
 
-        dpsi_dx, _ = ccd.differentiate(psi, 0)
-        dpsi_dy, _ = ccd.differentiate(psi, 1)
+        if gradient_op is None:
+            dpsi_dx, _ = ccd.differentiate(psi, 0)
+            dpsi_dy, _ = ccd.differentiate(psi, 1)
+        else:
+            dpsi_dx = gradient_op.gradient(psi, 0)
+            dpsi_dy = gradient_op.gradient(psi, 1)
         f_x = sigma * kappa * dpsi_dx
         f_y = sigma * kappa * dpsi_dy
         return f_x, f_y
@@ -89,6 +98,7 @@ class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
         psi: "array",
         sigma: float,
         ccd: "CCDSolver",
+        gradient_op: "IGradientOperator | None" = None,
     ) -> Tuple["array", "array"]:
         """Return zero force fields."""
         return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
