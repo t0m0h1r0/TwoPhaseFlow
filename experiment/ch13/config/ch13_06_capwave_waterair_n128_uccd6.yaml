@@ -45,7 +45,7 @@ run:
 numerics:
   physical_time:
     interface_advection:
-      spatial: weno5
+      spatial: fccd_flux
       time: explicit
       tracking:
         enabled: true

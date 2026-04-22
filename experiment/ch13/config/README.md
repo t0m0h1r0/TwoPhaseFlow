@@ -79,9 +79,10 @@ must be independently visible.
 The current ch13 production/probe YAMLs follow the latest wiki design guide
 within the schemes implemented today:
 
-- `interface_advection.spatial: weno5` with `tracking.primary: psi` follows
-  WIKI-T-065 / WIKI-X-031: ψ is the conservative transported state; φ is
-  geometry and should not be the primary physical-time transport variable.
+- `interface_advection.spatial: fccd_flux` with `tracking.primary: psi` follows
+  the project no-WENO policy while preserving WIKI-T-065 / WIKI-X-031's field
+  separation: ψ is the conservative transported state; φ is geometry and should
+  not be the primary physical-time transport variable.
 - `momentum.viscosity.time: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
   viscous terms are stiffness-relevant and should use the CN path when
   available.
