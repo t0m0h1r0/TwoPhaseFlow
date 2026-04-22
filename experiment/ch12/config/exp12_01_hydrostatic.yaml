@@ -1,0 +1,34 @@
+# [12-01] Hydrostatic Pressure Equilibrium (IPC Projection)
+# Validates: Ch11 — steady-state pressure under gravity with no-slip walls.
+# Equivalent to: experiment/ch12/exp12_01_hydrostatic.py
+
+experiment:
+  id: "12-01"
+  title: "Hydrostatic Equilibrium: p = ρ|g|(1-y), IPC Projection"
+  type: convergence_study
+
+scheme:
+  operator: hydrostatic_ns
+  cases:
+    - label: default
+      params:
+        n_steps: 100
+        rho: 1.0
+        g_y: -1.0
+        dt_scale: 0.1
+
+input:
+  grid_sizes: [32, 64, 128]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - case: default
+      title: "Hydrostatic pressure error vs $h$"
+      error_keys: [p_err_inf]
+      ref_orders: [2, 4]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ pressure error"
+  output_stem: hydrostatic

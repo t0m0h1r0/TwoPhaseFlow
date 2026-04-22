@@ -252,3 +252,94 @@ class _PPENeumannScheme:
 @register_scheme("ppe_neumann")
 def _build_ppe_neumann(N: int, domain: dict, k_dc: int = 3, **_):
     return _PPENeumannScheme(N=N, domain=domain, k_dc=k_dc)
+
+
+# ── Hydrostatic NS (ch12-style IPC projection) ───────────────────────────────
+
+class _HydrostaticNSScheme:
+    """IPC projection for hydrostatic equilibrium (rho=1, gravity=-1 in y).
+
+    Convergence metric: L∞ pressure error vs p_exact = ρ|g|(1-y).
+    """
+
+    def __init__(self, N: int, domain: dict,
+                 n_steps: int = 100, rho: float = 1.0,
+                 g_y: float = -1.0, dt_scale: float = 0.1):
+        self._N = N
+        self._domain = domain
+        self._n_steps = n_steps
+        self._rho = rho
+        self._g_y = g_y
+        self._dt_scale = dt_scale
+
+    def compute_errors(self, test_fn=None) -> dict:
+        import numpy as _np
+        from twophase.backend import Backend
+        from twophase.config import GridConfig
+        from twophase.core.grid import Grid
+        from twophase.ccd.ccd_solver import CCDSolver
+        from twophase.ppe.ppe_builder import PPEBuilder
+        from twophase.tools.experiment.gpu import sparse_solve_2d
+
+        backend = Backend()
+        xp = backend.xp
+        N = self._N
+        Lx = float(self._domain.get("Lx", 1.0))
+        h = Lx / N
+        dt = self._dt_scale * h
+
+        gc = GridConfig(ndim=2, N=(N, N), L=(Lx, Lx))
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        ppe_builder = PPEBuilder(backend, grid, bc_type="wall")
+
+        X, Y = grid.meshgrid()
+        rho = xp.full_like(X, self._rho)
+
+        u = xp.zeros_like(X)
+        v = xp.zeros_like(X)
+        p = self._rho * abs(self._g_y) * (1.0 - Y)   # exact IC
+
+        def wall_bc(arr):
+            arr[0, :] = 0; arr[-1, :] = 0
+            arr[:, 0] = 0; arr[:, -1] = 0
+
+        def solve_ppe(rhs):
+            triplet, shape = ppe_builder.build(rho)
+            data, rows, cols = [backend.to_device(a) for a in triplet]
+            A = backend.sparse.csr_matrix((data, (rows, cols)), shape=shape)
+            return sparse_solve_2d(backend, A, rhs.ravel()).reshape(rhs.shape)
+
+        u_max_final = 0.0
+        for _ in range(self._n_steps):
+            dp_dx, _ = ccd.differentiate(p, 0)
+            dp_dy, _ = ccd.differentiate(p, 1)
+            u_star = u - dt / rho * dp_dx
+            v_star = v + dt * self._g_y - dt / rho * dp_dy
+            wall_bc(u_star); wall_bc(v_star)
+            du_dx, _ = ccd.differentiate(u_star, 0)
+            dv_dy, _ = ccd.differentiate(v_star, 1)
+            phi = solve_ppe((du_dx + dv_dy) / dt)
+            dphi_dx, _ = ccd.differentiate(phi, 0)
+            dphi_dy, _ = ccd.differentiate(phi, 1)
+            u = u_star - dt / rho * dphi_dx
+            v = v_star - dt / rho * dphi_dy
+            wall_bc(u); wall_bc(v)
+            p = p + phi
+            u_max_final = float(xp.max(xp.sqrt(u**2 + v**2)))
+            if _np.isnan(u_max_final) or u_max_final > 1e6:
+                break
+
+        p_exact = self._rho * abs(self._g_y) * (1.0 - Y)
+        p_shifted = p - xp.mean(p) + xp.mean(p_exact)
+        s = slice(2, -2)
+        p_err = float(xp.max(xp.abs(p_shifted[s, s] - p_exact[s, s])))
+        return {"N": N, "h": h, "p_err_inf": p_err, "u_inf_final": u_max_final}
+
+
+@register_scheme("hydrostatic_ns")
+def _build_hydrostatic_ns(N: int, domain: dict, n_steps: int = 100,
+                           rho: float = 1.0, g_y: float = -1.0,
+                           dt_scale: float = 0.1, **_):
+    return _HydrostaticNSScheme(N=N, domain=domain, n_steps=n_steps,
+                                rho=rho, g_y=g_y, dt_scale=dt_scale)
