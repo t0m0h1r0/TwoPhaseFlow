@@ -138,6 +138,19 @@ class IDivergenceOperator(ABC):
     def divergence(self, components: list["array"]) -> "array":
         """Compute ``sum_i d components[i] / dx_i``."""
 
+    def project(
+        self,
+        components: list["array"],
+        p: "array",
+        rho: "array",
+        dt: float,
+        force_components: list["array"] | None = None,
+    ) -> list["array"]:
+        """Apply face-flux projection if supported by this divergence strategy."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support face-flux projection"
+        )
+
 
 class CCDDivergenceOperator(IDivergenceOperator):
     """CCD divergence matching the legacy uniform-grid path."""

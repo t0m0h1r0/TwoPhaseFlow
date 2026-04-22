@@ -22,6 +22,8 @@ from typing import Dict, Tuple, TYPE_CHECKING
 import numpy as np
 import warnings
 
+from ..ppe.interfaces import MatrixAssemblyUnavailable
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
@@ -286,6 +288,12 @@ class ConsistentIIMReprojector(IVelocityReprojector):
 
         # Compute density field
         rho = rho_g + (rho_l - rho_g) * psi_d
+        try:
+            A_host = ppe_solver.get_matrix(rho)
+        except MatrixAssemblyUnavailable:
+            return self._delegate.reproject(
+                psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g
+            )
 
         # Base projection
         du_dx, _ = ccd.differentiate(u_d, 0)
@@ -319,7 +327,6 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             rho_host = _host_array(rho, backend)
             div_host = _host_array(div, backend)
             kappa0 = np.zeros_like(rho_host)
-            A_host = ppe_solver.get_matrix(rho)
             dp0_x, _ = ccd.differentiate(phi_base, 0)
             dp0_y, _ = ccd.differentiate(phi_base, 1)
 

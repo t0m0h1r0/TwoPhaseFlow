@@ -16,6 +16,8 @@ import pytest
 
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.config_io import ExperimentConfig
+from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
+from twophase.ppe.interfaces import IPPESolver
 
 
 N = 16
@@ -339,3 +341,55 @@ def test_from_config_can_disable_interface_tracking():
     solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._interface_tracking_enabled is False
     assert solver._interface_tracking_method == "none"
+
+
+class _NoMatrixPPESolver(IPPESolver):
+    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
+        return np.zeros_like(rhs)
+
+
+class _ArrayBackend:
+    xp = np
+
+    def to_device(self, arr):
+        return np.asarray(arr)
+
+    def to_host(self, arr):
+        return np.asarray(arr)
+
+
+class _RecordingReprojector:
+    def __init__(self):
+        self.calls = 0
+
+    def reproject(self, psi, u, v, ppe_solver, ccd, backend, rho_l=None, rho_g=None):
+        self.calls += 1
+        return u + 1.0, v + 1.0
+
+
+def test_consistent_iim_reprojector_uses_ppe_matrix_contract():
+    """Matrix-free PPE fallback is driven by IPPESolver.get_matrix contract."""
+    reprojector = ConsistentIIMReprojector(
+        reproj_iim=object(),
+        reconstruct_base=object(),
+    )
+    delegate = _RecordingReprojector()
+    reprojector._delegate = delegate
+
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+    u_out, v_out = reprojector.reproject(
+        psi,
+        u,
+        v,
+        _NoMatrixPPESolver(),
+        ccd=None,
+        backend=_ArrayBackend(),
+        rho_l=2.0,
+        rho_g=1.0,
+    )
+
+    assert delegate.calls == 1
+    assert np.all(u_out == 1.0)
+    assert np.all(v_out == 1.0)

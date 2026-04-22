@@ -1,4 +1,4 @@
-# N=128 water-air capillary-flow probe for WIKI-X-020/021/022.
+# N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
 
 grid:
   cells: [128, 128]
@@ -26,12 +26,12 @@ interface:
 physics:
   phases:
     liquid:
-      rho: 833.0
-      mu: 0.05
+      rho: 1000.0
+      mu: 1.0e-3
     gas:
-      rho: 1.0
-      mu: 0.05
-  surface_tension: 1.0
+      rho: 1.2
+      mu: 1.8e-5
+  surface_tension: 0.072
   gravity: 0.0
 
 run:
@@ -49,12 +49,7 @@ numerics:
       time: explicit
       tracking:
         enabled: true
-        primary: phi
-        redistance:
-          schedule:
-            every_steps: 4
-          clip_factor: 12.0
-          heaviside_eps_scale: 1.0
+        primary: psi
     momentum:
       form: primitive_velocity
       convection:
@@ -62,7 +57,7 @@ numerics:
         time: explicit
       viscosity:
         spatial: ccd
-        time: explicit
+        time: crank_nicolson
       capillary_force:
         model: csf
         time: explicit
@@ -70,7 +65,7 @@ numerics:
         force_gradient: projection_consistent
   elliptic:
     pressure_projection:
-      mode: consistent_gfm
+      mode: consistent_iim
       poisson:
         discretization: fvm
         solver:
@@ -80,7 +75,7 @@ numerics:
           max_iterations: 500
           restart: 80
           preconditioner: line_pcr
-          pcr_stages: 4
+          pcr_stages: 1
           c_tau: 2.0
 
 output:

@@ -27,8 +27,8 @@
 | Field | Value |
 |-------|-------|
 | Project type | Computational Fluid Dynamics (CFD) research |
-| Research focus | Two-phase incompressible flow with CCD (Combined Compact Difference) |
-| Primary method | CCD 6th-order compact scheme for spatial discretisation |
+| Research focus | Two-phase incompressible flow with the CCD family (CCD/FCCD/UCCD/DCCD) |
+| Primary method | CCD-family compact schemes for spatial discretisation |
 | Solver architecture | Projection method (IPC) + CCD-based PPE |
 | Target output | Doctoral thesis (LaTeX) + reproducible experiment suite |
 
@@ -42,16 +42,21 @@ is replaced; the universal system (kernel-constitution.md, kernel-domains.md) re
 
 ## PR-1 — CCD Primacy (FD Usage Policy)
 
-This is a CCD research project. CCD is the primary spatial operator for ALL solver components.
+This is a CCD-family research project. CCD, FCCD, UCCD, and DCCD are the
+primary spatial operators for ALL solver components. FCCD/UCCD/DCCD were
+introduced to keep the research programme inside the CCD family; do not replace
+them with WENO as a convenience fix.
 
-| Context | CCD role | FD role |
-|---------|----------|---------|
-| Solver core (`src/twophase/`) | Primary — all spatial operators | Forbidden |
-| Experiment scripts | Primary | Labeled comparison baseline only |
-| Paper narrative | Central method | Reference for comparison |
+| Context | CCD-family role | FD role | WENO role |
+|---------|-----------------|---------|-----------|
+| Solver core (`src/twophase/`) | Primary — all spatial operators | Forbidden | Forbidden unless explicitly approved as legacy/reference |
+| Experiment scripts | Primary | Labeled comparison baseline only | Labeled baseline only, never production ch13 |
+| Paper narrative | Central method | Reference for comparison | Historical/comparison method only |
 
 FD (finite difference) solvers/operators may appear in experiment scripts **only as labeled
 comparison baselines**, never as proposed fixes or solutions to CCD-related issues.
+WENO follows the same restriction and must not be selected in ch13 production
+YAMLs. If monotonicity or upwinding is needed, design the remedy as FCCD/UCCD/DCCD.
 
 ## PR-2 — Implicit Solver Policy
 

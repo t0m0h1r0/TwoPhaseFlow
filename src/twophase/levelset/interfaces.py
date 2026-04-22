@@ -70,6 +70,14 @@ class IReinitializer(ABC):
         psi_new : reinitialized CLS field
         """
 
+    def update_grid(self, grid) -> None:
+        """Refresh grid-dependent caches after mesh rebuild.
+
+        Stateless reinitializers can keep this default no-op; grid-aware
+        implementations override it.
+        """
+        return None
+
 
 class ICurvatureCalculator(ABC):
     """Abstract interface for interface curvature computation.
