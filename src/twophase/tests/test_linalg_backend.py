@@ -9,7 +9,11 @@ import numpy as np
 import pytest
 from scipy.linalg import solve_banded
 
-from twophase.linalg_backend import thomas_batched, tridiag_variable_batched
+from twophase.linalg_backend import (
+    thomas_batched,
+    thomas_precompute,
+    tridiag_variable_batched,
+)
 
 
 def _random_dd_banded(n: int, rng: np.random.Generator) -> np.ndarray:
@@ -46,6 +50,19 @@ def test_thomas_batched_matches_scipy_axis0(n, batch_shape):
     x_our = thomas_batched(np, ab, rhs, axis=0)
 
     assert x_our.shape == x_ref.shape
+    np.testing.assert_allclose(x_our, x_ref, rtol=1e-12, atol=1e-13)
+
+
+def test_thomas_batched_precomputed_factors_matches_scipy():
+    rng = np.random.default_rng(314)
+    n = 64
+    ab = _random_dd_banded(n, rng)
+    rhs = rng.standard_normal((n, 11))
+
+    x_ref = _scipy_solve_axis(ab, rhs, axis=0)
+    factors = thomas_precompute(ab)
+    x_our = thomas_batched(np, ab, rhs, axis=0, factors=factors)
+
     np.testing.assert_allclose(x_our, x_ref, rtol=1e-12, atol=1e-13)
 
 

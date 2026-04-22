@@ -400,6 +400,30 @@ class TestPPESolverIIMDecomp:
         # |p| should be bounded
         assert np.max(np.abs(p_np)) < 1.0, "|p|_max blew up"
 
+    def test_decomp_matches_static_young_laplace_exact_profile(self, backend):
+        """Static circular droplet matches the exact decomp pressure profile."""
+        N = 32
+        R = 0.25
+        sigma = 0.07
+        solver, grid, _ = self._make_decomp_solver(N, backend)
+        phi = make_circular_levelset(grid, R=R)
+        kappa = np.ones(grid.shape) / R
+        rho = np.where(phi < 0, 1000.0, 1.0)
+        xp = backend.xp
+
+        p = solver.solve(
+            xp.asarray(np.zeros(grid.shape)), xp.asarray(rho), dt=0.001,
+            phi=xp.asarray(phi), kappa=xp.asarray(kappa), sigma=sigma,
+        )
+        p_np = np.asarray(backend.to_host(p))
+
+        h = grid.L[0] / grid.N[0]
+        eps = 1.5 * h
+        H_smooth = 0.5 * (1.0 + np.tanh(phi / (2.0 * eps)))
+        p_exact = sigma * kappa * (1.0 - H_smooth)
+
+        np.testing.assert_allclose(p_np, p_exact, rtol=1e-13, atol=1e-13)
+
     def test_decomp_density_independent(self, backend):
         """Decomp solution is independent of density ratio for rhs=0."""
         R = 0.25
