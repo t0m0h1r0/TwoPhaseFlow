@@ -93,20 +93,42 @@ class ConvergenceStudyHandler(ExperimentHandler):
 
         for idx, panel in enumerate(panels):
             ax = axes[idx // ncols][idx % ncols]
-            case_label = panel.get("case", list(results.keys())[0])
-            rows = results.get(case_label, [])
-
-            hs = [float(r["h"]) for r in rows]
             error_keys: list[str] = list(panel.get("error_keys", []))
-            errors = {k: [float(r[k]) for r in rows] for k in error_keys if k in rows[0]}
+            ref_orders = list(panel.get("ref_orders", [2, 4, 6]))
+            xlabel = str(panel.get("xlabel", "$h$"))
+            ylabel = str(panel.get("ylabel", r"$L_\infty$ error"))
+            title = str(panel.get("title", ""))
 
-            convergence_loglog(
-                ax, hs, errors,
-                ref_orders=list(panel.get("ref_orders", [2, 4, 6])),
-                xlabel=str(panel.get("xlabel", "$h$")),
-                ylabel=str(panel.get("ylabel", r"$L_\infty$ error")),
-                title=str(panel.get("title", "")),
-            )
+            if panel.get("all_cases"):
+                # Build one combined errors dict → single convergence_loglog call
+                combined_hs = None
+                combined_errs: dict = {}
+                for case_label, rows in results.items():
+                    if not rows:
+                        continue
+                    hs = [float(r["h"]) for r in rows]
+                    if combined_hs is None:
+                        combined_hs = hs
+                    for k in error_keys:
+                        if k in rows[0]:
+                            series_label = (f"{case_label} {k}"
+                                            if len(error_keys) > 1 else case_label)
+                            combined_errs[series_label] = [float(r[k]) for r in rows]
+                if combined_hs and combined_errs:
+                    convergence_loglog(ax, combined_hs, combined_errs,
+                                       ref_orders=ref_orders,
+                                       xlabel=xlabel, ylabel=ylabel, title=title)
+            else:
+                case_label = panel.get("case", list(results.keys())[0])
+                rows = results.get(case_label, [])
+                if not rows:
+                    continue
+                hs = [float(r["h"]) for r in rows]
+                errs = {k: [float(r[k]) for r in rows]
+                        for k in error_keys if k in rows[0]}
+                convergence_loglog(ax, hs, errs,
+                                   ref_orders=ref_orders,
+                                   xlabel=xlabel, ylabel=ylabel, title=title)
 
         # Hide unused panels
         for idx in range(len(panels), nrows * ncols):

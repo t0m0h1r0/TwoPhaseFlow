@@ -1,0 +1,33 @@
+# [11-25] CN viscous temporal convergence (periodic, uniform nu)
+# Validates: Ch5 — Crank-Nicolson O(dt^2), unconditionally stable.
+
+experiment:
+  id: "11-25"
+  title: "CN Viscous Temporal Convergence (uniform $\\nu$)"
+  type: time_accuracy
+
+scheme:
+  operator: cn_viscous_temporal
+  params: {N: 64, nu: 0.01}
+
+input:
+  n_steps_list: [10, 20, 40, 80, 160, 320]
+  T_final: 1.0
+
+reference:
+  type: analytical
+  solution: zero   # adapter returns L2 error vs exact directly
+  params: {}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - case: default
+      series_label: "CN + CCD"
+      error_key: err
+      ref_orders: [1, 2]
+      xlabel: "$\\Delta t$"
+      ylabel: "$L^2$ error"
+      title: "CN viscous temporal convergence"
+  output_stem: cn_viscous
