@@ -1030,7 +1030,8 @@ class TwoPhaseNSSolver:
 
         # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
         u_star, v_star = self._viscous_predictor.predict(
-            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
+            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd,
+            buoy_v=buoy_v, psi=psi,
         )
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)

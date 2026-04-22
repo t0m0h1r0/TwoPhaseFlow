@@ -109,6 +109,7 @@ class ViscousTerm(INSTerm):
         mu: "array",
         rho: "array",
         ccd: "CCDSolver",
+        psi=None,
     ) -> List:
         """Return V_α = (1/Re) ∇·[μ̃ (∇u + ∇uᵀ)] / ρ̃ evaluated at current u.
 
@@ -123,7 +124,7 @@ class ViscousTerm(INSTerm):
         -------
         visc : list of arrays, one per velocity component
         """
-        return self._evaluate(velocity_components, mu, rho, ccd)
+        return self._evaluate(velocity_components, mu, rho, ccd, psi=psi)
 
     # ── Crank-Nicolson predictor step ─────────────────────────────────────
 
@@ -135,6 +136,7 @@ class ViscousTerm(INSTerm):
         rho: "array",
         ccd: "CCDSolver",
         dt: float,
+        psi=None,
     ) -> List:
         """Delegate the viscous predictor advance to ``self.cn_advance``.
 
@@ -158,7 +160,7 @@ class ViscousTerm(INSTerm):
                 for c in range(len(u_old))
             ]
         return self.cn_advance.advance(
-            u_old, explicit_rhs, mu, rho, self, ccd, dt,
+            u_old, explicit_rhs, mu, rho, self, ccd, dt, psi=psi,
         )
 
     # ── Core evaluation ───────────────────────────────────────────────────
@@ -264,7 +266,29 @@ class ViscousTerm(INSTerm):
             total += self._low_order_derivative(stress, beta, ccd)
         return total
 
-    def _evaluate(self, vel: List, mu, rho, ccd: "CCDSolver") -> List:
+    def _bulk_laplacian_component(self, component, mu, ccd: "CCDSolver"):
+        """Cheap bulk path μ Δ_CCD u using CCD second derivatives directly."""
+        lap = self.xp.zeros_like(component)
+        for axis in range(ccd.ndim):
+            _, d2 = ccd.differentiate(component, axis)
+            lap += d2
+        return mu * lap
+
+    def _interface_band_mask(self, psi):
+        xp = self.xp
+        p = xp.asarray(psi)
+        band = (p > 1.0e-6) & (p < 1.0 - 1.0e-6)
+        for axis in range(p.ndim):
+            base = xp.copy(band)
+            lo = [slice(None)] * p.ndim
+            hi = [slice(None)] * p.ndim
+            lo[axis] = slice(1, None)
+            hi[axis] = slice(None, -1)
+            band[tuple(lo)] = band[tuple(lo)] | base[tuple(hi)]
+            band[tuple(hi)] = band[tuple(hi)] | base[tuple(lo)]
+        return band
+
+    def _evaluate(self, vel: List, mu, rho, ccd: "CCDSolver", psi=None) -> List:
         """Compute ∇·[μ̃ (∇u + ∇uᵀ)] / (ρ̃ Re) for each component.
 
         Symmetric stress tensor S_{αβ} = μ̃ (∂u_α/∂x_β + ∂u_β/∂x_α) / 2
@@ -279,6 +303,17 @@ class ViscousTerm(INSTerm):
                 for alpha in range(ndim)
             ]
         if self.spatial_scheme == "ccd_bulk":
+            if psi is not None:
+                band = self._interface_band_mask(psi)
+                return [
+                    self.xp.where(
+                        band,
+                        self._stress_divergence_component_conservative(alpha, vel, mu, ccd),
+                        self._bulk_laplacian_component(vel[alpha], mu, ccd),
+                    )
+                    / (self.Re * rho)
+                    for alpha in range(ndim)
+                ]
             return [
                 self._stress_divergence_component_ccd_bulk(alpha, vel, mu, ccd)
                 / (self.Re * rho)

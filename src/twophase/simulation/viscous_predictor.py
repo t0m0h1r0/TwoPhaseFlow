@@ -55,6 +55,7 @@ class IViscousPredictor(ABC):
         dt: float,
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
+        psi: "array" | None = None,
     ) -> tuple["array", "array"]:
         """Advance velocity with viscous + convection + optional buoyancy.
 
@@ -67,6 +68,7 @@ class IViscousPredictor(ABC):
         dt : float  timestep
         ccd : CCDSolver  differentiation operator
         buoy_v : ndarray, optional  buoyancy term for v-component
+        psi : ndarray, optional  Heaviside interface field for band switching
 
         Returns
         -------
@@ -119,9 +121,10 @@ class ExplicitViscousPredictor(IViscousPredictor):
         dt: float,
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
+        psi: "array" | None = None,
     ) -> tuple["array", "array"]:
         """Explicit forward-Euler step."""
-        visc_u, visc_v = self._viscous.compute_explicit([u, v], mu, rho, ccd)
+        visc_u, visc_v = self._viscous.compute_explicit([u, v], mu, rho, ccd, psi=psi)
 
         # Advance velocity
         u_star = u + dt * (conv_u + visc_u)
@@ -172,6 +175,7 @@ class CNViscousPredictor(IViscousPredictor):
         dt: float,
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
+        psi: "array" | None = None,
     ) -> tuple["array", "array"]:
         """CN implicit step via ViscousTerm.apply_cn_predictor()."""
         # Construct explicit RHS: rho * (convection + buoyancy)
@@ -179,7 +183,7 @@ class CNViscousPredictor(IViscousPredictor):
 
         # Delegate to CN solver
         vel_star = self._viscous.apply_cn_predictor(
-            [u, v], explicit_rhs, mu, rho, ccd, dt,
+            [u, v], explicit_rhs, mu, rho, ccd, dt, psi=psi,
         )
 
         return vel_star[0], vel_star[1]

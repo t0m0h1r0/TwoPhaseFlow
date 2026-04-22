@@ -137,6 +137,52 @@ def test_viscous_legacy_all_ccd_laplacian_constant_mu(backend):
     assert err < 3e-2, f"Legacy CCD viscous error {err:.2e}"
 
 
+def test_viscous_ccd_bulk_uses_laplacian_away_from_interface(backend):
+    """When psi marks pure bulk, ccd_bulk uses the cheap μΔ_CCD path."""
+    cfg, grid, ccd, be = make_setup(N=32, backend=backend)
+    visc = ViscousTerm(be, Re=1.0, cn_viscous=False, spatial_scheme="ccd_bulk")
+
+    N = 32
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    u = np.sin(2 * np.pi * X)
+    v = np.zeros_like(u)
+    mu = np.ones_like(u)
+    rho = np.ones_like(u)
+    psi = np.zeros_like(u)
+
+    result = visc.compute_explicit([u, v], mu, rho, ccd, psi=psi)
+    expected = -(2 * np.pi)**2 * np.sin(2 * np.pi * X)
+    err = np.max(np.abs(result[0][1:-1, 1:-1] - expected[1:-1, 1:-1]))
+    assert err < 3e-2, f"Bulk CCD Laplacian error {err:.2e}"
+
+
+def test_viscous_ccd_bulk_uses_stress_form_in_interface_band(backend):
+    """When psi marks interface, ccd_bulk keeps the stress-divergence path."""
+    cfg, grid, ccd, be = make_setup(N=32, backend=backend)
+    visc = ViscousTerm(be, Re=1.0, cn_viscous=False, spatial_scheme="ccd_bulk")
+    ref = ViscousTerm(
+        be,
+        Re=1.0,
+        cn_viscous=False,
+        spatial_scheme="conservative_stress",
+    )
+
+    N = 32
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    u = np.sin(2 * np.pi * X)
+    v = np.zeros_like(u)
+    mu = np.ones_like(u)
+    rho = np.ones_like(u)
+    psi = 0.5 * np.ones_like(u)
+
+    result = visc.compute_explicit([u, v], mu, rho, ccd, psi=psi)
+    expected = ref.compute_explicit([u, v], mu, rho, ccd)
+    err = np.max(np.abs(result[0] - expected[0]))
+    assert err < 1e-14, f"Interface band did not use stress-divergence: {err:.2e}"
+
+
 # ── Test 3: Gravity ───────────────────────────────────────────────────────
 
 def test_gravity_direction(backend):
