@@ -47,44 +47,36 @@ run:
 
 numerics:
   time:
-    interface_transport: tvd_rk3
-    momentum_predictor: projection_predictor_corrector
+    algorithm: fractional_step
   interface:
     transport:
       variable: psi
       spatial: fccd_flux
-    tracking:
-      primary: psi
+      time_integrator: tvd_rk3
   momentum:
-    form: primitive_velocity
     terms:
       convection:
         spatial: uccd6
         time_integrator: ab2
         uccd6_sigma: 1.0e-3
       pressure:
-        spatial: fccd_flux
+        gradient: fccd_flux
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
       surface_tension:
-        spatial: fccd_flux
+        gradient: fccd_flux
         model: csf
   projection:
     mode: consistent_iim
     poisson:
-      operator:
-        discretization: fvm
-        coefficient: variable_density
       solver:
         kind: iterative
         method: gmres
         tolerance: 1.0e-8
         max_iterations: 500
         restart: 80
-        preconditioner: line_pcr
-        pcr_stages: 1
-        c_tau: 2.0
+        preconditioner: jacobi
 
 output:
   dir: results/ch13_06_capwave_waterair_n128_uccd6
