@@ -149,6 +149,26 @@ if [ "${chapter}" = "ch13" ]; then
         echo "  -> FAILED"
         exit 1
     fi
+elif ls experiment/${chapter}/config/exp*.yaml >/dev/null 2>&1; then
+    # YAML-driven chapters (ch11, ch12): iterate over config files
+    failed=0
+    for cfg in experiment/${chapter}/config/exp*.yaml; do
+        stem="\$(basename \$cfg .yaml)"
+        echo ""
+        echo "====== \$stem ======"
+        if time ${PYTHON} experiment/run.py --config "\$stem"; then
+            echo "  -> OK"
+        else
+            echo "  -> FAILED (exit \$?)"
+            failed=\$((failed + 1))
+        fi
+    done
+
+    if [ \$failed -gt 0 ]; then
+        echo ""
+        echo "WARNING: \$failed experiment(s) failed."
+        exit 1
+    fi
 else
     failed=0
     for script in experiment/${chapter}/exp*.py; do
