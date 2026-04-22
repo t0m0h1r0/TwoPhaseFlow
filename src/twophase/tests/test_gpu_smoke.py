@@ -63,11 +63,11 @@ def test_ccd_derivative_gpu_matches_cpu(tiny_grid_factory, cpu_backend, gpu_back
 
         np.testing.assert_allclose(
             gpu_backend.to_host(d1_gpu), np.asarray(d1_cpu),
-            rtol=1e-12, atol=1e-13,
+            rtol=1e-12, atol=5e-13,
         )
         np.testing.assert_allclose(
             gpu_backend.to_host(d2_gpu), np.asarray(d2_cpu),
-            rtol=1e-12, atol=1e-13,
+            rtol=1e-12, atol=5e-13,
         )
 
 

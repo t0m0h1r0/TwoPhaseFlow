@@ -190,8 +190,11 @@ def thomas_precompute(ab) -> ThomasFactors:
     """
     import numpy as np_host
 
-    # Pull to host if needed (small 3×n array).
-    ab_h = np_host.asarray(ab) if not isinstance(ab, np_host.ndarray) else ab
+    getter = getattr(ab, "get", None)
+    if callable(getter):
+        ab_h = getter()
+    else:
+        ab_h = np_host.asarray(ab) if not isinstance(ab, np_host.ndarray) else ab
     ab_h = ab_h.astype(np_host.float64, copy=False)
 
     n = ab_h.shape[1]
