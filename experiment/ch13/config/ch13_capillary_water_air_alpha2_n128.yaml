@@ -36,9 +36,9 @@ physics:
 
 run:
   time:
-    final: 0.10
+    final: 8.0
     cfl: 0.10
-    print_every: 20
+    print_every: 100
   debug:
     step_diagnostics: false
 
@@ -86,15 +86,13 @@ numerics:
         tolerance: 1.0e-8
         max_iterations: 500
         restart: 80
-        preconditioner: line_pcr
-        pcr_stages: 1
-        c_tau: 2.0
+        preconditioner: jacobi
 
 output:
-  dir: results/ch13_capillary_water_air_alpha2_n128
+  dir: results/ch13_capillary_water_air_alpha2_n128_t8
   save_npz: true
   snapshots:
-    interval: 0.01
+    interval: 0.5
   figures:
     - type: time_series
       title: "Water-air capillary flow: deformation"

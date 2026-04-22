@@ -97,10 +97,10 @@ within the schemes implemented today:
 - `projection.mode: consistent_iim` follows WIKI-X-020 / WIKI-X-032:
   the sharp-interface path should be explicit in the config; the implementation
   can still reject/fallback unsafe IIM candidates internally.
-- `projection.poisson.solver.kind: iterative` with `gmres + line_pcr` follows WIKI-T-060 /
-  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. ch13 uses
-  `pcr_stages: 1` because the N=128 capillary-wave GPU probe keeps the same
-  PPE residual class as `pcr_stages: 4` while cutting preconditioner cost.
+- `projection.poisson.solver.kind: iterative` with `gmres + jacobi` follows WIKI-T-060 /
+  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. For N=128 ch13 runs,
+  diagonal Jacobi keeps the same PPE residual class as the truncated line-PCR
+  probe while avoiding the costly per-iteration batched tridiagonal solves.
   Direct sparse FVM solve is kept as a debugging option, not the ch13 default.
 - `momentum.terms.convection.spatial: fccd_flux` remains the conservative implemented
   default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
@@ -111,7 +111,8 @@ within the schemes implemented today:
 `projection.poisson.solver.kind` selects the solver class:
 
 - `iterative`: requires an iteration method, currently `gmres`, plus tolerance,
-  iteration limit, restart, preconditioner, PCR stage cap, and `c_tau`.
+  iteration limit, restart, and preconditioner. `pcr_stages` / `c_tau` are
+  meaningful only when `preconditioner: line_pcr`.
 - `direct`: sparse FVM direct solve; it intentionally does not accept iterative
   options such as `method` or `preconditioner`.
 - `defect_correction`: outer residual correction.  It must specify

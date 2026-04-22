@@ -55,6 +55,54 @@ apply_style()
 BASE = pathlib.Path(__file__).parent
 
 
+def _add_snapshot_series(flat: dict, snaps) -> None:
+    """Store field snapshots as explicit time-series arrays in data.npz."""
+    if not snaps:
+        return
+
+    flat["fields/times"] = np.asarray([snap["t"] for snap in snaps], dtype=float)
+    for field in ("psi", "u", "v", "p", "rho"):
+        if field in snaps[0]:
+            flat[f"fields/{field}"] = np.stack(
+                [np.asarray(snap[field]) for snap in snaps],
+                axis=0,
+            )
+
+    if "grid_coords" in snaps[0]:
+        for axis, coord in enumerate(snaps[0]["grid_coords"]):
+            flat[f"fields/grid_coords/{axis}"] = np.asarray(coord)
+
+
+def _snapshots_from_field_series(results: dict) -> list[dict]:
+    """Reconstruct plot snapshots from field arrays saved in data.npz."""
+    if "fields/times" not in results:
+        return []
+
+    fields = {
+        "psi": "fields/psi",
+        "u": "fields/u",
+        "v": "fields/v",
+        "p": "fields/p",
+        "rho": "fields/rho",
+    }
+    grid_coords = []
+    axis = 0
+    while f"fields/grid_coords/{axis}" in results:
+        grid_coords.append(np.asarray(results[f"fields/grid_coords/{axis}"]))
+        axis += 1
+
+    snaps = []
+    for index, time in enumerate(np.asarray(results["fields/times"])):
+        snap = {"t": float(time)}
+        for field, key in fields.items():
+            if key in results:
+                snap[field] = np.asarray(results[key][index])
+        if grid_coords:
+            snap["grid_coords"] = [coord.copy() for coord in grid_coords]
+        snaps.append(snap)
+    return snaps
+
+
 # ── config resolution ────────────────────────────────────────────────────────
 
 def _resolve_config(name: str) -> pathlib.Path:
@@ -107,6 +155,7 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
         elif isinstance(v, dict):  # e.g. debug_diagnostics: flatten with "/" separator
             for kk, vv in v.items():
                 flat[f"{k}/{kk}"] = np.asarray(vv)
+    _add_snapshot_series(flat, results.get("snapshots"))
     save_results(npz_path, flat)
 
     # Snapshots are list-of-dicts; save separately so --plot-only can access them
@@ -204,6 +253,10 @@ def _plot_only(cfg, label: str, outdir: pathlib.Path) -> None:
     if snap_path.exists():
         with open(snap_path, "rb") as _f:
             results["snapshots"] = pickle.load(_f)
+    else:
+        snaps = _snapshots_from_field_series(results)
+        if snaps:
+            results["snapshots"] = snaps
 
     if cfg.sweep:
         cases = cfg.sweep

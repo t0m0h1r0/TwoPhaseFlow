@@ -6,8 +6,9 @@ but evaluates the operator matrix-free:
     L_FVM(rho) p = Σ_a D_a ( A_a(rho) G_a p )
 
 The linear solve is performed by GMRES on a backend-native ``LinearOperator``.
-For wall BC the preconditioner applies shifted line solves along each axis using
-the variable-batched tridiagonal helper added in CHK-162.
+For wall BC the preconditioner can apply either cheap diagonal Jacobi scaling
+or shifted line solves along each axis using the variable-batched tridiagonal
+helper added in CHK-162.
 
 This is an additive solver: the legacy :class:`PPESolverFVMSpsolve` remains the
 fallback path and is used automatically for non-wall boundary conditions.
@@ -74,9 +75,9 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.preconditioner = str(
             getattr(solver_cfg, "ppe_preconditioner", "line_pcr")
         ).strip().lower()
-        if self.preconditioner not in {"line_pcr", "none"}:
+        if self.preconditioner not in {"jacobi", "line_pcr", "none"}:
             raise ValueError(
-                "ppe_preconditioner must be 'line_pcr' or 'none', "
+                "ppe_preconditioner must be 'jacobi', 'line_pcr', or 'none', "
                 f"got {self.preconditioner!r}"
             )
         pcr_stages = getattr(solver_cfg, "ppe_pcr_stages", 4)
@@ -102,6 +103,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
         self._operator_coeffs = None
         self._precond_coeffs = None
+        self._diag_inv = None
         self._refresh_grid_metrics()
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
@@ -111,6 +113,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
             self.ndim = grid.ndim
         self._operator_coeffs = None
         self._precond_coeffs = None
+        self._diag_inv = None
         self._refresh_grid_metrics()
         if self._fallback is not None:
             self._fallback = PPESolverFVMSpsolve(
@@ -140,14 +143,27 @@ class PPESolverFVMMatrixFree(IPPESolver):
         rhs_flat[self._pin_dof] = 0.0
 
         self.prepare_operator(rho_dev)
-        shift = 2.0 / (self.c_tau * rho_dev * (self._h_min ** 2))
-        self._precond_coeffs = []
-        for lower, main, upper in self._operator_coeffs:
-            self._precond_coeffs.append((
-                -lower,
-                shift - main,
-                -upper,
-            ))
+        self._precond_coeffs = None
+        self._diag_inv = None
+        if self.preconditioner == "line_pcr":
+            shift = 2.0 / (self.c_tau * rho_dev * (self._h_min ** 2))
+            self._precond_coeffs = []
+            for lower, main, upper in self._operator_coeffs:
+                self._precond_coeffs.append((
+                    -lower,
+                    shift - main,
+                    -upper,
+                ))
+        elif self.preconditioner == "jacobi":
+            diag = self.xp.zeros_like(rho_dev)
+            for _lower, main, _upper in self._operator_coeffs:
+                diag += main
+            diag.ravel()[self._pin_dof] = 1.0
+            self._diag_inv = 1.0 / self.xp.where(
+                self.xp.abs(diag) > 1e-30,
+                diag,
+                1.0,
+            )
 
         if p_init is None:
             x0 = self.xp.zeros_like(rhs_flat)
@@ -164,12 +180,15 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
         def _precond(r_flat):
             r_field = self.xp.asarray(r_flat).reshape(self.grid.shape)
-            z = self.apply_line_preconditioner(r_field)
+            if self.preconditioner == "jacobi":
+                z = self.apply_jacobi_preconditioner(r_field)
+            else:
+                z = self.apply_line_preconditioner(r_field)
             return z.ravel()
 
         A = la.LinearOperator((n_dof, n_dof), matvec=_matvec, dtype=rhs_flat.dtype)
         M = None
-        if self.preconditioner == "line_pcr":
+        if self.preconditioner in {"jacobi", "line_pcr"}:
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
 
         try:
@@ -263,6 +282,8 @@ class PPESolverFVMMatrixFree(IPPESolver):
     def apply_line_preconditioner(self, r):
         """Apply the shifted additive line preconditioner."""
         xp = self.xp
+        if self._precond_coeffs is None:
+            raise RuntimeError("line preconditioner coefficients are not initialised")
         r_work = xp.asarray(r).copy()
         r_work.ravel()[self._pin_dof] = 0.0
 
@@ -278,6 +299,14 @@ class PPESolverFVMMatrixFree(IPPESolver):
             )
 
         z /= float(self.ndim)
+        z.ravel()[self._pin_dof] = 0.0
+        return z
+
+    def apply_jacobi_preconditioner(self, r):
+        """Apply a diagonal Jacobi preconditioner on the active backend."""
+        if self._diag_inv is None:
+            raise RuntimeError("Jacobi preconditioner diagonal is not initialised")
+        z = self.xp.asarray(r) * self._diag_inv
         z.ravel()[self._pin_dof] = 0.0
         return z
 

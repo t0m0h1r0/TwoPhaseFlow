@@ -142,13 +142,10 @@ class PPESolverIIM(_CCDPPEBase):
             rho_smooth = rho_l + (rho_g - rho_l) * H_smooth
             p_jump = sigma * kap_np * (1.0 - H_smooth)
 
-            from .ccd_ppe_utils import precompute_density_gradients, compute_ccd_laplacian
+            from .ccd_ppe_utils import precompute_density_gradients
             drho_s = precompute_density_gradients(rho_smooth, self.ccd, self.backend)
-            Lp_jump = compute_ccd_laplacian(
-                p_jump, rho_smooth, drho_s, self.ccd, self.backend,
-            )
 
-            rhs_tilde = rhs_np - Lp_jump
+            rhs_tilde = rhs_np
             # ✅ LU → DC反復法（LU排除）
             p_tilde = self._dc_solve_smooth(rhs_tilde, rho_smooth, drho_s, p_init=None)
             self._last_jump_field = sigma * kap_np
