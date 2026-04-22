@@ -15,6 +15,9 @@ interface:
   thickness:
     mode: local
     base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_hfe
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
@@ -44,36 +47,25 @@ run:
 
 numerics:
   time:
-    default_integrator: forward_euler
+    interface_transport: tvd_rk3
+    momentum_predictor: projection_predictor_corrector
   interface:
     transport:
       variable: psi
       spatial: fccd_flux
-      time_integrator: forward_euler
     tracking:
-      enabled: true
       primary: psi
   momentum:
     form: primitive_velocity
-    terms:
+    operators:
       convection:
         spatial: fccd_flux
-        time_integrator: forward_euler
-      pressure:
-        gradient: projection_consistent
-        balanced_with: surface_tension
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
-      surface_tension:
-        enabled: true
-        model: csf
-        time_integrator: forward_euler
-        curvature: psi_direct_hfe
-        gradient: projection_consistent
-        balanced_with: pressure
-      gravity:
-        enabled: false
+      balanced_force:
+        spatial: fccd_flux
+        surface_tension_model: csf
   projection:
     mode: consistent_iim
     poisson:

@@ -40,7 +40,7 @@ from .velocity_reprojector import (
 from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
 from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
 from .gradient_operator import (
-    IGradientOperator, CCDGradientOperator, FVMGradientOperator,
+    IGradientOperator, CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,
     IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
 )
 from ..levelset.curvature_filter import InterfaceLimitedFilter
@@ -126,6 +126,7 @@ class TwoPhaseNSSolver:
         ppe_dc_tolerance: float = 0.0,
         ppe_dc_relaxation: float = 1.0,
         surface_tension_scheme: str = "csf",
+        balanced_force_scheme: str = "projection_consistent",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
@@ -228,7 +229,11 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
 
-        # Pressure gradient operator strategy (CCD vs FVM)
+        self._balanced_force_scheme = str(balanced_force_scheme).strip().lower()
+
+        # Pressure gradient operator strategy (CCD vs FVM by default; FCCD can
+        # replace it below when the balanced pressure/surface-tension pair asks
+        # for a CCD-family face operator).
         if not self._grid.uniform and bc_type == "wall":
             self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
             self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
@@ -265,6 +270,18 @@ class TwoPhaseNSSolver:
             FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
             if needs_fccd else None
         )
+        if self._balanced_force_scheme in self._fccd_modes:
+            if self._fccd is None:
+                self._fccd = FCCDSolver(
+                    self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd
+                )
+            self._grad_op = FCCDGradientOperator(self._fccd)
+        elif self._balanced_force_scheme != "projection_consistent":
+            raise ValueError(
+                "Unsupported balanced_force_scheme="
+                f"{self._balanced_force_scheme!r}; use projection_consistent|"
+                "fccd_nodal|fccd_flux."
+            )
         if self._advection_scheme in self._fccd_modes:
             # mass_correction stays off: the outer step() already applies
             # w=4ψ(1-ψ) correction on ψ after psi_from_phi; enabling it here
@@ -582,6 +599,9 @@ class TwoPhaseNSSolver:
             ),
             surface_tension_scheme=str(
                 getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
+            ),
+            balanced_force_scheme=str(
+                getattr(getattr(cfg, "run", g), "balanced_force_scheme", "projection_consistent")
             ),
             uccd6_sigma=float(
                 getattr(getattr(cfg, "run", g), "uccd6_sigma", 1.0e-3)

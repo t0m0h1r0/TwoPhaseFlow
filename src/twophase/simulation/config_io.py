@@ -114,6 +114,7 @@ class RunCfg:
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
     surface_tension_scheme: str = "csf"
     viscous_time_scheme: str = "explicit"
+    balanced_force_scheme: str = "projection_consistent"
     uccd6_sigma: float = 1.0e-3   # hyperviscosity coefficient for convection_scheme='uccd6'
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     ppe_iteration_method: str = "gmres"
@@ -417,11 +418,13 @@ _POISSON_COEFFICIENTS = ("variable_density",)
 _SURFACE_TENSION_SCHEMES = ("csf", "none")
 _SURFACE_TENSION_TIME_SCHEMES = ("forward_euler",)
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
+_INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
+_MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _EXPLICIT_TIME_SCHEMES = ("forward_euler",)
 _MOMENTUM_FORMS = ("primitive_velocity",)
 _VISCOUS_SPATIAL_SCHEMES = ("ccd",)
 _CURVATURE_SCHEMES = ("psi_direct_hfe",)
-_BALANCED_FORCE_GRADIENTS = ("projection_consistent",)
+_BALANCED_FORCE_SCHEMES = ("projection_consistent", "fccd_flux", "fccd_nodal")
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
 _PPE_ITERATION_METHODS = ("gmres",)
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
@@ -437,6 +440,8 @@ def _parse_run(
     time_cfg = d["time"]
     snapshots = output.get("snapshots", {}) or {}
     reinit = interface["reinitialization"]
+    interface_geometry = interface.get("geometry", {}) or {}
+    interface_curvature = interface_geometry.get("curvature", {}) or {}
     reinit_profile = reinit.get("profile", {}) or {}
     reinit_schedule = reinit["schedule"]
     layout = _parse_numerics_layout(numerics)
@@ -447,6 +452,7 @@ def _parse_run(
     viscosity = layout["viscosity"]
     pressure_term = layout["pressure_term"]
     surface_tension = layout["surface_tension"]
+    balanced_force = layout["balanced_force"]
     projection = layout["projection"]
     poisson = projection["poisson"]
     poisson_operator = poisson.get("operator", poisson)
@@ -476,8 +482,10 @@ def _parse_run(
         layout["paths"]["interface_spatial"],
     )
     _parse_time_integrator(
-        interface_transport, _EXPLICIT_TIME_SCHEMES,
+        interface_transport, _INTERFACE_TIME_SCHEMES,
         layout["paths"]["interface_time"],
+        default="tvd_rk3",
+        aliases={"explicit": "tvd_rk3", "rk3": "tvd_rk3"},
     )
     _validate_choice(
         momentum.get("form", "primitive_velocity"), _MOMENTUM_FORMS,
@@ -506,35 +514,37 @@ def _parse_run(
         ppe_dc_relaxation,
     ) = _parse_ppe_solver_config(ppe_solver_cfg, layout["paths"]["poisson_solver"])
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
-    pressure_gradient = _validate_choice(
-        pressure_term.get("gradient", "projection_consistent"),
-        _BALANCED_FORCE_GRADIENTS,
-        layout["paths"]["pressure_gradient"],
-    )
-    surface_gradient = _validate_choice(
-        surface_tension.get("gradient", surface_tension.get("force_gradient", "projection_consistent")),
-        _BALANCED_FORCE_GRADIENTS,
-        layout["paths"]["surface_tension_gradient"],
-    )
-    if surface_gradient != pressure_gradient:
-        raise ValueError(
-            "balanced-force pressure and surface-tension terms must use the same "
-            f"gradient, got pressure={pressure_gradient!r}, surface_tension={surface_gradient!r}"
+    if balanced_force is not None:
+        balanced_force_scheme = _validate_choice(
+            balanced_force["spatial"],
+            _BALANCED_FORCE_SCHEMES,
+            layout["paths"]["balanced_force_spatial"],
         )
-    surface_tension_enabled = _parse_enabled(surface_tension.get("enabled", True))
+    else:
+        pressure_gradient = _validate_choice(
+            pressure_term.get("gradient", "projection_consistent"),
+            _BALANCED_FORCE_SCHEMES,
+            layout["paths"]["pressure_gradient"],
+        )
+        surface_gradient = _validate_choice(
+            surface_tension.get("gradient", surface_tension.get("force_gradient", "projection_consistent")),
+            _BALANCED_FORCE_SCHEMES,
+            layout["paths"]["surface_tension_gradient"],
+        )
+        if surface_gradient != pressure_gradient:
+            raise ValueError(
+                "balanced-force pressure and surface-tension terms must use the same "
+                f"gradient, got pressure={pressure_gradient!r}, surface_tension={surface_gradient!r}"
+            )
+        balanced_force_scheme = surface_gradient
     surface_tension_scheme = _validate_choice(
-        surface_tension.get("model", "csf" if surface_tension_enabled else "none"),
+        surface_tension.get("model", "csf"),
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
-    if not surface_tension_enabled:
-        surface_tension_scheme = "none"
-    _parse_time_integrator(
-        surface_tension, _SURFACE_TENSION_TIME_SCHEMES,
-        layout["paths"]["surface_tension_time"],
-    )
     _validate_choice(
-        surface_tension.get("curvature", "psi_direct_hfe"), _CURVATURE_SCHEMES,
+        interface_curvature.get("method", surface_tension.get("curvature", "psi_direct_hfe")),
+        _CURVATURE_SCHEMES,
         layout["paths"]["surface_tension_curvature"],
     )
     uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
@@ -591,7 +601,9 @@ def _parse_run(
         phi_primary_heaviside_eps_scale=float(
             _tracking_redistance(tracking).get("heaviside_eps_scale", 1.0)
         ),
-        kappa_max=_opt_float(surface_tension.get("curvature_cap")),
+        kappa_max=_opt_float(
+            interface_curvature.get("cap", surface_tension.get("curvature_cap"))
+        ),
         reinit_method=reinit_method,
         dgr_phi_smooth_C=float(
             reinit_profile.get("dgr_phi_smooth_C", 1e-4)
@@ -603,6 +615,7 @@ def _parse_run(
         pressure_scheme=pressure_scheme,
         surface_tension_scheme=surface_tension_scheme,
         viscous_time_scheme=viscous_time_scheme,
+        balanced_force_scheme=balanced_force_scheme,
         uccd6_sigma=uccd6_sigma,
         face_flux_projection=bool(projection.get("face_flux_projection", False)),
         ppe_iteration_method=ppe_iteration_method,
@@ -651,7 +664,15 @@ def _parse_numerics_layout(numerics: dict) -> dict:
     """
     if "interface" in numerics and "momentum" in numerics and "projection" in numerics:
         interface_num = numerics["interface"]
-        interface_transport = interface_num["transport"]
+        time_num = numerics.get("time", {}) or {}
+        interface_transport = dict(interface_num["transport"])
+        if "time_integrator" not in interface_transport and "interface_transport" in time_num:
+            interface_transport["time_integrator"] = time_num["interface_transport"]
+        _validate_choice(
+            time_num.get("momentum_predictor", "projection_predictor_corrector"),
+            _MOMENTUM_PREDICTORS,
+            "numerics.time.momentum_predictor",
+        )
         tracking = dict(interface_num.get("tracking", {}) or {})
         if "primary" not in tracking:
             tracking["primary"] = interface_transport.get("variable", "psi")
@@ -659,16 +680,31 @@ def _parse_numerics_layout(numerics: dict) -> dict:
             tracking["enabled"] = tracking["primary"] != "none"
 
         momentum = numerics["momentum"]
-        terms = momentum["terms"]
+        terms = momentum.get("terms", {}) or {}
+        operators = momentum.get("operators", {}) or {}
+        balanced_force = operators.get("balanced_force")
+        if balanced_force is None and "balanced_force" in terms:
+            balanced_force = terms["balanced_force"]
+        convection = operators.get("convection", terms.get("convection"))
+        viscosity = operators.get("viscosity", terms.get("viscosity"))
+        if balanced_force is not None:
+            surface_tension = {
+                "model": balanced_force.get("surface_tension_model", "csf")
+            }
+            pressure_term = {}
+        else:
+            surface_tension = terms["surface_tension"]
+            pressure_term = terms.get("pressure", {})
         projection = numerics["projection"]
         return {
             "interface_transport": interface_transport,
             "tracking": tracking,
             "momentum": momentum,
-            "convection": terms["convection"],
-            "viscosity": terms["viscosity"],
-            "pressure_term": terms.get("pressure", {}),
-            "surface_tension": terms["surface_tension"],
+            "convection": convection,
+            "viscosity": viscosity,
+            "pressure_term": pressure_term,
+            "surface_tension": surface_tension,
+            "balanced_force": balanced_force,
             "gravity": terms.get("gravity", {"enabled": False}),
             "projection": projection,
             "paths": {
@@ -677,16 +713,16 @@ def _parse_numerics_layout(numerics: dict) -> dict:
                 "tracking_primary": "numerics.interface.tracking.primary",
                 "tracking_redistance": "numerics.interface.tracking.redistance.schedule.every_steps",
                 "momentum_form": "numerics.momentum.form",
-                "convection_spatial": "numerics.momentum.terms.convection.spatial",
-                "convection_time": "numerics.momentum.terms.convection.time_integrator",
-                "convection_uccd6_sigma": "numerics.momentum.terms.convection.uccd6_sigma",
-                "viscosity_spatial": "numerics.momentum.terms.viscosity.spatial",
-                "viscosity_time": "numerics.momentum.terms.viscosity.time_integrator",
+                "convection_spatial": "numerics.momentum.operators.convection.spatial",
+                "convection_time": "numerics.momentum.operators.convection.time_integrator",
+                "convection_uccd6_sigma": "numerics.momentum.operators.convection.uccd6_sigma",
+                "viscosity_spatial": "numerics.momentum.operators.viscosity.spatial",
+                "viscosity_time": "numerics.momentum.operators.viscosity.time_integrator",
                 "pressure_gradient": "numerics.momentum.terms.pressure.gradient",
-                "surface_tension_model": "numerics.momentum.terms.surface_tension.model",
-                "surface_tension_time": "numerics.momentum.terms.surface_tension.time_integrator",
-                "surface_tension_curvature": "numerics.momentum.terms.surface_tension.curvature",
+                "surface_tension_model": "numerics.momentum.operators.balanced_force.surface_tension_model",
+                "surface_tension_curvature": "interface.geometry.curvature.method",
                 "surface_tension_gradient": "numerics.momentum.terms.surface_tension.gradient",
+                "balanced_force_spatial": "numerics.momentum.operators.balanced_force.spatial",
                 "projection_mode": "numerics.projection.mode",
                 "poisson_discretization": "numerics.projection.poisson.operator.discretization",
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
@@ -707,6 +743,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
         "viscosity": momentum["viscosity"],
         "pressure_term": {},
         "surface_tension": momentum["capillary_force"],
+        "balanced_force": None,
         "gravity": {"enabled": False},
         "projection": projection,
         "paths": {
@@ -740,10 +777,13 @@ def _parse_time_integrator(
     cfg: dict,
     choices: tuple[str, ...],
     path: str,
+    *,
+    default: str = "forward_euler",
+    aliases: dict[str, str] | None = None,
 ) -> str:
-    raw = cfg.get("time_integrator", cfg.get("time", "forward_euler"))
+    raw = cfg.get("time_integrator", cfg.get("time", default))
     value = str(raw).strip().lower()
-    aliases = {
+    alias_map = {
         "explicit": "forward_euler",
         "euler": "forward_euler",
         "euler_forward": "forward_euler",
@@ -751,7 +791,9 @@ def _parse_time_integrator(
         "cn": "crank_nicolson",
         "crank-nicolson": "crank_nicolson",
     }
-    return _validate_choice(aliases.get(value, value), choices, path)
+    if aliases:
+        alias_map.update(aliases)
+    return _validate_choice(alias_map.get(value, value), choices, path)
 
 
 def _parse_ppe_solver_config(solver_cfg: dict, path: str) -> tuple[

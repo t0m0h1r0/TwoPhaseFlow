@@ -2,6 +2,7 @@
 
 Encapsulates the choice between:
 - CCDGradientOperator: 6th-order CCD compact differentiation
+- FCCDGradientOperator: face-centred compact gradient reconstructed to nodes
 - FVMGradientOperator: face-average FVM gradient (for non-uniform grids)
 - CCDDivergenceOperator: CCD nodal divergence
 - FVMDivergenceOperator: finite-volume nodal-flux divergence
@@ -14,6 +15,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
+    from ..ccd.fccd import FCCDSolver
 
 
 class IGradientOperator(ABC):
@@ -68,6 +70,21 @@ class CCDGradientOperator(IGradientOperator):
         if self.bc_type == "wall":
             self._ccd.enforce_wall_neumann(dp_daxis, axis)
         return dp_daxis
+
+
+class FCCDGradientOperator(IGradientOperator):
+    """FCCD gradient shared by pressure correction and surface tension force."""
+
+    def __init__(self, fccd: "FCCDSolver") -> None:
+        self._fccd = fccd
+
+    def gradient(
+        self,
+        p: "array",
+        axis: int,
+    ) -> "array":
+        """Compute nodal gradient via FCCD face gradient + R4 reconstruction."""
+        return self._fccd.node_gradient(p, axis)
 
 
 class FVMGradientOperator(IGradientOperator):
