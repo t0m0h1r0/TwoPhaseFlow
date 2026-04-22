@@ -21,7 +21,7 @@ interface:
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 2
+      every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -64,7 +64,7 @@ numerics:
         spatial: fccd_flux
         time_integrator: ab2
       pressure:
-        gradient: ccd
+        gradient: fccd_flux
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
