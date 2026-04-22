@@ -214,7 +214,50 @@ interface is careful and robust.
 
 ---
 
-## 9 Energy Dissipation and Verification
+## 9 Normal/Tangent Interface-Band Refinement
+
+The next refinement is to avoid treating the entire interface band as equally
+dangerous.  With an interface distance field, or with a smoothed Heaviside
+proxy, define
+
+$$
+\mathbf{n} = \frac{\nabla\phi}{|\nabla\phi|},\qquad
+\mathbf{t}=(-n_y,n_x).
+$$
+
+Then
+
+$$
+\partial_n f = n_xD_xf+n_yD_yf,\qquad
+\partial_t f=-n_yD_xf+n_xD_yf.
+$$
+
+The physical observation is directional: the high-viscosity jump and velocity
+gradient kink are strongest across the interface normal.  Tangential variation
+is usually smoother.  Therefore the Phase-1 practical rule is axis-local:
+
+| Dominant normal | Normal-direction derivative | Tangential derivative |
+|---|---|---|
+| $|n_x|\ge |n_y|$ | x derivative: low-order / one-sided | y derivative: CCD |
+| $|n_y|>|n_x|$ | y derivative: low-order / one-sided | x derivative: CCD |
+
+This semi-local rule preserves the CCD asset inside the interface band without
+pretending that stencils crossing the interface are smooth.  It is a bridge
+between the simple band switch of §8 and the full local-coordinate stress
+formulation:
+
+$$
+\tau_{nn}\sim 2\mu\,\partial_n u_n,\quad
+\tau_{tt}\sim 2\mu\,\partial_t u_t,\quad
+\tau_{nt}\sim\mu(\partial_nu_t+\partial_tu_n).
+$$
+
+The full $(u_n,u_t)$ stress construction is Phase 3 research; the axis-local
+normal fallback is the recommended implementation first step.
+
+---
+
+## 10 Energy Dissipation and Verification
 
 ### Requirement
 
@@ -234,7 +277,7 @@ Test 3 (zero viscous force for zero velocity) is the cheapest diagnostic and sho
 
 ---
 
-## 10 Interaction with BF/PPE Path
+## 11 Interaction with BF/PPE Path
 
 The viscous term is **not part of the BF pressure-surface tension balance**. However:
 
@@ -243,7 +286,7 @@ The viscous term is **not part of the BF pressure-surface tension balance**. How
 
 ---
 
-## 11 Anti-Pattern Table
+## 12 Anti-Pattern Table
 
 | Anti-pattern | Failure mode |
 |--------------|-------------|
@@ -256,21 +299,24 @@ The viscous term is **not part of the BF pressure-surface tension balance**. How
 | Viscous force diagnostic with raw BF residual | Cross-term contamination; misleading diagnosis |
 | Non-conservative Layer C | Energy property lost |
 | Global $\mu\Delta\mathbf{u}$ shortcut in two-phase flow | Interface cross term removed; shear stress jump mishandled |
+| Interface-band all-low-order fallback when tangential stencils are smooth | Unnecessary loss of CCD accuracy |
+| Noisy normal field used for derivative switching | Random axis switching; artificial viscous noise |
 
 ---
 
-## 12 Four-Phase Implementation Roadmap
+## 13 Four-Phase Implementation Roadmap
 
 | Phase | Content | Acceptance gate |
 |-------|---------|----------------|
 | 1 | Low-order conservative viscous (Layers A/B/C, 2nd order throughout) | Couette, static droplet, manufactured solution 2nd-order |
 | 2 | Interface band switching (2nd-order one-sided/central in band) | High-$\mu$-ratio energy test; no regression from Phase 1 |
 | 3 | Phi/psi-gated bulk CCD Laplacian + interface stress-divergence | Same as Phase 2; bulk speed improves without changing interface diagnostics |
-| 4 | Bulk CCD at Layer A correction path (out-of-band only) | Single-phase manufactured CCD-order convergence; two-phase unchanged |
-| 5 | Defect correction for Helmholtz ($L_L$ inner + $L_H$ outer) | Defect correction matches direct $A_H$ solve; Helmholtz convergence faster |
+| 4 | Normal-axis fallback inside interface band; tangential CCD retained | Rotated-interface smoke tests show axis choice follows $\nabla\psi$ |
+| 5 | Full normal/tangent projected derivative prototype | Matches Phase 4 in simple aligned cases; improves oblique-interface accuracy |
+| 6 | Defect correction for Helmholtz ($L_L$ inner + $L_H$ outer) | Defect correction matches direct $A_H$ solve; Helmholtz convergence faster |
 
 ---
 
-## 13 One-Line Summary
+## 14 One-Line Summary
 
-> **Use CCD aggressively where $\psi$ says the flow is bulk, but keep the conservative stress-divergence form where $\psi$ says the viscosity jump lives.**
+> **Use CCD aggressively in the bulk and along the interface tangent; reserve low-order/jump-aware treatment for the interface-normal direction.**

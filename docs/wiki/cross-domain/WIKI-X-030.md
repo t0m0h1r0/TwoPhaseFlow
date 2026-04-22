@@ -60,6 +60,13 @@ $\psi\in(\varepsilon_\psi,1-\varepsilon_\psi)$ with a one-cell dilation.
 This keeps CCD as the bulk workhorse while preventing the global
 $\mu\nabla^2\mathbf{u}$ anti-pattern near the viscosity jump.
 
+Inside the interface band, the next refinement is normal/tangent splitting.
+Using $\mathbf{n}\approx\nabla\psi/|\nabla\psi|$, only the coordinate direction
+closest to the interface normal should fall back to low-order / one-sided
+differentiation; the tangential direction can keep CCD.  The initial
+implementation is axis-local (`|n_x|>|n_y|` ⇒ x is normal-like, y is
+tangential-like) rather than a full curvilinear $(u_n,u_t)$ stress formulation.
+
 FCCD remains a pressure / surface-tension balanced-force tool because its value
 is face-locus alignment.  It is not the viscous operator's primary design axis.
 UCCD6 remains a transport / advection stabilisation tool; using its
