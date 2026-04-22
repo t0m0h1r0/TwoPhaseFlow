@@ -209,13 +209,20 @@ def test_from_config_threads_fccd_keys():
         "grid": {
             "cells": [N, N],
             "domain": {"size": [L, L], "boundary": "wall"},
-            "interface_fitting": {
-                "enabled": True,
+            "distribution": {
+                "type": "interface_fitted",
                 "method": "gaussian_levelset",
                 "alpha": 2.0,
                 "schedule": "static",
             },
-            "interface_width": {"mode": "local", "base_factor": 1.5},
+        },
+        "interface": {
+            "thickness": {"mode": "local", "base_factor": 1.5},
+            "reinitialization": {
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+                "profile": {"eps_scale": 1.4, "ridge_sigma_0": 3.0},
+            },
         },
         "physics": {
             "phases": {
@@ -226,21 +233,35 @@ def test_from_config_threads_fccd_keys():
         },
         "run": {
             "time": {"final": 1.0, "cfl": 0.1},
-            "schemes": {
-                "levelset_advection": "fccd_flux",
-                "momentum_convection": "fccd_flux",
-                "ppe": "fvm_direct",
-                "surface_tension": "csf",
-                "viscous_time": "crank_nicolson",
+        },
+        "numerics": {
+            "physical_time": {
+                "interface_advection": {
+                    "spatial": "fccd_flux",
+                    "time": "explicit",
+                    "tracking": {"enabled": True, "primary": "phi"},
+                },
+                "momentum": {
+                    "form": "primitive_velocity",
+                    "convection": {"spatial": "fccd_flux", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
+                },
             },
-            "reinitialization": {
-                "method": "ridge_eikonal",
-                "every": 2,
-                "eps_scale": 1.4,
-                "ridge_sigma_0": 3.0,
+            "elliptic": {
+                "pressure_projection": {
+                    "mode": "consistent_gfm",
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "direct"},
+                    },
+                },
             },
-            "projection": {"mode": "consistent_gfm"},
-            "interface_tracking": {"enabled": True, "method": "phi_primary"},
         },
     }
     cfg = ExperimentConfig.from_dict(raw)
@@ -260,13 +281,19 @@ def test_from_config_can_disable_interface_tracking():
         "grid": {
             "cells": [N, N],
             "domain": {"size": [L, L], "boundary": "wall"},
-            "interface_fitting": {
-                "enabled": False,
+            "distribution": {
+                "type": "uniform",
                 "method": "none",
                 "alpha": 1.0,
                 "schedule": "static",
             },
-            "interface_width": {"mode": "nominal", "base_factor": 1.5},
+        },
+        "interface": {
+            "thickness": {"mode": "nominal", "base_factor": 1.5},
+            "reinitialization": {
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+            },
         },
         "physics": {
             "phases": {
@@ -277,15 +304,34 @@ def test_from_config_can_disable_interface_tracking():
         },
         "run": {
             "time": {"final": 0.1, "cfl": 0.1},
-            "reinitialization": {"method": "ridge_eikonal", "every": 2},
-            "interface_tracking": {"enabled": False, "method": "none"},
-            "projection": {"mode": "standard"},
-            "schemes": {
-                "levelset_advection": "dissipative_ccd",
-                "momentum_convection": "ccd",
-                "ppe": "fvm_iterative",
-                "surface_tension": "csf",
-                "viscous_time": "explicit",
+        },
+        "numerics": {
+            "physical_time": {
+                "interface_advection": {
+                    "spatial": "dissipative_ccd",
+                    "time": "explicit",
+                    "tracking": {"enabled": False, "primary": "none"},
+                },
+                "momentum": {
+                    "form": "primitive_velocity",
+                    "convection": {"spatial": "ccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "explicit"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
+                },
+            },
+            "elliptic": {
+                "pressure_projection": {
+                    "mode": "standard",
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "iterative", "method": "gmres"},
+                    },
+                },
             },
         },
     }

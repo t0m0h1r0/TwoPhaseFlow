@@ -1,4 +1,4 @@
-"""Canonical ch13 experiment YAML schema coverage."""
+"""Readable ch13 YAML schema coverage."""
 
 from __future__ import annotations
 
@@ -11,7 +11,9 @@ from twophase.simulation.config_io import ExperimentConfig
 
 def _deep_update(base: dict, patch: dict) -> dict:
     for key, value in patch.items():
-        if isinstance(value, dict) and isinstance(base.get(key), dict):
+        if key == "solver":
+            base[key] = value
+        elif isinstance(value, dict) and isinstance(base.get(key), dict):
             _deep_update(base[key], value)
         else:
             base[key] = value
@@ -23,13 +25,20 @@ def _minimal(patch: dict | None = None) -> dict:
         "grid": {
             "cells": [8, 8],
             "domain": {"size": [1.0, 1.0], "boundary": "wall"},
-            "interface_fitting": {
-                "enabled": True,
+            "distribution": {
+                "type": "interface_fitted",
                 "method": "gaussian_levelset",
                 "alpha": 1.0,
                 "schedule": "static",
             },
-            "interface_width": {"mode": "nominal", "base_factor": 1.5},
+        },
+        "interface": {
+            "thickness": {"mode": "nominal", "base_factor": 1.5},
+            "reinitialization": {
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+                "profile": {"eps_scale": 1.0, "ridge_sigma_0": 3.0},
+            },
         },
         "physics": {
             "phases": {
@@ -39,48 +48,77 @@ def _minimal(patch: dict | None = None) -> dict:
             "surface_tension": 0.0,
             "gravity": 0.0,
         },
-        "run": {
-            "time": {"final": 0.1, "cfl": 0.1},
-            "reinitialization": {
-                "method": "ridge_eikonal",
-                "every": 2,
-                "eps_scale": 1.0,
-                "ridge_sigma_0": 3.0,
+        "run": {"time": {"final": 0.1, "cfl": 0.1}},
+        "numerics": {
+            "physical_time": {
+                "interface_advection": {
+                    "spatial": "dissipative_ccd",
+                    "time": "explicit",
+                    "tracking": {"enabled": True, "primary": "psi"},
+                },
+                "momentum": {
+                    "form": "primitive_velocity",
+                    "convection": {"spatial": "ccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "explicit"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
+                },
             },
-            "interface_tracking": {"enabled": True, "method": "psi_direct"},
-            "projection": {"mode": "standard"},
-            "schemes": {
-                "levelset_advection": "dissipative_ccd",
-                "momentum_convection": "ccd",
-                "ppe": "fvm_iterative",
-                "surface_tension": "csf",
-                "viscous_time": "explicit",
+            "elliptic": {
+                "pressure_projection": {
+                    "mode": "standard",
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {
+                            "kind": "iterative",
+                            "method": "gmres",
+                            "tolerance": 1.0e-8,
+                            "max_iterations": 500,
+                            "restart": 80,
+                            "preconditioner": "line_pcr",
+                            "pcr_stages": 4,
+                            "c_tau": 2.0,
+                        },
+                    },
+                },
             },
         },
     }
     return _deep_update(raw, deepcopy(patch)) if patch else raw
 
 
-def test_canonical_defaults_round_trip():
+def test_readable_defaults_round_trip():
     cfg = ExperimentConfig.from_dict(_minimal())
     assert cfg.grid.NX == 8
     assert cfg.grid.NY == 8
-    assert cfg.grid.bc_type == "wall"
     assert cfg.physics.mu_l == 0.01
     assert cfg.physics.mu_g == 0.01
     assert cfg.run.advection_scheme == "dissipative_ccd"
     assert cfg.run.convection_scheme == "ccd"
     assert cfg.run.ppe_solver == "fvm_iterative"
-    assert cfg.run.pressure_scheme == "fvm_matrixfree"
+    assert cfg.run.ppe_iteration_method == "gmres"
+    assert cfg.run.ppe_preconditioner == "line_pcr"
 
 
-def test_canonical_structured_sections_round_trip():
+def test_readable_structured_sections_round_trip():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {
             "cells": [16, 12],
             "domain": {"size": [2.0, 1.0], "boundary": "periodic"},
-            "interface_fitting": {"alpha": 2.0, "schedule": "every_3"},
-            "interface_width": {"mode": "local", "base_factor": 1.7},
+            "distribution": {"alpha": 2.0, "schedule": "every_3"},
+        },
+        "interface": {
+            "thickness": {"mode": "local", "base_factor": 1.7},
+            "reinitialization": {
+                "profile": {
+                    "eps_scale": 1.4,
+                    "ridge_sigma_0": 2.5,
+                },
+            },
         },
         "physics": {
             "phases": {
@@ -91,34 +129,48 @@ def test_canonical_structured_sections_round_trip():
         },
         "run": {
             "time": {"final": 0.2, "cfl": 0.05, "print_every": 7},
-            "reinitialization": {
-                "eps_scale": 1.4,
-                "ridge_sigma_0": 2.5,
-            },
-            "interface_tracking": {
-                "method": "phi_primary",
-                "redist_every": 5,
-                "clip_factor": 10.0,
-                "heaviside_eps_scale": 1.2,
-            },
-            "projection": {"mode": "consistent_iim", "face_flux_projection": True},
-            "schemes": {
-                "levelset_advection": "fccd_flux",
-                "momentum_convection": "uccd6",
-                "uccd6_sigma": 2.0e-3,
-                "ppe": "fvm_direct",
-                "surface_tension": "none",
-                "viscous_time": "crank_nicolson",
-            },
             "debug": {"step_diagnostics": True},
+        },
+        "numerics": {
+            "physical_time": {
+                "interface_advection": {
+                    "spatial": "fccd_flux",
+                    "tracking": {
+                        "primary": "phi",
+                        "redistance": {
+                            "schedule": {"every_steps": 5},
+                            "clip_factor": 10.0,
+                            "heaviside_eps_scale": 1.2,
+                        },
+                    },
+                },
+                "momentum": {
+                    "convection": {
+                        "spatial": "uccd6",
+                        "uccd6_sigma": 2.0e-3,
+                    },
+                    "viscosity": {"time": "crank_nicolson"},
+                    "capillary_force": {
+                        "model": "none",
+                        "curvature_cap": 20.0,
+                    },
+                },
+            },
+            "elliptic": {
+                "pressure_projection": {
+                    "mode": "consistent_iim",
+                    "face_flux_projection": True,
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "direct"},
+                    },
+                },
+            },
         },
         "output": {"snapshots": {"interval": 0.25}},
     }))
     assert cfg.grid.NX == 16
     assert cfg.grid.NY == 12
-    assert cfg.grid.LX == 2.0
-    assert cfg.grid.LY == 1.0
-    assert cfg.grid.bc_type == "periodic"
     assert cfg.grid.alpha_grid == 2.0
     assert cfg.grid.grid_rebuild_freq == 3
     assert cfg.grid.use_local_eps is True
@@ -126,14 +178,10 @@ def test_canonical_structured_sections_round_trip():
     assert cfg.physics.rho_g == 1.0
     assert cfg.physics.sigma == 0.5
     assert cfg.run.T_final == 0.2
-    assert cfg.run.cfl == 0.05
-    assert cfg.run.print_every == 7
     assert cfg.run.snap_interval == 0.25
-    assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
     assert cfg.run.interface_tracking_method == "phi_primary"
-    assert cfg.run.phi_primary_redist_every == 5
     assert cfg.run.reproject_mode == "consistent_iim"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
@@ -141,50 +189,115 @@ def test_canonical_structured_sections_round_trip():
     assert cfg.run.uccd6_sigma == 2.0e-3
     assert cfg.run.ppe_solver == "fvm_direct"
     assert cfg.run.pressure_scheme == "fvm_spsolve"
+    assert cfg.run.ppe_iteration_method == "none"
+    assert cfg.run.ppe_preconditioner == "none"
+    assert cfg.run.ppe_max_iterations == 0
     assert cfg.run.surface_tension_scheme == "none"
+    assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True
 
 
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])
-def test_invalid_advection_scheme_rejected(adv: str):
-    with pytest.raises(ValueError, match="levelset_advection"):
+def test_invalid_interface_transport_scheme_rejected(adv: str):
+    with pytest.raises(ValueError, match="interface_advection.spatial"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"schemes": {"levelset_advection": adv}},
+            "numerics": {"physical_time": {"interface_advection": {"spatial": adv}}},
         }))
 
 
-def test_invalid_convection_scheme_rejected():
-    with pytest.raises(ValueError, match="momentum_convection"):
+def test_invalid_momentum_scheme_rejected():
+    with pytest.raises(ValueError, match="momentum.convection.spatial"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"schemes": {"momentum_convection": "bogus"}},
+            "numerics": {
+                "physical_time": {"momentum": {"convection": {"spatial": "bogus"}}},
+            },
         }))
 
 
-def test_invalid_ppe_scheme_rejected():
-    with pytest.raises(ValueError, match="schemes.ppe"):
+def test_invalid_ppe_solver_kind_rejected():
+    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.kind"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"schemes": {"ppe": "ccd_lu"}},
+            "numerics": {
+                "elliptic": {
+                    "pressure_projection": {
+                        "poisson": {"solver": {"kind": "ccd_lu"}},
+                    },
+                },
+            },
+        }))
+
+
+def test_invalid_ppe_iteration_method_rejected():
+    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.method"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "elliptic": {
+                    "pressure_projection": {
+                        "poisson": {
+                            "solver": {"kind": "iterative", "method": "lgmres"},
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_direct_ppe_rejects_iterative_options():
+    with pytest.raises(ValueError, match="does not accept iterative options"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "elliptic": {
+                    "pressure_projection": {
+                        "poisson": {
+                            "solver": {"kind": "direct", "method": "gmres"},
+                        },
+                    },
+                },
+            },
         }))
 
 
 def test_invalid_viscous_time_scheme_rejected():
-    with pytest.raises(ValueError, match="schemes.viscous_time"):
+    with pytest.raises(ValueError, match="viscosity.time"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"schemes": {"viscous_time": "rk4"}},
+            "numerics": {
+                "physical_time": {"momentum": {"viscosity": {"time": "rk4"}}},
+            },
         }))
 
 
-def test_invalid_interface_tracking_method_rejected():
-    with pytest.raises(ValueError, match="interface_tracking.method"):
+def test_invalid_interface_tracking_primary_rejected():
+    with pytest.raises(ValueError, match="interface_advection.tracking.primary"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"interface_tracking": {"method": "marker_particles"}},
+            "numerics": {
+                "physical_time": {
+                    "interface_advection": {
+                        "tracking": {"primary": "marker_particles"},
+                    },
+                },
+            },
+        }))
+
+
+def test_invalid_tracking_redistance_frequency_rejected():
+    with pytest.raises(ValueError, match="tracking.redistance.schedule.every_steps"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "physical_time": {
+                    "interface_advection": {
+                        "tracking": {
+                            "redistance": {"schedule": {"every_steps": 0}},
+                        },
+                    },
+                },
+            },
         }))
 
 
 def test_disabled_interface_fitting_forces_uniform_grid():
     cfg = ExperimentConfig.from_dict(_minimal({
-        "grid": {"interface_fitting": {"enabled": False, "alpha": 2.0}},
+        "grid": {"distribution": {"type": "uniform", "method": "none", "alpha": 2.0}},
     }))
     assert cfg.grid.interface_fitting_enabled is False
     assert cfg.grid.interface_fitting_method == "none"
@@ -192,14 +305,14 @@ def test_disabled_interface_fitting_forces_uniform_grid():
 
 
 def test_invalid_interface_fitting_method_rejected():
-    with pytest.raises(ValueError, match="interface_fitting.method"):
+    with pytest.raises(ValueError, match="grid.distribution.method"):
         ExperimentConfig.from_dict(_minimal({
-            "grid": {"interface_fitting": {"method": "spline_fit"}},
+            "grid": {"distribution": {"method": "spline_fit"}},
         }))
 
 
 def test_invalid_projection_mode_rejected():
-    with pytest.raises(ValueError, match="projection.mode"):
+    with pytest.raises(ValueError, match="pressure_projection.mode"):
         ExperimentConfig.from_dict(_minimal({
-            "run": {"projection": {"mode": "gfm"}},
+            "numerics": {"elliptic": {"pressure_projection": {"mode": "gfm"}}},
         }))

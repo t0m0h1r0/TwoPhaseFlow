@@ -59,8 +59,32 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.tol = getattr(solver_cfg, "pseudo_tol", 1e-8)
         self.maxiter = getattr(solver_cfg, "pseudo_maxiter", 500)
         self.c_tau = getattr(solver_cfg, "pseudo_c_tau", 2.0)
-        self.restart = min(80, max(20, self.maxiter))
-        self.precond_pcr_stages = 4 if self.backend.is_gpu() else None
+        self.iteration_method = str(
+            getattr(solver_cfg, "ppe_iteration_method", "gmres")
+        ).strip().lower()
+        if self.iteration_method != "gmres":
+            raise ValueError(
+                "PPESolverFVMMatrixFree supports ppe_iteration_method='gmres' "
+                f"today, got {self.iteration_method!r}"
+            )
+        restart = getattr(solver_cfg, "ppe_restart", None)
+        self.restart = int(restart) if restart is not None else min(80, max(20, self.maxiter))
+        self.preconditioner = str(
+            getattr(solver_cfg, "ppe_preconditioner", "line_pcr")
+        ).strip().lower()
+        if self.preconditioner not in {"line_pcr", "none"}:
+            raise ValueError(
+                "ppe_preconditioner must be 'line_pcr' or 'none', "
+                f"got {self.preconditioner!r}"
+            )
+        pcr_stages = getattr(solver_cfg, "ppe_pcr_stages", 4)
+        if pcr_stages is None:
+            pcr_stages = 4
+        self.precond_pcr_stages = (
+            int(pcr_stages)
+            if self.backend.is_gpu() and self.preconditioner == "line_pcr"
+            else None
+        )
 
         if bc_spec is not None:
             self._pin_dof = bc_spec.pin_dof
@@ -144,7 +168,9 @@ class PPESolverFVMMatrixFree(IPPESolver):
             return z.ravel()
 
         A = la.LinearOperator((n_dof, n_dof), matvec=_matvec, dtype=rhs_flat.dtype)
-        M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
+        M = None
+        if self.preconditioner == "line_pcr":
+            M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
 
         try:
             sol_flat, info = la.gmres(

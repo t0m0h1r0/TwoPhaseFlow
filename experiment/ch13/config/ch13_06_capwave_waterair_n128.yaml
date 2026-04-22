@@ -6,14 +6,23 @@ grid:
   domain:
     size: [1.0, 1.0]
     boundary: wall
-  interface_fitting:
-    enabled: true
+  distribution:
+    type: interface_fitted
     method: gaussian_levelset
     alpha: 2.0
     schedule: static
-  interface_width:
+
+interface:
+  thickness:
     mode: local
     base_factor: 1.5
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 2
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
 
 physics:
   phases:
@@ -31,22 +40,38 @@ run:
     final: 90.0
     cfl: 0.10
     print_every: 1000
-  reinitialization:
-    method: ridge_eikonal
-    every: 2
-    eps_scale: 1.4
-    ridge_sigma_0: 3.0
-  interface_tracking:
-    enabled: true
-    method: phi_primary
-  projection:
-    mode: consistent_gfm
-  schemes:
-    levelset_advection: fccd_flux
-    momentum_convection: fccd_flux
-    ppe: fvm_direct
-    surface_tension: csf
-    viscous_time: explicit
+
+numerics:
+  physical_time:
+    interface_advection:
+      spatial: fccd_flux
+      time: explicit
+      tracking:
+        enabled: true
+        primary: phi
+        redistance:
+          schedule:
+            every_steps: 4
+    momentum:
+      form: primitive_velocity
+      convection:
+        spatial: fccd_flux
+        time: explicit
+      viscosity:
+        spatial: ccd
+        time: explicit
+      capillary_force:
+        model: csf
+        time: explicit
+        curvature: psi_direct_hfe
+        force_gradient: projection_consistent
+  elliptic:
+    pressure_projection:
+      mode: consistent_gfm
+      poisson:
+        discretization: fvm
+        solver:
+          kind: direct
 
 output:
   dir: results/ch13_06_capwave_waterair_n128

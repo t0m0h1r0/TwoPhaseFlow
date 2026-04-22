@@ -5,14 +5,23 @@ grid:
   domain:
     size: [1.0, 1.0]
     boundary: wall
-  interface_fitting:
-    enabled: true
+  distribution:
+    type: interface_fitted
     method: gaussian_levelset
     alpha: 2.0
     schedule: static
-  interface_width:
+
+interface:
+  thickness:
     mode: local
     base_factor: 1.5
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 2
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
 
 physics:
   phases:
@@ -30,27 +39,49 @@ run:
     final: 0.10
     cfl: 0.10
     print_every: 20
-  reinitialization:
-    method: ridge_eikonal
-    every: 2
-    eps_scale: 1.4
-    ridge_sigma_0: 3.0
-  interface_tracking:
-    enabled: true
-    method: phi_primary
-    redist_every: 4
-    clip_factor: 12.0
-    heaviside_eps_scale: 1.0
-  projection:
-    mode: consistent_gfm
-  schemes:
-    levelset_advection: fccd_flux
-    momentum_convection: fccd_flux
-    ppe: fvm_iterative
-    surface_tension: csf
-    viscous_time: explicit
   debug:
     step_diagnostics: false
+
+numerics:
+  physical_time:
+    interface_advection:
+      spatial: fccd_flux
+      time: explicit
+      tracking:
+        enabled: true
+        primary: phi
+        redistance:
+          schedule:
+            every_steps: 4
+          clip_factor: 12.0
+          heaviside_eps_scale: 1.0
+    momentum:
+      form: primitive_velocity
+      convection:
+        spatial: fccd_flux
+        time: explicit
+      viscosity:
+        spatial: ccd
+        time: explicit
+      capillary_force:
+        model: csf
+        time: explicit
+        curvature: psi_direct_hfe
+        force_gradient: projection_consistent
+  elliptic:
+    pressure_projection:
+      mode: consistent_gfm
+      poisson:
+        discretization: fvm
+        solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-8
+          max_iterations: 500
+          restart: 80
+          preconditioner: line_pcr
+          pcr_stages: 4
+          c_tau: 2.0
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128
