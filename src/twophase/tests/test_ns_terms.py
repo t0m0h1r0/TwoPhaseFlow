@@ -183,6 +183,35 @@ def test_viscous_ccd_bulk_uses_stress_form_in_interface_band(backend):
     assert err < 1e-14, f"Interface band did not use stress-divergence: {err:.2e}"
 
 
+def test_viscous_ccd_bulk_keeps_tangential_ccd_in_interface_band(backend):
+    """If the interface normal is x-like, y-direction viscous derivatives keep CCD."""
+    cfg, grid, ccd, be = make_setup(N=32, backend=backend)
+    visc = ViscousTerm(be, Re=1.0, cn_viscous=False, spatial_scheme="ccd_bulk")
+    conservative = ViscousTerm(
+        be,
+        Re=1.0,
+        cn_viscous=False,
+        spatial_scheme="conservative_stress",
+    )
+
+    N = 32
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    u = np.sin(2 * np.pi * Y)
+    v = np.zeros_like(u)
+    mu = np.ones_like(u)
+    rho = np.ones_like(u)
+    psi = 0.25 + 0.5 * X
+
+    result = visc.compute_explicit([u, v], mu, rho, ccd, psi=psi)
+    low_order = conservative.compute_explicit([u, v], mu, rho, ccd)
+    expected = -(2 * np.pi)**2 * np.sin(2 * np.pi * Y)
+
+    err_directional = np.max(np.abs(result[0][1:-1, 1:-1] - expected[1:-1, 1:-1]))
+    err_low = np.max(np.abs(low_order[0][1:-1, 1:-1] - expected[1:-1, 1:-1]))
+    assert err_directional < err_low
+
+
 # ── Test 3: Gravity ───────────────────────────────────────────────────────
 
 def test_gravity_direction(backend):

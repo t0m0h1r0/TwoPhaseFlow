@@ -274,6 +274,18 @@ class ViscousTerm(INSTerm):
             lap += d2
         return mu * lap
 
+    def _axis_derivative_with_normal_fallback(
+        self,
+        data,
+        axis: int,
+        ccd: "CCDSolver",
+        normal_axis_masks: list,
+    ):
+        """CCD tangential derivative with low-order fallback on normal-like axis."""
+        d_ccd, _ = ccd.differentiate(data, axis)
+        d_low = self._low_order_derivative(data, axis, ccd)
+        return self.xp.where(normal_axis_masks[axis], d_low, d_ccd)
+
     def _interface_band_mask(self, psi):
         xp = self.xp
         p = xp.asarray(psi)
@@ -287,6 +299,44 @@ class ViscousTerm(INSTerm):
             band[tuple(lo)] = band[tuple(lo)] | base[tuple(hi)]
             band[tuple(hi)] = band[tuple(hi)] | base[tuple(lo)]
         return band
+
+    def _normal_axis_masks(self, psi, ccd: "CCDSolver"):
+        xp = self.xp
+        p = xp.asarray(psi)
+        gradients = [self._low_order_derivative(p, axis, ccd) for axis in range(p.ndim)]
+        abs_grads = [xp.abs(g) for g in gradients]
+        max_grad = abs_grads[0]
+        for g in abs_grads[1:]:
+            max_grad = xp.maximum(max_grad, g)
+        masks = []
+        for g in abs_grads:
+            masks.append((g >= max_grad) & (max_grad > 1.0e-14))
+        flat = max_grad <= 1.0e-14
+        masks = [m | flat for m in masks]
+        return masks
+
+    def _stress_divergence_component_normal_tangent(
+        self,
+        alpha: int,
+        vel: List,
+        mu,
+        ccd: "CCDSolver",
+        normal_axis_masks: list,
+    ):
+        """Interface-band stress form: normal-like derivatives low-order, tangent CCD."""
+        total = self.xp.zeros_like(vel[alpha])
+        for beta in range(len(vel)):
+            du_a_dbeta = self._axis_derivative_with_normal_fallback(
+                vel[alpha], beta, ccd, normal_axis_masks
+            )
+            du_b_dalpha = self._axis_derivative_with_normal_fallback(
+                vel[beta], alpha, ccd, normal_axis_masks
+            )
+            stress = mu * (du_a_dbeta + du_b_dalpha)
+            total += self._axis_derivative_with_normal_fallback(
+                stress, beta, ccd, normal_axis_masks
+            )
+        return total
 
     def _evaluate(self, vel: List, mu, rho, ccd: "CCDSolver", psi=None) -> List:
         """Compute ∇·[μ̃ (∇u + ∇uᵀ)] / (ρ̃ Re) for each component.
@@ -305,10 +355,13 @@ class ViscousTerm(INSTerm):
         if self.spatial_scheme == "ccd_bulk":
             if psi is not None:
                 band = self._interface_band_mask(psi)
+                normal_axis_masks = self._normal_axis_masks(psi, ccd)
                 return [
                     self.xp.where(
                         band,
-                        self._stress_divergence_component_conservative(alpha, vel, mu, ccd),
+                        self._stress_divergence_component_normal_tangent(
+                            alpha, vel, mu, ccd, normal_axis_masks
+                        ),
                         self._bulk_laplacian_component(vel[alpha], mu, ccd),
                     )
                     / (self.Re * rho)
