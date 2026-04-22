@@ -426,6 +426,10 @@ _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler")
 _MOMENTUM_FORMS = ("primitive_velocity",)
 _VISCOUS_SPATIAL_SCHEMES = ("ccd",)
 _CURVATURE_SCHEMES = ("psi_direct_hfe",)
+_MOMENTUM_PREDICTOR_ALIASES = {
+    "fractional_step": "projection_predictor_corrector",
+    "pressure_correction": "projection_predictor_corrector",
+}
 _MOMENTUM_GRADIENT_SCHEMES = ("projection_consistent", "fccd_flux", "fccd_nodal")
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
 _PPE_ITERATION_METHODS = ("gmres",)
@@ -456,9 +460,10 @@ def _parse_run(
     surface_tension = layout["surface_tension"]
     projection = layout["projection"]
     poisson = projection["poisson"]
-    poisson_operator = poisson.get("operator", poisson)
+    poisson_operator = poisson.get("operator", {})
     _validate_choice(
-        poisson_operator["discretization"], _PPE_DISCRETIZATIONS,
+        poisson_operator.get("discretization", "fvm"),
+        _PPE_DISCRETIZATIONS,
         layout["paths"]["poisson_discretization"],
     )
     _validate_choice(
@@ -518,15 +523,15 @@ def _parse_run(
     ) = _parse_ppe_solver_config(ppe_solver_cfg, layout["paths"]["poisson_solver"])
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
     pressure_gradient_scheme = _validate_choice(
-        pressure_term.get("spatial", pressure_term.get("gradient", "projection_consistent")),
+        pressure_term.get("gradient", pressure_term.get("spatial", "projection_consistent")),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
     surface_tension_gradient_scheme = _validate_choice(
         surface_tension.get(
-            "spatial",
+            "gradient",
             surface_tension.get(
-                "gradient",
+                "spatial",
                 surface_tension.get("force_gradient", "projection_consistent"),
             ),
         ),
@@ -666,12 +671,13 @@ def _parse_numerics_layout(numerics: dict) -> dict:
         interface_num = numerics["interface"]
         time_num = numerics.get("time", {}) or {}
         interface_transport = dict(interface_num["transport"])
-        if "time_integrator" not in interface_transport and "interface_transport" in time_num:
-            interface_transport["time_integrator"] = time_num["interface_transport"]
         _validate_choice(
-            time_num.get("momentum_predictor", "projection_predictor_corrector"),
+            _normalize_momentum_predictor(
+                time_num.get("algorithm",
+                time_num.get("momentum_predictor", "projection_predictor_corrector"))
+            ),
             _MOMENTUM_PREDICTORS,
-            "numerics.time.momentum_predictor",
+            "numerics.time.algorithm",
         )
         tracking = dict(interface_num.get("tracking", {}) or {})
         if "primary" not in tracking:
@@ -719,10 +725,10 @@ def _parse_numerics_layout(numerics: dict) -> dict:
                 "convection_uccd6_sigma": "numerics.momentum.terms.convection.uccd6_sigma",
                 "viscosity_spatial": "numerics.momentum.terms.viscosity.spatial",
                 "viscosity_time": "numerics.momentum.terms.viscosity.time_integrator",
-                "pressure_spatial": "numerics.momentum.terms.pressure.spatial",
+                "pressure_spatial": "numerics.momentum.terms.pressure.gradient",
                 "surface_tension_model": "numerics.momentum.terms.surface_tension.model",
                 "surface_tension_curvature": "interface.geometry.curvature.method",
-                "surface_tension_spatial": "numerics.momentum.terms.surface_tension.spatial",
+                "surface_tension_spatial": "numerics.momentum.terms.surface_tension.gradient",
                 "projection_mode": "numerics.projection.mode",
                 "poisson_discretization": "numerics.projection.poisson.operator.discretization",
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
@@ -894,6 +900,13 @@ def _parse_ppe_solver_options(kind: str, solver_cfg: dict, path: str) -> tuple[
     ppe_restart = int(solver_cfg["restart"]) if "restart" in solver_cfg else None
     if ppe_restart is not None and ppe_restart <= 0:
         raise ValueError(f"{path}.restart must be > 0")
+    if ppe_preconditioner != "line_pcr":
+        for _k in ("pcr_stages", "c_tau"):
+            if _k in solver_cfg:
+                raise ValueError(
+                    f"{path}.{_k} is only valid when preconditioner='line_pcr', "
+                    f"got preconditioner={ppe_preconditioner!r}"
+                )
     ppe_pcr_stages = (
         int(solver_cfg["pcr_stages"]) if "pcr_stages" in solver_cfg else None
     )
@@ -1016,6 +1029,11 @@ def _parse_tracking_redistance_every(
             f"{path} must be > 0"
         )
     return every
+
+
+def _normalize_momentum_predictor(raw: str) -> str:
+    """Resolve paper-term aliases for momentum_predictor to the internal key."""
+    return _MOMENTUM_PREDICTOR_ALIASES.get(str(raw).strip().lower(), str(raw).strip().lower())
 
 
 def _parse_projection_mode(raw: Any, path: str = "numerics.projection.mode") -> str:

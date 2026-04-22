@@ -391,3 +391,43 @@ def test_invalid_projection_mode_rejected():
         ExperimentConfig.from_dict(_minimal({
             "numerics": {"projection": {"mode": "gfm"}},
         }))
+
+
+@pytest.mark.parametrize("extra_key", ["pcr_stages", "c_tau"])
+def test_pcr_stages_and_c_tau_rejected_for_non_line_pcr(extra_key: str):
+    with pytest.raises(ValueError, match=f"{extra_key}.*line_pcr"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "solver": {
+                            "kind": "iterative",
+                            "preconditioner": "jacobi",
+                            extra_key: 4,
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_gradient_key_reads_pressure_and_surface_tension():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "pressure": {"gradient": "fccd_flux"},
+                    "surface_tension": {"gradient": "fccd_nodal", "model": "csf"},
+                },
+            },
+        },
+    }))
+    assert cfg.run.pressure_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_nodal"
+
+
+def test_fractional_step_algorithm_alias():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {"time": {"algorithm": "fractional_step"}},
+    }))
+    assert cfg.run.reproject_mode == "legacy"
