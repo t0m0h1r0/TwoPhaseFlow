@@ -51,6 +51,7 @@ from .gradient_operator import (
     IGradientOperator,
     CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,  # registration
     IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
+    FCCDDivergenceOperator,
 )
 from .scheme_build_ctx import (
     GradientBuildCtx, AdvectionBuildCtx, ConvectionBuildCtx,
@@ -275,18 +276,7 @@ class TwoPhaseNSSolver:
             surface_tension_gradient_scheme or self._momentum_gradient_scheme
         ).strip().lower()
 
-        # Momentum gradient operator strategies.  Pressure and surface tension
-        # are separate physical terms in the YAML; they may intentionally choose
-        # different spatial operators.
-        ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
-        if not self._grid.uniform and bc_type == "wall":
-            base_grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
-            self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
-        else:
-            base_grad_op = ccd_grad_op
-            self._div_op = CCDDivergenceOperator(self._ccd)
-
-        # FCCDSolver: shared across advection, convection, and gradient operators.
+        # FCCDSolver: created first so FCCDDivergenceOperator can use it below.
         # One shared instance reuses the CCD LU factorisation — mirrors builder.py
         # §"one factorisation, many calls".
         _FCCD_NAMES = frozenset({"fccd_flux", "fccd_nodal"})
@@ -301,6 +291,25 @@ class TwoPhaseNSSolver:
             FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
             if needs_fccd else None
         )
+
+        # Momentum gradient / divergence operators.
+        # _div_op: PPE RHS divergence (FVM for non-uniform+wall to avoid H²q
+        # amplification of the non-smooth surface tension force; see WIKI-T-068 §3).
+        # _fccd_div_op: separate face-flux projector with O(h⁴) FCCD face values
+        # for the velocity field (WIKI-T-068 §5); activated automatically.
+        ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+        if not self._grid.uniform and bc_type == "wall":
+            self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
+        else:
+            self._div_op = CCDDivergenceOperator(self._ccd)
+
+        self._fccd_div_op: FCCDDivergenceOperator | None = (
+            FCCDDivergenceOperator(self._fccd)
+            if self._fccd is not None and not self._grid.uniform and bc_type == "wall"
+            else None
+        )
+        if self._fccd_div_op is not None:
+            self._face_flux_projection = True
 
         # Gradient operators — each scheme class decides its own construction.
         grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=self._fccd)
@@ -722,6 +731,8 @@ class TwoPhaseNSSolver:
         self._reinit.update_grid(self._grid)
         self._ppe_solver.update_grid(self._grid)
         self._ppe_solver.invalidate_cache()
+        if self._fccd_div_op is not None:
+            self._fccd_div_op.update_weights()
         self._p_prev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
@@ -1020,7 +1031,8 @@ class TwoPhaseNSSolver:
                 )
             )
         if self._face_flux_projection:
-            u, v = self._div_op.project(
+            proj_op = self._fccd_div_op if self._fccd_div_op is not None else self._div_op
+            u, v = proj_op.project(
                 [u_star, v_star],
                 p,
                 rho,

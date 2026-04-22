@@ -204,11 +204,15 @@ class VariableDensityReprojector(IVelocityReprojector):
 
         phi = ppe_solver.solve(div, rho)
 
-        # Correct velocity
+        # Correct velocity: u = u* - (1/ρ)∇φ
+        # The PPE solves ∇·[(1/ρ)∇φ] = ∇·u*, so the divergence-free correction
+        # requires (1/ρ)∇φ, not ∇φ. Without this factor, water (ρ=1000) is
+        # over-corrected by 1000× → instant KE blowup.
+        rho_inv = 1.0 / xp.where(xp.abs(rho) > 1e-30, rho, 1.0)
         dp_dx, _ = ccd.differentiate(phi, 0)
         dp_dy, _ = ccd.differentiate(phi, 1)
-        u_proj = u_d - xp.asarray(dp_dx)
-        v_proj = v_d - xp.asarray(dp_dy)
+        u_proj = u_d - rho_inv * xp.asarray(dp_dx)
+        v_proj = v_d - rho_inv * xp.asarray(dp_dy)
 
         return u_proj, v_proj
 

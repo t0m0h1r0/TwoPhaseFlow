@@ -70,6 +70,8 @@
 | [WIKI-T-064](theory/WIKI-T-064.md) | ∇·(2μD) Staggered MAC Discretization: Layer Architecture, Shear Stress Corner Placement, and Conservative Discrete Forms |
 | [WIKI-T-065](theory/WIKI-T-065.md) | CLS Complete 1-Step Algorithm: Conservative Transport, ψ↔φ Mapping, Narrow-Band Reinit, and Staged Mass Correction |
 | [WIKI-T-066](theory/WIKI-T-066.md) | Body Force Discretization in Variable-Density Two-Phase NS: f vs f/ρ, Gravity Face Placement, Hydrostatic Split, and BF Consistency |
+| [WIKI-T-067](theory/WIKI-T-067.md) | GFM Variable-Density Projection: Mandatory 1/ρ Factor in Velocity Correction |
+| [WIKI-T-068](theory/WIKI-T-068.md) | FCCDDivergenceOperator: FCCD Face-Flux Projector with FVM-Consistent Pressure Gradient |
 
 ## Cross-Domain (32)
 
@@ -225,3 +227,7 @@
 | [WIKI-L-024](code/WIKI-L-024.md) | FCCD Library Module: FCCDSolver, FCCDConvectionTerm, FCCDLevelSetAdvection |
 | [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |
 | [WIKI-L-026](code/WIKI-L-026.md) | GPU Matrix-Free FVM PPE Roadmap: Variable-Batched PCR and Device-Resident Krylov |
+| [WIKI-L-027](code/WIKI-L-027.md) | Split-Reinit y-flip Invariance: safe_grad Floor in compute_gradient_normal |
+| [WIKI-L-028](code/WIKI-L-028.md) | Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
+| [WIKI-L-029](code/WIKI-L-029.md) | FCCD Weight Staleness after In-Place Grid Rebuild: update_weights() Protocol |
+| [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |

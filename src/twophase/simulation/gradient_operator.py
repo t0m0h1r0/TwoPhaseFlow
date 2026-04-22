@@ -1,11 +1,12 @@
-"""Pressure gradient/divergence operator strategies (CCD vs FVM).
+"""Pressure gradient/divergence operator strategies (CCD vs FVM vs FCCD).
 
 Encapsulates the choice between:
 - CCDGradientOperator: 6th-order CCD compact differentiation
 - FCCDGradientOperator: face-centred compact gradient reconstructed to nodes
 - FVMGradientOperator: face-average FVM gradient (for non-uniform grids)
 - CCDDivergenceOperator: CCD nodal divergence
-- FVMDivergenceOperator: finite-volume nodal-flux divergence
+- FVMDivergenceOperator: finite-volume nodal-flux divergence (O(h²))
+- FCCDDivergenceOperator: FCCD face-flux divergence, BF-paired with FCCDGradientOperator (O(h⁴))
 """
 
 from __future__ import annotations
@@ -355,3 +356,97 @@ class FVMDivergenceOperator(IDivergenceOperator):
             shape[axis] = -1
             self._dv.append(self.xp.asarray(dv.reshape(shape)))
             self._d_face.append(self.xp.asarray(d_face.reshape(shape)))
+
+
+class FCCDDivergenceOperator(IDivergenceOperator):
+    """FCCD face-flux projector: O(h⁴) face values, BF-paired with FCCDGradientOperator.
+
+    NOT used as the primary PPE-RHS divergence operator (FCCD face_value applied to
+    non-smooth surface tension forces gives spurious H²q corrections).  Used
+    exclusively through ``project()``, where FCCD face values are applied to the
+    smooth velocity field u* while the pressure gradient uses the FVM-consistent
+    finite difference that matches the FVM PPE solver (see WIKI-T-068 §4-5).
+
+    For diagnostics or smooth fields, ``divergence()`` can still be called.
+    """
+
+    def __init__(self, fccd: "FCCDSolver") -> None:
+        self._fccd = fccd
+
+    def divergence(self, components: list["array"]) -> "array":
+        div = None
+        for axis, comp in enumerate(components):
+            f_face = self._fccd.face_value(comp, axis)
+            d = self._fccd.face_divergence(f_face, axis)
+            div = d if div is None else div + d
+        return div
+
+    def project(
+        self,
+        components: list["array"],
+        p: "array",
+        rho: "array",
+        dt: float,
+        force_components: list["array"] | None = None,
+    ) -> list["array"]:
+        """FCCD face-flux projection (WIKI-T-068 §5).
+
+        Uses FCCD Hermite face values for velocity and force (O(h⁴) accuracy),
+        with FVM-consistent pressure gradient ``(p_r - p_l) / H`` to match the
+        FVM PPE solver.  This gives near-zero FVM divergence after reconstruction
+        — identical to ``FVMDivergenceOperator.project`` but with O(h⁴) face
+        interpolation for the velocity and force components.
+        """
+        import numpy as _np
+        xp = self._fccd.xp
+        grid = self._fccd.grid
+        ndim = grid.ndim
+
+        u_faces = [self._fccd.face_value(comp, ax) for ax, comp in enumerate(components)]
+        if force_components is None:
+            f_faces = [xp.zeros_like(u_faces[ax]) for ax in range(ndim)]
+        else:
+            f_faces = [self._fccd.face_value(fc, ax) for ax, fc in enumerate(force_components)]
+
+        corrected = []
+        for axis in range(ndim):
+            N = grid.N[axis]
+
+            def sl(start, stop, ax=axis):
+                s = [slice(None)] * ndim
+                s[ax] = slice(start, stop)
+                return tuple(s)
+
+            d_face = _np.asarray(grid.coords[axis][1:] - grid.coords[axis][:-1])
+            shape = [1] * ndim
+            shape[axis] = -1
+            d_face_arr = xp.asarray(d_face.reshape(shape))
+
+            rho_lo = rho[sl(0, N)]
+            rho_hi = rho[sl(1, N + 1)]
+            p_face = 2.0 / (rho_lo + rho_hi) * (p[sl(1, N + 1)] - p[sl(0, N)]) / d_face_arr
+
+            corrected.append(u_faces[axis] - dt * p_face + dt * f_faces[axis])
+
+        nodal = []
+        for axis, face in enumerate(corrected):
+            N = grid.N[axis]
+
+            def sl(start, stop, ax=axis):
+                s = [slice(None)] * ndim
+                s[ax] = slice(start, stop)
+                return tuple(s)
+
+            comp = xp.zeros(grid.shape, dtype=face.dtype)
+            comp[sl(1, N)] = 0.5 * (face[sl(0, N - 1)] + face[sl(1, N)])
+            comp[sl(0, 1)] = face[sl(0, 1)]
+            comp[sl(N, N + 1)] = face[sl(N - 1, N)]
+            nodal.append(comp)
+        return nodal
+
+    def update_weights(self) -> None:
+        """Refresh FCCD geometric weights after in-place grid rebuild (WIKI-L-029)."""
+        self._fccd._weights = [
+            self._fccd._precompute_weights(ax)
+            for ax in range(self._fccd.ndim)
+        ]
