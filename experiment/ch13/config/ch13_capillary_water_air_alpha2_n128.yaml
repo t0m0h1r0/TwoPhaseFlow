@@ -43,40 +43,52 @@ run:
     step_diagnostics: false
 
 numerics:
-  physical_time:
-    interface_advection:
+  time:
+    default_integrator: forward_euler
+  interface:
+    transport:
+      variable: psi
       spatial: fccd_flux
-      time: explicit
-      tracking:
-        enabled: true
-        primary: psi
-    momentum:
-      form: primitive_velocity
+      time_integrator: forward_euler
+    tracking:
+      enabled: true
+      primary: psi
+  momentum:
+    form: primitive_velocity
+    terms:
       convection:
         spatial: fccd_flux
-        time: explicit
+        time_integrator: forward_euler
+      pressure:
+        gradient: projection_consistent
+        balanced_with: surface_tension
       viscosity:
         spatial: ccd
-        time: crank_nicolson
-      capillary_force:
+        time_integrator: crank_nicolson
+      surface_tension:
+        enabled: true
         model: csf
-        time: explicit
+        time_integrator: forward_euler
         curvature: psi_direct_hfe
-        force_gradient: projection_consistent
-  elliptic:
-    pressure_projection:
-      mode: consistent_iim
-      poisson:
+        gradient: projection_consistent
+        balanced_with: pressure
+      gravity:
+        enabled: false
+  projection:
+    mode: consistent_iim
+    poisson:
+      operator:
         discretization: fvm
-        solver:
-          kind: iterative
-          method: gmres
-          tolerance: 1.0e-8
-          max_iterations: 500
-          restart: 80
-          preconditioner: line_pcr
-          pcr_stages: 1
-          c_tau: 2.0
+        coefficient: variable_density
+      solver:
+        kind: iterative
+        method: gmres
+        tolerance: 1.0e-8
+        max_iterations: 500
+        restart: 80
+        preconditioner: line_pcr
+        pcr_stages: 1
+        c_tau: 2.0
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128

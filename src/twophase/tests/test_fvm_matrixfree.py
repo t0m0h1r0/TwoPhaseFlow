@@ -9,6 +9,7 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ppe.factory import create_ppe_solver
+from twophase.ppe.fvm_defect_correction import PPESolverFVMDefectCorrection
 from twophase.ppe.fvm_matrixfree import PPESolverFVMMatrixFree
 from twophase.ppe.fvm_spsolve import PPESolverFVMSpsolve
 from twophase.ppe.ppe_builder import PPEBuilder
@@ -68,6 +69,31 @@ def test_fvm_matrixfree_solve_matches_direct_fvm():
     p_ref = np.asarray(solver_ref.solve(rhs, rho, dt=1e-3))
 
     np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
+
+
+def test_fvm_defect_correction_with_direct_base_matches_direct_fvm():
+    backend = Backend(use_gpu=False)
+    cfg = _make_cfg(8)
+    grid = Grid(cfg.grid, backend)
+    base_solver = PPESolverFVMSpsolve(backend, grid, bc_type="wall")
+    operator = PPESolverFVMMatrixFree(backend, cfg, grid, bc_type="wall")
+    solver_dc = PPESolverFVMDefectCorrection(
+        backend,
+        grid,
+        base_solver,
+        operator,
+        max_corrections=2,
+        tolerance=1.0e-10,
+        relaxation=1.0,
+    )
+
+    rng = np.random.default_rng(789)
+    rho = 1.0 + rng.uniform(0.0, 1.0, grid.shape)
+    rhs = rng.standard_normal(grid.shape)
+
+    pressure_dc = np.asarray(solver_dc.solve(rhs, rho, dt=1e-3))
+    pressure_ref = np.asarray(base_solver.solve(rhs, rho, dt=1e-3))
+    np.testing.assert_allclose(pressure_dc, pressure_ref, rtol=1e-9, atol=1e-10)
 
 
 def test_factory_creates_fvm_iterative_solver():

@@ -4,11 +4,12 @@ from .ccd_lu import PPESolverCCDLU
 from .iim_solver import PPESolverIIM
 from .iterative import PPESolverIterative
 from .fvm_matrixfree import PPESolverFVMMatrixFree
+from .fvm_defect_correction import PPESolverFVMDefectCorrection
 from .fd_ppe_matrix import FDPPEMatrix
 
 __all__ = [
     "create_ppe_solver", "register_ppe_solver",
     "PPESolverCCDLU", "PPESolverIIM", "PPESolverIterative",
-    "PPESolverFVMMatrixFree",
+    "PPESolverFVMMatrixFree", "PPESolverFVMDefectCorrection",
     "FDPPEMatrix",
 ]

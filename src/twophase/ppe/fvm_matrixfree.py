@@ -62,6 +62,8 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.iteration_method = str(
             getattr(solver_cfg, "ppe_iteration_method", "gmres")
         ).strip().lower()
+        if self.iteration_method in {"explicit", "gauss_seidel", "adi"}:
+            self.iteration_method = "gmres"
         if self.iteration_method != "gmres":
             raise ValueError(
                 "PPESolverFVMMatrixFree supports ppe_iteration_method='gmres' "
@@ -137,9 +139,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
         rhs_flat = rhs_dev.ravel().copy()
         rhs_flat[self._pin_dof] = 0.0
 
-        self._operator_coeffs = [
-            self.build_line_coeffs(rho_dev, ax) for ax in range(self.ndim)
-        ]
+        self.prepare_operator(rho_dev)
         shift = 2.0 / (self.c_tau * rho_dev * (self._h_min ** 2))
         self._precond_coeffs = []
         for lower, main, upper in self._operator_coeffs:
@@ -208,6 +208,13 @@ class PPESolverFVMMatrixFree(IPPESolver):
         sol = self.xp.asarray(sol_flat).reshape(self.grid.shape)
         sol.ravel()[self._pin_dof] = 0.0
         return sol
+
+    def prepare_operator(self, rho) -> None:
+        """Build matrix-free FVM operator coefficients for the current density."""
+        rho_dev = self.xp.asarray(rho)
+        self._operator_coeffs = [
+            self.build_line_coeffs(rho_dev, ax) for ax in range(self.ndim)
+        ]
 
     def build_line_coeffs(self, rho, axis: int):
         """Return lower/main/upper arrays for all lines along ``axis``."""

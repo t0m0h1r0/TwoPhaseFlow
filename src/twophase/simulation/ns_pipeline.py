@@ -47,6 +47,7 @@ from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.context import NSComputeContext
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
+from ..ppe.fvm_defect_correction import PPESolverFVMDefectCorrection
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
@@ -120,6 +121,10 @@ class TwoPhaseNSSolver:
         ppe_preconditioner: str = "line_pcr",
         ppe_pcr_stages: int | None = 4,
         ppe_c_tau: float = 2.0,
+        ppe_defect_correction: bool = False,
+        ppe_dc_max_iterations: int = 0,
+        ppe_dc_tolerance: float = 0.0,
+        ppe_dc_relaxation: float = 1.0,
         surface_tension_scheme: str = "csf",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
@@ -206,6 +211,10 @@ class TwoPhaseNSSolver:
         self._ppe_preconditioner = str(ppe_preconditioner).strip().lower()
         self._ppe_pcr_stages = ppe_pcr_stages
         self._ppe_c_tau = float(ppe_c_tau)
+        self._ppe_defect_correction = bool(ppe_defect_correction)
+        self._ppe_dc_max_iterations = int(ppe_dc_max_iterations)
+        self._ppe_dc_tolerance = float(ppe_dc_tolerance)
+        self._ppe_dc_relaxation = float(ppe_dc_relaxation)
         self._pressure_scheme = (
             "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
             else "fvm_spsolve"
@@ -419,35 +428,63 @@ class TwoPhaseNSSolver:
         disabled here to prevent silent divergence in two-phase runs.
         """
         ppe_solver = self._normalize_ppe_solver(pressure_scheme)
+        if self._ppe_defect_correction:
+            base_solver = self._build_plain_ppe_solver(ppe_solver)
+            operator = self._build_matrixfree_ppe_operator()
+            return PPESolverFVMDefectCorrection(
+                self._backend,
+                self._grid,
+                base_solver,
+                operator,
+                max_corrections=self._ppe_dc_max_iterations,
+                tolerance=self._ppe_dc_tolerance,
+                relaxation=self._ppe_dc_relaxation,
+            )
+        return self._build_plain_ppe_solver(ppe_solver)
+
+    def _build_plain_ppe_solver(self, ppe_solver: str):
+        """Instantiate an unwrapped FVM PPE solver."""
         if ppe_solver == "fvm_direct":
             return PPESolverFVMSpsolve(
                 self._backend, self._grid, bc_type=self.bc_type,
             )
         if ppe_solver == "fvm_iterative":
-            from types import SimpleNamespace
-            from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
-            from ..core.boundary import BoundarySpec
-            cfg_shim = SimpleNamespace(
-                solver=SimpleNamespace(
-                    pseudo_tol=self._ppe_tolerance,
-                    pseudo_maxiter=self._ppe_max_iterations,
-                    pseudo_c_tau=self._ppe_c_tau,
-                    ppe_iteration_method=self._ppe_iteration_method,
-                    ppe_restart=self._ppe_restart,
-                    ppe_preconditioner=self._ppe_preconditioner,
-                    ppe_pcr_stages=self._ppe_pcr_stages,
-                )
-            )
-            bc_spec = BoundarySpec(
-                bc_type=self.bc_type,
-                shape=tuple(n + 1 for n in self._grid.N),
-                N=self._grid.N,
-            )
-            return PPESolverFVMMatrixFree(
-                self._backend, cfg_shim, self._grid,
-                bc_type=self.bc_type, bc_spec=bc_spec,
+            return self._build_matrixfree_ppe_operator(
+                preconditioner=self._ppe_preconditioner,
+                pcr_stages=self._ppe_pcr_stages,
             )
         raise AssertionError("unreachable PPE solver dispatch")
+
+    def _build_matrixfree_ppe_operator(
+        self,
+        *,
+        preconditioner: str | None = None,
+        pcr_stages: int | None = None,
+    ) -> PPESolverFVMMatrixFree:
+        """Build a matrix-free FVM operator/iterative solver instance."""
+        from types import SimpleNamespace
+        from ..core.boundary import BoundarySpec
+
+        cfg_shim = SimpleNamespace(
+            solver=SimpleNamespace(
+                pseudo_tol=self._ppe_tolerance,
+                pseudo_maxiter=self._ppe_max_iterations,
+                pseudo_c_tau=self._ppe_c_tau,
+                ppe_iteration_method=self._ppe_iteration_method,
+                ppe_restart=self._ppe_restart,
+                ppe_preconditioner=preconditioner or "none",
+                ppe_pcr_stages=pcr_stages,
+            )
+        )
+        bc_spec = BoundarySpec(
+            bc_type=self.bc_type,
+            shape=tuple(n + 1 for n in self._grid.N),
+            N=self._grid.N,
+        )
+        return PPESolverFVMMatrixFree(
+            self._backend, cfg_shim, self._grid,
+            bc_type=self.bc_type, bc_spec=bc_spec,
+        )
 
     # ── class-method constructors ─────────────────────────────────────────
 
@@ -531,6 +568,18 @@ class TwoPhaseNSSolver:
             ),
             ppe_pcr_stages=getattr(getattr(cfg, "run", g), "ppe_pcr_stages", 4),
             ppe_c_tau=float(getattr(getattr(cfg, "run", g), "ppe_c_tau", 2.0)),
+            ppe_defect_correction=bool(
+                getattr(getattr(cfg, "run", g), "ppe_defect_correction", False)
+            ),
+            ppe_dc_max_iterations=int(
+                getattr(getattr(cfg, "run", g), "ppe_dc_max_iterations", 0)
+            ),
+            ppe_dc_tolerance=float(
+                getattr(getattr(cfg, "run", g), "ppe_dc_tolerance", 0.0)
+            ),
+            ppe_dc_relaxation=float(
+                getattr(getattr(cfg, "run", g), "ppe_dc_relaxation", 1.0)
+            ),
             surface_tension_scheme=str(
                 getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
             ),

@@ -50,39 +50,50 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "run": {"time": {"final": 0.1, "cfl": 0.1}},
         "numerics": {
-            "physical_time": {
-                "interface_advection": {
+            "time": {"default_integrator": "forward_euler"},
+            "interface": {
+                "transport": {
+                    "variable": "psi",
                     "spatial": "dissipative_ccd",
-                    "time": "explicit",
-                    "tracking": {"enabled": True, "primary": "psi"},
                 },
-                "momentum": {
-                    "form": "primitive_velocity",
-                    "convection": {"spatial": "ccd", "time": "explicit"},
-                    "viscosity": {"spatial": "ccd", "time": "explicit"},
-                    "capillary_force": {
-                        "model": "csf",
-                        "time": "explicit",
-                        "curvature": "psi_direct_hfe",
-                        "force_gradient": "projection_consistent",
+                "tracking": {"enabled": True, "primary": "psi"},
+            },
+            "momentum": {
+                "form": "primitive_velocity",
+                "terms": {
+                    "convection": {"spatial": "ccd", "time_integrator": "forward_euler"},
+                    "pressure": {
+                        "gradient": "projection_consistent",
+                        "balanced_with": "surface_tension",
                     },
+                    "viscosity": {"spatial": "ccd", "time_integrator": "forward_euler"},
+                    "surface_tension": {
+                        "enabled": True,
+                        "model": "csf",
+                        "time_integrator": "forward_euler",
+                        "curvature": "psi_direct_hfe",
+                        "gradient": "projection_consistent",
+                        "balanced_with": "pressure",
+                    },
+                    "gravity": {"enabled": False},
                 },
             },
-            "elliptic": {
-                "pressure_projection": {
-                    "mode": "standard",
-                    "poisson": {
+            "projection": {
+                "mode": "standard",
+                "poisson": {
+                    "operator": {
                         "discretization": "fvm",
-                        "solver": {
-                            "kind": "iterative",
-                            "method": "gmres",
-                            "tolerance": 1.0e-8,
-                            "max_iterations": 500,
-                            "restart": 80,
-                            "preconditioner": "line_pcr",
-                            "pcr_stages": 4,
-                            "c_tau": 2.0,
-                        },
+                        "coefficient": "variable_density",
+                    },
+                    "solver": {
+                        "kind": "iterative",
+                        "method": "gmres",
+                        "tolerance": 1.0e-8,
+                        "max_iterations": 500,
+                        "restart": 80,
+                        "preconditioner": "line_pcr",
+                        "pcr_stages": 4,
+                        "c_tau": 2.0,
                     },
                 },
             },
@@ -132,38 +143,38 @@ def test_readable_structured_sections_round_trip():
             "debug": {"step_diagnostics": True},
         },
         "numerics": {
-            "physical_time": {
-                "interface_advection": {
+            "interface": {
+                "transport": {
                     "spatial": "fccd_flux",
-                    "tracking": {
+                },
+                "tracking": {
                         "primary": "phi",
                         "redistance": {
                             "schedule": {"every_steps": 5},
                             "clip_factor": 10.0,
                             "heaviside_eps_scale": 1.2,
                         },
-                    },
                 },
-                "momentum": {
+            },
+            "momentum": {
+                "terms": {
                     "convection": {
                         "spatial": "uccd6",
                         "uccd6_sigma": 2.0e-3,
                     },
-                    "viscosity": {"time": "crank_nicolson"},
-                    "capillary_force": {
+                    "viscosity": {"time_integrator": "crank_nicolson"},
+                    "surface_tension": {
                         "model": "none",
                         "curvature_cap": 20.0,
                     },
                 },
             },
-            "elliptic": {
-                "pressure_projection": {
-                    "mode": "consistent_iim",
-                    "face_flux_projection": True,
-                    "poisson": {
-                        "discretization": "fvm",
-                        "solver": {"kind": "direct"},
-                    },
+            "projection": {
+                "mode": "consistent_iim",
+                "face_flux_projection": True,
+                "poisson": {
+                    "operator": {"discretization": "fvm"},
+                    "solver": {"kind": "direct"},
                 },
             },
         },
@@ -200,44 +211,36 @@ def test_readable_structured_sections_round_trip():
 
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])
 def test_invalid_interface_transport_scheme_rejected(adv: str):
-    with pytest.raises(ValueError, match="interface_advection.spatial"):
+    with pytest.raises(ValueError, match="interface.transport.spatial"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"physical_time": {"interface_advection": {"spatial": adv}}},
+            "numerics": {"interface": {"transport": {"spatial": adv}}},
         }))
 
 
 def test_invalid_momentum_scheme_rejected():
-    with pytest.raises(ValueError, match="momentum.convection.spatial"):
+    with pytest.raises(ValueError, match="momentum.terms.convection.spatial"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "physical_time": {"momentum": {"convection": {"spatial": "bogus"}}},
+                "momentum": {"terms": {"convection": {"spatial": "bogus"}}},
             },
         }))
 
 
 def test_invalid_ppe_solver_kind_rejected():
-    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.kind"):
+    with pytest.raises(ValueError, match="projection.poisson.solver.kind"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "elliptic": {
-                    "pressure_projection": {
-                        "poisson": {"solver": {"kind": "ccd_lu"}},
-                    },
-                },
+                "projection": {"poisson": {"solver": {"kind": "ccd_lu"}}},
             },
         }))
 
 
 def test_invalid_ppe_iteration_method_rejected():
-    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.method"):
+    with pytest.raises(ValueError, match="projection.poisson.solver.method"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "elliptic": {
-                    "pressure_projection": {
-                        "poisson": {
-                            "solver": {"kind": "iterative", "method": "lgmres"},
-                        },
-                    },
+                "projection": {
+                    "poisson": {"solver": {"kind": "iterative", "method": "lgmres"}},
                 },
             },
         }))
@@ -247,10 +250,67 @@ def test_direct_ppe_rejects_iterative_options():
     with pytest.raises(ValueError, match="does not accept iterative options"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "elliptic": {
-                    "pressure_projection": {
-                        "poisson": {
-                            "solver": {"kind": "direct", "method": "gmres"},
+                "projection": {
+                    "poisson": {
+                        "solver": {"kind": "direct", "method": "gmres"},
+                    },
+                },
+            },
+        }))
+
+
+def test_defect_correction_ppe_parses_base_solver():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "solver": {
+                        "kind": "defect_correction",
+                        "corrections": {
+                            "max_iterations": 3,
+                            "tolerance": 1.0e-7,
+                            "relaxation": 0.8,
+                        },
+                        "base_solver": {
+                            "kind": "iterative",
+                            "method": "gmres",
+                            "tolerance": 1.0e-6,
+                            "max_iterations": 40,
+                            "preconditioner": "none",
+                        },
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.run.ppe_defect_correction is True
+    assert cfg.run.ppe_solver == "fvm_iterative"
+    assert cfg.run.ppe_preconditioner == "none"
+    assert cfg.run.ppe_dc_max_iterations == 3
+    assert cfg.run.ppe_dc_tolerance == 1.0e-7
+    assert cfg.run.ppe_dc_relaxation == 0.8
+
+
+def test_defect_correction_ppe_requires_base_solver():
+    with pytest.raises(ValueError, match="requires .*base_solver"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {"solver": {"kind": "defect_correction"}},
+                },
+            },
+        }))
+
+
+def test_non_dc_ppe_rejects_base_solver():
+    with pytest.raises(ValueError, match="base_solver is only valid"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "solver": {
+                            "kind": "iterative",
+                            "base_solver": {"kind": "direct"},
                         },
                     },
                 },
@@ -259,37 +319,31 @@ def test_direct_ppe_rejects_iterative_options():
 
 
 def test_invalid_viscous_time_scheme_rejected():
-    with pytest.raises(ValueError, match="viscosity.time"):
+    with pytest.raises(ValueError, match="viscosity.time_integrator"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "physical_time": {"momentum": {"viscosity": {"time": "rk4"}}},
+                "momentum": {"terms": {"viscosity": {"time_integrator": "rk4"}}},
             },
         }))
 
 
 def test_invalid_interface_tracking_primary_rejected():
-    with pytest.raises(ValueError, match="interface_advection.tracking.primary"):
+    with pytest.raises(ValueError, match="interface.tracking.primary"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "physical_time": {
-                    "interface_advection": {
-                        "tracking": {"primary": "marker_particles"},
-                    },
-                },
+                "interface": {"tracking": {"primary": "marker_particles"}},
             },
         }))
 
 
 def test_invalid_tracking_redistance_frequency_rejected():
-    with pytest.raises(ValueError, match="tracking.redistance.schedule.every_steps"):
+    with pytest.raises(ValueError, match="interface.tracking.redistance.schedule.every_steps"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "physical_time": {
-                    "interface_advection": {
+                "interface": {
                         "tracking": {
                             "redistance": {"schedule": {"every_steps": 0}},
                         },
-                    },
                 },
             },
         }))
@@ -312,7 +366,7 @@ def test_invalid_interface_fitting_method_rejected():
 
 
 def test_invalid_projection_mode_rejected():
-    with pytest.raises(ValueError, match="pressure_projection.mode"):
+    with pytest.raises(ValueError, match="projection.mode"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"elliptic": {"pressure_projection": {"mode": "gfm"}}},
+            "numerics": {"projection": {"mode": "gfm"}},
         }))
