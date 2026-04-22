@@ -56,15 +56,18 @@ numerics:
       primary: psi
   momentum:
     form: primitive_velocity
-    operators:
+    terms:
       convection:
+        spatial: fccd_flux
+        time_integrator: ab2
+      pressure:
         spatial: fccd_flux
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
-      balanced_force:
+      surface_tension:
         spatial: fccd_flux
-        surface_tension_model: csf
+        model: csf
   projection:
     mode: consistent_iim
     poisson:

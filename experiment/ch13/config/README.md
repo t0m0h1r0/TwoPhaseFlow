@@ -53,8 +53,8 @@ interface information as an input, but it is not itself interface physics.
 
 ## Numerical Classification
 
-`numerics` is organised by equation role, not by individual force names.  The
-big split is: interface transport, momentum operators, and projection/PPE.
+`numerics` is organised by equation role and physical term.  The big split is:
+interface transport, momentum terms, and projection/PPE.
 
 - `time`: physical-time orchestration.  ch13 interface transport uses
   `tvd_rk3`; the momentum update is the existing projection
@@ -65,17 +65,17 @@ big split is: interface transport, momentum operators, and projection/PPE.
   `interface.reinitialization`, which is pseudo-time geometry restoration.
 - `momentum.form`: current equation form. `primitive_velocity` is implemented;
   WIKI-X-028 motivates a future `conservative_momentum` form.
-- `momentum.operators`: spatial/time choices for implemented momentum
-  operators.  `balanced_force` is the coupled pressure/surface-tension operator;
-  it is not expressed as two independent knobs because using different schemes
-  is precisely the unstable case.
+- `momentum.terms`: spatial/time choices for physical momentum terms.  Pressure
+  and surface tension are written as `pressure` and `surface_tension`, not as a
+  hidden derivative-only knob or method-name coupling.
 - `projection`: projection semantics and the PPE solve.  The PPE is split into
   `poisson.operator` and `poisson.solver` so that discretisation and linear
   algebra are not confused.
 
-`surface_tension_model` is not a duplicate physical input.  `physics.surface_tension`
-is the material constant σ; `momentum.operators.balanced_force.surface_tension_model`
-selects the numerical formulation for the σ κ ∇ψ half of the balanced pair.
+`surface_tension.model` is not a duplicate physical input.
+`physics.surface_tension` is the material constant σ;
+`momentum.terms.surface_tension.model` selects the numerical formulation for
+the σ κ ∇ψ term.
 
 Gravity is omitted when `physics.gravity: 0.0`.  There is no separate
 `gravity.enabled` flag; physical presence is determined by the physics section.
@@ -94,12 +94,15 @@ within the schemes implemented today:
   experiments do not fall back to WENO. This preserves WIKI-T-065 / WIKI-X-031's
   field separation: ψ is the conservative transported state; φ is geometry and
   should not be the primary physical-time transport variable.
-- `time.interface_transport: tvd_rk3` reflects the actual FCCD/DCCD advection
-  implementation; older `forward_euler` wording was misleading.
-- `momentum.operators.balanced_force.spatial: fccd_flux` applies the same
-  CCD-family face operator to pressure correction and surface tension force.
-  There is no `balanced_with` field because the coupling is the operator itself.
-- `momentum.operators.viscosity.time_integrator: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
+- `time.interface_transport: tvd_rk3` reflects the actual FCCD/DCCD interface
+  transport implementation.
+- `momentum.terms.convection.time_integrator: ab2` matches the implemented
+  momentum predictor history; startup falls back to Euler only for the first
+  step when no previous convection state exists.
+- `momentum.terms.pressure.spatial` and
+  `momentum.terms.surface_tension.spatial` make the two physical terms visible
+  without imposing a YAML-level equality constraint.
+- `momentum.terms.viscosity.time_integrator: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
   viscous terms are stiffness-relevant and should use the CN path when
   available.
 - `projection.mode: consistent_iim` follows WIKI-X-020 / WIKI-X-032:
@@ -110,7 +113,7 @@ within the schemes implemented today:
   diagonal Jacobi keeps the same PPE residual class as the truncated line-PCR
   probe while avoiding the costly per-iteration batched tridiagonal solves.
   Direct sparse FVM solve is kept as a debugging option, not the ch13 default.
-- `momentum.operators.convection.spatial: fccd_flux` remains the conservative implemented
+- `momentum.terms.convection.spatial: fccd_flux` remains the conservative implemented
   default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
   conservative-momentum UCCD6 form is still a future implementation target.
 

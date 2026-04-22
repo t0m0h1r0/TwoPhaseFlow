@@ -64,12 +64,13 @@ def _minimal(patch: dict | None = None) -> dict:
             },
             "momentum": {
                 "form": "primitive_velocity",
-                "operators": {
-                    "convection": {"spatial": "ccd"},
-                    "viscosity": {"spatial": "ccd", "time_integrator": "forward_euler"},
-                    "balanced_force": {
+                "terms": {
+                    "convection": {"spatial": "ccd", "time_integrator": "ab2"},
+                    "pressure": {"spatial": "projection_consistent"},
+                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
+                    "surface_tension": {
                         "spatial": "projection_consistent",
-                        "surface_tension_model": "csf",
+                        "model": "csf",
                     },
                 },
             },
@@ -105,10 +106,13 @@ def test_readable_defaults_round_trip():
     assert cfg.physics.mu_g == 0.01
     assert cfg.run.advection_scheme == "dissipative_ccd"
     assert cfg.run.convection_scheme == "ccd"
+    assert cfg.run.convection_time_scheme == "ab2"
     assert cfg.run.ppe_solver == "fvm_iterative"
     assert cfg.run.ppe_iteration_method == "gmres"
     assert cfg.run.ppe_preconditioner == "line_pcr"
-    assert cfg.run.balanced_force_scheme == "projection_consistent"
+    assert cfg.run.momentum_gradient_scheme == "projection_consistent"
+    assert cfg.run.pressure_gradient_scheme == "projection_consistent"
+    assert cfg.run.surface_tension_gradient_scheme == "projection_consistent"
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():
@@ -172,16 +176,15 @@ def test_readable_structured_sections_round_trip():
                 },
             },
             "momentum": {
-                "operators": {
+                "terms": {
                     "convection": {
                         "spatial": "uccd6",
+                        "time_integrator": "ab2",
                         "uccd6_sigma": 2.0e-3,
                     },
+                    "pressure": {"spatial": "projection_consistent"},
                     "viscosity": {"time_integrator": "crank_nicolson"},
-                    "balanced_force": {
-                        "spatial": "fccd_flux",
-                        "surface_tension_model": "none",
-                    },
+                    "surface_tension": {"spatial": "fccd_flux", "model": "none"},
                 },
             },
             "projection": {
@@ -219,7 +222,9 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.ppe_preconditioner == "none"
     assert cfg.run.ppe_max_iterations == 0
     assert cfg.run.surface_tension_scheme == "none"
-    assert cfg.run.balanced_force_scheme == "fccd_flux"
+    assert cfg.run.pressure_gradient_scheme == "projection_consistent"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.momentum_gradient_scheme == "projection_consistent"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True
@@ -234,10 +239,10 @@ def test_invalid_interface_transport_scheme_rejected(adv: str):
 
 
 def test_invalid_momentum_scheme_rejected():
-    with pytest.raises(ValueError, match="momentum.operators.convection.spatial"):
+    with pytest.raises(ValueError, match="momentum.terms.convection.spatial"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "momentum": {"operators": {"convection": {"spatial": "bogus"}}},
+                "momentum": {"terms": {"convection": {"spatial": "bogus"}}},
             },
         }))
 
@@ -338,7 +343,7 @@ def test_invalid_viscous_time_scheme_rejected():
     with pytest.raises(ValueError, match="viscosity.time_integrator"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "momentum": {"operators": {"viscosity": {"time_integrator": "rk4"}}},
+                "momentum": {"terms": {"viscosity": {"time_integrator": "rk4"}}},
             },
         }))
 

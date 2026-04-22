@@ -118,12 +118,14 @@ def test_pipeline_can_select_direct_fvm_ppe():
     assert isinstance(solver._ppe_solver, PPESolverFVMSpsolve)
 
 
-def test_surface_tension_uses_projector_gradient_operator():
-    """R-1.5: CSF ∇ψ uses the same gradient operator as pressure correction."""
+def test_surface_tension_uses_configured_gradient_operator():
+    """CSF ∇ψ uses the surface-tension term's configured operator."""
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         alpha_grid=2.0,
         grid_rebuild_freq=0,
+        pressure_gradient_scheme="projection_consistent",
+        surface_tension_gradient_scheme="fccd_flux",
     )
     psi = _mode2_ic(solver)
     velocity = np.zeros_like(psi)
@@ -131,17 +133,19 @@ def test_surface_tension_uses_projector_gradient_operator():
     kappa = np.ones_like(psi)
 
     force_x, force_y = solver._st_force.compute(
-        kappa, psi, 2.0, solver._ccd, solver._grad_op,
+        kappa, psi, 2.0, solver._ccd, solver._surface_tension_grad_op,
     )
 
     np.testing.assert_allclose(
         solver._backend.to_host(force_x),
-        solver._backend.to_host(2.0 * solver._grad_op.gradient(psi, 0)),
+        solver._backend.to_host(2.0 * solver._surface_tension_grad_op.gradient(psi, 0)),
     )
     np.testing.assert_allclose(
         solver._backend.to_host(force_y),
-        solver._backend.to_host(2.0 * solver._grad_op.gradient(psi, 1)),
+        solver._backend.to_host(2.0 * solver._surface_tension_grad_op.gradient(psi, 1)),
     )
+    assert solver._pressure_grad_op is solver._grad_op
+    assert solver._surface_tension_grad_op is not solver._pressure_grad_op
 
 
 def test_weno5_advection_constructed_from_scheme():
