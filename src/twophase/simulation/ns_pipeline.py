@@ -40,7 +40,7 @@ from .velocity_reprojector import (
 from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
 from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
 from .gradient_operator import (
-    IGradientOperator, CCDGradientOperator, FVMGradientOperator,
+    IGradientOperator, CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,
     IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
 )
 from ..levelset.curvature_filter import InterfaceLimitedFilter
@@ -126,6 +126,10 @@ class TwoPhaseNSSolver:
         ppe_dc_tolerance: float = 0.0,
         ppe_dc_relaxation: float = 1.0,
         surface_tension_scheme: str = "csf",
+        convection_time_scheme: str = "ab2",
+        pressure_gradient_scheme: str | None = None,
+        surface_tension_gradient_scheme: str | None = None,
+        momentum_gradient_scheme: str = "projection_consistent",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
@@ -178,11 +182,12 @@ class TwoPhaseNSSolver:
         self._reinit_eps_scale = float(reinit_eps_scale)
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
-            "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
+            "legacy", "variable_density_only", "iim", "gfm",
+            "consistent_iim", "consistent_gfm",
         }:
             raise ValueError(
                 f"Unsupported reproject_mode='{reproject_mode}'. "
-                "Use legacy|variable_density_only|consistent_iim|consistent_gfm."
+                "Use legacy|variable_density_only|gfm|iim."
             )
         # Backward compatibility: old flag maps to variable-density-only mode.
         if self._reproject_variable_density and self._reproject_mode == "legacy":
@@ -228,12 +233,31 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
 
-        # Pressure gradient operator strategy (CCD vs FVM)
+        self._convection_time_scheme = str(convection_time_scheme).strip().lower()
+        if self._convection_time_scheme not in {"ab2", "forward_euler"}:
+            raise ValueError(
+                "Unsupported convection_time_scheme="
+                f"{self._convection_time_scheme!r}; use ab2|forward_euler."
+            )
+        self._conv_prev = None
+        self._conv_ab2_ready = False
+        self._momentum_gradient_scheme = str(momentum_gradient_scheme).strip().lower()
+        self._pressure_gradient_scheme = str(
+            pressure_gradient_scheme or self._momentum_gradient_scheme
+        ).strip().lower()
+        self._surface_tension_gradient_scheme = str(
+            surface_tension_gradient_scheme or self._momentum_gradient_scheme
+        ).strip().lower()
+
+        # Momentum gradient operator strategies.  Pressure and surface tension
+        # are separate physical terms in the YAML; they may intentionally choose
+        # different spatial operators.
+        ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
         if not self._grid.uniform and bc_type == "wall":
-            self._grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
+            base_grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
             self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
         else:
-            self._grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+            base_grad_op = ccd_grad_op
             self._div_op = CCDDivergenceOperator(self._ccd)
 
         # Advection / convection scheme selection (CHK-160 bridge for FCCD).
@@ -260,11 +284,20 @@ class TwoPhaseNSSolver:
         needs_fccd = (
             self._advection_scheme in self._fccd_modes
             or self._convection_scheme in self._fccd_modes
+            or self._pressure_gradient_scheme in self._fccd_modes
+            or self._surface_tension_gradient_scheme in self._fccd_modes
         )
         self._fccd = (
             FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
             if needs_fccd else None
         )
+        self._pressure_grad_op = self._make_momentum_gradient_operator(
+            self._pressure_gradient_scheme, base_grad_op, ccd_grad_op
+        )
+        self._surface_tension_grad_op = self._make_momentum_gradient_operator(
+            self._surface_tension_gradient_scheme, base_grad_op, ccd_grad_op
+        )
+        self._grad_op = self._pressure_grad_op
         if self._advection_scheme in self._fccd_modes:
             # mass_correction stays off: the outer step() already applies
             # w=4ψ(1-ψ) correction on ψ after psi_from_phi; enabling it here
@@ -359,11 +392,9 @@ class TwoPhaseNSSolver:
         # Velocity reprojection strategy (after grid rebuild)
         if self._reproject_mode == "legacy":
             self._reprojector: IVelocityReprojector = LegacyReprojector()
-        elif self._reproject_mode == "variable_density_only":
+        elif self._reproject_mode in {"variable_density_only", "gfm", "consistent_gfm"}:
             self._reprojector = VariableDensityReprojector()
-        elif self._reproject_mode == "consistent_gfm":
-            self._reprojector = VariableDensityReprojector()
-        elif self._reproject_mode == "consistent_iim":
+        elif self._reproject_mode in {"iim", "consistent_iim"}:
             self._reprojector = ConsistentIIMReprojector(
                 self._reproj_iim,
                 self._reconstruct_base,
@@ -384,7 +415,7 @@ class TwoPhaseNSSolver:
             self._viscous_predictor = ExplicitViscousPredictor(self._backend, Re=Re)
 
         # Surface tension strategy — SurfaceTensionForce (CSF) or Null.
-        # 'csf' applies balanced-force κ∇ψ (σ > 0 check internal);
+        # 'csf' applies σκ∇ψ (σ > 0 check internal);
         # 'none' disables the force entirely (σκ∇ψ and PPE augmentation both off).
         self._surface_tension_scheme = str(surface_tension_scheme)
         if self._surface_tension_scheme == "csf":
@@ -396,6 +427,27 @@ class TwoPhaseNSSolver:
                 f"Unknown surface_tension_scheme={self._surface_tension_scheme!r}; "
                 "expected 'csf' or 'none'."
             )
+
+    def _make_momentum_gradient_operator(
+        self,
+        scheme: str,
+        base_grad_op: IGradientOperator,
+        ccd_grad_op: IGradientOperator,
+    ) -> IGradientOperator:
+        if scheme == "ccd":
+            return ccd_grad_op
+        if scheme == "projection_consistent":
+            return base_grad_op
+        if scheme in self._fccd_modes:
+            if self._fccd is None:
+                self._fccd = FCCDSolver(
+                    self._grid, self._backend, bc_type=self.bc_type, ccd_solver=self._ccd
+                )
+            return FCCDGradientOperator(self._fccd)
+        raise ValueError(
+            "Unsupported momentum gradient scheme="
+            f"{scheme!r}; use ccd|fccd_nodal|fccd_flux."
+        )
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
 
@@ -583,6 +635,26 @@ class TwoPhaseNSSolver:
             surface_tension_scheme=str(
                 getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
             ),
+            convection_time_scheme=str(
+                getattr(getattr(cfg, "run", g), "convection_time_scheme", "ab2")
+            ),
+            pressure_gradient_scheme=str(
+                getattr(
+                    getattr(cfg, "run", g),
+                    "pressure_gradient_scheme",
+                    "projection_consistent",
+                )
+            ),
+            surface_tension_gradient_scheme=str(
+                getattr(
+                    getattr(cfg, "run", g),
+                    "surface_tension_gradient_scheme",
+                    "projection_consistent",
+                )
+            ),
+            momentum_gradient_scheme=str(
+                getattr(getattr(cfg, "run", g), "momentum_gradient_scheme", "projection_consistent")
+            ),
             uccd6_sigma=float(
                 getattr(getattr(cfg, "run", g), "uccd6_sigma", 1.0e-3)
             ),
@@ -689,6 +761,8 @@ class TwoPhaseNSSolver:
         self._ppe_solver.update_grid(self._grid)
         self._ppe_solver.invalidate_cache()
         self._p_prev = None
+        self._conv_prev = None
+        self._conv_ab2_ready = False
 
         # 9. Velocity re-projection: linear interpolation of (u, v) does not
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
@@ -924,8 +998,10 @@ class TwoPhaseNSSolver:
             debug_scalars = [xp.max(xp.abs(kappa))]
 
         # Strategy pattern: surface tension force encapsulates σ > 0 check.
-        # R-1.5: Pass grad_op for FVM-consistent ∇ψ on non-uniform grids.
-        f_x, f_y = self._st_force.compute(kappa, psi, sigma, ccd, grad_op=self._grad_op)
+        # R-1.5: Pass the configured ∇ψ operator for non-uniform grids.
+        f_x, f_y = self._st_force.compute(
+            kappa, psi, sigma, ccd, grad_op=self._surface_tension_grad_op
+        )
 
         # ── 3. NS predictor ────────────────────────────────────────────
         du_dx, du_xx = ccd.differentiate(u, 0)
@@ -956,9 +1032,22 @@ class TwoPhaseNSSolver:
         if g_acc != 0.0:
             buoy_v = -(rho - rho_ref) / rho * g_acc
 
+        if self._convection_time_scheme == "ab2":
+            if self._conv_ab2_ready and self._conv_prev is not None:
+                conv_step_u = 1.5 * conv_u - 0.5 * self._conv_prev[0]
+                conv_step_v = 1.5 * conv_v - 0.5 * self._conv_prev[1]
+            else:
+                conv_step_u = conv_u
+                conv_step_v = conv_v
+            self._conv_prev = (xp.copy(conv_u), xp.copy(conv_v))
+            self._conv_ab2_ready = True
+        else:
+            conv_step_u = conv_u
+            conv_step_v = conv_v
+
         # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
         u_star, v_star = self._viscous_predictor.predict(
-            u, v, conv_u, conv_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
+            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
         )
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
@@ -973,9 +1062,9 @@ class TwoPhaseNSSolver:
         self._p_prev = p
 
         # ── 5. Corrector ───────────────────────────────────────────────
-        # Strategy pattern: gradient operator encapsulates CCD vs FVM logic
-        dp_dx = self._grad_op.gradient(p, 0)
-        dp_dy = self._grad_op.gradient(p, 1)
+        # Strategy pattern: pressure gradient operator encapsulates CCD vs FVM logic
+        dp_dx = self._pressure_grad_op.gradient(p, 0)
+        dp_dy = self._pressure_grad_op.gradient(p, 1)
         if debug_scalars is not None:
             debug_scalars.append(
                 xp.maximum(

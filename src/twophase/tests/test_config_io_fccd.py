@@ -34,6 +34,7 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "interface": {
             "thickness": {"mode": "nominal", "base_factor": 1.5},
+            "geometry": {"curvature": {"method": "psi_direct_hfe"}},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},
@@ -50,32 +51,27 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "run": {"time": {"final": 0.1, "cfl": 0.1}},
         "numerics": {
-            "time": {"default_integrator": "forward_euler"},
+            "time": {
+                "interface_transport": "tvd_rk3",
+                "momentum_predictor": "projection_predictor_corrector",
+            },
             "interface": {
                 "transport": {
                     "variable": "psi",
                     "spatial": "dissipative_ccd",
                 },
-                "tracking": {"enabled": True, "primary": "psi"},
+                "tracking": {"primary": "psi"},
             },
             "momentum": {
                 "form": "primitive_velocity",
                 "terms": {
-                    "convection": {"spatial": "ccd", "time_integrator": "forward_euler"},
-                    "pressure": {
-                        "gradient": "projection_consistent",
-                        "balanced_with": "surface_tension",
-                    },
-                    "viscosity": {"spatial": "ccd", "time_integrator": "forward_euler"},
+                    "convection": {"spatial": "ccd", "time_integrator": "ab2"},
+                    "pressure": {"gradient": "ccd"},
+                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
-                        "enabled": True,
+                        "gradient": "ccd",
                         "model": "csf",
-                        "time_integrator": "forward_euler",
-                        "curvature": "psi_direct_hfe",
-                        "gradient": "projection_consistent",
-                        "balanced_with": "pressure",
                     },
-                    "gravity": {"enabled": False},
                 },
             },
             "projection": {
@@ -110,9 +106,13 @@ def test_readable_defaults_round_trip():
     assert cfg.physics.mu_g == 0.01
     assert cfg.run.advection_scheme == "dissipative_ccd"
     assert cfg.run.convection_scheme == "ccd"
+    assert cfg.run.convection_time_scheme == "ab2"
     assert cfg.run.ppe_solver == "fvm_iterative"
     assert cfg.run.ppe_iteration_method == "gmres"
     assert cfg.run.ppe_preconditioner == "line_pcr"
+    assert cfg.run.momentum_gradient_scheme == "ccd"
+    assert cfg.run.pressure_gradient_scheme == "ccd"
+    assert cfg.run.surface_tension_gradient_scheme == "ccd"
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():
@@ -142,6 +142,7 @@ def test_readable_structured_sections_round_trip():
         },
         "interface": {
             "thickness": {"mode": "local", "base_factor": 1.7},
+            "geometry": {"curvature": {"cap": 20.0}},
             "reinitialization": {
                 "profile": {
                     "eps_scale": 1.4,
@@ -178,17 +179,16 @@ def test_readable_structured_sections_round_trip():
                 "terms": {
                     "convection": {
                         "spatial": "uccd6",
+                        "time_integrator": "ab2",
                         "uccd6_sigma": 2.0e-3,
                     },
+                    "pressure": {"spatial": "projection_consistent"},
                     "viscosity": {"time_integrator": "crank_nicolson"},
-                    "surface_tension": {
-                        "model": "none",
-                        "curvature_cap": 20.0,
-                    },
+                    "surface_tension": {"gradient": "fccd_flux", "model": "none"},
                 },
             },
             "projection": {
-                "mode": "consistent_iim",
+                "mode": "iim",
                 "face_flux_projection": True,
                 "poisson": {
                     "operator": {"discretization": "fvm"},
@@ -211,7 +211,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
     assert cfg.run.interface_tracking_method == "phi_primary"
-    assert cfg.run.reproject_mode == "consistent_iim"
+    assert cfg.run.reproject_mode == "iim"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
@@ -222,6 +222,9 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.ppe_preconditioner == "none"
     assert cfg.run.ppe_max_iterations == 0
     assert cfg.run.surface_tension_scheme == "none"
+    assert cfg.run.pressure_gradient_scheme == "ccd"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True
@@ -386,5 +389,45 @@ def test_invalid_interface_fitting_method_rejected():
 def test_invalid_projection_mode_rejected():
     with pytest.raises(ValueError, match="projection.mode"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"projection": {"mode": "gfm"}},
+            "numerics": {"projection": {"mode": "sharp_interface"}},
         }))
+
+
+@pytest.mark.parametrize("extra_key", ["pcr_stages", "c_tau"])
+def test_pcr_stages_and_c_tau_rejected_for_non_line_pcr(extra_key: str):
+    with pytest.raises(ValueError, match=f"{extra_key}.*line_pcr"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "solver": {
+                            "kind": "iterative",
+                            "preconditioner": "jacobi",
+                            extra_key: 4,
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_gradient_key_reads_pressure_and_surface_tension():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "pressure": {"gradient": "fccd_flux"},
+                    "surface_tension": {"gradient": "fccd_nodal", "model": "csf"},
+                },
+            },
+        },
+    }))
+    assert cfg.run.pressure_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_nodal"
+
+
+def test_fractional_step_algorithm_alias():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {"time": {"algorithm": "fractional_step"}},
+    }))
+    assert cfg.run.reproject_mode == "legacy"

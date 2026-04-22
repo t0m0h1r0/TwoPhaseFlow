@@ -9,12 +9,15 @@ grid:
     type: interface_fitted
     method: gaussian_levelset
     alpha: 2.0
-    schedule: static
+    schedule: every_step
 
 interface:
   thickness:
     mode: local
     base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_hfe
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
@@ -44,49 +47,46 @@ run:
 
 numerics:
   time:
-    default_integrator: forward_euler
+    algorithm: fractional_step
   interface:
     transport:
       variable: psi
       spatial: fccd_flux
-      time_integrator: forward_euler
+      time_integrator: tvd_rk3
     tracking:
-      enabled: true
-      primary: psi
+      primary: phi
+      redistance:
+        schedule:
+          every_steps: 4
   momentum:
-    form: primitive_velocity
     terms:
       convection:
         spatial: fccd_flux
-        time_integrator: forward_euler
+        time_integrator: ab2
       pressure:
-        gradient: projection_consistent
-        balanced_with: surface_tension
+        gradient: ccd
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
       surface_tension:
-        enabled: true
+        gradient: fccd_flux
         model: csf
-        time_integrator: forward_euler
-        curvature: psi_direct_hfe
-        gradient: projection_consistent
-        balanced_with: pressure
-      gravity:
-        enabled: false
   projection:
-    mode: consistent_iim
+    mode: gfm
     poisson:
-      operator:
-        discretization: fvm
-        coefficient: variable_density
       solver:
-        kind: iterative
-        method: gmres
-        tolerance: 1.0e-8
-        max_iterations: 500
-        restart: 80
-        preconditioner: jacobi
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 1.0
+        base_solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-6
+          max_iterations: 500
+          restart: 80
+          preconditioner: jacobi
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128_t8
