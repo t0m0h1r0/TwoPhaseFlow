@@ -70,12 +70,18 @@ numerics:
     mode: consistent_iim
     poisson:
       solver:
-        kind: iterative
-        method: gmres
-        tolerance: 1.0e-8
-        max_iterations: 500
-        restart: 80
-        preconditioner: jacobi
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 1.0
+        base_solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-6
+          max_iterations: 500
+          restart: 80
+          preconditioner: jacobi
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128_t8
