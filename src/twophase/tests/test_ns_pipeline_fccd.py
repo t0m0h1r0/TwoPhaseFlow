@@ -114,6 +114,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
+    assert solver._viscous_spatial_scheme == "ccd_bulk"
 
 
 def test_fccd_not_constructed_when_unused():
@@ -304,7 +305,7 @@ def test_from_config_threads_fccd_keys():
                 "momentum": {
                     "form": "primitive_velocity",
                     "convection": {"spatial": "fccd_flux", "time": "explicit"},
-                    "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
+                    "viscosity": {"spatial": "ccd_bulk", "time": "crank_nicolson"},
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",
@@ -376,7 +377,7 @@ def test_from_config_can_disable_interface_tracking():
                 "momentum": {
                     "form": "primitive_velocity",
                     "convection": {"spatial": "ccd", "time": "explicit"},
-                    "viscosity": {"spatial": "ccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd_bulk", "time": "explicit"},
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",

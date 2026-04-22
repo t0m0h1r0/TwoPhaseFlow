@@ -149,6 +149,7 @@ class TwoPhaseNSSolver:
         pressure_gradient_scheme: str | None = None,
         surface_tension_gradient_scheme: str | None = None,
         momentum_gradient_scheme: str = "projection_consistent",
+        viscous_spatial_scheme: str = "ccd_bulk",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
@@ -416,10 +417,21 @@ class TwoPhaseNSSolver:
         # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = cn_viscous
         self._Re = Re
+        self._viscous_spatial_scheme = str(viscous_spatial_scheme)
         from ..ns_terms.viscous import ViscousTerm
-        _viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True) if cn_viscous else None
+        _viscous_term = ViscousTerm(
+            self._backend,
+            Re=Re,
+            cn_viscous=True,
+            spatial_scheme=self._viscous_spatial_scheme,
+        )
         _viscous_scheme = "crank_nicolson" if cn_viscous else "explicit"
-        viscous_ctx = ViscousBuildCtx(backend=self._backend, re=Re, viscous_term=_viscous_term)
+        viscous_ctx = ViscousBuildCtx(
+            backend=self._backend,
+            re=Re,
+            spatial_scheme=self._viscous_spatial_scheme,
+            viscous_term=_viscous_term,
+        )
         self._viscous_predictor: IViscousPredictor = IViscousPredictor.from_scheme(
             _viscous_scheme, viscous_ctx
         )
@@ -618,6 +630,9 @@ class TwoPhaseNSSolver:
             ),
             convection_time_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_time_scheme", "ab2")
+            ),
+            viscous_spatial_scheme=str(
+                getattr(getattr(cfg, "run", g), "viscous_spatial_scheme", "ccd_bulk")
             ),
             pressure_gradient_scheme=str(
                 getattr(

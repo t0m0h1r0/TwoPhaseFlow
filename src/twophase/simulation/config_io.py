@@ -107,6 +107,7 @@ class RunCfg:
     # convection_scheme: momentum    — 'ccd' | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
     # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct' | 'fccd_iterative'
     # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
+    # viscous_spatial_scheme: viscous — 'ccd_bulk' | 'conservative_stress' | 'ccd_stress_legacy'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
@@ -114,6 +115,7 @@ class RunCfg:
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
+    viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "explicit"
     pressure_gradient_scheme: str = "ccd"
     surface_tension_gradient_scheme: str = "ccd"
@@ -435,7 +437,12 @@ _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler")
 _MOMENTUM_FORMS = ("primitive_velocity",)
-_VISCOUS_SPATIAL_SCHEMES = ("ccd",)
+_VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legacy")
+_VISCOUS_SPATIAL_ALIASES = {
+    "stress_divergence": "conservative_stress",
+    "low_order_conservative": "conservative_stress",
+    "ccd": "ccd_stress_legacy",
+}
 _CURVATURE_SCHEMES = ("psi_direct_hfe",)
 _MOMENTUM_PREDICTOR_ALIASES = {
     "fractional_step": "projection_predictor_corrector",
@@ -587,8 +594,12 @@ def _parse_run(
             f"{layout['paths']['convection_uccd6_sigma']} must be > 0, "
             f"got {uccd6_sigma}"
         )
-    _validate_choice(
-        viscosity["spatial"], _VISCOUS_SPATIAL_SCHEMES,
+    viscous_spatial_scheme = _validate_choice(
+        _VISCOUS_SPATIAL_ALIASES.get(
+            str(viscosity["spatial"]).strip().lower(),
+            viscosity["spatial"],
+        ),
+        _VISCOUS_SPATIAL_SCHEMES,
         layout["paths"]["viscosity_spatial"],
     )
     viscous_time_scheme = _parse_time_integrator(
@@ -650,6 +661,7 @@ def _parse_run(
         pressure_scheme=pressure_scheme,
         surface_tension_scheme=surface_tension_scheme,
         convection_time_scheme=convection_time_scheme,
+        viscous_spatial_scheme=viscous_spatial_scheme,
         viscous_time_scheme=viscous_time_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,

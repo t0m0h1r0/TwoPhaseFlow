@@ -85,7 +85,7 @@ def test_convection_linear_u(backend):
 # ── Test 2: Viscous term ──────────────────────────────────────────────────
 
 def test_viscous_laplacian_constant_mu(backend):
-    """For μ=const, Re=1: viscous term = μ Δu / ρ."""
+    """For μ=const, Re=1: ccd_bulk stress divergence matches 2Δu."""
     cfg, grid, ccd, be = make_setup(N=32, backend=backend)
     visc = ViscousTerm(be, Re=1.0, cn_viscous=False)
 
@@ -107,12 +107,34 @@ def test_viscous_laplacian_constant_mu(backend):
     # The symmetric tensor for u(x) only: V_x = (1/Re ρ) * (2 ∂²u/∂x² + 0) = 2 Δu / Re
     expected = 2.0 * lap_u   # Re=1, rho=1
     err = np.max(np.abs(result[0][1:-1, 1:-1] - expected[1:-1, 1:-1]))
-    # Two chained CCD operations; O(h^5) boundary error amplified by 2nd CCD.
-    # For N=32, h=1/32: expected error ≈ O((2π)^6 * h^5) ≈ 5e-3.
-    # Eq-II-bc is O(h²) for f'' at boundaries; contamination propagates through
-    # the global CCD tridiagonal solve, limiting interior L∞ to ~O(h²).
-    # For N=32, two chained CCDs give error ~O((2π)²·h²) ≈ 3e-2.
-    assert err < 3e-2, f"Viscous laplacian error {err:.2e}"
+    # ccd_bulk intentionally uses CCD only for Layer-A gradients, then returns
+    # through a low-order physical-coordinate stress divergence.  The expected
+    # accuracy here is the conservative body, not the old all-CCD chain.
+    assert err < 6e-1, f"Viscous stress-divergence error {err:.2e}"
+
+
+def test_viscous_legacy_all_ccd_laplacian_constant_mu(backend):
+    """Legacy all-CCD stress/divergence path remains available for comparison."""
+    cfg, grid, ccd, be = make_setup(N=32, backend=backend)
+    visc = ViscousTerm(
+        be,
+        Re=1.0,
+        cn_viscous=False,
+        spatial_scheme="ccd_stress_legacy",
+    )
+
+    N = 32
+    X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
+                       indexing='ij')
+    u = np.sin(2 * np.pi * X)
+    v = np.zeros_like(u)
+    mu = np.ones_like(u)
+    rho = np.ones_like(u)
+
+    result = visc.compute_explicit([u, v], mu, rho, ccd)
+    expected = 2.0 * (-(2 * np.pi)**2 * np.sin(2 * np.pi * X))
+    err = np.max(np.abs(result[0][1:-1, 1:-1] - expected[1:-1, 1:-1]))
+    assert err < 3e-2, f"Legacy CCD viscous error {err:.2e}"
 
 
 # ── Test 3: Gravity ───────────────────────────────────────────────────────

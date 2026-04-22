@@ -68,7 +68,7 @@ def _minimal(patch: dict | None = None) -> dict:
                 "terms": {
                     "convection": {"spatial": "ccd", "time_integrator": "ab2"},
                     "pressure": {"gradient": "ccd"},
-                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
+                    "viscosity": {"spatial": "ccd_bulk", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
                         "gradient": "ccd",
                         "formulation": "csf",
@@ -114,6 +114,7 @@ def test_readable_defaults_round_trip():
     assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "ccd"
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
 
 
 def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
@@ -125,6 +126,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
 
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
     assert cfg.run.reinit_method == "ridge_eikonal"
@@ -239,7 +241,7 @@ def test_readable_structured_sections_round_trip():
                         "uccd6_sigma": 2.0e-3,
                     },
                     "pressure": {"spatial": "projection_consistent"},
-                    "viscosity": {"time_integrator": "crank_nicolson"},
+                    "viscosity": {"spatial": "ccd_bulk", "time_integrator": "crank_nicolson"},
                     "surface_tension": {"gradient": "fccd_flux", "formulation": "none"},
                 },
             },
@@ -283,6 +285,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.debug_diagnostics is True
 
 

@@ -87,11 +87,26 @@ class ExplicitViscousPredictor(IViscousPredictor):
 
     @classmethod
     def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "ExplicitViscousPredictor":
-        return cls(ctx.backend, ctx.re)
+        return cls(ctx.backend, ctx.re, ctx.spatial_scheme, ctx.viscous_term)
 
-    def __init__(self, backend: "Backend", Re: float) -> None:
+    def __init__(
+        self,
+        backend: "Backend",
+        Re: float,
+        spatial_scheme: str = "ccd_bulk",
+        viscous_term: "ViscousTerm | None" = None,
+    ) -> None:
         self.xp = backend.xp
         self.Re = Re
+        if viscous_term is None:
+            from ..ns_terms.viscous import ViscousTerm
+            viscous_term = ViscousTerm(
+                backend,
+                Re=Re,
+                cn_viscous=False,
+                spatial_scheme=spatial_scheme,
+            )
+        self._viscous = viscous_term
 
     def predict(
         self,
@@ -106,20 +121,7 @@ class ExplicitViscousPredictor(IViscousPredictor):
         buoy_v: "array" | None = None,
     ) -> tuple["array", "array"]:
         """Explicit forward-Euler step."""
-        # Compute Laplacian terms (second derivatives)
-        du_xx, _ = ccd.differentiate(u, 0)
-        du_xx, _ = ccd.differentiate(du_xx, 0)
-        du_yy, _ = ccd.differentiate(u, 1)
-        du_yy, _ = ccd.differentiate(du_yy, 1)
-
-        dv_xx, _ = ccd.differentiate(v, 0)
-        dv_xx, _ = ccd.differentiate(dv_xx, 0)
-        dv_yy, _ = ccd.differentiate(v, 1)
-        dv_yy, _ = ccd.differentiate(dv_yy, 1)
-
-        # Viscous term: (mu / rho) * (∂²u/∂x² + ∂²u/∂y²)
-        visc_u = (mu / rho) * (du_xx + du_yy)
-        visc_v = (mu / rho) * (dv_xx + dv_yy)
+        visc_u, visc_v = self._viscous.compute_explicit([u, v], mu, rho, ccd)
 
         # Advance velocity
         u_star = u + dt * (conv_u + visc_u)

@@ -125,6 +125,11 @@ within the schemes implemented today:
 - `momentum.terms.viscosity.time_integrator: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
   viscous terms are stiffness-relevant and should use the CN path when
   available.
+- `momentum.terms.viscosity.spatial: ccd_bulk` keeps the calculation in the CCD
+  family without making FCCD/UCCD the viscous owner: Layer-A velocity gradients
+  use CCD in the smooth bulk, while stress assembly/divergence remains the
+  variable-μ conservative stress-divergence body.  Interface-band fallback is
+  the next refinement point.
 - `projection.mode` is omitted for the §9 default.  The implementation uses the
   projection mode implied by `poisson.operator.coefficient`; explicit values
   are reserved for legacy/IIM/GFM comparison paths.

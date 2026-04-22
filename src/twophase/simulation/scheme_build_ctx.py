@@ -60,6 +60,7 @@ class SurfaceTensionBuildCtx:
 class ViscousBuildCtx:
     backend: "Backend"
     re: float
+    spatial_scheme: str = "ccd_bulk"
     viscous_term: "ViscousTerm | None" = None
 
 
