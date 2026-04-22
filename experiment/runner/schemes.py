@@ -1767,10 +1767,8 @@ def _run_single_vortex_loop(N, alpha_grid, eps_g_factor, eps_g_cells, eps_xi_cel
 
     def _eps_field():
         if eps_xi_cells is not None:
-            hx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1])
-            hy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1])
-            hx2d = 0.5 * (hx[:-1] + hx[1:])[:, _np.newaxis] * xp.ones((1, N))
-            hy2d = 0.5 * (hy[:-1] + hy[1:])[_np.newaxis, :] * xp.ones((N, 1))
+            hx2d = xp.asarray(grid.h[0])[:, None]   # (N+1, 1) node-centred spacings
+            hy2d = xp.asarray(grid.h[1])[None, :]   # (1, N+1)
             return eps_xi_cells * xp.maximum(hx2d, hy2d)
         return eps
 
