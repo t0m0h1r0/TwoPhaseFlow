@@ -25,6 +25,36 @@ compiled_at: "2026-04-22"
 
 # Viscous Term Design Guide for CCD/FCCD Two-Phase NS
 
+## §0 Operator Identity: Stress-Divergence Owns Viscosity
+
+The viscous term is not selected by asking "CCD, FCCD, or UCCD?" at the top
+level.  Its governing object is the conservative variable-viscosity
+stress-divergence operator
+
+$$
+\mathbf{F}_\mu = \nabla\cdot(2\mu D(\mathbf{u})).
+$$
+
+Therefore the scheme hierarchy is:
+
+1. **Primary operator**: conservative stress assembly + conservative stress
+   divergence, even at low order.
+2. **Bulk accuracy option**: CCD may be used inside Layer A only, i.e. for
+   smooth-region velocity gradients used to build stresses.
+3. **Interface-band fallback**: low-order / one-sided / jump-aware gradients
+   are mandatory where stencils cross the phase interface.
+4. **Implicit solve**: the robust low-order conservative operator is the
+   solve/preconditioner body; high-order bulk CCD enters as a defect correction
+   $L_\mu^H - L_\mu^L$.
+
+FCCD remains a pressure / surface-tension balanced-force tool because its value
+is face-locus alignment.  It is not the viscous operator's primary design axis.
+UCCD6 remains a transport / advection stabilisation tool; using its
+hyperviscosity as the viscous term's main mechanism would obscure the physical
+stress tensor and its energy-dissipation requirement.
+
+---
+
 ## §1 Core Split: Layer A CCD (Bulk) vs Low-Order Conservative (Interface Band)
 
 The key architectural decision is to **separate accuracy from robustness** by region:
