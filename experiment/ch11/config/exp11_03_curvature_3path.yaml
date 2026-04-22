@@ -1,0 +1,37 @@
+# [11-03] Curvature: CCD vs CD2 on circle and sinusoidal interface
+# Validates: Ch10 — CCD curvature O(h^2-h^4); CD2 O(h^2).
+
+experiment:
+  id: "11-03"
+  title: "Curvature Convergence: CCD vs CD2"
+  type: convergence_study
+
+scheme:
+  operator: curvature_ccd
+  cases:
+    - label: circle
+      params: {interface: circle}
+    - label: sinusoidal
+      params: {interface: sinusoidal}
+
+input:
+  grid_sizes: [16, 32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x2"
+  panels:
+    - case: circle
+      title: "(a) Circle ($R=0.25$)"
+      error_keys: [ccd_Li, cd2_Li]
+      ref_orders: [2, 4]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ curvature error"
+    - case: sinusoidal
+      title: "(b) Sinusoidal interface"
+      error_keys: [ccd_Li]
+      ref_orders: [2, 4]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ curvature error"
+  output_stem: curvature_3path

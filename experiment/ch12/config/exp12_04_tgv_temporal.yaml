@@ -1,0 +1,36 @@
+# [12-04] TGV AB2+IPC temporal accuracy
+# Validates: Ch11 — AB2 projection O(dt^2) on TGV at fixed N=64.
+
+experiment:
+  id: "12-04"
+  title: "TGV AB2+IPC Temporal Accuracy (N=64)"
+  type: time_accuracy
+
+scheme:
+  operator: tgv_ab2
+  params:
+    N: 64
+    nu: 0.01
+    L_dom: 6.283185307179586   # 2*pi
+
+input:
+  n_steps_list: [5, 10, 20, 40, 80, 160]
+  T_final: 0.5
+
+reference:
+  type: analytical
+  solution: zero   # adapter returns L∞ velocity error directly
+  params: {}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - case: default
+      series_label: "AB2 + IPC"
+      error_key: err
+      ref_orders: [2]
+      xlabel: "$\\Delta t$"
+      ylabel: "$L^\\infty$ velocity error"
+      title: "TGV temporal convergence (AB2+IPC)"
+  output_stem: tgv_temporal

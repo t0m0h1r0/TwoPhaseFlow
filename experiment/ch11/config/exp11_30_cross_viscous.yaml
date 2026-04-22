@@ -1,0 +1,46 @@
+# [11-30] Cross-viscous term LTE vs dt
+# Validates: Ch5 — explicit cross-viscous O(dt^2) at low ratio, O(dt^1) at high ratio.
+
+experiment:
+  id: "11-30"
+  title: "Cross-viscous LTE vs $\\Delta t$"
+  type: time_accuracy
+
+scheme:
+  cases:
+    - label: "mu_ratio=1"
+      operator: cross_viscous_lte
+      params: {mu_ratio: 1}
+      ref_solution: zero
+      ref_params: {}
+    - label: "mu_ratio=10"
+      operator: cross_viscous_lte
+      params: {mu_ratio: 10}
+      ref_solution: zero
+      ref_params: {}
+    - label: "mu_ratio=100"
+      operator: cross_viscous_lte
+      params: {mu_ratio: 100}
+      ref_solution: zero
+      ref_params: {}
+
+input:
+  n_steps_list: [1, 2, 5, 10, 20, 50, 100]
+  T_final: 0.01
+
+reference:
+  type: analytical
+  solution: zero
+  params: {}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - all_cases: true
+      error_key: err
+      ref_orders: [1, 2]
+      xlabel: "$\\Delta t$"
+      ylabel: "$L^2$ LTE"
+      title: "Cross-viscous explicit LTE vs $\\Delta t$"
+  output_stem: cross_viscous_lte

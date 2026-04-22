@@ -95,3 +95,9 @@ def _hydrostatic(X, Y, rho=1.0, g=1.0, **_):
 def _ode_decay(T=1.0, **_):
     """q(T) = e^{-T} for dq/dt = -q."""
     return float(np.exp(-T))
+
+
+@register_solution("zero")
+def _zero(**_):
+    """Exact solution = 0; use when the adapter computes error internally."""
+    return 0.0

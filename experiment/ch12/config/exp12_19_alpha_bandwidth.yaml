@@ -1,0 +1,41 @@
+# [12-19] Alpha-grid bandwidth constraint: eps_g_factor sweep (Zalesak)
+# Validates: §6 — fine-grid bandwidth W_fine = 2*eps_g must exceed
+#   interface displacement delta_x = u_max * reinit_freq * dt between grid rebuilds.
+# GPU実験: N=128で長時間 (~数分/case). ローカル確認は N=32 で。
+
+experiment:
+  id: "12-19"
+  title: "Alpha-Grid Bandwidth Constraint (Zalesak, $\\alpha=2$)"
+  type: parameter_sweep
+
+scheme:
+  operator: zalesak_nonuniform
+  params:
+    alpha_grid: 2.0
+    eps_ratio: 0.5
+    reinit_freq: 20
+
+sweep:
+  param: eps_g_factor
+  values: [1.0, 2.0, 4.0, 6.0, 8.0]
+
+input:
+  N: 128
+
+visualization:
+  layout: "1x2"
+  panels:
+    - metric_keys: [L2_psi, area_err]
+      scale: semilogy
+      xlabel: "$\\varepsilon_g$ factor"
+      ylabel: "error"
+      title: "Zalesak: bandwidth sweep ($\\alpha=2$)"
+      series_labels:
+        L2_psi: "$L^2(\\psi)$"
+        area_err: "area error"
+    - metric_keys: [mass_err]
+      scale: semilogy
+      xlabel: "$\\varepsilon_g$ factor"
+      ylabel: "mass error"
+      title: "Mass conservation"
+  output_stem: alpha_bandwidth

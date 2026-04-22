@@ -1,10 +1,9 @@
-"""ConvergenceStudyHandler — spatial accuracy convergence experiments.
+"""SchemeComparisonHandler — compare multiple schemes on the same problem.
 
-YAML type: convergence_study
+YAML type: scheme_comparison
 
-Runs each case over a set of grid sizes, computing errors against an
-analytical test function.  Results are saved as a dict of lists-of-dicts
-(one list per case, one dict per grid size).
+Like convergence_study but each case may specify its own operator.
+Results are overlaid on a single convergence loglog panel.
 """
 
 from __future__ import annotations
@@ -18,51 +17,33 @@ from ..registry import (
     ExperimentHandler, SCHEME_REGISTRY, SOLUTION_REGISTRY, register_handler,
 )
 from twophase.tools.experiment import (
-    save_results, load_results, save_figure, convergence_loglog, apply_style,
-    FIGSIZE_2COL,
+    save_results, load_results, save_figure, convergence_loglog,
 )
 
 
-@register_handler("convergence_study")
-class ConvergenceStudyHandler(ExperimentHandler):
+@register_handler("scheme_comparison")
+class SchemeComparisonHandler(ExperimentHandler):
 
     def run(self, cfg, outdir: pathlib.Path) -> dict:
-        scheme_name = cfg.scheme.get("operator")
-        factory = SCHEME_REGISTRY.get(scheme_name)
-        if factory is None:
-            raise ValueError(
-                f"Unknown scheme '{scheme_name}'. "
-                f"Registered: {sorted(SCHEME_REGISTRY)}"
-            )
-
+        base_operator = cfg.scheme.get("operator", "")
         base_params = dict(cfg.scheme.get("params", {}))
-        raw_cases = cfg.scheme.get("cases")
-        if raw_cases:
-            cases = list(raw_cases)
-        else:
-            # Bare scheme without cases list: single implicit case
-            cases = [{"label": "default", "params": base_params,
-                      "test_function": cfg.input.get("test_function", "")}]
+        raw_cases = cfg.scheme.get("cases", [])
 
         grid_sizes: list[int] = list(cfg.input.get("grid_sizes", [16, 32, 64, 128]))
         domain: dict = dict(cfg.input.get("domain", {"Lx": 1.0, "Ly": 1.0}))
 
         all_results: dict[str, list[dict]] = {}
 
-        for case in cases:
+        for case in raw_cases:
             label = case.get("label", "default")
+            operator = case.get("operator") or base_operator
+            factory = SCHEME_REGISTRY.get(operator)
+            if factory is None:
+                raise ValueError(f"Unknown scheme '{operator}'. Registered: {sorted(SCHEME_REGISTRY)}")
+
             case_params = {**base_params, **dict(case.get("params", {}))}
             tf_name = case.get("test_function") or cfg.input.get("test_function", "")
             test_fn = SOLUTION_REGISTRY.get(tf_name) if tf_name else None
-            if tf_name and test_fn is None:
-                raise ValueError(
-                    f"Unknown test function '{tf_name}'. "
-                    f"Registered: {sorted(SOLUTION_REGISTRY)}"
-                )
-
-            diff_axes = case.get("diff_axes")  # None → factory default (0,1)
-            if diff_axes is not None:
-                case_params["diff_axes"] = diff_axes
 
             case_rows: list[dict] = []
             for N in grid_sizes:
@@ -79,31 +60,37 @@ class ConvergenceStudyHandler(ExperimentHandler):
     def plot(self, cfg, outdir: pathlib.Path, results: dict | None = None) -> None:
         if results is None:
             raw = load_results(outdir / "data.npz")
-            # load_results returns object arrays for list-of-dicts; convert to list
             results = {k: list(v) for k, v in raw.items()}
 
         vis = cfg.visualization
-        layout: str = vis.get("layout", "1x1")
+        layout = vis.get("layout", "1x1")
         nrows, ncols = [int(x) for x in layout.split("x")]
-        panels: list[dict] = vis.get("panels", [])
+        panels = vis.get("panels", [{}])
 
-        figw = max(4.0 * ncols, 6.0)
+        figw = max(4.5 * ncols, 5.0)
         figh = max(3.5 * nrows, 3.5)
         fig, axes = plt.subplots(nrows, ncols, figsize=(figw, figh), squeeze=False)
 
         for idx, panel in enumerate(panels):
             ax = axes[idx // ncols][idx % ncols]
             error_keys: list[str] = list(panel.get("error_keys", []))
-            ref_orders = list(panel.get("ref_orders", [2, 4, 6]))
+            ref_orders = list(panel.get("ref_orders", [2, 4]))
             xlabel = str(panel.get("xlabel", "$h$"))
             ylabel = str(panel.get("ylabel", r"$L_\infty$ error"))
             title = str(panel.get("title", ""))
+            scale = str(panel.get("scale", "loglog"))
 
-            if panel.get("all_cases"):
-                # Build one combined errors dict → single convergence_loglog call
+            # Limit to listed cases if specified; else all
+            plot_cases = panel.get("cases", list(results.keys()))
+
+            if scale == "bar":
+                _plot_bar_panel(ax, results, plot_cases, error_keys,
+                                xlabel=xlabel, ylabel=ylabel, title=title)
+            else:
                 combined_hs = None
                 combined_errs: dict = {}
-                for case_label, rows in results.items():
+                for case_label in plot_cases:
+                    rows = results.get(case_label, [])
                     if not rows:
                         continue
                     hs = [float(r["h"]) for r in rows]
@@ -111,38 +98,49 @@ class ConvergenceStudyHandler(ExperimentHandler):
                         combined_hs = hs
                     for k in error_keys:
                         if k in rows[0]:
-                            series_label = (f"{case_label} {k}"
-                                            if len(error_keys) > 1 else case_label)
-                            combined_errs[series_label] = [float(r[k]) for r in rows]
+                            series = (f"{case_label} {k}"
+                                      if len(error_keys) > 1 else case_label)
+                            combined_errs[series] = [float(r[k]) for r in rows]
+
                 if combined_hs and combined_errs:
                     convergence_loglog(ax, combined_hs, combined_errs,
                                        ref_orders=ref_orders,
                                        xlabel=xlabel, ylabel=ylabel, title=title)
-            else:
-                case_label = panel.get("case", list(results.keys())[0])
-                rows = results.get(case_label, [])
-                if not rows:
-                    continue
-                hs = [float(r["h"]) for r in rows]
-                errs = {k: [float(r[k]) for r in rows]
-                        for k in error_keys if k in rows[0]}
-                convergence_loglog(ax, hs, errs,
-                                   ref_orders=ref_orders,
-                                   xlabel=xlabel, ylabel=ylabel, title=title)
 
-        # Hide unused panels
         for idx in range(len(panels), nrows * ncols):
             axes[idx // ncols][idx % ncols].set_visible(False)
 
         fig.tight_layout()
-        stem = vis.get("output_stem", "convergence")
-        save_figure(fig, outdir / stem)
+        save_figure(fig, outdir / vis.get("output_stem", "scheme_comparison"))
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+def _plot_bar_panel(ax, results, plot_cases, error_keys, xlabel, ylabel, title):
+    """Grouped bar chart: x = cases, bars = error_keys (log y-scale)."""
+    import numpy as _np
+    n_cases = len(plot_cases)
+    n_keys = max(len(error_keys), 1)
+    width = 0.7 / n_keys
+    x = _np.arange(n_cases)
+    for ki, key in enumerate(error_keys):
+        vals = []
+        for cl in plot_cases:
+            rows = results.get(cl, [])
+            vals.append(float(rows[-1].get(key, float("nan"))) if rows else float("nan"))
+        offset = (ki - (n_keys - 1) / 2.0) * width
+        ax.bar(x + offset, vals, width=width * 0.9, label=key)
+    ax.set_xticks(x)
+    ax.set_xticklabels(plot_cases, rotation=20, ha="right", fontsize=7)
+    ax.set_yscale("log")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    if error_keys:
+        ax.legend(fontsize=8)
+    ax.grid(True, axis="y", alpha=0.3)
+
 
 def _compute_slopes(rows: list[dict]) -> None:
-    """Add *_slope keys to rows (in-place, log-log pairwise rates)."""
     numeric_keys = [k for k in rows[0] if k not in ("N", "h") and not k.endswith("_slope")]
     for i in range(1, len(rows)):
         r0, r1 = rows[i - 1], rows[i]
