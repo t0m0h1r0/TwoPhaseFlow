@@ -52,7 +52,8 @@ class UCCD6ConvectionTerm(IConvectionTerm):
     with the AB2 predictor and both simulation pipelines.
     """
 
-    scheme_names = ("uccd6",)
+    scheme_names     = ("uccd6",)
+    _scheme_aliases  = {"uccd": "uccd6"}
 
     @classmethod
     def _build(cls, name: str, ctx: "ConvectionBuildCtx") -> "UCCD6ConvectionTerm":

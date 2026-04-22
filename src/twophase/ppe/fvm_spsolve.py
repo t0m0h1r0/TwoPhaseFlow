@@ -52,7 +52,8 @@ class PPESolverFVMSpsolve(IPPESolver):
         For explicit pin DOF specification
     """
 
-    scheme_names = ("fvm_direct",)
+    scheme_names     = ("fvm_direct",)
+    _scheme_aliases  = {"fvm_spsolve": "fvm_direct", "spsolve": "fvm_direct"}
 
     @classmethod
     def _build(cls, name: str, ctx: "PPEBuildCtx") -> "PPESolverFVMSpsolve":

@@ -22,22 +22,26 @@ class IViscousPredictor(ABC):
     """Abstract interface for viscous predictor (advance velocity with viscous term)."""
 
     _registry: ClassVar[dict[str, type["IViscousPredictor"]]] = {}
+    _aliases:  ClassVar[dict[str, str]]                       = {}
 
     def __init_subclass__(cls, **kw: object) -> None:
         super().__init_subclass__(**kw)
         for name in getattr(cls, "scheme_names", ()):
             IViscousPredictor._registry[name] = cls
+        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
+            IViscousPredictor._aliases[alias] = canonical
 
     @classmethod
     def from_scheme(cls, name: str, ctx: "ViscousBuildCtx") -> "IViscousPredictor":
         """Instantiate the viscous predictor registered under *name*."""
-        klass = cls._registry.get(name)
+        canonical = cls._aliases.get(name, name)
+        klass = cls._registry.get(canonical)
         if klass is None:
             raise ValueError(
                 f"Unknown viscous time scheme {name!r}. "
                 f"Known: {sorted(cls._registry)}"
             )
-        return klass._build(name, ctx)
+        return klass._build(canonical, ctx)
 
     @abstractmethod
     def predict(
@@ -136,7 +140,8 @@ class CNViscousPredictor(IViscousPredictor):
     Requires solving a linear system for each velocity component.
     """
 
-    scheme_names = ("crank_nicolson",)
+    scheme_names     = ("crank_nicolson",)
+    _scheme_aliases  = {"cn": "crank_nicolson", "crank-nicolson": "crank_nicolson"}
 
     @classmethod
     def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "CNViscousPredictor":

@@ -23,22 +23,26 @@ class IGradientOperator(ABC):
     """Abstract interface for computing pressure gradient ∇p."""
 
     _registry: ClassVar[dict[str, type["IGradientOperator"]]] = {}
+    _aliases:  ClassVar[dict[str, str]]                       = {}
 
     def __init_subclass__(cls, **kw: object) -> None:
         super().__init_subclass__(**kw)
         for name in getattr(cls, "scheme_names", ()):
             IGradientOperator._registry[name] = cls
+        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
+            IGradientOperator._aliases[alias] = canonical
 
     @classmethod
     def from_scheme(cls, name: str, ctx: "GradientBuildCtx") -> "IGradientOperator":
         """Instantiate the gradient operator registered under *name*."""
-        klass = cls._registry.get(name)
+        canonical = cls._aliases.get(name, name)
+        klass = cls._registry.get(canonical)
         if klass is None:
             raise ValueError(
                 f"Unknown gradient scheme {name!r}. "
                 f"Known: {sorted(cls._registry)}"
             )
-        return klass._build(name, ctx)
+        return klass._build(canonical, ctx)
 
     @abstractmethod
     def gradient(
@@ -100,7 +104,8 @@ class CCDGradientOperator(IGradientOperator):
 class FCCDGradientOperator(IGradientOperator):
     """FCCD gradient shared by pressure correction and surface tension force."""
 
-    scheme_names = ("fccd_flux", "fccd_nodal")
+    scheme_names     = ("fccd_flux", "fccd_nodal")
+    _scheme_aliases  = {"fccd": "fccd_flux"}
 
     @classmethod
     def _build(cls, name: str, ctx: "GradientBuildCtx") -> "FCCDGradientOperator":

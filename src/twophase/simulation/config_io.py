@@ -798,6 +798,13 @@ def _parse_time_integrator(
         "forward-euler": "forward_euler",
         "cn": "crank_nicolson",
         "crank-nicolson": "crank_nicolson",
+        "adams_bashforth_2": "ab2",
+        "adams_bashforth": "ab2",
+        "ab_2": "ab2",
+        "runge_kutta_3": "tvd_rk3",
+        "ssp_rk3": "tvd_rk3",
+        "tvd_runge_kutta_3": "tvd_rk3",
+        "rk3": "tvd_rk3",
     }
     if aliases:
         alias_map.update(aliases)

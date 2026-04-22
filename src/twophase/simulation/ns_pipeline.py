@@ -223,9 +223,12 @@ class TwoPhaseNSSolver:
         )
         self._grid = Grid(gc, self._backend)
         self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        self._ppe_solver_name = self._normalize_ppe_solver(
-            pressure_scheme if pressure_scheme is not None else ppe_solver
-        )
+        _raw_ppe = str(pressure_scheme if pressure_scheme is not None else ppe_solver).strip().lower()
+        self._ppe_solver_name = IPPESolver._aliases.get(_raw_ppe, _raw_ppe)
+        if self._ppe_solver_name not in IPPESolver._registry:
+            raise ValueError(
+                f"Unsupported ppe_solver={_raw_ppe!r}. Use fvm_iterative|fvm_direct."
+            )
         self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
         self._ppe_tolerance = float(ppe_tolerance)
         self._ppe_max_iterations = int(ppe_max_iterations)
@@ -250,7 +253,13 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
 
-        self._convection_time_scheme = str(convection_time_scheme).strip().lower()
+        _CONV_TIME_ALIASES = {
+            "adams_bashforth_2": "ab2", "adams_bashforth": "ab2", "ab_2": "ab2",
+            "explicit": "ab2", "forward_euler": "forward_euler",
+            "euler": "forward_euler",
+        }
+        _raw_cts = str(convection_time_scheme).strip().lower()
+        self._convection_time_scheme = _CONV_TIME_ALIASES.get(_raw_cts, _raw_cts)
         if self._convection_time_scheme not in {"ab2", "forward_euler"}:
             raise ValueError(
                 "Unsupported convection_time_scheme="
@@ -408,21 +417,6 @@ class TwoPhaseNSSolver:
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
 
-    @staticmethod
-    def _normalize_ppe_solver(raw: str) -> str:
-        aliases = {
-            "fvm_matrixfree": "fvm_iterative",
-            "matrixfree": "fvm_iterative",
-            "fvm_spsolve": "fvm_direct",
-            "spsolve": "fvm_direct",
-        }
-        name = aliases.get(str(raw), str(raw))
-        if name not in {"fvm_iterative", "fvm_direct"}:
-            raise ValueError(
-                f"Unsupported ppe_solver='{raw}'. Use fvm_iterative|fvm_direct."
-            )
-        return name
-
     def _build_ppe_solver(self, pressure_scheme: str):
         """Instantiate the PPE solver selected by ``pressure_scheme``.
 
@@ -436,7 +430,7 @@ class TwoPhaseNSSolver:
         available via the SimulationBuilder pipeline (builder.py) but are
         disabled here to prevent silent divergence in two-phase runs.
         """
-        ppe_solver = self._normalize_ppe_solver(pressure_scheme)
+        ppe_solver = pressure_scheme
         if self._ppe_defect_correction:
             base_solver = self._build_plain_ppe_solver(ppe_solver)
             # DC outer operator: matrix-free without preconditioner (used for residual)

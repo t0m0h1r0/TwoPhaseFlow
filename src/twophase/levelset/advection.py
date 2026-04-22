@@ -84,7 +84,8 @@ class LevelSetAdvection(ILevelSetAdvection):
     grid    : Grid — constructor-injected; eliminates temporal coupling from set_grid()
     """
 
-    scheme_names = ("weno5",)
+    scheme_names     = ("weno5",)
+    _scheme_aliases  = {"weno": "weno5"}
 
     @classmethod
     def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "LevelSetAdvection":
@@ -293,7 +294,8 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
     eps_d   : Filter strength ε_d (default 0.05, §5 eq:eps_adv)
     """
 
-    scheme_names = ("dissipative_ccd",)
+    scheme_names     = ("dissipative_ccd",)
+    _scheme_aliases  = {"dccd": "dissipative_ccd"}
 
     @classmethod
     def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "DissipativeCCDAdvection":

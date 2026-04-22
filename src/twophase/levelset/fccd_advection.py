@@ -53,7 +53,8 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
         ``advance(psi, velocity_components, dt, clip_bounds=(0.0, 1.0))``.
     """
 
-    scheme_names = ("fccd_flux", "fccd_nodal")
+    scheme_names     = ("fccd_flux", "fccd_nodal")
+    _scheme_aliases  = {"fccd": "fccd_flux"}
     _modes = {"fccd_flux": "flux", "fccd_nodal": "node"}
 
     @classmethod

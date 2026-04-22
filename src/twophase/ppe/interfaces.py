@@ -37,22 +37,26 @@ class IPPESolver(ABC):
     """
 
     _registry: ClassVar[dict[str, type["IPPESolver"]]] = {}
+    _aliases:  ClassVar[dict[str, str]]               = {}
 
     def __init_subclass__(cls, **kw: object) -> None:
         super().__init_subclass__(**kw)
         for name in getattr(cls, "scheme_names", ()):
             IPPESolver._registry[name] = cls
+        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
+            IPPESolver._aliases[alias] = canonical
 
     @classmethod
     def from_scheme(cls, name: str, ctx: "PPEBuildCtx") -> "IPPESolver":
         """Instantiate the PPE solver registered under *name*."""
-        klass = cls._registry.get(name)
+        canonical = cls._aliases.get(name, name)
+        klass = cls._registry.get(canonical)
         if klass is None:
             raise ValueError(
                 f"Unknown PPE solver scheme {name!r}. "
                 f"Known: {sorted(cls._registry)}"
             )
-        return klass._build(name, ctx)
+        return klass._build(canonical, ctx)
 
     @abstractmethod
     def solve(

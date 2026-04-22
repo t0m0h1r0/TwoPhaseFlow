@@ -54,7 +54,8 @@ class FCCDConvectionTerm(IConvectionTerm):
     and the SimulationBuilder pipeline accept either term transparently.
     """
 
-    scheme_names = ("fccd_flux", "fccd_nodal")
+    scheme_names     = ("fccd_flux", "fccd_nodal")
+    _scheme_aliases  = {"fccd": "fccd_flux"}
     _modes = {"fccd_flux": "flux", "fccd_nodal": "node"}
 
     @classmethod

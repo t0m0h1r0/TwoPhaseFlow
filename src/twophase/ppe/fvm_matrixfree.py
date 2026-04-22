@@ -44,7 +44,8 @@ class PPESolverFVMMatrixFree(IPPESolver):
     iteration; the fixed point is still the full FVM operator.
     """
 
-    scheme_names = ("fvm_iterative",)
+    scheme_names     = ("fvm_iterative",)
+    _scheme_aliases  = {"fvm_matrixfree": "fvm_iterative", "matrixfree": "fvm_iterative"}
 
     @classmethod
     def _build(cls, name: str, ctx: "PPEBuildCtx") -> "PPESolverFVMMatrixFree":
