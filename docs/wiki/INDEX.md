@@ -1,6 +1,6 @@
-# Wiki Index — 189 entries
+# Wiki Index — 191 entries
 
-## Theory (66)
+## Theory (67)
 
 | REF-ID | Title |
 |--------|-------|
@@ -72,6 +72,7 @@
 | [WIKI-T-066](theory/WIKI-T-066.md) | Body Force Discretization in Variable-Density Two-Phase NS: f vs f/ρ, Gravity Face Placement, Hydrostatic Split, and BF Consistency |
 | [WIKI-T-067](theory/WIKI-T-067.md) | GFM Variable-Density Projection: Mandatory 1/ρ Factor in Velocity Correction |
 | [WIKI-T-068](theory/WIKI-T-068.md) | FCCDDivergenceOperator: FCCD Face-Flux Projector with FVM-Consistent Pressure Gradient |
+| [WIKI-T-069](theory/WIKI-T-069.md) | FCCD Face Jet: Face-Carried Value, Gradient, and Curvature for FVM/HFE |
 
 ## Cross-Domain (32)
 
@@ -197,7 +198,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (26)
+## Code (27)
 
 | REF-ID | Title |
 |--------|-------|
@@ -231,3 +232,4 @@
 | [WIKI-L-028](code/WIKI-L-028.md) | Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
 | [WIKI-L-029](code/WIKI-L-029.md) | FCCD Weight Staleness after In-Place Grid Rebuild: update_weights() Protocol |
 | [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |
+| [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |
