@@ -61,7 +61,7 @@ numerics:
   momentum:
     terms:
       convection:
-        spatial: ccd
+        spatial: uccd6
         time_integrator: ab2
       pressure:
         gradient: fccd_flux
