@@ -134,9 +134,12 @@ within the schemes implemented today:
   is required for GPU execution; `line_pcr` requires CPU-side batched PCR and
   must not be used in production ch13 runs.  Direct sparse FVM solve is kept as
   a debugging option only.
-- `momentum.terms.convection.spatial: fccd_flux` remains the conservative implemented
-  default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
-  conservative-momentum UCCD6 form is still a future implementation target.
+- `momentum.terms.convection.spatial: uccd6` is the preferred implemented
+  momentum-advection path for ch13: WIKI-T-062 positions UCCD6 as the
+  order-preserving upwind CCD remedy for transport/Gibbs control, while FCCD
+  remains the face-locus remedy for pressure and capillary balanced-force
+  consistency. WIKI-X-028's fully conservative density-weighted UCCD6 momentum
+  form is still a future implementation target.
 
 ## PPE Solver Semantics
 

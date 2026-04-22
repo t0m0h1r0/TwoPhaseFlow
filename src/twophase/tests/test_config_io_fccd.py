@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -113,6 +114,21 @@ def test_readable_defaults_round_trip():
     assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "ccd"
+
+
+def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.run.advection_scheme == "fccd_flux"
+    assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.pressure_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.reinit_method == "ridge_eikonal"
+    assert cfg.run.reproject_mode == "gfm"
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():

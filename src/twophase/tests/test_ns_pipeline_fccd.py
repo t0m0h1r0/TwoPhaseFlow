@@ -11,6 +11,8 @@ non-trivial ψ advection after the stack swap.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -89,6 +91,23 @@ def test_fccd_solver_is_shared():
     assert isinstance(solver._conv_term, FCCDConvectionTerm)
     assert solver._conv_term._fccd is solver._fccd
     assert solver._adv._fccd is solver._fccd
+
+
+def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
+    """Checked-in ch13 YAML is executable: FCCD/HFE stack + UCCD convection."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._fccd is not None
+    assert solver._advection_scheme == "fccd_flux"
+    assert solver._convection_scheme == "uccd6"
+    assert solver._pressure_gradient_scheme == "fccd_flux"
+    assert solver._surface_tension_gradient_scheme == "fccd_flux"
+    assert solver._hfe is not None
 
 
 def test_fccd_not_constructed_when_unused():

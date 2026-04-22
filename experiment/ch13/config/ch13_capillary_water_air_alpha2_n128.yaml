@@ -1,4 +1,9 @@
 # N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
+# Production numerical stack: FCCD + HFE + UCCD6.
+# - FCCD: conservative interface transport, pressure gradient, and
+#   surface-tension gradient use `fccd_flux` for face-locus consistency.
+# - HFE: interface curvature uses `psi_direct_hfe`.
+# - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 
 grid:
   cells: [128, 128]
