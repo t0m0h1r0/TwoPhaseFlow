@@ -553,10 +553,10 @@ def _parse_run(
         phi_primary_transport=_parse_tracking_primary(tracking),
         interface_tracking_enabled=_parse_tracking_enabled(tracking),
         interface_tracking_method=_parse_tracking_method(tracking),
-        phi_primary_redist_every=int(tracking.get("redist_every", 4)),
-        phi_primary_clip_factor=float(tracking.get("clip_factor", 12.0)),
+        phi_primary_redist_every=_parse_tracking_redistance_every(tracking),
+        phi_primary_clip_factor=float(_tracking_redistance(tracking).get("clip_factor", 12.0)),
         phi_primary_heaviside_eps_scale=float(
-            tracking.get("heaviside_eps_scale", 1.0)
+            _tracking_redistance(tracking).get("heaviside_eps_scale", 1.0)
         ),
         kappa_max=_opt_float(surface_tension.get("curvature_cap")),
         reinit_method=reinit_method,
@@ -749,6 +749,21 @@ def _parse_tracking_enabled(tracking: dict) -> bool:
 
 def _parse_tracking_primary(tracking: dict) -> bool:
     return _parse_tracking_method(tracking) == "phi_primary"
+
+
+def _tracking_redistance(tracking: dict) -> dict:
+    return tracking.get("redistance", {}) or {}
+
+
+def _parse_tracking_redistance_every(tracking: dict) -> int:
+    schedule = (_tracking_redistance(tracking).get("schedule", {}) or {})
+    every = int(schedule.get("every_steps", 4))
+    if every <= 0:
+        raise ValueError(
+            "numerics.physical_time.interface_advection.tracking.redistance."
+            "schedule.every_steps must be > 0"
+        )
+    return every
 
 
 def _parse_projection_mode(raw: Any) -> str:

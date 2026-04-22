@@ -23,6 +23,14 @@ The physical-time tracking choice lives under
 `numerics.physical_time.interface_advection.tracking`, because it controls the
 advection strategy rather than the interface state itself.
 
+Tracking redistance frequency is intentionally separate from reinitialization
+frequency:
+
+- `interface_advection.tracking.redistance.schedule.every_steps`: phi-primary
+  tracking cleanup while transporting the interface in physical time.
+- `interface.reinitialization.schedule.every_steps`: full CLS profile restoration
+  in pseudo-time after advection.
+
 This follows WIKI-X-027: interface advection and reinitialization use different
 time axes and should not be placed as sibling `run` knobs or mixed in one
 `interface` bucket.

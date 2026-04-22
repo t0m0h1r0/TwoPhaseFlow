@@ -49,6 +49,9 @@ numerics:
       tracking:
         enabled: true
         primary: phi
+        redistance:
+          schedule:
+            every_steps: 4
     momentum:
       form: primitive_velocity
       convection:

@@ -137,9 +137,11 @@ def test_readable_structured_sections_round_trip():
                     "spatial": "fccd_flux",
                     "tracking": {
                         "primary": "phi",
-                        "redist_every": 5,
-                        "clip_factor": 10.0,
-                        "heaviside_eps_scale": 1.2,
+                        "redistance": {
+                            "schedule": {"every_steps": 5},
+                            "clip_factor": 10.0,
+                            "heaviside_eps_scale": 1.2,
+                        },
                     },
                 },
                 "momentum": {
@@ -272,6 +274,21 @@ def test_invalid_interface_tracking_primary_rejected():
                 "physical_time": {
                     "interface_advection": {
                         "tracking": {"primary": "marker_particles"},
+                    },
+                },
+            },
+        }))
+
+
+def test_invalid_tracking_redistance_frequency_rejected():
+    with pytest.raises(ValueError, match="tracking.redistance.schedule.every_steps"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "physical_time": {
+                    "interface_advection": {
+                        "tracking": {
+                            "redistance": {"schedule": {"every_steps": 0}},
+                        },
                     },
                 },
             },
