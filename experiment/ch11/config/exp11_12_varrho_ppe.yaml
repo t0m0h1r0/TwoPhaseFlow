@@ -1,0 +1,35 @@
+# [11-12] Variable-density PPE convergence (smooth rho, DC k=3)
+# Validates: Ch9b — variable-coefficient DC maintains O(h^6-7) for smooth rho.
+
+experiment:
+  id: "11-12"
+  title: "Variable-density PPE: smooth rho, DC k=3"
+  type: convergence_study
+
+scheme:
+  operator: varrho_ppe_smooth
+  cases:
+    - label: "rho~1"
+      params: {A: 0.0}
+    - label: "rho~9"
+      params: {A: 0.8}
+    - label: "rho~99"
+      params: {A: 0.98}
+    - label: "rho~999"
+      params: {A: 0.998}
+
+input:
+  grid_sizes: [16, 32, 64, 128]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - all_cases: true
+      title: "Variable-density PPE: $\\rho=1+A\\sin(\\pi x)\\cos(\\pi y)$"
+      error_keys: [Li]
+      ref_orders: [5, 6, 7]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ pressure error"
+  output_stem: varrho_ppe

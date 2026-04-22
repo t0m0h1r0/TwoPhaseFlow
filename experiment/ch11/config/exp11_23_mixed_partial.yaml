@@ -1,0 +1,37 @@
+# [11-23] Mixed partial CCD convergence: d²f/dxdy sequential
+# Validates: Ch4 — sequential CCD mixed partial O(h^4-6), commutative.
+
+experiment:
+  id: "11-23"
+  title: "CCD Mixed Partial Convergence: $\\partial_{xy}f$"
+  type: convergence_study
+
+scheme:
+  operator: mixed_partial_ccd
+  cases:
+    - label: periodic
+      params: {bc_type: periodic}
+    - label: wall
+      params: {bc_type: wall}
+
+input:
+  grid_sizes: [16, 32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x2"
+  panels:
+    - case: periodic
+      title: "(a) Periodic BC"
+      error_keys: [xy_Li, yx_Li]
+      ref_orders: [4, 6]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ error"
+    - case: wall
+      title: "(b) Wall BC"
+      error_keys: [xy_Li, yx_Li]
+      ref_orders: [4, 6]
+      xlabel: "$h$"
+      ylabel: "$L^\\infty$ error"
+  output_stem: mixed_partial

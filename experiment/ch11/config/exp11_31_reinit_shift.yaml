@@ -1,0 +1,31 @@
+# [11-31] Reinit interface zero-level shift convergence
+# Validates: Ch10 — reinit-induced shift O(h^2), accumulates linearly.
+
+experiment:
+  id: "11-31"
+  title: "Reinit Interface Shift Convergence"
+  type: convergence_study
+
+scheme:
+  operator: reinit_shift
+  cases:
+    - label: single
+      params: {n_calls: 1}
+    - label: accumulated
+      params: {n_calls: 10}
+
+input:
+  grid_sizes: [32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - all_cases: true
+      title: "Reinit interface shift vs $h$"
+      error_keys: [zero_shift, centroid_shift]
+      ref_orders: [1, 2, 3]
+      xlabel: "$h$"
+      ylabel: "Shift magnitude"
+  output_stem: reinit_shift

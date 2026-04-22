@@ -1,0 +1,33 @@
+# [11-14a] TVD-RK3 ODE temporal accuracy
+# Validates: Ch6 — SSP-RK3 O(dt^3) on dq/dt=-q.
+
+experiment:
+  id: "11-14a"
+  title: "TVD-RK3 Time Integration: ODE $dq/dt=-q$"
+  type: time_accuracy
+
+scheme:
+  operator: tvd_rk3_ode
+  params: {}
+
+input:
+  n_steps_list: [4, 8, 16, 32, 64, 128, 256, 512]
+  T_final: 1.0
+
+reference:
+  type: analytical
+  solution: ode_decay_exact
+  params: {}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - case: default
+      series_label: "TVD-RK3"
+      error_key: err
+      ref_orders: [3]
+      xlabel: "$\\Delta t$"
+      ylabel: "$|q - e^{-1}|$"
+      title: "TVD-RK3 ODE convergence"
+  output_stem: tvd_rk3_ode
