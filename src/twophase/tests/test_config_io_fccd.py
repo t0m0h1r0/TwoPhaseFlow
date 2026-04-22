@@ -104,6 +104,26 @@ def test_readable_defaults_round_trip():
     assert cfg.run.ppe_preconditioner == "line_pcr"
 
 
+def test_iterative_ppe_accepts_jacobi_preconditioner():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "elliptic": {
+                "pressure_projection": {
+                    "poisson": {
+                        "solver": {
+                            "kind": "iterative",
+                            "method": "gmres",
+                            "preconditioner": "jacobi",
+                        },
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.ppe_preconditioner == "jacobi"
+
+
 def test_readable_structured_sections_round_trip():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {

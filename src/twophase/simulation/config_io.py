@@ -419,7 +419,7 @@ _CURVATURE_SCHEMES = ("psi_direct_hfe",)
 _FORCE_GRADIENT_SCHEMES = ("projection_consistent",)
 _PPE_SOLVER_KINDS = ("iterative", "direct")
 _PPE_ITERATION_METHODS = ("gmres",)
-_PPE_PRECONDITIONERS = ("line_pcr", "none")
+_PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
 
 
 def _parse_run(

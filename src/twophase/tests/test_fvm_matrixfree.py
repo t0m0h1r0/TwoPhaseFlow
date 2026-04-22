@@ -70,6 +70,25 @@ def test_fvm_matrixfree_solve_matches_direct_fvm():
     np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
 
 
+def test_fvm_matrixfree_jacobi_preconditioner_matches_direct_fvm():
+    backend = Backend(use_gpu=False)
+    cfg = _make_cfg(8)
+    cfg.solver.ppe_preconditioner = "jacobi"
+    grid = Grid(cfg.grid, backend)
+
+    solver_mf = PPESolverFVMMatrixFree(backend, cfg, grid, bc_type="wall")
+    solver_ref = PPESolverFVMSpsolve(backend, grid, bc_type="wall")
+
+    rng = np.random.default_rng(789)
+    rho = 1.0 + rng.uniform(0.0, 1.0, grid.shape)
+    rhs = rng.standard_normal(grid.shape)
+
+    p_mf = np.asarray(solver_mf.solve(rhs, rho, dt=1e-3))
+    p_ref = np.asarray(solver_ref.solve(rhs, rho, dt=1e-3))
+
+    np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
+
+
 def test_factory_creates_fvm_iterative_solver():
     backend = Backend(use_gpu=False)
     cfg = _make_cfg(8)

@@ -74,9 +74,7 @@ numerics:
           tolerance: 1.0e-8
           max_iterations: 500
           restart: 80
-          preconditioner: line_pcr
-          pcr_stages: 1
-          c_tau: 2.0
+          preconditioner: jacobi
 
 output:
   dir: results/ch13_capillary_water_air_alpha2_n128_t8
