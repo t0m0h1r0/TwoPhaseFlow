@@ -6,17 +6,16 @@ grid:
   domain:
     size: [1.0, 1.0]
     boundary: wall
+  distribution:
+    type: interface_fitted
+    method: gaussian_levelset
+    alpha: 2.0
+    schedule: static
 
 interface:
-  geometry:
-    fitting:
-      enabled: true
-      method: gaussian_levelset
-      alpha: 2.0
-      schedule: static
-    width:
-      mode: local
-      base_factor: 1.5
+  thickness:
+    mode: local
+    base_factor: 1.5
   tracking:
     enabled: true
     primary: phi

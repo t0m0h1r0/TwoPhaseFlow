@@ -249,21 +249,24 @@ def _parse_grid(d: dict, interface: dict) -> GridCfg:
     domain = d["domain"]
     size = domain["size"]
     LX, LY = float(size[0]), float(size[1])
-    geometry = interface["geometry"]
-    fitting = geometry["fitting"]
-    width = geometry["width"]
-    fitting_enabled = _parse_enabled(fitting.get("enabled", True))
+    distribution = d["distribution"]
+    width = interface["thickness"]
+    distribution_type = _validate_choice(
+        distribution["type"], ("uniform", "interface_fitted"),
+        "grid.distribution.type",
+    )
+    fitting_enabled = distribution_type == "interface_fitted"
     fitting_method = _normalize_interface_fitting_method(
-        fitting.get("method", "gaussian_levelset")
+        distribution.get("method", "gaussian_levelset" if fitting_enabled else "none")
     )
     if fitting_method == "none":
         fitting_enabled = False
-    alpha_grid = float(fitting.get("alpha", 1.0))
+    alpha_grid = float(distribution.get("alpha", 1.0))
     if not fitting_enabled:
         alpha_grid = 1.0
     eps_factor = float(width.get("base_factor", 1.5))
-    eps_g_factor = float(fitting.get("eps_g_factor", 2.0))
-    eps_g_cells = _opt_float(fitting.get("eps_g_cells"))
+    eps_g_factor = float(distribution.get("eps_g_factor", 2.0))
+    eps_g_cells = _opt_float(distribution.get("eps_g_cells"))
     eps_xi_cells = _opt_float(width.get("xi_cells"))
     use_local_eps = _parse_interface_width_mode(width, eps_xi_cells)
     return GridCfg(
@@ -279,7 +282,7 @@ def _parse_grid(d: dict, interface: dict) -> GridCfg:
         dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
         use_local_eps=use_local_eps,
         eps_xi_cells=eps_xi_cells,
-        grid_rebuild_freq=_parse_grid_rebuild(fitting.get("schedule", "static")),
+        grid_rebuild_freq=_parse_grid_rebuild(distribution.get("schedule", "static")),
         interface_fitting_enabled=fitting_enabled,
         interface_fitting_method=("none" if not fitting_enabled else fitting_method),
     )
@@ -674,11 +677,11 @@ def _parse_interface_width_mode(
     if mode == "xi_cells":
         if eps_xi_cells is None:
             raise ValueError(
-                "interface.geometry.width.mode='xi_cells' requires xi_cells"
+                "interface.thickness.mode='xi_cells' requires xi_cells"
             )
         return True
     raise ValueError(
-        "interface.geometry.width.mode must be nominal|local|xi_cells, "
+        "interface.thickness.mode must be nominal|local|xi_cells, "
         f"got {mode!r}"
     )
 
@@ -696,7 +699,7 @@ def _parse_grid_rebuild(raw: Any) -> int:
     freq = int(raw)
     if freq < 0:
         raise ValueError(
-            f"interface.geometry.fitting.schedule must be >= 0, got {freq}"
+            f"grid.distribution.schedule must be >= 0, got {freq}"
         )
     return freq
 
@@ -715,7 +718,7 @@ def _normalize_interface_fitting_method(raw: Any) -> str:
     method = str(raw).strip().lower()
     if method not in {"gaussian_levelset", "none"}:
         raise ValueError(
-            "interface.geometry.fitting.method must be gaussian_levelset|none, "
+            "grid.distribution.method must be gaussian_levelset|none, "
             f"got {method!r}"
         )
     return method

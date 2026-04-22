@@ -25,17 +25,15 @@ def _minimal(patch: dict | None = None) -> dict:
         "grid": {
             "cells": [8, 8],
             "domain": {"size": [1.0, 1.0], "boundary": "wall"},
+            "distribution": {
+                "type": "interface_fitted",
+                "method": "gaussian_levelset",
+                "alpha": 1.0,
+                "schedule": "static",
+            },
         },
         "interface": {
-            "geometry": {
-                "fitting": {
-                    "enabled": True,
-                    "method": "gaussian_levelset",
-                    "alpha": 1.0,
-                    "schedule": "static",
-                },
-                "width": {"mode": "nominal", "base_factor": 1.5},
-            },
+            "thickness": {"mode": "nominal", "base_factor": 1.5},
             "tracking": {"enabled": True, "primary": "psi"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
@@ -111,12 +109,10 @@ def test_readable_structured_sections_round_trip():
         "grid": {
             "cells": [16, 12],
             "domain": {"size": [2.0, 1.0], "boundary": "periodic"},
+            "distribution": {"alpha": 2.0, "schedule": "every_3"},
         },
         "interface": {
-            "geometry": {
-                "fitting": {"alpha": 2.0, "schedule": "every_3"},
-                "width": {"mode": "local", "base_factor": 1.7},
-            },
+            "thickness": {"mode": "local", "base_factor": 1.7},
             "tracking": {
                 "primary": "phi",
                 "redist_every": 5,
@@ -276,7 +272,7 @@ def test_invalid_interface_tracking_primary_rejected():
 
 def test_disabled_interface_fitting_forces_uniform_grid():
     cfg = ExperimentConfig.from_dict(_minimal({
-        "interface": {"geometry": {"fitting": {"enabled": False, "alpha": 2.0}}},
+        "grid": {"distribution": {"type": "uniform", "method": "none", "alpha": 2.0}},
     }))
     assert cfg.grid.interface_fitting_enabled is False
     assert cfg.grid.interface_fitting_method == "none"
@@ -284,9 +280,9 @@ def test_disabled_interface_fitting_forces_uniform_grid():
 
 
 def test_invalid_interface_fitting_method_rejected():
-    with pytest.raises(ValueError, match="interface.geometry.fitting.method"):
+    with pytest.raises(ValueError, match="grid.distribution.method"):
         ExperimentConfig.from_dict(_minimal({
-            "interface": {"geometry": {"fitting": {"method": "spline_fit"}}},
+            "grid": {"distribution": {"method": "spline_fit"}},
         }))
 
 

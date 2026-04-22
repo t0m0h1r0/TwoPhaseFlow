@@ -5,7 +5,7 @@ current Python implementation stores it.
 
 ## Top-Level Sections
 
-- `grid`: computational mesh size, physical domain, and boundary type.
+- `grid`: computational mesh size, physical domain, boundary type, and mesh distribution.
 - `interface`: the full lifecycle of the phase interface.
 - `physics`: material properties and physical constants.
 - `run`: wall-clock experiment controls such as final time and diagnostics.
@@ -16,13 +16,25 @@ current Python implementation stores it.
 
 `interface` groups settings that must be reasoned about together:
 
-- `geometry.fitting`: whether the mesh follows the interface and how often it is rebuilt.
-- `geometry.width`: how the CLS thickness is measured (`nominal`, `local`, `xi_cells`).
+- `thickness`: how the CLS thickness is measured (`nominal`, `local`, `xi_cells`).
 - `tracking`: which interface variable is transported in physical time (`psi` or `phi`).
 - `reinitialization`: geometry restoration algorithm in pseudo-time; this is not physical time integration.
 
 This follows WIKI-X-027: interface transport and reinitialization use different
 time axes and should not be placed as sibling `run` knobs.
+
+## Grid Distribution
+
+`grid.distribution` owns mesh non-uniformity:
+
+- `type: uniform`: no interface-fitted concentration, `alpha` is ignored.
+- `type: interface_fitted`: concentrate cells around the interface.
+- `method: gaussian_levelset`: Gaussian density derived from the level-set field.
+- `alpha`: grid concentration strength; `alpha: 2.0` is the standard ch13 non-uniform setup.
+- `schedule`: grid rebuild schedule (`static`, `every_step`, or `every_N`).
+
+The distribution is located under `grid` because it changes the mesh. It may use
+interface information as an input, but it is not itself interface physics.
 
 ## Numerical Classification
 

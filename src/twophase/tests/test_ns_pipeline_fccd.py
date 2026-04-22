@@ -209,17 +209,15 @@ def test_from_config_threads_fccd_keys():
         "grid": {
             "cells": [N, N],
             "domain": {"size": [L, L], "boundary": "wall"},
+            "distribution": {
+                "type": "interface_fitted",
+                "method": "gaussian_levelset",
+                "alpha": 2.0,
+                "schedule": "static",
+            },
         },
         "interface": {
-            "geometry": {
-                "fitting": {
-                    "enabled": True,
-                    "method": "gaussian_levelset",
-                    "alpha": 2.0,
-                    "schedule": "static",
-                },
-                "width": {"mode": "local", "base_factor": 1.5},
-            },
+            "thickness": {"mode": "local", "base_factor": 1.5},
             "tracking": {"enabled": True, "primary": "phi"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
@@ -280,17 +278,15 @@ def test_from_config_can_disable_interface_tracking():
         "grid": {
             "cells": [N, N],
             "domain": {"size": [L, L], "boundary": "wall"},
+            "distribution": {
+                "type": "uniform",
+                "method": "none",
+                "alpha": 1.0,
+                "schedule": "static",
+            },
         },
         "interface": {
-            "geometry": {
-                "fitting": {
-                    "enabled": False,
-                    "method": "none",
-                    "alpha": 1.0,
-                    "schedule": "static",
-                },
-                "width": {"mode": "nominal", "base_factor": 1.5},
-            },
+            "thickness": {"mode": "nominal", "base_factor": 1.5},
             "tracking": {"enabled": False, "primary": "none"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
