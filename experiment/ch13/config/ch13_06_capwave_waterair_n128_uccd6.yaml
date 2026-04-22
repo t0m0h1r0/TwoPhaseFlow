@@ -16,9 +16,6 @@ interface:
   thickness:
     mode: local
     base_factor: 1.5
-  tracking:
-    enabled: true
-    primary: phi
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
@@ -49,6 +46,9 @@ numerics:
     interface_advection:
       spatial: fccd_flux
       time: explicit
+      tracking:
+        enabled: true
+        primary: phi
     momentum:
       form: primitive_velocity
       convection:

@@ -434,10 +434,10 @@ def _parse_run(
     reinit = interface["reinitialization"]
     reinit_profile = reinit.get("profile", {}) or {}
     reinit_schedule = reinit["schedule"]
-    tracking = interface["tracking"]
     physical_time = numerics["physical_time"]
     elliptic = numerics["elliptic"]
     interface_transport = physical_time["interface_advection"]
+    tracking = interface_transport["tracking"]
     momentum = physical_time["momentum"]
     convection = momentum["convection"]
     viscosity = momentum["viscosity"]
@@ -736,7 +736,7 @@ def _parse_tracking_method(tracking: dict) -> str:
     if primary == "none":
         return "none"
     raise ValueError(
-        "interface.tracking.primary must be phi|psi|none, "
+        "numerics.physical_time.interface_advection.tracking.primary must be phi|psi|none, "
         f"got {primary!r}"
     )
 

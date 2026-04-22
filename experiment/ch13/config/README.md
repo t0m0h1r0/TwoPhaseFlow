@@ -17,11 +17,15 @@ current Python implementation stores it.
 `interface` groups settings that must be reasoned about together:
 
 - `thickness`: how the CLS thickness is measured (`nominal`, `local`, `xi_cells`).
-- `tracking`: which interface variable is transported in physical time (`psi` or `phi`).
 - `reinitialization`: geometry restoration algorithm in pseudo-time; this is not physical time integration.
 
-This follows WIKI-X-027: interface transport and reinitialization use different
-time axes and should not be placed as sibling `run` knobs.
+The physical-time tracking choice lives under
+`numerics.physical_time.interface_advection.tracking`, because it controls the
+advection strategy rather than the interface state itself.
+
+This follows WIKI-X-027: interface advection and reinitialization use different
+time axes and should not be placed as sibling `run` knobs or mixed in one
+`interface` bucket.
 
 ## Grid Distribution
 
@@ -45,7 +49,8 @@ interface information as an input, but it is not itself interface physics.
 
 `physical_time` currently contains:
 
-- `interface_advection`: CLS/level-set advection in physical time.
+- `interface_advection`: CLS/level-set advection in physical time, including
+  whether `psi`, `phi`, or neither is the primary transported field.
 - `momentum.form`: current equation form. `primitive_velocity` is implemented;
   WIKI-X-028 motivates a future `conservative_momentum` form.
 - `momentum.convection`: nonlinear momentum transport scheme.

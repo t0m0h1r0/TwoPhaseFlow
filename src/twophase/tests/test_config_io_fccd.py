@@ -34,7 +34,6 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "interface": {
             "thickness": {"mode": "nominal", "base_factor": 1.5},
-            "tracking": {"enabled": True, "primary": "psi"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},
@@ -55,6 +54,7 @@ def _minimal(patch: dict | None = None) -> dict:
                 "interface_advection": {
                     "spatial": "dissipative_ccd",
                     "time": "explicit",
+                    "tracking": {"enabled": True, "primary": "psi"},
                 },
                 "momentum": {
                     "form": "primitive_velocity",
@@ -113,12 +113,6 @@ def test_readable_structured_sections_round_trip():
         },
         "interface": {
             "thickness": {"mode": "local", "base_factor": 1.7},
-            "tracking": {
-                "primary": "phi",
-                "redist_every": 5,
-                "clip_factor": 10.0,
-                "heaviside_eps_scale": 1.2,
-            },
             "reinitialization": {
                 "profile": {
                     "eps_scale": 1.4,
@@ -139,7 +133,15 @@ def test_readable_structured_sections_round_trip():
         },
         "numerics": {
             "physical_time": {
-                "interface_advection": {"spatial": "fccd_flux"},
+                "interface_advection": {
+                    "spatial": "fccd_flux",
+                    "tracking": {
+                        "primary": "phi",
+                        "redist_every": 5,
+                        "clip_factor": 10.0,
+                        "heaviside_eps_scale": 1.2,
+                    },
+                },
                 "momentum": {
                     "convection": {
                         "spatial": "uccd6",
@@ -264,9 +266,15 @@ def test_invalid_viscous_time_scheme_rejected():
 
 
 def test_invalid_interface_tracking_primary_rejected():
-    with pytest.raises(ValueError, match="interface.tracking.primary"):
+    with pytest.raises(ValueError, match="interface_advection.tracking.primary"):
         ExperimentConfig.from_dict(_minimal({
-            "interface": {"tracking": {"primary": "marker_particles"}},
+            "numerics": {
+                "physical_time": {
+                    "interface_advection": {
+                        "tracking": {"primary": "marker_particles"},
+                    },
+                },
+            },
         }))
 
 

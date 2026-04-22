@@ -218,7 +218,6 @@ def test_from_config_threads_fccd_keys():
         },
         "interface": {
             "thickness": {"mode": "local", "base_factor": 1.5},
-            "tracking": {"enabled": True, "primary": "phi"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},
@@ -237,7 +236,11 @@ def test_from_config_threads_fccd_keys():
         },
         "numerics": {
             "physical_time": {
-                "interface_advection": {"spatial": "fccd_flux", "time": "explicit"},
+                "interface_advection": {
+                    "spatial": "fccd_flux",
+                    "time": "explicit",
+                    "tracking": {"enabled": True, "primary": "phi"},
+                },
                 "momentum": {
                     "form": "primitive_velocity",
                     "convection": {"spatial": "fccd_flux", "time": "explicit"},
@@ -287,7 +290,6 @@ def test_from_config_can_disable_interface_tracking():
         },
         "interface": {
             "thickness": {"mode": "nominal", "base_factor": 1.5},
-            "tracking": {"enabled": False, "primary": "none"},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},
@@ -305,7 +307,11 @@ def test_from_config_can_disable_interface_tracking():
         },
         "numerics": {
             "physical_time": {
-                "interface_advection": {"spatial": "dissipative_ccd", "time": "explicit"},
+                "interface_advection": {
+                    "spatial": "dissipative_ccd",
+                    "time": "explicit",
+                    "tracking": {"enabled": False, "primary": "none"},
+                },
                 "momentum": {
                     "form": "primitive_velocity",
                     "convection": {"spatial": "ccd", "time": "explicit"},
