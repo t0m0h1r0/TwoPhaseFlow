@@ -16,7 +16,7 @@ dependencies = [
 vis  = ["matplotlib>=3.7"]
 io   = ["h5py>=3.9", "pyyaml>=6.0"]
 dev  = ["pytest>=7", "pytest-cov"]
-gpu  = ["cupy-cuda12x"]
+gpu  = ["cupy-cuda13x"]
 all  = ["matplotlib>=3.7", "h5py>=3.9", "pyyaml>=6.0"]
 
 [tool.setuptools.packages.find]
