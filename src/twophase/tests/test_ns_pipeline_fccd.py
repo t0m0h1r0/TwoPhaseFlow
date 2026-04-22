@@ -95,6 +95,9 @@ def test_fccd_solver_is_shared():
 
 def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     """Checked-in ch13 YAML is executable: FCCD/HFE stack + UCCD convection."""
+    from twophase.ppe.defect_correction import PPESolverDefectCorrection
+    from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+
     path = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
@@ -108,6 +111,9 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "fccd_flux"
     assert solver._hfe is not None
+    assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
+    assert solver._div_op is solver._fccd_div_op
 
 
 def test_fccd_not_constructed_when_unused():
@@ -140,6 +146,30 @@ def test_pipeline_can_select_direct_fvm_ppe():
         ppe_solver="fvm_direct",
     )
     assert isinstance(solver._ppe_solver, PPESolverFVMSpsolve)
+
+
+def test_pipeline_can_solve_fccd_ppe_smoke():
+    """FCCD PPE operator is usable as a pressure solve, not just configurable."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L, bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_gradient_scheme="fccd_flux",
+        surface_tension_gradient_scheme="fccd_flux",
+        ppe_preconditioner="none",
+        ppe_max_iterations=100,
+        ppe_tolerance=1.0e-8,
+    )
+    rho = np.ones(solver._grid.shape)
+    rhs = np.zeros(solver._grid.shape)
+    rhs[2, 3] = 1.0
+    rhs[3, 3] = -1.0
+    rhs.ravel()[solver._ppe_solver._pin_dof] = 0.0
+
+    pressure = solver._ppe_solver.solve(rhs, rho, dt=1.0)
+    residual = solver._backend.to_host(solver._ppe_solver.apply(pressure) - rhs)
+
+    assert np.isfinite(solver._backend.to_host(pressure)).all()
+    assert np.linalg.norm(residual) < 1.0e-6
 
 
 def test_surface_tension_uses_configured_gradient_operator():
@@ -276,7 +306,7 @@ def test_from_config_threads_fccd_keys():
                     "convection": {"spatial": "fccd_flux", "time": "explicit"},
                     "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
                     "capillary_force": {
-                        "model": "csf",
+                        "formulation": "csf",
                         "time": "explicit",
                         "curvature": "psi_direct_hfe",
                         "force_gradient": "projection_consistent",
@@ -286,10 +316,11 @@ def test_from_config_threads_fccd_keys():
             "elliptic": {
                 "pressure_projection": {
                     "mode": "consistent_gfm",
-                    "poisson": {
-                        "discretization": "fvm",
-                        "solver": {"kind": "direct"},
-                    },
+                        "poisson": {
+                            "discretization": "fvm",
+                            "coefficient": "phase_density",
+                            "solver": {"kind": "direct"},
+                        },
                 },
             },
         },
@@ -347,7 +378,7 @@ def test_from_config_can_disable_interface_tracking():
                     "convection": {"spatial": "ccd", "time": "explicit"},
                     "viscosity": {"spatial": "ccd", "time": "explicit"},
                     "capillary_force": {
-                        "model": "csf",
+                        "formulation": "csf",
                         "time": "explicit",
                         "curvature": "psi_direct_hfe",
                         "force_gradient": "projection_consistent",
@@ -357,10 +388,11 @@ def test_from_config_can_disable_interface_tracking():
             "elliptic": {
                 "pressure_projection": {
                     "mode": "standard",
-                    "poisson": {
-                        "discretization": "fvm",
-                        "solver": {"kind": "iterative", "method": "gmres"},
-                    },
+                        "poisson": {
+                            "discretization": "fvm",
+                            "coefficient": "phase_density",
+                            "solver": {"kind": "iterative", "method": "gmres"},
+                        },
                 },
             },
         },

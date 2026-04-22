@@ -199,6 +199,7 @@ class IDivergenceOperator(ABC):
         rho: "array",
         dt: float,
         force_components: list["array"] | None = None,
+        pressure_gradient: str = "fvm",
     ) -> list["array"]:
         """Apply face-flux projection if supported by this divergence strategy."""
         raise NotImplementedError(
@@ -324,6 +325,7 @@ class FVMDivergenceOperator(IDivergenceOperator):
         rho: "array",
         dt: float,
         force_components: list["array"] | None = None,
+        pressure_gradient: str = "fvm",
     ) -> list["array"]:
         """Apply PPE-consistent face-flux projection and reconstruct nodes."""
         faces = self.face_fluxes(components)
@@ -388,14 +390,13 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         rho: "array",
         dt: float,
         force_components: list["array"] | None = None,
+        pressure_gradient: str = "fvm",
     ) -> list["array"]:
         """FCCD face-flux projection (WIKI-T-068 §5).
 
         Uses FCCD Hermite face values for velocity and force (O(h⁴) accuracy),
-        with FVM-consistent pressure gradient ``(p_r - p_l) / H`` to match the
-        FVM PPE solver.  This gives near-zero FVM divergence after reconstruction
-        — identical to ``FVMDivergenceOperator.project`` but with O(h⁴) face
-        interpolation for the velocity and force components.
+        with either FVM-consistent ``(p_r - p_l) / H`` pressure fluxes for the
+        legacy FVM PPE path or FCCD face gradients for the FCCD PPE path.
         """
         import numpy as _np
         xp = self._fccd.xp
@@ -424,7 +425,11 @@ class FCCDDivergenceOperator(IDivergenceOperator):
 
             rho_lo = rho[sl(0, N)]
             rho_hi = rho[sl(1, N + 1)]
-            p_face = 2.0 / (rho_lo + rho_hi) * (p[sl(1, N + 1)] - p[sl(0, N)]) / d_face_arr
+            coeff = 2.0 / (rho_lo + rho_hi)
+            if pressure_gradient == "fccd":
+                p_face = coeff * self._fccd.face_gradient(p, axis)
+            else:
+                p_face = coeff * (p[sl(1, N + 1)] - p[sl(0, N)]) / d_face_arr
 
             corrected.append(u_faces[axis] - dt * p_face + dt * f_faces[axis])
 

@@ -71,7 +71,7 @@ def _minimal(patch: dict | None = None) -> dict:
                     "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
                         "gradient": "ccd",
-                        "model": "csf",
+                        "formulation": "csf",
                     },
                 },
             },
@@ -80,7 +80,7 @@ def _minimal(patch: dict | None = None) -> dict:
                 "poisson": {
                     "operator": {
                         "discretization": "fvm",
-                        "coefficient": "variable_density",
+                        "coefficient": "phase_density",
                     },
                     "solver": {
                         "kind": "iterative",
@@ -128,7 +128,47 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
     assert cfg.run.reinit_method == "ridge_eikonal"
-    assert cfg.run.reproject_mode == "gfm"
+    assert cfg.run.reproject_mode == "variable_density_only"
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+    assert cfg.run.ppe_defect_correction is True
+
+
+def test_fccd_ppe_discretization_maps_to_fccd_solver():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {"discretization": "fccd", "coefficient": "phase_density"},
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
+def test_fccd_ppe_rejects_direct_solver_kind():
+    with pytest.raises(ValueError, match="does not support"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "operator": {"discretization": "fccd", "coefficient": "phase_density"},
+                        "solver": {"kind": "direct"},
+                    },
+                },
+            },
+        }))
+
+
+def test_projection_coefficient_is_required_for_phase_ppe():
+    raw = _minimal()
+    del raw["numerics"]["projection"]["poisson"]["operator"]["coefficient"]
+    with pytest.raises(ValueError, match="coefficient.*required"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():
@@ -200,7 +240,7 @@ def test_readable_structured_sections_round_trip():
                     },
                     "pressure": {"spatial": "projection_consistent"},
                     "viscosity": {"time_integrator": "crank_nicolson"},
-                    "surface_tension": {"gradient": "fccd_flux", "model": "none"},
+                    "surface_tension": {"gradient": "fccd_flux", "formulation": "none"},
                 },
             },
             "projection": {
@@ -433,7 +473,7 @@ def test_gradient_key_reads_pressure_and_surface_tension():
             "momentum": {
                 "terms": {
                     "pressure": {"gradient": "fccd_flux"},
-                    "surface_tension": {"gradient": "fccd_nodal", "model": "csf"},
+                    "surface_tension": {"gradient": "fccd_nodal", "formulation": "csf"},
                 },
             },
         },

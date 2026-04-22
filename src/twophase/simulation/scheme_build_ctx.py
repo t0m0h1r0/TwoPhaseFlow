@@ -70,3 +70,4 @@ class PPEBuildCtx:
     bc_type: str
     bc_spec: "BoundarySpec | None" = None
     config: "SimpleNamespace | None" = None
+    fccd: "FCCDSolver | None" = None
