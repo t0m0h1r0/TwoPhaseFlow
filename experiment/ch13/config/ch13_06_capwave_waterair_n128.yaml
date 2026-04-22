@@ -21,10 +21,12 @@ interface:
     enabled: true
     primary: phi
   reinitialization:
-    method: ridge_eikonal
-    every: 2
-    eps_scale: 1.4
-    ridge_sigma_0: 3.0
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 2
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
 
 physics:
   phases:
@@ -44,25 +46,30 @@ run:
     print_every: 1000
 
 numerics:
-  terms:
-    interface_transport:
+  physical_time:
+    interface_advection:
       spatial: fccd_flux
       time: explicit
-    momentum_advection:
+    momentum:
       form: primitive_velocity
-      spatial: fccd_flux
-      time: explicit
-    viscosity:
-      spatial: ccd
-      time: explicit
-    surface_tension:
-      model: csf
-      curvature: psi_direct_hfe
-      force_gradient: projection_consistent
+      convection:
+        spatial: fccd_flux
+        time: explicit
+      viscosity:
+        spatial: ccd
+        time: explicit
+      capillary_force:
+        model: csf
+        time: explicit
+        curvature: psi_direct_hfe
+        force_gradient: projection_consistent
+  elliptic:
     pressure_projection:
       mode: consistent_gfm
-      solver:
-        kind: direct
+      poisson:
+        discretization: fvm
+        solver:
+          kind: direct
 
 output:
   dir: results/ch13_06_capwave_waterair_n128

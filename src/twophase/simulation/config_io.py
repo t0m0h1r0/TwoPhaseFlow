@@ -405,7 +405,9 @@ _PPE_TO_PRESSURE_SCHEME = {
     "fvm_iterative": "fvm_matrixfree",
     "fvm_direct": "fvm_spsolve",
 }
+_PPE_DISCRETIZATIONS = ("fvm",)
 _SURFACE_TENSION_SCHEMES = ("csf", "none")
+_SURFACE_TENSION_TIME_SCHEMES = ("explicit",)
 _VISCOUS_TIME_SCHEMES = ("explicit", "crank_nicolson")
 _EXPLICIT_TIME_SCHEMES = ("explicit",)
 _MOMENTUM_FORMS = ("primitive_velocity",)
@@ -427,14 +429,23 @@ def _parse_run(
     time_cfg = d["time"]
     snapshots = output.get("snapshots", {}) or {}
     reinit = interface["reinitialization"]
+    reinit_profile = reinit.get("profile", {}) or {}
+    reinit_schedule = reinit["schedule"]
     tracking = interface["tracking"]
-    terms = numerics["terms"]
-    interface_transport = terms["interface_transport"]
-    momentum = terms["momentum_advection"]
-    viscosity = terms["viscosity"]
-    surface_tension = terms["surface_tension"]
-    projection = terms["pressure_projection"]
-    ppe_solver_cfg = projection["solver"]
+    physical_time = numerics["physical_time"]
+    elliptic = numerics["elliptic"]
+    interface_transport = physical_time["interface_advection"]
+    momentum = physical_time["momentum"]
+    convection = momentum["convection"]
+    viscosity = momentum["viscosity"]
+    surface_tension = momentum["capillary_force"]
+    projection = elliptic["pressure_projection"]
+    poisson = projection["poisson"]
+    _validate_choice(
+        poisson["discretization"], _PPE_DISCRETIZATIONS,
+        "numerics.elliptic.pressure_projection.poisson.discretization",
+    )
+    ppe_solver_cfg = poisson["solver"]
     debug = d.get("debug", {}) or {}
 
     snap_raw = snapshots.get("times", [])
@@ -448,27 +459,27 @@ def _parse_run(
         )
     advection_scheme = _validate_choice(
         interface_transport["spatial"], _ADVECTION_SCHEMES,
-        "numerics.terms.interface_transport.spatial",
+        "numerics.physical_time.interface_advection.spatial",
     )
     _validate_choice(
         interface_transport["time"], _EXPLICIT_TIME_SCHEMES,
-        "numerics.terms.interface_transport.time",
+        "numerics.physical_time.interface_advection.time",
     )
     _validate_choice(
         momentum.get("form", "primitive_velocity"), _MOMENTUM_FORMS,
-        "numerics.terms.momentum_advection.form",
+        "numerics.physical_time.momentum.form",
     )
     convection_scheme = _validate_choice(
-        momentum["spatial"], _CONVECTION_SCHEMES,
-        "numerics.terms.momentum_advection.spatial",
+        convection["spatial"], _CONVECTION_SCHEMES,
+        "numerics.physical_time.momentum.convection.spatial",
     )
     _validate_choice(
-        momentum["time"], _EXPLICIT_TIME_SCHEMES,
-        "numerics.terms.momentum_advection.time",
+        convection["time"], _EXPLICIT_TIME_SCHEMES,
+        "numerics.physical_time.momentum.convection.time",
     )
     ppe_kind = _validate_choice(
         ppe_solver_cfg["kind"], _PPE_SOLVER_KINDS,
-        "numerics.terms.pressure_projection.solver.kind",
+        "numerics.elliptic.pressure_projection.poisson.solver.kind",
     )
     ppe_solver = "fvm_iterative" if ppe_kind == "iterative" else "fvm_direct"
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
@@ -483,52 +494,58 @@ def _parse_run(
     ) = _parse_ppe_solver_options(ppe_kind, ppe_solver_cfg)
     surface_tension_scheme = _validate_choice(
         surface_tension["model"], _SURFACE_TENSION_SCHEMES,
-        "numerics.terms.surface_tension.model",
+        "numerics.physical_time.momentum.capillary_force.model",
+    )
+    _validate_choice(
+        surface_tension.get("time", "explicit"), _SURFACE_TENSION_TIME_SCHEMES,
+        "numerics.physical_time.momentum.capillary_force.time",
     )
     _validate_choice(
         surface_tension.get("curvature", "psi_direct_hfe"), _CURVATURE_SCHEMES,
-        "numerics.terms.surface_tension.curvature",
+        "numerics.physical_time.momentum.capillary_force.curvature",
     )
     _validate_choice(
         surface_tension.get("force_gradient", "projection_consistent"),
         _FORCE_GRADIENT_SCHEMES,
-        "numerics.terms.surface_tension.force_gradient",
+        "numerics.physical_time.momentum.capillary_force.force_gradient",
     )
-    uccd6_sigma = float(momentum.get("uccd6_sigma", 1.0e-3))
+    uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
     if uccd6_sigma <= 0.0:
         raise ValueError(
-            "numerics.terms.momentum_advection.uccd6_sigma must be > 0, "
+            "numerics.physical_time.momentum.convection.uccd6_sigma must be > 0, "
             f"got {uccd6_sigma}"
         )
     _validate_choice(
         viscosity["spatial"], _VISCOUS_SPATIAL_SCHEMES,
-        "numerics.terms.viscosity.spatial",
+        "numerics.physical_time.momentum.viscosity.spatial",
     )
     viscous_time_scheme = _validate_choice(
         viscosity["time"], _VISCOUS_TIME_SCHEMES,
-        "numerics.terms.viscosity.time",
+        "numerics.physical_time.momentum.viscosity.time",
     )
     reproject_mode = _parse_projection_mode(projection["mode"])
-    reinit_method = reinit["method"]
+    reinit_method = reinit["algorithm"]
     if reinit_method is not None and reinit_method not in _REINIT_METHODS:
         raise ValueError(
-            f"run.reinitialization.method must be one of {_REINIT_METHODS}, "
+            f"interface.reinitialization.algorithm must be one of {_REINIT_METHODS}, "
             f"got {reinit_method!r}"
         )
-    ridge_sigma_0 = float(reinit.get("ridge_sigma_0", 3.0))
+    ridge_sigma_0 = float(reinit_profile.get("ridge_sigma_0", 3.0))
     if ridge_sigma_0 <= 0.0:
-        raise ValueError(f"run.ridge_sigma_0 must be > 0, got {ridge_sigma_0}")
+        raise ValueError(
+            f"interface.reinitialization.profile.ridge_sigma_0 must be > 0, got {ridge_sigma_0}"
+        )
     return RunCfg(
         T_final=_opt_float(time_cfg["final"]),
         max_steps=int(time_cfg["max_steps"]) if "max_steps" in time_cfg else None,
         cfl=float(cfl_raw if cfl_raw is not None else 0.15),
         snap_times=[float(x) for x in snap_raw],
         snap_interval=_opt_float(snapshots.get("interval")),
-        reinit_eps_scale=float(reinit.get("eps_scale", 1.0)),
+        reinit_eps_scale=float(reinit_profile.get("eps_scale", 1.0)),
         print_every=int(time_cfg.get("print_every", 100)),
         dt_fixed=_opt_float(dt_fixed_raw),
         cn_viscous=(viscous_time_scheme == "crank_nicolson"),
-        reinit_every=int(reinit["every"]),
+        reinit_every=int(reinit_schedule["every_steps"]),
         reproject_mode=reproject_mode,
         phi_primary_transport=_parse_tracking_primary(tracking),
         interface_tracking_enabled=_parse_tracking_enabled(tracking),
@@ -541,7 +558,7 @@ def _parse_run(
         kappa_max=_opt_float(surface_tension.get("curvature_cap")),
         reinit_method=reinit_method,
         dgr_phi_smooth_C=float(
-            reinit.get("dgr_phi_smooth_C", 1e-4)
+            reinit_profile.get("dgr_phi_smooth_C", 1e-4)
         ),
         ridge_sigma_0=ridge_sigma_0,
         advection_scheme=advection_scheme,
@@ -596,41 +613,47 @@ def _parse_ppe_solver_options(kind: str, solver_cfg: dict) -> tuple[
         present = sorted(iterative_keys.intersection(solver_cfg))
         if present:
             raise ValueError(
-                "numerics.terms.pressure_projection.solver.kind='direct' "
+                "numerics.elliptic.pressure_projection.poisson.solver.kind='direct' "
                 f"does not accept iterative options: {present}"
             )
         return "none", 0.0, 0, None, "none", None, 0.0
 
     ppe_iteration_method = _validate_choice(
         solver_cfg.get("method", "gmres"), _PPE_ITERATION_METHODS,
-        "numerics.terms.pressure_projection.solver.method",
+        "numerics.elliptic.pressure_projection.poisson.solver.method",
     )
     ppe_preconditioner = _validate_choice(
         solver_cfg.get("preconditioner", "line_pcr"),
         _PPE_PRECONDITIONERS,
-        "numerics.terms.pressure_projection.solver.preconditioner",
+        "numerics.elliptic.pressure_projection.poisson.solver.preconditioner",
     )
     ppe_tolerance = float(solver_cfg.get("tolerance", 1.0e-8))
     if ppe_tolerance <= 0.0:
-        raise ValueError("numerics.terms.pressure_projection.solver.tolerance must be > 0")
+        raise ValueError(
+            "numerics.elliptic.pressure_projection.poisson.solver.tolerance must be > 0"
+        )
     ppe_max_iterations = int(solver_cfg.get("max_iterations", 500))
     if ppe_max_iterations <= 0:
         raise ValueError(
-            "numerics.terms.pressure_projection.solver.max_iterations must be > 0"
+            "numerics.elliptic.pressure_projection.poisson.solver.max_iterations must be > 0"
         )
     ppe_restart = int(solver_cfg["restart"]) if "restart" in solver_cfg else None
     if ppe_restart is not None and ppe_restart <= 0:
-        raise ValueError("numerics.terms.pressure_projection.solver.restart must be > 0")
+        raise ValueError(
+            "numerics.elliptic.pressure_projection.poisson.solver.restart must be > 0"
+        )
     ppe_pcr_stages = (
         int(solver_cfg["pcr_stages"]) if "pcr_stages" in solver_cfg else None
     )
     if ppe_pcr_stages is not None and ppe_pcr_stages <= 0:
         raise ValueError(
-            "numerics.terms.pressure_projection.solver.pcr_stages must be > 0"
+            "numerics.elliptic.pressure_projection.poisson.solver.pcr_stages must be > 0"
         )
     ppe_c_tau = float(solver_cfg.get("c_tau", 2.0))
     if ppe_c_tau <= 0.0:
-        raise ValueError("numerics.terms.pressure_projection.solver.c_tau must be > 0")
+        raise ValueError(
+            "numerics.elliptic.pressure_projection.poisson.solver.c_tau must be > 0"
+        )
     return (
         ppe_iteration_method, ppe_tolerance, ppe_max_iterations, ppe_restart,
         ppe_preconditioner, ppe_pcr_stages, ppe_c_tau,
@@ -730,7 +753,7 @@ def _parse_projection_mode(raw: Any) -> str:
     mode = str(raw).strip().lower()
     if mode not in _PROJECTION_MODES:
         raise ValueError(
-            "numerics.terms.pressure_projection.mode must be one of "
+            "numerics.elliptic.pressure_projection.mode must be one of "
             f"{_PROJECTION_MODES}, got {raw!r}"
         )
     return _PROJECTION_TO_REPROJECT_MODE[mode]

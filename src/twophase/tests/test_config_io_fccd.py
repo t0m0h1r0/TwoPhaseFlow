@@ -38,10 +38,9 @@ def _minimal(patch: dict | None = None) -> dict:
             },
             "tracking": {"enabled": True, "primary": "psi"},
             "reinitialization": {
-                "method": "ridge_eikonal",
-                "every": 2,
-                "eps_scale": 1.0,
-                "ridge_sigma_0": 3.0,
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+                "profile": {"eps_scale": 1.0, "ridge_sigma_0": 3.0},
             },
         },
         "physics": {
@@ -54,33 +53,38 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "run": {"time": {"final": 0.1, "cfl": 0.1}},
         "numerics": {
-            "terms": {
-                "interface_transport": {
+            "physical_time": {
+                "interface_advection": {
                     "spatial": "dissipative_ccd",
                     "time": "explicit",
                 },
-                "momentum_advection": {
+                "momentum": {
                     "form": "primitive_velocity",
-                    "spatial": "ccd",
-                    "time": "explicit",
+                    "convection": {"spatial": "ccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "explicit"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
                 },
-                "viscosity": {"spatial": "ccd", "time": "explicit"},
-                "surface_tension": {
-                    "model": "csf",
-                    "curvature": "psi_direct_hfe",
-                    "force_gradient": "projection_consistent",
-                },
+            },
+            "elliptic": {
                 "pressure_projection": {
                     "mode": "standard",
-                    "solver": {
-                        "kind": "iterative",
-                        "method": "gmres",
-                        "tolerance": 1.0e-8,
-                        "max_iterations": 500,
-                        "restart": 80,
-                        "preconditioner": "line_pcr",
-                        "pcr_stages": 4,
-                        "c_tau": 2.0,
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {
+                            "kind": "iterative",
+                            "method": "gmres",
+                            "tolerance": 1.0e-8,
+                            "max_iterations": 500,
+                            "restart": 80,
+                            "preconditioner": "line_pcr",
+                            "pcr_stages": 4,
+                            "c_tau": 2.0,
+                        },
                     },
                 },
             },
@@ -120,8 +124,10 @@ def test_readable_structured_sections_round_trip():
                 "heaviside_eps_scale": 1.2,
             },
             "reinitialization": {
-                "eps_scale": 1.4,
-                "ridge_sigma_0": 2.5,
+                "profile": {
+                    "eps_scale": 1.4,
+                    "ridge_sigma_0": 2.5,
+                },
             },
         },
         "physics": {
@@ -136,21 +142,28 @@ def test_readable_structured_sections_round_trip():
             "debug": {"step_diagnostics": True},
         },
         "numerics": {
-            "terms": {
-                "interface_transport": {"spatial": "fccd_flux"},
-                "momentum_advection": {
-                    "spatial": "uccd6",
-                    "uccd6_sigma": 2.0e-3,
+            "physical_time": {
+                "interface_advection": {"spatial": "fccd_flux"},
+                "momentum": {
+                    "convection": {
+                        "spatial": "uccd6",
+                        "uccd6_sigma": 2.0e-3,
+                    },
+                    "viscosity": {"time": "crank_nicolson"},
+                    "capillary_force": {
+                        "model": "none",
+                        "curvature_cap": 20.0,
+                    },
                 },
-                "viscosity": {"time": "crank_nicolson"},
-                "surface_tension": {
-                    "model": "none",
-                    "curvature_cap": 20.0,
-                },
+            },
+            "elliptic": {
                 "pressure_projection": {
                     "mode": "consistent_iim",
                     "face_flux_projection": True,
-                    "solver": {"kind": "direct"},
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "direct"},
+                    },
                 },
             },
         },
@@ -187,37 +200,43 @@ def test_readable_structured_sections_round_trip():
 
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])
 def test_invalid_interface_transport_scheme_rejected(adv: str):
-    with pytest.raises(ValueError, match="interface_transport.spatial"):
+    with pytest.raises(ValueError, match="interface_advection.spatial"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"terms": {"interface_transport": {"spatial": adv}}},
+            "numerics": {"physical_time": {"interface_advection": {"spatial": adv}}},
         }))
 
 
 def test_invalid_momentum_scheme_rejected():
-    with pytest.raises(ValueError, match="momentum_advection.spatial"):
+    with pytest.raises(ValueError, match="momentum.convection.spatial"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"terms": {"momentum_advection": {"spatial": "bogus"}}},
+            "numerics": {
+                "physical_time": {"momentum": {"convection": {"spatial": "bogus"}}},
+            },
         }))
 
 
 def test_invalid_ppe_solver_kind_rejected():
-    with pytest.raises(ValueError, match="pressure_projection.solver.kind"):
+    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.kind"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "terms": {
-                    "pressure_projection": {"solver": {"kind": "ccd_lu"}},
+                "elliptic": {
+                    "pressure_projection": {
+                        "poisson": {"solver": {"kind": "ccd_lu"}},
+                    },
                 },
             },
         }))
 
 
 def test_invalid_ppe_iteration_method_rejected():
-    with pytest.raises(ValueError, match="pressure_projection.solver.method"):
+    with pytest.raises(ValueError, match="pressure_projection.poisson.solver.method"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "terms": {
+                "elliptic": {
                     "pressure_projection": {
-                        "solver": {"kind": "iterative", "method": "lgmres"},
+                        "poisson": {
+                            "solver": {"kind": "iterative", "method": "lgmres"},
+                        },
                     },
                 },
             },
@@ -228,9 +247,11 @@ def test_direct_ppe_rejects_iterative_options():
     with pytest.raises(ValueError, match="does not accept iterative options"):
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
-                "terms": {
+                "elliptic": {
                     "pressure_projection": {
-                        "solver": {"kind": "direct", "method": "gmres"},
+                        "poisson": {
+                            "solver": {"kind": "direct", "method": "gmres"},
+                        },
                     },
                 },
             },
@@ -240,7 +261,9 @@ def test_direct_ppe_rejects_iterative_options():
 def test_invalid_viscous_time_scheme_rejected():
     with pytest.raises(ValueError, match="viscosity.time"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"terms": {"viscosity": {"time": "rk4"}}},
+            "numerics": {
+                "physical_time": {"momentum": {"viscosity": {"time": "rk4"}}},
+            },
         }))
 
 
@@ -270,5 +293,5 @@ def test_invalid_interface_fitting_method_rejected():
 def test_invalid_projection_mode_rejected():
     with pytest.raises(ValueError, match="pressure_projection.mode"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"terms": {"pressure_projection": {"mode": "gfm"}}},
+            "numerics": {"elliptic": {"pressure_projection": {"mode": "gfm"}}},
         }))

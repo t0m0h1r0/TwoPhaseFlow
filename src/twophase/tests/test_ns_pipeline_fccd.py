@@ -222,10 +222,9 @@ def test_from_config_threads_fccd_keys():
             },
             "tracking": {"enabled": True, "primary": "phi"},
             "reinitialization": {
-                "method": "ridge_eikonal",
-                "every": 2,
-                "eps_scale": 1.4,
-                "ridge_sigma_0": 3.0,
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+                "profile": {"eps_scale": 1.4, "ridge_sigma_0": 3.0},
             },
         },
         "physics": {
@@ -239,22 +238,27 @@ def test_from_config_threads_fccd_keys():
             "time": {"final": 1.0, "cfl": 0.1},
         },
         "numerics": {
-            "terms": {
-                "interface_transport": {"spatial": "fccd_flux", "time": "explicit"},
-                "momentum_advection": {
+            "physical_time": {
+                "interface_advection": {"spatial": "fccd_flux", "time": "explicit"},
+                "momentum": {
                     "form": "primitive_velocity",
-                    "spatial": "fccd_flux",
-                    "time": "explicit",
+                    "convection": {"spatial": "fccd_flux", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
                 },
-                "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
-                "surface_tension": {
-                    "model": "csf",
-                    "curvature": "psi_direct_hfe",
-                    "force_gradient": "projection_consistent",
-                },
+            },
+            "elliptic": {
                 "pressure_projection": {
                     "mode": "consistent_gfm",
-                    "solver": {"kind": "direct"},
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "direct"},
+                    },
                 },
             },
         },
@@ -288,7 +292,10 @@ def test_from_config_can_disable_interface_tracking():
                 "width": {"mode": "nominal", "base_factor": 1.5},
             },
             "tracking": {"enabled": False, "primary": "none"},
-            "reinitialization": {"method": "ridge_eikonal", "every": 2},
+            "reinitialization": {
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 2},
+            },
         },
         "physics": {
             "phases": {
@@ -301,22 +308,27 @@ def test_from_config_can_disable_interface_tracking():
             "time": {"final": 0.1, "cfl": 0.1},
         },
         "numerics": {
-            "terms": {
-                "interface_transport": {"spatial": "dissipative_ccd", "time": "explicit"},
-                "momentum_advection": {
+            "physical_time": {
+                "interface_advection": {"spatial": "dissipative_ccd", "time": "explicit"},
+                "momentum": {
                     "form": "primitive_velocity",
-                    "spatial": "ccd",
-                    "time": "explicit",
+                    "convection": {"spatial": "ccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "explicit"},
+                    "capillary_force": {
+                        "model": "csf",
+                        "time": "explicit",
+                        "curvature": "psi_direct_hfe",
+                        "force_gradient": "projection_consistent",
+                    },
                 },
-                "viscosity": {"spatial": "ccd", "time": "explicit"},
-                "surface_tension": {
-                    "model": "csf",
-                    "curvature": "psi_direct_hfe",
-                    "force_gradient": "projection_consistent",
-                },
+            },
+            "elliptic": {
                 "pressure_projection": {
                     "mode": "standard",
-                    "solver": {"kind": "iterative", "method": "gmres"},
+                    "poisson": {
+                        "discretization": "fvm",
+                        "solver": {"kind": "iterative", "method": "gmres"},
+                    },
                 },
             },
         },
