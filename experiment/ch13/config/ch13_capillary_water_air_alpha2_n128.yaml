@@ -9,7 +9,7 @@ grid:
     type: interface_fitted
     method: gaussian_levelset
     alpha: 2.0
-    schedule: static
+    schedule: every_step
 
 interface:
   thickness:
@@ -53,6 +53,11 @@ numerics:
       variable: psi
       spatial: fccd_flux
       time_integrator: tvd_rk3
+    tracking:
+      primary: phi
+      redistance:
+        schedule:
+          every_steps: 4
   momentum:
     terms:
       convection:
