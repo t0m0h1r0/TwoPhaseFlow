@@ -45,12 +45,12 @@ setup:
 	./remote.sh setup
 
 run:
-	@test -n "$(EXP)" || { echo "Usage: make run EXP=experiment/ch11/exp11_X.py"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make run EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
 	@if ./remote.sh check >/dev/null 2>&1; then \
-		./remote.sh run $(EXP); \
+		./remote.sh run $(EXP) $(ARGS); \
 	else \
 		echo "INFO: Remote unavailable, running locally (CPU)."; \
-		python3 $(EXP); \
+		python3 $(EXP) $(ARGS); \
 	fi
 
 run-all:
@@ -61,12 +61,12 @@ ssh:
 	./remote.sh ssh
 
 cycle:
-	@test -n "$(EXP)" || { echo "Usage: make cycle EXP=experiment/ch11/exp11_X.py"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make cycle EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
 	@if ./remote.sh check >/dev/null 2>&1; then \
-		./remote.sh push && ./remote.sh run $(EXP) && ./remote.sh pull; \
+		./remote.sh push && ./remote.sh run $(EXP) $(ARGS) && ./remote.sh pull; \
 	else \
 		echo "INFO: Remote unavailable, running locally (CPU)."; \
-		python3 $(EXP); \
+		python3 $(EXP) $(ARGS); \
 	fi
 
 test:
@@ -78,13 +78,13 @@ test:
 	fi
 
 plot:
-	@test -n "$(EXP)" || { echo "Usage: make plot EXP=experiment/ch11/exp11_X.py"; exit 1; }
-	python3 $(EXP) --plot-only
+	@test -n "$(EXP)" || { echo "Usage: make plot EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	python3 $(EXP) --plot-only $(ARGS)
 
 # ── Always-local targets ──────────────────────────────────────────────────
 run-local:
-	@test -n "$(EXP)" || { echo "Usage: make run-local EXP=experiment/ch11/exp11_X.py"; exit 1; }
-	python3 $(EXP)
+	@test -n "$(EXP)" || { echo "Usage: make run-local EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	python3 $(EXP) $(ARGS)
 
 test-local:
 	cd src && python -m pytest twophase/tests -v --tb=short $(PYTEST_ARGS)

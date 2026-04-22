@@ -1,0 +1,49 @@
+# [11-01] CCD/DCCD Spatial Differentiation Convergence
+# Validates: Ch4 — CCD scheme, O(h^6) spatial accuracy.
+# Equivalent to: experiment/ch11/exp11_01_ccd_convergence.py
+
+experiment:
+  id: "11-01"
+  title: "CCD Spatial Differentiation Convergence"
+  type: convergence_study
+
+scheme:
+  operator: ccd
+  cases:
+    - label: periodic
+      params: {bc_type: periodic}
+      test_function: sin_2pi
+
+    - label: wall
+      params: {bc_type: wall}
+      test_function: exp_sincos
+
+    - label: nonuniform
+      params: {bc_type: wall, alpha_grid: 2.0, nonuniform_init: true}
+      test_function: exp_sincos
+      diff_axes: [0]   # only x-axis for non-uniform case (matches original script)
+
+input:
+  grid_sizes: [16, 32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x3"
+  panels:
+    - case: periodic
+      title: "(a) Periodic BC"
+      error_keys: [d1x_Li, d2x_Li]
+      ref_orders: [4, 6]
+
+    - case: wall
+      title: "(b) Wall BC"
+      error_keys: [d1x_Li, d2x_Li]
+      ref_orders: [4, 5, 6]
+
+    - case: nonuniform
+      title: "(c) Non-uniform ($\\alpha=2$)"
+      error_keys: [d1_Li, d2_Li]
+      ref_orders: [5, 6]
+
+  output_stem: ccd_convergence
