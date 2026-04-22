@@ -69,7 +69,7 @@ numerics:
         spatial: ccd
         time_integrator: crank_nicolson
       surface_tension:
-        gradient: projection_consistent
+        gradient: fccd_flux
         model: csf
   projection:
     mode: consistent_gfm
