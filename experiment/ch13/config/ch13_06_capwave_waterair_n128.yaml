@@ -1,5 +1,5 @@
 # CHK-176: water-air capillary wave, N=128.
-# Background: WIKI-X-020 / WIKI-X-021 / WIKI-X-022.
+# Scheme policy: WIKI-T-065 / WIKI-X-029..032, with WIKI-X-020..022 stack.
 
 grid:
   cells: [128, 128]
@@ -31,7 +31,7 @@ physics:
       mu: 1.0e-3
     gas:
       rho: 1.2
-      mu: 1.0e-3
+      mu: 1.8e-5
   surface_tension: 0.072
   gravity: 0.0
 
@@ -44,14 +44,11 @@ run:
 numerics:
   physical_time:
     interface_advection:
-      spatial: fccd_flux
+      spatial: weno5
       time: explicit
       tracking:
         enabled: true
-        primary: phi
-        redistance:
-          schedule:
-            every_steps: 4
+        primary: psi
     momentum:
       form: primitive_velocity
       convection:
@@ -59,7 +56,7 @@ numerics:
         time: explicit
       viscosity:
         spatial: ccd
-        time: explicit
+        time: crank_nicolson
       capillary_force:
         model: csf
         time: explicit
@@ -67,11 +64,18 @@ numerics:
         force_gradient: projection_consistent
   elliptic:
     pressure_projection:
-      mode: consistent_gfm
+      mode: consistent_iim
       poisson:
         discretization: fvm
         solver:
-          kind: direct
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-8
+          max_iterations: 500
+          restart: 80
+          preconditioner: line_pcr
+          pcr_stages: 4
+          c_tau: 2.0
 
 output:
   dir: results/ch13_06_capwave_waterair_n128

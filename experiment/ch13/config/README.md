@@ -74,6 +74,27 @@ This follows WIKI-X-026 and WIKI-X-028: advection, viscosity, surface tension,
 and pressure have different stiffness and conservation roles, so their choices
 must be independently visible.
 
+## Current ch13 Scheme Policy
+
+The current ch13 production/probe YAMLs follow the latest wiki design guide
+within the schemes implemented today:
+
+- `interface_advection.spatial: weno5` with `tracking.primary: psi` follows
+  WIKI-T-065 / WIKI-X-031: ψ is the conservative transported state; φ is
+  geometry and should not be the primary physical-time transport variable.
+- `momentum.viscosity.time: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
+  viscous terms are stiffness-relevant and should use the CN path when
+  available.
+- `pressure_projection.mode: consistent_iim` follows WIKI-X-020 / WIKI-X-032:
+  the sharp-interface path should be explicit in the config; the implementation
+  can still reject/fallback unsafe IIM candidates internally.
+- `poisson.solver.kind: iterative` with `gmres + line_pcr` follows WIKI-T-060 /
+  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. Direct sparse FVM solve
+  is kept as a debugging option, not the ch13 default.
+- `momentum.convection.spatial: fccd_flux` remains the conservative implemented
+  default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
+  conservative-momentum UCCD6 form is still a future implementation target.
+
 ## PPE Solver Semantics
 
 `pressure_projection.poisson.solver.kind` selects the solver class:
