@@ -53,8 +53,8 @@ class ConvergenceStudyHandler(ExperimentHandler):
             label = case.get("label", "default")
             case_params = {**base_params, **dict(case.get("params", {}))}
             tf_name = case.get("test_function") or cfg.input.get("test_function", "")
-            test_fn = SOLUTION_REGISTRY.get(tf_name)
-            if test_fn is None:
+            test_fn = SOLUTION_REGISTRY.get(tf_name) if tf_name else None
+            if tf_name and test_fn is None:
                 raise ValueError(
                     f"Unknown test function '{tf_name}'. "
                     f"Registered: {sorted(SOLUTION_REGISTRY)}"
