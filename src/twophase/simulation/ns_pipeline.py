@@ -635,15 +635,11 @@ class TwoPhaseNSSolver:
         if self._use_local_eps:
             self._curv.eps = self._make_eps_field()
 
-        # 8b. CHK-159: refresh reinitializer grid caches (Ridge-Eikonal h_min/eps_local/FMM).
-        if hasattr(self._reinit, 'update_grid'):
-            self._reinit.update_grid(self._grid)
-        # 8c. CHK-160/175: refresh PPE coordinate-dependent caches.
-        if hasattr(self._ppe_solver, 'update_grid'):
-            self._ppe_solver.update_grid(self._grid)
-            self._p_prev = None
-        if hasattr(self._ppe_solver, 'ppb') and hasattr(self._ppe_solver.ppb, 'invalidate_gpu_cache'):
-            self._ppe_solver.ppb.invalidate_gpu_cache()
+        # 8b. CHK-159/160/175: refresh grid-dependent caches via interfaces.
+        self._reinit.update_grid(self._grid)
+        self._ppe_solver.update_grid(self._grid)
+        self._ppe_solver.invalidate_cache()
+        self._p_prev = None
 
         # 9. Velocity re-projection: linear interpolation of (u, v) does not
         #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
@@ -938,10 +934,7 @@ class TwoPhaseNSSolver:
                     xp.max(xp.abs(dp_dy - f_y / rho)),
                 )
             )
-        projected_on_faces = (
-            self._face_flux_projection and hasattr(self._div_op, "project")
-        )
-        if projected_on_faces:
+        if self._face_flux_projection:
             u, v = self._div_op.project(
                 [u_star, v_star],
                 p,

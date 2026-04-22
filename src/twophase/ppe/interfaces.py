@@ -71,3 +71,11 @@ class IPPESolver(ABC):
         raise MatrixAssemblyUnavailable(
             f"{type(self).__name__} does not provide an assembled PPE matrix"
         )
+
+    def update_grid(self, grid) -> None:
+        """Refresh grid-dependent solver caches after mesh rebuild."""
+        return None
+
+    def invalidate_cache(self) -> None:
+        """Invalidate backend-specific cached matrix data if any."""
+        return None

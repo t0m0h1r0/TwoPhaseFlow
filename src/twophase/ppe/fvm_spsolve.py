@@ -77,6 +77,9 @@ class PPESolverFVMSpsolve(IPPESolver):
         self.ppb = PPEBuilder(self.backend, grid, self.bc_type, self.bc_spec)
         self._refresh_structure(grid)
 
+    def invalidate_cache(self) -> None:
+        self.ppb.invalidate_gpu_cache()
+
     def solve(self, rhs: np.ndarray, rho: np.ndarray, dt: float = 0.0, p_init=None) -> np.ndarray:
         """Solve the variable-density PPE via sparse FVM + direct solve.
 

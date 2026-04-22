@@ -147,8 +147,7 @@ class Reinitializer(IReinitializer):
 
     def update_grid(self, grid) -> None:
         """Propagate grid update to strategy (CHK-159/160)."""
-        if hasattr(self._strategy, 'update_grid'):
-            self._strategy.update_grid(grid)
+        self._strategy.update_grid(grid)
 
 
 # ── Legacy WENO5 implementation (retained for comparison / validation) ────────
