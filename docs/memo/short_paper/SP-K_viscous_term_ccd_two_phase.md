@@ -172,7 +172,49 @@ This maps to the `ICNAdvance` strategy pattern (WIKI-L-016):
 
 ---
 
-## 8 Energy Dissipation and Verification
+## 8 Phi/Psi-Gated Bulk Laplacian Shortcut
+
+The full three-layer stress-divergence operator is structurally correct but
+expensive if every point takes two high-order differentiation passes.  The
+interface field gives a sharper decomposition:
+
+$$
+\Omega = \Omega_{\rm bulk} \cup \Omega_\Gamma,\qquad
+\Omega_\Gamma = \{x:\psi(x)\in(\varepsilon_\psi,1-\varepsilon_\psi)\}.
+$$
+
+In the bulk, $\nabla\mu=0$ and the incompressible stress-divergence reduces to
+the constant-viscosity Laplacian path:
+
+$$
+L_\mu^{\rm bulk}\mathbf{u} = \mu\,\Delta_h^{CCD}\mathbf{u}.
+$$
+
+Near the interface, the dropped term
+$2D(\mathbf{u})\cdot\nabla\mu$ is concentrated and must be retained:
+
+$$
+L_\mu^\Gamma\mathbf{u} = \nabla_h\cdot(2\mu D_h(\mathbf{u})).
+$$
+
+The practical switch operator is
+
+$$
+L_\mu\mathbf{u}
+= (1-\chi_\Gamma)\,\mu\Delta_h^{CCD}\mathbf{u}
++ \chi_\Gamma\,\nabla_h\cdot(2\mu D_h(\mathbf{u})).
+$$
+
+This is not permission to use $\mu\nabla^2\mathbf{u}$ globally.  It is a
+localized computational shortcut: bulk points get the cheap CCD second
+derivative; interface-band points keep the conservative stress form.  A smooth
+blend $w(\phi)$ is possible, but a switch is the first implementation target
+because it preserves exact responsibility: bulk is simple and high-order,
+interface is careful and robust.
+
+---
+
+## 9 Energy Dissipation and Verification
 
 ### Requirement
 
@@ -192,7 +234,7 @@ Test 3 (zero viscous force for zero velocity) is the cheapest diagnostic and sho
 
 ---
 
-## 9 Interaction with BF/PPE Path
+## 10 Interaction with BF/PPE Path
 
 The viscous term is **not part of the BF pressure-surface tension balance**. However:
 
@@ -201,7 +243,7 @@ The viscous term is **not part of the BF pressure-surface tension balance**. How
 
 ---
 
-## 10 Anti-Pattern Table
+## 11 Anti-Pattern Table
 
 | Anti-pattern | Failure mode |
 |--------------|-------------|
@@ -213,20 +255,22 @@ The viscous term is **not part of the BF pressure-surface tension balance**. How
 | DCCD on $u$ only (not $v$) at Layer A | Asymmetric $\partial_y u + \partial_x v$; $\tau_{xy}$ energy injection |
 | Viscous force diagnostic with raw BF residual | Cross-term contamination; misleading diagnosis |
 | Non-conservative Layer C | Energy property lost |
+| Global $\mu\Delta\mathbf{u}$ shortcut in two-phase flow | Interface cross term removed; shear stress jump mishandled |
 
 ---
 
-## 11 Four-Phase Implementation Roadmap
+## 12 Four-Phase Implementation Roadmap
 
 | Phase | Content | Acceptance gate |
 |-------|---------|----------------|
 | 1 | Low-order conservative viscous (Layers A/B/C, 2nd order throughout) | Couette, static droplet, manufactured solution 2nd-order |
 | 2 | Interface band switching (2nd-order one-sided/central in band) | High-$\mu$-ratio energy test; no regression from Phase 1 |
-| 3 | Bulk CCD at Layer A (out-of-band only) | Single-phase manufactured CCD-order convergence; two-phase unchanged |
-| 4 | Defect correction for Helmholtz ($L_L$ inner + $L_H$ outer) | Defect correction matches direct $A_H$ solve; Helmholtz convergence faster |
+| 3 | Phi/psi-gated bulk CCD Laplacian + interface stress-divergence | Same as Phase 2; bulk speed improves without changing interface diagnostics |
+| 4 | Bulk CCD at Layer A correction path (out-of-band only) | Single-phase manufactured CCD-order convergence; two-phase unchanged |
+| 5 | Defect correction for Helmholtz ($L_L$ inner + $L_H$ outer) | Defect correction matches direct $A_H$ solve; Helmholtz convergence faster |
 
 ---
 
-## 12 One-Line Summary
+## 13 One-Line Summary
 
-> **The conservative stress-divergence form with a shared τ_xy is non-negotiable; CCD is valuable but belongs only at bulk Layer A gradients — never at interface-crossing stencils.**
+> **Use CCD aggressively where $\psi$ says the flow is bulk, but keep the conservative stress-divergence form where $\psi$ says the viscosity jump lives.**

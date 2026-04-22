@@ -47,6 +47,19 @@ Therefore the scheme hierarchy is:
    solve/preconditioner body; high-order bulk CCD enters as a defect correction
    $L_\mu^H - L_\mu^L$.
 
+The efficient CCD-family production path is the phi/psi-gated split:
+
+$$
+L_\mu\mathbf{u}
+= (1-\chi_\Gamma)\,\mu\Delta_h^{CCD}\mathbf{u}
++ \chi_\Gamma\,\nabla_h\cdot(2\mu D_h(\mathbf{u})).
+$$
+
+Here $\chi_\Gamma$ is built from the transported interface field, e.g.
+$\psi\in(\varepsilon_\psi,1-\varepsilon_\psi)$ with a one-cell dilation.
+This keeps CCD as the bulk workhorse while preventing the global
+$\mu\nabla^2\mathbf{u}$ anti-pattern near the viscosity jump.
+
 FCCD remains a pressure / surface-tension balanced-force tool because its value
 is face-locus alignment.  It is not the viscous operator's primary design axis.
 UCCD6 remains a transport / advection stabilisation tool; using its
