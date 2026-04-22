@@ -1,0 +1,37 @@
+# [12-14] Cross-derivative viscous CFL constraint (explicit Euler)
+# Validates: §5 — dt ≤ C_cross · h²/(Δμ/ρ) with C_cross ≈ 0.23 (±10%).
+
+experiment:
+  id: "12-14"
+  title: "Cross-Derivative Viscous CFL (Explicit Euler)"
+  type: parameter_sweep
+
+scheme:
+  operator: cross_viscous_cfl
+  params: {}
+
+sweep:
+  param: mu_ratio
+  values: [1, 10, 100, 1000]
+
+input:
+  N: 64
+
+visualization:
+  layout: "1x2"
+  panels:
+    - metric_keys: [dt_crit]
+      scale: loglog
+      xlabel: "$\\mu_l/\\mu_g$"
+      ylabel: "$\\Delta t_{\\rm crit}$"
+      title: "Critical $\\Delta t$ vs viscosity ratio"
+      series_labels:
+        dt_crit: "$\\Delta t_{\\rm crit}$"
+    - metric_keys: [C_cross]
+      scale: semilogx
+      xlabel: "$\\mu_l/\\mu_g$"
+      ylabel: "$C_{\\rm cross}$"
+      title: "$C_{\\rm cross} \\approx 0.23$ (constant)"
+      series_labels:
+        C_cross: "$C_{\\rm cross}$"
+  output_stem: cross_viscous_cfl

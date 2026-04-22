@@ -1,0 +1,28 @@
+# [12-15] Capillary CFL scaling — dt_max ∝ h^{3/2} (1D RK4, pure numpy)
+# Validates: §8 — capillary CFL constraint dt ≤ C_cap·sqrt((rho_l+rho_g)h³/(2π σ)).
+
+experiment:
+  id: "12-15"
+  title: "Capillary CFL Scaling ($\\Delta t \\propto h^{3/2}$)"
+  type: convergence_study
+
+scheme:
+  operator: capillary_cfl
+  cases:
+    - label: default
+      params: {}
+
+input:
+  grid_sizes: [32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  layout: "1x1"
+  panels:
+    - case: default
+      error_keys: [dt_max]
+      ref_orders: [1.5]
+      xlabel: "$h$"
+      ylabel: "$\\Delta t_{\\rm max}$"
+      title: "Capillary CFL: $\\Delta t_{\\rm max} \\propto h^{3/2}$"
+  output_stem: capillary_cfl

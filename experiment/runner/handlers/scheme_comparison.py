@@ -78,35 +78,66 @@ class SchemeComparisonHandler(ExperimentHandler):
             xlabel = str(panel.get("xlabel", "$h$"))
             ylabel = str(panel.get("ylabel", r"$L_\infty$ error"))
             title = str(panel.get("title", ""))
+            scale = str(panel.get("scale", "loglog"))
 
             # Limit to listed cases if specified; else all
             plot_cases = panel.get("cases", list(results.keys()))
 
-            combined_hs = None
-            combined_errs: dict = {}
-            for case_label in plot_cases:
-                rows = results.get(case_label, [])
-                if not rows:
-                    continue
-                hs = [float(r["h"]) for r in rows]
-                if combined_hs is None:
-                    combined_hs = hs
-                for k in error_keys:
-                    if k in rows[0]:
-                        series = (f"{case_label} {k}"
-                                  if len(error_keys) > 1 else case_label)
-                        combined_errs[series] = [float(r[k]) for r in rows]
+            if scale == "bar":
+                _plot_bar_panel(ax, results, plot_cases, error_keys,
+                                xlabel=xlabel, ylabel=ylabel, title=title)
+            else:
+                combined_hs = None
+                combined_errs: dict = {}
+                for case_label in plot_cases:
+                    rows = results.get(case_label, [])
+                    if not rows:
+                        continue
+                    hs = [float(r["h"]) for r in rows]
+                    if combined_hs is None:
+                        combined_hs = hs
+                    for k in error_keys:
+                        if k in rows[0]:
+                            series = (f"{case_label} {k}"
+                                      if len(error_keys) > 1 else case_label)
+                            combined_errs[series] = [float(r[k]) for r in rows]
 
-            if combined_hs and combined_errs:
-                convergence_loglog(ax, combined_hs, combined_errs,
-                                   ref_orders=ref_orders,
-                                   xlabel=xlabel, ylabel=ylabel, title=title)
+                if combined_hs and combined_errs:
+                    convergence_loglog(ax, combined_hs, combined_errs,
+                                       ref_orders=ref_orders,
+                                       xlabel=xlabel, ylabel=ylabel, title=title)
 
         for idx in range(len(panels), nrows * ncols):
             axes[idx // ncols][idx % ncols].set_visible(False)
 
         fig.tight_layout()
         save_figure(fig, outdir / vis.get("output_stem", "scheme_comparison"))
+
+
+def _plot_bar_panel(ax, results, plot_cases, error_keys, xlabel, ylabel, title):
+    """Grouped bar chart: x = cases, bars = error_keys (log y-scale)."""
+    import numpy as _np
+    n_cases = len(plot_cases)
+    n_keys = max(len(error_keys), 1)
+    width = 0.7 / n_keys
+    x = _np.arange(n_cases)
+    for ki, key in enumerate(error_keys):
+        vals = []
+        for cl in plot_cases:
+            rows = results.get(cl, [])
+            vals.append(float(rows[-1].get(key, float("nan"))) if rows else float("nan"))
+        offset = (ki - (n_keys - 1) / 2.0) * width
+        ax.bar(x + offset, vals, width=width * 0.9, label=key)
+    ax.set_xticks(x)
+    ax.set_xticklabels(plot_cases, rotation=20, ha="right", fontsize=7)
+    ax.set_yscale("log")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    if error_keys:
+        ax.legend(fontsize=8)
+    ax.grid(True, axis="y", alpha=0.3)
 
 
 def _compute_slopes(rows: list[dict]) -> None:

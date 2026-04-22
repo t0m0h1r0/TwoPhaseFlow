@@ -1338,3 +1338,541 @@ class _PressureFilterScheme:
 @register_scheme("pressure_filter")
 def _build_pressure_filter(N: int = 64, eps_d: float = 0.0, **kw):
     return _PressureFilterScheme(N=N, eps_d=eps_d)
+
+
+# ── Cross-viscous CFL (binary search, parameter_sweep) ─────────────────────
+
+class _CrossViscousCFLScheme:
+    """Binary-search critical dt for cross-viscous explicit Euler step.
+
+    Sweeps mu_ratio = mu_l/mu_g. Returns C_cross = dt_crit * Δμ / (ρ h²) ≈ 0.23.
+    """
+
+    _MU_G = 0.01
+    _RHO = 1.0
+    _R_IFACE = 0.25
+    _N_CHECK = 20
+    _GROW_LIMIT = 10.0
+
+    def __init__(self, N: int = 64, mu_ratio: float = 10.0, **_):
+        self._N = N
+        self._mu_ratio = float(mu_ratio)
+
+    def compute_result(self) -> dict:
+        import numpy as _np
+        from twophase.backend import Backend
+        from twophase.config import GridConfig
+        from twophase.core.grid import Grid
+        from twophase.ccd.ccd_solver import CCDSolver
+        from twophase.levelset.heaviside import heaviside
+
+        backend = Backend()
+        xp = backend.xp
+        N = self._N
+        h = 1.0 / N
+        eps = 1.5 * h
+
+        gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="periodic")
+        X, Y = grid.meshgrid()
+
+        mu_g = self._MU_G
+        mu_l = mu_g * self._mu_ratio
+        phi = self._R_IFACE - xp.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
+        H = heaviside(xp, phi, eps)
+        mu = mu_g + (mu_l - mu_g) * H
+        delta_mu = max(float(mu_l - mu_g), float(mu_g))
+
+        u0 = xp.sin(2 * _np.pi * X) * xp.sin(2 * _np.pi * Y)
+
+        def _cross_visc(u):
+            du_dx, _ = ccd.differentiate(u, 0)
+            du_dy, _ = ccd.differentiate(u, 1)
+            d_dx, _ = ccd.differentiate(mu * du_dy, 0)
+            d_dy, _ = ccd.differentiate(mu * du_dx, 1)
+            return d_dx + d_dy
+
+        def _stable(dt):
+            u = u0.copy()
+            thresh = self._GROW_LIMIT * float(xp.max(xp.abs(u)))
+            for _ in range(self._N_CHECK):
+                u = u + dt * _cross_visc(u)
+                if not _np.isfinite(float(xp.max(xp.abs(u)))) or float(xp.max(xp.abs(u))) > thresh:
+                    return False
+            return True
+
+        dt_scale = h ** 2 * self._RHO / delta_mu
+        dt_lo, dt_hi = 0.01 * dt_scale, 2.0 * dt_scale
+        while not _stable(dt_lo):
+            dt_lo *= 0.5
+        while _stable(dt_hi):
+            dt_hi *= 2.0
+        for _ in range(60):
+            dt_mid = 0.5 * (dt_lo + dt_hi)
+            if _stable(dt_mid):
+                dt_lo = dt_mid
+            else:
+                dt_hi = dt_mid
+            if (dt_hi - dt_lo) / max(dt_lo, 1e-300) < 0.01:
+                break
+
+        dt_crit = dt_lo
+        C_cross = dt_crit * delta_mu / (self._RHO * h ** 2)
+        return {"mu_ratio": self._mu_ratio, "dt_crit": float(dt_crit), "C_cross": float(C_cross)}
+
+
+@register_scheme("cross_viscous_cfl")
+def _build_cross_viscous_cfl(N: int = 64, mu_ratio: float = 10.0, domain=None, **_):
+    return _CrossViscousCFLScheme(N=N, mu_ratio=mu_ratio)
+
+
+# ── Capillary CFL (binary search, convergence_study over N) ───────────────
+
+class _CapillaryCFLScheme:
+    """Binary-search critical dt for 1D linearized capillary wave (RK4, pure numpy)."""
+
+    _RHO_L = 2.0
+    _RHO_G = 1.0
+    _SIGMA = 1.0
+    _L = 1.0
+    _N_PROBE = 400
+    _GROW_LIMIT = 10.0
+
+    def __init__(self, N: int = 64, sigma: float = 1.0, rho_l: float = 2.0,
+                 rho_g: float = 1.0, **_):
+        self._N = N
+        self._sigma = sigma
+        self._rho_l = rho_l
+        self._rho_g = rho_g
+
+    def compute_errors(self, test_fn=None) -> dict:
+        import numpy as _np
+
+        N = self._N
+        L = self._L
+        h = L / N
+        sigma = self._sigma
+        rho_l, rho_g = self._rho_l, self._rho_g
+        grow_limit = self._GROW_LIMIT
+        n_probe = self._N_PROBE
+
+        x = _np.arange(N) * h
+        eta0 = _np.sin(_np.pi * x / h) + 1e-3 * _np.sin(2 * _np.pi * x / L)
+        if _np.max(_np.abs(eta0)) < 1e-14:
+            eta0 = _np.cos(_np.pi * x / h)
+
+        k = 2.0 * _np.pi * _np.fft.fftfreq(N, d=h)
+        k3 = (sigma / (rho_l + rho_g)) * _np.abs(k) ** 3
+
+        def _rk4(eta, vel, dt):
+            def rhs(e, v):
+                return v, _np.fft.ifft(-k3 * _np.fft.fft(e)).real
+            k1e, k1v = rhs(eta, vel)
+            k2e, k2v = rhs(eta + 0.5 * dt * k1e, vel + 0.5 * dt * k1v)
+            k3e, k3v = rhs(eta + 0.5 * dt * k2e, vel + 0.5 * dt * k2v)
+            k4e, k4v = rhs(eta + dt * k3e, vel + dt * k3v)
+            return (eta + dt / 6.0 * (k1e + 2 * k2e + 2 * k3e + k4e),
+                    vel + dt / 6.0 * (k1v + 2 * k2v + 2 * k3v + k4v))
+
+        def _stable(dt):
+            eta, vel = eta0.copy(), _np.zeros_like(eta0)
+            amp0 = max(float(_np.max(_np.abs(eta))), 1e-30)
+            for _ in range(n_probe):
+                eta, vel = _rk4(eta, vel, dt)
+                amp = max(float(_np.max(_np.abs(eta))), float(_np.max(_np.abs(vel))))
+                if not _np.isfinite(amp) or amp > grow_limit * amp0:
+                    return False
+            return True
+
+        dt_sigma = _np.sqrt((rho_l + rho_g) * h ** 3 / (2.0 * _np.pi * sigma))
+        dt_lo, dt_hi = 0.05 * dt_sigma, 4.0 * dt_sigma
+        while not _stable(dt_lo):
+            dt_lo *= 0.5
+        while _stable(dt_hi):
+            dt_hi *= 1.5
+        for _ in range(80):
+            dt_mid = 0.5 * (dt_lo + dt_hi)
+            if _stable(dt_mid):
+                dt_lo = dt_mid
+            else:
+                dt_hi = dt_mid
+            if (dt_hi - dt_lo) / max(dt_lo, 1e-300) < 0.005:
+                break
+
+        dt_max = float(dt_lo)
+        return {"N": N, "h": h, "dt_max": dt_max,
+                "dt_sigma": float(dt_sigma), "ratio": dt_max / float(dt_sigma)}
+
+
+@register_scheme("capillary_cfl")
+def _build_capillary_cfl(N: int = 64, sigma: float = 1.0,
+                          rho_l: float = 2.0, rho_g: float = 1.0,
+                          domain=None, **_):
+    return _CapillaryCFLScheme(N=N, sigma=sigma, rho_l=rho_l, rho_g=rho_g)
+
+
+# ── Galilean CLS invariance (scheme_comparison: lab vs rest frame) ─────────
+
+class _GalileanCLSScheme:
+    """CLS advection Galilean invariance test.
+
+    case='lab'  — uniform background u=U_BG; circle traverses domain once.
+    case='rest' — u=0; circle stays; trivially accurate baseline.
+
+    Returns shape_err (||psi_T - psi_0||_2 / ||psi_0||_2) and mass_err.
+    """
+
+    _CFL = 0.25
+    _R = 0.25
+    _N_TRAVERSALS = 1
+
+    def __init__(self, N: int = 64, U_BG: float = 1.0, case: str = "lab", **_):
+        self._N = N
+        self._U_BG = float(U_BG)
+        self._case = case
+
+    def compute_errors(self, test_fn=None) -> dict:
+        import numpy as _np
+        from twophase.backend import Backend
+        from twophase.config import GridConfig
+        from twophase.core.grid import Grid
+        from twophase.ccd.ccd_solver import CCDSolver
+        from twophase.levelset.heaviside import heaviside
+        from twophase.levelset.advection import DissipativeCCDAdvection
+
+        backend = Backend()
+        xp = backend.xp
+        N = self._N
+        h = 1.0 / N
+        eps = 1.5 * h
+        U_BG = self._U_BG
+        is_lab = (self._case == "lab")
+
+        gc = GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0))
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="periodic")
+        advect = DissipativeCCDAdvection(backend, grid, ccd, bc="periodic")
+
+        X, Y = grid.meshgrid()
+        phi0 = self._R - xp.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2)
+        psi0 = heaviside(xp, phi0, eps)
+        psi = psi0.copy()
+
+        speed = U_BG if U_BG > 1e-14 else 1.0
+        T_total = self._N_TRAVERSALS * 1.0 / speed
+        dt = self._CFL * h / speed
+        n_steps = max(1, int(_np.ceil(T_total / dt)))
+        dt_actual = T_total / n_steps
+
+        u = xp.full_like(X, U_BG if is_lab else 0.0)
+        v = xp.zeros_like(X)
+
+        mass0 = float(xp.sum(psi0))
+        for _ in range(n_steps):
+            psi = advect.advance(psi, [u, v], dt_actual)
+
+        shape_err = float(xp.sqrt(xp.mean((psi - psi0) ** 2)) /
+                          max(float(xp.sqrt(xp.mean(psi0 ** 2))), 1e-30))
+        mass_T = float(xp.sum(psi))
+        mass_err = abs(mass_T - mass0) / max(abs(mass0), 1e-30)
+        return {"N": N, "h": h, "shape_err": shape_err, "mass_err": mass_err}
+
+
+@register_scheme("galilean_cls")
+def _build_galilean_cls(N: int = 64, U_BG: float = 1.0, case: str = "lab",
+                         domain=None, **_):
+    return _GalileanCLSScheme(N=N, U_BG=U_BG, case=case)
+
+
+# ── Zalesak disk on non-uniform grid (scheme_comparison + parameter_sweep) ──
+
+def _run_zalesak_loop(N, alpha_grid, eps_g_factor, eps_g_cells, eps_xi_cells,
+                      eps_ratio, reinit_freq):
+    """Shared Zalesak rigid-rotation loop with optional non-uniform grid rebuild.
+
+    Returns {"N", "h", "L2_psi", "area_err", "mass_err"}.
+    """
+    import numpy as _np
+    from twophase.backend import Backend
+    from twophase.config import GridConfig
+    from twophase.core.grid import Grid
+    from twophase.ccd.ccd_solver import CCDSolver
+    from twophase.core.grid_remap import build_grid_remapper
+    from twophase.levelset.advection import DissipativeCCDAdvection
+    from twophase.levelset.reinitialize import Reinitializer
+    from twophase.levelset.heaviside import heaviside, invert_heaviside
+    from twophase.simulation.initial_conditions.velocity_fields import RigidRotation
+    from twophase.simulation.initial_conditions.shapes import ZalesakDisk
+
+    backend = Backend()
+    xp = backend.xp
+
+    gc_kw = dict(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid)
+    if eps_g_cells is not None:
+        gc_kw["eps_g_cells"] = eps_g_cells
+    else:
+        gc_kw["eps_g_factor"] = eps_g_factor
+    gc = GridConfig(**gc_kw)
+    grid = Grid(gc, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    h = 1.0 / N
+    eps = eps_ratio * h
+
+    def _eps_field():
+        if eps_xi_cells is not None:
+            hx = xp.asarray(grid.h[0])[:, None]   # (N+1, 1) node-centred spacings
+            hy = xp.asarray(grid.h[1])[None, :]   # (1, N+1)
+            return eps_xi_cells * xp.maximum(hx, hy)
+        return eps
+
+    def _zalesak_sdf(X_h, Y_h):
+        return ZalesakDisk(center=(0.5, 0.5), radius=0.15,
+                           slot_width=0.05, slot_depth=0.25).sdf(X_h, Y_h)
+
+    X, Y = grid.meshgrid()
+    X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+    phi0 = xp.asarray(_zalesak_sdf(X_h, Y_h))
+    eps_f = _eps_field()
+    psi0 = heaviside(xp, phi0, eps_f)
+
+    if alpha_grid > 1.0:
+        grid.update_from_levelset(psi0, eps, ccd=ccd)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        X, Y = grid.meshgrid()
+        X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+        phi0 = xp.asarray(_zalesak_sdf(X_h, Y_h))
+        eps_f = _eps_field()
+        psi0 = heaviside(xp, phi0, eps_f)
+
+    T = 2 * _np.pi
+    vf = RigidRotation(center=(0.5, 0.5), period=T)
+    adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
+                                  eps_d=0.05, mass_correction=True)
+    eps_r = float(xp.min(xp.asarray(eps_f))) if eps_xi_cells is not None else eps
+    reinit = Reinitializer(backend, grid, ccd, eps_r, n_steps=4,
+                           bc="zero", method="split")
+
+    dt = 0.45 / N
+    n_steps = int(T / dt); dt = T / n_steps
+    psi = psi0.copy()
+    dV = grid.cell_volumes()
+    mass0 = float(xp.sum(psi * dV))
+
+    for step in range(n_steps):
+        u, v = vf.compute(X, Y, t=0)
+        psi = adv.advance(psi, [u, v], dt)
+
+        if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
+            old_coords = [c.copy() for c in grid.coords]
+            M_before = float(xp.sum(psi * dV))
+            grid.update_from_levelset(psi, eps, ccd=ccd)
+            remapper = build_grid_remapper(backend, old_coords, grid.coords)
+            psi = xp.clip(remapper.remap(psi), 0.0, 1.0)
+            dV = grid.cell_volumes()
+            M_after = float(xp.sum(psi * dV))
+            w = 4.0 * psi * (1.0 - psi)
+            W = float(xp.sum(w * dV))
+            if W > 1e-12:
+                psi = xp.clip(psi + ((M_before - M_after) / W) * w, 0.0, 1.0)
+            ccd = CCDSolver(grid, backend, bc_type="wall")
+            adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
+                                          eps_d=0.05, mass_correction=True)
+            eps_f = _eps_field()
+            eps_r = float(xp.min(xp.asarray(eps_f))) if eps_xi_cells is not None else eps
+            reinit = Reinitializer(backend, grid, ccd, eps_r, n_steps=4,
+                                   bc="zero", method="split")
+            X, Y = grid.meshgrid()
+
+        if (step + 1) % reinit_freq == 0:
+            psi = reinit.reinitialize(psi)
+
+    X, Y = grid.meshgrid()
+    X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+    phi0_final = xp.asarray(_zalesak_sdf(X_h, Y_h))
+    psi0_final = heaviside(xp, phi0_final, eps)
+    dV_final = grid.cell_volumes()
+    mass_final = float(xp.sum(psi * dV_final))
+    mass_err = abs(mass_final - mass0) / max(abs(mass0), 1e-30)
+    L2_psi = float(xp.sqrt(xp.mean((psi - psi0_final) ** 2)))
+    psi_area = float(xp.sum(xp.where(psi >= 0.5, dV_final, 0.0)))
+    psi0_area = float(xp.sum(xp.where(psi0_final >= 0.5, dV_final, 0.0)))
+    area_err = abs(psi_area - psi0_area) / max(abs(psi0_area), 1e-30)
+    return {"N": N, "h": h, "L2_psi": L2_psi, "area_err": area_err, "mass_err": mass_err}
+
+
+class _ZalesakNonuniformScheme:
+    """Zalesak rigid rotation with non-uniform grid rebuild (exp12_19, 20)."""
+
+    def __init__(self, N: int = 128, alpha_grid: float = 1.0,
+                 eps_g_factor: float = 2.0, eps_g_cells=None,
+                 eps_xi_cells=None, eps_ratio: float = 0.5,
+                 reinit_freq: int = 20, **_):
+        self._kw = dict(N=N, alpha_grid=alpha_grid, eps_g_factor=eps_g_factor,
+                        eps_g_cells=eps_g_cells, eps_xi_cells=eps_xi_cells,
+                        eps_ratio=eps_ratio, reinit_freq=reinit_freq)
+
+    def compute_errors(self, test_fn=None) -> dict:
+        return _run_zalesak_loop(**self._kw)
+
+    def compute_result(self) -> dict:
+        return _run_zalesak_loop(**self._kw)
+
+
+@register_scheme("zalesak_nonuniform")
+def _build_zalesak_nonuniform(N: int = 128, alpha_grid: float = 1.0,
+                               eps_g_factor: float = 2.0, eps_g_cells=None,
+                               eps_xi_cells=None, eps_ratio: float = 0.5,
+                               reinit_freq: int = 20, domain=None, **_):
+    return _ZalesakNonuniformScheme(N=N, alpha_grid=alpha_grid,
+                                    eps_g_factor=eps_g_factor,
+                                    eps_g_cells=eps_g_cells,
+                                    eps_xi_cells=eps_xi_cells,
+                                    eps_ratio=eps_ratio,
+                                    reinit_freq=reinit_freq)
+
+
+# ── Single vortex on non-uniform grid (scheme_comparison, exp12_21) ────────
+
+def _run_single_vortex_loop(N, alpha_grid, eps_g_factor, eps_g_cells, eps_xi_cells,
+                             eps_ratio, reinit_freq):
+    """Shared single-vortex loop with optional non-uniform grid rebuild.
+
+    Returns {"N", "h", "L2_psi", "area_err", "mass_err"}.
+    """
+    import numpy as _np
+    from twophase.backend import Backend
+    from twophase.config import GridConfig
+    from twophase.core.grid import Grid
+    from twophase.ccd.ccd_solver import CCDSolver
+    from twophase.core.grid_remap import build_grid_remapper
+    from twophase.levelset.advection import DissipativeCCDAdvection
+    from twophase.levelset.reinitialize import Reinitializer
+    from twophase.levelset.heaviside import heaviside, invert_heaviside
+    from twophase.simulation.initial_conditions.velocity_fields import SingleVortex
+
+    backend = Backend()
+    xp = backend.xp
+
+    gc_kw = dict(ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha_grid)
+    if eps_g_cells is not None:
+        gc_kw["eps_g_cells"] = eps_g_cells
+    else:
+        gc_kw["eps_g_factor"] = eps_g_factor
+    gc = GridConfig(**gc_kw)
+    grid = Grid(gc, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    h = 1.0 / N
+    eps = eps_ratio * h
+
+    def _eps_field():
+        if eps_xi_cells is not None:
+            hx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1])
+            hy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1])
+            hx2d = 0.5 * (hx[:-1] + hx[1:])[:, _np.newaxis] * xp.ones((1, N))
+            hy2d = 0.5 * (hy[:-1] + hy[1:])[_np.newaxis, :] * xp.ones((N, 1))
+            return eps_xi_cells * xp.maximum(hx2d, hy2d)
+        return eps
+
+    T = 8.0
+    vf = SingleVortex(period=T)
+
+    def _circle_sdf(X_h, Y_h):
+        return 0.15 - _np.sqrt((X_h - 0.5) ** 2 + (Y_h - 0.75) ** 2)
+
+    X, Y = grid.meshgrid()
+    X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+    phi0 = xp.asarray(_circle_sdf(X_h, Y_h))
+    eps_f = _eps_field()
+    psi0 = heaviside(xp, phi0, eps_f)
+
+    if alpha_grid > 1.0:
+        grid.update_from_levelset(psi0, eps, ccd=ccd)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        X, Y = grid.meshgrid()
+        X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+        phi0 = xp.asarray(_circle_sdf(X_h, Y_h))
+        eps_f = _eps_field()
+        psi0 = heaviside(xp, phi0, eps_f)
+
+    adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
+                                  eps_d=0.05, mass_correction=True)
+    eps_r = float(xp.min(xp.asarray(eps_f))) if eps_xi_cells is not None else eps
+    reinit = Reinitializer(backend, grid, ccd, eps_r, n_steps=4,
+                           bc="zero", method="split")
+
+    dt = 0.45 / N
+    n_steps = int(T / dt); dt = T / n_steps
+    psi = psi0.copy()
+    dV = grid.cell_volumes()
+    mass0 = float(xp.sum(psi * dV))
+
+    for step in range(n_steps):
+        t = step * dt
+        u, v = vf.compute(X, Y, t=t)
+        psi = adv.advance(psi, [u, v], dt)
+
+        if alpha_grid > 1.0 and (step + 1) % reinit_freq == 0:
+            old_coords = [c.copy() for c in grid.coords]
+            M_before = float(xp.sum(psi * dV))
+            grid.update_from_levelset(psi, eps, ccd=ccd)
+            remapper = build_grid_remapper(backend, old_coords, grid.coords)
+            psi = xp.clip(remapper.remap(psi), 0.0, 1.0)
+            dV = grid.cell_volumes()
+            M_after = float(xp.sum(psi * dV))
+            w = 4.0 * psi * (1.0 - psi)
+            W = float(xp.sum(w * dV))
+            if W > 1e-12:
+                psi = xp.clip(psi + ((M_before - M_after) / W) * w, 0.0, 1.0)
+            ccd = CCDSolver(grid, backend, bc_type="wall")
+            adv = DissipativeCCDAdvection(backend, grid, ccd, bc="zero",
+                                          eps_d=0.05, mass_correction=True)
+            eps_f = _eps_field()
+            eps_r = float(xp.min(xp.asarray(eps_f))) if eps_xi_cells is not None else eps
+            reinit = Reinitializer(backend, grid, ccd, eps_r, n_steps=4,
+                                   bc="zero", method="split")
+            X, Y = grid.meshgrid()
+
+        if (step + 1) % reinit_freq == 0:
+            psi = reinit.reinitialize(psi)
+
+    X, Y = grid.meshgrid()
+    X_h, Y_h = _np.asarray(backend.to_host(X)), _np.asarray(backend.to_host(Y))
+    phi0_final = xp.asarray(_circle_sdf(X_h, Y_h))
+    psi0_final = heaviside(xp, phi0_final, eps)
+    dV_final = grid.cell_volumes()
+    mass_final = float(xp.sum(psi * dV_final))
+    mass_err = abs(mass_final - mass0) / max(abs(mass0), 1e-30)
+    L2_psi = float(xp.sqrt(xp.mean((psi - psi0_final) ** 2)))
+    psi_area = float(xp.sum(xp.where(psi >= 0.5, dV_final, 0.0)))
+    psi0_area = float(xp.sum(xp.where(psi0_final >= 0.5, dV_final, 0.0)))
+    area_err = abs(psi_area - psi0_area) / max(abs(psi0_area), 1e-30)
+    return {"N": N, "h": h, "L2_psi": L2_psi, "area_err": area_err, "mass_err": mass_err}
+
+
+class _SingleVortexCLSScheme:
+    """Single vortex (LeVeque) with non-uniform grid rebuild (exp12_21)."""
+
+    def __init__(self, N: int = 128, alpha_grid: float = 1.0,
+                 eps_g_factor: float = 2.0, eps_g_cells=None,
+                 eps_xi_cells=None, eps_ratio: float = 1.5,
+                 reinit_freq: int = 20, **_):
+        self._kw = dict(N=N, alpha_grid=alpha_grid, eps_g_factor=eps_g_factor,
+                        eps_g_cells=eps_g_cells, eps_xi_cells=eps_xi_cells,
+                        eps_ratio=eps_ratio, reinit_freq=reinit_freq)
+
+    def compute_errors(self, test_fn=None) -> dict:
+        return _run_single_vortex_loop(**self._kw)
+
+
+@register_scheme("single_vortex_cls")
+def _build_single_vortex_cls(N: int = 128, alpha_grid: float = 1.0,
+                               eps_g_factor: float = 2.0, eps_g_cells=None,
+                               eps_xi_cells=None, eps_ratio: float = 1.5,
+                               reinit_freq: int = 20, domain=None, **_):
+    return _SingleVortexCLSScheme(N=N, alpha_grid=alpha_grid,
+                                   eps_g_factor=eps_g_factor,
+                                   eps_g_cells=eps_g_cells,
+                                   eps_xi_cells=eps_xi_cells,
+                                   eps_ratio=eps_ratio,
+                                   reinit_freq=reinit_freq)
