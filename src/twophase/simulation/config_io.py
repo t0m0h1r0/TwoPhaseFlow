@@ -115,9 +115,9 @@ class RunCfg:
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
     viscous_time_scheme: str = "explicit"
-    pressure_gradient_scheme: str = "projection_consistent"
-    surface_tension_gradient_scheme: str = "projection_consistent"
-    momentum_gradient_scheme: str = "projection_consistent"
+    pressure_gradient_scheme: str = "ccd"
+    surface_tension_gradient_scheme: str = "ccd"
+    momentum_gradient_scheme: str = "ccd"
     uccd6_sigma: float = 1.0e-3   # hyperviscosity coefficient for convection_scheme='uccd6'
     face_flux_projection: bool = False  # experimental CHK-172 PoC; default off
     ppe_iteration_method: str = "gmres"
@@ -403,13 +403,17 @@ _REINIT_METHODS = (
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
 )
 _PROJECTION_MODES = (
-    "standard", "variable_density", "consistent_iim", "consistent_gfm",
+    "standard", "variable_density", "iim", "gfm",
 )
+_PROJECTION_MODE_ALIASES = {
+    "consistent_iim": "iim",
+    "consistent_gfm": "gfm",
+}
 _PROJECTION_TO_REPROJECT_MODE = {
     "standard": "legacy",
     "variable_density": "variable_density_only",
-    "consistent_iim": "consistent_iim",
-    "consistent_gfm": "consistent_gfm",
+    "iim": "iim",
+    "gfm": "gfm",
 }
 _PPE_SCHEMES = ("fvm_iterative", "fvm_direct")
 _PPE_TO_PRESSURE_SCHEME = {
@@ -430,7 +434,8 @@ _MOMENTUM_PREDICTOR_ALIASES = {
     "fractional_step": "projection_predictor_corrector",
     "pressure_correction": "projection_predictor_corrector",
 }
-_MOMENTUM_GRADIENT_SCHEMES = ("projection_consistent", "fccd_flux", "fccd_nodal")
+_MOMENTUM_GRADIENT_SCHEMES = ("ccd", "fccd_flux", "fccd_nodal")
+_MOMENTUM_GRADIENT_ALIASES = {"projection_consistent": "ccd"}
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
 _PPE_ITERATION_METHODS = ("gmres",)
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
@@ -522,19 +527,18 @@ def _parse_run(
         ppe_dc_relaxation,
     ) = _parse_ppe_solver_config(ppe_solver_cfg, layout["paths"]["poisson_solver"])
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
+    _raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
     pressure_gradient_scheme = _validate_choice(
-        pressure_term.get("gradient", pressure_term.get("spatial", "projection_consistent")),
+        _MOMENTUM_GRADIENT_ALIASES.get(_raw_p_grad, _raw_p_grad),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
+    _raw_st_grad = surface_tension.get(
+        "gradient",
+        surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
+    )
     surface_tension_gradient_scheme = _validate_choice(
-        surface_tension.get(
-            "gradient",
-            surface_tension.get(
-                "spatial",
-                surface_tension.get("force_gradient", "projection_consistent"),
-            ),
-        ),
+        _MOMENTUM_GRADIENT_ALIASES.get(_raw_st_grad, _raw_st_grad),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["surface_tension_spatial"],
     )
@@ -1039,6 +1043,7 @@ def _normalize_momentum_predictor(raw: str) -> str:
 def _parse_projection_mode(raw: Any, path: str = "numerics.projection.mode") -> str:
     """Parse canonical YAML projection mode to the internal solver key."""
     mode = str(raw).strip().lower()
+    mode = _PROJECTION_MODE_ALIASES.get(mode, mode)
     if mode not in _PROJECTION_MODES:
         raise ValueError(
             f"{path} must be one of {_PROJECTION_MODES}, got {raw!r}"

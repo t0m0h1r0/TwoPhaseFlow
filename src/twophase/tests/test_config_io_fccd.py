@@ -66,10 +66,10 @@ def _minimal(patch: dict | None = None) -> dict:
                 "form": "primitive_velocity",
                 "terms": {
                     "convection": {"spatial": "ccd", "time_integrator": "ab2"},
-                    "pressure": {"spatial": "projection_consistent"},
+                    "pressure": {"gradient": "ccd"},
                     "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
-                        "spatial": "projection_consistent",
+                        "gradient": "ccd",
                         "model": "csf",
                     },
                 },
@@ -110,9 +110,9 @@ def test_readable_defaults_round_trip():
     assert cfg.run.ppe_solver == "fvm_iterative"
     assert cfg.run.ppe_iteration_method == "gmres"
     assert cfg.run.ppe_preconditioner == "line_pcr"
-    assert cfg.run.momentum_gradient_scheme == "projection_consistent"
-    assert cfg.run.pressure_gradient_scheme == "projection_consistent"
-    assert cfg.run.surface_tension_gradient_scheme == "projection_consistent"
+    assert cfg.run.momentum_gradient_scheme == "ccd"
+    assert cfg.run.pressure_gradient_scheme == "ccd"
+    assert cfg.run.surface_tension_gradient_scheme == "ccd"
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():
@@ -184,11 +184,11 @@ def test_readable_structured_sections_round_trip():
                     },
                     "pressure": {"spatial": "projection_consistent"},
                     "viscosity": {"time_integrator": "crank_nicolson"},
-                    "surface_tension": {"spatial": "fccd_flux", "model": "none"},
+                    "surface_tension": {"gradient": "fccd_flux", "model": "none"},
                 },
             },
             "projection": {
-                "mode": "consistent_iim",
+                "mode": "iim",
                 "face_flux_projection": True,
                 "poisson": {
                     "operator": {"discretization": "fvm"},
@@ -211,7 +211,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
     assert cfg.run.interface_tracking_method == "phi_primary"
-    assert cfg.run.reproject_mode == "consistent_iim"
+    assert cfg.run.reproject_mode == "iim"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
@@ -222,9 +222,9 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.ppe_preconditioner == "none"
     assert cfg.run.ppe_max_iterations == 0
     assert cfg.run.surface_tension_scheme == "none"
-    assert cfg.run.pressure_gradient_scheme == "projection_consistent"
+    assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
-    assert cfg.run.momentum_gradient_scheme == "projection_consistent"
+    assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
     assert cfg.run.debug_diagnostics is True
@@ -389,7 +389,7 @@ def test_invalid_interface_fitting_method_rejected():
 def test_invalid_projection_mode_rejected():
     with pytest.raises(ValueError, match="projection.mode"):
         ExperimentConfig.from_dict(_minimal({
-            "numerics": {"projection": {"mode": "gfm"}},
+            "numerics": {"projection": {"mode": "sharp_interface"}},
         }))
 
 

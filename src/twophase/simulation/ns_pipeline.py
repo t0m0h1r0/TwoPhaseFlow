@@ -182,11 +182,12 @@ class TwoPhaseNSSolver:
         self._reinit_eps_scale = float(reinit_eps_scale)
         self._reproject_mode = str(reproject_mode).strip().lower()
         if self._reproject_mode not in {
-            "legacy", "variable_density_only", "consistent_iim", "consistent_gfm",
+            "legacy", "variable_density_only", "iim", "gfm",
+            "consistent_iim", "consistent_gfm",
         }:
             raise ValueError(
                 f"Unsupported reproject_mode='{reproject_mode}'. "
-                "Use legacy|variable_density_only|consistent_iim|consistent_gfm."
+                "Use legacy|variable_density_only|gfm|iim."
             )
         # Backward compatibility: old flag maps to variable-density-only mode.
         if self._reproject_variable_density and self._reproject_mode == "legacy":
@@ -251,11 +252,12 @@ class TwoPhaseNSSolver:
         # Momentum gradient operator strategies.  Pressure and surface tension
         # are separate physical terms in the YAML; they may intentionally choose
         # different spatial operators.
+        ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
         if not self._grid.uniform and bc_type == "wall":
             base_grad_op: IGradientOperator = FVMGradientOperator(self._backend, self._grid)
             self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
         else:
-            base_grad_op = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
+            base_grad_op = ccd_grad_op
             self._div_op = CCDDivergenceOperator(self._ccd)
 
         # Advection / convection scheme selection (CHK-160 bridge for FCCD).
@@ -290,10 +292,10 @@ class TwoPhaseNSSolver:
             if needs_fccd else None
         )
         self._pressure_grad_op = self._make_momentum_gradient_operator(
-            self._pressure_gradient_scheme, base_grad_op
+            self._pressure_gradient_scheme, base_grad_op, ccd_grad_op
         )
         self._surface_tension_grad_op = self._make_momentum_gradient_operator(
-            self._surface_tension_gradient_scheme, base_grad_op
+            self._surface_tension_gradient_scheme, base_grad_op, ccd_grad_op
         )
         self._grad_op = self._pressure_grad_op
         if self._advection_scheme in self._fccd_modes:
@@ -390,11 +392,9 @@ class TwoPhaseNSSolver:
         # Velocity reprojection strategy (after grid rebuild)
         if self._reproject_mode == "legacy":
             self._reprojector: IVelocityReprojector = LegacyReprojector()
-        elif self._reproject_mode == "variable_density_only":
+        elif self._reproject_mode in {"variable_density_only", "gfm", "consistent_gfm"}:
             self._reprojector = VariableDensityReprojector()
-        elif self._reproject_mode == "consistent_gfm":
-            self._reprojector = VariableDensityReprojector()
-        elif self._reproject_mode == "consistent_iim":
+        elif self._reproject_mode in {"iim", "consistent_iim"}:
             self._reprojector = ConsistentIIMReprojector(
                 self._reproj_iim,
                 self._reconstruct_base,
@@ -431,10 +431,13 @@ class TwoPhaseNSSolver:
     def _make_momentum_gradient_operator(
         self,
         scheme: str,
-        projection_consistent: IGradientOperator,
+        base_grad_op: IGradientOperator,
+        ccd_grad_op: IGradientOperator,
     ) -> IGradientOperator:
+        if scheme == "ccd":
+            return ccd_grad_op
         if scheme == "projection_consistent":
-            return projection_consistent
+            return base_grad_op
         if scheme in self._fccd_modes:
             if self._fccd is None:
                 self._fccd = FCCDSolver(
@@ -443,7 +446,7 @@ class TwoPhaseNSSolver:
             return FCCDGradientOperator(self._fccd)
         raise ValueError(
             "Unsupported momentum gradient scheme="
-            f"{scheme!r}; use projection_consistent|fccd_nodal|fccd_flux."
+            f"{scheme!r}; use ccd|fccd_nodal|fccd_flux."
         )
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
