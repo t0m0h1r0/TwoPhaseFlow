@@ -1160,3 +1160,181 @@ def _build_cn_interface_viscous(N: int = 64, mu_base: float = 0.01,
                                  mu_ratio: float = 100.0, decay: float = 1.0, **_):
     return _CNInterfaceViscousAdapter(N=N, mu_base=mu_base,
                                       mu_ratio=mu_ratio, decay=decay)
+
+
+# ── TGV AB2 time history ──────────────────────────────────────────────────────
+
+class _TGVab2HistoryAdapter:
+    """AB2 + IPC projection on TGV; records E_k(t) and ||div||_∞ history."""
+
+    def __init__(self, N: int = 64, nu: float = 0.01, L_dom: float = 6.283185307):
+        self._N = N
+        self._nu = nu
+        self._L = L_dom
+
+    def run_history(self, n_steps: int = 200, dt: float = 0.01,
+                    checkpoint_interval: int = 5) -> list:
+        import numpy as _np
+        from twophase.backend import Backend
+        from twophase.config import GridConfig
+        from twophase.core.grid import Grid
+        from twophase.ccd.ccd_solver import CCDSolver
+        from twophase.tools.benchmarks.analytical_solutions import tgv_velocity
+
+        backend = Backend()
+        xp = backend.xp
+        N, nu, L = self._N, self._nu, self._L
+        h = L / N
+
+        gc = GridConfig(ndim=2, N=(N, N), L=(L, L))
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="periodic")
+        X, Y = grid.meshgrid()
+
+        def fft_poisson(rhs):
+            rhs_int = rhs[:-1, :-1]
+            Ni = rhs_int.shape[0]
+            kx = xp.fft.fftfreq(Ni, d=h) * 2 * _np.pi
+            ky = xp.fft.fftfreq(Ni, d=h) * 2 * _np.pi
+            KX, KY = xp.meshgrid(kx, ky, indexing="ij")
+            K2 = KX**2 + KY**2; K2[0, 0] = 1.0
+            p_hat = xp.fft.fft2(rhs_int) / (-K2); p_hat[0, 0] = 0.0
+            p_int = xp.real(xp.fft.ifft2(p_hat))
+            p = xp.zeros_like(rhs)
+            p[:-1, :-1] = p_int; p[-1, :] = p[0, :]; p[:, -1] = p[:, 0]
+            return p
+
+        u, v = tgv_velocity(X, Y, 0.0, nu)
+        p = -0.25 * (xp.cos(2 * X) + xp.cos(2 * Y))
+        rhs_u_prev = rhs_v_prev = None
+        history: list[dict] = []
+
+        for step in range(n_steps):
+            t = step * dt
+            if step % checkpoint_interval == 0:
+                E_k = float(0.5 * (xp.mean(u**2) + xp.mean(v**2)))
+                E_k_exact = _np.pi**2 * _np.exp(-4 * nu * t) / L**2 * h**2 * N**2
+                # Simple exact: 0.5*(u_ex^2 + v_ex^2) mean
+                u_ex, v_ex = tgv_velocity(X, Y, t, nu)
+                E_k_exact = float(0.5 * (xp.mean(u_ex**2) + xp.mean(v_ex**2)))
+                du_dx, _ = ccd.differentiate(u, 0)
+                dv_dy, _ = ccd.differentiate(v, 1)
+                div_inf = float(xp.max(xp.abs(du_dx + dv_dy)))
+                history.append({"t": t, "E_k": E_k, "E_k_exact": E_k_exact,
+                                 "div_inf": div_inf})
+
+            du_dx, d2u_dx2 = ccd.differentiate(u, 0)
+            du_dy, d2u_dy2 = ccd.differentiate(u, 1)
+            dv_dx, d2v_dx2 = ccd.differentiate(v, 0)
+            dv_dy, d2v_dy2 = ccd.differentiate(v, 1)
+            rhs_u = -(u * du_dx + v * du_dy) + nu * (d2u_dx2 + d2u_dy2)
+            rhs_v = -(u * dv_dx + v * dv_dy) + nu * (d2v_dx2 + d2v_dy2)
+            dp_dx, _ = ccd.differentiate(p, 0)
+            dp_dy, _ = ccd.differentiate(p, 1)
+
+            if step == 0:
+                u_s = u + dt * rhs_u - dt * dp_dx
+                v_s = v + dt * rhs_v - dt * dp_dy
+            else:
+                u_s = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev) - dt * dp_dx
+                v_s = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev) - dt * dp_dy
+
+            rhs_u_prev, rhs_v_prev = rhs_u, rhs_v
+            du_s_dx, _ = ccd.differentiate(u_s, 0)
+            dv_s_dy, _ = ccd.differentiate(v_s, 1)
+            phi = fft_poisson((du_s_dx + dv_s_dy) / dt)
+            dphi_dx, _ = ccd.differentiate(phi, 0)
+            dphi_dy, _ = ccd.differentiate(phi, 1)
+            u = u_s - dt * dphi_dx
+            v = v_s - dt * dphi_dy
+            p = p + phi
+
+        # Final checkpoint
+        t_final = n_steps * dt
+        u_ex, v_ex = tgv_velocity(X, Y, t_final, nu)
+        E_k = float(0.5 * (xp.mean(u**2) + xp.mean(v**2)))
+        E_k_exact = float(0.5 * (xp.mean(u_ex**2) + xp.mean(v_ex**2)))
+        du_dx, _ = ccd.differentiate(u, 0)
+        dv_dy, _ = ccd.differentiate(v, 1)
+        div_inf = float(xp.max(xp.abs(du_dx + dv_dy)))
+        history.append({"t": t_final, "E_k": E_k, "E_k_exact": E_k_exact,
+                         "div_inf": div_inf})
+        return history
+
+
+@register_scheme("tgv_ab2_history")
+def _build_tgv_ab2_history(N: int = 64, nu: float = 0.01,
+                            L_dom: float = 6.283185307, domain=None, **_):
+    return _TGVab2HistoryAdapter(N=N, nu=nu, L_dom=L_dom)
+
+
+# ── Pressure filter prohibition (convergence study) ────────────────────────
+
+class _PressureFilterScheme:
+    """Compute divergence error after velocity projection from filtered/clean pressure.
+
+    pressure p = sin(2πx)sin(2πy). After applying DCCD filter with eps_d,
+    compute grad(p_filtered) and resulting div error in velocity correction.
+    """
+
+    def __init__(self, N: int, eps_d: float = 0.0, **_):
+        self._N = N
+        self._eps_d = eps_d
+
+    def compute_errors(self, test_fn=None) -> dict:
+        import numpy as _np
+        from twophase.backend import Backend
+        from twophase.config import GridConfig
+        from twophase.core.grid import Grid
+        from twophase.ccd.ccd_solver import CCDSolver
+
+        backend = Backend()
+        xp = backend.xp
+        N = self._N
+        eps_d = self._eps_d
+        L = 1.0
+        h = L / N
+
+        gc = GridConfig(ndim=2, N=(N, N), L=(L, L))
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="periodic")
+        X, Y = grid.meshgrid()
+
+        p_exact = xp.sin(2 * _np.pi * X) * xp.sin(2 * _np.pi * Y)
+        p = p_exact.copy()
+
+        if eps_d > 0.0:
+            # 3-point DCCD filter in x then y (periodic)
+            def filter1d(f, axis):
+                result = f.copy()
+                if axis == 0:
+                    result = (1 - 2 * eps_d) * f + eps_d * (
+                        xp.roll(f, -1, axis=0) + xp.roll(f, 1, axis=0))
+                else:
+                    result = (1 - 2 * eps_d) * f + eps_d * (
+                        xp.roll(f, -1, axis=1) + xp.roll(f, 1, axis=1))
+                return result
+            p = filter1d(filter1d(p, 0), 1)
+
+        dp_dx, _ = ccd.differentiate(p, 0)
+        dp_dy, _ = ccd.differentiate(p, 1)
+        # Exact grad p
+        dp_dx_ex = 2 * _np.pi * xp.cos(2 * _np.pi * X) * xp.sin(2 * _np.pi * Y)
+        dp_dy_ex = 2 * _np.pi * xp.sin(2 * _np.pi * X) * xp.cos(2 * _np.pi * Y)
+
+        # Velocity correction: u^{n+1} = u* - dt*grad(p). Here u* = dt*grad(p_exact).
+        # div(u^{n+1}) = div(dt*(grad(p_exact) - grad(p_filtered)))
+        # For filtered: div error = div(dt*(grad(p_exact) - grad(p)))
+        dt = 1.0
+        err_x = dp_dx_ex - dp_dx
+        err_y = dp_dy_ex - dp_dy
+        d_err_x_dx, _ = ccd.differentiate(err_x, 0)
+        d_err_y_dy, _ = ccd.differentiate(err_y, 1)
+        err_div = float(xp.max(xp.abs(d_err_x_dx + d_err_y_dy)))
+
+        return {"N": N, "h": h, "err_div": err_div}
+
+
+@register_scheme("pressure_filter")
+def _build_pressure_filter(N: int = 64, eps_d: float = 0.0, **kw):
+    return _PressureFilterScheme(N=N, eps_d=eps_d)

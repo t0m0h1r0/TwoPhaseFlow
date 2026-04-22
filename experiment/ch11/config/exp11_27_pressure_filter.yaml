@@ -1,0 +1,32 @@
+# [11-27] Pressure DCCD-filter prohibition — divergence error convergence
+# Validates: §8c — applying dissipative filter to pressure field destroys div-free.
+
+experiment:
+  id: "11-27"
+  title: "Pressure Filter Prohibition ($\\nabla\\cdot u$ error)"
+  type: scheme_comparison
+
+scheme:
+  operator: pressure_filter
+  params: {}
+  cases:
+    - label: "clean ($\\varepsilon_d=0$)"
+      params: {eps_d: 0.0}
+    - label: "$\\varepsilon_d=0.05$"
+      params: {eps_d: 0.05}
+    - label: "$\\varepsilon_d=0.25$"
+      params: {eps_d: 0.25}
+
+input:
+  grid_sizes: [32, 64, 128, 256]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  layout: "1x1"
+  panels:
+    - title: "Pressure filter $\\|\\nabla\\cdot u^{n+1}\\|_\\infty$ vs $h$"
+      error_keys: [err_div]
+      ref_orders: [2, 4]
+      xlabel: "$h$"
+      ylabel: "$\\|\\nabla\\cdot u\\|_\\infty$"
+  output_stem: pressure_filter
