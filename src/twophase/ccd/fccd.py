@@ -45,6 +45,7 @@ References: SP-C, SP-D; WIKI-T-046, T-050, T-051, T-053, T-054, T-055, T-056.
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
 import math
 from typing import List, Optional, TYPE_CHECKING
 
@@ -54,6 +55,21 @@ from ..backend import fuse as _fuse
 if TYPE_CHECKING:
     from ..core.grid import Grid
     from ..backend import Backend
+
+
+@dataclass(frozen=True)
+class FCCDFaceJet:
+    """Face-located compact Hermite jet.
+
+    Symbol mapping:
+        value: ``u_f`` in SP-H / WIKI-T-069.
+        gradient: ``u'_f`` from the FCCD face-gradient operator.
+        curvature: ``u''_f`` from the face-averaged CCD second derivative.
+    """
+
+    value: object
+    gradient: object
+    curvature: object
 
 
 # ── Fused face stencils (collapse to single CUDA kernel on GPU) ──────────
@@ -74,6 +90,30 @@ def _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_16):
     = −(H²/16)·(q_lo + q_hi).
     """
     return 0.5 * (u_lo + u_hi) - H_sq_over_16 * (q_lo + q_hi)
+
+
+@_fuse
+def _face_curvature_kernel(q_lo, q_hi):
+    """q_f = 0.5*(q_lo + q_hi). SP-H / WIKI-T-069 face-jet closure."""
+    return 0.5 * (q_lo + q_hi)
+
+
+@_fuse
+def _upwind_taylor_face_kernel(
+    u_lo,
+    u_hi,
+    d_lo,
+    d_hi,
+    q_lo,
+    q_hi,
+    H_half,
+    H_sq_over_8,
+    positive_mask,
+):
+    """Directional Taylor-HFE face state from nodal (u, u', u'')."""
+    left_state = u_lo + H_half * d_lo + H_sq_over_8 * q_lo
+    right_state = u_hi - H_half * d_hi + H_sq_over_8 * q_hi
+    return positive_mask * left_state + (~positive_mask) * right_state
 
 
 @_fuse
@@ -149,8 +189,10 @@ class FCCDSolver:
                 "uniform": True,
                 "H": H,
                 "inv_H": 1.0 / H,
+                "H_half": 0.5 * H,
                 "H_over_24": H / 24.0,
                 "H_sq_over_16": H * H / 16.0,
+                "H_sq_over_8": H * H / 8.0,
                 "H_over_16": H / 16.0,
                 "N_faces": N_faces,
             }
@@ -160,8 +202,10 @@ class FCCDSolver:
             "uniform": False,
             "H": H,
             "inv_H": 1.0 / H,
+            "H_half": 0.5 * H,
             "H_over_24": H / 24.0,
             "H_sq_over_16": H * H / 16.0,
+            "H_sq_over_8": H * H / 8.0,
             # H/16 is applied at NODE positions for R_4; use mean of adjacent faces.
             "H_over_16_node": self._node_H_over_16(H_host),
             "N_faces": N_faces,
@@ -265,6 +309,94 @@ class FCCDSolver:
 
         u_f = _face_value_kernel(u_lo, u_hi, q_lo, q_hi, H_sq_over_16)
         return xp.moveaxis(u_f, 0, axis)
+
+    def face_second_derivative(self, u, axis: int, q=None):
+        """Face-carried CCD second derivative closure (SP-H / WIKI-T-069).
+
+        This is the third member of the face jet ``(u_f, u'_f, u''_f)``.
+        It is intentionally an additive bridge closure,
+
+            u''_{i-1/2} = 0.5 * (q_{i-1} + q_i),  q = S_CCD u,
+
+        so a later direct face-unknown block solve can replace this method
+        without changing caller code.
+        """
+        xp = self.xp
+        if q is None:
+            _, q = self._ccd.differentiate(u, axis)
+        q_lo, q_hi = self._face_slice(q, axis)
+        q_face = _face_curvature_kernel(q_lo, q_hi)
+        return xp.moveaxis(q_face, 0, axis)
+
+    def face_jet(self, u, axis: int, q=None) -> FCCDFaceJet:
+        """Return the face-located compact jet ``(u_f, u'_f, u''_f)``.
+
+        The three components share the same nodal CCD second derivative
+        ``q`` to preserve A3 traceability and avoid duplicate block solves.
+        """
+        if q is None:
+            _, q = self._ccd.differentiate(u, axis)
+        return FCCDFaceJet(
+            value=self.face_value(u, axis, q=q),
+            gradient=self.face_gradient(u, axis, q=q),
+            curvature=self.face_second_derivative(u, axis, q=q),
+        )
+
+    def upwind_face_value(
+        self,
+        u,
+        advective_velocity_face,
+        axis: int,
+        nodal_gradient=None,
+        q=None,
+    ):
+        """Directional Taylor-HFE face state from nodal ``(u, u', u'')``.
+
+        For positive face velocity, reconstruct from the low/upwind node:
+
+            u_lo + (H/2) u'_lo + (H²/8) u''_lo.
+
+        For negative face velocity, reconstruct from the high/upwind node:
+
+            u_hi - (H/2) u'_hi + (H²/8) u''_hi.
+
+        This produces the biased ``(i, i-1/2, i-1)`` HFE state described in
+        SP-H. Riemann dissipation is intentionally left to the caller.
+        """
+        xp = self.xp
+        if nodal_gradient is None or q is None:
+            computed_gradient, computed_q = self._ccd.differentiate(u, axis)
+            if nodal_gradient is None:
+                nodal_gradient = computed_gradient
+            if q is None:
+                q = computed_q
+
+        u_lo, u_hi = self._face_slice(u, axis)
+        d_lo, d_hi = self._face_slice(nodal_gradient, axis)
+        q_lo, q_hi = self._face_slice(q, axis)
+        advective = xp.moveaxis(xp.asarray(advective_velocity_face), axis, 0)
+        positive_mask = advective >= 0.0
+
+        w = self._weights[axis]
+        if w["uniform"]:
+            H_half = w["H_half"]
+            H_sq_over_8 = w["H_sq_over_8"]
+        else:
+            H_half = self._broadcast_axis0(w["H_half"], u_lo.ndim)
+            H_sq_over_8 = self._broadcast_axis0(w["H_sq_over_8"], u_lo.ndim)
+
+        upwind_state = _upwind_taylor_face_kernel(
+            u_lo,
+            u_hi,
+            d_lo,
+            d_hi,
+            q_lo,
+            q_hi,
+            H_half,
+            H_sq_over_8,
+            positive_mask,
+        )
+        return xp.moveaxis(upwind_state, 0, axis)
 
     def node_gradient(self, u, axis: int, q=None):
         """4th-order node gradient via R_4 Hermite reconstruction (SP-D §6).

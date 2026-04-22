@@ -17,7 +17,7 @@ compiled_by: ResearchArchitect
 
 - `FCCDFaceJet(value, gradient, curvature)`
 - `FCCDSolver.face_second_derivative(field, axis, q=None)`
-- `FCCDSolver.face_jet(field, axis, nodal_gradient=None, q=None)`
+- `FCCDSolver.face_jet(field, axis, q=None)`
 - `FCCDSolver.upwind_face_value(field, advective_velocity_face, axis, nodal_gradient=None, q=None)`
 
 ## A3 mapping
@@ -43,4 +43,3 @@ Focused tests live in `src/twophase/tests/test_fccd.py`:
 - face second derivative converges on smooth periodic fields.
 - upwind Taylor-HFE reconstruction converges at third order for both velocity
   signs.
-
