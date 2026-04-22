@@ -1,0 +1,33 @@
+# [11-16] Young-Laplace Pressure Jump Convergence
+# Validates: Ch8 — Balanced-force CSF pipeline. Δp = κ/We for static droplet.
+# Equivalent to: experiment/ch11/exp11_16_young_laplace.py
+
+experiment:
+  id: "11-16"
+  title: "Young-Laplace Pressure Jump (Δp = κ/We, R=0.25)"
+  type: convergence_study
+
+scheme:
+  operator: young_laplace
+  cases:
+    - label: default
+      params:
+        R: 0.25
+        We: 1.0
+        eps_scale: 1.5
+
+input:
+  grid_sizes: [32, 64, 128]
+  domain: {Lx: 1.0, Ly: 1.0}
+
+visualization:
+  type: convergence_loglog
+  layout: "1x1"
+  panels:
+    - case: default
+      title: "Young-Laplace: $\\Delta p = \\kappa/We$, $R=0.25$"
+      error_keys: [rel_err]
+      ref_orders: [1, 2]
+      xlabel: "$h$"
+      ylabel: "Relative error"
+  output_stem: young_laplace
