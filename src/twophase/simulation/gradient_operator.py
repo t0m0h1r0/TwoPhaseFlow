@@ -10,16 +10,35 @@ Encapsulates the choice between:
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
     from ..ccd.fccd import FCCDSolver
+    from .scheme_build_ctx import GradientBuildCtx
 
 
 class IGradientOperator(ABC):
     """Abstract interface for computing pressure gradient ∇p."""
+
+    _registry: ClassVar[dict[str, type["IGradientOperator"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            IGradientOperator._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "GradientBuildCtx") -> "IGradientOperator":
+        """Instantiate the gradient operator registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown gradient scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def gradient(
@@ -46,6 +65,12 @@ class CCDGradientOperator(IGradientOperator):
     Applies Neumann boundary conditions on walls.
     Used on uniform or locally-refined grids when CCD accuracy is prioritized.
     """
+
+    scheme_names = ("ccd", "projection_consistent")  # projection_consistent: backward-compat alias
+
+    @classmethod
+    def _build(cls, name: str, ctx: "GradientBuildCtx") -> "CCDGradientOperator":
+        return ctx.ccd_op  # type: ignore[return-value]
 
     def __init__(self, backend: "Backend", ccd: "CCDSolver", bc_type: str = "wall") -> None:
         """
@@ -74,6 +99,12 @@ class CCDGradientOperator(IGradientOperator):
 
 class FCCDGradientOperator(IGradientOperator):
     """FCCD gradient shared by pressure correction and surface tension force."""
+
+    scheme_names = ("fccd_flux", "fccd_nodal")
+
+    @classmethod
+    def _build(cls, name: str, ctx: "GradientBuildCtx") -> "FCCDGradientOperator":
+        return cls(ctx.fccd)
 
     def __init__(self, fccd: "FCCDSolver") -> None:
         self._fccd = fccd

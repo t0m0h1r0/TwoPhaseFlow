@@ -7,16 +7,35 @@ Encapsulates the choice between:
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Tuple, TYPE_CHECKING
+from typing import ClassVar, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
     from .gradient_operator import IGradientOperator
+    from .scheme_build_ctx import SurfaceTensionBuildCtx
 
 
 class INSSurfaceTensionStrategy(ABC):
     """Abstract interface for surface tension force computation."""
+
+    _registry: ClassVar[dict[str, type["INSSurfaceTensionStrategy"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            INSSurfaceTensionStrategy._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "INSSurfaceTensionStrategy":
+        """Instantiate the surface tension strategy registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown surface_tension_scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def compute(
@@ -53,6 +72,12 @@ class SurfaceTensionForce(INSSurfaceTensionStrategy):
     Applied to the momentum equation; also added to PPE RHS for
     consistent balanced-force treatment.
     """
+
+    scheme_names = ("csf",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "SurfaceTensionForce":
+        return cls(ctx.backend)
 
     def __init__(self, backend: "Backend") -> None:
         """
@@ -98,6 +123,12 @@ class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
 
     Used when surface tension should be skipped entirely.
     """
+
+    scheme_names = ("none",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "NullSurfaceTensionForce":
+        return cls(ctx.backend)
 
     def __init__(self, backend: "Backend") -> None:
         self.xp = backend.xp

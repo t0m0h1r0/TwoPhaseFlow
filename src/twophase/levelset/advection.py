@@ -68,6 +68,7 @@ if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
     from ..ccd.ccd_solver import CCDSolver
+    from ..simulation.scheme_build_ctx import AdvectionBuildCtx
 
 # WENO5 ideal weights (app:weno5 eq:weno5_ideal_weights)
 _D0, _D1, _D2 = 1.0 / 10.0, 6.0 / 10.0, 3.0 / 10.0
@@ -82,6 +83,13 @@ class LevelSetAdvection(ILevelSetAdvection):
     backend : Backend
     grid    : Grid — constructor-injected; eliminates temporal coupling from set_grid()
     """
+
+    scheme_names = ("weno5",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "LevelSetAdvection":
+        ls_bc = "periodic" if ctx.bc_type == "periodic" else "neumann"
+        return cls(ctx.backend, ctx.grid, bc=ls_bc)
 
     def __init__(self, backend: "Backend", grid: "Grid", bc: str = 'zero'):
         """
@@ -284,6 +292,12 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
               'periodic' | 'neumann' | 'outflow' | 'zero'
     eps_d   : Filter strength ε_d (default 0.05, §5 eq:eps_adv)
     """
+
+    scheme_names = ("dissipative_ccd",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "DissipativeCCDAdvection":
+        return cls(ctx.backend, ctx.grid, ctx.ccd)
 
     def __init__(
         self,

@@ -14,21 +14,28 @@ The result is an array of shape ``grid.shape`` for each velocity component.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from .interfaces import INSTerm
+from .interfaces import IConvectionTerm
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from .context import NSComputeContext
+    from ..simulation.scheme_build_ctx import ConvectionBuildCtx
 
 
-class ConvectionTerm(INSTerm):
-    """Computes −(u·∇)u for all velocity components.
+class ConvectionTerm(IConvectionTerm):
+    """Computes −(u·∇)u for all velocity components (CCD, 6th-order).
 
     Parameters
     ----------
     backend : Backend
     """
+
+    scheme_names = ("ccd",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ConvectionBuildCtx") -> "ConvectionTerm":
+        return cls(ctx.backend)
 
     def __init__(self, backend: "Backend"):
         self.xp = backend.xp

@@ -16,10 +16,10 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass  # 循環インポートを避けるため型ヒントのみ
+    from ..simulation.scheme_build_ctx import PPEBuildCtx
 
 
 class MatrixAssemblyUnavailable(RuntimeError):
@@ -35,6 +35,24 @@ class IPPESolver(ABC):
     統一されたシグネチャにより、TwoPhaseSimulation は
     isinstance チェックを行わずにどの実装でも利用できる。
     """
+
+    _registry: ClassVar[dict[str, type["IPPESolver"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            IPPESolver._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "PPEBuildCtx") -> "IPPESolver":
+        """Instantiate the PPE solver registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown PPE solver scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def solve(

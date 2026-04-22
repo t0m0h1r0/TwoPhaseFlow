@@ -22,15 +22,16 @@ References
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from .interfaces import INSTerm
+from .interfaces import IConvectionTerm
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from ..core.grid import Grid
+    from ..simulation.scheme_build_ctx import ConvectionBuildCtx
 
 
-class UCCD6ConvectionTerm(INSTerm):
+class UCCD6ConvectionTerm(IConvectionTerm):
     """UCCD6-stabilised −(u·∇)u convective acceleration.
 
     Parameters
@@ -50,6 +51,12 @@ class UCCD6ConvectionTerm(INSTerm):
     :class:`twophase.ns_terms.convection.ConvectionTerm` — drop-in compatible
     with the AB2 predictor and both simulation pipelines.
     """
+
+    scheme_names = ("uccd6",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ConvectionBuildCtx") -> "UCCD6ConvectionTerm":
+        return cls(ctx.backend, ctx.grid, ctx.ccd, sigma=ctx.uccd6_sigma)
 
     def __init__(
         self,

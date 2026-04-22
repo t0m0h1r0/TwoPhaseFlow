@@ -18,7 +18,7 @@ Statistics are collected in reprojector.stats dict (populated during reproject()
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, TYPE_CHECKING
+from typing import ClassVar, Dict, Tuple, TYPE_CHECKING
 import numpy as np
 import warnings
 
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..ppe.iim.stencil_corrector import IIMStencilCorrector
     from ..ppe.interfaces import IPPESolver
+    from .scheme_build_ctx import ReprojectorBuildCtx
 
 
 def _device_array(arr, backend: "Backend"):
@@ -43,6 +44,24 @@ def _host_array(arr, backend: "Backend") -> np.ndarray:
 
 class IVelocityReprojector(ABC):
     """Abstract interface for velocity reprojection after grid rebuild."""
+
+    _registry: ClassVar[dict[str, type["IVelocityReprojector"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            IVelocityReprojector._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "ReprojectorBuildCtx") -> "IVelocityReprojector":
+        """Instantiate the reprojector registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown reproject_mode {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def reproject(
@@ -83,6 +102,12 @@ class LegacyReprojector(IVelocityReprojector):
 
     Used when reproject_mode='legacy' or as fallback for other modes.
     """
+
+    scheme_names = ("legacy",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "LegacyReprojector":
+        return cls()
 
     def __init__(self) -> None:
         self._stats = {"calls": 0}
@@ -133,6 +158,12 @@ class VariableDensityReprojector(IVelocityReprojector):
 
     Used when reproject_mode='variable_density_only' or 'consistent_gfm'.
     """
+
+    scheme_names = ("variable_density_only", "gfm", "consistent_gfm")
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "VariableDensityReprojector":
+        return cls()
 
     def __init__(self) -> None:
         self._stats = {"calls": 0}
@@ -225,6 +256,12 @@ class ConsistentIIMReprojector(IVelocityReprojector):
 
     Maintains rich statistics: iim_attempts, iim_accepts, iim_rejects, etc.
     """
+
+    scheme_names = ("iim", "consistent_iim")
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "ConsistentIIMReprojector":
+        return cls(ctx.iim_stencil_corrector, ctx.reconstruct_base)
 
     def __init__(
         self,

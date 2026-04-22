@@ -9,16 +9,35 @@ Both implement IViscousPredictor with the same signature.
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List, TYPE_CHECKING
+from typing import ClassVar, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
     from ..ns_terms.viscous import ViscousTerm
+    from .scheme_build_ctx import ViscousBuildCtx
 
 
 class IViscousPredictor(ABC):
     """Abstract interface for viscous predictor (advance velocity with viscous term)."""
+
+    _registry: ClassVar[dict[str, type["IViscousPredictor"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            IViscousPredictor._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "ViscousBuildCtx") -> "IViscousPredictor":
+        """Instantiate the viscous predictor registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown viscous time scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def predict(
@@ -59,6 +78,12 @@ class ExplicitViscousPredictor(IViscousPredictor):
 
     No implicit solve; Reynolds-number-constrained CFL.
     """
+
+    scheme_names = ("explicit", "forward_euler")
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "ExplicitViscousPredictor":
+        return cls(ctx.backend, ctx.re)
 
     def __init__(self, backend: "Backend", Re: float) -> None:
         self.xp = backend.xp
@@ -110,6 +135,12 @@ class CNViscousPredictor(IViscousPredictor):
 
     Requires solving a linear system for each velocity component.
     """
+
+    scheme_names = ("crank_nicolson",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "CNViscousPredictor":
+        return cls(ctx.backend, ctx.viscous_term)
 
     def __init__(self, backend: "Backend", viscous_term: "ViscousTerm") -> None:
         """

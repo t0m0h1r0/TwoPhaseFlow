@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ..config import SimulationConfig
     from ..core.grid import Grid
     from ..core.boundary import BoundarySpec
+    from ..simulation.scheme_build_ctx import PPEBuildCtx
 
 
 class PPESolverFVMMatrixFree(IPPESolver):
@@ -42,6 +43,12 @@ class PPESolverFVMMatrixFree(IPPESolver):
     line preconditioner.  The preconditioner is used only to accelerate the
     iteration; the fixed point is still the full FVM operator.
     """
+
+    scheme_names = ("fvm_iterative",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "PPEBuildCtx") -> "PPESolverFVMMatrixFree":
+        return cls(ctx.backend, ctx.config, ctx.grid, bc_type=ctx.bc_type, bc_spec=ctx.bc_spec)
 
     def __init__(
         self,

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
     from ..core.boundary import BoundarySpec
+    from ..simulation.scheme_build_ctx import PPEBuildCtx
 
 
 class PPESolverFVMSpsolve(IPPESolver):
@@ -50,6 +51,12 @@ class PPESolverFVMSpsolve(IPPESolver):
     bc_spec : BoundarySpec, optional
         For explicit pin DOF specification
     """
+
+    scheme_names = ("fvm_direct",)
+
+    @classmethod
+    def _build(cls, name: str, ctx: "PPEBuildCtx") -> "PPESolverFVMSpsolve":
+        return cls(ctx.backend, ctx.grid, bc_type=ctx.bc_type, bc_spec=ctx.bc_spec)
 
     def __init__(
         self,

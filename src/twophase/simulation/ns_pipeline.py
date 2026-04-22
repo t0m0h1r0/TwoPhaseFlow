@@ -24,8 +24,9 @@ from ..ccd.ccd_solver import CCDSolver
 from ..ccd.fccd import FCCDSolver
 from ..levelset.heaviside import apply_mass_correction
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
-from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
-from ..levelset.fccd_advection import FCCDLevelSetAdvection
+from ..levelset.interfaces import ILevelSetAdvection
+from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
+from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.transport_strategy import (
@@ -34,21 +35,37 @@ from ..levelset.transport_strategy import (
 )
 from .step_diagnostics import IStepDiagnostics, NullStepDiagnostics, ActiveStepDiagnostics
 from .velocity_reprojector import (
-    IVelocityReprojector, LegacyReprojector, VariableDensityReprojector,
-    ConsistentGFMReprojector, ConsistentIIMReprojector
+    IVelocityReprojector,
+    LegacyReprojector, VariableDensityReprojector,      # registration
+    ConsistentGFMReprojector, ConsistentIIMReprojector,  # registration
 )
-from .viscous_predictor import IViscousPredictor, ExplicitViscousPredictor, CNViscousPredictor
-from .surface_tension_strategy import INSSurfaceTensionStrategy, SurfaceTensionForce, NullSurfaceTensionForce
+from .viscous_predictor import (
+    IViscousPredictor,
+    ExplicitViscousPredictor, CNViscousPredictor,  # registration
+)
+from .surface_tension_strategy import (
+    INSSurfaceTensionStrategy,
+    SurfaceTensionForce, NullSurfaceTensionForce,  # registration
+)
 from .gradient_operator import (
-    IGradientOperator, CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,
+    IGradientOperator,
+    CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,  # registration
     IDivergenceOperator, CCDDivergenceOperator, FVMDivergenceOperator,
 )
+from .scheme_build_ctx import (
+    GradientBuildCtx, AdvectionBuildCtx, ConvectionBuildCtx,
+    ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx, PPEBuildCtx,
+)
 from ..levelset.curvature_filter import InterfaceLimitedFilter
-from ..ns_terms.fccd_convection import FCCDConvectionTerm
+from ..ns_terms.interfaces import IConvectionTerm
+from ..ns_terms.convection import ConvectionTerm                      # registration
+from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registration
+from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm           # registration
 from ..ns_terms.context import NSComputeContext
-from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
+from ..ppe.interfaces import IPPESolver
+from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
 from ..ppe.fvm_defect_correction import PPESolverFVMDefectCorrection
-from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
+from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -260,76 +277,49 @@ class TwoPhaseNSSolver:
             base_grad_op = ccd_grad_op
             self._div_op = CCDDivergenceOperator(self._ccd)
 
-        # Advection / convection scheme selection (CHK-160 bridge for FCCD).
-        # One shared FCCDSolver reuses the CCD LU factorisation for both
-        # ψ advection and momentum convection — mirrors builder.py §"one
-        # factorisation, many calls".  All array ops stay on ``backend.xp``;
-        # no host round-trip is added on the hot path.
-        self._advection_scheme = str(advection_scheme)
-        self._convection_scheme = str(convection_scheme)
-        self._fccd_modes = {"fccd_nodal": "node", "fccd_flux": "flux"}
-        if self._advection_scheme not in {
-            "dissipative_ccd", "weno5", *self._fccd_modes.keys(),
-        }:
-            raise ValueError(
-                "Unsupported advection_scheme="
-                f"'{self._advection_scheme}'. Use dissipative_ccd|weno5|"
-                "fccd_nodal|fccd_flux."
-            )
-        if self._convection_scheme not in {"ccd", "uccd6", *self._fccd_modes.keys()}:
-            raise ValueError(
-                "Unsupported convection_scheme="
-                f"'{self._convection_scheme}'. Use ccd|fccd_nodal|fccd_flux|uccd6."
-            )
-        needs_fccd = (
-            self._advection_scheme in self._fccd_modes
-            or self._convection_scheme in self._fccd_modes
-            or self._pressure_gradient_scheme in self._fccd_modes
-            or self._surface_tension_gradient_scheme in self._fccd_modes
+        # FCCDSolver: shared across advection, convection, and gradient operators.
+        # One shared instance reuses the CCD LU factorisation — mirrors builder.py
+        # §"one factorisation, many calls".
+        _FCCD_NAMES = frozenset({"fccd_flux", "fccd_nodal"})
+        needs_fccd = bool(
+            {
+                str(advection_scheme), str(convection_scheme),
+                self._pressure_gradient_scheme, self._surface_tension_gradient_scheme,
+            }
+            & _FCCD_NAMES
         )
         self._fccd = (
             FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
             if needs_fccd else None
         )
-        self._pressure_grad_op = self._make_momentum_gradient_operator(
-            self._pressure_gradient_scheme, base_grad_op, ccd_grad_op
+
+        # Gradient operators — each scheme class decides its own construction.
+        grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=self._fccd)
+        self._pressure_grad_op = IGradientOperator.from_scheme(
+            self._pressure_gradient_scheme, grad_ctx
         )
-        self._surface_tension_grad_op = self._make_momentum_gradient_operator(
-            self._surface_tension_gradient_scheme, base_grad_op, ccd_grad_op
+        self._surface_tension_grad_op = IGradientOperator.from_scheme(
+            self._surface_tension_gradient_scheme, grad_ctx
         )
         self._grad_op = self._pressure_grad_op
-        if self._advection_scheme in self._fccd_modes:
-            # mass_correction stays off: the outer step() already applies
-            # w=4ψ(1-ψ) correction on ψ after psi_from_phi; enabling it here
-            # would run the same formula on φ (SDF-valued) under
-            # phi_primary_transport, where w goes negative in the liquid bulk
-            # and scrambles φ.
-            self._adv = FCCDLevelSetAdvection(
-                self._backend, self._grid, self._fccd,
-                mode=self._fccd_modes[self._advection_scheme],
-                mass_correction=False,
-            )
-        elif self._advection_scheme == "weno5":
-            ls_bc = "periodic" if bc_type == "periodic" else "neumann"
-            self._adv = LevelSetAdvection(self._backend, self._grid, bc=ls_bc)
-        else:
-            self._adv = DissipativeCCDAdvection(self._backend, self._grid, self._ccd)
-        self._fccd_conv = (
-            FCCDConvectionTerm(
-                self._backend, self._fccd,
-                mode=self._fccd_modes[self._convection_scheme],
-            )
-            if self._convection_scheme in self._fccd_modes else None
+
+        # Advection scheme — scheme class decides its own construction.
+        adv_ctx = AdvectionBuildCtx(
+            backend=self._backend, grid=self._grid,
+            ccd=self._ccd, bc_type=bc_type, fccd=self._fccd,
         )
-        # UCCD6 convection (WIKI-X-023): skew-sym CCD + selective hyperviscosity.
-        # Shares the same pre-factored CCD block-LU as FCCD — no extra cost.
-        if self._convection_scheme == "uccd6":
-            from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
-            self._uccd6_conv = UCCD6ConvectionTerm(
-                self._backend, self._grid, self._ccd, sigma=float(uccd6_sigma),
-            )
-        else:
-            self._uccd6_conv = None
+        self._advection_scheme = str(advection_scheme)
+        self._adv = ILevelSetAdvection.from_scheme(self._advection_scheme, adv_ctx)
+
+        # Convection term — single slot; CCD, FCCD, and UCCD6 all return IConvectionTerm.
+        self._convection_scheme = str(convection_scheme)
+        conv_ctx = ConvectionBuildCtx(
+            backend=self._backend, ccd=self._ccd, grid=self._grid,
+            fccd=self._fccd, uccd6_sigma=float(uccd6_sigma),
+        )
+        self._conv_term: IConvectionTerm = IConvectionTerm.from_scheme(
+            self._convection_scheme, conv_ctx
+        )
         self._reconstruct_base = HeavisideInterfaceReconstructor(
             self._backend,
             ReconstructionConfig(
@@ -390,63 +380,30 @@ class TwoPhaseNSSolver:
         )
 
         # Velocity reprojection strategy (after grid rebuild)
-        if self._reproject_mode == "legacy":
-            self._reprojector: IVelocityReprojector = LegacyReprojector()
-        elif self._reproject_mode in {"variable_density_only", "gfm", "consistent_gfm"}:
-            self._reprojector = VariableDensityReprojector()
-        elif self._reproject_mode in {"iim", "consistent_iim"}:
-            self._reprojector = ConsistentIIMReprojector(
-                self._reproj_iim,
-                self._reconstruct_base,
-            )
-        else:
-            raise ValueError(f"Unknown reproject_mode: {self._reproject_mode}")
+        reproj_ctx = ReprojectorBuildCtx(
+            iim_stencil_corrector=self._reproj_iim,
+            reconstruct_base=self._reconstruct_base,
+        )
+        self._reprojector: IVelocityReprojector = IVelocityReprojector.from_scheme(
+            self._reproject_mode, reproj_ctx
+        )
 
         # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = cn_viscous
         self._Re = Re
-        if cn_viscous:
-            from ..ns_terms.viscous import ViscousTerm
-            viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True)
-            self._viscous_predictor: IViscousPredictor = CNViscousPredictor(
-                self._backend, viscous_term
-            )
-        else:
-            self._viscous_predictor = ExplicitViscousPredictor(self._backend, Re=Re)
+        from ..ns_terms.viscous import ViscousTerm
+        _viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True) if cn_viscous else None
+        _viscous_scheme = "crank_nicolson" if cn_viscous else "explicit"
+        viscous_ctx = ViscousBuildCtx(backend=self._backend, re=Re, viscous_term=_viscous_term)
+        self._viscous_predictor: IViscousPredictor = IViscousPredictor.from_scheme(
+            _viscous_scheme, viscous_ctx
+        )
 
-        # Surface tension strategy — SurfaceTensionForce (CSF) or Null.
-        # 'csf' applies σκ∇ψ (σ > 0 check internal);
-        # 'none' disables the force entirely (σκ∇ψ and PPE augmentation both off).
+        # Surface tension strategy — scheme class decides its own construction.
         self._surface_tension_scheme = str(surface_tension_scheme)
-        if self._surface_tension_scheme == "csf":
-            self._st_force: INSSurfaceTensionStrategy = SurfaceTensionForce(self._backend)
-        elif self._surface_tension_scheme == "none":
-            self._st_force = NullSurfaceTensionForce(self._backend)
-        else:
-            raise ValueError(
-                f"Unknown surface_tension_scheme={self._surface_tension_scheme!r}; "
-                "expected 'csf' or 'none'."
-            )
-
-    def _make_momentum_gradient_operator(
-        self,
-        scheme: str,
-        base_grad_op: IGradientOperator,
-        ccd_grad_op: IGradientOperator,
-    ) -> IGradientOperator:
-        if scheme == "ccd":
-            return ccd_grad_op
-        if scheme == "projection_consistent":
-            return base_grad_op
-        if scheme in self._fccd_modes:
-            if self._fccd is None:
-                self._fccd = FCCDSolver(
-                    self._grid, self._backend, bc_type=self.bc_type, ccd_solver=self._ccd
-                )
-            return FCCDGradientOperator(self._fccd)
-        raise ValueError(
-            "Unsupported momentum gradient scheme="
-            f"{scheme!r}; use ccd|fccd_nodal|fccd_flux."
+        st_ctx = SurfaceTensionBuildCtx(backend=self._backend)
+        self._st_force: INSSurfaceTensionStrategy = INSSurfaceTensionStrategy.from_scheme(
+            self._surface_tension_scheme, st_ctx
         )
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
@@ -482,7 +439,19 @@ class TwoPhaseNSSolver:
         ppe_solver = self._normalize_ppe_solver(pressure_scheme)
         if self._ppe_defect_correction:
             base_solver = self._build_plain_ppe_solver(ppe_solver)
-            operator = self._build_matrixfree_ppe_operator()
+            # DC outer operator: matrix-free without preconditioner (used for residual)
+            from ..core.boundary import BoundarySpec
+            _op_bc_spec = BoundarySpec(
+                bc_type=self.bc_type,
+                shape=tuple(n + 1 for n in self._grid.N),
+                N=self._grid.N,
+            )
+            _op_ctx = PPEBuildCtx(
+                backend=self._backend, grid=self._grid,
+                bc_type=self.bc_type, bc_spec=_op_bc_spec,
+                config=self._build_ppe_cfg_shim(preconditioner="none"),
+            )
+            operator = IPPESolver.from_scheme("fvm_iterative", _op_ctx)
             return PPESolverFVMDefectCorrection(
                 self._backend,
                 self._grid,
@@ -494,30 +463,38 @@ class TwoPhaseNSSolver:
             )
         return self._build_plain_ppe_solver(ppe_solver)
 
-    def _build_plain_ppe_solver(self, ppe_solver: str):
-        """Instantiate an unwrapped FVM PPE solver."""
-        if ppe_solver == "fvm_direct":
-            return PPESolverFVMSpsolve(
-                self._backend, self._grid, bc_type=self.bc_type,
-            )
-        if ppe_solver == "fvm_iterative":
-            return self._build_matrixfree_ppe_operator(
+    def _build_plain_ppe_solver(self, ppe_scheme: str):
+        """Instantiate an unwrapped FVM PPE solver via registry."""
+        from ..core.boundary import BoundarySpec
+
+        bc_spec = BoundarySpec(
+            bc_type=self.bc_type,
+            shape=tuple(n + 1 for n in self._grid.N),
+            N=self._grid.N,
+        )
+        cfg_shim = (
+            self._build_ppe_cfg_shim(
                 preconditioner=self._ppe_preconditioner,
                 pcr_stages=self._ppe_pcr_stages,
             )
-        raise AssertionError("unreachable PPE solver dispatch")
+            if ppe_scheme == "fvm_iterative" else None
+        )
+        ppe_ctx = PPEBuildCtx(
+            backend=self._backend, grid=self._grid,
+            bc_type=self.bc_type, bc_spec=bc_spec, config=cfg_shim,
+        )
+        return IPPESolver.from_scheme(ppe_scheme, ppe_ctx)
 
-    def _build_matrixfree_ppe_operator(
+    def _build_ppe_cfg_shim(
         self,
         *,
         preconditioner: str | None = None,
         pcr_stages: int | None = None,
-    ) -> PPESolverFVMMatrixFree:
-        """Build a matrix-free FVM operator/iterative solver instance."""
+    ):
+        """Build the SimpleNamespace config shim for PPESolverFVMMatrixFree."""
         from types import SimpleNamespace
-        from ..core.boundary import BoundarySpec
 
-        cfg_shim = SimpleNamespace(
+        return SimpleNamespace(
             solver=SimpleNamespace(
                 pseudo_tol=self._ppe_tolerance,
                 pseudo_maxiter=self._ppe_max_iterations,
@@ -527,15 +504,6 @@ class TwoPhaseNSSolver:
                 ppe_preconditioner=preconditioner or "none",
                 ppe_pcr_stages=pcr_stages,
             )
-        )
-        bc_spec = BoundarySpec(
-            bc_type=self.bc_type,
-            shape=tuple(n + 1 for n in self._grid.N),
-            N=self._grid.N,
-        )
-        return PPESolverFVMMatrixFree(
-            self._backend, cfg_shim, self._grid,
-            bc_type=self.bc_type, bc_spec=bc_spec,
         )
 
     # ── class-method constructors ─────────────────────────────────────────
@@ -1004,28 +972,13 @@ class TwoPhaseNSSolver:
         )
 
         # ── 3. NS predictor ────────────────────────────────────────────
-        du_dx, du_xx = ccd.differentiate(u, 0)
-        du_dy, du_yy = ccd.differentiate(u, 1)
-        dv_dx, dv_xx = ccd.differentiate(v, 0)
-        dv_dy, dv_yy = ccd.differentiate(v, 1)
 
-        # Momentum convection: default centred CCD, FCCD (SP-D §6/§7), or
-        # UCCD6 (WIKI-X-023). All three return −(u·∇)u componentwise, so
-        # the AB2 buffer shape and later viscous/buoyancy arithmetic are
-        # unchanged. No host round-trip is added by this dispatch.
-        if self._fccd_conv is not None:
-            ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
-            _conv = self._fccd_conv.compute(ctx)
-            conv_u = _conv[0]
-            conv_v = _conv[1]
-        elif self._uccd6_conv is not None:
-            ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
-            _conv = self._uccd6_conv.compute(ctx)
-            conv_u = _conv[0]
-            conv_v = _conv[1]
-        else:
-            conv_u = -(u * du_dx + v * du_dy)
-            conv_v = -(u * dv_dx + v * dv_dy)
+        # Momentum convection: CCD, FCCD (SP-D §6/§7), or UCCD6 (WIKI-X-023).
+        # All return −(u·∇)u componentwise via the registered IConvectionTerm.
+        _conv_ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
+        _conv = self._conv_term.compute(_conv_ctx)
+        conv_u = _conv[0]
+        conv_v = _conv[1]
 
         # Buoyancy (applied to explicit RHS before viscous step)
         buoy_v = xp.zeros_like(v)

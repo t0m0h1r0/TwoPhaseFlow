@@ -20,12 +20,13 @@ DIP（依存性逆転原則）に基づき、SimulationBuilder が NS 各項を
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List, TYPE_CHECKING
+from typing import List, ClassVar, TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
     from .context import NSComputeContext
+    from ..simulation.scheme_build_ctx import ConvectionBuildCtx
 
 
 class INSTerm(ABC):
@@ -47,3 +48,29 @@ class INSTerm(ABC):
         Returns:
             List of RHS contributions per equation (u, v, [w])
         """
+
+
+class IConvectionTerm(INSTerm):
+    """Base class for momentum convection schemes with self-registration.
+
+    Concrete classes declare ``scheme_names`` to register themselves;
+    ``IConvectionTerm.from_scheme(name, ctx)`` instantiates the right one.
+    """
+
+    _registry: ClassVar[dict[str, type["IConvectionTerm"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            IConvectionTerm._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "ConvectionBuildCtx") -> "IConvectionTerm":
+        """Instantiate the convection term registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown convection scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)

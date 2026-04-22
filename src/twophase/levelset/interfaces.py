@@ -14,10 +14,11 @@ without modifying TwoPhaseSimulation itself.
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List, TYPE_CHECKING
+from typing import List, ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
+    from ..simulation.scheme_build_ctx import AdvectionBuildCtx
 
 
 class ILevelSetAdvection(ABC):
@@ -26,7 +27,26 @@ class ILevelSetAdvection(ABC):
     Implementations:
         - LevelSetAdvection        (WENO5 + TVD-RK3, reference scheme)
         - DissipativeCCDAdvection  (DCCD + TVD-RK3, paper-primary §5)
+        - FCCDLevelSetAdvection    (FCCD + TVD-RK3)
     """
+
+    _registry: ClassVar[dict[str, type["ILevelSetAdvection"]]] = {}
+
+    def __init_subclass__(cls, **kw: object) -> None:
+        super().__init_subclass__(**kw)
+        for name in getattr(cls, "scheme_names", ()):
+            ILevelSetAdvection._registry[name] = cls
+
+    @classmethod
+    def from_scheme(cls, name: str, ctx: "AdvectionBuildCtx") -> "ILevelSetAdvection":
+        """Instantiate the advection scheme registered under *name*."""
+        klass = cls._registry.get(name)
+        if klass is None:
+            raise ValueError(
+                f"Unknown advection scheme {name!r}. "
+                f"Known: {sorted(cls._registry)}"
+            )
+        return klass._build(name, ctx)
 
     @abstractmethod
     def advance(

@@ -26,16 +26,17 @@ reduces CCD calls from 2*ndim to ndim.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from .interfaces import INSTerm
+from .interfaces import IConvectionTerm
 
 if TYPE_CHECKING:
     from ..ccd.fccd import FCCDSolver
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
     from .context import NSComputeContext
+    from ..simulation.scheme_build_ctx import ConvectionBuildCtx
 
 
-class FCCDConvectionTerm(INSTerm):
+class FCCDConvectionTerm(IConvectionTerm):
     """FCCD-based −(u·∇)u convective acceleration.
 
     Parameters
@@ -52,6 +53,13 @@ class FCCDConvectionTerm(INSTerm):
     :class:`twophase.ns_terms.convection.ConvectionTerm` so AB2 predictor
     and the SimulationBuilder pipeline accept either term transparently.
     """
+
+    scheme_names = ("fccd_flux", "fccd_nodal")
+    _modes = {"fccd_flux": "flux", "fccd_nodal": "node"}
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ConvectionBuildCtx") -> "FCCDConvectionTerm":
+        return cls(ctx.backend, ctx.fccd, mode=cls._modes[name])
 
     def __init__(
         self,

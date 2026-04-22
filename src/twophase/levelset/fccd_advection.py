@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
     from ..ccd.fccd import FCCDSolver
+    from ..simulation.scheme_build_ctx import AdvectionBuildCtx
 
 
 class FCCDLevelSetAdvection(ILevelSetAdvection):
@@ -51,6 +52,13 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
     API matches :class:`DissipativeCCDAdvection.advance`:
         ``advance(psi, velocity_components, dt, clip_bounds=(0.0, 1.0))``.
     """
+
+    scheme_names = ("fccd_flux", "fccd_nodal")
+    _modes = {"fccd_flux": "flux", "fccd_nodal": "node"}
+
+    @classmethod
+    def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "FCCDLevelSetAdvection":
+        return cls(ctx.backend, ctx.grid, ctx.fccd, mode=cls._modes[name], mass_correction=False)
 
     def __init__(
         self,

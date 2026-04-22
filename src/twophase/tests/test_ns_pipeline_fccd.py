@@ -77,6 +77,8 @@ def test_fullstack_two_steps_no_nan(advection_scheme: str, convection_scheme: st
 
 def test_fccd_solver_is_shared():
     """Sanity: convection + advection share one FCCDSolver instance."""
+    from twophase.ns_terms.fccd_convection import FCCDConvectionTerm
+
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         alpha_grid=2.0,
@@ -84,19 +86,22 @@ def test_fccd_solver_is_shared():
         convection_scheme="fccd_flux",
     )
     assert solver._fccd is not None
-    assert solver._fccd_conv._fccd is solver._fccd
+    assert isinstance(solver._conv_term, FCCDConvectionTerm)
+    assert solver._conv_term._fccd is solver._fccd
     assert solver._adv._fccd is solver._fccd
 
 
 def test_fccd_not_constructed_when_unused():
     """Baseline path: no FCCDSolver allocated when both schemes are legacy."""
+    from twophase.ns_terms.convection import ConvectionTerm
+
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         advection_scheme="dissipative_ccd",
         convection_scheme="ccd",
     )
     assert solver._fccd is None
-    assert solver._fccd_conv is None
+    assert isinstance(solver._conv_term, ConvectionTerm)
 
 
 def test_pipeline_uses_matrixfree_fvm_ppe():
@@ -279,7 +284,7 @@ def test_from_config_threads_fccd_keys():
     assert solver._interface_tracking_method == "phi_primary"
     assert solver._interface_tracking_enabled is True
     assert solver._fccd is not None
-    assert solver._fccd_conv is not None
+    assert solver._conv_term is not None
 
 
 def test_from_config_can_disable_interface_tracking():
