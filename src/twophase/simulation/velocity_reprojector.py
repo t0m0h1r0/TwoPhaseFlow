@@ -278,6 +278,10 @@ class ConsistentIIMReprojector(IVelocityReprojector):
         if rho_l is None or rho_g is None:
             # Fallback to variable-density if densities not provided
             return self._delegate.reproject(psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g)
+        if not hasattr(ppe_solver, "get_matrix"):
+            return self._delegate.reproject(
+                psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g
+            )
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)

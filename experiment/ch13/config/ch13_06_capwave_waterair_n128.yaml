@@ -74,7 +74,7 @@ numerics:
           max_iterations: 500
           restart: 80
           preconditioner: line_pcr
-          pcr_stages: 4
+          pcr_stages: 1
           c_tau: 2.0
 
 output:

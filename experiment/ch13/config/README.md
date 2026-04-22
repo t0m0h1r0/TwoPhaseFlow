@@ -91,8 +91,10 @@ within the schemes implemented today:
   the sharp-interface path should be explicit in the config; the implementation
   can still reject/fallback unsafe IIM candidates internally.
 - `poisson.solver.kind: iterative` with `gmres + line_pcr` follows WIKI-T-060 /
-  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. Direct sparse FVM solve
-  is kept as a debugging option, not the ch13 default.
+  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. ch13 uses
+  `pcr_stages: 1` because the N=128 capillary-wave GPU probe keeps the same
+  PPE residual class as `pcr_stages: 4` while cutting preconditioner cost.
+  Direct sparse FVM solve is kept as a debugging option, not the ch13 default.
 - `momentum.convection.spatial: fccd_flux` remains the conservative implemented
   default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
   conservative-momentum UCCD6 form is still a future implementation target.
