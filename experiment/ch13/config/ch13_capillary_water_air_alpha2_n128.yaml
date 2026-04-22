@@ -67,7 +67,7 @@ numerics:
         gradient: fccd_flux
         model: csf
   projection:
-    mode: consistent_iim
+    mode: consistent_gfm
     poisson:
       solver:
         kind: defect_correction
