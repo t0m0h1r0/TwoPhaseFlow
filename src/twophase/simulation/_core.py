@@ -36,12 +36,9 @@ from __future__ import annotations
 import numpy as np
 from typing import Optional, Callable, List
 
-from ..backend import Backend
-from ..config import SimulationConfig
-from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
-from ..levelset.field_extender import NullFieldExtender
+from .legacy_component_binding import bind_legacy_simulation_components
 from .legacy_flow_helpers import (
     advance_legacy_levelset,
     build_legacy_flow_state,
@@ -80,50 +77,7 @@ class TwoPhaseSimulation:
         外部からは SimulationBuilder を使用すること。
         """
         obj = cls.__new__(cls)
-        c = components
-        obj.config  = c.config
-        obj.backend = c.backend
-        obj.grid    = c.grid
-        obj.eps     = c.eps
-        obj.ccd     = c.ccd
-
-        # フィールドの初期化
-        obj.psi      = ScalarField(c.grid, c.backend)
-        obj.rho      = ScalarField(c.grid, c.backend)
-        obj.mu       = ScalarField(c.grid, c.backend)
-        obj.kappa    = ScalarField(c.grid, c.backend)
-        obj.phi      = ScalarField(c.grid, c.backend)   # cached φ = H_ε⁻¹(ψ) from Step 4
-        obj.pressure = ScalarField(c.grid, c.backend)
-        obj.velocity = VectorField(c.grid, c.backend)
-        obj.vel_star = VectorField(c.grid, c.backend)
-
-        # サブモジュールの設定
-        obj.ls_advect      = c.ls_advect
-        obj.ls_reinit      = c.ls_reinit
-        obj.curvature_calc = c.curvature_calc
-        obj.predictor      = c.predictor
-        obj.ppe_solver     = c.ppe_solver
-        obj.rhie_chow      = c.rhie_chow
-        obj.vel_corrector  = c.vel_corrector
-        obj.cfl_calc       = c.cfl_calc
-        obj._bc_handler    = c.bc_handler
-        obj._diagnostics   = c.diagnostics
-        obj._ppe_rhs_gfm   = c.ppe_rhs_gfm  # None when CSF mode
-        obj._field_ext     = c.field_extender  # NullFieldExtender when disabled
-        obj._needs_phi     = (c.field_extender is not None
-                              and not c.field_extender.is_null_extender
-                              ) or (c.ppe_rhs_gfm is not None)
-
-        # 状態変数
-        obj.time = 0.0
-        obj.step = 0
-
-        # 無次元流体物性
-        obj._rho_l = 1.0
-        obj._rho_g = c.config.fluid.rho_ratio
-        obj._mu_l  = 1.0
-        obj._mu_g  = c.config.fluid.mu_ratio
-
+        bind_legacy_simulation_components(obj, components)
         return obj
     # ── 公開 API ──────────────────────────────────────────────────────────
 
