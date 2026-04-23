@@ -36,7 +36,7 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
 \begin{itemize}
   \item \textbf{$\psi$ に CCD を適用してはならない．}
         tanh プロファイルを CCD で微分すると急勾配帯の曲率が増幅され，
-        CN 半陰的処理でも不安定化する（CHK-137 検証）．
+        CN 半陰的処理でも不安定化することを本稿の数値実験で確認した．
         DCCD スペクトルフィルタ（\S\ref{sec:dccd_derivation}）で散逸を加えた
         場合のみ実用的．
   \item \textbf{$p$ の CCD 節点値計算は jump 補正なしでは禁止．}
