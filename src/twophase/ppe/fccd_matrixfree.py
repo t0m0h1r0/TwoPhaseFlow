@@ -27,6 +27,12 @@ import warnings
 import numpy as np
 
 from .interfaces import IPPESolver
+from .fccd_matrixfree_helpers import (
+    build_fccd_face_inverse_density,
+    build_fccd_geometry_cache,
+    build_fccd_jacobi_inverse,
+    compute_fccd_phase_gauges,
+)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -152,8 +158,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
-        xp = self.xp
-        self._rho_dev = xp.asarray(rho)
+        self._rho_dev = self.xp.asarray(rho)
         self._rho = np.asarray(self.backend.to_host(self._rho_dev))
         self._diag_inv = None
         self._refresh_phase_gauges()
@@ -162,12 +167,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             for axis in range(self.ndim)
         ]
         if self.preconditioner == "jacobi":
-            diag = xp.zeros_like(self._rho_dev)
-            for axis in range(self.ndim):
-                h_min = float(self._h_min[axis])
-                diag -= 2.0 / (self._rho_dev * h_min * h_min)
-            self._pin_flat(diag.ravel(), 1.0)
-            self._diag_inv = 1.0 / xp.where(xp.abs(diag) > 1.0e-30, diag, 1.0)
+            self._diag_inv = build_fccd_jacobi_inverse(
+                xp=self.xp,
+                rho_dev=self._rho_dev,
+                h_min=self._h_min,
+                pin_dofs=self._pin_dofs,
+            )
 
     def apply(self, p):
         """Apply ``D_f[(1/rho)_f G_f(p)]`` with a pinned gauge DOF."""
@@ -333,49 +338,24 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):
-        xp = self.xp if self._is_device_array(rho) else np
-        rho_arr = xp.asarray(rho)
-        ndim = self.ndim
-        N = self.grid.N[axis]
-
-        def sl(start, stop):
-            s = [slice(None)] * ndim
-            s[axis] = slice(start, stop)
-            return tuple(s)
-
-        rho_lo = rho_arr[sl(0, N)]
-        rho_hi = rho_arr[sl(1, N + 1)]
-        coeff = 2.0 / (rho_lo + rho_hi)
-        if self.coefficient_scheme != "phase_separated":
-            return coeff
-        threshold = self._phase_threshold
-        if threshold is None:
-            return coeff
-        same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
-        return xp.where(same_phase, coeff, 0.0)
+        return build_fccd_face_inverse_density(
+            xp=self.xp if self._is_device_array(rho) else np,
+            rho=rho,
+            axis=axis,
+            ndim=self.ndim,
+            grid=self.grid,
+            coefficient_scheme=self.coefficient_scheme,
+            phase_threshold=self._phase_threshold,
+        )
 
     def _refresh_phase_gauges(self) -> None:
-        if self.coefficient_scheme != "phase_separated":
-            self._pin_dofs = (self._pin_dof,)
-            self._phase_threshold = None
-            return
-        rho_np = np.asarray(self._rho, dtype=np.float64)
-        rho_min = float(np.min(rho_np))
-        rho_max = float(np.max(rho_np))
-        if not np.isfinite(rho_min + rho_max) or abs(rho_max - rho_min) < 1.0e-14:
-            self._pin_dofs = (self._pin_dof,)
-            self._phase_threshold = None
-            return
-        threshold = 0.5 * (rho_min + rho_max)
-        gas = np.flatnonzero(rho_np.ravel() < threshold)
-        liquid = np.flatnonzero(rho_np.ravel() >= threshold)
-        pins = []
-        if gas.size:
-            pins.append(int(gas[0]))
-        if liquid.size:
-            pins.append(int(liquid[0]))
-        self._pin_dofs = tuple(sorted(set(pins))) or (self._pin_dof,)
-        self._phase_threshold = threshold
+        state = compute_fccd_phase_gauges(
+            rho_host=self._rho,
+            coefficient_scheme=self.coefficient_scheme,
+            default_pin_dof=self._pin_dof,
+        )
+        self._pin_dofs = state.pin_dofs
+        self._phase_threshold = state.phase_threshold
 
     def _pin_flat(self, flat, value) -> None:
         for dof in self._pin_dofs:
@@ -402,18 +382,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def _refresh_grid_geometry_cache(self) -> None:
         """Cache per-axis geometric scalars reused across every GMRES matvec."""
-        xp = self.xp
-        self._h_min = []
-        self._node_width = []
-        for axis in range(self.ndim):
-            coords = np.asarray(self.grid.coords[axis], dtype=np.float64)
-            face_width = coords[1:] - coords[:-1]
-            node_width = np.empty_like(coords)
-            node_width[0] = 0.5 * face_width[0]
-            node_width[-1] = 0.5 * face_width[-1]
-            node_width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
-            self._h_min.append(float(np.min(face_width)))
-            self._node_width.append(xp.asarray(node_width))
+        cache = build_fccd_geometry_cache(xp=self.xp, grid=self.grid, ndim=self.ndim)
+        self._h_min = cache.h_min
+        self._node_width = cache.node_width
 
     def _broadcast_axis0(self, values, ndim: int):
         shape = [1] * ndim
