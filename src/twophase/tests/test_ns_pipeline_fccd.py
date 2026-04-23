@@ -109,12 +109,161 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
-    assert solver._surface_tension_gradient_scheme == "fccd_flux"
+    assert solver._surface_tension_gradient_scheme == "none"
+    assert solver._surface_tension_scheme == "pressure_jump"
+    assert solver._ppe_coefficient_scheme == "phase_separated"
+    assert solver._ppe_interface_coupling_scheme == "jump_decomposition"
     assert solver._hfe is not None
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
+
+
+def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
+    """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+
+    ppe.prepare_operator(rho)
+    coeff_x = np.asarray(ppe._face_inverse_density(ppe._rho, axis=0))
+
+    assert ppe.coefficient_scheme == "phase_separated"
+    assert ppe.interface_coupling_scheme == "jump_decomposition"
+    assert len(ppe._pin_dofs) == 2
+    assert np.all(coeff_x[N // 2, :] == 0.0)
+    assert np.all(coeff_x[: N // 2, :] > 0.0)
+    assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
+
+
+def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
+    """Each decoupled Neumann phase block must receive zero-mean RHS."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+    rhs = np.ones_like(rho)
+    rhs[: N // 2 + 1, :] = 7.0
+    rhs[N // 2 + 1 :, :] = -3.0
+
+    ppe.prepare_operator(rho)
+    projected = np.asarray(ppe._project_rhs_compatibility(rhs))
+    liquid = np.asarray(ppe._rho) >= ppe._phase_threshold
+    gas = np.asarray(ppe._rho) < ppe._phase_threshold
+
+    assert abs(float(np.mean(projected[liquid]))) < 1.0e-14
+    assert abs(float(np.mean(projected[gas]))) < 1.0e-14
+    assert np.allclose(projected.ravel()[list(ppe._pin_dofs)], 0.0)
+
+
+def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
+    """SP-M Phase 2: pressure_jump adds [p]=σκ on the gas side."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+        surface_tension_scheme="pressure_jump",
+        debug_diagnostics=True,
+    )
+    ppe = solver._ppe_solver
+    pressure = np.zeros(solver._grid.shape)
+    psi = np.zeros_like(pressure)
+    psi[: N // 2 + 1, :] = 1.0
+    kappa = np.full_like(pressure, 3.0)
+
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=2.0)
+    jumped = np.asarray(ppe.apply_interface_jump(pressure))
+
+    assert np.allclose(jumped[: N // 2 + 1, :], 0.0)
+    assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
+    assert np.allclose(pressure, 0.0)
+    ppe.invalidate_cache()
+    assert np.allclose(np.asarray(ppe.apply_interface_jump(pressure)), pressure)
+
+
+def test_pressure_jump_constructor_rejects_force_gradient():
+    with pytest.raises(ValueError, match="surface_tension_gradient_scheme"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            ppe_coefficient_scheme="phase_separated",
+            ppe_interface_coupling_scheme="jump_decomposition",
+            surface_tension_scheme="pressure_jump",
+            surface_tension_gradient_scheme="fccd_flux",
+        )
+
+
+def test_pressure_jump_constructor_requires_jump_decomposition():
+    with pytest.raises(ValueError, match="ppe_interface_coupling_scheme"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            ppe_coefficient_scheme="phase_separated",
+            ppe_interface_coupling_scheme="none",
+            surface_tension_scheme="pressure_jump",
+        )
+
+
+def test_phase_separated_pressure_jump_stack_one_step_no_nan():
+    """Executable SP-M smoke: phase-separated FCCD PPE + pressure_jump."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        advection_scheme="fccd_flux",
+        convection_scheme="uccd6",
+        pressure_gradient_scheme="fccd_flux",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_max_iterations=80,
+        ppe_tolerance=1.0e-6,
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+        surface_tension_scheme="pressure_jump",
+        debug_diagnostics=True,
+    )
+    psi = _mode2_ic(solver)
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    psi, u, v, p = solver.step(
+        psi, u, v, dt=2.0e-4,
+        rho_l=1000.0, rho_g=1.0, sigma=0.1,
+        mu=0.01, step_index=0,
+    )
+
+    for name, arr in [("psi", psi), ("u", u), ("v", v), ("p", p)]:
+        assert np.all(np.isfinite(arr)), f"{name} not finite"
+
+    assert solver._p_prev is not None
+    assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
+    diag = solver._step_diag.last
+    assert diag["ppe_phase_count"] == 2.0
+    assert diag["ppe_pin_count"] == 2.0
+    assert diag["ppe_interface_coupling_jump"] == 1.0
+    assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
 
 
 def test_fccd_not_constructed_when_unused():

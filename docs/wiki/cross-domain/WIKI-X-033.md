@@ -93,3 +93,84 @@ Use `fvm` only as a comparison or legacy route.  The pure architecture should
 name the mathematical scheme (`fccd`, `ccd`, `uccd6`) and keep locus/form choices
 (`face`, `flux`, `bulk`, `normal_fallback`) as term-local options or defaults.
 
+
+## Code Status: Phase 1 Split PPE
+
+`projection.poisson.operator.coefficient: phase_separated` is the SP-M YAML
+entry point.  It is intentionally different from `phase_density`:
+
+- `phase_density` keeps the older mixture-density FCCD operator
+  `D_f[(1/rho)_f G_f(p)]`.
+- `phase_separated` uses FCCD rows within each density phase and sets
+  cross-interface PPE face coupling to zero.
+- one pressure gauge is pinned per detected phase block.
+- GFM jump ghost pressure jets are still the next stage, not silently faked.
+
+This keeps the implementation honest: the code is already FVM-free and
+phase-split, while the missing GFM jump-row closure remains explicit.
+
+## Code Status: Phase 2 Pressure Jump
+
+`momentum.terms.surface_tension.formulation: pressure_jump` is now the SP-M
+surface-tension setting.  It differs from `csf`:
+
+- `csf` computes a body force `σκ∇ψ` and adds it to the balanced-force PPE path.
+- `pressure_jump` computes no body force and supplies `(ψ,κ,σ)` to the
+  phase-separated FCCD PPE.
+- the executable pressure is composed as `p = p_tilde + σκ(1-ψ)`, matching the
+  existing IIM jump-decomposition sign convention.
+
+This keeps the design philosophy unified: phase physics is declared as a sharp
+interface pressure jump, not hidden inside a surface-tension force model.
+
+## Code Status: Phase 3 Per-Phase Compatibility
+
+Because `phase_separated` cuts cross-interface PPE coupling, the gas and liquid
+pressure blocks each have a Neumann nullspace.  The solver therefore projects the
+PPE RHS to zero mean separately in each detected density phase before GMRES, then
+pins one pressure gauge per phase.  This is a solvability requirement for the
+split differential operator, not a return to FVM conservation.
+
+## Code Status: Phase 4 Base-Pressure Warm Start
+
+For `pressure_jump`, the PPE unknown is `p_tilde`; the returned pressure is the
+assembled physical pressure `p = p_tilde + σκ(1-ψ)`.  The pipeline now warm-starts
+GMRES with `p_tilde` only.  This avoids injecting the sharp jump component into
+the next smooth phase-block solve.
+
+## Code Status: Phase 5 YAML Semantics
+
+For `surface_tension.formulation: pressure_jump`, `surface_tension.gradient` is
+invalid and must be omitted.  The jump path is a PPE pressure condition, not a
+body-force gradient.  The loader maps this to `surface_tension_gradient_scheme =
+none`, and the direct solver constructor rejects conflicting force-gradient
+settings.
+
+## Code Status: Phase 6 Explicit Coupling Key
+
+`phase_separated` now names only the PPE coefficient/block structure.  The
+interface closure is explicit as
+`projection.poisson.operator.interface_coupling: jump_decomposition`.  This keeps
+configuration honest: the current code uses jump decomposition, while a future
+GFM ghost-row closure must be introduced as its own coupling mode.
+
+## Code Status: Phase 7 Consistency Guard
+
+`surface_tension.formulation: pressure_jump` now requires
+`coefficient: phase_separated` and `interface_coupling: jump_decomposition`.
+Both YAML loading and direct solver construction reject inconsistent settings, so
+a pressure jump can no longer be requested without the matching SP-M PPE path.
+
+## Code Status: Phase 8 PPE Diagnostics
+
+Debug diagnostics now include SP-M PPE state: phase count, pin count,
+pre/post per-phase RHS mean, and whether jump decomposition is active.  These
+metrics make the current split-PPE approximation visible in experiment output
+instead of hiding it inside the solver.
+
+## Code Status: Phase 9 Regrid Context Guard
+
+Grid-rebuild velocity reprojection now clears stale SP-M jump context before its
+auxiliary PPE solve.  This prevents the previous step's pressure-jump data from
+leaking into remap cleanup and removes the remote smoke-test step-2 blow-up seen
+before the guard.

@@ -183,3 +183,156 @@ phase-separated PPE rows.
 > high-order, jump-aware differential architecture: phase-separated PPE + GFM for
 > pressure, HFE for interface states, and defect correction for stiff viscous and
 > elliptic solves.
+
+---
+
+## 9. Implementation Status: Phase-Separated FCCD PPE Phase 1
+
+The executable first stage now distinguishes the SP-M pressure coefficient model
+from the older mixture-density model in YAML:
+
+```yaml
+projection:
+  poisson:
+    operator:
+      discretization: fccd
+      coefficient: phase_separated
+```
+
+This selects the FCCD matrix-free PPE with a phase-separated coefficient rule.
+Faces whose two endpoint densities belong to different phases are assigned zero
+PPE coupling, so the pressure operator is assembled as two FCCD phase blocks
+rather than as a smeared mixture-density operator.  Each phase block receives its
+own pressure gauge pin.
+
+This is not yet the full GFM jump-row implementation.  The current stage is the
+minimal SP-M-consistent executable split:
+
+1. pure FCCD PPE rows inside each phase;
+2. no FVM face-volume assembly;
+3. no cross-interface density averaging;
+4. one pressure nullspace constraint per detected phase;
+5. GFM pressure-jump ghost jets retained as the next implementation step.
+
+The corresponding code path is `PPESolverFCCDMatrixFree` with
+`ppe_coefficient_scheme="phase_separated"`.
+
+## 10. Implementation Status: Pressure-Jump Surface Tension Phase 2
+
+The executable SP-M stack now separates the two surface-tension roles:
+
+```yaml
+momentum:
+  terms:
+    surface_tension:
+      formulation: pressure_jump
+```
+
+`pressure_jump` deliberately returns no CSF body force.  Instead, the pipeline
+passes `(ψ, κ, σ)` to the phase-separated FCCD PPE and composes the final pressure
+as
+
+\[
+p = \tilde p + \sigma\kappa(1-\psi).
+\]
+
+This matches the existing IIM jump-decomposition convention and prevents the
+configuration from pretending that a CSF body force and a sharp pressure jump are
+the same numerical object.  Full GFM ghost pressure jets remain the next row-level
+closure; Phase 2 provides the correct YAML semantics and executable jump
+composition path.
+
+## 11. Implementation Status: Per-Phase PPE Compatibility Phase 3
+
+Once cross-interface PPE coupling is removed, each phase block is a Neumann
+elliptic problem with its own nullspace.  Therefore the discrete RHS must satisfy
+one compatibility condition per phase:
+
+\[
+\sum_{\Omega_q} rhs_q \approx 0,\qquad q\in\{L,G\}.
+\]
+
+The FCCD matrix-free phase-separated solver now projects the RHS by subtracting
+its mean separately in the gas and liquid masks before GMRES, and it keeps one
+pressure gauge pin per detected phase.  This is not a finite-volume conservation
+claim; it is the solvability condition for the FVM-free differential PPE blocks.
+
+## 12. Implementation Status: Base-Pressure Warm Start Phase 4
+
+With pressure-jump decomposition, the elliptic unknown is not the final pressure
+`p`; it is the smooth block pressure `p_tilde`.  The physical pressure is
+assembled afterward as
+
+\[
+p = \tilde p + \sigma\kappa(1-\psi).
+\]
+
+Warm-starting GMRES with the assembled pressure would feed the discontinuous jump
+component back into the next smooth PPE solve.  The pipeline therefore stores
+`last_base_pressure` and uses only `p_tilde` as the next PPE initial guess, while
+returning the assembled pressure to the momentum corrector.
+
+## 13. Implementation Status: Pressure-Jump YAML Semantics Phase 5
+
+`pressure_jump` is not a CSF force model.  Therefore it must not carry a
+`surface_tension.gradient` setting.  In the YAML contract, force-gradient choices
+belong only to `formulation: csf`; the SP-M pressure-jump path applies surface
+tension through the PPE context `(ψ,κ,σ)` and sets the surface-tension gradient
+scheme to `none`.
+
+This keeps the user-facing configuration scheme-first and term-correct: `fccd`
+selects the pressure/interface differential scheme, while `pressure_jump` selects
+the sharp-interface surface-tension role.
+
+## 14. Implementation Status: Explicit PPE Interface Coupling Phase 6
+
+The PPE operator configuration now separates two concepts:
+
+```yaml
+operator:
+  coefficient: phase_separated
+  interface_coupling: jump_decomposition
+```
+
+`coefficient` defines the phase-block elliptic operator.  `interface_coupling`
+defines how the blocks are closed across Γ.  The current executable coupling is
+`jump_decomposition`; future GFM ghost pressure jets should appear as a distinct
+coupling mode rather than being implied by `phase_separated`.
+
+## 15. Implementation Status: Pressure-Jump Consistency Guard Phase 7
+
+`pressure_jump` is now guarded as a coupled PPE feature.  It is valid only with
+
+```yaml
+operator:
+  coefficient: phase_separated
+  interface_coupling: jump_decomposition
+```
+
+This prevents silent fallbacks where the user requests a sharp pressure jump but
+the selected PPE operator is still the mixture-density model or has no jump
+closure.  The same guard exists in the direct `TwoPhaseNSSolver` constructor.
+
+## 16. Implementation Status: PPE Diagnostics Phase 8
+
+The SP-M PPE path now exposes runtime diagnostics when step diagnostics are
+enabled:
+
+- `ppe_phase_count`
+- `ppe_pin_count`
+- `ppe_rhs_phase_mean_before_max`
+- `ppe_rhs_phase_mean_after_max`
+- `ppe_interface_coupling_jump`
+
+These values verify that the phase-separated PPE actually sees two phase blocks,
+uses one pressure gauge per block, and projects the RHS to the per-phase Neumann
+compatibility condition before GMRES.
+
+## 17. Implementation Status: Regrid Reprojection Context Guard Phase 9
+
+Dynamic interface-fitted grid rebuilds invoke a velocity reprojection PPE before
+the main timestep PPE.  That auxiliary reprojection must not inherit the previous
+step's `pressure_jump` context; otherwise the discontinuous assembled pressure
+jump is differentiated during remap cleanup and can create artificial kinetic
+energy.  `update_grid()` and `invalidate_cache()` now clear the stored interface
+jump context, so only the main SP-M PPE receives `(ψ,κ,σ)` for the current step.

@@ -28,6 +28,10 @@ class IStepDiagnostics(ABC):
     def record_div_u(self, div_u_max: float) -> None:
         """Record maximum velocity divergence."""
 
+    @abstractmethod
+    def record_ppe_stats(self, stats: Dict[str, float]) -> None:
+        """Record optional PPE solver diagnostics."""
+
     @property
     @abstractmethod
     def last(self) -> Dict[str, float]:
@@ -50,6 +54,9 @@ class NullStepDiagnostics(IStepDiagnostics):
         pass
 
     def record_div_u(self, div_u_max: float) -> None:
+        pass
+
+    def record_ppe_stats(self, stats: Dict[str, float]) -> None:
         pass
 
     @property
@@ -82,6 +89,10 @@ class ActiveStepDiagnostics(IStepDiagnostics):
 
     def record_div_u(self, div_u_max: float) -> None:
         self._last["div_u_max"] = float(div_u_max)
+
+    def record_ppe_stats(self, stats: Dict[str, float]) -> None:
+        for key, value in stats.items():
+            self._last[str(key)] = float(value)
 
     @property
     def last(self) -> Dict[str, float]:

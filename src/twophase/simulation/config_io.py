@@ -106,13 +106,15 @@ class RunCfg:
     # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd'
     # convection_scheme: momentum    — 'ccd' | 'fccd' | 'uccd6'
     # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct' | 'fccd_iterative'
-    # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
+    # surface_tension_scheme: σκ∇ψ or [p]=σκ — 'csf' | 'pressure_jump' | 'none'
     # viscous_spatial_scheme: viscous — 'ccd' | 'conservative_stress' | 'ccd_stress_legacy'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
     ppe_solver: str = "fvm_iterative"
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
+    ppe_coefficient_scheme: str = "phase_density"
+    ppe_interface_coupling_scheme: str = "none"
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
     viscous_spatial_scheme: str = "ccd_bulk"
@@ -431,9 +433,22 @@ _PPE_TO_PRESSURE_SCHEME = {
     "fccd_iterative": "fccd_matrixfree",
 }
 _PPE_DISCRETIZATIONS = ("fvm", "fccd")
-_POISSON_COEFFICIENTS = ("phase_density", "variable_density")
-_POISSON_COEFFICIENT_ALIASES = {"variable_density": "phase_density"}
-_SURFACE_TENSION_SCHEMES = ("csf", "none")
+_POISSON_COEFFICIENTS = ("phase_density", "variable_density", "phase_separated")
+_POISSON_COEFFICIENT_ALIASES = {
+    "variable_density": "phase_density",
+    "phase_separated_density": "phase_separated",
+    "split_phase": "phase_separated",
+}
+_POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition")
+_POISSON_INTERFACE_COUPLING_ALIASES = {
+    "pressure_jump": "jump_decomposition",
+    "jump": "jump_decomposition",
+}
+_SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
+_SURFACE_TENSION_ALIASES = {
+    "gfm_jump": "pressure_jump",
+    "ppe_jump": "pressure_jump",
+}
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
@@ -502,7 +517,7 @@ def _parse_run(
     if "coefficient" not in poisson_operator:
         raise ValueError(
             f"{layout['paths']['poisson_coefficient']} is required; "
-            "use 'phase_density' for the §9 two-phase mixture-density PPE."
+            "use 'phase_separated' for SP-M or 'phase_density' for mixture-density PPE."
         )
     poisson_coefficient = _validate_choice(
         _POISSON_COEFFICIENT_ALIASES.get(
@@ -512,6 +527,22 @@ def _parse_run(
         _POISSON_COEFFICIENTS,
         layout["paths"]["poisson_coefficient"],
     )
+    coupling_default = (
+        "jump_decomposition" if poisson_coefficient == "phase_separated" else "none"
+    )
+    poisson_interface_coupling = _validate_choice(
+        _POISSON_INTERFACE_COUPLING_ALIASES.get(
+            str(poisson_operator.get("interface_coupling", coupling_default)).strip().lower(),
+            poisson_operator.get("interface_coupling", coupling_default),
+        ),
+        _POISSON_INTERFACE_COUPLINGS,
+        layout["paths"]["poisson_interface_coupling"],
+    )
+    if poisson_coefficient == "phase_density" and poisson_interface_coupling != "none":
+        raise ValueError(
+            f"{layout['paths']['poisson_interface_coupling']} must be 'none' "
+            "when poisson coefficient is 'phase_density'."
+        )
     ppe_solver_cfg = poisson["solver"]
     debug = d.get("debug", {}) or {}
 
@@ -585,24 +616,49 @@ def _parse_run(
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
-    _raw_st_grad = surface_tension.get(
-        "gradient",
-        surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
-    )
-    surface_tension_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(
-            str(_raw_st_grad).strip().lower(),
-            _raw_st_grad,
-        ),
-        _MOMENTUM_GRADIENT_SCHEMES,
-        layout["paths"]["surface_tension_spatial"],
-    )
-    momentum_gradient_scheme = pressure_gradient_scheme
     surface_tension_scheme = _validate_choice(
-        surface_tension.get("formulation", surface_tension.get("model", "csf")),
+        _SURFACE_TENSION_ALIASES.get(
+            str(surface_tension.get("formulation", surface_tension.get("model", "csf"))).strip().lower(),
+            surface_tension.get("formulation", surface_tension.get("model", "csf")),
+        ),
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
+    if surface_tension_scheme == "pressure_jump":
+        if poisson_coefficient != "phase_separated":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_model']}='pressure_jump' "
+                "requires poisson.operator.coefficient='phase_separated'."
+            )
+        if poisson_interface_coupling != "jump_decomposition":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_model']}='pressure_jump' "
+                "requires poisson.operator.interface_coupling='jump_decomposition'."
+            )
+        explicit_st_grad = any(
+            key in surface_tension for key in ("gradient", "spatial", "force_gradient")
+        )
+        if explicit_st_grad:
+            raise ValueError(
+                f"{layout['paths']['surface_tension_spatial']} must be omitted "
+                "when surface_tension.formulation='pressure_jump'; "
+                "the jump is applied in the PPE, not as σκ∇ψ."
+            )
+        surface_tension_gradient_scheme = "none"
+    else:
+        _raw_st_grad = surface_tension.get(
+            "gradient",
+            surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
+        )
+        surface_tension_gradient_scheme = _validate_choice(
+            _MOMENTUM_GRADIENT_ALIASES.get(
+                str(_raw_st_grad).strip().lower(),
+                _raw_st_grad,
+            ),
+            _MOMENTUM_GRADIENT_SCHEMES,
+            layout["paths"]["surface_tension_spatial"],
+        )
+    momentum_gradient_scheme = pressure_gradient_scheme
     _validate_choice(
         interface_curvature.get("method", surface_tension.get("curvature", "psi_direct_hfe")),
         _CURVATURE_SCHEMES,
@@ -679,6 +735,8 @@ def _parse_run(
         convection_scheme=convection_scheme,
         ppe_solver=ppe_solver,
         pressure_scheme=pressure_scheme,
+        ppe_coefficient_scheme=poisson_coefficient,
+        ppe_interface_coupling_scheme=poisson_interface_coupling,
         surface_tension_scheme=surface_tension_scheme,
         convection_time_scheme=convection_time_scheme,
         viscous_spatial_scheme=viscous_spatial_scheme,
@@ -797,6 +855,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
                 "projection_mode": "numerics.projection.mode",
                 "poisson_discretization": "numerics.projection.poisson.operator.discretization",
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
+                "poisson_interface_coupling": "numerics.projection.poisson.operator.interface_coupling",
                 "poisson_solver": "numerics.projection.poisson.solver",
             },
         }
@@ -837,6 +896,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
             "projection_mode": "numerics.elliptic.pressure_projection.mode",
             "poisson_discretization": "numerics.elliptic.pressure_projection.poisson.discretization",
             "poisson_coefficient": "numerics.elliptic.pressure_projection.poisson.coefficient",
+            "poisson_interface_coupling": "numerics.elliptic.pressure_projection.poisson.interface_coupling",
             "poisson_solver": "numerics.elliptic.pressure_projection.poisson.solver",
         },
     }
@@ -1142,4 +1202,6 @@ def _coefficient_to_projection_mode(coefficient: str) -> str:
     """Derive the standard projection mode from the PPE coefficient model."""
     if coefficient == "phase_density":
         return "variable_density"
+    if coefficient == "phase_separated":
+        return "consistent_gfm"
     raise ValueError(f"Unsupported PPE coefficient model: {coefficient!r}")

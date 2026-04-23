@@ -45,7 +45,7 @@ from .viscous_predictor import (
 )
 from .surface_tension_strategy import (
     INSSurfaceTensionStrategy,
-    SurfaceTensionForce, NullSurfaceTensionForce,  # registration
+    SurfaceTensionForce, NullSurfaceTensionForce, PressureJumpSurfaceTension,  # registration
 )
 from .gradient_operator import (
     IGradientOperator,
@@ -133,6 +133,8 @@ class TwoPhaseNSSolver:
         convection_scheme: str = "ccd",
         ppe_solver: str = "fvm_iterative",
         pressure_scheme: str | None = None,
+        ppe_coefficient_scheme: str = "phase_density",
+        ppe_interface_coupling_scheme: str = "none",
         ppe_iteration_method: str = "gmres",
         ppe_tolerance: float = 1.0e-8,
         ppe_max_iterations: int = 500,
@@ -234,6 +236,21 @@ class TwoPhaseNSSolver:
                 "Use fvm_iterative|fvm_direct|fccd_iterative."
             )
         self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
+        self._ppe_coefficient_scheme = str(ppe_coefficient_scheme).strip().lower()
+        self._ppe_interface_coupling_scheme = str(
+            ppe_interface_coupling_scheme
+        ).strip().lower()
+        if str(surface_tension_scheme).strip().lower() == "pressure_jump":
+            if self._ppe_coefficient_scheme != "phase_separated":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_coefficient_scheme='phase_separated'"
+                )
+            if self._ppe_interface_coupling_scheme != "jump_decomposition":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_interface_coupling_scheme='jump_decomposition'"
+                )
         self._ppe_tolerance = float(ppe_tolerance)
         self._ppe_max_iterations = int(ppe_max_iterations)
         self._ppe_restart = ppe_restart
@@ -275,9 +292,18 @@ class TwoPhaseNSSolver:
         self._pressure_gradient_scheme = str(
             pressure_gradient_scheme or self._momentum_gradient_scheme
         ).strip().lower()
-        self._surface_tension_gradient_scheme = str(
-            surface_tension_gradient_scheme or self._momentum_gradient_scheme
-        ).strip().lower()
+        _raw_st_scheme = str(surface_tension_scheme).strip().lower()
+        if _raw_st_scheme == "pressure_jump":
+            if surface_tension_gradient_scheme not in {None, "none"}:
+                raise ValueError(
+                    "surface_tension_gradient_scheme must be omitted or 'none' "
+                    "when surface_tension_scheme='pressure_jump'"
+                )
+            self._surface_tension_gradient_scheme = "none"
+        else:
+            self._surface_tension_gradient_scheme = str(
+                surface_tension_gradient_scheme or self._momentum_gradient_scheme
+            ).strip().lower()
 
         # FCCDSolver: created first so FCCDDivergenceOperator can use it below.
         # One shared instance reuses the CCD LU factorisation — mirrors builder.py
@@ -324,8 +350,9 @@ class TwoPhaseNSSolver:
         self._pressure_grad_op = IGradientOperator.from_scheme(
             self._pressure_gradient_scheme, grad_ctx
         )
-        self._surface_tension_grad_op = IGradientOperator.from_scheme(
-            self._surface_tension_gradient_scheme, grad_ctx
+        self._surface_tension_grad_op = (
+            None if self._surface_tension_gradient_scheme == "none"
+            else IGradientOperator.from_scheme(self._surface_tension_gradient_scheme, grad_ctx)
         )
         self._grad_op = self._pressure_grad_op
 
@@ -528,6 +555,8 @@ class TwoPhaseNSSolver:
                 ppe_restart=self._ppe_restart,
                 ppe_preconditioner=preconditioner or "none",
                 ppe_pcr_stages=pcr_stages,
+                ppe_coefficient_scheme=self._ppe_coefficient_scheme,
+                ppe_interface_coupling_scheme=self._ppe_interface_coupling_scheme,
             )
         )
 
@@ -598,6 +627,12 @@ class TwoPhaseNSSolver:
             pressure_scheme=str(
                 getattr(getattr(cfg, "run", g), "pressure_scheme", "fvm_matrixfree")
             ),
+            ppe_coefficient_scheme=str(
+                getattr(getattr(cfg, "run", g), "ppe_coefficient_scheme", "phase_density")
+            ),
+            ppe_interface_coupling_scheme=str(
+                getattr(getattr(cfg, "run", g), "ppe_interface_coupling_scheme", "none")
+            ),
             ppe_iteration_method=str(
                 getattr(getattr(cfg, "run", g), "ppe_iteration_method", "gmres")
             ),
@@ -642,11 +677,7 @@ class TwoPhaseNSSolver:
                 )
             ),
             surface_tension_gradient_scheme=str(
-                getattr(
-                    getattr(cfg, "run", g),
-                    "surface_tension_gradient_scheme",
-                    "projection_consistent",
-                )
+                getattr(getattr(cfg, "run", g), "surface_tension_gradient_scheme")
             ),
             momentum_gradient_scheme=str(
                 getattr(getattr(cfg, "run", g), "momentum_gradient_scheme", "projection_consistent")
@@ -1043,13 +1074,21 @@ class TwoPhaseNSSolver:
         rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
         if debug_scalars is not None:
             debug_scalars.append(xp.max(xp.abs(rhs)))
+        if hasattr(self._ppe_solver, "set_interface_jump_context"):
+            jump_sigma = sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
+            self._ppe_solver.set_interface_jump_context(
+                psi=psi, kappa=kappa, sigma=jump_sigma
+            )
         p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
-        self._p_prev = p
+        self._p_prev = getattr(self._ppe_solver, "last_base_pressure", p)
+        p_corrector = (
+            self._p_prev if self._surface_tension_scheme == "pressure_jump" else p
+        )
 
         # ── 5. Corrector ───────────────────────────────────────────────
         # Strategy pattern: pressure gradient operator encapsulates CCD vs FVM logic
-        dp_dx = self._pressure_grad_op.gradient(p, 0)
-        dp_dy = self._pressure_grad_op.gradient(p, 1)
+        dp_dx = self._pressure_grad_op.gradient(p_corrector, 0)
+        dp_dy = self._pressure_grad_op.gradient(p_corrector, 1)
         if debug_scalars is not None:
             debug_scalars.append(
                 xp.maximum(
@@ -1065,7 +1104,7 @@ class TwoPhaseNSSolver:
                     "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
                 )
             u, v = proj_op.project(
-                [u_star, v_star], p, rho, dt, [f_x / rho, f_y / rho],
+                [u_star, v_star], p_corrector, rho, dt, [f_x / rho, f_y / rho],
                 **project_kwargs,
             )
         else:
@@ -1081,6 +1120,9 @@ class TwoPhaseNSSolver:
             self._step_diag.record_ppe_rhs(float(dbg[1]))
             self._step_diag.record_bf_residual(float(dbg[2]))
             self._step_diag.record_div_u(float(dbg[3]))
+            self._step_diag.record_ppe_stats(
+                getattr(self._ppe_solver, "last_diagnostics", {})
+            )
 
         return psi, u, v, p
 

@@ -1,7 +1,8 @@
-"""Surface tension force strategy (CSF vs Null).
+"""Surface tension force strategy (CSF, pressure-jump, or Null).
 
 Encapsulates the choice between:
 - SurfaceTensionForce: applies balanced-force κ ∇ψ / σ
+- PressureJumpSurfaceTension: no body force; PPE carries [p]=σκ
 - NullSurfaceTensionForce: no-op (when σ = 0)
 """
 
@@ -149,3 +150,18 @@ class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
     ) -> Tuple["array", "array"]:
         """Return zero force fields."""
         return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
+
+
+class PressureJumpSurfaceTension(NullSurfaceTensionForce):
+    """Surface tension represented as a PPE pressure jump, not CSF force.
+
+    SP-M uses the sharp-interface condition [p]=σκ in the pressure solve.
+    Therefore this strategy returns zero momentum body force; the pipeline passes
+    the same κ, ψ, and σ fields to the phase-separated PPE jump decomposition.
+    """
+
+    scheme_names = ("pressure_jump",)
+    _scheme_aliases = {
+        "gfm_jump": "pressure_jump",
+        "ppe_jump": "pressure_jump",
+    }
