@@ -45,7 +45,7 @@ principles, and a pure-FCCD DNS architecture. The paper manuscript still cites
 WIKI-P-013 is the forwarder: every reviewer or downstream CHK that needs to
 know the rewrite state starts here and drops into [SP-O] for the full plan.
 
-Current Phase: **0 (CHK-182, in progress)**.
+Current Phase: **4 (CHK-190, complete) — all 9 phases done**.
 
 ---
 
@@ -81,8 +81,10 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | (pending commit) |
-| 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | **done** (2026-04-24) | (pending commit) |
-| 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | pending | — |
+| 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | **done** (2026-04-24) | db68a70 |
+| 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | **done** (2026-04-24) | (pending commit) |
+
+**All 9 phases complete** — §2–§10 SP-core rewrite is finished (246 pp, +37 pp over pre-rewrite §1–§14).
 
 Each Phase must compile `xelatex paper/main.tex` warning-free and append a
 line to `docs/02_ACTIVE_LEDGER.md` before the commit lands.
@@ -247,10 +249,29 @@ Files created or edited by Phase.
 
 ### Phase 4 (CHK-190) — §10
 
-- [ ] `paper/sections/10_full_algorithm.tex` — §10.2 expanded to 8 phases
-      A–H (SP-L §6).
-- [ ] `paper/sections/10_3_level_selection.tex` (new, ≈ 80 lines, SP-I §3).
-- [ ] `paper/sections/10_5_pure_fccd_dns.tex` (new, ≈ 150 lines, SP-M).
+- [x] `paper/sections/10_full_algorithm.tex` (+180 行, SP-L §6 + §11-§13):
+      §10.2 SP-L A-H 8 段階と本稿 Step 1-7 対応. Phase A-H 定義 + Step
+      マッピング, 幾何ラグ政策, Phase H 診断セット (6 指標), 演算子分裂
+      安全性 (Lie vs Strang), Level 1/2/3 による A-H 具体化.
+      Label: sec:algo_sp_l_ah_mapping.
+- [x] `paper/sections/10_3_level_selection.tex` (new, ≈ 140 行, SP-I §3):
+      §10.3 Level 1/2/3 選択ロジック. CFL 4 制約からの自動トリガー,
+      Level 間コスト-精度トレードオフ, Level 1 バリデーション限定,
+      Level 2 プロダクション既定, Level 3 極端剛性窓, 物理 → 推奨マトリクス.
+- [x] `paper/sections/10_5_pure_fccd_dns.tex` (new, ≈ 205 行, SP-M Phase 1-4):
+      §10.5 純 FCCD DNS アーキテクチャ. Phase 1 界面追跡 (Ridge-Eikonal +
+      FCCD 保存形), Phase 2 運動量移流 + HFE 風上, Phase 3 粘性 + DC 分離,
+      Phase 4 分相 FCCD PPE + GFM 中核, CFD 位置付け (研究 DNS 極限),
+      Acceptance Gate G-1..G-5, 実装ロードマップ (SP-M Phase 1-9 対応).
+- [x] `paper/sections/10b_dccd_bootstrap.tex` (+10 行, SP-J P-5 annotation):
+      適応 DCCD フィルタ末尾に BF 整合性注記. 圧力/毛管圧フィルタ禁止
+      ポインタ (§\ref{sec:dccd_pressure_filter_prohibition}),
+      $S(\psi)=(2\psi-1)^2$ 界面消失が P-5 の自然実装.
+- [x] `paper/main.tex` — §10 系列に 10_3/10_5 inputs 追加.
+- [x] Fixes: `sec:verify_ccd_periodic` → `sec:verify_ccd_convergence`,
+      §5 \phantomsection\label{sec:level_selection} 削除
+      (§10.3 に本定義移動, multiply-defined 解消).
+- [x] xelatex clean rebuild 246 pp (+5); 0 undef refs/citations, 0 errors.
 
 ---
 
@@ -308,5 +329,6 @@ Index: [SP_INDEX.md](../../memo/short_paper/SP_INDEX.md).
 |---|---|---|
 | 2026-04-23 | Phase 0 opened: SP-H → SP-N rename, SP_INDEX, SP-O, this dashboard | pending |
 | 2026-04-23 | Phase 1a/1b/1c/2a/2b/3a closed: §2 minor + §3.4 Ridge–Eikonal + §4 FCCD/UCCD6 + §5 L1/L2/L3 + §6 non-uniform + §7 advection/viscous | see CHK-183..188 |
-| 2026-04-24 | Phase 3b closed (CHK-189): §8 BF failure + 7 principles + FCCD BF + pressure filter; §9 split-PPE +190行 + HFE +60行 + DC +70行 + BC +60行 + GPU-native FVM 165行; 241 pp | pending |
-| — | Phase 4 | to follow |
+| 2026-04-24 | Phase 3b closed (CHK-189): §8 BF failure + 7 principles + FCCD BF + pressure filter; §9 split-PPE +190行 + HFE +60行 + DC +70行 + BC +60行 + GPU-native FVM 165行; 241 pp | db68a70 |
+| 2026-04-24 | Phase 4 closed (CHK-190): §10 SP-L A-H 8-phase +180行 + Level 選択 140行 + 純 FCCD DNS 205行 + 10b P-5 annotation; 246 pp | pending |
+| 2026-04-24 | **§2-§10 SP-core rewrite COMPLETE** — 全 9 phases 完了, 論文 246 pp (+37 pp over pre-rewrite) | — |
