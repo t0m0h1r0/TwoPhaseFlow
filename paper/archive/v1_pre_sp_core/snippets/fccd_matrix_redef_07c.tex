@@ -1,0 +1,30 @@
+%!TEX root = ../../../main.tex
+%
+% §7.3 07c_fccd_advection.tex の FCCD 行列 M^FCCD インライン再定義
+%   退避: CHK-193 Phase D-2（2026-04-24）
+%
+% 退避理由:
+%   §4.5 04e_fccd.tex L118 の boxed 一次定義（eq:fccd_composite_matrix）と
+%   同式を §7c 本文中でインライン再掲していた．
+%   §4e 側に cross-ref が既にあるため，本体の数式展開は冗長．
+%
+% 本編の代替:
+%   paper/sections/07c_fccd_advection.tex L13 付近および L152 付近を
+%   §\ref{sec:fccd_def} / 式~\eqref{eq:fccd_composite_matrix} への参照のみに圧縮．
+%
+% 元の箇所と本文（参考）:
+
+% L13 付近（subsection 冒頭の説明文）:
+SP-D \cite{SPD} は \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
+$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2 \mathbf{S}_{\CCD}$ を
+速度移流項へ拡張し，
+
+% L152 付近（BF 整合性定理の演算子説明）:
+\begin{theorem}[FCCD Option B の BF 整合性]\label{thm:fccd_adv_bf}
+$\nabla p$（FCCD），$\sigma\kappa\nabla\psi$（FCCD 面形），
+$\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（FCCD Option B）の
+3 項すべてを\textbf{共通の面中心演算子}
+$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ で
+離散化すれば，静止状態 $\mathbf{u}\equiv 0$ での離散運動量バランスの
+BF 残差は
+...

@@ -71,7 +71,10 @@ $\alpha = 1$（対流 CFL 支配）で $q \ge 4$ が理想的だが，
 \end{center}
 
 本章のデフォルト実装は \textbf{Level 2}．Level 1 は検証・格子収束で引用し，
-Level 3 は本稿の実装範囲外（設計フックのみ記述）とする．
+Level 3 は\textbf{時間積分}のみ設計フックに留める
+（Radau IIA + JFNK; §\ref{sec:time_level3}）．
+Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, Phase 1--4）は
+§\ref{sec:pure_fccd_dns} で完備に提示する．
 
 % -------------------------------------------------------------------------------
 \subsection{演算子別剛性マップ（SP-I §2）}
@@ -108,7 +111,6 @@ L1/L2/L3 の違いは本質的に表内「合理的な時間処理」列の \tex
 % -------------------------------------------------------------------------------
 \subsection{Level 1：検証用 3 次 TVD Runge--Kutta 法（SSPRK3）}
 \label{sec:time_level1}
-\phantomsection\label{sec:tvd_rk3}% backward-compat: 旧 §5.1 label
 % -------------------------------------------------------------------------------
 
 Level 1 は全陽的で，\textbf{CLS 移流ステップおよび CLS 再初期化の仮想時間積分}
@@ -449,8 +451,6 @@ Radau IIA + JFNK の実装詳細は SP-I §3.3 \cite{SPI} に委ねる．}．
 \texttt{ns\_pipeline.py} の predictor/PPE/corrector 抽象は
 既に 3 ステップを因数分解しているため，
 PPE ソルバを触らずに predictor を Radau IIA 実装へ置換可能である．
-実運用開始は SP-I Q-I4（L3 コスト閾値）の数値的同定後
-（別 CHK にキュー化）．
 
 \textbf{Level 選択トリガー：}
 $\rho_l/\rho_g > 10^4$ または $\text{We} < 10^{-2}$ または

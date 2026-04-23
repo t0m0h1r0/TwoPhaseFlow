@@ -10,7 +10,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 SP-D \cite{SPD} は \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
-$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2 \mathbf{S}_{\CCD}$ を
+$\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 速度移流項へ拡張し，
 Balanced-Force 原理（\S\ref{sec:balanced_force}）が要求する
 「$\nabla p,\,\sigma\kappa\nabla\psi,\,\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$
@@ -149,7 +149,7 @@ FCCD 面フラックスで保存形を評価する：
 $\nabla p$（FCCD），$\sigma\kappa\nabla\psi$（FCCD 面形），
 $\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（FCCD Option B）の
 3 項すべてを\textbf{共通の面中心演算子}
-$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ で
+$\mathbf{M}^{\FCCD}$（\S\ref{sec:fccd_def} 式~\eqref{eq:fccd_composite_matrix}）で
 離散化すれば，静止状態 $\mathbf{u}\equiv 0$ での離散運動量バランスの
 BF 残差は
 \begin{equation*}

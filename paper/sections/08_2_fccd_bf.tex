@@ -16,42 +16,29 @@ $\FaceJet{u}=(u_f,u'_f,u''_f)$ は，BF sub-system の
 P-1..P-4 を\textbf{同時に}満たす最小単位である．
 
 % -------------------------------------------------------------------------------
-\subsubsection{H-01 診断の再掲と FCCD 救済}
-\label{sec:h01_diagnosis_fccd_remedy}
+% H-01 診断の一次定義は §\ref{sec:fccd_motivation_h01}（§4.5, WIKI-E-030, CHK-152）にある．
+% 本節では FCCD 面ジェットによる救済に直ちに進むため，診断再掲は外部参照に委ねる．
+% 旧 \subsubsection{H-01 診断の再掲と FCCD 救済} は
+% paper/archive/v1_pre_sp_core/snippets/h01_recap_08_2.tex に退避（CHK-193 Phase D-1）．
 % -------------------------------------------------------------------------------
+\phantomsection
+\label{sec:h01_diagnosis_fccd_remedy}% 外部参照保持：10_5/08c/10_3/appendix_gpu_fvm
 
-非一様格子上で節点 CCD 勾配と FVM の面平均勾配 $\mathcal{G}^\text{adj}$
-は異なる離散幾何を参照する：
-\begin{equation}
-  \mathcal{G}^\text{adj} p\big|_{i+1/2}
-    = \frac{p_{i+1}-p_i}{d_f^{(i+1/2)}},
-  \qquad d_f^{(i+1/2)} = \text{局所面距離．}
-  \label{eq:bf_gadj_recap}
-\end{equation}
-$\mathcal{G}^\text{adj}$ は速度投影で保存性を保証する一方，
-節点 CCD 勾配は $\sigma\kappa\bnabla\psi$ に使われ，
-\begin{equation}
-  \mathrm{BF}_\text{res}
-    := \bigl\| \mathcal{G}^\text{adj} p_\text{YL} - \sigma\kappa\bnabla\psi\,\text{（CCD）} \bigr\|_\infty
-    \sim \Ord{\Delta x^2}\,\Bigl|\frac{d\log J}{dx}\Bigr|
-  \label{eq:bf_residual_h01}
-\end{equation}
-が計測される（Exp-1：$\rho_l/\rho_g{=}830$ で $|\BF_\text{res}|\approx 884$ at step 1）．
-$\sigma{=}0$（Exp-2）で爆発が消える事実がH-01 を確定させた．
-
-\noindent\textbf{FCCD 統一}：
-FCCD 演算子 $D^\FCCD$ は $f=i-1/2$ で $\{u_{i-1},u_i\}$ のみを用い，
-$\mathcal{G}^\text{adj}$ と\textbf{同一の面位置・同一のデータフットプリント}．
+節点 CCD 勾配と FVM の面平均勾配 $\mathcal{G}^\text{adj}$ の\textbf{メトリック不整合}
+は，界面適合非一様格子上で
+$\mathrm{BF}_\text{res} = \Ord{\Delta x^2}\cdot|d\log J/dx|$ の残差を生む
+（一次定義：§\ref{sec:fccd_motivation_h01}, Exp-1 実測 $|\BF_\text{res}|\approx 884$
+at step 1, $\rho_l/\rho_g{=}830$）．
+FCCD 面ジェット $\FaceJet{u}=(u_f,u'_f,u''_f)$ は
+$\mathcal{G}^\text{adj}$ と\textbf{同一の面位置・同一のデータフットプリント}を用い，
 \begin{equation}
   \mathcal{G}p := D^\FCCD p,
   \qquad \bnabla\psi := D^\FCCD\psi
+  \qquad\Longrightarrow\qquad
+  \mathrm{BF}_\text{res} = \Ord{\Delta x^4}
   \label{eq:bf_fccd_unification}
 \end{equation}
-を採れば，BF 残差は FCCD 切断誤差に還元され
-\begin{equation}
-  \mathrm{BF}_\text{res} = \Ord{\Delta x^4} \ \gg\ \text{従来 }\Ord{\Delta x^2}.
-  \label{eq:bf_residual_fccd}
-\end{equation}
+により残差を高次へ還元する（§\ref{sec:fccd_def}）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{面ジェット $\FaceJet{p}$ による BF 構築}
