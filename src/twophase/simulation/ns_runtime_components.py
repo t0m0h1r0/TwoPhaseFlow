@@ -6,11 +6,15 @@ from dataclasses import dataclass
 
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport, StaticInterfaceTransport
-from .step_diagnostics import ActiveStepDiagnostics, NullStepDiagnostics
 from .surface_tension_strategy import INSSurfaceTensionStrategy
 from .velocity_reprojector import IVelocityReprojector
 from .viscous_predictor import IViscousPredictor
-from .scheme_build_ctx import ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx
+from .ns_runtime_strategy_builders import (
+    build_ns_reprojector,
+    build_ns_step_diagnostics,
+    build_ns_surface_tension_force,
+    build_ns_viscous_predictor,
+)
 
 
 @dataclass(frozen=True)
@@ -92,36 +96,23 @@ def build_ns_runtime_components(
             reinit_every=options.reinit_every,
         )
 
-    step_diag = ActiveStepDiagnostics() if options.debug_diagnostics else NullStepDiagnostics()
-    reprojector = IVelocityReprojector.from_scheme(
-        options.reproject_mode,
-        ReprojectorBuildCtx(
-            iim_stencil_corrector=reproj_iim,
-            reconstruct_base=reconstruct_base,
-        ),
+    step_diag = build_ns_step_diagnostics(
+        debug_enabled=options.debug_diagnostics,
     )
-
-    from ..ns_terms.viscous import ViscousTerm
-
-    viscous_term = ViscousTerm(
-        backend,
-        Re=options.reynolds_number,
-        cn_viscous=True,
-        spatial_scheme=options.viscous_spatial_scheme,
+    reprojector = build_ns_reprojector(
+        reproject_mode=options.reproject_mode,
+        reproj_iim=reproj_iim,
+        reconstruct_base=reconstruct_base,
     )
-    viscous_predictor = IViscousPredictor.from_scheme(
-        "crank_nicolson" if options.cn_viscous else "explicit",
-        ViscousBuildCtx(
-            backend=backend,
-            re=options.reynolds_number,
-            spatial_scheme=options.viscous_spatial_scheme,
-            viscous_term=viscous_term,
-        ),
+    viscous_predictor = build_ns_viscous_predictor(
+        backend=backend,
+        cn_viscous=options.cn_viscous,
+        reynolds_number=options.reynolds_number,
+        viscous_spatial_scheme=options.viscous_spatial_scheme,
     )
-
-    st_force = INSSurfaceTensionStrategy.from_scheme(
-        options.surface_tension_scheme,
-        SurfaceTensionBuildCtx(backend=backend),
+    st_force = build_ns_surface_tension_force(
+        backend=backend,
+        surface_tension_scheme=options.surface_tension_scheme,
     )
     X, Y = grid.meshgrid()
     return NSRuntimeComponents(
