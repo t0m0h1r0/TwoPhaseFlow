@@ -42,6 +42,11 @@ import numpy as np
 from typing import Optional, Tuple, TYPE_CHECKING
 
 from .block_tridiag import BlockTridiagSolver
+from .ccd_boundary_helpers import (
+    compute_ccd_left_boundary,
+    compute_ccd_right_boundary,
+    enforce_ccd_wall_neumann,
+)
 from .ccd_solver_helpers import (
     apply_ccd_metric,
     build_ccd_axis_solver,
@@ -260,14 +265,7 @@ class CCDSolver:
         grad : array — gradient field (modified in-place)
         ax   : int   — axis along which the wall boundaries are zeroed
         """
-        if self.bc_type != "wall":
-            return
-        sl_lo = [slice(None)] * grad.ndim
-        sl_hi = [slice(None)] * grad.ndim
-        sl_lo[ax] = 0
-        sl_hi[ax] = -1
-        grad[tuple(sl_lo)] = 0.0
-        grad[tuple(sl_hi)] = 0.0
+        enforce_ccd_wall_neumann(self, grad, ax)
 
     # ── Build per-axis solver ─────────────────────────────────────────────
 
@@ -333,27 +331,7 @@ class CCDSolver:
         so downstream boundary-subtraction and ghost-recovery math can use
         a single matmul rather than 4 scalar-indexed ops.
         """
-        xp = self.xp
-        if bc_left_override is not None:
-            batch = f.shape[1]
-            fp0  = xp.full(batch, float(bc_left_override[0]))
-            fpp0 = xp.full(batch, float(bc_left_override[1]))
-            out = xp.empty((2, batch), dtype=fp0.dtype)
-            out[0] = fp0
-            out[1] = fpp0
-            return out                                       # (2, batch)
-
-        # Vectorised contraction: (n,) device vector @ (n, batch) → (batch,).
-        # The coefficients are cached on device in _build_axis_solver.
-        c_I  = info['c_I_left_dev']                           # (4,)
-        c_II = info['c_II_left_dev']                          # (4 or 6,)
-        n_II = info['n_II_left']
-        R_I  = c_I  @ f[:4]                                   # (batch,)
-        R_II = c_II @ f[:n_II]                                # (batch,)
-        out = xp.empty((2, f.shape[1]), dtype=R_I.dtype)
-        out[0] = R_I
-        out[1] = R_II
-        return out                                            # (2, batch)
+        return compute_ccd_left_boundary(self, info, f, h, bc_left_override)
 
     def _right_boundary(self, info, f, h, N, bc_right_override):
         """Compute the data-dependent part of the right boundary value.
@@ -361,28 +339,7 @@ class CCDSolver:
         Returns a ``(2, batch)`` stacked array ``[fpN, fppN]`` — same
         convention as :meth:`_left_boundary`.
         """
-        xp = self.xp
-        if bc_right_override is not None:
-            batch = f.shape[1]
-            fpN  = xp.full(batch, float(bc_right_override[0]))
-            fppN = xp.full(batch, float(bc_right_override[1]))
-            out = xp.empty((2, batch), dtype=fpN.dtype)
-            out[0] = fpN
-            out[1] = fppN
-            return out                                       # (2, batch)
-
-        # The right stencil uses f[N], f[N-1], f[N-2], ..., so build a
-        # reversed view and contract the same way as the left side.
-        c_I_r  = info['c_I_right_dev']                        # (4,)
-        c_II_r = info['c_II_right_dev']                       # (4 or 6,)
-        n_II_r = info['n_II_right']
-        f_rev = f[N::-1]                                      # view, stride -1
-        R_I_r  = c_I_r  @ f_rev[:4]                           # (batch,)
-        R_II_r = c_II_r @ f_rev[:n_II_r]                      # (batch,)
-        out = xp.empty((2, f.shape[1]), dtype=R_I_r.dtype)
-        out[0] = R_I_r
-        out[1] = R_II_r
-        return out                                            # (2, batch)
+        return compute_ccd_right_boundary(self, info, f, h, N, bc_right_override)
 
     # DO NOT DELETE — CHK-118 legacy reference.
     # Pre-matmul scalar-gather boundary helpers. Retained per C2.

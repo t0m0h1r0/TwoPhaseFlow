@@ -49,6 +49,10 @@ from dataclasses import dataclass
 import math
 from typing import List, Optional, TYPE_CHECKING
 
+from .fccd_advection_helpers import (
+    compute_fccd_advection_rhs,
+    compute_fccd_flux_contribution,
+)
 from .ccd_solver import CCDSolver
 from .fccd_helpers import (
     build_axis_weights,
@@ -530,51 +534,12 @@ class FCCDSolver:
                      F_f = 0.5 [u_f^(k)·(∂u)_f + (u^(k)·u)_f]
                      then nodal face divergence. O(H⁴) uniform.
         """
-        if mode not in ("node", "flux"):
-            raise ValueError(f"mode must be 'node' or 'flux', got {mode!r}")
-        xp = self.xp
-        ndim = len(velocity_components)
-
-        # Pre-compute q for each velocity component and reuse across axes.
-        # Saves ndim² CCD calls to ndim*ndim = ndim² (no reduction in count,
-        # but caches d2 per (component, axis) for both face_gradient + node).
-        q_cache = {}
-
-        def get_q(field, ax):
-            key = (id(field), ax)
-            if key not in q_cache:
-                q_cache[key] = self._ccd.second_derivative(field, ax)
-            return q_cache[key]
-
-        if scalar is None:
-            # Momentum: -(u·∇)u_j for each j
-            result = []
-            for j in range(ndim):
-                u_j = velocity_components[j]
-                acc = xp.zeros_like(u_j)
-                for k in range(ndim):
-                    u_k = velocity_components[k]
-                    if mode == "node":
-                        q_j = get_q(u_j, k)
-                        du_j_dk = self.node_gradient(u_j, k, q=q_j)
-                        acc -= u_k * du_j_dk
-                    else:  # flux
-                        acc += self._flux_contribution(u_k, u_j, k)
-                result.append(acc)
-            return result
-
-        # Scalar: -u·∇ψ as a single-element list
-        psi = scalar
-        acc = xp.zeros_like(psi)
-        for k in range(ndim):
-            u_k = velocity_components[k]
-            if mode == "node":
-                q_psi = get_q(psi, k)
-                dpsi_dk = self.node_gradient(psi, k, q=q_psi)
-                acc -= u_k * dpsi_dk
-            else:
-                acc += self._flux_contribution(u_k, psi, k)
-        return [acc]
+        return compute_fccd_advection_rhs(
+            self,
+            velocity_components,
+            scalar=scalar,
+            mode=mode,
+        )
 
     def _flux_contribution(self, u_k, phi, axis: int):
         """Conservative face-flux contribution for one axis (SP-D §7, Option B).
@@ -588,10 +553,7 @@ class FCCDSolver:
         variant (Option B-sk, SP-D §7.1), average with the non-conservative
         form ``−u_k · node_gradient(φ)`` at nodes.
         """
-        prod = u_k * phi
-        q_prod = self._ccd.second_derivative(prod, axis)
-        F_cons = self.face_value(prod, axis, q=q_prod)
-        return -self.face_divergence(F_cons, axis)
+        return compute_fccd_flux_contribution(self, u_k, phi, axis)
 
     # ── Wall BC helpers ─────────────────────────────────────────────────
 
