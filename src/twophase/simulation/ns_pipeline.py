@@ -13,7 +13,6 @@ Conventions
 from __future__ import annotations
 
 import numpy as np
-import warnings
 
 from ..ccd.fccd import FCCDSolver
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
@@ -73,14 +72,17 @@ from .ns_runtime_binding import (
     bind_ns_ppe_runtime,
     bind_ns_scheme_runtime,
 )
+from .ns_runtime_services import (
+    NSRuntimeSetupContext,
+    NSTimestepEstimateContext,
+    build_runtime_initial_condition,
+    build_runtime_initial_velocity,
+    compute_runtime_dt_max,
+    make_runtime_boundary_condition_hook,
+    psi_from_phi as runtime_psi_from_phi,
+)
 from .runtime_setup import (
     apply_velocity_bc as _apply_bc,
-    build_initial_condition,
-    build_initial_velocity,
-    infer_background as _infer_background,
-    make_boundary_condition_hook,
-    normalise_ic_dict as _normalise_ic_dict,
-    wall_bc_hook as _wall_bc_hook,
 )
 from .ns_solver_options import (
     NSSolverInitOptions,
@@ -547,7 +549,7 @@ class TwoPhaseNSSolver:
 
     def psi_from_phi(self, phi: np.ndarray) -> np.ndarray:
         """Smooth Heaviside ψ = H_ε(φ)."""
-        return np.asarray(self._backend.to_host(self._reconstruct_base.psi_from_phi(phi)))
+        return runtime_psi_from_phi(self._runtime_setup_context(), phi)
 
     def build_ic(self, cfg: "ExperimentConfig") -> np.ndarray:
         """Build initial ψ field from config ``initial_condition`` section.
@@ -574,7 +576,10 @@ class TwoPhaseNSSolver:
                  type: union
                  shapes: [{type: circle, interior_phase: gas, ...}, ...]
         """
-        return build_initial_condition(self._grid, self._eps, cfg.initial_condition)
+        return build_runtime_initial_condition(
+            self._runtime_setup_context(),
+            cfg.initial_condition,
+        )
 
     def build_velocity(
         self, cfg: "ExperimentConfig", psi: np.ndarray | None = None
@@ -583,11 +588,9 @@ class TwoPhaseNSSolver:
 
         If ``initial_velocity`` is absent, returns zero fields.
         """
-        return build_initial_velocity(
-            self.X,
-            self.Y,
+        return build_runtime_initial_velocity(
+            self._runtime_setup_context(),
             cfg.initial_velocity,
-            self._backend.to_host,
         )
 
     # ── boundary-condition hook factory ──────────────────────────────────
@@ -599,10 +602,9 @@ class TwoPhaseNSSolver:
         * default wall → zeros all 4 boundaries
         * ``boundary_condition.type == 'couette'`` → Couette shear
         """
-        return make_boundary_condition_hook(
+        return make_runtime_boundary_condition_hook(
+            self._runtime_setup_context(),
             cfg.boundary_condition,
-            self.bc_type,
-            self.LY,
         )
 
     # ── stable-timestep estimate ──────────────────────────────────────────
@@ -615,29 +617,36 @@ class TwoPhaseNSSolver:
         cfl: float = 0.15,
     ) -> float:
         """CFL + viscous + capillary timestep limit."""
-        h = self.h_min if self._alpha_grid > 1.0 else self._h
-        mu_max = max(
-            filter(None, [physics.mu, physics.mu_l, physics.mu_g])
+        return compute_runtime_dt_max(
+            self._runtime_timestep_context(),
+            u,
+            v,
+            physics,
+            cfl=cfl,
         )
-        rho_min = physics.rho_g
 
-        xp = self._backend.xp
-        _uv_max = np.asarray(self._backend.to_host(
-            xp.stack([xp.max(xp.abs(xp.asarray(u))), xp.max(xp.abs(xp.asarray(v)))])
-        ))
-        u_max = max(float(_uv_max[0]), float(_uv_max[1]), 1e-10)
-        dt_cfl = cfl * h / u_max
-        # CN (Heun trapezoid) relaxes viscous CFL by ~2× vs forward Euler
-        visc_safety = 0.5 if self._cn_viscous else 0.25
-        dt_visc = visc_safety * h ** 2 / (mu_max / rho_min)
+    def _runtime_setup_context(self) -> NSRuntimeSetupContext:
+        """Build the convenience-service context for setup-facing helpers."""
+        return NSRuntimeSetupContext(
+            backend=self._backend,
+            grid=self._grid,
+            eps=self._eps,
+            X=self.X,
+            Y=self.Y,
+            LY=self.LY,
+            bc_type=self.bc_type,
+            reconstruct_base=self._reconstruct_base,
+        )
 
-        if physics.sigma > 0.0:
-            rho_sum = physics.rho_l + physics.rho_g
-            dt_cap = 0.25 * np.sqrt(
-                rho_sum * h ** 3 / (2.0 * np.pi * physics.sigma)
-            )
-            return min(dt_cfl, dt_visc, dt_cap)
-        return min(dt_cfl, dt_visc)
+    def _runtime_timestep_context(self) -> NSTimestepEstimateContext:
+        """Build the timestep-estimation context for runtime services."""
+        return NSTimestepEstimateContext(
+            backend=self._backend,
+            h=self._h,
+            h_min=self.h_min,
+            alpha_grid=self._alpha_grid,
+            cn_viscous=self._cn_viscous,
+        )
 
     def _prepare_step_inputs(
         self,
