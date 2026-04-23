@@ -80,7 +80,7 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | edecf66 |
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
-| 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | pending | — |
+| 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | (pending commit) |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | pending | — |
 | 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | pending | — |
 
@@ -174,10 +174,32 @@ Files created or edited by Phase.
 
 ### Phase 3a (CHK-188) — §7 advection / reinit
 
-- [ ] `paper/sections/07_0_scheme_per_variable.tex` (new, ≈ 60 lines, SP-L §3).
-- [ ] `paper/sections/07c_fccd_advection.tex` (new, ≈ 220 lines, SP-D).
-- [ ] `paper/sections/07d_cls_stages.tex` (new, ≈ 80 lines, SP-L §5).
-- [ ] `paper/sections/07e_viscous_3layer.tex` (new, ≈ 140 lines, SP-K).
+- [x] `paper/sections/07_0_scheme_per_variable.tex` (new, ≈ 85 行, SP-L §3):
+      §7.0 変数別スキーム方針. $\psi$→WENO5/DCCD, $u,v$ bulk→CCD/UCCD6/FCCD,
+      界面帯→WENO5/2 次, $p$→face-flux+GFM, $\rho,\mu$→低次. 5 設計原則.
+- [x] `paper/sections/07c_fccd_advection.tex` (new, ≈ 220 行, SP-D 全移植):
+      §7.3 FCCD 移流. 共通プリミティブ $\mathbf{P}_f = \mathbf{P}_1 - \mathbf{P}_2\mathbf{S}_{\CCD}$,
+      面ジェット $\mathcal{J}_f = (\mathbf{P}_f, \mathbf{M}^{\FCCD}, \mathbf{S}_{\CCD}^f)$
+      の同一 $\mathbf{q}$ 共有, Option C R$_4$ Hermite 面→節点再構成,
+      Option B 保存形面フラックス + スキュー対称形, BF 整合性定理
+      (静止状態 $\mathcal{O}(H^4)$ 残差), 壁 BC Option IV Dirichlet 無滑り,
+      3 段階移行パス (Stage 1/2/3).
+- [x] `paper/sections/07d_cls_stages.tex` (new, ≈ 100 行, SP-L §5-§6):
+      §7.5 CLS A→F 6 段階. 3 責務原則 (質量/幾何/補正),
+      $\psi\leftrightarrow\phi$ tanh/artanh 対応, TVD-RK3 Shu-Osher,
+      narrow-band 再初期化, $\psi(1-\psi)$ 質量補正.
+- [x] `paper/sections/07e_viscous_3layer.tex` (new, ≈ 160 行, SP-K §3-§5):
+      §7.6 粘性 3 層. $\mu\nabla^2\mathbf{u}$ 禁止証明,
+      Layer A (CCD は bulk のみ) / B ($\tau_{xy}$ コーナー) / C (保存形),
+      コーナー粘性算術/調和平均, 共有 $\tau_{xy}$ 原則,
+      エネルギー恒等式 $\le 0$, 界面帯 CCD 禁止,
+      Phi/Psi-gated bulk ショートカット, CN Helmholtz デフェクト補正.
+- [x] `paper/main.tex` — 4 `\input` を §7 系列に追加.
+- [x] xelatex clean 230 pp (+7); 0 undef refs, 0 undef citations, 0 errors.
+- [x] Forward-ref fixes: Olsson2005→OlssonKreiss2005,
+      cls_adv_stage→cls_stages, cls_reinit→cls_compression,
+      fccd_bf→balanced_force, face_jet→face_jet_def,
+      collocate_vs_staggered→collocate_layout.
 
 ### Phase 3b (CHK-189) — §8 BF + §9 PPE
 
