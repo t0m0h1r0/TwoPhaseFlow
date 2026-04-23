@@ -73,6 +73,7 @@
 | [WIKI-T-067](theory/WIKI-T-067.md) | GFM Variable-Density Projection: Mandatory 1/ρ Factor in Velocity Correction |
 | [WIKI-T-068](theory/WIKI-T-068.md) | FCCDDivergenceOperator: FCCD Face-Flux Projector with FVM-Consistent Pressure Gradient |
 | [WIKI-T-069](theory/WIKI-T-069.md) | FCCD Face Jet: Face-Carried Value, Gradient, and Curvature for FVM/HFE |
+| [WIKI-T-070](theory/WIKI-T-070.md) | Rising-Bubble Early Blowup on Static α=2 FCCD Stack: Buoyancy-Driven Projection-Closure Failure |
 
 ## Cross-Domain (33)
 
@@ -147,6 +148,7 @@
 
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
+| [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts |
 
 ## Paper (12)
 

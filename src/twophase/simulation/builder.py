@@ -1,5 +1,5 @@
 """
-SimulationBuilder — TwoPhaseSimulation の構築を担うビルダー。
+SimulationBuilder — legacy ``TwoPhaseSimulation`` の構築を担うビルダー。
 
 設計方針:
     - TwoPhaseSimulation.__init__ の「God Constructor」問題を解消する（SRP）。
@@ -34,33 +34,8 @@ SimulationBuilder — TwoPhaseSimulation の構築を担うビルダー。
 from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 
-from ..backend import Backend
 from ..config import SimulationConfig
-from ..core.grid import Grid
-from ..core.boundary import BoundarySpec
-from ..core.field import ScalarField, VectorField
-from ..core.components import SimulationComponents
-from ..ccd.ccd_solver import CCDSolver
-from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
-from ..levelset.reinitialize import Reinitializer
-from ..levelset.curvature import CurvatureCalculator  # legacy (phi-based)
-from ..levelset.curvature_psi import CurvatureCalculatorPsi  # recommended (psi-direct)
-from ..time_integration.ab2_predictor import Predictor
-from ..ns_terms.convection import ConvectionTerm
-from ..ns_terms.viscous import ViscousTerm
-from ..ns_terms.gravity import GravityTerm
-from ..ns_terms.surface_tension import SurfaceTensionTerm
-from ..spatial.rhie_chow import RhieChowInterpolator
-from ..ppe.factory import create_ppe_solver
-from ..coupling.velocity_corrector import VelocityCorrector
-from ..coupling.gfm import GFMCorrector
-from ..spatial.dccd_ppe_filter import DCCDPPEFilter
-from ..coupling.ppe_rhs_gfm import PPERHSBuilderGFM
-from ..levelset.field_extender import FieldExtender, NullFieldExtender
-from ..levelset.closest_point_extender import ClosestPointExtender
-from ..time_integration.cfl import CFLCalculator
-from .boundary_condition import BoundaryConditionHandler
-from .diagnostics import DiagnosticsReporter
+from .legacy_builder_runtime import build_legacy_simulation_components
 
 if TYPE_CHECKING:
     from ..ppe.interfaces import IPPESolver
@@ -69,7 +44,7 @@ if TYPE_CHECKING:
 
 
 class SimulationBuilder:
-    """TwoPhaseSimulation を段階的に組み立てるビルダー。
+    """Legacy ``TwoPhaseSimulation`` を段階的に組み立てるビルダー。
 
     Parameters
     ----------
@@ -131,148 +106,16 @@ class SimulationBuilder:
         sim : 初期化済み TwoPhaseSimulation インスタンス
         """
         from ._core import TwoPhaseSimulation
-
-        # 基盤インフラの生成
-        config = self._config
-        backend = Backend(use_gpu=config.use_gpu)
-
-        grid = Grid(config.grid, backend)
-        bc_spec = BoundarySpec(
-            bc_type=config.numerics.bc_type,
-            shape=grid.shape,
-            N=grid.N,
+        components = build_legacy_simulation_components(
+            config=self._config,
+            ppe_solver=self._ppe_solver,
+            convection_term=self._convection,
+            viscous_term=self._viscous,
+            gravity_term=self._gravity,
+            surface_tension_term=self._surface_tension,
         )
-        dx_min = min(
-            config.grid.L[ax] / config.grid.N[ax]
-            for ax in range(config.grid.ndim)
-        )
-        eps = config.numerics.epsilon_factor * dx_min
-        ccd = CCDSolver(grid, backend, bc_type=config.numerics.bc_type)
+        return TwoPhaseSimulation._from_components(components)
 
-        # レベルセット演算子
-        # 'periodic' → 'periodic'(wrap), 'wall' → 'neumann'(∂ψ/∂n=0 対称反射).
-        # 'zero' は後方互換のデフォルトだが壁面 BC では誤差が大きい
-        # （ゼロゴーストが再初期化法線 n̂ を壁方向に引き寄せ，曲率スパイクを誘発する）．
-        _ls_bc = 'periodic' if config.numerics.bc_type == 'periodic' else 'neumann'
 
-        # FCCD shared across momentum + ψ advection (one factorisation, many calls).
-        fccd = None
-        if (
-            config.numerics.advection_scheme.startswith("fccd_")
-            or config.numerics.convection_scheme.startswith("fccd_")
-        ):
-            from ..ccd.fccd import FCCDSolver
-            fccd = FCCDSolver(grid, backend, bc_type=config.numerics.bc_type,
-                              ccd_solver=ccd)
-
-        adv_mode = {"fccd_nodal": "node", "fccd_flux": "flux"}
-        if config.numerics.advection_scheme == "dissipative_ccd":
-            ls_advect = DissipativeCCDAdvection(backend, grid, ccd, bc=_ls_bc,
-                                                   mass_correction=True)
-        elif config.numerics.advection_scheme in adv_mode:
-            from ..levelset.fccd_advection import FCCDLevelSetAdvection
-            ls_advect = FCCDLevelSetAdvection(
-                backend, grid, fccd,
-                mode=adv_mode[config.numerics.advection_scheme],
-                mass_correction=True,
-            )
-        else:  # "weno5"
-            ls_advect = LevelSetAdvection(backend, grid, bc=_ls_bc)
-
-        # Auto-inject FCCDConvectionTerm when user did not supply one.
-        if self._convection is None and config.numerics.convection_scheme in adv_mode:
-            from ..ns_terms.fccd_convection import FCCDConvectionTerm
-            self._convection = FCCDConvectionTerm(
-                backend, fccd,
-                mode=adv_mode[config.numerics.convection_scheme],
-            )
-        # Auto-inject UCCD6ConvectionTerm (WIKI-X-023) when user selects 'uccd6'.
-        if self._convection is None and config.numerics.convection_scheme == "uccd6":
-            from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
-            self._convection = UCCD6ConvectionTerm(
-                backend, grid, ccd,
-                sigma=config.numerics.uccd6_sigma,
-            )
-        ls_reinit = Reinitializer(
-            backend, grid, ccd, eps, config.numerics.reinit_steps, bc=_ls_bc,
-            method=config.numerics.reinit_method,
-            sigma_0=config.numerics.ridge_sigma_0,
-        )
-        # Curvature: psi-direct method (section 3b eq. curvature_psi_2d)
-        # eliminates logit inversion; falls back to legacy phi-based if configured
-        curvature_calc = CurvatureCalculatorPsi(backend, ccd)
-
-        # GFM mode detection (§8e sec:gfm)
-        use_gfm = config.numerics.surface_tension_model == "gfm"
-
-        # NS 各項（注入または自動生成）— ccd はコンストラクタ注入（ISP改善）
-        predictor = Predictor(
-            backend, config, ccd,
-            convection=self._convection,
-            viscous=self._viscous,
-            gravity=self._gravity,
-            surface_tension=self._surface_tension,
-            use_gfm=use_gfm,
-        )
-
-        # 圧力ソルバー（注入または factory 経由）
-        # ccd を渡すことで PPESolverPseudoTime が CCD matrix-free O(h⁶) を使用できる
-        ppe_solver = self._ppe_solver or create_ppe_solver(
-            config, backend, grid, ccd=ccd, bc_spec=bc_spec,
-        )
-
-        # 補助演算子
-        # Rhie-Chow is always constructed (used in CSF path; retained as legacy in GFM path)
-        rhie_chow = RhieChowInterpolator(backend, grid, ccd, bc_type=config.numerics.bc_type)
-        vel_corrector = VelocityCorrector(backend, grid, ccd)
-
-        # GFM pipeline (§8e + §7 sec:dccd_decoupling)
-        ppe_rhs_gfm = None
-        if use_gfm:
-            gfm_corrector = GFMCorrector(backend, grid, config.fluid.We)
-            dccd_ppe_filter = DCCDPPEFilter(backend, grid, ccd, bc_type=config.numerics.bc_type)
-            ppe_rhs_gfm = PPERHSBuilderGFM(dccd_ppe_filter, gfm_corrector)
-        # Field extension across Γ: smooth pressure for CCD gradient
-        method = config.numerics.extension_method
-        if method == "hermite":
-            field_extender = ClosestPointExtender(backend, grid, ccd)
-        elif method == "upwind" and config.numerics.n_extend > 0:
-            field_extender = FieldExtender(
-                backend, grid, ccd, n_iter=config.numerics.n_extend,
-            )
-        else:
-            field_extender = NullFieldExtender()
-
-        cfl_calc = CFLCalculator(
-            backend, grid, config.numerics.cfl_number,
-            We=config.fluid.We,
-            rho_ratio=config.fluid.rho_ratio,
-            cn_viscous=config.numerics.cn_viscous,
-        )
-
-        # 境界条件・診断
-        bc_handler = BoundaryConditionHandler(config)
-        diagnostics = DiagnosticsReporter(backend, grid)
-
-        # TwoPhaseSimulation のファクトリメソッドで組み立て
-        return TwoPhaseSimulation._from_components(
-            SimulationComponents(
-                config=config,
-                backend=backend,
-                grid=grid,
-                eps=eps,
-                ccd=ccd,
-                ls_advect=ls_advect,
-                ls_reinit=ls_reinit,
-                curvature_calc=curvature_calc,
-                predictor=predictor,
-                ppe_solver=ppe_solver,
-                rhie_chow=rhie_chow,
-                vel_corrector=vel_corrector,
-                cfl_calc=cfl_calc,
-                bc_handler=bc_handler,
-                diagnostics=diagnostics,
-                ppe_rhs_gfm=ppe_rhs_gfm,
-                field_extender=field_extender,
-            )
-        )
+# DO NOT DELETE — legacy builder retained per C2.
+SimulationBuilderLegacy = SimulationBuilder

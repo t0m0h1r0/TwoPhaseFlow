@@ -1,0 +1,155 @@
+# Debug companion for the N=128x256 water-air rising-bubble probe.
+# Keeps the same GPU-priority FCCD/HFE/UCCD6 stack, but shortens T and
+# enables per-step diagnostics so early blowup can be localized.
+
+grid:
+  cells: [128, 256]
+  domain:
+    size: [1.0, 2.0]
+    boundary: wall
+  distribution:
+    type: interface_fitted
+    method: gaussian_levelset
+    alpha: 2.0
+    schedule: static
+
+interface:
+  thickness:
+    mode: local
+    base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_hfe
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 4
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
+
+physics:
+  phases:
+    liquid:
+      rho: 1000.0
+      mu: 1.0e-3
+    gas:
+      rho: 1.2
+      mu: 1.8e-5
+  surface_tension: 0.072
+  gravity: 0.001
+
+run:
+  time:
+    final: 0.05
+    cfl: 0.10
+    print_every: 1
+  debug:
+    step_diagnostics: true
+
+numerics:
+  time:
+    algorithm: fractional_step
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+  momentum:
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: ab2
+      pressure:
+        gradient: fccd
+      viscosity:
+        spatial: ccd
+        time_integrator: crank_nicolson
+      surface_tension:
+        formulation: pressure_jump
+  projection:
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: jump_decomposition
+      solver:
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 1.0
+        base_solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-6
+          max_iterations: 500
+          restart: 80
+          preconditioner: jacobi
+
+output:
+  dir: results/ch13_rising_bubble_water_air_alpha2_n128x256_debug
+  save_npz: true
+  snapshots:
+    interval: 0.0025
+  figures:
+    - type: time_series
+      title: "Water-air rising bubble debug: centroid height"
+      x: times
+      y: [yc]
+      labels: ["$y_c(t)$"]
+      xlabel: "$t$"
+      ylabel: "$y_c$"
+      file: bubble_centroid_y.pdf
+
+    - type: time_series
+      title: "Water-air rising bubble debug: mean rise velocity"
+      x: times
+      y: [mean_rise_velocity]
+      labels: ["$\\bar{v}_g(t)$"]
+      xlabel: "$t$"
+      ylabel: "$\\bar{v}_g$"
+      file: mean_rise_velocity.pdf
+
+    - type: time_series
+      title: "Water-air rising bubble debug: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: time_series
+      title: "Water-air rising bubble debug: deformation"
+      x: times
+      y: [deformation]
+      labels: ["$D(t)$"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      file: deformation.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics: [volume_conservation, bubble_centroid, mean_rise_velocity, deformation]
+
+initial_condition:
+  type: circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  interior_phase: gas
+
+initial_velocity: null
+boundary_condition:
+  type: wall

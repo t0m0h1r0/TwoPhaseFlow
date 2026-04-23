@@ -23,6 +23,11 @@ import numpy as np
 
 from .interfaces import IPPESolver
 from .fvm_spsolve import PPESolverFVMSpsolve
+from .fvm_matrixfree_helpers import (
+    build_fvm_grid_metrics,
+    build_fvm_line_coeffs,
+    build_fvm_preconditioner_state,
+)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -151,27 +156,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
         rhs_flat[self._pin_dof] = 0.0
 
         self.prepare_operator(rho_dev)
-        self._precond_coeffs = None
-        self._diag_inv = None
-        if self.preconditioner == "line_pcr":
-            shift = 2.0 / (self.c_tau * rho_dev * (self._h_min ** 2))
-            self._precond_coeffs = []
-            for lower, main, upper in self._operator_coeffs:
-                self._precond_coeffs.append((
-                    -lower,
-                    shift - main,
-                    -upper,
-                ))
-        elif self.preconditioner == "jacobi":
-            diag = self.xp.zeros_like(rho_dev)
-            for _lower, main, _upper in self._operator_coeffs:
-                diag += main
-            diag.ravel()[self._pin_dof] = 1.0
-            self._diag_inv = 1.0 / self.xp.where(
-                self.xp.abs(diag) > 1e-30,
-                diag,
-                1.0,
-            )
+        self._prepare_preconditioner_state(rho_dev)
 
         if p_init is None:
             x0 = self.xp.zeros_like(rhs_flat)
@@ -245,26 +230,15 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
     def build_line_coeffs(self, rho, axis: int):
         """Return lower/main/upper arrays for all lines along ``axis``."""
-        xp = self.xp
-        N_ax = self.grid.N[axis]
-        d_face = self._d_face[axis]
-        dv = self._dv_node[axis]
-
-        lower = xp.zeros_like(rho)
-        main = xp.zeros_like(rho)
-        upper = xp.zeros_like(rho)
-
-        sl_lo = self._sl(axis, 0, N_ax)
-        sl_hi = self._sl(axis, 1, N_ax + 1)
-
-        rho_lo = rho[sl_lo]
-        rho_hi = rho[sl_hi]
-        coeff_face = 2.0 / (rho_lo + rho_hi) / d_face
-
-        upper[self._sl(axis, 0, N_ax)] = coeff_face / dv[self._sl(axis, 0, N_ax)]
-        lower[self._sl(axis, 1, N_ax + 1)] = coeff_face / dv[self._sl(axis, 1, N_ax + 1)]
-        main[...] = -(lower + upper)
-        return lower, main, upper
+        return build_fvm_line_coeffs(
+            xp=self.xp,
+            grid=self.grid,
+            ndim=self.ndim,
+            d_face=self._d_face,
+            dv_node=self._dv_node,
+            rho=self.xp.asarray(rho),
+            axis=axis,
+        )
 
     def apply(self, p):
         """Apply the pinned matrix-free FVM operator to ``p``."""
@@ -325,22 +299,20 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
     def _refresh_grid_metrics(self) -> None:
         """Build backend-native face and control-volume spacing arrays."""
-        self._h_min = min(
-            float(np.min(np.diff(np.asarray(coord)))) for coord in self.grid.coords
-        )
-        self._d_face = []
-        self._dv_node = []
-        for axis in range(self.ndim):
-            coords = np.asarray(self.grid.coords[axis], dtype=np.float64)
-            d_face = coords[1:] - coords[:-1]
-            dv = np.empty_like(coords)
-            dv[0] = d_face[0] / 2.0
-            dv[-1] = d_face[-1] / 2.0
-            dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
+        metrics = build_fvm_grid_metrics(xp=self.xp, grid=self.grid, ndim=self.ndim)
+        self._h_min = metrics.h_min
+        self._d_face = metrics.d_face
+        self._dv_node = metrics.dv_node
 
-            face_shape = [1] * self.ndim
-            node_shape = [1] * self.ndim
-            face_shape[axis] = d_face.size
-            node_shape[axis] = dv.size
-            self._d_face.append(self.xp.asarray(d_face.reshape(face_shape)))
-            self._dv_node.append(self.xp.asarray(dv.reshape(node_shape)))
+    def _prepare_preconditioner_state(self, rho) -> None:
+        state = build_fvm_preconditioner_state(
+            xp=self.xp,
+            operator_coeffs=self._operator_coeffs,
+            preconditioner=self.preconditioner,
+            c_tau=self.c_tau,
+            rho=self.xp.asarray(rho),
+            h_min=self._h_min,
+            pin_dof=self._pin_dof,
+        )
+        self._precond_coeffs = state.line_coeffs
+        self._diag_inv = state.diag_inv

@@ -27,7 +27,13 @@ pivoting is required.  Do not use these solvers on general banded systems.
 from __future__ import annotations
 
 import math
-from typing import NamedTuple
+from .linalg_backend_helpers import (
+    ThomasFactors,
+    reshape_batched_rhs,
+    restore_batched_rhs,
+    thomas_precompute,
+    validate_banded_tridiag_shape,
+)
 
 
 def _is_cupy(xp) -> bool:
@@ -163,65 +169,6 @@ def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat, max_stages: int 
     return b / d
 
 
-class ThomasFactors(NamedTuple):
-    """Pre-computed scalar recurrence for a tridiagonal matrix.
-
-    Fields are host (Python float) arrays so that the GPU solve loop
-    never reads scalar elements from device memory.
-    """
-    c_prime: list[float]    # length n, c_prime[n-1] = 0
-    denom_inv: list[float]  # length n, 1 / denom[i]
-    lower: list[float]      # length n, lower[0] unused
-
-
-def thomas_precompute(ab) -> ThomasFactors:
-    """Pre-compute the scalar recurrence from a banded matrix.
-
-    Parameters
-    ----------
-    ab : array-like, shape (3, n)
-        Banded matrix (same layout as ``thomas_batched``).
-        If on GPU, a small (3n float) D2H transfer is performed once.
-
-    Returns
-    -------
-    ThomasFactors
-        Pre-computed factors for ``thomas_batched(..., factors=...)``.
-    """
-    import numpy as np_host
-
-    getter = getattr(ab, "get", None)
-    if callable(getter):
-        ab_h = getter()
-    else:
-        ab_h = np_host.asarray(ab) if not isinstance(ab, np_host.ndarray) else ab
-    ab_h = ab_h.astype(np_host.float64, copy=False)
-
-    n = ab_h.shape[1]
-    upper = ab_h[0]   # upper[0] unused
-    main = ab_h[1]
-    lower = ab_h[2]   # lower[-1] unused
-
-    c_prime = [0.0] * n
-    denom_inv = [0.0] * n
-
-    # i = 0
-    denom_inv[0] = 1.0 / float(main[0])
-    if n > 1:
-        c_prime[0] = float(upper[1]) * denom_inv[0]
-
-    # i = 1 .. n-1
-    for i in range(1, n):
-        denom = float(main[i]) - float(lower[i - 1]) * c_prime[i - 1]
-        denom_inv[i] = 1.0 / denom
-        if i < n - 1:
-            c_prime[i] = float(upper[i + 1]) * denom_inv[i]
-
-    lower_h = [float(lower[i]) for i in range(n)]
-
-    return ThomasFactors(c_prime=c_prime, denom_inv=denom_inv, lower=lower_h)
-
-
 def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None):
     """Batched tridiagonal solver along ``axis``, vectorised across batch dims.
 
@@ -262,15 +209,10 @@ def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None)
     round-off (``< 1e-13`` relative on diagonally-dominant LHS).
     """
     n = rhs.shape[axis]
-    if ab.shape[0] != 3 or ab.shape[1] != n:
-        raise ValueError(
-            f"ab must have shape (3, n={n}); got {tuple(ab.shape)}"
-        )
+    validate_banded_tridiag_shape(ab, n)
 
     # Move target axis to front → (n, *batch)
-    moved = xp.moveaxis(rhs, axis, 0)
-    batch_shape = moved.shape[1:]
-    d = moved.reshape(n, -1)                       # (n, B)
+    _, batch_shape, d = reshape_batched_rhs(xp, rhs, axis)
 
     # ── GPU path: Parallel Cyclic Reduction ──────────────────────────────
     if _is_cupy(xp):
@@ -281,8 +223,7 @@ def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None)
         a_vec[1:] = ab_dev[2, :n - 1]
         c_vec[:n - 1] = ab_dev[0, 1:]
         x = _pcr_solve_batched(xp, a_vec, d_vec, c_vec, d)
-        x_moved = x.reshape((n,) + batch_shape)
-        return xp.moveaxis(x_moved, 0, axis)
+        return restore_batched_rhs(xp, x, batch_shape, axis)
 
     # ── CPU path: sequential Thomas ───────────────────────────────────────
     # Allocate working storage
@@ -329,8 +270,7 @@ def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None)
         for i in range(n - 2, -1, -1):
             x[i] = d_prime[i] - c_prime[i] * x[i + 1]
 
-    x_moved = x.reshape((n,) + batch_shape)
-    return xp.moveaxis(x_moved, 0, axis)
+    return restore_batched_rhs(xp, x, batch_shape, axis)
 
 
 def tridiag_variable_batched(
@@ -369,9 +309,7 @@ def tridiag_variable_batched(
         raise ValueError("lower, diag, upper, rhs must all have the same shape")
 
     n = rhs.shape[axis]
-    moved_rhs = xp.moveaxis(rhs, axis, 0)
-    batch_shape = moved_rhs.shape[1:]
-    rhs_2d = moved_rhs.reshape(n, -1)
+    _, batch_shape, rhs_2d = reshape_batched_rhs(xp, rhs, axis)
 
     lower_2d = xp.moveaxis(lower, axis, 0).reshape(n, -1)
     diag_2d = xp.moveaxis(diag, axis, 0).reshape(n, -1)
@@ -405,5 +343,4 @@ def tridiag_variable_batched(
         for i in range(n - 2, -1, -1):
             x_2d[i] = d_prime[i] - c_prime[i] * x_2d[i + 1]
 
-    x_moved = x_2d.reshape((n,) + batch_shape)
-    return xp.moveaxis(x_moved, 0, axis)
+    return restore_batched_rhs(xp, x_2d, batch_shape, axis)

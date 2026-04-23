@@ -57,7 +57,15 @@ Usage
     u, v = vf.compute(X, Y, t=0.0)
 """
 
-from .shapes import Circle, Rectangle, HalfSpace, SinusoidalInterface, shape_from_dict
+from .shapes import (
+    Circle,
+    HalfSpace,
+    PerturbedCircle,
+    Rectangle,
+    SinusoidalInterface,
+    ZalesakDisk,
+    shape_from_dict,
+)
 from .builder import InitialConditionBuilder
 from .velocity_fields import VelocityField, RigidRotation, UniformFlow, velocity_field_from_dict
 
@@ -68,6 +76,8 @@ __all__ = [
     "Rectangle",
     "HalfSpace",
     "SinusoidalInterface",
+    "PerturbedCircle",
+    "ZalesakDisk",
     "shape_from_dict",
     # velocity field primitives
     "VelocityField",

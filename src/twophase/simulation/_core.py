@@ -1,5 +1,5 @@
 """
-トップレベル タイムステップ ループ。
+legacy トップレベル タイムステップ ループ。
 
 §9.1 の完全な 7 ステップアルゴリズム (Eq. 85–94) を実装する。
 
@@ -36,17 +36,27 @@ from __future__ import annotations
 import numpy as np
 from typing import Optional, Callable, List
 
-from ..backend import Backend
-from ..config import SimulationConfig
-from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
-from ..levelset.heaviside import update_properties, invert_heaviside
-from ..levelset.field_extender import NullFieldExtender
+from .legacy_component_binding import bind_legacy_simulation_components
+from .legacy_flow_helpers import (
+    advance_legacy_levelset,
+    build_legacy_flow_state,
+    correct_legacy_velocity,
+    predict_legacy_velocity,
+    solve_legacy_ppe,
+    update_legacy_curvature,
+    update_legacy_properties,
+)
+from .legacy_run_loop import (
+    advance_legacy_step_with_retry,
+    has_nonfinite_legacy_state,
+    run_legacy_simulation,
+)
 
 
 class TwoPhaseSimulation:
-    """二相流ソルバー。
+    """Legacy 二相流ソルバー。
 
     このクラスは直接インスタンス化しないこと。
     SimulationBuilder を通じて構築すること::
@@ -68,52 +78,8 @@ class TwoPhaseSimulation:
         外部からは SimulationBuilder を使用すること。
         """
         obj = cls.__new__(cls)
-        c = components
-        obj.config  = c.config
-        obj.backend = c.backend
-        obj.grid    = c.grid
-        obj.eps     = c.eps
-        obj.ccd     = c.ccd
-
-        # フィールドの初期化
-        obj.psi      = ScalarField(c.grid, c.backend)
-        obj.rho      = ScalarField(c.grid, c.backend)
-        obj.mu       = ScalarField(c.grid, c.backend)
-        obj.kappa    = ScalarField(c.grid, c.backend)
-        obj.phi      = ScalarField(c.grid, c.backend)   # cached φ = H_ε⁻¹(ψ) from Step 4
-        obj.pressure = ScalarField(c.grid, c.backend)
-        obj.velocity = VectorField(c.grid, c.backend)
-        obj.vel_star = VectorField(c.grid, c.backend)
-
-        # サブモジュールの設定
-        obj.ls_advect      = c.ls_advect
-        obj.ls_reinit      = c.ls_reinit
-        obj.curvature_calc = c.curvature_calc
-        obj.predictor      = c.predictor
-        obj.ppe_solver     = c.ppe_solver
-        obj.rhie_chow      = c.rhie_chow
-        obj.vel_corrector  = c.vel_corrector
-        obj.cfl_calc       = c.cfl_calc
-        obj._bc_handler    = c.bc_handler
-        obj._diagnostics   = c.diagnostics
-        obj._ppe_rhs_gfm   = c.ppe_rhs_gfm  # None when CSF mode
-        obj._field_ext     = c.field_extender  # NullFieldExtender when disabled
-        obj._needs_phi     = (c.field_extender is not None
-                              and not c.field_extender.is_null_extender
-                              ) or (c.ppe_rhs_gfm is not None)
-
-        # 状態変数
-        obj.time = 0.0
-        obj.step = 0
-
-        # 無次元流体物性
-        obj._rho_l = 1.0
-        obj._rho_g = c.config.fluid.rho_ratio
-        obj._mu_l  = 1.0
-        obj._mu_g  = c.config.fluid.mu_ratio
-
+        bind_legacy_simulation_components(obj, components)
         return obj
-
     # ── 公開 API ──────────────────────────────────────────────────────────
 
     def run(
@@ -132,34 +98,13 @@ class TwoPhaseSimulation:
         verbose         : True の場合、ステップごとに情報を出力
         callback        : f(sim) — output_interval ステップごとに呼ばれる
         """
-        if t_end is None:
-            t_end = self.config.numerics.t_end
-
-        # 初期 ψ から物性を初期化
-        self._update_properties()
-        self._update_curvature()
-
-        while self.time < t_end:
-            dt_nominal = self.cfl_calc.compute(
-                [self.velocity[ax] for ax in range(self.config.grid.ndim)],
-                self.mu.data,
-                self.rho.data,
-            )
-            dt_nominal = min(dt_nominal, t_end - self.time)
-
-            # Adaptive safety fallback:
-            # If a step produces non-finite state (or raises), rollback and retry
-            # with dt halved. This keeps long runs from hard-failing at the first
-            # unstable CFL estimate.
-            dt = self._step_with_retry(dt_nominal, verbose=verbose)
-
-            if verbose and self.step % output_interval == 0:
-                self._diagnostics.report(self, dt)
-            if callback is not None and self.step % output_interval == 0:
-                callback(self)
-
-        if verbose:
-            print(f"シミュレーション終了 t={self.time:.6f}, step={self.step}")
+        run_legacy_simulation(
+            self,
+            t_end=t_end,
+            output_interval=output_interval,
+            verbose=verbose,
+            callback=callback,
+        )
 
     def _step_with_retry(self, dt_nominal: float, verbose: bool = False) -> float:
         """Advance one step with rollback + dt-halving retries.
@@ -169,67 +114,11 @@ class TwoPhaseSimulation:
         float
             Accepted dt used for this step.
         """
-        xp = self.backend.xp
-        max_retries = 12
-        dt_try = float(dt_nominal)
-
-        # Snapshot (device-side copies) for rollback.
-        psi0 = xp.copy(self.psi.data)
-        rho0 = xp.copy(self.rho.data)
-        mu0 = xp.copy(self.mu.data)
-        kappa0 = xp.copy(self.kappa.data)
-        phi0 = xp.copy(self.phi.data)
-        p0 = xp.copy(self.pressure.data)
-        vel0 = [xp.copy(self.velocity[ax]) for ax in range(self.config.grid.ndim)]
-        vels0 = [xp.copy(self.vel_star[ax]) for ax in range(self.config.grid.ndim)]
-        time0 = float(self.time)
-        step0 = int(self.step)
-
-        for retry in range(max_retries + 1):
-            try:
-                self.step_forward(dt_try)
-                if self._has_nonfinite_state():
-                    raise FloatingPointError("non-finite state after step")
-                return dt_try
-            except Exception:
-                # Roll back all mutable fields + counters before retry.
-                self.psi.data = xp.copy(psi0)
-                self.rho.data = xp.copy(rho0)
-                self.mu.data = xp.copy(mu0)
-                self.kappa.data = xp.copy(kappa0)
-                self.phi.data = xp.copy(phi0)
-                self.pressure.data = xp.copy(p0)
-                for ax in range(self.config.grid.ndim):
-                    self.velocity[ax] = xp.copy(vel0[ax])
-                    self.vel_star[ax] = xp.copy(vels0[ax])
-                self.time = time0
-                self.step = step0
-
-                if retry >= max_retries:
-                    raise
-                dt_try *= 0.5
-                if verbose:
-                    print(
-                        f"[run] step retry {retry + 1}/{max_retries}: "
-                        f"reducing dt to {dt_try:.3e}"
-                    )
-
-        return dt_try
+        return advance_legacy_step_with_retry(self, dt_nominal, verbose=verbose)
 
     def _has_nonfinite_state(self) -> bool:
         """True when any primary field contains NaN/Inf."""
-        xp = self.backend.xp
-        fields = [
-            self.psi.data,
-            self.rho.data,
-            self.mu.data,
-            self.kappa.data,
-            self.phi.data,
-            self.pressure.data,
-        ]
-        fields.extend(self.velocity[ax] for ax in range(self.config.grid.ndim))
-        fields.extend(self.vel_star[ax] for ax in range(self.config.grid.ndim))
-        return any(bool(xp.any(~xp.isfinite(arr))) for arr in fields)
+        return has_nonfinite_legacy_state(self)
 
     def step_forward(self, dt: float) -> None:
         """タイムステップ dt で 1 ステップ進める（§9.1 の 7 ステップアルゴリズム）。
@@ -277,22 +166,11 @@ class TwoPhaseSimulation:
 
     def _build_flow_state_with_pressure(self, pressure) -> FlowState:
         """延長済み圧力を使った FlowState を構築する（Extension PDE 用）。"""
-        ndim = self.config.grid.ndim
-        return FlowState(
-            velocity=[self.velocity[ax] for ax in range(ndim)],
-            psi=self.psi.data,
-            rho=self.rho.data,
-            mu=self.mu.data,
-            kappa=self.kappa.data,
-            pressure=pressure,
-        )
+        return build_legacy_flow_state(self, pressure)
 
     def _step_advect_reinit(self, dt: float) -> None:  # modifies self.psi in-place
         """Step 1–2: CLS 移流（WENO5+TVD-RK3）→ 再初期化（疑似時間 PDE）。"""
-        ndim = self.config.grid.ndim
-        vel_components = [self.velocity[ax] for ax in range(ndim)]
-        psi_adv = self.ls_advect.advance(self.psi.data, vel_components, dt)
-        self.psi.data = self.ls_reinit.reinitialize(psi_adv)
+        advance_legacy_levelset(self, dt)
 
     def _step_predictor(self, state: FlowState, dt: float) -> List:
         """Step 5: 予測速度 u* を計算し vel_star フィールドに格納する。
@@ -301,11 +179,7 @@ class TwoPhaseSimulation:
         -------
         vel_star : list of arrays  (u* の各速度成分)
         """
-        ndim = self.config.grid.ndim
-        vel_star_list = self.predictor.compute(state, dt)
-        for ax in range(ndim):
-            self.vel_star[ax] = vel_star_list[ax]
-        return [self.vel_star[ax] for ax in range(ndim)]
+        return predict_legacy_velocity(self, state, dt)
 
     def _step_ppe(self, vel_star: List, dt: float) -> object:
         """Step 6: PPE RHS 構築 → PPE 求解（IPC 増分法） → δp を返す。
@@ -324,28 +198,7 @@ class TwoPhaseSimulation:
         -------
         delta_p : 圧力増分 δp（速度 Corrector に渡す）
         """
-        if self._ppe_rhs_gfm is not None:
-            # GFM path (§8e Eq. gfm_ccd_div):
-            # q_h = (1/dt) div(u_tilde*) + b^GFM
-            # phi cached in _update_curvature (Step 4) to avoid redundant inversion
-            rhs = self._ppe_rhs_gfm.build_rhs(
-                vel_star, self.phi.data, self.kappa.data, self.rho.data, dt,
-            )
-        else:
-            # CSF/Rhie-Chow path (legacy):
-            # Rhie-Chow 補正発散: self.pressure.data = p^n
-            div_rc = self.rhie_chow.face_velocity_divergence(
-                vel_star, self.pressure.data, self.rho.data, dt,
-            )
-            rhs = div_rc / dt
-
-        # δp を解く（IPC: 初期値 0）
-        delta_p = self.ppe_solver.solve(
-            rhs, self.rho.data, dt, p_init=None,
-        )
-        # p^{n+1} = p^n + δp（§9 Step 7 の圧力更新）
-        self.pressure.data = self.pressure.data + delta_p
-        return delta_p   # 速度 Corrector は ∇(δp) を適用する
+        return solve_legacy_ppe(self, vel_star, dt)
 
     def _step_correct_velocity(self, vel_star: List, delta_p: object, dt: float) -> None:  # modifies self.velocity in-place
         """Step 7: u* − (Δt/ρ̃)∇(δp) → u^{n+1} を velocity フィールドに書き込む。
@@ -356,31 +209,16 @@ class TwoPhaseSimulation:
         Extension PDE (Aslam 2004): δp を界面越しに滑らかに延長してから
         CCD ∇(δp) を計算する（NullFieldExtender の場合は δp をそのまま返す）．
         """
-        ndim = self.config.grid.ndim
-        n_hat = self._field_ext.compute_normal(self.phi.data)
-        delta_p = self._field_ext.extend(delta_p, self.phi.data, n_hat)
-        vel_new = self.vel_corrector.correct(vel_star, delta_p, self.rho.data, dt)
-        for ax in range(ndim):
-            self.velocity[ax] = vel_new[ax]
+        correct_legacy_velocity(self, vel_star, delta_p, dt)
 
     # ── プライベートヘルパー ───────────────────────────────────────────────
 
     def _update_properties(self) -> None:
-        rho, mu = update_properties(
-            self.backend.xp,
-            self.psi.data,
-            self._rho_l, self._rho_g,
-            self._mu_l, self._mu_g,
-        )
-        self.rho.data = rho
-        self.mu.data  = mu
+        update_legacy_properties(self)
 
     def _update_curvature(self) -> None:
-        self.kappa.data = self.curvature_calc.compute(self.psi.data)
-        # Cache φ = H_ε⁻¹(ψ) for GFM PPE RHS (Step 6).
-        # Only computed when GFM is active; CurvatureCalculator also inverts
-        # ψ→φ internally, so this is a second inversion.  Eliminating it
-        # would require passing pre-computed φ through ICurvatureCalculator,
-        # which is too invasive for this change.
-        if self._needs_phi:
-            self.phi.data = invert_heaviside(self.backend.xp, self.psi.data, self.eps)
+        update_legacy_curvature(self)
+
+
+# DO NOT DELETE — legacy split-step simulation core retained per C2.
+TwoPhaseSimulationLegacy = TwoPhaseSimulation

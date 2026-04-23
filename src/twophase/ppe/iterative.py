@@ -35,7 +35,6 @@ at boundaries) and naturally zero for 3pt (interior-only stencil).
 """
 
 from __future__ import annotations
-import warnings
 import numpy as np
 from typing import TYPE_CHECKING
 
@@ -47,6 +46,20 @@ if TYPE_CHECKING:
     from ..core.boundary import BoundarySpec
 
 from .interfaces import IPPESolver
+from .iterative_residuals import (
+    compute_density_gradient_3pt,
+    compute_iterative_residual_3pt,
+)
+from .iterative_smoothers import (
+    step_iterative_adi,
+    step_iterative_explicit,
+    step_iterative_gauss_seidel,
+)
+from .iterative_workflow import (
+    IterativeSolveContext,
+    compute_iterative_diagnostic_residual,
+    run_iterative_solve,
+)
 
 
 class PPESolverIterative(IPPESolver):
@@ -169,100 +182,19 @@ class PPESolverIterative(IPPESolver):
         -------
         p : array, shape ``grid.shape``
         """
-        xp = self.xp
-        shape = self.grid.shape
-        pin = self._pin_dof
-
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
-
-        from .ccd_ppe_utils import (
-            precompute_density_gradients, compute_lts_dtau, check_convergence,
+        result, self._last_state = run_iterative_solve(
+            self._solve_context(),
+            rhs_np=rhs_np,
+            rho_np=rho_np,
+            p_init=p_init,
+            residual_ccd=self._residual_ccd,
+            residual_3pt=self._residual_3pt,
+            ccd=self.ccd,
+            thomas_sweep=self._thomas_sweep,
         )
-
-        # LTS: stability limit for explicit pseudo-time
-        if self.method == "explicit":
-            c_limit = 0.19 if self.discretization == "ccd" else 0.45
-            c_eff = min(self.c_tau, c_limit)
-        else:
-            c_eff = self.c_tau
-        dtau = compute_lts_dtau(rho_np, c_eff, self._h_min)
-
-        # Unpack initial state (dict from get_state() or plain array)
-        if isinstance(p_init, dict):
-            p = np.asarray(self.backend.to_host(p_init["p"]), dtype=float)
-        elif p_init is not None:
-            p = np.asarray(self.backend.to_host(p_init), dtype=float)
-        else:
-            p = np.zeros(shape, dtype=float)
-
-        # Density gradient (frozen during iteration)
-        if self.discretization == "ccd":
-            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
-        else:
-            drho = self._drho_3pt(rho_np)
-
-        # Per-axis derivatives of p (updated each iteration for state output)
-        last_dp: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
-        last_d2p: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
-
-        converged = False
-        residual = np.inf
-        for _ in range(self.maxiter):
-            # ── Residual R = rhs − L(p) ─────────────────────────────
-            # Always use this solver's own discretization for residual,
-            # even when p_init came from a different discretization.
-            if self.discretization == "ccd":
-                R, dp_list, d2p_list = self._residual_ccd(
-                    p, rhs_np, rho_np, drho,
-                )
-            else:
-                R, dp_list, d2p_list = self._residual_3pt(
-                    p, rhs_np, rho_np, drho,
-                )
-            last_dp = dp_list
-            last_d2p = d2p_list
-
-            residual, converged = check_convergence(R, pin, self.tol)
-            if converged:
-                break
-
-            # ── Update step ──────────────────────────────────────────
-            # Sign convention: L has negative eigenvalues (Laplacian), so the
-            # correct pseudo-time update is p -= Δτ R (damped iteration on the
-            # positive-definite system −L p = −rhs).  Negate R for smoothers.
-            neg_R = -R
-            if self.method == "explicit":
-                p = self._step_explicit(p, neg_R, dtau, pin)
-            elif self.method == "gauss_seidel":
-                p = self._step_gauss_seidel(p, neg_R, rho_np, drho, dtau, pin)
-            elif self.method == "adi":
-                p = self._step_adi(p, neg_R, rho_np, drho, dtau, pin)
-
-        if not converged:
-            warnings.warn(
-                f"PPESolverIterative({self.discretization},{self.method}): "
-                f"not converged after {self.maxiter} iterations "
-                f"(residual={residual:.3e}, tol={self.tol:.3e}).",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
-        if not np.isfinite(p).all():
-            warnings.warn(
-                "PPESolverIterative: non-finite values detected. "
-                "Check the density field or reduce pseudo_c_tau.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
-        result = self.backend.to_device(p)
         self.last_solution = result
-        self._last_state = {
-            "p": result,
-            "dp": [self.backend.to_device(d) for d in last_dp],
-            "d2p": [self.backend.to_device(d) for d in last_d2p],
-        }
         return result
 
     def get_state(self) -> dict:
@@ -296,17 +228,31 @@ class PPESolverIterative(IPPESolver):
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
         p_np = np.asarray(self.backend.to_host(p), dtype=float)
+        return compute_iterative_diagnostic_residual(
+            self._solve_context(),
+            p_np=p_np,
+            rhs_np=rhs_np,
+            rho_np=rho_np,
+            residual_ccd=self._residual_ccd,
+            residual_3pt=self._residual_3pt,
+            ccd=self.ccd,
+        )
 
-        from .ccd_ppe_utils import precompute_density_gradients, check_convergence
-        if self.discretization == "ccd":
-            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
-            R, _, _ = self._residual_ccd(p_np, rhs_np, rho_np, drho)
-        else:
-            drho = self._drho_3pt(rho_np)
-            R, _, _ = self._residual_3pt(p_np, rhs_np, rho_np, drho)
-
-        residual, _ = check_convergence(R, self._pin_dof, 0.0)
-        return residual
+    def _solve_context(self) -> IterativeSolveContext:
+        """Build the grouped solve context shared by helpers."""
+        return IterativeSolveContext(
+            backend=self.backend,
+            discretization=self.discretization,
+            method=self.method,
+            c_tau=self.c_tau,
+            tol=self.tol,
+            maxiter=self.maxiter,
+            h=self._h,
+            h_min=self._h_min,
+            ndim=self.ndim,
+            shape=self.grid.shape,
+            pin=self._pin_dof,
+        )
 
     # ── Density gradient (3pt) ───────────────────────────────────────────
 
@@ -315,40 +261,11 @@ class PPESolverIterative(IPPESolver):
 
         Interior: central difference.  Boundary: 2nd-order one-sided stencil.
         """
-        drho: list[np.ndarray] = []
-        for ax in range(self.ndim):
-            h = self._h[ax]
-            dr = np.zeros_like(rho_np)
-            # Interior central difference
-            slc_p = [slice(None)] * self.ndim
-            slc_m = [slice(None)] * self.ndim
-            slc_c = [slice(None)] * self.ndim
-            slc_p[ax] = slice(2, None)
-            slc_m[ax] = slice(None, -2)
-            slc_c[ax] = slice(1, -1)
-            dr[tuple(slc_c)] = (
-                rho_np[tuple(slc_p)] - rho_np[tuple(slc_m)]
-            ) / (2.0 * h)
-            # Left boundary: (-3f0 + 4f1 - f2) / (2h)
-            s0 = [slice(None)] * self.ndim; s0[ax] = 0
-            s1 = [slice(None)] * self.ndim; s1[ax] = 1
-            s2 = [slice(None)] * self.ndim; s2[ax] = 2
-            dr[tuple(s0)] = (
-                -3.0 * rho_np[tuple(s0)]
-                + 4.0 * rho_np[tuple(s1)]
-                - rho_np[tuple(s2)]
-            ) / (2.0 * h)
-            # Right boundary: (3fN - 4fN-1 + fN-2) / (2h)
-            sN = [slice(None)] * self.ndim; sN[ax] = -1
-            sNm1 = [slice(None)] * self.ndim; sNm1[ax] = -2
-            sNm2 = [slice(None)] * self.ndim; sNm2[ax] = -3
-            dr[tuple(sN)] = (
-                3.0 * rho_np[tuple(sN)]
-                - 4.0 * rho_np[tuple(sNm1)]
-                + rho_np[tuple(sNm2)]
-            ) / (2.0 * h)
-            drho.append(dr)
-        return drho
+        return compute_density_gradient_3pt(
+            rho_np,
+            h=self._h,
+            ndim=self.ndim,
+        )
 
     # ── Residual computation ─────────────────────────────────────────────
 
@@ -383,33 +300,15 @@ class PPESolverIterative(IPPESolver):
         Interior only: boundary Lp = 0 (boundary equations are identity in
         all smoothers, so boundary residual does not affect the iteration).
         """
-        shape = self.grid.shape
-        Lp = np.zeros(shape, dtype=float)
-        dp_list: list[np.ndarray] = []
-        d2p_list: list[np.ndarray] = []
-        for ax in range(self.ndim):
-            h = self._h[ax]
-            h2 = h * h
-            slc_p = [slice(None)] * self.ndim
-            slc_m = [slice(None)] * self.ndim
-            slc_c = [slice(None)] * self.ndim
-            slc_p[ax] = slice(2, None)
-            slc_m[ax] = slice(None, -2)
-            slc_c[ax] = slice(1, -1)
-            # d²p/dx²
-            d2p = np.zeros(shape, dtype=float)
-            d2p[tuple(slc_c)] = (
-                p[tuple(slc_p)] - 2.0 * p[tuple(slc_c)] + p[tuple(slc_m)]
-            ) / h2
-            # dp/dx
-            dp_ax = np.zeros(shape, dtype=float)
-            dp_ax[tuple(slc_c)] = (
-                p[tuple(slc_p)] - p[tuple(slc_m)]
-            ) / (2.0 * h)
-            Lp += d2p / rho_np - (drho[ax] / rho_np ** 2) * dp_ax
-            dp_list.append(dp_ax)
-            d2p_list.append(d2p)
-        return rhs_np - Lp, dp_list, d2p_list
+        return compute_iterative_residual_3pt(
+            p,
+            rhs_np,
+            rho_np,
+            drho,
+            h=self._h,
+            ndim=self.ndim,
+            shape=self.grid.shape,
+        )
 
     # ── Smoothers ────────────────────────────────────────────────────────
 
@@ -424,16 +323,13 @@ class PPESolverIterative(IPPESolver):
 
         Boundary values are frozen (Neumann BC enforced implicitly).
         """
-        # Only update interior; boundary stays at initial value
-        p = p.copy()
-        for ax in range(self.ndim):
-            s0 = [slice(None)] * self.ndim; s0[ax] = 0
-            sN = [slice(None)] * self.ndim; sN[ax] = -1
-            R[tuple(s0)] = 0.0
-            R[tuple(sN)] = 0.0
-        p += dtau * R
-        p.ravel()[pin] = 0.0
-        return p
+        return step_iterative_explicit(
+            p,
+            R,
+            dtau,
+            pin=pin,
+            ndim=self.ndim,
+        )
 
     def _step_gauss_seidel(
         self,
@@ -460,50 +356,16 @@ class PPESolverIterative(IPPESolver):
 
         Boundary nodes: identity (δp = 0 at walls).
         """
-        shape = self.grid.shape
-        Nx, Ny = shape
-        hx, hy = self._h[0], self._h[1]
-
-        inv_rho = 1.0 / rho
-        ax_c = inv_rho / (hx * hx)
-        ay_c = inv_rho / (hy * hy)
-        bx = drho[0] / (rho ** 2 * 2.0 * hx)
-        by = drho[1] / (rho ** 2 * 2.0 * hy)
-
-        diag = 1.0 / dtau + 2.0 * ax_c + 2.0 * ay_c
-        c_xm = ax_c - bx
-        c_xp = ax_c + bx
-        c_ym = ay_c - by
-        c_yp = ay_c + by
-
-        dp = np.zeros(shape, dtype=float)
-        pin_ij = np.unravel_index(pin, shape)
-
-        # Pre-compute red/black masks for interior nodes
-        ii = np.arange(1, Nx - 1)[:, None]
-        jj = np.arange(1, Ny - 1)[None, :]
-
-        # Red-black sweep (color 0 = red, 1 = black)
-        for color in range(2):
-            mask = ((ii + jj) % 2 == color)
-            # Exclude pin DOF
-            if 1 <= pin_ij[0] < Nx - 1 and 1 <= pin_ij[1] < Ny - 1:
-                mask[pin_ij[0] - 1, pin_ij[1] - 1] = False
-
-            # Interior slice views (all arrays are (Nx, Ny))
-            rhs_update = (
-                R[1:-1, 1:-1]
-                + c_xm[1:-1, 1:-1] * dp[:-2, 1:-1]
-                + c_xp[1:-1, 1:-1] * dp[2:, 1:-1]
-                + c_ym[1:-1, 1:-1] * dp[1:-1, :-2]
-                + c_yp[1:-1, 1:-1] * dp[1:-1, 2:]
-            )
-            update_vals = rhs_update / diag[1:-1, 1:-1]
-            dp[1:-1, 1:-1] = np.where(mask, update_vals, dp[1:-1, 1:-1])
-
-        p = p + dp
-        p.ravel()[pin] = 0.0
-        return p
+        return step_iterative_gauss_seidel(
+            p,
+            R,
+            rho,
+            drho,
+            dtau,
+            h=self._h,
+            shape=self.grid.shape,
+            pin=pin,
+        )
 
     def _step_adi(
         self,
@@ -518,13 +380,15 @@ class PPESolverIterative(IPPESolver):
 
         Same algorithm as PPESolverSweep._sweep_1d.
         """
-        q = self._thomas_sweep(R, rho, drho[0], dtau, axis=0)
-        q.ravel()[pin] = 0.0
-        dp = self._thomas_sweep(q, rho, drho[1], dtau, axis=1)
-        dp.ravel()[pin] = 0.0
-        p = p + dp
-        p.ravel()[pin] = 0.0
-        return p
+        return step_iterative_adi(
+            p,
+            R,
+            rho,
+            drho,
+            dtau,
+            pin=pin,
+            thomas_sweep=self._thomas_sweep,
+        )
 
     # ── Thomas sweep (vectorized, identical to PPESolverSweep._sweep_1d) ─
 
