@@ -277,9 +277,18 @@ class TwoPhaseNSSolver:
         self._pressure_gradient_scheme = str(
             pressure_gradient_scheme or self._momentum_gradient_scheme
         ).strip().lower()
-        self._surface_tension_gradient_scheme = str(
-            surface_tension_gradient_scheme or self._momentum_gradient_scheme
-        ).strip().lower()
+        _raw_st_scheme = str(surface_tension_scheme).strip().lower()
+        if _raw_st_scheme == "pressure_jump":
+            if surface_tension_gradient_scheme not in {None, "none"}:
+                raise ValueError(
+                    "surface_tension_gradient_scheme must be omitted or 'none' "
+                    "when surface_tension_scheme='pressure_jump'"
+                )
+            self._surface_tension_gradient_scheme = "none"
+        else:
+            self._surface_tension_gradient_scheme = str(
+                surface_tension_gradient_scheme or self._momentum_gradient_scheme
+            ).strip().lower()
 
         # FCCDSolver: created first so FCCDDivergenceOperator can use it below.
         # One shared instance reuses the CCD LU factorisation — mirrors builder.py
@@ -326,8 +335,9 @@ class TwoPhaseNSSolver:
         self._pressure_grad_op = IGradientOperator.from_scheme(
             self._pressure_gradient_scheme, grad_ctx
         )
-        self._surface_tension_grad_op = IGradientOperator.from_scheme(
-            self._surface_tension_gradient_scheme, grad_ctx
+        self._surface_tension_grad_op = (
+            None if self._surface_tension_gradient_scheme == "none"
+            else IGradientOperator.from_scheme(self._surface_tension_gradient_scheme, grad_ctx)
         )
         self._grad_op = self._pressure_grad_op
 
@@ -648,11 +658,7 @@ class TwoPhaseNSSolver:
                 )
             ),
             surface_tension_gradient_scheme=str(
-                getattr(
-                    getattr(cfg, "run", g),
-                    "surface_tension_gradient_scheme",
-                    "projection_consistent",
-                )
+                getattr(getattr(cfg, "run", g), "surface_tension_gradient_scheme")
             ),
             momentum_gradient_scheme=str(
                 getattr(getattr(cfg, "run", g), "momentum_gradient_scheme", "projection_consistent")

@@ -594,19 +594,6 @@ def _parse_run(
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
-    _raw_st_grad = surface_tension.get(
-        "gradient",
-        surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
-    )
-    surface_tension_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(
-            str(_raw_st_grad).strip().lower(),
-            _raw_st_grad,
-        ),
-        _MOMENTUM_GRADIENT_SCHEMES,
-        layout["paths"]["surface_tension_spatial"],
-    )
-    momentum_gradient_scheme = pressure_gradient_scheme
     surface_tension_scheme = _validate_choice(
         _SURFACE_TENSION_ALIASES.get(
             str(surface_tension.get("formulation", surface_tension.get("model", "csf"))).strip().lower(),
@@ -615,6 +602,31 @@ def _parse_run(
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
+    if surface_tension_scheme == "pressure_jump":
+        explicit_st_grad = any(
+            key in surface_tension for key in ("gradient", "spatial", "force_gradient")
+        )
+        if explicit_st_grad:
+            raise ValueError(
+                f"{layout['paths']['surface_tension_spatial']} must be omitted "
+                "when surface_tension.formulation='pressure_jump'; "
+                "the jump is applied in the PPE, not as σκ∇ψ."
+            )
+        surface_tension_gradient_scheme = "none"
+    else:
+        _raw_st_grad = surface_tension.get(
+            "gradient",
+            surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
+        )
+        surface_tension_gradient_scheme = _validate_choice(
+            _MOMENTUM_GRADIENT_ALIASES.get(
+                str(_raw_st_grad).strip().lower(),
+                _raw_st_grad,
+            ),
+            _MOMENTUM_GRADIENT_SCHEMES,
+            layout["paths"]["surface_tension_spatial"],
+        )
+    momentum_gradient_scheme = pressure_gradient_scheme
     _validate_choice(
         interface_curvature.get("method", surface_tension.get("curvature", "psi_direct_hfe")),
         _CURVATURE_SCHEMES,

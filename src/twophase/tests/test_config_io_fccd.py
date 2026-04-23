@@ -128,7 +128,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
-    assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reproject_mode == "gfm"
@@ -175,6 +175,24 @@ def test_phase_separated_coefficient_maps_to_gfm_projection():
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.reproject_mode == "gfm"
+
+
+def test_pressure_jump_rejects_body_force_gradient():
+    raw = _minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "gradient": "fccd",
+                        "formulation": "pressure_jump",
+                    },
+                },
+            },
+        },
+    })
+
+    with pytest.raises(ValueError, match="must be omitted"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_fccd_ppe_rejects_direct_solver_kind():

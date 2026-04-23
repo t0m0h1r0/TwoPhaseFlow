@@ -137,3 +137,11 @@ For `pressure_jump`, the PPE unknown is `p_tilde`; the returned pressure is the
 assembled physical pressure `p = p_tilde + σκ(1-ψ)`.  The pipeline now warm-starts
 GMRES with `p_tilde` only.  This avoids injecting the sharp jump component into
 the next smooth phase-block solve.
+
+## Code Status: Phase 5 YAML Semantics
+
+For `surface_tension.formulation: pressure_jump`, `surface_tension.gradient` is
+invalid and must be omitted.  The jump path is a PPE pressure condition, not a
+body-force gradient.  The loader maps this to `surface_tension_gradient_scheme =
+none`, and the direct solver constructor rejects conflicting force-gradient
+settings.

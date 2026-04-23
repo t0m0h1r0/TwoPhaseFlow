@@ -271,3 +271,15 @@ Warm-starting GMRES with the assembled pressure would feed the discontinuous jum
 component back into the next smooth PPE solve.  The pipeline therefore stores
 `last_base_pressure` and uses only `p_tilde` as the next PPE initial guess, while
 returning the assembled pressure to the momentum corrector.
+
+## 13. Implementation Status: Pressure-Jump YAML Semantics Phase 5
+
+`pressure_jump` is not a CSF force model.  Therefore it must not carry a
+`surface_tension.gradient` setting.  In the YAML contract, force-gradient choices
+belong only to `formulation: csf`; the SP-M pressure-jump path applies surface
+tension through the PPE context `(ψ,κ,σ)` and sets the surface-tension gradient
+scheme to `none`.
+
+This keeps the user-facing configuration scheme-first and term-correct: `fccd`
+selects the pressure/interface differential scheme, while `pressure_jump` selects
+the sharp-interface surface-tension role.

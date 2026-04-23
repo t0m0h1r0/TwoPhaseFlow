@@ -109,7 +109,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
-    assert solver._surface_tension_gradient_scheme == "fccd_flux"
+    assert solver._surface_tension_gradient_scheme == "none"
     assert solver._surface_tension_scheme == "pressure_jump"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._hfe is not None
@@ -195,6 +195,16 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     assert np.allclose(pressure, 0.0)
 
 
+def test_pressure_jump_constructor_rejects_force_gradient():
+    with pytest.raises(ValueError, match="surface_tension_gradient_scheme"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            surface_tension_scheme="pressure_jump",
+            surface_tension_gradient_scheme="fccd_flux",
+        )
+
+
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     """Executable SP-M smoke: phase-separated FCCD PPE + pressure_jump."""
     solver = TwoPhaseNSSolver(
@@ -203,7 +213,6 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
         advection_scheme="fccd_flux",
         convection_scheme="uccd6",
         pressure_gradient_scheme="fccd_flux",
-        surface_tension_gradient_scheme="fccd_flux",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
