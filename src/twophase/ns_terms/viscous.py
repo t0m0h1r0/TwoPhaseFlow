@@ -271,8 +271,7 @@ class ViscousTerm(INSTerm):
         """Cheap bulk path μ Δ_CCD u using CCD second derivatives directly."""
         lap = self.xp.zeros_like(component)
         for axis in range(ccd.ndim):
-            _, d2 = ccd.differentiate(component, axis)
-            lap += d2
+            lap += ccd.second_derivative(component, axis)
         return mu * lap
 
     def _axis_derivative_with_normal_fallback(

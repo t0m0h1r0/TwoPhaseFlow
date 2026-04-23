@@ -270,7 +270,7 @@ class FCCDSolver:
         """
         xp = self.xp
         if q is None:
-            _, q = self._ccd.differentiate(u, axis)
+            q = self._ccd.second_derivative(u, axis)
         u_lo, u_hi = self._face_slice(u, axis)
         q_lo, q_hi = self._face_slice(q, axis)
 
@@ -297,7 +297,7 @@ class FCCDSolver:
         """
         xp = self.xp
         if q is None:
-            _, q = self._ccd.differentiate(u, axis)
+            q = self._ccd.second_derivative(u, axis)
         u_lo, u_hi = self._face_slice(u, axis)
         q_lo, q_hi = self._face_slice(q, axis)
 
@@ -323,7 +323,7 @@ class FCCDSolver:
         """
         xp = self.xp
         if q is None:
-            _, q = self._ccd.differentiate(u, axis)
+            q = self._ccd.second_derivative(u, axis)
         q_lo, q_hi = self._face_slice(q, axis)
         q_face = _face_curvature_kernel(q_lo, q_hi)
         return xp.moveaxis(q_face, 0, axis)
@@ -335,7 +335,7 @@ class FCCDSolver:
         ``q`` to preserve A3 traceability and avoid duplicate block solves.
         """
         if q is None:
-            _, q = self._ccd.differentiate(u, axis)
+            q = self._ccd.second_derivative(u, axis)
         return FCCDFaceJet(
             value=self.face_value(u, axis, q=q),
             gradient=self.face_gradient(u, axis, q=q),
@@ -364,12 +364,15 @@ class FCCDSolver:
         SP-H. Riemann dissipation is intentionally left to the caller.
         """
         xp = self.xp
-        if nodal_gradient is None or q is None:
+        if nodal_gradient is None and q is None:
             computed_gradient, computed_q = self._ccd.differentiate(u, axis)
+            nodal_gradient = computed_gradient
+            q = computed_q
+        else:
             if nodal_gradient is None:
-                nodal_gradient = computed_gradient
+                nodal_gradient = self._ccd.first_derivative(u, axis)
             if q is None:
-                q = computed_q
+                q = self._ccd.second_derivative(u, axis)
 
         u_lo, u_hi = self._face_slice(u, axis)
         d_lo, d_hi = self._face_slice(nodal_gradient, axis)
@@ -414,7 +417,7 @@ class FCCDSolver:
         """
         xp = self.xp
         if q is None:
-            _, q = self._ccd.differentiate(u, axis)
+            q = self._ccd.second_derivative(u, axis)
         d_face = self.face_gradient(u, axis, q=q)   # shape (..., N, ...)
         w = self._weights[axis]
 
@@ -575,7 +578,7 @@ class FCCDSolver:
         def get_q(field, ax):
             key = (id(field), ax)
             if key not in q_cache:
-                _, q_cache[key] = self._ccd.differentiate(field, ax)
+                q_cache[key] = self._ccd.second_derivative(field, ax)
             return q_cache[key]
 
         if scalar is None:
@@ -620,7 +623,7 @@ class FCCDSolver:
         variant (Option B-sk, SP-D §7.1), average with the non-conservative
         form ``−u_k · node_gradient(φ)`` at nodes.
         """
-        _, q_prod = self._ccd.differentiate(u_k * phi, axis)
+        q_prod = self._ccd.second_derivative(u_k * phi, axis)
         F_cons = self.face_value(u_k * phi, axis, q=q_prod)
         return -self.face_divergence(F_cons, axis)
 
