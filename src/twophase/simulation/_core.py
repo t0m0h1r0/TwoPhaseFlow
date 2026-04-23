@@ -43,6 +43,10 @@ from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
 from ..levelset.heaviside import update_properties, invert_heaviside
 from ..levelset.field_extender import NullFieldExtender
+from .legacy_simulation_state import (
+    restore_legacy_simulation,
+    snapshot_legacy_simulation,
+)
 
 
 class TwoPhaseSimulation:
@@ -168,21 +172,10 @@ class TwoPhaseSimulation:
         float
             Accepted dt used for this step.
         """
-        xp = self.backend.xp
         max_retries = 12
         dt_try = float(dt_nominal)
 
-        # Snapshot (device-side copies) for rollback.
-        psi0 = xp.copy(self.psi.data)
-        rho0 = xp.copy(self.rho.data)
-        mu0 = xp.copy(self.mu.data)
-        kappa0 = xp.copy(self.kappa.data)
-        phi0 = xp.copy(self.phi.data)
-        p0 = xp.copy(self.pressure.data)
-        vel0 = [xp.copy(self.velocity[ax]) for ax in range(self.config.grid.ndim)]
-        vels0 = [xp.copy(self.vel_star[ax]) for ax in range(self.config.grid.ndim)]
-        time0 = float(self.time)
-        step0 = int(self.step)
+        snapshot = snapshot_legacy_simulation(self)
 
         for retry in range(max_retries + 1):
             try:
@@ -192,17 +185,7 @@ class TwoPhaseSimulation:
                 return dt_try
             except Exception:
                 # Roll back all mutable fields + counters before retry.
-                self.psi.data = xp.copy(psi0)
-                self.rho.data = xp.copy(rho0)
-                self.mu.data = xp.copy(mu0)
-                self.kappa.data = xp.copy(kappa0)
-                self.phi.data = xp.copy(phi0)
-                self.pressure.data = xp.copy(p0)
-                for ax in range(self.config.grid.ndim):
-                    self.velocity[ax] = xp.copy(vel0[ax])
-                    self.vel_star[ax] = xp.copy(vels0[ax])
-                self.time = time0
-                self.step = step0
+                restore_legacy_simulation(self, snapshot)
 
                 if retry >= max_retries:
                     raise
