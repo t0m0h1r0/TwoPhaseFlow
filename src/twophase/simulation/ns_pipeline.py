@@ -17,7 +17,6 @@ import numpy as np
 from ..ccd.fccd import FCCDSolver
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
 from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
-from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from .step_diagnostics import ActiveStepDiagnostics
 from .ns_step_state import NSStepInputs, NSStepState
@@ -35,20 +34,17 @@ from .gradient_operator import (
     CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,  # registration
     CCDDivergenceOperator, FVMDivergenceOperator, FCCDDivergenceOperator,
 )
-from .ns_operator_stack import NSOperatorStackOptions, build_ns_operator_stack
 from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
 from .ns_ppe_runtime import (
     build_ns_runtime_ppe_cfg_shim,
     build_ns_runtime_ppe_solver,
     build_ns_runtime_plain_ppe_solver,
-    make_ns_ppe_factory_options,
 )
 from .ns_runtime_bootstrap import (
     bind_ns_runtime_bootstrap,
     build_ns_runtime_bootstrap,
 )
-from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
 from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registration
 from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm           # registration
@@ -64,12 +60,16 @@ from .ns_runtime_factories import (
 from .ns_runtime_config import (
     normalise_ns_interface_runtime,
     normalise_ns_ppe_runtime,
-    normalise_ns_scheme_runtime,
 )
 from .ns_runtime_binding import (
     bind_ns_interface_runtime,
     bind_ns_ppe_runtime,
-    bind_ns_scheme_runtime,
+)
+from .ns_scheme_bootstrap import (
+    bind_ns_operator_stack,
+    bind_ns_scheme_runtime_artifacts,
+    build_ns_scheme_operator_stack,
+    build_ns_scheme_runtime_artifacts,
 )
 from .ns_runtime_services import (
     NSRuntimeSetupContext,
@@ -314,13 +314,16 @@ class TwoPhaseNSSolver:
 
     def _initialise_scheme_runtime(self, options: SolverSchemeOptions) -> None:
         """Normalise scheme selections and stateful time-integration flags."""
-        eps_curv = self._make_eps_field() if self._use_local_eps and self._alpha_grid > 1.0 else self._eps
-        self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
-        self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=options.hfe_C)
-        state = normalise_ns_scheme_runtime(options)
-        bind_ns_scheme_runtime(self, state)
-        self._conv_prev = None
-        self._conv_ab2_ready = False
+        artifacts = build_ns_scheme_runtime_artifacts(
+            backend=self._backend,
+            ccd=self._ccd,
+            eps=self._eps,
+            use_local_eps=self._use_local_eps,
+            alpha_grid=self._alpha_grid,
+            make_eps_field=self._make_eps_field,
+            options=options,
+        )
+        bind_ns_scheme_runtime_artifacts(self, artifacts)
 
     def _initialise_operator_stack(
         self,
@@ -328,36 +331,17 @@ class TwoPhaseNSSolver:
         scheme_options: SolverSchemeOptions,
     ) -> None:
         """Build spatial operators and solver strategies."""
-        stack = build_ns_operator_stack(
+        stack = build_ns_scheme_operator_stack(
             backend=self._backend,
             grid=self._grid,
             ccd=self._ccd,
-            options=NSOperatorStackOptions(
-                bc_type=grid_options.bc_type,
-                advection_scheme=self._scheme_runtime.advection_scheme,
-                convection_scheme=self._scheme_runtime.convection_scheme,
-                pressure_gradient_scheme=self._scheme_runtime.pressure_gradient_scheme,
-                surface_tension_gradient_scheme=self._scheme_runtime.surface_tension_gradient_scheme,
-                ppe_solver_name=self._ppe_runtime.ppe_solver_name,
-                face_flux_projection=bool(scheme_options.face_flux_projection)
-                or bool(self._interface_runtime.face_flux_projection),
-                uccd6_sigma=float(scheme_options.uccd6_sigma),
-            ),
-            ppe_options=make_ns_ppe_factory_options(
-                self._ppe_runtime,
-                solver_name=self._ppe_runtime.ppe_solver_name,
-            ),
+            grid_options=grid_options,
+            scheme_options=scheme_options,
+            interface_runtime=self._interface_runtime,
+            ppe_runtime=self._ppe_runtime,
+            scheme_runtime=self._scheme_runtime,
         )
-        self._fccd = stack.fccd
-        self._fccd_div_op = stack.fccd_div_op
-        self._div_op = stack.div_op
-        self._face_flux_projection = stack.face_flux_projection
-        self._ppe_solver = stack.ppe_solver
-        self._pressure_grad_op = stack.pressure_grad_op
-        self._surface_tension_grad_op = stack.surface_tension_grad_op
-        self._grad_op = self._pressure_grad_op
-        self._adv = stack.adv
-        self._conv_term = stack.conv_term
+        bind_ns_operator_stack(self, stack)
 
     def _build_reinitializer(
         self,
