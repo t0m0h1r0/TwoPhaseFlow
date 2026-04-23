@@ -15,7 +15,7 @@ grid:
     type: interface_fitted
     method: gaussian_levelset
     alpha: 2.0
-    schedule: every_step
+    schedule: static
 
 interface:
   thickness:
@@ -27,7 +27,7 @@ interface:
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 1
+      every_steps: 4
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -59,11 +59,6 @@ numerics:
       variable: psi
       spatial: fccd
       time_integrator: tvd_rk3
-    tracking:
-      primary: phi
-      redistance:
-        schedule:
-          every_steps: 4
   momentum:
     terms:
       convection:

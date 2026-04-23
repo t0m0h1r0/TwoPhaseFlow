@@ -18,6 +18,7 @@ import pytest
 
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.config_io import ExperimentConfig
+from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
 from twophase.ppe.interfaces import IPPESolver
 
@@ -114,6 +115,9 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "jump_decomposition"
     assert solver._hfe is not None
+    assert isinstance(solver._transport, PsiDirectTransport)
+    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.reinit_every == 4
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
