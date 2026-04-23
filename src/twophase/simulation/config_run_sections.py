@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .config_models import RunCfg
 from .config_run_builder_sections import RunCfgBuilderOptions, build_run_cfg
+from .config_run_context_sections import build_run_parse_context
 from .config_run_layout_sections import (
     normalize_momentum_predictor,
     parse_numerics_layout,
@@ -34,52 +35,48 @@ def parse_run(
     output: dict | None = None,
 ) -> RunCfg:
     """Parse the run section from experiment YAML."""
-    output = output or {}
-    reinit = interface["reinitialization"]
-    interface_geometry = interface.get("geometry", {}) or {}
-    interface_curvature = interface_geometry.get("curvature", {}) or {}
-    reinit_profile = reinit.get("profile", {}) or {}
-    reinit_schedule = reinit["schedule"]
-    layout = parse_numerics_layout(numerics)
-    tracking = layout["tracking"]
-    projection = layout["projection"]
-    debug = d.get("debug", {}) or {}
+    context = build_run_parse_context(
+        run_section=d,
+        interface=interface,
+        numerics=numerics,
+        output=output,
+    )
 
     operator_settings = parse_run_operator_settings(
-        layout=layout,
-        interface_transport=layout["interface_transport"],
-        momentum=layout["momentum"],
-        convection=layout["convection"],
-        viscosity=layout["viscosity"],
-        pressure_term=layout["pressure_term"],
-        surface_tension=layout["surface_tension"],
-        interface_curvature=interface_curvature,
-        projection=projection,
+        layout=context.layout,
+        interface_transport=context.layout["interface_transport"],
+        momentum=context.layout["momentum"],
+        convection=context.layout["convection"],
+        viscosity=context.layout["viscosity"],
+        pressure_term=context.layout["pressure_term"],
+        surface_tension=context.layout["surface_tension"],
+        interface_curvature=context.interface_curvature,
+        projection=context.projection,
     )
 
     reinit_projection = parse_run_reinit_projection(
-        reinit=reinit,
-        reinit_profile=reinit_profile,
-        projection=projection,
+        reinit=context.reinit,
+        reinit_profile=context.reinit_profile,
+        projection=context.projection,
         poisson_coefficient=operator_settings["poisson_coefficient"],
-        projection_mode_path=layout["paths"]["projection_mode"],
+        projection_mode_path=context.layout["paths"]["projection_mode"],
     )
 
     return build_run_cfg(
         RunCfgBuilderOptions(
-            time_cfg=d["time"],
-            snapshots=output.get("snapshots", {}) or {},
-            tracking=tracking,
-            projection=projection,
-            interface_curvature=interface_curvature,
-            surface_tension=layout["surface_tension"],
-            reinit_profile=reinit_profile,
-            reinit_schedule=reinit_schedule,
-            layout_paths=layout["paths"],
+            time_cfg=context.time_cfg,
+            snapshots=context.snapshots,
+            tracking=context.tracking,
+            projection=context.projection,
+            interface_curvature=context.interface_curvature,
+            surface_tension=context.layout["surface_tension"],
+            reinit_profile=context.reinit_profile,
+            reinit_schedule=context.reinit_schedule,
+            layout_paths=context.layout["paths"],
             operator_settings=operator_settings,
             reproject_mode=reinit_projection.reproject_mode,
             reinit_method=reinit_projection.reinit_method,
             ridge_sigma_0=reinit_projection.ridge_sigma_0,
-            debug=debug,
+            debug=context.debug,
         )
     )
