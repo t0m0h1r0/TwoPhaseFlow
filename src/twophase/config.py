@@ -108,10 +108,10 @@ class NumericsConfig:
     # 境界条件の種類: BCType.WALL または BCType.PERIODIC
     bc_type: BCType = BCType.WALL
     # CLS 移流スキーム:
-    #   'dissipative_ccd' (デフォルト, §5) | 'weno5' | 'fccd_nodal' | 'fccd_flux'
-    # FCCD 変種は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
+    #   'dissipative_ccd' (デフォルト, §5) | 'weno5' | 'fccd'
+    # FCCD は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
     advection_scheme: str = "dissipative_ccd"
-    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
+    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd' | 'uccd6'
     # FCCD 変種は face-centered compact (SP-D §6/§7); UCCD6 は 6 次 upwind CCD +
     # 選択的超粘性 (WIKI-T-062, WIKI-X-023). いずれも ConvectionTerm と完全互換
     # の AB2 バッファ形状を保つ.
@@ -134,19 +134,23 @@ class NumericsConfig:
         # 文字列からの自動変換（YAML 後方互換）
         if isinstance(self.bc_type, str):
             object.__setattr__(self, 'bc_type', BCType(self.bc_type))
+        if self.advection_scheme == "fccd":
+            object.__setattr__(self, 'advection_scheme', "fccd_flux")
+        if self.convection_scheme == "fccd":
+            object.__setattr__(self, 'convection_scheme', "fccd_flux")
         assert isinstance(self.bc_type, BCType), (
             f"bc_type は BCType でなければならない: '{self.bc_type}'"
         )
         assert self.advection_scheme in (
             "dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux",
         ), (
-            f"advection_scheme は 'dissipative_ccd', 'weno5', 'fccd_nodal', "
-            f"'fccd_flux' のいずれか: '{self.advection_scheme}'"
+            f"advection_scheme は 'dissipative_ccd', 'weno5', 'fccd' "
+            f"のいずれか: '{self.advection_scheme}'"
         )
         assert self.convection_scheme in (
             "ccd", "fccd_nodal", "fccd_flux", "uccd6",
         ), (
-            f"convection_scheme は 'ccd', 'fccd_nodal', 'fccd_flux', 'uccd6' "
+            f"convection_scheme は 'ccd', 'fccd', 'uccd6' "
             f"のいずれか: '{self.convection_scheme}'"
         )
         if self.convection_scheme == "uccd6":

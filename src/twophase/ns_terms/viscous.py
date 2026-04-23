@@ -55,7 +55,7 @@ class ViscousTerm(INSTerm):
                  If False, the caller is expected to use ``compute_explicit``
                  directly (see ``ns_terms/predictor.py``).
     spatial_scheme : Spatial operator for the stress-divergence body.
-                 ``ccd_bulk`` uses CCD for Layer-A velocity gradients and
+                 ``ccd``/``ccd_bulk`` uses CCD for Layer-A velocity gradients and
                  low-order physical-coordinate stress divergence.
                  ``conservative_stress`` uses low-order gradients everywhere.
                  ``ccd_stress_legacy`` preserves the old all-CCD
@@ -170,7 +170,8 @@ class ViscousTerm(INSTerm):
         aliases = {
             "stress_divergence": "conservative_stress",
             "low_order_conservative": "conservative_stress",
-            "ccd": "ccd_stress_legacy",
+            "ccd": "ccd_bulk",
+            "ccd_legacy": "ccd_stress_legacy",
         }
         canonical = aliases.get(str(name).strip().lower(), str(name).strip().lower())
         if canonical not in {"conservative_stress", "ccd_bulk", "ccd_stress_legacy"}:

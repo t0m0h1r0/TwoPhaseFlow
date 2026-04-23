@@ -298,14 +298,14 @@ def test_from_config_threads_fccd_keys():
         "numerics": {
             "physical_time": {
                 "interface_advection": {
-                    "spatial": "fccd_flux",
+                    "spatial": "fccd",
                     "time": "explicit",
                     "tracking": {"enabled": True, "primary": "phi"},
                 },
                 "momentum": {
                     "form": "primitive_velocity",
-                    "convection": {"spatial": "fccd_flux", "time": "explicit"},
-                    "viscosity": {"spatial": "ccd_bulk", "time": "crank_nicolson"},
+                    "convection": {"spatial": "fccd", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "crank_nicolson"},
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",
@@ -377,7 +377,7 @@ def test_from_config_can_disable_interface_tracking():
                 "momentum": {
                     "form": "primitive_velocity",
                     "convection": {"spatial": "ccd", "time": "explicit"},
-                    "viscosity": {"spatial": "ccd_bulk", "time": "explicit"},
+                    "viscosity": {"spatial": "ccd", "time": "explicit"},
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",

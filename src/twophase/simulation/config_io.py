@@ -103,11 +103,11 @@ class RunCfg:
     ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
     # Stage-wise numerical schemes — bridged from SimulationBuilder (CHK-158)
     # and WIKI-X-023 per-term NS decomposition.
-    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
-    # convection_scheme: momentum    — 'ccd' | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
+    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd'
+    # convection_scheme: momentum    — 'ccd' | 'fccd' | 'uccd6'
     # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct' | 'fccd_iterative'
     # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
-    # viscous_spatial_scheme: viscous — 'ccd_bulk' | 'conservative_stress' | 'ccd_stress_legacy'
+    # viscous_spatial_scheme: viscous — 'ccd' | 'conservative_stress' | 'ccd_stress_legacy'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
@@ -399,7 +399,9 @@ def _resolve_surface_tension(
 
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
+_ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
+_CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
@@ -441,7 +443,8 @@ _VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legac
 _VISCOUS_SPATIAL_ALIASES = {
     "stress_divergence": "conservative_stress",
     "low_order_conservative": "conservative_stress",
-    "ccd": "ccd_stress_legacy",
+    "ccd": "ccd_bulk",
+    "ccd_legacy": "ccd_stress_legacy",
 }
 _CURVATURE_SCHEMES = ("psi_direct_hfe",)
 _MOMENTUM_PREDICTOR_ALIASES = {
@@ -449,7 +452,10 @@ _MOMENTUM_PREDICTOR_ALIASES = {
     "pressure_correction": "projection_predictor_corrector",
 }
 _MOMENTUM_GRADIENT_SCHEMES = ("ccd", "fccd_flux", "fccd_nodal")
-_MOMENTUM_GRADIENT_ALIASES = {"projection_consistent": "ccd"}
+_MOMENTUM_GRADIENT_ALIASES = {
+    "projection_consistent": "ccd",
+    "fccd": "fccd_flux",
+}
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
 _PPE_ITERATION_METHODS = ("gmres",)
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
@@ -519,7 +525,11 @@ def _parse_run(
             "run.time: 'cfl' and 'dt' are mutually exclusive."
         )
     advection_scheme = _validate_choice(
-        interface_transport["spatial"], _ADVECTION_SCHEMES,
+        _ADVECTION_SCHEME_ALIASES.get(
+            str(interface_transport["spatial"]).strip().lower(),
+            interface_transport["spatial"],
+        ),
+        _ADVECTION_SCHEMES,
         layout["paths"]["interface_spatial"],
     )
     _parse_time_integrator(
@@ -533,7 +543,11 @@ def _parse_run(
         layout["paths"]["momentum_form"],
     )
     convection_scheme = _validate_choice(
-        convection["spatial"], _CONVECTION_SCHEMES,
+        _CONVECTION_SCHEME_ALIASES.get(
+            str(convection["spatial"]).strip().lower(),
+            convection["spatial"],
+        ),
+        _CONVECTION_SCHEMES,
         layout["paths"]["convection_spatial"],
     )
     convection_time_scheme = _parse_time_integrator(
@@ -564,7 +578,10 @@ def _parse_run(
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
     _raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
     pressure_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(_raw_p_grad, _raw_p_grad),
+        _MOMENTUM_GRADIENT_ALIASES.get(
+            str(_raw_p_grad).strip().lower(),
+            _raw_p_grad,
+        ),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
@@ -573,7 +590,10 @@ def _parse_run(
         surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
     )
     surface_tension_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(_raw_st_grad, _raw_st_grad),
+        _MOMENTUM_GRADIENT_ALIASES.get(
+            str(_raw_st_grad).strip().lower(),
+            _raw_st_grad,
+        ),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["surface_tension_spatial"],
     )

@@ -30,7 +30,7 @@ numerics:
   interface:
     transport:
       variable: psi
-      spatial: fccd_flux
+      spatial: fccd
       time_integrator: tvd_rk3
 ```
 
@@ -106,12 +106,13 @@ must be independently visible.
 The current ch13 production/probe YAMLs follow the latest wiki design guide
 within the schemes implemented today:
 
-- `interface.transport.spatial: fccd_flux` follows the core CCD-family policy:
+- `interface.transport.spatial: fccd` follows the core CCD-family policy:
   FCCD/UCCD/DCCD are introduced so production ch13 experiments do not fall back
   to WENO. This preserves WIKI-T-065 / WIKI-X-031's field separation: ψ is the
   conservative transported state; φ is geometry and should not be the primary
   physical-time transport variable.  `tracking:` is omitted because
-  `transport.variable: psi` already determines the tracking variable.
+  `transport.variable: psi` already determines the tracking variable.  The
+  flux-locus form is the term default, not part of the scheme name.
 - `interface.transport.time_integrator: tvd_rk3` is co-located with the spatial
   scheme in the same `transport:` block, reflecting that spatial and temporal
   discretizations of the same equation belong together.
@@ -125,11 +126,10 @@ within the schemes implemented today:
 - `momentum.terms.viscosity.time_integrator: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
   viscous terms are stiffness-relevant and should use the CN path when
   available.
-- `momentum.terms.viscosity.spatial: ccd_bulk` keeps the calculation in the CCD
-  family without making FCCD/UCCD the viscous owner: Layer-A velocity gradients
-  use CCD in the smooth bulk, while stress assembly/divergence remains the
-  variable-μ conservative stress-divergence body.  Interface-band fallback is
-  the next refinement point.
+- `momentum.terms.viscosity.spatial: ccd` keeps the calculation in the CCD
+  family.  The implementation uses the term's default options: bulk CCD
+  Laplacian away from the interface and conservative stress-divergence with
+  normal-axis fallback inside the ψ band.
 - `projection.mode` is omitted for the §9 default.  The implementation uses the
   projection mode implied by `poisson.operator.coefficient`; explicit values
   are reserved for legacy/IIM/GFM comparison paths.

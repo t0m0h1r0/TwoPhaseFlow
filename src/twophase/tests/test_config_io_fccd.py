@@ -68,7 +68,7 @@ def _minimal(patch: dict | None = None) -> dict:
                 "terms": {
                     "convection": {"spatial": "ccd", "time_integrator": "ab2"},
                     "pressure": {"gradient": "ccd"},
-                    "viscosity": {"spatial": "ccd_bulk", "time_integrator": "crank_nicolson"},
+                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
                         "gradient": "ccd",
                         "formulation": "csf",
@@ -222,7 +222,7 @@ def test_readable_structured_sections_round_trip():
         "numerics": {
             "interface": {
                 "transport": {
-                    "spatial": "fccd_flux",
+                    "spatial": "fccd",
                 },
                 "tracking": {
                         "primary": "phi",
@@ -241,8 +241,8 @@ def test_readable_structured_sections_round_trip():
                         "uccd6_sigma": 2.0e-3,
                     },
                     "pressure": {"spatial": "projection_consistent"},
-                    "viscosity": {"spatial": "ccd_bulk", "time_integrator": "crank_nicolson"},
-                    "surface_tension": {"gradient": "fccd_flux", "formulation": "none"},
+                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
+                    "surface_tension": {"gradient": "fccd", "formulation": "none"},
                 },
             },
             "projection": {
@@ -475,7 +475,7 @@ def test_gradient_key_reads_pressure_and_surface_tension():
         "numerics": {
             "momentum": {
                 "terms": {
-                    "pressure": {"gradient": "fccd_flux"},
+                    "pressure": {"gradient": "fccd"},
                     "surface_tension": {"gradient": "fccd_nodal", "formulation": "csf"},
                 },
             },
