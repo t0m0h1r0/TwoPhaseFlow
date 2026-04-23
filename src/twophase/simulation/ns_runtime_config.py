@@ -41,6 +41,16 @@ class NSPPERuntimeState:
     pressure_scheme: str
 
 
+@dataclass(frozen=True)
+class NSSchemeRuntimeState:
+    convection_time_scheme: str
+    momentum_gradient_scheme: str
+    pressure_gradient_scheme: str
+    surface_tension_gradient_scheme: str
+    advection_scheme: str
+    convection_scheme: str
+
+
 def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     rebuild_freq = max(0, int(options.grid_rebuild_freq))
     reinit_every = int(options.reinit_every)
@@ -165,4 +175,48 @@ def normalise_ns_ppe_runtime(
             else "fvm_spsolve" if ppe_solver_name == "fvm_direct"
             else "fccd_matrixfree"
         ),
+    )
+
+
+def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
+    conv_time_aliases = {
+        "adams_bashforth_2": "ab2",
+        "adams_bashforth": "ab2",
+        "ab_2": "ab2",
+        "explicit": "ab2",
+        "forward_euler": "forward_euler",
+        "euler": "forward_euler",
+    }
+    raw_time_scheme = str(options.convection_time_scheme).strip().lower()
+    convection_time_scheme = conv_time_aliases.get(raw_time_scheme, raw_time_scheme)
+    if convection_time_scheme not in {"ab2", "forward_euler"}:
+        raise ValueError(
+            "Unsupported convection_time_scheme="
+            f"{convection_time_scheme!r}; use ab2|forward_euler."
+        )
+
+    momentum_gradient_scheme = str(options.momentum_gradient_scheme).strip().lower()
+    pressure_gradient_scheme = str(
+        options.pressure_gradient_scheme or momentum_gradient_scheme
+    ).strip().lower()
+    raw_st_scheme = str(options.surface_tension_scheme).strip().lower()
+    if raw_st_scheme == "pressure_jump":
+        if options.surface_tension_gradient_scheme not in {None, "none"}:
+            raise ValueError(
+                "surface_tension_gradient_scheme must be omitted or 'none' "
+                "when surface_tension_scheme='pressure_jump'"
+            )
+        surface_tension_gradient_scheme = "none"
+    else:
+        surface_tension_gradient_scheme = str(
+            options.surface_tension_gradient_scheme or momentum_gradient_scheme
+        ).strip().lower()
+
+    return NSSchemeRuntimeState(
+        convection_time_scheme=convection_time_scheme,
+        momentum_gradient_scheme=momentum_gradient_scheme,
+        pressure_gradient_scheme=pressure_gradient_scheme,
+        surface_tension_gradient_scheme=surface_tension_gradient_scheme,
+        advection_scheme=str(options.advection_scheme),
+        convection_scheme=str(options.convection_scheme),
     )

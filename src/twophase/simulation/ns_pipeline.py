@@ -70,6 +70,7 @@ from .ns_runtime_factories import (
 from .ns_runtime_config import (
     normalise_ns_interface_runtime,
     normalise_ns_ppe_runtime,
+    normalise_ns_scheme_runtime,
 )
 from .runtime_setup import (
     apply_velocity_bc as _apply_bc,
@@ -425,43 +426,15 @@ class TwoPhaseNSSolver:
         eps_curv = self._make_eps_field() if self._use_local_eps and self._alpha_grid > 1.0 else self._eps
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=options.hfe_C)
-
-        conv_time_aliases = {
-            "adams_bashforth_2": "ab2",
-            "adams_bashforth": "ab2",
-            "ab_2": "ab2",
-            "explicit": "ab2",
-            "forward_euler": "forward_euler",
-            "euler": "forward_euler",
-        }
-        raw_time_scheme = str(options.convection_time_scheme).strip().lower()
-        self._convection_time_scheme = conv_time_aliases.get(raw_time_scheme, raw_time_scheme)
-        if self._convection_time_scheme not in {"ab2", "forward_euler"}:
-            raise ValueError(
-                "Unsupported convection_time_scheme="
-                f"{self._convection_time_scheme!r}; use ab2|forward_euler."
-            )
-
+        state = normalise_ns_scheme_runtime(options)
+        self._convection_time_scheme = state.convection_time_scheme
         self._conv_prev = None
         self._conv_ab2_ready = False
-        self._momentum_gradient_scheme = str(options.momentum_gradient_scheme).strip().lower()
-        self._pressure_gradient_scheme = str(
-            options.pressure_gradient_scheme or self._momentum_gradient_scheme
-        ).strip().lower()
-        raw_st_scheme = str(options.surface_tension_scheme).strip().lower()
-        if raw_st_scheme == "pressure_jump":
-            if options.surface_tension_gradient_scheme not in {None, "none"}:
-                raise ValueError(
-                    "surface_tension_gradient_scheme must be omitted or 'none' "
-                    "when surface_tension_scheme='pressure_jump'"
-                )
-            self._surface_tension_gradient_scheme = "none"
-        else:
-            self._surface_tension_gradient_scheme = str(
-                options.surface_tension_gradient_scheme or self._momentum_gradient_scheme
-            ).strip().lower()
-        self._advection_scheme = str(options.advection_scheme)
-        self._convection_scheme = str(options.convection_scheme)
+        self._momentum_gradient_scheme = state.momentum_gradient_scheme
+        self._pressure_gradient_scheme = state.pressure_gradient_scheme
+        self._surface_tension_gradient_scheme = state.surface_tension_gradient_scheme
+        self._advection_scheme = state.advection_scheme
+        self._convection_scheme = state.convection_scheme
 
     def _initialise_operator_stack(
         self,
