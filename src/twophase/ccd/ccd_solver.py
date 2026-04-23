@@ -202,7 +202,9 @@ class CCDSolver:
         f_p1 = f[2:n_int + 2]
         d1_rhs = (_A1 / h) * (f_p1 - f_m1)                        # (n_int, batch)
         d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)      # (n_int, batch)
-        rhs = xp.stack((d1_rhs, d2_rhs), axis=1)                  # (n_int, 2, batch)
+        rhs = xp.empty((n_int, 2, batch_size), dtype=f.dtype)     # (n_int, 2, batch)
+        rhs[:, 0, :] = d1_rhs
+        rhs[:, 1, :] = d2_rhs
 
         # Boundary values — each returns a (2, batch) stacked [d1, d2]
         # contribution, pre-stacked so the subtraction + ghost recovery
@@ -516,7 +518,10 @@ class CCDSolver:
             batch = f.shape[1]
             fp0  = xp.full(batch, float(bc_left_override[0]))
             fpp0 = xp.full(batch, float(bc_left_override[1]))
-            return xp.stack((fp0, fpp0))                      # (2, batch)
+            out = xp.empty((2, batch), dtype=fp0.dtype)
+            out[0] = fp0
+            out[1] = fpp0
+            return out                                       # (2, batch)
 
         # Vectorised contraction: (n,) device vector @ (n, batch) → (batch,).
         # The coefficients are cached on device in _build_axis_solver.
@@ -525,7 +530,10 @@ class CCDSolver:
         n_II = info['n_II_left']
         R_I  = c_I  @ f[:4]                                   # (batch,)
         R_II = c_II @ f[:n_II]                                # (batch,)
-        return xp.stack((R_I, R_II))                          # (2, batch)
+        out = xp.empty((2, f.shape[1]), dtype=R_I.dtype)
+        out[0] = R_I
+        out[1] = R_II
+        return out                                            # (2, batch)
 
     def _right_boundary(self, info, f, h, N, bc_right_override):
         """Compute the data-dependent part of the right boundary value.
@@ -538,7 +546,10 @@ class CCDSolver:
             batch = f.shape[1]
             fpN  = xp.full(batch, float(bc_right_override[0]))
             fppN = xp.full(batch, float(bc_right_override[1]))
-            return xp.stack((fpN, fppN))                      # (2, batch)
+            out = xp.empty((2, batch), dtype=fpN.dtype)
+            out[0] = fpN
+            out[1] = fppN
+            return out                                       # (2, batch)
 
         # The right stencil uses f[N], f[N-1], f[N-2], ..., so build a
         # reversed view and contract the same way as the left side.
@@ -548,7 +559,10 @@ class CCDSolver:
         f_rev = f[N::-1]                                      # view, stride -1
         R_I_r  = c_I_r  @ f_rev[:4]                           # (batch,)
         R_II_r = c_II_r @ f_rev[:n_II_r]                      # (batch,)
-        return xp.stack((R_I_r, R_II_r))                      # (2, batch)
+        out = xp.empty((2, f.shape[1]), dtype=R_I_r.dtype)
+        out[0] = R_I_r
+        out[1] = R_II_r
+        return out                                            # (2, batch)
 
     # DO NOT DELETE — CHK-118 legacy reference.
     # Pre-matmul scalar-gather boundary helpers. Retained per C2.
