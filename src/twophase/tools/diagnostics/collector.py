@@ -166,21 +166,29 @@ class DiagnosticCollector:
 
             elif m == "mean_rise_velocity":
                 gas = psi < 0.5
-                vol_gas = float(xp.sum(xp.where(gas, dV, 0.0)))
-                vm = (
-                    float(xp.sum(xp.where(gas, v * dV, 0.0))) / vol_gas
-                    if vol_gas > 1e-12
-                    else 0.0
-                )
+                gas_raw = xp.stack([
+                    xp.sum(xp.where(gas, dV, 0.0)),
+                    xp.sum(xp.where(gas, v * dV, 0.0)),
+                ])
+                vol_gas, v_sum = [float(x) for x in np.asarray(_to_host(gas_raw))]
+                vm = v_sum / vol_gas if vol_gas > 1e-12 else 0.0
                 self._data[m].append(vm)
 
             elif m == "bubble_centroid":
                 gas = psi < 0.5
-                vol_gas = float(xp.sum(xp.where(gas, dV, 0.0)))
+                gas_raw = xp.stack([
+                    xp.sum(xp.where(gas, dV, 0.0)),
+                    xp.sum(xp.where(gas, X * dV, 0.0)),
+                    xp.sum(xp.where(gas, Y * dV, 0.0)),
+                    xp.sum(xp.where(gas, v * dV, 0.0)),
+                ])
+                vol_gas, x_sum, y_sum, v_sum = [
+                    float(x) for x in np.asarray(_to_host(gas_raw))
+                ]
                 if vol_gas > 1e-12:
-                    xc = float(xp.sum(xp.where(gas, X * dV, 0.0))) / vol_gas
-                    yc = float(xp.sum(xp.where(gas, Y * dV, 0.0))) / vol_gas
-                    vc = float(xp.sum(xp.where(gas, v * dV, 0.0))) / vol_gas
+                    xc = x_sum / vol_gas
+                    yc = y_sum / vol_gas
+                    vc = v_sum / vol_gas
                 else:
                     xc = yc = vc = float("nan")
                 self._data["xc"].append(xc)
@@ -208,14 +216,21 @@ class DiagnosticCollector:
                 if self.sigma > 0.0 and self.R > 0.0:
                     inside = psi > 0.5
                     outside = psi < 0.5
-                    n_in = float(xp.sum(inside))
-                    n_out = float(xp.sum(outside))
+                    raw = xp.stack([
+                        xp.sum(inside),
+                        xp.sum(outside),
+                        xp.sum(xp.where(inside, p, 0.0)),
+                        xp.sum(xp.where(outside, p, 0.0)),
+                    ])
+                    n_in, n_out, p_in_sum, p_out_sum = [
+                        float(x) for x in np.asarray(_to_host(raw))
+                    ]
                     p_in = (
-                        float(xp.sum(xp.where(inside, p, 0.0))) / n_in
+                        p_in_sum / n_in
                         if n_in > 0 else 0.0
                     )
                     p_out = (
-                        float(xp.sum(xp.where(outside, p, 0.0))) / n_out
+                        p_out_sum / n_out
                         if n_out > 0 else 0.0
                     )
                     dp_sim = p_in - p_out
