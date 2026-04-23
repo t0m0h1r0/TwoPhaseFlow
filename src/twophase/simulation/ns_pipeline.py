@@ -44,9 +44,9 @@ from .ns_ppe_runtime import (
     build_ns_runtime_plain_ppe_solver,
     make_ns_ppe_factory_options,
 )
-from .ns_runtime_components import (
-    NSRuntimeComponentOptions,
-    build_ns_runtime_components,
+from .ns_runtime_bootstrap import (
+    bind_ns_runtime_bootstrap,
+    build_ns_runtime_bootstrap,
 )
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
@@ -57,7 +57,6 @@ from ..ppe.interfaces import IPPESolver
 from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree              # registration
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
-from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .ns_runtime_factories import (
     NSReinitializerFactoryOptions,
     build_ns_reinitializer,
@@ -261,46 +260,21 @@ class TwoPhaseNSSolver:
             options.ppe,
             surface_tension_scheme=options.schemes.surface_tension_scheme,
         )
-        self._p_prev = None
-        self._p_prev_dev = None
-        self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
         self._initialise_scheme_runtime(options.schemes)
         self._initialise_operator_stack(options.grid, options.schemes)
-        self._reinit = self._build_reinitializer(options.interface, options.schemes)
-        self._cn_viscous = options.schemes.cn_viscous
-        self._Re = options.schemes.Re
-        self._viscous_spatial_scheme = str(options.schemes.viscous_spatial_scheme)
-        self._surface_tension_scheme = str(options.schemes.surface_tension_scheme)
-        components = build_ns_runtime_components(
+        bootstrap = build_ns_runtime_bootstrap(
             backend=self._backend,
             grid=self._grid,
             adv=self._adv,
-            reinit=self._reinit,
             eps=self._eps,
-            options=NSRuntimeComponentOptions(
-                phi_primary_clip_factor=self._interface_runtime.phi_primary_clip_factor,
-                phi_primary_heaviside_eps_scale=self._interface_runtime.phi_primary_heaviside_eps_scale,
-                interface_tracking_enabled=self._interface_runtime.interface_tracking_enabled,
-                phi_primary_transport=self._interface_runtime.phi_primary_transport,
-                phi_primary_redist_every=self._interface_runtime.phi_primary_redist_every,
-                reinit_every=self._interface_runtime.reinit_every,
-                debug_diagnostics=options.schemes.debug_diagnostics,
-                reproject_mode=self._interface_runtime.reproject_mode,
-                cn_viscous=self._cn_viscous,
-                reynolds_number=self._Re,
-                viscous_spatial_scheme=self._viscous_spatial_scheme,
-                surface_tension_scheme=self._surface_tension_scheme,
+            interface_runtime=self._interface_runtime,
+            scheme_options=options.schemes,
+            build_reinitializer=lambda: self._build_reinitializer(
+                options.interface,
+                options.schemes,
             ),
-            reproj_iim=self._reproj_iim,
         )
-        self._reconstruct_base = components.reconstruct_base
-        self._reconstruct_phi_primary = components.reconstruct_phi_primary
-        self._transport = components.transport
-        self.X, self.Y = components.X, components.Y
-        self._step_diag = components.step_diag
-        self._reprojector = components.reprojector
-        self._viscous_predictor = components.viscous_predictor
-        self._st_force = components.st_force
+        bind_ns_runtime_bootstrap(self, bootstrap)
 
     def _initialise_geometry(self, options: SolverGridOptions) -> None:
         """Initialise grid geometry and backend state."""
