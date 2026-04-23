@@ -21,6 +21,7 @@ from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # r
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
 from .step_diagnostics import ActiveStepDiagnostics
+from .ns_step_state import NSStepInputs, NSStepState
 from .velocity_reprojector import (
     LegacyReprojector, VariableDensityReprojector,      # registration
     ConsistentGFMReprojector, ConsistentIIMReprojector,  # registration
@@ -669,99 +670,93 @@ class TwoPhaseNSSolver:
 
     def _prepare_step_inputs(
         self,
-        psi: np.ndarray,
-        u: np.ndarray,
-        v: np.ndarray,
-        rho_l: float,
-        rho_g: float,
-        rho_ref: float | None,
-    ) -> tuple["array", "array", "array", float]:
+        inputs: NSStepInputs,
+    ) -> NSStepState:
         """Promote step inputs to the active backend and normalise ``rho_ref``."""
-        xp = self._backend.xp
-        rho_ref = 0.5 * (rho_l + rho_g) if rho_ref is None else rho_ref
-        return xp.asarray(psi), xp.asarray(u), xp.asarray(v), float(rho_ref)
+        return NSStepState.from_inputs(inputs, backend=self._backend)
 
     def _advance_interface_stage(
         self,
-        psi: "array",
-        u: "array",
-        v: "array",
-        dt: float,
-        rho_l: float,
-        rho_g: float,
-        step_index: int,
-    ) -> tuple["array", "array", "array"]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Advance the interface transport and optional grid rebuild."""
-        psi = self._transport.advance(psi, [u, v], dt, step_index=step_index)
+        state.psi = self._transport.advance(
+            state.psi, [state.u, state.v], state.dt, step_index=state.step_index
+        )
         if (
             self._alpha_grid > 1.0
             and self._rebuild_freq > 0
-            and step_index > 0
-            and (step_index % self._rebuild_freq == 0)
+            and state.step_index > 0
+            and (state.step_index % self._rebuild_freq == 0)
         ):
             try:
-                psi, u, v = self._rebuild_grid(psi, u, v, rho_l=rho_l, rho_g=rho_g)
+                state.psi, state.u, state.v = self._rebuild_grid(
+                    state.psi,
+                    state.u,
+                    state.v,
+                    rho_l=state.rho_l,
+                    rho_g=state.rho_g,
+                )
             except TypeError:
-                psi, u, v = self._rebuild_grid(psi, u, v)
-        return psi, u, v
+                state.psi, state.u, state.v = self._rebuild_grid(
+                    state.psi,
+                    state.u,
+                    state.v,
+                )
+        return state
 
     def _materialise_step_fields(
         self,
-        psi: "array",
-        rho_l: float,
-        rho_g: float,
-        mu: float | np.ndarray,
-        mu_l: float | None,
-        mu_g: float | None,
-    ) -> tuple["array", float | np.ndarray]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Build density and viscosity fields for the current step."""
-        rho = rho_g + (rho_l - rho_g) * psi
-        if mu_l is not None and mu_g is not None:
-            mu_field = mu_g + (mu_l - mu_g) * psi
+        state.rho = state.rho_g + (state.rho_l - state.rho_g) * state.psi
+        if state.mu_l is not None and state.mu_g is not None:
+            state.mu_field = state.mu_g + (state.mu_l - state.mu_g) * state.psi
         else:
-            mu_field = mu
-        return rho, mu_field
+            state.mu_field = state.mu
+        return state
 
     def _surface_tension_stage(
         self,
-        psi: "array",
-        rho: "array",
-        sigma: float,
-    ) -> tuple["array", "array", "array", list["array"] | None]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Compute curvature and balanced-force surface tension terms."""
         xp = self._backend.xp
-        kappa_raw = self._curv.compute(psi)
-        kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
+        kappa_raw = self._curv.compute(state.psi)
+        state.kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
         if self._kappa_max is not None:
-            kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-        debug_scalars = None
+            state.kappa = xp.clip(state.kappa, -self._kappa_max, self._kappa_max)
+        state.debug_scalars = None
         if isinstance(self._step_diag, ActiveStepDiagnostics):
-            debug_scalars = [xp.max(xp.abs(kappa))]
+            state.debug_scalars = [xp.max(xp.abs(state.kappa))]
 
-        f_x, f_y = self._st_force.compute(
-            kappa, psi, sigma, self._ccd, grad_op=self._surface_tension_grad_op
+        state.f_x, state.f_y = self._st_force.compute(
+            state.kappa,
+            state.psi,
+            state.sigma,
+            self._ccd,
+            grad_op=self._surface_tension_grad_op,
         )
-        return kappa, f_x, f_y, debug_scalars
+        return state
 
     def _predict_velocity_stage(
         self,
-        psi: "array",
-        u: "array",
-        v: "array",
-        rho: "array",
-        mu_field: float | np.ndarray,
-        dt: float,
-        g_acc: float,
-        rho_ref: float,
-    ) -> tuple["array", "array"]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Advance the momentum predictor stage."""
         xp = self._backend.xp
-        conv_ctx = NSComputeContext(velocity=[u, v], ccd=self._ccd, rho=rho, mu=mu_field)
+        conv_ctx = NSComputeContext(
+            velocity=[state.u, state.v],
+            ccd=self._ccd,
+            rho=state.rho,
+            mu=state.mu_field,
+        )
         conv_u, conv_v = self._conv_term.compute(conv_ctx)
 
-        buoy_v = xp.zeros_like(v)
-        if g_acc != 0.0:
-            buoy_v = -(rho - rho_ref) / rho * g_acc
+        buoy_v = xp.zeros_like(state.v)
+        if state.g_acc != 0.0:
+            buoy_v = -(state.rho - state.rho_ref) / state.rho * state.g_acc
 
         if self._convection_time_scheme == "ab2":
             if self._conv_ab2_ready and self._conv_prev is not None:
@@ -776,69 +771,68 @@ class TwoPhaseNSSolver:
             conv_step_u = conv_u
             conv_step_v = conv_v
 
-        return self._viscous_predictor.predict(
-            u,
-            v,
+        state.u_star, state.v_star = self._viscous_predictor.predict(
+            state.u,
+            state.v,
             conv_step_u,
             conv_step_v,
-            mu_field,
-            rho,
-            dt,
+            state.mu_field,
+            state.rho,
+            state.dt,
             self._ccd,
             buoy_v=buoy_v,
-            psi=psi,
+            psi=state.psi,
         )
+        return state
 
     def _solve_pressure_stage(
         self,
-        psi: "array",
-        u_star: "array",
-        v_star: "array",
-        rho: "array",
-        dt: float,
-        sigma: float,
-        kappa: "array",
-        f_x: "array",
-        f_y: "array",
-        debug_scalars: list["array"] | None,
-    ) -> tuple["array", "array", list["array"] | None]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Solve PPE and prepare the corrector pressure field."""
         xp = self._backend.xp
-        rhs = self._div_op.divergence([u_star, v_star]) / dt
-        rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
-        if debug_scalars is not None:
-            debug_scalars.append(xp.max(xp.abs(rhs)))
+        rhs = self._div_op.divergence([state.u_star, state.v_star]) / state.dt
+        rhs = rhs + self._div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
+        if state.debug_scalars is not None:
+            state.debug_scalars.append(xp.max(xp.abs(rhs)))
         if hasattr(self._ppe_solver, "set_interface_jump_context"):
-            jump_sigma = sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
-            self._ppe_solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=jump_sigma)
+            jump_sigma = (
+                state.sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
+            )
+            self._ppe_solver.set_interface_jump_context(
+                psi=state.psi,
+                kappa=state.kappa,
+                sigma=jump_sigma,
+            )
 
-        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev_dev)
-        self._p_prev_dev = getattr(self._ppe_solver, "last_base_pressure", p)
+        state.pressure = self._ppe_solver.solve(
+            rhs,
+            state.rho,
+            dt=state.dt,
+            p_init=self._p_prev_dev,
+        )
+        self._p_prev_dev = getattr(self._ppe_solver, "last_base_pressure", state.pressure)
         self._p_prev = np.asarray(self._backend.to_host(self._p_prev_dev))
-        p_corrector = self._p_prev_dev if self._surface_tension_scheme == "pressure_jump" else p
-        return p, p_corrector, debug_scalars
+        state.p_corrector = (
+            self._p_prev_dev
+            if self._surface_tension_scheme == "pressure_jump"
+            else state.pressure
+        )
+        return state
 
     def _correct_velocity_stage(
         self,
-        u_star: "array",
-        v_star: "array",
-        p_corrector: "array",
-        rho: "array",
-        dt: float,
-        f_x: "array",
-        f_y: "array",
-        bc_hook,
-        debug_scalars: list["array"] | None,
-    ) -> tuple["array", "array"]:
+        state: NSStepState,
+    ) -> NSStepState:
         """Apply pressure correction and optional face-flux projection."""
         xp = self._backend.xp
-        dp_dx = self._pressure_grad_op.gradient(p_corrector, 0)
-        dp_dy = self._pressure_grad_op.gradient(p_corrector, 1)
-        if debug_scalars is not None:
-            debug_scalars.append(
+        dp_dx = self._pressure_grad_op.gradient(state.p_corrector, 0)
+        dp_dy = self._pressure_grad_op.gradient(state.p_corrector, 1)
+        if state.debug_scalars is not None:
+            state.debug_scalars.append(
                 xp.maximum(
-                    xp.max(xp.abs(dp_dx - f_x / rho)),
-                    xp.max(xp.abs(dp_dy - f_y / rho)),
+                    xp.max(xp.abs(dp_dx - state.f_x / state.rho)),
+                    xp.max(xp.abs(dp_dy - state.f_y / state.rho)),
                 )
             )
         if self._face_flux_projection:
@@ -848,32 +842,40 @@ class TwoPhaseNSSolver:
                 project_kwargs["pressure_gradient"] = (
                     "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
                 )
-            u, v = proj_op.project(
-                [u_star, v_star],
-                p_corrector,
-                rho,
-                dt,
-                [f_x / rho, f_y / rho],
+            state.u, state.v = proj_op.project(
+                [state.u_star, state.v_star],
+                state.p_corrector,
+                state.rho,
+                state.dt,
+                [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
             )
         else:
-            u = u_star - dt / rho * dp_dx + dt * f_x / rho
-            v = v_star - dt / rho * dp_dy + dt * f_y / rho
-        _apply_bc(u, v, bc_hook, self.bc_type)
-        return u, v
+            state.u = (
+                state.u_star
+                - state.dt / state.rho * dp_dx
+                + state.dt * state.f_x / state.rho
+            )
+            state.v = (
+                state.v_star
+                - state.dt / state.rho * dp_dy
+                + state.dt * state.f_y / state.rho
+            )
+        _apply_bc(state.u, state.v, state.bc_hook, self.bc_type)
+        return state
 
     def _record_step_diagnostics(
         self,
-        debug_scalars: list["array"] | None,
-        u: "array",
-        v: "array",
+        state: NSStepState,
     ) -> None:
         """Flush step diagnostics to the active recorder."""
-        if debug_scalars is None:
+        if state.debug_scalars is None:
             return
         xp = self._backend.xp
-        debug_scalars.append(xp.max(xp.abs(self._div_op.divergence([u, v]))))
-        dbg = np.asarray(self._backend.to_host(xp.stack(debug_scalars)))
+        state.debug_scalars.append(
+            xp.max(xp.abs(self._div_op.divergence([state.u, state.v])))
+        )
+        dbg = np.asarray(self._backend.to_host(xp.stack(state.debug_scalars)))
         self._step_diag.record_kappa(float(dbg[0]))
         self._step_diag.record_ppe_rhs(float(dbg[1]))
         self._step_diag.record_bf_residual(float(dbg[2]))
@@ -923,24 +925,39 @@ class TwoPhaseNSSolver:
         -------
         psi, u, v, p : ndarray
         """
-        psi, u, v, rho_ref = self._prepare_step_inputs(psi, u, v, rho_l, rho_g, rho_ref)
-        psi, u, v = self._advance_interface_stage(psi, u, v, dt, rho_l, rho_g, step_index)
-        rho, mu_field = self._materialise_step_fields(psi, rho_l, rho_g, mu, mu_l, mu_g)
-        kappa, f_x, f_y, debug_scalars = self._surface_tension_stage(psi, rho, sigma)
-        u_star, v_star = self._predict_velocity_stage(
-            psi, u, v, rho, mu_field, dt, g_acc, rho_ref
+        state = self._prepare_step_inputs(
+            NSStepInputs(
+                psi=psi,
+                u=u,
+                v=v,
+                dt=dt,
+                rho_l=rho_l,
+                rho_g=rho_g,
+                sigma=sigma,
+                mu=mu,
+                g_acc=g_acc,
+                rho_ref=rho_ref,
+                mu_l=mu_l,
+                mu_g=mu_g,
+                bc_hook=bc_hook,
+                step_index=step_index,
+            )
         )
-        _apply_bc(u_star, v_star, bc_hook, self.bc_type)
-        p, p_corrector, debug_scalars = self._solve_pressure_stage(
-            psi, u_star, v_star, rho, dt, sigma, kappa, f_x, f_y, debug_scalars
-        )
-        u, v = self._correct_velocity_stage(
-            u_star, v_star, p_corrector, rho, dt, f_x, f_y, bc_hook, debug_scalars
-        )
-        self._record_step_diagnostics(debug_scalars, u, v)
+        state = self._advance_interface_stage(state)
+        state = self._materialise_step_fields(state)
+        state = self._surface_tension_stage(state)
+        state = self._predict_velocity_stage(state)
+        _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
+        state = self._solve_pressure_stage(state)
+        state = self._correct_velocity_stage(state)
+        self._record_step_diagnostics(state)
 
-        p_out = np.asarray(self._backend.to_host(p)) if self._backend.is_gpu() else p
-        return psi, u, v, p_out
+        p_out = (
+            np.asarray(self._backend.to_host(state.pressure))
+            if self._backend.is_gpu()
+            else state.pressure
+        )
+        return state.psi, state.u, state.v, p_out
 
     # ── private ───────────────────────────────────────────────────────────
     # (PPE solve and matrix build delegated to self._ppe_solver —  see PPESolverFVMSpsolve)
