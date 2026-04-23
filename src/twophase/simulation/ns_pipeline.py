@@ -15,8 +15,6 @@ from __future__ import annotations
 import numpy as np
 
 from ..ccd.fccd import FCCDSolver
-from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
-from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
 from ..levelset.reinitialize import Reinitializer
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
 from .ns_step_services import (
@@ -27,20 +25,7 @@ from .ns_step_services import (
     record_ns_step_diagnostics,
     solve_ns_pressure_stage,
 )
-from .velocity_reprojector import (
-    LegacyReprojector, VariableDensityReprojector,      # registration
-    ConsistentGFMReprojector, ConsistentIIMReprojector,  # registration
-)
-from .viscous_predictor import (
-    ExplicitViscousPredictor, CNViscousPredictor,  # registration
-)
-from .surface_tension_strategy import (
-    SurfaceTensionForce, NullSurfaceTensionForce, PressureJumpSurfaceTension,  # registration
-)
-from .gradient_operator import (
-    CCDGradientOperator, FCCDGradientOperator, FVMGradientOperator,  # registration
-    CCDDivergenceOperator, FVMDivergenceOperator, FCCDDivergenceOperator,
-)
+from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
 from .ns_ppe_runtime import (
@@ -48,17 +33,7 @@ from .ns_ppe_runtime import (
     build_ns_runtime_ppe_solver,
     build_ns_runtime_plain_ppe_solver,
 )
-from .ns_runtime_bootstrap import (
-    bind_ns_runtime_bootstrap,
-    build_ns_runtime_bootstrap,
-)
-from ..ns_terms.convection import ConvectionTerm                      # registration
-from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registration
-from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm           # registration
 from ..ppe.interfaces import IPPESolver
-from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree              # registration
-from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
-from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from .ns_runtime_factories import (
     NSReinitializerFactoryOptions,
     build_ns_reinitializer,
@@ -70,6 +45,10 @@ from .ns_runtime_config import (
 from .ns_runtime_binding import (
     bind_ns_interface_runtime,
     bind_ns_ppe_runtime,
+)
+from .ns_solver_runtime_lifecycle import (
+    initialise_ns_solver_from_options,
+    reset_ns_runtime_contexts,
 )
 from .ns_scheme_bootstrap import (
     bind_ns_operator_stack,
@@ -260,27 +239,7 @@ class TwoPhaseNSSolver:
 
     def _initialise_from_options(self, options: NSSolverInitOptions) -> None:
         """Initialise the solver from grouped options."""
-        self._initialise_geometry(options.grid)
-        self._initialise_interface_runtime(options.interface)
-        self._initialise_ppe_runtime(
-            options.ppe,
-            surface_tension_scheme=options.schemes.surface_tension_scheme,
-        )
-        self._initialise_scheme_runtime(options.schemes)
-        self._initialise_operator_stack(options.grid, options.schemes)
-        bootstrap = build_ns_runtime_bootstrap(
-            backend=self._backend,
-            grid=self._grid,
-            adv=self._adv,
-            eps=self._eps,
-            interface_runtime=self._interface_runtime,
-            scheme_options=options.schemes,
-            build_reinitializer=lambda: self._build_reinitializer(
-                options.interface,
-                options.schemes,
-            ),
-        )
-        bind_ns_runtime_bootstrap(self, bootstrap)
+        initialise_ns_solver_from_options(self, options)
 
     def _initialise_geometry(self, options: SolverGridOptions) -> None:
         """Initialise grid geometry and backend state."""
@@ -297,8 +256,7 @@ class TwoPhaseNSSolver:
         self._backend = state.backend
         self._grid = state.grid
         self._ccd = state.ccd
-        self._runtime_setup_ctx = None
-        self._runtime_timestep_ctx = None
+        reset_ns_runtime_contexts(self)
 
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
@@ -509,8 +467,7 @@ class TwoPhaseNSSolver:
         self._p_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
-        self._runtime_setup_ctx = None
-        self._runtime_timestep_ctx = None
+        reset_ns_runtime_contexts(self)
         return result.psi, result.u, result.v
 
     # ── initial condition / velocity builders ─────────────────────────────

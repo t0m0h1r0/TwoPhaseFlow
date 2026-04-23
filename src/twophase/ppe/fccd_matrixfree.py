@@ -32,9 +32,14 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_interface_jump_context,
-    build_fccd_jacobi_inverse,
-    compute_fccd_phase_gauges,
     project_fccd_rhs_compatibility,
+)
+from .fccd_matrixfree_lifecycle import (
+    invalidate_fccd_matrixfree_cache,
+    prepare_fccd_matrixfree_operator,
+    refresh_fccd_geometry_cache,
+    refresh_fccd_matrixfree_grid,
+    refresh_fccd_phase_gauges,
 )
 
 if TYPE_CHECKING:
@@ -124,30 +129,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
-        if grid is not None:
-            self.grid = grid
-            self.ndim = grid.ndim
-            self.fccd.grid = grid
-        self.fccd._weights = [
-            self.fccd._precompute_weights(ax)
-            for ax in range(self.fccd.ndim)
-        ]
-        self._refresh_grid_geometry_cache()
-        self._rho = None
-        self._rho_dev = None
-        self._diag_inv = None
-        self._coeff_face = None
-        self._phase_threshold = None
-        self._interface_jump_context = None
+        refresh_fccd_matrixfree_grid(self, grid=grid)
 
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
-        self._rho = None
-        self._rho_dev = None
-        self._diag_inv = None
-        self._coeff_face = None
-        self._phase_threshold = None
-        self._interface_jump_context = None
+        invalidate_fccd_matrixfree_cache(self)
 
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Store SP-M pressure-jump data for ``p = p_tilde + σκ(1-ψ)``."""
@@ -161,21 +147,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
-        self._rho_dev = self.xp.asarray(rho)
-        self._rho = np.asarray(self.backend.to_host(self._rho_dev))
-        self._diag_inv = None
-        self._refresh_phase_gauges()
-        self._coeff_face = [
-            self._face_inverse_density(self._rho_dev, axis)
-            for axis in range(self.ndim)
-        ]
-        if self.preconditioner == "jacobi":
-            self._diag_inv = build_fccd_jacobi_inverse(
-                xp=self.xp,
-                rho_dev=self._rho_dev,
-                h_min=self._h_min,
-                pin_dofs=self._pin_dofs,
-            )
+        prepare_fccd_matrixfree_operator(self, rho)
 
     def apply(self, p):
         """Apply ``D_f[(1/rho)_f G_f(p)]`` with a pinned gauge DOF."""
@@ -310,13 +282,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         )
 
     def _refresh_phase_gauges(self) -> None:
-        state = compute_fccd_phase_gauges(
-            rho_host=self._rho,
-            coefficient_scheme=self.coefficient_scheme,
-            default_pin_dof=self._pin_dof,
-        )
-        self._pin_dofs = state.pin_dofs
-        self._phase_threshold = state.phase_threshold
+        refresh_fccd_phase_gauges(self)
 
     def _pin_flat(self, flat, value) -> None:
         for dof in self._pin_dofs:
@@ -343,9 +309,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def _refresh_grid_geometry_cache(self) -> None:
         """Cache per-axis geometric scalars reused across every GMRES matvec."""
-        cache = build_fccd_geometry_cache(xp=self.xp, grid=self.grid, ndim=self.ndim)
-        self._h_min = cache.h_min
-        self._node_width = cache.node_width
+        refresh_fccd_geometry_cache(self)
 
     def _broadcast_axis0(self, values, ndim: int):
         shape = [1] * ndim
