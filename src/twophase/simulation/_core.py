@@ -1,5 +1,5 @@
 """
-トップレベル タイムステップ ループ。
+legacy トップレベル タイムステップ ループ。
 
 §9.1 の完全な 7 ステップアルゴリズム (Eq. 85–94) を実装する。
 
@@ -46,7 +46,7 @@ from ..levelset.field_extender import NullFieldExtender
 
 
 class TwoPhaseSimulation:
-    """二相流ソルバー。
+    """Legacy 二相流ソルバー。
 
     このクラスは直接インスタンス化しないこと。
     SimulationBuilder を通じて構築すること::
@@ -113,7 +113,6 @@ class TwoPhaseSimulation:
         obj._mu_g  = c.config.fluid.mu_ratio
 
         return obj
-
     # ── 公開 API ──────────────────────────────────────────────────────────
 
     def run(
@@ -384,3 +383,7 @@ class TwoPhaseSimulation:
         # which is too invasive for this change.
         if self._needs_phi:
             self.phi.data = invert_heaviside(self.backend.xp, self.psi.data, self.eps)
+
+
+# DO NOT DELETE — legacy split-step simulation core retained per C2.
+TwoPhaseSimulationLegacy = TwoPhaseSimulation

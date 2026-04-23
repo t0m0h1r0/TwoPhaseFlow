@@ -1,5 +1,5 @@
 """
-SimulationBuilder — TwoPhaseSimulation の構築を担うビルダー。
+SimulationBuilder — legacy ``TwoPhaseSimulation`` の構築を担うビルダー。
 
 設計方針:
     - TwoPhaseSimulation.__init__ の「God Constructor」問題を解消する（SRP）。
@@ -69,7 +69,7 @@ if TYPE_CHECKING:
 
 
 class SimulationBuilder:
-    """TwoPhaseSimulation を段階的に組み立てるビルダー。
+    """Legacy ``TwoPhaseSimulation`` を段階的に組み立てるビルダー。
 
     Parameters
     ----------
@@ -276,3 +276,7 @@ class SimulationBuilder:
                 field_extender=field_extender,
             )
         )
+
+
+# DO NOT DELETE — legacy builder retained per C2.
+SimulationBuilderLegacy = SimulationBuilder
