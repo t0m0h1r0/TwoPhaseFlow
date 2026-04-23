@@ -142,7 +142,7 @@ class CCDSolver:
 
         return d1, d2
 
-    def differentiate_raw(self, data: np.ndarray, axis: int):
+    def differentiate_raw(self, data, axis: int):
         """Compute CCD derivatives in ξ-space without metric transformation.
 
         Used exclusively for grid metric computation (§6 Step 5): call with the
@@ -155,24 +155,23 @@ class CCDSolver:
 
         Parameters
         ----------
-        data : 1-D numpy array, shape ``(N[axis]+1,)``
+        data : 1-D array, shape ``(N[axis]+1,)``
         axis : spatial axis (0, 1, or 2)
 
         Returns
         -------
-        d1 : 1-D numpy array — ∂data/∂x_unif in ξ-space
-        d2 : 1-D numpy array — ∂²data/∂x_unif² in ξ-space
+        d1 : 1-D array — ∂data/∂x_unif in ξ-space
+        d2 : 1-D array — ∂²data/∂x_unif² in ξ-space
         """
-        arr = np.asarray(data).ravel()
+        xp = self.xp
+        arr = xp.asarray(data).ravel()
         # Embed 1-D coords into an N-D array with shape[axis]=N+1, all others=1,
         # so that moveaxis(data, axis, 0) gives (N+1, 1) regardless of axis value.
         shape = [1] * self.ndim
         shape[axis] = -1
         data_nd = arr.reshape(shape)
         d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
-        d1_host = self.backend.to_host(d1_nd)
-        d2_host = self.backend.to_host(d2_nd)
-        return np.asarray(d1_host).ravel(), np.asarray(d2_host).ravel()
+        return xp.asarray(d1_nd).ravel(), xp.asarray(d2_nd).ravel()
 
     def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
         """Wall-BC CCD solve in ξ-space, no metric transformation.

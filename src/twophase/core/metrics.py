@@ -43,23 +43,24 @@ def compute_metrics(
     J       : list of per-axis metric arrays
     dJ_dxi  : list of per-axis metric gradient arrays
     """
+    xp = ccd.xp if ccd is not None else np
     J: List[np.ndarray] = []
     dJ_dxi: List[np.ndarray] = []
 
     for ax in range(ndim):
         if ccd is not None and not uniform:
             # CCD O(h^6): differentiate x(xi) in xi-space
-            coords_ax = np.asarray(coords[ax])
+            coords_ax = xp.asarray(coords[ax])
             d1_raw, d2_raw = ccd.differentiate_raw(coords_ax, axis=ax)
             J_ax = 1.0 / d1_raw
             dJ_ax = -d2_raw / (d1_raw ** 2)
         else:
             # O(h^2) central-difference fallback
             dxi = 1.0 / N[ax]
-            h_ax = h[ax]
+            h_ax = xp.asarray(h[ax])
             J_ax = dxi / h_ax
 
-            dJ_ax = np.zeros_like(J_ax)
+            dJ_ax = xp.zeros_like(J_ax)
             dJ_ax[1:-1] = (J_ax[2:] - J_ax[:-2]) / (2.0 * dxi)
             dJ_ax[0] = (J_ax[1] - J_ax[0]) / dxi
             dJ_ax[-1] = (J_ax[-1] - J_ax[-2]) / dxi
