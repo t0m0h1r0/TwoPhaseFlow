@@ -74,7 +74,7 @@
 | [WIKI-T-068](theory/WIKI-T-068.md) | FCCDDivergenceOperator: FCCD Face-Flux Projector with FVM-Consistent Pressure Gradient |
 | [WIKI-T-069](theory/WIKI-T-069.md) | FCCD Face Jet: Face-Carried Value, Gradient, and Curvature for FVM/HFE |
 
-## Cross-Domain (32)
+## Cross-Domain (33)
 
 | REF-ID | Title |
 |--------|-------|
@@ -110,6 +110,7 @@
 | [WIKI-X-030](cross-domain/WIKI-X-030.md) | Viscous Term Design Guide for CCD/FCCD Two-Phase NS: Bulk-CCD vs Interface-Band Split, Defect Correction, and Implicit Solver Architecture |
 | [WIKI-X-031](cross-domain/WIKI-X-031.md) | Advection Design Guide for CCD/FCCD Two-Phase NS: Conservative Flux Form, Velocity-PPE Consistency, and Scheme Selection per Variable |
 | [WIKI-X-032](cross-domain/WIKI-X-032.md) | Complete 1-Step Time Integration for CLS + Variable-Density CCD NS: Phase Ordering, Geometry Lag Policy, and Operator Splitting Safety |
+| [WIKI-X-033](cross-domain/WIKI-X-033.md) | Pure High-Order FCCD Two-Phase DNS: FVM-Free Phase-Separated PPE + HFE + GFM + DC |
 
 ## Experiment (29)
 
