@@ -167,6 +167,37 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
 
 
+def test_phase_separated_pressure_jump_stack_one_step_no_nan():
+    """Executable SP-M smoke: phase-separated FCCD PPE + pressure_jump."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        advection_scheme="fccd_flux",
+        convection_scheme="uccd6",
+        pressure_gradient_scheme="fccd_flux",
+        surface_tension_gradient_scheme="fccd_flux",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_max_iterations=80,
+        ppe_tolerance=1.0e-6,
+        ppe_coefficient_scheme="phase_separated",
+        surface_tension_scheme="pressure_jump",
+    )
+    psi = _mode2_ic(solver)
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    psi, u, v, p = solver.step(
+        psi, u, v, dt=2.0e-4,
+        rho_l=1000.0, rho_g=1.0, sigma=0.1,
+        mu=0.01, step_index=0,
+    )
+
+    for name, arr in [("psi", psi), ("u", u), ("v", v), ("p", p)]:
+        assert np.all(np.isfinite(arr)), f"{name} not finite"
+
+
 def test_fccd_not_constructed_when_unused():
     """Baseline path: no FCCDSolver allocated when both schemes are legacy."""
     from twophase.ns_terms.convection import ConvectionTerm
