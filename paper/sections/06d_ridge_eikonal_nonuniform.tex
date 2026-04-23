@@ -78,8 +78,8 @@ $\partial_x^2 = J_x^{-2}\partial_\xi^2 - (J_{xx}/J_x^3)\partial_\xi$
           - \frac{\xi_{i,j}-\xi_{i-1,j}}{h_x^-(i)}\right]
 \]
 は 2 次精度に留まるが，Morse 非退化リッジでは符号判定に影響しない．
-GPU 実装で非一様 CCD ソルバが未整備のデバッグビルド
-（WIKI-L-017 参照）ではこの fallback を一時許容する（CHK-160 検証済）．
+GPU 実装で非一様 CCD ソルバが未整備のデバッグビルドでは
+この fallback を一時許容する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{D3 実装：非一様 FMM の格子データ結線}
@@ -113,7 +113,7 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 
 \noindent この結線により FMM のワンパス計算量は
 一様版と同じ $\mathcal{O}(N \log N)$ を維持し，
-一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分，WIKI-L-017）．
+一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{D4 実装：$\varepsilon_\text{local}(\bm{x})$ の空間場}{D4 実装：ε\_local(x) の空間場}}
@@ -135,7 +135,7 @@ $\xiridge$ から $\phi$ への再構成（SP-B §6 式）
 一様較正 $\varepsilon_\text{scale}=1.4$ を初期値として採用し，
 $|\Delta V/V|>5\%$ を検知した時点で適応スケーリング
 $\varepsilon_\text{scale}(\bm{x})=1.4\cdot h_\text{ref}/h_\text{min}$ に切替える
-（CHK-138/139 で閾値同定）．
+（閾値は \S\ref{sec:xi_sdf_reinit} の較正に基づく）．
 界面適合格子族（\S\ref{sec:grid_density}）では
 $h(\bm{x}) \approx h_\text{ref}$ が界面近傍で成立するため，
 適応スケーリングは密度勾配帯のみで発動する．
@@ -157,7 +157,7 @@ D1--D4 の効果が次のように簡素化される：
         （$R_c$ は局所曲率半径）．
   \item \textbf{D3 FMM}：界面から距離 $\mathcal{O}(\varepsilon_\text{local})$ の
         narrow band のみで実行．$D<0$ fallback の発動率は 1\% 未満
-        （CHK-160 実測値）．
+        （本稿の実測値）．
   \item \textbf{D4 $\varepsilon_\text{local}$}：界面帯で一様値
         $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
 \end{itemize}
@@ -182,7 +182,7 @@ ALE モードでは格子更新ごとに再計算．
   \item D4 $\varepsilon_\text{local}$ テーブル参照: $\mathcal{O}(N_x N_y)$
 \end{itemize}
 合計は一様版と同じ漸近オーダー．
-一軸あたり実行時間は一様版の 1.1--1.3$\times$（WIKI-L-017）．
+一軸あたり実行時間は一様版の 1.1--1.3$\times$．
 
 \noindent\textbf{FCCD との接続}：
 \S\ref{sec:ridge_fccd_handoff} で示した通り，

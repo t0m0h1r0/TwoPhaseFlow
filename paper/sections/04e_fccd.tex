@@ -21,13 +21,13 @@ SP-C \cite{SPC}（行列定式化＋周期 DFT 解析）を統合し，
 \label{sec:fccd_motivation_h01}
 % -------------------------------------------------------------------------------
 
-WIKI-T-044 が FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ と
-節点中心 CCD 微分の\textbf{メトリック不整合}を指摘し，
-WIKI-E-030 Exp-1 の毛管ベンチマーク（$\rho_\text{liq}/\rho_\text{gas}=833$）で
+FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ と
+節点中心 CCD 微分の\textbf{メトリック不整合}を先行予備解析が指摘し，
+毛管ベンチマーク（$\rho_\text{liq}/\rho_\text{gas}=833$）の Exp-1 で
 Balanced-Force 残差 $|\BF_{\text{res}}|\approx 884$（step 1）を実測．
-Exp-2（$\sigma=0 \Rightarrow T=20$ まで安定）が決定的証拠となり
+Exp-2（$\sigma=0 \Rightarrow T=20$ まで安定）が決定的証拠となり，
 hypothesis \textbf{H-01}（「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\nabla\psi$ の
-メトリック空間不一致が長時間破綻の主因」）が確定した（CHK-152）．
+メトリック空間不一致が長時間破綻の主因」）が確定した．
 
 SP-A の着想は：$\mathcal{G}^{\text{adj}}$ が面上で定義される事実を出発点として，
 \textbf{圧力勾配も界面力勾配も同一面ロカス上}で {\FCCD} により評価することで，
@@ -155,7 +155,7 @@ cancellation 係数 $\lambda_i$ と混合項係数 $\mu_i$ は格子幾何に依
   \lambda_i = \frac{1 - 3\theta_i(1-\theta_i)}{6}
   \label{eq:fccd_nonuniform_coeffs}
 \end{equation}
-（WIKI-T-050）．合成演算子は
+．合成演算子は
 $\mathbf{M}^{\FCCD,\text{nu}} = \mathbf{D}_1^{(H)} - (\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)})\,\mathbf{S}_{\CCD}$
 で，一様極限 $\theta_i\equiv 1/2 \Rightarrow \mu_i\equiv 0, \lambda_i \equiv 1/24$ で
 式~\eqref{eq:fccd_composite_matrix} を回復する（SP-C \S5）．
@@ -182,7 +182,7 @@ Balanced-Force 残差は：
   \label{eq:fccd_bf_residual_order}
 \end{equation}
 まで圧縮され，H-01 を根治的に解消する．
-これにより CHK-152 の未解決アクション
+これにより H-01 の未解決アクション
 「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\bnabla\psi$ の同一メトリクス空間統一」が
 FCCD 採用で満たされる（SP-A \S6.2）．
 
