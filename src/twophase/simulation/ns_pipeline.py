@@ -2,7 +2,6 @@
 
 Provides ``TwoPhaseNSSolver`` — a reusable class that wraps the common
 5-stage predictor-corrector used in all §13 experiments.
-Also provides ``run_simulation()`` for fully config-driven execution.
 
 Conventions
 -----------
@@ -69,8 +68,15 @@ from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree              # registr
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
-from .initial_conditions.builder import InitialConditionBuilder
-from .initial_conditions.velocity_fields import velocity_field_from_dict
+from .runtime_setup import (
+    apply_velocity_bc as _apply_bc,
+    build_initial_condition,
+    build_initial_velocity,
+    infer_background as _infer_background,
+    make_boundary_condition_hook,
+    normalise_ic_dict as _normalise_ic_dict,
+    wall_bc_hook as _wall_bc_hook,
+)
 
 
 class TwoPhaseNSSolver:
@@ -267,6 +273,7 @@ class TwoPhaseNSSolver:
             else "fccd_matrixfree"
         )
         self._p_prev = None
+        self._p_prev_dev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
         # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
@@ -792,6 +799,7 @@ class TwoPhaseNSSolver:
         if self._fccd_div_op is not None:
             self._fccd_div_op.update_weights()
         self._p_prev = None
+        self._p_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
 
@@ -839,10 +847,7 @@ class TwoPhaseNSSolver:
                  type: union
                  shapes: [{type: circle, interior_phase: gas, ...}, ...]
         """
-        ic = dict(cfg.initial_condition)
-        ic_norm = _normalise_ic_dict(ic)
-        builder = InitialConditionBuilder.from_dict(ic_norm)
-        return np.asarray(builder.build(self._grid, self._eps))
+        return build_initial_condition(self._grid, self._eps, cfg.initial_condition)
 
     def build_velocity(
         self, cfg: "ExperimentConfig", psi: np.ndarray | None = None
@@ -851,14 +856,12 @@ class TwoPhaseNSSolver:
 
         If ``initial_velocity`` is absent, returns zero fields.
         """
-        if cfg.initial_velocity is None:
-            return np.zeros(self.X.shape), np.zeros(self.Y.shape)
-
-        spec = dict(cfg.initial_velocity)
-        vf = velocity_field_from_dict(spec)
-        u, v = vf.compute(self.X, self.Y)
-        return (np.asarray(self._backend.to_host(u)),
-                np.asarray(self._backend.to_host(v)))
+        return build_initial_velocity(
+            self.X,
+            self.Y,
+            cfg.initial_velocity,
+            self._backend.to_host,
+        )
 
     # ── boundary-condition hook factory ──────────────────────────────────
 
@@ -869,29 +872,11 @@ class TwoPhaseNSSolver:
         * default wall → zeros all 4 boundaries
         * ``boundary_condition.type == 'couette'`` → Couette shear
         """
-        bc_cfg = cfg.boundary_condition
-
-        if bc_cfg is None:
-            if self.bc_type == "periodic":
-                return None
-            return _wall_bc_hook  # standard zero-wall
-
-        bc_type = bc_cfg.get("type", "wall")
-        if bc_type == "couette":
-            gamma = float(bc_cfg.get("gamma_dot", 1.0))
-            U = 0.5 * gamma * self.LY
-
-            def _couette(u: np.ndarray, v: np.ndarray) -> None:
-                u[:, 0] = -U
-                u[:, -1] = +U
-                v[:, 0] = 0.0
-                v[:, -1] = 0.0
-                u[0, :] = u[1, :]
-                u[-1, :] = u[-2, :]
-
-            return _couette
-
-        return _wall_bc_hook
+        return make_boundary_condition_hook(
+            cfg.boundary_condition,
+            self.bc_type,
+            self.LY,
+        )
 
     # ── stable-timestep estimate ──────────────────────────────────────────
 
@@ -1079,10 +1064,11 @@ class TwoPhaseNSSolver:
             self._ppe_solver.set_interface_jump_context(
                 psi=psi, kappa=kappa, sigma=jump_sigma
             )
-        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
-        self._p_prev = getattr(self._ppe_solver, "last_base_pressure", p)
+        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev_dev)
+        self._p_prev_dev = getattr(self._ppe_solver, "last_base_pressure", p)
+        self._p_prev = np.asarray(self._backend.to_host(self._p_prev_dev))
         p_corrector = (
-            self._p_prev if self._surface_tension_scheme == "pressure_jump" else p
+            self._p_prev_dev if self._surface_tension_scheme == "pressure_jump" else p
         )
 
         # ── 5. Corrector ───────────────────────────────────────────────
@@ -1124,207 +1110,11 @@ class TwoPhaseNSSolver:
                 getattr(self._ppe_solver, "last_diagnostics", {})
             )
 
-        return psi, u, v, p
+        p_out = np.asarray(self._backend.to_host(p)) if self._backend.is_gpu() else p
+        return psi, u, v, p_out
 
     # ── private ───────────────────────────────────────────────────────────
     # (PPE solve and matrix build delegated to self._ppe_solver —  see PPESolverFVMSpsolve)
 
 
-# ── IC normalisation helper ───────────────────────────────────────────────────
-
-def _normalise_ic_dict(ic: dict) -> dict:
-    """Convert shorthand IC dicts to InitialConditionBuilder format.
-
-    Returns a dict with ``background_phase`` and ``shapes`` keys suitable
-    for :meth:`InitialConditionBuilder.from_dict`.
-    """
-    if "shapes" in ic and "type" not in ic:
-        # Already in builder format (explicit background_phase + shapes)
-        return ic
-
-    ic_type = ic.get("type", "")
-
-    if ic_type == "union":
-        # {type: union, shapes: [...], background_phase: ...}
-        shapes = ic.get("shapes", [])
-        bg = ic.get("background_phase") or _infer_background(shapes)
-        return {"background_phase": bg, "shapes": shapes}
-
-    if ic_type:
-        # Single-shape shorthand: strip meta keys, wrap in shapes list
-        shape_dict = {k: v for k, v in ic.items()
-                      if k not in ("background_phase",)}
-        bg = ic.get("background_phase") or _infer_background([shape_dict])
-        return {"background_phase": bg, "shapes": [shape_dict]}
-
-    # Fallback: pass through as-is
-    return ic
-
-
-def _infer_background(shapes: list) -> str:
-    """Infer background phase as the complement of shapes' interior_phase.
-
-    * Any gas shape → background = liquid
-    * All liquid shapes → background = gas
-    """
-    for s in shapes:
-        if s.get("interior_phase", "liquid") == "gas":
-            return "liquid"
-    return "gas"
-
-
-# ── module-level helpers ──────────────────────────────────────────────────────
-
-def _wall_bc_hook(u: np.ndarray, v: np.ndarray) -> None:
-    """Zero-velocity boundary condition (no-slip / no-penetration)."""
-    for arr in (u, v):
-        arr[0, :] = 0.0; arr[-1, :] = 0.0
-        arr[:, 0] = 0.0; arr[:, -1] = 0.0
-
-
-def _apply_bc(u, v, bc_hook, bc_type: str) -> None:
-    if bc_hook is not None:
-        bc_hook(u, v)
-    elif bc_type == "wall":
-        _wall_bc_hook(u, v)
-    # periodic: nothing to do
-
-
-# ── top-level config-driven runner ───────────────────────────────────────────
-
-def run_simulation(cfg: "ExperimentConfig") -> dict:
-    """Run a complete simulation from an :class:`ExperimentConfig`.
-
-    Parameters
-    ----------
-    cfg : ExperimentConfig
-
-    Returns
-    -------
-    dict with keys:
-        ``times`` (ndarray), ``snapshots`` (list of dicts),
-        and one ndarray per active diagnostic metric.
-    """
-    from ..tools.diagnostics import DiagnosticCollector
-
-    solver = TwoPhaseNSSolver.from_config(cfg)
-    psi = solver.build_ic(cfg)
-    u, v = solver.build_velocity(cfg, psi)
-    bc_hook = solver.make_bc_hook(cfg)
-    ph = cfg.physics
-
-    # Non-uniform grid: always fit once to the IC before time-stepping.
-    # rebuild_freq==0 freezes this IC-fitted grid; rebuild_freq>0 then
-    # refreshes it periodically from the transported interface.
-    if solver._alpha_grid > 1.0:
-        psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
-        mode = "static" if solver._rebuild_freq == 0 else f"dynamic/{solver._rebuild_freq}"
-        print(f"  [{mode} non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
-
-    # Initial radius estimate from IC (used only by laplace_pressure metric)
-    ic = cfg.initial_condition
-    R_ic = float(ic.get("radius", 0.25)) if isinstance(ic, dict) else 0.25
-
-    _bk0 = solver._backend
-    diag = DiagnosticCollector(
-        cfg.diagnostics,
-        np.asarray(_bk0.to_host(solver.X)),
-        np.asarray(_bk0.to_host(solver.Y)),
-        solver.h,
-        rho_l=ph.rho_l, rho_g=ph.rho_g,
-        sigma=ph.sigma, R=R_ic,
-    )
-    snaps: list[dict] = []
-    if cfg.run.snap_interval is not None and cfg.run.T_final is not None:
-        iv = cfg.run.snap_interval
-        n = int(cfg.run.T_final / iv)
-        auto = [i * iv for i in range(n + 1)]
-        snap_times = sorted(set(list(cfg.run.snap_times) + auto))
-    else:
-        snap_times = list(cfg.run.snap_times)
-    snap_idx = 0
-
-    T = cfg.run.T_final if cfg.run.T_final is not None else float("inf")
-    max_steps = cfg.run.max_steps
-
-    t = 0.0
-    step = 0
-    dbg_history: list = []
-
-    while t < T and (max_steps is None or step < max_steps):
-        if cfg.run.dt_fixed is not None:
-            dt = min(cfg.run.dt_fixed, T - t)
-        else:
-            dt = min(solver.dt_max(u, v, ph, cfg.run.cfl), T - t)
-        if dt < 1e-12:
-            break
-
-        step_index = step
-        grid_will_rebuild = (
-            solver._alpha_grid > 1.0
-            and solver._rebuild_freq > 0
-            and step_index > 0
-            and (step_index % solver._rebuild_freq == 0)
-        )
-        psi, u, v, p = solver.step(
-            psi, u, v, dt,
-            rho_l=ph.rho_l,
-            rho_g=ph.rho_g,
-            sigma=ph.sigma,
-            mu=ph.mu,
-            g_acc=ph.g_acc,
-            rho_ref=ph.rho_ref,
-            mu_l=ph.mu_l,
-            mu_g=ph.mu_g,
-            bc_hook=bc_hook,
-            step_index=step_index,
-        )
-        t += dt
-        step += 1
-
-        # Diagnostics: pass device arrays — collector uses xp for on-device reductions.
-        _bk = solver._backend
-        dV_dev = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
-        if grid_will_rebuild:
-            diag.X = np.asarray(_bk.to_host(solver.X))
-            diag.Y = np.asarray(_bk.to_host(solver.Y))
-        diag.collect(t, psi, u, v, p, dV=dV_dev)
-        dbg_entry = solver._step_diag.last
-        if dbg_entry:
-            dbg_history.append({"t": t, "step": step, **dbg_entry})
-
-        while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
-            _to_h = lambda a: np.asarray(_bk.to_host(a))
-            psi_h, u_h, v_h, p_h = _to_h(psi), _to_h(u), _to_h(v), _to_h(p)
-            snap_entry = {
-                "t": float(t),
-                "psi": psi_h.copy(),
-                "u": u_h.copy(),
-                "v": v_h.copy(),
-                "p": p_h.copy(),
-                "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
-            }
-            if solver._alpha_grid > 1.0:
-                snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
-            snaps.append(snap_entry)
-            snap_idx += 1
-
-        if step % cfg.run.print_every == 0 or step <= 2:
-            ke = diag.last("kinetic_energy", 0.0)
-            print(f"  step={step:5d}  t={t:.4f}  dt={dt:.5f}  KE={ke:.3e}")
-            d = solver._step_diag.last
-            if d:
-                print(f"          kappa_max={d['kappa_max']:.3e}  ppe_rhs={d['ppe_rhs_max']:.3e}"
-                      f"  bf_res={d['bf_residual_max']:.3e}  div_u={d['div_u_max']:.3e}")
-
-        ke = diag.last("kinetic_energy", 0.0)
-        if np.isnan(ke) or ke > 1e6:
-            print(f"  BLOWUP at step={step}, t={t:.4f}")
-            break
-
-    results = {**diag.to_arrays(), "snapshots": snaps}
-    if dbg_history:
-        results["debug_diagnostics"] = {
-            k: np.array([d[k] for d in dbg_history]) for k in dbg_history[0]
-        }
-    return results
+from .runner import run_simulation

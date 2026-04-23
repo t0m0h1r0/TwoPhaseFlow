@@ -101,6 +101,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
         self._pin_dofs = (self._pin_dof,)
         self._rho = None
+        self._rho_dev = None
         self._diag_inv = None
         self._coeff_face = None
         self._h_min = None
@@ -124,6 +125,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         ]
         self._refresh_grid_geometry_cache()
         self._rho = None
+        self._rho_dev = None
         self._diag_inv = None
         self._coeff_face = None
         self._phase_threshold = None
@@ -132,6 +134,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
         self._rho = None
+        self._rho_dev = None
         self._diag_inv = None
         self._coeff_face = None
         self._phase_threshold = None
@@ -142,38 +145,45 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._interface_jump_context = {
             "psi": self.xp.asarray(psi),
             "kappa": self.xp.asarray(kappa),
+            "psi_host": np.asarray(self.backend.to_host(psi)),
+            "kappa_host": np.asarray(self.backend.to_host(kappa)),
             "sigma": float(sigma),
         }
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
         xp = self.xp
-        self._rho = xp.asarray(rho)
+        self._rho_dev = xp.asarray(rho)
+        self._rho = np.asarray(self.backend.to_host(self._rho_dev))
         self._diag_inv = None
         self._refresh_phase_gauges()
         self._coeff_face = [
-            self._face_inverse_density(self._rho, axis)
+            self._face_inverse_density(self._rho_dev, axis)
             for axis in range(self.ndim)
         ]
         if self.preconditioner == "jacobi":
-            diag = xp.zeros_like(self._rho)
+            diag = xp.zeros_like(self._rho_dev)
             for axis in range(self.ndim):
                 h_min = float(self._h_min[axis])
-                diag -= 2.0 / (self._rho * h_min * h_min)
+                diag -= 2.0 / (self._rho_dev * h_min * h_min)
             self._pin_flat(diag.ravel(), 1.0)
             self._diag_inv = 1.0 / xp.where(xp.abs(diag) > 1.0e-30, diag, 1.0)
 
     def apply(self, p):
         """Apply ``D_f[(1/rho)_f G_f(p)]`` with a pinned gauge DOF."""
         xp = self.xp
-        if self._rho is None or self._coeff_face is None:
+        if self._rho_dev is None or self._coeff_face is None:
             raise RuntimeError("prepare_operator(rho) must be called before apply(p)")
-        out = xp.zeros_like(p)
+        return_host = self.backend.is_gpu() and not self._is_device_array(p)
+        p_dev = xp.asarray(p)
+        out = xp.zeros_like(p_dev)
         for axis in range(self.ndim):
-            grad_face = self.fccd.face_gradient(p, axis)
+            grad_face = self.fccd.face_gradient(p_dev, axis)
             coeff_face = self._coeff_face[axis]
             out = out + self._face_flux_divergence(coeff_face * grad_face, axis)
-        self._pin_flat(out.ravel(), p.ravel())
+        self._pin_flat(out.ravel(), p_dev.ravel())
+        if return_host:
+            return np.asarray(self.backend.to_host(out))
         return out
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
@@ -183,6 +193,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             raise RuntimeError("FCCD matrix-free PPE requires backend GMRES")
 
         xp = self.xp
+        return_host = self.backend.is_gpu() and not self._is_device_array(rhs)
         rhs_dev = xp.asarray(rhs)
         self.prepare_operator(rho)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
@@ -245,6 +256,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
+        if return_host:
+            return np.asarray(self.backend.to_host(sol))
         return sol
 
     def apply_interface_jump(self, pressure):
@@ -258,13 +271,19 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         sigma = self._interface_jump_context["sigma"]
         if sigma <= 0.0:
             return pressure
-        psi = self._interface_jump_context["psi"]
-        kappa = self._interface_jump_context["kappa"]
-        return pressure + sigma * kappa * (1.0 - psi)
+        if self.backend.is_gpu() and self._is_device_array(pressure):
+            pressure_arr = self.xp.asarray(pressure)
+            psi = self._interface_jump_context["psi"]
+            kappa = self._interface_jump_context["kappa"]
+            return pressure_arr + sigma * kappa * (1.0 - psi)
+        pressure_arr = np.asarray(pressure)
+        psi = self._interface_jump_context["psi_host"]
+        kappa = self._interface_jump_context["kappa_host"]
+        return pressure_arr + sigma * kappa * (1.0 - psi)
 
     def _project_rhs_compatibility(self, rhs):
         """Enforce one Neumann compatibility condition per phase block."""
-        xp = self.xp
+        xp = self.xp if self._is_device_array(rhs) else np
         rhs_projected = xp.asarray(rhs).copy()
         stats = {
             "ppe_phase_count": 1.0,
@@ -283,23 +302,24 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self._pin_flat(rhs_projected.ravel(), 0.0)
             self.last_diagnostics = stats
             return rhs_projected
+        rho_view = self._rho_dev if xp is self.xp else self._rho
         phase_masks = (
-            self._rho < self._phase_threshold,
-            self._rho >= self._phase_threshold,
+            rho_view < self._phase_threshold,
+            rho_view >= self._phase_threshold,
         )
         means_before = []
         means_after = []
         phase_count = 0
         for mask in phase_masks:
-            count = int(self.backend.asnumpy(xp.sum(mask)))
+            count = int(self._to_scalar(xp.sum(mask)))
             if count == 0:
                 continue
             phase_count += 1
             mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
-            means_before.append(abs(float(self.backend.asnumpy(mean))))
+            means_before.append(abs(self._to_scalar(mean)))
             rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
             mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
-            means_after.append(abs(float(self.backend.asnumpy(mean_after))))
+            means_after.append(abs(self._to_scalar(mean_after)))
         self._pin_flat(rhs_projected.ravel(), 0.0)
         stats.update(
             {
@@ -313,7 +333,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):
-        xp = self.xp
+        xp = self.xp if self._is_device_array(rho) else np
+        rho_arr = xp.asarray(rho)
         ndim = self.ndim
         N = self.grid.N[axis]
 
@@ -322,8 +343,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             s[axis] = slice(start, stop)
             return tuple(s)
 
-        rho_lo = rho[sl(0, N)]
-        rho_hi = rho[sl(1, N + 1)]
+        rho_lo = rho_arr[sl(0, N)]
+        rho_hi = rho_arr[sl(1, N + 1)]
         coeff = 2.0 / (rho_lo + rho_hi)
         if self.coefficient_scheme != "phase_separated":
             return coeff
@@ -338,7 +359,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self._pin_dofs = (self._pin_dof,)
             self._phase_threshold = None
             return
-        rho_np = np.asarray(self.backend.asnumpy(self._rho), dtype=np.float64)
+        rho_np = np.asarray(self._rho, dtype=np.float64)
         rho_min = float(np.min(rho_np))
         rho_max = float(np.max(rho_np))
         if not np.isfinite(rho_min + rho_max) or abs(rho_max - rho_min) < 1.0e-14:
@@ -398,3 +419,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         shape = [1] * ndim
         shape[0] = -1
         return values.reshape(shape)
+
+    def _is_device_array(self, arr) -> bool:
+        return self.backend.is_gpu() and hasattr(arr, "__cuda_array_interface__")
+
+    def _to_scalar(self, value) -> float:
+        if self._is_device_array(value):
+            return float(self.backend.asnumpy(value))
+        return float(value)

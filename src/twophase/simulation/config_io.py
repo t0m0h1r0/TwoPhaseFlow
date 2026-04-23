@@ -28,8 +28,7 @@ resolved before constructing PhysicsCfg:
 from __future__ import annotations
 
 import copy
-import math
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -256,74 +255,16 @@ def _parse_raw(raw: dict) -> ExperimentConfig:
 
 
 def _parse_grid(d: dict, interface: dict) -> GridCfg:
-    cells = d["cells"]
-    NX, NY = int(cells[0]), int(cells[1])
-    domain = d["domain"]
-    size = domain["size"]
-    LX, LY = float(size[0]), float(size[1])
-    distribution = d["distribution"]
-    width = interface["thickness"]
-    distribution_type = _validate_choice(
-        distribution["type"], ("uniform", "interface_fitted"),
-        "grid.distribution.type",
-    )
-    fitting_enabled = distribution_type == "interface_fitted"
-    fitting_method = _normalize_interface_fitting_method(
-        distribution.get("method", "gaussian_levelset" if fitting_enabled else "none")
-    )
-    if fitting_method == "none":
-        fitting_enabled = False
-    alpha_grid = float(distribution.get("alpha", 1.0))
-    if not fitting_enabled:
-        alpha_grid = 1.0
-    eps_factor = float(width.get("base_factor", 1.5))
-    eps_g_factor = float(distribution.get("eps_g_factor", 2.0))
-    eps_g_cells = _opt_float(distribution.get("eps_g_cells"))
-    eps_xi_cells = _opt_float(width.get("xi_cells"))
-    use_local_eps = _parse_interface_width_mode(width, eps_xi_cells)
-    return GridCfg(
-        NX=NX,
-        NY=NY,
-        LX=LX,
-        LY=LY,
-        bc_type=str(domain["boundary"]),
-        alpha_grid=alpha_grid,
-        eps_factor=eps_factor,
-        eps_g_factor=eps_g_factor,
-        eps_g_cells=eps_g_cells,
-        dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
-        use_local_eps=use_local_eps,
-        eps_xi_cells=eps_xi_cells,
-        grid_rebuild_freq=_parse_grid_rebuild(distribution.get("schedule", "static")),
-        interface_fitting_enabled=fitting_enabled,
-        interface_fitting_method=("none" if not fitting_enabled else fitting_method),
-    )
+    from .config_sections import parse_grid
+
+    return parse_grid(d, interface)
 
 
 def _parse_physics(d: dict) -> PhysicsCfg:
     """Parse physics section, resolving derived parameters."""
-    phases = d["phases"]
-    liquid = phases["liquid"]
-    gas = phases["gas"]
-    rho_l = float(liquid["rho"])
-    rho_g = float(gas["rho"])
-    g_acc = float(d.get("gravity", 0.0))
-    rho_ref = _opt_float(d.get("rho_ref"))
-    d_ref = _opt_float(d.get("d_ref"))
+    from .config_sections import parse_physics
 
-    mu_raw, mu_l_raw, mu_g_raw = _resolve_viscosity(d, rho_l, g_acc, d_ref)
-    sigma_raw = _resolve_surface_tension(d, rho_l, rho_g, g_acc, d_ref, mu_g_raw)
-
-    return PhysicsCfg(
-        rho_l=rho_l,
-        rho_g=rho_g,
-        sigma=sigma_raw,
-        mu=mu_raw,
-        mu_l=mu_l_raw,
-        mu_g=mu_g_raw,
-        g_acc=g_acc,
-        rho_ref=rho_ref,
-    )
+    return parse_physics(d)
 
 
 def _resolve_viscosity(
@@ -333,42 +274,9 @@ def _resolve_viscosity(
     d_ref: float | None,
 ) -> tuple[float, float | None, float | None]:
     """Resolve uniform and phase viscosities from direct or derived inputs."""
-    phases = d["phases"]
-    liquid = phases["liquid"]
-    gas = phases["gas"]
-    mu_g = _opt_float(gas["mu"])
-    mu_l = _opt_float(liquid["mu"])
-    mu = _opt_float(d.get("mu"))
+    from .config_sections import resolve_viscosity
 
-    lambda_mu = _opt_float(d.get("lambda_mu"))
-    if lambda_mu is not None and mu_g is not None:
-        mu_l = lambda_mu * mu_g
-
-    re_num = _opt_float(d.get("Re"))
-    if re_num is not None and d_ref is not None and g_acc > 0.0:
-        mu_derived = rho_l * math.sqrt(g_acc * d_ref) * d_ref / re_num
-        if mu is None:
-            mu = mu_derived
-        if mu_g is None:
-            mu_g = mu_derived
-        if mu_l is None:
-            mu_l = mu_derived
-
-    if mu is None:
-        if mu_g is not None:
-            mu = mu_g
-        elif mu_l is not None:
-            mu = mu_l
-        else:
-            mu = 0.01
-
-    if mu_g is None and mu_l is None:
-        return mu, mu, mu
-    if mu_g is None:
-        mu_g = mu
-    if mu_l is None:
-        mu_l = mu
-    return mu, mu_l, mu_g
+    return resolve_viscosity(d, rho_l, g_acc, d_ref)
 
 
 def _resolve_surface_tension(
@@ -380,24 +288,9 @@ def _resolve_surface_tension(
     mu_g: float | None,
 ) -> float:
     """Resolve surface tension from direct sigma, Eotvos number, or Ca."""
-    sigma = _opt_float(d.get("surface_tension"))
+    from .config_sections import resolve_surface_tension
 
-    eo_num = _opt_float(d.get("Eo"))
-    if eo_num is not None and d_ref is not None and g_acc > 0.0:
-        sigma = g_acc * (rho_l - rho_g) * d_ref ** 2 / eo_num
-
-    ca_num = _opt_float(d.get("Ca"))
-    r_ref = _opt_float(d.get("R_ref")) or (d_ref / 2.0 if d_ref else None)
-    gamma_dot = _opt_float(d.get("gamma_dot"))
-    if (
-        ca_num is not None
-        and mu_g is not None
-        and gamma_dot is not None
-        and r_ref is not None
-    ):
-        sigma = mu_g * gamma_dot * r_ref / ca_num
-
-    return 0.0 if sigma is None else sigma
+    return resolve_surface_tension(d, rho_l, rho_g, g_acc, d_ref, mu_g)
 
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
