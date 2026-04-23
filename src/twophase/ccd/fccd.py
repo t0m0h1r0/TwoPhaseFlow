@@ -198,10 +198,12 @@ class FCCDSolver:
             }
 
         H = xp.asarray(H_host)
+        H_node_host = 0.5 * (H_host[:-1] + H_host[1:]) if len(H_host) > 1 else H_host
         return {
             "uniform": False,
             "H": H,
             "inv_H": 1.0 / H,
+            "inv_H_node": xp.asarray(1.0 / H_node_host),
             "H_half": 0.5 * H,
             "H_over_24": H / 24.0,
             "H_sq_over_16": H * H / 16.0,
@@ -521,13 +523,7 @@ class FCCDSolver:
             # Interior: (F[i] - F[i-1]) / H
             interior = (F[1:] - F[:-1]) * w["inv_H"]    # (N-1, *rest)
         else:
-            # Per-node 1/H at interior: use face-to-node mean.
-            import numpy as np
-            H_host = self.grid.coords[axis][1:] - self.grid.coords[axis][:-1]
-            H_node_host = 0.5 * (H_host[:-1] + H_host[1:])    # (N-1,) at i=1..N-1
-            inv_H_node = self._broadcast_axis0(
-                xp.asarray(1.0 / H_node_host), F.ndim
-            )
+            inv_H_node = self._broadcast_axis0(w["inv_H_node"], F.ndim)
             interior = (F[1:] - F[:-1]) * inv_H_node
 
         out_shape = (N + 1,) + F.shape[1:]
@@ -623,8 +619,9 @@ class FCCDSolver:
         variant (Option B-sk, SP-D §7.1), average with the non-conservative
         form ``−u_k · node_gradient(φ)`` at nodes.
         """
-        q_prod = self._ccd.second_derivative(u_k * phi, axis)
-        F_cons = self.face_value(u_k * phi, axis, q=q_prod)
+        prod = u_k * phi
+        q_prod = self._ccd.second_derivative(prod, axis)
+        F_cons = self.face_value(prod, axis, q=q_prod)
         return -self.face_divergence(F_cons, axis)
 
     # ── Wall BC helpers ─────────────────────────────────────────────────
