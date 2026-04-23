@@ -41,8 +41,16 @@ from ..config import SimulationConfig
 from ..core.field import ScalarField, VectorField
 from ..core.components import SimulationComponents
 from ..core.flow_state import FlowState
-from ..levelset.heaviside import update_properties, invert_heaviside
 from ..levelset.field_extender import NullFieldExtender
+from .legacy_flow_helpers import (
+    advance_legacy_levelset,
+    build_legacy_flow_state,
+    correct_legacy_velocity,
+    predict_legacy_velocity,
+    solve_legacy_ppe,
+    update_legacy_curvature,
+    update_legacy_properties,
+)
 from .legacy_simulation_state import (
     restore_legacy_simulation,
     snapshot_legacy_simulation,
@@ -259,22 +267,11 @@ class TwoPhaseSimulation:
 
     def _build_flow_state_with_pressure(self, pressure) -> FlowState:
         """延長済み圧力を使った FlowState を構築する（Extension PDE 用）。"""
-        ndim = self.config.grid.ndim
-        return FlowState(
-            velocity=[self.velocity[ax] for ax in range(ndim)],
-            psi=self.psi.data,
-            rho=self.rho.data,
-            mu=self.mu.data,
-            kappa=self.kappa.data,
-            pressure=pressure,
-        )
+        return build_legacy_flow_state(self, pressure)
 
     def _step_advect_reinit(self, dt: float) -> None:  # modifies self.psi in-place
         """Step 1–2: CLS 移流（WENO5+TVD-RK3）→ 再初期化（疑似時間 PDE）。"""
-        ndim = self.config.grid.ndim
-        vel_components = [self.velocity[ax] for ax in range(ndim)]
-        psi_adv = self.ls_advect.advance(self.psi.data, vel_components, dt)
-        self.psi.data = self.ls_reinit.reinitialize(psi_adv)
+        advance_legacy_levelset(self, dt)
 
     def _step_predictor(self, state: FlowState, dt: float) -> List:
         """Step 5: 予測速度 u* を計算し vel_star フィールドに格納する。
@@ -283,11 +280,7 @@ class TwoPhaseSimulation:
         -------
         vel_star : list of arrays  (u* の各速度成分)
         """
-        ndim = self.config.grid.ndim
-        vel_star_list = self.predictor.compute(state, dt)
-        for ax in range(ndim):
-            self.vel_star[ax] = vel_star_list[ax]
-        return [self.vel_star[ax] for ax in range(ndim)]
+        return predict_legacy_velocity(self, state, dt)
 
     def _step_ppe(self, vel_star: List, dt: float) -> object:
         """Step 6: PPE RHS 構築 → PPE 求解（IPC 増分法） → δp を返す。
@@ -306,28 +299,7 @@ class TwoPhaseSimulation:
         -------
         delta_p : 圧力増分 δp（速度 Corrector に渡す）
         """
-        if self._ppe_rhs_gfm is not None:
-            # GFM path (§8e Eq. gfm_ccd_div):
-            # q_h = (1/dt) div(u_tilde*) + b^GFM
-            # phi cached in _update_curvature (Step 4) to avoid redundant inversion
-            rhs = self._ppe_rhs_gfm.build_rhs(
-                vel_star, self.phi.data, self.kappa.data, self.rho.data, dt,
-            )
-        else:
-            # CSF/Rhie-Chow path (legacy):
-            # Rhie-Chow 補正発散: self.pressure.data = p^n
-            div_rc = self.rhie_chow.face_velocity_divergence(
-                vel_star, self.pressure.data, self.rho.data, dt,
-            )
-            rhs = div_rc / dt
-
-        # δp を解く（IPC: 初期値 0）
-        delta_p = self.ppe_solver.solve(
-            rhs, self.rho.data, dt, p_init=None,
-        )
-        # p^{n+1} = p^n + δp（§9 Step 7 の圧力更新）
-        self.pressure.data = self.pressure.data + delta_p
-        return delta_p   # 速度 Corrector は ∇(δp) を適用する
+        return solve_legacy_ppe(self, vel_star, dt)
 
     def _step_correct_velocity(self, vel_star: List, delta_p: object, dt: float) -> None:  # modifies self.velocity in-place
         """Step 7: u* − (Δt/ρ̃)∇(δp) → u^{n+1} を velocity フィールドに書き込む。
@@ -338,34 +310,15 @@ class TwoPhaseSimulation:
         Extension PDE (Aslam 2004): δp を界面越しに滑らかに延長してから
         CCD ∇(δp) を計算する（NullFieldExtender の場合は δp をそのまま返す）．
         """
-        ndim = self.config.grid.ndim
-        n_hat = self._field_ext.compute_normal(self.phi.data)
-        delta_p = self._field_ext.extend(delta_p, self.phi.data, n_hat)
-        vel_new = self.vel_corrector.correct(vel_star, delta_p, self.rho.data, dt)
-        for ax in range(ndim):
-            self.velocity[ax] = vel_new[ax]
+        correct_legacy_velocity(self, vel_star, delta_p, dt)
 
     # ── プライベートヘルパー ───────────────────────────────────────────────
 
     def _update_properties(self) -> None:
-        rho, mu = update_properties(
-            self.backend.xp,
-            self.psi.data,
-            self._rho_l, self._rho_g,
-            self._mu_l, self._mu_g,
-        )
-        self.rho.data = rho
-        self.mu.data  = mu
+        update_legacy_properties(self)
 
     def _update_curvature(self) -> None:
-        self.kappa.data = self.curvature_calc.compute(self.psi.data)
-        # Cache φ = H_ε⁻¹(ψ) for GFM PPE RHS (Step 6).
-        # Only computed when GFM is active; CurvatureCalculator also inverts
-        # ψ→φ internally, so this is a second inversion.  Eliminating it
-        # would require passing pre-computed φ through ICurvatureCalculator,
-        # which is too invasive for this change.
-        if self._needs_phi:
-            self.phi.data = invert_heaviside(self.backend.xp, self.psi.data, self.eps)
+        update_legacy_curvature(self)
 
 
 # DO NOT DELETE — legacy split-step simulation core retained per C2.
