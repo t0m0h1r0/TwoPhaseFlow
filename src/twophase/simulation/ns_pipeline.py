@@ -18,7 +18,7 @@ from ..ccd.fccd import FCCDSolver
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
 from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
 from ..levelset.reinitialize import Reinitializer
-from .ns_step_state import NSStepInputs, NSStepState
+from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
 from .ns_step_services import (
     compute_ns_predictor_stage,
     compute_ns_surface_tension_stage,
@@ -297,6 +297,8 @@ class TwoPhaseNSSolver:
         self._backend = state.backend
         self._grid = state.grid
         self._ccd = state.ccd
+        self._runtime_setup_ctx = None
+        self._runtime_timestep_ctx = None
 
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
@@ -507,6 +509,8 @@ class TwoPhaseNSSolver:
         self._p_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
+        self._runtime_setup_ctx = None
+        self._runtime_timestep_ctx = None
         return result.psi, result.u, result.v
 
     # ── initial condition / velocity builders ─────────────────────────────
@@ -591,30 +595,34 @@ class TwoPhaseNSSolver:
 
     def _runtime_setup_context(self) -> NSRuntimeSetupContext:
         """Build the convenience-service context for setup-facing helpers."""
-        return NSRuntimeSetupContext(
-            backend=self._backend,
-            grid=self._grid,
-            eps=self._eps,
-            X=self.X,
-            Y=self.Y,
-            LY=self.LY,
-            bc_type=self.bc_type,
-            reconstruct_base=self._reconstruct_base,
-        )
+        if self._runtime_setup_ctx is None:
+            self._runtime_setup_ctx = NSRuntimeSetupContext(
+                backend=self._backend,
+                grid=self._grid,
+                eps=self._eps,
+                X=self.X,
+                Y=self.Y,
+                LY=self.LY,
+                bc_type=self.bc_type,
+                reconstruct_base=self._reconstruct_base,
+            )
+        return self._runtime_setup_ctx
 
     def _runtime_timestep_context(self) -> NSTimestepEstimateContext:
         """Build the timestep-estimation context for runtime services."""
-        return NSTimestepEstimateContext(
-            backend=self._backend,
-            h=self._h,
-            h_min=self.h_min,
-            alpha_grid=self._alpha_grid,
-            cn_viscous=self._cn_viscous,
-        )
+        if self._runtime_timestep_ctx is None:
+            self._runtime_timestep_ctx = NSTimestepEstimateContext(
+                backend=self._backend,
+                h=self._h,
+                h_min=self.h_min,
+                alpha_grid=self._alpha_grid,
+                cn_viscous=self._cn_viscous,
+            )
+        return self._runtime_timestep_ctx
 
     def _prepare_step_inputs(
         self,
-        inputs: NSStepInputs,
+        inputs: NSStepInputs | NSStepRequest,
     ) -> NSStepState:
         """Promote step inputs to the active backend and normalise ``rho_ref``."""
         return NSStepState.from_inputs(inputs, backend=self._backend)
@@ -737,6 +745,28 @@ class TwoPhaseNSSolver:
 
     # ── one NS timestep ───────────────────────────────────────────────────
 
+    def step_request(
+        self,
+        request: NSStepInputs | NSStepRequest,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Advance one timestep from a grouped request object."""
+        state = self._prepare_step_inputs(request)
+        state = self._advance_interface_stage(state)
+        state = self._materialise_step_fields(state)
+        state = self._surface_tension_stage(state)
+        state = self._predict_velocity_stage(state)
+        _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
+        state = self._solve_pressure_stage(state)
+        state = self._correct_velocity_stage(state)
+        self._record_step_diagnostics(state)
+
+        p_out = (
+            np.asarray(self._backend.to_host(state.pressure))
+            if self._backend.is_gpu()
+            else state.pressure
+        )
+        return state.psi, state.u, state.v, p_out
+
     def step(
         self,
         psi: np.ndarray,
@@ -776,8 +806,8 @@ class TwoPhaseNSSolver:
         -------
         psi, u, v, p : ndarray
         """
-        state = self._prepare_step_inputs(
-            NSStepInputs(
+        return self.step_request(
+            NSStepRequest(
                 psi=psi,
                 u=u,
                 v=v,
@@ -794,21 +824,6 @@ class TwoPhaseNSSolver:
                 step_index=step_index,
             )
         )
-        state = self._advance_interface_stage(state)
-        state = self._materialise_step_fields(state)
-        state = self._surface_tension_stage(state)
-        state = self._predict_velocity_stage(state)
-        _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
-        state = self._solve_pressure_stage(state)
-        state = self._correct_velocity_stage(state)
-        self._record_step_diagnostics(state)
-
-        p_out = (
-            np.asarray(self._backend.to_host(state.pressure))
-            if self._backend.is_gpu()
-            else state.pressure
-        )
-        return state.psi, state.u, state.v, p_out
 
     # ── private ───────────────────────────────────────────────────────────
     # (PPE solve and matrix build delegated to self._ppe_solver —  see PPESolverFVMSpsolve)

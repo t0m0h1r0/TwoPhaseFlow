@@ -23,10 +23,12 @@ from .diagnostics import DiagnosticsReporter
 from .legacy import TwoPhaseSimulationLegacy, SimulationBuilderLegacy
 from .ns_pipeline import TwoPhaseNSSolver
 from .ns_solver_builder import NSSolverBuilder
+from .ns_step_state import NSStepRequest
 
 __all__ = [
     "TwoPhaseNSSolver",
     "NSSolverBuilder",
+    "NSStepRequest",
     "TwoPhaseSimulation",
     "TwoPhaseSimulationLegacy",
     "SimulationBuilder",

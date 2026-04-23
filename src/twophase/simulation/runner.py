@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 def run_simulation(cfg: "ExperimentConfig") -> dict:
     """Run a complete simulation from an :class:`ExperimentConfig`."""
     from .ns_pipeline import TwoPhaseNSSolver
+    from .ns_step_state import NSStepRequest
     from ..tools.diagnostics import DiagnosticCollector
 
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -76,21 +77,23 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             and step_index > 0
             and (step_index % solver._rebuild_freq == 0)
         )
-        psi, u, v, p = solver.step(
-            psi,
-            u,
-            v,
-            dt,
-            rho_l=ph.rho_l,
-            rho_g=ph.rho_g,
-            sigma=ph.sigma,
-            mu=ph.mu,
-            g_acc=ph.g_acc,
-            rho_ref=ph.rho_ref,
-            mu_l=ph.mu_l,
-            mu_g=ph.mu_g,
-            bc_hook=bc_hook,
-            step_index=step_index,
+        psi, u, v, p = solver.step_request(
+            NSStepRequest(
+                psi=psi,
+                u=u,
+                v=v,
+                dt=dt,
+                rho_l=ph.rho_l,
+                rho_g=ph.rho_g,
+                sigma=ph.sigma,
+                mu=ph.mu,
+                g_acc=ph.g_acc,
+                rho_ref=ph.rho_ref,
+                mu_l=ph.mu_l,
+                mu_g=ph.mu_g,
+                bc_hook=bc_hook,
+                step_index=step_index,
+            )
         )
         t += dt
         step += 1

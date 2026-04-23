@@ -25,6 +25,11 @@ class NSStepInputs:
 
 
 @dataclass
+class NSStepRequest(NSStepInputs):
+    """Public grouped request object for one NS timestep."""
+
+
+@dataclass
 class NSStepState:
     psi: Any
     u: Any
@@ -52,7 +57,7 @@ class NSStepState:
     p_corrector: Any = None
 
     @classmethod
-    def from_inputs(cls, inputs: NSStepInputs, *, backend) -> "NSStepState":
+    def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":
         xp = backend.xp
         rho_ref = (
             0.5 * (inputs.rho_l + inputs.rho_g)
