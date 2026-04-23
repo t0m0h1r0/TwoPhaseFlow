@@ -227,7 +227,7 @@ class CCDSolver:
         #   CPU bit-exactness — matmul rounding differs from back-subst.
         rhs_flat = rhs.reshape(2 * n_int, -1)                            # (2·n_int, batch)
         if self.backend.device == "gpu":
-            x_flat = (rhs_flat.T @ info['A_inv_dev_T']).T                # (2·n_int, batch)
+            x_flat = info['A_inv_dev'] @ rhs_flat                        # (2·n_int, batch)
         else:
             x_flat = self.backend.linalg.lu_solve(
                 (info['lu'], info['piv']), rhs_flat
@@ -336,10 +336,8 @@ class CCDSolver:
             A_inv_dev = self.backend.linalg.lu_solve(
                 (lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype)
             )
-            A_inv_dev_T = A_inv_dev.T
         else:
             A_inv_dev = None
-            A_inv_dev_T = None
 
         # Round 4 (CHK-118): cache the tiny static boundary coefficients on
         # device so the hot path never re-uploads them per CCD call. Kept
@@ -347,7 +345,6 @@ class CCDSolver:
         # _left_boundary_legacy / _right_boundary_legacy helpers still work.
         info_dev = {
             'A_inv_dev':      A_inv_dev,
-            'A_inv_dev_T':    A_inv_dev_T,
             'L0_dev':         xp.asarray(L0),
             'UN_dev':         xp.asarray(UN),
             'M_left_dev':     xp.asarray(bc_left['M']),
