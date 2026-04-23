@@ -29,28 +29,33 @@ class NSPPEFactoryOptions:
     dc_relaxation: float
 
 
+@dataclass(frozen=True)
+class NSReinitializerFactoryOptions:
+    reinit_steps: int
+    reinit_method: str
+    dgr_phi_smooth_C: float
+    reinit_eps_scale: float
+    ridge_sigma_0: float
+
+
 def build_ns_reinitializer(
     *,
     backend,
     grid,
     ccd,
     eps,
-    reinit_steps: int,
-    reinit_method: str,
-    dgr_phi_smooth_C: float,
-    reinit_eps_scale: float,
-    ridge_sigma_0: float,
+    options: NSReinitializerFactoryOptions,
 ) -> Reinitializer:
     return Reinitializer(
         backend,
         grid,
         ccd,
         eps,
-        n_steps=reinit_steps,
-        method=reinit_method,
-        phi_smooth_C=dgr_phi_smooth_C,
-        eps_scale=reinit_eps_scale,
-        sigma_0=ridge_sigma_0,
+        n_steps=options.reinit_steps,
+        method=options.reinit_method,
+        phi_smooth_C=options.dgr_phi_smooth_C,
+        eps_scale=options.reinit_eps_scale,
+        sigma_0=options.ridge_sigma_0,
     )
 
 

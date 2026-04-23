@@ -59,6 +59,7 @@ from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registr
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .ns_runtime_factories import (
+    NSReinitializerFactoryOptions,
     build_ns_reinitializer,
 )
 from .ns_runtime_config import (
@@ -421,11 +422,13 @@ class TwoPhaseNSSolver:
             grid=self._grid,
             ccd=self._ccd,
             eps=self._eps,
-            reinit_steps=scheme_options.reinit_steps,
-            reinit_method=interface_options.reinit_method,
-            dgr_phi_smooth_C=interface_options.dgr_phi_smooth_C,
-            reinit_eps_scale=self._reinit_eps_scale,
-            ridge_sigma_0=float(interface_options.ridge_sigma_0),
+            options=NSReinitializerFactoryOptions(
+                reinit_steps=scheme_options.reinit_steps,
+                reinit_method=interface_options.reinit_method,
+                dgr_phi_smooth_C=interface_options.dgr_phi_smooth_C,
+                reinit_eps_scale=self._interface_runtime.reinit_eps_scale,
+                ridge_sigma_0=float(interface_options.ridge_sigma_0),
+            ),
         )
 
     def _build_ppe_solver(self, pressure_scheme: str):
