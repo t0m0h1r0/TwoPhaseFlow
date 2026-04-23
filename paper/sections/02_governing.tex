@@ -32,6 +32,20 @@ $\psi$ の定義・性質・移流方程式は第~\ref{sec:levelset}章で詳述
 密度・粘性の補間（式~\eqref{eq:interp_intro}）および
 曲率の直接計算（§~\ref{sec:curvature_direct_psi}）に用いる．
 
+\begin{tcolorbox}[defbox, title={Eikonal 制約のトポロジー硬直性（SP-B §2）}]
+符号付き距離関数 $\phi$ の定義は Eikonal 条件 $|\bnabla\phi|=1$ と等価であり，
+これは零等位集合の\textbf{平行オフセット性}を強制する．
+幾何的頑健性と一意性の代償として，Eikonal 制約は
+\textbf{極値とリッジを抑制}し，零等位集合のトポロジーは
+滑らかな時間発展の下で凍結される．
+FMM/FSM/Godunov Hamilton--Jacobi の各再初期化（WIKI-T-042 参照）は，
+幾何学的に見ればこの\textbf{トポロジー硬直性を反復強制}する手続きである．
+§~\ref{sec:levelset} で導入する Ridge--Eikonal ハイブリッド
+（SP-B, SP-E）は，この硬直性を緩め界面の融合・分裂に必要な自由度を
+Gaussian 補助場 $\xiridge$ で回復しつつ，Eikonal 由来の距離精度を保つ
+設計である．
+\end{tcolorbox}
+
 \begin{tcolorbox}[defbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
 \textbf{符号規約の定義（全章共通）：}
 \begin{itemize}
