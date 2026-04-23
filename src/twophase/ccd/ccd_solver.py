@@ -42,6 +42,17 @@ import numpy as np
 from typing import Optional, Tuple, TYPE_CHECKING
 
 from .block_tridiag import BlockTridiagSolver
+from .ccd_solver_helpers import (
+    apply_ccd_metric,
+    build_ccd_axis_solver,
+    build_ccd_axis_solver_legacy,
+    build_ccd_axis_solver_periodic,
+    differentiate_ccd_periodic,
+    differentiate_ccd_periodic_second_only,
+    differentiate_ccd_wall_first_only,
+    differentiate_ccd_wall_raw,
+    differentiate_ccd_wall_second_only,
+)
 
 if TYPE_CHECKING:
     from ..core.grid import Grid
@@ -214,200 +225,23 @@ class CCDSolver:
         ``differentiate_raw()`` (metric computation).  Returns ξ-space
         derivatives in the same shape as ``data``.
         """
-        xp = self.xp
-        info = self._solvers[axis]
-        h = info['h']
-        N = info['N']
-        n_int = info['n_int']
-
-        # Move target axis to front, flatten remaining axes as batch
-        data = xp.asarray(data)
-        f = xp.moveaxis(data, axis, 0)          # (N+1, *other)
-        orig_shape = f.shape
-        n_pts = f.shape[0]
-        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
-        f = f.reshape(n_pts, batch_size)         # (N+1, batch)
-
-        # Build interior RHS — vectorised over interior nodes i=1..n_int.
-        # Interior index idx=0..n_int-1 maps to node i=idx+1, so
-        #   f[i-1] → f[0:n_int],  f[i] → f[1:n_int+1],  f[i+1] → f[2:n_int+2].
-        f_m1 = f[0:n_int]
-        f_0  = f[1:n_int + 1]
-        f_p1 = f[2:n_int + 2]
-        d1_rhs = (_A1 / h) * (f_p1 - f_m1)                        # (n_int, batch)
-        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)      # (n_int, batch)
-        rhs = xp.empty((n_int, 2, batch_size), dtype=f.dtype)     # (n_int, 2, batch)
-        rhs[:, 0, :] = d1_rhs
-        rhs[:, 1, :] = d2_rhs
-
-        # Boundary values — each returns a (2, batch) stacked [d1, d2]
-        # contribution, pre-stacked so the subtraction + ghost recovery
-        # below can use batched (2,2) @ (2,batch) matmuls.
-        bc_lo = self._left_boundary(info, f, h, bc_left)                 # (2, batch)
-        bc_hi = self._right_boundary(info, f, h, N, bc_right)            # (2, batch)
-
-        # Subtract boundary coupling from the first and last interior rows:
-        # one (2,2) @ (2,batch) matmul per side, using the device-cached
-        # L0_dev / UN_dev blocks. Was 4 scalar-indexed -= ops per side.
-        rhs[0]  -= info['L0_dev'] @ bc_lo                                # (2, batch)
-        rhs[-1] -= info['UN_dev'] @ bc_hi                                # (2, batch)
-
-        # Solve the (2·n_int × 2·n_int) dense system.
-        # GPU path (CHK-119): A_inv_dev @ rhs_flat — one cuBLAS DGEMM
-        #   (~57 us on RTX 3080 Ti vs ~989 us for lu_solve; cuSOLVER
-        #   dispatch overhead dominated the cost). A_inv_dev is computed
-        #   once at construction in _build_axis_solver.
-        # CPU path: retain lu_solve (scipy triangular solve) for PR-5
-        #   CPU bit-exactness — matmul rounding differs from back-subst.
-        rhs_flat = rhs.reshape(2 * n_int, -1)                            # (2·n_int, batch)
-        if self.backend.device == "gpu":
-            x_flat = info['A_inv_dev'] @ rhs_flat                        # (2·n_int, batch)
-        else:
-            x_flat = self.backend.linalg.lu_solve(
-                (info['lu'], info['piv']), rhs_flat
-            )
-        sol = x_flat.reshape(n_int, 2, -1)                               # (n_int, 2, batch)
-
-        # Assemble full derivative arrays into a single (2, n_pts, batch)
-        # buffer — channel 0 = d1, channel 1 = d2. Using xp.empty instead
-        # of xp.zeros because the full array is overwritten below.
-        out = xp.empty((2, n_pts, batch_size))
-        out[:, 1:-1, :] = sol.transpose(1, 0, 2)                         # (2, n_int, batch)
-
-        # Recover boundary values at i=0 and i=N from compact-BC expressions:
-        # [d1_0, d2_0] = M_left @ [d1_1, d2_1] + [fp0, fpp0]
-        # Batched (2,2) @ (2,batch) matmul + (2,batch) add → one update.
-        out[:, 0, :] = info['M_left_dev']  @ out[:, 1, :]     + bc_lo
-        out[:, N, :] = info['M_right_dev'] @ out[:, N - 1, :] + bc_hi
-
-        d1_flat = out[0]
-        d2_flat = out[1]
-
-        # Restore original shape
-        d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
-        d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
-        return d1, d2
+        return differentiate_ccd_wall_raw(self, data, axis, bc_left, bc_right)
 
     def _differentiate_wall_first_only(
         self, data, axis: int, bc_left, bc_right, apply_metric: bool = True
     ):
         """Wall-BC CCD solve returning only the first derivative."""
-        xp = self.xp
-        info = self._solvers[axis]
-        h = info['h']
-        N = info['N']
-        n_int = info['n_int']
-
-        data = xp.asarray(data)
-        f = xp.moveaxis(data, axis, 0)
-        orig_shape = f.shape
-        n_pts = f.shape[0]
-        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
-        f = f.reshape(n_pts, batch_size)
-
-        f_m1 = f[0:n_int]
-        f_0 = f[1:n_int + 1]
-        f_p1 = f[2:n_int + 2]
-        d1_rhs = (_A1 / h) * (f_p1 - f_m1)
-        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)
-        rhs = xp.empty((n_int, 2, batch_size), dtype=f.dtype)
-        rhs[:, 0, :] = d1_rhs
-        rhs[:, 1, :] = d2_rhs
-
-        bc_lo = self._left_boundary(info, f, h, bc_left)
-        bc_hi = self._right_boundary(info, f, h, N, bc_right)
-        rhs[0] -= info['L0_dev'] @ bc_lo
-        rhs[-1] -= info['UN_dev'] @ bc_hi
-
-        rhs_flat = rhs.reshape(2 * n_int, -1)
-        if self.backend.device == "gpu":
-            A_inv_dev_T = info.get('A_inv_dev_T')
-            if A_inv_dev_T is None:
-                x_flat = info['A_inv_dev'] @ rhs_flat
-            else:
-                x_flat = (rhs_flat.T @ A_inv_dev_T).T
-        else:
-            x_flat = self.backend.linalg.lu_solve(
-                (info['lu'], info['piv']), rhs_flat
-            )
-        sol = x_flat.reshape(n_int, 2, -1)
-
-        left_pair = info['M_left_dev'] @ sol[0] + bc_lo
-        right_pair = info['M_right_dev'] @ sol[-1] + bc_hi
-
-        d1_flat = xp.empty((n_pts, batch_size), dtype=f.dtype)
-        d1_flat[1:-1, :] = sol[:, 0, :]
-        d1_flat[0, :] = left_pair[0]
-        d1_flat[N, :] = right_pair[0]
-        d1_axis0 = d1_flat.reshape(orig_shape)
-
-        if not self.grid.uniform and apply_metric:
-            shape = [-1] + [1] * (len(orig_shape) - 1)
-            d1_axis0 = xp.asarray(self.grid.J[axis]).reshape(shape) * d1_axis0
-
-        return xp.moveaxis(d1_axis0, 0, axis)
+        return differentiate_ccd_wall_first_only(
+            self, data, axis, bc_left, bc_right, apply_metric=apply_metric
+        )
 
     def _differentiate_wall_second_only(
         self, data, axis: int, bc_left, bc_right, apply_metric: bool = True
     ):
         """Wall-BC CCD solve returning only the second derivative."""
-        xp = self.xp
-        info = self._solvers[axis]
-        h = info['h']
-        N = info['N']
-        n_int = info['n_int']
-
-        data = xp.asarray(data)
-        f = xp.moveaxis(data, axis, 0)
-        orig_shape = f.shape
-        n_pts = f.shape[0]
-        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
-        f = f.reshape(n_pts, batch_size)
-
-        f_m1 = f[0:n_int]
-        f_0 = f[1:n_int + 1]
-        f_p1 = f[2:n_int + 2]
-        d1_rhs = (_A1 / h) * (f_p1 - f_m1)
-        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)
-        rhs = xp.empty((n_int, 2, batch_size), dtype=f.dtype)
-        rhs[:, 0, :] = d1_rhs
-        rhs[:, 1, :] = d2_rhs
-
-        bc_lo = self._left_boundary(info, f, h, bc_left)
-        bc_hi = self._right_boundary(info, f, h, N, bc_right)
-        rhs[0] -= info['L0_dev'] @ bc_lo
-        rhs[-1] -= info['UN_dev'] @ bc_hi
-
-        rhs_flat = rhs.reshape(2 * n_int, -1)
-        if self.backend.device == "gpu":
-            x_flat = info['A_inv_dev'] @ rhs_flat
-        else:
-            x_flat = self.backend.linalg.lu_solve(
-                (info['lu'], info['piv']), rhs_flat
-            )
-        sol = x_flat.reshape(n_int, 2, -1)
-
-        left_pair = info['M_left_dev'] @ sol[0] + bc_lo
-        right_pair = info['M_right_dev'] @ sol[-1] + bc_hi
-
-        d2_flat = xp.empty((n_pts, batch_size), dtype=f.dtype)
-        d2_flat[1:-1, :] = sol[:, 1, :]
-        d2_flat[0, :] = left_pair[1]
-        d2_flat[N, :] = right_pair[1]
-        d2_axis0 = d2_flat.reshape(orig_shape)
-
-        if not self.grid.uniform and apply_metric:
-            d1_flat = xp.empty((n_pts, batch_size), dtype=f.dtype)
-            d1_flat[1:-1, :] = sol[:, 0, :]
-            d1_flat[0, :] = left_pair[0]
-            d1_flat[N, :] = right_pair[0]
-            d1_axis0 = d1_flat.reshape(orig_shape)
-            shape = [-1] + [1] * (len(orig_shape) - 1)
-            J = xp.asarray(self.grid.J[axis]).reshape(shape)
-            dJ = xp.asarray(self.grid.dJ_dxi[axis]).reshape(shape)
-            d2_axis0 = J * J * d2_axis0 + J * dJ * d1_axis0
-
-        return xp.moveaxis(d2_axis0, 0, axis)
+        return differentiate_ccd_wall_second_only(
+            self, data, axis, bc_left, bc_right, apply_metric=apply_metric
+        )
 
     def enforce_wall_neumann(self, grad, ax: int) -> None:
         """Zero CCD gradient at wall boundaries (Neumann BC: ∂p/∂n = 0).
@@ -438,136 +272,26 @@ class CCDSolver:
     # ── Build per-axis solver ─────────────────────────────────────────────
 
     def _build_axis_solver(self, n_pts: int, h: float) -> dict:
-        N = n_pts - 1
-        n_int = N - 1
-        assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
-
-        bc_left = _boundary_coeffs_left(h, n_pts)
-        bc_right = _boundary_coeffs_right(h, n_pts)
-
-        # Original off-diagonal blocks (before boundary absorption)
-        L0 = np.array([[_ALPHA1, _B1 * h],
-                        [_B2 / h, _BETA2]])   # couples i=1 with i=0
-        UN = np.array([[_ALPHA1, -_B1 * h],
-                        [-_B2 / h, _BETA2]])  # couples i=N-1 with i=N
-
-        diag  = [np.eye(2) for _ in range(n_int)]
-        lower = [np.array([[_ALPHA1, _B1 * h],
-                            [_B2 / h, _BETA2]]) for _ in range(n_int)]
-        upper = [np.array([[_ALPHA1, -_B1 * h],
-                            [-_B2 / h, _BETA2]]) for _ in range(n_int)]
-
-        # Absorb left boundary (i=1 row couples with i=0)
-        diag[0] = diag[0] + lower[0] @ bc_left['M']
-        lower[0] = np.zeros((2, 2))
-
-        # Absorb right boundary (i=N-1 row couples with i=N)
-        diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
-        upper[-1] = np.zeros((2, 2))
-
-        # Assemble the (2·n_int × 2·n_int) block-banded matrix and factor
-        # once on the active device. Same layout convention as
-        # _build_axis_solver_periodic: row 2i / 2i+1 correspond to d1 / d2
-        # at interior node i+1.
-        A_host = np.zeros((2 * n_int, 2 * n_int))
-        for i in range(n_int):
-            A_host[2*i:2*i+2, 2*i:2*i+2] = diag[i]
-            if i >= 1:
-                A_host[2*i:2*i+2, 2*(i-1):2*(i-1)+2] = lower[i]
-            if i <= n_int - 2:
-                A_host[2*i:2*i+2, 2*(i+1):2*(i+1)+2] = upper[i]
-
-        A_dev = self.xp.asarray(A_host)
-        lu, piv = self.backend.linalg.lu_factor(A_dev)
-
-        # Round 5 (CHK-119): explicit inverse A_inv_dev = A^{-1} cached on
-        # device. Computed once at construction; the GPU hot path uses
-        # A_inv_dev @ rhs_flat (one cuBLAS DGEMM, ~57 us on RTX 3080 Ti)
-        # instead of lu_solve (~989 us, cuSOLVER dispatch overhead dominated).
-        # CPU path keeps lu_solve to preserve PR-5 CPU bit-exactness.
-        # lu / piv kept in info dict for _build_axis_solver_legacy + audit.
-        xp = self.xp
-        if self.backend.device == "gpu":
-            A_inv_dev = self.backend.linalg.lu_solve(
-                (lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype)
-            )
-        else:
-            A_inv_dev = None
-
-        # Round 4 (CHK-118): cache the tiny static boundary coefficients on
-        # device so the hot path never re-uploads them per CCD call. Kept
-        # alongside the numpy originals so _build_axis_solver_legacy and the
-        # _left_boundary_legacy / _right_boundary_legacy helpers still work.
-        info_dev = {
-            'A_inv_dev':      A_inv_dev,
-            'L0_dev':         xp.asarray(L0),
-            'UN_dev':         xp.asarray(UN),
-            'M_left_dev':     xp.asarray(bc_left['M']),
-            'M_right_dev':    xp.asarray(bc_right['M']),
-            'c_I_left_dev':   xp.asarray(bc_left['c_I']),
-            'c_II_left_dev':  xp.asarray(bc_left['c_II']),
-            'c_I_right_dev':  xp.asarray(bc_right['c_I']),
-            'c_II_right_dev': xp.asarray(bc_right['c_II']),
-            'n_I_left':       len(bc_left['c_I']),
-            'n_II_left':      len(bc_left['c_II']),
-            'n_I_right':      len(bc_right['c_I']),
-            'n_II_right':     len(bc_right['c_II']),
-        }
-
-        return {
-            'lu': lu,
-            'piv': piv,
-            'h': h,
-            'N': N,
-            'n_int': n_int,
-            'L0': L0,
-            'UN': UN,
-            'bc_left': bc_left,
-            'bc_right': bc_right,
-            **info_dev,
-        }
+        return build_ccd_axis_solver(
+            self,
+            n_pts,
+            h,
+            _boundary_coeffs_left,
+            _boundary_coeffs_right,
+        )
 
     # DO NOT DELETE — CHK-117 legacy reference.
     # Pre-dense-LU block-Thomas path retained per C2 (never delete tested
     # code). Not wired to any call site; kept for auditability + rollback.
     # Uses BlockTridiagSolver — which is why the import at the top stays.
     def _build_axis_solver_legacy(self, n_pts: int, h: float) -> dict:
-        N = n_pts - 1
-        n_int = N - 1
-        assert n_int >= 1, f"Need ≥ 3 grid points; got {n_pts}"
-
-        bc_left = _boundary_coeffs_left(h, n_pts)
-        bc_right = _boundary_coeffs_right(h, n_pts)
-
-        L0 = np.array([[_ALPHA1, _B1 * h],
-                        [_B2 / h, _BETA2]])
-        UN = np.array([[_ALPHA1, -_B1 * h],
-                        [-_B2 / h, _BETA2]])
-
-        diag  = [np.eye(2) for _ in range(n_int)]
-        lower = [np.array([[_ALPHA1, _B1 * h],
-                            [_B2 / h, _BETA2]]) for _ in range(n_int)]
-        upper = [np.array([[_ALPHA1, -_B1 * h],
-                            [-_B2 / h, _BETA2]]) for _ in range(n_int)]
-
-        diag[0] = diag[0] + lower[0] @ bc_left['M']
-        lower[0] = np.zeros((2, 2))
-        diag[-1] = diag[-1] + upper[-1] @ bc_right['M']
-        upper[-1] = np.zeros((2, 2))
-
-        solver = BlockTridiagSolver(self.xp)
-        solver.factorize(diag, lower, upper)
-
-        return {
-            'solver': solver,
-            'h': h,
-            'N': N,
-            'n_int': n_int,
-            'L0': L0,
-            'UN': UN,
-            'bc_left': bc_left,
-            'bc_right': bc_right,
-        }
+        return build_ccd_axis_solver_legacy(
+            self,
+            n_pts,
+            h,
+            _boundary_coeffs_left,
+            _boundary_coeffs_right,
+        )
 
     # ── Periodic solver ───────────────────────────────────────────────────
 
@@ -582,27 +306,7 @@ class CCDSolver:
         using the backend's LU (scipy on CPU, cupyx.scipy on GPU). The factors
         live on the active device; solve-time runs entirely device-native.
         """
-        N = n_pts - 1   # number of unique nodes (node N is the periodic image of node 0)
-        assert N >= 3, f"Need ≥ 3 unique nodes for periodic CCD; got {N}"
-
-        lower_blk = np.array([[_ALPHA1,  _B1 * h],
-                               [_B2 / h,  _BETA2]])   # left-neighbour coupling
-        upper_blk = np.array([[_ALPHA1, -_B1 * h],
-                               [-_B2 / h,  _BETA2]])  # right-neighbour coupling
-
-        # Build 2N × 2N block-circulant matrix on host (small, one-time build).
-        A_host = np.zeros((2 * N, 2 * N))
-        for i in range(N):
-            A_host[2*i:2*i+2, 2*i:2*i+2] += np.eye(2)                        # diagonal
-            j_lo = (i - 1) % N
-            A_host[2*i:2*i+2, 2*j_lo:2*j_lo+2] += lower_blk                  # left  (wrap at i=0)
-            j_hi = (i + 1) % N
-            A_host[2*i:2*i+2, 2*j_hi:2*j_hi+2] += upper_blk                  # right (wrap at i=N-1)
-
-        # Factor on the active device.
-        A_dev = self.xp.asarray(A_host)
-        lu, piv = self.backend.linalg.lu_factor(A_dev)
-        return {'lu': lu, 'piv': piv, 'h': h, 'N': N}
+        return build_ccd_axis_solver_periodic(self, n_pts, h)
 
     def _differentiate_periodic(self, data, axis: int, apply_metric: bool = True):
         """Periodic CCD differentiation using the pre-factorised block-circulant solver.
@@ -610,98 +314,15 @@ class CCDSolver:
         Nodes 0..N-1 are solved via the 2N×2N system; node N receives a copy
         of node 0 (periodic image). Runs entirely on the active device.
         """
-        xp = self.xp
-        info = self._periodic_solvers[axis]
-        h = info['h']
-        N = info['N']
-
-        # Move target axis to front, flatten remaining axes as batch
-        data = xp.asarray(data)
-        f_full = xp.moveaxis(data, axis, 0)      # (N+1, *other)
-        orig_shape = f_full.shape
-        n_pts = f_full.shape[0]                  # N+1
-        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
-        f_full = f_full.reshape(n_pts, batch_size)  # (N+1, batch)
-
-        # N unique nodes only; node N = node 0 (periodic image).
-        f_unique = f_full[:N, :]                 # (N, batch) — device-native view
-
-        # Build RHS (2N × batch) device-native using a vectorised roll/slice pattern.
-        f_im1 = xp.roll(f_unique, 1, axis=0)     # f[(i-1) mod N]
-        f_ip1 = xp.roll(f_unique, -1, axis=0)    # f[(i+1) mod N]
-        rhs_d1 = (_A1 / h) * (f_ip1 - f_im1)                         # (N, batch)
-        rhs_d2 = (_A2 / (h * h)) * (f_im1 - 2.0 * f_unique + f_ip1)  # (N, batch)
-
-        rhs = xp.empty((2 * N, batch_size), dtype=f_unique.dtype)
-        rhs[0::2, :] = rhs_d1
-        rhs[1::2, :] = rhs_d2
-
-        # Solve (2N × batch) on the active device.
-        x = self.backend.linalg.lu_solve((info['lu'], info['piv']), rhs)
-
-        # Extract d1 (even rows) and d2 (odd rows) for nodes 0..N-1
-        d1_inner = x[0::2, :]   # (N, batch)
-        d2_inner = x[1::2, :]   # (N, batch)
-
-        # Full (N+1, batch) arrays: node N = node 0 (periodic image)
-        d1_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
-        d2_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
-        d1_flat[:N, :] = d1_inner
-        d2_flat[:N, :] = d2_inner
-        d1_flat[N, :] = d1_inner[0, :]
-        d2_flat[N, :] = d2_inner[0, :]
-
-        d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
-        d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
-
-        if not self.grid.uniform and apply_metric:
-            d1, d2 = self._apply_metric(d1, d2, axis)
-
-        return d1, d2
+        return differentiate_ccd_periodic(self, data, axis, apply_metric=apply_metric)
 
     def _differentiate_periodic_second_only(
         self, data, axis: int, apply_metric: bool = True
     ):
         """Periodic CCD differentiation returning only the second derivative."""
-        xp = self.xp
-        info = self._periodic_solvers[axis]
-        h = info['h']
-        N = info['N']
-
-        data = xp.asarray(data)
-        f_full = xp.moveaxis(data, axis, 0)
-        orig_shape = f_full.shape
-        n_pts = f_full.shape[0]
-        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
-        f_full = f_full.reshape(n_pts, batch_size)
-        f_unique = f_full[:N, :]
-
-        f_im1 = xp.roll(f_unique, 1, axis=0)
-        f_ip1 = xp.roll(f_unique, -1, axis=0)
-        rhs_d1 = (_A1 / h) * (f_ip1 - f_im1)
-        rhs_d2 = (_A2 / (h * h)) * (f_im1 - 2.0 * f_unique + f_ip1)
-
-        rhs = xp.empty((2 * N, batch_size), dtype=f_unique.dtype)
-        rhs[0::2, :] = rhs_d1
-        rhs[1::2, :] = rhs_d2
-
-        x = self.backend.linalg.lu_solve((info['lu'], info['piv']), rhs)
-
-        d2_inner = x[1::2, :]
-        d2_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
-        d2_flat[:N, :] = d2_inner
-        d2_flat[N, :] = d2_inner[0, :]
-        d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
-
-        if not self.grid.uniform and apply_metric:
-            d1_inner = x[0::2, :]
-            d1_flat = xp.empty((N + 1, batch_size), dtype=f_unique.dtype)
-            d1_flat[:N, :] = d1_inner
-            d1_flat[N, :] = d1_inner[0, :]
-            d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
-            _, d2 = self._apply_metric(d1, d2, axis)
-
-        return d2
+        return differentiate_ccd_periodic_second_only(
+            self, data, axis, apply_metric=apply_metric
+        )
 
     # ── Boundary helper methods ───────────────────────────────────────────
 
@@ -802,20 +423,7 @@ class CCDSolver:
         ∂f/∂x   = J · (∂f/∂ξ)
         ∂²f/∂x² = J² · (∂²f/∂ξ²) + J · (dJ/dξ) · (∂f/∂ξ)     (§4.9)
         """
-        xp = self.xp
-        # Broadcast metric arrays to field shape
-        J_1d    = xp.asarray(self.grid.J[axis])
-        dJ_1d   = xp.asarray(self.grid.dJ_dxi[axis])
-
-        # Build shape for broadcasting: (1, …, N+1, …, 1) with N+1 at axis
-        shape = [1] * self.ndim
-        shape[axis] = -1
-        J   = J_1d.reshape(shape)
-        dJ  = dJ_1d.reshape(shape)
-
-        d1_x = J * d1_xi
-        d2_x = J * J * d2_xi + J * dJ * d1_xi
-        return d1_x, d2_x
+        return apply_ccd_metric(self, d1_xi, d2_xi, axis)
 
 
 # ── Boundary coefficient constructors (module-level, pure functions) ─────
