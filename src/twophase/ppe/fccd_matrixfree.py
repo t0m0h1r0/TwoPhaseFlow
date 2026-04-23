@@ -73,6 +73,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
         self._rho = None
         self._diag_inv = None
+        self._h_min = None
+        self._node_width = None
+        self._refresh_grid_geometry_cache()
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
@@ -84,6 +87,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self.fccd._precompute_weights(ax)
             for ax in range(self.fccd.ndim)
         ]
+        self._refresh_grid_geometry_cache()
         self._rho = None
         self._diag_inv = None
 
@@ -100,7 +104,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         if self.preconditioner == "jacobi":
             diag = xp.zeros_like(self._rho)
             for axis in range(self.ndim):
-                h_min = float(np.min(np.diff(np.asarray(self.grid.coords[axis]))))
+                h_min = float(self._h_min[axis])
                 diag -= 2.0 / (self._rho * h_min * h_min)
             diag.ravel()[self._pin_dof] = 1.0
             self._diag_inv = 1.0 / xp.where(xp.abs(diag) > 1.0e-30, diag, 1.0)
@@ -207,19 +211,28 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
         flux = xp.moveaxis(xp.asarray(face_flux), axis, 0)
         N = self.grid.N[axis]
-        coords = np.asarray(self.grid.coords[axis], dtype=np.float64)
-        face_width = coords[1:] - coords[:-1]
-        node_width = np.empty_like(coords)
-        node_width[0] = 0.5 * face_width[0]
-        node_width[-1] = 0.5 * face_width[-1]
-        node_width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
-        width = self._broadcast_axis0(self.xp.asarray(node_width), flux.ndim)
+        width = self._broadcast_axis0(self._node_width[axis], flux.ndim)
 
         out = xp.zeros((N + 1,) + flux.shape[1:], dtype=flux.dtype)
         out[1:N] = (flux[1:] - flux[:-1]) / width[1:N]
         out[0] = flux[0] / width[0]
         out[N] = -flux[N - 1] / width[N]
         return xp.moveaxis(out, 0, axis)
+
+    def _refresh_grid_geometry_cache(self) -> None:
+        """Cache per-axis geometric scalars reused across every GMRES matvec."""
+        xp = self.xp
+        self._h_min = []
+        self._node_width = []
+        for axis in range(self.ndim):
+            coords = np.asarray(self.grid.coords[axis], dtype=np.float64)
+            face_width = coords[1:] - coords[:-1]
+            node_width = np.empty_like(coords)
+            node_width[0] = 0.5 * face_width[0]
+            node_width[-1] = 0.5 * face_width[-1]
+            node_width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
+            self._h_min.append(float(np.min(face_width)))
+            self._node_width.append(xp.asarray(node_width))
 
     def _broadcast_axis0(self, values, ndim: int):
         shape = [1] * ndim
