@@ -48,9 +48,10 @@ from .legacy_flow_helpers import (
     update_legacy_curvature,
     update_legacy_properties,
 )
-from .legacy_simulation_state import (
-    restore_legacy_simulation,
-    snapshot_legacy_simulation,
+from .legacy_run_loop import (
+    advance_legacy_step_with_retry,
+    has_nonfinite_legacy_state,
+    run_legacy_simulation,
 )
 
 
@@ -97,34 +98,13 @@ class TwoPhaseSimulation:
         verbose         : True の場合、ステップごとに情報を出力
         callback        : f(sim) — output_interval ステップごとに呼ばれる
         """
-        if t_end is None:
-            t_end = self.config.numerics.t_end
-
-        # 初期 ψ から物性を初期化
-        self._update_properties()
-        self._update_curvature()
-
-        while self.time < t_end:
-            dt_nominal = self.cfl_calc.compute(
-                [self.velocity[ax] for ax in range(self.config.grid.ndim)],
-                self.mu.data,
-                self.rho.data,
-            )
-            dt_nominal = min(dt_nominal, t_end - self.time)
-
-            # Adaptive safety fallback:
-            # If a step produces non-finite state (or raises), rollback and retry
-            # with dt halved. This keeps long runs from hard-failing at the first
-            # unstable CFL estimate.
-            dt = self._step_with_retry(dt_nominal, verbose=verbose)
-
-            if verbose and self.step % output_interval == 0:
-                self._diagnostics.report(self, dt)
-            if callback is not None and self.step % output_interval == 0:
-                callback(self)
-
-        if verbose:
-            print(f"シミュレーション終了 t={self.time:.6f}, step={self.step}")
+        run_legacy_simulation(
+            self,
+            t_end=t_end,
+            output_interval=output_interval,
+            verbose=verbose,
+            callback=callback,
+        )
 
     def _step_with_retry(self, dt_nominal: float, verbose: bool = False) -> float:
         """Advance one step with rollback + dt-halving retries.
@@ -134,46 +114,11 @@ class TwoPhaseSimulation:
         float
             Accepted dt used for this step.
         """
-        max_retries = 12
-        dt_try = float(dt_nominal)
-
-        snapshot = snapshot_legacy_simulation(self)
-
-        for retry in range(max_retries + 1):
-            try:
-                self.step_forward(dt_try)
-                if self._has_nonfinite_state():
-                    raise FloatingPointError("non-finite state after step")
-                return dt_try
-            except Exception:
-                # Roll back all mutable fields + counters before retry.
-                restore_legacy_simulation(self, snapshot)
-
-                if retry >= max_retries:
-                    raise
-                dt_try *= 0.5
-                if verbose:
-                    print(
-                        f"[run] step retry {retry + 1}/{max_retries}: "
-                        f"reducing dt to {dt_try:.3e}"
-                    )
-
-        return dt_try
+        return advance_legacy_step_with_retry(self, dt_nominal, verbose=verbose)
 
     def _has_nonfinite_state(self) -> bool:
         """True when any primary field contains NaN/Inf."""
-        xp = self.backend.xp
-        fields = [
-            self.psi.data,
-            self.rho.data,
-            self.mu.data,
-            self.kappa.data,
-            self.phi.data,
-            self.pressure.data,
-        ]
-        fields.extend(self.velocity[ax] for ax in range(self.config.grid.ndim))
-        fields.extend(self.vel_star[ax] for ax in range(self.config.grid.ndim))
-        return any(bool(xp.any(~xp.isfinite(arr))) for arr in fields)
+        return has_nonfinite_legacy_state(self)
 
     def step_forward(self, dt: float) -> None:
         """タイムステップ dt で 1 ステップ進める（§9.1 の 7 ステップアルゴリズム）。
