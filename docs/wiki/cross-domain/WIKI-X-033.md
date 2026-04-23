@@ -160,3 +160,10 @@ GFM ghost-row closure must be introduced as its own coupling mode.
 `coefficient: phase_separated` and `interface_coupling: jump_decomposition`.
 Both YAML loading and direct solver construction reject inconsistent settings, so
 a pressure jump can no longer be requested without the matching SP-M PPE path.
+
+## Code Status: Phase 8 PPE Diagnostics
+
+Debug diagnostics now include SP-M PPE state: phase count, pin count,
+pre/post per-phase RHS mean, and whether jump decomposition is active.  These
+metrics make the current split-PPE approximation visible in experiment output
+instead of hiding it inside the solver.

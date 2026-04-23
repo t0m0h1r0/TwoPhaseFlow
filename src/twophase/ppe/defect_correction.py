@@ -60,6 +60,7 @@ class PPESolverDefectCorrection(IPPESolver):
         if hasattr(self.operator, "_defer_interface_jump"):
             self.operator._defer_interface_jump = True
         self.last_base_pressure = None
+        self.last_diagnostics = {}
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh both the target operator and the configured base solver."""
@@ -88,6 +89,7 @@ class PPESolverDefectCorrection(IPPESolver):
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
+        initial_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
 
         self.operator.prepare_operator(rho)
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
@@ -109,6 +111,7 @@ class PPESolverDefectCorrection(IPPESolver):
             pressure = pressure + self.relaxation * correction
             self._pin_flat(pressure.ravel(), 0.0)
         self.last_base_pressure = xp.copy(pressure)
+        self.last_diagnostics = initial_diagnostics
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
         return pressure

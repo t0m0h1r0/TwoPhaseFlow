@@ -185,6 +185,7 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
         surface_tension_scheme="pressure_jump",
+        debug_diagnostics=True,
     )
     ppe = solver._ppe_solver
     pressure = np.zeros(solver._grid.shape)
@@ -239,6 +240,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
         surface_tension_scheme="pressure_jump",
+        debug_diagnostics=True,
     )
     psi = _mode2_ic(solver)
     u = np.zeros_like(psi)
@@ -255,6 +257,11 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
 
     assert solver._p_prev is not None
     assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
+    diag = solver._step_diag.last
+    assert diag["ppe_phase_count"] == 2.0
+    assert diag["ppe_pin_count"] == 2.0
+    assert diag["ppe_interface_coupling_jump"] == 1.0
+    assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
 
 
 def test_fccd_not_constructed_when_unused():

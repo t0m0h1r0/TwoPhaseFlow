@@ -1116,6 +1116,9 @@ class TwoPhaseNSSolver:
             self._step_diag.record_ppe_rhs(float(dbg[1]))
             self._step_diag.record_bf_residual(float(dbg[2]))
             self._step_diag.record_div_u(float(dbg[3]))
+            self._step_diag.record_ppe_stats(
+                getattr(self._ppe_solver, "last_diagnostics", {})
+            )
 
         return psi, u, v, p
 

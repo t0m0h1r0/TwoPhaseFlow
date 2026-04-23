@@ -106,6 +106,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._interface_jump_context = None
         self._defer_interface_jump = False
         self.last_base_pressure = None
+        self.last_diagnostics = {}
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
@@ -252,24 +253,50 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         """Enforce one Neumann compatibility condition per phase block."""
         xp = self.xp
         rhs_projected = xp.asarray(rhs).copy()
+        stats = {
+            "ppe_phase_count": 1.0,
+            "ppe_pin_count": float(len(self._pin_dofs)),
+            "ppe_rhs_phase_mean_before_max": 0.0,
+            "ppe_rhs_phase_mean_after_max": 0.0,
+            "ppe_interface_coupling_jump": float(
+                self.interface_coupling_scheme == "jump_decomposition"
+            ),
+        }
         if (
             self.coefficient_scheme != "phase_separated"
             or self._phase_threshold is None
             or self._rho is None
         ):
             self._pin_flat(rhs_projected.ravel(), 0.0)
+            self.last_diagnostics = stats
             return rhs_projected
         phase_masks = (
             self._rho < self._phase_threshold,
             self._rho >= self._phase_threshold,
         )
+        means_before = []
+        means_after = []
+        phase_count = 0
         for mask in phase_masks:
             count = int(self.backend.asnumpy(xp.sum(mask)))
             if count == 0:
                 continue
+            phase_count += 1
             mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+            means_before.append(abs(float(self.backend.asnumpy(mean))))
             rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
+            mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+            means_after.append(abs(float(self.backend.asnumpy(mean_after))))
         self._pin_flat(rhs_projected.ravel(), 0.0)
+        stats.update(
+            {
+                "ppe_phase_count": float(phase_count),
+                "ppe_pin_count": float(len(self._pin_dofs)),
+                "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
+                "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
+            }
+        )
+        self.last_diagnostics = stats
         return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):

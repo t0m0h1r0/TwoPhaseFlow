@@ -312,3 +312,18 @@ operator:
 This prevents silent fallbacks where the user requests a sharp pressure jump but
 the selected PPE operator is still the mixture-density model or has no jump
 closure.  The same guard exists in the direct `TwoPhaseNSSolver` constructor.
+
+## 16. Implementation Status: PPE Diagnostics Phase 8
+
+The SP-M PPE path now exposes runtime diagnostics when step diagnostics are
+enabled:
+
+- `ppe_phase_count`
+- `ppe_pin_count`
+- `ppe_rhs_phase_mean_before_max`
+- `ppe_rhs_phase_mean_after_max`
+- `ppe_interface_coupling_jump`
+
+These values verify that the phase-separated PPE actually sees two phase blocks,
+uses one pressure gauge per block, and projects the RHS to the per-phase Neumann
+compatibility condition before GMRES.
