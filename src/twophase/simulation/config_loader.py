@@ -30,14 +30,15 @@ def load_experiment_config(path: str | Path):
 def parse_raw(raw: dict):
     """Assemble ``ExperimentConfig`` from a raw YAML/dict payload."""
     from .config_models import ExperimentConfig
-    from .config_io import _parse_grid, _parse_physics, _parse_run
+    from .config_run_sections import parse_run
+    from .config_sections import parse_grid, parse_physics
 
     interface = raw["interface"]
     numerics = raw["numerics"]
-    grid = _parse_grid(raw["grid"], interface)
-    physics = _parse_physics(raw["physics"])
+    grid = parse_grid(raw["grid"], interface)
+    physics = parse_physics(raw["physics"])
     output = parse_output(raw.get("output", {}))
-    run = _parse_run(raw["run"], interface, numerics, raw.get("output", {}))
+    run = parse_run(raw["run"], interface, numerics, raw.get("output", {}))
     return ExperimentConfig(
         grid=grid,
         physics=physics,
