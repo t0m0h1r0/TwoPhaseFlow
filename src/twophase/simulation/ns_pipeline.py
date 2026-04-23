@@ -77,6 +77,13 @@ from .runtime_setup import (
     normalise_ic_dict as _normalise_ic_dict,
     wall_bc_hook as _wall_bc_hook,
 )
+from .ns_solver_options import (
+    NSSolverInitOptions,
+    SolverGridOptions,
+    SolverInterfaceOptions,
+    SolverPPEOptions,
+    SolverSchemeOptions,
+)
 
 
 class TwoPhaseNSSolver:
@@ -162,224 +169,85 @@ class TwoPhaseNSSolver:
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
-        self.NX, self.NY = NX, NY
-        self.LX, self.LY = LX, LY
-        self.bc_type = bc_type
-        self._alpha_grid = alpha_grid
-        self._eps_factor = eps_factor
-        self._eps_xi_cells = eps_xi_cells
-        self._use_local_eps = use_local_eps or (eps_xi_cells is not None)
-        # grid_rebuild_freq == 0 → static non-uniform grid (build once from IC,
-        # never rebuild). This avoids rebuild-driven metric discontinuity
-        # (WIKI-X-012 Mode 1) entirely.
-        self._rebuild_freq = int(grid_rebuild_freq)
-        if self._rebuild_freq < 0:
-            self._rebuild_freq = 0
-        self._reinit_every = int(reinit_every)
-        self._reproject_variable_density = bool(reproject_variable_density)
-        self._interface_tracking_enabled = bool(interface_tracking_enabled)
-        if not self._interface_tracking_enabled:
-            self._interface_tracking_method = "none"
-        else:
-            if interface_tracking_method is None:
-                interface_tracking_method = (
-                    "phi_primary" if bool(phi_primary_transport) else "psi_direct"
-                )
-            self._interface_tracking_method = str(interface_tracking_method).strip().lower()
-            if self._interface_tracking_method == "phi":
-                self._interface_tracking_method = "phi_primary"
-            elif self._interface_tracking_method == "psi":
-                self._interface_tracking_method = "psi_direct"
-            elif self._interface_tracking_method == "none":
-                self._interface_tracking_enabled = False
-        if self._interface_tracking_method not in {"phi_primary", "psi_direct", "none"}:
-            raise ValueError(
-                "Unsupported interface_tracking_method="
-                f"'{interface_tracking_method}'. Use phi_primary|psi_direct|none."
-            )
-        self._phi_primary_transport = (
-            bool(phi_primary_transport)
-            if self._interface_tracking_method not in {"phi_primary", "psi_direct"}
-            else self._interface_tracking_method == "phi_primary"
+        options = NSSolverInitOptions(
+            grid=SolverGridOptions(
+                NX=NX,
+                NY=NY,
+                LX=LX,
+                LY=LY,
+                bc_type=bc_type,
+                use_gpu=use_gpu,
+                alpha_grid=alpha_grid,
+                eps_factor=eps_factor,
+                eps_g_factor=eps_g_factor,
+                eps_g_cells=eps_g_cells,
+                dx_min_floor=dx_min_floor,
+                use_local_eps=use_local_eps,
+                eps_xi_cells=eps_xi_cells,
+            ),
+            interface=SolverInterfaceOptions(
+                grid_rebuild_freq=grid_rebuild_freq,
+                reinit_every=reinit_every,
+                reinit_method=reinit_method,
+                reproject_variable_density=reproject_variable_density,
+                reproject_mode=reproject_mode,
+                phi_primary_transport=phi_primary_transport,
+                interface_tracking_enabled=interface_tracking_enabled,
+                interface_tracking_method=interface_tracking_method,
+                phi_primary_redist_every=phi_primary_redist_every,
+                phi_primary_clip_factor=phi_primary_clip_factor,
+                phi_primary_heaviside_eps_scale=phi_primary_heaviside_eps_scale,
+                kappa_max=kappa_max,
+                dgr_phi_smooth_C=dgr_phi_smooth_C,
+                reinit_eps_scale=reinit_eps_scale,
+                ridge_sigma_0=ridge_sigma_0,
+            ),
+            ppe=SolverPPEOptions(
+                ppe_solver=ppe_solver,
+                pressure_scheme=pressure_scheme,
+                ppe_coefficient_scheme=ppe_coefficient_scheme,
+                ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
+                ppe_iteration_method=ppe_iteration_method,
+                ppe_tolerance=ppe_tolerance,
+                ppe_max_iterations=ppe_max_iterations,
+                ppe_restart=ppe_restart,
+                ppe_preconditioner=ppe_preconditioner,
+                ppe_pcr_stages=ppe_pcr_stages,
+                ppe_c_tau=ppe_c_tau,
+                ppe_defect_correction=ppe_defect_correction,
+                ppe_dc_max_iterations=ppe_dc_max_iterations,
+                ppe_dc_tolerance=ppe_dc_tolerance,
+                ppe_dc_relaxation=ppe_dc_relaxation,
+            ),
+            schemes=SolverSchemeOptions(
+                hfe_C=hfe_C,
+                reinit_steps=reinit_steps,
+                cn_viscous=cn_viscous,
+                Re=Re,
+                surface_tension_scheme=surface_tension_scheme,
+                convection_time_scheme=convection_time_scheme,
+                advection_scheme=advection_scheme,
+                convection_scheme=convection_scheme,
+                pressure_gradient_scheme=pressure_gradient_scheme,
+                surface_tension_gradient_scheme=surface_tension_gradient_scheme,
+                momentum_gradient_scheme=momentum_gradient_scheme,
+                viscous_spatial_scheme=viscous_spatial_scheme,
+                uccd6_sigma=uccd6_sigma,
+                face_flux_projection=face_flux_projection,
+                debug_diagnostics=debug_diagnostics,
+            ),
         )
-        self._phi_primary_redist_every = max(1, int(phi_primary_redist_every))
-        self._phi_primary_clip_factor = max(2.0, float(phi_primary_clip_factor))
-        self._phi_primary_heaviside_eps_scale = max(1.0, float(phi_primary_heaviside_eps_scale))
-        self._kappa_max = float(kappa_max) if kappa_max is not None else None
-        self._face_flux_projection = bool(face_flux_projection)
-        self._reinit_eps_scale = float(reinit_eps_scale)
-        self._reproject_mode = str(reproject_mode).strip().lower()
-        if self._reproject_mode not in {
-            "legacy", "variable_density_only", "iim", "gfm",
-            "consistent_iim", "consistent_gfm",
-        }:
-            raise ValueError(
-                f"Unsupported reproject_mode='{reproject_mode}'. "
-                "Use legacy|variable_density_only|gfm|iim."
-            )
-        # Backward compatibility: old flag maps to variable-density-only mode.
-        if self._reproject_variable_density and self._reproject_mode == "legacy":
-            self._reproject_mode = "variable_density_only"
-
-        self._h = LX / NX
-        self._eps = eps_factor * self._h
-
-        self._backend = Backend(use_gpu=use_gpu)
-        gc = GridConfig(
-            ndim=2, N=(NX, NY), L=(LX, LY),
-            alpha_grid=alpha_grid,
-            eps_g_factor=eps_g_factor,
-            eps_g_cells=eps_g_cells,
-            dx_min_floor=dx_min_floor,
-        )
-        self._grid = Grid(gc, self._backend)
-        self._ccd = CCDSolver(self._grid, self._backend, bc_type=bc_type)
-        _raw_ppe = str(pressure_scheme if pressure_scheme is not None else ppe_solver).strip().lower()
-        self._ppe_solver_name = IPPESolver._aliases.get(_raw_ppe, _raw_ppe)
-        if self._ppe_solver_name not in IPPESolver._registry:
-            raise ValueError(
-                f"Unsupported ppe_solver={_raw_ppe!r}. "
-                "Use fvm_iterative|fvm_direct|fccd_iterative."
-            )
-        self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
-        self._ppe_coefficient_scheme = str(ppe_coefficient_scheme).strip().lower()
-        self._ppe_interface_coupling_scheme = str(
-            ppe_interface_coupling_scheme
-        ).strip().lower()
-        if str(surface_tension_scheme).strip().lower() == "pressure_jump":
-            if self._ppe_coefficient_scheme != "phase_separated":
-                raise ValueError(
-                    "surface_tension_scheme='pressure_jump' requires "
-                    "ppe_coefficient_scheme='phase_separated'"
-                )
-            if self._ppe_interface_coupling_scheme != "jump_decomposition":
-                raise ValueError(
-                    "surface_tension_scheme='pressure_jump' requires "
-                    "ppe_interface_coupling_scheme='jump_decomposition'"
-                )
-        self._ppe_tolerance = float(ppe_tolerance)
-        self._ppe_max_iterations = int(ppe_max_iterations)
-        self._ppe_restart = ppe_restart
-        self._ppe_preconditioner = str(ppe_preconditioner).strip().lower()
-        self._ppe_pcr_stages = ppe_pcr_stages
-        self._ppe_c_tau = float(ppe_c_tau)
-        self._ppe_defect_correction = bool(ppe_defect_correction)
-        self._ppe_dc_max_iterations = int(ppe_dc_max_iterations)
-        self._ppe_dc_tolerance = float(ppe_dc_tolerance)
-        self._ppe_dc_relaxation = float(ppe_dc_relaxation)
-        self._pressure_scheme = (
-            "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
-            else "fvm_spsolve" if self._ppe_solver_name == "fvm_direct"
-            else "fccd_matrixfree"
+        self._initialise_geometry(options.grid)
+        self._initialise_interface_runtime(options.interface)
+        self._initialise_ppe_runtime(
+            options.ppe,
+            surface_tension_scheme=options.schemes.surface_tension_scheme,
         )
         self._p_prev = None
         self._p_prev_dev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
-
-        # eps field: ξ空間セル数ベース or 従来のlocal eps or スカラー
-        eps_curv = self._make_eps_field() if self._use_local_eps and alpha_grid > 1.0 else self._eps
-        self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
-        self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=hfe_C)
-
-        _CONV_TIME_ALIASES = {
-            "adams_bashforth_2": "ab2", "adams_bashforth": "ab2", "ab_2": "ab2",
-            "explicit": "ab2", "forward_euler": "forward_euler",
-            "euler": "forward_euler",
-        }
-        _raw_cts = str(convection_time_scheme).strip().lower()
-        self._convection_time_scheme = _CONV_TIME_ALIASES.get(_raw_cts, _raw_cts)
-        if self._convection_time_scheme not in {"ab2", "forward_euler"}:
-            raise ValueError(
-                "Unsupported convection_time_scheme="
-                f"{self._convection_time_scheme!r}; use ab2|forward_euler."
-            )
-        self._conv_prev = None
-        self._conv_ab2_ready = False
-        self._momentum_gradient_scheme = str(momentum_gradient_scheme).strip().lower()
-        self._pressure_gradient_scheme = str(
-            pressure_gradient_scheme or self._momentum_gradient_scheme
-        ).strip().lower()
-        _raw_st_scheme = str(surface_tension_scheme).strip().lower()
-        if _raw_st_scheme == "pressure_jump":
-            if surface_tension_gradient_scheme not in {None, "none"}:
-                raise ValueError(
-                    "surface_tension_gradient_scheme must be omitted or 'none' "
-                    "when surface_tension_scheme='pressure_jump'"
-                )
-            self._surface_tension_gradient_scheme = "none"
-        else:
-            self._surface_tension_gradient_scheme = str(
-                surface_tension_gradient_scheme or self._momentum_gradient_scheme
-            ).strip().lower()
-
-        # FCCDSolver: created first so FCCDDivergenceOperator can use it below.
-        # One shared instance reuses the CCD LU factorisation — mirrors builder.py
-        # §"one factorisation, many calls".
-        _FCCD_NAMES = frozenset({"fccd_flux", "fccd_nodal", "fccd_iterative"})
-        needs_fccd = bool(
-            {
-                str(advection_scheme), str(convection_scheme),
-                self._pressure_gradient_scheme, self._surface_tension_gradient_scheme,
-                self._ppe_solver_name,
-            }
-            & _FCCD_NAMES
-        )
-        self._fccd = (
-            FCCDSolver(self._grid, self._backend, bc_type=bc_type, ccd_solver=self._ccd)
-            if needs_fccd else None
-        )
-
-        # Momentum gradient / divergence operators.
-        # _div_op: PPE RHS divergence.  FCCD PPE uses FCCD face-flux divergence;
-        # legacy non-uniform wall runs retain the FVM divergence from WIKI-T-068.
-        # _fccd_div_op: face-flux projector with O(h⁴) FCCD face values.
-        ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
-        self._fccd_div_op: FCCDDivergenceOperator | None = (
-            FCCDDivergenceOperator(self._fccd)
-            if self._fccd is not None
-            else None
-        )
-        if self._ppe_solver_name == "fccd_iterative":
-            if self._fccd_div_op is None:
-                raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
-            self._div_op = self._fccd_div_op
-        elif not self._grid.uniform and bc_type == "wall":
-            self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
-        else:
-            self._div_op = CCDDivergenceOperator(self._ccd)
-
-        if self._fccd_div_op is not None:
-            self._face_flux_projection = True
-        self._ppe_solver = self._build_ppe_solver(self._ppe_solver_name)
-
-        # Gradient operators — each scheme class decides its own construction.
-        grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=self._fccd)
-        self._pressure_grad_op = IGradientOperator.from_scheme(
-            self._pressure_gradient_scheme, grad_ctx
-        )
-        self._surface_tension_grad_op = (
-            None if self._surface_tension_gradient_scheme == "none"
-            else IGradientOperator.from_scheme(self._surface_tension_gradient_scheme, grad_ctx)
-        )
-        self._grad_op = self._pressure_grad_op
-
-        # Advection scheme — scheme class decides its own construction.
-        adv_ctx = AdvectionBuildCtx(
-            backend=self._backend, grid=self._grid,
-            ccd=self._ccd, bc_type=bc_type, fccd=self._fccd,
-        )
-        self._advection_scheme = str(advection_scheme)
-        self._adv = ILevelSetAdvection.from_scheme(self._advection_scheme, adv_ctx)
-
-        # Convection term — single slot; CCD, FCCD, and UCCD6 all return IConvectionTerm.
-        self._convection_scheme = str(convection_scheme)
-        conv_ctx = ConvectionBuildCtx(
-            backend=self._backend, ccd=self._ccd, grid=self._grid,
-            fccd=self._fccd, uccd6_sigma=float(uccd6_sigma),
-        )
-        self._conv_term: IConvectionTerm = IConvectionTerm.from_scheme(
-            self._convection_scheme, conv_ctx
-        )
+        self._initialise_scheme_runtime(options.schemes)
+        self._initialise_operator_stack(options.grid, options.schemes)
         self._reconstruct_base = HeavisideInterfaceReconstructor(
             self._backend,
             ReconstructionConfig(
@@ -396,17 +264,7 @@ class TwoPhaseNSSolver:
                 clip_factor=self._phi_primary_clip_factor,
             ),
         )
-        # Reinit uses conservative scalar eps (Option C: memo §4.2)
-        # DGR is grid-agnostic (cell_volumes() based mass correction, logit inversion).
-        # SplitReinitializer's CN diffusion assumes uniform h = L/N — causes accumulated
-        # diffusion even on uniform grids (transition width grows to ~1.0 vs ε≈0.023).
-        self._reinit = Reinitializer(
-            self._backend, self._grid, self._ccd, self._eps,
-            n_steps=reinit_steps, method=reinit_method,
-            phi_smooth_C=dgr_phi_smooth_C,
-            eps_scale=self._reinit_eps_scale,
-            sigma_0=float(ridge_sigma_0),
-        )
+        self._reinit = self._build_reinitializer(options.interface, options.schemes)
 
         # Level-set transport strategy (advection + reinit + redistancing)
         if not self._interface_tracking_enabled:
@@ -429,14 +287,14 @@ class TwoPhaseNSSolver:
                 self._backend,
                 self._adv,
                 self._reinit,
-                reinit_every=reinit_every,
+                reinit_every=options.interface.reinit_every,
             )
 
         self.X, self.Y = self._grid.meshgrid()
 
         # Step diagnostics strategy (Null Object pattern)
         self._step_diag = (
-            ActiveStepDiagnostics() if debug_diagnostics else NullStepDiagnostics()
+            ActiveStepDiagnostics() if options.schemes.debug_diagnostics else NullStepDiagnostics()
         )
 
         # Velocity reprojection strategy (after grid rebuild)
@@ -449,20 +307,20 @@ class TwoPhaseNSSolver:
         )
 
         # Viscous predictor strategy (CN vs Explicit)
-        self._cn_viscous = cn_viscous
-        self._Re = Re
-        self._viscous_spatial_scheme = str(viscous_spatial_scheme)
+        self._cn_viscous = options.schemes.cn_viscous
+        self._Re = options.schemes.Re
+        self._viscous_spatial_scheme = str(options.schemes.viscous_spatial_scheme)
         from ..ns_terms.viscous import ViscousTerm
         _viscous_term = ViscousTerm(
             self._backend,
-            Re=Re,
+            Re=options.schemes.Re,
             cn_viscous=True,
             spatial_scheme=self._viscous_spatial_scheme,
         )
-        _viscous_scheme = "crank_nicolson" if cn_viscous else "explicit"
+        _viscous_scheme = "crank_nicolson" if options.schemes.cn_viscous else "explicit"
         viscous_ctx = ViscousBuildCtx(
             backend=self._backend,
-            re=Re,
+            re=options.schemes.Re,
             spatial_scheme=self._viscous_spatial_scheme,
             viscous_term=_viscous_term,
         )
@@ -471,10 +329,279 @@ class TwoPhaseNSSolver:
         )
 
         # Surface tension strategy — scheme class decides its own construction.
-        self._surface_tension_scheme = str(surface_tension_scheme)
+        self._surface_tension_scheme = str(options.schemes.surface_tension_scheme)
         st_ctx = SurfaceTensionBuildCtx(backend=self._backend)
         self._st_force: INSSurfaceTensionStrategy = INSSurfaceTensionStrategy.from_scheme(
             self._surface_tension_scheme, st_ctx
+        )
+
+    def _initialise_geometry(self, options: SolverGridOptions) -> None:
+        """Initialise grid geometry and backend state."""
+        self.NX, self.NY = options.NX, options.NY
+        self.LX, self.LY = options.LX, options.LY
+        self.bc_type = options.bc_type
+        self._alpha_grid = float(options.alpha_grid)
+        self._eps_factor = float(options.eps_factor)
+        self._eps_xi_cells = options.eps_xi_cells
+        self._use_local_eps = bool(options.use_local_eps) or (options.eps_xi_cells is not None)
+        self._h = options.LX / options.NX
+        self._eps = self._eps_factor * self._h
+
+        self._backend = Backend(use_gpu=options.use_gpu)
+        gc = GridConfig(
+            ndim=2,
+            N=(options.NX, options.NY),
+            L=(options.LX, options.LY),
+            alpha_grid=options.alpha_grid,
+            eps_g_factor=options.eps_g_factor,
+            eps_g_cells=options.eps_g_cells,
+            dx_min_floor=options.dx_min_floor,
+        )
+        self._grid = Grid(gc, self._backend)
+        self._ccd = CCDSolver(self._grid, self._backend, bc_type=options.bc_type)
+
+    def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
+        """Normalise interface-tracking and remap controls."""
+        self._rebuild_freq = max(0, int(options.grid_rebuild_freq))
+        self._reinit_every = int(options.reinit_every)
+        self._reproject_variable_density = bool(options.reproject_variable_density)
+        self._face_flux_projection = False
+        self._reinit_eps_scale = float(options.reinit_eps_scale)
+        self._kappa_max = float(options.kappa_max) if options.kappa_max is not None else None
+
+        self._interface_tracking_enabled = bool(options.interface_tracking_enabled)
+        tracking_method = options.interface_tracking_method
+        if not self._interface_tracking_enabled:
+            self._interface_tracking_method = "none"
+        else:
+            if tracking_method is None:
+                tracking_method = (
+                    "phi_primary" if bool(options.phi_primary_transport) else "psi_direct"
+                )
+            self._interface_tracking_method = str(tracking_method).strip().lower()
+            if self._interface_tracking_method == "phi":
+                self._interface_tracking_method = "phi_primary"
+            elif self._interface_tracking_method == "psi":
+                self._interface_tracking_method = "psi_direct"
+            elif self._interface_tracking_method == "none":
+                self._interface_tracking_enabled = False
+        if self._interface_tracking_method not in {"phi_primary", "psi_direct", "none"}:
+            raise ValueError(
+                "Unsupported interface_tracking_method="
+                f"'{tracking_method}'. Use phi_primary|psi_direct|none."
+            )
+        self._phi_primary_transport = (
+            bool(options.phi_primary_transport)
+            if self._interface_tracking_method not in {"phi_primary", "psi_direct"}
+            else self._interface_tracking_method == "phi_primary"
+        )
+        self._phi_primary_redist_every = max(1, int(options.phi_primary_redist_every))
+        self._phi_primary_clip_factor = max(2.0, float(options.phi_primary_clip_factor))
+        self._phi_primary_heaviside_eps_scale = max(
+            1.0, float(options.phi_primary_heaviside_eps_scale)
+        )
+
+        self._reproject_mode = str(options.reproject_mode).strip().lower()
+        if self._reproject_mode not in {
+            "legacy", "variable_density_only", "iim", "gfm",
+            "consistent_iim", "consistent_gfm",
+        }:
+            raise ValueError(
+                f"Unsupported reproject_mode='{options.reproject_mode}'. "
+                "Use legacy|variable_density_only|gfm|iim."
+            )
+        if self._reproject_variable_density and self._reproject_mode == "legacy":
+            self._reproject_mode = "variable_density_only"
+
+    def _initialise_ppe_runtime(
+        self,
+        options: SolverPPEOptions,
+        *,
+        surface_tension_scheme: str,
+    ) -> None:
+        """Normalise PPE configuration and validate coupled options."""
+        raw_ppe = str(
+            options.pressure_scheme if options.pressure_scheme is not None else options.ppe_solver
+        ).strip().lower()
+        self._ppe_solver_name = IPPESolver._aliases.get(raw_ppe, raw_ppe)
+        if self._ppe_solver_name not in IPPESolver._registry:
+            raise ValueError(
+                f"Unsupported ppe_solver={raw_ppe!r}. "
+                "Use fvm_iterative|fvm_direct|fccd_iterative."
+            )
+        self._ppe_iteration_method = str(options.ppe_iteration_method).strip().lower()
+        self._ppe_coefficient_scheme = str(options.ppe_coefficient_scheme).strip().lower()
+        self._ppe_interface_coupling_scheme = str(
+            options.ppe_interface_coupling_scheme
+        ).strip().lower()
+        if str(surface_tension_scheme).strip().lower() == "pressure_jump":
+            if self._ppe_coefficient_scheme != "phase_separated":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_coefficient_scheme='phase_separated'"
+                )
+            if self._ppe_interface_coupling_scheme != "jump_decomposition":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_interface_coupling_scheme='jump_decomposition'"
+                )
+
+        self._ppe_tolerance = float(options.ppe_tolerance)
+        self._ppe_max_iterations = int(options.ppe_max_iterations)
+        self._ppe_restart = options.ppe_restart
+        self._ppe_preconditioner = str(options.ppe_preconditioner).strip().lower()
+        self._ppe_pcr_stages = options.ppe_pcr_stages
+        self._ppe_c_tau = float(options.ppe_c_tau)
+        self._ppe_defect_correction = bool(options.ppe_defect_correction)
+        self._ppe_dc_max_iterations = int(options.ppe_dc_max_iterations)
+        self._ppe_dc_tolerance = float(options.ppe_dc_tolerance)
+        self._ppe_dc_relaxation = float(options.ppe_dc_relaxation)
+        self._pressure_scheme = (
+            "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
+            else "fvm_spsolve" if self._ppe_solver_name == "fvm_direct"
+            else "fccd_matrixfree"
+        )
+
+    def _initialise_scheme_runtime(self, options: SolverSchemeOptions) -> None:
+        """Normalise scheme selections and stateful time-integration flags."""
+        eps_curv = self._make_eps_field() if self._use_local_eps and self._alpha_grid > 1.0 else self._eps
+        self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
+        self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=options.hfe_C)
+
+        conv_time_aliases = {
+            "adams_bashforth_2": "ab2",
+            "adams_bashforth": "ab2",
+            "ab_2": "ab2",
+            "explicit": "ab2",
+            "forward_euler": "forward_euler",
+            "euler": "forward_euler",
+        }
+        raw_time_scheme = str(options.convection_time_scheme).strip().lower()
+        self._convection_time_scheme = conv_time_aliases.get(raw_time_scheme, raw_time_scheme)
+        if self._convection_time_scheme not in {"ab2", "forward_euler"}:
+            raise ValueError(
+                "Unsupported convection_time_scheme="
+                f"{self._convection_time_scheme!r}; use ab2|forward_euler."
+            )
+
+        self._conv_prev = None
+        self._conv_ab2_ready = False
+        self._momentum_gradient_scheme = str(options.momentum_gradient_scheme).strip().lower()
+        self._pressure_gradient_scheme = str(
+            options.pressure_gradient_scheme or self._momentum_gradient_scheme
+        ).strip().lower()
+        raw_st_scheme = str(options.surface_tension_scheme).strip().lower()
+        if raw_st_scheme == "pressure_jump":
+            if options.surface_tension_gradient_scheme not in {None, "none"}:
+                raise ValueError(
+                    "surface_tension_gradient_scheme must be omitted or 'none' "
+                    "when surface_tension_scheme='pressure_jump'"
+                )
+            self._surface_tension_gradient_scheme = "none"
+        else:
+            self._surface_tension_gradient_scheme = str(
+                options.surface_tension_gradient_scheme or self._momentum_gradient_scheme
+            ).strip().lower()
+        self._advection_scheme = str(options.advection_scheme)
+        self._convection_scheme = str(options.convection_scheme)
+
+    def _initialise_operator_stack(
+        self,
+        grid_options: SolverGridOptions,
+        scheme_options: SolverSchemeOptions,
+    ) -> None:
+        """Build spatial operators and solver strategies."""
+        fccd_names = frozenset({"fccd_flux", "fccd_nodal", "fccd_iterative"})
+        needs_fccd = bool(
+            {
+                self._advection_scheme,
+                self._convection_scheme,
+                self._pressure_gradient_scheme,
+                self._surface_tension_gradient_scheme,
+                self._ppe_solver_name,
+            }
+            & fccd_names
+        )
+        self._fccd = (
+            FCCDSolver(
+                self._grid,
+                self._backend,
+                bc_type=grid_options.bc_type,
+                ccd_solver=self._ccd,
+            )
+            if needs_fccd
+            else None
+        )
+
+        ccd_grad_op: IGradientOperator = CCDGradientOperator(
+            self._backend,
+            self._ccd,
+            bc_type=grid_options.bc_type,
+        )
+        self._fccd_div_op: FCCDDivergenceOperator | None = (
+            FCCDDivergenceOperator(self._fccd) if self._fccd is not None else None
+        )
+        if self._ppe_solver_name == "fccd_iterative":
+            if self._fccd_div_op is None:
+                raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
+            self._div_op = self._fccd_div_op
+        elif not self._grid.uniform and grid_options.bc_type == "wall":
+            self._div_op = FVMDivergenceOperator(self._backend, self._grid)
+        else:
+            self._div_op = CCDDivergenceOperator(self._ccd)
+
+        if self._fccd_div_op is not None:
+            self._face_flux_projection = True
+        self._face_flux_projection = self._face_flux_projection or bool(
+            scheme_options.face_flux_projection
+        )
+        self._ppe_solver = self._build_ppe_solver(self._ppe_solver_name)
+
+        grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=self._fccd)
+        self._pressure_grad_op = IGradientOperator.from_scheme(
+            self._pressure_gradient_scheme, grad_ctx
+        )
+        self._surface_tension_grad_op = (
+            None
+            if self._surface_tension_gradient_scheme == "none"
+            else IGradientOperator.from_scheme(self._surface_tension_gradient_scheme, grad_ctx)
+        )
+        self._grad_op = self._pressure_grad_op
+
+        adv_ctx = AdvectionBuildCtx(
+            backend=self._backend,
+            grid=self._grid,
+            ccd=self._ccd,
+            bc_type=grid_options.bc_type,
+            fccd=self._fccd,
+        )
+        self._adv = ILevelSetAdvection.from_scheme(self._advection_scheme, adv_ctx)
+
+        conv_ctx = ConvectionBuildCtx(
+            backend=self._backend,
+            ccd=self._ccd,
+            grid=self._grid,
+            fccd=self._fccd,
+            uccd6_sigma=float(scheme_options.uccd6_sigma),
+        )
+        self._conv_term = IConvectionTerm.from_scheme(self._convection_scheme, conv_ctx)
+
+    def _build_reinitializer(
+        self,
+        interface_options: SolverInterfaceOptions,
+        scheme_options: SolverSchemeOptions,
+    ) -> Reinitializer:
+        """Build the level-set reinitializer."""
+        return Reinitializer(
+            self._backend,
+            self._grid,
+            self._ccd,
+            self._eps,
+            n_steps=scheme_options.reinit_steps,
+            method=interface_options.reinit_method,
+            phi_smooth_C=interface_options.dgr_phi_smooth_C,
+            eps_scale=self._reinit_eps_scale,
+            sigma_0=float(interface_options.ridge_sigma_0),
         )
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
@@ -912,6 +1039,221 @@ class TwoPhaseNSSolver:
             return min(dt_cfl, dt_visc, dt_cap)
         return min(dt_cfl, dt_visc)
 
+    def _prepare_step_inputs(
+        self,
+        psi: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+        rho_l: float,
+        rho_g: float,
+        rho_ref: float | None,
+    ) -> tuple["array", "array", "array", float]:
+        """Promote step inputs to the active backend and normalise ``rho_ref``."""
+        xp = self._backend.xp
+        rho_ref = 0.5 * (rho_l + rho_g) if rho_ref is None else rho_ref
+        return xp.asarray(psi), xp.asarray(u), xp.asarray(v), float(rho_ref)
+
+    def _advance_interface_stage(
+        self,
+        psi: "array",
+        u: "array",
+        v: "array",
+        dt: float,
+        rho_l: float,
+        rho_g: float,
+        step_index: int,
+    ) -> tuple["array", "array", "array"]:
+        """Advance the interface transport and optional grid rebuild."""
+        psi = self._transport.advance(psi, [u, v], dt, step_index=step_index)
+        if (
+            self._alpha_grid > 1.0
+            and self._rebuild_freq > 0
+            and step_index > 0
+            and (step_index % self._rebuild_freq == 0)
+        ):
+            try:
+                psi, u, v = self._rebuild_grid(psi, u, v, rho_l=rho_l, rho_g=rho_g)
+            except TypeError:
+                psi, u, v = self._rebuild_grid(psi, u, v)
+        return psi, u, v
+
+    def _materialise_step_fields(
+        self,
+        psi: "array",
+        rho_l: float,
+        rho_g: float,
+        mu: float | np.ndarray,
+        mu_l: float | None,
+        mu_g: float | None,
+    ) -> tuple["array", float | np.ndarray]:
+        """Build density and viscosity fields for the current step."""
+        rho = rho_g + (rho_l - rho_g) * psi
+        if mu_l is not None and mu_g is not None:
+            mu_field = mu_g + (mu_l - mu_g) * psi
+        else:
+            mu_field = mu
+        return rho, mu_field
+
+    def _surface_tension_stage(
+        self,
+        psi: "array",
+        rho: "array",
+        sigma: float,
+    ) -> tuple["array", "array", "array", list["array"] | None]:
+        """Compute curvature and balanced-force surface tension terms."""
+        xp = self._backend.xp
+        kappa_raw = self._curv.compute(psi)
+        kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
+        if self._kappa_max is not None:
+            kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
+        debug_scalars = None
+        if isinstance(self._step_diag, ActiveStepDiagnostics):
+            debug_scalars = [xp.max(xp.abs(kappa))]
+
+        f_x, f_y = self._st_force.compute(
+            kappa, psi, sigma, self._ccd, grad_op=self._surface_tension_grad_op
+        )
+        return kappa, f_x, f_y, debug_scalars
+
+    def _predict_velocity_stage(
+        self,
+        psi: "array",
+        u: "array",
+        v: "array",
+        rho: "array",
+        mu_field: float | np.ndarray,
+        dt: float,
+        g_acc: float,
+        rho_ref: float,
+    ) -> tuple["array", "array"]:
+        """Advance the momentum predictor stage."""
+        xp = self._backend.xp
+        conv_ctx = NSComputeContext(velocity=[u, v], ccd=self._ccd, rho=rho, mu=mu_field)
+        conv_u, conv_v = self._conv_term.compute(conv_ctx)
+
+        buoy_v = xp.zeros_like(v)
+        if g_acc != 0.0:
+            buoy_v = -(rho - rho_ref) / rho * g_acc
+
+        if self._convection_time_scheme == "ab2":
+            if self._conv_ab2_ready and self._conv_prev is not None:
+                conv_step_u = 1.5 * conv_u - 0.5 * self._conv_prev[0]
+                conv_step_v = 1.5 * conv_v - 0.5 * self._conv_prev[1]
+            else:
+                conv_step_u = conv_u
+                conv_step_v = conv_v
+            self._conv_prev = (xp.copy(conv_u), xp.copy(conv_v))
+            self._conv_ab2_ready = True
+        else:
+            conv_step_u = conv_u
+            conv_step_v = conv_v
+
+        return self._viscous_predictor.predict(
+            u,
+            v,
+            conv_step_u,
+            conv_step_v,
+            mu_field,
+            rho,
+            dt,
+            self._ccd,
+            buoy_v=buoy_v,
+            psi=psi,
+        )
+
+    def _solve_pressure_stage(
+        self,
+        psi: "array",
+        u_star: "array",
+        v_star: "array",
+        rho: "array",
+        dt: float,
+        sigma: float,
+        kappa: "array",
+        f_x: "array",
+        f_y: "array",
+        debug_scalars: list["array"] | None,
+    ) -> tuple["array", "array", list["array"] | None]:
+        """Solve PPE and prepare the corrector pressure field."""
+        xp = self._backend.xp
+        rhs = self._div_op.divergence([u_star, v_star]) / dt
+        rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
+        if debug_scalars is not None:
+            debug_scalars.append(xp.max(xp.abs(rhs)))
+        if hasattr(self._ppe_solver, "set_interface_jump_context"):
+            jump_sigma = sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
+            self._ppe_solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=jump_sigma)
+
+        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev_dev)
+        self._p_prev_dev = getattr(self._ppe_solver, "last_base_pressure", p)
+        self._p_prev = np.asarray(self._backend.to_host(self._p_prev_dev))
+        p_corrector = self._p_prev_dev if self._surface_tension_scheme == "pressure_jump" else p
+        return p, p_corrector, debug_scalars
+
+    def _correct_velocity_stage(
+        self,
+        u_star: "array",
+        v_star: "array",
+        p_corrector: "array",
+        rho: "array",
+        dt: float,
+        f_x: "array",
+        f_y: "array",
+        bc_hook,
+        debug_scalars: list["array"] | None,
+    ) -> tuple["array", "array"]:
+        """Apply pressure correction and optional face-flux projection."""
+        xp = self._backend.xp
+        dp_dx = self._pressure_grad_op.gradient(p_corrector, 0)
+        dp_dy = self._pressure_grad_op.gradient(p_corrector, 1)
+        if debug_scalars is not None:
+            debug_scalars.append(
+                xp.maximum(
+                    xp.max(xp.abs(dp_dx - f_x / rho)),
+                    xp.max(xp.abs(dp_dy - f_y / rho)),
+                )
+            )
+        if self._face_flux_projection:
+            proj_op = self._fccd_div_op if self._fccd_div_op is not None else self._div_op
+            project_kwargs = {}
+            if proj_op is self._fccd_div_op:
+                project_kwargs["pressure_gradient"] = (
+                    "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
+                )
+            u, v = proj_op.project(
+                [u_star, v_star],
+                p_corrector,
+                rho,
+                dt,
+                [f_x / rho, f_y / rho],
+                **project_kwargs,
+            )
+        else:
+            u = u_star - dt / rho * dp_dx + dt * f_x / rho
+            v = v_star - dt / rho * dp_dy + dt * f_y / rho
+        _apply_bc(u, v, bc_hook, self.bc_type)
+        return u, v
+
+    def _record_step_diagnostics(
+        self,
+        debug_scalars: list["array"] | None,
+        u: "array",
+        v: "array",
+    ) -> None:
+        """Flush step diagnostics to the active recorder."""
+        if debug_scalars is None:
+            return
+        xp = self._backend.xp
+        debug_scalars.append(xp.max(xp.abs(self._div_op.divergence([u, v]))))
+        dbg = np.asarray(self._backend.to_host(xp.stack(debug_scalars)))
+        self._step_diag.record_kappa(float(dbg[0]))
+        self._step_diag.record_ppe_rhs(float(dbg[1]))
+        self._step_diag.record_bf_residual(float(dbg[2]))
+        self._step_diag.record_div_u(float(dbg[3]))
+        self._step_diag.record_ppe_stats(
+            getattr(self._ppe_solver, "last_diagnostics", {})
+        )
+
     # ── one NS timestep ───────────────────────────────────────────────────
 
     def step(
@@ -953,162 +1295,21 @@ class TwoPhaseNSSolver:
         -------
         psi, u, v, p : ndarray
         """
-        ccd = self._ccd
-        xp = self._backend.xp
-
-        if rho_ref is None:
-            rho_ref = 0.5 * (rho_l + rho_g)
-
-        # Helper: device→host, safe for both numpy and cupy arrays.
-        # Used ONLY for stage-1 (phi-primary transport) and grid rebuild
-        # which are CPU-bound algorithms.  Stages 2-5 stay device-resident.
-        def _h(arr): return np.asarray(self._backend.to_host(arr))
-
-        # Promote inputs to device — no-op on CPU backend.
-        psi = xp.asarray(psi)
-        u = xp.asarray(u)
-        v = xp.asarray(v)
-
-        # ── 1. Advect + reinitialize ───────────────────────────────────
-        # Strategy pattern: transport encapsulates phi-primary vs psi-direct logic
-        psi = self._transport.advance(psi, [u, v], dt, step_index=step_index)
-
-        # ── 1b. Grid rebuild (interface-fitted, every rebuild_freq steps)
-        # rebuild_freq == 0 → static grid, never rebuild during time-stepping.
-        if (
-            self._alpha_grid > 1.0
-            and self._rebuild_freq > 0
-            and step_index > 0
-            and (step_index % self._rebuild_freq == 0)
-        ):
-            # Keep the rebuild/remap path on the active backend as far as
-            # possible; Grid.update_from_levelset() still hostifies internally,
-            # but remap/mass-correction/reprojection can remain device-resident.
-            try:
-                psi, u, v = self._rebuild_grid(
-                    psi, u, v, rho_l=rho_l, rho_g=rho_g,
-                )
-            except TypeError:
-                # Backward compatibility for experiment monkey-patches that
-                # replace _rebuild_grid(psi, u, v) with a 3-arg lambda.
-                psi, u, v = self._rebuild_grid(psi, u, v)
-
-        # All arrays below are device-resident (xp namespace).
-        rho = rho_g + (rho_l - rho_g) * psi
-
-        # Variable viscosity (recomputed after advection so μ tracks ψ)
-        if mu_l is not None and mu_g is not None:
-            mu_field = mu_g + (mu_l - mu_g) * psi
-        else:
-            mu_field = mu  # scalar or pre-computed array
-
-        # ── 2. Curvature + balanced-force CSF ──────────────────────────
-        # Compute curvature (used for diagnostics + surface tension force)
-        kappa_raw = self._curv.compute(psi)
-        kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(psi))
-        if self._kappa_max is not None:
-            kappa = xp.clip(kappa, -self._kappa_max, self._kappa_max)
-        debug_scalars = None
-        if isinstance(self._step_diag, ActiveStepDiagnostics):
-            debug_scalars = [xp.max(xp.abs(kappa))]
-
-        # Strategy pattern: surface tension force encapsulates σ > 0 check.
-        # R-1.5: Pass the configured ∇ψ operator for non-uniform grids.
-        f_x, f_y = self._st_force.compute(
-            kappa, psi, sigma, ccd, grad_op=self._surface_tension_grad_op
+        psi, u, v, rho_ref = self._prepare_step_inputs(psi, u, v, rho_l, rho_g, rho_ref)
+        psi, u, v = self._advance_interface_stage(psi, u, v, dt, rho_l, rho_g, step_index)
+        rho, mu_field = self._materialise_step_fields(psi, rho_l, rho_g, mu, mu_l, mu_g)
+        kappa, f_x, f_y, debug_scalars = self._surface_tension_stage(psi, rho, sigma)
+        u_star, v_star = self._predict_velocity_stage(
+            psi, u, v, rho, mu_field, dt, g_acc, rho_ref
         )
-
-        # ── 3. NS predictor ────────────────────────────────────────────
-
-        # Momentum convection: CCD, FCCD (SP-D §6/§7), or UCCD6 (WIKI-X-023).
-        # All return −(u·∇)u componentwise via the registered IConvectionTerm.
-        _conv_ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=rho, mu=mu_field)
-        _conv = self._conv_term.compute(_conv_ctx)
-        conv_u = _conv[0]
-        conv_v = _conv[1]
-
-        # Buoyancy (applied to explicit RHS before viscous step)
-        buoy_v = xp.zeros_like(v)
-        if g_acc != 0.0:
-            buoy_v = -(rho - rho_ref) / rho * g_acc
-
-        if self._convection_time_scheme == "ab2":
-            if self._conv_ab2_ready and self._conv_prev is not None:
-                conv_step_u = 1.5 * conv_u - 0.5 * self._conv_prev[0]
-                conv_step_v = 1.5 * conv_v - 0.5 * self._conv_prev[1]
-            else:
-                conv_step_u = conv_u
-                conv_step_v = conv_v
-            self._conv_prev = (xp.copy(conv_u), xp.copy(conv_v))
-            self._conv_ab2_ready = True
-        else:
-            conv_step_u = conv_u
-            conv_step_v = conv_v
-
-        # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
-        u_star, v_star = self._viscous_predictor.predict(
-            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd,
-            buoy_v=buoy_v, psi=psi,
-        )
-
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
-
-        # ── 4. PPE (balanced-force) ─────────────────────────────────────
-        rhs = self._div_op.divergence([u_star, v_star]) / dt
-        # Add balanced-force CSF contribution if σ > 0 (zero forces when σ ≤ 0)
-        rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
-        if debug_scalars is not None:
-            debug_scalars.append(xp.max(xp.abs(rhs)))
-        if hasattr(self._ppe_solver, "set_interface_jump_context"):
-            jump_sigma = sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
-            self._ppe_solver.set_interface_jump_context(
-                psi=psi, kappa=kappa, sigma=jump_sigma
-            )
-        p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev_dev)
-        self._p_prev_dev = getattr(self._ppe_solver, "last_base_pressure", p)
-        self._p_prev = np.asarray(self._backend.to_host(self._p_prev_dev))
-        p_corrector = (
-            self._p_prev_dev if self._surface_tension_scheme == "pressure_jump" else p
+        p, p_corrector, debug_scalars = self._solve_pressure_stage(
+            psi, u_star, v_star, rho, dt, sigma, kappa, f_x, f_y, debug_scalars
         )
-
-        # ── 5. Corrector ───────────────────────────────────────────────
-        # Strategy pattern: pressure gradient operator encapsulates CCD vs FVM logic
-        dp_dx = self._pressure_grad_op.gradient(p_corrector, 0)
-        dp_dy = self._pressure_grad_op.gradient(p_corrector, 1)
-        if debug_scalars is not None:
-            debug_scalars.append(
-                xp.maximum(
-                    xp.max(xp.abs(dp_dx - f_x / rho)),
-                    xp.max(xp.abs(dp_dy - f_y / rho)),
-                )
-            )
-        if self._face_flux_projection:
-            proj_op = self._fccd_div_op if self._fccd_div_op is not None else self._div_op
-            project_kwargs = {}
-            if proj_op is self._fccd_div_op:
-                project_kwargs["pressure_gradient"] = (
-                    "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
-                )
-            u, v = proj_op.project(
-                [u_star, v_star], p_corrector, rho, dt, [f_x / rho, f_y / rho],
-                **project_kwargs,
-            )
-        else:
-            u = u_star - dt / rho * dp_dx + dt * f_x / rho
-            v = v_star - dt / rho * dp_dy + dt * f_y / rho
-
-        _apply_bc(u, v, bc_hook, self.bc_type)
-
-        if debug_scalars is not None:
-            debug_scalars.append(xp.max(xp.abs(self._div_op.divergence([u, v]))))
-            dbg = np.asarray(self._backend.to_host(xp.stack(debug_scalars)))
-            self._step_diag.record_kappa(float(dbg[0]))
-            self._step_diag.record_ppe_rhs(float(dbg[1]))
-            self._step_diag.record_bf_residual(float(dbg[2]))
-            self._step_diag.record_div_u(float(dbg[3]))
-            self._step_diag.record_ppe_stats(
-                getattr(self._ppe_solver, "last_diagnostics", {})
-            )
+        u, v = self._correct_velocity_stage(
+            u_star, v_star, p_corrector, rho, dt, f_x, f_y, bc_hook, debug_scalars
+        )
+        self._record_step_diagnostics(debug_scalars, u, v)
 
         p_out = np.asarray(self._backend.to_host(p)) if self._backend.is_gpu() else p
         return psi, u, v, p_out
