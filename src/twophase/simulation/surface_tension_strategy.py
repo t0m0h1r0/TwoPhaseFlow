@@ -1,17 +1,10 @@
-"""Surface tension force strategy (CSF, pressure-jump, or Null).
-
-Encapsulates the choice between:
-- SurfaceTensionForce: applies balanced-force κ ∇ψ / σ
-- PressureJumpSurfaceTension: no body force; PPE carries [p]=σκ
-- NullSurfaceTensionForce: no-op (when σ = 0)
-"""
+"""Surface-tension strategy interface plus compatibility exports."""
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import ClassVar, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
-    from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
     from .gradient_operator import IGradientOperator
     from .scheme_build_ctx import SurfaceTensionBuildCtx
@@ -52,7 +45,7 @@ class INSSurfaceTensionStrategy(ABC):
         gradient_op: "IGradientOperator | None" = None,
         *,
         grad_op: "IGradientOperator | None" = None,
-    ) -> Tuple["array", "array"]:
+    ) -> tuple["array", "array"]:
         """Compute surface tension force components f_x, f_y.
 
         Parameters
@@ -71,97 +64,15 @@ class INSSurfaceTensionStrategy(ABC):
         """
 
 
-class SurfaceTensionForce(INSSurfaceTensionStrategy):
-    """Balanced-force CSF: f = σ κ ∇ψ.
+from .surface_tension_forces import (
+    NullSurfaceTensionForce,
+    PressureJumpSurfaceTension,
+    SurfaceTensionForce,
+)
 
-    Applied to the momentum equation; also added to PPE RHS for
-    consistent balanced-force treatment.
-    """
-
-    scheme_names = ("csf",)
-
-    @classmethod
-    def _build(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "SurfaceTensionForce":
-        return cls(ctx.backend)
-
-    def __init__(self, backend: "Backend") -> None:
-        """
-
-        Parameters
-        ----------
-        backend : Backend
-        """
-        self.xp = backend.xp
-
-    def compute(
-        self,
-        kappa: "array",
-        psi: "array",
-        sigma: float,
-        ccd: "CCDSolver",
-        gradient_op: "IGradientOperator | None" = None,
-        *,
-        grad_op: "IGradientOperator | None" = None,
-    ) -> Tuple["array", "array"]:
-        """Compute f = σ κ ∇ψ componentwise.
-
-        R-1.5: If grad_op (FVM) provided, use for ∇ψ on non-uniform grids.
-        """
-        if sigma <= 0.0:
-            return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
-
-        if grad_op is not None:
-            gradient_op = grad_op
-        if gradient_op is None:
-            dpsi_dx, _ = ccd.differentiate(psi, 0)
-            dpsi_dy, _ = ccd.differentiate(psi, 1)
-        else:
-            dpsi_dx = gradient_op.gradient(psi, 0)
-            dpsi_dy = gradient_op.gradient(psi, 1)
-        f_x = sigma * kappa * dpsi_dx
-        f_y = sigma * kappa * dpsi_dy
-        return f_x, f_y
-
-
-class NullSurfaceTensionForce(INSSurfaceTensionStrategy):
-    """No-op surface tension (Null Object pattern).
-
-    Used when surface tension should be skipped entirely.
-    """
-
-    scheme_names = ("none",)
-
-    @classmethod
-    def _build(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "NullSurfaceTensionForce":
-        return cls(ctx.backend)
-
-    def __init__(self, backend: "Backend") -> None:
-        self.xp = backend.xp
-
-    def compute(
-        self,
-        kappa: "array",
-        psi: "array",
-        sigma: float,
-        ccd: "CCDSolver",
-        gradient_op: "IGradientOperator | None" = None,
-        *,
-        grad_op: "IGradientOperator | None" = None,
-    ) -> Tuple["array", "array"]:
-        """Return zero force fields."""
-        return self.xp.zeros_like(kappa), self.xp.zeros_like(kappa)
-
-
-class PressureJumpSurfaceTension(NullSurfaceTensionForce):
-    """Surface tension represented as a PPE pressure jump, not CSF force.
-
-    SP-M uses the sharp-interface condition [p]=σκ in the pressure solve.
-    Therefore this strategy returns zero momentum body force; the pipeline passes
-    the same κ, ψ, and σ fields to the phase-separated PPE jump decomposition.
-    """
-
-    scheme_names = ("pressure_jump",)
-    _scheme_aliases = {
-        "gfm_jump": "pressure_jump",
-        "ppe_jump": "pressure_jump",
-    }
+__all__ = [
+    "INSSurfaceTensionStrategy",
+    "SurfaceTensionForce",
+    "NullSurfaceTensionForce",
+    "PressureJumpSurfaceTension",
+]
