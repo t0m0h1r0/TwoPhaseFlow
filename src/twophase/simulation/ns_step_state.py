@@ -55,6 +55,7 @@ class NSStepState:
     v_star: Any = None
     pressure: Any = None
     p_corrector: Any = None
+    projected_face_components: list[Any] | None = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":

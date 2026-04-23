@@ -148,6 +148,30 @@ def test_ch13_rising_bubble_water_air_yaml_builds_solver():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
 
 
+def test_ch13_rising_bubble_facepreserve_yaml_builds_solver():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_facepreserve_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._face_flux_projection is True
+    assert solver._preserve_projected_faces is True
+
+
+def test_ch13_rising_bubble_buoyancyproj_yaml_builds_solver():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_buoyancyproj_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._face_flux_projection is True
+    assert solver._projection_consistent_buoyancy is True
+
+
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
     solver = TwoPhaseNSSolver(

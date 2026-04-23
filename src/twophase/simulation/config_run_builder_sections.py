@@ -96,6 +96,12 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         momentum_gradient_scheme=options.operator_settings["momentum_gradient_scheme"],
         uccd6_sigma=options.operator_settings["uccd6_sigma"],
         face_flux_projection=bool(options.projection.get("face_flux_projection", False)),
+        preserve_projected_faces=bool(
+            options.projection.get("preserve_projected_faces", False)
+        ),
+        projection_consistent_buoyancy=bool(
+            options.projection.get("projection_consistent_buoyancy", False)
+        ),
         ppe_iteration_method=options.operator_settings["ppe_iteration_method"],
         ppe_tolerance=options.operator_settings["ppe_tolerance"],
         ppe_max_iterations=options.operator_settings["ppe_max_iterations"],
