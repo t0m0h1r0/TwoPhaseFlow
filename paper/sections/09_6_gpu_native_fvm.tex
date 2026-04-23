@@ -162,15 +162,20 @@ $(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
 % -------------------------------------------------------------------------------
 
 \begin{center}
-\begin{tabular}{@{}p{0.15\textwidth}p{0.78\textwidth}@{}}
+\footnotesize
+\begin{tabular}{@{}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.78\textwidth}@{}}
 \hline
 層 & 内容 \\
 \hline
 方程式 & $L_\text{FVM}(\rho)p = \sum_a D_a A_a(\rho)G_a p$ \\
 離散化 & 面ローカル勾配 + 調和面フラックス + 節点発散 + 線分 3 重対角制限 \\
 線形代数 & 可変バッチ PCR/CR 線ソルブを Krylov プリコンディショナーとして使用 \\
-既存コード & \texttt{\_fvm\_pressure\_grad}, \texttt{RhieChowInterpolator.face\_velocity\_divergence}, \texttt{PPEBuilder.build\_values}, \texttt{\_pcr\_solve\_batched} \\
-新規コード & \texttt{PPESolverFVMMatrixFree}, \texttt{solve\_tridiagonal\_variable\_batched} \\
+既存コード & \texttt{\_fvm\_pressure\_grad},
+  \texttt{RhieChowInterpolator.face\_velocity\_divergence},
+  \texttt{PPEBuilder.build\_values},
+  \texttt{\_pcr\_solve\_batched} \\
+新規コード & \texttt{PPESolverFVMMatrixFree},
+  \texttt{solve\_tridiagonal\_variable\_batched} \\
 \hline
 \end{tabular}
 \end{center}

@@ -80,7 +80,7 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | edecf66 |
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
-| 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | (pending commit) |
+| 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | 10da0c2 |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | **done** (2026-04-24) | db68a70 |
 | 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | **done** (2026-04-24) | c8b4b28 |
 
@@ -332,3 +332,5 @@ Index: [SP_INDEX.md](../../memo/short_paper/SP_INDEX.md).
 | 2026-04-24 | Phase 3b closed (CHK-189): §8 BF failure + 7 principles + FCCD BF + pressure filter; §9 split-PPE +190行 + HFE +60行 + DC +70行 + BC +60行 + GPU-native FVM 165行; 241 pp | db68a70 |
 | 2026-04-24 | Phase 4 closed (CHK-190): §10 SP-L A-H 8-phase +180行 + Level 選択 140行 + 純 FCCD DNS 205行 + 10b P-5 annotation; 246 pp | c8b4b28 |
 | 2026-04-24 | **§2-§10 SP-core rewrite COMPLETE** — 全 9 phases 完了, 論文 246 pp (+37 pp over pre-rewrite) | — |
+| 2026-04-24 | Merged worktree → main (`--no-ff`, CHK-182..190 の 9 commits 保持, 41 files +5483/-56) | df47a9c |
+| 2026-04-24 | Post-merge rigorous review (CHK-191): 3 並列 Explore agents が 21 件修正点を特定 → R-1..R-8 で全解消. **R-1** SP-B/SP-J `\cite{}` in §2 tcolorboxes; **R-2** 13 subsection 見出しを `\texorpdfstring` でラップ (hyperref PDF bookmark 保護, 11 warnings → 0); **R-3** §5 Level 3 ↔ §10.5 物語整合性 (forward-ref + footnote); **R-4** raw `\xi_\text{idx}` → `\xiidx` 置換 (§3.4); **R-5** 孤立 fig/tab ラベル 3 件 (`fig:eikonal_violation`, `fig:grid_transform`, `tab:reinit_comparison_chk138`) を本文から `\ref` 追加; **R-6** Overfull (10_3:76-91, 36.7pt) + Underfull (09_6:172-173) hbox 解消; **R-7** 6 孤立 bib を本文 `\cite` 化 (Zalesak1979, Chandrasekhar1961, JiangPeng2000, Fedkiw1999, Sussman1999, VanderVorst1992); **R-8** `\mathrm{BF}_\text{res}` → `\BF_\text{res}` 置換 (math mode のみ). **品質指標**: 246 pp unchanged, Token not allowed 11→0, Overfull 1→0, Underfull 1→0, undefined 0→0, multiply-defined 0→0, SP coverage 14/15 (SPO 自己参照). 24 .tex files modified, ~50 LOC net diff, 0 regressions. **出版品質 B → A**. L-3 (269 件孤立 label 棚卸し) は CHK-192 キュー化 (軽微, 別セッション). | (pending commit) |
