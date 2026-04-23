@@ -2,27 +2,14 @@
 
 from __future__ import annotations
 
+from .config_run_poisson_sections import parse_run_poisson_settings
 from .config_sections import validate_choice
 from .config_run_layout_sections import parse_time_integrator
-from .config_run_ppe_sections import parse_ppe_solver_config
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
 _ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
 _CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
-_PPE_TO_PRESSURE_SCHEME = {
-    "fvm_iterative": "fvm_matrixfree",
-    "fvm_direct": "fvm_spsolve",
-    "fccd_iterative": "fccd_matrixfree",
-}
-_PPE_DISCRETIZATIONS = ("fvm", "fccd")
-_POISSON_COEFFICIENTS = ("phase_density", "variable_density", "phase_separated")
-_POISSON_COEFFICIENT_ALIASES = {
-    "mixture_density": "phase_density",
-    "phase": "phase_separated",
-}
-_POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition")
-_POISSON_INTERFACE_COUPLING_ALIASES = {"jump": "jump_decomposition"}
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {"balanced_force": "csf"}
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
@@ -54,49 +41,10 @@ def parse_run_operator_settings(
     interface_curvature: dict,
     projection: dict,
 ) -> dict:
-    poisson = projection["poisson"]
-    poisson_operator = poisson.get("operator", {})
-    if not poisson_operator and ("discretization" in poisson or "coefficient" in poisson):
-        poisson_operator = {
-            key: poisson[key]
-            for key in ("discretization", "coefficient")
-            if key in poisson
-        }
-    poisson_discretization = validate_choice(
-        poisson_operator.get("discretization", "fvm"),
-        _PPE_DISCRETIZATIONS,
-        layout["paths"]["poisson_discretization"],
+    poisson_settings = parse_run_poisson_settings(
+        layout=layout,
+        projection=projection,
     )
-    if "coefficient" not in poisson_operator:
-        raise ValueError(
-            f"{layout['paths']['poisson_coefficient']} is required; "
-            "use 'phase_separated' for SP-M or 'phase_density' for mixture-density PPE."
-        )
-    poisson_coefficient = validate_choice(
-        _POISSON_COEFFICIENT_ALIASES.get(
-            str(poisson_operator["coefficient"]).strip().lower(),
-            poisson_operator["coefficient"],
-        ),
-        _POISSON_COEFFICIENTS,
-        layout["paths"]["poisson_coefficient"],
-    )
-    coupling_default = (
-        "jump_decomposition" if poisson_coefficient == "phase_separated" else "none"
-    )
-    poisson_interface_coupling = validate_choice(
-        _POISSON_INTERFACE_COUPLING_ALIASES.get(
-            str(poisson_operator.get("interface_coupling", coupling_default)).strip().lower(),
-            poisson_operator.get("interface_coupling", coupling_default),
-        ),
-        _POISSON_INTERFACE_COUPLINGS,
-        layout["paths"]["poisson_interface_coupling"],
-    )
-    if poisson_coefficient == "phase_density" and poisson_interface_coupling != "none":
-        raise ValueError(
-            f"{layout['paths']['poisson_interface_coupling']} must be 'none' "
-            "when poisson coefficient is 'phase_density'."
-        )
-    ppe_solver_cfg = poisson["solver"]
 
     advection_scheme = validate_choice(
         _ADVECTION_SCHEME_ALIASES.get(
@@ -133,26 +81,6 @@ def parse_run_operator_settings(
         default="ab2",
         aliases={"explicit": "ab2"},
     )
-    (
-        ppe_solver,
-        ppe_iteration_method,
-        ppe_tolerance,
-        ppe_max_iterations,
-        ppe_restart,
-        ppe_preconditioner,
-        ppe_pcr_stages,
-        ppe_c_tau,
-        ppe_defect_correction,
-        ppe_dc_max_iterations,
-        ppe_dc_tolerance,
-        ppe_dc_relaxation,
-    ) = parse_ppe_solver_config(
-        ppe_solver_cfg,
-        layout["paths"]["poisson_solver"],
-        poisson_discretization,
-        layout["paths"]["poisson_discretization"],
-    )
-    pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
     raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
     pressure_gradient_scheme = validate_choice(
         _MOMENTUM_GRADIENT_ALIASES.get(str(raw_p_grad).strip().lower(), raw_p_grad),
@@ -170,12 +98,12 @@ def parse_run_operator_settings(
         layout["paths"]["surface_tension_model"],
     )
     if surface_tension_scheme == "pressure_jump":
-        if poisson_coefficient != "phase_separated":
+        if poisson_settings["poisson_coefficient"] != "phase_separated":
             raise ValueError(
                 f"{layout['paths']['surface_tension_model']}='pressure_jump' "
                 "requires poisson.operator.coefficient='phase_separated'."
             )
-        if poisson_interface_coupling != "jump_decomposition":
+        if poisson_settings["poisson_interface_coupling"] != "jump_decomposition":
             raise ValueError(
                 f"{layout['paths']['surface_tension_model']}='pressure_jump' "
                 "requires poisson.operator.interface_coupling='jump_decomposition'."
@@ -225,24 +153,24 @@ def parse_run_operator_settings(
         layout["paths"]["viscosity_time"],
     )
     return {
-        "poisson_coefficient": poisson_coefficient,
-        "poisson_interface_coupling": poisson_interface_coupling,
+        "poisson_coefficient": poisson_settings["poisson_coefficient"],
+        "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
         "advection_scheme": advection_scheme,
         "convection_scheme": convection_scheme,
         "convection_time_scheme": convection_time_scheme,
-        "ppe_solver": ppe_solver,
-        "pressure_scheme": pressure_scheme,
-        "ppe_iteration_method": ppe_iteration_method,
-        "ppe_tolerance": ppe_tolerance,
-        "ppe_max_iterations": ppe_max_iterations,
-        "ppe_restart": ppe_restart,
-        "ppe_preconditioner": ppe_preconditioner,
-        "ppe_pcr_stages": ppe_pcr_stages,
-        "ppe_c_tau": ppe_c_tau,
-        "ppe_defect_correction": ppe_defect_correction,
-        "ppe_dc_max_iterations": ppe_dc_max_iterations,
-        "ppe_dc_tolerance": ppe_dc_tolerance,
-        "ppe_dc_relaxation": ppe_dc_relaxation,
+        "ppe_solver": poisson_settings["ppe_solver"],
+        "pressure_scheme": poisson_settings["pressure_scheme"],
+        "ppe_iteration_method": poisson_settings["ppe_iteration_method"],
+        "ppe_tolerance": poisson_settings["ppe_tolerance"],
+        "ppe_max_iterations": poisson_settings["ppe_max_iterations"],
+        "ppe_restart": poisson_settings["ppe_restart"],
+        "ppe_preconditioner": poisson_settings["ppe_preconditioner"],
+        "ppe_pcr_stages": poisson_settings["ppe_pcr_stages"],
+        "ppe_c_tau": poisson_settings["ppe_c_tau"],
+        "ppe_defect_correction": poisson_settings["ppe_defect_correction"],
+        "ppe_dc_max_iterations": poisson_settings["ppe_dc_max_iterations"],
+        "ppe_dc_tolerance": poisson_settings["ppe_dc_tolerance"],
+        "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
         "pressure_gradient_scheme": pressure_gradient_scheme,
         "surface_tension_scheme": surface_tension_scheme,
         "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
