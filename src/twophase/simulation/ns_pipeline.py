@@ -44,7 +44,10 @@ from .ns_ppe_runtime import (
     build_ns_runtime_plain_ppe_solver,
     make_ns_ppe_factory_options,
 )
-from .ns_runtime_components import build_ns_runtime_components
+from .ns_runtime_components import (
+    NSRuntimeComponentOptions,
+    build_ns_runtime_components,
+)
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
 from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registration
@@ -265,19 +268,21 @@ class TwoPhaseNSSolver:
             adv=self._adv,
             reinit=self._reinit,
             eps=self._eps,
-            phi_primary_clip_factor=self._phi_primary_clip_factor,
-            phi_primary_heaviside_eps_scale=self._phi_primary_heaviside_eps_scale,
-            interface_tracking_enabled=self._interface_tracking_enabled,
-            phi_primary_transport=self._phi_primary_transport,
-            phi_primary_redist_every=self._phi_primary_redist_every,
-            reinit_every=options.interface.reinit_every,
-            debug_diagnostics=options.schemes.debug_diagnostics,
-            reproject_mode=self._reproject_mode,
+            options=NSRuntimeComponentOptions(
+                phi_primary_clip_factor=self._phi_primary_clip_factor,
+                phi_primary_heaviside_eps_scale=self._phi_primary_heaviside_eps_scale,
+                interface_tracking_enabled=self._interface_tracking_enabled,
+                phi_primary_transport=self._phi_primary_transport,
+                phi_primary_redist_every=self._phi_primary_redist_every,
+                reinit_every=self._interface_runtime.reinit_every,
+                debug_diagnostics=options.schemes.debug_diagnostics,
+                reproject_mode=self._interface_runtime.reproject_mode,
+                cn_viscous=self._cn_viscous,
+                reynolds_number=self._Re,
+                viscous_spatial_scheme=self._viscous_spatial_scheme,
+                surface_tension_scheme=self._surface_tension_scheme,
+            ),
             reproj_iim=self._reproj_iim,
-            cn_viscous=self._cn_viscous,
-            reynolds_number=self._Re,
-            viscous_spatial_scheme=self._viscous_spatial_scheme,
-            surface_tension_scheme=self._surface_tension_scheme,
         )
         self._reconstruct_base = components.reconstruct_base
         self._reconstruct_phi_primary = components.reconstruct_phi_primary
@@ -307,6 +312,7 @@ class TwoPhaseNSSolver:
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
         state = normalise_ns_interface_runtime(options)
+        self._interface_runtime = state
         self._rebuild_freq = state.rebuild_freq
         self._reinit_every = state.reinit_every
         self._reproject_variable_density = state.reproject_variable_density
@@ -357,6 +363,7 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=options.hfe_C)
         state = normalise_ns_scheme_runtime(options)
+        self._scheme_runtime = state
         self._convection_time_scheme = state.convection_time_scheme
         self._conv_prev = None
         self._conv_ab2_ready = False

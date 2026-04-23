@@ -26,6 +26,22 @@ class NSRuntimeComponents:
     Y: object
 
 
+@dataclass(frozen=True)
+class NSRuntimeComponentOptions:
+    phi_primary_clip_factor: float
+    phi_primary_heaviside_eps_scale: float
+    interface_tracking_enabled: bool
+    phi_primary_transport: bool
+    phi_primary_redist_every: int
+    reinit_every: int
+    debug_diagnostics: bool
+    reproject_mode: str
+    cn_viscous: bool
+    reynolds_number: float
+    viscous_spatial_scheme: str
+    surface_tension_scheme: str
+
+
 def build_ns_runtime_components(
     *,
     backend,
@@ -33,46 +49,35 @@ def build_ns_runtime_components(
     adv,
     reinit,
     eps,
-    phi_primary_clip_factor: float,
-    phi_primary_heaviside_eps_scale: float,
-    interface_tracking_enabled: bool,
-    phi_primary_transport: bool,
-    phi_primary_redist_every: int,
-    reinit_every: int,
-    debug_diagnostics: bool,
-    reproject_mode: str,
+    options: NSRuntimeComponentOptions,
     reproj_iim,
-    cn_viscous: bool,
-    reynolds_number: float,
-    viscous_spatial_scheme: str,
-    surface_tension_scheme: str,
 ) -> NSRuntimeComponents:
     reconstruct_base = HeavisideInterfaceReconstructor(
         backend,
         ReconstructionConfig(
             eps=eps,
             eps_scale=1.0,
-            clip_factor=phi_primary_clip_factor,
+            clip_factor=options.phi_primary_clip_factor,
         ),
     )
     reconstruct_phi_primary = HeavisideInterfaceReconstructor(
         backend,
         ReconstructionConfig(
             eps=eps,
-            eps_scale=phi_primary_heaviside_eps_scale,
-            clip_factor=phi_primary_clip_factor,
+            eps_scale=options.phi_primary_heaviside_eps_scale,
+            clip_factor=options.phi_primary_clip_factor,
         ),
     )
 
-    if not interface_tracking_enabled:
+    if not options.interface_tracking_enabled:
         transport = StaticInterfaceTransport(backend)
-    elif phi_primary_transport:
+    elif options.phi_primary_transport:
         transport = PhiPrimaryTransport(
             backend,
             {
-                "redist_every": phi_primary_redist_every,
-                "clip_factor": phi_primary_clip_factor,
-                "eps_scale": phi_primary_heaviside_eps_scale,
+                "redist_every": options.phi_primary_redist_every,
+                "clip_factor": options.phi_primary_clip_factor,
+                "eps_scale": options.phi_primary_heaviside_eps_scale,
             },
             reconstruct_phi_primary,
             adv,
@@ -84,12 +89,12 @@ def build_ns_runtime_components(
             backend,
             adv,
             reinit,
-            reinit_every=reinit_every,
+            reinit_every=options.reinit_every,
         )
 
-    step_diag = ActiveStepDiagnostics() if debug_diagnostics else NullStepDiagnostics()
+    step_diag = ActiveStepDiagnostics() if options.debug_diagnostics else NullStepDiagnostics()
     reprojector = IVelocityReprojector.from_scheme(
-        reproject_mode,
+        options.reproject_mode,
         ReprojectorBuildCtx(
             iim_stencil_corrector=reproj_iim,
             reconstruct_base=reconstruct_base,
@@ -100,22 +105,22 @@ def build_ns_runtime_components(
 
     viscous_term = ViscousTerm(
         backend,
-        Re=reynolds_number,
+        Re=options.reynolds_number,
         cn_viscous=True,
-        spatial_scheme=viscous_spatial_scheme,
+        spatial_scheme=options.viscous_spatial_scheme,
     )
     viscous_predictor = IViscousPredictor.from_scheme(
-        "crank_nicolson" if cn_viscous else "explicit",
+        "crank_nicolson" if options.cn_viscous else "explicit",
         ViscousBuildCtx(
             backend=backend,
-            re=reynolds_number,
-            spatial_scheme=viscous_spatial_scheme,
+            re=options.reynolds_number,
+            spatial_scheme=options.viscous_spatial_scheme,
             viscous_term=viscous_term,
         ),
     )
 
     st_force = INSSurfaceTensionStrategy.from_scheme(
-        surface_tension_scheme,
+        options.surface_tension_scheme,
         SurfaceTensionBuildCtx(backend=backend),
     )
     X, Y = grid.meshgrid()
