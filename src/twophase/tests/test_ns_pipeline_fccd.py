@@ -124,6 +124,30 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._viscous_spatial_scheme == "ccd_bulk"
 
 
+def test_ch13_rising_bubble_water_air_yaml_builds_solver():
+    from twophase.ppe.defect_correction import PPESolverDefectCorrection
+    from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._grid.N[0] == 128
+    assert solver._grid.N[1] == 256
+    assert solver.LX == pytest.approx(1.0)
+    assert solver.LY == pytest.approx(2.0)
+    assert isinstance(solver._transport, PsiDirectTransport)
+    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.reinit_every == 4
+    assert solver._advection_scheme == "fccd_flux"
+    assert solver._convection_scheme == "uccd6"
+    assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
+
+
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
     solver = TwoPhaseNSSolver(

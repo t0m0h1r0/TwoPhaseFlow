@@ -143,6 +143,27 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.phi_primary_transport is False
 
 
+def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.grid.NX == 128
+    assert cfg.grid.NY == 256
+    assert cfg.grid.LX == 1.0
+    assert cfg.grid.LY == 2.0
+    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.physics.g_acc == pytest.approx(0.001)
+    assert cfg.run.reinit_every == 4
+    assert cfg.run.interface_tracking_method == "psi_direct"
+    assert cfg.run.phi_primary_transport is False
+    assert cfg.run.advection_scheme == "fccd_flux"
+    assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
 def test_fccd_ppe_discretization_maps_to_fccd_solver():
     cfg = ExperimentConfig.from_dict(_minimal({
         "numerics": {
