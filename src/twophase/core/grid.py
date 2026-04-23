@@ -114,14 +114,16 @@ class Grid:
         if alpha <= 1.0:
             return  # uniform grid — nothing to do
 
+        xp = self.backend.xp
+
         dx_floor = self._gc.dx_min_floor
         # eps_g: ξ空間セル数指定時は軸ごとに L[ax]/N[ax] ベース (WIKI-T-039 fix)
         eps_g_cells = self._gc.eps_g_cells
         eps_g_default = self._gc.eps_g_factor * eps if eps_g_cells is None else None
 
-        # ψ → φ (logit inversion)
-        psi_host = np.asarray(self.backend.to_host(psi_data))
-        phi = invert_heaviside(np, psi_host, eps)
+        # ψ → φ (logit inversion) on the active backend. We only materialise
+        # the final 1-D per-axis coordinates on host for metric construction.
+        phi = invert_heaviside(xp, xp.asarray(psi_data), eps)
 
         for ax in range(self.ndim):
             if eps_g_cells is not None:
@@ -132,17 +134,17 @@ class Grid:
 
             # 1-D marginal: min |φ| over other axes (§6 φ̄^x_i = min_j |φ_{i,j}|)
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
-            phi_1d = np.min(np.abs(phi), axis=axes_other)
+            phi_1d = xp.min(xp.abs(phi), axis=axes_other)
 
             # §6 eq:grid_delta: bounded Gaussian indicator ∈ [0, 1]
             # NOTE: ディラックデルタ正規化因子 1/(ε_g√π) は除去する.
             # 正規化すると ピーク = 1/(ε_g√π) >> 1 となり ω >> α になる (unbounded bug).
-            indicator_1d = np.exp(-(phi_1d ** 2) / (eps_g ** 2))
+            indicator_1d = xp.exp(-(phi_1d ** 2) / (eps_g ** 2))
 
             omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
 
             # Node target widths proportional to 1/ω; enforce minimum cell width
-            node_w = np.maximum(1.0 / omega, dx_floor)  # (N+1,) node weights
+            node_w = xp.maximum(1.0 / omega, dx_floor)  # (N+1,) node weights
 
             # Cell spacings: average adjacent node weights → symmetric for symmetric ω.
             # Using node_w[:-1] alone would drop the last node and break symmetry
@@ -153,12 +155,13 @@ class Grid:
             dx_cells = dx_cells * (self._gc.L[ax] / dx_cells.sum())
 
             # Cumulative integration: ステップ3–4 (§6 格子点生成アルゴリズム)
-            coords_ax = np.zeros(self._gc.N[ax] + 1)
-            coords_ax[1:] = np.cumsum(dx_cells)   # sum = L → no rescale needed
+            coords_ax = xp.zeros(self._gc.N[ax] + 1, dtype=float)
+            coords_ax[1:] = xp.cumsum(dx_cells)   # sum = L → no rescale needed
+            coords_ax_h = np.asarray(self.backend.to_host(coords_ax))
 
-            self.coords[ax] = coords_ax
+            self.coords[ax] = coords_ax_h
             # Per-node spacing (average of left and right cell widths)
-            cell_dx = np.diff(coords_ax)
+            cell_dx = np.diff(coords_ax_h)
             node_dx = np.empty(self._gc.N[ax] + 1)
             node_dx[0] = cell_dx[0]
             node_dx[-1] = cell_dx[-1]
