@@ -28,10 +28,13 @@ import numpy as np
 
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
+    apply_fccd_interface_jump,
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
+    build_fccd_interface_jump_context,
     build_fccd_jacobi_inverse,
     compute_fccd_phase_gauges,
+    project_fccd_rhs_compatibility,
 )
 
 if TYPE_CHECKING:
@@ -148,13 +151,13 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Store SP-M pressure-jump data for ``p = p_tilde + σκ(1-ψ)``."""
-        self._interface_jump_context = {
-            "psi": self.xp.asarray(psi),
-            "kappa": self.xp.asarray(kappa),
-            "psi_host": np.asarray(self.backend.to_host(psi)),
-            "kappa_host": np.asarray(self.backend.to_host(kappa)),
-            "sigma": float(sigma),
-        }
+        self._interface_jump_context = build_fccd_interface_jump_context(
+            xp=self.xp,
+            backend=self.backend,
+            psi=psi,
+            kappa=kappa,
+            sigma=sigma,
+        )
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
@@ -267,72 +270,30 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def apply_interface_jump(self, pressure):
         """Apply the stored sharp-interface pressure jump decomposition."""
-        if (
-            self.coefficient_scheme != "phase_separated"
-            or self.interface_coupling_scheme != "jump_decomposition"
-            or self._interface_jump_context is None
-        ):
-            return pressure
-        sigma = self._interface_jump_context["sigma"]
-        if sigma <= 0.0:
-            return pressure
-        if self.backend.is_gpu() and self._is_device_array(pressure):
-            pressure_arr = self.xp.asarray(pressure)
-            psi = self._interface_jump_context["psi"]
-            kappa = self._interface_jump_context["kappa"]
-            return pressure_arr + sigma * kappa * (1.0 - psi)
-        pressure_arr = np.asarray(pressure)
-        psi = self._interface_jump_context["psi_host"]
-        kappa = self._interface_jump_context["kappa_host"]
-        return pressure_arr + sigma * kappa * (1.0 - psi)
+        return apply_fccd_interface_jump(
+            pressure=pressure,
+            coefficient_scheme=self.coefficient_scheme,
+            interface_coupling_scheme=self.interface_coupling_scheme,
+            interface_jump_context=self._interface_jump_context,
+            backend=self.backend,
+            xp=self.xp,
+            is_device_array=self._is_device_array,
+        )
 
     def _project_rhs_compatibility(self, rhs):
         """Enforce one Neumann compatibility condition per phase block."""
         xp = self.xp if self._is_device_array(rhs) else np
-        rhs_projected = xp.asarray(rhs).copy()
-        stats = {
-            "ppe_phase_count": 1.0,
-            "ppe_pin_count": float(len(self._pin_dofs)),
-            "ppe_rhs_phase_mean_before_max": 0.0,
-            "ppe_rhs_phase_mean_after_max": 0.0,
-            "ppe_interface_coupling_jump": float(
-                self.interface_coupling_scheme == "jump_decomposition"
-            ),
-        }
-        if (
-            self.coefficient_scheme != "phase_separated"
-            or self._phase_threshold is None
-            or self._rho is None
-        ):
-            self._pin_flat(rhs_projected.ravel(), 0.0)
-            self.last_diagnostics = stats
-            return rhs_projected
-        rho_view = self._rho_dev if xp is self.xp else self._rho
-        phase_masks = (
-            rho_view < self._phase_threshold,
-            rho_view >= self._phase_threshold,
-        )
-        means_before = []
-        means_after = []
-        phase_count = 0
-        for mask in phase_masks:
-            count = int(self._to_scalar(xp.sum(mask)))
-            if count == 0:
-                continue
-            phase_count += 1
-            mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
-            means_before.append(abs(self._to_scalar(mean)))
-            rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
-            mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
-            means_after.append(abs(self._to_scalar(mean_after)))
-        self._pin_flat(rhs_projected.ravel(), 0.0)
-        stats.update(
-            {
-                "ppe_phase_count": float(phase_count),
-                "ppe_pin_count": float(len(self._pin_dofs)),
-                "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
-                "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
-            }
+        rhs_projected, stats = project_fccd_rhs_compatibility(
+            rhs=rhs,
+            xp=xp,
+            coefficient_scheme=self.coefficient_scheme,
+            phase_threshold=self._phase_threshold,
+            rho_dev=self._rho_dev,
+            rho_host=self._rho,
+            pin_dofs=self._pin_dofs,
+            interface_coupling_scheme=self.interface_coupling_scheme,
+            use_device_density=xp is self.xp,
+            to_scalar=self._to_scalar,
         )
         self.last_diagnostics = stats
         return rhs_projected

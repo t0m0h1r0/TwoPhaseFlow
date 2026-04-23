@@ -103,3 +103,110 @@ def build_fccd_jacobi_inverse(
     for dof in pin_dofs:
         flat[dof] = 1.0
     return 1.0 / xp.where(xp.abs(diag) > 1.0e-30, diag, 1.0)
+
+
+def build_fccd_interface_jump_context(*, xp, backend, psi, kappa, sigma: float) -> dict:
+    return {
+        "psi": xp.asarray(psi),
+        "kappa": xp.asarray(kappa),
+        "psi_host": np.asarray(backend.to_host(psi)),
+        "kappa_host": np.asarray(backend.to_host(kappa)),
+        "sigma": float(sigma),
+    }
+
+
+def apply_fccd_interface_jump(
+    *,
+    pressure,
+    coefficient_scheme: str,
+    interface_coupling_scheme: str,
+    interface_jump_context: dict | None,
+    backend,
+    xp,
+    is_device_array,
+):
+    if (
+        coefficient_scheme != "phase_separated"
+        or interface_coupling_scheme != "jump_decomposition"
+        or interface_jump_context is None
+    ):
+        return pressure
+    sigma = interface_jump_context["sigma"]
+    if sigma <= 0.0:
+        return pressure
+    if backend.is_gpu() and is_device_array(pressure):
+        pressure_arr = xp.asarray(pressure)
+        psi = interface_jump_context["psi"]
+        kappa = interface_jump_context["kappa"]
+        return pressure_arr + sigma * kappa * (1.0 - psi)
+    pressure_arr = np.asarray(pressure)
+    psi = interface_jump_context["psi_host"]
+    kappa = interface_jump_context["kappa_host"]
+    return pressure_arr + sigma * kappa * (1.0 - psi)
+
+
+def project_fccd_rhs_compatibility(
+    *,
+    rhs,
+    xp,
+    coefficient_scheme: str,
+    phase_threshold: float | None,
+    rho_dev,
+    rho_host,
+    pin_dofs: tuple[int, ...],
+    interface_coupling_scheme: str,
+    use_device_density: bool,
+    to_scalar,
+):
+    rhs_projected = xp.asarray(rhs).copy()
+    stats = {
+        "ppe_phase_count": 1.0,
+        "ppe_pin_count": float(len(pin_dofs)),
+        "ppe_rhs_phase_mean_before_max": 0.0,
+        "ppe_rhs_phase_mean_after_max": 0.0,
+        "ppe_interface_coupling_jump": float(
+            interface_coupling_scheme == "jump_decomposition"
+        ),
+    }
+    if (
+        coefficient_scheme != "phase_separated"
+        or phase_threshold is None
+        or rho_host is None
+    ):
+        _pin_zero(rhs_projected.ravel(), pin_dofs)
+        return rhs_projected, stats
+
+    rho_view = rho_dev if use_device_density else rho_host
+    phase_masks = (
+        rho_view < phase_threshold,
+        rho_view >= phase_threshold,
+    )
+    means_before = []
+    means_after = []
+    phase_count = 0
+    for mask in phase_masks:
+        count = int(to_scalar(xp.sum(mask)))
+        if count == 0:
+            continue
+        phase_count += 1
+        mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        means_before.append(abs(to_scalar(mean)))
+        rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
+        mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        means_after.append(abs(to_scalar(mean_after)))
+
+    _pin_zero(rhs_projected.ravel(), pin_dofs)
+    stats.update(
+        {
+            "ppe_phase_count": float(phase_count),
+            "ppe_pin_count": float(len(pin_dofs)),
+            "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
+            "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
+        }
+    )
+    return rhs_projected, stats
+
+
+def _pin_zero(flat, pin_dofs: tuple[int, ...]) -> None:
+    for dof in pin_dofs:
+        flat[dof] = 0.0
