@@ -2,30 +2,37 @@
 
 from __future__ import annotations
 
+from .config_constants import (
+    _ADVECTION_SCHEME_ALIASES,
+    _ADVECTION_SCHEMES,
+    _CONVECTION_SCHEME_ALIASES,
+    _CONVECTION_SCHEMES,
+    _CURVATURE_SCHEMES,
+    _INTERFACE_TIME_SCHEMES,
+    _MOMENTUM_FORMS,
+    _SURFACE_TENSION_ALIASES as _SURFACE_TENSION_ALIASES_BASE,
+    _SURFACE_TENSION_SCHEMES,
+    _VISCOUS_SPATIAL_ALIASES as _VISCOUS_SPATIAL_ALIASES_BASE,
+    _VISCOUS_SPATIAL_SCHEMES,
+    _VISCOUS_TIME_SCHEMES,
+)
 from .config_run_poisson_sections import parse_run_poisson_settings
+from .ns_option_canonicalizer import (
+    CONVECTION_TIME_SCHEME_ALIASES,
+    canonicalize_momentum_gradient_scheme,
+    canonicalize_surface_tension_gradient_scheme,
+    validate_pressure_jump_ppe_compatibility,
+)
 from .config_sections import validate_choice
 from .config_run_layout_sections import parse_time_integrator
 
-_ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
-_ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
-_CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
-_CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
-_SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
-_SURFACE_TENSION_ALIASES = {"balanced_force": "csf"}
-_VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
-_INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
-_CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler")
-_MOMENTUM_FORMS = ("primitive_velocity",)
-_VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legacy")
-_VISCOUS_SPATIAL_ALIASES = {
-    "ccd": "ccd_bulk",
-    "conservative": "conservative_stress",
+_SURFACE_TENSION_ALIASES = {
+    **_SURFACE_TENSION_ALIASES_BASE,
+    "balanced_force": "csf",
 }
-_CURVATURE_SCHEMES = ("psi_direct_hfe",)
-_MOMENTUM_GRADIENT_SCHEMES = ("ccd", "fccd_flux", "fccd_nodal")
-_MOMENTUM_GRADIENT_ALIASES = {
-    "projection_consistent": "ccd",
-    "fccd": "fccd_flux",
+_VISCOUS_SPATIAL_ALIASES = {
+    **_VISCOUS_SPATIAL_ALIASES_BASE,
+    "conservative": "conservative_stress",
 }
 
 
@@ -76,16 +83,15 @@ def parse_run_operator_settings(
     )
     convection_time_scheme = parse_time_integrator(
         convection,
-        _CONVECTION_TIME_SCHEMES,
+        ("ab2", "forward_euler"),
         layout["paths"]["convection_time"],
         default="ab2",
-        aliases={"explicit": "ab2"},
+        aliases=CONVECTION_TIME_SCHEME_ALIASES,
     )
     raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
-    pressure_gradient_scheme = validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(str(raw_p_grad).strip().lower(), raw_p_grad),
-        _MOMENTUM_GRADIENT_SCHEMES,
-        layout["paths"]["pressure_spatial"],
+    pressure_gradient_scheme = canonicalize_momentum_gradient_scheme(
+        raw_p_grad,
+        path=layout["paths"]["pressure_spatial"],
     )
     surface_tension_scheme = validate_choice(
         _SURFACE_TENSION_ALIASES.get(
@@ -97,38 +103,46 @@ def parse_run_operator_settings(
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
+    momentum_gradient_scheme = pressure_gradient_scheme
     if surface_tension_scheme == "pressure_jump":
-        if poisson_settings["poisson_coefficient"] != "phase_separated":
-            raise ValueError(
+        validate_pressure_jump_ppe_compatibility(
+            surface_tension_scheme=surface_tension_scheme,
+            ppe_coefficient_scheme=poisson_settings["poisson_coefficient"],
+            ppe_interface_coupling_scheme=poisson_settings["poisson_interface_coupling"],
+            coefficient_error=(
                 f"{layout['paths']['surface_tension_model']}='pressure_jump' "
                 "requires poisson.operator.coefficient='phase_separated'."
-            )
-        if poisson_settings["poisson_interface_coupling"] != "jump_decomposition":
-            raise ValueError(
+            ),
+            interface_error=(
                 f"{layout['paths']['surface_tension_model']}='pressure_jump' "
                 "requires poisson.operator.interface_coupling='jump_decomposition'."
-            )
+            ),
+        )
         explicit_st_grad = any(
             key in surface_tension for key in ("gradient", "spatial", "force_gradient")
         )
-        if explicit_st_grad:
-            raise ValueError(
-                f"{layout['paths']['surface_tension_spatial']} must be omitted "
-                "when surface_tension.formulation='pressure_jump'; "
-                "the jump is applied in the PPE, not as σκ∇ψ."
+        raw_st_grad = (
+            surface_tension.get(
+                "gradient",
+                surface_tension.get(
+                    "spatial",
+                    surface_tension.get("force_gradient"),
+                ),
             )
-        surface_tension_gradient_scheme = "none"
+            if explicit_st_grad
+            else None
+        )
     else:
         raw_st_grad = surface_tension.get(
             "gradient",
             surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
         )
-        surface_tension_gradient_scheme = validate_choice(
-            _MOMENTUM_GRADIENT_ALIASES.get(str(raw_st_grad).strip().lower(), raw_st_grad),
-            _MOMENTUM_GRADIENT_SCHEMES,
-            layout["paths"]["surface_tension_spatial"],
-        )
-    momentum_gradient_scheme = pressure_gradient_scheme
+    surface_tension_gradient_scheme = canonicalize_surface_tension_gradient_scheme(
+        surface_tension_scheme=surface_tension_scheme,
+        surface_tension_gradient_scheme=raw_st_grad,
+        momentum_gradient_scheme=momentum_gradient_scheme,
+        path=layout["paths"]["surface_tension_spatial"],
+    )
     validate_choice(
         interface_curvature.get("method", surface_tension.get("curvature", "psi_direct_hfe")),
         _CURVATURE_SCHEMES,

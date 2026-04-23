@@ -4,6 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .ns_option_canonicalizer import (
+    canonicalize_convection_time_scheme,
+    canonicalize_momentum_gradient_scheme,
+    canonicalize_ppe_solver_name,
+    canonicalize_surface_tension_gradient_scheme,
+    pressure_scheme_for_ppe_solver,
+    validate_pressure_jump_ppe_compatibility,
+)
+
 
 @dataclass(frozen=True)
 class NSInterfaceRuntimeState:
@@ -130,30 +139,31 @@ def normalise_ns_ppe_runtime(
 ) -> NSPPERuntimeState:
     raw_ppe = str(
         options.pressure_scheme if options.pressure_scheme is not None else options.ppe_solver
-    ).strip().lower()
-    ppe_solver_name = ppe_aliases.get(raw_ppe, raw_ppe)
-    if ppe_solver_name not in ppe_registry:
-        raise ValueError(
-            f"Unsupported ppe_solver={raw_ppe!r}. "
-            "Use fvm_iterative|fvm_direct|fccd_iterative."
-        )
+    )
+    ppe_solver_name = canonicalize_ppe_solver_name(
+        raw_ppe,
+        ppe_aliases=ppe_aliases,
+        ppe_registry=ppe_registry,
+    )
 
     ppe_iteration_method = str(options.ppe_iteration_method).strip().lower()
     ppe_coefficient_scheme = str(options.ppe_coefficient_scheme).strip().lower()
     ppe_interface_coupling_scheme = str(
         options.ppe_interface_coupling_scheme
     ).strip().lower()
-    if str(surface_tension_scheme).strip().lower() == "pressure_jump":
-        if ppe_coefficient_scheme != "phase_separated":
-            raise ValueError(
-                "surface_tension_scheme='pressure_jump' requires "
-                "ppe_coefficient_scheme='phase_separated'"
-            )
-        if ppe_interface_coupling_scheme != "jump_decomposition":
-            raise ValueError(
-                "surface_tension_scheme='pressure_jump' requires "
-                "ppe_interface_coupling_scheme='jump_decomposition'"
-            )
+    validate_pressure_jump_ppe_compatibility(
+        surface_tension_scheme=surface_tension_scheme,
+        ppe_coefficient_scheme=ppe_coefficient_scheme,
+        ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
+        coefficient_error=(
+            "surface_tension_scheme='pressure_jump' requires "
+            "ppe_coefficient_scheme='phase_separated'"
+        ),
+        interface_error=(
+            "surface_tension_scheme='pressure_jump' requires "
+            "ppe_interface_coupling_scheme='jump_decomposition'"
+        ),
+    )
 
     return NSPPERuntimeState(
         ppe_solver_name=ppe_solver_name,
@@ -170,47 +180,25 @@ def normalise_ns_ppe_runtime(
         ppe_dc_max_iterations=int(options.ppe_dc_max_iterations),
         ppe_dc_tolerance=float(options.ppe_dc_tolerance),
         ppe_dc_relaxation=float(options.ppe_dc_relaxation),
-        pressure_scheme=(
-            "fvm_matrixfree" if ppe_solver_name == "fvm_iterative"
-            else "fvm_spsolve" if ppe_solver_name == "fvm_direct"
-            else "fccd_matrixfree"
-        ),
+        pressure_scheme=pressure_scheme_for_ppe_solver(ppe_solver_name),
     )
 
 
 def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
-    conv_time_aliases = {
-        "adams_bashforth_2": "ab2",
-        "adams_bashforth": "ab2",
-        "ab_2": "ab2",
-        "explicit": "ab2",
-        "forward_euler": "forward_euler",
-        "euler": "forward_euler",
-    }
-    raw_time_scheme = str(options.convection_time_scheme).strip().lower()
-    convection_time_scheme = conv_time_aliases.get(raw_time_scheme, raw_time_scheme)
-    if convection_time_scheme not in {"ab2", "forward_euler"}:
-        raise ValueError(
-            "Unsupported convection_time_scheme="
-            f"{convection_time_scheme!r}; use ab2|forward_euler."
-        )
-
-    momentum_gradient_scheme = str(options.momentum_gradient_scheme).strip().lower()
-    pressure_gradient_scheme = str(
+    convection_time_scheme = canonicalize_convection_time_scheme(
+        options.convection_time_scheme
+    )
+    momentum_gradient_scheme = canonicalize_momentum_gradient_scheme(
+        options.momentum_gradient_scheme
+    )
+    pressure_gradient_scheme = canonicalize_momentum_gradient_scheme(
         options.pressure_gradient_scheme or momentum_gradient_scheme
-    ).strip().lower()
-    raw_st_scheme = str(options.surface_tension_scheme).strip().lower()
-    if raw_st_scheme == "pressure_jump":
-        if options.surface_tension_gradient_scheme not in {None, "none"}:
-            raise ValueError(
-                "surface_tension_gradient_scheme must be omitted or 'none' "
-                "when surface_tension_scheme='pressure_jump'"
-            )
-        surface_tension_gradient_scheme = "none"
-    else:
-        surface_tension_gradient_scheme = str(
-            options.surface_tension_gradient_scheme or momentum_gradient_scheme
-        ).strip().lower()
+    )
+    surface_tension_gradient_scheme = canonicalize_surface_tension_gradient_scheme(
+        surface_tension_scheme=options.surface_tension_scheme,
+        surface_tension_gradient_scheme=options.surface_tension_gradient_scheme,
+        momentum_gradient_scheme=momentum_gradient_scheme,
+    )
 
     return NSSchemeRuntimeState(
         convection_time_scheme=convection_time_scheme,
