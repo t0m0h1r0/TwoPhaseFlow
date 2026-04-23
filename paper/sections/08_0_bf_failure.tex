@@ -1,0 +1,61 @@
+% paper/sections/08_0_bf_failure.tex
+%
+% §8.2.0  BF 失敗モード 5 種（SP-J §1）
+%         §8.2（Balanced-Force）冒頭に配置し、
+%         以降の P-1..P-7 原則（§8.3）の動機付けとする。
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Balanced-Force 失敗モード 5 種（SP-J §1）}
+\label{sec:bf_failure_modes}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+連続問題での静止液滴平衡
+\begin{equation}
+  -\bnabla p + \mathbf{f}_\sigma = \mathbf{0}
+  \quad\text{（Young--Laplace: }[p]_\Gamma=\sigma\kappa\text{）}
+  \label{eq:bf_continuous_balance}
+\end{equation}
+を\textbf{離散的に}保持するには
+\begin{equation}
+  -G_h p + f_{\sigma,h} \approx \mathbf{0}
+  \label{eq:bf_discrete_balance}
+\end{equation}
+が要請される．微分階数ではなく\textbf{離散演算子の整合性}が
+寄生流れ（spurious currents）を支配する．
+SP-J \cite{SPJ} §1 は，実装で頻出する 5 つの破綻モードを列挙する：
+
+\begin{tcolorbox}[warnbox,title={F-1..F-5：Balanced-Force 失敗モード}]
+\begin{description}[leftmargin=2em,style=nextline]
+  \item[\textbf{F-1} 評価位置不一致]
+    $G_h p$ と $f_{\sigma,h}$ が異なる格子位置（節点 vs 面）で評価される．
+    $(G_h p)_f \neq (f_\sigma)_f$ が定義上保証できない．
+  \item[\textbf{F-2} PPE 勾配と補正勾配の不一致]
+    PPE 内部で用いる $G_h$ と，$\mathbf{u}^* \to \mathbf{u}^{n+1}$ 補正で用いる $G_h$ が異なる．
+    ある方程式を解き，別の方程式で補正していることになる．
+  \item[\textbf{F-3} $D_h$ と $G_h$ が離散共役でない]
+    $D_h \neq -G_h^\ast$．PPE 演算子が SPD でなくなり，
+    離散エネルギー恒等式を崩し，CG が適用できない．
+  \item[\textbf{F-4} $\betaf=(1/\rho)_f$ の経路不一致]
+    PPE / 速度補正 / 界面張力の 3 経路で $\betaf$ の平均化
+    （算術 vs 調和）が異なる．高密度比 $\rho_l/\rho_g\gg 1$ で
+    補正残差が界面上で $\Ord{1}$ となる．
+  \item[\textbf{F-5} 界面ジャンプ無補正の CCD ステンシル]
+    $[p]_\Gamma=\sigma\kappa$ を跨ぐ CCD ステンシルが
+    滑らかな場として扱われ，ジャンプが数値的に平滑化される．
+    GFM/IIM による面フラックス補正が必要．
+\end{description}
+\end{tcolorbox}
+
+\noindent\textbf{重要な事実}：
+F-1..F-5 は\textbf{すべて微分階数と独立}である．
+「高次 CCD を全量に適用」した素朴実装は F-1..F-5 のどれか（多くの場合複数）を
+必ず踏む．CHK-172 の rising bubble PoC では F-2 と F-4 が同時発生し，
+PPE RHS の発散だけを修正しても補正側が別 $G_h$ を参照する限り
+BF 残差は減らない（SP-J §2.P-2 結論）．
+
+\noindent\textbf{方針}：
+§\ref{sec:bf_seven_principles} で 7 つの設計原則 P-1..P-7 を定式化し，
+§\ref{sec:fccd_bf_sub_system} で FCCD 面ジェットによる
+$\Ord{H^4}$ の BF 残差抑制を示す．
+
+% ═══════════════════════════════════════════════════════════════════════════════

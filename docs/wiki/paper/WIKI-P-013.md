@@ -81,7 +81,7 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | (pending commit) |
-| 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | pending | — |
+| 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | **done** (2026-04-24) | (pending commit) |
 | 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | pending | — |
 
 Each Phase must compile `xelatex paper/main.tex` warning-free and append a
@@ -203,15 +203,47 @@ Files created or edited by Phase.
 
 ### Phase 3b (CHK-189) — §8 BF + §9 PPE
 
-- [ ] `paper/sections/08_0_bf_failure.tex` (new, ≈ 45 lines, SP-J §1).
-- [ ] `paper/sections/08_1_bf_seven_principles.tex` (new, ≈ 160 lines, SP-J §2).
-- [ ] `paper/sections/08_2_fccd_bf.tex` (new, ≈ 130 lines, SP-A+SP-H+SP-J §3).
-- [ ] `paper/sections/08c_pressure_filter.tex` — expanded from stub (SP-J P-5).
-- [ ] `paper/sections/09b_split_ppe.tex` — +160 lines (SP-M §5–§8).
-- [ ] `paper/sections/09c_hfe.tex` — +30 lines (SP-H §4).
-- [ ] `paper/sections/09d_defect_correction.tex` — +20 lines (SP-M §9).
-- [ ] `paper/sections/09e_ppe_bc.tex` — Option III/IV explicit.
-- [ ] `paper/sections/09_6_gpu_native_fvm.tex` (new, ≈ 130 lines, SP-F).
+- [x] `paper/sections/08_0_bf_failure.tex` (new, ≈ 55 行, SP-J §1):
+      BF 連続/離散バランス (eq:bf_continuous_balance/bf_discrete_balance),
+      5 失敗モード F-1..F-5 tcolorbox, CHK-172 rising-bubble 適用.
+      Label: sec:bf_failure_modes.
+- [x] `paper/sections/08_1_bf_seven_principles.tex` (new, ≈ 165 行, SP-J §2):
+      P-1 位置一致, P-2 adjoint PPE $D_h^\text{bf} = -(G_h^\text{bf})^T$ + SPD,
+      P-3 幾何単一定義, P-4 $\betaf$ 単一定義, P-5 $\kappa$ 帯制限,
+      P-6 GFM 界面ジャンプ, P-7 静圧分離, Rhie–Chow 制限.
+      Labels: sec:bf_seven_principles, sec:bf_p1_location..p7_separation,
+      sec:bf_rhie_chow_restriction.
+- [x] `paper/sections/08_2_fccd_bf.tex` (new, ≈ 155 行, SP-A §6 + SP-H §3 + SP-J §3):
+      H-01 診断再掲 + FCCD 救済 (残差 $\Ord{\Delta x^2}\to\Ord{\Delta x^4}$),
+      面ジェット $\FaceJet{p}$ による BF 構築 ($F^p_f = \betaf p'_f$),
+      GFM ジャンプ補正 (Phase 1), 静水圧テスト予測テーブル,
+      設計戦略 A/B/C 比較, アンチパターン 8 種 warnbox.
+- [x] `paper/sections/08c_pressure_filter.tex` (stub → 85 行, SP-J §4):
+      片側 DCCD フィルタの系統的バイアス, 両辺対称整合要件,
+      安全性マトリクス, 既定禁止ポリシー.
+- [x] `paper/sections/09b_split_ppe.tex` (+190 行, SP-M §5–§8):
+      純 FCCD 分相アーキテクチャ, 分相 adjoint pair + SPD,
+      GFM ghost jet stitching, 相別ゲージ pin + compatibility,
+      pressure-jump formulation, regrid guard.
+- [x] `paper/sections/09c_hfe.tex` (+60 行, SP-H §4):
+      面ジェット方向 Taylor 状態 $(p^+_f, p^-_f)$ 構築, 風上選択.
+- [x] `paper/sections/09d_defect_correction.tex` (+70 行, SP-M §9):
+      外殻/内殻剛性分解 $A_H/A_L$, 純 FCCD 収束目標.
+- [x] `paper/sections/09e_ppe_bc.tex` (+60 行, SP-C §6 + SP-D §8):
+      Option III Neumann 壁, Option IV Dirichlet 値 BC,
+      整合性要件 (同一面位置), 周期 FFT/DFT 完全閉式.
+- [x] `paper/sections/09_6_gpu_native_fvm.tex` (new, ≈ 165 行, SP-F):
+      face-local calculus $L_\text{FVM}(\rho)p = \sum_a D_a A_a G_a p$,
+      variable-batched PCR, matrix-free additive preconditioner
+      (4-stage truncation CHK-166), D2H discipline, A3 + Phase 1-3 roadmap,
+      H-01/A-01 切り分け.
+- [x] `paper/main.tex` — §8/§9 `\input` 追加 (08_0/08_1/08_2/09_6).
+- [x] Fixes: `\end{center>`→`\end{center}` (09b/09d),
+      `\noindent検証`→`\noindent 検証` (XeLaTeX Japanese 境界),
+      double superscript `p'^q`→`{p'}^{(q)}` (09e),
+      5 未定義前方参照を既存ラベル再マップ.
+- [x] xelatex clean 241 pp (+11); 0 undef refs, 0 undef citations, 0 errors;
+      SPA/SPC/SPD/SPF/SPH/SPJ/SPM citations resolved.
 
 ### Phase 4 (CHK-190) — §10
 
@@ -275,4 +307,6 @@ Index: [SP_INDEX.md](../../memo/short_paper/SP_INDEX.md).
 | Date | Event | Commit |
 |---|---|---|
 | 2026-04-23 | Phase 0 opened: SP-H → SP-N rename, SP_INDEX, SP-O, this dashboard | pending |
-| — | Phase 1a–4 | to follow |
+| 2026-04-23 | Phase 1a/1b/1c/2a/2b/3a closed: §2 minor + §3.4 Ridge–Eikonal + §4 FCCD/UCCD6 + §5 L1/L2/L3 + §6 non-uniform + §7 advection/viscous | see CHK-183..188 |
+| 2026-04-24 | Phase 3b closed (CHK-189): §8 BF failure + 7 principles + FCCD BF + pressure filter; §9 split-PPE +190行 + HFE +60行 + DC +70行 + BC +60行 + GPU-native FVM 165行; 241 pp | pending |
+| — | Phase 4 | to follow |

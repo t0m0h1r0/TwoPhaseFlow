@@ -1,0 +1,182 @@
+% paper/sections/08_1_bf_seven_principles.tex
+%
+% §8.3  Balanced-Force 七原則（SP-J §2）
+%       P-1 位置一致 / P-2 PPE-corrector 共有 / P-3 geometry 経路統一 /
+%       P-4 β_f 統一 / P-5 曲率への CCD 非適用 /
+%       P-6 界面ジャンプ補正 / P-7 BF sub-system 分離
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Balanced-Force 七原則（SP-J §2）}
+\label{sec:bf_seven_principles}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+§\ref{sec:bf_failure_modes} の 5 失敗モードを回避するため，
+SP-J \cite{SPJ} §2 は 7 原則 P-1..P-7 を与える．
+実装は\textbf{全 7 原則を同時に}満たす必要があり，
+1 つでも欠けると寄生流れが $\Ord{h^0}$ で残留する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-1：$G_h p$ と $f_{\sigma,h}$ の同一位置評価}
+\label{sec:bf_p1_location}
+% -------------------------------------------------------------------------------
+
+staggered 速度配置（速度は面）では
+\begin{equation}
+  u_f^{n+1} = u_f^* + \Delta t\Bigl(
+    -\betaf(G_h^\text{bf} p)_f + (f_\sigma)_f + \cdots
+  \Bigr),
+  \label{eq:bf_p1_corrector}
+\end{equation}
+$(G_h^\text{bf} p)_f$ と $(f_\sigma)_f$ は\textbf{同じ面で評価}されねばならない．
+節点 CCD 勾配を面に補間し，$f_\sigma$ を別の補間で構築する
+\textbf{「位置を合わせれば十分」は不正解}．
+補間演算子自身が互いに随伴整合（adjoint-compatible）でなければ
+$(G_h p)_f - (f_\sigma)_f$ は相殺しない．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-2：随伴 PPE $D_h^\text{bf} = -(G_h^\text{bf})^\ast$}
+\label{sec:bf_p2_adjoint}
+% -------------------------------------------------------------------------------
+
+PPE を\textbf{随伴ペア}から組み立てる：
+\begin{equation}
+  D_h^\text{bf}\Bigl(\betaf\,G_h^\text{bf}\,p\Bigr)
+    = \frac{1}{\Delta t}\,D_h^\text{bf}\,\mathbf{u}^*,
+  \qquad D_h^\text{bf} = -(G_h^\text{bf})^\ast.
+  \label{eq:bf_p2_ppe}
+\end{equation}
+これにより離散内積 $\langle\cdot,\cdot\rangle_h$ 下で
+\begin{equation}
+  \langle p,\,A_h p\rangle_h
+    = \langle G_h^\text{bf} p,\,\betaf\,G_h^\text{bf} p\rangle_h
+    \ge 0,
+  \label{eq:bf_p2_spd}
+\end{equation}
+零空間（定数モード）除去後に $A_h$ は SPD で CG が主解法，
+\textbf{補正側 $G_h$ = PPE 側 $G_h^\text{bf}$} が保証される．
+
+\noindent\textbf{CHK-172 rising bubble への含意}：
+PPE RHS の発散だけを修正しても，補正側が別の $G_h$ を参照する限り
+F-2 は解消しない．$G_h^\text{bf}$ を両経路で共有することが必要．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-3：$f_\sigma$ を $[p]_\Gamma$ と同じ離散幾何に通す}
+\label{sec:bf_p3_geometry}
+% -------------------------------------------------------------------------------
+
+CSF 形式の $f_\sigma$ を，仮想毛管圧 $p_\sigma$ から
+$G_h^\text{bf} p_\sigma$ として構成できるよう設計すれば，
+静止平衡は
+\begin{equation}
+  -G_h^\text{bf} p + G_h^\text{bf} p_\sigma
+    = G_h^\text{bf}(p_\sigma - p) \approx \mathbf{0}
+  \label{eq:bf_p3_cancel}
+\end{equation}
+が\textbf{PPE 解の精度}により成立する．
+独立に離散化された 2 ベクトルのキャンセルを期待する旧来設計と本質的に異なる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-4：$\betaf$ を 3 経路で統一}
+\label{sec:bf_p4_beta}
+% -------------------------------------------------------------------------------
+
+変密度 PPE $L_h p = -D_h^\text{bf}(\betaf\,G_h^\text{bf} p)$ において
+$\betaf = (1/\rho)_f$ は以下の 3 経路\textbf{すべてで同一}：
+\begin{enumerate}[leftmargin=2em,noitemsep]
+  \item PPE 演算子 $L_h$ 自身，
+  \item 速度補正 $u_f^{n+1} = u_f^* - \Delta t\,\betaf\,(G_h^\text{bf} p)_f$，
+  \item 界面張力正規化 $f_\sigma \propto \betaf\,\sigma\kappa\,(\nabla\psi)_f$．
+\end{enumerate}
+PPE に調和平均，補正に算術平均という「混用」は
+$\rho_l/\rho_g \gg 1$ で BF 残差を界面で $\Ord{1}$ とする．
+\textbf{本稿の選択}：$\betaf^\text{harm}=2/(\rho_L+\rho_R)^{-1}\cdot 2^{-1}$（調和平均，
+\S\ref{sec:split_ppe_formulation}）を 3 経路共通で採用．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-5：曲率に生 CCD を適用しない}
+\label{sec:bf_p5_curvature}
+% -------------------------------------------------------------------------------
+
+$\kappa = \bnabla\cdot(\bnabla\psi/|\bnabla\psi|)$ は
+界面から $\Ord{\varepsilon}$ 幅でしか滑らかでない場を 2 回微分する．
+高次 CCD は分母の $|\bnabla\psi|$ 小のノイズを増幅し，
+ほぼ定数の bulk を広いステンシルで走査する．
+
+\noindent\textbf{規則}：$\bnabla\psi$ には CCD を用いてよい．
+$\kappa$ は\textbf{界面帯に制限した平滑化}または
+2 次 FD に落とす．曲率精度は\textbf{演算子位置整合に比べ 2 次的}であり，
+BF 残差への影響は 2 次効果に留まる．
+
+\noindent\textbf{DCCD フィルタ規則}：
+圧力フィルタリングは BF 経路に適用する場合，
+$-G_h p + f_\sigma$ の\textbf{両辺に対称に}適用せねばならない．
+片側だけフィルタは非対称減衰を生み P-1 を破る
+（詳細は §\ref{sec:dccd_pressure_filter_prohibition}）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-6：界面越えステンシルへのジャンプ補正}
+\label{sec:bf_p6_jump}
+% -------------------------------------------------------------------------------
+
+CCD は滑らかな場を仮定する．静止液滴で $\Delta p = \sigma\kappa$ が
+正しく設定されているのに寄生流れが出る場合，
+ほぼ常に\textbf{界面越えステンシルが圧力ジャンプを平滑化}している．
+必要な補正：
+\begin{itemize}[noitemsep]
+  \item \textbf{GFM 面フラックス補正}（Phase 1 実用）：
+  \begin{equation}
+    (G_h^\text{bf} p)_f^\text{corrected}
+      = (G_h^\text{bf} p)_f - \frac{\sigma\kappa}{H_f},
+    \label{eq:bf_p6_gfm}
+  \end{equation}
+  bulk ステンシルは変更せず，ジャンプだけを面フラックスに注入．
+  2 次精度；Phase 1 検証と H-01 診断に十分．
+  \item \textbf{IIM コンパクト行補正}（Phase 3 研究）：
+  FCCD のコンパクト関係 $M_f\mathbf{g} = R_f\mathbf{p}$ に対し
+  $[p]_\Gamma,\,[\betaf\partial_n p]_\Gamma$ を Taylor 展開した
+  補正ベクトル $c_\Gamma^\text{IIM}$ を加算．
+\end{itemize}
+
+% -------------------------------------------------------------------------------
+\subsubsection{P-7：BF sub-system と bulk 微分子の分離}
+\label{sec:bf_p7_separation}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\hline
+タスク & 演算子 & 精度要求 \\
+\hline
+bulk 移流・拡散（$u,v$）& 節点 CCD / UCCD6 / FCCD & 高次（$\Ord{h^6}$） \\
+PPE + 補正 & $G_h^\text{bf},\,D_h^\text{bf}$（面随伴ペア）& 内整合（$\Ord{h^2}$--$\Ord{h^4}$） \\
+界面張力 $f_\sigma$ & $G_h^\text{bf}$ と同じ面スロット & 内整合 \\
+曲率 $\kappa$ & 界面帯制限平滑化 & 2 次 \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{設計哲学}：
+BF sub-system は\textbf{高次である必要はない}．
+内部整合性（位置一致・随伴ペア・$\betaf$ 統一）があれば
+寄生流れは演算子精度ではなく
+\textbf{界面ジャンプ処理の精度}で律速される．
+bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Rhie--Chow の限定使用}
+\label{sec:bf_rhie_chow_restriction}
+% -------------------------------------------------------------------------------
+
+Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
+チェッカーボード抑制\textbf{のみ}のツールであり，BF 機構ではない：
+\begin{itemize}[noitemsep]
+  \item RC の $G_h$ は PPE $G_h^\text{bf}$ と異なる $\Rightarrow$ F-2 を踏む．
+  \item RC は $[p]_\Gamma=\sigma\kappa$ を平滑化 $\Rightarrow$ 高密度比で寄生流れ増幅．
+  \item RC は 1 次散逸を挿入 $\Rightarrow$ CCD の 6 次ステンシルを劣化させる．
+\end{itemize}
+\textbf{用途}：デバッグ時の一時安定化，粗格子初期化のみ．
+プロダクションの BF 圧力補正経路では使用禁止．
+本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）も BF 補正ではなく
+デカップリング抑制として位置付ける．
+
+% ═══════════════════════════════════════════════════════════════════════════════

@@ -108,3 +108,200 @@ IPC の $\bnabla p^n$（Predictor ステップ）および
 $\bnabla(\delta p)$（Corrector ステップ）が界面を横切る前に，
 圧力場をジャンプ補正済み HFE Hermite 補間で滑らかに延長することで，
 CCD ステンシルが不連続値に触れることを防止する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{純 FCCD 分相 PPE アーキテクチャ（SP-M 全量取り込み）}
+\label{sec:pure_fccd_split_ppe}
+% ─────────────────────────────────────────────────────────────────────────────
+
+SP-M \cite{SPM} は FVM の制御体積保存を離散不変量として放棄し，
+すべての空間演算子を FCCD / HFE / GFM の\textbf{単一高次言語}に統一する
+DNS アーキテクチャを提案する．質量保存は
+$\Ord{\Delta x^4}$--$\Ord{\Delta x^6}$ の漸近的な高次性として扱われ，
+制御体積恒等式としては保証されない．
+
+\noindent\textbf{アーキテクチャの階層}：
+\begin{enumerate}[leftmargin=2em,noitemsep]
+  \item 界面幾何：Ridge--Eikonal（\S\ref{sec:ridge_eikonal}）
+        で位相・メトリックを分離．
+  \item 移流：FCCD + HFE（\S\ref{sec:fccd_advection}）で $\psi$ と
+        運動量を共通面ジェット $\mathcal{J}_f$ 上で更新．
+  \item 粘性：3 層アーキテクチャ（\S\ref{sec:viscous_3layer}）．
+        $\mu\nabla^2\mathbf{u}$ は\textbf{界面越えでは使わない}．
+  \item 圧力：分相 FCCD PPE + GFM ジャンプ行（本節）．
+  \item 剛性処理：デフェクト補正
+        （\S\ref{sec:defect_correction_main}）の高次外側 / 低次内側分解．
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{位相分離 FCCD PPE：面ジェット随伴ペア}
+\label{sec:phase_separated_fccd_adjoint}
+% ─────────────────────────────────────────────────────────────────────────────
+
+各相 $q\in\{L,G\}$ で\textbf{FCCD 面ジェット}
+$\mathcal{J}_f(p_q)=(p_{q,f},p'_{q,f},p''_{q,f})$ を基本量とする．
+面随伴ペア
+\begin{equation}
+  G_h^\FCCD: \{p_{q,i}\}_\text{node} \to \{p'_{q,f}\}_\text{face},
+  \qquad
+  D_h^\FCCD = -(G_h^\FCCD)^\ast
+  \label{eq:split_ppe_adjoint_pair}
+\end{equation}
+により相 $q$ の PPE ブロックを
+\begin{equation}
+  -D_h^\FCCD\Bigl(\rho_q^{-1}\,G_h^\FCCD\,p_q\Bigr)
+    = \frac{1}{\Delta t}\,D_h^\FCCD\,\mathbf{u}_q^*
+  \qquad\text{in }\Omega_q
+  \label{eq:split_ppe_fccd_block}
+\end{equation}
+として組み立てる．$\rho_q$ が各相で\textbf{定数}であるため
+$-D_h^\FCCD\rho_q^{-1} G_h^\FCCD$ は
+純 Poisson 演算子の FCCD 版となり，
+§\ref{sec:ccd_poisson_matrix} の行列構造がそのまま適用される．
+
+\noindent\textbf{離散随伴性と SPD}：
+P-2（§\ref{sec:bf_p2_adjoint}）により
+\begin{equation}
+  \langle p_q,\,A_h^q p_q\rangle_h
+    = \rho_q^{-1}\langle G_h^\FCCD p_q,\,G_h^\FCCD p_q\rangle_h \ge 0,
+  \label{eq:split_ppe_spd}
+\end{equation}
+等号は $G_h^\FCCD p_q \equiv 0$ のみ（相 $q$ 内で一定）．
+各相ブロックは定数差モード除去後に SPD で CG が直接使える．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{GFM ゴーストジェットによる位相ステッチ}
+\label{sec:gfm_ghost_jet_stitch}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ を跨ぐコンパクトステンシルを\textbf{単相化}するため，
+ジャンプ条件 $[p]_\Gamma=\sigma\kappa$，$[\rho^{-1}\partial_n p]_\Gamma=0$
+から\textbf{ゴースト面ジェット}
+\begin{equation}
+  \bigl(p_q^\ast,\,p_q'^\ast,\,p_q''^\ast\bigr)
+    = \text{GFM extrapolate of phase }\bar q
+      \text{ into } \Omega_q
+  \label{eq:gfm_ghost_jet}
+\end{equation}
+を構築する（$\bar q$ は対相）．面 $f\subset\Gamma$ 付近のステンシルは
+対相の値を\textbf{ゴーストジェットで置換}した上で FCCD を適用：
+\begin{equation}
+  (G_h^\FCCD p)_f^\text{stitched}
+    = G_h^\FCCD\bigl(\,\{p_{q,i}\}_{i\in\Omega_q}
+      \cup \{p_q^\ast(x_i)\}_{i\in\Omega_{\bar q}}\bigr).
+  \label{eq:fccd_stitched_face}
+\end{equation}
+これにより\textbf{代数的な単相ステンシル}を各相で保ちつつ，
+物理的不連続をジャンプクロージャ経由で自動的に注入する．
+
+\noindent\textbf{ジャンプジェット構成}：
+$\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
+\begin{align}
+  p_q^\ast(x_f)
+    &= p_{\bar q}(x_f) - \sigma\kappa\,\mathrm{sign}(\phi_f),
+      \label{eq:gfm_value_jump}\\
+  p_q'^\ast(x_f)
+    &= \frac{\rho_q}{\rho_{\bar q}}\,p'_{\bar q}(x_f),
+      \label{eq:gfm_gradient_jump}\\
+  p_q''^\ast(x_f)
+    &= p''_{\bar q}(x_f)
+       - \bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n})\,\mathrm{sign}(\phi_f).
+      \label{eq:gfm_curvature_jump}
+\end{align}
+2 次値ジャンプは Laplace--Beltrami 分解
+$\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{PPE 整合性条件と相別ゲージ固定}
+\label{sec:ppe_phase_gauge_pin}
+% ─────────────────────────────────────────────────────────────────────────────
+
+相 $q$ ブロックが Neumann 楕円問題である以上，
+相ごとに\textbf{可解条件}
+\begin{equation}
+  \sum_{i\in\Omega_q}\,S_{q,i}\,\Delta V_i \approx 0,
+  \qquad S_{q,i} = \frac{1}{\Delta t}\,(D_h^\FCCD \mathbf{u}^*)_i
+  \label{eq:split_ppe_compatibility}
+\end{equation}
+を満たす必要がある．SP-M \cite{SPM} Phase 3 の運用：
+GMRES 前に $\{S_{q,i}\}_{i\in\Omega_q}$ の平均をマスク別に減算．
+\textbf{相別ゲージピン}を各相に 1 点ずつ（計 2 点）置き，
+零モードを除去する．
+\begin{equation}
+  p_q(i_\text{pin}^q) \equiv 0,
+  \quad i_\text{pin}^q \in \Omega_q,\ q\in\{L,G\}.
+  \label{eq:split_ppe_phase_pin}
+\end{equation}
+
+\noindent\textbf{警告}：
+圧力ジャンプ形式（\S\ref{sec:split_ppe_pressure_jump_formulation}）
+で未知量が $\tilde p$（滑らか部分）となる場合，
+GMRES のウォームスタートには$\tilde p$のみを渡す．
+\textbf{合成圧力 $p = \tilde p + \sigma\kappa(1-\psi)$}
+をウォームスタートに用いると不連続成分が次段 PPE に漏れて
+人工運動エネルギーを生む．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{圧力ジャンプ形式：CSF 体積力を回避するクリーン分離}
+\label{sec:split_ppe_pressure_jump_formulation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+SP-M \cite{SPM} Phase 2 の推奨：CSF 体積力を使用せず，
+$[p]_\Gamma=\sigma\kappa$ を PPE の直接境界条件として課す．
+運動量方程式の表面張力項は\textbf{ゼロ}：
+\begin{equation}
+  \rho\frac{D\mathbf{u}}{Dt}
+    = -\bnabla p + \bnabla\cdot(2\mu\mathbf{D}) + \rho\mathbf{g},
+  \qquad [p]_\Gamma = \sigma\kappa.
+  \label{eq:split_ppe_momentum_no_csf}
+\end{equation}
+PPE には $(\psi,\kappa,\sigma)$ をコンテキストとして渡し，
+合成圧力は
+\begin{equation}
+  p = \tilde p + \sigma\kappa\,(1-\psi),
+  \label{eq:split_ppe_pressure_composition}
+\end{equation}
+$\tilde p$ が滑らか部分（PPE 未知量），
+$\sigma\kappa(1-\psi)$ が界面厚 $\varepsilon$ 内で
+$[\,\cdot\,]_\Gamma=\sigma\kappa$ を表現する鋭いジャンプ項．
+
+\noindent\textbf{YAML セマンティクス}（CHK-181 確定）：
+\begin{itemize}[noitemsep]
+  \item \texttt{operator.coefficient = phase\_separated}：相ブロック定義
+  \item \texttt{operator.interface\_coupling = jump\_decomposition}：ステッチング
+  \item \texttt{surface\_tension.formulation = pressure\_jump}：CSF を切る
+  \item \texttt{surface\_tension.gradient = none}：CSF 勾配設定を無効化
+\end{itemize}
+\texttt{pressure\_jump} は混合密度モデルや GFM 無しで使うと
+シルエント・フォールバックを生むため，
+\textbf{整合性ガード}（SP-M Phase 7）で上記 3 設定を強制．
+
+\noindent\textbf{ランタイム診断}（SP-M Phase 8）：
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\hline
+診断 & 確認内容 \\
+\hline
+\texttt{ppe\_phase\_count} & 実効相数（2 想定）\\
+\texttt{ppe\_pin\_count} & 相別ピン数（2 想定）\\
+\texttt{ppe\_rhs\_phase\_mean\_before\_max} & 射影前の RHS 相平均 \\
+\texttt{ppe\_rhs\_phase\_mean\_after\_max} & 射影後（$\approx 10^{-14}$ 期待）\\
+\texttt{ppe\_interface\_coupling\_jump} & $[p]_\Gamma$ 適用フラグ \\
+\hline
+\end{tabular}
+\end{center}
+これにより P-2 / P-3 / P-4 の実装上の破綻を
+step 単位で検出できる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{再メッシュ再投影と PPE コンテキスト防護}
+\label{sec:split_ppe_regrid_guard}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面適合格子の動的再構築（\S\ref{sec:grid_ale}）では
+速度再投影 PPE がメインステップ PPE の\textbf{前段}で走る．
+前ステップの \texttt{pressure\_jump} コンテキストを継承すると
+不連続合成圧力が再投影内部で微分され，人工運動エネルギーを生む．
+\textbf{規則}：\texttt{update\_grid()} および \texttt{invalidate\_cache()} で
+界面ジャンプコンテキストをクリアし，
+メインステップ PPE にのみ $(\psi,\kappa,\sigma)$ を渡す．
