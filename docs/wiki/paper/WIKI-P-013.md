@@ -76,8 +76,8 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 |---|---|---|---|---|
 | 0 | CHK-182 | SP-H→SP-N rename, SP_INDEX, SP-O, WIKI-P-013, preamble macros, ledger | **done** (2026-04-23) | 1a23d04 |
 | 1a | CHK-183 | §2 minor + §1.5 SP index | **done** (2026-04-23) | 8b910cc |
-| 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | pending |
-| 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | pending | — |
+| 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | 814f888 |
+| 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | pending |
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | pending | — |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | pending | — |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | pending | — |
@@ -121,13 +121,17 @@ Files created or edited by Phase.
 
 ### Phase 1c (CHK-185) — §4 FCCD/UCCD6/face-jet
 
-- [ ] `paper/sections/04c_dccd_derivation.tex` (new, ≈ 110 lines, SP-G).
-- [ ] `paper/sections/04e_fccd.tex` (new, ≈ 180 lines, SP-A+SP-C).
-- [ ] `paper/sections/04f_uccd6.tex` (new, ≈ 120 lines, SP-N).
-- [ ] `paper/sections/04g_face_jet.tex` (new, ≈ 50 lines, SP-H intro).
-- [ ] `paper/sections/04b_ccd_bc.tex` — Option III/IV additions.
+- [x] `paper/sections/04c_dccd_derivation.tex` (new, 177 lines, SP-G全移植: 1次風上→修正方程式→DCCD埋込→半離散固有値→6反論).
+- [x] `paper/sections/04e_fccd.tex` (new, 211 lines, SP-A+SP-C: 4設計原理P-F1..P-F4・λ=1/24相殺・行列形式・周期DFT・H-01救済).
+- [x] `paper/sections/04f_uccd6.tex` (new, 140 lines, SP-N: ハイパー粘性・エネルギー恒等式・CN無条件安定・GKS・3スキーム比較).
+- [x] `paper/sections/04g_face_jet.tex` (new, 146 lines, SP-H §2: face jet プリミティブ統一API).
+- [x] `paper/sections/04_ccd.tex` — 末尾に§4.2.4 Chu--Fan ω₁,ω₂厳密形 (+29行; SP-N接続).
+- [x] `paper/main.tex` — §4 inputs 再編 (04c/04e/04f/04g 追加; 04d 除外).
+- [x] `paper/preamble.tex` — `\CCD` 追加 + 全SP-O演算子マクロを`\ensuremath{}`でラップ (math/text両モード対応).
+- [x] `paper/sections/04c_dccd_derivation.tex` に backward-compat `\phantomsection\label{}` (sec:dissipative_ccd/dccd_motivation/dccd_bc/dccd_conservation/dccd_filter_theory, eq:dccd_filter/dccd_transfer).
 - [ ] `paper/sections/04d_dissipative_ccd.tex` — retired (content absorbed
-      into 04c).
+      into 04c, 04d ファイルは履歴用に残置・`\input`除外).
+- [x] xelatex clean 217 pp (+5); 0 undefined refs, 0 errors.
 
 ### Phase 2a (CHK-186) — §5 L1/L2/L3
 

@@ -35,10 +35,14 @@
 \part{Navier--Stokes 方程式の数値計算アルゴリズム――CCD法による物理的一貫性と高解像の両立}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-%% §4: CCD法の定式化（CCD スキーム＋DCCD フィルタ）
-\input{sections/04_ccd}               %% §4（CCD 基礎・設計原理）
-\input{sections/04b_ccd_bc}           %% §4続き（境界条件・行列構造）
-\input{sections/04d_dissipative_ccd}  %% §4続き（DCCD フィルタ：CCD 安定化変種）
+%% §4: CCD法の定式化（CCD スキーム＋DCCD フィルタ＋FCCD/UCCD6/face-jet）
+\input{sections/04_ccd}               %% §4.1–§4.2（CCD 基礎・Chu--Fan ω_1,ω_2）
+\input{sections/04c_dccd_derivation}  %% §4.3（DCCD：SP-G 教示的導出；旧 04d を吸収）
+\input{sections/04b_ccd_bc}           %% §4.4（境界条件・行列構造）
+\input{sections/04e_fccd}             %% §4.5（FCCD：SP-A + SP-C）
+\input{sections/04f_uccd6}            %% §4.6（UCCD6：SP-N）
+\input{sections/04g_face_jet}         %% §4.7（面ジェット：SP-H §2）
+%% \input{sections/04d_dissipative_ccd}  %% 旧 DCCD 節：04c に吸収済み（履歴保存）
 
 %% §5: 時間積分スキームの設計
 \input{sections/05_time_integration}  %% §5（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）

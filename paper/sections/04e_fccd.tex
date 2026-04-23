@@ -1,0 +1,211 @@
+% paper/sections/04e_fccd.tex
+%
+% §4.5  FCCD：面中心 CCD と H-01 診断に対する救済
+%        SP-A（4 設計原理・4 次導出）+ SP-C（行列定式化）を統合．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{{\FCCD}：面中心 CCD 演算子族}
+\label{sec:fccd_def}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-A \cite{SPA}（4 設計原理＋4 次 cancellation 導出）と
+SP-C \cite{SPC}（行列定式化＋周期 DFT 解析）を統合し，
+本節では\textbf{面中心 Combined Compact Difference}（{\FCCD}）演算子族を定義する．
+{\FCCD} の目的はふたつ：
+(i) 非一様・界面追従格子における FVM 面フラックスと CCD 節点勾配の
+\textbf{メトリック不整合（H-01）}を根治的に解消し（§\ref{sec:balanced_force}），
+(ii) 高次精度・コンパクト性・風上構造という CCD 本来の長所を面配置で保存することである．
+
+% -------------------------------------------------------------------------------
+\subsubsection{H-01 診断と動機}
+\label{sec:fccd_motivation_h01}
+% -------------------------------------------------------------------------------
+
+WIKI-T-044 が FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ と
+節点中心 CCD 微分の\textbf{メトリック不整合}を指摘し，
+WIKI-E-030 Exp-1 の毛管ベンチマーク（$\rho_\text{liq}/\rho_\text{gas}=833$）で
+Balanced-Force 残差 $|\mathrm{BF}_{\text{res}}|\approx 884$（step 1）を実測．
+Exp-2（$\sigma=0 \Rightarrow T=20$ まで安定）が決定的証拠となり
+hypothesis \textbf{H-01}（「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\nabla\psi$ の
+メトリック空間不一致が長時間破綻の主因」）が確定した（CHK-152）．
+
+SP-A の着想は：$\mathcal{G}^{\text{adj}}$ が面上で定義される事実を出発点として，
+\textbf{圧力勾配も界面力勾配も同一面ロカス上}で {\FCCD} により評価することで，
+BF 残差を $\Ord{\Delta x^2} \to \Ord{\Delta x^4}$ まで圧縮する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{4 つの設計原理}
+\label{sec:fccd_design_principles}
+% -------------------------------------------------------------------------------
+
+SP-A \S3 は以下の 4 原理に従う：
+
+\begin{enumerate}[label=\textbf{P-F\arabic*.}]
+\item \textbf{風上限定．}
+      $a>0$ において $\{u_{i-1}, u_i\}$ のみ使用，
+      中心・下流成分に依存しない．
+\item \textbf{ステンシル非拡大．}
+      $u_{i-2}$ 以遠は参照せず，3 点コンパクト性を CCD から継承．
+\item \textbf{Combined Compact 構造．}
+      高階補助未知数（$u'''_f$）を導入し，
+      Chu--Fan 同様の\textbf{微分関係式の組合せ}で精度を取得．
+\item \textbf{面中心化．}
+      一次量は全て面 $f = i-1/2$ で定義，
+      界面位置・ALE 格子運動・FVM 面フラックスと\textbf{同一ロカス}．
+\end{enumerate}
+
+% -------------------------------------------------------------------------------
+\subsubsection{4 次 Cancellation 導出}
+\label{sec:fccd_derivation}
+% -------------------------------------------------------------------------------
+
+1 次差分の面上展開（SP-A \S4.4）：
+\begin{equation}
+  \frac{u_i - u_{i-1}}{\Delta x}
+  \;=\; u'_f + \frac{\Delta x^2}{24}\,u'''_f + \Ord{\Delta x^4}.
+  \label{eq:fccd_upwind_expansion}
+\end{equation}
+Chu--Fan 流の組合せ演算子を定義：
+\begin{equation}
+  D^{\FCCD} u_f
+  \;=\; \frac{u_i - u_{i-1}}{\Delta x}
+  \;-\; \lambda\,\Delta x^2\,u'''_f.
+  \label{eq:fccd_operator}
+\end{equation}
+式~\eqref{eq:fccd_upwind_expansion} を代入して \textbf{cancellation 条件}
+$\lambda = 1/24$ を課せば：
+\begin{equation}
+  \boxed{\;
+  D^{\FCCD} u_f \;=\; u'_f + \Ord{\Delta x^4}
+  \;}
+  \label{eq:fccd_fourth_order}
+\end{equation}
+となり，ステンシル拡大・風上構造の放棄なしに\textbf{4 次精度}を獲得する．
+$u'''_f$ は近傍節点の $q_i = u''_i$（CCD 出力）から
+$u'''_f \approx (q_i - q_{i-1})/\Delta x$ の 2 次中心差で閉じる（SP-C \S4）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{行列定式化}
+\label{sec:fccd_matrix}
+% -------------------------------------------------------------------------------
+
+SP-C \cite{SPC} の行列表記を用いると，面勾配ベクトル
+$\mathbf{d}^{\FCCD} \in \mathbb{R}^N$ は節点値 $\mathbf{u}\in\mathbb{R}^{N+1}$ から：
+\begin{equation}
+  \mathbf{d}^{\FCCD}
+  \;=\; \mathbf{D}_1\,\mathbf{u} - \mathbf{D}_2\,\mathbf{q},
+  \qquad \mathbf{q} = \mathbf{S}_{\CCD}\,\mathbf{u},
+  \label{eq:fccd_matrix_system}
+\end{equation}
+で得られる．ここで
+$\mathbf{D}_1, \mathbf{D}_2 \in \mathbb{R}^{N\times(N+1)}$ は面↔節点
+\textbf{bidiagonal}（行あたり 2 非零）：
+\begin{align}
+  (\mathbf{D}_1)_{f_{i-1/2},\,i-1} &= -1/H, &\quad (\mathbf{D}_1)_{f_{i-1/2},\,i} &= +1/H, \label{eq:fccd_D1}\\
+  (\mathbf{D}_2)_{f_{i-1/2},\,i-1} &= -H/24, &\quad (\mathbf{D}_2)_{f_{i-1/2},\,i} &= +H/24. \label{eq:fccd_D2}
+\end{align}
+$\mathbf{S}_{\CCD} = \Pi_q\,\mathbf{A}_{\CCD}^{-1}\mathbf{B}_{\CCD}$ は
+Chu--Fan 結合システムを節点 2 次導関数へ射影した作用素で，
+\textbf{形式上は密行列}だが実行時は block-Thomas（壁）または
+block-circulant LU（周期）で $\Ord{N}$ 計算．
+従って合成演算子：
+\begin{equation}
+  \boxed{\;
+  \mathbf{M}^{\FCCD}
+  \;=\; \mathbf{D}_1 - \mathbf{D}_2\,\mathbf{S}_{\CCD}
+  \;\in\; \mathbb{R}^{N\times(N+1)}
+  \;}
+  \label{eq:fccd_composite_matrix}
+\end{equation}
+の適用は 2 段階：
+(i) $\mathbf{q} \leftarrow \mathbf{S}_{\CCD}\mathbf{u}$（既存 CCD ソルバ再利用），
+(ii) $\mathbf{d}^{\FCCD} \leftarrow \mathbf{D}_1\mathbf{u} - \mathbf{D}_2\mathbf{q}$（面上局所ステンシル）．
+全体コスト $\Ord{N}$，追加メモリは $\mathbf{q}$ のみ．
+
+% -------------------------------------------------------------------------------
+\subsubsection{周期境界での DFT 解析}
+\label{sec:fccd_periodic_dft}
+% -------------------------------------------------------------------------------
+
+周期格子で $\mathbf{M}^{\FCCD}$ は\textbf{ブロック循環行列}（block-circulant）となり，
+離散 Fourier 変換で対角化される．
+波数 $\xi = k H$ に対する Fourier シンボル：
+\begin{equation}
+  \hat M^{\FCCD}(\xi)
+  \;=\; \frac{2i\sin(\xi/2)}{H}\cdot e^{-i\xi/2}
+        \;\cdot\;
+        \left[1 - \frac{\xi^2}{24}\,\hat S_{\CCD}(\xi)\right]
+  \label{eq:fccd_fourier_symbol}
+\end{equation}
+（$\hat S_{\CCD}(\xi) = -\omega_2(\xi)^2/H^2$，詳細は SP-C \S7.4）
+を Taylor 展開して $\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，
+式~\eqref{eq:fccd_fourth_order} の 4 次精度が
+Fourier レベルでも確認される．
+
+% -------------------------------------------------------------------------------
+\subsubsection{非一様格子への拡張（概要）}
+\label{sec:fccd_nonuniform_sketch}
+% -------------------------------------------------------------------------------
+
+非一様格子（$H_i$ 可変，面位置パラメータ $\theta_i$）での
+cancellation 係数 $\lambda_i$ と混合項係数 $\mu_i$ は格子幾何に依存：
+\begin{equation}
+  \mu_i = \theta_i - \tfrac{1}{2},
+  \qquad
+  \lambda_i = \frac{1 - 3\theta_i(1-\theta_i)}{6}
+  \label{eq:fccd_nonuniform_coeffs}
+\end{equation}
+（WIKI-T-050）．合成演算子は
+$\mathbf{M}^{\FCCD,\text{nu}} = \mathbf{D}_1^{(H)} - (\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)})\,\mathbf{S}_{\CCD}$
+で，一様極限 $\theta_i\equiv 1/2 \Rightarrow \mu_i\equiv 0, \lambda_i \equiv 1/24$ で
+式~\eqref{eq:fccd_composite_matrix} を回復する（SP-C \S5）．
+完全な係数行列と切断誤差解析は §\ref{sec:grid}（非一様格子）で扱う．
+
+% -------------------------------------------------------------------------------
+\subsubsection{H-01 救済と Balanced-Force 補正}
+\label{sec:fccd_h01_remedy}
+% -------------------------------------------------------------------------------
+
+{\FCCD} を圧力勾配と界面力勾配の\textbf{両方}に適用：
+\begin{equation}
+  \mathcal{G}\,p \;\equiv\; D^{\FCCD}\,p,
+  \qquad
+  \bnabla\psi \;\equiv\; D^{\FCCD}\,\psi,
+  \label{eq:fccd_bf_unification}
+\end{equation}
+すると両演算子は同一面ロカス・同一メトリック・同一 Fourier シンボルとなり
+Balanced-Force 残差は：
+\begin{equation}
+  |\mathrm{BF}_{\text{res}}|
+  \;=\; \bigl\|\mathcal{G}\,p_{\text{YL}} - \sigma\kappa\,\bnabla\psi\bigr\|_\infty
+  \;=\; \Ord{\Delta x^4}
+  \label{eq:fccd_bf_residual_order}
+\end{equation}
+まで圧縮され，H-01 を根治的に解消する．
+これにより CHK-152 の未解決アクション
+「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\bnabla\psi$ の同一メトリクス空間統一」が
+FCCD 採用で満たされる（SP-A \S6.2）．
+
+より運用的な Balanced-Force 設計原則（7 原理 P-1..P-7）は
+§\ref{sec:balanced_force} で統一する；
+{\FCCD} は P-1（演算子ロカス整合）・P-3（$D_h, G_h$ 離散随伴）・
+P-5（フィルタ抑制下での安定性）の 3 原理を同時に満たす
+\textbf{最小構成}であることが SP-J \cite{SPJ} で証明される．
+
+% -------------------------------------------------------------------------------
+\subsubsection{導入の前提と実装チェック}
+\label{sec:fccd_poc_requirements}
+% -------------------------------------------------------------------------------
+
+SP-A \S6.3 は採用前に必要な 3 点を挙げる：
+
+\begin{itemize}
+  \item \textbf{非一様一般化}（§\ref{sec:fccd_nonuniform_sketch}）は
+        SP-C \S5 および SP-E \cite{SPE}（ridge-Eikonal 非一様拡張）で完了．
+  \item \textbf{壁境界}は Option III（Neumann）・Option IV（Dirichlet）を
+        §\ref{sec:ccd_bc} で扱う．Option III は SP-C \S6，Option IV は SP-D \cite{SPD} \S8．
+  \item \textbf{擬時間 PPE 整合}は §\ref{sec:pressure} で
+        純 {\FCCD} PPE（SP-M \cite{SPM}）として再構成する．
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════════

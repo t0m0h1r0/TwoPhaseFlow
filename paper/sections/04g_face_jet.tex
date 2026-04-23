@@ -1,0 +1,146 @@
+% paper/sections/04g_face_jet.tex
+%
+% §4.7  面ジェット $\FaceJet{u}$：FCCD / FVM / HFE の共通プリミティブ
+%        SP-H §2 の紹介．完全な定式化は §7（移流），§8–§9（PPE），§10（アルゴリズム）で再登場．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{面ジェット $\FaceJet{u}$：統一プリミティブ}
+\label{sec:face_jet_def}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-H \cite{SPH} は，面上で値・一次導関数・二次導関数の 3 組
+$\FaceJet{u} = (u_f, u'_f, u''_f)$ を一括して提供する
+\textbf{面ジェット}（face jet）を，
+FCCD 移流・FVM 圧力投影・HFE 再構成の\textbf{共通プリミティブ}として定義する．
+本節では定義と役割分担のみを与え，完全な定式化は
+§\ref{sec:advection}（移流），
+§\ref{sec:pressure}（圧力投影）および
+§\ref{sec:algorithm}（アルゴリズム総合）で再登場する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{定義：面ジェット演算子}
+\label{sec:face_jet_formula}
+% -------------------------------------------------------------------------------
+
+節点上の値 $u_i$ と CCD が返す節点 Hermite ペア $(u'_i, u''_i = q_i)$ を入力とし，
+面 $x_{i-1/2}$ 上の 3 組を：
+\begin{equation}
+  \FaceJet{u}_{i-1/2}
+  \;=\;
+  \bigl(P_f u,\; G_f u,\; Q_f u\bigr)_{i-1/2}
+  \;\equiv\;
+  \bigl(u_{i-1/2},\; u'_{i-1/2},\; u''_{i-1/2}\bigr)
+  \label{eq:face_jet_def}
+\end{equation}
+で定義する．ここで $P_f, G_f, Q_f$ はそれぞれ面値・面勾配・面二次導関数を
+コンパクト Hermite 公式：
+\begin{align}
+  P_{i-1/2}\,u &=
+  \frac{u_{i-1}+u_i}{2}
+  -\frac{H_i^2}{16}(q_{i-1}+q_i), \label{eq:face_value_formula}\\
+  G_{i-1/2}\,u &=
+  \frac{u_i-u_{i-1}}{H_i}
+  -\frac{H_i}{24}(q_i-q_{i-1}), \label{eq:face_grad_formula}\\
+  Q_{i-1/2}\,u &=
+  \tfrac{1}{2}(q_{i-1}+q_i) \label{eq:face_second_formula}
+\end{align}
+で構成する（$q_i = u''_i$ は CCD の出力である二次導関数）．
+式~\eqref{eq:face_value_formula}–\eqref{eq:face_grad_formula} は $\Ord{H^4}$，
+式~\eqref{eq:face_second_formula} は $\Ord{H^2}$ の精度を持つ；
+二次導関数成分が意図的に低次で構成されている理由は，
+これが独立未知数ではなく HFE 再構成と診断に用いる\textbf{補助量}だからである（SP-H §2）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{3 成分の役割分担}
+\label{sec:face_jet_roles}
+% -------------------------------------------------------------------------------
+
+面ジェット 3 成分の配役は以下の通り（詳細は各章参照）：
+
+\begin{center}
+\begin{tabular}{l p{0.35\linewidth} p{0.35\linewidth}}
+\hline
+\textbf{成分} & \textbf{用途} & \textbf{登場章} \\ \hline
+$u_f$ & FCCD 保存形移流 flux / HFE 上流面値 Riemann 入力 &
+  §\ref{sec:advection}（SP-D 移流）\\
+$u'_f$ & 変密度 PPE 面フラックス $\betaf\,p'_f$ / 曲率・界面力評価 &
+  §\ref{sec:pressure}（SP-H §3, SP-M）\\
+$u''_f$ & HFE 方向テイラー再構成の 2 次補正項 / 診断 &
+  §\ref{sec:advection}（SP-H §4, SP-D）\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent
+3 成分が単一の面上で\textbf{同一の演算子族}から構成されることが肝要である．
+PPE で $u'_f$，移流で $u_f$ を使うとき，
+両者が別々のステンシルから生成されると $D_h G_h$ が離散的に随伴でなくなり
+Balanced-Force モード F-2/F-3（§\ref{sec:balanced_force} 参照）を再現する．
+面ジェットはこの整合性を\textbf{API レベルで}保証する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{HFE 方向テイラー状態}
+\label{sec:face_jet_hfe}
+% -------------------------------------------------------------------------------
+
+移流 Riemann 入力として，節点 Hermite $(u, u', u'')$ から
+直接\textbf{方向テイラー上流面値}を構成する補助原語：
+\begin{align}
+  u^{+}_{i-1/2} &= u_{i-1} + \frac{H_i}{2}u'_{i-1} + \frac{H_i^2}{8}u''_{i-1}, \label{eq:hfe_upwind_plus}\\
+  u^{-}_{i-1/2} &= u_{i} \;-\; \frac{H_i}{2}u'_{i} \;+\; \frac{H_i^2}{8}u''_{i}. \label{eq:hfe_upwind_minus}
+\end{align}
+面速度 $a_f$ の符号に従って左右状態から上流側を選び，
+Riemann / Lax--Friedrichs フラックス関数に入力する．
+これが \textbf{HFE}（Hermite Field Extension）上流再構成の
+最低限の原語であり，§\ref{sec:advection} で
+非線形リミッタ・エントロピー選別と組み合わせる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{変密度 PPE との整合性（予告）}
+\label{sec:face_jet_ppe}
+% -------------------------------------------------------------------------------
+
+一次元変密度圧力方程式
+$\partial_x(\betaf\,\partial_x p) = S$
+の FVM セル離散では，
+面フラックス：
+\begin{equation}
+  F^{p}_{f} \;=\; \betaf\,\bigl[\FaceJet{p}\bigr]_{2}
+  \;=\; \betaf\,p'_f
+  \label{eq:face_ppe_flux}
+\end{equation}
+が保存量となる（$[\cdot]_k$ は面ジェットの第 $k$ 成分）．
+界面を横切る場合のジャンプ条件 $[p]_f = \sigma\kappa$, $[\betaf p']_f = 0$（相変化なし）
+は\textbf{面ジェット成分に対して}課され，事後平均したノード勾配に課されない．
+この役割分担（FVM は保存，FCCD は面精度，GFM/IIM はジャンプ行）は
+SP-H §3 で確立され，§\ref{sec:pressure} および
+§\ref{sec:hfe} で具体化される．
+
+% -------------------------------------------------------------------------------
+\subsubsection{設計結果と実装方針}
+\label{sec:face_jet_design_consequences}
+% -------------------------------------------------------------------------------
+
+\begin{itemize}
+  \item \textbf{面ジェットは公開契約（public contract）．}
+        現状の実装は既存の CCD ノード解 $(u'_i, u''_i)$ を再利用する\textbf{加算的}
+        （additive）構成であるが，
+        将来的にブロックシステムで $(u_f, u'_f, u''_f)$ を独立未知数に昇格しても
+        呼び出し側インタフェースは不変である．
+  \item \textbf{FVM 保存は置き換えない．}
+        圧力方程式は依然として面フラックス発散として組み立てる
+        （§\ref{sec:pressure}）．
+  \item \textbf{不連続生フィールドに面値原語を直接適用しない．}
+        ジャンプ処理なしの $u_f$ 適用は，$H^2 q$ 項（式~\eqref{eq:face_value_formula} 第 2 項）が
+        不連続を Gibbs 振動として輸送する（WIKI-L-030 の警告）．
+  \item \textbf{HFE 上流再構成は層．}
+        方向状態を用意するのみで，散逸とエントロピー選別は Riemann 層が担う．
+\end{itemize}
+
+\noindent
+§\ref{sec:advection}（FCCD 移流 Opt B/C），
+§\ref{sec:pressure}（分相 FCCD PPE + HFE），
+§\ref{sec:algorithm}（8 段階時間ステップ）はいずれも
+本節の $\FaceJet{u}$ を唯一の面上プリミティブとして用いる．
+
+% ═══════════════════════════════════════════════════════════════════════════════

@@ -183,16 +183,18 @@
 \newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
 
 % -- SP-O rewrite (2026-04-23) operator-family shorthands --
-\newcommand{\FCCD}{\mathrm{FCCD}}
-\newcommand{\UCCD}[1][]{\mathrm{UCCD}#1}
-\newcommand{\DCCD}{\mathrm{DCCD}}
-\newcommand{\Ridge}{\text{Ridge}}
-\newcommand{\EikSolve}{\mathrm{Eik}}
-\newcommand{\HFE}{\mathrm{HFE}}
-\newcommand{\GFM}{\mathrm{GFM}}
-\newcommand{\FaceJet}[1]{\mathcal{J}_{f}\!\left(#1\right)}
-\newcommand{\BF}{\mathrm{BF}}
-\newcommand{\DC}{\mathrm{DC}}
+%    \ensuremath lets each macro work in both math and text contexts.
+\newcommand{\CCD}{\ensuremath{\mathrm{CCD}}}
+\newcommand{\FCCD}{\ensuremath{\mathrm{FCCD}}}
+\newcommand{\UCCD}[1][]{\ensuremath{\mathrm{UCCD}#1}}
+\newcommand{\DCCD}{\ensuremath{\mathrm{DCCD}}}
+\newcommand{\Ridge}{\ensuremath{\text{Ridge}}}
+\newcommand{\EikSolve}{\ensuremath{\mathrm{Eik}}}
+\newcommand{\HFE}{\ensuremath{\mathrm{HFE}}}
+\newcommand{\GFM}{\ensuremath{\mathrm{GFM}}}
+\newcommand{\FaceJet}[1]{\ensuremath{\mathcal{J}_{f}\!\left(#1\right)}}
+\newcommand{\BF}{\ensuremath{\mathrm{BF}}}
+\newcommand{\DC}{\ensuremath{\mathrm{DC}}}
 
 % -- ξ disambiguation: §6 index / §3.4 ridge auxiliary / §6.2 grid density --
 \newcommand{\xiidx}{\xi_{\text{idx}}}
