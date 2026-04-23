@@ -173,6 +173,23 @@ class CCDSolver:
         d1_nd, d2_nd = self._differentiate_wall_raw(data_nd, axis, None, None)
         return xp.asarray(d1_nd).ravel(), xp.asarray(d2_nd).ravel()
 
+    def first_derivative(
+        self,
+        data,
+        axis: int,
+        bc_left: Optional[Tuple[float, float]] = None,
+        bc_right: Optional[Tuple[float, float]] = None,
+        apply_metric: bool = True,
+    ):
+        """Compute only the first derivative along ``axis``."""
+        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+            return self._differentiate_periodic(
+                data, axis, apply_metric=apply_metric
+            )[0]
+        return self._differentiate_wall_first_only(
+            data, axis, bc_left, bc_right, apply_metric=apply_metric
+        )
+
     def _differentiate_wall_raw(self, data, axis: int, bc_left, bc_right):
         """Wall-BC CCD solve in ξ-space, no metric transformation.
 
@@ -253,6 +270,65 @@ class CCDSolver:
         d1 = xp.moveaxis(d1_flat.reshape(orig_shape), 0, axis)
         d2 = xp.moveaxis(d2_flat.reshape(orig_shape), 0, axis)
         return d1, d2
+
+    def _differentiate_wall_first_only(
+        self, data, axis: int, bc_left, bc_right, apply_metric: bool = True
+    ):
+        """Wall-BC CCD solve returning only the first derivative."""
+        xp = self.xp
+        info = self._solvers[axis]
+        h = info['h']
+        N = info['N']
+        n_int = info['n_int']
+
+        data = xp.asarray(data)
+        f = xp.moveaxis(data, axis, 0)
+        orig_shape = f.shape
+        n_pts = f.shape[0]
+        batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
+        f = f.reshape(n_pts, batch_size)
+
+        f_m1 = f[0:n_int]
+        f_0 = f[1:n_int + 1]
+        f_p1 = f[2:n_int + 2]
+        d1_rhs = (_A1 / h) * (f_p1 - f_m1)
+        d2_rhs = (_A2 / (h * h)) * (f_m1 - 2.0 * f_0 + f_p1)
+        rhs = xp.empty((n_int, 2, batch_size), dtype=f.dtype)
+        rhs[:, 0, :] = d1_rhs
+        rhs[:, 1, :] = d2_rhs
+
+        bc_lo = self._left_boundary(info, f, h, bc_left)
+        bc_hi = self._right_boundary(info, f, h, N, bc_right)
+        rhs[0] -= info['L0_dev'] @ bc_lo
+        rhs[-1] -= info['UN_dev'] @ bc_hi
+
+        rhs_flat = rhs.reshape(2 * n_int, -1)
+        if self.backend.device == "gpu":
+            A_inv_dev_T = info.get('A_inv_dev_T')
+            if A_inv_dev_T is None:
+                x_flat = info['A_inv_dev'] @ rhs_flat
+            else:
+                x_flat = (rhs_flat.T @ A_inv_dev_T).T
+        else:
+            x_flat = self.backend.linalg.lu_solve(
+                (info['lu'], info['piv']), rhs_flat
+            )
+        sol = x_flat.reshape(n_int, 2, -1)
+
+        left_pair = info['M_left_dev'] @ sol[0] + bc_lo
+        right_pair = info['M_right_dev'] @ sol[-1] + bc_hi
+
+        d1_flat = xp.empty((n_pts, batch_size), dtype=f.dtype)
+        d1_flat[1:-1, :] = sol[:, 0, :]
+        d1_flat[0, :] = left_pair[0]
+        d1_flat[N, :] = right_pair[0]
+        d1_axis0 = d1_flat.reshape(orig_shape)
+
+        if not self.grid.uniform and apply_metric:
+            shape = [-1] + [1] * (len(orig_shape) - 1)
+            d1_axis0 = xp.asarray(self.grid.J[axis]).reshape(shape) * d1_axis0
+
+        return xp.moveaxis(d1_axis0, 0, axis)
 
     def enforce_wall_neumann(self, grad, ax: int) -> None:
         """Zero CCD gradient at wall boundaries (Neumann BC: ∂p/∂n = 0).

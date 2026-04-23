@@ -87,6 +87,22 @@ def test_ccd_d1_convergence_order(backend):
     )
 
 
+def test_first_derivative_matches_differentiate_uniform(backend):
+    """d1-only path must match the full CCD differentiate() result."""
+    N = 32
+    grid = make_grid_2d(N, backend)
+    ccd = CCDSolver(grid, backend)
+    x = np.linspace(0.0, 1.0, N + 1)
+    y = np.linspace(0.0, 1.0, N + 1)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    f = np.sin(np.pi * X) * np.cos(np.pi * Y)
+
+    d1_full, _ = ccd.differentiate(f, axis=0)
+    d1_only = ccd.first_derivative(f, axis=0)
+
+    assert np.allclose(np.asarray(d1_only), np.asarray(d1_full))
+
+
 # ── Test 2: O(h⁵) convergence for d2 ─────────────────────────────────────
 
 def test_ccd_d2_convergence_order(backend):
@@ -275,6 +291,19 @@ def test_nonuniform_d1_converges(backend):
         f"Non-uniform d1 convergence order {mean_slope:.2f} < 0.8\n"
         f"Errors: {errors}\nSlopes: {slopes}"
     )
+
+
+def test_first_derivative_matches_differentiate_nonuniform(backend):
+    """d1-only path must stay consistent after non-uniform metric mapping."""
+    grid = _make_nonuniform_grid(32, 2.0, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    X, Y = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    f = np.sin(np.pi * X) * np.cos(np.pi * Y)
+
+    d1_full, _ = ccd.differentiate(f, axis=0)
+    d1_only = ccd.first_derivative(f, axis=0)
+
+    assert np.allclose(np.asarray(d1_only), np.asarray(d1_full))
 
 
 def test_nonuniform_d2_bounded(backend):

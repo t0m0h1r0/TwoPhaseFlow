@@ -229,9 +229,9 @@ class ViscousTerm(INSTerm):
         """Compute Σ_β ∂[μ̃(∂u_α/∂x_β + ∂u_β/∂x_α)]/∂x_β for one α."""
         total = self.xp.zeros_like(vel[alpha])
         for beta in range(len(vel)):
-            du_a_dbeta,  _ = ccd.differentiate(vel[alpha], beta)
-            du_b_dalpha, _ = ccd.differentiate(vel[beta],  alpha)
-            stress,          _ = ccd.differentiate(mu * (du_a_dbeta + du_b_dalpha), beta)
+            du_a_dbeta = ccd.first_derivative(vel[alpha], beta)
+            du_b_dalpha = ccd.first_derivative(vel[beta],  alpha)
+            stress = ccd.first_derivative(mu * (du_a_dbeta + du_b_dalpha), beta)
             total += stress
         return total
 
@@ -261,8 +261,8 @@ class ViscousTerm(INSTerm):
         """CCD Layer-A gradients with low-order conservative stress divergence."""
         total = self.xp.zeros_like(vel[alpha])
         for beta in range(len(vel)):
-            du_a_dbeta, _ = ccd.differentiate(vel[alpha], beta)
-            du_b_dalpha, _ = ccd.differentiate(vel[beta], alpha)
+            du_a_dbeta = ccd.first_derivative(vel[alpha], beta)
+            du_b_dalpha = ccd.first_derivative(vel[beta], alpha)
             stress = mu * (du_a_dbeta + du_b_dalpha)
             total += self._low_order_derivative(stress, beta, ccd)
         return total
@@ -283,7 +283,7 @@ class ViscousTerm(INSTerm):
         normal_axis_masks: list,
     ):
         """CCD tangential derivative with low-order fallback on normal-like axis."""
-        d_ccd, _ = ccd.differentiate(data, axis)
+        d_ccd = ccd.first_derivative(data, axis)
         d_low = self._low_order_derivative(data, axis, ccd)
         return self.xp.where(normal_axis_masks[axis], d_low, d_ccd)
 

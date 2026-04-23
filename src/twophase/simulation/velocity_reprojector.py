@@ -136,8 +136,8 @@ class LegacyReprojector(IVelocityReprojector):
         v_d = _device_array(v, backend)
 
         # Base projection: solve PPE with ρ = 1
-        du_dx, _ = ccd.differentiate(u_d, 0)
-        dv_dy, _ = ccd.differentiate(v_d, 1)
+        du_dx = ccd.first_derivative(u_d, 0)
+        dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         # Uniform density matrix
@@ -145,8 +145,8 @@ class LegacyReprojector(IVelocityReprojector):
         phi = ppe_solver.solve(div, rho)
 
         # Correct velocity
-        dp_dx, _ = ccd.differentiate(phi, 0)
-        dp_dy, _ = ccd.differentiate(phi, 1)
+        dp_dx = ccd.first_derivative(phi, 0)
+        dp_dy = ccd.first_derivative(phi, 1)
         u_proj = u_d - xp.asarray(dp_dx)
         v_proj = v_d - xp.asarray(dp_dy)
 
@@ -198,8 +198,8 @@ class VariableDensityReprojector(IVelocityReprojector):
             rho = xp.ones_like(psi_d)
 
         # Base projection
-        du_dx, _ = ccd.differentiate(u_d, 0)
-        dv_dy, _ = ccd.differentiate(v_d, 1)
+        du_dx = ccd.first_derivative(u_d, 0)
+        dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         phi = ppe_solver.solve(div, rho)
@@ -209,8 +209,8 @@ class VariableDensityReprojector(IVelocityReprojector):
         # requires (1/ρ)∇φ, not ∇φ. Without this factor, water (ρ=1000) is
         # over-corrected by 1000× → instant KE blowup.
         rho_inv = 1.0 / xp.where(xp.abs(rho) > 1e-30, rho, 1.0)
-        dp_dx, _ = ccd.differentiate(phi, 0)
-        dp_dy, _ = ccd.differentiate(phi, 1)
+        dp_dx = ccd.first_derivative(phi, 0)
+        dp_dy = ccd.first_derivative(phi, 1)
         u_proj = u_d - rho_inv * xp.asarray(dp_dx)
         v_proj = v_d - rho_inv * xp.asarray(dp_dy)
 
@@ -341,18 +341,18 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             )
 
         # Base projection
-        du_dx, _ = ccd.differentiate(u_d, 0)
-        dv_dy, _ = ccd.differentiate(v_d, 1)
+        du_dx = ccd.first_derivative(u_d, 0)
+        dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         # Helper: apply correction and compute divergence
         def _apply_phi_and_div(phi_field):
-            dp_dx, _ = ccd.differentiate(phi_field, 0)
-            dp_dy, _ = ccd.differentiate(phi_field, 1)
+            dp_dx = ccd.first_derivative(phi_field, 0)
+            dp_dy = ccd.first_derivative(phi_field, 1)
             u_c = u_d - xp.asarray(dp_dx)
             v_c = v_d - xp.asarray(dp_dy)
-            du_c_dx, _ = ccd.differentiate(u_c, 0)
-            dv_c_dy, _ = ccd.differentiate(v_c, 1)
+            du_c_dx = ccd.first_derivative(u_c, 0)
+            dv_c_dy = ccd.first_derivative(v_c, 1)
             _sum = xp.asarray(du_c_dx) + xp.asarray(dv_c_dy)
             div_check = float(xp.sqrt(xp.sum(_sum ** 2)))
             return u_c, v_c, float(div_check)
@@ -372,8 +372,8 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             rho_host = _host_array(rho, backend)
             div_host = _host_array(div, backend)
             kappa0 = np.zeros_like(rho_host)
-            dp0_x, _ = ccd.differentiate(phi_base, 0)
-            dp0_y, _ = ccd.differentiate(phi_base, 1)
+            dp0_x = ccd.first_derivative(phi_base, 0)
+            dp0_y = ccd.first_derivative(phi_base, 1)
 
             delta_q = self._reproj_iim.compute_correction(
                 A_host,
