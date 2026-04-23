@@ -35,6 +35,12 @@ if TYPE_CHECKING:
     from ..core.grid import Grid
     from ..core.boundary import BoundarySpec
 
+from .ppe_builder_helpers import (
+    build_ppe_index_arrays,
+    build_ppe_matrix_triplets,
+    prepare_ppe_rhs_vector,
+)
+
 
 # DO NOT DELETE — passed tests 2026-03-20
 # Superseded by: _CCDPPEBase._build_sparse_operator() in ccd_ppe_base.py
@@ -114,129 +120,7 @@ class PPEBuilder:
         Periodic BC uses np.isin (not in CuPy): rows are pulled to host
         for that one mask operation, then results converted back to xp.
         """
-        xp = self.xp
-        n = self.n_dof
-        ndim = self.ndim
-
-        rho_arr = xp.asarray(rho)
-        rho_flat = rho_arr.ravel()
-
-        # Lazily upload static face-index arrays to xp (one-time per init).
-        if not self._face_indices_dev:
-            for ax, (idx_L, idx_R) in self._face_indices.items():
-                self._face_indices_dev[ax] = (xp.asarray(idx_L),
-                                              xp.asarray(idx_R))
-
-        data_list: list = []
-        row_list: list  = []
-        col_list: list  = []
-
-        # Scalar strides computed with numpy (no device needed).
-        strides = [int(np.prod(self.shape_field[ax + 1:])) for ax in range(ndim)]
-
-        for ax in range(ndim):
-            N_ax = self.N[ax]
-            idx_L_xp, idx_R_xp = self._face_indices_dev[ax]   # xp int arrays
-
-            rho_L = rho_flat[idx_L_xp]
-            rho_R = rho_flat[idx_R_xp]
-            a_f = 2.0 / (rho_L + rho_R)   # harmonic mean face coefficient
-
-            if not self.grid.uniform:
-                # Non-uniform grid: per-face spacings precomputed once, cached.
-                # Face between node k and k+1:
-                #   d_face[k] = x[k+1] − x[k]  (gradient denominator)
-                #   dv[i] = control volume width at node i
-                cache_key = ('nonunif', ax)
-                if cache_key not in self._gpu_coeff_cache:
-                    coords = np.asarray(self.grid.coords[ax])
-                    d_face = coords[1:] - coords[:-1]
-                    dv = np.empty(len(coords))
-                    dv[0]    = (coords[1] - coords[0]) / 2.0
-                    dv[-1]   = (coords[-1] - coords[-2]) / 2.0
-                    dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
-                    idx_L_h, idx_R_h = self._face_indices[ax]   # numpy
-                    stride = strides[ax]
-                    ax_idx_L = (idx_L_h // stride) % self.shape_field[ax]
-                    ax_idx_R = (idx_R_h // stride) % self.shape_field[ax]
-                    self._gpu_coeff_cache[cache_key] = (
-                        xp.asarray(d_face[ax_idx_L]),
-                        xp.asarray(dv[ax_idx_L]),
-                        xp.asarray(dv[ax_idx_R]),
-                    )
-                d_f_xp, dv_L_xp, dv_R_xp = self._gpu_coeff_cache[cache_key]
-                coeff_for_L = a_f / d_f_xp / dv_L_xp
-                coeff_for_R = a_f / d_f_xp / dv_R_xp
-            else:
-                h = float(self.grid.L[ax] / N_ax)
-                h2 = h * h
-                coeff = a_f / h2
-
-                if self.bc_type == 'periodic':
-                    coeff_for_L = coeff
-                    coeff_for_R = coeff
-                else:
-                    # Node-centred boundary correction: boundary nodes have
-                    # control volume h/2 → coefficient doubles. Masks cached.
-                    cache_key = ('bc_mask', ax)
-                    if cache_key not in self._gpu_coeff_cache:
-                        idx_L_h, idx_R_h = self._face_indices[ax]
-                        stride = strides[ax]
-                        ax_idx_L = (idx_L_h // stride) % self.shape_field[ax]
-                        ax_idx_R = (idx_R_h // stride) % self.shape_field[ax]
-                        self._gpu_coeff_cache[cache_key] = (
-                            xp.asarray(ax_idx_L == 0),
-                            xp.asarray(ax_idx_R == N_ax),
-                        )
-                    mask_L, mask_R = self._gpu_coeff_cache[cache_key]
-                    coeff_for_L = xp.where(mask_L, 2.0 * coeff, coeff)
-                    coeff_for_R = xp.where(mask_R, 2.0 * coeff, coeff)
-
-            # L → R, R → L, diagonal contributions
-            data_list.extend([coeff_for_L, coeff_for_R, -coeff_for_L, -coeff_for_R])
-            row_list.extend([idx_L_xp, idx_R_xp, idx_L_xp, idx_R_xp])
-            col_list.extend([idx_R_xp, idx_L_xp, idx_L_xp, idx_R_xp])
-
-            # Periodic wrap face: connects node (N_ax-1) ↔ node 0
-            if self.bc_type == 'periodic':
-                idx_wL, idx_wR = self._wrap_face_indices[ax]
-                rho_wL = rho_flat[xp.asarray(idx_wL)]
-                rho_wR = rho_flat[xp.asarray(idx_wR)]
-                coeff_w = 2.0 / (rho_wL + rho_wR) / h2
-                idx_wL_xp = xp.asarray(idx_wL)
-                idx_wR_xp = xp.asarray(idx_wR)
-                data_list.extend([coeff_w, coeff_w, -coeff_w, -coeff_w])
-                row_list.extend([idx_wL_xp, idx_wR_xp, idx_wL_xp, idx_wR_xp])
-                col_list.extend([idx_wR_xp, idx_wL_xp, idx_wL_xp, idx_wR_xp])
-
-        data = xp.concatenate(data_list)
-        rows = xp.concatenate(row_list)
-        cols = xp.concatenate(col_list)
-
-        # Periodic BC: ghost-node rows replaced by identity-minus constraints.
-        # np.isin not in CuPy — pull rows to host for the mask, convert back.
-        if self.bc_type == 'periodic':
-            img_dofs = self._periodic_image_dofs
-            src_dofs = self._periodic_image_sources
-            rows_h = np.asarray(self.backend.to_host(rows))
-            keep = xp.asarray(~np.isin(rows_h, img_dofs))
-            data, rows, cols = data[keep], rows[keep], cols[keep]
-            data = xp.concatenate([data,
-                                    xp.ones(len(img_dofs)),
-                                    -xp.ones(len(img_dofs))])
-            rows = xp.concatenate([rows,
-                                    xp.asarray(img_dofs), xp.asarray(img_dofs)])
-            cols = xp.concatenate([cols,
-                                    xp.asarray(img_dofs), xp.asarray(src_dofs)])
-
-        # Pin one pressure DOF to fix the null space (p[pin] = 0).
-        pin = self._pin_dof
-        keep = rows != pin
-        data = xp.concatenate([data[keep], xp.array([1.0])])
-        rows = xp.concatenate([rows[keep], xp.array([pin], dtype=rows.dtype)])
-        cols = xp.concatenate([cols[keep], xp.array([pin], dtype=cols.dtype)])
-
-        return (data, rows, cols), (n, n)
+        return build_ppe_matrix_triplets(self, rho)
 
     def build_structure(self):
         """Return the fixed sparsity pattern (rows, cols) and metadata.
@@ -298,102 +182,10 @@ class PPEBuilder:
         -------
         rhs_vec : np.ndarray, shape (n_dof,)
         """
-        rhs_vec = np.asarray(self.backend.to_host(rhs_field)).ravel().copy()
-        rhs_vec[self._pin_dof] = 0.0
-        if self.bc_type == 'periodic' and self._periodic_image_dofs is not None:
-            rhs_vec[self._periodic_image_dofs] = 0.0
-        return rhs_vec
+        return prepare_ppe_rhs_vector(self, rhs_field)
 
     # ── Index array pre-computation ───────────────────────────────────────
 
     def _build_index_arrays(self) -> None:
         """Pre-compute the flat node indices of each face type."""
-        import numpy as np_host
-        self._face_indices = {}
-
-        shape = self.shape_field  # e.g. (Nx+1, Ny+1)
-
-        for ax in range(self.ndim):
-            ranges = [np_host.arange(s) for s in shape]
-            N_ax = self.N[ax]
-
-            if self.bc_type == 'periodic':
-                # Internal faces: (0,1), (1,2), ..., (N_ax-2, N_ax-1)
-                # The last face (N_ax-1, N_ax) is REPLACED by the wrap face below.
-                ranges_L = [r.copy() for r in ranges]
-                ranges_R = [r.copy() for r in ranges]
-                ranges_L[ax] = np_host.arange(0, N_ax - 1)
-                ranges_R[ax] = np_host.arange(1, N_ax)
-            else:
-                # Wall/Neumann: faces (0,1), ..., (N_ax-1, N_ax)
-                ranges_L = [r.copy() for r in ranges]
-                ranges_R = [r.copy() for r in ranges]
-                ranges_L[ax] = np_host.arange(0, N_ax)
-                ranges_R[ax] = np_host.arange(1, N_ax + 1)
-
-            grid_L = np_host.meshgrid(*ranges_L, indexing='ij')
-            grid_R = np_host.meshgrid(*ranges_R, indexing='ij')
-
-            idx_L = np_host.ravel_multi_index(
-                [g.ravel() for g in grid_L], shape
-            )
-            idx_R = np_host.ravel_multi_index(
-                [g.ravel() for g in grid_R], shape
-            )
-            self._face_indices[ax] = (idx_L, idx_R)
-
-        if self.bc_type == 'periodic':
-            # Wrap faces: L = node (N_ax-1, ...), R = node (0, ...)
-            # These are the physical periodic faces replacing the excluded last face.
-            self._wrap_face_indices = {}
-            image_to_source: dict[int, int] = {}
-
-            for ax in range(self.ndim):
-                N_ax = self.N[ax]
-                ranges = [np_host.arange(s) for s in shape]
-
-                # Wrap face nodes along this axis
-                ranges_wL = [r.copy() for r in ranges]
-                ranges_wR = [r.copy() for r in ranges]
-                ranges_wL[ax] = np_host.array([N_ax - 1])
-                ranges_wR[ax] = np_host.array([0])
-
-                g_wL = np_host.meshgrid(*ranges_wL, indexing='ij')
-                g_wR = np_host.meshgrid(*ranges_wR, indexing='ij')
-                idx_wL = np_host.ravel_multi_index(
-                    [g.ravel() for g in g_wL], shape
-                )
-                idx_wR = np_host.ravel_multi_index(
-                    [g.ravel() for g in g_wR], shape
-                )
-                self._wrap_face_indices[ax] = (idx_wL, idx_wR)
-
-                # Ghost (periodic image) nodes: coordinate = N_ax along this axis.
-                # Their source node has coordinate 0 along the same axis.
-                ranges_img = [r.copy() for r in ranges]
-                ranges_src = [r.copy() for r in ranges]
-                ranges_img[ax] = np_host.array([N_ax])
-                ranges_src[ax] = np_host.array([0])
-
-                g_img = np_host.meshgrid(*ranges_img, indexing='ij')
-                g_src = np_host.meshgrid(*ranges_src, indexing='ij')
-                idx_img = np_host.ravel_multi_index(
-                    [g.ravel() for g in g_img], shape
-                )
-                idx_src = np_host.ravel_multi_index(
-                    [g.ravel() for g in g_src], shape
-                )
-                # First-seen axis wins for nodes that are ghost along multiple axes.
-                for im, sr in zip(idx_img.tolist(), idx_src.tolist()):
-                    if im not in image_to_source:
-                        image_to_source[im] = sr
-
-            sorted_imgs = sorted(image_to_source.keys())
-            self._periodic_image_dofs = np_host.array(sorted_imgs, dtype=np_host.intp)
-            self._periodic_image_sources = np_host.array(
-                [image_to_source[k] for k in sorted_imgs], dtype=np_host.intp
-            )
-        else:
-            self._wrap_face_indices = {}
-            self._periodic_image_dofs = None
-            self._periodic_image_sources = None
+        build_ppe_index_arrays(self)
