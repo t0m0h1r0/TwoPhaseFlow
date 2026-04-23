@@ -20,27 +20,19 @@ from ..config import GridConfig
 from ..core.grid import Grid
 from ..ccd.ccd_solver import CCDSolver
 from ..ccd.fccd import FCCDSolver
-from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
 from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.reinitialize import Reinitializer
-from ..levelset.transport_strategy import (
-    ILevelSetTransport, PhiPrimaryTransport, PsiDirectTransport,
-    StaticInterfaceTransport,
-)
-from .step_diagnostics import IStepDiagnostics, NullStepDiagnostics, ActiveStepDiagnostics
+from .step_diagnostics import ActiveStepDiagnostics
 from .velocity_reprojector import (
-    IVelocityReprojector,
     LegacyReprojector, VariableDensityReprojector,      # registration
     ConsistentGFMReprojector, ConsistentIIMReprojector,  # registration
 )
 from .viscous_predictor import (
-    IViscousPredictor,
     ExplicitViscousPredictor, CNViscousPredictor,  # registration
 )
 from .surface_tension_strategy import (
-    INSSurfaceTensionStrategy,
     SurfaceTensionForce, NullSurfaceTensionForce, PressureJumpSurfaceTension,  # registration
 )
 from .gradient_operator import (
@@ -49,7 +41,7 @@ from .gradient_operator import (
 )
 from .ns_operator_stack import NSOperatorStackOptions, build_ns_operator_stack
 from .ns_grid_rebuild import rebuild_ns_grid
-from .scheme_build_ctx import ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx
+from .ns_runtime_components import build_ns_runtime_components
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
 from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registration
@@ -263,92 +255,39 @@ class TwoPhaseNSSolver:
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
         self._initialise_scheme_runtime(options.schemes)
         self._initialise_operator_stack(options.grid, options.schemes)
-        self._reconstruct_base = HeavisideInterfaceReconstructor(
-            self._backend,
-            ReconstructionConfig(
-                eps=self._eps,
-                eps_scale=1.0,
-                clip_factor=self._phi_primary_clip_factor,
-            ),
-        )
-        self._reconstruct_phi_primary = HeavisideInterfaceReconstructor(
-            self._backend,
-            ReconstructionConfig(
-                eps=self._eps,
-                eps_scale=self._phi_primary_heaviside_eps_scale,
-                clip_factor=self._phi_primary_clip_factor,
-            ),
-        )
         self._reinit = self._build_reinitializer(options.interface, options.schemes)
-
-        # Level-set transport strategy (advection + reinit + redistancing)
-        if not self._interface_tracking_enabled:
-            self._transport = StaticInterfaceTransport(self._backend)
-        elif self._phi_primary_transport:
-            self._transport = PhiPrimaryTransport(
-                self._backend,
-                {
-                    "redist_every": self._phi_primary_redist_every,
-                    "clip_factor": self._phi_primary_clip_factor,
-                    "eps_scale": self._phi_primary_heaviside_eps_scale,
-                },
-                self._reconstruct_phi_primary,
-                self._adv,
-                self._reinit,
-                self._grid,
-            )
-        else:
-            self._transport = PsiDirectTransport(
-                self._backend,
-                self._adv,
-                self._reinit,
-                reinit_every=options.interface.reinit_every,
-            )
-
-        self.X, self.Y = self._grid.meshgrid()
-
-        # Step diagnostics strategy (Null Object pattern)
-        self._step_diag = (
-            ActiveStepDiagnostics() if options.schemes.debug_diagnostics else NullStepDiagnostics()
-        )
-
-        # Velocity reprojection strategy (after grid rebuild)
-        reproj_ctx = ReprojectorBuildCtx(
-            iim_stencil_corrector=self._reproj_iim,
-            reconstruct_base=self._reconstruct_base,
-        )
-        self._reprojector: IVelocityReprojector = IVelocityReprojector.from_scheme(
-            self._reproject_mode, reproj_ctx
-        )
-
-        # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = options.schemes.cn_viscous
         self._Re = options.schemes.Re
         self._viscous_spatial_scheme = str(options.schemes.viscous_spatial_scheme)
-        from ..ns_terms.viscous import ViscousTerm
-        _viscous_term = ViscousTerm(
-            self._backend,
-            Re=options.schemes.Re,
-            cn_viscous=True,
-            spatial_scheme=self._viscous_spatial_scheme,
-        )
-        _viscous_scheme = "crank_nicolson" if options.schemes.cn_viscous else "explicit"
-        viscous_ctx = ViscousBuildCtx(
-            backend=self._backend,
-            re=options.schemes.Re,
-            spatial_scheme=self._viscous_spatial_scheme,
-            viscous_term=_viscous_term,
-        )
-        self._viscous_predictor: IViscousPredictor = IViscousPredictor.from_scheme(
-            _viscous_scheme, viscous_ctx
-        )
-
-        # Surface tension strategy — scheme class decides its own construction.
         self._surface_tension_scheme = str(options.schemes.surface_tension_scheme)
-        st_ctx = SurfaceTensionBuildCtx(backend=self._backend)
-        self._st_force: INSSurfaceTensionStrategy = INSSurfaceTensionStrategy.from_scheme(
-            self._surface_tension_scheme, st_ctx
+        components = build_ns_runtime_components(
+            backend=self._backend,
+            grid=self._grid,
+            adv=self._adv,
+            reinit=self._reinit,
+            eps=self._eps,
+            phi_primary_clip_factor=self._phi_primary_clip_factor,
+            phi_primary_heaviside_eps_scale=self._phi_primary_heaviside_eps_scale,
+            interface_tracking_enabled=self._interface_tracking_enabled,
+            phi_primary_transport=self._phi_primary_transport,
+            phi_primary_redist_every=self._phi_primary_redist_every,
+            reinit_every=options.interface.reinit_every,
+            debug_diagnostics=options.schemes.debug_diagnostics,
+            reproject_mode=self._reproject_mode,
+            reproj_iim=self._reproj_iim,
+            cn_viscous=self._cn_viscous,
+            reynolds_number=self._Re,
+            viscous_spatial_scheme=self._viscous_spatial_scheme,
+            surface_tension_scheme=self._surface_tension_scheme,
         )
+        self._reconstruct_base = components.reconstruct_base
+        self._reconstruct_phi_primary = components.reconstruct_phi_primary
+        self._transport = components.transport
+        self.X, self.Y = components.X, components.Y
+        self._step_diag = components.step_diag
+        self._reprojector = components.reprojector
+        self._viscous_predictor = components.viscous_predictor
+        self._st_force = components.st_force
 
     def _initialise_geometry(self, options: SolverGridOptions) -> None:
         """Initialise grid geometry and backend state."""
