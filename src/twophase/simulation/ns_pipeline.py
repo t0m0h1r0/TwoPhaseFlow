@@ -54,7 +54,7 @@ from .gradient_operator import (
 )
 from .scheme_build_ctx import (
     GradientBuildCtx, AdvectionBuildCtx, ConvectionBuildCtx,
-    ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx, PPEBuildCtx,
+    ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx,
 )
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.interfaces import IConvectionTerm
@@ -63,11 +63,17 @@ from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registra
 from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm           # registration
 from ..ns_terms.context import NSComputeContext
 from ..ppe.interfaces import IPPESolver
-from ..ppe.defect_correction import PPESolverDefectCorrection
 from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree              # registration
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
+from .ns_runtime_factories import (
+    NSPPEFactoryOptions,
+    build_ns_ppe_cfg_shim,
+    build_ns_ppe_solver,
+    build_ns_plain_ppe_solver,
+    build_ns_reinitializer,
+)
 from .runtime_setup import (
     apply_velocity_bc as _apply_bc,
     build_initial_condition,
@@ -603,19 +609,37 @@ class TwoPhaseNSSolver:
         scheme_options: SolverSchemeOptions,
     ) -> Reinitializer:
         """Build the level-set reinitializer."""
-        return Reinitializer(
-            self._backend,
-            self._grid,
-            self._ccd,
-            self._eps,
-            n_steps=scheme_options.reinit_steps,
-            method=interface_options.reinit_method,
-            phi_smooth_C=interface_options.dgr_phi_smooth_C,
-            eps_scale=self._reinit_eps_scale,
-            sigma_0=float(interface_options.ridge_sigma_0),
+        return build_ns_reinitializer(
+            backend=self._backend,
+            grid=self._grid,
+            ccd=self._ccd,
+            eps=self._eps,
+            reinit_steps=scheme_options.reinit_steps,
+            reinit_method=interface_options.reinit_method,
+            dgr_phi_smooth_C=interface_options.dgr_phi_smooth_C,
+            reinit_eps_scale=self._reinit_eps_scale,
+            ridge_sigma_0=float(interface_options.ridge_sigma_0),
         )
 
     # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
+
+    def _make_ppe_factory_options(self, solver_name: str) -> NSPPEFactoryOptions:
+        return NSPPEFactoryOptions(
+            solver_name=solver_name,
+            tolerance=self._ppe_tolerance,
+            max_iterations=self._ppe_max_iterations,
+            restart=self._ppe_restart,
+            preconditioner=self._ppe_preconditioner,
+            pcr_stages=self._ppe_pcr_stages,
+            c_tau=self._ppe_c_tau,
+            iteration_method=self._ppe_iteration_method,
+            coefficient_scheme=self._ppe_coefficient_scheme,
+            interface_coupling_scheme=self._ppe_interface_coupling_scheme,
+            defect_correction=self._ppe_defect_correction,
+            dc_max_iterations=self._ppe_dc_max_iterations,
+            dc_tolerance=self._ppe_dc_tolerance,
+            dc_relaxation=self._ppe_dc_relaxation,
+        )
 
     def _build_ppe_solver(self, pressure_scheme: str):
         """Instantiate the PPE solver selected by ``pressure_scheme``.
@@ -631,56 +655,23 @@ class TwoPhaseNSSolver:
         available via the SimulationBuilder pipeline (builder.py) but are
         disabled here to prevent silent divergence in two-phase runs.
         """
-        ppe_solver = pressure_scheme
-        if self._ppe_defect_correction:
-            base_solver = self._build_plain_ppe_solver(ppe_solver)
-            # DC outer operator: matrix-free without preconditioner (used for residual)
-            from ..core.boundary import BoundarySpec
-            _op_bc_spec = BoundarySpec(
-                bc_type=self.bc_type,
-                shape=tuple(n + 1 for n in self._grid.N),
-                N=self._grid.N,
-            )
-            _op_ctx = PPEBuildCtx(
-                backend=self._backend, grid=self._grid,
-                bc_type=self.bc_type, bc_spec=_op_bc_spec,
-                config=self._build_ppe_cfg_shim(preconditioner="none"),
-                fccd=self._fccd,
-            )
-            operator = IPPESolver.from_scheme(ppe_solver, _op_ctx)
-            return PPESolverDefectCorrection(
-                self._backend,
-                self._grid,
-                base_solver,
-                operator,
-                max_corrections=self._ppe_dc_max_iterations,
-                tolerance=self._ppe_dc_tolerance,
-                relaxation=self._ppe_dc_relaxation,
-            )
-        return self._build_plain_ppe_solver(ppe_solver)
+        return build_ns_ppe_solver(
+            backend=self._backend,
+            grid=self._grid,
+            bc_type=self.bc_type,
+            fccd=self._fccd,
+            options=self._make_ppe_factory_options(pressure_scheme),
+        )
 
     def _build_plain_ppe_solver(self, ppe_scheme: str):
         """Instantiate an unwrapped PPE solver via registry."""
-        from ..core.boundary import BoundarySpec
-
-        bc_spec = BoundarySpec(
+        return build_ns_plain_ppe_solver(
+            backend=self._backend,
+            grid=self._grid,
             bc_type=self.bc_type,
-            shape=tuple(n + 1 for n in self._grid.N),
-            N=self._grid.N,
-        )
-        cfg_shim = (
-            self._build_ppe_cfg_shim(
-                preconditioner=self._ppe_preconditioner,
-                pcr_stages=self._ppe_pcr_stages,
-            )
-            if ppe_scheme in {"fvm_iterative", "fccd_iterative"} else None
-        )
-        ppe_ctx = PPEBuildCtx(
-            backend=self._backend, grid=self._grid,
-            bc_type=self.bc_type, bc_spec=bc_spec, config=cfg_shim,
             fccd=self._fccd,
+            options=self._make_ppe_factory_options(ppe_scheme),
         )
-        return IPPESolver.from_scheme(ppe_scheme, ppe_ctx)
 
     def _build_ppe_cfg_shim(
         self,
@@ -689,20 +680,10 @@ class TwoPhaseNSSolver:
         pcr_stages: int | None = None,
     ):
         """Build the SimpleNamespace config shim for PPESolverFVMMatrixFree."""
-        from types import SimpleNamespace
-
-        return SimpleNamespace(
-            solver=SimpleNamespace(
-                pseudo_tol=self._ppe_tolerance,
-                pseudo_maxiter=self._ppe_max_iterations,
-                pseudo_c_tau=self._ppe_c_tau,
-                ppe_iteration_method=self._ppe_iteration_method,
-                ppe_restart=self._ppe_restart,
-                ppe_preconditioner=preconditioner or "none",
-                ppe_pcr_stages=pcr_stages,
-                ppe_coefficient_scheme=self._ppe_coefficient_scheme,
-                ppe_interface_coupling_scheme=self._ppe_interface_coupling_scheme,
-            )
+        return build_ns_ppe_cfg_shim(
+            self._make_ppe_factory_options(self._ppe_solver_name),
+            preconditioner=preconditioner,
+            pcr_stages=pcr_stages,
         )
 
     # ── class-method constructors ─────────────────────────────────────────
