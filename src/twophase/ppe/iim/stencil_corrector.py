@@ -36,6 +36,9 @@ if TYPE_CHECKING:
     from ...core.grid import Grid
 
 from .jump_conditions import JumpConditionCalculator
+from .stencil_corrector_hermite import compute_hermite_stencil_correction
+from .stencil_corrector_nearest import compute_nearest_stencil_correction
+from .stencil_corrector_utils import find_interface_crossings, sparse_element
 
 
 class IIMStencilCorrector:
@@ -109,60 +112,13 @@ class IIMStencilCorrector:
         Only the sparse element extraction uses a loop over O(N_Γ)
         crossing faces (typically N_Γ << N²).
         """
-        shape = self.grid.shape
-        Nx, Ny = shape
-        n = Nx * Ny
-
-        phi_flat = phi.ravel()
-        kap_flat = kappa.ravel()
-        delta_q = np.zeros(n)
-
-        L_csr = L_sparse.tocsr()
-
-        # Build face index pairs and detect crossings vectorially.
-        for axis in range(2):
-            if axis == 0:
-                # X-direction faces: (i, i+1) for i in [0, Nx-2], all j
-                idx_a = (np.arange(Nx - 1)[:, None] * Ny
-                         + np.arange(Ny)[None, :]).ravel()
-                idx_b = idx_a + Ny
-            else:
-                # Y-direction faces: (j, j+1) for all i, j in [0, Ny-2]
-                idx_a = (np.arange(Nx)[:, None] * Ny
-                         + np.arange(Ny - 1)[None, :]).ravel()
-                idx_b = idx_a + 1
-
-            phi_a = phi_flat[idx_a]
-            phi_b = phi_flat[idx_b]
-            cross = (phi_a * phi_b) < 0.0
-
-            if not np.any(cross):
-                continue
-
-            # Extract crossing subset
-            ca = idx_a[cross]
-            cb = idx_b[cross]
-            pa = phi_a[cross]
-
-            abs_a = np.abs(phi_flat[ca])
-            abs_b = np.abs(phi_flat[cb])
-            kap_iface = (
-                (abs_b * kap_flat[ca] + abs_a * kap_flat[cb])
-                / (abs_a + abs_b + 1e-30)
-            )
-            jump_p = sigma * kap_iface
-
-            # Sparse element extraction — O(N_Γ) only
-            L_ab = np.array([_sparse_element(L_csr, a, b) for a, b in zip(ca, cb)])
-            L_ba = np.array([_sparse_element(L_csr, b, a) for a, b in zip(ca, cb)])
-
-            # Sign: a<0 means a=liquid → += L_ab·jump, -= L_ba·jump
-            # Sign: a>0 means a=gas   → -= L_ab·jump, += L_ba·jump
-            sign = np.where(pa < 0.0, 1.0, -1.0)
-            np.add.at(delta_q, ca, sign * L_ab * jump_p)
-            np.add.at(delta_q, cb, -sign * L_ba * jump_p)
-
-        return delta_q
+        return compute_nearest_stencil_correction(
+            self.grid,
+            L_sparse,
+            phi,
+            kappa,
+            sigma,
+        )
 
     def _correction_hermite(
         self,
@@ -184,106 +140,18 @@ class IIMStencilCorrector:
         The correction at each crossing face uses the fractional
         position α = |φ_a|/(|φ_a|+|φ_b|) to weight the contributions.
         """
-        shape = self.grid.shape
-        Nx, Ny = shape
-        n = Nx * Ny
-
-        phi_flat = phi.ravel()
-        kap_flat = kappa.ravel()
-        rho_flat = rho.ravel()
-        rhs_flat = rhs.ravel()
-        delta_q = np.zeros(n)
-
-        L_csr = L_sparse.tocsr()
-
-        # Material properties (assumed piecewise constant near Γ)
-        rho_l = float(np.max(rho))
-        rho_g = float(np.min(rho))
-
-        for axis in range(2):
-            h = self.grid.L[axis] / self.grid.N[axis]
-
-            if axis == 0:
-                N_walk = Nx - 1
-                N_perp = Ny
-            else:
-                N_walk = Nx
-                N_perp = Ny - 1
-
-            for i in range(N_walk):
-                for j in range(N_perp if axis == 1 else Ny):
-                    if axis == 0:
-                        idx_a = i * Ny + j
-                        idx_b = (i + 1) * Ny + j
-                    else:
-                        idx_a = i * Ny + j
-                        idx_b = i * Ny + (j + 1)
-
-                    phi_a = phi_flat[idx_a]
-                    phi_b = phi_flat[idx_b]
-
-                    if phi_a * phi_b >= 0.0:
-                        continue
-
-                    # Fractional crossing position
-                    abs_a = abs(phi_a)
-                    abs_b = abs(phi_b)
-                    alpha = abs_a / (abs_a + abs_b + 1e-30)
-
-                    # Interface curvature
-                    kap_iface = (1.0 - alpha) * kap_flat[idx_a] + alpha * kap_flat[idx_b]
-
-                    # Determine liquid/gas sides
-                    if phi_a < 0.0:
-                        idx_liq, idx_gas = idx_a, idx_b
-                    else:
-                        idx_liq, idx_gas = idx_b, idx_a
-
-                    # Liquid-side pressure gradient along this axis
-                    p_prime_l = 0.0
-                    if axis == 0 and dp_dx is not None:
-                        p_prime_l = float(dp_dx.ravel()[idx_liq])
-                    elif axis == 1 and dp_dy is not None:
-                        p_prime_l = float(dp_dy.ravel()[idx_liq])
-
-                    # Compute jump conditions
-                    C = self._jump_calc.compute_1d_jumps(
-                        sigma=sigma,
-                        kappa=kap_iface,
-                        rho_l=rho_l,
-                        rho_g=rho_g,
-                        p_prime_l=p_prime_l,
-                        p_double_prime_l=0.0,
-                        q_l=float(rhs_flat[idx_liq]),
-                        q_g=float(rhs_flat[idx_gas]),
-                    )
-
-                    # Hermite-weighted correction (§4.2 of short paper)
-                    # W(α) weights for the CCD stencil crossing:
-                    #   w_0 = 1          (p equation contribution)
-                    #   w_1 = h·(1-α)    (p' equation, distance to crossing)
-                    #   w_2 = h²·(1-α)²/2  (p'' equation)
-                    w = np.array([
-                        1.0,
-                        h * (1.0 - alpha),
-                        0.5 * h**2 * (1.0 - alpha)**2,
-                    ])
-                    correction = float(np.dot(w, C[:3]))
-
-                    # Apply via sparse operator elements
-                    L_ab = _sparse_element(L_csr, idx_a, idx_b)
-                    L_ba = _sparse_element(L_csr, idx_b, idx_a)
-
-                    if phi_a < 0.0:
-                        # a=liquid, b=gas
-                        delta_q[idx_a] += L_ab * correction
-                        delta_q[idx_b] -= L_ba * correction
-                    else:
-                        # a=gas, b=liquid
-                        delta_q[idx_a] -= L_ab * correction
-                        delta_q[idx_b] += L_ba * correction
-
-        return delta_q
+        return compute_hermite_stencil_correction(
+            self.grid,
+            self._jump_calc,
+            L_sparse,
+            phi,
+            kappa,
+            sigma,
+            rho,
+            rhs,
+            dp_dx,
+            dp_dy,
+        )
 
     def find_interface_crossings(
         self,
@@ -302,61 +170,7 @@ class IIMStencilCorrector:
         crossings : list of dict with keys:
             axis, idx_a, idx_b, alpha, phi_a, phi_b
         """
-        shape = self.grid.shape
-        Nx, Ny = shape
-        crossings = []
-
-        for axis in range(2):
-            if axis == 0:
-                for i in range(Nx - 1):
-                    for j in range(Ny):
-                        idx_a = i * Ny + j
-                        idx_b = (i + 1) * Ny + j
-                        phi_a = phi.ravel()[idx_a]
-                        phi_b = phi.ravel()[idx_b]
-                        if phi_a * phi_b < 0.0:
-                            abs_a = abs(phi_a)
-                            abs_b = abs(phi_b)
-                            crossings.append({
-                                "axis": axis,
-                                "idx_a": idx_a,
-                                "idx_b": idx_b,
-                                "alpha": abs_a / (abs_a + abs_b),
-                                "phi_a": phi_a,
-                                "phi_b": phi_b,
-                            })
-            else:
-                for i in range(Nx):
-                    for j in range(Ny - 1):
-                        idx_a = i * Ny + j
-                        idx_b = i * Ny + (j + 1)
-                        phi_a = phi.ravel()[idx_a]
-                        phi_b = phi.ravel()[idx_b]
-                        if phi_a * phi_b < 0.0:
-                            abs_a = abs(phi_a)
-                            abs_b = abs(phi_b)
-                            crossings.append({
-                                "axis": axis,
-                                "idx_a": idx_a,
-                                "idx_b": idx_b,
-                                "alpha": abs_a / (abs_a + abs_b),
-                                "phi_a": phi_a,
-                                "phi_b": phi_b,
-                            })
-
-        return crossings
+        return find_interface_crossings(phi)
 
 
-def _sparse_element(L_csr, row: int, col: int) -> float:
-    """Extract a single element from a CSR sparse matrix.
-
-    CSR indices may be unsorted after Kronecker products / arithmetic,
-    so we use linear search instead of searchsorted.
-    """
-    start = L_csr.indptr[row]
-    end = L_csr.indptr[row + 1]
-    cols = L_csr.indices[start:end]
-    mask = (cols == col)
-    if mask.any():
-        return float(L_csr.data[start:end][mask][0])
-    return 0.0
+_sparse_element = sparse_element
