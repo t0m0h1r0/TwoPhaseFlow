@@ -38,6 +38,12 @@ from .gradient_operator import (
 from .ns_operator_stack import NSOperatorStackOptions, build_ns_operator_stack
 from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
+from .ns_ppe_runtime import (
+    build_ns_runtime_ppe_cfg_shim,
+    build_ns_runtime_ppe_solver,
+    build_ns_runtime_plain_ppe_solver,
+    make_ns_ppe_factory_options,
+)
 from .ns_runtime_components import build_ns_runtime_components
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
@@ -50,10 +56,6 @@ from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registr
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .ns_runtime_factories import (
-    NSPPEFactoryOptions,
-    build_ns_ppe_cfg_shim,
-    build_ns_ppe_solver,
-    build_ns_plain_ppe_solver,
     build_ns_reinitializer,
 )
 from .ns_runtime_config import (
@@ -332,6 +334,7 @@ class TwoPhaseNSSolver:
             ppe_aliases=IPPESolver._aliases,
             ppe_registry=IPPESolver._registry,
         )
+        self._ppe_runtime = state
         self._ppe_solver_name = state.ppe_solver_name
         self._ppe_iteration_method = state.ppe_iteration_method
         self._ppe_coefficient_scheme = state.ppe_coefficient_scheme
@@ -384,7 +387,10 @@ class TwoPhaseNSSolver:
                 or bool(self._face_flux_projection),
                 uccd6_sigma=float(scheme_options.uccd6_sigma),
             ),
-            ppe_options=self._make_ppe_factory_options(self._ppe_solver_name),
+            ppe_options=make_ns_ppe_factory_options(
+                self._ppe_runtime,
+                solver_name=self._ppe_solver_name,
+            ),
         )
         self._fccd = stack.fccd
         self._fccd_div_op = stack.fccd_div_op
@@ -415,26 +421,6 @@ class TwoPhaseNSSolver:
             ridge_sigma_0=float(interface_options.ridge_sigma_0),
         )
 
-    # ── PPE solver dispatch (pressure_scheme) ─────────────────────────────
-
-    def _make_ppe_factory_options(self, solver_name: str) -> NSPPEFactoryOptions:
-        return NSPPEFactoryOptions(
-            solver_name=solver_name,
-            tolerance=self._ppe_tolerance,
-            max_iterations=self._ppe_max_iterations,
-            restart=self._ppe_restart,
-            preconditioner=self._ppe_preconditioner,
-            pcr_stages=self._ppe_pcr_stages,
-            c_tau=self._ppe_c_tau,
-            iteration_method=self._ppe_iteration_method,
-            coefficient_scheme=self._ppe_coefficient_scheme,
-            interface_coupling_scheme=self._ppe_interface_coupling_scheme,
-            defect_correction=self._ppe_defect_correction,
-            dc_max_iterations=self._ppe_dc_max_iterations,
-            dc_tolerance=self._ppe_dc_tolerance,
-            dc_relaxation=self._ppe_dc_relaxation,
-        )
-
     def _build_ppe_solver(self, pressure_scheme: str):
         """Instantiate the PPE solver selected by ``pressure_scheme``.
 
@@ -449,22 +435,24 @@ class TwoPhaseNSSolver:
         available via the SimulationBuilder pipeline (builder.py) but are
         disabled here to prevent silent divergence in two-phase runs.
         """
-        return build_ns_ppe_solver(
+        return build_ns_runtime_ppe_solver(
             backend=self._backend,
             grid=self._grid,
             bc_type=self.bc_type,
             fccd=self._fccd,
-            options=self._make_ppe_factory_options(pressure_scheme),
+            state=self._ppe_runtime,
+            pressure_scheme=pressure_scheme,
         )
 
     def _build_plain_ppe_solver(self, ppe_scheme: str):
         """Instantiate an unwrapped PPE solver via registry."""
-        return build_ns_plain_ppe_solver(
+        return build_ns_runtime_plain_ppe_solver(
             backend=self._backend,
             grid=self._grid,
             bc_type=self.bc_type,
             fccd=self._fccd,
-            options=self._make_ppe_factory_options(ppe_scheme),
+            state=self._ppe_runtime,
+            ppe_scheme=ppe_scheme,
         )
 
     def _build_ppe_cfg_shim(
@@ -474,8 +462,8 @@ class TwoPhaseNSSolver:
         pcr_stages: int | None = None,
     ):
         """Build the SimpleNamespace config shim for PPESolverFVMMatrixFree."""
-        return build_ns_ppe_cfg_shim(
-            self._make_ppe_factory_options(self._ppe_solver_name),
+        return build_ns_runtime_ppe_cfg_shim(
+            self._ppe_runtime,
             preconditioner=preconditioner,
             pcr_stages=pcr_stages,
         )
