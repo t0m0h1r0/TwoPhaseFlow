@@ -22,6 +22,12 @@ import numpy as np
 
 from .interfaces import IReinitializer
 from .heaviside import invert_heaviside
+from .reinit_eikonal_distance import (
+    fmm_phi as compute_reinit_fmm_phi,
+    xi_sdf_phi as compute_reinit_xi_sdf_phi,
+    xi_sdf_phi_cpu_legacy,
+)
+from .reinit_eikonal_godunov import godunov_sweep as compute_reinit_godunov_sweep
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -164,52 +170,19 @@ class EikonalReinitializer(IReinitializer):
         ZSP (zero-set protection, CHK-137): cells with |φ₀| < h_min/2 are
         frozen throughout the sweep to prevent discrete zero-set drift.
         """
-        xp = self._xp
-        dtau = self._dtau
-        hx_f = self._hx_fwd   # (Nx+1, 1)
-        hx_b = self._hx_bwd
-        hy_f = self._hy_fwd   # (1, Ny+1)
-        hy_b = self._hy_bwd
-
-        inside = sgn0 > 0
-
-        # ZSP mask: freeze cells within half a grid cell of the zero-set
-        if self._zsp:
-            zsp_frozen = xp.abs(phi) < 0.5 * self._h_min
-
-        for _ in range(self._n_iter):
-            # First-order upwind differences (Neumann BC via one-sided)
-            phi_x = xp.roll(phi, -1, axis=0)  # φ[i+1]
-            phi_xm = xp.roll(phi, 1, axis=0)  # φ[i-1]
-            phi_y = xp.roll(phi, -1, axis=1)
-            phi_ym = xp.roll(phi, 1, axis=1)
-
-            Dpx = (phi_x - phi) / hx_f    # forward  D⁺ₓ
-            Dmx = (phi - phi_xm) / hx_b   # backward D⁻ₓ
-            Dpy = (phi_y - phi) / hy_f
-            Dmy = (phi - phi_ym) / hy_b
-
-            # Godunov flux (Sussman et al. 1994 eq. 2.8)
-            ax = xp.where(
-                inside,
-                xp.maximum(xp.maximum(Dmx, 0.0) ** 2, xp.minimum(Dpx, 0.0) ** 2),
-                xp.maximum(xp.minimum(Dmx, 0.0) ** 2, xp.maximum(Dpx, 0.0) ** 2),
-            )
-            ay = xp.where(
-                inside,
-                xp.maximum(xp.maximum(Dmy, 0.0) ** 2, xp.minimum(Dpy, 0.0) ** 2),
-                xp.maximum(xp.minimum(Dmy, 0.0) ** 2, xp.maximum(Dpy, 0.0) ** 2),
-            )
-
-            G = xp.sqrt(ax + ay + 1e-14) - 1.0
-            phi_new = phi - dtau * sgn0 * G
-
-            if self._zsp:
-                phi = xp.where(zsp_frozen, phi, phi_new)
-            else:
-                phi = phi_new
-
-        return phi
+        return compute_reinit_godunov_sweep(
+            self._xp,
+            phi,
+            sgn0,
+            dtau=self._dtau,
+            n_iter=self._n_iter,
+            hx_fwd=self._hx_fwd,
+            hx_bwd=self._hx_bwd,
+            hy_fwd=self._hy_fwd,
+            hy_bwd=self._hy_bwd,
+            zsp=self._zsp,
+            h_min=self._h_min,
+        )
 
     def _xi_sdf_phi(self, phi_dev):
         """Non-iterative ξ-SDF: signed ξ-distance to nearest zero-crossing.
@@ -221,52 +194,7 @@ class EikonalReinitializer(IReinitializer):
         Note: (Nx, Ny, N_cross) distance tensor fits in GPU memory for
         ch13 grid sizes (N≤128). Chunking not implemented.
         """
-        xp = self._xp
-        sgn = xp.sign(phi_dev)
-        sgn = xp.where(sgn == 0, 1.0, sgn)  # phi=0 → inside (CHK-140)
-        Nx, Ny = phi_dev.shape
-
-        cx_parts = []   # list of (n_cross, 2) arrays
-
-        # x-direction crossings: (i,j) → (i+1,j)
-        px  = phi_dev[:-1, :]
-        px1 = phi_dev[1:, :]
-        xi_mask = (px * px1) < 0.0
-        if xp.any(xi_mask):
-            ii, jj = xp.where(xi_mask)
-            denom = xp.abs(px[ii, jj]) + xp.abs(px1[ii, jj])
-            alpha = xp.abs(px[ii, jj]) / xp.where(denom > 0, denom, 1.0)
-            cx_parts.append(xp.stack(
-                [ii.astype(xp.float64) + alpha.astype(xp.float64),
-                 jj.astype(xp.float64)],
-                axis=1,
-            ))
-
-        # y-direction crossings: (i,j) → (i,j+1)
-        py  = phi_dev[:, :-1]
-        py1 = phi_dev[:, 1:]
-        eta_mask = (py * py1) < 0.0
-        if xp.any(eta_mask):
-            ii, jj = xp.where(eta_mask)
-            denom = xp.abs(py[ii, jj]) + xp.abs(py1[ii, jj])
-            alpha = xp.abs(py[ii, jj]) / xp.where(denom > 0, denom, 1.0)
-            cx_parts.append(xp.stack(
-                [ii.astype(xp.float64),
-                 jj.astype(xp.float64) + alpha.astype(xp.float64)],
-                axis=1,
-            ))
-
-        if not cx_parts:
-            return phi_dev   # no interface found; leave φ unchanged
-
-        crossings = xp.concatenate(cx_parts, axis=0)   # (N_cross, 2)
-
-        # Vectorised ξ-distance: broadcast (Nx, Ny, N_cross)
-        I  = xp.arange(Nx, dtype=xp.float64).reshape(-1, 1, 1)
-        J  = xp.arange(Ny, dtype=xp.float64).reshape(1, -1, 1)
-        kx = crossings[:, 0].reshape(1, 1, -1)
-        ky = crossings[:, 1].reshape(1, 1, -1)
-        return sgn * xp.min(xp.sqrt((I - kx) ** 2 + (J - ky) ** 2), axis=2)
+        return compute_reinit_xi_sdf_phi(self._xp, phi_dev)
 
     def _xi_sdf_phi_cpu(self, phi_dev):
         """DO NOT DELETE — CPU sequential baseline (CHK-137, bit-exact reference).
@@ -274,40 +202,7 @@ class EikonalReinitializer(IReinitializer):
         Original implementation using Python for-loops and numpy D2H conversion.
         Superseded by _xi_sdf_phi() (unified xp); kept for regression testing.
         """
-        phi_np = phi_dev.get() if hasattr(phi_dev, 'get') else np.asarray(phi_dev)
-        sgn = np.sign(phi_np)
-        Nx, Ny = phi_np.shape
-
-        cx_list = []
-        px = phi_np[:-1, :]
-        px1 = phi_np[1:, :]
-        xi_mask = (px * px1) < 0.0
-        if xi_mask.any():
-            ii, jj = np.where(xi_mask)
-            denom = np.abs(px[ii, jj]) + np.abs(px1[ii, jj])
-            alpha = np.abs(px[ii, jj]) / np.where(denom > 0, denom, 1.0)
-            for k in range(len(ii)):
-                cx_list.append((float(ii[k]) + float(alpha[k]), float(jj[k])))
-
-        py = phi_np[:, :-1]
-        py1 = phi_np[:, 1:]
-        eta_mask = (py * py1) < 0.0
-        if eta_mask.any():
-            ii, jj = np.where(eta_mask)
-            denom = np.abs(py[ii, jj]) + np.abs(py1[ii, jj])
-            alpha = np.abs(py[ii, jj]) / np.where(denom > 0, denom, 1.0)
-            for k in range(len(ii)):
-                cx_list.append((float(ii[k]), float(jj[k]) + float(alpha[k])))
-
-        if not cx_list:
-            return phi_dev
-        crossings = np.array(cx_list, dtype=np.float64)
-        I = np.arange(Nx, dtype=np.float64).reshape(-1, 1, 1)
-        J = np.arange(Ny, dtype=np.float64).reshape(1, -1, 1)
-        kx = crossings[:, 0].reshape(1, 1, -1)
-        ky = crossings[:, 1].reshape(1, 1, -1)
-        phi_xi = sgn * np.min(np.sqrt((I - kx) ** 2 + (J - ky) ** 2), axis=2)
-        return self._xp.asarray(phi_xi)
+        return xi_sdf_phi_cpu_legacy(self._xp, phi_dev)
 
     def _fmm_phi(self, phi_dev):
         """Fast Marching Method (Sethian 1996): single-pass Eikonal solver.
@@ -322,83 +217,4 @@ class EikonalReinitializer(IReinitializer):
 
         Works on CPU (NumPy). GPU inputs are converted host-side.
         """
-        import heapq
-
-        phi_np = phi_dev.get() if hasattr(phi_dev, 'get') else np.asarray(phi_dev)
-        sgn = np.sign(phi_np)
-        sgn = np.where(np.abs(phi_np) < 1e-10, 1.0, sgn)
-        Nx, Ny = phi_np.shape
-
-        INF = 1e30
-        dist = np.full((Nx, Ny), INF)
-        frozen = np.zeros((Nx, Ny), dtype=bool)
-        heap = []
-
-        def _push(i, j, d):
-            if 0 <= i < Nx and 0 <= j < Ny and not frozen[i, j] and d < dist[i, j]:
-                dist[i, j] = d
-                heapq.heappush(heap, (d, i, j))
-
-        # Seed: cells adjacent to zero-crossings (sub-cell linear interpolation)
-        for axis in range(2):
-            if axis == 0:
-                p, p1 = phi_np[:-1, :], phi_np[1:, :]
-            else:
-                p, p1 = phi_np[:, :-1], phi_np[:, 1:]
-            mask = (p * p1) < 0.0
-            if mask.any():
-                ii, jj = np.where(mask)
-                denom = np.abs(p[ii, jj]) + np.abs(p1[ii, jj])
-                alpha = np.abs(p[ii, jj]) / np.where(denom > 0, denom, 1.0)
-                for k in range(len(ii)):
-                    a = float(alpha[k])
-                    i0, j0 = int(ii[k]), int(jj[k])
-                    if axis == 0:
-                        _push(i0,     j0, a)
-                        _push(i0 + 1, j0, 1.0 - a)
-                    else:
-                        _push(i0, j0,     a)
-                        _push(i0, j0 + 1, 1.0 - a)
-
-        if not heap:
-            return phi_dev
-
-        # FMM propagation: accept minimum-distance cell, update its 4 neighbours
-        while heap:
-            d, i, j = heapq.heappop(heap)
-            if frozen[i, j]:
-                continue
-            frozen[i, j] = True
-
-            for ni, nj in ((i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)):
-                if not (0 <= ni < Nx and 0 <= nj < Ny) or frozen[ni, nj]:
-                    continue
-
-                # Minimum accepted distance from x-neighbours
-                ax = INF
-                if ni > 0 and frozen[ni - 1, nj]:     ax = min(ax, dist[ni - 1, nj])
-                if ni < Nx - 1 and frozen[ni + 1, nj]: ax = min(ax, dist[ni + 1, nj])
-                # Minimum accepted distance from y-neighbours
-                ay = INF
-                if nj > 0 and frozen[ni, nj - 1]:     ay = min(ay, dist[ni, nj - 1])
-                if nj < Ny - 1 and frozen[ni, nj + 1]: ay = min(ay, dist[ni, nj + 1])
-
-                if ax == INF and ay == INF:
-                    continue
-                elif ax == INF:
-                    d_new = ay + 1.0
-                elif ay == INF:
-                    d_new = ax + 1.0
-                else:
-                    diff = ax - ay
-                    if diff * diff >= 1.0:
-                        # Caustic regime: 1D update from closer neighbour
-                        d_new = min(ax, ay) + 1.0
-                    else:
-                        # Quadratic update: solves (d-ax)²+(d-ay)²=1
-                        d_new = 0.5 * (ax + ay + np.sqrt(2.0 - diff * diff))
-
-                _push(ni, nj, d_new)
-
-        phi_fmm = sgn * dist
-        return self._xp.asarray(phi_fmm)
+        return compute_reinit_fmm_phi(self._xp, phi_dev)
