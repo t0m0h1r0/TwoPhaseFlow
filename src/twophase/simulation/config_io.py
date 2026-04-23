@@ -114,6 +114,7 @@ class RunCfg:
     ppe_solver: str = "fvm_iterative"
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
     ppe_coefficient_scheme: str = "phase_density"
+    ppe_interface_coupling_scheme: str = "none"
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
     viscous_spatial_scheme: str = "ccd_bulk"
@@ -438,6 +439,11 @@ _POISSON_COEFFICIENT_ALIASES = {
     "phase_separated_density": "phase_separated",
     "split_phase": "phase_separated",
 }
+_POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition")
+_POISSON_INTERFACE_COUPLING_ALIASES = {
+    "pressure_jump": "jump_decomposition",
+    "jump": "jump_decomposition",
+}
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {
     "gfm_jump": "pressure_jump",
@@ -521,6 +527,22 @@ def _parse_run(
         _POISSON_COEFFICIENTS,
         layout["paths"]["poisson_coefficient"],
     )
+    coupling_default = (
+        "jump_decomposition" if poisson_coefficient == "phase_separated" else "none"
+    )
+    poisson_interface_coupling = _validate_choice(
+        _POISSON_INTERFACE_COUPLING_ALIASES.get(
+            str(poisson_operator.get("interface_coupling", coupling_default)).strip().lower(),
+            poisson_operator.get("interface_coupling", coupling_default),
+        ),
+        _POISSON_INTERFACE_COUPLINGS,
+        layout["paths"]["poisson_interface_coupling"],
+    )
+    if poisson_coefficient == "phase_density" and poisson_interface_coupling != "none":
+        raise ValueError(
+            f"{layout['paths']['poisson_interface_coupling']} must be 'none' "
+            "when poisson coefficient is 'phase_density'."
+        )
     ppe_solver_cfg = poisson["solver"]
     debug = d.get("debug", {}) or {}
 
@@ -704,6 +726,7 @@ def _parse_run(
         ppe_solver=ppe_solver,
         pressure_scheme=pressure_scheme,
         ppe_coefficient_scheme=poisson_coefficient,
+        ppe_interface_coupling_scheme=poisson_interface_coupling,
         surface_tension_scheme=surface_tension_scheme,
         convection_time_scheme=convection_time_scheme,
         viscous_spatial_scheme=viscous_spatial_scheme,
@@ -822,6 +845,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
                 "projection_mode": "numerics.projection.mode",
                 "poisson_discretization": "numerics.projection.poisson.operator.discretization",
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
+                "poisson_interface_coupling": "numerics.projection.poisson.operator.interface_coupling",
                 "poisson_solver": "numerics.projection.poisson.solver",
             },
         }
@@ -862,6 +886,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
             "projection_mode": "numerics.elliptic.pressure_projection.mode",
             "poisson_discretization": "numerics.elliptic.pressure_projection.poisson.discretization",
             "poisson_coefficient": "numerics.elliptic.pressure_projection.poisson.coefficient",
+            "poisson_interface_coupling": "numerics.elliptic.pressure_projection.poisson.interface_coupling",
             "poisson_solver": "numerics.elliptic.pressure_projection.poisson.solver",
         },
     }

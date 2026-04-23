@@ -135,6 +135,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
     assert cfg.run.ppe_defect_correction is True
 
 
@@ -174,7 +175,28 @@ def test_phase_separated_coefficient_maps_to_gfm_projection():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
     assert cfg.run.reproject_mode == "gfm"
+
+
+def test_phase_density_rejects_jump_decomposition_coupling():
+    raw = _minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_density",
+                        "interface_coupling": "jump_decomposition",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+
+    with pytest.raises(ValueError, match="phase_density"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_pressure_jump_rejects_body_force_gradient():

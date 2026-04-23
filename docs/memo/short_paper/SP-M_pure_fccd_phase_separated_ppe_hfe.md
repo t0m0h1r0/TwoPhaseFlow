@@ -283,3 +283,18 @@ scheme to `none`.
 This keeps the user-facing configuration scheme-first and term-correct: `fccd`
 selects the pressure/interface differential scheme, while `pressure_jump` selects
 the sharp-interface surface-tension role.
+
+## 14. Implementation Status: Explicit PPE Interface Coupling Phase 6
+
+The PPE operator configuration now separates two concepts:
+
+```yaml
+operator:
+  coefficient: phase_separated
+  interface_coupling: jump_decomposition
+```
+
+`coefficient` defines the phase-block elliptic operator.  `interface_coupling`
+defines how the blocks are closed across Γ.  The current executable coupling is
+`jump_decomposition`; future GFM ghost pressure jets should appear as a distinct
+coupling mode rather than being implied by `phase_separated`.

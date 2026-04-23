@@ -74,11 +74,24 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.coefficient_scheme = str(
             getattr(solver_cfg, "ppe_coefficient_scheme", "phase_density")
         ).strip().lower()
+        self.interface_coupling_scheme = str(
+            getattr(solver_cfg, "ppe_interface_coupling_scheme", "none")
+        ).strip().lower()
         if self.coefficient_scheme not in {"phase_density", "phase_separated"}:
             raise ValueError(
                 "FCCD PPE supports ppe_coefficient_scheme="
                 "'phase_density'|'phase_separated'"
             )
+        if self.interface_coupling_scheme not in {"none", "jump_decomposition"}:
+            raise ValueError(
+                "FCCD PPE supports ppe_interface_coupling_scheme="
+                "'none'|'jump_decomposition'"
+            )
+        if (
+            self.coefficient_scheme == "phase_density"
+            and self.interface_coupling_scheme != "none"
+        ):
+            raise ValueError("phase_density PPE requires interface_coupling='none'")
         if self.preconditioner not in {"jacobi", "none"}:
             raise ValueError("FCCD PPE supports preconditioner='jacobi'|'none'")
         if bc_spec is not None:
@@ -224,6 +237,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         """Apply the stored sharp-interface pressure jump decomposition."""
         if (
             self.coefficient_scheme != "phase_separated"
+            or self.interface_coupling_scheme != "jump_decomposition"
             or self._interface_jump_context is None
         ):
             return pressure

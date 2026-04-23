@@ -81,6 +81,7 @@ numerics:
       operator:
         discretization: fccd
         coefficient: phase_separated
+        interface_coupling: jump_decomposition
       solver:
         kind: defect_correction
         corrections:

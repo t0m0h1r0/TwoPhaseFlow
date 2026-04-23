@@ -145,3 +145,11 @@ invalid and must be omitted.  The jump path is a PPE pressure condition, not a
 body-force gradient.  The loader maps this to `surface_tension_gradient_scheme =
 none`, and the direct solver constructor rejects conflicting force-gradient
 settings.
+
+## Code Status: Phase 6 Explicit Coupling Key
+
+`phase_separated` now names only the PPE coefficient/block structure.  The
+interface closure is explicit as
+`projection.poisson.operator.interface_coupling: jump_decomposition`.  This keeps
+configuration honest: the current code uses jump decomposition, while a future
+GFM ghost-row closure must be introduced as its own coupling mode.

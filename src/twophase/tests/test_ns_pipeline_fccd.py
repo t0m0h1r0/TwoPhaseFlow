@@ -112,6 +112,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._surface_tension_gradient_scheme == "none"
     assert solver._surface_tension_scheme == "pressure_jump"
     assert solver._ppe_coefficient_scheme == "phase_separated"
+    assert solver._ppe_interface_coupling_scheme == "jump_decomposition"
     assert solver._hfe is not None
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
@@ -128,6 +129,7 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
     )
     ppe = solver._ppe_solver
     rho = np.ones(solver._grid.shape)
@@ -137,6 +139,7 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     coeff_x = np.asarray(ppe._face_inverse_density(ppe._rho, axis=0))
 
     assert ppe.coefficient_scheme == "phase_separated"
+    assert ppe.interface_coupling_scheme == "jump_decomposition"
     assert len(ppe._pin_dofs) == 2
     assert np.all(coeff_x[N // 2, :] == 0.0)
     assert np.all(coeff_x[: N // 2, :] > 0.0)
@@ -152,6 +155,7 @@ def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
     )
     ppe = solver._ppe_solver
     rho = np.ones(solver._grid.shape)
@@ -179,6 +183,7 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
         surface_tension_scheme="pressure_jump",
     )
     ppe = solver._ppe_solver
@@ -219,6 +224,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
         ppe_max_iterations=80,
         ppe_tolerance=1.0e-6,
         ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
         surface_tension_scheme="pressure_jump",
     )
     psi = _mode2_ic(solver)
