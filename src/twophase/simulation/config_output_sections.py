@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .config_io import OutputCfg
+from .config_models import OutputCfg
 
 
 def parse_output(d: dict) -> OutputCfg:

@@ -22,14 +22,14 @@ def require_pyyaml() -> Any:
 
 def load_experiment_config(path: str | Path):
     """Load ``ExperimentConfig`` from a YAML file."""
-    from .config_io import ExperimentConfig
+    from .config_models import ExperimentConfig
 
     return ExperimentConfig.from_yaml(path)
 
 
 def parse_raw(raw: dict):
     """Assemble ``ExperimentConfig`` from a raw YAML/dict payload."""
-    from .config_io import ExperimentConfig
+    from .config_models import ExperimentConfig
     from .config_io import _parse_grid, _parse_physics, _parse_run
 
     interface = raw["interface"]

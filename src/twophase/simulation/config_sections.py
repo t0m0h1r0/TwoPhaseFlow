@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .config_io import GridCfg, PhysicsCfg
+from .config_models import GridCfg, PhysicsCfg
 
 
 def parse_grid(d: dict, interface: dict) -> GridCfg:

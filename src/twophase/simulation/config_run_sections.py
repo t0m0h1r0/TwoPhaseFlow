@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .config_sections import opt_float, validate_choice
-from .config_io import RunCfg
+from .config_models import RunCfg
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
 _ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
