@@ -73,6 +73,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
         self._rho = None
         self._diag_inv = None
+        self._coeff_face = None
         self._h_min = None
         self._node_width = None
         self._refresh_grid_geometry_cache()
@@ -90,17 +91,23 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._refresh_grid_geometry_cache()
         self._rho = None
         self._diag_inv = None
+        self._coeff_face = None
 
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
         self._rho = None
         self._diag_inv = None
+        self._coeff_face = None
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
         xp = self.xp
         self._rho = xp.asarray(rho)
         self._diag_inv = None
+        self._coeff_face = [
+            self._face_inverse_density(self._rho, axis)
+            for axis in range(self.ndim)
+        ]
         if self.preconditioner == "jacobi":
             diag = xp.zeros_like(self._rho)
             for axis in range(self.ndim):
@@ -112,12 +119,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def apply(self, p):
         """Apply ``D_f[(1/rho)_f G_f(p)]`` with a pinned gauge DOF."""
         xp = self.xp
-        if self._rho is None:
+        if self._rho is None or self._coeff_face is None:
             raise RuntimeError("prepare_operator(rho) must be called before apply(p)")
         out = xp.zeros_like(p)
         for axis in range(self.ndim):
             grad_face = self.fccd.face_gradient(p, axis)
-            coeff_face = self._face_inverse_density(self._rho, axis)
+            coeff_face = self._coeff_face[axis]
             out = out + self._face_flux_divergence(coeff_face * grad_face, axis)
         out.ravel()[self._pin_dof] = p.ravel()[self._pin_dof]
         return out
