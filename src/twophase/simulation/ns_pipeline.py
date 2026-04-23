@@ -1080,11 +1080,14 @@ class TwoPhaseNSSolver:
             )
         p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
         self._p_prev = getattr(self._ppe_solver, "last_base_pressure", p)
+        p_corrector = (
+            self._p_prev if self._surface_tension_scheme == "pressure_jump" else p
+        )
 
         # ── 5. Corrector ───────────────────────────────────────────────
         # Strategy pattern: pressure gradient operator encapsulates CCD vs FVM logic
-        dp_dx = self._pressure_grad_op.gradient(p, 0)
-        dp_dy = self._pressure_grad_op.gradient(p, 1)
+        dp_dx = self._pressure_grad_op.gradient(p_corrector, 0)
+        dp_dy = self._pressure_grad_op.gradient(p_corrector, 1)
         if debug_scalars is not None:
             debug_scalars.append(
                 xp.maximum(
@@ -1100,7 +1103,7 @@ class TwoPhaseNSSolver:
                     "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
                 )
             u, v = proj_op.project(
-                [u_star, v_star], p, rho, dt, [f_x / rho, f_y / rho],
+                [u_star, v_star], p_corrector, rho, dt, [f_x / rho, f_y / rho],
                 **project_kwargs,
             )
         else:

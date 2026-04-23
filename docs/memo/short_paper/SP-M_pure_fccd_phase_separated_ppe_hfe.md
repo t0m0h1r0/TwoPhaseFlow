@@ -327,3 +327,12 @@ enabled:
 These values verify that the phase-separated PPE actually sees two phase blocks,
 uses one pressure gauge per block, and projects the RHS to the per-phase Neumann
 compatibility condition before GMRES.
+
+## 17. Implementation Status: Regrid Reprojection Context Guard Phase 9
+
+Dynamic interface-fitted grid rebuilds invoke a velocity reprojection PPE before
+the main timestep PPE.  That auxiliary reprojection must not inherit the previous
+step's `pressure_jump` context; otherwise the discontinuous assembled pressure
+jump is differentiated during remap cleanup and can create artificial kinetic
+energy.  `update_grid()` and `invalidate_cache()` now clear the stored interface
+jump context, so only the main SP-M PPE receives `(ψ,κ,σ)` for the current step.

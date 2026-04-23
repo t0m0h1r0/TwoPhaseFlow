@@ -167,3 +167,10 @@ Debug diagnostics now include SP-M PPE state: phase count, pin count,
 pre/post per-phase RHS mean, and whether jump decomposition is active.  These
 metrics make the current split-PPE approximation visible in experiment output
 instead of hiding it inside the solver.
+
+## Code Status: Phase 9 Regrid Context Guard
+
+Grid-rebuild velocity reprojection now clears stale SP-M jump context before its
+auxiliary PPE solve.  This prevents the previous step's pressure-jump data from
+leaking into remap cleanup and removes the remote smoke-test step-2 blow-up seen
+before the guard.

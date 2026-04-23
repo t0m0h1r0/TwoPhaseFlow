@@ -121,12 +121,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._rho = None
         self._diag_inv = None
         self._phase_threshold = None
+        self._interface_jump_context = None
 
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
         self._rho = None
         self._diag_inv = None
         self._phase_threshold = None
+        self._interface_jump_context = None
 
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Store SP-M pressure-jump data for ``p = p_tilde + σκ(1-ψ)``."""

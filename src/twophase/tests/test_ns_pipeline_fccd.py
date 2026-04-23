@@ -199,6 +199,8 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     assert np.allclose(jumped[: N // 2 + 1, :], 0.0)
     assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
     assert np.allclose(pressure, 0.0)
+    ppe.invalidate_cache()
+    assert np.allclose(np.asarray(ppe.apply_interface_jump(pressure)), pressure)
 
 
 def test_pressure_jump_constructor_rejects_force_gradient():
