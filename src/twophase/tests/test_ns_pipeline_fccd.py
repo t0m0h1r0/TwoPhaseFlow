@@ -205,8 +205,21 @@ def test_pressure_jump_constructor_rejects_force_gradient():
         TwoPhaseNSSolver(
             N, N, L, L,
             bc_type="wall",
+            ppe_coefficient_scheme="phase_separated",
+            ppe_interface_coupling_scheme="jump_decomposition",
             surface_tension_scheme="pressure_jump",
             surface_tension_gradient_scheme="fccd_flux",
+        )
+
+
+def test_pressure_jump_constructor_requires_jump_decomposition():
+    with pytest.raises(ValueError, match="ppe_interface_coupling_scheme"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            ppe_coefficient_scheme="phase_separated",
+            ppe_interface_coupling_scheme="none",
+            surface_tension_scheme="pressure_jump",
         )
 
 

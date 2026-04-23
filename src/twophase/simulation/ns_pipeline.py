@@ -240,6 +240,17 @@ class TwoPhaseNSSolver:
         self._ppe_interface_coupling_scheme = str(
             ppe_interface_coupling_scheme
         ).strip().lower()
+        if str(surface_tension_scheme).strip().lower() == "pressure_jump":
+            if self._ppe_coefficient_scheme != "phase_separated":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_coefficient_scheme='phase_separated'"
+                )
+            if self._ppe_interface_coupling_scheme != "jump_decomposition":
+                raise ValueError(
+                    "surface_tension_scheme='pressure_jump' requires "
+                    "ppe_interface_coupling_scheme='jump_decomposition'"
+                )
         self._ppe_tolerance = float(ppe_tolerance)
         self._ppe_max_iterations = int(ppe_max_iterations)
         self._ppe_restart = ppe_restart

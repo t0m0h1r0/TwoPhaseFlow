@@ -153,3 +153,10 @@ interface closure is explicit as
 `projection.poisson.operator.interface_coupling: jump_decomposition`.  This keeps
 configuration honest: the current code uses jump decomposition, while a future
 GFM ghost-row closure must be introduced as its own coupling mode.
+
+## Code Status: Phase 7 Consistency Guard
+
+`surface_tension.formulation: pressure_jump` now requires
+`coefficient: phase_separated` and `interface_coupling: jump_decomposition`.
+Both YAML loading and direct solver construction reject inconsistent settings, so
+a pressure jump can no longer be requested without the matching SP-M PPE path.

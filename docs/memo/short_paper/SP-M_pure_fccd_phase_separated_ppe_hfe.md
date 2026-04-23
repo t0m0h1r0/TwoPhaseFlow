@@ -298,3 +298,17 @@ operator:
 defines how the blocks are closed across Γ.  The current executable coupling is
 `jump_decomposition`; future GFM ghost pressure jets should appear as a distinct
 coupling mode rather than being implied by `phase_separated`.
+
+## 15. Implementation Status: Pressure-Jump Consistency Guard Phase 7
+
+`pressure_jump` is now guarded as a coupled PPE feature.  It is valid only with
+
+```yaml
+operator:
+  coefficient: phase_separated
+  interface_coupling: jump_decomposition
+```
+
+This prevents silent fallbacks where the user requests a sharp pressure jump but
+the selected PPE operator is still the mixture-density model or has no jump
+closure.  The same guard exists in the direct `TwoPhaseNSSolver` constructor.

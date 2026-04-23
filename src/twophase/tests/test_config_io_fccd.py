@@ -167,6 +167,16 @@ def test_phase_separated_coefficient_maps_to_gfm_projection():
                     "solver": {"kind": "iterative", "preconditioner": "none"},
                 },
             },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "jump_decomposition",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
         },
     })
     del raw["numerics"]["projection"]["mode"]
@@ -210,10 +220,44 @@ def test_pressure_jump_rejects_body_force_gradient():
                     },
                 },
             },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "jump_decomposition",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
         },
     })
 
     with pytest.raises(ValueError, match="must be omitted"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_pressure_jump_requires_phase_separated_ppe():
+    raw = _minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {"formulation": "pressure_jump"},
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_density",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+
+    with pytest.raises(ValueError, match="phase_separated"):
         ExperimentConfig.from_dict(raw)
 
 

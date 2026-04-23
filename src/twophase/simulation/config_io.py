@@ -625,6 +625,16 @@ def _parse_run(
         layout["paths"]["surface_tension_model"],
     )
     if surface_tension_scheme == "pressure_jump":
+        if poisson_coefficient != "phase_separated":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_model']}='pressure_jump' "
+                "requires poisson.operator.coefficient='phase_separated'."
+            )
+        if poisson_interface_coupling != "jump_decomposition":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_model']}='pressure_jump' "
+                "requires poisson.operator.interface_coupling='jump_decomposition'."
+            )
         explicit_st_grad = any(
             key in surface_tension for key in ("gradient", "spatial", "force_gradient")
         )
