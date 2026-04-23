@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from .config_models import RunCfg
 from .config_run_builder_sections import RunCfgBuilderOptions, build_run_cfg
-from .config_sections import validate_choice
 from .config_run_layout_sections import (
     normalize_momentum_predictor,
     parse_numerics_layout,
@@ -15,6 +14,7 @@ from .config_run_ppe_sections import (
     parse_ppe_solver_config,
     parse_ppe_solver_options,
 )
+from .config_run_reinit_sections import parse_run_reinit_projection
 from .config_run_tracking_sections import (
     coefficient_to_projection_mode,
     parse_enabled,
@@ -24,11 +24,6 @@ from .config_run_tracking_sections import (
     parse_tracking_primary,
     parse_tracking_redistance_every,
     tracking_redistance,
-)
-
-_REINIT_METHODS = (
-    "split", "unified", "dgr", "hybrid",
-    "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
 )
 
 
@@ -62,25 +57,13 @@ def parse_run(
         projection=projection,
     )
 
-    reproject_mode = parse_projection_mode(
-        projection.get(
-            "mode",
-            coefficient_to_projection_mode(operator_settings["poisson_coefficient"]),
-        ),
-        layout["paths"]["projection_mode"],
+    reinit_projection = parse_run_reinit_projection(
+        reinit=reinit,
+        reinit_profile=reinit_profile,
+        projection=projection,
+        poisson_coefficient=operator_settings["poisson_coefficient"],
+        projection_mode_path=layout["paths"]["projection_mode"],
     )
-    reinit_method = reinit["algorithm"]
-    if reinit_method is not None and reinit_method not in _REINIT_METHODS:
-        raise ValueError(
-            f"interface.reinitialization.algorithm must be one of {_REINIT_METHODS}, "
-            f"got {reinit_method!r}"
-        )
-    ridge_sigma_0 = float(reinit_profile.get("ridge_sigma_0", 3.0))
-    if ridge_sigma_0 <= 0.0:
-        raise ValueError(
-            "interface.reinitialization.profile.ridge_sigma_0 must be > 0, "
-            f"got {ridge_sigma_0}"
-        )
 
     return build_run_cfg(
         RunCfgBuilderOptions(
@@ -94,9 +77,9 @@ def parse_run(
             reinit_schedule=reinit_schedule,
             layout_paths=layout["paths"],
             operator_settings=operator_settings,
-            reproject_mode=reproject_mode,
-            reinit_method=reinit_method,
-            ridge_sigma_0=ridge_sigma_0,
+            reproject_mode=reinit_projection.reproject_mode,
+            reinit_method=reinit_projection.reinit_method,
+            ridge_sigma_0=reinit_projection.ridge_sigma_0,
             debug=debug,
         )
     )
