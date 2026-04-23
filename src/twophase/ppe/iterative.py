@@ -35,7 +35,6 @@ at boundaries) and naturally zero for 3pt (interior-only stencil).
 """
 
 from __future__ import annotations
-import warnings
 import numpy as np
 from typing import TYPE_CHECKING
 
@@ -56,9 +55,10 @@ from .iterative_smoothers import (
     step_iterative_explicit,
     step_iterative_gauss_seidel,
 )
-from .iterative_state import (
-    pack_iterative_solution_state,
-    unpack_iterative_initial_pressure,
+from .iterative_workflow import (
+    IterativeSolveContext,
+    compute_iterative_diagnostic_residual,
+    run_iterative_solve,
 )
 
 
@@ -182,124 +182,17 @@ class PPESolverIterative(IPPESolver):
         -------
         p : array, shape ``grid.shape``
         """
-        xp = self.xp
-        shape = self.grid.shape
-        pin = self._pin_dof
-
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
-
-        from .ccd_ppe_utils import (
-            precompute_density_gradients, compute_lts_dtau, check_convergence,
-        )
-
-        # LTS: stability limit for explicit pseudo-time
-        if self.method == "explicit":
-            c_limit = 0.19 if self.discretization == "ccd" else 0.45
-            c_eff = min(self.c_tau, c_limit)
-        else:
-            c_eff = self.c_tau
-        dtau = compute_lts_dtau(rho_np, c_eff, self._h_min)
-
-        # Unpack initial state (dict from get_state() or plain array)
-        p = unpack_iterative_initial_pressure(
-            p_init,
-            backend=self.backend,
-            shape=shape,
-        )
-
-        # Density gradient (frozen during iteration)
-        if self.discretization == "ccd":
-            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
-        else:
-            drho = compute_density_gradient_3pt(
-                rho_np,
-                h=self._h,
-                ndim=self.ndim,
-            )
-
-        # Per-axis derivatives of p (updated each iteration for state output)
-        last_dp: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
-        last_d2p: list[np.ndarray] = [np.zeros(shape) for _ in range(self.ndim)]
-
-        converged = False
-        residual = np.inf
-        for _ in range(self.maxiter):
-            # ── Residual R = rhs − L(p) ─────────────────────────────
-            # Always use this solver's own discretization for residual,
-            # even when p_init came from a different discretization.
-            if self.discretization == "ccd":
-                R, dp_list, d2p_list = self._residual_ccd(
-                    p, rhs_np, rho_np, drho,
-                )
-            else:
-                R, dp_list, d2p_list = self._residual_3pt(
-                    p, rhs_np, rho_np, drho,
-                )
-            last_dp = dp_list
-            last_d2p = d2p_list
-
-            residual, converged = check_convergence(R, pin, self.tol)
-            if converged:
-                break
-
-            # ── Update step ──────────────────────────────────────────
-            # Sign convention: L has negative eigenvalues (Laplacian), so the
-            # correct pseudo-time update is p -= Δτ R (damped iteration on the
-            # positive-definite system −L p = −rhs).  Negate R for smoothers.
-            neg_R = -R
-            if self.method == "explicit":
-                p = step_iterative_explicit(
-                    p,
-                    neg_R,
-                    dtau,
-                    pin=pin,
-                    ndim=self.ndim,
-                )
-            elif self.method == "gauss_seidel":
-                p = step_iterative_gauss_seidel(
-                    p,
-                    neg_R,
-                    rho_np,
-                    drho,
-                    dtau,
-                    h=self._h,
-                    shape=shape,
-                    pin=pin,
-                )
-            elif self.method == "adi":
-                p = step_iterative_adi(
-                    p,
-                    neg_R,
-                    rho_np,
-                    drho,
-                    dtau,
-                    pin=pin,
-                    thomas_sweep=self._thomas_sweep,
-                )
-
-        if not converged:
-            warnings.warn(
-                f"PPESolverIterative({self.discretization},{self.method}): "
-                f"not converged after {self.maxiter} iterations "
-                f"(residual={residual:.3e}, tol={self.tol:.3e}).",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
-        if not np.isfinite(p).all():
-            warnings.warn(
-                "PPESolverIterative: non-finite values detected. "
-                "Check the density field or reduce pseudo_c_tau.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
-        result, self._last_state = pack_iterative_solution_state(
-            p,
-            last_dp,
-            last_d2p,
-            backend=self.backend,
+        result, self._last_state = run_iterative_solve(
+            self._solve_context(),
+            rhs_np=rhs_np,
+            rho_np=rho_np,
+            p_init=p_init,
+            residual_ccd=self._residual_ccd,
+            residual_3pt=self._residual_3pt,
+            ccd=self.ccd,
+            thomas_sweep=self._thomas_sweep,
         )
         self.last_solution = result
         return result
@@ -335,21 +228,31 @@ class PPESolverIterative(IPPESolver):
         rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
         rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float)
         p_np = np.asarray(self.backend.to_host(p), dtype=float)
+        return compute_iterative_diagnostic_residual(
+            self._solve_context(),
+            p_np=p_np,
+            rhs_np=rhs_np,
+            rho_np=rho_np,
+            residual_ccd=self._residual_ccd,
+            residual_3pt=self._residual_3pt,
+            ccd=self.ccd,
+        )
 
-        from .ccd_ppe_utils import precompute_density_gradients, check_convergence
-        if self.discretization == "ccd":
-            drho = precompute_density_gradients(rho_np, self.ccd, self.backend)
-            R, _, _ = self._residual_ccd(p_np, rhs_np, rho_np, drho)
-        else:
-            drho = compute_density_gradient_3pt(
-                rho_np,
-                h=self._h,
-                ndim=self.ndim,
-            )
-            R, _, _ = self._residual_3pt(p_np, rhs_np, rho_np, drho)
-
-        residual, _ = check_convergence(R, self._pin_dof, 0.0)
-        return residual
+    def _solve_context(self) -> IterativeSolveContext:
+        """Build the grouped solve context shared by helpers."""
+        return IterativeSolveContext(
+            backend=self.backend,
+            discretization=self.discretization,
+            method=self.method,
+            c_tau=self.c_tau,
+            tol=self.tol,
+            maxiter=self.maxiter,
+            h=self._h,
+            h_min=self._h_min,
+            ndim=self.ndim,
+            shape=self.grid.shape,
+            pin=self._pin_dof,
+        )
 
     # ── Density gradient (3pt) ───────────────────────────────────────────
 
