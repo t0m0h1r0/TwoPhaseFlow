@@ -68,6 +68,11 @@ from .ns_runtime_config import (
     normalise_ns_ppe_runtime,
     normalise_ns_scheme_runtime,
 )
+from .ns_runtime_binding import (
+    bind_ns_interface_runtime,
+    bind_ns_ppe_runtime,
+    bind_ns_scheme_runtime,
+)
 from .runtime_setup import (
     apply_velocity_bc as _apply_bc,
     build_initial_condition,
@@ -271,11 +276,11 @@ class TwoPhaseNSSolver:
             reinit=self._reinit,
             eps=self._eps,
             options=NSRuntimeComponentOptions(
-                phi_primary_clip_factor=self._phi_primary_clip_factor,
-                phi_primary_heaviside_eps_scale=self._phi_primary_heaviside_eps_scale,
-                interface_tracking_enabled=self._interface_tracking_enabled,
-                phi_primary_transport=self._phi_primary_transport,
-                phi_primary_redist_every=self._phi_primary_redist_every,
+                phi_primary_clip_factor=self._interface_runtime.phi_primary_clip_factor,
+                phi_primary_heaviside_eps_scale=self._interface_runtime.phi_primary_heaviside_eps_scale,
+                interface_tracking_enabled=self._interface_runtime.interface_tracking_enabled,
+                phi_primary_transport=self._interface_runtime.phi_primary_transport,
+                phi_primary_redist_every=self._interface_runtime.phi_primary_redist_every,
                 reinit_every=self._interface_runtime.reinit_every,
                 debug_diagnostics=options.schemes.debug_diagnostics,
                 reproject_mode=self._interface_runtime.reproject_mode,
@@ -314,20 +319,7 @@ class TwoPhaseNSSolver:
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
         state = normalise_ns_interface_runtime(options)
-        self._interface_runtime = state
-        self._rebuild_freq = state.rebuild_freq
-        self._reinit_every = state.reinit_every
-        self._reproject_variable_density = state.reproject_variable_density
-        self._face_flux_projection = state.face_flux_projection
-        self._reinit_eps_scale = state.reinit_eps_scale
-        self._kappa_max = state.kappa_max
-        self._interface_tracking_enabled = state.interface_tracking_enabled
-        self._interface_tracking_method = state.interface_tracking_method
-        self._phi_primary_transport = state.phi_primary_transport
-        self._phi_primary_redist_every = state.phi_primary_redist_every
-        self._phi_primary_clip_factor = state.phi_primary_clip_factor
-        self._phi_primary_heaviside_eps_scale = state.phi_primary_heaviside_eps_scale
-        self._reproject_mode = state.reproject_mode
+        bind_ns_interface_runtime(self, state)
 
     def _initialise_ppe_runtime(
         self,
@@ -342,22 +334,7 @@ class TwoPhaseNSSolver:
             ppe_aliases=IPPESolver._aliases,
             ppe_registry=IPPESolver._registry,
         )
-        self._ppe_runtime = state
-        self._ppe_solver_name = state.ppe_solver_name
-        self._ppe_iteration_method = state.ppe_iteration_method
-        self._ppe_coefficient_scheme = state.ppe_coefficient_scheme
-        self._ppe_interface_coupling_scheme = state.ppe_interface_coupling_scheme
-        self._ppe_tolerance = state.ppe_tolerance
-        self._ppe_max_iterations = state.ppe_max_iterations
-        self._ppe_restart = state.ppe_restart
-        self._ppe_preconditioner = state.ppe_preconditioner
-        self._ppe_pcr_stages = state.ppe_pcr_stages
-        self._ppe_c_tau = state.ppe_c_tau
-        self._ppe_defect_correction = state.ppe_defect_correction
-        self._ppe_dc_max_iterations = state.ppe_dc_max_iterations
-        self._ppe_dc_tolerance = state.ppe_dc_tolerance
-        self._ppe_dc_relaxation = state.ppe_dc_relaxation
-        self._pressure_scheme = state.pressure_scheme
+        bind_ns_ppe_runtime(self, state)
 
     def _initialise_scheme_runtime(self, options: SolverSchemeOptions) -> None:
         """Normalise scheme selections and stateful time-integration flags."""
@@ -365,15 +342,9 @@ class TwoPhaseNSSolver:
         self._curv = CurvatureCalculator(self._backend, self._ccd, eps_curv)
         self._hfe = InterfaceLimitedFilter(self._backend, self._ccd, C=options.hfe_C)
         state = normalise_ns_scheme_runtime(options)
-        self._scheme_runtime = state
-        self._convection_time_scheme = state.convection_time_scheme
+        bind_ns_scheme_runtime(self, state)
         self._conv_prev = None
         self._conv_ab2_ready = False
-        self._momentum_gradient_scheme = state.momentum_gradient_scheme
-        self._pressure_gradient_scheme = state.pressure_gradient_scheme
-        self._surface_tension_gradient_scheme = state.surface_tension_gradient_scheme
-        self._advection_scheme = state.advection_scheme
-        self._convection_scheme = state.convection_scheme
 
     def _initialise_operator_stack(
         self,
@@ -387,18 +358,18 @@ class TwoPhaseNSSolver:
             ccd=self._ccd,
             options=NSOperatorStackOptions(
                 bc_type=grid_options.bc_type,
-                advection_scheme=self._advection_scheme,
-                convection_scheme=self._convection_scheme,
-                pressure_gradient_scheme=self._pressure_gradient_scheme,
-                surface_tension_gradient_scheme=self._surface_tension_gradient_scheme,
-                ppe_solver_name=self._ppe_solver_name,
+                advection_scheme=self._scheme_runtime.advection_scheme,
+                convection_scheme=self._scheme_runtime.convection_scheme,
+                pressure_gradient_scheme=self._scheme_runtime.pressure_gradient_scheme,
+                surface_tension_gradient_scheme=self._scheme_runtime.surface_tension_gradient_scheme,
+                ppe_solver_name=self._ppe_runtime.ppe_solver_name,
                 face_flux_projection=bool(scheme_options.face_flux_projection)
-                or bool(self._face_flux_projection),
+                or bool(self._interface_runtime.face_flux_projection),
                 uccd6_sigma=float(scheme_options.uccd6_sigma),
             ),
             ppe_options=make_ns_ppe_factory_options(
                 self._ppe_runtime,
-                solver_name=self._ppe_solver_name,
+                solver_name=self._ppe_runtime.ppe_solver_name,
             ),
         )
         self._fccd = stack.fccd
@@ -685,9 +656,9 @@ class TwoPhaseNSSolver:
         )
         if (
             self._alpha_grid > 1.0
-            and self._rebuild_freq > 0
+            and self._interface_runtime.rebuild_freq > 0
             and state.step_index > 0
-            and (state.step_index % self._rebuild_freq == 0)
+            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
         ):
             try:
                 state.psi, state.u, state.v = self._rebuild_grid(
@@ -725,8 +696,12 @@ class TwoPhaseNSSolver:
         xp = self._backend.xp
         kappa_raw = self._curv.compute(state.psi)
         state.kappa = self._hfe.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
-        if self._kappa_max is not None:
-            state.kappa = xp.clip(state.kappa, -self._kappa_max, self._kappa_max)
+        if self._interface_runtime.kappa_max is not None:
+            state.kappa = xp.clip(
+                state.kappa,
+                -self._interface_runtime.kappa_max,
+                self._interface_runtime.kappa_max,
+            )
         state.debug_scalars = None
         if isinstance(self._step_diag, ActiveStepDiagnostics):
             state.debug_scalars = [xp.max(xp.abs(state.kappa))]
@@ -758,7 +733,7 @@ class TwoPhaseNSSolver:
         if state.g_acc != 0.0:
             buoy_v = -(state.rho - state.rho_ref) / state.rho * state.g_acc
 
-        if self._convection_time_scheme == "ab2":
+        if self._scheme_runtime.convection_time_scheme == "ab2":
             if self._conv_ab2_ready and self._conv_prev is not None:
                 conv_step_u = 1.5 * conv_u - 0.5 * self._conv_prev[0]
                 conv_step_v = 1.5 * conv_v - 0.5 * self._conv_prev[1]
@@ -840,7 +815,7 @@ class TwoPhaseNSSolver:
             project_kwargs = {}
             if proj_op is self._fccd_div_op:
                 project_kwargs["pressure_gradient"] = (
-                    "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
+                    "fccd" if self._ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
                 )
             state.u, state.v = proj_op.project(
                 [state.u_star, state.v_star],
