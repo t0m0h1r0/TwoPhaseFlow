@@ -7,15 +7,14 @@ from dataclasses import dataclass
 from ..ccd.fccd import FCCDSolver
 from ..levelset.interfaces import ILevelSetAdvection
 from ..ns_terms.interfaces import IConvectionTerm
-from .gradient_operator import (
-    CCDGradientOperator,
-    CCDDivergenceOperator,
-    FCCDDivergenceOperator,
-    FVMDivergenceOperator,
-    IGradientOperator,
+from .gradient_operator import FCCDDivergenceOperator, IGradientOperator
+from .ns_operator_builders import (
+    build_ns_divergence_operators,
+    build_ns_fccd_solver_if_needed,
+    build_ns_gradient_operators,
+    build_ns_transport_operators,
 )
 from .ns_runtime_factories import NSPPEFactoryOptions, build_ns_ppe_solver
-from .scheme_build_ctx import AdvectionBuildCtx, ConvectionBuildCtx, GradientBuildCtx
 
 
 @dataclass(frozen=True)
@@ -51,42 +50,27 @@ def build_ns_operator_stack(
     options: NSOperatorStackOptions,
     ppe_options: NSPPEFactoryOptions,
 ) -> NSOperatorStack:
-    fccd_names = frozenset({"fccd_flux", "fccd_nodal", "fccd_iterative"})
-    needs_fccd = bool(
-        {
+    fccd = build_ns_fccd_solver_if_needed(
+        backend=backend,
+        grid=grid,
+        ccd=ccd,
+        bc_type=options.bc_type,
+        scheme_names={
             options.advection_scheme,
             options.convection_scheme,
             options.pressure_gradient_scheme,
             options.surface_tension_gradient_scheme,
             options.ppe_solver_name,
-        }
-        & fccd_names
+        },
     )
-    fccd = (
-        FCCDSolver(
-            grid,
-            backend,
-            bc_type=options.bc_type,
-            ccd_solver=ccd,
-        )
-        if needs_fccd
-        else None
-    )
-
-    ccd_grad_op: IGradientOperator = CCDGradientOperator(
-        backend,
-        ccd,
+    fccd_div_op, div_op = build_ns_divergence_operators(
+        backend=backend,
+        grid=grid,
+        ccd=ccd,
         bc_type=options.bc_type,
+        ppe_solver_name=options.ppe_solver_name,
+        fccd=fccd,
     )
-    fccd_div_op = FCCDDivergenceOperator(fccd) if fccd is not None else None
-    if options.ppe_solver_name == "fccd_iterative":
-        if fccd_div_op is None:
-            raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
-        div_op = fccd_div_op
-    elif not grid.uniform and options.bc_type == "wall":
-        div_op = FVMDivergenceOperator(backend, grid)
-    else:
-        div_op = CCDDivergenceOperator(ccd)
 
     face_flux_projection = options.face_flux_projection or bool(fccd_div_op is not None)
     ppe_solver = build_ns_ppe_solver(
@@ -97,36 +81,24 @@ def build_ns_operator_stack(
         options=ppe_options,
     )
 
-    grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=fccd)
-    pressure_grad_op = IGradientOperator.from_scheme(
-        options.pressure_gradient_scheme,
-        grad_ctx,
-    )
-    surface_tension_grad_op = (
-        None
-        if options.surface_tension_gradient_scheme == "none"
-        else IGradientOperator.from_scheme(options.surface_tension_gradient_scheme, grad_ctx)
+    pressure_grad_op, surface_tension_grad_op = build_ns_gradient_operators(
+        backend=backend,
+        ccd=ccd,
+        bc_type=options.bc_type,
+        pressure_gradient_scheme=options.pressure_gradient_scheme,
+        surface_tension_gradient_scheme=options.surface_tension_gradient_scheme,
+        fccd=fccd,
     )
 
-    adv = ILevelSetAdvection.from_scheme(
-        options.advection_scheme,
-        AdvectionBuildCtx(
-            backend=backend,
-            grid=grid,
-            ccd=ccd,
-            bc_type=options.bc_type,
-            fccd=fccd,
-        ),
-    )
-    conv_term = IConvectionTerm.from_scheme(
-        options.convection_scheme,
-        ConvectionBuildCtx(
-            backend=backend,
-            ccd=ccd,
-            grid=grid,
-            fccd=fccd,
-            uccd6_sigma=options.uccd6_sigma,
-        ),
+    adv, conv_term = build_ns_transport_operators(
+        backend=backend,
+        grid=grid,
+        ccd=ccd,
+        bc_type=options.bc_type,
+        advection_scheme=options.advection_scheme,
+        convection_scheme=options.convection_scheme,
+        fccd=fccd,
+        uccd6_sigma=options.uccd6_sigma,
     )
     return NSOperatorStack(
         fccd=fccd,
