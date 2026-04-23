@@ -82,7 +82,7 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | **done** (2026-04-23) | (pending commit) |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | **done** (2026-04-24) | db68a70 |
-| 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | **done** (2026-04-24) | (pending commit) |
+| 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | **done** (2026-04-24) | c8b4b28 |
 
 **All 9 phases complete** — §2–§10 SP-core rewrite is finished (246 pp, +37 pp over pre-rewrite §1–§14).
 
@@ -330,5 +330,5 @@ Index: [SP_INDEX.md](../../memo/short_paper/SP_INDEX.md).
 | 2026-04-23 | Phase 0 opened: SP-H → SP-N rename, SP_INDEX, SP-O, this dashboard | pending |
 | 2026-04-23 | Phase 1a/1b/1c/2a/2b/3a closed: §2 minor + §3.4 Ridge–Eikonal + §4 FCCD/UCCD6 + §5 L1/L2/L3 + §6 non-uniform + §7 advection/viscous | see CHK-183..188 |
 | 2026-04-24 | Phase 3b closed (CHK-189): §8 BF failure + 7 principles + FCCD BF + pressure filter; §9 split-PPE +190行 + HFE +60行 + DC +70行 + BC +60行 + GPU-native FVM 165行; 241 pp | db68a70 |
-| 2026-04-24 | Phase 4 closed (CHK-190): §10 SP-L A-H 8-phase +180行 + Level 選択 140行 + 純 FCCD DNS 205行 + 10b P-5 annotation; 246 pp | pending |
+| 2026-04-24 | Phase 4 closed (CHK-190): §10 SP-L A-H 8-phase +180行 + Level 選択 140行 + 純 FCCD DNS 205行 + 10b P-5 annotation; 246 pp | c8b4b28 |
 | 2026-04-24 | **§2-§10 SP-core rewrite COMPLETE** — 全 9 phases 完了, 論文 246 pp (+37 pp over pre-rewrite) | — |
