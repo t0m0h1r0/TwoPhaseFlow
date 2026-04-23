@@ -45,7 +45,7 @@ from .viscous_predictor import (
 )
 from .surface_tension_strategy import (
     INSSurfaceTensionStrategy,
-    SurfaceTensionForce, NullSurfaceTensionForce,  # registration
+    SurfaceTensionForce, NullSurfaceTensionForce, PressureJumpSurfaceTension,  # registration
 )
 from .gradient_operator import (
     IGradientOperator,
@@ -1048,6 +1048,11 @@ class TwoPhaseNSSolver:
         rhs = rhs + self._div_op.divergence([f_x / rho, f_y / rho])
         if debug_scalars is not None:
             debug_scalars.append(xp.max(xp.abs(rhs)))
+        if hasattr(self._ppe_solver, "set_interface_jump_context"):
+            jump_sigma = sigma if self._surface_tension_scheme == "pressure_jump" else 0.0
+            self._ppe_solver.set_interface_jump_context(
+                psi=psi, kappa=kappa, sigma=jump_sigma
+            )
         p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
         self._p_prev = p
 

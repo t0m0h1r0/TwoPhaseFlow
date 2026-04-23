@@ -106,7 +106,7 @@ class RunCfg:
     # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd'
     # convection_scheme: momentum    — 'ccd' | 'fccd' | 'uccd6'
     # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct' | 'fccd_iterative'
-    # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
+    # surface_tension_scheme: σκ∇ψ or [p]=σκ — 'csf' | 'pressure_jump' | 'none'
     # viscous_spatial_scheme: viscous — 'ccd' | 'conservative_stress' | 'ccd_stress_legacy'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
@@ -438,7 +438,11 @@ _POISSON_COEFFICIENT_ALIASES = {
     "phase_separated_density": "phase_separated",
     "split_phase": "phase_separated",
 }
-_SURFACE_TENSION_SCHEMES = ("csf", "none")
+_SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
+_SURFACE_TENSION_ALIASES = {
+    "gfm_jump": "pressure_jump",
+    "ppe_jump": "pressure_jump",
+}
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
@@ -604,7 +608,10 @@ def _parse_run(
     )
     momentum_gradient_scheme = pressure_gradient_scheme
     surface_tension_scheme = _validate_choice(
-        surface_tension.get("formulation", surface_tension.get("model", "csf")),
+        _SURFACE_TENSION_ALIASES.get(
+            str(surface_tension.get("formulation", surface_tension.get("model", "csf"))).strip().lower(),
+            surface_tension.get("formulation", surface_tension.get("model", "csf")),
+        ),
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )

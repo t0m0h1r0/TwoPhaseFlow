@@ -110,6 +110,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "fccd_flux"
+    assert solver._surface_tension_scheme == "pressure_jump"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._hfe is not None
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
@@ -140,6 +141,30 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     assert np.all(coeff_x[N // 2, :] == 0.0)
     assert np.all(coeff_x[: N // 2, :] > 0.0)
     assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
+
+
+def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
+    """SP-M Phase 2: pressure_jump adds [p]=σκ on the gas side."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        surface_tension_scheme="pressure_jump",
+    )
+    ppe = solver._ppe_solver
+    pressure = np.zeros(solver._grid.shape)
+    psi = np.zeros_like(pressure)
+    psi[: N // 2 + 1, :] = 1.0
+    kappa = np.full_like(pressure, 3.0)
+
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=2.0)
+    jumped = np.asarray(ppe.apply_interface_jump(pressure))
+
+    assert np.allclose(jumped[: N // 2 + 1, :], 0.0)
+    assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
 
 
 def test_fccd_not_constructed_when_unused():

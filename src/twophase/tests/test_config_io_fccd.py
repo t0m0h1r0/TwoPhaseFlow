@@ -129,6 +129,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_scheme == "pressure_jump"
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reproject_mode == "gfm"
     assert cfg.run.ppe_solver == "fccd_iterative"

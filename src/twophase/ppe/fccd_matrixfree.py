@@ -14,6 +14,7 @@ A3 chain:
     SP-M phase-separated PPE:
       div((1/rho_q) grad p_q) = rhs_q, q∈{L,G}
       -> zero cross-phase FCCD face coupling + one pressure gauge per phase
+      -> pressure-jump decomposition p = p_tilde + σκ(1-ψ)
       -> PPESolverFCCDMatrixFree._face_inverse_density
 """
 
@@ -88,6 +89,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._rho = None
         self._diag_inv = None
         self._phase_threshold = None
+        self._interface_jump_context = None
+        self._defer_interface_jump = False
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
@@ -108,6 +111,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._rho = None
         self._diag_inv = None
         self._phase_threshold = None
+
+    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+        """Store SP-M pressure-jump data for ``p = p_tilde + σκ(1-ψ)``."""
+        self._interface_jump_context = {
+            "psi": self.xp.asarray(psi),
+            "kappa": self.xp.asarray(kappa),
+            "sigma": float(sigma),
+        }
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
@@ -202,7 +213,23 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
         self._pin_flat(sol.ravel(), 0.0)
+        if not self._defer_interface_jump:
+            sol = self.apply_interface_jump(sol)
         return sol
+
+    def apply_interface_jump(self, pressure):
+        """Apply the stored sharp-interface pressure jump decomposition."""
+        if (
+            self.coefficient_scheme != "phase_separated"
+            or self._interface_jump_context is None
+        ):
+            return pressure
+        sigma = self._interface_jump_context["sigma"]
+        if sigma <= 0.0:
+            return pressure
+        psi = self._interface_jump_context["psi"]
+        kappa = self._interface_jump_context["kappa"]
+        return pressure + sigma * kappa * (1.0 - psi)
 
     def _face_inverse_density(self, rho, axis: int):
         xp = self.xp

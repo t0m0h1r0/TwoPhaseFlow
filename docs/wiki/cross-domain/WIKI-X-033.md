@@ -108,3 +108,17 @@ entry point.  It is intentionally different from `phase_density`:
 
 This keeps the implementation honest: the code is already FVM-free and
 phase-split, while the missing GFM jump-row closure remains explicit.
+
+## Code Status: Phase 2 Pressure Jump
+
+`momentum.terms.surface_tension.formulation: pressure_jump` is now the SP-M
+surface-tension setting.  It differs from `csf`:
+
+- `csf` computes a body force `σκ∇ψ` and adds it to the balanced-force PPE path.
+- `pressure_jump` computes no body force and supplies `(ψ,κ,σ)` to the
+  phase-separated FCCD PPE.
+- the executable pressure is composed as `p = p_tilde + σκ(1-ψ)`, matching the
+  existing IIM jump-decomposition sign convention.
+
+This keeps the design philosophy unified: phase physics is declared as a sharp
+interface pressure jump, not hidden inside a surface-tension force model.

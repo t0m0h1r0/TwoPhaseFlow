@@ -55,6 +55,10 @@ class PPESolverDefectCorrection(IPPESolver):
         self.relaxation = float(relaxation)
         self._pin_dof = operator._pin_dof
         self._pin_dofs = getattr(operator, "_pin_dofs", (self._pin_dof,))
+        if hasattr(self.base_solver, "_defer_interface_jump"):
+            self.base_solver._defer_interface_jump = True
+        if hasattr(self.operator, "_defer_interface_jump"):
+            self.operator._defer_interface_jump = True
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh both the target operator and the configured base solver."""
@@ -69,6 +73,12 @@ class PPESolverDefectCorrection(IPPESolver):
         """Invalidate backend caches owned by the inner solver/operator."""
         self.base_solver.invalidate_cache()
         self.operator.invalidate_cache()
+
+    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+        """Forward SP-M pressure-jump context to wrapped PPE components."""
+        for solver in (self.base_solver, self.operator):
+            if hasattr(solver, "set_interface_jump_context"):
+                solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve by base solve plus residual defect corrections."""
@@ -97,6 +107,8 @@ class PPESolverDefectCorrection(IPPESolver):
             self._pin_flat(correction.ravel(), 0.0)
             pressure = pressure + self.relaxation * correction
             self._pin_flat(pressure.ravel(), 0.0)
+        if hasattr(self.operator, "apply_interface_jump"):
+            pressure = self.operator.apply_interface_jump(pressure)
         return pressure
 
     def _pin_flat(self, flat, value) -> None:

@@ -216,3 +216,28 @@ minimal SP-M-consistent executable split:
 
 The corresponding code path is `PPESolverFCCDMatrixFree` with
 `ppe_coefficient_scheme="phase_separated"`.
+
+## 10. Implementation Status: Pressure-Jump Surface Tension Phase 2
+
+The executable SP-M stack now separates the two surface-tension roles:
+
+```yaml
+momentum:
+  terms:
+    surface_tension:
+      formulation: pressure_jump
+```
+
+`pressure_jump` deliberately returns no CSF body force.  Instead, the pipeline
+passes `(ψ, κ, σ)` to the phase-separated FCCD PPE and composes the final pressure
+as
+
+\[
+p = \tilde p + \sigma\kappa(1-\psi).
+\]
+
+This matches the existing IIM jump-decomposition convention and prevents the
+configuration from pretending that a CSF body force and a sharp pressure jump are
+the same numerical object.  Full GFM ghost pressure jets remain the next row-level
+closure; Phase 2 provides the correct YAML semantics and executable jump
+composition path.
