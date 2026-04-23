@@ -202,56 +202,42 @@ class ExperimentConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> "ExperimentConfig":
         """Load from a YAML file."""
-        yaml = _require_pyyaml()
+        from .config_loader import parse_raw, require_pyyaml
+
+        yaml = require_pyyaml()
         with open(path) as fh:
             raw = yaml.safe_load(fh) or {}
-        return _parse_raw(raw)
+        return parse_raw(raw)
 
     @classmethod
     def from_dict(cls, raw: dict) -> "ExperimentConfig":
         """Construct from a plain dict (already loaded from YAML)."""
-        return _parse_raw(raw)
+        from .config_loader import parse_raw
+
+        return parse_raw(raw)
 
 
 # ── convenience loader ───────────────────────────────────────────────────────
 
 def load_experiment_config(path: str | Path) -> ExperimentConfig:
     """Load :class:`ExperimentConfig` from a YAML file."""
-    return ExperimentConfig.from_yaml(path)
+    from .config_loader import load_experiment_config as _load_experiment_config
+
+    return _load_experiment_config(path)
 
 
 def _require_pyyaml() -> Any:
-    """Import PyYAML only when YAML loading is requested."""
-    try:
-        import yaml
-        return yaml
-    except ImportError:
-        raise ImportError(
-            "PyYAML is required to load experiment YAML files. "
-            "Install it with `pip install pyyaml` or `pip install twophase[io]`."
-        )
+    from .config_loader import require_pyyaml
+
+    return require_pyyaml()
 
 
 # ── parsing helpers ──────────────────────────────────────────────────────────
 
 def _parse_raw(raw: dict) -> ExperimentConfig:
-    interface = raw["interface"]
-    numerics = raw["numerics"]
-    grid = _parse_grid(raw["grid"], interface)
-    physics = _parse_physics(raw["physics"])
-    output = _parse_output(raw.get("output", {}))
-    run = _parse_run(raw["run"], interface, numerics, raw.get("output", {}))
-    return ExperimentConfig(
-        grid=grid,
-        physics=physics,
-        run=run,
-        output=output,
-        diagnostics=list(raw.get("diagnostics", [])),
-        initial_condition=dict(raw.get("initial_condition", {})),
-        initial_velocity=raw.get("initial_velocity") or None,
-        boundary_condition=raw.get("boundary_condition") or None,
-        sweep=raw.get("sweep") or None,
-    )
+    from .config_loader import parse_raw
+
+    return parse_raw(raw)
 
 
 def _parse_grid(d: dict, interface: dict) -> GridCfg:
@@ -381,11 +367,9 @@ def _parse_run(
 
 
 def _parse_output(d: dict) -> OutputCfg:
-    return OutputCfg(
-        dir=str(d.get("dir", "results")),
-        save_npz=bool(d.get("save_npz", True)),
-        figures=list(d.get("figures", [])),
-    )
+    from .config_output_sections import parse_output
+
+    return parse_output(d)
 
 
 def _opt_float(val: Any) -> float | None:
