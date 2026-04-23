@@ -237,6 +237,17 @@ class TwoPhaseNSSolver:
                 debug_diagnostics=debug_diagnostics,
             ),
         )
+        self._initialise_from_options(options)
+
+    @classmethod
+    def from_options(cls, options: NSSolverInitOptions) -> "TwoPhaseNSSolver":
+        """Construct a solver from grouped init options."""
+        solver = cls.__new__(cls)
+        solver._initialise_from_options(options)
+        return solver
+
+    def _initialise_from_options(self, options: NSSolverInitOptions) -> None:
+        """Initialise the solver from grouped options."""
         self._initialise_geometry(options.grid)
         self._initialise_interface_runtime(options.interface)
         self._initialise_ppe_runtime(
@@ -273,9 +284,9 @@ class TwoPhaseNSSolver:
             self._transport = PhiPrimaryTransport(
                 self._backend,
                 {
-                    "redist_every": phi_primary_redist_every,
-                    "clip_factor": phi_primary_clip_factor,
-                    "eps_scale": phi_primary_heaviside_eps_scale,
+                    "redist_every": self._phi_primary_redist_every,
+                    "clip_factor": self._phi_primary_clip_factor,
+                    "eps_scale": self._phi_primary_heaviside_eps_scale,
                 },
                 self._reconstruct_phi_primary,
                 self._adv,
@@ -698,132 +709,10 @@ class TwoPhaseNSSolver:
 
     @classmethod
     def from_config(cls, cfg: "ExperimentConfig") -> "TwoPhaseNSSolver":
-        """Construct from an :class:`ExperimentConfig`."""
-        g = cfg.grid
-        return cls(
-            g.NX, g.NY, g.LX, g.LY,
-            bc_type=g.bc_type,
-            alpha_grid=getattr(g, "alpha_grid", 1.0),
-            eps_factor=getattr(g, "eps_factor", 1.5),
-            eps_g_factor=getattr(g, "eps_g_factor", 2.0),
-            eps_g_cells=getattr(g, "eps_g_cells", None),
-            dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
-            use_local_eps=getattr(g, "use_local_eps", False),
-            eps_xi_cells=getattr(g, "eps_xi_cells", None),
-            grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
-            reinit_every=getattr(getattr(cfg, "run", g), "reinit_every", 2),
-            reinit_method=(
-                getattr(getattr(cfg, "run", g), "reinit_method", None) or "eikonal_xi"
-            ),
-            cn_viscous=getattr(getattr(cfg, "run", g), "cn_viscous", False),
-            Re=getattr(getattr(cfg, "physics", g), "Re", 1.0),
-            reproject_variable_density=getattr(
-                getattr(cfg, "run", g), "reproject_variable_density", False,
-            ),
-            reproject_mode=getattr(
-                getattr(cfg, "run", g), "reproject_mode", "legacy",
-            ),
-            phi_primary_transport=bool(
-                getattr(getattr(cfg, "run", g), "phi_primary_transport", True)
-            ),
-            interface_tracking_enabled=bool(
-                getattr(getattr(cfg, "run", g), "interface_tracking_enabled", True)
-            ),
-            interface_tracking_method=str(
-                getattr(getattr(cfg, "run", g), "interface_tracking_method", "phi_primary")
-            ),
-            phi_primary_redist_every=int(
-                getattr(getattr(cfg, "run", g), "phi_primary_redist_every", 4)
-            ),
-            phi_primary_clip_factor=float(
-                getattr(getattr(cfg, "run", g), "phi_primary_clip_factor", 12.0)
-            ),
-            phi_primary_heaviside_eps_scale=float(
-                getattr(getattr(cfg, "run", g), "phi_primary_heaviside_eps_scale", 1.0)
-            ),
-            kappa_max=getattr(getattr(cfg, "run", g), "kappa_max", None),
-            dgr_phi_smooth_C=float(
-                getattr(getattr(cfg, "run", g), "dgr_phi_smooth_C", 1e-4)
-            ),
-            reinit_eps_scale=float(cfg.run.reinit_eps_scale),
-            ridge_sigma_0=float(
-                getattr(getattr(cfg, "run", g), "ridge_sigma_0", 3.0)
-            ),
-            advection_scheme=str(
-                getattr(getattr(cfg, "run", g), "advection_scheme", "dissipative_ccd")
-            ),
-            convection_scheme=str(
-                getattr(getattr(cfg, "run", g), "convection_scheme", "ccd")
-            ),
-            ppe_solver=str(
-                getattr(getattr(cfg, "run", g), "ppe_solver", "fvm_iterative")
-            ),
-            pressure_scheme=str(
-                getattr(getattr(cfg, "run", g), "pressure_scheme", "fvm_matrixfree")
-            ),
-            ppe_coefficient_scheme=str(
-                getattr(getattr(cfg, "run", g), "ppe_coefficient_scheme", "phase_density")
-            ),
-            ppe_interface_coupling_scheme=str(
-                getattr(getattr(cfg, "run", g), "ppe_interface_coupling_scheme", "none")
-            ),
-            ppe_iteration_method=str(
-                getattr(getattr(cfg, "run", g), "ppe_iteration_method", "gmres")
-            ),
-            ppe_tolerance=float(
-                getattr(getattr(cfg, "run", g), "ppe_tolerance", 1.0e-8)
-            ),
-            ppe_max_iterations=int(
-                getattr(getattr(cfg, "run", g), "ppe_max_iterations", 500)
-            ),
-            ppe_restart=getattr(getattr(cfg, "run", g), "ppe_restart", 80),
-            ppe_preconditioner=str(
-                getattr(getattr(cfg, "run", g), "ppe_preconditioner", "line_pcr")
-            ),
-            ppe_pcr_stages=getattr(getattr(cfg, "run", g), "ppe_pcr_stages", 4),
-            ppe_c_tau=float(getattr(getattr(cfg, "run", g), "ppe_c_tau", 2.0)),
-            ppe_defect_correction=bool(
-                getattr(getattr(cfg, "run", g), "ppe_defect_correction", False)
-            ),
-            ppe_dc_max_iterations=int(
-                getattr(getattr(cfg, "run", g), "ppe_dc_max_iterations", 0)
-            ),
-            ppe_dc_tolerance=float(
-                getattr(getattr(cfg, "run", g), "ppe_dc_tolerance", 0.0)
-            ),
-            ppe_dc_relaxation=float(
-                getattr(getattr(cfg, "run", g), "ppe_dc_relaxation", 1.0)
-            ),
-            surface_tension_scheme=str(
-                getattr(getattr(cfg, "run", g), "surface_tension_scheme", "csf")
-            ),
-            convection_time_scheme=str(
-                getattr(getattr(cfg, "run", g), "convection_time_scheme", "ab2")
-            ),
-            viscous_spatial_scheme=str(
-                getattr(getattr(cfg, "run", g), "viscous_spatial_scheme", "ccd_bulk")
-            ),
-            pressure_gradient_scheme=str(
-                getattr(
-                    getattr(cfg, "run", g),
-                    "pressure_gradient_scheme",
-                    "projection_consistent",
-                )
-            ),
-            surface_tension_gradient_scheme=str(
-                getattr(getattr(cfg, "run", g), "surface_tension_gradient_scheme")
-            ),
-            momentum_gradient_scheme=str(
-                getattr(getattr(cfg, "run", g), "momentum_gradient_scheme", "projection_consistent")
-            ),
-            uccd6_sigma=float(
-                getattr(getattr(cfg, "run", g), "uccd6_sigma", 1.0e-3)
-            ),
-            face_flux_projection=bool(
-                getattr(getattr(cfg, "run", g), "face_flux_projection", False)
-            ),
-            debug_diagnostics=bool(getattr(getattr(cfg, "run", g), "debug_diagnostics", False)),
-        )
+        """Construct from an :class:`ExperimentConfig` via builder adapter."""
+        from .ns_solver_builder import NSSolverBuilder
+
+        return NSSolverBuilder(cfg).build()
 
     # ── properties ────────────────────────────────────────────────────────
 
