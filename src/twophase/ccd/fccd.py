@@ -50,6 +50,13 @@ import math
 from typing import List, Optional, TYPE_CHECKING
 
 from .ccd_solver import CCDSolver
+from .fccd_helpers import (
+    build_axis_weights,
+    build_node_H_over_16,
+    enforce_wall_option_iii as apply_fccd_wall_option_iii,
+    enforce_wall_option_iv as apply_fccd_wall_option_iv,
+    periodic_symbol as compute_fccd_periodic_symbol,
+)
 from ..backend import fuse as _fuse
 
 if TYPE_CHECKING:
@@ -178,49 +185,11 @@ class FCCDSolver:
         reduces to the uniform one with per-face H_i. We therefore only
         distinguish scalar vs array weights, not uniform vs non-uniform.
         """
-        xp = self.xp
-        N_faces = self.grid.N[ax]
-        coords_host = self.grid.coords[ax]  # (N+1,) numpy
-        H_host = coords_host[1:] - coords_host[:-1]   # (N,) face widths
-
-        if self.grid.uniform:
-            H = float(H_host[0])
-            return {
-                "uniform": True,
-                "H": H,
-                "inv_H": 1.0 / H,
-                "H_half": 0.5 * H,
-                "H_over_24": H / 24.0,
-                "H_sq_over_16": H * H / 16.0,
-                "H_sq_over_8": H * H / 8.0,
-                "H_over_16": H / 16.0,
-                "N_faces": N_faces,
-            }
-
-        H = xp.asarray(H_host)
-        H_node_host = 0.5 * (H_host[:-1] + H_host[1:]) if len(H_host) > 1 else H_host
-        return {
-            "uniform": False,
-            "H": H,
-            "inv_H": 1.0 / H,
-            "inv_H_node": xp.asarray(1.0 / H_node_host),
-            "H_half": 0.5 * H,
-            "H_over_24": H / 24.0,
-            "H_sq_over_16": H * H / 16.0,
-            "H_sq_over_8": H * H / 8.0,
-            # H/16 is applied at NODE positions for R_4; use mean of adjacent faces.
-            "H_over_16_node": self._node_H_over_16(H_host),
-            "N_faces": N_faces,
-        }
+        return build_axis_weights(self.grid, self.xp, ax)
 
     def _node_H_over_16(self, H_host):
         """Per-node H/16 = (H_i + H_{i+1})/2 / 16 for R_4 correction (node i)."""
-        import numpy as np
-        H_node = np.zeros(len(H_host) + 1)
-        H_node[1:-1] = 0.5 * (H_host[:-1] + H_host[1:])
-        H_node[0] = H_host[0]    # boundary — one-sided
-        H_node[-1] = H_host[-1]
-        return self.xp.asarray(H_node / 16.0)
+        return build_node_H_over_16(self.xp, H_host)
 
     # ── Face-to-node slicing helpers ─────────────────────────────────────
 
@@ -639,7 +608,7 @@ class FCCDSolver:
         (SP-C §6) add wall face entries at positions f_{-1/2} and
         f_{N+1/2} that are not in our interior-only face array.
         """
-        return face_array  # no-op for the interior-only face layout
+        return apply_fccd_wall_option_iii(face_array, axis)
 
     def enforce_wall_option_iv(self, face_array, axis: int, wall_value: float = 0.0):
         """Mirror-flip boundary faces for Dirichlet fields (u no-slip).
@@ -659,7 +628,7 @@ class FCCDSolver:
         explicitly, this is the hook point — deferred until a concrete
         moving-wall case arises.
         """
-        return face_array
+        return apply_fccd_wall_option_iv(face_array, axis, wall_value=wall_value)
 
     # ── Diagnostics ─────────────────────────────────────────────────────
 
@@ -671,5 +640,4 @@ class FCCDSolver:
         """
         if not self._weights[axis]["uniform"]:
             raise ValueError("periodic_symbol only defined for uniform grid")
-        H = self._weights[axis]["H"]
-        return 1j * omega * (1.0 - 7.0 * (omega * H) ** 4 / 5760.0)
+        return compute_fccd_periodic_symbol(self._weights[axis]["H"], omega)
