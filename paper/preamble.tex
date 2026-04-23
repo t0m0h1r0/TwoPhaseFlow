@@ -182,6 +182,35 @@
 \newcommand{\fpp}[1]{f^{(2)}_{#1}}
 \newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
 
+% -- SP-O rewrite (2026-04-23) operator-family shorthands --
+\newcommand{\FCCD}{\mathrm{FCCD}}
+\newcommand{\UCCD}[1][]{\mathrm{UCCD}#1}
+\newcommand{\DCCD}{\mathrm{DCCD}}
+\newcommand{\Ridge}{\text{Ridge}}
+\newcommand{\EikSolve}{\mathrm{Eik}}
+\newcommand{\HFE}{\mathrm{HFE}}
+\newcommand{\GFM}{\mathrm{GFM}}
+\newcommand{\FaceJet}[1]{\mathcal{J}_{f}\!\left(#1\right)}
+\newcommand{\BF}{\mathrm{BF}}
+\newcommand{\DC}{\mathrm{DC}}
+
+% -- ξ disambiguation: §6 index / §3.4 ridge auxiliary / §6.2 grid density --
+\newcommand{\xiidx}{\xi_{\text{idx}}}
+\newcommand{\xiridge}{\xi_{\Ridge}}
+\newcommand{\omegagrid}{\omega_{\text{grid}}}
+
+% -- FCCD face coefficient shorthand: β_f ≡ (1/ρ)_f harmonic-averaged --
+\newcommand{\betaf}{\beta_{f}}
+
+% -- A3 traceability margin note (equation → discretisation → code → test) --
+% Quiet by default; \Athreedebug is a numeric flag (1 → emit margin notes).
+\providecommand{\Athreedebug}{0}
+\newcommand{\Athree}[4]{%
+  \ifnum\Athreedebug=1%
+    \marginpar{\scriptsize A3: \ref{#1}\\ #2\\ \texttt{#3}\\ \texttt{#4}}%
+  \fi%
+}
+
 % -- Theorem environments --
 % amsthm の plain スタイルは \itshape を使うが，
 % ヒラギノ明朝にイタリック体がないため警告が出る．
