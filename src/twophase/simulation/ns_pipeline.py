@@ -18,10 +18,8 @@ import warnings
 from ..backend import Backend
 from ..config import GridConfig
 from ..core.grid import Grid
-from ..core.grid_remap import build_grid_remapper
 from ..ccd.ccd_solver import CCDSolver
 from ..ccd.fccd import FCCDSolver
-from ..levelset.heaviside import apply_mass_correction
 from ..levelset.reconstruction import ReconstructionConfig, HeavisideInterfaceReconstructor
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
 from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
@@ -50,6 +48,7 @@ from .gradient_operator import (
     CCDDivergenceOperator, FVMDivergenceOperator, FCCDDivergenceOperator,
 )
 from .ns_operator_stack import NSOperatorStackOptions, build_ns_operator_stack
+from .ns_grid_rebuild import rebuild_ns_grid
 from .scheme_build_ctx import ReprojectorBuildCtx, SurfaceTensionBuildCtx, ViscousBuildCtx
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from ..ns_terms.convection import ConvectionTerm                      # registration
@@ -700,65 +699,31 @@ class TwoPhaseNSSolver:
 
         Returns remapped (psi, u, v).
         """
-        if self._alpha_grid <= 1.0:
-            return psi, u, v
-
-        # 1. Save old grid state for interpolation
-        old_coords = [c.copy() for c in self._grid.coords]
-        old_h = [h.copy() for h in self._grid.h]
-
-        # 2. Compute old cell volumes / mass on the active device to avoid
-        #    per-rebuild D2H round-trips on the GPU path.
-        xp = self._backend.xp
-        dV_old = xp.asarray(old_h[0])
-        for ax in range(1, self._grid.ndim):
-            dV_old = xp.expand_dims(dV_old, axis=ax) * xp.asarray(old_h[ax])
-        psi_dev = xp.asarray(psi)
-        M_before = xp.sum(psi_dev * dV_old)
-
-        # 3. Rebuild grid from ψ (mutates coords, h, J, dJ_dxi in-place)
-        self._grid.update_from_levelset(psi, self._eps, ccd=self._ccd)
-
-        # 4. Remap psi, u, v from old grid to new grid.
-        remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
-        psi = xp.clip(xp.asarray(remapper.remap(psi)), 0.0, 1.0)
-        u = xp.asarray(remapper.remap(u))
-        v = xp.asarray(remapper.remap(v))
-
-        # 5. Mass correction for psi
-        dV_new = self._grid.cell_volumes()
-        psi = apply_mass_correction(xp, psi, dV_new, M_before)
-
-        # 6. Update meshgrid cache.
-        self.X, self.Y = self._grid.meshgrid()
-
-        # 8. Update curvature eps_field for local-eps mode
-        if self._use_local_eps:
-            self._curv.eps = self._make_eps_field()
-
-        # 8b. CHK-159/160/175: refresh grid-dependent caches via interfaces.
-        self._reinit.update_grid(self._grid)
-        self._ppe_solver.update_grid(self._grid)
-        self._ppe_solver.invalidate_cache()
-        if self._fccd_div_op is not None:
-            self._fccd_div_op.update_weights()
+        result = rebuild_ns_grid(
+            backend=self._backend,
+            grid=self._grid,
+            ccd=self._ccd,
+            eps=self._eps,
+            alpha_grid=self._alpha_grid,
+            psi=psi,
+            u=u,
+            v=v,
+            rho_l=rho_l,
+            rho_g=rho_g,
+            use_local_eps=self._use_local_eps,
+            curvature_operator=self._curv,
+            make_eps_field=self._make_eps_field,
+            reinitializer=self._reinit,
+            ppe_solver=self._ppe_solver,
+            fccd_div_op=self._fccd_div_op,
+            reprojector=self._reprojector,
+        )
+        self.X, self.Y = result.X, result.Y
         self._p_prev = None
         self._p_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
-
-        # 9. Velocity re-projection: linear interpolation of (u, v) does not
-        #    preserve ∇·u = 0. Solve a PPE to remove the spurious divergence
-        #    introduced by the remap.  Without this step the remapped velocity
-        #    has O(h) divergence which drives exponential KE growth.
-        # Strategy pattern: reprojector encapsulates legacy/variable-density/IIM logic.
-        u, v = self._reprojector.reproject(
-            psi, u, v, self._ppe_solver, self._ccd, self._backend,
-            rho_l=rho_l, rho_g=rho_g,
-        )
-
-        # Return device arrays — callers expect the same device type as input.
-        return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
+        return result.psi, result.u, result.v
 
     # ── initial condition / velocity builders ─────────────────────────────
 
