@@ -97,45 +97,17 @@ def invert_heaviside(xp, psi, eps: float):
     """
     import math
 
-    # Broadcast eps to the shape of psi so that both scalar and 2-D
-    # array eps (local grid-spacing-based ε_field) work uniformly.
-    eps_arr = xp.asarray(eps) * xp.ones_like(psi)
-
-    phi_max = eps_arr * math.log((1.0 - _DELTA_CLAMP) / _DELTA_CLAMP)
-
-    phi = xp.empty_like(psi, dtype=float)
-
-    # Masks for three regions
-    sat_low = psi <= _DELTA_CLAMP
-    sat_high = psi >= 1.0 - _DELTA_CLAMP
-    standard = ~sat_low & ~sat_high
-
-    # Step 2: saturated regions -> +/- phi_max (element-wise for array eps)
-    phi[sat_low] = -phi_max[sat_low]
-    phi[sat_high] = phi_max[sat_high]
-
-    # Step 3: standard region -> analytic logit
-    if xp.any(standard):
-        psi_std = psi[standard]
-        phi[standard] = eps_arr[standard] * xp.log(psi_std / (1.0 - psi_std))
-
-    # Newton fallback (eq. newton_inversion, section 3b eq.66):
-    # For points near saturation boundary where analytic inversion
-    # may have reduced accuracy, refine with 2 Newton iterations.
-    # In practice with delta_clamp=1e-6, this covers ~0 points.
-    near_sat = ((psi > _DELTA_CLAMP) & (psi < 10 * _DELTA_CLAMP)) | \
-               ((psi < 1.0 - _DELTA_CLAMP) & (psi > 1.0 - 10 * _DELTA_CLAMP))
-    if xp.any(near_sat):
-        phi_ns = phi[near_sat]
-        psi_ns = psi[near_sat]
-        eps_ns = eps_arr[near_sat]
-        for _ in range(2):
-            H_k = 1.0 / (1.0 + xp.exp(-phi_ns / eps_ns))
-            dH_k = (1.0 / eps_ns) * H_k * (1.0 - H_k)
-            phi_ns = phi_ns - (H_k - psi_ns) / dH_k
-        phi[near_sat] = xp.clip(phi_ns, -phi_max[near_sat], phi_max[near_sat])
-
-    return phi
+    # Saturation handling is equivalent to clipping ψ into
+    # [delta_clamp, 1-delta_clamp] before the analytic logit inversion:
+    #
+    #   phi = eps * log(psi / (1 - psi))
+    #
+    # For ψ outside that interval, clipping yields exactly +/- phi_max.
+    # This keeps the section-3b semantics while avoiding mask-heavy scatter
+    # updates on the GPU hot path used by interface-fitted regridding.
+    eps_arr = xp.asarray(eps)
+    psi_clip = xp.clip(xp.asarray(psi), _DELTA_CLAMP, 1.0 - _DELTA_CLAMP)
+    return eps_arr * xp.log(psi_clip / (1.0 - psi_clip))
 
 
 def apply_mass_correction(xp, q, dV, M_target):

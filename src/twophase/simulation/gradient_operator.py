@@ -96,7 +96,7 @@ class CCDGradientOperator(IGradientOperator):
         axis: int,
     ) -> "array":
         """Compute ∂p/∂x_axis via CCD with wall Neumann BC if needed."""
-        dp_daxis, _ = self._ccd.differentiate(p, axis)
+        dp_daxis = self._ccd.first_derivative(p, axis)
         if self.bc_type == "wall":
             self._ccd.enforce_wall_neumann(dp_daxis, axis)
         return dp_daxis

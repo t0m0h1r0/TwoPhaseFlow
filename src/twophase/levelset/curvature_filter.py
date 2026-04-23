@@ -45,8 +45,7 @@ def _ccd_laplacian(xp, ccd, field):
     """∇²field = Σ_ax ∂²field/∂x_ax² via CCD (ndim tridiagonal solves)."""
     lap = xp.zeros_like(field)
     for ax in range(ccd.ndim):
-        _, d2 = ccd.differentiate(field, ax)
-        lap += d2
+        lap += ccd.second_derivative(field, ax)
     return lap
 
 
