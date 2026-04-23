@@ -1,0 +1,140 @@
+% paper/sections/04f_uccd6.tex
+%
+% §4.6  UCCD6：6 次節点中心 CCD ＋ 次数保存ハイパー粘性（SP-N）
+%        旧 SP-H は 2026-04-23 リナンバで SP-N となった．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{{\UCCD[6]}：次数保存ハイパー粘性付き節点中心 CCD}
+\label{sec:uccd6_def}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-N \cite{SPN} は，Chu--Fan の CCD 演算子 $D_1^{\CCD}$ の
+\textbf{6 次分散精度を保ったまま}
+高次ハイパー粘性 $\sigma|a|h^7(-D_2^{\CCD})^4$ を
+演算子内部に埋め込むことで，
+節点中心のままモーメント移流の $L^2$ 安定性を得る設計である．
+DCCD（§\ref{sec:dccd_derivation}，後フィルタ）と
+FCCD（§\ref{sec:fccd_def}，面中心）に対する
+\textbf{第 3 の経路}として，本節では定式化・安定性解析・境界閉包を述べる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{演算子定義と符号}
+\label{sec:uccd6_hyperviscosity}
+% -------------------------------------------------------------------------------
+
+線形移流 $\partial_t u + a\,\partial_x u = 0$ に対する半離散演算子：
+\begin{equation}
+  \partial_t U_j
+  \;=\; L_h U_j
+  \;=\; -a\,(D_1^{\CCD}U)_j \;-\; \sigma|a|h^{7}\,\bigl((-D_2^{\CCD})^{4}U\bigr)_j,
+  \qquad \sigma > 0.
+  \label{eq:uccd6_semidiscrete}
+\end{equation}
+ここで $D_1^{\CCD}, D_2^{\CCD}$ は Chu--Fan CCD の 1 次・2 次導関数演算子
+（§\ref{sec:ccd_def}）．第二項が\textbf{ハイパー粘性}であり，
+$(-D_2^{\CCD})$ が正定値（§\ref{sec:ccd_omega_weights}）であることから
+その 4 乗も正定値で，式~\eqref{eq:uccd6_semidiscrete} は\textbf{散逸演算子}を加えた形となる．
+
+指数 7 の必然性を確認する．周期格子での Fourier シンボル：
+\begin{equation}
+  \lambda(\theta)
+  \;=\; -i\,\frac{a\,\omega_1(\theta)}{h}
+  \;-\; \sigma|a|\,\frac{\omega_2(\theta)^{8}}{h},
+  \qquad \theta = kh,
+  \label{eq:uccd6_symbol}
+\end{equation}
+を用いると，$\omega_2^2 = \theta^2 + \Ord{\theta^8}$
+（式~\eqref{eq:ccd_omega_12} 導出系）より
+ハイパー粘性は物理波数で
+$-\sigma|a|h^{7}\partial_x^{8}u$ として作用し，
+主項 $D_1^{\CCD}$ の $\Ord{h^6}$ 切断誤差より\textbf{漸近的に劣位}．
+指数 5（$h^{5}(-D_2^{\CCD})^3$）では主項の次数を削り，
+指数 9 では $\theta=\pi$ 近傍モードを減衰しきれない；
+指数 7・ハイパー粘性 4 乗は\textbf{次数保存の最小構成}である（SP-N §3.2）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{半離散 $L^2$ 安定性（エネルギー法）}
+\label{sec:uccd6_l2_stability}
+% -------------------------------------------------------------------------------
+
+周期格子の $\ell^2$ 内積 $\langle\cdot,\cdot\rangle_h$ の下で
+$D_1^{\CCD}$ は歪 Hermite，$D_2^{\CCD}$ は Hermite かつ負定値．従って：
+\begin{equation}
+  \frac{1}{2}\frac{\mathrm{d}}{\mathrm{d}t}\|U\|_h^{2}
+  \;=\; \langle U, \dot U\rangle_h
+  \;=\; -\sigma|a|h^{7}\,\bigl\|(-D_2^{\CCD})^{2}U\bigr\|_h^{2}
+  \;\le\; 0.
+  \label{eq:uccd6_energy_id}
+\end{equation}
+移流項 $-a\langle U, D_1^{\CCD}U\rangle_h$ は歪 Hermite 性より消滅；
+ハイパー粘性項が\textbf{厳密な散逸同定}を与える．
+従って SP-N §4 に従い，UCCD6 は全ての $\theta\in(0,\pi]$ で
+モードごとに散逸する（$\omega_2(\theta)\ne 0$）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Crank--Nicolson による無条件安定}
+\label{sec:uccd6_cn_stability}
+% -------------------------------------------------------------------------------
+
+時間刻み $\tau$ の Crank--Nicolson：
+\begin{equation}
+  (I + \tfrac{\tau}{2}L_h)\,U^{n+1}
+  \;=\; (I - \tfrac{\tau}{2}L_h)\,U^{n}.
+  \label{eq:uccd6_cn}
+\end{equation}
+Fourier 基底で増幅因子：
+\begin{equation}
+  G(\theta)
+  \;=\; \frac{1 + \tau\lambda(\theta)/2}{1 - \tau\lambda(\theta)/2},
+  \qquad
+  |G(\theta)|^{2}
+  \;=\; \frac{(1 - \tau\,\Re\lambda/2)^2 + (\tau\,\Im\lambda/2)^2}{(1 + \tau|\Re\lambda|/2)^2 + (\tau\,\Im\lambda/2)^2}.
+  \label{eq:uccd6_amp_factor}
+\end{equation}
+$\Re\lambda(\theta)\le 0$（式~\eqref{eq:uccd6_symbol}）より $|G(\theta)|\le 1$ が
+$\tau, h$ によらず成立；すなわち UCCD6+CN は\textbf{無条件安定}．
+
+\begin{remark}[陽解法の CFL 拘束]
+\label{rem:uccd6_explicit_cfl}
+TVD-RK3 などの陽解法を用いると $\omega_2^8$ 依存が
+$\theta=\pi$ 近傍で $\tau_{\max}\le \Ord{h/\omega_{2,\max}^8}$ の厳しい拘束を課す．
+中程度の $\sigma$ でも実質使えず，CN との組合せが必然（SP-N §5 Remark）．
+\end{remark}
+
+% -------------------------------------------------------------------------------
+\subsubsection{境界閉包と GKS 文脈}
+\label{sec:uccd6_boundary}
+% -------------------------------------------------------------------------------
+
+有界区間 $[0,L]$ における Chu--Fan 閉包は
+$j=1, N$ で 4 次精度の Hermite 閉包（§\ref{sec:ccd_bc}）を継承する．
+$(-D_2^{\CCD})$ の 4 回適用では境界付近で $\Ord{h^4}$ となるが，
+$h^7$ 係数がこれを主項 $\Ord{h^6}$ より抑制するため大局的精度は保たれる．
+厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
+SP-N §6 の PoC プログラムで扱う．
+
+% -------------------------------------------------------------------------------
+\subsubsection{3 スキームの役割分担}
+\label{sec:uccd6_scheme_comparison}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{l l l l}
+\hline
+\textbf{スキーム} & \textbf{配置} & \textbf{散逸チャンネル} & \textbf{保存精度} \\ \hline
+Chu--Fan CCD（§\ref{sec:ccd_def}） & 節点 & なし & $\Ord{h^6}$ \\
+DCCD（§\ref{sec:dccd_derivation}） & 節点 & 外殻 post-filter & $\Ord{h^6}$ \\
+FCCD（§\ref{sec:fccd_def}） & \textbf{面} & 風上構造 & $\Ord{h^4}$ \\
+\textbf{UCCD6（本節）} & 節点 & \textbf{演算子内部} & $\Ord{h^6}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent
+UCCD6 は FCCD と\textbf{直交補完}の関係にある：
+FCCD は Balanced-Force H-01（§\ref{sec:balanced_force}）を面配置で救済し，
+UCCD6 は節点配置のまま演算子内部散逸でモーメント移流の Gibbs を抑制する．
+UCCD6 はモーメント移流（§\ref{sec:advection}）で主に用いられ，
+CN と組み合わせて§\ref{sec:time_int} の Level-2/3 時間積分スタックに組み込まれる．
+
+% ═══════════════════════════════════════════════════════════════════════════════

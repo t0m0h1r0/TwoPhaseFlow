@@ -1,0 +1,244 @@
+% paper/sections/07c_fccd_advection.tex
+%
+% §7.3  FCCD 移流：Option B/C と面ジェット共通プリミティブ（SP-D）
+%        既存の CCD/DCCD 移流を上位互換に拡張する FCCD 移流演算子群．
+%        §4.5 FCCD の面中心行列 M^FCCD を速度移流に転用する経路を示す．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{FCCD 移流：節点出力版 Option C と面フラックス版 Option B}
+\label{sec:fccd_advection}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-D \cite{SPD} は \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
+$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2 \mathbf{S}_{\CCD}$ を
+速度移流項へ拡張し，
+Balanced-Force 原理（\S\ref{sec:balanced_force}）が要求する
+「$\nabla p,\,\sigma\kappa\nabla\psi,\,\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$
+\textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
+現行実装の節点版 CCD 移流は pressure/CSF を面中心 FCCD に置換しても
+\textbf{移流だけが節点中心に残る}ため BF 残差が $\mathcal{O}(h^2)$ に
+退化する（CHK-172 測定）．
+SP-D はこれを 2 経路で解消する：
+\begin{itemize}
+  \item \textbf{Option C（節点出力）}：面中心 FCCD 勾配を R$_4$
+        Hermite 再構成で節点に戻し，従来の AB2 履歴バッファ互換．
+  \item \textbf{Option B（面フラックス）}：保存形
+        $\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$ を FCCD 面値 $\mathbf{P}_f$ で
+        組み立て，面ダイバージェンスで節点に戻す．BF 整合性が最強．
+\end{itemize}
+
+% -------------------------------------------------------------------------------
+\subsubsection{共通プリミティブ：面値演算子 $\mathbf{P}_f$ と面ジェット $\mathcal{J}_f$}
+\label{sec:fccd_adv_primitives}
+% -------------------------------------------------------------------------------
+
+節点ベクトル $\mathbf{u}\in\mathbb{R}^{N+1}$ から面ベクトル
+$\mathbf{u}_f\in\mathbb{R}^N$ への 4 次精度内挿は，
+節点平均の $\mathcal{O}(H^2)$ 誤差を $\mathbf{S}_{\CCD}$ が与える第二導関数
+$\mathbf{q}\in\mathbb{R}^{N+1}$ で相殺することで得られる．
+面中央 $x_c = x_{f_{i-1/2}}$ 周りの対称 Taylor 展開から：
+\begin{equation}
+  u^{\FCCD}_{f_{i-1/2}}
+  = \tfrac{1}{2}(u_{i-1}+u_i)
+  - \tfrac{H_i^2}{16}(q_{i-1}+q_i)
+  + \mathcal{O}(H^4).
+  \label{eq:fccd_adv_face_value}
+\end{equation}
+疎な双対角行列 $\mathbf{P}_1, \mathbf{P}_2\in\mathbb{R}^{N\times(N+1)}$ を
+$\mathbf{P}_1 = \tfrac{1}{2}(1,1)\text{ 双対角}$，
+$\mathbf{P}_2 = (H_i^2/16)\cdot(1,1)\text{ 双対角}$ として，
+\begin{equation}
+  \boxed{\;
+  \mathbf{P}_f := \mathbf{P}_1 - \mathbf{P}_2\,\mathbf{S}_{\CCD},
+  \qquad \mathbf{u}_f = \mathbf{P}_f\,\mathbf{u},
+  \;}
+  \label{eq:fccd_adv_Pf}
+\end{equation}
+と行列化する．
+切断誤差 $u_f - u(x_c) = -\tfrac{5}{384}H^4 u^{(4)}(x_c) + \mathcal{O}(H^6)$．
+
+\noindent\textbf{面ジェット $\mathcal{J}_f$}（\S\ref{sec:face_jet_def}）：
+SP-H の統一プリミティブ $\FaceJet{u} = (u_f, u'_f, u''_f)$ は
+\begin{equation}
+  \mathcal{J}_f(\mathbf{u}) = \bigl(\mathbf{P}_f\mathbf{u},\,
+  \mathbf{M}^{\FCCD}\mathbf{u},\,
+  \mathbf{S}_{\CCD}^f\mathbf{u}\bigr),
+  \label{eq:fccd_adv_jet}
+\end{equation}
+の 3 出力を単一の $\mathbf{S}_{\CCD}$ 解から共有する．
+面値・面勾配・面第二導関数はいずれも同じ $\mathbf{q}$ に依存するため
+\textbf{CCD ブロック三重対角解は 1 軸あたり 1 回のみ}で済む．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Option C：R$_4$ Hermite 面→節点再構成}
+\label{sec:fccd_adv_option_c}
+% -------------------------------------------------------------------------------
+
+面値勾配 $\mathbf{d}^{\FCCD} = \mathbf{M}^{\FCCD}\mathbf{u}$ から
+4 次精度の節点勾配を得るには，隣接面の平均で生じる
+$\mathcal{O}(H^2)$ 誤差を $\mathbf{q}$ で相殺する：
+\begin{equation}
+  (\partial_x u)^{\text{node-FCCD}}_i
+  = \tfrac{1}{2}(d_{f_{i-1/2}} + d_{f_{i+1/2}})
+  - \tfrac{H}{16}(q_{i+1} - q_{i-1})
+  + \mathcal{O}(H^4).
+  \label{eq:fccd_adv_R4}
+\end{equation}
+この\textbf{R$_4$ Hermite 再構成}で節点勾配が FCCD の面精度と
+同じ $\mathcal{O}(H^4)$ を達成する．
+移流項は従来通り node-pointwise 積で組み立てる：
+\begin{equation}
+  [\mathcal{A}^{(j)}]_i = -\sum_k u_k(x_i)\cdot(\partial_{x_k} u_j)^{\text{node-FCCD}}_i.
+  \label{eq:fccd_adv_option_c}
+\end{equation}
+
+\noindent\textbf{Option C の利点}：
+出力が節点値なので既存の AB2 履歴バッファ / PPE RHS /
+CSF $\sigma\kappa\nabla\psi$ / Rhie--Chow がすべて無変更．
+`ns\_pipeline.py` の \texttt{ccd.differentiate(u, ax)[0]} を
+\texttt{fccd.node\_gradient(u, ax, q=...)} に置換するだけで実装完了．
+
+\noindent\textbf{Option C の限界}：
+R$_4$ の面→節点変換で BF 整合性が\textbf{部分的に}回復するに留まる．
+圧力と CSF が面中心 FCCD で動く一方，移流だけは R$_4$ 経由の
+節点に戻っているため，節点-面-節点の往復で
+$\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
+製品実装では Option B が推奨．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Option B：保存形 FCCD 面フラックス}
+\label{sec:fccd_adv_option_b}
+% -------------------------------------------------------------------------------
+
+運動量の自然形は $\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（保存形）である
+（SP-L §1）．
+非保存形 $(\mathbf{u}\cdot\nabla)\mathbf{u}$ は $\nabla\cdot\mathbf{u}\neq 0$
+の離散的残差によりスプリアス運動量源を生む．
+FCCD 面フラックスで保存形を評価する：
+\begin{equation}
+  F^{(k,j),\text{cons}}_{f_{i-1/2}}
+  = (u^{(k)} u^{(j)})_f
+  = \bigl(\mathbf{P}_f(u^{(k)} u^{(j)})\bigr)_{i-1/2},
+  \label{eq:fccd_adv_flux_cons}
+\end{equation}
+節点ダイバージェンスで運動量更新を閉じる：
+\begin{equation}
+  [\nabla\cdot F^{(j)}]_i
+  = \sum_k\frac{F^{(k,j)}_{f_{i+1/2}} - F^{(k,j)}_{f_{i-1/2}}}{H_i}.
+  \label{eq:fccd_adv_divergence}
+\end{equation}
+
+\noindent\textbf{スキュー対称形（推奨）}：
+運動量の離散エネルギー保存のため，保存形と非保存形の算術平均
+\begin{equation}
+  F^{(k,j),\text{sk}}_{f_{i-1/2}}
+  = \tfrac{1}{2}\bigl(F^{(k,j),\text{cons}}_{f_{i-1/2}}
+  + F^{(k,j),\text{nc}}_{f_{i-1/2}}\bigr)
+  \label{eq:fccd_adv_flux_skew}
+\end{equation}
+を用いる（Kok 2000, Ham et al. 2002）．
+非保存形 $F^{(k,j),\text{nc}} = (\mathbf{P}_f u^{(k)})\cdot(\mathbf{M}^{\FCCD}u^{(j)})$
+は面値と面勾配の点積，両者とも $\mathcal{J}_f$ から得られる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{BF 整合性定理（面上完結）}
+\label{sec:fccd_adv_bf_theorem}
+% -------------------------------------------------------------------------------
+
+\begin{theorem}[FCCD Option B の BF 整合性]\label{thm:fccd_adv_bf}
+$\nabla p$（FCCD），$\sigma\kappa\nabla\psi$（FCCD 面形），
+$\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（FCCD Option B）の
+3 項すべてを\textbf{共通の面中心演算子}
+$\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ で
+離散化すれば，静止状態 $\mathbf{u}\equiv 0$ での離散運動量バランスの
+BF 残差は
+\begin{equation*}
+  \|\mathbf{R}_\text{BF}\|_\infty = \mathcal{O}(H^4)\text{（一様）},
+  \qquad \mathcal{O}(H^3)\text{（非一様）}
+\end{equation*}
+を満たす．
+\end{theorem}
+
+\begin{proof}[証明（要旨）]
+$\mathbf{u}\equiv 0$ で保存形・非保存形・スキュー対称形の 3 種の対流面
+フラックス（\eqref{eq:fccd_adv_flux_cons}
+\eqref{eq:fccd_adv_flux_skew} および非保存形）はいずれも
+点積に $\mathbf{u}$ を含むため恒等的に零．
+残る $\nabla p$ と CSF は共通演算子 $\mathbf{M}^{\FCCD}$ の
+切断誤差 $\mathcal{O}(H^4)/\mathcal{O}(H^3)$
+（\S\ref{sec:fccd_def}/\S\ref{sec:fccd_nonuniform}）で相殺する．$\square$
+\end{proof}
+
+\noindent\textbf{系}：
+移流を Option C（R$_4$ 経由の節点中心）に留めた場合，
+節点-面-節点の往復で BF 残差フロアは $\mathcal{O}(H^2)$ に退化．
+Option B でのみ H-01 が完全解消する（WIKI-E-030 実測で SP-C 単独の
+$\mathcal{O}(H^2)$ フロアから $\mathcal{O}(H^4)$ へ降下）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{運動量方程式の閉形}
+\label{sec:fccd_adv_closure}
+% -------------------------------------------------------------------------------
+
+FCCD Option B で閉じた運動量更新：
+\begin{equation}
+  \frac{u^{n+1}_j - u^n_j}{\Delta t}
+  = -\sum_k\frac{(u_k u_j)^{*}_{f_{i+1/2}} - (u_k u_j)^{*}_{f_{i-1/2}}}{H_i}
+  + \bigl[\nu \text{Lap} + \nabla p + \sigma\kappa\nabla\psi + g\bigr]_i,
+  \label{eq:fccd_adv_closure}
+\end{equation}
+右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
+node\_divergence で節点に戻す．
+PPE RHS は自然に $\nabla_h\cdot\mathbf{u}^*$ が FCCD 面ダイバージェンスで
+表現され，ループが閉じる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{壁境界条件 Option IV：Dirichlet 無滑り}
+\label{sec:fccd_adv_wall_iv}
+% -------------------------------------------------------------------------------
+
+\S\ref{sec:ccd_bc} で導入した Option III（Neumann $\psi, p$）は
+移流でも変更不要．
+Dirichlet 無滑り $u(x_\text{wall}) = 0$ に対する
+\textbf{Option IV（SP-D §8）}は，
+$u$ の反対称ゴーストミラー $u_{-1} = -u_1$ と
+$u''$ の反対称性 $q_{-1} = -q_1$ を組み合わせる：
+\begin{align}
+  d^{\FCCD}_{f_{-1/2}} &= \frac{u_1}{H} - \frac{H}{24}(q_0 + q_1)
+  \quad\text{（壁せん断率, 一般に非零）}, \label{eq:fccd_adv_wall_iv_d}\\
+  u^{\FCCD}_{f_{-1/2}} &= -\tfrac{1}{2}u_1 + \tfrac{H^2}{16}(q_1 - q_0)
+  \quad\text{（壁面速度, 連続無滑り極限で零）}. \label{eq:fccd_adv_wall_iv_u}
+\end{align}
+Option B の壁面フラックス
+$F^{(k,j)}_{f_{-1/2}} = u^{(k)}_f\cdot u^{(j)}_f$ は
+両因子とも壁で $\to 0$ のため先頭オーダーで恒等零，
+物理的無滑り運動量フラックス零と一致．
+
+% -------------------------------------------------------------------------------
+\subsubsection{実装・コスト・段階移行}
+\label{sec:fccd_adv_impl}
+% -------------------------------------------------------------------------------
+
+\noindent\textbf{$\mathbf{q}$-共有最適化}：
+面値 $\mathbf{P}_f\mathbf{u}$，面勾配 $\mathbf{M}^{\FCCD}\mathbf{u}$，
+面第二導関数 $\mathbf{S}_{\CCD}^f\mathbf{u}$ はすべて共通の
+$\mathbf{q} = \mathbf{S}_{\CCD}\mathbf{u}$ に依存するため，
+CCD ブロック三重対角解は\textbf{1 軸あたり 1 回のみ}．
+追加コストは疎行列 $\mathbf{P}_1, \mathbf{P}_2, \mathbf{D}_1, \mathbf{D}_2$ の
+$\mathcal{O}(N)$ 乗算のみで，
+演算量は純 CCD 移流の 1.3--1.5$\times$（WIKI-L-019）．
+
+\noindent\textbf{段階移行パス}：
+\begin{enumerate}
+  \item \textbf{Stage 1}：pressure/CSF のみ FCCD 化（\S\ref{sec:balanced_force}），
+        移流は従来の節点 CCD を維持．
+        BF 残差は pressure/CSF 精度に律速され $\mathcal{O}(H^2)$ 止まり．
+  \item \textbf{Stage 2}：Option C 導入で移流を R$_4$ 経由の節点中心 FCCD に．
+        $\mathcal{O}(H^2)$ フロアは残るが係数が小さくなる．
+  \item \textbf{Stage 3}：Option B で保存形面フラックスに完全移行．
+        H-01 完全解消，BF 残差 $\mathcal{O}(H^4)$．
+\end{enumerate}
+製品コンフィグは Stage 3（WIKI-X-018），
+回帰検証には Stage 1/2 を \texttt{fccd\_bf\_mode} フラグで切替可能．
+
+% ═══════════════════════════════════════════════════════════════════════════════

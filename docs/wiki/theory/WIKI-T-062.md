@@ -5,8 +5,8 @@ domain: theory
 status: PROPOSED  # Research memo only; no code; PoC pending
 superseded_by: null
 sources:
-  - path: docs/memo/short_paper/SP-H_uccd6_hyperviscosity.md
-    description: Full short paper — UCCD6 definition, Fourier analysis, energy identity, CN stability, boundary closures
+  - path: docs/memo/short_paper/SP-N_uccd6_hyperviscosity.md
+    description: Full short paper — UCCD6 definition, Fourier analysis, energy identity, CN stability, boundary closures (formerly SP-H; renumbered 2026-04-23 to avoid collision with SP-H_fccd_face_jet_fvm_hfe)
 depends_on:
   - "[[WIKI-T-001]]: CCD Method: Design Rationale and O(h^6) Compactness (baseline Chu & Fan operator)"
   - "[[WIKI-T-002]]: Dissipative CCD (DCCD) Spectral Filter (post-filter baseline)"
@@ -33,7 +33,7 @@ $$
 \partial_t U_j + a \, (D_1^{\text{CCD}} U)_j + \sigma |a| h^7 \, ((-D_2^{\text{CCD}})^4 U)_j = 0, \qquad \sigma > 0.
 $$
 
-The full derivation and stability analysis are in [SP-H](../../memo/short_paper/SP-H_uccd6_hyperviscosity.md). This entry summarises the key results and positions UCCD6 within the project's dispersion/dissipation stack.
+The full derivation and stability analysis are in [SP-N](../../memo/short_paper/SP-N_uccd6_hyperviscosity.md) (formerly SP-H; renumbered 2026-04-23). This entry summarises the key results and positions UCCD6 within the project's dispersion/dissipation stack.
 
 ## Key equations
 
@@ -96,14 +96,14 @@ Let the hyperviscosity have the form $\sigma |a| h^{2p-1} (-D_2^{\text{CCD}})^p$
 
 ## Open questions for PoC
 
-1. **Choice of $\sigma$.** The theoretical stability holds for any $\sigma > 0$; empirical studies (Exp-H1–H3 in SP-H §8) are needed to identify the range that balances Gibbs control against accuracy loss on smooth regions.
+1. **Choice of $\sigma$.** The theoretical stability holds for any $\sigma > 0$; empirical studies (Exp-H1–H3 in SP-N §8) are needed to identify the range that balances Gibbs control against accuracy loss on smooth regions.
 2. **2D tensor-product extension.** Apply $D_1^{\text{CCD}}$ and $(-D_2^{\text{CCD}})^4$ dimension-by-dimension; verify anisotropy-free behaviour.
 3. **Nonlinear advection.** UCCD6 as derived applies to linear $a \partial_x u$; for $u \partial_x u$ the hyperviscosity coefficient becomes state-dependent and the energy identity must be re-examined.
-4. **GKS rigorous proof.** §6 of SP-H gives the GKS context; the full boundary matrix proof with Chu & Fan closures is deferred.
+4. **GKS rigorous proof.** §6 of SP-N gives the GKS context; the full boundary matrix proof with Chu & Fan closures is deferred.
 
 ## References
 
 - Chu, P. C., & Fan, C. (1998). A three-point combined compact difference scheme. *J. Comp. Phys.*, 140(2), 370–399.
-- [SP-H full draft](../../memo/short_paper/SP-H_uccd6_hyperviscosity.md)
+- [SP-N full draft](../../memo/short_paper/SP-N_uccd6_hyperviscosity.md) (formerly SP-H)
 - [SP-G pedagogical foundation](../../memo/short_paper/SP-G_upwind_ccd_pedagogical.md)
 - [WIKI-T-001](WIKI-T-001.md), [WIKI-T-002](WIKI-T-002.md), [WIKI-T-013](WIKI-T-013.md), [WIKI-T-046](WIKI-T-046.md), [WIKI-T-061](WIKI-T-061.md)

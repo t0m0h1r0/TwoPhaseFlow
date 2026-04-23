@@ -1,0 +1,242 @@
+% paper/sections/10_5_pure_fccd_dns.tex
+%
+% §10.5  純 FCCD DNS アーキテクチャ（SP-M Phase 1-4）
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{純 FCCD DNS アーキテクチャ：Level 3 完全構成}
+\label{sec:pure_fccd_dns}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-M \cite{SPM} は，境界的な smoothed Heaviside 一括解法や
+FVM フラックスバランスに依存しない\textbf{純 FCCD シャープ界面 DNS}
+アーキテクチャを Phase 1--4 の 4 層構造として定式化した．
+Level 3（§\ref{sec:level3_stiff_regime}）における理論的最終形であり，
+表面張力支配・マイクロスケール・高密度比の同時極限で
+数値 spurious current を物理的根拠に基づいて最小化する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{設計命題：高次演算子の共通基準面位置}
+\label{sec:pure_fccd_thesis}
+% -------------------------------------------------------------------------------
+
+純 FCCD DNS の中核命題（SP-M §1）：
+\begin{quote}
+\textbf{界面追跡・運動量移流・粘性・圧力投影・表面張力・HFE}
+のすべての演算が，\textbf{共通の面基準点 $f$}で
+FCCD 面ジェット $\FaceJet{\cdot}=(\cdot_f,\cdot'_f,\cdot''_f)$ を
+プリミティブとして高次一貫に実行される．
+\end{quote}
+
+この命題は §\ref{sec:bf_p1_location}（BF P-1 位置一致）を
+全演算子に拡張したものに相当する．
+従来アプローチ（節点 CCD + FVM adjoint，smoothed Heaviside，
+CSF 体積力）は高次と FVM の間でメトリック不整合（H-01, §\ref{sec:h01_diagnosis_fccd_remedy}）
+を不可避的に生じるのに対し，純 FCCD DNS は
+単一の面ジェット API で統一することで H-01 を構造的に回避する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 1: 界面追跡層（Ridge-Eikonal + FCCD 輸送）}
+\label{sec:pure_fccd_phase1}
+% -------------------------------------------------------------------------------
+
+界面は VOF 体積分率ではなく\textbf{高次輸送される連続場}として扱う
+（SP-M §2）：
+\begin{itemize}[noitemsep]
+  \item \textbf{トポロジー/メトリック分離}：
+        Ridge--Eikonal ハイブリッド（§\ref{sec:ridge_eikonal}）が
+        距離関数品質 ($\phi$ の符号距離性) とトポロジー変化
+        （pinch-off, merge）を別層で処理．
+  \item \textbf{保存形輸送}：
+        FCCD 保存形面フラックス（§\ref{sec:fccd_advection}, Option B）で
+        $\psi$ を進める．低次 VOF フラックスへのフォールバックは禁止．
+  \item \textbf{幾何資産}：
+        $\phi$，法線 $\mathbf{n}$，曲率 $\kappa$ は
+        $\psi$ から再生成され，
+        表面張力・HFE・粘性法線-接線切替が共通で使用する．
+\end{itemize}
+
+界面幅 $\varepsilon$ は固定でなく\textbf{空間依存} $\varepsilon_\text{local}(\mathbf{x})$
+（§\ref{sec:ridge_eikonal_nonuniform}）として
+非一様格子に整合させる．Ridge--Eikonal が保証する符号距離性により
+$\nabla\cdot\mathbf{n}$ の高次評価が成立する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 2: 運動量移流層（FCCD + HFE）}
+\label{sec:pure_fccd_phase2}
+% -------------------------------------------------------------------------------
+
+運動量移流は\textbf{FVM セル更新ではなく高次微分演算}として評価する
+（SP-M §3）．
+面ジェット $\mathcal{J}_f(u)=(u_f,u'_f,u''_f)$ が
+FCCD 面基準点 $f$ で HFE 状態を提供し，風上選択または Riemann 選択が
+方向別 HFE 状態 $(u_f^+, u_f^-)$ 上で作用する：
+\begin{equation}
+  u_f^\text{upwind}
+    = \begin{cases}
+        u_f^- & \text{if } u_f \ge 0,\\
+        u_f^+ & \text{if } u_f < 0,
+      \end{cases}
+  \qquad
+  u_f^{+/-} = u_f \pm \tfrac{h}{2}u'_f + \tfrac{h^2}{8}u''_f
+  \label{eq:pure_fccd_hfe_upwind}
+\end{equation}
+最終的な空間微分は FCCD 演算子族を通じて節点運動量方程式に戻る．
+HFE は再構成層であり，単体の保存則ではない．
+その役割は，高次ステンシルが不連続な相データを
+正しい片側状態なしに\textbf{サンプリングしない}ことを保証することにある．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 3: 粘性項の応力発散 + DC 分離}
+\label{sec:pure_fccd_phase3}
+% -------------------------------------------------------------------------------
+
+粘性項は\textbf{応力テンソル発散形}で保持する（SP-M §4）：
+\begin{equation}
+  \mathcal{V}(\mathbf{u}) = \bnabla\cdot(2\mu\,D(\mathbf{u})),
+  \qquad D(\mathbf{u}) = \tfrac{1}{2}(\bnabla\mathbf{u} + \bnabla\mathbf{u}^T).
+  \label{eq:pure_fccd_viscous}
+\end{equation}
+純 FCCD アーキテクチャは粘性項を\textbf{粘性ジャンプを跨いで}
+$\mu\nabla^2\mathbf{u}$ に畳み込むことを禁止する（§\ref{sec:viscous_mu_lap_forbidden}）．
+代わりに 3 層構造：
+\begin{enumerate}[noitemsep]
+  \item \textbf{Bulk}：$\bnabla\mu = 0$ の領域で高次 CCD/FCCD 微分．
+  \item \textbf{界面帯}：応力発散 + 法線軸フォールバック + 接線 CCD 保持．
+  \item \textbf{陰的剛性}：
+        高次応力演算子 $A_H$ で外殻残差 $r_H$ を構成し，
+        低次安定な内殻 $A_L$ で $\delta\mathbf{u}$ を解く：
+        \begin{equation}
+          A_L\,\delta\mathbf{u} = r_H,
+          \qquad r_H = \text{RHS} - A_H\,\mathbf{u}^{(m)}.
+          \label{eq:pure_fccd_viscous_dc}
+        \end{equation}
+\end{enumerate}
+これは圧力側の戦略（§\ref{sec:dc_pure_fccd_outer_inner}）と\textbf{双対}：
+安定な内殻解 + 高次外殻物理．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 4: 分相 FCCD PPE + GFM の中核アーキテクチャ}
+\label{sec:pure_fccd_phase4}
+% -------------------------------------------------------------------------------
+
+圧力投影は\textbf{純 FCCD DNS の設計上の中核}である（SP-M §5, §\ref{sec:pure_fccd_split_ppe}）．
+単相 smeared PPE や FVM フラックスバランスではなく，
+各相内部で独立した楕円問題を解く：
+\begin{equation}
+  \bnabla\cdot\!\left(\frac{1}{\rho_L}\bnabla p_L\right) = S_L,
+  \qquad
+  \bnabla\cdot\!\left(\frac{1}{\rho_G}\bnabla p_G\right) = S_G.
+  \label{eq:pure_fccd_split_ppe_core}
+\end{equation}
+相は $\Gamma$ 上で GFM ジャンプ条件により縫合される：
+\begin{equation}
+  [p]_\Gamma = \sigma\kappa,
+  \qquad
+  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = 0
+  \quad\text{（非相変化非圧縮）．}
+  \label{eq:pure_fccd_gfm_jump}
+\end{equation}
+FCCD が面基準点の勾配/発散演算子を供給し，
+GFM がゴースト圧力ジェット $(p^*,p'^*,p''^*)$ を提供することで
+コンパクトステンシルが各相側で単相のまま維持される．
+代数的な行構造は，$\Gamma$ から離れた位置で単相高次構造を保ち，
+界面不連続は物理的に導出されたジャンプ閉式のみを通して入る．
+
+% -------------------------------------------------------------------------------
+\subsubsection{CFD 位置付け：研究 DNS / シャープ界面極限}
+\label{sec:pure_fccd_positioning}
+% -------------------------------------------------------------------------------
+
+純 FCCD DNS は\textbf{研究 DNS / シャープ界面極限}のコーナーを占める：
+
+\begin{itemize}[noitemsep]
+  \item \textbf{ベストフィット}：マイクロ流体，インクジェット破断，
+        気泡核生成，毛管波，合体・分裂開始など
+        表面張力支配現象．
+  \item \textbf{主たる勝利}：圧力・表面張力・HFE・界面ジャンプ評価を
+        共通の高次面基準点言語で揃えることによる
+        spurious current の大幅削減．
+  \item \textbf{主たるコスト}：実装複雑度，
+        困難な界面行 assembly，
+        高価な楕円解．
+  \item \textbf{ターゲット外}：FVM 頑健性と正確な質量保存が第一要件の
+        広範な産業スループット．
+\end{itemize}
+
+SP-M §6--§7 の整理：純 FCCD は Level 2（§\ref{sec:level2_production}）と
+競合せず\textbf{補完}する．Level 2 は汎用プロダクション，
+純 FCCD は極限レジームの研究 DNS．
+同一コードベースで両者を共存させる場合は
+YAML 設定 \verb|solver.architecture: split_fccd| で切替える
+（SP-M §9 Phase 1 実装状況）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Acceptance Gate と検証計画}
+\label{sec:pure_fccd_gates}
+% -------------------------------------------------------------------------------
+
+SP-M §8 の acceptance gate を論文検証章（§\ref{sec:verify_split_ppe_dc}）と
+連結する：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\hline
+Gate & 判定指標 & 測定法 \\
+\hline
+G-1 静水圧 spurious current & $\max|\mathbf{u}|_\text{equilibrium} \le 10^{-10}$
+  & 1-step IPC on $p_\text{stat}$ \\
+G-2 周期平面波 BF 精度 & $\varepsilon_\text{BF} = \Ord{h^4}$
+  & §\ref{sec:verify_split_ppe_dc} \\
+G-3 Laplace バランス & $\Delta p_\text{discrete} = \sigma\kappa_\text{exact}$
+  & 静止球，$\kappa$ 誤差 $\le 1\%$ \\
+G-4 密度比独立性 & $\varepsilon_p^\text{split} = \Ord{h^7}$ 共通 for $\rho_l/\rho_g\in[1,1000]$
+  & §\ref{sec:split_ppe_pressure_jump_formulation} \\
+G-5 曲率 spurious current & $\max|\mathbf{u}|/|\mathbf{u}_\text{phys}| \le 10^{-6}$
+  & 振動液滴 eigenmode \\
+\hline
+\end{tabular}
+\end{center}
+
+G-1, G-2 は §\ref{sec:fccd_bf_hydrostatic} で予測テーブルを示した（Phase 1
+実装が $\varepsilon_\text{BF}\sim 10^{-6}$ 到達，Phase 3 IIM 行補正で
+$10^{-10}$ 目標）．
+G-3--G-5 は分相 FCCD PPE Phase 2--4 実装（SP-M §10--§12）の
+acceptance と同一軸．
+
+% -------------------------------------------------------------------------------
+\subsubsection{実装ロードマップと Level 2 への移植経路}
+\label{sec:pure_fccd_roadmap}
+% -------------------------------------------------------------------------------
+
+SP-M §9--§17 で示された 9 段階実装（Phase 1--9）は
+論文の実装計画と以下のように対応する：
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\hline
+SP-M Phase & 内容 & 論文対応 \\
+\hline
+1 & 分相 FCCD PPE 組立 & §\ref{sec:pure_fccd_split_ppe} 既述 \\
+2 & 圧力ジャンプ表面張力 & §\ref{sec:split_ppe_pressure_jump_formulation} \\
+3 & 相別 PPE compatibility & §\ref{sec:ppe_phase_gauge_pin} \\
+4 & ベース圧 warm start & 実装詳細（付録予定） \\
+5 & ジャンプ YAML 仕様 & 設定層（本稿範囲外） \\
+6 & 陽的 PPE 界面結合 & §\ref{sec:gfm_ghost_jet_stitch} \\
+7 & ジャンプ整合性ガード & §\ref{sec:split_ppe_regrid_guard} \\
+8 & PPE 診断 & §\ref{sec:fccd_bf_hydrostatic} \\
+9 & regrid 再投影コンテキスト & §\ref{sec:split_ppe_regrid_guard} \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Level 2 への部分移植}：
+Level 2 プロダクション構成（§\ref{sec:level2_production}）に
+純 FCCD DNS の一部（例：Phase 4 分相 PPE のみ）を
+取り込むことも可能．
+実際 Level 2 既定の BF + FCCD 勾配
+（§\ref{sec:fccd_bf_sub_system}）は
+SP-M Phase 1 の軽量版に相当する．
+完全な Phase 1--4 の同時採用は Level 3 を前提とする．
+
+% ═══════════════════════════════════════════════════════════════════════════════

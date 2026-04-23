@@ -1,0 +1,81 @@
+% paper/sections/07_0_scheme_per_variable.tex
+%
+% §7.0  変数別スキーム方針（SP-L §3）
+%        §7 冒頭に配置し, 後続の §7.1 (CLS 移流) / §7.3 (FCCD 移流) /
+%        §7.6 (粘性 3 層) の選択根拠を先取りする．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{変数別スキーム選択方針}
+\label{sec:scheme_per_variable}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-L \cite{SPL} §3 の中心的主張は「差分演算子は\textbf{場の特性}に合わせて
+選択せよ」である．
+CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$ 滑らかである
+仮定に依存するため，$C^0$ kink・$\delta$ 関数・step profile を持つ変数に
+一律 CCD を適用すると\textbf{演算子の前提違反}が発散・膨張・スプリアス振動として
+表出する．
+
+\noindent\textbf{変数別割り当て}：
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\hline
+変数 & 特性 & 推奨スキーム \\
+\hline
+$\psi$（CLS）& $C^0$ 急 tanh & WENO5 + DCCD hybrid（\S\ref{sec:cls_advection}） \\
+$u, v$ bulk & $C^\infty$ 滑 & CCD / UCCD6 / FCCD（\S\ref{sec:fccd_advection}） \\
+$u, v$ 界面帯 & $\nabla u$ kink & WENO5 or 2 次片側（\S\ref{sec:viscous_3layer}）\\
+$\phi$（再初期化）& Eikonal & WENO--HJ（\S\ref{sec:eikonal_reinit}） \\
+$p$ & 界面で jump & Face-flux + GFM/IIM（\S\ref{sec:balanced_force}）\\
+$\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{設計原則（SP-L §3）}：
+\begin{itemize}
+  \item \textbf{$\psi$ に CCD を適用してはならない．}
+        tanh プロファイルを CCD で微分すると急勾配帯の曲率が増幅され，
+        CN 半陰的処理でも不安定化する（CHK-137 検証）．
+        DCCD スペクトルフィルタ（\S\ref{sec:dccd_derivation}）で散逸を加えた
+        場合のみ実用的．
+  \item \textbf{$p$ の CCD 節点値計算は jump 補正なしでは禁止．}
+        圧力跳躍を滑らかに内挿するため節点 CCD は実効的に
+        全域 $\mathcal{O}(1)$ のスプリアス圧力勾配を生む．
+        面フラックス + GFM/IIM，あるいは FCCD の面中心演算子
+        （\S\ref{sec:fccd_def}）を用いる．
+  \item \textbf{$\rho, \mu$ に CCD を適用してはならない．}
+        step プロファイルを CCD で差分すると Gibbs 振動が生じ，
+        物性値が $[\rho_\text{min},\rho_\text{max}]$ 範囲外になる．
+        物性値は常に低次（算術平均 / 調和平均 / $\psi$ 線形内挿）で評価．
+  \item \textbf{bulk 速度は CCD 推奨．}
+        $u, v$ は $C^\infty$ 滑らか（界面帯を除く）．
+        純 CCD でも安定だが，移流のスペクトル散逸欠如を補う
+        DCCD または UCCD6（\S\ref{sec:uccd6_def}）が製品版推奨．
+  \item \textbf{界面帯の速度は低次でよい．}
+        $\nabla u$ の kink を CCD stencil が跨ぐと $\mathcal{O}(1)$ 振動．
+        Definition $|\phi|\le 3h$ or phase-indicator mismatch で帯を同定し，
+        2 次中心 / 2 次片側に落とす（SP-K §6）．
+\end{itemize}
+
+\noindent\textbf{速度-PPE 整合性}（SP-L §2）：
+CLS 移流（Stage A, \S\ref{sec:cls_stages}）と運動量移流
+（\S\ref{sec:fccd_advection}）は\textbf{直前の PPE 投影済み $\mathbf{u}^n$}
+を用いる．
+未投影 $\mathbf{u}^*$ を使うと $\mathbf{u}^*$ の発散残差が $\psi$ 質量変化と
+PPE RHS の不整合を同時に引き起こす．
+正しい順序は：
+\begin{equation*}
+  \text{PPE}_{n}\!\to\!\mathbf{u}^n\!\to\!\text{CLS 移流} \& \text{運動量移流}
+  \!\to\!\mathbf{u}^*_{n+1}\!\to\!\text{PPE}_{n+1}
+\end{equation*}
+（詳細は \S\ref{sec:algorithm}）．
+
+\noindent\textbf{本章の構成}：
+\S\ref{sec:advection_motivation} で CLS 移流 DCCD（既存），
+\S\ref{sec:fccd_advection} で FCCD 移流 Option B/C（SP-D 新規），
+\S\ref{sec:cls_compression} で CLS 再初期化（既存），
+\S\ref{sec:cls_stages} で CLS A--F 6 段階（SP-L §5--§6 新規），
+\S\ref{sec:viscous_3layer} で粘性 3 層アーキテクチャ（SP-K §3--§5 新規）．
+
+% ═══════════════════════════════════════════════════════════════════════════════

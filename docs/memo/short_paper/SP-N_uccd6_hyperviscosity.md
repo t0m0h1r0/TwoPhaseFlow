@@ -1,9 +1,9 @@
-# SP-H: UCCD6 — A Sixth-Order Upwind Combined Compact Difference Scheme with Order-Preserving Hyperviscosity
+# SP-N: UCCD6 — A Sixth-Order Upwind Combined Compact Difference Scheme with Order-Preserving Hyperviscosity
 
 - **Status**: Research proposal (theory verified; PoC pending)
 - **Compiled by**: ResearchArchitect
-- **Compiled at**: 2026-04-21
-- **Related**: [SP-G](SP-G_upwind_ccd_pedagogical.md) (pedagogical foundation), [SP-A](SP-A_face_centered_upwind_ccd.md) (FCCD, orthogonal remedy)
+- **Compiled at**: 2026-04-21 (renumbered 2026-04-23: formerly SP-H, renamed to SP-N to resolve collision with [SP-H_fccd_face_jet_fvm_hfe.md](SP-H_fccd_face_jet_fvm_hfe.md))
+- **Related**: [SP-G](SP-G_upwind_ccd_pedagogical.md) (pedagogical foundation), [SP-A](SP-A_face_centered_upwind_ccd.md) (FCCD, orthogonal remedy), [SP-H](SP-H_fccd_face_jet_fvm_hfe.md) (face-jet companion)
 - **Wiki entry**: [WIKI-T-062](../../wiki/theory/WIKI-T-062.md)
 
 ## Abstract

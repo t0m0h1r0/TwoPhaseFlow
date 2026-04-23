@@ -1,0 +1,154 @@
+% paper/sections/06c_fccd_nonuniform.tex
+%
+% §6.4  非一様格子上の FCCD（SP-C §5）
+%         §4.5 FCCD の非一様拡張を本節で完結する．
+%         §4.5 sec:fccd_nonuniform_sketch から参照される主要本文．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{非一様格子上の FCCD：\texorpdfstring{$\mathcal{O}(H^3)$}{O(H3)} 行列定式}
+\label{sec:fccd_nonuniform}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\S\ref{sec:fccd_nonuniform_sketch} の非一様 FCCD 予告を本節で完結する．
+SP-C §5 \cite{SPC} は，\S\ref{sec:fccd_matrix} で導入した
+一様格子版行列 $\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ を
+非一様格子に拡張する道筋を示した．
+ここでは WIKI-T-050 の非一様 \textbf{打ち消し係数} $(\mu_i,\lambda_i)$ を
+2 つの疎な疎行列に織り込む．
+
+% -------------------------------------------------------------------------------
+\subsubsection{幾何量と打ち消し係数}
+\label{sec:fccd_nu_geometry}
+% -------------------------------------------------------------------------------
+
+\S\ref{sec:grid_density} のグリッド密度関数が定めた格子において，
+節点を $x_0 < x_1 < \cdots < x_N$ とし，
+内部面を $f_{i-1/2}$（$i=1,\ldots,N$）と記す．
+局所幾何量を：
+\begin{align}
+  H_i &:= x_i - x_{i-1} \quad\text{（面幅）}, \label{eq:fccd_nu_Hi}\\
+  \theta_i &:= (x_i - x_{f_{i-1/2}})/H_i \quad\text{（左節点からの相対位置）}. \label{eq:fccd_nu_theta}
+\end{align}
+中央（セル中心面）では $\theta_i \equiv 1/2$．
+WIKI-T-050 の \textbf{打ち消し係数}：
+\begin{equation}
+  \mu_i := \theta_i - \tfrac{1}{2},
+  \qquad
+  \lambda_i := \frac{1 - 3\theta_i(1-\theta_i)}{6}.
+  \label{eq:fccd_nu_mulambda}
+\end{equation}
+$\mu_i$ は面の中央ズレ，$\lambda_i$ は $u_f'''$ 近似の非一様補正項を担う．
+一様極限 $\theta_i\to 1/2$ で $\mu_i\to 0$，$\lambda_i\to 1/24$．
+
+% -------------------------------------------------------------------------------
+\subsubsection{3 本の疎な双対角行列}
+\label{sec:fccd_nu_matrices}
+% -------------------------------------------------------------------------------
+
+SP-C §5 に従い，$\mathbb{R}^{N\times(N+1)}$ の
+3 本の疎な双対角行列 $\mathbf{D}_1^{(H)}, \mathbf{D}_\mu^{(H\theta)}, \mathbf{D}_\lambda^{(H)}$ を定義する．
+行 $f_{i-1/2}$ は 2 つの節点列（$i-1$ と $i$）のみ非零：
+\begin{align}
+  (\mathbf{D}_1^{(H)})_{f_{i-1/2},i-1} &= -1/H_i,
+  &\quad (\mathbf{D}_1^{(H)})_{f_{i-1/2},i} &= +1/H_i, \label{eq:fccd_nu_D1}\\
+  (\mathbf{D}_\mu^{(H\theta)})_{f_{i-1/2},i-1} &= \mu_i H_i\theta_i,
+  &\quad (\mathbf{D}_\mu^{(H\theta)})_{f_{i-1/2},i} &= \mu_i H_i(1-\theta_i), \label{eq:fccd_nu_Dmu}\\
+  (\mathbf{D}_\lambda^{(H)})_{f_{i-1/2},i-1} &= -\lambda_i H_i,
+  &\quad (\mathbf{D}_\lambda^{(H)})_{f_{i-1/2},i} &= +\lambda_i H_i. \label{eq:fccd_nu_Dlambda}
+\end{align}
+$\mathbf{D}_1^{(H)}$ は 1 次差分，$\mathbf{D}_\mu^{(H\theta)}$ は $u_f''$ 補間，
+$\mathbf{D}_\lambda^{(H)}$ は $u_f'''$ 差分に対応する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{非一様 FCCD 行列}
+\label{sec:fccd_nu_matrix_form}
+% -------------------------------------------------------------------------------
+
+WIKI-T-053 が与える非一様 FCCD の面式
+\begin{equation}
+  d_{f_{i-1/2}} = \frac{u_i - u_{i-1}}{H_i}
+    - \mu_i H_i\bigl[\theta_i q_{i-1} + (1-\theta_i)q_i\bigr]
+    - \lambda_i H_i(q_i - q_{i-1})
+  \label{eq:fccd_nu_face_formula}
+\end{equation}
+をベクトル形で読み替えると：
+\begin{equation}
+  \mathbf{d}^{\FCCD,\text{nu}}
+  = \mathbf{D}_1^{(H)}\mathbf{u}
+   - (\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)})\mathbf{q},
+\end{equation}
+したがって節点から面への非一様 FCCD 演算子は
+\begin{equation}
+  \boxed{\;
+  \mathbf{M}^{\FCCD,\text{nu}}
+  = \mathbf{D}_1^{(H)}
+    - \bigl(\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)}\bigr)
+      \mathbf{S}_{\CCD}.
+  \;}
+  \label{eq:fccd_nu_composite_matrix}
+\end{equation}
+ここで $\mathbf{S}_{\CCD}$ は \S\ref{sec:fccd_matrix} で定義した
+非一様 CCD ブロック三重対角系の第二導関数射影であり，
+\S\ref{sec:ccd_metric} の座標変換により非一様格子上で直接構築できる．
+
+\noindent\textbf{一様極限（検証）}：
+$\theta_i \equiv 1/2 \Rightarrow \mu_i = 0$，$\lambda_i = 1/24$，
+$\mathbf{D}_\mu^{(H\theta)} \equiv \mathbf{0}$，
+$\mathbf{D}_\lambda^{(H)} = \mathbf{D}_2$（\S\ref{sec:fccd_matrix} 式~\eqref{eq:fccd_D2}）．
+したがって式~\eqref{eq:fccd_nu_composite_matrix} は
+\S\ref{sec:fccd_matrix} 式~\eqref{eq:fccd_composite_matrix} と一致する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{切断誤差：\texorpdfstring{$\mathcal{O}(H^3)$}{O(H3)}}
+\label{sec:fccd_nu_truncation}
+% -------------------------------------------------------------------------------
+
+SP-C §5 の Taylor 解析（WIKI-T-050 の $\mu,\lambda$ 導出と整合）により，
+一般の $\theta_i \neq 1/2$ に対する FCCD 切断誤差は
+\begin{equation}
+  D^{\FCCD,\text{nu}} u_{f_{i-1/2}}
+  = u'_{f_{i-1/2}} + c_3(\theta_i) H_i^3 u^{(4)}_{f_{i-1/2}} + \Ord{H_i^4}
+  \label{eq:fccd_nu_truncation}
+\end{equation}
+となり，セル中心面以外では $\mathcal{O}(H^3)$ に落ちる．
+$c_3(\theta) = (\theta-1/2)(1-\theta(1-\theta))/24$ は
+$\theta = 1/2$ で厳密に $0$ となるので，
+セル中心格子では $\mathcal{O}(H^4)$ が維持される．
+本稿の二相流実装では面位置を常に中心（$\theta = 1/2$）にとる
+\textbf{界面適合格子族}（\S\ref{sec:grid_density}）を採用するため，
+実効精度は $\mathcal{O}(H^4)$ のままである．
+
+% -------------------------------------------------------------------------------
+\subsubsection{プレ計算と実装コスト}
+\label{sec:fccd_nu_precompute}
+% -------------------------------------------------------------------------------
+
+3 本の重み行列 $\mathbf{D}_1^{(H)}, \mathbf{D}_\mu^{(H\theta)}, \mathbf{D}_\lambda^{(H)}$ は
+格子幾何 $(H_i,\theta_i)$ のみに依存するため，
+格子構築時に一度だけ計算してキャッシュする．
+各行は 2 非零要素のみで，全体メモリ量は $\mathcal{O}(N)$．
+
+演算コスト：1 回の FCCD 面勾配評価は
+（i）$\mathbf{S}_{\CCD}$ の非一様 CCD ブロック三重対角解 $\mathcal{O}(N)$ と
+（ii）3 本の双対角行列と節点・第二導関数ベクトルの疎な乗算 $\mathcal{O}(N)$
+の合計で $\mathcal{O}(N)$．
+一様版と漸近オーダーが同じであり，
+1 軸あたりの実行時間は一様版比で $1.1\text{--}1.3\times$
+（重み配列ロードの分；WIKI-L-015）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Balanced-Force への影響}
+\label{sec:fccd_nu_bf_impact}
+% -------------------------------------------------------------------------------
+
+\S\ref{sec:fccd_h01_remedy} で示した BF 残差 $|\mathrm{BF}_\text{res}| = \Ord{\Delta x^4}$ の性質は，
+非一様格子でも界面適合（$\theta=1/2$）を維持する限り保たれる．
+界面近傍のみ $\theta=1/2$ を保証する「局所中央化」を
+\S\ref{sec:grid_density} のグリッド密度関数で課すことにより，
+BF 原理（\S\ref{sec:bf_operator_mismatch}）の要求する
+$p$ 勾配と CSF の演算子整合が自動的に成立する．
+
+\noindent 詳細な実装注記・PCR/Thomas 法の非一様バージョン・
+境界行の wall BC 拡張は付録 B.2 および WIKI-T-050/053 参照．
+
+% ═══════════════════════════════════════════════════════════════════════════════

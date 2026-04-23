@@ -219,6 +219,71 @@ HFE が不可欠となり，高密度比シミュレーション（$\rho_l/\rho_
 推奨アップグレードパスとして位置づけられる．
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{面ジェット経由の HFE 指向状態（SP-H §4）}
+\label{sec:hfe_face_jet_directional}
+% ─────────────────────────────────────────────────────────────────────────────
+
+SP-H \cite{SPH} §4 は面ジェット $\mathcal{J}_f(u)=(u_f,u'_f,u''_f)$ を
+\textbf{共通再構成層}として位置付け，HFE の離散化を
+節点 Hermite 補間から\textbf{面位置 Taylor--HFE} に昇格させる．
+これにより分相 FCCD PPE（\S\ref{sec:pure_fccd_split_ppe}）の
+ジャンプクロージャと移流 Riemann 選択（\S\ref{sec:fccd_advection}）が
+同一プリミティブに結線する．
+
+\noindent\textbf{節点データから面指向状態への再構成}：
+節点 $(u,u',u'')$ が CCD で与えられた後，
+面 $f=i-1/2$ に対する左右指向状態は
+\begin{align}
+  u^+_{i-1/2}
+    &= u_{i-1} + \frac{H_i}{2}\,u'_{i-1} + \frac{H_i^2}{8}\,u''_{i-1},
+      \label{eq:hfe_taylor_plus}\\
+  u^-_{i-1/2}
+    &= u_i - \frac{H_i}{2}\,u'_i + \frac{H_i^2}{8}\,u''_i,
+      \label{eq:hfe_taylor_minus}
+\end{align}
+として 3 次 Taylor 展開から与えられる．圧力ジャンプ
+$[p]_\Gamma=\sigma\kappa$ が面 $f\subset\Gamma$ に作用する場合，
+$u^\pm$ にゴーストジェット（\S\ref{sec:gfm_ghost_jet_stitch}）を注入：
+\begin{equation}
+  u^{+\,\text{ghost}}_f = u^-_f - \sigma\kappa\,\mathrm{sign}(\phi_f),
+  \qquad u^{-\,\text{ghost}}_f = u^+_f + \sigma\kappa\,\mathrm{sign}(\phi_f).
+  \label{eq:hfe_ghost_injection}
+\end{equation}
+
+\noindent\textbf{指向選択規則}：
+面フロー速度 $a_f$ の符号により
+\begin{equation}
+  u_f^\text{upwind}
+    = \begin{cases}
+        u^+_f & a_f>0,\\
+        u^-_f & a_f<0.
+      \end{cases}
+  \label{eq:hfe_upwind_selection}
+\end{equation}
+楕円 PPE 文脈では上流判定ではなく
+\textbf{相マスク}（$\phi_f$ の符号）でゴースト側を選び，
+bulk ステンシルは対応する単相データに限定される．
+
+\noindent\textbf{FCCD 面ジェットとの関係}：
+SP-H §3（\S\ref{sec:face_jet_def}）の現行実装は
+$u''_f = (q_{i-1}+q_i)/2,\ q=S_\CCD u$ の 2 次閉式．
+Phase 3 昇格（\S\ref{sec:fccd_bf_gfm_integration}）では
+$(u_f,u'_f,u''_f)$ をブロック連立の 3 独立未知量として扱い
+$\Ord{h^4}$ を達成する．本稿 Level 2 は 2 次 $u''_f$ で運用．
+
+\noindent\textbf{使用箇所の再整理}：
+\begin{itemize}[noitemsep]
+  \item PPE ステッチング（\S\ref{sec:gfm_ghost_jet_stitch}）：
+        面 $f\subset\Gamma$ でゴーストジェット生成．
+  \item 移流 Option C（\S\ref{sec:fccd_adv_option_c}）：
+        Taylor--HFE で $u^+_f,u^-_f$ を構築し Riemann 解へ渡す．
+  \item 粘性 Layer B（\S\ref{sec:viscous_three_layers}）：
+        $\tau_{xy}$ 組立前にコーナー速度を指向的再構成．
+\end{itemize}
+これら 3 経路で\textbf{同じ面ジェットプリミティブ}を共有することが
+本章と §\ref{sec:fccd_advection}・§\ref{sec:viscous_3layer} の整合性を保証する．
+
+% ─────────────────────────────────────────────────────────────────────────────
 % backward-compat: rename to HFE in final draft
 \phantomsection\label{eq:gfm_rhs_correction}%
 \phantomsection\label{eq:gfm_ccd_div}%

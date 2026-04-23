@@ -1,0 +1,177 @@
+% paper/sections/04c_dccd_derivation.tex
+%
+% §4.3  DCCD の教示的導出：1 次風上 → 修正方程式 → DCCD 埋込み（SP-G）
+%        既存 04d_dissipative_ccd.tex を本節に吸収（DCCD 役割分担のみ残存）．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{\DCCD{} フィルタの教示的導出}
+\label{sec:dccd_derivation}
+\phantomsection\label{sec:dissipative_ccd}% backward-compat: 旧 04d §4.4 overall label
+\phantomsection\label{sec:dccd_motivation}% backward-compat: 旧 04d § motivation
+\phantomsection\label{sec:dccd_bc}% backward-compat: 旧 04d § BC (現在は §\ref{sec:ccd_bc} 参照)
+\phantomsection\label{sec:dccd_conservation}% backward-compat: 旧 04d § conservation (本節最終項)
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-G \cite{SPG} に従い，本節では DCCD フィルタを
+\textbf{1 次風上スキームの修正方程式}として再解釈し，
+Chu--Fan CCD の高次 2 次導関数を散逸チャンネルとして再利用する筋道を示す．
+DCCD は「アドホックな数値粘性追加」ではなく，
+1 次風上の安定性予算を\textbf{演算子整合}で CCD に移植した
+体系的帰結であることが導出から明らかになる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{1 次風上スキームの修正方程式}
+\label{sec:dccd_modified_eq}
+% -------------------------------------------------------------------------------
+
+$c>0$ の線形移流 $\partial_t u + c\,\partial_x u = 0$ に前進 Euler＋1 次風上を適用：
+\begin{equation}
+  u_i^{n+1} = (1-\nu)u_i^n + \nu u_{i-1}^n,\qquad \nu=\frac{c\Delta t}{\Delta x}.
+  \label{eq:upwind_scheme}
+\end{equation}
+フォン・ノイマン解析で増幅因子 $|G|^2 = 1 - 2\nu(1-\nu)(1-\cos(k\Delta x))$ が得られ，
+$0\le\nu\le 1$ で CFL 安定．
+$u_{i-1}^n = u - \Delta x\,\partial_x u + (\Delta x^2/2)\,\partial_x^2 u - \cdots$ を代入し
+時間側 $u_i^{n+1} = u + \Delta t\,\partial_t u + (\Delta t^2/2)\,\partial_t^2 u + \cdots$ と対応させると，
+スキームが実際に進める\textbf{等価 PDE}（修正方程式）は：
+\begin{equation}
+  \partial_t u + c\,\partial_x u
+  \;=\; \underbrace{\frac{c\Delta x}{2}(1-\nu)}_{D_\nu}\,\partial_x^2 u
+  \;+\; \Ord{\Delta x^2, \Delta t^2}.
+  \label{eq:upwind_modified_eq}
+\end{equation}
+$\nu<1$ で右辺 Laplacian は厳密に散逸的；
+これが 1 次風上の安定性を保証する\textbf{物理的起源}である（SP-G §3）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Chu--Fan CCD への埋込み}
+\label{sec:dccd_embedding}
+% -------------------------------------------------------------------------------
+
+中心 Chu--Fan CCD（§\ref{sec:ccd_def}）の 1 次導関数は純虚数 Fourier シンボルで
+散逸がない（WIKI-T-001/002 参照）．
+式~\eqref{eq:upwind_modified_eq} の $\partial_x^2 u$ 項を
+\textbf{CCD 自身の 2 次導関数} $D_2^{\CCD}$ で離散化することで，
+中心 CCD の分散精度を保ったまま散逸チャンネルを得る：
+\begin{equation}
+  \boxed{\;
+  \partial_t u_i + c\,(D_1^{\CCD}u)_i
+  \;=\; \varepsilon\,|c|\,\Delta x\,(D_2^{\CCD}u)_i,
+  \qquad \varepsilon > 0.
+  \;}
+  \label{eq:dccd_pde_form}
+\end{equation}
+CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
+低次有限差分で代用するとステンシル整合性が崩れ，
+修正波数の不整合が Balanced-Force 原理
+（§\ref{sec:balanced_force}）と同じ系統の残差を生む．
+
+% -------------------------------------------------------------------------------
+\subsubsection{製品版スペクトルフィルタとの関係}
+\label{sec:dccd_spectral_filter}
+\phantomsection\label{sec:dccd_filter_theory}% backward-compat: 旧 04d § filter theory
+% -------------------------------------------------------------------------------
+
+製品版 DCCD は定数 $\varepsilon$ を
+スペクトル伝達関数：
+\begin{equation}
+  H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2),
+  \qquad \xi=k\Delta x,
+  \label{eq:dccd_filter_transfer}
+\end{equation}
+\phantomsection\label{eq:dccd_filter}% backward-compat: 旧 04d filter label
+\phantomsection\label{eq:dccd_transfer}% backward-compat: 旧 04d transfer-function label
+に置き換える（WIKI-T-002）．
+低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は式~\eqref{eq:dccd_pde_form} の
+PDE 形の\textbf{波数依存 $\varepsilon$} 拡張と等価で，
+直流成分・6h 波長成分を $\Ord{\varepsilon_d}$ で保ちつつ
+Nyquist モードのみ $4\varepsilon_d$ で減衰する．
+本節の教示的 PDE は\textbf{製品フィルタの低波数極限}であり，
+WIKI-T-002 の波数選択的設計はこの極限を精緻化したものである．
+
+% -------------------------------------------------------------------------------
+\subsubsection{半離散 Fourier 安定性}
+\label{sec:dccd_eigenvalue}
+% -------------------------------------------------------------------------------
+
+周期格子の対称中心 CCD 修正波数
+$(D_1^{\CCD}u)_j \sim (i/\Delta x) k_{\text{eq}}(k\Delta x)\hat u$，
+$(D_2^{\CCD}u)_j \sim -(1/\Delta x^2) m_{\text{eq}}(k\Delta x)\hat u$
+を式~\eqref{eq:dccd_pde_form} に代入して固有値：
+\begin{equation}
+  \lambda(k) \;=\; -\varepsilon|c|\,\frac{m_{\text{eq}}}{\Delta x}
+                 \;-\; i\,c\,\frac{k_{\text{eq}}}{\Delta x}.
+  \label{eq:dccd_eigenvalue}
+\end{equation}
+Chu--Fan 係数 $(\beta_2,a_2,b_2)=(-1/8, 3, -9/8)$ での
+修正 2 次波数 $m_{\text{eq}}(\xi)$ は
+小 $\xi$ 展開で $m_{\text{eq}}=\xi^2+\Ord{\xi^6}$，
+Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
+区間 $[0,\pi]$ で符号変化なし（SP-G §5.1 検証）．従って：
+\begin{equation}
+  \Re\lambda(k) = -\varepsilon|c|\,\frac{m_{\text{eq}}(k\Delta x)}{\Delta x} \le 0,
+  \qquad \forall k,
+  \label{eq:dccd_dissipative}
+\end{equation}
+等号は $k=0$（直流）のみで成立．半離散系は非自明モードで無条件散逸．
+
+% -------------------------------------------------------------------------------
+\subsubsection{6 つの反論への回答}
+\label{sec:dccd_rebuttals}
+% -------------------------------------------------------------------------------
+
+SP-G §6 は以下の 6 反論を本構成が回避または明示的にスコープアウトすることを示す：
+
+\begin{enumerate}[label=\textbf{CA-\arabic*.}]
+\item \textbf{定数 $\varepsilon$ の精度低下．}
+      §\ref{sec:dccd_spectral_filter} の波数選択的フィルタが解決．
+\item \textbf{境界付き領域での必要非十分性．}
+      GKS 解析（§\ref{sec:ccd_bc}）が境界閉包まで含めて補う．
+\item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
+      §\ref{sec:ccd_bc} の Option III/IV で壁近傍の行を置換（WIKI-T-051/056）．
+\item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
+      TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL が
+      SP-G §5.3 で明示．中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
+\item \textbf{非線形・多次元・可変係数への拡張可否．}
+      線形解析は\textbf{必要条件プローブ}に過ぎない；
+      WENO5 相互検証（WIKI-T-013）で経験的裏付け．
+\item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
+      適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
+      $\varepsilon_d\le 0.05$ の製品設定で非拘束（WIKI-T-002）．
+\end{enumerate}
+
+% -------------------------------------------------------------------------------
+\subsubsection{DCCD の安定化フィルタとしての役割}
+\label{sec:dccd_role}
+% -------------------------------------------------------------------------------
+
+以上の導出は，製品 DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
+作用する設計であることを確立する．
+旧 §~04d (\texttt{04d\_dissipative\_ccd}：DCCD スペクトル設計・スイッチ $S(\psi)$・精度影響・境界条件・保存性）は，
+以下の要約として本節に吸収する：
+
+\begin{itemize}
+  \item \textbf{DCCD は移流の安定化専用}である．
+        Balanced-Force H-01 残差（界面 $\delta$ 関数と圧力勾配の位相ずれ）は
+        DCCD では解消できず，FCCD（§\ref{sec:fccd_def}）の\textbf{直交救済}を要する．
+  \item \textbf{界面近傍は非線形スイッチで無効化}される．
+        $S(\psi)=(2\psi-1)^2$ は bulk（$\psi\in\{0,1\}$）で $1$，
+        界面帯（$\psi=0.5$）で $0$ を取り，
+        CSF 体積力評価位置での余計な散逸を避ける．
+  \item \textbf{体積保存は外殻修正}で担保．
+        スペクトルフィルタ自体は \(\int u\,dx\) 不変ではないため，
+        §\ref{sec:cls_advection} の CLS 体積補正（$\int\psi$ 再正規化）を要する．
+  \item \textbf{UCCD6 との対照}．
+        UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
+        DCCD は\textbf{外殻 post-filter} として加える．
+        両者は直交的に選択可能で，Level-2 移流は DCCD，
+        Level-3 モーメント移流は UCCD6 を既定とする（§\ref{sec:time_int}）．
+\end{itemize}
+
+\noindent
+詳細な収束試験値・保存性解析・境界行設計は
+WIKI-T-002（DCCD スペクトル設計）・WIKI-T-013（DCCD vs WENO5 比較）を参照．
+旧 §~04d 節（\texttt{04d\_dissipative\_ccd.tex}）は本節に吸収されたため
+既定コンパイル対象から除外したが，履歴参照用にリポジトリに残存する．
+
+% ═══════════════════════════════════════════════════════════════════════════════

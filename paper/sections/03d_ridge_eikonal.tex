@@ -1,0 +1,254 @@
+% paper/sections/03d_ridge_eikonal.tex
+%
+% §3.4  Ridge--Eikonal ハイブリッド再初期化（SP-B + SP-E 完全取り込み）
+%   トポロジー変化を連続時間発展で扱う Gaussian 補助場 $\xiridge$ と
+%   FMM/FSM による $\phi$ 再構成の二段構成．非一様格子拡張（D1--D4）まで含める．
+%
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Ridge--Eikonal ハイブリッド再初期化}
+\label{sec:ridge_eikonal}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\textbf{主担当 SP：} SP-B（ハイブリッド枠組）\cite{SPB}，SP-E（非一様格子拡張）\cite{SPE}．\\
+\textbf{関連 wiki：} WIKI-T-042（再初期化カタログ），
+WIKI-T-049（$\xi$ 記号の曖昧性解消），
+WIKI-T-057/058/059（D1/D2/D3 非一様拡張），
+WIKI-L-025（ライブラリ）．
+
+§~\ref{sec:reinit} までで記述した古典的再初期化
+（Hamilton--Jacobi 型, FMM, FSM）はいずれも Eikonal 条件
+$|\bnabla\phi|=1$ を\textbf{トポロジー不変性の下で}強制する枠組で，
+界面の融合・分裂（coalescence / breakup）に必要な極値・リッジ構造を
+抑制する（§~\ref{sec:notation} 囲みを参照）．
+本節では SP-B の提案に従い，
+\textbf{トポロジーの自由度}と\textbf{計量整合性}を別々のスカラー場に担わせる
+二相スケジューリングを導入する．
+
+\subsubsection{Gaussian 補助場 $\xiridge$ の定義（D0）}
+\label{sec:ridge_aux_field}
+
+各界面成分 $\Gamma_k$ との符号付き距離を $d_k(\bm{x},t)$ としたうえで，
+\textbf{補助スカラー場} $\xiridge$ を以下で定義する：
+\begin{equation}
+  \xiridge(\bm{x},t) = \sum_k \exp\!\left(-\frac{d_k(\bm{x},t)^2}{\sigma^2}\right),
+  \label{eq:ridge_aux_def}
+\end{equation}
+ここで $\sigma$ は相互作用スケール．$\xiridge$ は\textbf{距離関数ではなく}
+Eikonal 条件を満たさない；
+これは局所極値・鞍点を許容するための意図的な設計であり，
+Morse 指数の連続変化としてトポロジー変化を表現する道具となる．
+
+時間発展は移流・拡散で与える：
+\begin{equation}
+  \partial_t \xiridge + \bm{u}\cdot\bnabla\xiridge
+  = \varepsilon_\text{diff}\,\Delta \xiridge .
+  \label{eq:ridge_pde}
+\end{equation}
+拡散係数 $\varepsilon_\text{diff}$ は正則化（数値安定化）のためのものであり，
+物理的拡散を表すわけではない．
+
+\begin{remark}[既存場との区別]\label{rem:ridge_vs_omega}
+$\xiridge$ は格子密度 Gaussian $\omegagrid(\phi) = \exp(-\alpha(\phi/\varepsilon_g)^2)$
+（§~\ref{sec:grid_density}）とは\textbf{役割が直交}する：
+$\omegagrid$ は格子間隔を制御し，$\xiridge$ は界面そのものを表す．
+また，既存の \texttt{xi\_sdf} 再初期化モード
+（\texttt{EikonalReinitializer.\_xi\_sdf\_phi}）が index 空間の
+Euclidean 距離を計算して Eikonal を満たすのに対し，
+$\xiridge$ は意図的に Eikonal を破る．
+\end{remark}
+
+\subsubsection{リッジ集合による界面定義}
+\label{sec:ridge_detection}
+
+界面 $\Gamma$ を $\xiridge$ の\textbf{リッジ集合}として定義する：
+\begin{equation}
+  \Gamma = \bigl\{\bm{x} \,\big|\, \bnabla\xiridge(\bm{x}) = 0,\;\;
+  \hat{\bm{n}}^{\top}\bnabla^2\xiridge(\bm{x})\,\hat{\bm{n}} < 0 \bigr\},
+  \qquad \hat{\bm{n}} = \frac{\bnabla\xiridge}{|\bnabla\xiridge|}.
+  \label{eq:ridge_set_def}
+\end{equation}
+これは法線方向に極大・接線方向に連続というクレスト線（2次元）
+／クレスト面（3次元）に対応する．
+孤立界面ではリッジ集合は古典的界面と一致し，
+複数界面の相互作用では\textbf{リッジ併合・分岐}が生じ，
+これが融合・分裂に対応する．
+したがってトポロジー変化は離散イベントではなく
+\textbf{$\xiridge$ の連続変形}（Morse 指数変化の一瞬）として表される．
+
+\subsubsection{トポロジー変化の連続化}
+\label{sec:ridge_topology}
+
+従来の level-set では，融合・分裂は $\phi$ の level set のトポロジーが
+不連続に変化する特異時刻として現れる．
+Ridge--Eikonal 枠組では：
+\begin{itemize}
+  \item 融合は 2 本のリッジが鞍点を通じて 1 本のリッジに滑らかに統合される．
+  \item 分裂はリッジの分岐（bifurcation）として単一パラメータ族で連続的に現れる．
+  \item いずれも $\xiridge$ の Morse 指数が瞬間的に変化する時刻として特徴づけられる．
+\end{itemize}
+離散イベント処理や明示的リメッシュは不要で，
+時間離散化の刻み幅が Morse 遷移と比して十分細ければ
+数値的にも自動的に捕捉される．
+
+\subsubsection{FMM/FSM による $\phi$ の再構成と一意性}
+\label{sec:ridge_fmm_reconstruction}
+
+リッジ集合 $\Gamma$ が幾何的に許容される（§~\ref{sec:ridge_admissibility}）
+条件を満たせば，Eikonal 再構成問題
+\begin{equation}
+  |\bnabla\phi| = 1 \text{ in } \Omega \setminus \Gamma, \qquad
+  \phi = 0 \text{ on } \Gamma,
+  \label{eq:eikonal_reconstruct}
+\end{equation}
+には\textbf{唯一の粘性解}が存在する．
+
+\paragraph{一意性の証明スケッチ（Crandall--Lions 1983）}
+\begin{enumerate}
+  \item \textbf{存在．} $\Gamma$ が閉集合なら $d(\bm{x},\Gamma)$ は Lipschitz 連続である．
+  \item \textbf{局所微分可能性．} 最近接射影 $\pi : \bm{x}\mapsto \Gamma$ が一意な領域で
+        $\phi$ は微分可能で $\bnabla\phi(\bm{x}) = \hat{\bm{n}}_\Gamma(\pi(\bm{x}))$．
+  \item \textbf{Eikonal 成立．} したがって $|\bnabla\phi|=1$ がほぼ至るところで成立．
+  \item \textbf{一意性．} 粘性解の比較原理（Crandall--Lions 1983 \cite{CrandallLions1983}）
+        により $\phi$ は $\Gamma$ を境界条件として一意．
+\end{enumerate}
+
+\paragraph{アルゴリズム}
+$\phi$ の再構成は FMM（狭帯域・非一様推奨）または FSM（全域）を適用する．
+両者で得られる $\phi$ は粘性解として同一である．
+再構成後は既存の FCCD 面中心移流（§~\ref{sec:advection}）
+で鋭利な界面追跡を再開する．
+
+\subsubsection{幾何的許容性条件}
+\label{sec:ridge_admissibility}
+
+Eikonal 再構成の一意性には $\Gamma$ が以下を満たす必要がある：
+\begin{enumerate}
+  \item\textbf{幾何正則性．}$\Gamma$ は閉じ，自己交差しない $(d-1)$ 次元多様体．
+  \item\textbf{最近接射影の一意性．}近傍点の最短射影が一意である．
+  \item\textbf{法線一貫性．}$\xiridge$ から推定される法線方向が $\Gamma$ 上で整合．
+\end{enumerate}
+これらは曲率上限と最小間隔基準によりリッジ抽出時に自然に保証できる．
+
+\subsubsection{非一様格子への拡張 D1--D4（SP-E）}
+\label{sec:ridge_eikonal_nonuniform}
+
+格子密度因子 $\alpha>1$ の界面適合格子
+（§~\ref{sec:grid_density}）では，SP-B の導出で暗黙に仮定された
+一様格子不変量が 3 か所で破れる：
+(i) Gaussian 半幅 $\sigma$ の物理セル分解能が不均一化，
+(ii) $\xi_\text{idx}$ 空間で Hessian を評価すると
+WIKI-T-039 の不可能性定理に抵触，
+(iii) FMM の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る．
+SP-E は 4 つの補正 D1--D4 でこれらを解消する．
+
+\paragraph{D1 — $\sigma_\text{eff}(\bm{x})$ の空間スケーリング}
+基準格子幅を $h_\text{ref}=(\prod_{a} L_a/N_a)^{1/d}$，
+局所幾何平均を $h(\bm{x})=\sqrt{h_x(i)\,h_y(j)}$ とし，
+\begin{equation}
+  \sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot \frac{h(\bm{x})}{h_\text{ref}},
+  \qquad \sigma_0 \in \mathbb{R}_{>0}\text{（}h_\text{ref}\text{ 単位）}
+  \label{eq:sigma_eff}
+\end{equation}
+と修正する．
+物理セル単位では $\sigma_\text{eff}(\bm{x})/h(\bm{x}) = \sigma_0/h_\text{ref}$ が定数となり
+SP-B 推奨値 $\sigma\in[2,4]$ がそのまま $\sigma_0$ に引き継げる．
+
+\paragraph{D2 — 物理空間 Hessian（$\xi$ 空間 Hessian 禁止定理）}
+$\xi_\text{idx}$ 空間で Hessian を組み立て
+chain rule $\bnabla_x^2 = J^{\!\top}\bnabla_\xi^2 J
++ (\bnabla_\xi J^{\!\top})\bnabla_\xi$
+で物理空間に変換する素朴な実装は禁じられる．
+
+\begin{theorem}[$\xi$ 空間 Hessian 不可能性]\label{thm:xi_hessian_forbidden}
+WIKI-T-039 の不可能性結果より，界面遷移幅が $\le 4$ セルのとき
+$\xi$ 空間 Hessian を経由する任意の計算は $\mathcal{O}(10^{-1})$ の
+フロア誤差を持つ．リッジ定義 \eqref{eq:ridge_set_def} は
+$\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
+この条件は一般に違反される．
+\end{theorem}
+
+許容される実装：
+\begin{enumerate}
+  \item\textbf{Approach A（論文整合）}——物理空間 Direct 非一様 CCD
+        で $\bnabla_x^2\xiridge$ を直接評価（SP-E 本命, CHK-160）．
+  \item\textbf{Approach B（実用 fallback）}——
+        物理空間二階 FD
+        $[\partial_{xx}\xiridge]_{ij}
+        = (\xi_{i+1,j}-2\xi_{ij}+\xi_{i-1,j})/(h_x^-(i)\,h_x^+(i))$
+        を用い，符号判定 $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}<0$ を
+        $H^{\text{FD}}$ で行う．リッジが Morse 非退化な限り
+        符号は一致する．
+\end{enumerate}
+
+\paragraph{D3 — 非一様 FMM}
+標準 FMM の二次更新
+$d_\text{new}=\tfrac{1}{2}(a_x+a_y+\sqrt{2-(a_x-a_y)^2})$
+は $h_x=h_y=1$ を前提とする．物理空間 Eikonal
+\begin{equation}
+  \frac{(d-a_x)^2}{h_x^2}+\frac{(d-a_y)^2}{h_y^2}=1
+  \label{eq:fmm_nonuniform}
+\end{equation}
+の閉形式解（大きい方の根）は
+\begin{equation}
+  d = \frac{a_x/h_x^2 + a_y/h_y^2 + \sqrt{D}}
+           {1/h_x^2 + 1/h_y^2},\qquad
+  D = \Bigl(\tfrac{1}{h_x^2}+\tfrac{1}{h_y^2}\Bigr)
+      - \frac{(a_x-a_y)^2}{h_x^2 h_y^2}.
+  \label{eq:fmm_closed_form}
+\end{equation}
+$D<0$ のときは一次元単調更新 $d=\min(a_x+h_x,\,a_y+h_y)$ を採用する．
+粘性一意性は \eqref{eq:fmm_nonuniform} が物理空間で書かれている限り
+SP-B §5 の証明がそのまま成立する．
+
+\paragraph{D4 — $\varepsilon$-widening の空間依存化}
+再構成幅を
+\begin{equation}
+  \varepsilon_\text{local}(\bm{x})
+  = \varepsilon_\text{scale}\cdot \varepsilon_\xi \cdot h(\bm{x}),
+  \qquad \varepsilon_\xi = \varepsilon/h_\text{min}
+  \label{eq:eps_local}
+\end{equation}
+と空間依存にする．
+CHK-138/139 の一様格子較正値 $\varepsilon_\text{scale}=1.4$ を維持し，
+空間因子 $h(\bm{x})/h_\text{ref}$ が非一様補正を担う．
+体積保存 $|\Delta V/V|<5\%$ が破れる場合は
+$\varepsilon_\text{scale}(\bm{x})=1.4\cdot h_\text{ref}/h_\text{min}$
+の適応化を行う．
+
+\subsubsection{$\sigma>0$ 制約（CHK-138 / CHK-139）}
+\label{sec:ridge_sigma_positive_caveat}
+
+純粋 FMM は $\sigma>0$ の毛管波条件下で体積保存が劣化する
+（WIKI-T-042 CHK-138：毛管波 $T=1$ で $|\Delta V/V|=8.2\%$）．
+診断された根本原因は界面幅 $\varepsilon$ の取り扱いであり，
+PPE 表面張力残差が $\sigma\kappa/\varepsilon$ にスケールする一方，
+FMM の厳密 $C^1$ SDF は $\varepsilon$ を狭帯域公称値に固定するのに対し
+演算子分離系では拡散で $\sim 1.4\varepsilon$ に広がるためである．
+\textbf{$\varepsilon$-widening}（式~\eqref{eq:eps_local}）は
+この劣化を補正する必須段階であり，FMM の後処理として必ず組み込む．
+
+\subsubsection{面中心追跡（SP-A）との接続}
+\label{sec:ridge_fccd_handoff}
+
+トポロジーが固定された段階で $\phi$ は面に snap され，
+ALE 的な面固定定式化に移行する．
+以降の移流・勾配評価は第~\ref{sec:advection} 章で定義する
+FCCD 面中心演算子で 4 次精度を保ちつつ行われる
+（SP-A \cite{SPA}）．
+再構成された $\phi$ と FCCD 評価は同一の\textbf{面 locus}を共有するため，
+再構成フェーズから追跡フェーズへの受け渡しは追加補間誤差を持たない．
+トポロジー変化が無い通常運転では，アルゴリズムは
+(i) FCCD による $\phi$ 面中心高次移流，(ii) 時折の FMM 再投影
+という既存 \texttt{phi\_primary\_transport + eikonal\_xi} パイプライン
+（WIKI-T-036）の厳密な一般化となる．
+
+\paragraph{本節の要点}
+\begin{itemize}
+  \item $\xiridge$ と $\phi$ は\textbf{役割が相補}：
+        前者はトポロジー自由度，後者は計量整合性を担う．
+  \item トポロジー変化は連続的 Morse 遷移として自動捕捉される．
+  \item 一意性は粘性解の比較原理により保証される．
+  \item 非一様格子への拡張は D1--D4 の補正で完結する．
+  \item $\sigma>0$ では $\varepsilon$-widening が必須後処理．
+\end{itemize}

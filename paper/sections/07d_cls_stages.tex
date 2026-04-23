@@ -1,0 +1,155 @@
+% paper/sections/07d_cls_stages.tex
+%
+% §7.5  CLS の A→F 6 段階アルゴリズム（SP-L §5–§6）
+%        §7.1 (CLS 移流) / §7.4 (再初期化) を統合し,
+%        1 物理時間ステップ内での順序を完結させる．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{CLS の A$\to$F 6 段階アルゴリズム}
+\label{sec:cls_stages}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+SP-L \cite{SPL} §5--§6 は，CLS \cite{OlssonKreiss2005} を 1 物理時間ステップ内の
+6 段階に分解し，
+\textbf{質量保存・幾何（法線・曲率）・質量補正}の
+3 責務を独立に処理することで
+既存 CLS の実装ミスを原理的に回避する設計を示す．
+
+% -------------------------------------------------------------------------------
+\subsubsection{3 責務原則と $\psi\leftrightarrow\phi$ 対応}
+\label{sec:cls_three_responsibilities}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\hline
+責務 & 場 & 機構 \\
+\hline
+質量保存 & $\psi\in[0,1]$ & 保存形面フラックス移流 \\
+幾何（法線・曲率）& $\phi$（符号距離）& 再初期化後に $\bnabla,\bnabla\cdot$ \\
+質量補正 & $\psi$ への補正 & $\psi(1-\psi)$ 界面局在 \\
+\hline
+\end{tabular}
+\end{center}
+
+3 責務の混同——非保存形で $\phi$ を移流する，再初期化なしで $\psi$ から曲率を計算する，
+質量補正を $\phi$ に適用する——が CLS 実装失敗の主要モードである．
+
+\noindent\textbf{$\psi\leftrightarrow\phi$ 対応}（tanh/artanh ペア）：
+\begin{equation}
+  \phi = 2\varepsilon\,\mathrm{artanh}(2\psi-1),
+  \qquad
+  \psi = \tfrac{1}{2}\bigl(1 + \tanh(\phi/2\varepsilon)\bigr).
+  \label{eq:cls_psi_phi_map}
+\end{equation}
+artanh 特異性回避のため artanh 前に $\psi\in[\delta,1-\delta]$
+（$\delta=10^{-6}$ 程度）でクランプ．
+$\varepsilon$ はシミュレーション全体で固定（変更すると $\kappa$ が変わる）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{6 段階シーケンス}
+\label{sec:cls_stage_sequence}
+% -------------------------------------------------------------------------------
+
+1 物理時間ステップ（$t^n\to t^{n+1}$）の段階順：
+
+\begin{center}
+\begin{tabular}{@{}llp{0.55\linewidth}@{}}
+\hline
+Stage & 操作 & 要件 \\
+\hline
+A & TVD-RK3 保存形移流 & WENO5 面フラックス，発散フリー $\mathbf{u}^n$ \\
+B & 移流後 $\psi(1-\psi)$ 補正 & 任意（長時間計算で有用）\\
+C & $\psi\to\phi$ 写像 & artanh 前 $\psi$ クランプ \\
+D & narrow-band 再初期化 & $|\phi|\le W=5\varepsilon$，pseudo-$\tau$ は $\Delta t$ と独立 \\
+E & $\phi\to\psi$ 写像＋幾何（$\mathbf{n},\kappa$）& tanh 前 $\phi/2\varepsilon$ クランプ \\
+F & 再初期化後 $\psi(1-\psi)$ 補正 & 必須（再初期化後必ず）\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Stage A — TVD-RK3 Shu--Osher}（\cite{ShuOsher1988}）：
+\begin{align}
+  \psi^{(1)} &= \psi^n + \Delta t\,\mathcal{L}^n, \label{eq:cls_rk3_1}\\
+  \psi^{(2)} &= \tfrac{3}{4}\psi^n + \tfrac{1}{4}\bigl(\psi^{(1)} + \Delta t\,\mathcal{L}^{(1)}\bigr), \label{eq:cls_rk3_2}\\
+  \psi^{n+1} &= \tfrac{1}{3}\psi^n + \tfrac{2}{3}\bigl(\psi^{(2)} + \Delta t\,\mathcal{L}^{(2)}\bigr). \label{eq:cls_rk3_3}
+\end{align}
+$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は WENO5 面フラックス．
+CCD は $\psi$ に適用禁止（\S\ref{sec:scheme_per_variable}）．
+
+\noindent\textbf{Stage D — Narrow-band 再初期化}：
+全域 Eikonal 反復は $\mathcal{O}(N)$ 冗長．
+$|\phi|\le W=5\varepsilon$ の帯のみ
+\begin{equation*}
+  \partial_\tau\phi + \mathrm{sgn}(\phi_0)(|\bnabla\phi|-1) = 0
+\end{equation*}
+を数擬時間ステップ反復．pseudo-$\tau$ は物理 $\Delta t$ とは別管理．
+詳細は \S\ref{sec:eikonal_reinit}（既存）参照．
+
+% -------------------------------------------------------------------------------
+\subsubsection{$\psi(1-\psi)$ 質量補正（界面局在）}
+\label{sec:cls_mass_correction}
+% -------------------------------------------------------------------------------
+
+各格子点での補正：
+\begin{equation}
+  \psi_i^{\text{new}}
+  = \psi_i^{\text{old}} + \lambda_\psi\cdot\psi_i^{\text{old}}(1-\psi_i^{\text{old}})\cdot\Delta_\text{global},
+  \label{eq:cls_mass_correction}
+\end{equation}
+ここで $\Delta_\text{global}$ は領域全体の質量偏差：
+\begin{equation*}
+  \Delta_\text{global}
+  = \frac{\sum_i\psi_i^{\text{initial}}V_i - \sum_i\psi_i^{\text{old}}V_i}
+         {\sum_i\psi_i^{\text{old}}(1-\psi_i^{\text{old}})V_i},
+\end{equation*}
+$\lambda_\psi\in[0.5,1.0]$．
+$\psi(1-\psi)$ プロファイルは界面帯（$\psi\approx 0.5$）で最大値 0.25，
+バルク（$\psi\in\{0,1\}$）で零．
+したがって補正は\textbf{界面局在}し，バルクの質量保存を乱さない．
+
+\noindent\textbf{適用タイミング}：
+Stage B（移流後）と Stage F（再初期化後）の 2 回．
+Stage F は必須，Stage B は省略可能だが長時間計算（$t/T_\text{char}>10$）では
+drift 蓄積を防ぐため推奨．
+
+% -------------------------------------------------------------------------------
+\subsubsection{速度-PPE 整合性：正しい順序}
+\label{sec:cls_velocity_consistency}
+% -------------------------------------------------------------------------------
+
+Stage A で用いる $\mathbf{u}$ は\textbf{直前の PPE 投影済み} $\mathbf{u}^n$．
+未投影 $\mathbf{u}^*$（運動量予測子出力）を使うと：
+\begin{itemize}
+  \item 移流で $\mathbf{u}^*$ の離散発散残差が $\psi$ 質量変化を生む
+  \item Stage A の CLS と Phase E の運動量予測子で速度場が異なり，
+        それぞれに対応する PPE RHS が不整合
+\end{itemize}
+正しい順序（\S\ref{sec:algorithm}）：
+\begin{equation*}
+  \text{PPE}_n\to\mathbf{u}^n\to\text{CLS A--F}\& \text{運動量予測子}\to\mathbf{u}^*_{n+1}\to\text{PPE}_{n+1}
+\end{equation*}
+
+% -------------------------------------------------------------------------------
+\subsubsection{失敗モードと回避}
+\label{sec:cls_failure_modes}
+% -------------------------------------------------------------------------------
+
+\begin{itemize}
+  \item \textbf{$\psi$ に CCD / FCCD を適用}→急 tanh 勾配増幅→NaN．
+        必ず WENO5 面フラックス．
+  \item \textbf{再初期化前に $\psi$ から曲率計算}→
+        symmetric tanh profile の曲率は最大 $\mathcal{O}(1/\varepsilon)$ で
+        真の界面曲率を $\mathcal{O}(10)$ 過大評価．
+        $\phi$ から $\mathbf{n}=\bnabla\phi/|\bnabla\phi|$，
+        $\kappa=\bnabla\cdot\mathbf{n}$（HFE, \S\ref{sec:hfe}）を計算．
+  \item \textbf{質量補正を $\phi$ に適用}→符号距離性が崩れ再初期化必須．
+  \item \textbf{$\varepsilon$ の動的変更}→$\kappa$ 定義が変わり界面運動が変質．
+        シミュレーション全体で固定．
+\end{itemize}
+
+\noindent 検証：バルクの $\psi\in\{0,1\}$ 位置で
+Stage F 補正が恒等的にゼロになることを毎ステップ監視
+（CHK-160 回帰テスト）．
+
+% ═══════════════════════════════════════════════════════════════════════════════

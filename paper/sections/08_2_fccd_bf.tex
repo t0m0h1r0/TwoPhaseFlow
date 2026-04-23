@@ -1,0 +1,190 @@
+% paper/sections/08_2_fccd_bf.tex
+%
+% §8.4  FCCD BF sub-system：H-01 診断と面ジェット統合
+%       （SP-A §6 + SP-H §3 + SP-J §3）
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{FCCD 面ジェットによる BF sub-system 実装}
+\label{sec:fccd_bf_sub_system}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+節点 CCD と FVM の\textbf{メトリック不整合}は H-01 として特定され
+（WIKI-E-030，CHK-152），$\bf{BF}_\text{res} = \Ord{\Delta x^2}\cdot|d\log J/dx|$
+の残差を界面適合非一様格子上で発生させる．
+節 \ref{sec:fccd_def} で導出した FCCD 面ジェット
+$\FaceJet{u}=(u_f,u'_f,u''_f)$ は，BF sub-system の
+P-1..P-4 を\textbf{同時に}満たす最小単位である．
+
+% -------------------------------------------------------------------------------
+\subsubsection{H-01 診断の再掲と FCCD 救済}
+\label{sec:h01_diagnosis_fccd_remedy}
+% -------------------------------------------------------------------------------
+
+非一様格子上で節点 CCD 勾配と FVM の面平均勾配 $\mathcal{G}^\text{adj}$
+は異なる離散幾何を参照する：
+\begin{equation}
+  \mathcal{G}^\text{adj} p\big|_{i+1/2}
+    = \frac{p_{i+1}-p_i}{d_f^{(i+1/2)}},
+  \qquad d_f^{(i+1/2)} = \text{局所面距離．}
+  \label{eq:bf_gadj_recap}
+\end{equation}
+$\mathcal{G}^\text{adj}$ は速度投影で保存性を保証する一方，
+節点 CCD 勾配は $\sigma\kappa\bnabla\psi$ に使われ，
+\begin{equation}
+  \mathrm{BF}_\text{res}
+    := \bigl\| \mathcal{G}^\text{adj} p_\text{YL} - \sigma\kappa\bnabla\psi\,\text{（CCD）} \bigr\|_\infty
+    \sim \Ord{\Delta x^2}\,\Bigl|\frac{d\log J}{dx}\Bigr|
+  \label{eq:bf_residual_h01}
+\end{equation}
+が計測される（Exp-1：$\rho_l/\rho_g{=}830$ で $|\mathrm{BF}_\text{res}|\approx 884$ at step 1）．
+$\sigma{=}0$（Exp-2）で爆発が消える事実がH-01 を確定させた．
+
+\noindent\textbf{FCCD 統一}：
+FCCD 演算子 $D^\FCCD$ は $f=i-1/2$ で $\{u_{i-1},u_i\}$ のみを用い，
+$\mathcal{G}^\text{adj}$ と\textbf{同一の面位置・同一のデータフットプリント}．
+\begin{equation}
+  \mathcal{G}p := D^\FCCD p,
+  \qquad \bnabla\psi := D^\FCCD\psi
+  \label{eq:bf_fccd_unification}
+\end{equation}
+を採れば，BF 残差は FCCD 切断誤差に還元され
+\begin{equation}
+  \mathrm{BF}_\text{res} = \Ord{\Delta x^4} \ \gg\ \text{従来 }\Ord{\Delta x^2}.
+  \label{eq:bf_residual_fccd}
+\end{equation}
+
+% -------------------------------------------------------------------------------
+\subsubsection{面ジェット $\FaceJet{p}$ による BF 構築}
+\label{sec:face_jet_bf_construction}
+% -------------------------------------------------------------------------------
+
+面ジェット $\FaceJet{p}=(p_f,p'_f,p''_f)$ は
+P-1..P-4 を単一オブジェクトで具現する（SP-H \cite{SPH} §3）．
+変密度 PPE の\textbf{面フラックス}は
+\begin{equation}
+  F^p_f := \betaf\,\FaceJet{p}_1 = \betaf\,p'_f,
+  \label{eq:fccd_bf_face_flux}
+\end{equation}
+ここで $\betaf = (1/\rho)_f$（P-4 単一定義）．
+PPE は FVM セル積分で
+\begin{equation}
+  F^p_{i+1/2} - F^p_{i-1/2}
+    = \int_{x_{i-1/2}}^{x_{i+1/2}}\! S\,dx,
+  \qquad S = \frac{1}{\Delta t}\,D_h^\text{bf}\,\mathbf{u}^*,
+  \label{eq:fccd_bf_cell_balance}
+\end{equation}
+として組み立て，速度補正は
+\begin{equation}
+  u_f^{n+1}
+    = u_f^* - \Delta t\,\betaf\,p'_f
+    \quad\text{（同じ }p'_f\text{）．}
+  \label{eq:fccd_bf_corrector}
+\end{equation}
+\textbf{同じ $p'_f$} が PPE 組立と補正で共有されるため P-2 が構造的に成立．
+
+% -------------------------------------------------------------------------------
+\subsubsection{界面ジャンプ GFM 補正（Phase 1 実用）}
+\label{sec:fccd_bf_gfm_integration}
+% -------------------------------------------------------------------------------
+
+界面 $\Gamma$ を跨ぐ面 $f$ で面ジェットを
+ジャンプ条件 $[p]_\Gamma=\sigma\kappa$，$[\betaf\partial_n p]_\Gamma=0$
+（非相変化）で補正：
+\begin{equation}
+  p'^{\text{corrected}}_f
+    = p'_f - \frac{\sigma\kappa}{H_f},
+  \qquad p^{\text{corrected}}_f
+    = p_f + \frac{\sigma\kappa}{2}\,\mathrm{sign}(\phi_f).
+  \label{eq:fccd_bf_gfm_face}
+\end{equation}
+bulk ステンシルは不変；ジャンプベクトル $c_\Gamma$ は
+$\kappa$ 更新時のみ再計算．
+Phase 1 の BF 精度は 2 次，H-01 診断に十分．
+
+\noindent\textbf{Phase 3（IIM 行補正，研究）}：
+FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
+コンパクト構造を維持したまま $\Ord{h^3}$--$\Ord{h^4}$ まで昇格．
+
+% -------------------------------------------------------------------------------
+\subsubsection{静水圧テストによる BF 精度検証}
+\label{sec:fccd_bf_hydrostatic}
+% -------------------------------------------------------------------------------
+
+\noindent\textbf{テスト}：重力 $\mathbf{g}=-g\hat{\mathbf{z}}$ 下の静止 2 層流体．
+解析解は $p_\text{stat}(z) = -\rho(\phi(z))\,g\,z$，$\mathbf{u}=\mathbf{0}$．
+
+\noindent\textbf{BF 残差測定}：
+\begin{equation}
+  \varepsilon_\text{BF}
+    := \max_f\,\bigl|\,u_f^{n+1}\,\bigr|
+    \quad\text{after one IPC step with }\mathbf{u}^*=\mathbf{0},\ p=p_\text{stat}.
+  \label{eq:fccd_bf_hydrostatic_metric}
+\end{equation}
+理想離散 BF では $\varepsilon_\text{BF}=0$．実測（予測）：
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\hline
+演算子 & 非一様格子 $\rho_l/\rho_g=830$ & 収束率 \\
+\hline
+節点 CCD + $\mathcal{G}^\text{adj}$（現行）& $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
+FCCD + GFM（Phase 1）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^3}$ \\
+FCCD + IIM（Phase 3 目標）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\Delta x^4}$ \\
+\hline
+\end{tabular}
+\end{center}
+詳細検証は \S\ref{sec:verify_split_ppe_dc}（§11 検証章）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{設計戦略 A/B/C の比較}
+\label{sec:fccd_bf_strategy_table}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.42\textwidth}p{0.32\textwidth}@{}}
+\hline
+戦略 & 内容 & 用途 \\
+\hline
+\textbf{A：全面演算子} &
+$G_h^\text{bf},D_h^\text{bf}$ を FCCD または低次面フラックスで構築．
+BF sub-system を完全分離．
+& 本稿推奨（Level 2/3）．
+\\
+\textbf{B：節点 CCD + BF 層} &
+bulk は節点 CCD．PPE + 補正 + $f_\sigma$ にのみ $G_h^\text{bf}$ を追加．
+低侵襲．
+& 既存 CCD コード資産がある場合の pragmatic 選択．
+\\
+\textbf{C：毛管ジャンプ PPE} &
+CSF 体積力を使わず，$[p]_\Gamma=\sigma\kappa$ を PPE に IIM 埋込み．
+静止平衡は構造的厳密．
+& 研究レベル，動圧分離が必要．
+\\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{本稿の位置}：
+Level 1（SSPRK3 検証）= 戦略 B（節点 CCD + GFM）；
+Level 2（プロダクション）= 戦略 A（FCCD 面ジェット + GFM）；
+Level 3（純 FCCD DNS, SP-M \cite{SPM}）= 戦略 C を目標とする分相 PPE
+（\S\ref{sec:split_ppe_framework}）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{BF アンチパターン一覧}
+\label{sec:fccd_bf_anti_patterns}
+% -------------------------------------------------------------------------------
+
+\begin{tcolorbox}[warnbox,title={避けるべき BF アンチパターン}]
+\begin{itemize}[leftmargin=1.5em,noitemsep]
+  \item 高次 $G_h p$，低次 $f_\sigma$（切断誤差非対称）
+  \item 節点 CCD 全量 $\kappa$（界面帯ノイズ増幅）
+  \item PPE $G_h$ と補正 $G_h$ が別演算子（F-2）
+  \item $f_\sigma$ が節点，$G_h p$ が面（F-1）
+  \item $\betaf$ 混用（PPE 調和 / 補正算術 / $f_\sigma$ 他；F-4）
+  \item 界面越え CCD ステンシル無補正（F-5）
+  \item BF 補正経路に Rhie--Chow（$G_h$ 二重定義）
+  \item BF 経路に非対称 DCCD フィルタ（片側減衰）
+\end{itemize}
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════

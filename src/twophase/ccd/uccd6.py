@@ -26,7 +26,7 @@ block-LU — each additional CCD call is O(N).
 
 References
 ----------
-- SP-H (``docs/memo/short_paper/SP-H_uccd6_hyperviscosity.md``)
+- SP-N (``docs/memo/short_paper/SP-N_uccd6_hyperviscosity.md``; formerly SP-H, renumbered 2026-04-23)
 - WIKI-T-062 (``docs/wiki/theory/WIKI-T-062.md``)
 - Chu, P. C., & Fan, C. (1998). *JCP* 140, 370–399.
 """

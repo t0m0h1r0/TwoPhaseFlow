@@ -1,0 +1,197 @@
+% paper/sections/06d_ridge_eikonal_nonuniform.tex
+%
+% §6.5  Ridge–Eikonal の非一様格子実装（SP-E §3–§7）
+%        §3.4.5 sec:ridge_eikonal_nonuniform の D1–D4 理論を
+%        §6 グリッドインフラの視点で実装面から完結させる．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Ridge--Eikonal の非一様格子実装：D1--D4 の格子層ビュー}
+\label{sec:ridge_eikonal_nu_grid}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\S\ref{sec:ridge_eikonal_nonuniform} で理論的に示した
+SP-E の 4 補正 D1--D4 を，
+\S\ref{sec:grid_density}（グリッド密度関数）・
+\S\ref{sec:grid_coord}（メトリクス係数）・
+\S\ref{sec:ccd_metric}（非一様 CCD）のインフラに載せて
+実装レベルで結線する．
+本節は「各補正がどの格子構築段階でキャッシュされ，
+どの離散演算子と整合するか」を明示することを目的とする．
+
+% -------------------------------------------------------------------------------
+\subsubsection{D1 実装：$\sigma_\text{eff}(\bm{x})$ のキャッシュ}
+\label{sec:ridge_nu_sigma_impl}
+% -------------------------------------------------------------------------------
+
+式~\eqref{eq:sigma_eff} の Gaussian 半幅
+$\sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot h(\bm{x})/h_\text{ref}$ は
+格子幾何のみに依存するため，
+\S\ref{sec:grid_gen} の格子点座標生成直後に 2 次元配列
+$\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
+時間発展ループ内では読み出しのみで，計算コストは $\mathcal{O}(0)$ 追加．
+
+\noindent\textbf{実装細目}：
+\begin{itemize}
+  \item 局所幾何平均 $h(\bm{x}) = \sqrt{h_x(i)\,h_y(j)}$ は
+        \S\ref{sec:grid_coord} のメトリクス係数
+        $J_x = \mathrm{d}x/\mathrm{d}\xi$ から
+        $h_x(i) = J_x(\xi_i)\Delta\xi$ として得られる．
+  \item 基準幅 $h_\text{ref} = (L_x L_y / (N_x N_y))^{1/2}$ は
+        スカラ定数として格子生成時に決定．
+  \item ALE（\S\ref{sec:grid_ale}）時間変化格子では
+        $\sigma_\text{eff}$ を格子更新ごとに再計算する．
+\end{itemize}
+
+一様極限（$h(\bm{x}) \equiv h_\text{ref}$）で
+$\sigma_\text{eff} \to \sigma_0$ となり SP-B §3 の既定と一致する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{D2 実装：物理空間 Hessian は非一様 CCD で直接評価}
+\label{sec:ridge_nu_hessian_impl}
+% -------------------------------------------------------------------------------
+
+定理~\ref{thm:xi_hessian_forbidden}（$\xi$ 空間 Hessian 不可能性）により，
+Ridge 検出 \eqref{eq:ridge_set_def} で必要な
+$\bnabla_x^2 \xiridge$ は物理空間で直接評価しなければならない．
+\S\ref{sec:ccd_metric} の非一様 CCD（座標変換法）は
+ノード値から直接物理空間の第一・第二導関数を返す演算子
+$\mathbf{D}_1^\text{CCD,nu}, \mathbf{D}_2^\text{CCD,nu}$ を提供するため，
+Approach A（SP-E 本命実装）は以下の 1 行で実装できる：
+\begin{equation}
+  [\bnabla_x^2 \xiridge]_{i,j}
+  = \mathbf{D}_2^{\text{CCD,nu},x}\,\xiridge
+  + \mathbf{D}_2^{\text{CCD,nu},y}\,\xiridge,
+  \label{eq:ridge_nu_hessian}
+\end{equation}
+ここで軸ごとに \S\ref{sec:ccd_metric} 式~\eqref{eq:transform_2nd_correct} の
+$\partial_x^2 = J_x^{-2}\partial_\xi^2 - (J_{xx}/J_x^3)\partial_\xi$
+の修正済み行列を適用する．
+混合項 $\partial_{xy}^2$ は Ridge 検出では $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$
+の対角二次形式のみで十分なため省略可能（SP-E §4）．
+
+\noindent\textbf{Approach B（fallback）}：
+物理空間二階 FD
+\[
+  [\partial_x^2\xiridge]_{i,j}
+  = \frac{2}{h_x^+(i)+h_x^-(i)}
+    \left[\frac{\xi_{i+1,j}-\xi_{i,j}}{h_x^+(i)}
+          - \frac{\xi_{i,j}-\xi_{i-1,j}}{h_x^-(i)}\right]
+\]
+は 2 次精度に留まるが，Morse 非退化リッジでは符号判定に影響しない．
+GPU 実装で非一様 CCD ソルバが未整備のデバッグビルド
+（WIKI-L-017 参照）ではこの fallback を一時許容する（CHK-160 検証済）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{D3 実装：非一様 FMM の格子データ結線}
+\label{sec:ridge_nu_fmm_impl}
+% -------------------------------------------------------------------------------
+
+式~\eqref{eq:fmm_closed_form} の閉形式解
+$d = (a_x/h_x^2 + a_y/h_y^2 + \sqrt{D})/(1/h_x^2 + 1/h_y^2)$ を
+格子層で組み立てるには，
+各ノード $(i,j)$ に対する隣接セル幅 $(h_x(i), h_y(j))$ を
+FMM ヒープの priority 計算時に即座に参照する必要がある．
+実装は以下：
+\begin{itemize}
+  \item \textbf{セル幅配列}：
+        \S\ref{sec:grid_gen} の $\{x_i\}_i, \{y_j\}_j$ から
+        $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を precompute．
+        FMM 内の各 tentative 更新は $O(1)$ テーブル参照のみ．
+  \item \textbf{判別式負時の fallback}：
+        $D<0$ のとき一次元単調更新
+        $d = \min(a_x + h_x(i),\,a_y + h_y(j))$．
+        コーナー近傍や急な密度勾配帯で発生し，
+        粘性一意性は物理空間 Eikonal \eqref{eq:fmm_nonuniform} の
+        弱解性質により保たれる．
+  \item \textbf{サブセルシード}：
+        Ridge 集合 $\mathcal{R}$ は一般にノード上に載らないため，
+        最寄り 4 ノードへ物理空間距離でシード値を分配する．
+        非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
+        単位セル仮定の素朴実装では最大 $\alpha$ 倍の誤差を生む
+        （$\alpha$ は格子密度比，SP-E §5）．
+\end{itemize}
+
+\noindent この結線により FMM のワンパス計算量は
+一様版と同じ $\mathcal{O}(N \log N)$ を維持し，
+一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分，WIKI-L-017）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{D4 実装：$\varepsilon_\text{local}(\bm{x})$ の空間場}
+\label{sec:ridge_nu_eps_impl}
+% -------------------------------------------------------------------------------
+
+式~\eqref{eq:eps_local} の再構成幅
+$\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_\xi\cdot h(\bm{x})$ を
+D1 と同様に 2 次元配列としてキャッシュする．
+$\xiridge$ から $\phi$ への再構成（SP-B §6 式）
+\begin{equation*}
+  \phi(\bm{x}) = \operatorname{sgn}(\xiridge - \xi_\text{th})\cdot d_\mathcal{R}(\bm{x}),
+  \qquad \xi_\text{th} = \xi_\text{ridge,min} - \varepsilon_\text{local}(\bm{x})
+\end{equation*}
+では閾値 $\xi_\text{th}$ がノードごとに変わるため，
+ノードループ内で $\varepsilon_\text{local}[i,j]$ を参照する実装となる．
+
+\noindent\textbf{体積保存の監視}：
+一様較正 $\varepsilon_\text{scale}=1.4$ を初期値として採用し，
+$|\Delta V/V|>5\%$ を検知した時点で適応スケーリング
+$\varepsilon_\text{scale}(\bm{x})=1.4\cdot h_\text{ref}/h_\text{min}$ に切替える
+（CHK-138/139 で閾値同定）．
+界面適合格子族（\S\ref{sec:grid_density}）では
+$h(\bm{x}) \approx h_\text{ref}$ が界面近傍で成立するため，
+適応スケーリングは密度勾配帯のみで発動する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{界面適合格子族との統合}
+\label{sec:ridge_nu_interface_fitted}
+% -------------------------------------------------------------------------------
+
+\S\ref{sec:grid_density} のグリッド密度関数
+$\omega_\text{grid}(\xi)$ を界面近傍で集中化すると，
+D1--D4 の効果が次のように簡素化される：
+\begin{itemize}
+  \item \textbf{D1 $\sigma_\text{eff}$}：界面帯では $h(\bm{x}) \approx h_\text{min}$ 一定．
+        Ridge 検出は等価密度帯内で実行されるため実効 $\sigma_\text{eff}$ は一様．
+  \item \textbf{D2 Hessian}：界面法線 $\hat{\bm{n}}$ は密度勾配方向と
+        ほぼ平行．$\hat{\bm{n}}^\top H\hat{\bm{n}}$ の対角寄与が支配的で
+        混合項省略の誤差は $\mathcal{O}(h^2/R_c^2)$ 以下
+        （$R_c$ は局所曲率半径）．
+  \item \textbf{D3 FMM}：界面から距離 $\mathcal{O}(\varepsilon_\text{local})$ の
+        narrow band のみで実行．$D<0$ fallback の発動率は 1\% 未満
+        （CHK-160 実測値）．
+  \item \textbf{D4 $\varepsilon_\text{local}$}：界面帯で一様値
+        $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
+\end{itemize}
+つまり界面適合格子では Ridge--Eikonal の非一様補正は
+「界面帯での一様近似 + 密度勾配帯での正則化」として作用し，
+一様格子実装の体積保存・曲率精度がほぼそのまま移植される．
+
+% -------------------------------------------------------------------------------
+\subsubsection{計算コスト・プレ計算・FCCD との接続}
+\label{sec:ridge_nu_cost}
+% -------------------------------------------------------------------------------
+
+\noindent\textbf{プレ計算（1 回のみ）}：
+$\sigma_\text{eff}[i,j]$，$h_x[i]$，$h_y[j]$，$\varepsilon_\text{local}[i,j]$ の
+4 配列を格子構築時にキャッシュ（$\mathcal{O}(N_x N_y)$ メモリ）．
+ALE モードでは格子更新ごとに再計算．
+
+\noindent\textbf{ランタイムコスト}（再初期化 1 回）：
+\begin{itemize}
+  \item D2 非一様 CCD Hessian: $\mathcal{O}(N_x N_y)$（\S\ref{sec:ccd_metric}）
+  \item D3 非一様 FMM: $\mathcal{O}(N_x N_y \log(N_x N_y))$
+  \item D4 $\varepsilon_\text{local}$ テーブル参照: $\mathcal{O}(N_x N_y)$
+\end{itemize}
+合計は一様版と同じ漸近オーダー．
+一軸あたり実行時間は一様版の 1.1--1.3$\times$（WIKI-L-017）．
+
+\noindent\textbf{FCCD との接続}：
+\S\ref{sec:ridge_fccd_handoff} で示した通り，
+Ridge--Eikonal で再構成された $\phi$ は
+\S\ref{sec:fccd_def}/\S\ref{sec:fccd_nonuniform} の FCCD 面中心追跡に
+そのまま引き継がれる．
+非一様 FCCD の係数 $(\mu_i, \lambda_i)$ と
+本節の $\sigma_\text{eff}, \varepsilon_\text{local}$ は
+\textbf{同じ格子幾何テーブル} $(h_x, h_y, J_x, J_y)$ から派生するため，
+格子層のプレ計算を一度行えば両アルゴリズムが同じキャッシュを共有できる．
+
+% ═══════════════════════════════════════════════════════════════════════════════

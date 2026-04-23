@@ -3,12 +3,12 @@
 - **Status**: Research design (theory organised; integrated PoC pending)
 - **Compiled by**: ResearchArchitect
 - **Compiled at**: 2026-04-22
-- **Related**: [SP-H](SP-H_uccd6_hyperviscosity.md) (UCCD6 core), [SP-G](SP-G_upwind_ccd_pedagogical.md) (upwind foundation), [SP-A](SP-A_face_centered_upwind_ccd.md) (FCCD remedy), [SP-F](SP-F_gpu_native_fvm_projection.md) (projection path)
+- **Related**: [SP-N](SP-N_uccd6_hyperviscosity.md) (UCCD6 core; formerly SP-H, renumbered 2026-04-23), [SP-G](SP-G_upwind_ccd_pedagogical.md) (upwind foundation), [SP-A](SP-A_face_centered_upwind_ccd.md) (FCCD remedy), [SP-F](SP-F_gpu_native_fvm_projection.md) (projection path), [SP-H](SP-H_fccd_face_jet_fvm_hfe.md) (face jet primitive)
 - **Wiki entries**: [WIKI-X-025](../../wiki/cross-domain/WIKI-X-025.md) (this design), [WIKI-X-023](../../wiki/cross-domain/WIKI-X-023.md) (UCCD6-NS), [WIKI-X-024](../../wiki/cross-domain/WIKI-X-024.md) (balanced-force)
 
 ## Abstract
 
-Once UCCD6 ([SP-H](SP-H_uccd6_hyperviscosity.md)) has stabilised the momentum advection operator and the balanced-force (BF) pairing ([WIKI-X-024](../../wiki/cross-domain/WIKI-X-024.md)) has removed the dominant surface-tension-driven residual, the next-order design question is time integration. We argue that
+Once UCCD6 ([SP-N](SP-N_uccd6_hyperviscosity.md)) has stabilised the momentum advection operator and the balanced-force (BF) pairing ([WIKI-X-024](../../wiki/cross-domain/WIKI-X-024.md)) has removed the dominant surface-tension-driven residual, the next-order design question is time integration. We argue that
 
 - **the capillary time-step restriction is fundamentally a *wave-resolution* constraint — not a stability constraint** — in the sense of Denner & van Wachem (2015 JCP 285; 2022 JCP 449), so choosing "implicit surface tension" does not automatically let the time step grow;
 - **Adams–Bashforth 2 (AB2) advection + Crank–Nicolson (CN) viscous + semi-implicit linearised surface tension + variable-density BF projection** is the sweet spot for Level-2 production workflows;
@@ -102,7 +102,7 @@ $$
 Notes:
 
 - $\mathcal{A}_{\text{UCCD6}}(\cdot)$ is the skew-symmetric advection plus $\sigma h^7 (-\Delta_{\text{CCD}})^4$ hyperviscosity from [WIKI-X-023](../../wiki/cross-domain/WIKI-X-023.md).
-- $\mathcal{V}(\mathbf{u}) = \nabla \cdot (\mu (\nabla \mathbf{u} + \nabla \mathbf{u}^\top))$ in **flux form** (mandatory across $\mu$-jumps; cf. SP-H §2.3).
+- $\mathcal{V}(\mathbf{u}) = \nabla \cdot (\mu (\nabla \mathbf{u} + \nabla \mathbf{u}^\top))$ in **flux form** (mandatory across $\mu$-jumps; cf. [SP-K](SP-K_viscous_term_ccd_two_phase.md) §3).
 - $\mathbf{f}_\sigma^{n+1/2}$ is the semi-implicit linearised surface-tension force on the predicted mid-step interface; paired with the BF pressure gradient via the CSF ↔ ∇p consistency of [WIKI-X-024](../../wiki/cross-domain/WIKI-X-024.md).
 
 ### 4.2 Pressure Poisson equation (BF, variable-density)
@@ -127,11 +127,11 @@ Interface advection (level-set / CLS) follows on $\mathbf{u}^{n+1}$ by the proje
 
 ## 5. Stability and energy accounting
 
-With the discrete $\ell^2$ inner product used in [SP-H §4](SP-H_uccd6_hyperviscosity.md) §4:
+With the discrete $\ell^2$ inner product used in [SP-N §4](SP-N_uccd6_hyperviscosity.md):
 
 1. **Advection**: UCCD6 skew-sym is discretely anti-Hermitian (conjecture, proof pending; open question Q-1 in [WIKI-X-023](../../wiki/cross-domain/WIKI-X-023.md) §7). AB2 is explicit and classically stable under $\Delta t \le \Delta t_{\text{CFL,adv}}$ (factor $\approx 0.72$ of forward-Euler CFL on the advective spectral radius).
 2. **Viscous**: CN on $\mathcal{V}$ is A-stable. Energy inequality: $\tfrac{1}{2}\mathrm{d}\|\mathbf{u}\|^2/\mathrm{d}t \le -\nu \|\nabla_{\text{CCD}}\mathbf{u}\|^2$ holds semi-discretely; CN preserves this non-positivity.
-3. **Hyperviscosity** ($\sigma h^7 (-\Delta_{\text{CCD}})^4$): in AB2 mode treated as part of $\mathcal{A}_{\text{UCCD6}}$ and therefore bounded by the advective CFL of [SP-H §5](SP-H_uccd6_hyperviscosity.md). Implicit treatment inside CN (promoting $(-\Delta_{\text{CCD}})^4$ to the LHS) lifts this to unconditional stability at the cost of one extra biharmonic-like solve per step; listed as optional.
+3. **Hyperviscosity** ($\sigma h^7 (-\Delta_{\text{CCD}})^4$): in AB2 mode treated as part of $\mathcal{A}_{\text{UCCD6}}$ and therefore bounded by the advective CFL of [SP-N §5](SP-N_uccd6_hyperviscosity.md). Implicit treatment inside CN (promoting $(-\Delta_{\text{CCD}})^4$ to the LHS) lifts this to unconditional stability at the cost of one extra biharmonic-like solve per step (cf. [SP-N §5](SP-N_uccd6_hyperviscosity.md)); listed as optional.
 4. **Surface tension**: semi-implicit linearisation of Aland–Voigt (2019) is unconditionally stable on the Laplace–Beltrami part; the capillary-wave *resolution* bound of §1 is the remaining constraint.
 5. **Projection**: variable-density BF PPE preserves the null space of div; the spurious-current bound reduces to the BF operator residual (zero under §4.2's matched-operator formulation).
 
@@ -170,7 +170,7 @@ for ch13 regimes (Re $\gg 1$, small $h$): the viscous CFL is removed, the capill
 - **Aland, S., & Voigt, A.** (2019). Benchmark computations of diffuse interface models for two-dimensional bubble dynamics. *Int. J. Numer. Meth. Fluids* **91**(3), 111–137 — semi-implicit surface-tension unconditional stability.
 - **Bänsch, E.** (2001). Finite element discretization of the Navier–Stokes equations with a free capillary surface. *Numer. Math.* **88**, 203–235 — historical root of semi-implicit Laplace–Beltrami.
 - **Chu, P. C., & Fan, C.** (1998). A three-point combined compact difference scheme. *JCP* **140**, 370–399.
-- **SP-H** (this series, [../../memo/short_paper/SP-H_uccd6_hyperviscosity.md](SP-H_uccd6_hyperviscosity.md)) — UCCD6 core.
+- **SP-N** (this series, [SP-N_uccd6_hyperviscosity.md](SP-N_uccd6_hyperviscosity.md)) — UCCD6 core (formerly SP-H; renumbered 2026-04-23 to resolve collision with [SP-H_fccd_face_jet_fvm_hfe.md](SP-H_fccd_face_jet_fvm_hfe.md)).
 - **WIKI-X-023** — UCCD6 integration design for incompressible NS.
 - **WIKI-X-024** — Balanced-force design for two-phase UCCD6-NS.
 - **WIKI-T-004** — Balanced-force condition: operator consistency principle.

@@ -1,0 +1,215 @@
+% paper/sections/09_6_gpu_native_fvm.tex
+%
+% §9.7  GPU-native FVM 投影：面ローカル演算子カリキュラスと可変バッチ PCR
+%       （SP-F 全取り込み）
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{GPU-native FVM 投影：面ローカル演算子と可変バッチ PCR}
+\label{sec:gpu_native_fvm_projection}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+分相 FCCD PPE（\S\ref{sec:split_ppe_framework}）は Level 2/3 の
+物理精度を決定する主経路だが，Level 1/2 エンジニアリング運用では
+既存の非一様 FVM 投影（\S\ref{sec:fvm_ccd_corrector}）を
+\textbf{GPU 上で高速化}する道筋も並行して必要になる．
+SP-F \cite{SPF} は\textbf{PDE・面係数を一切変えず}，
+演算子表現とソルバー戦略のみを GPU ネイティブ化する設計を示した．
+
+\noindent\textbf{問題診断}（SP-F \cite{SPF} §1）：
+現行非一様 FVM コードは 3 つの GPU 互換要素をすでに持つ：
+(i) \texttt{\_fvm\_pressure\_grad}（面ローカル圧力勾配），
+(ii) \texttt{RhieChowInterpolator.face\_velocity\_divergence}，
+(iii) \texttt{PPEBuilder.build\_values}（デバイス上で係数構築）．
+残るボトルネックは
+\textbf{大域疎行列 PPE ソルブ}（\texttt{PPESolverFVMSpsolve}）であり，
+これが PPE を「事前組立 CSR」として扱う限り
+線並列性が隠蔽され，CPU フォールバックでは D2H/H2D 転送が発生する．
+
+\noindent\textbf{診断の要点}：
+FVM が本質的にシーケンシャルなのではない．
+\textbf{大域疎行列表現が線並列性を覆い隠している}だけである．
+変更すべきは演算子の\textbf{表現}であり，PDE や面係数ではない．
+
+% -------------------------------------------------------------------------------
+\subsubsection{面ローカル演算子カリキュラス}
+\label{sec:gpu_fvm_face_local_calculus}
+% -------------------------------------------------------------------------------
+
+軸 $a\in\{1,\ldots,d\}$ に対し，左右面ギャザ $E_a^\pm$，
+面間距離 $H_{a,f}$，節点制御体積 $\Delta V_i$ を定義．
+調和面係数・面勾配・面フラックス・節点発散を
+\begin{align}
+  A_{a,f}(\rho) &:= \frac{2}{\rho_L+\rho_R},
+    \label{eq:fvm_face_harmonic}\\
+  (G_a p)_f &:= \frac{(E_a^+ p)_f - (E_a^- p)_f}{H_{a,f}},
+    \label{eq:fvm_face_gradient}\\
+  (F_a p)_f &:= A_{a,f}(\rho)\,(G_a p)_f,
+    \label{eq:fvm_face_flux}\\
+  (D_a q)_i &:= \frac{q_{i+1/2}-q_{i-1/2}}{\Delta V_i}.
+    \label{eq:fvm_node_divergence}
+\end{align}
+変密度 FVM PPE は\textbf{面ローカル演算子カリキュラス}として
+\begin{equation}
+  \boxed{\
+    L_\text{FVM}(\rho)\,p = \sum_{a=1}^{d} D_a\,A_a(\rho)\,G_a\,p
+  \ }
+  \label{eq:fvm_operator_calculus}
+\end{equation}
+と再表示される．
+
+\noindent\textbf{行列フリー等価性}：
+1D 1 軸で節点 $i$ は
+$c_i^- p_{i-1} + c_i^0 p_i + c_i^+ p_{i+1}$，
+$c_i^\pm = A_{i\pm 1/2}/(H_{i\pm 1/2}\Delta V_i),\ c_i^0=-c_i^-\!-c_i^+$ を受ける．
+これは \texttt{PPEBuilder.build\_values} が COO/CSR に materialize する係数と
+\textbf{代数的に同一}．違いは表現形式のみである：
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\hline
+CSR ビュー & 全非零をまず組立 → 乗算 / 直接解 \\
+面ローカルビュー & $G_a$ 評価 → $A_a(\rho)$ 乗算 → $D_a$ 適用（各段は全配列スライス）\\
+\hline
+\end{tabular}
+\end{center}
+
+% -------------------------------------------------------------------------------
+\subsubsection{線分解と可変バッチ PCR プリミティブ}
+\label{sec:gpu_fvm_variable_pcr}
+% -------------------------------------------------------------------------------
+
+軸 $a$ の横断指数 $\mathbf{m}$ を固定すると，その線は 3 重対角：
+\begin{equation}
+  (\mathcal{T}_{a,\mathbf{m}} p)_k
+    = c^-_{k,\mathbf{m}} p_{k-1,\mathbf{m}}
+    + c^0_{k,\mathbf{m}} p_{k,\mathbf{m}}
+    + c^+_{k,\mathbf{m}} p_{k+1,\mathbf{m}}.
+  \label{eq:fvm_tridiag_line}
+\end{equation}
+ここで\textbf{各線は 3 重対角だが，行列は線ごとに異なる}．
+これは既存の PCR（Parallel Cyclic Reduction）拡張ポイント：
+
+\begin{tcolorbox}[resultbox,title={可変バッチ PCR：$\text{PCRVar}(a,d,c,r)$}]
+既存 \texttt{\_pcr\_solve\_batched} は $(n,1) \to (n,B)$ ブロードキャストで
+\textbf{同一対角}を $B$ バッチに共有する．
+変密度 FVM では対角 $(a,d,c)$ を\textbf{$(n,B)$ 配列}に昇格し，
+PCR の 4 段階（左右ロール $\to$ 除去係数 $\alpha,\beta$ $\to$
+$(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
+\textbf{すべての線で並列に}実行する．段階数は $\lceil\log_2 n\rceil$ 不変．
+\end{tcolorbox}
+
+\noindent\textbf{軸 $a$ の線ソルブ規模}：
+\begin{itemize}[noitemsep]
+  \item バッチ数 $B = \prod_{b\neq a}(N_b+1)$，
+  \item 線長 $n = N_a+1$，
+  \item 係数 $(a,d,c)$ は $\rho$・幾何からデバイスで構築，
+  \item CSR 組立なし，シンボリック分解なし，Python ループなし．
+\end{itemize}
+
+% -------------------------------------------------------------------------------
+\subsubsection{プリコンディショナーとしての線ソルブ（ADI 化の禁止）}
+\label{sec:gpu_fvm_preconditioner}
+% -------------------------------------------------------------------------------
+
+本プロジェクトには分割スイープを\textbf{単独ソルバー}として使った
+過去の失敗（ADI の収束劣化，分割誤差）が記録されている．
+再発防止のため，可変バッチ PCR の正しい用法は
+\textbf{Krylov プリコンディショナー}：
+\begin{equation}
+  \text{solve } L_\text{FVM}(\rho)\,p = b
+  \quad\text{with Krylov, using line solves only in }P^{-1}.
+  \label{eq:fvm_krylov_with_prec}
+\end{equation}
+加法的プリコンディショナーの典型：
+\begin{equation}
+  P^{-1} r := \sum_{a=1}^{d} \omega_a\,\mathcal{T}_a^{-1} r,
+  \qquad \omega_a\in[0,1].
+  \label{eq:fvm_additive_prec}
+\end{equation}
+各 $\mathcal{T}_a^{-1}$ は軸 $a$ 上の可変バッチ PCR で適用．
+乗法的 / 対称的変形も可能．
+
+\noindent\textbf{結果}（SP-F \cite{SPF} §4）：
+\begin{enumerate}[noitemsep]
+  \item 不動点に分割誤差を持ち込まない（Krylov が見る演算子は
+        $L_\text{FVM}$ であり $\sum_a\mathcal{T}_a$ ではない），
+  \item 線並列性は反復路の高速化として使われる．
+\end{enumerate}
+\textbf{標語}：「ADI をソルバーにすると方程式が変わる；
+線 PCR をプリコンディショナーにすると反復路が変わるだけ」．
+
+% -------------------------------------------------------------------------------
+\subsubsection{D2H/H2D 境界規律}
+\label{sec:gpu_fvm_d2h_discipline}
+% -------------------------------------------------------------------------------
+
+\begin{tcolorbox}[resultbox,title={ゼロ転送ホットループ条件（SP-F \cite{SPF} §5）}]
+次の 3 条件下で PPE ホットループは\textbf{必須 D2H/H2D 転送ゼロ}：
+\begin{enumerate}[noitemsep]
+  \item 幾何配列 $(H_{a,f},\Delta V_i)$ はグリッド構築時に一度だけアップロード．
+  \item 密度依存係数 $A_{a,f}(\rho)$ と線対角 $(a,d,c)$ は
+        \texttt{backend.xp} 内部で形成．
+  \item 行列フリー apply・線プリコンディショニング・Krylov 残差ノルムは
+        デバイス配列のまま保持．
+\end{enumerate}
+\end{tcolorbox}
+許容される転送は (i) \texttt{save\_results}・プロット等 I/O，
+(ii) 明示診断フラッシュ，(iii) 射影ホットループ外の非 FVM モジュール
+のみ．
+
+% -------------------------------------------------------------------------------
+\subsubsection{A3 トレーサビリティと実装ロードマップ}
+\label{sec:gpu_fvm_a3_roadmap}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{@{}p{0.15\textwidth}p{0.78\textwidth}@{}}
+\hline
+層 & 内容 \\
+\hline
+方程式 & $L_\text{FVM}(\rho)p = \sum_a D_a A_a(\rho)G_a p$ \\
+離散化 & 面ローカル勾配 + 調和面フラックス + 節点発散 + 線分 3 重対角制限 \\
+線形代数 & 可変バッチ PCR/CR 線ソルブを Krylov プリコンディショナーとして使用 \\
+既存コード & \texttt{\_fvm\_pressure\_grad}, \texttt{RhieChowInterpolator.face\_velocity\_divergence}, \texttt{PPEBuilder.build\_values}, \texttt{\_pcr\_solve\_batched} \\
+新規コード & \texttt{PPESolverFVMMatrixFree}, \texttt{solve\_tridiagonal\_variable\_batched} \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{実装段階}：
+\begin{enumerate}[noitemsep]
+  \item Phase 1：\texttt{\_pcr\_solve\_batched} を $(n,B)$ 可変対角に拡張．
+  \item Phase 2：行列フリー FVM 演算子 + FGMRES + 線 PCR プリコンディショナー．
+  \item Phase 3：追加ソルバータイプとして登録（既定は変更しない；C2）．
+  \item Phase 4：検証 — 行列フリー apply $=$ CSR apply；
+        可変 PCR $=$ CPU リファレンス；CPU/GPU parity；
+        ソルブループ内の \texttt{.get()/.item()/float(...)/to\_host()} ゼロ；
+        リモート GPU 壁時計で \texttt{fvm\_spsolve} 比較．
+\end{enumerate}
+
+% -------------------------------------------------------------------------------
+\subsubsection{H-01 / A-01 との関係：正確性と性能の分離}
+\label{sec:gpu_fvm_h01_a01}
+% -------------------------------------------------------------------------------
+
+H-01 / A-01（\S\ref{sec:h01_diagnosis_fccd_remedy}）は
+圧力・毛管・移流項が\textbf{同じ面位置}に生きるべきという
+\textbf{正確性の軌跡}問題を解いた．
+SP-F は同じ面ローカル代数の\textbf{性能表現}問題を解く．
+両者は補完的：
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\hline
+H-01 / A-01（FCCD, \S\ref{sec:fccd_def}）& 演算子を\textbf{正しくする} \\
+SP-F（本節）& 同じ演算子を\textbf{GPU で速くする} \\
+\hline
+\end{tabular}
+\end{center}
+SP-F は面ローカル FVM 方程式を\textbf{厳密に保つ}ため，
+既存の $\mathcal{G}^\text{adj}$ / Rhie--Chow / FVM PPE スタックを
+正確性証明を再開せずに加速できる．
+Level 2 プロダクション（\S\ref{sec:algorithm}）では
+分相 FCCD PPE 経路と GPU-native FVM 経路を
+ワークロードに応じて切り替える
+\textbf{二路選択}が実用的．
+
+% ═══════════════════════════════════════════════════════════════════════════════
