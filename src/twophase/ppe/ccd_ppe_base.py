@@ -27,6 +27,11 @@ if TYPE_CHECKING:
     from ..core.boundary import BoundarySpec
 
 from .interfaces import IPPESolver
+from .ccd_ppe_base_helpers import (
+    assemble_ccd_pinned_system,
+    build_ccd_1d_matrices,
+    build_ccd_sparse_operator,
+)
 
 
 class _CCDPPEBase(IPPESolver):
@@ -237,60 +242,7 @@ class _CCDPPEBase(IPPESolver):
         L_pinned : scipy.sparse.csr_matrix, shape (n, n)
         rhs_np   : np.ndarray, shape (n,)
         """
-        xp = self.xp
-
-        # ── Cache lookup (key = id(rho)) ─────────────────────────────────
-        rho_key = id(rho)
-        L_pinned = None
-        for k, L_cached, _ in self._L_cache:
-            if k == rho_key:
-                L_pinned = L_cached
-                break
-
-        if L_pinned is None:
-            # CCD differentiate works on device arrays; keep rho on device
-            # to avoid unnecessary host→device→host round-trip.
-            rho_dev = xp.asarray(rho)
-            drho_np = []
-            for ax in range(self.ndim):
-                drho_ax, _ = self.ccd.differentiate(rho_dev, ax)
-                drho_np.append(np.asarray(self.backend.to_host(drho_ax), dtype=float))
-            rho_np = np.asarray(self.backend.to_host(rho_dev), dtype=float)
-
-            L_sparse = self._build_sparse_operator(rho_np, drho_np)
-
-            if self._periodic:
-                Nx, Ny = self.grid.N
-                reduced_shape = (Nx, Ny)
-                pin_dof = self._bc_spec.pin_dof_in_shape(reduced_shape)
-            else:
-                pin_dof = self._bc_spec.pin_dof
-
-            from ..core.boundary import pin_sparse_row
-            # Pin the operator only; the RHS pin is applied below on the
-            # live rhs vector so different RHSs can reuse the same L.
-            L_lil = L_sparse.tolil()
-            dummy_rhs = np.zeros(L_lil.shape[0])
-            pin_sparse_row(L_lil, dummy_rhs, pin_dof)
-            L_pinned = L_lil.tocsr()
-
-            # Insert into LRU (simple: append + drop oldest)
-            self._L_cache.append((rho_key, L_pinned, None))
-            if len(self._L_cache) > self._cache_capacity:
-                self._L_cache.pop(0)
-
-        # ── Build RHS vector (always fresh) ──────────────────────────────
-        if self._periodic:
-            Nx, Ny = self.grid.N
-            rhs_full = np.asarray(self.backend.to_host(rhs), dtype=float)
-            rhs_np = rhs_full[:Nx, :Ny].ravel()
-            pin_dof = self._bc_spec.pin_dof_in_shape((Nx, Ny))
-        else:
-            pin_dof = self._bc_spec.pin_dof
-            rhs_np = np.asarray(self.backend.to_host(rhs), dtype=float).ravel()
-        rhs_np[pin_dof] = 0.0
-
-        return L_pinned, rhs_np
+        return assemble_ccd_pinned_system(self, rhs, rho)
 
     def invalidate_cache(self) -> None:
         """Drop all cached operator matrices.
@@ -321,42 +273,7 @@ class _CCDPPEBase(IPPESolver):
         D1 : np.ndarray — D_axis^{(1)} matrix
         D2 : np.ndarray — D_axis^{(2)} matrix
         """
-        n_full = self.grid.N[axis] + 1
-
-        # CCD runs on the active device but the 1-D matrices are consumed by
-        # scipy.sparse on the host side below, so the results are transferred
-        # via ``backend.to_host`` (a no-op on CPU, ``.get()`` on GPU).
-        _h = self.backend.to_host
-
-        if self._periodic:
-            N_ax = self.grid.N[axis]
-            if axis == 0:
-                I_per = self.xp.zeros((n_full, N_ax))
-                for j in range(N_ax):
-                    I_per[j, j] = 1.0
-                I_per[N_ax, 0] = 1.0
-                d1, d2 = self.ccd.differentiate(I_per, axis=0)
-                return (np.asarray(_h(d1), dtype=float)[:N_ax, :],
-                        np.asarray(_h(d2), dtype=float)[:N_ax, :])
-            else:
-                I_per = self.xp.zeros((N_ax, n_full))
-                for j in range(N_ax):
-                    I_per[j, j] = 1.0
-                I_per[0, N_ax] = 1.0
-                d1, d2 = self.ccd.differentiate(I_per, axis=1)
-                d1_np = np.asarray(_h(d1), dtype=float)[:, :N_ax]
-                d2_np = np.asarray(_h(d2), dtype=float)[:, :N_ax]
-                return d1_np.T, d2_np.T
-        else:
-            I = self.xp.eye(n_full)
-            if axis == 0:
-                d1, d2 = self.ccd.differentiate(I, axis=0)
-                return (np.asarray(_h(d1), dtype=float),
-                        np.asarray(_h(d2), dtype=float))
-            else:
-                d1, d2 = self.ccd.differentiate(I, axis=1)
-                return (np.asarray(_h(d1), dtype=float).T,
-                        np.asarray(_h(d2), dtype=float).T)
+        return build_ccd_1d_matrices(self, axis)
 
     def _build_sparse_operator(self, rho_np, drho_np):
         """Assemble the sparse L_CCD^ρ matrix via Kronecker products.
@@ -383,41 +300,4 @@ class _CCDPPEBase(IPPESolver):
             Wall:     shape ((N+1)², (N+1)²)
             Periodic: shape (N², N²)
         """
-        import scipy.sparse as sp
-
-        D1x = self._D1[0]
-        D2x = self._D2[0]
-        D1y = self._D1[1]
-        D2y = self._D2[1]
-
-        mx = D1x.shape[0]
-        my = D1y.shape[0]
-
-        D2x_full = sp.kron(sp.csr_matrix(D2x), sp.eye(my), format='csr')
-        D2y_full = sp.kron(sp.eye(mx), sp.csr_matrix(D2y), format='csr')
-        D1x_full = sp.kron(sp.csr_matrix(D1x), sp.eye(my), format='csr')
-        D1y_full = sp.kron(sp.eye(mx), sp.csr_matrix(D1y), format='csr')
-
-        if self._periodic:
-            Nx, Ny = self.grid.N
-            rho_trimmed = rho_np[:Nx, :Ny]
-            drho_x_trimmed = drho_np[0][:Nx, :Ny]
-            drho_y_trimmed = drho_np[1][:Nx, :Ny] if self.ndim > 1 else np.zeros_like(rho_trimmed)
-        else:
-            rho_trimmed = rho_np
-            drho_x_trimmed = drho_np[0]
-            drho_y_trimmed = drho_np[1] if self.ndim > 1 else np.zeros_like(rho_trimmed)
-
-        rho_flat = rho_trimmed.ravel()
-        drho_x_flat = drho_x_trimmed.ravel()
-        drho_y_flat = drho_y_trimmed.ravel()
-
-        inv_rho = sp.diags(1.0 / rho_flat, format='csr')
-        coeff_x = sp.diags(drho_x_flat / rho_flat ** 2, format='csr')
-        coeff_y = sp.diags(drho_y_flat / rho_flat ** 2, format='csr')
-
-        L = (inv_rho @ (D2x_full + D2y_full)
-             - coeff_x @ D1x_full
-             - coeff_y @ D1y_full)
-
-        return L.tocsr()
+        return build_ccd_sparse_operator(self, rho_np, drho_np)
