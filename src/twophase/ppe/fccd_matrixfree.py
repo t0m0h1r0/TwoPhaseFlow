@@ -14,6 +14,7 @@ A3 chain:
     SP-M phase-separated PPE:
       div((1/rho_q) grad p_q) = rhs_q, q∈{L,G}
       -> zero cross-phase FCCD face coupling + one pressure gauge per phase
+      -> per-phase RHS compatibility projection
       -> pressure-jump decomposition p = p_tilde + σκ(1-ψ)
       -> PPESolverFCCDMatrixFree._face_inverse_density
 """
@@ -156,8 +157,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
         self.prepare_operator(rho)
+        rhs_dev = self._project_rhs_compatibility(rhs_dev)
         rhs_flat = rhs_dev.ravel().copy()
-        self._pin_flat(rhs_flat, 0.0)
 
         if p_init is None:
             x0 = xp.zeros_like(rhs_flat)
@@ -230,6 +231,30 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         psi = self._interface_jump_context["psi"]
         kappa = self._interface_jump_context["kappa"]
         return pressure + sigma * kappa * (1.0 - psi)
+
+    def _project_rhs_compatibility(self, rhs):
+        """Enforce one Neumann compatibility condition per phase block."""
+        xp = self.xp
+        rhs_projected = xp.asarray(rhs).copy()
+        if (
+            self.coefficient_scheme != "phase_separated"
+            or self._phase_threshold is None
+            or self._rho is None
+        ):
+            self._pin_flat(rhs_projected.ravel(), 0.0)
+            return rhs_projected
+        phase_masks = (
+            self._rho < self._phase_threshold,
+            self._rho >= self._phase_threshold,
+        )
+        for mask in phase_masks:
+            count = int(self.backend.asnumpy(xp.sum(mask)))
+            if count == 0:
+                continue
+            mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+            rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
+        self._pin_flat(rhs_projected.ravel(), 0.0)
+        return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):
         xp = self.xp

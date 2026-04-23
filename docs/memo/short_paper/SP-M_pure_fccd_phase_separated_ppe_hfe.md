@@ -241,3 +241,18 @@ configuration from pretending that a CSF body force and a sharp pressure jump ar
 the same numerical object.  Full GFM ghost pressure jets remain the next row-level
 closure; Phase 2 provides the correct YAML semantics and executable jump
 composition path.
+
+## 11. Implementation Status: Per-Phase PPE Compatibility Phase 3
+
+Once cross-interface PPE coupling is removed, each phase block is a Neumann
+elliptic problem with its own nullspace.  Therefore the discrete RHS must satisfy
+one compatibility condition per phase:
+
+\[
+\sum_{\Omega_q} rhs_q \approx 0,\qquad q\in\{L,G\}.
+\]
+
+The FCCD matrix-free phase-separated solver now projects the RHS by subtracting
+its mean separately in the gas and liquid masks before GMRES, and it keeps one
+pressure gauge pin per detected phase.  This is not a finite-volume conservation
+claim; it is the solvability condition for the FVM-free differential PPE blocks.

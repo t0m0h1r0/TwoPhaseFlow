@@ -143,6 +143,33 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
 
 
+def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
+    """Each decoupled Neumann phase block must receive zero-mean RHS."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+    rhs = np.ones_like(rho)
+    rhs[: N // 2 + 1, :] = 7.0
+    rhs[N // 2 + 1 :, :] = -3.0
+
+    ppe.prepare_operator(rho)
+    projected = np.asarray(ppe._project_rhs_compatibility(rhs))
+    liquid = np.asarray(ppe._rho) >= ppe._phase_threshold
+    gas = np.asarray(ppe._rho) < ppe._phase_threshold
+
+    assert abs(float(np.mean(projected[liquid]))) < 1.0e-14
+    assert abs(float(np.mean(projected[gas]))) < 1.0e-14
+    assert np.allclose(projected.ravel()[list(ppe._pin_dofs)], 0.0)
+
+
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     """SP-M Phase 2: pressure_jump adds [p]=σκ on the gas side."""
     solver = TwoPhaseNSSolver(

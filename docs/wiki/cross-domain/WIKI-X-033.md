@@ -122,3 +122,11 @@ surface-tension setting.  It differs from `csf`:
 
 This keeps the design philosophy unified: phase physics is declared as a sharp
 interface pressure jump, not hidden inside a surface-tension force model.
+
+## Code Status: Phase 3 Per-Phase Compatibility
+
+Because `phase_separated` cuts cross-interface PPE coupling, the gas and liquid
+pressure blocks each have a Neumann nullspace.  The solver therefore projects the
+PPE RHS to zero mean separately in each detected density phase before GMRES, then
+pins one pressure gauge per phase.  This is a solvability requirement for the
+split differential operator, not a return to FVM conservation.
