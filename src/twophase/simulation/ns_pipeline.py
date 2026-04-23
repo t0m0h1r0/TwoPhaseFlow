@@ -67,6 +67,10 @@ from .ns_runtime_factories import (
     build_ns_plain_ppe_solver,
     build_ns_reinitializer,
 )
+from .ns_runtime_config import (
+    normalise_ns_interface_runtime,
+    normalise_ns_ppe_runtime,
+)
 from .runtime_setup import (
     apply_velocity_bc as _apply_bc,
     build_initial_condition,
@@ -372,56 +376,20 @@ class TwoPhaseNSSolver:
 
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
-        self._rebuild_freq = max(0, int(options.grid_rebuild_freq))
-        self._reinit_every = int(options.reinit_every)
-        self._reproject_variable_density = bool(options.reproject_variable_density)
-        self._face_flux_projection = False
-        self._reinit_eps_scale = float(options.reinit_eps_scale)
-        self._kappa_max = float(options.kappa_max) if options.kappa_max is not None else None
-
-        self._interface_tracking_enabled = bool(options.interface_tracking_enabled)
-        tracking_method = options.interface_tracking_method
-        if not self._interface_tracking_enabled:
-            self._interface_tracking_method = "none"
-        else:
-            if tracking_method is None:
-                tracking_method = (
-                    "phi_primary" if bool(options.phi_primary_transport) else "psi_direct"
-                )
-            self._interface_tracking_method = str(tracking_method).strip().lower()
-            if self._interface_tracking_method == "phi":
-                self._interface_tracking_method = "phi_primary"
-            elif self._interface_tracking_method == "psi":
-                self._interface_tracking_method = "psi_direct"
-            elif self._interface_tracking_method == "none":
-                self._interface_tracking_enabled = False
-        if self._interface_tracking_method not in {"phi_primary", "psi_direct", "none"}:
-            raise ValueError(
-                "Unsupported interface_tracking_method="
-                f"'{tracking_method}'. Use phi_primary|psi_direct|none."
-            )
-        self._phi_primary_transport = (
-            bool(options.phi_primary_transport)
-            if self._interface_tracking_method not in {"phi_primary", "psi_direct"}
-            else self._interface_tracking_method == "phi_primary"
-        )
-        self._phi_primary_redist_every = max(1, int(options.phi_primary_redist_every))
-        self._phi_primary_clip_factor = max(2.0, float(options.phi_primary_clip_factor))
-        self._phi_primary_heaviside_eps_scale = max(
-            1.0, float(options.phi_primary_heaviside_eps_scale)
-        )
-
-        self._reproject_mode = str(options.reproject_mode).strip().lower()
-        if self._reproject_mode not in {
-            "legacy", "variable_density_only", "iim", "gfm",
-            "consistent_iim", "consistent_gfm",
-        }:
-            raise ValueError(
-                f"Unsupported reproject_mode='{options.reproject_mode}'. "
-                "Use legacy|variable_density_only|gfm|iim."
-            )
-        if self._reproject_variable_density and self._reproject_mode == "legacy":
-            self._reproject_mode = "variable_density_only"
+        state = normalise_ns_interface_runtime(options)
+        self._rebuild_freq = state.rebuild_freq
+        self._reinit_every = state.reinit_every
+        self._reproject_variable_density = state.reproject_variable_density
+        self._face_flux_projection = state.face_flux_projection
+        self._reinit_eps_scale = state.reinit_eps_scale
+        self._kappa_max = state.kappa_max
+        self._interface_tracking_enabled = state.interface_tracking_enabled
+        self._interface_tracking_method = state.interface_tracking_method
+        self._phi_primary_transport = state.phi_primary_transport
+        self._phi_primary_redist_every = state.phi_primary_redist_every
+        self._phi_primary_clip_factor = state.phi_primary_clip_factor
+        self._phi_primary_heaviside_eps_scale = state.phi_primary_heaviside_eps_scale
+        self._reproject_mode = state.reproject_mode
 
     def _initialise_ppe_runtime(
         self,
@@ -430,47 +398,27 @@ class TwoPhaseNSSolver:
         surface_tension_scheme: str,
     ) -> None:
         """Normalise PPE configuration and validate coupled options."""
-        raw_ppe = str(
-            options.pressure_scheme if options.pressure_scheme is not None else options.ppe_solver
-        ).strip().lower()
-        self._ppe_solver_name = IPPESolver._aliases.get(raw_ppe, raw_ppe)
-        if self._ppe_solver_name not in IPPESolver._registry:
-            raise ValueError(
-                f"Unsupported ppe_solver={raw_ppe!r}. "
-                "Use fvm_iterative|fvm_direct|fccd_iterative."
-            )
-        self._ppe_iteration_method = str(options.ppe_iteration_method).strip().lower()
-        self._ppe_coefficient_scheme = str(options.ppe_coefficient_scheme).strip().lower()
-        self._ppe_interface_coupling_scheme = str(
-            options.ppe_interface_coupling_scheme
-        ).strip().lower()
-        if str(surface_tension_scheme).strip().lower() == "pressure_jump":
-            if self._ppe_coefficient_scheme != "phase_separated":
-                raise ValueError(
-                    "surface_tension_scheme='pressure_jump' requires "
-                    "ppe_coefficient_scheme='phase_separated'"
-                )
-            if self._ppe_interface_coupling_scheme != "jump_decomposition":
-                raise ValueError(
-                    "surface_tension_scheme='pressure_jump' requires "
-                    "ppe_interface_coupling_scheme='jump_decomposition'"
-                )
-
-        self._ppe_tolerance = float(options.ppe_tolerance)
-        self._ppe_max_iterations = int(options.ppe_max_iterations)
-        self._ppe_restart = options.ppe_restart
-        self._ppe_preconditioner = str(options.ppe_preconditioner).strip().lower()
-        self._ppe_pcr_stages = options.ppe_pcr_stages
-        self._ppe_c_tau = float(options.ppe_c_tau)
-        self._ppe_defect_correction = bool(options.ppe_defect_correction)
-        self._ppe_dc_max_iterations = int(options.ppe_dc_max_iterations)
-        self._ppe_dc_tolerance = float(options.ppe_dc_tolerance)
-        self._ppe_dc_relaxation = float(options.ppe_dc_relaxation)
-        self._pressure_scheme = (
-            "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
-            else "fvm_spsolve" if self._ppe_solver_name == "fvm_direct"
-            else "fccd_matrixfree"
+        state = normalise_ns_ppe_runtime(
+            options,
+            surface_tension_scheme=surface_tension_scheme,
+            ppe_aliases=IPPESolver._aliases,
+            ppe_registry=IPPESolver._registry,
         )
+        self._ppe_solver_name = state.ppe_solver_name
+        self._ppe_iteration_method = state.ppe_iteration_method
+        self._ppe_coefficient_scheme = state.ppe_coefficient_scheme
+        self._ppe_interface_coupling_scheme = state.ppe_interface_coupling_scheme
+        self._ppe_tolerance = state.ppe_tolerance
+        self._ppe_max_iterations = state.ppe_max_iterations
+        self._ppe_restart = state.ppe_restart
+        self._ppe_preconditioner = state.ppe_preconditioner
+        self._ppe_pcr_stages = state.ppe_pcr_stages
+        self._ppe_c_tau = state.ppe_c_tau
+        self._ppe_defect_correction = state.ppe_defect_correction
+        self._ppe_dc_max_iterations = state.ppe_dc_max_iterations
+        self._ppe_dc_tolerance = state.ppe_dc_tolerance
+        self._ppe_dc_relaxation = state.ppe_dc_relaxation
+        self._pressure_scheme = state.pressure_scheme
 
     def _initialise_scheme_runtime(self, options: SolverSchemeOptions) -> None:
         """Normalise scheme selections and stateful time-integration flags."""
