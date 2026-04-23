@@ -44,11 +44,12 @@ class PicardCNAdvance:
         viscous_op: "ViscousTerm",
         ccd: "CCDSolver",
         dt: float,
+        psi=None,
     ) -> List:
         ndim = len(u_old)
 
         # Explicit viscous at time n
-        visc_n = viscous_op._evaluate(u_old, mu, rho, ccd)
+        visc_n = viscous_op._evaluate(u_old, mu, rho, ccd, psi=psi)
 
         # Forward-Euler predictor (evaluation point for the corrector)
         u_pred = [
@@ -57,7 +58,7 @@ class PicardCNAdvance:
         ]
 
         # Trapezoid corrector
-        visc_star = viscous_op._evaluate(u_pred, mu, rho, ccd)
+        visc_star = viscous_op._evaluate(u_pred, mu, rho, ccd, psi=psi)
         return [
             u_old[c] + dt * (explicit_rhs[c] / rho
                              + 0.5 * visc_n[c]

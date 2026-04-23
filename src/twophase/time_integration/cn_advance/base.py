@@ -52,4 +52,5 @@ class ICNAdvance(Protocol):
         viscous_op: "ViscousTerm",
         ccd: "CCDSolver",
         dt: float,
+        psi=None,
     ) -> List: ...

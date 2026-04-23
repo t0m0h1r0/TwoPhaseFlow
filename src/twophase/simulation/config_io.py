@@ -103,10 +103,11 @@ class RunCfg:
     ridge_sigma_0: float = 3.0       # Gaussian-ξ ridge bandwidth (CHK-159, SP-E D1)
     # Stage-wise numerical schemes — bridged from SimulationBuilder (CHK-158)
     # and WIKI-X-023 per-term NS decomposition.
-    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd_nodal' | 'fccd_flux'
-    # convection_scheme: momentum    — 'ccd' | 'fccd_nodal' | 'fccd_flux' | 'uccd6'
-    # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct'
+    # advection_scheme : ψ advection — 'dissipative_ccd' | 'weno5' | 'fccd'
+    # convection_scheme: momentum    — 'ccd' | 'fccd' | 'uccd6'
+    # ppe_solver       : pressure    — 'fvm_iterative' | 'fvm_direct' | 'fccd_iterative'
     # surface_tension_scheme: σκ∇ψ   — 'csf' | 'none'
+    # viscous_spatial_scheme: viscous — 'ccd' | 'conservative_stress' | 'ccd_stress_legacy'
     # viscous_time_scheme: viscous predictor — 'explicit' | 'crank_nicolson'
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
@@ -114,6 +115,7 @@ class RunCfg:
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
+    viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "explicit"
     pressure_gradient_scheme: str = "ccd"
     surface_tension_gradient_scheme: str = "ccd"
@@ -397,7 +399,9 @@ def _resolve_surface_tension(
 
 
 _ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
+_ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
+_CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
@@ -415,27 +419,43 @@ _PROJECTION_TO_REPROJECT_MODE = {
     "iim": "iim",
     "gfm": "gfm",
 }
-_PPE_SCHEMES = ("fvm_iterative", "fvm_direct")
+_PPE_SCHEMES = ("fvm_iterative", "fvm_direct", "fccd_iterative")
+_PPE_DISCRETIZATION_SOLVERS = {
+    ("fvm", "iterative"): "fvm_iterative",
+    ("fvm", "direct"): "fvm_direct",
+    ("fccd", "iterative"): "fccd_iterative",
+}
 _PPE_TO_PRESSURE_SCHEME = {
     "fvm_iterative": "fvm_matrixfree",
     "fvm_direct": "fvm_spsolve",
+    "fccd_iterative": "fccd_matrixfree",
 }
-_PPE_DISCRETIZATIONS = ("fvm",)
-_POISSON_COEFFICIENTS = ("variable_density",)
+_PPE_DISCRETIZATIONS = ("fvm", "fccd")
+_POISSON_COEFFICIENTS = ("phase_density", "variable_density")
+_POISSON_COEFFICIENT_ALIASES = {"variable_density": "phase_density"}
 _SURFACE_TENSION_SCHEMES = ("csf", "none")
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler")
 _MOMENTUM_FORMS = ("primitive_velocity",)
-_VISCOUS_SPATIAL_SCHEMES = ("ccd",)
+_VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legacy")
+_VISCOUS_SPATIAL_ALIASES = {
+    "stress_divergence": "conservative_stress",
+    "low_order_conservative": "conservative_stress",
+    "ccd": "ccd_bulk",
+    "ccd_legacy": "ccd_stress_legacy",
+}
 _CURVATURE_SCHEMES = ("psi_direct_hfe",)
 _MOMENTUM_PREDICTOR_ALIASES = {
     "fractional_step": "projection_predictor_corrector",
     "pressure_correction": "projection_predictor_corrector",
 }
 _MOMENTUM_GRADIENT_SCHEMES = ("ccd", "fccd_flux", "fccd_nodal")
-_MOMENTUM_GRADIENT_ALIASES = {"projection_consistent": "ccd"}
+_MOMENTUM_GRADIENT_ALIASES = {
+    "projection_consistent": "ccd",
+    "fccd": "fccd_flux",
+}
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
 _PPE_ITERATION_METHODS = ("gmres",)
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
@@ -466,13 +486,29 @@ def _parse_run(
     projection = layout["projection"]
     poisson = projection["poisson"]
     poisson_operator = poisson.get("operator", {})
-    _validate_choice(
+    if not poisson_operator and (
+        "discretization" in poisson or "coefficient" in poisson
+    ):
+        poisson_operator = {
+            key: poisson[key]
+            for key in ("discretization", "coefficient")
+            if key in poisson
+        }
+    poisson_discretization = _validate_choice(
         poisson_operator.get("discretization", "fvm"),
         _PPE_DISCRETIZATIONS,
         layout["paths"]["poisson_discretization"],
     )
-    _validate_choice(
-        poisson_operator.get("coefficient", "variable_density"),
+    if "coefficient" not in poisson_operator:
+        raise ValueError(
+            f"{layout['paths']['poisson_coefficient']} is required; "
+            "use 'phase_density' for the §9 two-phase mixture-density PPE."
+        )
+    poisson_coefficient = _validate_choice(
+        _POISSON_COEFFICIENT_ALIASES.get(
+            str(poisson_operator["coefficient"]).strip().lower(),
+            poisson_operator["coefficient"],
+        ),
         _POISSON_COEFFICIENTS,
         layout["paths"]["poisson_coefficient"],
     )
@@ -489,7 +525,11 @@ def _parse_run(
             "run.time: 'cfl' and 'dt' are mutually exclusive."
         )
     advection_scheme = _validate_choice(
-        interface_transport["spatial"], _ADVECTION_SCHEMES,
+        _ADVECTION_SCHEME_ALIASES.get(
+            str(interface_transport["spatial"]).strip().lower(),
+            interface_transport["spatial"],
+        ),
+        _ADVECTION_SCHEMES,
         layout["paths"]["interface_spatial"],
     )
     _parse_time_integrator(
@@ -503,7 +543,11 @@ def _parse_run(
         layout["paths"]["momentum_form"],
     )
     convection_scheme = _validate_choice(
-        convection["spatial"], _CONVECTION_SCHEMES,
+        _CONVECTION_SCHEME_ALIASES.get(
+            str(convection["spatial"]).strip().lower(),
+            convection["spatial"],
+        ),
+        _CONVECTION_SCHEMES,
         layout["paths"]["convection_spatial"],
     )
     convection_time_scheme = _parse_time_integrator(
@@ -525,11 +569,19 @@ def _parse_run(
         ppe_dc_max_iterations,
         ppe_dc_tolerance,
         ppe_dc_relaxation,
-    ) = _parse_ppe_solver_config(ppe_solver_cfg, layout["paths"]["poisson_solver"])
+    ) = _parse_ppe_solver_config(
+        ppe_solver_cfg,
+        layout["paths"]["poisson_solver"],
+        poisson_discretization,
+        layout["paths"]["poisson_discretization"],
+    )
     pressure_scheme = _PPE_TO_PRESSURE_SCHEME[ppe_solver]
     _raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
     pressure_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(_raw_p_grad, _raw_p_grad),
+        _MOMENTUM_GRADIENT_ALIASES.get(
+            str(_raw_p_grad).strip().lower(),
+            _raw_p_grad,
+        ),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["pressure_spatial"],
     )
@@ -538,13 +590,16 @@ def _parse_run(
         surface_tension.get("spatial", surface_tension.get("force_gradient", "ccd")),
     )
     surface_tension_gradient_scheme = _validate_choice(
-        _MOMENTUM_GRADIENT_ALIASES.get(_raw_st_grad, _raw_st_grad),
+        _MOMENTUM_GRADIENT_ALIASES.get(
+            str(_raw_st_grad).strip().lower(),
+            _raw_st_grad,
+        ),
         _MOMENTUM_GRADIENT_SCHEMES,
         layout["paths"]["surface_tension_spatial"],
     )
     momentum_gradient_scheme = pressure_gradient_scheme
     surface_tension_scheme = _validate_choice(
-        surface_tension.get("model", "csf"),
+        surface_tension.get("formulation", surface_tension.get("model", "csf")),
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
@@ -559,8 +614,12 @@ def _parse_run(
             f"{layout['paths']['convection_uccd6_sigma']} must be > 0, "
             f"got {uccd6_sigma}"
         )
-    _validate_choice(
-        viscosity["spatial"], _VISCOUS_SPATIAL_SCHEMES,
+    viscous_spatial_scheme = _validate_choice(
+        _VISCOUS_SPATIAL_ALIASES.get(
+            str(viscosity["spatial"]).strip().lower(),
+            viscosity["spatial"],
+        ),
+        _VISCOUS_SPATIAL_SCHEMES,
         layout["paths"]["viscosity_spatial"],
     )
     viscous_time_scheme = _parse_time_integrator(
@@ -568,7 +627,8 @@ def _parse_run(
         layout["paths"]["viscosity_time"],
     )
     reproject_mode = _parse_projection_mode(
-        projection["mode"], layout["paths"]["projection_mode"]
+        projection.get("mode", _coefficient_to_projection_mode(poisson_coefficient)),
+        layout["paths"]["projection_mode"],
     )
     reinit_method = reinit["algorithm"]
     if reinit_method is not None and reinit_method not in _REINIT_METHODS:
@@ -621,6 +681,7 @@ def _parse_run(
         pressure_scheme=pressure_scheme,
         surface_tension_scheme=surface_tension_scheme,
         convection_time_scheme=convection_time_scheme,
+        viscous_spatial_scheme=viscous_spatial_scheme,
         viscous_time_scheme=viscous_time_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,
@@ -730,7 +791,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
                 "viscosity_spatial": "numerics.momentum.terms.viscosity.spatial",
                 "viscosity_time": "numerics.momentum.terms.viscosity.time_integrator",
                 "pressure_spatial": "numerics.momentum.terms.pressure.gradient",
-                "surface_tension_model": "numerics.momentum.terms.surface_tension.model",
+                "surface_tension_model": "numerics.momentum.terms.surface_tension.formulation",
                 "surface_tension_curvature": "interface.geometry.curvature.method",
                 "surface_tension_spatial": "numerics.momentum.terms.surface_tension.gradient",
                 "projection_mode": "numerics.projection.mode",
@@ -770,7 +831,7 @@ def _parse_numerics_layout(numerics: dict) -> dict:
             "viscosity_spatial": "numerics.physical_time.momentum.viscosity.spatial",
             "viscosity_time": "numerics.physical_time.momentum.viscosity.time",
             "pressure_spatial": "numerics.elliptic.pressure_projection.pressure.gradient",
-            "surface_tension_model": "numerics.physical_time.momentum.capillary_force.model",
+            "surface_tension_model": "numerics.physical_time.momentum.capillary_force.formulation",
             "surface_tension_curvature": "numerics.physical_time.momentum.capillary_force.curvature",
             "surface_tension_spatial": "numerics.physical_time.momentum.capillary_force.force_gradient",
             "projection_mode": "numerics.elliptic.pressure_projection.mode",
@@ -811,7 +872,12 @@ def _parse_time_integrator(
     return _validate_choice(alias_map.get(value, value), choices, path)
 
 
-def _parse_ppe_solver_config(solver_cfg: dict, path: str) -> tuple[
+def _parse_ppe_solver_config(
+    solver_cfg: dict,
+    path: str,
+    discretization: str = "fvm",
+    discretization_path: str = "projection.poisson.operator.discretization",
+) -> tuple[
     str, str, float, int, int | None, str, int | None, float, bool, int, float, float
 ]:
     kind = _validate_choice(solver_cfg["kind"], _PPE_SOLVER_KINDS, f"{path}.kind")
@@ -859,7 +925,16 @@ def _parse_ppe_solver_config(solver_cfg: dict, path: str) -> tuple[
         if dc_relaxation <= 0.0:
             raise ValueError(f"{path}.corrections.relaxation must be > 0")
 
-    ppe_solver = "fvm_iterative" if effective_kind == "iterative" else "fvm_direct"
+    solver_key = (discretization, effective_kind)
+    if solver_key not in _PPE_DISCRETIZATION_SOLVERS:
+        raise ValueError(
+            f"{discretization_path}={discretization!r} does not support "
+            f"{effective_path}.kind={effective_kind!r}"
+        )
+    ppe_solver = _PPE_DISCRETIZATION_SOLVERS[solver_key]
+    if discretization == "fccd" and effective_kind == "iterative":
+        effective_solver_cfg = dict(effective_solver_cfg)
+        effective_solver_cfg.setdefault("preconditioner", "none")
     (
         ppe_iteration_method,
         ppe_tolerance,
@@ -869,6 +944,11 @@ def _parse_ppe_solver_config(solver_cfg: dict, path: str) -> tuple[
         ppe_pcr_stages,
         ppe_c_tau,
     ) = _parse_ppe_solver_options(effective_kind, effective_solver_cfg, effective_path)
+    if discretization == "fccd" and ppe_preconditioner not in {"jacobi", "none"}:
+        raise ValueError(
+            f"{effective_path}.preconditioner for FCCD PPE must be 'jacobi' or 'none', "
+            f"got {ppe_preconditioner!r}"
+        )
     return (
         ppe_solver, ppe_iteration_method, ppe_tolerance, ppe_max_iterations,
         ppe_restart, ppe_preconditioner, ppe_pcr_stages, ppe_c_tau,
@@ -1056,3 +1136,10 @@ def _parse_projection_mode(raw: Any, path: str = "numerics.projection.mode") -> 
             f"{path} must be one of {_PROJECTION_MODES}, got {raw!r}"
         )
     return _PROJECTION_TO_REPROJECT_MODE[mode]
+
+
+def _coefficient_to_projection_mode(coefficient: str) -> str:
+    """Derive the standard projection mode from the PPE coefficient model."""
+    if coefficient == "phase_density":
+        return "variable_density"
+    raise ValueError(f"Unsupported PPE coefficient model: {coefficient!r}")

@@ -74,20 +74,21 @@ class RichardsonCNAdvance:
         viscous_op: "ViscousTerm",
         ccd: "CCDSolver",
         dt: float,
+        psi=None,
     ) -> List:
         # Big step
         u1 = self.base.advance(
-            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt,
+            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt, psi=psi,
         )
 
         # Two half steps, explicit_rhs frozen at time n (matches the
         # surrounding IPC+AB2 assembly in ns_terms/predictor.py).
         dt_half = 0.5 * dt
         u_half = self.base.advance(
-            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt_half,
+            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, psi=psi,
         )
         u2 = self.base.advance(
-            u_half, explicit_rhs, mu, rho, viscous_op, ccd, dt_half,
+            u_half, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, psi=psi,
         )
 
         # Extrapolation: (4·u_{Δt/2,2} − u_Δt) / 3

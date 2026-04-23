@@ -60,6 +60,7 @@ class SurfaceTensionBuildCtx:
 class ViscousBuildCtx:
     backend: "Backend"
     re: float
+    spatial_scheme: str = "ccd_bulk"
     viscous_term: "ViscousTerm | None" = None
 
 
@@ -70,3 +71,4 @@ class PPEBuildCtx:
     bc_type: str
     bc_spec: "BoundarySpec | None" = None
     config: "SimpleNamespace | None" = None
+    fccd: "FCCDSolver | None" = None

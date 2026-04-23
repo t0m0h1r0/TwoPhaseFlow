@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -70,7 +71,7 @@ def _minimal(patch: dict | None = None) -> dict:
                     "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
                     "surface_tension": {
                         "gradient": "ccd",
-                        "model": "csf",
+                        "formulation": "csf",
                     },
                 },
             },
@@ -79,7 +80,7 @@ def _minimal(patch: dict | None = None) -> dict:
                 "poisson": {
                     "operator": {
                         "discretization": "fvm",
-                        "coefficient": "variable_density",
+                        "coefficient": "phase_density",
                     },
                     "solver": {
                         "kind": "iterative",
@@ -113,6 +114,63 @@ def test_readable_defaults_round_trip():
     assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "ccd"
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
+
+
+def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.run.advection_scheme == "fccd_flux"
+    assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
+    assert cfg.run.pressure_gradient_scheme == "fccd_flux"
+    assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
+    assert cfg.run.reinit_method == "ridge_eikonal"
+    assert cfg.run.reproject_mode == "variable_density_only"
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+    assert cfg.run.ppe_defect_correction is True
+
+
+def test_fccd_ppe_discretization_maps_to_fccd_solver():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {"discretization": "fccd", "coefficient": "phase_density"},
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
+def test_fccd_ppe_rejects_direct_solver_kind():
+    with pytest.raises(ValueError, match="does not support"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "operator": {"discretization": "fccd", "coefficient": "phase_density"},
+                        "solver": {"kind": "direct"},
+                    },
+                },
+            },
+        }))
+
+
+def test_projection_coefficient_is_required_for_phase_ppe():
+    raw = _minimal()
+    del raw["numerics"]["projection"]["poisson"]["operator"]["coefficient"]
+    with pytest.raises(ValueError, match="coefficient.*required"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_iterative_ppe_accepts_jacobi_preconditioner():
@@ -164,7 +222,7 @@ def test_readable_structured_sections_round_trip():
         "numerics": {
             "interface": {
                 "transport": {
-                    "spatial": "fccd_flux",
+                    "spatial": "fccd",
                 },
                 "tracking": {
                         "primary": "phi",
@@ -183,8 +241,8 @@ def test_readable_structured_sections_round_trip():
                         "uccd6_sigma": 2.0e-3,
                     },
                     "pressure": {"spatial": "projection_consistent"},
-                    "viscosity": {"time_integrator": "crank_nicolson"},
-                    "surface_tension": {"gradient": "fccd_flux", "model": "none"},
+                    "viscosity": {"spatial": "ccd", "time_integrator": "crank_nicolson"},
+                    "surface_tension": {"gradient": "fccd", "formulation": "none"},
                 },
             },
             "projection": {
@@ -227,6 +285,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.momentum_gradient_scheme == "ccd"
     assert cfg.run.kappa_max == 20.0
     assert cfg.run.cn_viscous is True
+    assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.debug_diagnostics is True
 
 
@@ -416,8 +475,8 @@ def test_gradient_key_reads_pressure_and_surface_tension():
         "numerics": {
             "momentum": {
                 "terms": {
-                    "pressure": {"gradient": "fccd_flux"},
-                    "surface_tension": {"gradient": "fccd_nodal", "model": "csf"},
+                    "pressure": {"gradient": "fccd"},
+                    "surface_tension": {"gradient": "fccd_nodal", "formulation": "csf"},
                 },
             },
         },

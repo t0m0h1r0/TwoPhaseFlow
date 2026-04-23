@@ -160,6 +160,70 @@ def test_face_value_convergence_rate(backend):
     )
 
 
+# ── V3b: face jet and Taylor-HFE upwind state ────────────────────────────
+
+def test_face_jet_matches_existing_primitives(backend):
+    """face_jet exposes the existing face_value and face_gradient operators."""
+    N = 32
+    grid = make_grid(N, backend, L=1.0)
+    fccd = FCCDSolver(grid, backend, bc_type="periodic")
+
+    x = np.asarray(grid.coords[0])
+    field = np.sin(2 * np.pi * x)
+    field_2d = np.broadcast_to(field[:, None], (N + 1, 5)).copy()
+
+    jet = fccd.face_jet(field_2d, axis=0)
+
+    assert np.allclose(jet.value, fccd.face_value(field_2d, axis=0))
+    assert np.allclose(jet.gradient, fccd.face_gradient(field_2d, axis=0))
+    assert jet.curvature.shape == jet.value.shape
+
+
+def test_face_second_derivative_convergence_rate(backend):
+    """Face-carried q_f converges at second order for smooth periodic fields."""
+    Ns = [32, 64, 128, 256]
+    errs = []
+    for N in Ns:
+        grid = make_grid(N, backend, L=1.0)
+        fccd = FCCDSolver(grid, backend, bc_type="periodic")
+        x = np.asarray(grid.coords[0])
+        field = np.sin(2 * np.pi * x)
+        field_2d = np.broadcast_to(field[:, None], (N + 1, 5)).copy()
+
+        q_face = fccd.face_second_derivative(field_2d, axis=0)
+        x_face = _face_coords(x)
+        exact = -(2 * np.pi) ** 2 * np.sin(2 * np.pi * x_face)
+        errs.append(float(np.max(np.abs(q_face[:, 2] - exact))))
+
+    ratios = [errs[i] / errs[i + 1] for i in range(len(errs) - 1)]
+    assert ratios[-1] > 3.5, (
+        f"Face second derivative bridge must converge at O(H^2): ratios={ratios}"
+    )
+
+
+@pytest.mark.parametrize("velocity_sign", [1.0, -1.0])
+def test_upwind_face_value_taylor_hfe_order(velocity_sign, backend):
+    """Directional Taylor-HFE face state converges at third order."""
+    Ns = [32, 64, 128, 256]
+    errs = []
+    for N in Ns:
+        grid = make_grid(N, backend, L=1.0)
+        fccd = FCCDSolver(grid, backend, bc_type="periodic")
+        x = np.asarray(grid.coords[0])
+        field = np.sin(2 * np.pi * x)
+        field_2d = np.broadcast_to(field[:, None], (N + 1, 5)).copy()
+        velocity_face = np.full((N, 5), velocity_sign)
+
+        upwind = fccd.upwind_face_value(field_2d, velocity_face, axis=0)
+        exact = np.sin(2 * np.pi * _face_coords(x))
+        errs.append(float(np.max(np.abs(upwind[:, 2] - exact))))
+
+    ratios = [errs[i] / errs[i + 1] for i in range(len(errs) - 1)]
+    assert ratios[-1] > 7.0, (
+        f"Taylor-HFE upwind state must converge at O(H^3): ratios={ratios}"
+    )
+
+
 # ── V4: node_gradient R_4 O(H^4) ─────────────────────────────────────────
 
 def test_node_gradient_hermite_order(backend):

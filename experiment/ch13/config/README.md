@@ -30,7 +30,7 @@ numerics:
   interface:
     transport:
       variable: psi
-      spatial: fccd_flux
+      spatial: fccd
       time_integrator: tvd_rk3
 ```
 
@@ -82,15 +82,14 @@ interface transport, momentum terms, and projection/PPE.
   name the gradient operator (∇p and ∇H(ψ)); `convection.spatial` names the
   transport operator — deliberately different keys since the operators are
   semantically different.
-- `projection`: projection semantics and the PPE solve.  `poisson.solver`
-  selects the linear algebra.  The `poisson.operator` block (FVM discretization,
-  variable-density coefficient) is optional; both values have exactly one
-  valid choice and default automatically.
+- `projection`: PPE solve configuration.  `poisson.operator.discretization`
+  selects the pressure operator family; `poisson.operator.coefficient` selects
+  how material phases enter the PPE coefficient.
 
-`surface_tension.model` is not a duplicate physical input.
+`surface_tension.formulation` is not a phase selector.
 `physics.surface_tension` is the material constant σ;
-`momentum.terms.surface_tension.model` selects the numerical formulation for
-the σ κ ∇ψ term.
+`momentum.terms.surface_tension.formulation` selects the numerical formulation
+for the σ κ ∇ψ term.  Use `csf` for the current §9 balanced-force path.
 
 `momentum.form: primitive_velocity` is omitted: there is exactly one
 implemented form and a paper reader gains nothing from seeing a constant.
@@ -107,12 +106,13 @@ must be independently visible.
 The current ch13 production/probe YAMLs follow the latest wiki design guide
 within the schemes implemented today:
 
-- `interface.transport.spatial: fccd_flux` follows the core CCD-family policy:
+- `interface.transport.spatial: fccd` follows the core CCD-family policy:
   FCCD/UCCD/DCCD are introduced so production ch13 experiments do not fall back
   to WENO. This preserves WIKI-T-065 / WIKI-X-031's field separation: ψ is the
   conservative transported state; φ is geometry and should not be the primary
   physical-time transport variable.  `tracking:` is omitted because
-  `transport.variable: psi` already determines the tracking variable.
+  `transport.variable: psi` already determines the tracking variable.  The
+  flux-locus form is the term default, not part of the scheme name.
 - `interface.transport.time_integrator: tvd_rk3` is co-located with the spatial
   scheme in the same `transport:` block, reflecting that spatial and temporal
   discretizations of the same equation belong together.
@@ -126,17 +126,27 @@ within the schemes implemented today:
 - `momentum.terms.viscosity.time_integrator: crank_nicolson` follows WIKI-X-026 / WIKI-X-030:
   viscous terms are stiffness-relevant and should use the CN path when
   available.
-- `projection.mode: consistent_iim` follows WIKI-X-020 / WIKI-X-032:
-  the sharp-interface path should be explicit in the config; the implementation
-  can still reject/fallback unsafe IIM candidates internally.
-- `projection.poisson.solver.kind: iterative` with `gmres + jacobi` follows WIKI-T-060 /
-  WIKI-T-063 / WIKI-L-026 for GPU-scale FVM projection. Jacobi preconditioner
-  is required for GPU execution; `line_pcr` requires CPU-side batched PCR and
-  must not be used in production ch13 runs.  Direct sparse FVM solve is kept as
-  a debugging option only.
-- `momentum.terms.convection.spatial: fccd_flux` remains the conservative implemented
-  default. The `_uccd6` YAML is an explicit UCCD6 probe; WIKI-X-028's
-  conservative-momentum UCCD6 form is still a future implementation target.
+- `momentum.terms.viscosity.spatial: ccd` keeps the calculation in the CCD
+  family.  The implementation uses the term's default options: bulk CCD
+  Laplacian away from the interface and conservative stress-divergence with
+  normal-axis fallback inside the ψ band.
+- `projection.mode` is omitted for the §9 default.  The implementation uses the
+  projection mode implied by `poisson.operator.coefficient`; explicit values
+  are reserved for legacy/IIM/GFM comparison paths.
+- `projection.poisson.operator.discretization: fccd` selects the CCD-family
+  pressure operator: `D_f[(1/rho)_f G_f(p)]`, replacing the paper's CCD
+  projection operator with FCCD face fluxes rather than the FVM path.
+- `projection.poisson.operator.coefficient: phase_density` is the two-phase
+  declaration for the PPE: rho is assembled from `physics.phases` and psi.
+- `projection.poisson.solver.kind: defect_correction` keeps the paper-style
+  residual-correction shell visible while the configured base solve supplies
+  the matrix-free FCCD correction step.
+- `momentum.terms.convection.spatial: uccd6` is the preferred implemented
+  momentum-advection path for ch13: WIKI-T-062 positions UCCD6 as the
+  order-preserving upwind CCD remedy for transport/Gibbs control, while FCCD
+  remains the face-locus remedy for pressure and capillary balanced-force
+  consistency. WIKI-X-028's fully conservative density-weighted UCCD6 momentum
+  form is still a future implementation target.
 
 ## PPE Solver Semantics
 
@@ -174,9 +184,10 @@ projection:
         preconditioner: jacobi
 ```
 
-The `projection.poisson.operator` block (`discretization: fvm`,
-`coefficient: variable_density`) is optional; both values are the only
-available choices and default automatically.
+`projection.poisson.operator.coefficient: phase_density` is required for the
+standard two-phase §9 PPE.  The numeric value still comes only from
+`physics.phases`; the projection section declares that those phases are used
+as the PPE coefficient.
 
 Kronecker LU is intentionally absent from ch13 YAML. It remains a restricted
 component/reference path, not an integration-experiment default.

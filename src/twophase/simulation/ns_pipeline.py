@@ -64,8 +64,9 @@ from ..ns_terms.fccd_convection import FCCDConvectionTerm             # registra
 from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm           # registration
 from ..ns_terms.context import NSComputeContext
 from ..ppe.interfaces import IPPESolver
+from ..ppe.defect_correction import PPESolverDefectCorrection
+from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree              # registration
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree                # registration
-from ..ppe.fvm_defect_correction import PPESolverFVMDefectCorrection
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve                      # registration
 from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .initial_conditions.builder import InitialConditionBuilder
@@ -148,6 +149,7 @@ class TwoPhaseNSSolver:
         pressure_gradient_scheme: str | None = None,
         surface_tension_gradient_scheme: str | None = None,
         momentum_gradient_scheme: str = "projection_consistent",
+        viscous_spatial_scheme: str = "ccd_bulk",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         debug_diagnostics: bool = False,
@@ -228,7 +230,8 @@ class TwoPhaseNSSolver:
         self._ppe_solver_name = IPPESolver._aliases.get(_raw_ppe, _raw_ppe)
         if self._ppe_solver_name not in IPPESolver._registry:
             raise ValueError(
-                f"Unsupported ppe_solver={_raw_ppe!r}. Use fvm_iterative|fvm_direct."
+                f"Unsupported ppe_solver={_raw_ppe!r}. "
+                "Use fvm_iterative|fvm_direct|fccd_iterative."
             )
         self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
         self._ppe_tolerance = float(ppe_tolerance)
@@ -243,9 +246,9 @@ class TwoPhaseNSSolver:
         self._ppe_dc_relaxation = float(ppe_dc_relaxation)
         self._pressure_scheme = (
             "fvm_matrixfree" if self._ppe_solver_name == "fvm_iterative"
-            else "fvm_spsolve"
+            else "fvm_spsolve" if self._ppe_solver_name == "fvm_direct"
+            else "fccd_matrixfree"
         )
-        self._ppe_solver = self._build_ppe_solver(self._ppe_solver_name)
         self._p_prev = None
         self._reproj_iim = IIMStencilCorrector(self._grid, mode="hermite")
 
@@ -279,11 +282,12 @@ class TwoPhaseNSSolver:
         # FCCDSolver: created first so FCCDDivergenceOperator can use it below.
         # One shared instance reuses the CCD LU factorisation — mirrors builder.py
         # §"one factorisation, many calls".
-        _FCCD_NAMES = frozenset({"fccd_flux", "fccd_nodal"})
+        _FCCD_NAMES = frozenset({"fccd_flux", "fccd_nodal", "fccd_iterative"})
         needs_fccd = bool(
             {
                 str(advection_scheme), str(convection_scheme),
                 self._pressure_gradient_scheme, self._surface_tension_gradient_scheme,
+                self._ppe_solver_name,
             }
             & _FCCD_NAMES
         )
@@ -293,23 +297,27 @@ class TwoPhaseNSSolver:
         )
 
         # Momentum gradient / divergence operators.
-        # _div_op: PPE RHS divergence (FVM for non-uniform+wall to avoid H²q
-        # amplification of the non-smooth surface tension force; see WIKI-T-068 §3).
-        # _fccd_div_op: separate face-flux projector with O(h⁴) FCCD face values
-        # for the velocity field (WIKI-T-068 §5); activated automatically.
+        # _div_op: PPE RHS divergence.  FCCD PPE uses FCCD face-flux divergence;
+        # legacy non-uniform wall runs retain the FVM divergence from WIKI-T-068.
+        # _fccd_div_op: face-flux projector with O(h⁴) FCCD face values.
         ccd_grad_op: IGradientOperator = CCDGradientOperator(self._backend, self._ccd, bc_type=bc_type)
-        if not self._grid.uniform and bc_type == "wall":
+        self._fccd_div_op: FCCDDivergenceOperator | None = (
+            FCCDDivergenceOperator(self._fccd)
+            if self._fccd is not None
+            else None
+        )
+        if self._ppe_solver_name == "fccd_iterative":
+            if self._fccd_div_op is None:
+                raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
+            self._div_op = self._fccd_div_op
+        elif not self._grid.uniform and bc_type == "wall":
             self._div_op: IDivergenceOperator = FVMDivergenceOperator(self._backend, self._grid)
         else:
             self._div_op = CCDDivergenceOperator(self._ccd)
 
-        self._fccd_div_op: FCCDDivergenceOperator | None = (
-            FCCDDivergenceOperator(self._fccd)
-            if self._fccd is not None and not self._grid.uniform and bc_type == "wall"
-            else None
-        )
         if self._fccd_div_op is not None:
             self._face_flux_projection = True
+        self._ppe_solver = self._build_ppe_solver(self._ppe_solver_name)
 
         # Gradient operators — each scheme class decides its own construction.
         grad_ctx = GradientBuildCtx(ccd_op=ccd_grad_op, fccd=self._fccd)
@@ -409,10 +417,21 @@ class TwoPhaseNSSolver:
         # Viscous predictor strategy (CN vs Explicit)
         self._cn_viscous = cn_viscous
         self._Re = Re
+        self._viscous_spatial_scheme = str(viscous_spatial_scheme)
         from ..ns_terms.viscous import ViscousTerm
-        _viscous_term = ViscousTerm(self._backend, Re=Re, cn_viscous=True) if cn_viscous else None
+        _viscous_term = ViscousTerm(
+            self._backend,
+            Re=Re,
+            cn_viscous=True,
+            spatial_scheme=self._viscous_spatial_scheme,
+        )
         _viscous_scheme = "crank_nicolson" if cn_viscous else "explicit"
-        viscous_ctx = ViscousBuildCtx(backend=self._backend, re=Re, viscous_term=_viscous_term)
+        viscous_ctx = ViscousBuildCtx(
+            backend=self._backend,
+            re=Re,
+            spatial_scheme=self._viscous_spatial_scheme,
+            viscous_term=_viscous_term,
+        )
         self._viscous_predictor: IViscousPredictor = IViscousPredictor.from_scheme(
             _viscous_scheme, viscous_ctx
         )
@@ -433,6 +452,7 @@ class TwoPhaseNSSolver:
           * 'fvm_spsolve'    : sparse FVM direct solve (production default)
           * 'fvm_matrixfree' : matrix-free FVM + line-preconditioned GMRES
                                (needs SimulationConfig; synthesised below)
+          * 'fccd_matrixfree': matrix-free FCCD face-flux GMRES
 
         CCD-based PPE solvers ('ccd_lu', 'iim') hit the rank-deficient
         Neumann nullspace documented in WIKI-X-004 / WIKI-T-016; they are
@@ -453,9 +473,10 @@ class TwoPhaseNSSolver:
                 backend=self._backend, grid=self._grid,
                 bc_type=self.bc_type, bc_spec=_op_bc_spec,
                 config=self._build_ppe_cfg_shim(preconditioner="none"),
+                fccd=self._fccd,
             )
-            operator = IPPESolver.from_scheme("fvm_iterative", _op_ctx)
-            return PPESolverFVMDefectCorrection(
+            operator = IPPESolver.from_scheme(ppe_solver, _op_ctx)
+            return PPESolverDefectCorrection(
                 self._backend,
                 self._grid,
                 base_solver,
@@ -467,7 +488,7 @@ class TwoPhaseNSSolver:
         return self._build_plain_ppe_solver(ppe_solver)
 
     def _build_plain_ppe_solver(self, ppe_scheme: str):
-        """Instantiate an unwrapped FVM PPE solver via registry."""
+        """Instantiate an unwrapped PPE solver via registry."""
         from ..core.boundary import BoundarySpec
 
         bc_spec = BoundarySpec(
@@ -480,11 +501,12 @@ class TwoPhaseNSSolver:
                 preconditioner=self._ppe_preconditioner,
                 pcr_stages=self._ppe_pcr_stages,
             )
-            if ppe_scheme == "fvm_iterative" else None
+            if ppe_scheme in {"fvm_iterative", "fccd_iterative"} else None
         )
         ppe_ctx = PPEBuildCtx(
             backend=self._backend, grid=self._grid,
             bc_type=self.bc_type, bc_spec=bc_spec, config=cfg_shim,
+            fccd=self._fccd,
         )
         return IPPESolver.from_scheme(ppe_scheme, ppe_ctx)
 
@@ -608,6 +630,9 @@ class TwoPhaseNSSolver:
             ),
             convection_time_scheme=str(
                 getattr(getattr(cfg, "run", g), "convection_time_scheme", "ab2")
+            ),
+            viscous_spatial_scheme=str(
+                getattr(getattr(cfg, "run", g), "viscous_spatial_scheme", "ccd_bulk")
             ),
             pressure_gradient_scheme=str(
                 getattr(
@@ -1005,7 +1030,8 @@ class TwoPhaseNSSolver:
 
         # Strategy pattern: viscous predictor encapsulates CN vs Explicit logic
         u_star, v_star = self._viscous_predictor.predict(
-            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd, buoy_v=buoy_v
+            u, v, conv_step_u, conv_step_v, mu_field, rho, dt, ccd,
+            buoy_v=buoy_v, psi=psi,
         )
 
         _apply_bc(u_star, v_star, bc_hook, self.bc_type)
@@ -1032,12 +1058,14 @@ class TwoPhaseNSSolver:
             )
         if self._face_flux_projection:
             proj_op = self._fccd_div_op if self._fccd_div_op is not None else self._div_op
+            project_kwargs = {}
+            if proj_op is self._fccd_div_op:
+                project_kwargs["pressure_gradient"] = (
+                    "fccd" if self._ppe_solver_name == "fccd_iterative" else "fvm"
+                )
             u, v = proj_op.project(
-                [u_star, v_star],
-                p,
-                rho,
-                dt,
-                [f_x / rho, f_y / rho],
+                [u_star, v_star], p, rho, dt, [f_x / rho, f_y / rho],
+                **project_kwargs,
             )
         else:
             u = u_star - dt / rho * dp_dx + dt * f_x / rho
