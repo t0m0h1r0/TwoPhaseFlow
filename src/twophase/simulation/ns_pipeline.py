@@ -725,25 +725,27 @@ class TwoPhaseNSSolver:
         old_coords = [c.copy() for c in self._grid.coords]
         old_h = [h.copy() for h in self._grid.h]
 
-        # 2. Compute old cell volumes for mass correction (host-side)
-        dV_old = old_h[0].copy()
+        # 2. Compute old cell volumes / mass on the active device to avoid
+        #    per-rebuild D2H round-trips on the GPU path.
+        xp = self._backend.xp
+        dV_old = xp.asarray(old_h[0])
         for ax in range(1, self._grid.ndim):
-            dV_old = np.expand_dims(dV_old, axis=ax) * old_h[ax]
-        psi_host = np.asarray(self._backend.to_host(psi))
-        M_before = float(np.sum(psi_host * dV_old))
+            dV_old = xp.expand_dims(dV_old, axis=ax) * xp.asarray(old_h[ax])
+        psi_dev = xp.asarray(psi)
+        M_before = xp.sum(psi_dev * dV_old)
 
         # 3. Rebuild grid from ψ (mutates coords, h, J, dJ_dxi in-place)
         self._grid.update_from_levelset(psi, self._eps, ccd=self._ccd)
 
         # 4. Remap psi, u, v from old grid to new grid.
         remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
-        psi = np.clip(np.asarray(self._backend.to_host(remapper.remap(psi))), 0.0, 1.0)
-        u = np.asarray(self._backend.to_host(remapper.remap(u)))
-        v = np.asarray(self._backend.to_host(remapper.remap(v)))
+        psi = xp.clip(xp.asarray(remapper.remap(psi)), 0.0, 1.0)
+        u = xp.asarray(remapper.remap(u))
+        v = xp.asarray(remapper.remap(v))
 
         # 5. Mass correction for psi
-        dV_new = np.asarray(self._backend.to_host(self._grid.cell_volumes()))
-        psi = np.asarray(apply_mass_correction(np, psi, dV_new, M_before))
+        dV_new = self._grid.cell_volumes()
+        psi = apply_mass_correction(xp, psi, dV_new, M_before)
 
         # 6. Update meshgrid cache.
         self.X, self.Y = self._grid.meshgrid()
@@ -773,7 +775,6 @@ class TwoPhaseNSSolver:
         )
 
         # Return device arrays — callers expect the same device type as input.
-        xp = self._backend.xp
         return xp.asarray(psi), xp.asarray(u), xp.asarray(v)
 
     # ── initial condition / velocity builders ─────────────────────────────
@@ -964,17 +965,17 @@ class TwoPhaseNSSolver:
             and step_index > 0
             and (step_index % self._rebuild_freq == 0)
         ):
-            # Grid rebuild is CPU-bound; round-trip through host.
-            psi_h, u_h, v_h = _h(psi), _h(u), _h(v)
+            # Keep the rebuild/remap path on the active backend as far as
+            # possible; Grid.update_from_levelset() still hostifies internally,
+            # but remap/mass-correction/reprojection can remain device-resident.
             try:
-                psi_h, u_h, v_h = self._rebuild_grid(
-                    psi_h, u_h, v_h, rho_l=rho_l, rho_g=rho_g,
+                psi, u, v = self._rebuild_grid(
+                    psi, u, v, rho_l=rho_l, rho_g=rho_g,
                 )
             except TypeError:
                 # Backward compatibility for experiment monkey-patches that
                 # replace _rebuild_grid(psi, u, v) with a 3-arg lambda.
-                psi_h, u_h, v_h = self._rebuild_grid(psi_h, u_h, v_h)
-            psi, u, v = xp.asarray(psi_h), xp.asarray(u_h), xp.asarray(v_h)
+                psi, u, v = self._rebuild_grid(psi, u, v)
 
         # All arrays below are device-resident (xp namespace).
         rho = rho_g + (rho_l - rho_g) * psi
