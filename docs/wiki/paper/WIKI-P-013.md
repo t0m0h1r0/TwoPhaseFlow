@@ -77,8 +77,8 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 0 | CHK-182 | SP-H→SP-N rename, SP_INDEX, SP-O, WIKI-P-013, preamble macros, ledger | **done** (2026-04-23) | 1a23d04 |
 | 1a | CHK-183 | §2 minor + §1.5 SP index | **done** (2026-04-23) | 8b910cc |
 | 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | 814f888 |
-| 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | pending |
-| 2a | CHK-186 | §5 L1/L2/L3 time integration | pending | — |
+| 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | edecf66 |
+| 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | pending |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | pending | — |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | pending | — |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | pending | — |
@@ -135,7 +135,16 @@ Files created or edited by Phase.
 
 ### Phase 2a (CHK-186) — §5 L1/L2/L3
 
-- [ ] `paper/sections/05_time_integration.tex` — restructured in place.
+- [x] `paper/sections/05_time_integration.tex` — in-place restructure
+      (305→566 行, +261): §5.1 Level スペクトル, §5.2 演算子剛性, §5.3 Level 1,
+      §5.4 Level 2 (AB2+IPC+CN+半陰的 ST), §5.5 Level 3 (Radau IIA),
+      §5.6 毛管波制約 (Denner--vW), §5.7 合成ガイド.
+- [x] `paper/bibliography.bib` — +7 entries (DennerVanWachem 2015/2022,
+      Denner2024, AlandVoigt2019, Baensch2001, HairerWanner1996, Li2022).
+- [x] 全 cross-ref 保持: sec:tvd_rk3/ab2_ipc/ipc_derivation/time_accuracy_table,
+      warn:tvd_rk3_scope/ab2_startup/cn_cross_derivative/cross_cfl,
+      box:cn_tridiagonal — すべて phantomsection で維持.
+- [x] xelatex clean 219 pp (+2); 0 undefined refs, 0 errors.
 
 ### Phase 2b (CHK-187) — §6 non-uniform
 
