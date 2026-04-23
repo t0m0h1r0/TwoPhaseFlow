@@ -78,8 +78,8 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 1a | CHK-183 | §2 minor + §1.5 SP index | **done** (2026-04-23) | 8b910cc |
 | 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | 814f888 |
 | 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | edecf66 |
-| 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | pending |
-| 2b | CHK-187 | §6 non-uniform FCCD + ridge | pending | — |
+| 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
+| 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | (pending commit) |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | pending | — |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | pending | — |
 | 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | pending | — |
@@ -148,8 +148,29 @@ Files created or edited by Phase.
 
 ### Phase 2b (CHK-187) — §6 non-uniform
 
-- [ ] `paper/sections/06c_fccd_nonuniform.tex` (new, ≈ 90 lines, SP-C §5).
-- [ ] `paper/sections/06d_ridge_eikonal_nonuniform.tex` (new, ≈ 120 lines, SP-E).
+- [x] `paper/sections/06c_fccd_nonuniform.tex` (new, ≈ 155 行, SP-C §5):
+      §6.4 非一様 FCCD 行列定式. 局所幾何 $(H_i, \theta_i)$ と
+      WIKI-T-050 打ち消し係数 $(\mu_i, \lambda_i)$ から
+      3 本の疎な双対角行列 $\mathbf{D}_1^{(H)}, \mathbf{D}_\mu^{(H\theta)}, \mathbf{D}_\lambda^{(H)}$
+      を定義し,
+      複合行列 $\mathbf{M}^{\FCCD,\text{nu}} = \mathbf{D}_1^{(H)} - (\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)})\mathbf{S}_{\CCD}$
+      (boxed) を示す. $\mathcal{O}(H^3)$ 切断誤差と
+      $c_3(\theta) = (\theta-1/2)(1-\theta(1-\theta))/24$ が $\theta=1/2$ で消失するため
+      界面適合格子族では $\mathcal{O}(H^4)$ 維持.
+- [x] `paper/sections/06d_ridge_eikonal_nonuniform.tex` (new, ≈ 200 行, SP-E §3–§7):
+      §6.5 Ridge–Eikonal 非一様実装層. §3.4.5 の D1–D4 を
+      §6.1 grid density / §6.2 coord transform / §6.3 non-uniform CCD のインフラに結線.
+      D1 $\sigma_\text{eff}$ キャッシュ, D2 物理空間 Hessian (Approach A/B),
+      D3 非一様 FMM セル幅+サブセルシード+$D<0$ fallback,
+      D4 $\varepsilon_\text{local}$ 空間場+体積保存監視,
+      界面適合格子族統合で一様近似に帰着することを示す.
+      FCCD と同じ格子幾何キャッシュ $(h_x, h_y, J_x, J_y)$ を共有可能.
+- [x] `paper/main.tex` — `\input{sections/06c_fccd_nonuniform}` +
+      `\input{sections/06d_ridge_eikonal_nonuniform}` を §6 系列に追加.
+- [x] xelatex clean 223 pp (+4); 0 undefined refs, 0 errors.
+- [x] Fixes: `sec:ccd_nonuniform` → `sec:ccd_metric`,
+      `\noindent詳細` → `\noindent 詳細` (XeLaTeX 日本語制御列境界),
+      `sec:ccd_gpu` 未定義ラベル削除.
 
 ### Phase 3a (CHK-188) — §7 advection / reinit
 
