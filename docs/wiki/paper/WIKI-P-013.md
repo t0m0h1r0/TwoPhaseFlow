@@ -74,9 +74,9 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 
 | Phase | CHK | Scope | State | Commit |
 |---|---|---|---|---|
-| 0 | CHK-182 | SP-H→SP-N rename, SP_INDEX, SP-O, WIKI-P-013, preamble macros, ledger | **in progress** | — |
-| 1a | CHK-183 | §2 minor + §1.5 SP index | pending | — |
-| 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | pending | — |
+| 0 | CHK-182 | SP-H→SP-N rename, SP_INDEX, SP-O, WIKI-P-013, preamble macros, ledger | **done** (2026-04-23) | 1a23d04 |
+| 1a | CHK-183 | §2 minor + §1.5 SP index | **done** (2026-04-23) | 8b910cc |
+| 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | pending |
 | 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | pending | — |
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | pending | — |
 | 2b | CHK-187 | §6 non-uniform FCCD + ridge | pending | — |
@@ -114,8 +114,10 @@ Files created or edited by Phase.
 
 ### Phase 1b (CHK-184) — §3 Ridge–Eikonal
 
-- [ ] `paper/sections/03d_ridge_eikonal.tex` (new, ≈ 150 lines).
-- [ ] `paper/main.tex` — append `\input{sections/03d_ridge_eikonal}`.
+- [x] `paper/sections/03d_ridge_eikonal.tex` (new, ≈ 254 lines, SP-B §3–§7 + SP-E §3–§6).
+- [x] `paper/main.tex` — append `\input{sections/03d_ridge_eikonal}`.
+- [x] `paper/bibliography.bib` — +16 entries (`CrandallLions1983` + `SPA..SPO` stubs).
+- [x] xelatex clean 212 pp; 4 new citations + 4 cross-refs resolved.
 
 ### Phase 1c (CHK-185) — §4 FCCD/UCCD6/face-jet
 
