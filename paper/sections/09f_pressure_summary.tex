@@ -105,3 +105,14 @@ $\Ord{\varepsilon^2}=\Ord{h^2}$ が全体の空間精度を律速する（表~\r
 分相 PPE + DC $k{=}3$ の $\Ord{h^5}$ は CSF 誤差を十分に上回り，
 PPE ソルバが精度ボトルネックとならないことを保証する．
 \end{tcolorbox}
+
+\noindent\textbf{GPU-native FVM 実装バリアント（付録~\ref{app:gpu_fvm}）}：
+本章は PPE の\textbf{数学的定式化と精度}を扱う．
+同一の面ローカル代数を GPU 上で行列フリーに実装する経路
+（演算子カリキュラス $L_\text{FVM}(\rho)p = \sum_a D_a A_a(\rho) G_a p$，
+可変バッチ PCR，D2H/H2D 規律）は
+\textbf{正確性を変えずに性能を変える}補助設計であり，
+付録~\ref{app:gpu_fvm}（SP-F \cite{SPF}）に委ねる．
+Level 2 プロダクションでは本文の分相 FCCD PPE 経路と
+付録の GPU-native FVM 経路をワークロードに応じて切り替える
+二路選択が実用的である．
