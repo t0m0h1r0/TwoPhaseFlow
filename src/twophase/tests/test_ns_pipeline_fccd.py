@@ -192,6 +192,7 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
 
     assert np.allclose(jumped[: N // 2 + 1, :], 0.0)
     assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
+    assert np.allclose(pressure, 0.0)
 
 
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
@@ -223,6 +224,9 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
 
     for name, arr in [("psi", psi), ("u", u), ("v", v), ("p", p)]:
         assert np.all(np.isfinite(arr)), f"{name} not finite"
+
+    assert solver._p_prev is not None
+    assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
 
 
 def test_fccd_not_constructed_when_unused():

@@ -1054,7 +1054,7 @@ class TwoPhaseNSSolver:
                 psi=psi, kappa=kappa, sigma=jump_sigma
             )
         p = self._ppe_solver.solve(rhs, rho, dt=dt, p_init=self._p_prev)
-        self._p_prev = p
+        self._p_prev = getattr(self._ppe_solver, "last_base_pressure", p)
 
         # ── 5. Corrector ───────────────────────────────────────────────
         # Strategy pattern: pressure gradient operator encapsulates CCD vs FVM logic

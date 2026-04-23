@@ -92,6 +92,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._phase_threshold = None
         self._interface_jump_context = None
         self._defer_interface_jump = False
+        self.last_base_pressure = None
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
@@ -214,6 +215,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
         self._pin_flat(sol.ravel(), 0.0)
+        self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
         return sol

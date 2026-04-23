@@ -256,3 +256,18 @@ The FCCD matrix-free phase-separated solver now projects the RHS by subtracting
 its mean separately in the gas and liquid masks before GMRES, and it keeps one
 pressure gauge pin per detected phase.  This is not a finite-volume conservation
 claim; it is the solvability condition for the FVM-free differential PPE blocks.
+
+## 12. Implementation Status: Base-Pressure Warm Start Phase 4
+
+With pressure-jump decomposition, the elliptic unknown is not the final pressure
+`p`; it is the smooth block pressure `p_tilde`.  The physical pressure is
+assembled afterward as
+
+\[
+p = \tilde p + \sigma\kappa(1-\psi).
+\]
+
+Warm-starting GMRES with the assembled pressure would feed the discontinuous jump
+component back into the next smooth PPE solve.  The pipeline therefore stores
+`last_base_pressure` and uses only `p_tilde` as the next PPE initial guess, while
+returning the assembled pressure to the momentum corrector.
