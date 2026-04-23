@@ -30,6 +30,7 @@ def compute_ns_surface_tension_stage(
     st_force,
     ccd,
     surface_tension_grad_op,
+    projection_consistent_buoyancy: bool,
 ) -> NSStepState:
     """Compute curvature and balanced-force surface tension terms."""
     xp = backend.xp
@@ -52,6 +53,8 @@ def compute_ns_surface_tension_stage(
         ccd,
         grad_op=surface_tension_grad_op,
     )
+    if projection_consistent_buoyancy and state.g_acc != 0.0:
+        state.f_y = state.f_y - (state.rho - state.rho_ref) * state.g_acc
     return state
 
 
@@ -65,6 +68,7 @@ def compute_ns_predictor_stage(
     scheme_runtime,
     conv_ab2_ready: bool,
     conv_prev,
+    projection_consistent_buoyancy: bool,
 ) -> tuple[NSStepState, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
@@ -77,7 +81,7 @@ def compute_ns_predictor_stage(
     conv_u, conv_v = conv_term.compute(conv_ctx)
 
     buoy_v = xp.zeros_like(state.v)
-    if state.g_acc != 0.0:
+    if state.g_acc != 0.0 and not projection_consistent_buoyancy:
         buoy_v = -(state.rho - state.rho_ref) / state.rho * state.g_acc
 
     next_conv_prev = conv_prev
@@ -155,6 +159,7 @@ def correct_ns_velocity_stage(
     backend,
     pressure_grad_op,
     face_flux_projection: bool,
+    preserve_projected_faces: bool,
     fccd_div_op,
     div_op,
     ppe_runtime,
@@ -179,18 +184,38 @@ def correct_ns_velocity_stage(
             project_kwargs["pressure_gradient"] = (
                 "fccd" if ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
             )
-        state.u, state.v = proj_op.project(
-            [state.u_star, state.v_star],
-            state.p_corrector,
-            state.rho,
-            state.dt,
-            [state.f_x / state.rho, state.f_y / state.rho],
-            **project_kwargs,
-        )
+        if preserve_projected_faces and hasattr(proj_op, "project_faces"):
+            state.projected_face_components = proj_op.project_faces(
+                [state.u_star, state.v_star],
+                state.p_corrector,
+                state.rho,
+                state.dt,
+                [state.f_x / state.rho, state.f_y / state.rho],
+                **project_kwargs,
+            )
+            state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
+        else:
+            state.projected_face_components = None
+            state.u, state.v = proj_op.project(
+                [state.u_star, state.v_star],
+                state.p_corrector,
+                state.rho,
+                state.dt,
+                [state.f_x / state.rho, state.f_y / state.rho],
+                **project_kwargs,
+            )
     else:
+        state.projected_face_components = None
         state.u = state.u_star - state.dt / state.rho * dp_dx + state.dt * state.f_x / state.rho
         state.v = state.v_star - state.dt / state.rho * dp_dy + state.dt * state.f_y / state.rho
-    apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
+    preserve_face_state = (
+        preserve_projected_faces
+        and state.projected_face_components is not None
+        and bc_type == "wall"
+        and state.bc_hook is None
+    )
+    if not preserve_face_state:
+        apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
     return state
 
 
@@ -206,9 +231,14 @@ def record_ns_step_diagnostics(
     if state.debug_scalars is None:
         return
     xp = backend.xp
-    state.debug_scalars.append(
-        xp.max(xp.abs(div_op.divergence([state.u, state.v])))
-    )
+    if (
+        state.projected_face_components is not None
+        and hasattr(div_op, "divergence_from_faces")
+    ):
+        div_field = div_op.divergence_from_faces(state.projected_face_components)
+    else:
+        div_field = div_op.divergence([state.u, state.v])
+    state.debug_scalars.append(xp.max(xp.abs(div_field)))
     dbg = np.asarray(backend.to_host(xp.stack(state.debug_scalars)))
     step_diag.record_kappa(float(dbg[0]))
     step_diag.record_ppe_rhs(float(dbg[1]))

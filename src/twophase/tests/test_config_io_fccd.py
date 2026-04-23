@@ -137,6 +137,53 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
     assert cfg.run.ppe_defect_correction is True
+    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.run.reinit_every == 4
+    assert cfg.run.interface_tracking_method == "psi_direct"
+    assert cfg.run.phi_primary_transport is False
+
+
+def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.grid.NX == 128
+    assert cfg.grid.NY == 256
+    assert cfg.grid.LX == 1.0
+    assert cfg.grid.LY == 2.0
+    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.physics.g_acc == pytest.approx(0.001)
+    assert cfg.run.reinit_every == 4
+    assert cfg.run.interface_tracking_method == "psi_direct"
+    assert cfg.run.phi_primary_transport is False
+    assert cfg.run.advection_scheme == "fccd_flux"
+    assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
+def test_ch13_rising_bubble_facepreserve_yaml_loads_projection_poc():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_facepreserve_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.run.face_flux_projection is True
+    assert cfg.run.preserve_projected_faces is True
+
+
+def test_ch13_rising_bubble_buoyancyproj_yaml_loads_projection_poc():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_buoyancyproj_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.run.face_flux_projection is True
+    assert cfg.run.projection_consistent_buoyancy is True
 
 
 def test_fccd_ppe_discretization_maps_to_fccd_solver():
@@ -357,6 +404,8 @@ def test_readable_structured_sections_round_trip():
             "projection": {
                 "mode": "iim",
                 "face_flux_projection": True,
+                "preserve_projected_faces": True,
+                "projection_consistent_buoyancy": True,
                 "poisson": {
                     "operator": {"discretization": "fvm"},
                     "solver": {"kind": "direct"},
@@ -380,6 +429,8 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.interface_tracking_method == "phi_primary"
     assert cfg.run.reproject_mode == "iim"
     assert cfg.run.face_flux_projection is True
+    assert cfg.run.preserve_projected_faces is True
+    assert cfg.run.projection_consistent_buoyancy is True
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.uccd6_sigma == 2.0e-3

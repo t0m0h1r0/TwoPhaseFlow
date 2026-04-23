@@ -158,6 +158,8 @@ class TwoPhaseNSSolver:
         viscous_spatial_scheme: str = "ccd_bulk",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
+        preserve_projected_faces: bool = False,
+        projection_consistent_buoyancy: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
         options = NSSolverInitOptions(
@@ -225,6 +227,8 @@ class TwoPhaseNSSolver:
                 viscous_spatial_scheme=viscous_spatial_scheme,
                 uccd6_sigma=uccd6_sigma,
                 face_flux_projection=face_flux_projection,
+                preserve_projected_faces=preserve_projected_faces,
+                projection_consistent_buoyancy=projection_consistent_buoyancy,
                 debug_diagnostics=debug_diagnostics,
             ),
         )
@@ -582,7 +586,17 @@ class TwoPhaseNSSolver:
         inputs: NSStepInputs | NSStepRequest,
     ) -> NSStepState:
         """Promote step inputs to the active backend and normalise ``rho_ref``."""
-        return NSStepState.from_inputs(inputs, backend=self._backend)
+        state = NSStepState.from_inputs(inputs, backend=self._backend)
+        if (
+            self._preserve_projected_faces
+            and self._projected_face_components is not None
+            and hasattr(self._div_op, "reconstruct_nodes")
+        ):
+            state.projected_face_components = self._projected_face_components
+            state.u, state.v = self._div_op.reconstruct_nodes(
+                self._projected_face_components
+            )
+        return state
 
     def _advance_interface_stage(
         self,
@@ -612,6 +626,7 @@ class TwoPhaseNSSolver:
                     state.u,
                     state.v,
                 )
+            self._projected_face_components = None
         return state
 
     def _materialise_step_fields(
@@ -636,6 +651,7 @@ class TwoPhaseNSSolver:
             st_force=self._st_force,
             ccd=self._ccd,
             surface_tension_grad_op=self._surface_tension_grad_op,
+            projection_consistent_buoyancy=self._projection_consistent_buoyancy,
         )
 
     def _predict_velocity_stage(
@@ -652,6 +668,7 @@ class TwoPhaseNSSolver:
             scheme_runtime=self._scheme_runtime,
             conv_ab2_ready=self._conv_ab2_ready,
             conv_prev=self._conv_prev,
+            projection_consistent_buoyancy=self._projection_consistent_buoyancy,
         )
         return state
 
@@ -680,6 +697,7 @@ class TwoPhaseNSSolver:
             backend=self._backend,
             pressure_grad_op=self._pressure_grad_op,
             face_flux_projection=self._face_flux_projection,
+            preserve_projected_faces=self._preserve_projected_faces,
             fccd_div_op=self._fccd_div_op,
             div_op=self._div_op,
             ppe_runtime=self._ppe_runtime,
@@ -715,6 +733,7 @@ class TwoPhaseNSSolver:
         _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
         state = self._solve_pressure_stage(state)
         state = self._correct_velocity_stage(state)
+        self._projected_face_components = state.projected_face_components
         self._record_step_diagnostics(state)
 
         p_out = (

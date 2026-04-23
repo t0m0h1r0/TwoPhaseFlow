@@ -85,6 +85,8 @@ class RunCfg:
     momentum_gradient_scheme: str = "ccd"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
+    preserve_projected_faces: bool = False
+    projection_consistent_buoyancy: bool = False
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500

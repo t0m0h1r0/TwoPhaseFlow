@@ -101,6 +101,12 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ),
             uccd6_sigma=float(getattr(run, "uccd6_sigma", 1.0e-3)),
             face_flux_projection=bool(getattr(run, "face_flux_projection", False)),
+            preserve_projected_faces=bool(
+                getattr(run, "preserve_projected_faces", False)
+            ),
+            projection_consistent_buoyancy=bool(
+                getattr(run, "projection_consistent_buoyancy", False)
+            ),
             debug_diagnostics=bool(getattr(run, "debug_diagnostics", False)),
         ),
     )

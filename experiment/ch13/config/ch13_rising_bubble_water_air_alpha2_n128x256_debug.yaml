@@ -1,15 +1,11 @@
-# N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
-# Production numerical stack: FCCD PPE + HFE + UCCD6.
-# - FCCD: conservative interface transport and pressure gradient use the `fccd`
-#   scheme; flux-locus form is the default option for these terms.
-# - Surface tension: `pressure_jump` is represented in the PPE, not as CSF σκ∇ψ.
-# - HFE: interface curvature uses `psi_direct_hfe`.
-# - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
+# Debug companion for the N=128x256 water-air rising-bubble probe.
+# Keeps the same GPU-priority FCCD/HFE/UCCD6 stack, but shortens T and
+# enables per-step diagnostics so early blowup can be localized.
 
 grid:
-  cells: [128, 128]
+  cells: [128, 256]
   domain:
-    size: [1.0, 1.0]
+    size: [1.0, 2.0]
     boundary: wall
   distribution:
     type: interface_fitted
@@ -41,15 +37,15 @@ physics:
       rho: 1.2
       mu: 1.8e-5
   surface_tension: 0.072
-  gravity: 0.0
+  gravity: 0.001
 
 run:
   time:
-    final: 8.0
+    final: 0.05
     cfl: 0.10
-    print_every: 100
+    print_every: 1
   debug:
-    step_diagnostics: false
+    step_diagnostics: true
 
 numerics:
   time:
@@ -92,22 +88,31 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch13_capillary_water_air_alpha2_n128_t8
+  dir: results/ch13_rising_bubble_water_air_alpha2_n128x256_debug
   save_npz: true
   snapshots:
-    interval: 0.5
+    interval: 0.0025
   figures:
     - type: time_series
-      title: "Water-air capillary flow: deformation"
+      title: "Water-air rising bubble debug: centroid height"
       x: times
-      y: [deformation]
-      labels: ["D(t)"]
+      y: [yc]
+      labels: ["$y_c(t)$"]
       xlabel: "$t$"
-      ylabel: "$D = (L-B)/(L+B)$"
-      file: deformation.pdf
+      ylabel: "$y_c$"
+      file: bubble_centroid_y.pdf
 
     - type: time_series
-      title: "Water-air capillary flow: volume drift"
+      title: "Water-air rising bubble debug: mean rise velocity"
+      x: times
+      y: [mean_rise_velocity]
+      labels: ["$\\bar{v}_g(t)$"]
+      xlabel: "$t$"
+      ylabel: "$\\bar{v}_g$"
+      file: mean_rise_velocity.pdf
+
+    - type: time_series
+      title: "Water-air rising bubble debug: volume drift"
       x: times
       y: [volume_conservation]
       labels: ["$|\\Delta V|/V_0$"]
@@ -117,14 +122,13 @@ output:
       file: volume_drift.pdf
 
     - type: time_series
-      title: "Water-air capillary flow: kinetic energy"
+      title: "Water-air rising bubble debug: deformation"
       x: times
-      y: [kinetic_energy]
-      labels: ["KE"]
+      y: [deformation]
+      labels: ["$D(t)$"]
       xlabel: "$t$"
-      ylabel: "$E_k$"
-      yscale: log
-      file: kinetic_energy.pdf
+      ylabel: "$D = (L-B)/(L+B)$"
+      file: deformation.pdf
 
     - type: snapshot_series
       field: psi
@@ -138,15 +142,13 @@ output:
       field: pressure
       file_prefix: pressure_t
 
-diagnostics: [volume_conservation, kinetic_energy, deformation]
+diagnostics: [volume_conservation, bubble_centroid, mean_rise_velocity, deformation]
 
 initial_condition:
-  type: perturbed_circle
+  type: circle
   center: [0.5, 0.5]
   radius: 0.25
-  epsilon: 0.05
-  mode: 2
-  interior_phase: liquid
+  interior_phase: gas
 
 initial_velocity: null
 boundary_condition:

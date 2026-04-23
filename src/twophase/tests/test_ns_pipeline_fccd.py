@@ -18,6 +18,7 @@ import pytest
 
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.config_io import ExperimentConfig
+from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
 from twophase.ppe.interfaces import IPPESolver
 
@@ -114,10 +115,61 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "jump_decomposition"
     assert solver._hfe is not None
+    assert isinstance(solver._transport, PsiDirectTransport)
+    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.reinit_every == 4
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
+
+
+def test_ch13_rising_bubble_water_air_yaml_builds_solver():
+    from twophase.ppe.defect_correction import PPESolverDefectCorrection
+    from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._grid.N[0] == 128
+    assert solver._grid.N[1] == 256
+    assert solver.LX == pytest.approx(1.0)
+    assert solver.LY == pytest.approx(2.0)
+    assert isinstance(solver._transport, PsiDirectTransport)
+    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.reinit_every == 4
+    assert solver._advection_scheme == "fccd_flux"
+    assert solver._convection_scheme == "uccd6"
+    assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
+
+
+def test_ch13_rising_bubble_facepreserve_yaml_builds_solver():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_facepreserve_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._face_flux_projection is True
+    assert solver._preserve_projected_faces is True
+
+
+def test_ch13_rising_bubble_buoyancyproj_yaml_builds_solver():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_buoyancyproj_debug.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    assert solver._face_flux_projection is True
+    assert solver._projection_consistent_buoyancy is True
 
 
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():

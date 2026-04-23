@@ -84,6 +84,8 @@ class SolverSchemeOptions:
     viscous_spatial_scheme: str = "ccd_bulk"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
+    preserve_projected_faces: bool = False
+    projection_consistent_buoyancy: bool = False
     debug_diagnostics: bool = False
 
 

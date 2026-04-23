@@ -73,6 +73,32 @@ class IDivergenceOperator(ABC):
             f"{type(self).__name__} does not support face-flux projection"
         )
 
+    def project_faces(
+        self,
+        components: list["array"],
+        p: "array",
+        rho: "array",
+        dt: float,
+        force_components: list["array"] | None = None,
+        pressure_gradient: str = "fvm",
+    ) -> list["array"]:
+        """Return corrected face fluxes if supported by this strategy."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not expose projected face fluxes"
+        )
+
+    def reconstruct_nodes(self, face_components: list["array"]) -> list["array"]:
+        """Reconstruct nodal velocities from face fluxes if supported."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not reconstruct nodal velocities"
+        )
+
+    def divergence_from_faces(self, face_components: list["array"]) -> "array":
+        """Compute divergence directly from face fluxes if supported."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support face-flux divergence"
+        )
+
 
 from .divergence_ops import (
     CCDDivergenceOperator,
