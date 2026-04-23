@@ -54,6 +54,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.tolerance = float(tolerance)
         self.relaxation = float(relaxation)
         self._pin_dof = operator._pin_dof
+        self._pin_dofs = getattr(operator, "_pin_dofs", (self._pin_dof,))
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh both the target operator and the configured base solver."""
@@ -62,6 +63,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.base_solver.update_grid(self.grid)
         self.operator.update_grid(self.grid)
         self._pin_dof = self.operator._pin_dof
+        self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
 
     def invalidate_cache(self) -> None:
         """Invalidate backend caches owned by the inner solver/operator."""
@@ -72,26 +74,31 @@ class PPESolverDefectCorrection(IPPESolver):
         """Solve by base solve plus residual defect corrections."""
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
-        rhs_flat = rhs_dev.ravel().copy()
-        rhs_flat[self._pin_dof] = 0.0
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
-        pressure.ravel()[self._pin_dof] = 0.0
 
         self.operator.prepare_operator(rho)
+        self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
+        rhs_flat = rhs_dev.ravel().copy()
+        self._pin_flat(rhs_flat, 0.0)
+        self._pin_flat(pressure.ravel(), 0.0)
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
-            residual.ravel()[self._pin_dof] = 0.0
+            self._pin_flat(residual.ravel(), 0.0)
             residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
             if residual_norm <= self.tolerance * scale:
                 break
             correction = xp.asarray(
                 self.base_solver.solve(residual, rho, dt=dt, p_init=None)
             )
-            correction.ravel()[self._pin_dof] = 0.0
+            self._pin_flat(correction.ravel(), 0.0)
             pressure = pressure + self.relaxation * correction
-            pressure.ravel()[self._pin_dof] = 0.0
+            self._pin_flat(pressure.ravel(), 0.0)
         return pressure
+
+    def _pin_flat(self, flat, value) -> None:
+        for dof in self._pin_dofs:
+            flat[dof] = value

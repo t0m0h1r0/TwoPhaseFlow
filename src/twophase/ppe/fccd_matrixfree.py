@@ -5,11 +5,16 @@ Symbol mapping:
     rho    -> mixture density
     G_f(p) -> FCCD face gradient
     D_f    -> FCCD face-flux divergence
+    chi    -> phase indicator derived from sharp density
 
 A3 chain:
     §9 PPE: div((1/rho) grad p) = rhs
       -> FCCD discretisation: D_f[(1/rho)_f G_f(p)]
       -> PPESolverFCCDMatrixFree.apply
+    SP-M phase-separated PPE:
+      div((1/rho_q) grad p_q) = rhs_q, q∈{L,G}
+      -> zero cross-phase FCCD face coupling + one pressure gauge per phase
+      -> PPESolverFCCDMatrixFree._face_inverse_density
 """
 
 from __future__ import annotations
@@ -64,6 +69,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.preconditioner = str(
             getattr(solver_cfg, "ppe_preconditioner", "none")
         ).strip().lower()
+        self.coefficient_scheme = str(
+            getattr(solver_cfg, "ppe_coefficient_scheme", "phase_density")
+        ).strip().lower()
+        if self.coefficient_scheme not in {"phase_density", "phase_separated"}:
+            raise ValueError(
+                "FCCD PPE supports ppe_coefficient_scheme="
+                "'phase_density'|'phase_separated'"
+            )
         if self.preconditioner not in {"jacobi", "none"}:
             raise ValueError("FCCD PPE supports preconditioner='jacobi'|'none'")
         if bc_spec is not None:
@@ -71,8 +84,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         else:
             centre_idx = tuple(n // 2 for n in grid.N)
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
+        self._pin_dofs = (self._pin_dof,)
         self._rho = None
         self._diag_inv = None
+        self._phase_threshold = None
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
@@ -86,23 +101,26 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         ]
         self._rho = None
         self._diag_inv = None
+        self._phase_threshold = None
 
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
         self._rho = None
         self._diag_inv = None
+        self._phase_threshold = None
 
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
         xp = self.xp
         self._rho = xp.asarray(rho)
         self._diag_inv = None
+        self._refresh_phase_gauges()
         if self.preconditioner == "jacobi":
             diag = xp.zeros_like(self._rho)
             for axis in range(self.ndim):
                 h_min = float(np.min(np.diff(np.asarray(self.grid.coords[axis]))))
                 diag -= 2.0 / (self._rho * h_min * h_min)
-            diag.ravel()[self._pin_dof] = 1.0
+            self._pin_flat(diag.ravel(), 1.0)
             self._diag_inv = 1.0 / xp.where(xp.abs(diag) > 1.0e-30, diag, 1.0)
 
     def apply(self, p):
@@ -115,7 +133,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             grad_face = self.fccd.face_gradient(p, axis)
             coeff_face = self._face_inverse_density(self._rho, axis)
             out = out + self._face_flux_divergence(coeff_face * grad_face, axis)
-        out.ravel()[self._pin_dof] = p.ravel()[self._pin_dof]
+        self._pin_flat(out.ravel(), p.ravel())
         return out
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
@@ -126,15 +144,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
-        rhs_flat = rhs_dev.ravel().copy()
-        rhs_flat[self._pin_dof] = 0.0
         self.prepare_operator(rho)
+        rhs_flat = rhs_dev.ravel().copy()
+        self._pin_flat(rhs_flat, 0.0)
 
         if p_init is None:
             x0 = xp.zeros_like(rhs_flat)
         else:
             x0 = xp.asarray(p_init).ravel().copy()
-            x0[self._pin_dof] = 0.0
+            self._pin_flat(x0, 0.0)
 
         n_dof = int(np.prod(self.grid.shape))
 
@@ -149,7 +167,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
             def _precond(r_flat):
                 z = xp.asarray(r_flat).reshape(self.grid.shape) * self._diag_inv
-                z.ravel()[self._pin_dof] = 0.0
+                self._pin_flat(z.ravel(), 0.0)
                 return z.ravel()
 
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
@@ -183,10 +201,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 stacklevel=2,
             )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
-        sol.ravel()[self._pin_dof] = 0.0
+        self._pin_flat(sol.ravel(), 0.0)
         return sol
 
     def _face_inverse_density(self, rho, axis: int):
+        xp = self.xp
         ndim = self.ndim
         N = self.grid.N[axis]
 
@@ -197,7 +216,44 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
         rho_lo = rho[sl(0, N)]
         rho_hi = rho[sl(1, N + 1)]
-        return 2.0 / (rho_lo + rho_hi)
+        coeff = 2.0 / (rho_lo + rho_hi)
+        if self.coefficient_scheme != "phase_separated":
+            return coeff
+        threshold = self._phase_threshold
+        if threshold is None:
+            return coeff
+        same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
+        return xp.where(same_phase, coeff, 0.0)
+
+    def _refresh_phase_gauges(self) -> None:
+        if self.coefficient_scheme != "phase_separated":
+            self._pin_dofs = (self._pin_dof,)
+            self._phase_threshold = None
+            return
+        rho_np = np.asarray(self.backend.asnumpy(self._rho), dtype=np.float64)
+        rho_min = float(np.min(rho_np))
+        rho_max = float(np.max(rho_np))
+        if not np.isfinite(rho_min + rho_max) or abs(rho_max - rho_min) < 1.0e-14:
+            self._pin_dofs = (self._pin_dof,)
+            self._phase_threshold = None
+            return
+        threshold = 0.5 * (rho_min + rho_max)
+        gas = np.flatnonzero(rho_np.ravel() < threshold)
+        liquid = np.flatnonzero(rho_np.ravel() >= threshold)
+        pins = []
+        if gas.size:
+            pins.append(int(gas[0]))
+        if liquid.size:
+            pins.append(int(liquid[0]))
+        self._pin_dofs = tuple(sorted(set(pins))) or (self._pin_dof,)
+        self._phase_threshold = threshold
+
+    def _pin_flat(self, flat, value) -> None:
+        for dof in self._pin_dofs:
+            if np.isscalar(value):
+                flat[dof] = value
+            else:
+                flat[dof] = value[dof]
 
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence with wall Neumann rows retained for the PPE operator."""

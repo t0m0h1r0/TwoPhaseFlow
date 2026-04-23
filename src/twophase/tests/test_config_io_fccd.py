@@ -130,9 +130,10 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_flux"
     assert cfg.run.reinit_method == "ridge_eikonal"
-    assert cfg.run.reproject_mode == "variable_density_only"
+    assert cfg.run.reproject_mode == "gfm"
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
+    assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.ppe_defect_correction is True
 
 
@@ -150,6 +151,29 @@ def test_fccd_ppe_discretization_maps_to_fccd_solver():
 
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
+def test_phase_separated_coefficient_maps_to_gfm_projection():
+    raw = _minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+    del raw["numerics"]["projection"]["mode"]
+    cfg = ExperimentConfig.from_dict(raw)
+
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.pressure_scheme == "fccd_matrixfree"
+    assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.reproject_mode == "gfm"
 
 
 def test_fccd_ppe_rejects_direct_solver_kind():

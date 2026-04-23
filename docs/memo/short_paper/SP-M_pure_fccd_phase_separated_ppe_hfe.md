@@ -183,3 +183,36 @@ phase-separated PPE rows.
 > high-order, jump-aware differential architecture: phase-separated PPE + GFM for
 > pressure, HFE for interface states, and defect correction for stiff viscous and
 > elliptic solves.
+
+---
+
+## 9. Implementation Status: Phase-Separated FCCD PPE Phase 1
+
+The executable first stage now distinguishes the SP-M pressure coefficient model
+from the older mixture-density model in YAML:
+
+```yaml
+projection:
+  poisson:
+    operator:
+      discretization: fccd
+      coefficient: phase_separated
+```
+
+This selects the FCCD matrix-free PPE with a phase-separated coefficient rule.
+Faces whose two endpoint densities belong to different phases are assigned zero
+PPE coupling, so the pressure operator is assembled as two FCCD phase blocks
+rather than as a smeared mixture-density operator.  Each phase block receives its
+own pressure gauge pin.
+
+This is not yet the full GFM jump-row implementation.  The current stage is the
+minimal SP-M-consistent executable split:
+
+1. pure FCCD PPE rows inside each phase;
+2. no FVM face-volume assembly;
+3. no cross-interface density averaging;
+4. one pressure nullspace constraint per detected phase;
+5. GFM pressure-jump ghost jets retained as the next implementation step.
+
+The corresponding code path is `PPESolverFCCDMatrixFree` with
+`ppe_coefficient_scheme="phase_separated"`.

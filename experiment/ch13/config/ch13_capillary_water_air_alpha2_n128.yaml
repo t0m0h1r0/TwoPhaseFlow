@@ -81,7 +81,7 @@ numerics:
     poisson:
       operator:
         discretization: fccd
-        coefficient: phase_density
+        coefficient: phase_separated
       solver:
         kind: defect_correction
         corrections:

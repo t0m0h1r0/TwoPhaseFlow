@@ -93,3 +93,18 @@ Use `fvm` only as a comparison or legacy route.  The pure architecture should
 name the mathematical scheme (`fccd`, `ccd`, `uccd6`) and keep locus/form choices
 (`face`, `flux`, `bulk`, `normal_fallback`) as term-local options or defaults.
 
+
+## Code Status: Phase 1 Split PPE
+
+`projection.poisson.operator.coefficient: phase_separated` is the SP-M YAML
+entry point.  It is intentionally different from `phase_density`:
+
+- `phase_density` keeps the older mixture-density FCCD operator
+  `D_f[(1/rho)_f G_f(p)]`.
+- `phase_separated` uses FCCD rows within each density phase and sets
+  cross-interface PPE face coupling to zero.
+- one pressure gauge is pinned per detected phase block.
+- GFM jump ghost pressure jets are still the next stage, not silently faked.
+
+This keeps the implementation honest: the code is already FVM-free and
+phase-split, while the missing GFM jump-row closure remains explicit.

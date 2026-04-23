@@ -133,6 +133,7 @@ class TwoPhaseNSSolver:
         convection_scheme: str = "ccd",
         ppe_solver: str = "fvm_iterative",
         pressure_scheme: str | None = None,
+        ppe_coefficient_scheme: str = "phase_density",
         ppe_iteration_method: str = "gmres",
         ppe_tolerance: float = 1.0e-8,
         ppe_max_iterations: int = 500,
@@ -234,6 +235,7 @@ class TwoPhaseNSSolver:
                 "Use fvm_iterative|fvm_direct|fccd_iterative."
             )
         self._ppe_iteration_method = str(ppe_iteration_method).strip().lower()
+        self._ppe_coefficient_scheme = str(ppe_coefficient_scheme).strip().lower()
         self._ppe_tolerance = float(ppe_tolerance)
         self._ppe_max_iterations = int(ppe_max_iterations)
         self._ppe_restart = ppe_restart
@@ -528,6 +530,7 @@ class TwoPhaseNSSolver:
                 ppe_restart=self._ppe_restart,
                 ppe_preconditioner=preconditioner or "none",
                 ppe_pcr_stages=pcr_stages,
+                ppe_coefficient_scheme=self._ppe_coefficient_scheme,
             )
         )
 
@@ -597,6 +600,9 @@ class TwoPhaseNSSolver:
             ),
             pressure_scheme=str(
                 getattr(getattr(cfg, "run", g), "pressure_scheme", "fvm_matrixfree")
+            ),
+            ppe_coefficient_scheme=str(
+                getattr(getattr(cfg, "run", g), "ppe_coefficient_scheme", "phase_density")
             ),
             ppe_iteration_method=str(
                 getattr(getattr(cfg, "run", g), "ppe_iteration_method", "gmres")

@@ -110,11 +110,36 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "fccd_flux"
+    assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._hfe is not None
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
+
+
+def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
+    """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+
+    ppe.prepare_operator(rho)
+    coeff_x = np.asarray(ppe._face_inverse_density(ppe._rho, axis=0))
+
+    assert ppe.coefficient_scheme == "phase_separated"
+    assert len(ppe._pin_dofs) == 2
+    assert np.all(coeff_x[N // 2, :] == 0.0)
+    assert np.all(coeff_x[: N // 2, :] > 0.0)
+    assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
 
 
 def test_fccd_not_constructed_when_unused():

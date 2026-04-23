@@ -113,6 +113,7 @@ class RunCfg:
     convection_scheme: str = "ccd"
     ppe_solver: str = "fvm_iterative"
     pressure_scheme: str = "fvm_matrixfree"  # internal backend key derived from ppe_solver
+    ppe_coefficient_scheme: str = "phase_density"
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
     viscous_spatial_scheme: str = "ccd_bulk"
@@ -431,8 +432,12 @@ _PPE_TO_PRESSURE_SCHEME = {
     "fccd_iterative": "fccd_matrixfree",
 }
 _PPE_DISCRETIZATIONS = ("fvm", "fccd")
-_POISSON_COEFFICIENTS = ("phase_density", "variable_density")
-_POISSON_COEFFICIENT_ALIASES = {"variable_density": "phase_density"}
+_POISSON_COEFFICIENTS = ("phase_density", "variable_density", "phase_separated")
+_POISSON_COEFFICIENT_ALIASES = {
+    "variable_density": "phase_density",
+    "phase_separated_density": "phase_separated",
+    "split_phase": "phase_separated",
+}
 _SURFACE_TENSION_SCHEMES = ("csf", "none")
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
@@ -502,7 +507,7 @@ def _parse_run(
     if "coefficient" not in poisson_operator:
         raise ValueError(
             f"{layout['paths']['poisson_coefficient']} is required; "
-            "use 'phase_density' for the §9 two-phase mixture-density PPE."
+            "use 'phase_separated' for SP-M or 'phase_density' for mixture-density PPE."
         )
     poisson_coefficient = _validate_choice(
         _POISSON_COEFFICIENT_ALIASES.get(
@@ -679,6 +684,7 @@ def _parse_run(
         convection_scheme=convection_scheme,
         ppe_solver=ppe_solver,
         pressure_scheme=pressure_scheme,
+        ppe_coefficient_scheme=poisson_coefficient,
         surface_tension_scheme=surface_tension_scheme,
         convection_time_scheme=convection_time_scheme,
         viscous_spatial_scheme=viscous_spatial_scheme,
@@ -1142,4 +1148,6 @@ def _coefficient_to_projection_mode(coefficient: str) -> str:
     """Derive the standard projection mode from the PPE coefficient model."""
     if coefficient == "phase_density":
         return "variable_density"
+    if coefficient == "phase_separated":
+        return "consistent_gfm"
     raise ValueError(f"Unsupported PPE coefficient model: {coefficient!r}")
