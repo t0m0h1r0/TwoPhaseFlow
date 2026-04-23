@@ -79,7 +79,7 @@ material in §4.7, §7.3, §8.5, §9.3, and §10.
 | 1b | CHK-184 | §3.4 Ridge–Eikonal new subsection | **done** (2026-04-23) | 814f888 |
 | 1c | CHK-185 | §4 FCCD/UCCD6/face-jet rewrite | **done** (2026-04-23) | edecf66 |
 | 2a | CHK-186 | §5 L1/L2/L3 time integration | **done** (2026-04-23) | e66da0d |
-| 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | (pending commit) |
+| 2b | CHK-187 | §6 non-uniform FCCD + ridge | **done** (2026-04-23) | 0dbefac |
 | 3a | CHK-188 | §7 per-variable + FCCD advection + viscous 3-layer | pending | — |
 | 3b | CHK-189 | §8 BF + §9 FCCD PPE + GPU-native | pending | — |
 | 4 | CHK-190 | §10 8-phase + Level selection + pure-FCCD DNS | pending | — |
