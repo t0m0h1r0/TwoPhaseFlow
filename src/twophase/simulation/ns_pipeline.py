@@ -15,10 +15,6 @@ from __future__ import annotations
 import numpy as np
 import warnings
 
-from ..backend import Backend
-from ..config import GridConfig
-from ..core.grid import Grid
-from ..ccd.ccd_solver import CCDSolver
 from ..ccd.fccd import FCCDSolver
 from ..levelset.advection import LevelSetAdvection, DissipativeCCDAdvection  # registration
 from ..levelset.fccd_advection import FCCDLevelSetAdvection                  # registration
@@ -40,6 +36,7 @@ from .gradient_operator import (
     CCDDivergenceOperator, FVMDivergenceOperator, FCCDDivergenceOperator,
 )
 from .ns_operator_stack import NSOperatorStackOptions, build_ns_operator_stack
+from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
 from .ns_runtime_components import build_ns_runtime_components
 from ..levelset.curvature_filter import InterfaceLimitedFilter
@@ -291,28 +288,19 @@ class TwoPhaseNSSolver:
 
     def _initialise_geometry(self, options: SolverGridOptions) -> None:
         """Initialise grid geometry and backend state."""
-        self.NX, self.NY = options.NX, options.NY
-        self.LX, self.LY = options.LX, options.LY
-        self.bc_type = options.bc_type
-        self._alpha_grid = float(options.alpha_grid)
-        self._eps_factor = float(options.eps_factor)
-        self._eps_xi_cells = options.eps_xi_cells
-        self._use_local_eps = bool(options.use_local_eps) or (options.eps_xi_cells is not None)
-        self._h = options.LX / options.NX
-        self._eps = self._eps_factor * self._h
-
-        self._backend = Backend(use_gpu=options.use_gpu)
-        gc = GridConfig(
-            ndim=2,
-            N=(options.NX, options.NY),
-            L=(options.LX, options.LY),
-            alpha_grid=options.alpha_grid,
-            eps_g_factor=options.eps_g_factor,
-            eps_g_cells=options.eps_g_cells,
-            dx_min_floor=options.dx_min_floor,
-        )
-        self._grid = Grid(gc, self._backend)
-        self._ccd = CCDSolver(self._grid, self._backend, bc_type=options.bc_type)
+        state = build_ns_geometry_runtime(options)
+        self.NX, self.NY = state.NX, state.NY
+        self.LX, self.LY = state.LX, state.LY
+        self.bc_type = state.bc_type
+        self._alpha_grid = state.alpha_grid
+        self._eps_factor = state.eps_factor
+        self._eps_xi_cells = state.eps_xi_cells
+        self._use_local_eps = state.use_local_eps
+        self._h = state.h
+        self._eps = state.eps
+        self._backend = state.backend
+        self._grid = state.grid
+        self._ccd = state.ccd
 
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
         """Normalise interface-tracking and remap controls."""
