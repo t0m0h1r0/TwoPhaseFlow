@@ -10,19 +10,19 @@
 \begin{description}
   \item[\textbf{VOF（Volume of Fluid）法}~\cite{HirtNichols1981}]
         各セル内の液相体積分率 $F \in [0,1]$ を輸送変数とする．
-        保存形の輸送方程式を解くため\textbf{質量保存性に優れる}が，
+        保存形の輸送方程式を解くため質量保存性に優れるが，
         界面の幾何学的情報（法線 $\hat{\bm n}$，曲率 $\kappa$）を $F$ から
         再構成する精度が限られる．寄生流れが生じやすい．
 
   \item[\textbf{標準 Level Set（LS）法}~\cite{OsherSethian1988}]
         界面からの符号付き距離関数 $\phi$（$|\bnabla\phi|=1$）を輸送変数とする．
         $\hat{\bm n} = \bnabla\phi$，$\kappa = -\bnabla\cdot\hat{\bm n}$ と簡潔に書けるため
-        \textbf{幾何計算精度が高い}．しかし移流方程式が非保存形のため，
-        数値積分誤差が\textbf{質量損失}として蓄積するという根本的問題がある．
+        幾何計算精度が高い．しかし移流方程式が非保存形のため，
+        数値積分誤差が質量損失として蓄積するという根本的問題がある．
 
   \item[\textbf{Conservative Level Set（CLS）法}~\cite{OlssonKreiss2005}（\textbf{本稿採用}）]
         $\phi$ を滑らかなヘヴィサイド関数 $\psi = H_\varepsilon(\phi) \in [0,1]$ に変換し，
-        \textbf{保存形}の移流方程式を解く．
+        保存形の移流方程式を解く．
         VOF の質量保存性と標準 LS の幾何計算精度を両立する．
         ただし，幾何量（法線・曲率）の計算に $\phi$ を要するため，
         $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
@@ -79,7 +79,7 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
         （DC $k=3$）を適用して高次の圧力補正を得る．
         速度補正の勾配には CCD $\Ord{h^6}$ を適用する．
         CSF + Balanced-Force（Rhie--Chow 拡張，§~\ref{sec:rc_balanced_force}）により
-        表面張力と圧力勾配に\textbf{同一の CCD 演算子}を使用し，
+        表面張力と圧力勾配に同一の CCD 演算子を使用し，
         平滑領域で高次の離散化整合性を確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
   \item \textbf{DCCD 散逸によるチェッカーボード抑制}：
         $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
