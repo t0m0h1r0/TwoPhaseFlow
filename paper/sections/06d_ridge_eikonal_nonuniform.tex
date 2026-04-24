@@ -1,6 +1,6 @@
 % paper/sections/06d_ridge_eikonal_nonuniform.tex
 %
-% §6.5  Ridge–Eikonal の非一様格子実装（SP-E §3–§7）
+% §6.5  Ridge–Eikonal の非一様格子実装
 %        §3.4.5 sec:ridge_eikonal_nonuniform の D1–D4 理論を
 %        §6 グリッドインフラの視点で実装面から完結させる．
 %
@@ -10,7 +10,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \S\ref{sec:ridge_eikonal_nonuniform} で理論的に示した
-SP-E の 4 補正 D1--D4 を，
+4 補正 D1--D4 を，
 \S\ref{sec:grid_density}（グリッド密度関数）・
 \S\ref{sec:grid_coord}（メトリクス係数）・
 \S\ref{sec:ccd_metric}（非一様 CCD）のインフラに載せて
@@ -43,7 +43,7 @@ $\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
 \end{itemize}
 
 一様極限（$h(\bm{x}) \equiv h_\text{ref}$）で
-$\sigma_\text{eff} \to \sigma_0$ となり SP-B §3 の既定と一致する．
+$\sigma_\text{eff} \to \sigma_0$ となり一様格子版の既定と一致する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{D2 実装：物理空間 Hessian は非一様 CCD で直接評価}
@@ -56,7 +56,7 @@ $\bnabla_x^2 \xiridge$ は物理空間で直接評価しなければならない
 \S\ref{sec:ccd_metric} の非一様 CCD（座標変換法）は
 ノード値から直接物理空間の第一・第二導関数を返す演算子
 $\mathbf{D}_1^\text{CCD,nu}, \mathbf{D}_2^\text{CCD,nu}$ を提供するため，
-Approach A（SP-E 本命実装）は以下の 1 行で実装できる：
+Approach A（本命実装）は以下の 1 行で実装できる：
 \begin{equation}
   [\bnabla_x^2 \xiridge]_{i,j}
   = \mathbf{D}_2^{\text{CCD,nu},x}\,\xiridge
@@ -67,7 +67,7 @@ Approach A（SP-E 本命実装）は以下の 1 行で実装できる：
 $\partial_x^2 = J_x^{-2}\partial_\xi^2 - (J_{xx}/J_x^3)\partial_\xi$
 の修正済み行列を適用する．
 混合項 $\partial_{xy}^2$ は Ridge 検出では $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$
-の対角二次形式のみで十分なため省略可能（SP-E §4）．
+の対角二次形式のみで十分なため省略可能．
 
 \noindent\textbf{Approach B（fallback）}：
 物理空間二階 FD
@@ -108,7 +108,7 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
         最寄り 4 ノードへ物理空間距離でシード値を分配する．
         非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
         単位セル仮定の素朴実装では最大 $\alpha$ 倍の誤差を生む
-        （$\alpha$ は格子密度比，SP-E §5）．
+        （$\alpha$ は格子密度比）．
 \end{itemize}
 
 \noindent この結線により FMM のワンパス計算量は
@@ -123,7 +123,7 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 式~\eqref{eq:eps_local} の再構成幅
 $\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_\xi\cdot h(\bm{x})$ を
 D1 と同様に 2 次元配列としてキャッシュする．
-$\xiridge$ から $\phi$ への再構成（SP-B §6 式）
+$\xiridge$ から $\phi$ への再構成式
 \begin{equation*}
   \phi(\bm{x}) = \operatorname{sgn}(\xiridge - \xi_\text{th})\cdot d_\mathcal{R}(\bm{x}),
   \qquad \xi_\text{th} = \xi_\text{ridge,min} - \varepsilon_\text{local}(\bm{x})
