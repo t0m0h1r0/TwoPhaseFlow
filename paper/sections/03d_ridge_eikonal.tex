@@ -96,37 +96,56 @@ $\xiridge$ は意図的に Eikonal を破る．
 
 従来の level-set では，融合・分裂は $\phi$ の level set のトポロジーが
 不連続に変化する特異時刻として現れる．
-Ridge--Eikonal 枠組では：
-\begin{itemize}
+Ridge--Eikonal 枠組では，これらの事象はすべて補助場 $\xiridge$ の
+連続的な変形として単一パラメータ族内で表現される．
+
+\begin{proposition}[リッジ集合のトポロジー変化の連続性]
+\label{prop:ridge_continuity}
+$\xiridge(\cdot, t)$ が各 $t$ で Morse 函数である区間では，
+そのリッジ集合 $\Gamma(t)$ は以下の意味で連続変形する：
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, topsep=2pt]
   \item 融合は 2 本のリッジが鞍点を通じて 1 本のリッジに滑らかに統合される．
   \item 分裂はリッジの分岐（bifurcation）として単一パラメータ族で連続的に現れる．
   \item いずれも $\xiridge$ の Morse 指数~\cite{Milnor1963} が瞬間的に変化する時刻として特徴づけられる．
 \end{itemize}
-離散イベント処理や明示的リメッシュは不要で，
-時間離散化の刻み幅が Morse 遷移と比して十分細ければ
+\end{proposition}
+
+\begin{proof}[証明スケッチ]
+$\xiridge \in C^2$ かつ臨界点が非退化である限り，Morse 補題より
+各臨界点の近傍は正準形に局所変形でき，指数変化は孤立点でのみ生じる．
+リッジ集合は臨界点を滑らかにつなぐ勾配下降流の集合として定義されるため，
+指数変化の瞬間を除いて連続的に変形する．詳細は~\cite{Milnor1963} \S6 を参照．
+\end{proof}
+
+以上より離散イベント処理や明示的リメッシュは不要で，
+時間離散化の刻み幅 $\Delta t$ が Morse 遷移の特徴時間スケール
+$\tau_M \sim h/|\bm{u}|_{\max}$ に対して $\Delta t \ll \tau_M$ を満たすとき
 数値的にも自動的に捕捉される．
 
 \subsubsection{FMM/FSM による $\phi$ の再構成と一意性}
 \label{sec:ridge_fmm_reconstruction}
 
+\begin{theorem}[FMM/FSM による $\phi$ 一意再構成]
+\label{thm:eikonal_reconstruction}
 リッジ集合 $\Gamma$ が幾何的に許容される（§~\ref{sec:ridge_admissibility}）
-条件を満たせば，Eikonal 再構成問題
+条件を満たすとき，Eikonal 再構成問題
 \begin{equation}
   |\bnabla\phi| = 1 \text{ in } \Omega \setminus \Gamma, \qquad
   \phi = 0 \text{ on } \Gamma,
   \label{eq:eikonal_reconstruct}
 \end{equation}
-には\textbf{唯一の粘性解}が存在する．
+には唯一の粘性解 $\phi(\bm{x}) = d(\bm{x}, \Gamma)$ が存在する．
+\end{theorem}
 
-\paragraph{一意性の証明スケッチ（Crandall--Lions 1983）}
-\begin{enumerate}
-  \item \textbf{存在．} $\Gamma$ が閉集合なら $d(\bm{x},\Gamma)$ は Lipschitz 連続である．
-  \item \textbf{局所微分可能性．} 最近接射影 $\pi : \bm{x}\mapsto \Gamma$ が一意な領域で
-        $\phi$ は微分可能で $\bnabla\phi(\bm{x}) = \hat{\bm{n}}_\Gamma(\pi(\bm{x}))$．
-  \item \textbf{Eikonal 成立．} したがって $|\bnabla\phi|=1$ がほぼ至るところで成立．
-  \item \textbf{一意性．} 粘性解の比較原理（Crandall--Lions 1983 \cite{CrandallLions1983}）
-        により $\phi$ は $\Gamma$ を境界条件として一意．
-\end{enumerate}
+\begin{proof}[証明スケッチ（Crandall--Lions 1983~\cite{CrandallLions1983}）]
+(i)~\emph{存在．} $\Gamma$ が閉集合なら $d(\bm{x},\Gamma)$ は Lipschitz 連続である．
+(ii)~\emph{局所微分可能性．} 最近接射影 $\pi : \bm{x}\mapsto \Gamma$ が一意な領域で
+$\phi$ は微分可能で $\bnabla\phi(\bm{x}) = \hat{\bm{n}}_\Gamma(\pi(\bm{x}))$．
+(iii)~\emph{Eikonal 成立．} したがって $|\bnabla\phi|=1$ がほぼ至るところで成立．
+(iv)~\emph{一意性．} 粘性解の比較原理~\cite{CrandallLions1983} により
+$\phi$ は $\Gamma$ を境界条件として一意．
+詳細な外部証明は SP-B~\cite{SPB} §4 を参照．
+\end{proof}
 
 \paragraph{アルゴリズム}
 $\phi$ の再構成は FMM（狭帯域・非一様推奨）または FSM（全域）を適用する．
@@ -253,7 +272,8 @@ FCCD 面中心演算子で 4 次精度を保ちつつ行われる
 （SP-A \cite{SPA}）．
 再構成された $\phi$ と FCCD 評価は同一の\textbf{面 locus}を共有するため，
 再構成フェーズから追跡フェーズへの受け渡しは追加補間誤差を持たない．
-トポロジー変化が無い通常運転では，アルゴリズムは
+Morse 遷移を含まない時間帯（トポロジー変化が発生しない区間）では，
+アルゴリズムは
 (i) FCCD による $\phi$ 面中心高次移流，(ii) 時折の FMM 再投影
 という既存パイプラインの厳密な一般化となる．
 
