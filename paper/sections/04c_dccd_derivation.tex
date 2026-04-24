@@ -87,8 +87,7 @@ CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
   \qquad \xi=k\Delta x,
   \label{eq:dccd_filter_transfer}
 \end{equation}
-\phantomsection\label{eq:dccd_filter}% backward-compat: 旧 04d filter label
-\phantomsection\label{eq:dccd_transfer}% backward-compat: 旧 04d transfer-function label
+% backward-compat phantom labels removed (CHK-205 m2): use eq:dccd_filter_transfer
 に置き換える．
 低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は式~\eqref{eq:dccd_pde_form} の
 PDE 形の\textbf{波数依存 $\varepsilon$} 拡張と等価で，
@@ -113,8 +112,10 @@ $(D_2^{\CCD}u)_j \sim -(1/\Delta x^2) m_{\text{eq}}(k\Delta x)\hat u$
 \end{equation}
 Chu--Fan 係数 $(\beta_2,a_2,b_2)=(-1/8, 3, -9/8)$ での
 修正 2 次波数 $m_{\text{eq}}(\xi)$ は
+$\omega_2(\theta)^2$（式~\eqref{eq:ccd_omega_12}，$\theta=\xi$）と一致し，
 小 $\xi$ 展開で $m_{\text{eq}}=\xi^2+\Ord{\xi^6}$，
-Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
+Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
+（$96/10$，分子 $81+48-33$・分母 $48-40+2$ の直接代入），
 区間 $[0,\pi]$ で符号変化なし．従って：
 \begin{equation}
   \Re\lambda(k) = -\varepsilon|c|\,\frac{m_{\text{eq}}(k\Delta x)}{\Delta x} \le 0,
@@ -134,7 +135,9 @@ Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
 \item \textbf{定数 $\varepsilon$ の精度低下．}
       §\ref{sec:dccd_spectral_filter} の波数選択的フィルタが解決．
 \item \textbf{境界付き領域での必要非十分性．}
-      GKS 解析（§\ref{sec:ccd_bc}）が境界閉包まで含めて補う．
+      §\ref{sec:ccd_bc} の片側 Hermite 閉包が\textbf{十分条件プローブ}として機能する；
+      厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
+      §\ref{sec:uccd6_boundary} で開課題として明示している．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
       §\ref{sec:ccd_bc} の Option III/IV で壁近傍の行を置換．
 \item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}

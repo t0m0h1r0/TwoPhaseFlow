@@ -19,6 +19,15 @@
         両端格子点の片側スキームとブロック三重対角行列の構造を整備する．
   \item \textbf{§~\ref{sec:dissipative_ccd}（散逸的 CCD フィルタ）：}
         高周波不安定性の回避と界面適応フィルタ制御の設計を述べる．
+  \item \textbf{§~\ref{sec:fccd_def}（面中心 CCD: FCCD）：}
+        面中心補間と共通面ジェット契約 (R1)--(R4) を示し，
+        HFE・GFM・分相 PPE・粘性界面バンドの共通プリミティブを与える．
+  \item \textbf{§~\ref{sec:uccd6_def}（Upwind CCD with hyperviscosity: UCCD6）：}
+        主項 $\Ord{h^6}$ を保ちつつ Nyquist 近傍のみを抑制するハイパー粘性項の設計と
+        Crank--Nicolson による無条件 $L^2$ 安定性を示す．
+  \item \textbf{§~\ref{sec:face_jet_def}（共通面ジェットプリミティブ）：}
+        FCCD/UCCD6 を経て統一された面ジェット $\mathcal{J}_f(u)=(u_f, u'_f, u''_f)$ を
+        本稿の離散演算子群（HFE・GFM・分相 PPE・粘性）に供給する契約を定義する．
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
