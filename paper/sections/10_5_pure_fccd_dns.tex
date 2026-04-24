@@ -14,6 +14,23 @@ Level 3（§\ref{sec:level3_stiff_regime}）における理論的最終形であ
 表面張力支配・マイクロスケール・高密度比の同時極限で
 数値 spurious current を物理的根拠に基づいて最小化する．
 
+\noindent\textbf{Phase 1--4 と Level 1/2/3 の対応：}
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\hline
+Phase & 内容 & 主要技術 & Level 対応 \\
+\hline
+Phase 1 & 界面追跡層 & Ridge-Eikonal + FCCD 輸送 & Level 2 で部分採用可 \\
+Phase 2 & 運動量移流層 & FCCD + HFE & Level 2/3 \\
+Phase 3 & 粘性項分離 & 応力発散 + DC & Level 2/3 \\
+Phase 4 & 分相 FCCD PPE & 分相 + GFM + DC $k{=}3$ & Level 3 完全採用 \\
+\hline
+\end{tabular}
+\end{center}
+Phase 1 の軽量版は Level 2 プロダクションでも採用可能（§\ref{sec:level2_production}）；
+Phase 1--4 の同時採用は Level 3 を前提とする（§\ref{sec:level_selection}）．
+
 % -------------------------------------------------------------------------------
 \subsubsection{設計命題：高次演算子の共通基準面位置}
 \label{sec:pure_fccd_thesis}
@@ -29,10 +46,11 @@ FCCD 面ジェット $\FaceJet{\cdot}=(\cdot_f,\cdot'_f,\cdot''_f)$ を
 
 この命題は §\ref{sec:bf_p1_location}（BF P-1 位置一致）を
 全演算子に拡張したものに相当する．
-純 FCCD DNS は (R1)-(R4) の面ジェット契約を圧力・界面・移流・粘性の全演算子に
+純 FCCD DNS は (R1)-(R4)（§\ref{sec:fccd_def} の 4 役割定義）の面ジェット契約を
+圧力・界面・移流・粘性の全演算子に
 拡張したアーキテクチャであり，単一の面ジェット API で 4 経路のメトリック整合を
 構造的に担保する（従来 FVM 共存設計で生じた H-01 型不整合の歴史的経緯は
-付録~\ref{sec:fccd_motivation_h01}）．
+付録~\ref{app:fccd_motivation_h01}）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Phase 1: 界面追跡層（Ridge-Eikonal + FCCD 輸送）}
@@ -187,7 +205,7 @@ G-2 周期平面波 BF 精度 & $\varepsilon_\text{BF} = \Ord{h^4}$
 G-3 Laplace バランス & $\Delta p_\text{discrete} = \sigma\kappa_\text{exact}$
   & 静止球，$\kappa$ 誤差 $\le 1\%$ \\
 G-4 密度比独立性 & $\varepsilon_p^\text{split} = \Ord{h^7}$ 共通 for $\rho_l/\rho_g\in[1,1000]$
-  & §\ref{sec:split_ppe_pressure_jump_formulation} \\
+  & §\ref{sec:verify_split_ppe_dc} \\
 G-5 曲率 spurious current & $\max|\mathbf{u}|/|\mathbf{u}_\text{phys}| \le 10^{-6}$
   & 振動液滴 eigenmode \\
 \hline

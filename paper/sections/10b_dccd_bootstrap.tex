@@ -138,12 +138,26 @@ P-5 と整合する．
 \label{sec:bootstrap}
 % ═════════════════════════════════════════════════════════════════════════════
 
-シミュレーション開始前に，一様格子上の仮 $\phi^{(0)}$ 評価
-$\to$ 非一様格子生成（§~\ref{sec:grid_2d}）
-$\to$ CLS 初期化・CCD 演算子構築・Young--Laplace 初期圧力設定
-の 5 段階ブートストラップを一度だけ実行する
-（格子--界面の循環参照を解消；詳細は付録~\ref{app:bootstrap} 参照）．
-格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）については
+シミュレーション開始前に，格子--界面の循環参照を解消するため
+以下の 5 段階ブートストラップを一度だけ実行する：
+\begin{enumerate}[leftmargin=2em,noitemsep]
+  \item \textbf{Step 0（一様格子仮 SDF）：} 等間隔格子 $\Delta x_0 = L/N$ 上で
+        解析初期界面から仮の符号付距離 $\phi^{(0)}$ を評価する（幾何解析式または FMM）．
+  \item \textbf{Step 1（非一様格子生成）：} Ridge-Eikonal 誘導 $\phi^{(0)}$ から
+        界面適合非一様格子 $\{x_i\}, \{y_j\}$ を生成（§~\ref{sec:grid_2d}；
+        密度比 $\alpha = \max h / \min h$）．
+  \item \textbf{Step 2（CLS 初期化）：} 新しい非一様格子上で
+        $\psi^0_{i,j} = \tfrac{1}{2}(1+\tanh(\phi^{(0)}_{i,j}/\varepsilon_c))$ を設定
+        （$\varepsilon_c$ は CLS 厚さ，§~\ref{sec:cls_compression}）．
+  \item \textbf{Step 3（CCD 演算子構築）：} 非一様格子重みから
+        $D^{(1)}, D^{(2)}, M_{\mathrm{CCD}}, L_L, L_H$ の疎行列構造を一度だけ構築
+        （格子更新 Mode 1 では以降不変）．
+  \item \textbf{Step 4（Young--Laplace 初期圧力）：} 初期曲率 $\kappa^0$ から
+        $p^0 = p_\infty + \sigma\kappa^0 H(\phi^{(0)})$（smoothed）で初期圧力場を設定し，
+        Step 0 で測定した $\mathbf{u}^0=\mathbf{0}$ と整合させる．
+\end{enumerate}
+5 段階実行後，時刻ループ Step 1 から通常アルゴリズム（§\ref{sec:algo_flow}）が動作する．
+詳細は付録~\ref{app:bootstrap}；格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は
 §~\ref{sec:grid_ale} を参照されたい．
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -171,6 +185,12 @@ $\to$ CLS 初期化・CCD 演算子構築・Young--Laplace 初期圧力設定
 粘性項は Crank--Nicolson 法（無条件安定）で処理するため，等粘性系では粘性 CFL 制約は不要である．
 ただし大粘性比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
 陽的処理に起因する実質的な粘性制約が界面近傍で復活する場合がある（§~\ref{sec:stability} 参照）．
+
+\noindent\textbf{§~\ref{sec:level_selection} の 3 項版との関係：}
+式~\eqref{eq:dt_full_algo} の 2 項制約は等粘性・CN 有効領域での縮約表現であり，
+一般の可変 Level 構成（§~\ref{sec:level_selection} 式~\eqref{eq:level_cfl_min}）では
+$\Delta t_\text{visc}$（陽的粘性領域）も追加する 3 項 $\min$ が正しい．
+物理波速度 $\Delta t_\text{wave}$ は非圧縮解法のため両式とも除外される．
 
 \bigskip
 以上の統合アルゴリズムの各構成要素が設計通りの精度を達成するか，

@@ -17,15 +17,14 @@ Level 間コスト比率，および適用領域の棲み分けを示す．
 \label{sec:level_trigger}
 % -------------------------------------------------------------------------------
 
-物理 CFL 制約の 4 つを通常ステップで測定し，最も厳しい制約に対応する
-Level を選ぶ：
+物理 CFL 制約の 3 つを通常ステップで測定し，最も厳しい制約に対応する
+Level を選ぶ（非圧縮解法のため物理波速度 $\Delta t_\text{wave}$ は除外）：
 \begin{equation}
   \Delta t_\text{step}
     = \min\!\Bigl(
         \Delta t_\text{adv},\,
         \Delta t_\text{visc},\,
-        \Delta t_\sigma^\text{BKZ},\,
-        \Delta t_\text{wave}
+        \Delta t_\sigma^\text{BKZ}
       \Bigr),
   \label{eq:level_cfl_min}
 \end{equation}
@@ -35,7 +34,6 @@ Level を選ぶ：
   \item $\Delta t_\text{visc} = C_\text{visc}\rho h^2/(2\mu N_\text{dim})$（粘性 CFL）
   \item $\Delta t_\sigma^\text{BKZ} = \sqrt{(\rho_l+\rho_g)h^3/(2\pi\sigma)}$
         （Brackbill--Kothe--Zemach 毛管波制約，§\ref{sec:time_capillary}）
-  \item $\Delta t_\text{wave} = C_\text{wave}h/c_s$（物理波速度，非圧縮では無関係）
 \end{itemize}
 
 \begin{table}[htbp]
@@ -98,6 +96,9 @@ Level 1 の 8 倍程度の throughput を実現する．
 Level 3 は外殻非線形反復のコストが高いが，
 $\Delta t$ 拡大比が剛性の平方で効くため，
 $\rho_l/\rho_g > 500$ 領域で Level 2 を上回る実効効率を持つ．
+\textbf{※ Level 3 の 3--10$\times$ Level 2 throughput は}
+\textbf{理論見積もり（Radau IIA の $\Delta t$ 拡大比 + JFNK Krylov コスト）に基づく
+設計目標であり，数値検証は未完了（§~\ref{sec:verify_level3_benchmark} にて計画中）．}
 
 % -------------------------------------------------------------------------------
 \subsubsection{バリデーション Level: Level 1 の役割}
@@ -114,7 +115,7 @@ Level 1（SSPRK3 全陽的）は\textbf{実運用ではなく}検証用途とし
         個別演算子（FCCD 勾配，UCCD6 対流，CCD 曲率）の整合性を SSPRK3 で確認．
   \item 面ジェット共通プリミティブ整合確認（§\ref{sec:fccd_def}）：
         BF 残差の切断誤差次数を Level 2 の半陰的結合項抜きで測定する
-        （歴史的背景 H-01 は付録~\ref{sec:fccd_motivation_h01}）．
+        （歴史的背景 H-01 は付録~\ref{app:fccd_motivation_h01}）．
 \end{itemize}
 
 Level 1 で得た精度指標を\textbf{Level 2 の設計目標}として引き継ぐ．
