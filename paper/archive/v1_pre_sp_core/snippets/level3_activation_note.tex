@@ -1,0 +1,18 @@
+%!TEX root = ../../../main.tex
+%
+% §5 Level 3 実運用開始条件 — 内部 CHK チケット参照
+%   退避: CHK-193 Phase E-3（2026-04-24）
+%
+% 退避理由:
+%   本文中に「別 CHK にキュー化」という内部トラッキング情報が露出していた．
+%   CHK-ID の管理は docs/02_ACTIVE_LEDGER.md 側で行い，論文本文からは除去．
+%
+% 本編の代替:
+%   paper/sections/05_time_integration.tex L452-453 を削除．
+%   Level 3 の実装状態説明は L443-L448 の footnote と
+%   §\ref{sec:pure_fccd_dns}（§10.5）の詳細提示に集約．
+%
+% 元の文（参考）:
+
+実運用開始は SP-I Q-I4（L3 コスト閾値）の数値的同定後
+（別 CHK にキュー化）．

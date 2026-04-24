@@ -1,11 +1,11 @@
-% paper/sections/09_6_gpu_native_fvm.tex
+% paper/sections/appendix_gpu_fvm.tex
 %
-% §9.7  GPU-native FVM 投影：面ローカル演算子カリキュラスと可変バッチ PCR
-%       （SP-F 全取り込み）
+% 付録H  GPU-native FVM 投影：面ローカル演算子カリキュラスと可変バッチ PCR
+%       （SP-F 全取り込み。旧 §9.7 を付録化）
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{GPU-native FVM 投影：面ローカル演算子と可変バッチ PCR}
-\label{sec:gpu_native_fvm_projection}
+\section{GPU-native FVM 投影：面ローカル演算子と可変バッチ PCR}
+\label{app:gpu_fvm}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 分相 FCCD PPE（\S\ref{sec:split_ppe_framework}）は Level 2/3 の
@@ -31,8 +31,9 @@ FVM が本質的にシーケンシャルなのではない．
 変更すべきは演算子の\textbf{表現}であり，PDE や面係数ではない．
 
 % -------------------------------------------------------------------------------
-\subsubsection{面ローカル演算子カリキュラス}
+\subsection{面ローカル演算子カリキュラス}
 \label{sec:gpu_fvm_face_local_calculus}
+\phantomsection\label{app:gpu_fvm_ops}% 本文→付録バックリンク用 alias
 % -------------------------------------------------------------------------------
 
 軸 $a\in\{1,\ldots,d\}$ に対し，左右面ギャザ $E_a^\pm$，
@@ -73,8 +74,9 @@ CSR ビュー & 全非零をまず組立 → 乗算 / 直接解 \\
 \end{center}
 
 % -------------------------------------------------------------------------------
-\subsubsection{線分解と可変バッチ PCR プリミティブ}
+\subsection{線分解と可変バッチ PCR プリミティブ}
 \label{sec:gpu_fvm_variable_pcr}
+\phantomsection\label{app:gpu_fvm_pcr}% 本文→付録バックリンク用 alias
 % -------------------------------------------------------------------------------
 
 軸 $a$ の横断指数 $\mathbf{m}$ を固定すると，その線は 3 重対角：
@@ -106,7 +108,7 @@ $(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
 \end{itemize}
 
 % -------------------------------------------------------------------------------
-\subsubsection{プリコンディショナーとしての線ソルブ（ADI 化の禁止）}
+\subsection{プリコンディショナーとしての線ソルブ（ADI 化の禁止）}
 \label{sec:gpu_fvm_preconditioner}
 % -------------------------------------------------------------------------------
 
@@ -138,8 +140,9 @@ $(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
 線 PCR をプリコンディショナーにすると反復路が変わるだけ」．
 
 % -------------------------------------------------------------------------------
-\subsubsection{D2H/H2D 境界規律}
+\subsection{D2H/H2D 境界規律}
 \label{sec:gpu_fvm_d2h_discipline}
+\phantomsection\label{app:gpu_fvm_d2h}% 本文→付録バックリンク用 alias
 % -------------------------------------------------------------------------------
 
 \begin{tcolorbox}[resultbox,title={ゼロ転送ホットループ条件（SP-F \cite{SPF} §5）}]
@@ -157,20 +160,25 @@ $(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
 のみ．
 
 % -------------------------------------------------------------------------------
-\subsubsection{A3 トレーサビリティと実装ロードマップ}
+\subsection{A3 トレーサビリティと実装ロードマップ}
 \label{sec:gpu_fvm_a3_roadmap}
 % -------------------------------------------------------------------------------
 
 \begin{center}
-\begin{tabular}{@{}p{0.15\textwidth}p{0.78\textwidth}@{}}
+\footnotesize
+\begin{tabular}{@{}p{0.15\textwidth}>{\raggedright\arraybackslash}p{0.78\textwidth}@{}}
 \hline
 層 & 内容 \\
 \hline
 方程式 & $L_\text{FVM}(\rho)p = \sum_a D_a A_a(\rho)G_a p$ \\
 離散化 & 面ローカル勾配 + 調和面フラックス + 節点発散 + 線分 3 重対角制限 \\
 線形代数 & 可変バッチ PCR/CR 線ソルブを Krylov プリコンディショナーとして使用 \\
-既存コード & \texttt{\_fvm\_pressure\_grad}, \texttt{RhieChowInterpolator.face\_velocity\_divergence}, \texttt{PPEBuilder.build\_values}, \texttt{\_pcr\_solve\_batched} \\
-新規コード & \texttt{PPESolverFVMMatrixFree}, \texttt{solve\_tridiagonal\_variable\_batched} \\
+既存コード & \texttt{\_fvm\_pressure\_grad},
+  \texttt{RhieChowInterpolator.face\_velocity\_divergence},
+  \texttt{PPEBuilder.build\_values},
+  \texttt{\_pcr\_solve\_batched} \\
+新規コード & \texttt{PPESolverFVMMatrixFree},
+  \texttt{solve\_tridiagonal\_variable\_batched} \\
 \hline
 \end{tabular}
 \end{center}
@@ -187,7 +195,7 @@ $(a,d,c,r)$ 点ごと更新 $\to$ ストライド倍加）を
 \end{enumerate}
 
 % -------------------------------------------------------------------------------
-\subsubsection{H-01 / A-01 との関係：正確性と性能の分離}
+\subsection{H-01 / A-01 との関係：正確性と性能の分離}
 \label{sec:gpu_fvm_h01_a01}
 % -------------------------------------------------------------------------------
 
@@ -211,5 +219,13 @@ Level 2 プロダクション（\S\ref{sec:algorithm}）では
 分相 FCCD PPE 経路と GPU-native FVM 経路を
 ワークロードに応じて切り替える
 \textbf{二路選択}が実用的．
+
+\noindent\textbf{圧力フィルタ禁止との整合}：
+本付録で扱う GPU-native FVM 投影は
+\S\ref{sec:dccd_pressure_nofilt} の圧力フィルタ禁止論と
+整合する実装バリアントである．
+非対称 DCCD を圧力に適用しないため P-1/P-2
+（\S\ref{sec:bf_seven_principles}）を破壊せず，
+本文の BF 予算がそのまま引き継がれる．
 
 % ═══════════════════════════════════════════════════════════════════════════════

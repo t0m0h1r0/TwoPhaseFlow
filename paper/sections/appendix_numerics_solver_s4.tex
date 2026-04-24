@@ -6,7 +6,7 @@
 \label{app:fvm_face_coeff}
 \label{sec:fvm_face_coeff}
 % ═══════════════════════════════════════════════════════════════════════════════
-%% ※ 旧 08g_fvm_note.tex の内容を統合（CHK-088）
+%% ※ 旧 08g_fvm_note.tex の内容を統合
 
 PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散化すると，
 フェイス面係数として\textbf{調和平均}が自然に現れる：
@@ -39,7 +39,7 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 
 \subsubsection{FVM PPE 行列の周期境界条件対応}
 \label{sec:fvm_periodic}
-%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 E.4 へ移動（CHK-086）
+%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 D.3 へ移動
 
 壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
 周期境界を持つ計算領域ではそのまま適用できない．
@@ -72,7 +72,7 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 
 \begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
   式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
-  ILU(0)（\texttt{fill\_factor=1}）を前処理に使用すると BiCGSTAB の収束が著しく遅延する．
+  ILU(0)（\texttt{fill\_factor=1}）を前処理に使用すると BiCGSTAB~\cite{VanderVorst1992} の収束が著しく遅延する．
   実装では \texttt{fill\_factor=10} で安定収束を確認した．
   直接法（\texttt{spsolve}）は収束診断に有効である．
 \end{tcolorbox}

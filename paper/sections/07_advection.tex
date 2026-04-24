@@ -16,11 +16,11 @@ CLS 移流方程式（§~\ref{sec:levelset}，式~\eqref{eq:cls_advection}の再
 \end{equation}
 である．
 
-\noindent\textbf{本章の対象範囲（注）：}
-現時点では移流・再初期化・安定性制約を詳述する．
-界面張力項（CSF モデルへの CCD 適用）および粘性項（変密度場での Hermite 評価）は
-「各物理項の空間離散化」の全体ビジョンの一部であり，今後の課題として位置づける
-（§~\ref{sec:future_work}）．
+\noindent\textbf{本章の対象範囲：}
+本章では CLS 移流・再初期化と CLS 側安定性制約を詳述する．
+FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§7.3）で展開し，
+界面張力項（CSF モデルへの FCCD 適用）は §~\ref{sec:fccd_bf_sub_system}（§8.4）で，
+粘性項（変密度 3 層 Hermite 評価）は §~\ref{sec:viscous_3layer}（§7.6）で詳述する．
 
 \begin{enumerate}
   \item \textbf{§~\ref{sec:cls_on_nonuniform}（非一様格子上の CLS 演算）：}
