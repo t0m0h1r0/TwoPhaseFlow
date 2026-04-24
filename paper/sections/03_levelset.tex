@@ -203,7 +203,7 @@ $\phi$ の代わりに，滑らかな\textbf{ヘヴィサイド関数} $\psi = H
 $\psi$ の移流方程式は\textbf{保存形（発散形）}で記述される（式~\eqref{eq:cls_advection}，§~\ref{sec:cls_advection} で詳述）．
 本稿の符号規約では $\psi$ は気相側で 1 に近づく指標であるため，
 連続レベルで $\int\psi\,dV =$ const が成立すれば，閉じた領域では補体として液相体積も保存される．
-離散計算でも保存形フラックスと適切な境界・補正処理により液相体積のドリフトを抑えられる．
+離散計算でも保存形フラックスと境界処理（周期/壁面で $\bu\cdot\hat{\bm{n}}=0$）および値域クランプ $\psi\in[0,1]$ により液相体積のドリフトを $\Ord{h^5\Delta t}$ 水準まで抑えられる（§~\ref{sec:cls_advection}）．
 
 \begin{table}[htbp]
 \caption{標準 LS 法 vs CLS 法：選択の根拠}
