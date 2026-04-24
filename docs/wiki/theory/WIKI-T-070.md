@@ -9,6 +9,7 @@ links:
   - "[[WIKI-T-063]]: FCCD face-flux PPE"
   - "[[WIKI-T-066]]: Body-force discretization in variable-density NS"
   - "[[WIKI-T-068]]: FCCD face-flux projector"
+  - "[[WIKI-T-071]]: face-canonical literature survey and PoC ladder"
   - "[[WIKI-E-031]]: ch13 rising-bubble hypothesis verdicts"
 compiled_by: ResearchArchitect
 ---

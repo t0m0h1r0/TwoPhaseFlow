@@ -1,6 +1,6 @@
-# Wiki Index — 191 entries
+# Wiki Index — 195 entries
 
-## Theory (67)
+## Theory (70)
 
 | REF-ID | Title |
 |--------|-------|
@@ -74,8 +74,11 @@
 | [WIKI-T-068](theory/WIKI-T-068.md) | FCCDDivergenceOperator: FCCD Face-Flux Projector with FVM-Consistent Pressure Gradient |
 | [WIKI-T-069](theory/WIKI-T-069.md) | FCCD Face Jet: Face-Carried Value, Gradient, and Curvature for FVM/HFE |
 | [WIKI-T-070](theory/WIKI-T-070.md) | Rising-Bubble Early Blowup on Static α=2 FCCD Stack: Buoyancy-Driven Projection-Closure Failure |
+| [WIKI-T-071](theory/WIKI-T-071.md) | Face-Canonical Variable-Density Projection: Literature Survey and PoC Ladder |
+| [WIKI-T-072](theory/WIKI-T-072.md) | Buoyancy-Driven Predictor Assembly: Interface-Local Intermediate-State Theory |
+| [WIKI-T-073](theory/WIKI-T-073.md) | Interface-Band Predictor Closure: NS–LS–CFD Derivation for Buoyancy-Driven Assembly |
 
-## Cross-Domain (33)
+## Cross-Domain (35)
 
 | REF-ID | Title |
 |--------|-------|
@@ -112,6 +115,8 @@
 | [WIKI-X-031](cross-domain/WIKI-X-031.md) | Advection Design Guide for CCD/FCCD Two-Phase NS: Conservative Flux Form, Velocity-PPE Consistency, and Scheme Selection per Variable |
 | [WIKI-X-032](cross-domain/WIKI-X-032.md) | Complete 1-Step Time Integration for CLS + Variable-Density CCD NS: Phase Ordering, Geometry Lag Policy, and Operator Splitting Safety |
 | [WIKI-X-033](cross-domain/WIKI-X-033.md) | Pure High-Order FCCD Two-Phase DNS: FVM-Free Phase-Separated PPE + HFE + GFM + DC |
+| [WIKI-X-034](cross-domain/WIKI-X-034.md) | Buoyancy-Aware Predictor Assembly Redesign: From Interface-Local Diagnosis to Solver-Side Fix |
+| [WIKI-X-035](cross-domain/WIKI-X-035.md) | Buoyancy-Aware Predictor Redesign Theorem: Minimal Admissible Algorithm for ch13 |
 
 ## Experiment (29)
 
