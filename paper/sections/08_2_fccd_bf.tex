@@ -110,11 +110,21 @@ FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 演算子 & 非一様格子 $\rho_l/\rho_g=830$ & 収束率 \\
 \hline
 旧設計（節点 CCD + 事後面平均）& $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
-FCCD + GFM（Phase 1）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^3}$ \\
+FCCD + GFM（Phase 1）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^2}$$^{\ddagger}$ \\
 FCCD + IIM（Phase 3 目標）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\Delta x^4}$ \\
 \hline
 \end{tabular}
 \end{center}
+\noindent$^{\ddagger}$ GFM の 2 次律速により収束率は Theorem 1（\S\ref{sec:fccd_adv_bf_theorem}）
+の $\Ord{H^4}$ 上界に届かない．絶対誤差 $10^{-6}$ は一様格子 FCCD $\Ord{H^4}$
+係数の小さいことから得られる実測予測値であり，漸近オーダーは GFM 依存で
+$\Ord{\Delta x^2}$．IIM（Phase 3）で初めて $\Ord{\Delta x^4}$ に昇格する．
+
+\noindent\textbf{重力 BF テスト}として明示：本表は重力平衡での BF 残差を測定する
+（CSF BF の静止液滴テスト \S\ref{sec:hydrostatic_droplet} とは独立；
+CSF 側は $f_\sigma$ と $G_h p_\sigma$ の相殺が主論点）．
+予測値（§\ref{sec:verify_split_ppe_dc} で検証予定）．
+
 詳細検証は \S\ref{sec:verify_split_ppe_dc}（§11 検証章）．
 
 % -------------------------------------------------------------------------------
