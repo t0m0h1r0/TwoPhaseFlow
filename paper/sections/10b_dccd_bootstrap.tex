@@ -8,6 +8,13 @@
 本節では散逸強度 $\varepsilon_{d,\max}$ の具体的な設計値と，
 CLS 変数 $\psi$ に基づく適応制御アルゴリズムを与える．
 
+\noindent\textbf{本節のスコープ．}
+本稿では bulk 運動量移流の既定は UCCD6（§~\ref{sec:uccd6_def}）であり，
+DCCD は (i) CLS $\psi$ 移流と再初期化圧縮項（§~\ref{sec:reinit}），
+(ii) PPE RHS / Corrector のチェッカーボード抑制，
+(iii) 曲率計算の高次微分安定化，の 3 用途に限定される．
+以下の適応制御設計はこれらの用途における $\varepsilon_d$ と $S(\psi)$ の仕様である．
+
 表~\ref{tab:dccd_usage_map} に，アルゴリズム全体で DCCD フィルタが担う 3 つの役割と
 パラメータ設定を一覧する．
 

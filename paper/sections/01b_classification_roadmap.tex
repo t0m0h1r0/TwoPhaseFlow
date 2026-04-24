@@ -83,7 +83,9 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
         平滑領域で高次の離散化整合性を確保する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
   \item \textbf{DCCD 散逸によるチェッカーボード抑制}：
         $\varepsilon_d = 1/4$ がコロケート格子のチェッカーボード不安定を
-        スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}）．
+        スキーム内部で抑制する（§~\ref{sec:dccd_decoupling}；
+        本用途は圧力・速度デカップリングに限定され，運動量移流散逸は
+        UCCD6（§~\ref{sec:uccd6_def}）が担う）．
 \end{enumerate}
 さらに，高密度比対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節で実証）の基盤技術として，
 Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
@@ -161,7 +163,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & 保存形界面追跡，再初期化方程式，曲率数値計算
    & 2 \\
 4  & CCD 法
-   & 6次精度コンパクト差分，係数導出，DCCD フィルタ
+   & 6次精度コンパクト差分，係数導出，DCCD フィルタ（UCCD6 への教育的前段），UCCD6 演算子内部散逸（bulk 移流既定）
    & --- \\
 5  & 時間積分
    & \raggedright CLS：TVD-RK3（$\Ord{\Delta t^3}$）；
@@ -171,7 +173,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & レベルセット連動格子生成，メトリック係数，ALE 簡略化
    & 3, 4 \\
 7  & CLS 移流・再初期化
-   & Dissipative CCD 移流スキーム，圧縮項 DCCD，安定性制約
+   & CLS $\psi$ 移流 DCCD（L1/L2 explicit），運動量移流 UCCD6（L1/L2/L3 既定），圧縮項 DCCD（CLS reinit 専用），安定性制約
    & 3, 4, 5 \\
 8  & 圧力・速度連成
    & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
