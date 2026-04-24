@@ -1,0 +1,51 @@
+% paper/sections/appendix_ccd_h01.tex
+%
+% §B.4  H-01 診断の歴史的ケーススタディ
+%   SP-A 初版（FVM 共存前提）における FCCD 動機付けの保全．
+%   本稿 SP-M 純 FCCD 構成では FVM が消滅するため以下は歴史的経緯である．
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{H-01 診断の歴史的ケーススタディ}
+\label{sec:fccd_motivation_h01}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\begin{remark}[本節の位置付け]
+本稿（SP-M 純 FCCD 構成）では FVM 面平均演算子 $\mathcal{G}^{\text{adj}}$ は
+設計から除外され，{\FCCD} は「面ジェット共通プリミティブ」
+（§~\ref{sec:fccd_def}，4 役割 (R1)-(R4)）として再解釈される．
+したがって以下の H-01 診断は SP-A 初版（FVM 共存前提）における歴史的な
+動機付けであり，本稿本体の構造的正当化とは独立の経緯記述である．
+\end{remark}
+
+\paragraph{H-01 仮説の形成．}
+FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ と
+節点中心 CCD 微分の\textbf{メトリック不整合}を先行予備解析が指摘し，
+毛管ベンチマーク（$\rho_\text{liq}/\rho_\text{gas}=833$）の Exp-1 で
+Balanced-Force 残差 $|\BF_{\text{res}}|\approx 884$（step 1）を実測．
+Exp-2（$\sigma=0 \Rightarrow T=20$ まで安定）が決定的証拠となり，
+hypothesis \textbf{H-01}（「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\nabla\psi$ の
+メトリック空間不一致が長時間破綻の主因」）が確定した．
+
+\paragraph{SP-A 初版の救済策．}
+$\mathcal{G}^{\text{adj}}$ が面上で定義される事実を出発点として，
+\textbf{圧力勾配も界面力勾配も同一面ロカス上}で {\FCCD} により評価することで，
+BF 残差を $\Ord{\Delta x^2} \to \Ord{\Delta x^4}$ まで圧縮する，というのが
+SP-A \cite{SPA} 初版（FVM 共存前提）の結論であった．
+
+\paragraph{SP-M 純 FCCD 設計への昇格．}
+本稿では FVM そのものが設計から除外される（SP-M）．
+代わりに {\FCCD} は HFE 上流点再構築，GFM ghost pressure jet，
+分相 PPE 楕円演算子 $D_h^{bf}$，粘性 stress-divergence 界面バンド
+という 4 役割 (R1)-(R4) の\textbf{共通面ジェットプリミティブ}として位置付けられる
+（詳細は §~\ref{sec:fccd_def}）．
+H-01 は 6 モード障害診断（F-1..F-6）のうち F-1/F-3/F-5 を主因と指摘したが，
+現設計ではこれら 3 モードは face-jet 契約の段階で構造的に回避される．
+
+\medskip
+\noindent\textbf{補足．}
+H-01 は SP-A \S1（face-centred upwind CCD 初版動機）および
+WIKI-T-046（Relation to H-01）で詳細に論じられている．
+本付録はその要約的保全であり，
+論文本体は (R1)-(R4) による構造的正当化のみで {\FCCD} の必要性を閉じる．
+
+% ═══════════════════════════════════════════════════════════════════════════════

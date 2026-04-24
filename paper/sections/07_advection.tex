@@ -25,9 +25,9 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§7.
 \begin{enumerate}
   \item \textbf{§~\ref{sec:cls_on_nonuniform}（非一様格子上の CLS 演算）：}
         DCCD フィルタの $\xi$ 空間適用と $\psi$ 補間，空間可変 Heaviside 幅を論じる．
-  \item \textbf{§~\ref{sec:advection_motivation}（移流項：DCCDによる「情報の選別」）：}
-        単なる数値散逸ではなく，高周波ノイズのみを狙い撃ちし物理的な界面構造を
-        無傷で保つ「スペクトルフィルタ」としての DCCD を設計する．
+  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 DCCD；運動量用 UCCD6）：}
+        CLS $\psi$ 移流は高周波ノイズを狙い撃ちする「スペクトルフィルタ」として DCCD を用い，
+        運動量 $(u,v)$ 移流は演算子内部散逸の UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）が担う．
   \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化）：}
         再初期化方程式の圧縮項を Dissipative CCD と Crank--Nicolson 法で離散化する．
   \item \textbf{§~\ref{sec:stability}（安定性制約）：}
@@ -94,7 +94,7 @@ $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 （詳細は §~\ref{sec:advection_dccd_design}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{移流項：DCCDによる「情報の選別」}
+\subsection{移流項：CLS $\psi$ 用 DCCD と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -320,7 +320,8 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 対象 & スキーム & 精度 & 根拠 \\
 \hline
 CLS 移流（$\psi$） & Dissipative CCD（§~\ref{sec:advection_motivation}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 同一ステンシル；一様 $\varepsilon_d^{\mathrm{adv}}$ でGibbs 振動抑制 \\
-CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 移流と同構成（陽解法） \\
+運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
+CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 移流と同構成（陽解法；非線形フラックス） \\
 CLS 圧縮（拡散部） & CCD-CN（§~\ref{sec:cls_compression}） & $\Ord{h^6}$ & 線形拡散部は A-stable \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\
 速度・圧力場ノイズ除去 & 散逸的 CCD 適応制御（§~\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\

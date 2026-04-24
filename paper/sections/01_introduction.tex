@@ -7,23 +7,42 @@
 % 【論文の芯】本稿を貫く単一の設計哲学
 % ─────────────────────────────────────────────────────────────────────────────
 
+\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing}--§~\ref{sec:levelset}）}]
+\small
+\begin{description}[leftmargin=6em, style=nextline, itemsep=1pt, topsep=2pt]
+  \item[$\phi$] 符号付き距離（SDF）に準ずるレベルセット関数（§~\ref{sec:ridge_eikonal}）．
+  \item[$\psi$] 平滑化ヘヴィサイド $H_\varepsilon(\phi) \in (0,1)$．CLS の保存対象（§~\ref{sec:cls_advection}）．
+  \item[$\varepsilon$] 界面遷移層の厚さパラメータ．$\varepsilon \propto h$ とスケールさせる（§~\ref{sec:cls_advection}）．
+  \item[CLS] Conservative Level Set．$\psi$ を保存量として移流する定式化（§~\ref{sec:levelset}）．
+  \item[PPE] 圧力 Poisson 方程式．分相定式化では各相で独立に解く（§~\ref{sec:pressure}）．
+  \item[BF] Balanced-Force 条件．表面張力と圧力勾配の離散整合（§~\ref{sec:balanced_force}）．
+\end{description}
+\end{tcolorbox}
+
 気液二相流の数値シミュレーションには多くの数値的困難が伴うが，
 それらのうち最も根本的かつ克服が難しいのが
-\textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である．
-従来の CSF（連続表面力）モデルでは，表面張力を体積力として近似するため
+\textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である~\cite{Popinet2009, Francois2006}．
+従来の CSF（連続表面力）モデル~\cite{Brackbill1992} では，表面張力を体積力として近似するため
 界面遷移層の厚さ $\varepsilon$ に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ の物理的誤差が残り，
-格子を細分化しても寄生流れの下限が消えない（§~\ref{sec:failure_modes}，§~\ref{sec:balanced_force}）．
+格子を細分化しても寄生流れの下限が消えない~\cite{Popinet2009}
+（§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
 \textbf{本稿の技術的中核はこの問題の根本的解決にある．}
-結合コンパクト差分法（CCD，$\Ord{h^6}$，第~\ref{sec:CCD}章以降）による高精度曲率計算と，
+結合コンパクト差分法（第~\ref{sec:CCD}章以降；
+CCD は 1 次・2 次微分を同時に陰的に解く $\Ord{h^6}$ 精度コンパクト法）
+による高精度曲率計算と，
 分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
 Balanced-Force 条件の離散化整合性を高精度に維持し，
 平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する
-（詳細は §~\ref{sec:ppe_discretization_choice}）．
+（詳細は §~\ref{sec:ppe_discretization_choice}：
+PPE 離散化で DC $k=3$ 反復と CCD 勾配を組み合わせ，
+BF 残差を機械精度近くまで押し下げる設計選択）．
 さらに Hermite 場延長法（HFE）を開発し，
 高密度比（$\rho_l/\rho_g > 5$）対応の分相 PPE 解法における
 界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した
-（詳細は §~\ref{sec:split_ppe_motivation}）．
+（詳細は §~\ref{sec:split_ppe_motivation}：
+分相 PPE は各相で定数密度 Poisson を独立に解き，
+界面で圧力ジャンプ条件により結合する高密度比向けの定式化）．
 
 本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
 \begin{description}
@@ -53,16 +72,15 @@ Balanced-Force 条件の離散化整合性を高精度に維持し，
 
 数値流体力学（CFD）を学んだ読者は，まず単相流（空気のみ，水のみ）の
 Navier--Stokes 方程式を扱うのが一般的である．
-\textbf{気液二相流}とは，気相（ガス）と液相（液体）が共存し，
+気液二相流とは，気相（ガス）と液相（液体）が共存し，
 その間に明確な界面を形成しながら運動する流体現象であり，
 気泡塔・核沸騰・波浪・噴霧燃焼など，工学・自然界に広く現れる重要な現象である．
 なぜ「2種類の流体が共存する」だけで，これほど困難が増すのか？
-その答えは一言でいえば \textbf{「界面の存在」} に尽きる．
+その答えは一言でいえば「界面の存在」に尽きる．
 
 \begin{table}[htbp]
 \centering
 \caption{単相流と気液二相流の本質的違い}
-\label{tab:single_vs_two_phase}
 \renewcommand{\arraystretch}{1.4}
 \begin{tabular}{lll}
 \hline
@@ -85,7 +103,7 @@ Navier--Stokes 方程式を扱うのが一般的である．
 図~\ref{fig:density_jump}に示すように，
 気液界面を挟んで密度と粘性が急激に変化する．
 数値計算では有限の格子上で計算するため，この不連続を直接扱うことはできない．
-界面を格子内の有限厚さの遷移層として\textbf{滑らかに近似}することで計算可能にするが，
+界面を格子内の有限厚さの遷移層として滑らかに近似することで計算可能にするが，
 その近似の仕方によって計算の安定性・精度・質量保存性が大きく変わる．
 
 \begin{figure}[htbp]
@@ -171,15 +189,10 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         密度・粘性が界面を挟んで不連続に変化する
         （$\rho_l/\rho_g \approx 1000$，$\mu_l/\mu_g \approx 100$）ため，
         界面位置を高精度かつ安定に追跡しなければならない．
-        標準的な Level Set 移流方程式 $\partial\phi/\partial t + \bu\cdot\bnabla\phi = 0$ は
-        \textbf{非保存形}であるため，数値積分誤差が体積損失として蓄積する
-        （第~\ref{sec:failure_modes}節，失敗例2参照）．
+        標準的な Level Set 移流方程式 $\partial\phi/\partial t + \bu\cdot\bnabla\phi = 0$~\cite{OsherSethian1988} は
+        非保存形であるため，数値積分誤差が体積損失として蓄積する~\cite{Sussman1999}．
         さらに移流スキームの数値拡散により界面プロファイルが「にじみ」，
-        曲率計算精度が低下する（同節，失敗例4参照）．
-
-        \textbf{→ 本稿の対処：} Conservative Level Set 法（CLS 法）による
-        質量（体積）の離散的保存性の向上，および Dissipative CCD スキームによる数値拡散の低減
-        （第~\ref{sec:levelset}章，第~\ref{sec:advection}章）．
+        曲率計算精度が低下する．
 
   \item \textbf{表面張力の正確な評価}：
         表面張力 $\sigma\kappa\hat{\bm n}$ は本来「界面上の面力（2次元面力）」であり，
@@ -187,42 +200,27 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
         曲率 $\kappa$ の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
         デルタ関数的な集中力をどう離散化するかが精度を決定する．
 
-        \textbf{→ 本稿の対処：}
-        曲率 $\kappa$ は CCD 法により滑らかな領域で高次精度に評価し（第~\ref{sec:CCD}章），
-        Balanced-Force 条件（§~\ref{sec:balanced_force}）により
-        滑らかな領域で圧力勾配と表面張力の離散化を高次に整合させる．
-
   \item \textbf{非圧縮条件の高精度維持}：
         速度場の発散をゼロに保つ圧力場を毎ステップ正確に求解する必要がある．
         単相流では均一係数のラプラシアン $\bnabla^2 p = \cdots$ であるが，
         二相流では可変係数 $\bnabla\cdot(1/\rho\,\bnabla p) = \cdots$ となり，
         界面をまたぐ密度比（$\rho_l/\rho_g \approx 1000$）が係数の急峻な変化を生み，
-        反復ソルバーの収束が著しく悪化する（第~\ref{sec:pressure}章）．
+        反復ソルバーの収束が著しく悪化する．
         さらにコロケート格子では圧力と速度の数値的デカップリング
-        （チェッカーボード不安定，第~\ref{sec:failure_modes}節失敗例3参照）が
-        追加の困難をもたらす．
-
-        \textbf{→ 本稿の対処：} 分相 PPE 解法と欠陥補正法（DC $k=3$）による
-        高密度比に強い圧力補正（第~\ref{sec:pressure}章），
-        DCCD 散逸（$\varepsilon_d = 1/4$，チェッカーボード抑制用；移流用は別値）によるチェッカーボードモードの内在的除去
-        （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}，各値の詳細は §~\ref{sec:algorithm}）．
+        （チェッカーボード不安定）が追加の困難をもたらす．
 
   \item \textbf{密度成層と寄生流れの安定処理}：
         重力と密度差による静水圧分布を正確に扱わないと，
-        静止すべき液滴の界面に沿って渦状の人工的速度場（寄生流れ，spurious currents）が発生する
-        （第~\ref{sec:failure_modes}節，失敗例1参照）．
+        静止すべき液滴の界面に沿って渦状の人工的速度場（寄生流れ，spurious currents）が発生する~\cite{Francois2006, Sussman2000}．
         寄生流れの根本原因は，運動量方程式において圧力勾配項 $-\bnabla p$ と
-        表面張力項 $\sigma\kappa\bnabla\psi$ に\textbf{異なる差分演算子}を用いることによる
+        表面張力項 $\sigma\kappa\bnabla\psi$ に異なる差分演算子を用いることによる
         離散化の不整合である：連続体レベルで両者が釣り合っていても，
         離散レベルで $\Ord{h^2}$ の不整合誤差が体積力として残り，
-        人工的な速度場を駆動する（§~\ref{sec:balanced_force} 参照）．
-
-        \textbf{→ 本稿の対処：}
-        CCD 法（第~\ref{sec:CCD}章）による滑らかな領域での高次曲率計算と
-        CCD 勾配による Balanced-Force 条件（§~\ref{sec:balanced_force}）により，
-        $\bnabla p$ と $\kappa\bnabla\psi$ を\textbf{同一の CCD 演算子}で評価し，
-        数値離散化誤差成分を CSF モデル誤差が律速する水準まで低減する．
+        人工的な速度場を駆動する．
 \end{enumerate}
+
+各困難の具体的な発現形態は次節の失敗例 1--4（§~\ref{sec:failure_modes}）に対応し，
+本稿の対処方針は同節でまとめて提示する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{二相流数値計算の典型的失敗例}
@@ -231,51 +229,68 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 
 上記の困難を軽視すると，計算は「動く」が物理的に意味のない結果を出力する．
 学部生が実装する際に最もよく遭遇する4つの失敗例を示す．
+以下の失敗例 1--4 はそれぞれ §~\ref{sec:challenges} の困難 4（寄生流れ）・
+困難 1（質量損失）・困難 3（チェッカーボード）・困難 1（にじみ）に対応し，
+各例の末尾に本稿の対処を明示する．
 
 \paragraph{失敗例1：寄生流れ（Spurious Currents）}
-\textbf{症状：} 静止しているはずの液滴が，界面に沿って渦状の速度場を持つ．
+\subparagraph{症状.}静止しているはずの液滴が，界面に沿って渦状の速度場を持つ．
 速度の大きさは表面張力に比例して大きくなる．
 
-\textbf{原因：} 曲率 $\kappa$ の計算誤差が表面張力項 $\sigma\kappa\bnabla\psi$ に誤差を生じさせる．
+\subparagraph{原因.}曲率 $\kappa$ の計算誤差が表面張力項 $\sigma\kappa\bnabla\psi$ に誤差を生じさせる．
 この誤差は圧力場と速度場を通じてフィードバックループを形成し，数値的な「流れ」として固定化する．
 具体的には，``圧力ジャンプ条件 $[p]=\sigma\kappa$'' を離散的に正確に満足しないために発生する．
 
-\textbf{本稿の対処：}
+\subparagraph{本稿の対処.}
 CCD 法による滑らかな領域での高精度な $\kappa$ 計算と
 Balanced-Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の CCD 演算子を使用）により
 寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
 
 \paragraph{失敗例2：質量損失（Mass Loss）}
-\textbf{症状：} 時間が経つにつれて液滴が小さくなり，最終的に消える．
+\subparagraph{症状.}時間が経つにつれて液滴が小さくなり，最終的に消える．
 
-\textbf{原因：} 標準的な Level Set 法では，移流方程式
+\subparagraph{原因.}標準的な Level Set 法では，移流方程式
 $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 保存形ではないため，数値積分誤差が体積損失として蓄積する．
-再初期化の不適切な実装も体積を変化させる．
+再初期化の過程で $\phi=0$ 等値面が微小移動することも体積を変化させる
+（定量化は §~\ref{sec:why_cls}）．
 
-\textbf{本稿の対処：} Conservative Level Set 法（CLS）により，
+\subparagraph{本稿の対処.}Conservative Level Set 法（CLS）により，
 質量（体積）の離散的保存性を向上させる．
 
 \paragraph{失敗例3：圧力--速度のデカップリング（Checkerboard 不安定）}
-\textbf{症状：} 圧力場が空間的に激しく振動し（チェッカーボードパターン），
+\subparagraph{症状.}圧力場が空間的に激しく振動し（チェッカーボードパターン），
 速度場が非物理的な振動を示す．
 
-\textbf{原因：} コロケート格子において，中心差分による圧力勾配の評価では
+\subparagraph{原因.}コロケート格子において，中心差分による圧力勾配の評価では
 隣り合う格子点の圧力が連立されないため（1つ飛びの点しか参照しない），
-高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する．
-周期 $2\Delta x$ のチェッカーボードモード $p_j = P_0(-1)^j$ に対して
-中心差分がゼロ勾配を返すことは代数的に示される（付録~\ref{app:checkerboard_mode}）．
+高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する~\cite{RhieChow1983}．
+具体的に周期 $2\Delta x$ のチェッカーボードモード $p_j = P_0(-1)^j$ に対して，
+中心差分は
+$(p_{j+1}-p_{j-1})/(2\Delta x) = P_0\bigl[(-1)^{j+1}-(-1)^{j-1}\bigr]/(2\Delta x) = 0$
+となりゼロ勾配を返す．より詳細な固有値解析は付録~\ref{app:checkerboard_mode} を参照．
 
-\noindent\textbf{本稿の対処：} Dissipative CCD のスペクトル散逸（$\varepsilon_d = 1/4$）により，
+\subparagraph{本稿の対処.} Dissipative CCD のスペクトル散逸（$\varepsilon_d = 1/4$）により，
 $2\Delta x$ チェッカーボードモードをスキーム内部で除去する
 （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling} 参照）．
 
 \paragraph{失敗例4：界面のにじみ（Interface Smearing）}
-\textbf{症状：} 時間とともに界面が広がり，密度・粘性の遷移領域が厚くなっていく．
+\subparagraph{症状.}時間とともに界面が広がり，密度・粘性の遷移領域が厚くなっていく．
 
-\textbf{原因：} 移流スキームの数値拡散（numerical diffusion）により，
-界面指標 $\psi$ のプロファイルが徐々にぼやける．
+\subparagraph{原因.}移流スキームの数値拡散（numerical diffusion）により，
+界面指標 $\psi$ のプロファイルが徐々にぼやける~\cite{OlssonKreiss2005}．
 特に低次精度スキーム（1次風上差分など）では顕著．
 
-\textbf{本稿の対処：} Dissipative CCD（散逸的 CCD；§~\ref{sec:advection_motivation}）と
+\subparagraph{本稿の対処.}Dissipative CCD（散逸的 CCD；§~\ref{sec:advection_motivation}）と
 CLS 再初期化の定期的適用により，界面の鮮鋭さを維持する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection*{本章と次章の繋がり}
+% ─────────────────────────────────────────────────────────────────────────────
+
+以上 4 つの失敗例は，いずれも連続論では成立する保存則・整合条件が
+離散化で崩れることに起因する．これらを統一的に扱うための基盤として，
+第~\ref{sec:governing}章では支配方程式（Navier--Stokes と界面移流）を
+One-Fluid 形で与え，応力ジャンプ条件の CSF 体積力への吸収機構を示す．
+第~\ref{sec:levelset}章では CLS 法による $\phi \to \psi = H_\varepsilon(\phi)$
+平滑化変数の導入と保存形移流の定式化を述べ，以降の離散化設計に接続する．

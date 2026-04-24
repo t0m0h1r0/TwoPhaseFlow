@@ -131,10 +131,18 @@ FCCD（§\ref{sec:fccd_def}） & \textbf{面} & 風上構造 & $\Ord{h^4}$ \\
 \end{center}
 
 \noindent
+本稿では UCCD6 が bulk 移流の既定として DCCD を置換する．
+$\omega_2^8$ の選択的 Nyquist 散逸は DCCD の一様減衰 $H(\pi)=1-4\varepsilon_d$ より
+dispersion preservation に優り，bulk 高周波の保持性で上位に位置する．
+DCCD は UCCD6 の動機付けを成す教育的前段（§\ref{sec:dccd_derivation}）として
+および CLS 再初期化圧縮項（§\ref{sec:reinit}，非線形フラックス散逸子）として保持される．
+
+\noindent
 UCCD6 は FCCD と\textbf{直交補完}の関係にある：
-FCCD は Balanced-Force H-01（§\ref{sec:balanced_force}）を面配置で救済し，
-UCCD6 は節点配置のまま演算子内部散逸でモーメント移流の Gibbs を抑制する．
-UCCD6 はモーメント移流（§\ref{sec:advection}）で主に用いられ，
-CN と組み合わせて§\ref{sec:time_int} の Level-2/3 時間積分スタックに組み込まれる．
+FCCD の $\Ord{H^4}$ は界面消費点（(R1)-(R4)；§\ref{sec:fccd_def}）のみに展開され，
+バルク演算子は節点 CCD $\Ord{h^6}$ を維持する（設計選択であり精度の妥協ではない）．
+UCCD6 は節点配置のまま演算子内部散逸でモーメント移流の Gibbs を抑制し，
+Level-1 検証・Level-2 製品・Level-3 DNS すべての bulk advection 既定として
+§\ref{sec:time_int} の時間積分スタックに組み込まれる．
 
 % ═══════════════════════════════════════════════════════════════════════════════
