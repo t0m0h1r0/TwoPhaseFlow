@@ -117,9 +117,12 @@ FCCD 面フラックスで保存形を評価する：
 \begin{equation}
   F^{(k,j),\text{cons}}_{f_{i-1/2}}
   = (u^{(k)} u^{(j)})_f
-  = \bigl(\mathbf{P}_f(u^{(k)} u^{(j)})\bigr)_{i-1/2},
+  = \bigl(\mathbf{P}_f(u^{(k)} u^{(j)})\bigr)_{i-1/2}
+  \quad\text{（節点積 $u^{(k)}_i u^{(j)}_i$ を先に作り，単一の $\mathbf{P}_f$ で面に補間）},
   \label{eq:fccd_adv_flux_cons}
 \end{equation}
+面で 2 回分離補間する $(\mathbf{P}_f u^{(k)})(\mathbf{P}_f u^{(j)})$ は
+非線形積の補間誤差が $\Ord{H^2}$ フロアに落ちるため採用しない．
 節点ダイバージェンスで運動量更新を閉じる：
 \begin{equation}
   [\nabla\cdot F^{(j)}]_i
@@ -159,6 +162,9 @@ BF 残差は
 \end{theorem}
 
 \begin{proof}[証明（要旨）]
+本定理は PPE が $[p]=\sigma\kappa$ を\textbf{有限誤差 $\Ord{H^4}$ 内で解く}
+（すなわち PPE 残差 $\|G_h p - f_\sigma\|_\infty = \Ord{H^4}$；
+\S\ref{sec:split_ppe_pressure_jump_formulation}）ことを仮定する．
 $\mathbf{u}\equiv 0$ で保存形・非保存形・スキュー対称形の 3 種の対流面
 フラックス（\eqref{eq:fccd_adv_flux_cons}
 \eqref{eq:fccd_adv_flux_skew} および非保存形）はいずれも

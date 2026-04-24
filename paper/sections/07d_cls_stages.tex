@@ -58,7 +58,7 @@ $\varepsilon$ はシミュレーション全体で固定（変更すると $\kap
 \hline
 Stage & 操作 & 要件 \\
 \hline
-A & TVD-RK3 保存形移流 & WENO5 面フラックス，発散フリー $\mathbf{u}^n$ \\
+A & TVD-RK3 保存形移流 & WENO5 面フラックス + DCCD スペクトル散逸（\S\ref{sec:cls_advection}），発散フリー $\mathbf{u}^n$ \\
 B & 移流後 $\psi(1-\psi)$ 補正 & 任意（長時間計算で有用）\\
 C & $\psi\to\phi$ 写像 & artanh 前 $\psi$ クランプ \\
 D & narrow-band 再初期化 & $|\phi|\le W=5\varepsilon$，pseudo-$\tau$ は $\Delta t$ と独立 \\
@@ -74,8 +74,10 @@ F & 再初期化後 $\psi(1-\psi)$ 補正 & 必須（再初期化後必ず）\\
   \psi^{(2)} &= \tfrac{3}{4}\psi^n + \tfrac{1}{4}\bigl(\psi^{(1)} + \Delta t\,\mathcal{L}^{(1)}\bigr), \label{eq:cls_rk3_2}\\
   \psi^{n+1} &= \tfrac{1}{3}\psi^n + \tfrac{2}{3}\bigl(\psi^{(2)} + \Delta t\,\mathcal{L}^{(2)}\bigr). \label{eq:cls_rk3_3}
 \end{align}
-$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は WENO5 面フラックス．
-CCD は $\psi$ に適用禁止（\S\ref{sec:scheme_per_variable}）．
+$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は
+WENO5 面フラックス（Jiang--Shu \cite{JiangShu1996}）に DCCD スペクトル散逸を合成した
+ハイブリッド演算子（\S\ref{sec:cls_advection}，変数別割り当て表 \S\ref{sec:scheme_per_variable}）．
+CCD 単独は $\psi$ に適用禁止（\S\ref{sec:scheme_per_variable}）．
 
 \noindent\textbf{Stage D — Narrow-band 再初期化}：
 全域 Eikonal 反復は $\mathcal{O}(N)$ 冗長．
