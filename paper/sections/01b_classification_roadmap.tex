@@ -64,12 +64,15 @@ Fran{\c{c}}ois ら~\cite{Francois2006} が VOF 枠組みで体系化した．
 寄生流れの物理的下限として残留し，格子精緻化だけでは本質的に除去できない
 （§~\ref{sec:balanced_force} に詳述）．
 
-第二は Extension PDE（Aslam 2004）により圧力場を界面越しに滑らかに延長し，
+第二は Extension PDE~\cite{Aslam2004} により圧力場を界面越しに滑らかに延長し，
 CCD ステンシルが界面近傍でも滑らかな場を参照できるようにするアプローチである．
-Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set の組み合わせで
+Desjardins ら~\cite{Desjardins2008} は Ghost-Fluid Method（GFM）と高次 Level Set の組み合わせで
 密度不連続を界面で鋭く扱う手法を示しており，界面越し場延長の有効性を裏付けている．
 
-本稿は CCD 高次精度との整合を重視し，以下の 3 つの柱で寄生流れを抑制する：
+本稿は第一（BF）と第二（界面越し場延長）の両アプローチを統合する立場をとり，
+BF の離散整合条件を 7 原則 P-1..P-7（§~\ref{sec:bf_seven_principles}）として系統化した上で，
+GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extension} で定式化）を CCD 高次精度の枠内で実装する．
+具体的には以下の 3 つの柱で寄生流れを抑制する：
 \begin{enumerate}[noitemsep]
   \item \textbf{CCD $\Ord{h^6}$ 微分演算子}：
         同一3点ステンシルで $\Ord{h^6}$ の1・2階微分を提供し，
@@ -89,13 +92,13 @@ Desjardins ら~\cite{Desjardins2008} は Ghost Fluid Method と高次 Level Set 
 \end{enumerate}
 さらに，高密度比対応の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}，第~\ref{sec:interface_crossing}節で実証）の基盤技術として，
 Hermite 場延長法（HFE, §~\ref{sec:field_extension}）を開発した．
-HFE は Extension PDE（Aslam 2004）の定常解を CCD の Hermite データ $(f,f',f'')$ から
+HFE は Extension PDE~\cite{Aslam2004} の定常解を CCD の Hermite データ $(f,f',f'')$ から
 仮想時間前進を経由せず直接構成し，界面越し場延長精度を
 $\Ord{h}$（風上差分）から $\Ord{h^6}$ へ引き上げる．
 以上により，簡潔かつ数学的に整合した定式化を実現する．
 
 なお，寄生流れ低減に対しては Height-Function 曲率推定~\cite{Popinet2009}%
-（VOF 法で $\Ord{h^2}$ 以上を実現），CLSVOF 法~\cite{Sussman2000}，
+（VOF 法で $\Ord{h^2}$ の曲率精度を達成），CLSVOF 法~\cite{Sussman2000}，
 PROST 法~\cite{Renardy2002}%
 等の手法も提案されている．
 本研究はレベルセット法の枠組み内での高精度化を目指す点でこれらとは異なるアプローチを採る．
@@ -163,11 +166,10 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
    & 保存形界面追跡，再初期化方程式，曲率数値計算
    & 2 \\
 4  & CCD 法
-   & 6次精度コンパクト差分，係数導出，DCCD フィルタ（UCCD6 への教育的前段），UCCD6 演算子内部散逸（bulk 移流既定）
+   & 6 次精度コンパクト差分，係数導出，DCCD，UCCD6
    & --- \\
 5  & 時間積分
-   & \raggedright CLS：TVD-RK3（$\Ord{\Delta t^3}$）；
-     NS：AB2+IPC（$\Ord{\Delta t^2}$），CN 粘性；時間刻み制約
+   & CLS は TVD-RK3，NS は AB2+IPC と CN 粘性，時間刻み制約
    & 2, 3, 4 \\
 6  & 界面適合格子
    & レベルセット連動格子生成，メトリック係数，ALE 簡略化
@@ -211,7 +213,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
         単相 Navier--Stokes 方程式の基礎，Projection 法による圧力--速度分離，有限差分法の基本概念
   \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
         One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
-  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}--\ref{sec:pressure}章）：
+  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:grid}, \ref{sec:collocate}, \ref{sec:ppe_solve} 章；表~\ref{tab:chapter_overview} の第 4 章・第 6 章・第 8--9 章に相当）：
         CCD 法，界面適合格子，Rhie--Chow 補正，分相 PPE による圧力求解
   \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
         7ステップ離散計算フローの統合実装
@@ -295,10 +297,6 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
   (s7.east) -- ++(5mm, 0)
   |- node[lbl, near start, right, xshift=1mm]{\small $t^{n+1} \to t^{n+2}$}
   (s1.east);
-
-%% ── 離散詳細は第9章の注記 ────────────────────────────────────────────────
-\node[chap, below=6mm of s7, xshift=25mm]
-  {\textup{（各ステップの完全な離散方程式は第~\ref{sec:algorithm}章参照）}};
 
 \end{tikzpicture}
 \caption{1タイムステップの処理フロー（概念図）．

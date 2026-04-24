@@ -1,6 +1,6 @@
 % paper/sections/07e_viscous_3layer.tex
 %
-% §7.6  粘性項：3 層アーキテクチャと μ∇²u 禁止（SP-K §3–§5）
+% §7.6  粘性項：3 層アーキテクチャと μ∇²u 禁止
 %        変粘性二相流で μ∇²u が物理的に誤りである理由と,
 %        Layer A/B/C 分離による正しい離散化.
 %
@@ -9,7 +9,7 @@
 \label{sec:viscous_3layer}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-SP-K \cite{SPK} は変粘性二相流の粘性項を
+本節では変粘性二相流の粘性項を
 \textbf{Layer A（速度勾配生成）・Layer B（応力テンソル組立）・
 Layer C（保存形応力ダイバージェンス）}の 3 層に分解し，
 各層の独立性を維持することで
@@ -141,7 +141,7 @@ bulk（界面から遠い）& CCD & 保存形 \\
 \end{tabular}
 \end{center}
 
-\noindent\textbf{Phi/Psi-gated bulk Laplacian ショートカット}（SP-K §8）：
+\noindent\textbf{Phi/Psi-gated bulk Laplacian ショートカット}：
 bulk では $\bnabla\mu=0$ のため \eqref{eq:viscous_exact_decomposition} は
 $\mu\nabla^2\mathbf{u}$ に簡約する．
 $\psi$ による領域分割で

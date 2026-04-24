@@ -1,6 +1,6 @@
 % paper/sections/07_0_scheme_per_variable.tex
 %
-% §7.0  変数別スキーム方針（SP-L §3）
+% §7.0  変数別スキーム方針
 %        §7 冒頭に配置し, 後続の §7.1 (CLS 移流) / §7.3 (FCCD 移流) /
 %        §7.6 (粘性 3 層) の選択根拠を先取りする．
 %
@@ -9,7 +9,7 @@
 \label{sec:scheme_per_variable}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-SP-L \cite{SPL} §3 の中心的主張は「差分演算子は\textbf{場の特性}に合わせて
+本節の中心的主張は「差分演算子は\textbf{場の特性}に合わせて
 選択せよ」である．
 CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$ 滑らかである
 仮定に依存するため，$C^0$ kink・$\delta$ 関数・step profile を持つ変数に
@@ -32,7 +32,7 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
 \end{tabular}
 \end{center}
 
-\noindent\textbf{設計原則（SP-L §3）}：
+\noindent\textbf{設計原則}：
 \begin{itemize}
   \item \textbf{$\psi$ に CCD を適用してはならない．}
         tanh プロファイルを CCD で微分すると急勾配帯の曲率が増幅され，
@@ -55,10 +55,10 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
   \item \textbf{界面帯の速度は低次でよい．}
         $\nabla u$ の kink を CCD stencil が跨ぐと $\mathcal{O}(1)$ 振動．
         Definition $|\phi|\le 3h$ or phase-indicator mismatch で帯を同定し，
-        2 次中心 / 2 次片側に落とす（SP-K §6）．
+        2 次中心 / 2 次片側に落とす（\S\ref{sec:viscous_3layer}）．
 \end{itemize}
 
-\noindent\textbf{速度-PPE 整合性}（SP-L §2）：
+\noindent\textbf{速度-PPE 整合性}：
 CLS 移流（Stage A, \S\ref{sec:cls_stages}）と運動量移流
 （\S\ref{sec:fccd_advection}）は\textbf{直前の PPE 投影済み $\mathbf{u}^n$}
 を用いる．
@@ -73,9 +73,9 @@ PPE RHS の不整合を同時に引き起こす．
 
 \noindent\textbf{本章の構成}：
 \S\ref{sec:advection_motivation} で CLS 移流 DCCD（既存），
-\S\ref{sec:fccd_advection} で FCCD 移流 Option B/C（SP-D 新規），
+\S\ref{sec:fccd_advection} で FCCD 移流 Option B/C，
 \S\ref{sec:cls_compression} で CLS 再初期化（既存），
-\S\ref{sec:cls_stages} で CLS A--F 6 段階（SP-L §5--§6 新規），
-\S\ref{sec:viscous_3layer} で粘性 3 層アーキテクチャ（SP-K §3--§5 新規）．
+\S\ref{sec:cls_stages} で CLS A--F 6 段階，
+\S\ref{sec:viscous_3layer} で粘性 3 層アーキテクチャ．
 
 % ═══════════════════════════════════════════════════════════════════════════════

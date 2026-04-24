@@ -42,8 +42,8 @@ FMM/FSM/Godunov Hamilton--Jacobi の各再初期化は，
 幾何学的に見ればこのトポロジー硬直性を反復強制する手続きである．
 §~\ref{sec:levelset} で導入する Ridge--Eikonal ハイブリッドは，
 この硬直性を緩め界面の融合・分裂に必要な自由度を
-Gaussian 補助場 $\xiridge$ で回復しつつ，Eikonal 由来の距離精度を保つ
-設計である．
+Gaussian 補助場（§~\ref{sec:ridge_eikonal} で定義）により回復しつつ，
+Eikonal 由来の距離精度を保つ設計である．
 \end{tcolorbox}
 
 \begin{tcolorbox}[defbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
@@ -82,7 +82,9 @@ $[p] < 0$ すなわち $p_\text{liq} > p_\text{gas}$
 （液滴内部の圧力が外部より高い）は Laplace 圧力の物理と整合 $\checkmark$
 
 $|[p]| = \sigma/R$ を「ラプラス圧力の大きさ」と呼ぶが，符号付き定義
-$[p] = \sigma\kappa$ を正式表記として用いる．
+$[p] = \sigma\kappa$ を正式表記として用いる
+（本 tcolorbox の数式は有次元形；無次元化と *-付き表記は §~\ref{sec:nondim}，
+無次元形は式~\eqref{eq:young_laplace_jump}）．
 \end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -163,7 +165,10 @@ Two-Fluid 形式は各相に個別の方程式を解き，界面追跡（Front T
         $[\bm{\tau}\cdot\hat{\bm n}]_\Gamma = -\sigma\kappa\hat{\bm n}$ が，
         Heaviside 分布の微分則による体積積分化で
         $\bm{f}_\sigma = -[\bm{\tau}\cdot\hat{\bm n}]_\Gamma\,\delta_s = \sigma\kappa\hat{\bm n}\,\delta_s$
-        として運動量方程式右辺に吸収された（§~\ref{sec:csf}；詳細は付録~\ref{app:onefluid_1d}）．
+        として運動量方程式右辺に吸収された．
+        弱形式等価性 $\int_\Omega\bm{f}_\sigma\!\cdot\!\bm{v}\,dV = \int_\Gamma\sigma\kappa\hat{\bm n}\!\cdot\!\bm{v}\,dA$
+        が任意のテスト関数 $\bm{v}$ で成立することにより，面積分から体積積分への変換が厳密に正当化される
+        （§~\ref{sec:csf}；詳細は付録~\ref{app:onefluid_1d}）．
   \item 界面の速度連続条件~\eqref{eq:jump_vel} は，
         全領域で同一の速度場 $\bu$ を解くことで自動的に満たされる．
 \end{enumerate}
@@ -174,7 +179,7 @@ Two-Fluid 形式は各相に個別の方程式を解き，界面追跡（Front T
 上記の統合の数学的正当性は，1次元拡散方程式による簡約モデルで厳密に確認できる．
 Two-Fluid 系（各相の方程式 ＋ 応力ジャンプ条件）と，デルタ関数的な界面力項を加えた
 One-Fluid 方程式は，弱形式において等価である．
-この等価性により，界面条件が CSF 体積力項に「吸収」される仕組みが定量的に示される（詳細は付録~\ref{app:onefluid_1d} 参照）．
+この等価性により，界面条件が CSF 体積力項（§~\ref{sec:csf}）に「吸収」される仕組みが定量的に示される（詳細は付録~\ref{app:onefluid_1d} 参照）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{One-Fluid 定式化と非圧縮条件}

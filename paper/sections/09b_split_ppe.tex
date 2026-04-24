@@ -110,13 +110,13 @@ $\bnabla(\delta p)$（Corrector ステップ）が界面を横切る前に，
 CCD ステンシルが不連続値に触れることを防止する．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{純 FCCD 分相 PPE アーキテクチャ（SP-M 全量取り込み）}
+\subsubsection{純 FCCD 分相 PPE アーキテクチャ}
 \label{sec:pure_fccd_split_ppe}
 % ─────────────────────────────────────────────────────────────────────────────
 
-SP-M \cite{SPM} は FVM の制御体積保存を離散不変量として放棄し，
+本節の純 FCCD 分相 PPE は FVM の制御体積保存を離散不変量として放棄し，
 すべての空間演算子を FCCD / HFE / GFM の\textbf{単一高次言語}に統一する
-DNS アーキテクチャを提案する．質量保存は
+DNS アーキテクチャを採る．質量保存は
 $\Ord{\Delta x^4}$--$\Ord{\Delta x^6}$ の漸近的な高次性として扱われ，
 制御体積恒等式としては保証されない．
 
@@ -223,7 +223,7 @@ $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
   \qquad S_{q,i} = \frac{1}{\Delta t}\,(D_h^\FCCD \mathbf{u}^*)_i
   \label{eq:split_ppe_compatibility}
 \end{equation}
-を満たす必要がある．SP-M \cite{SPM} Phase 3 の運用：
+を満たす必要がある．本稿の運用：
 GMRES 前に $\{S_{q,i}\}_{i\in\Omega_q}$ の平均をマスク別に減算．
 \textbf{相別ゲージピン}を各相に 1 点ずつ（計 2 点）置き，
 零モードを除去する．
@@ -246,7 +246,7 @@ GMRES のウォームスタートには$\tilde p$のみを渡す．
 \label{sec:split_ppe_pressure_jump_formulation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-SP-M \cite{SPM} Phase 2 の推奨：CSF 体積力を使用せず，
+本形式の推奨：CSF 体積力を使用せず，
 $[p]_\Gamma=\sigma\kappa$ を PPE の直接境界条件として課す．
 運動量方程式の表面張力項は\textbf{ゼロ}：
 \begin{equation}
@@ -274,9 +274,9 @@ $[\,\cdot\,]_\Gamma=\sigma\kappa$ を表現する鋭いジャンプ項．
 \end{itemize}
 \texttt{pressure\_jump} は混合密度モデルや GFM 無しで使うと
 シルエント・フォールバックを生むため，
-\textbf{整合性ガード}（SP-M Phase 7）で上記 3 設定を強制．
+\textbf{整合性ガード}で上記 3 設定を強制．
 
-\noindent\textbf{ランタイム診断}（SP-M Phase 8）：
+\noindent\textbf{ランタイム診断}：
 \begin{center}
 \begin{tabular}{@{}ll@{}}
 \hline
