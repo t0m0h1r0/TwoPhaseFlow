@@ -1,13 +1,13 @@
 % paper/sections/10_3_level_selection.tex
 %
-% §10.3  Level 1/2/3 選択ロジック（SP-I §3）
+% §10.3  Level 1/2/3 選択ロジック
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Level 1/2/3 選択ロジックとコスト-精度トレードオフ}
 \label{sec:level_selection}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-SP-I \cite{SPI} §3 で時間積分設計を Level 1--3 の連続スペクトルに整理した
+§\ref{sec:time_int} で時間積分設計を Level 1--3 の連続スペクトルに整理した
 （§\ref{sec:time_level1}--\ref{sec:time_level3}）．
 本節では 1 タイムステップ内で Level を切替えるトリガー，
 Level 間コスト比率，および適用領域の棲み分けを示す．
@@ -117,8 +117,7 @@ Level 1（SSPRK3 全陽的）は\textbf{実運用ではなく}検証用途とし
         （歴史的背景 H-01 は付録~\ref{sec:fccd_motivation_h01}）．
 \end{itemize}
 
-Level 1 で得た精度指標を\textbf{Level 2 の設計目標}として引き継ぐ
-（SP-I §5, \cite{SPI}）．
+Level 1 で得た精度指標を\textbf{Level 2 の設計目標}として引き継ぐ．
 Level 2 の Crank--Nicolson + 半陰的 ST は Level 1 の $\Ord{h^k}$ を
 時間刻み制約から切り離した上で保持することを設計要件とする．
 
@@ -165,7 +164,7 @@ Level 3 の外殻 JFNK 反復は 1 ステップあたり 5--20 Krylov 反復 + 3
 ステップを要するが，$\Delta t_\text{L3}/\Delta t_\text{L2}$ が
 $50\text{--}200\times$ まで拡大可能なため実効効率が上回る．
 本稿では Level 3 の具体構成（Radau IIA の stage 構成，JFNK 前処理戦略）は
-§\ref{sec:time_level3} にとどめ，詳細実装は SP-I §3.3 \cite{SPI} を参照とする．
+§\ref{sec:time_level3} にとどめ，本稿の対象外とする．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Level 選択マトリクス（物理 → 推奨）}
@@ -192,7 +191,6 @@ Zalesak 型（硬幾何）& $\{1\}$ & N/A & L1 & CLS 単独検証 \\
 \verb|time_integration.level: 1|\,\verb|2|\,\verb|3|
 を明示指定し，ランタイムトリガー（表~\ref{tab:level_trigger}）は
 警告のみ発行する．
-Level の自動昇格は収束性と再現性を損なうため既定では無効化する
-（SP-I §6, \cite{SPI}）．
+Level の自動昇格は収束性と再現性を損なうため既定では無効化する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
