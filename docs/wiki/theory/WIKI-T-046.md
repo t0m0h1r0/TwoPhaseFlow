@@ -33,6 +33,19 @@ compiled_at: "2026-04-20"
 
 FCCD is a **face-centred, upwind-limited reformulation of the Chu & Fan (1998) Combined Compact Difference** operator. Primary derivatives are evaluated at cell faces $x_{i-1/2}$ using only the two immediate upwind cell values $\{u_{i-1}, u_i\}$, and fourth-order spatial accuracy is obtained by algebraically cancelling the leading third-derivative truncation term via the coefficient $\lambda = 1/24$.
 
+### Primary motivation: common face-jet primitive (R1)–(R4)
+
+In the pure-FCCD design of the current paper (SP-M), FCCD supplies a single **face-jet primitive** $\mathcal{J}_f(u) = (u_f,\ u'_f,\ u''_f)$ at $\mathcal{O}(\Delta x^4)$ that is reused by four co-located operators of the two-phase solver:
+
+| Role | Operator | Consumption |
+|---|---|---|
+| (R1) | HFE upwind advection | one-sided face values $u_f$ for $\psi$ (and $\phi$ on cubic-logit coords) |
+| (R2) | GFM ghost-pressure jet | face-averaged $\llbracket p \rrbracket$, $\llbracket \partial_n p \rrbracket$ rows |
+| (R3) | Phase-separated PPE $D_h^{bf} = -(G_h^{bf})^*$ | face-locus gradient $G_h^{bf}$ and its adjoint divergence |
+| (R4) | Viscous stress-divergence interface band | face-locus $\nabla\cdot(\mu[\nabla\bm u + (\nabla\bm u)^\top])$ in the 3-layer Hermite band |
+
+All four roles share the **same two-cell upwind footprint** and the same $\mathcal{O}(\Delta x^4)$ truncation, making "one primitive, four operators" the design statement of SP-A / SP-M.
+
 The full derivation is in [SP-A](../../memo/short_paper/SP-A_face_centered_upwind_ccd.md). This entry summarises the key equations and positions FCCD within the project’s existing CCD stack.
 
 For the executable PoC equation set, see [WIKI-T-053](WIKI-T-053.md): it interprets the $u'''_f$ correction below as $(q_i-q_{i-1})/\Delta x$ with $q_i=(D_{\mathrm{CCD}}^{(2)}u)_i$, matching the paper's CCD derivation method and avoiding a new third-derivative unknown.
@@ -70,17 +83,17 @@ $$
 
 **Accuracy trade-off.** FCCD sacrifices two orders relative to the O(h^6) interior CCD, but gains strict upwind causality and face-locus alignment. The latter is what matters for Balanced-Force consistency on non-uniform grids.
 
-## Relation to H-01 (WIKI-E-030)
+## Historical context: H-01 diagnosis
 
-[WIKI-E-030](../experiment/WIKI-E-030.md) + [WIKI-T-045](WIKI-T-045.md) diagnosed the late blow-up as a mismatch between the FVM face gradient $\mathcal{G}^{\text{adj}}$ (used for velocity projection, [WIKI-T-044](WIKI-T-044.md)) and the node-centred CCD gradient (used for $\sigma \kappa \nabla \psi$). The BF residual measured at step 1 of Exp-1 was $|\text{BF}_\text{res}| \approx 884$.
+*Historical note — see paper appendix §B.4 for the archived case study.*
 
-FCCD places both gradients on the face locus, reducing the residual to the FCCD truncation order:
+[WIKI-E-030](../experiment/WIKI-E-030.md) + [WIKI-T-045](WIKI-T-045.md) diagnosed an earlier-generation late blow-up as a mismatch between the FVM face gradient $\mathcal{G}^{\text{adj}}$ (used for velocity projection, [WIKI-T-044](WIKI-T-044.md)) and the node-centred CCD gradient (used for $\sigma \kappa \nabla \psi$). The BF residual measured at step 1 of Exp-1 was $|\text{BF}_\text{res}| \approx 884$, and FCCD on a shared face locus reduced it to the truncation order
 
 $$
-\text{BF}_\text{res}^{\text{FCCD}} \;=\; \mathcal{O}(\Delta x^4) \quad\text{vs.}\quad \text{current }\mathcal{O}(\Delta x^2).
+\text{BF}_\text{res}^{\text{FCCD}} \;=\; \mathcal{O}(\Delta x^4) \quad\text{vs.}\quad \text{earlier }\mathcal{O}(\Delta x^2).
 $$
 
-This is the candidate remediation recorded as the open action in [ACTIVE_LEDGER](../../02_ACTIVE_LEDGER.md) CHK-152.
+**Current status (SP-M).** Under the pure-FCCD design of the paper, the FVM auxiliary $\mathcal{G}^{\text{adj}}$ is retired entirely and the face-jet primitive supplies the pressure gradient directly; the metric inconsistency cannot arise structurally. H-01 is therefore preserved as a historical case study rather than as the primary motivation. The living motivation is the (R1)–(R4) common-primitive contract above. The original remediation action recorded in [ACTIVE_LEDGER](../../02_ACTIVE_LEDGER.md) CHK-152 is subsumed by the pure-FCCD adoption in the current paper.
 
 ## Open questions for PoC
 
