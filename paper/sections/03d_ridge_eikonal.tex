@@ -12,6 +12,25 @@
 
 \textbf{主担当 SP：} SP-B（ハイブリッド枠組）\cite{SPB}，SP-E（非一様格子拡張）\cite{SPE}．
 
+\begin{tcolorbox}[warnbox, title={§~\ref{sec:ridge_eikonal} 読解のための前提知識}]
+本節は第~\ref{sec:levelset}章の締めくくりとして，
+トポロジー変化の連続化という他章に依存する高度な話題を扱う．
+以下の章を\textbf{既習前提}として forward-reference する：
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, topsep=2pt]
+  \item §~\ref{sec:CCD}（CCD / FCCD の設計原理と離散化）——補助場 $\xiridge$ の空間微分を用いる．
+  \item §~\ref{sec:grid}（非一様格子）——D1--D4 拡張で参照する座標変換と格子密度制御．
+  \item §~\ref{sec:fccd_advection}（FCCD 移流）——$\xiridge$ の輸送に用いる離散化の詳細．
+  \item §~\ref{sec:verification}（検証ベンチマーク）——Morse 遷移・再構成誤差の数値的検証．
+\end{itemize}
+本節で登場する主な前方参照は以下の箇所に対応する：
+\begin{itemize}[leftmargin=1.5em, itemsep=0pt, topsep=2pt]
+  \item $\omegagrid$（格子密度 Gaussian）——§~\ref{sec:grid}\,の格子密度制御関数．
+  \item \texttt{xi\_sdf} 再初期化モード——§~\ref{sec:fccd_advection}\,に紐づく既存実装のラベル．
+  \item FMM/FSM による $\phi$ 再構成——古典的 Eikonal 解法（§~\ref{sec:reinit}）．
+  \item Morse 遷移時間スケール $\tau_M$——§~\ref{sec:verification}\,検証ベンチマークで測定．
+\end{itemize}
+\end{tcolorbox}
+
 §~\ref{sec:reinit} までで記述した古典的再初期化
 （Hamilton--Jacobi 型, FMM, FSM）はいずれも Eikonal 条件
 $|\bnabla\phi|=1$ を\textbf{トポロジー不変性の下で}強制する枠組で，
