@@ -29,10 +29,10 @@ FCCD 面ジェット $\FaceJet{\cdot}=(\cdot_f,\cdot'_f,\cdot''_f)$ を
 
 この命題は §\ref{sec:bf_p1_location}（BF P-1 位置一致）を
 全演算子に拡張したものに相当する．
-従来アプローチ（節点 CCD + FVM adjoint，smoothed Heaviside，
-CSF 体積力）は高次と FVM の間でメトリック不整合（H-01, §\ref{sec:h01_diagnosis_fccd_remedy}）
-を不可避的に生じるのに対し，純 FCCD DNS は
-単一の面ジェット API で統一することで H-01 を構造的に回避する．
+純 FCCD DNS は (R1)-(R4) の面ジェット契約を圧力・界面・移流・粘性の全演算子に
+拡張したアーキテクチャであり，単一の面ジェット API で 4 経路のメトリック整合を
+構造的に担保する（従来 FVM 共存設計で生じた H-01 型不整合の歴史的経緯は
+付録~\ref{sec:fccd_motivation_h01}）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Phase 1: 界面追跡層（Ridge-Eikonal + FCCD 輸送）}

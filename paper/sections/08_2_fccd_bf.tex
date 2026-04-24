@@ -1,19 +1,19 @@
 % paper/sections/08_2_fccd_bf.tex
 %
-% §8.4  FCCD BF sub-system：H-01 診断と面ジェット統合
-%       （SP-A §6 + SP-H §3 + SP-J §3）
+% §8.4  FCCD 面ジェットによる BF sub-system 統合
+%       （SP-A §6 + SP-H §3 + SP-J §3；H-01 歴史的診断は付録 §B.4）
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{FCCD 面ジェットによる BF sub-system 実装}
 \label{sec:fccd_bf_sub_system}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-節点 CCD と FVM の\textbf{メトリック不整合}は H-01 として特定され，
-$\BF_\text{res} = \Ord{\Delta x^2}\cdot|d\log J/dx|$ の残差を
-界面適合非一様格子上で発生させる．
 節 \ref{sec:fccd_def} で導出した FCCD 面ジェット
 $\FaceJet{u}=(u_f,u'_f,u''_f)$ は，BF sub-system の
-P-1..P-4 を\textbf{同時に}満たす最小単位である．
+P-1..P-4 を\textbf{同時に}満たす最小単位であり，
+4 役割 (R1)-(R4) の (R3) 分相 PPE 楕円演算子への適用例として位置付けられる．
+（旧設計（節点 CCD + 事後面平均）で生じていた $\Ord{\Delta x^2}\cdot|d\log J/dx|$
+残差は歴史的に H-01 として診断された；付録~\ref{sec:fccd_motivation_h01} を参照．）
 
 % -------------------------------------------------------------------------------
 % H-01 診断の一次定義は §\ref{sec:fccd_motivation_h01}（§4.5）にある．
@@ -24,13 +24,9 @@ P-1..P-4 を\textbf{同時に}満たす最小単位である．
 \phantomsection
 \label{sec:h01_diagnosis_fccd_remedy}% 外部参照保持：10_5/08c/10_3/appendix_gpu_fvm
 
-節点 CCD 勾配と FVM の面平均勾配 $\mathcal{G}^\text{adj}$ の\textbf{メトリック不整合}
-は，界面適合非一様格子上で
-$\mathrm{BF}_\text{res} = \Ord{\Delta x^2}\cdot|d\log J/dx|$ の残差を生む
-（一次定義：§\ref{sec:fccd_motivation_h01}, Exp-1 実測 $|\BF_\text{res}|\approx 884$
-at step 1, $\rho_l/\rho_g{=}830$）．
-FCCD 面ジェット $\FaceJet{u}=(u_f,u'_f,u''_f)$ は
-$\mathcal{G}^\text{adj}$ と\textbf{同一の面位置・同一のデータフットプリント}を用い，
+本稿の構成では {\FCCD} 面ジェット $\FaceJet{u}=(u_f,u'_f,u''_f)$ が
+圧力勾配・界面力・HFE 上流点・GFM ジャンプ条件の 4 経路で共有される（(R1)-(R4)）．
+これにより面フットプリントは 4 経路で一致し，
 \begin{equation}
   \mathcal{G}p := D^\FCCD p,
   \qquad \bnabla\psi := D^\FCCD\psi
@@ -113,7 +109,7 @@ FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 \hline
 演算子 & 非一様格子 $\rho_l/\rho_g=830$ & 収束率 \\
 \hline
-節点 CCD + $\mathcal{G}^\text{adj}$（現行）& $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
+旧設計（節点 CCD + 事後面平均）& $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
 FCCD + GFM（Phase 1）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^3}$ \\
 FCCD + IIM（Phase 3 目標）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\Delta x^4}$ \\
 \hline
