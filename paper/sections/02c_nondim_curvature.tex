@@ -42,13 +42,14 @@ $p^*$ は圧力，$\bm{f}_\sigma^*$ は表面張力項である．
 次に，参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ~\cite{Tryggvason2011}．
 $L$ は液滴半径・気泡初期直径・毛管長のいずれかを問題設定に応じて採用し，
 $U$ は初速または重力終端速度を採用する（§~\ref{sec:validation} の各ベンチマーク参照）．
+本稿の表記規約として，\textbf{*-付きの変数は有次元量，*-無しは無次元量}とする．
 これらを用いて，物理変数を以下のように無次元化する．
 \begin{align}
  \bm{x}^* &= L\bm{x} & \bu^* &= U\bu & t^* &= \frac{L}{U}t & p^* &= \rho_l U^2 p \\
  \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla \\
  \phi^* &= L\phi & \kappa^* &= \kappa/L
 \end{align}
-ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla, \phi, \kappa$ は全て無次元量である．
+ここで，各式の左辺（*-付き）は有次元，右辺（*-無し）は無次元である．
 $\phi$ は長さ次元を持つため $\phi^* = L\phi$，$\kappa$ は長さの逆次元を持つため
 $\kappa^* = \kappa/L$ と変換され，式~\eqref{eq:curvature_div} の無次元化と整合する．
 
