@@ -40,12 +40,17 @@ $p^*$ は圧力，$\bm{f}_\sigma^*$ は表面張力項である．
 % ─────────────────────────────────────────────────────────────────────────────
 
 次に，参照量として液相密度 $\rho_l$，代表速度 $U$，代表長さ $L$ を選ぶ~\cite{Tryggvason2011}．
+$L$ は液滴半径・気泡初期直径・毛管長のいずれかを問題設定に応じて採用し，
+$U$ は初速または重力終端速度を採用する（§~\ref{sec:validation} の各ベンチマーク参照）．
 これらを用いて，物理変数を以下のように無次元化する．
 \begin{align}
  \bm{x}^* &= L\bm{x} & \bu^* &= U\bu & t^* &= \frac{L}{U}t & p^* &= \rho_l U^2 p \\
- \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla
+ \rho^* &= \rho_l \rho(\psi) & \mu^* &= \mu_l \mu(\psi) & \bnabla^* &= \frac{1}{L}\bnabla \\
+ \phi^* &= L\phi & \kappa^* &= \kappa/L
 \end{align}
-ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla$ は全て無次元量である．
+ここで，右辺の $\bm{x}, \bu, t, p, \rho, \mu, \bnabla, \phi, \kappa$ は全て無次元量である．
+$\phi$ は長さ次元を持つため $\phi^* = L\phi$，$\kappa$ は長さの逆次元を持つため
+$\kappa^* = \kappa/L$ と変換され，式~\eqref{eq:curvature_div} の無次元化と整合する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{なぜ「慣性力スケール」で正規化するのか}
@@ -102,10 +107,16 @@ Froude 数 $Fr$   & $\dfrac{U}{\sqrt{gL}}$
   & 重力波が生じにくい（速い流れ） \\[6pt]
 Weber 数 $We$    & $\dfrac{\rho_l U^2 L}{\sigma}$
   & $\dfrac{\text{慣性力}}{\text{表面張力}}$
-  & 液滴が変形・分裂しやすい \\
+  & 液滴が変形・分裂しやすい \\[6pt]
+Capillary 数 $Ca$ & $\dfrac{\mu_l U}{\sigma} = \dfrac{We}{Re}$
+  & $\dfrac{\text{粘性力}}{\text{表面張力}}$
+  & 粘性流で界面が引き伸ばされる \\[6pt]
+Bond 数 $Bo$     & $\dfrac{\rho_l g L^2}{\sigma} = \dfrac{We}{Fr^2}$
+  & $\dfrac{\text{重力}}{\text{表面張力}}$
+  & 重力変形が表面張力保持を上回る \\
 \hline
 \end{tabular}
-\caption{3つの無次元数の定義と力の比としての解釈}
+\caption{無次元数の定義と力の比としての解釈．$Ca,Bo$ は独立パラメータではなく $We/Re, We/Fr^2$ から派生する。}
 \label{tab:dimless_numbers}
 \end{table}
 
@@ -114,9 +125,15 @@ Weber 数 $We$    & $\dfrac{\rho_l U^2 L}{\sigma}$
 $\mu_l=10^{-3}\,\mathrm{Pa\cdot s}$,
 $\sigma=0.073\,\mathrm{N/m}$）の落下液滴
 （$U=1\,\mathrm{m/s}$, $L=10^{-3}\,\mathrm{m}$）では，
-$Re=1000$，$Fr=10.1$，$We=13.7$ となる．
+$Re=1000$，$Fr=10.1$，$We=13.7$，
+$Ca = We/Re \approx 1.37\times 10^{-2}$，
+$Bo = We/Fr^2 \approx 0.134$ となる．
 $We > 1$ であるから，表面張力よりも慣性力が勝り，
-液滴は球形から変形しやすい状態にあると判断できる．
+液滴は球形から変形しやすい状態にある．
+一方 $Ca \ll 1$ であるため粘性応力に対しては表面張力が支配的で，
+寄生流れの相対強度は$\Ord{Ca}$ に比例することが知られている~\cite{Popinet2009}．
+$Bo < 1$ は重力が球形を強く崩すほどではないことを示すが，
+マイクロ流体や微小液滴ではさらに小さな $Bo$ が典型的である．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{界面曲率の定義と解析表現}
@@ -215,7 +232,12 @@ $\psi \to 0$ または $\psi \to 1$ の\textbf{飽和領域}では $g'(\phi) \to
   I_\psi \equiv \{\phi : \psi_{\min} < H_\varepsilon(\phi) < 1 - \psi_{\min}\}
   \quad (\text{推奨 } \psi_{\min} = 0.01)
 \]
-に限定する．これは界面近傍帯 $|\phi| \lesssim O(\varepsilon)$ に対応する．
+に限定する．この $\psi_{\min}=0.01$ はロジット写像
+$\phi = \varepsilon\,\ln\bigl(\psi/(1-\psi)\bigr)$ のもとで
+$|\phi| \lesssim 4.6\,\varepsilon$ に対応し（$\ln(0.99/0.01)\approx 4.595$），
+CLS の推奨界面幅 $\phi\in[-3\varepsilon,3\varepsilon]$ を包含する最小裕度である．
+$H_\varepsilon'(\phi) = \varepsilon^{-1}\psi(1-\psi)$ の飽和裾を最小限除外しつつ
+界面近傍帯を全て含む実用的閾値として CLS 文献で慣用される．
 具体的な安定化処置は §~\ref{sec:curvature_direct_psi_cls}（第~\ref{sec:levelset}章）で述べる．
 \end{corollary}
 
