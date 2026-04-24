@@ -26,7 +26,7 @@
   \item[FCCD] Face-centred CCD．HFE・GFM・分相 PPE・粘性 stress-div で共有する
         面ジェット共通プリミティブ（§~\ref{sec:fccd_def}）．
   \item[UCCD6] Upwind CCD6．bulk 運動量移流の既定スキーム（内蔵超粘性，$\Ord{h^6}$ 精度；§~\ref{sec:uccd6_def}）．
-  \item[HFE] Heaviside-based Face Extension．Hermite データ $(f,f',f'')$ を Extension PDE~\cite{Aslam2004}
+  \item[HFE] Hermite Field Extension（Hermite 場延長法）．Hermite データ $(f,f',f'')$ を Extension PDE~\cite{Aslam2004}
         の定常解から面ジェットに拡張（§~\ref{sec:field_extension}）．
   \item[GFM] Ghost-Fluid Method．界面ジャンプ条件を近傍セルの ghost 値として注入する定式化（§~\ref{sec:gfm}）．
 \end{description}
@@ -41,9 +41,7 @@
 （§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
 \textbf{本稿の技術的中核はこの問題の根本的解決にある．}
-結合コンパクト差分法（第~\ref{sec:CCD}章以降；
-CCD は 1 次・2 次微分を同時に陰的に解く $\Ord{h^6}$ 精度コンパクト法）
-による高精度曲率計算と，
+結合コンパクト差分法（CCD，第~\ref{sec:CCD}章以降）による高精度曲率計算と，
 分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
 Balanced-Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
 高精度に維持し，
@@ -52,12 +50,12 @@ Balanced-Force 条件の離散化整合性（本稿で系統化する 7 原則 P
 PPE 離散化で DC $k=3$ 反復と CCD 勾配を組み合わせ，
 BF 残差を機械精度近くまで押し下げる設計選択）．
 中核となる演算子族として，
-\textbf{FCCD}（Face-centred CCD：HFE・GFM・分相 PPE・粘性 stress-divergence の
+\textbf{FCCD}（Face-centred CCD：HFE〔Hermite 場延長法〕・GFM・分相 PPE・粘性 stress-divergence の
 共通面ジェットプリミティブ；§~\ref{sec:fccd_def}）および
 \textbf{UCCD6}（Upwind CCD6：内蔵超粘性をもつ bulk 運動量移流用 $\Ord{h^6}$ スキーム；§~\ref{sec:uccd6_def}）を
 本稿で新たに定式化する．
-さらに Hermite 場延長法（HFE）を開発し，
-高密度比（$\rho_l/\rho_g > 5$）対応の分相 PPE 解法における
+さらに HFE を開発し，
+高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 830$）対応の分相 PPE 解法における
 界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した
 （詳細は §~\ref{sec:split_ppe_motivation}：
 分相 PPE は各相で定数密度 Poisson を独立に解き，
@@ -90,7 +88,7 @@ BF 残差を機械精度近くまで押し下げる設計選択）．
 
 以下 §~\ref{sec:why_hard}〜§~\ref{sec:roadmap} では，
 なぜ単相流の方法がそのまま使えないか，どの困難がどの手法で解決されるかを順番に説明する．
-全体アルゴリズムの俯瞰図は次章 §~\ref{sec:roadmap} 末尾の §~\ref{sec:algo_overview} に示す．
+全体アルゴリズムの俯瞰図は次節 §~\ref{sec:roadmap} 末尾の §~\ref{sec:algo_overview} に示す．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{単相流と気液二相流の本質的違い}
