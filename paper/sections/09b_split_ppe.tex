@@ -40,6 +40,14 @@ smoothed Heaviside 一括解法の\textbf{本質的制約}である：
 CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
 低密度比だから一括解法で十分ということはない．
 
+\noindent\textbf{条件数の定量的見積もり：}
+smoothed Heaviside 一括演算子 $\bnabla\cdot(\rho^{-1}\bnabla\cdot)$ の条件数は
+$\kappa_2 \approx (\rho_l/\rho_g)\cdot h^{-2}$ のオーダーで成長する．
+$\rho_l/\rho_g = 830$（水--空気），$h = 1/64$ では
+$\kappa_2 \sim 830\cdot 4096 \approx 3.4\times 10^{6}$ となり，
+CG/DC 反復の収束が遅い（行列は singular ではないが
+\textbf{強く条件が悪い}）．分相 PPE では各相内 $\kappa_2 \approx h^{-2}\sim 10^{3}$ に縮退する．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{分相 PPE 解法の定式化}
 \label{sec:split_ppe_formulation}
@@ -55,7 +63,9 @@ Smoothed Heaviside 一括解法が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
   \label{eq:split_ppe}
 \end{equation}
 %
-を解く．ただし，これは単に各相を切り離して解くという意味ではない．
+を解く（ここで $q = (1/\Delta t)\,\bnabla\cdot\bu^\ast$ は PPE の
+Predictor 速度由来の発散ソース；§\ref{sec:algorithm} Step 6 と一致）．
+ただし，これは単に各相を切り離して解くという意味ではない．
 界面 $\Gamma$ 上では圧力ジャンプと法線フラックス条件を同時に課して，
 二つの相の楕円型問題を閉じる：
 \begin{align}
@@ -73,6 +83,14 @@ $J_p=\sigma(\kappa^{n+1}-\kappa^n)$ とし，
 法線速度の連続性から
 $J_n=\Delta t^{-1}[\bu^*\cdot\hat{\bm n}]$ を用いる．
 予測速度が界面法線方向に連続となる離散化では $J_n=0$ に退化する．
+
+\noindent\textbf{$J_n$ の物理的正当化：}
+連続 NS では界面で法線速度が連続（$[\bu\cdot\mathbf{n}]_\Gamma=0$；非相変化）．
+Predictor 離散化が保存的ならば $\bu^*$ も界面で連続となり $J_n\equiv 0$．
+非保存的離散化（例：upwind 面補間が界面で非対称）では
+$[\bu^*\cdot\mathbf{n}]\sim \Ord{h^p}$ の残差が生じ，
+$J_n$ は PPE でこの残差を吸収して corrector 後の $\bu^{n+1}$ を
+連続に戻す役割を果たす（$\Ord{h^p}$ 一致時に $J_n=0$ が自動成立）．
 HFE（§~\ref{sec:field_extension}）は，これらのジャンプ条件で補正した
 片側データを界面越しに延長し，CCD ステンシルが不連続値に触れないようにするための
 補助技術である．
@@ -119,6 +137,17 @@ CCD ステンシルが不連続値に触れることを防止する．
 DNS アーキテクチャを採る．質量保存は
 $\Ord{\Delta x^4}$--$\Ord{\Delta x^6}$ の漸近的な高次性として扱われ，
 制御体積恒等式としては保証されない．
+
+\noindent\textbf{設計選択の根拠：}
+FVM 制御体積保存を放棄する代償として，
+(i) CLS 質量保存（§\ref{sec:cls_stages} Stage D）が\textbf{体積質量保存}
+（全領域 $\int\psi\,\mathrm{d}V$）を $\Ord{\Delta x^4}$ で独立に担保する，
+(ii) 速度場の離散発散フリー性は \textbf{DCCD フィルタ済み発散}
+（式~\eqref{eq:dccd_ppe_rhs}）で保証される，の二経路が保存性を補完する．
+FVM では両者が同一の面フラックス恒等式から派生するのに対し，
+本稿は「演算子の高次性」と「幾何学的発散フリー性」を独立系統で扱う．
+数値検証は §\ref{sec:verify_split_ppe_dc}（質量保存）と
+§\ref{sec:bf_static_droplet}（BF 整合性）で分離して行う．
 
 \noindent\textbf{アーキテクチャの階層}：
 \begin{enumerate}[leftmargin=2em,noitemsep]
@@ -210,6 +239,17 @@ $\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
 \end{align}
 2 次値ジャンプは Laplace--Beltrami 分解
 $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
+
+\noindent\textbf{$\kappa_s$ の導出（2 階項の根拠）：}
+式~\eqref{eq:gfm_curvature_jump} の $\bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n})$ を
+界面座標で展開すると，
+$\bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n}) = \partial_n(\sigma\kappa)\,(\mathbf{n}\!\cdot\!\mathbf{n}) + \sigma\kappa\,\bnabla\!\cdot\mathbf{n}
+ = \partial_n(\sigma\kappa) + \sigma\kappa^2$
+（$\bnabla\!\cdot\mathbf{n}=\kappa$；§\ref{sec:ridge_eikonal}）．
+さらに界面接線方向の発散 $\partial_s(\sigma\kappa)$ を分離すると，
+2 階ジャンプ成分は $[\partial_n^2 p]_\Gamma = \partial_s(\sigma\kappa)/\sigma \equiv \kappa_s$
+として表現される（Liu-Fedkiw-Kang~\cite{Fedkiw1999} Appendix A の
+Laplace--Beltrami 分解と整合；詳細な座標系変換は付録~\ref{app:gfm_curvature_jump_derivation} に委ねる）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{PPE 整合性条件と相別ゲージ固定}

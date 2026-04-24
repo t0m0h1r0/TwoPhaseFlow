@@ -127,8 +127,9 @@ CCD $\bnabla(\delta p)$ が不連続値を直接跨がずに評価される．}
 
 式~\eqref{eq:extension_pde_main} の定常解は最近接点延長
 $q_\mathrm{ext}(\bm{x}) = q\bigl(\bm{x}_\Gamma(\bm{x})\bigr)$ に他ならない
-（Aslam~(2004)~\cite{Aslam2004}, §2；$\bnabla q \cdot \hat{\bm{n}} = 0$ の
-特性曲線解が最近接点の値の伝播と一致する）．
+（Aslam~(2004)~\cite{Aslam2004}, §2, Proposition 1；$\bnabla q \cdot \hat{\bm{n}} = 0$ の
+特性曲線解が最近接点の値の伝播と一致するという主張，
+および \cite{Aslam2004} §3 の数値実験で最近接点延長の一致性が確認されている）．
 ここで $\bm{x}_\Gamma$ は $\bm{x}$ から界面 $\Gamma$ への最近接点である．
 本稿ではこの定常解を，Extension PDE の仮想時間前進を経由せず，
 CCD の Hermite データ $(f, f', f'')$ を用いた直接補間により構成する．
@@ -202,8 +203,9 @@ HFE は同一の定常解を CCD データから直接構成することで，
 
 時刻ループ内での適用箇所（§~\ref{sec:algorithm}）：
 \begin{enumerate}
-  \item \textbf{PPE 求解前（Step 5c）：} 前時刻圧力 $p^n$ に HFE を適用して $p^n_{\mathrm{ext}}$ を構築し，
-        IPC Predictor の $-\bnabla p^n$ 項に使用する
+  \item \textbf{Predictor 内（Step 5 の $-\bnabla p^n$ 評価前）：}
+        前時刻圧力 $p^n$ に HFE を適用して $p^n_{\mathrm{ext}}$ を構築し，
+        IPC Predictor の $-\bnabla p^n$ 項に使用する（§~\ref{sec:algorithm} Step 5 内のサブステップ）
   \item \textbf{Corrector 前（Step 7 前）：} 圧力増分 $\delta p$ に HFE を適用して $\delta p_{\mathrm{ext}}$ を構築し，
         速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する
 \end{enumerate}
@@ -240,7 +242,13 @@ HFE が不可欠となり，高密度比シミュレーション（$\rho_l/\rho_
     &= u_i - \frac{H_i}{2}\,u'_i + \frac{H_i^2}{8}\,u''_i,
       \label{eq:hfe_taylor_minus}
 \end{align}
-として 3 次 Taylor 展開から与えられる．圧力ジャンプ
+として 3 次 Taylor 展開から与えられる．
+\textbf{精度層の区別：}式~\eqref{eq:hfe_taylor_plus}--\eqref{eq:hfe_taylor_minus} は
+面位置 $f=i\pm 1/2$ での値 $u^\pm$ を節点値から $\Ord{h^3}$ で
+\textbf{再構成}する操作であり，節点 HFE 補間の $\Ord{h^6}$（式~\eqref{eq:hermite5_error}）
+とは独立の精度層を持つ．分相 FCCD PPE では $u^\pm$ の $\Ord{h^3}$ 誤差は
+面ジェットジャンプクロージャと Riemann 選択に吸収される（\S\ref{sec:gfm_ghost_jet_stitch}）．
+圧力ジャンプ
 $[p]_\Gamma=\sigma\kappa$ が面 $f\subset\Gamma$ に作用する場合，
 $u^\pm$ にゴーストジェット（\S\ref{sec:gfm_ghost_jet_stitch}）を注入：
 \begin{equation}

@@ -43,8 +43,15 @@ $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
 \begin{itemize}
   \item \textbf{フェイス係数 $2/(\rho_L+\rho_R)$（式~\eqref{eq:af_exact}）：}
         FVM フラックス連続性から自然に導かれるフェイス係数 $a_{i+1/2} = 2/(\rho_L+\rho_R)$ は，
-        密度の算術平均の逆数であると同時に比体積 $1/\rho$ の調和平均でもある
-        （2値の場合，両者は同一の式を与える）．
+        密度の算術平均の逆数であると同時に比体積 $1/\rho$ の調和平均でもある．
+        \textbf{2 値の場合の等価性}：
+        $\bigl[(\rho_L+\rho_R)/2\bigr]^{-1}$（算術平均の逆数）
+        $=$ $2/(\rho_L+\rho_R)$；
+        一方 $\bigl[(1/\rho_L+1/\rho_R)/2\bigr]^{-1}$（$1/\rho$ の調和平均）
+        $=$ $2\rho_L\rho_R/(\rho_L+\rho_R)$．
+        $\rho_L \to \rho_R$ 近傍では両者が $\Ord{(\rho_L-\rho_R)^2}$ で一致し，
+        一般の 2 値では前者が FVM フラックス連続性と整合する
+        （§\ref{sec:bf_p4}；n ≥ 3 値では両者は分離する）．
         この係数は界面フラックスに物理的根拠を持ち，
         条件数の過大評価を防ぐ（付録~\ref{app:fvm_face_coeff}）．
   \item \textbf{分相 PPE + DC $k{=}3$ + CCD 勾配（§~\ref{sec:split_ppe_framework}）：}
@@ -97,6 +104,9 @@ $p_{i_0,j_0} = 0$ は数学的拘束であり，速度補正に必要な勾配 $
 
 FCCD 面ジェット（\S\ref{sec:face_jet_def}）を境界で閉じる方式として，
 4 オプションを整理する．
+\textbf{表の読み方：}Option I/II は一般的な CCD 境界閉包（§\ref{sec:ccd_bc}）の
+FCCD 面ジェットへの素朴適用；Option III/IV は面ジェットの 3 成分
+$(p_f,p'_f,p''_f)$ に対して物理境界条件を直接課す本稿の採用手法．
 本稿の採用は\textbf{Option III}（無滑り壁）と\textbf{Option IV}（ディリクレ壁）：
 
 \begin{center}

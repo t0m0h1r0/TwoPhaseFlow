@@ -86,6 +86,10 @@ $L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン固定）を
 実装上はゲージピン固定後の疎行列に対して LU 分解等の直接解法を用いる．
 $x$・$y$ 方向の line sweep/ADI は計算コストを下げる近似前処理として有効だが，
 その場合は Step~2 残差が許容誤差に依存するため，本節の「直接法」ケースと区別する．
+\textbf{適用範囲：}LU 直接法は $N \le 256^2$ 程度の小中規模で実効的
+（$\Ord{N^{3/2}}$ fill-in が主コスト；$N=128^2$ で 10--30 秒）．
+$N \ge 512^2$ の大規模では PCG + AMG への切替が推奨される
+（§\ref{sec:verify_dc_spectral} ベンチ参照）．
 $L_L$ の Neumann BC はゴーストセル反射 $p_{-1}=p_1$（左壁）で離散化し，
 $L_H$（CCD）と $L_L$（FD）が同一の物理的 Neumann 条件を共有する
 （境界スタンシルの導出は付録~\ref{app:sweep_thomas_coeff}）．
@@ -112,8 +116,14 @@ $L_L$ は収束を駆動する「加速装置」の役割のみを担い，
 この精度保証は反復回数 $k$ と密接に関連する：
 $k=1$ では $L_L$ の $\Ord{h^2}$ が支配的だが，
 $k$ を増やすごとに $L_H$ の高次精度が発現し，
-$k \geq 3$ で $\Ord{h^6}$ に漸近する
+\textbf{等密度・均一格子・周期 BC の理想化}では $k \geq 3$ で $\Ord{h^6}$ に漸近する
 （定量的検証は §~\ref{sec:dc_iteration_accuracy} に示す）．
+\textbf{実運用条件下の劣化：}
+(i) GFM ステッチ付き分相 PPE では界面条件の $\Ord{h^3}$ が律速して
+$\Ord{h^4}$--$\Ord{h^5}$ に劣化；
+(ii) Neumann BC 境界閉包（§\ref{sec:ccd_bc}）では一般に $\Ord{h^5}$；
+(iii) 非一様格子（$\alpha > 1$）では局所 $\Ord{h^4}$ に律速される．
+§\ref{sec:verify_dc_spectral} の数値表は理想化条件と実運用条件の両方を示す．
 反復行列のスペクトル解析（付録~\ref{app:dc_convergence_theory}）により，
 $\omega$ の最適値と収束速度が理論的に導かれる：
 $\omega \in (0,\, 0.833)$ が収束に必要であり，
@@ -160,7 +170,7 @@ $L_L$（内殻，低次反復）&
 
 \noindent\textbf{内殻側の設計要件}：
 $L_L$ は\textbf{$L_H$ と同じ}
-(i) $\betaf$ 平均化（調和），
+(i) $\betaf$ 平均化（調和；$\betaf=(1/\rho)_f$，§\ref{sec:bf_p4}），
 (ii) 境界条件，
 (iii) 界面帯スイッチ（\S\ref{sec:viscous_ccd_placement}）
 を\textbf{共有}する．
