@@ -165,11 +165,11 @@ $\varepsilon_{\textup{eff}} \gg \varepsilon$ は
 % ═══════════════════════════════════════════════════════════════════════════════
 
 $\psi$ 直接法（式~\eqref{eq:curvature_psi_2d}，定理~\ref{thm:curvature_invariance}）を用いる場合，
-曲率計算は Eikonal 条件 $|\bnabla\phi|=1$ に依存しない
-（ただし界面近傍で $\psi$ が滑らかな単調プロファイルを保つことを前提とする）．
+曲率計算は Eikonal 条件 $|\bnabla\phi|=1$ に依存しない．
+適用域は系~\ref{cor:cls_curvature_domain} に従い，
 界面近傍（$\psi_{\min} < \psi < 1-\psi_{\min}$，推奨 $\psi_{\min}=0.01$）で
 式~\eqref{eq:curvature_psi_2d} を適用し，
-界面遠方（$|\bnabla\psi| \to 0$）では $\kappa = 0$ とする．
+界面遠方（飽和領域，$|\bnabla\psi| \to 0$）では $\kappa = 0$ とする．
 CCD 法（第~\ref{sec:CCD}章）は解法過程で $\psi, \psi', \psi''$ を
 同時に $\Ord{h^6}$ 精度で算出するため，追加計算は不要である．
 
