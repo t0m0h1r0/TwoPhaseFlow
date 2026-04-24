@@ -76,6 +76,11 @@ Level 3 は\textbf{時間積分}のみ設計フックに留める
 Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, Phase 1--4）は
 §\ref{sec:pure_fccd_dns} で完備に提示する．
 
+\noindent\textbf{注．} 上表の Level 1 「対流：SSPRK3」は\textbf{検証・立ち上げ専用}の設定である．
+運用（ch13 ライジングバブル等）は Level 2（AB2 + IPC）を既定とし，
+NS 対流の SSPRK3 適用は精度基準試験と bootstrap の範囲に限定する
+（注意~\ref{warn:tvd_rk3_scope}）．
+
 % -------------------------------------------------------------------------------
 \subsection{演算子別剛性マップ}
 \label{sec:time_operator_stiffness}
@@ -97,7 +102,7 @@ Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, P
 演算子 & 剛性源 & 合理的な時間処理 \\
 \hline
 $\mathcal{C}(\bu,\bu)$（対流） & 対流 CFL $|\bu|\Delta t/h$ & 陽的（AB2 または SSPRK3） \\
-$\mathcal{V}(\bu)$（粘性） & 粘性 CFL $\nu\Delta t/h^2$（高 Re では顕著） & CN（半陰的） \\
+$\mathcal{V}(\bu)$（粘性） & 粘性 CFL $\nu\Delta t/h^2$（低 Re で顕著；高 Re は対流 CFL 律速） & CN（半陰的） \\
 $\bm{f}_\sigma$（表面張力） & 毛管波 $\Delta t_\text{cap}$ & 半陰的（L2）・完全陰的（L3） \\
 $\bnabla p$，$\bnabla\cdot\bu=0$ & 非圧縮拘束 & 変密度 BF 投影 \\
 \hline
@@ -167,6 +172,11 @@ Level 2 は本稿のデフォルト実装であり，
 van Kan（1986）\cite{vanKan1986} の \textbf{Incremental Pressure Correction（IPC）法}
 と組み合わせる．対角粘性は Crank--Nicolson，表面張力は半陰的線形化
 （Aland--Voigt \cite{AlandVoigt2019}），投影は変密度 BF 版（§\ref{sec:ppe_solve}）．
+van Kan の元提案は等密度の想定であるが，
+変密度拡張として式~\eqref{eq:predictor_ab2_ipc} では
+密度 $\rho^{n+1}$ を\textbf{対流右辺・慣性左辺の双方で先行利用}することで
+$\Ord{\Delta t^2}$ 精度を保持する（射影法の変密度解析は
+Guermond--Minev--Shen \cite{Guermond2006} を参照）．
 
 Predictor ステップの離散式は：
 \begin{equation}
@@ -443,14 +453,16 @@ Level 3 の完全陰的時間積分に切り替える．骨格は以下のとお
         $\Delta t$ を 1--2 桁緩めうるため剛性領域では総コストが逆転する．
 \end{itemize}
 
-\textbf{現在の実装状態：}
-本稿の Level 3 \textit{時間積分}（Radau IIA + JFNK）は \textit{設計フックのみ}で提示する%
-\footnote{Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, Phase 1--4）は
-§\ref{sec:pure_fccd_dns} で理論的に完備に提示する．
-本節は時間積分スキームの観点に限定した概観である．}．
+\begin{remark}[Level 3 実装の範囲]
+\label{rem:level3_scope}
+本稿の Level 3 \textbf{時間積分}（Radau IIA + JFNK）は\textbf{設計フックのみ}で提示する．
+Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, Phase 1--4）は
+§\ref{sec:pure_fccd_dns} で理論的に完備に提示しており，
+本節は時間積分スキームの観点に限定した概観である．
 \texttt{ns\_pipeline.py} の predictor/PPE/corrector 抽象は
 既に 3 ステップを因数分解しているため，
 PPE ソルバを触らずに predictor を Radau IIA 実装へ置換可能である．
+\end{remark}
 
 \textbf{Level 選択トリガー：}
 $\rho_l/\rho_g > 10^4$ または $\text{We} < 10^{-2}$ または
@@ -473,7 +485,10 @@ $\Delta t_\text{adv} \ll \Delta t_\text{cap}$ 側に落ち込む場合に L3 へ
 であり，陽的 CSF 積分の条件を与える．しかし Denner--van~Wachem
 （2015, JCP 285 \cite{DennerVanWachem2015}；2022, JCP 449 \cite{DennerVanWachem2022}）は，
 この拘束が純粋な安定性問題ではなく，毛管波自身を\textbf{時間的にも解像する}
-必要から来る\textbf{波解像拘束}であることを示した：
+必要から来る\textbf{波解像拘束}であることを示した．
+両者の $\sqrt{2}$ 差は BKZ が純粋に安定限界（$\omega_c\Delta t\le 2$）を与えるのに対し，
+Denner--van Wachem が\textbf{毛管波の半周期を少なくとも 1 時間ステップ}で解像する
+条件（$\omega_c\Delta t \le \sqrt{2}$）を課す物理的要請の違いに由来する：
 \begin{equation}
   \boxed{\;
   \Delta t_\text{cap} \le C_\text{wave}\sqrt{\frac{(\rho_1+\rho_2)h^3}{2\pi\sigma}},
