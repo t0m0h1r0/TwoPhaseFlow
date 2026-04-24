@@ -34,7 +34,7 @@ PPE (Lv.3：純 FCCD DNS) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^5}$/$
 NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & 1D / axis-aligned：$\Ord{h^6}$；2D 一般：完全テンソル版に限り $\Ord{h^6}$★ & — \\
+HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & 1D / axis-aligned：$\Ord{h^6}$；2D 一般：完全テンソル版に限り $\Ord{h^6}$$\star$ & — \\
 \midrule
 \textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
 \textbf{全体（時間律速：均質流域）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
@@ -52,7 +52,7 @@ HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite
 質量積分誤差や形状誤差は別指標であり，この局所次数と混同しない．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（§~\ref{sec:algorithm}）．
 $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．\\
-\noindent★\ 混合微分 $q_{xy},q_{xxy},q_{xyy},q_{xxyy}$ を必要とする完全テンソル版のみ
+\noindent$\star$\ 混合微分 $q_{xy},q_{xxy},q_{xyy},q_{xxyy}$ を必要とする完全テンソル版のみ
 2D 斜め界面で $\Ord{h^6}$ 保証；混合微分を省略した簡略版は $\Ord{h^4}$ 以下に律速される
 （§\ref{sec:extension_pde_disc}）．
 \end{table}
