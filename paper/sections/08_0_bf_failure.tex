@@ -1,11 +1,11 @@
 % paper/sections/08_0_bf_failure.tex
 %
-% §8.2.0  BF 失敗モード 5 種（SP-J §1）
+% §8.2.0  BF 失敗モード 5 種
 %         §8.2（Balanced-Force）冒頭に配置し、
 %         以降の P-1..P-7 原則（§8.3）の動機付けとする。
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Balanced-Force 失敗モード 5 種（SP-J §1）}
+\subsection{Balanced-Force 失敗モード 5 種}
 \label{sec:bf_failure_modes}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -22,7 +22,7 @@
 \end{equation}
 が要請される．微分階数ではなく\textbf{離散演算子の整合性}が
 寄生流れ（spurious currents）を支配する．
-SP-J \cite{SPJ} §1 は，実装で頻出する 5 つの破綻モードを列挙する：
+実装で頻出する 5 つの破綻モードを以下に列挙する：
 
 \begin{tcolorbox}[warnbox,title={F-1..F-5：Balanced-Force 失敗モード}]
 \begin{description}[leftmargin=2em,style=nextline]
@@ -51,7 +51,7 @@ F-1..F-5 は\textbf{すべて微分階数と独立}である．
 「高次 CCD を全量に適用」した素朴実装は F-1..F-5 のどれか（多くの場合複数）を
 必ず踏む．本稿の rising bubble PoC では F-2 と F-4 が同時発生し，
 PPE RHS の発散だけを修正しても補正側が別 $G_h$ を参照する限り
-BF 残差は減らない（SP-J §2.P-2 結論）．
+BF 残差は減らない（P-2 参照，\S\ref{sec:bf_seven_principles}）．
 
 \noindent\textbf{方針}：
 §\ref{sec:bf_seven_principles} で 7 つの設計原則 P-1..P-7 を定式化し，
