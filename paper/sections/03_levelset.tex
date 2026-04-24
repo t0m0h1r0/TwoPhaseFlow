@@ -22,12 +22,14 @@
         ロジット逆変換を省略して $\psi$ 微分から曲率を直接求める高効率手法と
         その数値安定性を述べる．
   \item \textbf{§~\ref{sec:curvature_stab}（曲率の数値安定化）：}
-        分母クランプ・Gaussian 前フィルタ・適用域 $\psi_\min$ の順序と相互作用を整理し，
+        分母クランプ・Gaussian 前フィルタ・適用域 $\psi_{\min}$ の順序と相互作用を整理し，
         飽和帯での曲率発散を抑える実装チェックリストを与える．
   \item \textbf{§~\ref{sec:ridge_eikonal}（Ridge-Eikonal 補助場再構成）：}
         ロジット逆変換が飽和帯で失敗する場合に備え，
-        Gaussian 補助場 $g_\sigma\ast\psi$ から稜線距離を FMM で再構成する
-        フォールバック経路を定式化する．
+        Morse 理論に基づく Gaussian 補助場 $\xiridge$ による界面再定義（リッジ集合）と，
+        その FMM/FSM による Eikonal 再構成を定式化する．
+        トポロジー変化（リッジ併合・分岐）は補助場の連続変形として表され，
+        離散イベント処理を不要にする．
 \end{enumerate}
 
 \subsection{標準 Level Set 法の問題点：なぜ CLS が必要か}
