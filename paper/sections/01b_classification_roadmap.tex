@@ -71,7 +71,7 @@ Desjardins ら~\cite{Desjardins2008} は Ghost-Fluid Method（GFM）と高次 Le
 
 本稿は第一（BF）と第二（界面越し場延長）の両アプローチを統合する立場をとり，
 BF の離散整合条件を 7 原則 P-1..P-7（§~\ref{sec:bf_seven_principles}）として系統化した上で，
-GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:intro}で導入）を CCD 高次精度の枠内で実装する．
+GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extension} で定式化）を CCD 高次精度の枠内で実装する．
 具体的には以下の 3 つの柱で寄生流れを抑制する：
 \begin{enumerate}[noitemsep]
   \item \textbf{CCD $\Ord{h^6}$ 微分演算子}：
@@ -213,7 +213,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
         単相 Navier--Stokes 方程式の基礎，Projection 法による圧力--速度分離，有限差分法の基本概念
   \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
         One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
-  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:grid}, \ref{sec:collocate}, \ref{sec:split_ppe_motivation} 章；表~\ref{tab:chapter_overview} の第 4, 6--8 章に相当）：
+  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:grid}, \ref{sec:collocate}, \ref{sec:ppe_solve} 章；表~\ref{tab:chapter_overview} の第 4 章・第 6 章・第 8--9 章に相当）：
         CCD 法，界面適合格子，Rhie--Chow 補正，分相 PPE による圧力求解
   \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
         7ステップ離散計算フローの統合実装
@@ -297,10 +297,6 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
   (s7.east) -- ++(5mm, 0)
   |- node[lbl, near start, right, xshift=1mm]{\small $t^{n+1} \to t^{n+2}$}
   (s1.east);
-
-%% ── 離散詳細は第9章の注記 ────────────────────────────────────────────────
-\node[chap, below=6mm of s7, xshift=25mm]
-  {\textup{（各ステップの完全な離散方程式は第~\ref{sec:algorithm}章参照）}};
 
 \end{tikzpicture}
 \caption{1タイムステップの処理フロー（概念図）．

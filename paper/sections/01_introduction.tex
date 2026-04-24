@@ -11,13 +11,13 @@
 本稿で繰り返し使用する主要記号と略語を以下にまとめる．
 各記号の正式定義と境界条件は該当節を参照されたい．
 
-\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing}--§~\ref{sec:levelset}）}]
+\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing} 以降）}]
 \small
 \begin{description}[leftmargin=6em, style=nextline, itemsep=1pt, topsep=2pt]
   \item[$\phi$] 符号付き距離（SDF）に準ずるレベルセット関数（§~\ref{sec:ridge_eikonal}）．
   \item[$\psi$] 平滑化ヘヴィサイド $H_\varepsilon(\phi) \in (0,1)$．CLS の保存対象（§~\ref{sec:cls_advection}）．
   \item[$\varepsilon$] 界面遷移層の厚さパラメータ．$\varepsilon \propto h$ とスケールさせる（§~\ref{sec:cls_advection}）．
-  \item[$\varepsilon_d$] Dissipative CCD の散逸強度パラメータ．
+  \item[$\varepsilon_d$] Dissipative CCD（結合コンパクト差分法；第~\ref{sec:CCD}章）の散逸強度パラメータ．
         安定性条件 $\varepsilon_d\le 1/4$，チェッカーボード抑制用途では $\varepsilon_d=1/4$ 固定，
         界面用途では $\varepsilon_{d,\max}=0.05$ を採用（§~\ref{sec:dccd_derivation}, §~\ref{sec:dccd_params}）．
   \item[CLS] Conservative Level Set．$\psi$ を保存量として移流する定式化（§~\ref{sec:levelset}）．
@@ -55,16 +55,16 @@ BF 残差を機械精度近くまで押し下げる設計選択）．
 \textbf{UCCD6}（Upwind CCD6：内蔵超粘性をもつ bulk 運動量移流用 $\Ord{h^6}$ スキーム；§~\ref{sec:uccd6_def}）を
 本稿で新たに定式化する．
 さらに HFE を開発し，
-高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 830$）対応の分相 PPE 解法における
+高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 10^3$）対応の分相 PPE 解法における
 界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した
-（詳細は §~\ref{sec:split_ppe_motivation}：
-分相 PPE は各相で定数密度 Poisson を独立に解き，
-界面で圧力ジャンプ条件により結合する高密度比向けの定式化）．
+（HFE の定式化詳細は §~\ref{sec:field_extension}；
+分相 PPE は各相で定密度 Poisson を独立に解き，
+界面で圧力ジャンプ条件により結合する高密度比向けの定式化，§~\ref{sec:split_ppe_motivation}）．
 
 本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
 \begin{description}
   \item[Conservative Level Set + Dissipative CCD (DCCD)]%
-        （第~\ref{sec:levelset}・\ref{sec:advection}章）\mbox{}\\
+        （第~\ref{sec:levelset}章・第~\ref{sec:advection}章）\mbox{}\\
         界面の質量保存と数値拡散抑制——曲率計算の入力精度を維持するための基盤
   \item[UCCD6 による bulk 移流の $\Ord{h^6}$ 化]%
         （第~\ref{sec:CCD}章§~\ref{sec:uccd6_def}）\mbox{}\\
@@ -72,13 +72,13 @@ BF 残差を機械精度近くまで押し下げる設計選択）．
         高波数安定性と $\Ord{h^6}$ 精度を両立
   \item[FCCD による HFE / GFM / 分相 PPE / 粘性応力の面ジェット統合]%
         （第~\ref{sec:CCD}章§~\ref{sec:fccd_def}）\mbox{}\\
-        4 つの界面処理役割 (R1)--(R4) を単一の面中心 CCD 演算子族で統一し，
-        演算子整合を構造的に保証
+        4 つの界面処理役割 (R1)--(R4)（§~\ref{sec:fccd_def} で定義）を
+        単一の面中心 CCD 演算子族で統一し，演算子整合を構造的に保証
   \item[DCCD 散逸によるチェッカーボード抑制]%
         （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}）\mbox{}\\
         コロケート格子上の $2\Delta x$ モードを DCCD のスペクトル散逸で内在的に除去
   \item[分相 PPE + 欠陥補正法 + CCD 勾配]%
-        （第~\ref{sec:collocate}章§~\ref{sec:split_ppe_motivation}）\mbox{}\\
+        （第~\ref{sec:ppe_solve}章§~\ref{sec:split_ppe_motivation}）\mbox{}\\
         各相内の定密度 Poisson 方程式に DC $k=3$ を適用し，
         CCD 勾配による Corrector の速度補正精度を高める
   \item[非一様格子]%
@@ -289,7 +289,8 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 
 \subparagraph{原因.}コロケート格子において，中心差分による圧力勾配の評価では
 隣り合う格子点の圧力が連立されないため（1つ飛びの点しか参照しない），
-高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する~\cite{RhieChow1983}．
+高周波の圧力振動が速度場に伝播しない「幽霊モード」が存在する
+（コロケート格子上のこの課題とその運動量補間による古典的対処は~\cite{RhieChow1983}）．
 具体的に周期 $2\Delta x$ のチェッカーボードモード $p_j = P_0(-1)^j$ に対して，
 中心差分は
 $(p_{j+1}-p_{j-1})/(2\Delta x) = P_0\bigl[(-1)^{j+1}-(-1)^{j-1}\bigr]/(2\Delta x) = 0$
