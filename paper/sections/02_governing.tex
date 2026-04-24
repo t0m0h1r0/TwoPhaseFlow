@@ -160,12 +160,11 @@ Two-Fluid 形式は各相に個別の方程式を解き，界面追跡（Front T
 この変換には以下の操作が含まれる：
 \begin{enumerate}
   \item 各相の\textbf{別々の方程式}（$k=l,g$）が\textbf{1本の方程式}~\eqref{eq:NS_onefluid} に統合された．
-  \item 界面での\textbf{応力ジャンプ条件}~\eqref{eq:jump_stress} が
-        右辺の\textbf{表面張力項} $\bm{f}_\sigma$（§~\ref{sec:csf}）として吸収された．
-        式~\eqref{eq:jump_stress} の右辺は $-\sigma\kappa\hat{\bm n}$ であるが，
-        One-Fluid 方程式ではこの界面力を運動量方程式の右辺へ移項して
-        $\bm{f}_\sigma=\sigma\kappa\hat{\bm n}\delta_s$ として表すため，
-        見かけの符号が反転する．
+  \item 界面での応力ジャンプ条件~\eqref{eq:jump_stress}
+        $[\bm{\tau}\cdot\hat{\bm n}]_\Gamma = -\sigma\kappa\hat{\bm n}$ が，
+        Heaviside 分布の微分則による体積積分化で
+        $\bm{f}_\sigma = -[\bm{\tau}\cdot\hat{\bm n}]_\Gamma\,\delta_s = \sigma\kappa\hat{\bm n}\,\delta_s$
+        として運動量方程式右辺に吸収された（§~\ref{sec:csf}；詳細は付録~\ref{app:onefluid_1d}）．
   \item 界面の\textbf{速度連続条件}~\eqref{eq:jump_vel} は，
         全領域で同一の速度場 $\bu$ を解くことで自動的に満たされる．
 \end{enumerate}
