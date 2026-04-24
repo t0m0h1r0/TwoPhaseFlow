@@ -1,37 +1,38 @@
 % paper/sections/04e_fccd.tex
 %
-% §4.5  FCCD：面中心 CCD と H-01 診断に対する救済
+% §4.5  FCCD：面ジェット共通プリミティブ（HFE / GFM / 分相PPE）
 %        SP-A（4 設計原理・4 次導出）+ SP-C（行列定式化）を統合．
+%        H-01 歴史的診断は付録 §B.4（appendix_ccd_h01.tex）に退避．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{\texorpdfstring{{\FCCD}：面中心 CCD 演算子族}{FCCD：面中心 CCD 演算子族}}
+\subsection{\texorpdfstring{{\FCCD}：面ジェット共通プリミティブ}{FCCD：面ジェット共通プリミティブ}}
 \label{sec:fccd_def}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 SP-A \cite{SPA}（4 設計原理＋4 次 cancellation 導出）と
 SP-C \cite{SPC}（行列定式化＋周期 DFT 解析）を統合し，
 本節では\textbf{面中心 Combined Compact Difference}（{\FCCD}）演算子族を定義する．
-{\FCCD} の目的はふたつ：
-(i) 非一様・界面追従格子における FVM 面フラックスと CCD 節点勾配の
-\textbf{メトリック不整合（H-01）}を根治的に解消し（§\ref{sec:balanced_force}），
-(ii) 高次精度・コンパクト性・風上構造という CCD 本来の長所を面配置で保存することである．
+{\FCCD} は単独スキームではなく，複数の界面消費点で共有される
+\textbf{共通面ジェットプリミティブ} $\mathcal{J}_f(u)=(u_f, u'_f, u''_f)$ を
+$\Ord{H^4}$ で供給する契約（shared contract）として本稿では位置付けられる．
 
-% -------------------------------------------------------------------------------
-\subsubsection{H-01 診断と動機}
-\label{sec:fccd_motivation_h01}
-% -------------------------------------------------------------------------------
+\noindent\textbf{本稿での 4 つの再利用先（R1)-(R4)．}
+\begin{enumerate}[label=\textbf{(R\arabic*)}]
+  \item HFE 上流点再構築（§~\ref{sec:advection_motivation}）における面ジェット消費；
+  \item GFM ghost pressure jet（§~\ref{sec:split_ppe_framework}）での $[p]=\sigma\kappa$ および $[\alpha p']=0$ 条件課嵌；
+  \item 分相 PPE 楕円作用素 $G_h^{bf}$ と $D_h^{bf} = -(G_h^{bf})^{\!*}$（§~\ref{sec:split_ppe_framework}）の離散随伴対；
+  \item 粘性 stress-divergence の界面バンド（§~\ref{sec:viscous_3layer}）における面法線・接線高次微分．
+\end{enumerate}
+バルク演算子は節点 CCD の $\Ord{h^6}$ を維持し，
+{\FCCD} の $\Ord{H^4}$ は上記 4 界面消費点でのみ展開される．
+この意味で {\FCCD} は bulk 精度の縮退ではなく，
+界面近傍のメトリック整合を担保する\textbf{設計選択}である．
 
-FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ と
-節点中心 CCD 微分の\textbf{メトリック不整合}を先行予備解析が指摘し，
-毛管ベンチマーク（$\rho_\text{liq}/\rho_\text{gas}=833$）の Exp-1 で
-Balanced-Force 残差 $|\BF_{\text{res}}|\approx 884$（step 1）を実測．
-Exp-2（$\sigma=0 \Rightarrow T=20$ まで安定）が決定的証拠となり，
-hypothesis \textbf{H-01}（「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\nabla\psi$ の
-メトリック空間不一致が長時間破綻の主因」）が確定した．
-
-SP-A の着想は：$\mathcal{G}^{\text{adj}}$ が面上で定義される事実を出発点として，
-\textbf{圧力勾配も界面力勾配も同一面ロカス上}で {\FCCD} により評価することで，
-BF 残差を $\Ord{\Delta x^2} \to \Ord{\Delta x^4}$ まで圧縮する．
+\noindent\textbf{歴史的経緯の保全．}
+{\FCCD} 初版（SP-A）の動機は FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ との
+メトリック整合（H-01 診断）にあったが，SP-M 純 FCCD 設計では FVM が除外される．
+歴史的診断 H-01 および Exp-1/Exp-2 実測値は付録~\ref{sec:fccd_motivation_h01}
+（§B.4 H-01 診断の歴史的ケーススタディ）に保全されている．
 
 % -------------------------------------------------------------------------------
 \subsubsection{4 つの設計原理}
@@ -51,7 +52,7 @@ SP-A \S3 は以下の 4 原理に従う：
       Chu--Fan 同様の\textbf{微分関係式の組合せ}で精度を取得．
 \item \textbf{面中心化．}
       一次量は全て面 $f = i-1/2$ で定義，
-      界面位置・ALE 格子運動・FVM 面フラックスと\textbf{同一ロカス}．
+      HFE 上流点・GFM ジャンプ行・分相 PPE 楕円演算子と\textbf{同一面ロカス}．
 \end{enumerate}
 
 % -------------------------------------------------------------------------------
@@ -162,7 +163,7 @@ $\mathbf{M}^{\FCCD,\text{nu}} = \mathbf{D}_1^{(H)} - (\mathbf{D}_\mu^{(H\theta)}
 完全な係数行列と切断誤差解析は §\ref{sec:grid}（非一様格子）で扱う．
 
 % -------------------------------------------------------------------------------
-\subsubsection{H-01 救済と Balanced-Force 補正}
+\subsubsection{Balanced-Force 補正（面ジェット共通メトリック）}
 \label{sec:fccd_h01_remedy}
 % -------------------------------------------------------------------------------
 
@@ -181,10 +182,11 @@ Balanced-Force 残差は：
   \;=\; \Ord{\Delta x^4}
   \label{eq:fccd_bf_residual_order}
 \end{equation}
-まで圧縮され，H-01 を根治的に解消する．
-これにより H-01 の未解決アクション
-「$\mathcal{G}^{\text{adj}}$ と $\sigma\kappa\bnabla\psi$ の同一メトリクス空間統一」が
-FCCD 採用で満たされる（SP-A \S6.2）．
+まで圧縮される．
+4 役割 (R1)-(R4) が同一面ジェット $\mathcal{J}_f$ を共有することで，
+圧力勾配・界面力・HFE 上流点・GFM ジャンプ条件の相互整合が
+$\Ord{\Delta x^4}$ レベルで担保される
+（SP-A 初版の H-01 救済動機は付録~\ref{sec:fccd_motivation_h01} を参照）．
 
 より運用的な Balanced-Force 設計原則（7 原理 P-1..P-7）は
 §\ref{sec:balanced_force} で統一する；
