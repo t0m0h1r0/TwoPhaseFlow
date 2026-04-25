@@ -101,10 +101,19 @@ $\betaf = (1/\rho)_f$ は以下の 3 経路\textbf{すべてで同一}：
 \end{enumerate}
 PPE に調和平均，補正に算術平均という「混用」は
 $\rho_l/\rho_g \gg 1$ で BF 残差を界面で $\Ord{1}$ とする．
-\textbf{本稿の選択}：$\betaf^\text{harm}=2/(\rho_L+\rho_R)$（調和平均：
-密度の算術平均 $(\rho_L+\rho_R)/2$ を取ってから逆数化すると
-$\betaf^\text{harm}=[(\rho_L+\rho_R)/2]^{-1}=2/(\rho_L+\rho_R)$；
-\S\ref{sec:split_ppe_formulation}）を 3 経路共通で採用．
+\textbf{本稿の選択}：$\betaf^\text{harm}=2/(\rho_L+\rho_R)$ を 3 経路共通で採用．
+
+\smallskip\noindent\textbf{命名と等価性（混乱回避）}：
+$\betaf^\text{harm}$ は \textbf{$1/\rho$ の調和平均}（厳密形式）：
+$\bigl[\bigl(1/\rho_L+1/\rho_R\bigr)/2\bigr]^{-1}=2\rho_L\rho_R/(\rho_L+\rho_R)$．
+他方，2 値の場合は\textbf{密度の算術平均の逆数}とも書ける：
+$\bigl[(\rho_L+\rho_R)/2\bigr]^{-1}=2/(\rho_L+\rho_R)$．
+両者は $\Ord{(\rho_L-\rho_R)^2}$ で一致するが，
+本稿は FVM フェイス係数連続性（§\ref{sec:bf_p4_beta}）と整合する
+\textbf{密度算術平均の逆数} $2/(\rho_L+\rho_R)$ を採用し，
+表記 $\betaf^\text{harm}$ は慣用に従う．
+$n\ge 3$ 値では両者が分離するため
+（§\ref{app:fvm_face_coeff} 参照），定義の取違いに注意．
 
 % -------------------------------------------------------------------------------
 \subsubsection{P-5：曲率に生 CCD を適用しない}
@@ -189,10 +198,15 @@ Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
   \item RC は 1 次散逸を挿入 $\Rightarrow$ CCD の 6 次ステンシルを劣化させる．
 \end{itemize}
 \textbf{用途}：デバッグ時の一時安定化，粗格子初期化のみ．
-プロダクションの BF 圧力補正経路では使用禁止．
-本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）は BF 補正ではなく
-\textbf{高周波散逸の面中心修正}として位置付ける（F-2 を踏むのではなく
-面フラックスの整合を\textbf{補強}する）．
+\textbf{RC 単独の Balanced-Force 経路は禁止}（プロダクションの BF 圧力補正には使用しない）．
+\textbf{ただし}，§\ref{sec:collocate} の RC + CSF 拡張（§\ref{sec:rc_balanced_force}）で
+\textbf{曲率・$\betaf$ 同一演算子適用}を満たす\textbf{拡張 RC--CSF}は，
+本稿のコロケート Level 2 既定の BF 経路として独立に成立する．
+すなわち\textbf{RC 単独 = 不可，RC + CSF 整合拡張 = 既定}であり，
+この区別を曖昧にすると F-2/F-4 を踏む．
+本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）は
+さらに\textbf{高周波散逸の面中心修正}として位置付け，
+面フラックス整合を補強する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{F-1--F-5 × P-1--P-7 対応マップ}
@@ -210,7 +224,7 @@ F-1（位置ズレ）              & $\blacksquare$ & & $\square$ & & & & $\squa
 F-2（補正 $G_h$ 不一致）      & & $\blacksquare$ & & & & & $\square$ & P-2 \\
 F-3（随伴違反）              & & $\blacksquare$ & & & & & & P-2 \\
 F-4（$\betaf$ 混用）         & & $\square$ & & $\blacksquare$ & & & & P-4 \\
-F-5（界面越えステンシル）   & & & $\square$ & & $\square$ & $\blacksquare$ & & P-6 \\
+F-5（界面越えステンシル）\footnote{F-5 で P-6 単独は \(\Ord{h^2}\) を達成する；P-3 と P-5 は次数改善の上乗せ寄与であり主解消ではない．}   & & & $\square$ & & $\square$ & $\blacksquare$ & & P-6 \\
 \hline
 \end{tabular}
 
@@ -220,6 +234,10 @@ F-5（界面越えステンシル）   & & & $\square$ & & $\square$ & $\blacksq
 \noindent P-5（曲率 $\kappa$ の非 CCD 化）と P-3（$f_\sigma$ を $p$ と同幾何）は
 F-5（界面越えステンシル平滑化）に対し副次的・間接的に寄与する．
 P-7（sub-system 分離）は F-1・F-2 の\textbf{設計レベル}での発生を防ぐ予防策．
-7 原則は独立ではなく，\textbf{5 失敗モードすべてを同時に解消する最小集合}として設計されている．
+\textbf{F-1..F-5 への主解消は P-1, P-2, P-4, P-6 の 4 原則}が担い，
+P-3, P-5, P-7 は次数改善・設計予防として\textbf{独立な設計目的}を持つ
+（各原則の設計動機は §\ref{sec:bf_p1_location}--\ref{sec:bf_p7_separation} 参照）．
+7 原則の動機は単一の「5 モード解消最小集合」ではなく，
+主解消 4 原則と副次寄与 3 原則が\textbf{独立な目的群}を網羅する設計である．
 
 % ═══════════════════════════════════════════════════════════════════════════════

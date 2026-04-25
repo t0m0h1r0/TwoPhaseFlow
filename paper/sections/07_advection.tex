@@ -99,7 +99,7 @@ $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 % ─────────────────────────────────────────────────────────────────────────────
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{移流スキーム選択の設計根拠：WENO5 からの脱却}
+\subsubsection{移流スキーム選択の設計根拠：純 WENO5 単独の不適合と hybrid 化の必然}
 \label{sec:advection_weno5_critique}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -127,6 +127,9 @@ CLS 界面移流には以下の 3 点で非適合である
 \end{enumerate}
 
 \noindent
+\textbf{結論}：純 WENO5 単独は CLS 界面移流に不適合であるが，
+\textbf{WENO5 + DCCD hybrid}（DCCD bulk + WENO5 衝撃領域選択；
+§\ref{sec:cls_stages}）は両者の弱点を相互補完する設計である．
 CCD は線形・コンパクト・低散逸スキームであり，
 CLS の滑らかな $\psi$ プロファイルに対して界面構造を追加散逸なく長時間保持でき，
 支配方程式全体の空間離散化を単一構造で統一する
@@ -246,7 +249,7 @@ $H(\xi) \approx 1 - \varepsilon_d^{\mathrm{adv}}\xi^2 \approx 1$（精度劣化 
 との使い分けを表~\ref{box:scheme_roles}に整理する．
 \end{tcolorbox}
 
-\begin{tcolorbox}[resultbox, title={TVD-RK3 + DCCD 微分応答制御の線形 CFL 上界}]
+\begin{tcolorbox}[warnbox, title={TVD-RK3 + DCCD 微分応答制御の線形 CFL 上界（線形理論・未検証）}]
 \label{result:dccd_stability}
 線形定係数移流に対するフォン・ノイマン解析では，
 TVD-RK3 の虚軸安定域 $|z|\le\sqrt{3}$ と
