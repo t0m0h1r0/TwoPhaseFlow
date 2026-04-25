@@ -548,6 +548,81 @@ $D(T{=}2)=0.037$ より小さい．$T{=}2$ では VolCons$=1.38\%$ と目標 $1\
 （$t{=}0.5$ → $t{=}1.5$ にかけて VolCons が一度減少する非単調挙動がこれを示唆する）．
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{再初期化の実装ガイドと収束判定}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{tcolorbox}[mybox, title={実装ガイド：再初期化の定量的運用}]
+\textbf{仮想時間刻み：} $\Delta s = \min(h_x, h_y)$ として，安定条件（\ref{warn:cls_dtau_stability}）から
+推奨値 $\Delta\tau = 0.125\Delta s$（2次元拡散安定限界 $\Delta s/6$ より約25\%小さく，安全余裕を確保）．
+
+\medskip
+\noindent\textbf{収束モニター：} $M(\tau) = \int_\Omega \psi(1-\psi)\,dV$ を使用する．
+基準値
+\begin{equation}
+  M_{\mathrm{ref}} = \int_\Omega H_\varepsilon(\phi_0)\bigl(1-H_\varepsilon(\phi_0)\bigr)\,dV
+\end{equation}
+に対して $M(\tau)/M_{\mathrm{ref}}$ が閾値（例：$1.05$）を超えたときのみ再初期化を実行する
+（適応的再初期化；§~\ref{sec:adaptive_reinit} の $\theta_{\mathrm{reinit}}=1.10$ が現行運用値）．
+軽微な乱れでは3～5ステップ，界面トポロジー変化直後は10～20ステップ程度が目安．
+
+\medskip
+\noindent\textbf{終了判定（再初期化ループの停止条件）：}
+再初期化ループを反復ごとに以下の条件でチェックし，いずれかを満たしたとき停止する：
+\begin{enumerate}
+  \item \textbf{残差収束：}
+        $\|\psi^{m+1} - \psi^m\|_{L^\infty} < \delta_{\tau}$（推奨：$\delta_\tau = 10^{-4}\,\Delta s$）
+  \item \textbf{ステップ数上限：}
+        $m \ge N_{\tau,\max}$（推奨：$N_{\tau,\max} = 5$；CLS の lift-and-redistribute が
+        1 回で $M(\tau)/M_{\mathrm{ref}}$ を閾値以下まで戻すため通常運転ではこれで十分．
+        トポロジー変化直後のみ $N_{\tau,\max} = 20$ に引き上げる．
+        校正値は §~\ref{sec:verification} ベンチマークに基づく）
+\end{enumerate}
+物理タイムステップあたりの再初期化ステップ数（1-5 程度）が少なすぎる場合は
+$M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
+
+\noindent\textbf{トレードオフ：}
+再初期化不足 → プロファイル崩れ・曲率誤差増大；
+再初期化過剰 → 界面位置の微小移動・体積誤差蓄積．
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{仮想時間刻み \texorpdfstring{$\Delta\tau$}{Δτ} の安定性}
+\label{warn:cls_dtau_stability}
+% ─────────────────────────────────────────────────────────────────────────────
+以下は，圧縮項と拡散項をともに陽的に扱う場合の参考安定条件である．
+本稿の標準実装では，圧縮項を Dissipative CCD で陽的に処理し，
+拡散項を Crank--Nicolson で半陰的に処理する（§~\ref{sec:advection}）．
+したがって実際の運用では，拡散項の陽的 CFL は CN 処理により緩和される．
+完全陽解法として再初期化方程式を TVD-RK3 で仮想時間積分する場合，
+$\Delta\tau$ には以下の安定性制約が存在する．
+再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
+それぞれの安定条件は以下の通りである．
+双曲型成分（CFL 条件）では，フラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値は
+$\psi \in [0,1]$（値域クランプにより保証）の両端で達成され $\max = 1$ であるから
+$\Delta\tau_{\text{hyp}} \le \Delta s$（$\Delta s = \min(h_x, h_y)$）．
+放物型成分（拡散安定条件）では，2次元で
+$\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
+実用的な安定条件はこれらの最小値：
+\[
+  \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{4\varepsilon}\right)
+\]
+典型的なパラメータ $\varepsilon = 1.5\Delta s$ では $(\Delta s)^2/(4\varepsilon) = \Delta s/6 \approx 0.167\Delta s$ となり，
+拡散型成分の制約が支配的である．
+\textbf{完全陽解法での参考値：} $\Delta\tau = 0.125\Delta s$
+（安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
+標準の圧縮 DCCD + CN 拡散スキームにおける具体的な更新式と制約は
+§~\ref{sec:cls_compression} および §~\ref{sec:algo_flow}（Step 2）で改めて定義する．
+\textbf{備考（圧縮項の離散化選択）：}
+CLS 再初期化圧縮項は非線形フラックス $\bnabla\cdot(\psi(1-\psi)\hat{n})$ を含む．
+UCCD6（§~\ref{sec:uccd6_def}）は線形スカラー移流 $\bu\cdot\bnabla\cdot$ を想定した
+特性方向組み替えを用いるため，非線形フラックスにそのまま適用すると
+風上性の保証が崩れる．
+本稿では圧縮項に DCCD（Dissipative CCD）を保持し，UCCD6 は
+NS 側のスカラー移流にのみ適用する．
+UCCD6 の非線形フラックス化（Jacobian $F'(\psi) = 1-2\psi$ の符号に応じた
+左右ステンシル動的切替）は本稿の範囲外であり，§~\ref{sec:future_work} で将来課題として整理する．
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsection{安定性制約（時間刻みの決定）}
 \label{sec:stability}
 % ─────────────────────────────────────────────────────────────────────────────

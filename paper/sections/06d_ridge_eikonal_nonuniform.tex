@@ -31,6 +31,104 @@ $J_x$ 記号は登場しない．主本文 $J_x^{\S6}$ への
 \end{remark}
 
 % -------------------------------------------------------------------------------
+\subsubsection{D1--D4 の数学的定義}
+\label{sec:ridge_nu_d1d4_math}
+% -------------------------------------------------------------------------------
+
+格子密度因子 $\alpha>1$ の界面適合格子
+（§~\ref{sec:grid_density}）では，§~\ref{sec:ridge_aux_field}--§~\ref{sec:ridge_fmm_reconstruction}
+の導出で暗黙に仮定された一様格子不変量が 3 か所で破れる：
+(i) Gaussian 半幅 $\sigma$ の物理セル分解能が不均一化，
+(ii) $\xiidx$ 空間で Hessian を評価すると
+後述の実用的困難性（注記~\ref{rem:xi_hessian_forbidden}）に抵触，
+(iii) FMM の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る．
+以下 4 つの補正 D1--D4 でこれらを解消する．
+
+\paragraph{D1 — $\sigma_\text{eff}(\bm{x})$ の空間スケーリング}
+基準格子幅を $h_\text{ref}=(\prod_{a} L_a/N_a)^{1/d}$，
+局所幾何平均を $h(\bm{x})=\sqrt{h_x(i)\,h_y(j)}$ とし，
+\begin{equation}
+  \sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot \frac{h(\bm{x})}{h_\text{ref}},
+  \qquad \sigma_0 \in \mathbb{R}_{>0}\text{（}h_\text{ref}\text{ 単位）}
+  \label{eq:sigma_eff}
+\end{equation}
+と修正する．
+物理セル単位では $\sigma_\text{eff}(\bm{x})/h(\bm{x}) = \sigma_0/h_\text{ref}$ が定数となり
+一様格子での設計値をそのまま $\sigma_0$ に引き継げる．
+
+\paragraph{D2 — 物理空間 Hessian（$\xi$ 空間 Hessian 禁止定理）}
+$\xiidx$ 空間で Hessian を組み立て
+chain rule $\bnabla_x^2 = J^{\!\top}\bnabla_\xi^2 J
++ (\bnabla_\xi J^{\!\top})\bnabla_\xi$
+で物理空間に変換する素朴な実装は禁じられる．
+
+\begin{remark}[$\xi$ 空間 Hessian の実用的困難性]\label{rem:xi_hessian_forbidden}
+界面遷移幅が $\le 4$ セルのとき，
+$\xi$ 空間 Hessian を経由する任意の計算は $\mathcal{O}(10^{-1})$ の
+フロア誤差を持つ（実験的根拠は §~\ref{sec:xi_sdf_reinit}）．
+リッジ定義 \eqref{eq:ridge_set_def} は
+$\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
+この条件は一般に違反される．
+\end{remark}
+
+許容される実装：
+\begin{enumerate}
+  \item\textbf{Approach A（論文整合）}——物理空間 Direct 非一様 CCD
+        で $\bnabla_x^2\xiridge$ を直接評価（本稿の推奨実装）．
+  \item\textbf{Approach B（実用 fallback）}——
+        物理空間二階 FD
+        $[\partial_{xx}\xiridge]_{ij}
+        = (\xi_{i+1,j}-2\xi_{ij}+\xi_{i-1,j})/(h_x^-(i)\,h_x^+(i))$
+        を用い，符号判定 $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}<0$ を
+        $H^{\text{FD}}$ で行う．リッジが Morse 非退化な限り
+        符号は一致する（本式は非一様格子では $\Ord{1}$ 近似だが，
+        Morse 非退化点で符号判定に限れば精度に依存しない）．
+\end{enumerate}
+
+\paragraph{D3 — 非一様 FMM}
+標準 FMM の二次更新
+$d_\text{new}=\tfrac{1}{2}(a_x+a_y+\sqrt{2-(a_x-a_y)^2})$
+は $h_x=h_y=1$ を前提とする．
+ここで $a_x, a_y$ は各方向で「Accepted」集合に属する近傍点（風上側）の $d$ 最小値である
+（標準 FMM の upwind 選択規則；詳細は~\cite{Sethian1996}）．
+物理空間 Eikonal
+\begin{equation}
+  \frac{(d-a_x)^2}{h_x^2}+\frac{(d-a_y)^2}{h_y^2}=1
+  \label{eq:fmm_nonuniform}
+\end{equation}
+の閉形式解（大きい方の根）は
+\begin{equation}
+  d = \frac{a_x/h_x^2 + a_y/h_y^2 + \sqrt{D}}
+           {1/h_x^2 + 1/h_y^2},\qquad
+  D = \Bigl(\tfrac{1}{h_x^2}+\tfrac{1}{h_y^2}\Bigr)
+      - \frac{(a_x-a_y)^2}{h_x^2 h_y^2}.
+  \label{eq:fmm_closed_form}
+\end{equation}
+$D<0$ のときは一次元単調更新 $d=\min(a_x+h_x,\,a_y+h_y)$ を採用する．
+粘性一意性は \eqref{eq:fmm_nonuniform} が物理空間で書かれている限り
+§~\ref{sec:ridge_fmm_reconstruction} の粘性解一意性証明がそのまま成立する．
+
+\paragraph{D4 — $\varepsilon$-widening の空間依存化}
+再構成幅を
+\begin{equation}
+  \varepsilon_\text{local}(\bm{x})
+  = \varepsilon_\text{scale}\cdot \varepsilon_\xi \cdot h(\bm{x}),
+  \qquad \varepsilon_\xi = \varepsilon/h_\text{min}
+  \label{eq:eps_local}
+\end{equation}
+と空間依存にする
+（$h_\text{min} \equiv \min_{\bm{x}} h(\bm{x})$ は計算領域の最小格子幅；
+非一様格子の定義は §~\ref{sec:grid}）．
+
+\noindent
+$\varepsilon_\text{scale}$ は「再構成された SDF 幅を
+局所格子幅とどの程度整合させるか」を決める無次元因子であり，
+一様格子の既定値を非一様格子へ移植する際にも
+式~\eqref{eq:eps_local} の空間因子により自然に吸収される．
+本稿では以降，代表値として $\varepsilon_\text{scale}=1.4$ を用いるが，
+感度評価と実装詳細は本節以降で扱う．
+
+% -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{D1 実装：$\sigma_\text{eff}(\bm{x})$ のキャッシュ}{D1 実装：σ\_eff(x) のキャッシュ}}
 \label{sec:ridge_nu_sigma_impl}
 % -------------------------------------------------------------------------------
