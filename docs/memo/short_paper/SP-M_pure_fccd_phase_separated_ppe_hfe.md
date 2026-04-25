@@ -257,6 +257,24 @@ its mean separately in the gas and liquid masks before GMRES, and it keeps one
 pressure gauge pin per detected phase.  This is not a finite-volume conservation
 claim; it is the solvability condition for the FVM-free differential PPE blocks.
 
+The gauge pin is a nullspace constraint, not a physical boundary condition.
+Therefore it must be placed on a bulk row of each phase block.  Pinning the
+first density-threshold crossing is mathematically unsafe: in a diffuse
+interface it can select a contact-line/interface row, replacing a pressure-jump
+or cut-face row by a Dirichlet gauge row.  In the wall-bounded capillary-wave
+case this produced a left-edge force spike and a two-order-of-magnitude kinetic
+energy inflation.  The production rule is now:
+
+1. detect the gas and liquid masks from the phase-separated density threshold;
+2. prefer cells whose density is within 5% of the phase bulk value;
+3. within those bulk candidates, choose the cell farthest from the domain
+   boundary in index distance;
+4. fall back to the old phase mask only if no bulk candidate exists.
+
+This keeps the gauge operation aligned with the Neumann nullspace theory: the
+pin removes only an arbitrary phase constant and does not alter an interface or
+wall-contact equation.
+
 ## 12. Implementation Status: Base-Pressure Warm Start Phase 4
 
 With pressure-jump decomposition, the elliptic unknown is not the final pressure

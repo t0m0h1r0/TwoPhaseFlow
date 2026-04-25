@@ -131,6 +131,13 @@ PPE RHS to zero mean separately in each detected density phase before GMRES, the
 pins one pressure gauge per phase.  This is a solvability requirement for the
 split differential operator, not a return to FVM conservation.
 
+The gauge DOF must be a bulk-phase representative.  It must not be chosen as the
+first density-threshold crossing, because that can place the gauge on a diffuse
+interface/contact-line row.  Such a pin changes an equation that should carry
+pressure-jump or cut-face information into a local Dirichlet gauge row.  The
+current code therefore chooses, per phase, a density-pure candidate farthest
+from the domain boundary before falling back to any phase cell.
+
 ## Code Status: Phase 4 Base-Pressure Warm Start
 
 For `pressure_jump`, the PPE unknown is `p_tilde`; the returned pressure is the
