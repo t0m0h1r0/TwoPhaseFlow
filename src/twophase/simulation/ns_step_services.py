@@ -184,6 +184,8 @@ def correct_ns_velocity_stage(
             project_kwargs["pressure_gradient"] = (
                 "fccd" if ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
             )
+            if ppe_runtime.ppe_coefficient_scheme == "phase_separated":
+                project_kwargs["coefficient_scheme"] = "phase_separated"
         if preserve_projected_faces and hasattr(proj_op, "project_faces"):
             state.projected_face_components = proj_op.project_faces(
                 [state.u_star, state.v_star],

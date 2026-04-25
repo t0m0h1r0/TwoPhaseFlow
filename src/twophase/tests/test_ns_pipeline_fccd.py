@@ -16,6 +16,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from twophase.backend import Backend
+from twophase.ccd.ccd_solver import CCDSolver
+from twophase.ccd.fccd import FCCDSolver
+from twophase.config import GridConfig, SimulationConfig
+from twophase.core.grid import Grid
+from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.levelset.transport_strategy import PsiDirectTransport
@@ -25,6 +32,171 @@ from twophase.ppe.interfaces import IPPESolver
 
 N = 16
 L = 1.0
+
+
+def _make_nonuniform_fccd_wall_stack():
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(8, 7), L=(1.0, 1.4), alpha_grid=2.0),
+    )
+    grid = Grid(cfg.grid, backend)
+    for axis, power in enumerate((1.25, 1.4)):
+        length = grid.L[axis]
+        xi = np.linspace(0.0, 1.0, grid.N[axis] + 1)
+        coords = length * xi ** power
+        coords[-1] = length
+        grid.coords[axis] = coords
+        cell_width = np.diff(coords)
+        node_width = np.empty(grid.N[axis] + 1)
+        node_width[0] = cell_width[0]
+        node_width[-1] = cell_width[-1]
+        node_width[1:-1] = 0.5 * (cell_width[:-1] + cell_width[1:])
+        grid.h[axis] = node_width
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    grid._build_metrics(ccd=ccd)
+    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
+    return backend, grid, fccd
+
+
+def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
+    """Projection and FCCD PPE must share the same metric and face space."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    div_op = FCCDDivergenceOperator(fccd)
+    ppe = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
+    rng = np.random.default_rng(314)
+    pressure = rng.standard_normal(grid.shape)
+    rho = 1.0 + rng.uniform(0.0, 0.5, grid.shape)
+
+    ppe.prepare_operator(rho)
+    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    projection_apply = np.asarray(
+        div_op.divergence_from_faces(
+            div_op.pressure_fluxes(pressure, rho, pressure_gradient="fccd")
+        )
+    ).ravel()
+
+    mask = np.ones_like(ppe_apply, dtype=bool)
+    mask[ppe._pin_dof] = False
+    np.testing.assert_allclose(
+        projection_apply[mask],
+        ppe_apply[mask],
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
+def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
+    """Projection must cut the same cross-phase faces as phase-separated PPE."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    div_op = FCCDDivergenceOperator(fccd)
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "jump_decomposition",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
+    rng = np.random.default_rng(2718)
+    pressure = rng.standard_normal(grid.shape)
+    rho = np.ones(grid.shape)
+    rho[: grid.N[0] // 2 + 1, :] = 1000.0
+
+    ppe.prepare_operator(rho)
+    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    projection_apply = np.asarray(
+        div_op.divergence_from_faces(
+            div_op.pressure_fluxes(
+                pressure,
+                rho,
+                pressure_gradient="fccd",
+                coefficient_scheme="phase_separated",
+            )
+        )
+    ).ravel()
+
+    mask = np.ones_like(ppe_apply, dtype=bool)
+    mask[list(ppe._pin_dofs)] = False
+    np.testing.assert_allclose(
+        projection_apply[mask],
+        ppe_apply[mask],
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
+def test_phase_separated_corrector_forwards_projection_coefficient_scheme():
+    """NS corrector must use the same face coefficient scheme as the PPE."""
+    from twophase.simulation.ns_step_services import correct_ns_velocity_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    class GradientStub:
+        def gradient(self, pressure, axis):
+            return np.zeros_like(pressure)
+
+    class ProjectionRecorder:
+        def __init__(self):
+            self.kwargs = None
+
+        def project_faces(self, components, p, rho, dt, force_components=None, **kwargs):
+            self.kwargs = kwargs
+            return [np.array(component, copy=True) for component in components]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    arr = np.zeros((3, 3))
+    state = NSStepState(
+        psi=arr,
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones_like(arr),
+        f_x=np.zeros_like(arr),
+        f_y=np.zeros_like(arr),
+        u_star=np.zeros_like(arr),
+        v_star=np.zeros_like(arr),
+        p_corrector=np.zeros_like(arr),
+    )
+    backend = type("BackendStub", (), {"xp": np})()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+        },
+    )()
+    projection = ProjectionRecorder()
+
+    correct_ns_velocity_stage(
+        state,
+        backend=backend,
+        pressure_grad_op=GradientStub(),
+        face_flux_projection=True,
+        preserve_projected_faces=True,
+        fccd_div_op=projection,
+        div_op=projection,
+        ppe_runtime=ppe_runtime,
+        bc_type="wall",
+        apply_velocity_bc=lambda *_args: None,
+    )
+
+    assert projection.kwargs == {
+        "pressure_gradient": "fccd",
+        "coefficient_scheme": "phase_separated",
+    }
 
 
 def _mode2_ic(solver: TwoPhaseNSSolver) -> np.ndarray:
