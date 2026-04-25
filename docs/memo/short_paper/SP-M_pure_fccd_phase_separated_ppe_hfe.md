@@ -202,8 +202,8 @@ projection:
 This selects the FCCD matrix-free PPE with a phase-separated coefficient rule.
 Faces whose two endpoint densities belong to different phases are assigned zero
 PPE coupling, so the pressure operator is assembled as two FCCD phase blocks
-rather than as a smeared mixture-density operator.  Each phase block receives its
-own pressure gauge pin.
+rather than as a smeared mixture-density operator.  Each phase block has its own
+constant Neumann nullspace.
 
 This is not yet the full GFM jump-row implementation.  The current stage is the
 minimal SP-M-consistent executable split:
@@ -253,27 +253,29 @@ one compatibility condition per phase:
 \]
 
 The FCCD matrix-free phase-separated solver now projects the RHS by subtracting
-its mean separately in the gas and liquid masks before GMRES, and it keeps one
-pressure gauge pin per detected phase.  This is not a finite-volume conservation
-claim; it is the solvability condition for the FVM-free differential PPE blocks.
+its **control-volume weighted** mean separately in the gas and liquid masks
+before GMRES.  It removes the pressure nullspace with a per-phase zero-volume-
+mean gauge,
 
-The gauge pin is a nullspace constraint, not a physical boundary condition.
-Therefore it must be placed on a bulk row of each phase block.  Pinning the
-first density-threshold crossing is mathematically unsafe: in a diffuse
-interface it can select a contact-line/interface row, replacing a pressure-jump
-or cut-face row by a Dirichlet gauge row.  In the wall-bounded capillary-wave
-case this produced a left-edge force spike and a two-order-of-magnitude kinetic
-energy inflation.  The production rule is now:
+\[
+\sum_{i\in\Omega_q} p_i\,\Delta V_i = 0,\qquad q\in\{L,G\},
+\]
 
-1. detect the gas and liquid masks from the phase-separated density threshold;
-2. prefer cells whose density is within 5% of the phase bulk value;
-3. within those bulk candidates, choose the cell farthest from the domain
-   boundary in index distance;
-4. fall back to the old phase mask only if no bulk candidate exists.
+not by replacing a single row with a point Dirichlet condition.  This is not a
+finite-volume conservation claim; it is the solvability condition for the
+FVM-free differential PPE blocks.
 
-This keeps the gauge operation aligned with the Neumann nullspace theory: the
-pin removes only an arbitrary phase constant and does not alter an interface or
-wall-contact equation.
+The distinction is essential.  A point gauge row is not a physical boundary
+condition; in a compact/cut-face PPE block it removes one local equation and
+injects a one-point residual into an otherwise symmetric problem.  Moving the
+pin from a contact-line row to a bulk row only moves the residual.  The mean
+gauge acts on the nullspace itself: the Krylov apply uses the physical operator
+on the mean-free subspace and an identity only on the constant-mode complement.
+Therefore it preserves mirror symmetry whenever the grid, phase mask, and RHS
+are mirror-symmetric.  The wall-bounded capillary-wave case exposed this
+failure mode: the previous point gauge generated a localized artificial force,
+and the outer defect-correction loop reintroduced the same point row even after
+the inner PPE had been changed.
 
 ## 12. Implementation Status: Base-Pressure Warm Start Phase 4
 
@@ -338,13 +340,15 @@ enabled:
 
 - `ppe_phase_count`
 - `ppe_pin_count`
+- `ppe_mean_gauge`
 - `ppe_rhs_phase_mean_before_max`
 - `ppe_rhs_phase_mean_after_max`
 - `ppe_interface_coupling_jump`
 
 These values verify that the phase-separated PPE actually sees two phase blocks,
-uses one pressure gauge per block, and projects the RHS to the per-phase Neumann
-compatibility condition before GMRES.
+uses no point pins when the mean gauge is active (`ppe_pin_count=0`,
+`ppe_mean_gauge=1`), and projects the RHS to the per-phase Neumann compatibility
+condition before GMRES.
 
 ## 17. Implementation Status: Regrid Reprojection Context Guard Phase 9
 
