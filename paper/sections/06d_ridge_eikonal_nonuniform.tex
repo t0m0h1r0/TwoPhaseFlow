@@ -135,6 +135,16 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 一様版と同じ $\mathcal{O}(N \log N)$ を維持し，
 一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分）．
 
+\noindent\textbf{GPU 実装の等価性要件．}
+非一様 FMM は Accepted 集合から最小 tentative 値を順に確定する
+因果的 Eikonal 解法であり~\cite{Sethian1996}，固定回数の sweeping や Jacobi 型緩和に置き換えると
+式~\eqref{eq:fmm_nonuniform} の粘性解を同じ順序で近似したことにならない．
+したがって GPU 実装でも，device 上に距離場，Accepted/freezing flag，
+trial queue を保持し，CPU 版と同じ非一様 upwind 二次更新
+\eqref{eq:fmm_closed_form} によって隣接点を緩和する必要がある．
+これは高速化の実装詳細ではなく，曲率・pressure-jump・BF 投影が共有する
+signed-distance metric を定義する離散化契約である．
+
 % -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{D4 実装：$\varepsilon_\text{local}(\bm{x})$ の空間場}{D4 実装：ε\_local(x) の空間場}}
 \label{sec:ridge_nu_eps_impl}

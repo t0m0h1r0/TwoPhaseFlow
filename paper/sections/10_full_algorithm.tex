@@ -360,14 +360,21 @@ $\phi^{n+1}$ の CCD 微分から曲率を求める（式~\eqref{eq:curvature_2d
 ここで $\varepsilon_{\text{norm}} = 10^{-12}$（ゼロ除算回避のための微小正則化定数）である．
 
 % ── Step 5 ──────────────────────────────────────────────────────────────
-\paragraph{Step 5：運動量予測（Predictor，AB2 + CN/ADI + IPC）}
-対流項に AB2 外挿，対角粘性項に CN/ADI，交差粘性項に時刻 $n$ の陽的評価を用いる．
-IPC により $-\bnabla p^n$ を陽的に加え，重力と
-CSF 体積力 $(\kappa/We)\bnabla\psi$ を Predictor に含む
-（Balanced-Force 条件，式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}）．
+\paragraph{Step 5：運動量予測（Predictor，Level 2a/2b 分岐）}
+Level 2a（中密度比・診断用）は対流項に AB2 外挿，対角粘性項に CN/ADI，
+交差粘性項に時刻 $n$ の陽的評価を用いる．
+Level 2b（水--空気級・長時間運用）は式~\eqref{eq:predictor_imex_bdf2} の
+IMEX--BDF2 予測子を用い，粘性ブロックを implicit-BDF2 で解く．
+いずれの場合も hydrostatic な浮力勾配は圧力空間へ残し，
+式~\eqref{eq:buoyancy_gradient_residual_split} の残差だけを
+投影と同じ面演算子で Predictor に入れる．
+表面張力は Level 2a では BF 対応 CSF 体積力として，
+Level 2b/3 では pressure-jump 形式の分相 PPE 側へ移す
+（Balanced-Force 条件，式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}；
+投影閉包は式~\eqref{eq:same_face_projection_closure}）．
 
 \medskip
-\underline{$x$ 成分（$u^*_{i,j}$，$n \ge 1$）：}
+\underline{Level 2a の $x$ 成分（$u^*_{i,j}$，$n \ge 1$）：}
 \begin{align*}
   \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(u^*_{i,j} - u^n_{i,j}\bigr)
   &= -\rho^{n+1}_{i,j}\Bigl[
@@ -384,6 +391,8 @@ CSF 体積力 $(\kappa/We)\bnabla\psi$ を Predictor に含む
 \end{align*}
 $y$ 成分は $x \leftrightarrow y$ の対称形に重力項
 $-\rho^{n+1}_{i,j}/Fr^2$ を加える（付録~\ref{app:predictor_y}）．
+Level 2b ではこの節点重力項をそのまま加えず，
+$\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$ の面残差形で組み立てる．
 スタートアップ（$n=0$）のみ対流項を前進 Euler で代用（§~\ref{sec:ab2_ipc}，注意~\ref{warn:ab2_startup}）．
 ADI 分裂の実装詳細（陰的係数の選択，スウィープ形式）は付録~\ref{app:cn_adi_detail} 参照．
 
@@ -408,14 +417,14 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
 
 \noindent\textbf{Level 別 PPE 主方程式（先頭分岐）：}
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item \textbf{Level 1（SSPRK3 検証）/ Level 2（プロダクション）：}
+  \item \textbf{Level 1（SSPRK3 検証）/ Level 2a（中密度比プロダクション）：}
         変密度一括 PPE（式~\eqref{eq:PPE_CCD_fullalgo}，product-rule 展開）を解く．
-        Level 2 では smoothed Heaviside + GFM 補正で
-        中程度の密度比（Level 1 等密度を超える二相流）に対応
-        （\S\ref{sec:level_physics_matrix} 参照：上昇気泡・毛管波例では L2 推奨）．
+        Level 2a では smoothed Heaviside + GFM 補正で
+        中程度の密度比（Level 1 等密度を超える二相流）に対応する
+        （\S\ref{sec:level_physics_matrix} 参照）．
         DC 残差プラトー（$\|d^{(3)}\|_\infty/\|d^{(0)}\|_\infty > 10^{-3}$）が観測される
         場合は Level 3 への切替を推奨する（§\ref{sec:level_selection} 切替判定参照）．
-  \item \textbf{Level 3（純 FCCD DNS，水--空気級 $\rho_l/\rho_g\gtrsim 500$）：}
+  \item \textbf{Level 2b/Level 3（水--空気級 $\rho_l/\rho_g\gtrsim 500$）：}
         \textbf{分相 PPE 解法}（式~\eqref{eq:split_ppe_fccd_block}，
         §\ref{sec:split_ppe_framework}）が主方程式．
         各相で定数密度 PPE
@@ -530,4 +539,3 @@ p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
         $\alpha=1.5$ で約50ステップ後にブローアップが生じる．
 \end{itemize}
 \end{tcolorbox}
-

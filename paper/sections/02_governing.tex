@@ -158,6 +158,27 @@ Two-Fluid 形式は各相に個別の方程式を解き，界面追跡（Front T
   \label{eq:NS_onefluid}
 \end{equation}
 
+\noindent\textbf{浮力項の圧力ロバスト分解．}
+重力ポテンシャル $\Phi_g$ を $\bm{g}=-\bnabla\Phi_g$ で定義し，
+任意の基準密度 $\rho_0$ に対して $\rho'=\rho-\rho_0$ と書くと，
+重力項は
+\begin{equation}
+  \rho\bm{g}
+  = \rho_0\bm{g} + \rho'\bm{g}
+  = -\bnabla(\rho_0\Phi_g+\rho'\Phi_g)
+    + \Phi_g\bnabla\rho'
+  \label{eq:buoyancy_gradient_residual_split}
+\end{equation}
+に分解できる．第1項は完全な勾配であり，非圧縮投影法では圧力に吸収されるべき
+hydrostatic 成分である~\cite{Chorin1968,Guermond2006}．
+一方，$\Phi_g\bnabla\rho'$ は密度が変化する界面帯に支持を持つ
+非勾配残差であり，実際に速度を変える浮力である．
+したがって水--空気級の浮力駆動計算では，$\rho\bm{g}$ 全体を Predictor の節点体積力として
+入れるのではなく，勾配成分は圧力空間へ，残差成分は投影と同じ面演算子上へ分配する必要がある．
+この分解は後の Balanced-Force 条件~\cite{Francois2006}
+（§~\ref{sec:bf_seven_principles}）と
+分相 PPE 閉包（§~\ref{sec:split_ppe_framework}）の連続式側の出発点である．
+
 この変換には以下の操作が含まれる：
 \begin{enumerate}
   \item 各相の方程式（$k=l,g$）が 1 本の方程式~\eqref{eq:NS_onefluid} に統合された．

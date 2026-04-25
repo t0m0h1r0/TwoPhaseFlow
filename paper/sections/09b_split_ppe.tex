@@ -211,6 +211,42 @@ P-2（§\ref{sec:bf_p2_adjoint}）により
 各相ブロックは定数差モード除去後に SPD で CG が直接使える．
 
 % ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{同一面係数による投影閉包と浮力残差}
+\label{sec:phase_separated_projection_closure}
+% ─────────────────────────────────────────────────────────────────────────────
+
+分相 PPE の安定性は，PPE 行列だけでなく，Predictor 残差と Corrector が
+同じ面係数を用いることに依存する．これは射影法の
+``PPE と速度補正が同じ離散作用素の随伴対でなければならない''
+という条件の変密度・界面版である~\cite{Chorin1968,Guermond2006}．
+面上の係数を
+\[
+  A_f =
+  \begin{cases}
+    \rho_q^{-1}, & f\subset\Omega_q\ \text{かつ同相面},\\
+    0, & f\ \text{が相を横切る切断面},
+  \end{cases}
+\]
+と書くと，投影恒等式は
+\begin{equation}
+  L_h = D_f A_f G_f,\qquad
+  \bu_f^{n+1} = \bu_f^* - \Delta t\,A_fG_f(\delta p),\qquad
+  D_f\bu_f^{n+1}=0
+  \label{eq:same_face_projection_closure}
+\end{equation}
+である．ここで重要なのは，$A_f$，$G_f$，$D_f$ が
+\textbf{PPE・速度補正・浮力残差の三者で同一}であることである．
+式~\eqref{eq:buoyancy_gradient_residual_split} の
+$\Phi_g\bnabla\rho'$ を面残差として評価する場合も，
+節点で作った残差を事後的に面補間してはならない．
+必ず同じ $G_f$ で hydrostatic ポテンシャルを差分し，同じ $A_f$ で圧力フラックス側へ戻す．
+相を横切る面で $A_f=0$ とする分相係数を PPE だけに使い，
+Corrector や浮力残差で混合密度係数を使うと，
+$D_fA_fG_f$ で打ち消されるべき界面支持の発散が残る．
+したがって「同じメトリック」だけでは不十分であり，
+\textbf{同じ面係数・同じ面勾配・同じ面発散}まで含めて投影閉包と呼ぶ．
+
+% ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{GFM ゴーストジェットによる位相ステッチ}
 \label{sec:gfm_ghost_jet_stitch}
 % ─────────────────────────────────────────────────────────────────────────────
