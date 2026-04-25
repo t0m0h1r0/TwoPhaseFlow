@@ -1,11 +1,11 @@
 % paper/sections/04c_dccd_derivation.tex
 %
-% §4.3  DCCD の教示的導出：1 次風上 → 修正方程式 → DCCD 埋込み
-%        本稿での DCCD は CLS 移流の production 既定（§7）；
+% §4.4  DCCD の導出形 + 実装デフォルト：1 次風上 → 修正方程式 → spectral filter
+%        本稿での DCCD は CLS 移流の実装デフォルト（§7）；
 %        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS 移流 + reinit 圧縮項に適用．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{\DCCD{} フィルタの教示的導出}
+\subsection{\DCCD{} フィルタ：導出形と実装デフォルト}
 \label{sec:dccd_derivation}
 \phantomsection\label{sec:dissipative_ccd}% backward-compat: 旧 04d §4.4 overall label
 \phantomsection\label{sec:dccd_motivation}% backward-compat: 旧 04d § motivation
@@ -27,7 +27,7 @@ DCCD は「アドホックな数値粘性追加」ではなく，
 体系的帰結であることが導出から明らかになる．
 
 \noindent\textbf{本稿における DCCD の位置付け．}
-DCCD は本稿の\textbf{CLS 移流の production 既定}スキームである
+DCCD は本稿の\textbf{CLS 移流の実装デフォルト}スキームである
 （§~\ref{sec:advection_motivation}：CCD 微分 + 後段スペクトル散逸）．
 $\psi$ は $C^0$ 急 tanh プロファイルを持つため UCCD6 では振動が出現し，
 DCCD のスペクトル散逸が必須となる．
@@ -84,12 +84,12 @@ CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
 （§\ref{sec:balanced_force}）と同じ系統の残差を生む．
 
 % -------------------------------------------------------------------------------
-\subsubsection{製品版スペクトルフィルタとの関係}
+\subsubsection{実装デフォルト：スペクトルフィルタとの関係}
 \label{sec:dccd_spectral_filter}
 \phantomsection\label{sec:dccd_filter_theory}% backward-compat: 旧 04d § filter theory
 % -------------------------------------------------------------------------------
 
-製品版 DCCD は定数 $\varepsilon$ を
+実装デフォルト DCCD は定数 $\varepsilon$ を
 スペクトル伝達関数：
 \begin{equation}
   H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2),
@@ -102,7 +102,7 @@ CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
 PDE 形の\textbf{波数依存 $\varepsilon$} 拡張と等価で，
 直流成分・6h 波長成分を $\Ord{\varepsilon_d}$ で保ちつつ
 Nyquist モードのみ $4\varepsilon_d$ で減衰する．
-本節の教示的 PDE は\textbf{製品フィルタの低波数極限}であり，
+本節の導出形 PDE は\textbf{実装デフォルトフィルタの低波数極限}であり，
 式~\eqref{eq:dccd_filter_transfer} の波数選択的設計はこの極限を精緻化したものである．
 
 % -------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（§\ref{sec:advec
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
         本稿では bulk $u, v$ 移流の既定を UCCD6 とし
-        CLS 移流（$\psi$）の production 既定を DCCD とする：
+        CLS 移流（$\psi$）の実装デフォルトを DCCD とする：
         Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
         Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
         Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
