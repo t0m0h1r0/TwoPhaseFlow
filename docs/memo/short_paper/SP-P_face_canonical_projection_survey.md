@@ -844,3 +844,11 @@ Assembly-vs-corrector refinement:
 > state itself. It is carried by the **evaluation state of the viscous
 > operator**, confirming that the missing horizontal coupling is genuinely a
 > `V(u_pred)`-stage effect.
+>
+> Recasting the same branches in gravity-direction language yields
+> `buoyancy_gravity_aligned_local`,
+> `buoyancy_stagesplit_gravity_postfullband`, and
+> `buoyancy_stagesplit_gravity_postsharp`. In the current 2-D benchmark they
+> are bit-identical to the historical `y/x`-named variants, so the true
+> invariant is **gravity-aligned vs transverse coupling**, not literal
+> coordinate labels.

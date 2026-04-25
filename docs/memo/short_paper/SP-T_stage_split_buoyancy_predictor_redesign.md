@@ -25,6 +25,11 @@ repair operator, but a **stage-split buoyancy predictor**:
    `V(u_pred)`;
 3. keep the final projection/corrector unchanged.
 
+For the current benchmark, “vertical” and “horizontal” coincide with `y` and
+`x` because gravity acts on the last spatial axis. But the admissible redesign
+is not fundamentally Cartesian-name based; it is **gravity-aligned** during
+assembly and **transverse** at the `V(u_pred)` stage.
+
 ## 2. Problem Statement
 
 The failure remains a short-time rising-bubble blowup on the static `α=2` FCCD

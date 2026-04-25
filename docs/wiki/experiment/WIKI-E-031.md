@@ -2,7 +2,7 @@
 ref_id: WIKI-E-031
 title: "ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts"
 domain: experiment
-status: OPEN
+status: RESOLVED
 superseded_by: null
 sources:
   - path: experiment/ch13/results/ch13_rising_bubble_water_air_alpha2_n128x256_debug/data.npz
@@ -47,6 +47,10 @@ sources:
     description: PoC P — explicit viscous predictor with conservative-stress operator
   - path: experiment/ch13/results/ch13_rising_bubble_water_air_alpha2_n128x256_faceustar_explicitvisc_ccdlegacy_debug/data.npz
     description: PoC Q — explicit viscous predictor with CCD-legacy stress operator
+  - path: experiment/ch13/results/ch13_rising_bubble_water_air_alpha2_n128x256_richardson_buoyancyfaceresidualstagesplit_debug/data.npz
+    description: phase-separated projection closure — stable to T=0.05
+  - path: experiment/ch13/results/ch13_rising_bubble_water_air_alpha2_n128x256_richardson_buoyancyfaceresidualqjumpstagesplit_debug/data.npz
+    description: q-jump PoC after phase-separated projection closure — stable to T=0.05
 depends_on:
   - "[[WIKI-T-063]]: FCCD face-flux PPE"
   - "[[WIKI-T-066]]: body-force discretization in variable-density NS"
@@ -59,6 +63,31 @@ compiled_at: "2026-04-24"
 ---
 
 # ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts
+
+## Resolution update — 2026-04-25
+
+The dominant defect is now identified: FCCD PPE used the phase-separated
+coefficient space, but the projection corrector and face-native buoyancy
+residual still used harmonic mixture-density pressure fluxes. This mixed
+operators:
+
+- PPE: `D_f[(1/rho)_f^sep G_f(p)]`, cross-phase faces cut
+- corrector/residual: `D_f[(1/rho)_f^mix G_f(p)]`, cross-phase faces coupled
+
+After making `FCCDDivergenceOperator.pressure_fluxes()` accept
+`coefficient_scheme="phase_separated"` and passing that policy from the NS
+pipeline into the predictor residual and corrector, the Richardson face-residual
+case reaches `T=0.05` without blowup.
+
+| Run | Verdict | Final snapshot |
+|---|---|---|
+| `...buoyancyfaceresidualstagesplit_debug` | PASS to `T=0.05` | `KE=1.119e-05`, `ppe_rhs=1.174e+02`, `bf_res=1.777e+02`, `div_u=4.353e-01` |
+| `...buoyancyfaceresidualqjumpstagesplit_debug` | PASS to `T=0.05` | `KE=1.125e-05`, `ppe_rhs=1.192e+02`, `bf_res=1.077e+02`, `div_u=4.190e-01` |
+| `...buoyancyfaceresidualstagesplit_longviz` | PASS to `T=0.5` | `KE=9.491e-04`, `ppe_rhs=6.565e+02`, `bf_res=1.704e+02`, `div_u=1.241e+00`; `psi`/velocity/pressure PDFs every `0.05` |
+
+The q-jump hypothesis is therefore not the primary cause. It is a useful
+consistency check, but the necessary stabilising fix is identical phase
+separation in PPE, residual assembly, and projection.
 
 ## Baseline observation
 
@@ -1047,3 +1076,51 @@ algorithm contract rather than just a diagnosis memo.
 > `buoyancy_stagesplit_sharpx`. So the x-side residual is an
 > **operator-evaluation-stage phenomenon**, not a canonical-state mutation
 > requirement.
+>
+> The same redesign is now also exposed with **gravity-direction** naming:
+>
+> - `buoyancy_gravity_aligned_local`
+> - `buoyancy_stagesplit_gravity_postfullband`
+> - `buoyancy_stagesplit_gravity_postsharp`
+>
+> For the current benchmark they are bit-identical to the older `y/x`-named
+> branches, confirming that the invariant is really gravity-aligned vs
+> transverse coupling.
+
+We then implemented a more theory-driven **pressure-compatible vs residual**
+split of buoyancy at the predictor-assembly level:
+
+- `buoyancy_residual_fullband_local`
+- `buoyancy_residual_stagesplit_transversefullband`
+
+These remove the discrete gradient-compatible part of buoyancy from the
+predictor velocity update and retain only the interface-local residual.
+However, neither branch beats the existing best closures:
+
+- `residual_fullband`: `4.145e9 / 8.427e10 / 1.801e6`
+- `residual_stage_split`: `3.785e9 / 7.727e10 / 1.733e6`
+
+So the theoretical split is physically meaningful, but this **first discrete
+proxy is too aggressive** as a direct replacement for the current predictor.
+The current evidence suggests that the pressure-compatible part cannot simply
+be removed from the predictor.
+
+After enforcing PPE/projection metric identity on the FCCD face-flux path, a
+more faithful face-native residual split was tested:
+
+- `buoyancy_faceresidual_stagesplit_transversefullband`
+
+The face-space unit check passes on a nonuniform wall grid: constant density
+excess makes `face(f_b/rho) + (1/rho)_f G_f((rho-rho_ref)Phi_g)` vanish to
+roundoff.  However, the ch13 debug run worsens to step-4 blowup:
+
+- `face_residual_stage_split`: `5.072e7 / 4.414e11 / 1.595e8`
+
+This is a stronger negative result than the nodal residual split.  The likely
+interpretation is not that the decomposition is wrong, but that the pressure
+unknown now has to carry the hydrostatic jump `(rho_l-rho_g)Phi_g` together
+with the capillary jump.  The current PPE jump decomposition only injects the
+surface-tension term `sigma*kappa*(1-psi)`, so the residual predictor and the
+PPE pressure family are still not closed as a single well-balanced system.
+be removed from the predictor branch without a tighter co-design of the later
+pressure closure.

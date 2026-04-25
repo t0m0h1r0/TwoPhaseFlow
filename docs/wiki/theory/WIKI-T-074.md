@@ -17,9 +17,21 @@ stiffness” mechanism.
 The admissible cure is:
 
 > a stage-split, pressure-robust, well-balanced buoyancy predictor in which the
-> vertical buoyancy mismatch is repaired during predictor assembly on the full
-> two-axis dilated interface band, and the residual horizontal coupling is
+> gravity-aligned buoyancy mismatch is repaired during predictor assembly on the full
+> two-axis dilated interface band, and the residual transverse coupling is
 > repaired mainly in the state seen by `V(u_pred)`.
+
+This should be read carefully:
+
+- `gravity-aligned / transverse` is the right **reduced diagnostic basis** for
+  the current benchmark,
+- but the deeper invariant is the decomposition
+  `\rho \mathbf{g} = -\nabla(\rho\Phi_g) + \Phi_g\nabla\rho`,
+- i.e. **gradient-compatible part vs interface-local residual**.
+
+So `y/x` is not fundamental, and even `gravity-aligned / transverse` is not the
+final mathematical object. It is the lowest-cost physical proxy of the deeper,
+coordinate-free split.
 
 ## Why This Is the Right Mathematical Class
 
@@ -46,12 +58,30 @@ This conclusion combines five theory threads:
    simple weighted blend. It lives on the full local 3×3 interface
    neighbourhood.
 
+6. **Coordinate covariance**
+   on nonuniform or interface-tracking coordinates, the force split must be
+   defined in physical space and discretized with the same metric-aware
+   operators as pressure and projection.
+
+7. **Discrete gradient equivalence**
+   the final numerical split should really be made modulo the discrete pressure
+   gradient range `Range(G_h)`, not by coordinate names. The pressure-robust
+   object is `f_h = f_h^{\nabla} + f_h^{res}` with
+   `f_h^{\nabla} \in Range(G_h)` and `f_h^{res}` assembled on the same support
+   as the predictor state.
+
+8. **PPE/projection metric identity**
+   for the FCCD face-flux projection path, `G_h` is the face gradient used by
+   the FCCD PPE operator, and `D_h` must retain the same wall control-volume
+   rows as the PPE matvec. Using a nodal gradient or a boundary-zero
+   `face_divergence` is not the same discrete space.
+
 ## Minimal Discrete Form
 
 \[
 \mathbf{u}_{B}^{\dagger}
 =
-T_y^{I_1}\!\left(\mathbf{u}^n + \Delta t\,\mathbf{b}(\psi^n)\right),
+T_g^{I_1}\!\left(\mathbf{u}^n + \Delta t\,\mathbf{b}(\psi^n)\right),
 \]
 
 \[
@@ -68,7 +98,7 @@ T_y^{I_1}\!\left(\mathbf{u}^n + \Delta t\,\mathbf{b}(\psi^n)\right),
 \[
 \mathbf{u}_{\mathrm{pred}}^{(1)}
 =
-S_x^{I_1}\!\left(\mathbf{u}_{\mathrm{pred}}^{(0)}\right),
+S_{\perp}^{I_1}\!\left(\mathbf{u}_{\mathrm{pred}}^{(0)}\right),
 \]
 
 followed by the usual CN/Picard viscous correction using
@@ -76,8 +106,12 @@ followed by the usual CN/Picard viscous correction using
 
 Interpretation:
 
-- `T_y^{I₁}` = vertical buoyancy repair during predictor assembly
-- `S_x^{I₁}` = horizontal/cross-component repair before `V(u_pred)`
+- `T_g^{I₁}` = gravity-aligned buoyancy repair during predictor assembly
+- `S_{\perp}^{I₁}` = transverse/cross-component repair before `V(u_pred)`
+
+For the present 2-D code path, where gravity acts on the last spatial axis,
+`T_g^{I₁}` reduces to the historical `T_y^{I₁}` and `S_{\perp}^{I₁}` reduces
+to the historical `S_x^{I₁}`.
 
 ## Literature Basis
 

@@ -156,7 +156,7 @@
 
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
-| [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts |
+| [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
 
 ## Paper (12)
 
@@ -209,7 +209,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (27)
+## Code (28)
 
 | REF-ID | Title |
 |--------|-------|
@@ -244,3 +244,4 @@
 | [WIKI-L-029](code/WIKI-L-029.md) | FCCD Weight Staleness after In-Place Grid Rebuild: update_weights() Protocol |
 | [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |
 | [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |
+| [WIKI-L-032](code/WIKI-L-032.md) | Phase-Separated FCCD Projection Closure: PPE, Predictor Residual, and Corrector Faces |

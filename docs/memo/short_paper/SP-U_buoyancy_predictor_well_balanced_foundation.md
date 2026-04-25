@@ -61,6 +61,82 @@ This is the numerically relevant object: it vanishes only in the reference
 phase, is strongest across the interface band, and is the branch that the PoC
 ladder has consistently identified as the dominant trigger.
 
+## 2.1 Coordinate-Free Gravity Decomposition
+
+The mathematically correct invariant is not the Cartesian label `x` or `y`,
+but the conservative body-force field itself. For uniform gravity one may write
+
+\[
+\mathbf{g} = -\nabla \Phi_g,
+\qquad
+\Phi_g(\mathbf{x}) = -\mathbf{g}\cdot\mathbf{x}.
+\]
+
+Then
+
+\[
+\rho(\psi)\mathbf{g}
+=
+-\nabla\!\bigl(\rho(\psi)\Phi_g\bigr)
++ \Phi_g\,\nabla\rho(\psi).
+\]
+
+Therefore gravity contains two qualitatively different pieces:
+
+1. a **gradient-compatible part** `-\nabla(\rho\Phi_g)`, which belongs with the
+   pressure family, and
+2. an **interface-local residual** `\Phi_g \nabla\rho`, which survives because
+   variable density destroys pure hydrostatic reducibility.
+
+Since `\rho=\rho(\psi)`, one also has
+
+\[
+\nabla\rho(\psi)=\rho'(\psi)\nabla\psi,
+\]
+
+so the residual is localized in the diffuse interface band and follows the
+density-gradient / interface-normal geometry, not the gravity vector alone.
+
+This yields the strict theoretical ranking:
+
+- **Cartesian `x/y` splitting** is not fundamental;
+- **gravity-aligned / transverse splitting** is a good reduced description for
+  uniform gravity on orthogonal grids;
+- the deepest invariant is the **gradient-compatible vs interface-local
+  residual** decomposition.
+
+For mapped or nonuniform coordinates, this split must be defined in **physical
+space** and then transferred with the metric-aware discrete gradient/divergence
+operators. That is the proper way to treat interface-tracking coordinates.
+
+At the discrete level this means the ultimate invariant is not axis direction
+but the decomposition modulo the discrete pressure-gradient range:
+
+\[
+\mathbf{f}_h = \mathbf{f}_h^{\nabla} + \mathbf{f}_h^{\mathrm{res}},
+\qquad
+\mathbf{f}_h^{\nabla}\in \mathrm{Range}(G_h).
+\]
+
+Any physically admissible redesign should therefore make the hydrostatic /
+pressure-compatible part live in `Range(G_h)` and assemble only the residual on
+the predictor support.
+
+Implementation audit.  On the FCCD face-flux branch, the relevant discrete
+space is face-native: `G_h` is the FCCD face pressure gradient and `D_h` is the
+wall-control-volume divergence used by the FCCD PPE matrix-free operator.  The
+projection operator must therefore use the same retained wall rows; the raw
+FCCD boundary-zero `face_divergence` is a different operator and is not
+PPE-identical.
+
+Face-native residual audit.  Recasting the residual as
+`face(f_b/rho) + (1/rho)_f G_f((rho-rho_ref)Phi_g)` passes the constant-density
+nonuniform-grid cancellation test, so the coordinate/metric part of the
+formula is correct.  It nevertheless worsens the ch13 debug run.  This points
+to a missing pressure-family closure: once the predictor carries only the
+residual, the pressure unknown must carry the hydrostatic jump
+`(rho_l-rho_g)Phi_g` in addition to the capillary jump.
+
 ## 3. Why Naive Remedies Fail
 
 The recent PoC ladder rejects several tempting ideas:
@@ -86,6 +162,12 @@ Therefore the right question is not “how do we damp buoyancy?” but
 > how do we assemble a predictor state such that the velocity update remains
 > well balanced against pressure-like forces and does not inject a spurious
 > gradient component into the discrete divergence/pressure closure?
+
+Equivalently:
+
+> how do we keep the gradient-compatible part of gravity inside the
+> pressure-robust closure while assembling the interface-local residual on the
+> same discrete support as the momentum predictor?
 
 ## 4. Literature Survey and Its Implications
 
@@ -352,3 +434,18 @@ The mathematically and physically justified solution method is now:
 
 This is the narrowest redesign class consistent with both the literature and
 the full in-repo hypothesis ladder.
+
+An important negative result must be recorded as well. A direct predictor-side
+implementation of the decomposition
+
+\[
+\rho \mathbf{g} = -\nabla(\rho\Phi_g) + \Phi_g \nabla\rho
+\]
+
+was tested by removing the discrete gradient-compatible part from the predictor
+velocity update and retaining only the interface-local residual in the repaired
+buoyancy substate. In the current solver this did **not** outperform the best
+existing branches. Hence the decomposition is theoretically correct, but a
+naive direct substitution into the predictor assembly is insufficient. The
+pressure-compatible part must be co-designed with the later pressure closure,
+not merely discarded from the predictor.
