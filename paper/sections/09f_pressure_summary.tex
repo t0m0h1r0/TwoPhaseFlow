@@ -116,14 +116,8 @@ $\Ord{\varepsilon^2}=\Ord{h^2}$ が全体の空間精度を律速する（表~\r
 PPE ソルバが精度ボトルネックとならないことを保証する．
 \end{tcolorbox}
 
-\noindent\textbf{GPU-native FVM 実装バリアント（付録~\ref{app:gpu_fvm}）}：
+\noindent\textbf{GPU-native FVM 実装バリアント}：
 本章は PPE の\textbf{数学的定式化と精度}を扱う．
-同一の面ローカル代数を GPU 上で行列フリーに実装する経路
-（演算子カリキュラス $L_\text{FVM}(\rho)p = \sum_a D_a A_a(\rho) G_a p$
-は付録~\ref{app:gpu_fvm_ops}，可変バッチ PCR は付録~\ref{app:gpu_fvm_pcr}，
-D2H/H2D 規律は付録~\ref{app:gpu_fvm_d2h}）は
-\textbf{正確性を変えずに性能を変える}補助設計であり，
-付録~\ref{app:gpu_fvm} に詳述する．
-Level 2 プロダクションでは本文の変密度一括 smoothed-Heaviside PPE 経路（§\ref{sec:algorithm} Step 6）と
-付録の GPU-native FVM 経路をワークロードに応じて切り替える
-二路選択が実用的である．
+Level 2 プロダクションでの 2 経路選択（変密度一括 smoothed-Heaviside PPE vs
+GPU-native FVM 経路；同精度・性能差のみ）は
+§\ref{sec:level_gpu_dual_path} に集約．付録~\ref{app:gpu_fvm} に実装詳細を記す．
