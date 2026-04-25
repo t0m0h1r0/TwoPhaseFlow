@@ -100,10 +100,11 @@ not production-equivalent unless it proves residual convergence and boundary
 consistency. In ch13 it delayed the blow-up but did not pass the final-time
 run; non-uniform FMM did.
 
-Acceptable future GPU work:
-
-1. implement GPU FMM with the same accepted-set non-uniform update, or
-2. implement residual-converged GPU fast sweeping with explicit wall-grid proof.
+The production GPU path is now an exact accepted-set FMM implemented as a CuPy
+`RawKernel`.  The kernel keeps `dist`, `frozen`, and the min-heap on device,
+uses the same `(distance, insertion_order, index)` ordering as the CPU heap,
+and applies the same non-uniform upwind quadratic update.  This preserves the
+FMM causality relation; it is not a fixed-sweep approximation.
 
 ## Imported items
 
@@ -116,6 +117,7 @@ Acceptable future GPU work:
 | CN predictor callbacks | source split applied inside the viscous predictor stage |
 | `cn_mode: richardson` | short YAML alias for internal `richardson_picard` |
 | non-uniform FMM redistancing | paper-faithful `|grad(phi)|=1` metric closure |
+| GPU heap FMM | CuPy `RawKernel` implementation of the same Accepted-set update |
 
 ## Validation
 
@@ -127,10 +129,10 @@ make test
 
 make run EXP=experiment/ch13/run.py ARGS="ch13_rising_bubble_water_air_alpha2_n128x256"
   reached t=0.5000, step=140
-  final KE=9.494e-04
+  final KE=9.498e-04
   final kappa_max=3.528e+03
-  final ppe_rhs=6.719e+02
-  final bf_res=2.786e+02
+  final ppe_rhs=6.517e+02
+  final bf_res=2.136e+02
 ```
 
 Field outputs exist for `psi`, velocity, and pressure through `t=0.500`.
@@ -142,4 +144,3 @@ as the long-form source for the paper section. The paper should present this
 as a single closure theorem: pressure-like buoyancy, projection-native face
 state, term-aware time integration, and FMM redistancing are mutually required
 for the ch13 water--air rising-bubble benchmark.
-

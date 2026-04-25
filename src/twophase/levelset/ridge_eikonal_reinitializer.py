@@ -61,7 +61,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._dV = grid.cell_volumes()
 
         self._extractor = RidgeExtractor(backend, grid, sigma_0=sigma_0, h_ref=self._h_ref)
-        self._fmm = NonUniformFMM(grid)
+        self._fmm = NonUniformFMM(grid, backend=backend)
 
     def update_grid(self, grid) -> None:
         self._grid = grid
@@ -87,19 +87,22 @@ class RidgeEikonalReinitializer(IReinitializer):
         xi_ridge = self._extractor.compute_xi_ridge(phi)
         ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
 
-        extra_seeds = None
-        phi_np = phi.get() if hasattr(phi, "get") else np.asarray(phi)
-        mask_np = ridge_mask.get() if hasattr(ridge_mask, "get") else np.asarray(ridge_mask)
-        if np.any(mask_np):
-            ii, jj = np.where(mask_np)
-            on_interface = np.abs(phi_np[ii, jj]) < 0.5 * self._h_min
-            if np.any(on_interface):
-                iis = ii[on_interface]
-                jjs = jj[on_interface]
-                extra_seeds = [(int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))]
+        if self._backend.is_gpu():
+            phi_sdf = self._fmm.solve(phi, ridge_mask=ridge_mask, h_min=self._h_min)
+        else:
+            extra_seeds = None
+            phi_np = np.asarray(phi)
+            mask_np = np.asarray(ridge_mask)
+            if np.any(mask_np):
+                ii, jj = np.where(mask_np)
+                on_interface = np.abs(phi_np[ii, jj]) < 0.5 * self._h_min
+                if np.any(on_interface):
+                    iis = ii[on_interface]
+                    jjs = jj[on_interface]
+                    extra_seeds = [(int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))]
 
-        phi_sdf_np = self._fmm.solve(phi_np, extra_seeds=extra_seeds)
-        phi_sdf = xp.asarray(phi_sdf_np)
+            phi_sdf_np = self._fmm.solve(phi_np, extra_seeds=extra_seeds)
+            phi_sdf = xp.asarray(phi_sdf_np)
         psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
 
         if self._mass_correction:

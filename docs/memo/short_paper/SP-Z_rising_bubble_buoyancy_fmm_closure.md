@@ -4,7 +4,8 @@
 - **Compiled by**: Codex
 - **Compiled at**: 2026-04-25
 - **Scope**: `ch13_rising_bubble_water_air_alpha2_n128x256`
-- **Code commits**: `90273da` (implementation), `a3bc8f2` (initial note)
+- **Code commits**: `90273da` (implementation), `a3bc8f2` (initial note),
+  GPU FMM follow-up in current worktree
 
 ## 1. Abstract
 
@@ -187,11 +188,21 @@ treatment. In the observed sequence, an approximate device sweep delayed the
 instability but did not remove it; the non-uniform FMM path crossed the failing
 region and completed `t=0.5`.
 
+The GPU implementation now follows the same accepted-set contract instead of
+using a fixed-sweep proxy.  A CuPy `RawKernel` owns the FMM state on device:
+`dist`, `frozen`, and the min-heap entries `(distance, insertion_order, index)`.
+The kernel scans the sign-changing interface seeds, inserts ridge seeds, then
+repeatedly accepts the global minimum trial node and updates its four
+neighbours with the same non-uniform upwind quadratic used by the CPU heap.
+This is sequential inside the kernel because the causality relation is
+sequential; the point is correctness and device residency, not pretending that
+FMM is an embarrassingly parallel stencil.
+
 **Theoretical significance.** Ridge--Eikonal is not a visual smoothing tool.
 It is the metric closure used by curvature, pressure jump, and balanced-force
-operators. If the GPU implementation is changed, the replacement must be a
-mathematically equivalent GPU FMM or a residual-converged non-uniform
-fast-sweeping method.
+operators. GPU acceleration is admissible only when it preserves the same
+accepted-set Eikonal solve or provides an equally strong residual-converged
+replacement.
 
 ## 8. Imported items and their meaning
 
@@ -203,6 +214,7 @@ fast-sweeping method.
 | face-native predictor state | assemble `u*_f` before PPE RHS | PPE RHS uses `D_f u*_f`, not arbitrary nodal `u*` | predictor/corrector did not close as a discrete identity |
 | CN callback hooks | allow predictor assembly inside implicit viscous stage | source split and viscous solve must share the same stage state | applying the split outside CN changed the state seen by viscosity |
 | Richardson/Picard CN mode | reduce splitting error in nonlinear CN path | second-order centred diffusion response | single Picard CN was too sensitive to intermediate-state mismatch |
+| GPU heap FMM | keep `dist/frozen/heap` on device while preserving Accepted order | device-resident paper-equivalent Eikonal solve | CuPy vector sweeps were fast-looking but not FMM |
 | non-uniform FMM redistancing | solve `|grad(phi)|=1` with accepted upwind causality | signed-distance metric for curvature and jumps | fixed sweeps left enough metric error to trigger late blow-up |
 | YAML vocabulary update | expose theory rather than implementation mechanics | reproducible experiment semantics | old value encoded debug implementation details |
 
@@ -226,10 +238,9 @@ Suggested Ridge--Eikonal paragraph:
 > The reinitialisation step is required to recover a signed-distance field
 > satisfying `|grad(phi)|=1` on the non-uniform interface-fitted grid. The
 > accepted-set FMM update is retained in production because curvature and
-> pressure-jump balance are sensitive to residual Eikonal error. GPU
-> acceleration of this step is admissible only if it preserves the same
-> non-uniform upwind Eikonal solve or supplies an explicit residual-convergence
-> criterion.
+> pressure-jump balance are sensitive to residual Eikonal error. The GPU path
+> therefore implements the same min-heap Accepted-set FMM inside a CuPy
+> RawKernel, rather than replacing it with a fixed-sweep pseudo-time update.
 
 Suggested time-integration paragraph:
 
@@ -250,10 +261,10 @@ make test
 
 make run EXP=experiment/ch13/run.py ARGS="ch13_rising_bubble_water_air_alpha2_n128x256"
   reached t = 0.5000 in 140 steps
-  final KE = 9.494e-04
+  final KE = 9.498e-04
   final kappa_max = 3.528e+03
-  final ppe_rhs = 6.719e+02
-  final bf_res = 2.786e+02
+  final ppe_rhs = 6.517e+02
+  final bf_res = 2.136e+02
 ```
 
 The previous failing window near `t≈0.38--0.46` is crossed without kinetic
@@ -273,4 +284,3 @@ SP series:
 - Sethian and Osher--Sethian for accepted-set Eikonal/level-set foundations;
 - the well-balanced source-term literature cited in SP-U for gradient-force
   preservation.
-

@@ -44,13 +44,18 @@ CHK-159 ships `src/twophase/levelset/ridge_eikonal.py` with three additive class
 
 ## 2. API
 
-### 2.1 `NonUniformFMM(grid)`
+### 2.1 `NonUniformFMM(grid, backend=None)`
 
-Physical-space Fast Marching. CPU-serial (heap-based Dijkstra) by construction — D3 is inherently serial, so the caller handles D2H/H2D across the GPU/CPU boundary.
+Physical-space Fast Marching.  The algorithmic contract is the accepted-set
+upwind FMM solve for `|grad(phi)|=1` on the non-uniform physical grid.  CPU uses
+the Python `heapq` implementation; GPU uses a CuPy `RawKernel` with the same
+min-heap ordering and the same quadratic update while keeping FMM state on
+device.  The GPU path is intentionally not a fixed-sweep pseudo-time
+reinitialiser.
 
 | method | description |
 |---|---|
-| `solve(phi_np, extra_seeds=None) -> phi_sdf_np` | Returns SDF solving $\|\nabla_x\phi\|=1$ with physical-space quadratic (§6.2) and caustic fallback. `extra_seeds` accepts iterable of `(i, j, d)` physical-distance anchors (e.g., ridge cells). |
+| `solve(phi, extra_seeds=None, ridge_mask=None, h_min=None) -> phi_sdf` | Returns SDF solving $\|\nabla_x\phi\|=1$ with physical-space quadratic (§6.2) and caustic fallback. `extra_seeds` accepts iterable of `(i, j, d)` physical-distance anchors; GPU may pass a device `ridge_mask` directly to seed ridge cells without D2H. |
 
 ### 2.2 `RidgeExtractor(backend, grid, sigma_0=3.0, h_ref=None)`
 
@@ -86,7 +91,11 @@ Activated `Reinitializer(method='ridge_eikonal', sigma_0=...)` via `SimulationBu
   - `_sigma_eff_kernel(h_field, sigma_0, h_ref)` — D1 per-node σ_eff field
   - `_eps_local_kernel(h_field, eps_scale, eps_xi)` — D4 per-node ε_local field
 - Helper `_sigmoid_xp(xp, phi, eps_local)` is plain arithmetic parameterised on `xp`; no `@_fuse` (would require unconditional `cupy` import).
-- `NonUniformFMM.solve` runs on CPU with numpy; caller handles D2H/H2D. Mirrors the stock `_fmm_phi` pattern in `reinit_eikonal.py`.
+- `NonUniformFMM.solve` runs the same FMM contract on CPU or GPU.  CPU uses
+  NumPy + `heapq`; GPU uses a CuPy `RawKernel` and returns a device array.
+- The GPU kernel is sequential in the FMM causality sense but device-resident:
+  no host-side distance field materialisation is required by
+  `RidgeEikonalReinitializer`.
 
 ## 5. Traceability matrix
 
@@ -106,6 +115,7 @@ Activated `Reinitializer(method='ridge_eikonal', sigma_0=...)` via `SimulationBu
 | V3 | FMM residual (p99, mean) | α∈{1,2,3}, 64² | PASS |
 | V4 | volume conservation 1 step | α∈{1,2}, 64² | PASS |
 | V5 | CPU/GPU parity fused kernels | α=2, 32² | `--gpu` gated |
+| V7 | GPU FMM accepted-set parity | α=2, 32² + ridge seeds | `--gpu` gated |
 | V6 | default method='split' bit-exact | any | PASS |
 
 Pytest: `pytest src/twophase/tests/test_ridge_eikonal.py -v` (14 pass, 1 GPU-skip; 225 in full suite, no regressions).
