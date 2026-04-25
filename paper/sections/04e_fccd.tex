@@ -1,6 +1,6 @@
 % paper/sections/04e_fccd.tex
 %
-% §4.5  FCCD：面中心 Combined Compact Difference 派生スキーム
+% §4.6  FCCD：面中心 Combined Compact Difference 派生スキーム
 %        4 設計原理・4 次導出および行列定式化を統合．
 %        H-01 歴史的診断は付録 §B.4（appendix_ccd_h01.tex）に退避．
 %
@@ -159,16 +159,6 @@ $\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得る．純虚数性（散逸
 保たれたまま式~\eqref{eq:fccd_fourth_order} の 4 次精度が Fourier レベルで確認される．
 
 % -------------------------------------------------------------------------------
-\subsubsection{非一様格子への拡張（予告）}
-\label{sec:fccd_nonuniform_sketch}
-\phantomsection\label{eq:fccd_nonuniform_coeffs}%
-% -------------------------------------------------------------------------------
-
-非一様格子（$H_i$ 可変，面位置 $\theta_i$）での完全な係数行列と切断誤差解析は
-§~\ref{sec:fccd_nonuniform}（第~\ref{sec:grid}章）で与える．
-一様極限 $\theta_i\equiv 1/2$ では本節の式~\eqref{eq:fccd_composite_matrix} を回復する．
-
-% -------------------------------------------------------------------------------
 \subsubsection{演算子整合性：同一面ロカスでの $\Ord{\Delta x^4}$ 性質}
 \label{sec:fccd_h01_remedy}
 % -------------------------------------------------------------------------------
@@ -203,9 +193,8 @@ $\Ord{\Delta x^4}$ メトリック整合が崩れない
 {\FCCD} 採用にあたり必要となる実装側の前提は以下のとおり：
 
 \begin{itemize}
-  \item \textbf{非一様一般化}（§\ref{sec:fccd_nonuniform_sketch}）は
-        §\ref{sec:fccd_nonuniform} および ridge-Eikonal 非一様拡張
-        （§\ref{sec:ridge_eikonal_nu_grid}）で完了．
+  \item \textbf{非一様一般化}は §\ref{sec:fccd_nonuniform}
+        および ridge-Eikonal 非一様拡張（§\ref{sec:ridge_eikonal_nu_grid}）で扱う．
   \item \textbf{壁境界}は Option III（Neumann）・Option IV（Dirichlet）を
         §\ref{sec:fccd_bc_options} で扱う（Option IV の運動量壁実装は
         §\ref{sec:fccd_adv_wall_iv}）．

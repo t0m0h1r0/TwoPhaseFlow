@@ -1,19 +1,24 @@
 % paper/sections/04g_face_jet.tex
 %
-% §4.6  面ジェット $\FaceJet{u}$：FCCD / UCCD6 出力の 3 成分 API
-%        本節では数学的定義のみを与える；消費先章での具体使用は §4.7 章末まとめを参照．
+% §4.7  面ジェット $\FaceJet{u}$：基底 CCD 出力の面 API（FCCD と等価）
+%        本節では数学的定義のみを与える；消費先章での具体使用は章末まとめ §\ref{sec:ccd_summary} を参照．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{\texorpdfstring{面ジェット $\FaceJet{u}$：FCCD / UCCD6 出力の 3 成分 API}{面ジェット J\_f(u)：FCCD / UCCD6 出力の 3 成分 API}}
+\subsection{\texorpdfstring{面ジェット $\FaceJet{u}$：基底 CCD 出力の面 API（FCCD と等価）}{面ジェット J\_f(u)：基底 CCD 出力の面 API（FCCD と等価）}}
 \label{sec:face_jet_def}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本節では，FCCD（§\ref{sec:fccd_def}）および UCCD6（§\ref{sec:uccd6_def}）の
-出力を統一する \textbf{3 成分 API}：
+本節では，基底 CCD（§\ref{sec:ccd_def}）が返す節点 Hermite ペア
+$(u_i,\,q_i = u''_i)$ から面値・面勾配・面二次導関数を構成する
+\textbf{3 成分 API}：
 \[
   \FaceJet{u} \;=\; (u_f,\,u'_f,\,u''_f)
 \]
 を\textbf{面ジェット}（face jet）として定義する．
+構成式は §\ref{sec:fccd_def} の FCCD 公式と数式上\textbf{等価}であり，
+FCCD は本 API を面中心スキームとして直接実装した形態と見なせる；
+UCCD6（§\ref{sec:uccd6_def}）など他の節点中心 CCD 派生も
+本 API を経由して面位置の表現を得る．
 本節では数学的定義と各成分の数値的意味のみを与え，
 後続章（§\ref{sec:time_int} 以降）では本 API を
 \textbf{入力契約}（input contract）として再利用する；
@@ -105,7 +110,7 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 \end{itemize}
 
 % Phantom labels: §4 純化 (CHK-216) で削除した subsubsection の
-% 後方互換用．本来の文脈は §8 / §9 の用途章で再導入される．
+% 後方互換用．本来の文脈は §7 / §8 の用途章で再導入される．
 \phantomsection\label{sec:face_jet_hfe}%
 \phantomsection\label{sec:face_jet_ppe}%
 \phantomsection\label{eq:hfe_upwind_plus}%
@@ -134,7 +139,7 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 \textbf{スキーム} & \textbf{配置} & \textbf{散逸チャンネル} & \textbf{微分精度}$^\dagger$ & \textbf{安定性} & \textbf{計算量} \\ \hline
 {\CCD} (§\ref{sec:ccd_def})              & 節点      & なし                          & $\Ord{h^6}$           & 中心差分（散逸ゼロ）         & $\Ord{N}$ \\
 {\DCCD} (§\ref{sec:dccd_derivation})     & 節点      & 外殻 post-filter              & $\Ord{h^6}$$^\ddagger$ & $\ell^2$ 安定（spectral 拘束下）   & $\Ord{N}$ \\
-{\FCCD} (§\ref{sec:fccd_def})            & \textbf{面} & 風上構造（option）          & $\Ord{H^4}$           & 基底 CCD 由来               & $\Ord{N}$ \\
+{\FCCD} (§\ref{sec:fccd_def})            & \textbf{面}$^\flat$ & なし（散逸ゼロ）          & $\Ord{H^4}$           & 基底 CCD 由来               & $\Ord{N}$ \\
 {\UCCD[6]} (§\ref{sec:uccd6_def})        & 節点      & \textbf{演算子内部}（hyperviscosity） & $\Ord{h^6}$  & CN で無条件安定（周期格子）    & $\Ord{N}$ \\
 $\FaceJet{u}$ (§\ref{sec:face_jet_def})  & 面（API） & ---                           & $\Ord{H^4}$/$\Ord{H^2}$$^\S$ & 基底スキーム継承   & $\Ord{N}$ post \\
 \hline
@@ -147,6 +152,8 @@ $^\dagger$ 微分演算子の formal 精度．
 $^\ddagger$ DCCD は微分演算子そのものは $\Ord{h^6}$ を保つが，
 post-filter による移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が別途付随し
 （§\ref{sec:dccd_filter_theory}），移流の実効精度は $\Ord{h^2}$ に律速される．
+$^\flat$ FCCD は面位置に値を置く面中心スキームだが Fourier シンボルは純虚数で散逸ゼロ；
+散逸が必要な場面では風上限定ステンシル（option）を併用する．
 $^\S$ 面ジェットは $u_f, u'_f$ が $\Ord{H^4}$，$u''_f$ が $\Ord{H^2}$．
 }
 
