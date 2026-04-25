@@ -133,7 +133,10 @@ def select_buoyancy_predictor_state_assembly(
     normalized = str(mode or "none").strip().lower()
     if normalized in {"", "none"}:
         return PredictorAssemblySelection()
-    if normalized == "buoyancy_faceresidual_stagesplit_transversefullband":
+    if normalized in {
+        "balanced_buoyancy",
+        "buoyancy_faceresidual_stagesplit_transversefullband",
+    }:
         if fullband_state_transform is None or residual_buoyancy_force_builder is None:
             return PredictorAssemblySelection()
         return PredictorAssemblySelection(

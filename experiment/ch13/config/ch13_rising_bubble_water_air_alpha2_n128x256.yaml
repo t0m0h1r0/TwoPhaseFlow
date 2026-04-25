@@ -60,6 +60,8 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    predictor:
+      assembly: balanced_buoyancy
     terms:
       convection:
         spatial: uccd6
@@ -69,8 +71,7 @@ numerics:
       viscosity:
         spatial: ccd
         time_integrator: crank_nicolson
-        cn_mode: richardson_picard
-        predictor_assembly: buoyancy_faceresidual_stagesplit_transversefullband
+        cn_mode: richardson
       surface_tension:
         formulation: pressure_jump
   projection:

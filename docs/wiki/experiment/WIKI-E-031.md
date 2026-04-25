@@ -1110,6 +1110,13 @@ more faithful face-native residual split was tested:
 
 - `buoyancy_faceresidual_stagesplit_transversefullband`
 
+2026-04-25 update: the production-facing name for this closure is now
+`balanced_buoyancy`; the long name remains only as a legacy alias.  The later
+clean integration in [WIKI-L-034](../code/WIKI-L-034.md) shows that the split
+passes the full `t=0.5` rising-bubble run once canonical face-state carry and
+FMM redistancing are enforced together. The older paragraph below is retained
+as a historical pre-closure negative trial.
+
 The face-space unit check passes on a nonuniform wall grid: constant density
 excess makes `face(f_b/rho) + (1/rho)_f G_f((rho-rho_ref)Phi_g)` vanish to
 roundoff.  However, the ch13 debug run worsens to step-4 blowup:

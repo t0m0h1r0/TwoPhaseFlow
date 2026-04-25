@@ -1,49 +1,121 @@
 ---
 ref_id: WIKI-L-034
-title: "ch13 Rising Bubble Closure: Face Buoyancy Residual + FMM Redistancing"
+title: "ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM"
 domain: code
 status: ACTIVE
 superseded_by: null
-tags: [ch13, rising_bubble, buoyancy, fccd, projection, ridge_eikonal, fmm]
+tags: [ch13, rising_bubble, buoyancy, fccd, projection, ridge_eikonal, fmm, time_integration]
 compiled_by: Codex
 compiled_at: "2026-04-25"
 ---
 
-# ch13 Rising Bubble Closure: Face Buoyancy Residual + FMM Redistancing
+# ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM
 
 ## Decision
 
-The clean production path for
-`ch13_rising_bubble_water_air_alpha2_n128x256.yaml` uses the last stable
-`worktree-researcharchitect-src-refactor-plan` settings:
+The production ch13 rising-bubble run uses the following clean configuration:
 
-- AB2 convection,
-- Crank--Nicolson viscosity with `richardson_picard`,
-- `buoyancy_faceresidual_stagesplit_transversefullband`,
-- face-flux projection,
-- canonical face state and face-native predictor state.
+```yaml
+numerics:
+  momentum:
+    predictor:
+      assembly: balanced_buoyancy
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: ab2
+      viscosity:
+        spatial: ccd
+        time_integrator: crank_nicolson
+        cn_mode: richardson
+  projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+```
 
-## Why it stabilises
+The old value
+`buoyancy_faceresidual_stagesplit_transversefullband` remains a legacy alias,
+but it is no longer the preferred YAML vocabulary.
 
-The buoyancy force is split as
+## Theory pillar 1: pressure-robust buoyancy
+
+For vertical gravity with potential `Phi_g = -g y`,
 
 ```text
 rho' g = -grad(rho' Phi_g) + Phi_g grad(rho').
 ```
 
-Only the residual part belongs in the explicit predictor. The hydrostatic
-gradient must stay in pressure space. The implementation therefore constructs
-the residual acceleration on projection-native faces and carries that face
-state through the predictor/corrector stage rather than recomputing an
-incompatible nodal approximation later.
+The gradient part is pressure-like. It must be represented in pressure space,
+not advanced as a free explicit velocity source. The implemented
+`balanced_buoyancy` predictor therefore advances only the non-hydrostatic
+residual. Discretely, the residual acceleration is assembled as
 
-## Reinitialisation constraint
+```text
+a_f^res = face(f_b / rho) + (1/rho)_f G_f(rho' Phi_g).
+```
 
-Ridge--Eikonal redistancing remains tied to the non-uniform FMM solve for
-`|grad(phi)| = 1`. A fixed-sweep GPU pseudo-time Eikonal kernel is not accepted
-as production-equivalent unless it proves residual convergence and wall-grid
-consistency. In ch13 it delayed the instability but did not pass the full
-`t=0.5` run.
+This is a pressure-robust / well-balanced source treatment: gradient forces
+should not create solenoidal velocity.
+
+## Theory pillar 2: face-state closure
+
+The phase-separated projection uses the face operator chain
+
+```text
+D_f A_f G_f p.
+```
+
+Therefore the predictor state entering the PPE RHS must also be the
+projection-native face state `u*_f`. The canonical face-state changes are not a
+cache trick. They define the discrete state variable required for the proof:
+the `D_f u*_f` used by the PPE and the `A_f G_f p` used by the corrector must
+act on the same face geometry and phase cuts.
+
+## Theory pillar 3: time integration
+
+The accepted time update is term-aware:
+
+- AB2 for smooth explicit momentum convection;
+- Crank--Nicolson for viscous/parabolic response;
+- Richardson/Picard refinement for the CN predictor state;
+- projection as a constraint solve;
+- SSP/TVD-RK3 retained only for bounded interface transport.
+
+The important change is that the full variable-density momentum update is not
+treated as one explicit TVD-RK3 RHS. The pressure/buoyancy balance and the
+projection constraint determine the correct split.
+
+## Theory pillar 4: Ridge--Eikonal requirement
+
+Ridge--Eikonal is required because the capillary and pressure-jump terms depend
+on a signed-distance reconstruction satisfying
+
+```text
+|grad(phi)| = 1
+```
+
+on the non-uniform wall grid. A fixed-sweep GPU pseudo-time Eikonal kernel is
+not production-equivalent unless it proves residual convergence and boundary
+consistency. In ch13 it delayed the blow-up but did not pass the final-time
+run; non-uniform FMM did.
+
+Acceptable future GPU work:
+
+1. implement GPU FMM with the same accepted-set non-uniform update, or
+2. implement residual-converged GPU fast sweeping with explicit wall-grid proof.
+
+## Imported items
+
+| Item | Production meaning |
+|---|---|
+| `balanced_buoyancy` | user-facing predictor mode for pressure-robust buoyancy |
+| face residual acceleration | same-locus residual source built with PPE face operators |
+| canonical face state | projected face velocity carried as primary state |
+| face-native predictor state | `u*_f` constructed before PPE RHS assembly |
+| CN predictor callbacks | source split applied inside the viscous predictor stage |
+| `cn_mode: richardson` | short YAML alias for internal `richardson_picard` |
+| non-uniform FMM redistancing | paper-faithful `|grad(phi)|=1` metric closure |
 
 ## Validation
 
@@ -57,13 +129,17 @@ make run EXP=experiment/ch13/run.py ARGS="ch13_rising_bubble_water_air_alpha2_n1
   reached t=0.5000, step=140
   final KE=9.494e-04
   final kappa_max=3.528e+03
+  final ppe_rhs=6.719e+02
+  final bf_res=2.786e+02
 ```
 
-## Follow-up
+Field outputs exist for `psi`, velocity, and pressure through `t=0.500`.
 
-The next GPU optimisation target is not an approximate redistancing shortcut.
-It is either:
+## Paper link
 
-1. a GPU FMM with the same accepted-set non-uniform update, or
-2. a residual-converged GPU fast-sweeping method with explicit boundary proof.
+Use [SP-Z](../../memo/short_paper/SP-Z_rising_bubble_buoyancy_fmm_closure.md)
+as the long-form source for the paper section. The paper should present this
+as a single closure theorem: pressure-like buoyancy, projection-native face
+state, term-aware time integration, and FMM redistancing are mutually required
+for the ch13 water--air rising-bubble benchmark.
 
