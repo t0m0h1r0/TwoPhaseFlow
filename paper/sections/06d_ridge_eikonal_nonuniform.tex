@@ -18,6 +18,18 @@
 本節は「各補正がどの格子構築段階でキャッシュされ，
 どの離散演算子と整合するか」を明示することを目的とする．
 
+\begin{remark}[本節の記号規約]
+\label{rem:ridge_nu_jx_convention}
+\S\ref{sec:grid_coord} は主本文メトリクス係数を
+$J_x = \mathrm{d}\xi/\mathrm{d}x$（ヤコビアン）として定義したが，
+本節ではセル幅計算および FMM 閉形式解との整合のため，
+\textbf{逆数の幾何量}
+$\mathsf{X}_\xi(\xi) \equiv \mathrm{d}x/\mathrm{d}\xi = 1/J_x^{\S6}$ を用いる．
+以降\textbf{本節では一貫して $\mathsf{X}_\xi$ 記号}を使用し，
+$J_x$ 記号は登場しない．主本文 $J_x^{\S6}$ への
+変換は $J_x^{\S6} = 1/\mathsf{X}_\xi$ で読み替える．
+\end{remark}
+
 % -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{D1 実装：$\sigma_\text{eff}(\bm{x})$ のキャッシュ}{D1 実装：σ\_eff(x) のキャッシュ}}
 \label{sec:ridge_nu_sigma_impl}
@@ -33,9 +45,9 @@ $\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
 \noindent\textbf{実装細目}：
 \begin{itemize}
   \item 局所幾何平均 $h(\bm{x}) = \sqrt{h_x(i)\,h_y(j)}$ は
-        \S\ref{sec:grid_coord} のメトリクス係数
-        $J_x = \mathrm{d}x/\mathrm{d}\xi$ から
-        $h_x(i) = J_x(\xi_i)\Delta\xi$ として得られる．
+        本節ローカルな逆数メトリクス
+        $\mathsf{X}_\xi = \mathrm{d}x/\mathrm{d}\xi = 1/J_x^{\S6}$ から
+        $h_x(i) = \mathsf{X}_\xi(\xi_i)\Delta\xi$ として得られる．
   \item 基準幅 $h_\text{ref} = (L_x L_y / (N_x N_y))^{1/2}$ は
         スカラ定数として格子生成時に決定．
   \item ALE（\S\ref{sec:grid_ale}）時間変化格子では
@@ -63,9 +75,14 @@ Approach A（本命実装）は以下の 1 行で実装できる：
   + \mathbf{D}_2^{\text{CCD,nu},y}\,\xiridge,
   \label{eq:ridge_nu_hessian}
 \end{equation}
-ここで軸ごとに \S\ref{sec:ccd_metric} 式~\eqref{eq:transform_2nd_correct} の
-$\partial_x^2 = J_x^{-2}\partial_\xi^2 - (J_{xx}/J_x^3)\partial_\xi$
-の修正済み行列を適用する．
+ここで軸ごとに \S\ref{sec:ccd_metric} 式~\eqref{eq:transform_2nd_correct} を
+本節記号で書き直した
+$\partial_x^2 = \mathsf{X}_\xi^{-2}\,\partial_\xi^2
+  - (\mathsf{X}_{\xi\xi}/\mathsf{X}_\xi^3)\,\partial_\xi$
+の修正済み行列を適用する
+（$\mathsf{X}_{\xi\xi} = \mathrm{d}^2 x/\mathrm{d}\xi^2$；
+主本文 $J_x^{\S6} = 1/\mathsf{X}_\xi$ と $J_x^2 \partial_\xi^2 + J_x\partial_\xi J_x \partial_\xi$
+の表現は数学的に等価）．
 混合項 $\partial_{xy}^2$ は Ridge 検出では $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$
 の対角二次形式のみで十分なため省略可能．
 
@@ -77,7 +94,9 @@ $\partial_x^2 = J_x^{-2}\partial_\xi^2 - (J_{xx}/J_x^3)\partial_\xi$
     \left[\frac{\xi_{i+1,j}-\xi_{i,j}}{h_x^+(i)}
           - \frac{\xi_{i,j}-\xi_{i-1,j}}{h_x^-(i)}\right]
 \]
-は 2 次精度に留まるが，Morse 非退化リッジでは符号判定に影響しない．
+は 2 次精度に留まるが，Morse 非退化リッジ\textbf{かつ曲率半径 $R \gg h_\text{min}$}では
+符号判定に影響しない（小曲率半径の薄いリッジでは $\Ord{h^2}$ 誤差が
+$\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため Approach A を推奨）．
 GPU 実装で非一様 CCD ソルバが未整備のデバッグビルドでは
 この fallback を一時許容する．
 
@@ -95,7 +114,8 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 \begin{itemize}
   \item \textbf{セル幅配列}：
         \S\ref{sec:grid_gen} の $\{x_i\}_i, \{y_j\}_j$ から
-        $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を precompute．
+        $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を precompute
+        （\S\ref{sec:fccd_nu_geometry} の $H_i$ と同義；本節の $h_x[i] = H_i$ として参照）．
         FMM 内の各 tentative 更新は $O(1)$ テーブル参照のみ．
   \item \textbf{判別式負時の fallback}：
         $D<0$ のとき一次元単調更新
@@ -191,7 +211,8 @@ Ridge--Eikonal で再構成された $\phi$ は
 そのまま引き継がれる．
 非一様 FCCD の係数 $(\mu_i, \lambda_i)$ と
 本節の $\sigma_\text{eff}, \varepsilon_\text{local}$ は
-\textbf{同じ格子幾何テーブル} $(h_x, h_y, J_x, J_y)$ から派生するため，
-格子層のプレ計算を一度行えば両アルゴリズムが同じキャッシュを共有できる．
+\textbf{同じ格子幾何テーブル} $(h_x, h_y, \mathsf{X}_\xi, \mathsf{Y}_\eta)$ から派生するため，
+格子層のプレ計算を一度行えば両アルゴリズムが同じキャッシュを共有できる
+（主本文 $J_x^{\S6}, J_y^{\S6}$ は逆数 $1/\mathsf{X}_\xi, 1/\mathsf{Y}_\eta$ で得る）．
 
 % ═══════════════════════════════════════════════════════════════════════════════

@@ -9,13 +9,18 @@
 \label{sec:defect_correction_main}
 
 \noindent\textbf{本節の位置づけ：}
-本節で示す欠陥補正法（DC）は，
-分相 PPE 解法（§~\ref{sec:split_ppe_framework}）の各相内で
-等密度ポアソン方程式を高精度に求解するための基本フレームワークである．
-分相 PPE により各相の PPE は定数密度のラプラシアンとなるため，
-DC の CCD 高次演算子 $L_H$ と FD 低次演算子 $L_L$ のスペクトル不整合が最小化され，
-$k \geq 3$ で $\Ord{h^6}$ に漸近する（§~\ref{sec:dc_accuracy}）．
-$k$ の選択および設計根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
+本節で示す欠陥補正法（DC）は，CCD 高次演算子 $L_H$ と FD 低次演算子 $L_L$ の
+組合せによりポアソン方程式を高精度に求解する汎用フレームワークであり，
+本稿では Level 2（変密度一括 smoothed-Heaviside PPE，§~\ref{sec:algorithm}）
+および Level 3（分相 PPE 解法，§~\ref{sec:split_ppe_framework}）の双方で適用する．
+分相 PPE（Level 3）では各相の PPE が定数密度のラプラシアンとなるため
+$L_H$/$L_L$ のスペクトル不整合が最小化され，
+$k \geq 3$ で漸近精度 $\Ord{h^6}$ を得る（§~\ref{sec:dc_accuracy}；
+BC 種別の内訳は §\ref{sec:dc_pure_fccd_convergence} の表で
+$\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann / IIM 行補正で $\Ord{h^4}$ 以上 と区別）；
+変密度一括 PPE（Level 2）では smoothed-Heaviside による $\rho$ 滑化幅
+$\varepsilon_H$ が DC 収束率を律速し，
+$k$ 既定値の選択根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
 
 本節では，§~\ref{sec:ccd_poisson_matrix} で構築した CCD 離散演算子 $L_H$（$\Ord{h^6}$）を
 「\textbf{高精度で評価し，低精度で解く}」という原理で効率的に求解する
@@ -86,6 +91,10 @@ $L_L$（変密度 FD Laplacian，Neumann BC，ゲージピン固定）を
 実装上はゲージピン固定後の疎行列に対して LU 分解等の直接解法を用いる．
 $x$・$y$ 方向の line sweep/ADI は計算コストを下げる近似前処理として有効だが，
 その場合は Step~2 残差が許容誤差に依存するため，本節の「直接法」ケースと区別する．
+\textbf{適用範囲：}LU 直接法は $N \le 256^2$ 程度の小中規模で実効的
+（$\Ord{N^{3/2}}$ fill-in が主コスト；$N=128^2$ で 10--30 秒）．
+$N \ge 512^2$ の大規模では PCG + AMG への切替が推奨される
+（§\ref{sec:verify_dc_spectral} ベンチ参照）．
 $L_L$ の Neumann BC はゴーストセル反射 $p_{-1}=p_1$（左壁）で離散化し，
 $L_H$（CCD）と $L_L$（FD）が同一の物理的 Neumann 条件を共有する
 （境界スタンシルの導出は付録~\ref{app:sweep_thomas_coeff}）．
@@ -112,8 +121,22 @@ $L_L$ は収束を駆動する「加速装置」の役割のみを担い，
 この精度保証は反復回数 $k$ と密接に関連する：
 $k=1$ では $L_L$ の $\Ord{h^2}$ が支配的だが，
 $k$ を増やすごとに $L_H$ の高次精度が発現し，
-$k \geq 3$ で $\Ord{h^6}$ に漸近する
+\textbf{等密度・均一格子・周期 BC の理想化}では $k \geq 3$ で $\Ord{h^6}$ に漸近する
 （定量的検証は §~\ref{sec:dc_iteration_accuracy} に示す）．
+\textbf{超収束（Dirichlet BC）}：
+Dirichlet BC + 等密度の理想化下では，
+$L_H$ の補正方程式 $L_L\delta=b-L_H p^{(k)}$ で内点欠陥が
+$L_H$ の打切り誤差より 1 次低い形で打ち消し合うため，
+$k\geq 3$ で局所 $\Ord{h^7}$ の超収束が観測される
+（詳細は §\ref{sec:verify_split_ppe_dc}）．
+本稿の主漸近主張は $\Ord{h^6}$；$\Ord{h^7}$ は Dirichlet 限定の超収束効果として
+別途明示する．
+\textbf{実運用条件下の劣化：}
+(i) GFM ステッチ付き分相 PPE では界面条件の $\Ord{h^3}$ が律速して
+$\Ord{h^4}$--$\Ord{h^5}$ に劣化；
+(ii) Neumann BC 境界閉包（§\ref{sec:ccd_bc}）では一般に $\Ord{h^5}$；
+(iii) 非一様格子（$\alpha > 1$）では局所 $\Ord{h^4}$ に律速される．
+§\ref{sec:verify_dc_spectral} の数値表は理想化条件と実運用条件の両方を示す．
 反復行列のスペクトル解析（付録~\ref{app:dc_convergence_theory}）により，
 $\omega$ の最適値と収束速度が理論的に導かれる：
 $\omega \in (0,\, 0.833)$ が収束に必要であり，
@@ -160,7 +183,7 @@ $L_L$（内殻，低次反復）&
 
 \noindent\textbf{内殻側の設計要件}：
 $L_L$ は\textbf{$L_H$ と同じ}
-(i) $\betaf$ 平均化（調和），
+(i) $\betaf$ 平均化（調和；$\betaf=(1/\rho)_f$，§\ref{sec:bf_p4_beta}），
 (ii) 境界条件，
 (iii) 界面帯スイッチ（\S\ref{sec:viscous_ccd_placement}）
 を\textbf{共有}する．
@@ -185,13 +208,28 @@ $L_L$ のスパース LU（小中規模）．
 アーキテクチャ & DC $k$ & 実効精度 \\
 \hline
 節点 CCD PPE（等密度，本稿 Level 1）& 3 & $\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann \\
-分相 FCCD PPE（Level 2）& 2--3 & $\Ord{h^4}$--$\Ord{h^5}$（GFM 2 次律速）\\
-純 FCCD + IIM 行補正（Level 3）& 2 & $\Ord{h^4}$--$\Ord{h^6}$（IIM ジャンプ昇格）\\
+変密度一括 smoothed-Heaviside PPE（Level 2，中程度密度比）& 3 & $\Ord{h^2}$（界面帯）；bulk $\Ord{h^6}$（smoothed Heaviside + GFM 補正律速）\\
+分相 PPE + DC + CCD 勾配（Level 3，水--空気級高密度比）& 3 & $\Ord{h^7}$ Dir / $\Ord{h^5}$ Neu（IIM 行補正採用時 $\Ord{h^4}$ 以上保証）\\
 \hline
 \end{tabular}
 \end{center}
-Level 2/3 では GFM ジャンプ精度が全体精度を支配するため，
-DC 反復回数を $k$ に増やしても
-FCCD の $\Ord{h^6}$ には漸近しない．
+
+\noindent\textit{注（Lv.3 が Lv.1 より低精度に見える理由）}：
+Lv.1 は等密度問題（界面なし）で DC が CCD 切断誤差のみを補正するため
+$\Ord{h^7}$ 超収束が出る．Lv.3 は $\rho_l/\rho_g\gtrsim 500$ の界面ありでの値であり，
+界面ジャンプ条件が IIM 行補正なし時 GFM 2 次（局所 $\Ord{h^2}$，
+界面測度の薄帯化で全体 $\Ord{h^4}$）に律速する．
+IIM 行補正採用時はジャンプも $\Ord{h^4}$ 以上に昇格し，
+全体は $\Ord{h^6}$ 上界に達する．
+Level 3 では GFM ジャンプ精度が全体精度を支配するため，
+DC 反復回数は $k=2$ では FCCD の $\Ord{h^6}$ には漸近せず，
+$k=3$ 以上で GFM 律速のため実効精度向上は見込めない
+（\textbf{理論上界}；$k$ 依存性の数値検証は
+\S\ref{sec:verify_time} で行う予定）．
 Level 3 で IIM 行補正（\S\ref{sec:fccd_bf_gfm_integration} Phase 3）
 を採用すると全体精度が $\Ord{h^4}$ 以上に昇格する．
+Level 2 では GFM stitching が無く，全体精度は smoothed-Heaviside 滑化幅
+$\varepsilon_H$ の $\Ord{\varepsilon_H^2}$ により律速される．
+なお \S\ref{sec:algorithm} の DC ループは Level 共通で $k=3$ を既定とする
+（安全マージン；$k>2$ で GFM 律速のため実効精度向上はないが，
+表中 Lv.3 の $k$ も §10 統一のため $k=3$ 表記とした）．

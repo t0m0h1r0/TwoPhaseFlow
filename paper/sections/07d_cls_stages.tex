@@ -58,7 +58,7 @@ $\varepsilon$ はシミュレーション全体で固定（変更すると $\kap
 \hline
 Stage & 操作 & 要件 \\
 \hline
-A & TVD-RK3 保存形移流 & WENO5 面フラックス，発散フリー $\mathbf{u}^n$ \\
+A & TVD-RK3 保存形移流 & Dissipative CCD：CCD 微分による保存形フラックス + 後段スペクトル散逸 (Stage A; \S\ref{sec:advection_motivation})，発散フリー $\mathbf{u}^n$．BC：壁面 $\partial_n\psi=0$（Neumann）/ 周期境界（検証），CCD ghost-cell 対称延長 \\
 B & 移流後 $\psi(1-\psi)$ 補正 & 任意（長時間計算で有用）\\
 C & $\psi\to\phi$ 写像 & artanh 前 $\psi$ クランプ \\
 D & narrow-band 再初期化 & $|\phi|\le W=5\varepsilon$，pseudo-$\tau$ は $\Delta t$ と独立 \\
@@ -74,8 +74,12 @@ F & 再初期化後 $\psi(1-\psi)$ 補正 & 必須（再初期化後必ず）\\
   \psi^{(2)} &= \tfrac{3}{4}\psi^n + \tfrac{1}{4}\bigl(\psi^{(1)} + \Delta t\,\mathcal{L}^{(1)}\bigr), \label{eq:cls_rk3_2}\\
   \psi^{n+1} &= \tfrac{1}{3}\psi^n + \tfrac{2}{3}\bigl(\psi^{(2)} + \Delta t\,\mathcal{L}^{(2)}\bigr). \label{eq:cls_rk3_3}
 \end{align}
-$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は WENO5 面フラックス．
-CCD は $\psi$ に適用禁止（\S\ref{sec:scheme_per_variable}）．
+$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は Dissipative CCD（DCCD）演算子であり，
+CCD で計算した発散形フラックス $\partial(\psi\bu)/\partial x$ にスペクトル散逸
+$\varepsilon_d h^2 D^2$（$f'=\partial(\psi\bu)/\partial x$ への作用）を後段で課す
+（\S\ref{sec:advection_motivation}，変数別割り当て表
+\S\ref{sec:scheme_per_variable}）．CCD 単独（散逸なし）は $\psi$ に適用禁止
+（\S\ref{sec:scheme_per_variable}）．WENO5 は比較参照スキーム（付録~\ref{app:weno5}）．
 
 \noindent\textbf{Stage D — Narrow-band 再初期化}：
 全域 Eikonal 反復は $\mathcal{O}(N)$ 冗長．
@@ -136,8 +140,8 @@ Stage A で用いる $\mathbf{u}$ は\textbf{直前の PPE 投影済み} $\mathb
 % -------------------------------------------------------------------------------
 
 \begin{itemize}
-  \item \textbf{$\psi$ に CCD / FCCD を適用}→急 tanh 勾配増幅→NaN．
-        必ず WENO5 面フラックス．
+  \item \textbf{$\psi$ に CCD / FCCD（散逸なし）を適用}→急 tanh 勾配増幅→NaN．
+        必ず Dissipative CCD（CCD 微分 + 後段スペクトル散逸）を用いる．
   \item \textbf{再初期化前に $\psi$ から曲率計算}→
         symmetric tanh profile の曲率は最大 $\mathcal{O}(1/\varepsilon)$ で
         真の界面曲率を $\mathcal{O}(10)$ 過大評価．

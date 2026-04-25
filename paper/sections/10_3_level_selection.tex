@@ -17,15 +17,14 @@ Level 間コスト比率，および適用領域の棲み分けを示す．
 \label{sec:level_trigger}
 % -------------------------------------------------------------------------------
 
-物理 CFL 制約の 4 つを通常ステップで測定し，最も厳しい制約に対応する
-Level を選ぶ：
+物理 CFL 制約の 3 つを通常ステップで測定し，最も厳しい制約に対応する
+Level を選ぶ（非圧縮解法のため物理波速度 $\Delta t_\text{wave}$ は除外）：
 \begin{equation}
   \Delta t_\text{step}
     = \min\!\Bigl(
         \Delta t_\text{adv},\,
         \Delta t_\text{visc},\,
-        \Delta t_\sigma^\text{BKZ},\,
-        \Delta t_\text{wave}
+        \Delta t_\sigma^\text{BKZ}
       \Bigr),
   \label{eq:level_cfl_min}
 \end{equation}
@@ -35,7 +34,6 @@ Level を選ぶ：
   \item $\Delta t_\text{visc} = C_\text{visc}\rho h^2/(2\mu N_\text{dim})$（粘性 CFL）
   \item $\Delta t_\sigma^\text{BKZ} = \sqrt{(\rho_l+\rho_g)h^3/(2\pi\sigma)}$
         （Brackbill--Kothe--Zemach 毛管波制約，§\ref{sec:time_capillary}）
-  \item $\Delta t_\text{wave} = C_\text{wave}h/c_s$（物理波速度，非圧縮では無関係）
 \end{itemize}
 
 \begin{table}[htbp]
@@ -84,12 +82,16 @@ Level 1 & $\sim$ 3--5 (RK 段) &
 Level 2 & $\sim$ 6--10 (AB2+CN+ST) &
   $10$--$50\times$ Level 1 & $2$--$8\times$ Level 1 &
   $\Ord{\Delta t^2}$ 全体 \\
-Level 3 & $\sim$ 30--100 (Radau IIA + JFNK) &
-  $100$--$1000\times$ Level 1 & $3$--$10\times$ Level 2 &
-  $\Ord{\Delta t^5}$ 全体 \\
+Level 3$^{\dagger}$ & $\sim$ 30--100$^{\dagger}$ (Radau IIA + JFNK) &
+  $500$--$10000\times^{\dagger}$ Level 1 & $3$--$10\times^{\dagger}$ Level 2 &
+  $\Ord{\Delta t^5}^{\dagger}$ 全体 \\
 \hline
 \end{tabular}
 \end{center}
+
+\smallskip
+\noindent$\dagger$\ Level 3 値は理論設計値；本稿の数値検証は §\ref{sec:verify_time} 以降未実施
+（下記 Remark 参照）．
 
 \noindent\textbf{解釈：}
 Level 2 は $C_\text{visc}$ と $C_\sigma$ の両制約を同時に緩和するため，
@@ -98,6 +100,15 @@ Level 1 の 8 倍程度の throughput を実現する．
 Level 3 は外殻非線形反復のコストが高いが，
 $\Delta t$ 拡大比が剛性の平方で効くため，
 $\rho_l/\rho_g > 500$ 領域で Level 2 を上回る実効効率を持つ．
+
+\begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,title=\textbf{Remark：Level 3 コスト見積の検証状態}]
+Level 3 の 3--10$\times$ Level 2 throughput（および Level 1 比 500--10000$\times$ $\Delta t$ 拡大）は
+Radau IIA の段別 $\Delta t$ 拡大比と JFNK Krylov コスト（行列ベクトル積数）から推定した
+\textbf{理論設計値}である．
+本稿の数値検証は §~\ref{sec:verify_time} 以降の検証章で
+ch13 ベンチマーク（水--空気プールスロッシュ・水滴衝突）に基づき今後実施する．
+本表の Level 3 列は設計目標として参照すること．
+\end{tcolorbox}
 
 % -------------------------------------------------------------------------------
 \subsubsection{バリデーション Level: Level 1 の役割}
@@ -114,7 +125,7 @@ Level 1（SSPRK3 全陽的）は\textbf{実運用ではなく}検証用途とし
         個別演算子（FCCD 勾配，UCCD6 対流，CCD 曲率）の整合性を SSPRK3 で確認．
   \item 面ジェット共通プリミティブ整合確認（§\ref{sec:fccd_def}）：
         BF 残差の切断誤差次数を Level 2 の半陰的結合項抜きで測定する
-        （歴史的背景 H-01 は付録~\ref{sec:fccd_motivation_h01}）．
+        （歴史的背景 H-01 は付録~\ref{app:fccd_motivation_h01}）．
 \end{itemize}
 
 Level 1 で得た精度指標を\textbf{Level 2 の設計目標}として引き継ぐ．
@@ -162,7 +173,8 @@ Level 2 を上回る：
 
 Level 3 の外殻 JFNK 反復は 1 ステップあたり 5--20 Krylov 反復 + 3--6 Newton
 ステップを要するが，$\Delta t_\text{L3}/\Delta t_\text{L2}$ が
-$50\text{--}200\times$ まで拡大可能なため実効効率が上回る．
+$10\text{--}1000\times$ まで拡大可能なため実効効率が上回る
+（表値 L2: 10--50$\times$ L1，L3: 500--10000$\times$ L1 から派生）．
 本稿では Level 3 の具体構成（Radau IIA の stage 構成，JFNK 前処理戦略）は
 §\ref{sec:time_level3} にとどめ，本稿の対象外とする．
 
@@ -179,13 +191,18 @@ $50\text{--}200\times$ まで拡大可能なため実効効率が上回る．
 \hline
 2 次元渦流（TGV）& $1$ & $\infty$ & L1/L2 & 検証用，移流 CFL のみ \\
 上昇気泡（中程度）& $100$ & $1$ & L2 & BF + 半陰的 ST が実用 \\
-毛管波（ch13）& $830$ & $0.02$ & L2 & $\Delta t_\sigma^\text{BKZ}$ 緩和が鍵 \\
+毛管波（ch13）& $830$ & $0.02$ & L2（§\ref{sec:verify_time} 検証ベンチマーク）& $\Delta t_\sigma^\text{BKZ}$ 緩和が鍵 \\
 水--空気インクジェット & $830$ & $0.001$ & L2/L3 & 破断初期は L3 必要 \\
 マイクロ流体 T 字路 & $1000$ & $0.0001$ & L3 & 全剛性同時，L2 では step が停止 \\
 Zalesak 型（硬幾何）& $\{1\}$ & N/A & L1 & CLS 単独検証 \\
 \hline
 \end{tabular}
 \end{center}
+
+\noindent\textbf{Level 推奨の解釈}：表中 L3 推奨は \S\ref{sec:level3_stiff_regime} の
+3 条件\textbf{同時成立}（$\rho_l/\rho_g\ge 500$ かつ $\mu_l/\mu_g\ge 50$ かつ $\text{We}\le 0.01$）
+が要件．830 級高密度比でも We $> 0.01$（毛管波 ch13）または単独条件のみでは
+L2 で十分；L3 は剛性多重結合（マイクロ流体 T 字路や インクジェット 破断初期）に限定．
 
 実装上は YAML 設定で
 \verb|time_integration.level: 1|\,\verb|2|\,\verb|3|

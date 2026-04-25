@@ -12,15 +12,22 @@
 
 §\ref{sec:bf_failure_modes} の 5 失敗モードを回避するため，
 本節では 7 原則 P-1..P-7 を与える．
-実装は\textbf{全 7 原則を同時に}満たす必要があり，
-1 つでも欠けると寄生流れが $\Ord{h^0}$ で残留する．
+\textbf{BF 整合性の核は P-1（位置一致）/ P-2（補正 $G_h$ 共有）/ P-4（$\betaf$ 統一）/
+P-6（界面ジャンプ補正）の 4 原則}が担い，これらが欠けると寄生流れが
+$\Ord{h^0}$ で残留する．残る P-3（geometry 経路統一）/ P-5（曲率非 CCD 化）/
+P-7（sub-system 分離）は\textbf{次数改善および予防的役割}を持つ．
+\textbf{特に P-5 の status は適用形態に依存}：対称フィルタ適用時は
+P-1 維持の必要条件として連動する（§\ref{sec:bf_p5_curvature}），
+非対称・無フィルタ時は次数改善の予防策に留まる．主解消は依然 4 原則 (P-1/P-2/P-4/P-6) で完結する
+（詳細は §\ref{sec:bf_p5_curvature} および §\ref{sec:bf_failure_principle_map} の F$\times$P 表参照）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{P-1：$G_h p$ と $f_{\sigma,h}$ の同一位置評価}
 \label{sec:bf_p1_location}
 % -------------------------------------------------------------------------------
 
-staggered 速度配置（速度は面）では
+\textbf{コロケート配置の面演算子 FCCD（\S\ref{sec:fccd_def}）で実装する場合}，
+速度補正は面値 $u_f^{n+1}$ を経由して節点に戻す 2 段設計となる：
 \begin{equation}
   u_f^{n+1} = u_f^* + \Delta t\Bigl(
     -\betaf(G_h^\text{bf} p)_f + (f_\sigma)_f + \cdots
@@ -32,9 +39,11 @@ $(G_h^\text{bf} p)_f$ と $(f_\sigma)_f$ は\textbf{同じ面で評価}されね
 \textbf{「位置を合わせれば十分」は不正解}．
 補間演算子自身が互いに随伴整合（adjoint-compatible）でなければ
 $(G_h p)_f - (f_\sigma)_f$ は相殺しない．
+P-1 から P-7 まで本節全体を通じ，「面」は FCCD で定義される共通面ジェット
+位置（\S\ref{sec:face_jet_def}）を指す．
 
 % -------------------------------------------------------------------------------
-\subsubsection{P-2：随伴 PPE $D_h^\text{bf} = -(G_h^\text{bf})^\ast$}
+\subsubsection{P-2：随伴 PPE による F-2・F-3 の同時解消：$D_h^\text{bf} = -(G_h^\text{bf})^\ast$}
 \label{sec:bf_p2_adjoint}
 % -------------------------------------------------------------------------------
 
@@ -58,6 +67,13 @@ PPE を\textbf{随伴ペア}から組み立てる：
 \noindent\textbf{rising bubble への含意}：
 PPE RHS の発散だけを修正しても，補正側が別の $G_h$ を参照する限り
 F-2 は解消しない．$G_h^\text{bf}$ を両経路で共有することが必要．
+
+\noindent\textbf{F-2 と F-3 の独立性}：
+F-3（$D_h\neq -G_h^\ast$；随伴ペア違反）と
+F-2（PPE 内 $G_h\neq$ 補正 $G_h^\text{bf}$；経路違反）は\textbf{独立の失敗モード}だが，
+P-2 の随伴構築 $D_h^\text{bf}=-(G_h^\text{bf})^\ast$ は両者を同時に解消する：
+$G_h^\text{bf}$ を固定して $D_h^\text{bf}$ をその随伴として導出するため，
+PPE と補正の両経路で同一演算子が現れ，かつ随伴整合も自動的に成立する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{P-3：$f_\sigma$ を $[p]_\Gamma$ と同じ離散幾何に通す}
@@ -85,12 +101,27 @@ $\betaf = (1/\rho)_f$ は以下の 3 経路\textbf{すべてで同一}：
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item PPE 演算子 $L_h$ 自身，
   \item 速度補正 $u_f^{n+1} = u_f^* - \Delta t\,\betaf\,(G_h^\text{bf} p)_f$，
-  \item 界面張力正規化 $f_\sigma \propto \betaf\,\sigma\kappa\,(\nabla\psi)_f$．
+  \item 界面張力正規化 $f_\sigma \propto \betaf\,\sigma\kappa\,(\nabla\psi)_f$（CSF
+        標準式 $\sigma\kappa\nabla\psi$ に $\betaf$ 因子を付加した\textbf{変密度
+        corrector 離散化の特殊形}；等密度では $\betaf$ が定数で標準式に還元する）．
 \end{enumerate}
 PPE に調和平均，補正に算術平均という「混用」は
 $\rho_l/\rho_g \gg 1$ で BF 残差を界面で $\Ord{1}$ とする．
-\textbf{本稿の選択}：$\betaf^\text{harm}=2/(\rho_L+\rho_R)^{-1}\cdot 2^{-1}$（調和平均，
-\S\ref{sec:split_ppe_formulation}）を 3 経路共通で採用．
+\textbf{本稿の選択}：$\betaf^\text{harm}=2/(\rho_L+\rho_R)$ を 3 経路共通で採用．
+
+\smallskip\noindent\textbf{命名と等価性（混乱回避）}：
+$\betaf^\text{harm}$ は \textbf{$1/\rho$ の調和平均}（厳密形式）：
+$\bigl[\bigl(1/\rho_L+1/\rho_R\bigr)/2\bigr]^{-1}=2\rho_L\rho_R/(\rho_L+\rho_R)$．
+他方，2 値の場合は\textbf{密度の算術平均の逆数}とも書ける：
+$\bigl[(\rho_L+\rho_R)/2\bigr]^{-1}=2/(\rho_L+\rho_R)$．
+両者の差は $(\rho_L-\rho_R)^2/(2\bar\rho(\rho_L+\rho_R))$ オーダーであり，
+$\Delta\rho/\bar\rho \to 0$ の等密度極限では $\Ord{(\Delta\rho/\bar\rho)^2}$ で一致する一方，
+$\rho_l/\rho_g\sim 10^3$ では絶対値で大きく乖離する点に注意．
+本稿は FVM フェイス係数連続性（§\ref{sec:bf_p4_beta}）と整合する
+\textbf{密度算術平均の逆数} $2/(\rho_L+\rho_R)$ を採用し，
+表記 $\betaf^\text{harm}$ は慣用に従う．
+$n\ge 3$ 値では両者が分離するため
+（§\ref{app:fvm_face_coeff} 参照），定義の取違いに注意．
 
 % -------------------------------------------------------------------------------
 \subsubsection{P-5：曲率に生 CCD を適用しない}
@@ -110,7 +141,10 @@ BF 残差への影響は 2 次効果に留まる．
 \noindent\textbf{DCCD フィルタ規則}：
 圧力フィルタリングは BF 経路に適用する場合，
 $-G_h p + f_\sigma$ の\textbf{両辺に対称に}適用せねばならない．
-片側だけフィルタは非対称減衰を生み P-1 を破る
+片側だけフィルタは非対称減衰を生み P-1 を事後的に破壊する：
+P-5 は対称適用時に「次数改善・設計予防」として機能するが，
+非対称適用時は P-1 違反として F-1/F-2 失敗モードに直接寄与する．
+この意味で P-5 は P-1 維持の必要条件として連動する
 （詳細は §\ref{sec:dccd_pressure_filter_prohibition}）．
 
 % -------------------------------------------------------------------------------
@@ -163,9 +197,17 @@ BF sub-system は\textbf{高次である必要はない}．
 bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}．
 
 % -------------------------------------------------------------------------------
-\subsubsection{Rhie--Chow の限定使用}
+\subsubsection{Rhie--Chow の限定使用（F-2/F-4 失敗モードへの該当）}
 \label{sec:bf_rhie_chow_restriction}
 % -------------------------------------------------------------------------------
+
+\noindent
+本項は P-1--P-7 原則の独立スロットではなく，
+\textbf{失敗モード F-2（演算子非整合）と F-4（ジャンプ平滑化）が
+Rhie--Chow（RC）補間で同時発現する典型例}として位置付ける副節である．
+P-1--P-7 と F-1--F-5 の対応は次の §\ref{sec:bf_failure_principle_map} にまとめる．
+
+\medskip
 
 Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
 チェッカーボード抑制\textbf{のみ}のツールであり，BF 機構ではない：
@@ -175,8 +217,46 @@ Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
   \item RC は 1 次散逸を挿入 $\Rightarrow$ CCD の 6 次ステンシルを劣化させる．
 \end{itemize}
 \textbf{用途}：デバッグ時の一時安定化，粗格子初期化のみ．
-プロダクションの BF 圧力補正経路では使用禁止．
-本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）も BF 補正ではなく
-デカップリング抑制として位置付ける．
+\textbf{RC 単独の Balanced-Force 経路は禁止}（プロダクションの BF 圧力補正には使用しない）．
+\textbf{ただし}，§\ref{sec:collocate} の RC + CSF 拡張（§\ref{sec:rc_balanced_force}）で
+\textbf{曲率・$\betaf$ 同一演算子適用}を満たす\textbf{拡張 RC--CSF}は，
+本稿のコロケート Level 2（\S\ref{sec:level_selection} 参照）既定の BF 経路として独立に成立する．
+すなわち\textbf{RC 単独 = 不可，RC + CSF 整合拡張 = 既定}であり，
+この区別を曖昧にすると F-2/F-4 を踏む．
+本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）は
+さらに\textbf{高周波散逸の面中心修正}として位置付け，
+面フラックス整合を補強する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{F-1--F-5 × P-1--P-7 対応マップ}
+\label{sec:bf_failure_principle_map}
+% -------------------------------------------------------------------------------
+
+5 失敗モード（§\ref{sec:bf_failure_modes}）と 7 原則の対応関係：
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lcccccccl@{}}
+\hline
+ & P-1 & P-2 & P-3 & P-4 & P-5 & P-6 & P-7 & 主解消原則 \\
+\hline
+F-1（位置ズレ）              & $\blacksquare$ & & $\square$ & & & & $\square$ & P-1 \\
+F-2（補正 $G_h$ 不一致）      & & $\blacksquare$ & & & & & $\square$ & P-2 \\
+F-3（随伴違反）              & & $\blacksquare$ & & & & & & P-2 \\
+F-4（$\betaf$ 混用）         & & $\square$ & & $\blacksquare$ & & & & P-4 \\
+F-5（界面越えステンシル）\footnote{F-5 で P-6 単独は \(\Ord{h^2}\) を達成する；P-3 と P-5 は次数改善の上乗せ寄与であり主解消ではない．}   & & & $\square$ & & $\square$ & $\blacksquare$ & & P-6 \\
+\hline
+\end{tabular}
+
+{\footnotesize $\blacksquare$：主解消，$\square$：副次的に寄与}
+\end{center}
+
+\noindent P-5（曲率 $\kappa$ の非 CCD 化）と P-3（$f_\sigma$ を $p$ と同幾何）は
+F-5（界面越えステンシル平滑化）に対し副次的・間接的に寄与する．
+P-7（sub-system 分離）は F-1・F-2 の\textbf{設計レベル}での発生を防ぐ予防策．
+\textbf{F-1..F-5 への主解消は P-1, P-2, P-4, P-6 の 4 原則}が担い，
+P-3, P-5, P-7 は次数改善・設計予防として\textbf{独立な設計目的}を持つ
+（各原則の設計動機は §\ref{sec:bf_p1_location}--\ref{sec:bf_p7_separation} 参照）．
+7 原則の動機は単一の「5 モード解消最小集合」ではなく，
+主解消 4 原則と副次寄与 3 原則が\textbf{独立な目的群}を網羅する設計である．
 
 % ═══════════════════════════════════════════════════════════════════════════════

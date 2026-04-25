@@ -72,13 +72,33 @@ $\mathbf{n},\,\kappa,\,\delta(\psi)$ で異なる DCCD & $\times$ & 経路不整
 % -------------------------------------------------------------------------------
 
 \begin{itemize}[noitemsep]
-  \item DCCD フィルタは $\psi$ 移流（\S\ref{sec:cls_advection}）と
-        運動量移流（\S\ref{sec:advection}）のみに適用．
+  \item DCCD フィルタは $\psi$ 移流および運動量移流
+        （両者とも \S\ref{sec:advection_motivation} で中央的に扱う；
+        ψ は \S\ref{sec:advection_motivation} と連動）のみに適用．
   \item 圧力 $p$，毛管圧 $p_\sigma$，$G_h^\text{bf} p$ には
         いかなるフィルタも適用しない．
+  \item \textbf{PPE RHS の二段運用（重要な区別）}：
+        \begin{enumerate}[label=(\alph*),noitemsep]
+          \item \emph{許可}：予測速度 $\bu^*$ への\textbf{事前フィルタ}
+                $\tilde{\bu}^* = F_{\varepsilon_d}\bu^*$（$\varepsilon_d = 1/4$）に
+                CCD 発散を適用して RHS $= D_h\tilde{\bu}^*/\Delta t$ を構成する
+                方式（§\ref{sec:dccd_decoupling}，式~\eqref{eq:dccd_ppe_rhs}）．
+                チェッカーボード除去が目的で，補正後の質量保存は
+                フィルタ付き発散に対し $D_h\tilde{\bu}^*-\Delta t\,D_h(\rho^{-1}G_h p)=0$
+                を満たすよう PPE が解かれ，
+                非フィルタ発散には $D_h\bu^{n+1}\sim\Ord{\varepsilon_d h^2}$ の
+                bulk 滑らかモード残差が残る（§\ref{sec:dccd_decoupling}）．
+          \item \emph{禁止}：構成済み RHS そのもの（既に $D_h\bu^*/\Delta t$ を
+                計算した結果）に追加フィルタを post-apply すること．
+                これは速度発散構造の事後的破壊を引き起こし，補正後の
+                $D_h\bu^{n+1}=0$ を保証できなくなる．
+        \end{enumerate}
   \item 曲率 $\kappa$ は\textbf{界面帯制限された}補間平滑化
         （\S\ref{sec:curvature_stab}）でのみ安定化し，
         DCCD フィルタは用いない．
+  \item \textbf{曲率平滑化と DCCD は独立機構}：曲率平滑化は界面帯のみ作用し，
+        DCCD は bulk のみ作用する非線形スイッチ $S(\psi)=(2\psi-1)^2$ で
+        干渉が回避される（§\ref{sec:dccd_spectral_filter}）．
   \item Crank--Nicolson 粘性項（§\ref{sec:time_cn}）のデフェクト補正内部解でも
         フィルタ挿入は禁止．$L_H$（高次 CCD）と $L_L$（2 次）は
         同じ $\mu$・同じ BC・同じ帯スイッチを共有．
