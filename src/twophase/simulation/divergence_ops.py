@@ -197,14 +197,10 @@ class FCCDDivergenceOperator(IDivergenceOperator):
 
     def __init__(self, fccd: "FCCDSolver") -> None:
         self._fccd = fccd
+        self._node_width = None
 
     def divergence(self, components: list["array"]) -> "array":
-        div = None
-        for axis, comp in enumerate(components):
-            f_face = self._fccd.face_value(comp, axis)
-            d = self._fccd.face_divergence(f_face, axis)
-            div = d if div is None else div + d
-        return div
+        return self.divergence_from_faces(self.face_fluxes(components))
 
     def face_fluxes(self, components: list["array"]) -> list["array"]:
         """Evaluate nodal velocity components on normal faces."""
@@ -214,7 +210,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         """Compute FCCD divergence directly from normal face fluxes."""
         div = None
         for axis, face in enumerate(face_components):
-            d = self._fccd.face_divergence(face, axis)
+            d = self._face_flux_divergence(face, axis)
             div = d if div is None else div + d
         return div
 
@@ -245,6 +241,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         rho: "array",
         *,
         pressure_gradient: str = "fvm",
+        coefficient_scheme: str = "phase_density",
+        phase_threshold=None,
     ) -> list["array"]:
         """Compute PPE-consistent face pressure fluxes."""
         import numpy as _np
@@ -269,6 +267,12 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             rho_lo = rho[sl(0, n_cells)]
             rho_hi = rho[sl(1, n_cells + 1)]
             coeff = 2.0 / (rho_lo + rho_hi)
+            if coefficient_scheme == "phase_separated":
+                threshold = phase_threshold
+                if threshold is None:
+                    threshold = 0.5 * (xp.min(rho) + xp.max(rho))
+                same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
+                coeff = xp.where(same_phase, coeff, 0.0)
             if pressure_gradient == "fccd":
                 face = coeff * self._fccd.face_gradient(p, axis)
             else:
@@ -284,6 +288,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         dt: float,
         force_components: list["array"] | None = None,
         pressure_gradient: str = "fvm",
+        coefficient_scheme: str = "phase_density",
+        phase_threshold=None,
     ) -> list["array"]:
         """FCCD face-flux projection (WIKI-T-068 §5)."""
         return self.reconstruct_nodes(
@@ -294,6 +300,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 dt,
                 force_components,
                 pressure_gradient=pressure_gradient,
+                coefficient_scheme=coefficient_scheme,
+                phase_threshold=phase_threshold,
             )
         )
 
@@ -305,6 +313,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         dt: float,
         force_components: list["array"] | None = None,
         pressure_gradient: str = "fvm",
+        coefficient_scheme: str = "phase_density",
+        phase_threshold=None,
     ) -> list["array"]:
         """Apply FCCD face-flux projection and keep corrected faces."""
         xp = self._fccd.xp
@@ -319,6 +329,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             p,
             rho,
             pressure_gradient=pressure_gradient,
+            coefficient_scheme=coefficient_scheme,
+            phase_threshold=phase_threshold,
         )
         return [
             u_face - dt * p_face + dt * f_face
@@ -331,3 +343,41 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             self._fccd._precompute_weights(axis)
             for axis in range(self._fccd.ndim)
         ]
+        self._node_width = None
+
+    def _face_flux_divergence(self, face_flux, axis: int):
+        """Divergence paired with the FCCD PPE wall-control-volume rows."""
+        if self._fccd.bc_type == "periodic":
+            return self._fccd.face_divergence(face_flux, axis)
+        if self._node_width is None:
+            self._init_node_width()
+
+        xp = self._fccd.xp
+        flux = xp.moveaxis(xp.asarray(face_flux), axis, 0)
+        n_cells = self._fccd.grid.N[axis]
+        width = self._broadcast_axis0(self._node_width[axis], flux.ndim)
+
+        out = xp.zeros((n_cells + 1,) + flux.shape[1:], dtype=flux.dtype)
+        out[1:n_cells] = (flux[1:] - flux[:-1]) / width[1:n_cells]
+        out[0] = flux[0] / width[0]
+        out[n_cells] = -flux[n_cells - 1] / width[n_cells]
+        return xp.moveaxis(out, 0, axis)
+
+    def _init_node_width(self) -> None:
+        """Cache nodal control-volume widths from physical coordinates."""
+        import numpy as _np
+
+        self._node_width = []
+        for axis in range(self._fccd.grid.ndim):
+            coords = _np.asarray(self._fccd.grid.coords[axis], dtype=_np.float64)
+            d_face = coords[1:] - coords[:-1]
+            width = _np.empty_like(coords)
+            width[0] = 0.5 * d_face[0]
+            width[-1] = 0.5 * d_face[-1]
+            width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
+            self._node_width.append(self._fccd.xp.asarray(width))
+
+    def _broadcast_axis0(self, values, ndim: int):
+        shape = [1] * ndim
+        shape[0] = -1
+        return values.reshape(shape)
