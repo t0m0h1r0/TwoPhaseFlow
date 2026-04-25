@@ -148,7 +148,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 0
-    assert cfg.run.reinit_every == 4
+    assert cfg.run.reinit_every == 20
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False
 

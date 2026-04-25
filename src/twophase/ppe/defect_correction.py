@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import IPPESolver
+from .fccd_matrixfree_helpers import fccd_interface_jump_is_active
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -83,10 +84,24 @@ class PPESolverDefectCorrection(IPPESolver):
             if hasattr(solver, "set_interface_jump_context"):
                 solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
 
+    def _subtract_interface_jump_operator(self, rhs_dev):
+        """Apply jump decomposition for the wrapped operator residual solve."""
+        operator = self.operator
+        if not hasattr(operator, "apply_interface_jump") or not fccd_interface_jump_is_active(
+            coefficient_scheme=getattr(operator, "coefficient_scheme", "none"),
+            interface_coupling_scheme=getattr(operator, "interface_coupling_scheme", "none"),
+            interface_jump_context=getattr(operator, "_interface_jump_context", None),
+        ):
+            return rhs_dev
+        jump_pressure = operator.apply_interface_jump(self.xp.zeros_like(rhs_dev))
+        return rhs_dev - operator.apply(jump_pressure)
+
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve by base solve plus residual defect corrections."""
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
+        self.operator.prepare_operator(rho)
+        rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
@@ -98,7 +113,6 @@ class PPESolverDefectCorrection(IPPESolver):
                 pressure = self.operator.apply_interface_jump(pressure)
             return pressure
 
-        self.operator.prepare_operator(rho)
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel().copy()
         self._pin_flat(rhs_flat, 0.0)

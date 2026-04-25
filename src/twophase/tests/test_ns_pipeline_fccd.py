@@ -24,6 +24,7 @@ from twophase.core.grid import Grid
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.simulation.ns_step_services import _interface_supported_curvature
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
@@ -211,6 +212,28 @@ def _mode2_ic(solver: TwoPhaseNSSolver) -> np.ndarray:
     return solver.psi_from_phi(phi)
 
 
+def test_psi_direct_transport_reinitializes_after_initial_step_only():
+    class IdentityAdvection:
+        def advance(self, psi, velocity, dt):
+            return psi
+
+    class ShiftReinitializer:
+        def reinitialize(self, psi):
+            return psi + 1.0
+
+    transport = PsiDirectTransport(
+        Backend(use_gpu=False),
+        IdentityAdvection(),
+        ShiftReinitializer(),
+        reinit_every=2,
+    )
+    psi = np.zeros((3, 3))
+    velocity = [np.zeros_like(psi), np.zeros_like(psi)]
+
+    assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=0), psi)
+    assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
+
+
 @pytest.mark.parametrize(
     "advection_scheme,convection_scheme",
     [("fccd_flux", "fccd_flux"), ("fccd_nodal", "fccd_nodal")],
@@ -289,7 +312,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 0
-    assert solver._interface_runtime.reinit_every == 4
+    assert solver._interface_runtime.reinit_every == 20
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
@@ -313,6 +336,38 @@ def test_ch13_capillary_wave_yaml_builds_initial_field():
     y_high = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.75)))
     assert psi[x0, y_low] > 0.5
     assert psi[x0, y_high] < 0.5
+
+
+def test_ch13_capillary_curvature_is_supported_on_interface_band():
+    """HFE must not reintroduce pressure-jump curvature in saturation tails."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+    psi = solver.build_ic(cfg)
+    u, v = solver.build_velocity(cfg, psi)
+    psi, _, _ = solver._rebuild_grid(psi, u, v, cfg.physics.rho_l, cfg.physics.rho_g)
+
+    kappa_raw = solver._curv.compute(psi)
+    kappa = solver._hfe.apply(
+        solver._backend.xp.asarray(kappa_raw),
+        solver._backend.xp.asarray(psi),
+    )
+    kappa = _interface_supported_curvature(
+        kappa,
+        psi,
+        xp=solver._backend.xp,
+        psi_min=getattr(solver._curv, "psi_min", 0.01),
+    )
+    kappa_h = np.asarray(solver._backend.to_host(kappa))
+    psi_h = np.asarray(solver._backend.to_host(psi))
+
+    psi_min = getattr(solver._curv, "psi_min", 0.01)
+    tail = (psi_h <= psi_min) | (psi_h >= 1.0 - psi_min)
+    assert np.all(kappa_h[tail] == 0.0)
+    assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 20.0
 
 
 def test_ch13_rising_bubble_water_air_yaml_builds_solver():
@@ -462,7 +517,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
-        ppe_max_iterations=80,
+        ppe_max_iterations=500,
         ppe_tolerance=1.0e-6,
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",

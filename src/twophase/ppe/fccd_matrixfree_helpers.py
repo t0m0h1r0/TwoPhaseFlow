@@ -115,6 +115,21 @@ def build_fccd_interface_jump_context(*, xp, backend, psi, kappa, sigma: float) 
     }
 
 
+def fccd_interface_jump_is_active(
+    *,
+    coefficient_scheme: str,
+    interface_coupling_scheme: str,
+    interface_jump_context: dict | None,
+) -> bool:
+    """Return whether the SP-M pressure-jump decomposition is active."""
+    return (
+        coefficient_scheme == "phase_separated"
+        and interface_coupling_scheme == "jump_decomposition"
+        and interface_jump_context is not None
+        and float(interface_jump_context.get("sigma", 0.0)) > 0.0
+    )
+
+
 def apply_fccd_interface_jump(
     *,
     pressure,

@@ -141,6 +141,14 @@ def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
     return state
 
 
+def _interface_supported_curvature(kappa, psi, *, xp, psi_min: float | None):
+    """Preserve the CLS curvature invariant ``kappa=0`` off the interface."""
+    if psi_min is None or psi_min <= 0.0:
+        return kappa
+    band = (psi > psi_min) & (psi < 1.0 - psi_min)
+    return xp.where(band, kappa, 0.0)
+
+
 def compute_ns_surface_tension_stage(
     state: NSStepState,
     *,
@@ -158,6 +166,12 @@ def compute_ns_surface_tension_stage(
     xp = backend.xp
     kappa_raw = curv.compute(state.psi)
     state.kappa = hfe.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
+    state.kappa = _interface_supported_curvature(
+        state.kappa,
+        state.psi,
+        xp=xp,
+        psi_min=getattr(curv, "psi_min", 0.01),
+    )
     if interface_runtime.kappa_max is not None:
         state.kappa = xp.clip(
             state.kappa,

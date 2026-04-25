@@ -33,6 +33,7 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_interface_jump_context,
+    fccd_interface_jump_is_active,
     project_fccd_rhs_compatibility,
 )
 from .fccd_matrixfree_lifecycle import (
@@ -168,6 +169,17 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             return np.asarray(self.backend.to_host(out))
         return out
 
+    def _subtract_interface_jump_operator(self, rhs_dev):
+        """Apply jump decomposition: solve ``L(p_tilde)=rhs-L(J)``."""
+        if self._defer_interface_jump or not fccd_interface_jump_is_active(
+            coefficient_scheme=self.coefficient_scheme,
+            interface_coupling_scheme=self.interface_coupling_scheme,
+            interface_jump_context=self._interface_jump_context,
+        ):
+            return rhs_dev
+        jump_pressure = self.apply_interface_jump(self.xp.zeros_like(rhs_dev))
+        return rhs_dev - self.apply(jump_pressure)
+
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FCCD PPE with backend GMRES."""
         la = self.backend.sparse_linalg
@@ -178,6 +190,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return_host = self.backend.is_gpu() and not self._is_device_array(rhs)
         rhs_dev = xp.asarray(rhs)
         self.prepare_operator(rho)
+        rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
         rhs_flat = rhs_dev.ravel().copy()
         if all_arrays_exact_zero(xp, (rhs_flat,)):
