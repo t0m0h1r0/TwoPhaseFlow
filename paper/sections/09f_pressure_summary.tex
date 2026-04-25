@@ -75,7 +75,10 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 
 \begin{tcolorbox}[mybox, title={設計選択の根拠：分相 PPE + DC + CCD 勾配の統合設計}]
 \label{box:ppe_design_rationale}
-本稿の PPE 求解戦略は\textbf{分相 PPE 解法}を主軸とし，以下の3つの原則から帰結する．
+本稿の PPE 求解戦略は密度比に応じて\textbf{2 経路}を切り替える：
+中程度の密度比では Lv.2（変密度一括 smoothed-Heaviside PPE，§~\ref{sec:algorithm} Step 6），
+高密度比 + 高粘性比 + 低 We 同時成立時は Lv.3（分相 PPE 解法，§~\ref{sec:split_ppe_framework}）．
+以下の3つの原則は両経路に共通する設計指針であり，特に Lv.3 では効果が顕著である．
 
 \begin{enumerate}
   \item \textbf{分相 PPE による密度比非依存化}．
