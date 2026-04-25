@@ -14,6 +14,23 @@ Level 3（§\ref{sec:level3_stiff_regime}）における理論的最終形であ
 表面張力支配・マイクロスケール・高密度比の同時極限で
 数値 spurious current を物理的根拠に基づいて最小化する．
 
+\noindent\textbf{Phase 1--4 と Level 1/2/3 の対応：}
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\hline
+Phase & 内容 & 主要技術 & Level 対応 \\
+\hline
+Phase 1 & 界面追跡層 & Ridge-Eikonal + FCCD 輸送 & Level 2 で部分採用可 \\
+Phase 2 & 運動量移流層 & FCCD + HFE & Level 2/3 \\
+Phase 3 & 粘性項分離 & 応力発散 + DC & Level 2/3 \\
+Phase 4 & 分相 FCCD PPE & 分相 + GFM + DC $k{=}3$ & Level 3 完全採用 \\
+\hline
+\end{tabular}
+\end{center}
+Phase 1 の軽量版は Level 2 プロダクションでも採用可能（§\ref{sec:level2_production}）；
+Phase 1--4 の同時採用は Level 3 を前提とする（§\ref{sec:level_selection}）．
+
 % -------------------------------------------------------------------------------
 \subsubsection{設計命題：高次演算子の共通基準面位置}
 \label{sec:pure_fccd_thesis}
@@ -29,10 +46,11 @@ FCCD 面ジェット $\FaceJet{\cdot}=(\cdot_f,\cdot'_f,\cdot''_f)$ を
 
 この命題は §\ref{sec:bf_p1_location}（BF P-1 位置一致）を
 全演算子に拡張したものに相当する．
-純 FCCD DNS は (R1)-(R4) の面ジェット契約を圧力・界面・移流・粘性の全演算子に
+純 FCCD DNS は (R1)-(R4)（§\ref{sec:fccd_def} の 4 役割定義）の面ジェット契約を
+圧力・界面・移流・粘性の全演算子に
 拡張したアーキテクチャであり，単一の面ジェット API で 4 経路のメトリック整合を
 構造的に担保する（従来 FVM 共存設計で生じた H-01 型不整合の歴史的経緯は
-付録~\ref{sec:fccd_motivation_h01}）．
+付録~\ref{app:fccd_motivation_h01}）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Phase 1: 界面追跡層（Ridge-Eikonal + FCCD 輸送）}
@@ -119,21 +137,25 @@ $\mu\nabla^2\mathbf{u}$ に畳み込むことを禁止する（§\ref{sec:viscou
 
 圧力投影は\textbf{純 FCCD DNS の設計上の中核}である（§\ref{sec:pure_fccd_split_ppe}）．
 単相 smeared PPE や FVM フラックスバランスではなく，
-各相内部で独立した楕円問題を解く：
+§\ref{sec:split_ppe_framework} 式~\eqref{eq:split_ppe} の分相 PPE
+$\nabla^2 p_k = \rho_k\, q$（$k\in\{\ell,g\}$；定数密度）を
+各相内部で独立に解く．
+等価な変動係数形式
 \begin{equation}
-  \bnabla\cdot\!\left(\frac{1}{\rho_L}\bnabla p_L\right) = S_L,
-  \qquad
-  \bnabla\cdot\!\left(\frac{1}{\rho_G}\bnabla p_G\right) = S_G.
+  \bnabla\cdot\!\left(\frac{1}{\rho_k}\bnabla p_k\right) = q
+  \quad (k\in\{\ell,g\})
   \label{eq:pure_fccd_split_ppe_core}
 \end{equation}
-相は $\Gamma$ 上で GFM ジャンプ条件により縫合される：
+は，定数 $\rho_k$ により式~\eqref{eq:split_ppe} と同一（product-rule の第 2 項は消滅）．
+相は $\Gamma$ 上で GFM ジャンプ条件
+（式~\eqref{eq:split_ppe_pressure_jump}--\eqref{eq:split_ppe_flux_jump}）
 \begin{equation}
-  [p]_\Gamma = \sigma\kappa,
+  [p]_\Gamma = J_p = \sigma\kappa,
   \qquad
-  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = 0
-  \quad\text{（非相変化非圧縮）．}
+  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = J_n
   \label{eq:pure_fccd_gfm_jump}
 \end{equation}
+で縫合される（非相変化非圧縮では $J_n=0$）．
 FCCD が面基準点の勾配/発散演算子を供給し，
 GFM がゴースト圧力ジェット $(p^*,p'^*,p''^*)$ を提供することで
 コンパクトステンシルが各相側で単相のまま維持される．
@@ -186,8 +208,9 @@ G-2 周期平面波 BF 精度 & $\varepsilon_\text{BF} = \Ord{h^4}$
   & §\ref{sec:verify_split_ppe_dc} \\
 G-3 Laplace バランス & $\Delta p_\text{discrete} = \sigma\kappa_\text{exact}$
   & 静止球，$\kappa$ 誤差 $\le 1\%$ \\
-G-4 密度比独立性 & $\varepsilon_p^\text{split} = \Ord{h^7}$ 共通 for $\rho_l/\rho_g\in[1,1000]$
-  & §\ref{sec:split_ppe_pressure_jump_formulation} \\
+G-4 密度比独立性 & 目標 $\varepsilon_p^\text{split} = \Ord{h^7}$ Dir / $\Ord{h^5}$ Neu
+  for $\rho_l/\rho_g\in[1,1000]$（検証予定）
+  & §\ref{sec:verify_split_ppe_dc} \\
 G-5 曲率 spurious current & $\max|\mathbf{u}|/|\mathbf{u}_\text{phys}| \le 10^{-6}$
   & 振動液滴 eigenmode \\
 \hline

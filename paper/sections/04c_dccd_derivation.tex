@@ -1,8 +1,8 @@
 % paper/sections/04c_dccd_derivation.tex
 %
 % §4.3  DCCD の教示的導出：1 次風上 → 修正方程式 → DCCD 埋込み
-%        本稿での DCCD は UCCD6（§4.6）への教育的前段と位置付けられる．
-%        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS reinit 圧縮項にのみ残存．
+%        本稿での DCCD は CLS 移流の production 既定（§7）；
+%        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS 移流 + reinit 圧縮項に適用．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{\DCCD{} フィルタの教示的導出}
@@ -21,11 +21,14 @@ DCCD は「アドホックな数値粘性追加」ではなく，
 体系的帰結であることが導出から明らかになる．
 
 \noindent\textbf{本稿における DCCD の位置付け．}
-DCCD は歴史的には bulk 移流の既定スキームであったが，
-本稿では UCCD6（§~\ref{sec:uccd6_def}）への\textbf{教育的前段}として保存される．
-bulk 移流は Level-1/2/3 すべてで UCCD6 を既定とし，
-DCCD の運用的残存は CLS 再初期化圧縮項（§~\ref{sec:reinit}）の
-非線形フラックス散逸子（UCCD6 未拡張のため）に限定される．
+DCCD は本稿の\textbf{CLS 移流の production 既定}スキームである
+（§~\ref{sec:advection_motivation}：CCD 微分 + 後段スペクトル散逸）．
+$\psi$ は $C^0$ 急 tanh プロファイルを持つため UCCD6 では振動が出現し，
+DCCD のスペクトル散逸が必須となる．
+bulk $u, v$ 移流は Level-1/2/3 すべてで UCCD6（§~\ref{sec:uccd6_def}）を既定とし，
+DCCD は CLS 再初期化圧縮項（§~\ref{sec:reinit}）の
+非線形フラックス散逸子としても適用される．
+WENO5 は付録~\ref{app:weno5} の比較対象スキームに留める．
 
 % -------------------------------------------------------------------------------
 \subsubsection{1 次風上スキームの修正方程式}
@@ -87,8 +90,7 @@ CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
   \qquad \xi=k\Delta x,
   \label{eq:dccd_filter_transfer}
 \end{equation}
-\phantomsection\label{eq:dccd_filter}% backward-compat: 旧 04d filter label
-\phantomsection\label{eq:dccd_transfer}% backward-compat: 旧 04d transfer-function label
+% backward-compat phantom labels removed (CHK-205 m2): use eq:dccd_filter_transfer
 に置き換える．
 低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は式~\eqref{eq:dccd_pde_form} の
 PDE 形の\textbf{波数依存 $\varepsilon$} 拡張と等価で，
@@ -113,8 +115,10 @@ $(D_2^{\CCD}u)_j \sim -(1/\Delta x^2) m_{\text{eq}}(k\Delta x)\hat u$
 \end{equation}
 Chu--Fan 係数 $(\beta_2,a_2,b_2)=(-1/8, 3, -9/8)$ での
 修正 2 次波数 $m_{\text{eq}}(\xi)$ は
+$\omega_2(\theta)^2$（式~\eqref{eq:ccd_omega_12}，$\theta=\xi$）と一致し，
 小 $\xi$ 展開で $m_{\text{eq}}=\xi^2+\Ord{\xi^6}$，
-Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
+Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
+（$96/10$，分子 $81+48-33$・分母 $48-40+2$ の直接代入），
 区間 $[0,\pi]$ で符号変化なし．従って：
 \begin{equation}
   \Re\lambda(k) = -\varepsilon|c|\,\frac{m_{\text{eq}}(k\Delta x)}{\Delta x} \le 0,
@@ -122,6 +126,13 @@ Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
   \label{eq:dccd_dissipative}
 \end{equation}
 等号は $k=0$（直流）のみで成立．半離散系は非自明モードで無条件散逸．
+
+\noindent\textbf{Post-filter 形での実装条件．}
+本稿の DCCD は PDE 形ではなく\textbf{post-filter} 形
+$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（§\ref{sec:advection_motivation}）．
+フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が安定の必要条件であり，
+§\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの境界値に相当する
+（過剰散逸を避けつつチェッカーボードを最大限に抑える設計値）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{6 つの反論への回答}
@@ -134,15 +145,17 @@ Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
 \item \textbf{定数 $\varepsilon$ の精度低下．}
       §\ref{sec:dccd_spectral_filter} の波数選択的フィルタが解決．
 \item \textbf{境界付き領域での必要非十分性．}
-      GKS 解析（§\ref{sec:ccd_bc}）が境界閉包まで含めて補う．
+      §\ref{sec:ccd_bc} の片側 Hermite 閉包が\textbf{十分条件プローブ}として機能する；
+      厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
+      §\ref{sec:uccd6_boundary} で開課題として明示している．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
-      §\ref{sec:ccd_bc} の Option III/IV で壁近傍の行を置換．
+      §\ref{sec:fccd_bc_options} の Option III/IV で壁近傍の行を置換．
 \item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
       TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL により，
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
 \item \textbf{非線形・多次元・可変係数への拡張可否．}
       線形解析は\textbf{必要条件プローブ}に過ぎない；
-      WENO5 相互検証で経験的裏付け．
+      比較対象 WENO5（付録~\ref{app:weno5}）との相互検証で経験的裏付け．
 \item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
       $\varepsilon_d\le 0.05$ の製品設定で非拘束．
@@ -169,16 +182,20 @@ Nyquist $\xi=\pi$ で有限正値 $\approx 11.43$，
   \item \textbf{体積保存は外殻修正}で担保．
         スペクトルフィルタ自体は \(\int u\,dx\) 不変ではないため，
         §\ref{sec:cls_advection} の CLS 体積補正（$\int\psi$ 再正規化）を要する．
-  \item \textbf{UCCD6 との対照と昇格}．
+        Level 1 検証（$\varepsilon_d=0.05$，$N=64$ 設定）では
+        フィルタのみの体積損失 $\sim 10^{-4}\cdot T$（$T$：シミュレーション時間）が
+        観測され，CLS 再正規化で機械精度まで圧縮される
+        （詳細な検証値は §\ref{sec:verify_cls_advection} に提示する）．
+  \item \textbf{UCCD6 との対照}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
-        本稿では bulk 移流の既定を UCCD6 に昇格：
+        本稿では bulk $u, v$ 移流の既定を UCCD6 とし
+        CLS 移流（$\psi$）の production 既定を DCCD とする：
         Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
-        Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を既定，
-        Level-3 DNS は UCCD6 inside IRK を既定とする（§\ref{sec:time_int}）．
-        DCCD の運用的残存は CLS 再初期化圧縮項の非線形フラックス散逸子
-        （§\ref{sec:reinit}，UCCD6 未拡張のため）であり，
-        本節の導出は UCCD6 の動機付けを成す\textbf{教育的前段}として保存される．
+        Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
+        Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
+        DCCD は CLS 再初期化圧縮項の非線形フラックス散逸子
+        （§\ref{sec:reinit}，UCCD6 未拡張のため）にも適用される．
 \end{itemize}
 
 \noindent

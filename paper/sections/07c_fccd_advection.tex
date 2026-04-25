@@ -117,9 +117,12 @@ FCCD 面フラックスで保存形を評価する：
 \begin{equation}
   F^{(k,j),\text{cons}}_{f_{i-1/2}}
   = (u^{(k)} u^{(j)})_f
-  = \bigl(\mathbf{P}_f(u^{(k)} u^{(j)})\bigr)_{i-1/2},
+  = \bigl(\mathbf{P}_f(u^{(k)} u^{(j)})\bigr)_{i-1/2}
+  \quad\text{（節点積 $u^{(k)}_i u^{(j)}_i$ を先に作り，単一の $\mathbf{P}_f$ で面に補間）},
   \label{eq:fccd_adv_flux_cons}
 \end{equation}
+面で 2 回分離補間する $(\mathbf{P}_f u^{(k)})(\mathbf{P}_f u^{(j)})$ は
+非線形積の補間誤差が $\Ord{H^2}$ フロアに落ちるため採用しない．
 節点ダイバージェンスで運動量更新を閉じる：
 \begin{equation}
   [\nabla\cdot F^{(j)}]_i
@@ -138,6 +141,20 @@ FCCD 面フラックスで保存形を評価する：
 を用いる（Kok 2000, Ham et al. 2002）．
 非保存形 $F^{(k,j),\text{nc}} = (\mathbf{P}_f u^{(k)})\cdot(\mathbf{M}^{\FCCD}u^{(j)})$
 は面値と面勾配の点積，両者とも $\mathcal{J}_f$ から得られる．
+
+\smallskip\noindent\textbf{離散エネルギー保存の面ジェット版（要約）}：
+発散フリー速度場 $D_h\bu=0$ で，
+$\langle\psi,\mathcal{L}^\text{sk}\psi\rangle = \tfrac{1}{2}\langle\psi,\mathcal{L}^\text{cons}\psi\rangle
++ \tfrac{1}{2}\langle\psi,\mathcal{L}^\text{nc}\psi\rangle$ より
+保存形と非保存形の対称化により $\langle\psi,\mathcal{L}^\text{sk}\psi\rangle=0$
+が \textbf{離散積} $\langle\cdot,\cdot\rangle_{f}$（面ジェット重み付き内積）で成立．
+ここで CCD 面ロカス $\mathbf{P}_f$ と面勾配 $\mathbf{M}^{\FCCD}$ が
+\textbf{随伴ペア}を構成することが鍵で，
+$\langle\mathbf{P}_f\mathbf{u},\mathbf{M}^{\FCCD}\mathbf{v}\rangle_f
+=\langle\mathbf{u},(\mathbf{M}^{\FCCD})^\top\mathbf{P}_f^\top\mathbf{v}\rangle$
+の関係（一様格子では境界寄与を除き厳密；非一様格子では $\Ord{H^4}$
+誤差で近似）が成立する．これは P-2 の補正幾何経路統一
+（§\ref{sec:bf_p2_adjoint}）の帰結である．
 
 % -------------------------------------------------------------------------------
 \subsubsection{BF 整合性定理（面上完結）}
@@ -159,14 +176,36 @@ BF 残差は
 \end{theorem}
 
 \begin{proof}[証明（要旨）]
-$\mathbf{u}\equiv 0$ で保存形・非保存形・スキュー対称形の 3 種の対流面
-フラックス（\eqref{eq:fccd_adv_flux_cons}
-\eqref{eq:fccd_adv_flux_skew} および非保存形）はいずれも
-点積に $\mathbf{u}$ を含むため恒等的に零．
-残る $\nabla p$ と CSF は共通演算子 $\mathbf{M}^{\FCCD}$ の
-切断誤差 $\mathcal{O}(H^4)/\mathcal{O}(H^3)$
-（\S\ref{sec:fccd_def}/\S\ref{sec:fccd_nonuniform}）で相殺する．$\square$
+\textbf{仮定の明示}：(A1) FCCD 共通演算子 $\mathbf{M}^{\FCCD}$ は
+\S\ref{sec:fccd_def}（一様）で切断誤差 $\Ord{H^4}$，
+\S\ref{sec:fccd_nonuniform}（非一様）で $\Ord{H^3}$．
+(A2) PPE 可解条件 $\sum_i (D_h\bu^*)_i = 0$（離散発散の総和零；
+Neumann BC 下の compatibility）が満たされる．
+(A3) 本定理は\textbf{CSF-baseline PPE}（変密度一括 PPE + smoothed Heaviside
+CSF；§\ref{sec:projection_derivation}）の設定．分相 PPE / GFM ジャンプ条件版
+（§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
+Corollary~\ref{cor:fccd_split_ppe_bf}．\\
+\textbf{論証}：$\mathbf{u}\equiv 0$ で保存形・非保存形・スキュー対称形
+3 種の対流面フラックス（\eqref{eq:fccd_adv_flux_cons}
+\eqref{eq:fccd_adv_flux_skew} および非保存形）はいずれも点積に $\mathbf{u}$ を
+含むため恒等的に零．残る $\nabla p$ と CSF は (A1) より同一の
+$\mathbf{M}^{\FCCD}$ で評価され，両項の切断誤差は同一表現
+$\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合い
+（同一演算子・同一格子点・同一切断），$\|\mathbf{R}_\text{BF}\|_\infty$ は
+切断誤差オーダーで律速される．(A2) は PPE 可解性を保証し，$p^{n+1}$ が
+well-defined であることから $G_h p$ の評価が有効．$\square$
 \end{proof}
+
+\begin{corollary}[分相 PPE での FCCD-BF 整合]
+\label{cor:fccd_split_ppe_bf}
+分相 PPE + GFM ジャンプ条件（§\ref{sec:split_ppe_framework}）を採用した場合，
+本定理は速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配と
+界面ジャンプ $[p]=\sigma\kappa|\bnabla\psi|$ の片側評価に
+\textbf{同一の FCCD 演算子 $\mathbf{M}^{\FCCD}$} を適用すれば
+そのまま成立する（CSF 体積力経路は使用しない；
+代わりに HFE で延長された片側 $p$ 場に FCCD を適用）．
+証明は本定理と同一の line-of-argument に従う．
+\end{corollary}
 
 \noindent\textbf{系}：
 移流を Option C（R$_4$ 経由の節点中心）に留めた場合，

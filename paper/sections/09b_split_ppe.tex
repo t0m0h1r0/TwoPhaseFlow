@@ -30,15 +30,23 @@ PPE のグリーン関数の非局所性により解全体に伝播する
 smoothed Heaviside 一括解法の\textbf{本質的制約}である：
 %
 \begin{itemize}[noitemsep]
-  \item $\rho_l/\rho_g = 2$--$5$：高解像度側で格子収束がプラトー化
-  \item $\rho_l/\rho_g = 10$--$100$：DC 発散は再試験では再現しないが，界面型密度場で設計精度は回復しない
-  \item 水--空気系（$\rho_l/\rho_g \approx 830$）：一括 smoothed Heaviside のみでの高精度計算は未保証
+  \item 中程度密度比：高解像度側で格子収束がプラトー化
+  \item 中-高密度比：DC 発散は再試験（FCCD ベースライン + 改訂 GFM ジャンプ条件，§\ref{sec:interface_crossing}）では再現しないが，界面型密度場で設計精度は回復しない
+  \item 水--空気級高密度比：一括 smoothed Heaviside のみでの高精度計算は未保証
 \end{itemize}
 %
 §~\ref{sec:interface_crossing} に定量的な再試験データを示す．
-重要な点として，$\rho_l/\rho_g = 2$--$5$ でも界面近傍の精度は
+重要な点として，中程度の密度比でも界面近傍の精度は
 CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
 低密度比だから一括解法で十分ということはない．
+
+\noindent\textbf{条件数の定量的見積もり：}
+smoothed Heaviside 一括演算子 $\bnabla\cdot(\rho^{-1}\bnabla\cdot)$ の条件数は
+$\kappa_2 \approx (\rho_l/\rho_g)\cdot h^{-2}$ のオーダーで成長する．
+水--空気級の高密度比（$\rho_l/\rho_g \sim 10^3$），$h = 1/64$ では
+$\kappa_2 \sim 10^3\cdot 4096 \approx 4\times 10^{6}$ となり，
+CG/DC 反復の収束が遅い（行列は singular ではないが
+\textbf{強く条件が悪い}）．分相 PPE では各相内 $\kappa_2 \approx h^{-2}\sim 10^{3}$ に縮退する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{分相 PPE 解法の定式化}
@@ -55,7 +63,9 @@ Smoothed Heaviside 一括解法が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
   \label{eq:split_ppe}
 \end{equation}
 %
-を解く．ただし，これは単に各相を切り離して解くという意味ではない．
+を解く（ここで $q = (1/\Delta t)\,\bnabla\cdot\bu^\ast$ は PPE の
+Predictor 速度由来の発散ソース；§\ref{sec:algorithm} Step 6 と一致）．
+ただし，これは単に各相を切り離して解くという意味ではない．
 界面 $\Gamma$ 上では圧力ジャンプと法線フラックス条件を同時に課して，
 二つの相の楕円型問題を閉じる：
 \begin{align}
@@ -73,6 +83,14 @@ $J_p=\sigma(\kappa^{n+1}-\kappa^n)$ とし，
 法線速度の連続性から
 $J_n=\Delta t^{-1}[\bu^*\cdot\hat{\bm n}]$ を用いる．
 予測速度が界面法線方向に連続となる離散化では $J_n=0$ に退化する．
+
+\noindent\textbf{$J_n$ の物理的正当化：}
+連続 NS では界面で法線速度が連続（$[\bu\cdot\mathbf{n}]_\Gamma=0$；非相変化）．
+Predictor 離散化が保存的ならば $\bu^*$ も界面で連続となり $J_n\equiv 0$．
+非保存的離散化（例：upwind 面補間が界面で非対称）では
+$[\bu^*\cdot\mathbf{n}]\sim \Ord{h^p}$ の残差が生じ，
+$J_n$ は PPE でこの残差を吸収して corrector 後の $\bu^{n+1}$ を
+連続に戻す役割を果たす（$\Ord{h^p}$ 一致時に $J_n=0$ が自動成立）．
 HFE（§~\ref{sec:field_extension}）は，これらのジャンプ条件で補正した
 片側データを界面越しに延長し，CCD ステンシルが不連続値に触れないようにするための
 補助技術である．
@@ -120,6 +138,17 @@ DNS アーキテクチャを採る．質量保存は
 $\Ord{\Delta x^4}$--$\Ord{\Delta x^6}$ の漸近的な高次性として扱われ，
 制御体積恒等式としては保証されない．
 
+\noindent\textbf{設計選択の根拠：}
+FVM 制御体積保存を放棄する代償として，
+(i) CLS 質量保存（§\ref{sec:cls_stages} Stage D）が\textbf{体積質量保存}
+（全領域 $\int\psi\,\mathrm{d}V$）を $\Ord{\Delta x^4}$ で独立に担保する，
+(ii) 速度場の離散発散フリー性は \textbf{DCCD フィルタ済み発散}
+（式~\eqref{eq:dccd_ppe_rhs}）で保証される，の二経路が保存性を補完する．
+FVM では両者が同一の面フラックス恒等式から派生するのに対し，
+本稿は「演算子の高次性」と「幾何学的発散フリー性」を独立系統で扱う．
+数値検証は §\ref{sec:verify_split_ppe_dc}（質量保存）と
+§\ref{sec:bf_static_droplet}（BF 整合性）で分離して行う．
+
 \noindent\textbf{アーキテクチャの階層}：
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item 界面幾何：Ridge--Eikonal（\S\ref{sec:ridge_eikonal}）
@@ -158,6 +187,18 @@ $\mathcal{J}_f(p_q)=(p_{q,f},p'_{q,f},p''_{q,f})$ を基本量とする．
 $-D_h^\FCCD\rho_q^{-1} G_h^\FCCD$ は
 純 Poisson 演算子の FCCD 版となり，
 §\ref{sec:ccd_poisson_matrix} の行列構造がそのまま適用される．
+
+\noindent\textbf{eq:split\_ppe との同値性記法}：
+本式~\eqref{eq:split_ppe_fccd_block} は~\eqref{eq:split_ppe} の
+$\nabla^2 p_q = \rho_q\,q$ と等価：
+\textbf{前提}（明示）— $\rho_q$ は相 $q$ 全体で\textbf{格子点に依存しない定数}
+（液相・気相それぞれ単一値）；位相マスク境界 $\partial\Omega_q$ は
+GFM ゴーストジェット（\S\ref{sec:gfm_ghost_jet_stitch}）で扱い，
+ステンシル内に $\rho$ ジャンプは現れない．
+従って product-rule 第 2 項
+$(\bnabla\rho_q^{-1})\!\cdot G_h p_q$ は消滅し，
+$D_h(\rho_q^{-1}G_h p_q) = \rho_q^{-1}D_h G_h p_q = \rho_q^{-1}\nabla_h^2 p_q$
+で書き換えると $-\nabla_h^2 p_q = \rho_q\,q$ に帰着する．
 
 \noindent\textbf{離散随伴性と SPD}：
 P-2（§\ref{sec:bf_p2_adjoint}）により
@@ -211,6 +252,53 @@ $\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
 2 次値ジャンプは Laplace--Beltrami 分解
 $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
 
+\noindent\textbf{$\kappa_s$ の導出（界面座標 1 段階展開）：}
+\textbf{前提仮定}（明示化）：
+(H1) 滑らか延長 — 各相 RHS $\rho_q q$ は HFE（\S\ref{sec:hfe}）により
+界面近傍で $C^2$ 級に延長されている；
+(H2) flux-jump 消失 — $J_n\equiv[\rho^{-1}\partial_n p]_\Gamma=0$
+（\S\ref{sec:gfm_ghost_jet_stitch}）；
+(H3) 単位法線整合 — $|\bnabla\psi|=1$（リッジ Eikonal SDF 上）．
+界面 $\Gamma$ 上で局所直交座標 $(s,n)$ を取る（$s$：接線弧長，
+$n$：法線距離 $\phi$ と整合）．
+中間補題：(H2) と運動量方程式表面張力ゼロ（\S\ref{sec:split_ppe_pressure_jump_formulation}）から
+界面圧力ジャンプ $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ を Heaviside 越しに
+\textbf{1 階}展開した結果が式~\eqref{eq:gfm_curvature_jump} 第 1 式の
+$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$%
+\footnote{前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ は flux jump の連続性（GFM 求解条件），$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ は表面張力下の curvature 駆動圧力ジャンプ（界面ソース項）であり，両者は独立に扱う；詳細は \S\ref{sec:split_ppe_pressure_jump_formulation}．}．
+さらに $n$ 方向の Laplacian を分解すると：
+\begin{equation}
+  \nabla^2 p = \partial_n^2 p + \kappa\,\partial_n p + \nabla_s^2 p,
+  \label{eq:laplace_beltrami_normal_decomp}
+\end{equation}
+ここで $\nabla_s^2$ は界面 Laplace--Beltrami 演算子．
+界面で $\partial_n p$ がジャンプを持つため，
+$[\nabla^2 p]_\Gamma = [\partial_n^2 p]_\Gamma + \kappa\,[\partial_n p]_\Gamma + [\nabla_s^2 p]_\Gamma$．
+仮定 (H1) より両相 PDE $\nabla^2 p = \rho q$（$q\equiv\bnabla\!\cdot\bu^*/\Delta t$ の各相延長）
+が界面まで滑らかに到達し，
+$[\nabla^2 p]_\Gamma = [\rho q]_\Gamma$ は与えられた量．
+$[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2(\sigma\kappa|\bnabla\psi|)$
+から接線 2 階差分を取り，
+1 階差分 $\kappa[\partial_n p]_\Gamma=\kappa\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ を
+代入して整理すると，
+\begin{equation}
+  [\partial_n^2 p]_\Gamma
+  = [\rho q]_\Gamma
+    - \kappa\,\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})
+    - \partial_s^2(\sigma\kappa|\bnabla\psi|).
+  \label{eq:kappa_s_derivation}
+\end{equation}
+分相 PPE の片側で $[\rho q]_\Gamma$ を吸収する RHS 整合化と
+仮定 (H3) $|\bnabla\psi|=1$ を用いれば，
+2 階ジャンプ成分の主要項は接線 2 階微分
+\begin{equation}
+  \kappa_s \equiv \partial_s(\sigma\kappa)/\sigma
+  \label{eq:kappa_s_def}
+\end{equation}
+に縮退する（高次項 $\Ord{(h\kappa)^2}$ を含む詳細は
+Liu--Fedkiw--Kang~\cite{Fedkiw1999} Appendix A の Laplace--Beltrami 分解と整合）．
+本稿はこの $\kappa_s$ を分相 PPE の界面 BC 補正項として用いる．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{PPE 整合性条件と相別ゲージ固定}
 \label{sec:ppe_phase_gauge_pin}
@@ -219,11 +307,11 @@ $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
 相 $q$ ブロックが Neumann 楕円問題である以上，
 相ごとに\textbf{可解条件}
 \begin{equation}
-  \sum_{i\in\Omega_q}\,S_{q,i}\,\Delta V_i \approx 0,
+  \sum_{i\in\Omega_q}\,S_{q,i}\,\Delta V_i = 0,
   \qquad S_{q,i} = \frac{1}{\Delta t}\,(D_h^\FCCD \mathbf{u}^*)_i
   \label{eq:split_ppe_compatibility}
 \end{equation}
-を満たす必要がある．本稿の運用：
+を満たす必要がある（離散積分の意味で厳密に零）．本稿の運用：
 GMRES 前に $\{S_{q,i}\}_{i\in\Omega_q}$ の平均をマスク別に減算．
 \textbf{相別ゲージピン}を各相に 1 点ずつ（計 2 点）置き，
 零モードを除去する．
@@ -232,6 +320,19 @@ GMRES 前に $\{S_{q,i}\}_{i\in\Omega_q}$ の平均をマスク別に減算．
   \quad i_\text{pin}^q \in \Omega_q,\ q\in\{L,G\}.
   \label{eq:split_ppe_phase_pin}
 \end{equation}
+
+\noindent\textbf{命題（2 ピンとジャンプ条件の整合性）}：
+IPC 増分形式（\S\ref{sec:ipc_derivation}）では未知量を増分 $\delta p_q^n = p_q^{n+1}-p_q^n$
+で解く．初期化時 $\delta p_q^0 \equiv 0$，
+かつジャンプ条件 $[\delta p]_\Gamma = \sigma(\kappa^{n+1}-\kappa^n)$ が
+GFM ゴーストジェット（\S\ref{sec:gfm_ghost_jet_stitch}）経由で
+\textbf{両相 PDE と独立に}注入されるため，
+$\delta p_L(i_\text{pin}^L)\equiv 0$ かつ $\delta p_G(i_\text{pin}^G)\equiv 0$ が
+両相同時に成立可能で，かつジャンプ条件と整合．
+合成圧力 $p_q = p_q^{n}+\delta p_q$ では液相基準ピン
+$p_L(i_\text{pin}^L)=0$ に対し気相は
+$p_G = p_L + \sigma\kappa$ シフトで自動整合．
+よって 2 独立ピンとジャンプ条件は\textbf{両立}する．\hfill$\square$
 
 \noindent\textbf{警告}：
 圧力ジャンプ形式（\S\ref{sec:split_ppe_pressure_jump_formulation}）
