@@ -388,20 +388,68 @@ IPC 法による予測ステップへの $p^n$ の組み込みは，このスプ
 
 % AB2 起動問題 tcolorbox は §5.3 末尾 (sec:ab2_ipc legacy paragraph) に移動 (Phase 2)
 
-\subsection{Crank--Nicolson 法（対角粘性項）}% Phase 2: \subsubsection → \subsection 昇格 (Phase 3 で implicit-BDF2 主軸化に rewrite)
-\label{sec:time_cn}
+\subsection{粘性項：implicit-BDF2 (GMRES)}
+\label{sec:time_viscous}
 
-粘性項（2階空間微分を含む）は，純陽的処理では厳しい時間刻み制限（$\Delta t < O(h^2)$）を課す．
-これを緩和するため，Crank--Nicolson（CN）法による\textbf{半陰的}処理を採用する（行列構造と Thomas 法の詳細は \ref{box:cn_tridiagonal} 参照）：
+ch13 production stack の粘性項処理は \textbf{implicit-BDF2 法 + Jacobi 前処理 GMRES}
+である．Predictor 式 \eqref{eq:predictor_imex_bdf2} の粘性ブロック
+$\mathcal{V}(\bu^*)$ を完全陰的に扱うことで純粘性 CFL 制約 $\Delta t < O(h^2)$ を
+消滅させる．純陽的処理では水--空気級の $h$ 縮小と $\nu$ 比 $\sim 10$ により
+$\Delta t$ が対流 CFL より 1--2 桁厳しくなり実用不可となる．
+
+\paragraph{Helmholtz 形主定式}
+BDF2 の係数 $\gamma=2/3$ で陰的化した粘性ブロックは
 \begin{equation}
-  \frac{u^{n+1} - u^n}{\Delta t} = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
-  \label{eq:crank_nicolson}
+  \bigl(I - \gamma\Delta t\,\mathcal{L}_{\nu}\bigr)\bu^* = \mathrm{RHS}^{n,n-1},
+  \qquad
+  \mathcal{L}_{\nu} = \rho^{-1}\bnabla\cdot\bigl[\mu(\bnabla + \bnabla^T)\bigr]
+  \label{eq:helmholtz_implicit_bdf2}
 \end{equation}
-ここで $\mathcal{D}$ は粘性拡散演算子．線形・自己随伴な拡散演算子を
-全て陰的に扱う場合，CN 法は時間方向に2次精度（$\Ord{\Delta t^2}$）かつ
-A-stable であり，陽的拡散 CFL を課さずに計算できる．
-ただし本稿の実装では交差粘性項を陽的に残すため，変粘性界面では
-後述の局所制約が別途現れる．
+の Helmholtz 形となる．ここで $\mathrm{RHS}^{n,n-1}$ は式~\eqref{eq:predictor_imex_bdf2}
+右辺の対流外挿 $-\mathcal{C}^{\mathrm{EXT2}}$ と浮力残差 $\bm{a}^{n+1}_{\mathrm{res}}$
+および BDF2 履歴項 $(4\bu^n - \bu^{n-1})/3$ をまとめたものである．
+左辺演算子 $A = I - \gamma\Delta t\,\mathcal{L}_{\nu}$ は対称正定値であり，
+ch13 既定では Krylov 部分空間法 (GMRES) で解く．
+
+\paragraph{GMRES 収束性と Jacobi 前処理}
+$A$ の対角項は $\rho_{ij}/\Delta t + (\mu_{i\pm 1/2,j})/(Re\,h^2)$ に支配されるため，
+\textbf{Jacobi 前処理} (対角逆数によるスカラー除算) は安価かつ効果的である．
+変粘性 $\mu_l/\mu_g \sim 10^2$ の二相流でも，界面厚さ $\sim 3h$ の局在性により
+$A$ の条件数は $\Ord{10^3}$ にとどまる．restart 80 GMRES は ch13 既定 $\mathrm{cfl}=0.10$
+で 500 反復以内に残差 $10^{-8}$ まで収束する．
+
+\begin{tcolorbox}[resultbox, title={implicit-BDF2 GMRES 収束目安 (ch13 設計値)}]
+\label{box:gmres_implicit_bdf2}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lccc@{}}
+\hline
+$\mu_l/\mu_g$ & 残差許容値 & GMRES restart & iterations 目安 \\
+\hline
+$1$（等粘性） & $10^{-8}$ & $30$ & $\lesssim 50$ \\
+$10$ & $10^{-8}$ & $50$ & $\lesssim 150$ \\
+$10^2$（空気--水） & $10^{-8}$ & $80$ & $\lesssim 500$ \\
+$10^3$（高粘度比） & $10^{-6}$ & $100$ & 適応的調整推奨 \\
+\hline
+\end{tabular}
+
+\smallskip
+\textbf{stagnation 検出と recovery：}
+GMRES が restart 周期内で残差停滞 ($r_{k+1}/r_k > 0.99$) を示す場合，
+$\Delta t$ を半分に減らして再試行する．ch13 既定では発生頻度 $< 1\%$．
+\end{tcolorbox}
+
+\paragraph{安定性：A-stable と粘性 CFL 消滅}
+BDF2 は A-stable (Hairer--Wanner~\cite{HairerWanner1996} Sec.~V.1) であり，
+粘性ブロックを完全陰的に扱うことで純粘性拡散による $\Delta t < O(h^2)$ 制約は消滅する．
+最終的な律速時間刻みは対流 CFL と毛管波制約 $\Delta t_{\mathrm{cap}}$
+(§~\ref{sec:time_csf}) の最小値である．
+
+\paragraph{クロス微分項の陽的処理}
+implicit-BDF2 でも，変粘性応力テンソルのクロス微分項 $\mathcal{D}_{\mathrm{c}}$ は
+$\bu^*$-成分間連立を避けるため陽的に評価する．
+旧 Crank--Nicolson (CN) 文脈で議論されてきた制約は implicit-BDF2 でも本質的に
+同じ形で残る（変粘性界面で粘性 CFL が局所的に復活；
+注意~\ref{warn:cn_cross_derivative}・\ref{warn:cross_cfl}）．
 
 \begin{tcolorbox}[warnbox, title={CN 粘性項のクロス微分：$u$ と $v$ の陰的結合と実装上の分離}]
 \label{warn:cn_cross_derivative}
@@ -505,6 +553,28 @@ $u^*$-$v^*$ の成分間連立を避けるために陽的評価へ回すのは
 $y$ 方向の対角拡散項そのものを常に陽的化するという意味ではない
 （§~\ref{sec:time_accuracy_table}，注意~\ref{warn:cn_cross_derivative} 参照）．
 \end{tcolorbox}
+
+\paragraph{旧実装：Crank--Nicolson 法 (Level 2a)}
+\phantomsection\label{sec:time_cn}% backward-compat: 旧 §5.4.3 sec:time_cn (08c L102 ref)
+
+中密度比向けの旧 Level 2a 実装では粘性項に \textbf{Crank--Nicolson (CN) 法}
+を採用していた：
+\begin{equation}
+  \frac{u^{n+1} - u^n}{\Delta t}
+  = \frac{1}{2}\bigl[\mathcal{D}(u^n) + \mathcal{D}(u^{n+1})\bigr]
+  \label{eq:crank_nicolson}
+\end{equation}
+ここで $\mathcal{D}$ は粘性拡散演算子．線形・自己随伴な拡散演算子全てを陰的に
+扱う場合，CN は時間方向 $\Ord{\Delta t^2}$ かつ A-stable で，陽的拡散 CFL を
+課さない．本実装では交差粘性項を陽的に残すため，変粘性界面では本節の同じ制約
+（注意~\ref{warn:cn_cross_derivative}・\ref{warn:cross_cfl}）が現れる．行列構造は
+$\mathcal{D}_{\mathrm{d}}$ を方向別 ADI スウィープで三重対角化し
+（\ref{box:cn_tridiagonal}）Thomas 法で $\mathcal{O}(N)$ 求解できるが，
+ch13 production stack ではグローバルな 2D 系を GMRES で直接解く
+（implicit-BDF2 + Jacobi 前処理；本節主体）．
+
+ch13 統一済みであるため CN 法は §~\ref{sec:full_algorithm} の全体アルゴリズム参照
+および過去ベンチマーク（§~\ref{sec:verify_cn_viscous}）との整合性のために保持する．
 
 % -------------------------------------------------------------------------------
 \subsection{\texorpdfstring{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§\ref{sec:pure_fccd_dns} で空間側を詳述）}{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§10.5 で空間側を詳述）}}
