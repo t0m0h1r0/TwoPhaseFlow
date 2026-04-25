@@ -103,5 +103,6 @@ def refresh_fccd_geometry_cache(solver) -> None:
     cache = build_fccd_geometry_cache(xp=solver.xp, grid=solver.grid, ndim=solver.ndim)
     solver._h_min = cache.h_min
     solver._node_width = cache.node_width
+    solver._node_width_inv = [1.0 / width for width in cache.node_width]
     solver._cell_volume = cache.cell_volume
     solver._cell_volume_host = np.asarray(solver.backend.to_host(cache.cell_volume))

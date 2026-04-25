@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..backend import fuse as _fuse
+
 
 @dataclass(frozen=True)
 class FCCDGeometryCache:
@@ -129,6 +131,11 @@ def compute_fccd_phase_weighted_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache
     )
 
 
+@_fuse
+def _subtract_two_phase_mean_kernel(arr, mask, mean0, mean1):
+    return arr - (mask * mean0 + (~mask) * mean1)
+
+
 def subtract_fccd_phase_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache, means):
     """Return the phase-gauge projection without copying ``arr`` first.
 
@@ -137,9 +144,12 @@ def subtract_fccd_phase_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache, means)
     """
     arr_view = xp.asarray(arr)
     if len(means) == 2:
-        result = xp.where(cache.masks[0], means[0], means[1])
-        xp.subtract(arr_view, result, out=result)
-        return result
+        return _subtract_two_phase_mean_kernel(
+            arr_view,
+            cache.masks[0],
+            means[0],
+            means[1],
+        )
     result = arr_view.copy()
     for mask, mean in zip(cache.masks, means):
         result = xp.where(mask, result - mean, result)
