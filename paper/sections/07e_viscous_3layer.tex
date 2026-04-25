@@ -9,6 +9,13 @@
 \label{sec:viscous_3layer}
 % ═══════════════════════════════════════════════════════════════════════════════
 
+\noindent\textbf{Part 1 連続定式化との関係：}
+本節は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
+粘性項 $\bnabla\cdot(2\mu\bm{D})$ を，変粘性二相流の Layer A/B/C 構造として
+離散化する設計を示す．界面の応力ジャンプ条件（式~\eqref{eq:jump_stress}：
+$[\sigma\bm{n}]_\Gamma = -\sigma_s\kappa\bm{n}$；接線成分は $[\tau_{xy}]_\Gamma=0$）が
+3 層分解の設計根拠であり，$\mu\nabla^2\bm{u}$ 直接離散が禁じられる物理的理由となる．
+
 本節では変粘性二相流の粘性項を
 \textbf{Layer A（速度勾配生成）・Layer B（応力テンソル組立）・
 Layer C（保存形応力ダイバージェンス）}の 3 層に分解し，

@@ -9,6 +9,14 @@
 \label{sec:cls_stages}
 % ═══════════════════════════════════════════════════════════════════════════════
 
+\noindent\textbf{Part 1 連続定式化との関係：}
+本節は §~\ref{sec:cls_advection}（§3.2 CLS 保存形移流方程式）と
+§~\ref{sec:reinit}（§3.3 再初期化方程式）で確立した連続定式化を
+1 物理時間ステップの演算子分裂に組み込む離散アルゴリズムを示す．
+ch13 production stack では，Stage A の FCCD ψ 移流（\texttt{FCCDLevelSetAdvection}；
+§~\ref{sec:advection_motivation}）と Stage C の Ridge-Eikonal 再初期化
+（\texttt{RidgeEikonalReinitializer}；§~\ref{sec:xi_sdf_reinit}）が主経路となる．
+
 本節では，CLS \cite{OlssonKreiss2005} を 1 物理時間ステップ内の
 6 段階に分解し，
 \textbf{質量保存・幾何（法線・曲率）・質量補正}の
