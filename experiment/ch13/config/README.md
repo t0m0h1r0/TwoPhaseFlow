@@ -1,5 +1,15 @@
 # ch13 Experiment YAML Design
 
+The checked-in §13 production set is intentionally limited to two YAML files:
+
+- `ch13_capillary_water_air_alpha2_n128.yaml` — capillary-wave probe.
+- `ch13_rising_bubble_water_air_alpha2_n128x256.yaml` — rising-bubble probe.
+
+Both configs must emit periodic snapshots with `psi`, `velocity`, and
+`pressure` fields.  The runner stores these in `data.npz` under
+`fields/psi`, `fields/velocity`, and `fields/pressure` (plus compatibility
+fields `fields/u`, `fields/v`, and `fields/p`).
+
 The ch13 YAML schema is organized by *what the setting means*, not by where the
 current Python implementation stores it.
 
