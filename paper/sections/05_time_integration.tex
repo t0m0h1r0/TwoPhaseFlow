@@ -509,10 +509,11 @@ PPE ソルバを触らずに predictor を Radau IIA 実装へ置換可能であ
 \end{remark}
 
 \textbf{Level 選択トリガー：}
-$\rho_l/\rho_g > 10^4$ または $\text{We} < 10^{-2}$ または
-$\mu_l/\mu_g > 10^3$ の 3 条件のいずれかで L2 の $\Delta t$ が
-$\Delta t_\text{adv} \ll \Delta t_\text{cap}$ 側に落ち込む場合に L3 へ移行
-（詳細判定ロジックは §\ref{sec:level_selection} 参照）．
+§\ref{sec:level_selection} で定める 3 条件
+（密度比・粘度比・Weber 数）の\textbf{同時成立}により
+L2 の $\Delta t$ が $\Delta t_\text{adv}\ll\Delta t_\text{cap}$ 側に落ち込む場合に L3 へ移行する
+（具体的閾値および判定ロジックは §\ref{sec:level_selection} の表に集約；
+本節 L480-483 で参照する $\rho \geq 500 + \mu \geq 50 + \text{We}\leq 0.01$ と同一基準）．
 
 % -------------------------------------------------------------------------------
 \subsection{毛管波時間刻み制約：波解像の観点}

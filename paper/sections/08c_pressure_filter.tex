@@ -84,9 +84,10 @@ $\mathbf{n},\,\kappa,\,\delta(\psi)$ で異なる DCCD & $\times$ & 経路不整
                 CCD 発散を適用して RHS $= D_h\tilde{\bu}^*/\Delta t$ を構成する
                 方式（§\ref{sec:dccd_decoupling}，式~\eqref{eq:dccd_ppe_rhs}）．
                 チェッカーボード除去が目的で，補正後の質量保存は
-                フィルタ済み速度に対する $D_h\tilde{\bu}^{n+1}=0$ として
-                成立し，bulk 滑らかモードへの $\Ord{\varepsilon_d h^2}$ 寄与は
-                予期される．
+                フィルタ付き発散に対し $D_h\tilde{\bu}^*-\Delta t\,D_h(\rho^{-1}G_h p)=0$
+                を満たすよう PPE が解かれ，
+                非フィルタ発散には $D_h\bu^{n+1}\sim\Ord{\varepsilon_d h^2}$ の
+                bulk 滑らかモード残差が残る（§\ref{sec:dccd_decoupling}）．
           \item \emph{禁止}：構成済み RHS そのもの（既に $D_h\bu^*/\Delta t$ を
                 計算した結果）に追加フィルタを post-apply すること．
                 これは速度発散構造の事後的破壊を引き起こし，補正後の

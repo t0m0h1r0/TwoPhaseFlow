@@ -15,7 +15,9 @@
 および Level 3（分相 PPE 解法，§~\ref{sec:split_ppe_framework}）の双方で適用する．
 分相 PPE（Level 3）では各相の PPE が定数密度のラプラシアンとなるため
 $L_H$/$L_L$ のスペクトル不整合が最小化され，
-$k \geq 3$ で $\Ord{h^6}$ に漸近する（§~\ref{sec:dc_accuracy}）；
+$k \geq 3$ で漸近精度 $\Ord{h^6}$ を得る（§~\ref{sec:dc_accuracy}；
+BC 種別の内訳は §\ref{sec:dc_pure_fccd_convergence} の表で
+$\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann / IIM 行補正で $\Ord{h^4}$ 以上 と区別）；
 変密度一括 PPE（Level 2）では smoothed-Heaviside による $\rho$ 滑化幅
 $\varepsilon_H$ が DC 収束率を律速し，
 $k$ 既定値の選択根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
