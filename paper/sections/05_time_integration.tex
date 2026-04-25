@@ -265,19 +265,18 @@ $\partial_n(\delta p)|_{\partial\Omega}=0$ が
 Chorin 法の $\partial_n p^{n+1}|_{\partial\Omega}=0$ 強制が誘起する
 $\Ord{\Delta t}$ 境界層が消える．
 従って $p_e^{n+1}-p^{n+1}=\Ord{\Delta t^2}$．
-速度補正そのものは $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t}\cdot\Delta t/\rho=\Ord{\Delta t^2}$
-（$\delta p=p^{n+1}-p^n=\Ord{\Delta t}$）で正則項として残るが，
+速度補正そのものは $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t}$ 規模の正則項として残る
+（$\delta p=p^{n+1}-p^n=\Ord{\Delta t}$，$\bnabla=\Ord{1/h}$，$\Delta t\sim h$ より$\Delta t\cdot\Ord{\Delta t/h}/\rho=\Ord{\Delta t}$）が，
 真値との差すなわち\textbf{補正の誤差}は
 $\Delta t\bnabla(p_e^{n+1}-p^{n+1})/\rho^{n+1}=\Ord{\Delta t^3}$ となり，
 Predictor 段階の $\Ord{\Delta t^2}$ 誤差と合わせて全体
 $\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
 変密度 $\rho^{n+1}$ が時刻 $n+1$ で評価される点が van Kan の等密度版から
-の主な拡張である．固定点での Eulerian 時間変化率 $\partial_t\rho|_{\bx}$ 自体は
-界面拡散幅 $\varepsilon\sim h$ を通過する時に $|U|/\varepsilon = \Ord{1/h}$ となり
-有限ではないが，1 タイムステップ内の変化量は $|U|\Delta t/\varepsilon = \Ord{\text{CFL}}$
-（$|U|=\Ord{1}$，$\Delta t=\Ord{h}$）に留まる．従って $\delta p = p^{n+1}-p^n$ も
-時刻方向 1 ステップで $\Ord{\Delta t}$ に留まり，変密度下でも本節の精度評価が保たれる．
-完全な変密度 IPC 解析は Guermond--Minev--Shen~\cite{Guermond2006} に従う．
+の主な拡張である．非圧縮流れでは圧力場の正則性 $dp/dt = \Ord{1}$ が成立するため，
+$\delta p = p^{n+1}-p^n = \Ord{\Delta t}$ は時刻方向 1 ステップで保たれる．
+変密度下でこの正則性が破綻しないことは Guermond--Minev--Shen~\cite{Guermond2006}
+§6.2 (rotational pressure correction) およびそこで参照される変密度系列で確立されており，
+本節の精度評価は変密度下でも保たれる（直接的な variable-density IPC $\Ord{\Delta t^2}$ 誤差解析は Pyo--Shen / Guermond--Quartapelle 系列を参照）．
 
 \subsubsection{Level 2 の全体的な時間精度}
 \label{sec:time_accuracy_table}
