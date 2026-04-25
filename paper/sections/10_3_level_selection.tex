@@ -83,7 +83,7 @@ Level 2 & $\sim$ 6--10 (AB2+CN+ST) &
   $10$--$50\times$ Level 1 & $2$--$8\times$ Level 1 &
   $\Ord{\Delta t^2}$ 全体 \\
 Level 3 & $\sim$ 30--100 (Radau IIA + JFNK) &
-  $100$--$1000\times$ Level 1 & $3$--$10\times$ Level 2 &
+  $500$--$10000\times$ Level 1 & $3$--$10\times$ Level 2 &
   $\Ord{\Delta t^5}$ 全体 \\
 \hline
 \end{tabular}
@@ -98,7 +98,7 @@ $\Delta t$ 拡大比が剛性の平方で効くため，
 $\rho_l/\rho_g > 500$ 領域で Level 2 を上回る実効効率を持つ．
 
 \begin{tcolorbox}[colback=yellow!8,colframe=yellow!60!black,title=\textbf{Remark：Level 3 コスト見積の検証状態}]
-Level 3 の 3--10$\times$ Level 2 throughput（および Level 1 比 100--1000$\times$ $\Delta t$ 拡大）は
+Level 3 の 3--10$\times$ Level 2 throughput（および Level 1 比 500--10000$\times$ $\Delta t$ 拡大）は
 Radau IIA の段別 $\Delta t$ 拡大比と JFNK Krylov コスト（行列ベクトル積数）から推定した
 \textbf{理論設計値}である．
 本稿の数値検証は §~\ref{sec:verify_time} 以降の検証章で

@@ -264,10 +264,8 @@ $n$：法線距離 $\phi$ と整合）．
 中間補題：(H2) と運動量方程式表面張力ゼロ（\S\ref{sec:split_ppe_pressure_jump_formulation}）から
 界面圧力ジャンプ $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ を Heaviside 越しに
 \textbf{1 階}展開した結果が式~\eqref{eq:gfm_curvature_jump} 第 1 式の
-$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$
-（前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ とは別条件；
-表面張力下の curvature 駆動圧力ジャンプであり，
-\S\ref{sec:algorithm} アルゴリズム注記参照）．
+$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$%
+\footnote{前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ は flux jump の連続性（GFM 求解条件），$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ は表面張力下の curvature 駆動圧力ジャンプ（界面ソース項）であり，両者は独立に扱う；詳細は \S\ref{sec:split_ppe_pressure_jump_formulation}．}．
 さらに $n$ 方向の Laplacian を分解すると：
 \begin{equation}
   \nabla^2 p = \partial_n^2 p + \kappa\,\partial_n p + \nabla_s^2 p,

@@ -218,8 +218,9 @@ IIM 行補正採用時はジャンプも $\Ord{h^4}$ 以上に昇格し，
 全体は $\Ord{h^6}$ 上界に達する．
 Level 2/3 では GFM ジャンプ精度が全体精度を支配するため，
 DC 反復回数は $k=2$ では FCCD の $\Ord{h^6}$ には漸近せず，
-$k=3$ で実効精度が saturate する（$k>3$ は GFM 2 次律速のため
-収束改善なし）．
+$k=3$ 以上で GFM 律速のため実効精度向上は見込めない
+（\textbf{理論上界}；$k$ 依存性の数値検証は
+\S\ref{sec:verify_time} で行う予定）．
 Level 3 で IIM 行補正（\S\ref{sec:fccd_bf_gfm_integration} Phase 3）
 を採用すると全体精度が $\Ord{h^4}$ 以上に昇格する．
 なお \S\ref{sec:algorithm} の DC ループは Level 共通で $k=3$ を既定とする
