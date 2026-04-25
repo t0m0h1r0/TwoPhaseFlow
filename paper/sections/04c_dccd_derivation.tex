@@ -195,13 +195,9 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
   \item \textbf{UCCD6 との対照}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
-        本稿では bulk $u, v$ 移流の既定を UCCD6 とし
-        CLS 移流（$\psi$）の実装デフォルトを DCCD とする：
-        Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
-        Level-2 実装既定（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
-        Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
-        DCCD は CLS 再初期化圧縮項の非線形フラックス散逸子
-        （§\ref{sec:reinit}，UCCD6 未拡張のため）にも適用される．
+        両スキームの用途別割当（bulk 移流／CLS 移流／再初期化圧縮項など）と
+        Level-1/2/3 における具体的な組合せは
+        §\ref{sec:time_int} の比較表に集約する．
 \end{itemize}
 
 \noindent
@@ -314,7 +310,7 @@ $C^0$ tanh プロファイル移流（界面）
         速度勾配評価に用いる．
         PPE 右辺・Corrector 発散のチェッカーボード抑制には，
         本適応制御ではなく $\varepsilon_d=1/4$ の固定フィルタ
-        （§~\ref{sec:dccd_decoupling}）を用いる．
+        （§~\ref{sec:collocate}）を用いる．
 \end{enumerate}
 
 \textbf{2 次元への拡張：}

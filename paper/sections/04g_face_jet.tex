@@ -139,7 +139,7 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 \textbf{スキーム} & \textbf{配置} & \textbf{散逸チャンネル} & \textbf{微分精度}$^\dagger$ & \textbf{安定性} & \textbf{計算量} \\ \hline
 {\CCD} (§\ref{sec:ccd_def})              & 節点      & なし                          & $\Ord{h^6}$           & 中心差分（散逸ゼロ）         & $\Ord{N}$ \\
 {\DCCD} (§\ref{sec:dccd_derivation})     & 節点      & 外殻 post-filter              & $\Ord{h^6}$$^\ddagger$ & $\ell^2$ 安定（spectral 拘束下）   & $\Ord{N}$ \\
-{\FCCD} (§\ref{sec:fccd_def})            & \textbf{面} & 風上構造（option）          & $\Ord{H^4}$           & 基底 CCD 由来               & $\Ord{N}$ \\
+{\FCCD} (§\ref{sec:fccd_def})            & \textbf{面}$^\flat$ & なし（散逸ゼロ）          & $\Ord{H^4}$           & 基底 CCD 由来               & $\Ord{N}$ \\
 {\UCCD[6]} (§\ref{sec:uccd6_def})        & 節点      & \textbf{演算子内部}（hyperviscosity） & $\Ord{h^6}$  & CN で無条件安定（周期格子）    & $\Ord{N}$ \\
 $\FaceJet{u}$ (§\ref{sec:face_jet_def})  & 面（API） & ---                           & $\Ord{H^4}$/$\Ord{H^2}$$^\S$ & 基底スキーム継承   & $\Ord{N}$ post \\
 \hline
@@ -152,6 +152,8 @@ $^\dagger$ 微分演算子の formal 精度．
 $^\ddagger$ DCCD は微分演算子そのものは $\Ord{h^6}$ を保つが，
 post-filter による移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が別途付随し
 （§\ref{sec:dccd_filter_theory}），移流の実効精度は $\Ord{h^2}$ に律速される．
+$^\flat$ FCCD は面位置に値を置く面中心スキームだが Fourier シンボルは純虚数で散逸ゼロ；
+散逸が必要な場面では風上限定ステンシル（option）を併用する．
 $^\S$ 面ジェットは $u_f, u'_f$ が $\Ord{H^4}$，$u''_f$ が $\Ord{H^2}$．
 }
 
