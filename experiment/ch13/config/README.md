@@ -27,6 +27,26 @@ current Python implementation stores it.
 - `numerics`: time integrators, equation terms, projection semantics, and linear solvers.
 - `output`: result directory, snapshots, and figure recipes.
 
+## Capillary-Wave Initial Field
+
+The capillary-wave experiment should be configured through `initial_condition`
+only; do not add wrapper scripts for new wave inputs.  Use the `capillary_wave`
+shape alias:
+
+```yaml
+initial_condition:
+  type: capillary_wave
+  axis: y
+  mean: 0.5
+  amplitude: 0.05
+  mode: 2
+  length: 1.0
+  phase: 0.0
+  interior_phase: liquid
+```
+
+This represents `y = mean + amplitude*cos(2π*mode*x/length + phase)`.
+
 ## Interface Lifecycle
 
 `interface` groups settings that must be reasoned about together:

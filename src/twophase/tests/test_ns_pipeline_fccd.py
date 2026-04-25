@@ -296,6 +296,25 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._viscous_spatial_scheme == "ccd_bulk"
 
 
+def test_ch13_capillary_wave_yaml_builds_initial_field():
+    """Capillary-wave YAML should build a sinusoidal two-phase initial field."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    psi = solver.build_ic(cfg)
+    assert psi.shape == solver._grid.shape
+
+    x0 = int(np.argmin(np.abs(np.asarray(solver._grid.coords[0]) - 0.0)))
+    y_low = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.25)))
+    y_high = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.75)))
+    assert psi[x0, y_low] > 0.5
+    assert psi[x0, y_high] < 0.5
+
+
 def test_ch13_rising_bubble_water_air_yaml_builds_solver():
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree

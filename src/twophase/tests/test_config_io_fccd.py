@@ -124,6 +124,10 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     )
     cfg = ExperimentConfig.from_yaml(path)
 
+    assert cfg.initial_condition["type"] == "capillary_wave"
+    assert cfg.initial_condition["mode"] == 2
+    assert "interface_amplitude" in cfg.diagnostics
+    assert "deformation" not in cfg.diagnostics
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"

@@ -15,6 +15,31 @@ from .shape_primitives import (
 )
 
 
+def _axis_index(value) -> int:
+    if isinstance(value, str):
+        axis = value.lower()
+        if axis in {"x", "0"}:
+            return 0
+        if axis in {"y", "1"}:
+            return 1
+        raise ValueError("SinusoidalInterface: axis must be x|y|0|1.")
+    return int(value)
+
+
+def _wave_wavelength(data: dict) -> float:
+    if "wavelength" in data:
+        return float(data["wavelength"])
+    mode = int(data.get("mode", 0))
+    if mode <= 0:
+        raise ValueError(
+            "SinusoidalInterface: provide 'wavelength' or positive 'mode'."
+        )
+    length = float(data.get("length", data.get("domain_length", 1.0)))
+    if length <= 0.0:
+        raise ValueError("SinusoidalInterface: length must be positive.")
+    return length / float(mode)
+
+
 def _build_circle(data: dict, phase: str) -> ShapePrimitive:
     return Circle(
         center=data["center"],
@@ -46,10 +71,11 @@ def _build_half_space(data: dict, phase: str) -> ShapePrimitive:
 
 def _build_sinusoidal_interface(data: dict, phase: str) -> ShapePrimitive:
     return SinusoidalInterface(
-        axis=int(data.get("axis", 1)),
-        mean=float(data["mean"]),
+        axis=_axis_index(data.get("axis", data.get("normal_axis", 1))),
+        mean=float(data.get("mean", data.get("base"))),
         amplitude=float(data.get("amplitude", 0.0)),
-        wavelength=float(data["wavelength"]),
+        wavelength=_wave_wavelength(data),
+        phase=float(data.get("phase", 0.0)),
         interior_phase=phase,
     )
 
@@ -79,6 +105,7 @@ _SHAPE_BUILDERS: dict[str, Callable[[dict, str], ShapePrimitive]] = {
     "rectangle": _build_rectangle,
     "half_space": _build_half_space,
     "sinusoidal_interface": _build_sinusoidal_interface,
+    "capillary_wave": _build_sinusoidal_interface,
     "perturbed_circle": _build_perturbed_circle,
     "zalesak_disk": _build_zalesak_disk,
 }
