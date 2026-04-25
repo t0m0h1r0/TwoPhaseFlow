@@ -91,6 +91,10 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "ab2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
             viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "forward_euler")),
+            cn_mode=str(getattr(run, "cn_mode", "picard")),
+            cn_buoyancy_predictor_assembly_mode=str(
+                getattr(run, "cn_buoyancy_predictor_assembly_mode", "none")
+            ),
             pressure_gradient_scheme=str(
                 getattr(run, "pressure_gradient_scheme", "projection_consistent")
             ),
@@ -102,6 +106,13 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ),
             uccd6_sigma=float(getattr(run, "uccd6_sigma", 1.0e-3)),
             face_flux_projection=bool(getattr(run, "face_flux_projection", False)),
+            canonical_face_state=bool(getattr(run, "canonical_face_state", False)),
+            face_native_predictor_state=bool(
+                getattr(run, "face_native_predictor_state", False)
+            ),
+            face_no_slip_boundary_state=bool(
+                getattr(run, "face_no_slip_boundary_state", False)
+            ),
             preserve_projected_faces=bool(
                 getattr(run, "preserve_projected_faces", False)
             ),

@@ -53,4 +53,8 @@ class ICNAdvance(Protocol):
         ccd: "CCDSolver",
         dt: float,
         psi=None,
+        intermediate_velocity_operator_transform: Callable[[List], None] | None = None,
+        predictor_state_assembly: Callable[..., List] | None = None,
+        convective_rhs: List | None = None,
+        buoyancy_rhs: List | None = None,
     ) -> List: ...

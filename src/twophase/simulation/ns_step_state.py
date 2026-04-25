@@ -22,6 +22,7 @@ class NSStepInputs:
     mu_g: float | None = None
     bc_hook: Any = None
     step_index: int = 0
+    face_velocity_components: list[Any] | None = None
 
 
 @dataclass
@@ -53,8 +54,10 @@ class NSStepState:
     debug_scalars: list[Any] | None = None
     u_star: Any = None
     v_star: Any = None
+    predictor_face_components: list[Any] | None = None
     pressure: Any = None
     p_corrector: Any = None
+    face_velocity_components: list[Any] | None = None
     projected_face_components: list[Any] | None = None
     projection_dt: float | None = None
 
@@ -81,5 +84,6 @@ class NSStepState:
             mu_g=inputs.mu_g,
             bc_hook=inputs.bc_hook,
             step_index=int(inputs.step_index),
+            face_velocity_components=getattr(inputs, "face_velocity_components", None),
             projection_dt=float(inputs.dt),
         )

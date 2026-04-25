@@ -36,6 +36,11 @@ _VISCOUS_SPATIAL_ALIASES = {
     **_VISCOUS_SPATIAL_ALIASES_BASE,
     "conservative": "conservative_stress",
 }
+_CN_MODES = ("picard", "richardson_picard")
+_PREDICTOR_ASSEMBLY_MODES = (
+    "none",
+    "buoyancy_faceresidual_stagesplit_transversefullband",
+)
 
 
 def parse_run_operator_settings(
@@ -169,6 +174,16 @@ def parse_run_operator_settings(
         layout["paths"]["viscosity_time"],
         aliases=VISCOUS_TIME_SCHEME_ALIASES,
     )
+    cn_mode = validate_choice(
+        str(viscosity.get("cn_mode", "picard")).strip().lower(),
+        _CN_MODES,
+        f"{layout['paths']['viscosity_time']}.cn_mode",
+    )
+    predictor_assembly = validate_choice(
+        str(viscosity.get("predictor_assembly", "none")).strip().lower(),
+        _PREDICTOR_ASSEMBLY_MODES,
+        f"{layout['paths']['viscosity_time']}.predictor_assembly",
+    )
     if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":
         raise ValueError(
             f"{layout['paths']['convection_time']}='imex_bdf2' requires "
@@ -205,4 +220,6 @@ def parse_run_operator_settings(
         "uccd6_sigma": uccd6_sigma,
         "viscous_spatial_scheme": viscous_spatial_scheme,
         "viscous_time_scheme": viscous_time_scheme,
+        "cn_mode": cn_mode,
+        "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
     }

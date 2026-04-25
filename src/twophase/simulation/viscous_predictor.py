@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar
+from typing import Callable, TYPE_CHECKING, ClassVar
 
 from ..core.registry import SchemeRegistryMixin
 
@@ -30,6 +30,8 @@ class IViscousPredictor(SchemeRegistryMixin, ABC):
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
         psi: "array" | None = None,
+        intermediate_velocity_operator_transform: Callable[[list], None] | None = None,
+        predictor_state_assembly: Callable[..., list] | None = None,
     ) -> tuple["array", "array"]:
         """Advance velocity with viscous + convection + optional buoyancy.
 

@@ -94,11 +94,22 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         convection_time_scheme=options.operator_settings["convection_time_scheme"],
         viscous_spatial_scheme=options.operator_settings["viscous_spatial_scheme"],
         viscous_time_scheme=options.operator_settings["viscous_time_scheme"],
+        cn_mode=options.operator_settings["cn_mode"],
+        cn_buoyancy_predictor_assembly_mode=options.operator_settings[
+            "cn_buoyancy_predictor_assembly_mode"
+        ],
         pressure_gradient_scheme=options.operator_settings["pressure_gradient_scheme"],
         surface_tension_gradient_scheme=options.operator_settings["surface_tension_gradient_scheme"],
         momentum_gradient_scheme=options.operator_settings["momentum_gradient_scheme"],
         uccd6_sigma=options.operator_settings["uccd6_sigma"],
         face_flux_projection=bool(options.projection.get("face_flux_projection", False)),
+        canonical_face_state=bool(options.projection.get("canonical_face_state", False)),
+        face_native_predictor_state=bool(
+            options.projection.get("face_native_predictor_state", False)
+        ),
+        face_no_slip_boundary_state=bool(
+            options.projection.get("face_no_slip_boundary_state", False)
+        ),
         preserve_projected_faces=bool(
             options.projection.get("preserve_projected_faces", False)
         ),

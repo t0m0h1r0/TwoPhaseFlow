@@ -30,9 +30,11 @@ def build_ns_viscous_predictor(
     viscous_time_scheme: str | None = None,
     reynolds_number: float,
     viscous_spatial_scheme: str,
+    cn_mode: str = "picard",
 ):
     from .ns_option_canonicalizer import canonicalize_viscous_time_scheme
     from ..ns_terms.viscous import ViscousTerm
+    from ..time_integration.cn_advance import make_cn_advance
 
     selected_scheme = canonicalize_viscous_time_scheme(
         viscous_time_scheme
@@ -43,6 +45,7 @@ def build_ns_viscous_predictor(
         Re=reynolds_number,
         cn_viscous=True,
         spatial_scheme=viscous_spatial_scheme,
+        cn_advance=make_cn_advance(backend, cn_mode),
     )
     return IViscousPredictor.from_scheme(
         selected_scheme,
@@ -51,6 +54,7 @@ def build_ns_viscous_predictor(
             re=reynolds_number,
             spatial_scheme=viscous_spatial_scheme,
             viscous_term=viscous_term,
+            cn_mode=cn_mode,
         ),
     )
 
