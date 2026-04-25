@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .face_projection import (
+    apply_pressure_projection,
+    reconstruct_nodes_from_faces,
+    zero_face_components,
+)
 from .gradient_operator import IDivergenceOperator
 
 if TYPE_CHECKING:
@@ -113,22 +118,7 @@ class FVMDivergenceOperator(IDivergenceOperator):
 
     def reconstruct_nodes(self, face_components: list["array"]) -> list["array"]:
         """Reconstruct nodal components from corrected normal face fluxes."""
-        nodal = []
-        ndim = self._grid.ndim
-        for axis, face in enumerate(face_components):
-            n_cells = self._grid.N[axis]
-            comp = self.xp.zeros(self._grid.shape, dtype=face.dtype)
-
-            def sl(start, stop):
-                s = [slice(None)] * ndim
-                s[axis] = slice(start, stop)
-                return tuple(s)
-
-            comp[sl(1, n_cells)] = 0.5 * (face[sl(0, n_cells - 1)] + face[sl(1, n_cells)])
-            comp[sl(0, 1)] = face[sl(0, 1)]
-            comp[sl(n_cells, n_cells + 1)] = face[sl(n_cells - 1, n_cells)]
-            nodal.append(comp)
-        return nodal
+        return reconstruct_nodes_from_faces(self.xp, self._grid, face_components)
 
     def project(
         self,
@@ -164,14 +154,11 @@ class FVMDivergenceOperator(IDivergenceOperator):
         faces = self.face_fluxes(components)
         p_faces = self.pressure_fluxes(p, rho)
         if force_components is None:
-            force_faces = [self.xp.zeros_like(face) for face in faces]
+            force_faces = zero_face_components(self.xp, faces)
         else:
             force_faces = self.face_fluxes(force_components)
 
-        return [
-            face - dt * p_face + dt * force_face
-            for face, p_face, force_face in zip(faces, p_faces, force_faces)
-        ]
+        return apply_pressure_projection(faces, p_faces, force_faces, dt)
 
     def _init_metrics(self) -> None:
         """Compute and cache face spacings and nodal control-volume widths."""
@@ -216,24 +203,11 @@ class FCCDDivergenceOperator(IDivergenceOperator):
 
     def reconstruct_nodes(self, face_components: list["array"]) -> list["array"]:
         """Reconstruct nodal velocities from corrected face fluxes."""
-        xp = self._fccd.xp
-        grid = self._fccd.grid
-        ndim = grid.ndim
-        nodal = []
-        for axis, face in enumerate(face_components):
-            n_cells = grid.N[axis]
-
-            def sl(start, stop, ax=axis):
-                s = [slice(None)] * ndim
-                s[ax] = slice(start, stop)
-                return tuple(s)
-
-            comp = xp.zeros(grid.shape, dtype=face.dtype)
-            comp[sl(1, n_cells)] = 0.5 * (face[sl(0, n_cells - 1)] + face[sl(1, n_cells)])
-            comp[sl(0, 1)] = face[sl(0, 1)]
-            comp[sl(n_cells, n_cells + 1)] = face[sl(n_cells - 1, n_cells)]
-            nodal.append(comp)
-        return nodal
+        return reconstruct_nodes_from_faces(
+            self._fccd.xp,
+            self._fccd.grid,
+            face_components,
+        )
 
     def pressure_fluxes(
         self,
@@ -318,10 +292,9 @@ class FCCDDivergenceOperator(IDivergenceOperator):
     ) -> list["array"]:
         """Apply FCCD face-flux projection and keep corrected faces."""
         xp = self._fccd.xp
-        ndim = self._fccd.grid.ndim
         u_faces = self.face_fluxes(components)
         if force_components is None:
-            f_faces = [xp.zeros_like(u_faces[ax]) for ax in range(ndim)]
+            f_faces = zero_face_components(xp, u_faces)
         else:
             f_faces = self.face_fluxes(force_components)
 
@@ -332,10 +305,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             coefficient_scheme=coefficient_scheme,
             phase_threshold=phase_threshold,
         )
-        return [
-            u_face - dt * p_face + dt * f_face
-            for u_face, p_face, f_face in zip(u_faces, p_faces, f_faces)
-        ]
+        return apply_pressure_projection(u_faces, p_faces, f_faces, dt)
 
     def update_weights(self) -> None:
         """Refresh FCCD geometric weights after in-place grid rebuild (WIKI-L-029)."""
