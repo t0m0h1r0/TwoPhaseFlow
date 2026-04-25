@@ -482,6 +482,8 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     for name, arr in [("psi", psi), ("u", u), ("v", v), ("p", p)]:
         assert np.all(np.isfinite(arr)), f"{name} not finite"
 
+    speed_max = max(float(np.max(np.abs(u))), float(np.max(np.abs(v))))
+    assert speed_max > 1.0e-12
     assert solver._p_prev is not None
     assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
     diag = solver._step_diag.last

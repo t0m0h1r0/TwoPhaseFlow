@@ -500,7 +500,7 @@ def solve_ns_pressure_stage(
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
 ) -> tuple[NSStepState, object, np.ndarray]:
-    """Solve PPE and prepare the corrector pressure field."""
+    """Solve PPE and prepare total corrector pressure plus base warm start."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     predictor_faces = None
@@ -534,10 +534,7 @@ def solve_ns_pressure_stage(
     )
     next_p_prev_dev = getattr(ppe_solver, "last_base_pressure", state.pressure)
     next_p_prev = np.asarray(backend.to_host(next_p_prev_dev))
-    if surface_tension_scheme == "pressure_jump":
-        state.p_corrector = next_p_prev_dev
-    else:
-        state.p_corrector = state.pressure
+    state.p_corrector = state.pressure
     return state, next_p_prev_dev, next_p_prev
 
 def correct_ns_velocity_stage(
