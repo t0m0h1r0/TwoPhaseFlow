@@ -10,6 +10,13 @@ import numpy as np
 from .shape_base import ShapePrimitive, validate_shape_phase
 
 
+def _xp_like(array):
+    if type(array).__module__.split(".", 1)[0] == "cupy":
+        import cupy as cp
+        return cp
+    return np
+
+
 @dataclass
 class Circle(ShapePrimitive):
     center: Tuple[float, ...]
@@ -81,6 +88,7 @@ class SinusoidalInterface(ShapePrimitive):
     mean: float
     amplitude: float
     wavelength: float
+    phase: float
     _interior_phase: str = field(default="liquid", repr=False)
 
     def __init__(
@@ -89,6 +97,7 @@ class SinusoidalInterface(ShapePrimitive):
         mean: float,
         amplitude: float,
         wavelength: float,
+        phase: float = 0.0,
         interior_phase: str = "liquid",
     ) -> None:
         if axis not in (0, 1):
@@ -99,6 +108,7 @@ class SinusoidalInterface(ShapePrimitive):
         self.mean = float(mean)
         self.amplitude = float(amplitude)
         self.wavelength = float(wavelength)
+        self.phase = float(phase)
         self._interior_phase = interior_phase
         validate_shape_phase(interior_phase)
 
@@ -110,12 +120,13 @@ class SinusoidalInterface(ShapePrimitive):
         if len(coords) != 2:
             raise ValueError(
                 "SinusoidalInterface.sdf: only 2-D grids are supported."
-            )
-        perp = 1 - self.axis
-        interface = self.mean + self.amplitude * np.cos(
-            2.0 * np.pi * coords[perp] / self.wavelength
         )
-        return np.asarray(coords[self.axis] - interface)
+        perp = 1 - self.axis
+        xp = _xp_like(coords[perp])
+        interface = self.mean + self.amplitude * xp.cos(
+            2.0 * np.pi * coords[perp] / self.wavelength + self.phase
+        )
+        return coords[self.axis] - interface
 
 
 @dataclass

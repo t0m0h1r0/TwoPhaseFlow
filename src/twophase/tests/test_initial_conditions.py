@@ -383,6 +383,33 @@ def test_sinusoidal_interface_from_dict(grid_2d):
     assert phi[0, 0] < 0, "Bottom-left node should be inside (φ < 0)"
 
 
+def test_capillary_wave_from_dict_mode_phase_alias(grid_2d):
+    """capillary_wave YAML should define a sinusoidal interface by mode."""
+    grid = grid_2d
+
+    s = shape_from_dict({
+        "type": "capillary_wave",
+        "axis": "y",
+        "mean": 0.5,
+        "amplitude": 0.02,
+        "mode": 2,
+        "length": 1.0,
+        "phase": np.pi / 2.0,
+        "interior_phase": "liquid",
+    })
+
+    assert isinstance(s, SinusoidalInterface)
+    assert s.axis == 1
+    assert s.wavelength == pytest.approx(0.5)
+    assert s.phase == pytest.approx(np.pi / 2.0)
+
+    X, Y = grid.meshgrid()
+    phi = s.sdf(X, Y)
+    ix = np.argmin(np.abs(grid.coords[0] - 0.0))
+    iy = np.argmin(np.abs(grid.coords[1] - 0.5))
+    assert phi[ix, iy] == pytest.approx(0.0, abs=grid.h[1])
+
+
 def test_sinusoidal_interface_zalesak_slotted_disk(grid_2d):
     """Zalesak IC from YAML dict (circle + gas rectangle) matches expected shape."""
     grid = grid_2d

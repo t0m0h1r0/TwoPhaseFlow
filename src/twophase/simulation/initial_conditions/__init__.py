@@ -19,7 +19,7 @@ HalfSpace
 
 SinusoidalInterface
     Half-space bounded by a sinusoidal curve (2-D).  Used for
-    Rayleigh–Taylor instability initial conditions.
+    Rayleigh–Taylor and capillary-wave initial conditions.
 
 shape_from_dict
     Deserialise a shape from a plain dict (YAML fragment).

@@ -98,13 +98,13 @@ output:
     interval: 0.5
   figures:
     - type: time_series
-      title: "Water-air capillary flow: deformation"
+      title: "Water-air capillary wave: interface amplitude"
       x: times
-      y: [deformation]
-      labels: ["D(t)"]
+      y: [interface_amplitude]
+      labels: ["A(t)"]
       xlabel: "$t$"
-      ylabel: "$D = (L-B)/(L+B)$"
-      file: deformation.pdf
+      ylabel: "$A(t)$"
+      file: interface_amplitude.pdf
 
     - type: time_series
       title: "Water-air capillary flow: volume drift"
@@ -138,14 +138,16 @@ output:
       field: pressure
       file_prefix: pressure_t
 
-diagnostics: [volume_conservation, kinetic_energy, deformation]
+diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
 
 initial_condition:
-  type: perturbed_circle
-  center: [0.5, 0.5]
-  radius: 0.25
-  epsilon: 0.05
+  type: capillary_wave
+  axis: y
+  mean: 0.5
+  amplitude: 0.05
   mode: 2
+  length: 1.0
+  phase: 0.0
   interior_phase: liquid
 
 initial_velocity: null
