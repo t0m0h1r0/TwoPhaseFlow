@@ -415,16 +415,20 @@ $s_h^\ast$ の切断誤差 $\Ord{\varepsilon_d h^4}$ は PPE 右辺の
 $\Delta t$ 正規化により $\Ord{\varepsilon_d h^4/\Delta t}$ の摂動として入り，
 楕円解 $p$ には $\Ord{\varepsilon_d h^4/\Delta t \cdot h^{-2}} = \Ord{\varepsilon_d h^2/\Delta t}$
 の寄与を生じる（PPE グリーン関数 $\sim h^{-2}$ の逆ラプラシアン作用）．
-$\varepsilon_d = 1/4$，$\Delta t \sim h$ の CFL 支配領域では，
-C/RC-DCCD は圧力 $p$ に $\Ord{h}$（C/RC なし）を $\Ord{h^3}$ に昇格させる
-効果を持ち，速度補正 $G_h p$ には $\Ord{h^2}$ の精度改善を与える
-（§~\ref{sec:verify_rc_bracket} で数値検証予定）．
+$\varepsilon_d = 1/4$ で，移流 CFL 支配領域（$\Delta t \sim h$）では
+C/RC-DCCD は圧力 $p$ に $\Ord{h}$（C/RC なし）を $\Ord{h^3}$ に昇格させる効果を持ち，
+速度補正 $G_h p$ には $\Ord{h^2}$ の精度改善を与える．
+毛管 CFL 支配領域（$\Delta t \sim h^{3/2}$，例：表面張力駆動の毛管波）では
+昇格効果は $\Ord{h^{1/2}}$ に縮退する（$\Ord{\varepsilon_d h^4/\Delta t \cdot h^{-2}}$ の $\Delta t$ 依存性経由）が，
+チェッカーボード抑制という主目的は維持される
+（§~\ref{sec:verify_rc_bracket} で regime 別に数値検証予定）．
 
 なお，速度補正ステップ（式~\eqref{eq:corrector}）は\textbf{フィルタ前}の $\bu^*$ に作用する．
 §\ref{sec:dccd_filter_default_policy} (a) で生成されるフィルタ済み予測速度 $\tilde\bu^*$ は
 \textbf{PPE-RHS の発散計算のみ}に用いられ，corrector 式 \eqref{eq:corrector} へは入らない
-（フィルタ済み $\tilde\bu^{n+1}$ に対しては $D_h\tilde\bu^{n+1}=0$ が成立し，
-非フィルタ $\bu^{n+1}$ では bulk 滑らかモードに $\Ord{\varepsilon_d h^2}$ の差が残る）．
+（射影は PPE 右辺で用いた $D_h\tilde\bu^*$ を 0 化する；
+実装上 $\bu^{n+1}$ は再フィルタしないため，非フィルタ発散 $D_h\bu^{n+1}$ には
+bulk 滑らかモードに $\Ord{\varepsilon_d h^2}$ の差が残る）．
 したがって本節の射影で制御されるのは，PPE 右辺の構成に用いた
 DCCD フィルタ付き発散であり，非フィルタ発散 $D^{(1)}_\mathrm{CCD}\cdot\bu^{n+1}$ が
 機械精度でゼロになるとは主張しない．
