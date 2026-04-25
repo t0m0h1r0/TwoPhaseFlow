@@ -128,8 +128,8 @@ CLS 界面移流には以下の 3 点で非適合である
 
 \noindent
 \textbf{結論}：純 WENO5 単独は CLS 界面移流に不適合であるが，
-\textbf{WENO5 + DCCD hybrid}（DCCD bulk + WENO5 衝撃領域選択；
-§\ref{sec:cls_stages}）は両者の弱点を相互補完する設計である．
+\textbf{WENO5 + DCCD hybrid}（WENO5 面フラックス（保存形・shock-capturing）に
+DCCD スペクトル散逸を後段合成；§\ref{sec:cls_stages}）は両者の弱点を相互補完する設計である．
 CCD は線形・コンパクト・低散逸スキームであり，
 CLS の滑らかな $\psi$ プロファイルに対して界面構造を追加散逸なく長時間保持でき，
 支配方程式全体の空間離散化を単一構造で統一する
