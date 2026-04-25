@@ -23,6 +23,29 @@ So the admissible redesign is not a single uniform repair. It is:
 2. x-side post-transform on the intermediate state seen by `V(u_pred)`,
 3. unchanged final projection.
 
+In implementation terms this is better read as:
+
+1. **gravity-aligned** repair during predictor assembly,
+2. **transverse** repair before `V(u_pred)`.
+
+For the current 2-D benchmark these reduce to `y` and `x`.
+
+Strictly speaking, even this is still a reduced model. The deeper physical split
+is
+
+\[
+\rho\mathbf{g} = -\nabla(\rho\Phi_g) + \Phi_g\nabla\rho,
+\]
+
+so the mathematically fundamental distinction is:
+
+- **gradient-compatible buoyancy content**, which belongs with pressure, and
+- **interface-local residual buoyancy**, which must be assembled on the same
+  support as the predictor state.
+
+The gravity-aligned / transverse language is the lowest-cost practical proxy of
+that coordinate-free decomposition.
+
 ## Minimal Discrete Form
 
 \[
@@ -98,6 +121,8 @@ The stage-split design is now also available as first-class solver modes:
 
 - `buoyancy_stagesplit_fullbandx`
 - `buoyancy_stagesplit_sharpx`
+- `buoyancy_stagesplit_gravity_postfullband`
+- `buoyancy_stagesplit_gravity_postsharp`
 
 and these are bit-identical to the original explicit flag combinations.
 
