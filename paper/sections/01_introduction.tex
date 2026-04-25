@@ -7,31 +7,6 @@
 % 【論文の芯】本稿を貫く単一の設計哲学
 % ─────────────────────────────────────────────────────────────────────────────
 
-\noindent
-本稿で繰り返し使用する主要記号と略語を以下にまとめる．
-各記号の正式定義と境界条件は該当節を参照されたい．
-
-\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing} 以降）}]
-\small
-\begin{description}[leftmargin=6em, style=nextline, itemsep=1pt, topsep=2pt]
-  \item[$\phi$] 符号付き距離（SDF）に準ずるレベルセット関数（§~\ref{sec:ridge_eikonal}）．
-  \item[$\psi$] 平滑化ヘヴィサイド $H_\varepsilon(\phi) \in (0,1)$．CLS の保存対象（§~\ref{sec:cls_advection}）．
-  \item[$\varepsilon$] 界面遷移層の厚さパラメータ．$\varepsilon \propto h$ とスケールさせる（§~\ref{sec:cls_advection}）．
-  \item[$\varepsilon_d$] Dissipative CCD（結合コンパクト差分法；第~\ref{sec:CCD}章）の散逸強度パラメータ．
-        安定性条件 $\varepsilon_d\le 1/4$，チェッカーボード抑制用途では $\varepsilon_d=1/4$ 固定，
-        界面用途では $\varepsilon_{d,\max}=0.05$ を採用（§~\ref{sec:dccd_derivation}, §~\ref{sec:dccd_params}）．
-  \item[CLS] Conservative Level Set．$\psi$ を保存量として移流する定式化（§~\ref{sec:levelset}）．
-  \item[PPE] 圧力 Poisson 方程式．分相定式化では各相で独立に解く（§~\ref{sec:split_ppe_motivation}）．
-  \item[BF] Balanced-Force 条件．表面張力と圧力勾配の離散整合（§~\ref{sec:balanced_force}）．
-  \item[FCCD] Face-centred CCD．HFE・GFM・分相 PPE・粘性 stress-div で共有する
-        面ジェット共通プリミティブ（§~\ref{sec:fccd_def}）．
-  \item[UCCD6] Upwind CCD6．bulk 運動量移流の既定スキーム（内蔵超粘性，$\Ord{h^6}$ 精度；§~\ref{sec:uccd6_def}）．
-  \item[HFE] Hermite Field Extension（Hermite 場延長法）．Hermite データ $(f,f',f'')$ を Extension PDE~\cite{Aslam2004}
-        の定常解から面ジェットに拡張（§~\ref{sec:field_extension}）．
-  \item[GFM] Ghost-Fluid Method．界面ジャンプ条件を近傍セルの ghost 値として注入する定式化（§~\ref{sec:gfm}）．
-\end{description}
-\end{tcolorbox}
-
 気液二相流の数値シミュレーションには多くの数値的困難が伴うが，
 それらのうち最も根本的かつ克服が難しいのが
 \textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である~\cite{Popinet2009, Francois2006}．
@@ -45,46 +20,11 @@
 分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
 Balanced-Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
 高精度に維持し，
-平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する
-（詳細は §~\ref{sec:ppe_discretization_choice}：
-PPE 離散化で DC $k=3$ 反復と CCD 勾配を組み合わせ，
-BF 残差を機械精度近くまで押し下げる設計選択）．
-中核となる演算子族として，
-\textbf{FCCD}（Face-centred CCD：HFE〔Hermite 場延長法〕・GFM・分相 PPE・粘性 stress-divergence の
-共通面ジェットプリミティブ；§~\ref{sec:fccd_def}）および
-\textbf{UCCD6}（Upwind CCD6：内蔵超粘性をもつ bulk 運動量移流用 $\Ord{h^6}$ スキーム；§~\ref{sec:uccd6_def}）を
-本稿で新たに定式化する．
-さらに HFE を開発し，
-高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 10^3$）対応の分相 PPE 解法における
-界面ジャンプ条件の $\Ord{h^6}$ 精度処理のための基盤技術を整備した
-（HFE の定式化詳細は §~\ref{sec:field_extension}；
-分相 PPE は各相で定密度 Poisson を独立に解き，
-界面で圧力ジャンプ条件により結合する高密度比向けの定式化，§~\ref{sec:split_ppe_motivation}）．
-
-本稿に登場する他の全手法はこの中心課題を支えるために選択されている：
-\begin{description}
-  \item[Conservative Level Set + Dissipative CCD (DCCD)]%
-        （第~\ref{sec:levelset}章・第~\ref{sec:advection}章）\mbox{}\\
-        界面の質量保存と数値拡散抑制——曲率計算の入力精度を維持するための基盤
-  \item[UCCD6 による bulk 移流の $\Ord{h^6}$ 化]%
-        （第~\ref{sec:CCD}章§~\ref{sec:uccd6_def}）\mbox{}\\
-        Navier--Stokes の bulk 対流項に内蔵超粘性をもつ UCCD6 を適用し，
-        高波数安定性と $\Ord{h^6}$ 精度を両立
-  \item[FCCD による HFE / GFM / 分相 PPE / 粘性応力の面ジェット統合]%
-        （第~\ref{sec:CCD}章§~\ref{sec:fccd_def}）\mbox{}\\
-        4 つの界面処理役割 (R1)--(R4)（§~\ref{sec:fccd_def} で定義）を
-        単一の面中心 CCD 演算子族で統一し，演算子整合を構造的に保証
-  \item[DCCD 散逸によるチェッカーボード抑制]%
-        （第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling}）\mbox{}\\
-        コロケート格子上の $2\Delta x$ モードを DCCD のスペクトル散逸で内在的に除去
-  \item[分相 PPE + 欠陥補正法 + CCD 勾配]%
-        （第~\ref{sec:ppe_solve}章§~\ref{sec:split_ppe_motivation}）\mbox{}\\
-        各相内の定密度 Poisson 方程式に DC $k=3$ を適用し，
-        CCD 勾配による Corrector の速度補正精度を高める
-  \item[非一様格子]%
-        （第~\ref{sec:grid}章）\mbox{}\\
-        界面近傍を自動的に高解像度化し，界面処理の空間分解能を効率的に確保
-\end{description}
+平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
+本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS+DCCD・分相 PPE・非一様格子）の
+詳細仕様および記号 Glossary は，第~\ref{sec:CCD}章冒頭の
+§~\ref{sec:notation_glossary}（記号と略語）および
+§~\ref{sec:tech_roadmap}（技術要素一覧）に整理した．
 
 以下 §~\ref{sec:why_hard}〜§~\ref{sec:roadmap} では，
 なぜ単相流の方法がそのまま使えないか，どの困難がどの手法で解決されるかを順番に説明する．

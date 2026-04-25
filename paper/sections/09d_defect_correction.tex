@@ -197,39 +197,12 @@ DC 外側反復の収束を劣化させる（$A_L$ は $L_H$ と同じ係数・B
 $L_L$ のスパース LU（小中規模）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{純 FCCD DNS での収束率}
-\label{sec:dc_pure_fccd_convergence}
+\subsubsection{純 FCCD DNS での収束率（Level 別 DC $k$ 上界）}
 % ─────────────────────────────────────────────────────────────────────────────
 
-本稿は以下を目標収束率として設定：
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\hline
-アーキテクチャ & DC $k$ & 実効精度 \\
-\hline
-節点 CCD PPE（等密度，本稿 Level 1）& 3 & $\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann \\
-変密度一括 smoothed-Heaviside PPE（Level 2，中程度密度比）& 3 & $\Ord{h^2}$（界面帯）；bulk $\Ord{h^6}$（smoothed Heaviside + GFM 補正律速）\\
-分相 PPE + DC + CCD 勾配（Level 3，水--空気級高密度比）& 3 & $\Ord{h^7}$ Dir / $\Ord{h^5}$ Neu（IIM 行補正採用時 $\Ord{h^4}$ 以上保証）\\
-\hline
-\end{tabular}
-\end{center}
-
-\noindent\textit{注（Lv.3 が Lv.1 より低精度に見える理由）}：
-Lv.1 は等密度問題（界面なし）で DC が CCD 切断誤差のみを補正するため
-$\Ord{h^7}$ 超収束が出る．Lv.3 は $\rho_l/\rho_g\gtrsim 500$ の界面ありでの値であり，
-界面ジャンプ条件が IIM 行補正なし時 GFM 2 次（局所 $\Ord{h^2}$，
-界面測度の薄帯化で全体 $\Ord{h^4}$）に律速する．
-IIM 行補正採用時はジャンプも $\Ord{h^4}$ 以上に昇格し，
-全体は $\Ord{h^6}$ 上界に達する．
-Level 3 では GFM ジャンプ精度が全体精度を支配するため，
-DC 反復回数は $k=2$ では FCCD の $\Ord{h^6}$ には漸近せず，
-$k=3$ 以上で GFM 律速のため実効精度向上は見込めない
-（\textbf{理論上界}；$k$ 依存性の数値検証は
-\S\ref{sec:verify_time} で行う予定）．
-Level 3 で IIM 行補正（\S\ref{sec:fccd_bf_gfm_integration} Phase 3）
-を採用すると全体精度が $\Ord{h^4}$ 以上に昇格する．
-Level 2 では GFM stitching が無く，全体精度は smoothed-Heaviside 滑化幅
-$\varepsilon_H$ の $\Ord{\varepsilon_H^2}$ により律速される．
-なお \S\ref{sec:algorithm} の DC ループは Level 共通で $k=3$ を既定とする
-（安全マージン；$k>2$ で GFM 律速のため実効精度向上はないが，
-表中 Lv.3 の $k$ も §10 統一のため $k=3$ 表記とした）．
+\noindent
+Level 1/2/3 アーキテクチャ別の DC $k=3$ 目標収束率（節点 CCD PPE，変密度一括
+smoothed-Heaviside PPE，分相 PPE + DC + CCD 勾配）および
+GFM 律速・IIM 行補正による上界の議論は
+§\ref{sec:level_cost_accuracy}（Level 1/2/3 選択ロジック内）に集約した．
+本節 L19 の BC 種別内訳もこの集約表を参照されたい．

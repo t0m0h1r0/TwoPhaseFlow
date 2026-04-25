@@ -82,10 +82,10 @@ $\nabla\cdot\mathbf{n}$ の高次評価が成立する．
 \label{sec:pure_fccd_phase2}
 % -------------------------------------------------------------------------------
 
-運動量移流は\textbf{FVM セル更新ではなく高次微分演算}として評価する．
-面ジェット $\mathcal{J}_f(u)=(u_f,u'_f,u''_f)$ が
-FCCD 面基準点 $f$ で HFE 状態を提供し，風上選択または Riemann 選択が
-方向別 HFE 状態 $(u_f^+, u_f^-)$ 上で作用する：
+運動量移流の詳細定式（FCCD 面ジェット $\mathcal{J}_f(u)=(u_f,u'_f,u''_f)$，
+ブロック Thomas 求解，境界処理）は §\ref{sec:fccd_advection} に集約済み．
+純 FCCD DNS アーキテクチャ上の適用では，
+方向別 HFE 状態 $(u_f^+, u_f^-)$ 上の風上選択を採用する：
 \begin{equation}
   u_f^\text{upwind}
     = \begin{cases}
@@ -96,39 +96,26 @@ FCCD 面基準点 $f$ で HFE 状態を提供し，風上選択または Riemann
   u_f^{+/-} = u_f \pm \tfrac{h}{2}u'_f + \tfrac{h^2}{8}u''_f
   \label{eq:pure_fccd_hfe_upwind}
 \end{equation}
-最終的な空間微分は FCCD 演算子族を通じて節点運動量方程式に戻る．
-HFE は再構成層であり，単体の保存則ではない．
-その役割は，高次ステンシルが不連続な相データを
-正しい片側状態なしに\textbf{サンプリングしない}ことを保証することにある．
+HFE は再構成層であり，高次ステンシルが不連続な相データを
+正しい片側状態なしにサンプリングしないことを保証する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Phase 3: 粘性項の応力発散 + DC 分離}
 \label{sec:pure_fccd_phase3}
 % -------------------------------------------------------------------------------
 
-粘性項は\textbf{応力テンソル発散形}で保持する：
+粘性項は応力テンソル発散形 $\mathcal{V}(\mathbf{u}) = \bnabla\cdot(2\mu\,D(\mathbf{u}))$ で保持する
+（$\mu\nabla^2\mathbf{u}$ への畳み込み禁止：§\ref{sec:viscous_mu_lap_forbidden}）．
+3 層構造（Bulk / 界面帯 / 陰的剛性）の詳細定式は §\ref{sec:viscous_3layer} に，
+DC 分離による外殻 FGMRES + 内殻低次解の階層は §\ref{sec:viscous_cn_defect} に集約済み．
+純 FCCD DNS では陰的剛性層で
 \begin{equation}
-  \mathcal{V}(\mathbf{u}) = \bnabla\cdot(2\mu\,D(\mathbf{u})),
-  \qquad D(\mathbf{u}) = \tfrac{1}{2}(\bnabla\mathbf{u} + \bnabla\mathbf{u}^T).
-  \label{eq:pure_fccd_viscous}
+  A_L\,\delta\mathbf{u} = r_H,
+  \qquad r_H = \text{RHS} - A_H\,\mathbf{u}^{(m)}
+  \label{eq:pure_fccd_viscous_dc}
 \end{equation}
-純 FCCD アーキテクチャは粘性項を\textbf{粘性ジャンプを跨いで}
-$\mu\nabla^2\mathbf{u}$ に畳み込むことを禁止する（§\ref{sec:viscous_mu_lap_forbidden}）．
-代わりに 3 層構造：
-\begin{enumerate}[noitemsep]
-  \item \textbf{Bulk}：$\bnabla\mu = 0$ の領域で高次 CCD/FCCD 微分．
-  \item \textbf{界面帯}：応力発散 + 法線軸フォールバック + 接線 CCD 保持．
-  \item \textbf{陰的剛性}：
-        高次応力演算子 $A_H$ で外殻残差 $r_H$ を構成し，
-        低次安定な内殻 $A_L$ で $\delta\mathbf{u}$ を解く：
-        \begin{equation}
-          A_L\,\delta\mathbf{u} = r_H,
-          \qquad r_H = \text{RHS} - A_H\,\mathbf{u}^{(m)}.
-          \label{eq:pure_fccd_viscous_dc}
-        \end{equation}
-\end{enumerate}
-これは圧力側の戦略（§\ref{sec:dc_pure_fccd_outer_inner}）と\textbf{双対}：
-安定な内殻解 + 高次外殻物理．
+を解き，圧力側の戦略（§\ref{sec:dc_pure_fccd_outer_inner}）と\textbf{双対}を成す
+（安定な内殻解 + 高次外殻物理）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Phase 4: 分相 FCCD PPE + GFM の中核アーキテクチャ}
