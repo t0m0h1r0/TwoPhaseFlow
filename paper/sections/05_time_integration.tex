@@ -271,141 +271,8 @@ AB2/EXT2 の零安定性 (Dahlquist の根条件) によりこの開始誤差は
 増幅されず，全体精度 $\Ord{\Delta t^2}$ と整合する \cite{DahlquistBjorck1974}．
 \end{tcolorbox}
 
-\subsection{圧力投影：IPC + FCCD PPE}% Phase 5: §5.6 として独立節昇格 + FCCD PPE 言及追加
-\label{sec:ipc_derivation}
-
-IPC 法では，圧力 Poisson 方程式において絶対圧力 $p^{n+1}$ の代わりに
-\textbf{圧力増分 $\delta p \equiv p^{n+1} - p^n$} を未知変数として解く
-（§~\ref{sec:algorithm} Step 6--7 参照）：
-\begin{align*}
-  &\text{PPE：}\quad \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
-    = \frac{1}{\Delta t}\bnabla\cdot\bu^*\\
-  &\text{補正：}\quad \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla(\delta p),
-  \qquad p^{n+1} = p^n + \delta p
-\end{align*}
-CCD 演算子 $\mathcal{L}^{\rho}_{\mathrm{CCD}}$ は絶対圧力版と\textbf{完全に同一}であり，
-求解対象変数が $p^{n+1}$ から $\delta p$ に変わるだけである．
-この定式化により，標準 Chorin 法の人工的圧力境界層に起因する
-$\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
-（Guermond et al., \textit{Comput. Methods Appl. Mech. Engrg.} \textbf{195}, 2006~\cite{Guermond2006}）．
-
-\noindent\textbf{自己完結 proof sketch（主要項のみ）：}
-速度 splitting $\bu^{n+1}=\bu^*-\Delta t\,\bnabla(\delta p)/\rho^{n+1}$ と
-正確な Navier--Stokes 圧力場 $p_e^{n+1}$ を比較する．
-Predictor 段階の誤差は AB2 + CCD で $\bu^*-\bu_e^{n+1}=\Ord{\Delta t^2}$．
-PPE は $\bnabla\cdot\bigl(\rho^{-1}\bnabla\delta p\bigr)=\bnabla\cdot\bu^*/\Delta t$ を満たし，
-両辺に $\Delta t$ を掛けて発散をとると
-$\bnabla\cdot\bu^{n+1}=0$（離散非圧縮）．
-$\delta p = p^{n+1}-p^n$ を未知数にすることで境界条件
-$\partial_n(\delta p)|_{\partial\Omega}=0$ が
-\textbf{時刻 $n+1$ と $n$ の差分ノイマン}として閉じ，
-Chorin 法の $\partial_n p^{n+1}|_{\partial\Omega}=0$ 強制が誘起する
-$\Ord{\Delta t}$ 境界層が消える．
-従って $p_e^{n+1}-p^{n+1}=\Ord{\Delta t^2}$．
-速度補正そのものは $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t}$ 規模の正則項として残る
-（$\delta p=p^{n+1}-p^n=\Ord{\Delta t}$，$\bnabla=\Ord{1/h}$，$\Delta t\sim h$ より$\Delta t\cdot\Ord{\Delta t/h}/\rho=\Ord{\Delta t}$）が，
-真値との差すなわち\textbf{補正の誤差}は
-$\Delta t\bnabla(p_e^{n+1}-p^{n+1})/\rho^{n+1}=\Ord{\Delta t^3}$ となり，
-Predictor 段階の $\Ord{\Delta t^2}$ 誤差と合わせて全体
-$\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
-変密度 $\rho^{n+1}$ が時刻 $n+1$ で評価される点が van Kan の等密度版から
-の主な拡張である．非圧縮流れでは圧力場の正則性 $dp/dt = \Ord{1}$ が成立するため，
-$\delta p = p^{n+1}-p^n = \Ord{\Delta t}$ は時刻方向 1 ステップで保たれる．
-変密度下でこの正則性が破綻しないことは Guermond--Minev--Shen~\cite{Guermond2006}
-§6.2 (rotational pressure correction) およびそこで参照される変密度系列で確立されており，
-本節の精度評価は変密度下でも保たれる（直接的な variable-density IPC $\Ord{\Delta t^2}$ 誤差解析は Pyo--Shen / Guermond--Quartapelle 系列を参照）．
-
-\paragraph{FCCD PPE と defect-correction の役割}
-ch13 production stack の PPE 求解は，左辺の楕円型作用素
-$\nabla\!\cdot\!(\rho^{-1}\nabla\cdot)$ を FCCD（§\ref{sec:CCD}）で離散化し，
-密度ジャンプを跨ぐ 1 次微分を高精度合成微分で評価する．非対称性の高い
-変密度演算子に対しては defect-correction を 2--3 反復実施し，
-界面近傍の 6 次精度を回復する．境界条件・界面ジャンプ・PPE 右辺の
-表面張力寄与（式~\eqref{eq:ppe_jump_decomposed}）はそれぞれ独立な
-phase に分解（phase-separated 求解）して条件数を抑える．
-これらは PROD 名称ではなく実装の構成要素として §\ref{sec:algorithm}
-で詳述する．
-
-\paragraph{安定性：投影演算子の射影性}
-連続レベルでは Helmholtz--Hodge 分解により $\bu^{n+1}$ は
-$\bu^{*}$ の発散自由部分への直交射影である．離散 PPE がこの射影性を
-保つ限り（FCCD ラプラシアンが半正定値，境界条件がノイマン型で整合的），
-projection 段階は新たな成長因子を導入しない．従って IPC 全体の
-$L^2$ エネルギーノルムは予測子段階の安定性
-（§\ref{sec:time_level1}・§\ref{sec:time_viscous}）で律速される．
-
-\subsection{Level 2 の全体的な時間精度}% Phase 2: \subsubsection → \subsection 昇格 (Phase 6 で §5.8 として ch13 中心に書換)
-\label{sec:time_accuracy_table}
-
-\begin{center}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcc}
-\hline
-方程式・項 & 時間積分法 & 時間精度 \\
-\hline
-CLS 移流 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
-NS 対流項（Predictor） & AB2（L2a）/ EXT2（L2b） & $\Ord{\Delta t^2}$ \\
-NS 粘性項 & CN（L2a）/ implicit-BDF2（L2b） & $\Ord{\Delta t^2}$ \\
-NS 粘性クロス項 & L2a 陽的，L2b 陰的ブロック & $\Ord{\Delta t}$--$\Ord{\Delta t^2}$\,$^\dagger$ \\
-Projection スプリッティング & IPC（L2a）/ BDF2 射影補正（L2b） & $\Ord{\Delta t^2}$ \\
-表面張力 & 半陰的 CSF / pressure-jump PPE & $\Ord{\Delta t^2}$ \\
-\hline
-\textbf{全体（閉包済み均質流域）} & & $\boldsymbol{\Ord{\Delta t^2}}$ \\
-\textbf{全体（未閉包の界面粘性クロス項）} & & $\boldsymbol{\Ord{\Delta t}}$\,$^\dagger$ \\
-\hline
-\end{tabular}
-\end{center}
-
-{\small $^\dagger$ 変粘性界面（$|\bnabla\mu| \neq 0$）ではクロス微分項 $\mathcal{D}_{\mathrm{c}}$ の陽的処理が $\Ord{\Delta t}$ 誤差を導入し，界面近傍での全体時間精度が $\Ord{\Delta t}$ に律速される（注意~\ref{warn:cn_cross_derivative} 参照）．$\mu_l/\mu_g \gg 1$ の場合は AB2 外挿 $[\frac{3}{2}\mathcal{D}_{\mathrm{c}}^n - \frac{1}{2}\mathcal{D}_{\mathrm{c}}^{n-1}]$ の適用を推奨する．}
-
-{\small $^\ddagger$ 非一様格子で\textbf{Mode 2（ALE 補正なしの再生成）}（§\ref{sec:grid_ale}）を採用すると，格子速度 $\bm{v}_\text{mesh}$ 補正の省略により上記時間精度は $\Ord{\Delta t}$ に劣化する．本稿の Level 2 既定は\textbf{Mode 1（時間固定格子）}を仮定する（ALE 補正付き再生成は将来拡張）．}
-
-本スキームの\textbf{均質流域での全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
-界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用され，
-交差粘性項を単純陽解法に留める限り $\Ord{\Delta t}$ が上限となる．
-現行 ch13 YAML は時間固定の interface-fitted 格子を用いるため，
-Mode 2（ALE 補正なし再生成）による $\Ord{\Delta t}$ 劣化は発生しない．
-水--空気級では Level 2b の implicit-BDF2 粘性ブロックと
-同一面分相投影により，劣化要因を「未閉包の界面演算子」に局在化させる．
-空間精度（Dissipative CCD 移流：実効 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ フィルタ誤差，
-CCD：$\Ord{h^6}$ 微分精度）は，移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が律速する
-全体空間精度と整合する．CSF モデル誤差 $\Ord{\varepsilon^2}$ が空間精度の律速であり，
-その他のコンポーネント（CCD 微分・PPE 勾配・界面追跡）は
-現行の連続圧力場（smoothed Heaviside）のもとで $\Ord{h^6}$ を維持する
-（定量値は §~\ref{sec:bf_static_droplet} 参照）．
-
-\noindent\textbf{設計上の注意：「CLS は $\Ord{\Delta t^3}$ なのに全体が $\Ord{\Delta t^2}$ な理由」}
-
-CLS 移流に TVD-RK3（$\Ord{\Delta t^3}$）を採用している一方，NS 対流項は
-AB2 または EXT2（$\Ord{\Delta t^2}$）にとどめている．
-この非対称性は意図的な設計選択であり，以下の理由による：
-
-界面と流体運動は\textbf{疎結合（operator-split）}として扱われる．
-CLS 移流（界面輸送）は密度場 $\rho^{n+1}$ と曲率 $\kappa^{n+1}$ を決定する「前処理」であり，
-その時間精度が $\Ord{\Delta t^2}$ 以上であり，かつ界面近傍の陽的交差粘性項や
-表面張力卓越時の RC 時刻ずれが支配しない場合，全体の流体運動精度は
-NS 方程式側の $\Ord{\Delta t^2}$ で律速する：
-\[
-  \text{全体時間精度} = \min\!\bigl(\underbrace{\Ord{\Delta t^3}}_\text{CLS},\;
-    \underbrace{\Ord{\Delta t^2}}_\text{NS (AB2/IMEX--BDF2)}\bigr) = \Ord{\Delta t^2}
-\]
-\textbf{CLS の $\Ord{\Delta t^3}$ 高精度化の役割：}
-時間精度を $\Ord{\Delta t^3}$ に向上させることには貢献しないが，
-界面プロファイルの変形が小さく保たれることで
-（i）曲率 $\kappa$ の数値精度が向上し寄生流れを抑制，
-（ii）再初期化の必要頻度が減少し質量保存誤差が低減する，
-という実用上の優位が得られる．
-
-\noindent\textbf{背景：標準 Chorin 法のスプリッティング誤差（なぜ AB2 だけでは不十分か）}
-
-対流項を AB2（2次精度）に変更するだけでは全体精度は $\Ord{\Delta t^2}$ に\textbf{ならない}．
-標準的な Predictor--Corrector 分割（Chorin, 1968~\cite{Chorin1968}）は，
-圧力境界条件の不整合（人工的圧力境界層）に起因する $\Ord{\Delta t}$ スプリッティング誤差を独立に内包するため，
-対流項の高次化だけで律速が解消されない．
-IPC 法による予測ステップへの $p^n$ の組み込みは，このスプリッティング誤差を
-2次精度へ低減する標準的な手段の一つであり，本稿ではこの方針を採用する．
-
-% AB2 起動問題 tcolorbox は §5.3 末尾 (sec:ab2_ipc legacy paragraph) に移動 (Phase 2)
+% Phase 6: §5.6 IPC 圧力投影 と §5.5 全体時間精度 はそれぞれ
+% §5.6 (界面張力後・浮力前) と §5.8 (浮力後・Level 補足前) に移動済み．
 
 \subsection{粘性項：implicit-BDF2 (GMRES)}
 \label{sec:time_viscous}
@@ -713,6 +580,71 @@ $\pi/2\approx 1.57$）を与えるのに対し，Denner--van Wachem が
 毛管波ケースで validation 対象とする．
 
 % -------------------------------------------------------------------------------
+\subsection{圧力投影：IPC + FCCD PPE}% Phase 6: §5.6 として 界面張力後・浮力前に配置
+\label{sec:ipc_derivation}
+% -------------------------------------------------------------------------------
+
+IPC 法では，圧力 Poisson 方程式において絶対圧力 $p^{n+1}$ の代わりに
+\textbf{圧力増分 $\delta p \equiv p^{n+1} - p^n$} を未知変数として解く
+（§~\ref{sec:algorithm} Step 6--7 参照）：
+\begin{align*}
+  &\text{PPE：}\quad \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
+    = \frac{1}{\Delta t}\bnabla\cdot\bu^*\\
+  &\text{補正：}\quad \bu^{n+1} = \bu^* - \frac{\Delta t}{\rho^{n+1}}\bnabla(\delta p),
+  \qquad p^{n+1} = p^n + \delta p
+\end{align*}
+CCD 演算子 $\mathcal{L}^{\rho}_{\mathrm{CCD}}$ は絶対圧力版と\textbf{完全に同一}であり，
+求解対象変数が $p^{n+1}$ から $\delta p$ に変わるだけである．
+この定式化により，標準 Chorin 法の人工的圧力境界層に起因する
+$\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
+（Guermond et al., \textit{Comput. Methods Appl. Mech. Engrg.} \textbf{195}, 2006~\cite{Guermond2006}）．
+
+\noindent\textbf{自己完結 proof sketch（主要項のみ）：}
+速度 splitting $\bu^{n+1}=\bu^*-\Delta t\,\bnabla(\delta p)/\rho^{n+1}$ と
+正確な Navier--Stokes 圧力場 $p_e^{n+1}$ を比較する．
+Predictor 段階の誤差は AB2 + CCD で $\bu^*-\bu_e^{n+1}=\Ord{\Delta t^2}$．
+PPE は $\bnabla\cdot\bigl(\rho^{-1}\bnabla\delta p\bigr)=\bnabla\cdot\bu^*/\Delta t$ を満たし，
+両辺に $\Delta t$ を掛けて発散をとると
+$\bnabla\cdot\bu^{n+1}=0$（離散非圧縮）．
+$\delta p = p^{n+1}-p^n$ を未知数にすることで境界条件
+$\partial_n(\delta p)|_{\partial\Omega}=0$ が
+\textbf{時刻 $n+1$ と $n$ の差分ノイマン}として閉じ，
+Chorin 法の $\partial_n p^{n+1}|_{\partial\Omega}=0$ 強制が誘起する
+$\Ord{\Delta t}$ 境界層が消える．
+従って $p_e^{n+1}-p^{n+1}=\Ord{\Delta t^2}$．
+速度補正そのものは $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t}$ 規模の正則項として残る
+（$\delta p=p^{n+1}-p^n=\Ord{\Delta t}$，$\bnabla=\Ord{1/h}$，$\Delta t\sim h$ より$\Delta t\cdot\Ord{\Delta t/h}/\rho=\Ord{\Delta t}$）が，
+真値との差すなわち\textbf{補正の誤差}は
+$\Delta t\bnabla(p_e^{n+1}-p^{n+1})/\rho^{n+1}=\Ord{\Delta t^3}$ となり，
+Predictor 段階の $\Ord{\Delta t^2}$ 誤差と合わせて全体
+$\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
+変密度 $\rho^{n+1}$ が時刻 $n+1$ で評価される点が van Kan の等密度版から
+の主な拡張である．非圧縮流れでは圧力場の正則性 $dp/dt = \Ord{1}$ が成立するため，
+$\delta p = p^{n+1}-p^n = \Ord{\Delta t}$ は時刻方向 1 ステップで保たれる．
+変密度下でこの正則性が破綻しないことは Guermond--Minev--Shen~\cite{Guermond2006}
+§6.2 (rotational pressure correction) およびそこで参照される変密度系列で確立されており，
+本節の精度評価は変密度下でも保たれる（直接的な variable-density IPC $\Ord{\Delta t^2}$ 誤差解析は Pyo--Shen / Guermond--Quartapelle 系列を参照）．
+
+\paragraph{FCCD PPE と defect-correction の役割}
+ch13 production stack の PPE 求解は，左辺の楕円型作用素
+$\nabla\!\cdot\!(\rho^{-1}\nabla\cdot)$ を FCCD（§\ref{sec:CCD}）で離散化し，
+密度ジャンプを跨ぐ 1 次微分を高精度合成微分で評価する．非対称性の高い
+変密度演算子に対しては defect-correction を 2--3 反復実施し，
+界面近傍の 6 次精度を回復する．境界条件・界面ジャンプ・PPE 右辺の
+表面張力寄与（式~\eqref{eq:ppe_jump_decomposed}）はそれぞれ独立な
+phase に分解（phase-separated 求解）して条件数を抑える．
+これらは PROD 名称ではなく実装の構成要素として §\ref{sec:algorithm}
+で詳述する．
+
+\paragraph{安定性：投影演算子の射影性}
+連続レベルでは Helmholtz--Hodge 分解により $\bu^{n+1}$ は
+$\bu^{*}$ の発散自由部分への直交射影である．離散 PPE がこの射影性を
+保つ限り（FCCD ラプラシアンが半正定値，境界条件がノイマン型で整合的），
+projection 段階は新たな成長因子を導入しない．従って IPC 全体の
+$L^2$ エネルギーノルムは予測子段階の安定性
+（§\ref{sec:time_level1}・§\ref{sec:time_viscous}）で律速される．
+
+% -------------------------------------------------------------------------------
 \subsection{浮力項：balanced-buoyancy（rising bubble；陽的）}
 \label{sec:time_buoyancy}
 % -------------------------------------------------------------------------------
@@ -777,86 +709,133 @@ predictor RHS の体積力項は省略される．
 \end{tcolorbox}
 
 % -------------------------------------------------------------------------------
-\subsection{\texorpdfstring{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§\ref{sec:pure_fccd_dns} で空間側を詳述）}{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§10.5 で空間側を詳述）}}
-\label{sec:time_level3}
+\subsection{全体時間精度}% Phase 6: §5.8 として 浮力後・他 Level 補足前に配置
+\label{sec:time_accuracy_table}
 % -------------------------------------------------------------------------------
 
-超高密度比・極低 We・薄膜 DNS など
-Level 2 の半陰的手法では時間刻みが不経済となる窓では，
-Level 3 の完全陰的時間積分に切り替える．
-\textbf{ルーティング閾値（密度比・粘度比・Weber 数の 3 条件同時成立）}は
-§\ref{sec:level_selection} に集約済みであり，
-本節は時間積分側の構成要素に限定して骨格を提示する：
+ch13 production stack 各項の時間積分法と時間精度を表~\ref{tab:time_accuracy_prod}
+にまとめる．Level 1（全陽的；検証用）および legacy Level 2a（AB2 + IPC + CN）
+との比較を併記する．
 
-\begin{itemize}[leftmargin=2em]
-  \item \textbf{対流・粘性・ハイパー粘性}：5 次 A/L-stable IRK である
-        \textbf{Radau IIA}（Hairer--Wanner \cite{HairerWanner1996}）の 3 段法に UCCD6
-        （§\ref{sec:uccd6_def}）を埋め込む．
-        CN が対角粘性を無条件安定化するのに対し，Radau IIA は
-        UCCD6 ハイパー粘性まで含めて完全陰的に扱う．
-  \item \textbf{表面張力}：Li 2022 \cite{Li2022} の完全陰的ジャンプ条件，
-        または Denner 2024 \cite{Denner2024} の圧力--速度--界面完全結合．
-  \item \textbf{連立解法}：ステージ毎の JFNK（Jacobian-Free Newton--Krylov）反復．
-        Level 2 より 1 ステップあたり 5--20 倍高コストだが，
-        $\Delta t$ を 1--2 桁緩めうるため剛性領域では総コストが逆転する．
-\end{itemize}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccc}
+\hline
+方程式・項 & ch13 production & legacy（Level 2a） & 時間精度 \\
+\hline
+CLS 移流 & TVD-RK3 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
+NS 対流（Predictor）& IMEX-BDF2（EXT2）& AB2 & $\Ord{\Delta t^2}$ \\
+NS 粘性 & implicit-BDF2（GMRES）& Crank--Nicolson & $\Ord{\Delta t^2}$ \\
+NS 粘性クロス項 & 陽的（注意$^\dagger$）& 陽的（注意$^\dagger$）& $\Ord{\Delta t}$--$\Ord{\Delta t^2}$ \\
+表面張力 & PPE 内蔵 jump-decomposed & 陽的 CSF & $\Ord{\Delta t^2}$ \\
+浮力 & balanced-buoyancy（陽的）& —（中密度比検証では不要）& $\Ord{\Delta t^2}$ \\
+Projection & IPC + FCCD PPE & IPC + 標準 PPE & $\Ord{\Delta t^2}$ \\
+\hline
+\textbf{全体（均質流域）}& \multicolumn{2}{c}{両ストリーム} & $\boldsymbol{\Ord{\Delta t^2}}$ \\
+\textbf{全体（界面粘性クロス項）}& \multicolumn{2}{c}{両ストリーム}  & $\boldsymbol{\Ord{\Delta t}}^\dagger$ \\
+\hline
+\end{tabular}\\
+\refstepcounter{table}\label{tab:time_accuracy_prod}\textbf{表~\thetable}: 時間精度内訳．
+\end{center}
 
-\begin{remark}[Level 3 実装の範囲]
-\label{rem:level3_scope}
-本稿の Level 3 \textbf{時間積分}（Radau IIA + JFNK）は\textbf{設計フックのみ}で提示する．
-Level 3 の\textbf{空間離散・連成アーキテクチャ}（純 FCCD DNS, Phase 1--4）は
-§\ref{sec:pure_fccd_dns} で理論的に完備に提示しており，
-本節は時間積分スキームの観点に限定した概観である．
-\texttt{ns\_pipeline.py} の predictor/PPE/corrector 抽象は
-既に 3 ステップを因数分解しているため，
-PPE ソルバを触らずに predictor を Radau IIA 実装へ置換可能である．
-\end{remark}
+{\small $^\dagger$ 変粘性界面（$|\bnabla\mu| \neq 0$）ではクロス微分項 $\mathcal{D}_{\mathrm{c}}$ の陽的処理が $\Ord{\Delta t}$ 誤差を導入し（注意~\ref{warn:cn_cross_derivative}），界面近傍での全体時間精度が $\Ord{\Delta t}$ に律速される．$\mu_l/\mu_g \gg 1$ の場合は AB2 外挿の適用を推奨する．}
 
-\noindent
-Level 選択トリガー（剛性レジームの自動判定，3 条件同時成立による L2→L3 移行）は
-§\ref{sec:level_trigger} 表~\ref{tab:level_trigger} に集約．
+ch13 YAML は時間固定の interface-fitted 格子（Mode 1）を仮定し，Mode 2（ALE
+補正なし再生成；§\ref{sec:grid_ale}）による $\Ord{\Delta t}$ 劣化は発生しない．
+水--空気級では implicit-BDF2 粘性ブロック（§\ref{sec:time_viscous}）と
+同一面分相投影（§\ref{sec:ipc_derivation}）の組み合わせにより，劣化要因を
+「未閉包の界面演算子」に局在化させる．
+
+\noindent\textbf{CLS が $\Ord{\Delta t^3}$ で全体が $\Ord{\Delta t^2}$ な理由}：
+界面と流体運動は\textbf{疎結合（operator-split）}として扱われ，CLS 移流
+（TVD-RK3）は密度 $\rho^{n+1}$ と曲率 $\kappa^{n+1}$ を決定する「前処理」である．
+その時間精度が $\Ord{\Delta t^2}$ 以上であれば全体精度は NS 側で律速し，
+$\min(\Ord{\Delta t^3}_\text{CLS},\Ord{\Delta t^2}_\text{NS}) = \Ord{\Delta t^2}$
+となる．CLS の $\Ord{\Delta t^3}$ 高精度化は全体精度向上ではなく，
+（i）$\kappa$ 数値精度向上による寄生流抑制，
+（ii）再初期化頻度低減による質量保存誤差軽減，の実用優位を狙う．
+
+\noindent\textbf{IPC + jump-decomposed CSF が $\Ord{\Delta t^2}$ を担保する理由}：
+標準 Chorin 法は圧力境界条件不整合に起因する $\Ord{\Delta t}$ スプリッティング
+誤差を内包し，対流項を AB2 にしても全体 $\Ord{\Delta t^2}$ に達しない．
+IPC 法（§\ref{sec:ipc_derivation}）が予測ステップに $p^n$ を組み込み
+この誤差を $\Ord{\Delta t^2}$ へ低減し，jump-decomposed CSF
+（§\ref{sec:time_csf}）が表面張力 splitting を IPC と同時刻結合することで
+全体 2 次精度が閉じる．
 
 % -------------------------------------------------------------------------------
-\subsection{時間刻みガイド：3 Level の律速合成}
+\subsection{時間刻みガイド：項別律速合成}% Phase 6: per-term 律速合成式に統一
 \label{sec:time_guide}
 % -------------------------------------------------------------------------------
 
-Level 2 の合成 Δt：
-\[
-  \Delta t_\text{L2}
-  \approx \min\!\bigl(\Delta t_\text{CFL,adv},\; \Delta t_\text{cap},\; \Delta t_\text{operator}\bigr)
-  \ll \Delta t_\nu
-\]
-粘性 CFL は CN/implicit-BDF2 半陰的化で消え，
-対流 CFL，毛管波拘束，および非一様格子・投影閉包に由来する
-演算子固有拘束のみ残る．
-$\mu_l/\mu_g \gg 10$ の高粘性比では注意~\ref{warn:cross_cfl} の
-クロス微分 CFL が界面近傍で復活しうる．
+ch13 production stack の合成 $\Delta t$ は，物理項ごとの時間スケールを
+最小化したものとして閉じる：
+\begin{equation}
+  \Delta t_\text{ch13}
+  \;=\; \min\!\bigl(\Delta t_\text{adv},\;
+                    \Delta t_\text{cap},\;
+                    \Delta t_\text{buoy},\;
+                    \Delta t_\text{operator}\bigr).
+  \label{eq:dt_per_term}
+\end{equation}
+各項の意味：
+\begin{itemize}[leftmargin=2em]
+  \item $\Delta t_\text{adv} = \mathrm{CFL}_\text{adv}\,h/\|\bm{u}\|_\infty$
+        — 対流 CFL．EXT2 外挿の零安定領域 $|\xi|\le 1$ で
+        $\mathrm{CFL}_\text{adv}\le 1$（§\ref{sec:time_level1}）．
+  \item $\Delta t_\text{cap}$ — 毛管波解像（式~\eqref{eq:dt_cap_denner}）；
+        水--空気で典型的に主律速．
+  \item $\Delta t_\text{buoy} \lesssim N_\text{BV}^{-1}$ — 浮力波制約
+        （式~\eqref{eq:brunt_vaisala}）；rising bubble で副次的，capillary では無効．
+  \item $\Delta t_\text{operator}$ — 非一様格子・投影閉包に由来する演算子固有拘束．
+\end{itemize}
 
-Level 1 の合成 Δt（検証用）：
-\[
-  \Delta t_\text{L1}
-  = \min\!\bigl(\Delta t_\text{CFL,adv},\; \Delta t_\nu,\; \Delta t_\sigma^\text{BKZ}\bigr)
-\]
+\textbf{粘性 CFL $\Delta t_\nu$ の消滅}：
+implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
+粘性 CFL を課さない．ただし変粘性界面では注意~\ref{warn:cross_cfl} の
+クロス微分 CFL が陽的処理を通じて部分的に復活しうる．
 
-Level 3 の合成 Δt（剛性レジーム）：
-\[
-  \Delta t_\text{L3} \approx \Delta t_\text{cap}
-\]
-のみが残り，対流・粘性・ハイパー粘性の CFL は JFNK 反復コストと引き換えに消滅．
+\textbf{ch13 既定 \texttt{cfl=0.10}}：
+ch13 YAML の \texttt{run.time.cfl=0.10} は式~\eqref{eq:dt_cap_denner} の保守設定
+$C_\text{wave}=0.1$ に対応し，水--空気級の毛管波を 1 周期あたり
+20 ステップ程度で解像する．rising bubble では浮力残差が小さく
+$\Delta t_\text{buoy}$ は通常律速にならない．
 
-\medskip
-\noindent\textbf{実装上のデフォルト}：
-第~\ref{sec:benchmarks}章の二相流ベンチマークはすべて Level 2 に属するが，
-中密度比・短時間検証は AB2 + IPC + CN，水--空気級の毛管波および浮力駆動気泡は
-IMEX--BDF2 + implicit-BDF2 粘性 + 同一面 BF/分相投影を標準実装とする．
-格子収束検証（§\ref{sec:time_accuracy_table}）のみ Level 1 を用い，
-$\Ord{\Delta t^2}$ NS + $\Ord{\Delta t^3}$ CLS の律速関係を明示する．
-Level 3 への切替は剛性トリガー条件に基づく
-（§\ref{sec:level_selection}）．
+以上で項別の時間積分設計が閉じた．次節は本章で扱わなかった
+他 Level 設定（Level 1 全陽的検証 + Level 3 完全陰的剛性レジーム）の
+位置づけを補足する．
 
-以上で時間積分の骨格が確定した：
-Level 2 を主軸とし，検証では Level 1，剛性では Level 3 へ切り替える
-連続スペクトルとして時間積分を扱う．
-次章では，本章で確立した時間積分骨格の上で，CLS 移流・運動量移流・粘性項の
-各物理項に対する CCD/DCCD/UCCD6/FCCD の用途別配分を整備する．
+% -------------------------------------------------------------------------------
+\subsection{補足：他 Level 設定の位置づけ}% Phase 6: §5.10 他 Level 補足 (~15 LOC)
+\label{sec:time_level_legacy}
+\phantomsection\label{sec:time_level3}% backward-compat: 旧 Level 3 ref (10_3 = 2 件)
+% sec:time_level2 は §5.3 末尾 (legacy paragraph) に既設; sec:time_level1 は §5.3 header
+% -------------------------------------------------------------------------------
+
+本稿の主軸 ch13 production stack（旧 Level 2b に相当；§\ref{sec:time_level1}--§\ref{sec:time_guide}）
+に対し，本章では扱わなかった 2 つの補助設定がある：
+
+\paragraph{Level 1：全陽的（SSPRK3 + 陽的拡散；検証用）}
+すべての項を陽的に扱う構成．粘性 CFL $\Delta t_\nu$ と毛管 BKZ
+$\Delta t_\sigma^\text{BKZ}$ が支配的となり，
+$\Delta t_\text{L1} = \min(\Delta t_\text{adv}, \Delta t_\nu, \Delta t_\sigma^\text{BKZ})$．
+時間刻み律速が厳しいため production には用いず，CLS の $\Ord{\Delta t^3}$
+収束検証（§\ref{sec:time_accuracy_table}）など短時間検証ケースに限定する．
+
+\paragraph{Level 3：完全陰的（Radau IIA + JFNK；設計フックのみ）}
+超高密度比・極低 We・薄膜 DNS など ch13 production の半陰的構成では
+時間刻みが不経済となるレジーム向けの設計フックである．構成要素は
+Hairer--Wanner~\cite{HairerWanner1996} の 5 次 A/L-stable Radau IIA（3 段法）に
+UCCD6（§\ref{sec:uccd6_def}）を埋め込み，表面張力は Li~\cite{Li2022} または
+Denner~\cite{Denner2024} の完全結合，連立は JFNK（Jacobian-Free Newton--Krylov）
+で解く．Level 2 比 1 ステップ 5--20 倍高コストだが $\Delta t$ を 1--2 桁緩めうる．
+本稿では\textbf{時間積分骨格のみ}を提示し，空間離散・連成アーキテクチャ
+（純 FCCD DNS）は §\ref{sec:pure_fccd_dns} に集約．ルーティング閾値
+（密度比・粘度比・Weber 数の 3 条件同時成立）は §\ref{sec:level_selection}
+表~\ref{tab:level_trigger} に記載．
+
+\paragraph{Level 2 概念名の継承}
+旧構成では本章を Level 2a (AB2+IPC+CN) / Level 2b (IMEX-BDF2+implicit-BDF2)
+の連続スペクトルとして記述していた．本改訂版では項別設計に再編したが，
+Level 概念名は他章（§\ref{sec:level_selection} 等）からの参照のために
+phantomsection で保持する（\texttt{sec:time\_level1/2/3}）．
