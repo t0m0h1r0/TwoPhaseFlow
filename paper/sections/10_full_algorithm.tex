@@ -103,7 +103,7 @@ Step & 処理 & 手法 & 参照 \\
 5 & 運動量 $(u,v)$ 移流 & UCCD6+AB2（L2）/ UCCD6 inside Radau（L3） & §~\ref{sec:uccd6_def} \\
   & Predictor      & AB2 + CN/ADI + IPC + CSF                       & §~\ref{sec:ab2_ipc} \\
 6 & PPE 求解       & 分相 PPE + DC $k{=}3$（Lv.3 既定）/ 一括 PPE（Lv.1/2）& §~\ref{sec:ppe_solve} \\
-7 & Corrector      & IPC 増分更新                                    & §~\ref{sec:pressure} \\
+7 & Corrector      & IPC 増分更新                                    & §~\ref{sec:ab2_ipc} \\
 \hline
 \end{tabular}
 \end{table}
@@ -425,7 +425,10 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
         $[\partial_n p]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$
         （後者は \S\ref{sec:split_ppe_framework} の Laplace--Beltrami 法線分解
         の 1 階成分；前提仮定 (H2) の flux-jump $[\rho^{-1}\partial_n p]_\Gamma=0$
-        とは別条件）を HFE（§\ref{sec:field_extension}）で課す．
+        とは別条件．\textbf{実装上}は \S\ref{sec:split_ppe_framework}
+        の eq:gfm\_gradient\_jump で定義する密度重み付け ghost-jet 形式
+        $p_q^{*\prime}(x_f)=(\rho_q/\rho_{\bar q})p_{\bar q}'(x_f)$ で gradient BC を構成する）
+        を HFE（§\ref{sec:field_extension}）で課す．
         式~\eqref{eq:PPE_CCD_fullalgo} は使用しない．
 \end{itemize}
 
