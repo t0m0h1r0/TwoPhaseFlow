@@ -191,7 +191,10 @@ class FCCDDivergenceOperator(IDivergenceOperator):
 
     def divergence(self, components: list["array"]) -> "array":
         xp = self._fccd.xp
-        if all_arrays_exact_zero(xp, components):
+        if (
+            not self._fccd.backend.is_gpu()
+            and all_arrays_exact_zero(xp, components)
+        ):
             return xp.zeros_like(components[0])
         return self.divergence_from_faces(self.face_fluxes(components))
 

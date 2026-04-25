@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..backend import fuse as _fuse
+
 
 @dataclass(frozen=True)
 class FCCDGeometryCache:
@@ -18,6 +20,15 @@ class FCCDGeometryCache:
 class FCCDPhaseGaugeState:
     pin_dofs: tuple[int, ...]
     phase_threshold: float | None
+
+
+@dataclass(frozen=True)
+class FCCDPhaseMeanGaugeCache:
+    masks: tuple
+    weights: tuple
+    weight_sums: tuple
+    weight_stack: object
+    weight_sum_stack: object
 
 
 def build_fccd_geometry_cache(*, xp, grid, ndim: int) -> FCCDGeometryCache:
@@ -77,6 +88,72 @@ def compute_fccd_phase_gauges(
         pin_dofs=tuple(sorted(set(pins))) or (default_pin_dof,),
         phase_threshold=threshold,
     )
+
+
+def build_fccd_phase_mean_gauge_cache(
+    *,
+    xp,
+    rho,
+    cell_volume,
+    phase_threshold: float | None,
+) -> FCCDPhaseMeanGaugeCache | None:
+    if phase_threshold is None:
+        return None
+    rho_arr = xp.asarray(rho)
+    volume = xp.asarray(cell_volume)
+    masks = (
+        rho_arr < phase_threshold,
+        rho_arr >= phase_threshold,
+    )
+    weights = tuple(xp.where(mask, volume, 0.0) for mask in masks)
+    weight_sums = tuple(xp.sum(weight) for weight in weights)
+    return FCCDPhaseMeanGaugeCache(
+        masks=masks,
+        weights=weights,
+        weight_sums=weight_sums,
+        weight_stack=xp.stack(weights),
+        weight_sum_stack=xp.stack(weight_sums),
+    )
+
+
+def compute_fccd_phase_weighted_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache):
+    arr_view = xp.asarray(arr)
+    if len(cache.weights) == 2:
+        reduction_axes = tuple(range(1, cache.weight_stack.ndim))
+        weighted_sums = xp.sum(cache.weight_stack * arr_view, axis=reduction_axes)
+        return tuple(
+            weighted_sums[i] / cache.weight_sum_stack[i]
+            for i in range(len(cache.weights))
+        )
+    return tuple(
+        xp.sum(weight * arr_view) / weight_sum
+        for weight, weight_sum in zip(cache.weights, cache.weight_sums)
+    )
+
+
+@_fuse
+def _subtract_two_phase_mean_kernel(arr, mask, mean0, mean1):
+    return arr - (mask * mean0 + (~mask) * mean1)
+
+
+def subtract_fccd_phase_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache, means):
+    """Return the phase-gauge projection without copying ``arr`` first.
+
+    A3 mapping: for each phase ``Ω_k``, enforce
+    ``p <- p - <p>_k`` with ``<p>_k = Σ_{Ω_k} V_i p_i / Σ_{Ω_k} V_i``.
+    """
+    arr_view = xp.asarray(arr)
+    if len(means) == 2:
+        return _subtract_two_phase_mean_kernel(
+            arr_view,
+            cache.masks[0],
+            means[0],
+            means[1],
+        )
+    result = arr_view.copy()
+    for mask, mean in zip(cache.masks, means):
+        result = xp.where(mask, result - mean, result)
+    return result
 
 
 def _select_bulk_phase_gauge_pin(
@@ -234,13 +311,19 @@ def project_fccd_rhs_compatibility(
     rho_host,
     cell_volume_dev,
     cell_volume_host,
+    phase_masks,
+    phase_weights,
+    phase_weight_sums,
+    phase_weight_stack,
+    phase_weight_sum_stack,
     pin_dofs: tuple[int, ...],
     interface_coupling_scheme: str,
     use_device_density: bool,
     to_scalar,
     pin_rhs: bool = True,
+    record_stats: bool = True,
 ):
-    rhs_projected = xp.asarray(rhs).copy()
+    rhs_view = xp.asarray(rhs)
     stats = {
         "ppe_phase_count": 1.0,
         "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
@@ -256,36 +339,66 @@ def project_fccd_rhs_compatibility(
         or phase_threshold is None
         or rho_host is None
     ):
+        rhs_projected = rhs_view.copy() if pin_rhs else rhs_view
         if pin_rhs:
             _pin_zero(rhs_projected.ravel(), pin_dofs)
         return rhs_projected, stats
 
-    rho_view = rho_dev if use_device_density else rho_host
-    weight_view = cell_volume_dev if use_device_density else cell_volume_host
-    phase_masks = (
-        rho_view < phase_threshold,
-        rho_view >= phase_threshold,
-    )
+    if phase_masks is None or phase_weights is None or phase_weight_sums is None:
+        rho_view = rho_dev if use_device_density else rho_host
+        weight_view = cell_volume_dev if use_device_density else cell_volume_host
+        cache = build_fccd_phase_mean_gauge_cache(
+            xp=xp,
+            rho=rho_view,
+            cell_volume=weight_view,
+            phase_threshold=phase_threshold,
+        )
+        phase_masks = cache.masks
+        phase_weights = cache.weights
+        phase_weight_sums = cache.weight_sums
+        phase_weight_stack = cache.weight_stack
+        phase_weight_sum_stack = cache.weight_sum_stack
+    if phase_weight_stack is None:
+        phase_weight_stack = xp.stack(phase_weights)
+    if phase_weight_sum_stack is None:
+        phase_weight_sum_stack = xp.stack(phase_weight_sums)
     means_before = []
     means_after = []
-    phase_count = 0
-    for mask in phase_masks:
-        count = int(to_scalar(xp.sum(mask)))
-        if count == 0:
-            continue
-        phase_count += 1
-        phase_weight = xp.where(mask, weight_view, 0.0)
-        mean = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
-        means_before.append(abs(to_scalar(mean)))
-        rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
-        mean_after = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
-        means_after.append(abs(to_scalar(mean_after)))
+    phase_cache = FCCDPhaseMeanGaugeCache(
+        masks=phase_masks,
+        weights=phase_weights,
+        weight_sums=phase_weight_sums,
+        weight_stack=phase_weight_stack,
+        weight_sum_stack=phase_weight_sum_stack,
+    )
+    phase_means = compute_fccd_phase_weighted_means(
+        xp=xp,
+        arr=rhs_view,
+        cache=phase_cache,
+    )
+    if record_stats:
+        means_before = [abs(to_scalar(mean)) for mean in phase_means]
+    rhs_projected = subtract_fccd_phase_means(
+        xp=xp,
+        arr=rhs_view,
+        cache=phase_cache,
+        means=phase_means,
+    )
+    if record_stats:
+        means_after = [
+            abs(to_scalar(mean))
+            for mean in compute_fccd_phase_weighted_means(
+                xp=xp,
+                arr=rhs_projected,
+                cache=phase_cache,
+            )
+        ]
 
     if pin_rhs:
         _pin_zero(rhs_projected.ravel(), pin_dofs)
     stats.update(
         {
-            "ppe_phase_count": float(phase_count),
+            "ppe_phase_count": float(len(phase_means)),
             "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
             "ppe_mean_gauge": float(not pin_rhs),
             "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),

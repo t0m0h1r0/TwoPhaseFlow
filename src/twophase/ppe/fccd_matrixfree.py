@@ -33,8 +33,10 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_interface_jump_context,
+    compute_fccd_phase_weighted_means,
     fccd_interface_jump_is_active,
     project_fccd_rhs_compatibility,
+    subtract_fccd_phase_means,
 )
 from .fccd_matrixfree_lifecycle import (
     invalidate_fccd_matrixfree_cache,
@@ -51,6 +53,31 @@ if TYPE_CHECKING:
     from ..core.boundary import BoundarySpec
     from ..core.grid import Grid
     from ..simulation.scheme_build_ctx import PPEBuildCtx
+
+
+_WEIGHTED_DIV_INTERIOR_KERNEL = None
+_WEIGHTED_DIV_BOUNDARY_KERNEL = None
+
+
+def _get_weighted_divergence_kernels():
+    """Return cached CuPy kernels for ``D_f[(1/rho)_f G_f p]`` accumulation."""
+    global _WEIGHTED_DIV_INTERIOR_KERNEL, _WEIGHTED_DIV_BOUNDARY_KERNEL
+    if _WEIGHTED_DIV_INTERIOR_KERNEL is None:
+        import cupy as cp
+
+        _WEIGHTED_DIV_INTERIOR_KERNEL = cp.ElementwiseKernel(
+            "T out_old, T grad_hi, T grad_lo, T coeff_hi, T coeff_lo, T inv_width",
+            "T out",
+            "out = out_old + (coeff_hi * grad_hi - coeff_lo * grad_lo) * inv_width",
+            "twophase_fccd_ppe_weighted_div_interior",
+        )
+        _WEIGHTED_DIV_BOUNDARY_KERNEL = cp.ElementwiseKernel(
+            "T out_old, T grad, T coeff, T inv_width, T sign",
+            "T out",
+            "out = out_old + sign * coeff * grad * inv_width",
+            "twophase_fccd_ppe_weighted_div_boundary",
+        )
+    return _WEIGHTED_DIV_INTERIOR_KERNEL, _WEIGHTED_DIV_BOUNDARY_KERNEL
 
 
 class PPESolverFCCDMatrixFree(IPPESolver):
@@ -121,8 +148,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._rho_dev = None
         self._diag_inv = None
         self._coeff_face = None
+        self._phase_mean_gauge_cache = None
+        self._phase_mean_gauge_cache_host = None
         self._h_min = None
         self._node_width = None
+        self._node_width_inv = None
         self._cell_volume = None
         self._cell_volume_host = None
         self._phase_threshold = None
@@ -165,7 +195,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             p_mean_free = self._project_phase_means(p_dev)
             out = self._apply_operator_core(p_mean_free)
             out = self._project_phase_means(out)
-            out = out + (p_dev - p_mean_free)
+            out += p_dev
+            out -= p_mean_free
         else:
             out = self._apply_operator_core(p_dev)
             self._pin_flat(out.ravel(), p_dev.ravel())
@@ -179,8 +210,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         out = xp.zeros_like(p_dev)
         for axis in range(self.ndim):
             grad_face = self.fccd.face_gradient(p_dev, axis)
-            coeff_face = self._coeff_face[axis]
-            out = out + self._face_flux_divergence(coeff_face * grad_face, axis)
+            self._accumulate_weighted_face_gradient_divergence(
+                out,
+                grad_face,
+                self._coeff_face[axis],
+                axis,
+            )
         return out
 
     def _subtract_interface_jump_operator(self, rhs_dev):
@@ -206,8 +241,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.prepare_operator(rho)
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
-        rhs_flat = rhs_dev.ravel().copy()
-        if all_arrays_exact_zero(xp, (rhs_flat,)):
+        rhs_flat = rhs_dev.ravel()
+        if (
+            not self.backend.is_gpu()
+            and all_arrays_exact_zero(xp, (rhs_flat,))
+        ):
             sol = xp.zeros_like(rhs_dev)
             if not self._uses_phase_mean_gauge():
                 self._pin_flat(sol.ravel(), 0.0)
@@ -289,9 +327,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             is_device_array=self._is_device_array,
         )
 
-    def _project_rhs_compatibility(self, rhs):
+    def _project_rhs_compatibility(self, rhs, *, record_stats: bool = True):
         """Enforce one Neumann compatibility condition per phase block."""
         xp = self.xp if self._is_device_array(rhs) else np
+        phase_cache = (
+            self._phase_mean_gauge_cache
+            if xp is self.xp
+            else self._phase_mean_gauge_cache_host
+        )
         rhs_projected, stats = project_fccd_rhs_compatibility(
             rhs=rhs,
             xp=xp,
@@ -301,13 +344,26 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             rho_host=self._rho,
             cell_volume_dev=self._cell_volume,
             cell_volume_host=self._cell_volume_host,
+            phase_masks=None if phase_cache is None else phase_cache.masks,
+            phase_weights=None if phase_cache is None else phase_cache.weights,
+            phase_weight_sums=(
+                None if phase_cache is None else phase_cache.weight_sums
+            ),
+            phase_weight_stack=(
+                None if phase_cache is None else phase_cache.weight_stack
+            ),
+            phase_weight_sum_stack=(
+                None if phase_cache is None else phase_cache.weight_sum_stack
+            ),
             pin_dofs=self._pin_dofs,
             interface_coupling_scheme=self.interface_coupling_scheme,
             use_device_density=xp is self.xp,
             to_scalar=self._to_scalar,
             pin_rhs=not self._uses_phase_mean_gauge(),
+            record_stats=record_stats,
         )
-        self.last_diagnostics = stats
+        if record_stats:
+            self.last_diagnostics = stats
         return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):
@@ -340,16 +396,25 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def _project_phase_means(self, arr):
         """Project a field onto the per-phase zero-volume-mean pressure gauge."""
         xp = self.xp if self._is_device_array(arr) else np
-        arr_projected = xp.asarray(arr).copy()
+        arr_view = xp.asarray(arr)
         if not self._uses_phase_mean_gauge():
-            return arr_projected
-        rho_view = self._rho_dev if xp is self.xp else self._rho
-        weight_view = self._cell_volume if xp is self.xp else self._cell_volume_host
-        for mask in (rho_view < self._phase_threshold, rho_view >= self._phase_threshold):
-            phase_weight = xp.where(mask, weight_view, 0.0)
-            mean = xp.sum(phase_weight * arr_projected) / xp.sum(phase_weight)
-            arr_projected = xp.where(mask, arr_projected - mean, arr_projected)
-        return arr_projected
+            return arr_view
+        phase_cache = (
+            self._phase_mean_gauge_cache
+            if xp is self.xp
+            else self._phase_mean_gauge_cache_host
+        )
+        phase_means = compute_fccd_phase_weighted_means(
+            xp=xp,
+            arr=arr_view,
+            cache=phase_cache,
+        )
+        return subtract_fccd_phase_means(
+            xp=xp,
+            arr=arr_view,
+            cache=phase_cache,
+            means=phase_means,
+        )
 
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence with wall Neumann rows retained for the PPE operator."""
@@ -361,11 +426,80 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         N = self.grid.N[axis]
         width = self._broadcast_axis0(self._node_width[axis], flux.ndim)
 
-        out = xp.zeros((N + 1,) + flux.shape[1:], dtype=flux.dtype)
+        out = xp.empty((N + 1,) + flux.shape[1:], dtype=flux.dtype)
         out[1:N] = (flux[1:] - flux[:-1]) / width[1:N]
         out[0] = flux[0] / width[0]
         out[N] = -flux[N - 1] / width[N]
         return xp.moveaxis(out, 0, axis)
+
+    def _accumulate_face_flux_divergence(self, out, face_flux, axis: int) -> None:
+        """Accumulate ``D_f[(1/rho)_f G_f p]`` without a full-size copy."""
+        xp = self.xp
+        if self.fccd.bc_type == "periodic":
+            out += self.fccd.face_divergence(face_flux, axis)
+            return
+        if self._node_width is None:
+            self._refresh_grid_geometry_cache()
+        flux = xp.moveaxis(xp.asarray(face_flux), axis, 0)
+        out_axis0 = xp.moveaxis(out, axis, 0)
+        N = self.grid.N[axis]
+        width = self._broadcast_axis0(self._node_width[axis], flux.ndim)
+        out_axis0[1:N] += (flux[1:] - flux[:-1]) / width[1:N]
+        out_axis0[0] += flux[0] / width[0]
+        out_axis0[N] -= flux[N - 1] / width[N]
+
+    def _accumulate_weighted_face_gradient_divergence(
+        self,
+        out,
+        grad_face,
+        coeff_face,
+        axis: int,
+    ) -> None:
+        """Fuse ``(1/rho)_f`` multiplication with FCCD flux divergence."""
+        xp = self.xp
+        if self.fccd.bc_type == "periodic":
+            self._accumulate_face_flux_divergence(out, coeff_face * grad_face, axis)
+            return
+        if self._node_width_inv is None:
+            self._refresh_grid_geometry_cache()
+        grad = xp.moveaxis(xp.asarray(grad_face), axis, 0)
+        coeff = xp.moveaxis(xp.asarray(coeff_face), axis, 0)
+        out_axis0 = xp.moveaxis(out, axis, 0)
+        N = self.grid.N[axis]
+        inv_width = self._broadcast_axis0(self._node_width_inv[axis], grad.ndim)
+        if self.backend.is_gpu():
+            interior_kernel, boundary_kernel = _get_weighted_divergence_kernels()
+            interior_kernel(
+                out_axis0[1:N],
+                grad[1:],
+                grad[:-1],
+                coeff[1:],
+                coeff[:-1],
+                inv_width[1:N],
+                out_axis0[1:N],
+            )
+            boundary_kernel(
+                out_axis0[0],
+                grad[0],
+                coeff[0],
+                inv_width[0],
+                1.0,
+                out_axis0[0],
+            )
+            boundary_kernel(
+                out_axis0[N],
+                grad[N - 1],
+                coeff[N - 1],
+                inv_width[N],
+                -1.0,
+                out_axis0[N],
+            )
+            return
+        out_axis0[1:N] += (
+            coeff[1:] * grad[1:] - coeff[:-1] * grad[:-1]
+        ) * inv_width[1:N]
+        out_axis0[0] += coeff[0] * grad[0] * inv_width[0]
+        out_axis0[N] -= coeff[N - 1] * grad[N - 1] * inv_width[N]
 
     def _refresh_grid_geometry_cache(self) -> None:
         """Cache per-axis geometric scalars reused across every GMRES matvec."""
