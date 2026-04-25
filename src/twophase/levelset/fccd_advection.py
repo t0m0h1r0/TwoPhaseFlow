@@ -24,6 +24,7 @@ GPU/CPU unified via ``backend.xp``. Mass-correction hook inherited.
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import ILevelSetAdvection
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
@@ -92,6 +93,17 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
+
+        if all_arrays_exact_zero(xp, velocity_components):
+            q_new = psi
+            if clip_bounds is not None:
+                lo, hi = clip_bounds
+                needs_clip = xp.stack([xp.min(psi) < lo, xp.max(psi) > hi])
+                if bool(xp.any(needs_clip)):
+                    q_new = xp.clip(psi, lo, hi)
+            if self._mass_correction:
+                q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+            return q_new
 
         if clip_bounds is None:
             post_stage = None

@@ -68,6 +68,7 @@ class Grid:
             self.h.append(dx)
 
         self.shape: tuple = tuple(n + 1 for n in self.N)
+        self._cell_volumes = None
 
         # Metrics (identity for uniform grid)
         self._build_metrics()
@@ -180,6 +181,7 @@ class Grid:
         self.J, self.dJ_dxi = compute_metrics(
             self.coords, self.h, self.N, self.ndim, self.uniform, ccd,
         )
+        self._cell_volumes = self._build_cell_volume_field()
 
     # ── Convenience ──────────────────────────────────────────────────────
 
@@ -193,7 +195,14 @@ class Grid:
         return math.prod(L / N for L, N in zip(self.L, self.N))
 
     def cell_volumes(self):
-        """Per-node control volumes on device, shape ``self.shape``."""
+        """Per-node control volumes retained by the current grid geometry."""
+        if self._cell_volumes is not None:
+            return self._cell_volumes
+        self._cell_volumes = self._build_cell_volume_field()
+        return self._cell_volumes
+
+    def _build_cell_volume_field(self):
+        """Materialize the control-volume field produced by this grid build."""
         xp = self.xp
         vol = xp.asarray(self.h[0])
         for ax in range(1, self.ndim):

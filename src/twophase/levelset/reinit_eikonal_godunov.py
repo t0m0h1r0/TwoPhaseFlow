@@ -27,10 +27,14 @@ def godunov_sweep(
     hy_bwd,
     zsp: bool,
     h_min: float,
+    frozen_mask=None,
 ):
     """Run the first-order Godunov pseudo-time sweep."""
     inside = sgn0 > 0
     zsp_frozen = xp.abs(phi) < 0.5 * h_min if zsp else None
+    if frozen_mask is not None:
+        frozen = xp.asarray(frozen_mask)
+        zsp_frozen = frozen if zsp_frozen is None else (zsp_frozen | frozen)
 
     for _ in range(n_iter):
         phi_x = xp.roll(phi, -1, axis=0)
@@ -56,6 +60,6 @@ def godunov_sweep(
 
         G = xp.sqrt(ax + ay + 1e-14) - 1.0
         phi_new = phi - dtau * sgn0 * G
-        phi = xp.where(zsp_frozen, phi, phi_new) if zsp else phi_new
+        phi = xp.where(zsp_frozen, phi, phi_new) if zsp_frozen is not None else phi_new
 
     return phi

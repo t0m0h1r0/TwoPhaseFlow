@@ -25,6 +25,8 @@ symmetry_error        parity-aware reflection error under x/y mirror. Each
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 
@@ -40,6 +42,18 @@ def _xp_of(arr):
         return cupy.get_array_module(arr)
     except ImportError:
         return np
+
+
+@dataclass
+class DiagnosticRetainedGeometry:
+    """Device-side geometry intentionally retained by the simulation procedure."""
+
+    xp: object
+    shape: tuple[int, ...]
+    X: object
+    Y: object
+    rows: object
+    cols: object
 
 
 class DiagnosticCollector:
@@ -106,6 +120,7 @@ class DiagnosticCollector:
         self.times: list[float] = []
         self._data: dict[str, list] = {}
         self._V0: float | None = None  # set on first collect()
+        self._retained_geometry: DiagnosticRetainedGeometry | None = None
 
         # bubble_centroid expands into xc / yc / vc sub-series
         # symmetry_error expands into sym_{psi,u,v}_{y,x} sub-series (CHK-161)
@@ -120,6 +135,18 @@ class DiagnosticCollector:
                 self._data.setdefault(m, [])
 
     # ── public interface ──────────────────────────────────────────────────
+
+    def retain_device_geometry(self, xp, X, Y, shape) -> None:
+        """Retain geometry produced by grid construction/rebuild for diagnostics."""
+        rows, cols = _deformation_axes(xp, tuple(shape))
+        self._retained_geometry = DiagnosticRetainedGeometry(
+            xp=xp,
+            shape=tuple(shape),
+            X=xp.asarray(X),
+            Y=xp.asarray(Y),
+            rows=rows,
+            cols=cols,
+        )
 
     def collect(
         self,
@@ -143,8 +170,12 @@ class DiagnosticCollector:
             dV = xp.full(psi.shape, self.h ** 2)
         elif _xp_of(dV) is not xp:
             dV = xp.asarray(dV)
-        X = xp.asarray(self.X)
-        Y = xp.asarray(self.Y)
+        geometry = self._retained_geometry
+        if geometry is None or geometry.xp is not xp or geometry.shape != tuple(psi.shape):
+            self.retain_device_geometry(xp, self.X, self.Y, psi.shape)
+            geometry = self._retained_geometry
+        X = geometry.X
+        Y = geometry.Y
         rho = self.rho_g + (self.rho_l - self.rho_g) * psi
 
         V_dev = xp.sum(psi * dV)
@@ -196,7 +227,7 @@ class DiagnosticCollector:
                 self._data["vc"].append(vc)
 
             elif m == "deformation":
-                self._data[m].append(_deformation(psi))
+                self._data[m].append(_deformation(psi, geometry))
 
             elif m == "interface_amplitude":
                 self._data[m].append(_interface_amplitude(psi, self.Y, self.h))
@@ -264,31 +295,44 @@ def _to_host(arr):
     return np.asarray(arr)
 
 
-def _deformation(psi) -> float:
+def _deformation_axes(xp, shape: tuple[int, ...]):
+    """Materialize index fields retained with diagnostic geometry."""
+    NX, NY = shape
+    rows = xp.arange(NX, dtype=xp.float64)[:, None] * xp.ones((1, NY), dtype=xp.float64)
+    cols = xp.ones((NX, 1), dtype=xp.float64) * xp.arange(NY, dtype=xp.float64)[None, :]
+    return rows, cols
+
+
+def _deformation(psi, geometry: DiagnosticRetainedGeometry | None = None) -> float:
     """D = (L−B)/(L+B) from second moments of the ψ > 0.5 region.
 
-    Fully device-resident: builds index grids on-device and batches the
-    final 3 scalars (Ixx, Iyy, Ixy) into a single D2H transfer.
+    Fully device-resident: reuses the retained index fields created by the
+    diagnostic procedure and batches the final scalars into one D2H transfer.
     """
     xp = _xp_of(psi)
     mask = psi > 0.5
-    n_pts = float(xp.sum(mask))
-    if n_pts < 1.0:
-        return 0.0
-    NX, NY = psi.shape
-    rows = xp.arange(NX, dtype=xp.float64)[:, None] * xp.ones((1, NY), dtype=xp.float64)
-    cols = xp.ones((NX, 1), dtype=xp.float64) * xp.arange(NY, dtype=xp.float64)[None, :]
-    row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_pts
-    col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_pts
+    n_pts_dev = xp.sum(mask)
+    if geometry is not None and geometry.xp is xp and geometry.shape == tuple(psi.shape):
+        rows = geometry.rows
+        cols = geometry.cols
+    else:
+        rows, cols = _deformation_axes(xp, tuple(psi.shape))
+    n_safe = xp.where(n_pts_dev > 0, n_pts_dev, 1.0)
+    row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_safe
+    col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_safe
     dy = xp.where(mask, rows - row_mean, 0.0)
     dx = xp.where(mask, cols - col_mean, 0.0)
     raw = xp.stack([
-        xp.sum(dx * dx) / n_pts,
-        xp.sum(dy * dy) / n_pts,
-        xp.sum(dx * dy) / n_pts,
+        n_pts_dev,
+        xp.sum(dx * dx) / n_safe,
+        xp.sum(dy * dy) / n_safe,
+        xp.sum(dx * dy) / n_safe,
     ])
     stats = np.asarray(_to_host(raw))
-    Ixx, Iyy, Ixy = float(stats[0]), float(stats[1]), float(stats[2])
+    n_pts = float(stats[0])
+    if n_pts < 1.0:
+        return 0.0
+    Ixx, Iyy, Ixy = float(stats[1]), float(stats[2]), float(stats[3])
     disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
     eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
     eig2 = 0.5 * (Ixx + Iyy) - np.sqrt(disc)

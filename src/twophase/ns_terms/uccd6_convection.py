@@ -22,6 +22,7 @@ References
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import IConvectionTerm
 
 if TYPE_CHECKING:
@@ -100,6 +101,8 @@ class UCCD6ConvectionTerm(IConvectionTerm):
 
         xp = self.xp
         ndim = len(velocity_components)
+        if all_arrays_exact_zero(xp, velocity_components):
+            return [xp.zeros_like(component) for component in velocity_components]
         ccd_op = self._ccd
         result = []
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..core.array_checks import all_arrays_exact_zero
 from .face_projection import (
     apply_pressure_projection,
     reconstruct_nodes_from_faces,
@@ -48,6 +49,7 @@ class FVMDivergenceOperator(IDivergenceOperator):
         self._grid = grid
         self._dv = None
         self._d_face = None
+        self.supports_zero_projection_shortcut = True
 
     def divergence(self, components: list["array"]) -> "array":
         """Compute divergence from face-averaged nodal fluxes."""
@@ -185,8 +187,12 @@ class FCCDDivergenceOperator(IDivergenceOperator):
     def __init__(self, fccd: "FCCDSolver") -> None:
         self._fccd = fccd
         self._node_width = None
+        self.supports_zero_projection_shortcut = True
 
     def divergence(self, components: list["array"]) -> "array":
+        xp = self._fccd.xp
+        if all_arrays_exact_zero(xp, components):
+            return xp.zeros_like(components[0])
         return self.divergence_from_faces(self.face_fluxes(components))
 
     def face_fluxes(self, components: list["array"]) -> list["array"]:

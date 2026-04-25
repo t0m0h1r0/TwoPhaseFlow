@@ -26,6 +26,7 @@ import warnings
 
 import numpy as np
 
+from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
     apply_fccd_interface_jump,
@@ -179,6 +180,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.prepare_operator(rho)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
         rhs_flat = rhs_dev.ravel().copy()
+        if all_arrays_exact_zero(xp, (rhs_flat,)):
+            sol = xp.zeros_like(rhs_dev)
+            self._pin_flat(sol.ravel(), 0.0)
+            self.last_base_pressure = xp.copy(sol)
+            if not self._defer_interface_jump:
+                sol = self.apply_interface_jump(sol)
+            if return_host:
+                return np.asarray(self.backend.to_host(sol))
+            return sol
 
         if p_init is None:
             x0 = xp.zeros_like(rhs_flat)
