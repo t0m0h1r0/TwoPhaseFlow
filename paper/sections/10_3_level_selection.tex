@@ -44,13 +44,13 @@ Level を選ぶ（非圧縮解法のため物理波速度 $\Delta t_\text{wave}$
 最少制約 & 支配剛性 & 推奨 Level & 対応スキーム & 典型領域 \\
 \hline
 $\Delta t_\text{adv}$ & 対流 &
-  Level 1 / 2 & SSPRK3 / AB2 &
+  Level 1 / 2 & SSPRK3 / AB2--EXT2 &
   一般流れ，Re 中庸 \\
 $\Delta t_\text{visc}$ & 粘性 &
-  Level 2 & AB2 + CN &
+  Level 2 & CN または implicit-BDF2 &
   高粘性比，薄膜 \\
 $\Delta t_\sigma^\text{BKZ}$ & 毛管波 &
-  Level 2 / 3 & 半陰的 ST / Li 2022 &
+  Level 2 / 3 & pressure-jump / 完全結合 &
   We $\ll 1$，微小気泡 \\
 同時多数 & 結合剛性 &
   Level 3 & Radau IIA + JFNK &
@@ -137,19 +137,24 @@ Level 2 の Crank--Nicolson + 半陰的 ST は Level 1 の $\Ord{h^k}$ を
 \label{sec:level2_production}
 % -------------------------------------------------------------------------------
 
-Level 2（AB2 + CN + 半陰的 ST + BF 投影）は本稿の\textbf{既定プロダクション構成}．
+Level 2 は本稿の\textbf{既定プロダクション構成}であり，
+中密度比の Level 2a（AB2 + CN + 半陰的 ST + BF 投影）と，
+水--空気級の Level 2b（EXT2 + implicit-BDF2 + pressure-jump 分相投影）に分ける．
 §\ref{sec:time_level2} で定式化した通り，時間刻みは
 \begin{equation}
   \Delta t_\text{L2}
     = \min\!\bigl(
         C_\text{adv} h/\|\mathbf{u}\|_\infty,\,
-        C_\sigma^\text{impl}\,\Delta t_\sigma^\text{BKZ}
+        \Delta t_\text{cap},\,
+        \Delta t_\text{operator}
       \bigr),
-  \qquad C_\sigma^\text{impl}\simeq 5\text{--}10,
   \label{eq:level2_dt}
 \end{equation}
-半陰的 ST が $\Delta t_\sigma$ の実用係数を $\sim 10\times$ 緩和するため，
-移流 CFL のみが実効制約となる．
+ここで $\Delta t_\text{cap}$ は毛管波の\textbf{時間解像}制約であり，
+表面張力を pressure-jump 側に移しても一般には消えない．
+$\Delta t_\text{operator}$ は非一様格子・壁面閉包・FCCD/UCCD6・投影結合の
+演算子固有制約を表す．implicit-BDF2 により消えるのは粘性 CFL であって，
+毛管波の物理解像制約ではない．
 境界条件設定（Option III/IV, §\ref{sec:fccd_bc_options}），
 BF 七原則（P-1..P-7, §\ref{sec:bf_seven_principles}），
 面ジェット統一（§\ref{sec:fccd_bf_sub_system}）は
@@ -190,9 +195,9 @@ $10\text{--}1000\times$ まで拡大可能なため実効効率が上回る
 物理例 & $\rho_l/\rho_g$ & $\text{We}$ & 推奨 & 理由 \\
 \hline
 2 次元渦流（TGV）& $1$ & $\infty$ & L1/L2 & 検証用，移流 CFL のみ \\
-上昇気泡（中程度）& $100$ & $1$ & L2 & BF + 半陰的 ST が実用 \\
-毛管波（ch13）& $830$ & $0.02$ & L2（§\ref{sec:verify_time} 検証ベンチマーク）& $\Delta t_\sigma^\text{BKZ}$ 緩和が鍵 \\
-水--空気インクジェット & $830$ & $0.001$ & L2/L3 & 破断初期は L3 必要 \\
+上昇気泡（水--空気）& $\sim833$ & $O(1)$ & L2b & 浮力残差 + 分相投影閉包が鍵 \\
+毛管波（ch13）& $\sim833$ & $0.02$ & L2b（§\ref{sec:val_capillary}）& 毛管波解像 $\Delta t_\text{cap}$ が鍵 \\
+水--空気インクジェット & $\sim833$ & $0.001$ & L2/L3 & 破断初期は L3 必要 \\
 マイクロ流体 T 字路 & $1000$ & $0.0001$ & L3 & 全剛性同時，L2 では step が停止 \\
 Zalesak 型（硬幾何）& $\{1\}$ & N/A & L1 & CLS 単独検証 \\
 \hline

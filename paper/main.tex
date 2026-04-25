@@ -28,7 +28,7 @@
 \input{sections/03_levelset}          %% §3：CLS 法（なぜ必要か）
 \input{sections/03b_cls_transport}    %% §3続き：保存形移流・再初期化方程式
 \input{sections/03c_levelset_mapping} %% §3続き：ψ-φ 関係・逆変換・曲率安定化
-\input{sections/03d_ridge_eikonal}    %% §3.4：Ridge--Eikonal ハイブリッド再初期化（SP-B + SP-E）
+\input{sections/03d_ridge_eikonal}    %% §3.4：Ridge--Eikonal ハイブリッド再初期化
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
@@ -37,11 +37,11 @@
 
 %% §4: CCD法の定式化（CCD スキーム＋DCCD フィルタ＋FCCD/UCCD6/face-jet）
 \input{sections/04_ccd}               %% §4.1–§4.2（CCD 基礎・Chu--Fan ω_1,ω_2）
-\input{sections/04c_dccd_derivation}  %% §4.3（DCCD：SP-G 教示的導出；旧 04d を吸収）
+\input{sections/04c_dccd_derivation}  %% §4.3（DCCD 教示的導出；旧 04d を吸収）
 \input{sections/04b_ccd_bc}           %% §4.4（境界条件・行列構造）
-\input{sections/04e_fccd}             %% §4.5（FCCD：SP-A + SP-C）
-\input{sections/04f_uccd6}            %% §4.6（UCCD6：SP-N）
-\input{sections/04g_face_jet}         %% §4.7（面ジェット：SP-H §2）
+\input{sections/04e_fccd}             %% §4.5（FCCD 面中心演算子）
+\input{sections/04f_uccd6}            %% §4.6（UCCD6 運動量対流）
+\input{sections/04g_face_jet}         %% §4.7（面ジェット統合）
 
 %% §5: 時間積分スキームの設計
 \input{sections/05_time_integration}  %% §5（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）
@@ -50,33 +50,33 @@
 %% §6: 界面適合非一様格子
 \input{sections/06_grid}              %% §6（界面適合格子の構築 章ヘッダーを内包）
 \input{sections/06b_ccd_extensions}   %% §6続き（CCD の非一様格子適用）← 格子を知った後で
-\input{sections/06c_fccd_nonuniform}  %% §6.4 非一様 FCCD（SP-C §5）
-\input{sections/06d_ridge_eikonal_nonuniform} %% §6.5 Ridge--Eikonal 非一様（SP-E §3-§7）
+\input{sections/06c_fccd_nonuniform}  %% §6.4 非一様 FCCD
+\input{sections/06d_ridge_eikonal_nonuniform} %% §6.5 Ridge--Eikonal 非一様
 
 %% §7: 各物理項の空間離散化：CCDエンジンによるモジュール設計
-\input{sections/07_0_scheme_per_variable}  %% §7.0 変数別スキーム方針（SP-L §3）
+\input{sections/07_0_scheme_per_variable}  %% §7.0 変数別スキーム方針
 \input{sections/07_advection}         %% §7（移流項を筆頭節として再配置）
-\input{sections/07c_fccd_advection}   %% §7.3 FCCD 移流 Option B/C（SP-D）
+\input{sections/07c_fccd_advection}   %% §7.3 FCCD 移流 Option B/C
 \input{sections/07b_reinitialization} %% §7続き（CLS再初期化）
-\input{sections/07d_cls_stages}       %% §7.5 CLS A-F 6 段階（SP-L §5-§6）
-\input{sections/07e_viscous_3layer}   %% §7.6 粘性 3 層（SP-K §3-§5）
+\input{sections/07d_cls_stages}       %% §7.5 CLS A-F 6 段階
+\input{sections/07e_viscous_3layer}   %% §7.6 粘性 3 層
 \clearpage
 
 %% §8: 圧力・速度連成：Balanced-Force CCD理論
 \input{sections/08_collocate}         %% §8
 \input{sections/08b_pressure}         %% §8.2 変密度投影法
-\input{sections/08_0_bf_failure}      %% §8.2.0 BF 失敗モード F-1..F-5（SP-J §1）
-\input{sections/08_1_bf_seven_principles} %% §8.3 BF 七原則 P-1..P-7（SP-J §2）
-\input{sections/08_2_fccd_bf}         %% §8.4 FCCD BF sub-system（SP-A + SP-H §3 + SP-J §3）
-\input{sections/08c_pressure_filter}  %% §8.5 DCCD 圧力フィルタ禁止（SP-J §2 P-5）
+\input{sections/08_0_bf_failure}      %% §8.2.0 BF 失敗モード F-1..F-5
+\input{sections/08_1_bf_seven_principles} %% §8.3 BF 七原則 P-1..P-7
+\input{sections/08_2_fccd_bf}         %% §8.4 FCCD BF sub-system
+\input{sections/08c_pressure_filter}  %% §8.5 DCCD 圧力フィルタ禁止
 \clearpage
 
 %% §9: 圧力Poisson方程式の解法
 \input{sections/09_ccd_poisson}        %% §9.1–§9.2（sectionヘッダーを内包）
-\input{sections/09b_split_ppe}         %% §9.3 分相PPE解法（SP-M §5-§8 全量）
-\input{sections/09c_hfe}               %% §9.4 Hermite 場延長法（HFE）+ SP-H §4
-\input{sections/09d_defect_correction} %% §9.5 欠陥補正法 + SP-M §9 外殻剛性分解
-\input{sections/09e_ppe_bc}            %% §9.6 境界条件 + SP-C §6 / SP-D §8 (Opt III/IV)
+\input{sections/09b_split_ppe}         %% §9.3 分相PPE解法
+\input{sections/09c_hfe}               %% §9.4 Hermite 場延長法（HFE）
+\input{sections/09d_defect_correction} %% §9.5 欠陥補正法
+\input{sections/09e_ppe_bc}            %% §9.6 境界条件と Option III/IV
 \input{sections/09f_pressure_summary}  %% §9のまとめ（GPU-native FVM 詳細は付録 H へ移動）
 %% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 D.3 に統合
@@ -86,10 +86,10 @@
 \clearpage
 \part{精度検証と展望：コンポーネント精度から多相流物理現象へ}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/10_full_algorithm}    %% §10（演算子マッピング・7ステップアルゴリズム + SP-L A–H 8-phase）
-\input{sections/10_3_level_selection} %% §10.3 Level 1/2/3 選択ロジック（SP-I §3）
+\input{sections/10_full_algorithm}    %% §10（演算子マッピング・7ステップアルゴリズム）
+\input{sections/10_3_level_selection} %% §10.3 Level 1/2/3 選択ロジック
 \input{sections/10b_dccd_bootstrap}  %% §10続き（DCCDパラメタ・ブートストラップ・タイムステップ）
-\input{sections/10_5_pure_fccd_dns}   %% §10.5 純 FCCD DNS アーキテクチャ（SP-M Phase 1-4）
+\input{sections/10_5_pure_fccd_dns}   %% §10.5 純 FCCD DNS アーキテクチャ
 \clearpage
 \input{sections/11_component_verification}  %% §11：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
@@ -138,7 +138,7 @@
 %% 付録G: ブートストラップ初期化シーケンス（§10 から移動）
 \input{sections/appendix_bootstrap}             %% G.1 初期化5段階
 
-%% 付録H: GPU-native FVM 投影（SP-F, §9 から移動）
+%% 付録H: GPU-native FVM 投影
 \input{sections/appendix_gpu_fvm}                %% H.1 面ローカル演算子・可変バッチ PCR
 
 \end{document}
