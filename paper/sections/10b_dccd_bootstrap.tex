@@ -1,187 +1,27 @@
 % paper/sections/10b_dccd_bootstrap.tex
 % ═════════════════════════════════════════════════════════════════════════════
-\subsection{DCCD パラメタの設計と適応制御}
-\label{sec:dccd_params}
+% §10b 統合アルゴリズム周辺（DCCD パラメタ設計は §4c に集約済；
+%        Bootstrap は付録 H に集約済；本ファイルはタイムステップ制御のみ保持）
 % ═════════════════════════════════════════════════════════════════════════════
 
-§~\ref{sec:dccd_filter_theory} で導入した DCCD フィルタの理論的枠組みに基づき，
-本節では散逸強度 $\varepsilon_{d,\max}$ の具体的な設計値と，
-CLS 変数 $\psi$ に基づく適応制御アルゴリズムを与える．
-
-\noindent\textbf{本節のスコープ．}
-本稿では bulk 運動量移流の既定は UCCD6（§~\ref{sec:uccd6_def}）であり，
-DCCD は (i) CLS $\psi$ 移流と再初期化圧縮項（§~\ref{sec:reinit}），
-(ii) PPE RHS / Corrector のチェッカーボード抑制，
-(iii) 曲率計算の高次微分安定化，の 3 用途に限定される．
-以下の適応制御設計はこれらの用途における $\varepsilon_d$ と $S(\psi)$ の仕様である．
-
-表~\ref{tab:dccd_usage_map} に，アルゴリズム全体で DCCD フィルタが担う 3 つの役割と
-パラメータ設定を一覧する．
-
-\begin{table}[htbp]
-\centering
-\caption{DCCD フィルタのパラメータ設計一覧}
-\label{tab:dccd_usage_map}
-\small
-\begin{tabular}{llcl}
-\hline
-用途 & $\varepsilon_d$ & 適応制御 & 設計根拠 \\
-\hline
-CLS 移流（§~\ref{sec:advection_motivation}）
-  & 0.05 & あり（$S(\psi)$） & 界面プロファイル保持 \\
-PPE RHS / Corrector（§~\ref{sec:dccd_decoupling}）
-  & $1/4$ & なし（固定） & チェッカーボード完全抑制 \\
-曲率計算（§~\ref{sec:curvature}）
-  & 0.05 & あり（$S(\psi)$） & 高次微分の精度保持 \\
-\hline
-\end{tabular}
-\end{table}
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{散逸強度 \texorpdfstring{$\varepsilon_{d,\max}$}{ε\_d,max} の設計値}
-\label{sec:dccd_eps_design}
-% ─────────────────────────────────────────────────────────────────────────────
-
-フィルタ伝達関数 $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ に対し，
-低波数精度保存（波長 $\geq 6h$ で劣化 $\leq 5\%$）と
-高周波抑制（ナイキスト成分 20\% 減衰）の同時要求から，
-両制約が等号で一致する設計点が得られる
-（スペクトル設計の詳細は §~\ref{sec:dccd_filter_theory} 参照）：
-\begin{equation}
-  \boxed{\varepsilon_{d,\max} = 0.05}
-  \label{eq:eps_max}
-\end{equation}
-安定性制約 $\varepsilon_{d,\max} \leq 0.25$（式~\eqref{eq:dccd_filter_transfer}）を満足する．
-より強い安定化が必要な場合は $\varepsilon_{d,\max} = 0.10$〜$0.20$ まで拡張可能だが，
-低波数精度も同率で劣化する．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{適応散逸制御則と実装アルゴリズム}
-\label{sec:dccd_adaptive}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\textbf{適応散逸強度．}
-格子点 $i$ での散逸強度を CLS 変数 $\psi_i^n$（時刻 $t^n$）によって点別に制御する：
-\begin{equation}
-  \varepsilon_d^{(i)} \;=\; \varepsilon_{d,\max} \cdot S(\psi_i^n)
-  \;=\; \varepsilon_{d,\max}\,(2\psi_i^n - 1)^2
-  \label{eq:adaptive_eps}
-\end{equation}
-これにより：
-\begin{itemize}
-  \item $\psi_i \approx 0.5$（界面）：$\varepsilon_d^{(i)} \approx 0$，フィルタ無効，標準 CCD に退化
-  \item $\psi_i \approx 0$ または $1$（バルク）：$\varepsilon_d^{(i)} \approx \varepsilon_{d,\max}$，
-        最大散逸でノイズを積極的に排除
-\end{itemize}
-
-\begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの実装アルゴリズム}]
-\label{alg:dccd}
-\textbf{入力：} スカラー場 $f$ の格子値 $\{f_i\}$，CLS 変数 $\{\psi_i^n\}$，散逸強度 $\varepsilon_{d,\max}$
-
-\begin{enumerate}
-  \item \textbf{CCD 求解：}
-        標準 CCD ブロック Thomas アルゴリズム（§~\ref{sec:ccd_matrix}）を実行し，
-        $\{f'_i\}$，$\{f''_i\}$ を得る．
-  \item \textbf{点別散逸強度の計算：}
-        各格子点 $i$ に対して
-        \[
-          \varepsilon_d^{(i)} = \varepsilon_{d,\max}\,(2\psi_i^n - 1)^2
-        \]
-        を計算する（計算コスト：$O(N)$，数値演算 1 回/点）．
-  \item \textbf{1 次微分のフィルタ適用：}
-        \[
-          \tilde{f}'_i = f'_i + \varepsilon_d^{(i)}\,(f'_{i+1} - 2f'_i + f'_{i-1}),
-          \quad i = 1, \ldots, N-2
-        \]
-        境界点 $i=0, N-1$：周期 BC では折り返しインデックスを使用；
-        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§~\ref{sec:dccd_bc} 参照）．
-  \item \textbf{2 次微分のフィルタ適用：}
-        \[
-          \tilde{f}''_i = f''_i + \varepsilon_d^{(i)}\,(f''_{i+1} - 2f''_i + f''_{i-1}),
-          \quad i = 1, \ldots, N-2
-        \]
-  \item \textbf{後続計算への引き渡し：}
-        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ を CLS 移流，曲率計算，
-        速度勾配評価に用いる．
-        PPE 右辺・Corrector 発散のチェッカーボード抑制には，
-        本適応制御ではなく $\varepsilon_d=1/4$ の固定フィルタ
-        （§~\ref{sec:dccd_decoupling}）を用いる．
-\end{enumerate}
-
-\textbf{2 次元への拡張：}
-2 次元計算では $x$ 方向と $y$ 方向に独立に 1 次元フィルタを適用する（次元分割法）：
-\[
-  \tilde{f}'_{x,ij} = f'_{x,ij} + \varepsilon_d^{(ij)}\,(f'_{x,i+1,j} - 2f'_{x,ij} + f'_{x,i-1,j}),
-  \quad
-  \tilde{f}'_{y,ij} = f'_{y,ij} + \varepsilon_d^{(ij)}\,(f'_{y,i,j+1} - 2f'_{y,ij} + f'_{y,i,j-1})
-\]
-$f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
-
-\textbf{計算コスト：} ステップ 1（CCD，$O(N^2)$ for 2D）+ ステップ 2--4（フィルタ，$O(N^2)$）．
-フィルタは CCD の後処理として追加コストが小さい．
-また，$\tilde{f}'$ と $\tilde{f}''$ はフィルタ段階で\textbf{独立}に補正する——
-すなわち $\tilde{f}''$ は $\tilde{f}'$ から再連立せずに計算する（計算コスト削減のための設計選択）．
-\end{tcolorbox}
-
-\noindent\textbf{BF 整合性への注意（P-5, \S\ref{sec:bf_p5_curvature}）}：
-曲率平滑化を目的とする DCCD フィルタ適用は$\psi$・速度・$\kappa$ の
-\textbf{帯制限}に限定し，圧力 $p$ および毛管圧 $p_\sigma = \sigma\kappa$ には
-絶対に適用しない（\S\ref{sec:dccd_pressure_filter_prohibition}）．
-片側だけのフィルタ適用は BF P-1 対称性を破壊する
-（\S\ref{sec:dccd_pressure_filter_asymmetric}）．
-本節の $\varepsilon_d^{(i)} = \varepsilon_{d,\max}(2\psi_i-1)^2$ 適応制御は
-$S(\psi)$ が界面で消失するため界面帯制限の自然な実装となっており，
-P-5 と整合する．
+\noindent
+DCCD フィルタの散逸強度 $\varepsilon_{d,\max}$ 設計値・
+適応散逸制御則・実装アルゴリズム
+（\S\ref{sec:dccd_params}, \S\ref{sec:dccd_eps_design}, \S\ref{sec:dccd_adaptive}，
+表~\ref{tab:dccd_usage_map}，式~\eqref{eq:eps_max},
+\eqref{eq:adaptive_eps}，アルゴリズム~\ref{alg:dccd}）は
+DCCD 導出章（§\ref{sec:dccd_derivation} 末尾，第~\ref{sec:CCD}章）に集約した．
 
 % ═════════════════════════════════════════════════════════════════════════════
-\subsection{ブートストラップ処理：初期化シーケンス}
+\subsection{ブートストラップ処理}
 \label{sec:bootstrap}
 % ═════════════════════════════════════════════════════════════════════════════
 
-シミュレーション開始前に，格子--界面の循環参照を解消するため
-以下の 6 段階ブートストラップを一度だけ実行する：
-\begin{enumerate}[leftmargin=2em,noitemsep]
-  \item \textbf{Step 0（一様格子仮 SDF）：} 等間隔格子 $\Delta x_0 = L/N$ 上で
-        解析初期界面から仮の符号付距離 $\phi^{(0)}$ を評価する（幾何解析式または FMM）．
-  \item \textbf{Step 1（非一様格子生成）：} Ridge-Eikonal 誘導 $\phi^{(0)}$ から
-        界面適合非一様格子 $\{x_i\}, \{y_j\}$ を生成（§~\ref{sec:grid_2d}；
-        密度比 $\alpha = \max h / \min h$）．
-  \item \textbf{Step 2（CLS 初期化）：} 新しい非一様格子上で
-        $\psi^0_{i,j} = \tfrac{1}{2}(1+\tanh(\phi^{(0)}_{i,j}/\varepsilon_c))$ を設定
-        （$\varepsilon_c$ は CLS 厚さ，§~\ref{sec:cls_compression}）．
-  \item \textbf{Step 3（CCD 演算子構築）：} 非一様格子重みから
-        $D^{(1)}, D^{(2)}, M_{\mathrm{CCD}}, L_L, L_H$ の疎行列構造を一度だけ構築
-        （格子更新 Mode 1 では以降不変）．
-  \item \textbf{Step 3.5（非一様格子上 SDF 再初期化）：}
-        Step 0 の $\phi^{(0)}$ は一様格子幾何解析由来であり，
-        Step 1 で生成した非一様格子 $\{x_i\},\{y_j\}$ 上では
-        $|\nabla\phi^{(0)}|=1$ が一般に保たれない．
-        この差は Step 4 の Young--Laplace 圧力が依存する界面曲率
-        $\kappa^0=\nabla\!\cdot\!(\nabla\phi^{(0)}/|\nabla\phi^{(0)}|)$
-        の精度を律速し，かつ §~\ref{sec:field_extension} の HFE 精度要件
-        （$\Ord{h^6}$）と整合しない．
-        対策として，Step 3 の演算子で CLS 再初期化（§~\ref{sec:reinit}）を
-        \textbf{1 サイクル}実行し
-        $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する．
-        \textbf{精度根拠}：広帯域 $\sigma_0 = 3 h_{\min}$ の 1 サイクルで
-        $\bigl||\nabla\phi^{(0)}_\text{sdf}|-1\bigr|\le \Ord{h^4}$ が達成される
-        （CLS 再初期化の局所線形化解析；定式化は §~\ref{sec:reinit}，
-        定量的根拠は §~\ref{sec:verify_time} の 1D/2D テスト結果に従う）．
-        HFE 誤差伝播 $\varepsilon_\text{HFE} \lesssim \varepsilon_\text{sdf}\cdot|\nabla^k p|$
-        ($k\le 6$) より局所 $\Ord{h^4}$ 誤差が界面曲率精度を律速するが，
-        Step 4 Young--Laplace は時刻 0 の初期化のみであり，
-        以後の時刻発展で誤差は減衰，
-        \textbf{HFE $\Ord{h^6}$ 全体精度}は時間平均的に達成される
-        （\S\ref{sec:verify_time} で数値検証）．
-        以後の Step 4 では $\phi^{(0)}_\text{sdf}$ を用いる．
-  \item \textbf{Step 4（Young--Laplace 初期圧力）：} 高精度化された
-        $\phi^{(0)}_\text{sdf}$ から計算される初期曲率 $\kappa^0$ を用いて
-        $p^0 = p_\infty + \sigma\kappa^0 H(\phi^{(0)}_\text{sdf})$（smoothed）で初期圧力場を設定し，
-        Step 0 で測定した $\mathbf{u}^0=\mathbf{0}$ と整合させる．
-\end{enumerate}
-6 段階実行後，時刻ループ Step 1 から通常アルゴリズム（§\ref{sec:algo_flow}）が動作する．
-詳細は付録~\ref{app:bootstrap}；格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は
-§~\ref{sec:grid_ale} を参照されたい．
+シミュレーション開始前に格子--界面の循環参照を解消する
+6 段階ブートストラップ処理（一様格子仮 SDF $\to$ 非一様格子生成 $\to$ CLS 初期化 $\to$
+CCD 演算子構築 $\to$ 非一様格子上 SDF 再初期化 $\to$ Young--Laplace 初期圧力）を
+一度だけ実行する．完全な疑似コードは付録~\ref{app:bootstrap} を参照．
+格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は §~\ref{sec:grid_ale}．
 
 % ═════════════════════════════════════════════════════════════════════════════
 \subsection{タイムステップ制御}

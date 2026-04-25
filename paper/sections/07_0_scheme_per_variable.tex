@@ -51,7 +51,7 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
   \item \textbf{bulk 速度は CCD 推奨．}
         $u, v$ は $C^\infty$ 滑らか（界面帯を除く）．
         純 CCD でも安定だが，移流のスペクトル散逸欠如を補う
-        DCCD または UCCD6（\S\ref{sec:uccd6_def}）が製品版推奨．
+        DCCD または UCCD6（\S\ref{sec:uccd6_def}）が実装デフォルト推奨．
   \item \textbf{界面帯の速度は低次でよい．}
         $\nabla u$ の kink を CCD stencil が跨ぐと $\mathcal{O}(1)$ 振動．
         Definition $|\phi|\le 3h$ or phase-indicator mismatch で帯を同定し，
