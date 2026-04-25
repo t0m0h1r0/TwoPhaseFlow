@@ -4,36 +4,20 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
+from ..core.registry import SchemeRegistryMixin
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from .gradient_operator import IGradientOperator
     from .scheme_build_ctx import SurfaceTensionBuildCtx
 
 
-class INSSurfaceTensionStrategy(ABC):
+class INSSurfaceTensionStrategy(SchemeRegistryMixin, ABC):
     """Abstract interface for surface tension force computation."""
 
     _registry: ClassVar[dict[str, type["INSSurfaceTensionStrategy"]]] = {}
     _aliases:  ClassVar[dict[str, str]]                               = {}
-
-    def __init_subclass__(cls, **kw: object) -> None:
-        super().__init_subclass__(**kw)
-        for name in getattr(cls, "scheme_names", ()):
-            INSSurfaceTensionStrategy._registry[name] = cls
-        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
-            INSSurfaceTensionStrategy._aliases[alias] = canonical
-
-    @classmethod
-    def from_scheme(cls, name: str, ctx: "SurfaceTensionBuildCtx") -> "INSSurfaceTensionStrategy":
-        """Instantiate the surface tension strategy registered under *name*."""
-        canonical = cls._aliases.get(name, name)
-        klass = cls._registry.get(canonical)
-        if klass is None:
-            raise ValueError(
-                f"Unknown surface_tension_scheme {name!r}. "
-                f"Known: {sorted(cls._registry)}"
-            )
-        return klass._build(canonical, ctx)
+    _scheme_kind: ClassVar[str] = "surface_tension_scheme"
 
     @abstractmethod
     def compute(

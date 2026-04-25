@@ -18,6 +18,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import ClassVar, TYPE_CHECKING
 
+from ..core.registry import SchemeRegistryMixin
+
 if TYPE_CHECKING:
     from ..simulation.scheme_build_ctx import PPEBuildCtx
 
@@ -26,7 +28,7 @@ class MatrixAssemblyUnavailable(RuntimeError):
     """Raised when a PPE solver intentionally does not expose a sparse matrix."""
 
 
-class IPPESolver(ABC):
+class IPPESolver(SchemeRegistryMixin, ABC):
     """圧力ポアソン方程式ソルバーの抽象基底クラス。
 
     すべての具体的なソルバー実装はこのクラスを継承し、
@@ -38,25 +40,7 @@ class IPPESolver(ABC):
 
     _registry: ClassVar[dict[str, type["IPPESolver"]]] = {}
     _aliases:  ClassVar[dict[str, str]]               = {}
-
-    def __init_subclass__(cls, **kw: object) -> None:
-        super().__init_subclass__(**kw)
-        for name in getattr(cls, "scheme_names", ()):
-            IPPESolver._registry[name] = cls
-        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
-            IPPESolver._aliases[alias] = canonical
-
-    @classmethod
-    def from_scheme(cls, name: str, ctx: "PPEBuildCtx") -> "IPPESolver":
-        """Instantiate the PPE solver registered under *name*."""
-        canonical = cls._aliases.get(name, name)
-        klass = cls._registry.get(canonical)
-        if klass is None:
-            raise ValueError(
-                f"Unknown PPE solver scheme {name!r}. "
-                f"Known: {sorted(cls._registry)}"
-            )
-        return klass._build(canonical, ctx)
+    _scheme_kind: ClassVar[str] = "PPE solver scheme"
 
     @abstractmethod
     def solve(

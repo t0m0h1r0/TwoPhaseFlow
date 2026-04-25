@@ -24,6 +24,8 @@ from typing import List, ClassVar, TYPE_CHECKING
 
 import numpy as np
 
+from ..core.registry import SchemeRegistryMixin
+
 if TYPE_CHECKING:
     from .context import NSComputeContext
     from ..simulation.scheme_build_ctx import ConvectionBuildCtx
@@ -50,7 +52,7 @@ class INSTerm(ABC):
         """
 
 
-class IConvectionTerm(INSTerm):
+class IConvectionTerm(SchemeRegistryMixin, INSTerm):
     """Base class for momentum convection schemes with self-registration.
 
     Concrete classes declare ``scheme_names`` to register themselves;
@@ -59,22 +61,4 @@ class IConvectionTerm(INSTerm):
 
     _registry: ClassVar[dict[str, type["IConvectionTerm"]]] = {}
     _aliases:  ClassVar[dict[str, str]]                     = {}
-
-    def __init_subclass__(cls, **kw: object) -> None:
-        super().__init_subclass__(**kw)
-        for name in getattr(cls, "scheme_names", ()):
-            IConvectionTerm._registry[name] = cls
-        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
-            IConvectionTerm._aliases[alias] = canonical
-
-    @classmethod
-    def from_scheme(cls, name: str, ctx: "ConvectionBuildCtx") -> "IConvectionTerm":
-        """Instantiate the convection term registered under *name*."""
-        canonical = cls._aliases.get(name, name)
-        klass = cls._registry.get(canonical)
-        if klass is None:
-            raise ValueError(
-                f"Unknown convection scheme {name!r}. "
-                f"Known: {sorted(cls._registry)}"
-            )
-        return klass._build(canonical, ctx)
+    _scheme_kind: ClassVar[str] = "convection scheme"

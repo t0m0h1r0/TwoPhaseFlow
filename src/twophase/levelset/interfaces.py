@@ -16,12 +16,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, ClassVar, TYPE_CHECKING
 
+from ..core.registry import SchemeRegistryMixin
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..simulation.scheme_build_ctx import AdvectionBuildCtx
 
 
-class ILevelSetAdvection(ABC):
+class ILevelSetAdvection(SchemeRegistryMixin, ABC):
     """Abstract interface for CLS field advection operators.
 
     Implementations:
@@ -32,25 +34,7 @@ class ILevelSetAdvection(ABC):
 
     _registry: ClassVar[dict[str, type["ILevelSetAdvection"]]] = {}
     _aliases:  ClassVar[dict[str, str]]                        = {}
-
-    def __init_subclass__(cls, **kw: object) -> None:
-        super().__init_subclass__(**kw)
-        for name in getattr(cls, "scheme_names", ()):
-            ILevelSetAdvection._registry[name] = cls
-        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
-            ILevelSetAdvection._aliases[alias] = canonical
-
-    @classmethod
-    def from_scheme(cls, name: str, ctx: "AdvectionBuildCtx") -> "ILevelSetAdvection":
-        """Instantiate the advection scheme registered under *name*."""
-        canonical = cls._aliases.get(name, name)
-        klass = cls._registry.get(canonical)
-        if klass is None:
-            raise ValueError(
-                f"Unknown advection scheme {name!r}. "
-                f"Known: {sorted(cls._registry)}"
-            )
-        return klass._build(canonical, ctx)
+    _scheme_kind: ClassVar[str] = "advection scheme"
 
     @abstractmethod
     def advance(

@@ -4,35 +4,19 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
+from ..core.registry import SchemeRegistryMixin
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from .scheme_build_ctx import ViscousBuildCtx
 
 
-class IViscousPredictor(ABC):
+class IViscousPredictor(SchemeRegistryMixin, ABC):
     """Abstract interface for viscous predictor (advance velocity with viscous term)."""
 
     _registry: ClassVar[dict[str, type["IViscousPredictor"]]] = {}
     _aliases:  ClassVar[dict[str, str]]                       = {}
-
-    def __init_subclass__(cls, **kw: object) -> None:
-        super().__init_subclass__(**kw)
-        for name in getattr(cls, "scheme_names", ()):
-            IViscousPredictor._registry[name] = cls
-        for alias, canonical in getattr(cls, "_scheme_aliases", {}).items():
-            IViscousPredictor._aliases[alias] = canonical
-
-    @classmethod
-    def from_scheme(cls, name: str, ctx: "ViscousBuildCtx") -> "IViscousPredictor":
-        """Instantiate the viscous predictor registered under *name*."""
-        canonical = cls._aliases.get(name, name)
-        klass = cls._registry.get(canonical)
-        if klass is None:
-            raise ValueError(
-                f"Unknown viscous time scheme {name!r}. "
-                f"Known: {sorted(cls._registry)}"
-            )
-        return klass._build(canonical, ctx)
+    _scheme_kind: ClassVar[str] = "viscous time scheme"
 
     @abstractmethod
     def predict(
