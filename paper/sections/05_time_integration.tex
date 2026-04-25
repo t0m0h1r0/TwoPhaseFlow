@@ -264,9 +264,13 @@ $\partial_n(\delta p)|_{\partial\Omega}=0$ が
 \textbf{時刻 $n+1$ と $n$ の差分ノイマン}として閉じ，
 Chorin 法の $\partial_n p^{n+1}|_{\partial\Omega}=0$ 強制が誘起する
 $\Ord{\Delta t}$ 境界層が消える．
-従って $p_e^{n+1}-p^{n+1}=\Ord{\Delta t^2}$，
-速度補正項 $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t^2}\cdot\Delta t/\rho=\Ord{\Delta t^3}$
-で全体 $\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
+従って $p_e^{n+1}-p^{n+1}=\Ord{\Delta t^2}$．
+速度補正そのものは $\Delta t\bnabla(\delta p)/\rho^{n+1}=\Ord{\Delta t}\cdot\Delta t/\rho=\Ord{\Delta t^2}$
+（$\delta p=p^{n+1}-p^n=\Ord{\Delta t}$）で正則項として残るが，
+真値との差すなわち\textbf{補正の誤差}は
+$\Delta t\bnabla(p_e^{n+1}-p^{n+1})/\rho^{n+1}=\Ord{\Delta t^3}$ となり，
+Predictor 段階の $\Ord{\Delta t^2}$ 誤差と合わせて全体
+$\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
 変密度 $\rho^{n+1}$ が時刻 $n+1$ で評価される点が van Kan の等密度版から
 の主な拡張であり，$\rho$ の時間変化が $\Ord{\Delta t}$ なら
 精度次数は不変．完全な変密度 IPC 解析は Guermond--Salgado~\cite{Guermond2006} に従う．
@@ -295,7 +299,7 @@ Projection スプリッティング & IPC（van Kan 1986） & $\Ord{\Delta t^2}$
 
 {\small $^\dagger$ 変粘性界面（$|\bnabla\mu| \neq 0$）ではクロス微分項 $\mathcal{D}_{\mathrm{c}}$ の陽的処理が $\Ord{\Delta t}$ 誤差を導入し，界面近傍での全体時間精度が $\Ord{\Delta t}$ に律速される（注意~\ref{warn:cn_cross_derivative} 参照）．$\mu_l/\mu_g \gg 1$ の場合は AB2 外挿 $[\frac{3}{2}\mathcal{D}_{\mathrm{c}}^n - \frac{1}{2}\mathcal{D}_{\mathrm{c}}^{n-1}]$ の適用を推奨する．}
 
-{\small $^\ddagger$ 非一様格子で\textbf{Mode 2（ALE 補正なしの再生成）}（§\ref{sec:grid_ale}）を採用すると，格子速度 $\bm{v}_\text{mesh}$ 補正の省略により上記時間精度は $\Ord{\Delta t}$ に劣化する．本稿の Level 2 既定は\textbf{Mode 1（固定格子）}または\textbf{Mode 3（ALE 補正付き再生成）}を仮定する．}
+{\small $^\ddagger$ 非一様格子で\textbf{Mode 2（ALE 補正なしの再生成）}（§\ref{sec:grid_ale}）を採用すると，格子速度 $\bm{v}_\text{mesh}$ 補正の省略により上記時間精度は $\Ord{\Delta t}$ に劣化する．本稿の Level 2 既定は\textbf{Mode 1（時間固定格子）}を仮定する（ALE 補正付き再生成は将来拡張）．}
 
 本スキームの\textbf{均質流域での全体時間精度は $\Ord{\Delta t^2}$（2次精度）}である．
 界面近傍（$\mu_l/\mu_g \gg 1$）では上記 $^\dagger$ の注意が適用され，

@@ -136,19 +136,21 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
 波数 $\xi = k H$ に対する Fourier シンボル：
 \begin{equation}
   \hat M^{\FCCD}(\xi)
-  \;=\; \frac{2i\sin(\xi/2)}{H}\cdot e^{-i\xi/2}
+  \;=\; \frac{i\sin(\xi)}{H}
         \;\cdot\;
         \left[1 + \frac{\omega_2(\xi)^2}{24}\right]
   \label{eq:fccd_fourier_symbol}
 \end{equation}
-ここで $\omega_2(\xi)$ は CCD 2 階微分の無次元有効波数で
-$\hat q_i = -\omega_2(\xi)^2\hat u_i/H^2$ を満たす（§\ref{sec:ccd_def} 参照）．
-括弧内因子は $\hat D_2\hat S_{\CCD} = (H^2/24)\hat S_{\CCD}\cdot(2i\sin(\xi/2)/H)$ から導かれ，
-$H^2/24\cdot(-\omega_2^2/H^2)=-\omega_2^2/24$ で無次元化が閉じる．
-Taylor 展開 $\omega_2(\xi)^2 = \xi^2 + \Ord{\xi^6}$ を代入すると
-$\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，
-式~\eqref{eq:fccd_fourth_order} の 4 次精度が
-Fourier レベルでも確認される．
+ここで前段因子 $i\sin(\xi)/H$ は中央差分の Fourier シンボル
+（$(q_{i+1}-q_{i-1})/(2H) \mapsto i\sin(\xi)/H$，純虚数で散逸ゼロ）であり，
+$\omega_2(\xi)$ は CCD 2 階微分の無次元有効波数
+$\hat q_i = -\omega_2(\xi)^2\hat u_i/H^2$（§\ref{sec:ccd_def}）である．
+括弧内因子は $\hat D_2 = (H/24)\cdot i\sin(\xi)/H$（混合項の中央差分シンボル）と
+$\hat S_{\CCD} = -\omega_2^2/H^2$（CCD ソース）の積から得られ，
+$H^2/24\cdot(-\omega_2^2/H^2) = -\omega_2^2/24$ で無次元化が閉じる．
+Taylor 展開 $\omega_2(\xi)^2 = \xi^2 + \Ord{\xi^8}$（式~\eqref{eq:ccd_omega_12}）を代入すると
+$\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，純虚数性（散逸ゼロ）が
+保たれたまま式~\eqref{eq:fccd_fourth_order} の 4 次精度が Fourier レベルで確認される．
 
 % -------------------------------------------------------------------------------
 \subsubsection{非一様格子への拡張（概要）}
