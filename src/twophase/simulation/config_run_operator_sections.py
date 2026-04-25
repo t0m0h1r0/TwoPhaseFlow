@@ -7,6 +7,7 @@ from .config_constants import (
     _ADVECTION_SCHEMES,
     _CONVECTION_SCHEME_ALIASES,
     _CONVECTION_SCHEMES,
+    _CONVECTION_TIME_SCHEMES,
     _CURVATURE_SCHEMES,
     _INTERFACE_TIME_SCHEMES,
     _MOMENTUM_FORMS,
@@ -19,6 +20,7 @@ from .config_constants import (
 from .config_run_poisson_sections import parse_run_poisson_settings
 from .ns_option_canonicalizer import (
     CONVECTION_TIME_SCHEME_ALIASES,
+    VISCOUS_TIME_SCHEME_ALIASES,
     canonicalize_momentum_gradient_scheme,
     canonicalize_surface_tension_gradient_scheme,
     validate_pressure_jump_ppe_compatibility,
@@ -83,7 +85,7 @@ def parse_run_operator_settings(
     )
     convection_time_scheme = parse_time_integrator(
         convection,
-        ("ab2", "forward_euler"),
+        _CONVECTION_TIME_SCHEMES,
         layout["paths"]["convection_time"],
         default="ab2",
         aliases=CONVECTION_TIME_SCHEME_ALIASES,
@@ -165,7 +167,18 @@ def parse_run_operator_settings(
         viscosity,
         _VISCOUS_TIME_SCHEMES,
         layout["paths"]["viscosity_time"],
+        aliases=VISCOUS_TIME_SCHEME_ALIASES,
     )
+    if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":
+        raise ValueError(
+            f"{layout['paths']['convection_time']}='imex_bdf2' requires "
+            f"{layout['paths']['viscosity_time']}='implicit_bdf2'"
+        )
+    if viscous_time_scheme == "implicit_bdf2" and convection_time_scheme != "imex_bdf2":
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}='implicit_bdf2' requires "
+            f"{layout['paths']['convection_time']}='imex_bdf2'"
+        )
     return {
         "poisson_coefficient": poisson_settings["poisson_coefficient"],
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],

@@ -156,6 +156,7 @@ class TwoPhaseNSSolver:
         surface_tension_gradient_scheme: str | None = None,
         momentum_gradient_scheme: str = "projection_consistent",
         viscous_spatial_scheme: str = "ccd_bulk",
+        viscous_time_scheme: str | None = None,
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         preserve_projected_faces: bool = False,
@@ -225,6 +226,10 @@ class TwoPhaseNSSolver:
                 surface_tension_gradient_scheme=surface_tension_gradient_scheme,
                 momentum_gradient_scheme=momentum_gradient_scheme,
                 viscous_spatial_scheme=viscous_spatial_scheme,
+                viscous_time_scheme=(
+                    viscous_time_scheme
+                    or ("crank_nicolson" if cn_viscous else "forward_euler")
+                ),
                 uccd6_sigma=uccd6_sigma,
                 face_flux_projection=face_flux_projection,
                 preserve_projected_faces=preserve_projected_faces,
@@ -471,6 +476,8 @@ class TwoPhaseNSSolver:
         self._p_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
+        self._velocity_prev = None
+        self._velocity_bdf2_ready = False
         reset_ns_runtime_contexts(self)
         return result.psi, result.u, result.v
 
@@ -582,6 +589,7 @@ class TwoPhaseNSSolver:
                 h_min=self.h_min,
                 alpha_grid=self._alpha_grid,
                 cn_viscous=self._cn_viscous,
+                viscous_time_scheme=self._viscous_time_scheme,
                 h_axes=h_axes,
             )
         return self._runtime_timestep_ctx
@@ -664,7 +672,13 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Advance the momentum predictor stage."""
-        state, self._conv_ab2_ready, self._conv_prev = compute_ns_predictor_stage(
+        (
+            state,
+            self._conv_ab2_ready,
+            self._conv_prev,
+            self._velocity_bdf2_ready,
+            self._velocity_prev,
+        ) = compute_ns_predictor_stage(
             state,
             backend=self._backend,
             ccd=self._ccd,
@@ -673,6 +687,8 @@ class TwoPhaseNSSolver:
             scheme_runtime=self._scheme_runtime,
             conv_ab2_ready=self._conv_ab2_ready,
             conv_prev=self._conv_prev,
+            velocity_bdf2_ready=self._velocity_bdf2_ready,
+            velocity_prev=self._velocity_prev,
             projection_consistent_buoyancy=self._projection_consistent_buoyancy,
         )
         return state

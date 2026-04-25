@@ -7,6 +7,8 @@ import numpy as np
 from ..ns_terms.context import NSComputeContext
 from .ns_step_state import NSStepState
 
+IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
+
 
 def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
     """Build density and viscosity fields for the current step."""
@@ -67,8 +69,10 @@ def compute_ns_predictor_stage(
     scheme_runtime,
     conv_ab2_ready: bool,
     conv_prev,
+    velocity_bdf2_ready: bool = False,
+    velocity_prev=None,
     projection_consistent_buoyancy: bool,
-) -> tuple[NSStepState, bool, tuple | None]:
+) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
     conv_ctx = NSComputeContext(
@@ -85,6 +89,14 @@ def compute_ns_predictor_stage(
 
     next_conv_prev = conv_prev
     next_conv_ab2_ready = conv_ab2_ready
+    next_velocity_prev = velocity_prev
+    next_velocity_bdf2_ready = velocity_bdf2_ready
+    bdf2_history_ready = (
+        conv_ab2_ready
+        and conv_prev is not None
+        and velocity_bdf2_ready
+        and velocity_prev is not None
+    )
     if scheme_runtime.convection_time_scheme == "ab2":
         if conv_ab2_ready and conv_prev is not None:
             conv_step_u = 1.5 * conv_u - 0.5 * conv_prev[0]
@@ -94,23 +106,63 @@ def compute_ns_predictor_stage(
             conv_step_v = conv_v
         next_conv_prev = (xp.copy(conv_u), xp.copy(conv_v))
         next_conv_ab2_ready = True
+    elif scheme_runtime.convection_time_scheme == "imex_bdf2":
+        if bdf2_history_ready:
+            conv_step_u = 2.0 * conv_u - conv_prev[0]
+            conv_step_v = 2.0 * conv_v - conv_prev[1]
+        else:
+            conv_step_u = conv_u
+            conv_step_v = conv_v
+        next_conv_prev = (xp.copy(conv_u), xp.copy(conv_v))
+        next_conv_ab2_ready = True
     else:
         conv_step_u = conv_u
         conv_step_v = conv_v
 
-    state.u_star, state.v_star = viscous_predictor.predict(
-        state.u,
-        state.v,
-        conv_step_u,
-        conv_step_v,
-        state.mu_field,
-        state.rho,
-        state.dt,
-        ccd,
-        buoy_v=buoy_v,
-        psi=state.psi,
+    if scheme_runtime.convection_time_scheme == "imex_bdf2" and bdf2_history_ready:
+        state.projection_dt = IMEX_BDF2_PROJECTION_FACTOR * state.dt
+        if not hasattr(viscous_predictor, "predict_bdf2"):
+            raise TypeError(
+                "IMEX-BDF2 momentum requires a viscous predictor with predict_bdf2()."
+            )
+        state.u_star, state.v_star = viscous_predictor.predict_bdf2(
+            state.u,
+            state.v,
+            velocity_prev[0],
+            velocity_prev[1],
+            conv_step_u,
+            conv_step_v,
+            state.mu_field,
+            state.rho,
+            state.dt,
+            ccd,
+            buoy_v=buoy_v,
+            psi=state.psi,
+        )
+    else:
+        state.projection_dt = state.dt
+        state.u_star, state.v_star = viscous_predictor.predict(
+            state.u,
+            state.v,
+            conv_step_u,
+            conv_step_v,
+            state.mu_field,
+            state.rho,
+            state.dt,
+            ccd,
+            buoy_v=buoy_v,
+            psi=state.psi,
+        )
+    if scheme_runtime.convection_time_scheme == "imex_bdf2":
+        next_velocity_prev = (xp.copy(state.u), xp.copy(state.v))
+        next_velocity_bdf2_ready = True
+    return (
+        state,
+        next_conv_ab2_ready,
+        next_conv_prev,
+        next_velocity_bdf2_ready,
+        next_velocity_prev,
     )
-    return state, next_conv_ab2_ready, next_conv_prev
 
 
 def solve_ns_pressure_stage(
@@ -124,7 +176,8 @@ def solve_ns_pressure_stage(
 ) -> tuple[NSStepState, object, np.ndarray]:
     """Solve PPE and prepare the corrector pressure field."""
     xp = backend.xp
-    rhs = div_op.divergence([state.u_star, state.v_star]) / state.dt
+    projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
+    rhs = div_op.divergence([state.u_star, state.v_star]) / projection_dt
     rhs = rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
     if state.debug_scalars is not None:
         state.debug_scalars.append(xp.max(xp.abs(rhs)))
@@ -139,7 +192,7 @@ def solve_ns_pressure_stage(
     state.pressure = ppe_solver.solve(
         rhs,
         state.rho,
-        dt=state.dt,
+        dt=projection_dt,
         p_init=p_prev_dev,
     )
     next_p_prev_dev = getattr(ppe_solver, "last_base_pressure", state.pressure)
@@ -167,6 +220,7 @@ def correct_ns_velocity_stage(
 ) -> NSStepState:
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
+    projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     dp_dx = pressure_grad_op.gradient(state.p_corrector, 0)
     dp_dy = pressure_grad_op.gradient(state.p_corrector, 1)
     if state.debug_scalars is not None:
@@ -190,7 +244,7 @@ def correct_ns_velocity_stage(
                 [state.u_star, state.v_star],
                 state.p_corrector,
                 state.rho,
-                state.dt,
+                projection_dt,
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
             )
@@ -201,14 +255,14 @@ def correct_ns_velocity_stage(
                 [state.u_star, state.v_star],
                 state.p_corrector,
                 state.rho,
-                state.dt,
+                projection_dt,
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
             )
     else:
         state.projected_face_components = None
-        state.u = state.u_star - state.dt / state.rho * dp_dx + state.dt * state.f_x / state.rho
-        state.v = state.v_star - state.dt / state.rho * dp_dy + state.dt * state.f_y / state.rho
+        state.u = state.u_star - projection_dt / state.rho * dp_dx + projection_dt * state.f_x / state.rho
+        state.v = state.v_star - projection_dt / state.rho * dp_dy + projection_dt * state.f_y / state.rho
     preserve_face_state = (
         preserve_projected_faces
         and state.projected_face_components is not None

@@ -43,6 +43,7 @@ class NSRuntimeComponentOptions:
     cn_viscous: bool
     reynolds_number: float
     viscous_spatial_scheme: str
+    viscous_time_scheme: str
     surface_tension_scheme: str
 
 
@@ -107,6 +108,7 @@ def build_ns_runtime_components(
     viscous_predictor = build_ns_viscous_predictor(
         backend=backend,
         cn_viscous=options.cn_viscous,
+        viscous_time_scheme=options.viscous_time_scheme,
         reynolds_number=options.reynolds_number,
         viscous_spatial_scheme=options.viscous_spatial_scheme,
     )

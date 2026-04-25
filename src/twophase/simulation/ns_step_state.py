@@ -56,6 +56,7 @@ class NSStepState:
     pressure: Any = None
     p_corrector: Any = None
     projected_face_components: list[Any] | None = None
+    projection_dt: float | None = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":
@@ -80,4 +81,5 @@ class NSStepState:
             mu_g=inputs.mu_g,
             bc_hook=inputs.bc_hook,
             step_index=int(inputs.step_index),
+            projection_dt=float(inputs.dt),
         )

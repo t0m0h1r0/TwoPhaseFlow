@@ -7,6 +7,7 @@ from .config_constants import (
     _MOMENTUM_GRADIENT_ALIASES,
     _MOMENTUM_GRADIENT_SCHEMES,
     _PPE_TO_PRESSURE_SCHEME,
+    _VISCOUS_TIME_SCHEMES,
 )
 from .config_sections import validate_choice
 
@@ -15,8 +16,22 @@ CONVECTION_TIME_SCHEME_ALIASES = {
     "adams_bashforth_2": "ab2",
     "adams_bashforth": "ab2",
     "ab_2": "ab2",
+    "bdf2": "imex_bdf2",
+    "ext2_bdf2": "imex_bdf2",
+    "imex-bdf2": "imex_bdf2",
     "forward_euler": "forward_euler",
     "euler": "forward_euler",
+}
+VISCOUS_TIME_SCHEME_ALIASES = {
+    "explicit": "forward_euler",
+    "euler": "forward_euler",
+    "forward-euler": "forward_euler",
+    "cn": "crank_nicolson",
+    "crank-nicolson": "crank_nicolson",
+    "bdf2": "implicit_bdf2",
+    "implicit-bdf2": "implicit_bdf2",
+    "imex_bdf2": "implicit_bdf2",
+    "imex-bdf2": "implicit_bdf2",
 }
 PRESSURE_JUMP_PPE_COEFFICIENT = "phase_separated"
 PRESSURE_JUMP_INTERFACE_COUPLING = "jump_decomposition"
@@ -29,7 +44,19 @@ def canonicalize_convection_time_scheme(raw) -> str:
     if canonical not in _CONVECTION_TIME_SCHEMES:
         raise ValueError(
             "Unsupported convection_time_scheme="
-            f"{canonical!r}; use ab2|forward_euler."
+            f"{canonical!r}; use ab2|forward_euler|imex_bdf2."
+        )
+    return canonical
+
+
+def canonicalize_viscous_time_scheme(raw) -> str:
+    """Return the canonical viscous time integrator name."""
+    value = str(raw).strip().lower()
+    canonical = VISCOUS_TIME_SCHEME_ALIASES.get(value, value)
+    if canonical not in _VISCOUS_TIME_SCHEMES:
+        raise ValueError(
+            "Unsupported viscous_time_scheme="
+            f"{canonical!r}; use forward_euler|crank_nicolson|implicit_bdf2."
         )
     return canonical
 

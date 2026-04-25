@@ -9,6 +9,7 @@ from .ns_option_canonicalizer import (
     canonicalize_momentum_gradient_scheme,
     canonicalize_ppe_solver_name,
     canonicalize_surface_tension_gradient_scheme,
+    canonicalize_viscous_time_scheme,
     pressure_scheme_for_ppe_solver,
     validate_pressure_jump_ppe_compatibility,
 )
@@ -53,6 +54,7 @@ class NSPPERuntimeState:
 @dataclass(frozen=True)
 class NSSchemeRuntimeState:
     convection_time_scheme: str
+    viscous_time_scheme: str
     momentum_gradient_scheme: str
     pressure_gradient_scheme: str
     surface_tension_gradient_scheme: str
@@ -188,6 +190,22 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
     convection_time_scheme = canonicalize_convection_time_scheme(
         options.convection_time_scheme
     )
+    raw_viscous_time_scheme = getattr(
+        options,
+        "viscous_time_scheme",
+        "crank_nicolson" if getattr(options, "cn_viscous", False) else "forward_euler",
+    )
+    viscous_time_scheme = canonicalize_viscous_time_scheme(raw_viscous_time_scheme)
+    if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":
+        raise ValueError(
+            "convection_time_scheme='imex_bdf2' requires "
+            "viscosity.time_integrator='implicit_bdf2'."
+        )
+    if viscous_time_scheme == "implicit_bdf2" and convection_time_scheme != "imex_bdf2":
+        raise ValueError(
+            "viscosity.time_integrator='implicit_bdf2' requires "
+            "convection.time_integrator='imex_bdf2'."
+        )
     momentum_gradient_scheme = canonicalize_momentum_gradient_scheme(
         options.momentum_gradient_scheme
     )
@@ -202,6 +220,7 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
 
     return NSSchemeRuntimeState(
         convection_time_scheme=convection_time_scheme,
+        viscous_time_scheme=viscous_time_scheme,
         momentum_gradient_scheme=momentum_gradient_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,

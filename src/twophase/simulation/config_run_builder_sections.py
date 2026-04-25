@@ -55,7 +55,10 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         reinit_eps_scale=float(options.reinit_profile.get("eps_scale", 1.0)),
         print_every=int(options.time_cfg.get("print_every", 100)),
         dt_fixed=opt_float(dt_fixed_raw),
-        cn_viscous=(options.operator_settings["viscous_time_scheme"] == "crank_nicolson"),
+        cn_viscous=(
+            options.operator_settings["viscous_time_scheme"]
+            in {"crank_nicolson", "implicit_bdf2"}
+        ),
         reinit_every=int(options.reinit_schedule["every_steps"]),
         reproject_mode=options.reproject_mode,
         phi_primary_transport=parse_tracking_primary(

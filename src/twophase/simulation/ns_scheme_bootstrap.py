@@ -49,6 +49,8 @@ def bind_ns_scheme_runtime_artifacts(solver, artifacts: NSSchemeRuntimeArtifacts
     bind_ns_scheme_runtime(solver, artifacts.state)
     solver._conv_prev = None
     solver._conv_ab2_ready = False
+    solver._velocity_prev = None
+    solver._velocity_bdf2_ready = False
 
 
 def build_ns_scheme_operator_stack(

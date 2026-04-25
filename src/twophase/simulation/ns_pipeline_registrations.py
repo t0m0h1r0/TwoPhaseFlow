@@ -31,7 +31,11 @@ from .velocity_reprojector import (
     LegacyReprojector,
     VariableDensityReprojector,
 )
-from .viscous_predictor import CNViscousPredictor, ExplicitViscousPredictor
+from .viscous_predictor import (
+    CNViscousPredictor,
+    ExplicitViscousPredictor,
+    ImplicitBDF2ViscousPredictor,
+)
 
 __all__ = [
     "LevelSetAdvection",
@@ -58,4 +62,5 @@ __all__ = [
     "ConsistentIIMReprojector",
     "ExplicitViscousPredictor",
     "CNViscousPredictor",
+    "ImplicitBDF2ViscousPredictor",
 ]

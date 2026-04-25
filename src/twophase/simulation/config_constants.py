@@ -47,10 +47,10 @@ _SURFACE_TENSION_ALIASES = {
     "gfm_jump": "pressure_jump",
     "ppe_jump": "pressure_jump",
 }
-_VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson")
+_VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson", "implicit_bdf2")
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
-_CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler")
+_CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler", "imex_bdf2")
 _MOMENTUM_FORMS = ("primitive_velocity",)
 _VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legacy")
 _VISCOUS_SPATIAL_ALIASES = {

@@ -63,12 +63,12 @@ numerics:
     terms:
       convection:
         spatial: uccd6
-        time_integrator: ab2
+        time_integrator: imex_bdf2
       pressure:
         gradient: fccd
       viscosity:
         spatial: ccd
-        time_integrator: crank_nicolson
+        time_integrator: implicit_bdf2
       surface_tension:
         formulation: pressure_jump
   projection:

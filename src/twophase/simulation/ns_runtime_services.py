@@ -32,6 +32,7 @@ class NSTimestepEstimateContext:
     h_min: float
     alpha_grid: float
     cn_viscous: bool
+    viscous_time_scheme: str = "forward_euler"
     h_axes: tuple[float, ...] | None = None
 
 
@@ -113,7 +114,10 @@ def compute_runtime_dt_max(
     nu_max = mu_max / rho_min
     inv_h2_sum = sum(1.0 / (float(h_axis) ** 2) for h_axis in h_axes)
     explicit_visc_dt = 1.0 / (2.0 * nu_max * inv_h2_sum)
-    dt_visc = (2.0 if context.cn_viscous else 1.0) * explicit_visc_dt
+    if context.viscous_time_scheme == "implicit_bdf2":
+        dt_visc = float("inf")
+    else:
+        dt_visc = (2.0 if context.cn_viscous else 1.0) * explicit_visc_dt
 
     if physics.sigma > 0.0:
         rho_sum = physics.rho_l + physics.rho_g

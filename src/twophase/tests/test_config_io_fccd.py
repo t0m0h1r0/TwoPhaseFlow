@@ -126,7 +126,9 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
 
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
+    assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"
@@ -161,6 +163,8 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.phi_primary_transport is False
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
+    assert cfg.run.convection_time_scheme == "imex_bdf2"
+    assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
 
 
@@ -541,6 +545,32 @@ def test_invalid_viscous_time_scheme_rejected():
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
                 "momentum": {"terms": {"viscosity": {"time_integrator": "rk4"}}},
+            },
+        }))
+
+
+def test_imex_bdf2_requires_implicit_bdf2_viscosity():
+    with pytest.raises(ValueError, match="viscosity.time_integrator"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "convection": {"time_integrator": "imex_bdf2"},
+                    },
+                },
+            },
+        }))
+
+
+def test_implicit_bdf2_viscosity_requires_imex_bdf2_convection():
+    with pytest.raises(ValueError, match="convection.time_integrator"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "viscosity": {"time_integrator": "implicit_bdf2"},
+                    },
+                },
             },
         }))
 

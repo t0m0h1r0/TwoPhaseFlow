@@ -90,6 +90,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "csf")),
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "ab2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
+            viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "forward_euler")),
             pressure_gradient_scheme=str(
                 getattr(run, "pressure_gradient_scheme", "projection_consistent")
             ),

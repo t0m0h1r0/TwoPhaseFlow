@@ -50,10 +50,15 @@ class IViscousPredictor(SchemeRegistryMixin, ABC):
         """
 
 
-from .viscous_predictors import CNViscousPredictor, ExplicitViscousPredictor
+from .viscous_predictors import (
+    CNViscousPredictor,
+    ExplicitViscousPredictor,
+    ImplicitBDF2ViscousPredictor,
+)
 
 __all__ = [
     "IViscousPredictor",
     "ExplicitViscousPredictor",
     "CNViscousPredictor",
+    "ImplicitBDF2ViscousPredictor",
 ]

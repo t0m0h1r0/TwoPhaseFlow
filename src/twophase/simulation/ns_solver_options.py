@@ -82,6 +82,7 @@ class SolverSchemeOptions:
     surface_tension_gradient_scheme: str | None = None
     momentum_gradient_scheme: str = "projection_consistent"
     viscous_spatial_scheme: str = "ccd_bulk"
+    viscous_time_scheme: str = "forward_euler"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
     preserve_projected_faces: bool = False
