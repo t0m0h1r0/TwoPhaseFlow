@@ -7,23 +7,23 @@ single script replaces the 8 individual ``exp13_0X_*.py`` wrappers.
 Usage
 -----
   # Single run (no sweep)
-  python experiment/ch13/run.py exp13_03_rising_bubble
+  python experiment/ch13/run.py ch13_capillary_water_air_alpha2_n128
 
-  # Sweep (if YAML has ``sweep:`` section)
-  python experiment/ch13/run.py exp13_04_rt_sigma
+  # Rising bubble
+  python experiment/ch13/run.py ch13_rising_bubble_water_air_alpha2_n128x256
 
   # Re-plot only (from saved .npz)
-  python experiment/ch13/run.py exp13_03_rising_bubble --plot-only
+  python experiment/ch13/run.py ch13_capillary_water_air_alpha2_n128 --plot-only
 
-  # Run all 8 experiments sequentially
+  # Run both checked-in §13 production configs sequentially
   python experiment/ch13/run.py --all
 
 Config resolution
 -----------------
-  exp13_03_rising_bubble
-    → config/exp13_03_rising_bubble.yaml
+  ch13_capillary_water_air_alpha2_n128
+    → config/ch13_capillary_water_air_alpha2_n128.yaml
 
-  config/exp13_03_rising_bubble.yaml
+  config/ch13_capillary_water_air_alpha2_n128.yaml
     → as-is (relative to this script)
 
 Sweep support
@@ -67,6 +67,16 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
                 [np.asarray(snap[field]) for snap in snaps],
                 axis=0,
             )
+    if "p" in snaps[0]:
+        flat["fields/pressure"] = flat["fields/p"]
+    if "u" in snaps[0] and "v" in snaps[0]:
+        flat["fields/velocity"] = np.stack(
+            [
+                np.stack([np.asarray(snap["u"]), np.asarray(snap["v"])], axis=0)
+                for snap in snaps
+            ],
+            axis=0,
+        )
 
     if "grid_coords" in snaps[0]:
         for axis, coord in enumerate(snaps[0]["grid_coords"]):
@@ -82,7 +92,7 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         "psi": "fields/psi",
         "u": "fields/u",
         "v": "fields/v",
-        "p": "fields/p",
+        "p": "fields/pressure" if "fields/pressure" in results else "fields/p",
         "rho": "fields/rho",
     }
     grid_coords = []
@@ -297,7 +307,7 @@ def main():
     args = parser.parse_args()
 
     if args.all:
-        configs = sorted((BASE / "config").glob("exp13_*.yaml"))
+        configs = sorted((BASE / "config").glob("*.yaml"))
         for cp in configs:
             _dispatch(cp, plot_only=args.plot_only)
         return

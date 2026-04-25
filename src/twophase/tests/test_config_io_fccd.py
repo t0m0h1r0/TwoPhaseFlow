@@ -164,28 +164,6 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
 
 
-def test_ch13_rising_bubble_facepreserve_yaml_loads_projection_poc():
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_facepreserve_debug.yaml"
-    )
-    cfg = ExperimentConfig.from_yaml(path)
-
-    assert cfg.run.face_flux_projection is True
-    assert cfg.run.preserve_projected_faces is True
-
-
-def test_ch13_rising_bubble_buoyancyproj_yaml_loads_projection_poc():
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256_buoyancyproj_debug.yaml"
-    )
-    cfg = ExperimentConfig.from_yaml(path)
-
-    assert cfg.run.face_flux_projection is True
-    assert cfg.run.projection_consistent_buoyancy is True
-
-
 def test_fccd_ppe_discretization_maps_to_fccd_solver():
     cfg = ExperimentConfig.from_dict(_minimal({
         "numerics": {

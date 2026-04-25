@@ -2,7 +2,7 @@
 """
 exp13_06_capwave_waterair_n128.py — Wrapper for ch13 unified runner
 
-Remote-compatible wrapper for ch13/run.py with config ch13_06_capwave_waterair_n128.
+Remote-compatible wrapper for ch13/run.py with config ch13_capillary_water_air_alpha2_n128.
 Enables: make cycle EXP=experiment/ch13/exp13_06_capwave_waterair_n128.py
 
 Background: WIKI-X-020 (Ridge-Eikonal → IIM chain)
@@ -26,5 +26,5 @@ from run import main
 
 if __name__ == "__main__":
     # Override sys.argv to inject config name
-    sys.argv = ["run.py", "ch13_06_capwave_waterair_n128"]
+    sys.argv = ["run.py", "ch13_capillary_water_air_alpha2_n128"]
     main()
