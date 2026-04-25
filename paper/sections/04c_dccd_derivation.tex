@@ -15,26 +15,38 @@
 
 §~\ref{sec:ccd_bc}--§~\ref{sec:ccd_matrix} で確立した
 基底 CCD のブロック Thomas 行列に対する
-\textbf{post-filter} として DCCD を導出する．
-すなわち本節の主役は基底 CCD の解 $(f, f', f'')$ ではなく，
+\textbf{散逸 post-filter} として DCCD を導出する．
+本節の主役は基底 CCD の解 $(f, f', f'')$ ではなく，
 それに作用する散逸演算子そのものである．
 
-本節では DCCD フィルタを
-\textbf{1 次風上スキームの修正方程式}として再解釈し，
-Chu--Fan CCD の高次 2 次導関数を散逸チャンネルとして再利用する筋道を示す．
-DCCD は「アドホックな数値粘性追加」ではなく，
-1 次風上の安定性予算を\textbf{演算子整合}で CCD に移植した
-体系的帰結であることが導出から明らかになる．
+\medskip\noindent\textbf{なぜ基底 CCD に散逸が必要か．}
+基底 CCD（§~\ref{sec:ccd_def}）は中心差分系であり，
+最高波数 $\xi=k h\to\pi$ におけるシンボル
+$\omega_1(\xi),\omega_2(\xi)$ の挙動から，
+\textbf{Nyquist 近傍のチェッカーボード（$2h$ 波長振動）が散逸ゼロで温存される}．
+これは平滑場の純伝搬では問題ないが，
+実用シミュレーションでは離散化誤差・非線形相互作用・初期データ不規則性が
+このモードを励起し，スプリアス振動として顕在化する．
 
-\noindent\textbf{本稿における DCCD の位置付け．}
-DCCD は本稿の\textbf{CLS 移流の実装デフォルト}スキームである
-（§~\ref{sec:advection_motivation}：CCD 微分 + 後段スペクトル散逸）．
-$\psi$ は $C^0$ 急 tanh プロファイルを持つため UCCD6 では振動が出現し，
-DCCD のスペクトル散逸が必須となる．
-bulk $u, v$ 移流は Level-1/2/3 すべてで UCCD6（§~\ref{sec:uccd6_def}）を既定とし，
-DCCD は CLS 再初期化圧縮項（§~\ref{sec:reinit}）の
-非線形フラックス散逸子としても適用される．
-WENO5 は付録~\ref{app:weno5} の比較対象スキームに留める．
+\medskip\noindent\textbf{導出形と実装デフォルトの 2 段構成．}
+本節では DCCD を以下の 2 段で示す：
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{導出形}（§\ref{sec:dccd_modified_eq}--§\ref{sec:dccd_embedding}）：
+        1 次風上スキームの修正方程式から $\partial_x^2$ 散逸チャンネルを抽出し，
+        CCD の高次 $f''$ チャンネルへ\textbf{演算子整合}で移植する筋道．
+        DCCD が「アドホックな数値粘性追加」ではなく
+        1 次風上の安定性予算の体系的帰結であることを明らかにする．
+  \item \textbf{実装デフォルト}（§\ref{sec:dccd_spectral_filter}--§\ref{sec:dccd_adaptive}）：
+        伝達関数 $H(\xi)=1-4\varepsilon_d\sin^2(\xi/2)$ による
+        スペクトル post-filter 形式．
+        導出形 PDE はその低波数極限に対応する．
+\end{itemize}
+DCCD は本章の派生スキームのうち\textbf{基底 CCD への外殻 post-filter} の
+形式を取る唯一のものであり，
+散逸を演算子内部に埋め込む UCCD6（§~\ref{sec:uccd6_def}）と
+本節の post-filter 形式は対照をなす．
+具体的な用途章割当は §~\ref{sec:dccd_eps_design} の
+\textbf{適用範囲の制限}で再述するに留める．
 
 % -------------------------------------------------------------------------------
 \subsubsection{1 次風上スキームの修正方程式}
@@ -80,8 +92,7 @@ $\nu<1$ で右辺 Laplacian は厳密に散逸的；
 \end{equation}
 CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
 低次有限差分で代用するとステンシル整合性が崩れ，
-修正波数の不整合が Balanced-Force 原理
-（§\ref{sec:balanced_force}）と同じ系統の残差を生む．
+修正波数の不整合が散逸チャンネルの精度を $\Ord{h^2}$ まで劣化させる．
 
 % -------------------------------------------------------------------------------
 \subsubsection{実装デフォルト：スペクトルフィルタとの関係}
@@ -135,7 +146,7 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
 
 \noindent\textbf{Post-filter 形での実装条件．}
 本稿の DCCD は PDE 形ではなく\textbf{post-filter} 形
-$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（§\ref{sec:advection_motivation}）．
+$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dccd_filter_transfer}）．
 フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が安定の必要条件であり，
 §\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの境界値に相当する
 （過剰散逸を避けつつチェッカーボードを最大限に抑える設計値）．
@@ -219,30 +230,29 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（§\ref{sec:advec
 CLS 変数 $\psi$ に基づく適応制御アルゴリズムを与える．
 
 \noindent\textbf{本節のスコープ．}
-本稿では bulk 運動量移流の既定は UCCD6（§~\ref{sec:uccd6_def}）であり，
-DCCD は (i) CLS $\psi$ 移流と再初期化圧縮項（§~\ref{sec:reinit}），
-(ii) PPE RHS / Corrector のチェッカーボード抑制，
-(iii) 曲率計算の高次微分安定化，の 3 用途に限定される．
-以下の適応制御設計はこれらの用途における $\varepsilon_d$ と $S(\psi)$ の仕様である．
+本節では DCCD の散逸強度パラメータ $\varepsilon_d$ と
+適応制御スイッチ $S(\psi)$ の \textbf{数値設計}を扱う．
+スキーム単独の数値特性（フィルタ伝達関数・安定性条件・収束性）が中心であり，
+具体的な用途章割当（CLS 移流・チェッカーボード抑制・曲率帯制限など）の
+機構詳細は当該章（§~\ref{sec:cls_advection} 以降）に委ねる．
 
-表~\ref{tab:dccd_usage_map} に，アルゴリズム全体で DCCD フィルタが担う 3 つの役割と
-パラメータ設定を一覧する．
+表~\ref{tab:dccd_usage_map} に，本稿で DCCD が採る代表的なパラメータ設定を一覧する．
 
 \begin{table}[htbp]
 \centering
-\caption{DCCD フィルタのパラメータ設計一覧}
+\caption{DCCD フィルタのパラメータ設計一覧（用途章割当の機構詳細は §\ref{sec:cls_advection} 以降）}
 \label{tab:dccd_usage_map}
 \small
 \begin{tabular}{llcl}
 \hline
-用途 & $\varepsilon_d$ & 適応制御 & 設計根拠 \\
+適用シナリオ & $\varepsilon_d$ & 適応制御 & 設計根拠 \\
 \hline
-CLS 移流（§~\ref{sec:advection_motivation}）
+$C^0$ tanh プロファイル移流（界面）
   & 0.05 & あり（$S(\psi)$） & 界面プロファイル保持 \\
-PPE RHS / Corrector（§~\ref{sec:dccd_decoupling}）
-  & $1/4$ & なし（固定） & チェッカーボード完全抑制 \\
-曲率計算（§~\ref{sec:curvature}）
-  & 0.05 & あり（$S(\psi)$） & 高次微分の精度保持 \\
+平滑場・チェッカーボード抑制
+  & $1/4$ & なし（固定） & 安定性上限・Nyquist 完全抑制 \\
+高次導関数の帯制限
+  & 0.05 & あり（$S(\psi)$） & 数値振動を界面外で抑制 \\
 \hline
 \end{tabular}
 \end{table}
@@ -333,14 +343,12 @@ $f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
 すなわち $\tilde{f}''$ は $\tilde{f}'$ から再連立せずに計算する（計算コスト削減のための設計選択）．
 \end{tcolorbox}
 
-\noindent\textbf{BF 整合性への注意（P-5, \S\ref{sec:bf_p5_curvature}）}：
-曲率平滑化を目的とする DCCD フィルタ適用は$\psi$・速度・$\kappa$ の
-\textbf{帯制限}に限定し，圧力 $p$ および毛管圧 $p_\sigma = \sigma\kappa$ には
-絶対に適用しない（\S\ref{sec:dccd_pressure_filter_prohibition}）．
-片側だけのフィルタ適用は BF P-1 対称性を破壊する
-（\S\ref{sec:dccd_pressure_filter_asymmetric}）．
-本節の $\varepsilon_d^{(i)} = \varepsilon_{d,\max}(2\psi_i-1)^2$ 適応制御は
-$S(\psi)$ が界面で消失するため界面帯制限の自然な実装となっており，
-P-5 と整合する．
+\noindent\textbf{適用範囲の制限．}
+$\varepsilon_d^{(i)} = \varepsilon_{d,\max}(2\psi_i-1)^2$ という適応制御は
+$S(\psi)$ が界面で消失する性質を持ち，
+DCCD フィルタを\textbf{界面帯外に限定して適用}する自然な実装となっている．
+均衡条件に依存する物理量（圧力場・毛管圧など）への適用可否は
+スキーム設計の問題ではなく用途章で扱う離散整合性の問題であるため，
+本節では取り扱わない．
 
 % ═══════════════════════════════════════════════════════════════════════════════

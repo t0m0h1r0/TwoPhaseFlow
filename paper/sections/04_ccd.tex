@@ -63,8 +63,8 @@ $\Ord{\varepsilon}$ で滑らかに変化する界面に対しては
   \item \textbf{面ジェット $\FaceJet{u}$}（§~\ref{sec:face_jet_def}）：
         FCCD/UCCD6 の出力を統一する 3 成分 API
         $(u_f, u'_f, u''_f)$．
-        以降の消費先章（§\ref{sec:advection}--§\ref{sec:pressure}）はすべて
-        本 API のみを入力契約として用いる．
+        以降の消費先章はすべて本 API のみを入力契約として用いる
+        （消費先章一覧は §~\ref{sec:ccd_summary} の比較表に集約）．
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -113,10 +113,9 @@ $\Ord{\varepsilon^2}=\Ord{h^2}$ として残るため，
 
 \textbf{注意：}
 CCD 演算子は滑らかな入力場を前提として $\Ord{h^6}$ 精度を発揮する．
-界面を跨ぐ不連続場に対しては Hermite 場延長法（HFE，§~\ref{sec:field_extension}）により
-入力を平滑化する手法が考えられるが，現行の CSF + smoothed Heaviside 一括解法では
-圧力場が連続的に定義されるため HFE は不要である（§~\ref{sec:projection_derivation} 参照）．
-これにより CCD の高次精度が寄生流れ抑制に直接寄与する．
+界面を跨ぐ不連続場の取り扱い（場延長やジャンプ条件の課嵌など）は
+スキーム設計の問題ではなく用途章の課題であり，
+本章では入力場が滑らかな前提で CCD の数値特性のみを論じる．
 定量的な閾値と格子収束テストの詳細は §~\ref{sec:verify_ccd_convergence} を参照のこと．
 \end{tcolorbox}
 
