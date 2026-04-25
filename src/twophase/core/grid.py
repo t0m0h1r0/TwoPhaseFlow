@@ -68,6 +68,7 @@ class Grid:
             self.h.append(dx)
 
         self.shape: tuple = tuple(n + 1 for n in self.N)
+        self._cell_volumes_cache = None
 
         # Metrics (identity for uniform grid)
         self._build_metrics()
@@ -180,6 +181,7 @@ class Grid:
         self.J, self.dJ_dxi = compute_metrics(
             self.coords, self.h, self.N, self.ndim, self.uniform, ccd,
         )
+        self._cell_volumes_cache = None
 
     # ── Convenience ──────────────────────────────────────────────────────
 
@@ -194,10 +196,13 @@ class Grid:
 
     def cell_volumes(self):
         """Per-node control volumes on device, shape ``self.shape``."""
+        if self._cell_volumes_cache is not None:
+            return self._cell_volumes_cache
         xp = self.xp
         vol = xp.asarray(self.h[0])
         for ax in range(1, self.ndim):
             vol = xp.expand_dims(vol, axis=ax) * xp.asarray(self.h[ax])
+        self._cell_volumes_cache = vol
         return vol
 
     def __repr__(self) -> str:
