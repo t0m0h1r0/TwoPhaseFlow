@@ -8,6 +8,85 @@
 空間離散化スキームの設計原理と散逸的 CCD フィルタ（DCCD）を示す
 （界面適合格子は第~\ref{sec:grid}章，時間積分は第~\ref{sec:time_int}章）．
 
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{記号と略語}
+\label{sec:notation_glossary}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本稿で繰り返し使用する主要記号と略語を以下にまとめる．
+各記号の正式定義と境界条件は該当節を参照されたい．
+
+\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing} 以降）}]
+\small
+\begin{description}[leftmargin=6em, style=nextline, itemsep=1pt, topsep=2pt]
+  \item[$\phi$] 符号付き距離（SDF）に準ずるレベルセット関数（§~\ref{sec:ridge_eikonal}）．
+  \item[$\psi$] 平滑化ヘヴィサイド $H_\varepsilon(\phi) \in (0,1)$．CLS の保存対象（§~\ref{sec:cls_advection}）．
+  \item[$\varepsilon$] 界面遷移層の厚さパラメータ．$\varepsilon \propto h$ とスケールさせる（§~\ref{sec:cls_advection}）．
+  \item[$\varepsilon_d$] Dissipative CCD（結合コンパクト差分法；本章）の散逸強度パラメータ．
+        安定性条件 $\varepsilon_d\le 1/4$，チェッカーボード抑制用途では $\varepsilon_d=1/4$ 固定，
+        界面用途では $\varepsilon_{d,\max}=0.05$ を採用（§~\ref{sec:dccd_derivation}, §~\ref{sec:dccd_params}）．
+  \item[CLS] Conservative Level Set．$\psi$ を保存量として移流する定式化（§~\ref{sec:levelset}）．
+  \item[PPE] 圧力 Poisson 方程式．分相定式化では各相で独立に解く（§~\ref{sec:split_ppe_motivation}）．
+  \item[BF] Balanced-Force 条件．表面張力と圧力勾配の離散整合（§~\ref{sec:balanced_force}）．
+  \item[FCCD] Face-centred CCD．HFE・GFM・分相 PPE・粘性 stress-div で共有する
+        面ジェット共通プリミティブ（§~\ref{sec:fccd_def}）．
+  \item[UCCD6] Upwind CCD6．bulk 運動量移流の既定スキーム（内蔵超粘性，$\Ord{h^6}$ 精度；§~\ref{sec:uccd6_def}）．
+  \item[HFE] Hermite Field Extension（Hermite 場延長法）．Hermite データ $(f,f',f'')$ を Extension PDE~\cite{Aslam2004}
+        の定常解から面ジェットに拡張（§~\ref{sec:field_extension}）．
+  \item[GFM] Ghost-Fluid Method．界面ジャンプ条件を近傍セルの ghost 値として注入する定式化（§~\ref{sec:gfm}）．
+\end{description}
+\end{tcolorbox}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{本稿で導入する技術要素一覧}
+\label{sec:tech_roadmap}
+% ─────────────────────────────────────────────────────────────────────────────
+
+§~\ref{sec:intro} で示した寄生流れ問題への根本的解決のため，
+本稿では以下の技術要素を導入する．
+本章以降の各節で順次定式化を与える．
+
+\textbf{中核演算子族（本稿で新たに定式化）：}
+\begin{description}
+  \item[\textbf{FCCD}（Face-centred CCD）]
+        HFE〔Hermite 場延長法〕・GFM・分相 PPE・粘性 stress-divergence の
+        共通面ジェットプリミティブ（§~\ref{sec:fccd_def}）．
+        4 つの界面処理役割 (R1)--(R4) を単一の面中心 CCD 演算子族で統一し，
+        演算子整合を構造的に保証．
+  \item[\textbf{UCCD6}（Upwind CCD6）]
+        内蔵超粘性をもつ bulk 運動量移流用 $\Ord{h^6}$ スキーム（§~\ref{sec:uccd6_def}）．
+        Navier--Stokes の bulk 対流項に適用し，高波数安定性と $\Ord{h^6}$ 精度を両立．
+  \item[\textbf{HFE}（Hermite Field Extension）]
+        高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 10^3$）対応の
+        分相 PPE 解法における界面ジャンプ条件の $\Ord{h^6}$ 精度処理基盤
+        （§~\ref{sec:field_extension}）．
+\end{description}
+
+\textbf{支持技術要素：}
+\begin{description}
+  \item[Conservative Level Set + Dissipative CCD (DCCD)]%
+        （第~\ref{sec:levelset}章・第~\ref{sec:advection}章）
+        界面の質量保存と数値拡散抑制；曲率計算の入力精度を維持するための基盤．
+  \item[DCCD 散逸によるチェッカーボード抑制]%
+        （§~\ref{sec:dccd_decoupling}）
+        コロケート格子上の $2\Delta x$ モードを DCCD のスペクトル散逸で内在的に除去．
+  \item[分相 PPE + 欠陥補正法（DC $k=3$）+ CCD 勾配]%
+        （§~\ref{sec:split_ppe_motivation}）
+        各相内の定密度 Poisson 方程式に DC $k=3$ を適用し，
+        CCD 勾配による Corrector の速度補正精度を高める．
+  \item[非一様格子]%
+        （第~\ref{sec:grid}章）
+        界面近傍を自動的に高解像度化し，界面処理の空間分解能を効率的に確保．
+\end{description}
+
+\textbf{Balanced-Force 条件 7 原則（§~\ref{sec:bf_seven_principles}）：}
+P-1（対称性）・P-2（一致離散化）・P-3（GFM ジャンプ整合）・
+P-4（ノルム整合）・P-5（曲率帯制限）・P-6（DC 反復精度）・P-7（境界整合）．
+これら 7 原則の同時充足により BF 残差を機械精度近くまで押し下げる
+（詳細は §~\ref{sec:ppe_discretization_choice}）．
+
+\medskip
+\noindent\textbf{本章の構成：}
 \begin{enumerate}
   \item \textbf{§~\ref{sec:locality}（局所性の重要性）：}
         界面という不連続面を扱う際に広域ステンシルが陥る「非局所性の罠」を指摘し，
