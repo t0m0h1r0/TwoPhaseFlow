@@ -16,6 +16,19 @@ CCD の $\Ord{h^6}$ 精度が $\Ord{h}$–$\Ord{h^2}$ に劣化する．
 （詳細・精度制限は §~\ref{sec:grid_gen} の \ref{box:grid_jx_accuracy} 参照）．
 \end{tcolorbox}
 
+\subsubsection{計算空間 $\xi$ 上でのフィルタ適用順序（DCCD/UCCD 共通）}
+\phantomsection\label{sec:cls_on_nonuniform}% backward-compat: 旧 §6.1 ラベル．他章の参照保護．
+
+スペクトルフィルタ（DCCD：§~\ref{sec:dissipative_ccd}）や風上安定化（UCCD6：§~\ref{sec:uccd6_def}）を
+非一様格子上で適用する際には，
+\textbf{計算空間 $\xi$ 上でフィルタ／安定化項を実行し，事後にメトリクス $J_x = \partial\xi/\partial x$ を適用}する．
+物理空間 $x$ 上での直接フィルタリングは不均等な格子幅により高周波減衰の一様性が崩れるため，
+$\xi$ 空間一様格子上での操作が必須である．
+CCD ソルバーは計算空間で求解後に \texttt{\_apply\_metric} で物理空間微分を返すため，
+フィルタは計算空間微分 $(f'_\xi, f''_\xi)$ の段階で適用し，
+メトリクス変換はフィルタ適用後に行う．
+（移流項における具体的な動作モードは §~\ref{sec:advection_motivation} 参照．）
+
 \subsection{2次元への拡張：混合偏微分 \texorpdfstring{$D_{xy}^{(11)}$}{Dxy\^{}(11)} の計算}
 \label{sec:ccd_mixed}
 

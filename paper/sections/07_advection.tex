@@ -47,66 +47,7 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{非一様格子上の CLS 演算}
-\label{sec:cls_on_nonuniform}
-% ─────────────────────────────────────────────────────────────────────────────
-
-DCCD フィルタ（§~\ref{sec:dissipative_ccd}）を非一様格子上で適用する際には，
-\textbf{計算空間 $\xi$ 上でフィルタを実行し，事後にメトリクス $J_x = \partial\xi/\partial x$ を適用}する．
-物理空間 $x$ 上での直接フィルタリングは不均等な格子幅により
-高周波減衰の一様性が崩れるため，$\xi$ 空間一様格子上での操作が必須である．
-CCD ソルバーは計算空間で求解後に \texttt{\_apply\_metric} で物理空間微分を返すため，
-フィルタは計算空間微分 $(f'_\xi, f''_\xi)$ の段階で適用し，
-メトリクス変換はフィルタ適用後に行う（§~\ref{sec:algo_flow}, Step 1--4）．
-
-格子再構築時の CLS 場 $\psi$ の転写には，
-$\psi$ の\textbf{直接線形補間}が $\phi$ 経由の高次補間より優位である．
-$\phi$ 3次補間ではロジット空間でのオーバーシュートと飽和域クリップにより
-質量誤差が $\Ord{10^{-2}}$（3\%）に達するのに対し，
-$\psi$ 線形補間はモノトン性（$\psi \in [0,1]$ 保持）から $\Ord{10^{-5}}$（0.005\%）に抑制される
-（§~\ref{sec:cls_conservation} で定量検証）．
-
-\paragraph{\texorpdfstring{計算空間 $\xi$ ベースの Heaviside 幅}{計算空間 xi ベースの Heaviside 幅}}
-
-非一様格子では一様な $\varepsilon = C_\varepsilon h$ の代わりに，
-局所格子幅に比例する空間可変場
-\begin{equation}
-  \varepsilon(\bx) = N_{\varepsilon,\text{cells}} \cdot h_{\mathrm{local}}(\bx),
-  \quad h_{\mathrm{local}}(i,j) = \max(h_x(i),\, h_y(j))
-  \label{eq:eps_xi_cells}
-\end{equation}
-を用いることができる（$N_{\varepsilon,\text{cells}}$ は $\xi$ 空間でのセル数）．
-界面近傍（細かいセル）では $\varepsilon$ が小さく，遠方（粗いセル）では大きくなるが，
-$\xi$ 空間では常に $N_{\varepsilon,\text{cells}}$ セル幅で Heaviside 遷移が解像される．
-一様格子では $h_{\mathrm{local}} = h$ となり従来のスカラー $\varepsilon$ と一致する．
-
-\begin{tcolorbox}[warnbox, title={空間可変 $\varepsilon(\bx)$ と CSF 表面張力の非互換性}]
-\label{box:eps_xi_csf_warning}
-式~\eqref{eq:eps_xi_cells} の空間可変 $\varepsilon$ は，
-CSF 表面張力モデル（デルタ関数型体積力）との組み合わせで
-寄生流れを著しく増幅させる（§~\ref{sec:local_eps_validation} で定量検証）．
-原因は，$\varepsilon$ の空間変動に伴うデルタ関数 $\delta_\varepsilon(\phi)$
-の振幅不整合であり，細い格子と粗い格子の境界で非物理的な表面力が発生する．
-
-$N_{\varepsilon,\text{cells}}$ が有効なのは，\textbf{表面張力を GFM（Ghost Fluid Method）で
-計算する場合に限られる}：デルタ関数を介さず圧力ジャンプを直接課すため，
-振幅不整合の影響を受けない（§~\ref{sec:future_work} 参照）．
-加えて，$N_{\varepsilon,\text{cells}} \ge 1.5$ が必要である：
-それ未満では界面近傍の細かいセルで Heaviside 遷移が 1 セル幅未満となり
-解像不足になる．
-\end{tcolorbox}
-
-\noindent\textbf{設計上の注意：}
-§~\ref{sec:dissipative_ccd} で導入した DCCD フィルタは本章でも再利用するが，
-動作モードが異なる．
-速度・圧力場では界面適応スイッチ $S(\psi) = (2\psi-1)^2$ により
-界面上でフィルタを OFF にしたが（§~\ref{sec:dccd_decoupling}），CLS 移流では $\psi \approx 0.5$（界面）付近こそ
-安定化が最も必要な領域であるため，\textbf{一様強度}
-$\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
-（詳細は §~\ref{sec:advection_dccd_design}）．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{移流項：CLS $\psi$ 用 Dissipative CCD と運動量用 UCCD6}
+\subsection{移流項：CLS $\psi$ 用 FCCD と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
