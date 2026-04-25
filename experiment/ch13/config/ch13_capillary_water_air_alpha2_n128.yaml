@@ -60,6 +60,8 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    predictor:
+      assembly: balanced_buoyancy
     terms:
       convection:
         spatial: uccd6
@@ -72,6 +74,9 @@ numerics:
       surface_tension:
         formulation: pressure_jump
   projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
     poisson:
       operator:
         discretization: fccd

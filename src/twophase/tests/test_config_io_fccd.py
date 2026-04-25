@@ -136,6 +136,10 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert cfg.run.face_flux_projection is True
+    assert cfg.run.canonical_face_state is True
+    assert cfg.run.face_native_predictor_state is True
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reproject_mode == "gfm"
     assert cfg.run.ppe_solver == "fccd_iterative"
