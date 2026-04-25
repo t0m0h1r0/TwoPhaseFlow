@@ -129,6 +129,23 @@ def compute_fccd_phase_weighted_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache
     )
 
 
+def subtract_fccd_phase_means(*, xp, arr, cache: FCCDPhaseMeanGaugeCache, means):
+    """Return the phase-gauge projection without copying ``arr`` first.
+
+    A3 mapping: for each phase ``Ω_k``, enforce
+    ``p <- p - <p>_k`` with ``<p>_k = Σ_{Ω_k} V_i p_i / Σ_{Ω_k} V_i``.
+    """
+    arr_view = xp.asarray(arr)
+    if len(means) == 2:
+        result = xp.where(cache.masks[0], means[0], means[1])
+        xp.subtract(arr_view, result, out=result)
+        return result
+    result = arr_view.copy()
+    for mask, mean in zip(cache.masks, means):
+        result = xp.where(mask, result - mean, result)
+    return result
+
+
 def _select_bulk_phase_gauge_pin(
     rho_np: np.ndarray,
     *,
@@ -296,7 +313,7 @@ def project_fccd_rhs_compatibility(
     pin_rhs: bool = True,
     record_stats: bool = True,
 ):
-    rhs_projected = xp.asarray(rhs).copy()
+    rhs_view = xp.asarray(rhs)
     stats = {
         "ppe_phase_count": 1.0,
         "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
@@ -312,6 +329,7 @@ def project_fccd_rhs_compatibility(
         or phase_threshold is None
         or rho_host is None
     ):
+        rhs_projected = rhs_view.copy() if pin_rhs else rhs_view
         if pin_rhs:
             _pin_zero(rhs_projected.ravel(), pin_dofs)
         return rhs_projected, stats
@@ -345,20 +363,17 @@ def project_fccd_rhs_compatibility(
     )
     phase_means = compute_fccd_phase_weighted_means(
         xp=xp,
-        arr=rhs_projected,
+        arr=rhs_view,
         cache=phase_cache,
     )
     if record_stats:
         means_before = [abs(to_scalar(mean)) for mean in phase_means]
-    if len(phase_means) == 2:
-        rhs_projected = rhs_projected - xp.where(
-            phase_masks[0],
-            phase_means[0],
-            phase_means[1],
-        )
-    else:
-        for mask, mean in zip(phase_masks, phase_means):
-            rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
+    rhs_projected = subtract_fccd_phase_means(
+        xp=xp,
+        arr=rhs_view,
+        cache=phase_cache,
+        means=phase_means,
+    )
     if record_stats:
         means_after = [
             abs(to_scalar(mean))

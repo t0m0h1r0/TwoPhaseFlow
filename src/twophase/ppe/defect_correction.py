@@ -154,7 +154,7 @@ class PPESolverDefectCorrection(IPPESolver):
             return pressure
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
-        rhs_flat = rhs_dev.ravel().copy()
+        rhs_flat = rhs_dev.ravel()
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         for _ in range(self.max_corrections):
