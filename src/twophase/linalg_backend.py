@@ -60,43 +60,59 @@ def _pcr_solve_batched(xp, a_vec, d_vec, c_vec, b_mat):
     n_stages = max(1, math.ceil(math.log2(n)))
 
     # Expand diagonals to (n, 1) for unified broadcasting with (n, B) b_mat.
-    a = xp.asarray(a_vec, dtype=b_mat.dtype)[:, None]
-    d = xp.asarray(d_vec, dtype=b_mat.dtype)[:, None]
-    c = xp.asarray(c_vec, dtype=b_mat.dtype)[:, None]
-    b = b_mat.copy()
+    lower_coeff = xp.asarray(a_vec, dtype=b_mat.dtype)[:, None]
+    diag_coeff = xp.asarray(d_vec, dtype=b_mat.dtype)[:, None]
+    upper_coeff = xp.asarray(c_vec, dtype=b_mat.dtype)[:, None]
+    rhs_work = b_mat.copy()
+    return _pcr_reduce_batched(
+        xp,
+        lower_coeff,
+        diag_coeff,
+        upper_coeff,
+        rhs_work,
+        n_stages,
+    )
 
-    idx = xp.arange(n)
+
+def _pcr_reduce_batched(
+    xp,
+    lower_coeff,
+    diag_coeff,
+    upper_coeff,
+    rhs_work,
+    n_stages: int,
+):
+    """Run the shared PCR reduction loop for batched tridiagonal systems."""
+    n = diag_coeff.shape[0]
+    line_index = xp.arange(n)
     stride = 1
     for _ in range(n_stages):
-        # Neighbour values via roll; boundary contributions are zeroed by mask.
-        d_l = xp.roll(d, stride, axis=0)
-        c_l = xp.roll(c, stride, axis=0)
-        a_l = xp.roll(a, stride, axis=0)
-        b_l = xp.roll(b, stride, axis=0)
+        diag_left = xp.roll(diag_coeff, stride, axis=0)
+        upper_left = xp.roll(upper_coeff, stride, axis=0)
+        lower_left = xp.roll(lower_coeff, stride, axis=0)
+        rhs_left = xp.roll(rhs_work, stride, axis=0)
 
-        d_r = xp.roll(d, -stride, axis=0)
-        a_r = xp.roll(a, -stride, axis=0)
-        c_r = xp.roll(c, -stride, axis=0)
-        b_r = xp.roll(b, -stride, axis=0)
+        diag_right = xp.roll(diag_coeff, -stride, axis=0)
+        lower_right = xp.roll(lower_coeff, -stride, axis=0)
+        upper_right = xp.roll(upper_coeff, -stride, axis=0)
+        rhs_right = xp.roll(rhs_work, -stride, axis=0)
 
-        # α[i] = -a[i]/d[i−s], masked to 0 at left boundary.
-        has_l = (idx >= stride)[:, None]
-        d_l_safe = xp.where(xp.abs(d_l) > 0, d_l, 1.0)
-        alpha = xp.where(has_l, -a / d_l_safe, 0.0)
+        has_left = (line_index >= stride)[:, None]
+        diag_left_safe = xp.where(xp.abs(diag_left) > 0, diag_left, 1.0)
+        alpha = xp.where(has_left, -lower_coeff / diag_left_safe, 0.0)
 
-        # β[i] = -c[i]/d[i+s], masked to 0 at right boundary.
-        has_r = (idx < n - stride)[:, None]
-        d_r_safe = xp.where(xp.abs(d_r) > 0, d_r, 1.0)
-        beta = xp.where(has_r, -c / d_r_safe, 0.0)
+        has_right = (line_index < n - stride)[:, None]
+        diag_right_safe = xp.where(xp.abs(diag_right) > 0, diag_right, 1.0)
+        beta = xp.where(has_right, -upper_coeff / diag_right_safe, 0.0)
 
-        a = alpha * a_l
-        d = d + alpha * c_l + beta * a_r
-        c = beta * c_r
-        b = b + alpha * b_l + beta * b_r
+        lower_coeff = alpha * lower_left
+        diag_coeff = diag_coeff + alpha * upper_left + beta * lower_right
+        upper_coeff = beta * upper_right
+        rhs_work = rhs_work + alpha * rhs_left + beta * rhs_right
 
         stride *= 2
 
-    return b / d
+    return rhs_work / diag_coeff
 
 
 def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat, max_stages: int | None = None):
@@ -133,40 +149,18 @@ def _pcr_solve_variable_batched(xp, a_mat, d_mat, c_mat, b_mat, max_stages: int 
     if max_stages is not None:
         n_stages = min(n_stages, max(1, int(max_stages)))
 
-    a = xp.asarray(a_mat, dtype=b_mat.dtype).copy()
-    d = xp.asarray(d_mat, dtype=b_mat.dtype).copy()
-    c = xp.asarray(c_mat, dtype=b_mat.dtype).copy()
-    b = xp.asarray(b_mat, dtype=b_mat.dtype).copy()
-
-    idx = xp.arange(n)
-    stride = 1
-    for _ in range(n_stages):
-        d_l = xp.roll(d, stride, axis=0)
-        c_l = xp.roll(c, stride, axis=0)
-        a_l = xp.roll(a, stride, axis=0)
-        b_l = xp.roll(b, stride, axis=0)
-
-        d_r = xp.roll(d, -stride, axis=0)
-        a_r = xp.roll(a, -stride, axis=0)
-        c_r = xp.roll(c, -stride, axis=0)
-        b_r = xp.roll(b, -stride, axis=0)
-
-        has_l = (idx >= stride)[:, None]
-        d_l_safe = xp.where(xp.abs(d_l) > 0, d_l, 1.0)
-        alpha = xp.where(has_l, -a / d_l_safe, 0.0)
-
-        has_r = (idx < n - stride)[:, None]
-        d_r_safe = xp.where(xp.abs(d_r) > 0, d_r, 1.0)
-        beta = xp.where(has_r, -c / d_r_safe, 0.0)
-
-        a = alpha * a_l
-        d = d + alpha * c_l + beta * a_r
-        c = beta * c_r
-        b = b + alpha * b_l + beta * b_r
-
-        stride *= 2
-
-    return b / d
+    lower_coeff = xp.asarray(a_mat, dtype=b_mat.dtype).copy()
+    diag_coeff = xp.asarray(d_mat, dtype=b_mat.dtype).copy()
+    upper_coeff = xp.asarray(c_mat, dtype=b_mat.dtype).copy()
+    rhs_work = xp.asarray(b_mat, dtype=b_mat.dtype).copy()
+    return _pcr_reduce_batched(
+        xp,
+        lower_coeff,
+        diag_coeff,
+        upper_coeff,
+        rhs_work,
+        n_stages,
+    )
 
 
 def thomas_batched(xp, ab, rhs, axis: int, factors: ThomasFactors | None = None):
