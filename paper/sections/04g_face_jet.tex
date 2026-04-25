@@ -117,13 +117,64 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 \label{sec:ccd_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-%% Phase 6 で CCD/DCCD/FCCD/UCCD6/面ジェット の数値特性比較表 + 5 略語のみを記述．
-%% 用途章機構（§8/§9 領域）への言及は禁止．
-%% 消費先章列挙は表内 1 列に集約し，機構詳細は本節では扱わない．
 本章では，3 点ステンシル制約下で $\Ord{h^6}$ 精度を実現する
 コンパクト差分スキーム族 — CCD・DCCD・FCCD・UCCD6 — と
 その出力を統一する 3 成分 API である面ジェット $\FaceJet{u}=(u_f,u'_f,u''_f)$ を導出した．
 本節では数値特性を比較表で整理し，後続章（§\ref{sec:time_int} 以降）への
-バトンパスを示す．
+バトンパスを章名と節番号のみで示す．
+
+% -------------------------------------------------------------------------------
+\subsubsection*{数値特性比較表}
+% -------------------------------------------------------------------------------
+
+\begin{center}
+{\footnotesize
+\begin{tabular}{l l l l l l}
+\hline
+\textbf{スキーム} & \textbf{配置} & \textbf{散逸チャンネル} & \textbf{微分精度}$^\dagger$ & \textbf{安定性} & \textbf{計算量} \\ \hline
+{\CCD} (§\ref{sec:ccd_def})              & 節点      & なし                          & $\Ord{h^6}$           & 中心差分（散逸ゼロ）         & $\Ord{N}$ \\
+{\DCCD} (§\ref{sec:dccd_derivation})     & 節点      & 外殻 post-filter              & $\Ord{h^6}$$^\ddagger$ & $\ell^2$ 安定（spectral 拘束下）   & $\Ord{N}$ \\
+{\FCCD} (§\ref{sec:fccd_def})            & \textbf{面} & 風上構造（option）          & $\Ord{H^4}$           & 基底 CCD 由来               & $\Ord{N}$ \\
+{\UCCD[6]} (§\ref{sec:uccd6_def})        & 節点      & \textbf{演算子内部}（hyperviscosity） & $\Ord{h^6}$  & CN で無条件安定（周期格子）    & $\Ord{N}$ \\
+$\FaceJet{u}$ (§\ref{sec:face_jet_def})  & 面（API） & ---                           & $\Ord{H^4}$/$\Ord{H^2}$$^\S$ & 基底スキーム継承   & $\Ord{N}$ post \\
+\hline
+\end{tabular}}
+\end{center}
+
+\noindent
+{\footnotesize
+$^\dagger$ 微分演算子の formal 精度．
+$^\ddagger$ DCCD は微分演算子そのものは $\Ord{h^6}$ を保つが，
+post-filter による移流フィルタ誤差 $\Ord{\varepsilon_d^{\mathrm{adv}} h^2}$ が別途付随し
+（§\ref{sec:dccd_filter_theory}），移流の実効精度は $\Ord{h^2}$ に律速される．
+$^\S$ 面ジェットは $u_f, u'_f$ が $\Ord{H^4}$，$u''_f$ が $\Ord{H^2}$．
+}
+
+% -------------------------------------------------------------------------------
+\subsubsection*{後続章へのバトンパス}
+% -------------------------------------------------------------------------------
+
+本章で導入した演算子・API は以下の章で再利用される（章名と節番号のみ；
+個別機構の詳細は各章で展開）：
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \S\ref{sec:time_int}（時間積分）：UCCD6 を Crank--Nicolson と組み合わせる．
+  \item \S\ref{sec:grid}（非一様格子）：CCD/FCCD の非一様格子拡張．
+  \item \S\ref{sec:advection}（移流）：CLS 移流に DCCD，運動量移流に FCCD/UCCD6 を適用．
+  \item \S\ref{sec:collocate}（圧力・速度連成）：FCCD 面ジェットを面演算子として再利用．
+  \item \S\ref{sec:ppe_solve}（圧力 Poisson）：CCD 系微分作用素を PPE の離散化基底に用いる．
+\end{itemize}
+
+% -------------------------------------------------------------------------------
+\subsubsection*{略語一覧}
+% -------------------------------------------------------------------------------
+
+\begin{description}\setlength{\itemsep}{0pt}
+  \item[CCD] Combined Compact Difference（Chu--Fan 6 次基底）（§\ref{sec:ccd_def}）
+  \item[DCCD] Dissipative CCD（外殻 spectral post-filter 付加）（§\ref{sec:dccd_derivation}）
+  \item[FCCD] Face-centered CCD（面位置の値・導関数を $\Ord{H^4}$ で構成）（§\ref{sec:fccd_def}）
+  \item[UCCD6] Upwind CCD-6（次数保存ハイパー粘性内蔵）（§\ref{sec:uccd6_def}）
+  \item[面ジェット $\FaceJet{u}$] $(u_f, u'_f, u''_f)$ を一括して提供する 3 成分 API（§\ref{sec:face_jet_def}）
+\end{description}
 
 % ═══════════════════════════════════════════════════════════════════════════════
