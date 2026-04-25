@@ -7,14 +7,18 @@
 \label{sec:uccd6_def}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-{\UCCD[6]} は，Chu--Fan の CCD 演算子 $D_1^{\CCD}$ の
+中心差分系である基底 CCD（§\ref{sec:ccd_def}）を対流項に適用すると，
+最高波数 $\xi=\pi$ における散逸ゼロから\textbf{Gibbs 振動}が許容される．
+{\UCCD[6]} は，Chu--Fan の $D_1^{\CCD}$ の
 \textbf{6 次分散精度を保ったまま}
 高次ハイパー粘性 $\sigma_6|a|h^7(-D_2^{\CCD})^4$ を
-演算子内部に埋め込むことで，
-節点中心のままモーメント移流の $L^2$ 安定性を得る設計である．
-DCCD（§\ref{sec:dccd_derivation}，後フィルタ）と
-FCCD（§\ref{sec:fccd_def}，面中心）に対する
-\textbf{第 3 の経路}として，本節では定式化・安定性解析・境界閉包を述べる．
+\textbf{演算子内部に埋め込む}風上派生であり，
+節点中心のままモーメント移流の $L^2$ 安定性を得る．
+散逸を外殻 post-filter として加える DCCD（§\ref{sec:dccd_derivation}）と
+面中心化により面ジェットを供給する FCCD（§\ref{sec:fccd_def}）に対する
+\textbf{第 3 の経路}（演算子内部散逸）であり，
+Crank--Nicolson 時間積分との結合で無条件 $L^2$ 安定となる
+（§\ref{sec:time_int}）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{演算子定義と符号}
@@ -146,23 +150,19 @@ FCCD（§\ref{sec:fccd_def}） & \textbf{面} & 風上構造 & $\Ord{h^4}$ \\
 {\footnotesize $^\star$ 微分演算子の formal 精度．DCCD では post-filter による移流フィルタ誤差 $\Ord{\varepsilon_d^\text{adv}\,h^2}$ が別途付随し，移流の実効精度は $\Ord{h^2}$ に律速される（§\ref{sec:dccd_filter_theory} 参照）．UCCD6 は $\omega_2^8$ 重みで Nyquist 帯域のみ選択減衰し bulk $\Ord{h^6}$ を維持．}
 
 \noindent
-本稿では UCCD6 を \textbf{bulk $u,v$ 運動量移流}の既定とし，DCCD は
-\textbf{CLS ($\psi$) 移流（§\ref{sec:advection_motivation}）および
-再初期化圧縮項（§\ref{sec:reinit}）}に専門化する分業構造を採る．
-すなわち bulk $u,v$ 移流について UCCD6 が DCCD を置換するが，
-CLS 移流の既定は DCCD であり置換されない．
+\textbf{DCCD との数値特性比較．}
 $\omega_2^8$ の選択的 Nyquist 散逸は DCCD の一様減衰 $H(\pi)=1-4\varepsilon_d$ より
-dispersion preservation に優り，bulk 高周波の保持性で上位に位置するため，
-$u,v$ 移流に対しては UCCD6 を採る；
-一方 $\psi$ の急峻 tanh プロファイルでは
-DCCD の一様減衰がスペクトル振動を確実に抑制する．
+dispersion preservation に優り，bulk 高周波の保持性で上位に位置する；
+一方 DCCD の一様減衰は急峻 $C^0$ プロファイルのスペクトル振動を確実に抑制する．
+このため両スキームは入力場の滑らかさに応じて使い分けられる
+（具体的な適用場面は §~\ref{sec:ccd_summary} の比較表に集約）．
 
 \noindent
+\textbf{FCCD との関係．}
 UCCD6 は FCCD と\textbf{直交補完}の関係にある：
-FCCD の $\Ord{H^4}$ は界面消費点（(R1)-(R4)；§\ref{sec:fccd_def}）のみに展開され，
-バルク演算子は節点 CCD $\Ord{h^6}$ を維持する（設計選択であり精度の妥協ではない）．
-UCCD6 は節点配置のまま演算子内部散逸でモーメント移流の Gibbs を抑制し，
-Level-1 検証・Level-2 製品・Level-3 DNS すべての bulk advection 既定として
-§\ref{sec:time_int} の時間積分スタックに組み込まれる．
+FCCD は\textbf{面位置}に値を持つ高次補間で $\Ord{H^4}$ を保ち，
+UCCD6 は\textbf{節点位置}のまま演算子内部散逸で Gibbs を抑制する．
+両者は同じ基底 CCD のシンボル $\omega_1, \omega_2$ から派生し，
+出力ロカス（面 vs 節点）と散逸機構（補間 vs 演算子内部）が異なるのみである．
 
 % ═══════════════════════════════════════════════════════════════════════════════

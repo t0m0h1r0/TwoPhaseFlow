@@ -9,144 +9,72 @@
 （界面適合格子は第~\ref{sec:grid}章，時間積分は第~\ref{sec:time_int}章）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{記号と略語}
-\label{sec:notation_glossary}
-% ─────────────────────────────────────────────────────────────────────────────
-
-本稿で繰り返し使用する主要記号と略語を以下にまとめる．
-各記号の正式定義と境界条件は該当節を参照されたい．
-
-\begin{tcolorbox}[defbox, title={\textbf{記号 Glossary}（詳細は §~\ref{sec:governing} 以降）}]
-\small
-\begin{description}[leftmargin=6em, style=nextline, itemsep=1pt, topsep=2pt]
-  \item[$\phi$] 符号付き距離（SDF）に準ずるレベルセット関数（§~\ref{sec:ridge_eikonal}）．
-  \item[$\psi$] 平滑化ヘヴィサイド $H_\varepsilon(\phi) \in (0,1)$．CLS の保存対象（§~\ref{sec:cls_advection}）．
-  \item[$\varepsilon$] 界面遷移層の厚さパラメータ．$\varepsilon \propto h$ とスケールさせる（§~\ref{sec:cls_advection}）．
-  \item[$\varepsilon_d$] Dissipative CCD（結合コンパクト差分法；本章）の散逸強度パラメータ．
-        安定性条件 $\varepsilon_d\le 1/4$，チェッカーボード抑制用途では $\varepsilon_d=1/4$ 固定，
-        界面用途では $\varepsilon_{d,\max}=0.05$ を採用（§~\ref{sec:dccd_derivation}, §~\ref{sec:dccd_params}）．
-  \item[CLS] Conservative Level Set．$\psi$ を保存量として移流する定式化（§~\ref{sec:levelset}）．
-  \item[PPE] 圧力 Poisson 方程式．分相定式化では各相で独立に解く（§~\ref{sec:split_ppe_motivation}）．
-  \item[BF] Balanced-Force 条件．表面張力と圧力勾配の離散整合（§~\ref{sec:balanced_force}）．
-  \item[FCCD] Face-centred CCD．HFE・GFM・分相 PPE・粘性 stress-div で共有する
-        面ジェット共通プリミティブ（§~\ref{sec:fccd_def}）．
-  \item[UCCD6] Upwind CCD6．bulk 運動量移流の既定スキーム（内蔵超粘性，$\Ord{h^6}$ 精度；§~\ref{sec:uccd6_def}）．
-  \item[HFE] Hermite Field Extension（Hermite 場延長法）．Hermite データ $(f,f',f'')$ を Extension PDE~\cite{Aslam2004}
-        の定常解から面ジェットに拡張（§~\ref{sec:field_extension}）．
-  \item[GFM] Ghost-Fluid Method．界面ジャンプ条件を近傍セルの ghost 値として注入する定式化（§~\ref{sec:gfm}）．
-\end{description}
-\end{tcolorbox}
+%% 旧 §4.0「記号と略語」「技術要素一覧」は §4.7 章末まとめ（sec:ccd_summary）へ
+%% 集約した．外部 ref を保護するため label のみ phantom で保持する．
+\phantomsection\label{sec:notation_glossary}%
+\phantomsection\label{sec:tech_roadmap}%
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{本稿で導入する技術要素一覧}
-\label{sec:tech_roadmap}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:intro} で示した寄生流れ問題への根本的解決のため，
-本稿では以下の技術要素を導入する．
-本章以降の各節で順次定式化を与える．
-
-\textbf{中核演算子族（本稿で新たに定式化）：}
-\begin{description}
-  \item[\textbf{FCCD}（Face-centred CCD）]
-        HFE〔Hermite 場延長法〕・GFM・分相 PPE・粘性 stress-divergence の
-        共通面ジェットプリミティブ（§~\ref{sec:fccd_def}）．
-        4 つの界面処理役割 (R1)--(R4) を単一の面中心 CCD 演算子族で統一し，
-        演算子整合を構造的に保証．
-  \item[\textbf{UCCD6}（Upwind CCD6）]
-        内蔵超粘性をもつ bulk 運動量移流用 $\Ord{h^6}$ スキーム（§~\ref{sec:uccd6_def}）．
-        Navier--Stokes の bulk 対流項に適用し，高波数安定性と $\Ord{h^6}$ 精度を両立．
-  \item[\textbf{HFE}（Hermite Field Extension）]
-        高密度比（代表例として水-空気系 $\rho_l/\rho_g \approx 10^3$）対応の
-        分相 PPE 解法における界面ジャンプ条件の $\Ord{h^6}$ 精度処理基盤
-        （§~\ref{sec:field_extension}）．
-\end{description}
-
-\textbf{支持技術要素：}
-\begin{description}
-  \item[Conservative Level Set + Dissipative CCD (DCCD)]%
-        （第~\ref{sec:levelset}章・第~\ref{sec:advection}章）
-        界面の質量保存と数値拡散抑制；曲率計算の入力精度を維持するための基盤．
-  \item[DCCD 散逸によるチェッカーボード抑制]%
-        （§~\ref{sec:dccd_decoupling}）
-        コロケート格子上の $2\Delta x$ モードを DCCD のスペクトル散逸で内在的に除去．
-  \item[分相 PPE + 欠陥補正法（DC $k=3$）+ CCD 勾配]%
-        （§~\ref{sec:split_ppe_motivation}）
-        各相内の定密度 Poisson 方程式に DC $k=3$ を適用し，
-        CCD 勾配による Corrector の速度補正精度を高める．
-  \item[非一様格子]%
-        （第~\ref{sec:grid}章）
-        界面近傍を自動的に高解像度化し，界面処理の空間分解能を効率的に確保．
-\end{description}
-
-\textbf{Balanced-Force 条件 7 原則（§~\ref{sec:bf_seven_principles}）：}
-P-1（対称性）・P-2（一致離散化）・P-3（GFM ジャンプ整合）・
-P-4（ノルム整合）・P-5（曲率帯制限）・P-6（DC 反復精度）・P-7（境界整合）．
-これら 7 原則の同時充足により BF 残差を機械精度近くまで押し下げる
-（詳細は §~\ref{sec:ppe_discretization_choice}）．
-
-\medskip
-\noindent\textbf{本章の構成：}
-\begin{enumerate}
-  \item \textbf{§~\ref{sec:locality}（局所性の重要性）：}
-        界面という不連続面を扱う際に広域ステンシルが陥る「非局所性の罠」を指摘し，
-        3点ステンシルの圧倒的優位性を示す．
-  \item \textbf{§~\ref{sec:ccd_motivation}（CCD 法：高次精度とコンパクト性の統合）：}
-        3点でありながら $\Ord{h^6}$ を実現する設計原理を導出し，
-        修飾波数による解像度特性を標準差分と比較する．
-  \item \textbf{§~\ref{sec:ccd_bc}（境界条件）：}
-        両端格子点の片側スキームとブロック三重対角行列の構造を整備する．
-  \item \textbf{§~\ref{sec:dissipative_ccd}（散逸的 CCD フィルタ）：}
-        高周波不安定性の回避と界面適応フィルタ制御の設計を述べる．
-  \item \textbf{§~\ref{sec:fccd_def}（面中心 CCD: FCCD）：}
-        面中心補間と共通面ジェット契約 (R1)--(R4) を示し，
-        HFE・GFM・分相 PPE・粘性界面バンドの共通プリミティブを与える．
-  \item \textbf{§~\ref{sec:uccd6_def}（Upwind CCD with hyperviscosity: UCCD6）：}
-        主項 $\Ord{h^6}$ を保ちつつ Nyquist 近傍のみを抑制するハイパー粘性項の設計と
-        Crank--Nicolson による無条件 $L^2$ 安定性を示す．
-  \item \textbf{§~\ref{sec:face_jet_def}（共通面ジェットプリミティブ）：}
-        FCCD/UCCD6 を経て統一された面ジェット $\mathcal{J}_f(u)=(u_f, u'_f, u''_f)$ を
-        本稿の離散演算子群（HFE・GFM・分相 PPE・粘性）に供給する契約を定義する．
-\end{enumerate}
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsection{二相流数値計算の難所と「局所性」の重要性}
+\subsection{動機：3 点ステンシル制約下での \texorpdfstring{$\Ord{h^6}$}{O(h\^{}6)} 設計}
 \label{sec:locality}
 % ─────────────────────────────────────────────────────────────────────────────
 
-界面を含む二相流の数値計算における最大の難所は，
-\textbf{不連続面（界面）と高精度スキームの共存}である．
-高次精度を追求するために広域ステンシルを採用すると，
-界面近傍で数値振動（Gibbs 現象）が生じ，
-速度・圧力場の汚染を通じて計算全体が破綻する．
-これを「\textbf{非局所性の罠}」と呼ぶ．
+界面という $\Ord{\varepsilon=h}$ スケールの急変場を含む二相流 NS 数値計算では，
+\textbf{広域ステンシルによる高次化が原理的に破綻する}．
+5 点以上の中心差分や WENO5 は圧縮性流体では有効でも，
+CLS レベルセットのように
+$\Ord{\varepsilon}$ で滑らかに変化する界面に対しては
+ステンシル幅が遷移層厚みを超えた瞬間に
+法線・曲率の幾何情報精度が崩壊する（\textbf{非局所性の罠}；
+§~\ref{sec:advection_weno5_critique}）．
+これが速度・圧力場を通じて計算全体に伝播し，
+\textbf{曲率誤差に律速される寄生流れ}を顕在化させる．
 
-WENO5 に代表される広域ステンシル手法（5点以上）は，
-圧縮性流体力学では優れた性能を発揮するが，
-CLS レベルセット界面のように $\Ord{\varepsilon}$（$\varepsilon = \Ord{h}$）スケールで
-滑らかに変化する界面に適用すると，
-ステンシル幅が界面厚みを超えてしまい，
-界面の幾何情報（法線・曲率）の精度が著しく低下する（§~\ref{sec:advection_weno5_critique}）．
+\medskip\noindent
+この現実から本稿は\textbf{3 点ステンシル}を不可侵の基本制約として採用する．
+3 点で $\Ord{h^6}$ を実現する経路はただ一つ ―\textbf{コンパクト陰的定式化}
+（求めたい微分値そのものを未知数として隣接点と連立する手法）― であり，
+本章ではその Hermite 型変種である\textbf{結合コンパクト差分}
+（CCD~\cite{ChuFan1998}）を基盤として，
+スキーム内在の数値課題（最高波数振動・面値再構成・対流項風上化）に応える
+派生スキーム族を順次導出する．
+界面適合非一様格子（§~\ref{sec:grid_gen}）との整合性は
+3 点制約の副産物として自然に得られる．
 
-対して，\textbf{3点ステンシル}は：
-\begin{itemize}
-  \item 界面の幾何情報を汚さない最小の局所性を持つ
-  \item コンパクト暗黙的定式化により $\Ord{h^6}$ 精度を達成できる
-  \item 界面適合非一様格子（§~\ref{sec:grid_gen}）との整合性が高い
-\end{itemize}
-
-この「\textbf{究極の局所性}」こそが，CCD 法の根本的な設計動機である．
+\medskip
+\noindent\textbf{本章で導入する 4 スキーム + 出力 API のロードマップ：}
+\begin{enumerate}[leftmargin=*, label=(\arabic*), itemsep=2pt, topsep=2pt]
+  \item \textbf{CCD}（§~\ref{sec:ccd_def}）：
+        $f, f', f''$ を同時連立する基底スキーム．
+        3 点 + Hermite 補間で $\Ord{h^6}$ 精度を実現．
+        境界条件 + ブロック Thomas 行列構造を §~\ref{sec:ccd_bc}--§~\ref{sec:ccd_matrix} で確立．
+  \item \textbf{DCCD}（§~\ref{sec:dccd_derivation}）：
+        中心差分系の最高波数 $\xi=\pi$ におけるスプリアス振動を抑制する
+        基底 CCD への\textbf{散逸 post-filter}．
+        導出形（1 次風上の修正方程式解釈）と実装デフォルト（spectral filter）を順に提示．
+  \item \textbf{FCCD}（§~\ref{sec:fccd_def}）：
+        節点値から\textbf{面値・面導関数}を $\Ord{h^4}$ で構成する面中心派生．
+        4 設計原理（共通プリミティブ／$\lambda=1/24$ 打ち消し／行列単一化／
+        DFT 正準解析）を順次導出．
+  \item \textbf{UCCD6}（§~\ref{sec:uccd6_def}）：
+        ハイパー粘性 $(-D_2^{\CCD})^4$ を内蔵した\textbf{風上派生}．
+        基底 CCD の対流項に対する高波数振動を抑制し，
+        Crank--Nicolson 時間積分で無条件 $L^2$ 安定．
+  \item \textbf{面ジェット $\FaceJet{u}$}（§~\ref{sec:face_jet_def}）：
+        FCCD/UCCD6 の出力を統一する 3 成分 API
+        $(u_f, u'_f, u''_f)$．
+        以降の消費先章はすべて本 API のみを入力契約として用いる
+        （消費先章一覧は §~\ref{sec:ccd_summary} の比較表に集約）．
+\end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{CCD 法：高次精度とコンパクト性の統合}
+\subsection{精度とステンシル幅のトレードオフ}
 \label{sec:ccd_motivation}
+% ─────────────────────────────────────────────────────────────────────────────
 
-§~\ref{sec:locality} では，界面を汚さないために\textbf{局所性}（3点ステンシル）が必要であることを示した．
-次の問いは「3点制約のもとで，いかに高精度（$\Ord{h^6}$）を達成するか」である．
-本節はこの問いに答える．中心差分との精度対ステンシル幅のトレードオフを整理し，
-CCD 法がそれを乗り越える仕組みを導出する．
-
-\subsubsection{精度とステンシル幅のトレードオフ}
+§~\ref{sec:locality} で示した「3 点で $\Ord{h^6}$」という設計目標を，
+本節では中心差分との精度対ステンシル幅トレードオフから定量的に位置付け，
+\textbf{コンパクトスキーム}が陽的差分の限界を超える経路を導出する．
 
 最も単純な2次精度の中心差分（一次微分）は：
 \begin{equation}
@@ -185,10 +113,9 @@ $\Ord{\varepsilon^2}=\Ord{h^2}$ として残るため，
 
 \textbf{注意：}
 CCD 演算子は滑らかな入力場を前提として $\Ord{h^6}$ 精度を発揮する．
-界面を跨ぐ不連続場に対しては Hermite 場延長法（HFE，§~\ref{sec:field_extension}）により
-入力を平滑化する手法が考えられるが，現行の CSF + smoothed Heaviside 一括解法では
-圧力場が連続的に定義されるため HFE は不要である（§~\ref{sec:projection_derivation} 参照）．
-これにより CCD の高次精度が寄生流れ抑制に直接寄与する．
+界面を跨ぐ不連続場の取り扱い（場延長やジャンプ条件の課嵌など）は
+スキーム設計の問題ではなく用途章の課題であり，
+本章では入力場が滑らかな前提で CCD の数値特性のみを論じる．
 定量的な閾値と格子収束テストの詳細は §~\ref{sec:verify_ccd_convergence} を参照のこと．
 \end{tcolorbox}
 
