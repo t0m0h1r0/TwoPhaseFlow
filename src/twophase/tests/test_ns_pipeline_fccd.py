@@ -24,6 +24,7 @@ from twophase.core.grid import Grid
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.simulation.ns_step_services import _interface_supported_curvature
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
@@ -68,7 +69,7 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
     rho = 1.0 + rng.uniform(0.0, 0.5, grid.shape)
 
     ppe.prepare_operator(rho)
-    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
     projection_apply = np.asarray(
         div_op.divergence_from_faces(
             div_op.pressure_fluxes(pressure, rho, pressure_gradient="fccd")
@@ -104,7 +105,7 @@ def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
     rho[: grid.N[0] // 2 + 1, :] = 1000.0
 
     ppe.prepare_operator(rho)
-    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
     projection_apply = np.asarray(
         div_op.divergence_from_faces(
             div_op.pressure_fluxes(
@@ -116,11 +117,9 @@ def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
         )
     ).ravel()
 
-    mask = np.ones_like(ppe_apply, dtype=bool)
-    mask[list(ppe._pin_dofs)] = False
     np.testing.assert_allclose(
-        projection_apply[mask],
-        ppe_apply[mask],
+        projection_apply,
+        ppe_apply,
         rtol=1.0e-12,
         atol=1.0e-12,
     )
@@ -211,6 +210,28 @@ def _mode2_ic(solver: TwoPhaseNSSolver) -> np.ndarray:
     return solver.psi_from_phi(phi)
 
 
+def test_psi_direct_transport_reinitializes_after_initial_step_only():
+    class IdentityAdvection:
+        def advance(self, psi, velocity, dt):
+            return psi
+
+    class ShiftReinitializer:
+        def reinitialize(self, psi):
+            return psi + 1.0
+
+    transport = PsiDirectTransport(
+        Backend(use_gpu=False),
+        IdentityAdvection(),
+        ShiftReinitializer(),
+        reinit_every=2,
+    )
+    psi = np.zeros((3, 3))
+    velocity = [np.zeros_like(psi), np.zeros_like(psi)]
+
+    assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=0), psi)
+    assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
+
+
 @pytest.mark.parametrize(
     "advection_scheme,convection_scheme",
     [("fccd_flux", "fccd_flux"), ("fccd_nodal", "fccd_nodal")],
@@ -289,7 +310,7 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 0
-    assert solver._interface_runtime.reinit_every == 4
+    assert solver._interface_runtime.reinit_every == 20
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
     assert solver._div_op is solver._fccd_div_op
@@ -313,6 +334,38 @@ def test_ch13_capillary_wave_yaml_builds_initial_field():
     y_high = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.75)))
     assert psi[x0, y_low] > 0.5
     assert psi[x0, y_high] < 0.5
+
+
+def test_ch13_capillary_curvature_is_supported_on_interface_band():
+    """HFE must not reintroduce pressure-jump curvature in saturation tails."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+    psi = solver.build_ic(cfg)
+    u, v = solver.build_velocity(cfg, psi)
+    psi, _, _ = solver._rebuild_grid(psi, u, v, cfg.physics.rho_l, cfg.physics.rho_g)
+
+    kappa_raw = solver._curv.compute(psi)
+    kappa = solver._hfe.apply(
+        solver._backend.xp.asarray(kappa_raw),
+        solver._backend.xp.asarray(psi),
+    )
+    kappa = _interface_supported_curvature(
+        kappa,
+        psi,
+        xp=solver._backend.xp,
+        psi_min=getattr(solver._curv, "psi_min", 0.01),
+    )
+    kappa_h = np.asarray(solver._backend.to_host(kappa))
+    psi_h = np.asarray(solver._backend.to_host(psi))
+
+    psi_min = getattr(solver._curv, "psi_min", 0.01)
+    tail = (psi_h <= psi_min) | (psi_h >= 1.0 - psi_min)
+    assert np.all(kappa_h[tail] == 0.0)
+    assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 20.0
 
 
 def test_ch13_rising_bubble_water_air_yaml_builds_solver():
@@ -365,10 +418,32 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
 
     assert ppe.coefficient_scheme == "phase_separated"
     assert ppe.interface_coupling_scheme == "jump_decomposition"
-    assert len(ppe._pin_dofs) == 2
+    assert ppe._uses_phase_mean_gauge()
     assert np.all(coeff_x[N // 2, :] == 0.0)
     assert np.all(coeff_x[: N // 2, :] > 0.0)
     assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
+
+
+def test_phase_separated_fallback_pin_candidates_are_bulk_not_interface_edge():
+    """Fallback point-gauge candidates must avoid diffuse contact-line rows."""
+    from twophase.ppe.fccd_matrixfree_helpers import compute_fccd_phase_gauges
+
+    rho = np.ones((16, 16))
+    rho[:, :8] = 1000.0
+    rho[:, 8] = 450.0
+
+    state = compute_fccd_phase_gauges(
+        rho_host=rho,
+        coefficient_scheme="phase_separated",
+        default_pin_dof=0,
+    )
+    coords = [np.unravel_index(dof, rho.shape) for dof in state.pin_dofs]
+
+    assert len(coords) == 2
+    for i, j in coords:
+        assert 0 < i < rho.shape[0] - 1
+        assert 0 < j < rho.shape[1] - 1
+        assert j != 8
 
 
 def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
@@ -396,7 +471,118 @@ def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
 
     assert abs(float(np.mean(projected[liquid]))) < 1.0e-14
     assert abs(float(np.mean(projected[gas]))) < 1.0e-14
-    assert np.allclose(projected.ravel()[list(ppe._pin_dofs)], 0.0)
+
+
+def test_phase_separated_fccd_ppe_projects_rhs_by_control_volume():
+    """Nonuniform Neumann compatibility is a zero control-volume integral."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "jump_decomposition",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
+    rho = np.ones(grid.shape)
+    rho[: grid.N[0] // 2 + 1, :] = 1000.0
+    rng = np.random.default_rng(1618)
+    rhs = rng.standard_normal(grid.shape)
+
+    ppe.prepare_operator(rho)
+    projected = np.asarray(ppe._project_rhs_compatibility(rhs))
+    weights = np.asarray(grid.cell_volumes())
+
+    phase_masks = (
+        np.asarray(ppe._rho) >= ppe._phase_threshold,
+        np.asarray(ppe._rho) < ppe._phase_threshold,
+    )
+    for mask in phase_masks:
+        assert abs(float(np.sum(weights[mask] * projected[mask]))) < 1.0e-13
+
+
+def test_phase_separated_mean_gauge_removes_phase_constant_modes():
+    """Phase-separated PPE uses mean gauges, not point Dirichlet pins."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+    ppe.prepare_operator(rho)
+
+    field = np.zeros_like(rho)
+    field[rho < ppe._phase_threshold] = 3.0
+    field[rho >= ppe._phase_threshold] = -2.0
+    applied = np.asarray(ppe.apply(field))
+
+    assert np.allclose(applied, field)
+
+
+def test_phase_separated_mean_gauge_preserves_mirror_symmetry():
+    """The nullspace gauge must not introduce a one-point symmetry defect."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    y = np.linspace(-1.0, 1.0, N + 1)
+    x = np.linspace(-1.0, 1.0, N + 1)
+    yy, xx = np.meshgrid(y, x, indexing="ij")
+    rho = np.where(yy < 0.0, 1000.0, 1.0)
+    pressure = xx * xx + 0.3 * yy
+
+    ppe.prepare_operator(rho)
+    applied = np.asarray(ppe.apply(pressure))
+
+    np.testing.assert_allclose(applied, applied[:, ::-1], rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_phase_separated_defect_correction_preserves_mirror_symmetry():
+    """Outer residual correction must use the same mean gauge as the base PPE."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_defect_correction=True,
+        ppe_dc_max_iterations=2,
+        ppe_dc_tolerance=1.0e-10,
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+        surface_tension_scheme="pressure_jump",
+    )
+    ppe = solver._ppe_solver
+    y = np.linspace(-1.0, 1.0, N + 1)
+    x = np.linspace(-1.0, 1.0, N + 1)
+    yy, xx = np.meshgrid(y, x, indexing="ij")
+    rho = np.where(yy < 0.0, 1000.0, 1.0)
+    psi = np.where(yy < 0.0, 1.0, 0.0)
+    kappa = 2.0 + 0.1 * xx * xx
+    rhs = np.zeros_like(rho)
+
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=0.072)
+    pressure = np.asarray(solver._backend.to_host(ppe.solve(rhs, rho)))
+
+    np.testing.assert_allclose(
+        pressure,
+        pressure[:, ::-1],
+        rtol=1.0e-10,
+        atol=1.0e-10,
+    )
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
@@ -462,7 +648,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
-        ppe_max_iterations=80,
+        ppe_max_iterations=500,
         ppe_tolerance=1.0e-6,
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -482,11 +668,14 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     for name, arr in [("psi", psi), ("u", u), ("v", v), ("p", p)]:
         assert np.all(np.isfinite(arr)), f"{name} not finite"
 
+    speed_max = max(float(np.max(np.abs(u))), float(np.max(np.abs(v))))
+    assert speed_max > 1.0e-12
     assert solver._p_prev is not None
     assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
     diag = solver._step_diag.last
     assert diag["ppe_phase_count"] == 2.0
-    assert diag["ppe_pin_count"] == 2.0
+    assert diag["ppe_pin_count"] == 0.0
+    assert diag["ppe_mean_gauge"] == 1.0
     assert diag["ppe_interface_coupling_jump"] == 1.0
     assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
 

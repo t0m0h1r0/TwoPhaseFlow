@@ -11,6 +11,7 @@ import numpy as np
 class FCCDGeometryCache:
     h_min: list[float]
     node_width: list
+    cell_volume: object
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,11 @@ def build_fccd_geometry_cache(*, xp, grid, ndim: int) -> FCCDGeometryCache:
         node_axis[1:-1] = 0.5 * (coords[2:] - coords[:-2])
         h_min.append(float(np.min(face_width)))
         node_width.append(xp.asarray(node_axis))
-    return FCCDGeometryCache(h_min=h_min, node_width=node_width)
+    return FCCDGeometryCache(
+        h_min=h_min,
+        node_width=node_width,
+        cell_volume=xp.asarray(grid.cell_volumes()),
+    )
 
 
 def compute_fccd_phase_gauges(
@@ -49,17 +54,76 @@ def compute_fccd_phase_gauges(
         return FCCDPhaseGaugeState(pin_dofs=(default_pin_dof,), phase_threshold=None)
 
     threshold = 0.5 * (rho_min + rho_max)
-    gas = np.flatnonzero(rho_np.ravel() < threshold)
-    liquid = np.flatnonzero(rho_np.ravel() >= threshold)
     pins = []
-    if gas.size:
-        pins.append(int(gas[0]))
-    if liquid.size:
-        pins.append(int(liquid[0]))
+    gas_pin = _select_bulk_phase_gauge_pin(
+        rho_np,
+        phase_mask=rho_np < threshold,
+        threshold=threshold,
+        rho_extreme=rho_min,
+        prefer_low_density=True,
+    )
+    liquid_pin = _select_bulk_phase_gauge_pin(
+        rho_np,
+        phase_mask=rho_np >= threshold,
+        threshold=threshold,
+        rho_extreme=rho_max,
+        prefer_low_density=False,
+    )
+    if gas_pin is not None:
+        pins.append(gas_pin)
+    if liquid_pin is not None:
+        pins.append(liquid_pin)
     return FCCDPhaseGaugeState(
         pin_dofs=tuple(sorted(set(pins))) or (default_pin_dof,),
         phase_threshold=threshold,
     )
+
+
+def _select_bulk_phase_gauge_pin(
+    rho_np: np.ndarray,
+    *,
+    phase_mask: np.ndarray,
+    threshold: float,
+    rho_extreme: float,
+    prefer_low_density: bool,
+) -> int | None:
+    """Choose a phase gauge in the bulk, away from walls and the interface.
+
+    The Neumann PPE gauge removes only a per-phase constant null mode.  Placing
+    the gauge on a diffuse-interface/contact-line row changes a physical
+    pressure-jump row into a Dirichlet row, so the selected DOF must be a bulk
+    representative whenever such a cell exists.
+    """
+    if not np.any(phase_mask):
+        return None
+
+    denom = abs(threshold - rho_extreme)
+    if denom <= 1.0e-14:
+        purity = np.ones_like(rho_np, dtype=np.float64)
+    elif prefer_low_density:
+        purity = (threshold - rho_np) / denom
+    else:
+        purity = (rho_np - threshold) / denom
+    purity = np.clip(purity, 0.0, 1.0)
+
+    bulk_mask = phase_mask & (purity >= 0.95)
+    candidate_mask = bulk_mask if np.any(bulk_mask) else phase_mask
+    boundary_distance = _grid_boundary_distance(rho_np.shape)
+    score = np.where(candidate_mask, boundary_distance + 1.0e-3 * purity, -np.inf)
+    return int(np.argmax(score))
+
+
+def _grid_boundary_distance(shape: tuple[int, ...]) -> np.ndarray:
+    """Return index-space distance to the nearest domain boundary."""
+    distance = np.full(shape, np.inf, dtype=np.float64)
+    ndim = len(shape)
+    for axis, size in enumerate(shape):
+        axis_index = np.arange(size, dtype=np.float64).reshape(
+            (1,) * axis + (size,) + (1,) * (ndim - axis - 1)
+        )
+        axis_distance = np.minimum(axis_index, size - 1 - axis_index)
+        distance = np.minimum(distance, axis_distance)
+    return distance
 
 
 def build_fccd_face_inverse_density(
@@ -115,6 +179,21 @@ def build_fccd_interface_jump_context(*, xp, backend, psi, kappa, sigma: float) 
     }
 
 
+def fccd_interface_jump_is_active(
+    *,
+    coefficient_scheme: str,
+    interface_coupling_scheme: str,
+    interface_jump_context: dict | None,
+) -> bool:
+    """Return whether the SP-M pressure-jump decomposition is active."""
+    return (
+        coefficient_scheme == "phase_separated"
+        and interface_coupling_scheme == "jump_decomposition"
+        and interface_jump_context is not None
+        and float(interface_jump_context.get("sigma", 0.0)) > 0.0
+    )
+
+
 def apply_fccd_interface_jump(
     *,
     pressure,
@@ -153,15 +232,19 @@ def project_fccd_rhs_compatibility(
     phase_threshold: float | None,
     rho_dev,
     rho_host,
+    cell_volume_dev,
+    cell_volume_host,
     pin_dofs: tuple[int, ...],
     interface_coupling_scheme: str,
     use_device_density: bool,
     to_scalar,
+    pin_rhs: bool = True,
 ):
     rhs_projected = xp.asarray(rhs).copy()
     stats = {
         "ppe_phase_count": 1.0,
-        "ppe_pin_count": float(len(pin_dofs)),
+        "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
+        "ppe_mean_gauge": float(not pin_rhs),
         "ppe_rhs_phase_mean_before_max": 0.0,
         "ppe_rhs_phase_mean_after_max": 0.0,
         "ppe_interface_coupling_jump": float(
@@ -173,10 +256,12 @@ def project_fccd_rhs_compatibility(
         or phase_threshold is None
         or rho_host is None
     ):
-        _pin_zero(rhs_projected.ravel(), pin_dofs)
+        if pin_rhs:
+            _pin_zero(rhs_projected.ravel(), pin_dofs)
         return rhs_projected, stats
 
     rho_view = rho_dev if use_device_density else rho_host
+    weight_view = cell_volume_dev if use_device_density else cell_volume_host
     phase_masks = (
         rho_view < phase_threshold,
         rho_view >= phase_threshold,
@@ -189,17 +274,20 @@ def project_fccd_rhs_compatibility(
         if count == 0:
             continue
         phase_count += 1
-        mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        phase_weight = xp.where(mask, weight_view, 0.0)
+        mean = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
         means_before.append(abs(to_scalar(mean)))
         rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
-        mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        mean_after = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
         means_after.append(abs(to_scalar(mean_after)))
 
-    _pin_zero(rhs_projected.ravel(), pin_dofs)
+    if pin_rhs:
+        _pin_zero(rhs_projected.ravel(), pin_dofs)
     stats.update(
         {
             "ppe_phase_count": float(phase_count),
-            "ppe_pin_count": float(len(pin_dofs)),
+            "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
+            "ppe_mean_gauge": float(not pin_rhs),
             "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
             "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
         }

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import IPPESolver
+from .fccd_matrixfree_helpers import fccd_interface_jump_is_active
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -83,13 +84,57 @@ class PPESolverDefectCorrection(IPPESolver):
             if hasattr(solver, "set_interface_jump_context"):
                 solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
 
+    def _subtract_interface_jump_operator(self, rhs_dev):
+        """Apply jump decomposition for the wrapped operator residual solve."""
+        operator = self.operator
+        if not hasattr(operator, "apply_interface_jump") or not fccd_interface_jump_is_active(
+            coefficient_scheme=getattr(operator, "coefficient_scheme", "none"),
+            interface_coupling_scheme=getattr(operator, "interface_coupling_scheme", "none"),
+            interface_jump_context=getattr(operator, "_interface_jump_context", None),
+        ):
+            return rhs_dev
+        jump_pressure = operator.apply_interface_jump(self.xp.zeros_like(rhs_dev))
+        return rhs_dev - self._apply_physical_operator(jump_pressure)
+
+    def _apply_physical_operator(self, pressure):
+        """Apply the physical PPE operator without gauge augmentation when exposed."""
+        if hasattr(self.operator, "_apply_operator_core"):
+            return self.operator._apply_operator_core(pressure)
+        return self.operator.apply(pressure)
+
+    def _uses_phase_mean_gauge(self) -> bool:
+        checker = getattr(self.operator, "_uses_phase_mean_gauge", None)
+        return bool(checker()) if callable(checker) else False
+
+    def _enforce_pressure_gauge(self, pressure):
+        """Apply the configured pressure nullspace gauge."""
+        if self._uses_phase_mean_gauge() and hasattr(self.operator, "_project_phase_means"):
+            return self.operator._project_phase_means(pressure)
+        self._pin_flat(pressure.ravel(), 0.0)
+        return pressure
+
+    def _enforce_rhs_compatibility(self, rhs):
+        """Apply the matching Neumann compatibility constraint to a RHS."""
+        if self._uses_phase_mean_gauge() and hasattr(
+            self.operator,
+            "_project_rhs_compatibility",
+        ):
+            return self.operator._project_rhs_compatibility(rhs)
+        rhs_projected = rhs.copy()
+        self._pin_flat(rhs_projected.ravel(), 0.0)
+        return rhs_projected
+
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve by base solve plus residual defect corrections."""
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
+        self.operator.prepare_operator(rho)
+        rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
+        rhs_dev = self._enforce_rhs_compatibility(rhs_dev)
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
+        pressure = self._enforce_pressure_gauge(pressure)
         initial_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
         if all_arrays_exact_zero(xp, (rhs_dev, pressure)):
             self.last_base_pressure = xp.copy(pressure)
@@ -98,25 +143,22 @@ class PPESolverDefectCorrection(IPPESolver):
                 pressure = self.operator.apply_interface_jump(pressure)
             return pressure
 
-        self.operator.prepare_operator(rho)
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel().copy()
-        self._pin_flat(rhs_flat, 0.0)
-        self._pin_flat(pressure.ravel(), 0.0)
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
-            self._pin_flat(residual.ravel(), 0.0)
+            residual = self._enforce_rhs_compatibility(residual)
             residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
             if residual_norm <= self.tolerance * scale:
                 break
             correction = xp.asarray(
                 self.base_solver.solve(residual, rho, dt=dt, p_init=None)
             )
-            self._pin_flat(correction.ravel(), 0.0)
+            correction = self._enforce_pressure_gauge(correction)
             pressure = pressure + self.relaxation * correction
-            self._pin_flat(pressure.ravel(), 0.0)
+            pressure = self._enforce_pressure_gauge(pressure)
         self.last_base_pressure = xp.copy(pressure)
         self.last_diagnostics = initial_diagnostics
         if hasattr(self.operator, "apply_interface_jump"):

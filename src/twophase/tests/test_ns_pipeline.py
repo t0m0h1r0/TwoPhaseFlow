@@ -173,7 +173,7 @@ def test_dt_max_uses_directional_courant_sum():
 
 
 def test_dt_max_capillary_wave_bound_uses_h_min():
-    """Capillary bound follows C_wave sqrt((rho_l+rho_g) h_min^3/(2πσ))."""
+    """Capillary bound uses cfl as C_wave in the wave-resolution scale."""
     from twophase.simulation.config_io import PhysicsCfg
 
     s = _make_solver(alpha_grid=1.0)
@@ -182,7 +182,7 @@ def test_dt_max_capillary_wave_bound_uses_h_min():
     ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=1.0, mu=1.0e-12)
 
     dt = s.dt_max(u, v, ph, cfl=0.2)
-    expected = 0.25 * np.sqrt(
+    expected = 0.2 * np.sqrt(
         (ph.rho_l + ph.rho_g) * s.h_min ** 3 / (2.0 * np.pi * ph.sigma)
     )
     assert dt == pytest.approx(expected)
