@@ -95,3 +95,14 @@ body-force split, and corrector must share:
 - the same face gradient/divergence pair,
 - the same wall control-volume rows,
 - the same phase-separated face coefficient policy.
+
+## 6. Clean-main synthesis
+
+The exploratory branch contained additional predictor-assembly and q-jump PoCs.
+The clean merge intentionally kept only the projection-closure subset because
+that is the smallest change that restores the discrete identity
+`D_f A_f G_f` between PPE and corrector.
+
+See [SP-X](SP-X_projection_closure_trial_synthesis.md) for the full
+trial-and-error synthesis, rejected hypotheses, accepted cause, and clean-main
+validation (`8682cf5`, merged by `977c834`).

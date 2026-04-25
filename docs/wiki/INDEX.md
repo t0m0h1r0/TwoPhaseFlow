@@ -1,6 +1,6 @@
-# Wiki Index — 195 entries
+# Wiki Index — 219 entries
 
-## Theory (70)
+## Theory (76)
 
 | REF-ID | Title |
 |--------|-------|
@@ -79,6 +79,7 @@
 | [WIKI-T-073](theory/WIKI-T-073.md) | Interface-Band Predictor Closure: NS–LS–CFD Derivation for Buoyancy-Driven Assembly |
 | [WIKI-T-074](theory/WIKI-T-074.md) | Well-Balanced Buoyancy Predictor Theory: Pressure-Robust, Interface-Band, Stage-Split Closure |
 | [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
+| [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
 
 ## Cross-Domain (36)
 
@@ -121,7 +122,7 @@
 | [WIKI-X-035](cross-domain/WIKI-X-035.md) | Buoyancy-Aware Predictor Redesign Theorem: Minimal Admissible Algorithm for ch13 |
 | [WIKI-X-036](cross-domain/WIKI-X-036.md) | Stage-Split Buoyancy Predictor Redesign: Vertical Assembly Repair and V(u_pred)-Stage Horizontal Coupling |
 
-## Experiment (29)
+## Experiment (32)
 
 | REF-ID | Title |
 |--------|-------|
@@ -157,8 +158,9 @@
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
 | [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
+| [WIKI-E-032](experiment/WIKI-E-032.md) | ch13 Projection-Closure Trial Synthesis: Failed Hypotheses, Accepted Cause, Clean-Main Validation |
 
-## Paper (12)
+## Paper (13)
 
 | REF-ID | Title |
 |--------|-------|
@@ -174,6 +176,7 @@
 | [WIKI-P-010](paper/WIKI-P-010.md) | 07b_reinitialization: Eikonal Unified Method Section (CHK-136) |
 | [WIKI-P-011](paper/WIKI-P-011.md) | Optimizing Multi-Agent Kernel Prompts with Visible Extended Thinking |
 | [WIKI-P-012](paper/WIKI-P-012.md) | 07b_reinitialization: ξ-SDF, FMM, and ε-Widening Sections (CHK-137..139) |
+| [WIKI-P-013](paper/WIKI-P-013.md) | SP-Core Paper Rewrite (§2–§10) — Phase Dashboard for CHK-182..190 |
 
 ## Meta (29)
 
@@ -209,7 +212,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (28)
+## Code (33)
 
 | REF-ID | Title |
 |--------|-------|
@@ -245,3 +248,4 @@
 | [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |
 | [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |
 | [WIKI-L-032](code/WIKI-L-032.md) | Phase-Separated FCCD Projection Closure: PPE, Predictor Residual, and Corrector Faces |
+| [WIKI-L-033](code/WIKI-L-033.md) | Clean Integration of Phase-Separated FCCD Projection Closure |

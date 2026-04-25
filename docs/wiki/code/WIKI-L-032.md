@@ -59,3 +59,15 @@ After coefficient closure, the same case reaches `T=0.05` without blowup:
 
 The root cause is therefore not lack of q-jump alone. The dominant defect was
 mixed phase-separated and mixture-density face spaces in PPE/projection.
+
+## Clean-main follow-up
+
+The clean production merge is documented in [[WIKI-L-033]]. It keeps only the
+operator-closure subset:
+
+- same wall-row `D_f` as the matrix-free FCCD PPE,
+- same phase-separated `A_f` in `pressure_fluxes()` and the corrector,
+- regression tests for non-uniform wall-grid operator equality.
+
+The broader trial synthesis and rejected hypotheses are recorded in
+[[WIKI-E-032]] and `SP-X_projection_closure_trial_synthesis.md`.

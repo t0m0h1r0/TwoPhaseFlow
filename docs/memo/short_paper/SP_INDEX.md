@@ -1,8 +1,8 @@
 # SP Index — Short-Paper Catalogue and Paper-Chapter Mapping
 
 - **Compiled by**: ResearchArchitect
-- **Compiled at**: 2026-04-23
-- **Purpose**: Canonical dashboard for the SP-A..SP-P short-paper series.
+- **Compiled at**: 2026-04-25
+- **Purpose**: Canonical dashboard for the SP-A..SP-X short-paper series.
   Tracks (1) the SP-letter → file mapping (so SP-H renumber events remain
   auditable), and (2) the SP → paper-chapter mapping used by
   [SP-O](SP-O_paper_rewrite_sp_core.md) to drive the §2–§10 rewrite
@@ -41,6 +41,8 @@
 | **SP-T** | [SP-T_stage_split_buoyancy_predictor_redesign.md](SP-T_stage_split_buoyancy_predictor_redesign.md) | **Stage-split redesign: vertical assembly repair + `V(u_pred)`-stage horizontal coupling** | 2026-04-25 | ACTIVE |
 | **SP-U** | [SP-U_buoyancy_predictor_well_balanced_foundation.md](SP-U_buoyancy_predictor_well_balanced_foundation.md) | **Literature-backed mathematical foundation for a pressure-robust, well-balanced buoyancy predictor** | 2026-04-25 | ACTIVE |
 | **SP-V** | [SP-V_discrete_buoyancy_predictor_operator_spec.md](SP-V_discrete_buoyancy_predictor_operator_spec.md) | **Discrete operator contract for stage-split buoyancy predictor assembly and `V(u_pred)` coupling** | 2026-04-25 | ACTIVE |
+| **SP-W** | [SP-W_phase_separated_projection_closure.md](SP-W_phase_separated_projection_closure.md) | **Phase-separated FCCD projection closure: PPE / residual / corrector face coefficient consistency** | 2026-04-25 | ACTIVE |
+| **SP-X** | [SP-X_projection_closure_trial_synthesis.md](SP-X_projection_closure_trial_synthesis.md) | **Trial synthesis and theory of the clean-main phase-separated projection closure** | 2026-04-25 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
