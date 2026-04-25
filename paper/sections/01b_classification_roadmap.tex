@@ -171,18 +171,18 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 5  & 時間積分
    & CLS は TVD-RK3，NS は AB2+IPC と CN 粘性，時間刻み制約
    & 2, 3, 4 \\
-6  & 界面適合格子
-   & レベルセット連動格子生成，メトリック係数，ALE 簡略化，Ridge-Eikonal の非一様格子拡張（D1--D4 数学的定義）
-   & 3, 4 \\
-7  & CLS 移流・再初期化
+6  & CLS 移流・再初期化
    & CLS $\psi$ 移流 DCCD（L1/L2 explicit），運動量移流 UCCD6（L1/L2/L3 既定），圧縮項 DCCD（CLS reinit 専用），安定性制約
    & 3, 4, 5 \\
-8  & 圧力・速度連成
+7  & 圧力・速度連成
    & Helmholtz 分解，DCCD チェッカーボード抑制，Balanced-Force
    & 4, 5 \\
-9  & 圧力 Poisson 方程式
+8  & 圧力 Poisson 方程式
    & 分相 PPE 解法，HFE，欠陥補正法，境界条件，精度総括
-   & 8 \\
+   & 7 \\
+9  & 界面適合格子
+   & レベルセット連動格子生成，メトリック係数，ALE 簡略化，Ridge-Eikonal の非一様格子拡張（D1--D4 数学的定義）
+   & 3, 4, 6, 7, 8 \\
 10 & 完全アルゴリズム
    & 離散演算子マッピング・7ステップフロー・タイムステップ制御・Level 1/2/3 PPE routing 集約・GPU 二路選択・純 FCCD DC 収束率
    & 全章 \\
@@ -213,8 +213,8 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
         単相 Navier--Stokes 方程式の基礎，Projection 法による圧力--速度分離，有限差分法の基本概念
   \item \textbf{数学的基盤と界面追跡}（第~\ref{sec:governing}--\ref{sec:advection}章）：
         One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
-  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:grid}, \ref{sec:collocate}, \ref{sec:ppe_solve} 章；表~\ref{tab:chapter_overview} の第 4 章・第 6 章・第 8--9 章に相当）：
-        CCD 法，界面適合格子，Rhie--Chow 補正，分相 PPE による圧力求解
+  \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:advection}, \ref{sec:collocate}, \ref{sec:ppe_solve}, \ref{sec:grid} 章；表~\ref{tab:chapter_overview} の第 4 章・第 6--9 章に相当）：
+        CCD 法，CLS 移流・再初期化，Rhie--Chow 補正，分相 PPE，界面適合格子
   \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
         7ステップ離散計算フローの統合実装
   \item \textbf{コンポーネント検証}（第~\ref{sec:verification}章）：
