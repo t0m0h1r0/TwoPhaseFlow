@@ -937,3 +937,113 @@ Gate-fix update (2026-04-25):
 > `buoyancy_local`, both landing at
 > `3.021e9 / 6.000e10 / 1.505e6`. The strongest current clue is therefore a
 > **full two-axis dilated interface-band buoyancy predictor assembly**.
+
+Neighbourhood split update:
+
+> splitting that successful full-band mask into an **edge-only** branch and a
+> **strict-plus-corner** branch shows that neither partial neighbourhood is
+> sufficient. `buoyancy_edgeband_local` lands at
+> `3.373e9 / 6.776e10 / 1.617e6`, while `buoyancy_corneraug_local` lands at
+> `3.411e9 / 6.654e10 / 1.580e6`. Both remain weaker than
+> `buoyancy_fullband_local = 3.021e9 / 6.000e10 / 1.505e6`. The active clue is
+> therefore not “edge cells only” or “corner cells only”, but a **cooperative
+> full 3×3 interface-neighbourhood buoyancy repair**.
+
+Weighted-band update:
+
+> two weighted variants were then tested to see whether the full-band signal is
+> just a tunable mixture of edge and corner contributions.
+> `buoyancy_edgehalf_local` (`edge=0.5`, `corner=1.0`) lands at
+> `3.536e9 / 7.017e10 / 1.633e6`, while `buoyancy_cornerhalf_local`
+> (`edge=1.0`, `corner=0.5`) lands at `3.362e9 / 6.717e10 / 1.603e6`.
+> Neither comes close to the full-band optimum. So the winning signal is not a
+> simple scalar weighting of edge and corner terms; it behaves like a **hard,
+> coupled full-neighbourhood assembly**.
+
+Component-selective full-band update:
+
+> two further probes then split that hard full-band repair by velocity
+> component. `buoyancy_fullband_local_x` lands at
+> `3.449e9 / 6.985e10 / 1.636e6`, while `buoyancy_fullband_local_y` lands at
+> `3.330e9 / 6.607e10 / 1.583e6`. Since the y-only branch is materially better
+> than the x-only branch, the dominant signal is vertical and buoyancy-carrying.
+> But neither equals the full-band optimum
+> `3.021e9 / 6.000e10 / 1.505e6`, so the effective object is not a pure
+> y-component fix. It is a **vertical-dominant yet still cross-component
+> coupled full-neighbourhood predictor repair**.
+
+Axis-mixed refinement:
+
+> two hybrid branches then tested whether that remaining gap can be closed by a
+> lighter x-side repair. `buoyancy_fullbandy_mappedx` (full-band y + mapped x)
+> lands at `3.369e9 / 6.883e10 / 1.636e6`, while
+> `buoyancy_fullbandy_sharpx` (full-band y + sharp-local x) lands at
+> `3.411e9 / 6.758e10 / 1.606e6`. Both are worse than the plain y-only branch
+> `3.330e9 / 6.607e10 / 1.583e6`. Therefore the missing signal is not restored
+> by a shallow x-side patch; it belongs to a **fully coupled two-component
+> full-band assembly**.
+
+Assembly-vs-corrector refinement:
+
+> one further probe then separated predictor assembly from the later
+> `V(u_pred)` evaluation. The branch kept
+> `predictor_assembly: buoyancy_fullband_local_y` but added
+> `intermediate_state_repair: fullband_x`, so only the x-component was repaired
+> at the intermediate-state stage. This yielded
+> `3.181e9 / 6.129e10 / 1.503e6`, much closer to the full optimum
+> `3.021e9 / 6.000e10 / 1.505e6` than the plain y-only branch
+> `3.330e9 / 6.607e10 / 1.583e6`. So the dominant y-signal is assembly-side,
+> but the missing x-signal is recovered mainly **at the `V(u_pred)` stage**.
+
+This stage separation is now formalised as a redesign spec in `WIKI-X-036` and
+`SP-T`: the admissible next-step architecture is **vertical repair in predictor
+assembly + horizontal post-transform before `V(u_pred)`**.
+
+The broader mathematical/physical foundation is now captured in `WIKI-T-074`
+and `SP-U`, which connect this redesign to pressure-robustness,
+well-balancedness, mass-momentum consistency, and variable-density projection
+theory.
+
+The discrete operator contract for the redesign is now pinned in `WIKI-T-075`
+and `SP-V`, making the stage-split predictor directly auditable as a CFD
+algorithm contract rather than just a diagnosis memo.
+>
+> Two follow-up runs then checked whether the x-side post repair must itself be
+> a hard full-band transform. With the same y-only predictor assembly,
+>
+> - `postmappedx` gives `3.250e9 / 6.564e10 / 1.591e6`;
+> - `postsharpx` gives `3.209e9 / 6.455e10 / 1.572e6`;
+> - `postfullbandx` remains best at `3.181e9 / 6.129e10 / 1.503e6`.
+>
+> Therefore the x-side residual is indeed a **`V(u_pred)`-stage** effect, but
+> it is not all-or-nothing tied to a hard full-band x repair. A local x-side
+> post transform already recovers much of the missing signal, especially the
+> sharp-local variant, while the full-band version still gives the strongest
+> improvement.
+>
+> These two stage-split branches have now been promoted to first-class solver
+> modes:
+>
+> - `buoyancy_stagesplit_fullbandx`
+> - `buoyancy_stagesplit_sharpx`
+>
+> and the resulting runs are bit-identical to the earlier composed-flag probes.
+> So the stage-split diagnosis is stable under solver-side refactoring.
+>
+> We then isolated whether the x-side post-stage signal requires mutating the
+> intermediate state or only the state fed to the viscous operator. Two
+> operator-only branches,
+>
+> - `buoyancy_stagesplit_operatorfullbandx`
+> - `buoyancy_stagesplit_operatorsharpx`
+>
+> apply the x-side repair only on a copy used for evaluating `V(u_pred)`. They
+> produce exactly the same diagnostics as the earlier stage-split modes:
+>
+> - `operatorfullbandx`: `3.181e9 / 6.129e10 / 1.503e6`
+> - `operatorsharpx`: `3.209e9 / 6.455e10 / 1.572e6`
+>
+> Both are bit-identical to `buoyancy_stagesplit_fullbandx` and
+> `buoyancy_stagesplit_sharpx`. So the x-side residual is an
+> **operator-evaluation-stage phenomenon**, not a canonical-state mutation
+> requirement.

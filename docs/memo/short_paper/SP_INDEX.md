@@ -38,6 +38,9 @@
 | **SP-Q** | [SP-Q_buoyancy_driven_predictor_assembly.md](SP-Q_buoyancy_driven_predictor_assembly.md) | **Buoyancy-driven predictor assembly theory for ch13 CN intermediate-state failure** | 2026-04-25 | ACTIVE |
 | **SP-R** | [SP-R_interface_band_predictor_closure_derivation.md](SP-R_interface_band_predictor_closure_derivation.md) | **NS × LS × CFD derivation of interface-band predictor closure and buoyancy-aware assembly** | 2026-04-25 | ACTIVE |
 | **SP-S** | [SP-S_buoyancy_predictor_redesign_theorem.md](SP-S_buoyancy_predictor_redesign_theorem.md) | **Redesign theorem and minimal admissible algorithm for buoyancy-aware predictor assembly** | 2026-04-25 | ACTIVE |
+| **SP-T** | [SP-T_stage_split_buoyancy_predictor_redesign.md](SP-T_stage_split_buoyancy_predictor_redesign.md) | **Stage-split redesign: vertical assembly repair + `V(u_pred)`-stage horizontal coupling** | 2026-04-25 | ACTIVE |
+| **SP-U** | [SP-U_buoyancy_predictor_well_balanced_foundation.md](SP-U_buoyancy_predictor_well_balanced_foundation.md) | **Literature-backed mathematical foundation for a pressure-robust, well-balanced buoyancy predictor** | 2026-04-25 | ACTIVE |
+| **SP-V** | [SP-V_discrete_buoyancy_predictor_operator_spec.md](SP-V_discrete_buoyancy_predictor_operator_spec.md) | **Discrete operator contract for stage-split buoyancy predictor assembly and `V(u_pred)` coupling** | 2026-04-25 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).

@@ -77,8 +77,10 @@
 | [WIKI-T-071](theory/WIKI-T-071.md) | Face-Canonical Variable-Density Projection: Literature Survey and PoC Ladder |
 | [WIKI-T-072](theory/WIKI-T-072.md) | Buoyancy-Driven Predictor Assembly: Interface-Local Intermediate-State Theory |
 | [WIKI-T-073](theory/WIKI-T-073.md) | Interface-Band Predictor Closure: NS–LS–CFD Derivation for Buoyancy-Driven Assembly |
+| [WIKI-T-074](theory/WIKI-T-074.md) | Well-Balanced Buoyancy Predictor Theory: Pressure-Robust, Interface-Band, Stage-Split Closure |
+| [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
 
-## Cross-Domain (35)
+## Cross-Domain (36)
 
 | REF-ID | Title |
 |--------|-------|
@@ -117,6 +119,7 @@
 | [WIKI-X-033](cross-domain/WIKI-X-033.md) | Pure High-Order FCCD Two-Phase DNS: FVM-Free Phase-Separated PPE + HFE + GFM + DC |
 | [WIKI-X-034](cross-domain/WIKI-X-034.md) | Buoyancy-Aware Predictor Assembly Redesign: From Interface-Local Diagnosis to Solver-Side Fix |
 | [WIKI-X-035](cross-domain/WIKI-X-035.md) | Buoyancy-Aware Predictor Redesign Theorem: Minimal Admissible Algorithm for ch13 |
+| [WIKI-X-036](cross-domain/WIKI-X-036.md) | Stage-Split Buoyancy Predictor Redesign: Vertical Assembly Repair and V(u_pred)-Stage Horizontal Coupling |
 
 ## Experiment (29)
 
