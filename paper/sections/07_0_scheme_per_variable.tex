@@ -22,7 +22,7 @@ CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$
 \hline
 変数 & 特性 & 推奨スキーム \\
 \hline
-$\psi$（CLS）& $C^0$ 急 tanh & Dissipative CCD（CCD 微分 + 後段スペクトル散逸；\S\ref{sec:advection_motivation}） \\
+$\psi$（CLS）& $C^0$ 急 tanh & FCCD（面値保存型；\texttt{FCCDLevelSetAdvection}；ch13 production；\S\ref{sec:advection_motivation}） \\
 $u, v$ bulk & $C^\infty$ 滑 & CCD / UCCD6 / FCCD（\S\ref{sec:fccd_advection}） \\
 $u, v$ 界面帯 & $\nabla u$ kink & 2 次片側（\S\ref{sec:viscous_3layer}）；比較対象 WENO5 は付録~\ref{app:weno5} \\
 $\phi$（再初期化）& Eikonal & Godunov（Level 1）/ WENO--HJ~\cite{JiangPeng2000}（Level 2/3 オプション；\S\ref{sec:eikonal_reinit}） \\
@@ -34,11 +34,12 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
 
 \noindent\textbf{設計原則}：
 \begin{itemize}
-  \item \textbf{$\psi$ に CCD を適用してはならない．}
-        tanh プロファイルを CCD で微分すると急勾配帯の曲率が増幅され，
+  \item \textbf{$\psi$ に節点 CCD を適用してはならない．}
+        tanh プロファイルを節点 CCD で微分すると急勾配帯の曲率が増幅され，
         CN 半陰的処理でも不安定化することを本稿の数値実験で確認した．
-        DCCD スペクトルフィルタ（\S\ref{sec:dccd_derivation}）で散逸を加えた
-        場合のみ実用的．
+        ch13 production では FCCD 面値演算子（\S\ref{sec:fccd_def}）で面フラックスを評価することで
+        振動源を切り，\texttt{FCCDLevelSetAdvection} を実装デフォルトとする．
+        旧実装の DCCD スペクトル散逸（\S\ref{sec:dccd_derivation}）はレガシー位置づけ．
   \item \textbf{$p$ の CCD 節点値計算は jump 補正なしでは禁止．}
         圧力跳躍を滑らかに内挿するため節点 CCD は実効的に
         全域 $\mathcal{O}(1)$ のスプリアス圧力勾配を生む．
@@ -50,8 +51,9 @@ $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\
         物性値は常に低次（算術平均 / 調和平均 / $\psi$ 線形内挿）で評価．
   \item \textbf{bulk 速度は CCD 推奨．}
         $u, v$ は $C^\infty$ 滑らか（界面帯を除く）．
-        純 CCD でも安定だが，移流のスペクトル散逸欠如を補う
-        DCCD または UCCD6（\S\ref{sec:uccd6_def}）が実装デフォルト推奨．
+        純 CCD でも安定だが，移流の風上安定化を担う
+        UCCD6（\S\ref{sec:uccd6_def}）が ch13 production の実装デフォルト
+        （\texttt{UCCD6ConvectionTerm}）．DCCD は legacy 位置づけ．
   \item \textbf{界面帯の速度は低次でよい．}
         $\nabla u$ の kink を CCD stencil が跨ぐと $\mathcal{O}(1)$ 振動．
         Definition $|\phi|\le 3h$ or phase-indicator mismatch で帯を同定し，
@@ -72,9 +74,9 @@ PPE RHS の不整合を同時に引き起こす．
 （詳細は \S\ref{sec:algorithm}）．
 
 \noindent\textbf{本章の構成}：
-\S\ref{sec:advection_motivation} で CLS 移流 DCCD（Stage A），
-\S\ref{sec:fccd_advection} で FCCD 移流 Option B/C，
-\S\ref{sec:cls_compression} で CLS 再初期化（既存），
+\S\ref{sec:advection_motivation} で CLS 移流 FCCD（Stage A），
+\S\ref{sec:fccd_advection} で FCCD/UCCD6 運動量移流，
+\S\ref{sec:cls_compression} で CLS 再初期化（Ridge-Eikonal 主軸），
 \S\ref{sec:cls_stages} で CLS A--F 6 段階，
 \S\ref{sec:viscous_3layer} で粘性 3 層アーキテクチャ．
 

@@ -1,6 +1,6 @@
 % paper/sections/07_advection.tex
 %
-% §6  CLS 移流の離散化：Dissipative CCD スキームの設計根拠
+% §6  CLS 界面追跡の空間離散化：FCCD/UCCD6/Ridge-Eikonal の ch13 production stack
 %     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
 %
 \section{CLS 界面追跡の空間離散化：移流・再初期化への CCD 適用}
@@ -16,6 +16,19 @@ CLS 移流方程式（§~\ref{sec:levelset}，式~\eqref{eq:cls_advection}の再
 \end{equation}
 である．
 
+\noindent\textbf{Part 1 からの継承：}
+本章は Part 1 で確立した連続定式化の離散実装を示す．
+\begin{itemize}
+  \item §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の運動量移流項
+        $(\bm{u}\cdot\bnabla)\bm{u}$ → §~\ref{sec:fccd_advection}（§6.3）で FCCD 離散化，
+        bulk 域は UCCD6（§~\ref{sec:uccd6_def}）が担う．
+  \item §~\ref{sec:cls_advection}（§3.2 CLS 保存形移流方程式，式~\eqref{eq:cls_advection}）
+        → §~\ref{sec:advection_motivation}（§6.2）で FCCD 面値演算子により離散化．
+  \item §~\ref{sec:reinit}（§3.3 再初期化方程式）+ §~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）
+        → §~\ref{sec:cls_compression}（§6.4）で Ridge-Eikonal 主軸の離散実装（ch13 production）．
+\end{itemize}
+ch13 production stack（\texttt{experiment/ch13/config/*.yaml}）はこの配分を採用する．
+
 \noindent\textbf{本章の対象範囲：}
 本章では CLS 移流・再初期化と CLS 側安定性制約を詳述する．
 FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.3）で展開し，
@@ -23,13 +36,12 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.
 粘性項（変密度 3 層 Hermite 評価）は §~\ref{sec:viscous_3layer}（§6.6）で詳述する．
 
 \begin{enumerate}
-  \item \textbf{§~\ref{sec:cls_on_nonuniform}（非一様格子上の CLS 演算）：}
-        DCCD フィルタの $\xi$ 空間適用と $\psi$ 補間，空間可変 Heaviside 幅を論じる．
-  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 DCCD；運動量用 UCCD6；比較対象 WENO5 は付録~\ref{app:weno5}）：}
-        CLS $\psi$ 移流は高周波ノイズを狙い撃ちする「スペクトルフィルタ」として DCCD を用い，
+  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 FCCD；運動量用 UCCD6；比較対象 WENO5 は付録~\ref{app:weno5}）：}
+        CLS $\psi$ 移流は面値保存型の FCCD（§~\ref{sec:fccd_advection}）を用い，
         運動量 $(u,v)$ 移流は演算子内部散逸の UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）が担う．
-  \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化）：}
-        再初期化方程式の圧縮項を Dissipative CCD と Crank--Nicolson 法で離散化する．
+  \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化：Ridge-Eikonal 主軸）：}
+        ch13 production の Ridge-Eikonal 法で再初期化を行う．
+        旧実装の DCCD 圧縮項 + Crank--Nicolson 拡散はレガシー位置づけ．
   \item \textbf{§~\ref{sec:stability}（安定性制約）：}
         時間刻み $\Delta t$ の CFL・拡散安定条件と推奨値をまとめる．
 \end{enumerate}
