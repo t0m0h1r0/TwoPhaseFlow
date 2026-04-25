@@ -32,7 +32,7 @@ returned as an array.
 """
 
 from __future__ import annotations
-from typing import List, Optional, TYPE_CHECKING
+from typing import Callable, List, Optional, TYPE_CHECKING
 
 from .interfaces import INSTerm
 from .viscous_spatial import (
@@ -141,6 +141,10 @@ class ViscousTerm(INSTerm):
         ccd: "CCDSolver",
         dt: float,
         psi=None,
+        intermediate_velocity_operator_transform: Callable[[List], None] | None = None,
+        predictor_state_assembly: Callable[..., List] | None = None,
+        convective_rhs: List | None = None,
+        buoyancy_rhs: List | None = None,
     ) -> List:
         """Delegate the viscous predictor advance to ``self.cn_advance``.
 
@@ -164,7 +168,18 @@ class ViscousTerm(INSTerm):
                 for c in range(len(u_old))
             ]
         return self.cn_advance.advance(
-            u_old, explicit_rhs, mu, rho, self, ccd, dt, psi=psi,
+            u_old,
+            explicit_rhs,
+            mu,
+            rho,
+            self,
+            ccd,
+            dt,
+            psi=psi,
+            intermediate_velocity_operator_transform=intermediate_velocity_operator_transform,
+            predictor_state_assembly=predictor_state_assembly,
+            convective_rhs=convective_rhs,
+            buoyancy_rhs=buoyancy_rhs,
         )
 
     # ── Core evaluation ───────────────────────────────────────────────────

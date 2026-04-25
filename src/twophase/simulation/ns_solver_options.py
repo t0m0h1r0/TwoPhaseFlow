@@ -83,8 +83,13 @@ class SolverSchemeOptions:
     momentum_gradient_scheme: str = "projection_consistent"
     viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "forward_euler"
+    cn_mode: str = "picard"
+    cn_buoyancy_predictor_assembly_mode: str = "none"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
+    canonical_face_state: bool = False
+    face_native_predictor_state: bool = False
+    face_no_slip_boundary_state: bool = False
     preserve_projected_faces: bool = False
     projection_consistent_buoyancy: bool = False
     debug_diagnostics: bool = False

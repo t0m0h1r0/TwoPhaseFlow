@@ -50,7 +50,7 @@ Caveats
 See docs/memo/extended_cn_impl_design.md §5.2 and WIKI-T-033 §5.2 / §6.
 """
 from __future__ import annotations
-from typing import List, TYPE_CHECKING
+from typing import Callable, List, TYPE_CHECKING
 
 from .base import ICNAdvance
 
@@ -75,21 +75,35 @@ class RichardsonCNAdvance:
         ccd: "CCDSolver",
         dt: float,
         psi=None,
+        intermediate_velocity_operator_transform: Callable[[List], None] | None = None,
+        predictor_state_assembly: Callable[..., List] | None = None,
+        convective_rhs: List | None = None,
+        buoyancy_rhs: List | None = None,
     ) -> List:
+        advance_kwargs = {
+            "psi": psi,
+            "intermediate_velocity_operator_transform": intermediate_velocity_operator_transform,
+            "predictor_state_assembly": predictor_state_assembly,
+            "convective_rhs": convective_rhs,
+            "buoyancy_rhs": buoyancy_rhs,
+        }
         # Big step
         u1 = self.base.advance(
-            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt, psi=psi,
+            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt, **advance_kwargs,
         )
 
         # Two half steps, explicit_rhs frozen at time n (matches the
         # surrounding IPC+AB2 assembly in ns_terms/predictor.py).
         dt_half = 0.5 * dt
         u_half = self.base.advance(
-            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, psi=psi,
+            u_old, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, **advance_kwargs,
         )
         u2 = self.base.advance(
-            u_half, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, psi=psi,
+            u_half, explicit_rhs, mu, rho, viscous_op, ccd, dt_half, **advance_kwargs,
         )
 
         # Extrapolation: (4·u_{Δt/2,2} − u_Δt) / 3
-        return [(4.0 * u2[c] - u1[c]) / 3.0 for c in range(len(u_old))]
+        return [
+            (4.0 * u2[component_index] - u1[component_index]) / 3.0
+            for component_index in range(len(u_old))
+        ]

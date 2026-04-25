@@ -44,6 +44,7 @@ class NSRuntimeComponentOptions:
     reynolds_number: float
     viscous_spatial_scheme: str
     viscous_time_scheme: str
+    cn_mode: str
     surface_tension_scheme: str
 
 
@@ -111,6 +112,7 @@ def build_ns_runtime_components(
         viscous_time_scheme=options.viscous_time_scheme,
         reynolds_number=options.reynolds_number,
         viscous_spatial_scheme=options.viscous_spatial_scheme,
+        cn_mode=options.cn_mode,
     )
     st_force = build_ns_surface_tension_force(
         backend=backend,

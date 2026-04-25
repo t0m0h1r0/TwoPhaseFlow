@@ -62,6 +62,7 @@ class ViscousBuildCtx:
     re: float
     spatial_scheme: str = "ccd_bulk"
     viscous_term: "ViscousTerm | None" = None
+    cn_mode: str = "picard"
 
 
 @dataclass

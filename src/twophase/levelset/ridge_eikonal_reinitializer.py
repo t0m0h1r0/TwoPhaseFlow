@@ -8,7 +8,6 @@ import numpy as np
 
 from .heaviside import invert_heaviside
 from .interfaces import IReinitializer
-from .reinit_eikonal_godunov import godunov_sweep as compute_reinit_godunov_sweep
 from .ridge_eikonal_extractor import RidgeExtractor
 from .ridge_eikonal_fmm import NonUniformFMM
 from .ridge_eikonal_kernels import _eps_local_kernel, _sigmoid_xp
@@ -19,7 +18,14 @@ if TYPE_CHECKING:
 
 
 class RidgeEikonalReinitializer(IReinitializer):
-    """Topology-preserving reinit via ridge extraction + non-uniform FMM."""
+    """Topology-preserving reinit via ridge extraction + non-uniform FMM.
+
+    The redistancing step solves the static Eikonal problem ``|grad(phi)| = 1``
+    with the accepted-set upwind rule implemented in :class:`NonUniformFMM`.
+    Approximate fixed-sweep pseudo-time reinitialisation is intentionally not
+    used here because the downstream curvature and capillary/buoyancy balance
+    depend on the converged signed-distance field.
+    """
 
     def __init__(
         self,
@@ -38,12 +44,9 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
-        self._n_iter = 20
-        self._use_device_eikonal = backend.is_gpu()
 
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
         self._h_min = h_min
-        self._dtau = 0.5 * h_min
         if h_ref is None:
             h_ref = float(np.prod([L / N for L, N in zip(grid.L, grid.N)]) ** (1.0 / grid.ndim))
         self._h_ref = h_ref
@@ -55,30 +58,21 @@ class RidgeEikonalReinitializer(IReinitializer):
         hy = xp.asarray(grid.h[1]).reshape(1, -1)
         self._h_field = xp.sqrt(hx * hy)
         self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
-        self._hx_fwd = hx
-        self._hx_bwd = xp.roll(hx, 1, axis=0)
-        self._hy_fwd = hy
-        self._hy_bwd = xp.roll(hy, 1, axis=1)
         self._dV = grid.cell_volumes()
 
         self._extractor = RidgeExtractor(backend, grid, sigma_0=sigma_0, h_ref=self._h_ref)
-        self._fmm = NonUniformFMM(grid)
+        self._fmm = NonUniformFMM(grid, backend=backend)
 
     def update_grid(self, grid) -> None:
         self._grid = grid
         xp = self._xp
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
         self._h_min = h_min
-        self._dtau = 0.5 * h_min
         self._eps_xi = self._eps / h_min
         hx = xp.asarray(grid.h[0]).reshape(-1, 1)
         hy = xp.asarray(grid.h[1]).reshape(1, -1)
         self._h_field = xp.sqrt(hx * hy)
         self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
-        self._hx_fwd = hx
-        self._hx_bwd = xp.roll(hx, 1, axis=0)
-        self._hy_fwd = hy
-        self._hy_bwd = xp.roll(hy, 1, axis=1)
         self._dV = grid.cell_volumes()
         self._extractor.update_grid(grid)
         self._fmm.update_grid(grid)
@@ -93,8 +87,8 @@ class RidgeEikonalReinitializer(IReinitializer):
         xi_ridge = self._extractor.compute_xi_ridge(phi)
         ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
 
-        if self._use_device_eikonal:
-            phi_sdf = self._device_eikonal_phi(phi, ridge_mask)
+        if self._backend.is_gpu():
+            phi_sdf = self._fmm.solve(phi, ridge_mask=ridge_mask, h_min=self._h_min)
         else:
             extra_seeds = None
             phi_np = np.asarray(phi)
@@ -122,27 +116,3 @@ class RidgeEikonalReinitializer(IReinitializer):
             psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
 
         return psi_new
-
-    def _device_eikonal_phi(self, phi, ridge_mask):
-        """GPU-resident Ridge-Eikonal redistancing via fixed Godunov sweeps."""
-        xp = self._xp
-        interface_band = xp.abs(phi) < 0.5 * self._h_min
-        seed_mask = xp.asarray(ridge_mask) & interface_band
-        phi_seeded = xp.where(seed_mask, 0.0, phi)
-        sgn0 = xp.sign(phi_seeded)
-        sgn0 = xp.where(xp.abs(phi_seeded) < 1.0e-10, 1.0, sgn0)
-        frozen_mask = interface_band | seed_mask
-        return compute_reinit_godunov_sweep(
-            xp,
-            phi_seeded,
-            sgn0,
-            dtau=self._dtau,
-            n_iter=self._n_iter,
-            hx_fwd=self._hx_fwd,
-            hx_bwd=self._hx_bwd,
-            hy_fwd=self._hy_fwd,
-            hy_bwd=self._hy_bwd,
-            zsp=True,
-            h_min=self._h_min,
-            frozen_mask=frozen_mask,
-        )

@@ -45,11 +45,11 @@ physics:
 
 run:
   time:
-    final: 8.0
+    final: 0.50
     cfl: 0.10
-    print_every: 100
+    print_every: 10
   debug:
-    step_diagnostics: false
+    step_diagnostics: true
 
 numerics:
   time:
@@ -60,6 +60,8 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    predictor:
+      assembly: balanced_buoyancy
     terms:
       convection:
         spatial: uccd6
@@ -72,6 +74,9 @@ numerics:
       surface_tension:
         formulation: pressure_jump
   projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
     poisson:
       operator:
         discretization: fccd
@@ -92,10 +97,10 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch13_rising_bubble_water_air_alpha2_n128x256_t8
+  dir: results/ch13_rising_bubble_water_air_alpha2_n128x256
   save_npz: true
   snapshots:
-    interval: 0.5
+    interval: 0.05
   figures:
     - type: time_series
       title: "Water-air rising bubble: centroid height"

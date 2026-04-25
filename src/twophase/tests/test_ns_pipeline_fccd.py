@@ -316,6 +316,12 @@ def test_ch13_rising_bubble_water_air_yaml_builds_solver():
     assert solver._interface_runtime.reinit_every == 4
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
+    assert solver._convection_time_scheme == "imex_bdf2"
+    assert solver._viscous_time_scheme == "implicit_bdf2"
+    assert solver._cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert solver._face_flux_projection is True
+    assert solver._canonical_face_state is True
+    assert solver._face_native_predictor_state is True
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
 

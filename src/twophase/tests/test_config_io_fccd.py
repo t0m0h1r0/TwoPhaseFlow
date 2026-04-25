@@ -165,7 +165,30 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert cfg.run.face_flux_projection is True
+    assert cfg.run.canonical_face_state is True
+    assert cfg.run.face_native_predictor_state is True
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
+
+
+def test_legacy_buoyancy_predictor_assembly_alias_maps_to_balanced_name():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "viscosity": {
+                        "time_integrator": "crank_nicolson",
+                        "predictor_assembly": (
+                            "buoyancy_faceresidual_stagesplit_transversefullband"
+                        ),
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
 
 
 def test_fccd_ppe_discretization_maps_to_fccd_solver():

@@ -13,6 +13,18 @@ def reset_ns_runtime_contexts(solver) -> None:
 
 def initialise_ns_solver_from_options(solver, options) -> None:
     """Run the ordered runtime assembly sequence for `TwoPhaseNSSolver`."""
+    solver._canonical_face_state = bool(
+        getattr(options.schemes, "canonical_face_state", False)
+    )
+    solver._face_native_predictor_state = bool(
+        getattr(options.schemes, "face_native_predictor_state", False)
+    )
+    solver._face_no_slip_boundary_state = bool(
+        getattr(options.schemes, "face_no_slip_boundary_state", False)
+    )
+    solver._cn_buoyancy_predictor_assembly_mode = str(
+        getattr(options.schemes, "cn_buoyancy_predictor_assembly_mode", "none")
+    )
     solver._preserve_projected_faces = bool(
         getattr(options.schemes, "preserve_projected_faces", False)
     )

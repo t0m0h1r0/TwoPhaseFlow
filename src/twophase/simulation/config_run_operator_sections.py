@@ -36,6 +36,23 @@ _VISCOUS_SPATIAL_ALIASES = {
     **_VISCOUS_SPATIAL_ALIASES_BASE,
     "conservative": "conservative_stress",
 }
+_CN_MODES = ("picard", "richardson_picard")
+_CN_MODE_ALIASES = {
+    "richardson": "richardson_picard",
+    "cn_richardson": "richardson_picard",
+    "richardson_cn": "richardson_picard",
+}
+_PREDICTOR_ASSEMBLY_MODES = (
+    "none",
+    "balanced_buoyancy",
+)
+_PREDICTOR_ASSEMBLY_ALIASES = {
+    "balanced": "balanced_buoyancy",
+    "well_balanced": "balanced_buoyancy",
+    "well_balanced_buoyancy": "balanced_buoyancy",
+    "buoyancy_split": "balanced_buoyancy",
+    "buoyancy_faceresidual_stagesplit_transversefullband": "balanced_buoyancy",
+}
 
 
 def parse_run_operator_settings(
@@ -169,6 +186,27 @@ def parse_run_operator_settings(
         layout["paths"]["viscosity_time"],
         aliases=VISCOUS_TIME_SCHEME_ALIASES,
     )
+    cn_mode = validate_choice(
+        _CN_MODE_ALIASES.get(
+            str(viscosity.get("cn_mode", "picard")).strip().lower(),
+            str(viscosity.get("cn_mode", "picard")).strip().lower(),
+        ),
+        _CN_MODES,
+        f"{layout['paths']['viscosity_time']}.cn_mode",
+    )
+    predictor_cfg = momentum.get("predictor", {}) or {}
+    raw_predictor_assembly = predictor_cfg.get(
+        "assembly",
+        viscosity.get("predictor_assembly", "none"),
+    )
+    predictor_assembly = validate_choice(
+        _PREDICTOR_ASSEMBLY_ALIASES.get(
+            str(raw_predictor_assembly).strip().lower(),
+            str(raw_predictor_assembly).strip().lower(),
+        ),
+        _PREDICTOR_ASSEMBLY_MODES,
+        "numerics.momentum.predictor.assembly",
+    )
     if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":
         raise ValueError(
             f"{layout['paths']['convection_time']}='imex_bdf2' requires "
@@ -205,4 +243,6 @@ def parse_run_operator_settings(
         "uccd6_sigma": uccd6_sigma,
         "viscous_spatial_scheme": viscous_spatial_scheme,
         "viscous_time_scheme": viscous_time_scheme,
+        "cn_mode": cn_mode,
+        "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
     }

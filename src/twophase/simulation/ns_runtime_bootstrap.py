@@ -22,6 +22,7 @@ class NSRuntimeBootstrapArtifacts:
     reynolds_number: float
     viscous_spatial_scheme: str
     viscous_time_scheme: str
+    cn_mode: str
     surface_tension_scheme: str
     components: NSRuntimeComponents
 
@@ -49,6 +50,7 @@ def build_ns_runtime_bootstrap(
     cn_viscous = viscous_time_scheme in {"crank_nicolson", "implicit_bdf2"}
     reynolds_number = float(scheme_options.Re)
     viscous_spatial_scheme = str(scheme_options.viscous_spatial_scheme)
+    cn_mode = str(getattr(scheme_options, "cn_mode", "picard"))
     surface_tension_scheme = str(scheme_options.surface_tension_scheme)
     components = build_ns_runtime_components(
         backend=backend,
@@ -69,6 +71,7 @@ def build_ns_runtime_bootstrap(
             reynolds_number=reynolds_number,
             viscous_spatial_scheme=viscous_spatial_scheme,
             viscous_time_scheme=viscous_time_scheme,
+            cn_mode=cn_mode,
             surface_tension_scheme=surface_tension_scheme,
         ),
         reproj_iim=reproj_iim,
@@ -80,6 +83,7 @@ def build_ns_runtime_bootstrap(
         reynolds_number=reynolds_number,
         viscous_spatial_scheme=viscous_spatial_scheme,
         viscous_time_scheme=viscous_time_scheme,
+        cn_mode=cn_mode,
         surface_tension_scheme=surface_tension_scheme,
         components=components,
     )
@@ -95,6 +99,7 @@ def bind_ns_runtime_bootstrap(solver, artifacts: NSRuntimeBootstrapArtifacts) ->
     solver._Re = artifacts.reynolds_number
     solver._viscous_spatial_scheme = artifacts.viscous_spatial_scheme
     solver._viscous_time_scheme = artifacts.viscous_time_scheme
+    solver._cn_mode = artifacts.cn_mode
     solver._surface_tension_scheme = artifacts.surface_tension_scheme
     solver._reconstruct_base = artifacts.components.reconstruct_base
     solver._reconstruct_phi_primary = artifacts.components.reconstruct_phi_primary

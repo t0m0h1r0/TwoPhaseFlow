@@ -9,7 +9,7 @@ u*, v* -> ``u_star``, ``v_star``
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 from ..core.array_checks import all_arrays_exact_zero
 from ..ppe.gmres_helpers import backend_supports_gmres, solve_gmres
@@ -65,8 +65,11 @@ class ExplicitViscousPredictor(IViscousPredictor):
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
         psi: "array" | None = None,
+        intermediate_velocity_operator_transform: Callable[[list], None] | None = None,
+        predictor_state_assembly: Callable[..., list] | None = None,
     ) -> tuple["array", "array"]:
         """Explicit forward-Euler step."""
+        del intermediate_velocity_operator_transform, predictor_state_assembly
         visc_u, visc_v = self._viscous.compute_explicit([u, v], mu, rho, ccd, psi=psi)
 
         u_star = u + dt * (conv_u + visc_u)
@@ -104,11 +107,28 @@ class CNViscousPredictor(IViscousPredictor):
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
         psi: "array" | None = None,
+        intermediate_velocity_operator_transform: Callable[[list], None] | None = None,
+        predictor_state_assembly: Callable[..., list] | None = None,
     ) -> tuple["array", "array"]:
         """CN implicit step via ``ViscousTerm.apply_cn_predictor()``."""
         explicit_rhs = [rho * conv_u, rho * (conv_v + buoy_v if buoy_v is not None else conv_v)]
+        convective_rhs = [rho * conv_u, rho * conv_v]
+        buoyancy_rhs = [
+            self.xp.zeros_like(conv_u),
+            rho * buoy_v if buoy_v is not None else self.xp.zeros_like(conv_v),
+        ]
         vel_star = self._viscous.apply_cn_predictor(
-            [u, v], explicit_rhs, mu, rho, ccd, dt, psi=psi
+            [u, v],
+            explicit_rhs,
+            mu,
+            rho,
+            ccd,
+            dt,
+            psi=psi,
+            intermediate_velocity_operator_transform=intermediate_velocity_operator_transform,
+            predictor_state_assembly=predictor_state_assembly,
+            convective_rhs=convective_rhs,
+            buoyancy_rhs=buoyancy_rhs,
         )
         return vel_star[0], vel_star[1]
 
@@ -155,8 +175,11 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         ccd: "CCDSolver",
         buoy_v: "array" | None = None,
         psi: "array" | None = None,
+        intermediate_velocity_operator_transform: Callable[[list], None] | None = None,
+        predictor_state_assembly: Callable[..., list] | None = None,
     ) -> tuple["array", "array"]:
         """First-step backward-Euler startup for the BDF2 history."""
+        del intermediate_velocity_operator_transform, predictor_state_assembly
         explicit_acceleration = self._explicit_acceleration(conv_u, conv_v, buoy_v)
         return self._solve_implicit(
             base_velocity=[u, v],

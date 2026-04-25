@@ -285,6 +285,37 @@ def test_gpu_parity_ridge_kernels():
     np.testing.assert_allclose(s_cpu, s_gpu, rtol=1e-12, atol=1e-14)
 
 
+@pytest.mark.gpu
+def test_gpu_fmm_matches_cpu_accepted_set_with_ridge_seeds():
+    """GPU FMM must match CPU accepted-set FMM, not a fixed-sweep proxy."""
+    cpu = Backend(use_gpu=False)
+    try:
+        gpu = Backend(use_gpu=True)
+    except Exception as e:
+        pytest.skip(f"GPU backend unavailable: {e}")
+
+    grid_cpu, _ = _mk_grid(n=32, L=1.0, alpha=2.0, backend=cpu)
+    grid_gpu, _ = _mk_grid(n=32, L=1.0, alpha=2.0, backend=gpu)
+    phi_cpu = _phi_circle(grid_cpu, 0.47, 0.52, 0.23)
+    h_min = float(min(np.min(grid_cpu.h[ax]) for ax in range(grid_cpu.ndim)))
+    ridge_mask_cpu = np.abs(phi_cpu) < 0.35 * h_min
+    ii, jj = np.where(ridge_mask_cpu & (np.abs(phi_cpu) < 0.5 * h_min))
+    extra_seeds = [(int(ii[k]), int(jj[k]), 0.0) for k in range(len(ii))]
+
+    fmm_cpu = NonUniformFMM(grid_cpu)
+    fmm_gpu = NonUniformFMM(grid_gpu, backend=gpu)
+    phi_expected = fmm_cpu.solve(phi_cpu.copy(), extra_seeds=extra_seeds)
+    phi_actual_dev = fmm_gpu.solve(
+        gpu.xp.asarray(phi_cpu),
+        ridge_mask=gpu.xp.asarray(ridge_mask_cpu),
+        h_min=h_min,
+    )
+
+    assert hasattr(phi_actual_dev, "get"), "GPU FMM must return a device array"
+    phi_actual = phi_actual_dev.get()
+    np.testing.assert_allclose(phi_actual, phi_expected, rtol=2e-13, atol=2e-13)
+
+
 # ── C7 — ε-mismatch idempotency tests (CHK-160) ────────────────────────
 
 def test_reinit_call2_idempotent(backend):

@@ -157,8 +157,13 @@ class TwoPhaseNSSolver:
         momentum_gradient_scheme: str = "projection_consistent",
         viscous_spatial_scheme: str = "ccd_bulk",
         viscous_time_scheme: str | None = None,
+        cn_mode: str = "picard",
+        cn_buoyancy_predictor_assembly_mode: str = "none",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
+        canonical_face_state: bool = False,
+        face_native_predictor_state: bool = False,
+        face_no_slip_boundary_state: bool = False,
         preserve_projected_faces: bool = False,
         projection_consistent_buoyancy: bool = False,
         debug_diagnostics: bool = False,
@@ -230,8 +235,13 @@ class TwoPhaseNSSolver:
                     viscous_time_scheme
                     or ("crank_nicolson" if cn_viscous else "forward_euler")
                 ),
+                cn_mode=cn_mode,
+                cn_buoyancy_predictor_assembly_mode=cn_buoyancy_predictor_assembly_mode,
                 uccd6_sigma=uccd6_sigma,
                 face_flux_projection=face_flux_projection,
+                canonical_face_state=canonical_face_state,
+                face_native_predictor_state=face_native_predictor_state,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
                 preserve_projected_faces=preserve_projected_faces,
                 projection_consistent_buoyancy=projection_consistent_buoyancy,
                 debug_diagnostics=debug_diagnostics,
@@ -601,10 +611,11 @@ class TwoPhaseNSSolver:
         """Promote step inputs to the active backend and normalise ``rho_ref``."""
         state = NSStepState.from_inputs(inputs, backend=self._backend)
         if (
-            self._preserve_projected_faces
+            (self._canonical_face_state or self._preserve_projected_faces)
             and self._projected_face_components is not None
             and hasattr(self._div_op, "reconstruct_nodes")
         ):
+            state.face_velocity_components = self._projected_face_components
             state.projected_face_components = self._projected_face_components
             state.u, state.v = self._div_op.reconstruct_nodes(
                 self._projected_face_components
@@ -690,6 +701,15 @@ class TwoPhaseNSSolver:
             velocity_bdf2_ready=self._velocity_bdf2_ready,
             velocity_prev=self._velocity_prev,
             projection_consistent_buoyancy=self._projection_consistent_buoyancy,
+            face_native_predictor_state=self._face_native_predictor_state,
+            face_no_slip_boundary_state=self._face_no_slip_boundary_state,
+            div_op=self._div_op,
+            bc_type=self.bc_type,
+            cn_buoyancy_predictor_assembly_mode=self._cn_buoyancy_predictor_assembly_mode,
+            pressure_grad_op=self._pressure_grad_op,
+            Y=self.Y,
+            coords=(self.X, self.Y),
+            ppe_coefficient_scheme=self._ppe_coefficient_scheme,
         )
         return state
 
@@ -705,6 +725,9 @@ class TwoPhaseNSSolver:
             ppe_solver=self._ppe_solver,
             p_prev_dev=self._p_prev_dev,
             surface_tension_scheme=self._surface_tension_scheme,
+            face_native_predictor_state=self._face_native_predictor_state,
+            bc_type=self.bc_type,
+            face_no_slip_boundary_state=self._face_no_slip_boundary_state,
         )
         return state
 
@@ -718,6 +741,9 @@ class TwoPhaseNSSolver:
             backend=self._backend,
             pressure_grad_op=self._pressure_grad_op,
             face_flux_projection=self._face_flux_projection,
+            canonical_face_state=self._canonical_face_state,
+            face_native_predictor_state=self._face_native_predictor_state,
+            face_no_slip_boundary_state=self._face_no_slip_boundary_state,
             preserve_projected_faces=self._preserve_projected_faces,
             fccd_div_op=self._fccd_div_op,
             div_op=self._div_op,

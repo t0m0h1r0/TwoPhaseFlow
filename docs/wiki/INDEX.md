@@ -214,7 +214,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (33)
+## Code (34)
 
 | REF-ID | Title |
 |--------|-------|
@@ -251,3 +251,4 @@
 | [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |
 | [WIKI-L-032](code/WIKI-L-032.md) | Phase-Separated FCCD Projection Closure: PPE, Predictor Residual, and Corrector Faces |
 | [WIKI-L-033](code/WIKI-L-033.md) | Clean Integration of Phase-Separated FCCD Projection Closure |
+| [WIKI-L-034](code/WIKI-L-034.md) | ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM |
