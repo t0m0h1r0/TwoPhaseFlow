@@ -411,9 +411,8 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
   \item \textbf{Level 1（SSPRK3 検証）/ Level 2（プロダクション）：}
         変密度一括 PPE（式~\eqref{eq:PPE_CCD_fullalgo}，product-rule 展開）を解く．
         Level 2 では smoothed Heaviside + GFM 補正で
-        低--中密度比（$\rho_l/\rho_g\lesssim 100$）に対応
+        中程度の密度比（Level 1 等密度を超える二相流）に対応
         （\S\ref{sec:level_physics_matrix} 参照：上昇気泡・毛管波例では L2 推奨）．
-        \emph{中間域}（$100 < \rho_l/\rho_g < 500$）では L2 + GFM 補正で対応可能だが，
         DC 残差プラトー（$\|d^{(3)}\|_\infty/\|d^{(0)}\|_\infty > 10^{-3}$）が観測される
         場合は Level 3 への切替を推奨する（§\ref{sec:level_selection} 切替判定参照）．
   \item \textbf{Level 3（純 FCCD DNS，水--空気級 $\rho_l/\rho_g\gtrsim 500$）：}

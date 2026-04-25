@@ -1,8 +1,8 @@
 % paper/sections/04c_dccd_derivation.tex
 %
 % §4.3  DCCD の教示的導出：1 次風上 → 修正方程式 → DCCD 埋込み
-%        本稿での DCCD は UCCD6（§4.6）への教育的前段と位置付けられる．
-%        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS reinit 圧縮項にのみ残存．
+%        本稿での DCCD は CLS 移流の production 既定（§7）；
+%        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS 移流 + reinit 圧縮項に適用．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{\DCCD{} フィルタの教示的導出}
@@ -21,11 +21,14 @@ DCCD は「アドホックな数値粘性追加」ではなく，
 体系的帰結であることが導出から明らかになる．
 
 \noindent\textbf{本稿における DCCD の位置付け．}
-DCCD は歴史的には bulk 移流の既定スキームであったが，
-本稿では UCCD6（§~\ref{sec:uccd6_def}）への\textbf{教育的前段}として保存される．
-bulk 移流は Level-1/2/3 すべてで UCCD6 を既定とし，
-DCCD の運用的残存は CLS 再初期化圧縮項（§~\ref{sec:reinit}）の
-非線形フラックス散逸子（UCCD6 未拡張のため）に限定される．
+DCCD は本稿の\textbf{CLS 移流の production 既定}スキームである
+（§~\ref{sec:advection_motivation}：CCD 微分 + 後段スペクトル散逸）．
+$\psi$ は $C^0$ 急 tanh プロファイルを持つため UCCD6 では振動が出現し，
+DCCD のスペクトル散逸が必須となる．
+bulk $u, v$ 移流は Level-1/2/3 すべてで UCCD6（§~\ref{sec:uccd6_def}）を既定とし，
+DCCD は CLS 再初期化圧縮項（§~\ref{sec:reinit}）の
+非線形フラックス散逸子としても適用される．
+WENO5 は付録~\ref{app:weno5} の比較対象スキームに留める．
 
 % -------------------------------------------------------------------------------
 \subsubsection{1 次風上スキームの修正方程式}
@@ -176,16 +179,16 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
         フィルタのみの体積損失 $\sim 10^{-4}\cdot T$（$T$：シミュレーション時間）が
         観測され，CLS 再正規化で機械精度まで圧縮される
         （詳細な検証値は §\ref{sec:verify_cls_advection} に提示する）．
-  \item \textbf{UCCD6 との対照と昇格}．
+  \item \textbf{UCCD6 との対照}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
-        本稿では bulk 移流の既定を UCCD6 に昇格：
+        本稿では bulk $u, v$ 移流の既定を UCCD6 とし
+        CLS 移流（$\psi$）の production 既定を DCCD とする：
         Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
-        Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を既定，
-        Level-3 DNS は UCCD6 inside IRK を既定とする（§\ref{sec:time_int}）．
-        DCCD の運用的残存は CLS 再初期化圧縮項の非線形フラックス散逸子
-        （§\ref{sec:reinit}，UCCD6 未拡張のため）であり，
-        本節の導出は UCCD6 の動機付けを成す\textbf{教育的前段}として保存される．
+        Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
+        Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
+        DCCD は CLS 再初期化圧縮項の非線形フラックス散逸子
+        （§\ref{sec:reinit}，UCCD6 未拡張のため）にも適用される．
 \end{itemize}
 
 \noindent

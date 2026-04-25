@@ -206,8 +206,8 @@ $L_L$ のスパース LU（小中規模）．
 アーキテクチャ & DC $k$ & 実効精度 \\
 \hline
 節点 CCD PPE（等密度，本稿 Level 1）& 3 & $\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann \\
-変density一括 smoothed-Heaviside PPE（Level 2，$\rho_l/\rho_g\lesssim 100$）& 3 & $\Ord{h^2}$（界面帯）；bulk $\Ord{h^6}$（smoothed Heaviside + GFM 補正律速）\\
-純 FCCD + IIM 行補正（Level 3）& 3 & $\Ord{h^4}$--$\Ord{h^6}$（IIM ジャンプ昇格）\\
+変density一括 smoothed-Heaviside PPE（Level 2，中程度密度比）& 3 & $\Ord{h^2}$（界面帯）；bulk $\Ord{h^6}$（smoothed Heaviside + GFM 補正律速）\\
+分相 PPE + DC + CCD 勾配（Level 3，水--空気級高密度比）& 3 & $\Ord{h^7}$ Dir / $\Ord{h^5}$ Neu（IIM 行補正採用時 $\Ord{h^4}$ 以上保証）\\
 \hline
 \end{tabular}
 \end{center}
