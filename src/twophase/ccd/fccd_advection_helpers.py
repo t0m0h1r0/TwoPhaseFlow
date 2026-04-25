@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..core.array_checks import all_arrays_exact_zero
+
 
 def compute_fccd_flux_contribution(solver, u_k, phi, axis: int):
     """Conservative face-flux contribution for one axis."""
@@ -18,6 +20,10 @@ def compute_fccd_advection_rhs(solver, velocity_components, scalar=None, mode: s
 
     xp = solver.xp
     ndim = len(velocity_components)
+    if all_arrays_exact_zero(xp, velocity_components):
+        if scalar is None:
+            return [xp.zeros_like(component) for component in velocity_components]
+        return [xp.zeros_like(scalar)]
     q_cache = {}
 
     def get_q(field, ax):

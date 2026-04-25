@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..core.array_checks import all_arrays_exact_zero
 from .interfaces import IPPESolver
 
 if TYPE_CHECKING:
@@ -90,6 +91,12 @@ class PPESolverDefectCorrection(IPPESolver):
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
         initial_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
+        if all_arrays_exact_zero(xp, (rhs_dev, pressure)):
+            self.last_base_pressure = xp.copy(pressure)
+            self.last_diagnostics = initial_diagnostics
+            if hasattr(self.operator, "apply_interface_jump"):
+                pressure = self.operator.apply_interface_jump(pressure)
+            return pressure
 
         self.operator.prepare_operator(rho)
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))

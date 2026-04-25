@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..core.array_checks import all_arrays_exact_zero
 from ..ns_terms.context import NSComputeContext
 from .ns_step_state import NSStepState
 
@@ -221,6 +222,35 @@ def correct_ns_velocity_stage(
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
+    correction_is_zero = all_arrays_exact_zero(xp, (
+        state.u_star,
+        state.v_star,
+        state.p_corrector,
+        state.f_x,
+        state.f_y,
+    ))
+    proj_op = None
+    project_kwargs = {}
+    if face_flux_projection:
+        proj_op = fccd_div_op if fccd_div_op is not None else div_op
+        if proj_op is fccd_div_op:
+            project_kwargs["pressure_gradient"] = (
+                "fccd" if ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
+            )
+            if ppe_runtime.ppe_coefficient_scheme == "phase_separated":
+                project_kwargs["coefficient_scheme"] = "phase_separated"
+    if correction_is_zero and (
+        not face_flux_projection
+        or getattr(proj_op, "supports_zero_projection_shortcut", False)
+    ):
+        state.projected_face_components = None
+        state.u = xp.zeros_like(state.u_star)
+        state.v = xp.zeros_like(state.v_star)
+        if state.debug_scalars is not None:
+            state.debug_scalars.append(xp.asarray(0.0))
+        apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
+        return state
+
     dp_dx = pressure_grad_op.gradient(state.p_corrector, 0)
     dp_dy = pressure_grad_op.gradient(state.p_corrector, 1)
     if state.debug_scalars is not None:
@@ -231,14 +261,6 @@ def correct_ns_velocity_stage(
             )
         )
     if face_flux_projection:
-        proj_op = fccd_div_op if fccd_div_op is not None else div_op
-        project_kwargs = {}
-        if proj_op is fccd_div_op:
-            project_kwargs["pressure_gradient"] = (
-                "fccd" if ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
-            )
-            if ppe_runtime.ppe_coefficient_scheme == "phase_separated":
-                project_kwargs["coefficient_scheme"] = "phase_separated"
         if preserve_projected_faces and hasattr(proj_op, "project_faces"):
             state.projected_face_components = proj_op.project_faces(
                 [state.u_star, state.v_star],
