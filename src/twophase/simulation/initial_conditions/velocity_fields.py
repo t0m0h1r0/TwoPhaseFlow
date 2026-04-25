@@ -18,7 +18,7 @@ Supported types in YAML (velocity_field.type):
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Sequence, Tuple
+from typing import Callable, Sequence, Tuple
 
 import numpy as np
 
@@ -240,6 +240,44 @@ class CouetteShear(VelocityField):
         return (u, v)
 
 
+def _build_rigid_rotation(data: dict) -> VelocityField:
+    return RigidRotation(
+        center=data["center"],
+        period=float(data.get("period", 1.0)),
+    )
+
+
+def _build_uniform_flow(data: dict) -> VelocityField:
+    return UniformFlow(velocity=data["velocity"])
+
+
+def _build_single_vortex(data: dict) -> VelocityField:
+    return SingleVortex(period=float(data.get("period", 1.0)))
+
+
+def _build_double_shear_layer(data: dict) -> VelocityField:
+    return DoubleShearLayer(
+        delta=float(data.get("delta", 0.05)),
+        eps=float(data.get("eps", 0.05)),
+    )
+
+
+def _build_couette_shear(data: dict) -> VelocityField:
+    return CouetteShear(
+        gamma_dot=float(data["gamma_dot"]),
+        LY=float(data["LY"]),
+    )
+
+
+_VELOCITY_FIELD_BUILDERS: dict[str, Callable[[dict], VelocityField]] = {
+    "rigid_rotation": _build_rigid_rotation,
+    "uniform": _build_uniform_flow,
+    "single_vortex": _build_single_vortex,
+    "double_shear_layer": _build_double_shear_layer,
+    "couette_shear": _build_couette_shear,
+}
+
+
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────
 
 def velocity_field_from_dict(d: dict) -> VelocityField:
@@ -270,37 +308,17 @@ def velocity_field_from_dict(d: dict) -> VelocityField:
     ValueError
         Unknown field type or missing required fields.
     """
-    d = dict(d)  # コピー（pop で元を壊さない）
-    field_type = d.pop("type", None)
+    data = dict(d)  # コピー（pop で元を壊さない）
+    field_type = data.pop("type", None)
     if field_type is None:
         raise ValueError("velocity_field dict must have a 'type' key.")
 
-    if field_type == "rigid_rotation":
-        return RigidRotation(
-            center=d["center"],
-            period=float(d.get("period", 1.0)),
-        )
+    builder = _VELOCITY_FIELD_BUILDERS.get(field_type)
+    if builder is not None:
+        return builder(data)
 
-    if field_type == "uniform":
-        return UniformFlow(velocity=d["velocity"])
-
-    if field_type == "single_vortex":
-        return SingleVortex(period=float(d.get("period", 1.0)))
-
-    if field_type == "double_shear_layer":
-        return DoubleShearLayer(
-            delta=float(d.get("delta", 0.05)),
-            eps=float(d.get("eps", 0.05)),
-        )
-
-    if field_type == "couette_shear":
-        return CouetteShear(
-            gamma_dot=float(d["gamma_dot"]),
-            LY=float(d["LY"]),
-        )
-
+    supported = "', '".join(_VELOCITY_FIELD_BUILDERS.keys())
     raise ValueError(
         f"Unknown velocity_field type '{field_type}'. "
-        "Supported: 'rigid_rotation', 'uniform', 'single_vortex', 'double_shear_layer', "
-        "'couette_shear'."
+        f"Supported: '{supported}'."
     )

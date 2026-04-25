@@ -41,6 +41,7 @@ from .fccd_matrixfree_lifecycle import (
     refresh_fccd_matrixfree_grid,
     refresh_fccd_phase_gauges,
 )
+from .gmres_helpers import backend_supports_gmres, solve_gmres
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -169,7 +170,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FCCD PPE with backend GMRES."""
         la = self.backend.sparse_linalg
-        if not hasattr(la, "LinearOperator") or not hasattr(la, "gmres"):
+        if not backend_supports_gmres(la):
             raise RuntimeError("FCCD matrix-free PPE requires backend GMRES")
 
         xp = self.xp
@@ -203,27 +204,16 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
 
-        try:
-            sol_flat, info = la.gmres(
-                A,
-                rhs_flat,
-                x0=x0,
-                M=M,
-                restart=self.restart,
-                maxiter=self.maxiter,
-                atol=0.0,
-                rtol=self.tol,
-            )
-        except TypeError:
-            sol_flat, info = la.gmres(
-                A,
-                rhs_flat,
-                x0=x0,
-                M=M,
-                restart=self.restart,
-                maxiter=self.maxiter,
-                tol=self.tol,
-            )
+        sol_flat, info = solve_gmres(
+            la,
+            A,
+            rhs_flat,
+            x0=x0,
+            preconditioner=M,
+            restart=self.restart,
+            maxiter=self.maxiter,
+            tolerance=self.tol,
+        )
 
         if info != 0:
             warnings.warn(

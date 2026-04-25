@@ -10,6 +10,8 @@ import pytest
 from scipy.linalg import solve_banded
 
 from twophase.linalg_backend import (
+    _pcr_solve_batched,
+    _pcr_solve_variable_batched,
     thomas_batched,
     thomas_precompute,
     tridiag_variable_batched,
@@ -136,6 +138,38 @@ def _reference_variable_tridiag(lower, diag, upper, rhs, axis: int):
         out[:, col] = solve_banded((1, 1), ab, moved_r[:, col])
     out = out.reshape((n,) + np.moveaxis(rhs, axis, 0).shape[1:])
     return np.moveaxis(out, 0, axis)
+
+
+def test_pcr_solve_batched_matches_reference():
+    rng = np.random.default_rng(2040)
+    n = 16
+    batch = 5
+    ab = _random_dd_banded(n, rng)
+    lower = np.zeros(n, dtype=np.float64)
+    diag = ab[1].copy()
+    upper = np.zeros(n, dtype=np.float64)
+    lower[1:] = ab[2, : n - 1]
+    upper[: n - 1] = ab[0, 1:]
+    rhs = rng.standard_normal((n, batch))
+
+    x_ref = np.column_stack(
+        [solve_banded((1, 1), ab, rhs[:, batch_index]) for batch_index in range(batch)]
+    )
+    x_our = _pcr_solve_batched(np, lower, diag, upper, rhs)
+
+    np.testing.assert_allclose(x_our, x_ref, rtol=1e-12, atol=1e-13)
+
+
+def test_pcr_solve_variable_batched_matches_reference():
+    rng = np.random.default_rng(2041)
+    shape = (16, 4)
+    lower, diag, upper = _random_variable_dd(shape, axis=0, rng=rng)
+    rhs = rng.standard_normal(shape)
+
+    x_ref = _reference_variable_tridiag(lower, diag, upper, rhs, axis=0)
+    x_our = _pcr_solve_variable_batched(np, lower, diag, upper, rhs)
+
+    np.testing.assert_allclose(x_our, x_ref, rtol=1e-12, atol=1e-13)
 
 
 @pytest.mark.parametrize("axis", [0, 1, 2])

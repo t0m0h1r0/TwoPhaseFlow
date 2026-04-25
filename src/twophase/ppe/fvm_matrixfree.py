@@ -28,6 +28,7 @@ from .fvm_matrixfree_helpers import (
     build_fvm_line_coeffs,
     build_fvm_preconditioner_state,
 )
+from .gmres_helpers import backend_supports_gmres, solve_gmres
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -139,7 +140,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
             return self._fallback.solve(rhs, rho, dt, p_init=p_init)
 
         la = self.backend.sparse_linalg
-        if not hasattr(la, "LinearOperator") or not hasattr(la, "gmres"):
+        if not backend_supports_gmres(la):
             warnings.warn(
                 "Matrix-free FVM solver unavailable on this backend; falling back "
                 "to PPESolverFVMSpsolve.",
@@ -184,27 +185,16 @@ class PPESolverFVMMatrixFree(IPPESolver):
         if self.preconditioner in {"jacobi", "line_pcr"}:
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
 
-        try:
-            sol_flat, info = la.gmres(
-                A,
-                rhs_flat,
-                x0=x0,
-                M=M,
-                restart=self.restart,
-                maxiter=self.maxiter,
-                atol=0.0,
-                rtol=self.tol,
-            )
-        except TypeError:
-            sol_flat, info = la.gmres(
-                A,
-                rhs_flat,
-                x0=x0,
-                M=M,
-                restart=self.restart,
-                maxiter=self.maxiter,
-                tol=self.tol,
-            )
+        sol_flat, info = solve_gmres(
+            la,
+            A,
+            rhs_flat,
+            x0=x0,
+            preconditioner=M,
+            restart=self.restart,
+            maxiter=self.maxiter,
+            tolerance=self.tol,
+        )
 
         if info != 0:
             warnings.warn(
