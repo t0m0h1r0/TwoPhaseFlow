@@ -10,29 +10,27 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本節では\textbf{面中心 Combined Compact Difference}（{\FCCD}）演算子族を，
-4 設計原理，4 次 cancellation 導出，行列定式化，周期 DFT 解析を順に提示して定義する．
-{\FCCD} は単独スキームではなく，複数の界面消費点で共有される
-\textbf{共通面ジェットプリミティブ} $\mathcal{J}_f(u)=(u_f, u'_f, u''_f)$ を
-$\Ord{H^4}$ で供給する契約（shared contract）として本稿では位置付けられる
-（具体的構成および $D_h^\FCCD G_h^\FCCD$ の adjoint commutation 構造は
-§\ref{sec:face_jet_def} を参照）．
+\textbf{4 設計原理} → \textbf{4 次 cancellation 導出} → \textbf{行列定式化}
+→ \textbf{周期 DFT 解析}の順に提示して定義する．
+{\FCCD} は節点値から
+\textbf{面値・面導関数} $\mathcal{J}_f(u)=(u_f, u'_f, u''_f)$ を
+$\Ord{H^4}$ で構成する基底 CCD の派生スキームであり，
+本節の数値特性は 4 設計原理と DFT 正準解析で完結する．
 
-\noindent\textbf{本稿での 4 つの再利用先（R1)-(R4)．}
-\begin{enumerate}[label=\textbf{(R\arabic*)}]
-  \item HFE 上流点再構築（§~\ref{sec:advection_motivation}）における面ジェット消費；
-  \item GFM ghost pressure jet（§~\ref{sec:split_ppe_framework}）での $[p]=\sigma\kappa$ および $[\beta_f p'_f]=0$（$\beta_f=(1/\rho)_f$）条件課嵌；
-  \item 分相 PPE 楕円作用素 $G_h^{bf}$ と $D_h^{bf} = -(G_h^{bf})^{\!*}$（§~\ref{sec:split_ppe_framework}）の離散随伴対；
-  \item 粘性 stress-divergence の界面バンド（§~\ref{sec:viscous_3layer}）における面法線・接線高次微分．
-\end{enumerate}
-バルク演算子は節点 CCD の $\Ord{h^6}$ を維持し，
-{\FCCD} の $\Ord{H^4}$ は上記 4 界面消費点でのみ展開される．
-この意味で {\FCCD} は bulk 精度の縮退ではなく，
-界面近傍のメトリック整合を担保する\textbf{設計選択}である．
+\medskip\noindent\textbf{なぜ面中心化が必要か．}
+基底 CCD（§~\ref{sec:ccd_def}）が節点 $i$ で $(f_i, f'_i, f''_i)$ を
+同時連立するのに対し，
+{\FCCD} は面 $f=i-1/2$ で同等の 3 成分量を構成する．
+これにより，後続章で要求される
+「面位置に値を持つ離散演算子族」（移流フラックス・面平均勾配など）が
+基底 CCD と同じ Hermite 補間に基づく $\Ord{H^4}$ 整合性を保ったまま
+構築できる．バルクの節点 CCD は $\Ord{h^6}$ を維持するため，
+{\FCCD} は bulk 精度の縮退ではなく\textbf{面ジェット供給の設計選択}である．
+出力形式の API 定義は §~\ref{sec:face_jet_def} に集約する．
 
 \noindent\textbf{歴史的経緯の保全．}
-{\FCCD} 初版の動機は FVM 面平均勾配 $\mathcal{G}^{\text{adj}}$ との
-メトリック整合（H-01 診断）にあったが，本稿の純 FCCD 設計では FVM が除外される．
-歴史的診断 H-01 および Exp-1/Exp-2 実測値は付録~\ref{sec:fccd_motivation_h01}
+{\FCCD} 初版の動機（FVM 面平均勾配とのメトリック整合，H-01 診断）と
+Exp-1/Exp-2 実測値は付録~\ref{sec:fccd_motivation_h01}
 （§B.4 H-01 診断の歴史的ケーススタディ）に保全されている．
 
 % -------------------------------------------------------------------------------
@@ -161,62 +159,48 @@ $\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得る．純虚数性（散逸
 保たれたまま式~\eqref{eq:fccd_fourth_order} の 4 次精度が Fourier レベルで確認される．
 
 % -------------------------------------------------------------------------------
-\subsubsection{非一様格子への拡張（概要）}
+\subsubsection{非一様格子への拡張（予告）}
 \label{sec:fccd_nonuniform_sketch}
+\phantomsection\label{eq:fccd_nonuniform_coeffs}%
 % -------------------------------------------------------------------------------
 
-非一様格子（$H_i$ 可変，面位置パラメータ $\theta_i$）での
-cancellation 係数 $\lambda_i$ と混合項係数 $\mu_i$ は格子幾何に依存：
-\begin{equation}
-  \mu_i = \theta_i - \tfrac{1}{2},
-  \qquad
-  \lambda_i = \frac{1 - 3\theta_i(1-\theta_i)}{6}
-  \label{eq:fccd_nonuniform_coeffs}
-\end{equation}
-．合成演算子は
-$\mathbf{M}^{\FCCD,\text{nu}} = \mathbf{D}_1^{(H)} - (\mathbf{D}_\mu^{(H\theta)} + \mathbf{D}_\lambda^{(H)})\,\mathbf{S}_{\CCD}$
-で，一様極限 $\theta_i\equiv 1/2 \Rightarrow \mu_i\equiv 0, \lambda_i \equiv 1/24$ で
-式~\eqref{eq:fccd_composite_matrix} を回復する．
-完全な係数行列と切断誤差解析は §\ref{sec:grid}（非一様格子）で扱う．
+非一様格子（$H_i$ 可変，面位置 $\theta_i$）での完全な係数行列と切断誤差解析は
+§~\ref{sec:fccd_nonuniform}（第~\ref{sec:grid}章）で与える．
+一様極限 $\theta_i\equiv 1/2$ では本節の式~\eqref{eq:fccd_composite_matrix} を回復する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{Balanced-Force 補正（面ジェット共通メトリック）}
+\subsubsection{演算子整合性：同一面ロカスでの $\Ord{\Delta x^4}$ 性質}
 \label{sec:fccd_h01_remedy}
 % -------------------------------------------------------------------------------
 
-{\FCCD} を圧力勾配と界面力勾配の\textbf{両方}に適用：
+{\FCCD} を異なる入力場（例として 2 つの場 $p, \psi$）に適用すると：
 \begin{equation}
-  \mathcal{G}\,p \;\equiv\; D^{\FCCD}\,p,
+  D^{\FCCD}\,p,
   \qquad
-  \bnabla\psi \;\equiv\; D^{\FCCD}\,\psi,
+  D^{\FCCD}\,\psi,
   \label{eq:fccd_bf_unification}
 \end{equation}
-すると両演算子は同一面ロカス・同一メトリック・同一 Fourier シンボルとなり
-Balanced-Force 残差は：
+両者は\textbf{同一面ロカス・同一メトリック・同一 Fourier シンボル}となり，
+これらの離散勾配の整合誤差は：
 \begin{equation}
-  |\mathrm{BF}_{\text{res}}|
-  \;=\; \bigl\|\mathcal{G}\,p_{\text{YL}} - \sigma\kappa\,\bnabla\psi\bigr\|_\infty
+  \bigl\|\,D^{\FCCD}\,p - g(\psi)\cdot D^{\FCCD}\,\psi\,\bigr\|_\infty
   \;=\; \Ord{\Delta x^4}
+  \qquad\bigl(g(\psi):\text{平滑関数}\bigr)
   \label{eq:fccd_bf_residual_order}
 \end{equation}
 まで圧縮される．
-4 役割 (R1)-(R4) が同一面ジェット $\mathcal{J}_f$ を共有することで，
-圧力勾配・界面力・HFE 上流点・GFM ジャンプ条件の相互整合が
-$\Ord{\Delta x^4}$ レベルで担保される
-（初版の H-01 救済動機は付録~\ref{sec:fccd_motivation_h01} を参照）．
-
-より運用的な Balanced-Force 設計原則（7 原理 P-1..P-7）は
-§\ref{sec:balanced_force} で統一する；
-{\FCCD} は P-1（演算子ロカス整合）・P-3（$D_h, G_h$ 離散随伴）・
-P-5（フィルタ抑制下での安定性）の 3 原理を同時に満たす
-\textbf{最小構成}である（証明は §\ref{sec:balanced_force} 参照）．
+これは {\FCCD} 出力が 4 つの異なる消費点で共有されたとしても
+$\Ord{\Delta x^4}$ メトリック整合が崩れない
+\textbf{$\lambda=1/24$ cancellation の構造的帰結}である．
+具体的な物理量適用（圧力勾配・表面張力・界面ジャンプ条件など）における
+活用方法は当該用途章で展開される．
 
 % -------------------------------------------------------------------------------
 \subsubsection{導入の前提と実装チェック}
 \label{sec:fccd_poc_requirements}
 % -------------------------------------------------------------------------------
 
-{\FCCD} 採用にあたり必要となる 3 点は以下のとおり：
+{\FCCD} 採用にあたり必要となる実装側の前提は以下のとおり：
 
 \begin{itemize}
   \item \textbf{非一様一般化}（§\ref{sec:fccd_nonuniform_sketch}）は
@@ -225,8 +209,6 @@ P-5（フィルタ抑制下での安定性）の 3 原理を同時に満たす
   \item \textbf{壁境界}は Option III（Neumann）・Option IV（Dirichlet）を
         §\ref{sec:fccd_bc_options} で扱う（Option IV の運動量壁実装は
         §\ref{sec:fccd_adv_wall_iv}）．
-  \item \textbf{擬時間 PPE 整合}は §\ref{sec:pressure} で
-        純 {\FCCD} PPE として再構成する．
 \end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════════════════
