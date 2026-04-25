@@ -272,8 +272,12 @@ $\Delta t\bnabla(p_e^{n+1}-p^{n+1})/\rho^{n+1}=\Ord{\Delta t^3}$ となり，
 Predictor 段階の $\Ord{\Delta t^2}$ 誤差と合わせて全体
 $\bu^{n+1}-\bu_e^{n+1}=\Ord{\Delta t^2}$．
 変密度 $\rho^{n+1}$ が時刻 $n+1$ で評価される点が van Kan の等密度版から
-の主な拡張であり，$\rho$ の時間変化が $\Ord{\Delta t}$ なら
-精度次数は不変．完全な変密度 IPC 解析は Guermond--Salgado~\cite{Guermond2006} に従う．
+の主な拡張であり，$\rho$ の Euler 描像での時間変化率
+$\partial_t\rho|_{\bx\,\text{固定}}$ が $\Ord{\Delta t}$ なら
+精度次数は不変（$\rho_l/\rho_g\sim\Ord{1000}$ の界面ジャンプ自体は $\Ord{1}$ だが
+界面が有限速度で移動するため固定点での変化率は $\Ord{\Delta t}$ に抑えられ，
+$\delta p = \Ord{\Delta t}$ は変密度下でも保たれる）．
+完全な変密度 IPC 解析は Guermond--Salgado~\cite{Guermond2006} に従う．
 
 \subsubsection{Level 2 の全体的な時間精度}
 \label{sec:time_accuracy_table}

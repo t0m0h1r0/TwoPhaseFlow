@@ -136,20 +136,25 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
 波数 $\xi = k H$ に対する Fourier シンボル：
 \begin{equation}
   \hat M^{\FCCD}(\xi)
-  \;=\; \frac{i\sin(\xi)}{H}
+  \;=\; \frac{2i\sin(\xi/2)}{H}
         \;\cdot\;
         \left[1 + \frac{\omega_2(\xi)^2}{24}\right]
   \label{eq:fccd_fourier_symbol}
 \end{equation}
-ここで前段因子 $i\sin(\xi)/H$ は中央差分の Fourier シンボル
-（$(q_{i+1}-q_{i-1})/(2H) \mapsto i\sin(\xi)/H$，純虚数で散逸ゼロ）であり，
+ここで前段因子 $2i\sin(\xi/2)/H$ は bidiagonal node-to-face 差分
+$(D_1 u)_{f_{i-1/2}} = (u_i-u_{i-1})/H$（式~\eqref{eq:fccd_D1}）の
+面位置における Fourier シンボル（純虚数で散逸ゼロ；
+節点間中央差分 $i\sin(\xi)/H$ とは別演算子）であり，
 $\omega_2(\xi)$ は CCD 2 階微分の無次元有効波数
 $\hat q_i = -\omega_2(\xi)^2\hat u_i/H^2$（§\ref{sec:ccd_def}）である．
-括弧内因子は $\hat D_2 = (H/24)\cdot i\sin(\xi)/H$（混合項の中央差分シンボル）と
-$\hat S_{\CCD} = -\omega_2^2/H^2$（CCD ソース）の積から得られ，
-$H^2/24\cdot(-\omega_2^2/H^2) = -\omega_2^2/24$ で無次元化が閉じる．
-Taylor 展開 $\omega_2(\xi)^2 = \xi^2 + \Ord{\xi^8}$（式~\eqref{eq:ccd_omega_12}）を代入すると
-$\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，純虚数性（散逸ゼロ）が
+括弧内因子は $\hat D_2 = (iH/12)\sin(\xi/2)$（$(\pm H/24)$ bidiagonal ステンシルの面シンボル）と
+$\hat S_{\CCD} = -\omega_2^2/H^2$（CCD ソース）から
+$\hat M^{\FCCD} = \hat D_1 - \hat D_2\hat S_{\CCD}$ を整理して
+$(2i\sin(\xi/2)/H)[1 + \omega_2^2/24]$ に到達する．
+Taylor 展開 $2\sin(\xi/2) = \xi - \xi^3/24 + \Ord{\xi^5}$ および
+$\omega_2(\xi)^2 = \xi^2 + \Ord{\xi^8}$（式~\eqref{eq:ccd_omega_12}）を代入すると，
+括弧内 $1+\xi^2/24$ が前段因子の $-\xi^3/24$ 切断項を相殺し
+$\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得る．純虚数性（散逸ゼロ）が
 保たれたまま式~\eqref{eq:fccd_fourth_order} の 4 次精度が Fourier レベルで確認される．
 
 % -------------------------------------------------------------------------------

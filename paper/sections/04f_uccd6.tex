@@ -102,7 +102,9 @@ $\tau, h$ によらず成立；すなわち UCCD6+CN は\textbf{無条件安定}
 \label{rem:uccd6_explicit_cfl}
 TVD-RK3 などの陽解法を用いると $\omega_2^8$ 依存が $\theta=\pi$ 近傍で
 $\tau_{\max}\le \Ord{h/(\sigma|a|\,\omega_{2,\max}^8)}$
-（$\sigma$：UCCD6 散逸係数，$|a|$：移流速度の最大絶対値）の
+（$\sigma$：UCCD6 散逸係数，$|a|$：移流速度の最大絶対値，
+$\omega_{2,\max} := \max_{\theta\in[0,\pi]}\omega_2(\theta) = \omega_2(\pi)$ は
+CCD 2 階微分の最大有効波数；式~\eqref{eq:ccd_omega_12} の $\theta=\pi$ 評価値）の
 厳しい拘束を課す．中程度の $\sigma$ でも実質使えず，CN との組合せが必然．
 \end{remark}
 
