@@ -15,8 +15,9 @@
 \textbf{演算子内部に埋め込む}風上派生であり，
 節点中心のままモーメント移流の $L^2$ 安定性を得る．
 散逸を外殻 post-filter として加える DCCD（§\ref{sec:dccd_derivation}）と
-面中心化により面ジェットを供給する FCCD（§\ref{sec:fccd_def}）に対する
-\textbf{第 3 の経路}（演算子内部散逸）であり，
+ともに\textbf{節点中心 dissipation family} を構成し
+（DCCD は post-filter，UCCD6 は演算子内部散逸という対比），
+面中心化を行う FCCD（§\ref{sec:fccd_def}）は別 family に属する．
 Crank--Nicolson 時間積分との結合で無条件 $L^2$ 安定となる
 （§\ref{sec:time_int}）．
 
@@ -158,11 +159,12 @@ dispersion preservation に優り，bulk 高周波の保持性で上位に位置
 （具体的な適用場面は §~\ref{sec:ccd_summary} の比較表に集約）．
 
 \noindent
-\textbf{FCCD との関係．}
-UCCD6 は FCCD と\textbf{直交補完}の関係にある：
-FCCD は\textbf{面位置}に値を持つ高次補間で $\Ord{H^4}$ を保ち，
-UCCD6 は\textbf{節点位置}のまま演算子内部散逸で Gibbs を抑制する．
-両者は同じ基底 CCD のシンボル $\omega_1, \omega_2$ から派生し，
-出力ロカス（面 vs 節点）と散逸機構（補間 vs 演算子内部）が異なるのみである．
+\textbf{FCCD（§\ref{sec:fccd_def}）との関係．}
+本章の派生スキームは出力ロカスで二つの family に分かれる：
+節点中心 family（CCD / DCCD / UCCD6）と面中心 family（FCCD）である．
+UCCD6 は節点中心 family の第 3 員で，演算子内部散逸により Gibbs を抑制する；
+FCCD は面位置に値を持つ高次補間で $\Ord{H^4}$ を保ち，
+\textbf{面ジェット}（§\ref{sec:face_jet_def}）を経由して節点中心 family の出力にも面 API を提供する．
+両 family は同じ基底 CCD のシンボル $\omega_1, \omega_2$ から派生する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
