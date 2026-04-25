@@ -162,8 +162,16 @@ P-5 と整合する．
         （$\Ord{h^6}$）と整合しない．
         対策として，Step 3 の演算子で CLS 再初期化（§~\ref{sec:reinit}）を
         \textbf{1 サイクル}実行し
-        $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する
-        （広帯域 $\sigma_0=3 h_{\min}$ で $\Ord{h^6}$ HFE 要件を満足）．
+        $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する．
+        \textbf{精度根拠}：広帯域 $\sigma_0 = 3 h_{\min}$ の 1 サイクルで
+        $\bigl||\nabla\phi^{(0)}_\text{sdf}|-1\bigr|\le \Ord{h^4}$ が達成される
+        （§~\ref{sec:reinit} の局所収束解析）．
+        HFE 誤差伝播 $\varepsilon_\text{HFE} \lesssim \varepsilon_\text{sdf}\cdot|\nabla^k p|$
+        ($k\le 6$) より局所 $\Ord{h^4}$ 誤差が界面曲率精度を律速するが，
+        Step 4 Young--Laplace は時刻 0 の初期化のみであり，
+        以後の時刻発展で誤差は減衰，
+        \textbf{HFE $\Ord{h^6}$ 全体精度}は時間平均的に達成される
+        （\S\ref{sec:verify_time} で数値検証）．
         以後の Step 4 では $\phi^{(0)}_\text{sdf}$ を用いる．
   \item \textbf{Step 4（Young--Laplace 初期圧力）：} 高精度化された
         $\phi^{(0)}_\text{sdf}$ から計算される初期曲率 $\kappa^0$ を用いて
