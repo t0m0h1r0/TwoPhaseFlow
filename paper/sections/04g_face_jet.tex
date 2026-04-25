@@ -1,19 +1,24 @@
 % paper/sections/04g_face_jet.tex
 %
-% §4.6  面ジェット $\FaceJet{u}$：FCCD / UCCD6 出力の 3 成分 API
-%        本節では数学的定義のみを与える；消費先章での具体使用は §4.7 章末まとめを参照．
+% §4.7  面ジェット $\FaceJet{u}$：基底 CCD 出力の面 API（FCCD と等価）
+%        本節では数学的定義のみを与える；消費先章での具体使用は章末まとめ §\ref{sec:ccd_summary} を参照．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{\texorpdfstring{面ジェット $\FaceJet{u}$：FCCD / UCCD6 出力の 3 成分 API}{面ジェット J\_f(u)：FCCD / UCCD6 出力の 3 成分 API}}
+\subsection{\texorpdfstring{面ジェット $\FaceJet{u}$：基底 CCD 出力の面 API（FCCD と等価）}{面ジェット J\_f(u)：基底 CCD 出力の面 API（FCCD と等価）}}
 \label{sec:face_jet_def}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本節では，FCCD（§\ref{sec:fccd_def}）および UCCD6（§\ref{sec:uccd6_def}）の
-出力を統一する \textbf{3 成分 API}：
+本節では，基底 CCD（§\ref{sec:ccd_def}）が返す節点 Hermite ペア
+$(u_i,\,q_i = u''_i)$ から面値・面勾配・面二次導関数を構成する
+\textbf{3 成分 API}：
 \[
   \FaceJet{u} \;=\; (u_f,\,u'_f,\,u''_f)
 \]
 を\textbf{面ジェット}（face jet）として定義する．
+構成式は §\ref{sec:fccd_def} の FCCD 公式と数式上\textbf{等価}であり，
+FCCD は本 API を面中心スキームとして直接実装した形態と見なせる；
+UCCD6（§\ref{sec:uccd6_def}）など他の節点中心 CCD 派生も
+本 API を経由して面位置の表現を得る．
 本節では数学的定義と各成分の数値的意味のみを与え，
 後続章（§\ref{sec:time_int} 以降）では本 API を
 \textbf{入力契約}（input contract）として再利用する；
