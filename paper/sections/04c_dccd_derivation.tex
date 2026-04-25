@@ -1,8 +1,8 @@
 % paper/sections/04c_dccd_derivation.tex
 %
-% §4.4  DCCD の導出形 + 実装デフォルト：1 次風上 → 修正方程式 → spectral filter
-%        本稿での DCCD は CLS 移流の実装デフォルト（§7）；
-%        bulk 移流 default は UCCD6（L1/L2/L3）；DCCD は CLS 移流 + reinit 圧縮項に適用．
+% §4.4  DCCD の導出形 + 実装デフォルト：中心 CCD 散逸ゼロ → -D_2^CCD 散逸チャンネル → spectral filter
+%        本稿での DCCD は CLS 移流の実装デフォルト（§6）．
+%        用途別の具体組合せは §\ref{sec:time_int} 比較表を参照．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{\DCCD{} フィルタ：導出形と実装デフォルト}
@@ -31,11 +31,11 @@ $\omega_1(\xi),\omega_2(\xi)$ の挙動から，
 \medskip\noindent\textbf{導出形と実装デフォルトの 2 段構成．}
 本節では DCCD を以下の 2 段で示す：
 \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
-  \item \textbf{導出形}（§\ref{sec:dccd_modified_eq}--§\ref{sec:dccd_embedding}）：
-        1 次風上スキームの修正方程式から $\partial_x^2$ 散逸チャンネルを抽出し，
-        CCD の高次 $f''$ チャンネルへ\textbf{演算子整合}で移植する筋道．
-        DCCD が「アドホックな数値粘性追加」ではなく
-        1 次風上の安定性予算の体系的帰結であることを明らかにする．
+  \item \textbf{導出形}（§\ref{sec:dccd_embedding}）：
+        中心 Chu--Fan CCD の 1 次導関数 $D_1^{\CCD}$ は純虚数 Fourier シンボルで散逸ゼロのため，
+        \textbf{実数 Hermite 正定値}な偶数次演算子 $-D_2^{\CCD}$ を散逸チャンネルとして並列付加する筋道．
+        DCCD の散逸チャンネルが「アドホックな数値粘性」ではなく
+        中心系の対称性と CCD が既に解いている量の有効再利用であることを明らかにする．
   \item \textbf{実装デフォルト}（§\ref{sec:dccd_spectral_filter}--§\ref{sec:dccd_adaptive}）：
         伝達関数 $H(\xi)=1-4\varepsilon_d\sin^2(\xi/2)$ による
         スペクトル post-filter 形式．
@@ -49,39 +49,21 @@ DCCD は本章の派生スキームのうち\textbf{基底 CCD への外殻 post
 \textbf{適用範囲の制限}で再述するに留める．
 
 % -------------------------------------------------------------------------------
-\subsubsection{1 次風上スキームの修正方程式}
-\label{sec:dccd_modified_eq}
-% -------------------------------------------------------------------------------
-
-$c>0$ の線形移流 $\partial_t u + c\,\partial_x u = 0$ に前進 Euler＋1 次風上を適用：
-\begin{equation}
-  u_i^{n+1} = (1-\nu)u_i^n + \nu u_{i-1}^n,\qquad \nu=\frac{c\Delta t}{\Delta x}.
-  \label{eq:upwind_scheme}
-\end{equation}
-フォン・ノイマン解析で増幅因子 $|G|^2 = 1 - 2\nu(1-\nu)(1-\cos(k\Delta x))$ が得られ，
-$0\le\nu\le 1$ で CFL 安定．
-$u_{i-1}^n = u - \Delta x\,\partial_x u + (\Delta x^2/2)\,\partial_x^2 u - \cdots$ を代入し
-時間側 $u_i^{n+1} = u + \Delta t\,\partial_t u + (\Delta t^2/2)\,\partial_t^2 u + \cdots$ と対応させると，
-スキームが実際に進める\textbf{等価 PDE}（修正方程式）は：
-\begin{equation}
-  \partial_t u + c\,\partial_x u
-  \;=\; \underbrace{\frac{c\Delta x}{2}(1-\nu)}_{D_\nu}\,\partial_x^2 u
-  \;+\; \Ord{\Delta x^2, \Delta t^2}.
-  \label{eq:upwind_modified_eq}
-\end{equation}
-$\nu<1$ で右辺 Laplacian は厳密に散逸的；
-これが 1 次風上の安定性を保証する\textbf{物理的起源}である．
-
-% -------------------------------------------------------------------------------
-\subsubsection{Chu--Fan CCD への埋込み}
+\subsubsection{Chu--Fan CCD への散逸チャンネルの埋込み}
 \label{sec:dccd_embedding}
+\phantomsection\label{sec:dccd_modified_eq}% backward-compat: 旧 §4.7.1 削除に伴う参照保護
 % -------------------------------------------------------------------------------
 
-中心 Chu--Fan CCD（§\ref{sec:ccd_def}）の 1 次導関数は純虚数 Fourier シンボルで
-散逸がない．
-式~\eqref{eq:upwind_modified_eq} の $\partial_x^2 u$ 項を
-\textbf{CCD 自身の 2 次導関数} $D_2^{\CCD}$ で離散化することで，
-中心 CCD の分散精度を保ったまま散逸チャンネルを得る：
+中心 Chu--Fan CCD（§\ref{sec:ccd_def}）の 1 次導関数 $D_1^{\CCD}$ は
+Fourier シンボル $i\omega_1(\xi)/h$ で\textbf{純虚数}（中心ステンシルの対称性に由来）であり，
+固有値の実部がゼロで散逸を持たない．
+散逸を加えるには\textbf{実数の Hermite 演算子}を主項に並列付加する必要がある．
+
+基底 CCD が既に解いている 2 次導関数 $D_2^{\CCD}$ は
+Fourier シンボル $-\omega_2(\xi)^2/h^2$ で\textbf{実かつ負定値}
+（§\ref{sec:ccd_omega_weights}）であり，
+$-D_2^{\CCD}$ の符号反転で正値の散逸チャンネルが得られる．
+これを $\varepsilon\,|c|\,\Delta x$ のスケーリングで主項に並列して付加：
 \begin{equation}
   \boxed{\;
   \partial_t u_i + c\,(D_1^{\CCD}u)_i
@@ -90,9 +72,14 @@ $\nu<1$ で右辺 Laplacian は厳密に散逸的；
   \;}
   \label{eq:dccd_pde_form}
 \end{equation}
+スケーリング $|c|\Delta x$ は次元解析（散逸係数の物理次元 $[L^2/T]$）から定まり，
+$\varepsilon$ は無次元の振幅パラメタである．
 CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
 低次有限差分で代用するとステンシル整合性が崩れ，
 修正波数の不整合が散逸チャンネルの精度を $\Ord{h^2}$ まで劣化させる．
+本式は中心 CCD の対称性のみから自閉的に導出され，外部スキームへの依存を持たない．
+（風上ステンシル + ハイパー粘性として散逸を演算子内部に組み込む別経路は
+UCCD6（§\ref{sec:uccd6_def}）で展開する．）
 
 % -------------------------------------------------------------------------------
 \subsubsection{実装デフォルト：スペクトルフィルタとの関係}
@@ -166,7 +153,8 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
       厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
       §\ref{sec:uccd6_boundary} で開課題として明示している．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
-      §\ref{sec:fccd_bc_options} の Option III/IV で壁近傍の行を置換．
+      壁近傍の境界行設計（Option III/IV による置換）は
+      §\ref{sec:grid} 章の境界処理で論じる．
 \item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
       TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL により，
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
@@ -207,13 +195,9 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
   \item \textbf{UCCD6 との対照}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
-        本稿では bulk $u, v$ 移流の既定を UCCD6 とし
-        CLS 移流（$\psi$）の実装デフォルトを DCCD とする：
-        Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
-        Level-2 実装既定（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
-        Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
-        DCCD は CLS 再初期化圧縮項の非線形フラックス散逸子
-        （§\ref{sec:reinit}，UCCD6 未拡張のため）にも適用される．
+        両スキームの用途別割当（bulk 移流／CLS 移流／再初期化圧縮項など）と
+        Level-1/2/3 における具体的な組合せは
+        §\ref{sec:time_int} の比較表に集約する．
 \end{itemize}
 
 \noindent
@@ -315,7 +299,7 @@ $C^0$ tanh プロファイル移流（界面）
           \quad i = 1, \ldots, N-2
         \]
         境界点 $i=0, N-1$：周期 BC では折り返しインデックスを使用；
-        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§~\ref{sec:dccd_bc} 参照）．
+        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§~\ref{sec:ccd_bc} 参照）．
   \item \textbf{2 次微分のフィルタ適用：}
         \[
           \tilde{f}''_i = f''_i + \varepsilon_d^{(i)}\,(f''_{i+1} - 2f''_i + f''_{i-1}),
@@ -326,7 +310,7 @@ $C^0$ tanh プロファイル移流（界面）
         速度勾配評価に用いる．
         PPE 右辺・Corrector 発散のチェッカーボード抑制には，
         本適応制御ではなく $\varepsilon_d=1/4$ の固定フィルタ
-        （§~\ref{sec:dccd_decoupling}）を用いる．
+        （§~\ref{sec:collocate}）を用いる．
 \end{enumerate}
 
 \textbf{2 次元への拡張：}
