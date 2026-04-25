@@ -194,6 +194,11 @@ Zalesak 型（硬幾何）& $\{1\}$ & N/A & L1 & CLS 単独検証 \\
 \end{tabular}
 \end{center}
 
+\noindent\textbf{Level 推奨の解釈}：表中 L3 推奨は \S\ref{sec:level3_stiff_regime} の
+3 条件\textbf{同時成立}（$\rho_l/\rho_g\ge 500$ かつ $\mu_l/\mu_g\ge 50$ かつ $\text{We}\le 0.01$）
+が要件．830 級高密度比でも We $> 0.01$（毛管波 ch13）または単独条件のみでは
+L2 で十分；L3 は剛性多重結合（マイクロ流体 T 字路や インクジェット 破断初期）に限定．
+
 実装上は YAML 設定で
 \verb|time_integration.level: 1|\,\verb|2|\,\verb|3|
 を明示指定し，ランタイムトリガー（表~\ref{tab:level_trigger}）は

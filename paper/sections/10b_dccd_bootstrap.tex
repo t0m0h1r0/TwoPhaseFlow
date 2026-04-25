@@ -165,7 +165,8 @@ P-5 と整合する．
         $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する．
         \textbf{精度根拠}：広帯域 $\sigma_0 = 3 h_{\min}$ の 1 サイクルで
         $\bigl||\nabla\phi^{(0)}_\text{sdf}|-1\bigr|\le \Ord{h^4}$ が達成される
-        （§~\ref{sec:reinit} の局所収束解析）．
+        （CLS 再初期化の局所線形化解析；定式化は §~\ref{sec:reinit}，
+        定量的根拠は §~\ref{sec:verify_time} の 1D/2D テスト結果に従う）．
         HFE 誤差伝播 $\varepsilon_\text{HFE} \lesssim \varepsilon_\text{sdf}\cdot|\nabla^k p|$
         ($k\le 6$) より局所 $\Ord{h^4}$ 誤差が界面曲率精度を律速するが，
         Step 4 Young--Laplace は時刻 0 の初期化のみであり，

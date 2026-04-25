@@ -204,7 +204,7 @@ $L_L$ のスパース LU（小中規模）．
 \hline
 節点 CCD PPE（等密度，本稿 Level 1）& 3 & $\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann \\
 分相 FCCD PPE（Level 2）& 2--3 & $\Ord{h^4}$--$\Ord{h^5}$（GFM 2 次律速）\\
-純 FCCD + IIM 行補正（Level 3）& 2 & $\Ord{h^4}$--$\Ord{h^6}$（IIM ジャンプ昇格）\\
+純 FCCD + IIM 行補正（Level 3）& 3 & $\Ord{h^4}$--$\Ord{h^6}$（IIM ジャンプ昇格）\\
 \hline
 \end{tabular}
 \end{center}
@@ -221,3 +221,6 @@ DC 反復回数を $k$ に増やしても
 FCCD の $\Ord{h^6}$ には漸近しない．
 Level 3 で IIM 行補正（\S\ref{sec:fccd_bf_gfm_integration} Phase 3）
 を採用すると全体精度が $\Ord{h^4}$ 以上に昇格する．
+なお \S\ref{sec:algorithm} の DC ループは Level 共通で $k=3$ を既定とする
+（安全マージン；$k>2$ で GFM 律速のため実効精度向上はないが，
+表中 Lv.3 の $k$ も §10 統一のため $k=3$ 表記とした）．
