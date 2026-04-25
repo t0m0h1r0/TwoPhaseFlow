@@ -146,11 +146,16 @@ FCCD（§\ref{sec:fccd_def}） & \textbf{面} & 風上構造 & $\Ord{h^4}$ \\
 {\footnotesize $^\star$ 微分演算子の formal 精度．DCCD では post-filter による移流フィルタ誤差 $\Ord{\varepsilon_d^\text{adv}\,h^2}$ が別途付随し，移流の実効精度は $\Ord{h^2}$ に律速される（§\ref{sec:dccd_filter_theory} 参照）．UCCD6 は $\omega_2^8$ 重みで Nyquist 帯域のみ選択減衰し bulk $\Ord{h^6}$ を維持．}
 
 \noindent
-本稿では UCCD6 が bulk 移流の既定として DCCD を置換する．
+本稿では UCCD6 を \textbf{bulk $u,v$ 運動量移流}の既定とし，DCCD は
+\textbf{CLS ($\psi$) 移流（§\ref{sec:advection_motivation}）および
+再初期化圧縮項（§\ref{sec:reinit}）}に専門化する分業構造を採る．
+すなわち bulk $u,v$ 移流について UCCD6 が DCCD を置換するが，
+CLS 移流の既定は DCCD であり置換されない．
 $\omega_2^8$ の選択的 Nyquist 散逸は DCCD の一様減衰 $H(\pi)=1-4\varepsilon_d$ より
-dispersion preservation に優り，bulk 高周波の保持性で上位に位置する．
-DCCD は UCCD6 の動機付けを成す教育的前段（§\ref{sec:dccd_derivation}）として
-および CLS 再初期化圧縮項（§\ref{sec:reinit}，非線形フラックス散逸子）として保持される．
+dispersion preservation に優り，bulk 高周波の保持性で上位に位置するため，
+$u,v$ 移流に対しては UCCD6 を採る；
+一方 $\psi$ の急峻 tanh プロファイルでは
+DCCD の一様減衰がスペクトル振動を確実に抑制する．
 
 \noindent
 UCCD6 は FCCD と\textbf{直交補完}の関係にある：
