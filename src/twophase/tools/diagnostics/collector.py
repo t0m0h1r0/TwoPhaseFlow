@@ -106,6 +106,8 @@ class DiagnosticCollector:
         self.times: list[float] = []
         self._data: dict[str, list] = {}
         self._V0: float | None = None  # set on first collect()
+        self._device_cache: dict[str, object] = {}
+        self._deformation_cache: dict[str, object] = {}
 
         # bubble_centroid expands into xc / yc / vc sub-series
         # symmetry_error expands into sym_{psi,u,v}_{y,x} sub-series (CHK-161)
@@ -120,6 +122,11 @@ class DiagnosticCollector:
                 self._data.setdefault(m, [])
 
     # ── public interface ──────────────────────────────────────────────────
+
+    def invalidate_device_cache(self) -> None:
+        """Drop cached device-side coordinate arrays after a grid rebuild."""
+        self._device_cache.clear()
+        self._deformation_cache.clear()
 
     def collect(
         self,
@@ -143,8 +150,8 @@ class DiagnosticCollector:
             dV = xp.full(psi.shape, self.h ** 2)
         elif _xp_of(dV) is not xp:
             dV = xp.asarray(dV)
-        X = xp.asarray(self.X)
-        Y = xp.asarray(self.Y)
+        X = self._cached_device_array("X", self.X, xp)
+        Y = self._cached_device_array("Y", self.Y, xp)
         rho = self.rho_g + (self.rho_l - self.rho_g) * psi
 
         V_dev = xp.sum(psi * dV)
@@ -196,7 +203,7 @@ class DiagnosticCollector:
                 self._data["vc"].append(vc)
 
             elif m == "deformation":
-                self._data[m].append(_deformation(psi))
+                self._data[m].append(_deformation(psi, self._deformation_cache))
 
             elif m == "interface_amplitude":
                 self._data[m].append(_interface_amplitude(psi, self.Y, self.h))
@@ -240,6 +247,15 @@ class DiagnosticCollector:
                 else:
                     self._data[m].append(0.0)
 
+    def _cached_device_array(self, name: str, value, xp):
+        source_id_key = f"{name}_source_id"
+        cached_key = f"{name}_device"
+        source_id = id(value)
+        if self._device_cache.get(source_id_key) != source_id:
+            self._device_cache[cached_key] = xp.asarray(value)
+            self._device_cache[source_id_key] = source_id
+        return self._device_cache[cached_key]
+
     def last(self, key: str, default: float = 0.0) -> float:
         """Return the most recently collected value for ``key``."""
         data = self._data.get(key, [])
@@ -264,7 +280,7 @@ def _to_host(arr):
     return np.asarray(arr)
 
 
-def _deformation(psi) -> float:
+def _deformation(psi, cache: dict | None = None) -> float:
     """D = (L−B)/(L+B) from second moments of the ψ > 0.5 region.
 
     Fully device-resident: builds index grids on-device and batches the
@@ -272,23 +288,35 @@ def _deformation(psi) -> float:
     """
     xp = _xp_of(psi)
     mask = psi > 0.5
-    n_pts = float(xp.sum(mask))
-    if n_pts < 1.0:
-        return 0.0
+    n_pts_dev = xp.sum(mask)
     NX, NY = psi.shape
-    rows = xp.arange(NX, dtype=xp.float64)[:, None] * xp.ones((1, NY), dtype=xp.float64)
-    cols = xp.ones((NX, 1), dtype=xp.float64) * xp.arange(NY, dtype=xp.float64)[None, :]
-    row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_pts
-    col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_pts
+    if cache is not None and cache.get("shape") == psi.shape and cache.get("xp") is xp:
+        rows = cache["rows"]
+        cols = cache["cols"]
+    else:
+        rows = xp.arange(NX, dtype=xp.float64)[:, None] * xp.ones((1, NY), dtype=xp.float64)
+        cols = xp.ones((NX, 1), dtype=xp.float64) * xp.arange(NY, dtype=xp.float64)[None, :]
+        if cache is not None:
+            cache["shape"] = psi.shape
+            cache["xp"] = xp
+            cache["rows"] = rows
+            cache["cols"] = cols
+    n_safe = xp.where(n_pts_dev > 0, n_pts_dev, 1.0)
+    row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_safe
+    col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_safe
     dy = xp.where(mask, rows - row_mean, 0.0)
     dx = xp.where(mask, cols - col_mean, 0.0)
     raw = xp.stack([
-        xp.sum(dx * dx) / n_pts,
-        xp.sum(dy * dy) / n_pts,
-        xp.sum(dx * dy) / n_pts,
+        n_pts_dev,
+        xp.sum(dx * dx) / n_safe,
+        xp.sum(dy * dy) / n_safe,
+        xp.sum(dx * dy) / n_safe,
     ])
     stats = np.asarray(_to_host(raw))
-    Ixx, Iyy, Ixy = float(stats[0]), float(stats[1]), float(stats[2])
+    n_pts = float(stats[0])
+    if n_pts < 1.0:
+        return 0.0
+    Ixx, Iyy, Ixy = float(stats[1]), float(stats[2]), float(stats[3])
     disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
     eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
     eig2 = 0.5 * (Ixx + Iyy) - np.sqrt(disc)

@@ -744,6 +744,8 @@ class TwoPhaseNSSolver:
     def step_request(
         self,
         request: NSStepInputs | NSStepRequest,
+        *,
+        return_host_pressure: bool = True,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Advance one timestep from a grouped request object."""
         state = self._prepare_step_inputs(request)
@@ -759,7 +761,7 @@ class TwoPhaseNSSolver:
 
         p_out = (
             np.asarray(self._backend.to_host(state.pressure))
-            if self._backend.is_gpu()
+            if self._backend.is_gpu() and return_host_pressure
             else state.pressure
         )
         return state.psi, state.u, state.v, p_out

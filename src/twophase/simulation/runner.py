@@ -61,6 +61,7 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     t = 0.0
     step = 0
     dbg_history: list = []
+    dV_dev = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
 
     while t < T and (max_steps is None or step < max_steps):
         if cfg.run.dt_fixed is not None:
@@ -93,16 +94,19 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
                 mu_g=ph.mu_g,
                 bc_hook=bc_hook,
                 step_index=step_index,
-            )
+            ),
+            return_host_pressure=False,
         )
         t += dt
         step += 1
 
         _bk = solver._backend
-        dV_dev = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
         if grid_will_rebuild:
+            dV_dev = solver._grid.cell_volumes()
             diag.X = np.asarray(_bk.to_host(solver.X))
             diag.Y = np.asarray(_bk.to_host(solver.Y))
+            if hasattr(diag, "invalidate_device_cache"):
+                diag.invalidate_device_cache()
         diag.collect(t, psi, u, v, _bk.xp.asarray(p), dV=dV_dev)
         dbg_entry = solver._step_diag.last
         if dbg_entry:
