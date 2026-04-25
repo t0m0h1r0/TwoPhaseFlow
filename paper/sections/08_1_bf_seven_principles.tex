@@ -197,9 +197,17 @@ BF sub-system は\textbf{高次である必要はない}．
 bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}．
 
 % -------------------------------------------------------------------------------
-\subsubsection{Rhie--Chow の限定使用}
+\subsubsection{Rhie--Chow の限定使用（F-2/F-4 失敗モードへの該当）}
 \label{sec:bf_rhie_chow_restriction}
 % -------------------------------------------------------------------------------
+
+\noindent
+本項は P-1--P-7 原則の独立スロットではなく，
+\textbf{失敗モード F-2（演算子非整合）と F-4（ジャンプ平滑化）が
+Rhie--Chow（RC）補間で同時発現する典型例}として位置付ける副節である．
+P-1--P-7 と F-1--F-5 の対応は次の §\ref{sec:bf_failure_principle_map} にまとめる．
+
+\medskip
 
 Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
 チェッカーボード抑制\textbf{のみ}のツールであり，BF 機構ではない：
