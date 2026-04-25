@@ -25,12 +25,12 @@
         $\psi$ 直接法での適用域 $\psi_{\min}$ と飽和帯の扱い，
         および $\phi$ 経由計算での分母クランプの役割を整理し，
         曲率精度の第一保証が再初期化品質（Eikonal 条件）にあることを明示する．
-  \item \textbf{§~\ref{sec:ridge_eikonal}（Ridge-Eikonal 補助場再構成）：}
-        ロジット逆変換が飽和帯で失敗する場合に備え，
-        Morse 理論に基づく Gaussian 補助場 $\xiridge$ による界面再定義（リッジ集合）と，
+  \item \textbf{§~\ref{sec:ridge_eikonal}（Ridge-Eikonal 補助場再構成；補助経路）：}
+        ロジット逆変換が飽和帯で失敗する場合や，
+        トポロジー変化を連続的に扱いたい場合に備えた補助経路として，
+        Gaussian 補助場 $\xiridge$ による界面再定義（リッジ集合）と，
         その FMM/FSM による Eikonal 再構成を定式化する．
-        トポロジー変化（リッジ併合・分岐）は補助場の連続変形として表され，
-        離散イベント処理を不要にする．
+        基本の CLS ループは前節までで完結しており，本節はその拡張である．
 \end{enumerate}
 
 \subsection{標準 Level Set 法の問題点：なぜ CLS が必要か}

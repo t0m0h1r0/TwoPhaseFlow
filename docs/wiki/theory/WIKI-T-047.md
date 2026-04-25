@@ -63,6 +63,35 @@ where a small diffusion $\varepsilon$ regularises ridge interactions.
 
 Controls the interaction length. **Too small** suppresses topology change (ridges never meet). **Too large** diffuses geometry. A scaling with $\Delta x$, Re, and Ca is future work. Initial guidance: $\sigma \sim 2\text{--}4\,\Delta x_\text{face}$ for the isolated-interface regime, wider near transitions.
 
+## Kernel-family consistency: what must and need not be unified?
+
+The Gaussian kernel used in $\xi_\text{ridge}$ is **not** the CLS regularised Heaviside kernel.
+
+- $\xi_\text{ridge}$ is an **auxiliary topology carrier** used to detect and continue ridge geometry through topology change.
+- The CLS transport / material interpolation chain still relies on a separate regularisation family
+  $$
+  \psi = H_\varepsilon(\phi), \qquad
+  \delta_\varepsilon(\phi) = \frac{d H_\varepsilon}{d\phi}, \qquad
+  \phi = H_\varepsilon^{-1}(\psi),
+  $$
+  which must remain internally consistent.
+
+In the present implementation, that CLS family is logistic/sigmoid-based:
+
+- `H_\varepsilon` is logistic,
+- `\delta_\varepsilon` is its exact derivative,
+- `H_\varepsilon^{-1}` is the corresponding logit inverse.
+
+This is the consistency that matters mathematically. By contrast, $\xi_\text{ridge}$ is not a Heaviside surrogate and is not required to share the same kernel family. Forcing a Gaussian unification would therefore mean changing the **entire** CLS family (e.g. to an erf / Gaussian-CDF representation), not merely swapping the ridge kernel.
+
+Therefore the correct design rule is:
+
+1. keep $H_\varepsilon$, $\delta_\varepsilon$, and $H_\varepsilon^{-1}$ in one closed family;
+2. treat $\xi_\text{ridge}$ as a separate auxiliary field with a different role;
+3. do not identify the ridge width $\sigma$ with the CLS thickness $\varepsilon$.
+
+Under this interpretation, the current Gaussian-ridge + logistic-CLS split is theoretically admissible and does **not** require kernel unification.
+
 ## Comparison with existing project fields
 
 | Field | Origin | Eikonal? | Admits topology change? |

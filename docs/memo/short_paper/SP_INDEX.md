@@ -2,7 +2,7 @@
 
 - **Compiled by**: ResearchArchitect
 - **Compiled at**: 2026-04-23
-- **Purpose**: Canonical dashboard for the SP-A..SP-O short-paper series.
+- **Purpose**: Canonical dashboard for the SP-A..SP-P short-paper series.
   Tracks (1) the SP-letter → file mapping (so SP-H renumber events remain
   auditable), and (2) the SP → paper-chapter mapping used by
   [SP-O](SP-O_paper_rewrite_sp_core.md) to drive the §2–§10 rewrite
@@ -34,6 +34,10 @@
 | SP-M | [SP-M_pure_fccd_phase_separated_ppe_hfe.md](SP-M_pure_fccd_phase_separated_ppe_hfe.md) | Pure FCCD two-phase DNS (no FVM, phase-separated PPE, GFM) | 2026-04-23 | PROPOSED |
 | **SP-N** | [SP-N_uccd6_hyperviscosity.md](SP-N_uccd6_hyperviscosity.md) | **UCCD6: sixth-order upwind CCD with hyperviscosity** (formerly SP-H) | 2026-04-21 | PROPOSED |
 | **SP-O** | [SP-O_paper_rewrite_sp_core.md](SP-O_paper_rewrite_sp_core.md) | **Paper §2–§10 SP-core rewrite plan** (CHK-182..190 executable spec) | 2026-04-23 | ACTIVE |
+| **SP-P** | [SP-P_face_canonical_projection_survey.md](SP-P_face_canonical_projection_survey.md) | **Face-canonical variable-density projection survey + ch13 PoC ladder** | 2026-04-24 | ACTIVE |
+| **SP-Q** | [SP-Q_buoyancy_driven_predictor_assembly.md](SP-Q_buoyancy_driven_predictor_assembly.md) | **Buoyancy-driven predictor assembly theory for ch13 CN intermediate-state failure** | 2026-04-25 | ACTIVE |
+| **SP-R** | [SP-R_interface_band_predictor_closure_derivation.md](SP-R_interface_band_predictor_closure_derivation.md) | **NS × LS × CFD derivation of interface-band predictor closure and buoyancy-aware assembly** | 2026-04-25 | ACTIVE |
+| **SP-S** | [SP-S_buoyancy_predictor_redesign_theorem.md](SP-S_buoyancy_predictor_redesign_theorem.md) | **Redesign theorem and minimal admissible algorithm for buoyancy-aware predictor assembly** | 2026-04-25 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
