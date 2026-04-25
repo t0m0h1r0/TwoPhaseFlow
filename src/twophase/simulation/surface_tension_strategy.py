@@ -9,7 +9,6 @@ from ..core.registry import SchemeRegistryMixin
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from .gradient_operator import IGradientOperator
-    from .scheme_build_ctx import SurfaceTensionBuildCtx
 
 
 class INSSurfaceTensionStrategy(SchemeRegistryMixin, ABC):

@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from ..backend import Backend
     from ..ccd.ccd_solver import CCDSolver
     from ..ppe.interfaces import IPPESolver
-    from .scheme_build_ctx import ReprojectorBuildCtx
 
 
 def _device_array(arr, backend: "Backend"):

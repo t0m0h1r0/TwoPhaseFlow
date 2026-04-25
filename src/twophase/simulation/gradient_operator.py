@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from ..core.registry import SchemeRegistryMixin
-
-if TYPE_CHECKING:
-    from .scheme_build_ctx import GradientBuildCtx
 
 
 class IGradientOperator(SchemeRegistryMixin, ABC):

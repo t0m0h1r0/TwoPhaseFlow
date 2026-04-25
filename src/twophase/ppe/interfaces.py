@@ -16,12 +16,9 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import ClassVar, TYPE_CHECKING
+from typing import ClassVar
 
 from ..core.registry import SchemeRegistryMixin
-
-if TYPE_CHECKING:
-    from ..simulation.scheme_build_ctx import PPEBuildCtx
 
 
 class MatrixAssemblyUnavailable(RuntimeError):

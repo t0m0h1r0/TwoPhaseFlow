@@ -14,13 +14,9 @@ without modifying TwoPhaseSimulation itself.
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List, ClassVar, TYPE_CHECKING
+from typing import List, ClassVar
 
 from ..core.registry import SchemeRegistryMixin
-
-if TYPE_CHECKING:
-    from ..ccd.ccd_solver import CCDSolver
-    from ..simulation.scheme_build_ctx import AdvectionBuildCtx
 
 
 class ILevelSetAdvection(SchemeRegistryMixin, ABC):

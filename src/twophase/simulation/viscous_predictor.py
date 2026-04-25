@@ -8,7 +8,6 @@ from ..core.registry import SchemeRegistryMixin
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
-    from .scheme_build_ctx import ViscousBuildCtx
 
 
 class IViscousPredictor(SchemeRegistryMixin, ABC):
