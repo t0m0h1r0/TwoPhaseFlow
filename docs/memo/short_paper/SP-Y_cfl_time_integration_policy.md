@@ -140,6 +140,17 @@ dt_cap = C_wave sqrt((rho_l + rho_g) h_min^3 / (2 pi sigma)),
 C_wave ≈ 0.1--0.3.
 ```
 
+In the runtime configuration the scalar key `run.time.cfl` is the only
+dimensionless user safety coefficient.  Therefore, when `sigma > 0`, the same
+value must be used as `C_wave` in the capillary-wave bound unless a future
+configuration introduces an explicitly named and documented override.  A
+hard-coded value such as `C_wave = 0.25` violates the written CFL contract:
+`cfl: 0.10` would still advance at the 0.25 capillary coefficient whenever the
+initial advective rate is small.  This is not a harmless implementation detail;
+for a water--air capillary wave it multiplies the physical wave-resolution
+timestep by 2.5 and can move the update outside the stable/resolved part of the
+coupled compact operator.
+
 This is a physical wave-resolution scale, not only an explicit-CSF stability
 bound.  Implicit surface tension removes a spurious stiff eigenvalue, but if the
 short capillary wave is part of the resolved dynamics, the time step must still
@@ -254,9 +265,11 @@ Fully coupled Radau IIA or equivalent implicit RK:
 Immediate corrections:
 
 1. Runtime CFL must use the directional Courant sum.
-2. Capillary time-step control must be explicitly reported as `dt_cap`.
-3. "TVD-RK3 stable" must never be used as a justification for the full NS step.
-4. ch13 non-uniform runs need operator-level evidence before being called
+2. Capillary time-step control must use `run.time.cfl` as `C_wave`, not a
+   hard-coded coefficient.
+3. Capillary time-step control must be explicitly reported as `dt_cap`.
+4. "TVD-RK3 stable" must never be used as a justification for the full NS step.
+5. ch13 non-uniform runs need operator-level evidence before being called
    theoretically stable.
 
 Deferred implementation work:

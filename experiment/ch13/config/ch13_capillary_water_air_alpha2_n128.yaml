@@ -46,7 +46,7 @@ physics:
 
 run:
   time:
-    final: 0.20
+    final: 0.50
     cfl: 0.10
     print_every: 20
   debug:
