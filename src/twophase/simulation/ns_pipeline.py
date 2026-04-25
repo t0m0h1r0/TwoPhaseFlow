@@ -572,12 +572,17 @@ class TwoPhaseNSSolver:
     def _runtime_timestep_context(self) -> NSTimestepEstimateContext:
         """Build the timestep-estimation context for runtime services."""
         if self._runtime_timestep_ctx is None:
+            h_axes = tuple(
+                float(self._grid.h[ax].min())
+                for ax in range(self._grid.ndim)
+            )
             self._runtime_timestep_ctx = NSTimestepEstimateContext(
                 backend=self._backend,
                 h=self._h,
                 h_min=self.h_min,
                 alpha_grid=self._alpha_grid,
                 cn_viscous=self._cn_viscous,
+                h_axes=h_axes,
             )
         return self._runtime_timestep_ctx
 

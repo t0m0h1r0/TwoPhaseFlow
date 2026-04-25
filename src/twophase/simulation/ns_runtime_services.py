@@ -32,6 +32,7 @@ class NSTimestepEstimateContext:
     h_min: float
     alpha_grid: float
     cn_viscous: bool
+    h_axes: tuple[float, ...] | None = None
 
 
 def psi_from_phi(context: NSRuntimeSetupContext, phi: np.ndarray) -> np.ndarray:
@@ -80,26 +81,44 @@ def compute_runtime_dt_max(
     *,
     cfl: float = 0.15,
 ) -> float:
-    """Estimate the stable timestep from CFL, viscous, and capillary limits."""
-    h = context.h_min if context.alpha_grid > 1.0 else context.h
+    """Estimate the stable timestep from advective, viscous, and capillary limits.
+
+    The advective bound uses the multidimensional Courant sum
+    ``Σ_i max|u_i| / h_i`` rather than ``max_i |u_i| / h_min``.  The capillary
+    bound uses the Denner--van Wachem wave-resolution scale with a fixed
+    safety factor ``C_wave = 0.25``.  For non-uniform grids these are necessary
+    timestep scales, not a proof of stability for the full non-normal compact
+    operator.
+    """
+    h_axes = context.h_axes
+    if h_axes is None:
+        h = context.h_min if context.alpha_grid > 1.0 else context.h
+        h_axes = (h, h)
+    h_min = min(h_axes)
     mu_max = max(filter(None, [physics.mu, physics.mu_l, physics.mu_g]))
     rho_min = physics.rho_g
 
     xp = context.backend.xp
-    uv_max = np.asarray(
+    axis_speeds = np.asarray(
         context.backend.to_host(
             xp.stack([xp.max(xp.abs(xp.asarray(u))), xp.max(xp.abs(xp.asarray(v)))])
         )
     )
-    u_max = max(float(uv_max[0]), float(uv_max[1]), 1e-10)
-    dt_cfl = cfl * h / u_max
-    visc_safety = 0.5 if context.cn_viscous else 0.25
-    dt_visc = visc_safety * h ** 2 / (mu_max / rho_min)
+    advective_rate = sum(
+        float(speed) / float(h_axis)
+        for speed, h_axis in zip(axis_speeds, h_axes)
+    )
+    dt_cfl = float("inf") if advective_rate <= 1e-14 else cfl / advective_rate
+
+    nu_max = mu_max / rho_min
+    inv_h2_sum = sum(1.0 / (float(h_axis) ** 2) for h_axis in h_axes)
+    explicit_visc_dt = 1.0 / (2.0 * nu_max * inv_h2_sum)
+    dt_visc = (2.0 if context.cn_viscous else 1.0) * explicit_visc_dt
 
     if physics.sigma > 0.0:
         rho_sum = physics.rho_l + physics.rho_g
         dt_cap = 0.25 * np.sqrt(
-            rho_sum * h ** 3 / (2.0 * np.pi * physics.sigma)
+            rho_sum * h_min ** 3 / (2.0 * np.pi * physics.sigma)
         )
         return min(dt_cfl, dt_visc, dt_cap)
     return min(dt_cfl, dt_visc)

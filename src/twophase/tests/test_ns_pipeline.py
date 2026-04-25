@@ -156,6 +156,36 @@ def test_dt_max_nonuniform():
     assert dt_n < dt_u, "dt_max should be smaller with non-uniform grid"
 
 
+def test_dt_max_uses_directional_courant_sum():
+    """2-D advection CFL must use Σ_i |u_i|/h_i, not max_i |u_i|/h_min."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0)
+    u = np.ones(s._grid.shape)
+    v = np.ones(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=0.0, mu=1.0e-12)
+
+    dt = s.dt_max(u, v, ph, cfl=0.2)
+    expected = 0.2 / (1.0 / s.h_min + 1.0 / s.h_min)
+    assert dt == pytest.approx(expected)
+
+
+def test_dt_max_capillary_wave_bound_uses_h_min():
+    """Capillary bound follows C_wave sqrt((rho_l+rho_g) h_min^3/(2πσ))."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0)
+    u = np.zeros(s._grid.shape)
+    v = np.zeros(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=1.0, mu=1.0e-12)
+
+    dt = s.dt_max(u, v, ph, cfl=0.2)
+    expected = 0.25 * np.sqrt(
+        (ph.rho_l + ph.rho_g) * s.h_min ** 3 / (2.0 * np.pi * ph.sigma)
+    )
+    assert dt == pytest.approx(expected)
+
+
 # ── Test 6: config_io round-trip ─────────────────────────────────────────────
 
 def test_gridcfg_parse_alpha_grid():
