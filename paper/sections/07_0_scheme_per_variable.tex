@@ -24,7 +24,7 @@ CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$
 \hline
 $\psi$（CLS）& $C^0$ 急 tanh & Dissipative CCD（CCD 微分 + 後段スペクトル散逸；\S\ref{sec:advection_motivation}） \\
 $u, v$ bulk & $C^\infty$ 滑 & CCD / UCCD6 / FCCD（\S\ref{sec:fccd_advection}） \\
-$u, v$ 界面帯 & $\nabla u$ kink & WENO5 or 2 次片側（\S\ref{sec:viscous_3layer}）\\
+$u, v$ 界面帯 & $\nabla u$ kink & 2 次片側（\S\ref{sec:viscous_3layer}）；比較対象 WENO5 は付録~\ref{app:weno5} \\
 $\phi$（再初期化）& Eikonal & Godunov（Level 1）/ WENO--HJ~\cite{JiangPeng2000}（Level 2/3 オプション；\S\ref{sec:eikonal_reinit}） \\
 $p$ & 界面で jump & Face-flux + GFM/IIM~\cite{Fedkiw1999}（\S\ref{sec:balanced_force}）\\
 $\rho, \mu$ & step profile & 低次（\S\ref{sec:viscous_3layer}）\\

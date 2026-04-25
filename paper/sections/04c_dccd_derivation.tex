@@ -127,6 +127,13 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
 \end{equation}
 等号は $k=0$（直流）のみで成立．半離散系は非自明モードで無条件散逸．
 
+\noindent\textbf{Post-filter 形での実装条件．}
+本稿の DCCD は PDE 形ではなく\textbf{post-filter} 形
+$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（§\ref{sec:advection_motivation}）．
+フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が安定の必要条件であり，
+§\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの境界値に相当する
+（過剰散逸を避けつつチェッカーボードを最大限に抑える設計値）．
+
 % -------------------------------------------------------------------------------
 \subsubsection{6 つの反論への回答}
 \label{sec:dccd_rebuttals}
@@ -148,7 +155,7 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
 \item \textbf{非線形・多次元・可変係数への拡張可否．}
       線形解析は\textbf{必要条件プローブ}に過ぎない；
-      WENO5 相互検証で経験的裏付け．
+      比較対象 WENO5（付録~\ref{app:weno5}）との相互検証で経験的裏付け．
 \item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
       $\varepsilon_d\le 0.05$ の製品設定で非拘束．

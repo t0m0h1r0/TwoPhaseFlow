@@ -130,7 +130,8 @@ CLS 界面移流には以下の 3 点で非適合である
 \textbf{結論}：純 WENO5 単独は CLS 界面移流に不適合であるため，
 本稿は CLS 移流に \textbf{Dissipative CCD（DCCD）}を採用する．
 すなわち CCD で計算した発散形フラックス $f' = \partial(\psi\bu)/\partial x$ に
-スペクトル散逸 $\varepsilon_d h^4 D^4$ を後段で課す（§\ref{sec:cls_stages} Stage A）．
+スペクトル散逸 $\varepsilon_d h^2 D^2$（$f'$ への作用：$f'_{i+1}-2f'_i+f'_{i-1}$）
+を後段で課す（§\ref{sec:cls_stages} Stage A）．
 CCD は線形・コンパクト・低散逸スキームであり，
 CLS の滑らかな $\psi$ プロファイルに対して界面構造を追加散逸なく長時間保持でき，
 支配方程式全体の空間離散化を単一構造で統一する．
@@ -280,6 +281,7 @@ $\max_\xi H(\xi;\varepsilon_d^{\mathrm{adv}})|\hat{k}^*(\xi)| \approx 1.9$
 （添字のシフト対称性より）である．
 したがって，周期境界・一様格子・値域制限なしの半離散演算子では，
 DCCD フィルタ済み発散の総和はゼロとなる．
+\label{sec:dccd_conservation_caveat}%
 一方，非周期境界や非一様格子では境界フラックス近似，メトリクス，体積重みの扱いに依存し，
 一般には保存形 FVM のような厳密テレスコーピングは保証されない．
 また，RK ステージ後の clamp や再初期化は別の非保存誤差を生むため，
@@ -326,7 +328,7 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & Dissipative CCD：CCD 微分発散形フラックス + 後段スペクトル散逸（§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & フィルタ律速 $\Ord{\varepsilon_d h^2}$（CCD 微分 $\Ord{h^6}$ は後段散逸に吸収） & 線形・コンパクト・低散逸；単独 CCD（散逸なし）は $\psi$ に適用禁止；WENO5 は比較参照（付録~\ref{app:weno5}） \\
+CLS 移流（$\psi$） & Dissipative CCD：CCD 微分発散形フラックス + 後段スペクトル散逸（§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & フィルタ律速 $\Ord{\varepsilon_d h^2}$（CCD 微分 $\Ord{h^6}$ は後段散逸に吸収） & 線形・コンパクト・低散逸；単独 CCD（散逸なし）は $\psi$ に適用禁止；発散形は近似的（厳密 FVM telescoping は §~\ref{sec:dccd_conservation_caveat} の条件下で破れる）；WENO5 は比較参照（付録~\ref{app:weno5}） \\
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 移流と同構成（陽解法；非線形フラックス） \\
 CLS 圧縮（拡散部） & CCD-CN（§~\ref{sec:cls_compression}） & $\Ord{h^6}$ & 線形拡散部は A-stable \\
