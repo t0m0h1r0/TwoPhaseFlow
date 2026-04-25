@@ -154,7 +154,8 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
       厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
       §\ref{sec:uccd6_boundary} で開課題として明示している．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
-      §\ref{sec:fccd_bc_options} の Option III/IV で壁近傍の行を置換．
+      壁近傍の境界行設計（Option III/IV による置換）は
+      §\ref{sec:grid} 章の境界処理で論じる．
 \item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
       TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL により，
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
@@ -299,7 +300,7 @@ $C^0$ tanh プロファイル移流（界面）
           \quad i = 1, \ldots, N-2
         \]
         境界点 $i=0, N-1$：周期 BC では折り返しインデックスを使用；
-        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§~\ref{sec:dccd_bc} 参照）．
+        壁面・流出 BC では境界点をフィルタ適用前の CCD 値のまま保持する（§~\ref{sec:ccd_bc} 参照）．
   \item \textbf{2 次微分のフィルタ適用：}
         \[
           \tilde{f}''_i = f''_i + \varepsilon_d^{(i)}\,(f''_{i+1} - 2f''_i + f''_{i-1}),
