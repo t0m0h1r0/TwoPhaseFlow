@@ -188,6 +188,14 @@ $-D_h^\FCCD\rho_q^{-1} G_h^\FCCD$ は
 純 Poisson 演算子の FCCD 版となり，
 §\ref{sec:ccd_poisson_matrix} の行列構造がそのまま適用される．
 
+\noindent\textbf{eq:split\_ppe との同値性記法}：
+本式~\eqref{eq:split_ppe_fccd_block} は eq:~\eqref{eq:split_ppe} の
+$\nabla^2 p_q = \rho_q\,q$ と等価：
+$\rho_q$ 定数のため product-rule 第 2 項
+$(\bnabla\rho_q^{-1})\!\cdot G_h p_q$ は消滅し，
+$D_h(\rho_q^{-1}G_h p_q) = \rho_q^{-1}D_h G_h p_q = \rho_q^{-1}\nabla_h^2 p_q$
+で書き換えると $-\nabla_h^2 p_q = \rho_q\,q$ に帰着する．
+
 \noindent\textbf{離散随伴性と SPD}：
 P-2（§\ref{sec:bf_p2_adjoint}）により
 \begin{equation}
@@ -240,16 +248,44 @@ $\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
 2 次値ジャンプは Laplace--Beltrami 分解
 $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
 
-\noindent\textbf{$\kappa_s$ の導出（2 階項の根拠）：}
-式~\eqref{eq:gfm_curvature_jump} の $\bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n})$ を
-界面座標で展開すると，
-$\bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n}) = \partial_n(\sigma\kappa)\,(\mathbf{n}\!\cdot\!\mathbf{n}) + \sigma\kappa\,\bnabla\!\cdot\mathbf{n}
- = \partial_n(\sigma\kappa) + \sigma\kappa^2$
-（$\bnabla\!\cdot\mathbf{n}=\kappa$；§\ref{sec:ridge_eikonal}）．
-さらに界面接線方向の発散 $\partial_s(\sigma\kappa)$ を分離すると，
-2 階ジャンプ成分は $[\partial_n^2 p]_\Gamma = \partial_s(\sigma\kappa)/\sigma \equiv \kappa_s$
-として表現される（Liu-Fedkiw-Kang~\cite{Fedkiw1999} Appendix A の
-Laplace--Beltrami 分解と整合；詳細な座標系変換は原著に委ねる）．
+\noindent\textbf{$\kappa_s$ の導出（界面座標 1 段階展開）：}
+界面 $\Gamma$ 上で局所直交座標 $(s,n)$ を取る（$s$：接線弧長，
+$n$：法線距離 $\phi$ と整合）．
+界面圧力ジャンプ $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ を Heaviside 越しに
+\textbf{1 階}展開した結果が式~\eqref{eq:gfm_curvature_jump} 第 1 式の
+$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$．
+さらに $n$ 方向の Laplacian を分解すると：
+\begin{equation}
+  \nabla^2 p = \partial_n^2 p + \kappa\,\partial_n p + \nabla_s^2 p,
+  \label{eq:laplace_beltrami_normal_decomp}
+\end{equation}
+ここで $\nabla_s^2$ は界面 Laplace--Beltrami 演算子．
+界面で $\partial_n p$ がジャンプを持つため，
+$[\nabla^2 p]_\Gamma = [\partial_n^2 p]_\Gamma + \kappa\,[\partial_n p]_\Gamma + [\nabla_s^2 p]_\Gamma$．
+PPE が両相で $\nabla^2 p = \rho q$（$q\equiv\bnabla\!\cdot\bu^*/\Delta t$ の各相延長）
+を満たし，両相 RHS の延長が滑らか（HFE 後）と仮定すると
+$[\nabla^2 p]_\Gamma = [\rho q]_\Gamma$ は与えられた量．
+$[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2(\sigma\kappa|\bnabla\psi|)$
+から接線 2 階差分を取り，
+1 階差分 $\kappa[\partial_n p]_\Gamma=\kappa\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ を
+代入して整理すると，
+\begin{equation}
+  [\partial_n^2 p]_\Gamma
+  = [\rho q]_\Gamma
+    - \kappa\,\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})
+    - \partial_s^2(\sigma\kappa|\bnabla\psi|).
+  \label{eq:kappa_s_derivation}
+\end{equation}
+分相 PPE の片側で $[\rho q]_\Gamma$ を吸収する RHS 整合化と
+$|\bnabla\psi|=1$（HFE 上の SDF 性）を用いれば，
+2 階ジャンプ成分の主要項は接線 2 階微分
+\begin{equation}
+  \kappa_s \equiv \partial_s(\sigma\kappa)/\sigma
+  \label{eq:kappa_s_def}
+\end{equation}
+に縮退する（高次項 $\Ord{(h\kappa)^2}$ を含む詳細は
+Liu--Fedkiw--Kang~\cite{Fedkiw1999} Appendix A の Laplace--Beltrami 分解と整合）．
+本稿はこの $\kappa_s$ を分相 PPE の界面 BC 補正項として用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{PPE 整合性条件と相別ゲージ固定}

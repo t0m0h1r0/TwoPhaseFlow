@@ -118,6 +118,14 @@ $k=1$ では $L_L$ の $\Ord{h^2}$ が支配的だが，
 $k$ を増やすごとに $L_H$ の高次精度が発現し，
 \textbf{等密度・均一格子・周期 BC の理想化}では $k \geq 3$ で $\Ord{h^6}$ に漸近する
 （定量的検証は §~\ref{sec:dc_iteration_accuracy} に示す）．
+\textbf{超収束（Dirichlet BC）}：
+Dirichlet BC + 等密度の理想化下では，
+$L_H$ の補正方程式 $L_L\delta=b-L_H p^{(k)}$ で内点欠陥が
+$L_H$ の打切り誤差より 1 次低い形で打ち消し合うため，
+$k\geq 3$ で局所 $\Ord{h^7}$ の超収束が観測される
+（詳細は表 §\ref{sec:verify_split_ppe_dc}）．
+本稿の主漸近主張は $\Ord{h^6}$；$\Ord{h^7}$ は Dirichlet 限定の超収束効果として
+別途明示する．
 \textbf{実運用条件下の劣化：}
 (i) GFM ステッチ付き分相 PPE では界面条件の $\Ord{h^3}$ が律速して
 $\Ord{h^4}$--$\Ord{h^5}$ に劣化；

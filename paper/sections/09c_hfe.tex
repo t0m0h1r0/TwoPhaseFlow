@@ -201,14 +201,17 @@ HFE は同一の定常解を CCD データから直接構成することで，
 
 \subsubsection{HFE のアルゴリズムへの組み込み}
 
-時刻ループ内での適用箇所（§~\ref{sec:algorithm}）：
+時刻ループ内での適用箇所（§~\ref{sec:algorithm} の現行構成）：
 \begin{enumerate}
-  \item \textbf{Predictor 内（Step 5 の $-\bnabla p^n$ 評価前）：}
+  \item \textbf{Step 5a（IPC Predictor の $-\bnabla p^n$ 直前のサブステップ）：}
         前時刻圧力 $p^n$ に HFE を適用して $p^n_{\mathrm{ext}}$ を構築し，
-        IPC Predictor の $-\bnabla p^n$ 項に使用する（§~\ref{sec:algorithm} Step 5 内のサブステップ）
-  \item \textbf{Corrector 前（Step 7 前）：} 圧力増分 $\delta p$ に HFE を適用して $\delta p_{\mathrm{ext}}$ を構築し，
-        速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する
+        Predictor の $-\bnabla p^n$ 項に使用する．
+  \item \textbf{Step 6a（Corrector 直前；Step 7 前）：}
+        圧力増分 $\delta p$ に HFE を適用して $\delta p_{\mathrm{ext}}$ を構築し，
+        速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する．
 \end{enumerate}
+\textbf{命名整合}：「Step 5 内のサブステップ」「Corrector 前」の旧表現は，
+Step 5a / Step 6a に正規化された（§\ref{sec:algorithm} で詳述）．
 
 \medskip
 \noindent\textbf{本節のまとめと位置づけ．}
