@@ -426,6 +426,28 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
 
 
+def test_phase_separated_gauge_pins_are_bulk_not_interface_edge():
+    """Per-phase Neumann gauges must not pin diffuse contact-line rows."""
+    from twophase.ppe.fccd_matrixfree_helpers import compute_fccd_phase_gauges
+
+    rho = np.ones((16, 16))
+    rho[:, :8] = 1000.0
+    rho[:, 8] = 450.0
+
+    state = compute_fccd_phase_gauges(
+        rho_host=rho,
+        coefficient_scheme="phase_separated",
+        default_pin_dof=0,
+    )
+    coords = [np.unravel_index(dof, rho.shape) for dof in state.pin_dofs]
+
+    assert len(coords) == 2
+    for i, j in coords:
+        assert 0 < i < rho.shape[0] - 1
+        assert 0 < j < rho.shape[1] - 1
+        assert j != 8
+
+
 def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
     """Each decoupled Neumann phase block must receive zero-mean RHS."""
     solver = TwoPhaseNSSolver(

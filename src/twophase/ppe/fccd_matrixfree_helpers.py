@@ -49,17 +49,76 @@ def compute_fccd_phase_gauges(
         return FCCDPhaseGaugeState(pin_dofs=(default_pin_dof,), phase_threshold=None)
 
     threshold = 0.5 * (rho_min + rho_max)
-    gas = np.flatnonzero(rho_np.ravel() < threshold)
-    liquid = np.flatnonzero(rho_np.ravel() >= threshold)
     pins = []
-    if gas.size:
-        pins.append(int(gas[0]))
-    if liquid.size:
-        pins.append(int(liquid[0]))
+    gas_pin = _select_bulk_phase_gauge_pin(
+        rho_np,
+        phase_mask=rho_np < threshold,
+        threshold=threshold,
+        rho_extreme=rho_min,
+        prefer_low_density=True,
+    )
+    liquid_pin = _select_bulk_phase_gauge_pin(
+        rho_np,
+        phase_mask=rho_np >= threshold,
+        threshold=threshold,
+        rho_extreme=rho_max,
+        prefer_low_density=False,
+    )
+    if gas_pin is not None:
+        pins.append(gas_pin)
+    if liquid_pin is not None:
+        pins.append(liquid_pin)
     return FCCDPhaseGaugeState(
         pin_dofs=tuple(sorted(set(pins))) or (default_pin_dof,),
         phase_threshold=threshold,
     )
+
+
+def _select_bulk_phase_gauge_pin(
+    rho_np: np.ndarray,
+    *,
+    phase_mask: np.ndarray,
+    threshold: float,
+    rho_extreme: float,
+    prefer_low_density: bool,
+) -> int | None:
+    """Choose a phase gauge in the bulk, away from walls and the interface.
+
+    The Neumann PPE gauge removes only a per-phase constant null mode.  Placing
+    the gauge on a diffuse-interface/contact-line row changes a physical
+    pressure-jump row into a Dirichlet row, so the selected DOF must be a bulk
+    representative whenever such a cell exists.
+    """
+    if not np.any(phase_mask):
+        return None
+
+    denom = abs(threshold - rho_extreme)
+    if denom <= 1.0e-14:
+        purity = np.ones_like(rho_np, dtype=np.float64)
+    elif prefer_low_density:
+        purity = (threshold - rho_np) / denom
+    else:
+        purity = (rho_np - threshold) / denom
+    purity = np.clip(purity, 0.0, 1.0)
+
+    bulk_mask = phase_mask & (purity >= 0.95)
+    candidate_mask = bulk_mask if np.any(bulk_mask) else phase_mask
+    boundary_distance = _grid_boundary_distance(rho_np.shape)
+    score = np.where(candidate_mask, boundary_distance + 1.0e-3 * purity, -np.inf)
+    return int(np.argmax(score))
+
+
+def _grid_boundary_distance(shape: tuple[int, ...]) -> np.ndarray:
+    """Return index-space distance to the nearest domain boundary."""
+    distance = np.full(shape, np.inf, dtype=np.float64)
+    ndim = len(shape)
+    for axis, size in enumerate(shape):
+        axis_index = np.arange(size, dtype=np.float64).reshape(
+            (1,) * axis + (size,) + (1,) * (ndim - axis - 1)
+        )
+        axis_distance = np.minimum(axis_index, size - 1 - axis_index)
+        distance = np.minimum(distance, axis_distance)
+    return distance
 
 
 def build_fccd_face_inverse_density(
