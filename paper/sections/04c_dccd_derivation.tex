@@ -175,7 +175,7 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
       比較対象 WENO5（付録~\ref{app:weno5}）との相互検証で経験的裏付け．
 \item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
-      $\varepsilon_d\le 0.05$ の製品設定で非拘束．
+      $\varepsilon_d\le 0.05$ の実装デフォルト設定で非拘束．
 \end{enumerate}
 
 % -------------------------------------------------------------------------------
@@ -183,15 +183,16 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
 \label{sec:dccd_role}
 % -------------------------------------------------------------------------------
 
-以上の導出は，製品 DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
+以上の導出は，実装デフォルト DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
 作用する設計であることを確立する．
 旧 §~04d (\texttt{04d\_dissipative\_ccd}：DCCD スペクトル設計・スイッチ $S(\psi)$・精度影響・境界条件・保存性）は，
 以下の要約として本節に吸収する：
 
 \begin{itemize}
   \item \textbf{DCCD は移流の安定化専用}である．
-        Balanced-Force H-01 残差（界面 $\delta$ 関数と圧力勾配の位相ずれ）は
-        DCCD では解消できず，FCCD（§\ref{sec:fccd_def}）の\textbf{直交救済}を要する．
+        節点 CCD の散逸ゼロチャンネルへ post-filter 形式で散逸を加える設計であり，
+        面位置で評価する量に対する整合性は本スキーム単独では保証されず，
+        面中心化が要請される場合は FCCD（§\ref{sec:fccd_def}）が用いられる．
   \item \textbf{界面近傍は非線形スイッチで無効化}される．
         $S(\psi)=(2\psi-1)^2$ は bulk（$\psi\in\{0,1\}$）で $1$，
         界面帯（$\psi=0.5$）で $0$ を取り，
@@ -209,7 +210,7 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
         本稿では bulk $u, v$ 移流の既定を UCCD6 とし
         CLS 移流（$\psi$）の実装デフォルトを DCCD とする：
         Level-1 検証では UCCD6/DCCD 両形式を明示的に並列し，
-        Level-2 製品（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
+        Level-2 実装既定（ch13 rising bubble）は UCCD6+AB2 を bulk に，DCCD を $\psi$ 移流に，
         Level-3 DNS は UCCD6 inside IRK を bulk に既定とする（§\ref{sec:time_int}）．
         DCCD は CLS 再初期化圧縮項の非線形フラックス散逸子
         （§\ref{sec:reinit}，UCCD6 未拡張のため）にも適用される．
