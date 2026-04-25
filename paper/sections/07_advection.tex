@@ -25,7 +25,7 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§7.
 \begin{enumerate}
   \item \textbf{§~\ref{sec:cls_on_nonuniform}（非一様格子上の CLS 演算）：}
         DCCD フィルタの $\xi$ 空間適用と $\psi$ 補間，空間可変 Heaviside 幅を論じる．
-  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 DCCD；運動量用 UCCD6）：}
+  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 WENO5+DCCD hybrid；運動量用 UCCD6）：}
         CLS $\psi$ 移流は高周波ノイズを狙い撃ちする「スペクトルフィルタ」として DCCD を用い，
         運動量 $(u,v)$ 移流は演算子内部散逸の UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）が担う．
   \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化）：}
@@ -94,7 +94,7 @@ $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 （詳細は §~\ref{sec:advection_dccd_design}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{移流項：CLS $\psi$ 用 DCCD と運動量用 UCCD6}
+\subsection{移流項：CLS $\psi$ 用 WENO5+DCCD hybrid と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 

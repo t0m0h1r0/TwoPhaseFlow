@@ -58,7 +58,7 @@ $\varepsilon$ はシミュレーション全体で固定（変更すると $\kap
 \hline
 Stage & 操作 & 要件 \\
 \hline
-A & TVD-RK3 保存形移流 & WENO5 面フラックス + DCCD スペクトル散逸（\S\ref{sec:advection_motivation}），発散フリー $\mathbf{u}^n$．BC：壁面 $\partial_n\psi=0$（Neumann）/ 周期境界（検証），WENO5 ghost-cell 対称延長 \\
+A & TVD-RK3 保存形移流 & WENO5 面フラックス + DCCD ハイブリッド (Stage A; \S\ref{sec:advection_motivation})，発散フリー $\mathbf{u}^n$．BC：壁面 $\partial_n\psi=0$（Neumann）/ 周期境界（検証），WENO5 ghost-cell 対称延長 \\
 B & 移流後 $\psi(1-\psi)$ 補正 & 任意（長時間計算で有用）\\
 C & $\psi\to\phi$ 写像 & artanh 前 $\psi$ クランプ \\
 D & narrow-band 再初期化 & $|\phi|\le W=5\varepsilon$，pseudo-$\tau$ は $\Delta t$ と独立 \\
