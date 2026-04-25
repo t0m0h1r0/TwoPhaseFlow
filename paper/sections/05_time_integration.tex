@@ -259,7 +259,7 @@ van Kan~(1986)~\cite{vanKan1986} の \textbf{Incremental Pressure Correction (IP
 前ステップ圧力 $-\bnabla p^n$ の陽的組み込みが IPC の本質である
 （変密度拡張は Guermond--Minev--Shen~\cite{Guermond2006} を参照）．
 ch13 production stack では IMEX-BDF2 + IPC + implicit-BDF2 粘性に統一済みであるが，
-本式は §~\ref{sec:full_algorithm} の全体アルゴリズム参照および
+本式は §~\ref{sec:algorithm} の全体アルゴリズム参照および
 過去ベンチマーク（§~\ref{sec:verification}）との整合性のために保持する．
 
 \begin{tcolorbox}[warnbox, title={AB2/EXT2 起動問題（$n=0$）}]
@@ -573,8 +573,125 @@ $\mathcal{D}_{\mathrm{d}}$ を方向別 ADI スウィープで三重対角化し
 ch13 production stack ではグローバルな 2D 系を GMRES で直接解く
 （implicit-BDF2 + Jacobi 前処理；本節主体）．
 
-ch13 統一済みであるため CN 法は §~\ref{sec:full_algorithm} の全体アルゴリズム参照
+ch13 統一済みであるため CN 法は §~\ref{sec:algorithm} の全体アルゴリズム参照
 および過去ベンチマーク（§~\ref{sec:verify_cn_viscous}）との整合性のために保持する．
+
+% -------------------------------------------------------------------------------
+\subsection{界面張力項：PPE 内蔵 jump-decomposed CSF}
+\label{sec:time_csf}
+% -------------------------------------------------------------------------------
+
+ch13 production stack の表面張力は，従来の陽的 Continuum Surface Force
+（CSF; Brackbill--Kothe--Zemach \cite{Brackbill1992}）を運動量予測子の RHS
+体積力として加える方式から，\textbf{圧力ジャンプ条件を PPE 右辺に
+直接組み込む jump-decomposed CSF} へ統一されている．本節は時間積分の
+観点でその精度・安定性・物理的な毛管波制約を整理する．
+
+\paragraph{PPE 右辺の圧力ジャンプ}
+界面 $\Gamma$ における Young--Laplace 条件 $[p]_\Gamma = \sigma\kappa$
+を法線方向に展開すると，圧力勾配のジャンプは
+\begin{equation}
+  \bigl[\nabla p\cdot\hat{n}\bigr]_\Gamma = \sigma\kappa\,\delta_\Gamma,
+  \qquad \hat{n} = \nabla\psi/\|\nabla\psi\|
+  \label{eq:pressure_jump_csf}
+\end{equation}
+で与えられる（$\delta_\Gamma$ は $\Gamma$ 上の表面 Dirac，
+$\psi$ は CLS フェーズ場）．jump-decomposed CSF は，予測子の RHS には
+体積力を加えず，補正子で解く PPE
+\begin{equation}
+  \nabla\!\cdot\!\bigl(\rho^{-1}\nabla\delta p^{n+1}\bigr)
+  = \frac{1}{\Delta t}\nabla\!\cdot u^{*}
+  \;+\;\nabla\!\cdot\!\bigl(\rho^{-1}\sigma\kappa^{n+1}\,\delta_\Gamma\,\hat{n}\bigr)
+  \label{eq:ppe_jump_decomposed}
+\end{equation}
+の \textbf{右辺第 2 項} として表面張力寄与を埋め込む．
+$\kappa^{n+1}$ は TVD-RK3 で更新済みの $\psi^{n+1}$ から FCCD 評価し
+（§\ref{sec:CCD} の曲率定式参照），予測子段では $\kappa^{n}$ を
+用いない．
+
+\paragraph{Splitting error が陽的 CSF より小さい原理}
+陽的 CSF は predictor 段で
+$u^{*} = u^{n} + \Delta t(\cdots + \rho^{-1}\sigma\kappa^{n}\delta_\Gamma\hat{n})$
+として表面張力を加えるため，predictor--corrector 間で $\kappa$ と
+圧力 gradient の整合が $\Ord{\Delta t}$ ずれる．これに対し
+jump-decomposed CSF は予測子に表面張力を含めず，PPE 段で $\kappa^{n+1}$
+と $\delta p^{n+1}$ を同時刻で結合するため，分離誤差は IPC 全体の
+$\Ord{\Delta t^2}$ に組み込まれる．Hysing らの 2D rising bubble
+ベンチマーク \cite{Hysing2009} では，同一 $\Delta t$・同一空間離散
+の比較で寄生流速（parasitic currents）が 1 桁小さい結果が得られる．
+
+\begin{remark}[陰的化と毛管波物理解像の独立性]
+\label{rem:implicit_csf_capillary}
+$\sigma\kappa$ を陰的に評価しても，毛管波そのものを解像する
+時間刻み制約（後述の式~\eqref{eq:dt_cap_denner}）は緩まない．
+陰的処理が除くのは離散スプリアス剛性であり，物理的な毛管波周波数
+$\omega_c$ に支配される時間スケールは scheme に依存しないためである
+（Denner--van~Wachem \cite{DennerVanWachem2015}）．
+\end{remark}
+
+\paragraph{陽的 CSF との比較}
+陽的 CSF は predictor RHS に体積力として加える単純実装で，中密度比
+$\rho_1/\rho_2 \le 10$ の検証では十分機能する．ch13 の水--空気
+（$\rho_1/\rho_2 = 10^3$）では PPE 内蔵化が寄生流抑制と長時間
+安定性の双方で有利となるため，ch13 production stack では
+jump-decomposed CSF を既定とし，陽的 CSF は legacy 検証パスとして
+保持する．
+
+% -------------------------------------------------------------------------------
+\subsubsection*{毛管波時間刻み制約：波解像の観点}
+\phantomsection\label{sec:time_capillary}% backward-compat: 旧 §5.6 sec:time_capillary (10_3, 13_benchmarks refs)
+% -------------------------------------------------------------------------------
+
+陰的化と無関係に残る\textbf{物理的な}毛管波時間刻み制約を本節後半に
+整理する．表面張力 $\sigma$ が作用する鋭い界面の最小解像波長
+$\lambda = 2h$ に対し，毛管波の分散関係は
+$\omega_c^2 = \sigma k^3/(\rho_1+\rho_2)$（$k = 2\pi/\lambda$）．
+Brackbill--Kothe--Zemach（1992）\cite{Brackbill1992} の
+\textbf{安定性 CFL} は
+\[
+  \Delta t_\sigma^\text{BKZ} \le \sqrt{\frac{(\rho_1+\rho_2)h^3}{4\pi\sigma}}
+\]
+であり，陽的 CSF 積分の条件を与える．しかし Denner--van~Wachem
+（2015, JCP 285 \cite{DennerVanWachem2015}；2022, JCP 449
+\cite{DennerVanWachem2022}）は，この拘束が純粋な安定性問題ではなく，
+毛管波自身を\textbf{時間的にも解像する}必要から来る\textbf{波解像拘束}
+であることを示した．両者の $\sqrt{2}$ 比は BKZ が純粋に安定限界
+（$\omega_c\Delta t \le \Ord{1}$；陽解法の Nyquist 評価で
+$\pi/2\approx 1.57$）を与えるのに対し，Denner--van Wachem が
+\textbf{毛管波の半周期を少なくとも 1 時間ステップ}で解像する
+波解像条件を課す物理的要請の違いに由来する：
+\begin{equation}
+  \boxed{\;
+  \Delta t_\text{cap} \le C_\text{wave}\sqrt{\frac{(\rho_1+\rho_2)h^3}{2\pi\sigma}},
+  \qquad C_\text{wave}\simeq 0.1\text{--}0.3.
+  \;}
+  \label{eq:dt_cap_denner}
+\end{equation}
+
+\textbf{重要な帰結}：
+
+\begin{enumerate}[leftmargin=2em]
+  \item \textbf{表面張力の陰的化では毛管時間刻みは緩まない．}
+        半陰的 CSF（Aland--Voigt \cite{AlandVoigt2019}；Bänsch
+        \cite{Baensch2001}）は Laplace--Beltrami 成分で無条件安定だが，
+        物理的毛管波が解に寄与する限り $\Delta t$ は
+        式~\eqref{eq:dt_cap_denner} で律速される．
+        陰的処理はスプリアス剛性固有値を除くが，物理を変えない
+        （注意~\ref{rem:implicit_csf_capillary}）．
+  \item \textbf{UCCD6 や BF 設計は別層}．UCCD6 は移流を安定化し，
+        BF ペアは静的力残差を消し，波解像は $\Delta t_\text{cap}$
+        を決める．3 つの拘束は独立合成される．
+  \item \textbf{ch13 実運用コロラリ}：水--空気 ch13
+        （$\rho_1/\rho_2 = 10^3$, $N=128$）では
+        $\Delta t_\text{cap}$ が $\Delta t_\text{CFL,adv}$ と
+        $\Delta t_\nu$ より厳しい．ch13 既定 \texttt{cfl=0.10} は
+        $C_\text{wave}=0.1$ の保守設定に対応する．
+\end{enumerate}
+
+本稿の ch13 production stack では $C_\text{wave}=0.1$--$0.3$ を
+設計範囲とし，$0.1$ 未満は過剰計算，$0.3$ 超は波形歪みリスクとする．
+測定毛管周期 $T_c = 2\pi/\omega_c$ は，§\ref{sec:benchmarks} の
+毛管波ケースで validation 対象とする．
 
 % -------------------------------------------------------------------------------
 \subsection{\texorpdfstring{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§\ref{sec:pure_fccd_dns} で空間側を詳述）}{Level 3 時間積分：剛性レジーム向け Radau IIA（設計フックのみ，§10.5 で空間側を詳述）}}
@@ -615,57 +732,6 @@ PPE ソルバを触らずに predictor を Radau IIA 実装へ置換可能であ
 \noindent
 Level 選択トリガー（剛性レジームの自動判定，3 条件同時成立による L2→L3 移行）は
 §\ref{sec:level_trigger} 表~\ref{tab:level_trigger} に集約．
-
-% -------------------------------------------------------------------------------
-\subsection{毛管波時間刻み制約：波解像の観点}
-\label{sec:time_capillary}
-% -------------------------------------------------------------------------------
-
-表面張力 $\sigma$ が作用する鋭い界面の最小解像波長 $\lambda = 2h$ に対し，
-毛管波の分散関係は $\omega_c^2 = \sigma k^3/(\rho_1+\rho_2)$
-（$k = 2\pi/\lambda$）．Brackbill--Kothe--Zemach（1992）\cite{Brackbill1992} の
-\textbf{安定性 CFL} は
-\[
-  \Delta t_\sigma^\text{BKZ} \le \sqrt{\frac{(\rho_1+\rho_2)h^3}{4\pi\sigma}}
-\]
-であり，陽的 CSF 積分の条件を与える．しかし Denner--van~Wachem
-（2015, JCP 285 \cite{DennerVanWachem2015}；2022, JCP 449 \cite{DennerVanWachem2022}）は，
-この拘束が純粋な安定性問題ではなく，毛管波自身を\textbf{時間的にも解像する}
-必要から来る\textbf{波解像拘束}であることを示した．
-両者の $\sqrt{2}$ 比は BKZ が純粋に安定限界
-（$\omega_c\Delta t \le \Ord{1}$；陽解法の Nyquist 評価で $\pi/2\approx 1.57$）を与えるのに対し，
-Denner--van Wachem が\textbf{毛管波の半周期を少なくとも 1 時間ステップ}で解像する
-波解像条件を課す物理的要請の違いに由来する（文献値 $\sqrt{2}$ 比はこの差の order-of-magnitude 表現）：
-\begin{equation}
-  \boxed{\;
-  \Delta t_\text{cap} \le C_\text{wave}\sqrt{\frac{(\rho_1+\rho_2)h^3}{2\pi\sigma}},
-  \qquad C_\text{wave}\simeq 0.1\text{--}0.3.
-  \;}
-  \label{eq:dt_cap_denner}
-\end{equation}
-
-\textbf{重要な帰結}：
-
-\begin{enumerate}[leftmargin=2em]
-  \item \textbf{表面張力の陰的化では毛管時間刻みは緩まない．}
-        半陰的 CSF（Aland--Voigt \cite{AlandVoigt2019}；Bänsch \cite{Baensch2001}）は
-        Laplace--Beltrami 成分で無条件安定だが，物理的毛管波が
-        解に寄与する限り $\Delta t$ は式~\eqref{eq:dt_cap_denner} で律速される．
-        陰的処理はスプリアス剛性固有値を除くが，物理を変えない．
-  \item \textbf{UCCD6 や BF 設計は別層}．
-        UCCD6 は移流を安定化し，BF ペアは静的力残差を消し，
-        波解像は $\Delta t_\text{cap}$ を決める．3 つの拘束は独立合成される．
-  \item \textbf{実運用コロラリ}：
-        水--空気 ch13（$\rho_1/\rho_2 = 10^3$, $N=128$）では
-        $\Delta t_\text{cap}$ が $\Delta t_\text{CFL,adv}$ と $\Delta t_\nu$ より
-        厳しい．タイトカップリング陰的スキームが有利なのは
-        毛管波が動的に寄与しない領域のみ．
-\end{enumerate}
-
-本稿の Level 2 実装では $C_\text{wave}=0.1$--$0.3$ を設計範囲とし，
-$0.1$ 未満は過剰計算，$0.3$ 超は波形歪みリスクとする．
-測定毛管周期 $T_c = 2\pi/\omega_c$ は，§\ref{sec:benchmarks} の
-毛管波ケースで validation 対象とする．
 
 % -------------------------------------------------------------------------------
 \subsection{時間刻みガイド：3 Level の律速合成}
