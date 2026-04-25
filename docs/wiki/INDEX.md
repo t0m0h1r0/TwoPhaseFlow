@@ -1,4 +1,4 @@
-# Wiki Index — 219 entries
+# Wiki Index — 220 entries
 
 ## Theory (76)
 
@@ -81,7 +81,7 @@
 | [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
 | [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
 
-## Cross-Domain (36)
+## Cross-Domain (37)
 
 | REF-ID | Title |
 |--------|-------|
@@ -121,6 +121,7 @@
 | [WIKI-X-034](cross-domain/WIKI-X-034.md) | Buoyancy-Aware Predictor Assembly Redesign: From Interface-Local Diagnosis to Solver-Side Fix |
 | [WIKI-X-035](cross-domain/WIKI-X-035.md) | Buoyancy-Aware Predictor Redesign Theorem: Minimal Admissible Algorithm for ch13 |
 | [WIKI-X-036](cross-domain/WIKI-X-036.md) | Stage-Split Buoyancy Predictor Redesign: Vertical Assembly Repair and V(u_pred)-Stage Horizontal Coupling |
+| [WIKI-X-037](cross-domain/WIKI-X-037.md) | ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
 
 ## Experiment (32)
 
