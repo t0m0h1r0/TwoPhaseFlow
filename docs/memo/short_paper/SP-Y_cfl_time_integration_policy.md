@@ -176,6 +176,14 @@ The strict certification options are:
 For ch13-like non-uniform two-phase runs, scalar CFL and capillary bounds should
 be treated as necessary preconditions only.
 
+Applied to the production ch13 YAMLs, both capillary-wave and rising-bubble
+water--air cases should use the Level-2 momentum stack
+`convection.time_integrator=imex_bdf2` with
+`viscosity.time_integrator=implicit_bdf2`.  The old AB2+CN combination remains
+acceptable as a short diagnostic baseline, but it is not the preferred long-time
+or larger-CFL setting.  This change removes the explicit viscous restriction;
+it does not enlarge the capillary wave-resolution bound.
+
 ---
 
 ## 5. Recommended time-integration hierarchy

@@ -161,6 +161,12 @@ The PPE and corrector must share the same face coefficient, gradient,
 divergence, wall metric, and surface-force representation.  Otherwise the time
 integrator may be stable for the wrong semi-discrete equation.
 
+Current ch13 production policy: the capillary-wave and rising-bubble YAMLs both
+use this Level-2 split, i.e. `imex_bdf2` for UCCD6 convection extrapolation and
+`implicit_bdf2` for the CCD viscous block.  This is the right setting for
+longer runs such as `T=8`, but it should not be interpreted as permission to
+raise the capillary step beyond the Denner--van Wachem wave-resolution limit.
+
 ## 6. ch13 gate
 
 A ch13 run should not be called theoretically stable merely because it uses

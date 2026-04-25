@@ -163,9 +163,8 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.phi_primary_transport is False
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
-    assert cfg.run.convection_time_scheme == "ab2"
-    assert cfg.run.viscous_time_scheme == "crank_nicolson"
-    assert cfg.run.cn_mode == "richardson_picard"
+    assert cfg.run.convection_time_scheme == "imex_bdf2"
+    assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
