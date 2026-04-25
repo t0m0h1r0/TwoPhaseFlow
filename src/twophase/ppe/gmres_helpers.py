@@ -1,0 +1,43 @@
+"""Small compatibility helpers for backend-native GMRES solvers."""
+
+from __future__ import annotations
+
+
+def backend_supports_gmres(linear_algebra) -> bool:
+    """Return whether ``linear_algebra`` exposes GMRES and LinearOperator."""
+    return hasattr(linear_algebra, "LinearOperator") and hasattr(linear_algebra, "gmres")
+
+
+def solve_gmres(
+    linear_algebra,
+    operator,
+    rhs,
+    *,
+    x0,
+    preconditioner,
+    restart,
+    maxiter: int,
+    tolerance: float,
+):
+    """Call SciPy/CuPy GMRES using the supported tolerance keyword."""
+    try:
+        return linear_algebra.gmres(
+            operator,
+            rhs,
+            x0=x0,
+            M=preconditioner,
+            restart=restart,
+            maxiter=maxiter,
+            atol=0.0,
+            rtol=tolerance,
+        )
+    except TypeError:
+        return linear_algebra.gmres(
+            operator,
+            rhs,
+            x0=x0,
+            M=preconditioner,
+            restart=restart,
+            maxiter=maxiter,
+            tol=tolerance,
+        )
