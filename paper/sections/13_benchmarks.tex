@@ -124,12 +124,9 @@ $[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
 時間区間は closure の発散有無を調べる短時間 $T=0.50$ に絞る．
 
 本ケースの理論的焦点は，浮力をそのまま nodal predictor に入れないことである．
-第~\ref{sec:two_to_one}章で導入した
-\[
-  \rho\bm{g}
-  = -\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho
-\]
-の分解により，hydrostatic な勾配成分は圧力空間に残し，
+浮力分解 $\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$
+（第~\ref{sec:two_to_one}章で導出）の閉包により，
+hydrostatic な勾配成分は圧力空間に残し，
 密度変化に支えられた残差のみを face residual acceleration として組み立てる．
 この残差は PPE と同じ $A_f,G_f,D_f$ 上で評価する必要がある；
 そうでなければ投影で消えるべき gradient force が非ソレノイダルな速度として残る．
