@@ -2,7 +2,7 @@
 
 - **Compiled by**: ResearchArchitect
 - **Compiled at**: 2026-04-25
-- **Purpose**: Canonical dashboard for the SP-A..SP-X short-paper series.
+- **Purpose**: Canonical dashboard for the SP-A..SP-Z short-paper series.
   Tracks (1) the SP-letter → file mapping (so SP-H renumber events remain
   auditable), and (2) the SP → paper-chapter mapping used by
   [SP-O](SP-O_paper_rewrite_sp_core.md) to drive the §2–§10 rewrite
@@ -43,6 +43,8 @@
 | **SP-V** | [SP-V_discrete_buoyancy_predictor_operator_spec.md](SP-V_discrete_buoyancy_predictor_operator_spec.md) | **Discrete operator contract for stage-split buoyancy predictor assembly and `V(u_pred)` coupling** | 2026-04-25 | ACTIVE |
 | **SP-W** | [SP-W_phase_separated_projection_closure.md](SP-W_phase_separated_projection_closure.md) | **Phase-separated FCCD projection closure: PPE / residual / corrector face coefficient consistency** | 2026-04-25 | ACTIVE |
 | **SP-X** | [SP-X_projection_closure_trial_synthesis.md](SP-X_projection_closure_trial_synthesis.md) | **Trial synthesis and theory of the clean-main phase-separated projection closure** | 2026-04-25 | ACTIVE |
+| **SP-Y** | [SP-Y_cfl_time_integration_policy.md](SP-Y_cfl_time_integration_policy.md) | **CFL and time-integration policy for capillary/two-phase NS runs** | 2026-04-25 | ACTIVE |
+| **SP-Z** | [SP-Z_rising_bubble_buoyancy_fmm_closure.md](SP-Z_rising_bubble_buoyancy_fmm_closure.md) | **Rising-bubble buoyancy/FMM closure validated by ch13 t=0.5 run** | 2026-04-25 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
