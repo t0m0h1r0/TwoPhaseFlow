@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..ppe.gmres_helpers import backend_supports_gmres, solve_gmres
 from .viscous_predictor import IViscousPredictor
+
+IMPLICIT_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -107,3 +110,178 @@ class CNViscousPredictor(IViscousPredictor):
             [u, v], explicit_rhs, mu, rho, ccd, dt, psi=psi
         )
         return vel_star[0], vel_star[1]
+
+
+class ImplicitBDF2ViscousPredictor(IViscousPredictor):
+    """Matrix-free implicit viscous solve for BDF2 projection steps."""
+
+    scheme_names = ("implicit_bdf2",)
+    _scheme_aliases = {
+        "bdf2": "implicit_bdf2",
+        "imex_bdf2": "implicit_bdf2",
+        "implicit-bdf2": "implicit_bdf2",
+    }
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "ImplicitBDF2ViscousPredictor":
+        return cls(ctx.backend, ctx.viscous_term)
+
+    def __init__(
+        self,
+        backend: "Backend",
+        viscous_term: "ViscousTerm",
+        *,
+        tolerance: float = 1.0e-8,
+        max_iterations: int = 80,
+        restart: int = 40,
+    ) -> None:
+        self.backend = backend
+        self.xp = backend.xp
+        self._viscous = viscous_term
+        self.tolerance = tolerance
+        self.max_iterations = max_iterations
+        self.restart = restart
+
+    def predict(
+        self,
+        u: "array",
+        v: "array",
+        conv_u: "array",
+        conv_v: "array",
+        mu: "array",
+        rho: "array",
+        dt: float,
+        ccd: "CCDSolver",
+        buoy_v: "array" | None = None,
+        psi: "array" | None = None,
+    ) -> tuple["array", "array"]:
+        """First-step backward-Euler startup for the BDF2 history."""
+        explicit_acceleration = self._explicit_acceleration(conv_u, conv_v, buoy_v)
+        return self._solve_implicit(
+            base_velocity=[u, v],
+            initial_guess=[u, v],
+            explicit_acceleration=explicit_acceleration,
+            mu=mu,
+            rho=rho,
+            dt_effective=dt,
+            ccd=ccd,
+            psi=psi,
+        )
+
+    def predict_bdf2(
+        self,
+        u: "array",
+        v: "array",
+        u_prev: "array",
+        v_prev: "array",
+        conv_u: "array",
+        conv_v: "array",
+        mu: "array",
+        rho: "array",
+        dt: float,
+        ccd: "CCDSolver",
+        buoy_v: "array" | None = None,
+        psi: "array" | None = None,
+    ) -> tuple["array", "array"]:
+        """Solve u* - (2/3)dt V(u*) = 4/3 uⁿ - 1/3 uⁿ⁻¹ + (2/3)dt E."""
+        base_velocity = [
+            (4.0 / 3.0) * u - (1.0 / 3.0) * u_prev,
+            (4.0 / 3.0) * v - (1.0 / 3.0) * v_prev,
+        ]
+        explicit_acceleration = self._explicit_acceleration(conv_u, conv_v, buoy_v)
+        return self._solve_implicit(
+            base_velocity=base_velocity,
+            initial_guess=[u, v],
+            explicit_acceleration=explicit_acceleration,
+            mu=mu,
+            rho=rho,
+            dt_effective=IMPLICIT_BDF2_PROJECTION_FACTOR * dt,
+            ccd=ccd,
+            psi=psi,
+        )
+
+    def _explicit_acceleration(self, conv_u, conv_v, buoy_v) -> list:
+        if buoy_v is None:
+            return [conv_u, conv_v]
+        return [conv_u, conv_v + buoy_v]
+
+    def _solve_implicit(
+        self,
+        *,
+        base_velocity: list,
+        initial_guess: list,
+        explicit_acceleration: list,
+        mu,
+        rho,
+        dt_effective: float,
+        ccd: "CCDSolver",
+        psi=None,
+    ) -> tuple["array", "array"]:
+        linear_algebra = self.backend.sparse_linalg
+        if not backend_supports_gmres(linear_algebra):
+            raise RuntimeError("Implicit BDF2 viscosity requires backend-native GMRES.")
+
+        xp = self.xp
+        shape = xp.asarray(base_velocity[0]).shape
+        component_size = int(xp.asarray(base_velocity[0]).size)
+        mu_device = xp.asarray(mu)
+        rho_device = xp.asarray(rho)
+        psi_device = xp.asarray(psi) if psi is not None else None
+        rhs_components = [
+            xp.asarray(base_velocity[component])
+            + dt_effective * xp.asarray(explicit_acceleration[component])
+            for component in range(2)
+        ]
+        rhs_flat = self._flatten_components(rhs_components)
+        initial_flat = self._flatten_components(initial_guess)
+        n_dof = int(rhs_flat.size)
+
+        def split_components(flat_array):
+            flat_device = xp.asarray(flat_array)
+            return [
+                flat_device[:component_size].reshape(shape),
+                flat_device[component_size:].reshape(shape),
+            ]
+
+        def matrix_vector(flat_array):
+            velocity_components = split_components(flat_array)
+            viscous_components = self._viscous._evaluate(
+                velocity_components,
+                mu_device,
+                rho_device,
+                ccd,
+                psi=psi_device,
+            )
+            return self._flatten_components([
+                velocity_components[component]
+                - dt_effective * viscous_components[component]
+                for component in range(2)
+            ])
+
+        operator = linear_algebra.LinearOperator(
+            (n_dof, n_dof),
+            matvec=matrix_vector,
+            dtype=rhs_flat.dtype,
+        )
+        solution_flat, info = solve_gmres(
+            linear_algebra,
+            operator,
+            rhs_flat,
+            x0=initial_flat,
+            preconditioner=None,
+            restart=self.restart,
+            maxiter=self.max_iterations,
+            tolerance=self.tolerance,
+        )
+        if info != 0:
+            raise RuntimeError(
+                f"Implicit BDF2 viscous GMRES did not converge (info={info})."
+            )
+        solution = split_components(solution_flat)
+        return solution[0], solution[1]
+
+    def _flatten_components(self, components: list):
+        return self.xp.concatenate([
+            self.xp.asarray(component).ravel()
+            for component in components
+        ])

@@ -27,11 +27,17 @@ def build_ns_viscous_predictor(
     *,
     backend,
     cn_viscous: bool,
+    viscous_time_scheme: str | None = None,
     reynolds_number: float,
     viscous_spatial_scheme: str,
 ):
+    from .ns_option_canonicalizer import canonicalize_viscous_time_scheme
     from ..ns_terms.viscous import ViscousTerm
 
+    selected_scheme = canonicalize_viscous_time_scheme(
+        viscous_time_scheme
+        or ("crank_nicolson" if cn_viscous else "forward_euler")
+    )
     viscous_term = ViscousTerm(
         backend,
         Re=reynolds_number,
@@ -39,7 +45,7 @@ def build_ns_viscous_predictor(
         spatial_scheme=viscous_spatial_scheme,
     )
     return IViscousPredictor.from_scheme(
-        "crank_nicolson" if cn_viscous else "explicit",
+        selected_scheme,
         ViscousBuildCtx(
             backend=backend,
             re=reynolds_number,
