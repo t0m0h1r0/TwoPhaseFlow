@@ -34,6 +34,11 @@ class IStepDiagnostics(ABC):
 
     @property
     @abstractmethod
+    def enabled(self) -> bool:
+        """Return whether this recorder collects diagnostic scalars."""
+
+    @property
+    @abstractmethod
     def last(self) -> Dict[str, float]:
         """Return dict of most recently recorded values."""
 
@@ -58,6 +63,10 @@ class NullStepDiagnostics(IStepDiagnostics):
 
     def record_ppe_stats(self, stats: Dict[str, float]) -> None:
         pass
+
+    @property
+    def enabled(self) -> bool:
+        return False
 
     @property
     def last(self) -> Dict[str, float]:
@@ -93,6 +102,10 @@ class ActiveStepDiagnostics(IStepDiagnostics):
     def record_ppe_stats(self, stats: Dict[str, float]) -> None:
         for key, value in stats.items():
             self._last[str(key)] = float(value)
+
+    @property
+    def enabled(self) -> bool:
+        return True
 
     @property
     def last(self) -> Dict[str, float]:

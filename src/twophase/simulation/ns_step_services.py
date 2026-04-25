@@ -6,7 +6,6 @@ import numpy as np
 
 from ..ns_terms.context import NSComputeContext
 from .ns_step_state import NSStepState
-from .step_diagnostics import ActiveStepDiagnostics
 
 
 def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
@@ -43,7 +42,7 @@ def compute_ns_surface_tension_stage(
             interface_runtime.kappa_max,
         )
     state.debug_scalars = None
-    if isinstance(step_diag, ActiveStepDiagnostics):
+    if step_diag.enabled:
         state.debug_scalars = [xp.max(xp.abs(state.kappa))]
 
     state.f_x, state.f_y = st_force.compute(
