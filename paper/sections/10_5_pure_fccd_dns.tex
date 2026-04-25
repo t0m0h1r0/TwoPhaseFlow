@@ -137,21 +137,25 @@ $\mu\nabla^2\mathbf{u}$ に畳み込むことを禁止する（§\ref{sec:viscou
 
 圧力投影は\textbf{純 FCCD DNS の設計上の中核}である（§\ref{sec:pure_fccd_split_ppe}）．
 単相 smeared PPE や FVM フラックスバランスではなく，
-各相内部で独立した楕円問題を解く：
+§\ref{sec:split_ppe_framework} 式~\eqref{eq:split_ppe} の分相 PPE
+$\nabla^2 p_k = \rho_k\, q$（$k\in\{\ell,g\}$；定数密度）を
+各相内部で独立に解く．
+等価な変動係数形式
 \begin{equation}
-  \bnabla\cdot\!\left(\frac{1}{\rho_L}\bnabla p_L\right) = S_L,
-  \qquad
-  \bnabla\cdot\!\left(\frac{1}{\rho_G}\bnabla p_G\right) = S_G.
+  \bnabla\cdot\!\left(\frac{1}{\rho_k}\bnabla p_k\right) = q
+  \quad (k\in\{\ell,g\})
   \label{eq:pure_fccd_split_ppe_core}
 \end{equation}
-相は $\Gamma$ 上で GFM ジャンプ条件により縫合される：
+は，定数 $\rho_k$ により式~\eqref{eq:split_ppe} と同一（product-rule の第 2 項は消滅）．
+相は $\Gamma$ 上で GFM ジャンプ条件
+（式~\eqref{eq:split_ppe_pressure_jump}--\eqref{eq:split_ppe_flux_jump}）
 \begin{equation}
-  [p]_\Gamma = \sigma\kappa,
+  [p]_\Gamma = J_p = \sigma\kappa,
   \qquad
-  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = 0
-  \quad\text{（非相変化非圧縮）．}
+  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = J_n
   \label{eq:pure_fccd_gfm_jump}
 \end{equation}
+で縫合される（非相変化非圧縮では $J_n=0$）．
 FCCD が面基準点の勾配/発散演算子を供給し，
 GFM がゴースト圧力ジェット $(p^*,p'^*,p''^*)$ を提供することで
 コンパクトステンシルが各相側で単相のまま維持される．
@@ -204,7 +208,8 @@ G-2 周期平面波 BF 精度 & $\varepsilon_\text{BF} = \Ord{h^4}$
   & §\ref{sec:verify_split_ppe_dc} \\
 G-3 Laplace バランス & $\Delta p_\text{discrete} = \sigma\kappa_\text{exact}$
   & 静止球，$\kappa$ 誤差 $\le 1\%$ \\
-G-4 密度比独立性 & $\varepsilon_p^\text{split} = \Ord{h^7}$ 共通 for $\rho_l/\rho_g\in[1,1000]$
+G-4 密度比独立性 & 目標 $\varepsilon_p^\text{split} = \Ord{h^7}$ Dir / $\Ord{h^5}$ Neu
+  for $\rho_l/\rho_g\in[1,1000]$（検証予定）
   & §\ref{sec:verify_split_ppe_dc} \\
 G-5 曲率 spurious current & $\max|\mathbf{u}|/|\mathbf{u}_\text{phys}| \le 10^{-6}$
   & 振動液滴 eigenmode \\

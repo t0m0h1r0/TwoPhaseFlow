@@ -73,7 +73,7 @@ DCCD 散逸によりチェッカーボード不安定を内在的に抑制する
 \caption{NS 方程式の各項と対応ソルバーの概要．
 対流項は CCD + AB2（陽的），粘性項は CCD + Crank--Nicolson（半陰的），
 圧力項は欠陥補正法 PPE（DC，$k{=}3$）+ 勾配演算子 $\mathcal{G}$（均一格子: CCD；非一様格子+壁面BC: $\mathcal{G}^\text{adj}$，§~\ref{sec:fvm_ccd_corrector}）による Projection，
-重力は陽的体積力，表面張力は CSF 体積力として Predictor に含む．}
+重力は陽的体積力，表面張力は CSF 体積力として Predictor に含む．\textbf{適用範囲}：本図は Level 1/2 の構成；Level 3（純 FCCD DNS，§\ref{sec:pure_fccd_dns}）では CSF 体積力を撤去し，Step 5a で HFE による圧力ジャンプ評価へ置換する．}
 \label{fig:ns_solvers}
 \end{figure}
 
@@ -405,6 +405,26 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
 
 % ── Step 6 ──────────────────────────────────────────────────────────────
 \paragraph{Step 6：圧力 Poisson 方程式の求解（IPC 増分法）}
+
+\noindent\textbf{Level 別 PPE 主方程式（先頭分岐）：}
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item \textbf{Level 1（SSPRK3 検証）/ Level 2（プロダクション）：}
+        変密度一括 PPE（式~\eqref{eq:PPE_CCD_fullalgo}，product-rule 展開）を解く．
+        Level 2 では smoothed Heaviside + GFM 補正で
+        低--中密度比（$\rho_l/\rho_g\lesssim 100$）に対応
+        （表~\ref{sec:level_physics_matrix} の上昇気泡・毛管波例では L2 推奨）．
+  \item \textbf{Level 3（純 FCCD DNS，水--空気級 $\rho_l/\rho_g\gtrsim 500$）：}
+        \textbf{分相 PPE 解法}（式~\eqref{eq:split_ppe_fccd_block}，
+        §\ref{sec:split_ppe_framework}）が主方程式．
+        各相で定数密度 PPE
+        $-D_h^\FCCD(\rho_q^{-1}G_h^\FCCD p_q) = D_h^\FCCD\bu_q^*/\Delta t$
+        を独立に解き，界面ジャンプ条件 $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ と
+        $[\partial_n p]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ を
+        HFE（§\ref{sec:field_extension}）で課す．
+        式~\eqref{eq:PPE_CCD_fullalgo} は使用しない．
+\end{itemize}
+
+\noindent\textbf{Level 1/2 の主方程式}：
 圧力増分 $\delta p \equiv p^{n+1} - p^n$ を欠陥補正法で求解する：
 \begin{equation}
 \begin{aligned}
@@ -430,7 +450,7 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
 CCD 発散から構成される（式~\eqref{eq:dccd_ppe_rhs}）．
 境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
 
-\noindent\textbf{DC $k{=}3$ 反復概要（Steps 6.0--6.5）：}
+\noindent\textbf{DC $k{=}3$ 反復概要（Steps 6.0--6.5；Level 1/2/3 共通）：}
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item Step 6.0：初期化 $\delta p^{(0)} = 0$．
   \item Step 6.1：$k=1,2,3$ で欠陥 $d^{(k)} = \text{RHS} - L_H\,\delta p^{(k-1)}$ を CCD で評価．
@@ -440,25 +460,16 @@ CCD 発散から構成される（式~\eqref{eq:dccd_ppe_rhs}）．
   \item Step 6.5：最終値 $\delta p \leftarrow \delta p^{(3)}$．
 \end{enumerate}
 詳細証明と ADI 比較は付録~\ref{app:dc_ppe_detail}，§~\ref{sec:defect_correction_main} 参照．
+Level 3 分相 PPE では $L_H, L_L$ は\textbf{各相 $q$ 内の定数密度 Poisson} になり，
+DC は相ごとに独立適用される（界面 BC は HFE 経由で課す）．
 
-\noindent\textbf{Level 別 PPE 解法選択（本稿の既定）：}
-\begin{itemize}[noitemsep]
-  \item \textbf{Level 1（SSPRK3 検証）：}等密度均一格子での
-        一括 CCD-PPE（式~\eqref{eq:PPE_CCD_fullalgo}）を基準として使用．
-  \item \textbf{Level 2（プロダクション）：}
-        smoothed Heaviside 一括 PPE + GFM 補正で低--中密度比（$\rho_l/\rho_g \leq 10$）に対応．
-  \item \textbf{Level 3（純 FCCD DNS，本稿の主要戦略）：}
-        高密度比（$\rho_l/\rho_g \geq 10$，水--空気級）では
-        \textbf{分相 PPE 解法}——各相で定数密度 PPE を独立に解き，
-        界面ジャンプ条件を HFE（§~\ref{sec:field_extension}）で課す方式（§~\ref{sec:split_ppe_framework}）——
-        を既定とする．
-\end{itemize}
+\noindent\textbf{精度に関する補足：}
 §~\ref{sec:split_ppe_recovery} では，分相 PPE + DC $k{=}3$ が
 液相内部 Dirichlet 評価で $\rho_l/\rho_g = 1$--$1000$ に対し
-密度比に依存しない $\Ord{h^7}$ 収束を示すことを実証した．
+密度比に依存しない $\Ord{h^7}$ 超収束を示すことを実証した．
 Neumann 実運用では §~\ref{sec:verify_ppe_neumann} の境界精度により
 $\Ord{h^5}$ が上界であり，界面近傍の精度は HFE とジャンプ条件処理に依存する．
-一括 PPE と分相 PPE の切替判定は §~\ref{sec:level_selection} の Level 選択に従う．
+Level 1/2/3 切替判定は §~\ref{sec:level_selection} に従う．
 
 % ── Step 7 ──────────────────────────────────────────────────────────────
 \paragraph{Step 7：速度・圧力補正（Corrector，IPC）}

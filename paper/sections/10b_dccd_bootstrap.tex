@@ -139,7 +139,7 @@ P-5 と整合する．
 % ═════════════════════════════════════════════════════════════════════════════
 
 シミュレーション開始前に，格子--界面の循環参照を解消するため
-以下の 5 段階ブートストラップを一度だけ実行する：
+以下の 6 段階ブートストラップを一度だけ実行する：
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item \textbf{Step 0（一様格子仮 SDF）：} 等間隔格子 $\Delta x_0 = L/N$ 上で
         解析初期界面から仮の符号付距離 $\phi^{(0)}$ を評価する（幾何解析式または FMM）．
@@ -152,11 +152,25 @@ P-5 と整合する．
   \item \textbf{Step 3（CCD 演算子構築）：} 非一様格子重みから
         $D^{(1)}, D^{(2)}, M_{\mathrm{CCD}}, L_L, L_H$ の疎行列構造を一度だけ構築
         （格子更新 Mode 1 では以降不変）．
-  \item \textbf{Step 4（Young--Laplace 初期圧力）：} 初期曲率 $\kappa^0$ から
-        $p^0 = p_\infty + \sigma\kappa^0 H(\phi^{(0)})$（smoothed）で初期圧力場を設定し，
+  \item \textbf{Step 3.5（非一様格子上 SDF 再初期化）：}
+        Step 0 の $\phi^{(0)}$ は一様格子幾何解析由来であり，
+        Step 1 で生成した非一様格子 $\{x_i\},\{y_j\}$ 上では
+        $|\nabla\phi^{(0)}|=1$ が一般に保たれない．
+        この差は Step 4 の Young--Laplace 圧力が依存する界面曲率
+        $\kappa^0=\nabla\!\cdot\!(\nabla\phi^{(0)}/|\nabla\phi^{(0)}|)$
+        の精度を律速し，かつ §~\ref{sec:field_extension} の HFE 精度要件
+        （$\Ord{h^6}$）と整合しない．
+        対策として，Step 3 の演算子で CLS 再初期化（§~\ref{sec:reinit}）を
+        \textbf{1 サイクル}実行し
+        $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する
+        （広帯域 $\sigma_0=3 h_{\min}$ で $\Ord{h^6}$ HFE 要件を満足）．
+        以後の Step 4 では $\phi^{(0)}_\text{sdf}$ を用いる．
+  \item \textbf{Step 4（Young--Laplace 初期圧力）：} 高精度化された
+        $\phi^{(0)}_\text{sdf}$ から計算される初期曲率 $\kappa^0$ を用いて
+        $p^0 = p_\infty + \sigma\kappa^0 H(\phi^{(0)}_\text{sdf})$（smoothed）で初期圧力場を設定し，
         Step 0 で測定した $\mathbf{u}^0=\mathbf{0}$ と整合させる．
 \end{enumerate}
-5 段階実行後，時刻ループ Step 1 から通常アルゴリズム（§\ref{sec:algo_flow}）が動作する．
+6 段階実行後，時刻ループ Step 1 から通常アルゴリズム（§\ref{sec:algo_flow}）が動作する．
 詳細は付録~\ref{app:bootstrap}；格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は
 §~\ref{sec:grid_ale} を参照されたい．
 
