@@ -104,6 +104,10 @@ $\mathbf{D}_1, \mathbf{D}_2 \in \mathbb{R}^{N\times(N+1)}$ は面↔節点
   (\mathbf{D}_1)_{f_{i-1/2},\,i-1} &= -1/H, &\quad (\mathbf{D}_1)_{f_{i-1/2},\,i} &= +1/H, \label{eq:fccd_D1}\\
   (\mathbf{D}_2)_{f_{i-1/2},\,i-1} &= -H/24, &\quad (\mathbf{D}_2)_{f_{i-1/2},\,i} &= +H/24. \label{eq:fccd_D2}
 \end{align}
+$\mathbf{D}_2$ の符号は，
+$u_f'''\approx(q_i-q_{i-1})/H$ の中心差分から
+cancellation 項 $-(H^2/24)u_f'''=-(H/24)(q_i-q_{i-1})$
+として導かれる（§\ref{sec:fccd_def}, eq:~\eqref{eq:fccd_operator}）．
 $\mathbf{S}_{\CCD} = \Pi_q\,\mathbf{A}_{\CCD}^{-1}\mathbf{B}_{\CCD}$ は
 Chu--Fan 結合システムを節点 2 次導関数へ射影した作用素で，
 \textbf{形式上は密行列}だが実行時は block-Thomas（壁）または
@@ -134,11 +138,15 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
   \hat M^{\FCCD}(\xi)
   \;=\; \frac{2i\sin(\xi/2)}{H}\cdot e^{-i\xi/2}
         \;\cdot\;
-        \left[1 - \frac{\xi^2}{24}\,\hat S_{\CCD}(\xi)\right]
+        \left[1 + \frac{\omega_2(\xi)^2}{24}\right]
   \label{eq:fccd_fourier_symbol}
 \end{equation}
-（$\hat S_{\CCD}(\xi) = -\omega_2(\xi)^2/H^2$）
-を Taylor 展開して $\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，
+ここで $\omega_2(\xi)$ は CCD 2 階微分の無次元有効波数で
+$\hat q_i = -\omega_2(\xi)^2\hat u_i/H^2$ を満たす（§\ref{sec:ccd_def} 参照）．
+括弧内因子は $\hat D_2\hat S_{\CCD} = (H^2/24)\hat S_{\CCD}\cdot(2i\sin(\xi/2)/H)$ から導かれ，
+$H^2/24\cdot(-\omega_2^2/H^2)=-\omega_2^2/24$ で無次元化が閉じる．
+Taylor 展開 $\omega_2(\xi)^2 = \xi^2 + \Ord{\xi^6}$ を代入すると
+$\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得，
 式~\eqref{eq:fccd_fourth_order} の 4 次精度が
 Fourier レベルでも確認される．
 
@@ -205,7 +213,8 @@ P-5（フィルタ抑制下での安定性）の 3 原理を同時に満たす
         §\ref{sec:fccd_nonuniform} および ridge-Eikonal 非一様拡張
         （§\ref{sec:ridge_eikonal_nu_grid}）で完了．
   \item \textbf{壁境界}は Option III（Neumann）・Option IV（Dirichlet）を
-        §\ref{sec:ccd_bc} で扱う．
+        §\ref{sec:fccd_bc_options} で扱う（Option IV の運動量壁実装は
+        §\ref{sec:fccd_adv_wall_iv}）．
   \item \textbf{擬時間 PPE 整合}は §\ref{sec:pressure} で
         純 {\FCCD} PPE として再構成する．
 \end{itemize}

@@ -139,7 +139,7 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
       厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
       §\ref{sec:uccd6_boundary} で開課題として明示している．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
-      §\ref{sec:ccd_bc} の Option III/IV で壁近傍の行を置換．
+      §\ref{sec:fccd_bc_options} の Option III/IV で壁近傍の行を置換．
 \item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
       TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL により，
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
@@ -172,6 +172,10 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
   \item \textbf{体積保存は外殻修正}で担保．
         スペクトルフィルタ自体は \(\int u\,dx\) 不変ではないため，
         §\ref{sec:cls_advection} の CLS 体積補正（$\int\psi$ 再正規化）を要する．
+        Level 1 検証（$\varepsilon_d=0.05$，$N=64$ 設定）では
+        フィルタのみの体積損失 $\sim 10^{-4}\cdot T$（$T$：シミュレーション時間）が
+        観測され，CLS 再正規化で機械精度まで圧縮される
+        （詳細な検証値は §\ref{sec:verify_cls_advection} に提示する）．
   \item \textbf{UCCD6 との対照と昇格}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
