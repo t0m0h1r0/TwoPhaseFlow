@@ -324,7 +324,7 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & Dissipative CCD（§~\ref{sec:advection_motivation}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 同一ステンシル；一様 $\varepsilon_d^{\mathrm{adv}}$ でGibbs 振動抑制 \\
+CLS 移流（$\psi$） & WENO5 面フラックス + DCCD スペクトル散逸ハイブリッド（§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & WENO5 面 $\Ord{h^5}$；DCCD フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 衝撃捕獲＋スペクトル散逸；単独 CCD は $\psi$ に適用禁止 \\
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 移流と同構成（陽解法；非線形フラックス） \\
 CLS 圧縮（拡散部） & CCD-CN（§~\ref{sec:cls_compression}） & $\Ord{h^6}$ & 線形拡散部は A-stable \\

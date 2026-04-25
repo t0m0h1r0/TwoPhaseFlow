@@ -77,9 +77,21 @@ $\mathbf{n},\,\kappa,\,\delta(\psi)$ で異なる DCCD & $\times$ & 経路不整
         ψ は §3 \ref{sec:cls_advection} と連動）のみに適用．
   \item 圧力 $p$，毛管圧 $p_\sigma$，$G_h^\text{bf} p$ には
         いかなるフィルタも適用しない．
-  \item \textbf{PPE RHS（$\bnabla\cdot\bu^*/\Delta t$）}にもフィルタ挿入禁止：
-        フィルタは速度発散構造を破壊し，補正後の質量保存
-        $D_h\bu^{n+1}=0$ を $\Ord{\varepsilon_d h^2}$ で侵食する．
+  \item \textbf{PPE RHS の二段運用（重要な区別）}：
+        \begin{enumerate}[label=(\alph*),noitemsep]
+          \item \emph{許可}：予測速度 $\bu^*$ への\textbf{事前フィルタ}
+                $\tilde{\bu}^* = F_{\varepsilon_d}\bu^*$（$\varepsilon_d = 1/4$）に
+                CCD 発散を適用して RHS $= D_h\tilde{\bu}^*/\Delta t$ を構成する
+                方式（§\ref{sec:dccd_decoupling}，式~\eqref{eq:dccd_ppe_rhs}）．
+                チェッカーボード除去が目的で，補正後の質量保存は
+                フィルタ済み速度に対する $D_h\tilde{\bu}^{n+1}=0$ として
+                成立し，bulk 滑らかモードへの $\Ord{\varepsilon_d h^2}$ 寄与は
+                予期される．
+          \item \emph{禁止}：構成済み RHS そのもの（既に $D_h\bu^*/\Delta t$ を
+                計算した結果）に追加フィルタを post-apply すること．
+                これは速度発散構造の事後的破壊を引き起こし，補正後の
+                $D_h\bu^{n+1}=0$ を保証できなくなる．
+        \end{enumerate}
   \item 曲率 $\kappa$ は\textbf{界面帯制限された}補間平滑化
         （\S\ref{sec:curvature_stab}）でのみ安定化し，
         DCCD フィルタは用いない．

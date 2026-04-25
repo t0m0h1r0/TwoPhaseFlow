@@ -12,8 +12,11 @@
 
 §\ref{sec:bf_failure_modes} の 5 失敗モードを回避するため，
 本節では 7 原則 P-1..P-7 を与える．
-実装は\textbf{全 7 原則を同時に}満たす必要があり，
-1 つでも欠けると寄生流れが $\Ord{h^0}$ で残留する．
+\textbf{BF 整合性の核は P-1（位置一致）/ P-2（補正 $G_h$ 共有）/ P-4（$\betaf$ 統一）/
+P-6（界面ジャンプ補正）の 4 原則}が担い，これらが欠けると寄生流れが
+$\Ord{h^0}$ で残留する．残る P-3（geometry 経路統一）/ P-5（曲率非 CCD 化）/
+P-7（sub-system 分離）は\textbf{次数改善および設計レベルの予防策}として
+独立な目的を持つ（詳細は §\ref{sec:bf_failure_principle_map} の F$\times$P 表参照）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{P-1：$G_h p$ と $f_{\sigma,h}$ の同一位置評価}
@@ -108,7 +111,9 @@ $\betaf^\text{harm}$ は \textbf{$1/\rho$ の調和平均}（厳密形式）：
 $\bigl[\bigl(1/\rho_L+1/\rho_R\bigr)/2\bigr]^{-1}=2\rho_L\rho_R/(\rho_L+\rho_R)$．
 他方，2 値の場合は\textbf{密度の算術平均の逆数}とも書ける：
 $\bigl[(\rho_L+\rho_R)/2\bigr]^{-1}=2/(\rho_L+\rho_R)$．
-両者は $\Ord{(\rho_L-\rho_R)^2}$ で一致するが，
+両者の差は $(\rho_L-\rho_R)^2/(2\bar\rho(\rho_L+\rho_R))$ オーダーであり，
+$\Delta\rho/\bar\rho \to 0$ の等密度極限では $\Ord{(\Delta\rho/\bar\rho)^2}$ で一致する一方，
+$\rho_l/\rho_g\sim 10^3$ では絶対値で大きく乖離する点に注意．
 本稿は FVM フェイス係数連続性（§\ref{sec:bf_p4_beta}）と整合する
 \textbf{密度算術平均の逆数} $2/(\rho_L+\rho_R)$ を採用し，
 表記 $\betaf^\text{harm}$ は慣用に従う．
@@ -201,7 +206,7 @@ Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
 \textbf{RC 単独の Balanced-Force 経路は禁止}（プロダクションの BF 圧力補正には使用しない）．
 \textbf{ただし}，§\ref{sec:collocate} の RC + CSF 拡張（§\ref{sec:rc_balanced_force}）で
 \textbf{曲率・$\betaf$ 同一演算子適用}を満たす\textbf{拡張 RC--CSF}は，
-本稿のコロケート Level 2 既定の BF 経路として独立に成立する．
+本稿のコロケート Level 2（\S\ref{sec:level_selection} 参照）既定の BF 経路として独立に成立する．
 すなわち\textbf{RC 単独 = 不可，RC + CSF 整合拡張 = 既定}であり，
 この区別を曖昧にすると F-2/F-4 を踏む．
 本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）は

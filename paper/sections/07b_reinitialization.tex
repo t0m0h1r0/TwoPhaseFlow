@@ -316,8 +316,11 @@ Eikonal 方程式 \cite{Sussman1994}
         $\phi = 0$ 面を不変に保つ→界面位置（形状）は変化しない．
   \item \textbf{勾配収束：}十分な反復で $|\nabla\phi|\to 1$ が保証され，
         界面幅は $\varepsilon(i,j)$ に正確に収束する（DGR のグローバル中央値近似不要）．
-  \item \textbf{質量保存（前クリッピング）：}Step 4 の $\phi$ 空間補正により
-        $\sum\psi_{\mathrm{corr}} = \sum\psi_{\mathrm{old}}$（Thm 2）．
+  \item \textbf{質量保存（前クリッピング）：}Step 4 の $\phi$ 空間補正
+        $\delta\phi=\Delta M/\!\int H'_\varepsilon\,dV$ により設計上
+        $\sum\psi_{\mathrm{corr}}=\sum\psi_{\mathrm{old}}$ が成立する
+        （$H'_\varepsilon$ の正値性と $\delta\phi$ の構成より直ちに従う；
+        クリッピング前段で評価する場合に限る）．
 \end{enumerate}
 
 \noindent\textbf{DGR・分裂法との比較：}
