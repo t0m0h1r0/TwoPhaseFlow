@@ -25,7 +25,7 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§7.
 \begin{enumerate}
   \item \textbf{§~\ref{sec:cls_on_nonuniform}（非一様格子上の CLS 演算）：}
         DCCD フィルタの $\xi$ 空間適用と $\psi$ 補間，空間可変 Heaviside 幅を論じる．
-  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 WENO5+DCCD hybrid；運動量用 UCCD6）：}
+  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 DCCD；運動量用 UCCD6；比較対象 WENO5 は付録~\ref{app:weno5}）：}
         CLS $\psi$ 移流は高周波ノイズを狙い撃ちする「スペクトルフィルタ」として DCCD を用い，
         運動量 $(u,v)$ 移流は演算子内部散逸の UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）が担う．
   \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化）：}
@@ -94,12 +94,12 @@ $\varepsilon_d^{\mathrm{adv}} = 0.05$ を全格子点に適用する
 （詳細は §~\ref{sec:advection_dccd_design}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{移流項：CLS $\psi$ 用 WENO5+DCCD hybrid と運動量用 UCCD6}
+\subsection{移流項：CLS $\psi$ 用 Dissipative CCD と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{移流スキーム選択の設計根拠：純 WENO5 単独の不適合と hybrid 化の必然}
+\subsubsection{移流スキーム選択の設計根拠：WENO5 単独の不適合と CLS に DCCD を採る理由}
 \label{sec:advection_weno5_critique}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -127,13 +127,15 @@ CLS 界面移流には以下の 3 点で非適合である
 \end{enumerate}
 
 \noindent
-\textbf{結論}：純 WENO5 単独は CLS 界面移流に不適合であるが，
-\textbf{WENO5 + DCCD hybrid}（WENO5 面フラックス（保存形・shock-capturing）に
-DCCD スペクトル散逸を後段合成；§\ref{sec:cls_stages}）は両者の弱点を相互補完する設計である．
+\textbf{結論}：純 WENO5 単独は CLS 界面移流に不適合であるため，
+本稿は CLS 移流に \textbf{Dissipative CCD（DCCD）}を採用する．
+すなわち CCD で計算した発散形フラックス $f' = \partial(\psi\bu)/\partial x$ に
+スペクトル散逸 $\varepsilon_d h^4 D^4$ を後段で課す（§\ref{sec:cls_stages} Stage A）．
 CCD は線形・コンパクト・低散逸スキームであり，
 CLS の滑らかな $\psi$ プロファイルに対して界面構造を追加散逸なく長時間保持でき，
-支配方程式全体の空間離散化を単一構造で統一する
-（第~\ref{sec:verification}章で定量的に検証）．
+支配方程式全体の空間離散化を単一構造で統一する．
+WENO5 は \emph{比較参照スキーム}として付録~\ref{app:weno5} に収録するに留め，
+本稿の主実装には用いない（第~\ref{sec:verification}章で DCCD と WENO5 を定量比較）．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{気液界面移流の困難と純 CCD の限界}
@@ -324,7 +326,7 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & WENO5 面フラックス + DCCD スペクトル散逸ハイブリッド（§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & WENO5 面 $\Ord{h^5}$；DCCD フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 衝撃捕獲＋スペクトル散逸；単独 CCD は $\psi$ に適用禁止 \\
+CLS 移流（$\psi$） & Dissipative CCD：CCD 微分発散形フラックス + 後段スペクトル散逸（§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & フィルタ律速 $\Ord{\varepsilon_d h^2}$（CCD 微分 $\Ord{h^6}$ は後段散逸に吸収） & 線形・コンパクト・低散逸；単独 CCD（散逸なし）は $\psi$ に適用禁止；WENO5 は比較参照（付録~\ref{app:weno5}） \\
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 圧縮（移流部） & Dissipative CCD（§~\ref{sec:cls_compression}） & CCD 微分 $\Ord{h^6}$；固定フィルタ誤差 $\Ord{\varepsilon_d h^2}$ & 移流と同構成（陽解法；非線形フラックス） \\
 CLS 圧縮（拡散部） & CCD-CN（§~\ref{sec:cls_compression}） & $\Ord{h^6}$ & 線形拡散部は A-stable \\
