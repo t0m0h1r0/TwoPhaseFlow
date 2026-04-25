@@ -8,6 +8,15 @@ import numpy as np
 from .block_tridiag import BlockTridiagSolver
 
 
+def _solve_dense_inverse_or_lu(solver, info, rhs_flat):
+    if solver.backend.device == "gpu":
+        A_inv_dev_T = info.get('A_inv_dev_T')
+        if A_inv_dev_T is not None:
+            return (rhs_flat.T @ A_inv_dev_T).T
+        return info['A_inv_dev'] @ rhs_flat
+    return solver.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+
+
 def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
     xp = solver.xp
     info = solver._solvers[axis]
@@ -37,10 +46,7 @@ def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
     rhs[-1] -= info['UN_dev'] @ bc_hi
 
     rhs_flat = rhs.reshape(2 * n_int, -1)
-    if solver.backend.device == "gpu":
-        x_flat = info['A_inv_dev'] @ rhs_flat
-    else:
-        x_flat = solver.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+    x_flat = _solve_dense_inverse_or_lu(solver, info, rhs_flat)
     sol = x_flat.reshape(n_int, 2, -1)
 
     out = xp.empty((2, n_pts, batch_size))
@@ -82,14 +88,7 @@ def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right
     rhs[-1] -= info['UN_dev'] @ bc_hi
 
     rhs_flat = rhs.reshape(2 * n_int, -1)
-    if solver.backend.device == "gpu":
-        A_inv_dev_T = info.get('A_inv_dev_T')
-        if A_inv_dev_T is None:
-            x_flat = info['A_inv_dev'] @ rhs_flat
-        else:
-            x_flat = (rhs_flat.T @ A_inv_dev_T).T
-    else:
-        x_flat = solver.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+    x_flat = _solve_dense_inverse_or_lu(solver, info, rhs_flat)
     sol = x_flat.reshape(n_int, 2, -1)
 
     left_pair = info['M_left_dev'] @ sol[0] + bc_lo
@@ -137,10 +136,7 @@ def differentiate_ccd_wall_second_only(solver, data, axis: int, bc_left, bc_righ
     rhs[-1] -= info['UN_dev'] @ bc_hi
 
     rhs_flat = rhs.reshape(2 * n_int, -1)
-    if solver.backend.device == "gpu":
-        x_flat = info['A_inv_dev'] @ rhs_flat
-    else:
-        x_flat = solver.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
+    x_flat = _solve_dense_inverse_or_lu(solver, info, rhs_flat)
     sol = x_flat.reshape(n_int, 2, -1)
 
     left_pair = info['M_left_dev'] @ sol[0] + bc_lo

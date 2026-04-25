@@ -670,8 +670,11 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
 
     speed_max = max(float(np.max(np.abs(u))), float(np.max(np.abs(v))))
     assert speed_max > 1.0e-12
-    assert solver._p_prev is not None
-    assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
+    previous_pressure = solver._p_prev
+    if previous_pressure is None:
+        assert solver._p_prev_dev is not None
+        previous_pressure = solver._backend.to_host(solver._p_prev_dev)
+    assert not np.allclose(np.asarray(previous_pressure), np.asarray(p))
     diag = solver._step_diag.last
     assert diag["ppe_phase_count"] == 2.0
     assert diag["ppe_pin_count"] == 0.0

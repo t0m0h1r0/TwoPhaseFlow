@@ -54,6 +54,7 @@ class DiagnosticRetainedGeometry:
     Y: object
     rows: object
     cols: object
+    y_mid: object
 
 
 class DiagnosticCollector:
@@ -139,13 +140,16 @@ class DiagnosticCollector:
     def retain_device_geometry(self, xp, X, Y, shape) -> None:
         """Retain geometry produced by grid construction/rebuild for diagnostics."""
         rows, cols = _deformation_axes(xp, tuple(shape))
+        X_dev = xp.asarray(X)
+        Y_dev = xp.asarray(Y)
         self._retained_geometry = DiagnosticRetainedGeometry(
             xp=xp,
             shape=tuple(shape),
-            X=xp.asarray(X),
-            Y=xp.asarray(Y),
+            X=X_dev,
+            Y=Y_dev,
             rows=rows,
             cols=cols,
+            y_mid=xp.mean(Y_dev),
         )
 
     def collect(
@@ -230,7 +234,9 @@ class DiagnosticCollector:
                 self._data[m].append(_deformation(psi, geometry))
 
             elif m == "interface_amplitude":
-                self._data[m].append(_interface_amplitude(psi, self.Y, self.h))
+                self._data[m].append(
+                    _interface_amplitude(psi, geometry.Y, geometry.y_mid)
+                )
 
             elif m == "symmetry_error":
                 # CHK-161 parity-aware: each sub-key is 0 for 4-fold symmetric flow.
@@ -356,23 +362,27 @@ def _symmetry_error(field, axis: int, parity: int = +1) -> float:
     return diff / scale
 
 
-def _interface_amplitude(psi, Y, h: float) -> float:
-    """Approximate amplitude of ψ = 0.5 isoline deviation from domain centre.
-
-    Syncs to host once: the nested Python loop over columns is ill-suited
-    to a device; one sync per step is acceptable for a diagnostic.
-    """
-    psi_h = _to_host(psi)
-    Y_h = _to_host(Y)
-    NY = psi_h.shape[1]
-    y_mid = Y_h.mean()
-    best = 0.0
-    for i in range(psi_h.shape[0]):
-        col = psi_h[i, :]
-        for j in range(NY - 1):
-            if (col[j] - 0.5) * (col[j + 1] - 0.5) < 0:
-                frac = (0.5 - col[j]) / (col[j + 1] - col[j])
-                y_int = Y_h[i, j] + frac * h
-                best = max(best, abs(y_int - y_mid))
-                break
-    return best
+def _interface_amplitude(psi, Y, y_mid) -> float:
+    """Return max deviation of the first ψ=0.5 crossing in each column."""
+    xp = _xp_of(psi)
+    psi_dev = xp.asarray(psi)
+    if psi_dev.shape[1] < 2:
+        return 0.0
+    Y_dev = xp.asarray(Y)
+    below_left = psi_dev[:, :-1] - 0.5
+    below_right = psi_dev[:, 1:] - 0.5
+    crossings = below_left * below_right < 0.0
+    has_crossing = xp.any(crossings, axis=1)
+    first_crossing = xp.argmax(crossings, axis=1)
+    rows = xp.arange(psi_dev.shape[0])
+    psi0 = psi_dev[rows, first_crossing]
+    psi1 = psi_dev[rows, first_crossing + 1]
+    y0 = Y_dev[rows, first_crossing]
+    y1 = Y_dev[rows, first_crossing + 1]
+    denom = xp.where(has_crossing, psi1 - psi0, 1.0)
+    frac = xp.where(has_crossing, (0.5 - psi0) / denom, 0.0)
+    y_int = y0 + frac * (y1 - y0)
+    amplitude = xp.max(
+        xp.where(has_crossing, xp.abs(y_int - y_mid), 0.0)
+    )
+    return float(np.asarray(_to_host(amplitude)))

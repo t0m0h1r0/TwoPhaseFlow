@@ -8,6 +8,7 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_jacobi_inverse,
+    build_fccd_phase_mean_gauge_cache,
     compute_fccd_phase_gauges,
 )
 
@@ -18,6 +19,8 @@ def invalidate_fccd_matrixfree_cache(solver) -> None:
     solver._rho_dev = None
     solver._diag_inv = None
     solver._coeff_face = None
+    solver._phase_mean_gauge_cache = None
+    solver._phase_mean_gauge_cache_host = None
     solver._phase_threshold = None
     solver._interface_jump_context = None
 
@@ -42,6 +45,7 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
     solver._rho = np.asarray(solver.backend.to_host(solver._rho_dev))
     solver._diag_inv = None
     refresh_fccd_phase_gauges(solver)
+    refresh_fccd_phase_mean_gauge_cache(solver)
     solver._coeff_face = [
         build_fccd_face_inverse_density(
             xp=solver.xp,
@@ -76,6 +80,22 @@ def refresh_fccd_phase_gauges(solver) -> None:
     )
     solver._pin_dofs = state.pin_dofs
     solver._phase_threshold = state.phase_threshold
+
+
+def refresh_fccd_phase_mean_gauge_cache(solver) -> None:
+    """Cache phase masks and control-volume weights for mean-gauge projections."""
+    solver._phase_mean_gauge_cache = build_fccd_phase_mean_gauge_cache(
+        xp=solver.xp,
+        rho=solver._rho_dev,
+        cell_volume=solver._cell_volume,
+        phase_threshold=solver._phase_threshold,
+    )
+    solver._phase_mean_gauge_cache_host = build_fccd_phase_mean_gauge_cache(
+        xp=np,
+        rho=solver._rho,
+        cell_volume=solver._cell_volume_host,
+        phase_threshold=solver._phase_threshold,
+    )
 
 
 def refresh_fccd_geometry_cache(solver) -> None:

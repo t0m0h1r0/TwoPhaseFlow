@@ -16,6 +16,10 @@ from .ns_step_state import NSStepState
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
 
 
+def _backend_is_gpu(backend) -> bool:
+    return bool(getattr(backend, "is_gpu", lambda: False)())
+
+
 def build_pressure_robust_buoyancy_residual_accel_faces(
     *,
     buoyancy_force_components: list,
@@ -547,7 +551,11 @@ def solve_ns_pressure_stage(
         p_init=p_prev_dev,
     )
     next_p_prev_dev = getattr(ppe_solver, "last_base_pressure", state.pressure)
-    next_p_prev = np.asarray(backend.to_host(next_p_prev_dev))
+    next_p_prev = (
+        None
+        if _backend_is_gpu(backend)
+        else np.asarray(backend.to_host(next_p_prev_dev))
+    )
     state.p_corrector = state.pressure
     return state, next_p_prev_dev, next_p_prev
 
@@ -570,13 +578,16 @@ def correct_ns_velocity_stage(
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
-    correction_is_zero = all_arrays_exact_zero(xp, (
-        state.u_star,
-        state.v_star,
-        state.p_corrector,
-        state.f_x,
-        state.f_y,
-    ))
+    correction_is_zero = (
+        not _backend_is_gpu(backend)
+        and all_arrays_exact_zero(xp, (
+            state.u_star,
+            state.v_star,
+            state.p_corrector,
+            state.f_x,
+            state.f_y,
+        ))
+    )
     proj_op = None
     project_kwargs = {}
     keep_face_state = canonical_face_state or preserve_projected_faces

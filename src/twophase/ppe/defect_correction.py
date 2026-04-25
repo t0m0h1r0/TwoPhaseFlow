@@ -113,13 +113,16 @@ class PPESolverDefectCorrection(IPPESolver):
         self._pin_flat(pressure.ravel(), 0.0)
         return pressure
 
-    def _enforce_rhs_compatibility(self, rhs):
+    def _enforce_rhs_compatibility(self, rhs, *, record_stats: bool = True):
         """Apply the matching Neumann compatibility constraint to a RHS."""
         if self._uses_phase_mean_gauge() and hasattr(
             self.operator,
             "_project_rhs_compatibility",
         ):
-            return self.operator._project_rhs_compatibility(rhs)
+            return self.operator._project_rhs_compatibility(
+                rhs,
+                record_stats=record_stats,
+            )
         rhs_projected = rhs.copy()
         self._pin_flat(rhs_projected.ravel(), 0.0)
         return rhs_projected
@@ -135,8 +138,15 @@ class PPESolverDefectCorrection(IPPESolver):
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
         pressure = self._enforce_pressure_gauge(pressure)
-        initial_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
-        if all_arrays_exact_zero(xp, (rhs_dev, pressure)):
+        initial_diagnostics = dict(getattr(self.operator, "last_diagnostics", {}))
+        if not initial_diagnostics:
+            initial_diagnostics = dict(
+                getattr(self.base_solver, "last_diagnostics", {})
+            )
+        if (
+            not self.backend.is_gpu()
+            and all_arrays_exact_zero(xp, (rhs_dev, pressure))
+        ):
             self.last_base_pressure = xp.copy(pressure)
             self.last_diagnostics = initial_diagnostics
             if hasattr(self.operator, "apply_interface_jump"):
@@ -149,7 +159,7 @@ class PPESolverDefectCorrection(IPPESolver):
         scale = max(rhs_norm, 1.0)
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
-            residual = self._enforce_rhs_compatibility(residual)
+            residual = self._enforce_rhs_compatibility(residual, record_stats=False)
             residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
             if residual_norm <= self.tolerance * scale:
                 break

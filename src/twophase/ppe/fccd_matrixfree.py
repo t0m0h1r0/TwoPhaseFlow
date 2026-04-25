@@ -33,6 +33,7 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_interface_jump_context,
+    compute_fccd_phase_weighted_means,
     fccd_interface_jump_is_active,
     project_fccd_rhs_compatibility,
 )
@@ -121,6 +122,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._rho_dev = None
         self._diag_inv = None
         self._coeff_face = None
+        self._phase_mean_gauge_cache = None
+        self._phase_mean_gauge_cache_host = None
         self._h_min = None
         self._node_width = None
         self._cell_volume = None
@@ -207,7 +210,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
         rhs_flat = rhs_dev.ravel().copy()
-        if all_arrays_exact_zero(xp, (rhs_flat,)):
+        if (
+            not self.backend.is_gpu()
+            and all_arrays_exact_zero(xp, (rhs_flat,))
+        ):
             sol = xp.zeros_like(rhs_dev)
             if not self._uses_phase_mean_gauge():
                 self._pin_flat(sol.ravel(), 0.0)
@@ -289,9 +295,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             is_device_array=self._is_device_array,
         )
 
-    def _project_rhs_compatibility(self, rhs):
+    def _project_rhs_compatibility(self, rhs, *, record_stats: bool = True):
         """Enforce one Neumann compatibility condition per phase block."""
         xp = self.xp if self._is_device_array(rhs) else np
+        phase_cache = (
+            self._phase_mean_gauge_cache
+            if xp is self.xp
+            else self._phase_mean_gauge_cache_host
+        )
         rhs_projected, stats = project_fccd_rhs_compatibility(
             rhs=rhs,
             xp=xp,
@@ -301,13 +312,26 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             rho_host=self._rho,
             cell_volume_dev=self._cell_volume,
             cell_volume_host=self._cell_volume_host,
+            phase_masks=None if phase_cache is None else phase_cache.masks,
+            phase_weights=None if phase_cache is None else phase_cache.weights,
+            phase_weight_sums=(
+                None if phase_cache is None else phase_cache.weight_sums
+            ),
+            phase_weight_stack=(
+                None if phase_cache is None else phase_cache.weight_stack
+            ),
+            phase_weight_sum_stack=(
+                None if phase_cache is None else phase_cache.weight_sum_stack
+            ),
             pin_dofs=self._pin_dofs,
             interface_coupling_scheme=self.interface_coupling_scheme,
             use_device_density=xp is self.xp,
             to_scalar=self._to_scalar,
             pin_rhs=not self._uses_phase_mean_gauge(),
+            record_stats=record_stats,
         )
-        self.last_diagnostics = stats
+        if record_stats:
+            self.last_diagnostics = stats
         return rhs_projected
 
     def _face_inverse_density(self, rho, axis: int):
@@ -343,11 +367,23 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         arr_projected = xp.asarray(arr).copy()
         if not self._uses_phase_mean_gauge():
             return arr_projected
-        rho_view = self._rho_dev if xp is self.xp else self._rho
-        weight_view = self._cell_volume if xp is self.xp else self._cell_volume_host
-        for mask in (rho_view < self._phase_threshold, rho_view >= self._phase_threshold):
-            phase_weight = xp.where(mask, weight_view, 0.0)
-            mean = xp.sum(phase_weight * arr_projected) / xp.sum(phase_weight)
+        phase_cache = (
+            self._phase_mean_gauge_cache
+            if xp is self.xp
+            else self._phase_mean_gauge_cache_host
+        )
+        phase_means = compute_fccd_phase_weighted_means(
+            xp=xp,
+            arr=arr_projected,
+            cache=phase_cache,
+        )
+        if len(phase_means) == 2:
+            return arr_projected - xp.where(
+                phase_cache.masks[0],
+                phase_means[0],
+                phase_means[1],
+            )
+        for mask, mean in zip(phase_cache.masks, phase_means):
             arr_projected = xp.where(mask, arr_projected - mean, arr_projected)
         return arr_projected
 
