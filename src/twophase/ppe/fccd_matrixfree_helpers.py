@@ -11,6 +11,7 @@ import numpy as np
 class FCCDGeometryCache:
     h_min: list[float]
     node_width: list
+    cell_volume: object
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,11 @@ def build_fccd_geometry_cache(*, xp, grid, ndim: int) -> FCCDGeometryCache:
         node_axis[1:-1] = 0.5 * (coords[2:] - coords[:-2])
         h_min.append(float(np.min(face_width)))
         node_width.append(xp.asarray(node_axis))
-    return FCCDGeometryCache(h_min=h_min, node_width=node_width)
+    return FCCDGeometryCache(
+        h_min=h_min,
+        node_width=node_width,
+        cell_volume=xp.asarray(grid.cell_volumes()),
+    )
 
 
 def compute_fccd_phase_gauges(
@@ -227,15 +232,19 @@ def project_fccd_rhs_compatibility(
     phase_threshold: float | None,
     rho_dev,
     rho_host,
+    cell_volume_dev,
+    cell_volume_host,
     pin_dofs: tuple[int, ...],
     interface_coupling_scheme: str,
     use_device_density: bool,
     to_scalar,
+    pin_rhs: bool = True,
 ):
     rhs_projected = xp.asarray(rhs).copy()
     stats = {
         "ppe_phase_count": 1.0,
-        "ppe_pin_count": float(len(pin_dofs)),
+        "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
+        "ppe_mean_gauge": float(not pin_rhs),
         "ppe_rhs_phase_mean_before_max": 0.0,
         "ppe_rhs_phase_mean_after_max": 0.0,
         "ppe_interface_coupling_jump": float(
@@ -247,10 +256,12 @@ def project_fccd_rhs_compatibility(
         or phase_threshold is None
         or rho_host is None
     ):
-        _pin_zero(rhs_projected.ravel(), pin_dofs)
+        if pin_rhs:
+            _pin_zero(rhs_projected.ravel(), pin_dofs)
         return rhs_projected, stats
 
     rho_view = rho_dev if use_device_density else rho_host
+    weight_view = cell_volume_dev if use_device_density else cell_volume_host
     phase_masks = (
         rho_view < phase_threshold,
         rho_view >= phase_threshold,
@@ -263,17 +274,20 @@ def project_fccd_rhs_compatibility(
         if count == 0:
             continue
         phase_count += 1
-        mean = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        phase_weight = xp.where(mask, weight_view, 0.0)
+        mean = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
         means_before.append(abs(to_scalar(mean)))
         rhs_projected = xp.where(mask, rhs_projected - mean, rhs_projected)
-        mean_after = xp.sum(xp.where(mask, rhs_projected, 0.0)) / count
+        mean_after = xp.sum(phase_weight * rhs_projected) / xp.sum(phase_weight)
         means_after.append(abs(to_scalar(mean_after)))
 
-    _pin_zero(rhs_projected.ravel(), pin_dofs)
+    if pin_rhs:
+        _pin_zero(rhs_projected.ravel(), pin_dofs)
     stats.update(
         {
             "ppe_phase_count": float(phase_count),
-            "ppe_pin_count": float(len(pin_dofs)),
+            "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
+            "ppe_mean_gauge": float(not pin_rhs),
             "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
             "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
         }

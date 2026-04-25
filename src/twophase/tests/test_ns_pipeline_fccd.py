@@ -69,7 +69,7 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
     rho = 1.0 + rng.uniform(0.0, 0.5, grid.shape)
 
     ppe.prepare_operator(rho)
-    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
     projection_apply = np.asarray(
         div_op.divergence_from_faces(
             div_op.pressure_fluxes(pressure, rho, pressure_gradient="fccd")
@@ -105,7 +105,7 @@ def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
     rho[: grid.N[0] // 2 + 1, :] = 1000.0
 
     ppe.prepare_operator(rho)
-    ppe_apply = np.asarray(ppe.apply(pressure)).ravel()
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
     projection_apply = np.asarray(
         div_op.divergence_from_faces(
             div_op.pressure_fluxes(
@@ -117,11 +117,9 @@ def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
         )
     ).ravel()
 
-    mask = np.ones_like(ppe_apply, dtype=bool)
-    mask[list(ppe._pin_dofs)] = False
     np.testing.assert_allclose(
-        projection_apply[mask],
-        ppe_apply[mask],
+        projection_apply,
+        ppe_apply,
         rtol=1.0e-12,
         atol=1.0e-12,
     )
@@ -420,14 +418,14 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
 
     assert ppe.coefficient_scheme == "phase_separated"
     assert ppe.interface_coupling_scheme == "jump_decomposition"
-    assert len(ppe._pin_dofs) == 2
+    assert ppe._uses_phase_mean_gauge()
     assert np.all(coeff_x[N // 2, :] == 0.0)
     assert np.all(coeff_x[: N // 2, :] > 0.0)
     assert np.all(coeff_x[N // 2 + 1 :, :] > 0.0)
 
 
-def test_phase_separated_gauge_pins_are_bulk_not_interface_edge():
-    """Per-phase Neumann gauges must not pin diffuse contact-line rows."""
+def test_phase_separated_fallback_pin_candidates_are_bulk_not_interface_edge():
+    """Fallback point-gauge candidates must avoid diffuse contact-line rows."""
     from twophase.ppe.fccd_matrixfree_helpers import compute_fccd_phase_gauges
 
     rho = np.ones((16, 16))
@@ -473,7 +471,118 @@ def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
 
     assert abs(float(np.mean(projected[liquid]))) < 1.0e-14
     assert abs(float(np.mean(projected[gas]))) < 1.0e-14
-    assert np.allclose(projected.ravel()[list(ppe._pin_dofs)], 0.0)
+
+
+def test_phase_separated_fccd_ppe_projects_rhs_by_control_volume():
+    """Nonuniform Neumann compatibility is a zero control-volume integral."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "jump_decomposition",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
+    rho = np.ones(grid.shape)
+    rho[: grid.N[0] // 2 + 1, :] = 1000.0
+    rng = np.random.default_rng(1618)
+    rhs = rng.standard_normal(grid.shape)
+
+    ppe.prepare_operator(rho)
+    projected = np.asarray(ppe._project_rhs_compatibility(rhs))
+    weights = np.asarray(grid.cell_volumes())
+
+    phase_masks = (
+        np.asarray(ppe._rho) >= ppe._phase_threshold,
+        np.asarray(ppe._rho) < ppe._phase_threshold,
+    )
+    for mask in phase_masks:
+        assert abs(float(np.sum(weights[mask] * projected[mask]))) < 1.0e-13
+
+
+def test_phase_separated_mean_gauge_removes_phase_constant_modes():
+    """Phase-separated PPE uses mean gauges, not point Dirichlet pins."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    rho = np.ones(solver._grid.shape)
+    rho[: N // 2 + 1, :] = 1000.0
+    ppe.prepare_operator(rho)
+
+    field = np.zeros_like(rho)
+    field[rho < ppe._phase_threshold] = 3.0
+    field[rho >= ppe._phase_threshold] = -2.0
+    applied = np.asarray(ppe.apply(field))
+
+    assert np.allclose(applied, field)
+
+
+def test_phase_separated_mean_gauge_preserves_mirror_symmetry():
+    """The nullspace gauge must not introduce a one-point symmetry defect."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+    )
+    ppe = solver._ppe_solver
+    y = np.linspace(-1.0, 1.0, N + 1)
+    x = np.linspace(-1.0, 1.0, N + 1)
+    yy, xx = np.meshgrid(y, x, indexing="ij")
+    rho = np.where(yy < 0.0, 1000.0, 1.0)
+    pressure = xx * xx + 0.3 * yy
+
+    ppe.prepare_operator(rho)
+    applied = np.asarray(ppe.apply(pressure))
+
+    np.testing.assert_allclose(applied, applied[:, ::-1], rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_phase_separated_defect_correction_preserves_mirror_symmetry():
+    """Outer residual correction must use the same mean gauge as the base PPE."""
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_defect_correction=True,
+        ppe_dc_max_iterations=2,
+        ppe_dc_tolerance=1.0e-10,
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="jump_decomposition",
+        surface_tension_scheme="pressure_jump",
+    )
+    ppe = solver._ppe_solver
+    y = np.linspace(-1.0, 1.0, N + 1)
+    x = np.linspace(-1.0, 1.0, N + 1)
+    yy, xx = np.meshgrid(y, x, indexing="ij")
+    rho = np.where(yy < 0.0, 1000.0, 1.0)
+    psi = np.where(yy < 0.0, 1.0, 0.0)
+    kappa = 2.0 + 0.1 * xx * xx
+    rhs = np.zeros_like(rho)
+
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=0.072)
+    pressure = np.asarray(solver._backend.to_host(ppe.solve(rhs, rho)))
+
+    np.testing.assert_allclose(
+        pressure,
+        pressure[:, ::-1],
+        rtol=1.0e-10,
+        atol=1.0e-10,
+    )
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
@@ -565,7 +674,8 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     assert not np.allclose(np.asarray(solver._p_prev), np.asarray(p))
     diag = solver._step_diag.last
     assert diag["ppe_phase_count"] == 2.0
-    assert diag["ppe_pin_count"] == 2.0
+    assert diag["ppe_pin_count"] == 0.0
+    assert diag["ppe_mean_gauge"] == 1.0
     assert diag["ppe_interface_coupling_jump"] == 1.0
     assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
 

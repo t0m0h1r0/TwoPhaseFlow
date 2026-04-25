@@ -55,11 +55,15 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
         for axis in range(solver.ndim)
     ]
     if solver.preconditioner == "jacobi":
+        uses_mean_gauge = (
+            hasattr(solver, "_uses_phase_mean_gauge")
+            and solver._uses_phase_mean_gauge()
+        )
         solver._diag_inv = build_fccd_jacobi_inverse(
             xp=solver.xp,
             rho_dev=solver._rho_dev,
             h_min=solver._h_min,
-            pin_dofs=solver._pin_dofs,
+            pin_dofs=() if uses_mean_gauge else solver._pin_dofs,
         )
 
 
@@ -79,3 +83,5 @@ def refresh_fccd_geometry_cache(solver) -> None:
     cache = build_fccd_geometry_cache(xp=solver.xp, grid=solver.grid, ndim=solver.ndim)
     solver._h_min = cache.h_min
     solver._node_width = cache.node_width
+    solver._cell_volume = cache.cell_volume
+    solver._cell_volume_host = np.asarray(solver.backend.to_host(cache.cell_volume))

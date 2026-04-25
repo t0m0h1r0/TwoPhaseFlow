@@ -123,6 +123,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._coeff_face = None
         self._h_min = None
         self._node_width = None
+        self._cell_volume = None
+        self._cell_volume_host = None
         self._phase_threshold = None
         self._interface_jump_context = None
         self._defer_interface_jump = False
@@ -153,20 +155,32 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         prepare_fccd_matrixfree_operator(self, rho)
 
     def apply(self, p):
-        """Apply ``D_f[(1/rho)_f G_f(p)]`` with a pinned gauge DOF."""
+        """Apply the FCCD PPE operator with its configured gauge constraint."""
         xp = self.xp
         if self._rho_dev is None or self._coeff_face is None:
             raise RuntimeError("prepare_operator(rho) must be called before apply(p)")
         return_host = self.backend.is_gpu() and not self._is_device_array(p)
         p_dev = xp.asarray(p)
+        if self._uses_phase_mean_gauge():
+            p_mean_free = self._project_phase_means(p_dev)
+            out = self._apply_operator_core(p_mean_free)
+            out = self._project_phase_means(out)
+            out = out + (p_dev - p_mean_free)
+        else:
+            out = self._apply_operator_core(p_dev)
+            self._pin_flat(out.ravel(), p_dev.ravel())
+        if return_host:
+            return np.asarray(self.backend.to_host(out))
+        return out
+
+    def _apply_operator_core(self, p_dev):
+        """Apply physical ``D_f[(1/rho)_f G_f(p)]`` without a gauge row."""
+        xp = self.xp
         out = xp.zeros_like(p_dev)
         for axis in range(self.ndim):
             grad_face = self.fccd.face_gradient(p_dev, axis)
             coeff_face = self._coeff_face[axis]
             out = out + self._face_flux_divergence(coeff_face * grad_face, axis)
-        self._pin_flat(out.ravel(), p_dev.ravel())
-        if return_host:
-            return np.asarray(self.backend.to_host(out))
         return out
 
     def _subtract_interface_jump_operator(self, rhs_dev):
@@ -178,7 +192,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         ):
             return rhs_dev
         jump_pressure = self.apply_interface_jump(self.xp.zeros_like(rhs_dev))
-        return rhs_dev - self.apply(jump_pressure)
+        return rhs_dev - self._apply_operator_core(jump_pressure)
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FCCD PPE with backend GMRES."""
@@ -195,7 +209,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         rhs_flat = rhs_dev.ravel().copy()
         if all_arrays_exact_zero(xp, (rhs_flat,)):
             sol = xp.zeros_like(rhs_dev)
-            self._pin_flat(sol.ravel(), 0.0)
+            if not self._uses_phase_mean_gauge():
+                self._pin_flat(sol.ravel(), 0.0)
             self.last_base_pressure = xp.copy(sol)
             if not self._defer_interface_jump:
                 sol = self.apply_interface_jump(sol)
@@ -207,7 +222,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             x0 = xp.zeros_like(rhs_flat)
         else:
             x0 = xp.asarray(p_init).ravel().copy()
-            self._pin_flat(x0, 0.0)
+            if self._uses_phase_mean_gauge():
+                x0 = self._project_phase_means(x0.reshape(self.grid.shape)).ravel()
+            else:
+                self._pin_flat(x0, 0.0)
 
         n_dof = int(np.prod(self.grid.shape))
 
@@ -222,7 +240,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
             def _precond(r_flat):
                 z = xp.asarray(r_flat).reshape(self.grid.shape) * self._diag_inv
-                self._pin_flat(z.ravel(), 0.0)
+                if self._uses_phase_mean_gauge():
+                    z = self._project_phase_means(z)
+                else:
+                    self._pin_flat(z.ravel(), 0.0)
                 return z.ravel()
 
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
@@ -245,7 +266,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 stacklevel=2,
             )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
-        self._pin_flat(sol.ravel(), 0.0)
+        if self._uses_phase_mean_gauge():
+            sol = self._project_phase_means(sol)
+        else:
+            self._pin_flat(sol.ravel(), 0.0)
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
@@ -275,10 +299,13 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             phase_threshold=self._phase_threshold,
             rho_dev=self._rho_dev,
             rho_host=self._rho,
+            cell_volume_dev=self._cell_volume,
+            cell_volume_host=self._cell_volume_host,
             pin_dofs=self._pin_dofs,
             interface_coupling_scheme=self.interface_coupling_scheme,
             use_device_density=xp is self.xp,
             to_scalar=self._to_scalar,
+            pin_rhs=not self._uses_phase_mean_gauge(),
         )
         self.last_diagnostics = stats
         return rhs_projected
@@ -303,6 +330,26 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 flat[dof] = value
             else:
                 flat[dof] = value[dof]
+
+    def _uses_phase_mean_gauge(self) -> bool:
+        return (
+            self.coefficient_scheme == "phase_separated"
+            and self._phase_threshold is not None
+        )
+
+    def _project_phase_means(self, arr):
+        """Project a field onto the per-phase zero-volume-mean pressure gauge."""
+        xp = self.xp if self._is_device_array(arr) else np
+        arr_projected = xp.asarray(arr).copy()
+        if not self._uses_phase_mean_gauge():
+            return arr_projected
+        rho_view = self._rho_dev if xp is self.xp else self._rho
+        weight_view = self._cell_volume if xp is self.xp else self._cell_volume_host
+        for mask in (rho_view < self._phase_threshold, rho_view >= self._phase_threshold):
+            phase_weight = xp.where(mask, weight_view, 0.0)
+            mean = xp.sum(phase_weight * arr_projected) / xp.sum(phase_weight)
+            arr_projected = xp.where(mask, arr_projected - mean, arr_projected)
+        return arr_projected
 
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence with wall Neumann rows retained for the PPE operator."""
