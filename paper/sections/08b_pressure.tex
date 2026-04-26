@@ -13,7 +13,7 @@ Projection 法の幾何学的意味を説明した．
 
 本稿では van Kan（1986）の \textbf{IPC（Incremental Pressure Correction）法}を採用し，
 予測ステップに前時刻圧力 $-\bnabla p^n$ を組み込む
-（§~\ref{sec:time_int}，式~\eqref{eq:predictor_ab2_ipc}）．
+（§~\ref{sec:time_int}，式~\eqref{eq:predictor_imex_bdf2}）．
 これにより標準 Chorin 法の $\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される．
 
 \subsubsection{Step 1：予測速度（Predictor）}
@@ -85,8 +85,8 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
         均一格子および周期 BC では CCD を引き続き使用する．
   \item \textbf{$\rho^{n+1}$} は CLS 移流（§~\ref{sec:algorithm}，Step 1）で事前に更新済み．
   \item \textbf{時間離散化：} 本節の導出は Backward Euler 形式で統一したが，
-        対流項は実装で AB2（式~\eqref{eq:predictor_ab2_ipc}），
-        粘性項は Crank--Nicolson（$\Ord{\Delta t^2}$，§~\ref{sec:advection}）を採用する．
+        対流項は実装で IMEX-BDF2（EXT2 外挿；式~\eqref{eq:predictor_imex_bdf2}），
+        粘性項は implicit-BDF2（GMRES；$\Ord{\Delta t^2}$，§~\ref{sec:time_viscous}）を採用する．
 \end{itemize}
 \end{tcolorbox}
 

@@ -99,7 +99,7 @@ $\mathbf{n},\,\kappa,\,\delta(\psi)$ で異なる DCCD & $\times$ & 経路不整
   \item \textbf{曲率平滑化と DCCD は独立機構}：曲率平滑化は界面帯のみ作用し，
         DCCD は bulk のみ作用する非線形スイッチ $S(\psi)=(2\psi-1)^2$ で
         干渉が回避される（§\ref{sec:dccd_spectral_filter}）．
-  \item Crank--Nicolson 粘性項（§\ref{sec:time_cn}）のデフェクト補正内部解でも
+  \item implicit-BDF2 粘性項（§\ref{sec:time_viscous}）のデフェクト補正内部解でも
         フィルタ挿入は禁止．$L_H$（高次 CCD）と $L_L$（2 次）は
         同じ $\mu$・同じ BC・同じ帯スイッチを共有．
 \end{itemize}

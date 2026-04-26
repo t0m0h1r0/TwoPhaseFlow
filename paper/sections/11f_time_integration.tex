@@ -86,8 +86,9 @@ ODE テストでは収束次数が漸近的に $3.00$ に近づき，
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:ab2_ipc} で導入した AB2（Adams--Bashforth 2 段）の
-設計時間精度 $\Ord{\Delta t^2}$ を確認する．
+§~\ref{sec:time_level1} で導入した EXT2 外挿（IMEX-BDF2 の対流処理；
+AB2 と同じ $(3/2,-1/2)$ 係数の 2 次零安定多段法）の
+設計時間精度 $\Ord{\Delta t^2}$ を，AB2 単体の参照テストとして確認する．
 
 \noindent\textbf{評価対象：}
 AB2（Adams--Bashforth 2 段）＋前進 Euler 起動．
