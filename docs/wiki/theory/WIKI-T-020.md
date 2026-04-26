@@ -31,6 +31,12 @@ Let ψ = g(φ) with g ∈ C², g' > 0 (strictly monotone increasing). Then:
 
 **Corollary:** H_ε(φ) = 1/(1+e^{-φ/ε}) is strictly monotone increasing → **logit inversion is completely unnecessary for curvature computation.**
 
+**2026-04-26 discrete caveat:** The corollary is exact in the continuum. It
+does not prove that a discrete `psi`-direct curvature operator is
+energy-stable, balanced-force compatible, or a discrete surface-area gradient.
+The ch13 capillary redesign therefore treats `psi`-direct curvature as one
+candidate geometry operator, not as a production guarantee; see [[WIKI-T-077]].
+
 ## 2D Curvature Formula (ψ-Direct)
 
 κ = −(ψ_y² ψ_{xx} − 2ψ_x ψ_y ψ_{xy} + ψ_x² ψ_{yy}) / (ψ_x² + ψ_y²)^{3/2}

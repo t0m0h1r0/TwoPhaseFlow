@@ -70,6 +70,31 @@ For phase-separated PPE with mixture-density correction, this defect is
 interface-supported. At water-air density ratios it becomes a stiff
 projection-residual source.
 
+## Capillary-jump corollary
+
+The same closure rule applies to surface tension. A capillary jump for
+phase-separated PPE must be a phase-labelled pressure trace:
+
+```text
+J_g|_Gamma - J_l|_Gamma = sigma kappa_Gamma.
+```
+
+It must enter the projection as:
+
+```text
+F_J = jump_flux_sep(J_sep),
+L_sep q = r - D_f F_J,
+u_f^{n+1} = u_f^* - dt(A_f^sep G_f q + F_J).
+```
+
+The smooth mixture field `sigma*kappa*(1-psi)` is not canonical for
+`A_f^sep`, because cross-phase faces are cut and the smeared `grad(psi)` term
+becomes an intra-phase source. The phase-separated null test is a static bubble
+with constant curvature: `J_l` and `J_g` are phase constants, so
+`jump_flux_sep(J_sep)=0` while the physical pressure retains the
+Young--Laplace jump. See [[WIKI-T-077]] for the capillary design and
+[[WIKI-L-036]] for the implementation contract.
+
 ## Non-uniform-grid corollary
 
 Matching the symbolic method name is insufficient. The equality must hold with:
