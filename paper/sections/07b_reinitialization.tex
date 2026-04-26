@@ -93,12 +93,12 @@ $M = \sum_{i,j} \psi_{i,j}\,\Delta V_{i,j}$ に置き換え，
   \label{eq:adaptive_reinit_trigger}
 \end{equation}
 ここで $M_{\mathrm{ref}}$ は直前の再初期化直後の $M$ 値，
-$\theta_{\mathrm{reinit}} = 1.10$ は閾値パラメタである．
+$\theta_{\mathrm{reinit}}$ は界面太り度の許容比を与える閾値パラメタ
+（既定値の選定および感度は §~\ref{sec:val_summary} を参照）である．
 $M(\tau)$ は界面プロファイルの太り度を表し，
 $\psi = H_\varepsilon(\phi)$ の平衡形からの逸脱に比例して増大する．
-単一渦テスト（$N = 128$）において，この適応トリガーにより
-再初期化回数が 227 回（固定 10 ステップ毎）から\textbf{2 回}に激減し，
-$L_2$ 形状誤差が 49\% 改善された（§~\ref{sec:verify_dccd_conservation}）．
+適応トリガー導入による再初期化回数の削減効果と形状誤差改善は
+§~\ref{sec:verify_dccd_conservation} を参照．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ Eikonal 方程式 \cite{Sussman1994}
 \begin{tcolorbox}[algbox, title={Eikonal 再初期化アルゴリズム}]
 \begin{enumerate}
   \item \textbf{ロジット反転：}$\phi = \varepsilon\ln(\psi/(1-\psi))$（飽和クランプ付き）
-  \item \textbf{Eikonal PDE 反復（$n_{\mathrm{iter}}=20$ ステップ）：}
+  \item \textbf{Eikonal PDE 反復（疑似時間反復；反復回数は §~\ref{sec:val_summary} 参照）：}
         Godunov 一次風上差分で式~\eqref{eq:eikonal_pde} を疑似時間積分
         （\S\ref{sec:scheme_per_variable} 表で $\phi$ 再初期化に WENO--HJ を推奨する記述は
         Level 2/3 の高精度オプション；Level 1 検証では Godunov で十分）
@@ -464,8 +464,9 @@ $D(T{=}2)=0.037$ より小さい．$T{=}2$ では VolCons$=1.38\%$ と目標 $1\
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{tcolorbox}[mybox, title={実装ガイド：再初期化の定量的運用}]
-\textbf{仮想時間刻み：} $\Delta s = \min(h_x, h_y)$ として，安定条件（\ref{warn:cls_dtau_stability}）から
-推奨値 $\Delta\tau = 0.125\Delta s$（2次元拡散安定限界 $\Delta s/6$ より約25\%小さく，安全余裕を確保）．
+\textbf{仮想時間刻み：} $\Delta s = \min(h_x, h_y)$ として，
+安定条件（\ref{warn:cls_dtau_stability}）の 2 次元拡散安定限界に対し
+保守的な安全マージンを取った推奨値を用いる．
 
 \medskip
 \noindent\textbf{収束モニター：} $M(\tau) = \int_\Omega \psi(1-\psi)\,dV$ を使用する．
@@ -473,8 +474,8 @@ $D(T{=}2)=0.037$ より小さい．$T{=}2$ では VolCons$=1.38\%$ と目標 $1\
 \begin{equation}
   M_{\mathrm{ref}} = \int_\Omega H_\varepsilon(\phi_0)\bigl(1-H_\varepsilon(\phi_0)\bigr)\,dV
 \end{equation}
-に対して $M(\tau)/M_{\mathrm{ref}}$ が閾値（例：$1.05$）を超えたときのみ再初期化を実行する
-（適応的再初期化；§~\ref{sec:adaptive_reinit} の $\theta_{\mathrm{reinit}}=1.10$ が現行運用値）．
+に対して $M(\tau)/M_{\mathrm{ref}}$ が閾値 $\theta_{\mathrm{reinit}}$ を超えたときのみ再初期化を実行する
+（適応的再初期化；§~\ref{sec:adaptive_reinit}．既定値の選定および感度は §~\ref{sec:val_summary}）．
 軽微な乱れでは3～5ステップ，界面トポロジー変化直後は10～20ステップ程度が目安．
 
 \medskip
@@ -518,10 +519,11 @@ $\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
 \[
   \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{4\varepsilon}\right)
 \]
-典型的なパラメータ $\varepsilon = 1.5\Delta s$ では $(\Delta s)^2/(4\varepsilon) = \Delta s/6 \approx 0.167\Delta s$ となり，
+典型的なパラメータ $\varepsilon \sim \Delta s$ オーダーでは
+$(\Delta s)^2/(4\varepsilon) \sim \Delta s$ オーダーとなり，
 拡散型成分の制約が支配的である．
-\textbf{完全陽解法での参考値：} $\Delta\tau = 0.125\Delta s$
-（安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
+\textbf{完全陽解法での参考値：}拡散安定限界に対して
+保守的な安全余裕を確保した $\Delta\tau$ を採用する．
 旧実装の圧縮--拡散演算子分裂解法（散逸 CCD 圧縮項 + Crank--Nicolson 拡散項）の
 具体的な更新式と歴史的経緯は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
 \textbf{備考（圧縮項の離散化選択）：}

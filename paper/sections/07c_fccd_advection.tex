@@ -12,7 +12,7 @@
 \noindent\textbf{Part 1 連続定式化との関係：}
 本節の FCCD 移流演算子は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
 運動量移流項 $(\bm{u}\cdot\bnabla)\bm{u}$ を Balanced-Force 整合（§~\ref{sec:balanced_force}）で
-離散化するために用いる．ch13 production stack では bulk 速度に \texttt{UCCD6ConvectionTerm}
+離散化するために用いる．ch13 production stack では bulk 速度に UCCD6 対流
 （§~\ref{sec:uccd6_def}）を主実装とし，本節 FCCD 移流は CSF 表面張力項
 （§~\ref{sec:fccd_bf_sub_system}）と圧力勾配との 3 項整合のために必要となる．
 
@@ -102,8 +102,8 @@ $\mathcal{O}(H^2)$ 誤差を $\mathbf{q}$ で相殺する：
 \noindent\textbf{Option C の利点}：
 出力が節点値なので既存の AB2 履歴バッファ / PPE RHS /
 CSF $\sigma\kappa\nabla\psi$ / Rhie--Chow がすべて無変更．
-`ns\_pipeline.py` の \texttt{ccd.differentiate(u, ax)[0]} を
-\texttt{fccd.node\_gradient(u, ax, q=...)} に置換するだけで実装完了．
+既存の節点 CCD 1 次微分作用素を FCCD 節点勾配作用素
+（面値再構成 + 面 $\to$ 節点投影 R$_4$）に置換するだけで実装完了．
 
 \noindent\textbf{Option C の限界}：
 R$_4$ の面→節点変換で BF 整合性が\textbf{部分的に}回復するに留まる．

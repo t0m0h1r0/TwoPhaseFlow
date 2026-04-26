@@ -22,7 +22,7 @@ CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$
 \hline
 変数 & 特性 & 推奨スキーム \\
 \hline
-$\psi$（CLS）& $C^0$ 急 tanh & FCCD（面値保存型；\texttt{FCCDLevelSetAdvection}；ch13 production；\S\ref{sec:advection_motivation}） \\
+$\psi$（CLS）& $C^0$ 急 tanh & FCCD 面ジェット移流（面値保存型；ch13 production；\S\ref{sec:advection_motivation}） \\
 $u, v$ bulk & $C^\infty$ 滑 & CCD / UCCD6 / FCCD（\S\ref{sec:fccd_advection}） \\
 $u, v$ 界面帯 & $\nabla u$ kink & 2 次片側（\S\ref{sec:viscous_3layer}）；比較対象 WENO5 は付録~\ref{app:weno5} \\
 $\phi$（再初期化）& Eikonal & Godunov（Level 1）/ WENO--HJ~\cite{JiangPeng2000}（Level 2/3 オプション；\S\ref{sec:eikonal_reinit}） \\
