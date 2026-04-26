@@ -1,6 +1,34 @@
 % paper/sections/07b_reinitialization.tex
-% §6 続き：CLS 再初期化（Ridge-Eikonal 主軸；Split 法は legacy paragraph）・安定性制約
+% §5  CLS 専用アルゴリズム (CLS-specific): Ridge-Eikonal 再初期化 + A-F 6 段階
+%      §5.1 (本ファイル)  Ridge-Eikonal 主軸再初期化
+%      §5.2 (07d)         CLS A-F 6 段階アルゴリズム
 %
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{CLS 専用アルゴリズム}
+\label{ch:cls_specific}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{本章の位置付け：}
+§~\ref{sec:levelset}（§3）で CLS の連続定式化（保存形移流方程式・再初期化方程式・
+$\psi\leftrightarrow\phi$ 対応・Ridge--Eikonal ハイブリッド）を，
+§~\ref{sec:CCD}（§4）で CCD/FCCD/UCCD6 の差分演算子を定義した．
+本章では CLS framework に固有のアルゴリズム
+（再初期化と 1 物理時間ステップ内の演算子分裂順序）を扱い，
+個別の方程式項（$\psi$ 移流・運動量移流・粘性・物性値・圧力 jump）の
+空間離散化は §~\ref{ch:per_term_spatial}（§6）で，
+時間積分との結合は §~\ref{ch:time_integration}（§7）で論じる．
+
+\noindent\textbf{本章の構成：}
+\begin{itemize}
+  \item \S~\ref{sec:cls_compression}（§5.1）\textbf{Ridge--Eikonal 再初期化}：
+        ch13 production stack の主軸再初期化．Eikonal PDE による距離関数構築 +
+        Ridge ガウス射影で $\psi$ を再構成．
+  \item \S~\ref{sec:cls_stages}（§5.2）\textbf{CLS A--F 6 段階アルゴリズム}：
+        質量保存・幾何（法線・曲率）・質量補正の 3 責務を独立処理する
+        演算子分裂．Stage A の $\psi$ 移流の更新式は §~\ref{ch:time_integration}（§7）
+        を参照．
+\end{itemize}
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{CLS 再初期化：Ridge-Eikonal 主軸（ch13 production stack）}
 \label{sec:cls_compression}
@@ -404,87 +432,19 @@ $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
 \end{tcolorbox}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{仮想時間刻み \texorpdfstring{$\Delta\tau$}{Δτ} の安定性}
-\label{warn:cls_dtau_stability}
+% CHK-223 Phase 3.3/3.4: 時間積分関連 2 節を §7 NEW (time integration) へ移行．
+% backward-compat: 旧 \ref{warn:cls_dtau_stability} と \ref{sec:stability} は
+% phantomsection alias で外部参照保護．本ファイルでは §7 への redirect 1 行のみ残す．
 % ─────────────────────────────────────────────────────────────────────────────
-以下は，圧縮項と拡散項をともに陽的に扱う場合の参考安定条件である．
-ch13 production stack は §~\ref{sec:xi_sdf_reinit} の Ridge-Eikonal を主軸とし
-反復を伴わないため，本節の陽的 CFL 制約は直接の運用拘束ではなく，
-旧実装（§~\ref{sec:dissipative_ccd}）との比較参照のために記す．
-完全陽解法として再初期化方程式を TVD-RK3 で仮想時間積分する場合，
-$\Delta\tau$ には以下の安定性制約が存在する．
-再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
-それぞれの安定条件は以下の通りである．
-双曲型成分（CFL 条件）では，フラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値は
-$\psi \in [0,1]$（値域クランプにより保証）の両端で達成され $\max = 1$ であるから
-$\Delta\tau_{\text{hyp}} \le \Delta s$（$\Delta s = \min(h_x, h_y)$）．
-放物型成分（拡散安定条件）では，2次元で
-$\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
-実用的な安定条件はこれらの最小値：
-\[
-  \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{4\varepsilon}\right)
-\]
-典型的なパラメータ $\varepsilon \sim \Delta s$ オーダーでは
-$(\Delta s)^2/(4\varepsilon) \sim \Delta s$ オーダーとなり，
-拡散型成分の制約が支配的である．
-\textbf{完全陽解法での参考値：}拡散安定限界に対して
-保守的な安全余裕を確保した $\Delta\tau$ を採用する．
-旧実装の演算子分裂解法の具体的な更新式は §~\ref{sec:dissipative_ccd}（§4.4）を参照．
-\textbf{備考（圧縮項の離散化選択）：}
-CLS 再初期化圧縮項は非線形フラックス $\bnabla\cdot(\psi(1-\psi)\hat{n})$ を含む．
-UCCD6（§~\ref{sec:uccd6_def}）は線形スカラー移流 $\bu\cdot\bnabla\cdot$ を想定した
-特性方向組み替えを用いるため，非線形フラックスにそのまま適用すると
-風上性の保証が崩れる．本稿では NS 側のスカラー移流にのみ UCCD6 を適用し，
-界面再初期化は Ridge-Eikonal による反復不要の 1 ショット再構成で扱う．
-UCCD6 の非線形フラックス化（Jacobian $F'(\psi) = 1-2\psi$ の符号に応じた
-左右ステンシル動的切替）は本稿の範囲外であり，§~\ref{sec:future_work} で将来課題として整理する．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{安定性制約（時間刻みの決定）}
-\label{sec:stability}
-% ─────────────────────────────────────────────────────────────────────────────
-
-時間刻み $\Delta t$ は，以下の3種類の制約のうち最も厳しい条件を選ぶ（安全率 $\text{CFL}_{\max} < 1$）：
-
-\begin{tcolorbox}[resultbox, title={時間刻みの制約（CN 法採用時：2制約）}]
-\begin{align}
-  &\text{\textbf{対流 CFL}：}\quad
-  \Delta t_{\text{adv}} = \text{CFL}_{\max} \cdot \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
-  \label{eq:dt_adv} \\[6pt]
-  &\text{\textbf{界面張力 CFL（2D）}：}\quad
-  \Delta t_\sigma = \sqrt{\frac{(\rho_l + \rho_g)\min(\Delta x, \Delta y)^3}{2\pi\sigma}}
-  \label{eq:dt_sigma}
-\end{align}
-\textbf{最終的な時間刻み：}$\Delta t = \min(\Delta t_{\text{adv}},\, \Delta t_\sigma)$
+% backward-compat aliases for warn:cls_dtau_stability / sec:stability are placed
+% at the migration destination (§7) to avoid multiply-defined labels.
 
 \medskip
-\textbf{粘性 CFL（参考値）：}
-\[
-  \Delta t_{\text{visc}} = \frac{\min(\Delta x, \Delta y)^2}{4(\mu/\rho)_{\max}}
-  \quad \text{（陽的粘性処理のみ適用；CN 法採用時は不要）}
-\]
-CN 法を対角粘性項に採用しているため，線形拡散部に由来する陽的粘性 CFL は
-等粘性流体では時間刻み決定に使用しない．
-ただし，変粘性流体（気液二相流）ではクロス微分項 $\partial_y(\mu\partial_x v)$ が陽的処理されるため，
-大密度比（$\mu_l/\mu_g \gg 1$）の場合には界面近傍で粘性類似の制約が実質的に復活しうる
-（詳細は §~\ref{warn:cn_cross_derivative} の注意ボックス末尾の安定性解析を参照）．
-\end{tcolorbox}
-
-式~\eqref{eq:dt_sigma} の界面張力 CFL は，界面上の微小振幅波の分散関係
-$\omega^2 = \sigma k^3/(\rho_l+\rho_g)$ にナイキスト波数 $k_{\max}=\pi/\Delta x$
-を代入し，群速度 CFL 条件 $c_g\,\Delta t \le \Delta x$ を適用して得られる
-（導出の全手順と $\rho_l\gg\rho_g$ での物理的解釈は付録~\ref{app:capillary_cfl}；
-ベンチマーク検証は §~\ref{sec:val_capillary} 参照）．
-$\Delta t_\sigma \propto \Delta x^{3/2}$ の依存性は分散関係 $\omega\propto k^{3/2}$ に由来し，
-格子を半分にすると約 2.8 倍の制約強化をもたらす．
-表面張力が支配的な問題（$We \ll 1$）では本制約が支配的となるため，
-表面張力の半陰的処理による制約緩和や，
-静水圧分離による動的圧力定式化など制約緩和策が有効である
-（適用条件と数値検証は §~\ref{sec:val_capillary}）．
-
-以上で，CCD エンジン（§~\ref{sec:CCD}），界面適合格子（§~\ref{sec:grid_gen}），
-時間積分フレームワーク（§~\ref{sec:time_int}），
-および CLS 移流・再初期化の空間離散化（本章）が揃った．
-残る中核課題は，コロケート格子上での圧力・速度連成である．
-次章（§~\ref{sec:collocate}）では，Balanced-Force 条件に基づく
-離散レベルでの力の釣り合いの設計と，チェッカーボード不安定の抑制を論じる．
+\noindent\textbf{再初期化の時間刻み制約：}
+完全陽解法として再初期化方程式を仮想時間積分する場合の $\Delta\tau$ 安定性
+（双曲 CFL + 拡散 CFL）と，物理 $\Delta t$ の対流 CFL・界面張力 CFL・粘性 CFL
+（律速合成式）は時間積分章にまとめている．
+擬似時間 $\Delta\tau$ の参考安定条件は \S~\ref{warn:cls_dtau_stability_v7}（§7）に，
+物理 $\Delta t$ の律速合成式は \S~\ref{sec:dt_synthesis}（§7.9）に集約．
+ch13 production stack の Ridge--Eikonal 主軸（\S~\ref{sec:xi_sdf_reinit}）は
+反復不要であり，擬似時間 CFL は物理 $\Delta t$ には乗らない．

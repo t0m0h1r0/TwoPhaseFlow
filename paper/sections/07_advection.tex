@@ -1,54 +1,33 @@
 % paper/sections/07_advection.tex
 %
-% §6  CLS 界面追跡の空間離散化：FCCD/UCCD6/Ridge-Eikonal の ch13 production stack
-%     WENO5 は参照スキームとして付録~\ref{app:weno5} に収録する．
+% §6.1  CLS $\psi$ 用 FCCD と運動量用 UCCD6 (per-term spatial discretization)
+%       §6 chapter intro は 07_0_scheme_per_variable.tex に移行済み (CHK-223).
+%       本ファイルは §6.1 subsection から始まる．
 %
-\section{CLS 界面追跡の空間離散化：移流・再初期化への CCD 適用}
-\label{sec:discretization_modules}
-\label{sec:advection}% backward-compat: 既存 \ref{sec:advection} を保持
-
-本章では，§~\ref{sec:strategy} で設計した CCD エンジンを各物理項に適用し，
-それぞれどのような恩恵を得るかを詳述する．
-CLS 移流方程式（§~\ref{sec:levelset}，式~\eqref{eq:cls_advection}の再掲）は
-\begin{equation}
-  \frac{\partial\psi}{\partial t} + \bnabla\cdot(\psi\bm{u}) = 0
-  \label{eq:cls_advection_ref}
-\end{equation}
-である．
-
-\noindent\textbf{Part 1 からの継承：}
-本章は Part 1 で確立した連続定式化の離散実装を示す．
-\begin{itemize}
-  \item §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の運動量移流項
-        $(\bm{u}\cdot\bnabla)\bm{u}$ → §~\ref{sec:fccd_advection}（§6.3）で FCCD 離散化，
-        bulk 域は UCCD6（§~\ref{sec:uccd6_def}）が担う．
-  \item §~\ref{sec:cls_advection}（§3.2 CLS 保存形移流方程式，式~\eqref{eq:cls_advection}）
-        → §~\ref{sec:advection_motivation}（§6.2）で FCCD 面値演算子により離散化．
-  \item §~\ref{sec:reinit}（§3.3 再初期化方程式）+ §~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）
-        → §~\ref{sec:cls_compression}（§6.4）で Ridge-Eikonal 主軸の離散実装（ch13 production）．
-\end{itemize}
-ch13 production stack（本稿の検証構成）はこの配分を採用する．
-
-\noindent\textbf{本章の対象範囲：}
-本章では CLS 移流・再初期化と CLS 側安定性制約を詳述する．
-FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.3）で展開し，
-界面張力項（CSF モデルへの FCCD 適用）は §~\ref{sec:fccd_bf_sub_system}（§7.4）で，
-粘性項（変密度 3 層 Hermite 評価）は §~\ref{sec:viscous_3layer}（§6.6）で詳述する．
-
-\begin{enumerate}
-  \item \textbf{§~\ref{sec:advection_motivation}（移流項：CLS $\psi$ 用 FCCD；運動量用 UCCD6；比較対象 WENO5 は付録~\ref{app:weno5}）：}
-        CLS $\psi$ 移流は面値保存型の FCCD（§~\ref{sec:fccd_advection}）を用い，
-        運動量 $(u,v)$ 移流は演算子内部散逸の UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）が担う．
-  \item \textbf{§~\ref{sec:cls_compression}（CLS 再初期化：Ridge-Eikonal 主軸）：}
-        ch13 production の Ridge-Eikonal 法で再初期化を行う．
-        旧実装の歴史的経緯は §~\ref{sec:dissipative_ccd}（§4.4）を参照．
-        末尾の §~\ref{sec:stability} で時間刻み $\Delta t$ の CFL・拡散安定条件をまとめる．
-\end{enumerate}
+% backward-compat: §6 chapter intro 時代の section ラベルを保持
+\phantomsection\label{sec:discretization_modules}% legacy chapter alias
+\phantomsection\label{sec:advection}% legacy chapter alias
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{移流項：CLS $\psi$ 用 FCCD と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
+
+\noindent\textbf{Part 1 連続定式化との関係：}
+本節は §~\ref{sec:cls_advection}（§3.2 CLS 保存形移流方程式，
+式~\eqref{eq:cls_advection}）と §~\ref{sec:onefluid}（§2 One-Fluid NS，
+式~\eqref{eq:NS_onefluid}）の運動量移流項 $(\bm{u}\cdot\bnabla)\bm{u}$ の
+空間離散化を統一して扱う．
+CLS 移流方程式の再掲：
+\begin{equation}
+  \frac{\partial\psi}{\partial t} + \bnabla\cdot(\psi\bm{u}) = 0
+  \label{eq:cls_advection_ref}
+\end{equation}
+ch13 production stack では，CLS $\psi$ には面値保存型の FCCD
+（§~\ref{sec:fccd_def}）を，運動量 $(u,v)$ には演算子内部散逸の
+UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）を用いる．
+FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.2）で展開し，
+界面張力項は §~\ref{sec:fccd_bf_sub_system}（§8）で扱う．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{移流スキーム選択の設計根拠：WENO5 不適合と CLS に FCCD を採る理由}
