@@ -188,15 +188,15 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
 §~\ref{sec:error_budget} で特定した残存限界との対応：
 \begin{itemize}[noitemsep]
   \item \textbf{$\sigma > 0$ 移動界面結合}——両 YAML とも pressure-jump 分相 PPE を用い，
-        CSF 体積力ではなく圧力ジャンプとして表面張力を扱う（\textit{補完}）．
+        CSF 体積力ではなく圧力ジャンプとして表面張力を扱う（\textbf{補完}）．
   \item \textbf{再初期化--移流蓄積}——Ridge--Eikonal + local thickness により，
-        非一様 $\alpha=2$ でも体積誤差 $O(10^{-5})$ の長時間/短時間 smoke を維持する（\textit{補完}）．
+        非一様 $\alpha=2$ でも体積誤差 $O(10^{-5})$ の長時間/短時間 smoke を維持する（\textbf{補完}）．
   \item \textbf{毛管波 CFL 安定境界}——$\mathrm{CFL}=0.10$ は安定実行の経験値であり，
         理論上は式~\eqref{eq:flat_capillary_dispersion} と
-        §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要がある（\textit{継続}）．
+        §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要がある（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
-        face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textit{補完}）．
+        face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
   \item \textbf{物理 benchmark の未完了点}——毛管波の周期誤差と気泡の終端速度は，
         現行 YAML の保存性/closure 確認とは別に，無次元数と出力診断を固定した
-        resolution/CFL sweep で確定する（\textit{継続}）．
+        resolution/CFL sweep で確定する（\textbf{継続}）．
 \end{itemize}
