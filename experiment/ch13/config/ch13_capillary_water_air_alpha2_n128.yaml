@@ -47,7 +47,8 @@ physics:
 run:
   time:
     final: 0.50
-    cfl: 0.10
+    # theory: per-operator automatic CFL budget; grid count updates dt candidates.
+    cfl: theory
     print_every: 20
   debug:
     step_diagnostics: true

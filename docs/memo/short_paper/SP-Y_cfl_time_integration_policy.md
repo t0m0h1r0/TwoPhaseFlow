@@ -280,6 +280,56 @@ Deferred implementation work:
 4. add diagnostics reporting `dt_adv`, `dt_nu`, `dt_cap`, and `dt_operator` when
    available.
 
+### 6.1 2026-04-27 implementation addendum: grid-independent YAML policy
+
+The scalar YAML setting is now split into an explicit policy layer.  The legacy
+form
+
+```yaml
+run:
+  time:
+    cfl: 0.10
+```
+
+is still accepted and is interpreted as a manual scalar used for both the
+advective and capillary coefficients.  The theory-first form is
+
+```yaml
+run:
+  time:
+    cfl: theory
+```
+
+which expands to fixed dimensionless constants:
+
+```text
+C_adv = 0.10,   C_cap = 0.05,   C_visc = 1.0.
+```
+
+The timestep is then computed from operator-specific candidates:
+
+```text
+dt_adv = C_adv / Σ_i(max |u_i| / h_i),
+dt_nu  = C_visc / (2 ν_max Σ_i h_i^{-2})     for explicit viscosity,
+dt_cap = C_cap sqrt((ρ_l + ρ_g) h_min^3 / (2πσ)).
+```
+
+For `implicit_bdf2` viscosity, the explicit viscous CFL candidate is removed.
+This is not an instruction to enlarge the capillary step; it is the opposite:
+the dimensionless constants are fixed by theory/verification, and changing
+`NX`, `NY`, or non-uniform stretching only changes `h_i`, `h_min`, and the
+measured velocity maxima.  A refined-grid failure under the same policy is
+therefore not solved by retuning YAML CFL.  It is evidence for one of:
+
+1. a non-uniform compact-operator spectral bound not captured by scalar `h_min`;
+2. a capillary/curvature energy-law defect;
+3. projection tolerance or splitting error becoming active after refinement;
+4. a limiter switch from capillary to advection or viscosity.
+
+The runner records `dt_advective`, `dt_viscous`, `dt_capillary`,
+`dt_limiter_code`, `h_min`, and `advective_rate` when step diagnostics are
+enabled.  These quantities are the required audit trail for grid sweeps.
+
 ---
 
 ## 7. References

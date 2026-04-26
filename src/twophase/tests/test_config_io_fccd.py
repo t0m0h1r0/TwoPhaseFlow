@@ -115,6 +115,43 @@ def test_readable_defaults_round_trip():
     assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "ccd"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
+    assert cfg.run.cfl_policy == "manual"
+    assert cfg.run.cfl_advective == pytest.approx(0.1)
+    assert cfg.run.cfl_capillary == pytest.approx(0.1)
+    assert cfg.run.cfl_viscous == pytest.approx(1.0)
+
+
+def test_theory_cfl_policy_expands_to_operator_constants():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "run": {"time": {"final": 0.1, "cfl": "theory"}},
+    }))
+
+    assert cfg.run.cfl_policy == "theory"
+    assert cfg.run.cfl == pytest.approx(0.05)
+    assert cfg.run.cfl_advective == pytest.approx(0.10)
+    assert cfg.run.cfl_capillary == pytest.approx(0.05)
+    assert cfg.run.cfl_viscous == pytest.approx(1.0)
+
+
+def test_structured_cfl_policy_allows_term_overrides():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "run": {
+            "time": {
+                "final": 0.1,
+                "cfl": {
+                    "policy": "theory",
+                    "advective": 0.2,
+                    "capillary": 0.04,
+                    "viscous": 0.8,
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.cfl_policy == "theory"
+    assert cfg.run.cfl_advective == pytest.approx(0.2)
+    assert cfg.run.cfl_capillary == pytest.approx(0.04)
+    assert cfg.run.cfl_viscous == pytest.approx(0.8)
 
 
 def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
@@ -133,6 +170,9 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.cfl_policy == "theory"
+    assert cfg.run.cfl_advective == pytest.approx(0.10)
+    assert cfg.run.cfl_capillary == pytest.approx(0.05)
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"

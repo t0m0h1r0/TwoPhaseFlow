@@ -15,6 +15,12 @@ from .config_run_tracking_sections import (
     tracking_redistance,
 )
 
+DEFAULT_CFL_NUMBER = 0.15
+THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
+THEORY_CFL_ADVECTIVE = 0.10
+THEORY_CFL_CAPILLARY = 0.05
+THEORY_CFL_VISCOUS = 1.0
+
 
 @dataclass(frozen=True)
 class RunCfgBuilderOptions:
@@ -34,6 +40,44 @@ class RunCfgBuilderOptions:
     debug: dict[str, Any]
 
 
+def resolve_cfl_policy(raw: Any) -> tuple[float, str, float, float, float]:
+    """Resolve a legacy scalar or theory policy into per-operator CFL constants."""
+    if raw is None:
+        return (
+            DEFAULT_CFL_NUMBER,
+            "manual",
+            DEFAULT_CFL_NUMBER,
+            DEFAULT_CFL_NUMBER,
+            THEORY_CFL_VISCOUS,
+        )
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in THEORY_CFL_ALIASES:
+            return (
+                THEORY_CFL_CAPILLARY,
+                "theory",
+                THEORY_CFL_ADVECTIVE,
+                THEORY_CFL_CAPILLARY,
+                THEORY_CFL_VISCOUS,
+            )
+        scalar = float(value)
+        return scalar, "manual", scalar, scalar, THEORY_CFL_VISCOUS
+    if isinstance(raw, dict):
+        policy = str(raw.get("policy", "manual")).strip().lower()
+        if policy in THEORY_CFL_ALIASES:
+            adv = float(raw.get("advective", THEORY_CFL_ADVECTIVE))
+            cap = float(raw.get("capillary", THEORY_CFL_CAPILLARY))
+            visc = float(raw.get("viscous", THEORY_CFL_VISCOUS))
+            return min(adv, cap), "theory", adv, cap, visc
+        scalar = float(raw.get("value", DEFAULT_CFL_NUMBER))
+        adv = float(raw.get("advective", scalar))
+        cap = float(raw.get("capillary", scalar))
+        visc = float(raw.get("viscous", THEORY_CFL_VISCOUS))
+        return scalar, "manual", adv, cap, visc
+    scalar = float(raw)
+    return scalar, "manual", scalar, scalar, THEORY_CFL_VISCOUS
+
+
 def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     """Build `RunCfg` from normalized run-section fragments."""
     snap_raw = options.snapshots.get("times", [])
@@ -44,12 +88,17 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     dt_fixed_raw = options.time_cfg.get("dt")
     if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
+    cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
 
     tracking_redist = tracking_redistance(options.tracking)
     return RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
-        cfl=float(cfl_raw if cfl_raw is not None else 0.15),
+        cfl=cfl_number,
+        cfl_policy=cfl_policy,
+        cfl_advective=cfl_adv,
+        cfl_capillary=cfl_cap,
+        cfl_viscous=cfl_visc,
         snap_times=[float(x) for x in snap_raw],
         snap_interval=opt_float(options.snapshots.get("interval")),
         reinit_eps_scale=float(options.reinit_profile.get("eps_scale", 1.0)),
