@@ -198,17 +198,21 @@ $\sigma > 0$ の毛管波・液滴振動ベンチマークには
 
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{統一再初期化：Eikonal 法}
-\label{sec:eikonal_reinit}
+\subsubsection{Ridge-Eikonal 再初期化：Eikonal 基盤と Ridge 補正の統合定式化}
+\label{sec:xi_sdf_reinit}
+\phantomsection\label{sec:eikonal_reinit}% 旧 §6.3.4 ラベル統合; 外部参照保護
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{Part 1 連続定式化との関係：}
-本節は §~\ref{sec:reinit}（§3.3 再初期化方程式）の Eikonal 単独運用形の離散実装である．
-ch13 production の主軸である Ridge-Eikonal 法（§~\ref{sec:xi_sdf_reinit}；
-連続定式化は §~\ref{sec:ridge_eikonal}）は本節の Eikonal 距離構築を前段とする．
+本節は §~\ref{sec:reinit}（§3.3 再初期化方程式）と
+§~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）の離散実装である．
+ch13 production stack の主軸再初期化はここで定式化する Ridge-Eikonal 法
+（前段の Eikonal 距離構築 + Ridge ガウス射影による $\psi$ 再構成）であり，
+旧実装（圧縮--拡散演算子分裂）は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
 
-分裂法（形状回復）と DGR（界面幅補正）を一度に達成する統一アルゴリズムとして，
-\textbf{Eikonal 再初期化}を導入する．
+\paragraph*{Eikonal 基盤と継承される理論保証}
+Ridge-Eikonal は Eikonal PDE による符号距離関数構築を前段に持つ．
+本項では Ridge-Eikonal が継承する Eikonal 法の基盤と理論保証を整理する．
 Eikonal 方程式 \cite{Sussman1994}
 \begin{equation}
   \frac{\partial\phi}{\partial\tau} + \operatorname{sgn}(\phi_0)\bigl(|\nabla\phi| - 1\bigr) = 0
@@ -253,53 +257,26 @@ Eikonal 方程式 \cite{Sussman1994}
         クリッピング前段で評価する場合に限る）．
 \end{enumerate}
 
-\noindent\textbf{DGR・分裂法との比較：}
-\begin{table}[H]
-  \centering
-  \small
-  \begin{tabular}{lccc}
-    \hline
-    方法 & 形状（零点集合） & 界面幅 $\varepsilon$ & $\sigma>0$ 毛管波 \\
-    \hline
-    分裂法のみ  & $\checkmark$ & $\sim 1.4\varepsilon$（膨張） & $\checkmark$ 正確 \\
-    DGR のみ    & $\times$（フォールド不可） & $\checkmark$ & $\times$ Blowup \\
-    ハイブリッド & $\checkmark$ & $\checkmark$ & $\times$ $D(t)$ 誤差 \\
-    \textbf{Eikonal}（本法）& $\checkmark$（連続形） & $\checkmark$ & $\times$ $D(t)$ 誤差 \\
-    \hline
-  \end{tabular}
-  \caption{再初期化手法の比較．}
-\end{table}
-
-\noindent\textbf{検証結果（$T=2$，Prosperetti ベンチマーク）：}
-Eikonal 法は体積保存（$\Delta V/V < 0.15\%$）を維持しブローアップも回避するが，
-$D(T{=}2) = 0.245$（参照値 $\approx 0.021$）でハイブリッド法と同一の誤差を示す．
-原因：Godunov 差分の離散誤差により零点集合が各呼び出しでわずかに移動し，
-$\sim 3700$ 回×20 反復の累積で mode-2 変形が成長する．
-これは DGR のグローバル中央値非一様性とは異なるが，同等の系統的誤差を生む．
-$\phi$ の局所操作を繰り返す全手法に共通の制約であり，
-\textbf{$\sigma>0$ 毛管波ベンチマークには分裂法単独}を推奨する．
-
-\noindent\textbf{Eikonal 法の適用範囲：}
-Eikonal は $\sigma{=}0$ の受動移流・静的形状問題（Zalesak スロット等）では
-体積保存・界面幅・形状復元の全条件を満たす有力手法である．
-将来の改善案として，零点集合近傍（$|\phi_0| < h/2$）の更新をスキップすることで
-離散ゼロセットドリフトを原理的に排除できる（ZSP として実装・検証済み；§~\ref{sec:xi_sdf_reinit} 参照）．
+\paragraph*{Eikonal 単独運用の限界：Godunov 由来の零セットドリフト}
+Eikonal 法は $\sigma{=}0$ の受動移流・静的形状問題（Zalesak スロット等）では
+体積保存・界面幅・形状復元のすべての条件を満たす有力手法であるが，
+$\sigma>0$ で界面振動を伴う系では Godunov 差分の離散誤差により
+零点集合が各呼び出しでわずかに移動し，反復累積で形状誤差を生む．
+これは DGR のグローバル中央値非一様性とは異なるが，同等の系統的誤差として現れる
+（定量比較は §~\ref{sec:val_capillary} を参照）．
+本制約は $\phi$ の局所操作を反復する全手法に共通であり，
+\textbf{反復を一切伴わない解析的距離構築}を要請する——これが
+Ridge-Eikonal（次項 ξ 空間符号距離関数法）の動機である．
 
 
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{\texorpdfstring{$\xi$}{ξ}空間符号距離関数法（Ridge-Eikonal；ch13 主実装）}
-\label{sec:xi_sdf_reinit}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\noindent\textbf{Part 1 連続定式化との関係：}
-本節は §~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）の離散実装であり，
-ch13 production stack の \texttt{RidgeEikonalReinitializer}
-（\texttt{experiment/ch13/config/*.yaml} の \texttt{algorithm: ridge\_eikonal}）に対応する．
-
-前節 Eikonal 法の失敗原因（Godunov 差分の離散ゼロセットドリフト累積）を根本的に排除するため，
-反復を一切伴わない \textbf{ξ空間符号距離関数（ξ-SDF）法}を提案する．
-本手法は再初期化呼び出しごとに，現在の $\psi$ 場から零点交差を直接検出し，
-格子インデックス空間（$\xi$ 空間）における符号距離を解析的に構築する．
+\paragraph*{Ridge-Eikonal による解：ξ 空間符号距離関数法}
+反復累積誤差を原理的に排除するため，
+ch13 production stack では再初期化呼び出しごとに
+現在の $\psi$ 場から零点交差を直接検出し，
+格子インデックス空間（$\xi$ 空間）における符号距離を
+解析的に構築する \textbf{ξ 空間符号距離関数（ξ-SDF）法}を採用する．
+本手法は §~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）の Ridge ガウス
+射影を離散化したものであり，反復を行わないため累積ドリフトが構造的に存在しない．
 
 \begin{tcolorbox}[algbox, title={ξ-SDF 再初期化アルゴリズム (Strategy B)}]
 \begin{enumerate}
