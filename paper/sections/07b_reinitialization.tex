@@ -9,87 +9,36 @@
 \noindent\textbf{Part 1 からの継承：}
 本節は §~\ref{sec:reinit}（§3.2 末，再初期化方程式 \eqref{eq:cls_reinit_iso}）の
 連続定式化と §~\ref{sec:ridge_eikonal}（§3.4 Ridge-Eikonal 連続定式化）に基づく
-離散実装を示す．ch13 production stack（\texttt{experiment/ch13/config/*.yaml} で
-\texttt{interface.reinitialization.algorithm: ridge\_eikonal}）は
-\texttt{RidgeEikonalReinitializer} を採用する．
+離散実装を示す．ch13 production stack の主軸再初期化は Ridge-Eikonal 法であり，
+Eikonal PDE による距離関数構築 + Ridge ガウス射影で $\psi$ を再構成する．
 本節の構成は以下である：
 \begin{itemize}
-  \item \textbf{主軸 Ridge-Eikonal 法}：§~\ref{sec:xi_sdf_reinit}（後述 \texttt{ξ}空間符号距離関数法 = Ridge ZSP）
-        が ch13 production の主実装．Eikonal PDE による距離関数構築 + Ridge ガウス射影で
-        $\psi$ を再構成する．連続定式化の理論的根拠は §~\ref{sec:ridge_eikonal} 参照．
+  \item \textbf{主軸 Ridge-Eikonal 法}：§~\ref{sec:xi_sdf_reinit}（後述 $\xi$ 空間符号距離関数法）
+        が ch13 production の主実装．連続定式化の理論的根拠は §~\ref{sec:ridge_eikonal} 参照．
   \item \textbf{過渡 Eikonal 法}：§~\ref{sec:eikonal_reinit}（後述「統一再初期化：Eikonal 法」）は
-        Ridge ZSP の前段である Eikonal 距離構築の単独運用形．
-  \item \textbf{旧実装 SplitReinitializer（DCCD 圧縮 + CN 拡散）}：下記
-        \paragraph{旧実装} に legacy paragraph として降格．ch13 production では使用しない．
+        Ridge-Eikonal の前段である Eikonal 距離構築の単独運用形．
 \end{itemize}
+旧実装（圧縮--拡散演算子分裂による再初期化）の歴史的経緯および詳細な
+散逸演算子設計は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
+本節以降は ch13 production である Ridge-Eikonal を主軸とする．
 
-\paragraph{旧実装（SplitReinitializer）：圧縮項の DCCD 離散化}
-\phantomsection\label{sec:cls_compression_legacy}% ch13 production 非採用; 比較参照のため保持
-
-CLS 法の再初期化方程式（式~\eqref{eq:cls_reinit_iso}）
-\begin{equation}
-  \frac{\partial\psi}{\partial\tau}
-  + \underbrace{\bnabla\cdot\!\bigl(\psi(1-\psi)\hat{\bm{n}}\bigr)}_{\text{圧縮項（陽解法）}}
-  = \underbrace{\bnabla\cdot(\varepsilon\bnabla\psi)}_{\text{拡散項（陰解法）}}
-  \label{eq:cls_reinit_split}
-\end{equation}
-を演算子分裂し，圧縮項に DCCD（Dissipative CCD），拡散項に Crank--Nicolson 半陰解法を適用する
-旧実装（\texttt{SplitReinitializer}）は ch13 production 確立前に使用されていた手法である．
-本実装では Ridge-Eikonal 法への移行に伴い legacy 位置づけとなったが，
-比較参照および §~\ref{sec:dccd_mass_conservation} の質量保存性議論で必要となるため，
-以下に簡略形で記す．
-
-\medskip
-\noindent\textbf{陽解法・陰解法の使い分け：}
-圧縮フラックス $f(\psi) = \psi(1-\psi)\hat{\bm n}$（特性速度 $\max|f'|=1$）は
-§~\ref{sec:advection_motivation} の DCCD 移流と同構成で陽的処理（CFL $\Delta\tau \leq 0.5h$），
-拡散項 $\varepsilon\bnabla^2\psi$（陽的 CFL $\Delta\tau \leq h^2/(2\varepsilon)$）は
-Crank--Nicolson による半陰的処理で陽的 CFL を除く．
-
-\medskip
-\noindent\textbf{圧縮項の DCCD 離散化}（$x$ 成分；$y$ 成分も同様）：
-$g_i = \psi_i(1-\psi_i)\hat{n}_{x,i}$，
-\begin{align}
-  g'_i &= \left[\partial_x g\right]_i \quad\text{（CCD 求解）} \label{eq:comp_ccd} \\
-  \tilde{G}_i &= g'_i + \varepsilon_d^{\mathrm{comp}}\!\left(g'_{i+1} - 2g'_i + g'_{i-1}\right)
-  \quad(\varepsilon_d^{\mathrm{comp}} = 0.05) \label{eq:comp_filter}
-\end{align}
-法線 $\hat{\bm n} = \bnabla\psi/|\bnabla\psi|$ は CCD + DCCD 1 次微分場（§~\ref{sec:dissipative_ccd}）
-から評価する（$|\bnabla\psi| + \delta$，$\delta = 10^{-8}$）．
-
-\medskip
-\noindent\textbf{拡散項の CCD-CN 法}（$\theta=1/2$ 半陰解法）：
-$M_2$（CCD 2 階左辺係数；主対角 $1$，両側 $\beta_2=-1/8$），
-$B_2$（CCD 2 階右辺係数；主対角 $a_2=3$，両側 $b_2/2=-9/16$）として
-\begin{equation}
-  \left(M_2 - \frac{\varepsilon\Delta\tau}{2h^2}B_2\right)\psi^{\tau+1}
-  = \left(M_2 + \frac{\varepsilon\Delta\tau}{2h^2}B_2\right)\psi^{**}
-  \label{eq:comp_cn_system}
-\end{equation}
-係数行列は三重対角で Thomas アルゴリズムで $\Ord{N}$ に求解可能．
-$\psi^{**}$ は圧縮項陽的処理後の中間値．
-
-\label{alg:cls_reinit_dccd}%
-旧実装 SplitReinitializer の完全アルゴリズム（圧縮 DCCD + CN 拡散 + DGR 厚み補正）は
-§~\ref{sec:algo_flow}（Step 2）にまとめる．
-\textbf{ch13 production の方針：} 旧実装の SplitReinitializer に代わり，
-ch13 production では §~\ref{sec:xi_sdf_reinit} の Ridge ZSP（Ridge-Eikonal）を採用する．
-Ridge-Eikonal は離散ゼロセットドリフトを原理的に排除し，
-DCCD 圧縮項の演算子分裂に伴う形状歪み（§~\ref{sec:dgr_thickness}）を回避できる．
+% 旧 SplitReinitializer paragraph (~80 LOC) は CHK-222 で削除．
+% 比較参照ラベルは外部参照保護のため phantomsection alias で保持．
+\phantomsection\label{sec:cls_compression_legacy}% ch13 production 非採用; ref 保護
+\phantomsection\label{alg:cls_reinit_dccd}% §10_full L312 ref 保護
 
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{Dissipative CCD 移流の離散的質量保存性}
-\label{sec:dccd_mass_conservation}
+\subsubsection{再初期化演算子の質量保存性}
+\label{sec:dccd_mass_conservation}% backward-compat: 11a/11c/11d/07_advection ref 保護
 % ─────────────────────────────────────────────────────────────────────────────
 
 CLS 移流方程式（式~\eqref{eq:cls_advection}）の保存形
 $\partial\psi/\partial t + \bnabla\cdot(\psi\bm{u}) = 0$ は，
 領域積分により $\mathrm{d}/\mathrm{d}t \int\psi\,\mathrm{d}V = 0$
-（周期／壁面 BC）を保証する．
-離散化においても，空間演算子が
-$\sum_i [\bnabla\cdot(\psi\bm{u})]_i = 0$
-を満たせば質量は厳密に保存される．
+（周期／壁面 BC）を保証する．離散化においても，
+空間演算子が $\sum_i [\bnabla\cdot(\psi\bm{u})]_i = 0$ を満たせば
+質量は厳密に保存される．
 
 \textbf{CCD 周期系の零和性．}
 周期境界条件下のブロック巡回行列 CCD 系では，
@@ -100,53 +49,27 @@ Eq-II（2階微分）が対称ステンシル $\propto (f_{i-1} - 2f_i + f_{i+1}
 $\sum_i d_{1,i} = 0$，$\sum_i d_{2,i} = 0$ が厳密に成立する%
 \footnote{RHS の各成分は反対称/対称ステンシルから構成され，
 周期和は零．非特異な係数行列を通しても零和性は保存される．}．
+帯状散逸付き 1 次微分演算子も 2 階差分のテレスコーピング和が
+零となるため，全点和に対して同様の零和性が保たれる．
 
-Dissipative CCD フィルタ
-$\tilde{f}'_i = d_{1,i} + \varepsilon_d(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})$
-の全点和は，2階差分のテレスコーピングにより：
-\begin{equation}
-  \sum_i \tilde{f}'_i = \sum_i d_{1,i}
-  + \varepsilon_d\underbrace{\sum_i(d_{1,i+1} - 2d_{1,i} + d_{1,i-1})}_{= 0}
-  = 0
-  \label{eq:dccd_zero_sum}
-\end{equation}
-\textbf{DCCD 空間演算子自体は周期 BC で離散的に質量を厳密に保存する}．
-実験（§~\ref{sec:verify_dccd_conservation}）において
-$|\sum_i \tilde{f}'_i| < 5 \times 10^{-13}$（$N{=}256$ での最大値；
-$\Ord{N\varepsilon_{\text{mach}}} \approx 5\times10^{-14}$ の単純和の推定に対し
-CCD 固有の帯状ブロック行列の条件数寄与で $10\times$ 程度上振れる
-浮動小数点丸め蓄積に整合）を確認した．
-ただし，時間積分後の値域制限（式~\eqref{eq:psi_clamp}）や再初期化の演算子分裂は
-別の非保存誤差を生むため，実アルゴリズムでは後述の界面重み付き補正で総量を戻す．
-
-\textbf{演算子分裂による質量損失メカニズム．}
-再初期化方程式~\eqref{eq:cls_reinit_split} は連続形で保存的（両辺が発散形）であるが，
-離散化において圧縮項（DCCD + 陽解法）と拡散項（CN-ADI + CCD Eq-II）が
-\textbf{異なる離散演算子}を使用する．
-平衡プロファイル $\psi(1-\psi)\hat{\bm{n}} = \varepsilon\bnabla\psi$ では
-連続形で両項が厳密に釣り合うが，
-圧縮側の DCCD フィルタと拡散側の CN 行列は異なるスペクトル応答を持つため，
-離散的には残差が生じる．
-この残差が繰り返し蓄積し，再初期化 1 回あたり $\Ord{10^{-3}}$--$\Ord{10^{-5}}$ の質量誤差を生む．
-事後的な界面重み付き補正（Olsson--Kreiss 基底 $w = 4\psi(1-\psi)$，
-§~\ref{sec:verify_cls_advection}）でこの損失を機械精度 $\Ord{10^{-15}}$ まで修復する．
+\textbf{Ridge-Eikonal 主軸での運用．}
+Ridge-Eikonal 法は反復を伴わない 1 ショット再構成
+（§~\ref{sec:xi_sdf_reinit}）であり，演算子分裂による分布的質量損失は
+構造的に発生しない．離散総量の補正は事後的な体積重み付き
+$\phi$ 空間質量補正（§~\ref{sec:dgr_thickness} の補正手順）で行う．
+旧実装の演算子分裂解法における質量損失メカニズムと
+散逸演算子レベルの保存性議論の詳細は，§~\ref{sec:dissipative_ccd}
+（§4.4 散逸 CCD の歴史的経緯）に集約する．
 
 \textbf{非一様格子への拡張．}
 非一様格子ではセル体積 $\Delta V_{i,j} = h_x(i) \cdot h_y(j)$ が
 格子点ごとに異なるため，質量積分を
 $M = \sum_{i,j} \psi_{i,j}\,\Delta V_{i,j}$ に置き換え，
 界面重み $W = \sum w_{i,j}\,\Delta V_{i,j}$ も体積重み付きとする．
-Dissipative CCD フィルタは計算空間（$\xi$-空間）で
-3 点ステンシルを適用した後にメトリクス $J = \partial\xi/\partial x$
-を乗じて物理空間に変換する（§~\ref{sec:ccd_metric}）．
 一様格子では $\Delta V$ が定数に退化するため，従来の無重み和に一致する．
-一方，非一様格子では $J$ と $\Delta V$ が位置依存するため，
-計算空間での零和性は物理空間の体積重み付き和に自動的には移らない．
-したがって，DCCD 空間演算子単体に厳密保存を主張するのではなく，
-clamp・再初期化・格子転写後に体積重み付き質量補正を適用して
-総量を所定の許容誤差へ戻す運用とする．
-静的非一様格子で機械精度近い総量一致を得るには，
-面フラックス差分として保存形に組むか，この事後補正を併用する必要がある．
+非一様格子では計算空間零和性が物理空間の体積重み付き和へ
+自動的に移らないため，clamp・再初期化・格子転写後に
+体積重み付き質量補正を適用して総量を所定の許容誤差へ戻す運用とする．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -157,11 +80,10 @@ clamp・再初期化・格子転写後に体積重み付き質量補正を適用
 固定頻度の再初期化（例：10 ステップ毎）は過剰な再初期化を引き起こし，
 形状精度を大幅に劣化させることが数値実験で判明した
 （§~\ref{sec:verify_dccd_conservation}）．
-Dissipative CCD のスペクトル減衰は界面プロファイルの波長
-$\lambda_{\min} \approx 2\pi\varepsilon \approx 9.4h$ に対して僅か 2\% であり，
-高周波減衰は形状誤差に寄与しない．
+再初期化スキームに帯状散逸を併用する場合の高周波減衰は
+界面プロファイルの主要波長に対して僅かであり，形状誤差への寄与は小さい．
 支配的な形状誤差源は，各再初期化呼び出しにおける
-圧縮--拡散ステップの累積的プロファイル歪みである．
+界面再構成ステップの累積的プロファイル歪みである．
 
 そこで，再初期化の呼び出しを体積モニタ $M(\tau) = \int \psi(1-\psi)\,\mathrm{d}V$
 に基づく適応的トリガーに置き換える：
@@ -185,7 +107,7 @@ $L_2$ 形状誤差が 49\% 改善された（§~\ref{sec:verify_dccd_conservatio
 % ─────────────────────────────────────────────────────────────────────────────
 
 \textbf{分裂誤差による界面膨張．}
-演算子分裂スキーム~\eqref{eq:cls_reinit_split} は，
+旧実装の演算子分裂解法（§~\ref{sec:dissipative_ccd}）は，
 圧縮（陽解法 FE）と拡散（CN-ADI）を\textbf{逐次適用}する．
 平衡では両項が釣り合うが，逐次実行では：
 (1) 圧縮が先に界面を鋭化 $\varepsilon' < \varepsilon$，
@@ -603,9 +525,9 @@ $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
 \label{warn:cls_dtau_stability}
 % ─────────────────────────────────────────────────────────────────────────────
 以下は，圧縮項と拡散項をともに陽的に扱う場合の参考安定条件である．
-本稿の標準実装では，圧縮項を Dissipative CCD で陽的に処理し，
-拡散項を Crank--Nicolson で半陰的に処理する（§~\ref{sec:advection}）．
-したがって実際の運用では，拡散項の陽的 CFL は CN 処理により緩和される．
+ch13 production stack は §~\ref{sec:xi_sdf_reinit} の Ridge-Eikonal を主軸とし
+反復を伴わないため，本節の陽的 CFL 制約は直接の運用拘束ではなく，
+旧実装（§~\ref{sec:dissipative_ccd}）との比較参照のために記す．
 完全陽解法として再初期化方程式を TVD-RK3 で仮想時間積分する場合，
 $\Delta\tau$ には以下の安定性制約が存在する．
 再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
@@ -623,15 +545,14 @@ $\Delta\tau_{\text{par}} \le (\Delta s)^2/(4\varepsilon)$．
 拡散型成分の制約が支配的である．
 \textbf{完全陽解法での参考値：} $\Delta\tau = 0.125\Delta s$
 （安定限界 $\Delta s/6$ より25\%小さく，実用上安全な余裕を確保）．
-標準の圧縮 DCCD + CN 拡散スキームにおける具体的な更新式と制約は
-§~\ref{sec:cls_compression} および §~\ref{sec:algo_flow}（Step 2）で改めて定義する．
+旧実装の圧縮--拡散演算子分裂解法（散逸 CCD 圧縮項 + Crank--Nicolson 拡散項）の
+具体的な更新式と歴史的経緯は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
 \textbf{備考（圧縮項の離散化選択）：}
 CLS 再初期化圧縮項は非線形フラックス $\bnabla\cdot(\psi(1-\psi)\hat{n})$ を含む．
 UCCD6（§~\ref{sec:uccd6_def}）は線形スカラー移流 $\bu\cdot\bnabla\cdot$ を想定した
 特性方向組み替えを用いるため，非線形フラックスにそのまま適用すると
-風上性の保証が崩れる．
-本稿では圧縮項に DCCD（Dissipative CCD）を保持し，UCCD6 は
-NS 側のスカラー移流にのみ適用する．
+風上性の保証が崩れる．本稿では NS 側のスカラー移流にのみ UCCD6 を適用し，
+界面再初期化は Ridge-Eikonal による反復不要の 1 ショット再構成で扱う．
 UCCD6 の非線形フラックス化（Jacobian $F'(\psi) = 1-2\psi$ の符号に応じた
 左右ステンシル動的切替）は本稿の範囲外であり，§~\ref{sec:future_work} で将来課題として整理する．
 
