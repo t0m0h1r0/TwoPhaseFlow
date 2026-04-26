@@ -277,9 +277,7 @@ Shu--Osher 型 TVD-RK3 法（= SSPRK3）\cite{ShuOsher1988} を用いる：
 ここで $\mathcal{L}(q)$ は空間演算子であり，
 ch13 production stack の CLS 移流では \textbf{FCCD フラックス発散}
 $\mathcal{L}(\psi)=-\bnabla\cdot(\psi\bu)$
-（§~\ref{sec:advection_motivation} の \texttt{FCCDLevelSetAdvection}；
-空間演算子 $\mathcal{L}$ の具体的な構成は §~\ref{sec:advection} で詳述）を用いる．
-旧 DCCD 経路（§~\ref{sec:dissipative_ccd}）は法的に保持される．
+（空間演算子 $\mathcal{L}$ の具体的な構成は §~\ref{sec:advection} で詳述）を用いる．
 運動量移流 $(u,v)$ の既定空間スキームは UCCD6（§~\ref{sec:uccd6_def}）である．
 
 \noindent\textbf{CLS 専用 $\psi^{n+1}$ 更新：}
@@ -409,30 +407,13 @@ ch13 既定では Krylov 部分空間法 (GMRES) で解く．
 
 \paragraph{GMRES 収束性と Jacobi 前処理}
 $A$ の対角項は $\rho_{ij}/\Delta t + (\mu_{i\pm 1/2,j})/(Re\,h^2)$ に支配されるため，
-\textbf{Jacobi 前処理} (対角逆数によるスカラー除算) は安価かつ効果的である．
-変粘性 $\mu_l/\mu_g \sim 10^2$ の二相流でも，界面厚さ $\sim 3h$ の局在性により
-$A$ の条件数は $\Ord{10^3}$ にとどまる．restart 80 GMRES は ch13 既定 $\mathrm{cfl}=0.10$
-で 500 反復以内に残差 $10^{-8}$ まで収束する．
-
-\begin{tcolorbox}[resultbox, title={implicit-BDF2 GMRES 収束目安 (ch13 設計値)}]
-\label{box:gmres_implicit_bdf2}
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{@{}lccc@{}}
-\hline
-$\mu_l/\mu_g$ & 残差許容値 & GMRES restart & iterations 目安 \\
-\hline
-$1$（等粘性） & $10^{-8}$ & $30$ & $\lesssim 50$ \\
-$10$ & $10^{-8}$ & $50$ & $\lesssim 150$ \\
-$10^2$（空気--水） & $10^{-8}$ & $80$ & $\lesssim 500$ \\
-$10^3$（高粘度比） & $10^{-6}$ & $100$ & 適応的調整推奨 \\
-\hline
-\end{tabular}
-
-\smallskip
-\textbf{stagnation 検出と recovery：}
-GMRES が restart 周期内で残差停滞 ($r_{k+1}/r_k > 0.99$) を示す場合，
-$\Delta t$ を半分に減らして再試行する．ch13 既定では発生頻度 $< 1\%$．
-\end{tcolorbox}
+\textbf{Jacobi 前処理}（対角逆数によるスカラー除算）は安価かつ効果的である．
+変粘性 $\mu_l/\mu_g \gg 1$ の二相流でも，界面厚さの局在性により
+左辺演算子の条件数は緩やかに増加するに留まり，
+restart 付き GMRES に Jacobi 前処理を併用すれば
+要求残差まで安定に収束する．残差停滞時は $\Delta t$ を半減して
+再試行する recovery 手続きを用いる．具体的な収束反復回数や
+restart 値の設計は検証章（\S\ref{sec:val_summary}）に委ねる．
 
 \paragraph{安定性：A-stable と粘性 CFL 消滅}
 BDF2 は A-stable (Hairer--Wanner~\cite{HairerWanner1996} Sec.~V.1; 詳細分類は
@@ -798,18 +779,17 @@ $\delta_\Gamma$ 局在の有限源となるため，定常 $|u_\text{spurious}|$
 界面が鋭い CLS 表現では $\partial_z\ln\rho$ が界面厚さ $\sim 3h$ に
 局在し，$N_\text{BV} \sim \sqrt{g/h}$．陽的時間積分では
 $\Delta t \lesssim N_\text{BV}^{-1} \sim \sqrt{h/g}$ が浮力波解像
-の必要条件として現れる．ch13 rising bubble の標準格子
-（$N=128$, $g=0.98$）では $\Delta t_\text{buoy}\sim 0.01$ となり，
-通常は $\Delta t_\text{cap}$（毛管波制約）が先に律速するが，
-低 We（弱表面張力）の系では $\Delta t_\text{buoy}$ が顕在化しうる．
+の必要条件として現れる．低 We（弱表面張力）の系では本制約が
+顕在化しうる．具体的な数値検証は検証章（\S\ref{sec:val_rising_bubble}）
+に委ねる．
 
 \begin{tcolorbox}[colback=yellow!5,colframe=orange!60!black,title={\textbf{適用範囲：浮力分解の有効ケース}}]
 \label{warn:balanced_buoy_scope}
 balanced-buoyancy 分解は\textbf{有意な重力 $g \neq 0$ かつ
-密度比 $\rho_l/\rho_g \gg 1$} のケース（典型例：ch13 rising bubble）で
-有効である．capillary water-air ベンチマーク（ch13 capillary YAML）は
-$g=0$ で重力項そのものが無効化されるため，本節の議論は適用されず，
-predictor RHS の体積力項は省略される．
+密度比 $\rho_l/\rho_g \gg 1$} のケース（典型例：上昇気泡）で
+有効である．無重力（$g=0$）の系では重力項そのものが
+無効化されるため，本節の議論は適用されず，predictor RHS の
+体積力項は省略される．
 \end{tcolorbox}
 
 % -------------------------------------------------------------------------------
@@ -843,7 +823,7 @@ Projection & IPC + FCCD PPE & $\Ord{\Delta t^2}$ \\
 
 {\small $^\dagger$ 変粘性界面（$|\bnabla\mu| \neq 0$）ではクロス微分項 $\mathcal{D}_{\mathrm{c}}$ の陽的処理が $\Ord{\Delta t}$ 誤差を導入し（注意~\ref{warn:cn_cross_derivative}），界面近傍での全体時間精度が $\Ord{\Delta t}$ に律速される．$\mu_l/\mu_g \gg 1$ の場合は EXT2 外挿の適用を推奨する．}
 
-ch13 YAML は時間固定の interface-fitted 格子（Mode 1）を仮定し，Mode 2（ALE
+本稿の検証構成は時間固定の interface-fitted 格子（Mode 1）を仮定し，Mode 2（ALE
 補正なし再生成；§\ref{sec:grid_ale}）による $\Ord{\Delta t}$ 劣化は発生しない．
 水--空気級では implicit-BDF2 粘性ブロック（§\ref{sec:time_viscous}）と
 同一面分相投影（§\ref{sec:ipc_derivation}）の組み合わせにより，劣化要因を
@@ -898,11 +878,10 @@ implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
 粘性 CFL を課さない．ただし変粘性界面では注意~\ref{warn:cross_cfl} の
 クロス微分 CFL が陽的処理を通じて部分的に復活しうる．
 
-\textbf{ch13 既定 \texttt{cfl=0.10}}：
-ch13 YAML の \texttt{run.time.cfl=0.10} は式~\eqref{eq:dt_cap_denner} の保守設定
-$C_\text{wave}=0.1$ に対応し，水--空気級の毛管波を 1 周期あたり
-20 ステップ程度で解像する．rising bubble では浮力残差が小さく
-$\Delta t_\text{buoy}$ は通常律速にならない．
+\textbf{保守的 CFL 設定}：
+本稿の検証構成では物理項ごとの CFL を保守側に取り，律速項の
+時間スケールを十分余裕をもって解像する．具体的な係数値および
+ベンチマーク別の合成結果は検証章（§\ref{sec:val_summary}）に委ねる．
 
 以上で本章 ch13 production stack の項別時間積分設計が閉じた．
 全陽的検証構成（SSPRK3 + 陽的拡散）や完全陰的剛性レジーム
