@@ -45,6 +45,7 @@
 | **SP-X** | [SP-X_projection_closure_trial_synthesis.md](SP-X_projection_closure_trial_synthesis.md) | **Trial synthesis and theory of the clean-main phase-separated projection closure** | 2026-04-25 | ACTIVE |
 | **SP-Y** | [SP-Y_cfl_time_integration_policy.md](SP-Y_cfl_time_integration_policy.md) | **CFL and time-integration policy for capillary/two-phase NS runs** | 2026-04-25 | ACTIVE |
 | **SP-Z** | [SP-Z_rising_bubble_buoyancy_fmm_closure.md](SP-Z_rising_bubble_buoyancy_fmm_closure.md) | **Rising-bubble buoyancy/FMM closure validated by ch13 t=0.5 run** | 2026-04-25 | ACTIVE |
+| **SP-AA** | [SP-AA_capillary_energy_variational_geometry.md](SP-AA_capillary_energy_variational_geometry.md) | **Capillary energy stability, variational geometry, and projection-native surface tension** | 2026-04-26 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
@@ -96,9 +97,10 @@ Progress tracking lives in [WIKI-P-013](../../wiki/paper/WIKI-P-013.md) and
 
 ## 4. Convention
 
-- **One letter, one paper**: never reuse a letter after retirement. The SP-H
-  collision resolution of 2026-04-23 (SP-H_uccd6 → SP-N) is the canonical
-  template for future collisions.
+- **One label, one paper**: never reuse a label after retirement. After
+  `SP-Z`, continue with `SP-AA`, `SP-AB`, ... . The SP-H collision resolution
+  of 2026-04-23 (SP-H_uccd6 → SP-N) is the canonical template for future
+  collisions.
 - **Status lifecycle**: `PROPOSED` (research memo, no binding on code) →
   `ACTIVE` (driving a CHK) → `INTEGRATED` (equations landed in the paper).
 - **Back-reference hygiene**: when a letter is renumbered, update all
