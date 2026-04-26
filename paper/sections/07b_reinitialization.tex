@@ -58,8 +58,7 @@ Ridge-Eikonal 法は反復を伴わない 1 ショット再構成
 構造的に発生しない．離散総量の補正は事後的な体積重み付き
 $\phi$ 空間質量補正（§~\ref{sec:dgr_thickness} の補正手順）で行う．
 旧実装の演算子分裂解法における質量損失メカニズムと
-散逸演算子レベルの保存性議論の詳細は，§~\ref{sec:dissipative_ccd}
-（§4.4 散逸 CCD の歴史的経緯）に集約する．
+保存性議論の詳細は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
 
 \textbf{非一様格子への拡張．}
 非一様格子ではセル体積 $\Delta V_{i,j} = h_x(i) \cdot h_y(j)$ が
@@ -430,8 +429,7 @@ $(\Delta s)^2/(4\varepsilon) \sim \Delta s$ オーダーとなり，
 拡散型成分の制約が支配的である．
 \textbf{完全陽解法での参考値：}拡散安定限界に対して
 保守的な安全余裕を確保した $\Delta\tau$ を採用する．
-旧実装の圧縮--拡散演算子分裂解法（散逸 CCD 圧縮項 + Crank--Nicolson 拡散項）の
-具体的な更新式と歴史的経緯は §~\ref{sec:dissipative_ccd}（§4.4）に集約する．
+旧実装の演算子分裂解法の具体的な更新式は §~\ref{sec:dissipative_ccd}（§4.4）を参照．
 \textbf{備考（圧縮項の離散化選択）：}
 CLS 再初期化圧縮項は非線形フラックス $\bnabla\cdot(\psi(1-\psi)\hat{n})$ を含む．
 UCCD6（§~\ref{sec:uccd6_def}）は線形スカラー移流 $\bu\cdot\bnabla\cdot$ を想定した

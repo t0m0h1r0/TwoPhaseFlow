@@ -240,7 +240,7 @@ CLS 移流（$\psi$） & FCCD（面値保存型；§~\ref{sec:fccd_def}，§~\re
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 再初期化 & Ridge-Eikonal（§~\ref{sec:ridge_eikonal}，§~\ref{sec:cls_compression}） & Eikonal 距離 $\Ord{h^6}$ + Ridge ガウス射影 & 反復不要の 1 ショット再構成；§3.4 Part 1 連続定式化の離散実装 \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\
-速度・圧力場ノイズ除去 & 散逸的 CCD 適応制御（§~\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\
+速度・圧力場ノイズ除去 & 適応制御散逸演算子（§~\ref{sec:dissipative_ccd}） & — & $S(\psi)$ で界面保護 \\
 圧力 Poisson & 欠陥補正法 PPE + CCD 勾配（§~\ref{sec:pressure}） & $\Ord{h^5}$--$\Ord{h^7}$† & Balanced-Force 整合性（DC k=3） \\
 \hline
 \end{tabular}
