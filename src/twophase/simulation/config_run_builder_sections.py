@@ -15,6 +15,12 @@ from .config_run_tracking_sections import (
     tracking_redistance,
 )
 
+DEFAULT_CFL_MULTIPLIER = 1.0
+LEGACY_THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
+THEORY_CFL_ADVECTIVE = 0.10
+THEORY_CFL_CAPILLARY = 0.05
+THEORY_CFL_VISCOUS = 1.0
+
 
 @dataclass(frozen=True)
 class RunCfgBuilderOptions:
@@ -34,6 +40,42 @@ class RunCfgBuilderOptions:
     debug: dict[str, Any]
 
 
+def resolve_cfl_policy(raw: Any) -> tuple[float, str, float, float, float]:
+    """Resolve ``run.time.cfl`` as a multiplier on theory CFL constants."""
+    if raw is None:
+        multiplier = DEFAULT_CFL_MULTIPLIER
+    elif isinstance(raw, str):
+        value = raw.strip().lower()
+        multiplier = (
+            DEFAULT_CFL_MULTIPLIER
+            if value in LEGACY_THEORY_CFL_ALIASES
+            else float(value)
+        )
+    elif isinstance(raw, dict):
+        multiplier = float(raw.get("multiplier", raw.get("value", DEFAULT_CFL_MULTIPLIER)))
+        adv_factor = float(raw.get("advective", multiplier))
+        cap_factor = float(raw.get("capillary", multiplier))
+        visc_factor = float(raw.get("viscous", multiplier))
+        return (
+            multiplier,
+            "theory_multiplier",
+            THEORY_CFL_ADVECTIVE * adv_factor,
+            THEORY_CFL_CAPILLARY * cap_factor,
+            THEORY_CFL_VISCOUS * visc_factor,
+        )
+    else:
+        multiplier = float(raw)
+    if multiplier <= 0.0:
+        raise ValueError("run.time.cfl must be a positive multiplier.")
+    return (
+        multiplier,
+        "theory_multiplier",
+        THEORY_CFL_ADVECTIVE * multiplier,
+        THEORY_CFL_CAPILLARY * multiplier,
+        THEORY_CFL_VISCOUS * multiplier,
+    )
+
+
 def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     """Build `RunCfg` from normalized run-section fragments."""
     snap_raw = options.snapshots.get("times", [])
@@ -44,12 +86,17 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     dt_fixed_raw = options.time_cfg.get("dt")
     if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
+    cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
 
     tracking_redist = tracking_redistance(options.tracking)
     return RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
-        cfl=float(cfl_raw if cfl_raw is not None else 0.15),
+        cfl=cfl_number,
+        cfl_policy=cfl_policy,
+        cfl_advective=cfl_adv,
+        cfl_capillary=cfl_cap,
+        cfl_viscous=cfl_visc,
         snap_times=[float(x) for x in snap_raw],
         snap_interval=opt_float(options.snapshots.get("interval")),
         reinit_eps_scale=float(options.reinit_profile.get("eps_scale", 1.0)),
