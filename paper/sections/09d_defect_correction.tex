@@ -197,12 +197,13 @@ DC 外側反復の収束を劣化させる（$A_L$ は $L_H$ と同じ係数・B
 $L_L$ のスパース LU（小中規模）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{純 FCCD DNS での収束率（Level 別 DC $k$ 上界）}
+\subsubsection{純 FCCD DNS での収束率（DC $k$ 上界）}
+\label{sec:dc_pure_fccd_convergence}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent
-Level 1/2/3 アーキテクチャ別の DC $k=3$ 目標収束率（節点 CCD PPE，変密度一括
-smoothed-Heaviside PPE，分相 PPE + DC + CCD 勾配）および
-GFM 律速・IIM 行補正による上界の議論は
-§\ref{sec:level_cost_accuracy}（Level 1/2/3 選択ロジック内）に集約した．
-本節 L19 の BC 種別内訳もこの集約表を参照されたい．
+3 種の PPE 構成（節点 CCD PPE，変密度一括 smoothed-Heaviside PPE，
+分相 PPE + DC + CCD 勾配）に対する DC $k=3$ 目標収束率は，
+GFM 律速・IIM 行補正による上界に従う．
+分相 PPE + DC + CCD 勾配構成の詳細は §\ref{sec:pure_fccd_dns} を参照．
+本節 L19 の BC 種別内訳もこの整理に従う．

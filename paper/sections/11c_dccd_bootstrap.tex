@@ -49,10 +49,10 @@ CCD 演算子構築 $\to$ 非一様格子上 SDF 再初期化 $\to$ Young--Lapla
 ただし大粘性比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
 陽的処理に起因する実質的な粘性制約が界面近傍で復活する場合がある（§~\ref{sec:stability} 参照）．
 
-\noindent\textbf{§~\ref{sec:level_selection} の 3 項版との関係：}
-式~\eqref{eq:dt_full_algo} の 2 項制約は等粘性・CN 有効領域での縮約表現であり，
-一般の可変 Level 構成（§~\ref{sec:level_selection} 式~\eqref{eq:level_cfl_min}）では
-$\Delta t_\text{visc}$（陽的粘性領域）も追加する 3 項 $\min$ が正しい．
+\noindent\textbf{3 項 $\min$ 版（陽的粘性領域）：}
+式~\eqref{eq:dt_full_algo} の 2 項制約は等粘性・CN 有効領域での縮約表現である．
+陽的粘性領域では $\Delta t_\text{visc} = C_\text{visc}\rho h_{\min}^2/(2\mu N_\text{dim})$（粘性 CFL）も加え，
+$\Delta t = \min(\Delta t_\text{adv}, \Delta t_\text{visc}, \Delta t_\sigma)$ の 3 項 $\min$ となる．
 物理波速度 $\Delta t_\text{wave}$ は非圧縮解法のため両式とも除外される．
 
 \bigskip
