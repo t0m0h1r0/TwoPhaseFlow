@@ -237,6 +237,20 @@ def test_dt_budget_treats_zero_viscosity_as_no_viscous_limit():
     assert budget.limiter == "advective"
 
 
+def test_dt_max_crank_nicolson_omits_viscous_stability_limit():
+    """Implicit CN viscosity should not be governed by the CFL multiplier."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0, viscous_time_scheme="crank_nicolson")
+    u = np.ones(s._grid.shape)
+    v = np.ones(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=0.0, mu=1.0e6)
+
+    dt = s.dt_max(u, v, ph, cfl=0.2)
+    expected = 0.2 / (1.0 / s.h_min + 1.0 / s.h_min)
+    assert dt == pytest.approx(expected)
+
+
 def test_dt_max_implicit_bdf2_omits_viscous_stability_limit():
     """True implicit BDF2 viscosity should not impose the explicit ν/h² bound."""
     from twophase.simulation.config_io import PhysicsCfg

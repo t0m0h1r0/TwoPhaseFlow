@@ -15,8 +15,8 @@ from .config_run_tracking_sections import (
     tracking_redistance,
 )
 
-DEFAULT_CFL_NUMBER = 0.15
-THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
+DEFAULT_CFL_MULTIPLIER = 1.0
+LEGACY_THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
 THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
@@ -41,41 +41,39 @@ class RunCfgBuilderOptions:
 
 
 def resolve_cfl_policy(raw: Any) -> tuple[float, str, float, float, float]:
-    """Resolve a legacy scalar or theory policy into per-operator CFL constants."""
+    """Resolve ``run.time.cfl`` as a multiplier on theory CFL constants."""
     if raw is None:
-        return (
-            DEFAULT_CFL_NUMBER,
-            "manual",
-            DEFAULT_CFL_NUMBER,
-            DEFAULT_CFL_NUMBER,
-            THEORY_CFL_VISCOUS,
-        )
-    if isinstance(raw, str):
+        multiplier = DEFAULT_CFL_MULTIPLIER
+    elif isinstance(raw, str):
         value = raw.strip().lower()
-        if value in THEORY_CFL_ALIASES:
-            return (
-                THEORY_CFL_CAPILLARY,
-                "theory",
-                THEORY_CFL_ADVECTIVE,
-                THEORY_CFL_CAPILLARY,
-                THEORY_CFL_VISCOUS,
-            )
-        scalar = float(value)
-        return scalar, "manual", scalar, scalar, THEORY_CFL_VISCOUS
-    if isinstance(raw, dict):
-        policy = str(raw.get("policy", "manual")).strip().lower()
-        if policy in THEORY_CFL_ALIASES:
-            adv = float(raw.get("advective", THEORY_CFL_ADVECTIVE))
-            cap = float(raw.get("capillary", THEORY_CFL_CAPILLARY))
-            visc = float(raw.get("viscous", THEORY_CFL_VISCOUS))
-            return min(adv, cap), "theory", adv, cap, visc
-        scalar = float(raw.get("value", DEFAULT_CFL_NUMBER))
-        adv = float(raw.get("advective", scalar))
-        cap = float(raw.get("capillary", scalar))
-        visc = float(raw.get("viscous", THEORY_CFL_VISCOUS))
-        return scalar, "manual", adv, cap, visc
-    scalar = float(raw)
-    return scalar, "manual", scalar, scalar, THEORY_CFL_VISCOUS
+        multiplier = (
+            DEFAULT_CFL_MULTIPLIER
+            if value in LEGACY_THEORY_CFL_ALIASES
+            else float(value)
+        )
+    elif isinstance(raw, dict):
+        multiplier = float(raw.get("multiplier", raw.get("value", DEFAULT_CFL_MULTIPLIER)))
+        adv_factor = float(raw.get("advective", multiplier))
+        cap_factor = float(raw.get("capillary", multiplier))
+        visc_factor = float(raw.get("viscous", multiplier))
+        return (
+            multiplier,
+            "theory_multiplier",
+            THEORY_CFL_ADVECTIVE * adv_factor,
+            THEORY_CFL_CAPILLARY * cap_factor,
+            THEORY_CFL_VISCOUS * visc_factor,
+        )
+    else:
+        multiplier = float(raw)
+    if multiplier <= 0.0:
+        raise ValueError("run.time.cfl must be a positive multiplier.")
+    return (
+        multiplier,
+        "theory_multiplier",
+        THEORY_CFL_ADVECTIVE * multiplier,
+        THEORY_CFL_CAPILLARY * multiplier,
+        THEORY_CFL_VISCOUS * multiplier,
+    )
 
 
 def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:

@@ -282,29 +282,23 @@ Deferred implementation work:
 
 ### 6.1 2026-04-27 implementation addendum: grid-independent YAML policy
 
-The scalar YAML setting is now split into an explicit policy layer.  The legacy
-form
+The scalar YAML setting is now a multiplier on the fixed theory budget.  The
+production form is
 
 ```yaml
 run:
   time:
-    cfl: 0.10
+    cfl: 1.0
 ```
 
-is still accepted and is interpreted as a manual scalar used for both the
-advective and capillary coefficients.  The theory-first form is
-
-```yaml
-run:
-  time:
-    cfl: theory
-```
-
-which expands to fixed dimensionless constants:
+where `1.0` expands to the fixed dimensionless constants
 
 ```text
 C_adv = 0.10,   C_cap = 0.05,   C_visc = 1.0.
 ```
+
+To make the run more conservative, use a smaller multiplier such as
+`cfl: 0.5`; do not rewrite the operator constants in YAML.
 
 The timestep is then computed from operator-specific candidates:
 
@@ -314,12 +308,15 @@ dt_nu  = C_visc / (2 ν_max Σ_i h_i^{-2})     for explicit viscosity,
 dt_cap = C_cap sqrt((ρ_l + ρ_g) h_min^3 / (2πσ)).
 ```
 
-For `implicit_bdf2` viscosity, the explicit viscous CFL candidate is removed.
-This is not an instruction to enlarge the capillary step; it is the opposite:
-the dimensionless constants are fixed by theory/verification, and changing
-`NX`, `NY`, or non-uniform stretching only changes `h_i`, `h_min`, and the
-measured velocity maxima.  A refined-grid failure under the same policy is
-therefore not solved by retuning YAML CFL.  It is evidence for one of:
+The multiplier applies only to explicitly constrained candidates.  Therefore
+explicit advection/transport, the current explicit capillary response, and
+explicit viscosity are scaled; `crank_nicolson` and `implicit_bdf2` viscosity
+remove the explicit viscous CFL candidate.  This is not an instruction to
+enlarge the capillary step; it is the opposite: the dimensionless constants are
+fixed by theory/verification, and changing `NX`, `NY`, or non-uniform
+stretching only changes `h_i`, `h_min`, and the measured velocity maxima.  A
+refined-grid failure under the same policy is therefore not solved by retuning
+YAML CFL.  It is evidence for one of:
 
 1. a non-uniform compact-operator spectral bound not captured by scalar `h_min`;
 2. a capillary/curvature energy-law defect;

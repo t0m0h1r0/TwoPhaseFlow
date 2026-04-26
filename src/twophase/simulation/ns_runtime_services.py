@@ -119,12 +119,12 @@ def compute_runtime_timestep_budget(
 
     The advective bound uses the multidimensional Courant sum
     ``Σ_i max|u_i| / h_i`` rather than ``max_i |u_i| / h_min``.  The capillary
-    bound uses the Denner--van Wachem wave-resolution scale.  ``cfl`` remains
-    the legacy scalar coefficient; theory mode supplies separate
-    ``cfl_advective`` and ``cfl_capillary`` so changing grid count only changes
-    the measured timestep, not the dimensionless constants.  For non-uniform
-    grids these are necessary timestep scales, not a proof of stability for the
-    full non-normal compact operator.
+    bound uses the Denner--van Wachem wave-resolution scale.  ``cfl`` is the
+    fallback multiplier; production configs pass explicit per-operator
+    constants derived from the theory multiplier so changing grid count only
+    changes the measured timestep, not the dimensionless constants.  For
+    non-uniform grids these are necessary timestep scales, not a proof of
+    stability for the full non-normal compact operator.
     """
     cfl_advective = cfl if cfl_advective is None else cfl_advective
     cfl_capillary = cfl if cfl_capillary is None else cfl_capillary
@@ -155,7 +155,7 @@ def compute_runtime_timestep_budget(
         float("inf") if advective_rate <= 1e-14 else cfl_advective / advective_rate
     )
 
-    if context.viscous_time_scheme == "implicit_bdf2":
+    if context.viscous_time_scheme in {"crank_nicolson", "implicit_bdf2"}:
         dt_visc = float("inf")
     elif mu_max <= 0.0:
         dt_visc = float("inf")

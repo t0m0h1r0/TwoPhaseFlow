@@ -176,12 +176,14 @@ missing.
 
 ## Implemented policy
 
-`run.time.cfl: theory` now denotes fixed per-operator dimensionless constants,
-not a tunable grid-dependent scalar:
+`run.time.cfl` now denotes a multiplier on fixed per-operator dimensionless
+constants.  `cfl: 1.0` means the theory budget; `cfl: 0.5` means half of the
+theory budget:
 
 - advective: `dt_adv = C_adv / Σ_i(max |u_i| / h_i)`, with `C_adv = 0.10`
 - viscous: `dt_visc = C_visc / (2 ν_max Σ_i h_i^{-2})`, with `C_visc = 1.0`
-  for explicit viscosity and no explicit viscous limit for `implicit_bdf2`
+  for explicit viscosity and no explicit viscous limit for `crank_nicolson` or
+  `implicit_bdf2`
 - capillary: `dt_cap = C_cap sqrt((ρ_l + ρ_g) h_min^3 / (2πσ))`, with
   `C_cap = 0.05`
 
@@ -190,6 +192,9 @@ and the measured velocity maxima in these formulas.  The YAML no longer needs
 manual retuning when the grid count changes; if a refined-grid case fails while
 the same dimensionless constants and limiter diagnostics are used, that failure
 is classified as an operator/energy-law defect rather than a CFL-knob issue.
+The multiplier is applied only to explicitly constrained candidates: explicit
+advection/transport, currently explicit capillary response, and explicit
+viscosity.  Fully implicit viscous schemes do not receive a viscous CFL bound.
 
 The runner stores `dt_advective`, `dt_viscous`, `dt_capillary`,
 `dt_limiter_code`, `h_min`, and `advective_rate` in debug diagnostics so grid

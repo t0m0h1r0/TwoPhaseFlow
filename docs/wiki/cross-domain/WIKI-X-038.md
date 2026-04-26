@@ -175,10 +175,11 @@ raise the capillary step beyond the Denner--van Wachem wave-resolution limit.
 
 ## 6. ch13 gate
 
-A ch13 run should not be called theoretically stable merely because it uses a
-single scalar `CFL=0.10`.  The production gate is now `run.time.cfl: theory`,
-which fixes the operator constants and lets grid spacing enter only through the
-derived timestep candidates:
+A ch13 run should not be called theoretically stable merely because it uses an
+arbitrary scalar `CFL=0.10`.  The production gate is now `run.time.cfl: 1.0`,
+where `1.0` is the multiplier for the fixed theory constants.  Smaller values,
+for example `0.5`, are allowed only as conservative multipliers.  Grid spacing
+enters through the derived timestep candidates:
 
 ```text
 dt_adv = C_adv / Σ_i(max |u_i| / h_i),
@@ -187,10 +188,12 @@ dt_cap = C_cap sqrt((ρ_l + ρ_g) h_min^3 / (2πσ)).
 ```
 
 Current policy constants are `C_adv = 0.10`, `C_cap = 0.05`, and
-`C_visc = 1.0`; `implicit_bdf2` viscosity removes the explicit viscous
-candidate.  Therefore changing `NX`, `NY`, or non-uniform stretching should not
-require changing YAML CFL.  The solver recomputes `h_i`, `h_min`, velocity
-maxima, and the active limiter.
+`C_visc = 1.0`.  The multiplier applies only to explicitly constrained
+candidates: explicit advection/transport, the current explicit capillary
+response, and explicit viscosity.  `crank_nicolson` and `implicit_bdf2`
+viscosity remove the explicit viscous candidate.  Therefore changing `NX`,
+`NY`, or non-uniform stretching should not require changing YAML CFL.  The
+solver recomputes `h_i`, `h_min`, velocity maxima, and the active limiter.
 
 The gate is:
 
@@ -203,7 +206,7 @@ The gate is:
 5. if surface tension is active, respect the capillary wave-resolution scale;
 6. keep SSPRK3 claims limited to scalar interface transport.
 
-If a refined-grid run fails under the same `cfl: theory` constants, classify it
+If a refined-grid run fails under the same `cfl: 1.0` theory multiplier, classify it
 as an operator, curvature-energy, projection, or limiter-switch problem before
 touching the YAML CFL coefficient.
 
