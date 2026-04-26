@@ -1,210 +1,132 @@
-% paper/sections/11f_time_integration.tex
+% paper/sections/12g_time_integration.tex
 %
-% §11.4  時間積分スキームの検証
-%   Exp 14: TVD-RK3
-%   Exp 15: AB2
+% Tier VI: 制約・否定テスト
+%   U9 = DCCD-on-pressure 禁止則 否定テスト
+% Tier VII: coupling primitive (single mechanism)
+%   U7 = BF static droplet 1-step (Laplace 圧力誤差)
+%        (a) 円形界面静止 Δp = σκ vs 計算値 (BF 演算子整合性)
+%        (b) ρ/μ 補間 (arithmetic/harmonic/VOF) 面値精度
 % ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Tier VI：制約・否定テスト}
+\label{sec:verify_constraint}
 
-\subsection{時間積分スキームの検証}
-\label{sec:verify_time}
-
-前節では PPE ソルバの空間精度と収束特性を検証した．
-本節では，アルゴリズム Step~1（CLS 移流）で用いる TVD-RK3
-（§~\ref{sec:verify_tvd_rk3}），
-Step~5（Predictor）で用いる AB2（§~\ref{sec:verify_ab2}），
-Crank--Nicolson 粘性項の時間精度と無条件安定性（§~\ref{sec:verify_cn_viscous}），
-および交差微分粘性項の陽的処理が時間精度に与える影響（§~\ref{sec:verify_cross_viscous}）
-を検証する．
-
+Part 2 の設計選択には，「ある操作をしてはいけない」という
+\textbf{制約条件}が含まれる．本 Tier では，特に重要な
+\textbf{DCCD-on-pressure 禁止則}（§~\ref{sec:dccd_pressure_nofilt}）を
+\textbf{否定テスト}（違反すると静止液滴に寄生流れが噴出する）として検証する．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{TVD-RK3 時間積分精度}
-\label{sec:verify_tvd_rk3}
+\subsubsection{U9：DCCD-on-pressure 禁止則 否定テスト}
+\label{sec:U9_dccd_pressure_prohibition}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:time_int} で導入した TVD-RK3（3 段 Shu--Osher 型 Runge--Kutta）の
-設計時間精度 $\Ord{\Delta t^3}$ を，スカラー ODE テストおよび固定格子移流テストで確認する．
-前者で漸近精度を，後者で空間離散のスペクトル半径による安定域制約を診断する．
+§~\ref{sec:dccd_pressure_nofilt} で導入された「圧力場に DCCD フィルタを適用してはならない」
+という設計制約を，違反した場合の不安定性増大を観測することで\textbf{否定的に}検証する．
 
-\noindent\textbf{評価対象：}
-TVD-RK3（3 段 Shu--Osher 型 Runge--Kutta）の時間精度と安定域．
+\noindent\textbf{Part 2 対応 primitive：} \#20 (DCCD-pressure 禁止則)．
+
+\noindent\textbf{下流連関：}
+Static droplet 200-step stability（§~\ref{sec:twophase_static_longterm}）．
 
 \noindent\textbf{手順とパラメタ：}
 \begin{itemize}[noitemsep]
-  \item \textbf{ODE テスト：} スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$，厳密解 $q(1) = e^{-1}$；
-        ステップ数 $n = 4, 8, 16, 32, 64, 128, 256, 512$
-  \item \textbf{固定格子移流テスト：} 2 次元周期格子 $N = 256$，
-        初期値 $q_0 = \sin(2\pi x)$，空間微分は CCD（$\Ord{h^6}$，周期境界）；
-        $\mathrm{d}q/\mathrm{d}t = -\partial q/\partial x$，$T = 1$，
-        ステップ数 $n = 10, 20, 40, 80, 160, 320, 640$（$\Delta t$ を粗から細へ精緻化）
+  \item 静止液滴（$N = 64$，$R = 0.25$，中心 $(0.5, 0.5)$，
+        $\rho_l/\rho_g = 1000$，$\sigma = 1$）
+  \item 2 ケース比較：
+        (i) DCCD filter OFF（規則遵守，本論文の標準設定），
+        (ii) DCCD filter ON（$\varepsilon_d = 0.05, 0.25$，禁止則違反）
+  \item $\Delta t = 10^{-3}$，200 ステップで $\max|\bu|$ の時間履歴を計測
 \end{itemize}
 
-\noindent\textbf{結果：}
-
-\begin{table}[htbp]
-\centering
-\caption{TVD-RK3 の時間精度（$\mathrm{d}q/\mathrm{d}t=-q$，$q(0)=1$）}
-\label{tab:tvd_rk3}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rc cc}
-\toprule
-$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
-\midrule
-  4 & $2.50 \times 10^{-1}$ & $2.93 \times 10^{-4}$  & ---    \\
-  8 & $1.25 \times 10^{-1}$ & $3.31 \times 10^{-5}$  & $3.14$ \\
- 16 & $6.25 \times 10^{-2}$ & $3.93 \times 10^{-6}$  & $3.07$ \\
- 32 & $3.13 \times 10^{-2}$ & $4.80 \times 10^{-7}$  & $3.04$ \\
- 64 & $1.56 \times 10^{-2}$ & $5.92 \times 10^{-8}$  & $3.02$ \\
-128 & $7.81 \times 10^{-3}$ & $7.35 \times 10^{-9}$  & $3.01$ \\
-256 & $3.91 \times 10^{-3}$ & $9.17 \times 10^{-10}$ & $3.00$ \\
-512 & $1.95 \times 10^{-3}$ & $1.14 \times 10^{-10}$ & $3.00$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_tvd_rk3}
-\caption{TVD-RK3 の時間収束．
-(a) スカラー ODE では設計通り $\Ord{\Delta t^3}$ の 3 次精度を達成する．
-(b) 固定格子移流では粗い時間刻みで安定域を外れるが，
-安定域内の細かい時間刻みでは 3 次の低下傾向を示す．}
-\label{fig:tvd_rk3}
-\end{figure}
+\noindent\textbf{結果（要約）：}
+製造解 $p = \sin(2\pi x)\sin(2\pi y)$（周期境界）に対する診断試験では，
+フィルタなしの CCD ラプラシアンは厳密解に対して $\Ord{h^{6.0}}$ で収束する一方，
+DCCD フィルタ（$\varepsilon_d = 0.25$）を適用すると
+$\nabla^2 p - \nabla^2 \tilde{p}$（$\tilde{p}$: フィルタ後）の $L_\infty$ ノルムが
+$\Ord{h^{2.0}}$ の発散誤差を生じる（$N = 32$: $1.51$，$N = 256$: $2.38 \times 10^{-2}$）．
+$\varepsilon_d = 0.05$ でも同じ $\Ord{h^{2.0}}$ スケーリング．
+この誤差は速度補正で
+$\nabla \cdot \bu^{n+1}_\mathrm{filtered} = (\nabla^2 p - \nabla^2 \tilde{p})/\Delta t \neq 0$
+となり非圧縮条件を $\Ord{h^2}$ で破壊する．
+静止液滴 200-step 試験では filter ON ケースで寄生流れが急速に増大し，
+filter OFF ケースは Laplace 圧周辺の機械精度近傍誤差を維持する．
 
 \noindent\textbf{結論：}
-ODE テストでは収束次数が漸近的に $3.00$ に近づき，
-設計通りの $\Ord{\Delta t^3}$ が確認された．
-固定格子移流テストは空間離散のスペクトル半径による安定域制約を受けるため，
-粗い時間刻みの発散点は時間精度判定から除外する．
+DCCD-on-pressure 禁止則の必要性を $\Ord{h^2}$ 発散誤差として定量実証．\textbf{合格}（否定テスト成立）．
 
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Tier VII：coupling primitive（single mechanism）}
+\label{sec:verify_coupling}
+
+Tier VII は「複数 primitive の最小結合」を 1 ステップで検証する Tier である．
+本 Tier の単体テスト U7 は BF（Balanced Force）演算子整合性を
+静止液滴 1-step（Laplace 圧誤差）で測る．
+これは Part 2 全体で\textbf{最重要}の coupling primitive である：
+寄生流れ（parasitic current）の発生は BF 演算子不整合の直接的指標であり，
+第~\ref{sec:verification}章 の Static droplet（§~\ref{sec:twophase_static_longterm}）
+全件の前提となる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{AB2 時間積分精度}
-\label{sec:verify_ab2}
+\subsubsection{U7：BF static droplet 1-step (Laplace 圧力誤差)}
+\label{sec:U7_bf_static_droplet}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:time_level1} で導入した EXT2 外挿（IMEX-BDF2 の対流処理；
-AB2 と同じ $(3/2,-1/2)$ 係数の 2 次零安定多段法）の
-設計時間精度 $\Ord{\Delta t^2}$ を，AB2 単体の参照テストとして確認する．
+§~\ref{sec:rc_balanced_force} の BF（Balanced Force）整合性条件——
+圧力勾配 $\nabla p^{n+1}$ と表面張力 $\sigma\kappa\nabla\psi$ に同一の
+離散微分演算子を用いる——が，1-step Laplace 圧誤差として
+寄生流れを抑制することを検証する．
 
-\noindent\textbf{評価対象：}
-AB2（Adams--Bashforth 2 段）＋前進 Euler 起動．
+\noindent\textbf{Part 2 対応 primitive：}
+\#18 (BF discrete operator matching)，\#12 ($\rho/\mu$ 補間規則)．
 
-\noindent\textbf{手順とパラメタ：}
-\begin{itemize}[noitemsep]
-  \item スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0)=1$，厳密解 $q(1) = e^{-1}$
-  \item 初期ステップは前進 Euler で起動
-  \item ステップ数 $n = 16, 32, 64, 128, 256, 512$
-\end{itemize}
+\noindent\textbf{下流連関：}
+Static droplet (Laplace, parasitic) §~\ref{sec:twophase_static_longterm}．
 
-\noindent\textbf{結果：}
+% ───────────────
+\paragraph{(a) 円形界面静止 $\Delta p = \sigma\kappa$ vs 計算値（BF 演算子整合性）}
+\label{sec:U7_laplace_pressure}
 
-\begin{table}[htbp]
-\centering
-\caption{AB2 の時間精度（$\mathrm{d}q/\mathrm{d}t=-q$，$q(0)=1$，初期ステップ: 前進 Euler）}
-\label{tab:ab2_time}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rc cc}
-\toprule
-$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
-\midrule
- 16 & $6.25 \times 10^{-2}$ & $1.42 \times 10^{-4}$ & ---    \\
- 32 & $3.13 \times 10^{-2}$ & $3.27 \times 10^{-5}$ & $2.12$ \\
- 64 & $1.56 \times 10^{-2}$ & $7.84 \times 10^{-6}$ & $2.06$ \\
-128 & $7.81 \times 10^{-3}$ & $1.92 \times 10^{-6}$ & $2.03$ \\
-256 & $3.91 \times 10^{-3}$ & $4.73 \times 10^{-7}$ & $2.02$ \\
-512 & $1.95 \times 10^{-3}$ & $1.18 \times 10^{-7}$ & $2.01$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+円形液滴（$R = 0.25$，中心 $(0.5, 0.5)$，$\sigma = 1$，重力なし）に対して
+NS ソルバを 1 ステップ実行し，PPE で計算された圧力場 $p^1$ から
+内外圧力差 $\Delta p_\mathrm{num}$ を抽出する．
+解析解 $\Delta p_\mathrm{exact} = \sigma\kappa = \sigma/R = 4.0$ との比較．
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_ab2_time}
-\caption{AB2 の時間収束．寄生根 $|\rho_2| = 0.5$ により Euler 起動の
-  $\Ord{\Delta t}$ 誤差は数ステップで減衰し，全体として $\Ord{\Delta t^2}$ を達成する．}
-\label{fig:ab2_time}
-\end{figure}
-
-\noindent\textbf{結論：}
-収束次数は $\Ord{\Delta t^2}$ に漸近し，設計通りの 2 次精度が確認された．
-AB2 の特性方程式が持つ寄生根 $|\rho_2| = 0.5$ は安定領域内にあり，
-前進 Euler による $\Ord{\Delta t}$ の起動誤差は数ステップで減衰する．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{Crank--Nicolson 粘性項の時間精度と安定性}
-\label{sec:verify_cn_viscous}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:time_int} の対角粘性項に用いた Crank--Nicolson（CN）スキームの
-$\Ord{\Delta t^2}$ 精度と無条件安定性を独立に検証する．
-
-\paragraph{テスト設定}
-2D 拡散方程式 $u_t = \nu \bnabla^2 u$（$\nu = 0.01$）を
-厳密解 $u = \exp(-8\pi^2\nu t)\sin(2\pi x)\sin(2\pi y)$
-（周期境界）に対して，$N = 64$ 固定で $\Delta t$ を $T/10$ から $T/320$ まで
-細分化した（$T = 1$）．CN の暗黙方程式は CCD ラプラシアンを
-行列フリー LinearOperator として GMRES で解いた．
-
-\paragraph{時間収束}
-収束次数は $\Delta t = T/10 \to T/160$ で
-$2.00 \to 1.99 \to 2.04 \to 2.18$ と安定して $\Ord{\Delta t^2}$ を示した．
-$\Delta t = T/320$ では空間離散化の丸め誤差底に到達した．
-
-\paragraph{無条件安定性}
-粘性 CFL 数 $\mathrm{CFL}_\nu = \nu\Delta t / h^2 = 0.5$--$10$ で
-CN と前進 Euler を各 10 ステップ比較した結果，
-CN は $\mathrm{CFL}_\nu = 10$ でも $\max|u|$ が単調減少し安定を維持した一方，
-前進 Euler は $\mathrm{CFL}_\nu = 5$ で $\max|u| \approx 5.95 \times 10^2$（初期値の約 600 倍），
-$\mathrm{CFL}_\nu = 10$ で $\approx 6.45 \times 10^5$ と急激な不安定成長を示した．
-
-\noindent\textbf{結論：}
-CN は設計通り $\Ord{\Delta t^2}$ を達成し，CFL 制約なしに安定動作する．
-これにより粘性項の暗黙処理が NS ソルバの時間ステップ制限を緩和していることが確認された．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{交差粘性項の陽的処理と時間精度劣化}
-\label{sec:verify_cross_viscous}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:time_int} の CN スキームは対角粘性項
-$\partial_x[\mu\,\partial_x u]$，$\partial_y[\mu\,\partial_y v]$
-のみを暗黙処理し，交差微分項
-$\partial_x[\mu\,\partial_y u] + \partial_y[\mu\,\partial_x u]$
-は陽的に評価する．この分離が粘性比 $\mu_l/\mu_g \gg 1$ で時間精度に与える影響を
-MMS テストで定量した．
-
-\noindent\textbf{手順：}
-周期境界の $64 \times 64$ 格子上で，
-$u_{\mathrm{exact}} = e^{-\lambda t}\sin(2\pi x)\sin(2\pi y)$，
-$\mu(x) = \mu_0 (1 + (\mu_l/\mu_g - 1)\,H_\varepsilon(x - 0.5))$
-を用いた MMS 設定で，前進 Euler 1 ステップの局所打切り誤差 (LTE) を
-$\Delta t = 10^{-2}$--$10^{-4}$ で測定した．
+\noindent\textbf{2 演算子整合性のテスト：}
+\begin{enumerate}[noitemsep]
+  \item \textbf{整合} (Match)：$\nabla p$ と $\nabla\psi$ にともに CCD $\Ord{h^6}$
+        （または FCCD face-average $\mathcal{G}^\text{adj}$ 非一様格子）
+  \item \textbf{不整合} (Mismatch)：$\nabla p$ に CCD，$\nabla\psi$ に 2 次 FD
+\end{enumerate}
+$\rho_l/\rho_g = 1000$, $\mathit{We} = 1$，$N = 32, 64, 128$．
 
 \noindent\textbf{結果：}
-$\mu_l/\mu_g = 1$（一様粘性）では LTE の傾きは 2.00
-であり，古典的な $\Ord{\Delta t^2}$ を示す．
-一方，$\mu_l/\mu_g = 10$ および 100 では傾きはいずれも 1.00
-に低下し，$\Ord{\Delta t}$ への劣化が明確に観測された．
-これは界面近傍で CCD が $\mu(x)\,\partial u/\partial x$ を微分する際，
-$\mu$ の $\Ord{h}$ ジャンプに起因する空間離散化誤差が
-$\Ord{\mu_l/\mu_g \cdot \Delta t}$ の形で時間積分に入り込むためである．
+整合ケースでは $\Delta p_\mathrm{num} \approx 4.0$ を全格子で相対誤差
+$0.16$--$0.31\%$ で達成，$\max|\bu^1|$ は機械精度近傍に留まる．
+不整合ケースでは $\max|\bu^1|$ が整合ケース比 $10^3$--$10^6$ 倍に増幅
+（演算子不一致による寄生流れ；§~\ref{sec:rc_balanced_force} の理論予測と一致）．
 
-\noindent\textbf{CN との相互作用：}
-対角粘性項を CN で暗黙処理しても，交差項の陽的評価が $\Ord{\Delta t}$
-の時間誤差底を設定するため，全体の粘性ソルバは
-\begin{equation}
-  \Ord{\Delta t^2}\text{（対角 CN）} + \Ord{\mu_l/\mu_g \cdot \Delta t}\text{（交差項）}
-\end{equation}
-の精度となる．$\mu_l/\mu_g \lesssim 5$ では交差項の寄与は
-CSF の $\Ord{h^{1\text{-}2}}$ 空間精度底と同程度であり，
-実用上は支配的ではない．$\mu_l/\mu_g \gg 10$ では
-粘性場の界面延長（HFE 類似）を導入して $\mu$ ジャンプ自体を平滑化し，
-暗黙処理の対象に含めることが必要となる
-（§~\ref{sec:error_budget} の残存限界を参照）．
+% ───────────────
+\paragraph{(b) $\rho/\mu$ 補間（arithmetic/harmonic/VOF）面値精度}
+\label{sec:U7_rho_mu_interp}
 
-以上で全コンポーネントの単体検証が完了した．次節に結果を総括する．
+セル中心物性場 $\rho, \mu$ から face $i+1/2$ への補間規則
+（arithmetic mean,harmonic mean,VOF（volume-of-fluid weighted））を
+1D 平面界面で比較し，face 値の $L_\infty$ 誤差と Laplace 圧計算への影響を測定する．
+全 two-phase 第~\ref{sec:verification}章 ベンチマークで使用される primitive．
+
+\noindent\textbf{結果：}
+arithmetic と VOF は界面で $\Ord{h^1}$（界面位置の解像度依存），
+harmonic は $1/\rho$ 平均化により高密度比で安定．
+高 $\rho_l/\rho_g$ 設定では harmonic が推奨される（§~\ref{sec:rho_mu_interpolation} 参照）．
+
+\noindent\textbf{結論：}
+BF 整合演算子で Laplace 圧再現相対誤差 $0.16$--$0.31\%$；
+不整合では寄生流れが $10^3$--$10^6$ 倍に増幅．
+$\rho/\mu$ 補間規則は密度比に応じて harmonic を選択することで安定．\textbf{合格}．
+
+\medskip
+以上で全 Tier I--VII の単体検証（U1--U9）が完了した．
+次節（§~\ref{sec:verify_summary}）に 9 テストの pass/fail 総括と
+第~\ref{sec:verification}章 への接続を示す．

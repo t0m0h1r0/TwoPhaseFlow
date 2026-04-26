@@ -1,425 +1,147 @@
-% paper/sections/11e_pressure_solver.tex
+% paper/sections/12f_pressure_solver.tex
 %
-% §11.3  圧力ソルバの検証
-%   Exp 9+10: DC 反復回数 vs 精度 / DC vs FD
-%   Exp 13:   DC ω 緩和とスペクトル収束
-%   Exp 11:   PPE Neumann BC
-%   Exp 12:   変密度 PPE
+% Tier V: 時間積分の検証
+%   U8 = Time integration suite
+%        (a) TVD-RK3 ODE 3 次 + 安定領域
+%        (b) AB2 ODE 2 次
+%        (c) CN + ADI predictor 拡散 MMS 2 次
+%        (d) 粘性 3-layer Layer A/B/C 個別精度
 % ═══════════════════════════════════════════════════════════════════════════════
+\subsection{Tier V：時間積分}
+\label{sec:verify_time}
 
-\subsection{圧力ソルバの検証}
-\label{sec:verify_solver}
-
-前節の界面処理パイプライン（§~\ref{sec:verify_interface}）により，
-曲率 $\kappa$ および延長物性場がアルゴリズム Step~6 の PPE ソルバに引き渡される．
-本節では，PPE ソルバの中核をなす欠陥補正法（DC）の反復特性
-（§~\ref{sec:verify_ppe}），
-Neumann 境界条件での精度（§~\ref{sec:verify_ppe_neumann}），
-分相 PPE + DC $k{=}3$ による密度比非依存な高精度 PPE
-（§~\ref{sec:verify_split_ppe_dc}），
-変密度一括解法の参考データ（§~\ref{sec:verify_ppe_varrho}）を順に検証する．
-
+NS パイプラインの時間進展は，
+CLS 移流の TVD-RK3（§~\ref{sec:time_int}），
+NS Predictor の IMEX-BDF2 / AB2（§~\ref{sec:time_level1}），
+粘性項の Crank--Nicolson + ADI sweep（§~\ref{sec:time_int}）の
+3 系統に分かれる．
+本 Tier の単体テスト U8 はこれらを 4 sub-test で suite 検証する．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{欠陥補正法の反復回数と空間精度}
-\label{sec:verify_ppe}
-\label{sec:dc_iteration_accuracy}
+\subsubsection{U8：Time integration suite}
+\label{sec:U8_time_integration_suite}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:defect_correction_main} で導入した欠陥補正法（DC）の
-反復回数 $k$ が解の精度をどの程度支配するかを確認する．
+TVD-RK3 / AB2 / CN+ADI predictor / 粘性 3-layer の 4 sub-test で
+時間積分スキームの設計精度を ODE / MMS テストで検証する．
 
-\noindent\textbf{評価対象：}
-欠陥補正法（DC）の反復特性：$k$ vs 精度，DC vs FD 比較．
+\noindent\textbf{Part 2 対応 primitive：}
+\#13 (TVD-RK3),\#14 (IMEX-BDF2),\#15 (ADI predictor sweep),\#11 (粘性 3-layer)．
 
-\noindent\textbf{手順とパラメタ：}
+\noindent\textbf{下流連関：}
+全 NS time 系（KE decay,TGV temporal）．
+
+% ───────────────
+\paragraph{(a) TVD-RK3 ODE 3 次精度＋安定領域}
+\label{sec:verify_tvd_rk3}
+
+スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，$q(0) = 1$，厳密解 $q(1) = e^{-1}$；
+ステップ数 $n = 4, 8, \ldots, 512$．
+
+\begin{table}[htbp]
+\centering
+\caption{TVD-RK3 の時間精度}
+\label{tab:tvd_rk3}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\begin{tabular}{rc cc}
+\toprule
+$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
+\midrule
+  4 & $2.50 \times 10^{-1}$ & $2.93 \times 10^{-4}$  & ---    \\
+  8 & $1.25 \times 10^{-1}$ & $3.31 \times 10^{-5}$  & $3.14$ \\
+ 16 & $6.25 \times 10^{-2}$ & $3.93 \times 10^{-6}$  & $3.07$ \\
+ 32 & $3.13 \times 10^{-2}$ & $4.80 \times 10^{-7}$  & $3.04$ \\
+ 64 & $1.56 \times 10^{-2}$ & $5.92 \times 10^{-8}$  & $3.02$ \\
+128 & $7.81 \times 10^{-3}$ & $7.35 \times 10^{-9}$  & $3.01$ \\
+256 & $3.91 \times 10^{-3}$ & $9.17 \times 10^{-10}$ & $3.00$ \\
+512 & $1.95 \times 10^{-3}$ & $1.14 \times 10^{-10}$ & $3.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+収束次数は漸近的に $3.00$ に近づき，設計通りの $\Ord{\Delta t^3}$ を達成．
+固定格子移流テスト（CCD 周期 $N = 256$）では空間離散のスペクトル半径による
+安定領域制約を確認した．
+
+\noindent\textbf{結論：}$\Ord{\Delta t^{3.00}}$．\textbf{合格}．
+
+% ───────────────
+\paragraph{(b) AB2 ODE 2 次精度}
+\label{sec:verify_ab2}
+
+スカラー ODE $\mathrm{d}q/\mathrm{d}t = -q$，AB2（前進 Euler 起動）；
+$n = 16, 32, \ldots, 512$．
+
+\begin{table}[htbp]
+\centering
+\caption{AB2 の時間精度}
+\label{tab:ab2_time}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\begin{tabular}{rc cc}
+\toprule
+$n$ & $\Delta t$ & $|q - e^{-1}|$ & 次数 \\
+\midrule
+ 16 & $6.25 \times 10^{-2}$ & $1.42 \times 10^{-4}$ & ---    \\
+ 32 & $3.13 \times 10^{-2}$ & $3.27 \times 10^{-5}$ & $2.12$ \\
+ 64 & $1.56 \times 10^{-2}$ & $7.84 \times 10^{-6}$ & $2.06$ \\
+128 & $7.81 \times 10^{-3}$ & $1.92 \times 10^{-6}$ & $2.03$ \\
+256 & $3.91 \times 10^{-3}$ & $4.73 \times 10^{-7}$ & $2.02$ \\
+512 & $1.95 \times 10^{-3}$ & $1.18 \times 10^{-7}$ & $2.01$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+収束次数は $\Ord{\Delta t^2}$ に漸近．寄生根 $|\rho_2| = 0.5$ は安定領域内で，
+前進 Euler 起動の $\Ord{\Delta t}$ 誤差は数ステップで減衰．
+EXT2 外挿（IMEX-BDF2 の対流処理）も同じ $(3/2, -1/2)$ 係数の 2 次零安定多段法．
+
+\noindent\textbf{結論：}$\Ord{\Delta t^{2.0}}$．\textbf{合格}．
+
+% ───────────────
+\paragraph{(c) Crank--Nicolson + ADI predictor sweep 拡散 MMS 2 次}
+\label{sec:verify_cn_viscous}
+
+2D 拡散方程式 $u_t = \nu \nabla^2 u$（$\nu = 0.01$，周期境界）に対し
+厳密解 $u = \exp(-8\pi^2 \nu t)\sin(2\pi x)\sin(2\pi y)$ で $N = 64$ 固定，
+$\Delta t = T/10 \to T/320$ で時間収束を計測．
+
+\noindent\textbf{結果：}
+収束次数は $T/10 \to T/160$ で $2.00 \to 1.99 \to 2.04 \to 2.18$ と
+安定して $\Ord{\Delta t^2}$ を示し，
+$T/320$ で空間離散の丸め誤差床に到達．
+
+\noindent\textbf{無条件安定性：}
+$\mathrm{CFL}_\nu = \nu\Delta t/h^2 = 0.5$--$10$ で
+CN は $\mathrm{CFL}_\nu = 10$ でも単調減少を維持，
+前進 Euler は $\mathrm{CFL}_\nu = 5$ で初期値の約 $600$ 倍に発散する．
+ADI 方向分裂誤差は第~\ref{sec:verification}章 の TGV 結合テストで検証．
+
+\noindent\textbf{結論：}CN $\Ord{\Delta t^{2.0}}$＋無条件安定．\textbf{合格}．
+
+% ───────────────
+\paragraph{(d) 粘性 3-layer Layer A/B/C 個別精度（交差微分粘性項）}
+\label{sec:verify_cross_viscous}
+
+CN は対角粘性項 $\partial_x[\mu\,\partial_x u]$ のみ暗黙処理し，
+交差微分項 $\partial_x[\mu\,\partial_y u]$ は陽的評価する（§~\ref{sec:time_int}）．
+粘性比 $\mu_l/\mu_g$ がこの分離に与える影響を 3 層に分けて MMS で測定する：
+Layer A（対角項のみ），Layer B（対角+陽的交差項），Layer C（界面 HFE 統合）．
+
+\noindent\textbf{結果：}
 \begin{itemize}[noitemsep]
-  \item 2 次元 Poisson 問題，参照解 $p^* = \sin(\pi x)\sin(\pi y)$（Dirichlet BC）
-  \item $N = 8, 16, 32, 64, 128$ の一様格子
-  \item (a) 反復回数 $k = 1, 2, 3, 5, 10$ の $L^\infty$ 誤差を計測
-  \item (b) FD 5 点直接解法と DC $k{=}3$ の精度・コスト比較
+  \item Layer A: $\mu_l/\mu_g = 1$ で LTE $\Ord{\Delta t^2}$（古典 CN）
+  \item Layer B: $\mu_l/\mu_g = 10, 100$ で LTE 傾き $1.00$ に低下（$\Ord{\Delta t}$ 劣化）
+  \item Layer C: HFE 統合により $\mu$ ジャンプ平滑化で $\Ord{\Delta t^{1.5}}$ 程度回復
 \end{itemize}
-
-\noindent\textbf{結果：}
-
-\paragraph{(a) 反復回数 $k$ と精度の関係}
-
-\begin{table}[htbp]
-\centering
-\caption{欠陥補正法の反復回数 $k$ と $L^\infty$ 誤差（Dirichlet BC，$p^* = \sin\pi x\,\sin\pi y$）}
-\label{tab:dc_k_accuracy}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rr ccccc}
-\toprule
-$N$ & $h$ & $k=1$ & $k=2$ & $k=3$ & $k=5$ & $k=10$ \\
-\midrule
-  8 & $1/8$   & $1.30 \times 10^{-2}$ & $2.71 \times 10^{-4}$ & $2.08 \times 10^{-4}$ & $2.06 \times 10^{-4}$ & $1.98 \times 10^{-4}$ \\
- 16 & $1/16$  & $3.22 \times 10^{-3}$ & $1.13 \times 10^{-5}$ & $1.91 \times 10^{-6}$ & $1.90 \times 10^{-6}$ & $1.81 \times 10^{-6}$ \\
- 32 & $1/32$  & $8.04 \times 10^{-4}$ & $6.54 \times 10^{-7}$ & $1.60 \times 10^{-8}$ & $1.59 \times 10^{-8}$ & $1.53 \times 10^{-8}$ \\
- 64 & $1/64$  & $2.01 \times 10^{-4}$ & $4.04 \times 10^{-8}$ & $1.29 \times 10^{-10}$ & $1.28 \times 10^{-10}$ & $1.23 \times 10^{-10}$ \\
-128 & $1/128$ & $5.02 \times 10^{-5}$ & $2.52 \times 10^{-9}$ & $2.07 \times 10^{-12}$ & $1.59 \times 10^{-12}$ & $2.05 \times 10^{-12}$ \\
-\midrule
-\multicolumn{2}{c}{収束次数} & $\approx 2.0$ & $\approx 4.0$ & $\approx 7.0$ & $\approx 7.0$ & $\approx 7.0$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_dc_k_accuracy}
-\caption{欠陥補正法の反復回数 $k$ と $L^\infty$ 誤差の格子収束．
-  $k=1$ では $L_L$ の $\Ord{h^2}$ が支配的であるが，$k \ge 3$ で
-  $\Ord{h^7}$ に到達する．}
-\label{fig:dc_k_accuracy}
-\end{figure}
-
-$k = 1$ では初期値 $p^{(0)}=0$ に対する 1 回の反復が
-$p^{(1)} = \omega\,L_L^{-1}b$ を返すのみであり，
-$L_L$（$\Ord{h^2}$ の低次 FD Laplacian 基底ソルバ；§~\ref{sec:defect_correction_main}）の
-打ち切り誤差が支配するため収束次数は $\Ord{h^2}$ にとどまる．
-$k = 2$ では中間的な $\Ord{h^4}$ となり，
-$k \ge 3$ で CCD の設計精度が完全に発現して $\Ord{h^7}$ を達成する．
-設計次数 $\Ord{h^6}$ を超える超収束は，Dirichlet 条件下で参照解が境界上で零となるため
-境界スキームの $\Ord{h^5}$ 打ち切り誤差が消失することに起因する．
-$k = 3$ と $k = 10$ の絶対誤差の差は高々 2 倍程度であり，
-これ以上の反復は精度向上に対するコストが見合わない．
-したがって以降のすべての PPE 求解には $k = 3$ を採用する．
-
-\paragraph{(b) DC $k=3$ と FD 直接解法の比較}
-同一の問題設定で，FD 5 点ステンシルの直接解法と DC $k=3$ の精度およびコストを比較する．
-表~\ref{tab:dc_vs_fd} に結果を示す．
-
-\begin{table}[htbp]
-\centering
-\caption{FD 5 点直接解法と DC $k=3$ の精度・コスト比較}
-\label{tab:dc_vs_fd}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{r cc cc cc}
-\toprule
-$N$ & FD $L^\infty$ & 次数 & DC $k{=}3$ $L^\infty$ & 次数 & 精度比 & コスト比 \\
-\midrule
-  8 & $1.30 \times 10^{-2}$ & ---   & $2.08 \times 10^{-4}$ & ---   & $62\times$ & $1.2\times$ \\
- 16 & $3.22 \times 10^{-3}$ & $2.0$ & $1.91 \times 10^{-6}$ & $6.8$ & $1682\times$ & --- \\
- 32 & $8.04 \times 10^{-4}$ & $2.0$ & $1.60 \times 10^{-8}$ & $6.9$ & $50219\times$ & --- \\
- 64 & $2.01 \times 10^{-4}$ & $2.0$ & $1.29 \times 10^{-10}$ & $7.0$ & $1.6 \times 10^6\times$ & $4.0\times$ \\
-128 & $5.02 \times 10^{-5}$ & $2.0$ & $2.07 \times 10^{-12}$ & $7.0$ & $2.4 \times 10^7\times$ & $3.0\times$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_dc_vs_fd}
-\caption{DC $k{=}3$ と FD 5 点直接解法の $L^\infty$ 誤差・計算コスト比較．
-  DC は $N=128$ で FD の約 $2.4 \times 10^7$ 倍高精度でありながら，
-  コスト増加は $3.0$ 倍にとどまる．}
-\label{fig:dc_vs_fd}
-\end{figure}
-
-DC $k=3$ は $N = 128$ において FD の約 2400 万倍の精度を達成しつつ，
-計算コストの増加は 3.0 倍にとどまる．
-なお，本テストは非周期 Dirichlet 境界条件を用いているため，
-§~\ref{sec:verify_ccd_convergence} の周期境界テストでは検証されなかった
-CCD 境界スキームの正当性も同時に確認している．
+全体の粘性ソルバ精度は
+$\Ord{\Delta t^2}$（対角 CN）＋ $\Ord{\mu_l/\mu_g \cdot \Delta t}$（交差項）．
+$\mu_l/\mu_g \lesssim 5$ では交差項寄与は CSF $\Ord{h^{1\text{-}2}}$ と同程度であり
+実用上支配的ではない．
 
 \noindent\textbf{結論：}
-$k \ge 3$ で CCD の設計精度が完全に発現し $\Ord{h^7}$ を達成する
-（Dirichlet 境界で境界スキーム誤差が消失するための超収束）．
-$k = 3$ と $k = 10$ の絶対誤差の差は高々 2 倍であり，$k = 3$ を採用する．
-DC $k{=}3$ は $N = 128$ で FD 比 $2.4 \times 10^7$ 倍高精度，コスト増 $3.0$ 倍．
-
-\noindent\textbf{補足：DC $\omega$ 緩和とスペクトル収束}%
-\label{sec:verify_dc_spectral}%
-（付録~\ref{app:dc_convergence_theory}）．
-変密度条件での DC 反復の $\omega$ 依存性を調べた結果，
-等密度（$\rho_l/\rho_g = 1$）では $\omega \in [0.2, 0.7]$ で収束するが，
-$\rho_l/\rho_g \geq 5$ ではすべての $\omega$ で停滞することが判明した．
-この制約は分相 PPE 解法（§~\ref{sec:split_ppe_framework}）の相内部評価では回避される
-（§~\ref{sec:verify_split_ppe_dc}）．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{PPE Neumann 境界条件とゲージ固定}
-\label{sec:verify_ppe_neumann}
-% ─────────────────────────────────────────────────────────────────────────────
-
-\noindent\textbf{目的：}
-全周 Neumann BC ＋ 1 点ゲージ固定での DC $k{=}3$ の格子収束性を検証する．
-
-\noindent\textbf{評価対象：}
-PPE Neumann BC ＋ゲージ固定 $p_{0,0} = p^*(0,0)$．
-
-\noindent\textbf{手順とパラメタ：}
-\begin{itemize}[noitemsep]
-  \item 参照解 $p^* = \cos(\pi x)\cos(\pi y)$
-        （境界上で自然に $\partial p^*/\partial n = 0$ を満たす）
-  \item ゲージ固定 $p_{0,0} = p^*(0,0) = 1$，DC $k{=}3$
-  \item 格子 $N = 8, 16, 32, 64, 128$
-\end{itemize}
-
-\noindent\textbf{結果：}
-
-\begin{table}[htbp]
-\centering
-\caption{PPE Neumann 境界条件（$p^* = \cos\pi x\,\cos\pi y$，DC $k{=}3$，ゲージ固定 $p_{0,0}=1$）}
-\label{tab:ppe_neumann}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rr cc}
-\toprule
-$N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
-\midrule
-  8 & $1/8$   & $1.98 \times 10^{-2}$ & ---   \\
- 16 & $1/16$  & $8.59 \times 10^{-4}$ & $4.5$ \\
- 32 & $1/32$  & $2.87 \times 10^{-5}$ & $4.9$ \\
- 64 & $1/64$  & $9.09 \times 10^{-7}$ & $5.0$ \\
-128 & $1/128$ & $2.85 \times 10^{-8}$ & $5.0$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/ch11_ppe_neumann}
-\caption{PPE Neumann BC の格子収束．収束次数は $\Ord{h^5}$ に収束し，
-  CCD 境界スキームの打ち切り誤差が精度上界を規定する．}
-\label{fig:ppe_neumann}
-\end{figure}
-
-収束次数は $N \ge 32$ で $\Ord{h^{5.0}}$ に安定する．
-これは CCD の内部スキーム（$\Ord{h^6}$）ではなく，
-境界スキーム（$\Ord{h^5}$）が全体精度のボトルネックとなることを意味する．
-前項 §~\ref{sec:verify_ppe} の Dirichlet テストでは
-参照解が境界上で零となるため境界スキーム誤差が消失し超収束（$\Ord{h^7}$）を示したが，
-Neumann 条件ではこの特殊事情がなく，境界精度が支配的となる．
-二相流 PPE は Neumann 条件で運用するため，
-達成可能な空間精度は $\Ord{h^5}$ が実質的な上界である．
-
-\noindent\textbf{結論：}
-収束次数は $N \ge 32$ で $\Ord{h^{5.0}}$ に安定する．
-CCD 境界スキーム（$\Ord{h^5}$）が全体精度のボトルネックであり，
-二相流 PPE（Neumann 条件）の達成可能精度は $\Ord{h^5}$ が実質的上界である．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{\texorpdfstring{分相 PPE + DC $k{=}3$：密度比非依存な高精度 PPE}{分相 PPE + DC k=3：密度比非依存な高精度 PPE}}
-\label{sec:verify_split_ppe_dc}
-% backward-compat
-\label{sec:split_ppe_recovery}%
-\label{sec:gfm_ppe_recovery}%
-% ─────────────────────────────────────────────────────────────────────────────
-
-\noindent\textbf{目的：}
-§~\ref{sec:split_ppe_framework} の分相 PPE 解法が，
-等密度 DC $k{=}3$ の $\Ord{h^7}$ を密度比によらず回復することを実証する．
-
-\noindent\textbf{評価対象：}
-分相 PPE + DC $k{=}3$ vs 変密度一括 DC vs 分相 PPE + FD．
-
-\noindent\textbf{手順とパラメタ：}
-\begin{itemize}[noitemsep]
-  \item 製造解 $p^* = \sin\pi x\sin\pi y$（Dirichlet BC），
-        円形界面（$R = 0.25$，中心 $(0.5, 0.5)$），
-        smoothed Heaviside 密度場（$\varepsilon = 1.5h$）
-  \item 3 手法を比較：
-        (a) 変密度一括 DC $k{=}3$，
-        (b) 分相 PPE + FD 直接法（$\Ord{h^2}$），
-        (c) 分相 PPE + DC $k{=}3$
-  \item 液相内部（$\phi > 3h$）で $L^\infty$ 誤差を計測
-  \item 密度比スイープ $\rho_l/\rho_g = 1$--$1000$（$N = 64$），
-        格子収束 $N = 8$--$128$（$\rho_l/\rho_g = 1000$）
-\end{itemize}
-
-\noindent\textbf{結果：}
-
-\paragraph{密度比スイープ（$N = 64$）}
-
-\begin{table}[htbp]
-\centering
-\caption{3 手法の PPE 精度比較（$N = 64$，液相内部 $L^\infty$）}
-\label{tab:split_ppe_dc_sweep}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rccc}
-\toprule
-$\rho_l/\rho_g$ & 変密度一括 DC & 分相 PPE + FD & 分相 PPE + DC $k{=}3$ \\
-\midrule
-   1 & $6.6 \times 10^{-12}$  & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
-   2 & $8.4 \times 10^{-8}$   & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
-   5 & $5.8 \times 10^{-7}$   & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
-  10 & $2.9 \times 10^{-7}$   & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
- 100 & $9.1 \times 10^{-6}$   & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
-1000 & $2.7 \times 10^{-5}$   & $2.0 \times 10^{-4}$ & $9.4 \times 10^{-11}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-分相 PPE + DC $k{=}3$ の液相内部誤差は $9.4 \times 10^{-11}$（$N = 64$）で
-\textbf{表~\ref{tab:split_ppe_dc_sweep} の全密度比に対して同じ値}であり，$\rho_l/\rho_g = 1$（等密度）の
-§~\ref{sec:verify_ppe} の結果（$1.29 \times 10^{-10}$）と同水準である．
-変密度一括 DC は $\rho_l/\rho_g = 1000$ で 5 桁劣化する．
-分相 PPE + FD は $\Ord{h^2}$ で安定だが，DC $k{=}3$ より 6 桁以上低精度である．
-
-\paragraph{格子収束（$\rho_l/\rho_g = 1000$）}
-
-\begin{table}[htbp]
-\centering
-\caption{格子収束比較（$\rho_l/\rho_g = 1000$，液相内部 $L^\infty$）}
-\label{tab:split_ppe_dc_convergence}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{rcccccc}
-\toprule
-$N$ & 一括 DC & 次数 & FD 直接 & 次数 & DC $k{=}3$ & 次数 \\
-\midrule
-  8 & $2.3 \times 10^{-3}$  & ---      & $1.3 \times 10^{-2}$ & ---   & $2.1 \times 10^{-4}$ & --- \\
- 16 & $1.9 \times 10^{-4}$  & $3.6$    & $3.2 \times 10^{-3}$ & $2.0$ & $1.5 \times 10^{-6}$ & $7.1$ \\
- 32 & $1.5 \times 10^{-5}$  & $3.7$    & $8.0 \times 10^{-4}$ & $2.0$ & $1.2 \times 10^{-8}$ & $7.0$ \\
- 64 & $2.7 \times 10^{-5}$  & $-0.8$   & $2.0 \times 10^{-4}$ & $2.0$ & $9.4 \times 10^{-11}$ & $7.0$ \\
-128 & $4.1 \times 10^{-5}$  & $-0.6$   & $5.0 \times 10^{-5}$ & $2.0$ & $7.2 \times 10^{-13}$ & $7.0$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\linewidth]{figures/ch11_split_ppe_dc_comparison}
-\caption{(a)~密度比スイープ（$N=64$）：分相 PPE + DC $k{=}3$（緑）は液相内部で全密度比に対し
-  $9.4 \times 10^{-11}$ に不変．
-  (b)~$\rho_l/\rho_g = 10$ での格子収束．
-  (c)~$\rho_l/\rho_g = 1000$ での格子収束：
-  分相 PPE + DC $k{=}3$ は $\Ord{h^{7.0}}$ で収束し，
-  変密度一括 DC は $N \geq 64$ で収束が反転する．}
-\label{fig:split_ppe_dc_comparison}
-\end{figure}
-
-変密度一括 DC は $N \geq 64$ で誤差が\textbf{増大}する（収束次数が負値）．
-界面幅 $\varepsilon = 1.5h$ の縮小に伴い $1/\rho$ ジャンプが急峻化し，
-ステンシル汚染が悪化するためである．
-対して分相 PPE + DC $k{=}3$ は液相内部で\textbf{$\Ord{h^{7.0}}$} の収束を示し，
-§~\ref{sec:verify_ppe} の等密度 Dirichlet テストの超収束次数と同水準である．
-Neumann BC 条件（実運用）では $\Ord{h^{5.0}}$（§~\ref{sec:verify_ppe_neumann}）が上界となるが，
-本テストが直接示す密度比非依存性は界面から離れた相内部に限られる．
-
-\begin{tcolorbox}[resultbox, title={分相 PPE + DC $k{=}3$ の精度検証}]
-\begin{enumerate}[noitemsep]
-  \item 分相 PPE + DC $k{=}3$ は\textbf{液相内部}で全密度比（$\rho_l/\rho_g = 1$--$1000$）に対し
-        等密度テストと同一の $\Ord{h^{7.0}}$（Dirichlet）を達成する
-  \item 相内部の格子収束次数は密度比に\textbf{非依存}
-        （$N = 64 \to 128$ で次数 $7.04$，$\rho = 10$ でも $1000$ でも同一）
-  \item 変密度一括 DC 比で $N=128$，$\rho=1000$ にて
-        $5.7 \times 10^7$ 倍の精度改善
-\end{enumerate}
-\end{tcolorbox}
-
-\noindent\textbf{結論：}
-分相 PPE + DC $k{=}3$ は液相内部では全密度比（$\rho_l/\rho_g = 1$--$1000$）で
-$9.4 \times 10^{-11}$（$N = 64$）に不変であり，
-格子収束は $\Ord{h^{7.0}}$ で密度比に非依存である．
-変密度一括 DC は $N \geq 64$ で収束が反転（負の次数）し，
-分相 PPE + DC $k{=}3$ 比で $5.7 \times 10^7$ 倍低精度である．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{変密度 PPE の参考データ：滑らかな密度場での収束特性}
-\label{sec:verify_ppe_varrho}
-\label{sec:varrho_ppe_limitation}%
-% ─────────────────────────────────────────────────────────────────────────────
-
-\noindent\textbf{目的：}
-CCD 変密度演算子自体の精度特性を参考として記録する．
-
-\noindent\textbf{評価対象：}
-変密度 DC $k{=}3$（滑らかな正弦波密度場，Dirichlet BC）．
-
-\noindent\textbf{手順とパラメタ：}
-\begin{itemize}[noitemsep]
-  \item 密度場 $\rho(x,y) = 1 + A\sin(\pi x)\cos(\pi y)$
-        （$A = 0, 0.8, 0.98, 0.998$；$\rho_{\max}/\rho_{\min} \approx 1, 9, 99, 999$）
-  \item DC $k{=}3$，Dirichlet BC，格子収束試験
-\end{itemize}
-
-\noindent\textbf{結果：}
-$\rho_{\max}/\rho_{\min} \approx 999$ でも $\Ord{h^{5.8}}$ を維持した
-（$N=128$ で $L^\infty = 8.5 \times 10^{-11}$）．
-
-\noindent\textbf{結論：}
-密度場が十分に滑らかである限り，CCD の高次精度は密度比によらず発現する．
-界面型密度分布（smoothed Heaviside）では高解像度側で
-漸近格子収束が失われる本質的限界があり（§~\ref{sec:interface_crossing}），
-これが分相 PPE 解法を必要とする根拠となっている．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{圧力場フィルタ適用禁止の定量的根拠}
-\label{sec:verify_pressure_filter}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:dccd_pressure_nofilt} で DCCD フィルタの圧力場への適用を禁止した
-根拠を定量的に実証する．
-製造解 $p = \sin(2\pi x)\sin(2\pi y)$（周期境界）に対し，
-フィルタなしの CCD ラプラシアン精度と，DCCD フィルタ適用後のラプラシアン誤差を比較した．
-
-\noindent\textbf{結果：}
-フィルタなしの CCD ラプラシアンは厳密解に対して $\Ord{h^{6.0}}$ で収束する．
-一方，DCCD フィルタ（$\varepsilon_d = 0.25$）を適用すると，
-$\bnabla^2 p - \bnabla^2 \tilde{p}$（$\tilde{p}$: フィルタ後）の $L_\infty$ ノルムが
-$\Ord{h^{2.0}}$ の発散誤差を生じる（$N = 32$: $1.51$，$N = 256$: $2.38 \times 10^{-2}$）．
-$\varepsilon_d = 0.05$ でも同じ $\Ord{h^{2.0}}$ のスケーリングが確認された．
-
-この誤差は速度補正ステップにおいて
-$\bnabla \cdot \bu^{n+1}_{\mathrm{filtered}} =
-(\bnabla^2 p - \bnabla^2 \tilde{p})/\Delta t \neq 0$
-となり，非圧縮条件を $\Ord{h^2}$ で破壊する．
-したがって，§~\ref{sec:dccd_pressure_nofilt} の禁止規則は必須である．
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{PPE 条件数のスケーリング}
-\label{sec:verify_ppe_condition}
-% ─────────────────────────────────────────────────────────────────────────────
-
-§~\ref{sec:ppe_bc_stability} で議論した変密度 PPE の条件数スケーリングを数値的に測定する．
-古典的な目安は $\kappa \approx \Ord{(\rho_l/\rho_g) / h^2}$ であるが，
-界面型密度分布とゲージ固定 Neumann 系ではこの見積りから外れる可能性がある．
-FVM 変密度ラプラシアン（Neumann 境界，中心ゲージ固定）の条件数を
-$N = 8$--$64$，$\rho_l/\rho_g = 1$--$1000$ で測定した．
-
-\noindent\textbf{結果：}
-等密度（$\rho_l/\rho_g = 1$）でも実測は $\kappa \propto N^{3.0}$ であり，
-単純な $\Ord{h^{-2}}$ 見積りより強い格子依存性を示した．
-$\rho_l/\rho_g \geq 10$ では，界面近傍の密度コントラストが
-高周波固有モードを選択的に増幅し，$\kappa$ は $N$ に対する指数が
-3--6 に増大する．
-特に $\rho_l/\rho_g = 1000$，$N = 64$ では $\kappa \approx 2.2 \times 10^7$ に達し，
-これが §~\ref{sec:varrho_dc_convergence} で報告する
-界面型密度場の収束劣化を助長する要因である．
-
-\noindent\textbf{結論：}
-現行の FVM 変密度 PPE 行列では，条件数悪化は
-古典的な $\Ord{(\rho_l/\rho_g)/h^2}$ 見積りを超えるスケーリングを示し，
-分相 PPE 解法（§~\ref{sec:split_ppe_framework}）による条件数低減の必要性を裏付ける．
-
-
-% ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{CCD 2 階微分演算子のスペクトル半径}
-\label{sec:verify_ccd_spectral_radius}
-% ─────────────────────────────────────────────────────────────────────────────
-
-付録~\ref{sec:lambda_max_derive} で導出した CCD $D^{(2)}$ のスペクトル半径を
-数値的に測定し，安定性解析に必要な正確な値を確定する．
-
-\noindent\textbf{手順：}
-$N = 32$--$256$（壁面境界）で CCD $D^{(2)}$ 行列を列ごとに構築し，
-NumPy \texttt{eigh} で全固有値を計算した．同一格子での FD 中心差分
-$D^{(2)}_{\mathrm{FD}}$ との比較，および 2D Kronecker 積
-$I \otimes D^{(2)} + D^{(2)} \otimes I$ の理論値との一致を検証した．
-
-\noindent\textbf{結果：}
-CCD $D^{(2)}$ の無次元スペクトル半径は $\rho_{\mathrm{CCD}} h^2 = 9.60 \pm 0.01$
-（$N = 32$--$256$ で一定）であり，FD 中心差分の $\rho_{\mathrm{FD}} h^2 = 4.00$
-に対してほぼ 2.4 倍である．2D Kronecker ラプラシアンの最大固有値は
-$\rho_{\mathrm{2D}} = 2\rho_{\mathrm{1D}}$ と理論値に機械精度（相対誤差 $< 10^{-14}$）で一致した．
-
-\noindent\textbf{結論：}
-CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$ を確認した．
-この値は FD 比 2.4 倍であり，
-明示的粘性 CFL の安全率を $\nu\Delta t / h^2 < 1/(2 \times 9.6) \approx 0.052$
-に制約する．CN 粘性（§~\ref{sec:verify_cn_viscous}）の採用により
-この CFL 制約は回避される．
+高粘性比界面近傍で $\Ord{\Delta t}$ 劣化を確認；
+理論予測（§~\ref{sec:time_int}）と一致．
+\textbf{合格}（理論一致）／実用的に許容可能．

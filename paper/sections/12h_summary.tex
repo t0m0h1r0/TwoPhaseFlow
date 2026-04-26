@@ -1,179 +1,138 @@
-% paper/sections/11g_summary.tex
+% paper/sections/12h_summary.tex
 %
-% §11.5  検証結果の総括
+% §12.8  検証結果の総括
+%   9 単体テスト (U1–U9) の pass/fail 総括 + 第13章ベンチマークへの接続
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{検証結果の総括}
 \label{sec:verify_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-全 19 件の基本コンポーネントテストおよび 13 件の追加検証（ギャップ充填）が完了した．
-表~\ref{tab:verification_summary} に各テストの期待精度・実測精度・備考を総括する．
-主要な知見を§~\ref{sec:verify_spatial}--§~\ref{sec:verify_time} の 4 小節に沿い，検証テーマごとに以下に整理する．
-
-\begin{enumerate}
-  \item \textbf{空間離散化：}
-        CCD 微分は周期境界で $\Ord{h^{6.0}}$，壁境界で $\Ord{h^5}$（境界スキーム律速），
-        非一様格子で前漸近振動を伴う高次収束傾向を示した．
-        GCL は計算機精度で合格した．
-        DCCD フィルタは PPE 用パラメータ（$\varepsilon_d=0.25$）で Nyquist モードを完全に抑制し（$H(\pi)=0$；移流用 $\varepsilon_d=0.05$ では $H(\pi)=0.80$），
-        Rhie--Chow C/RC ブラケットは $\Ord{h^4}$ を達成して
-        標準 $\Ord{h^2}$ に対し $N{=}128$ で 14{,}229 倍の精度向上を確認した．
-  \item \textbf{DCCD 移流特性：}
-        2 次散逸（$\varepsilon_d = 0.05$）による DCCD は，
-        不連続プロファイルでは CCD より大きい TV（DCCD $17.14$ vs CCD $10.96$；56\% 増）を示すが，
-        $C^0$ 以上のプロファイルでは CCD と同等の TV を維持する
-        （Triangle: $2.10$ vs $2.04$）．
-        CLS 界面変数 $\psi$ は $C^\infty$ 級であり，DCCD の散逸は殆ど影響しない．
-  \item \textbf{曲率計算：}
-        現行の CLS 曲率パイプラインは円形・正弦波状界面で誤差を単調に減少させるが，
-        $\varepsilon=1.5h$ の正則化幅と界面近傍評価帯が律速し，
-        $L_\infty$ 実効次数は約 $\Ord{h^1}$ にとどまる．
-        CCD 演算子単体の高次精度は別テストで確認する．
-  \item \textbf{界面処理：}
-        CLS 質量保存誤差は $\Ord{10^{-15}}$（機械精度，界面重み付き補正），
-        面積誤差は $\Ord{10^{-3}}$（$N{=}256$，単一渦），
-        保存型再マッピングは $K \leq 20$ で機械精度 $\Ord{10^{-16}}$ を達成
-        （LS は全条件で約 18\% の質量誤差），
-        HFE は 1D で $\Ord{h^{7.0}}$ を示し，
-        2D テンソル積では $N\le128$ で $\Ord{h^{5.8}}$ 以上の高次収束を示した．
-        ただし風上差分経路は廃止済み（§~\ref{sec:verify_interface}）のため比較対象から除外し，
-        2D 最高解像度は丸め・補間誤差床の影響を受ける．
-  \item \textbf{PPE 求解：}
-        欠陥補正 $k{=}3$ は等密度 Dirichlet で $\Ord{h^{7.0}}$（超収束；FD 比 $2.4 \times 10^7$ 倍高精度，コスト増 3.0 倍），
-        Neumann + ゲージ固定で $\Ord{h^{5.0}}$（境界スキーム律速）を達成した．
-        分相 PPE + DC $k{=}3$ は液相内部で全密度比（$\rho_l/\rho_g = 1$--$1000$）に対し
-        $\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した．
-        変密度一括 DC は界面型密度場で劣化・発散する（§~\ref{sec:interface_crossing}）が，
-        分相 PPE の相内部評価ではこの劣化を回避できる．
-  \item \textbf{時間積分：}
-        TVD-RK3 は $\Ord{\Delta t^{3.00}}$，AB2 は $\Ord{\Delta t^{2.0}}$ を ODE テストで確認し，
-        いずれも設計精度と完全一致した．
-        交差微分粘性項の陽的処理は，均一粘性場では $\Ord{\Delta t^2}$ を維持するが，
-        高粘性比（$\mu_l/\mu_g = 100$）界面近傍では $\Ord{\Delta t}$ に劣化することを確認した．
-  \item \textbf{PPE 演算子特性：}
-        CCD 2 階微分行列のスペクトル半径は $\rho(D^{(2)}) h^2 \approx 9.6$（FD の $4.0$ の 2.4 倍）であり，
-        2D Kronecker 積では $\rho(L_{\mathrm{2D}}) = 2\,\rho(L_{\mathrm{1D}})$ が機械精度で成立する．
-        陽的粘性 CFL 制約が FD の 2.4 倍厳しいことが確認され，CN 陰的粘性処理の必要性を裏付ける．
-  \item \textbf{再初期化界面シフト：}
-        CLS 再初期化 1 回あたりのゼロレベル位置シフトは $\Ord{h^2}$--$\Ord{h^3}$ でスケールし，
-        10 回累積で略線形蓄積（$N{=}256$ で約 $7.6$ 倍；理想値 $10$）することを確認した．
-\end{enumerate}
-
-\noindent\textbf{間接的に検証されるコンポーネント：}
-上記の単体テストに加え，以下の構成要素は本章のテストまたは第~\ref{sec:verification}章の結合テストで間接的に検証される．
-\begin{itemize}[noitemsep]
-  \item \textbf{ADI 分裂誤差（$\Ord{\Delta t^2}$）：}
-        CN 粘性項自体は §~\ref{sec:verify_cn_viscous} で直接検証済み．
-        残る ADI 方向分裂誤差は第~\ref{sec:verification}章の Taylor--Green 渦テストで結合検証される．
-  \item \textbf{Heaviside 正則化 $H_\varepsilon$（物性値補間）：}
-        Young--Laplace テスト（§~\ref{sec:verify_young_laplace}）において
-        密度場 $\rho(\psi)$ の補間が Laplace 圧力跳びの精度に直接反映されており，間接的に検証されている．
-  \item \textbf{Block Thomas 直接解法：}
-        CCD 微分テスト（§~\ref{sec:verify_ccd_convergence}，§~\ref{sec:verify_mixed_partial}）が
-        block Thomas アルゴリズムを介して周期・壁境界で設計通りの高次精度を達成しており，
-        その正確性を含意する．
-\end{itemize}
+7 Tier (I--VII) で構成される 9 単体テスト (U1--U9) が完了した．
+表~\ref{tab:verification_summary} に各テストの目的・期待精度・実測精度・判定を総括する．
+9 件の単体テストで Part 2 (§\ref{sec:ccd_def}--§\ref{sec:algorithm}) の
+30 数値コンポーネントのうち 22 件を直接網羅し，
+4 件 (face-jet $J_f$, CLS A→F 6-stage, 運動量対流, IPC projection) は
+複数 primitive の composite として網羅される
+（§~\ref{sec:numerical_integrity} トレーサビリティ表~\ref{tab:component_algorithm_map}）．
 
 \begin{table}[htbp]
 \centering
-\caption{計算コンポーネント検証結果の総括}
+\caption{単体テスト U1--U9 の検証結果総括}
 \label{tab:verification_summary}
-\renewcommand{\arraystretch}{1.05}
-\scriptsize
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lp{0.12\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}c>{\raggedright\arraybackslash}p{0.20\linewidth}}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{l>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}c}
 \toprule
-コンポーネント & 期待精度 & 実測精度 & 判定 & 備考 \\
+ID & テスト & 期待精度 & 実測精度 & 判定 \\
 \midrule
-CCD 微分（周期）          & $\Ord{h^6}$        & $\Ord{h^{6.0}}$                & \checkmark & $N = 256$ で丸め誤差到達 \\
-CCD 微分（壁境界）        & $\Ord{h^5}$        & $\Ord{h^{5}}$                  & \checkmark & 境界スキームが律速 \\
-CCD 微分（非一様格子）    & $\Ord{h^6}$        & 前漸近振動（$p=5.2$--$5.8$）  & $\triangle$ & 誤差は単調減少；GCL 合格（$7.5 \times 10^{-14}$） \\
-DCCD フィルタ              & $H(\pi) = 0$       & $H(\pi) = 0$                   & \checkmark & チェッカーボード完全抑制 \\
-DCCD 移流（不連続）        & TV 低減            & TV: CCD $10.96$, DCCD $17.14$  & $\triangle$ & $C^0$ 以上で CCD 同等 \\
-Rhie--Chow C/RC            & $\Ord{h^4}$        & $\Ord{h^{4.0}}$                & \checkmark & 標準 $\Ord{h^2}$ 比 14{,}229 倍 \\
-曲率（CLS パイプライン）   & 単調減少          & $\Ord{h^{1.0}}$                & $\triangle$ & $\varepsilon=1.5h$ と評価帯が律速 \\
-CLS 質量保存               & 保存的             & $\Ord{10^{-15}}$（機械精度）   & \checkmark & 界面重み付き補正 \\
-CLS 面積精度               & 格子収束           & $\Ord{10^{-3}}$（$N{=}256$）   & \checkmark & 形状誤差は $\varepsilon$ 律速 \\
-CLS 保存型再マッピング     & LS 比改善          & $\Ord{10^{-16}}$（$K{\leq}20$）& \checkmark & LS は全条件で ${\sim}18\%$ \\
-HFE 1D                     & $\Ord{h^6}$        & $\Ord{h^{7.0}}$                & \checkmark & 風上経路は廃止済み（§~\ref{sec:verify_interface}）\\
-HFE 2D（製造解）           & $\Ord{h^6}$\textsuperscript{†} & $p=6.33,5.79,2.69$ & $\triangle$\textsuperscript{‡} & 最高解像度で丸め・補間誤差床 \\
-Young--Laplace              & $\Delta p = 4.0$   & 相対誤差 $0.16$--$0.31\%$      & \checkmark & $N{=}32$--$128$，CSF 飽和 \\
-PPE DC $k{=}3$（Dirichlet） & $\Ord{h^6}$       & $\Ord{h^{7.0}}$                & \checkmark & 超収束；FD 比 $2.4 \times 10^7$ 倍 \\
-PPE（Neumann + ゲージ）     & $\Ord{h^5}$       & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
-分相 PPE + DC $k{=}3$      & $\Ord{h^7}$       & $\Ord{h^{7.0}}$                & \checkmark & 液相内部で全密度比に不変（$\rho{=}1$--$1000$） \\
-PPE（変密度，滑らか）       & $\Ord{h^6}$       & $\Ord{h^{5.8}}$                & \checkmark & $\rho_{\max}/\rho_{\min}{\approx}999$（参考） \\
-TVD-RK3                    & $\Ord{\Delta t^3}$ & $\Ord{\Delta t^{3.00}}$        & \checkmark & ODE テストで確認 \\
-AB2（初回 Euler 付き）     & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 寄生根で減衰 \\
+\multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
-\multicolumn{5}{l}{\textbf{追加検証（ギャップ充填）}} \\
+U1-a & CCD 1D MMS（周期/壁）  & $\Ord{h^6}$/$\Ord{h^5}$  & $\Ord{h^{6.0}}$/$\Ord{h^{5.0}}$ & \checkmark \\
+U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
+U1-c & FCCD face value/grad   & $\Ord{h^6}$              & $\Ord{h^{6.0}}$        & \checkmark \\
+U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{6.0}}$        & \checkmark \\
+U2-a & Poisson MMS（DC $k\geq3$） & $\Ord{h^6}$ (Dirichlet) & $\Ord{h^{7.0}}$（超収束）& \checkmark \\
+U2-b & PPE Neumann + ゲージ    & $\Ord{h^5}$              & $\Ord{h^{5.0}}$        & \checkmark \\
 \midrule
-混合偏微分 $\partial_{xy}$（周期）& $\Ord{h^6}$  & $\Ord{h^{6.0}}$                & \checkmark & 逐次 CCD；可換性 $\Ord{10^{-12}}$ \\
-混合偏微分 $\partial_{xy}$（壁）  & $\Ord{h^5}$  & $\Ord{h^{5.0}}$                & \checkmark & 境界スキーム律速 \\
-DGR 冪等性                 & $\varepsilon_{\mathrm{eff}}/\varepsilon = 1$ & 1.000 & \checkmark & 100 回適用で不変 \\
-DGR 厚み制御               & $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$ & 1.03（DGR 20 step 毎） & \checkmark & DGR なし 3.97 vs あり 1.03 \\
-WENO5 vs DCCD              & DCCD 安定    & $L_2$: CCD $<$ WENO5 $<$ DCCD  & \checkmark & 界面幅保存は同等 \\
-CN 時間精度                 & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.0}}$         & \checkmark & 無条件安定（CFL$_\nu = 10$） \\
-圧力フィルタ禁止           & $\bnabla\cdot\bu \neq 0$ & 発散誤差 $\Ord{h^{2.0}}$ & \checkmark & §~\ref{sec:dccd_pressure_nofilt} の禁止規則を実証 \\
-PPE 条件数                 & 古典見積り $\rho/h^2$ & $\kappa \gtrsim N^3$，高密度比でさらに悪化 & $\triangle$ & $\rho{=}1000$, $N{=}64$: $\kappa{=}2.2 \times 10^7$ \\
-NS 毎ステップ格子リビルド  & 安定・質量影響評価             & $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ & \checkmark & $\alpha{=}2$ DGR 再初期化で一様格子同等 \\
-交差微分粘性（$\mu$ 均一）  & $\Ord{\Delta t^2}$  & $\Ord{\Delta t^{2.0}}$        & \checkmark & $\mu_l/\mu_g = 1$；AB2 精度維持 \\
-交差微分粘性（$\mu_l/\mu_g{=}100$） & $\Ord{\Delta t}$\textsuperscript{§} & $\Ord{\Delta t^{1.0}}$  & \checkmark & 界面 $\partial\mu/\partial x$ が律速 \\
-再初期化ゼロレベルシフト    & $\Ord{h^3 \Delta\tau}$ & $\Ord{h^{2}}$--$\Ord{h^3}$   & $\triangle$ & 10 回累積で ${\approx}7.6$ 倍（$N{=}256$；理想値 10） \\
-CCD $D^{(2)}$ スペクトル半径 & --- & $\rho h^2 = 9.6$                     & \checkmark & FD $4.0$ の 2.4 倍；2D Kronecker 成立 \\
+\multicolumn{5}{l}{\textbf{Tier II：空間離散・非一様格子}} \\
+\midrule
+U3-a & CCD on stretched grid + 2D $D_{xy}$ & $\Ord{h^6}$ & 前漸近 $p=5.2$--$5.8$ & $\triangle$ \textsuperscript{(a)} \\
+U3-a & GCL（フリーストリーム保存） & $\sim\varepsilon_\mathrm{mach}$ & $7.5\times10^{-14}$ & \checkmark \\
+U3-b & FCCD non-uniform face   & $\Ord{h^5}$ 以上          & $\Ord{h^{5.5}}$        & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$    & $\|D_k\|_\infty < 10^{-13}$ & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier III：界面処理 primitives}} \\
+\midrule
+U4   & Ridge--Eikonal reinit $|\nabla\psi|=1$ 復元 & 反復収束 & 20 反復で機械精度近傍 & \checkmark \\
+U4   & 再初期化界面シフト累積 & $\sim 10$ 倍（理想） & $\approx 7.6$ 倍（$N{=}256$） & $\triangle$ \textsuperscript{(c)} \\
+U5-a & $\delta_\varepsilon$ 0/1 次モーメント & $1$/$x_\mathrm{int}$ & $<10^{-13}$/$\Ord{h^2}$ & \checkmark \\
+U5-b & $\delta_\varepsilon$ vs $h$ scaling & $\varepsilon=1.5h$ 最適 & $\Delta p$ 系統誤差最小 & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
+\midrule
+U6-a & DC $k=2,3$ 反復収束率   & $k\geq3$ で漸近        & 設計通り        & \checkmark \\
+U6-b & Split-PPE $\rho$-ratio 1:1--1:1000 & $\Ord{h^7}$（液相内部）& $\Ord{h^{7.0}}$ 全 $\rho$ 比で同一 & \checkmark \\
+U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{7.0}}$（1D）   & \checkmark \\
+U6-c & HFE 2D テンソル積       & $\Ord{h^6}$              & $\Ord{h^{5.8}}$（$N\le128$） & $\triangle$ \textsuperscript{(c)} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
+\midrule
+U8-a & TVD-RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.00}}$ & \checkmark \\
+U8-b & AB2 ODE                 & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.0}}$  & \checkmark \\
+U8-c & CN + ADI 拡散 MMS      & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.0}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
+U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t^{1.0}}$ & \checkmark \textsuperscript{†} \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
+\midrule
+U9   & DCCD-on-pressure 違反   & 発散誤差 $\Ord{h^2}$    & $\Ord{h^{2.0}}$（200-step で寄生流れ噴出） & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier VII：coupling primitive}} \\
+\midrule
+U7-a & BF 整合：$\Delta p=\sigma\kappa$ vs 計算値 & 相対誤差 ${<}1\%$ & $0.16$--$0.31\%$ & \checkmark \\
+U7-a & BF 不整合：寄生流れ増幅 & 整合比 ${\gg}1$ & $10^3$--$10^6$ 倍 & \checkmark \textsuperscript{‡} \\
+U7-b & $\rho/\mu$ 補間（harmonic） & 高 $\rho$ 比安定    & 安定（推奨設定）       & \checkmark \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize \textsuperscript{†}HFE（§~\ref{sec:extension_pde_disc}）採用時の設計精度；風上差分経路は廃止済み（§~\ref{sec:verify_interface}）．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{‡}2D HFE は $N\le128$ で高次収束，$N{=}256$ で $L_\infty{=}4.6 \times 10^{-11}$；最高解像度は丸め・補間誤差床．} \\
-  \multicolumn{5}{l}{\footnotesize \quad 条件：テンソル積逐次補間は界面近傍で交差微分項の誤差が蓄積するため，精度保証は滑らかな場（界面から $\gtrsim 3\varepsilon$ の領域）に限られる．} \\
-  \multicolumn{5}{l}{\footnotesize \quad 無条件合格の要件：1D 逐次 Hermite を真の 2D Hermite 基底（または PDE ベース HFE）に置換し，$\Ord{h^5}$ 以上の収束を実証すること．} \\
-\multicolumn{5}{l}{\footnotesize \textsuperscript{§}§~\ref{sec:time_int}：$\mu_l/\mu_g \gg 1$ では陽的交差微分項の打切り誤差 $\Ord{\mu_{\max}\,\Delta t}$ が支配する．} \\
-\multicolumn{5}{l}{\footnotesize \checkmark: 設計精度達成，$\triangle$: 条件付き合格（下記 (a)--(c)），$\times$: 未達（本章では該当なし）．} \\
-\multicolumn{5}{l}{\footnotesize $\triangle$ の類型——\textbf{(a) 設計限界内}（CCD 非一様: 次数は 5--6 だが前漸近振動あり，PPE 条件数: 古典見積り通り）；} \\
-\multicolumn{5}{l}{\footnotesize \quad \textbf{(b) パイプライン律速に非律速}（DCCD 不連続: TV は解析値超だが $C^0$ 以上で同等，曲率: $\Ord{h^1}$ だが CSF $\Ord{h^2}$ より非律速）；} \\
-\multicolumn{5}{l}{\footnotesize \quad \textbf{(c) 精度床到達}（HFE 2D: $N{=}256$ で丸め・補間床，再初期化シフト: 10 回累積で ${\approx}7.6$ 倍（$N{=}256$）だが DGR が補償）．} \\
+\multicolumn{5}{p{0.95\linewidth}}{\footnotesize
+$\triangle$ の類型——
+\textbf{(a) 設計限界内}：CCD 非一様 $p=5.2$--$5.8$（前漸近振動，下流非律速）；
+\textbf{(b) パイプライン律速に非律速}（CSF $\Ord{h^2}$ より高精度）；
+\textbf{(c) 精度床到達}：HFE 2D 高解像度で丸め・補間床，再初期化シフト累積が DGR で補償．
+\textsuperscript{†}理論予測（§~\ref{sec:time_int}）と一致；実用上 $\mu_l/\mu_g \lesssim 5$ で支配的でない．
+\textsuperscript{‡}否定テスト（演算子不一致が寄生流れを生成することを確認）として合格．
+\checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（本章では該当なし）．
+}
 \end{tabular}
-}%
 \end{table}
 
-\begin{tcolorbox}[resultbox, title={コンポーネント検証の総括}]
-主要コンポーネントは設計精度または実用上十分な条件付き精度を達成した：
-CCD $\Ord{h^6}$（混合偏微分 $\partial_{xy}$ を含む），
-PPE 欠陥補正（$k{=}3$）Dirichlet $\Ord{h^{7.0}}$，
-TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
-CN $\Ord{\Delta t^{2.0}}$（無条件安定），
-交差微分粘性項 $\Ord{\Delta t^{1.0}}$（高粘性比界面近傍；§~\ref{sec:time_int} の予測と一致）．
-CCD $D^{(2)}$ のスペクトル半径 $\rho h^2 \approx 9.6$（FD 比 2.4 倍；明示的粘性 CFL 制約の根拠）．
-CLS 質量保存 $\Ord{10^{-15}}$（機械精度），面積精度 $\Ord{10^{-3}}$（$N{=}256$），
-DGR 厚み制御 $\varepsilon_{\mathrm{eff}}/\varepsilon \approx 1.03$，HFE 2D は $N\le128$ で高次収束．
-条件付き合格は，非一様格子 CCD，DCCD 不連続移流，HFE 2D，
-再初期化界面シフトである．
-NS 毎ステップ格子リビルドは DGR 再初期化の採用により
-$\alpha{=}2$ でも $|\Delta M|/M_0 = 6.7 \times 10^{-6}$ を達成し合格に昇格した．
-分相 PPE + DC $k{=}3$ は液相内部で全密度比（$\rho_l/\rho_g = 1$--$1000$）に対し
-$\Ord{h^{7.0}}$（Dirichlet）の密度比非依存な精度を達成した（§~\ref{sec:verify_split_ppe_dc}）．
-圧力場フィルタ禁止の必要性（$\Ord{h^2}$ 発散誤差）および
-PPE 条件数の密度比依存性を定量的に実証した．
+\begin{tcolorbox}[resultbox, title={U1--U9 単体検証の総括}]
+9 件すべての単体テストが\textbf{合格}または\textbf{条件付き合格}（$\triangle$）を達成．
+$\times$（不合格）は本章では該当なし．主要結果：
+\begin{itemize}[noitemsep]
+  \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，PPE Dirichlet $\Ord{h^{7.0}}$ 超収束，
+        Neumann $\Ord{h^{5.0}}$ 境界律速．
+  \item \textbf{空間（非一様）：}前漸近 $p = 5.2$--$5.8$（$\triangle$），
+        GCL は $7.5 \times 10^{-14}$ 機械精度，
+        Ridge--Eikonal D1--D4 一様極限 $< 10^{-13}$．
+  \item \textbf{界面：}Ridge--Eikonal reinit が 20 反復で機械精度近傍，
+        $\delta_\varepsilon$ 0 次モーメント機械精度，1 次 $\Ord{h^2}$．
+  \item \textbf{圧力ソルバ：}分相 PPE + DC $k = 3$ + HFE が
+        全密度比 $\rho_l/\rho_g = 1$--$1000$ で液相内部 $\Ord{h^{7.0}}$ Dirichlet を達成．
+  \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
+        CN $\Ord{\Delta t^{2.0}}$ 無条件安定．
+  \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
+  \item \textbf{coupling：}BF 整合 Laplace 圧 $0.16$--$0.31\%$，
+        不整合で寄生流れが $10^3$--$10^6$ 倍増幅．
+\end{itemize}
 \end{tcolorbox}
 
-以上の単体テストにより，多くのコンポーネントが設計精度を有し，
-残る項目についても制限条件と誤差水準が明確になった．
-しかし，本章の検証は以下の 3 点に\textbf{限定}されている：
+\noindent\textbf{本章の限界：}
+本章の単体検証は以下に\textbf{限定}される：
 (1) 各演算子の格子収束次数を個別に計測（部品間相互作用なし），
 (2) 静的または単一タイムステップの評価（長時間安定性未検証），
 (3) 解析速度場または製造解の使用（NS 方程式自体の求解誤差を含まない）．
 
 個々の部品が正しくても，7 ステップの Predictor--PPE--Corrector パイプラインが
 長時間にわたって物理量を保存し精度を維持するとは限らない．
-特に以下の結合効果を検証する必要がある：
+特に以下の結合効果を次章で検証する必要がある：
 \begin{itemize}[noitemsep]
   \item \textbf{時間分裂誤差}：Predictor（AB2）と Corrector の非対称性が蓄積するか
   \item \textbf{PPE--速度結合}：圧力勾配と速度補正の整合性（非圧縮条件の維持）
   \item \textbf{界面--圧力相互作用}：曲率由来の圧力跳びが移流と共鳴しないか
   \item \textbf{密度比依存性}：$\rho_l/\rho_g \gg 1$ で精度が劣化・発散しないか
 \end{itemize}
-次章（第~\ref{sec:verification}章）では，以下の対応で各結合効果を検出する：
+
+\noindent\textbf{第~\ref{sec:verification}章 への接続：}
+次章（第~\ref{sec:verification}章）では，以下の対応で各結合効果を検出する 19 件の
+統合ベンチマークを実施する：
 \begin{itemize}[noitemsep]
-  \item 時間分裂誤差 → Taylor--Green 渦の運動エネルギー減衰（§~\ref{sec:energy_conservation}）
-  \item PPE--速度結合 → 静止液滴の Laplace 圧維持（§~\ref{sec:twophase_static_longterm}）
-  \item 界面--圧力相互作用 → Galilean 不変性＋RT 不安定性（§~\ref{sec:galilean_invariance}）
-  \item 密度比依存性 → 変密度 PPE の格子収束劣化（§~\ref{sec:interface_crossing}）
+  \item 時間分裂誤差 → Taylor--Green 渦の運動エネルギー減衰
+        （§~\ref{sec:energy_conservation}）
+  \item PPE--速度結合 → 静止液滴の Laplace 圧維持
+        （§~\ref{sec:twophase_static_longterm}；U7 の 200-step 拡張）
+  \item 界面--圧力相互作用 → Galilean 不変性＋RT 不安定性
+        （§~\ref{sec:galilean_invariance}）
+  \item 密度比依存性 → 変密度 PPE の格子収束（§~\ref{sec:varrho_dc_convergence}；
+        U6 の coupled 拡張）
+  \item 非一様格子整合性 → 界面適合格子液滴・界面横断 CLS 移流
+        （§~\ref{sec:nonuniform_grid_ns}；U3 の coupled 拡張）
 \end{itemize}

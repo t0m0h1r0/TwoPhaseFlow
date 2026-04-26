@@ -1,98 +1,181 @@
-% paper/sections/11_component_verification.tex
+% paper/sections/12_component_verification.tex
 %
-% §11  計算コンポーネントの数学的検証
+% §12  計算コンポーネントの数学的検証
+%       Part 2 (§4–§10) の数値手法のうち,第~\ref{sec:verification}章 統合実験の前提となる
+%       primitive を 9 件の単体テスト (U1–U9) に厳選し 7 Tier に分類する.
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{計算コンポーネントの数学的検証}
 \label{sec:numerical_integrity}%
 \label{sec:impl_collocate}% backward compat: referenced from §7
 
-前章では Predictor--PPE--Corrector の 7 ステップ（§~\ref{sec:algorithm}）を
-統合アルゴリズムとして提示した．
-本章では，その各構成要素が\textbf{単体で}設計通りの数学的精度を有するかを，
-解析解が既知の問題に対する格子収束試験（grid refinement study）により系統的に検証する．
-次章（第~\ref{sec:verification}章）で行うソルバ全体の結合検証に先立ち，
-不具合が混入した場合にその原因を部品レベルで特定できるよう，
-コンポーネント単体テストとしての位置づけをとる．
+第~\ref{sec:algorithm}章 では Predictor--PPE--Corrector の 7 ステップを
+統合アルゴリズムとして提示し,Part 2 (§\ref{sec:ccd_def}--§\ref{sec:algorithm})
+で各構成要素 (CCD/DCCD/UCCD6/FCCD,CLS,Ridge--Eikonal,HFE,DC,
+Split-PPE,IPC, BF 整合性条件など) を導入した.
+本章の目的は,これらのうち\textbf{第~\ref{sec:verification}章 統合実験の前提}と
+なる primitive のみを抽出し,
+解析解を持つ問題に対する格子収束試験 (grid refinement study) と
+製造解法 (method of manufactured solutions, MMS) によって
+\textbf{単体で}設計通りの数学的精度を有することを系統的に確認することである.
 
-検証の基本手法は\textbf{製造解法}（method of manufactured solutions, MMS）
-と格子精緻化による収束次数の計測である．
-各テストでは解析的に微分可能な参照解を設定し，
-格子幅 $h$ の系列 $h, h/2, h/4, \ldots$ で $L^\infty$ または $L^2$ 誤差を計測する．
-得られた収束次数 $p$ を理論的期待値 $p_{\mathrm{design}}$ と比較し，
-$|p - p_{\mathrm{design}}| < 0.5$ で\textbf{合格}（\checkmark），
-設計値未達だが (a)~全体ボトルネック（CSF $\Ord{h^2}$ 等）より高精度，
-(b)~前漸近振動・精度床など既知の理由で設計限界内，
+\noindent\textbf{選別原則：}
+旧版 (18 件の冗長な実験) を以下の 3 原則で再設計し,
+\textbf{9 件 (U1--U9)} に厳選した:
+\begin{enumerate}[noitemsep]
+  \item \textbf{必要性：} 各テストは Part 2 primitive を対象とし,
+        その primitive は少なくとも 1 件の第~\ref{sec:verification}章 ベンチマーク
+        の prerequisite に含まれる.
+  \item \textbf{十分性：} 第~\ref{sec:verification}章 各ベンチマークの
+        失敗原因 primitive が,対応単体テストで網羅される.
+  \item \textbf{単体性 (isolation)：} MMS / 格子細分化 / 解析解比較を主軸とし,
+        coupled simulation は第~\ref{sec:verification}章 の役割とする.
+\end{enumerate}
+冗長な派生テスト (例: WENO5 vs DCCD 比較,Rhie--Chow 高次精度,PPE 条件数,
+変密度一括 PPE 単独収束) は削除または paper 内解析議論で代替し,
+複数 primitive を suite 形式 (sub-test 群) に統合した結果,
+単体テストは 9 件 (各 1--4 sub-test) に縮約された.
+
+\noindent\textbf{合否判定基準 (rubric)：}
+各テストでは解析的に微分可能な参照解を設定し,
+格子幅 $h$ の系列 $h, h/2, h/4, \ldots$ で $L^\infty$ または $L^2$ 誤差を計測する.
+得られた収束次数 $p$ を理論的期待値 $p_{\mathrm{design}}$ と比較し,
+$|p - p_{\mathrm{design}}| < 0.5$ で\textbf{合格}（\checkmark）,
+設計値未達だが (a)~全体ボトルネック (CSF $\Ord{h^2}$ 等) より高精度,
+(b)~前漸近振動・精度床など既知の理由で設計限界内,
 または (c)~下流パイプラインで非律速であれば
-\textbf{条件付き合格}（$\triangle$），
-それ以外を\textbf{不合格}（$\times$）と判定する（各 $\triangle$ の分類は表~\ref{tab:verification_summary} 脚注に示す）．
+\textbf{条件付き合格}（$\triangle$）,
+それ以外を\textbf{不合格}（$\times$）と判定する
+（各 $\triangle$ の分類は表~\ref{tab:verification_summary} 脚注に示す）.
 
-検証は，アルゴリズム内部の\textbf{依存関係}に沿って 4 段階で構成する．
-テスト順序はアルゴリズム Step 番号順ではなく，\textbf{論理的依存の下流から上流}
-（基盤演算子 $\to$ 組立パイプライン $\to$ ソルバ $\to$ 時間積分）に従う．
-これにより，不合格が生じた場合にその原因を依存グラフの中で局所化できる．
-\begin{enumerate}
-  \item \textbf{§~\ref{sec:verify_spatial}（空間離散化基盤）：}
-        CCD/DCCD 微分演算子・非一様格子 GCL・曲率計算・Rhie--Chow 補正．
-        ここが不合格であれば，以降の全テストの前提が崩壊する．
-  \item \textbf{§~\ref{sec:verify_interface}（界面処理パイプライン）：}
-        CLS 移流・保存型再マッピング・HFE 場延長・Young--Laplace 圧力跳び．
-        §~\ref{sec:verify_spatial} の演算子を組み合わせた
-        Step 1--4 のパイプラインを検証する．不合格であれば組立段階の誤りを示す．
-  \item \textbf{§~\ref{sec:verify_solver}（圧力ソルバ）：}
-        欠陥補正法・Neumann BC・分相 PPE・変密度 PPE．
-        PPE 求解（Step 6）のスキームを検証する．
-  \item \textbf{§~\ref{sec:verify_time}（時間積分）：}
-        TVD-RK3・AB2・Crank--Nicolson．
-        時間発展スキーム（TVD-RK3・AB2・CN）の精度と安定性を ODE テストで確認する．
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection*{構成 (7 Tier)}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+検証は,アルゴリズム内部の\textbf{依存関係}に沿って 7 Tier (I--VII) で構成する.
+テスト順序はアルゴリズム Step 番号順ではなく,\textbf{論理的依存の下流から上流}
+（基盤演算子 $\to$ 組立パイプライン $\to$ ソルバ $\to$ 時間積分 $\to$ 制約 $\to$ coupling primitive）に従う.
+これにより,不合格が生じた場合にその原因を依存グラフの中で局所化できる.
+\begin{enumerate}[noitemsep]
+  \item \textbf{Tier I (空間離散・一様格子,§~\ref{sec:verify_spatial}):}
+        U1 = CCD operator family suite (CCD/DCCD/FCCD/UCCD6) ＋
+        U2 = CCD-Poisson + PPE BC.
+        ここが不合格であれば以降の全テストの前提が崩壊する.
+  \item \textbf{Tier II (空間離散・非一様格子,§~\ref{sec:verify_nonuniform_suite}):}
+        U3 = 非一様格子 spatial suite (CCD on stretched grid + FCCD non-uniform + Ridge--Eikonal D1--D4).
+  \item \textbf{Tier III (界面処理 primitives,§~\ref{sec:verify_interface}):}
+        U4 = Ridge--Eikonal reinit $|\nabla\psi|=1$ 復元 ＋
+        U5 = Smoothed Heaviside / $\delta_\varepsilon$ モーメント精度.
+  \item \textbf{Tier IV (圧力ソルバ,§~\ref{sec:verify_solver}):}
+        U6 = Split-PPE + DC + HFE 密度比独立性.
+  \item \textbf{Tier V (時間積分,§~\ref{sec:verify_time}):}
+        U8 = Time integration suite (TVD-RK3 / AB2 / CN+ADI / 粘性 3-layer).
+  \item \textbf{Tier VI (制約・否定テスト,§~\ref{sec:verify_constraint}):}
+        U9 = DCCD-on-pressure 禁止則の否定テスト.
+  \item \textbf{Tier VII (coupling primitive・single mechanism,§~\ref{sec:verify_coupling}):}
+        U7 = BF 静止液滴 1-step Laplace 圧力誤差 ($\sigma\kappa$ vs 計算値).
 \end{enumerate}
 
 \noindent\textbf{略語：}
-CCD（Combined Compact Difference, §~\ref{sec:ccd_def}），
-DCCD（Dissipative CCD, §~\ref{sec:dccd_motivation}），
-CLS（Conservative Level Set, §~\ref{sec:levelset_mapping}），
-HFE（Hermite Field Extension, §~\ref{sec:field_extension}），
-DGR（Direct Geometric Reinitialization, §~\ref{sec:dgr_thickness}），
-DC（Defect Correction, §~\ref{sec:defect_correction_main}），
-GCL（Geometric Conservation Law）．
+CCD（Combined Compact Difference, §~\ref{sec:ccd_def}）,
+DCCD（Dissipative CCD, §~\ref{sec:dccd_motivation}）,
+FCCD（Face-CCD, §~\ref{sec:fccd_def}）,
+UCCD6（Upwind CCD 6 次, §~\ref{sec:ccd_def}）,
+CLS（Conservative Level Set, §~\ref{sec:levelset_mapping}）,
+HFE（Hermite Field Extension, §~\ref{sec:field_extension}）,
+DC（Defect Correction, §~\ref{sec:defect_correction_main}）,
+DGR（Direct Geometric Reinitialization, §~\ref{sec:dgr_thickness}）,
+GCL（Geometric Conservation Law）,
+BF（Balanced Force, §~\ref{sec:rc_balanced_force}）,
+IPC（Incremental Pressure Correction, §~\ref{sec:ipc_derivation}）.
 
 \noindent
-本章は個々の部品を\textbf{単体で}テストするため，
-部品間の相互作用（時間分裂誤差・PPE--速度結合・界面--圧力干渉）は検出できない．
-これらの結合効果は次章（第~\ref{sec:verification}章）の統合テストで検証する．
-§~\ref{sec:verify_summary} に全コンポーネントの検証結果を総括する．
+本章は個々の部品を\textbf{単体で}テストするため,
+部品間の相互作用 (時間分裂誤差・PPE--速度結合・界面--圧力干渉) は検出できない.
+これらの結合効果は次章 (第~\ref{sec:verification}章) の統合テストで検証する.
+§~\ref{sec:verify_summary} に全コンポーネントの検証結果を総括する.
 
-表~\ref{tab:component_algorithm_map} に，
-§~\ref{sec:algorithm} のアルゴリズム各ステップと本章の検証項目の対応を示す．
+% ───────────────────────────────────────────────────────────────────────────────
+\subsection*{Part 2 → 第~\ref{sec:verification}章 トレーサビリティ}
+% ───────────────────────────────────────────────────────────────────────────────
+
+表~\ref{tab:component_algorithm_map} に Part 2 の 30 数値コンポーネントを
+9 単体テスト (U1--U9) と 第~\ref{sec:verification}章 の 19 ベンチマークに対応させる.
+合計 30 primitive のうち 22 件を 9 単体テストの sub-test 群で直接網羅し,
+4 件 (face-jet $J_f$,CLS A→F 6-stage,運動量対流,IPC projection) は
+複数 primitive の composite として網羅される.
+1 件 (擬時間 CFL formula) は paper 解析式のみで提示し,
+3 件 (item 8, 16, 19) は composite 内で間接検証される.
 
 \begin{table}[htbp]
 \centering
-\caption{アルゴリズム（§~\ref{sec:algorithm}）と本章の検証項目の対応}
+\caption{Part 2 primitive と本章単体テスト・第~\ref{sec:verification}章 ベンチマークの対応}
 \label{tab:component_algorithm_map}
-\renewcommand{\arraystretch}{1.3}
-\small
-\begin{tabular}{cl>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{4.0cm}}
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\begin{tabular}{cl>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{4.5cm}c}
 \toprule
-ステップ & 構成要素 & 検証項目 & 節 \\
+\# & Part 2 primitive & 単体テスト & 第~\ref{sec:verification}章 ベンチマーク連関 & Tier \\
 \midrule
-1 & CLS 移流（DCCD+RK3） & DCCD 散逸特性，CLS 形状・質量保存 & §\ref{sec:verify_dccd_dissipation}, \ref{sec:dccd_dissipation_bench}, \ref{sec:verify_cls_advection} \\
-2 & 再初期化 & CLS 移流テストに含む & §\ref{sec:verify_cls_advection} \\
-3 & 物性値更新（$\rho, \mu$） & HFE 1D/2D 収束，Young--Laplace 精度 & §\ref{sec:verify_field_extension} \\
-4 & 曲率 $\kappa$（CCD） & CLS 曲率パイプラインの格子収束 & §\ref{sec:verify_curvature} \\
-5 & Predictor（AB2+CN） & §~\ref{sec:verification} で結合検証 & — \\
-6 & PPE（欠陥補正） & $k$ vs 精度，Neumann BC，変密度 & §\ref{sec:verify_ppe}, \ref{sec:verify_ppe_neumann}, \ref{sec:verify_ppe_varrho} \\
-7 & Corrector & §~\ref{sec:verification} で結合検証 & — \\
+\multicolumn{5}{l}{\textbf{Tier I (空間離散・一様格子)}} \\
 \midrule
-基盤 & CCD 微分演算子 & 周期 / 壁境界 / 非一様格子 & §\ref{sec:verify_ccd_convergence}, \ref{sec:gcl_verification} \\
-基盤 & Rhie--Chow 補正 & C/RC ブラケット収束次数 & §\ref{sec:verify_rc_bracket} \\
-基盤 & TVD-RK3 / AB2 & ODE 時間精度 & §\ref{sec:verify_time} \\
+1  & CCD base op           & U1-a & 全 NS 系                                  & I \\
+2  & CCD BC + Thomas       & U1-a (BC sub) & Hydrostatic, Kovasznay         & I \\
+3  & DCCD filter           & U1-b & DCCD 非侵襲 (§~\ref{sec:highre_dccd}) & I \\
+4  & UCCD6 nodal           & U1-d & TGV, Kovasznay (運動量)                & I \\
+5  & FCCD face             & U1-c & CLS,BF subsystem                        & I \\
+21 & CCD-Poisson           & U2-a & 全 PPE                                    & I \\
+25 & PPE BC (Option III/IV)& U2-b & Hydrostatic,全 PPE                       & I \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier II (空間離散・非一様格子)}} \\
+\midrule
+27,28 & 非一様格子 metric / CCD on non-uniform & U3-a & §~\ref{sec:nonuniform_grid_ns} 全件 & II \\
+29 & Non-uniform FCCD      & U3-b & CLS on non-uniform                        & II \\
+30 & Ridge--Eikonal D1--D4 & U3-c & Non-uniform 13h                           & II \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier III (界面処理 primitives)}} \\
+\midrule
+7  & Ridge--Eikonal reinit & U4   & RT,rising bubble,Galilean                 & III \\
+26 & CSF + smoothed $\delta_\varepsilon$ & U5 & Static droplet,capillary       & III \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier IV (圧力ソルバ)}} \\
+\midrule
+22 & Split-PPE             & U6-b & DC convergence (§~\ref{sec:varrho_dc_convergence}) & IV \\
+23 & HFE                   & U6-c & Split-PPE 補助                            & IV \\
+24 & DC iteration          & U6-a & DC convergence                            & IV \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier V (時間積分)}} \\
+\midrule
+13 & TVD-RK3               & U8-a & Galilean,RT                              & V \\
+14 & IMEX-BDF2 (NS 時間)   & U8-b & TGV temporal                              & V \\
+15 & ADI predictor sweep   & U8-c & 陰的粘性                                 & V \\
+11 & 粘性 3-layer         & U8-d & KE decay,RT                              & V \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier VI (制約・否定)}} \\
+\midrule
+20 & DCCD-pressure 禁止則 & U9   & Static droplet 200-step (§~\ref{sec:twophase_static_longterm}) & VI \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier VII (coupling primitive)}} \\
+\midrule
+18 & BF discrete operator matching & U7-a & Static droplet (Laplace, parasitic) & VII \\
+12 & $\rho/\mu$ 補間規則  & U7-b & 全 two-phase 第~\ref{sec:verification}章   & VII \\
+\midrule
+\multicolumn{5}{l}{\textbf{Composite (単体テストの組合せで間接網羅)}} \\
+\midrule
+6  & Face-jet $J_f$       & ---  & U1-c (FCCD) で部品検証                    & --- \\
+8  & CLS A→F 6-stage      & ---  & U4 + U5 等で網羅                          & --- \\
+9  & CLS $\psi$ advection (FCCD) & --- & U1-c (FCCD 部分)                    & --- \\
+10 & 運動量 advection     & ---  & U1 で網羅                                 & --- \\
+16 & IPC projection       & ---  & U2 + U7 で網羅                            & --- \\
+17 & 擬時間 CFL formula   & ---  & paper 解析式のみ (テスト不要)             & --- \\
+19 & FCCD BF subsystem    & ---  & U7-a で網羅                               & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\input{sections/12b_spatial_discretization} %% §12.1 空間離散化基盤の検証（CCD/GCL/DCCD）
-\input{sections/12c_spatial_geometry}       %% §12.1続き（曲率・Rhie-Chow・混合微分）
-\input{sections/12d_interface_pipeline}     %% §12.2 界面処理パイプラインの検証（CLS/WENO5/DGR/DCCD質量保存）
-\input{sections/12e_interface_field}        %% §12.2続き（動的格子再マッピング・HFE・Young-Laplace）
-\input{sections/12f_pressure_solver}        %% §12.3 圧力ソルバの検証
-\input{sections/12g_time_integration}       %% §12.4 時間積分スキームの検証
-\input{sections/12h_summary}                %% §12.5 検証結果の総括
+\input{sections/12b_spatial_discretization} %% Tier I: U1 + U2 (空間離散・一様格子)
+\input{sections/12c_spatial_geometry}       %% Tier II: U3 (非一様格子 spatial suite)
+\input{sections/12d_interface_pipeline}     %% Tier III: U4 + U5 (Ridge-Eikonal + Heaviside)
+\input{sections/12e_interface_field}        %% Tier IV: U6 (Split-PPE + DC + HFE)
+\input{sections/12f_pressure_solver}        %% Tier V: U8 (Time integration suite)
+\input{sections/12g_time_integration}       %% Tier VI + VII: U9 + U7
+\input{sections/12h_summary}                %% §12.8 検証結果の総括
