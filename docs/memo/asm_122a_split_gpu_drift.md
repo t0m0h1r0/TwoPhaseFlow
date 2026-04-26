@@ -4,7 +4,7 @@
 **Date:** 2026-04-11
 **Scope:** diagnosis only, zero `src/twophase/` edits
 **Probe:** `scripts/asm_122a_probe.py`
-**Data:** `experiment/ch11/results/asm_122a/*.csv` (five {probe}_gpu.csv files)
+**Data:** `scripts/data/asm_122a/*.csv` (five {probe}_gpu.csv files; 旧 `experiment/ch11/results/asm_122a/` は CHK-235 で削除. 再現は `scripts/asm_122a_probe.py` を再実行)
 **Depends on:** [[WIKI-T-028]], CHK-122 ledger row
 
 ## 1. Observation
@@ -86,8 +86,8 @@ step   baseline    cn-adi-cpu  ccd-no-ainv  matmul-all-cpu
 ## 7. Artifacts
 
 - `scripts/asm_122a_probe.py` — 5-probe harness; local `python3 scripts/asm_122a_probe.py --probe baseline --N 64 --n-steps 100 --pass-b cpu` runs in <1 s with zero drift (determinism check). Remote GPU run: see `make push` + `ssh python` block in the ledger trail.
-- `experiment/ch11/results/asm_122a/{probe}_gpu.csv` — 5 files, 20 checkpoints each, full drift curves.
-- `experiment/ch11/results/asm_122a/{probe}_cpu.csv` — 5 files, CPU-CPU determinism references (all zero).
+- `scripts/data/asm_122a/{probe}_gpu.csv` — 5 files, 20 checkpoints each, full drift curves (旧パス `experiment/ch11/results/asm_122a/` は CHK-235 で削除).
+- `scripts/data/asm_122a/{probe}_cpu.csv` — 5 files, CPU-CPU determinism references (all zero).
 
 ## 8. Out of scope
 

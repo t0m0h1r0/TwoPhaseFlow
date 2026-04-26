@@ -28,7 +28,7 @@ help:
 	@echo ""
 	@echo "Variables:"
 	@echo "  EXP=<path>                  Experiment script path"
-	@echo "  CH=<chN>                    Chapter name (ch11, ch12, ...)"
+	@echo "  CH=<chN>                    Chapter name (ch12, ch13, ...)"
 	@echo "  PYTEST_ARGS=<args>          Extra pytest arguments"
 	@echo "  TWOPHASE_FORCE_LOCAL=1      Skip remote check, always run locally"
 
@@ -45,7 +45,7 @@ setup:
 	./remote.sh setup
 
 run:
-	@test -n "$(EXP)" || { echo "Usage: make run EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make run EXP=experiment/run.py ARGS='--config <stem>'"; exit 1; }
 	@if ./remote.sh check >/dev/null 2>&1; then \
 		./remote.sh run $(EXP) $(ARGS); \
 	else \
@@ -54,14 +54,14 @@ run:
 	fi
 
 run-all:
-	@test -n "$(CH)" || { echo "Usage: make run-all CH=ch11"; exit 1; }
+	@test -n "$(CH)" || { echo "Usage: make run-all CH=ch12"; exit 1; }
 	./remote.sh run-all $(CH)
 
 ssh:
 	./remote.sh ssh
 
 cycle:
-	@test -n "$(EXP)" || { echo "Usage: make cycle EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make cycle EXP=experiment/run.py ARGS='--config <stem>'"; exit 1; }
 	@if ./remote.sh check >/dev/null 2>&1; then \
 		./remote.sh push && ./remote.sh run $(EXP) $(ARGS) && ./remote.sh pull; \
 	else \
@@ -78,12 +78,12 @@ test:
 	fi
 
 plot:
-	@test -n "$(EXP)" || { echo "Usage: make plot EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make plot EXP=experiment/run.py ARGS='--config <stem>'"; exit 1; }
 	python3 $(EXP) --plot-only $(ARGS)
 
 # ── Always-local targets ──────────────────────────────────────────────────
 run-local:
-	@test -n "$(EXP)" || { echo "Usage: make run-local EXP=experiment/ch11/exp11_X.py [ARGS='--config ...']"; exit 1; }
+	@test -n "$(EXP)" || { echo "Usage: make run-local EXP=experiment/run.py ARGS='--config <stem>'"; exit 1; }
 	python3 $(EXP) $(ARGS)
 
 test-local:

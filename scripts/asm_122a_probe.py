@@ -316,7 +316,7 @@ def main() -> int:
     ap.add_argument("--checkpoint-every", type=int, default=20,
                     help="record drift snapshot every K advection steps")
     ap.add_argument("--out-dir", type=pathlib.Path,
-                    default=ROOT / "experiment" / "ch11" / "results" / "asm_122a")
+                    default=ROOT / "scripts" / "data" / "asm_122a")
     ap.add_argument("--pass-b", choices=("cpu", "gpu"), default="cpu",
                     help="Phase A smoke uses cpu/cpu (diff should be 0). "
                          "Phase B diagnosis uses cpu/gpu to measure drift.")
