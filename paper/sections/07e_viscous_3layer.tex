@@ -1,8 +1,11 @@
 % paper/sections/07e_viscous_3layer.tex
 %
-% §6.6  粘性項：3 層アーキテクチャと μ∇²u 禁止
+% §6.3  粘性項：3 層アーキテクチャと μ∇²u 禁止 (CHK-223: §6 per-term spatial 配下)
 %        変粘性二相流で μ∇²u が物理的に誤りである理由と,
 %        Layer A/B/C 分離による正しい離散化.
+% §6.4  ρ, μ 物性値補間規則 (CHK-223 Phase 6 NEW: ρ/μ prescription co-location)
+%        sec:rho_mu_interpolation; ρ=ρ_g+(ρ_l-ρ_g)ψ 代数更新 + face μ arith/harm.
+%        CN Helmholtz + デフェクト補正 (旧 §6.6 末尾) は §7.4 (sec:viscous_cn_defect_v7) に集約.
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{粘性項：3 層アーキテクチャと変粘性対応}
@@ -181,42 +184,142 @@ $\psi$ による領域分割で
 $\Omega_\Gamma = \{\psi\in(\varepsilon_\psi, 1-\varepsilon_\psi)\}$
 （$\varepsilon_\psi$ は界面マスキング閾値；既定値の選定は §~\ref{sec:val_summary}）．
 
+% ─────────────────────────────────────────────────────────────────────────────
+% CHK-223 Phase 3.5: CN Helmholtz + デフェクト補正は時間積分 (CN 半陰的処理) であるため
+% §7.4 (sec:time_viscous) 末尾に移行．本ファイルは spatial discretization (Layer A/B/C
+% + corner μ + 界面帯 stencil 設計) のみで完結．
+% backward-compat: 旧 \ref{sec:viscous_cn_defect} と \ref{eq:viscous_cn_helmholtz} は
+% phantomsection alias で外部参照保護．
+% ─────────────────────────────────────────────────────────────────────────────
+% backward-compat aliases for sec:viscous_cn_defect / eq:viscous_cn_helmholtz are
+% placed at the migration destination (§7.4) to avoid multiply-defined labels.
+
+\medskip
+\noindent\textbf{時間積分との結合：}
+本節で確立した空間 Layer A/B/C と corner $\mu$ 評価は時間積分のいずれの形式
+（陽的 / IMEX / CN 半陰的）にも入力される．
+特に CN（Crank--Nicolson）半陰的処理を採用する場合の Helmholtz 系
+$\bigl(I - \tfrac{\Delta t}{2\rho}L_H\bigr)\mathbf{u}^* = \text{RHS}$ と
+デフェクト補正解法（FGMRES + PCG/AMG/ADI/LU）の詳細は
+\S~\ref{sec:viscous_cn_defect_v7}（§7.4）に集約する．
+
+% ═══════════════════════════════════════════════════════════════════════════════
+% §6.4  ρ, μ 物性値補間規則 (CHK-223 Phase 6: prescription co-location)
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{\texorpdfstring{$\rho, \mu$ 物性値補間規則}{ρ, μ 物性値補間規則}}
+\label{sec:rho_mu_interpolation}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+\noindent\textbf{設計動機：}
+密度 $\rho$ と粘性 $\mu$ は界面で step profile（$\rho_g/\mu_g \to \rho_l/\mu_l$）を持つ．
+CCD/UCCD6 等の高次差分演算子を直接適用すると Gibbs 振動を生じ，
+$[\rho_\text{min},\rho_\text{max}]$ 範囲外の物性値が現れ得る
+（\S\ref{sec:scheme_per_variable}，§6.0）．
+本節では物性値は常に\textbf{低次代数更新}で評価する規則を確立する．
+時間積分章 §7 はこの §6.4 の規則を ref のみで利用する．
+
 % -------------------------------------------------------------------------------
-\subsubsection{Crank--Nicolson 粘性 Helmholtz とデフェクト補正}
-\label{sec:viscous_cn_defect}
+\subsubsection{\texorpdfstring{セル中心 $\rho, \mu$：CLS $\psi$ からの代数更新}{セル中心 ρ, μ：CLS ψ からの代数更新}}
+\label{sec:rho_mu_cell_center}
 % -------------------------------------------------------------------------------
 
-Crank--Nicolson の粘性 Helmholtz 系：
+CLS phase-indicator $\psi^{n+1}\in[0,1]$ から物性値を線形内挿で得る：
+\begin{align}
+  \rho_{i,j}^{n+1} &= \rho_g + (\rho_l - \rho_g)\,\psi_{i,j}^{n+1},
+  \label{eq:rho_update}\\
+  \mu_{i,j}^{n+1} &= \mu_g + (\mu_l - \mu_g)\,\psi_{i,j}^{n+1}.
+  \label{eq:mu_update}
+\end{align}
+$\psi$ は CLS Stage A--F（\S\ref{sec:cls_stage_sequence}，§5.2）で確定し，
+$\psi(1-\psi)$ 質量補正後（Stage F）の値を用いる．
+$\rho^{n+1}$ は時間積分 §7 の運動量予測子・PPE・浮力体積力に直接代入される．
+
+\noindent\textbf{線形内挿の正当性：}
+$\rho(\psi) = \rho_g + (\rho_l-\rho_g)\psi$ は CLS の連続定式化
+（\S\ref{sec:cls_advection}，§3.2）で導出された関係そのもので，
+$\psi\in[0,1]$ なら $\rho\in[\rho_g,\rho_l]$ が代数的に保証される．
+高次補間（CCD 等）は Gibbs 振動で範囲外値（$\rho<\rho_g$ または $\rho>\rho_l$）を
+生じうるため禁止．
+
+% -------------------------------------------------------------------------------
+\subsubsection{\texorpdfstring{Face $\mu$：算術平均 vs 調和平均}{Face μ：算術平均 vs 調和平均}}
+\label{sec:mu_face_interpolation}
+% -------------------------------------------------------------------------------
+
+\textbf{Face 上の $\mu$} は粘性応力フラックス（Layer C；
+\eqref{eq:viscous_layerC_x},\eqref{eq:viscous_layerC_y}）と CN Helmholtz の
+主対角構築（§\ref{sec:viscous_cn_defect_v7}，§7.4）で必要となる．
+2 種の評価方法：
+
+\noindent\textbf{算術平均}：
 \begin{equation}
-  \Bigl(I - \tfrac{\Delta t}{2\rho}L_H\Bigr)\mathbf{u}^*
-  = \text{RHS},
-  \qquad L_H = \bnabla\cdot(2\mu\mathbf{D}_h^{(H)}),
-  \label{eq:viscous_cn_helmholtz}
+  \mu_{i+1/2,j}^\text{arith} = \tfrac{1}{2}(\mu_{i,j} + \mu_{i+1,j}).
+  \label{eq:mu_face_arith}
 \end{equation}
-ここで $L_H$ は CCD bulk + 2 次界面帯の混合演算子．
-コンパクト LHS は前処理が困難なため Krylov 直接解は高コスト．
 
-\noindent\textbf{デフェクト補正分裂}：
-$A_H = I - (\Delta t/2\rho)L_H$，$A_L = I - (\Delta t/2\rho)L_L$
-（$L_L$ は全域 2 次）として，
-\begin{enumerate}
-  \item $r^{(m)} = \text{RHS} - A_H\mathbf{u}^{(m)}$（高次残差）
-  \item $A_L\delta\mathbf{u} = r^{(m)}$（低次内部解）
-  \item $\mathbf{u}^{(m+1)} = \mathbf{u}^{(m)} + \delta\mathbf{u}$
-\end{enumerate}
-外側ループは FGMRES（内部解が可変），
-内部 $A_L$ は PCG+AMG / ADI / LU（問題規模と構造に応じて選択：
-大規模 3D は PCG+AMG，構造格子の 2D は ADI，小中規模ベンチマークは LU）．
-$L_L$ は $L_H$ と同じ $\mu$・同じ BC・同じ帯スイッチを共有する必要があり，
-素朴な $\mu_0\nabla^2$ では収束しない．
+\noindent\textbf{調和平均}：
+\begin{equation}
+  \mu_{i+1/2,j}^\text{harm} = \frac{2\mu_{i,j}\mu_{i+1,j}}{\mu_{i,j}+\mu_{i+1,j}}.
+  \label{eq:mu_face_harm}
+\end{equation}
 
-\noindent\textbf{アンチパターン}：
+\noindent\textbf{選択指針}：
 \begin{itemize}
-  \item $\mu\nabla^2\mathbf{u}$ 形式（\S\ref{sec:viscous_mu_lap_forbidden}）
-  \item Layer C で CCD 使用（保存性崩壊）
-  \item $\tau_{xy}$ を x-/y- 別々に計算（対称性崩壊）
-  \item コーナー $\mu$ をセル中心の 2 点内挿で代用（ステンシル非整合）
-  \item 界面帯で CCD 強行（$\mathcal{O}(1)$ 勾配誤差）
+  \item 低粘性比（$\mu_l/\mu_g \lesssim 10$）：算術平均で十分．
+  \item 高粘性比（$\mu_l/\mu_g \gg 10$；水--空気で $\approx 55$）：
+        調和平均が安全．直列抵抗則（フェイス跨ぎの粘性応力連続）
+        $\tau_{xy}/\mu = \partial_y u + \partial_x v$ の 2 セル和が
+        調和平均で正確に再現されるため．
+  \item ch13 production stack（水--空気上昇気泡）では調和平均をデフォルト．
+\end{itemize}
+
+% -------------------------------------------------------------------------------
+\subsubsection{\texorpdfstring{Corner $\mu$：4 点平均}{Corner μ：4 点平均}}
+\label{sec:mu_corner_interpolation}
+% -------------------------------------------------------------------------------
+
+非対角応力 $\tau_{xy}$ を保持する\textbf{コーナー} $(i+1/2, j+1/2)$ では
+4 点平均（算術 \eqref{eq:viscous_mu_corner_arith} または調和
+\eqref{eq:viscous_mu_corner_harm}）を用いる．
+具体式と共有配列原則（$\tau_{xy}$ を 1 回だけ計算し x-/y- 運動量で共有）は
+\S\ref{sec:viscous_corner}（§6.3）を参照．
+高粘性比時の harmonic mean 推奨は face 評価と同様．
+
+% -------------------------------------------------------------------------------
+\subsubsection{時間積分との結合（ordering）}
+\label{sec:rho_mu_time_integration}
+% -------------------------------------------------------------------------------
+
+$\rho^{n+1}, \mu^{n+1}$ は time-stepping ordering の中で
+\textbf{CLS Stage A--F 後・運動量予測子前}に確定する：
+\begin{enumerate}
+  \item Stage F 後の $\psi^{n+1}$ から \eqref{eq:rho_update}, \eqref{eq:mu_update}
+        で cell-center $\rho^{n+1}, \mu^{n+1}$ を更新．
+  \item Face $\mu$ は Layer C / CN Helmholtz 構築時に
+        \eqref{eq:mu_face_arith} または \eqref{eq:mu_face_harm} で評価．
+  \item Corner $\mu$ は $\tau_{xy}$ 計算時に
+        \eqref{eq:viscous_mu_corner_arith} または
+        \eqref{eq:viscous_mu_corner_harm} で評価．
+\end{enumerate}
+詳細な velocity-PPE ordering は
+\S\ref{sec:cls_velocity_consistency_v7}（§7.3）を参照．
+
+% -------------------------------------------------------------------------------
+\subsubsection{失敗モードと回避}
+\label{sec:rho_mu_failure_modes}
+% -------------------------------------------------------------------------------
+
+\begin{itemize}
+  \item \textbf{$\rho, \mu$ に CCD を直接適用} → Gibbs 振動 → 範囲外値．
+        必ず代数更新 \eqref{eq:rho_update}, \eqref{eq:mu_update}．
+  \item \textbf{Face $\mu$ で算術平均を高粘性比に適用} → 過大粘性
+        → エネルギー散逸の over-prediction．
+        $\mu_l/\mu_g \gg 10$ では調和平均．
+  \item \textbf{$\tau_{xy}$ を x-/y- 運動量で別々に計算} → 数値非対称
+        → 離散エネルギー恒等式破綻．
+        共有配列原則（\S\ref{sec:viscous_corner}）．
+  \item \textbf{$\psi$ クランプ前に物性値更新} → $\rho<\rho_g$ または $\rho>\rho_l$．
+        Stage F 補正と $\psi\in[\delta, 1-\delta]$ クランプ後に更新．
 \end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════════════════

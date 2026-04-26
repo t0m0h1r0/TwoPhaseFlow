@@ -43,17 +43,20 @@
 \input{sections/04e_fccd}             %% §4.6（FCCD 面中心演算子）
 \input{sections/04g_face_jet}         %% §4.7（面ジェット統合）
 
-%% §5: 時間積分スキームの設計
-\input{sections/05_time_integration}  %% §5（時間積分：TVD-RK3 / AB2+IPC 章ヘッダーを内包）
+%% §5 (CHK-223 NEW): CLS 専用アルゴリズム (CLS-specific) ─ Ridge-Eikonal 再初期化 + A-F 6 段階
+\input{sections/07b_reinitialization} %% §5.1 CLS 再初期化 (Ridge-Eikonal) + §5 chapter intro
+\input{sections/07d_cls_stages}       %% §5.2 CLS A-F 6 段階
 \clearpage
 
-%% §6 → §7: 各物理項の空間離散化：CCDエンジンによるモジュール設計
-\input{sections/07_0_scheme_per_variable}  %% §6.0 変数別スキーム方針
-\input{sections/07_advection}         %% §6（移流項を筆頭節として再配置）
-\input{sections/07c_fccd_advection}   %% §6.3 FCCD 移流 Option B/C
-\input{sections/07b_reinitialization} %% §6続き（CLS再初期化）
-\input{sections/07d_cls_stages}       %% §6.5 CLS A-F 6 段階
-\input{sections/07e_viscous_3layer}   %% §6.6 粘性 3 層
+%% §6 (CHK-223 NEW): 方程式項別空間離散化 (per-term spatial; CLS context 確立後)
+\input{sections/07_0_scheme_per_variable}  %% §6.0 変数別スキーム方針 + §6 chapter intro
+\input{sections/07_advection}         %% §6.1 CLS ψ FCCD 移流
+\input{sections/07c_fccd_advection}   %% §6.2 運動量 FCCD/UCCD6 移流
+\input{sections/07e_viscous_3layer}   %% §6.3 粘性 3 層 (Layer A/B/C) + §6.4 ρ/μ 補間規則
+\clearpage
+
+%% §7 (CHK-223 NEW; 旧 §5 + 移行 5 件): 時間積分 (空間離散化の直後で連続接続)
+\input{sections/05_time_integration}  %% §7（時間積分：TVD-RK3 / IMEX-BDF2 / CN defect-correction / velocity-PPE ordering / pseudo-time CFL）
 \clearpage
 
 %% §7 → §8: 圧力・速度連成：Balanced-Force CCD理論

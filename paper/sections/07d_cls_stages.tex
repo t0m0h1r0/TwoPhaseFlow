@@ -1,8 +1,10 @@
 % paper/sections/07d_cls_stages.tex
 %
-% §6.5  CLS の A→F 6 段階アルゴリズム
-%        §6.1 (CLS 移流) / §6.4 (再初期化) を統合し,
+% §5.2  CLS の A→F 6 段階アルゴリズム (CHK-223 NEW: §5 CLS-specific 配下)
+%        §6.1 (CLS ψ FCCD 移流) / §5.1 (再初期化) を統合し,
 %        1 物理時間ステップ内での順序を完結させる．
+%        Stage A の TVD-RK3 更新式は §7.3 (eq:cls_tvd_rk3_psi) に集約 (CHK-223 Phase 3).
+%        velocity-PPE ordering 詳細は §7.3 (sec:cls_velocity_consistency_v7) に集約.
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{\texorpdfstring{CLS の A$\to$F 6 段階アルゴリズム}{CLS の A→F 6 段階アルゴリズム}}
@@ -76,18 +78,22 @@ F & 再初期化後 $\psi(1-\psi)$ 補正 & 必須（再初期化後必ず）\\
 \end{tabular}
 \end{center}
 
-\noindent\textbf{Stage A — TVD-RK3 Shu--Osher}（\cite{ShuOsher1988}）：
-\begin{align}
-  \psi^{(1)} &= \psi^n + \Delta t\,\mathcal{L}^n, \label{eq:cls_rk3_1}\\
-  \psi^{(2)} &= \tfrac{3}{4}\psi^n + \tfrac{1}{4}\bigl(\psi^{(1)} + \Delta t\,\mathcal{L}^{(1)}\bigr), \label{eq:cls_rk3_2}\\
-  \psi^{n+1} &= \tfrac{1}{3}\psi^n + \tfrac{2}{3}\bigl(\psi^{(2)} + \Delta t\,\mathcal{L}^{(2)}\bigr). \label{eq:cls_rk3_3}
-\end{align}
-$\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は FCCD 面値演算子による保存形発散である：
-セル境界 $x_{i+1/2}$ における面値フラックス $(\psi u)_{f,i+1/2}$ を Hermite 補間で構成し，
-その差分でセル中心の発散を求める（\S\ref{sec:advection_motivation}，
-変数別割り当て表 \S\ref{sec:scheme_per_variable}）．
-節点 CCD 単独（散逸なし）は $\psi$ に適用禁止（\S\ref{sec:scheme_per_variable}）．
+\noindent\textbf{Stage A — TVD-RK3 Shu--Osher 更新式}：
+本 stage の $\psi^{n+1}$ 更新には TVD-RK3（SSPRK3）を用いる．
+具体的な 3 段更新式 $\psi^{(1)},\psi^{(2)},\psi^{n+1}$ は
+\S\ref{eq:cls_tvd_rk3_psi}（§7.3）に集約しており，本節では参照のみ．
+時間更新作用素 $\mathcal{L}\psi = -\nabla\cdot(\mathbf{u}\psi)$ は FCCD 面値演算子による
+保存形発散であり，セル境界 $x_{i+1/2}$ における面値フラックス
+$(\psi u)_{f,i+1/2}$ を Hermite 補間で構成して中心発散を求める
+（\S\ref{sec:advection_motivation}，§6.1）．
+節点 CCD 単独（散逸なし）は $\psi$ に適用禁止
+（\S\ref{sec:scheme_per_variable}，§6.0）．
 WENO5 は比較参照スキーム（付録~\ref{app:weno5}）．
+% backward-compat: 旧 eq:cls_rk3_{1,2,3} は §7.3 eq:cls_tvd_rk3_psi に統合．
+% 旧ラベルは外部参照保護のため alias 化：
+\phantomsection\label{eq:cls_rk3_1}%
+\phantomsection\label{eq:cls_rk3_2}%
+\phantomsection\label{eq:cls_rk3_3}%
 
 \noindent\textbf{Stage D — Narrow-band 再初期化}：
 全域 Eikonal 反復は $\mathcal{O}(N)$ 冗長．
@@ -126,21 +132,16 @@ Stage F は必須，Stage B は省略可能だが長時間計算（$t/T_\text{ch
 drift 蓄積を防ぐため推奨．
 
 % -------------------------------------------------------------------------------
-\subsubsection{速度-PPE 整合性：正しい順序}
-\label{sec:cls_velocity_consistency}
+\subsubsection{Stage A の速度場確定タイミング}
+\label{sec:cls_velocity_timing}
+% backward-compat: 旧 sec:cls_velocity_consistency の alias は §7 NEW (移行先) 側に置く．
 % -------------------------------------------------------------------------------
 
-Stage A で用いる $\mathbf{u}$ は\textbf{直前の PPE 投影済み} $\mathbf{u}^n$．
-未投影 $\mathbf{u}^*$（運動量予測子出力）を使うと：
-\begin{itemize}
-  \item 移流で $\mathbf{u}^*$ の離散発散残差が $\psi$ 質量変化を生む
-  \item Stage A の CLS と Phase E の運動量予測子で速度場が異なり，
-        それぞれに対応する PPE RHS が不整合
-\end{itemize}
-正しい順序（\S\ref{sec:algorithm}）：
-\begin{equation*}
-  \text{PPE}_n\to\mathbf{u}^n\to\text{CLS A--F}\& \text{運動量予測子}\to\mathbf{u}^*_{n+1}\to\text{PPE}_{n+1}
-\end{equation*}
+Stage A の $\psi$ 移流は\textbf{直前の PPE 投影済み} $\mathbf{u}^n$ を入力として用い，
+1 ステップで $\psi^{n+1}$ を確定する．ここで「PPE 投影済み速度場」を採用する根拠
+（CLS と運動量予測子で同一の $\mathbf{u}^n$ を共有しないと PPE RHS 不整合を生む）と，
+正しい時間ステップ ordering の図示は §~\ref{sec:cls_velocity_consistency}（§7）に集約．
+本節は CLS 6 段階アルゴリズムの責務分離（mass / geometry / correction）に焦点を絞る．
 
 % -------------------------------------------------------------------------------
 \subsubsection{失敗モードと回避}
