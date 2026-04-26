@@ -86,10 +86,10 @@ def compute_runtime_dt_max(
 
     The advective bound uses the multidimensional Courant sum
     ``Σ_i max|u_i| / h_i`` rather than ``max_i |u_i| / h_min``.  The capillary
-    bound uses the Denner--van Wachem wave-resolution scale with a fixed
-    safety factor ``C_wave = 0.25``.  For non-uniform grids these are necessary
-    timestep scales, not a proof of stability for the full non-normal compact
-    operator.
+    bound uses the Denner--van Wachem wave-resolution scale with the same
+    dimensionless user coefficient ``cfl`` interpreted as ``C_wave``.  For
+    non-uniform grids these are necessary timestep scales, not a proof of
+    stability for the full non-normal compact operator.
     """
     h_axes = context.h_axes
     if h_axes is None:
@@ -121,7 +121,7 @@ def compute_runtime_dt_max(
 
     if physics.sigma > 0.0:
         rho_sum = physics.rho_l + physics.rho_g
-        dt_cap = 0.25 * np.sqrt(
+        dt_cap = cfl * np.sqrt(
             rho_sum * h_min ** 3 / (2.0 * np.pi * physics.sigma)
         )
         return min(dt_cfl, dt_visc, dt_cap)

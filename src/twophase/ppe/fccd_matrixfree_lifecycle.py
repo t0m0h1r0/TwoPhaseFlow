@@ -8,6 +8,7 @@ from .fccd_matrixfree_helpers import (
     build_fccd_face_inverse_density,
     build_fccd_geometry_cache,
     build_fccd_jacobi_inverse,
+    build_fccd_phase_mean_gauge_cache,
     compute_fccd_phase_gauges,
 )
 
@@ -18,6 +19,8 @@ def invalidate_fccd_matrixfree_cache(solver) -> None:
     solver._rho_dev = None
     solver._diag_inv = None
     solver._coeff_face = None
+    solver._phase_mean_gauge_cache = None
+    solver._phase_mean_gauge_cache_host = None
     solver._phase_threshold = None
     solver._interface_jump_context = None
 
@@ -42,6 +45,7 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
     solver._rho = np.asarray(solver.backend.to_host(solver._rho_dev))
     solver._diag_inv = None
     refresh_fccd_phase_gauges(solver)
+    refresh_fccd_phase_mean_gauge_cache(solver)
     solver._coeff_face = [
         build_fccd_face_inverse_density(
             xp=solver.xp,
@@ -55,11 +59,15 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
         for axis in range(solver.ndim)
     ]
     if solver.preconditioner == "jacobi":
+        uses_mean_gauge = (
+            hasattr(solver, "_uses_phase_mean_gauge")
+            and solver._uses_phase_mean_gauge()
+        )
         solver._diag_inv = build_fccd_jacobi_inverse(
             xp=solver.xp,
             rho_dev=solver._rho_dev,
             h_min=solver._h_min,
-            pin_dofs=solver._pin_dofs,
+            pin_dofs=() if uses_mean_gauge else solver._pin_dofs,
         )
 
 
@@ -74,8 +82,27 @@ def refresh_fccd_phase_gauges(solver) -> None:
     solver._phase_threshold = state.phase_threshold
 
 
+def refresh_fccd_phase_mean_gauge_cache(solver) -> None:
+    """Cache phase masks and control-volume weights for mean-gauge projections."""
+    solver._phase_mean_gauge_cache = build_fccd_phase_mean_gauge_cache(
+        xp=solver.xp,
+        rho=solver._rho_dev,
+        cell_volume=solver._cell_volume,
+        phase_threshold=solver._phase_threshold,
+    )
+    solver._phase_mean_gauge_cache_host = build_fccd_phase_mean_gauge_cache(
+        xp=np,
+        rho=solver._rho,
+        cell_volume=solver._cell_volume_host,
+        phase_threshold=solver._phase_threshold,
+    )
+
+
 def refresh_fccd_geometry_cache(solver) -> None:
     """Cache per-axis geometric scalars reused across every GMRES matvec."""
     cache = build_fccd_geometry_cache(xp=solver.xp, grid=solver.grid, ndim=solver.ndim)
     solver._h_min = cache.h_min
     solver._node_width = cache.node_width
+    solver._node_width_inv = [1.0 / width for width in cache.node_width]
+    solver._cell_volume = cache.cell_volume
+    solver._cell_volume_host = np.asarray(solver.backend.to_host(cache.cell_volume))

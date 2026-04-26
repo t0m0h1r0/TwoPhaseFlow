@@ -198,7 +198,7 @@ class PsiDirectTransport(ILevelSetTransport):
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
 
         # Reinitialize on cadence
-        if self.reinit_every > 0 and step_index % self.reinit_every == 0:
+        if self.reinit_every > 0 and step_index > 0 and step_index % self.reinit_every == 0:
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
 
         return psi

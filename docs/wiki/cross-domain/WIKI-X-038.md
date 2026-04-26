@@ -91,6 +91,12 @@ dt_cap = C_wave sqrt((rho_l + rho_g) h_min^3 / (2 pi sigma)),
 C_wave ≈ 0.1--0.3.
 ```
 
+Runtime rule: unless a separate documented override is added, `run.time.cfl`
+is `C_wave` for `dt_cap`.  The capillary coefficient must not be hard-coded.
+Otherwise a YAML that states `cfl: 0.10` can still run the surface-tension
+block at `C_wave = 0.25`, which is a 2.5x larger capillary-wave timestep and
+breaks the user's stated CFL contract.
+
 The production budget is therefore
 
 ```text
@@ -173,11 +179,13 @@ A ch13 run should not be called theoretically stable merely because it uses
 `CFL=0.10`.  The gate is:
 
 1. report `dt_adv`, `dt_nu`, and `dt_cap`;
-2. if `alpha > 1`, provide compact-operator spectral/energy evidence;
-3. if AB2 momentum convection is active, place the scaled eigenvalues in the
+2. state the `C_wave` value used for capillarity and verify that it matches the
+   YAML CFL coefficient;
+3. if `alpha > 1`, provide compact-operator spectral/energy evidence;
+4. if AB2 momentum convection is active, place the scaled eigenvalues in the
    AB2 stability region or show sufficient damping;
-4. if surface tension is active, respect the capillary wave-resolution scale;
-5. keep SSPRK3 claims limited to scalar interface transport.
+5. if surface tension is active, respect the capillary wave-resolution scale;
+6. keep SSPRK3 claims limited to scalar interface transport.
 
 ## 7. Related short paper
 

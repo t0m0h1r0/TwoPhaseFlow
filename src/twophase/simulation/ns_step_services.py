@@ -16,6 +16,10 @@ from .ns_step_state import NSStepState
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
 
 
+def _backend_is_gpu(backend) -> bool:
+    return bool(getattr(backend, "is_gpu", lambda: False)())
+
+
 def build_pressure_robust_buoyancy_residual_accel_faces(
     *,
     buoyancy_force_components: list,
@@ -141,6 +145,14 @@ def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
     return state
 
 
+def _interface_supported_curvature(kappa, psi, *, xp, psi_min: float | None):
+    """Preserve the CLS curvature invariant ``kappa=0`` off the interface."""
+    if psi_min is None or psi_min <= 0.0:
+        return kappa
+    band = (psi > psi_min) & (psi < 1.0 - psi_min)
+    return xp.where(band, kappa, 0.0)
+
+
 def compute_ns_surface_tension_stage(
     state: NSStepState,
     *,
@@ -158,6 +170,12 @@ def compute_ns_surface_tension_stage(
     xp = backend.xp
     kappa_raw = curv.compute(state.psi)
     state.kappa = hfe.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
+    state.kappa = _interface_supported_curvature(
+        state.kappa,
+        state.psi,
+        xp=xp,
+        psi_min=getattr(curv, "psi_min", 0.01),
+    )
     if interface_runtime.kappa_max is not None:
         state.kappa = xp.clip(
             state.kappa,
@@ -500,7 +518,7 @@ def solve_ns_pressure_stage(
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
 ) -> tuple[NSStepState, object, np.ndarray]:
-    """Solve PPE and prepare the corrector pressure field."""
+    """Solve PPE and prepare total corrector pressure plus base warm start."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     predictor_faces = None
@@ -533,11 +551,12 @@ def solve_ns_pressure_stage(
         p_init=p_prev_dev,
     )
     next_p_prev_dev = getattr(ppe_solver, "last_base_pressure", state.pressure)
-    next_p_prev = np.asarray(backend.to_host(next_p_prev_dev))
-    if surface_tension_scheme == "pressure_jump":
-        state.p_corrector = next_p_prev_dev
-    else:
-        state.p_corrector = state.pressure
+    next_p_prev = (
+        None
+        if _backend_is_gpu(backend)
+        else np.asarray(backend.to_host(next_p_prev_dev))
+    )
+    state.p_corrector = state.pressure
     return state, next_p_prev_dev, next_p_prev
 
 def correct_ns_velocity_stage(
@@ -559,13 +578,16 @@ def correct_ns_velocity_stage(
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
-    correction_is_zero = all_arrays_exact_zero(xp, (
-        state.u_star,
-        state.v_star,
-        state.p_corrector,
-        state.f_x,
-        state.f_y,
-    ))
+    correction_is_zero = (
+        not _backend_is_gpu(backend)
+        and all_arrays_exact_zero(xp, (
+            state.u_star,
+            state.v_star,
+            state.p_corrector,
+            state.f_x,
+            state.f_y,
+        ))
+    )
     proj_op = None
     project_kwargs = {}
     keep_face_state = canonical_face_state or preserve_projected_faces

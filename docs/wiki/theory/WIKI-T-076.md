@@ -83,6 +83,20 @@ Matching the symbolic method name is insufficient. The equality must hold with:
 This is why the clean fix adjusted both the FCCD projection divergence rows and
 the phase-separated pressure-flux coefficient path.
 
+## Gauge corollary
+
+After cross-phase faces are cut, each phase block is a Neumann problem.  Its
+nullspace is the phase-constant pressure mode, so the compatible RHS condition
+is a zero control-volume-weighted phase integral.  On non-uniform grids the
+plain arithmetic mean is not the left-nullspace condition.
+
+The gauge must remove only this nullspace.  A point Dirichlet pin replaces one
+physical compact/cut-face row and therefore breaks mirror symmetry unless the
+pin itself is duplicated by the symmetry group.  The phase-separated FCCD path
+uses a per-phase mean gauge instead: project the RHS and pressure onto the
+mean-free subspace, apply the physical operator there, and regularize only the
+constant-mode complement.
+
 ## Debugging implication
 
 Before interpreting blowup as a time-integrator, advection, level-set, or
@@ -92,7 +106,10 @@ buoyancy-model failure, test:
 projection-side D_f A_f G_f p == PPE-side apply(p)
 ```
 
-for random `p` and representative `rho`, excluding gauge-pinned DOFs.
+for random `p` and representative `rho`, using the physical operator before
+gauge augmentation.  A separate symmetry test should verify that a symmetric
+RHS/phase mask remains symmetric after both the base PPE solve and the outer
+defect-correction residual loop.
 
 ## Related
 

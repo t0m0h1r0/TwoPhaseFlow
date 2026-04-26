@@ -9,7 +9,7 @@
 \phantomsection\label{sec:advection}% legacy chapter alias
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{移流項：CLS $\psi$ 用 FCCD と運動量用 UCCD6}
+\subsection{移流項：CLS \texorpdfstring{$\psi$}{ψ} 用 FCCD と運動量用 UCCD6}
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ $F_i = [(\psi u)_{f,i+1/2} - (\psi u)_{f,i-1/2}]/h$ を求める
 FCCD は\textbf{保存型 FVM のテレスコーピング構造}を持ち，
 $\psi$ プロファイル kink での節点 CCD overshoot を経由しないため，
 界面の急峻な遷移層に対しても安定かつ厳密質量保存的である．
-WENO5 は \emph{比較参照スキーム}として付録~\ref{app:weno5} に収録するに留め，
+WENO5 は \textbf{比較参照スキーム}として付録~\ref{app:weno5} に収録するに留め，
 本稿の主実装には用いない（§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．\footnote{ch13
 production stack 確立前の旧実装では帯状散逸付き節点 CCD を CLS 移流に使用していた．
 当該手法は線形フィルタによる近似的安定化に依存し，非周期境界での厳密質量保存を満たさない．

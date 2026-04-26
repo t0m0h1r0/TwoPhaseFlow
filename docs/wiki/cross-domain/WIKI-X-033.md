@@ -103,7 +103,7 @@ entry point.  It is intentionally different from `phase_density`:
   `D_f[(1/rho)_f G_f(p)]`.
 - `phase_separated` uses FCCD rows within each density phase and sets
   cross-interface PPE face coupling to zero.
-- one pressure gauge is pinned per detected phase block.
+- one constant Neumann nullspace is removed per detected phase block.
 - GFM jump ghost pressure jets are still the next stage, not silently faked.
 
 This keeps the implementation honest: the code is already FVM-free and
@@ -127,9 +127,17 @@ interface pressure jump, not hidden inside a surface-tension force model.
 
 Because `phase_separated` cuts cross-interface PPE coupling, the gas and liquid
 pressure blocks each have a Neumann nullspace.  The solver therefore projects the
-PPE RHS to zero mean separately in each detected density phase before GMRES, then
-pins one pressure gauge per phase.  This is a solvability requirement for the
-split differential operator, not a return to FVM conservation.
+PPE RHS to zero control-volume-weighted mean separately in each detected density
+phase before GMRES, then uses a per-phase zero-volume-mean pressure gauge.  This
+is a solvability requirement for the split differential operator, not a return
+to FVM conservation.
+
+A point gauge DOF is not acceptable for this path.  Replacing one compact PPE
+row by `p_i=0` injects a non-physical local residual; choosing a more central
+bulk cell only moves that residual.  The implemented gauge is instead a
+nullspace projection: the physical operator acts on the mean-free subspace and
+the constant-mode complement is regularized algebraically.  On symmetric grids
+and phase masks this preserves mirror symmetry, unlike any single-point pin.
 
 ## Code Status: Phase 4 Base-Pressure Warm Start
 
@@ -163,10 +171,12 @@ a pressure jump can no longer be requested without the matching SP-M PPE path.
 
 ## Code Status: Phase 8 PPE Diagnostics
 
-Debug diagnostics now include SP-M PPE state: phase count, pin count,
-pre/post per-phase RHS mean, and whether jump decomposition is active.  These
-metrics make the current split-PPE approximation visible in experiment output
-instead of hiding it inside the solver.
+Debug diagnostics now include SP-M PPE state: phase count, point-pin count,
+mean-gauge flag, pre/post per-phase RHS mean, and whether jump decomposition is
+active.  For the current mean-gauge path the expected values are
+`ppe_pin_count=0` and `ppe_mean_gauge=1`.  These metrics make the current
+split-PPE approximation visible in experiment output instead of hiding it inside
+the solver.
 
 ## Code Status: Phase 9 Regrid Context Guard
 

@@ -251,7 +251,10 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         mu_device = xp.asarray(mu)
         rho_device = xp.asarray(rho)
         psi_device = xp.asarray(psi) if psi is not None else None
-        if all_arrays_exact_zero(xp, (*base_velocity, *explicit_acceleration)):
+        if (
+            not self.backend.is_gpu()
+            and all_arrays_exact_zero(xp, (*base_velocity, *explicit_acceleration))
+        ):
             return xp.zeros_like(base_velocity[0]), xp.zeros_like(base_velocity[1])
         rhs_components = [
             xp.asarray(base_velocity[component])
