@@ -8,9 +8,10 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 §\ref{sec:time_int} では時間積分を物理項別（移流・粘性・界面張力・圧力・浮力）に
-ch13 production stack を中心として整理し，他 Level 設定（Level 1 全陽的検証 +
-Level 3 完全陰的剛性レジーム）の位置づけは §\ref{sec:time_level_legacy} に補足した．
-本節では 1 タイムステップ内で Level を切替えるトリガー，
+ch13 production stack を中心として整理した．
+本節では本稿で扱わなかった代替 Level 設定（Level 1 全陽的検証 +
+Level 3 完全陰的剛性レジーム）の位置づけ，
+1 タイムステップ内で Level を切替えるトリガー，
 Level 間コスト比率，および適用領域の棲み分けを示す．
 
 % -------------------------------------------------------------------------------
@@ -179,7 +180,8 @@ Level 2 の Crank--Nicolson + 半陰的 ST は Level 1 の $\Ord{h^k}$ を
 Level 2 は本稿の\textbf{既定プロダクション構成}であり，
 中密度比の Level 2a（AB2 + CN + 半陰的 ST + BF 投影）と，
 水--空気級の Level 2b（EXT2 + implicit-BDF2 + pressure-jump 分相投影）に分ける．
-§\ref{sec:time_level2} で定式化した通り，時間刻みは
+§\ref{sec:time_level1}（ch13 production stack の IMEX-BDF2 + IPC + pressure-jump CSF）
+で定式化した通り，時間刻みは
 \begin{equation}
   \Delta t_\text{L2}
     = \min\!\bigl(
@@ -220,7 +222,7 @@ Level 3 の外殻 JFNK 反復は 1 ステップあたり 5--20 Krylov 反復 + 3
 $10\text{--}1000\times$ まで拡大可能なため実効効率が上回る
 （表値 L2: 10--50$\times$ L1，L3: 500--10000$\times$ L1 から派生）．
 本稿では Level 3 の具体構成（Radau IIA の stage 構成，JFNK 前処理戦略）は
-§\ref{sec:time_level3} にとどめ，本稿の対象外とする．
+本節の適用窓提示にとどめ，定式化と数値実装は本稿の対象外とする．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Level 選択マトリクス（物理 → 推奨）}
