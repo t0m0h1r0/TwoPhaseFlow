@@ -1,6 +1,6 @@
-% paper/sections/13_benchmarks.tex
+% paper/sections/14_benchmarks.tex
 %
-% §13  二相流ベンチマーク — current ch13 production set
+% §14  二相流ベンチマーク — current ch14 production set
 %      Two YAMLs: capillary wave and rising bubble.
 %
 
@@ -9,7 +9,7 @@
 \label{sec:benchmarks}
 
 第~\ref{sec:verification}章では構成要素ごとの精度と NS 連成の物理的整合性を検証した．
-本章では，研究用 YAML として維持する第13章の本番検証セットを，
+本章では，研究用 YAML として維持する本章の本番検証セットを，
 毛管波（§~\ref{sec:val_capillary}）と浮力駆動気泡上昇
 （§~\ref{sec:val_rising_bubble}）の2本に限定する．
 どちらも第~\ref{sec:verification}章の部品検証には含まれない
@@ -26,10 +26,10 @@
 \label{sec:val_grid_policy}
 % ═══════════════════════════════════════════════════════════════════
 
-第13章で維持する YAML は次の2本である：
+本章で維持する YAML は次の2本である：
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item \texttt{experiment/ch13/config/ch13\_capillary\_water\_air\_alpha2\_n128.yaml}
-  \item \texttt{experiment/ch13/config/ch13\_rising\_bubble\_water\_air\_alpha2\_n128x256.yaml}
+  \item \texttt{experiment/ch14/config/ch14\_capillary\_water\_air\_alpha2\_n128.yaml}
+  \item \texttt{experiment/ch14/config/ch14\_rising\_bubble\_water\_air\_alpha2\_n128x256.yaml}
 \end{itemize}
 両者は水--空気物性（$\rho_l=1000,\rho_g=1.2$，
 $\mu_l=10^{-3},\mu_g=1.8\times10^{-5}$，$\sigma=0.072$），
@@ -167,7 +167,7 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
 \begin{table}[htbp]
 \centering
 \caption{第~\ref{sec:validation}章 ベンチマーク結果まとめ}
-\label{tab:ch13_summary}
+\label{tab:ch14_summary}
 \renewcommand{\arraystretch}{1.4}
 \begin{tabular}{p{2.2cm}p{3.2cm}p{5.1cm}p{2.0cm}}
 \toprule
