@@ -4,7 +4,7 @@
 \subsection{Predictor ADI 分裂の実装詳細}
 \label{app:predictor_adi}
 
-本節では，§~\ref{sec:algo_flow} Step~5 の運動量予測ステップにおける
+本節では，本稿 7-step フロー Step~5 の運動量予測ステップにおける
 Crank--Nicolson + ADI 分裂の実装詳細と，$y$ 成分の完全な離散形式を補足する．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ $v^*_{i,j}$ を求める（$n \ge 1$）：
 \subsubsection{CN 離散化と ADI 分裂の関係}
 \label{app:cn_adi_detail}
 
-§~\ref{sec:algo_flow} Step~5 の離散形式は形式的な CN 離散化を示す．
+本稿 7-step フロー Step~5 の離散形式は形式的な CN 離散化を示す．
 実装では ADI 分裂により，クロス微分項（$D_y^{(1)}(\mu D_x^{(1)} v)$ 等）は $n$ 時刻の値で陽的に評価し，
 直接微分項（$D_x^{(1)}(2\mu D_x^{(1)} u^*)$ 等）のみを陰的に解く．
 

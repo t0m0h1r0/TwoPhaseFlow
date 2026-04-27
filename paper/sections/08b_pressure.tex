@@ -62,7 +62,7 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
 \noindent\textbf{補足：}
 外力 $\bm{F}_\text{ext}^{n+1}$ は重力項と CSF 体積力 $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方を含み，
 CSF は Predictor に保持される（式~\eqref{eq:NS_dimless_cls}）．
-密度 $\rho^{n+1}$ は CLS 移流（§~\ref{sec:algorithm}, Step 1）で事前に更新済みである．
+密度 $\rho^{n+1}$ は CLS 移流（本稿 7-step フローの Step 1）で事前に更新済みである．
 本節の導出は Backward Euler 形式で統一したが，
 対流項は IMEX-BDF2（式~\eqref{eq:predictor_imex_bdf2}），
 粘性項は implicit-BDF2（$\Ord{\Delta t^2}$，§~\ref{sec:time_viscous}）を用いる．

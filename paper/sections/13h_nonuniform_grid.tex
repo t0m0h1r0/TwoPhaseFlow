@@ -332,7 +332,7 @@ $\alpha$ に依存しない安定した移流精度を実現する．
 \end{table}
 
 非一様格子（$\alpha=1.5$）が唯一の原因と確定した．
-理論解析（§~\ref{sec:fvm_ccd_corrector}，§~\ref{box:fvm_ccd_metric}）により，
+理論解析（§~\ref{sec:fvm_ccd_corrector}；FVM--CCD メトリック整合性条件）により，
 CCD 速度補正の $J_n = 1/\delta v_i$ と PPE の $J_f = 1/d_f^{(i)}$ が乖離
 （$\alpha=1.5$，64$\times$128 で $\max|J_f - J_n|/J_f = 0.774$）し，
 毎ステップ残差発散が速度場に注入されることを導出した．
