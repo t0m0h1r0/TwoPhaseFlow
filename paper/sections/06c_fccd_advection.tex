@@ -1,4 +1,4 @@
-% paper/sections/07c_fccd_advection.tex
+% paper/sections/06c_fccd_advection.tex
 %
 % §6.2  FCCD 移流：Option B/C と面ジェット共通プリミティブ (CHK-223: §6 per-term spatial 配下)
 %        既存の節点 CCD 移流を保存型に拡張する FCCD 移流演算子群．
@@ -168,10 +168,9 @@ $\langle\mathbf{P}_f\mathbf{u},\mathbf{M}^{\FCCD}\mathbf{v}\rangle_f
 \label{sec:fccd_adv_bf_theorem}
 % -------------------------------------------------------------------------------
 
-\begin{theorem}[FCCD Option B の BF 整合性]\label{thm:fccd_adv_bf}
-$\nabla p$（FCCD），$\sigma\kappa\nabla\psi$（FCCD 面形），
-$\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（FCCD Option B）の
-3 項すべてを\textbf{共通の面中心演算子}
+\begin{theorem}[FCCD pressure/CSF の静的 BF 整合性]\label{thm:fccd_adv_bf}
+$\nabla p$（FCCD）と $\sigma\kappa\nabla\psi$（FCCD 面形）を
+\textbf{共通の面中心演算子}
 $\mathbf{M}^{\FCCD}$（\S\ref{sec:fccd_def} 式~\eqref{eq:fccd_composite_matrix}）で
 離散化すれば，静止状態 $\mathbf{u}\equiv 0$ での離散運動量バランスの
 BF 残差は
@@ -192,10 +191,9 @@ Neumann BC 下の compatibility）が満たされる．
 CSF；§\ref{sec:projection_derivation}）の設定．分相 PPE / GFM ジャンプ条件版
 （§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
 Corollary~\ref{cor:fccd_split_ppe_bf}．\\
-\textbf{論証}：$\mathbf{u}\equiv 0$ で保存形・非保存形・スキュー対称形
-3 種の対流面フラックス（\eqref{eq:fccd_adv_flux_cons}
-\eqref{eq:fccd_adv_flux_skew} および非保存形）はいずれも点積に $\mathbf{u}$ を
-含むため恒等的に零．残る $\nabla p$ と CSF は (A1) より同一の
+\textbf{論証}：$\mathbf{u}\equiv 0$ では対流項は恒等的に零であるため，
+静的 BF 残差は圧力勾配と CSF の演算子一致だけで決まる．
+残る $\nabla p$ と CSF は (A1) より同一の
 $\mathbf{M}^{\FCCD}$ で評価され，両項の切断誤差は同一表現
 $\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合い
 （同一演算子・同一格子点・同一切断），$\|\mathbf{R}_\text{BF}\|_\infty$ は
@@ -214,11 +212,14 @@ well-defined であることから $G_h p$ の評価が有効．$\square$
 証明は本定理と同一の line-of-argument に従う．
 \end{corollary}
 
-\noindent\textbf{系}：
-移流を Option C（R$_4$ 経由の節点中心）に留めた場合，
-節点-面-節点の往復で BF 残差フロアは $\mathcal{O}(H^2)$ に退化．
-Option B でのみ H-01 が完全解消する（本稿の実測で移流のみ節点中心 CCD の
-$\mathcal{O}(H^2)$ フロアから $\mathcal{O}(H^4)$ へ降下）．
+\noindent\textbf{動的移流ロカス命題}：
+非零速度場では，対流フラックスも圧力・CSF と同じ面ロカスに置かれて初めて
+運動量 RHS 全体が同一の面中心空間で閉じる．
+Option C（R$_4$ 経由の節点中心）は節点--面--節点の往復を残すため，
+静的 BF 定理の直接の仮定ではないが，動的計算ではロカス不一致の残差源になり得る．
+Option B は $\nabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
+pressure/CSF/convective flux の 3 項を同一の face-to-node divergence で戻す
+動的整合化のための設計である．
 
 % -------------------------------------------------------------------------------
 \subsubsection{運動量方程式の閉形}
@@ -229,7 +230,7 @@ FCCD Option B で閉じた運動量更新：
 \begin{equation}
   \frac{u^{n+1}_j - u^n_j}{\Delta t}
   = -\sum_k\frac{(u_k u_j)^{*}_{f_{i+1/2}} - (u_k u_j)^{*}_{f_{i-1/2}}}{H_i}
-  + \bigl[\nu \text{Lap} + \nabla p + \sigma\kappa\nabla\psi + g\bigr]_i,
+  + \bigl[\nu \text{Lap} - \nabla p + \sigma\kappa\nabla\psi + g\bigr]_i,
   \label{eq:fccd_adv_closure}
 \end{equation}
 右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
@@ -281,7 +282,7 @@ $\mathcal{O}(N)$ 乗算のみで，
   \item \textbf{Stage 2}：Option C 導入で移流を R$_4$ 経由の節点中心 FCCD に．
         $\mathcal{O}(H^2)$ フロアは残るが係数が小さくなる．
   \item \textbf{Stage 3}：Option B で保存形面フラックスに完全移行．
-        H-01 完全解消，BF 残差 $\mathcal{O}(H^4)$．
+        動的移流ロカスを pressure/CSF と一致させ，面中心 RHS として閉じる．
 \end{enumerate}
 製品コンフィグは Stage 3，
 回帰検証には Stage 1/2 を \texttt{fccd\_bf\_mode} フラグで切替可能．

@@ -622,12 +622,13 @@ $A_H = I - (\Delta t/2\rho)L_H$，$A_L = I - (\Delta t/2\rho)L_L$
 大規模 3D は PCG+AMG，構造格子の 2D は ADI，小中規模ベンチマークは LU）．
 $L_L$ は $L_H$ と同じ $\mu$・同じ BC・同じ帯スイッチを共有する必要があり，
 素朴な $\mu_0\nabla^2$ では収束しない．
-$\mu_\text{face}$ の補間規則（調和平均推奨）は \S~\ref{sec:rho_mu_interpolation}（§6.4）．
+$\mu_\text{face}$ の補間規則（CLS 拡散界面では算術平均基準；調和平均は感度評価用）は
+\S~\ref{sec:rho_mu_interpolation}（§6.4）．
 
 \noindent\textbf{アンチパターン：}
 \begin{itemize}
   \item $\mu\nabla^2\mathbf{u}$ 形式（\S~\ref{sec:viscous_mu_lap_forbidden}，§6.3）
-  \item Layer C で CCD 使用（保存性崩壊）
+  \item Layer C の界面法線方向で CCD 強行（kink を跨いで応力評価が崩壊）
   \item $\tau_{xy}$ を $x$/$y$ 別々に計算（対称性崩壊）
   \item コーナー $\mu$ をセル中心の 2 点内挿で代用（ステンシル非整合）
   \item 界面帯で CCD 強行（$\mathcal{O}(1)$ 勾配誤差）
