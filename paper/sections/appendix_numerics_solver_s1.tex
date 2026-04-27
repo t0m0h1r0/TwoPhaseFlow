@@ -29,8 +29,8 @@ $k_{\max}$ に対応する群速度で CFL 条件 $c_g(k_{\max})\,\Delta t \le \
 厳密な係数は $2/(3\sqrt{\pi}) \approx 0.376$ であるが，
 文献で広く用いられる簡略形 $1/\sqrt{2\pi} \approx 0.399$ を採用すると
 式 \eqref{eq:dt_sigma} を得る（$6\%$ 大きい $\Delta t$ を許すが，
-CFL 安全係数 $C_\sigma \in (0,1]$（毛管波 CFL の安全係数；本実装 ch13
-既定 $C_\sigma = 0.5$）で補正するため実用上問題ない）：
+毛管波 CFL の安全係数 $C_\sigma \in (0,1]$ を
+$\Delta t \le C_\sigma\Delta t_\sigma$ として掛けるため実用上問題ない）：
 \[
   \Delta t_\sigma = \sqrt{\frac{(\rho_l+\rho_g)\,\Delta x^3}{2\pi\sigma}}
 \]
