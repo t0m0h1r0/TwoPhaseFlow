@@ -120,25 +120,25 @@
 \appendix
 \part*{付録}
 
-%% 付録A: 界面数学・CLS 証明（§2-3 対応）
-\input{sections/appendix_interface}       %% A.1–A.5
+%% 付録A: 無次元化の項別導出（§2 対応）
+\input{sections/appendix_nondim_details}        %% A.1 項別無次元化, A.2 曲率2D導出
 
-%% 付録B: CCD 法の係数導出と実装（§4 対応）
-\input{sections/appendix_ccd}             %% B.1 係数導出, B.2 境界代替, B.3 精度・楕円型
+%% 付録B: 界面数学・CLS 証明（§2-3 対応）
+\input{sections/appendix_interface}             %% B.1–B.5
 
-%% 付録C: 移流スキームと安定性制約（§7 対応）
-\input{sections/appendix_advection}       %% C.1 WENO5, C.2 安定性解析, C.3 安定性制約
+%% 付録C: CCD 法の係数導出と実装（§4 対応）
+\input{sections/appendix_ccd}                   %% C.1 係数導出, C.2 境界代替, C.3 精度・楕円型
 
-%% 付録D: 圧力ソルバーと連成解析（§8-9 対応）
-\input{sections/appendix_pressure}        %% D.1 欠陥補正理論, D.2 仮想時間, D.3 FVM基準
+%% 付録D: 移流スキームと安定性制約（§7 対応）
+\input{sections/appendix_advection}             %% D.1 安定性解析, D.2 安定性制約
 
-%% 付録E: 検証の補足解析（§12 から移動）
-\input{sections/appendix_verification_details}  %% E.1 PPE離散化選択, E.2 HFE適合性
+%% 付録E: 圧力ソルバーと連成解析（§8-9 対応）
+\input{sections/appendix_pressure}              %% E.1 欠陥補正理論, E.2 仮想時間, E.3 FVM基準
 
-%% 付録F: 無次元化の項別導出（§2 から移動）
-\input{sections/appendix_nondim_details}        %% F.1 項別無次元化, F.2 曲率2D導出
+%% 付録F: ブートストラップ初期化シーケンス（§10-11 対応）
+\input{sections/appendix_bootstrap}             %% F.1 初期化5段階
 
-%% 付録G: ブートストラップ初期化シーケンス（§10 から移動）
-\input{sections/appendix_bootstrap}             %% G.1 初期化5段階
+%% 付録G: 検証の補足解析（§12 対応）
+\input{sections/appendix_verification_details}  %% G.1 PPE離散化選択, G.2 HFE適合性
 
 \end{document}
