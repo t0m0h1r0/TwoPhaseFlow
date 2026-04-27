@@ -138,8 +138,12 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
 \noindent\textbf{Post-filter 形での実装条件．}
 本稿の DCCD は PDE 形ではなく\textbf{post-filter} 形
 $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dccd_filter_transfer}）．
-フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が安定の必要条件であり，
-§\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの境界値に相当する
+フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が
+符号反転を起こさない単調減衰条件となる．
+定係数周期格子で $\ell^2$ 非増幅だけを問えば
+$|H(\xi)|\le 1$ から $\varepsilon_d\le 1/2$ まで許されるが，
+$\varepsilon_d>1/4$ では高波数で符号が反転するため本稿では採用しない．
+§\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの設計上限に相当する
 （過剰散逸を避けつつチェッカーボードを最大限に抑える設計値）．
 
 % -------------------------------------------------------------------------------
@@ -154,8 +158,9 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
       §\ref{sec:dccd_spectral_filter} の波数選択的フィルタが解決．
 \item \textbf{境界付き領域での必要非十分性．}
       §\ref{sec:ccd_bc} の片側 Hermite 閉包が\textbf{十分条件プローブ}として機能する；
-      厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は
-      §\ref{sec:uccd6_boundary} で開課題として明示している．
+      ただし DCCD の有界域安定性は Fourier 解析だけからは結論しない．
+      本稿では境界点を未フィルタに保つ設計と内部点ブロックの spectral bound を用い，
+      厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は主張範囲外とする．
 \item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
       壁近傍の境界行設計（Option III/IV による置換）は
       §\ref{sec:grid} 章の境界処理で論じる．
@@ -164,7 +169,7 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
 \item \textbf{非線形・多次元・可変係数への拡張可否．}
       線形解析は\textbf{必要条件プローブ}に過ぎない；
-      比較対象スキームとの相互検証で経験的裏付け．
+      後続の検証章（§\ref{sec:verify_summary}）で確認対象とし，本節では十分条件として主張しない．
 \item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
       $\varepsilon_d\le 0.05$ の実装デフォルト設定で非拘束．
@@ -289,15 +294,20 @@ $C^0$ tanh プロファイル移流（界面）
 周期 1 次元で標準 3 点 Laplacian を $L_2$，
 $E=\operatorname{diag}(\varepsilon_d^{(i)})$ とおくと，
 post-filter は $T=I+E L_2$ で書ける．
-$E L_2$ は（$E$ が半正定値の場合は極限の意味で）
+$E L_2$ は一般に非正規であり，標準 $\ell^2$ ノルムの収縮を
+この形から直ちに結論することはできない．
+一方で $E L_2$ は（$E$ が半正定値の場合は極限の意味で）
 対称半負定値行列 $E^{1/2}L_2E^{1/2}$ と同じ非零固有値を持ち，
 Rayleigh 商から固有値 $\mu$ は $-4\varepsilon_{d,\max}\le\mu\le0$ に入る．
 したがって $0\le\varepsilon_{d,\max}\le1/4$ なら
-$0\le 1+\mu\le1$ であり，定数係数の場合と同じ非増幅条件を満たす．
+$0\le 1+\mu\le1$ であり，定数係数の場合と同じ
+固有値ベースの非増幅条件を満たす．
 壁面・流出境界では境界点を未フィルタのまま保持し，
 内部点ブロックにこの条件を課す．
 2 次元では各方向の 1 次元フィルタを逐次適用するため，
-各方向で同じ上限を満たせば収縮写像の合成となる．
+各方向で同じ上限を満たす spectral probe として用いる．
+標準 $\ell^2$ 収縮を主張する場合は，対称保存形フィルタまたは
+別途のノルム評価が必要である．
 
 \begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの実装アルゴリズム}]
 \label{alg:dccd}
