@@ -5,10 +5,12 @@ The checked-in §13 production set is intentionally limited to two YAML files:
 - `ch13_capillary_water_air_alpha2_n128.yaml` — capillary-wave probe.
 - `ch13_rising_bubble_water_air_alpha2_n128x256.yaml` — rising-bubble probe.
 
-Run these through the unified §13 runner, not per-experiment wrapper scripts:
+Run these through the unified runner (`experiment/run.py`); ch13 was
+folded into the shared YAML-dispatcher in CHK-232:
 
-- `make run EXP=experiment/ch13/run.py ARGS="ch13_capillary_water_air_alpha2_n128"`
-- `make run EXP=experiment/ch13/run.py ARGS="ch13_rising_bubble_water_air_alpha2_n128x256"`
+- `python experiment/run.py --config ch13_capillary_water_air_alpha2_n128`
+- `python experiment/run.py --config ch13_rising_bubble_water_air_alpha2_n128x256`
+- Add `--plot-only` to regenerate figures from a prior `data.npz`.
 
 Both configs must emit periodic snapshots with `psi`, `velocity`, and
 `pressure` fields.  The runner stores these in `data.npz` under

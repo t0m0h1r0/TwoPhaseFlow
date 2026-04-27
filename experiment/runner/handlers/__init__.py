@@ -6,6 +6,8 @@ Handler types:
   scheme_comparison  — multi-case overlay or bar chart
   parameter_sweep    — scalar param sweep, metric vs param
   time_history       — metric trajectories over timesteps
+  capillary_wave     — ch13 capillary-wave NS simulation (ns_simulation.py)
+  circle             — ch13 rising-bubble NS simulation (ns_simulation.py)
 """
 
 from __future__ import annotations
@@ -19,6 +21,9 @@ from ..registry import (
     ExperimentHandler, SCHEME_REGISTRY, SOLUTION_REGISTRY, register_handler,
 )
 from twophase.tools.experiment import save_results, load_results, save_figure, convergence_loglog
+
+# Side-effect import: registers ch13 NS-simulation handlers.
+from . import ns_simulation  # noqa: F401
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────

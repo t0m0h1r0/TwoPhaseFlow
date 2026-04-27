@@ -1,4 +1,5 @@
-import importlib.util
+import importlib
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -7,12 +8,16 @@ from twophase.simulation.config_io import ExperimentConfig
 
 
 def _load_ch13_runner():
+    """Load the unified runner's NS-simulation handler module (CHK-232).
+
+    The legacy ``experiment/ch13/run.py`` was retired; the snapshot
+    serialization helpers now live in
+    ``experiment/runner/handlers/ns_simulation.py``.
+    """
     root = Path(__file__).resolve().parents[3]
-    path = root / "experiment" / "ch13" / "run.py"
-    spec = importlib.util.spec_from_file_location("ch13_run", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    return importlib.import_module("experiment.runner.handlers.ns_simulation")
 
 
 def test_snapshot_fields_are_saved_as_npz_series():

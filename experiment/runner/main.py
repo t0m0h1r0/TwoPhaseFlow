@@ -2,8 +2,8 @@
 
 Invoked via ``experiment/run.py``:
 
-    python experiment/run.py --config exp11_01_ccd_convergence
-    python experiment/run.py --config exp11_01_ccd_convergence --plot-only
+    python experiment/run.py --config exp12_01_hydrostatic
+    python experiment/run.py --config ch13_capillary_water_air_alpha2_n128 --plot-only
     python experiment/run.py --all
 """
 
@@ -18,8 +18,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # Chapter config directories searched in order when a bare stem is given
 _CHAPTER_CONFIG_DIRS = [
-    ROOT / "ch11" / "config",
     ROOT / "ch12" / "config",
+    ROOT / "ch13" / "config",
 ]
 
 
@@ -29,22 +29,19 @@ def _resolve_config(name: str) -> pathlib.Path:
     Accepts:
     - Absolute path (returned as-is if exists)
     - Relative path from cwd or experiment/ root
-    - Bare stem (e.g. ``exp11_01_ccd_convergence``) → searched in chapter config dirs
+    - Bare stem (e.g. ``ch13_capillary_water_air_alpha2_n128``) → searched in chapter config dirs
     """
     p = pathlib.Path(name)
 
-    # Absolute or cwd-relative path
     if p.is_absolute() and p.exists():
         return p
     if p.exists():
         return p.resolve()
 
-    # Try relative to experiment/ root
     for base in [ROOT, *_CHAPTER_CONFIG_DIRS]:
         candidate = base / name
         if candidate.exists():
             return candidate.resolve()
-        # Try appending .yaml
         candidate_yaml = base / (name + ".yaml")
         if candidate_yaml.exists():
             return candidate_yaml.resolve()
@@ -58,7 +55,7 @@ def _resolve_config(name: str) -> pathlib.Path:
 def _outdir(config_path: pathlib.Path) -> pathlib.Path:
     """Derive results directory from YAML location.
 
-    experiment/ch11/config/exp11_01_foo.yaml → experiment/ch11/results/exp11_01_foo/
+    experiment/ch12/config/exp12_01_foo.yaml → experiment/ch12/results/exp12_01_foo/
     Any other location: config_path.parent.parent / results / stem
     """
     if config_path.parent.name == "config":
@@ -66,26 +63,55 @@ def _outdir(config_path: pathlib.Path) -> pathlib.Path:
     return config_path.parent / "results" / config_path.stem
 
 
-def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
-    # Lazy imports after sys.path is set up
-    from .config_loader import load_component_config
-    from .registry import HANDLER_REGISTRY
-    # Trigger registrations (handlers, schemes, solutions)
-    from . import handlers, schemes, solutions  # noqa: F401
+def _peek_handler_key(config_path: pathlib.Path) -> str:
+    """Read just enough of the YAML to choose a handler.
 
-    cfg = load_component_config(config_path)
-    exp_type = cfg.experiment.get("type", "")
-    handler = HANDLER_REGISTRY.get(exp_type)
+    ch11/ch12 schema → ``experiment.type`` (e.g. ``convergence_study``)
+    ch13 schema     → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
+    """
+    try:
+        import yaml
+    except ImportError as e:
+        raise ImportError("PyYAML required: pip install pyyaml") from e
+
+    with open(config_path) as fh:
+        raw = yaml.safe_load(fh) or {}
+
+    exp = raw.get("experiment")
+    if isinstance(exp, dict) and exp.get("type"):
+        return str(exp["type"])
+
+    ic = raw.get("initial_condition")
+    if isinstance(ic, dict) and ic.get("type"):
+        return str(ic["type"])
+
+    raise ValueError(
+        f"Cannot determine handler for {config_path}: "
+        "neither 'experiment.type' nor 'initial_condition.type' present."
+    )
+
+
+def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
+    from .registry import HANDLER_REGISTRY
+    from . import handlers, schemes, solutions  # noqa: F401  trigger registrations
+
+    handler_key = _peek_handler_key(config_path)
+    handler = HANDLER_REGISTRY.get(handler_key)
     if handler is None:
         raise ValueError(
-            f"Unknown experiment type '{exp_type}'. "
-            f"Registered types: {sorted(HANDLER_REGISTRY)}"
+            f"Unknown experiment/handler key '{handler_key}'. "
+            f"Registered: {sorted(HANDLER_REGISTRY)}"
         )
 
+    cfg = handler.load_config(config_path)
     outdir = _outdir(config_path)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    print(f"==> [{cfg.experiment.get('id', '?')}] {cfg.experiment.get('title', '')}")
+    title = ""
+    exp_meta = getattr(cfg, "experiment", None)
+    if isinstance(exp_meta, dict):
+        title = f"[{exp_meta.get('id', '?')}] {exp_meta.get('title', '')}"
+    print(f"==> {title or config_path.stem}")
     print(f"    config : {config_path}")
     print(f"    outdir : {outdir}")
 
@@ -104,7 +130,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="experiment/run.py",
-        description="YAML-driven experiment runner (ch11/ch12).",
+        description="YAML-driven experiment runner (ch12/ch13).",
     )
     parser.add_argument("--config", default=None,
                         help="Config YAML name or path (stem or full path).")
