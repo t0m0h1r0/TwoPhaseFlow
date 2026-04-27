@@ -53,7 +53,13 @@ FAIL until the fatal/major items below are fixed. Chapter 8 has a strong narrati
 - Problem: The text says `§11 検証章`, but the independent chapter 11 was removed and component verification is now section 12.
 - Required fix: Replace the undefined theorem reference with `sec:fccd_def`/`sec:face_jet_def` and remove the stale chapter number.
 
+### MINOR-2: math remains in PDF bookmark-sensitive headings
+
+- Location: `paper/sections/08d_bf_seven_principles.tex:25`
+- Location: `paper/sections/08e_fccd_bf.tex:39`
+- Problem: Several subsubsection titles contain math without `\texorpdfstring`, violating KL-12.
+- Required fix: Wrap math-bearing headings in `\texorpdfstring`.
+
 ## SOLID audit
 
 [SOLID-N/A] No `src/twophase/` code changes are in scope for this review. The relevant gate is P3/A3 consistency: equation -> discretization -> verification references.
-

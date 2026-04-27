@@ -24,13 +24,17 @@ P-1..P-4 を\textbf{同時に}満たす最小単位であり，
   \mathcal{G}p := D^\FCCD p,
   \qquad \bnabla\psi := D^\FCCD\psi
   \qquad\Longrightarrow\qquad
-  \mathrm{BF}_\text{res} = \Ord{\Delta x^4}
+  \mathrm{BF}^{\mathrm{foot}}_\text{res}=\Ord{\Delta x^4},
+  \quad
+  \mathrm{BF}^{\mathrm{GFM}}_\text{res}=\Ord{\Delta x^2},
   \label{eq:bf_fccd_unification}
 \end{equation}
-により残差を高次へ還元する（§\ref{sec:fccd_def}）．
+となる．すなわち FCCD 面ジェット自体のフットプリント不一致は
+$\Ord{\Delta x^4}$ まで下がるが，Phase 1 の GFM/CSF 経路では
+界面ジャンプ処理と有限幅 CSF モデルが $\Ord{\Delta x^2}$ で律速する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{面ジェット $\FaceJet{p}$ による BF 構築}
+\subsubsection{\texorpdfstring{面ジェット $\FaceJet{p}$ による BF 構築}{面ジェット FaceJet(p) による BF 構築}}
 \label{sec:face_jet_bf_construction}
 % -------------------------------------------------------------------------------
 
@@ -46,13 +50,13 @@ PPE は FVM セル積分で
 \begin{equation}
   F^p_{i+1/2} - F^p_{i-1/2}
     = \int_{x_{i-1/2}}^{x_{i+1/2}}\! S\,dx,
-  \qquad S = \frac{1}{\Delta t}\,D_h^\text{bf}\,\mathbf{u}^*,
+  \qquad S = \frac{1}{\Delta t_{\mathrm{proj}}}\,D_h^\text{bf}\,\mathbf{u}^*,
   \label{eq:fccd_bf_cell_balance}
 \end{equation}
 として組み立て，速度補正は
 \begin{equation}
   u_f^{n+1}
-    = u_f^* - \Delta t\,\betaf\,p'_f
+    = u_f^* - \Delta t_{\mathrm{proj}}\,\betaf\,p'_f
     \quad\text{（同じ }p'_f\text{）．}
   \label{eq:fccd_bf_corrector}
 \end{equation}
@@ -108,17 +112,18 @@ FCCD + IIM（Phase 3 目標）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\De
 \hline
 \end{tabular}
 \end{center}
-\noindent$^{\ddagger}$ GFM の 2 次律速により収束率は Theorem 1（\S\ref{sec:fccd_adv_bf_theorem}）
-の $\Ord{H^4}$ 上界に届かない．絶対誤差 $10^{-6}$ は一様格子 FCCD $\Ord{H^4}$
+\noindent$^{\ddagger}$ GFM の 2 次律速により収束率は
+FCCD 面ジェット自体の $\Ord{H^4}$ 整合性（\S\ref{sec:fccd_def}，
+\S\ref{sec:face_jet_def}）には届かない．絶対誤差 $10^{-6}$ は一様格子 FCCD $\Ord{H^4}$
 係数の小さいことから得られる実測予測値であり，漸近オーダーは GFM 依存で
 $\Ord{\Delta x^2}$．IIM（Phase 3）で初めて $\Ord{\Delta x^4}$ に昇格する．
 
 \noindent\textbf{重力 BF テスト}として明示：本表は重力平衡での BF 残差を測定する
 （CSF BF の静止液滴テスト \S\ref{sec:bf_static_droplet} とは独立；
 CSF 側は $f_\sigma$ と $G_h p_\sigma$ の相殺が主論点）．
-予測値（§\ref{sec:verify_split_ppe_dc} で検証予定）．
+予測値の検証設計は §\ref{sec:verify_split_ppe_dc} と §\ref{sec:bf_static_droplet} に分離する．
 
-詳細検証は \S\ref{sec:verify_split_ppe_dc}（§11 検証章）．
+詳細検証は \S\ref{sec:verify_split_ppe_dc}（コンポーネント検証）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{設計戦略 A/B/C の比較}
