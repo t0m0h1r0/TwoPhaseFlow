@@ -7,10 +7,10 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{\DCCD{} フィルタ：導出形と実装デフォルト}
 \label{sec:dccd_derivation}
-\phantomsection\label{sec:dissipative_ccd}% backward-compat: 旧 04d §4.4 overall label
-\phantomsection\label{sec:dccd_motivation}% backward-compat: 旧 04d § motivation
-\phantomsection\label{sec:dccd_bc}% backward-compat: 旧 04d § BC (現在は §\ref{sec:ccd_bc} 参照)
-\phantomsection\label{sec:dccd_conservation}% backward-compat: 旧 04d § conservation (本節最終項)
+\phantomsection\label{sec:dissipative_ccd}%
+\phantomsection\label{sec:dccd_motivation}%
+\phantomsection\label{sec:dccd_bc}%
+\phantomsection\label{sec:dccd_conservation}%
 % ═══════════════════════════════════════════════════════════════════════════════
 
 §~\ref{sec:ccd_bc}--§~\ref{sec:ccd_matrix} で確立した
@@ -51,7 +51,7 @@ DCCD は本章の派生スキームのうち\textbf{基底 CCD への外殻 post
 % -------------------------------------------------------------------------------
 \subsubsection{Chu--Fan CCD への散逸チャンネルの埋込み}
 \label{sec:dccd_embedding}
-\phantomsection\label{sec:dccd_modified_eq}% backward-compat: 旧 §4.7.1 削除に伴う参照保護
+\phantomsection\label{sec:dccd_modified_eq}%
 % -------------------------------------------------------------------------------
 
 中心 Chu--Fan CCD（§\ref{sec:ccd_def}）の 1 次導関数 $D_1^{\CCD}$ は
@@ -84,7 +84,7 @@ UCCD6（§\ref{sec:uccd6_def}）で展開する．）
 % -------------------------------------------------------------------------------
 \subsubsection{実装デフォルト：スペクトルフィルタとの関係}
 \label{sec:dccd_spectral_filter}
-\phantomsection\label{sec:dccd_filter_theory}% backward-compat: 旧 04d § filter theory
+\phantomsection\label{sec:dccd_filter_theory}%
 % -------------------------------------------------------------------------------
 
 実装デフォルト DCCD は定数 $\varepsilon$ を
@@ -94,7 +94,6 @@ UCCD6（§\ref{sec:uccd6_def}）で展開する．）
   \qquad \xi=k\Delta x,
   \label{eq:dccd_filter_transfer}
 \end{equation}
-% backward-compat phantom labels removed (CHK-205 m2): use eq:dccd_filter_transfer
 に置き換える．
 低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は，
 式~\eqref{eq:dccd_pde_form} の散逸項を 1 回の時間ステップ $\Delta t$ で
@@ -178,8 +177,8 @@ $H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dc
 
 以上の導出は，実装デフォルト DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
 作用する設計であることを確立する．
-旧 §~04d (\texttt{04d\_dissipative\_ccd}：DCCD スペクトル設計・スイッチ $S(\psi)$・精度影響・境界条件・保存性）は，
-以下の要約として本節に吸収する：
+DCCD のスペクトル設計・スイッチ $S(\psi)$・精度影響・境界条件・保存性は，
+以下の要約として本節に集約する：
 
 \begin{itemize}
   \item \textbf{DCCD は移流の安定化専用}である．
