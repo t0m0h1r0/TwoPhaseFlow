@@ -15,6 +15,7 @@ Commands:
   setup                 One-time: install Python, venv, dependencies on remote
   run <script.py>       Run a single experiment on remote
   run-all <ch12|ch13>  Run all experiments in a chapter
+                        (ch12 = standalone exp_U*.py scripts; ch13 = YAML configs)
   test [pytest-args]    Run pytest on remote (default: --gpu)
   ssh                   Open an interactive SSH session to remote project dir
 
@@ -22,8 +23,10 @@ Examples:
   ./remote.sh check
   ./remote.sh push
   ./remote.sh setup
-  ./remote.sh run experiment/run.py --config exp12_01_hydrostatic
+  ./remote.sh run experiment/ch12/exp_U1_ccd_operator_suite.py
+  ./remote.sh run experiment/run.py --config ch13_capillary_water_air_alpha2_n128
   ./remote.sh run-all ch12
+  ./remote.sh run-all ch13
   ./remote.sh test
   ./remote.sh test -k test_ccd --gpu
   ./remote.sh pull
@@ -109,7 +112,7 @@ SETUP
 
 # ── Run a single experiment ──────────────────────────────────────────────────
 cmd_run() {
-    local script="${1:?Error: provide a script path, e.g. experiment/run.py --config exp12_01_hydrostatic}"
+    local script="${1:?Error: provide a script path, e.g. experiment/run.py --config ch13_capillary_water_air_alpha2_n128 or experiment/ch12/exp_U1_ccd_operator_suite.py}"
     shift
     local extra_args="$*"
 
@@ -142,7 +145,7 @@ export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
 
 if ls experiment/${chapter}/config/*.yaml >/dev/null 2>&1; then
-    # YAML-driven chapters (ch12, ch13): iterate over all config files
+    # YAML-driven chapters (ch13): iterate over all config files
     failed=0
     for cfg in experiment/${chapter}/config/*.yaml; do
         stem="\$(basename \$cfg .yaml)"
@@ -162,6 +165,7 @@ if ls experiment/${chapter}/config/*.yaml >/dev/null 2>&1; then
         exit 1
     fi
 else
+    # Standalone-script chapters (ch12 U-tests): glob exp_U*.py + exp*.py
     failed=0
     for script in experiment/${chapter}/exp*.py; do
         echo ""

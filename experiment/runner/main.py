@@ -1,10 +1,13 @@
-"""Unified experiment runner entry point.
+"""Unified experiment runner entry point (YAML-driven, ch13).
 
 Invoked via ``experiment/run.py``:
 
-    python experiment/run.py --config exp12_01_hydrostatic
-    python experiment/run.py --config ch13_capillary_water_air_alpha2_n128 --plot-only
+    python experiment/run.py --config ch13_capillary_water_air_alpha2_n128
+    python experiment/run.py --config ch13_rising_bubble_water_air_alpha2_n128x256 --plot-only
     python experiment/run.py --all
+
+Chapter 12 unit tests (U1-U9) are standalone Python scripts under
+``experiment/ch12/exp_U*.py`` — invoke them directly, not through this runner.
 """
 
 from __future__ import annotations
@@ -18,7 +21,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # Chapter config directories searched in order when a bare stem is given
 _CHAPTER_CONFIG_DIRS = [
-    ROOT / "ch12" / "config",
     ROOT / "ch13" / "config",
 ]
 
@@ -66,8 +68,8 @@ def _outdir(config_path: pathlib.Path) -> pathlib.Path:
 def _peek_handler_key(config_path: pathlib.Path) -> str:
     """Read just enough of the YAML to choose a handler.
 
-    ch11/ch12 schema → ``experiment.type`` (e.g. ``convergence_study``)
-    ch13 schema     → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
+    ch13 schema → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
+    Legacy schema with ``experiment.type`` is also peeked for forward compat.
     """
     try:
         import yaml
@@ -93,7 +95,7 @@ def _peek_handler_key(config_path: pathlib.Path) -> str:
 
 def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
     from .registry import HANDLER_REGISTRY
-    from . import handlers, schemes, solutions  # noqa: F401  trigger registrations
+    from . import handlers  # noqa: F401  trigger handler registrations
 
     handler_key = _peek_handler_key(config_path)
     handler = HANDLER_REGISTRY.get(handler_key)
@@ -130,7 +132,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="experiment/run.py",
-        description="YAML-driven experiment runner (ch12/ch13).",
+        description="YAML-driven experiment runner (ch13).",
     )
     parser.add_argument("--config", default=None,
                         help="Config YAML name or path (stem or full path).")
