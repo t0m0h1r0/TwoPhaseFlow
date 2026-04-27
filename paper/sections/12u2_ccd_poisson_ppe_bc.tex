@@ -1,0 +1,91 @@
+% paper/sections/12u2_ccd_poisson_ppe_bc.tex
+%
+% U2: CCD-Poisson + PPE BC — Tier I (uniform grid)
+% Verifies: §9 (CCD-Poisson + PPE Neumann + gauge fix; defect-correction).
+% Script  : experiment/ch12/exp_U2_ccd_poisson_ppe_bc.py
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsubsection{U2：CCD--Poisson + PPE 境界条件 [Tier I]}
+\label{sec:U2_ccd_poisson_ppe_bc}
+
+\paragraph{検証対象．}
+第~\ref{sec:ppe_solve}章 で導入した CCD--Poisson 楕円型ソルバ
+（§\ref{sec:ccd_elliptic}），defect--correction 反復
+（§\ref{sec:defect_correction_main}：$k$ 回反復で精度を段階的に押し上げる），
+PPE Neumann 境界条件 + 1 点ゲージ固定（§\ref{sec:ppe_solve} 末尾）の
+\textbf{単体精度}を確認する．
+
+\paragraph{単体テスト．}
+2D 周期領域 $[0,1]^2$ 上で MMS による格子収束．
+\begin{description}\setlength{\itemsep}{0pt}
+  \item[U2-a] Dirichlet Poisson．$p^* = \sin(\pi x) \sin(\pi y)$，
+        $f = -2\pi^2 p^*$．DC 反復回数 $k \in \{1,2,3,5,10\}$．
+        理論期待：$k=1 \to \Ord{h^2}$，$k=2 \to \Ord{h^4}$，
+        $k \ge 3 \to \Ord{h^7}$（スーパー収束）．
+  \item[U2-b] Neumann + 1 点ゲージ固定．$p^* = \cos(\pi x)\cos(\pi y)$，
+        $f = -2\pi^2 p^*$，$k = 3$．
+        理論期待：$\Ord{h^5}$（境界スキーム支配）．
+\end{description}
+
+\paragraph{数値結果．}
+
+\begin{table}[!ht]
+\caption{U2-a: CCD--Poisson Dirichlet $L_\infty$ 誤差．DC 反復 $k=1$ で
+$\Ord{h^2}$，$k=2$ で $\Ord{h^4}$，$k \ge 3$ で $\Ord{h^7}$（スーパー収束）に
+段階的に到達．$N\!=\!128$ の $k\!\ge\!3$ は機械精度床近傍．}
+\label{tab:U2_dirichlet}
+\centering\small
+\begin{tabular}{r r r r r r r}
+\toprule
+$N$ & $h$ & $\|e\|^\infty_{k=1}$ & $\|e\|^\infty_{k=2}$ & $\|e\|^\infty_{k=3}$ & $\|e\|^\infty_{k=5}$ & $\|e\|^\infty_{k=10}$ \\
+\midrule
+8   & $0.125$  & $1.30\!\times\!10^{-2}$ & $2.71\!\times\!10^{-4}$ & $2.08\!\times\!10^{-4}$ & $2.06\!\times\!10^{-4}$ & $1.98\!\times\!10^{-4}$ \\
+16  & $0.0625$ & $3.22\!\times\!10^{-3}$ & $1.13\!\times\!10^{-5}$ & $1.91\!\times\!10^{-6}$ & $1.90\!\times\!10^{-6}$ & $1.81\!\times\!10^{-6}$ \\
+32  & $0.0313$ & $8.04\!\times\!10^{-4}$ & $6.54\!\times\!10^{-7}$ & $1.60\!\times\!10^{-8}$ & $1.59\!\times\!10^{-8}$ & $1.53\!\times\!10^{-8}$ \\
+64  & $0.0156$ & $2.01\!\times\!10^{-4}$ & $4.04\!\times\!10^{-8}$ & $1.29\!\times\!10^{-10}$ & $1.28\!\times\!10^{-10}$ & $1.23\!\times\!10^{-10}$ \\
+128 & $0.0078$ & $5.02\!\times\!10^{-5}$ & $2.52\!\times\!10^{-9}$ & $1.02\!\times\!10^{-12}$ & $1.01\!\times\!10^{-12}$ & $9.77\!\times\!10^{-13}$ \\
+\midrule
+\multicolumn{2}{r}{slope ($N\!=\!8\!\to\!128$)} & $\mathbf{2.00}$ & $\mathbf{4.18}$ & $\mathbf{6.90}$ & $\mathbf{6.90}$ & $\mathbf{6.90}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\caption{U2-b: PPE Neumann + 1 点ゲージ固定 $L_\infty$ 誤差（$k=3$）．
+$\Ord{h^5}$（境界スキーム律速；§\ref{sec:ppe_solve}）と整合．}
+\label{tab:U2_neumann}
+\centering\small
+\begin{tabular}{r r r}
+\toprule
+$N$ & $h$ & $\|e\|_\infty$ \\
+\midrule
+8   & $0.125$  & $1.98\times 10^{-2}$ \\
+16  & $0.0625$ & $8.59\times 10^{-4}$ \\
+32  & $0.0313$ & $2.87\times 10^{-5}$ \\
+64  & $0.0156$ & $9.09\times 10^{-7}$ \\
+128 & $0.0078$ & $2.85\times 10^{-8}$ \\
+\midrule
+\multicolumn{2}{r}{slope ($N\!=\!8\!\to\!128$)} & $\mathbf{4.85}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u2_ccd_poisson_ppe_bc}
+\caption{U2：CCD--Poisson + PPE 境界条件．
+Dirichlet defect--correction $k=1,2,3$ で slope $2.00 / 4.18 / 6.90$ の段階収束（$k\!\ge\!3$ 飽和）；
+Neumann + 1 点ゲージ固定で slope $4.85$（境界 5 次スキーム律速）．
+出典：\texttt{experiment/ch12/exp\_U2\_ccd\_poisson\_ppe\_bc.py}．}
+\label{fig:ch12_u2}
+\end{figure}
+
+\paragraph{評価．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item U2-a $k=1,2,3$：設計値 $\{2,\,4,\,7\}$ にそれぞれ
+        $\{2.00,\,4.18,\,6.90\}$ で到達．$k=5,10$ は $k=3$ と同精度
+        （DC が $k=3$ 時点で既に飽和；§\ref{sec:dc_accuracy} の段階理論と整合）．\checkmark
+  \item U2-b Neumann：slope $4.85$（$\le 0.5$ 設計差; 境界 5 次スキームの典型値）．
+        \checkmark（境界スキーム支配の典型）．
+\end{itemize}
+A3 トレーサビリティ：§\ref{sec:defect_correction_main} の DC 反復式 →
+\texttt{src/twophase/ppe/defect\_correction.py} の \texttt{PPESolverDefectCorrection}．

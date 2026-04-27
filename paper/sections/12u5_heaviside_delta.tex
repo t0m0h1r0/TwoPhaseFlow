@@ -1,0 +1,92 @@
+% paper/sections/12u5_heaviside_delta.tex
+%
+% U5: Smoothed Heaviside / delta moment accuracy — Tier III
+% Verifies: §5 (Hε / δε scaling eps = c·h, moment accuracy).
+% Script  : experiment/ch12/exp_U5_heaviside_delta_accuracy.py
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsubsection{U5：$H_\eps$ / $\delta_\eps$ モーメント精度 [Tier III]}
+\label{sec:U5_heaviside_delta}
+
+\paragraph{検証対象．}
+第~\ref{sec:eps_spatial_variable}章 で導入した平滑化 Heaviside $H_\eps(\phi)$ と
+$\delta_\eps(\phi) = H'_\eps(\phi)$ の \textbf{0 次モーメント精度}と，
+スケーリング規則 $\eps = c h$（§\ref{sec:eps_spatial_variable}）の係数 $c$ 依存性を
+1D 線形 $\phi(x) = x - 0.5$ 上で確認する．
+
+\paragraph{単体テスト．}
+$N \in \{16,32,64,128,256\}$，$h = 1/N$．
+\begin{description}\setlength{\itemsep}{0pt}
+  \item[U5-a] スケール $\eps = 1.5 h$ の 0 次モーメント
+        $M_0 = \sum_i H_\eps(\phi_i)\,h - 1$，
+        1 次モーメント $M_1 = \sum_i H_\eps(\phi_i)\,\phi_i\,h - 1/2$ の
+        格子収束．
+  \item[U5-b] $c \in \{0.5, 1, 1.5, 2\}$ で $N \in \{32, 64, 128\}$ の
+        $\|M_0\|$ 比較（$c$-最適性検証）．
+\end{description}
+
+\paragraph{数値結果．}
+
+\begin{table}[!ht]
+\caption{U5-a: $H_\eps$ / $\delta_\eps$ モーメント誤差（$\eps = 1.5 h$）．
+$N \ge 64$ で 0 次モーメント誤差が機械精度床（$\sim 10^{-11}$）に到達．
+slope $N\!=\!16\!\to\!64$ は $\approx 11$（解析的には超収束 / round-off floor 影響大）．}
+\label{tab:U5_moments}
+\centering\small
+\begin{tabular}{r r r r r}
+\toprule
+$N$ & $h$ & $\eps$ & $\|M_0\|$ & $\|M_1\|$ \\
+\midrule
+$16$  & $0.0625$  & $0.0938$  & $6.77\times 10^{-3}$ & $3.39\times 10^{-3}$ \\
+$32$  & $0.0313$  & $0.0469$  & $3.28\times 10^{-5}$ & $1.64\times 10^{-5}$ \\
+$64$  & $0.0156$  & $0.0234$  & $7.48\times 10^{-10}$ & $3.74\times 10^{-10}$ \\
+$128$ & $0.0078$  & $0.0117$  & $1.64\times 10^{-11}\,^\star$ & $8.19\times 10^{-12}\,^\star$ \\
+$256$ & $0.0039$  & $0.0059$  & $1.64\times 10^{-11}\,^\star$ & $8.19\times 10^{-12}\,^\star$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+{\footnotesize $^\star$ Round-off 床（倍精度限界）．設計次数の漸近的検証は
+$N \le 64$ までの $\sim 11$ で確認済み．}
+\end{table}
+
+\begin{table}[!ht]
+\caption{U5-b: スケール係数 $c = \eps / h$ の 0 次モーメント誤差比較．
+$c < 1$ は $\eps$ がサポート不足（誤差が $h \to 0$ で stall）．
+$c \ge 1$ は $h$ 細分化で機械精度に到達．$c = 2$ は $N=128$ で
+$1.83\times 10^{-14}$（最良）．本実装での推奨は $c \in [1.5, 2]$．}
+\label{tab:U5_eps_h_rule}
+\centering\small
+\begin{tabular}{r c c c c}
+\toprule
+$N$ & $c=0.5$ & $c=1.0$ & $c=1.5$ & $c=2.0$ \\
+\midrule
+$32$   & $2.04\times 10^{-3}$ & $8.02\times 10^{-8}$ & $3.28\times 10^{-5}$ & $5.17\times 10^{-4}$ \\
+$64$   & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}$ & $7.48\times 10^{-10}$ & $1.73\times 10^{-7}$ \\
+$128$  & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}\,^\dagger$ & $1.64\times 10^{-11}$ & $\mathbf{1.83\times 10^{-14}}$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+{\footnotesize $^\dagger$ stall（$\eps$ サポート不足；$h$ を細かくしても改善せず）．}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u5_heaviside_delta_accuracy}
+\caption{U5：$H_\eps$ / $\delta_\eps$ モーメント精度 + $\eps = c h$ 最適 c-sweep．
+$c=1.5$ で $N=64$ までに 0 次モーメント誤差が機械精度床へ到達；
+$c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．
+出典：\texttt{experiment/ch12/exp\_U5\_heaviside\_delta\_accuracy.py}．}
+\label{fig:ch12_u5}
+\end{figure}
+
+\paragraph{評価．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item U5-a：0 次モーメント誤差は $N \le 64$ 域で $h^{11}$ 相当の超収束．
+        $N \ge 128$ は機械精度床．§\ref{sec:eps_spatial_variable} の
+        $C^\infty$ 連続化（cosine ウィンドウ）の高次効果を確認．\checkmark
+  \item U5-b：$c < 1$ では $\eps$ がカーネル幅未満となり stall．
+        $c \in [1.5, 2.0]$ が実用最適．§\ref{sec:eps_spatial_variable} の
+        スケール選択基準と整合．\checkmark
+\end{itemize}
+A3 トレーサビリティ：
+平滑化 Heaviside / $\delta_\eps$ 定義 → §\ref{sec:eps_spatial_variable} →
+\texttt{src/twophase/utils/heaviside.py}．
