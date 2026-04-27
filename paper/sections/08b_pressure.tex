@@ -59,36 +59,15 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
 これが変密度 PPE（IPC 増分形式）である．
 一様密度（$\rho=\mathrm{const}$）では $\bnabla^2(\delta p) = \rho\,\bnabla\cdot\bu^*/\Delta t$ に帰着する．
 
-\begin{tcolorbox}[mybox, title={実装上の注意}]
-\begin{itemize}
-  \item \textbf{外力 $\bm{F}_\text{ext}^{n+1}$} には重力項と CSF 体積力
-        $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方が含まれる
-        （式~\eqref{eq:NS_dimless_cls}；CSF は Predictor に保持）．
-  \item \textbf{$\bnabla p^n$ および $\bnabla(\delta p)$ の評価：}
-        低密度比（$\rho_l/\rho_g \leq 5$）の smoothed Heaviside 一括解法では
-        圧力場が連続的に定義されるため，CCD 勾配を直接適用する．
-        高密度比（$\rho_l/\rho_g > 5$）の分相 PPE 解法では
-        HFE による場延長が必要である（付録~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
-  \item \textbf{非一様格子（$\alpha>1$）での $\bnabla(\delta p)$：face-average 勾配 $\mathcal{G}^\text{adj}$．}
-        CCD 勾配はメトリクス $J_n = 1/\delta v_i$ を使うが，
-        PPE の FVM Laplacian は $J_f = 1/d_f^{(i)}$ を使う．
-        非一様格子では $J_n \neq J_f$ のため $\mathcal{D}_\text{FVM}(\mathcal{G}_\text{CCD}) \neq \mathcal{L}_\text{FVM}$
-        となり，ステップごとに残差発散が蓄積する（§~\ref{box:fvm_ccd_metric}）．
-        壁面 BC + 非一様格子の速度補正には
-        \[
-          (\mathcal{G}^\text{adj}\,p)_i
-          = \tfrac{1}{2}\!\left[
-              \tfrac{p_{i+1}-p_i}{d_f^{(i)}} + \tfrac{p_i-p_{i-1}}{d_f^{(i-1)}}
-            \right]
-        \]
-        を使用し，$\mathcal{D}_\text{FVM}(\mathcal{G}^\text{adj}) = \mathcal{L}_\text{FVM}$（厳密整合）を保証する．
-        均一格子および周期 BC では CCD を引き続き使用する．
-  \item \textbf{$\rho^{n+1}$} は CLS 移流（§~\ref{sec:algorithm}，Step 1）で事前に更新済み．
-  \item \textbf{時間離散化：} 本節の導出は Backward Euler 形式で統一したが，
-        対流項は実装で IMEX-BDF2（EXT2 外挿；式~\eqref{eq:predictor_imex_bdf2}），
-        粘性項は implicit-BDF2（GMRES；$\Ord{\Delta t^2}$，§~\ref{sec:time_viscous}）を採用する．
-\end{itemize}
-\end{tcolorbox}
+\noindent\textbf{補足：}
+外力 $\bm{F}_\text{ext}^{n+1}$ は重力項と CSF 体積力 $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方を含み，
+CSF は Predictor に保持される（式~\eqref{eq:NS_dimless_cls}）．
+密度 $\rho^{n+1}$ は CLS 移流（§~\ref{sec:algorithm}, Step 1）で事前に更新済みである．
+本節の導出は Backward Euler 形式で統一したが，
+対流項は IMEX-BDF2（式~\eqref{eq:predictor_imex_bdf2}），
+粘性項は implicit-BDF2（$\Ord{\Delta t^2}$，§~\ref{sec:time_viscous}）を用いる．
+高密度比の分相 PPE 解法における圧力勾配の評価には
+HFE による場延長を要する（付録~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
 
 \noindent\textbf{PPE の離散化と求解方針：}
 以下の演算子形式は圧力増分 $\delta p$ および圧力 $p$ のいずれにも適用可能であるため，
@@ -104,16 +83,5 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
 FVM との等価性・調和平均の根拠は §~\ref{sec:fvm_face_coeff} 参照．
 実装詳細（仮想時間刻み・ゲージ固定）は付録~\ref{sec:ppe_pseudotime} 参照．
 
-% ─────────────────────────────────────────────────────────────────────────────
-% 圧力場へのフィルタ適用禁止（詳細は §7.5 08c_pressure_filter.tex）
-% 旧 inline warnbox は §8c 完全版と重複のため退避:
-%   paper/archive/v1_pre_sp_core/snippets/pressure_filter_warnbox_08b.tex
-% ─────────────────────────────────────────────────────────────────────────────
 \phantomsection
-\label{sec:dccd_pressure_nofilt}% 外部参照保持：11e_pressure_solver, 11g_summary
-
-\noindent\textbf{注意（圧力場へのフィルタ適用禁止）：}
-非対称 DCCD フィルタを圧力場 $p$ に直接適用すると BF 原則 P-1/P-2
-（§~\ref{sec:bf_p1_location}, §~\ref{sec:bf_p2_adjoint}）を破壊する．
-詳細な禁止論理・両辺対称整合要件・安全性マトリクス・許容条件は
-§~\ref{sec:dccd_pressure_filter_prohibition} に委ねる．
+\label{sec:dccd_pressure_nofilt}% backward-compat: 外部参照保持

@@ -237,9 +237,9 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 $(p_{j+1}-p_{j-1})/(2\Delta x) = P_0\bigl[(-1)^{j+1}-(-1)^{j-1}\bigr]/(2\Delta x) = 0$
 となりゼロ勾配を返す．より詳細な固有値解析は付録~\ref{app:checkerboard_mode} を参照．
 
-\subparagraph{本稿の対処.} DCCD のスペクトル散逸（$\varepsilon_d = 1/4$ 固定）により，
-$2\Delta x$ チェッカーボードモードをスキーム内部で除去する
-（第~\ref{sec:collocate}章§~\ref{sec:dccd_decoupling} 参照）．
+\subparagraph{本稿の対処.} Balanced-Force 演算子整合（圧力勾配と CSF/界面力に同一の離散微分演算子を共有）と
+FCCD 面ジェット sub-system により，$2\Delta x$ チェッカーボードモードをスキーム内部で抑制する
+（第~\ref{sec:collocate}章§~\ref{sec:checkerboard_solution} 参照）．
 
 \paragraph{失敗例4：界面のにじみ（Interface Smearing）}
 \subparagraph{症状.}時間とともに界面が広がり，密度・粘性の遷移領域が厚くなっていく．
