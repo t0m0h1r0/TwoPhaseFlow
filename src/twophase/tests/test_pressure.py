@@ -80,14 +80,14 @@ def test_ppe_solve_residual(backend):
     製造解 p = cos(πx)cos(πy) に対応する RHS を使用。
     CCD 境界スキームの零空間問題を避けるため滑らかな RHS を使用。
 
-    Note: the pinned CCD PPE operator has a near-null space at very small
-    grids (N ≤ 16 gives cond(L) ~ 1e17 in FP64 — the LU solver then becomes
-    sensitive to the reordering heuristic and differs between scipy 1.13
-    and scipy 1.17). We use N=24 — well past the conditioning cliff, where
-    rel_res ≈ 1.5e-3 on both stacks — and a 5e-3 ceiling that leaves ~3×
-    headroom. Convergence is verified separately in §11 experiments.
+    Note: the pinned CCD PPE operator's residual is non-monotone in N for
+    N ≲ 28 — N=22/24 hit local minima of the LU pivot ordering quality on
+    scipy 1.17.1 (rel_res ~ 1e-2 to 3e-2). From N=32 onward the residual
+    drops to ~3e-4 on both scipy 1.13 and 1.17 stacks. We use N=32 with a
+    5e-3 ceiling (~15× headroom). Convergence is verified separately in
+    §12 experiments.
     """
-    N = 24
+    N = 32
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
     )
