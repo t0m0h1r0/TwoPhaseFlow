@@ -1,4 +1,4 @@
-"""ch13 NS-simulation handlers — capillary wave and rising bubble.
+"""ch14 NS-simulation handlers — capillary wave and rising bubble.
 
 These handlers consume the ``ExperimentConfig`` schema (top-level
 ``grid``/``physics``/``run``/``output``/``initial_condition``...) loaded
@@ -6,7 +6,7 @@ via ``twophase.simulation.config_io.load_experiment_config`` and drive
 ``twophase.simulation.ns_pipeline.run_simulation``.
 
 Dispatch (registered handler keys mirror ``initial_condition.type``
-values found in ch13 YAMLs):
+values found in ch14 YAMLs):
 
   capillary_wave  → CapillaryWaveHandler
   circle          → RisingBubbleHandler
@@ -222,7 +222,7 @@ def _plot_only(cfg, label: str, outdir: pathlib.Path) -> None:
     print(f"[{label}] plots regenerated → {outdir}")
 
 
-# ── Handler base for ch13 schema ──────────────────────────────────────────────
+# ── Handler base for ch14 schema ──────────────────────────────────────────────
 
 class _NSSimulationHandler(ExperimentHandler):
     """Shared base: load_experiment_config + run/plot lifecycle."""

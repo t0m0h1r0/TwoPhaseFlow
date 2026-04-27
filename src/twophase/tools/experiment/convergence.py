@@ -2,7 +2,7 @@
 Convergence analysis utilities.
 
 Extracted from experiment scripts where grid-refinement convergence
-rate computation was duplicated 8+ times across ch11/ch12.
+rate computation was duplicated across ch12 unit tests.
 """
 
 from __future__ import annotations

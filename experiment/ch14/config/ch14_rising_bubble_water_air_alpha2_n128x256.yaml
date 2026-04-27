@@ -98,7 +98,7 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch13_rising_bubble_water_air_alpha2_n128x256
+  dir: results/ch14_rising_bubble_water_air_alpha2_n128x256
   save_npz: true
   snapshots:
     interval: 0.05

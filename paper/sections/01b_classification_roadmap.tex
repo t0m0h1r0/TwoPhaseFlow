@@ -118,8 +118,8 @@ PROST 法~\cite{Renardy2002}%
 CCD $\Ord{h^6}$ 微分演算子による曲率・圧力勾配離散化，
 および分相 PPE + 欠陥補正法（DC $k=3$）+ CCD 勾配の組み合わせである．
 
-NS 方程式の各項とそれを処理するソルバーの対応関係は，
-アルゴリズム全体を把握した後の第~\ref{sec:algorithm}章（図~\ref{fig:ns_solvers}）で整理する．
+NS 方程式の各項とそれを処理するソルバーの対応関係（演算子マッピング）は，
+本稿全体のアルゴリズム構成として Part 2 の各章で個別に提示する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{対象読者と前提知識}
@@ -215,8 +215,8 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
         One-Fluid 定式化，CSF モデル（§~\ref{sec:csf}），CLS 法，Dissipative CCD 移流スキーム
   \item \textbf{空間離散化スキーム}（第~\ref{sec:CCD}, \ref{sec:advection}, \ref{sec:collocate}, \ref{sec:ppe_solve}, \ref{sec:grid} 章；表~\ref{tab:chapter_overview} の第 4 章・第 6--9 章に相当）：
         CCD 法，CLS 移流・再初期化，Rhie--Chow 補正，分相 PPE，界面適合格子
-  \item \textbf{完全アルゴリズムの実装}（第~\ref{sec:algorithm}章）：
-        7ステップ離散計算フローの統合実装
+  \item \textbf{完全アルゴリズムの実装}：
+        7ステップ離散計算フローの統合実装は Part 2 各章に分散して提示
   \item \textbf{コンポーネント検証}（第~\ref{sec:verification}章）：
         CCD 精度・GCL・Zalesak 円板・PPE の単体検証
   \item \textbf{多相流ベンチマーク}（第~\ref{sec:validation}章）：
@@ -228,7 +228,7 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 界面サブシステム（Step 1--4）と，（2）Predictor・PPE 求解・Corrector という
 流体力学サブシステム（Step 5--7）の7ステップで構成される．
 両サブシステムは物性値 $\rho,\mu$ と曲率 $\kappa$ を介して結合する．
-各ステップの離散方程式・実装上の注意・収束判定の詳細は第~\ref{sec:algorithm}章で述べる．
+各ステップの離散方程式・実装上の注意・収束判定の詳細は，本稿 Part 2 の対応する章で述べる．
 
 上記7ステップの関係を図~\ref{fig:algo_flow}に示す．
 
@@ -303,6 +303,6 @@ NS 方程式の各項とそれを処理するソルバーの対応関係は，
 界面サブシステム（CLS 移流・再初期化・物性更新・曲率計算，ステップ1--4）と
 流体力学ソルバー（Predictor--PPE--Corrector，ステップ5--7）が，
 物性値 $\rho,\,\mu$ および曲率 $\kappa$ を通じて結合している．
-各ステップの離散方程式・実装詳細は第~\ref{sec:algorithm}章（完全アルゴリズムフロー）で述べる．}
+各ステップの離散方程式・実装詳細は，本稿 Part 2 の対応する章で述べる．}
 \label{fig:algo_flow}
 \end{figure}

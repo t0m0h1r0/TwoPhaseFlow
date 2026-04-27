@@ -1,4 +1,4 @@
-"""Central registry for experiment handlers (ch13 NS-simulation)."""
+"""Central registry for experiment handlers (ch14 NS-simulation)."""
 
 from __future__ import annotations
 

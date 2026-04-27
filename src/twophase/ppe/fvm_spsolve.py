@@ -38,7 +38,7 @@ class PPESolverFVMSpsolve(IPPESolver):
     Mandatory for ch12+ (PR-2/PR-6).
 
     Implements the legacy TwoPhaseNSSolver._solve_ppe() path as an IPPESolver.
-    Suitable for ch12+ integration; not for ch11 smooth RHS (use PPESolverCCDLU instead).
+    Suitable for ch12+ integration; not for smooth-RHS component tests (use PPESolverCCDLU instead).
 
     Parameters
     ----------

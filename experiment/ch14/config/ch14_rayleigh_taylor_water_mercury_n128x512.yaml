@@ -1,0 +1,169 @@
+# Rayleigh-Taylor instability: water (light, BELOW) / mercury (heavy, ABOVE).
+# Atwood number A = (rho_Hg - rho_w) / (rho_Hg + rho_w) ≈ 0.862 — high-density-ratio regime.
+# Production numerical stack: FCCD PPE + HFE + UCCD6 + Ridge-Eikonal + IMEX-BDF2.
+#
+# Schema convention:
+#   physics.phases.liquid = water (lower phase; interior_phase: liquid in initial_condition)
+#   physics.phases.gas    = mercury (upper phase; the schema slot is named "gas" by
+#                                    convention — physical mercury is a heavy liquid).
+# The header documents the relabeling so the YAML stays self-describing.
+#
+# Handler dispatch:
+#   initial_condition.type: capillary_wave  → CapillaryWaveHandler
+#   The shape is identical to the capillary-wave benchmark; what makes this RT
+#   instead of capillary is gravity > 0 with the heavy phase above the interface.
+
+grid:
+  cells: [128, 512]
+  domain:
+    size: [0.5, 2.0]
+    boundary: wall
+  distribution:
+    type: interface_fitted
+    method: gaussian_levelset
+    alpha: 2.0
+    schedule: static
+
+interface:
+  thickness:
+    mode: local
+    base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_hfe
+      cap: 5.0
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 4
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
+
+physics:
+  phases:
+    liquid:                # water (light, below the interface)
+      rho: 1000.0
+      mu: 1.0e-3
+    gas:                   # mercury (heavy, above the interface) — schema slot named "gas"
+      rho: 13546.0
+      mu: 1.526e-3
+  surface_tension: 0.375   # water/mercury interfacial tension ≈ 0.375 N/m
+  gravity: 9.81            # downward; unstable since heavy phase sits on top
+
+run:
+  time:
+    final: 1.0             # ω = sqrt(A·g·k) ≈ 10.4 1/s → ~3 decades growth in linear phase
+    cfl: 1.0
+    print_every: 20
+  debug:
+    step_diagnostics: true
+
+numerics:
+  time:
+    algorithm: fractional_step
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+  momentum:
+    predictor:
+      assembly: balanced_buoyancy
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: imex_bdf2
+      pressure:
+        gradient: fccd
+      viscosity:
+        spatial: ccd
+        time_integrator: implicit_bdf2
+      surface_tension:
+        formulation: pressure_jump
+  projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: jump_decomposition
+      solver:
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 1.0
+        base_solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-6
+          max_iterations: 500
+          restart: 80
+          preconditioner: jacobi
+
+output:
+  dir: results/ch14_rayleigh_taylor_water_mercury_n128x512
+  save_npz: true
+  snapshots:
+    interval: 0.05
+  figures:
+    - type: time_series
+      title: "RT water-mercury: interface amplitude"
+      x: times
+      y: [interface_amplitude]
+      labels: ["A(t)"]
+      xlabel: "$t$"
+      ylabel: "$A(t)$"
+      yscale: log
+      file: interface_amplitude.pdf
+
+    - type: time_series
+      title: "RT water-mercury: kinetic energy"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
+
+    - type: time_series
+      title: "RT water-mercury: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
+
+initial_condition:
+  type: capillary_wave     # CapillaryWaveHandler dispatch; semantically RT
+  axis: y                  # interface is a function of x: y = mean + amplitude*cos(2π*mode*x/length + phase)
+  mean: 1.0                # interface at mid-domain (domain y ∈ [0, 2.0])
+  amplitude: 0.01          # 1% of half-domain — small linear perturbation
+  mode: 1                  # single wavelength fits the domain width (length: 0.5)
+  length: 0.5              # = domain x-extent
+  phase: 0.0
+  interior_phase: liquid   # water below interface (φ = sdf < 0 region)
+
+initial_velocity: null     # start at rest
+boundary_condition:
+  type: wall

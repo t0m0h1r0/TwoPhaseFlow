@@ -1,7 +1,7 @@
 """
 Interface-level diagnostics: thickness, area, parasitic currents, tracking.
 
-Pure functions extracted from experiment scripts (ch11, ch12).
+Pure functions extracted from experiment scripts (ch12).
 """
 
 from __future__ import annotations

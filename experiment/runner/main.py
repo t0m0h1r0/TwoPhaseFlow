@@ -1,9 +1,10 @@
-"""Unified experiment runner entry point (YAML-driven, ch13).
+"""Unified experiment runner entry point (YAML-driven, ch14).
 
 Invoked via ``experiment/run.py``:
 
-    python experiment/run.py --config ch13_capillary_water_air_alpha2_n128
-    python experiment/run.py --config ch13_rising_bubble_water_air_alpha2_n128x256 --plot-only
+    python experiment/run.py --config ch14_capillary_water_air_alpha2_n128
+    python experiment/run.py --config ch14_rising_bubble_water_air_alpha2_n128x256 --plot-only
+    python experiment/run.py --config ch14_rayleigh_taylor_water_mercury_n128x512
     python experiment/run.py --all
 
 Chapter 12 unit tests (U1-U9) are standalone Python scripts under
@@ -21,7 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 # Chapter config directories searched in order when a bare stem is given
 _CHAPTER_CONFIG_DIRS = [
-    ROOT / "ch13" / "config",
+    ROOT / "ch14" / "config",
 ]
 
 
@@ -31,7 +32,7 @@ def _resolve_config(name: str) -> pathlib.Path:
     Accepts:
     - Absolute path (returned as-is if exists)
     - Relative path from cwd or experiment/ root
-    - Bare stem (e.g. ``ch13_capillary_water_air_alpha2_n128``) → searched in chapter config dirs
+    - Bare stem (e.g. ``ch14_capillary_water_air_alpha2_n128``) → searched in chapter config dirs
     """
     p = pathlib.Path(name)
 
@@ -68,7 +69,7 @@ def _outdir(config_path: pathlib.Path) -> pathlib.Path:
 def _peek_handler_key(config_path: pathlib.Path) -> str:
     """Read just enough of the YAML to choose a handler.
 
-    ch13 schema → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
+    ch14 schema → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
     Legacy schema with ``experiment.type`` is also peeked for forward compat.
     """
     try:
@@ -132,7 +133,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="experiment/run.py",
-        description="YAML-driven experiment runner (ch13).",
+        description="YAML-driven experiment runner (ch14).",
     )
     parser.add_argument("--config", default=None,
                         help="Config YAML name or path (stem or full path).")

@@ -159,25 +159,29 @@ $\hat M^{\FCCD}(\xi) = i\xi/H + \Ord{\xi^5/H}$ を得る．純虚数性（散逸
 \label{sec:fccd_h01_remedy}
 % -------------------------------------------------------------------------------
 
-{\FCCD} を異なる入力場（例として 2 つの場 $p, \psi$）に適用すると：
+{\FCCD} を異なる入力場（例として 2 つの滑らかな場 $p, \psi$）に適用すると：
 \begin{equation}
   D^{\FCCD}\,p,
   \qquad
   D^{\FCCD}\,\psi,
   \label{eq:fccd_bf_unification}
 \end{equation}
-両者は\textbf{同一面ロカス・同一メトリック・同一 Fourier シンボル}となり，
-これらの離散勾配の整合誤差は：
+両者は\textbf{同一面ロカス・同一メトリック・同一 Fourier シンボル}となる．
+ただし，これは任意の独立な $p,\psi$ に対して
+$D^{\FCCD}p-g(\psi)D^{\FCCD}\psi$ が小さいことを意味しない．
+連続場が滑らかな構成関係 $p=P(\psi)$ を満たし，
+$g=P'$ とおける場合に限り，連続 chain rule $p_x=P'(\psi)\psi_x$ と
+同一面評価の組合せから：
 \begin{equation}
-  \bigl\|\,D^{\FCCD}\,p - g(\psi)\cdot D^{\FCCD}\,\psi\,\bigr\|_\infty
+  \bigl\|\,D^{\FCCD}\,p - P'(\psi_f)\cdot D^{\FCCD}\,\psi\,\bigr\|_\infty
   \;=\; \Ord{\Delta x^4}
-  \qquad\bigl(g(\psi):\text{平滑関数}\bigr)
+  \qquad\bigl(\psi_f:\text{同一面での 4 次評価}\bigr)
   \label{eq:fccd_bf_residual_order}
 \end{equation}
 まで圧縮される．
 これは {\FCCD} 出力が 4 つの異なる消費点で共有されたとしても
-$\Ord{\Delta x^4}$ メトリック整合が崩れない
-\textbf{$\lambda=1/24$ cancellation の構造的帰結}である．
+同一の構成関係に由来する場の間では $\Ord{\Delta x^4}$ メトリック整合が崩れない
+\textbf{$\lambda=1/24$ cancellation と同一面評価の構造的帰結}である．
 具体的な物理量適用（圧力勾配・表面張力・界面ジャンプ条件など）における
 活用方法は当該用途章で展開される．
 

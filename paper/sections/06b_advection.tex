@@ -169,7 +169,7 @@ FCCD は線形 Hermite 補間に基づくため一般には TVD ではなく，
 一般には質量保存形ではない．実運用では clamp 後に
 §~\ref{sec:dccd_mass_conservation} の界面重み付き質量補正を適用し，
 値域制限で生じた総量誤差を戻す
-（完全なアルゴリズムは §~\ref{sec:algo_flow}, Step 1）．
+（完全なアルゴリズムは 7-step フロー Step 1 に対応）．
 
 \begin{tcolorbox}[warnbox, title={線形 CFL 上界の目安（FCCD + TVD-RK3，線形理論・未検証）}]
 \label{result:dccd_stability}% backward-compat: 旧 DCCD 安定性 ラベル維持
@@ -186,7 +186,7 @@ $\max_\xi |\hat{k}^*_{\mathrm{FCCD}}(\xi)| \approx 2.0$
 
 \label{alg:dccd_adv}%
 完全な CLS 移流の離散アルゴリズム（TVD-RK3 + FCCD 面値演算子 + 値域制限 + 質量補正）は
-§~\ref{sec:algo_flow}（Step 1）にまとめる．
+本稿の 7-step フロー Step 1 に対応する．
 
 \paragraph{誤差指標の注意：$\psi$ 空間 vs $\phi$ 空間}
 CLS 移流の形状誤差を $L_2(\psi - \psi_0)$ で評価する場合，
