@@ -96,12 +96,17 @@ UCCD6（§\ref{sec:uccd6_def}）で展開する．）
 \end{equation}
 % backward-compat phantom labels removed (CHK-205 m2): use eq:dccd_filter_transfer
 に置き換える．
-低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は式~\eqref{eq:dccd_pde_form} の
-PDE 形の\textbf{波数依存 $\varepsilon$} 拡張と等価で，
-直流成分・6h 波長成分を $\Ord{\varepsilon_d}$ で保ちつつ
-Nyquist モードのみ $4\varepsilon_d$ で減衰する．
-本節の導出形 PDE は\textbf{実装デフォルトフィルタの低波数極限}であり，
-式~\eqref{eq:dccd_filter_transfer} の波数選択的設計はこの極限を精緻化したものである．
+低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は，
+式~\eqref{eq:dccd_pde_form} の散逸項を 1 回の時間ステップ $\Delta t$ で
+post-filter として適用した近似に対応する．
+具体的には Courant 数 $C=|c|\Delta t/\Delta x$ に対して
+$\varepsilon_d=\varepsilon C$ と同定すると，
+拡散因子 $\exp[-\varepsilon C\,\omega_2(\xi)^2]$ の低波数一次近似が
+$1-\varepsilon_d\xi^2$ を与える．
+この対応は定数係数・一様格子・1 ステップ 1 回の post-filter に限る．
+式~\eqref{eq:dccd_filter_transfer} はその低波数極限を，
+直流成分を保ち，Nyquist モードを $4\varepsilon_d$ で抑える
+波数選択的な実装形へ置き換えたものである．
 
 % -------------------------------------------------------------------------------
 \subsubsection{半離散 Fourier 安定性}
@@ -120,7 +125,7 @@ $(D_2^{\CCD}u)_j \sim -(1/\Delta x^2) m_{\text{eq}}(k\Delta x)\hat u$
 Chu--Fan 係数 $(\beta_2,a_2,b_2)=(-1/8, 3, -9/8)$ での
 修正 2 次波数 $m_{\text{eq}}(\xi)$ は
 $\omega_2(\theta)^2$（式~\eqref{eq:ccd_omega_12}，$\theta=\xi$）と一致し，
-小 $\xi$ 展開で $m_{\text{eq}}=\xi^2+\Ord{\xi^6}$，
+小 $\xi$ 展開で $m_{\text{eq}}=\xi^2+\Ord{\xi^8}$，
 Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
 （$96/10$，分子 $81+48-33$・分母 $48-40+2$ の直接代入），
 区間 $[0,\pi]$ で符号変化なし．従って：
@@ -278,6 +283,22 @@ $C^0$ tanh プロファイル移流（界面）
   \item $\psi_i \approx 0$ または $1$（バルク）：$\varepsilon_d^{(i)} \approx \varepsilon_{d,\max}$，
         最大散逸でノイズを積極的に排除
 \end{itemize}
+
+\medskip\noindent\textbf{可変係数フィルタの安定性条件．}
+式~\eqref{eq:adaptive_eps} により $\varepsilon_d$ が空間変化すると，
+式~\eqref{eq:dccd_filter_transfer} の Fourier 伝達関数はそのまま適用できない．
+周期 1 次元で標準 3 点 Laplacian を $L_2$，
+$E=\operatorname{diag}(\varepsilon_d^{(i)})$ とおくと，
+post-filter は $T=I+E L_2$ で書ける．
+$E L_2$ は（$E$ が半正定値の場合は極限の意味で）
+対称半負定値行列 $E^{1/2}L_2E^{1/2}$ と同じ非零固有値を持ち，
+Rayleigh 商から固有値 $\mu$ は $-4\varepsilon_{d,\max}\le\mu\le0$ に入る．
+したがって $0\le\varepsilon_{d,\max}\le1/4$ なら
+$0\le 1+\mu\le1$ であり，定数係数の場合と同じ非増幅条件を満たす．
+壁面・流出境界では境界点を未フィルタのまま保持し，
+内部点ブロックにこの条件を課す．
+2 次元では各方向の 1 次元フィルタを逐次適用するため，
+各方向で同じ上限を満たせば収縮写像の合成となる．
 
 \begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの実装アルゴリズム}]
 \label{alg:dccd}
