@@ -45,13 +45,13 @@
 Hermite 場延長法（HFE; Aslam 2004 の Extension PDE に基づく），および Dissipative CCD 散逸機構の組み合わせにより
 根本的に解決する設計を提案する．
 その理論的基盤・実装詳細・検証手順を体系的に解説する．
-界面追跡には Conservative Level Set（CLS）法と Dissipative CCD スキームを採用して質量保存性と
+界面追跡には Conservative Level Set（CLS）法と CCD スキームを採用して質量保存性と
 数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は低密度比（$\rho_l/\rho_g \leq 5$）では
 欠陥補正法（FD 直接法 + CCD $\Ord{h^6}$ 勾配）で求解し，
 高密度比では分相 PPE 解法により各相で定数密度の Poisson 方程式を独立に解く．
 HFE が CCD ステンシルの界面 Gibbs 振動を除去し，
-DCCD 散逸（$\varepsilon_d=1/4$）がコロケート格子でのチェッカーボード不安定を
-外付け補正なしに内在的に抑制する（§~\ref{sec:extension_pde}，§~\ref{sec:dccd_decoupling}）．
+Balanced-Force 演算子整合と FCCD 面ジェット sub-system がコロケート格子でのチェッカーボード不安定を
+外付け補正なしに内在的に抑制する（§~\ref{sec:extension_pde}，§~\ref{sec:checkerboard_solution}）．
 全手法は7ステップのタイムループとして統合される．
 コンポーネント単体検証（CCD 精度・Zalesak 円盤・PPE 収束等）に加え，
 物理ベンチマーク（静止液滴・毛細管波・気泡上昇・Rayleigh--Taylor 不安定）の

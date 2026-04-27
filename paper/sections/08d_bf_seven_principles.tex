@@ -138,15 +138,6 @@ $\kappa$ は\textbf{界面帯に制限した平滑化}または
 2 次 FD に落とす．曲率精度は\textbf{演算子位置整合に比べ 2 次的}であり，
 BF 残差への影響は 2 次効果に留まる．
 
-\noindent\textbf{DCCD フィルタ規則}：
-圧力フィルタリングは BF 経路に適用する場合，
-$-G_h p + f_\sigma$ の\textbf{両辺に対称に}適用せねばならない．
-片側だけフィルタは非対称減衰を生み P-1 を事後的に破壊する：
-P-5 は対称適用時に「次数改善・設計予防」として機能するが，
-非対称適用時は P-1 違反として F-1/F-2 失敗モードに直接寄与する．
-この意味で P-5 は P-1 維持の必要条件として連動する
-（詳細は §\ref{sec:dccd_pressure_filter_prohibition}）．
-
 % -------------------------------------------------------------------------------
 \subsubsection{P-6：界面越えステンシルへのジャンプ補正}
 \label{sec:bf_p6_jump}
@@ -195,37 +186,6 @@ BF sub-system は\textbf{高次である必要はない}．
 寄生流れは演算子精度ではなく
 \textbf{界面ジャンプ処理の精度}で律速される．
 bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}．
-
-% -------------------------------------------------------------------------------
-\subsubsection{Rhie--Chow の限定使用（F-2/F-4 失敗モードへの該当）}
-\label{sec:bf_rhie_chow_restriction}
-% -------------------------------------------------------------------------------
-
-\noindent
-本項は P-1--P-7 原則の独立スロットではなく，
-\textbf{失敗モード F-2（演算子非整合）と F-4（ジャンプ平滑化）が
-Rhie--Chow（RC）補間で同時発現する典型例}として位置付ける副節である．
-P-1--P-7 と F-1--F-5 の対応は次の §\ref{sec:bf_failure_principle_map} にまとめる．
-
-\medskip
-
-Rhie--Chow 補間 $u_f^\text{RC}=\bar u_f - \alpha(p_R-p_L)$ は
-チェッカーボード抑制\textbf{のみ}のツールであり，BF 機構ではない：
-\begin{itemize}[noitemsep]
-  \item RC の $G_h$ は PPE $G_h^\text{bf}$ と異なる $\Rightarrow$ F-2 を踏む．
-  \item RC は $[p]_\Gamma=\sigma\kappa$ を平滑化 $\Rightarrow$ 高密度比で寄生流れ増幅．
-  \item RC は 1 次散逸を挿入 $\Rightarrow$ CCD の 6 次ステンシルを劣化させる．
-\end{itemize}
-\textbf{用途}：デバッグ時の一時安定化，粗格子初期化のみ．
-\textbf{RC 単独の Balanced-Force 経路は禁止}（プロダクションの BF 圧力補正には使用しない）．
-\textbf{ただし}，§\ref{sec:collocate} の RC + CSF 拡張（§\ref{sec:rc_balanced_force}）で
-\textbf{曲率・$\betaf$ 同一演算子適用}を満たす\textbf{拡張 RC--CSF}は，
-本稿のコロケート既定（smoothed-Heaviside プロダクション経路）の BF 経路として独立に成立する．
-すなわち\textbf{RC 単独 = 不可，RC + CSF 整合拡張 = 既定}であり，
-この区別を曖昧にすると F-2/F-4 を踏む．
-本稿の C/RC--DCCD 拡張（§\ref{sec:rc_high_order}）は
-さらに\textbf{高周波散逸の面中心修正}として位置付け，
-面フラックス整合を補強する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{F-1--F-5 × P-1--P-7 対応マップ}
