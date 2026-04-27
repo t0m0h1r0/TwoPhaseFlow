@@ -52,8 +52,8 @@ class PPEBuilder:
     FVM O(h²) finite-difference Laplacian matrix assembly. Used by
     PPESolverFVMSpsolve for non-uniform variable-density integration
     where CCD Kronecker assembly is unavailable. Per PROJECT_RULES PR-2,
-    this is the mandate approach for ch12/ch13 experiments; CCD solvers
-    remain the default for ch11 component tests.
+    this is the mandate approach for ch12+ integration experiments; CCD solvers
+    remain the default for component-level smooth-RHS tests.
 
     Parameters
     ----------

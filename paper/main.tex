@@ -89,10 +89,9 @@
 \clearpage
 \part{精度検証と展望：コンポーネント精度から多相流物理現象へ}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-\input{sections/11_full_algorithm}    %% §11（演算子マッピング・7ステップアルゴリズム）
-\input{sections/11c_dccd_bootstrap}   %% §11続き（DCCDパラメタ・ブートストラップ・タイムステップ）
-\input{sections/11d_pure_fccd_dns}    %% §11.5 純 FCCD DNS アーキテクチャ
-\clearpage
+%% §11（旧：完全アルゴリズム / DCCD ブートストラップ / 純 FCCD DNS）は CHK-246 で完全排除．
+%% 演算子マッピング・7ステップフロー・タイムステップ制御は本文中で随時参照されるが，
+%% 独立章としての提示は廃止し，各章の局所文脈に統合した．
 \input{sections/12_component_verification}  %% §12：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
 \input{sections/13_verification}                    %% §13：NS方程式の物理的整合性検証

@@ -99,7 +99,7 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch13_capillary_water_air_alpha2_n128
+  dir: results/ch14_capillary_water_air_alpha2_n128
   save_npz: true
   snapshots:
     interval: 0.05

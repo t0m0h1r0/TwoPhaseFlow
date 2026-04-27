@@ -201,7 +201,7 @@ HFE は同一の定常解を CCD データから直接構成することで，
 
 \subsubsection{HFE のアルゴリズムへの組み込み}
 
-時刻ループ内での適用箇所（§~\ref{sec:algorithm} の現行構成）：
+時刻ループ内での適用箇所（本稿のアルゴリズム構成における現行配置）：
 \begin{enumerate}
   \item \textbf{Step 5a（IPC Predictor の $-\bnabla p^n$ 直前のサブステップ）：}
         前時刻圧力 $p^n$ に HFE を適用して $p^n_{\mathrm{ext}}$ を構築し，
@@ -211,7 +211,7 @@ HFE は同一の定常解を CCD データから直接構成することで，
         速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する．
 \end{enumerate}
 \textbf{命名整合}：「Step 5 内のサブステップ」「Corrector 前」の旧表現は，
-Step 5a / Step 6a に正規化された（§\ref{sec:algorithm} で詳述）．
+Step 5a / Step 6a に正規化された（本稿のアルゴリズム構成で詳述）．
 
 \medskip
 \noindent\textbf{本節のまとめと位置づけ．}

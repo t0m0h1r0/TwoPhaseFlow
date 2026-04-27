@@ -49,7 +49,7 @@ class PPESolverCCDLU(_CCDPPEBase):
         u^{n+1} = u* − (Δt/ρ̃) ∇p^{n+1}
 
     Discretisation: CCD Kronecker O(h⁶) + sparse direct LU.
-    Use: ch11 smooth-RHS tests (PR-2).
+    Use: smooth-RHS component tests (PR-2).
 
     Parameters
     ----------
