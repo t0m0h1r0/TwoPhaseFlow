@@ -406,7 +406,8 @@ $\Delta t_{\mathrm{proj}}\equiv\gamma\Delta t$ を用いる：
   D_f\bu_f^{n+1}=0,
   \label{eq:projection_imex_bdf2_dt}
 \end{equation}
-すなわち PPE は $D_f A_f G_f$，Corrector は同じ $A_fG_f$ を共有する．
+すなわち投影形 PPE は $D_f A_f G_f$，SPD solve 形は $-D_f A_f G_f$ として扱い，
+Corrector は同じ $A_fG_f$ を共有する．
 界面張力は PPE 右辺のジャンプ条件として陰的に課す（§~\ref{sec:time_csf}）．
 
 \paragraph{安定性：対流 CFL と IMEX-BDF2 安定領域}
