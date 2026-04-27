@@ -68,6 +68,16 @@ $128$  & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}\,^\dagger$ & $1.64
 {\footnotesize $^\dagger$ stall（$\eps$ サポート不足；$h$ を細かくしても改善せず）．}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u5_heaviside_delta_accuracy}
+\caption{U5：$H_\eps$ / $\delta_\eps$ モーメント精度 + $\eps = c h$ 最適 c-sweep．
+$c=1.5$ で $N=64$ までに 0 次モーメント誤差が機械精度床へ到達；
+$c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．
+出典：\texttt{experiment/ch12/exp\_U5\_heaviside\_delta\_accuracy.py}．}
+\label{fig:ch12_u5}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U5-a：0 次モーメント誤差は $N \le 64$ 域で $h^{11}$ 相当の超収束．

@@ -68,6 +68,16 @@ target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u4_ridge_eikonal_reinit}
+\caption{U4：Ridge--Eikonal 再初期化 + DGR バンド厚補正．
+band 内 $\||\nabla\psi|-1\|_\infty$ は $n_\tau=20$ で $2.2\times 10^{-2}$, $n_\tau=100$ で $9\times 10^{-3}$ に漸近；
+DGR 1 ステップで $\eps_{\eff} / \eps^\star = 2.0 \to 1.0000033$ と機械精度で補正．
+出典：\texttt{experiment/ch12/exp\_U4\_ridge\_eikonal\_reinit.py}．}
+\label{fig:ch12_u4}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U4-a：$n_\tau = 20$ 反復で band 誤差 $2.2\times 10^{-2}$，

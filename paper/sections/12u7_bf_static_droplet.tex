@@ -74,6 +74,16 @@ $512$ & $0.0020$    & $0.457$ & $1.18$   & $0.457$ \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u7_bf_static_droplet}
+\caption{U7：BF 静止液滴 1-step + face $\mu$ 補間．
+$N=128$ で BF 結合の Young--Laplace 跳び $\Delta p = \sigma/R$ 再現誤差 $0.6\%$；
+face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h^2}$，slope $\approx 1.9$．
+出典：\texttt{experiment/ch12/exp\_U7\_bf\_static\_droplet.py}．}
+\label{fig:ch12_u7}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U7-a：$N \ge 64$ で BF 結合が Young--Laplace 跳び $\Delta p = \sigma/R$ を

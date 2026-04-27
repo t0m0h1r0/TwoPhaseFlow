@@ -17,7 +17,7 @@
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
 
 格子は \texttt{Grid.update\_from\_levelset(psi, eps)}
-（[src/twophase/core/grid.py:91](src/twophase/core/grid.py#L91)）が実装する
+（\texttt{src/twophase/core/grid.py:91}）が実装する
 gauss 密度 $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
 （式~\eqref{eq:grid_delta}）に従う．
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
@@ -104,6 +104,16 @@ $2.0$ & $0$ & $0$ & $0$ & $2.9\times 10^{-11}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u3_nonuniform_spatial_suite}
+\caption{U3：非一様格子 空間離散精度．
+$\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD face value/grad slope $5.99 / 5.97$（U1-c の 4 次律速が連鎖律補正で解消）；
+Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．
+出典：\texttt{experiment/ch12/exp\_U3\_nonuniform\_spatial\_suite.py}．}
+\label{fig:ch12_u3}
+\end{figure}
 
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}

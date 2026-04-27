@@ -49,6 +49,17 @@ $256$ & $0.0039$ & $1.23\times 10^{-10}$ & $0.00476$ & $0.0238$ & $3.86\times 10
 \end{tabular}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u9_dccd_pressure_prohibition}
+\caption{U9：DCCD on pressure 禁止規則の根拠（否定検証）．
+ベースライン CCD は $\Ord{h^6}$ で機械精度床へ収束する一方，
+DCCD 適用時は $L_\infty^{\mathrm{diff}}$ が $\Ord{h^2}$ にしか減衰せず ratio $\mathcal{R} = L^{\mathrm{diff}}_\infty / L^{\mathrm{unfilt}}_\infty$ が $10^5 \to 10^7$ へ 6 桁発散．
+$\nabla p$ には DCCD 不可・CCD 厳守の規則を定量的に裏付ける．
+出典：\texttt{experiment/ch12/exp\_U9\_dccd\_pressure\_prohibition.py}．}
+\label{fig:ch12_u9}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item ratio $\mathcal{R}$ は $N$ 増大とともに $10^5 \to 10^7$ へ \textbf{6 桁発散}．

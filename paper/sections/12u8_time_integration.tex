@@ -100,6 +100,17 @@ slope & $\mathbf{2.00}$ & $\mathbf{1.00}$ & $\mathbf{1.00}$ & $\mathbf{1.00}$ & 
 Layer B, C は ADI 分割誤差 $\Ord{\mathrm{d}t}$ が支配．}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u8_time_integration_suite}
+\caption{U8：TVD--RK3 / AB2 / CN--ADI 3 種積分子．
+基本収束 slope $3.00 / 2.04 / 2.00$ で各設計次数を完全達成；
+CN--ADI vs FE 安定性比較で CFL$_\nu = 0.5$ にて FE 増幅 $1.7\times 10^{21}$ 発散・CN は $0.64$ 抑制；
+3 層 ADI で Layer A 完全 2 次・B/C は ADI 分割で実効 1 次（既知劣化）．
+出典：\texttt{experiment/ch12/exp\_U8\_time\_integration\_suite.py}．}
+\label{fig:ch12_u8}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U8-a TVD--RK3：slope $3.00$，設計 3 次完全達成．\checkmark

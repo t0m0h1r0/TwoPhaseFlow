@@ -94,6 +94,16 @@ slope ($N\!=\!16\!\to\!128$) & $\mathbf{4.00}$ & $\mathbf{4.00}$ & $\mathbf{7.04
 UCCD6 は $f=\sin(2\pi x)$ の対称性により 7 次までスーパー収束．}
 \end{table}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.88\linewidth]{figures/ch12_u1_ccd_operator_suite}
+\caption{U1：CCD/DCCD/UCCD6/FCCD 演算子族 単体検証．
+CCD 周期 d1/d2 slope $6.00 / 5.97$，DCCD Nyquist $H(\pi;\varepsilon_d) = 1-4\varepsilon_d$ 解析一致，
+FCCD 壁 4 次律速，UCCD6 対称性スーパー 7 次．
+出典：\texttt{experiment/ch12/exp\_U1\_ccd\_operator\_suite.py}．}
+\label{fig:ch12_u1}
+\end{figure}
+
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U1-a CCD 周期 BC：d1/d2 とも slope $\approx 6.0$ で\textbf{合格}（\checkmark）．
