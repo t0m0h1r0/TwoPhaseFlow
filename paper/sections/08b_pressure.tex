@@ -21,20 +21,22 @@ BDF1 startup では $\Delta t_{\mathrm{proj}}=\Delta t$；§\ref{sec:ipc_derivat
 
 \subsubsection{Step 1：予測速度（Predictor）}
 
-射影段の圧力項だけを分離した離散 NS 方程式（無次元形）は：
+射影段で圧力項だけを分離し，対流・粘性・外力の時間離散済み寄与を
+$\bm{R}_{\mathrm{proj}}^{n+1}$ とまとめると：
 \begin{equation}
   \rho^{n+1}\frac{\bu^{n+1} - \bu^n}{\Delta t_{\mathrm{proj}}}
-  = \underbrace{-\rho^{n+1}(\bu^n\cdot\bnabla)\bu^n
-    + \frac{1}{Re}\bnabla\cdot[\mu^{n+1}(\bnabla\bu^{n+1}+\bnabla^T\bu^{n+1})]
-    + \bm{F}_\text{ext}^{n+1}}_{\displaystyle \equiv \bm{R}^{n+1}}
+  = \bm{R}_{\mathrm{proj}}^{n+1}
   - \bnabla p^{n+1}
   \label{eq:NS_full}
 \end{equation}
 IPC 法では前時刻圧力 $-\bnabla p^n$ を陽的に加えて\textbf{予測速度} $\bu^*$ を定義する：
 \begin{equation}
-  \rho^{n+1}\frac{\bu^* - \bu^n}{\Delta t_{\mathrm{proj}}} = \bm{R}^{n+1} - \bnabla p^n
+  \rho^{n+1}\frac{\bu^* - \bu^n}{\Delta t_{\mathrm{proj}}}
+  = \bm{R}_{\mathrm{proj}}^{n+1} - \bnabla p^n
   \quad\Longrightarrow\quad
-  \bu^* = \bu^n + \frac{\Delta t_{\mathrm{proj}}}{\rho^{n+1}}\bigl(\bm{R}^{n+1} - \bnabla p^n\bigr)
+  \bu^* = \bu^n
+  + \frac{\Delta t_{\mathrm{proj}}}{\rho^{n+1}}
+    \bigl(\bm{R}_{\mathrm{proj}}^{n+1} - \bnabla p^n\bigr)
   \label{eq:predictor}
 \end{equation}
 $\bu^*$ は一般に発散フリーではない（$\bnabla\cdot\bu^* \neq 0$）．

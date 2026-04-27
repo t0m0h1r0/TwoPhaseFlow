@@ -94,12 +94,24 @@ FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 解析解は $p_\text{stat}(z) = -\rho(\phi(z))\,g\,z$，$\mathbf{u}=\mathbf{0}$．
 
 \noindent\textbf{BF 残差測定}：
+重力加速度を $\bm{a}^g_f$，静水圧の面勾配を
+$(G_h^\text{bf}p_\text{stat})_f$ として，
+一ステップ補正で速度へ注入される離散加速度残差を測る：
 \begin{equation}
   \varepsilon_\text{BF}
-    := \max_f\,\bigl|\,u_f^{n+1}\,\bigr|
-    \quad\text{after one IPC step with }\mathbf{u}^*=\mathbf{0},\ p=p_\text{stat}.
+    := \Delta t_{\mathrm{proj}}
+       \max_f\,
+       \Bigl|\,
+         \bm{a}^g_f
+         - \betaf\,(G_h^\text{bf}p_\text{stat})_f
+       \Bigr|.
   \label{eq:fccd_bf_hydrostatic_metric}
 \end{equation}
+これは $\mathbf{u}^*=\mathbf{0}$ から開始し，重力加速度と
+圧力補正を同じ面スロットで同時に適用した
+1 ステップ釣合確認後の $\max_f|u_f^{n+1}|$ と同値である
+（§\ref{sec:time_buoyancy} の
+balanced-buoyancy 分解と同じ考え方）．
 理想離散 BF では $\varepsilon_\text{BF}=0$．実測（予測）：
 \begin{center}
 \begin{tabular}{@{}lll@{}}
