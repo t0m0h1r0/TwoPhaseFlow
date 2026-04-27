@@ -19,6 +19,11 @@ strategy under the Extended CN strategy pattern. True implicit CN (A-stable)
 and Padé-(2,2) variants arrive in later phases. See
 docs/memo/extended_cn_impl_design.md §5.1 for the extraction rationale and
 PR-5 bit-exact regression plan.
+
+Paper trace: §7.4 eq:viscous_cn_helmholtz_v7 describes the implicit CN target
+(I − γΔt L_ν)u* = RHS; this class implements the 1-step Picard (Heun
+corrector) approximation, which is O(Δt²) but non-A-stable. The §7.4 warnbox
+identifies this gap and §7 production stack uses IMEX-BDF2 (§7.3) instead.
 """
 from __future__ import annotations
 from typing import Callable, List, TYPE_CHECKING

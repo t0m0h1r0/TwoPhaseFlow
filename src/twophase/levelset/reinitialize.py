@@ -175,7 +175,7 @@ class ReinitializerWENO5(IReinitializer):
         self._bc = bc
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
-        _TVD_RK3_SAFETY = 0.5
+        _TVD_RK3_SAFETY = 0.5  # §7.9 stability warnbox 由来 (TVD-RK3 σ_max≈0.91 の安全側設定)
         ndim = grid.ndim
         dx_min = min(float(grid.L[ax] / grid.N[ax]) for ax in range(ndim))
         dtau_para = _TVD_RK3_SAFETY * dx_min**2 / (2.0 * ndim * eps)
