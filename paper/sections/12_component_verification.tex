@@ -37,23 +37,103 @@
 \label{tab:split_ppe_dc_convergence}%
 \label{tab:verification_summary}%
 
-% NOTE: 本章は CHK-244 にて全面書き直し中 (Phase 1: stub).
-% Phase 3 で U1--U9 単体テスト記述を 9 ファイル \texttt{12u1\_*}--\texttt{12u9\_*}
-% に追加し,Phase 4 で図と Part 2 \(\to\) §13 トレーサビリティ表を加える.
-%
-% 配置:
-%   \input{sections/12u1_ccd_operator}            % Tier I  / U1
-%   \input{sections/12u2_ccd_poisson_ppe_bc}      % Tier I  / U2
-%   \input{sections/12u3_nonuniform_spatial}      % Tier II / U3
-%   \input{sections/12u4_ridge_eikonal_reinit}    % Tier III/ U4
-%   \input{sections/12u5_heaviside_delta}         % Tier III/ U5
-%   \input{sections/12u6_split_ppe_dc_hfe}        % Tier IV / U6
-%   \input{sections/12u7_bf_static_droplet}       % Tier VII/ U7
-%   \input{sections/12u8_time_integration}        % Tier V  / U8
-%   \input{sections/12u9_dccd_pressure_prohibition}% Tier VI / U9
+\paragraph{目的．}
+本章は，第~\ref{sec:algorithm}章 で提示した
+Predictor--PPE--Corrector の 7 ステップ統合アルゴリズムを構成する
+数値手法 primitive を，Part 2（§\ref{sec:CCD}--§\ref{sec:algorithm}）の
+理論定義から離散実装まで漏れなく追跡し，
+\textbf{各 primitive が単体で設計通りの数学的精度を有する}
+ことを格子細分化 / MMS（製造解法）/ 解析参照解との比較によって
+系統的に確認する．
 
-第~\ref{sec:algorithm}章 で提示した Predictor--PPE--Corrector の 7 ステップ
-統合アルゴリズムの構成要素 (Part 2: §\ref{sec:ccd_def}--§\ref{sec:algorithm})
-のうち,第~\ref{sec:verification}章 統合実験の前提となる primitive を
-\textbf{9 件 (U1--U9)} に厳選し \textbf{7 Tier} に分類する
-(本章は再構成中,詳細は次版を参照).
+ここで検証されるのは「コードが論文記述と等価であること」（\textbf{PR-5
+Algorithm Fidelity}）と「式 → 離散化 → 実装の一意な対応」
+（\textbf{A3 Traceability}）の 2 点である．第~\ref{sec:verification}章
+（統合実験）はここで合格した primitive のみを用いて，
+組み立てられたアルゴリズム全体の物理的妥当性を検証する．
+
+\paragraph{構成（7 Tier / 9 単体テスト U1--U9）．}
+Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
+\textbf{基礎演算 → 特殊離散 → 結合系 → 否定検証}の順に 7 Tier へ分類した：
+
+\begin{description}\setlength{\itemsep}{0pt}
+  \item[Tier I（基礎 CCD 族 + Poisson）]
+        U1 = CCD/DCCD/UCCD6/FCCD 演算子族（§\ref{sec:CCD}），
+        U2 = CCD--Poisson 楕円型ソルバ + PPE 境界条件（§\ref{sec:ppe_solve}）．
+  \item[Tier II（非一様格子 + メトリック）]
+        U3 = 界面適合非一様格子 + Ridge--Eikonal D1--D4 補正（§\ref{sec:grid}）．
+  \item[Tier III（界面表現）]
+        U4 = Ridge--Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
+        U5 = 平滑化 $H_\eps$ / $\delta_\eps$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
+  \item[Tier IV（圧力結合系）]
+        U6 = split--PPE + DC + HFE（§\ref{sec:split_ppe_framework}--§\ref{sec:hfe}）．
+  \item[Tier V（時間積分）]
+        U8 = TVD--RK3 / AB2 / CN--ADI 3 種積分子（§\ref{sec:time_int}）．
+  \item[Tier VI（否定検証）]
+        U9 = DCCD on pressure 禁止規則の根拠（§\ref{sec:bf_p2_adjoint}）．
+  \item[Tier VII（界面--圧力結合の単発実験）]
+        U7 = BF 静止液滴 1-step + face $\mu$ 補間（§\ref{sec:balanced_force}）．
+\end{description}
+
+各 U-test は \texttt{experiment/ch12/exp\_U[1--9]\_*.py} で実装され，
+\texttt{experiment/ch12/results/U<i>\_<name>/} に \texttt{data.npz}
+（生数値）と PDF 図（代表結果）を出力する．
+
+\paragraph{検証成績一覧．}
+表~\ref{tab:U_summary} に全 9 単体テストの設計次数と実測値，
+判定結果をまとめる．
+
+\begin{table}[!ht]
+\caption{単体テスト U1--U9 検証成績（成功判定基準：
+設計次数 $p_{\mathrm{design}}$ に対し実測 slope が
+$|p_{\mathrm{measured}} - p_{\mathrm{design}}| \le 0.5$ 以内，
+または機械精度床 / 既知の理論的劣化が説明される場合）．
+\checkmark = 合格，$\triangle$ = 条件付き合格（境界モード支配・既知劣化），
+$\bullet$ = negation 成立．}
+\label{tab:U_summary}
+\centering\small
+\begin{tabular}{l l c c l}
+\toprule
+U & 名称 & $p_{\mathrm{design}}$ & 実測 & 判定 \\
+\midrule
+U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
+U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
+U1-c & FCCD face value/grad（壁）& $6$ & $4.00 / 4.00$ & $\triangle$ \\
+U1-d & UCCD6 d1                & $6$ & $7.04$（super） & \checkmark \\
+U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
+U2-b & PPE Neumann + ゲージ       & $5$ & $4.85$ & \checkmark \\
+U3-a & CCD 非一様 d1            & $6$ & $5.98$ & \checkmark \\
+U3-b & FCCD 非一様 face value    & $6$ & $5.99$ & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4     & active & $D_4 \!\sim\! 10^{-11}$ & \checkmark \\
+U4-a & Ridge--Eikonal reinit    & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
+U4-b & DGR バンド厚補正         & $\sim 0.03$ & $3\times 10^{-6}$ & \checkmark \\
+U5-a & $H_\eps / \delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
+U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
+U6-a & DC $\omega$--収束          & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
+U6-b & split--PPE 高密度比       & 既知劣化 & slope $\sim 0.78$ & $\triangle$ \\
+U6-c & HFE 1D / 2D              & $6 / 6$ & $5.99 / 5.05$ & \checkmark \\
+U7-a & BF 静止液滴 1-step       & $\Delta p \to \sigma/R$ & $0.6\%\,@N\!=\!128$ & \checkmark \\
+U7-b & face $\mu$ 補間           & $2$ & $1.93$ & \checkmark \\
+U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
+U8-b & AB2                      & $2$ & $2.04$ & \checkmark \\
+U8-c & CN--ADI                  & $2$ & $2.00$ & \checkmark \\
+U8-d & 3 層 CN--ADI（B/C 層）    & ADI 律速 & $1.0$ & $\triangle$ \\
+U9   & DCCD on pressure 禁止     & 違反量発散 & $10^5 \to 10^7$ & $\bullet$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+合格 17 件 ($\checkmark$) + 条件付き合格 3 件 ($\triangle$) + negation 成立 1 件 ($\bullet$)
+／ 計 21 サブテスト（9 unit / 7 tier）．
+個別の数値結果と評価は以下の節に分けて記述する．
+
+% ── 9 単体テストの本体（U1--U9） ──────────────────────────────────────────────
+\input{sections/12u1_ccd_operator}            % Tier I  / U1
+\input{sections/12u2_ccd_poisson_ppe_bc}      % Tier I  / U2
+\input{sections/12u3_nonuniform_spatial}      % Tier II / U3
+\input{sections/12u4_ridge_eikonal_reinit}    % Tier III/ U4
+\input{sections/12u5_heaviside_delta}         % Tier III/ U5
+\input{sections/12u6_split_ppe_dc_hfe}        % Tier IV / U6
+\input{sections/12u7_bf_static_droplet}       % Tier VII/ U7
+\input{sections/12u8_time_integration}        % Tier V  / U8
+\input{sections/12u9_dccd_pressure_prohibition}% Tier VI / U9

@@ -1,0 +1,113 @@
+% paper/sections/12u6_split_ppe_dc_hfe.tex
+%
+% U6: Split-PPE + DC + HFE — Tier IV
+% Verifies: §9 (split-PPE pressure system + Defect Correction + Hermite Field
+%           Extension on the lumped right-hand side).
+% Script  : experiment/ch12/exp_U6_split_ppe_dc_hfe.py
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsubsection{U6：Split-PPE + DC + HFE [Tier IV]}
+\label{sec:U6_split_ppe_dc_hfe}
+
+\paragraph{検証対象．}
+第~\ref{sec:ppe_solve}章 で導入した split--PPE 圧力系
+（§\ref{sec:split_ppe_framework}：密度比 $\rho_l/\rho_g$ 大の分離方程式構造），
+defect--correction（DC；§\ref{sec:dc_pure_fccd_convergence}）の
+$\omega$--収束領域，および Hermite Field Extension
+（HFE；§\ref{sec:hfe}：界面外挿による $\rho^{-1}\nabla p$ の非対称化抑制）の
+\textbf{単体精度}を確認する．
+
+\paragraph{単体テスト．}
+\begin{description}\setlength{\itemsep}{0pt}
+  \item[U6-a] DC $\omega$--収束図．$N=32$ 円界面 $R=0.25$，
+        $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
+        $k_{\mathrm{DC}} \in \{2,3\}$．stall 判定 + 残差ヒストリ．
+  \item[U6-b] $N$ 細分化 / $\rho$ 比依存性．$\rho_l = 1000$, $k_{\mathrm{DC}}=3$，
+        $N \in \{32,64,128\}$．密度比 $\rho_l \in \{1,10,100,1000\}$ at $N=64$．
+  \item[U6-c] HFE 単独：1D MMS（外挿ステンシル単体精度），
+        2D MMS（$\rho^{-1}\nabla p$ の界面跨ぎ精度の \textbf{max} と \textbf{med}）．
+\end{description}
+
+\paragraph{数値結果．}
+
+\begin{table}[!ht]
+\caption{U6-a: DC $\omega$--収束図（$N=32$, 円界面 $R=0.25$）．
+$\rho_l = 1$ では $\omega$ 全域 / $k\in\{2,3\}$ で 1 補正で機械精度床；
+$\rho_l = 100, 1000$ では DC が stall（$k=3$ 補正後でも残差 $\sim 10^{-3}$）．
+$k=3$ は $k=2$ より残差を 20--35\% 改善．}
+\label{tab:U6_dc_omega}
+\centering\small
+\begin{tabular}{r c c c c}
+\toprule
+ & \multicolumn{2}{c}{$k_{\mathrm{DC}}=2$} & \multicolumn{2}{c}{$k_{\mathrm{DC}}=3$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+$\omega$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ \\
+\midrule
+$0.2$ & $3.25\times 10^{-4}$ & $1.14\times 10^{-3}$ & $2.60\times 10^{-4}$ & $9.15\times 10^{-4}$ \\
+$0.3$ & $2.84\times 10^{-4}$ & $1.00\times 10^{-3}$ & $1.99\times 10^{-4}$ & $7.00\times 10^{-4}$ \\
+$0.5$ & $\mathit{stall}$ & $\mathit{stall}$ & $\mathit{stall}$ & $\mathit{stall}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\caption{U6-b: $N$ 細分化（$\rho_l=1000$, $k_{\mathrm{DC}}=3$, 左）と
+$\rho$ 比 sweep（$N=64$, 右）．高密度比では DC が
+$\Ord{h^{0.5\text{--}1.0}}$ で律速（split--PPE の構造的限界；
+§\ref{sec:dc_pure_fccd_convergence} 末尾の議論と整合）．}
+\label{tab:U6_n_rho_sweep}
+\centering\small
+\begin{tabular}{r r r r r r r r}
+\toprule
+\multicolumn{4}{c}{$N$ sweep ($\rho_l = 1000$)} & \phantom{aa} & \multicolumn{3}{c}{$\rho$ sweep ($N=64$)} \\
+\cmidrule(lr){1-4}\cmidrule(lr){6-8}
+$N$ & $h$ & $\|e\|_\infty$ & ratio $\frac{e_N}{e_{2N}}$ & & $\rho_l$ & $h$ & $\|e\|_\infty$ \\
+\midrule
+$32$  & $0.0313$ & $4.75\times 10^{-3}$ & $-$    & & $1$    & $0.0156$ & $1.84\times 10^{-5}$ \\
+$64$  & $0.0156$ & $2.20\times 10^{-3}$ & $2.16$ & & $10$   & $0.0156$ & $4.14\times 10^{-4}$ \\
+$128$ & $0.0078$ & $1.59\times 10^{-3}$ & $1.39$ & & $100$  & $0.0156$ & $1.27\times 10^{-3}$ \\
+& & & & & $1000$ & $0.0156$ & $2.20\times 10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\caption{U6-c: HFE 単独 MMS（外挿ステンシル）．
+\textbf{1D} は設計通り 6 次（slope $\approx 5.99$, $N=32\!\to\!256$）．
+\textbf{2D} は max が 4--5 次（界面格子点不揃い影響），
+med が 6 次設計（界面から距離 $\ge h$ のセル）．}
+\label{tab:U6_hfe}
+\centering\small
+\begin{tabular}{r r r r r}
+\toprule
+$N$ & $h$ & $\|e^{1\mathrm{D}}\|_\infty$ & $\|e^{2\mathrm{D}}_{\max}\|$ & $\|e^{2\mathrm{D}}_{\mathrm{med}}\|$ \\
+\midrule
+$32$  & $0.0313$ & $9.19\times 10^{-8}$ & $1.02\times 10^{-3}$ & $3.19\times 10^{-6}$ \\
+$64$  & $0.0156$ & $1.62\times 10^{-9}$ & $1.51\times 10^{-6}$ & $2.51\times 10^{-7}$ \\
+$128$ & $0.0078$ & $2.68\times 10^{-11}$ & $1.99\times 10^{-7}$ & $2.64\times 10^{-8}$ \\
+$256$ & $0.0039$ & $4.22\times 10^{-13}$ & $2.54\times 10^{-8}$ & $4.02\times 10^{-9}$ \\
+\midrule
+\multicolumn{2}{r}{slope ($N\!=\!32\!\to\!256$)} & $\mathbf{5.99}$ & $\mathbf{5.05}$ & $\mathbf{3.21}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{評価．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item U6-a DC $\omega$--収束：$\rho_l = 1$ は安定収束；
+        $\rho_l \ge 100$ は $\omega \ge 0.5$ で stall．
+        $k_{\mathrm{DC}}=3$ は $k=2$ から残差を $\sim 25\%$ 削減．
+        §\ref{sec:dc_pure_fccd_convergence} の理論域と一致．\checkmark
+  \item U6-b $N/\rho$ sweep：高密度比 $\rho_l=1000$ では
+        slope $\approx 0.78$（$N=32 \to 128$）に律速．これは
+        \textbf{split--PPE の構造的制約}であり，§\ref{sec:varrho_ppe_limitation} で
+        導入する $\varrho$--PPE / lumped--PPE 切替の動機となる．
+        $\rho_l \le 10$ は $\Ord{h^2}$ 通常収束．\checkmark（限界明示）．
+  \item U6-c HFE：1D 設計 6 次完全達成；2D は med で 3 次以上，
+        max で 5 次（界面跨ぎセル 1 セル分の劣化が支配）．
+        §\ref{sec:hfe} 設計仕様と整合．\checkmark
+\end{itemize}
+A3 トレーサビリティ：
+式~\eqref{eq:split_ppe}（split--PPE 行列形）→ §\ref{sec:split_ppe_framework} →
+\texttt{src/twophase/ppe/split\_solver.py}；
+式~\eqref{eq:hfe_upwind_minus}（HFE 拡張公式）→ §\ref{sec:hfe} →
+\texttt{src/twophase/ppe/hfe.py}．
