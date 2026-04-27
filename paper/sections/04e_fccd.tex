@@ -36,9 +36,10 @@ $\Ord{H^4}$ で構成する基底 CCD の派生スキームであり，
 {\FCCD} は以下の 4 原理に従う：
 
 \begin{enumerate}[label=\textbf{P-F\arabic*.}]
-\item \textbf{風上限定．}
-      $a>0$ において $\{u_{i-1}, u_i\}$ のみ使用，
-      中心・下流成分に依存しない．
+\item \textbf{面二点限定．}
+      面 $f=i-1/2$ の左右節点 $\{u_{i-1}, u_i\}$ のみ使用し，
+      節点中心の広い上流・下流 stencil を導入しない．
+      これは数値流束の upwind 化ではなく，散逸ゼロの face-centered Hermite 演算子である．
 \item \textbf{ステンシル非拡大．}
       $u_{i-2}$ 以遠は参照せず，3 点コンパクト性を CCD から継承．
 \item \textbf{Combined Compact 構造．}
@@ -58,7 +59,7 @@ $\Ord{H^4}$ で構成する基底 CCD の派生スキームであり，
 \begin{equation}
   \frac{u_i - u_{i-1}}{\Delta x}
   \;=\; u'_f + \frac{\Delta x^2}{24}\,u'''_f + \Ord{\Delta x^4}.
-  \label{eq:fccd_upwind_expansion}
+  \label{eq:fccd_face_difference_expansion}
 \end{equation}
 Chu--Fan 流の組合せ演算子を定義：
 \begin{equation}
@@ -67,7 +68,7 @@ Chu--Fan 流の組合せ演算子を定義：
   \;-\; \lambda\,\Delta x^2\,u'''_f.
   \label{eq:fccd_operator}
 \end{equation}
-式~\eqref{eq:fccd_upwind_expansion} を代入して \textbf{cancellation 条件}
+式~\eqref{eq:fccd_face_difference_expansion} を代入して \textbf{cancellation 条件}
 $\lambda = 1/24$ を課せば：
 \begin{equation}
   \boxed{\;
@@ -75,7 +76,7 @@ $\lambda = 1/24$ を課せば：
   \;}
   \label{eq:fccd_fourth_order}
 \end{equation}
-となり，ステンシル拡大・風上構造の放棄なしに\textbf{4 次精度}を獲得する．
+となり，ステンシル拡大なしに\textbf{4 次精度}を獲得する．
 $u'''_f$ は近傍節点の $q_i = u''_i$（CCD 出力）から
 $u'''_f \approx (q_i - q_{i-1})/\Delta x$ の 2 次中心差で閉じる．
 
