@@ -1,6 +1,7 @@
 # §9 ResearchArchitect Strict Review — 2026-04-28
 
 Initial verdict: MAJOR REVISION.
+Verdict after fixes: PASS (0 FATAL, 0 MAJOR).
 
 ## Scope
 - Reviewed `paper/sections/09_ccd_poisson.tex`.
@@ -24,3 +25,16 @@ Initial verdict: MAJOR REVISION.
 - Replace stale divergence and "planned/measured" claims with verification-backed or conditional wording.
 - Align gauge wording with phase-wise mean gauge as the default for split PPE.
 - Keep FVM only as a comparison or legacy low-order reference, not as the primary §9 boundary path.
+
+## Fix Summary
+- R9-1 fixed: `09b_split_ppe.tex` now separates projection-form `D_f A_f G_f` from SPD solve form `A_h=-D_fA_fG_f` and states the simultaneous RHS sign flip.
+- R9-2 fixed: `09e_ppe_bc.tex` now matches the §13 retest: robust DC divergence was not reproduced; the remaining limitation is grid-convergence plateau.
+- R9-3 fixed: Split PPE gauge text now prefers phase-wise volume-mean gauge, keeps point pins as fallback, and removes GMRES-specific wording.
+- R9-4 fixed: §9 benchmark magnitudes, "verification planned", and "measured value" phrasing were replaced by structural comparisons and verification-dependent qualifiers.
+- R9-5/R9-6 fixed: FVM wording is scoped to low-order baselines, and stale §8/chapter-specific source comments were removed.
+
+## Verification
+- `cd paper && latexmk -xelatex -interaction=nonstopmode main.tex` passed.
+- Output: 219 pages, undefined references 0, undefined citations 0.
+- Residual warnings are pre-existing §12 Overfull/Underfull and text-only float cosmetics; §9 introduced no remaining Overfull after table-width adjustment.
+- SOLID audit: not applicable; no `src/` code changed.
