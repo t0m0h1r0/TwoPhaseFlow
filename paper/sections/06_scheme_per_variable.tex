@@ -1,11 +1,11 @@
-% paper/sections/07_0_scheme_per_variable.tex
+% paper/sections/06_scheme_per_variable.tex
 %
 % §6  方程式項別空間離散化 (per-term spatial discretization)
 %      §6.0 (本ファイル冒頭) chapter intro + 変数別スキーム方針
-%      §6.1 (07_advection)   CLS ψ FCCD 面ジェット移流
-%      §6.2 (07c)            運動量 FCCD/UCCD6 移流
-%      §6.3 (07e Layer A/B/C) 粘性 3 層 + corner μ
-%      §6.4 (07e ρ/μ 補間規則) ρ/μ 物性値補間規則
+%      §6.1 (06b_advection)       CLS ψ FCCD 面ジェット移流
+%      §6.2 (06c_fccd_advection)  運動量 FCCD/UCCD6 移流
+%      §6.3 (06d_viscous_3layer)  粘性 3 層
+%      §6.4 (06d_viscous_3layer)  ρ/μ 物性値補間規則
 %      §6.5 (forward ref to §8 PPE) 圧力 jump 取り扱い
 %
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -42,11 +42,11 @@ CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$
 変数 & 特性 & 推奨スキーム \\
 \hline
 $\psi$（CLS）& $C^0$ 急 tanh & FCCD 面ジェット移流（面値保存型；\S\ref{sec:advection_motivation}） \\
-$u, v$ bulk & $C^\infty$ 滑 & \textbf{UCCD6}（\S\ref{sec:fccd_advection}）／ CCD・FCCD（検証用代替） \\
+$u, v$ bulk & $C^\infty$ 滑 & \textbf{UCCD6}（\S\ref{sec:uccd6_def}；FCCD Option B/C は \S\ref{sec:fccd_advection}）／ CCD・FCCD（検証用代替） \\
 $u, v$ 界面帯 & $\nabla u$ kink & 2 次片側（\S\ref{sec:viscous_3layer}） \\
 $\phi$（再初期化）& Eikonal & \textbf{Ridge-Eikonal}（\S\ref{sec:xi_sdf_reinit}）／ Godunov・WENO--HJ~\cite{JiangPeng2000}（基底 Eikonal solver） \\
 $p$ & 界面で jump & Face-flux + GFM/IIM~\cite{Fedkiw1999}（\S\ref{sec:balanced_force}）\\
-$\rho, \mu$ & step profile & 低次（算術平均=$\rho$, 調和平均=$\mu_\text{face}$；\S\ref{sec:rho_mu_interpolation}）\\
+$\rho, \mu$ & step profile & 低次（$\rho,\mu$ は $\psi$ から代数更新；face/corner 平均は拡張規則；\S\ref{sec:rho_mu_interpolation}）\\
 \hline
 \end{tabular}
 \end{center}
@@ -68,8 +68,8 @@ $\rho, \mu$ & step profile & 低次（算術平均=$\rho$, 調和平均=$\mu_\te
         step プロファイルを CCD で差分すると Gibbs 振動が生じ，
         物性値が $[\rho_\text{min},\rho_\text{max}]$ 範囲外になる．
         物性値は常に低次で評価する：$\rho^{n+1} = \rho_g + (\rho_l-\rho_g)\psi^{n+1}$
-        の $\psi$ 線形内挿（algebraic update）と，
-        界面跨ぎフラックスに対する調和平均（$\mu_\text{face}$）．
+        および $\mu^{n+1} = \mu_g + (\mu_l-\mu_g)\psi^{n+1}$ の代数更新を基準とする．
+        face/corner 平均は粘性フラックス拡張で必要になる場合の補助規則である．
         具体的な補間式は \S~\ref{sec:rho_mu_interpolation}（§6.4）に集約する．
   \item \textbf{bulk 速度は CCD 推奨．}
         $u, v$ は $C^\infty$ 滑らか（界面帯を除く）．
