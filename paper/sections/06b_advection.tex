@@ -35,8 +35,7 @@ FCCD による BF 整合移流 Option B/C は §~\ref{sec:fccd_advection}（§6.
 % ─────────────────────────────────────────────────────────────────────────────
 
 WENO5~\cite{JiangShu1996} は圧縮性流体力学の衝撃波捕捉向けに設計されたスキームであり，
-CLS 界面移流には以下の 3 点で非適合である
-（詳細な定式化と性質は付録~\ref{app:weno5} を参照）：
+CLS 界面移流には以下の 3 点で非適合である：
 
 \begin{enumerate}
   \item \textbf{過剰散逸：}
@@ -67,8 +66,7 @@ $F_i = [(\psi u)_{f,i+1/2} - (\psi u)_{f,i-1/2}]/h$ を求める
 FCCD は\textbf{保存型 FVM のテレスコーピング構造}を持ち，
 $\psi$ プロファイル kink での節点 CCD overshoot を経由しないため，
 界面の急峻な遷移層に対しても安定かつ厳密質量保存的である．
-WENO5 は \textbf{比較参照スキーム}として付録~\ref{app:weno5} に収録するに留め，
-本稿の主実装には用いない（§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．\footnote{ch13
+WENO5 は本稿の主実装には用いない（§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．\footnote{ch13
 production stack 確立前の旧実装では帯状散逸付き節点 CCD を CLS 移流に使用していた．
 当該手法は線形フィルタによる近似的安定化に依存し，非周期境界での厳密質量保存を満たさない．
 FCCD への移行は保存型構造による厳密質量保存と界面安定性の両立を理由とする．
@@ -156,9 +154,7 @@ FCCD は\textbf{保存型 FVM のテレスコーピング構造}を持つ：
 非周期境界・非一様格子・界面適合格子でもテレスコーピング構造が保たれるため，
 従来の節点 CCD 微分に伴う「近似的保存」（周期境界以外で破れる近似的成立）が
 FCCD では構造的に解消される．
-これが ch13 production で FCCD を採用した第一の理由である
-（WENO5 保存形との比較：付録~\ref{app:weno5}；
-定式化§~\ref{app:weno5_formulation}，再構成係数§~\ref{app:weno5_coef}，Lax-Friedrichs 分割§~\ref{app:lf_splitting}）．
+これが ch13 production で FCCD を採用した第一の理由である．
 
 \medskip
 \noindent\textbf{TVD 性と clamp 操作．}
@@ -215,7 +211,7 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & FCCD（面値保存型；§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & 面値 $\Ord{h^6}$；保存型 FVM テレスコーピング & 面値評価で節点 CCD overshoot を回避；非周期境界・非一様格子でも厳密質量保存；WENO5 は比較参照（付録~\ref{app:weno5}） \\
+CLS 移流（$\psi$） & FCCD（面値保存型；§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & 面値 $\Ord{h^6}$；保存型 FVM テレスコーピング & 面値評価で節点 CCD overshoot を回避；非周期境界・非一様格子でも厳密質量保存 \\
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 再初期化 & Ridge-Eikonal（§~\ref{sec:ridge_eikonal}，§~\ref{sec:cls_compression}） & Eikonal 距離 $\Ord{h^6}$ + Ridge ガウス射影 & 反復不要の 1 ショット再構成；§3.4 Part 1 連続定式化の離散実装 \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\

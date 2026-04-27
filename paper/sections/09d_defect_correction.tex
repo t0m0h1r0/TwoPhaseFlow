@@ -11,14 +11,14 @@
 \noindent\textbf{本節の位置づけ：}
 本節で示す欠陥補正法（DC）は，CCD 高次演算子 $L_H$ と FD 低次演算子 $L_L$ の
 組合せによりポアソン方程式を高精度に求解する汎用フレームワークであり，
-本稿では Level 2（変密度一括 smoothed-Heaviside PPE，§~\ref{sec:algorithm}）
-および Level 3（分相 PPE 解法，§~\ref{sec:split_ppe_framework}）の双方で適用する．
-分相 PPE（Level 3）では各相の PPE が定数密度のラプラシアンとなるため
+本稿では変密度一括 smoothed-Heaviside PPE（§~\ref{sec:algorithm}）
+および分相 PPE 解法（§~\ref{sec:split_ppe_framework}）の双方で適用する．
+分相 PPE では各相の PPE が定数密度のラプラシアンとなるため
 $L_H$/$L_L$ のスペクトル不整合が最小化され，
 $k \geq 3$ で漸近精度 $\Ord{h^6}$ を得る（§~\ref{sec:dc_accuracy}；
 BC 種別の内訳は §\ref{sec:dc_pure_fccd_convergence} の表で
 $\Ord{h^7}$ Dirichlet / $\Ord{h^5}$ Neumann / IIM 行補正で $\Ord{h^4}$ 以上 と区別）；
-変密度一括 PPE（Level 2）では smoothed-Heaviside による $\rho$ 滑化幅
+変密度一括 PPE では smoothed-Heaviside による $\rho$ 滑化幅
 $\varepsilon_H$ が DC 収束率を律速し，
 $k$ 既定値の選択根拠は §~\ref{sec:pressure_accuracy_summary} にまとめる．
 

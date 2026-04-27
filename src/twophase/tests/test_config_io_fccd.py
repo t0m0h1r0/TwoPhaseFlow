@@ -50,7 +50,7 @@ def _minimal(patch: dict | None = None) -> dict:
             "surface_tension": 0.0,
             "gravity": 0.0,
         },
-        "run": {"time": {"final": 0.1, "cfl": 0.1}},
+        "run": {"time": {"final": 0.1, "cfl": 1.0}},
         "numerics": {
             "time": {
                 "interface_transport": "tvd_rk3",
@@ -115,6 +115,55 @@ def test_readable_defaults_round_trip():
     assert cfg.run.pressure_gradient_scheme == "ccd"
     assert cfg.run.surface_tension_gradient_scheme == "ccd"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl_advective == pytest.approx(0.1)
+    assert cfg.run.cfl_capillary == pytest.approx(0.05)
+    assert cfg.run.cfl_viscous == pytest.approx(1.0)
+
+
+def test_unit_cfl_multiplier_expands_to_theory_constants():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "run": {"time": {"final": 0.1, "cfl": 1.0}},
+    }))
+
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl == pytest.approx(1.0)
+    assert cfg.run.cfl_advective == pytest.approx(0.10)
+    assert cfg.run.cfl_capillary == pytest.approx(0.05)
+    assert cfg.run.cfl_viscous == pytest.approx(1.0)
+
+
+def test_smaller_cfl_multiplier_scales_theory_constants():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "run": {"time": {"final": 0.1, "cfl": 0.5}},
+    }))
+
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl == pytest.approx(0.5)
+    assert cfg.run.cfl_advective == pytest.approx(0.05)
+    assert cfg.run.cfl_capillary == pytest.approx(0.025)
+    assert cfg.run.cfl_viscous == pytest.approx(0.5)
+
+
+def test_structured_cfl_policy_allows_term_multipliers():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "run": {
+            "time": {
+                "final": 0.1,
+                "cfl": {
+                    "multiplier": 1.0,
+                    "advective": 0.5,
+                    "capillary": 0.25,
+                    "viscous": 0.8,
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl_advective == pytest.approx(0.05)
+    assert cfg.run.cfl_capillary == pytest.approx(0.0125)
+    assert cfg.run.cfl_viscous == pytest.approx(0.8)
 
 
 def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
@@ -133,6 +182,10 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl == pytest.approx(1.0)
+    assert cfg.run.cfl_advective == pytest.approx(0.10)
+    assert cfg.run.cfl_capillary == pytest.approx(0.05)
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"

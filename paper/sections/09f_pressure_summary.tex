@@ -28,9 +28,9 @@ HFE による界面越し場延長（§~\ref{sec:field_extension}），
 \midrule
 CLS 移流 & DCCD + TVD-RK3 & CCD $\Ord{h^6}$；filter $\Ord{\varepsilon_d h^2}$§ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE (Lv.1：SSPRK3 検証) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
-PPE (Lv.2：プロダクション) & 一括 PPE + GFM 補正 + DC & $\Ord{h^4}$‡‡ & — \\
-PPE (Lv.3：純 FCCD DNS) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^7}$Dir/$\Ord{h^5}$Neu‡‡‡ & — \\
+PPE (等密度SSPRK3検証) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
+PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & $\Ord{h^4}$‡‡ & — \\
+PPE (分相 PPE) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^7}$Dir/$\Ord{h^5}$Neu‡‡‡ & — \\
 NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
 Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
@@ -44,9 +44,9 @@ HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite
 \smallskip
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
-\noindent‡\ Lv.1 等密度均一格子・周期 BC の理想化では $\Ord{h^6}$（§\ref{sec:dc_accuracy}）．\\
-\noindent‡‡\ Lv.2 は一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し DC で $\Ord{h^4}$ への昇格は数値検証（§~\ref{sec:verify_split_ppe_dc}）で確認予定．Lv.2 の理論証明は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，DC convergence は本稿では実測値として扱う．\\
-\noindent‡‡‡\ Lv.3 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．記載値は $k=3$ 漸近値；$k>3$ では界面ジャンプ条件が全体精度を支配し，CCD 切断誤差はすでに飽和するため精度はほぼ変化しない．\\
+\noindent‡\ 等密度均一格子・周期 BC の理想化では $\Ord{h^6}$（§\ref{sec:dc_accuracy}）．\\
+\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し DC で $\Ord{h^4}$ への昇格は数値検証（§~\ref{sec:verify_split_ppe_dc}）で確認予定．変密度一括 PPE の理論証明は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，DC convergence は本稿では実測値として扱う．\\
+\noindent‡‡‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．記載値は $k=3$ 漸近値；$k>3$ では界面ジャンプ条件が全体精度を支配し，CCD 切断誤差はすでに飽和するため精度はほぼ変化しない．\\
 \noindent§\ CCD 微分の局所切断誤差は $\Ord{h^6}$ だが，
 固定強度 DCCD フィルタは滑らかなモードに $\Ord{\varepsilon_d h^2}$ の修正を加える．
 質量積分誤差や形状誤差は別指標であり，この局所次数と混同しない．\\
@@ -76,9 +76,9 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \begin{tcolorbox}[mybox, title={設計選択の根拠：分相 PPE + DC + CCD 勾配の統合設計}]
 \label{box:ppe_design_rationale}
 本稿の PPE 求解戦略は密度比に応じて\textbf{2 経路}を切り替える：
-中程度の密度比では Lv.2（変密度一括 smoothed-Heaviside PPE，§~\ref{sec:algorithm} Step 6），
-高密度比 + 高粘性比 + 低 We 同時成立時は Lv.3（分相 PPE 解法，§~\ref{sec:split_ppe_framework}）．
-以下の3つの原則は両経路に共通する設計指針であり，特に Lv.3 では効果が顕著である．
+中程度の密度比では変密度一括 smoothed-Heaviside PPE（§~\ref{sec:algorithm} Step 6），
+高密度比 + 高粘性比 + 低 We 同時成立時は分相 PPE 解法（§~\ref{sec:split_ppe_framework}）．
+以下の3つの原則は両経路に共通する設計指針であり，特に分相 PPE では効果が顕著である．
 
 \begin{enumerate}
   \item \textbf{分相 PPE による密度比非依存化}．
@@ -116,7 +116,4 @@ $\Ord{\varepsilon^2}=\Ord{h^2}$ が全体の空間精度を律速する（表~\r
 PPE ソルバが精度ボトルネックとならないことを保証する．
 \end{tcolorbox}
 
-\noindent\textbf{GPU-native FVM 実装バリアント}：
 本章は PPE の\textbf{数学的定式化と精度}を扱う．
-プロダクションでの 2 経路選択（変密度一括 smoothed-Heaviside PPE vs
-GPU-native FVM 経路；同精度・性能差のみ）の実装詳細は付録~\ref{app:gpu_fvm} に記す．

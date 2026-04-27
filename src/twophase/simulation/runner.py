@@ -67,10 +67,20 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     control_volumes = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
 
     while t < T and (max_steps is None or step < max_steps):
+        dt_budget = None
         if cfg.run.dt_fixed is not None:
             dt = min(cfg.run.dt_fixed, T - t)
         else:
-            dt = min(solver.dt_max(u, v, ph, cfg.run.cfl), T - t)
+            dt_budget = solver.dt_budget(
+                u,
+                v,
+                ph,
+                cfg.run.cfl,
+                cfl_advective=cfg.run.cfl_advective,
+                cfl_capillary=cfg.run.cfl_capillary,
+                cfl_viscous=cfg.run.cfl_viscous,
+            )
+            dt = min(dt_budget.dt, T - t)
         if dt < 1e-12:
             break
 
@@ -111,8 +121,11 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
             diag.retain_device_geometry(_bk.xp, solver.X, solver.Y, psi.shape)
         diag.collect(t, psi, u, v, _bk.xp.asarray(p), dV=control_volumes)
         dbg_entry = solver._step_diag.last
-        if dbg_entry:
-            dbg_history.append({"t": t, "step": step, **dbg_entry})
+        if dbg_entry or (cfg.run.debug_diagnostics and dt_budget is not None):
+            merged_diag = {"t": t, "step": step, **dbg_entry}
+            if cfg.run.debug_diagnostics and dt_budget is not None:
+                merged_diag.update(dt_budget.diagnostics())
+            dbg_history.append(merged_diag)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             _to_h = lambda a: np.asarray(_bk.to_host(a))
@@ -133,6 +146,13 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
         if step % cfg.run.print_every == 0 or step <= 2:
             ke = diag.last("kinetic_energy", 0.0)
             print(f"  step={step:5d}  t={t:.4f}  dt={dt:.5f}  KE={ke:.3e}")
+            if dt_budget is not None:
+                print(
+                    f"          dt_adv={dt_budget.dt_advective:.3e}  "
+                    f"dt_visc={dt_budget.dt_viscous:.3e}  "
+                    f"dt_cap={dt_budget.dt_capillary:.3e}  "
+                    f"limiter={dt_budget.limiter}"
+                )
             d = solver._step_diag.last
             if d:
                 print(

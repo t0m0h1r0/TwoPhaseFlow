@@ -46,7 +46,8 @@ physics:
 run:
   time:
     final: 0.50
-    cfl: 0.10
+    # Multiplier on theory CFL constants; 1.0 uses the theory budget.
+    cfl: 1.0
     print_every: 10
   debug:
     step_diagnostics: true

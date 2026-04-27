@@ -51,7 +51,11 @@ class PhysicsCfg:
 class RunCfg:
     T_final: float | None = None
     max_steps: int | None = None
-    cfl: float = 0.15
+    cfl: float = 1.0
+    cfl_policy: str = "theory_multiplier"
+    cfl_advective: float = 0.10
+    cfl_capillary: float = 0.05
+    cfl_viscous: float = 1.0
     snap_times: list = field(default_factory=list)
     snap_interval: float | None = None
     reinit_eps_scale: float = 1.0

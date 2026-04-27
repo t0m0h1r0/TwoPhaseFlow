@@ -283,17 +283,18 @@ All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges, novelty table |
 | `02_governing.tex` + `02b_surface_tension.tex` + `02c_nondim_curvature.tex` | §2 | One-Fluid NS, CSF, Heaviside, ψ-convention |
 | `03_levelset.tex` + `03b_cls_transport.tex` + `03c_levelset_mapping.tex` | §3 | CLS advection, reinitialization, ψ-φ mapping |
-| `04_ccd.tex` + `04b_ccd_bc.tex` + `04d_dissipative_ccd.tex` | §4 | O(h⁶), block Thomas, boundary scheme, dissipative filter |
-| `05_time_integration.tex` | §5 | TVD-RK3/AB2+IPC, CFL |
-| `06_grid.tex` + `06b_ccd_extensions.tex` | §6 | Non-uniform interface-fitted grid and CCD extension |
-| `07_advection.tex` + `07b_reinitialization.tex` | §7 | Conservative advection and CLS reinitialization |
-| `08_collocate.tex` + `08b_pressure.tex` + `08c_pressure_filter.tex` | §8 | Collocated-grid pressure coupling, Rhie-Chow, pressure-filter limits |
+| `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_dccd_derivation.tex` + `04d_uccd6.tex` + `04e_fccd.tex` + `04f_face_jet.tex` | §4 | O(h⁶), block Thomas, boundary scheme, DCCD/UCCD6/FCCD/face-jet |
+| `05_reinitialization.tex` + `05b_cls_stages.tex` | §5 | CLS Ridge-Eikonal reinitialization, A-F 6 stages |
+| `06_scheme_per_variable.tex` + `06b_advection.tex` + `06c_fccd_advection.tex` + `06d_viscous_3layer.tex` | §6 | Per-variable spatial discretization, CLS/momentum FCCD advection, viscous 3-layer |
+| `07_time_integration.tex` | §7 | TVD-RK3/IMEX-BDF2/CN defect-correction, velocity-PPE ordering, CFL |
+| `08_collocate.tex` + `08b_pressure.tex` + `08c_bf_failure.tex` + `08d_bf_seven_principles.tex` + `08e_fccd_bf.tex` + `08f_pressure_filter.tex` | §8 | Collocated-grid pressure coupling, BF failure modes/principles, FCCD BF sub-system, pressure-filter limits |
 | `09_ccd_poisson.tex` + `09b_split_ppe.tex` + `09c_hfe.tex` + `09d_defect_correction.tex` + `09e_ppe_bc.tex` + `09f_pressure_summary.tex` | §9 | Variable-density PPE, split-PPE, HFE, defect correction, BC |
-| `10_full_algorithm.tex` + `10b_dccd_bootstrap.tex` | §10 | Full solver loop, operator mapping, DCCD bootstrap, timestep control |
-| `11_component_verification.tex` + `11a`–`11g` | §11 | Component-level mathematical verification |
-| `12_verification.tex` + `12a`–`12h` | §12 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
-| `13_benchmarks.tex` | §13 | Multi-phase flow benchmarks (capillary wave, rising bubble, Taylor deformation) |
-| `14_conclusion.tex` | §14 | Summary, future work |
+| `10_grid.tex` + `10b_ccd_extensions.tex` + `10c_fccd_nonuniform.tex` + `10d_ridge_eikonal_nonuniform.tex` | §10 | Non-uniform interface-fitted grid, CCD/FCCD/Ridge-Eikonal non-uniform extensions |
+| `11_full_algorithm.tex` + `11c_dccd_bootstrap.tex` + `11d_pure_fccd_dns.tex` | §11 | Full solver loop, operator mapping, DCCD bootstrap, pure FCCD DNS architecture |
+| `12_component_verification.tex` (+ sub-files) | §12 | Component-level mathematical verification (CCD/DCCD/curvature/CLS/HFE/PPE/RK3) |
+| `13_verification.tex` + `13b`–`13i` | §13 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
+| `14_benchmarks.tex` | §14 | Multi-phase flow benchmarks (capillary wave, rising bubble, Taylor deformation) |
+| `15_conclusion.tex` | §15 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |
 
 ### §9b — LaTeX Notation Conventions (MANDATORY, enforced 2026-04-01)
@@ -310,10 +311,10 @@ All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
 
 | Parameter | Defined in | Referenced in |
 |---|---|---|
-| `ε_tol` | `08_pressure.tex` (eq:etol_physical) | `08_pressure.tex` (box:dtau_impl), `09_full_algorithm.tex` |
-| `Δτ_opt` | `08_pressure.tex` (eq:dtau_opt) | `appendix_proofs.tex` (sec:dtau_derive) |
+| `ε_tol` | `appendix_ppe_pseudotime.tex` (eq:etol_physical) | `appendix_ppe_pseudotime.tex` (box:dtau_impl), `11_full_algorithm.tex` |
+| `Δτ_opt` | `appendix_ppe_pseudotime.tex` (eq:dtau_opt) | `appendix_ccd_impl_s3.tex` (sec:dtau_derive), `appendix_ppe_pseudotime.tex` (sec:dtau_derive) |
 | `Δτ_par` (CLS) | `03_levelset.tex` | `03_levelset.tex` warnbox |
-| Time accuracy order | `04b_time_schemes.tex` | `00_abstract.tex`, `01_introduction.tex`, `11_conclusion.tex` |
+| Time accuracy order | `07_time_integration.tex` | `00_abstract.tex`, `01_introduction.tex`, `15_conclusion.tex` |
 
 ────────────────────────────────────────────────────────
 # §11 — Domain Map

@@ -1,6 +1,6 @@
-# Wiki Index — 221 entries
+# Wiki Index — 224 entries
 
-## Theory (76)
+## Theory (77)
 
 | REF-ID | Title |
 |--------|-------|
@@ -80,6 +80,7 @@
 | [WIKI-T-074](theory/WIKI-T-074.md) | Well-Balanced Buoyancy Predictor Theory: Pressure-Robust, Interface-Band, Stage-Split Closure |
 | [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
 | [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
+| [WIKI-T-077](theory/WIKI-T-077.md) | Capillary Energy Stability: Variational Geometry and Projection-Native Surface Tension |
 
 ## Cross-Domain (38)
 
@@ -214,7 +215,7 @@
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
 
-## Code (34)
+## Code (36)
 
 | REF-ID | Title |
 |--------|-------|
@@ -252,3 +253,5 @@
 | [WIKI-L-032](code/WIKI-L-032.md) | Phase-Separated FCCD Projection Closure: PPE, Predictor Residual, and Corrector Faces |
 | [WIKI-L-033](code/WIKI-L-033.md) | Clean Integration of Phase-Separated FCCD Projection Closure |
 | [WIKI-L-034](code/WIKI-L-034.md) | ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM |
+| [WIKI-L-035](code/WIKI-L-035.md) | Implementation Roadmap: Projection-Native Capillary Coupling |
+| [WIKI-L-036](code/WIKI-L-036.md) | Phase-Trace Jump Flux Operator for Phase-Separated PPE |

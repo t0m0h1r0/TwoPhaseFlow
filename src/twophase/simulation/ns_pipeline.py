@@ -62,6 +62,7 @@ from .ns_runtime_services import (
     build_runtime_initial_condition,
     build_runtime_initial_velocity,
     compute_runtime_dt_max,
+    compute_runtime_timestep_budget,
     make_runtime_boundary_condition_hook,
     psi_from_phi as runtime_psi_from_phi,
 )
@@ -561,6 +562,10 @@ class TwoPhaseNSSolver:
         v: np.ndarray,
         physics: "PhysicsCfg",
         cfl: float = 0.15,
+        *,
+        cfl_advective: float | None = None,
+        cfl_capillary: float | None = None,
+        cfl_viscous: float = 1.0,
     ) -> float:
         """CFL + viscous + capillary timestep limit."""
         return compute_runtime_dt_max(
@@ -569,6 +574,32 @@ class TwoPhaseNSSolver:
             v,
             physics,
             cfl=cfl,
+            cfl_advective=cfl_advective,
+            cfl_capillary=cfl_capillary,
+            cfl_viscous=cfl_viscous,
+        )
+
+    def dt_budget(
+        self,
+        u: np.ndarray,
+        v: np.ndarray,
+        physics: "PhysicsCfg",
+        cfl: float = 0.15,
+        *,
+        cfl_advective: float | None = None,
+        cfl_capillary: float | None = None,
+        cfl_viscous: float = 1.0,
+    ):
+        """Return per-operator timestep candidates and active limiter."""
+        return compute_runtime_timestep_budget(
+            self._runtime_timestep_context(),
+            u,
+            v,
+            physics,
+            cfl=cfl,
+            cfl_advective=cfl_advective,
+            cfl_capillary=cfl_capillary,
+            cfl_viscous=cfl_viscous,
         )
 
     def _runtime_setup_context(self) -> NSRuntimeSetupContext:

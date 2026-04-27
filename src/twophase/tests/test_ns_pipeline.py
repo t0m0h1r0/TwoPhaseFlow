@@ -188,6 +188,69 @@ def test_dt_max_capillary_wave_bound_uses_h_min():
     assert dt == pytest.approx(expected)
 
 
+def test_dt_max_accepts_separate_capillary_cfl():
+    """Theory policy can lower the capillary constant without changing advective CFL."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0)
+    u = np.zeros(s._grid.shape)
+    v = np.zeros(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=1.0, mu=1.0e-12)
+
+    dt = s.dt_max(u, v, ph, cfl=0.2, cfl_capillary=0.05)
+    expected = 0.05 * np.sqrt(
+        (ph.rho_l + ph.rho_g) * s.h_min ** 3 / (2.0 * np.pi * ph.sigma)
+    )
+    assert dt == pytest.approx(expected)
+
+
+def test_dt_budget_reports_active_limiter_and_candidates():
+    """Runner diagnostics need all timestep candidates, not only the minimum."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0)
+    u = np.zeros(s._grid.shape)
+    v = np.zeros(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=1.0, mu=1.0e-12)
+
+    budget = s.dt_budget(u, v, ph, cfl=0.2, cfl_capillary=0.05)
+    diagnostics = budget.diagnostics()
+
+    assert budget.limiter == "capillary"
+    assert budget.dt == pytest.approx(budget.dt_capillary)
+    assert diagnostics["dt_limiter_code"] == pytest.approx(3.0)
+    assert diagnostics["dt_capillary"] == pytest.approx(budget.dt)
+
+
+def test_dt_budget_treats_zero_viscosity_as_no_viscous_limit():
+    """Inviscid configurations must not fail while evaluating the CFL budget."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0)
+    u = np.ones(s._grid.shape)
+    v = np.zeros(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=0.0, mu=0.0, mu_l=0.0, mu_g=0.0)
+
+    budget = s.dt_budget(u, v, ph, cfl=0.2)
+
+    assert np.isinf(budget.dt_viscous)
+    assert budget.limiter == "advective"
+
+
+def test_dt_max_crank_nicolson_omits_viscous_stability_limit():
+    """Implicit CN viscosity should not be governed by the CFL multiplier."""
+    from twophase.simulation.config_io import PhysicsCfg
+
+    s = _make_solver(alpha_grid=1.0, viscous_time_scheme="crank_nicolson")
+    u = np.ones(s._grid.shape)
+    v = np.ones(s._grid.shape)
+    ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=0.0, mu=1.0e6)
+
+    dt = s.dt_max(u, v, ph, cfl=0.2)
+    expected = 0.2 / (1.0 / s.h_min + 1.0 / s.h_min)
+    assert dt == pytest.approx(expected)
+
+
 def test_dt_max_implicit_bdf2_omits_viscous_stability_limit():
     """True implicit BDF2 viscosity should not impose the explicit ν/h² bound."""
     from twophase.simulation.config_io import PhysicsCfg

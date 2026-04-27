@@ -239,7 +239,7 @@ Eikonal 方程式 \cite{Sussman1994}
   \item \textbf{Eikonal PDE 反復（疑似時間反復；反復回数は §~\ref{sec:val_summary} 参照）：}
         Godunov 一次風上差分で式~\eqref{eq:eikonal_pde} を疑似時間積分
         （\S\ref{sec:scheme_per_variable} 表で $\phi$ 再初期化に WENO--HJ を推奨する記述は
-        Level 2/3 の高精度オプション；Level 1 検証では Godunov で十分）
+        変密度・分相プロダクションの高精度オプション；等密度SSPRK3検証では Godunov で十分）
         \begin{equation}
           \phi^{(k+1)} = \phi^{(k)} - \Delta\tau\,\operatorname{sgn}(\phi_0)\,
           \bigl(G^{\mathrm{Godunov}}(\phi^{(k)}) - 1\bigr)

@@ -49,6 +49,13 @@ Requires: first derivatives (psi_x, psi_y), second derivatives (psi_xx, psi_yy),
 
 **Consequence**: The CLS smoothed Heaviside psi = H_eps(phi) computes identical curvature whether using phi or psi. No logit inversion needed for curvature.
 
+**2026-04-26 discrete caveat**: this is a continuum theorem, not a discrete
+energy-stability theorem. On non-uniform grids, compact finite-difference
+operators do not satisfy the nonlinear chain rule exactly, so direct
+`psi`-curvature may fail to be the variational derivative of a discrete
+surface-area functional. See [[WIKI-T-077]] for the production capillary
+geometry contract.
+
 ## Implementation: psi-Direct Path
 
 1. Compute psi_x, psi_xx via x-direction CCD (O(h^6))
