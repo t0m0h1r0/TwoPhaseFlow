@@ -10,6 +10,16 @@ from typing import Any, Callable
 class ExperimentHandler:
     """Base for all experiment handlers.  Subclasses implement run() and plot()."""
 
+    @classmethod
+    def load_config(cls, path: Any) -> Any:
+        """Load YAML at ``path`` into the handler's expected config type.
+
+        Default: ch11/ch12 ``ComponentConfig`` via ``load_component_config``.
+        Override for ch13-style ``ExperimentConfig`` schemas.
+        """
+        from .config_loader import load_component_config
+        return load_component_config(path)
+
     def run(self, cfg: Any, outdir: Any) -> dict:
         raise NotImplementedError
 

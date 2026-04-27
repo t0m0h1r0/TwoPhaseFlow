@@ -14,7 +14,7 @@ Commands:
   pull                  Sync results back from remote
   setup                 One-time: install Python, venv, dependencies on remote
   run <script.py>       Run a single experiment on remote
-  run-all <ch11|ch12|ch13>  Run all experiments in a chapter
+  run-all <ch12|ch13>  Run all experiments in a chapter
   test [pytest-args]    Run pytest on remote (default: --gpu)
   ssh                   Open an interactive SSH session to remote project dir
 
@@ -22,8 +22,8 @@ Examples:
   ./remote.sh check
   ./remote.sh push
   ./remote.sh setup
-  ./remote.sh run experiment/ch11/exp11_01_ccd_convergence.py
-  ./remote.sh run-all ch11
+  ./remote.sh run experiment/run.py --config exp12_01_hydrostatic
+  ./remote.sh run-all ch12
   ./remote.sh test
   ./remote.sh test -k test_ccd --gpu
   ./remote.sh pull
@@ -109,7 +109,7 @@ SETUP
 
 # ── Run a single experiment ──────────────────────────────────────────────────
 cmd_run() {
-    local script="${1:?Error: provide a script path, e.g. experiment/ch11/exp11_01_ccd_convergence.py}"
+    local script="${1:?Error: provide a script path, e.g. experiment/run.py --config exp12_01_hydrostatic}"
     shift
     local extra_args="$*"
 
@@ -132,7 +132,7 @@ RUN
 
 # ── Run all experiments in a chapter ─────────────────────────────────────────
 cmd_run_all() {
-    local chapter="${1:?Error: provide chapter name, e.g. ch11 or ch12}"
+    local chapter="${1:?Error: provide chapter name, e.g. ch12 or ch13}"
 
     echo "==> Running all experiments in ${chapter} on ${REMOTE_HOST}"
     ssh "${REMOTE_HOST}" bash -s <<RUNALL
@@ -141,18 +141,10 @@ source "${VENV_DIR}/bin/activate"
 export TWOPHASE_USE_GPU=1
 cd "${REMOTE_DIR}"
 
-if [ "${chapter}" = "ch13" ]; then
-    echo "====== ch13 unified runner (run.py --all) ======"
-    if time ${PYTHON} experiment/ch13/run.py --all; then
-        echo "  -> OK"
-    else
-        echo "  -> FAILED"
-        exit 1
-    fi
-elif ls experiment/${chapter}/config/exp*.yaml >/dev/null 2>&1; then
-    # YAML-driven chapters (ch11, ch12): iterate over config files
+if ls experiment/${chapter}/config/*.yaml >/dev/null 2>&1; then
+    # YAML-driven chapters (ch12, ch13): iterate over all config files
     failed=0
-    for cfg in experiment/${chapter}/config/exp*.yaml; do
+    for cfg in experiment/${chapter}/config/*.yaml; do
         stem="\$(basename \$cfg .yaml)"
         echo ""
         echo "====== \$stem ======"
