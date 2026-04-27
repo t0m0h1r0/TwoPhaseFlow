@@ -231,7 +231,7 @@ CLS phase-indicator $\psi^{n+1}\in[0,1]$ から物性値を線形内挿で得る
   \label{eq:mu_update}
 \end{align}
 $\psi$ は CLS Stage A--F（\S\ref{sec:cls_stage_sequence}，§5.2）で確定し，
-$\psi(1-\psi)$ 質量補正後（Stage F）の値を用いる．
+Stage F の最終質量閉鎖・値域制限後の値を用いる．
 $\rho^{n+1}$ は時間積分 §7 の運動量予測子・PPE・浮力体積力に直接代入される．
 
 \noindent\textbf{線形内挿の正当性：}
@@ -293,7 +293,7 @@ $\psi\in[0,1]$ なら $\rho\in[\rho_g,\rho_l]$ が代数的に保証される．
 $\rho^{n+1}, \mu^{n+1}$ は time-stepping ordering の中で
 \textbf{CLS Stage A--F 後・運動量予測子前}に確定する：
 \begin{enumerate}
-  \item Stage F 後の $\psi^{n+1}$ から \eqref{eq:rho_update}, \eqref{eq:mu_update}
+  \item Stage F の最終質量閉鎖後の $\psi^{n+1}$ から \eqref{eq:rho_update}, \eqref{eq:mu_update}
         で cell-center $\rho^{n+1}, \mu^{n+1}$ を更新．
   \item Face $\mu$ は Layer C / CN Helmholtz 構築時に
         \eqref{eq:mu_face_arith} または \eqref{eq:mu_face_harm} で評価．
