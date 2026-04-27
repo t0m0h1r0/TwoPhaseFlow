@@ -86,7 +86,7 @@ class PPESolverIIM(_CCDPPEBase):
         self._iim_backend = getattr(config.solver, "iim_backend", "decomp")
         self._corrector = IIMStencilCorrector(grid, mode=self._iim_mode)
 
-        self._c_tau = getattr(config.solver, "pseudo_c_tau", 2.0)
+        self._c_tau = getattr(config.solver, "pseudo_c_tau", 2.0)  # §7.9 capillary CFL safety
         self._h_min = min(grid.L[ax] / grid.N[ax] for ax in range(grid.ndim))
 
     # ── IPPESolver interface (overrides _CCDPPEBase.solve) ───────────────

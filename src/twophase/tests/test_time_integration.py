@@ -5,7 +5,7 @@ Verified properties:
   1. WENO5 spatial order with periodic BC: O(h⁵), observed ≥ 4.8
      (§4 sec:weno5, eq:weno5_beta, eq:weno5_rec0-2; §4 sec:weno5_boundary)
   2. TVD-RK3 temporal order: O(Δt³), observed ≥ 2.8
-     (§4 eq:tvd_rk3)
+     (§7.3 eq:tvd_rk3)
 
 Manufactured solution (both tests):
     ψ(x, t) = 0.5 + 0.5·sin(2π(x − t))   on [0, 1] (periodic)
@@ -272,7 +272,7 @@ def test_dissipative_ccd_full_method_order(backend):
 
     Spatial truncation error O(h²) from the spectral filter (§5 eq:dccd_adv_filter)
     limits the overall method to O(h²) when dt ~ h (CFL fixed).
-    Implements §5 alg:dccd_adv + §9 eq:tvd_rk3.
+    Implements §6 alg:dccd_adv + §7.3 eq:tvd_rk3.
     """
     np.random.seed(0)
     Nxs = [32, 64, 128, 256]

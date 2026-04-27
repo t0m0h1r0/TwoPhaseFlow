@@ -207,7 +207,11 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         buoy_v: "array" | None = None,
         psi: "array" | None = None,
     ) -> tuple["array", "array"]:
-        """Solve u* - (2/3)dt V(u*) = 4/3 uⁿ - 1/3 uⁿ⁻¹ + (2/3)dt E."""
+        """Solve u* - (2/3)dt V(u*) = 4/3 uⁿ - 1/3 uⁿ⁻¹ + (2/3)dt E.
+
+        Implements §7.3 eq:predictor_imex_bdf2 (BDF2 coefficients 4/3, -1/3, 2/3)
+        and §7.4 eq:helmholtz_implicit_bdf2 (Helmholtz form, dt_effective = 2/3·dt).
+        """
         base_velocity = [
             (4.0 / 3.0) * u - (1.0 / 3.0) * u_prev,
             (4.0 / 3.0) * v - (1.0 / 3.0) * v_prev,
