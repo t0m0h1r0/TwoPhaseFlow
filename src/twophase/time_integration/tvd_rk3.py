@@ -1,7 +1,7 @@
 """
 TVD-RK3 (Total Variation Diminishing Runge-Kutta 3rd order).
 
-Implements §8 (Eq. 79–81) of the paper.
+Implements §7.3 (eq:tvd_rk3) of the paper.
 
 The Shu-Osher TVD-RK3 scheme for dq/dt = L(q):
 
