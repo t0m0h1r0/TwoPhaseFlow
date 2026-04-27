@@ -244,7 +244,7 @@ CLS 変数 $\psi$ に基づく適応制御アルゴリズムを与える．
 $C^0$ tanh プロファイル移流（界面）
   & 0.05 & あり（$S(\psi)$） & 界面プロファイル保持 \\
 平滑場・チェッカーボード抑制
-  & $1/4$ & なし（固定） & 安定性上限・Nyquist 完全抑制 \\
+  & $1/4$ & なし（固定） & 単調減衰上限・Nyquist 完全抑制 \\
 高次導関数の帯制限
   & 0.05 & あり（$S(\psi)$） & 数値振動を界面外で抑制 \\
 \hline
@@ -265,7 +265,7 @@ $C^0$ tanh プロファイル移流（界面）
   \boxed{\varepsilon_{d,\max} = 0.05}
   \label{eq:eps_max}
 \end{equation}
-安定性制約 $\varepsilon_{d,\max} \leq 0.25$（式~\eqref{eq:dccd_filter_transfer}）を満足する．
+単調減衰設計上限 $\varepsilon_{d,\max} \leq 0.25$（式~\eqref{eq:dccd_filter_transfer}）を満足する．
 より強い安定化が必要な場合は $\varepsilon_{d,\max} = 0.10$〜$0.20$ まで拡張可能だが，
 低波数精度も同率で劣化する．
 
