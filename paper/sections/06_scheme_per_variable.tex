@@ -42,9 +42,9 @@ CCD の $\mathcal{O}(h^6)$ 精度はステンシル支持内で場が $C^\infty$
 変数 & 特性 & 推奨スキーム \\
 \hline
 $\psi$（CLS）& $C^0$ 急 tanh & FCCD 面ジェット移流（面値保存型；ch13 production；\S\ref{sec:advection_motivation}） \\
-$u, v$ bulk & $C^\infty$ 滑 & CCD / UCCD6 / FCCD（\S\ref{sec:fccd_advection}） \\
+$u, v$ bulk & $C^\infty$ 滑 & \textbf{UCCD6}（ch13 production；\S\ref{sec:fccd_advection}）／ CCD・FCCD（検証用代替） \\
 $u, v$ 界面帯 & $\nabla u$ kink & 2 次片側（\S\ref{sec:viscous_3layer}） \\
-$\phi$（再初期化）& Eikonal & Godunov（等密度検証）/ WENO--HJ~\cite{JiangPeng2000}（変密度本番；\S\ref{sec:eikonal_reinit}） \\
+$\phi$（再初期化）& Eikonal & \textbf{Ridge-Eikonal}（ch13 production；\S\ref{sec:xi_sdf_reinit}）／ Godunov・WENO--HJ~\cite{JiangPeng2000}（基底 Eikonal solver） \\
 $p$ & 界面で jump & Face-flux + GFM/IIM~\cite{Fedkiw1999}（\S\ref{sec:balanced_force}）\\
 $\rho, \mu$ & step profile & 低次（算術平均=$\rho$, 調和平均=$\mu_\text{face}$；\S\ref{sec:rho_mu_interpolation}）\\
 \hline
@@ -81,9 +81,6 @@ $\rho, \mu$ & step profile & 低次（算術平均=$\rho$, 調和平均=$\mu_\te
         Definition $|\phi|\le 3h$ or phase-indicator mismatch で帯を同定し，
         2 次中心 / 2 次片側に落とす（\S\ref{sec:viscous_3layer}）．
 \end{itemize}
-
-% CHK-223 Phase 4.5: 速度-PPE 整合性段落は時間積分順序設計のため §7 NEW へ移行．
-% 詳細は \S\ref{sec:cls_velocity_consistency_v7}（§7.3）に集約．
 
 \noindent\textbf{本章の構成}：
 \S~\ref{sec:advection_motivation}（§6.1）で CLS $\psi$ 用 FCCD 面ジェット移流，
