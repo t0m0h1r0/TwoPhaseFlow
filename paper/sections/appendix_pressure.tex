@@ -24,8 +24,9 @@
 \subsection{C/RC 補正のテイラー展開証明}
 \label{app:crc_taylor}
 
-本節では，§~\ref{sec:rc_high_order} で述べた C/RC（CCD-enhanced Rhie--Chow Correction）の
-精度改善を，テイラー展開によって厳密に導出する．
+本節では C/RC（CCD-enhanced Rhie--Chow Correction）の精度改善（参考：付録~\ref{app:rhie_chow_full}）を，
+テイラー展開によって厳密に導出する（本稿のプロダクション設計では Rhie--Chow 経路を採用しないため，
+本節は historical reference として収録）．
 
 \paragraph{Rhie--Chow 補正項のテイラー展開}
 
@@ -80,7 +81,7 @@ $p''$ のフェイス差分は：
   \frac{p''_E - p''_P}{h} = p'''(x_f) + \frac{h^2}{24}p^{(5)}(x_f) + \Ord{h^4}
   \label{eq:d2_face_diff}
 \end{equation}
-これを用いた補正済みセル中心平均（式~\eqref{eq:rc_avg_corrected}）では，
+これを用いた補正済みセル中心平均では，
 $p'''$ 係数が $1/24$ に揃い，検出項は：
 \begin{equation}
   (\nabla p)_f - \overline{(\nabla p)}_f^{\,*}

@@ -73,7 +73,7 @@ Tier VII は「複数 primitive の最小結合」を 1 ステップで検証す
 % ─────────────────────────────────────────────────────────────────────────────
 
 \noindent\textbf{目的：}
-§~\ref{sec:rc_balanced_force} の BF（Balanced Force）整合性条件——
+§~\ref{sec:balanced_force} の BF（Balanced Force）整合性条件——
 圧力勾配 $\nabla p^{n+1}$ と表面張力 $\sigma\kappa\nabla\psi$ に同一の
 離散微分演算子を用いる——が，1-step Laplace 圧誤差として
 寄生流れを抑制することを検証する．
@@ -105,7 +105,7 @@ $\rho_l/\rho_g = 1000$, $\mathit{We} = 1$，$N = 32, 64, 128$．
 整合ケースでは $\Delta p_\mathrm{num} \approx 4.0$ を全格子で相対誤差
 $0.16$--$0.31\%$ で達成，$\max|\bu^1|$ は機械精度近傍に留まる．
 不整合ケースでは $\max|\bu^1|$ が整合ケース比 $10^3$--$10^6$ 倍に増幅
-（演算子不一致による寄生流れ；§~\ref{sec:rc_balanced_force} の理論予測と一致）．
+（演算子不一致による寄生流れ；§~\ref{sec:balanced_force} の理論予測と一致）．
 
 % ───────────────
 \paragraph{(b) $\rho/\mu$ 補間（arithmetic/harmonic/VOF）面値精度}
