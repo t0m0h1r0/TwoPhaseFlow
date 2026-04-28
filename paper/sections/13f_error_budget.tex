@@ -35,7 +35,7 @@ V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (壁境界・参照点ゲージ支配) $\triangle$ & — \\
 V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9$ & — \\
 V6   & 密度比 sweep ($\rho_r=2..833$) & $|\Delta p_{\mathrm{rel}}|^{\max}$ & $1.77\%$ ($\rho_r=833, N=32$) \checkmark & — \\
-V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{0.56}$ ($\times$ 設計未達) & $O(\Delta t^2)$ 設計 \\
+V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\times$ 設計未達；旧 reduced proxy $0.56$) & $O(\Delta t^2)$ 設計 \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
 V9   & local $\varepsilon$ (§14) & C/A at $N=32$ & $0.11\times$ ($\checkmark$) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $0.107\%$ \checkmark & — \\
@@ -49,7 +49,8 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
 \begin{enumerate}\setlength{\itemsep}{0pt}
   \item \textbf{空間離散誤差}．CCD 6 次（V2 で確証）．Kovasznay slope $6.00$，TGV では時間誤差床下．
   \item \textbf{時間離散誤差}．単相 NS は AB2/IMEX-BDF2 で $O(\Delta t^2)$（V1 slope $2.00$）．
-        二相結合では界面再初期化 + 曲率の陽的遅れ評価で実効 $O(\Delta t^{0.56})$（V7; \autoref{sec:imex_bdf2_twophase_time}）．
+        二相結合では界面再初期化頻度差 + 曲率の陽的遅れ評価で実効 $O(\Delta t^{1.58})$ までの回復に留まる
+        （V7; \autoref{sec:imex_bdf2_twophase_time}；§14 stack；旧 reduced proxy では $0.56$）．
   \item \textbf{界面表現誤差}．Heaviside--$\delta$ の local $\varepsilon$ は
         FCCD/HFE/pressure-jump PPE と同時に使う条件で有効（V9）；
         旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
@@ -67,7 +68,7 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item $\triangle$ \textbf{条件付き合格}: V4 (固定 Eulerian + 参照点固定 PPE で
         $O(\|\bm U\|)$ 残差), V10-b ($\alpha=2$ Zalesak: volume drift $1.519\%$ だが centroid order $0.34$).
   \item $\times$ \textbf{要改善 / 推奨せず / 制約条件}:
-        V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速).
+        V7 (二相時間 slope $1.58$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速; 旧 reduced proxy では $0.56$ に留まり §14 stack で改善).
   \item \checkmark \textbf{§14 stack 条件付き合格}: V9
         (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
         HFE curvature + pressure-jump PPE と同時採用する).
