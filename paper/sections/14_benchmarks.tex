@@ -311,7 +311,8 @@ Rayleigh--Taylor &
         解決される（実装は
         \texttt{src/twophase/simulation/}\allowbreak\texttt{config\_run\_builder\_sections.py:43}）．
         理論上は式~\eqref{eq:flat_capillary_dispersion} と
-        §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要がある（\textbf{継続}）．
+        §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要があり，
+        毛管 CFL 制約の最近の体系的議論は~\cite{DennerVanWachem2022}（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
         face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
   \item \textbf{RT 不安定 閉包}——低 Atwood（$\mathrm{At}\approx 0.026$）かつ
