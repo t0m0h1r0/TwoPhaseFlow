@@ -73,7 +73,7 @@ Stage & 操作 & 要件 \\
 A & TVD-RK3 保存形移流 & FCCD 面値演算子による保存形フラックス（Stage A; \S\ref{sec:advection_motivation}），発散フリー $\mathbf{u}^n$．BC：壁面 $\partial_n\psi=0$（Neumann）/ 周期境界（検証），CCD ghost-cell 対称延長 \\
 B & 移流後 $\psi(1-\psi)$ 補正 & clamp を伴う標準運用では必須；no-clamp の bounded 検証では省略可\\
 C & $\psi\to\phi$ 写像 & artanh 前 $\psi$ クランプ \\
-D & Ridge--Eikonal 再初期化 & 1 ショット距離再構成を補助経路として使用；反復 Eikonal fallback のみ仮想時間 $\tau$ を $\Delta t$ と独立管理 \\
+D & Ridge--Eikonal 再初期化 & 補助距離再構成；反復 fallback のみ仮想時間 $\tau$ を $\Delta t$ と独立管理 \\
 E & $\phi\to\psi$ 写像＋幾何（$\mathbf{n},\kappa$）& tanh 前 $\phi/2\varepsilon$ クランプ；曲率は $\psi$ 直接式または $\phi$/HFE 経路を用途で選択 \\
 F & 再初期化後の最終質量閉鎖 & $\phi$ 空間一様シフトを既定；補正後の零点移動量 $\delta\phi$ を監視\\
 \hline
@@ -97,7 +97,7 @@ $(\psi u)_{f,i+1/2}$ を Hermite 補間で構成して中心発散を求める
 
 \noindent\textbf{Stage D — Ridge--Eikonal 再初期化}：
 補助経路として §~\ref{sec:xi_sdf_reinit} の反復なし距離再構成を用いる．
-Godunov/WENO--HJ 型の反復 fallback を使う場合に限り，
+Godunov または WENO--HJ 型の反復 fallback を使う場合に限り，
 $|\phi|\le W=5\varepsilon$ の帯のみ
 \begin{equation*}
   \partial_\tau\phi + \mathrm{sgn}(\phi_0)(|\bnabla\phi|-1) = 0
