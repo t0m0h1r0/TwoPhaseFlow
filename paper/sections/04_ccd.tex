@@ -3,6 +3,7 @@
 \label{sec:strategy}
 \label{sec:CCD}
 
+\noindent\textbf{本章の位置付け：}
 本章では，二相流 NS 方程式の数値計算における「精度」の真の意味を再定義し，
 なぜ CCD 法が不可避な選択であるかを論理的に提示する．
 空間離散化スキームの設計原理と CCD 派生スキーム族
@@ -41,7 +42,7 @@ $\Ord{\varepsilon}$ で滑らかに変化する界面に対しては
 3 点制約の副産物として自然に得られる．
 
 \medskip
-\noindent\textbf{本章で導入する 4 スキーム + 出力 API のロードマップ．}
+\noindent\textbf{本章の構成：4 スキーム + 出力 API のロードマップ．}
 派生スキームは出力ロカスにより\textbf{2 つの family} に分かれる：
 \textbf{節点中心 dissipation family}（CCD / DCCD / UCCD6）と
 \textbf{面中心 family}（FCCD），そしてその両者の出力を面位置で統合する API（面ジェット）．

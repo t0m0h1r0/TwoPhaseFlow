@@ -3,11 +3,13 @@
 \label{sec:collocate}%
 \label{sec:pressure}% backward-compat: referenced from §1,§6,§7c,§10,§14,appendices
 
+\noindent\textbf{本章の位置付け：}
 界面適合非一様格子（§~\ref{sec:grid}章で詳述）上に，
 すべての流体変数（$\bu, p, \psi$）を同一格子点に配置する
 \textbf{コロケート配置}を採用する．
 本章は「いかに物理的な釣り合いを離散化で表現するか」という数学的設計に集中する．
 
+\noindent\textbf{本章の構成：}
 \begin{enumerate}
   \item \textbf{§~\ref{sec:collocate_layout}（コロケート格子の利点と課題）：}
         コロケート格子の利点と，$2\Delta x$ チェッカーボード問題の根本原因
@@ -22,9 +24,10 @@
   \item \textbf{§~\ref{sec:checkerboard_solution}（解決策の概観）：}
         Balanced--Force 演算子整合と FCCD 面ジェット sub-system による
         デカップリング解消の役割分担．
-  \item \textbf{§~\ref{sec:balanced_force}（Balanced--Force 条件：演算子の完全一致原理）：}
-        圧力勾配演算子と界面張力演算子を「全く同じ CCD 演算子」で構成することで
-        演算子不一致に由来する静止液滴の数値残差を抑える設計思想．
+  \item \textbf{§~\ref{sec:balanced_force}（Balanced--Force 条件：同一ロカス・随伴整合原理）：}
+        圧力勾配演算子と界面張力演算子を同じ評価ロカス・同じ随伴ペアで構成することで
+        演算子不一致に由来する静止液滴の数値残差を抑える設計思想
+        （一様格子では CCD-pair，非一様格子では face-adjoint pair）．
         演算子不一致がもたらす寄生流れの定量的解析．
 \end{enumerate}
 
@@ -114,7 +117,7 @@ $\bnabla\cdot(1/\rho\,\bnabla\delta p)
 本稿では採用しない．代わりに以下の二機構の組み合わせによりデカップリングを解消する：
 \begin{enumerate}[noitemsep]
   \item \textbf{Balanced--Force 演算子整合}（§~\ref{sec:balanced_force}）：
-        圧力勾配と表面張力に同一の CCD 演算子を用いることで，
+        圧力勾配と表面張力を同じ面ロカス・同じ随伴ペアへ通すことで，
         演算子不整合に起因する寄生流れを構造的に除去
   \item \textbf{FCCD 面ジェット sub-system}（§~\ref{sec:fccd_bf_sub_system}；純 FCCD DNS パスとして本稿で運用）：
         面中心 CCD 演算子による面ジェットを介して
@@ -127,7 +130,7 @@ $\bnabla\cdot(1/\rho\,\bnabla\delta p)
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \textbf{Balanced--Force 離散化条件}とは，圧力勾配 $\bnabla p$ と表面張力
-$(\kappa/We)\bnabla\psi$ に\textbf{同一の離散演算子}を使用することで，
+$(\kappa/We)\bnabla\psi$ を\textbf{同一の離散ロカスと随伴整合した演算子対}で評価することで，
 静止流体における力学的平衡 $\bnabla p = (\kappa/We)\bnabla\psi$ が
 離散化後にも同じ離散空間で表現されることを要求する条件である~\cite{Francois2006}．
 これは CSF モデル（§~\ref{sec:csf}）使用時に寄生流れ（spurious currents，第~\ref{sec:intro}章§~\ref{sec:failure_modes}）を
@@ -191,8 +194,8 @@ F-2（PPE 内 $G_h$ $\neq$ 補正 $G_h$）は構造的に回避される．
 
 \paragraph{Balanced--Force 条件（離散化要件のまとめ）}
 CSF モデルを使用する場合，圧力勾配項 $-\bnabla p$ と表面張力項 $(\kappa\bnabla\psi)/We$ に
-\textbf{同一の離散差分演算子}を適用する必要がある．
-CCD 法では $D_x^{(1)}, D_y^{(1)}$（第~\ref{sec:CCD}章）を統一使用する：
+\textbf{同一ロカスの離散演算子対}を適用する必要がある．
+一様格子の節点 CCD 経路では $D_x^{(1)}, D_y^{(1)}$（第~\ref{sec:CCD}章）を統一使用する：
 \begin{align}
   \text{圧力勾配：} & \quad
     -D_x^{(1)} p_{i,j}, \quad -D_y^{(1)} p_{i,j}
@@ -205,8 +208,8 @@ CCD 法では $D_x^{(1)}, D_y^{(1)}$（第~\ref{sec:CCD}章）を統一使用す
 演算子の不一致は式~\eqref{eq:bf_operator_mismatch} の $\Ord{h^2}$ 残差を生じ，
 正帰還ループを通じて計算の発散を招く．
 \textbf{本稿の CSF + Balanced--Force 定式化（§~\ref{sec:csf}）では，
-$\bnabla p$ と $(\kappa/We)\bnabla\psi$ に同一の CCD 演算子を使用し，
-演算子不一致に由来する寄生流れ成分を高次に抑える
+$\bnabla p$ と $(\kappa/We)\bnabla\psi$ を同じ離散ロカスで評価し，
+演算子不一致に由来する寄生流れ成分を抑える
 （§~\ref{sec:ppe_discretization_choice} 参照）．}
 
 \medskip
