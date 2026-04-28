@@ -2,11 +2,18 @@
 
 ## Verdict
 
-**ACCEPT WITH MINOR EDITS.**
+**PASS AFTER FIXES.**
 
 前回の Major 指摘はすべて解消されている。§12 の重複ラベル問題は修正され、`sec:verify_summary` は §12.8、`tab:verification_summary` は Table 34 に解決する。V8/V9/V10 の設定は実験スクリプト由来の値へ戻され、V4 は「厳密な Galilean 不変性検証」ではなく固定壁・参照点ゲージ下の offset 残差診断として再定義された。V4-b/V7/V9 の負の結果も章頭と精度バジェットで一貫している。
 
-Severity count: **0 Fatal / 0 Major / 2 Minor / 1 Nit**.
+Initial severity count: **0 Fatal / 0 Major / 2 Minor / 1 Nit**.
+Open severity count after follow-up fixes: **0 Fatal / 0 Major / 0 Minor / 0 Nit**.
+
+## Fix Summary
+
+- m1 fixed: §12 summary now says `Galilean offset 残差＋RT 不安定性`.
+- m2 fixed: §13f now describes V5 suppression as parameter-dependent instead of a global `1/3--1/6` range.
+- n1 fixed: V9 setting bullets now use Japanese `．`.
 
 ## Checks Performed
 
@@ -30,47 +37,47 @@ Severity count: **0 Fatal / 0 Major / 2 Minor / 1 Nit**.
 - **§12 verdict taxonomy:** U1-c, U6-b, U8-d are consistently conditional across parent and summary tables.
 - **Stale counts and overcompressed claims:** the stale “19 benchmarks” count is gone; the main V5 design guidance is parameterized rather than flat 3--6x.
 
-## Remaining Minor Findings
+## Findings Resolved In Follow-up
 
-### m1 — §12 summary still calls the V4 connection “Galilean 不変性＋RT”
-
-Evidence:
-- `paper/sections/12h_summary.tex:135` says `界面--圧力相互作用 → Galilean 不変性＋RT 不安定性`.
-
-Impact:
-- This is not scientifically fatal because §13 itself correctly frames V4 as an offset residual diagnostic.
-- However, it reintroduces the old promise at the §12→§13 transition.
-
-Recommended fix:
-- Replace with `Galilean offset 残差＋RT 不安定性`.
-
-### m2 — §13f still summarizes V5 as a fixed `1/3--1/6` suppression range in one place
+### m1 — §12 summary used the old V4 connection wording
 
 Evidence:
-- `paper/sections/13f_error_budget.tex:55` says `CCD/FD 比 $1/3$--$1/6$ 抑制`.
-- The later design-guidance paragraph correctly states the parameter dependence and representative ratios at `paper/sections/13f_error_budget.tex:82-84`.
+- Before the fix, `paper/sections/12h_summary.tex:135` used the old Galilean-invariance phrasing for the §13 connection.
+- The current text uses `界面--圧力相互作用 → Galilean offset 残差＋RT 不安定性`.
 
 Impact:
-- This is weaker than the previous Major issue because the final design-guidance paragraph is now correct.
-- Still, the error-source stack can be read as a global range.
+- Before correction, this was not scientifically fatal because §13 itself correctly framed V4 as an offset residual diagnostic.
+- However, it could reintroduce the old promise at the §12→§13 transition.
 
-Recommended fix:
-- Replace the line with parameterized wording, e.g. `V5 では全表ケースで CCD が FD 以下であり，粗格子・低密度比ほど抑制が大きい`.
+Applied fix:
+- Replaced with `Galilean offset 残差＋RT 不安定性`.
+
+### m2 — §13f used a fixed V5 suppression range in one place
+
+Evidence:
+- Before the fix, `paper/sections/13f_error_budget.tex:55` compressed V5 into one fixed CCD/FD suppression range.
+- The later design-guidance paragraph already stated the parameter dependence and representative ratios at `paper/sections/13f_error_budget.tex:82-84`.
+
+Impact:
+- This was weaker than the previous Major issue because the final design-guidance paragraph was already correct.
+- Still, the error-source stack could be read as a global range before the follow-up fix.
+
+Applied fix:
+- Replaced the fixed range with parameterized wording: `V5 では CSF κ + CCD 勾配が全表ケースで FD 以下となり，粗格子・低密度比ほど寄生流れの抑制が大きい`.
 
 ## Nit
 
-### n1 — V9 setting bullets use ASCII periods
+### n1 — V9 setting bullets used ASCII periods
 
 Evidence:
-- `paper/sections/13e_nonuniform_ns.tex:77-79` end the A/B/C setting lines with `.`.
+- Before the fix, `paper/sections/13e_nonuniform_ns.tex:77-79` ended the A/B/C setting lines with ASCII periods.
 
 Impact:
 - Cosmetic only.
 
-Recommended fix:
-- Replace with Japanese `．` for §1--§3 style consistency.
+Applied fix:
+- Replaced the ASCII periods with Japanese `．` for §1--§3 style consistency.
 
 ## Final Assessment
 
-The manuscript no longer has a reviewer-blocking defect in Chapters 12--13. The remaining items are small editorial consistency issues. If the next task is “対応”, they can be fixed in one surgical patch without rerunning experiments.
-
+The follow-up patch resolves all findings from this re-review. Chapters 12--13 no longer have reviewer-blocking or open editorial findings from this pass.

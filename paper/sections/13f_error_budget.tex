@@ -52,7 +52,8 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
         二相結合では界面再初期化 + 曲率の陽的遅れ評価で実効 $O(\Delta t^{0.56})$（V7; \autoref{sec:imex_bdf2_twophase_time}）．
   \item \textbf{界面表現誤差}．Heaviside--$\delta$ は固定 $\varepsilon$ 推奨（V9）；
         local $\varepsilon$ は寄生流れ 3 桁増加．
-  \item \textbf{曲率推定誤差}．CSF $\kappa$ + CCD 勾配で寄生流れ V5: CCD/FD 比 $1/3$--$1/6$ 抑制．
+  \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配が全表ケースで FD 以下となり，
+        粗格子・低密度比ほど寄生流れの抑制が大きい．
   \item \textbf{CLS 形状追跡誤差}．FCCD/TVD--RK3 では非一様格子 $\alpha=2$ の volume drift は
         $1.519\%$ まで収まるが，Zalesak slot の centroid order は $0.34$ に留まる（V10）．
 \end{enumerate}
