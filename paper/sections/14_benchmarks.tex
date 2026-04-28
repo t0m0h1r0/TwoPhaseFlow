@@ -131,7 +131,8 @@ IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
 気泡（気相円，半径 $R=0.25$）を
 $[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
 小さい重力 $g=10^{-3}$ の下で上昇を計算する．
-この設定は Hysing 型の単一気泡配置~\cite{Hysing2009}を幾何的原型とするが，
+この設定は Hysing 型の単一気泡配置~\cite{Hysing2009}を幾何的原型とし，
+diffuse-interface 系の対応 benchmark~\cite{AlandVoigt2019} と整合するが，
 物性は水--空気級の高密度比に戻し，
 時間区間は長時間 closure と上昇ダイナミクスの両方を観察する $T=70.0$ に取る．
 
@@ -141,7 +142,8 @@ $[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
 hydrostatic な勾配成分は圧力空間に残し，
 密度変化に支えられた残差のみを face residual acceleration として組み立てる．
 この残差は PPE と同じ $A_f,G_f,D_f$ 上で評価する必要がある；
-そうでなければ投影で消えるべき gradient force が非ソレノイダルな速度として残る．
+そうでなければ投影で消えるべき gradient force が非ソレノイダルな速度として残る
+（balanced-force 表面張力との同類概念は~\cite{Francois2006}）．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]\times[0,2]$，$128\times256$，interface-fitted $\alpha=2$，壁面境界
@@ -204,13 +206,15 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
   k = \frac{2\pi m}{L_x},
   \label{eq:rt_linear_growth}
 \end{equation}
-の指数増大を示す（粘性・表面張力・有限振幅の影響は線形近似では落とす）．
+の指数増大を示す（粘性・表面張力・有限振幅の影響は線形近似では落とす；
+RT 線形安定論の正準的取り扱いは~\cite{Chandrasekhar1961}）．
 本 YAML の数値代入では
 $\mathrm{At}=(1000-950)/(1000+950)\approx 0.0256$（低 Atwood），
 $k=2\pi/0.5=4\pi\approx 12.57\ \mathrm{m^{-1}}$，
 $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 となり，最終時刻 $T=7.0\ \mathrm{s}\approx 12.5/\gamma$ は
-線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である．
+線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である
+（低 Atwood RT の DNS benchmark 規約は~\cite{Tryggvason1988}）．
 
 スロット規約は §\ref{sec:val_grid_policy} に従う．
 すなわち YAML スキーマ上は \texttt{physics.phases.liquid} スロットに
@@ -253,7 +257,8 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 \begin{enumerate}[noitemsep,leftmargin=2em]
   \item \textbf{線形成長} 早期窓 $0<t\lesssim 3/\gamma\approx 1.7\ \mathrm{s}$ で
         \texttt{interface\_amplitude} が
-        式~\eqref{eq:rt_linear_growth} の対数線形 $\log A \sim \gamma t$ に整合．
+        式~\eqref{eq:rt_linear_growth} の対数線形 $\log A \sim \gamma t$ に整合
+        （DNS benchmark 規約は~\cite{Tryggvason2011}）．
   \item \textbf{非線形遷移} $t\approx T=7$ までに psi snapshot 上で
         spike/bubble の mushroom 形状が観察される．
   \item \textbf{保存性} \texttt{volume\_conservation} の最終値
