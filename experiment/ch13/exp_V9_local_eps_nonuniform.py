@@ -1,252 +1,502 @@
 #!/usr/bin/env python3
-"""[V9] Local-epsilon validation on non-uniform grid — Tier D.
+"""[V9] Local-epsilon validation on non-uniform grid with the §14 stack.
 
 Paper ref: §13.5 (sec:local_eps_validation).
 
-For non-uniform interface-fitted grids (alpha_grid > 1), the smoothed
-Heaviside thickness eps must scale with local spacing h(x) to keep
-H_eps a true 1.5-cell smoothing. A globally-fixed eps under-resolves the
-interface (too smeared) where h is small near the interface.
+V9 is a reduced static-droplet diagnostic for the non-uniform-grid interface
+width rule.  The numerical path is deliberately config-driven through
+``TwoPhaseNSSolver.from_config`` so that the tested operators match the §14
+production stack:
 
-V9 compares three configurations on the V8 static-droplet setup:
+  - FCCD interface transport and pressure gradient,
+  - UCCD6 momentum convection,
+  - HFE curvature (``psi_direct_hfe``),
+  - pressure-jump surface tension embedded in phase-separated FCCD PPE,
+  - face-flux projection.
 
-  A:  alpha = 1.0  + fixed eps = 1.5 * h  (uniform reference; baseline)
-  B:  alpha = 2.0  + fixed eps = 1.5 * h_avg  (naive non-uniform)
-  C:  alpha = 2.0  + local eps_ij = 1.5 * h_local_ij  (corrected non-uniform)
-
-Goal: confirm that C improves over B (smaller spurious current,
-smaller Δp error). The expected outcome is decisive — either C beats B
-(validates local-eps recipe) or it does not (paper-reportable null result).
-
-Setup
+Cases
 -----
-  R = 0.25, [0,1]^2, wall BC, sigma = 1, We = 10, mu = 0,
-  rho_l/rho_g = 10, CFL = 0.20 * h_min, 100 steps, N in {48, 64}.
+  A:  alpha = 1.0  + nominal eps = 1.5 h  (uniform reference)
+  B:  alpha = 2.0  + nominal eps = 1.5 h  (fixed-width non-uniform)
+  C:  alpha = 2.0  + local eps_ij = 1.5 max(h_x_i, h_y_j)
 
-Pass criterion
---------------
-  Decisive presentation: any monotone trend (A < C < B or otherwise) is
-  reportable; result drives §13.5 narrative regardless of sign.
+The material constants and resolution are intentionally reduced relative to
+§14's water-air run; V9 tests the operator-stack consistency and the local-eps
+choice, not the full §14 material benchmark.  In this pressure-jump path the
+returned pressure is a projection/corrector diagnostic, so the primary V9
+metrics are spurious current and volume drift; pressure contrast is plotted
+only as a secondary solver diagnostic.
 
 Usage
 -----
-  python experiment/ch13/exp_V9_local_eps_nonuniform.py
-  python experiment/ch13/exp_V9_local_eps_nonuniform.py --plot-only
+  make run EXP=experiment/ch13/exp_V9_local_eps_nonuniform.py
+  make plot EXP=experiment/ch13/exp_V9_local_eps_nonuniform.py
 """
 
 from __future__ import annotations
 
-import sys
 import pathlib
+import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from twophase.backend import Backend
-from twophase.config import GridConfig, SimulationConfig
-from twophase.core.grid import Grid
-from twophase.ccd.ccd_solver import CCDSolver
-from twophase.levelset.heaviside import heaviside
-from twophase.levelset.curvature import CurvatureCalculator
-from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.simulation.config_io import ExperimentConfig
+from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.simulation.ns_step_state import NSStepRequest
 from twophase.tools.experiment import (
-    apply_style, experiment_dir, experiment_argparser,
-    save_results, load_results, save_figure,
+    apply_style,
+    experiment_argparser,
+    experiment_dir,
+    field_panel,
+    load_results,
+    save_figure,
+    save_results,
 )
-from twophase.tools.experiment.gpu import sparse_solve_2d
 
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 R = 0.25
 CENTER = (0.5, 0.5)
-SIGMA = 1.0
-WE = 10.0
+SIGMA = 0.10
 RHO_L = 10.0
 RHO_G = 1.0
-N_STEPS = 100
-CFL_FACTOR = 0.20
-DP_EXACT = SIGMA / (R * WE)
+MU_L = 1.0e-3
+MU_G = 1.0e-4
+N_LIST = (24, 32)
+FIELD_N = 32
+N_STEPS = 10
+CFL_MULTIPLIER = 0.50
+DP_EXACT = SIGMA / R
 
 
-def _wall_bc(arr) -> None:
-    arr[0, :] = 0.0; arr[-1, :] = 0.0
-    arr[:, 0] = 0.0; arr[:, -1] = 0.0
+def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
+    distribution_type = "uniform" if alpha <= 1.0 else "interface_fitted"
+    raw = {
+        "grid": {
+            "cells": [N, N],
+            "domain": {"size": [1.0, 1.0], "boundary": "wall"},
+            "distribution": {
+                "type": distribution_type,
+                "method": "gaussian_levelset",
+                "alpha": alpha,
+                "schedule": "static",
+            },
+        },
+        "interface": {
+            "thickness": {"mode": eps_mode, "base_factor": 1.5},
+            "geometry": {"curvature": {"method": "psi_direct_hfe", "cap": 5.0}},
+            "reinitialization": {
+                "algorithm": "ridge_eikonal",
+                "schedule": {"every_steps": 20},
+                "profile": {"eps_scale": 1.4, "ridge_sigma_0": 3.0},
+            },
+        },
+        "physics": {
+            "phases": {
+                "liquid": {"rho": RHO_L, "mu": MU_L},
+                "gas": {"rho": RHO_G, "mu": MU_G},
+            },
+            "surface_tension": SIGMA,
+            "gravity": 0.0,
+        },
+        "run": {
+            "time": {
+                "final": 10.0,
+                "max_steps": N_STEPS,
+                "cfl": CFL_MULTIPLIER,
+                "print_every": N_STEPS + 1,
+            },
+            "debug": {"step_diagnostics": True},
+        },
+        "numerics": {
+            "time": {"algorithm": "fractional_step"},
+            "interface": {
+                "transport": {
+                    "variable": "psi",
+                    "spatial": "fccd",
+                    "time_integrator": "tvd_rk3",
+                }
+            },
+            "momentum": {
+                "predictor": {"assembly": "balanced_buoyancy"},
+                "terms": {
+                    "convection": {
+                        "spatial": "uccd6",
+                        "time_integrator": "imex_bdf2",
+                    },
+                    "pressure": {"gradient": "fccd"},
+                    "viscosity": {
+                        "spatial": "ccd",
+                        "time_integrator": "implicit_bdf2",
+                    },
+                    "surface_tension": {"formulation": "pressure_jump"},
+                },
+            },
+            "projection": {
+                "face_flux_projection": True,
+                "canonical_face_state": True,
+                "face_native_predictor_state": True,
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "jump_decomposition",
+                    },
+                    "solver": {
+                        "kind": "defect_correction",
+                        "corrections": {
+                            "max_iterations": 3,
+                            "tolerance": 1.0e-8,
+                            "relaxation": 1.0,
+                        },
+                        "base_solver": {
+                            "kind": "iterative",
+                            "method": "gmres",
+                            "tolerance": 1.0e-6,
+                            "max_iterations": 500,
+                            "restart": 80,
+                            "preconditioner": "jacobi",
+                        },
+                    },
+                },
+            },
+        },
+        "initial_condition": {
+            "type": "circle",
+            "center": list(CENTER),
+            "radius": R,
+            "interior_phase": "liquid",
+        },
+        "boundary_condition": {"type": "wall"},
+        "output": {"dir": str(OUT), "save_npz": True, "snapshots": {"times": []}},
+    }
+    return ExperimentConfig.from_dict(raw)
 
 
-def _solve_ppe(rhs, rho, ppe_builder, backend):
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = [backend.to_device(a) for a in triplet]
-    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
-    xp = backend.xp
-    rhs_flat = xp.asarray(rhs).ravel().copy()
-    rhs_flat[ppe_builder._pin_dof] = 0.0
-    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
+def _assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver) -> dict:
+    expected = {
+        "interface transport": (cfg.run.advection_scheme, "fccd_flux"),
+        "momentum convection": (cfg.run.convection_scheme, "uccd6"),
+        "pressure gradient": (cfg.run.pressure_gradient_scheme, "fccd_flux"),
+        "surface tension": (cfg.run.surface_tension_scheme, "pressure_jump"),
+        "PPE": (cfg.run.ppe_solver, "fccd_iterative"),
+        "PPE coefficient": (cfg.run.ppe_coefficient_scheme, "phase_separated"),
+        "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "jump_decomposition"),
+        "reinitialization": (cfg.run.reinit_method, "ridge_eikonal"),
+    }
+    mismatches = [
+        f"{name}: got {actual!r}, expected {want!r}"
+        for name, (actual, want) in expected.items()
+        if actual != want
+    ]
+    if not cfg.run.face_flux_projection:
+        mismatches.append("projection: face_flux_projection is disabled")
+    if solver._fccd is None or solver._fccd_div_op is None:
+        mismatches.append("solver: FCCD operator/divergence stack was not built")
+    if mismatches:
+        raise RuntimeError("V9 is not using the §14 stack:\n  " + "\n  ".join(mismatches))
+    return {name: actual for name, (actual, _) in expected.items()}
 
 
-def _ccd_grad(field, ccd, axis, backend):
-    d1, _ = ccd.differentiate(field, axis)
-    return np.asarray(backend.to_host(d1))
+def _to_host(solver: TwoPhaseNSSolver, value) -> np.ndarray:
+    return np.asarray(solver.backend.to_host(value))
 
 
-def _measure_dp(p, phi_h, h_ref):
-    inside = phi_h > 3.0 * h_ref
-    outside = phi_h < -3.0 * h_ref
+def _control_volumes(solver: TwoPhaseNSSolver) -> np.ndarray:
+    return np.asarray(solver.backend.to_host(solver._grid.cell_volumes()))
+
+
+def _volume(psi: np.ndarray, dV: np.ndarray) -> float:
+    return float(np.sum(np.asarray(psi) * np.asarray(dV)))
+
+
+def _signed_distance(X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+    return R - np.sqrt((X - CENTER[0]) ** 2 + (Y - CENTER[1]) ** 2)
+
+
+def _measure_dp(p: np.ndarray, X: np.ndarray, Y: np.ndarray, h_min: float) -> float:
+    phi = _signed_distance(X, Y)
+    inside = phi > 3.0 * h_min
+    outside = phi < -3.0 * h_min
     if inside.any() and outside.any():
         return float(np.mean(p[inside]) - np.mean(p[outside]))
     return float("nan")
 
 
-def _local_h_field(grid, N: int) -> np.ndarray:
-    """Return per-node local spacing field h_ij = sqrt(h_x_i * h_y_j) on (N+1)x(N+1).
-
-    Uses grid.h[ax] which is per-node spacing of length N+1, then takes the
-    geometric mean of x and y spacings to form a 2D field matching meshgrid().
-    """
-    try:
-        hx = np.asarray(grid.h[0]).flatten()  # length N+1
-        hy = np.asarray(grid.h[1]).flatten()
-        return np.sqrt(np.outer(hx, hy))
-    except Exception:
-        return np.full((N + 1, N + 1), 1.0 / N)
-
-
-def _run_config(N: int, alpha: float, eps_kind: str) -> dict:
-    backend = Backend(use_gpu=False)
-    xp = backend.xp
-    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
-                                            alpha_grid=alpha))
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend, bc_type="wall")
-
-    h_uniform = 1.0 / N
-    eps_init = 1.5 * h_uniform
-    X0, Y0 = grid.meshgrid()
-    phi0 = R - xp.sqrt((X0 - CENTER[0]) ** 2 + (Y0 - CENTER[1]) ** 2)
-    psi0 = heaviside(xp, phi0, eps_init)
-    if alpha > 1.0:
-        grid.update_from_levelset(psi0, eps_init, ccd=ccd)
-
-    ppe_builder = PPEBuilder(backend, grid, bc_type="wall")
-
-    h_local = _local_h_field(grid, N)
-    h_avg = float(np.mean(h_local))
-    h_min = float(np.min(h_local))
-
-    if eps_kind == "fixed":
-        eps_field = np.full((N + 1, N + 1), 1.5 * h_avg)
-    elif eps_kind == "local":
-        eps_field = 1.5 * h_local
-    else:
-        raise ValueError(eps_kind)
-
-    eps_for_curv = float(np.mean(eps_field))
-    curv_calc = CurvatureCalculator(backend, ccd, eps_for_curv)
-    dt = CFL_FACTOR * h_min
-
-    X, Y = grid.meshgrid()
-    phi = R - xp.sqrt((X - CENTER[0]) ** 2 + (Y - CENTER[1]) ** 2)
-    psi = heaviside(xp, phi, xp.asarray(eps_field))
-    rho = RHO_G + (RHO_L - RHO_G) * psi
-    rho_h = np.asarray(backend.to_host(rho))
-    phi_h = np.asarray(backend.to_host(phi))
-    kappa_h = np.asarray(backend.to_host(curv_calc.compute(psi)))
-
-    dpsi_dx = _ccd_grad(psi, ccd, 0, backend)
-    dpsi_dy = _ccd_grad(psi, ccd, 1, backend)
-    f_x = (SIGMA / WE) * kappa_h * dpsi_dx
-    f_y = (SIGMA / WE) * kappa_h * dpsi_dy
-
-    u = np.zeros_like(rho_h); v = np.zeros_like(rho_h)
-    u_inf_hist = []; dp_hist = []; blew_up = False
-    for _ in range(N_STEPS):
-        u_star = u + dt / rho_h * f_x
-        v_star = v + dt / rho_h * f_y
-        _wall_bc(u_star); _wall_bc(v_star)
-        rhs = (_ccd_grad(u_star, ccd, 0, backend) +
-               _ccd_grad(v_star, ccd, 1, backend)) / dt
-        try:
-            p = np.asarray(_solve_ppe(rhs, rho_h, ppe_builder, backend))
-        except Exception:
-            blew_up = True; break
-        u = u_star - dt / rho_h * _ccd_grad(p, ccd, 0, backend)
-        v = v_star - dt / rho_h * _ccd_grad(p, ccd, 1, backend)
-        _wall_bc(u); _wall_bc(v)
-        ui = float(np.max(np.sqrt(u * u + v * v)))
-        u_inf_hist.append(ui)
-        dp_hist.append(_measure_dp(p, phi_h, h_min))
-        if not np.isfinite(ui) or ui > 1e2:
-            blew_up = True; break
-
-    arr = np.asarray(u_inf_hist)
+def _case_label(case_id: str) -> str:
     return {
-        "N": N, "alpha": alpha, "eps_kind": eps_kind, "h_min": h_min,
-        "h_avg": h_avg, "dt": dt, "blew_up": blew_up,
-        "u_inf_history": arr,
-        "u_inf_max": float(arr.max()) if len(arr) else float("nan"),
-        "u_inf_final": float(arr[-1]) if len(arr) else float("nan"),
-        "dp_final": dp_hist[-1] if dp_hist else float("nan"),
-        "dp_rel_err": (abs(dp_hist[-1] - DP_EXACT) / DP_EXACT) if dp_hist else float("nan"),
+        "A": r"$\alpha=1$, nominal $\epsilon$",
+        "B": r"$\alpha=2$, nominal $\epsilon$",
+        "C": r"$\alpha=2$, local $\epsilon_{ij}$",
+    }[case_id]
+
+
+def _run_case(N: int, case_id: str, alpha: float, eps_mode: str) -> dict:
+    cfg = _case_config(N, alpha, eps_mode)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+    stack = _assert_ch14_stack(cfg, solver)
+    psi = solver.build_ic(cfg)
+    u, v = solver.build_velocity(cfg, psi)
+    bc_hook = solver.make_bc_hook(cfg)
+    ph = cfg.physics
+
+    if solver._alpha_grid > 1.0:
+        psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
+        mode = "local" if cfg.grid.use_local_eps else "nominal"
+        print(
+            f"  [V9 {case_id}] static non-uniform grid built "
+            f"(eps={mode}, h_min={solver.h_min:.4e})"
+        )
+
+    X = _to_host(solver, solver.X)
+    Y = _to_host(solver, solver.Y)
+    dV = _control_volumes(solver)
+    psi0 = _to_host(solver, psi).copy()
+    vol0 = _volume(psi0, dV)
+
+    u_inf_history = []
+    dp_history = []
+    volume_history = []
+    dt_history = []
+    limiter_history = []
+    blew_up = False
+    error = ""
+    p = np.zeros_like(psi0)
+
+    for step in range(cfg.run.max_steps or N_STEPS):
+        try:
+            budget = solver.dt_budget(
+                u,
+                v,
+                ph,
+                cfg.run.cfl,
+                cfl_advective=cfg.run.cfl_advective,
+                cfl_capillary=cfg.run.cfl_capillary,
+                cfl_viscous=cfg.run.cfl_viscous,
+            )
+            dt = float(budget.dt)
+            if not np.isfinite(dt) or dt <= 0.0:
+                raise FloatingPointError(f"invalid dt={dt}")
+            psi, u, v, p = solver.step_request(
+                NSStepRequest(
+                    psi=psi,
+                    u=u,
+                    v=v,
+                    dt=dt,
+                    rho_l=ph.rho_l,
+                    rho_g=ph.rho_g,
+                    sigma=ph.sigma,
+                    mu=ph.mu,
+                    g_acc=ph.g_acc,
+                    rho_ref=ph.rho_ref,
+                    mu_l=ph.mu_l,
+                    mu_g=ph.mu_g,
+                    bc_hook=bc_hook,
+                    step_index=step,
+                ),
+                return_host_pressure=False,
+            )
+        except Exception as exc:
+            blew_up = True
+            error = f"{type(exc).__name__}: {exc}"
+            break
+
+        psi_h = _to_host(solver, psi)
+        u_h = _to_host(solver, u)
+        v_h = _to_host(solver, v)
+        p_h = _to_host(solver, p)
+        speed = np.sqrt(u_h * u_h + v_h * v_h)
+        u_inf = float(np.max(speed))
+        dp = _measure_dp(p_h, X, Y, solver.h_min)
+        volume = _volume(psi_h, dV)
+
+        u_inf_history.append(u_inf)
+        dp_history.append(dp)
+        volume_history.append(abs(volume - vol0) / max(abs(vol0), 1.0e-30))
+        dt_history.append(dt)
+        limiter_history.append(str(budget.limiter))
+        if not np.isfinite(u_inf) or u_inf > 1.0e3:
+            blew_up = True
+            error = f"non-finite or excessive velocity: {u_inf:.3e}"
+            break
+
+    psi_h = _to_host(solver, psi)
+    u_h = _to_host(solver, u)
+    v_h = _to_host(solver, v)
+    p_h = _to_host(solver, p)
+    speed = np.sqrt(u_h * u_h + v_h * v_h)
+    u_arr = np.asarray(u_inf_history)
+    dp_arr = np.asarray(dp_history)
+    vol_arr = np.asarray(volume_history)
+    dt_arr = np.asarray(dt_history)
+    dp_final = float(dp_arr[-1]) if len(dp_arr) else float("nan")
+
+    return {
+        "N": N,
+        "case": case_id,
+        "label": _case_label(case_id),
+        "alpha": alpha,
+        "eps_mode": eps_mode,
+        "stack": stack,
+        "h_min": float(solver.h_min),
+        "n_steps": int(len(u_arr)),
+        "blew_up": blew_up,
+        "error": error,
+        "dt_min": float(np.min(dt_arr)) if len(dt_arr) else float("nan"),
+        "dt_max": float(np.max(dt_arr)) if len(dt_arr) else float("nan"),
+        "limiter_final": limiter_history[-1] if limiter_history else "",
+        "u_inf_history": u_arr,
+        "dp_history": dp_arr,
+        "volume_history": vol_arr,
+        "u_inf_max": float(np.max(u_arr)) if len(u_arr) else float("nan"),
+        "u_inf_final": float(u_arr[-1]) if len(u_arr) else float("nan"),
+        "dp_final": dp_final,
+        "dp_exact": DP_EXACT,
+        "dp_abs_ratio": abs(dp_final) / DP_EXACT
+        if np.isfinite(dp_final)
+        else float("nan"),
+        "volume_drift_final": float(vol_arr[-1]) if len(vol_arr) else float("nan"),
+        "X": X,
+        "Y": Y,
+        "psi": psi_h,
+        "pressure": p_h,
+        "speed": speed,
     }
 
 
 def run_all() -> dict:
-    out = {}
-    for N in (48, 64):
-        out[f"N{N}_A"] = _run_config(N, alpha=1.0, eps_kind="fixed")
-        out[f"N{N}_B"] = _run_config(N, alpha=2.0, eps_kind="fixed")
-        out[f"N{N}_C"] = _run_config(N, alpha=2.0, eps_kind="local")
-    return {"runs": out}
+    cases = {
+        "A": (1.0, "nominal"),
+        "B": (2.0, "nominal"),
+        "C": (2.0, "local"),
+    }
+    runs = {}
+    for N in N_LIST:
+        for case_id, (alpha, eps_mode) in cases.items():
+            print(f"[V9] N={N}, case={case_id}, alpha={alpha}, eps={eps_mode}")
+            runs[f"N{N}_{case_id}"] = _run_case(N, case_id, alpha, eps_mode)
+    return {
+        "runs": runs,
+        "meta": {
+            "N_steps": N_STEPS,
+            "cfl_multiplier": CFL_MULTIPLIER,
+            "rho_l": RHO_L,
+            "rho_g": RHO_G,
+            "sigma": SIGMA,
+            "R": R,
+            "dp_exact": DP_EXACT,
+        },
+    }
 
 
 def make_figures(results: dict) -> None:
+    runs = results["runs"]
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
     ax_u, ax_d = axes
-    runs = results["runs"]
-    cmap = {"A": "C0", "B": "C1", "C": "C2"}
-    label = {"A": "α=1, fixed eps", "B": "α=2, fixed eps", "C": "α=2, local eps"}
-    for N in (48, 64):
-        for cfg_id in ("A", "B", "C"):
-            r = runs.get(f"N{N}_{cfg_id}")
-            if r is None or r["blew_up"]: continue
-            arr = r["u_inf_history"]
-            ax_u.semilogy(np.arange(1, len(arr) + 1), arr,
-                          color=cmap[cfg_id],
-                          linestyle=("-" if N == 48 else "--"),
-                          label=f"N={N}, {label[cfg_id]}")
-    ax_u.set_xlabel("step"); ax_u.set_ylabel("||u||_inf")
-    ax_u.set_title("V9: spurious current — A vs B vs C")
+    colors = {"A": "C0", "B": "C1", "C": "C2"}
+    for N in N_LIST:
+        for case_id in ("A", "B", "C"):
+            r = runs.get(f"N{N}_{case_id}")
+            if r is None or len(r["u_inf_history"]) == 0:
+                continue
+            arr = np.asarray(r["u_inf_history"])
+            linestyle = "-" if N == N_LIST[0] else "--"
+            ax_u.semilogy(
+                np.arange(1, len(arr) + 1),
+                arr,
+                color=colors[case_id],
+                linestyle=linestyle,
+                label=f"N={N}, {case_id}",
+            )
+    ax_u.set_xlabel("step")
+    ax_u.set_ylabel(r"$\|u\|_\infty$")
+    ax_u.set_title("V9 §14 stack: spurious-current trajectory")
     ax_u.legend(fontsize=7)
 
-    cats = []; vals = []; bar_colors = []
-    for N in (48, 64):
-        for cfg_id, color in zip(("A", "B", "C"), ("C0", "C1", "C2")):
-            r = runs.get(f"N{N}_{cfg_id}")
-            cats.append(f"N{N}\n{cfg_id}")
-            vals.append(r["dp_rel_err"] if r and not r["blew_up"] else 0.0)
-            bar_colors.append(color)
+    cats, vals, bar_colors = [], [], []
+    for N in N_LIST:
+        for case_id in ("A", "B", "C"):
+            r = runs.get(f"N{N}_{case_id}")
+            cats.append(f"N{N}\n{case_id}")
+            vals.append(r["dp_abs_ratio"] if r and not r["blew_up"] else np.nan)
+            bar_colors.append(colors[case_id])
     ax_d.bar(cats, vals, color=bar_colors)
-    ax_d.set_ylabel("|Δp - σ/R| / (σ/R)"); ax_d.set_yscale("log")
-    ax_d.set_title("V9: Δp relative error (final step)")
-    save_figure(fig, OUT / "V9_local_eps_nonuniform")
+    ax_d.set_ylabel(r"$|\Delta p_{\rm corr}|/(\sigma/R)$")
+    ax_d.set_yscale("log")
+    ax_d.set_title("V9 §14 stack: pressure-corrector contrast")
+    save_figure(
+        fig,
+        OUT / "V9_local_eps_nonuniform",
+        also_to=PAPER_FIGURES / "ch13_v9_local_eps",
+    )
+
+    field_runs = [runs.get(f"N{FIELD_N}_{case_id}") for case_id in ("A", "B", "C")]
+    field_runs = [r for r in field_runs if r is not None and len(r["u_inf_history"]) > 0]
+    if len(field_runs) != 3:
+        print("Skipping V9 field figure: not all FIELD_N cases are available.")
+        return
+    vmax = max(float(np.nanmax(r["speed"])) for r in field_runs)
+    if not np.isfinite(vmax) or vmax <= 0.0:
+        vmax = 1.0
+
+    fig_f, axes_f = plt.subplots(1, 3, figsize=(12.6, 4.0), constrained_layout=True)
+    for ax, r in zip(axes_f, field_runs):
+        field_panel(
+            ax,
+            r["X"],
+            r["Y"],
+            r["speed"],
+            cmap="magma",
+            vlim=(0.0, vmax),
+            contour_field=r["psi"],
+            contour_levels=(0.5,),
+            contour_color="white",
+            contour_lw=0.9,
+            cb_label=r"$|u|$",
+            title=f"{r['case']}: {_case_label(r['case'])}",
+            annotation=(
+                rf"$\|u\|_\infty={r['u_inf_final']:.2e}$"
+                "\n"
+                rf"$|\Delta p_c|/(\sigma/R)={r['dp_abs_ratio']:.2f}$"
+            ),
+        )
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+    fig_f.suptitle(f"V9: §14-stack local-epsilon fields (N={FIELD_N})", fontsize=11)
+    save_figure(
+        fig_f,
+        OUT / "V9_ch14_stack_field",
+        also_to=PAPER_FIGURES / "ch13_v9_ch14_stack_field",
+    )
 
 
 def print_summary(results: dict) -> None:
-    print("V9 (local-ε validation, A=α1+fixed, B=α2+fixed, C=α2+local):")
+    print(
+        "V9 (§14-stack local-ε validation; "
+        "A=α1+nominal, B=α2+nominal, C=α2+local):"
+    )
     runs = results["runs"]
-    for N in (48, 64):
-        for cfg_id, name in (("A", "α=1, fixed"), ("B", "α=2, fixed"),
-                              ("C", "α=2, local")):
-            r = runs.get(f"N{N}_{cfg_id}")
-            if r is None: continue
-            tag = "BLEW UP" if r["blew_up"] else (
-                f"|u|_max={r['u_inf_max']:.2e}  Δp={r['dp_final']:.4f}  "
-                f"rel_err={r['dp_rel_err']:.2%}"
-            )
-            print(f"  N={N}  ({cfg_id}) {name:>14s}: {tag}")
+    for N in N_LIST:
+        for case_id in ("A", "B", "C"):
+            r = runs.get(f"N{N}_{case_id}")
+            if r is None:
+                continue
+            if r["blew_up"]:
+                tag = f"BLEW UP after {r['n_steps']} steps ({r['error']})"
+            else:
+                tag = (
+                    f"|u|_max={r['u_inf_max']:.2e}  "
+                    f"Δp={r['dp_final']:.4f}  "
+                    f"|Δp_corr|/(σ/R)={r['dp_abs_ratio']:.2f}  "
+                    f"vol={r['volume_drift_final']:.2e}"
+                )
+            print(f"  N={N:>2}  ({case_id}) {_case_label(case_id):>28s}: {tag}")
 
 
 def main() -> None:

@@ -24,8 +24,9 @@ $\times$ を「本稿の保証範囲外または設計未達」とする．
 V1/V2/V3/V5/V6/V8 と V10-c（単一渦 reversal）は主張を支持する結果である一方，
 V4-a（固定壁・参照点ゲージ下の Galilean offset 残差）と V10-b（$\alpha=2$ Zalesak）は
 条件付き結果である．
-V4-b（Rayleigh--Taylor 線形成長率），V7（二相時間次数），V9（局所 $\varepsilon$）は
+V4-b（Rayleigh--Taylor 線形成長率）と V7（二相時間次数）は
 設計未達または推奨外の結果として扱う．
+V9（局所 $\varepsilon$）は §14 stack と同時に使う条件付き採用結果として扱う．
 V10-b は体積保存は保つが slot 重心追跡が低次に留まるため，
 薄い幾何特徴に対する条件付き結果として扱う．
 本章ではこれらを隠さず，アルゴリズムの適用範囲を定めるための検証結果として扱う．
@@ -64,7 +65,7 @@ V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $\Delta p_{\mathrm{meas}}$, $u_\infty^{\mathrm{end}}$ \\
 V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
 V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
-V9 & 局所 $\varepsilon$ 比較 (fixed/local) & \autoref{fig:V9_local_eps}     & $u_\infty^{\mathrm{max}}$ 安定性比較 \\
+V9 & 局所 $\varepsilon$ 比較 (§14 stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$ と 2D hot spot \\
 V10 & Zalesak / 単一渦 CLS 移流     & \autoref{fig:V10_zalesak}        & $V$-drift, centroid err, reversal error \\
 \bottomrule
 \end{tabular}

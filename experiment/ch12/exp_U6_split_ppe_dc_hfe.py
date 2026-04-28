@@ -62,13 +62,14 @@ from twophase.hfe.field_extension import HermiteFieldExtension, _hermite5_xp
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
-    convergence_loglog, compute_convergence_rates,
+    convergence_loglog, compute_convergence_rates, field_panel,
 )
 
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
 PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u6_split_ppe_dc_hfe"
+PAPER_FIG_HFE = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u6_hfe_2d_field"
 
 # ── Parameters ──────────────────────────────────────────────────────────────
 N_GRID = 64
@@ -329,7 +330,7 @@ def _u6c_hfe_1d_one(N: int) -> dict:
     return {"N": N, "h": h, "err_inf": err}
 
 
-def _u6c_hfe_2d_one(N: int, backend) -> dict:
+def _u6c_hfe_2d_one(N: int, backend, *, keep_field: bool = False) -> dict:
     """2D HFE convergence test against the analytic closest-point projection.
 
     For each target cell at (x,y) inside the circle, HFE returns f(x_Γ) where
@@ -361,16 +362,35 @@ def _u6c_hfe_2d_one(N: int, backend) -> dict:
         return {"N": N, "h": h,
                 "err_inf_max": float("nan"), "err_inf_med": float("nan")}
     err = np.abs(extended[band_mask] - field_truth_extension[band_mask])
-    return {"N": N, "h": h,
-            "err_inf_max": float(np.max(err)),
-            "err_inf_med": float(np.median(err))}
+    result = {
+        "N": N, "h": h,
+        "err_inf_max": float(np.max(err)),
+        "err_inf_med": float(np.median(err)),
+    }
+    if keep_field:
+        abs_error = np.abs(extended - field_truth_extension)
+        result["field_snapshot"] = {
+            "N": N, "h": h, "X": X, "Y": Y, "phi": phi,
+            "truth": field_truth_extension,
+            "extended": extended,
+            "band_abs_error": np.where(band_mask, abs_error, np.nan),
+        }
+    return result
 
 
 def run_U6c() -> dict:
     backend = Backend(use_gpu=False)
     rows_1d = [_u6c_hfe_1d_one(N) for N in HFE_GRID_SIZES]
-    rows_2d = [_u6c_hfe_2d_one(N, backend) for N in HFE_GRID_SIZES]
-    return {"hfe_1d": rows_1d, "hfe_2d": rows_2d}
+    rows_2d = [
+        _u6c_hfe_2d_one(N, backend, keep_field=(N == 128))
+        for N in HFE_GRID_SIZES
+    ]
+    field_snapshot = {}
+    for row in rows_2d:
+        if "field_snapshot" in row:
+            field_snapshot = row.pop("field_snapshot")
+            break
+    return {"hfe_1d": rows_1d, "hfe_2d": rows_2d, "hfe_field": field_snapshot}
 
 
 # ── Aggregator + plotting ──────────────────────────────────────────────────
@@ -442,6 +462,43 @@ def make_figures(results: dict) -> None:
     save_figure(fig, OUT / "U6_split_ppe_dc_hfe", also_to=PAPER_FIG)
 
 
+def make_hfe_field_figure(results: dict) -> None:
+    field = results["U6c"].get("hfe_field", {})
+    if not field:
+        return
+
+    X = np.asarray(field["X"])
+    Y = np.asarray(field["Y"])
+    phi = np.asarray(field["phi"])
+    truth = np.asarray(field["truth"])
+    extended = np.asarray(field["extended"])
+    band_abs_error = np.asarray(field["band_abs_error"])
+    log_error = np.ma.masked_invalid(np.log10(np.maximum(band_abs_error, 1.0e-16)))
+
+    q_min = float(min(np.nanmin(truth), np.nanmin(extended)))
+    q_max = float(max(np.nanmax(truth), np.nanmax(extended)))
+    err_min = float(np.nanmin(log_error))
+    err_max = float(np.nanmax(log_error))
+
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4))
+    panels = [
+        (truth, "analytic $q(x_\\Gamma)$", "viridis", (q_min, q_max), "$q$"),
+        (extended, "HFE $q_{ext}$", "viridis", (q_min, q_max), "$q_{ext}$"),
+        (log_error, "band $\\log_{10}|e|$", "magma", (err_min, err_max), "$\\log_{10}|e|$"),
+    ]
+    for ax, (field_data, title, cmap, vlim, cb_label) in zip(axes, panels):
+        field_panel(
+            ax, X, Y, field_data, cmap=cmap, vlim=vlim,
+            contour_field=phi, contour_levels=(0.0,),
+            contour_color="white" if cmap == "magma" else "k",
+            cb_label=cb_label, title=title,
+        )
+        ax.set_xlabel("$x$")
+        ax.set_ylabel("$y$")
+    fig.suptitle(f"U6-c: HFE circular-band field extension (N={int(field['N'])})")
+    save_figure(fig, OUT / "U6_hfe_2d_field", also_to=PAPER_FIG_HFE)
+
+
 def _slope_of(rows, key) -> float:
     hs = [r["h"] for r in rows]
     errs = [r[key] for r in rows]
@@ -507,6 +564,7 @@ def main() -> None:
         results = run_all()
         save_results(NPZ, results)
     make_figures(results)
+    make_hfe_field_figure(results)
     print_summary(results)
     print(f"==> U6 outputs in {OUT}")
 

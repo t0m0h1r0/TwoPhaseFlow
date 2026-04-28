@@ -1,0 +1,12 @@
+{
+  "branch": "worktree-ra-ch12-13-2d-candidates-20260428",
+  "branch_slug": "worktree-ra-ch12-13-2d-candidates-20260428",
+  "session_id": "CHK-RA-CH12-13-001",
+  "worktree_path": ".claude/worktrees/worktree-ra-ch12-13-2d-candidates-20260428",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH12-13",
+  "acquired_at": "2026-04-28T08:28:11Z",
+  "expires_at": "2026-04-29T08:28:11Z",
+  "meta_version": "7.1.0",
+  "scope": "ch12/ch13 candidate search for visually strong 2D image experiments"
+}
