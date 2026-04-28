@@ -5,11 +5,11 @@ Paper ref: §13.3 (sec:galilean_invariance, sec:coupling_limitations).
 
 Two sub-tests:
 
-  (A) Galilean translation. A static droplet (R=0.25, sigma>0) initialized
-      with uniform velocity U_frame in [0,1]^2 *periodic* BC. The exact
-      solution is the static droplet shifted by U_frame*t. Pass criterion:
-      ||u - U_frame||_inf < 1e-8 over 100 steps; the BF + split-PPE + CSF
-      pipeline must commute with frame translation.
+  (A) Galilean residual scale. A static droplet (R=0.25, sigma>0) is run
+      twice on the same fixed Eulerian wall grid: baseline U=(0,0) and
+      offset U=(0.1,0). This is a reduced residual-scale check for the
+      BF + split-PPE + CSF/PPE loop under wall BC and pinned pressure gauge,
+      not an exact periodic Galilean-invariance proof.
 
   (B) Rayleigh-Taylor (RT) linear growth. Heavy fluid on top of light fluid
       with a single-mode perturbation y_int(x, 0) = y0 + A0 * cos(2*pi*m*x/Lx).
@@ -21,14 +21,16 @@ Two sub-tests:
 
 Setup
 -----
-  (A) [0,1]^2 periodic, N=64, R=0.25, ρ_l/ρ_g=10, σ=1, We=10,
-      U_frame=(0.3, 0.0), CFL=0.10, 100 steps.
+  (A) [0,1]^2 wall BC, N=64, R=0.25, ρ_l/ρ_g=10, σ=1, We=10,
+      U_offset=(0.1, 0.0), dt=0.20h, 50 steps.
   (B) [0,1] x [0,2] wall-side BC (top/bottom = wall, left/right = wall),
       N=(64, 128), ρ_l/ρ_g=5, σ=0, μ small (Re_g ~ 1000),
       g=1.0 in -y, mode m=2, A0=0.005.
 
-Note: interface advection in (A) uses analytic shift (the only correct way
-for Galilean test); in (B) uses simple upwind on phi (CFL-stable).
+Note: interface advection in (A) is disabled because the droplet is static;
+in (B) the reduced RT diagnostic still uses a first-order φ update and is
+therefore reported only as a conditional setting check. Production interface
+transport is exercised by V10 with FCCD/TVD-RK3, matching the ch14 stack.
 
 Usage
 -----
