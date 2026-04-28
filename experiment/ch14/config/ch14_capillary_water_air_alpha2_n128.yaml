@@ -46,7 +46,7 @@ physics:
 
 run:
   time:
-    final: 0.50
+    final: 35.0
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 20

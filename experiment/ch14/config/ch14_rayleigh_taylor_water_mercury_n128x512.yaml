@@ -1,11 +1,11 @@
-# Rayleigh-Taylor instability: water (light, BELOW) / mercury (heavy, ABOVE).
-# Atwood number A = (rho_Hg - rho_w) / (rho_Hg + rho_w) ≈ 0.862 — high-density-ratio regime.
+# Rayleigh-Taylor instability: silicone oil (light, BELOW) / water (heavy, ABOVE).
+# Atwood number A = (rho_w - rho_oil) / (rho_w + rho_oil) ≈ 0.0256 — low-Atwood regime.
 # Production numerical stack: FCCD PPE + HFE + UCCD6 + Ridge-Eikonal + IMEX-BDF2.
 #
 # Schema convention:
-#   physics.phases.liquid = water (lower phase; interior_phase: liquid in initial_condition)
-#   physics.phases.gas    = mercury (upper phase; the schema slot is named "gas" by
-#                                    convention — physical mercury is a heavy liquid).
+#   physics.phases.liquid = silicone oil (lower phase; interior_phase: liquid in initial_condition)
+#   physics.phases.gas    = water (upper phase; the schema slot is named "gas" by
+#                                  convention — physical water is the heavy liquid here).
 # The header documents the relabeling so the YAML stays self-describing.
 #
 # Handler dispatch:
@@ -42,18 +42,18 @@ interface:
 
 physics:
   phases:
-    liquid:                # water (light, below the interface)
+    liquid:                # silicone oil 5cSt (light, below the interface)
+      rho: 950.0
+      mu: 5.0e-3
+    gas:                   # water (heavy, above the interface) — schema slot named "gas"
       rho: 1000.0
       mu: 1.0e-3
-    gas:                   # mercury (heavy, above the interface) — schema slot named "gas"
-      rho: 13546.0
-      mu: 1.526e-3
-  surface_tension: 0.375   # water/mercury interfacial tension ≈ 0.375 N/m
+  surface_tension: 0.040   # water / silicone-oil interfacial tension ≈ 0.040 N/m
   gravity: 9.81            # downward; unstable since heavy phase sits on top
 
 run:
   time:
-    final: 1.0             # ω = sqrt(A·g·k) ≈ 10.4 1/s → ~3 decades growth in linear phase
+    final: 7.0             # γ = sqrt(A·g·k) ≈ 1.78 1/s; t_final ≈ 12.5/γ → well into nonlinear mushroom regime
     cfl: 1.0
     print_every: 20
   debug:
@@ -105,13 +105,13 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch14_rayleigh_taylor_water_mercury_n128x512
+  dir: results/ch14_rayleigh_taylor_water_silicone_oil_n128x512
   save_npz: true
   snapshots:
     interval: 0.05
   figures:
     - type: time_series
-      title: "RT water-mercury: interface amplitude"
+      title: "RT water-silicone-oil: interface amplitude"
       x: times
       y: [interface_amplitude]
       labels: ["A(t)"]
@@ -121,7 +121,7 @@ output:
       file: interface_amplitude.pdf
 
     - type: time_series
-      title: "RT water-mercury: kinetic energy"
+      title: "RT water-silicone-oil: kinetic energy"
       x: times
       y: [kinetic_energy]
       labels: ["KE"]
@@ -131,7 +131,7 @@ output:
       file: kinetic_energy.pdf
 
     - type: time_series
-      title: "RT water-mercury: volume drift"
+      title: "RT water-silicone-oil: volume drift"
       x: times
       y: [volume_conservation]
       labels: ["$|\\Delta V|/V_0$"]
@@ -162,7 +162,7 @@ initial_condition:
   mode: 1                  # single wavelength fits the domain width (length: 0.5)
   length: 0.5              # = domain x-extent
   phase: 0.0
-  interior_phase: liquid   # water below interface (φ = sdf < 0 region)
+  interior_phase: liquid   # silicone oil below interface (φ = sdf < 0 region)
 
 initial_velocity: null     # start at rest
 boundary_condition:
