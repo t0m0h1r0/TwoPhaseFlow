@@ -7,6 +7,8 @@
 \noindent
 DCCD フィルタの散逸強度 $\varepsilon_{d,\max}$ 設計値・
 適応散逸制御則・離散アルゴリズム
+（コンパクト系のスペクトルフィルタ設計指針は~\cite{Lele1992}，
+時間発展との整合性は~\cite{Carpenter1994}）
 （\S\ref{sec:dccd_params}, \S\ref{sec:dccd_eps_design}, \S\ref{sec:dccd_adaptive}，
 表~\ref{tab:dccd_usage_map}，式~\eqref{eq:eps_max},
 \eqref{eq:adaptive_eps}，アルゴリズム~\ref{alg:dccd}）は
@@ -38,7 +40,7 @@ CCD 演算子構築 $\to$ 非一様格子上 SDF 再初期化 $\to$ Young--Lapla
       \left[\max\!\left(\frac{|u|_{\max}}{\Delta x}
                        +\frac{|v|_{\max}}{\Delta y}\right)\right]^{-1}
     }_{\Delta t_{\mathrm{adv}}\text{：対流 CFL（式~\eqref{eq:dt_adv}）}},\;
-    \underbrace{\sqrt{\frac{(\rho_l+\rho_g)\,h_{\min}^3}{2\pi\sigma}}}_{\Delta t_\sigma\text{：毛管波制約（式~\eqref{eq:dt_sigma}）}}
+    \underbrace{\sqrt{\frac{(\rho_l+\rho_g)\,h_{\min}^3}{2\pi\sigma}}}_{\Delta t_\sigma\text{：毛管波制約~\cite{DennerVanWachem2015}（式~\eqref{eq:dt_sigma}）}}
   \right)
   \label{eq:dt_full_algo}
 \end{equation}
