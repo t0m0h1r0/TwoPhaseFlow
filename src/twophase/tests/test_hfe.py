@@ -186,8 +186,8 @@ class TestHFE2D:
             else:
                 errors.append(0.0)
 
-        # Expect at least 2nd-order convergence for 2D tensor-product
-        # Hermite extension with CCD derivatives
+        # Expect design-order convergence for full tensor-product
+        # Hermite extension with CCD derivatives.
         if len(errors) >= 2 and all(e > 0 for e in errors):
             slopes = []
             for k in range(1, len(errors)):
@@ -195,8 +195,8 @@ class TestHFE2D:
                     slope = np.log(errors[k - 1] / errors[k]) / np.log(2.0)
                     slopes.append(slope)
             for s in slopes:
-                assert s >= 2.0, (
-                    f"2D HFE slope {s:.2f} < 2.0; errors={errors}"
+                assert s >= 5.5, (
+                    f"2D HFE slope {s:.2f} < 5.5; errors={errors}"
                 )
 
     def test_source_phase_unchanged(self):
