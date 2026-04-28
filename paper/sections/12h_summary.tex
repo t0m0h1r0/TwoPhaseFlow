@@ -27,33 +27,33 @@ ID & テスト & 期待精度 & 実測精度 & 判定 \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
-U1-a & CCD 1D MMS（周期/壁）  & $\Ord{h^6}$/$\Ord{h^5}$  & $\Ord{h^{6.0}}$/$\Ord{h^{5.0}}$ & \checkmark \\
+U1-a & CCD 1D MMS（周期）  & $\Ord{h^6}$  & $\Ord{h^{6.0}}$ & \checkmark \\
 U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
-U1-c & FCCD face value/grad   & $\Ord{h^6}$              & $\Ord{h^{6.0}}$        & \checkmark \\
-U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{6.0}}$        & \checkmark \\
-U2-a & Poisson MMS（DC $k\geq3$） & $\Ord{h^6}$ (Dirichlet) & $\Ord{h^{7.0}}$（超収束）& \checkmark \\
-U2-b & PPE Neumann + ゲージ    & $\Ord{h^5}$              & $\Ord{h^{5.0}}$        & \checkmark \\
+U1-c & FCCD face value/grad   & 評価配置上 $\Ord{h^4}$              & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & $\triangle$ \textsuperscript{(a)} \\
+U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
+U2-a & Poisson MMS（DC $k=1,2,3$） & $\Ord{h^2}$/$\Ord{h^4}$/$\Ord{h^7}$ & $2.00/4.18/6.90$ & \checkmark \\
+U2-b & PPE Neumann + ゲージ    & $\Ord{h^5}$              & $\Ord{h^{4.85}}$        & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier II：空間離散・非一様格子}} \\
 \midrule
-U3-a & CCD on stretched grid + 2D $D_{xy}$ & $\Ord{h^6}$ & 前漸近 $p=5.2$--$5.8$ & $\triangle$ \textsuperscript{(a)} \\
+U3-a & CCD on stretched grid + 2D $D_{xy}$ & $\Ord{h^6}$ & $\Ord{h^{5.98}}$ & \checkmark \\
 U3-a & GCL（フリーストリーム保存） & $\sim\varepsilon_\mathrm{mach}$ & $7.5\times10^{-14}$ & \checkmark \\
-U3-b & FCCD non-uniform face   & $\Ord{h^5}$ 以上          & $\Ord{h^{5.5}}$        & \checkmark \\
+U3-b & FCCD non-uniform face   & 評価配置上 $\Ord{h^4}$          & $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$        & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$    & $\|D_k\|_\infty < 10^{-13}$ & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier III：界面処理 primitives}} \\
 \midrule
-U4   & Ridge--Eikonal reinit $|\nabla\psi|=1$ 復元 & 反復収束 & 20 反復で機械精度近傍 & \checkmark \\
-U4   & 再初期化界面シフト累積 & $\sim 10$ 倍（理想） & $\approx 7.6$ 倍（$N{=}256$） & $\triangle$ \textsuperscript{(c)} \\
+U4-a & Godunov Eikonal reinit $|\nabla\phi|=1$ 復元 & band 残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
+U4-b & DGR バンド厚補正 & $\eps_{\eff}/\eps^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
 U5-a & $\delta_\varepsilon$ 0/1 次モーメント & $1$/$x_\mathrm{int}$ & $<10^{-13}$/$\Ord{h^2}$ & \checkmark \\
 U5-b & $\delta_\varepsilon$ vs $h$ scaling & $\varepsilon=1.5h$ 最適 & $\Delta p$ 系統誤差最小 & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
 U6-a & DC $k=2,3$ 反復収束率   & $k\geq3$ で漸近        & 設計通り        & \checkmark \\
-U6-b & Split-PPE $\rho$-ratio 1:1--1:1000 & $\Ord{h^7}$（液相内部）& $\Ord{h^{7.0}}$ 全 $\rho$ 比で同一 & \checkmark \\
-U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{7.0}}$（1D）   & \checkmark \\
-U6-c & HFE 2D テンソル積       & $\Ord{h^6}$              & $\Ord{h^{5.8}}$（$N\le128$） & $\triangle$ \textsuperscript{(c)} \\
+U6-b & lumped--PPE $\rho$-ratio 1:1--1:1000 & 高密度比限界の診断 & $\rho_l\le10$: $\Ord{h^2}$, $\rho_l=1000$: $p\approx0.78$ & \checkmark \\
+U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
+U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{5.10}}$/med $\Ord{h^{3.21}}$ & $\triangle$ \textsuperscript{(b)} \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
 \midrule
@@ -64,21 +64,19 @@ U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
 \midrule
-U9   & DCCD-on-pressure 違反   & 発散誤差 $\Ord{h^2}$    & $\Ord{h^{2.0}}$（200-step で寄生流れ噴出） & \checkmark \\
+U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mathrm{diff}}=\Ord{h^2}$, ratio $10^5$--$10^7$ & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VII：coupling primitive}} \\
 \midrule
-U7-a & BF 整合：$\Delta p=\sigma\kappa$ vs 計算値 & 相対誤差 ${<}1\%$ & $0.16$--$0.31\%$ & \checkmark \\
-U7-a & BF 不整合：寄生流れ増幅 & 整合比 ${\gg}1$ & $10^3$--$10^6$ 倍 & \checkmark \textsuperscript{‡} \\
-U7-b & $\rho/\mu$ 補間（harmonic） & 高 $\rho$ 比安定    & 安定（推奨設定）       & \checkmark \\
+U7-a & BF 整合：$\Delta p=\sigma\kappa$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
+U7-a & BF mismatch one-step 指標 & match と同精度域 & FD2 mismatch でも $N\ge64$ で ${<}3\%$ & \checkmark \\
+U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
 \bottomrule
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
-\textbf{(a) 設計限界内}：CCD 非一様 $p=5.2$--$5.8$（前漸近振動，下流非律速）；
-\textbf{(b) パイプライン律速に非律速}（CSF $\Ord{h^2}$ より高精度）；
-\textbf{(c) 精度床到達}：HFE 2D 高解像度で丸め・補間床，再初期化シフト累積が DGR で補償．
+\textbf{(a) 評価配置律速}：FCCD face 配列の周期端点を含む MMS 評価で 4 次に律速；
+\textbf{(b) 幾何診断律速}：HFE 2D band は closest-point 幾何と界面跨ぎセル配置を含む条件付き指標．
 \textsuperscript{†}理論予測（§~\ref{sec:time_int}）と一致；実用上 $\mu_l/\mu_g \lesssim 5$ で支配的でない．
-\textsuperscript{‡}否定テスト（演算子不一致が寄生流れを生成することを確認）として合格．
 \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（本章では該当なし）．
 }
 \end{tabular}
@@ -88,20 +86,25 @@ $\triangle$ の類型——
 9 件すべての単体テストが\textbf{合格}または\textbf{条件付き合格}（$\triangle$）を達成．
 $\times$（不合格）は本章では該当なし．主要結果：
 \begin{itemize}[noitemsep]
-  \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，PPE Dirichlet $\Ord{h^{7.0}}$ 超収束，
-        Neumann $\Ord{h^{5.0}}$ 境界律速．
-  \item \textbf{空間（非一様）：}前漸近 $p = 5.2$--$5.8$（$\triangle$），
+  \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，FCCD 評価配置は $\Ord{h^{4.0}}$（$\triangle$），
+        UCCD6 は $\Ord{h^{7.0}}$，PPE Dirichlet $k=3$ は $\Ord{h^{6.90}}$，
+        Neumann は $\Ord{h^{4.85}}$ 境界律速．
+  \item \textbf{空間（非一様）：}CCD $\Ord{h^{5.98}}$，
+        FCCD face value/grad $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
         GCL は $7.5 \times 10^{-14}$ 機械精度，
         Ridge--Eikonal D1--D4 一様極限 $< 10^{-13}$．
-  \item \textbf{界面：}Ridge--Eikonal reinit が 20 反復で機械精度近傍，
-        $\delta_\varepsilon$ 0 次モーメント機械精度，1 次 $\Ord{h^2}$．
-  \item \textbf{圧力ソルバ：}分相 PPE + DC $k = 3$ + HFE が
-        全密度比 $\rho_l/\rho_g = 1$--$1000$ で液相内部 $\Ord{h^{7.0}}$ Dirichlet を達成．
+  \item \textbf{界面：}Godunov Eikonal reinit は band 残差を
+        $n_\tau=20$ で $2.19\times10^{-2}$，$n_\tau=100$ で $9.16\times10^{-3}$ へ減衰し，
+        DGR は $\eps_{\eff}/\eps^\star = 2.0 \to 1.0000033$ を達成．
+        $\delta_\varepsilon$ は 0 次モーメント機械精度，1 次 $\Ord{h^2}$．
+  \item \textbf{圧力ソルバ：}lumped--PPE は高密度比 $\rho_l=1000$ で $p\approx0.78$ に律速し，
+        分相 PPE への切替動機を与える．HFE は 1D $\Ord{h^{5.91}}$，2D band max/med
+        $\Ord{h^{5.10}}$/$\Ord{h^{3.21}}$．
   \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
         CN $\Ord{\Delta t^{2.0}}$ 無条件安定．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
-  \item \textbf{coupling：}BF 整合 Laplace 圧 $0.16$--$0.31\%$，
-        不整合で寄生流れが $10^3$--$10^6$ 倍増幅．
+  \item \textbf{coupling：}BF 整合 Laplace 圧は $N=128$ で $0.61\%$，
+        face $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．
 \end{itemize}
 \end{tcolorbox}
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U1] CCD operator family suite — Tier I (uniform grid).
 
-Paper ref: Chapter 11 U1 (sec:U1_ccd_suite; paper/sections/12u1_ccd_operator.tex).
+Paper ref: Chapter 12 U1 (sec:U1_ccd_suite; paper/sections/12u1_ccd_operator.tex).
 
 Sub-tests
 ---------

@@ -52,7 +52,7 @@ $N \le 64$ までの $\sim 11$ で確認済み．}
 \caption{U5-b: スケール係数 $c = \eps / h$ の 0 次モーメント誤差比較．
 $c < 1$ は $\eps$ がサポート不足（誤差が $h \to 0$ で stall）．
 $c \ge 1$ は $h$ 細分化で機械精度に到達．$c = 2$ は $N=128$ で
-$1.83\times 10^{-14}$（最良）．本実装での推奨は $c \in [1.5, 2]$．}
+$1.83\times 10^{-14}$（最良）．本実験での推奨は $c \in [1.5, 2]$．}
 \label{tab:U5_eps_h_rule}
 \centering\small
 \begin{tabular}{r c c c c}
@@ -73,8 +73,7 @@ $128$  & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}\,^\dagger$ & $1.64
 \includegraphics[width=0.88\linewidth]{figures/ch12_u5_heaviside_delta_accuracy}
 \caption{U5：$H_\eps$ / $\delta_\eps$ モーメント精度 + $\eps = c h$ 最適 c-sweep．
 $c=1.5$ で $N=64$ までに 0 次モーメント誤差が機械精度床へ到達；
-$c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．
-出典：\texttt{experiment/ch12/exp\_U5\_heaviside\_delta\_accuracy.py}．}
+$c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．}
 \label{fig:ch12_u5}
 \end{figure}
 
@@ -87,6 +86,6 @@ $c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．
         $c \in [1.5, 2.0]$ が実用最適．§\ref{sec:eps_spatial_variable} の
         スケール選択基準と整合．\checkmark
 \end{itemize}
-A3 トレーサビリティ：
-平滑化 Heaviside / $\delta_\eps$ 定義 → §\ref{sec:eps_spatial_variable} →
-\texttt{src/twophase/levelset/heaviside.py}．
+検証対応：
+平滑化 Heaviside / $\delta_\eps$ 定義と §\ref{sec:eps_spatial_variable} に対し，
+0/1 次モーメント誤差と $\eps=ch$ の感度を測定する．

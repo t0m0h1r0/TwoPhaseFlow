@@ -6,37 +6,37 @@
 % 13f_coupling / 13g_interface_crossing / 13h_nonuniform_grid / 13i_error_budget)
 % は本ブランチで一括 git rm し，本ファイルから 6 新 sub-file へ再構成．
 % ═══════════════════════════════════════════════════════════════════════════════
-\section{統合検証：V1--V10 ゼロベース実験}
+\section{多相流ソルバの統合検証実験}
 \label{sec:verification}
 
 \paragraph{位置付け．}
 \autoref{sec:numerical_integrity}（§12）で個別コンポーネント
-（CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Ridge--Eikonal U4，
+（CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Godunov Eikonal U4，
 Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静的液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
 \textbf{単体で}設計仕様（slope, 境界整合，演算子トレース性）を満たすことを確認した．
 本章は，これらコンポーネントを\textbf{統合}した完全 Navier--Stokes / 二相流ソルバが
 \textbf{物理整合性}と\textbf{設計収束次数}を保つかを，10 個の独立した統合検証実験
-V1--V10 でゼロベース（旧データ・旧表は一切再利用しない）に評価する．
+V1--V10 で評価する．
+本章の V 系列は integration verification 専用であり，
+前章の U 系列（単体 component verification）とは実験目的と判定基準を分ける．
 
 \paragraph{V1--V10 の設計指針．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{Tier 構造} — V1--V2 は単相 NS（密度比 $1$）で空間/時間収束を確立し，
         V3--V7 で二相 NS（密度比 $\le 833$）の物理整合性と時間精度を，
         V8--V10 で非一様格子上の堅牢性を検証する．
-  \item \textbf{Algorithm Fidelity (PR-5)} — 各実験は paper-exact 設定
-        （$\sigma$, $\rho_l/\rho_g$, $\Re$, BC）で driver を呼び，CPU 上で bit-exact 再現可能．
-  \item \textbf{A3 Traceability} — 各 sub-file 末尾に「式 → 離散化 → コード」の chain を明示．
-  \item \textbf{出典} — 全数値は \texttt{experiment/ch13/results/V[1-10]\_*/data.npz}
-        から numpy で抽出した値のみを表に記載（旧 §13 prose 表セルの再利用は無し）．
+  \item \textbf{設定忠実性} — 各実験は表に示す物理設定
+        （$\sigma$, $\rho_l/\rho_g$, $\Re$, BC）で評価する．
+  \item \textbf{対応関係} — 各実験は「目的 → 設定 → 結果 → 判定」の順に記述する．
+  \item \textbf{数値の扱い} — 表には再生成した数値のみを記載し，旧表の値は再利用しない．
 \end{itemize}
 
 \paragraph{V1--V10 概観．}
-表~\ref{tab:V_summary} に各実験の検証対象・新図・主要指標を示す．
-詳細は本章 6 sub-file 内で個別に述べる．
+表~\ref{tab:V_summary} に各実験の検証対象と主要指標を示す．
+詳細は本章内で個別に述べる．
 
 \begin{table}[!ht]
-\caption{V1--V10 統合検証の概観．新図は \texttt{paper/figures/ch13\_v[1-10]\_*.pdf}．
-出典スクリプトは \texttt{experiment/ch13/exp\_V[1-10]\_*.py}．}
+\caption{V1--V10 統合検証の概観．}
 \label{tab:V_summary}
 \centering\footnotesize
 \begin{tabular}{l l l l}

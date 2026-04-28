@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U4] Reinit |∇φ|=1 recovery — Tier III.
 
-Paper ref: Chapter 11 U4 (sec:U4_ridge_eikonal_reinit; paper/sections/12u4_ridge_eikonal_reinit.tex).
+Paper ref: Chapter 12 U4 (sec:U4_ridge_eikonal_reinit; paper/sections/12u4_ridge_eikonal_reinit.tex).
 
 Sub-tests
 ---------
@@ -93,7 +93,7 @@ def run_U4a() -> dict:
     dtau = 0.3 * h_min
 
     phi_sdf = _circle_phi_sdf(grid)
-    # Biased φ_0 = φ_sdf / 2 → |∇φ_0| = 0.5 everywhere (Chapter 11 U4 setup).
+    # Biased φ_0 = φ_sdf / 2 → |∇φ_0| = 0.5 everywhere (Chapter 12 U4 setup).
     phi0 = phi_sdf / 2.0
     sgn0 = np.sign(phi_sdf)
 
@@ -225,7 +225,7 @@ def print_summary(results: dict) -> None:
               f"full err = {r['grad_err_inf']:.3e}{flag}")
 
     b = results["U4b"]
-    print("U4-b DGR thickness correction (Chapter 11 U4: ratio ~1.03, in [1.0, 1.1]):")
+    print("U4-b DGR thickness correction (Chapter 12 U4: ratio ~1.03, in [1.0, 1.1]):")
     print(f"  eps_target           = {b['eps_target']:.4e}")
     print(f"  eps_eff initial      = {b['eps_eff_init']:.4e}  "
           f"(ratio = {b['ratio_init']:.3f})")
