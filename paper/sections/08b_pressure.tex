@@ -10,10 +10,11 @@ Projection 法の幾何学的意味を説明した．
 本節ではこれを\textbf{変密度場}へ拡張し，
 なぜ可変係数演算子 $\bnabla\cdot(1/\rho\,\bnabla p)$ が現れるかを3ステップで導出する．
 
-本稿では van Kan（1986）の \textbf{IPC（Incremental Pressure Correction）法}を採用し，
+本稿では van Kan（1986）の \textbf{IPC（Incremental Pressure Correction）法}~\cite{vanKan1986}を採用し，
 予測ステップに前時刻圧力 $-\bnabla p^n$ を組み込む
 （§~\ref{sec:time_int}，式~\eqref{eq:predictor_imex_bdf2}）．
-これにより標準 Chorin 法の $\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される．
+これにより標準 Chorin 法~\cite{Chorin1968}の $\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
+（二次精度 projection の系統解説は~\cite{BellColella1989,Guermond2006}）．
 以下では圧力射影部分だけを抽出し，射影に用いる時間幅を
 $\Delta t_{\mathrm{proj}}$ と書く
 （IMEX-BDF2 では $\Delta t_{\mathrm{proj}}=\gamma\Delta t$，
