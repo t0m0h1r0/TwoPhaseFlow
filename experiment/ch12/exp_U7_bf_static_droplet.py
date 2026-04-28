@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U7] BF static droplet 1-step (Laplace pressure error) — Tier VII.
 
-Paper ref: §12.7 (sec:U7_bf_static_droplet).
+Paper ref: Chapter 11 U7 (sec:U7_bf_static_droplet; paper/sections/12u7_bf_static_droplet.tex).
 
 Sub-tests
 ---------
@@ -45,6 +45,7 @@ from twophase.tools.experiment.gpu import sparse_solve_2d
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u7_bf_static_droplet"
 
 # ── Physical parameters (U7-a) ───────────────────────────────────────────────
 R = 0.25
@@ -253,7 +254,7 @@ def make_figures(results: dict) -> None:
     ax_face.set_xlabel("$h$"); ax_face.set_ylabel("$L_\\infty$ ρ-face error")
     ax_face.set_title("(b) ρ face interpolation"); ax_face.legend(); ax_face.invert_xaxis()
 
-    save_figure(fig, OUT / "U7_bf_static_droplet")
+    save_figure(fig, OUT / "U7_bf_static_droplet", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:

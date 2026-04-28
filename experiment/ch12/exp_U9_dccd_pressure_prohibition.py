@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U9] DCCD-on-pressure prohibition — Tier VI (negation test).
 
-Paper ref: §12.6 (sec:U9_dccd_pressure_prohibition).
+Paper ref: Chapter 11 U9 (sec:U9_dccd_pressure_prohibition; paper/sections/12u9_dccd_pressure_prohibition.tex).
 
 Goal
 ----
@@ -49,6 +49,7 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u9_dccd_pressure_prohibition"
 
 GRID_SIZES = [32, 64, 128, 256]
 EPS_D_LIST = [0.05, 0.25]
@@ -170,7 +171,7 @@ def make_figures(results: dict) -> None:
         ylabel="$\\|\\nabla^2 p - \\nabla^2 \\tilde p\\|_\\infty$",
         title="(diff) DCCD-on-pressure error blow-up")
 
-    save_figure(fig, OUT / "U9_dccd_pressure_prohibition")
+    save_figure(fig, OUT / "U9_dccd_pressure_prohibition", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:

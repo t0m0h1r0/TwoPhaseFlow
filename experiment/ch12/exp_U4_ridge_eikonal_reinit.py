@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U4] Reinit |∇φ|=1 recovery — Tier III.
 
-Paper ref: §12.4 (sec:U4_ridge_eikonal_reinit); 12d_interface_pipeline.tex.
+Paper ref: Chapter 11 U4 (sec:U4_ridge_eikonal_reinit; paper/sections/12u4_ridge_eikonal_reinit.tex).
 
 Sub-tests
 ---------
@@ -51,6 +51,7 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u4_ridge_eikonal_reinit"
 
 N_GRID = 128
 R_CIRCLE = 0.25
@@ -92,7 +93,7 @@ def run_U4a() -> dict:
     dtau = 0.3 * h_min
 
     phi_sdf = _circle_phi_sdf(grid)
-    # Biased φ_0 = φ_sdf / 2 → |∇φ_0| = 0.5 everywhere (paper §12d Step 2).
+    # Biased φ_0 = φ_sdf / 2 → |∇φ_0| = 0.5 everywhere (Chapter 11 U4 setup).
     phi0 = phi_sdf / 2.0
     sgn0 = np.sign(phi_sdf)
 
@@ -205,7 +206,7 @@ def make_figures(results: dict) -> None:
     ax_b.legend(fontsize=8)
     ax_b.grid(True, axis="y", alpha=0.3)
 
-    save_figure(fig, OUT / "U4_ridge_eikonal_reinit")
+    save_figure(fig, OUT / "U4_ridge_eikonal_reinit", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:
@@ -224,7 +225,7 @@ def print_summary(results: dict) -> None:
               f"full err = {r['grad_err_inf']:.3e}{flag}")
 
     b = results["U4b"]
-    print("U4-b DGR thickness correction (paper: ratio ~1.03, in [1.0, 1.1]):")
+    print("U4-b DGR thickness correction (Chapter 11 U4: ratio ~1.03, in [1.0, 1.1]):")
     print(f"  eps_target           = {b['eps_target']:.4e}")
     print(f"  eps_eff initial      = {b['eps_eff_init']:.4e}  "
           f"(ratio = {b['ratio_init']:.3f})")
