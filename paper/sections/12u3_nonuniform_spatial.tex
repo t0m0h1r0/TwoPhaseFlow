@@ -17,7 +17,10 @@
 $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
 （式~\eqref{eq:grid_delta}）に従う．
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
-界面位置 $x = 0.5$ の周りに集中．
+対角界面 $x + y = 1$（領域中央を通る $45^\circ$ 直線）の周りに
+両軸が同時に集中する設計．これは Heaviside 場 $\psi = H_{\eps}((x-0.5)+(y-0.5))$ を経由して
+\texttt{update\_from\_levelset} に与える経路で実現する（実装:
+\texttt{experiment/ch12/exp\_U3\_nonuniform\_spatial\_suite.py:104}）．
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
@@ -44,7 +47,7 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 GCL: $f=1$ で $\|\mathrm{d}f/\mathrm{d}x\|_\infty = 2.13\times 10^{-13}$（機械零）．
 $\alpha=2$ の集中効果は $\sin(\pi x)$ MMS では境界に質量が無いため
 $\alpha=1$ と同精度（差 $< 10^{-13}$）；密度関数が周辺グリッドの
-$h_{\min}$ を保ったまま中央集中するため．}
+$h_{\min}$ を保ったまま対角線上に集中するため．}
 \label{tab:U3_ccd_nonuniform}
 \centering\small
 \begin{tabular}{r r r r}

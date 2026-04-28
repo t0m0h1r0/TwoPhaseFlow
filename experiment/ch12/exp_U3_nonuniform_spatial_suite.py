@@ -78,12 +78,14 @@ N_FOR_C = 128
 def _make_clustered_grid(
     N: int, alpha: float, backend, x_int: float = 0.5
 ) -> tuple:
-    """Build a 2D Grid clustered around an interface at x = x_int (and
-    y = x_int) using the paper's eq:grid_delta Gaussian density.
+    """Build a 2D Grid clustered around the diagonal interface
+    x + y = 2 * x_int (= 1 for x_int=0.5) using the paper's
+    eq:grid_delta Gaussian density.
 
     For alpha=1.0 returns a uniform grid; for alpha>1 the grid clusters
-    around the interface with bounded Jacobian (paper §6 stretching).
-    The CCD is built and bound to refined O(h^6) metrics on return.
+    around the diagonal level set phi = (X - x_int) + (Y - x_int) with
+    bounded Jacobian (paper §6 stretching, §12.U3). The CCD is built and
+    bound to refined O(h^6) metrics on return.
     """
     cfg = SimulationConfig(grid=GridConfig(
         ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha,
@@ -99,9 +101,11 @@ def _make_clustered_grid(
         x = np.asarray(grid.coords[0])
         y = np.asarray(grid.coords[1])
         X, Y = np.meshgrid(x, y, indexing="ij")
-        # ψ = H_eps(φ) with φ = x - x_int (planar interface). Use both axes
-        # so the y-axis also clusters at y=x_int.
-        phi = (X - x_int) + (Y - x_int)  # diagonal interface clusters both axes
+        # ψ = H_eps(φ) with φ = (x - x_int) + (y - x_int). The φ=0 locus is
+        # the diagonal line x + y = 2 * x_int (= 1 for x_int=0.5), so both
+        # axes cluster simultaneously around this 45° interface — matching
+        # paper §12.U3 "対角界面 x+y=1" setup.
+        phi = (X - x_int) + (Y - x_int)
         psi = heaviside(np, phi, eps)
         grid.update_from_levelset(psi, eps, ccd=ccd)
     return grid, ccd
