@@ -1,5 +1,5 @@
 % paper/sections/10_grid.tex
-\section{界面適合非一様格子}
+\section{界面適合非一様格子：格子生成・メトリクス係数・CCD/FCCD 非一様拡張}
 \label{sec:grid}
 
 \noindent\textbf{本章の位置付け：}
@@ -273,7 +273,7 @@ step 5 の CCD 評価が適切に機能していることを確認できる．
 直交テンソル積格子を前提としており，$\partial x/\partial\eta = \partial y/\partial\xi = 0$ が成立する．
 非直交格子では追加のオフ対角メトリクス項が必要になるため，本稿の適用範囲外となる．
 
-\subsection{時間変化格子と ALE 効果}
+\subsection{格子更新モードと ALE 補正の省略：固定格子設計の根拠}
 \label{sec:grid_ale}
 
 格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$ から
