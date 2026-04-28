@@ -33,10 +33,18 @@
   \item \texttt{experiment/ch14/config/ch14\_rising\_bubble.yaml}
   \item \texttt{experiment/ch14/config/ch14\_rayleigh\_taylor.yaml}
 \end{itemize}
-これらは代表物性（毛管波・上昇気泡は水--空気，Rayleigh--Taylor は水--シリコーン油），
+これらは代表物性（毛管波・上昇気泡は水--空気；
+Rayleigh--Taylor は水（重相，上）／シリコーン油 5cSt（軽相，下）），
 非一様 interface-fitted 格子 $\alpha=2$，Ridge--Eikonal 再初期化，
 FCCD 圧力勾配，HFE 曲率，pressure-jump 型分相 PPE，
 UCCD6 対流，および IMEX--BDF2/implicit-BDF2 時間発展を共有する．
+RT については，YAML スキーマ上 \texttt{physics.phases.liquid} スロットに下層シリコーン油，
+\texttt{physics.phases.gas} スロットに上層水を割り当てる
+（スキーマのスロット名と物理流体名を分離した運用である）．
+時間積分の安定境界は YAML \texttt{run.time.cfl} を理論 CFL 定数への乗数として与え，
+本章の3本はいずれも乗数 $1.0$ で，移流 $C_{\mathrm{adv}}=0.10$，毛管 $C_{\mathrm{cap}}=0.05$，
+粘性 $C_{\mathrm{visc}}=1.0$ に解決される
+（定数定義は \texttt{src/twophase/simulation/config\_run\_builder\_sections.py:20--22}）．
 
 非一様格子を採用できる条件は，格子密度比 $\alpha$ そのものではなく，
 投影・浮力残差・速度補正が同じ face locus を共有することである．
@@ -66,7 +74,7 @@ Corrector は同じ $A_fG_f$ で速度を補正し，
   k=\frac{2\pi m}{L_x}.
   \label{eq:capillary_wave_initial}
 \end{equation}
-YAML では $y_0=0.5$，$A_0=0.05$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
+YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
 小振幅の二流体毛管波では，粘性と壁の影響を無視した最初の基準として
 \begin{equation}
   \omega^2
@@ -83,29 +91,29 @@ IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]^2$，$128^2$，interface-fitted $\alpha=2$，壁面境界
-  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，$\sigma=0.072$
-  \item 時間：$T=8.0$，$\mathrm{CFL}=0.10$，界面移流は TVD-RK3，運動量は IMEX--BDF2
-  \item 幾何：\texttt{ridge\_eikonal} を4ステップ毎に適用し，$\varepsilon_\text{scale}=1.4$
+  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
+        $\sigma=0.072$，$g=0$
+  \item 時間：$T=35.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 20 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップ $5.0$
   \item 出力：\texttt{interface\_amplitude}，体積保存，運動エネルギー，
-        さらに \texttt{psi}・速度・圧力 snapshot を0.5間隔で保存
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{現行結果と判定基準}
+\subsubsection{受入基準と想定診断}
 
-現行 YAML の保存済み実行では $T=8.0$ まで到達し，
-体積ドリフトの最終値は $2.68\times10^{-5}$ である．
-一方，この実行データでは界面振幅診断が旧 \texttt{deformation} 名で保存され，
-速度エネルギーが全時刻でゼロのため，
-式~\eqref{eq:flat_capillary_dispersion} に基づく振動周期の定量判定には使わない．
-したがって本節の現在の判定は，\textbf{長時間出力 smoke と保存性は合格，
-毛管波動力学の定量 validation は interface-amplitude 診断を含む再実行後に確定}
-とする．
+\textit{（実験結果は計算完了次第掲載）}
 
 受入基準は次の三つである：
 \begin{enumerate}[noitemsep,leftmargin=2em]
   \item \textbf{界面振幅} $A(t)$ が式~\eqref{eq:flat_capillary_dispersion} の周期スケールから
-        大きく外れず，位相誤差を resolution/CFL sweep で評価できること．
-  \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=8$ で $O(10^{-4})$ 以下に留まること．
+        大きく外れず，位相誤差を想定 resolution/CFL sweep で評価できること
+        （本 YAML は単一点；解像度／CFL 走査は別 YAML で取得する）．
+  \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=35$ で $O(10^{-4})$ 以下に留まること．
   \item \textbf{場出力} \texttt{psi}，速度，圧力の snapshot が同じ時刻列で保存され，
         pressure-jump の不整合を事後診断できること．
 \end{enumerate}
