@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U1] CCD operator family suite — Tier I (uniform grid).
 
-Paper ref: §12.1.1 (sec:U1_ccd_suite).
+Paper ref: Chapter 11 U1 (sec:U1_ccd_suite; paper/sections/12u1_ccd_operator.tex).
 
 Sub-tests
 ---------
@@ -41,6 +41,7 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u1_ccd_operator_suite"
 
 GRID_SIZES = [16, 32, 64, 128, 256]
 
@@ -217,7 +218,7 @@ def make_figures(results: dict) -> None:
         {"$L_\\infty$ UCCD6 RHS": [r["Linf_d1"] for r in rows_d]},
         ref_orders=[5, 6], xlabel="$h$", ylabel="$L_\\infty$ error",
         title="(d) UCCD6 nodal RHS")
-    save_figure(fig, OUT / "U1_ccd_operator_suite")
+    save_figure(fig, OUT / "U1_ccd_operator_suite", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:

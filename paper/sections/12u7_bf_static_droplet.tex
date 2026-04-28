@@ -18,8 +18,9 @@
 \begin{description}\setlength{\itemsep}{0pt}
   \item[U7-a] BF 静止液滴 1-step（速度 0 初期化 + 1 ステップ pressure solve）．
         $R=0.25$ 円界面，$\sigma = 1$．Young--Laplace 解析値 $\Delta p^\star = \sigma/R = 4$．
-        \textbf{match}（density inside/outside 同一; gravity 0）と
-        \textbf{mismatch}（$\rho_l/\rho_g = 10$）の 2 モード．
+        \textbf{match}（$\nabla p$ と $\nabla\psi$ がともに CCD）と
+        \textbf{mismatch}（$\nabla p$ は CCD, $\nabla\psi$ は FD2）の 2 モード．
+        密度比は両モードとも $\rho_l/\rho_g = 1000$．
         $N \in \{32,64,128\}$．
   \item[U7-b] face $\mu$ 補間：3 種（arith / harm / vof-weighted）．
         $N \in \{32,64,128,256,512\}$．$\mu$ ジャンプ $\mu_l/\mu_g = 100$，
@@ -87,7 +88,7 @@ face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h
 \paragraph{評価．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U7-a：$N \ge 64$ で BF 結合が Young--Laplace 跳び $\Delta p = \sigma/R$ を
-        2\% 以下で再現．mismatch $\rho_l/\rho_g = 10$ でも match と同精度．
+        2\% 以下で再現．FD2 $\nabla\psi$ mismatch でも本 one-step 圧力跳び指標では match と同精度．
         parasitic velocity が $h$ 細分化で減衰（spurious current 抑制設計通り）．
         §\ref{sec:bf_p2_adjoint} の理論と整合．\checkmark
   \item U7-b：3 種補間とも slope $\approx 1.9$（$\Ord{h^2}$）．
@@ -97,6 +98,7 @@ face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h
 \end{itemize}
 A3 トレーサビリティ：
 式~\eqref{eq:bf_discrete_balance}（BF 離散整合条件）→ §\ref{sec:bf_p2_adjoint} →
-\texttt{src/twophase/coupling/bf.py}；
-face $\mu$ 補間規則→ §\ref{sec:mu_face_interpolation} →
-\texttt{src/twophase/coupling/face\_interp.py}．
+\texttt{src/twophase/levelset/curvature.py} と
+\texttt{src/twophase/ppe/ppe\_builder.py}；
+face $\mu$ 補間診断→ §\ref{sec:mu_face_interpolation} →
+\texttt{experiment/ch12/exp\_U7\_bf\_static\_droplet.py} の \texttt{\_face\_interp}．

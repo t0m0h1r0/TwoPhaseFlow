@@ -76,10 +76,9 @@ $10.0$ & $0.244$  & $0.6405$ & $0.6228$ \\
 
 \begin{table}[!ht]
 \caption{U8-d: A/B/C 3 層 CN--ADI（粘性 ratio test, $T=0.02$）．
-全層で slope $\approx 2.0$（設計）．
-\textbf{Layer A}（均一）は機械精度床に最速到達；
-\textbf{Layer B}（粘性勾配 only）と \textbf{C}（粘性 + 界面）は同等精度，
-ratio による誤差倍化はあるが収束次数は維持．}
+\textbf{Layer A}（均一）は slope $\approx 2.0$．
+\textbf{Layer B}（粘性勾配 only）と \textbf{C}（粘性 + 界面）は explicit cross term により
+slope $\approx 1.0$ に律速する（既知劣化）．}
 \label{tab:U8_layers}
 \centering\small
 \begin{tabular}{r r r r r r}
@@ -119,10 +118,10 @@ CN--ADI vs FE 安定性比較で CFL$_\nu = 0.5$ にて FE 増幅 $1.7\times 10^
         §\ref{sec:viscous_cn_defect} の A--安定設計と整合．\checkmark
   \item U8-d Layer A/B/C：A 層は完全 2 次，B/C 層は ADI 分割で実効 1 次まで
         劣化．これは ADI--Strang 整合則の典型挙動であり，
-        §\ref{sec:viscous_3layer} の予測通り．\checkmark（既知の劣化を定量化）．
+        §\ref{sec:viscous_3layer} の予測通り．$\triangle$（既知の劣化を定量化）．
 \end{itemize}
 A3 トレーサビリティ：
-式~\eqref{eq:tvd_rk3}（SSP 形）→ §\ref{sec:time_int} → \texttt{src/twophase/time/rk.py}；
-AB2 multistep 公式→ §\ref{sec:time_int} → 同；
+式~\eqref{eq:tvd_rk3}（SSP 形）→ §\ref{sec:time_int} → \texttt{src/twophase/time\_integration/tvd\_rk3.py}；
+AB2 multistep 公式→ §\ref{sec:time_int} → \texttt{src/twophase/time\_integration/ab2\_predictor.py}；
 式~\eqref{eq:viscous_cn_helmholtz}（CN--ADI 行列形）→ §\ref{sec:viscous_cn_defect} →
-\texttt{src/twophase/time/cn\_adi.py}．
+\texttt{src/twophase/time\_integration/cn\_advance/}．

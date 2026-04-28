@@ -1,7 +1,7 @@
 % paper/sections/12_component_verification.tex
 %
-% §12  計算コンポーネントの数学的検証
-%       Part 2 (§4–§11) の数値手法 primitive を 9 件の単体テスト (U1–U9) /
+% §11  計算コンポーネントの数学的検証
+%       Part 2 (§4–§10) の数値手法 primitive を 9 件の単体テスト (U1–U9) /
 %       7 Tier に分類し,各 primitive が単体で設計通りの数学的精度を有することを
 %       格子細分化 / MMS / 解析参照解との比較によって系統的に確認する.
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -38,8 +38,8 @@
 \label{tab:verification_summary}%
 
 \paragraph{目的．}
-本章は，本稿のアルゴリズム構成で提示した
-Predictor--PPE--Corrector の 7 ステップ統合アルゴリズムを構成する
+本章は，Part 2 各章に分散して提示した
+Predictor--PPE--Corrector を含む 7 ステップ統合アルゴリズムの
 数値手法 primitive を，Part 2（§\ref{sec:CCD}--§\ref{sec:grid}）の
 理論定義から離散実装まで漏れなく追跡し，
 \textbf{各 primitive が単体で設計通りの数学的精度を有する}
@@ -66,7 +66,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U4 = Ridge--Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
         U5 = 平滑化 $H_\eps$ / $\delta_\eps$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
   \item[Tier IV（圧力結合系）]
-        U6 = split--PPE + DC + HFE（§\ref{sec:split_ppe_framework}--§\ref{sec:hfe}）．
+        U6 = lumped--PPE + DC + HFE（§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
   \item[Tier V（時間積分）]
         U8 = TVD--RK3 / AB2 / CN--ADI 3 種積分子（§\ref{sec:time_int}）．
   \item[Tier VI（否定検証）]
@@ -98,7 +98,7 @@ U & 名称 & $p_{\mathrm{design}}$ & 実測 & 判定 \\
 \midrule
 U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
 U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
-U1-c & FCCD face value/grad（壁）& $6$ & $4.00 / 4.00$ & $\triangle$ \\
+U1-c & FCCD face value/grad（周期評価）& $6$ & $4.00 / 4.00$ & $\triangle$ \\
 U1-d & UCCD6 d1                & $6$ & $7.04$（super） & \checkmark \\
 U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
 U2-b & PPE Neumann + ゲージ       & $5$ & $4.85$ & \checkmark \\
@@ -107,11 +107,11 @@ U3-b & FCCD 非一様 face value    & $6$ & $5.99$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & active & $D_4 \!\sim\! 10^{-11}$ & \checkmark \\
 U4-a & Ridge--Eikonal reinit    & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正         & $\sim 0.03$ & $3\times 10^{-6}$ & \checkmark \\
-U5-a & $H_\eps / \delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
+U5-a & $\delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
-U6-a & DC $\omega$--収束          & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
-U6-b & split--PPE 高密度比       & 既知劣化 & slope $\sim 0.78$ & $\triangle$ \\
-U6-c & HFE 1D / 2D              & $6 / 6$ & $5.99 / 5.05$ & \checkmark \\
+U6-a & lumped--PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
+U6-b & lumped--PPE 高密度比      & 既知劣化 & slope $\sim 0.78$ & $\triangle$ \\
+U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.99 / 5.05 / 3.21$ & $\triangle$ \\
 U7-a & BF 静止液滴 1-step       & $\Delta p \to \sigma/R$ & $0.6\%\,@N\!=\!128$ & \checkmark \\
 U7-b & face $\mu$ 補間           & $2$ & $1.93$ & \checkmark \\
 U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
@@ -123,8 +123,8 @@ U9   & DCCD on pressure 禁止     & 違反量発散 & $10^5 \to 10^7$ & $\bulle
 \end{tabular}
 \end{table}
 
-合格 17 件 ($\checkmark$) + 条件付き合格 3 件 ($\triangle$) + negation 成立 1 件 ($\bullet$)
-／ 計 21 サブテスト（9 unit / 7 tier）．
+合格 18 件 ($\checkmark$) + 条件付き合格 4 件 ($\triangle$) + negation 成立 1 件 ($\bullet$)
+／ 計 23 サブテスト（9 unit / 7 tier）．
 個別の数値結果と評価は以下の節に分けて記述する．
 
 % ── 9 単体テストの本体（U1--U9） ──────────────────────────────────────────────

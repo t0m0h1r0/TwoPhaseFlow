@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U5] Smoothed Heaviside / delta_eps moment accuracy — Tier III.
 
-Paper ref: §12.4 (sec:U5_smoothed_heaviside_delta).
+Paper ref: Chapter 11 U5 (sec:U5_heaviside_delta; paper/sections/12u5_heaviside_delta.tex).
 Young-Laplace static droplet exercised separately in U7.
 
 Sub-tests
@@ -37,11 +37,12 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u5_heaviside_delta_accuracy"
 
 GRID_SIZES_A = [16, 32, 64, 128, 256]
 GRID_SIZES_B = [32, 64, 128]
 EPS_C_VALUES = [0.5, 1.0, 1.5, 2.0]
-X_INT = 0.5  # paper §12d spec
+X_INT = 0.5  # Chapter 11 U5 spec
 # Codebase delta_eps is logistic (C^infty) and gives super-spectral moment
 # decay, beating the paper's "O(h^2)" 1D claim (which describes the 2D
 # simulation bottleneck, not the 1D integration order).
@@ -142,7 +143,7 @@ def make_figures(results: dict) -> None:
         title="(b) $\\varepsilon=c\\,h$ scaling",
     )
 
-    save_figure(fig, OUT / "U5_heaviside_delta_accuracy")
+    save_figure(fig, OUT / "U5_heaviside_delta_accuracy", also_to=PAPER_FIG)
 
 
 def _argmin_c_per_N(sub_b: dict) -> dict[int, float]:
@@ -163,12 +164,12 @@ def print_summary(results: dict) -> None:
     rows_a = results["U5a"]["moments"]
     # Paper claims < 1e-13 (machine precision); codebase logistic delta hits
     # ~1e-11 floor at N >= 128 (round-off accumulation in summation).
-    print("U5-a 0th moment errors (paper: < 1e-13; logistic floor ~1e-11):")
+    print("U5-a 0th moment errors (Chapter 11 U5: < 1e-13; logistic floor ~1e-11):")
     for r in rows_a:
         flag = "OK" if r["err_norm"] < 1e-10 else "WARN"
         print(f"  N={r['N']:>4}  |int(delta)-1|={r['err_norm']:.2e}  [{flag}]")
 
-    print("U5-a 1st moment errors (paper: O(h^2); logistic delta gives "
+    print("U5-a 1st moment errors (Chapter 11 U5: O(h^2); logistic delta gives "
           "super-spectral decay until floor):")
     for r in rows_a:
         flag = "OK" if r["err_moment"] < 1e-10 else "WARN"

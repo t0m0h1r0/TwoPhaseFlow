@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """[U3] Non-uniform spatial accuracy suite — Tier II.
 
-Paper ref: §12.3 (sec:U3_nonuniform_suite); 12c_spatial_geometry.tex.
+Paper ref: Chapter 11 U3 (sec:U3_nonuniform_suite; paper/sections/12u3_nonuniform_spatial.tex).
 
-Grid: paper §12c specifies an "interface-clustered non-uniform grid"
+Grid: Chapter 11 U3 specifies an "interface-clustered non-uniform grid"
 (集中点 x=0.5, alpha=2). We use the codebase's actual paper-faithful
 stretching — `Grid.update_from_levelset(psi, eps)` from
 [src/twophase/core/grid.py:91](src/twophase/core/grid.py#L91), which
@@ -24,7 +24,7 @@ Sub-tests
       alpha in {1.0, 1.5, 2.0}, N=128.
       Expected alpha=1 -> ||D_k||_inf < 1e-13.
 
-D1-D4 interpretation (paper §12c calls them "metric corrections from
+D1-D4 interpretation (Chapter 11 U3 calls them "metric corrections from
 chain-rule dJ/dxi"; codebase exposes the underlying spatial fields):
   D1 = max(sigma_eff) - min(sigma_eff)        (RidgeExtractor smoothing scale)
   D2 = max(eps_local) - min(eps_local)        (RidgeEikonal local epsilon)
@@ -65,6 +65,7 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u3_nonuniform_spatial_suite"
 
 GRID_SIZES_AB = [16, 32, 64, 128]
 ALPHAS_AB = [1.0, 2.0]
@@ -291,11 +292,11 @@ def make_figures(results: dict) -> None:
     ax_c.legend(ncol=2, fontsize=8)
     ax_c.axhline(1e-13, ls=":", color="grey", lw=0.8)
 
-    save_figure(fig, OUT / "U3_nonuniform_spatial_suite")
+    save_figure(fig, OUT / "U3_nonuniform_spatial_suite", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:
-    print("U3-a CCD on interface-clustered grid (paper: alpha=1 slope ~6, "
+    print("U3-a CCD on interface-clustered grid (Chapter 11 U3: alpha=1 slope ~6, "
           "alpha=2 slope 5.2-5.8):")
     for alpha in ALPHAS_AB:
         rows = results["U3a"][f"alpha{alpha:g}"]
@@ -303,7 +304,7 @@ def print_summary(results: dict) -> None:
               f"d2 slope = {_slope_summary(rows, 'Linf_d2')}")
     # Paper threshold 7.5e-14 is essentially machine epsilon for h_min ~ 1/N²
     # times N CCD operations; tolerate up to 1e-13 round-off.
-    print("U3-a GCL ||d(1)/dx||_inf (paper: < 7.5e-14; tolerate < 1e-13):")
+    print("U3-a GCL ||d(1)/dx||_inf (Chapter 11 U3: < 7.5e-14; tolerate < 1e-13):")
     for alpha in ALPHAS_AB:
         gcl = results["U3a"]["gcl"][f"alpha{alpha:g}"]
         flag = "OK" if gcl < 1e-13 else ("WARN" if gcl < 1e-10 else "FAIL")
@@ -311,12 +312,12 @@ def print_summary(results: dict) -> None:
 
     # Paper says FCCD "maintains uniform-grid accuracy" on stretched grid.
     # FCCD is 4th-order on uniform; therefore expect ~4.0 on non-uniform too.
-    print("U3-b FCCD on alpha=2 grid (paper: 一様格子精度を維持 → slope ~4):")
+    print("U3-b FCCD on alpha=2 grid (Chapter 11 U3: 一様格子精度を維持 → slope ~4):")
     rows_b = results["U3b"]["alpha2"]
     print(f"  face value slope = {_slope_summary(rows_b, 'Linf_fv')}")
     print(f"  face grad  slope = {_slope_summary(rows_b, 'Linf_fg')}")
 
-    print("U3-c Ridge-Eikonal D1-D4 metric corrections (paper: alpha=1 -> < 1e-13):")
+    print("U3-c Ridge-Eikonal D1-D4 metric corrections (Chapter 11 U3: alpha=1 -> < 1e-13):")
     for alpha in ALPHAS_C:
         d = results["U3c"][f"alpha{alpha:g}"]
         worst = max(d["D1"], d["D2"], d["D3"], d["D4"])

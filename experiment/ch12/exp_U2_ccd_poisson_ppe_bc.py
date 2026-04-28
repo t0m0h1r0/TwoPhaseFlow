@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U2] CCD-Poisson + PPE BC — Tier I (uniform grid).
 
-Paper ref: §12.1.2 (sec:U2_ccd_poisson_ppe_bc).
+Paper ref: Chapter 11 U2 (sec:U2_ccd_poisson_ppe_bc; paper/sections/12u2_ccd_poisson_ppe_bc.tex).
 
 Sub-tests
 ---------
@@ -45,6 +45,7 @@ from twophase.tools.experiment.gpu import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u2_ccd_poisson_ppe_bc"
 
 DIRICHLET_GRID_SIZES = [8, 16, 32, 64, 128]
 NEUMANN_GRID_SIZES = [8, 16, 32, 64, 128]
@@ -203,7 +204,7 @@ def make_figures(results: dict) -> None:
         ref_orders=[4, 5, 6], xlabel="$h$", ylabel="$L_\\infty$ error",
         title="(b) PPE Neumann + gauge")
 
-    save_figure(fig, OUT / "U2_ccd_poisson_ppe_bc")
+    save_figure(fig, OUT / "U2_ccd_poisson_ppe_bc", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:

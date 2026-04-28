@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U8] Time integration suite — Tier V.
 
-Paper ref: §12.5 (sec:U8_time_integration_suite).
+Paper ref: Chapter 11 U8 (sec:U8_time_integration; paper/sections/12u8_time_integration.tex).
 
 Sub-tests
 ---------
@@ -17,7 +17,7 @@ Sub-tests
   (d) Viscous 3-layer Layer A/B/C accuracy (cross-diffusion term)
       Layer A: μ_l/μ_g=1   diagonal CN → O(Δt²)
       Layer B: μ_l/μ_g≥10  diagonal CN + explicit cross → O(Δt) degradation
-      Layer C: HFE-blend smoothed μ → O(Δt^{1.5}) partial recovery
+      Layer C: HFE-blend smoothed μ → O(Δt) known degradation
 
 Usage
 -----
@@ -44,6 +44,7 @@ from twophase.tools.experiment import (
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u8_time_integration_suite"
 
 
 # ── U8-a: TVD-RK3 ODE 3rd-order ──────────────────────────────────────────────
@@ -208,7 +209,7 @@ def _build_mu_field_1d(N: int, mu_ratio: float, eps_band: float):
 def _viscous_layer_1d(layer: str, mu_ratio: float, n_t: int,
                        T: float = 0.02, N: int = 64, alpha: float = 1.0,
                        eta_cross: float = 1.0e-3):
-    """1D MMS for viscous 3-layer LTE study (paper §12.5(d)).
+    """1D MMS for viscous 3-layer LTE study (Chapter 11 U8-d).
 
     PDE         u_t = ∂_x[μ(x) ∂_x u] + s(x,t)        on [0,1], Dirichlet u=0
     Manuf. soln u(x,t) = exp(−α t) sin(πx)
@@ -225,7 +226,7 @@ def _viscous_layer_1d(layer: str, mu_ratio: float, n_t: int,
                                        → cross EE introduces O(Δt) error,
                                          expected slope 1.0
       Layer C (μ ∈ {10, 100}, ε=5h)  : same split with HFE-smoothed μ
-                                       → smaller |L_cross|, expected slope 1.5
+                                       → smaller coefficient, expected slope 1.0
     """
     h = 1.0 / N
     dt = T / n_t
@@ -426,7 +427,7 @@ def make_figures(results: dict) -> None:
         title="(d) Viscous 3-layer LTE")
     ax_d.legend(fontsize=7, ncol=2)
 
-    save_figure(fig, OUT / "U8_time_integration_suite")
+    save_figure(fig, OUT / "U8_time_integration_suite", also_to=PAPER_FIG)
 
 
 def print_summary(results: dict) -> None:
