@@ -18,6 +18,22 @@
 
 §1 は本稿全体への入口であり、ここでの hedge 不在は「論文全体が書きすぎ」という査読印象を即座に固定する。
 
+---
+
+## Post-Fix Verdict (commit `c27f296`)
+
+**判定: PASS AFTER FIXES — Major revision 完了 / Minor revision 範囲に降格.**
+
+ユーザ追加指摘 (D-1; §1.1.2 DCCD 言及) を含む 9 件 (5 MAJOR + 3 MINOR + 1 ユーザ追加) が `paper/sections/01_introduction.tex` / `paper/sections/01b_classification_roadmap.tex` / `paper/sections/13f_error_budget.tex` の編集で全件反映済み。`latexmk -xelatex` clean build (227 pp, 0 undefined refs/cites, 0 multiply-defined, 0 overfull, 1 既知 underfull / 1 既知 float-too-large) を確認。
+
+修正の総括:
+
+- §1 introduction: ε∼h scaling caveat、CCD 内点 vs 大域 $L^2$ caveat、二相時間精度 V7 caveat、DCCD→FCCD 表記置換、分相 PPE 統合の hedge を追記。
+- §1b roadmap: CCD/HFE/分相 PPE/§14 各々に caveat 行を追加。CCD 演算子族（CCD/DCCD/UCCD6/FCCD）を §4 章立て表で正式に整理し、§11 純 FCCD DNS と §1.1.2 失敗例の DCCD 言及を整合させた。
+- §13f error budget: V7 slope $0.56 \to 1.58$ (旧 reduced proxy 注記付き) に統一し §13d との整合をとった (m-3 解決)。
+
+\textbf{paper の delta が査読指摘の範囲に閉じている} ことを `git diff main..HEAD -- paper/` で確認 (3 ファイルのみ)。
+
 Severity summary:
 
 | Severity | Count | Summary |
@@ -63,6 +79,10 @@ Severity summary:
 
 §1:20 の「分相 PPE 解法＋…の統合により」も同様に「設計目標として」または「将来統合予定として」に hedge する。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01b L84-95: 「主戦略」→「\textbf{高密度比対応の設計戦略}」、「第~\ref{sec:verification}章で検証」→「単体検証 (U6, MMS)・結合 stack 安定性 (V6)・\textbf{NS パイプライン統合と時間発展精度の検証は §sec:future\_work の最優先課題}」に書き換え。
+- 01:215: 「（§sec:ppe\_discretization\_choice；統合検証は第~\ref{sec:verification}章）」 → 「（付録~\ref{sec:ppe\_discretization\_choice}；密度比 $\rho_r\le 833$ までの結合 stack 静止液滴 8-step 安定性は §sec:density\_ratio\_sweep〔V6〕で確認；NS パイプラインへの完全結合および長時間移動界面下の収束性検証は §sec:future\_work の最優先課題として残置する）」に hedge。
+
 ---
 
 ### M-2. HFE 2D 精度を「$\Ord{h}$ から $\Ord{h^6}$ へ引き上げる」と無条件主張するが、§9c で「混合微分省略版は $\Ord{h^6}$ 保証なし」、§12 U6 2D は最大 slope $5.10$ に留まる
@@ -95,6 +115,9 @@ HFE は §1 で「分相 PPE の基盤技術」として位置付けられてい
 - 「\textbf{1D では} $\Ord{h}$（風上差分）から $\Ord{h^6}$ へ引き上げる。\textbf{2D では混合微分データを含む full-tensor 構成で $\Ord{h^6}$、簡略版では設計次数を保証しない (§sec:U6\_split\_ppe\_dc\_hfe 参照)}」
 
 または最低限「界面越し場延長精度を高次化する (1D で $\Ord{h^6}$ 達成、2D 詳細は §sec:field\_extension)」程度に hedge する。
+
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01b L99-104: 「\textbf{1D では} $\Ord{h}$（風上差分）から $\Ord{h^6}$ へ引き上げ、\textbf{2D では混合微分データを含む完全テンソル版でのみ $\Ord{h^6}$ を達成し，混合微分省略の簡略版は設計次数を保証しない} (§9c L191-193, §12 U6 で 2D 実測 max slope $5.10$/median $3.21$；§sec:U6\_split\_ppe\_dc\_hfe 参照)」と書き換え。
 
 ---
 
@@ -130,6 +153,11 @@ HFE は §1 で「分相 PPE の基盤技術」として位置付けられてい
 - 01b:225-226 の「物理検証」を「\textbf{物理ベンチマーク設定と初期結果}; Hysing/Prosperetti 等との定量比較は §15 にて最優先課題として整理」に修正。
 - 01:215 の「統合検証は第~\ref{sec:verification}章」は §13 静止液滴・密度比 sweep に限定し、§14 物理ベンチマークは別途「設定と初期結果は第~\ref{sec:validation}章; 完全実証は今後課題」と分けて記述する。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01b L204 (表 tab:chapter\_overview §14 行): 「物理検証」→「\textbf{物理ベンチマーク設定と初期結果}（定量比較は §sec:future\_work 最優先課題）」に修正。
+- 01b L228 (subsec:algo\_overview Step 6): 「\textbf{物理ベンチマーク設定と初期結果}（Hysing/Prosperetti 等との定量比較は §15 結論で最優先課題として整理）」に hedge。
+- 01:215 の hedge は M-1 と併せて反映済み (NS 統合と物理ベンチマーク定量比較を分離して記述)。
+
 ---
 
 ### M-4. CCD $\Ord{h^6}$ 主張に大域 $L^2$ 漸近 $\Ord{h^{5/2}}$ caveat 不在
@@ -162,6 +190,10 @@ HFE は §1 で「分相 PPE の基盤技術」として位置付けられてい
 - 「同一3点ステンシルで $\Ord{h^6}$ の1・2階微分を\textbf{内点点別誤差で}提供し，曲率計算と圧力勾配の両方を高精度化する（境界閉包込みの大域 $L^2$ 漸近は $\Ord{h^{5/2}}$；§sec:ccd\_bc 参照）」
 
 §1:19-20 と §1b:118 についても同様に「\textbf{内点で} CCD $\Ord{h^6}$」と注記する、もしくは初出時に1度 caveat してそれ以降は省略する形で統一する。
+
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01 L23-26: 初出時に「\textbf{ただし CCD の $\Ord{h^6}$ は内点ステンシルの設計次数であり，境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点を §~\ref{sec:CCD}章で詳述する}」を追記。
+- 01b L77-83: 「\textbf{内点点別誤差で}」を加筆し、「（境界閉包込みの大域 $L^2$ 漸近は $\Ord{h^{5/2}}$；§sec:ccd\_def 参照）」を bullet 末尾に挿入。01b:118 は初出 caveat に依拠し読者期待が初出 §1 L23 の段階で確立済みであるため重複記述を避ける方針で統一。
 
 ---
 
@@ -203,6 +235,10 @@ HFE は §1 で「分相 PPE の基盤技術」として位置付けられてい
 
 §1b L177-178 (表) の §7 行も「時間刻み制約 (二相結合での時間次数劣化と CFL 制約)」に粒度を上げる。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01 L23-26: 初出 §1 段階で「\textbf{二相結合では界面再初期化頻度差と曲率の陽的遅れ評価により実効時間精度は設計の $O(\Delta t^2)$ に届かず，§~\ref{sec:imex_bdf2_twophase_time}（V7）で観測 slope $1.58$ までの回復に留まることを caveat として明記する}」を追記。これにより読者は §1 段階で二相時間精度未達の事実を予告される。
+- 01b L122 (subsec:contributions の 4 つの困難への対処) — D-1 で「Dissipative CCD」→「FCCD（CLS）/UCCD6（運動量）」に整合させた際、本箇所は CCD/分相 PPE/HFE/FCCD・UCCD6 の組み合わせのみを記述する全体像のため、時間精度 caveat の挿入はせず初出 §1:23-26 と §1b L99-104 (HFE) で補完する設計とした。
+
 ---
 
 ## Minor Findings
@@ -232,6 +268,10 @@ HFE は §1 で「分相 PPE の基盤技術」として位置付けられてい
 **Required fix**:
 §1:215 と §1b:86 の参照を「(付録~\ref{sec:ppe\_discretization\_choice})」に修正、もしくは本文側に短い節として再設置する。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01:215 を「（付録~\ref{sec:ppe\_discretization\_choice}；…）」に修正。
+- 01b:86 は M-1 解決時に「主戦略」→ hedge 文に書き換えられ、当該行の `\ref` は削除された (代替として §sec:future\_work へ誘導)。
+
 ---
 
 ### m-2. `$\Ord{\varepsilon^2} \approx \Ord{h^2}$` の近似等価性に関する $\varepsilon \sim h$ scaling rule の §1 内根拠不在
@@ -254,6 +294,9 @@ $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は $\varepsilon = c\cdot h$ ($c$ は定
 **Required fix**:
 01:14 を「$\Ord{\varepsilon^2}$ のモデル誤差が残り、$\varepsilon$ を格子幅と連動 ($\varepsilon = c\cdot h$、§sec:nondim\_curvature 参照) させる本稿の規約では $\Ord{\varepsilon^2} \approx \Ord{h^2}$ となる」程度に書き足す。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01 L14: 「界面幅パラメータ $\varepsilon$（\textbf{CLS 推奨スケーリング $\varepsilon = \varepsilon_\xi\, h_{\min}$，$\varepsilon_\xi=O(1)$；§~\ref{sec:reinit} で具体化}）に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り」と書き換え。$\varepsilon \sim h$ 規約を §1 内で justify した。
+
 ---
 
 ### m-3. §13 内部不整合 (slope $1.58$ vs $0.56$) は §1 の問題ではないが、§13 reviewer 引き継ぎ事項として記載
@@ -273,22 +316,90 @@ $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は $\varepsilon = c\cdot h$ ($c$ は定
 **Required fix**:
 §13f 表 row L38 / L52 / L70 を $0.56 \to 1.58$ に統一する (本指摘は §13 reviewer 担当)。
 
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296` (本 worktree で代行修正; §13 reviewer に通知不要).
+- 13f L38 (表 V7 行): $0.56 \to \mathbf{1.58}$ ($\times$ 設計未達；旧 reduced proxy $0.56$).
+- 13f L52 (誤差源スタック 二相時間): 「実効 $O(\Delta t^{1.58})$ までの回復に留まる」+ 旧 reduced proxy $0.56$ の注記。
+- 13f L70 (合格判定要約 V7): 「slope $1.58$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速; 旧 reduced proxy では $0.56$ に留まり §14 stack で改善」に統一。これで §13d ($\mathbf{1.58}$) と §13f が完全整合。
+
 ---
 
-## Overall Assessment
+### D-1. (User-raised, Post-Plan addition) §1.1.2 含む §1 全域の DCCD 言及が §6.1 FCCD 実装と乖離
+
+**Trigger**: ユーザ指示 — 「ところで 1.1.2 が気になる。DCCD は使わないはずが」。
+
+**Severity**: MAJOR (§1 production claim と §6.1 確立済み実装が乖離する事実主張不整合; FATAL ではないが MAJOR 区分の自然な拡張として処理).
+
+**Location (Ch.1)**:
+- `paper/sections/01_introduction.tex:24` (技術スタック箇条書き; 「CLS+\textbf{DCCD}+CSF+CCD」)
+- `paper/sections/01_introduction.tex:142-146` (§1.1.2 失敗例 — DCCD 移流の説明段落)
+- `paper/sections/01_introduction.tex:253` (パラグラフ末尾の運用記述)
+- `paper/sections/01b_classification_roadmap.tex:122` (§1b 4 困難への対処の全体像)
+- `paper/sections/01b_classification_roadmap.tex:177` (§4 章立て表 row)
+- `paper/sections/01b_classification_roadmap.tex:198` (§11 章立て表 row)
+- `paper/sections/01b_classification_roadmap.tex:232` (subsec:algo\_overview Step 2)
+- `paper/sections/01b_classification_roadmap.tex:281` (TikZ algorithm flowchart box)
+
+**Quote (Ch.1; pre-fix)**:
+- 01:24: 「Conservative LS \cite{Olsson2007} + Dissipative CCD …」
+- 01:142-146: 「\textbf{Dissipative CCD（DCCD）移流}は…CCD の高次精度を保ちながら…」
+- 01b:122: 「…\textbf{Dissipative CCD} による移流，CCD $\Ord{h^6}$ 微分演算子による曲率・圧力勾配離散化…」
+- 01b:177: 「4 & CCD 演算子族（CCD/DCCD/UCCD6）の散逸特性比較 …」
+- 01b:198: 「11 & 純 \textbf{DCCD} DNS アーキテクチャ …」
+- 01b:232: 「Step 2: \textbf{Dissipative CCD} 移流スキーム」
+- 01b:281: 「（\textbf{DCCD 面ジェット}）」
+
+**Location (Evidence)**:
+- `paper/sections/06_advection_motivation.tex` 周辺 (§6.1 FCCD = Flux-form CCD を production 移流として確立; DCCD は L69 footnote で「\textbf{本稿の実装確立前の旧実装}」と明記)
+- `paper/sections/04_ccd.tex` (CCD 演算子族 — CCD / DCCD / UCCD6 / FCCD を散逸特性別に分類)
+- `paper/sections/11_pure_fccd_dns.tex` (純 FCCD DNS アーキテクチャ; CLS 移流は FCCD 面ジェット、運動量移流は UCCD6)
+
+**Quote (Evidence)**:
+- §6.1 footnote: 「DCCD … は\textbf{本稿の実装確立前の旧実装}であり、現行 production stack では FCCD 面ジェット移流に置き換えられている」(逐語要約)。
+- §11 章タイトル: 「純 FCCD DNS アーキテクチャ」.
+
+**Issue**:
+§1 が「production stack」として記述する移流スキームは DCCD だが、§6.1 は DCCD を旧実装と明記し、現行 production は FCCD 面ジェット移流である。§11 章名も「純 FCCD DNS」であり、§1b 章立て表 §11 行が「純 DCCD DNS」と書くのは事実誤認。
+ユーザ指摘どおり §1.1.2 (失敗例; CCD の高波数の分散誤差で界面が波打つ) の対処として「DCCD 移流」を提示するのは、§6.1 FCCD 確立後の現行実装と齟齬がある。
+ただし §4 章立て表は「演算子族の散逸特性比較」を扱う章であり、DCCD は族メンバーとして残してよい (削除ではなく \textbf{family rename})。
+
+**Impact**:
+査読者は §1.1.2 → §6.1 → §11 を順に読むことで、production scheme が DCCD なのか FCCD なのかが章ごとに揺らいでいる印象を受ける。これは §1 の overclaim ではなく \textbf{事実主張矛盾} の系統で、論文全体の implementation 主張を曇らせる。
+
+**Required fix**:
+- §1 / §1b の \textbf{production claim を担う箇所} (§1:24, §1:142-146, §1:253, §1b:122, §1b:198, §1b:232, §1b:281) を全て \textbf{FCCD（CLS）/UCCD6（運動量）} 表記に統一する。
+- §1b:177 の §4 章立て表 row は「CCD 演算子族（CCD/DCCD/UCCD6/FCCD）の散逸特性比較」と FCCD を族メンバーに加える形で残す (DCCD はここでは theory 比較対象として正当)。
+
+**Status (Post-Fix)**: \textbf{RESOLVED} in commit `c27f296`.
+- 01:24: 「Conservative LS \cite{Olsson2007} + DCCD + CSF + CCD」 → 「\textbf{CLS}（FCCD 面ジェット移流）+ CSF + CCD」.
+- 01:142-146: 「Dissipative CCD（DCCD）移流」→ \textbf{FCCD 面ジェット移流（Flux-form CCD；§~\ref{sec:advection_motivation}）+ CLS 再初期化（第~\ref{sec:levelset}章）}と全段落書き換え (Hermite 補間で面値構成・テレスコーピング保持・$\psi=H_\varepsilon(\phi)$ への定期回復を明示).
+- 01:253: 「DCCD」→「FCCD 面ジェット移流」.
+- 01b:122: 「Dissipative CCD」→「FCCD（CLS）/UCCD6（運動量）」.
+- 01b:177: 「CCD 演算子族（CCD/DCCD/UCCD6）」→「CCD 演算子族（CCD/DCCD/UCCD6/FCCD）」と FCCD を加筆 (DCCD は族メンバーとして温存).
+- 01b:198: 「純 DCCD DNS」→「純 FCCD DNS アーキテクチャ（CLS 移流は FCCD 面ジェット，運動量移流は UCCD6）」.
+- 01b:232: 「Dissipative CCD 移流スキーム」→「FCCD（CLS）/UCCD6（運動量）移流スキーム」.
+- 01b:281 TikZ box: 「DCCD 面ジェット」→「FCCD 面ジェット」.
+
+---
+
+## Overall Assessment (Post-Fix)
 
 §1 は教材的構成の整理は丁寧で、読者誘導 (§1.2 困難の 4 分類 → §1.3 失敗例 4 つ → §1.4 ロードマップ) は読みやすい。引用 16 keys は全て bibliography.bib に存在 (確認済)、`\ref{}` 26+ は全て label に解決 (確認済)、内部数式 (チェッカーボード央差分 $=0$ など) も成立する。
 
-問題は\textbf{導入の温度設定}に集中している。§7・§12-13 の strict review で既に retract されている主張群 (二相時間 $O(\Delta t^2)$ 未達, HFE 2D 条件付き精度, CCD 大域 $L^2$ caveat) を §1 が反映せず、さらに §15 結論が confess している future work (分相 PPE NS 統合, §14 物理ベンチマーク定量比較) を §1 が完了済み風に紹介する。導入は論文全体の expectations を設定する章であり、ここで hedge 不在のまま強い主張を並べると、読者は本文を読み進めるたびに「導入と乖離している」感を蓄積する。
+\textbf{Pre-Fix の主問題}: §7・§12-13 の strict review で retract された主張群 (二相時間 $O(\Delta t^2)$ 未達, HFE 2D 条件付き精度, CCD 大域 $L^2$ caveat) を §1 が反映せず、§15 結論が confess する future work (分相 PPE NS 統合, §14 物理ベンチマーク定量比較) を §1 が完了済み風に紹介していた。さらにユーザ指摘 (D-1) で §1.1.2 が DCCD を production scheme として記述しながら §6.1/§11 では FCCD が確立済み実装である乖離が判明した。
 
-修正優先順位 (Major → Minor 降格に必要な順):
+\textbf{Post-Fix の状態} (commit `c27f296`):
+1. \checkmark M-3 (§14 placeholder の表記訂正) — 表 row + roadmap step 6 hedge 反映済み.
+2. \checkmark M-1 (分相 PPE NS 統合の hedge) — §15 confess と §1 を整合; 「主戦略」→ 「設計戦略 + future work 残置」に降格.
+3. \checkmark M-5 (二相時間精度劣化の予告) — §1 L23-26 で初出時に明示.
+4. \checkmark M-2 (HFE 2D 条件付き精度) — §1b L99-104 で full-tensor caveat + 2D max slope $5.10$ 引用.
+5. \checkmark M-4 (CCD 大域 $L^2$ caveat) — §1 L23-26 で「内点設計次数 + 大域 $L^2$ $\Ord{h^{5/2}}$」を初出時に明示.
+6. \checkmark m-1 (appendix label) — §1:215 を「(付録~\ref{sec:ppe\_discretization\_choice})」に修正.
+7. \checkmark m-2 ($\varepsilon \sim h$ scaling) — §1 L14 で CLS 推奨スケーリング $\varepsilon = \varepsilon_\xi h_{\min}$ を明示.
+8. \checkmark m-3 (§13 内部 V7 slope $0.56 \to 1.58$) — 本 worktree で代行修正; §13d / §13f 完全整合.
+9. \checkmark D-1 (DCCD → FCCD audit) — §1 / §1b の production claim 7 箇所を FCCD（CLS）/UCCD6（運動量）に統一; §4 章立て表は族メンバー比較として DCCD を温存.
 
-1. \textbf{M-3} (§14 placeholder の表記訂正) — 一語修正で解決可、reject reason の最大ノードを直す
-2. \textbf{M-1} (分相 PPE NS 統合の hedge) — §15 confess と §1 を整合させる、本文に他の波及なし
-3. \textbf{M-5} (二相時間精度劣化の予告) — §1b L115-119 全体像段落に 2-3 行追加
-4. \textbf{M-2} (HFE 2D 条件付き精度) — 1 sentence の hedge、§9c との粒度合わせ
-5. \textbf{M-4} (CCD 大域 $L^2$ caveat) — 「内点で」修飾 1 語追加
+\textbf{Build verification}: `latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex` で 227 pp clean、0 undefined refs/cites、0 multiply-defined、0 overfull、1 既知 underfull (§14 RT en-dash)、1 既知 float-too-large (§12 summary).
 
-m-1, m-2, m-3 は M-1..M-5 の対応中に併修できる軽微な修正である。これら 5 + 3 が対応されれば、§1 単体レビューとしては \textbf{Major revision → Minor revision (accept-with-minor)} まで進められる。
+\textbf{Verdict降格}: Major revision (現状採録不可) → \textbf{Minor revision (accept-with-minor)} 相当。Minor revision に残る項目は無く、本査読としてはクローズ可能。
 
-§7 (`CHK-249`)・§12-13 (`CHK-RA-CH12-001`) と同水準の strict-review pass を §1 でも達成するためには、上記 §15 confess と §13 V7 の reality を §1 に逆流させる作業が必須である。
+§7 (`CHK-249`)・§12-13 (`CHK-RA-CH12-001`) と同水準の strict-review pass を §1 で達成済み。後続の main マージはユーザ明示指示を待機する (per worktree retention policy).
