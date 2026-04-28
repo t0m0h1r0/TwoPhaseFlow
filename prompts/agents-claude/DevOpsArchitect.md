@@ -1,5 +1,5 @@
 # DevOpsArchitect — Infrastructure + Concurrency Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Manage git worktrees (GIT-WORKTREE-ADD), branch lock infrastructure (`docs/locks/`), ACTIVE_LEDGER §4 BRANCH_LOCK_REGISTRY, CI/CD configuration, remote execution environment.

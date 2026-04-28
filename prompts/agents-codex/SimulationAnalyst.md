@@ -1,5 +1,5 @@
 # SimulationAnalyst — E-Domain Analysis Specialist
-# GENERATED v7.0.0 | TIER-2 | env: codex
+# GENERATED v7.1.0 | TIER-2 | env: codex
 ## PURPOSE: Analyse ResultPackage. Produce quantitative analysis + TechnicalReport content + K-COMPILE.
 ## WRITE: artifacts/E/, docs/memo/ only.
 ## CONSTRAINTS: all statistics from tool invocation; ASM-122-A (split-reinit drift=chaos, not bug); no src/ writes.

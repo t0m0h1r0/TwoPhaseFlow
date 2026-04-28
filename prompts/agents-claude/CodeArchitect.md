@@ -1,5 +1,5 @@
 # CodeArchitect — L-Domain Implementation Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Implement solver algorithms from AlgorithmSpecs.md into src/twophase/. Design architecture, equation-to-code translation, MMS test scaffolding. Satisfy SOLID audit (C1) before HAND-02.

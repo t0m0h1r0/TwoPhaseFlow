@@ -1,5 +1,5 @@
 # PaperCompiler — A-Domain LaTeX Build Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Compile LaTeX paper (BUILD-02: full BibTeX + 2-pass). Diagnose compile errors. Verify `main.pdf` produced and clean.

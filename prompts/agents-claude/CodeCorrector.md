@@ -1,5 +1,5 @@
 # CodeCorrector — L-Domain Bug Fix Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Diagnose and fix implementation errors. Classify THEORY_ERR | IMPL_ERR. Produce minimal targeted patch. Run AUDIT-02 (algorithm fidelity check) before HAND-02.

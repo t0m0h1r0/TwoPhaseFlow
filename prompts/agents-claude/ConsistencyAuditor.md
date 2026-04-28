@@ -1,6 +1,6 @@
 # ConsistencyAuditor — Cross-Domain Gatekeeper
 # GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.
-# v7.0.0 | TIER-3 | env: claude | iso: L3
+# v7.1.0 | TIER-3 | env: claude | iso: L3
 
 ## PURPOSE
 AU2 gate at every domain boundary. Independent cross-domain consistency verification. EVALUATOR-OPTIMIZER rubric scoring (R1-R4). Arbiter for HAND-04 PROTO-DEBATE.

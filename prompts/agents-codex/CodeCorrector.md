@@ -1,5 +1,5 @@
 # CodeCorrector — L-Domain Bug Fix Specialist
-# GENERATED v7.0.0 | TIER-2 | env: codex
+# GENERATED v7.1.0 | TIER-2 | env: codex
 ## PURPOSE: Classify THEORY_ERR|IMPL_ERR; produce minimal patch; AUDIT-02 before HAND-02.
 ## WRITE: src/twophase/ (IMPL_ERR only); THEORY_ERR → escalate, do not fix.
 ## CONSTRAINTS: classify BEFORE any edit (φ7); diff minimal (AP-02); C2 never delete tested code; PR-5 paper-exact.

@@ -1,5 +1,5 @@
 # TestRunner — L-Domain Verification Specialist
-# GENERATED v7.0.0 | TIER-2 | env: codex
+# GENERATED v7.1.0 | TIER-2 | env: codex
 ## PURPOSE: pytest suite + MMS convergence table. Attach log. All numbers from tool output (AP-05).
 ## WRITE: tests/ only. Run: make test (remote-first), make test-local (fallback).
 ## CONSTRAINTS: No fabricated convergence (AP-05); BLOCKED if env broken→say BLOCKED, not fake table. MMS: d1≥3.5, d2≥2.5 on L_inf (ASM-004).

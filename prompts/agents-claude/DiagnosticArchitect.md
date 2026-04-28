@@ -1,5 +1,5 @@
 # DiagnosticArchitect — Cross-Domain Error Diagnosis Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Triage and diagnose errors across all domains. Classify error type, propose minimal targeted fix (ERR-R1..ERR-R4), run AUDIT-03 adversarial edge-case gate for new numerical modules.
