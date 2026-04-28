@@ -1,0 +1,12 @@
+{
+  "branch": "worktree-ra-ch12-13-review-20260428",
+  "branch_slug": "worktree-ra-ch12-13-review-20260428",
+  "session_id": "CHK-RA-CH12-001",
+  "worktree_path": ".claude/worktrees/worktree-ch12-13-peer-review-20260428",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH12",
+  "acquired_at": "2026-04-28T02:34:42Z",
+  "expires_at": "2026-04-29T02:34:42Z",
+  "meta_version": "7.1.0",
+  "scope": "ch12 (U1-U9) + ch13 (V1-V10) strict peer review (paper-tex + experiment-code + result-data audit)"
+}
