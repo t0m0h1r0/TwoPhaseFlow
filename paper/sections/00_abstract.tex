@@ -15,17 +15,17 @@
 \small\centering
 \begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.68\linewidth}@{}}
 界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(\phi)$）\\
-空間離散： & CCD $\Ord{h^6}$（微分），Dissipative CCD（移流・速度/圧力），非一様格子\\
+空間離散： & CCD（内点 $\Ord{h^6}$；微分），Dissipative CCD（移流・速度/圧力），非一様格子\\
 格子構造： & コロケート格子 + DCCD 散逸（$\varepsilon_d=1/4$；チェッカーボード除去）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
-圧力解法： & 変密度 IPC（van Kan 1986）+ CCD-PPE（$\Ord{h^6}$）+ 欠陥補正法\\
+圧力解法： & IPC 法~\cite{vanKan1986}（本稿で変密度に拡張）+ CCD-PPE（$\Ord{h^6}$）+ 欠陥補正法\\
               & \textbf{低密度比}（$\rho_l/\rho_g \leq 5$）：smoothed Heaviside 一括解法\\
-              & \textbf{高密度比}（$\rho_l/\rho_g > 5$）：分相 PPE + HFE（§~\ref{sec:split_ppe_recovery}）\\[4pt]
+              & \textbf{高密度比}（$\rho_l/\rho_g > 5$）：分相 PPE + HFE（必要に応じ欠陥補正法 DC，§~\ref{sec:split_ppe_recovery}）\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
 時間方向律速： & AB2+IPC $\Rightarrow$ 全体時間精度 $\Ord{\Delta t^2}$（§~\ref{sec:time_accuracy_table}）${}^{\ast}$\\
 空間精度律速： & 分相 PPE + HFE で界面 Gibbs 振動を除去；界面近傍の圧力勾配精度 $\Ord{h^6}$ を維持\\[2pt]
-\multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ 空間精度は PPE・曲率・メトリクス評価で有効（§~\ref{sec:accuracy_summary}）}\\[2pt]
+\multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ 空間精度は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize ${}^{\ast}$界面近傍で $\mu_l/\mu_g \gg 1$ の場合，補間誤差により実効精度が $\Ord{\Delta t}$ に低下しうる（§~\ref{sec:time_accuracy_table} 参照）．}\\
 \end{tabular}
 \end{tcolorbox}
@@ -40,21 +40,23 @@
 気液二相流数値シミュレーションにおける最大の数値的障害は，
 静止液滴界面に生じる人工的渦流れ——\textbf{寄生流れ（spurious currents）}——である．
 その根本原因は，圧力勾配項と表面張力項に異なる差分演算子を用いることによる離散化の不整合であり，
-格子を細分化しても残留する $\Ord{1}$ の誤差体積力を生む．
-本稿は，この問題を結合コンパクト差分法（CCD，$\Ord{h^6}$），
-Hermite 場延長法（HFE; Aslam 2004 の Extension PDE に基づく），および Dissipative CCD 散逸機構の組み合わせにより
-根本的に解決する設計を提案する．
+格子を細分化しても下限が消えない誤差体積力を生む．
+本稿は，この問題を結合コンパクト差分法（CCD，内点 $\Ord{h^6}$），
+Hermite 場延長法（HFE；\cite{Aslam2004} の Extension PDE に基づく），および Dissipative CCD 散逸機構の組み合わせにより，
+寄生流れを CSF モデル誤差律速の水準まで根本的に抑制する設計を提案する．
 その理論的基盤・実装詳細・検証手順を体系的に解説する．
 界面追跡には Conservative Level Set（CLS）法と CCD スキームを採用して質量保存性と
 数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は低密度比（$\rho_l/\rho_g \leq 5$）では
-欠陥補正法（FD 直接法 + CCD $\Ord{h^6}$ 勾配）で求解し，
-高密度比では分相 PPE 解法により各相で定数密度の Poisson 方程式を独立に解く．
+smoothed Heaviside 一括解法（FD 直接法 + CCD $\Ord{h^6}$ 勾配；必要に応じ欠陥補正法）で求解し，
+高密度比では分相 PPE + HFE 解法（各相で定数密度の Poisson を独立化；必要に応じ欠陥補正法 DC）により求解する．
 HFE が CCD ステンシルの界面 Gibbs 振動を除去し，
-Balanced-Force 演算子整合と FCCD 面ジェット sub-system がコロケート格子でのチェッカーボード不安定を
-外付け補正なしに内在的に抑制する（§~\ref{sec:extension_pde}，§~\ref{sec:checkerboard_solution}）．
+Balanced-Force 演算子整合と FCCD 面ジェット sub-system の協働により，
+Rhie--Chow 補間に頼らずコロケート格子のチェッカーボード不安定を抑制する．
 全手法は7ステップのタイムループとして統合される．
-コンポーネント単体検証（CCD 精度・Zalesak 円盤・PPE 収束等）に加え，
-物理ベンチマーク（静止液滴・毛細管波・気泡上昇・Rayleigh--Taylor 不安定）の
-設計と期待される精度特性（理論収束次数・許容閾値）を定義する．
-物理ベンチマークの数値実験による実証は今後の課題として位置づける．
+コンポーネント単体検証（CCD 精度・Zalesak 円盤・PPE 収束等）と
+界面結合検証（静止液滴 Force Balance：FD は CCD の約 69 倍の寄生流れ；
+分相 PPE + DC $k{=}3$：全密度比で $\Ord{h^{7.0}}$；
+Rayleigh--Taylor 不安定の成長率誤差 $2.8\%$）を実施し，
+物理ベンチマークでは毛細管波の smoke 合格・気泡上昇の closure 合格を達成した．
+Hysing 級の terminal-velocity 比較や Prosperetti 級の dispersion 関係定量検証は今後の課題として位置づける．
 \end{abstract}
