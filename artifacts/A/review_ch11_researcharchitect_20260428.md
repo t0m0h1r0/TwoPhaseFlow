@@ -4,6 +4,12 @@ Date: 2026-04-28
 Worktree: `/Users/tomohiro/Downloads/TwoPhaseFlow-ch11-review`
 Branch: `worktree-ra-ch11-review`
 
+## Post-Fix Status
+
+- Fix status: all listed FATAL / MAJOR / MINOR findings addressed in this worktree.
+- Fix commits: `d296568` (chapter numbering), `d07bdd3` (paper U-test evidence), `0e39d36` (verification scripts / paper figure regeneration path).
+- Verification completed before closure: targeted stale-pattern grep, Python syntax check for all U1--U9 scripts, and LaTeX build.
+
 ## Routing
 
 - ResearchArchitect classification: FULL-PIPELINE
