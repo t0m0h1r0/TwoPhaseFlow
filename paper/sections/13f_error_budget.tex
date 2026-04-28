@@ -77,8 +77,9 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item 二相 NS：分相 PPE + DC + HFE 構成が密度比 $\le 833$ でロバスト（V6）．
         ただし時間方向の実効次数は界面処理に律速されるため，
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
-  \item 非一様格子：$\alpha = 1$ 推奨．$\alpha > 1$ 設定は CLS 再初期化と局所 $\varepsilon$ の
-        相互作用に注意．
+  \item 非一様格子：$\alpha > 1$ でも FCCD/TVD--RK3 の体積保存は成立するが，
+        Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
+        local $\varepsilon$ は推奨せず，fixed $\varepsilon$ と 2D snapshot 診断を併用する．
   \item 寄生流れ抑制：CCD 演算子は FD 比 $3$--$6$ 倍抑制（V5）；
         CSF + 高次圧力勾配の組み合わせが効果的．
 \end{itemize}

@@ -206,9 +206,8 @@ $L^1$ reversal error $2.424\times10^{-3}$ で初期形状を復元し，体積 d
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item $\alpha=1$ (一様格子)：$N=128$ で volume drift $0.107\%$，
         centroid err $4.688\times10^{-3}$ → \checkmark．
-  \item $\alpha=2$ (非一様格子)：FCCD を格子更新後に構築した production-stack 経路では
-        $N=128$ の volume drift は $1.519\%$ であり，旧い WENO/事前構築 FCCD 経路の
-        $12\%$ 級膨張は再現しない．一方，centroid order は $0.34$ に留まり，
+  \item $\alpha=2$ (非一様格子)：§14 と同じ FCCD/TVD--RK3 条件では
+        $N=128$ の volume drift は $1.519\%$ である．一方，centroid order は $0.34$ に留まり，
         slot 部の幾何追跡は条件付き（$\triangle$）．
   \item 単一渦：$N=96,\alpha=2$ で volume drift は表示精度で 0，
         $L^1$ reversal error $2.424\times10^{-3}$ → 可逆 deformation の視覚・定量検証に合格．
