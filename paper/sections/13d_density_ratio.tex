@@ -82,31 +82,36 @@ $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり，
 \label{sec:imex_bdf2_twophase_time}
 
 \paragraph{検証対象．}
-密度比 $\rho_r > 1$ の二相 NS において，IMEX-BDF2 時間離散
-（\autoref{ch:time_integration}）が
-設計次数 $O(\Delta t^2)$ を保つかを，参照解（$n_{\mathrm{step}}=640$）と粗解の差で評価．
+密度比 $\rho_r > 1$ の二相 NS において，§14 と同じ
+FCCD interface transport + TVD--RK3，UCCD6 convection + IMEX-BDF2，
+HFE curvature，ridge-eikonal reinitialization，pressure-jump phase-separated
+FCCD PPE + defect correction を同時に使ったときの実効時間精度を，
+参照解との差で評価する．これは BDF2 単体の次数検証ではなく，
+界面輸送・再初期化・pressure-jump PPE を含む結合 stack 診断である．
 
 \paragraph{設定．}
-$\rho_l = 10, \rho_g = 1$ ($\rho_r = 10$), 静止液滴 $r = 0.25$, $\sigma = 1$．
-$N = 64$．参照 $n_{\mathrm{ref}} = 640$．
-$n_{\mathrm{step}} \in \{40, 80, 160, 320\}$ ($\Delta t \in \{1.25\!\times\!10^{-3}, 6.25\!\times\!10^{-4}, 3.13\!\times\!10^{-4}, 1.56\!\times\!10^{-4}\}$)．
+$\rho_l=10,\rho_g=1$ ($\rho_r=10$), 液滴半径 $r=0.25$, $\sigma=1$．
+$N=24$, $T=0.02$．初期速度は液相内に
+$u_0=0.02\cos(2\pi y)H_\epsilon$, $v_0=-0.02\cos(2\pi x)H_\epsilon$ を与える．
+$n_{\mathrm{step}}\in\{8,16,32\}$ を粗解，$n_{\mathrm{ref}}=64$ を参照解とし，
+ridge-eikonal reinitialization は全 step で有効化する．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V7: IMEX-BDF2 二相時間精度．参照は $n_{\mathrm{ref}}=640$．
-slope (40→320, 4 点最小二乗) $\mathbf{0.56}$（最終局所 slope $0.87$）— 設計 $2$ 次から大きく低下．}
+\caption{V7: §14 stack の二相時間精度診断．参照は $n_{\mathrm{ref}}=64$．
+粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し，
+最終 halving で観測 slope $\mathbf{1.58}$ まで回復するが，純粋な 2 次には未達．}
 \label{tab:V7_imex_bdf2_time}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
 $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \midrule
-40   & $1.25\times 10^{-3}$  & $3.16\times 10^{-5}$ & ---  \\
-80   & $6.25\times 10^{-4}$  & $2.36\times 10^{-5}$ & $1.34$ \\
-160  & $3.13\times 10^{-4}$  & $1.74\times 10^{-5}$ & $1.36$ \\
-320  & $1.56\times 10^{-4}$  & $9.55\times 10^{-6}$ & $1.82$ \\
+8    & $2.50\times 10^{-3}$ & $6.201\times 10^{-4}$ & ---  \\
+16   & $1.25\times 10^{-3}$ & $5.751\times 10^{-4}$ & $1.08$ \\
+32   & $6.25\times 10^{-4}$ & $1.922\times 10^{-4}$ & $2.99$ \\
 \midrule
-\multicolumn{3}{r}{slope ($\Delta t$ halving, 4 点最小二乗)} & $\mathbf{0.56}$ \\
+\multicolumn{3}{r}{finest local slope} & $\mathbf{1.58}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -115,42 +120,33 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
 \caption{V7：IMEX-BDF2 二相時間精度．
-log-log 上で 4 点 slope $0.56$ — V1 単相 ($O(\Delta t^2)$ 達成) との対比で
-\textbf{二相結合下では二次精度が消失}．}
+§14 stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.58$ まで回復するが，
+粗い時間刻みでは界面輸送・再初期化・pressure-jump PPE の非線形結合誤差が支配する．}
 \label{fig:V7_imex_bdf2_time}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 観測 slope $\mathbf{0.56}$ — V1 単相の $2.00$ から\textbf{大幅劣化}（4 段階差以上の未達）．
-        $O(\Delta t^{0.56})$ は実質的に $O(\Delta t)$ より悪く，
-        BDF2 設計次数 $O(\Delta t^2)$ の主張は\textbf{二相結合下では維持されない}．
-  \item 劣化要因の量的論証：
+  \item 観測された最終局所 slope は $\mathbf{1.58}$．BDF2 単体の $2.00$ には届かないが，
+        旧 reduced proxy の slope $0.56$ より §14 stack では改善する．
+  \item 劣化要因の解釈：
     \begin{enumerate}\setlength{\itemsep}{0pt}
-      \item \textbf{CLS 再初期化の頻度差}：参照解 ($n_{\mathrm{ref}}=640$) と粗解
-            ($n_{\mathrm{step}}\in\{40,\dots,320\}$) は，各時間ステップで再初期化を実施するため
+      \item \textbf{CLS 再初期化の頻度差}：参照解 ($n_{\mathrm{ref}}=64$) と粗解
+            ($n_{\mathrm{step}}\in\{8,16,32\}$) は，各時間ステップで再初期化を実施するため
             \textbf{総再初期化回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍} 異なる．
-            再初期化 1 回の $\psi$ 補正は両解で同符号・同オーダーだが
-            \textbf{時刻のずれ}が存在し，差分 $u_{\mathrm{ref}} - u_{\mathrm{coarse}}$ を取っても
-            相殺されず $\Delta t$ に比例する切片誤差として残る．
-            （再初期化が両解で完全に同タイミングなら共通分は相殺されるが，
-             再初期化は CLS 進展時刻に同期するため粗解と参照で必ず非同期．）
-      \item \textbf{曲率の陽的遅れ評価}：本検証では CSF $\kappa$ を
-            $\kappa^n$（前ステップ値）で評価しており $\kappa^{n+1/2}$ ではない．
-            これは Crank--Nicolson 補正されていない陽的評価であり，
-            $\sigma\nabla\!\cdot(\kappa^n \nabla H)$ 項に系統的 $O(\Delta t)$ 誤差を残す．
-            この誤差は両解で $\Delta t$ 比例で異なり，差分でも相殺されない．
-      \item BDF2 自体の最大次数は $\Delta t^2$ だが，上記 2 つは
-            「両解で頻度・遅れ評価が異なる」ため両解差で相殺されず律速する．
+            よって参照解差には BDF2 ではなく reinitialization cadence の差が混入する．
+      \item \textbf{pressure-jump PPE の非線形結合}：
+            curvature/HFE と jump-decomposition PPE は界面位置と $\epsilon$ に非線形依存するため，
+            粗い時間刻みでは $u$ の差が単純な $\Delta t^2$ で減衰しない．
+      \item \textbf{interface transport の TVD--RK3 と momentum IMEX-BDF2 の混成}：
+            interface と momentum の時間離散次数が異なるため，結合問題としての観測次数は
+            最小次数だけで決まらず，参照解差に operator-splitting 誤差が残る．
     \end{enumerate}
-  \item \textbf{要改善 ($\times$ — 設計未達)} — slope $0.56$ は
-        $|p_{\mathrm{measured}} - p_{\mathrm{design}}| = 1.44$ で
-        合格基準 $\le 0.5$ から大幅外．改善には：
-        \textit{(i)} CLS 再初期化を 2 ステップに 1 回に間引いて頻度差を縮める（短期）；
-        \textit{(ii)} $\kappa^{n+1/2}$ Crank--Nicolson 化（中期）；
-        \textit{(iii)} 界面厚 $\varepsilon \to 0$ 極限の sharp interface 化（長期）．
-        本論文では，二相時間精度の設計次数は\textbf{$O(\Delta t^{0.56})$ が実効上限}
-        として\autoref{sec:error_budget}に明示する．
+  \item \textbf{条件付き未達 ($\triangle$)} — §14 stack は安定に実行され，細かい側で
+        $O(\Delta t^{1.58})$ まで近づくが，二相結合 stack 全体の 2 次収束主張には未達．
+        本論文では $O(\Delta t^2)$ を momentum predictor 単体の設計次数，
+        V7 を coupled-stack の実効次数診断として扱う．
 \end{itemize}
 検証対応：\autoref{ch:time_integration} の IMEX-BDF2 と
-\autoref{sec:eikonal_reinit} の再初期化に対し，二相時間精度の実効 slope を測定する．
+\autoref{sec:eikonal_reinit} の再初期化，\autoref{sec:split_ppe_motivation} の
+pressure-jump PPE に対し，二相結合 stack の実効 slope を測定する．

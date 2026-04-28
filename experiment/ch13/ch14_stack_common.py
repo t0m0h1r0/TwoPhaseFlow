@@ -330,6 +330,8 @@ def run_ch14_case(
         "X": X,
         "Y": Y,
         "psi": psi_h,
+        "u": u_h,
+        "v": v_h,
         "pressure": p_h,
         "speed": speed,
     }
