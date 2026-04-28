@@ -129,11 +129,19 @@ Required sections: `§ACTIVE_STATE` phase/branch/next_action | `§CHECKLIST` CHK
 Also required: `§4 BRANCH_LOCK_REGISTRY` (under concurrency_profile == "worktree"):
 ```
 [BRANCH_LOCK_REGISTRY]
-  branch: dev/L/CodeArchitect/task-42
-  session_id: {UUID v4}
+  branch:      dev/L/CodeArchitect/task-42
+  session_id:  {UUID v4}
   acquired_at: {ISO 8601 UTC}
-  lock_path: docs/locks/dev-L-CodeArchitect-task-42.lock.json
+  lock_path:   docs/locks/dev-L-CodeArchitect-task-42.lock.json
+  id_prefix:   {derived per kernel-ops.md §ID-NAMESPACE-DERIVE}    # NEW v7.1.0
 ```
+
+`id_prefix` (v7.1.0) is bound at session start by ResearchArchitect (or the first
+agent that mints a CHK/ASM/KL ticket). Immutable for the session lifetime. All
+CHK / ASM / KL IDs minted in this session take the form `{family}-{id_prefix}-NNN`
+per `kernel-ops.md §ID-RESERVE-LOCAL`. Legacy flat IDs (`CHK-NNN`) remain valid
+for entries created before v7.1.0 cutover (regex extension in `kernel-roles.md
+§SCHEMA EXTENSIONS v7.1.0`).
 
 **docs/03_PROJECT_RULES.md** (generated from kernel-project.md):
 Required: all PR-1..PR-6 sections. Verification: `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal 6.
