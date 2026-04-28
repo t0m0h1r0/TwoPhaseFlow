@@ -79,49 +79,57 @@ $0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
 \paragraph{検証対象．}
 Kovasznay 流（解析定常解）に対し CCD 演算子を反復適用したときの
 空間残差 $R = \mathcal{L}_{\mathrm{CCD}}[u_{\mathrm{exact}}] - 0$ の格子依存性が
-\textbf{設計 6 次}（\autoref{sec:ccd_def} 式~\eqref{eq:CCD_I}）に従うことを確認する．
+\textbf{真の 2D 定常 NS 解}上でどの実効次数を示すかを確認する．
+純粋な CCD 微分演算子は U1 で 6 次を確認済みだが，本 V2 は非周期 outflow 方向を含む
+Kovasznay 残差であり，非線形項・圧力勾配・一側境界の結合を含む実験である．
 
 \paragraph{設定．}
 $\Re = 40$, 解析解 $u_{\mathrm{exact}}(x,y) = 1 - \mathrm{e}^{\lambda x}\cos(2\pi y)$,
 $v_{\mathrm{exact}} = (\lambda/2\pi) \mathrm{e}^{\lambda x}\sin(2\pi y)$,
 $\lambda = \Re/2 - \sqrt{\Re^2/4 + 4\pi^2}$．
-$N \in \{32, 64, 128, 256\}$, 周期 BC．
+$x\in[-0.5,1.0]$, $y\in[0,1]$．
+$N \in \{32,64,128,256\}$, wall one-sided CCD boundary．
+残差評価は境界 4 点を除いた interior $L_\infty$ とする．
 
 \paragraph{結果．}
 \begin{table}[!ht]
 \caption{V2-a: Kovasznay CCD 空間残差 $\|R\|_\infty$．
-slope (32→128) $\mathbf{6.00}$ → CCD 6 次設計と一致．
-$N=256$ で $h^6 \!\sim\! 10^{-13}$ により round-off 床到達．}
+slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$．
+真の Kovasznay NS 残差では boundary/global compact coupling と非線形項により
+実効 4 次に留まるが，旧 manufactured periodic proxy ではなく実問題 identity と一致する．}
 \label{tab:V2_spatial}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
-$N$ & $h$ & $\|R_u\|_\infty$ & $\|R_v\|_\infty$ \\
+$N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 \midrule
-32  & $1.96\times 10^{-1}$ & $3.58\times 10^{-9}$  & $3.58\times 10^{-9}$ \\
-64  & $9.82\times 10^{-2}$ & $5.55\times 10^{-11}$ & $5.55\times 10^{-11}$ \\
-128 & $4.91\times 10^{-2}$ & $8.79\times 10^{-13}$ & $8.78\times 10^{-13}$ \\
-256 & $2.45\times 10^{-2}$ & $9.07\times 10^{-14}$ & $8.52\times 10^{-14}\,^\dagger$ \\
+32  & $4.688\times 10^{-2}$ & $4.942\times 10^{-6}$ & $3.604\times 10^{-7}$ \\
+64  & $2.344\times 10^{-2}$ & $4.048\times 10^{-7}$ & $6.363\times 10^{-9}$ \\
+128 & $1.172\times 10^{-2}$ & $2.780\times 10^{-8}$ & $1.046\times 10^{-10}$ \\
+256 & $5.859\times 10^{-3}$ & $1.800\times 10^{-9}$ & $1.722\times 10^{-12}$ \\
 \midrule
-\multicolumn{2}{r}{slope ($N=32\!\to\!128$)} & $\mathbf{6.00}$ & $\mathbf{6.00}$ \\
+\multicolumn{2}{r}{asymptotic slope} & $\mathbf{3.95}$ & --- \\
 \bottomrule
 \end{tabular}
-\\[2pt]
-{\footnotesize $^\dagger$ round-off 床（$h^6 < 10^{-13}$）．}
 \end{table}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v2_kovasznay_orders.pdf}
 \caption{V2：Kovasznay CCD 空間残差の格子収束．
-log-log で slope $6$ の理論直線と一致．$N=256$ で round-off 床到達．}
+左は定常 NS 残差，右は非圧縮残差．真の Kovasznay 解に対し residual は
+漸近 slope $3.95$，divergence は $10^{-12}$ 台まで低下する．}
 \label{fig:V2_kovasznay}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item slope $6.00$ × 3 段階で\textbf{設計通り}\checkmark．
-  \item U1（§\ref{sec:U1_ccd_suite}）で 1D MMS 単体 6 次を確認したが，
-        本実験は 2D + Kovasznay 解という非自明設定でも 6 次が保たれることを示す．
+  \item 旧実装は manufactured periodic NS であり Kovasznay ではなかったが，
+        現 V2 は解析 Kovasznay 解そのものを用いる．
+  \item residual slope $\mathbf{3.95}$ → 真の 2D steady NS 残差では実効 4 次．
+        これは CCD 単体の 6 次検証 (U1) ではなく，境界・圧力・非線形項を含む
+        統合 residual の observed order である．
+  \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，
+        Kovasznay 解の非圧縮性は CCD 演算子上でも十分保たれる．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I} に対し，Kovasznay 解の 2D 空間残差を測定する．
