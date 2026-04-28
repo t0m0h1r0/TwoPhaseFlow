@@ -10,7 +10,31 @@
 
 ## Post-Fix Status
 
-N/A（初回レビュー）
+**ALL CLOSED** (2026-04-28). 全 12 件 (FATAL 2 / MAJOR 4 / MINOR 6) を `paper/sections/00_abstract.tex` に反映。`latexmk -xelatex -interaction=nonstopmode main.tex` clean (219 pp; undefined ref/cite 0; 残 warning は既知の §12 `Text page 123 contains only floats` のみ)。
+
+| ID | Status | 適用箇所 |
+|---|---|---|
+| F-1 | CLOSED | titlepage L22 「smoothed Heaviside 一括解法」と abstract L50 を統一。低密度比は両者で同一表現。 |
+| F-2 | CLOSED | abstract L56–61 を 3 階層化：単体検証／結合検証（69×, $\Ord{h^{7.0}}$, RT 2.8%）／物理ベンチマーク smoke・closure 合格／Hysing/Prosperetti 級は今後課題。 |
+| M-1 | CLOSED | abstract L46 「根本的に解決する」→「寄生流れを CSF モデル誤差律速の水準まで根本的に抑制する」。 |
+| M-2 | CLOSED | abstract L57–59 に FD/CCD = 69×・分相 PPE + DC $k=3$ で全密度比 $\Ord{h^{7.0}}$・RT 成長率誤差 2.8% を挿入。 |
+| M-3 | CLOSED | 静止液滴を「Force Balance」検証側に明示 (L57)。future-work 側列挙から除去。 |
+| M-4 | CLOSED | abstract L53–54 「外付け補正なしに内在的に抑制」→「Balanced-Force 演算子整合と FCCD 面ジェット sub-system の協働により Rhie--Chow 補間に頼らず…抑制」。 |
+| N-1 | CLOSED | abstract L44 / titlepage L18 を「内点 $\Ord{h^6}$」へ。titlepage L28 footnote に大域 $L^2$ ノルム $\Ord{h^{5/2}}$ caveat を明記。 |
+| N-2 | CLOSED | abstract L43 「残留する $\Ord{1}$ の誤差体積力」→「下限が消えない誤差体積力」（オーダー語回避で本体整合）。 |
+| N-3 | CLOSED | abstract L45 「Aslam 2004」→ `\cite{Aslam2004}`。 |
+| N-4 | CLOSED | abstract から `§~\ref{sec:extension_pde}, \ref{sec:checkerboard_solution}` を削除（self-contained 化）。titlepage 内 §-refs は本体導入装置として保持。 |
+| N-5 | CLOSED | abstract L51 を「分相 PPE + HFE 解法（…必要に応じ欠陥補正法 DC）」に統一。titlepage L23 にも DC 注記追加。 |
+| N-6 | CLOSED | titlepage L21 「変密度 IPC（van Kan 1986）」→「IPC 法~\cite{vanKan1986}（本稿で変密度に拡張）」。 |
+
+**Verification commits (worktree branch `worktree-ra-abstract-review`)**:
+
+- (review 添付): `575144d docs: add abstract researcharchitect review (FATAL 2 / MAJOR 4 / MINOR 6)`
+- (titlepage fix): F-1 一部 + N-1 + N-5 + N-6
+- (abstract fix): F-1 残 + F-2 + M-1..M-4 + N-1..N-5
+- (review update): 本 Post-Fix Status 追記
+
+詳細は git log 参照。`main` への merge は未実施（ユーザー指示待ち、`--no-ff` 採用予定）。
 
 ---
 
