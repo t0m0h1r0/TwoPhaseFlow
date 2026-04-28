@@ -222,6 +222,10 @@ def _rt_one(N: int, mode: int = 2, A0: float = 0.005, n_steps: int = 200,
     u = np.zeros_like(phi_h); v = np.zeros_like(phi_h)
     amps = []; times = []
 
+    snap_indices = {n_eff // 3 - 1, 2 * n_eff // 3 - 1, n_eff - 1}
+    snap_phi = [phi_h.copy()]
+    snap_t = [0.0]
+
     for step in range(n_eff):
         psi_h = np.asarray(backend.to_host(heaviside(xp, phi_h, eps)))
         rho_h = rho_g + (rho_l - rho_g) * psi_h
@@ -247,6 +251,10 @@ def _rt_one(N: int, mode: int = 2, A0: float = 0.005, n_steps: int = 200,
         amps.append(_interface_amplitude(phi_h, X, Y, k, Lx))
         times.append((step + 1) * dt)
 
+        if step in snap_indices:
+            snap_phi.append(phi_h.copy())
+            snap_t.append((step + 1) * dt)
+
     times = np.asarray(times); amps = np.asarray(amps)
     valid = np.isfinite(amps) & (amps > A0 * 1.05)
     if valid.sum() < 5:
@@ -263,6 +271,8 @@ def _rt_one(N: int, mode: int = 2, A0: float = 0.005, n_steps: int = 200,
         "N": N, "mode": mode, "A0": A0, "n_steps": n_eff, "dt": dt,
         "gamma_theory": gamma_th, "gamma_num": gamma_num, "rel_err": rel_err,
         "times": times, "amps": amps,
+        "snap_phi": np.asarray(snap_phi), "snap_t": np.asarray(snap_t),
+        "Lx": Lx, "Ly": Ly, "eps": eps,
     }
 
 
@@ -305,6 +315,31 @@ def make_figures(results: dict) -> None:
     save_figure(fig, OUT / "V4_galilean_rt")
 
 
+def make_snapshot_figure(results: dict) -> None:
+    """4-panel imshow of RT psi field at t=0, t≈T/3, t≈2T/3, t=T (N=128)."""
+    rt = results["V4b"]["rt"]
+    target = next((r for r in rt if int(r["N"]) == 128), rt[-1])
+    phis = np.asarray(target["snap_phi"])
+    ts = np.asarray(target["snap_t"])
+    Lx = float(target["Lx"]); Ly = float(target["Ly"]); eps = float(target["eps"])
+    Nx, Ny = phis[0].shape
+    xs = np.linspace(0.0, Lx, Nx)
+    ys = np.linspace(0.0, Ly, Ny)
+
+    fig, axes = plt.subplots(1, 4, figsize=(14.5, 5.5))
+    im = None
+    for ax, phi, t in zip(axes, phis, ts):
+        psi = 0.5 * (1.0 + np.tanh(phi / eps))
+        im = ax.imshow(psi.T, origin="lower",
+                       extent=(0.0, Lx, 0.0, Ly), cmap="viridis",
+                       aspect="equal", vmin=0.0, vmax=1.0)
+        ax.contour(xs, ys, phi.T, levels=[0.0], colors="k", linewidths=0.7)
+        ax.set_title(f"t = {t:.2f}")
+        ax.set_xlabel("x"); ax.set_ylabel("y")
+    fig.colorbar(im, ax=axes.tolist(), shrink=0.78, label=r"$\psi$")
+    save_figure(fig, OUT / "V4_rt_snapshot")
+
+
 def print_summary(results: dict) -> None:
     a = results["V4a"]
     print("V4-A (Galilean translation-stability, wall BC):")
@@ -325,6 +360,7 @@ def main() -> None:
         results = run_all()
         save_results(NPZ, results)
     make_figures(results)
+    make_snapshot_figure(results)
     print_summary(results)
     print(f"==> V4 outputs in {OUT}")
 
