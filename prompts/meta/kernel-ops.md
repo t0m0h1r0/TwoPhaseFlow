@@ -358,6 +358,86 @@ Verifies `session_id` matches lock file before release; raises `LockOwnershipErr
 **Rules:** MUST call after HAND-02 SUCCESS; MUST retain on FAIL to allow retry.
 
 ────────────────────────────────────────────────────────
+# § ID NAMESPACE OPERATIONS (v7.1.0)
+
+Purpose: Make CHK/ASM/KL ticket IDs collision-free across parallel worktrees by
+namespacing them with a deterministic per-worktree prefix derived from the
+branch name. Replaces the legacy "read ledger max + 1" convention which
+caused documented collisions (CHK-115, CHK-161→167, CHK-225→226, CHK-246
+unrenumbered). Pure text rule — no scripts, no shared counter file.
+
+## ID-NAMESPACE-DERIVE
+Semantic: derive `id_prefix` deterministically from the active branch name.
+MUST run once per session at start, before any HAND-01 dispatch carrying an ID.
+The result is bound for the lifetime of the session and recorded in
+`docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`.
+
+Procedure:
+1. Take `branch_slug` (the branch name as it appears on disk).
+2. Strip a leading `worktree-` or `wt-` segment if present.
+3. Tokenize on `-`; take the first 2 tokens.
+4. Keep only `[A-Z0-9-]` after uppercasing; drop other characters.
+5. If total length > 9, truncate the second token so the joined `TOK1-TOK2`
+   is ≤ 9 characters; if the first token alone is ≥ 9, take only the first
+   token truncated to 9.
+6. Collision check: if the resulting prefix already appears in
+   `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY` under a different
+   active `session_id`, extend by appending `-` + the third token (or its
+   first 4 chars), re-truncated to ≤ 12 characters total.
+
+Examples:
+| branch_slug | id_prefix |
+|---|---|
+| `worktree-ra-ch9-review` | `RA-CH9` |
+| `worktree-ra-ch11-review` | `RA-CH11` |
+| `worktree-ch14-benchmark-bootstrap` | `CH14-BEN` |
+| `worktree-ra-paper-ch4-rewrite` | `RA-PAPER` |
+| `researcharchitect-src-refactor-plan` | `RESEARCH` |
+| `worktree-ra-meta-id-namespace` | `RA-META` |
+
+Output: `id_prefix: string` matching `^[A-Z0-9]+(?:-[A-Z0-9]+)*$`, length ≤ 12.
+
+## ID-RESERVE-LOCAL
+Semantic: assign the next CHK/ASM/KL number within the current session's
+prefix. Counter is local to the worktree (no cross-worktree coordination).
+Each family (CHK / ASM / KL) has its own counter, starting at 001.
+
+Procedure:
+1. Read `docs/02_ACTIVE_LEDGER.md` and grep for entries matching
+   `^(CHK|ASM|KL)-{id_prefix}-([0-9]{3})` for the family being reserved.
+2. Take max(NNN) within this prefix; output `NNN+1` zero-padded to 3 digits.
+3. If no match: NNN = 1.
+4. Emit full ID: `{family}-{id_prefix}-{NNN}`.
+
+Output: full ID string matching `^(CHK|ASM|KL)-[A-Z0-9-]+-[0-9]{3,}$`.
+
+## ID-COLLISION-CHECK
+Semantic: verify the resulting ID does not already exist in the local ledger
+copy. Defense in depth — should be a no-op if ID-RESERVE-LOCAL is correct.
+
+Procedure:
+1. After ID-RESERVE-LOCAL, grep ledger for the full ID string.
+2. Match count > 0 → raise `IdCollisionError` (STOP-10 IDs).
+3. Match count = 0 → pass.
+
+## Backward compatibility (legacy CHK-NNN form)
+
+Legacy entries `CHK-NNN`, `ASM-NNN`, `KL-NN` (without prefix) created before
+the v7.1.0 cutover remain valid. The schema regex in `kernel-roles.md
+§SCHEMA EXTENSIONS v7.1.0` accepts both forms. Cross-document references
+to legacy IDs (e.g., `kernel-constitution.md` cites `CHK-114`) are
+unchanged. Migration is forward-only: new IDs minted in worktree sessions
+after v7.1.0 cutover MUST use the prefixed form.
+
+## Stop conditions
+
+- `id_prefix` recomputed mid-session → STOP-10 (immutable per session)
+- ID emitted that does not contain the session's bound `id_prefix` →
+  STOP-10 IDs (HAND-03 C7 schema validation rejects)
+- Two active worktrees derive the same prefix and step 6 collision check
+  is skipped → STOP-10 IDs
+
+────────────────────────────────────────────────────────
 # § DOMAIN OPERATIONS
 
 ## DOM-01: Domain Gate Check
