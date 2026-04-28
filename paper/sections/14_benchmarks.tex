@@ -10,9 +10,10 @@
 
 第~\ref{sec:verification}章では構成要素ごとの精度と NS 連成の物理的整合性を検証した．
 本章では，研究用 YAML として維持する本章の本番検証セットを，
-毛管波（§~\ref{sec:val_capillary}）と浮力駆動気泡上昇
-（§~\ref{sec:val_rising_bubble}）の2本に限定する．
-どちらも第~\ref{sec:verification}章の部品検証には含まれない
+毛管波（§~\ref{sec:val_capillary}），浮力駆動気泡上昇
+（§~\ref{sec:val_rising_bubble}），および Rayleigh--Taylor smoke 設定の
+3 本に限定する．
+いずれも第~\ref{sec:verification}章の部品検証には含まれない
 移動界面・表面張力・変密度投影の結合問題である．
 したがって本章の目的は単なる「動いた/動かない」の報告ではなく，
 第~\ref{sec:two_to_one}章の浮力分解，
@@ -26,13 +27,13 @@
 \label{sec:val_grid_policy}
 % ═══════════════════════════════════════════════════════════════════
 
-本章で維持する YAML は次の2本である：
+本章で維持する YAML は次の3本である：
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item \texttt{experiment/ch14/config/ch14\_capillary\_water\_air\_alpha2\_n128.yaml}
-  \item \texttt{experiment/ch14/config/ch14\_rising\_bubble\_water\_air\_alpha2\_n128x256.yaml}
+  \item \texttt{experiment/ch14/config/ch14\_capillary.yaml}
+  \item \texttt{experiment/ch14/config/ch14\_rising\_bubble.yaml}
+  \item \texttt{experiment/ch14/config/ch14\_rayleigh\_taylor.yaml}
 \end{itemize}
-両者は水--空気物性（$\rho_l=1000,\rho_g=1.2$，
-$\mu_l=10^{-3},\mu_g=1.8\times10^{-5}$，$\sigma=0.072$），
+これらは代表物性（毛管波・上昇気泡は水--空気，Rayleigh--Taylor は水--シリコーン油），
 非一様 interface-fitted 格子 $\alpha=2$，Ridge--Eikonal 再初期化，
 FCCD 圧力勾配，HFE 曲率，pressure-jump 型分相 PPE，
 UCCD6 対流，および IMEX--BDF2/implicit-BDF2 時間発展を共有する．
@@ -187,7 +188,7 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
 
 §~\ref{sec:error_budget} で特定した残存限界との対応：
 \begin{itemize}[noitemsep]
-  \item \textbf{$\sigma > 0$ 移動界面結合}——両 YAML とも pressure-jump 分相 PPE を用い，
+  \item \textbf{$\sigma > 0$ 移動界面結合}——各 YAML は pressure-jump 分相 PPE を用い，
         CSF 体積力ではなく圧力ジャンプとして表面張力を扱う（\textbf{補完}）．
   \item \textbf{再初期化--移流蓄積}——Ridge--Eikonal + local thickness により，
         非一様 $\alpha=2$ でも体積誤差 $O(10^{-5})$ の長時間/短時間 smoke を維持する（\textbf{補完}）．

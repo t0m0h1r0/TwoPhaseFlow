@@ -1,30 +1,30 @@
 % paper/sections/13e_nonuniform_ns.tex
 %
-% V8 : 非一様 NS 静的液滴 (alpha sweep, N sweep)
+% V8 : 非一様 NS 静止液滴 (alpha sweep, N sweep)
 % V9 : 局所 epsilon 比較 (fixed vs local)
 % V10: Zalesak / CLS 移流 非一様
-% Verifies: §3 (CLS transport), §5 (Heaviside-delta), §10 (non-uniform grid)
-% Data    : results/V{8,9,10}_*/data.npz
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{非一様格子 NS と CLS 移流}
 \label{sec:nonuniform_grid_ns}
 
-\subsubsection{V8：非一様 NS 静的液滴}
+\subsubsection{V8：非一様 NS 静止液滴}
 \label{sec:nonuniform_ns_static}
 
 \paragraph{検証対象．}
 非一様格子（界面付近細密; 引き伸ばしパラメータ $\alpha$）上で
-静的液滴 BF 平衡が長時間維持されること（\autoref{sec:U3_nonuniform_suite}）．
+静止液滴 BF 平衡が長時間維持されること（\autoref{sec:U3_nonuniform_suite}）．
 $\alpha = 1$ で一様格子と一致し，$\alpha = 2$ で界面付近 $h_{\min} = 0.5\, h_{\mathrm{avg}}$．
 
 \paragraph{設定．}
-$L=1, \rho_l=\rho_g=1$, $\Delta p_{\mathrm{exact}} = 0.4$．
+$L=1$, 半径 $r=0.25$，$\sigma=1$, $\mathrm{We}=10$,
+$\rho_l=10$, $\rho_g=1$．
+$\Delta p_{\mathrm{exact}} = \sigma/(r\,\mathrm{We}) = 0.4$．
 $N \in \{48, 64, 96\}$, $\alpha \in \{1, 2\}$．
-$\Delta t = h_{\min}/0.5$, $n_{\mathrm{step}} = 200$．
+$\Delta t = 0.20\,h_{\min}$, $n_{\mathrm{step}} = 200$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V8: 非一様 NS 静的液滴 ($n_{\mathrm{step}}=200$)．
+\caption{V8: 非一様 NS 静止液滴 ($n_{\mathrm{step}}=200$)．
 $\alpha=2$ では界面細密化で $\Delta p_{\mathrm{rel}}$ がやや悪化（数値ジオメトリ補正の交互作用）．}
 \label{tab:V8_nonuniform_static}
 \centering\small
@@ -45,7 +45,7 @@ $N$ & $\alpha$ & $h_{\min}$ & $\Delta p_{\mathrm{final}}$ & $u_\infty^{\mathrm{e
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v8_nonuniform_static.pdf}
-\caption{V8：非一様 NS 静的液滴．
+\caption{V8：非一様 NS 静止液滴．
 $\Delta p_{\mathrm{final}}(\alpha)$ は $\alpha=1$ で $\Delta p_{\mathrm{exact}} \pm 1.2\%$ に収束．
 $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値ジャコビアンと相互作用）．}
 \label{fig:V8_nonuniform_static}
@@ -59,7 +59,7 @@ $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値
         Jacobian 補正が要求精度を増やす．
 \end{itemize}
 検証対応：\autoref{sec:U3_nonuniform_suite} の非一様格子定義に対し，
-静的液滴の圧力誤差と終端速度を測定する．
+静止液滴の圧力誤差と終端速度を測定する．
 
 \subsubsection{V9：局所 $\varepsilon$ vs 固定 $\varepsilon$ 比較}
 \label{sec:local_eps_validation}
@@ -72,12 +72,12 @@ $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値
 精度向上するか，または安定性低下を引き起こすかを定量評価．
 
 \paragraph{設定．}
-V8 と同条件 ($r=0.0625, \sigma=0.025$)．
+V8 と同じ縮約静止液滴条件 ($r=0.25, \sigma=1, \mathrm{We}=10, \rho_l/\rho_g=10$)．
 $N \in \{48, 64\}$, $\alpha \in \{1, 2\}$．
-\textbf{A}: $\alpha=1$, fixed $\varepsilon$ (基準).
-\textbf{B}: $\alpha=2$, fixed $\varepsilon$.
-\textbf{C}: $\alpha=2$, local $\varepsilon$.
-$\Delta t = h_{\min}/0.5$, $n_{\mathrm{step}} = 100$．
+\textbf{A}: $\alpha=1$, fixed $\varepsilon$ (基準)．
+\textbf{B}: $\alpha=2$, fixed $\varepsilon$．
+\textbf{C}: $\alpha=2$, local $\varepsilon$．
+$\Delta t = 0.20\,h_{\min}$, $n_{\mathrm{step}} = 100$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
@@ -111,10 +111,10 @@ $N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ & $|\Delta p_{\mathr
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{Local $\varepsilon$ は静的液滴設定では推奨されない}\textcolor{red}{($\times$)}．
+  \item \textbf{Local $\varepsilon$ は静止液滴設定では推奨されない}\textcolor{red}{($\times$)}．
         薄膜化により Heaviside--$\delta$ の局所変動が CSF 曲率推定に
         高周波ノイズを混入させ寄生流れを 3 桁増大させる．
-  \item Fixed $\varepsilon = c \cdot h_{\mathrm{avg}}$ が安全な default．
+  \item Fixed $\varepsilon = c \cdot h_{\mathrm{avg}}$ が安全な既定値である．
         非一様格子設計の改善は，局所 $\varepsilon$ ではなく
         \textbf{$\delta$ プロファイル形状の改良}（カーネル長の連続変化制限）
         を優先すべき，との設計指針が得られた．
@@ -122,12 +122,13 @@ $N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ & $|\Delta p_{\mathr
 検証対応：\autoref{sec:U5_heaviside_delta} の Heaviside--$\delta$ 定義に対し，
 固定 $\varepsilon$ と局所 $\varepsilon$ の寄生流れを比較する．
 
-\subsubsection{V10：Zalesak / CLS 移流 非一様}
+\subsubsection{V10：FCCD/TVD--RK3 による Zalesak / 単一渦 CLS 移流}
 \label{sec:zalesak_cls_advection}
 
 \paragraph{検証対象．}
-古典的 Zalesak slotted disk advection 問題を非一様格子上で CLS 移流として解き，
-\textbf{体積保存}と\textbf{重心追跡精度}を $\alpha \in \{1, 2\}$ で比較．
+古典的 Zalesak slotted disk advection 問題と可逆単一渦 deformation 問題を
+FCCD flux-form + TVD--RK3 の CLS 移流として解き，
+\textbf{体積保存}，\textbf{重心追跡精度}，および\textbf{可逆変形後の形状復元性}を評価する．
 \autoref{sec:cls_advection} 式~\eqref{eq:cls_advection} の advection 項に
 非一様格子上の高次保存形差分 (\autoref{sec:fccd_def}) を組み合わせた評価．
 
@@ -136,22 +137,40 @@ $N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ & $|\Delta p_{\mathr
 中心 $(0.5, 0.75)$．背景流 $\bm u(\bm x) = (-2\pi(y-0.5), 2\pi(x-0.5))$
 （剛体回転; 1 周期 = $1$ 時間単位）．
 $N \in \{64, 128\}$, $\alpha \in \{1, 2\}$．
-$\Delta t = h_{\min} \cdot \mathrm{CFL}_{\max}$, 1 周期積分．
+$\Delta t_{\mathrm{est}} = 0.25\,h_{\min}/\max|\bm u|$ からステップ数を決め，
+最終時刻が 1 周期に一致するよう $\Delta t$ を調整して積分する．
+単一渦は同じ FCCD/TVD--RK3 輸送を用い，$N=96$, $\alpha=2$,
+$T=1$ の可逆 deformation cycle として実行する．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V10: CLS 移流 1 周期．
-$\alpha=1$ は良好だが $\alpha=2$ で volume\_drift が悪化（特に $N=128$ で $12\%$）．}
+\caption{V10: FCCD/TVD--RK3 による Zalesak CLS 移流 1 周期．
+非一様格子 $\alpha=2$ では重心収束は弱いが，FCCD/TVD--RK3 条件では
+体積 drift は $N=128$ でも $1.52\%$ に収まる．}
 \label{tab:V10_zalesak}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
 $N$ & $\alpha$ & centroid err & volume drift & $V_T/V_0$ \\
 \midrule
-64  & 1 & $4.92\times 10^{-3}$ & $0.82\%$  & $1.0082$ \\
-128 & 1 & $2.71\times 10^{-3}$ & $0.64\%$  & $1.0064$ \\
-64  & 2 & $9.01\times 10^{-2}$ & $0.78\%$  & $0.9922$ \\
-128 & 2 & $9.26\times 10^{-2}$ & \textbf{$12.17\%$} & $1.1217$ \\
+64  & 1 & $1.091\times 10^{-2}$ & $2.857\%$ & $0.9714$ \\
+128 & 1 & $4.688\times 10^{-3}$ & $0.107\%$ & $1.0011$ \\
+64  & 2 & $8.358\times 10^{-3}$ & $0.125\%$ & $0.9987$ \\
+128 & 2 & $6.590\times 10^{-3}$ & $1.519\%$ & $0.9848$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!ht]
+\caption{V10: 単一渦 deformation reversal（$N=96$, $\alpha=2$）．
+最大変形後に速度場を反転させ，$t=T$ で初期円盤へ戻るかを測る．}
+\label{tab:V10_single_vortex}
+\centering\small
+\begin{tabular}{r r r r r}
+\toprule
+$N$ & $\alpha$ & $L^1$ reversal error & volume drift & $V_T/V_0$ \\
+\midrule
+96 & 2 & $2.424\times 10^{-3}$ & $0.000\%$ & $1.0000$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -159,30 +178,47 @@ $N$ & $\alpha$ & centroid err & volume drift & $V_T/V_0$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak.pdf}
-\caption{V10：Zalesak 1 周期．
-$\alpha=1$ は $V_T/V_0 \approx 1\pm 1\%$, centroid err $\le 5\times 10^{-3}$．
-$\alpha=2$ では特に $N=128$ で体積膨張が顕著（$+12\%$）→ 非一様格子上の CLS 再初期化補正が
-$N$ 増大に伴い体積誤差を蓄積．}
+\caption{V10：Zalesak 1 周期の定量指標．
+$\alpha=1$ は $N=128$ で volume drift $0.107\%$，centroid err $4.688\times 10^{-3}$．
+$\alpha=2$ は volume drift $1.519\%$ まで保つ一方，centroid err の収束は弱い
+（$N=64\!\to\!128$ で $8.358\times10^{-3}\!\to\!6.590\times10^{-3}$）．}
 \label{fig:V10_zalesak}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak_snapshot.pdf}
+\caption{V10：Zalesak slotted disk の 2D スナップショット（$N=128$）．
+初期形状，$\alpha=1$ の 1 周期後，$\alpha=2$ の 1 周期後を並べる．
+薄い slot と円盤輪郭の崩れ方を直接確認できる．}
+\label{fig:V10_zalesak_snapshot}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v10_single_vortex.pdf}
+\caption{V10：単一渦 deformation reversal の 2D スナップショット．
+初期円盤，最大変形時，反転後最終場を並べる．FCCD/TVD--RK3 は
+$L^1$ reversal error $2.424\times10^{-3}$ で初期形状を復元し，体積 drift は表示精度で 0．}
+\label{fig:V10_single_vortex}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item $\alpha=1$ (一様格子)：volume drift $\le 1\%$, centroid err $\le 5\times 10^{-3}$ → \checkmark．
-  \item $\alpha=2$ (非一様格子)：centroid err $\sim 0.09$ (slot 部の薄い構造が
-        非一様サンプリングで歪む), $N=128$ で volume drift $+12.17\%$ → \textbf{要改善 ($\times$)}．
-        \textbf{細格子化に伴い体積誤差が蓄積する} ($N=64\!\to\!128$ で drift $0.78\%\!\to\!12.17\%$)
-        という「収束逆行」性質は，CLS 再初期化が非一様格子上で
-        体積保存性を破る構造的問題を示唆する．
-  \item 非一様格子上の CLS 移流には \textbf{保存型再初期化補正}
-        （\autoref{sec:eikonal_reinit}）の高次化が必要．
+  \item $\alpha=1$ (一様格子)：$N=128$ で volume drift $0.107\%$，
+        centroid err $4.688\times10^{-3}$ → \checkmark．
+  \item $\alpha=2$ (非一様格子)：§14 と同じ FCCD/TVD--RK3 条件では
+        $N=128$ の volume drift は $1.519\%$ である．一方，centroid order は $0.34$ に留まり，
+        slot 部の幾何追跡は条件付き（$\triangle$）．
+  \item 単一渦：$N=96,\alpha=2$ で volume drift は表示精度で 0，
+        $L^1$ reversal error $2.424\times10^{-3}$ → 可逆 deformation の視覚・定量検証に合格．
   \item \textbf{本論文の制約条件として明示}：
         本ソルバの非一様格子サポート ($\alpha > 1$) は
-        \textbf{NS 静的問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で $\Delta p$ 誤差 $\le 5\%$)
-        には適用可能だが，\textbf{CLS 移流問題} ($\alpha=2$) は
-        本ソルバの保証範囲外である．§3 (CLS 移流)，§10 (非一様格子)，§11 (制約整理) において
-        「CLS 移流を伴う非一様格子問題は $\alpha = 1$ を推奨．$\alpha > 1$ の使用は
-        体積保存性の追加検証を要する」と注記すべき設計指針．
+        \textbf{NS 静止問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で $\Delta p$ 誤差 $\le 5\%$)
+        と FCCD/TVD--RK3 CLS 移流の体積保存には適用可能．ただし Zalesak の slot 重心追跡は
+        $\alpha=2$ で低次に留まるため，薄い形状特徴を含む問題では 2D スナップショットと
+        体積・重心の併記を必須とする．
 \end{itemize}
 検証対応：式~\eqref{eq:cls_advection}，\autoref{sec:cls_advection} の CLS 移流，
-\autoref{sec:fccd_def} の face value/grad に対し，体積 drift と重心誤差を測定する．
+\autoref{sec:fccd_def} の face value/grad に対し，体積 drift，重心誤差，
+および単一渦 reversal error を測定する．

@@ -61,6 +61,7 @@ from twophase.tools.experiment.gpu import sparse_solve_2d
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 R = 0.25
 CENTER = (0.5, 0.5)
@@ -164,6 +165,11 @@ def _run_single(N: int, n_steps: int = N_STEPS) -> dict:
         "dp_final": dp_final, "dp_exact": DP_EXACT, "dp_rel_err": dp_rel_err,
         "u_inf_history": np.asarray(u_inf_history),
         "dp_history": np.asarray(dp_history),
+        "X": np.asarray(backend.to_host(X)),
+        "Y": np.asarray(backend.to_host(Y)),
+        "psi": np.asarray(backend.to_host(psi)),
+        "pressure": p,
+        "speed": np.sqrt(u * u + v * v),
     }
 
 
@@ -189,7 +195,30 @@ def make_figures(results: dict) -> None:
     ax_p.axhline(DP_EXACT, color="k", linestyle="--", alpha=0.7, label="$\\sigma/R$")
     ax_p.set_xlabel("step"); ax_p.set_ylabel("$\\Delta p$")
     ax_p.set_title("Laplace pressure (200 step)"); ax_p.legend()
-    save_figure(fig, OUT / "V3_static_droplet_longterm")
+    save_figure(fig, OUT / "V3_static_droplet_longterm",
+                also_to=PAPER_FIGURES / "ch13_v3_static_droplet")
+
+    snap = runs["N128"]
+    fig_snap, axes_snap = plt.subplots(1, 2, figsize=(10.5, 4.4))
+    ax_p, ax_u = axes_snap
+    im_p = ax_p.pcolormesh(snap["X"], snap["Y"], snap["pressure"], cmap="coolwarm",
+                           shading="auto")
+    ax_p.contour(snap["X"], snap["Y"], snap["psi"], levels=[0.5],
+                 colors="black", linewidths=1.0)
+    ax_p.set_aspect("equal"); ax_p.set_xlabel("x"); ax_p.set_ylabel("y")
+    ax_p.set_title("pressure field + interface")
+    fig_snap.colorbar(im_p, ax=ax_p, shrink=0.82, label="$p$")
+
+    im_u = ax_u.pcolormesh(snap["X"], snap["Y"], snap["speed"], cmap="magma",
+                           shading="auto")
+    ax_u.contour(snap["X"], snap["Y"], snap["psi"], levels=[0.5],
+                 colors="white", linewidths=1.0)
+    ax_u.set_aspect("equal"); ax_u.set_xlabel("x"); ax_u.set_ylabel("y")
+    ax_u.set_title("$|u|$ after 200 steps")
+    fig_snap.colorbar(im_u, ax=ax_u, shrink=0.82, label="$|u|$")
+    fig_snap.suptitle("V3: static droplet 2D fields (N=128)")
+    save_figure(fig_snap, OUT / "V3_static_droplet_snapshot",
+                also_to=PAPER_FIGURES / "ch13_v3_static_droplet_snapshot")
 
 
 def print_summary(results: dict) -> None:

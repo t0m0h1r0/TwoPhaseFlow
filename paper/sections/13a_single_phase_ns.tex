@@ -2,10 +2,6 @@
 %
 % V1: TGV エネルギー減衰 (Tier A 単相 NS)
 % V2: Kovasznay CCD 空間残差 (fixed-point on periodic NS)
-% Verifies: §4 (CCD/DCCD spatial), §6 (PPE), §7 (時間積分 IMEX-BDF2 / AB2)
-% Scripts : experiment/ch13/exp_V1_tgv_energy_decay.py
-%           experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
-% Data    : experiment/ch13/results/{V1_tgv_energy_decay,V2_kovasznay_imex_bdf2}/data.npz
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{単相 NS：TGV と Kovasznay 残差}
 \label{sec:single_phase_ns}
@@ -16,7 +12,7 @@
 \paragraph{検証対象．}
 密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
 を CCD 空間離散 (\autoref{sec:CCD}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
-\textsc{HHO}-PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
+PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
 に対する相対誤差が\textbf{時間離散の設計次数 $O(\Delta t^2)$}で消えること，
 かつ非圧縮拘束 $\nabla\!\cdot u = 0$ が機械精度で保たれることを単相設定で確認する．
 
@@ -118,7 +114,7 @@ $N$ & $h$ & $\|R_u\|_\infty$ & $\|R_v\|_\infty$ \\
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v2_kovasznay_orders.pdf}
 \caption{V2：Kovasznay CCD 空間残差の格子収束．
-log-log で slope $6$ の theoretical line と完全一致．$N=256$ で round-off 床到達．}
+log-log で slope $6$ の理論直線と一致．$N=256$ で round-off 床到達．}
 \label{fig:V2_kovasznay}
 \end{figure}
 
