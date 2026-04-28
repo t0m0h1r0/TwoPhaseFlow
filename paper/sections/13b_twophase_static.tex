@@ -21,7 +21,7 @@ $\Delta p_{\mathrm{exact}} = \sigma / r$ が漸近的に再現されることを
 U7（§\ref{sec:U7_bf_static_droplet}）の 1 ステップ結果を時間方向に拡張した形．
 
 \paragraph{設定．}
-$L=1$, 半径 $r = 0.25$ の液滴中心配置．$\sigma = 1.0$, $\rho_l = \rho_g = 1$,
+$L=1$, 半径 $r = 0.25$ の液滴中心配置．$\sigma = 1.0$, $\rho_l = 10$, $\rho_g = 1$,
 $\Delta p_{\mathrm{exact}} = \sigma / r = 4.0$．
 $N \in \{64, 96, 128\}$, $\Delta t = h/4$, $n_{\mathrm{step}} = 200$．
 
@@ -55,6 +55,15 @@ $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $
 履歴ピーク値は $N$ に対し非単調になる（V5 で multistep + CCD/FD 切り分けにより，
 $h \to 0$ 極限では peak も最終収束することを別途確認）．}
 \label{fig:V3_droplet}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v3_static_droplet_snapshot.pdf}
+\caption{V3：静的液滴の 2D 場（$N=128$, 200 step 後）．
+左は圧力場と $\psi=0.5$ 界面，右は速度絶対値 $|\bm u|$ と界面を重ねたもの．
+Laplace 圧力跳びが円形界面に沿って維持され，寄生流れは界面近傍の薄い帯に局在する．}
+\label{fig:V3_droplet_snapshot}
 \end{figure}
 
 \paragraph{判定と制約条件．}
