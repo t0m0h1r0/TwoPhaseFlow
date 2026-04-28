@@ -267,6 +267,7 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 | `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
 | `PPESolverDCOmega` | `pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
 | `CurvatureCalculator` | `levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
+| `exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/legacy/exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/exp_V6_density_ratio_convergence.py` | Reduced smoothed-density CSF/PPE density sweep reference |
 
 ### Re-export stubs (backward compat after `pressure/solvers/` restructure)
 

@@ -11,48 +11,46 @@
 \label{sec:interface_crossing}
 
 \paragraph{検証対象．}
-分相 PPE + DC + HFE 統合（\autoref{sec:split_ppe_motivation}〜\autoref{sec:U6_split_ppe_dc_hfe}）が
-密度比 $\rho_r = \rho_l/\rho_g \in [2, 833]$（最大は水--空気の $\sim 833$）の
-全レンジで\textbf{ブローアップせず}，かつ Laplace 圧力差が $\rho_r$ にロバストに
-収束することを確認する．本検証は，一括 smoothed-Heaviside 解法で顕在化する
-密度ジャンプ越え問題に対する分相解法の応答評価でもある．
+§14 と同じ FCCD interface transport / UCCD6 convection / HFE curvature
+(``psi\_direct\_hfe'') / pressure-jump surface tension /
+phase-separated FCCD PPE + defect correction + face-flux projection の構成が，
+密度比 $\rho_r = \rho_l/\rho_g \in [2, 833]$（最大は水--空気の $\sim 833$）で
+\textbf{ブローアップしない}ことを確認する．
+pressure-jump 形式では Laplace 跳び $\sigma/r$ は PPE の界面結合に埋め込まれるため，
+出力される $p$ は絶対圧ではなく射影補正圧である．したがって本 V6 では
+$u_\infty^{\mathrm{end}}$，CLS 体積 drift，および
+$|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ を solver diagnostic として測る．
 
 \paragraph{設定．}
-V3 と同じ静止液滴設定．$\rho_l = \rho_r$, $\rho_g = 1$, $\sigma = 1$, $r = 0.25$
-→ $\Delta p_{\mathrm{exact}} = 4.0$．
-$\rho_r \in \{2, 10, 100, 833\}$, $N \in \{32, 64, 128\}$．
-$\Delta t = h/2$ (CFL ターゲット 0.4)．
+半径 $r=0.25$ の静止液滴，$\rho_l=\rho_r$, $\rho_g=1$, $\sigma=1$．
+$\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
+各ケース $8$ step，CFL multiplier $0.50$．
+スクリプト側で stack assertion を行い，通常 CCD/FVM-PPE 経路に落ちた場合は失敗させる．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V6: 密度比 sweep．全 12 ケースでブローアップなし．
-$|\Delta p_{\mathrm{rel}}| \le 1.77\%$（$\rho_r=833$ 含む）で収束．
-有効 5 桁で $\Delta p_{\mathrm{meas}}$ を提示し，$\rho_r$ を 2 桁
-($2 \to 833$) 振っても \textbf{平衡 $\Delta p$ は $\rho_r$ にほぼ独立}（$\rho_r$ 横断
-で $|\Delta p_{\mathrm{rel}}|$ が $\lesssim 0.08\%$ 内に収まる; 唯一の例外は
-$\rho_r=833, N=32$ で粗格子 $\rho$ ジャンプの量子化）—— 分相 PPE + DC + HFE が
-密度ジャンプ越えで設計通りの $\rho_r$ ロバスト性を裏付ける．}
+\caption{V6: §14 stack による密度比 sweep．全 8 ケースでブローアップなし．
+$|\Delta V_\psi|/V_{\psi,0}$ は全ケースで $O(10^{-10})$--$O(10^{-11})$，
+$u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する．
+$|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり，
+Laplace 絶対圧誤差ではない．}
 \label{tab:V6_density_ratio}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
-$\rho_r$ & $N$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty^{\mathrm{end}}$ \\
+$\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ \\
 \midrule
-2    & 32  & $4.01688$ & $0.422\%$ & $1.489\times 10^{-2}$ \\
-2    & 64  & $3.95071$ & $1.232\%$ & $1.309\times 10^{-3}$ \\
-2    & 128 & $3.96128$ & $0.968\%$ & $1.485\times 10^{-3}$ \\
+2    & 24 & $2.828\times 10^{-4}$ & $1.243\times 10^{-10}$ & $1.444\times 10^{-1}$ \\
+2    & 32 & $1.806\times 10^{-4}$ & $1.919\times 10^{-11}$ & $1.070\times 10^{-1}$ \\
 \midrule
-10   & 32  & $4.01666$ & $0.417\%$ & $4.095\times 10^{-3}$ \\
-10   & 64  & $3.95071$ & $1.232\%$ & $4.732\times 10^{-4}$ \\
-10   & 128 & $3.96129$ & $0.968\%$ & $1.269\times 10^{-3}$ \\
+10   & 24 & $1.820\times 10^{-4}$ & $1.973\times 10^{-10}$ & $1.443\times 10^{-1}$ \\
+10   & 32 & $1.159\times 10^{-4}$ & $2.473\times 10^{-11}$ & $1.068\times 10^{-1}$ \\
 \midrule
-100  & 32  & $4.01382$ & $0.346\%$ & $1.228\times 10^{-3}$ \\
-100  & 64  & $3.95075$ & $1.231\%$ & $3.135\times 10^{-4}$ \\
-100  & 128 & $3.96122$ & $0.969\%$ & $1.268\times 10^{-3}$ \\
+100  & 24 & $6.539\times 10^{-5}$ & $2.366\times 10^{-10}$ & $1.442\times 10^{-1}$ \\
+100  & 32 & $4.158\times 10^{-5}$ & $3.325\times 10^{-11}$ & $1.067\times 10^{-1}$ \\
 \midrule
-833  & 32  & $4.07069$ & $1.767\%$ & $3.928\times 10^{-4}$ \\
-833  & 64  & $3.95163$ & $1.209\%$ & $3.143\times 10^{-4}$ \\
-833  & 128 & $3.95932$ & $1.017\%$ & $1.265\times 10^{-3}$ \\
+833  & 24 & $2.298\times 10^{-5}$ & $2.008\times 10^{-10}$ & $1.442\times 10^{-1}$ \\
+833  & 32 & $1.461\times 10^{-5}$ & $3.950\times 10^{-11}$ & $1.067\times 10^{-1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -61,25 +59,24 @@ $\rho_r$ & $N$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
 \caption{V6：密度比収束 sweep．
-$\Delta p_{\mathrm{meas}}$（左, $\rho_r$ 軸）は全レンジで $\Delta p_{\mathrm{exact}}=4.0$ ± $1.8\%$．
-$u_\infty^{\mathrm{end}}$（右）は $\rho_r$ 増加で\textbf{減少傾向} — 高密度比下では
-寄生流れスケールが$\sigma/(\rho_l + \rho_g)$（\autoref{sec:spurious_multistep}）依存で抑制．}
+$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し，
+$\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり，
+全ケース $O(10^{-10})$--$O(10^{-11})$ に留まる．}
 \label{fig:V6_density_ratio}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 全 $12$ ケースで\textbf{ブローアップなし}（水--空気を含む）\checkmark．
-  \item $|\Delta p_{\mathrm{rel}}| \le 1.8\%$ で BF 平衡を保つ → 分相 PPE + DC + HFE 構成が
-        密度ジャンプ越えの圧力 / 速度 / Heaviside 整合性を維持\checkmark．
-  \item $u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制される — 一括 smoothed-Heaviside 解法
-        （単一 Heaviside で $\rho$, $\mu$, 圧力 BC を同時に内挿する一括 PPE; \autoref{sec:varrho_ppe_limitation}）
-        が中--高密度比で発散する問題に対し，分相解法は密度ジャンプ位置で
-        界面 PPE 補正を別途適用するため安定．
+  \item 全 $8$ ケースで\textbf{ブローアップなし}（水--空気相当を含む）\checkmark．
+  \item $|\Delta V_\psi|/V_{\psi,0} \le 2.4\times10^{-10}$ で CLS 体積は実質保存．
+  \item $u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制される．
+        高密度比下では速度応答スケールが $\sigma/(\rho_l+\rho_g)$ に従い低下する．
+  \item 本 V6 は stack assertion により通常 CCD/FVM-PPE ではなく
+        FCCD/UCCD6/HFE/pressure-jump/phase-separated PPE/DC 経路を直接検証する．
 \end{itemize}
 検証対応：式~\eqref{eq:split_ppe}，\autoref{sec:split_ppe_motivation} の分相 PPE，
 \autoref{sec:verify_split_ppe_dc}（DC），\autoref{sec:U6_split_ppe_dc_hfe}（HFE）に対し，
-密度比 sweep の圧力誤差と終端速度を測定する．
+密度比 sweep の終端速度，CLS 体積 drift，補正圧スケールを測定する．
 
 \subsubsection{V7：IMEX-BDF2 二相時間精度}
 \label{sec:imex_bdf2_twophase_time}

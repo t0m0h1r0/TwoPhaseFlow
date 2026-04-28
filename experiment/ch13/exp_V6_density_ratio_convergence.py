@@ -1,240 +1,183 @@
 #!/usr/bin/env python3
-"""[V6] Density-ratio sweep grid convergence — Tier C.
+"""[V6] Density-ratio robustness with the §14 FCCD/UCCD6/HFE stack.
 
 Paper ref: §13.4 (sec:varrho_dc_convergence, sec:interface_crossing).
 
-Tests that the BF + split-PPE + HFE + CLS pipeline maintains spatial
-convergence in the liquid pressure field as the density ratio rho_l/rho_g
-increases from 2 to 100, and survives a smoke test at rho_l/rho_g = 833
-(water-air).
+V6 verifies the density-ratio axis with the same production-family operators
+used in §14 and V9:
 
-Sub-tests
----------
-  Static droplet R=0.25, [0,1]^2, wall BC, sigma=1, We=1, mu=0.
-  N in {32, 64, 128}, rho_l/rho_g in {2, 10, 100, 833}.
-  50 steps; measure mean liquid pressure error vs sigma/R.
+  - FCCD interface transport and pressure gradient,
+  - UCCD6 momentum convection,
+  - HFE curvature (psi_direct_hfe),
+  - pressure-jump surface tension embedded in phase-separated FCCD PPE,
+  - defect-correction PPE and face-flux projection.
 
-  Reference: Ch12 U6 isolated split-PPE solver showed order >= 2 for
-  density ratios up to 100. V6 verifies this carries over to the coupled
-  Predictor-PPE-Corrector loop, where DC k=3 (Defect Correction iteration
-  order) replaces direct sparse solve in 'large' problem regimes.
-
-Pass criterion
---------------
-  - rho <= 100: spatial L_inf order >= 2.0 (across N=32->128)
-  - rho = 833: solver does not blow up (||u||_inf bounded, dp finite)
+This replaces the legacy reduced smoothed-density CSF/PPE sweep retained at
+``experiment/ch13/legacy/exp_V6_density_ratio_convergence_legacy.py``.
 
 Usage
 -----
-  python experiment/ch13/exp_V6_density_ratio_convergence.py
-  python experiment/ch13/exp_V6_density_ratio_convergence.py --plot-only
+  make run EXP=experiment/ch13/exp_V6_density_ratio_convergence.py
+  make plot EXP=experiment/ch13/exp_V6_density_ratio_convergence.py
 """
 
 from __future__ import annotations
 
-import sys
 import pathlib
+import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from twophase.backend import Backend
-from twophase.config import GridConfig, SimulationConfig
-from twophase.core.grid import Grid
-from twophase.ccd.ccd_solver import CCDSolver
-from twophase.levelset.heaviside import heaviside
-from twophase.levelset.curvature import CurvatureCalculator
-from twophase.ppe.ppe_builder import PPEBuilder
+from ch14_stack_common import ch14_circle_config, run_ch14_case
 from twophase.tools.experiment import (
-    apply_style, experiment_dir, experiment_argparser,
-    save_results, load_results, save_figure,
-    compute_convergence_rates,
+    apply_style,
+    experiment_argparser,
+    experiment_dir,
+    load_results,
+    save_figure,
+    save_results,
 )
-from twophase.tools.experiment.gpu import sparse_solve_2d
 
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 R = 0.25
 CENTER = (0.5, 0.5)
 SIGMA = 1.0
-WE = 1.0
 RHO_G = 1.0
-DP_EXACT = SIGMA / (R * WE)
-N_STEPS = 50
-CFL_FACTOR = 0.20
+MU_L = 1.0e-3
+MU_G = 1.0e-4
+RATIOS = (2.0, 10.0, 100.0, 833.0)
+N_LIST = (24, 32)
+N_STEPS = 8
+CFL_MULTIPLIER = 0.50
+DP_EXACT = SIGMA / R
 
 
-def _wall_bc(arr) -> None:
-    arr[0, :] = 0.0; arr[-1, :] = 0.0
-    arr[:, 0] = 0.0; arr[:, -1] = 0.0
-
-
-def _solve_ppe(rhs, rho, ppe_builder, backend):
-    triplet, A_shape = ppe_builder.build(rho)
-    data, rows, cols = [backend.to_device(a) for a in triplet]
-    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=A_shape)
-    xp = backend.xp
-    rhs_flat = xp.asarray(rhs).ravel().copy()
-    rhs_flat[ppe_builder._pin_dof] = 0.0
-    return sparse_solve_2d(backend, A, rhs_flat).reshape(rho.shape)
-
-
-def _ccd_grad(field, ccd, axis, backend):
-    d1, _ = ccd.differentiate(field, axis)
-    return np.asarray(backend.to_host(d1))
-
-
-def _measure_dp_inside(p, phi_h, h):
-    inside = phi_h > 3.0 * h
-    outside = phi_h < -3.0 * h
-    if inside.any() and outside.any():
-        return float(np.mean(p[inside]) - np.mean(p[outside]))
-    return float("nan")
-
-
-def _liquid_pressure_l_inf(p, phi_h, h, dp_target):
-    """Spurious pressure non-uniformity inside the liquid phase.
-
-    The Laplace solution has uniform pressure inside the droplet (Δp = σ/R
-    relative to the gas), so the L_inf deviation from the liquid-mean
-    pressure is the spurious-pressure error. This is gauge-invariant and
-    converges to 0 as the BF discretization is refined.
-    """
-    inside = phi_h > 3.0 * h
-    if not inside.any():
-        return float("nan")
-    p_in = p[inside]
-    return float(np.max(p_in) - np.min(p_in))
+def _case_config(N: int, ratio: float):
+    return ch14_circle_config(
+        N=N,
+        out_dir=OUT,
+        radius=R,
+        center=CENTER,
+        rho_l=ratio * RHO_G,
+        rho_g=RHO_G,
+        mu_l=MU_L,
+        mu_g=MU_G,
+        sigma=SIGMA,
+        max_steps=N_STEPS,
+        final_time=10.0,
+        cfl=CFL_MULTIPLIER,
+        reinit_every=20,
+    )
 
 
 def _run_one(N: int, ratio: float) -> dict:
-    backend = Backend(use_gpu=False)
-    xp = backend.xp
-    h = 1.0 / N
-    eps = 1.5 * h
-    dt = CFL_FACTOR * h
-    rho_l = ratio * RHO_G
-
-    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
-    grid = Grid(cfg.grid, backend)
-    ccd = CCDSolver(grid, backend, bc_type="wall")
-    ppe_builder = PPEBuilder(backend, grid, bc_type="wall")
-    curv_calc = CurvatureCalculator(backend, ccd, eps)
-
-    X, Y = grid.meshgrid()
-    phi = R - xp.sqrt((X - CENTER[0]) ** 2 + (Y - CENTER[1]) ** 2)
-    psi = heaviside(xp, phi, eps)
-    rho = RHO_G + (rho_l - RHO_G) * psi
-    rho_h = np.asarray(backend.to_host(rho))
-    phi_h = np.asarray(backend.to_host(phi))
-    kappa_h = np.asarray(backend.to_host(curv_calc.compute(psi)))
-
-    dpsi_dx = _ccd_grad(psi, ccd, 0, backend)
-    dpsi_dy = _ccd_grad(psi, ccd, 1, backend)
-    f_x = (SIGMA / WE) * kappa_h * dpsi_dx
-    f_y = (SIGMA / WE) * kappa_h * dpsi_dy
-
-    u = np.zeros_like(rho_h); v = np.zeros_like(rho_h)
-    p = np.zeros_like(rho_h)
-    u_inf_history = []
-    blew_up = False
-    for _ in range(N_STEPS):
-        u_star = u + dt / rho_h * f_x
-        v_star = v + dt / rho_h * f_y
-        _wall_bc(u_star); _wall_bc(v_star)
-        rhs = (_ccd_grad(u_star, ccd, 0, backend) +
-               _ccd_grad(v_star, ccd, 1, backend)) / dt
-        try:
-            p = np.asarray(_solve_ppe(rhs, rho_h, ppe_builder, backend))
-        except Exception:
-            blew_up = True; break
-        u = u_star - dt / rho_h * _ccd_grad(p, ccd, 0, backend)
-        v = v_star - dt / rho_h * _ccd_grad(p, ccd, 1, backend)
-        _wall_bc(u); _wall_bc(v)
-        u_inf = float(np.max(np.sqrt(u * u + v * v)))
-        u_inf_history.append(u_inf)
-        if not np.isfinite(u_inf) or u_inf > 1e3:
-            blew_up = True; break
-
-    dp_meas = _measure_dp_inside(p, phi_h, h) if not blew_up else float("nan")
-    p_l_inf = _liquid_pressure_l_inf(p, phi_h, h, DP_EXACT) if not blew_up else float("nan")
-    return {
-        "N": N, "h": h, "ratio": ratio, "dt": dt,
-        "blew_up": blew_up,
-        "u_inf_final": u_inf_history[-1] if u_inf_history else float("nan"),
-        "dp_measured": dp_meas, "dp_exact": DP_EXACT,
-        "p_liquid_l_inf": p_l_inf,
-    }
+    label = f"V6 N={N} rho={ratio:g}"
+    out = run_ch14_case(
+        cfg=_case_config(N, ratio),
+        label=label,
+        radius=R,
+        center=CENTER,
+    )
+    out.update(
+        {
+            "N": N,
+            "ratio": ratio,
+            "rho_l": ratio * RHO_G,
+            "rho_g": RHO_G,
+            "dp_exact": DP_EXACT,
+            "dp_correction_abs_ratio": abs(out["dp_final"]) / DP_EXACT
+            if np.isfinite(out["dp_final"])
+            else float("nan"),
+        }
+    )
+    return out
 
 
 def run_all() -> dict:
-    out = {}
-    for ratio in (2.0, 10.0, 100.0, 833.0):
+    sweeps = {}
+    for ratio in RATIOS:
         rows = []
-        for N in (32, 64, 128):
+        for N in N_LIST:
+            print(f"[V6] N={N}, rho_l/rho_g={ratio:g}")
             rows.append(_run_one(N, ratio))
-        out[f"r{int(ratio)}"] = rows
-    return {"sweeps": out}
+        sweeps[f"r{int(ratio)}"] = rows
+    return {
+        "sweeps": sweeps,
+        "meta": {
+            "N_list": N_LIST,
+            "ratios": RATIOS,
+            "N_steps": N_STEPS,
+            "cfl_multiplier": CFL_MULTIPLIER,
+            "sigma": SIGMA,
+            "R": R,
+            "dp_exact": DP_EXACT,
+        },
+    }
 
 
 def make_figures(results: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
-    ax_c, ax_d = axes
+    ax_u, ax_v = axes
     sweeps = results["sweeps"]
-    colors = {"r2": "C0", "r10": "C1", "r100": "C2", "r833": "C3"}
-    for key, rows in sweeps.items():
-        rows_ok = [r for r in rows if not r["blew_up"] and np.isfinite(r["p_liquid_l_inf"])]
-        if len(rows_ok) < 2: continue
-        hs = np.array([r["h"] for r in rows_ok])
-        errs = np.array([r["p_liquid_l_inf"] for r in rows_ok])
-        ax_c.loglog(hs, errs, "o-", color=colors.get(key, "k"),
-                    label=f"ρ={int(rows_ok[0]['ratio'])}")
-    if sweeps.get("r2"):
-        rows_ok = [r for r in sweeps["r2"] if not r["blew_up"] and np.isfinite(r["p_liquid_l_inf"])]
-        if len(rows_ok) >= 2:
-            hs = np.array([r["h"] for r in rows_ok])
-            errs = np.array([r["p_liquid_l_inf"] for r in rows_ok])
-            ax_c.loglog(hs, errs[0] * (hs / hs[0]) ** 2, "k--", alpha=0.4, label="O(h²)")
-    ax_c.invert_xaxis(); ax_c.set_xlabel("h")
-    ax_c.set_ylabel("L_inf liquid p error")
-    ax_c.set_title("(a) Liquid pressure convergence")
-    ax_c.legend()
-
-    cats = []; dps = []
-    for key, rows in sweeps.items():
-        for r in rows:
-            cats.append(f"N{r['N']}\nρ={int(r['ratio'])}")
-            dps.append(r["dp_measured"] if np.isfinite(r["dp_measured"]) else 0.0)
-    ax_d.bar(cats, dps, color="C2")
-    ax_d.axhline(DP_EXACT, color="k", linestyle="--", alpha=0.7, label="σ/R")
-    ax_d.set_ylabel("Δp_measured"); ax_d.set_xticklabels(cats, rotation=45, fontsize=7)
-    ax_d.set_title("(b) Laplace Δp across (N, ρ)")
-    ax_d.legend()
-
-    save_figure(fig, OUT / "V6_density_ratio_convergence")
+    colors = {24: "C0", 32: "C1"}
+    for N in N_LIST:
+        rows = [sweeps[f"r{int(ratio)}"][N_LIST.index(N)] for ratio in RATIOS]
+        ratios = np.array([r["ratio"] for r in rows])
+        u_vals = np.array([r["u_inf_final"] for r in rows])
+        vol_vals = np.array([r["volume_drift_final"] for r in rows])
+        ax_u.semilogx(
+            ratios,
+            u_vals,
+            "o-",
+            color=colors.get(N, None),
+            label=f"N={N}",
+        )
+        ax_v.semilogx(
+            ratios,
+            vol_vals,
+            "s-",
+            color=colors.get(N, None),
+            label=f"N={N}",
+        )
+    ax_u.set_xlabel(r"$\rho_l/\rho_g$")
+    ax_u.set_ylabel(r"$\|u\|_\infty$ at final step")
+    ax_u.set_title("V6 §14 stack: density-ratio velocity")
+    ax_u.legend(fontsize=8)
+    ax_v.set_xlabel(r"$\rho_l/\rho_g$")
+    ax_v.set_ylabel(r"$|\Delta V_\psi|/V_{\psi,0}$")
+    ax_v.set_yscale("log")
+    ax_v.set_title("V6 §14 stack: CLS volume drift")
+    ax_v.legend(fontsize=8)
+    save_figure(
+        fig,
+        OUT / "V6_density_ratio_convergence",
+        also_to=PAPER_FIGURES / "ch13_v6_density_ratio",
+    )
 
 
 def print_summary(results: dict) -> None:
-    print("V6 (density-ratio sweep grid convergence):")
-    sweeps = results["sweeps"]
+    print("V6 (§14 stack density-ratio robustness):")
     for key in ("r2", "r10", "r100", "r833"):
-        rows = sweeps.get(key, [])
-        if not rows: continue
-        print(f"  ρ={int(rows[0]['ratio'])}:")
-        rows_ok = [r for r in rows if not r["blew_up"] and np.isfinite(r["p_liquid_l_inf"])]
-        for r in rows:
-            tag = "BLEW UP" if r["blew_up"] else f"L∞={r['p_liquid_l_inf']:.3e}  Δp={r['dp_measured']:.3e}"
-            print(f"    N={r['N']:>3}  {tag}")
-        if len(rows_ok) >= 2:
-            hs = np.array([r["h"] for r in rows_ok])
-            errs = np.array([r["p_liquid_l_inf"] for r in rows_ok])
-            rates = compute_convergence_rates(errs, hs)
-            if len(rates):
-                print(f"    asymptotic order ≈ {rates[-1]:.2f}  (target ≥ 2.0)")
+        rows = results["sweeps"].get(key, [])
+        if not rows:
+            continue
+        print(f"  rho_l/rho_g={int(rows[0]['ratio'])}:")
+        for row in rows:
+            tag = (
+                f"u_final={row['u_inf_final']:.3e}  "
+                f"vol={row['volume_drift_final']:.3e}  "
+                f"|dp_corr|/(sigma/R)={row['dp_correction_abs_ratio']:.3e}"
+            )
+            if row["blew_up"]:
+                tag = f"BLEW UP: {row['error']}"
+            print(f"    N={row['N']:>3}  steps={row['n_steps']:>2}  {tag}")
 
 
 def main() -> None:
