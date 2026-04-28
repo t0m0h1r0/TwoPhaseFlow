@@ -1,236 +1,233 @@
 #!/usr/bin/env python3
-"""[V1] Single-phase Taylor-Green vortex energy decay — Tier A.
+"""[V1] Taylor--Green vortex with CCD spatial operators and PPE projection.
 
 Paper ref: §13.1 (sec:energy_conservation).
 
-Verifies that the full Predictor-PPE-Corrector pipeline (CCD spatial + AB2 time
-+ PPE pressure projection in periodic mode, single phase) preserves the analytic
-energy decay E_k(t) = (1/4)*exp(-4*nu*t) for the 2D TGV solution
-    u =  cos(x)*sin(y)*exp(-2*nu*t),
-    v = -sin(x)*cos(y)*exp(-2*nu*t),
-on [0, 2*pi]^2 periodic, Re = 100 (nu = 0.01).
-
-Sub-tests
----------
-  (a) Energy decay relative error |E_k(T) - exact| / E_k(0) at T = 2.0 for
-      N = 64, 128 with dt small enough that spatial error dominates.
-  (b) Time-step convergence: with N = 128 fixed (spatial error saturated),
-      n_steps in {50, 100, 200, 400} over T = 2.0 yields O(dt^2) for AB2.
-  (c) Pointwise divergence ||div(u)||_inf at each step <= 1e-10 (PPE
-      consistency check).
+Solves the periodic 2-D Taylor--Green vortex using project CCD derivatives for
+advection/diffusion and a pressure-projection step built from ``PPEBuilder``.
+The previous FFT/spectral proxy is retained as a C2 legacy reference under
+``experiment/ch13/legacy/``.
 
 Usage
 -----
-  python experiment/ch13/exp_V1_tgv_energy_decay.py
-  python experiment/ch13/exp_V1_tgv_energy_decay.py --plot-only
+  make run EXP=experiment/ch13/exp_V1_tgv_energy_decay.py
+  make plot EXP=experiment/ch13/exp_V1_tgv_energy_decay.py
 """
 
 from __future__ import annotations
 
-import sys
 import pathlib
+import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
+from twophase.backend import Backend
+from twophase.ccd.ccd_solver import CCDSolver
+from twophase.config import GridConfig, SimulationConfig
+from twophase.core.grid import Grid
+from twophase.ppe.ppe_builder import PPEBuilder
 from twophase.tools.experiment import (
-    apply_style, experiment_dir, experiment_argparser,
-    save_results, load_results, save_figure,
+    apply_style,
     compute_convergence_rates,
+    experiment_argparser,
+    experiment_dir,
+    load_results,
+    save_figure,
+    save_results,
 )
+from twophase.tools.experiment.gpu import sparse_solve_2d
 
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
-# ── Physical parameters ──────────────────────────────────────────────────────
-RE = 100.0
-NU = 1.0 / RE
-T_FINAL = 2.0
 L = 2.0 * np.pi
+NU = 0.01
+T_FINAL = 0.05
+SPATIAL_N = (32, 48, 64)
+TIME_N = 64
+SPATIAL_DT = 1.0e-3
+TIME_DT_TARGETS = (4.0e-3, 2.0e-3, 1.0e-3)
 
 
-def _tgv_exact(t: float, X, Y) -> tuple[np.ndarray, np.ndarray]:
-    """Analytic TGV solution at time t (Taylor 1923)."""
+def _setup(N: int, backend: Backend):
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(L, L)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
+    ppe = PPEBuilder(backend, grid, bc_type="periodic")
+    X, Y = grid.meshgrid()
+    return (
+        grid,
+        ccd,
+        ppe,
+        L / N,
+        np.asarray(backend.to_host(X)),
+        np.asarray(backend.to_host(Y)),
+    )
+
+
+def _exact_velocity(t: float, X: np.ndarray, Y: np.ndarray):
     decay = np.exp(-2.0 * NU * t)
-    u = np.cos(X) * np.sin(Y) * decay
-    v = -np.sin(X) * np.cos(Y) * decay
+    u = np.sin(X) * np.cos(Y) * decay
+    v = -np.cos(X) * np.sin(Y) * decay
     return u, v
 
 
-def _setup_periodic(N: int):
-    """Periodic 2D grid + spectral wavenumbers for FFT."""
-    h = L / N
-    x = np.arange(N) * h
-    X, Y = np.meshgrid(x, x, indexing="ij")
-    kx = 2 * np.pi * np.fft.fftfreq(N, d=h)
-    ky = 2 * np.pi * np.fft.fftfreq(N, d=h)
-    KX, KY = np.meshgrid(kx, ky, indexing="ij")
-    K2 = KX**2 + KY**2
-    K2_inv = np.where(K2 > 0, 1.0 / K2, 0.0)
-    return h, X, Y, KX, KY, K2, K2_inv
+def _sync_periodic(arr: np.ndarray) -> np.ndarray:
+    arr[-1, :] = arr[0, :]
+    arr[:, -1] = arr[:, 0]
+    return arr
 
 
-def _project_div_free(u: np.ndarray, v: np.ndarray, KX, KY, K2_inv) -> tuple[np.ndarray, np.ndarray]:
-    """Spectral pressure projection: subtract grad(p) so that div(u_new) = 0."""
-    u_hat = np.fft.fft2(u)
-    v_hat = np.fft.fft2(v)
-    div_hat = 1j * KX * u_hat + 1j * KY * v_hat
-    p_hat = -div_hat * K2_inv  # solves -K^2 p_hat = div
-    u_hat -= 1j * KX * p_hat
-    v_hat -= 1j * KY * p_hat
-    return np.real(np.fft.ifft2(u_hat)), np.real(np.fft.ifft2(v_hat))
+def _grad(field, ccd, axis: int, backend: Backend) -> np.ndarray:
+    d1, _ = ccd.differentiate(field, axis)
+    return np.asarray(backend.to_host(d1))
 
 
-def _ccd_periodic_advdiff(u, v, KX, KY, K2):
-    """Spectral advection-diffusion RHS for periodic 2D NS.
-
-    Returns (du/dt, dv/dt) for the predictor — pressure step is applied
-    afterward via _project_div_free. Uses spectral derivatives (equivalent to
-    high-order CCD in the limit; for periodic uniform grid the two are
-    asymptotically identical, and the FFT result is exact at any grid).
-    """
-    u_hat = np.fft.fft2(u)
-    v_hat = np.fft.fft2(v)
-    du_dx = np.real(np.fft.ifft2(1j * KX * u_hat))
-    du_dy = np.real(np.fft.ifft2(1j * KY * u_hat))
-    dv_dx = np.real(np.fft.ifft2(1j * KX * v_hat))
-    dv_dy = np.real(np.fft.ifft2(1j * KY * v_hat))
-    lap_u = np.real(np.fft.ifft2(-K2 * u_hat))
-    lap_v = np.real(np.fft.ifft2(-K2 * v_hat))
-    rhs_u = -(u * du_dx + v * du_dy) + NU * lap_u
-    rhs_v = -(u * dv_dx + v * dv_dy) + NU * lap_v
-    return rhs_u, rhs_v
+def _lap(field, ccd, backend: Backend) -> np.ndarray:
+    _, d2x = ccd.differentiate(field, 0)
+    _, d2y = ccd.differentiate(field, 1)
+    return np.asarray(backend.to_host(d2x)) + np.asarray(backend.to_host(d2y))
 
 
-def _step_ab2_projection(u, v, rhs_prev, KX, KY, K2, K2_inv, dt):
-    """AB2 predictor + spectral pressure projection (Chorin-Temam)."""
-    rhs_u, rhs_v = _ccd_periodic_advdiff(u, v, KX, KY, K2)
-    if rhs_prev is None:
-        # Forward-Euler start
-        u_star = u + dt * rhs_u
-        v_star = v + dt * rhs_v
-    else:
-        rhs_u_prev, rhs_v_prev = rhs_prev
-        u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev)
-        v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev)
-    u_new, v_new = _project_div_free(u_star, v_star, KX, KY, K2_inv)
-    return u_new, v_new, (rhs_u, rhs_v)
+def _solve_ppe(rhs, ppe_builder, backend):
+    triplet, shape = ppe_builder.build(np.ones_like(rhs))
+    data, rows, cols = [backend.to_device(a) for a in triplet]
+    A = backend.sparse.csr_matrix((data, (rows, cols)), shape=shape)
+    rhs_flat = backend.xp.asarray(rhs).ravel().copy()
+    rhs_flat[ppe_builder._pin_dof] = 0.0
+    return np.asarray(sparse_solve_2d(backend, A, rhs_flat).reshape(rhs.shape))
 
 
-def _div_inf(u, v, KX, KY) -> float:
-    u_hat = np.fft.fft2(u)
-    v_hat = np.fft.fft2(v)
-    div = np.real(np.fft.ifft2(1j * KX * u_hat + 1j * KY * v_hat))
-    return float(np.max(np.abs(div)))
+def _rhs(u, v, ccd, backend):
+    du_dx = _grad(u, ccd, 0, backend)
+    du_dy = _grad(u, ccd, 1, backend)
+    dv_dx = _grad(v, ccd, 0, backend)
+    dv_dy = _grad(v, ccd, 1, backend)
+    rhs_u = -(u * du_dx + v * du_dy) + NU * _lap(u, ccd, backend)
+    rhs_v = -(u * dv_dx + v * dv_dy) + NU * _lap(v, ccd, backend)
+    return _sync_periodic(rhs_u), _sync_periodic(rhs_v)
 
 
-def _energy(u, v, h) -> float:
-    """E_k = (1/2) * mean(u^2 + v^2) for periodic uniform grid."""
-    return 0.5 * float(np.mean(u**2 + v**2))
+def _project(u_star, v_star, dt, ccd, ppe, backend):
+    div = (_grad(u_star, ccd, 0, backend) + _grad(v_star, ccd, 1, backend)) / dt
+    p = _solve_ppe(div, ppe, backend)
+    u = u_star - dt * _grad(p, ccd, 0, backend)
+    v = v_star - dt * _grad(p, ccd, 1, backend)
+    return _sync_periodic(u), _sync_periodic(v)
 
 
-def _run_tgv(N: int, n_steps: int, T: float = T_FINAL) -> dict:
-    h, X, Y, KX, KY, K2, K2_inv = _setup_periodic(N)
-    u, v = _tgv_exact(0.0, X, Y)
-    e0 = _energy(u, v, h)
+def _energy(u: np.ndarray, v: np.ndarray, h: float) -> float:
+    return float(0.5 * np.sum((u[:-1, :-1] ** 2 + v[:-1, :-1] ** 2) * h * h))
 
-    dt = T / n_steps
+
+def _div_inf(u, v, ccd, backend) -> float:
+    div = _grad(u, ccd, 0, backend) + _grad(v, ccd, 1, backend)
+    return float(np.max(np.abs(div[:-1, :-1])))
+
+
+def _run(N: int, dt_target: float) -> dict:
+    backend = Backend(use_gpu=False)
+    _, ccd, ppe, h, X, Y = _setup(N, backend)
+    n_steps = max(1, int(np.ceil(T_FINAL / dt_target)))
+    dt = T_FINAL / n_steps
+    u, v = _exact_velocity(0.0, X, Y)
+    u = _sync_periodic(u.copy())
+    v = _sync_periodic(v.copy())
     rhs_prev = None
-    div_history = []
+    div_max = _div_inf(u, v, ccd, backend)
     for _ in range(n_steps):
-        u, v, rhs_prev = _step_ab2_projection(u, v, rhs_prev, KX, KY, K2, K2_inv, dt)
-        div_history.append(_div_inf(u, v, KX, KY))
-
-    e_T = _energy(u, v, h)
-    e_exact = e0 * np.exp(-4.0 * NU * T)
-    e_rel_err = abs(e_T - e_exact) / e_exact
-
-    u_ex, v_ex = _tgv_exact(T, X, Y)
-    u_inf_err = float(np.max(np.sqrt((u - u_ex) ** 2 + (v - v_ex) ** 2)))
-
+        rhs_u, rhs_v = _rhs(u, v, ccd, backend)
+        if rhs_prev is None:
+            u_star = u + dt * rhs_u
+            v_star = v + dt * rhs_v
+        else:
+            rhs_u_prev, rhs_v_prev = rhs_prev
+            u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev)
+            v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev)
+        u_star = _sync_periodic(u_star)
+        v_star = _sync_periodic(v_star)
+        u, v = _project(u_star, v_star, dt, ccd, ppe, backend)
+        rhs_prev = (rhs_u, rhs_v)
+        div_max = max(div_max, _div_inf(u, v, ccd, backend))
+    u_ex, v_ex = _exact_velocity(T_FINAL, X, Y)
+    e_num = _energy(u, v, h)
+    e_ex = _energy(u_ex, v_ex, h)
+    err = np.sqrt((u - u_ex) ** 2 + (v - v_ex) ** 2)
     return {
-        "N": N, "n_steps": n_steps, "dt": dt, "T": T,
-        "E0": e0, "E_T": e_T, "E_exact": e_exact,
-        "E_rel_err": e_rel_err,
-        "u_inf_err": u_inf_err,
-        "div_inf_max": float(max(div_history)),
-        "div_inf_final": float(div_history[-1]),
+        "N": N,
+        "h": h,
+        "dt": dt,
+        "n_steps": n_steps,
+        "E_rel": abs(e_num - e_ex) / max(abs(e_ex), 1.0e-30),
+        "u_Linf": float(np.max(err[:-1, :-1])),
+        "div_inf_max": div_max,
     }
 
 
-# ── (a) Spatial check (small dt, vary N) ─────────────────────────────────────
-
-def run_V1a():
-    rows = [_run_tgv(N=N, n_steps=800) for N in (64, 128)]
-    return {"spatial": rows}
-
-
-# ── (b) Time-step convergence (N=128 fixed, vary n_steps) ────────────────────
-
-def run_V1b():
-    # AB2 + explicit diffusion: avoid CFL-marginal large dt that triggers NaN.
-    rows = [_run_tgv(N=128, n_steps=n) for n in (200, 400, 800, 1600)]
-    return {"temporal": rows}
-
-
 def run_all() -> dict:
-    return {"V1a": run_V1a(), "V1b": run_V1b()}
+    spatial = [_run(N, SPATIAL_DT) for N in SPATIAL_N]
+    temporal = [_run(TIME_N, dt) for dt in TIME_DT_TARGETS]
+    return {
+        "spatial": spatial,
+        "temporal": temporal,
+        "meta": {"T_final": T_FINAL, "nu": NU, "L": L},
+    }
 
-
-# ── Plotting + summary ──────────────────────────────────────────────────────
 
 def make_figures(results: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
-    ax_e, ax_dt = axes
-
-    # (a) Spatial: E_k relative error vs N
-    rows_a = results["V1a"]["spatial"]
-    Ns = [r["N"] for r in rows_a]
-    e_errs = [r["E_rel_err"] for r in rows_a]
-    div_max = [r["div_inf_max"] for r in rows_a]
-    ax_e.bar([str(N) for N in Ns], e_errs, color="C0", label="$|E_k(T)-E_k^{exact}|/E_k^{exact}$")
-    ax_e.set_yscale("log")
-    ax_e.set_xlabel("$N$"); ax_e.set_ylabel("E_k relative error @ T=2")
-    ax_e.set_title(f"(a) TGV energy decay (Re={RE:g}, dt small)")
-    ax_e.axhline(1e-4, color="C3", linestyle="--", alpha=0.7, label="pass: 1e-4")
-    ax_e.legend(loc="upper right", fontsize=8)
-    for N, dm in zip(Ns, div_max):
-        ax_e.text(str(N), e_errs[Ns.index(N)] * 1.4,
-                  f"$\\|\\nabla\\!\\cdot\\!u\\|_\\infty^{{max}}$={dm:.1e}",
-                  ha="center", fontsize=7)
-
-    # (b) Temporal: E_k error vs dt
-    rows_b = results["V1b"]["temporal"]
-    dts = np.array([r["dt"] for r in rows_b])
-    errs = np.array([r["E_rel_err"] for r in rows_b])
-    ax_dt.loglog(dts, errs, "o-", color="C2", label="measured")
-    ref = errs[0] * (dts / dts[0]) ** 2
-    ax_dt.loglog(dts, ref, "k--", alpha=0.6, label="$O(\\Delta t^{2})$ reference")
-    ax_dt.set_xlabel("$\\Delta t$"); ax_dt.set_ylabel("E_k relative error @ T=2")
-    ax_dt.set_title("(b) AB2 + projection time order")
-    ax_dt.invert_xaxis(); ax_dt.legend()
-
-    save_figure(fig, OUT / "V1_tgv_energy_decay")
+    ax_s, ax_t = axes
+    spatial = results["spatial"]
+    temporal = results["temporal"]
+    hs = np.array([r["h"] for r in spatial])
+    e_sp = np.array([r["u_Linf"] for r in spatial])
+    dts = np.array([r["dt"] for r in temporal])
+    e_tm = np.array([r["u_Linf"] for r in temporal])
+    ax_s.loglog(hs, e_sp, "o-", color="C0", label="CCD/PPE")
+    ax_s.invert_xaxis()
+    ax_s.set_xlabel("h")
+    ax_s.set_ylabel(r"$\|u-u_{\rm exact}\|_\infty$")
+    ax_s.set_title("V1: spatial trend")
+    ax_s.legend()
+    ax_t.loglog(dts, e_tm, "s-", color="C3", label="AB2 + PPE")
+    if len(e_tm):
+        ax_t.loglog(dts, e_tm[0] * (dts / dts[0]) ** 2, "k--", alpha=0.5, label="O(dt²)")
+    ax_t.invert_xaxis()
+    ax_t.set_xlabel("dt")
+    ax_t.set_ylabel(r"$\|u-u_{\rm exact}\|_\infty$")
+    ax_t.set_title("V1: temporal trend")
+    ax_t.legend()
+    save_figure(
+        fig,
+        OUT / "V1_tgv_energy",
+        also_to=PAPER_FIGURES / "ch13_v1_tgv_energy",
+    )
 
 
 def print_summary(results: dict) -> None:
-    print("V1-a spatial (TGV E_k rel err @ T=2):")
-    for r in results["V1a"]["spatial"]:
-        print(f"  N={r['N']:>4}  dt={r['dt']:.4f}  E_rel_err={r['E_rel_err']:.3e}"
-              f"  ||div||_inf^max={r['div_inf_max']:.2e}")
-    print("V1-b temporal (N=128, AB2 dt-sweep):")
-    rows = results["V1b"]["temporal"]
-    dts = np.array([r["dt"] for r in rows])
-    errs = np.array([r["E_rel_err"] for r in rows])
+    print("V1 (TGV with CCD spatial operators + PPE projection):")
+    print("  spatial:")
+    for row in results["spatial"]:
+        print(
+            f"    N={row['N']:>3}  h={row['h']:.3e}  "
+            f"u_err={row['u_Linf']:.3e}  E_rel={row['E_rel']:.3e}  "
+            f"div={row['div_inf_max']:.3e}"
+        )
+    print("  temporal:")
+    dts = np.array([r["dt"] for r in results["temporal"]])
+    errs = np.array([r["u_Linf"] for r in results["temporal"]])
     rates = compute_convergence_rates(errs, dts)
-    for r, rate in zip(rows, [None] + list(rates)):
+    for row, rate in zip(results["temporal"], [None] + list(rates)):
         rate_s = "" if rate is None else f"  slope={rate:.2f}"
-        print(f"  n_steps={r['n_steps']:>4}  dt={r['dt']:.4e}  err={r['E_rel_err']:.3e}{rate_s}")
-    if len(rates):
-        print(f"  → asymptotic AB2 time order ≈ {rates[-1]:.2f}  (expected 2.00 ± 0.05)")
+        print(
+            f"    dt={row['dt']:.3e}  n={row['n_steps']:>3}  "
+            f"u_err={row['u_Linf']:.3e}{rate_s}"
+        )
 
 
 def main() -> None:
