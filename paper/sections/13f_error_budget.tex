@@ -22,7 +22,7 @@
 slope は log-log fitting (3 点以上)；単一値はその設定での代表値．
 括弧内は主な誤差源．}
 \label{tab:v_accuracy_summary}
-\centering\footnotesize
+\centering\scriptsize
 \begin{tabular}{l l l l l}
 \toprule
 ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
@@ -37,7 +37,7 @@ V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9
 V6   & 密度比 sweep ($\rho_r=2..833$) & $|\Delta p_{\mathrm{rel}}|^{\max}$ & $1.77\%$ ($\rho_r=833, N=32$) \checkmark & — \\
 V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{0.56}$ ($\times$ 設計未達) & $O(\Delta t^2)$ 設計 \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
-V9   & local $\varepsilon$ vs fixed & $u_\infty^{\max}$ ratio (C/A) at $N=64$ & $4860\times$ ($\times$ 推奨せず) & — \\
+V9   & local $\varepsilon$ (§14) & C/A at $N=32$ & $0.11\times$ ($\checkmark$) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $0.107\%$ \checkmark & — \\
 V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $1.519\%$ / $0.34$ ($\triangle$) & — \\
 V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\times10^{-3}$ / $0.000\%$ \checkmark & — \\
@@ -50,8 +50,9 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item \textbf{空間離散誤差}．CCD 6 次（V2 で確証）．Kovasznay slope $6.00$，TGV では時間誤差床下．
   \item \textbf{時間離散誤差}．単相 NS は AB2/IMEX-BDF2 で $O(\Delta t^2)$（V1 slope $2.00$）．
         二相結合では界面再初期化 + 曲率の陽的遅れ評価で実効 $O(\Delta t^{0.56})$（V7; \autoref{sec:imex_bdf2_twophase_time}）．
-  \item \textbf{界面表現誤差}．Heaviside--$\delta$ は固定 $\varepsilon$ 推奨（V9）；
-        local $\varepsilon$ は寄生流れ 3 桁増加．
+  \item \textbf{界面表現誤差}．Heaviside--$\delta$ の local $\varepsilon$ は
+        FCCD/HFE/pressure-jump PPE と同時に使う条件で有効（V9）；
+        旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配が全表ケースで FD 以下となり，
         粗格子・低密度比ほど寄生流れの抑制が大きい．
   \item \textbf{CLS 形状追跡誤差}．FCCD/TVD--RK3 では非一様格子 $\alpha=2$ の volume drift は
@@ -67,8 +68,10 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
         $O(\|\bm U\|)$ 残差), V10-b ($\alpha=2$ Zalesak: volume drift $1.519\%$ だが centroid order $0.34$).
   \item $\times$ \textbf{要改善 / 推奨せず / 制約条件}:
         V4-b (RT 線形成長率誤差 $43$--$55\%$; 予備診断のみ),
-        V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速),
-        V9 (local $\varepsilon$ → 寄生流れ激増; fixed $\varepsilon$ が安全な既定値).
+        V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速).
+  \item \checkmark \textbf{§14 stack 条件付き合格}: V9
+        (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
+        HFE curvature + pressure-jump PPE と同時採用する).
 \end{itemize}
 
 \paragraph{設計指針 (PR-5 Algorithm Fidelity)．}
@@ -79,7 +82,7 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
   \item 非一様格子：$\alpha > 1$ でも FCCD/TVD--RK3 の体積保存は成立するが，
         Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
-        local $\varepsilon$ は推奨せず，fixed $\varepsilon$ と 2D snapshot 診断を併用する．
+        local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
   \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
         代表的には $\rho_r=1,N=32$ で FD の $1/5.9$，
         $\rho_r=100,N=64$ で $1/2.5$．高解像度・高密度比では差が縮小する．

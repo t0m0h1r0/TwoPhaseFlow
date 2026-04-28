@@ -1,7 +1,7 @@
 % paper/sections/13e_nonuniform_ns.tex
 %
 % V8 : 非一様 NS 静止液滴 (alpha sweep, N sweep)
-% V9 : 局所 epsilon 比較 (fixed vs local)
+% V9 : 局所 epsilon 比較 (§14 stack nominal vs local)
 % V10: Zalesak / CLS 移流 非一様
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{非一様格子 NS と CLS 移流}
@@ -61,41 +61,45 @@ $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値
 検証対応：\autoref{sec:U3_nonuniform_suite} の非一様格子定義に対し，
 静止液滴の圧力誤差と終端速度を測定する．
 
-\subsubsection{V9：局所 $\varepsilon$ vs 固定 $\varepsilon$ 比較}
+\subsubsection{V9：§14 stack による局所 $\varepsilon$ vs nominal $\varepsilon$ 比較}
 \label{sec:local_eps_validation}
 
 \paragraph{検証対象．}
 非一様格子上で Heaviside--$\delta$ 厚み $\varepsilon$ を
-\textbf{(A) fixed} ($\varepsilon = c \, h_{\mathrm{avg}}$) と
-\textbf{(C) local} ($\varepsilon(\bm x) = c\, h(\bm x)$) で比較．
-界面細密領域でより薄い $\delta$ プロファイルを使う「local」が
-精度向上するか，または安定性低下を引き起こすかを定量評価．
+\textbf{(A) nominal} ($\alpha=1,\ \varepsilon=1.5h$),
+\textbf{(B) nominal} ($\alpha=2,\ \varepsilon=1.5h$),
+\textbf{(C) local} ($\alpha=2,\ \varepsilon_{ij}=1.5\max(h_{x,i},h_{y,j})$)
+で比較する．本試験は旧 CCD/CSF 経路ではなく，
+\textbf{§14 と同じ operator stack}（FCCD interface/pressure gradient,
+UCCD6 convection, HFE curvature, pressure-jump phase-separated FCCD PPE,
+face-flux projection）で再実行する．
 
 \paragraph{設定．}
-V8 と同じ縮約静止液滴条件 ($r=0.25, \sigma=1, \mathrm{We}=10, \rho_l/\rho_g=10$)．
-$N \in \{48, 64\}$, $\alpha \in \{1, 2\}$．
-\textbf{A}: $\alpha=1$, fixed $\varepsilon$ (基準)．
-\textbf{B}: $\alpha=2$, fixed $\varepsilon$．
-\textbf{C}: $\alpha=2$, local $\varepsilon$．
-$\Delta t = 0.20\,h_{\min}$, $n_{\mathrm{step}} = 100$．
+縮約静止液滴条件 ($r=0.25,\ \sigma=0.10,\ \rho_l/\rho_g=10$)．
+$N\in\{24,32\}$, $n_{\mathrm{step}}=10$,
+theory CFL multiplier $0.50$．圧力ジャンプ形式では返却される $p$ は
+物理 Laplace 圧そのものではなく投影補正圧の性格を持つため，
+主指標は $u_\infty^{\max}$ と体積 drift とし，
+$|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ は補助診断としてのみ示す．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V9: 局所 $\varepsilon$ 比較 ($n_{\mathrm{step}}=100$)．
-\textbf{C (local)} は $u_\infty^{\max}$ が \textbf{A/B (fixed)} より $\sim 3$ 桁悪化．}
+\caption{V9: §14 stack 上の局所 $\varepsilon$ 比較 ($n_{\mathrm{step}}=10$)．
+\textbf{C (local)} は nominal $\varepsilon$ より寄生速度を小さく保つ．}
 \label{tab:V9_local_eps}
 \centering\small
-\begin{tabular}{r l r r r r}
+\begin{tabular}{r l r r r r r}
 \toprule
-$N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ & $|\Delta p_{\mathrm{rel}}|$ \\
+$N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ &
+$|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
 \midrule
-48 & A & 1 & fixed & $8.07\times 10^{-5}$ & $1.32\%$ \\
-48 & B & 2 & fixed & $4.85\times 10^{-4}$ & $4.76\%$ \\
-48 & C & 2 & \textbf{local} & $\mathbf{2.35\times 10^{-1}}$ & $4.67\%$ \\
+24 & A & 1 & nominal & $7.15\times 10^{-5}$ & $0.14$ & $3.33\times 10^{-10}$ \\
+24 & B & 2 & nominal & $5.11\times 10^{-5}$ & $0.11$ & $2.15\times 10^{-9}$ \\
+24 & C & 2 & \textbf{local} & $\mathbf{2.00\times 10^{-5}}$ & $\mathbf{0.04}$ & $8.40\times 10^{-10}$ \\
 \midrule
-64 & A & 1 & fixed & $6.57\times 10^{-5}$ & $1.23\%$ \\
-64 & B & 2 & fixed & $3.55\times 10^{-4}$ & $3.61\%$ \\
-64 & C & 2 & \textbf{local} & $\mathbf{3.19\times 10^{-1}}$ & $3.92\%$ \\
+32 & A & 1 & nominal & $4.55\times 10^{-5}$ & $0.11$ & $4.16\times 10^{-11}$ \\
+32 & B & 2 & nominal & $3.24\times 10^{-5}$ & $0.08$ & $1.40\times 10^{-10}$ \\
+32 & C & 2 & \textbf{local} & $\mathbf{5.01\times 10^{-6}}$ & $\mathbf{0.01}$ & $2.16\times 10^{-11}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -103,24 +107,33 @@ $N$ & 設定 & $\alpha$ & $\varepsilon$ & $u_\infty^{\max}$ & $|\Delta p_{\mathr
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v9_local_eps.pdf}
-\caption{V9：局所 $\varepsilon$ vs 固定 $\varepsilon$．
-\textbf{C (local)} 設定で $u_\infty^{\max}$ が $0.2$--$0.3$ レベルに発散，
-固定 $\varepsilon$ 比 $\sim 1000$ 倍．曲率不連続が局所薄膜化により励起される．}
+\caption{V9：§14 stack 上の局所 $\varepsilon$ vs nominal $\varepsilon$．
+左は寄生速度履歴，右は補助診断としての投影補正圧 contrast．
+FCCD/HFE/pressure-jump PPE と組にすると，local $\varepsilon$ は
+旧 CCD/CSF 経路で見られた発散的な寄生流れを示さない．}
 \label{fig:V9_local_eps}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/ch13_v9_ch14_stack_field.pdf}
+\caption{V9：§14 stack で得た $N=32$ の 2D 速度場 snapshot．
+白線は $\psi=0.5$ 界面．A/B/C の全ケースで静止液滴形状は保持され，
+\textbf{C (local)} は界面近傍の速度 hot spot を最も小さく抑える．}
+\label{fig:V9_ch14_stack_field}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{Local $\varepsilon$ は静止液滴設定では推奨されない}\textcolor{red}{($\times$)}．
-        薄膜化により Heaviside--$\delta$ の局所変動が CSF 曲率推定に
-        高周波ノイズを混入させ寄生流れを 3 桁増大させる．
-  \item Fixed $\varepsilon = c \cdot h_{\mathrm{avg}}$ が安全な既定値である．
-        非一様格子設計の改善は，局所 $\varepsilon$ ではなく
-        \textbf{$\delta$ プロファイル形状の改良}（カーネル長の連続変化制限）
-        を優先すべき，との設計指針が得られた．
+  \item \textbf{Local $\varepsilon$ は §14 stack と同時に使う条件で採用可}\textcolor{blue}{($\checkmark$)}．
+        $N=32$ では C/A の $u_\infty^{\max}$ 比は $0.11$，
+        C/B 比は $0.15$ であり，nominal $\varepsilon$ より静かな界面になる．
+  \item ただし本 V9 は縮約静止液滴 probe であり，§14 の水--空気級 material benchmark
+        そのものではない．local $\varepsilon$ の採用は，
+        HFE curvature と pressure-jump PPE が同時に有効な構成に限定する．
 \end{itemize}
 検証対応：\autoref{sec:U5_heaviside_delta} の Heaviside--$\delta$ 定義に対し，
-固定 $\varepsilon$ と局所 $\varepsilon$ の寄生流れを比較する．
+nominal $\varepsilon$ と局所 $\varepsilon$ の寄生流れおよび 2D hot spot を比較する．
 
 \subsubsection{V10：FCCD/TVD--RK3 による Zalesak / 単一渦 CLS 移流}
 \label{sec:zalesak_cls_advection}
