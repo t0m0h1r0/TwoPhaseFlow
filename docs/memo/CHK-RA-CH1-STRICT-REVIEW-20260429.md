@@ -403,3 +403,74 @@ $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は $\varepsilon = c\cdot h$ ($c$ は定
 \textbf{Verdict降格}: Major revision (現状採録不可) → \textbf{Minor revision (accept-with-minor)} 相当。Minor revision に残る項目は無く、本査読としてはクローズ可能。
 
 §7 (`CHK-249`)・§12-13 (`CHK-RA-CH12-001`) と同水準の strict-review pass を §1 で達成済み。後続の main マージはユーザ明示指示を待機する (per worktree retention policy).
+
+---
+
+## Re-Review (Round 2, Post-Fix Verification)
+
+**Date**: 2026-04-29 (Phase D 完了後ユーザ指示「再レビューして」)
+**Scope**: Post-Fix 状態 (commit `c27f296` + memo/ledger commit `dca524b`) の独立再査読。
+**Method**: 修正後の §1 (272 行) / §1b (319 行) / §13f を全文精読し、(i) 各 finding の修正が実際に文面に反映されているか、(ii) 新規矛盾・新規 overclaim が混入していないか、(iii) 引用・前方参照健全性、(iv) ビルド clean を独立確認。
+
+### Build & Cite/Ref Healthcheck (Round 2)
+- `latexmk -xelatex` clean 227 pp, 0 undefined refs/cites, 0 multiply-defined。
+- §1/§1b 内の新規 `\ref` 全件 resolve: `sec:advection_motivation` (06b L13), `sec:future_work` (15 L135), `sec:density_ratio_sweep` (13d L10), `sec:imex_bdf2_twophase_time` (13d L85), `sec:reinit` (03b L80), `sec:CCD` / `sec:ccd_def` / `sec:ccd_summary` (04 / 04f), `sec:U6_split_ppe_dc_hfe` (12u6 L6)。
+- §6.1 L69 footnote 「本稿の実装確立前の旧実装では帯状散逸付き節点 CCD を CLS 移流に使用していた」を確認 — D-1 evidence claim (DCCD=legacy / FCCD=production) と一致。
+- §1/§1b 内 DCCD 残存箇所: 唯一 `01b:177` (§4 章立て表 row「CCD 演算子族（CCD/DCCD/UCCD6/FCCD）の散逸特性比較」) のみで、これは §4 が散逸特性を比較する theory 章であるため族メンバーとしての記載は正当 (D-1 の Required fix と整合)。
+
+### Round 2 Verdict
+
+**判定: PASS — 9 findings 全件の本質的修正は妥当。Round 2 で新たに観測した 3 件はすべて MINOR (cosmetic/memo-accuracy) で、reject 要因にはならない。**
+
+### Round 2 Findings (Minor only)
+
+#### RR-1. memo M-1 の Status 記述と実ファイルの不一致 (memo accuracy issue)
+
+**Severity**: MINOR (memo 自己整合性の問題; paper 本体の主張は妥当).
+
+**Observation**:
+- memo M-1 Status は「01b L84-95: 『主戦略』→『\textbf{高密度比対応の設計戦略}』」と記述。
+- 実際の `01b_classification_roadmap.tex` L83 は依然「高密度比では分相 PPE 解法を\textbf{主戦略}とし」のまま。
+- しかし L89-91 の hedge (V6 stack 静止液滴 8-step 安定性確認 + NS パイプライン統合は §sec:future_work 最優先課題) は\textbf{実装済み}; さらに L98 でも「高密度比対応の分相 PPE 解法（… §sec:density_ratio_sweep〔V6〕で密度比 $\rho_r\le 833$ までの結合 stack 安定性確認）の基盤技術として」と verification scope が明示されている。
+
+**Issue**: M-1 の substantive concern (verification scope 不明示) は L89-91 + L98 の hedge により実質的に解消されているが、memo Status は実施されなかった headline 文言変更を完了済みとして報告している。
+
+**Impact**: 査読印象として paper 本文は overclaim を回避できているが、memo を独立に読むと「主戦略 → 設計戦略」という文言降格が行われた印象を与える。後続の peer review が memo を典拠に paper 内テキストを検索すると不一致が発生する。
+
+**Required fix (任意)**: 以下 2 択 — (a) `01b:83` を「\textbf{高密度比向けの設計戦略として分相 PPE 解法}」に置換、または (b) memo M-1 Status を「主戦略 wording 自体は temporal positioning として残置し、verification scope を L89-91 + L98 で hedge することで M-1 substantive concern を解消」と書き換え。Round 1 の M-1 Required fix が「\textbf{または}『将来統合予定として』に hedge する」と二択だったため、(a)/(b) どちらでも reject criterion は満たさない。
+
+#### RR-2. §1 L23「水準まで低減する」の indicative 表現 (borderline overclaim)
+
+**Severity**: MINOR.
+
+**Location**: `paper/sections/01_introduction.tex:18-23`
+
+**Quote**: 「\textbf{本稿の技術的中核は，寄生流れの離散化起因成分を構造的に抑えることにある．}結合コンパクト差分法（CCD…）による高精度曲率計算と，分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，Balanced--Force 条件の離散化整合性…を高精度に維持し，平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．」
+
+**Observation**: indicative 「低減する」は production claim 文体。続く L24-27 の caveat は (a) CCD 内点 vs 大域 $L^2$, (b) 二相時間精度 V7 slope 1.58 の 2 系統に限定され、\textbf{integration（分相 PPE + DC + CCD 勾配）が CSF-floor 水準まで実際に低減した}という主張自体への hedge は欠落。§1.1.2 失敗例1 対処 (L216-222) で「density 比 $\le 833$ stack 安定性 V6 で確認、NS 完全結合は future work」の hedge があるため、§1 を通して読めば overclaim は解消されている。
+
+**Issue**: 段落単位で読むと L18-23 のみで「achieved」と読める。§1 の opening claim としては borderline。
+
+**Impact**: 段落単位で抜粋された場合 (e.g., abstract drafting) に overclaim と読まれるリスク。
+
+**Required fix (任意)**: L23 末尾を「\textbf{低減する設計とした（具体的検証範囲は §~\ref{sec:density_ratio_sweep} V6 + §~\ref{sec:future_work} 残置課題に整理）}」と一句追加する。または現状の §1.1.2 hedge で十分と判断し放置 (Round 1 M-1 fix は §1.1.2 で hedge する分担を採用しているため整合)。
+
+#### RR-3. §1b L101-105 HFE hedge の括弧内置きが weak hedge 構文
+
+**Severity**: MINOR.
+
+**Location**: `paper/sections/01b_classification_roadmap.tex:101-105`
+
+**Quote**: 「HFE は Extension PDE~\cite{Aslam2004} の定常解を CCD の Hermite データ $(f,f',f'')$ から仮想時間前進を経由せず直接構成し，界面越し場延長精度を $\Ord{h}$（風上差分）から \textbf{$\Ord{h^6}$ へ引き上げる}（完全テンソル版を用いる場合に限り 2D 斜め界面でも $\Ord{h^6}$ 設計精度を主張でき，混合微分を省略した簡略版は一般に $\Ord{h^6}$ 保証を持たない；§~\ref{sec:U6_split_ppe_dc_hfe}〔U6〕の 2D 検証では max slope $5.10$ / median $3.21$）．」
+
+**Observation**: 主動詞「引き上げる」は無条件の indicative 形を保持し、条件性は括弧内 hedge に押し込まれている。casual reader は主節のみ読み hedge を見落とす可能性がある。
+
+**Issue**: hedge は文面上存在するが、syntactic salience が低い。M-2 Required fix の選択肢として提示した「\textbf{1D では} $\Ord{h^6}$ 達成、\textbf{2D は} 完全テンソル版でのみ $\Ord{h^6}$、簡略版は保証なし」型の対称表現の方が strict review 観点では望ましい。
+
+**Impact**: 査読観点で「精度主張に hedge は付いているが括弧内」と指摘される余地があるが、reject 要因にはならない (hedge は文字としては存在; §12 U6 への back-reference + 数値も明示)。
+
+**Required fix (任意)**: L102-103 を「界面越し場延長精度を 1D では $\Ord{h^6}$（風上差分の $\Ord{h}$ から大幅向上）、2D 斜め界面では完全テンソル版で $\Ord{h^6}$、簡略版では設計次数を保証しない（§~\ref{sec:U6_split_ppe_dc_hfe} U6 で max slope $5.10$ / median $3.21$）」と並列構造化する。
+
+### Round 2 Closing
+
+Pre-Fix で指摘した 9 findings (5 MAJOR + 3 MINOR + 1 user-raised D-1) は全て substantive resolution 済。Round 2 で新たに観測した RR-1/2/3 はいずれも MINOR (cosmetic / 構文 / memo accuracy) で、本査読の reject criterion を超えない。\textbf{paper 本体は accept-with-minor 相当で main マージ可能水準に到達したと判定}。RR-1/2/3 を全件反映する追加修正は任意であり、ユーザ判断に委ねる。
