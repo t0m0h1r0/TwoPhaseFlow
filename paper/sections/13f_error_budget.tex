@@ -31,8 +31,7 @@ V1-a & 単相 TGV 空間 & $E_{\mathrm{rel}}$ at $N=64,128$ & $2.4\times 10^{-9}
 V1-b & 単相 TGV 時間 (AB2/IMEX-BDF2) & slope($E_{\mathrm{rel}}, \Delta t$) & $\mathbf{2.00}$ & $O(\Delta t^2)$ \checkmark \\
 V2-a & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{6.00}$ & $O(h^6)$ \checkmark \\
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
-V4-a & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (壁境界・参照点ゲージ支配) $\triangle$ & — \\
-V4-b & RT 線形成長率 & rel\_err($\gamma$) at $N=64$ & $43.3\%$ ($\times$; 予備診断のみ) & — \\
+V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (壁境界・参照点ゲージ支配) $\triangle$ & — \\
 V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9$ & — \\
 V6   & 密度比 sweep ($\rho_r=2..833$) & $|\Delta p_{\mathrm{rel}}|^{\max}$ & $1.77\%$ ($\rho_r=833, N=32$) \checkmark & — \\
 V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{0.56}$ ($\times$ 設計未達) & $O(\Delta t^2)$ 設計 \\
@@ -63,10 +62,9 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item \checkmark \textbf{合格}: V1-b (時間 2 次)，V2-a (空間 6 次)，
         V3 (BF 平衡)，V5 (CCD 寄生流れ抑制)，V6 (密度比ロバスト)，
         V8 (非一様静止), V10-a ($\alpha=1$), V10-c (単一渦 reversal).
-  \item $\triangle$ \textbf{条件付き合格}: V4-a (固定 Eulerian + 参照点固定 PPE で
+  \item $\triangle$ \textbf{条件付き合格}: V4 (固定 Eulerian + 参照点固定 PPE で
         $O(\|\bm U\|)$ 残差), V10-b ($\alpha=2$ Zalesak: volume drift $1.519\%$ だが centroid order $0.34$).
   \item $\times$ \textbf{要改善 / 推奨せず / 制約条件}:
-        V4-b (RT 線形成長率誤差 $43$--$55\%$; 予備診断のみ),
         V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速),
         V9 (local $\varepsilon$ → 寄生流れ激増; fixed $\varepsilon$ が安全な既定値).
 \end{itemize}
@@ -95,8 +93,8 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item V3, V5 (\autoref{sec:bf_static_droplet}, \autoref{sec:spurious_multistep})
         — BF 力学的バランス \eqref{eq:bf_fccd_unification} + CSF
         \eqref{eq:csf_final} に対する Laplace 圧維持と寄生流れ．
-  \item V4 (\autoref{sec:galilean_invariance}, \autoref{sec:rt_linear_growth}) —
-        固定壁系の Galilean offset 残差と線形 RT 分散関係に対する速度場差・成長率．
+  \item V4 (\autoref{sec:galilean_offset}) —
+        固定壁系の Galilean offset 残差に対する参照系シフト後の速度場差．
   \item V6, V7 (\autoref{sec:density_ratio_sweep},
         \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
         DC + HFE に対する密度比安定性と二相時間精度．
