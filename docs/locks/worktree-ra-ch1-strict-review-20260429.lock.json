@@ -1,0 +1,12 @@
+{
+  "branch": "worktree-ra-ch1-strict-review-20260429",
+  "branch_slug": "worktree-ra-ch1-strict-review-20260429",
+  "session_id": "CHK-RA-CH1-STRICT-REVIEW-001",
+  "worktree_path": ".claude/worktrees/worktree-ra-ch1-strict-review-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH1-STRICT-REVIEW",
+  "acquired_at": "2026-04-29T00:00:00Z",
+  "expires_at": "2026-04-30T00:00:00Z",
+  "meta_version": "7.1.0",
+  "scope": "ch1 strict peer review (PaperReviewer DOM-02; reject-oriented; cross-chapter §2-§15 evidence audit)"
+}
