@@ -1002,7 +1002,7 @@ implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
 粘性 CFL を課さない．ただし変粘性界面では注意~\ref{warn:cross_cfl} の
 クロス微分 CFL が陽的処理を通じて部分的に復活しうる．
 
-\textbf{CLS 再初期化擬似時間 $\Delta\tau$ の扱い}：
+\textbf{CLS 再初期化仮想時間 $\Delta\tau$ の扱い}：
 本稿の Ridge--Eikonal 主軸（\S~\ref{sec:xi_sdf_reinit}，§5.1）は
 反復不要の 1 ショット再構成であるため，物理 $\Delta t$ には乗らない．
 完全陽解法として再初期化方程式を仮想時間積分する旧実装の参考安定条件は
@@ -1014,7 +1014,7 @@ implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
 ベンチマーク別の合成結果は検証章（§\ref{sec:val_summary}）に委ねる．
 
 % -------------------------------------------------------------------------------
-\subsubsection{CLS 再初期化の擬似時間 \texorpdfstring{$\Delta\tau$}{Δτ} 安定性（旧実装の参考）}
+\subsubsection{CLS 再初期化の仮想時間 \texorpdfstring{$\Delta\tau$}{Δτ} 安定性（旧実装の参考）}
 \label{warn:cls_dtau_stability_v7}
 \phantomsection\label{warn:cls_dtau_stability}% backward-compat: 旧 07b alias
 % -------------------------------------------------------------------------------

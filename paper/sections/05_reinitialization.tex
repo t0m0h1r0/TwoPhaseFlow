@@ -245,9 +245,9 @@ Eikonal 方程式 \cite{Sussman1994}
 \begin{tcolorbox}[algbox, title={Eikonal 再初期化アルゴリズム}]
 \begin{enumerate}
   \item \textbf{ロジット反転：}$\phi = \varepsilon\ln(\psi/(1-\psi))$（飽和クランプ付き）
-  \item \textbf{Eikonal PDE 反復（疑似時間反復；反復回数は
+  \item \textbf{Eikonal PDE 反復（仮想時間反復；反復回数は
         §~\ref{sec:U4_ridge_eikonal_reinit} の単体検証を参照）：}
-        Godunov 一次風上差分で式~\eqref{eq:eikonal_pde} を疑似時間積分
+        Godunov 一次風上差分で式~\eqref{eq:eikonal_pde} を仮想時間積分
         （\S\ref{sec:scheme_per_variable} 表で $\phi$ 再初期化に WENO--HJ を推奨する記述は
         変密度・分相プロダクションの高精度オプション；等密度SSPRK3検証では Godunov で十分）
         \begin{equation}
@@ -381,7 +381,7 @@ $\phi_\xi = \operatorname{sgn}(\phi_{\mathrm{raw}}) \cdot d$ であり，$\opera
 $S_\xi$ 上（$d=0$）でのみ起きるため，$|\nabla_\xi\phi_\xi|=|\nabla d|=1$．\qed
 
 \item[命題~3（無反復 $\Rightarrow$ ドリフト累積なし）]
-ξ-SDF は反復疑似時間積分を行わない．
+ξ-SDF は反復仮想時間積分を行わない．
 補正前の零交差集合は線形補間誤差 $\Ord{h^2}$ の範囲で
 入力の符号反転集合から構成され，Godunov 差分の
 $O(\Delta\tau\cdot n_{\mathrm{iter}})$ 累積ドリフトを生じない．
@@ -428,7 +428,7 @@ D4 空間依存 $\varepsilon_\text{local}(\bm{x})$ へ置き換える．
 \begin{tcolorbox}[mybox, title={実装ガイド：再初期化の定量的運用}]
 \textbf{反復有無の切り分け：}
 本稿の Ridge--Eikonal／$\xi$-SDF／FMM 主経路は 1 ショット距離再構成であり，
-疑似時間ループを持たない．以下の停止条件は，
+仮想時間ループを持たない．以下の停止条件は，
 Godunov/WENO--HJ 型の反復 Eikonal solver を fallback として選ぶ場合にのみ適用する．
 反復型 Eikonal では $\Delta s = \min(h_x,h_y)$ とし，
 Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta s$
@@ -474,7 +474,7 @@ Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta
 完全陽解法として再初期化方程式を仮想時間積分する場合の $\Delta\tau$ 安定性
 （双曲 CFL + 拡散 CFL）と，物理 $\Delta t$ の対流 CFL・界面張力 CFL・粘性 CFL
 （律速合成式）は時間積分章にまとめている．
-擬似時間 $\Delta\tau$ の参考安定条件は \S~\ref{warn:cls_dtau_stability_v7}（§7）に，
+仮想時間 $\Delta\tau$ の参考安定条件は \S~\ref{warn:cls_dtau_stability_v7}（§7）に，
 物理 $\Delta t$ の律速合成式は \S~\ref{sec:dt_synthesis}（§7.9）に集約．
 本稿の Ridge--Eikonal 主軸（\S~\ref{sec:xi_sdf_reinit}）は
-反復不要であり，擬似時間 CFL は物理 $\Delta t$ には乗らない．
+反復不要であり，仮想時間 CFL は物理 $\Delta t$ には乗らない．
