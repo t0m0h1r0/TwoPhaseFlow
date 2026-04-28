@@ -33,10 +33,18 @@
   \item \texttt{experiment/ch14/config/ch14\_rising\_bubble.yaml}
   \item \texttt{experiment/ch14/config/ch14\_rayleigh\_taylor.yaml}
 \end{itemize}
-これらは代表物性（毛管波・上昇気泡は水--空気，Rayleigh--Taylor は水--シリコーン油），
+これらは代表物性（毛管波・上昇気泡は水--空気；
+Rayleigh--Taylor は水（重相，上）／シリコーン油 5cSt（軽相，下）），
 非一様 interface-fitted 格子 $\alpha=2$，Ridge--Eikonal 再初期化，
 FCCD 圧力勾配，HFE 曲率，pressure-jump 型分相 PPE，
 UCCD6 対流，および IMEX--BDF2/implicit-BDF2 時間発展を共有する．
+RT については，YAML スキーマ上 \texttt{physics.phases.liquid} スロットに下層シリコーン油，
+\texttt{physics.phases.gas} スロットに上層水を割り当てる
+（スキーマのスロット名と物理流体名を分離した運用である）．
+時間積分の安定境界は YAML \texttt{run.time.cfl} を理論 CFL 定数への乗数として与え，
+本章の3本はいずれも乗数 $1.0$ で，移流 $C_{\mathrm{adv}}=0.10$，毛管 $C_{\mathrm{cap}}=0.05$，
+粘性 $C_{\mathrm{visc}}=1.0$ に解決される
+（定数定義は \texttt{src/twophase/simulation/config\_run\_builder\_sections.py:20--22}）．
 
 非一様格子を採用できる条件は，格子密度比 $\alpha$ そのものではなく，
 投影・浮力残差・速度補正が同じ face locus を共有することである．
@@ -66,7 +74,7 @@ Corrector は同じ $A_fG_f$ で速度を補正し，
   k=\frac{2\pi m}{L_x}.
   \label{eq:capillary_wave_initial}
 \end{equation}
-YAML では $y_0=0.5$，$A_0=0.05$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
+YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
 小振幅の二流体毛管波では，粘性と壁の影響を無視した最初の基準として
 \begin{equation}
   \omega^2
@@ -83,29 +91,29 @@ IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]^2$，$128^2$，interface-fitted $\alpha=2$，壁面境界
-  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，$\sigma=0.072$
-  \item 時間：$T=8.0$，$\mathrm{CFL}=0.10$，界面移流は TVD-RK3，運動量は IMEX--BDF2
-  \item 幾何：\texttt{ridge\_eikonal} を4ステップ毎に適用し，$\varepsilon_\text{scale}=1.4$
+  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
+        $\sigma=0.072$，$g=0$
+  \item 時間：$T=35.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 20 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップ $5.0$
   \item 出力：\texttt{interface\_amplitude}，体積保存，運動エネルギー，
-        さらに \texttt{psi}・速度・圧力 snapshot を0.5間隔で保存
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{現行結果と判定基準}
+\subsubsection{受入基準と想定診断}
 
-現行 YAML の保存済み実行では $T=8.0$ まで到達し，
-体積ドリフトの最終値は $2.68\times10^{-5}$ である．
-一方，この実行データでは界面振幅診断が旧 \texttt{deformation} 名で保存され，
-速度エネルギーが全時刻でゼロのため，
-式~\eqref{eq:flat_capillary_dispersion} に基づく振動周期の定量判定には使わない．
-したがって本節の現在の判定は，\textbf{長時間出力 smoke と保存性は合格，
-毛管波動力学の定量 validation は interface-amplitude 診断を含む再実行後に確定}
-とする．
+\textit{（実験結果は計算完了次第掲載）}
 
 受入基準は次の三つである：
 \begin{enumerate}[noitemsep,leftmargin=2em]
   \item \textbf{界面振幅} $A(t)$ が式~\eqref{eq:flat_capillary_dispersion} の周期スケールから
-        大きく外れず，位相誤差を resolution/CFL sweep で評価できること．
-  \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=8$ で $O(10^{-4})$ 以下に留まること．
+        大きく外れず，位相誤差を想定 resolution/CFL sweep で評価できること
+        （本 YAML は単一点；解像度／CFL 走査は別 YAML で取得する）．
+  \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=35$ で $O(10^{-4})$ 以下に留まること．
   \item \textbf{場出力} \texttt{psi}，速度，圧力の snapshot が同じ時刻列で保存され，
         pressure-jump の不整合を事後診断できること．
 \end{enumerate}
@@ -122,7 +130,7 @@ $[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
 小さい重力 $g=10^{-3}$ の下で上昇を計算する．
 この設定は Hysing 型の単一気泡配置~\cite{Hysing2009}を幾何的原型とするが，
 物性は水--空気級の高密度比に戻し，
-時間区間は closure の発散有無を調べる短時間 $T=0.50$ に絞る．
+時間区間は長時間 closure と上昇ダイナミクスの両方を観察する $T=70.0$ に取る．
 
 本ケースの理論的焦点は，浮力をそのまま nodal predictor に入れないことである．
 浮力分解 $\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$
@@ -135,30 +143,121 @@ hydrostatic な勾配成分は圧力空間に残し，
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]\times[0,2]$，$128\times256$，interface-fitted $\alpha=2$，壁面境界
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，$\sigma=0.072$，$g=10^{-3}$
-  \item 時間：$T=0.50$，$\mathrm{CFL}=0.10$，界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 時間：$T=70.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 4 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップは YAML 既定値
+        （\texttt{interface.geometry.curvature.cap} の明示無し；
+        毛管波・RT は \texttt{cap=5.0} を明示する点との差分に注意）
   \item 浮力：\texttt{balanced\_buoyancy} predictor assembly
   \item 投影係数：\texttt{phase\_separated}，\texttt{pressure\_jump}
   \item 面状態：\texttt{face\_flux\_projection}，
         \texttt{canonical\_face\_state}，
         \texttt{face\_native\_predictor\_state}
   \item 出力：重心 $y_c(t)$，平均上昇速度，体積保存，変形量，
-        さらに \texttt{psi}・速度・圧力 snapshot を0.05間隔で保存
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{結果}
+\subsubsection{受入基準と想定診断}
 
-現行 YAML は \textbf{140 ステップ}で $T=0.50$ まで到達した．
-体積ドリフトの最終値は $1.50\times10^{-5}$，
-運動エネルギー最大値は $9.50\times10^{-4}$，
-変形量は $0.31208$--$0.31231$ の狭い範囲に留まった．
-小重力設定のため重心移動は小さく，$y_c$ は $0.49935$--$0.50066$ の範囲で推移する．
-この結果は「終端速度 benchmark」ではなく，
+\textit{（実験結果は計算完了次第掲載）}
+
+本ケースは「終端速度 benchmark」そのものではなく，
 水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化したときに
-投影不整合による早期ブローアップが消えることを確認する closure benchmark である．
-
-\noindent\textbf{判定：closure PASS．}
-ただし物理 benchmark としての長時間終端速度・形状収束は，
+投影不整合による早期ブローアップが起きないことを確認する閉包 benchmark を
+長時間まで延長した位置づけである．想定する受入基準は次の通り：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
+        $|\Delta V|/V_0 < O(10^{-4})$．
+  \item \textbf{重心} \texttt{bubble\_centroid}（\texttt{yc}）が単調上昇に推移．
+  \item \textbf{平均上昇速度} \texttt{mean\_rise\_velocity} が時間とともに
+        終端値へ漸近．
+  \item \textbf{変形量} \texttt{deformation} は弱重力 $g=10^{-3}$ の下では
+        狭い範囲で推移し，急激な振動が出ない．
+\end{enumerate}
+物理 benchmark としての長時間終端速度・形状収束を Hysing 数値解と直接比較する場合は，
 $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML で評価する．
+
+% ═══════════════════════════════════════════════════════════════════
+\subsection{Rayleigh--Taylor 不安定性}
+\label{sec:val_rayleigh_taylor}
+% ═══════════════════════════════════════════════════════════════════
+
+\subsubsection{設定と理論基準}
+
+水（重相，上）／シリコーン油 5cSt（軽相，下）の二層配置を平坦界面に正弦波擾乱として与え，
+重力下で Rayleigh--Taylor 不安定の線形成長から非線形 mushroom 領域までを観察する．
+線形理論では，小振幅擾乱 $A_0$ は
+\begin{equation}
+  A(t) = A_0 \, e^{\gamma t},
+  \qquad
+  \gamma = \sqrt{\mathrm{At}\, g\, k},
+  \qquad
+  \mathrm{At} = \frac{\rho_{\text{w}}-\rho_{\text{oil}}}{\rho_{\text{w}}+\rho_{\text{oil}}},
+  \qquad
+  k = \frac{2\pi m}{L_x},
+  \label{eq:rt_linear_growth}
+\end{equation}
+の指数増大を示す（粘性・表面張力・有限振幅の影響は線形近似では落とす）．
+本 YAML の数値代入では
+$\mathrm{At}=(1000-950)/(1000+950)\approx 0.0256$（低 Atwood），
+$k=2\pi/0.5=4\pi\approx 12.57\ \mathrm{m^{-1}}$，
+$\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
+となり，最終時刻 $T=7.0\ \mathrm{s}\approx 12.5/\gamma$ は
+線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である．
+
+スロット規約は §\ref{sec:val_grid_policy} に従う．
+すなわち YAML スキーマ上は \texttt{physics.phases.liquid} スロットに
+下層シリコーン油，\texttt{physics.phases.gas} スロットに
+上層水を割り当てる．
+擾乱形状は毛細管波と同型であるため
+\texttt{initial\_condition.type=capillary\_wave} ハンドラを流用するが，
+重力下で重相が上にある不安定な層化のため，
+本ケースの物理は RT である（毛管波ではない）．
+
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item グリッド：$[0,0.5]\times[0,2.0]$，$128\times512$，
+        interface-fitted $\alpha=2$，壁面境界
+  \item 物性（下層シリコーン油 5cSt）：
+        \texttt{phases.liquid}: $\rho=950$，$\mu=5\times10^{-3}$
+  \item 物性（上層水）：
+        \texttt{phases.gas}: $\rho=1000$，$\mu=10^{-3}$
+        （スキーマのスロット名は \texttt{gas} だが物理は水）
+  \item 表面張力・重力：$\sigma=0.040$，$g=9.81$
+  \item 時間：$T=7.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 4 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップ $5.0$
+  \item 初期界面：
+        \texttt{capillary\_wave} ハンドラ，
+        $y_0=1.0$，$A_0=0.01$，$m=1$，$L_x=0.5$，$\theta_0=0$，
+        \texttt{interior\_phase=liquid}
+  \item 出力：\texttt{interface\_amplitude}，運動エネルギー，体積保存，
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
+\end{itemize}
+
+\subsubsection{受入基準と想定診断}
+
+\textit{（実験結果は計算完了次第掲載）}
+
+想定する受入基準は次の四つである：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item \textbf{線形成長} 早期窓 $0<t\lesssim 3/\gamma\approx 1.7\ \mathrm{s}$ で
+        \texttt{interface\_amplitude} が
+        式~\eqref{eq:rt_linear_growth} の対数線形 $\log A \sim \gamma t$ に整合．
+  \item \textbf{非線形遷移} $t\approx T=7$ までに psi snapshot 上で
+        spike/bubble の mushroom 形状が観察される．
+  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
+        $|\Delta V|/V_0 < O(10^{-4})$．
+  \item \textbf{エネルギー} \texttt{kinetic\_energy} が線形領域で指数増大ののち
+        非線形領域で飽和に向かう．
+\end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════
 \subsection{総括}
@@ -170,18 +269,23 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
 \caption{第~\ref{sec:validation}章 ベンチマーク結果まとめ}
 \label{tab:ch14_summary}
 \renewcommand{\arraystretch}{1.4}
-\begin{tabular}{p{2.2cm}p{3.2cm}p{5.1cm}p{2.0cm}}
+\begin{tabular}{p{2.2cm}p{3.4cm}p{4.9cm}p{2.0cm}}
 \toprule
 ベンチマーク & 格子・条件 & 主要指標 & 判定 \\
 \midrule
 毛細管波 &
-  $N=128^2$，$\alpha=2$，$T=8$，水--空気，pressure-jump &
-  体積誤差 $2.68{\times}10^{-5}$；界面振幅・速度/圧力 snapshot 出力を受入基準化 &
-  smoke 合格 / 動力学未確定 \\
+  $N=128^2$，$\alpha=2$，$T=35$，水--空気，pressure-jump &
+  \textit{（実験結果は計算完了次第掲載）} &
+  \textit{（計算完了次第掲載）} \\
 単一気泡上昇 &
-  $N=128\times256$，$\alpha=2$，$T=0.50$，水--空気，balanced buoyancy &
-  140 steps；体積誤差 $1.50{\times}10^{-5}$；$E_k^{\max}=9.50{\times}10^{-4}$ &
-  closure 合格 \\
+  $N=128\times256$，$\alpha=2$，$T=70$，水--空気，balanced buoyancy &
+  \textit{（実験結果は計算完了次第掲載）} &
+  \textit{（計算完了次第掲載）} \\
+Rayleigh--Taylor &
+  $N=128\times512$，$0.5\times2.0$，$\alpha=2$，水／シリコーン油，
+  $g=9.81$，$T=7$ &
+  \textit{（実験結果は計算完了次第掲載）} &
+  \textit{（計算完了次第掲載）} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -191,13 +295,23 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML
   \item \textbf{$\sigma > 0$ 移動界面結合}——各 YAML は pressure-jump 分相 PPE を用い，
         CSF 体積力ではなく圧力ジャンプとして表面張力を扱う（\textbf{補完}）．
   \item \textbf{再初期化--移流蓄積}——Ridge--Eikonal + local thickness により，
-        非一様 $\alpha=2$ でも体積誤差 $O(10^{-5})$ の長時間/短時間 smoke を維持する（\textbf{補完}）．
-  \item \textbf{毛管波 CFL 安定境界}——$\mathrm{CFL}=0.10$ は安定実行の経験値であり，
+        非一様 $\alpha=2$ でも長時間 smoke を維持する想定
+        （定量目標は §\ref{sec:val_capillary}・§\ref{sec:val_rising_bubble}・§\ref{sec:val_rayleigh_taylor}
+        の各受入基準で $|\Delta V|/V_0 < O(10^{-4})$；\textbf{補完}）．
+  \item \textbf{毛管波 CFL 安定境界}——YAML \texttt{run.time.cfl} は理論 CFL 定数への
+        乗数であり，本章 3 本の乗数 $1.0$ は移流 $0.10$／毛管 $0.05$／粘性 $1.0$ に
+        解決される（実装は
+        \texttt{src/twophase/simulation/}\allowbreak\texttt{config\_run\_builder\_sections.py:43}）．
         理論上は式~\eqref{eq:flat_capillary_dispersion} と
         §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要がある（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
         face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
-  \item \textbf{物理 benchmark の未完了点}——毛管波の周期誤差と気泡の終端速度は，
-        現行 YAML の保存性/closure 確認とは別に，無次元数と出力診断を固定した
-        resolution/CFL sweep で確定する（\textbf{継続}）．
+  \item \textbf{RT 不安定 閉包}——低 Atwood（$\mathrm{At}\approx 0.026$）かつ
+        強重力 $g=9.81$ 下で，浮力残差分解と pressure-jump 閉包が
+        式~\eqref{eq:rt_linear_growth} の線形指数領域から非線形 mushroom
+        領域までの長時間発展を支える想定である（\textbf{継続}）．
+  \item \textbf{物理 benchmark の未完了点}——毛管波の周期誤差，気泡の終端速度，
+        および RT の線形成長率検証は，本章 YAML の閉包確認とは別に，
+        無次元数と出力診断を固定した想定 resolution/CFL sweep 別 YAML
+        で確定する（\textbf{継続}）．
 \end{itemize}
