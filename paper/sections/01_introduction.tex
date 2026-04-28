@@ -11,14 +11,14 @@
 それらのうち最も根本的かつ克服が難しいのが
 \textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である~\cite{Popinet2009, Francois2006}．
 従来の CSF（連続表面力）モデル~\cite{Brackbill1992} では，表面張力を体積力として近似するため
-界面遷移層の厚さ $\varepsilon$ に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ の物理的誤差が残り，
+界面幅パラメータ $\varepsilon$ に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り，
 格子を細分化しても寄生流れの下限が消えない~\cite{Popinet2009}
 （§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
-\textbf{本稿の技術的中核はこの問題の根本的解決にある．}
+\textbf{本稿の技術的中核は，寄生流れの離散化起因成分を構造的に抑えることにある．}
 結合コンパクト差分法（CCD，第~\ref{sec:CCD}章以降）による高精度曲率計算と，
 分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
-Balanced-Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
+Balanced--Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
 高精度に維持し，
 平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
 本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS+DCCD・分相 PPE・非一様格子）の
@@ -69,7 +69,7 @@ Navier--Stokes 方程式を扱うのが一般的である．
 図~\ref{fig:density_jump}に示すように，
 気液界面を挟んで密度と粘性が急激に変化する．
 数値計算では有限の格子上で計算するため，この不連続を直接扱うことはできない．
-界面を格子内の有限厚さの遷移層として滑らかに近似することで計算可能にするが，
+本稿の拡散界面表現では，界面を格子内の有限厚さの遷移層として滑らかに近似するが，
 その近似の仕方によって計算の安定性・精度・質量保存性が大きく変わる．
 
 \begin{figure}[htbp]
@@ -104,7 +104,7 @@ Navier--Stokes 方程式を扱うのが一般的である．
       plot (\x, {-1.5 + 0.7*(1/(1+exp(-5*\x)))});
     \draw[<->, thick, red2]
       (-0.4, 1.5) -- (0.4, 1.5)
-      node[midway, above, font=\scriptsize, red2]{界面厚さ $\approx 2\varepsilon$};
+      node[midway, above, font=\scriptsize, red2]{中心遷移幅 $\approx 2\varepsilon$};
     \draw[dashed, gray] (-0.4,-2) -- (-0.4, 1.4);
     \draw[dashed, gray] (0.4,-2)  -- (0.4, 1.4);
     \node[font=\scriptsize, teal2]   at (0,    0.2) {$\psi = H_\varepsilon(\phi)$};
@@ -113,7 +113,9 @@ Navier--Stokes 方程式を扱うのが一般的である．
   \end{scope}
 \end{tikzpicture}
 \caption{気液界面における密度・粘性のジャンプ（左：物理的不連続，右：CLS 遷移層による数値表現）．
-CLS 変数 $\psi \in [0,1]$ は界面を厚さ $\approx 2\varepsilon$ の滑らかな遷移層として表現する．
+CLS 変数 $\psi \in [0,1]$ は界面を滑らかな遷移層として表現する．
+本稿では $\varepsilon$ を界面幅パラメータと呼び，中心遷移幅は $\approx 2\varepsilon$，
+95\% 遷移帯はおよそ $|\phi|\le 3\varepsilon$（幅 $\approx 6\varepsilon$）である．
 \textbf{符号規約：}液相で $\psi \approx 0$，気相で $\psi \approx 1$（本稿全章共通）．
 これは物性補間式 $\rho(\psi) = \rho_l + (\rho_g - \rho_l)\psi$ と整合する：
 $\psi=0$ のとき $\rho = \rho_l$（液相密度），$\psi=1$ のとき $\rho = \rho_g$（気相密度）．
@@ -209,8 +211,8 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 
 \subparagraph{本稿の対処.}
 CCD 法による滑らかな領域での高精度な $\kappa$ 計算と
-Balanced-Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の CCD 演算子を使用）により
-寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}，第~\ref{sec:interface_crossing}節）．
+Balanced--Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の面中心演算子族を使用）により
+寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}；統合検証は第~\ref{sec:verification}章）．
 
 \paragraph{失敗例2：質量損失（Mass Loss）}
 \subparagraph{症状.}時間が経つにつれて液滴が小さくなり，最終的に消える．
@@ -237,7 +239,7 @@ $\partial\phi/\partial t + \bu\cdot\bnabla\phi=0$ が
 $(p_{j+1}-p_{j-1})/(2\Delta x) = P_0\bigl[(-1)^{j+1}-(-1)^{j-1}\bigr]/(2\Delta x) = 0$
 となりゼロ勾配を返す．より詳細な固有値解析は付録~\ref{app:checkerboard_mode} を参照．
 
-\subparagraph{本稿の対処.} Balanced-Force 演算子整合（圧力勾配と CSF/界面力に同一の離散微分演算子を共有）と
+\subparagraph{本稿の対処.} Balanced--Force 演算子整合（圧力勾配と CSF/界面力に同一の離散微分演算子を共有）と
 FCCD 面ジェット sub-system により，$2\Delta x$ チェッカーボードモードをスキーム内部で抑制する
 （第~\ref{sec:collocate}章§~\ref{sec:checkerboard_solution} 参照）．
 
