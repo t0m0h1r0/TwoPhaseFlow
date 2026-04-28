@@ -8,6 +8,27 @@
 
 Severity count: **0 Fatal / 10 Major / 6 Minor**.
 
+## Fix Summary
+
+Post-remediation verdict: **PASS**.
+
+All findings in this review were addressed in commit `85072b9`.
+
+- M1: Removed the stale backward-compat `sec:verify_summary` / `tab:verification_summary` labels from the chapter parent and connected `12h_summary.tex`; labels now resolve to §12.8 and the real summary table.
+- M2: Aligned V8/V9 paper settings with the active experiments (`rho_l/rho_g=10`, `We=10`, `r=0.25`, `sigma=1`, `dt=0.20 h_min`).
+- M3--M5: Reframed V4 as fixed-wall Galilean offset residual plus RT growth-rate miss; V4-a is conditional, V4-b is a failed linear-growth validation / preliminary diagnostic, and §13f no longer contradicts the V4 error-source analysis.
+- M6: Removed the undefined `HHO-PPE` term and described the V1 pressure step as PPE projection.
+- M7: Unified §12 verdict taxonomy for U1-c, U6-b, and U8-d across parent table, detailed sections, and final summary.
+- M8--M10: Replaced the stale “19 benchmarks” count, made V10 time-step definition reproducible, and rewrote V5 CCD/FD suppression as parameter-dependent rather than a flat 3--6x claim.
+- m1--m6: Unified static-droplet terminology to `静止液滴`, normalized visible punctuation/English filler, weakened finite-experiment “proof” language, removed the unsupported V3 peak-convergence aside, corrected the V6 spread statement, and removed script/data path comments from §12--§13 sources.
+
+Validation after fixes:
+
+- `git diff --check` passed.
+- `cd paper && latexmk -g -xelatex -interaction=nonstopmode main.tex` succeeded, 224 pages.
+- Log scan found 0 undefined references, 0 undefined citations, 0 multiply-defined labels, and 0 rerun warnings.
+- Review-residue scan for `HHO`, `19 件`, `h_{\min}/0.5`, `静的液滴`, `証明`, `補間誤差支配`, script/data comments, `smoke`, `synthesis`, and related stale terms returned no hits in §12--§13 scope.
+
 ## Scope
 
 - Reviewed source:
@@ -267,4 +288,3 @@ Recommendation:
 - `git diff --check`
 - `cd paper && latexmk -g -xelatex -interaction=nonstopmode main.tex`
 - Log scan for undefined references, multiply-defined labels, and rerun warnings.
-
