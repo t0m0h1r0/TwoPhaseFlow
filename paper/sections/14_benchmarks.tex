@@ -130,7 +130,7 @@ $[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
 小さい重力 $g=10^{-3}$ の下で上昇を計算する．
 この設定は Hysing 型の単一気泡配置~\cite{Hysing2009}を幾何的原型とするが，
 物性は水--空気級の高密度比に戻し，
-時間区間は closure の発散有無を調べる短時間 $T=0.50$ に絞る．
+時間区間は長時間 closure と上昇ダイナミクスの両方を観察する $T=70.0$ に取る．
 
 本ケースの理論的焦点は，浮力をそのまま nodal predictor に入れないことである．
 浮力分解 $\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$
@@ -143,29 +143,42 @@ hydrostatic な勾配成分は圧力空間に残し，
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]\times[0,2]$，$128\times256$，interface-fitted $\alpha=2$，壁面境界
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，$\sigma=0.072$，$g=10^{-3}$
-  \item 時間：$T=0.50$，$\mathrm{CFL}=0.10$，界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 時間：$T=70.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 4 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップは YAML 既定値
+        （\texttt{interface.geometry.curvature.cap} の明示無し；
+        毛管波・RT は \texttt{cap=5.0} を明示する点との差分に注意）
   \item 浮力：\texttt{balanced\_buoyancy} predictor assembly
   \item 投影係数：\texttt{phase\_separated}，\texttt{pressure\_jump}
   \item 面状態：\texttt{face\_flux\_projection}，
         \texttt{canonical\_face\_state}，
         \texttt{face\_native\_predictor\_state}
   \item 出力：重心 $y_c(t)$，平均上昇速度，体積保存，変形量，
-        さらに \texttt{psi}・速度・圧力 snapshot を0.05間隔で保存
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{結果}
+\subsubsection{受入基準と想定診断}
 
-現行 YAML は \textbf{140 ステップ}で $T=0.50$ まで到達した．
-体積ドリフトの最終値は $1.50\times10^{-5}$，
-運動エネルギー最大値は $9.50\times10^{-4}$，
-変形量は $0.31208$--$0.31231$ の狭い範囲に留まった．
-小重力設定のため重心移動は小さく，$y_c$ は $0.49935$--$0.50066$ の範囲で推移する．
-この結果は「終端速度 benchmark」ではなく，
+\textit{（実験結果は計算完了次第掲載）}
+
+本ケースは「終端速度 benchmark」そのものではなく，
 水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化したときに
-投影不整合による早期ブローアップが消えることを確認する closure benchmark である．
-
-\noindent\textbf{判定：closure PASS．}
-ただし物理 benchmark としての長時間終端速度・形状収束は，
+投影不整合による早期ブローアップが起きないことを確認する閉包 benchmark を
+長時間まで延長した位置づけである．想定する受入基準は次の通り：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
+        $|\Delta V|/V_0 < O(10^{-4})$．
+  \item \textbf{重心} \texttt{bubble\_centroid}（\texttt{yc}）が単調上昇に推移．
+  \item \textbf{平均上昇速度} \texttt{mean\_rise\_velocity} が時間とともに
+        終端値へ漸近．
+  \item \textbf{変形量} \texttt{deformation} は弱重力 $g=10^{-3}$ の下では
+        狭い範囲で推移し，急激な振動が出ない．
+\end{enumerate}
+物理 benchmark としての長時間終端速度・形状収束を Hysing 数値解と直接比較する場合は，
 $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML で評価する．
 
 % ═══════════════════════════════════════════════════════════════════
