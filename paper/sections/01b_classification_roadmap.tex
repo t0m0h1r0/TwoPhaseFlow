@@ -80,7 +80,7 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
         ただし $\Ord{h^6}$ は内点ステンシルの設計次数であり，
         境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点は §~\ref{sec:ccd_def} で詳述する．
   \item \textbf{分相 PPE + 欠陥補正法 + CCD 勾配}：
-        高密度比では分相 PPE 解法を主戦略とし，各相内で欠陥補正法
+        高密度比向けの主たる設計戦略として分相 PPE 解法を採用し，各相内で欠陥補正法
         （DC $k=3$）を適用して高次の圧力補正を得る．
         速度補正の勾配には CCD $\Ord{h^6}$ を適用する．
         CSF + Balanced--Force（§~\ref{sec:balanced_force}）により
@@ -99,10 +99,10 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
 Hermite 場延長法（HFE，§~\ref{sec:field_extension}）を開発した．
 HFE は Extension PDE~\cite{Aslam2004} の定常解を CCD の Hermite データ $(f,f',f'')$ から
 仮想時間前進を経由せず直接構成し，界面越し場延長精度を
-$\Ord{h}$（風上差分）から $\Ord{h^6}$ へ引き上げる
-（完全テンソル版を用いる場合に限り 2D 斜め界面でも $\Ord{h^6}$ 設計精度を主張でき，
-混合微分を省略した簡略版は一般に $\Ord{h^6}$ 保証を持たない；
-§~\ref{sec:U6_split_ppe_dc_hfe}〔U6〕の 2D 検証では max slope $5.10$ / median $3.21$）．
+$\Ord{h}$（風上差分）から大幅に向上させる：1D では $\Ord{h^6}$ を達成し，
+2D 斜め界面では完全テンソル版で $\Ord{h^6}$，
+混合微分を省略した簡略版では設計次数を保証しない
+（§~\ref{sec:U6_split_ppe_dc_hfe}〔U6〕の 2D 検証では max slope $5.10$ / median $3.21$）．
 以上により，簡潔かつ数学的に整合した定式化を実現する．
 
 なお，寄生流れ低減に対しては Height-Function 曲率推定~\cite{Popinet2009}%
