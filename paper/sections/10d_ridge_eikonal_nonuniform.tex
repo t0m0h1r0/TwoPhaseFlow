@@ -13,7 +13,7 @@
 界面適合非一様格子（密度因子 $\alpha>1$）へ拡張すると，
 (i) Gaussian 半幅 $\sigma$ の物理セル分解能が不均一化，
 (ii) $\xiidx$ 空間で Hessian を評価すると実用的困難性に抵触，
-(iii) FMM の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る，
+(iii) FMM~\cite{Sethian1996} の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る，
 の 3 か所で一様格子不変量が破れる．これらを 4 補正
 D1（$\sigma_\text{eff}$ 空間スケーリング）・D2（物理空間 Hessian）・
 D3（非一様 FMM）・D4（$\varepsilon$-widening の空間依存化）で解消し，
