@@ -6,7 +6,7 @@
 \label{sec:time_int}% backward-compat: 旧 §5 全体 ref を保持
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{Part 1 連続定式化との関係：}
+\noindent\textbf{本章の位置付け：}
 本章は，第~\ref{sec:onefluid}章で導出した一流体 NS 方程式
 （移流・粘性・圧力・界面張力・浮力の各項；式~\eqref{eq:NS_onefluid}）と
 第~\ref{sec:cls_advection}節で確立した CLS 保存形移流方程式を，
@@ -48,6 +48,7 @@ A-stable 系であれば任意 $\Delta t$ で絶対安定となる．IMEX 法は
 （時間積分形式の分類）と §\ref{sec:time_operator_stiffness}（剛性マップ + CFL 数）
 で順次与える．論理順は \textbf{ステップ形式 → 絶対安定領域 → 時間精度} である．
 
+\noindent\textbf{本章の構成：}
 本章の組織化原則は，各物理項を独立な剛性源と見なし，
 項ごとに時間処理を選択することにある．具体的には：
 
