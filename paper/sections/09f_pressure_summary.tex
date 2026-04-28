@@ -27,8 +27,8 @@ HFE による界面越し場延長（§~\ref{sec:field_extension}），
 \midrule
 CLS 移流 & TVD-RK3 & CCD $\Ord{h^6}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE (等密度SSPRK3検証) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
-PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & $\Ord{h^4}$‡‡ & — \\
+PPE (等密度周期基準) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
+PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & 理論保証外（界面律速；改善は検証依存）‡‡ & — \\
 PPE (分相 PPE) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^7}$Dir/$\Ord{h^5}$Neu‡‡‡ & — \\
 NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
@@ -44,7 +44,7 @@ HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
 \noindent‡\ 等密度均一格子・周期 BC の理想化では $\Ord{h^6}$（§\ref{sec:dc_accuracy}）．\\
-\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し DC で $\Ord{h^4}$ へ昇格するかは §~\ref{sec:verify_split_ppe_dc} の検証対象である．変密度一括 PPE は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，本章では理論保証外の検証依存項目として扱う．\\
+\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し，DC による改善は §~\ref{sec:verify_split_ppe_dc} の検証対象である．変密度一括 PPE は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，本章では理論保証外の検証依存項目として扱う．\\
 \noindent‡‡‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．記載値は $k=3$ 漸近値；$k>3$ では界面ジャンプ条件が全体精度を支配し，CCD 切断誤差はすでに飽和するため精度はほぼ変化しない．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（本稿 7-step フローの粘性項処理）．
 $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．\\
@@ -56,8 +56,10 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \begin{tcolorbox}[warnbox, title={精度閉包上の制約}]
 \begin{enumerate}
   \item \textbf{空間精度：}
-        全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
+        圧力・幾何量・移流に関わる主な高次コンポーネントは
+        $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
+        粘性 ADI の対角部など低次成分は表中の脚注条件で扱い，
+        界面近傍の全体精度は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差に律速される．
         分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成し，
         HFE（§~\ref{sec:field_extension}）はジャンプ補正済み片側データを延長し，
         CCD ステンシルが不連続値を跨がないようにする．

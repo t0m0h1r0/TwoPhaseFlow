@@ -4,7 +4,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{分相 PPE 解法：密度比非依存な高精度 PPE 戦略}
 \label{sec:split_ppe_framework}
-% backward-compat labels (previously in 12f_interface_crossing.tex)
+% backward-compat labels
 \label{sec:split_ppe_motivation}%
 \label{sec:gfm_numerical_motivation}%
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -31,11 +31,11 @@ smoothed Heaviside 一括解法の\textbf{本質的制約}である：
 %
 \begin{itemize}[noitemsep]
   \item 中程度密度比：高解像度側で格子収束がプラトー化
-  \item 中-高密度比：DC 発散は再試験（FCCD ベースライン + 改訂 GFM ジャンプ条件，§\ref{sec:interface_crossing}）では再現しないが，界面型密度場で設計精度は回復しない
+  \item 中-高密度比：頑健な DC 発散閾値は仮定せず，界面型密度場で設計精度は回復しない
   \item 水--空気級高密度比：一括 smoothed Heaviside のみでの高精度計算は未保証
 \end{itemize}
 %
-§~\ref{sec:interface_crossing} に定量的な再試験データを示す．
+したがって本章では，一括 smoothed-Heaviside PPE の高密度比利用を理論保証外とする．
 重要な点として，中程度の密度比でも界面近傍の精度は
 CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
 低密度比だから一括解法で十分ということはない．
@@ -147,8 +147,7 @@ FVM 制御体積保存を放棄する代償として，
 PPE 右辺の射影で保証される，の二経路が保存性を補完する．
 FVM では両者が同一の面フラックス恒等式から派生するのに対し，
 本稿は「演算子の高次性」と「幾何学的発散フリー性」を独立系統で扱う．
-数値検証は §\ref{sec:verify_split_ppe_dc}（質量保存）と
-§\ref{sec:bf_static_droplet}（BF 整合性）で分離して行う．
+数値検証では，質量保存と BF 整合性を分離して評価する．
 
 \noindent\textbf{アーキテクチャの階層}：
 \begin{enumerate}[leftmargin=2em,noitemsep]

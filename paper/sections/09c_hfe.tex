@@ -200,9 +200,9 @@ HFE は同一の定常解を CCD データから直接構成することで，
 仮想時間反復を排除する．
 \end{tcolorbox}
 
-\subsubsection{HFE のアルゴリズムへの組み込み}
+\subsubsection{HFE の射影ステップへの組み込み}
 
-時刻ループ内での適用箇所（本稿のアルゴリズム構成における現行配置）：
+射影ステップ内では次の2箇所で HFE を適用する：
 \begin{enumerate}
   \item \textbf{Step 5a（IPC Predictor の $-\bnabla p^n$ 直前のサブステップ）：}
         前時刻圧力 $p^n$ に HFE を適用して $p^n_{\mathrm{ext}}$ を構築し，
@@ -211,8 +211,9 @@ HFE は同一の定常解を CCD データから直接構成することで，
         圧力増分 $\delta p$ に HFE を適用して $\delta p_{\mathrm{ext}}$ を構築し，
         速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\,\bnabla(\delta p_{\mathrm{ext}})$ に使用する．
 \end{enumerate}
-\textbf{命名整合}：「Step 5 内のサブステップ」「Corrector 前」の旧表現は，
-Step 5a / Step 6a に正規化された（本稿のアルゴリズム構成で詳述）．
+\textbf{配置の要点}：Predictor では既知圧力 $p^n$ を，
+Corrector では圧力増分 $\delta p$ をそれぞれ延長し，
+界面ジャンプを持つ圧力場を CCD ステンシルが直接跨がないようにする．
 
 \medskip
 \noindent\textbf{本節のまとめと位置づけ．}
