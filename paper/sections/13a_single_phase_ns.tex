@@ -10,7 +10,7 @@
 \label{sec:energy_conservation}
 
 \paragraph{検証対象．}
-密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
+密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦~\cite{Brachet1983}; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
 を CCD 空間離散 (\autoref{sec:CCD}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
 PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
 に対する相対誤差が\textbf{時間離散の設計次数 $O(\Delta t^2)$}で消えること，
@@ -77,7 +77,7 @@ $0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
 \label{sec:kovasznay}
 
 \paragraph{検証対象．}
-Kovasznay 流（解析定常解）に対し CCD 演算子を反復適用したときの
+Kovasznay 流~\cite{Kovasznay1948}（解析定常解）に対し CCD 演算子を反復適用したときの
 空間残差 $R = \mathcal{L}_{\mathrm{CCD}}[u_{\mathrm{exact}}] - 0$ の格子依存性が
 \textbf{設計 6 次}（\autoref{sec:ccd_def} 式~\eqref{eq:CCD_I}）に従うことを確認する．
 
