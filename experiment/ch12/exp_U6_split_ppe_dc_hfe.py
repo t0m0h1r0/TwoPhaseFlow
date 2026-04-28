@@ -25,8 +25,10 @@ Sub-tests
       symmetry zero); Chapter 12 U6 reports slope ≈ 5.99. 2-D:
       HermiteFieldExtension.extend across a circular Γ on the same field;
       target = inside circle (φ > 0), source = outside (φ < 0); error
-      reported on the 6-cell extension band. Chapter 12 U6 reports
-      2-D max ≈ 5.05 and median ≈ 3.21 as a geometric-band diagnostic.
+      reported on the 6-cell extension band. Full tensor-product HFE restores
+      design-order behavior; the N=32 max retains a closest-point
+      pre-asymptotic contribution, so the printed 2-D slopes are effective
+      diagnostic slopes rather than new formal orders.
 
 Stall detection: PPESolverDefectCorrection.solve has
 ``for _ in range(max_corrections): ... if residual <= tol*scale: break``.
@@ -545,7 +547,7 @@ def print_summary(results: dict) -> None:
 
     rows_1d = results["U6c"]["hfe_1d"]
     rows_2d = results["U6c"]["hfe_2d"]
-    print("U6-c HFE convergence (Chapter 12 U6: 1D ≈ 5.99; 2D max ≈ 5.05 / med ≈ 3.21):")
+    print("U6-c HFE convergence (full tensor HFE; 2D slopes are effective diagnostics):")
     print(f"  1D Hermite-5 extrap. slope         = "
           f"{_slope_of(rows_1d, 'err_inf'):.2f}")
     print(f"  2D HFE band-max slope              = "
