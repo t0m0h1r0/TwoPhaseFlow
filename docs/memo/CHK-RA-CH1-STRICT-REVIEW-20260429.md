@@ -474,3 +474,54 @@ $\Ord{\varepsilon^2} \approx \Ord{h^2}$ は $\varepsilon = c\cdot h$ ($c$ は定
 ### Round 2 Closing
 
 Pre-Fix で指摘した 9 findings (5 MAJOR + 3 MINOR + 1 user-raised D-1) は全て substantive resolution 済。Round 2 で新たに観測した RR-1/2/3 はいずれも MINOR (cosmetic / 構文 / memo accuracy) で、本査読の reject criterion を超えない。\textbf{paper 本体は accept-with-minor 相当で main マージ可能水準に到達したと判定}。RR-1/2/3 を全件反映する追加修正は任意であり、ユーザ判断に委ねる。
+
+---
+
+## Round 3 (Post Round-2 Cleanup) — All RR-1/2/3 Resolved
+
+**Date**: 2026-04-29 (ユーザ指示「全指摘に対応して」)
+**Scope**: Round 2 で指摘した RR-1 / RR-2 / RR-3 (全件 MINOR) の本文反映。
+
+### Round 3 Verdict
+
+**判定: PASS — accept-with-minor から ACCEPT へ昇格相当**。Round 2 残置 3 件をすべて反映し、§1 / §1b に対する MAJOR / MINOR 指摘は完全消化。
+
+### RR-1 Resolution (主戦略 → 設計戦略 wording 降格)
+
+**File / Line**: `paper/sections/01b_classification_roadmap.tex:83`
+
+**Before**: 「高密度比では分相 PPE 解法を\textbf{主戦略}とし，各相内で欠陥補正法（DC $k=3$）を適用して高次の圧力補正を得る．」
+
+**After**: 「高密度比向けの\textbf{主たる設計戦略として}分相 PPE 解法を採用し，各相内で欠陥補正法（DC $k=3$）を適用して高次の圧力補正を得る．」
+
+**理由**: M-1 Required fix (a) 「主戦略 → 設計戦略 + future work」を文言レベルでも完了。L89-91 + L98 の verification scope hedge と組み合わせて、設計戦略 (design strategy) と検証範囲 (V6 stack 安定性) の区別が paper 本体テキストで明示された。memo M-1 Status の文言とも整合。
+
+### RR-2 Resolution (§1 L23 indicative → verification scope hedge 追加)
+
+**File / Line**: `paper/sections/01_introduction.tex:23-26` (新 L23-26 → 改修後 L23-29)
+
+**Before**: 「平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．」
+
+**After**: 「平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで\textbf{低減する設計とした}（具体的検証範囲は §~\ref{sec:density_ratio_sweep}〔V6 静止液滴 8-step 安定性，密度比 $\rho_r\le 833$〕に限定し，\textbf{NS パイプライン完全結合および長時間移動界面下の収束性検証は §~\ref{sec:future_work} の残置課題に整理する}）．」
+
+**理由**: indicative 「低減する」を「低減する設計とした」 + 検証範囲明示の hedge 句に置換。§1.1.2 失敗例1 対処 (L216-222) と同等の hedge を §1 opening (L18-) でも記載することで、段落単位で抜粋された場合の overclaim リスクを解消。
+
+### RR-3 Resolution (HFE 2D hedge を並列構造化)
+
+**File / Line**: `paper/sections/01b_classification_roadmap.tex:101-105` (改修後 L101-106)
+
+**Before**: 「界面越し場延長精度を $\Ord{h}$（風上差分）から $\Ord{h^6}$ へ\textbf{引き上げる}（完全テンソル版を用いる場合に限り 2D 斜め界面でも $\Ord{h^6}$ 設計精度を主張でき，混合微分を省略した簡略版は一般に $\Ord{h^6}$ 保証を持たない；§~\ref{sec:U6_split_ppe_dc_hfe}〔U6〕の 2D 検証では max slope $5.10$ / median $3.21$）．」
+
+**After**: 「界面越し場延長精度を $\Ord{h}$（風上差分）から\textbf{大幅に向上させる：1D では $\Ord{h^6}$ を達成し，2D 斜め界面では完全テンソル版で $\Ord{h^6}$，混合微分を省略した簡略版では設計次数を保証しない}（§~\ref{sec:U6_split_ppe_dc_hfe}〔U6〕の 2D 検証では max slope $5.10$ / median $3.21$）．」
+
+**理由**: 主動詞「引き上げる（無条件 indicative）」を「大幅に向上させる」+ 並列構造 (1D / 2D 完全テンソル / 2D 簡略版) に書き換え、precision 主張の条件性を本文構造として明示。casual reader にも hedge が見える形に再編成。
+
+### Round 3 Build Verification
+
+`latexmk -g -xelatex -interaction=nonstopmode -halt-on-error main.tex` clean **227 pp**, 0 undefined refs/cites, 0 multiply-defined, 0 overfull (Round 1/2 と同一)。RR-1/2/3 の修正で行数が 5 行増加したが page count 不変。
+
+### Round 3 Closing
+
+§1 / §1b に対する全 12 件 (Round 1: M-1..M-5, m-1..m-3 + ユーザ追加 D-1; Round 2: RR-1, RR-2, RR-3) の指摘がすべて本文反映済。**Final verdict: ACCEPT**。strict peer review としてクローズ可能。
+
+main マージはユーザ明示指示まで延期 (per worktree retention policy).
