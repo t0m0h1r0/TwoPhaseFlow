@@ -57,6 +57,13 @@ $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値
   \item $\alpha = 2$（非一様）で $\Delta p_{\mathrm{rel}} \le 5\%$ — 設計通りの安定動作だが，
         非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa$ 推定の
         Jacobian 補正が要求精度を増やす．
+  \item \textbf{$\alpha=1$ で $N=48\!\to\!64\!\to\!96$ の $u_\infty^{\mathrm{end}}$ 非単調}
+        ($1.42\!\to\!1.35\!\to\!5.64\times10^{-4}$，$N=96$ で約 $4\times$ 上昇)：
+        $\Delta p_{\mathrm{final}}$ 自体は $0.395$ 一定で BF 平衡は維持される．
+        $u_\infty$ の一過性増加は，V5 と同様に CCD 高次微分作用素による短波長 spurious mode
+        の励起に整合する（$\Delta t = h/4$ 固定下で $N$ 細密化が短波長成分の
+        累積時間を変える）．圧力スケールは保たれているため BF 検証目的では合格，
+        ただし長時間 spurious 抑制には HFE/pressure-jump 経路（U6, V6/V7）が必要．
 \end{itemize}
 検証対応：\autoref{sec:U3_nonuniform_suite} の非一様格子定義に対し，
 静止液滴の圧力誤差と終端速度を測定する．
