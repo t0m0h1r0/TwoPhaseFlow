@@ -3,7 +3,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help check push pull setup run run-all ssh cycle plot run-local cycle-local test test-local
+.PHONY: help check push pull setup run run-all ssh cycle plot run-local cycle-local test test-local lint-ids lint-id-refs
 
 help:
 	@echo "Experiment execution — remote server '$$(grep ^REMOTE_HOST remote.conf | cut -d= -f2 | tr -d '\"')'"
@@ -25,6 +25,10 @@ help:
 	@echo "  make run-local EXP=<path>   Run locally (no ssh, no rsync)"
 	@echo "  make test-local             pytest locally (CPU only)"
 	@echo "  make plot EXP=<path>        Re-plot only from cached .npz"
+	@echo ""
+	@echo "Meta-prompt ID lints (v7.1.0):"
+	@echo "  make lint-ids               No duplicate v7.1.0-namespaced IDs in ledger"
+	@echo "  make lint-id-refs           All CHK/ASM/KL refs are defined in ledger"
 	@echo ""
 	@echo "Variables:"
 	@echo "  EXP=<path>                  Experiment script path"
@@ -90,3 +94,32 @@ test-local:
 	cd src && python -m pytest twophase/tests -v --tb=short $(PYTEST_ARGS)
 
 cycle-local: run-local
+
+# ── Meta-prompt ID lints (v7.1.0) ─────────────────────────────────────────
+LEDGER ?= docs/02_ACTIVE_LEDGER.md
+LINT_REF_DIRS ?= docs prompts paper
+
+# Detect duplicate v7.1.0-namespaced IDs (CHK-PFX-NNN) among ledger row labels.
+# Legacy bare CHK-NNN are grandfathered (forward-only migration; see plan).
+lint-ids:
+	@dups=$$(grep -oE '^\| ?(CHK|ASM|KL)-[A-Z][A-Z0-9-]*-[0-9]{3,}' $(LEDGER) 2>/dev/null \
+		| sed -E 's/^\| ?//' | sort | uniq -d); \
+	if [ -n "$$dups" ]; then \
+		echo "ERROR: duplicate v7.1.0-namespaced IDs in $(LEDGER):" >&2; \
+		echo "$$dups" >&2; exit 1; \
+	fi; \
+	echo "OK: no duplicate v7.1.0-namespaced IDs in $(LEDGER)"
+
+# Detect CHK/ASM/KL references in $(LINT_REF_DIRS) that lack a definition in ledger.
+# Matches both legacy (CHK-NNN) and v7.1.0 (CHK-PFX-NNN) forms.
+lint-id-refs:
+	@defined=$$(grep -oE '(CHK|ASM|KL)-[A-Z0-9-]*[0-9]{3,}' $(LEDGER) 2>/dev/null | sort -u); \
+	refs=$$(find $(LINT_REF_DIRS) -type f \
+		\( -name '*.md' -o -name '*.tex' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null \
+		| xargs grep -hoE '(CHK|ASM|KL)-[A-Z0-9-]*[0-9]{3,}' 2>/dev/null | sort -u); \
+	missing=$$(comm -23 <(echo "$$refs") <(echo "$$defined") | sed '/^$$/d'); \
+	if [ -n "$$missing" ]; then \
+		echo "ERROR: undefined CHK/ASM/KL refs (referenced but not in $(LEDGER)):" >&2; \
+		echo "$$missing" >&2; exit 1; \
+	fi; \
+	echo "OK: all CHK/ASM/KL refs are defined in $(LEDGER)"
