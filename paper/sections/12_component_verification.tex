@@ -125,15 +125,29 @@ U9   & DCCD on pressure 禁止     & 違反量発散 & $10^5 \to 10^7$ & $\bulle
 
 合格 18 件 ($\checkmark$) + 条件付き合格 4 件 ($\triangle$) + negation 成立 1 件 ($\bullet$)
 ／ 計 23 サブテスト（9 unit / 7 tier）．
-個別の数値結果と評価は以下の節に分けて記述する．
+個別の数値結果と評価は以下の Tier 節に分けて記述する．
+U 番号は実験 ID として固定し，本文の節順は依存関係に沿った Tier 順に並べる．
 
-% ── 9 単体テストの本体（U1--U9） ──────────────────────────────────────────────
-\input{sections/12u1_ccd_operator}            % Tier I  / U1
-\input{sections/12u2_ccd_poisson_ppe_bc}      % Tier I  / U2
-\input{sections/12u3_nonuniform_spatial}      % Tier II / U3
-\input{sections/12u4_ridge_eikonal_reinit}    % Tier III/ U4
-\input{sections/12u5_heaviside_delta}         % Tier III/ U5
-\input{sections/12u6_split_ppe_dc_hfe}        % Tier IV / U6
-\input{sections/12u7_bf_static_droplet}       % Tier VII/ U7
-\input{sections/12u8_time_integration}        % Tier V  / U8
-\input{sections/12u9_dccd_pressure_prohibition}% Tier VI / U9
+% ── 9 単体テストの本体（Tier I--VII / U1--U9） ───────────────────────────────
+\subsection{Tier I：基礎 CCD 族と Poisson}
+\input{sections/12u1_ccd_operator}            % U1
+\input{sections/12u2_ccd_poisson_ppe_bc}      % U2
+
+\subsection{Tier II：非一様格子とメトリック}
+\input{sections/12u3_nonuniform_spatial}      % U3
+
+\subsection{Tier III：界面表現}
+\input{sections/12u4_ridge_eikonal_reinit}    % U4
+\input{sections/12u5_heaviside_delta}         % U5
+
+\subsection{Tier IV：圧力結合系}
+\input{sections/12u6_split_ppe_dc_hfe}        % U6
+
+\subsection{Tier V：時間積分}
+\input{sections/12u8_time_integration}        % U8
+
+\subsection{Tier VI：否定検証}
+\input{sections/12u9_dccd_pressure_prohibition}% U9
+
+\subsection{Tier VII：界面--圧力結合の単発実験}
+\input{sections/12u7_bf_static_droplet}       % U7
