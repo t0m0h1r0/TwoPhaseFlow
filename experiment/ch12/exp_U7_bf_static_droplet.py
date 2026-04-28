@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U7] BF static droplet 1-step (Laplace pressure error) — Tier VII.
 
-Paper ref: Chapter 11 U7 (sec:U7_bf_static_droplet; paper/sections/12u7_bf_static_droplet.tex).
+Paper ref: Chapter 12 U7 (sec:U7_bf_static_droplet; paper/sections/12u7_bf_static_droplet.tex).
 
 Sub-tests
 ---------

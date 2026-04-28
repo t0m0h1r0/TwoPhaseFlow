@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """[U6] Lumped PPE + DC + HFE — Tier IV.
 
-Paper ref: Chapter 11 U6 (sec:U6_split_ppe_dc_hfe; paper/sections/12u6_split_ppe_dc_hfe.tex).
+Paper ref: Chapter 12 U6 (sec:U6_split_ppe_dc_hfe; paper/sections/12u6_split_ppe_dc_hfe.tex).
 
 Sub-tests
 ---------
   (a) DC iteration / stall study with the lumped (phase_density) FCCD-PPE.
       ρ_l/ρ_g ∈ {1, 100, 1000}; relaxation ω ∈ {0.2, 0.3, 0.5, 0.7};
       max_corrections k ∈ {2, 3}. Counts (ω, k, ρ) cells whose DC for-loop
-      runs to completion without hitting tolerance ("stall"). Chapter 11 U6:
+      runs to completion without hitting tolerance ("stall"). Chapter 12 U6:
       ρ_l/ρ_g=1 is clean, while ρ_l/ρ_g ∈ {100, 1000} stalls for
       ω ≥ 0.5; this script reports lumped-PPE limitation evidence only.
 
@@ -17,15 +17,15 @@ Sub-tests
       so it aligns with the centre-pin gauge); circle interface R=0.25
       centre (0.5, 0.5); ε = 1.5h; ρ from smoothed Heaviside.
       Analytic RHS = ∇·((1/ρ)∇p*) = -2π² p*/ρ + ∇(1/ρ)·∇p*. L_inf error
-      measured inside the liquid bulk (φ > 3h). Chapter 11 U6: 一括 DC
+      measured inside the liquid bulk (φ > 3h). Chapter 12 U6: 一括 DC
       degrades from 6.6e-12 (ρ=1) to 2.7e-5 (ρ=1000) at N=64.
 
   (c) HFE 1-D + 2-D extension. 1-D: _hermite5_xp polynomial extrapolated one
       cell beyond the source window for f(x)=cos(π x)+0.3 sin(2π x) (no
-      symmetry zero); Chapter 11 U6 reports slope ≈ 5.99. 2-D:
+      symmetry zero); Chapter 12 U6 reports slope ≈ 5.99. 2-D:
       HermiteFieldExtension.extend across a circular Γ on the same field;
       target = inside circle (φ > 0), source = outside (φ < 0); error
-      reported on the 6-cell extension band. Chapter 11 U6 reports
+      reported on the 6-cell extension band. Chapter 12 U6 reports
       2-D max ≈ 5.05 and median ≈ 3.21 as a geometric-band diagnostic.
 
 Stall detection: PPESolverDefectCorrection.solve has
@@ -78,7 +78,7 @@ RHO_GAS = 1.0
 OMEGA_VALUES = [0.2, 0.3, 0.5, 0.7]
 DC_K_VALUES = [2, 3]
 HFE_GRID_SIZES = [32, 64, 128, 256]
-N_CONV_SIZES = [32, 64, 128]  # per-N study at ρ=1000 (Chapter 11 U6 table)
+N_CONV_SIZES = [32, 64, 128]  # per-N study at ρ=1000 (Chapter 12 U6 table)
 RHO_CONV = 1000.0
 R_CIRCLE = 0.25
 CENTER = (0.5, 0.5)
@@ -216,7 +216,7 @@ def _u6a_run_one(N: int, rho_l: float, omega: float, k_dc: int,
     rhs = _analytic_lp(X, Y, phi, eps, rho, rho_l)
 
     # Tight enough that ρ=1 converges within k iterations, loose enough that
-    # high-ρ struggles (matches Chapter 11 U6's "stall for all ω at ρ ≥ 5"
+    # high-ρ struggles (matches Chapter 12 U6's "stall for all ω at ρ ≥ 5"
     # narrative qualitatively while staying inside the FCCD GMRES regime).
     cfg_base = _make_cfg("phase_density", pseudo_tol=1.0e-6, pseudo_maxiter=30)
     cfg_op = _make_cfg("phase_density", pseudo_tol=1.0e-6, pseudo_maxiter=30)
@@ -452,7 +452,7 @@ def _slope_of(rows, key) -> float:
 
 def print_summary(results: dict) -> None:
     a = results["U6a"]
-    print("U6-a Lumped DC stall study (Chapter 11 U6: ρ_l/ρ_g=1 clean; ≥100 stalls at high ω):")
+    print("U6-a Lumped DC stall study (Chapter 12 U6: ρ_l/ρ_g=1 clean; ≥100 stalls at high ω):")
     for r in RHO_RATIOS_A:
         rk = f"r{int(r)}"
         for k in DC_K_VALUES:
@@ -470,7 +470,7 @@ def print_summary(results: dict) -> None:
                   f"n_corrs={n_corrs}  {tag}")
 
     b = results["U6b"]
-    print(f"U6-b Lumped + DC k=3 MMS (Chapter 11 U6 一括 DC: "
+    print(f"U6-b Lumped + DC k=3 MMS (Chapter 12 U6 一括 DC: "
           "6.6e-12 → 2.7e-5 across ρ=1→1000):")
     cells = "  ".join(f"ρ={int(r['rho_l']):>4}: {r['err_inf']:.2e}"
                       for r in b["rho_sweep"])
@@ -483,12 +483,12 @@ def print_summary(results: dict) -> None:
     print(f"  N-sweep  ρ={int(RHO_CONV)}  {cells}")
     n_slope = _slope_of(b["n_sweep"], "err_inf")
     flag = "[OK]" if n_slope < 1.0 else "[note]"
-    print(f"  N-sweep slope (Chapter 11 U6 table: degraded positive slope ≈0.78): "
+    print(f"  N-sweep slope (Chapter 12 U6 table: degraded positive slope ≈0.78): "
           f"{n_slope:.2f}  {flag}")
 
     rows_1d = results["U6c"]["hfe_1d"]
     rows_2d = results["U6c"]["hfe_2d"]
-    print("U6-c HFE convergence (Chapter 11 U6: 1D ≈ 5.99; 2D max ≈ 5.05 / med ≈ 3.21):")
+    print("U6-c HFE convergence (Chapter 12 U6: 1D ≈ 5.99; 2D max ≈ 5.05 / med ≈ 3.21):")
     print(f"  1D Hermite-5 extrap. slope         = "
           f"{_slope_of(rows_1d, 'err_inf'):.2f}")
     print(f"  2D HFE band-max slope              = "

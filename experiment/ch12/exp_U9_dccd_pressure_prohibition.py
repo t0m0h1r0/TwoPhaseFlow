@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U9] DCCD-on-pressure prohibition — Tier VI (negation test).
 
-Paper ref: Chapter 11 U9 (sec:U9_dccd_pressure_prohibition; paper/sections/12u9_dccd_pressure_prohibition.tex).
+Paper ref: Chapter 12 U9 (sec:U9_dccd_pressure_prohibition; paper/sections/12u9_dccd_pressure_prohibition.tex).
 
 Goal
 ----

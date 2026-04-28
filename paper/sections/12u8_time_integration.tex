@@ -106,7 +106,7 @@ Layer B, C は ADI 分割誤差 $\Ord{\mathrm{d}t}$ が支配．}
 基本収束 slope $3.00 / 2.04 / 2.00$ で各設計次数を完全達成；
 CN--ADI vs FE 安定性比較で CFL$_\nu = 0.5$ にて FE 増幅 $1.7\times 10^{21}$ 発散・CN は $0.64$ 抑制；
 3 層 ADI で Layer A 完全 2 次・B/C は ADI 分割で実効 1 次（既知劣化）．
-出典：\texttt{experiment/ch12/exp\_U8\_time\_integration\_suite.py}．}
+}
 \label{fig:ch12_u8}
 \end{figure}
 
@@ -120,8 +120,7 @@ CN--ADI vs FE 安定性比較で CFL$_\nu = 0.5$ にて FE 増幅 $1.7\times 10^
         劣化．これは ADI--Strang 整合則の典型挙動であり，
         §\ref{sec:viscous_3layer} の予測通り．$\triangle$（既知の劣化を定量化）．
 \end{itemize}
-A3 トレーサビリティ：
-式~\eqref{eq:tvd_rk3}（SSP 形）→ §\ref{sec:time_int} → \texttt{src/twophase/time\_integration/tvd\_rk3.py}；
-AB2 multistep 公式→ §\ref{sec:time_int} → \texttt{src/twophase/time\_integration/ab2\_predictor.py}；
-式~\eqref{eq:viscous_cn_helmholtz}（CN--ADI 行列形）→ §\ref{sec:viscous_cn_defect} →
-\texttt{src/twophase/time\_integration/cn\_advance/}．
+検証対応：
+式~\eqref{eq:tvd_rk3}（SSP 形），AB2 multistep 公式，
+式~\eqref{eq:viscous_cn_helmholtz}（CN--ADI 行列形）に対し，
+ODE/MMS 収束と粘性安定性を測定する．

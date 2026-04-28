@@ -23,7 +23,6 @@
 \paragraph{設定．}
 $L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 2.0$, 周期境界．
 $N \in \{64, 128\}$, $\Delta t \in \{0.01, 0.005, 0.0025, 0.00125\}$．
-出典：\texttt{experiment/ch13/exp\_V1\_tgv\_energy\_decay.py}．
 
 \paragraph{結果．}
 \begin{table}[!ht]
@@ -75,9 +74,8 @@ $0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
   \item 空間離散誤差は CCD 6 次が時間誤差床下に押し込まれ，観測上 0 寄与．
   \item $\|\nabla\!\cdot u\|_\infty \le 3 \times 10^{-14}$ → PPE 射影が機械精度で非圧縮を達成．
 \end{itemize}
-A3 トレース：式~\eqref{eq:CCD_I} → \autoref{ch:time_integration}（AB2/IMEX-BDF2）+
-\autoref{sec:ppe_solve}（PPE 射影）→ \texttt{src/twophase/integrator/imex\_bdf2.py},
-\texttt{src/twophase/poisson/ppe\_solver.py}．
+検証対応：式~\eqref{eq:CCD_I}，\autoref{ch:time_integration} の時間離散，
+\autoref{sec:ppe_solve} の PPE 射影に対し，TGV のエネルギー減衰と非圧縮残差を測定する．
 
 \subsubsection{V2：Kovasznay CCD 空間残差}
 \label{sec:kovasznay}
@@ -92,7 +90,6 @@ $\Re = 40$, 解析解 $u_{\mathrm{exact}}(x,y) = 1 - \mathrm{e}^{\lambda x}\cos(
 $v_{\mathrm{exact}} = (\lambda/2\pi) \mathrm{e}^{\lambda x}\sin(2\pi y)$,
 $\lambda = \Re/2 - \sqrt{\Re^2/4 + 4\pi^2}$．
 $N \in \{32, 64, 128, 256\}$, 周期 BC．
-出典：\texttt{experiment/ch13/exp\_V2\_kovasznay\_imex\_bdf2.py}．
 
 \paragraph{結果．}
 \begin{table}[!ht]
@@ -131,4 +128,4 @@ log-log で slope $6$ の theoretical line と完全一致．$N=256$ で round-o
   \item U1（§\ref{sec:U1_ccd_suite}）で 1D MMS 単体 6 次を確認したが，
         本実験は 2D + Kovasznay 解という非自明設定でも 6 次が保たれることを示す．
 \end{itemize}
-A3 トレース：式~\eqref{eq:CCD_I} → \texttt{src/twophase/ccd/ccd\_solver.py}．
+検証対応：式~\eqref{eq:CCD_I} に対し，Kovasznay 解の 2D 空間残差を測定する．

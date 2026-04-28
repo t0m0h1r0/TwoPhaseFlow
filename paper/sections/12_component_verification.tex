@@ -1,11 +1,11 @@
 % paper/sections/12_component_verification.tex
 %
-% §11  計算コンポーネントの数学的検証
+% §12  計算コンポーネントの数学的検証
 %       Part 2 (§4–§10) の数値手法 primitive を 9 件の単体テスト (U1–U9) /
 %       7 Tier に分類し,各 primitive が単体で設計通りの数学的精度を有することを
 %       格子細分化 / MMS / 解析参照解との比較によって系統的に確認する.
 % ═══════════════════════════════════════════════════════════════════════════════
-\section{計算コンポーネントの数学的検証}
+\section{数値要素の単体検証実験}
 \label{sec:numerical_integrity}%
 \label{sec:impl_collocate}%   backward compat: referenced from §7
 % ------------------------------------------------------------------------------
@@ -41,18 +41,19 @@
 本章は，Part 2 各章に分散して提示した
 Predictor--PPE--Corrector を含む 7 ステップ統合アルゴリズムの
 数値手法 primitive を，Part 2（§\ref{sec:CCD}--§\ref{sec:grid}）の
-理論定義から離散実装まで漏れなく追跡し，
+理論定義から検証可能な実験指標まで対応付け，
 \textbf{各 primitive が単体で設計通りの数学的精度を有する}
 ことを格子細分化 / MMS（製造解法）/ 解析参照解との比較によって
 系統的に確認する．
 
-ここで検証されるのは「コードが論文記述と等価であること」（\textbf{PR-5
-Algorithm Fidelity}）と「式 → 離散化 → 実装の一意な対応」
-（\textbf{A3 Traceability}）の 2 点である．第~\ref{sec:verification}章
+ここで検証されるのは，各式・離散化・実験指標が一貫した精度主張を支えること，
+および単体実験で観測された限界を次章の統合実験へ持ち越すことである．第~\ref{sec:verification}章
 （統合実験）はここで合格した primitive のみを用いて，
 組み立てられたアルゴリズム全体の物理的妥当性を検証する．
 
 \paragraph{構成（7 Tier / 9 単体テスト U1--U9）．}
+本章の U 系列は component verification 専用であり，
+次章の V 系列（統合検証）とは実験目的と判定基準を分ける．
 Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
 \textbf{基礎演算 → 特殊離散 → 結合系 → 否定検証}の順に 7 Tier へ分類した：
 
@@ -63,7 +64,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
   \item[Tier II（非一様格子 + メトリック）]
         U3 = 界面適合非一様格子 + Ridge--Eikonal D1--D4 補正（§\ref{sec:grid}）．
   \item[Tier III（界面表現）]
-        U4 = Ridge--Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
+        U4 = Godunov Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
         U5 = 平滑化 $H_\eps$ / $\delta_\eps$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
   \item[Tier IV（圧力結合系）]
         U6 = lumped--PPE + DC + HFE（§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
@@ -75,9 +76,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U7 = BF 静止液滴 1-step + face $\mu$ 補間（§\ref{sec:balanced_force}）．
 \end{description}
 
-各 U-test は \texttt{experiment/ch12/exp\_U[1--9]\_*.py} で実装され，
-\texttt{experiment/ch12/results/U<i>\_<name>/} に \texttt{data.npz}
-（生数値）と PDF 図（代表結果）を出力する．
+各 U-test は独立した単体実験として実施し，表と図には再生成した数値のみを記載する．
 
 \paragraph{検証成績一覧．}
 表~\ref{tab:U_summary} に全 9 単体テストの設計次数と実測値，
@@ -105,7 +104,7 @@ U2-b & PPE Neumann + ゲージ       & $5$ & $4.85$ & \checkmark \\
 U3-a & CCD 非一様 d1            & $6$ & $5.98$ & \checkmark \\
 U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & active & $D_4 \!\sim\! 10^{-11}$ & \checkmark \\
-U4-a & Ridge--Eikonal reinit    & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
+U4-a & Godunov Eikonal reinit   & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正         & $\sim 0.03$ & $3\times 10^{-6}$ & \checkmark \\
 U5-a & $\delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\

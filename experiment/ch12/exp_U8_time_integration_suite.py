@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U8] Time integration suite — Tier V.
 
-Paper ref: Chapter 11 U8 (sec:U8_time_integration; paper/sections/12u8_time_integration.tex).
+Paper ref: Chapter 12 U8 (sec:U8_time_integration; paper/sections/12u8_time_integration.tex).
 
 Sub-tests
 ---------
@@ -209,7 +209,7 @@ def _build_mu_field_1d(N: int, mu_ratio: float, eps_band: float):
 def _viscous_layer_1d(layer: str, mu_ratio: float, n_t: int,
                        T: float = 0.02, N: int = 64, alpha: float = 1.0,
                        eta_cross: float = 1.0e-3):
-    """1D MMS for viscous 3-layer LTE study (Chapter 11 U8-d).
+    """1D MMS for viscous 3-layer LTE study (Chapter 12 U8-d).
 
     PDE         u_t = ∂_x[μ(x) ∂_x u] + s(x,t)        on [0,1], Dirichlet u=0
     Manuf. soln u(x,t) = exp(−α t) sin(πx)

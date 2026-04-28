@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """[U2] CCD-Poisson + PPE BC — Tier I (uniform grid).
 
-Paper ref: Chapter 11 U2 (sec:U2_ccd_poisson_ppe_bc; paper/sections/12u2_ccd_poisson_ppe_bc.tex).
+Paper ref: Chapter 12 U2 (sec:U2_ccd_poisson_ppe_bc; paper/sections/12u2_ccd_poisson_ppe_bc.tex).
 
 Sub-tests
 ---------

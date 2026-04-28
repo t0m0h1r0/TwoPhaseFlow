@@ -16,9 +16,8 @@
 および Ridge--Eikonal D1--D4 補正
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
 
-格子は \texttt{Grid.update\_from\_levelset(psi, eps)}
-（\texttt{src/twophase/core/grid.py:91}）が実装する
-gauss 密度 $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
+格子は界面近傍に集中する gauss 密度
+$\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
 （式~\eqref{eq:grid_delta}）に従う．
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 界面位置 $x = 0.5$ の周りに集中．
@@ -111,7 +110,7 @@ $2.0$ & $0$ & $0$ & $0$ & $2.9\times 10^{-11}$ \\
 \caption{U3：非一様格子 空間離散精度．
 $\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD face value/grad slope $4.00 / 4.09$；
 Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．
-出典：\texttt{experiment/ch12/exp\_U3\_nonuniform\_spatial\_suite.py}．}
+}
 \label{fig:ch12_u3}
 \end{figure}
 
@@ -127,5 +126,5 @@ Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$
         $O(10^{-11})$ で発火．§\ref{sec:ridge_eikonal_nu_grid} の
         メトリック理論と一致．\checkmark
 \end{itemize}
-A3 トレーサビリティ：式~\eqref{eq:grid_delta} → §\ref{sec:grid_density} 密度関数 →
-\texttt{src/twophase/core/grid.py} の \texttt{Grid.update\_from\_levelset}．
+検証対応：式~\eqref{eq:grid_delta} と §\ref{sec:grid_density} の密度関数に対し，
+非一様格子上の CCD/FCCD 収束と D1--D4 メトリック量を測定する．
