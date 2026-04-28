@@ -85,15 +85,16 @@
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 D.3 に統合
 %% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 D.2
 
+%% §11: Part II capstone — Navier--Stokes ソルバ統合アルゴリズム
+\clearpage
+\input{sections/11_full_algorithm}    %% §11（演算子マッピング・7ステップアルゴリズム）
+\input{sections/11c_dccd_bootstrap}   %% §11続き（DCCDパラメタ・ブートストラップ・タイムステップ）
+\input{sections/11d_pure_fccd_dns}    %% §11.5 純 FCCD DNS アーキテクチャ
+
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 \clearpage
 \part{精度検証：コンポーネント単体から統合ソルバまで}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-%% §11: Navier--Stokes 計算スキームの全体像
-\input{sections/11_full_algorithm}    %% §11（演算子マッピング・7ステップアルゴリズム）
-\input{sections/11c_dccd_bootstrap}   %% §11続き（DCCDパラメタ・ブートストラップ・タイムステップ）
-\input{sections/11d_pure_fccd_dns}    %% §11.5 純 FCCD DNS アーキテクチャ
-\clearpage
 \input{sections/12_component_verification}  %% §12：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
 %% §13: V1-V10 ゼロベース新実験駆動.
