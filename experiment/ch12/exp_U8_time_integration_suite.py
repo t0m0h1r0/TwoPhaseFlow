@@ -35,6 +35,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 import numpy as np
 import matplotlib.pyplot as plt
 
+from twophase.time_integration.tvd_rk3 import tvd_rk3
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -47,21 +48,16 @@ NPZ = OUT / "data.npz"
 PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u8_time_integration_suite"
 
 
-# ── U8-a: TVD-RK3 ODE 3rd-order ──────────────────────────────────────────────
-
-def _tvd_rk3_step(q: float, dt: float, rhs) -> float:
-    """Shu–Osher TVD-RK3 single step (paper Eq. 79–81)."""
-    q1 = q + dt * rhs(q)
-    q2 = 0.75 * q + 0.25 * (q1 + dt * rhs(q1))
-    return (1.0 / 3.0) * q + (2.0 / 3.0) * (q2 + dt * rhs(q2))
-
+# ── U8-a: TVD-RK3 ODE 3rd-order (production integrator) ─────────────────────
 
 def _ode_rk3_error(n_steps: int) -> float:
+    """Drives production `twophase.time_integration.tvd_rk3` on scalar ODE
+    q' = -q,  q(0) = 1,  expected order 3 for Shu-Osher TVD-RK3."""
     rhs = lambda q: -q
     dt = 1.0 / n_steps
-    q = 1.0
+    q = np.float64(1.0)
     for _ in range(n_steps):
-        q = _tvd_rk3_step(q, dt, rhs)
+        q = tvd_rk3(np, q, dt, rhs)
     return float(abs(q - np.exp(-1.0)))
 
 
@@ -71,10 +67,16 @@ def run_U8a():
     return {"tvd_rk3": rows}
 
 
-# ── U8-b: AB2 ODE 2nd-order ──────────────────────────────────────────────────
+# ── U8-b: AB2 ODE 2nd-order (ODE benchmark) ─────────────────────────────────
+# NOTE: This is an ODE benchmark, NOT the production integrator.
+# Production AB2 lives inside `twophase.time_integration.ab2_predictor.Predictor`,
+# which is heavily NS-coupled (requires FlowState, ConvectionTerm, ViscousTerm,
+# ...) and cannot be invoked on a scalar ODE. The inline AB2 below is the
+# textbook 2nd-order multistep formula used to expose the design order; the
+# production scheme uses the same formula on each velocity component.
 
 def _ode_ab2_error(n_steps: int) -> float:
-    """AB2 with forward-Euler startup."""
+    """AB2 with forward-Euler startup (ODE benchmark)."""
     rhs = lambda q: -q
     dt = 1.0 / n_steps
     q_prev = 1.0

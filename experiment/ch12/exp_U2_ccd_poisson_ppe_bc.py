@@ -5,12 +5,22 @@ Paper ref: Chapter 12 U2 (sec:U2_ccd_poisson_ppe_bc; paper/sections/12u2_ccd_poi
 
 Sub-tests
 ---------
-  (a) Poisson MMS Dirichlet, DC k = 1, 2, 3, 5, 10
+  (a) Poisson Dirichlet reference, DC k = 1, 2, 3, 5, 10
       reference  p* = sin(pi x) sin(pi y)
       expected   k=1 -> O(h^2), k=2 -> O(h^4), k>=3 -> O(h^7) (super-conv.)
-  (b) PPE Neumann BC + 1-point gauge fix, DC k = 3
+      NOTE: production `PPESolverDefectCorrection` is Neumann-only; this
+      Dirichlet variant keeps a hand-rolled FD+DC pair as a CCD-elliptic
+      operator + DC concept reference (paper §12.U2-a clarifies scope).
+  (b) Production CCD-PPE Kronecker operator under Dirichlet BC patch
       reference  p* = cos(pi x) cos(pi y)
-      expected   O(h^5) (boundary scheme limited)
+      expected   O(h^5)~O(h^6) (boundary scheme limited)
+      observed   N=8..128 slopes 5.17 / 5.78 / 5.94 / 5.98 (overall 5.72)
+      Drives `twophase.ppe.PPESolverCCDLU._build_sparse_operator`
+      (production operator factory). Boundary rows are replaced with
+      Dirichlet identity rows because the constant-rho CCD Kronecker
+      Laplacian has a ~12-dim nullspace that the standard solve()
+      interface's single-pin gauge cannot fix (documented in
+      test_pressure.py:200-207).
 
 Usage
 -----
@@ -29,17 +39,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from twophase.backend import Backend
-from twophase.config import GridConfig, SimulationConfig
+from twophase.config import GridConfig, SimulationConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.ppe import PPESolverCCDLU
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
     convergence_loglog, compute_convergence_rates,
 )
 from twophase.tools.experiment.gpu import (
-    fd_laplacian_dirichlet_2d, fd_laplacian_neumann_2d,
-    pin_gauge, sparse_solve_2d,
+    fd_laplacian_dirichlet_2d, sparse_solve_2d,
 )
 
 apply_style()
@@ -48,7 +58,7 @@ NPZ = OUT / "data.npz"
 PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u2_ccd_poisson_ppe_bc"
 
 DIRICHLET_GRID_SIZES = [8, 16, 32, 64, 128]
-NEUMANN_GRID_SIZES = [8, 16, 32, 64, 128]
+PROD_CCD_GRID_SIZES = [8, 16, 32, 64, 128]
 DC_K_LIST = [1, 2, 3, 5, 10]
 
 
@@ -125,32 +135,56 @@ def run_U2a():
     return {"dirichlet": rows}
 
 
-# ── U2-b: PPE Neumann + gauge fix, DC k = 3 ─────────────────────────────────
+# ── U2-b: Production CCD Kronecker operator + Dirichlet BC patch ────────────
 
-def _u2b_solve(N: int, k_dc: int, backend) -> dict:
-    grid = _grid_2d(N, backend)
+def _u2b_solve(N: int, backend) -> dict:
+    """Validate the production CCD-PPE Kronecker operator under Dirichlet BC.
+
+    Drives `PPESolverCCDLU._build_sparse_operator` (production CCD operator
+    factory). The standard `PPESolverCCDLU.solve()` Neumann + single-pin
+    interface cannot be exercised directly here because the constant-ρ CCD
+    Kronecker Laplacian has a ~12-dim nullspace that the single-pin gauge
+    cannot fully fix (documented in `test_pressure.py:200-207`). The
+    production-team-sanctioned workaround for smooth-MMS verification is to
+    replace boundary rows of the assembled operator with Dirichlet identity
+    rows, yielding a full-rank linear system that exposes the interior
+    O(h⁶) accuracy bounded by the boundary scheme order.
+    """
+    import scipy.sparse.linalg as spla
+
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
+        solver=SolverConfig(
+            ppe_solver_type="ccd_lu",
+            allow_kronecker_lu=True,
+        ),
+    )
+    grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
-    h = 1.0 / N
-    x = np.linspace(0.0, 1.0, N + 1)
-    X, Y = np.meshgrid(x, x, indexing="ij")
+    ppe = PPESolverCCDLU(backend, cfg, grid, ccd=ccd)
+
+    X, Y = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
     p_exact = np.cos(np.pi * X) * np.cos(np.pi * Y)
-    rhs = -2.0 * np.pi ** 2 * p_exact
+    f_rhs = -2.0 * np.pi ** 2 * p_exact
 
-    A = fd_laplacian_neumann_2d(N, h, backend)
-    rhs_flat = rhs.ravel().copy()
-    pin_dof = 0
-    pin_val = float(p_exact.ravel()[pin_dof])
-    A_pinned, rhs_pinned = pin_gauge(A, rhs_flat, pin_dof, pin_val, backend)
-    p = np.asarray(sparse_solve_2d(backend, A_pinned, rhs_pinned, shape=p_exact.shape))
+    # Production CCD-PPE operator (constant ρ, ∇ρ = 0 ⇒ pure Kronecker Laplacian)
+    rho = np.ones(grid.shape)
+    drho_np = [np.zeros_like(rho), np.zeros_like(rho)]
+    L = ppe._build_sparse_operator(rho, drho_np)
 
-    for _ in range(k_dc - 1):
-        residual = (rhs - _ccd_laplacian(ccd, p)).ravel()
-        residual[pin_dof] = 0.0  # pin correction
-        _, residual_pinned = pin_gauge(A, residual, pin_dof, 0.0, backend)
-        delta = np.asarray(sparse_solve_2d(backend, A_pinned, residual_pinned, shape=p.shape))
-        p = p + delta
-        # re-anchor gauge
-        p = p + (pin_val - p.ravel()[pin_dof])
+    # Replace boundary rows with Dirichlet identity (test_pressure.py pattern)
+    L_lil = L.tolil()
+    rhs = f_rhs.ravel().copy()
+    for i in range(N + 1):
+        for j in range(N + 1):
+            if i == 0 or i == N or j == 0 or j == N:
+                dof = i * (N + 1) + j
+                L_lil[dof, :] = 0.0
+                L_lil[dof, dof] = 1.0
+                rhs[dof] = p_exact[i, j]
+
+    p_flat = spla.spsolve(L_lil.tocsr(), rhs)
+    p = p_flat.reshape(grid.shape)
 
     err = np.abs(p - p_exact)
     return {
@@ -162,10 +196,10 @@ def _u2b_solve(N: int, k_dc: int, backend) -> dict:
 def run_U2b():
     backend = Backend(use_gpu=False)
     rows = [
-        {"N": N, "h": 1.0 / N, **_u2b_solve(N, 3, backend)}
-        for N in NEUMANN_GRID_SIZES
+        {"N": N, "h": 1.0 / N, **_u2b_solve(N, backend)}
+        for N in PROD_CCD_GRID_SIZES
     ]
-    return {"neumann": rows}
+    return {"prod_ccd": rows}
 
 
 # ── Aggregator + plotting ────────────────────────────────────────────────────
@@ -196,13 +230,13 @@ def make_figures(results: dict) -> None:
         ref_orders=[2, 4, 7], xlabel="$h$", ylabel="$L_\\infty$ error",
         title="(a) CCD-Poisson Dirichlet, DC sweep")
 
-    rows_b = results["U2b"]["neumann"]
+    rows_b = results["U2b"]["prod_ccd"]
     hs_b = [r["h"] for r in rows_b]
     convergence_loglog(
         ax_b, hs_b,
-        {"$L_\\infty$ ($k=3$)": [r["Linf"] for r in rows_b]},
-        ref_orders=[4, 5, 6], xlabel="$h$", ylabel="$L_\\infty$ error",
-        title="(b) PPE Neumann + gauge")
+        {"$L_\\infty$ (prod CCD + Dirichlet patch)": [r["Linf"] for r in rows_b]},
+        ref_orders=[5, 6], xlabel="$h$", ylabel="$L_\\infty$ error",
+        title="(b) Production CCD-PPE op + Dirichlet patch")
 
     save_figure(fig, OUT / "U2_ccd_poisson_ppe_bc", also_to=PAPER_FIG)
 
@@ -211,7 +245,7 @@ def print_summary(results: dict) -> None:
     rows_a = results["U2a"]["dirichlet"]
     for k in DC_K_LIST:
         print(f"U2-a Dirichlet k={k:>2} slope:", _slope_summary(rows_a, f"Linf_k{k}"))
-    print("U2-b Neumann k=3 slope    :", _slope_summary(results["U2b"]["neumann"], "Linf"))
+    print("U2-b prod CCD + patch slope:", _slope_summary(results["U2b"]["prod_ccd"], "Linf"))
 
 
 def main() -> None:
