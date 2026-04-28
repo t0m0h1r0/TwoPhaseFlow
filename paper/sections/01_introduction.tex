@@ -11,7 +11,7 @@
 それらのうち最も根本的かつ克服が難しいのが
 \textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である~\cite{Popinet2009, Francois2006}．
 従来の CSF（連続表面力）モデル~\cite{Brackbill1992} では，表面張力を体積力として近似するため
-界面幅パラメータ $\varepsilon$ に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り，
+界面幅パラメータ $\varepsilon$（CLS 推奨スケーリング $\varepsilon = \varepsilon_\xi\, h_{\min}$，$\varepsilon_\xi=O(1)$；§~\ref{sec:reinit} で具体化）に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り，
 格子を細分化しても寄生流れの下限が消えない~\cite{Popinet2009}
 （§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
@@ -20,8 +20,14 @@
 分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
 Balanced--Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
 高精度に維持し，
-平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する．
-本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS+DCCD・分相 PPE・非一様格子）の
+平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する設計とした
+（具体的検証範囲は §~\ref{sec:density_ratio_sweep}〔V6 静止液滴 8-step 安定性，密度比 $\rho_r\le 833$〕に限定し，
+NS パイプライン完全結合および長時間移動界面下の収束性検証は §~\ref{sec:future_work} の残置課題に整理する）．
+ただし CCD の $\Ord{h^6}$ は内点ステンシルの設計次数であり，
+境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点を §~\ref{sec:CCD}章で詳述する．
+また二相結合では界面再初期化頻度差と曲率の陽的遅れ評価により実効時間精度は設計の $O(\Delta t^2)$ に届かず，
+§~\ref{sec:imex_bdf2_twophase_time}（V7）で観測 slope $1.58$ までの回復に留まることを caveat として明記する．
+本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS・分相 PPE・非一様格子）の
 詳細仕様は，第~\ref{sec:CCD}章末尾
 §~\ref{sec:ccd_summary}（章末まとめ：CCD スキーム族の数値特性と略語）に
 比較表と略語一覧を整理した
@@ -139,10 +145,10 @@ $\psi=0$ のとき $\rho = \rho_l$（液相密度），$\psi=1$ のとき $\rho 
   \item 液相体積（質量）が徐々に減少する（質量損失）
 \end{itemize}
 
-本稿の Dissipative CCD（DCCD；第~\ref{sec:advection}章）+ CLS 再初期化（第~\ref{sec:levelset}章）は，
+本稿の FCCD 面ジェット移流（Flux-form CCD；§~\ref{sec:advection_motivation}）+ CLS 再初期化（第~\ref{sec:levelset}章）は，
 このにじみを抑制するための中心的な手法である．
-DCCD により界面を壊す高波数応答を選択的に抑制し，
-固定強度フィルタが導入する有効誤差 $\Ord{\varepsilon_d h^2}$（$\varepsilon_d$ は散逸強度；Glossary 参照）を管理しながら，
+FCCD は面値 $(\psi u)_{f,i+1/2}$ を Hermite 補間で滑らかに構成して保存型 FVM のテレスコーピング構造を保ち，
+界面を壊す不要な高波数モードを構造的に抑える一方で，
 CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\phi)$ の形に定期的に回復させる（§~\ref{sec:reinit}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -212,7 +218,10 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(\p
 \subparagraph{本稿の対処.}
 CCD 法による滑らかな領域での高精度な $\kappa$ 計算と
 Balanced--Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の面中心演算子族を使用）により
-寄生流れを CSF モデル誤差の水準まで抑制する（§~\ref{sec:ppe_discretization_choice}；統合検証は第~\ref{sec:verification}章）．
+寄生流れを CSF モデル誤差の水準まで抑制する
+（付録~\ref{sec:ppe_discretization_choice}；
+密度比 $\rho_r\le 833$ までの結合 stack 静止液滴 8-step 安定性は §~\ref{sec:density_ratio_sweep}〔V6〕で確認；
+NS パイプラインへの完全結合および長時間移動界面下の収束性検証は §~\ref{sec:future_work} の最優先課題として残置する）．
 
 \paragraph{失敗例2：質量損失（Mass Loss）}
 \subparagraph{症状.}時間が経つにつれて液滴が小さくなり，最終的に消える．
@@ -250,7 +259,7 @@ FCCD 面ジェット sub-system により，$2\Delta x$ チェッカーボード
 界面指標 $\psi$ のプロファイルが徐々にぼやける~\cite{OlssonKreiss2005}．
 特に低次精度スキーム（1次風上差分など）では顕著．
 
-\subparagraph{本稿の対処.}DCCD（§~\ref{sec:advection_motivation}）と
+\subparagraph{本稿の対処.}FCCD 面ジェット移流（§~\ref{sec:advection_motivation}）と
 CLS 再初期化の定期的適用により，界面の鮮鋭さを維持する．
 
 % ─────────────────────────────────────────────────────────────────────────────
