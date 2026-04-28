@@ -1,0 +1,443 @@
+% paper/sections/11_full_algorithm.tex
+% §11: Navier--Stokes 方程式の計算スキーム全体像
+
+\section{Navier--Stokes 方程式の計算スキーム全体像：離散形式と 1 タイムステップ手順}
+\label{sec:algorithm}
+
+第~\ref{sec:CCD}章から第~\ref{sec:ppe_solve}章まで，CCD 空間離散化，
+CLS 界面追跡，時間積分，圧力連成，および Poisson ソルバーを個別に構築した．
+本章ではこれらの構成要素を統合し，
+時刻 $t^n$ から $t^{n+1}$ への\textbf{1タイムステップの完全アルゴリズム}を
+離散形式でまとめる．
+
+\begin{enumerate}
+  \item \textbf{§~\ref{sec:algo_operator_map}}：NS 方程式の各項と離散ソルバーの対応を概観する．
+  \item \textbf{§~\ref{sec:algo_flow}}：7 ステップの完全アルゴリズムを離散形式で詳述する．
+  \item \textbf{§~\ref{sec:dccd_params}}：DCCD フィルタの散逸パラメータ設計と適応制御を与える．
+  \item \textbf{§~\ref{sec:pure_fccd_dns}}：純 FCCD DNS（研究 DNS / シャープ界面極限）設計．
+  \item \textbf{§~\ref{sec:bootstrap}}：シミュレーション開始時の初期化シーケンスを示す．
+  \item \textbf{§~\ref{sec:algo_timestep}}：タイムステップ制御の安定性制約を定める．
+\end{enumerate}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\subsection{演算子マッピングと全体概観}
+\label{sec:algo_operator_map}
+% ═════════════════════════════════════════════════════════════════════════════
+
+図~\ref{fig:ns_solvers} に，NS 方程式の各項と本手法で用いる離散ソルバーの対応を示す．
+コロケート格子（セル中心）上で圧力・速度・界面変数すべてが同一点に配置され，
+DCCD 散逸によりチェッカーボード不安定を内在的に抑制する．
+
+%%% ── 図：NS各項とソルバーの対応 ─────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  node distance=4mm and 5mm,
+  nsterm/.style={draw=navy!70, fill=lightblue, rounded corners=4pt,
+                 font=\small\bfseries, inner sep=6pt,
+                 minimum width=26mm, minimum height=10mm, align=center},
+  solver/.style={draw=#1!70, fill=#1!10, rounded corners=4pt,
+                 font=\scriptsize, inner sep=5pt,
+                 minimum width=26mm, align=center},
+  solver/.default=navy,
+  subarr/.style={-Stealth, semithick, darkgray!60},
+]
+
+\node[font=\small\bfseries, text=navy] (hd1) at (0,0)
+  {NS 方程式の各項とソルバーの対応};
+
+%% ── NS 5項ボックス ─────────────────────────────────────────────────
+\node[nsterm, below=7mm of hd1, xshift=-57mm] (T1) {対流項};
+\node[nsterm, right=4mm of T1]  (T2) {圧力項};
+\node[nsterm, right=4mm of T2]  (T3) {粘性項};
+\node[nsterm, right=4mm of T3]  (T4) {重力項};
+\node[nsterm, right=4mm of T4]  (T5) {表面張力項};
+
+%% ── 各ソルバーボックス ─────────────────────────────────────────────
+\node[solver=orange2, below=5mm of T1] (S1)
+  {CCD（$D^{(1)}$）\\AB2（$\Ord{\Delta t^2}$）\\陽的};
+\node[solver=midblue, below=5mm of T2] (S2)
+  {欠陥補正法 PPE\\（DC，k=3）\\+ CCD 勾配\\Projection法};
+\node[solver=teal2, below=5mm of T3] (S3)
+  {CCD（$\Ord{h^6}$）\\Crank-Nicolson\\半陰的};
+\node[solver=darkgray, below=5mm of T4] (S4)
+  {陽的\\(定数項)};
+\node[solver=red2, below=5mm of T5] (S5)
+  {Level Set $\to\kappa$\\CCD\\陽的};
+
+\foreach \t/\s in {T1/S1, T2/S2, T3/S3, T4/S4, T5/S5}
+  \draw[subarr] (\t) -- (\s);
+
+\end{tikzpicture}
+\caption{NS 方程式の各項と対応ソルバーの概要．
+対流項は CCD + AB2（陽的），粘性項は CCD + Crank--Nicolson（半陰的），
+圧力項は欠陥補正法 PPE（DC，$k{=}3$）+ 勾配演算子 $\mathcal{G}$（均一格子: CCD；非一様格子+壁面BC: $\mathcal{G}^\text{adj}$，§~\ref{sec:fvm_ccd_corrector}）による Projection，
+重力は陽的体積力，表面張力は CSF 体積力として Predictor に含む．\textbf{適用範囲}：本図は Level 1/2 の構成；Level 3（純 FCCD DNS，§\ref{sec:pure_fccd_dns}）では CSF 体積力を撤去し，Step 5a で HFE による圧力ジャンプ評価へ置換する．}
+\label{fig:ns_solvers}
+\end{figure}
+
+DCCD フィルタの散逸パラメータ $\varepsilon_d$ は用途ごとに異なる値を取る
+（設計根拠は §~\ref{sec:dccd_params} で詳述）：
+\begin{itemize}[noitemsep]
+  \item \textbf{CLS 移流}（§~\ref{sec:advection_motivation}）：$\varepsilon_d = 0.05$（界面プロファイル保持のため低散逸）
+  \item \textbf{PPE 右辺・Corrector 発散}：$\varepsilon_d = 1/4$（チェッカーボード完全抑制）
+  \item \textbf{曲率計算の DCCD フィルタ}（§~\ref{sec:curvature}）：$\varepsilon_d = 0.05$（高次微分の精度保持）
+\end{itemize}
+
+表~\ref{tab:algo_overview} に 7 ステップの概観を示す．
+
+\begin{table}[htbp]
+\centering
+\caption{1 タイムステップ（$t^n \to t^{n+1}$）のアルゴリズム概観}
+\label{tab:algo_overview}
+\small
+\begin{tabular}{clp{0.50\linewidth}l}
+\hline
+Step & 処理 & 手法 & 参照 \\
+\hline
+1 & CLS $\psi$ 移流 & TVD-RK3 + FCCD フラックス発散（式~\eqref{eq:cls_tvd_rk3_psi}） & §~\ref{sec:time_level1} \\
+2 & 再初期化        & 仮想時間ステッピング                            & §~\ref{sec:cls_compression} \\
+3 & 物性更新        & $\psi\!\to\!\phi$ logit + 線形補間              & §~\ref{sec:levelset_mapping} \\
+4 & 曲率計算        & CCD 高次微分                                   & §~\ref{sec:curvature} \\
+5 & 運動量 $(u,v)$ 移流 & UCCD6 + EXT2 外挿（IMEX-BDF2 の対流処理） & §~\ref{sec:time_level1} \\
+  & Predictor      & IMEX-BDF2（EXT2 外挿 + Helmholtz GMRES）+ IPC + PPE 内蔵 jump-decomposed CSF + balanced-buoyancy & §~\ref{sec:time_level1} \\
+6 & PPE 求解       & 分相 PPE + IPC 増分（FCCD PPE）                  & §~\ref{sec:ppe_solve} \\
+7 & Corrector      & IPC 増分更新（同一 $\gamma\Delta t$ 投影）        & §~\ref{sec:ipc_derivation} \\
+\hline
+\end{tabular}
+\end{table}
+
+$\psi$ は保存形レベルセットの主変数であり，
+$\phi$ は法線計算，HFE，界面厚補正などで必要となる幾何補助量である．
+したがって，単なる $\psi\to\phi\to\psi$ は恒等変換であり，界面プロファイルの
+修復には DGR などの $\phi_{\mathrm{raw}}\to\phi_{\mathrm{sdf}}$ 補正を挟む．
+
+\begin{tcolorbox}[defbox, title={本章で用いる離散演算子の記法}]
+\label{box:operator_notation}
+\begin{itemize}[noitemsep]
+  \item $D_x^{(1)}, D_y^{(1)}$：CCD 法による1次微分 $(\partial/\partial x,\, \partial/\partial y)$
+  \item $D_x^{(2)}, D_y^{(2)}$：CCD 法による2次微分 $(\partial^2/\partial x^2,\, \partial^2/\partial y^2)$
+  \item $D_{xy}^{(11)}$：CCD 法による混合微分 $\partial^2/\partial x\partial y$—
+        $(D_{xy}^{(11)} f)_{i,j} = (D_y^{(1)}[D_x^{(1)} f])_{i,j}$（逐次2段スウィープ，$\Ord{h^6}$）
+  \item $\mathcal{C}_{\text{CCD}}(\bu,\, q)$：CCD 中心差分移流オペレータ（記法．
+          本稿の運動量移流 bulk 既定は UCCD6；§~\ref{sec:uccd6_def}）
+          $= u\,D_x^{(1)} q + v\,D_y^{(1)} q$
+          （非保存形；$\bnabla\cdot\bm{u}=0$ のもとで保存形と等価．
+          CLS $\psi$ 移流には DCCD 保存形 $\mathrm{Div}_h^{\psi}$ を使用；§~\ref{sec:advection_motivation}）
+  \item $\mathcal{D}_{\mathrm{d},x}$，$\mathcal{D}_{\mathrm{d},y}$：各速度成分自身に作用する対角粘性項
+        （本稿では implicit-BDF2 の Helmholtz GMRES で陰的に評価；§~\ref{sec:time_viscous}）
+  \item $\mathcal{D}_{\mathrm{c},x}$，$\mathcal{D}_{\mathrm{c},y}$：他成分を含む交差粘性項
+        （標準設定では時刻 $n$ で陽的に評価；§~\ref{sec:time_viscous}，付録~\ref{app:cn_adi_detail}）
+  \item $\mathrm{Div}_h^{\psi}(\psi\bm{u})$：DCCD 保存形フラックス発散（CLS $\psi$ 移流専用．§~\ref{sec:advection_motivation}）
+  \item $\mathcal{G}^\text{adj}$：face-average 圧力勾配（非一様格子 + 壁面 BC 専用，$\Ord{h^2}$）
+          \[
+            (\mathcal{G}^\text{adj}_x\, p)_{i,j}
+            = \tfrac{1}{2}\!\left[
+                \tfrac{p_{i+1,j}-p_{i,j}}{d_f^{x,(i)}}
+              + \tfrac{p_{i,j}-p_{i-1,j}}{d_f^{x,(i-1)}}
+              \right]
+          \]
+          $J_f = 1/d_f^{(i)}$ を使い $\mathcal{D}_\text{FVM}(\mathcal{G}^\text{adj}) = \mathcal{L}_\text{FVM}$ を保証する
+          （§~\ref{sec:fvm_ccd_corrector}；均一格子では $\mathcal{G}^\text{adj} = D^{(1)}_\text{CCD}$）．
+  \item $\mathcal{L}_{\mathrm{CCD}}^{\rho}$：CCD product-rule 変密度ラプラシアン
+          $= (1/\rho)(D_x^{(2)}p + D_y^{(2)}p)
+            - (D_x^{(1)}\rho/\rho^2)D_x^{(1)}p
+            - (D_y^{(1)}\rho/\rho^2)D_y^{(1)}p$
+          （演算子単体 $\Ord{h^6}$．
+          分相 PPE 適用時は，液相内部 Dirichlet 評価で DC $k{=}3$ が $\Ord{h^7}$ を回復する
+          ことが §~\ref{sec:verify_split_ppe_dc} で実証されているが，
+          実運用の Neumann 条件では境界スキームにより $\Ord{h^5}$ が上界となる．
+          一括 smoothed Heaviside 密度場では界面近傍で高次精度が失われ，
+          高解像度側で格子収束がプラトー化する；§~\ref{sec:interface_crossing}）
+\end{itemize}
+\end{tcolorbox}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\subsection{完全アルゴリズム：離散形式}
+\label{sec:algo_flow}
+% ═════════════════════════════════════════════════════════════════════════════
+
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
+添字 $(i,j)$ は格子点，上付き文字 $n, *, n+1$ は時間ステップを表す．
+
+\phantomsection
+\label{alg:full_timestep}
+\begin{tcolorbox}[algbox, title={1 タイムステップ $t^n \to t^{n+1}$ の完全アルゴリズム}]
+
+% ── Step 1 ──────────────────────────────────────────────────────────────
+\paragraph{Step 1：CLS 移流}
+保存形レベルセット変数 $\psi^n$ を，速度場 $\bm{u}^n$ を用いて TVD-RK3 で時間発展させる：
+\begin{align*}
+  \psi^{(1)}_{i,j} &= \psi^n_{i,j} - \Delta t \, \mathrm{Div}_h^{\psi}(\psi^n \bm{u}^n)_{i,j} \\
+  \psi^{(2)}_{i,j} &= \tfrac{3}{4}\psi^n_{i,j} + \tfrac{1}{4}\psi^{(1)}_{i,j} - \tfrac{1}{4}\Delta t \, \mathrm{Div}_h^{\psi}(\psi^{(1)} \bm{u}^n)_{i,j} \\
+  \psi^*_{i,j} &= \tfrac{1}{3}\psi^n_{i,j} + \tfrac{2}{3}\psi^{(2)}_{i,j} - \tfrac{2}{3}\Delta t \, \mathrm{Div}_h^{\psi}(\psi^{(2)} \bm{u}^n)_{i,j}
+\end{align*}
+各ステージ完了後に $\psi \leftarrow \max(0,\min(1,\psi))$ のクランプを適用
+（DCCD は TVD 性を持たないため必須；注意~\ref{warn:adv_clamp}）．
+
+% ── Step 2 ──────────────────────────────────────────────────────────────
+\paragraph{Step 2：再初期化（適応トリガー）}
+体積モニタ $M = \int\psi(1-\psi)\,\mathrm{d}V$ が閾値を超えた場合にのみ再初期化を実行する
+（§~\ref{sec:adaptive_reinit}，式~\eqref{eq:adaptive_reinit_trigger}）：
+\[
+  \text{if}\quad M / M_{\mathrm{ref}} > \theta_{\mathrm{reinit}}
+  \quad\Longrightarrow\quad
+  \psi^{n+1} = \mathrm{Reinitialize}(\psi^*,\; n_{\mathrm{reinit}})
+  \quad\text{else}\quad
+  \psi^{n+1} = \psi^*
+\]
+\begin{equation}
+  \Delta\tau = \min\!\left(
+    \underbrace{\frac{0.5\,h^2}{2\,N_{\mathrm{dim}}\,\varepsilon}}_{\text{放物安定条件}},\;
+    \underbrace{0.5\,h}_{\text{双曲 CFL}}
+  \right)
+  \label{eq:dtau_reinit_def}
+\end{equation}
+$n_{\mathrm{reinit}} = 4$，$\theta_{\mathrm{reinit}} = 1.10$
+（§~\ref{sec:cls_compression}，アルゴリズム~\ref{alg:cls_reinit_dccd}）．
+固定頻度の再初期化は不要な呼び出しを多数発生させ形状精度を劣化させるため推奨しない
+（§~\ref{sec:verify_dccd_conservation}）．
+ただし Zalesak 型の鋭い幾何形状では，適応トリガーが局所的角劣化を検知できないため，
+固定頻度（20 ステップ毎）を併用する．
+
+\paragraph{Step 2b：DGR 厚み補正（独立適用）}
+演算子分裂の構造的膨張（§~\ref{sec:dgr_thickness}）を補正するため，
+20 物理ステップ毎に Direct Geometric Reinitialization を適用する：
+\[
+  \varepsilon_{\mathrm{eff}} = \mathrm{median}\!\left[\frac{\psi(1-\psi)}{|\bnabla\psi|}\right]_{\text{band}},
+  \quad
+  \phi_{\mathrm{sdf}} = \varepsilon\ln\!\left(\frac{\psi}{1-\psi}\right)
+    \cdot\frac{\varepsilon_{\mathrm{eff}}}{\varepsilon},
+  \quad
+  \psi \leftarrow H_\varepsilon(\phi_{\mathrm{sdf}})
+\]
+この補正は形状再初期化（Step 2）とは独立であり，界面位置を変えず厚みのみ復元する．
+ただし，スロット等の界面幅に近い狭い構造を含む場合は適用しない
+（グローバル $\varepsilon_{\mathrm{eff}}$ 推定が構造を破壊するため；§~\ref{sec:dgr_thickness}）．
+
+% ── Step 3 ──────────────────────────────────────────────────────────────
+\paragraph{Step 3：グリッド・物性更新}
+$\psi^{n+1}$ に基づき距離関数と物性値を再計算する
+（物性補間は $\psi$，幾何量は $\phi$；§~\ref{sec:notation}）：
+\begin{align*}
+  \phi^{n+1}_{i,j} &= \varepsilon\ln\!\left(\frac{\psi^{n+1}_{i,j}}{1-\psi^{n+1}_{i,j}}\right)
+                    \quad (\text{ロジット関数，§~\ref{sec:newton_inversion}}) \\
+  \rho^{n+1}_{i,j} &= \rho_l + (\rho_g-\rho_l)\,\psi^{n+1}_{i,j}, \qquad
+  \mu^{n+1}_{i,j}  = \mu_l + (\mu_g-\mu_l)\,\psi^{n+1}_{i,j}
+\end{align*}
+\textbf{注：}$\rho^{n+1}$，$\mu^{n+1}$ は Step 4--7 の現時刻係数として同一の値を使用する（中間更新なし）．
+ただし AB2/CN の既知項には，前ステップから保存された $\bu^{n-1}$，$\bu^n$，$\mu^n$ を用いる．
+
+% ── Step 4 ──────────────────────────────────────────────────────────────
+\paragraph{Step 4：曲率計算}
+$\phi^{n+1}$ の CCD 微分から曲率を求める（式~\eqref{eq:curvature_2d}）：
+\begin{align*}
+ (\phi_x, \phi_y) &= (D_x^{(1)}\phi^{n+1},\; D_y^{(1)}\phi^{n+1}), \quad
+ (\phi_{xx}, \phi_{yy}, \phi_{xy}) = (D_x^{(2)}\phi^{n+1},\; D_y^{(2)}\phi^{n+1},\; D_{xy}^{(11)}\phi^{n+1})
+\end{align*}
+\begin{equation*}
+ \kappa^{n+1}_{i,j} = -\frac{\phi_y^2 \phi_{xx}
+                              - 2\phi_x\phi_y\phi_{xy}
+                              + \phi_x^2 \phi_{yy}}
+                           {\max\!\bigl(\phi_x^2 + \phi_y^2,\;
+                            \varepsilon_{\text{norm}}^2\bigr)^{3/2}}
+\end{equation*}
+ここで $\varepsilon_{\text{norm}} = 10^{-12}$（ゼロ除算回避のための微小正則化定数）である．
+
+% ── Step 5 ──────────────────────────────────────────────────────────────
+\paragraph{Step 5：運動量予測（Predictor，Level 2a/2b 分岐）}
+Level 2a（中密度比・診断用）は対流項に AB2 外挿，対角粘性項に CN/ADI，
+交差粘性項に時刻 $n$ の陽的評価を用いる．
+Level 2b（水--空気級・長時間運用）は式~\eqref{eq:predictor_imex_bdf2} の
+IMEX--BDF2 予測子を用い，粘性ブロックを implicit-BDF2 で解く．
+いずれの場合も hydrostatic な浮力勾配は圧力空間へ残し，
+式~\eqref{eq:buoyancy_gradient_residual_split} の残差だけを
+投影と同じ面演算子で Predictor に入れる．
+表面張力は Level 2a では BF 対応 CSF 体積力として，
+Level 2b/3 では pressure-jump 形式の分相 PPE 側へ移す
+（Balanced-Force 条件，式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}；
+投影閉包は式~\eqref{eq:same_face_projection_closure}）．
+
+\medskip
+\underline{Level 2a の $x$ 成分（$u^*_{i,j}$，$n \ge 1$）：}
+\begin{align*}
+  \frac{\rho^{n+1}_{i,j}}{\Delta t}\bigl(u^*_{i,j} - u^n_{i,j}\bigr)
+  &= -\rho^{n+1}_{i,j}\Bigl[
+      \tfrac{3}{2}\mathcal{C}_{\text{CCD}}(\bu^n, u^n)
+      -\tfrac{1}{2}\mathcal{C}_{\text{CCD}}(\bu^{n-1}, u^{n-1})
+    \Bigr]_{i,j} \\
+  &\quad + \frac{1}{2Re}\bigl[
+      \mathcal{D}_{\mathrm{d},x}(\mu^{n+1}, \bu^*)
+      + \mathcal{D}_{\mathrm{d},x}(\mu^n, \bu^n)
+    \bigr]_{i,j}
+    + \frac{1}{Re}\bigl[\mathcal{D}_{\mathrm{c},x}(\mu^n, \bu^n)\bigr]_{i,j} \\
+  &\quad - \bigl(D_x^{(1)} p^n\bigr)_{i,j}
+         + \frac{1}{We}\,\kappa^{n+1}_{i,j}\,\bigl(D_x^{(1)}\psi^{n+1}\bigr)_{i,j}
+\end{align*}
+$y$ 成分は $x \leftrightarrow y$ の対称形に重力項
+$-\rho^{n+1}_{i,j}/Fr^2$ を加える（付録~\ref{app:predictor_y}）．
+本稿ではこの節点重力項をそのまま加えず，
+balanced-buoyancy 分解
+$\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$ の面残差形（§~\ref{sec:time_buoyancy}）で組み立てる．
+スタートアップ（$n=0,1$）は BDF1（後退 Euler）で 2 ステップ助走後，BDF2 + EXT2 へ移行する
+（§~\ref{sec:time_level1}，注意~\ref{warn:bdf2_startup}）．
+旧 Level 2a の CN/ADI 分裂の実装詳細は付録~\ref{app:cn_adi_detail} に保持される．
+
+\medskip
+\noindent\textbf{粘性 Helmholtz 系の呼び出し順（CN + Defect Correction）：}
+Level 2a/2b の対角粘性陰的化は CN 粘性 Helmholtz 系
+$(I-(\Delta t/2\rho)L_H)\mathbf{u}^*=\text{RHS}$ を解く必要がある．
+$L_H$ は CCD bulk + 2 次界面帯の混合演算子で前処理が困難なため，
+Defect Correction 分裂による外殻 FGMRES + 内部低次解器の 2 階層で呼び出す
+（形式定義と $L_L$ の構成・アンチパターン一覧は §\ref{sec:viscous_cn_defect}）：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item 高次残差 $r^{(m)} = \text{RHS} - A_H\mathbf{u}^{(m)}$ を CCD で評価．
+  \item 低次内部解 $A_L\delta\mathbf{u} = r^{(m)}$ を PCG+AMG / ADI / LU で求解
+        （規模に応じ選択：3D 大規模→PCG+AMG，構造 2D→ADI，小中規模→LU）．
+  \item $\mathbf{u}^{(m+1)} = \mathbf{u}^{(m)} + \delta\mathbf{u}$．
+\end{enumerate}
+$L_L$ は $L_H$ と同じ $\mu$・同じ BC・同じ帯スイッチを共有する
+（§\ref{sec:viscous_cn_defect} 末尾アンチパターン）．
+
+\noindent\textbf{注意（移動界面 $+$ 表面張力での発散）：}
+表面張力あり（$\sigma > 0$）の移動界面では，本 Step の $-\bnabla p^n$ 項が
+界面の圧力ジャンプ $\Delta p = \sigma\kappa$ を横断して CCD ステンシル上で
+$\Ord{1}$ の打ち切り誤差を生じ，2 ステップで発散する
+（§~\ref{sec:galilean_invariance}，§~\ref{sec:interface_crossing}）．
+この場合は分相 PPE 解法（§~\ref{sec:interface_crossing}）と
+HFE による $p^n$ の界面越し延長（§~\ref{sec:hfe}）への
+置換が必要である．
+
+\paragraph{Step 5a：HFE 延長による $p^n_{\mathrm{ext}}$ 構築（$\sigma > 0$ の場合）}
+上記の発散を回避するため，Step 5 の $-\bnabla p^n$ を評価する前に
+HFE（§~\ref{sec:field_extension}）を適用して片側延長場 $p^n_{\mathrm{ext}}$ を構築する：
+$p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa^n)$．
+以降の Predictor 式では $\bnabla p^n \to \bnabla p^n_{\mathrm{ext}}$ に置換する
+（等密度・$\sigma=0$ 領域では HFE は恒等作用で安全に省略可能）．
+
+% ── Step 6 ──────────────────────────────────────────────────────────────
+\paragraph{Step 6：圧力 Poisson 方程式の求解（IPC 増分法）}
+
+\noindent\textbf{Level 別 PPE 主方程式（先頭分岐）：}
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item \textbf{Level 1（SSPRK3 検証）/ Level 2a（中密度比プロダクション）：}
+        変密度一括 PPE（式~\eqref{eq:PPE_CCD_fullalgo}，product-rule 展開）を解く．
+        Level 2a では smoothed Heaviside + GFM 補正で
+        中程度の密度比（Level 1 等密度を超える二相流）に対応する
+        （高密度比 + 高粘性比 + 低 We の同時成立時は Level 3 を選択）．
+        DC 残差プラトー（$\|d^{(3)}\|_\infty/\|d^{(0)}\|_\infty > 10^{-3}$）が観測される
+        場合は Level 3 への切替を推奨する．
+  \item \textbf{Level 2b/Level 3（水--空気級 $\rho_l/\rho_g\gtrsim 500$）：}
+        \textbf{分相 PPE 解法}（式~\eqref{eq:split_ppe_fccd_block}，
+        §\ref{sec:split_ppe_framework}）が主方程式．
+        各相で定数密度 PPE
+        $-D_h^\FCCD(\rho_q^{-1}G_h^\FCCD p_q) = D_h^\FCCD\bu_q^*/\Delta t$
+        を独立に解き，界面ジャンプ条件 $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ と
+        $[\partial_n p]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$
+        （後者は \S\ref{sec:split_ppe_framework} の Laplace--Beltrami 法線分解
+        の 1 階成分；前提仮定 (H2) の flux-jump $[\rho^{-1}\partial_n p]_\Gamma=0$
+        とは別条件．\textbf{実装上}は \S\ref{sec:split_ppe_framework}
+        の式~\eqref{eq:gfm_gradient_jump} で定義する密度重み付け ghost-jet 形式
+        $p_q^{*\prime}(x_f)=(\rho_q/\rho_{\bar q})p_{\bar q}'(x_f)$ で gradient BC を構成する）
+        を HFE（§\ref{sec:field_extension}）で課す．
+        式~\eqref{eq:PPE_CCD_fullalgo} は使用しない．
+\end{itemize}
+
+\noindent\textbf{Level 1/2 の主方程式}：
+圧力増分 $\delta p \equiv p^{n+1} - p^n$ を欠陥補正法で求解する：
+\begin{equation}
+\begin{aligned}
+  &\left[
+    \frac{D_x^{(2)}(\delta p)}{\rho^{n+1}}
+    - \frac{D_x^{(1)}\rho^{n+1}}{(\rho^{n+1})^2}
+      D_x^{(1)}(\delta p)
+  \right]_{i,j} \\
+  &\quad+
+  \left[
+    \frac{D_y^{(2)}(\delta p)}{\rho^{n+1}}
+    - \frac{D_y^{(1)}\rho^{n+1}}{(\rho^{n+1})^2}
+      D_y^{(1)}(\delta p)
+  \right]_{i,j}
+  =
+  \frac{1}{\Delta t}
+  \Bigl(D_x^{(1)}\tilde{u}^*_{i,j}
+        + D_y^{(1)}\tilde{v}^*_{i,j}\Bigr)
+\end{aligned}
+  \label{eq:PPE_CCD_fullalgo}
+\end{equation}
+右辺は DCCD フィルタ後速度（$\varepsilon_d=1/4$）の
+CCD 発散から構成される．
+境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
+
+\noindent\textbf{DC $k{=}3$ 反復概要（Steps 6.0--6.5；構造は Level 共通，
+オペレータ $L_H/L_L$ の中身が Level 別に置換される）：}
+\begin{enumerate}[leftmargin=2em,noitemsep]
+  \item Step 6.0：初期化 $\delta p^{(0)} = 0$．
+  \item Step 6.1：$k=1,2,3$ で欠陥 $d^{(k)} = \text{RHS} - L_H\,\delta p^{(k-1)}$ を CCD で評価．
+  \item Step 6.2：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を疎行列 LU で厳密に解く（§~\ref{sec:dc_sweep}）．
+  \item Step 6.3：緩和更新 $\delta p^{(k)} = \delta p^{(k-1)} + \omega\,\eta^{(k)}$（$\omega \in \{0.3,0.5,0.7\}$）．
+  \item Step 6.4：収束判定 $\|d^{(k)}\|_\infty < \varepsilon_\mathrm{tol}$（既定 $10^{-10}$）．
+  \item Step 6.5：最終値 $\delta p \leftarrow \delta p^{(3)}$．
+\end{enumerate}
+
+\noindent\textbf{Level 別の $L_H, L_L$ 定義：}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}lll@{}}
+\hline
+Level & $L_H$（高次：欠陥評価） & $L_L$（低次：補正解；疎 LU） \\
+\hline
+1 / 2 & 一括 PPE 演算子 & 5 点 Laplacian \\
+ & 式~\eqref{eq:PPE_CCD_fullalgo} & $\Delta_h$（変密度 product-rule 2 次） \\
+3 & 各相内 \textbf{定数密度 Poisson} & 各相内 5 点 Laplacian \\
+ & $-D_h^\FCCD\rho_q^{-1}G_h^\FCCD$（相 $q$ 独立） & $\Delta_h$（相内一様） \\
+\hline
+\end{tabular}
+\end{center}
+Level 3 では DC を相ごとに独立適用し，界面ジャンプ BC は HFE
+（§\ref{sec:field_extension}）経由で各 DC ステップに供給される．
+詳細証明と ADI 比較は付録~\ref{app:dc_ppe_detail}，§~\ref{sec:defect_correction_main} 参照．
+
+\noindent\textbf{精度に関する補足：}
+§~\ref{sec:split_ppe_recovery} では，分相 PPE + DC $k{=}3$ が
+液相内部 Dirichlet 評価で $\rho_l/\rho_g = 1$--$1000$ に対し
+密度比に依存しない $\Ord{h^7}$ 超収束を示すことを実証した．
+Neumann 実運用では §~\ref{sec:verify_ppe_neumann} の境界精度により
+$\Ord{h^5}$ が上界であり，界面近傍の精度は HFE とジャンプ条件処理に依存する．
+
+% ── Step 6a ─────────────────────────────────────────────────────────────
+\paragraph{Step 6a：HFE による $\delta p$ 延長（$\sigma>0$ の Corrector 直前）}
+Step 6 で得た圧力増分 $\delta p$ に HFE（§\ref{sec:field_extension}）を適用し
+$\delta p_{\mathrm{ext}}$ を構築する．
+界面を跨ぐ $-(\Delta t/\rho)\bnabla(\delta p)$ 評価で
+$1/\rho$ ジャンプによる打ち切り誤差を回避するため，
+Step 7 の速度補正項では $\delta p_{\mathrm{ext}}$ を用いる．
+$\sigma=0$ では本ステップを省略する．
+
+% ── Step 7 ──────────────────────────────────────────────────────────────
+\paragraph{Step 7：速度・圧力補正（Corrector，IPC）}
+\label{box:fvm_ccd_metric}
+圧力増分 $\delta p$ を用いて速度と圧力を同時に更新する：
+\begin{align*}
+u^{n+1}_{i,j} &= u^*_{i,j}
+  - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(\mathcal{G}_x \,\delta p\bigr)_{i,j}, \quad
+v^{n+1}_{i,j} = v^*_{i,j}
+  - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(\mathcal{G}_y \,\delta p\bigr)_{i,j} \\
+p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
+\end{align*}
+ここで勾配演算子 $\mathcal{G}$ は格子・境界条件により選択する：
+\begin{itemize}[noitemsep]
+  \item \textbf{均一格子，または周期 BC：}
+        $\mathcal{G}_x = D_x^{(1)}$（CCD $\Ord{h^6}$）．
+        CCD 発散の意味で非圧縮条件を満たす：
+        $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1} \approx 0$
+        （DCCD フィルタが $2\Delta x$ モードを除去）．
+  \item \textbf{非一様格子（$\alpha>1$）+ 壁面 BC：}
+        $\mathcal{G}_x = \mathcal{G}_x^\text{adj}$（face-average 勾配，$\Ord{h^2}$，§~\ref{sec:fvm_ccd_corrector}）．
+        $\mathcal{D}_\text{FVM}(\mathcal{G}^\text{adj}) = \mathcal{L}_\text{FVM}$ が成立するため，
+        FVM 発散の意味で非圧縮条件を満たす：
+        $\mathcal{D}_{\text{FVM},x}\, u^{n+1} + \mathcal{D}_{\text{FVM},y}\, v^{n+1} \approx 0$．
+        CCD 勾配（$J_n \neq J_f$）を使うと毎ステップ残差発散が蓄積し
+        $\alpha=1.5$ で約50ステップ後にブローアップが生じる．
+\end{itemize}
+\end{tcolorbox}
