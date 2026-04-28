@@ -1,6 +1,7 @@
 # §11--§13 ResearchArchitect Strict Review — 2026-04-28
 
 Initial verdict: MAJOR REVISION.
+Verdict after fixes: PASS (0 FATAL, 0 MAJOR).
 
 ## Scope
 - Reviewed `paper/sections/11_full_algorithm.tex`.
@@ -64,6 +65,23 @@ Initial verdict: MAJOR REVISION.
 4. Reframe §11d pure FCCD DNS as a research-limit architecture, not an implementation plan.
 5. Reframe §13 parent summary to foreground V7/V9/V10 limitations and make the chapter’s verdict honest.
 6. Normalize §12/§13 experiment subsection format after the technical routing is stable.
+
+## Fix Summary
+- R11-13-1 fixed: §11 no longer exposes retired Level 1/2/3 routing; visible routing now uses “一括 PPE”, “分相 PPE”, and “純 FCCD DNS（研究構成）”.
+- R11-13-2/R11-13-3 fixed: §11 Step 5/6 now separates one-field PPE and split PPE paths, clarifies Step 5a as HFE extension of known pressure, and places pressure-jump handling in the split PPE branch.
+- R11-13-4 fixed: §11d roadmap/YAML/planned-appendix/acceptance-plan material was replaced by a paper-facing “検証章との接続” table and a scoped research-architecture positioning paragraph.
+- R11-13-5 fixed: §12 U6 is now “一括 PPE の限界 + DC/HFE 単体挙動”; §13 V6 remains split PPE + DC + HFE integrated robustness.
+- R11-13-6/R11-13-7 fixed: §11 and §13 now state upfront that two-phase IMEX--BDF2 is limited by reinitialization frequency and curvature lag; §13 adds a verdict policy distinguishing pass, conditional pass, and limitation.
+- R11-13-8/R11-13-9 fixed: visible `ch13_v*`, `旧 §13g`, `blew_up = False`, and stale §13e chapter references were removed or corrected.
+- R11-13-10 fixed: U4 acceptance thresholds were made explicit (`≤1.5h`, ratio error `≤10^{-4}`).
+- R11-13-11 fixed: duplicate V6 verification prose was removed.
+- R11-13-12/R11-13-13 fixed: terminology and subsection headings were normalized across §11--§13 (`寄生流れ`, `再初期化`, `一括 PPE`, `分相 PPE`; `検証対象 / 設定 / 結果 / 判定...`).
+
+## Verification After Fixes
+- `git diff --check` passed.
+- `cd paper && latexmk -xelatex -interaction=nonstopmode main.tex` passed.
+- Output: 221 pages.
+- Log scan: 0 undefined references, 0 undefined citations, 0 multiply-defined labels.
 
 ## SOLID Audit
 - [SOLID-X] Not applicable to this review artifact. No `src/` code or production class/module structure was modified.

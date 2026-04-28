@@ -1,24 +1,30 @@
 % paper/sections/13_verification.tex
 %
-% §13: 統合検証 (Integration Verification) — V1-V10 ゼロベース新実験駆動.
-% Parent stub: 序 + V1-V10 概観 + 6 sub-file \input.
-% 旧 §13 (13b_force_balance / 13c_conservation / 13d_time_accuracy / 13e_highre_dccd /
-% 13f_coupling / 13g_interface_crossing / 13h_nonuniform_grid / 13i_error_budget)
-% は本ブランチで一括 git rm し，本ファイルから 6 新 sub-file へ再構成．
+% §13: 統合検証 (Integration Verification) — V1-V10.
+% Parent section: position, verdict policy, overview, and sub-file inputs.
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{多相流ソルバの統合検証実験}
 \label{sec:verification}
 
-\paragraph{位置付け．}
+\paragraph{本章の位置付け．}
 \autoref{sec:numerical_integrity}（§12）で個別コンポーネント
 （CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Godunov Eikonal U4，
 Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静的液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
 \textbf{単体で}設計仕様（slope, 境界整合，演算子トレース性）を満たすことを確認した．
 本章は，これらコンポーネントを\textbf{統合}した完全 Navier--Stokes / 二相流ソルバが
-\textbf{物理整合性}と\textbf{設計収束次数}を保つかを，10 個の独立した統合検証実験
+\textbf{物理整合性を保つ領域}と\textbf{設計収束次数が崩れる領域}を，10 個の独立した統合検証実験
 V1--V10 で評価する．
 本章の V 系列は integration verification 専用であり，
 前章の U 系列（単体 component verification）とは実験目的と判定基準を分ける．
+
+\paragraph{判定の読み方．}
+本章では，\checkmark を「設計通りに確認できた結果」，
+$\triangle$ を「物理的説明はつくが検証目的に対して条件付きの結果」，
+$\times$ を「本稿の保証範囲外または設計未達」とする．
+V1/V2/V3/V5/V6/V8 は主張を支持する結果である一方，
+V7（二相時間次数），V9（局所 $\varepsilon$），V10（非一様格子上 CLS 移流）は
+制約条件を与える負の結果である．
+本章ではこれらを隠さず，アルゴリズムの適用範囲を定めるための検証結果として扱う．
 
 \paragraph{V1--V10 の設計指針．}
 \begin{itemize}\setlength{\itemsep}{0pt}
@@ -28,7 +34,7 @@ V1--V10 で評価する．
   \item \textbf{設定忠実性} — 各実験は表に示す物理設定
         （$\sigma$, $\rho_l/\rho_g$, $\Re$, BC）で評価する．
   \item \textbf{対応関係} — 各実験は「目的 → 設定 → 結果 → 判定」の順に記述する．
-  \item \textbf{数値の扱い} — 表には再生成した数値のみを記載し，旧表の値は再利用しない．
+  \item \textbf{数値の扱い} — 表には再生成した数値のみを記載し，過去表の値は再利用しない．
 \end{itemize}
 
 \paragraph{V1--V10 概観．}
@@ -41,18 +47,18 @@ V1--V10 で評価する．
 \centering\footnotesize
 \begin{tabular}{l l l l}
 \toprule
-ID & 検証対象 & 新図 (ch13\_v*) & 主要指標 \\
+ID & 検証対象 & 図 & 主要指標 \\
 \midrule
-V1 & 単相 TGV エネルギー減衰          & v1\_tgv\_energy            & $E_{\mathrm{rel}}$ slope (dt) \\
-V2 & Kovasznay CCD 空間残差            & v2\_kovasznay\_orders       & $\|R\|_\infty$ slope (h) \\
-V3 & 静的液滴 long-term (200 step)    & v3\_static\_droplet         & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
-V4 & Galilean + Rayleigh--Taylor       & v4\_galilean\_rt           & $\|\Delta\|_\infty$, $\gamma_{\mathrm{num}}/\gamma_{\mathrm{th}}$ \\
-V5 & 寄生流れ multistep ($\rho_r$/op) & v5\_spurious\_multistep    & $u_\infty^{\mathrm{end}}$ (CCD vs FD) \\
-V6 & 密度比収束 ($\rho_r=2..833$)      & v6\_density\_ratio          & $\Delta p_{\mathrm{meas}}$, $u_\infty^{\mathrm{end}}$ \\
-V7 & IMEX-BDF2 二相時間精度            & v7\_imex\_bdf2\_time        & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
-V8 & 非一様 NS 静的 (200 step)         & v8\_nonuniform\_static      & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
-V9 & 局所 $\varepsilon$ 比較 (fixed/local) & v9\_local\_eps           & $u_\infty^{\mathrm{max}}$ 安定性比較 \\
-V10 & Zalesak / CLS-advection 非一様   & v10\_zalesak                & $V$-drift, centroid err \\
+V1 & 単相 TGV エネルギー減衰          & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (dt) \\
+V2 & Kovasznay CCD 空間残差            & \autoref{fig:V2_kovasznay}       & $\|R\|_\infty$ slope (h) \\
+V3 & 静的液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
+V4 & Galilean + Rayleigh--Taylor       & \autoref{fig:V4_galilean_rt}     & $\|\Delta\|_\infty$, $\gamma_{\mathrm{num}}/\gamma_{\mathrm{th}}$ \\
+V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD vs FD) \\
+V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $\Delta p_{\mathrm{meas}}$, $u_\infty^{\mathrm{end}}$ \\
+V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
+V8 & 非一様 NS 静的 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
+V9 & 局所 $\varepsilon$ 比較 (fixed/local) & \autoref{fig:V9_local_eps}     & $u_\infty^{\mathrm{max}}$ 安定性比較 \\
+V10 & Zalesak / CLS 移流 非一様   & \autoref{fig:V10_zalesak}        & $V$-drift, centroid err \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -63,7 +69,7 @@ V10 & Zalesak / CLS-advection 非一様   & v10\_zalesak                & $V$-dr
   \item \autoref{sec:twophase_static_verification}：V3 (静的液滴 long-term) + V5 (寄生流れ multistep)．
   \item \autoref{sec:galilean_rt}：V4 (Galilean 不変性 + Rayleigh--Taylor)．
   \item \autoref{sec:varrho_dc_convergence}：V6 (密度比 sweep) + V7 (IMEX-BDF2 二相時間精度)．
-  \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静的) + V9 (局所 $\varepsilon$) + V10 (CLS-advection 非一様)．
+  \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静的) + V9 (局所 $\varepsilon$) + V10 (CLS 移流 非一様)．
   \item \autoref{sec:error_budget}：V1--V10 横断の精度バジェット synthesis．
 \end{itemize}
 
