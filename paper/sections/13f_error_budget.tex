@@ -1,0 +1,110 @@
+% paper/sections/13f_error_budget.tex
+%
+% Synthesis: V1-V10 横断の精度バジェット
+% Hosts labels: sec:error_budget, sec:accuracy_summary
+% (tab:accuracy_summary 09f, sec:time_accuracy_table 07 を authoritative とし
+%  本節からは hosting せず外部参照のみで連結する)
+% No new figure embedding (synthesis section).
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{精度バジェット synthesis}
+\label{sec:error_budget}
+\label{sec:accuracy_summary}
+
+\paragraph{構成．}
+本節は V1--V10 横断の精度結果を一表に集約し，
+\textbf{各誤差源} (空間離散，時間離散，界面表現，曲率推定，CLS reinit) と
+\textbf{各設定パラメータ} ($\rho_r$, $\alpha$, $\Delta t$, $h$) の関係を整理する．
+旧 §13i の master accuracy table を，V-experiment npz 由来の値で再構築した形．
+
+\paragraph{Master accuracy summary．}
+
+\begin{table}[!ht]
+\caption{V1--V10 master accuracy summary．
+slope は log-log fitting (3 点以上)；単一値はその設定での代表値．
+括弧内は実装誤差源．}
+\label{tab:v_accuracy_summary}
+\centering\footnotesize
+\begin{tabular}{l l l l l}
+\toprule
+ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
+\midrule
+V1-a & 単相 TGV 空間 & $E_{\mathrm{rel}}$ at $N=64,128$ & $2.4\times 10^{-9}$ (時間誤差床) & — \\
+V1-b & 単相 TGV 時間 (AB2/IMEX-BDF2) & slope($E_{\mathrm{rel}}, \Delta t$) & $\mathbf{2.00}$ & $O(\Delta t^2)$ \checkmark \\
+V2-a & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{6.00}$ & $O(h^6)$ \checkmark \\
+V3   & 静的液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
+V4-a & Galilean 不変性 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (補間誤差支配) $\triangle$ & — \\
+V4-b & RT 線形成長率 & rel\_err($\gamma$) at $N=64$ & $43.3\%$ ($\triangle$ 短時間) & — \\
+V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9$ & — \\
+V6   & 密度比 sweep ($\rho_r=2..833$) & $|\Delta p_{\mathrm{rel}}|^{\max}$ & $1.77\%$ ($\rho_r=833, N=32$) \checkmark & — \\
+V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{0.56}$ ($\times$ 設計未達) & $O(\Delta t^2)$ 設計 \\
+V8   & 非一様 NS 静的 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
+V9   & local $\varepsilon$ vs fixed & $u_\infty^{\max}$ ratio (C/A) at $N=64$ & $4860\times$ ($\times$ 推奨せず) & — \\
+V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $0.64\%$ \checkmark & — \\
+V10-b& Zalesak ($\alpha=2$) & volume drift at $N=128$ & $12.17\%$ ($\times$ 要改善) & — \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{誤差源スタック．}
+\begin{enumerate}\setlength{\itemsep}{0pt}
+  \item \textbf{空間離散誤差}．CCD 6 次（V2 で確証）．Kovasznay slope $6.00$，TGV では時間誤差床下．
+  \item \textbf{時間離散誤差}．単相 NS は AB2/IMEX-BDF2 で $O(\Delta t^2)$（V1 slope $2.00$）．
+        二相結合では界面 reinit + 曲率 lag で実効 $O(\Delta t^{0.56})$（V7; \autoref{sec:imex_bdf2_twophase_time}）．
+  \item \textbf{界面表現誤差}．Heaviside--$\delta$ は固定 $\varepsilon$ 推奨（V9）；
+        local $\varepsilon$ は寄生流れ 3 桁増加．
+  \item \textbf{曲率推定誤差}．CSF $\kappa$ + CCD 勾配で寄生流れ V5: CCD/FD 比 $1/3$--$1/6$ 抑制．
+  \item \textbf{CLS reinit 誤差}．非一様格子 $\alpha=2$ で 1 周期積分後 volume drift $+12\%$（V10）．
+\end{enumerate}
+
+\paragraph{合格判定要約．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \checkmark \textbf{合格}: V1-b (時間 2 次)，V2-a (空間 6 次)，
+        V3 (BF 平衡)，V5 (CCD 寄生流れ抑制)，V6 (密度比ロバスト)，
+        V8 (非一様静的), V10 ($\alpha=1$).
+  \item $\triangle$ \textbf{条件付き合格}: V4-a (Galilean: 固定 Eulerian + 参照点固定 PPE で
+        $O(\|\bm U\|)$ 残差), V4-b (RT: 線形抽出 spec 外設計).
+  \item $\times$ \textbf{要改善 / 推奨せず / 制約条件}:
+        V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; reinit 頻度差 + $\kappa$ explicit lag が律速),
+        V9 (local $\varepsilon$ → 寄生流れ激増; fixed $\varepsilon$ が安全 default),
+        V10 ($\alpha=2, N=128$ → volume drift $+12.17\%$; CLS-advection 非一様格子は $\alpha\!=\!1$ 推奨).
+\end{itemize}
+
+\paragraph{設計指針 (PR-5 Algorithm Fidelity)．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item 単相 NS：CCD 6 次空間 + AB2/IMEX-BDF2 2 次時間が paper-exact 設計通り．
+  \item 二相 NS：分相 PPE + DC + HFE 構成が密度比 $\le 833$ でロバスト（V6）．
+        ただし時間方向の実効次数は界面処理に律速されるため，
+        \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
+  \item 非一様格子：$\alpha = 1$ 推奨．$\alpha > 1$ 設定は CLS reinit と局所 $\varepsilon$ の
+        相互作用に注意．
+  \item 寄生流れ抑制：CCD 演算子は FD 比 $3$--$6$ 倍抑制（V5）；
+        CSF + 高次圧力勾配の組み合わせが効果的．
+\end{itemize}
+\paragraph{A3 トレース統合．}
+本節は V1--V10 全結果の横断統合点．eq → discretization → code の連鎖を以下の
+親 → sub 接続で明示する（個別の式番号と実装パスは各 sub-section 末尾を参照）：
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item V1 (\autoref{sec:single_phase_ns}) — Navier--Stokes \eqref{eq:NS_onefluid}
+        → AB2 / IMEX-BDF2（\autoref{ch:time_integration}） →
+        \texttt{src/twophase/integrator/\{ab2,imex\_bdf2\}.py}．
+  \item V2 (\autoref{sec:single_phase_ns}, \autoref{sec:kovasznay}) —
+        CCD 6 次空間（\autoref{sec:ccd_def} 式~\eqref{eq:CCD_I}） →
+        \texttt{src/twophase/ccd/ccd\_solver.py}．
+  \item V3, V5 (\autoref{sec:bf_static_droplet}, \autoref{sec:spurious_multistep})
+        — BF 力学的バランス \eqref{eq:bf_fccd_unification} + CSF
+        \eqref{eq:csf_final} → \texttt{src/twophase/csf/curvature.py},
+        \texttt{src/twophase/ccd/ccd\_solver.py}．
+  \item V4 (\autoref{sec:galilean_invariance}, \autoref{sec:rt_linear_growth}) —
+        CCD 移流項対称性 + PPE 参照点ゲージ → \texttt{src/twophase/poisson/ppe.py}．
+  \item V6, V7 (\autoref{sec:density_ratio_sweep},
+        \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
+        DC + HFE → \texttt{src/twophase/poisson/\{split\_ppe,density\_correction\}.py},
+        \texttt{src/twophase/integrator/imex\_bdf2.py},
+        \texttt{src/twophase/cls/reinit.py}（律速）．
+  \item V8, V9, V10 (\autoref{sec:nonuniform_grid_ns}) — 非一様 NS + local
+        $\varepsilon$ + CLS-advection → \texttt{src/twophase/grid/nonuniform.py},
+        \texttt{src/twophase/cls/\{advection,reinit\}.py}．
+\end{itemize}
+本節 \autoref{tab:v_accuracy_summary} はこの全連鎖の精度結果を一表に集約する
+唯一の synthesis であり，他章 (\autoref{sec:conclusion}) からの inbound 参照は
+本表をエンドポイントとする．

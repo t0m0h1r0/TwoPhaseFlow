@@ -72,7 +72,7 @@ $128$ & $0.0078$ & $1.59\times 10^{-3}$ & $1.39$ & & $100$  & $0.0156$ & $1.27\t
 
 \begin{table}[!ht]
 \caption{U6-c: HFE 単独 MMS（外挿ステンシル）．
-\textbf{1D} は設計通り 6 次（slope $\approx 5.99$, $N=32\!\to\!256$）．
+\textbf{1D} は設計通り 6 次近傍（slope $\approx 5.91$, $N=32\!\to\!256$）．
 \textbf{2D} band は円界面の closest-point 幾何診断であり，
 max が 4--5 次，med が 3 次強へ律速する（条件付き合格）．}
 \label{tab:U6_hfe}
@@ -86,7 +86,7 @@ $64$  & $0.0156$ & $1.62\times 10^{-9}$ & $1.51\times 10^{-6}$ & $2.51\times 10^
 $128$ & $0.0078$ & $2.68\times 10^{-11}$ & $1.99\times 10^{-7}$ & $2.64\times 10^{-8}$ \\
 $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $2.54\times 10^{-8}$ & $4.02\times 10^{-9}$ \\
 \midrule
-\multicolumn{2}{r}{slope ($N\!=\!32\!\to\!256$)} & $\mathbf{5.99}$ & $\mathbf{5.05}$ & $\mathbf{3.21}$ \\
+\multicolumn{2}{r}{slope ($N\!=\!32\!\to\!256$)} & $\mathbf{5.91}$ & $\mathbf{5.10}$ & $\mathbf{3.21}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -97,7 +97,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $2.54\times 10^{-8}$ & $4.02\times 10
 \caption{U6：lumped--PPE + DC + HFE．
 DC $\omega$ 収束は $\rho_l \le 10$ 良好，$\rho_l \ge 100$ は $\omega \ge 0.5$ で stall；
 高密度比 $\rho_l = 1000$ で N--sweep slope $\approx 0.78$（lumped--PPE 構造的制約）；
-HFE 1D 設計 6 次（slope $5.99$），2D band 診断は max $5.05$ / med $3.21$．
+HFE 1D 設計 6 次近傍（slope $5.91$），2D band 診断は max $5.10$ / med $3.21$．
 出典：\texttt{experiment/ch12/exp\_U6\_split\_ppe\_dc\_hfe.py}．}
 \label{fig:ch12_u6}
 \end{figure}

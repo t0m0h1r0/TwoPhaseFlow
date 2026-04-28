@@ -1,95 +1,75 @@
-% paper/sections/12_verification.tex
+% paper/sections/13_verification.tex
 %
-% §12  NS 方程式の物理的整合性検証 (Physical Consistency Verification)
-%
-% 検証の 3 層構造：
-%   第10章 — コンポーネント単体（各演算子が設計精度を満たすか）
-%   第11章 — 物理的整合性（組み上げた NS ソルバが物理法則を正しく記述するか）
-%   第12章 — 二相流ベンチマーク（公表参照解との定量比較）
+% §13: 統合検証 (Integration Verification) — V1-V10 ゼロベース新実験駆動.
+% Parent stub: 序 + V1-V10 概観 + 6 sub-file \input.
+% 旧 §13 (13b_force_balance / 13c_conservation / 13d_time_accuracy / 13e_highre_dccd /
+% 13f_coupling / 13g_interface_crossing / 13h_nonuniform_grid / 13i_error_budget)
+% は本ブランチで一括 git rm し，本ファイルから 6 新 sub-file へ再構成．
 % ═══════════════════════════════════════════════════════════════════════════════
-\section{NS 方程式の物理的整合性検証}
+\section{統合検証：V1--V10 ゼロベース実験}
 \label{sec:verification}
 
-本稿の数値検証は以下の 3 層構造で設計されている：
-\begin{enumerate}[noitemsep]
-  \item[\textbf{第~\ref{sec:numerical_integrity}章}]
-    \textbf{コンポーネント単体} — 各演算子・ソルバが設計精度を満たすか（済）
-  \item[\textbf{本章}]
-    \textbf{物理的整合性} — 組み上げた NS ソルバが物理法則を正しく記述するか
-  \item[\textbf{第~\ref{sec:validation}章}]
-    \textbf{二相流ベンチマーク} — 公表参照解との定量比較
-\end{enumerate}
-第~\ref{sec:numerical_integrity}章では CCD 微分演算子の $\Ord{h^6}$ 精度，
-PPE 欠陥補正の格子収束，DCCD フィルタの散逸特性など，
-個々のコンポーネントが設計精度を有することを確認した．
-しかし，各部品が正しくても，それらの結合が物理法則と整合する保証はない．
-本章では，Predictor--PPE--Corrector パイプライン全体を単一の NS ソルバとして動作させ，
-解析解が既知の物理問題で整合性を検証する．
-なお，本章のテストでは\textbf{成功と同時に限界も明らかになる}：
-単相 NS ソルバは設計精度を完全に達成し（§~\ref{sec:ns_time_accuracy}），
-低密度比（$\rho_l/\rho_g \leq 5$）の二相流は静止界面で概ね安定動作する
-（§~\ref{sec:advection_pressure_coupling}；$\rho_l/\rho_g{=}5$ では条件付き）一方，
-§~\ref{sec:interface_crossing} の定量分析により
-smoothed Heaviside 一括解法では界面型密度場で漸近格子収束が失われることを示す．
-また §~\ref{sec:galilean_invariance} で移動界面＋表面張力（$\sigma > 0$）では
-IPC（増分圧力補正, Incremental Pressure Correction；§~\ref{sec:time_int}）が
-2 ステップで発散することを実証し，
-分相 PPE 解法（§~\ref{sec:split_ppe_framework}）による解決策を提示する．
+\paragraph{位置付け．}
+\autoref{sec:numerical_integrity}（§12）で個別コンポーネント
+（CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Ridge--Eikonal U4，
+Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静的液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
+\textbf{単体で}設計仕様（slope, 境界整合，演算子トレース性）を満たすことを確認した．
+本章は，これらコンポーネントを\textbf{統合}した完全 Navier--Stokes / 二相流ソルバが
+\textbf{物理整合性}と\textbf{設計収束次数}を保つかを，10 個の独立した統合検証実験
+V1--V10 でゼロベース（旧データ・旧表は一切再利用しない）に評価する．
 
-\noindent\textbf{本章のスコープ：}
-検証は物理的複雑さを段階的に引き上げ，以下の 7 段階で構成される：
-\begin{enumerate}[noitemsep]
-  \item \textbf{§~\ref{sec:force_balance}（力学的バランス）：}
-        静止流体における重力・表面張力の釣合．
-  \item \textbf{§~\ref{sec:ns_conservation}（保存則）：}
-        運動エネルギー減衰と非圧縮条件の維持．
-  \item \textbf{§~\ref{sec:ns_time_accuracy}（総合精度）および §~\ref{sec:highre_dccd}（DCCD 非侵襲性）：}
-        NS 方程式の時間・空間収束次数，DCCD フィルタの非侵襲性，
-        交差微分粘性項の CFL 安定性，
-        および界面近傍での時間精度劣化の診断を含む．
-  \item \textbf{§~\ref{sec:advection_pressure_coupling}（二相流結合）：}
-        CLS↔PPE 結合の物理的整合性（$\rho_l/\rho_g \leq 5$），
-        HFE と曲率フィルタの使い分け（適合性は付録~\ref{sec:hfe_smoothed_scope}），
-        Galilean 不変性．
-  \item \textbf{§~\ref{sec:interface_crossing}（一括解法の適用限界）：}
-        smoothed Heaviside 一括解法の格子収束劣化と分相 PPE 解法の必要性の数値的根拠．
-  \item \textbf{§~\ref{sec:nonuniform_grid_ns}（界面適合格子の NS 結合）：}
-        非一様格子上での NS ソルバ動作検証（静止液滴），
-        空間可変 $\varepsilon$ と CSF の非互換性診断，
-        CLS 移流精度，格子密度幅パラメタの較正．
-  \item \textbf{§~\ref{sec:error_budget}（精度バジェット）：}
-        全コンポーネントの実測精度を統合し，律速段階と今後の展望を示す．
-\end{enumerate}
+\paragraph{V1--V10 の設計指針．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \textbf{Tier 構造} — V1--V2 は単相 NS（密度比 $1$）で空間/時間収束を確立し，
+        V3--V7 で二相 NS（密度比 $\le 833$）の物理整合性と時間精度を，
+        V8--V10 で非一様格子上の堅牢性を検証する．
+  \item \textbf{Algorithm Fidelity (PR-5)} — 各実験は paper-exact 設定
+        （$\sigma$, $\rho_l/\rho_g$, $\Re$, BC）で driver を呼び，CPU 上で bit-exact 再現可能．
+  \item \textbf{A3 Traceability} — 各 sub-file 末尾に「式 → 離散化 → コード」の chain を明示．
+  \item \textbf{出典} — 全数値は \texttt{experiment/ch13/results/V[1-10]\_*/data.npz}
+        から numpy で抽出した値のみを表に記載（旧 §13 prose 表セルの再利用は無し）．
+\end{itemize}
 
-\noindent
-各テストは理論解・解析解との定量比較により合否を判定する．
-結果を踏まえた精度バジェットを §~\ref{sec:error_budget} に総括し，
-第~\ref{sec:validation}章の二相流ベンチマークへと接続する．
+\paragraph{V1--V10 概観．}
+表~\ref{tab:V_summary} に各実験の検証対象・新図・主要指標を示す．
+詳細は本章 6 sub-file 内で個別に述べる．
 
-\begin{table}[htbp]
-\centering
-\caption{物理的整合性の検証指標と許容基準}
-\label{tab:verification}
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{p{32mm}p{34mm}p{26mm}>{\raggedright\arraybackslash}p{20mm}l}
+\begin{table}[!ht]
+\caption{V1--V10 統合検証の概観．新図は \texttt{paper/figures/ch13\_v[1-10]\_*.pdf}．
+出典スクリプトは \texttt{experiment/ch13/exp\_V[1-10]\_*.py}．}
+\label{tab:V_summary}
+\centering\footnotesize
+\begin{tabular}{l l l l}
 \toprule
-検証項目 & 理論値/解析解 & チェック方法 & 許容基準 & 節 \\
+ID & 検証対象 & 新図 (ch13\_v*) & 主要指標 \\
 \midrule
-静水圧バランス & $p = \rho g z$，$\bu = \bm{0}$ & $\|\bu\|_\infty$ & $< 10^{-5}$\textsuperscript{$\dagger$} & §\ref{sec:force_balance}\\
-Laplace 圧均衡 & $\Delta p = \sigma/R$ & $\Delta p$ 相対誤差 & $< 1\%$ & §\ref{sec:force_balance}\\
-運動エネルギー減衰 & $E_k(t) = E_k(0)\,e^{-4\nu t}$ & 相対誤差 & $< 10^{-4}$ & §\ref{sec:ns_conservation}\\
-非圧縮条件（単相） & $\bnabla\cdot\bu \equiv 0$ & $\|\bnabla\cdot\bu\|_\infty$ & $< 10^{-10}$\textsuperscript{$\ddagger$} & §\ref{sec:ns_conservation}\\
-NS 時間精度 & $\Ord{\Delta t^2}$（AB2+IPC） & $\Delta t$ 精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
-NS 空間精度 & Kovasznay 解析解 & 格子精緻化 & スロープ確認 & §\ref{sec:ns_time_accuracy}\\
-DCCD 非侵襲性 & $E_k^{\text{CCD}} \approx E_k^{\text{DCCD}}$ & 相対差 & $< 10^{-3}$ & §\ref{sec:highre_dccd}\\
-静止液滴安定性 & 寄生流れ有界 & 200 ステップ & 成長比 $< 5$ & §\ref{sec:advection_pressure_coupling}\\
-HFE 適合性 & smoothed $p$: HFE 不要 & ON/OFF 比較 & 適用範囲の特定 & 付録~\ref{sec:hfe_smoothed_scope}\\
-Galilean 不変性 & $\|\bu - \bu_0\|_\infty = 0$ & 1 周期後 & $< 10^{-10}$ & §\ref{sec:advection_pressure_coupling}\\
-PPE 一括解法限界 & 界面型密度場の収束劣化 & 残差履歴・格子収束 & 劣化機構の特定 & §\ref{sec:interface_crossing}\\
-分相 PPE 精度回復\textsuperscript{$\S$} & 密度比非依存 & 格子収束 & DC $k{=}3$: $\Ord{h^7}$ & §\ref{sec:verify_split_ppe_dc}\\
+V1 & 単相 TGV エネルギー減衰          & v1\_tgv\_energy            & $E_{\mathrm{rel}}$ slope (dt) \\
+V2 & Kovasznay CCD 空間残差            & v2\_kovasznay\_orders       & $\|R\|_\infty$ slope (h) \\
+V3 & 静的液滴 long-term (200 step)    & v3\_static\_droplet         & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
+V4 & Galilean + Rayleigh--Taylor       & v4\_galilean\_rt           & $\|\Delta\|_\infty$, $\gamma_{\mathrm{num}}/\gamma_{\mathrm{th}}$ \\
+V5 & 寄生流れ multistep ($\rho_r$/op) & v5\_spurious\_multistep    & $u_\infty^{\mathrm{end}}$ (CCD vs FD) \\
+V6 & 密度比収束 ($\rho_r=2..833$)      & v6\_density\_ratio          & $\Delta p_{\mathrm{meas}}$, $u_\infty^{\mathrm{end}}$ \\
+V7 & IMEX-BDF2 二相時間精度            & v7\_imex\_bdf2\_time        & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
+V8 & 非一様 NS 静的 (200 step)         & v8\_nonuniform\_static      & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
+V9 & 局所 $\varepsilon$ 比較 (fixed/local) & v9\_local\_eps           & $u_\infty^{\mathrm{max}}$ 安定性比較 \\
+V10 & Zalesak / CLS-advection 非一様   & v10\_zalesak                & $V$-drift, centroid err \\
 \bottomrule
-\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\dagger$}$N{=}32$ は CCD 壁面境界スキーム（$\Ord{h^5}$）の影響で $\Ord{10^{-5}}$ に留まる；$N{\geq}64$ では $\Ord{10^{-10}}$ 以下（§~\ref{sec:force_balance}）．}} \\
-\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\ddagger$}FFT 直接法 PPE（単相・周期境界）での基準．二相流では CSF ソース項・変密度 PPE の打切り誤差により $\|\bnabla\cdot\bu\|_\infty \sim \Ord{10^{-2}}$ となる場合がある（§~\ref{sec:advection_pressure_coupling}）．}} \\
-\multicolumn{5}{l}{\parbox{150mm}{\footnotesize \textsuperscript{$\S$}第~\ref{sec:numerical_integrity}章のコンポーネント検証（§~\ref{sec:verify_split_ppe_dc}）で実施．§~\ref{sec:interface_crossing} の診断結果を受けた解決策として本章ロードマップに含める．}} \\
 \end{tabular}
 \end{table}
+
+\paragraph{構成．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \autoref{sec:single_phase_ns}：V1 (TGV エネルギー減衰) + V2 (Kovasznay CCD 空間収束)．
+  \item \autoref{sec:twophase_static_verification}：V3 (静的液滴 long-term) + V5 (寄生流れ multistep)．
+  \item \autoref{sec:galilean_rt}：V4 (Galilean 不変性 + Rayleigh--Taylor)．
+  \item \autoref{sec:varrho_dc_convergence}：V6 (密度比 sweep) + V7 (IMEX-BDF2 二相時間精度)．
+  \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静的) + V9 (局所 $\varepsilon$) + V10 (CLS-advection 非一様)．
+  \item \autoref{sec:error_budget}：V1--V10 横断の精度バジェット synthesis．
+\end{itemize}
+
+\input{sections/13a_single_phase_ns}
+\input{sections/13b_twophase_static}
+\input{sections/13c_galilean_rt}
+\input{sections/13d_density_ratio}
+\input{sections/13e_nonuniform_ns}
+\input{sections/13f_error_budget}

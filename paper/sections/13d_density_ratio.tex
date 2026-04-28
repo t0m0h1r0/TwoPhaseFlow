@@ -1,0 +1,167 @@
+% paper/sections/13d_density_ratio.tex
+%
+% V6: 密度比 sweep convergence (rho_r in {2,10,100,833}, N in {32,64,128})
+% V7: IMEX-BDF2 二相時間精度 (Linf err vs dt)
+% Verifies: §6.4 (split PPE), §6.5 (DC), §6.6 (HFE), §7 (IMEX-BDF2)
+% Scripts : exp_V6_density_ratio_convergence.py, exp_V7_imex_bdf2_twophase_time.py
+% Data    : results/V{6,7}_*/data.npz
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{密度比収束と IMEX-BDF2 時間精度}
+\label{sec:varrho_dc_convergence}
+
+\subsubsection{V6：密度比 sweep ($\rho_r = 2 \to 833$)}
+\label{sec:density_ratio_sweep}
+\label{sec:interface_crossing}
+
+\paragraph{検証対象．}
+分相 PPE + DC + HFE 統合（\autoref{sec:split_ppe_motivation}〜\autoref{sec:U6_split_ppe_dc_hfe}）が
+密度比 $\rho_r = \rho_l/\rho_g \in [2, 833]$（最大は水--空気の $\sim 833$）の
+全レンジで\textbf{ブローアップせず}，かつ Laplace 圧力差が $\rho_r$ にロバストに
+収束することを確認する．本検証は，旧 §13g で提起された「Smoothed Heaviside 一括解法の
+密度ジャンプ越え問題」に対する分相解法の応答評価でもある．
+
+\paragraph{設定．}
+V3 と同じ静的液滴設定．$\rho_l = \rho_r$, $\rho_g = 1$, $\sigma = 1$, $r = 0.25$
+→ $\Delta p_{\mathrm{exact}} = 4.0$．
+$\rho_r \in \{2, 10, 100, 833\}$, $N \in \{32, 64, 128\}$．
+$\Delta t = h/2$ (CFL ターゲット 0.4)．
+出典：\texttt{experiment/ch13/exp\_V6\_density\_ratio\_convergence.py}．
+
+\paragraph{結果．}
+\begin{table}[!ht]
+\caption{V6: 密度比 sweep．全 12 ケース blew\_up = False．
+$|\Delta p_{\mathrm{rel}}| \le 1.77\%$（$\rho_r=833$ 含む）で収束．
+有効 5 桁で $\Delta p_{\mathrm{meas}}$ を提示し，$\rho_r$ を 2 桁
+($2 \to 833$) 振っても \textbf{平衡 $\Delta p$ は $\rho_r$ にほぼ独立}（$\rho_r$ 横断
+で $|\Delta p_{\mathrm{rel}}|$ が $\le 0.06\%$ 内に収まる; 唯一の例外は
+$\rho_r=833, N=32$ で粗格子 $\rho$ ジャンプの量子化）—— 分相 PPE + DC + HFE が
+密度ジャンプ越えで設計通りの $\rho_r$ ロバスト性を発揮することを定量証明．}
+\label{tab:V6_density_ratio}
+\centering\small
+\begin{tabular}{r r r r r}
+\toprule
+$\rho_r$ & $N$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty^{\mathrm{end}}$ \\
+\midrule
+2    & 32  & $4.01688$ & $0.422\%$ & $1.489\times 10^{-2}$ \\
+2    & 64  & $3.95071$ & $1.232\%$ & $1.309\times 10^{-3}$ \\
+2    & 128 & $3.96128$ & $0.968\%$ & $1.485\times 10^{-3}$ \\
+\midrule
+10   & 32  & $4.01666$ & $0.417\%$ & $4.095\times 10^{-3}$ \\
+10   & 64  & $3.95071$ & $1.232\%$ & $4.732\times 10^{-4}$ \\
+10   & 128 & $3.96129$ & $0.968\%$ & $1.269\times 10^{-3}$ \\
+\midrule
+100  & 32  & $4.01382$ & $0.346\%$ & $1.228\times 10^{-3}$ \\
+100  & 64  & $3.95075$ & $1.231\%$ & $3.135\times 10^{-4}$ \\
+100  & 128 & $3.96122$ & $0.969\%$ & $1.268\times 10^{-3}$ \\
+\midrule
+833  & 32  & $4.07069$ & $1.767\%$ & $3.928\times 10^{-4}$ \\
+833  & 64  & $3.95163$ & $1.209\%$ & $3.143\times 10^{-4}$ \\
+833  & 128 & $3.95932$ & $1.017\%$ & $1.265\times 10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
+\caption{V6：密度比収束 sweep．
+$\Delta p_{\mathrm{meas}}$（左, $\rho_r$ 軸）は全レンジで $\Delta p_{\mathrm{exact}}=4.0$ ± $1.8\%$．
+$u_\infty^{\mathrm{end}}$（右）は $\rho_r$ 増加で\textbf{減少傾向} — 高密度比下では
+寄生流れスケールが$\sigma/(\rho_l + \rho_g)$（\autoref{sec:spurious_multistep}）依存で抑制．}
+\label{fig:V6_density_ratio}
+\end{figure}
+
+\paragraph{評価．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item 全 $12$ ケース blew\_up = False で\textbf{ブローアップ無し}（水--空気を含む）\checkmark．
+  \item $|\Delta p_{\mathrm{rel}}| \le 1.8\%$ で BF 平衡を保つ → 分相 PPE + DC + HFE 構成が
+        密度ジャンプ越えの圧力 / 速度 / Heaviside 整合性を維持\checkmark．
+  \item $u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制される — Smoothed Heaviside 一括解法
+        （単一 Heaviside で $\rho$, $\mu$, 圧力 BC を同時に内挿する旧手法; \autoref{sec:varrho_ppe_limitation}）
+        が中--高密度比で発散する問題に対し，分相解法は密度ジャンプ位置で
+        界面 PPE 補正を別途適用するため安定．
+\end{itemize}
+A3 トレース：式~\eqref{eq:split_ppe} → \autoref{sec:split_ppe_motivation}（分相 PPE）+
+\autoref{sec:verify_split_ppe_dc}（DC）+ \autoref{sec:U6_split_ppe_dc_hfe}（HFE） →
+\texttt{src/twophase/poisson/split\_ppe.py},
+\texttt{src/twophase/poisson/density\_correction.py}．
+
+\subsubsection{V7：IMEX-BDF2 二相時間精度}
+\label{sec:imex_bdf2_twophase_time}
+
+\paragraph{検証対象．}
+密度比 $\rho_r > 1$ の二相 NS において，IMEX-BDF2 時間離散
+（\autoref{ch:time_integration}）が
+設計次数 $O(\Delta t^2)$ を保つかを，参照解（$n_{\mathrm{step}}=640$）と粗解の差で評価．
+
+\paragraph{設定．}
+$\rho_l = 10, \rho_g = 1$ ($\rho_r = 10$), 静的液滴 $r = 0.25$, $\sigma = 1$．
+$N = 64$．参照 $n_{\mathrm{ref}} = 640$．
+$n_{\mathrm{step}} \in \{40, 80, 160, 320\}$ ($\Delta t \in \{1.25\!\times\!10^{-3}, 6.25\!\times\!10^{-4}, 3.13\!\times\!10^{-4}, 1.56\!\times\!10^{-4}\}$)．
+出典：\texttt{experiment/ch13/exp\_V7\_imex\_bdf2\_twophase\_time.py}．
+
+\paragraph{結果．}
+\begin{table}[!ht]
+\caption{V7: IMEX-BDF2 二相時間精度．参照は $n_{\mathrm{ref}}=640$．
+slope (40→320, 4 点最小二乗) $\mathbf{0.56}$（最終局所 slope $0.87$）— 設計 $2$ 次から大きく低下．}
+\label{tab:V7_imex_bdf2_time}
+\centering\small
+\begin{tabular}{r r r r}
+\toprule
+$n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
+\midrule
+40   & $1.25\times 10^{-3}$  & $3.16\times 10^{-5}$ & ---  \\
+80   & $6.25\times 10^{-4}$  & $2.36\times 10^{-5}$ & $1.34$ \\
+160  & $3.13\times 10^{-4}$  & $1.74\times 10^{-5}$ & $1.36$ \\
+320  & $1.56\times 10^{-4}$  & $9.55\times 10^{-6}$ & $1.82$ \\
+\midrule
+\multicolumn{3}{r}{slope ($\Delta t$ halving, 4 点最小二乗)} & $\mathbf{0.56}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
+\caption{V7：IMEX-BDF2 二相時間精度．
+log-log 上で 4 点 slope $0.56$ — V1 単相 ($O(\Delta t^2)$ 達成) との対比で
+\textbf{二相結合下では二次精度が消失}．}
+\label{fig:V7_imex_bdf2_time}
+\end{figure}
+
+\paragraph{評価．}
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item 観測 slope $\mathbf{0.56}$ — V1 単相の $2.00$ から\textbf{大幅劣化}（4 段階差以上の未達）．
+        $O(\Delta t^{0.56})$ は実質的に $O(\Delta t)$ より悪く，
+        BDF2 設計次数 $O(\Delta t^2)$ の主張は\textbf{二相結合下では維持されない}．
+  \item 劣化要因の量的論証：
+    \begin{enumerate}\setlength{\itemsep}{0pt}
+      \item \textbf{CLS reinit の頻度差}：参照解 ($n_{\mathrm{ref}}=640$) と粗解
+            ($n_{\mathrm{step}}\in\{40,\dots,320\}$) は，各時間ステップで reinit を実施するため
+            \textbf{総 reinit 回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍} 異なる．
+            reinit 1 回の $\psi$ 補正は両解で同符号・同オーダーだが
+            \textbf{時刻のずれ}が存在し，差分 $u_{\mathrm{ref}} - u_{\mathrm{coarse}}$ を取っても
+            cancel せず $\Delta t$ に比例する切片誤差として残る．
+            （reinit が両解で完全に同タイミングなら共通分は cancel するが，
+             reinit は CLS 進展時刻に同期するため粗解と参照で必ず非同期．）
+      \item \textbf{曲率の explicit lag}：本実装は CSF $\kappa$ を
+            $\kappa^n$（前ステップ値）で評価しており $\kappa^{n+1/2}$ ではない．
+            これは Crank--Nicolson 補正されていない explicit treatment であり，
+            $\sigma\nabla\!\cdot(\kappa^n \nabla H)$ 項に系統的 $O(\Delta t)$ 誤差を残す．
+            この誤差は両解で $\Delta t$ 比例で異なり，差分でも cancel しない．
+      \item BDF2 自体の最大次数は $\Delta t^2$ だが，上記 2 つは
+            「両解で頻度・lag が異なる」ため両解差で cancel せず律速する．
+    \end{enumerate}
+  \item \textbf{要改善 ($\times$ — 設計未達)} — slope $0.56$ は
+        $|p_{\mathrm{measured}} - p_{\mathrm{design}}| = 1.44$ で
+        合格基準 $\le 0.5$ から大幅外。改善には：
+        \textit{(i)} CLS reinit を 2 ステップに 1 回に間引いて頻度差を縮める（短期）；
+        \textit{(ii)} $\kappa^{n+1/2}$ Crank--Nicolson 化（中期）；
+        \textit{(iii)} 界面厚 $\varepsilon \to 0$ 極限の sharp interface 化（長期）．
+        本論文では，二相時間精度の設計次数は\textbf{$O(\Delta t^{0.56})$ が実効上限}
+        として\autoref{sec:error_budget}に明示する．
+\end{itemize}
+A3 トレース：\autoref{ch:time_integration}（IMEX-BDF2） +
+\autoref{sec:eikonal_reinit}（CLS reinit; 律速） →
+\texttt{src/twophase/integrator/imex\_bdf2.py},
+\texttt{src/twophase/cls/reinit.py}．

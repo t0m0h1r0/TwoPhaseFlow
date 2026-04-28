@@ -99,22 +99,22 @@ U & 名称 & $p_{\mathrm{design}}$ & 実測 & 判定 \\
 U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
 U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
 U1-c & FCCD face value/grad（周期評価）& $6$ & $4.00 / 4.00$ & $\triangle$ \\
-U1-d & UCCD6 d1                & $6$ & $7.04$（super） & \checkmark \\
+U1-d & UCCD6 d1                & $6$ & $7.00$（super） & \checkmark \\
 U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
 U2-b & PPE Neumann + ゲージ       & $5$ & $4.85$ & \checkmark \\
 U3-a & CCD 非一様 d1            & $6$ & $5.98$ & \checkmark \\
-U3-b & FCCD 非一様 face value    & $6$ & $5.99$ & \checkmark \\
+U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & active & $D_4 \!\sim\! 10^{-11}$ & \checkmark \\
 U4-a & Ridge--Eikonal reinit    & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正         & $\sim 0.03$ & $3\times 10^{-6}$ & \checkmark \\
 U5-a & $\delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
 U6-a & lumped--PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
-U6-b & lumped--PPE 高密度比      & 既知劣化 & slope $\sim 0.78$ & $\triangle$ \\
-U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.99 / 5.05 / 3.21$ & $\triangle$ \\
+U6-b & lumped--PPE 高密度比      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
+U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.91 / 5.10 / 3.21$ & $\triangle$ \\
 U7-a & BF 静止液滴 1-step       & $\Delta p \to \sigma/R$ & $0.6\%\,@N\!=\!128$ & \checkmark \\
-U7-b & face $\mu$ 補間           & $2$ & $1.93$ & \checkmark \\
-U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
+U7-b & face $\mu$ 補間           & $2$ & $1.91$ & \checkmark \\
+U8-a & TVD--RK3                & $3$ & $3.03$ & \checkmark \\
 U8-b & AB2                      & $2$ & $2.04$ & \checkmark \\
 U8-c & CN--ADI                  & $2$ & $2.00$ & \checkmark \\
 U8-d & 3 層 CN--ADI（B/C 層）    & ADI 律速 & $1.0$ & $\triangle$ \\

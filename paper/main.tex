@@ -81,7 +81,7 @@
 \input{sections/10b_ccd_extensions}   %% §10続き（CCD の非一様格子適用）
 \input{sections/10c_fccd_nonuniform}  %% §10.4 非一様 FCCD
 \input{sections/10d_ridge_eikonal_nonuniform} %% §10.5 Ridge--Eikonal 非一様
-%% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ 現 §11 U2 に移行済み
+%% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
 %% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 D.3 に統合
 %% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 D.2
 
@@ -89,24 +89,18 @@
 \clearpage
 \part{精度検証と展望：コンポーネント精度から多相流物理現象へ}
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-%% §11（旧：完全アルゴリズム / DCCD ブートストラップ / 純 FCCD DNS）は CHK-246 で完全排除．
+%% §11（旧：完全アルゴリズム / DCCD ブートストラップ / 純 FCCD DNS）は完全排除．
 %% 演算子マッピング・7ステップフロー・タイムステップ制御は本文中で随時参照されるが，
 %% 独立章としての提示は廃止し，各章の局所文脈に統合した．
-\input{sections/12_component_verification}  %% §11：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
+\input{sections/12_component_verification}  %% §12：計算コンポーネントの数学的検証（CCD/DCCD/曲率/CLS/場延長/PPE/RK3）
 \clearpage
-\input{sections/13_verification}                    %% §12：NS方程式の物理的整合性検証
-\input{sections/13b_force_balance}                 %% §12.1 力学的バランス検証
-\input{sections/13c_conservation}                  %% §12.2 保存則の検証
-\input{sections/13d_time_accuracy}                 %% §12.3 NS方程式の総合精度（時間/空間収束次数）
-\input{sections/13e_highre_dccd}                   %% §12.3c 高Re安定性：DCCDフィルタの非侵襲性
-\input{sections/13f_coupling}                      %% §12.4 二相流結合の物理的整合性
-\input{sections/13g_interface_crossing}            %% §12.5 Smoothed Heaviside一括解法の適用限界
-\input{sections/13h_nonuniform_grid}               %% §12.5b 界面適合格子のNS結合検証
-\input{sections/13i_error_budget}                  %% §12.6 精度バジェット
+%% §13: V1-V10 ゼロベース新実験駆動.
+%% Parent stub 13_verification.tex 内で 6 sub-file (13a-13f) を順次 \input する．
+\input{sections/13_verification}                    %% §13：統合検証 V1-V10 (parent + sub-file展開)
 \clearpage
-\input{sections/14_benchmarks}        %% §13：多相流ベンチマークと物理現象の検証
+\input{sections/14_benchmarks}        %% §14：多相流ベンチマークと物理現象の検証
 \clearpage
-\input{sections/15_conclusion}        %% §14（まとめと今後の課題）
+\input{sections/15_conclusion}        %% §15（まとめと今後の課題）
 
 \bibliographystyle{plain}
 \bibliography{bibliography}
@@ -133,10 +127,10 @@
 %% 付録E: 圧力ソルバーと連成解析（§8-9 対応）
 \input{sections/appendix_pressure}              %% E.1 欠陥補正理論, E.2 仮想時間, E.3 FVM基準
 
-%% 付録F: ブートストラップ初期化シーケンス（§10 対応）
+%% 付録F: ブートストラップ初期化シーケンス（§10-11 対応）
 \input{sections/appendix_bootstrap}             %% F.1 初期化5段階
 
-%% 付録G: 検証の補足解析（§11 対応）
+%% 付録G: 検証の補足解析（§12 対応）
 \input{sections/appendix_verification_details}  %% G.1 PPE離散化選択, G.2 HFE適合性
 
 \end{document}
