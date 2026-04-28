@@ -69,9 +69,9 @@ $\gamma_{\mathrm{th}} = \sqrt{\mathcal{A}\, g\, k}$ ($\mathcal{A} = (\rho_h - \r
 $A(t) = A_0 \exp(\gamma_{\mathrm{num}} t)$ で同定し，比較する．
 
 \paragraph{設定．}
-ドメイン高さ 2, 幅 1, $A_0 = 0.005$ の単一波長 ($\lambda = L_x = 1$, $k = 2\pi$) 摂動．
-$\rho_h = 3, \rho_l = 1$ ($\mathcal{A} = 0.5$), $g = 1$ →
-$\gamma_{\mathrm{th}} = \sqrt{\mathcal{A}\, g\, k} = \sqrt{0.5\!\cdot\!1\!\cdot\!2\pi} = 2.894$．
+ドメイン高さ 2, 幅 1, $A_0 = 0.005$ の 2 モード摂動 ($\lambda = L_x/2 = 0.5$, $k = 4\pi$, $m=2$)．
+$\rho_h = 5, \rho_l = 1$ ($\mathcal{A} = 2/3$), $g = 1$ →
+$\gamma_{\mathrm{th}} = \sqrt{\mathcal{A}\, g\, k} = \sqrt{(2/3)\!\cdot\!1\!\cdot\!4\pi} = \sqrt{8\pi/3} \approx 2.894$．
 $N \in \{64, 128\}$, $n_{\mathrm{step}} = 200$．
 \textbf{設計上の限界の事前認識}：$A_0 = 0.005$ で 200 step 内に振幅が $\sim 2 A_0$ まで到達するため，
 測定区間は線形領域\textbf{端}（非線形項が混入し始める手前）であり，
@@ -102,6 +102,17 @@ $N$ & $\Delta t$ & $\gamma_{\mathrm{num}}$ & $\gamma_{\mathrm{th}}$ & rel\_err \
 \label{fig:V4_galilean_rt}
 \end{figure}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v4_rt_snapshot.pdf}
+\caption{V4-b：Rayleigh--Taylor 2D 場スナップショット ($N=128$, $\rho_h/\rho_l=5$, $m=2$)．
+左から順に $t=0$（初期摂動 $A_0=0.005$ の cosine 形状），
+$t \approx t_{\mathrm{end}}/3$（線形成長初期），$t \approx 2t_{\mathrm{end}}/3$（線形成長中），
+$t = t_{\mathrm{end}}$（測定窓終端，線形領域端）．
+カラーマップは smoothed Heaviside $\psi$，黒線は界面 $\phi=0$ 等高線．}
+\label{fig:V4_rt_snapshot}
+\end{figure}
+
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 線形理論との誤差 $40$--$55\%$，かつ $\gamma_{\mathrm{num}}$ が
@@ -109,7 +120,7 @@ $N$ & $\Delta t$ & $\gamma_{\mathrm{num}}$ & $\gamma_{\mathrm{th}}$ & rel\_err \
         「高周波モード励起」では $\gamma$ は\textbf{過大評価}に向かうはずなので，
         この説明は方向性が逆である．実際の劣化要因は次の 2 点である：
     \begin{enumerate}\setlength{\itemsep}{0pt}
-      \item \textbf{初期 CSF 曲率推定誤差}：$\rho_h \!=\! 3, \rho_l \!=\! 1$ の界面で
+      \item \textbf{初期 CSF 曲率推定誤差}：$\rho_h \!=\! 5, \rho_l \!=\! 1$ の界面で
             $\kappa$ 推定が初期 $A_0 = 0.005$ の小振幅摂動を smear し，
             実効振幅が $A_0' < A_0$ になる ($\gamma$ 抽出時の $A_0$ 過大評価 → $\gamma$ 過小評価)．
             $N$ 増加で $\kappa$ 高周波が励起され smear 強度が増す．
