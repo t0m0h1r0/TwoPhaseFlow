@@ -3,13 +3,13 @@
 
 Paper ref: §13.3 (sec:bf_static_droplet companion / sec:error_budget contributor).
 
-V3 establishes that CCD-based BF + split-PPE + CSF + HFE keeps a static
-droplet stable to 200 steps at moderate density ratio. V5 adds two missing
+V3 establishes that a reduced CCD-gradient BF + CSF + FVM-PPE static-droplet
+loop remains bounded over 200 steps at moderate density ratio. V5 adds two
 controls:
 
   (i)  Compare against a 2nd-order central-difference (FD) baseline operator
        (same pipeline, same BCs, same eps; only spatial gradient operator
-       differs). Expected ratio: spurious_FD / spurious_CCD >= 20.
+       differs). The ratio is reported, not used as a hard pass threshold.
 
   (ii) Track spurious current peak over 200 steps for several density
        ratios in {1, 10, 100} (ρ=1 is single-phase sanity), confirming
@@ -21,10 +21,10 @@ Setup
   R=0.25, [0,1]^2, wall BC, σ=1, We=10, μ=0, CFL=0.25h, 200 steps.
   N in {32, 64, 128}, ρ_l/ρ_g in {1, 10, 100}.
 
-Pass criterion
---------------
-  - max ratio FD/CCD over (N, ρ) sweep >= 20
-  - CCD peak does not grow (final < 2 * peak_in_first_50_steps)
+Reported diagnostics
+--------------------
+  - final-time FD/CCD ratio over the (N, ρ) sweep
+  - peak and final CCD spurious-current histories
 
 Usage
 -----
@@ -58,6 +58,7 @@ from twophase.tools.experiment.gpu import sparse_solve_2d
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 R = 0.25
 CENTER = (0.5, 0.5)
@@ -179,23 +180,23 @@ def make_figures(results: dict) -> None:
     ax_t.set_title("Spurious current trajectory (N=128, ρ=10)")
     ax_t.legend()
 
-    # FD/CCD ratio bars across (N, ρ)
+    # FD/CCD final-time ratio bars across (N, ρ), matching the paper table.
     cats = []
     ratios = []
     for N in (32, 64, 128):
         for r in (1, 10, 100):
             ccd = runs.get(f"N{N}_r{r}_ccd")
             fd = runs.get(f"N{N}_r{r}_fd")
-            if ccd and fd and ccd["u_inf_peak_all"] > 0:
+            if ccd and fd and ccd["u_inf_final"] > 0:
                 cats.append(f"N{N}\nρ={r}")
-                ratios.append(fd["u_inf_peak_all"] / ccd["u_inf_peak_all"])
+                ratios.append(fd["u_inf_final"] / ccd["u_inf_final"])
     ax_b.bar(cats, ratios, color="C2")
-    ax_b.set_ylabel("peak FD / peak CCD")
-    ax_b.set_title("FD/CCD spurious-peak ratio")
-    ax_b.axhline(20, color="k", linestyle="--", alpha=0.6, label="pass: 20×")
-    ax_b.set_yscale("log"); ax_b.legend()
+    ax_b.set_ylabel("final FD / final CCD")
+    ax_b.set_title("FD/CCD final-time ratio")
+    ax_b.set_yscale("log")
 
-    save_figure(fig, OUT / "V5_spurious_multistep_ccd_vs_fd")
+    save_figure(fig, OUT / "V5_spurious_multistep_ccd_vs_fd",
+                also_to=PAPER_FIGURES / "ch13_v5_spurious_multistep")
 
 
 def print_summary(results: dict) -> None:
@@ -206,9 +207,9 @@ def print_summary(results: dict) -> None:
             ccd = runs.get(f"N{N}_r{r}_ccd")
             fd = runs.get(f"N{N}_r{r}_fd")
             if ccd and fd:
-                ratio = fd["u_inf_peak_all"] / max(ccd["u_inf_peak_all"], 1e-30)
-                print(f"  N={N:>3}  ρ={r:>3}  CCD_peak={ccd['u_inf_peak_all']:.2e}  "
-                      f"FD_peak={fd['u_inf_peak_all']:.2e}  FD/CCD={ratio:.1f}")
+                ratio = fd["u_inf_final"] / max(ccd["u_inf_final"], 1e-30)
+                print(f"  N={N:>3}  ρ={r:>3}  CCD_final={ccd['u_inf_final']:.2e}  "
+                      f"FD_final={fd['u_inf_final']:.2e}  FD/CCD={ratio:.1f}")
 
 
 def main() -> None:

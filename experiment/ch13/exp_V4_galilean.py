@@ -73,9 +73,9 @@ def _wall_bc(arr) -> None:
 
 
 def run_V4() -> dict:
-    """Translation-stability test: static droplet with uniform offset velocity
-    U_frame on wall BC. The interior velocity perturbation about U_frame
-    should remain small (Galilean invariance of the BF/CSF/PPE pipeline)."""
+    """Residual-scale test for a static droplet with a uniform offset on wall BC.
+    The perturbation about the imposed offset is reported as a reduced
+    Galilean-offset residual, not an exact periodic invariance proof."""
     backend = Backend(use_gpu=False)
     xp = backend.xp
     N = 64

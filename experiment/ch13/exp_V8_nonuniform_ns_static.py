@@ -4,10 +4,10 @@
 Paper ref: §13.5 (sec:nonuniform_grid_ns).
 
 V3 verifies the static droplet over 200 steps on a uniform grid (alpha=1).
-V8 repeats the same coupling test with the project's interface-fitted
-non-uniform grid (alpha_grid=2.0). This stresses the non-uniform CCD/FCCD
-metric corrections, the non-uniform Ridge-Eikonal, and the non-uniform
-PPE builder simultaneously, in a coupled NS run.
+V8 repeats the same reduced CCD-gradient + CSF + FVM-PPE coupling test with
+the project's interface-fitted non-uniform grid (alpha_grid=2.0). It is a
+non-uniform static-droplet diagnostic, not a §14 FCCD/HFE/Ridge-Eikonal stack
+validation.
 
 Setup
 -----

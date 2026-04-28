@@ -13,44 +13,46 @@
 密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦~\cite{Brachet1983}; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
 を CCD 空間離散 (\autoref{sec:CCD}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
 PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
-に対する相対誤差が\textbf{時間離散の設計次数 $O(\Delta t^2)$}で消えること，
-かつ非圧縮拘束 $\nabla\!\cdot u = 0$ が機械精度で保たれることを単相設定で確認する．
+に対する誤差と非圧縮拘束を確認する．
+旧実装は FFT spectral projection であり CCD/PPE の検証ではなかったため，
+現 V1 は project CCD 微分と FVM PPEBuilder 射影を直接用いる．
 
 \paragraph{設定．}
-$L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 2.0$, 周期境界．
-$N \in \{64, 128\}$, $\Delta t \in \{0.01, 0.005, 0.0025, 0.00125\}$．
+$L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 0.05$, 周期境界．
+空間 sweep は $N\in\{32,48,64\}$, $\Delta t=10^{-3}$．
+時間 sweep は $N=64$, $\Delta t\in\{3.846,2.000,1.000\}\times10^{-3}$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V1-a: 空間離散精度（$\Delta t = 0.0025$ 固定; 時間離散誤差支配のため
-$N$ 依存性は皆無に近い）．非圧縮残差 $\|\nabla\!\cdot u\|_\infty$ は機械精度床．}
+\caption{V1-a: CCD/PPE TGV の空間 trend（$\Delta t=10^{-3}$ 固定）．
+FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ に近い．}
 \label{tab:V1_spatial}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
 $N$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & $\|\nabla\!\cdot u\|_\infty^{\max}$ \\
 \midrule
-64  & $2.42\times 10^{-9}$ & $1.16\times 10^{-9}$ & $1.63\times 10^{-14}$ \\
-128 & $2.42\times 10^{-9}$ & $1.16\times 10^{-9}$ & $3.36\times 10^{-14}$ \\
+32 & $6.320\times 10^{-7}$ & $9.032\times 10^{-6}$ & $2.590\times 10^{-5}$ \\
+48 & $2.814\times 10^{-7}$ & $4.026\times 10^{-6}$ & $1.146\times 10^{-5}$ \\
+64 & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $6.438\times 10^{-6}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[!ht]
-\caption{V1-b: 時間離散精度（$N=128$ 固定）．
-$E_{\mathrm{rel}}$ slope (4 点最小二乗) $\mathbf{2.00}$ → AB2/IMEX-BDF2 の $O(\Delta t^2)$ を確認．}
+\caption{V1-b: CCD/PPE TGV の時間 trend（$N=64$ 固定）．
+AB2 predictor に対し，PPE 射影結合込みの速度誤差は実効 $O(\Delta t)$．}
 \label{tab:V1_temporal}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
 $\Delta t$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & 連続比 \\
 \midrule
-$0.01$    & $3.87\times 10^{-8}$ & $1.86\times 10^{-8}$ & ---  \\
-$0.005$   & $9.67\times 10^{-9}$ & $4.64\times 10^{-9}$ & $4.00$ \\
-$0.0025$  & $2.42\times 10^{-9}$ & $1.16\times 10^{-9}$ & $4.00$ \\
-$0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
+$3.846\times 10^{-3}$ & $5.871\times 10^{-7}$ & $8.718\times 10^{-6}$ & --- \\
+$2.000\times 10^{-3}$ & $3.126\times 10^{-7}$ & $4.534\times 10^{-6}$ & $1.92$ \\
+$1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \\
 \midrule
-\multicolumn{3}{r}{slope ($\Delta t$ halving)} & $\mathbf{2.00}$ \\
+\multicolumn{3}{r}{finest local slope} & $\mathbf{1.00}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -59,16 +61,20 @@ $0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v1_tgv_energy.pdf}
 \caption{V1：TGV エネルギー減衰の収束．
-左：$E_{\mathrm{rel}}(N)$ — 空間離散誤差は時間誤差床の下に位置し，$N$ に依存しない．
-右：$E_{\mathrm{rel}}(\Delta t)$ — 連続比 $4$ で AB2/IMEX-BDF2 の $O(\Delta t^2)$ slope $2.00$．}
+左：CCD/PPE 経路での空間 trend．右：AB2 predictor + PPE projection の時間 trend．
+旧 FFT spectral proxy ではなく，実装上の CCD/PPE 結合を直接測るため，観測次数は
+空間 $O(h^2)$，時間 $O(\Delta t)$ に留まる．}
 \label{fig:V1_tgv}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 時間離散 slope $2.00$（連続比 $4.00$ × 3 段階一致）→ \textbf{設計通り}\checkmark．
-  \item 空間離散誤差は CCD 6 次が時間誤差床下に押し込まれ，観測上 0 寄与．
-  \item $\|\nabla\!\cdot u\|_\infty \le 3 \times 10^{-14}$ → PPE 射影が機械精度で非圧縮を達成．
+  \item 現 V1 は FFT spectral projection ではなく，CCD 微分 + PPEBuilder 射影を用いるため，
+        紙面主張と実装 identity は一致した．
+  \item 観測時間 slope は $\mathbf{1.00}$．AB2 単体の 2 次設計は，PPE 射影との fractional-step
+        結合では維持されない．これは V7 と同じく「結合 stack の実効次数」として扱う．
+  \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
+        FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I}，\autoref{ch:time_integration} の時間離散，
 \autoref{sec:ppe_solve} の PPE 射影に対し，TGV のエネルギー減衰と非圧縮残差を測定する．
@@ -79,49 +85,57 @@ $0.00125$ & $6.04\times 10^{-10}$& $2.90\times 10^{-10}$& $4.00$ \\
 \paragraph{検証対象．}
 Kovasznay 流~\cite{Kovasznay1948}（解析定常解）に対し CCD 演算子を反復適用したときの
 空間残差 $R = \mathcal{L}_{\mathrm{CCD}}[u_{\mathrm{exact}}] - 0$ の格子依存性が
-\textbf{設計 6 次}（\autoref{sec:ccd_def} 式~\eqref{eq:CCD_I}）に従うことを確認する．
+\textbf{真の 2D 定常 NS 解}上でどの実効次数を示すかを確認する．
+純粋な CCD 微分演算子は U1 で 6 次を確認済みだが，本 V2 は非周期 outflow 方向を含む
+Kovasznay 残差であり，非線形項・圧力勾配・一側境界の結合を含む実験である．
 
 \paragraph{設定．}
 $\Re = 40$, 解析解 $u_{\mathrm{exact}}(x,y) = 1 - \mathrm{e}^{\lambda x}\cos(2\pi y)$,
 $v_{\mathrm{exact}} = (\lambda/2\pi) \mathrm{e}^{\lambda x}\sin(2\pi y)$,
 $\lambda = \Re/2 - \sqrt{\Re^2/4 + 4\pi^2}$．
-$N \in \{32, 64, 128, 256\}$, 周期 BC．
+$x\in[-0.5,1.0]$, $y\in[0,1]$．
+$N \in \{32,64,128,256\}$, wall one-sided CCD boundary．
+残差評価は境界 4 点を除いた interior $L_\infty$ とする．
 
 \paragraph{結果．}
 \begin{table}[!ht]
 \caption{V2-a: Kovasznay CCD 空間残差 $\|R\|_\infty$．
-slope (32→128) $\mathbf{6.00}$ → CCD 6 次設計と一致．
-$N=256$ で $h^6 \!\sim\! 10^{-13}$ により round-off 床到達．}
+slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$．
+真の Kovasznay NS 残差では boundary/global compact coupling と非線形項により
+実効 4 次に留まるが，旧 manufactured periodic proxy ではなく実問題 identity と一致する．}
 \label{tab:V2_spatial}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
-$N$ & $h$ & $\|R_u\|_\infty$ & $\|R_v\|_\infty$ \\
+$N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 \midrule
-32  & $1.96\times 10^{-1}$ & $3.58\times 10^{-9}$  & $3.58\times 10^{-9}$ \\
-64  & $9.82\times 10^{-2}$ & $5.55\times 10^{-11}$ & $5.55\times 10^{-11}$ \\
-128 & $4.91\times 10^{-2}$ & $8.79\times 10^{-13}$ & $8.78\times 10^{-13}$ \\
-256 & $2.45\times 10^{-2}$ & $9.07\times 10^{-14}$ & $8.52\times 10^{-14}\,^\dagger$ \\
+32  & $4.688\times 10^{-2}$ & $4.942\times 10^{-6}$ & $3.604\times 10^{-7}$ \\
+64  & $2.344\times 10^{-2}$ & $4.048\times 10^{-7}$ & $6.363\times 10^{-9}$ \\
+128 & $1.172\times 10^{-2}$ & $2.780\times 10^{-8}$ & $1.046\times 10^{-10}$ \\
+256 & $5.859\times 10^{-3}$ & $1.800\times 10^{-9}$ & $1.722\times 10^{-12}$ \\
 \midrule
-\multicolumn{2}{r}{slope ($N=32\!\to\!128$)} & $\mathbf{6.00}$ & $\mathbf{6.00}$ \\
+\multicolumn{2}{r}{asymptotic slope} & $\mathbf{3.95}$ & --- \\
 \bottomrule
 \end{tabular}
-\\[2pt]
-{\footnotesize $^\dagger$ round-off 床（$h^6 < 10^{-13}$）．}
 \end{table}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v2_kovasznay_orders.pdf}
 \caption{V2：Kovasznay CCD 空間残差の格子収束．
-log-log で slope $6$ の理論直線と一致．$N=256$ で round-off 床到達．}
+左は定常 NS 残差，右は非圧縮残差．真の Kovasznay 解に対し residual は
+漸近 slope $3.95$，divergence は $10^{-12}$ 台まで低下する．}
 \label{fig:V2_kovasznay}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item slope $6.00$ × 3 段階で\textbf{設計通り}\checkmark．
-  \item U1（§\ref{sec:U1_ccd_suite}）で 1D MMS 単体 6 次を確認したが，
-        本実験は 2D + Kovasznay 解という非自明設定でも 6 次が保たれることを示す．
+  \item 旧実装は manufactured periodic NS であり Kovasznay ではなかったが，
+        現 V2 は解析 Kovasznay 解そのものを用いる．
+  \item residual slope $\mathbf{3.95}$ → 真の 2D steady NS 残差では実効 4 次．
+        これは CCD 単体の 6 次検証 (U1) ではなく，境界・圧力・非線形項を含む
+        統合 residual の observed order である．
+  \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，
+        Kovasznay 解の非圧縮性は CCD 演算子上でも十分保たれる．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I} に対し，Kovasznay 解の 2D 空間残差を測定する．
