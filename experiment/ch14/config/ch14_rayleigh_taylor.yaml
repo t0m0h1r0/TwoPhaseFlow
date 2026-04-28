@@ -105,7 +105,7 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch14_rayleigh_taylor_water_silicone_oil_n128x512
+  dir: results/ch14_rayleigh_taylor
   save_npz: true
   snapshots:
     interval: 0.05

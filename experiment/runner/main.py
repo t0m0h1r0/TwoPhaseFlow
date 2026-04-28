@@ -2,9 +2,9 @@
 
 Invoked via ``experiment/run.py``:
 
-    python experiment/run.py --config ch14_capillary_water_air_alpha2_n128
-    python experiment/run.py --config ch14_rising_bubble_water_air_alpha2_n128x256 --plot-only
-    python experiment/run.py --config ch14_rayleigh_taylor_water_mercury_n128x512
+    python experiment/run.py --config ch14_capillary
+    python experiment/run.py --config ch14_rising_bubble --plot-only
+    python experiment/run.py --config ch14_rayleigh_taylor
     python experiment/run.py --all
 
 Chapter 12 unit tests (U1-U9) are standalone Python scripts under
@@ -32,7 +32,7 @@ def _resolve_config(name: str) -> pathlib.Path:
     Accepts:
     - Absolute path (returned as-is if exists)
     - Relative path from cwd or experiment/ root
-    - Bare stem (e.g. ``ch14_capillary_water_air_alpha2_n128``) → searched in chapter config dirs
+    - Bare stem (e.g. ``ch14_capillary``) → searched in chapter config dirs
     """
     p = pathlib.Path(name)
 

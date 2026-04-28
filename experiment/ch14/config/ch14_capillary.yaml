@@ -1,4 +1,4 @@
-# N=128x256 water-air rising-bubble probe derived from the capillary alpha=2 stack.
+# N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
 # Production numerical stack: FCCD PPE + HFE + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
@@ -7,9 +7,9 @@
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 
 grid:
-  cells: [128, 256]
+  cells: [128, 128]
   domain:
-    size: [1.0, 2.0]
+    size: [1.0, 1.0]
     boundary: wall
   distribution:
     type: interface_fitted
@@ -24,10 +24,11 @@ interface:
   geometry:
     curvature:
       method: psi_direct_hfe
+      cap: 5.0
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 4
+      every_steps: 20
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -41,14 +42,14 @@ physics:
       rho: 1.2
       mu: 1.8e-5
   surface_tension: 0.072
-  gravity: 0.001
+  gravity: 0.0
 
 run:
   time:
-    final: 70.0
+    final: 35.0
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
-    print_every: 10
+    print_every: 20
   debug:
     step_diagnostics: true
 
@@ -98,31 +99,22 @@ numerics:
           preconditioner: jacobi
 
 output:
-  dir: results/ch14_rising_bubble_water_air_alpha2_n128x256
+  dir: results/ch14_capillary
   save_npz: true
   snapshots:
     interval: 0.05
   figures:
     - type: time_series
-      title: "Water-air rising bubble: centroid height"
+      title: "Water-air capillary wave: interface amplitude"
       x: times
-      y: [yc]
-      labels: ["$y_c(t)$"]
+      y: [interface_amplitude]
+      labels: ["A(t)"]
       xlabel: "$t$"
-      ylabel: "$y_c$"
-      file: bubble_centroid_y.pdf
+      ylabel: "$A(t)$"
+      file: interface_amplitude.pdf
 
     - type: time_series
-      title: "Water-air rising bubble: mean rise velocity"
-      x: times
-      y: [mean_rise_velocity]
-      labels: ["$\\bar{v}_g(t)$"]
-      xlabel: "$t$"
-      ylabel: "$\\bar{v}_g$"
-      file: mean_rise_velocity.pdf
-
-    - type: time_series
-      title: "Water-air rising bubble: volume drift"
+      title: "Water-air capillary flow: volume drift"
       x: times
       y: [volume_conservation]
       labels: ["$|\\Delta V|/V_0$"]
@@ -132,13 +124,14 @@ output:
       file: volume_drift.pdf
 
     - type: time_series
-      title: "Water-air rising bubble: deformation"
+      title: "Water-air capillary flow: kinetic energy"
       x: times
-      y: [deformation]
-      labels: ["$D(t)$"]
+      y: [kinetic_energy]
+      labels: ["KE"]
       xlabel: "$t$"
-      ylabel: "$D = (L-B)/(L+B)$"
-      file: deformation.pdf
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
 
     - type: snapshot_series
       field: psi
@@ -152,13 +145,17 @@ output:
       field: pressure
       file_prefix: pressure_t
 
-diagnostics: [volume_conservation, bubble_centroid, mean_rise_velocity, deformation]
+diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
 
 initial_condition:
-  type: circle
-  center: [0.5, 0.5]
-  radius: 0.25
-  interior_phase: gas
+  type: capillary_wave
+  axis: y
+  mean: 0.5
+  amplitude: 0.01
+  mode: 2
+  length: 1.0
+  phase: 0.0
+  interior_phase: liquid
 
 initial_velocity: null
 boundary_condition:

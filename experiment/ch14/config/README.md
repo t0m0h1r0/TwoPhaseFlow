@@ -3,16 +3,15 @@
 The §14 benchmark set is the canonical surface for the two-phase NS production
 stack. Three YAML files are checked in:
 
-- `ch14_capillary_water_air_alpha2_n128.yaml` — capillary-wave benchmark.
-- `ch14_rising_bubble_water_air_alpha2_n128x256.yaml` — rising-bubble benchmark.
-- `ch14_rayleigh_taylor_water_mercury_n128x512.yaml` — Rayleigh–Taylor instability
-  benchmark (water/mercury, Atwood ≈ 0.862, gravity-driven).
+- `ch14_capillary.yaml` — capillary-wave benchmark.
+- `ch14_rising_bubble.yaml` — rising-bubble benchmark.
+- `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
 Run them through the unified runner (`experiment/run.py`):
 
-- `python experiment/run.py --config ch14_capillary_water_air_alpha2_n128`
-- `python experiment/run.py --config ch14_rising_bubble_water_air_alpha2_n128x256`
-- `python experiment/run.py --config ch14_rayleigh_taylor_water_mercury_n128x512`
+- `python experiment/run.py --config ch14_capillary`
+- `python experiment/run.py --config ch14_rising_bubble`
+- `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
 
 All configs emit periodic snapshots with `psi`, `velocity`, and `pressure`
