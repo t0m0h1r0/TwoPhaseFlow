@@ -182,6 +182,83 @@ hydrostatic な勾配成分は圧力空間に残し，
 $g$，$T$，および無次元数を Hysing benchmark と一致させた別 YAML で評価する．
 
 % ═══════════════════════════════════════════════════════════════════
+\subsection{Rayleigh--Taylor 不安定性}
+\label{sec:val_rayleigh_taylor}
+% ═══════════════════════════════════════════════════════════════════
+
+\subsubsection{設定と理論基準}
+
+水（重相，上）／シリコーン油 5cSt（軽相，下）の二層配置を平坦界面に正弦波擾乱として与え，
+重力下で Rayleigh--Taylor 不安定の線形成長から非線形 mushroom 領域までを観察する．
+線形理論では，小振幅擾乱 $A_0$ は
+\begin{equation}
+  A(t) = A_0 \, e^{\gamma t},
+  \qquad
+  \gamma = \sqrt{\mathrm{At}\, g\, k},
+  \qquad
+  \mathrm{At} = \frac{\rho_{\text{w}}-\rho_{\text{oil}}}{\rho_{\text{w}}+\rho_{\text{oil}}},
+  \qquad
+  k = \frac{2\pi m}{L_x},
+  \label{eq:rt_linear_growth}
+\end{equation}
+の指数増大を示す（粘性・表面張力・有限振幅の影響は線形近似では落とす）．
+本 YAML の数値代入では
+$\mathrm{At}=(1000-950)/(1000+950)\approx 0.0256$（低 Atwood），
+$k=2\pi/0.5=4\pi\approx 12.57\ \mathrm{m^{-1}}$，
+$\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
+となり，最終時刻 $T=7.0\ \mathrm{s}\approx 12.5/\gamma$ は
+線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である．
+
+YAML スキーマ上は \texttt{physics.phases.liquid} スロットに下層シリコーン油，
+\texttt{physics.phases.gas} スロットに上層水を割り当てる
+（§\ref{sec:val_grid_policy} 参照）．
+擾乱形状は毛細管波と同型であるため
+\texttt{initial\_condition.type=capillary\_wave} ハンドラを流用するが，
+重力下で重相が上にある不安定な層化のため，
+本ケースの物理は RT である（毛管波ではない）．
+
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item グリッド：$[0,0.5]\times[0,2.0]$，$128\times512$，
+        interface-fitted $\alpha=2$，壁面境界
+  \item 物性（下層シリコーン油 5cSt）：
+        \texttt{phases.liquid}: $\rho=950$，$\mu=5\times10^{-3}$
+  \item 物性（上層水）：
+        \texttt{phases.gas}: $\rho=1000$，$\mu=10^{-3}$
+        （スキーマのスロット名は \texttt{gas} だが物理は水）
+  \item 表面張力・重力：$\sigma=0.040$，$g=9.81$
+  \item 時間：$T=7.0$，CFL 乗数 $1.0$
+        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
+        界面移流は TVD-RK3，運動量は IMEX--BDF2
+  \item 幾何：\texttt{ridge\_eikonal} を 4 ステップ毎に適用し，
+        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
+  \item 界面厚さ：\texttt{thickness.mode=local}，\texttt{base\_factor=1.5}；
+        曲率は HFE（\texttt{psi\_direct\_hfe}），キャップ $5.0$
+  \item 初期界面：
+        \texttt{capillary\_wave} ハンドラ，
+        $y_0=1.0$，$A_0=0.01$，$m=1$，$L_x=0.5$，$\theta_0=0$，
+        \texttt{interior\_phase=liquid}
+  \item 出力：\texttt{interface\_amplitude}，運動エネルギー，体積保存，
+        さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
+\end{itemize}
+
+\subsubsection{受入基準と想定診断}
+
+\textit{（実験結果は計算完了次第掲載）}
+
+想定する受入基準は次の四つである：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item \textbf{線形成長} 早期窓 $0<t\lesssim 3/\gamma\approx 1.7\ \mathrm{s}$ で
+        \texttt{interface\_amplitude} が
+        式~\eqref{eq:rt_linear_growth} の対数線形 $\log A \sim \gamma t$ に整合．
+  \item \textbf{非線形遷移} $t\approx T=7$ までに psi snapshot 上で
+        spike/bubble の mushroom 形状が観察される．
+  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
+        $|\Delta V|/V_0 < O(10^{-4})$．
+  \item \textbf{エネルギー} \texttt{kinetic\_energy} が線形領域で指数増大ののち
+        非線形領域で飽和に向かう．
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════════════════
 \subsection{総括}
 \label{sec:val_summary}
 % ═══════════════════════════════════════════════════════════════════
