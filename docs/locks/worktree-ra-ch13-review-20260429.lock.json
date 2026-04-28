@@ -1,0 +1,12 @@
+{
+  "branch": "worktree-ra-ch13-review-20260429",
+  "branch_slug": "worktree-ra-ch13-review-20260429",
+  "session_id": "CHK-RA-CH13-001",
+  "worktree_path": ".claude/worktrees/worktree-ra-ch13-review-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH13",
+  "acquired_at": "2026-04-29T00:00:00Z",
+  "expires_at": "2026-04-30T00:00:00Z",
+  "meta_version": "7.1.0",
+  "scope": "ch13 (V1-V10) strict peer review + master-table fixes (review + fix unified; V1/V7/V10 re-execution)"
+}
