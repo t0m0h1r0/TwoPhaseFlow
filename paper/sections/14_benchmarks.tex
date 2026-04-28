@@ -39,7 +39,7 @@ UCCD6 対流，および IMEX--BDF2/implicit-BDF2 時間発展を共有する．
 
 非一様格子を採用できる条件は，格子密度比 $\alpha$ そのものではなく，
 投影・浮力残差・速度補正が同じ face locus を共有することである．
-具体的には PPE が $D_fA_fG_f$ を解くなら，
+具体的には投影形 PPE が $D_fA_fG_f$ を用い，solve 形では $-D_fA_fG_f$ を解くなら，
 Corrector は同じ $A_fG_f$ で速度を補正し，
 浮力残差も同じ face-gradient chain 上で評価する
 （式~\eqref{eq:same_face_projection_closure}）．

@@ -1,10 +1,9 @@
 % paper/sections/09f_pressure_summary.tex
 %
-% §8 章末まとめ：精度バランスと設計上のトレードオフ
-% ※ 旧所在: 09_ccd_poisson.tex 内 → §8 章末に移動
-%   理由：HFE（§8.4）・BC（§8.6）を全て読んだ後に精度全体像を示す構成に変更
+% §9 章末まとめ：精度閉包と適用範囲
+%   理由：HFE（§9.4）・BC（§9.6）を全て読んだ後に精度全体像を示す構成
 %% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{本章のまとめ：精度バランスと設計上のトレードオフ}
+\subsection{本章のまとめ：精度閉包と適用範囲}
 \label{sec:pressure_accuracy_summary}
 %% ═══════════════════════════════════════════════════════════════════════════════
 
@@ -28,8 +27,8 @@ HFE による界面越し場延長（§~\ref{sec:field_extension}），
 \midrule
 CLS 移流 & TVD-RK3 & CCD $\Ord{h^6}$ & $\Ord{\Delta t^3}$ \\
 幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE (等密度SSPRK3検証) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
-PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & $\Ord{h^4}$‡‡ & — \\
+PPE (等密度周期基準) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
+PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & 理論保証外（界面律速；改善は検証依存）‡‡ & — \\
 PPE (分相 PPE) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^7}$Dir/$\Ord{h^5}$Neu‡‡‡ & — \\
 NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
 NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
@@ -45,7 +44,7 @@ HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite
 \noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
 全体の空間精度を律速する．\\
 \noindent‡\ 等密度均一格子・周期 BC の理想化では $\Ord{h^6}$（§\ref{sec:dc_accuracy}）．\\
-\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し DC で $\Ord{h^4}$ への昇格は数値検証（§~\ref{sec:verify_split_ppe_dc}）で確認予定．変密度一括 PPE の理論証明は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，DC convergence は本稿では実測値として扱う．\\
+\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し，DC による改善は §~\ref{sec:verify_split_ppe_dc} の検証対象である．変密度一括 PPE は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，本章では理論保証外の検証依存項目として扱う．\\
 \noindent‡‡‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．記載値は $k=3$ 漸近値；$k>3$ では界面ジャンプ条件が全体精度を支配し，CCD 切断誤差はすでに飽和するため精度はほぼ変化しない．\\
 \noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（本稿 7-step フローの粘性項処理）．
 $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．\\
@@ -54,11 +53,13 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 （§\ref{sec:extension_pde_disc}）．
 \end{table}
 
-\begin{tcolorbox}[warnbox, title={精度ミスマッチと設計上のトレードオフ}]
+\begin{tcolorbox}[warnbox, title={精度閉包上の制約}]
 \begin{enumerate}
   \item \textbf{空間精度：}
-        全数値コンポーネントが $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        全体精度の律速は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差である．
+        圧力・幾何量・移流に関わる主な高次コンポーネントは
+        $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
+        粘性 ADI の対角部など低次成分は表中の脚注条件で扱い，
+        界面近傍の全体精度は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差に律速される．
         分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成し，
         HFE（§~\ref{sec:field_extension}）はジャンプ補正済み片側データを延長し，
         CCD ステンシルが不連続値を跨がないようにする．
@@ -69,9 +70,9 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 \end{enumerate}
 \end{tcolorbox}
 
-\begin{tcolorbox}[mybox, title={設計選択の根拠：分相 PPE + DC + CCD 勾配の統合設計}]
+\begin{tcolorbox}[mybox, title={閉包条件：分相 PPE + DC + CCD 勾配の統合}]
 \label{box:ppe_design_rationale}
-本稿の PPE 求解戦略は密度比に応じて\textbf{2 経路}を切り替える：
+本稿の PPE 求解戦略には密度比に応じた\textbf{2 つの適用領域}がある：
 中程度の密度比では変密度一括 smoothed-Heaviside PPE（本稿 7-step フローの Step 6），
 高密度比 + 高粘性比 + 低 We 同時成立時は分相 PPE 解法（§~\ref{sec:split_ppe_framework}）．
 以下の3つの原則は両経路に共通する設計指針であり，特に分相 PPE では効果が顕著である．
@@ -99,7 +100,7 @@ $Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 
 
   \item \textbf{疎行列直接法による Step~2 解法誤差の抑制}．
         DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を
-        ゲージ固定後の 2D 疎行列 LU などで解くことで，
+        ゲージ拘束後の 2D 疎行列 LU などで解くことで，
         Step~2 の線形解法残差は機械精度近くまで下げられる．
         方向分離スウィープを用いる場合は近似前処理として扱い，
         直接法ケースとは残差保証を分ける（§~\ref{sec:defect_correction_main}参照）．
