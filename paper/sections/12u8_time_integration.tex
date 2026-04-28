@@ -134,6 +134,12 @@ CN--ADI vs FE 安定性比較で CFL$_\nu = 0.5$ にて FE 増幅 $1.7\times 10^
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U8-a TVD--RK3：slope $3.00$，設計 3 次完全達成．\checkmark
   \item U8-b AB2：slope $2.04$，設計 2 次完全達成．\checkmark
+        $0.04$ の上振れは FE start--up step
+        （AB2 の 1 step 目の Forward--Euler 起動）に由来する $\Ord{\mathrm{d}t^2}$
+        ではなく $\Ord{\mathrm{d}t^3}$ の transient であり，
+        $n_t$ を増やすほど該当寄与が相対的に小さくなって観測 slope が
+        設計 2 次に上から漸近する典型的挙動．許容帯
+        $|p_{\mathrm{measured}} - p_{\mathrm{design}}| \le 0.5$ の十分内側．
   \item U8-c CN--ADI：slope $2.00$，FE 比 安定性 $19$ 桁優位（CFL$_\nu=0.5$ にて）．
         §\ref{sec:viscous_cn_defect} の A--安定設計と整合．\checkmark
   \item U8-d Layer A/B/C：A 層は完全 implicit CN ($L_{\mathrm{cross}}\!=\!0$) で完全 2 次．

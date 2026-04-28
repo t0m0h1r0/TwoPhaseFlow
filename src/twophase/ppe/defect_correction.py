@@ -63,6 +63,8 @@ class PPESolverDefectCorrection(IPPESolver):
             self.operator._defer_interface_jump = True
         self.last_base_pressure = None
         self.last_diagnostics = {}
+        self.last_residual_history: list[float] = []
+        self.last_stalled: bool = False
 
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh both the target operator and the configured base solver."""
@@ -157,11 +159,15 @@ class PPESolverDefectCorrection(IPPESolver):
         rhs_flat = rhs_dev.ravel()
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
+        history: list[float] = []
+        broke = False
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
             residual = self._enforce_rhs_compatibility(residual, record_stats=False)
             residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
+            history.append(residual_norm)
             if residual_norm <= self.tolerance * scale:
+                broke = True
                 break
             correction = xp.asarray(
                 self.base_solver.solve(residual, rho, dt=dt, p_init=None)
@@ -169,6 +175,8 @@ class PPESolverDefectCorrection(IPPESolver):
             correction = self._enforce_pressure_gauge(correction)
             pressure = pressure + self.relaxation * correction
             pressure = self._enforce_pressure_gauge(pressure)
+        self.last_residual_history = history
+        self.last_stalled = not broke
         self.last_base_pressure = xp.copy(pressure)
         self.last_diagnostics = initial_diagnostics
         if hasattr(self.operator, "apply_interface_jump"):

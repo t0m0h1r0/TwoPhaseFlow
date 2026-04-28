@@ -40,6 +40,20 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ で順次活性化することを確認．
 \end{description}
 
+\paragraph{D1--D4 の位置づけ．}
+本節の D1--D4 は \textbf{実験スクリプト固有の集約スカラー}であり，
+production API として \texttt{src/twophase} に独立関数として
+公開してはいない（実体は格子量 \texttt{ridge\_sigma\_eff\_field} /
+\texttt{eps\_local} / \texttt{dJ\_dxi}（§\ref{sec:ridge_eikonal_nu_grid}）
+の振幅幅 \textit{max-min} を実験側で集計したもの）．
+これは D1--D4 が「メトリック補正の活性化を一桁単位で確認する診断指標」であって
+量的な収束次数を主張する量ではないためで，
+production 経路では生成過程の各場が
+\texttt{NonuniformInterfaceGrid.update\_from\_levelset} 内で
+直接 CCD 連鎖律係数として用いられる．
+本実験は『各成分が一様格子で零，非一様で発火する』という
+発火検査として position する．
+
 \paragraph{結果．}
 
 \begin{table}[!ht]

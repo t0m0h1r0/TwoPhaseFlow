@@ -16,7 +16,7 @@ Sub-tests
 ---------
   (a) CCD on interface-clustered grid (interface at x=0.5),
       alpha in {1, 2}, f = sin(pi x), N in {16, 32, 64, 128}, wall BC.
-      Expected: alpha=1 slope ~6.0, alpha=2 slope 5.2-5.8.
+      Expected: alpha=1 slope ~6.0, alpha=2 slope ~5.98 (paper Ch12 U3-a).
       GCL: f = 1, expect ||df/dx||_inf < 7.5e-14 (machine zero).
   (b) FCCD face value/grad on alpha=2 grid, N in {16, 32, 64, 128}.
       Expected slope >= 5.5.
@@ -301,7 +301,7 @@ def make_figures(results: dict) -> None:
 
 def print_summary(results: dict) -> None:
     print("U3-a CCD on interface-clustered grid (Chapter 12 U3: alpha=1 slope ~6, "
-          "alpha=2 slope 5.2-5.8):")
+          "alpha=2 slope ~5.98):")
     for alpha in ALPHAS_AB:
         rows = results["U3a"][f"alpha{alpha:g}"]
         print(f"  alpha={alpha:g}  d1 slope = {_slope_summary(rows, 'Linf_d1')};  "

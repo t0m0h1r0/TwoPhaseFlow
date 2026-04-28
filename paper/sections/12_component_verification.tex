@@ -77,6 +77,16 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
 
 各 U-test は独立した単体実験として実施し，表と図には再生成した数値のみを記載する．
 
+\paragraph{バックエンド方針（CPU 固定）．}
+本章 U1--U9 はすべて \texttt{Backend(use\_gpu=False)} 固定で実行する．
+これは \textbf{CPU bit-exact verification}（PR-5）を優先する設計上の選択であり，
+収束次数や round-off 床といった単体精度指標が
+ハードウェア依存のドリフトを受けないことを保証するためである．
+GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:results}章の
+統合検証で運用評価する．本章で確認する numerical primitive は
+\texttt{backend.xp} 経由で書かれており CPU/GPU 切り替え可能だが，
+精度判定は CPU 値を canonical reference として記録する．
+
 \paragraph{検証成績一覧．}
 表~\ref{tab:U_summary} に全 9 単体テストの設計次数と実測値，
 判定結果をまとめる．

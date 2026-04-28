@@ -22,7 +22,7 @@ Sub-tests
 
   (c) HFE 1-D + 2-D extension. 1-D: _hermite5_xp polynomial extrapolated one
       cell beyond the source window for f(x)=cos(π x)+0.3 sin(2π x) (no
-      symmetry zero); Chapter 12 U6 reports slope ≈ 5.99. 2-D:
+      symmetry zero); Chapter 12 U6 reports slope ≈ 5.91. 2-D:
       HermiteFieldExtension.extend across a circular Γ on the same field;
       target = inside circle (φ > 0), source = outside (φ < 0); error
       reported on the 6-cell extension band. Chapter 12 U6 reports
@@ -30,8 +30,9 @@ Sub-tests
 
 Stall detection: PPESolverDefectCorrection.solve has
 ``for _ in range(max_corrections): ... if residual <= tol*scale: break``.
-Subclass _DCStallTracker records the per-correction residual norms and
-flags ``last_stalled = True`` iff the loop ran to completion without break.
+The parent solver records ``last_residual_history`` (per-correction norms)
+and ``last_stalled`` (True iff loop ran max_corrections without break) as
+side-effects of solve(); this experiment reads them directly.
 
 Usage
 -----
@@ -84,56 +85,6 @@ RHO_CONV = 1000.0
 R_CIRCLE = 0.25
 CENTER = (0.5, 0.5)
 PI = float(np.pi)
-
-
-# ── Subclass: DC with stall tracking ───────────────────────────────────────
-
-class _DCStallTracker(PPESolverDefectCorrection):
-    """Replicates parent solve() but records per-correction residual norms.
-
-    Sets ``last_residual_history`` and ``last_stalled`` (True iff loop ran
-    max_corrections without convergence break).
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.last_residual_history: list[float] = []
-        self.last_stalled: bool = False
-
-    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
-        xp = self.xp
-        rhs_dev = xp.asarray(rhs)
-        self.operator.prepare_operator(rho)
-        rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
-        rhs_dev = self._enforce_rhs_compatibility(rhs_dev)
-        pressure = xp.asarray(
-            self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
-        )
-        pressure = self._enforce_pressure_gauge(pressure)
-        rhs_flat = rhs_dev.ravel()
-        rhs_norm = float(xp.linalg.norm(rhs_flat))
-        scale = max(rhs_norm, 1.0)
-        history: list[float] = []
-        broke = False
-        for _ in range(self.max_corrections):
-            residual = rhs_dev - self.operator.apply(pressure)
-            residual = self._enforce_rhs_compatibility(residual, record_stats=False)
-            residual_norm = float(xp.linalg.norm(residual.ravel()))
-            history.append(residual_norm)
-            if residual_norm <= self.tolerance * scale:
-                broke = True
-                break
-            correction = xp.asarray(
-                self.base_solver.solve(residual, rho, dt=dt, p_init=None)
-            )
-            correction = self._enforce_pressure_gauge(correction)
-            pressure = pressure + self.relaxation * correction
-            pressure = self._enforce_pressure_gauge(pressure)
-        self.last_residual_history = list(history)
-        self.last_stalled = not broke
-        if hasattr(self.operator, "apply_interface_jump"):
-            pressure = self.operator.apply_interface_jump(pressure)
-        return pressure
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -223,7 +174,7 @@ def _u6a_run_one(N: int, rho_l: float, omega: float, k_dc: int,
     cfg_op = _make_cfg("phase_density", pseudo_tol=1.0e-6, pseudo_maxiter=30)
     base = PPESolverFCCDMatrixFree(backend, cfg_base, grid, fccd)
     operator = PPESolverFCCDMatrixFree(backend, cfg_op, grid, fccd)
-    solver = _DCStallTracker(
+    solver = PPESolverDefectCorrection(
         backend, grid, base, operator,
         max_corrections=k_dc, tolerance=1.0e-7, relaxation=omega,
     )
@@ -269,7 +220,7 @@ def _u6b_run_one(N: int, rho_l: float, k_dc: int, backend) -> dict:
         p = np.asarray(base.solve(rhs, rho))
     else:
         operator = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
-        solver = _DCStallTracker(
+        solver = PPESolverDefectCorrection(
             backend, grid, base, operator,
             max_corrections=k_dc, tolerance=1.0e-10, relaxation=1.0,
         )
@@ -545,7 +496,7 @@ def print_summary(results: dict) -> None:
 
     rows_1d = results["U6c"]["hfe_1d"]
     rows_2d = results["U6c"]["hfe_2d"]
-    print("U6-c HFE convergence (Chapter 12 U6: 1D ≈ 5.99; 2D max ≈ 5.05 / med ≈ 3.21):")
+    print("U6-c HFE convergence (Chapter 12 U6: 1D ≈ 5.91; 2D max ≈ 5.10 / med ≈ 3.21):")
     print(f"  1D Hermite-5 extrap. slope         = "
           f"{_slope_of(rows_1d, 'err_inf'):.2f}")
     print(f"  2D HFE band-max slope              = "

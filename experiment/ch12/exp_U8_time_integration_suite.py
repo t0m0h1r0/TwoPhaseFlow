@@ -341,6 +341,9 @@ def run_U8d():
     nt_list = [16, 32, 64, 128, 256]
     T = 0.02
     N = 64
+    # Layer A is constant-μ (μ_x≡0); μ_ratio is the absolute μ value for that
+    # diagonal-only CN test, so only the canonical mu_ratio=1 case is run.
+    # Layer B/C carry the actual ratio sweep (cross-term study).
     cases = [
         ("A", 1.0),
         ("B", 10.0),
@@ -358,7 +361,7 @@ def run_U8d():
                 "err": err,
                 "mu_x_max": mu_x_max, "mu_mean": mu_mean,
             })
-    return {"layers": rows, "T": T, "N": N}
+    return {"layers": rows, "T": T, "N": N, "cases": cases}
 
 
 # ── Aggregator + plotting ────────────────────────────────────────────────────
@@ -411,18 +414,25 @@ def make_figures(results: dict) -> None:
 
     rows_d = results["U8d"]["layers"]
     dts_d = sorted({r["dt"] for r in rows_d}, reverse=True)
+    # Only iterate over the actual (layer, mu_ratio) cases produced by run_U8d.
+    # Older versions iterated the full A/B/C × {1,10,100} cartesian product and
+    # silently dropped empty Layer-A μ=10/100 series; the case list is now the
+    # single source of truth.
+    cases = results["U8d"].get(
+        "cases",
+        [("A", 1.0), ("B", 10.0), ("B", 100.0), ("C", 10.0), ("C", 100.0)],
+    )
     series = {}
-    for layer in ("A", "B", "C"):
-        for mu_r in (1.0, 10.0, 100.0):
-            label = f"L{layer} $\\mu_r={int(mu_r)}$"
-            errs = []
-            for dt in dts_d:
-                hits = [r for r in rows_d if r["layer"] == layer
-                        and r["mu_ratio"] == mu_r and abs(r["dt"] - dt) < 1e-12]
-                if hits:
-                    errs.append(hits[0]["err"])
-            if errs:
-                series[label] = errs
+    for layer, mu_r in cases:
+        label = f"L{layer} $\\mu_r={int(mu_r)}$"
+        errs = []
+        for dt in dts_d:
+            hits = [r for r in rows_d if r["layer"] == layer
+                    and r["mu_ratio"] == mu_r and abs(r["dt"] - dt) < 1e-12]
+            if hits:
+                errs.append(hits[0]["err"])
+        if errs:
+            series[label] = errs
     convergence_loglog(
         ax_d, dts_d, series,
         ref_orders=[1, 2], xlabel="$\\Delta t$", ylabel="$L_\\infty$ error",
@@ -441,13 +451,16 @@ def print_summary(results: dict) -> None:
         print(f"  CFL_nu={s['CFL_nu']:>4} dt={s['dt']:.3e} n_t={s['n_t']}"
               f"  CN growth={s['cn_growth']:.3e}  FE growth={s['fe_growth']:.3e}")
     print("U8-d viscous 3-layer  (LTE slope by layer × mu_ratio):")
-    for layer in ("A", "B", "C"):
-        for mu_r in (1.0, 10.0, 100.0):
-            sub = [r for r in results["U8d"]["layers"]
-                   if r["layer"] == layer and r["mu_ratio"] == mu_r]
-            if sub:
-                print(f"  Layer {layer}  mu_ratio={mu_r:>5}  slope:",
-                      _slope_summary(sub, "dt", "err"))
+    cases = results["U8d"].get(
+        "cases",
+        [("A", 1.0), ("B", 10.0), ("B", 100.0), ("C", 10.0), ("C", 100.0)],
+    )
+    for layer, mu_r in cases:
+        sub = [r for r in results["U8d"]["layers"]
+               if r["layer"] == layer and r["mu_ratio"] == mu_r]
+        if sub:
+            print(f"  Layer {layer}  mu_ratio={mu_r:>5}  slope:",
+                  _slope_summary(sub, "dt", "err"))
 
 
 def main() -> None:

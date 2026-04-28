@@ -11,6 +11,19 @@ _EPS_D_ADV = 0.05
 
 @_fuse
 def _dccd_filter_stencil(fp, fp_p1, fp_m1, eps_d):
+    """Dissipative-CCD 3-point filter for *advected scalar* fluxes.
+
+    Transfer function: H(ξ) = 1 - 4·eps_d·sin²(ξ/2). Used by
+    :class:`DissipativeCCDAdvection` on level-set / volume-fraction transports.
+
+    PROHIBITED on the pressure field (∇p) — see U9 negation test
+    (paper §12 U9, ``twophase.levelset`` only). Applying this filter to
+    pressure breaks BF-coupling Algorithm Fidelity (PR-5) by introducing
+    an O(h²) perturbation against an O(h⁶) baseline; ratio diverges as
+    O(h^-4). This kernel exposes no field-tag, so the prohibition is
+    enforced at *call-site* (only `DissipativeCCDAdvection.advance` calls
+    it, never the PPE / momentum corrector path).
+    """
     return fp + eps_d * (fp_p1 - 2.0 * fp + fp_m1)
 
 
