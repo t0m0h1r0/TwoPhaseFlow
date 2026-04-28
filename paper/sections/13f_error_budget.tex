@@ -1,12 +1,11 @@
 % paper/sections/13f_error_budget.tex
 %
-% Synthesis: V1-V10 横断の精度バジェット
+% V1-V10 横断の精度バジェット総合
 % Hosts labels: sec:error_budget, sec:accuracy_summary
 % (tab:accuracy_summary 09f, sec:time_accuracy_table 07 を authoritative とし
 %  本節からは hosting せず外部参照のみで連結する)
-% No new figure embedding (synthesis section).
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{精度バジェット synthesis}
+\subsection{精度バジェット総合}
 \label{sec:error_budget}
 \label{sec:accuracy_summary}
 
@@ -14,7 +13,7 @@
 本節は V1--V10 横断の精度結果を一表に集約し，
 \textbf{各誤差源} (空間離散，時間離散，界面表現，曲率推定，CLS 再初期化) と
 \textbf{各設定パラメータ} ($\rho_r$, $\alpha$, $\Delta t$, $h$) の関係を整理する．
-旧表の値は用いず，V1--V10 の再生成結果に基づいて整理する．
+過去の表の値は用いず，V1--V10 の再生成結果に基づいて整理する．
 
 \paragraph{Master accuracy summary．}
 
@@ -31,13 +30,13 @@ ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
 V1-a & 単相 TGV 空間 & $E_{\mathrm{rel}}$ at $N=64,128$ & $2.4\times 10^{-9}$ (時間誤差床) & — \\
 V1-b & 単相 TGV 時間 (AB2/IMEX-BDF2) & slope($E_{\mathrm{rel}}, \Delta t$) & $\mathbf{2.00}$ & $O(\Delta t^2)$ \checkmark \\
 V2-a & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{6.00}$ & $O(h^6)$ \checkmark \\
-V3   & 静的液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
-V4-a & Galilean 不変性 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (補間誤差支配) $\triangle$ & — \\
-V4-b & RT 線形成長率 & rel\_err($\gamma$) at $N=64$ & $43.3\%$ ($\triangle$ 短時間) & — \\
+V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
+V4-a & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $0.21$ (壁境界・参照点ゲージ支配) $\triangle$ & — \\
+V4-b & RT 線形成長率 & rel\_err($\gamma$) at $N=64$ & $43.3\%$ ($\times$; 予備診断のみ) & — \\
 V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9$ & — \\
 V6   & 密度比 sweep ($\rho_r=2..833$) & $|\Delta p_{\mathrm{rel}}|^{\max}$ & $1.77\%$ ($\rho_r=833, N=32$) \checkmark & — \\
 V7   & IMEX-BDF2 二相時間 & slope($\|e\|_\infty, \Delta t$) & $\mathbf{0.56}$ ($\times$ 設計未達) & $O(\Delta t^2)$ 設計 \\
-V8   & 非一様 NS 静的 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
+V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
 V9   & local $\varepsilon$ vs fixed & $u_\infty^{\max}$ ratio (C/A) at $N=64$ & $4860\times$ ($\times$ 推奨せず) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $0.107\%$ \checkmark & — \\
 V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $1.519\%$ / $0.34$ ($\triangle$) & — \\
@@ -62,13 +61,13 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \checkmark \textbf{合格}: V1-b (時間 2 次)，V2-a (空間 6 次)，
         V3 (BF 平衡)，V5 (CCD 寄生流れ抑制)，V6 (密度比ロバスト)，
-        V8 (非一様静的), V10-a ($\alpha=1$), V10-c (単一渦 reversal).
-  \item $\triangle$ \textbf{条件付き合格}: V4-a (Galilean: 固定 Eulerian + 参照点固定 PPE で
-        $O(\|\bm U\|)$ 残差), V4-b (RT: 線形抽出 spec 外設計),
-        V10-b ($\alpha=2$ Zalesak: volume drift $1.519\%$ だが centroid order $0.34$).
+        V8 (非一様静止), V10-a ($\alpha=1$), V10-c (単一渦 reversal).
+  \item $\triangle$ \textbf{条件付き合格}: V4-a (固定 Eulerian + 参照点固定 PPE で
+        $O(\|\bm U\|)$ 残差), V10-b ($\alpha=2$ Zalesak: volume drift $1.519\%$ だが centroid order $0.34$).
   \item $\times$ \textbf{要改善 / 推奨せず / 制約条件}:
+        V4-b (RT 線形成長率誤差 $43$--$55\%$; 予備診断のみ),
         V7 (二相時間 slope $0.56$ → 設計 $O(\Delta t^2)$ 未達; 再初期化頻度差 + $\kappa$ 陽的遅れ評価が律速),
-        V9 (local $\varepsilon$ → 寄生流れ激増; fixed $\varepsilon$ が安全 default).
+        V9 (local $\varepsilon$ → 寄生流れ激増; fixed $\varepsilon$ が安全な既定値).
 \end{itemize}
 
 \paragraph{設計指針 (PR-5 Algorithm Fidelity)．}
@@ -80,8 +79,9 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
   \item 非一様格子：$\alpha > 1$ でも FCCD/TVD--RK3 の体積保存は成立するが，
         Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
         local $\varepsilon$ は推奨せず，fixed $\varepsilon$ と 2D snapshot 診断を併用する．
-  \item 寄生流れ抑制：CCD 演算子は FD 比 $3$--$6$ 倍抑制（V5）；
-        CSF + 高次圧力勾配の組み合わせが効果的．
+  \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
+        代表的には $\rho_r=1,N=32$ で FD の $1/5.9$，
+        $\rho_r=100,N=64$ で $1/2.5$．高解像度・高密度比では差が縮小する．
 \end{itemize}
 \paragraph{検証対応の統合．}
 本節は V1--V10 全結果の横断統合点である．各実験が測定した式・離散化・物理指標の対応を
@@ -95,13 +95,13 @@ V10-c& 単一渦 reversal ($\alpha=2$) & $L^1$ reversal / volume drift & $2.424\
         — BF 力学的バランス \eqref{eq:bf_fccd_unification} + CSF
         \eqref{eq:csf_final} に対する Laplace 圧維持と寄生流れ．
   \item V4 (\autoref{sec:galilean_invariance}, \autoref{sec:rt_linear_growth}) —
-        Galilean 不変性と線形 RT 分散関係に対する速度場差・成長率．
+        固定壁系の Galilean offset 残差と線形 RT 分散関係に対する速度場差・成長率．
   \item V6, V7 (\autoref{sec:density_ratio_sweep},
         \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
         DC + HFE に対する密度比安定性と二相時間精度．
   \item V8, V9, V10 (\autoref{sec:nonuniform_grid_ns}) — 非一様 NS + local
-        $\varepsilon$ + CLS 移流に対する静的液滴，局所 $\varepsilon$ 比較，体積保存性．
+        $\varepsilon$ + CLS 移流に対する静止液滴，局所 $\varepsilon$ 比較，体積保存性．
 \end{itemize}
 本節 \autoref{tab:v_accuracy_summary} はこの全対応の精度結果を一表に集約する
-唯一の synthesis であり，他章 (\autoref{sec:conclusion}) からの inbound 参照は
+唯一の総合表であり，他章 (\autoref{sec:conclusion}) からの参照は
 本表をエンドポイントとする．

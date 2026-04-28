@@ -9,7 +9,7 @@
 \paragraph{本章の位置付け．}
 \autoref{sec:numerical_integrity}（§12）で個別コンポーネント
 （CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Godunov Eikonal U4，
-Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静的液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
+Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静止液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
 \textbf{単体で}設計仕様（slope, 境界整合，演算子トレース性）を満たすことを確認した．
 本章は，これらコンポーネントを\textbf{統合}した完全 Navier--Stokes / 二相流ソルバが
 \textbf{物理整合性を保つ領域}と\textbf{設計収束次数が崩れる領域}を，10 個の独立した統合検証実験
@@ -22,8 +22,11 @@ V1--V10 で評価する．
 $\triangle$ を「物理的説明はつくが検証目的に対して条件付きの結果」，
 $\times$ を「本稿の保証範囲外または設計未達」とする．
 V1/V2/V3/V5/V6/V8 と V10-c（単一渦 reversal）は主張を支持する結果である一方，
-V7（二相時間次数），V9（局所 $\varepsilon$）は設計未達または推奨外の結果である．
-V10-b（$\alpha=2$ Zalesak）は体積保存は保つが slot 重心追跡が低次に留まるため，
+V4-a（固定壁・参照点ゲージ下の Galilean offset 残差）と V10-b（$\alpha=2$ Zalesak）は
+条件付き結果である．
+V4-b（Rayleigh--Taylor 線形成長率），V7（二相時間次数），V9（局所 $\varepsilon$）は
+設計未達または推奨外の結果として扱う．
+V10-b は体積保存は保つが slot 重心追跡が低次に留まるため，
 薄い幾何特徴に対する条件付き結果として扱う．
 本章ではこれらを隠さず，アルゴリズムの適用範囲を定めるための検証結果として扱う．
 
@@ -55,12 +58,12 @@ ID & 検証対象 & 図 & 主要指標 \\
 \midrule
 V1 & 単相 TGV エネルギー減衰          & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (dt) \\
 V2 & Kovasznay CCD 空間残差            & \autoref{fig:V2_kovasznay}       & $\|R\|_\infty$ slope (h) \\
-V3 & 静的液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
-V4 & Galilean + Rayleigh--Taylor       & \autoref{fig:V4_galilean_rt}     & $\|\Delta\|_\infty$, $\gamma_{\mathrm{num}}/\gamma_{\mathrm{th}}$ \\
+V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
+V4 & Galilean offset 残差 + Rayleigh--Taylor & \autoref{fig:V4_galilean_rt}     & $\|\Delta\|_\infty$, $\gamma_{\mathrm{num}}/\gamma_{\mathrm{th}}$ \\
 V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD vs FD) \\
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $\Delta p_{\mathrm{meas}}$, $u_\infty^{\mathrm{end}}$ \\
 V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
-V8 & 非一様 NS 静的 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
+V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ ($\alpha$) \\
 V9 & 局所 $\varepsilon$ 比較 (fixed/local) & \autoref{fig:V9_local_eps}     & $u_\infty^{\mathrm{max}}$ 安定性比較 \\
 V10 & Zalesak / 単一渦 CLS 移流     & \autoref{fig:V10_zalesak}        & $V$-drift, centroid err, reversal error \\
 \bottomrule
@@ -70,11 +73,11 @@ V10 & Zalesak / 単一渦 CLS 移流     & \autoref{fig:V10_zalesak}        & $V
 \paragraph{構成．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \autoref{sec:single_phase_ns}：V1 (TGV エネルギー減衰) + V2 (Kovasznay CCD 空間収束)．
-  \item \autoref{sec:twophase_static_verification}：V3 (静的液滴 long-term) + V5 (寄生流れ multistep)．
-  \item \autoref{sec:galilean_rt}：V4 (Galilean 不変性 + Rayleigh--Taylor)．
+  \item \autoref{sec:twophase_static_verification}：V3 (静止液滴 long-term) + V5 (寄生流れ multistep)．
+  \item \autoref{sec:galilean_rt}：V4 (Galilean offset 残差 + Rayleigh--Taylor)．
   \item \autoref{sec:varrho_dc_convergence}：V6 (密度比 sweep) + V7 (IMEX-BDF2 二相時間精度)．
-  \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静的) + V9 (局所 $\varepsilon$) + V10 (Zalesak / 単一渦 CLS 移流)．
-  \item \autoref{sec:error_budget}：V1--V10 横断の精度バジェット synthesis．
+  \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静止) + V9 (局所 $\varepsilon$) + V10 (Zalesak / 単一渦 CLS 移流)．
+  \item \autoref{sec:error_budget}：V1--V10 横断の精度バジェット総合．
 \end{itemize}
 
 \input{sections/13a_single_phase_ns}

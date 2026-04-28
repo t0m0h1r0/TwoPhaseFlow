@@ -55,10 +55,10 @@ Rhie--Chow 補間に頼らずコロケート格子のチェッカーボード不
 全手法は7ステップのタイムループとして統合される．
 検証は三段構成で実施した：
 数値要素の単体検証（CCD/FCCD/UCCD6，PPE 境界条件，非一様格子，HFE/分相 PPE 等），
-NS パイプライン統合検証（静的液滴の Laplace 圧力誤差 $0.97\%$，
-寄生流れは CCD が FD 比で約 $3$--$6$ 倍抑制，密度比 $833$ までの分相 PPE + DC + HFE ロバスト性，
+NS パイプライン統合検証（静止液滴の Laplace 圧力誤差 $0.97\%$，
+寄生流れは CCD が全表ケースで FD 以下，代表ケースで約 $2.5$--$5.9$ 倍抑制，密度比 $833$ までの分相 PPE + DC + HFE ロバスト性，
 Zalesak / 単一渦 CLS 移流の 2D 可視化と体積・重心診断），
-および物理ベンチマーク（毛細管波，気泡上昇，Rayleigh--Taylor smoke 設定）．
+および物理ベンチマーク（毛細管波，気泡上昇，Rayleigh--Taylor 予備設定）．
 一方，二相 IMEX--BDF2 の実効時間次数低下，local $\varepsilon$ の寄生流れ増加，
 および $\alpha=2$ Zalesak の slot 重心追跡低次化は制約条件として明示した．
 Hysing 級の terminal-velocity 比較や Prosperetti 級の dispersion 関係定量検証は今後の課題として位置づける．
