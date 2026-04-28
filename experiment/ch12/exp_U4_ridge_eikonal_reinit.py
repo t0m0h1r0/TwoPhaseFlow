@@ -199,8 +199,8 @@ def make_figures(results: dict) -> None:
     ratios = [b["ratio_init"], b["ratio_dgr"]]
     ax_b.bar(labels, ratios, color=["C1", "C0"])
     ax_b.axhline(1.0, ls="--", color="k", lw=0.8, label="target $\\varepsilon$")
-    ax_b.axhline(1.03, ls=":", color="grey", lw=0.8,
-                 label="paper expectation ~1.03")
+    ax_b.axhline(1.05, ls=":", color="grey", lw=0.8,
+                 label="OK threshold $|r{-}1|<0.05$")
     ax_b.set_ylabel("$\\varepsilon_{eff} / \\varepsilon$")
     ax_b.set_title("(b) DGR thickness correction")
     ax_b.legend(fontsize=8)
@@ -225,14 +225,16 @@ def print_summary(results: dict) -> None:
               f"full err = {r['grad_err_inf']:.3e}{flag}")
 
     b = results["U4b"]
-    print("U4-b DGR thickness correction (Chapter 12 U4: ratio ~1.03, in [1.0, 1.1]):")
+    # OK band |ratio − 1| < 0.05 from biased-ψ asymptotic 1-step residual
+    # O(h) at h≈7.8e-3 (with margin); see paper sec U4-b 判定 paragraph.
+    print("U4-b DGR thickness correction (acceptance: |ratio − 1| < 0.05):")
     print(f"  eps_target           = {b['eps_target']:.4e}")
     print(f"  eps_eff initial      = {b['eps_eff_init']:.4e}  "
-          f"(ratio = {b['ratio_init']:.3f})")
+          f"(ratio = {b['ratio_init']:.6f})")
     print(f"  eps_eff after DGR    = {b['eps_eff_dgr']:.4e}  "
-          f"(ratio = {b['ratio_dgr']:.3f})")
-    flag = "OK" if 1.0 <= b['ratio_dgr'] <= 1.1 else "WARN"
-    print(f"  DGR ratio in [1.0, 1.1]: [{flag}]")
+          f"(ratio = {b['ratio_dgr']:.6f})")
+    flag = "OK" if abs(b['ratio_dgr'] - 1.0) < 0.05 else "WARN"
+    print(f"  |DGR ratio − 1| < 0.05: [{flag}]")
 
 
 def main() -> None:

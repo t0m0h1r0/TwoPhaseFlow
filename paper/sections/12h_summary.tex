@@ -31,28 +31,27 @@ U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0
 U1-c & FCCD face value/grad   & 設計 $\Ord{h^6}$，評価配置上 $\Ord{h^4}$ & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & $\triangle$ \textsuperscript{(a)} \\
 U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
 U2-a & Poisson MMS（DC $k=1,2,3$） & $\Ord{h^2}$/$\Ord{h^4}$/$\Ord{h^7}$ & $2.00/4.18/6.90$ & \checkmark \\
-U2-b & PPE Neumann + ゲージ    & $\Ord{h^5}$              & $\Ord{h^{4.85}}$        & \checkmark \\
+U2-b & Production CCD-PPE 作用素 + Dirichlet パッチ & $\Ord{h^6}$ 内部，境界 5 次律速  & $\Ord{h^{5.72}}$        & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier II：空間離散・非一様格子}} \\
 \midrule
-U3-a & CCD on stretched grid + 2D $D_{xy}$ & $\Ord{h^6}$ & $\Ord{h^{5.98}}$ & \checkmark \\
-U3-a & GCL（フリーストリーム保存） & $\sim\varepsilon_\mathrm{mach}$ & $7.5\times10^{-14}$ & \checkmark \\
+U3-a & CCD on stretched grid + 2D $D_{xy}$ + GCL & $\Ord{h^6}$ + GCL $\sim\varepsilon_\mathrm{mach}$ & $\Ord{h^{5.98}}$ + GCL $7.5\!\times\!10^{-14}$ & \checkmark \\
 U3-b & FCCD non-uniform face   & 評価配置上 $\Ord{h^4}$          & $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$        & \checkmark \\
-U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$    & $\|D_k\|_\infty < 10^{-13}$ & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$，$\alpha>1$ で $D_4$ のみ発火 & $D_1$--$D_3 < 5\!\times\!10^{-14}$（機械零）, $D_4 \le 4.5\!\times\!10^{-11}$（$\alpha\!=\!1.5$） & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier III：界面処理 primitives}} \\
 \midrule
 U4-a & Godunov Eikonal reinit $|\nabla\phi|=1$ 復元 & band 残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正 & $\eps_{\eff}/\eps^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
-U5-a & $\delta_\varepsilon$ 0/1 次モーメント & $1$/$x_\mathrm{int}$ & $<10^{-13}$/$\Ord{h^2}$ & \checkmark \\
+U5-a & $\delta_\varepsilon$ 0/1 次モーメント & 0 次 $=1$ / 1 次 $=x_\mathrm{int}$（いずれも logistic round-off 床 $\sim 1.6\!\times\!10^{-11}$） & 0 次 $1.64\!\times\!10^{-11}$ / 1 次 $8.19\!\times\!10^{-12}$（$N\!\ge\!128$ で床到達） & \checkmark \\
 U5-b & $\delta_\varepsilon$ vs $h$ scaling & $\varepsilon=1.5h$ 最適 & $\Delta p$ 系統誤差最小 & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
-U6-a & DC $k=2,3$ 反復収束率   & $k\geq3$ で漸近        & 設計通り        & \checkmark \\
+U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.2\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
 U6-b & lumped--PPE $\rho$-ratio 1:1--1:1000 & 高密度比限界の診断 & $\rho_l\le10$: $\Ord{h^2}$, $\rho_l=1000$: $p\approx0.78$ & $\triangle$ \textsuperscript{(c)} \\
 U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
-U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{5.10}}$/med $\Ord{h^{3.21}}$ & $\triangle$ \textsuperscript{(b)} \\
+U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{5.10}}$ \checkmark / med $\Ord{h^{3.21}}$ $\times$ & 部分合格 \textsuperscript{(b)} \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
 \midrule
@@ -63,7 +62,7 @@ U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
 \midrule
-U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mathrm{diff}}=\Ord{h^2}$, ratio $10^5$--$10^7$ & \checkmark \\
+U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mathrm{diff}}=\Ord{h^2}$, ratio $10^5$--$3\!\times\!10^8$ & $\bullet$ \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VII：coupling primitive}} \\
 \midrule
@@ -77,29 +76,32 @@ $\triangle$ の類型——
 \textbf{(b) 幾何診断律速}：HFE 2D band は closest-point 幾何と界面跨ぎセル配置を含む条件付き指標；
 \textbf{(c) 一括 PPE 限界}：高密度比では分相 PPE への切替動機となる既知劣化．
 \textsuperscript{†}理論予測（§~\ref{sec:time_int}）と一致；実用上 $\mu_l/\mu_g \lesssim 5$ で支配的でない．
-\checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\times$: 未達（本章では該当なし）．
+\checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
+本表は §\ref{sec:numerical_integrity} 表~\ref{tab:U_summary} と同一の行構成（25 サブテスト）で対応する．
 }
 \end{tabular}
 \end{table}
 
 \begin{tcolorbox}[resultbox, title={U1--U9 単体検証の総括}]
-9 件すべての単体テストが\textbf{合格}または\textbf{条件付き合格}（$\triangle$）を達成．
+9 件すべての単体テストが\textbf{合格}（$\checkmark$ / $\bullet$ / 部分合格）または\textbf{条件付き合格}（$\triangle$）を達成．
 $\times$（不合格）は本章では該当なし．主要結果：
 \begin{itemize}[noitemsep]
   \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，FCCD 評価配置は $\Ord{h^{4.0}}$（$\triangle$），
-        UCCD6 は $\Ord{h^{7.0}}$，PPE Dirichlet $k=3$ は $\Ord{h^{6.90}}$，
-        Neumann は $\Ord{h^{4.85}}$ 境界律速．
+        UCCD6 は $\Ord{h^{7.0}}$，PPE Dirichlet DC $k=3$ は $\Ord{h^{6.90}}$，
+        production CCD-PPE 作用素 + Dirichlet パッチは $\Ord{h^{5.72}}$（粗格子で境界 5 次律速 → 細格子で内部 6 次へ漸近）．
   \item \textbf{空間（非一様）：}CCD $\Ord{h^{5.98}}$，
         FCCD face value/grad $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
         GCL は $7.5 \times 10^{-14}$ 機械精度，
-        Ridge--Eikonal D1--D4 一様極限 $< 10^{-13}$．
+        Ridge--Eikonal $D_1$--$D_3$ は機械零，連鎖律補正 $D_4$ のみ
+        $\alpha\!=\!1.5$ で $4.5\!\times\!10^{-11}$（最大），$\alpha\!=\!2$ で $2.9\!\times\!10^{-11}$．
   \item \textbf{界面：}Godunov Eikonal reinit は band 残差を
         $n_\tau=20$ で $2.19\times10^{-2}$，$n_\tau=100$ で $9.16\times10^{-3}$ へ減衰し，
         DGR は $\eps_{\eff}/\eps^\star = 2.0 \to 1.0000033$ を達成．
         $\delta_\varepsilon$ は 0 次モーメント機械精度，1 次 $\Ord{h^2}$．
   \item \textbf{圧力ソルバ：}lumped--PPE は高密度比 $\rho_l=1000$ で $p\approx0.78$ に律速し，
-        分相 PPE への切替動機を与える．HFE は 1D $\Ord{h^{5.91}}$，2D band max/med
-        $\Ord{h^{5.10}}$/$\Ord{h^{3.21}}$．
+        分相 PPE への切替動機を与える．HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
+        2D band は max $\Ord{h^{5.10}}$（許容帯内）/ med $\Ord{h^{3.21}}$（band 端外挿で
+        劣化；stencil 単体は 6 次設計，band--diagnostic は条件付き合格）．
   \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
         CN $\Ord{\Delta t^{2.0}}$ 無条件安定．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．

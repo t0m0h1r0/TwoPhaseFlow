@@ -6,7 +6,7 @@ Paper ref: Chapter 12 U6 (sec:U6_split_ppe_dc_hfe; paper/sections/12u6_split_ppe
 Sub-tests
 ---------
   (a) DC iteration / stall study with the lumped (phase_density) FCCD-PPE.
-      ρ_l/ρ_g ∈ {1, 100, 1000}; relaxation ω ∈ {0.2, 0.3, 0.5, 0.7};
+      ρ_l/ρ_g ∈ {1, 100, 1000}; relaxation ω ∈ {0.2, 0.3, 0.5, 0.7, 0.9};
       max_corrections k ∈ {2, 3}. Counts (ω, k, ρ) cells whose DC for-loop
       runs to completion without hitting tolerance ("stall"). Chapter 12 U6:
       ρ_l/ρ_g=1 is clean, while ρ_l/ρ_g ∈ {100, 1000} stalls for
@@ -76,7 +76,7 @@ N_GRID = 64
 RHO_RATIOS_A = [1.0, 100.0, 1000.0]
 RHO_RATIOS_B = [1.0, 10.0, 100.0, 1000.0]
 RHO_GAS = 1.0
-OMEGA_VALUES = [0.2, 0.3, 0.5, 0.7]
+OMEGA_VALUES = [0.2, 0.3, 0.5, 0.7, 0.9]
 DC_K_VALUES = [2, 3]
 HFE_GRID_SIZES = [32, 64, 128, 256]
 N_CONV_SIZES = [32, 64, 128]  # per-N study at ρ=1000 (Chapter 12 U6 table)

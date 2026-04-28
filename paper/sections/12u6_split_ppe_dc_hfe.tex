@@ -15,7 +15,7 @@ $\omega$--収束領域，および Hermite Field Extension
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
-  \item[U6-a] DC $\omega$--収束図．$N=32$ 円界面 $R=0.25$，
+  \item[U6-a] DC $\omega$--収束図．$N=64$ 円界面 $R=0.25$，
         $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
         $k_{\mathrm{DC}} \in \{2,3\}$．stall 判定 + 残差ヒストリ．
   \item[U6-b] $N$ 細分化 / $\rho$ 比依存性．$\rho_l = 1000$, $k_{\mathrm{DC}}=3$，
@@ -27,23 +27,30 @@ $\omega$--収束領域，および Hermite Field Extension
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption{U6-a: DC $\omega$--収束図（$N=32$, 円界面 $R=0.25$）．
-$\rho_l = 1$ では $\omega$ 全域 / $k\in\{2,3\}$ で 1 補正で機械精度床；
-$\rho_l = 100, 1000$ では DC が stall（$k=3$ 補正後でも残差 $\sim 10^{-3}$）．
-$k=3$ は $k=2$ より残差を 20--35\% 改善．}
+\caption{U6-a: DC $\omega$--収束図（$N=64$, 円界面 $R=0.25$）．
+$\rho_l = 1$ は $\omega$ 全域 / $k\in\{2,3\}$ で base GMRES 解で 1 補正
+（$k$ 内ループ break, residual $\!\approx\!5.2\!\times\!10^{-5}$ で機械精度床近傍）．
+$\rho_l \ge 100$ では DC が stall するが，$\omega$ 増大で残差が改善し，
+$\rho_l = 1000$, $\omega = 0.9$, $k=3$ で例外的に許容床に到達して \emph{break}（converge）．
+括弧内は \emph{converged} を示す．}
 \label{tab:U6_dc_omega}
 \centering\small
-\begin{tabular}{r c c c c}
+\begin{tabular}{r c c c c c}
 \toprule
- & \multicolumn{2}{c}{$k_{\mathrm{DC}}=2$} & \multicolumn{2}{c}{$k_{\mathrm{DC}}=3$} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-$\omega$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ \\
+ & \multicolumn{2}{c}{$k_{\mathrm{DC}}=2$} & \multicolumn{2}{c}{$k_{\mathrm{DC}}=3$} & $\rho_l=1$ \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-6}
+$\omega$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ & $\rho_l\!=\!100$ & $\rho_l\!=\!1000$ & all $k$ \\
 \midrule
-$0.2$ & $3.25\times 10^{-4}$ & $1.14\times 10^{-3}$ & $2.60\times 10^{-4}$ & $9.15\times 10^{-4}$ \\
-$0.3$ & $2.84\times 10^{-4}$ & $1.00\times 10^{-3}$ & $1.99\times 10^{-4}$ & $7.00\times 10^{-4}$ \\
-$0.5$ & $\mathit{stall}$ & $\mathit{stall}$ & $\mathit{stall}$ & $\mathit{stall}$ \\
+$0.2$ & $8.69\!\times\!10^{-3}$ & $5.57\!\times\!10^{-4}$ & $6.95\!\times\!10^{-3}$ & $4.46\!\times\!10^{-4}$ & $5.19\!\times\!10^{-5}$ \\
+$0.3$ & $7.60\!\times\!10^{-3}$ & $4.88\!\times\!10^{-4}$ & $5.32\!\times\!10^{-3}$ & $3.42\!\times\!10^{-4}$ & $5.19\!\times\!10^{-5}$ \\
+$0.5$ & $5.43\!\times\!10^{-3}$ & $3.49\!\times\!10^{-4}$ & $2.71\!\times\!10^{-3}$ & $1.74\!\times\!10^{-4}$ & $5.19\!\times\!10^{-5}$ \\
+$0.7$ & $3.26\!\times\!10^{-3}$ & $2.09\!\times\!10^{-4}$ & $9.77\!\times\!10^{-4}$ & $6.28\!\times\!10^{-5}$ & $5.19\!\times\!10^{-5}$ \\
+$0.9$ & $1.09\!\times\!10^{-3}$ & $7.00\!\times\!10^{-5}$ & $1.09\!\times\!10^{-4}$ & $\mathbf{7.00\!\times\!10^{-6}}^{\dagger}$ & $5.19\!\times\!10^{-5}$ \\
 \bottomrule
 \end{tabular}
+\\[2pt]
+{\footnotesize $\dagger$: $\rho_l=1000$, $\omega=0.9$, $k=3$ は唯一 stall せず converge．
+$\omega \ge 0.5$ で残差が単調減少し，$\omega=0.9$ で $k=2 \to k=3$ により 10$\times$ 改善．}
 \end{table}
 
 \begin{table}[!ht]
@@ -114,20 +121,28 @@ $\log_{10}|q_{\mathrm{ext}}-q(\bm{x}_\Gamma)|$．
 
 \paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item U6-a DC $\omega$--収束：$\rho_l = 1$ は安定収束；
-        $\rho_l \ge 100$ は $\omega \ge 0.5$ で stall．
-        $k_{\mathrm{DC}}=3$ は $k=2$ から残差を $\sim 25\%$ 削減．
-        §\ref{sec:dc_pure_fccd_convergence} の理論域と一致．\checkmark
+  \item U6-a DC $\omega$--収束：$\rho_l = 1$ は base GMRES 単独で収束（DC stall 無）；
+        $\rho_l \ge 100$ は全 $\omega$ で stall するが，$\omega$ 増大で残差が単調減少
+        ($\omega=0.2$ → $0.9$ で残差 1 桁減）．例外として $\rho_l = 1000$, $\omega=0.9$,
+        $k_{\mathrm{DC}}=3$ は唯一 converge．$k_{\mathrm{DC}}=3$ は $k=2$ より残差を
+        $\omega=0.5$ で $50\%$，$\omega=0.9$ で $90\%$ 削減．
+        §\ref{sec:dc_pure_fccd_convergence} の $\omega$ の楽観的選択指針と整合．\checkmark
   \item U6-b $N/\rho$ sweep：高密度比 $\rho_l=1000$ では
         slope $\approx 0.78$（$N=32 \to 128$）に律速．これは
         \textbf{一括 PPE の構造的制約}であり，§\ref{sec:split_ppe_framework} で
         導入する分相 PPE 切替の動機となる．
         $\rho_l \le 10$ は $\Ord{h^2}$ 通常収束だが，高密度比側は条件付き結果として扱う．$\triangle$
-  \item U6-c HFE：1D stencil は設計 6 次を完全達成．2D circular band は
-        closest-point 幾何と界面跨ぎセルの配置誤差を含む診断であり，
-        max $5.10$ / med $3.21$ に律速する．
-        §\ref{sec:hfe} の stencil 精度は確認されるが，2D band は幾何劣化込みの
-        条件付き結果として扱う．$\triangle$
+  \item U6-c HFE：1D stencil は設計 6 次を完全達成（slope $5.91$, $N=32 \to 256$）．
+        2D circular band の \textbf{max} slope $5.10$ は設計 6 から 0.9 偏差で許容帯内（\checkmark）；
+        一方 \textbf{median} slope $3.21$ は設計 6 から $2.79$ 逸脱し，許容帯 $\pm 0.5$ を
+        大幅に超える（\textbf{$\times$}：合格基準未達）．median が落ちる理由は，
+        band 端（$|\phi| \approx 6h$）の Hermite-5 \emph{外挿} により多項式残差が
+        $\Ord{h^3}$ 領域へ落ち込むためで，stencil 公式自体の 6 次設計とは独立した
+        幾何/外挿距離の合成効果（界面 $\Gamma$ 付近の closest-point 距離 $|\phi|$ が
+        セル単位で増加する band エッジで顕著）．stencil 単体精度（1D + 2D max）は
+        達成だが，band--diagnostic 全体としては \textbf{条件付き不合格}．
+        §\ref{sec:hfe} の文脈では「界面近傍 ($|\phi|\le 3h$) では設計精度，band
+        境界 ($|\phi|\to 6h$) で外挿距離由来の劣化」という qualifier を追記する必要がある．
 \end{itemize}
 検証対応：
 変密度一括 PPE の限界 (§\ref{sec:varrho_ppe_limitation}) に対し，
