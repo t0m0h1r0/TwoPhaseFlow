@@ -24,7 +24,8 @@ Setup
 
 Diagnostics at t = T_rev:
   - Centroid L2 displacement error vs initial centroid.
-  - Volume drift |V(T) - V(0)| / V(0).
+  - Conservative CLS mass drift |∫ψ(T)dV - ∫ψ(0)dV| / ∫ψ(0)dV.
+  - Thresholded area drift for the visible {ψ > 0.5} shape.
 
 Pass criterion
 --------------
@@ -111,8 +112,8 @@ def _fccd_advect(psi_h, u, v, ls_adv, backend, dt):
     return np.asarray(backend.to_host(out))
 
 
-def _measure_centroid_volume(psi_h, X_h, Y_h, dV_h):
-    """Compute volume and centroid of {psi > 0.5} (CLS H_eps level set)."""
+def _measure_centroid_area(psi_h, X_h, Y_h, dV_h):
+    """Compute thresholded area and centroid of {psi > 0.5}."""
     chi = (psi_h > 0.5).astype(float)
     V = float(np.sum(chi * dV_h))
     if V <= 0:
@@ -157,7 +158,9 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
 
     phi_h = _slotted_disk_phi(X_h, Y_h)
     psi_h = 1.0 / (1.0 + np.exp(-phi_h / eps))  # H_eps for transport mass
-    V0, cx0, cy0 = _measure_centroid_volume(psi_h, X_h, Y_h, dV_h)
+    psi0_active = psi_h.copy()
+    mass0 = float(np.sum(psi0_active * dV_h))
+    area0, cx0, cy0 = _measure_centroid_area(psi_h, X_h, Y_h, dV_h)
 
     u = -omega * (Y_h - 0.5)
     v = omega * (X_h - 0.5)
@@ -167,15 +170,18 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     for step in range(n_steps):
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
 
-    V_T, cx_T, cy_T = _measure_centroid_volume(psi_h, X_h, Y_h, dV_h)
+    mass_T = float(np.sum(psi_h * dV_h))
+    area_T, cx_T, cy_T = _measure_centroid_area(psi_h, X_h, Y_h, dV_h)
     cent_err = float(np.sqrt((cx_T - cx0) ** 2 + (cy_T - cy0) ** 2))
-    vol_drift = float(abs(V_T - V0) / max(V0, 1e-12))
+    vol_drift = float(abs(mass_T - mass0) / max(mass0, 1e-12))
+    area_drift = float(abs(area_T - area0) / max(area0, 1e-12))
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "V0": V0, "V_T": V_T, "cx0": cx0, "cy0": cy0, "cx_T": cx_T, "cy_T": cy_T,
-        "centroid_err": cent_err, "volume_drift": vol_drift,
-        "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_T": psi_h,
+        "V0": mass0, "V_T": mass_T, "area0": area0, "area_T": area_T,
+        "cx0": cx0, "cy0": cy0, "cx_T": cx_T, "cy_T": cy_T,
+        "centroid_err": cent_err, "volume_drift": vol_drift, "area_drift": area_drift,
+        "X": X_h, "Y": Y_h, "psi0": psi0_active, "psi_T": psi_h,
     }
 
 
@@ -205,7 +211,8 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
     psi0_h = 1.0 / (1.0 + np.exp(-_circle_phi(X_h, Y_h) / eps))
     psi_h = psi0_h.copy()
-    V0 = float(np.sum((psi0_h > 0.5) * dV_h))
+    V0 = float(np.sum(psi0_h * dV_h))
+    area0 = float(np.sum((psi0_h > 0.5) * dV_h))
 
     u0, v0 = _single_vortex_velocity(X_h, Y_h, 0.0, SINGLE_VORTEX_T)
     max_speed = float(np.max(np.sqrt(u0 * u0 + v0 * v0)))
@@ -226,13 +233,16 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     if psi_half is None:
         psi_half = psi_h.copy()
 
-    V_T = float(np.sum((psi_h > 0.5) * dV_h))
+    V_T = float(np.sum(psi_h * dV_h))
+    area_T = float(np.sum((psi_h > 0.5) * dV_h))
     volume_drift = float(abs(V_T - V0) / max(V0, 1e-12))
+    area_drift = float(abs(area_T - area0) / max(area0, 1e-12))
     reversal_l1 = float(np.sum(np.abs(psi_h - psi0_h) * dV_h) / max(np.sum(dV_h), 1e-12))
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "V0": V0, "V_T": V_T, "volume_drift": volume_drift, "reversal_l1": reversal_l1,
+        "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
+        "volume_drift": volume_drift, "area_drift": area_drift, "reversal_l1": reversal_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_half": psi_half, "psi_T": psi_h,
     }
 

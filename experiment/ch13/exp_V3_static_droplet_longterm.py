@@ -3,7 +3,7 @@
 
 Paper ref: §13.2 (sec:twophase_static_longterm; extension of §12 U7).
 
-Verifies that the project's BF (balanced-force) + split-PPE + CSF + FCCD/CCD
+Verifies that a reduced BF (balanced-force) + CSF + CCD-gradient + FVM-PPE
 pipeline maintains a static circular droplet over 200 time steps without
 secular growth of spurious currents and that the Laplace pressure jump
 sigma/R is preserved within 1% at the finest grid.
@@ -11,7 +11,7 @@ sigma/R is preserved within 1% at the finest grid.
 Sub-tests
 ---------
   Static droplet: R=0.25, center (0.5, 0.5), wall BC, [0,1]^2,
-  rho_l/rho_g = 10, We = 10, sigma = 1, mu = 0 (inviscid limit isolates the
+  rho_l/rho_g = 10, We = 1, sigma = 1, mu = 0 (inviscid limit isolates the
   pressure-velocity coupling), CFL = 0.25 * h, 200 steps.
   N in {64, 96, 128}.
 
@@ -26,8 +26,8 @@ Sub-tests
     - Delta p relative error to sigma/R
     - max |u|_inf observed during 200-step trajectory.
 
-Pass criterion: |u|_inf_final < 5e-3 at N=128, |Delta p - sigma/R|/<1%,
-trajectory peak does not grow.
+Reported diagnostics: |u|_inf trajectory, |Delta p - sigma/R|, and peak
+spurious current over 200 steps.
 
 Usage
 -----

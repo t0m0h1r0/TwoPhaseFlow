@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V4] Galilean invariance + Rayleigh-Taylor growth rate — Tier B.
+"""[V4] Galilean offset residual + Rayleigh-Taylor growth rate — Tier B.
 
 Paper ref: §13.3 (sec:galilean_invariance, sec:coupling_limitations).
 
@@ -89,9 +89,10 @@ def _wall_bc(arr) -> None:
 # ── (A) Galilean invariance ──────────────────────────────────────────────────
 
 def run_V4a() -> dict:
-    """Translation-stability test: static droplet with uniform offset velocity
-    U_frame on wall BC. The interior velocity perturbation about U_frame
-    should remain small (Galilean invariance of the BF/CSF/PPE pipeline).
+    """Translation-residual diagnostic for a static droplet with offset velocity.
+
+    The wall-BC and pinned-gauge setup is not an exact Galilean-invariance
+    proof; it reports the residual scale of the reduced BF/CSF/PPE loop.
     Wall BC is used because periodic-mode PPE on near-singular RHS (uniform
     initial velocity ⇒ rhs ≈ 0) is numerically unstable; the test validates
     the local Galilean property in the bulk."""
@@ -100,7 +101,6 @@ def run_V4a() -> dict:
     N = 64
     h = 1.0 / N
     eps = 1.5 * h
-    U_frame = np.array([0.0, 0.0])  # ablated for stability — see test (B)
     n_steps = 50
 
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
