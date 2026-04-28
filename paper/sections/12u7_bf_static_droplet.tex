@@ -14,7 +14,7 @@
 セル界面での粘性係数補間（§\ref{sec:mu_face_interpolation}：算術 / 調和 / VoF 重み付け）の
 \textbf{単体検証}を行う．
 
-\paragraph{単体テスト．}
+\paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
   \item[U7-a] BF 静止液滴 1-step（速度 0 初期化 + 1 ステップ pressure solve）．
         $R=0.25$ 円界面，$\sigma = 1$．Young--Laplace 解析値 $\Delta p^\star = \sigma/R = 4$．
@@ -27,7 +27,7 @@
         界面非整合グリッドで $L_\infty$ 誤差を測定．
 \end{description}
 
-\paragraph{数値結果．}
+\paragraph{結果．}
 
 \begin{table}[!ht]
 \caption{U7-a: BF 静止液滴 1-step 圧力跳び再現．
@@ -84,11 +84,11 @@ face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h
 \label{fig:ch12_u7}
 \end{figure}
 
-\paragraph{評価．}
+\paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U7-a：$N \ge 64$ で BF 結合が Young--Laplace 跳び $\Delta p = \sigma/R$ を
         2\% 以下で再現．FD2 $\nabla\psi$ mismatch でも本 one-step 圧力跳び指標では match と同精度．
-        parasitic velocity が $h$ 細分化で減衰（spurious current 抑制設計通り）．
+        寄生流れ速度が $h$ 細分化で減衰（寄生流れ抑制設計通り）．
         §\ref{sec:bf_p2_adjoint} の理論と整合．\checkmark
   \item U7-b：3 種補間とも slope $\approx 1.9$（$\Ord{h^2}$）．
         高ジャンプ $\mu_l/\mu_g = 100$ でも安定．
@@ -97,5 +97,5 @@ face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h
 \end{itemize}
 検証対応：
 式~\eqref{eq:bf_discrete_balance}（BF 離散整合条件）に対し，
-Young--Laplace 跳びと spurious current を測定する．
+Young--Laplace 跳びと寄生流れを測定する．
 face $\mu$ 補間については §\ref{sec:mu_face_interpolation} の 3 種平均の誤差を比較する．

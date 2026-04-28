@@ -1,0 +1,60 @@
+% paper/sections/11c_dccd_bootstrap.tex
+% ═════════════════════════════════════════════════════════════════════════════
+% §11 統合アルゴリズム周辺（DCCD パラメタ設計は §4c に集約済；
+%        Bootstrap は付録 H に集約済；本ファイルはタイムステップ制御のみ保持）
+% ═════════════════════════════════════════════════════════════════════════════
+
+\noindent
+DCCD フィルタの散逸強度 $\varepsilon_{d,\max}$ 設計値・
+適応散逸制御則・離散アルゴリズム
+（\S\ref{sec:dccd_params}, \S\ref{sec:dccd_eps_design}, \S\ref{sec:dccd_adaptive}，
+表~\ref{tab:dccd_usage_map}，式~\eqref{eq:eps_max},
+\eqref{eq:adaptive_eps}，アルゴリズム~\ref{alg:dccd}）は
+DCCD 導出章（§\ref{sec:dccd_derivation} 末尾，第~\ref{sec:CCD}章）に集約した．
+
+% ═════════════════════════════════════════════════════════════════════════════
+\subsection{ブートストラップ処理}
+\label{sec:bootstrap}
+% ═════════════════════════════════════════════════════════════════════════════
+
+シミュレーション開始前に格子--界面の循環参照を解消する
+6 段階ブートストラップ処理（一様格子仮 SDF $\to$ 非一様格子生成 $\to$ CLS 初期化 $\to$
+CCD 演算子構築 $\to$ 非一様格子上 SDF 再初期化 $\to$ Young--Laplace 初期圧力）を
+一度だけ実行する．完全な疑似コードは付録~\ref{app:bootstrap} を参照．
+格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は §~\ref{sec:grid_ale}．
+
+% ═════════════════════════════════════════════════════════════════════════════
+\subsection{タイムステップ制御}
+\label{sec:algo_timestep}
+% ═════════════════════════════════════════════════════════════════════════════
+
+各タイムステップの開始時に，以下の2制約のうち最も厳しい条件で $\Delta t$ を決定する
+（詳細な導出は §~\ref{sec:stability} 参照）：
+
+\begin{equation}
+  \Delta t = \min\!\left(
+    \underbrace{
+      C_{\mathrm{CFL}}
+      \left[\max\!\left(\frac{|u|_{\max}}{\Delta x}
+                       +\frac{|v|_{\max}}{\Delta y}\right)\right]^{-1}
+    }_{\Delta t_{\mathrm{adv}}\text{：対流 CFL（式~\eqref{eq:dt_adv}）}},\;
+    \underbrace{\sqrt{\frac{(\rho_l+\rho_g)\,h_{\min}^3}{2\pi\sigma}}}_{\Delta t_\sigma\text{：毛管波制約（式~\eqref{eq:dt_sigma}）}}
+  \right)
+  \label{eq:dt_full_algo}
+\end{equation}
+
+ここで $C_{\mathrm{CFL}} \le 0.5$ は安全率（デフォルト 0.45），$h_{\min} = \min(\Delta x, \Delta y)$ である．
+表面張力なし（$\sigma=0$）の計算では毛管波制約を除外し，対流 CFL を用いる．
+粘性項は Crank--Nicolson 法（無条件安定）で処理するため，等粘性系では粘性 CFL 制約は不要である．
+ただし大粘性比（$\mu_l/\mu_g \gg 1$）の気液系では，クロス微分項 $\partial_y(\mu\partial_x v)$ の
+陽的処理に起因する実質的な粘性制約が界面近傍で復活する場合がある（§~\ref{sec:stability} 参照）．
+
+\noindent\textbf{3 項 $\min$ 版（陽的粘性領域）：}
+式~\eqref{eq:dt_full_algo} の 2 項制約は等粘性・CN 有効領域での縮約表現である．
+陽的粘性領域では $\Delta t_\text{visc} = C_\text{visc}\rho h_{\min}^2/(2\mu N_\text{dim})$（粘性 CFL）も加え，
+$\Delta t = \min(\Delta t_\text{adv}, \Delta t_\text{visc}, \Delta t_\sigma)$ の 3 項 $\min$ となる．
+物理波速度 $\Delta t_\text{wave}$ は非圧縮解法のため両式とも除外される．
+
+\bigskip
+以上の統合アルゴリズムの各構成要素が設計通りの精度を達成するか，
+次章で系統的にコンポーネント単位の数学的検証を行う．

@@ -67,7 +67,8 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U4 = Godunov Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
         U5 = 平滑化 $H_\eps$ / $\delta_\eps$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
   \item[Tier IV（圧力結合系）]
-        U6 = lumped--PPE + DC + HFE（§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
+        U6 = 一括 PPE の限界 + DC/HFE 単体挙動
+        （§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
   \item[Tier V（時間積分）]
         U8 = TVD--RK3 / AB2 / CN--ADI 3 種積分子（§\ref{sec:time_int}）．
   \item[Tier VI（否定検証）]
@@ -104,12 +105,12 @@ U2-b & PPE Neumann + ゲージ       & $5$ & $4.85$ & \checkmark \\
 U3-a & CCD 非一様 d1            & $6$ & $5.98$ & \checkmark \\
 U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & active & $D_4 \!\sim\! 10^{-11}$ & \checkmark \\
-U4-a & Godunov Eikonal reinit   & $\sim h$ & $9\times 10^{-3}$ & \checkmark \\
-U4-b & DGR バンド厚補正         & $\sim 0.03$ & $3\times 10^{-6}$ & \checkmark \\
+U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & $9\times 10^{-3}$ & \checkmark \\
+U4-b & DGR バンド厚補正         & ratio 誤差 $\le 10^{-4}$ & $3\times 10^{-6}$ & \checkmark \\
 U5-a & $\delta_\eps$ モーメント & high & 機械精度床 & \checkmark \\
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
-U6-a & lumped--PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
-U6-b & lumped--PPE 高密度比      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
+U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!\le\!10$ 良好 & \checkmark \\
+U6-b & 一括 PPE 高密度比限界      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
 U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.91 / 5.10 / 3.21$ & $\triangle$ \\
 U7-a & BF 静止液滴 1-step       & $\Delta p \to \sigma/R$ & $0.6\%\,@N\!=\!128$ & \checkmark \\
 U7-b & face $\mu$ 補間           & $2$ & $1.91$ & \checkmark \\

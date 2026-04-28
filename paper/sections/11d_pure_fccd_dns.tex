@@ -1,0 +1,220 @@
+% paper/sections/11d_pure_fccd_dns.tex
+%
+% §11  純 FCCD DNS アーキテクチャ（Phase 1-4）
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{純 FCCD DNS アーキテクチャ：研究 DNS / シャープ界面極限構成}
+\label{sec:pure_fccd_dns}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節では，境界的な一括 smoothed-Heaviside 解法や
+FVM フラックスバランスに依存しない\textbf{純 FCCD シャープ界面 DNS}
+アーキテクチャを Phase 1--4 の 4 層構造として定式化する．
+研究 DNS / シャープ界面極限（高密度比 + 高粘性比 + 低 We の同時成立レジーム）
+における理論的最終形であり，
+表面張力支配・マイクロスケール・高密度比の同時極限で
+数値的な寄生流れを物理的根拠に基づいて最小化する．
+
+\noindent\textbf{Phase 1--4 の構成と適用範囲：}
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\hline
+Phase & 内容 & 主要技術 & 適用範囲 \\
+\hline
+Phase 1 & 界面追跡層 & Ridge--Eikonal + FCCD 輸送 & 本文経路でも部分採用可 \\
+Phase 2 & 運動量移流層 & FCCD + HFE & 純 FCCD DNS 用 \\
+Phase 3 & 粘性項分離 & 応力発散 + DC & 純 FCCD DNS 用 \\
+Phase 4 & 分相 FCCD PPE & 分相 + GFM + DC $k{=}3$ & 純 FCCD DNS の中核 \\
+\hline
+\end{tabular}
+\end{center}
+Phase 1 の軽量版は本文経路（一括 smoothed-Heaviside 経路）でも採用可能；
+Phase 1--4 の同時採用は本節の研究 DNS 構成を前提とする．
+
+% -------------------------------------------------------------------------------
+\subsubsection{設計命題：高次演算子の共通基準面位置}
+\label{sec:pure_fccd_thesis}
+% -------------------------------------------------------------------------------
+
+純 FCCD DNS の中核命題：
+\begin{quote}
+\textbf{界面追跡・運動量移流・粘性・圧力投影・表面張力・HFE}
+のすべての演算が，\textbf{共通の面基準点 $f$}で
+FCCD 面ジェット $\FaceJet{\cdot}=(\cdot_f,\cdot'_f,\cdot''_f)$ を
+プリミティブとして高次一貫に実行される．
+\end{quote}
+
+この命題は §\ref{sec:bf_p1_location}（BF P-1 位置一致）を
+全演算子に拡張したものに相当する．
+純 FCCD DNS は (R1)-(R4)（§\ref{sec:fccd_def} の 4 役割定義）の面ジェット契約を
+圧力・界面・移流・粘性の全演算子に
+拡張したアーキテクチャであり，単一の面ジェット API で 4 経路のメトリック整合を
+構造的に担保する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 1: 界面追跡層（Ridge--Eikonal + FCCD 輸送）}
+\label{sec:pure_fccd_phase1}
+% -------------------------------------------------------------------------------
+
+界面は VOF 体積分率ではなく\textbf{高次輸送される連続場}として扱う：
+\begin{itemize}[noitemsep]
+  \item \textbf{トポロジー/メトリック分離}：
+        Ridge--Eikonal ハイブリッド（§\ref{sec:ridge_eikonal}）が
+        距離関数品質 ($\phi$ の符号距離性) とトポロジー変化
+        （pinch-off, merge）を別層で処理．
+  \item \textbf{保存形輸送}：
+        FCCD 保存形面フラックス（§\ref{sec:fccd_advection}, Option B）で
+        $\psi$ を進める．低次 VOF フラックスへのフォールバックは禁止．
+  \item \textbf{幾何資産}：
+        $\phi$，法線 $\mathbf{n}$，曲率 $\kappa$ は
+        $\psi$ から再生成され，
+        表面張力・HFE・粘性法線-接線切替が共通で使用する．
+\end{itemize}
+
+界面幅 $\varepsilon$ は固定でなく\textbf{空間依存} $\varepsilon_\text{local}(\mathbf{x})$
+（§\ref{sec:ridge_eikonal_nu_grid}）として
+非一様格子に整合させる．Ridge--Eikonal が保証する符号距離性により
+$\nabla\cdot\mathbf{n}$ の高次評価が成立する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 2: 運動量移流層（FCCD + HFE）}
+\label{sec:pure_fccd_phase2}
+% -------------------------------------------------------------------------------
+
+運動量移流の詳細定式（FCCD 面ジェット $\mathcal{J}_f(u)=(u_f,u'_f,u''_f)$，
+ブロック Thomas 求解，境界処理）は §\ref{sec:fccd_advection} に集約済み．
+純 FCCD DNS アーキテクチャ上の適用では，
+方向別 HFE 状態 $(u_f^+, u_f^-)$ 上の風上選択を採用する：
+\begin{equation}
+  u_f^\text{upwind}
+    = \begin{cases}
+        u_f^- & \text{if } u_f \ge 0,\\
+        u_f^+ & \text{if } u_f < 0,
+      \end{cases}
+  \qquad
+  u_f^{+/-} = u_f \pm \tfrac{h}{2}u'_f + \tfrac{h^2}{8}u''_f
+  \label{eq:pure_fccd_hfe_upwind}
+\end{equation}
+HFE は再構成層であり，高次ステンシルが不連続な相データを
+正しい片側状態なしにサンプリングしないことを保証する．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 3: 粘性項の応力発散 + DC 分離}
+\label{sec:pure_fccd_phase3}
+% -------------------------------------------------------------------------------
+
+粘性項は応力テンソル発散形 $\mathcal{V}(\mathbf{u}) = \bnabla\cdot(2\mu\,D(\mathbf{u}))$ で保持する
+（$\mu\nabla^2\mathbf{u}$ への畳み込み禁止：§\ref{sec:viscous_mu_lap_forbidden}）．
+3 層構造（Bulk / 界面帯 / 陰的剛性）の詳細定式は §\ref{sec:viscous_3layer} に，
+DC 分離による外殻 FGMRES + 内殻低次解の階層は §\ref{sec:viscous_cn_defect} に集約済み．
+純 FCCD DNS では陰的剛性層で
+\begin{equation}
+  A_L\,\delta\mathbf{u} = r_H,
+  \qquad r_H = \text{RHS} - A_H\,\mathbf{u}^{(m)}
+  \label{eq:pure_fccd_viscous_dc}
+\end{equation}
+を解き，圧力側の戦略（§\ref{sec:dc_pure_fccd_outer_inner}）と\textbf{双対}を成す
+（安定な内殻解 + 高次外殻物理）．
+
+% -------------------------------------------------------------------------------
+\subsubsection{Phase 4: 分相 FCCD PPE + GFM の中核アーキテクチャ}
+\label{sec:pure_fccd_phase4}
+% -------------------------------------------------------------------------------
+
+圧力投影は\textbf{純 FCCD DNS の設計上の中核}である（§\ref{sec:pure_fccd_split_ppe}）．
+単相 smeared PPE や FVM フラックスバランスではなく，
+§\ref{sec:split_ppe_framework} 式~\eqref{eq:split_ppe} の分相 PPE
+$\nabla^2 p_k = \rho_k\, q$（$k\in\{\ell,g\}$；定数密度）を
+各相内部で独立に解く．
+等価な変動係数形式
+\begin{equation}
+  \bnabla\cdot\!\left(\frac{1}{\rho_k}\bnabla p_k\right) = q
+  \quad (k\in\{\ell,g\})
+  \label{eq:pure_fccd_split_ppe_core}
+\end{equation}
+は，定数 $\rho_k$ により式~\eqref{eq:split_ppe} と同一（product-rule の第 2 項は消滅）．
+相は $\Gamma$ 上で GFM ジャンプ条件
+（式~\eqref{eq:split_ppe_pressure_jump}--\eqref{eq:split_ppe_flux_jump}）
+\begin{equation}
+  [p]_\Gamma = J_p = \sigma\kappa,
+  \qquad
+  \left[\frac{1}{\rho}\partial_n p\right]_\Gamma = J_n
+  \label{eq:pure_fccd_gfm_jump}
+\end{equation}
+で縫合される（非相変化非圧縮では $J_n=0$）．
+FCCD が面基準点の勾配/発散演算子を供給し，
+GFM がゴースト圧力ジェット $(p^*,p'^*,p''^*)$ を提供することで
+コンパクトステンシルが各相側で単相のまま維持される．
+代数的な行構造は，$\Gamma$ から離れた位置で単相高次構造を保ち，
+界面不連続は物理的に導出されたジャンプ閉式のみを通して入る．
+
+% -------------------------------------------------------------------------------
+\subsubsection{CFD 位置付け：研究 DNS / シャープ界面極限}
+\label{sec:pure_fccd_positioning}
+% -------------------------------------------------------------------------------
+
+純 FCCD DNS は\textbf{研究 DNS / シャープ界面極限}のコーナーを占める：
+
+\begin{itemize}[noitemsep]
+  \item \textbf{ベストフィット}：マイクロ流体，インクジェット破断，
+        気泡核生成，毛管波，合体・分裂開始など
+        表面張力支配現象．
+  \item \textbf{主たる勝利}：圧力・表面張力・HFE・界面ジャンプ評価を
+        共通の高次面基準点言語で揃えることによる
+        寄生流れの大幅削減．
+  \item \textbf{主たるコスト}：離散化と界面条件の複雑度，
+        困難な界面行 assembly，
+        高価な楕円解．
+  \item \textbf{ターゲット外}：FVM 頑健性と正確な質量保存が第一要件の
+        広範な産業スループット．
+\end{itemize}
+
+純 FCCD は本文経路（一括 smoothed-Heaviside 経路および分相 PPE 経路）と
+競合せず\textbf{補完}する．本文経路は汎用検証・標準計算を担い，
+純 FCCD は極限レジームを見据えた研究構成である．
+
+% -------------------------------------------------------------------------------
+\subsubsection{検証章との接続}
+\label{sec:pure_fccd_gates}
+% -------------------------------------------------------------------------------
+
+純 FCCD DNS は本稿の検証済み標準経路そのものではなく，
+分相 PPE，HFE，FCCD 面ジェット，Balanced--Force 条件を
+同じ面基準点へ集約する研究構成である．
+したがって，本節で主張できる範囲は
+「どの既検証 primitive に依存するか」を明示することに限られる．
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{0.26\linewidth}p{0.43\linewidth}p{0.24\linewidth}@{}}
+\hline
+研究構成の要素 & 対応する検証済み primitive & 本稿での扱い \\
+\hline
+分相圧力投影 & 分相 PPE + DC + HFE（U6, V6） & 高密度比でのロバスト性を検証 \\
+界面越し延長 & HFE 単体精度（U6-c） & 1D 6 次，2D band は条件付き \\
+面基準点整合 & FCCD face value/grad（U1-c, U3-b） & face 評価は 4 次律速を明示 \\
+力の釣合い & Balanced--Force 静的液滴（U7, V3, V5） & 寄生流れ抑制を検証 \\
+\hline
+\end{tabular}
+\end{center}
+
+表に含まれない振動液滴固有モードや極低 We の寄生流れ評価は，
+本稿では検証済み結果として扱わない．
+それらは本研究構成の適用候補であり，結論では将来課題としてのみ位置付ける．
+
+% -------------------------------------------------------------------------------
+\subsubsection{本文経路との関係}
+\label{sec:pure_fccd_roadmap}
+% -------------------------------------------------------------------------------
+
+本文経路は，一括 smoothed-Heaviside PPE と分相 PPE を
+検証済み範囲に応じて使い分ける構成である．
+純 FCCD DNS はその上位互換ではなく，
+すべての界面演算を FCCD 面ジェットへ寄せることで
+シャープ界面極限を狙う研究構成である．
+本稿の検証結果から直ちに採用できるのは，
+分相 PPE + HFE と Balanced--Force 整合を組み合わせる部分であり，
+完全な Phase 1--4 の同時採用は本稿の検証範囲外である．
+
+% ═══════════════════════════════════════════════════════════════════════════════

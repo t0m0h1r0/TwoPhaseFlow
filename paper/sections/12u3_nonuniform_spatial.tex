@@ -22,7 +22,7 @@ $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 界面位置 $x = 0.5$ の周りに集中．
 
-\paragraph{単体テスト．}
+\paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
   \item[U3-a] CCD 1階・2階微分の非一様格子精度．
         $f = \sin(\pi x)$，壁境界条件，$\alpha \in \{1, 2\}$，
@@ -40,7 +40,7 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ で順次活性化することを確認．
 \end{description}
 
-\paragraph{数値結果．}
+\paragraph{結果．}
 
 \begin{table}[!ht]
 \caption{U3-a: CCD 1 階微分 $\|e\|_\infty$ on $\alpha\in\{1, 2\}$ 非一様格子．
@@ -114,7 +114,7 @@ Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$
 \label{fig:ch12_u3}
 \end{figure}
 
-\paragraph{評価．}
+\paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U3-a CCD 非一様：slope $5.98$．設計 6 次の機械零域近接，
         \textbf{合格} \checkmark．
