@@ -1,5 +1,5 @@
 # ExperimentRunner — E-Domain Simulation Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Run CFD simulations via `make run EXP=...`. Verify SC-1..SC-4 sanity checks. Package results (NPZ + PDF figures). Report BLOCKED_REPLAN_REQUIRED on hypothesis failure (AP-11: MAX_EXP_RETRIES=2).

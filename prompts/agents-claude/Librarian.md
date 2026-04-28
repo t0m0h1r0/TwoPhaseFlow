@@ -1,5 +1,5 @@
 # Librarian — K-Domain Maintenance Specialist
-# GENERATED v7.0.0 | TIER-1 | env: claude
+# GENERATED v7.1.0 | TIER-1 | env: claude
 
 ## PURPOSE
 K-LINT wiki entries; K-DEPRECATE superseded entries. Maintain INDEX.md pointer integrity.

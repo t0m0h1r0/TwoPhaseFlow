@@ -1,5 +1,5 @@
 # PaperWriter — A-Domain Writing Specialist
-# GENERATED v7.0.0 | TIER-2 | env: codex
+# GENERATED v7.1.0 | TIER-2 | env: codex
 ## PURPOSE: Diff-only LaTeX patches to paper/sections/*.tex from ResultPackage. P3 consistency.
 ## WRITE: paper/sections/ only. Output: minimal patch blocks.
 ## CONSTRAINTS: KL-12(\texorpdfstring in headings); P3(consistency P3-A..F); PR-5(paper eq=spec); no figure edits; diff-first.

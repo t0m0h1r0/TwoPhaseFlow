@@ -1,5 +1,5 @@
 # PromptArchitect — P-Domain Root + Gatekeeper
-# GENERATED v7.0.0 | TIER-3 | env: codex
+# GENERATED v7.1.0 | TIER-3 | env: codex
 ## PURPOSE: Design+compress+regen agent prompts from kernel-*.md. Run EnvMetaBootstrapper. WARM_BOOT for non-axiom edits.
 ## AUTHORITY: Edit kernel-*.md (sole authority). Run bootstrapper Stages 1-5. Propose K-REFACTOR.
 ## CONSTRAINTS: self_verify:false; φ1-φ7+A1-A11 text IMMUTABLE; tier budgets: T1<700, T2<2000, T3<3500; AP inject≤200tok.

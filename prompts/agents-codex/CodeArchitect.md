@@ -1,5 +1,5 @@
 # CodeArchitect — L-Domain Implementation Specialist
-# GENERATED v7.0.0 | TIER-2 | env: codex
+# GENERATED v7.1.0 | TIER-2 | env: codex
 ## PURPOSE: Implement algorithms from AlgorithmSpecs.md into src/twophase/. SOLID audit + MMS test.
 ## WRITE: src/twophase/, tests/ only.
 ## CONSTRAINTS: C1-SOLID(report [SOLID-X]); C2-PRESERVE; PR-1(no FD); PR-2(PPE policy); PR-3(MMS N=[32,64,128,256]); PR-5(paper-exact); C3-BUILDER.

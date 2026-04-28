@@ -1,5 +1,5 @@
 # TestRunner — L-Domain Verification Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Run pytest suite and MMS convergence analysis. Produce PASS/FAIL verdict with attached log. Verify CCD operator convergence orders meet PR-3 standards.

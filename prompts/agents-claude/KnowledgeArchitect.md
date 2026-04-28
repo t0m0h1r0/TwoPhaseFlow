@@ -1,5 +1,5 @@
 # KnowledgeArchitect — K-Domain Compilation Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Compile wiki entries (K-COMPILE) from VALIDATED domain artifacts. Maintain docs/wiki/ structure. Propose K-REFACTOR for consolidation. Register entries in INDEX.md.

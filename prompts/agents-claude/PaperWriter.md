@@ -1,5 +1,5 @@
 # PaperWriter — A-Domain Writing Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Write and revise LaTeX paper sections from ResultPackage and TechnicalReport. Produce diff-only patches to paper/sections/*.tex. Maintain A3 traceability chain in paper.

@@ -1,9 +1,9 @@
-# _base.yaml — Universal Agent Foundation v7.0.0 (Claude)
+# _base.yaml — Universal Agent Foundation v7.1.0 (Claude)
 # All agent prompts implicitly inherit this file.
 # Agents declare ONLY overrides and domain-specific content (primitive-diff inheritance).
 # To understand an agent: read _base.yaml FIRST, then the agent file.
 
-meta_version: "7.0.0"
+meta_version: "7.1.0"
 concurrency_profile: "worktree"
 handoff_mode: "text"
 
@@ -13,6 +13,9 @@ dynamic_replan: true         # BLOCKED_REPLAN_REQUIRED status active (kernel-wor
 context_condensation: true   # OP-CONDENSE trigger active (kernel-ops.md §OP-CONDENSE)
 evaluation_mode: "rubric"    # ConsistencyAuditor uses R1-R4 rubric ≥80 PASS (kernel-roles.md §EVALUATOR-OPTIMIZER)
 max_replan_cycles: 2         # AP-12: 3rd cycle → mandatory user escalation
+
+# v7.1.0 feature flags
+id_namespace_binding: true   # CHK/ASM/KL IDs use {family}-{id_prefix}-NNN form (kernel-ops.md §ID NAMESPACE OPERATIONS)
 
 axioms: "A1–A11 unconditional (docs/00_GLOBAL_RULES.md §A) — SSoT: kernel-constitution.md"
 project_rules: "PR-1–PR-6 (docs/03_PROJECT_RULES.md — SSoT: kernel-project.md)"
@@ -40,21 +43,26 @@ rules_always:
   - DOM-02_CONTAMINATION_GUARD
   - SCOPE_BOUNDARIES
   - BRANCH_LOCK_CHECK         # read ACTIVE_LEDGER §4 + docs/locks/ before any write
+  - ID_NAMESPACE_BIND         # v7.1.0: derive id_prefix once at session start; carry in all HAND-01 dispatches; immutable thereafter
 
 on_demand_common:
-  HAND-01:          "kernel-ops.md §HAND-01"
-  HAND-02:          "kernel-ops.md §HAND-02"
-  HAND-03:          "kernel-ops.md §HAND-03"
-  HAND-04:          "kernel-ops.md §HAND-04"        # v7.0.0
-  OP-CONDENSE:      "kernel-ops.md §OP-CONDENSE"    # v7.0.0
-  GIT-SP:           "kernel-ops.md §GIT-SP"
-  GIT-WORKTREE-ADD: "kernel-ops.md §GIT-WORKTREE-ADD"
-  GIT-ATOMIC-PUSH:  "kernel-ops.md §GIT-ATOMIC-PUSH"
-  LOCK:             "kernel-ops.md §LOCK-ACQUIRE"
-  UNLOCK:           "kernel-ops.md §LOCK-RELEASE"
-  HAND_SCHEMA:      "kernel-roles.md §SCHEMA-IN-CODE"
-  K-COMPILE:        "kernel-ops.md §K-COMPILE"
-  K-LINT:           "kernel-ops.md §K-LINT"
+  HAND-01:           "kernel-ops.md §HAND-01"
+  HAND-02:           "kernel-ops.md §HAND-02"
+  HAND-03:           "kernel-ops.md §HAND-03"
+  HAND-04:           "kernel-ops.md §HAND-04"        # v7.0.0
+  OP-CONDENSE:       "kernel-ops.md §OP-CONDENSE"    # v7.0.0
+  GIT-SP:            "kernel-ops.md §GIT-SP"
+  GIT-WORKTREE-ADD:  "kernel-ops.md §GIT-WORKTREE-ADD"
+  GIT-ATOMIC-PUSH:   "kernel-ops.md §GIT-ATOMIC-PUSH"
+  LOCK:              "kernel-ops.md §LOCK-ACQUIRE"
+  UNLOCK:            "kernel-ops.md §LOCK-RELEASE"
+  ID-NAMESPACE-DERIVE: "kernel-ops.md §ID-NAMESPACE-DERIVE"   # v7.1.0
+  ID-RESERVE-LOCAL:    "kernel-ops.md §ID-RESERVE-LOCAL"     # v7.1.0
+  ID-COLLISION-CHECK:  "kernel-ops.md §ID-COLLISION-CHECK"   # v7.1.0
+  HAND_SCHEMA:       "kernel-roles.md §SCHEMA-IN-CODE"
+  HAND_SCHEMA_V710:  "kernel-roles.md §SCHEMA EXTENSIONS v7.1.0"  # v7.1.0
+  K-COMPILE:         "kernel-ops.md §K-COMPILE"
+  K-LINT:            "kernel-ops.md §K-LINT"
 
 procedure_pre:
   - "HAND-03() — run 7-check acceptance before any work"

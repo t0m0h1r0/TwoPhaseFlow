@@ -110,6 +110,47 @@ MUST differ from round 1. Gatekeeper response is binding. After 2 SUSTAIN rounds
 escalation. HAND-03 still runs on HAND-04 receipt (check C7 uses `hand_type: "HAND-04"`).
 
 ────────────────────────────────────────────────────────
+# § SCHEMA EXTENSIONS v7.1.0 (Additive — immutable zone above unchanged)
+
+```typescript
+/** v7.1.0: Hand01Payload — extended with id_prefix for worktree-scoped IDs */
+interface Hand01PayloadV710 extends Hand01Payload {
+  id_prefix?: string;    // pattern: ^[A-Z0-9]+(?:-[A-Z0-9]+)*$, length ≤ 12
+                         // derived once per session via kernel-ops.md §ID-NAMESPACE-DERIVE
+                         // immutable for the lifetime of the session
+}
+
+/** v7.1.0: Hand02Payload — id_prefix echoed back for audit chain */
+interface Hand02PayloadV710 extends Hand02Payload {
+  id_prefix?: string;    // MUST match the dispatching HAND-01 payload's id_prefix
+}
+
+/** v7.1.0: chk_id regex extended to accept both legacy and prefixed forms.
+ *  Supersedes the v7.0.0 immutable-zone comment "pattern: ^CHK-[0-9]{3,}$" at L44.
+ *  Same extension applies to ASM and KL ticket IDs.
+ *
+ *  Legacy:    CHK-NNN   (3+ digits)            — pre-v7.1.0 entries on main
+ *  v7.1.0+:   CHK-PFX-NNN                      — worktree-scoped, collision-free by construction
+ *
+ *  Combined regex: ^(CHK|ASM|KL)-(?:[A-Z0-9]+(?:-[A-Z0-9]+)*-)?[0-9]{3,}$
+ */
+type TicketIdV710 = string;
+```
+
+**v7.1.0 rules:**
+- Under `concurrency_profile == "worktree"`, every HAND-01 dispatch that mints
+  a new CHK/ASM/KL MUST carry `id_prefix` derived per `kernel-ops.md §ID-NAMESPACE-DERIVE`.
+- HAND-03 C7 schema validation rejects HAND-02 returns whose emitted IDs do
+  not match the combined regex above (STOP-10 IDs).
+- `id_prefix` is recorded in `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`
+  alongside `branch` and `session_id`; recomputation mid-session is forbidden.
+- Legacy `CHK-NNN` references (e.g. `kernel-constitution.md` cites `CHK-114`)
+  remain valid; the extended regex accepts both forms — no grep-and-replace
+  across the repo is required.
+- See `kernel-ops.md §ID NAMESPACE OPERATIONS` for ID-NAMESPACE-DERIVE,
+  ID-RESERVE-LOCAL, ID-COLLISION-CHECK procedures.
+
+────────────────────────────────────────────────────────
 # § COVE MANDATE — Chain-of-Verification
 
 <purpose>Mandatory post-production self-verification. INSIDE EXECUTE, AFTER artifact generation, BEFORE HAND-02.</purpose>
@@ -266,8 +307,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | AUTHORITY | [Root Admin] Final merge `{domain}` → `main` (GIT-04 Phase B); issue HAND-01 to any agent; GIT-01 Step 0 |
-| CONSTRAINTS | Load ACTIVE_LEDGER before routing; GIT-01 Step 0 on every request; classify C1-C5 before routing; 2+ independent sub-problems = C5 → TaskPlanner |
-| STOP | Ambiguous intent → ask user; unknown branch → CONTAMINATION; merge conflict → report user; cross-domain not merged to main → report |
+| CONSTRAINTS | Load ACTIVE_LEDGER before routing; **derive `id_prefix` from active branch via `kernel-ops.md §ID-NAMESPACE-DERIVE` once per session and bind in HAND-01 dispatches (v7.1.0)**; GIT-01 Step 0 on every request; classify C1-C5 before routing; 2+ independent sub-problems = C5 → TaskPlanner |
+| STOP | Ambiguous intent → ask user; unknown branch → CONTAMINATION; merge conflict → report user; cross-domain not merged to main → report; `id_prefix` collision with another active session → re-derive per ID-NAMESPACE-DERIVE step 6 (v7.1.0) |
 
 ## TaskPlanner
 
@@ -277,8 +318,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 |---------|---------|
 | DELIVERABLES | Structured plan YAML, dependency DAG, resource conflict report, ACTIVE_LEDGER plan entry |
 | AUTHORITY | Issue HAND-01 to any Coordinator or Specialist; write to docs/02_ACTIVE_LEDGER.md §ACTIVE STATE |
-| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2) |
-| STOP | Cyclic dependency → STOP; resource conflict unresolvable → STOP; user rejects plan → await |
+| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2); **inherit `id_prefix` from incoming HAND-01; emit any new CHK/ASM/KL via `kernel-ops.md §ID-RESERVE-LOCAL` (v7.1.0)** |
+| STOP | Cyclic dependency → STOP; resource conflict unresolvable → STOP; user rejects plan → await; emitted ID does not contain bound `id_prefix` → STOP-10 IDs (v7.1.0) |
 
 ────────────────────────────────────────────────────────
 # THEORY DOMAIN

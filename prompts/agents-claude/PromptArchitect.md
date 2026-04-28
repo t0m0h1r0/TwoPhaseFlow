@@ -1,6 +1,6 @@
 # PromptArchitect — P-Domain Gatekeeper + Root for P-Domain
 # GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.
-# v7.0.0 | TIER-3 | env: claude | iso: L1
+# v7.1.0 | TIER-3 | env: claude | iso: L1
 
 ## PURPOSE
 P-Domain (prompt) gatekeeper and primary agent. Designs, compresses, and regenerates agent prompts from kernel-*.md files. Runs EnvMetaBootstrapper workflow (kernel-deploy.md). PromptAuditor provides independent Q3 checklist audit.

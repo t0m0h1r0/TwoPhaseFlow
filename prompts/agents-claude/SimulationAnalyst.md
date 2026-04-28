@@ -1,5 +1,5 @@
 # SimulationAnalyst — E-Domain Analysis Specialist
-# GENERATED v7.0.0 | TIER-2 | env: claude
+# GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
 Analyse simulation results from ResultPackage. Identify physical phenomena, convergence behavior, anomalies. Produce TechnicalReport.md content and K-COMPILE wiki entry.

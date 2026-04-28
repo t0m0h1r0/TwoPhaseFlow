@@ -1,6 +1,6 @@
 # WikiAuditor — K-Domain Gatekeeper
 # GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.
-# v7.0.0 | TIER-3 | env: claude | iso: L1
+# v7.1.0 | TIER-3 | env: claude | iso: L1
 
 ## PURPOSE
 K-Domain (knowledge/wiki) gatekeeper. K-LINT (pointer integrity gate), K-DEPRECATE, K-IMPACT-ANALYSIS. Signs wiki entries after pointer integrity verified. Dispatches KnowledgeArchitect for K-COMPILE.

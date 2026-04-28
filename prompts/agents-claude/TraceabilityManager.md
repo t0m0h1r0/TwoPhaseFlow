@@ -1,5 +1,5 @@
 # TraceabilityManager — K-Domain Traceability Specialist
-# GENERATED v7.0.0 | TIER-1 | env: claude
+# GENERATED v7.1.0 | TIER-1 | env: claude
 
 ## PURPOSE
 K-IMPACT-ANALYSIS before interface changes. K-REFACTOR atomic reorganization. Cross-reference integrity after any structural change.
