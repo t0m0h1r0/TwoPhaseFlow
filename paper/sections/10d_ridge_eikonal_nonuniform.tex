@@ -51,7 +51,8 @@ $J_x$ 記号は登場しない．主本文の $J_x$ への
 以下 4 つの補正 D1--D4 でこれらを解消する．
 
 \paragraph{D1 — $\sigma_\text{eff}(\bm{x})$ の空間スケーリング}
-基準格子幅を $h_\text{ref}=(\prod_{a} L_a/N_a)^{1/d}$，
+基準格子幅を格子点数 $N_a$ に対して
+$h_\text{ref}=(\prod_{a} L_a/(N_a-1))^{1/d}$，
 局所幾何平均を $h(\bm{x})=\sqrt{h_x(i)\,h_y(j)}$ とし，
 \begin{equation}
   \sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot \frac{h(\bm{x})}{h_\text{ref}},

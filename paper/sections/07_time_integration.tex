@@ -6,7 +6,7 @@
 \label{sec:time_int}% backward-compat: 旧 §5 全体 ref を保持
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{Part 1 連続定式化との関係：}
+\noindent\textbf{本章の位置付け：}
 本章は，第~\ref{sec:onefluid}章で導出した一流体 NS 方程式
 （移流・粘性・圧力・界面張力・浮力の各項；式~\eqref{eq:NS_onefluid}）と
 第~\ref{sec:cls_advection}節で確立した CLS 保存形移流方程式を，
@@ -48,6 +48,7 @@ A-stable 系であれば任意 $\Delta t$ で絶対安定となる．IMEX 法は
 （時間積分形式の分類）と §\ref{sec:time_operator_stiffness}（剛性マップ + CFL 数）
 で順次与える．論理順は \textbf{ステップ形式 → 絶対安定領域 → 時間精度} である．
 
+\noindent\textbf{本章の構成：}
 本章の組織化原則は，各物理項を独立な剛性源と見なし，
 項ごとに時間処理を選択することにある．具体的には：
 
@@ -296,7 +297,7 @@ Shu--Osher 型 TVD-RK3 法（= SSPRK3）\cite{ShuOsher1988} を用いる：
 ここで $\mathcal{L}(q)$ は空間演算子である．
 完全陽解法として再初期化方程式 \eqref{eq:cls_reinit_iso} を
 仮想時間 $\tau$ で積分する比較構成でも同じ SSPRK3 形式を用いられるが，
-本稿の主軸再初期化は Ridge--Eikonal 1 ショット再構成
+Ridge--Eikonal 補助経路は 1 ショット距離再構成
 （\S\ref{sec:xi_sdf_reinit}）であり，物理時間ステップの律速には含めない．
 本稿の CLS 移流では \textbf{FCCD フラックス発散}
 $\mathcal{L}(\psi)=-\bnabla\cdot(\psi\bu)$
@@ -339,7 +340,7 @@ TVD-RK3 との組合せだけで全変動減少は保証されない（注意~\r
 \end{itemize}
 再初期化方程式（式~\eqref{eq:cls_reinit_iso}）の仮想時間 TVD-RK3 は
 完全陽解法との比較・検証用の参考構成であり，
-Ridge--Eikonal 主軸の 1 ショット再構成とは別経路である．
+Ridge--Eikonal 補助経路の 1 ショット再構成とは別経路である．
 NS 対流は次小節の IMEX-BDF2（EXT2 外挿）が本稿の既定．
 SSPRK3 を NS 全体に適用する全陽的構成は精度基準試験
 （§~\ref{sec:verification} の時間収束試験）に限定する．
@@ -1002,8 +1003,8 @@ implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
 粘性 CFL を課さない．ただし変粘性界面では注意~\ref{warn:cross_cfl} の
 クロス微分 CFL が陽的処理を通じて部分的に復活しうる．
 
-\textbf{CLS 再初期化擬似時間 $\Delta\tau$ の扱い}：
-本稿の Ridge--Eikonal 主軸（\S~\ref{sec:xi_sdf_reinit}，§5.1）は
+\textbf{CLS 再初期化仮想時間 $\Delta\tau$ の扱い}：
+本稿の Ridge--Eikonal 補助経路（\S~\ref{sec:xi_sdf_reinit}，§5.1）は
 反復不要の 1 ショット再構成であるため，物理 $\Delta t$ には乗らない．
 完全陽解法として再初期化方程式を仮想時間積分する旧実装の参考安定条件は
 \S~\ref{warn:cls_dtau_stability_v7} に集約する．
@@ -1014,13 +1015,13 @@ implicit-BDF2 + GMRES（§\ref{sec:time_viscous}）は A-stable で
 ベンチマーク別の合成結果は検証章（§\ref{sec:val_summary}）に委ねる．
 
 % -------------------------------------------------------------------------------
-\subsubsection{CLS 再初期化の擬似時間 \texorpdfstring{$\Delta\tau$}{Δτ} 安定性（旧実装の参考）}
+\subsubsection{CLS 再初期化の仮想時間 \texorpdfstring{$\Delta\tau$}{Δτ} 安定性（旧実装の参考）}
 \label{warn:cls_dtau_stability_v7}
 \phantomsection\label{warn:cls_dtau_stability}% backward-compat: 旧 07b alias
 % -------------------------------------------------------------------------------
 以下は，圧縮項と拡散項をともに陽的に扱う場合の参考安定条件である．
-本稿は \S~\ref{sec:xi_sdf_reinit}（§5.1）の Ridge--Eikonal を
-主軸とし反復を伴わないため，本節の陽的 CFL 制約は直接の運用拘束ではなく，
+本稿は \S~\ref{sec:xi_sdf_reinit}（§5.1）の Ridge--Eikonal 補助経路では
+反復を伴わないため，本節の陽的 CFL 制約は直接の運用拘束ではなく，
 旧実装（\S~\ref{sec:dissipative_ccd}，§4.4）との比較参照のために記す．
 完全陽解法として再初期化方程式を TVD-RK3 で仮想時間積分する場合，
 $\Delta\tau$ には以下の安定性制約が存在する．

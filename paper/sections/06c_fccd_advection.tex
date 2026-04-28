@@ -11,7 +11,7 @@
 
 \noindent\textbf{Part 1 連続定式化との関係：}
 本節の FCCD 移流演算子は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
-運動量移流項 $(\bm{u}\cdot\bnabla)\bm{u}$ を Balanced-Force 整合（§~\ref{sec:balanced_force}）で
+運動量移流項 $(\bm{u}\cdot\bnabla)\bm{u}$ を Balanced--Force 整合（§~\ref{sec:balanced_force}）で
 離散化するために用いる．本稿では bulk 速度に UCCD6 対流
 （§~\ref{sec:uccd6_def}）を主実装とし，本節 FCCD 移流は CSF 表面張力項
 （§~\ref{sec:fccd_bf_sub_system}）と圧力勾配との 3 項整合のために必要となる．
@@ -19,7 +19,7 @@
 本節では \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
 $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 速度移流項へ拡張し，
-Balanced-Force 原理（\S\ref{sec:balanced_force}）が要求する
+Balanced--Force 原理（\S\ref{sec:balanced_force}）が要求する
 「$\nabla p,\,\sigma\kappa\nabla\psi,\,\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$
 \textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
 現行実装の節点版 CCD 移流は pressure/CSF を面中心 FCCD に置換しても
