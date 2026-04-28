@@ -19,8 +19,8 @@
 格子構造： & コロケート格子 + DCCD 散逸（$\varepsilon_d=1/4$；チェッカーボード除去）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
 圧力解法： & IPC 法~\cite{vanKan1986}（本稿で変密度に拡張）+ CCD-PPE（$\Ord{h^6}$）+ 欠陥補正法\\
-              & \textbf{低密度比}（$\rho_l/\rho_g \leq 5$）：smoothed Heaviside 一括解法\\
-              & \textbf{高密度比}（$\rho_l/\rho_g > 5$）：分相 PPE + HFE（必要に応じ欠陥補正法 DC，§~\ref{sec:split_ppe_recovery}）\\[4pt]
+              & \textbf{低密度比}（$\rho_l/\rho_g \leq 5$）：smoothed Heaviside 一括解法（FD 直接法 + CCD $\Ord{h^6}$ 勾配；必要に応じ DC）\\
+              & \textbf{高密度比}（$\rho_l/\rho_g > 5$）：分相 PPE + HFE（必要に応じ DC，§~\ref{sec:split_ppe_recovery}）\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
 時間方向律速： & AB2+IPC $\Rightarrow$ 全体時間精度 $\Ord{\Delta t^2}$（§~\ref{sec:time_accuracy_table}）${}^{\ast}$\\
@@ -53,10 +53,11 @@ HFE が CCD ステンシルの界面 Gibbs 振動を除去し，
 Balanced-Force 演算子整合と FCCD 面ジェット sub-system の協働により，
 Rhie--Chow 補間に頼らずコロケート格子のチェッカーボード不安定を抑制する．
 全手法は7ステップのタイムループとして統合される．
-コンポーネント単体検証（CCD 精度・Zalesak 円盤・PPE 収束等）と
-界面結合検証（静止液滴 Force Balance：FD は CCD の約 69 倍の寄生流れ；
+検証は三段構成で実施した：
+コンポーネント単体検証（CCD 精度・Zalesak 円盤・PPE 収束等），
+NS パイプライン整合検証（静止液滴 Force Balance：FD は CCD の約 69 倍の寄生流れ；
 分相 PPE + DC $k{=}3$：全密度比で $\Ord{h^{7.0}}$；
-Rayleigh--Taylor 不安定の成長率誤差 $2.8\%$）を実施し，
-物理ベンチマークでは毛細管波の smoke 合格・気泡上昇の closure 合格を達成した．
+Rayleigh--Taylor 不安定：成長率誤差 $2.8\%$），
+および物理ベンチマーク（毛細管波：長時間保存性 smoke 合格；気泡上昇：投影発散有無の closure 合格，$T{=}0.5$）．
 Hysing 級の terminal-velocity 比較や Prosperetti 級の dispersion 関係定量検証は今後の課題として位置づける．
 \end{abstract}
