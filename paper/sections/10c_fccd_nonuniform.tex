@@ -1,6 +1,6 @@
-% paper/sections/06c_fccd_nonuniform.tex
+% paper/sections/10c_fccd_nonuniform.tex
 %
-% §9.4  非一様格子上の FCCD
+% §10.4  非一様格子上の FCCD
 %         §4.6 で定義した一様格子上の FCCD を非一様格子へ拡張する．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
@@ -12,7 +12,7 @@
 $\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ を
 非一様格子に拡張するに際し，
 非一様 \textbf{打ち消し係数} $(\mu_i,\lambda_i)$ を
-2 つの疎な疎行列に織り込む．
+3 本の疎な双対角行列に織り込む．
 
 % -------------------------------------------------------------------------------
 \subsubsection{幾何量と打ち消し係数}
@@ -25,7 +25,7 @@ $\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ を
 局所幾何量を：
 \begin{align}
   H_i &:= x_i - x_{i-1} \quad\text{（面幅）}, \label{eq:fccd_nu_Hi}\\
-  \theta_i &:= (x_i - x_{f_{i-1/2}})/H_i \quad\text{（左節点からの相対位置）}. \label{eq:fccd_nu_theta}
+  \theta_i &:= (x_i - x_{f_{i-1/2}})/H_i \quad\text{（左節点値の線形補間重み）}. \label{eq:fccd_nu_theta}
 \end{align}
 中央（セル中心面）では $\theta_i \equiv 1/2$．
 \textbf{打ち消し係数}：
