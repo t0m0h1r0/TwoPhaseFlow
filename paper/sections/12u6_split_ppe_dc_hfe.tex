@@ -73,8 +73,8 @@ $128$ & $0.0078$ & $1.59\times 10^{-3}$ & $1.39$ & & $100$  & $0.0156$ & $1.27\t
 \begin{table}[!ht]
 \caption{U6-c: HFE 単独 MMS（外挿ステンシル）．
 \textbf{1D} は設計通り 6 次（slope $\approx 5.99$, $N=32\!\to\!256$）．
-\textbf{2D} は max が 4--5 次（界面格子点不揃い影響），
-med が 6 次設計（界面から距離 $\ge h$ のセル）．}
+\textbf{2D} band は円界面の closest-point 幾何診断であり，
+max が 4--5 次，med が 3 次強へ律速する（条件付き合格）．}
 \label{tab:U6_hfe}
 \centering\small
 \begin{tabular}{r r r r r}
@@ -97,7 +97,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $2.54\times 10^{-8}$ & $4.02\times 10
 \caption{U6：lumped--PPE + DC + HFE．
 DC $\omega$ 収束は $\rho_l \le 10$ 良好，$\rho_l \ge 100$ は $\omega \ge 0.5$ で stall；
 高密度比 $\rho_l = 1000$ で N--sweep slope $\approx 0.78$（lumped--PPE 構造的制約）；
-HFE 1D 設計 6 次（slope $5.99$），2D max $5.05$ / med $3.21$．
+HFE 1D 設計 6 次（slope $5.99$），2D band 診断は max $5.05$ / med $3.21$．
 出典：\texttt{experiment/ch12/exp\_U6\_split\_ppe\_dc\_hfe.py}．}
 \label{fig:ch12_u6}
 \end{figure}
@@ -113,9 +113,11 @@ HFE 1D 設計 6 次（slope $5.99$），2D max $5.05$ / med $3.21$．
         \textbf{lumped--PPE の構造的制約}であり，§\ref{sec:split_ppe_framework} で
         導入する分相 PPE 切替の動機となる．
         $\rho_l \le 10$ は $\Ord{h^2}$ 通常収束．\checkmark（限界明示）．
-  \item U6-c HFE：1D 設計 6 次完全達成；2D は med で 3 次以上，
-        max で 5 次（界面跨ぎセル 1 セル分の劣化が支配）．
-        §\ref{sec:hfe} 設計仕様と整合．\checkmark
+  \item U6-c HFE：1D stencil は設計 6 次を完全達成．2D circular band は
+        closest-point 幾何と界面跨ぎセルの配置誤差を含む診断であり，
+        max $5.05$ / med $3.21$ に律速する．
+        §\ref{sec:hfe} の stencil 精度は確認されるが，2D band は幾何劣化込みの
+        条件付き結果として扱う．$\triangle$
 \end{itemize}
 A3 トレーサビリティ：
 変密度一括 PPE 演算子 → §\ref{sec:varrho_ppe_limitation} →

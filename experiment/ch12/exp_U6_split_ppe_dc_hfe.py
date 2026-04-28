@@ -9,9 +9,8 @@ Sub-tests
       ρ_l/ρ_g ∈ {1, 100, 1000}; relaxation ω ∈ {0.2, 0.3, 0.5, 0.7};
       max_corrections k ∈ {2, 3}. Counts (ω, k, ρ) cells whose DC for-loop
       runs to completion without hitting tolerance ("stall"). Chapter 11 U6:
-      lumped + ρ_l/ρ_g ≥ 5 stalls for all ω; split rescues it via per-phase
-      uniform density (this script reports lumped only — split rescue is
-      verified end-to-end in ch13 high-ρ simulations).
+      ρ_l/ρ_g=1 is clean, while ρ_l/ρ_g ∈ {100, 1000} stalls for
+      ω ≥ 0.5; this script reports lumped-PPE limitation evidence only.
 
   (b) Lumped MMS at N=64, ρ_l/ρ_g ∈ {1, 10, 100, 1000}.
       Manufactured p* = cos(π x) cos(π y) (Neumann-compatible, p*(0.5,0.5)=0
@@ -23,11 +22,11 @@ Sub-tests
 
   (c) HFE 1-D + 2-D extension. 1-D: _hermite5_xp polynomial extrapolated one
       cell beyond the source window for f(x)=cos(π x)+0.3 sin(2π x) (no
-      symmetry zero); paper expectation slope ≈ 7.0 (super-conv). 2-D:
+      symmetry zero); Chapter 11 U6 reports slope ≈ 5.99. 2-D:
       HermiteFieldExtension.extend across a circular Γ on the same field;
       target = inside circle (φ > 0), source = outside (φ < 0); error
-      reported on the 6-cell extension band. Chapter 11 U6: 1-D ~7, 2-D
-      ~6.33/5.79 (until round-off floor at fine N).
+      reported on the 6-cell extension band. Chapter 11 U6 reports
+      2-D max ≈ 5.05 and median ≈ 3.21 as a geometric-band diagnostic.
 
 Stall detection: PPESolverDefectCorrection.solve has
 ``for _ in range(max_corrections): ... if residual <= tol*scale: break``.
@@ -453,7 +452,7 @@ def _slope_of(rows, key) -> float:
 
 def print_summary(results: dict) -> None:
     a = results["U6a"]
-    print("U6-a Lumped DC stall study (Chapter 11 U6: ρ_l/ρ_g ≥ 5 stalls all ω):")
+    print("U6-a Lumped DC stall study (Chapter 11 U6: ρ_l/ρ_g=1 clean; ≥100 stalls at high ω):")
     for r in RHO_RATIOS_A:
         rk = f"r{int(r)}"
         for k in DC_K_VALUES:
@@ -484,12 +483,12 @@ def print_summary(results: dict) -> None:
     print(f"  N-sweep  ρ={int(RHO_CONV)}  {cells}")
     n_slope = _slope_of(b["n_sweep"], "err_inf")
     flag = "[OK]" if n_slope < 1.0 else "[note]"
-    print(f"  N-sweep slope (Chapter 11 U6 table negative @ N≥64): "
+    print(f"  N-sweep slope (Chapter 11 U6 table: degraded positive slope ≈0.78): "
           f"{n_slope:.2f}  {flag}")
 
     rows_1d = results["U6c"]["hfe_1d"]
     rows_2d = results["U6c"]["hfe_2d"]
-    print("U6-c HFE convergence (Chapter 11 U6: 1D ≈ 7.0; 2D ≈ 6.33 / 5.79):")
+    print("U6-c HFE convergence (Chapter 11 U6: 1D ≈ 5.99; 2D max ≈ 5.05 / med ≈ 3.21):")
     print(f"  1D Hermite-5 extrap. slope         = "
           f"{_slope_of(rows_1d, 'err_inf'):.2f}")
     print(f"  2D HFE band-max slope              = "

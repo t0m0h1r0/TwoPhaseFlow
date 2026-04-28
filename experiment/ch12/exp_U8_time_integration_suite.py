@@ -17,7 +17,7 @@ Sub-tests
   (d) Viscous 3-layer Layer A/B/C accuracy (cross-diffusion term)
       Layer A: μ_l/μ_g=1   diagonal CN → O(Δt²)
       Layer B: μ_l/μ_g≥10  diagonal CN + explicit cross → O(Δt) degradation
-      Layer C: HFE-blend smoothed μ → O(Δt^{1.5}) partial recovery
+      Layer C: HFE-blend smoothed μ → O(Δt) known degradation
 
 Usage
 -----
@@ -226,7 +226,7 @@ def _viscous_layer_1d(layer: str, mu_ratio: float, n_t: int,
                                        → cross EE introduces O(Δt) error,
                                          expected slope 1.0
       Layer C (μ ∈ {10, 100}, ε=5h)  : same split with HFE-smoothed μ
-                                       → smaller |L_cross|, expected slope 1.5
+                                       → smaller coefficient, expected slope 1.0
     """
     h = 1.0 / N
     dt = T / n_t

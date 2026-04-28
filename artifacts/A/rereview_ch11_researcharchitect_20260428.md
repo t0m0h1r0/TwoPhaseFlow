@@ -12,6 +12,12 @@ Base review: `artifacts/A/review_ch11_researcharchitect_20260428.md`
 - Scope: current Chapter 11 as compiled from `paper/main.tex`: `paper/sections/12_component_verification.tex` and `paper/sections/12u*.tex`, plus the directly cited `experiment/ch12/exp_U*.py` support scripts.
 - Verdict: FAIL (0 FATAL, 2 MAJOR, 1 MINOR)
 
+## Post-Fix Status
+
+- Fix status: all listed R-M1 / R-M2 / R-m1 findings addressed in this worktree.
+- Fix scope: U6-c is now a conditional 1D-stencil + 2D-geometric-band result; U8 Layer C script expectations now match the paper's effective first-order criterion; U6 support-script docstrings and console summaries now mirror the current Chapter 11 table.
+- Verification completed before closure: targeted stale-pattern grep, Python syntax check for U6/U8 scripts, and LaTeX build.
+
 ## Closure Check Against Previous Review
 
 - F-1 chapter identity / numbering: closed. `paper/main.tex` comments, Chapter 11 header, and roadmap now consistently identify component verification as current §11.
