@@ -209,9 +209,10 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 となり，最終時刻 $T=7.0\ \mathrm{s}\approx 12.5/\gamma$ は
 線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である．
 
-YAML スキーマ上は \texttt{physics.phases.liquid} スロットに下層シリコーン油，
-\texttt{physics.phases.gas} スロットに上層水を割り当てる
-（§\ref{sec:val_grid_policy} 参照）．
+スロット規約は §\ref{sec:val_grid_policy} に従う．
+すなわち YAML スキーマ上は \texttt{physics.phases.liquid} スロットに
+下層シリコーン油，\texttt{physics.phases.gas} スロットに
+上層水を割り当てる．
 擾乱形状は毛細管波と同型であるため
 \texttt{initial\_condition.type=capillary\_wave} ハンドラを流用するが，
 重力下で重相が上にある不安定な層化のため，
@@ -299,7 +300,8 @@ Rayleigh--Taylor &
         の各受入基準で $|\Delta V|/V_0 < O(10^{-4})$；\textbf{補完}）．
   \item \textbf{毛管波 CFL 安定境界}——YAML \texttt{run.time.cfl} は理論 CFL 定数への
         乗数であり，本章 3 本の乗数 $1.0$ は移流 $0.10$／毛管 $0.05$／粘性 $1.0$ に
-        解決される（\texttt{src/twophase/simulation/config\_run\_builder\_sections.py:43}）．
+        解決される（実装は
+        \texttt{src/twophase/simulation/}\allowbreak\texttt{config\_run\_builder\_sections.py:43}）．
         理論上は式~\eqref{eq:flat_capillary_dispersion} と
         §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要がある（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
