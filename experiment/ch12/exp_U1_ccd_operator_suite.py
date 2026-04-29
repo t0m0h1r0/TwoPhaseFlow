@@ -7,7 +7,8 @@ Sub-tests
 ---------
   (a) CCD 1D MMS d1/d2 6-order convergence (periodic + wall BC)
   (b) DCCD modified wavenumber + smooth-mode preservation (analytic)
-  (c) FCCD face value/grad 6-order convergence (periodic)
+  (c) FCCD face value/grad 4th-order convergence (periodic; design order per
+      paper §sec:fccd_derivation / src/twophase/ccd/fccd.py module docstring)
   (d) UCCD6 nodal d1 6-order convergence + hyperviscosity diagnostic
 
 Usage

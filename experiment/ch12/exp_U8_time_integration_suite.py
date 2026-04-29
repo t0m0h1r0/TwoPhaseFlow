@@ -35,6 +35,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 import numpy as np
 import matplotlib.pyplot as plt
 
+from twophase.time_integration.tvd_rk3 import tvd_rk3
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -47,21 +48,16 @@ NPZ = OUT / "data.npz"
 PAPER_FIG = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures" / "ch12_u8_time_integration_suite"
 
 
-# ── U8-a: TVD-RK3 ODE 3rd-order ──────────────────────────────────────────────
-
-def _tvd_rk3_step(q: float, dt: float, rhs) -> float:
-    """Shu–Osher TVD-RK3 single step (paper Eq. 79–81)."""
-    q1 = q + dt * rhs(q)
-    q2 = 0.75 * q + 0.25 * (q1 + dt * rhs(q1))
-    return (1.0 / 3.0) * q + (2.0 / 3.0) * (q2 + dt * rhs(q2))
-
+# ── U8-a: TVD-RK3 ODE 3rd-order (production integrator) ─────────────────────
 
 def _ode_rk3_error(n_steps: int) -> float:
+    """Drives production `twophase.time_integration.tvd_rk3` on scalar ODE
+    q' = -q,  q(0) = 1,  expected order 3 for Shu-Osher TVD-RK3."""
     rhs = lambda q: -q
     dt = 1.0 / n_steps
-    q = 1.0
+    q = np.float64(1.0)
     for _ in range(n_steps):
-        q = _tvd_rk3_step(q, dt, rhs)
+        q = tvd_rk3(np, q, dt, rhs)
     return float(abs(q - np.exp(-1.0)))
 
 
@@ -71,10 +67,16 @@ def run_U8a():
     return {"tvd_rk3": rows}
 
 
-# ── U8-b: AB2 ODE 2nd-order ──────────────────────────────────────────────────
+# ── U8-b: AB2 ODE 2nd-order (ODE benchmark) ─────────────────────────────────
+# NOTE: This is an ODE benchmark, NOT the production integrator.
+# Production AB2 lives inside `twophase.time_integration.ab2_predictor.Predictor`,
+# which is heavily NS-coupled (requires FlowState, ConvectionTerm, ViscousTerm,
+# ...) and cannot be invoked on a scalar ODE. The inline AB2 below is the
+# textbook 2nd-order multistep formula used to expose the design order; the
+# production scheme uses the same formula on each velocity component.
 
 def _ode_ab2_error(n_steps: int) -> float:
-    """AB2 with forward-Euler startup."""
+    """AB2 with forward-Euler startup (ODE benchmark)."""
     rhs = lambda q: -q
     dt = 1.0 / n_steps
     q_prev = 1.0
@@ -339,6 +341,9 @@ def run_U8d():
     nt_list = [16, 32, 64, 128, 256]
     T = 0.02
     N = 64
+    # Layer A is constant-μ (μ_x≡0); μ_ratio is the absolute μ value for that
+    # diagonal-only CN test, so only the canonical mu_ratio=1 case is run.
+    # Layer B/C carry the actual ratio sweep (cross-term study).
     cases = [
         ("A", 1.0),
         ("B", 10.0),
@@ -356,7 +361,7 @@ def run_U8d():
                 "err": err,
                 "mu_x_max": mu_x_max, "mu_mean": mu_mean,
             })
-    return {"layers": rows, "T": T, "N": N}
+    return {"layers": rows, "T": T, "N": N, "cases": cases}
 
 
 # ── Aggregator + plotting ────────────────────────────────────────────────────
@@ -409,18 +414,25 @@ def make_figures(results: dict) -> None:
 
     rows_d = results["U8d"]["layers"]
     dts_d = sorted({r["dt"] for r in rows_d}, reverse=True)
+    # Only iterate over the actual (layer, mu_ratio) cases produced by run_U8d.
+    # Older versions iterated the full A/B/C × {1,10,100} cartesian product and
+    # silently dropped empty Layer-A μ=10/100 series; the case list is now the
+    # single source of truth.
+    cases = results["U8d"].get(
+        "cases",
+        [("A", 1.0), ("B", 10.0), ("B", 100.0), ("C", 10.0), ("C", 100.0)],
+    )
     series = {}
-    for layer in ("A", "B", "C"):
-        for mu_r in (1.0, 10.0, 100.0):
-            label = f"L{layer} $\\mu_r={int(mu_r)}$"
-            errs = []
-            for dt in dts_d:
-                hits = [r for r in rows_d if r["layer"] == layer
-                        and r["mu_ratio"] == mu_r and abs(r["dt"] - dt) < 1e-12]
-                if hits:
-                    errs.append(hits[0]["err"])
-            if errs:
-                series[label] = errs
+    for layer, mu_r in cases:
+        label = f"L{layer} $\\mu_r={int(mu_r)}$"
+        errs = []
+        for dt in dts_d:
+            hits = [r for r in rows_d if r["layer"] == layer
+                    and r["mu_ratio"] == mu_r and abs(r["dt"] - dt) < 1e-12]
+            if hits:
+                errs.append(hits[0]["err"])
+        if errs:
+            series[label] = errs
     convergence_loglog(
         ax_d, dts_d, series,
         ref_orders=[1, 2], xlabel="$\\Delta t$", ylabel="$L_\\infty$ error",
@@ -439,13 +451,16 @@ def print_summary(results: dict) -> None:
         print(f"  CFL_nu={s['CFL_nu']:>4} dt={s['dt']:.3e} n_t={s['n_t']}"
               f"  CN growth={s['cn_growth']:.3e}  FE growth={s['fe_growth']:.3e}")
     print("U8-d viscous 3-layer  (LTE slope by layer × mu_ratio):")
-    for layer in ("A", "B", "C"):
-        for mu_r in (1.0, 10.0, 100.0):
-            sub = [r for r in results["U8d"]["layers"]
-                   if r["layer"] == layer and r["mu_ratio"] == mu_r]
-            if sub:
-                print(f"  Layer {layer}  mu_ratio={mu_r:>5}  slope:",
-                      _slope_summary(sub, "dt", "err"))
+    cases = results["U8d"].get(
+        "cases",
+        [("A", 1.0), ("B", 10.0), ("B", 100.0), ("C", 10.0), ("C", 100.0)],
+    )
+    for layer, mu_r in cases:
+        sub = [r for r in results["U8d"]["layers"]
+               if r["layer"] == layer and r["mu_ratio"] == mu_r]
+        if sub:
+            print(f"  Layer {layer}  mu_ratio={mu_r:>5}  slope:",
+                  _slope_summary(sub, "dt", "err"))
 
 
 def main() -> None:

@@ -16,7 +16,7 @@ Sub-tests
 ---------
   (a) CCD on interface-clustered grid (interface at x=0.5),
       alpha in {1, 2}, f = sin(pi x), N in {16, 32, 64, 128}, wall BC.
-      Expected: alpha=1 slope ~6.0, alpha=2 slope 5.2-5.8.
+      Expected: alpha=1 slope ~6.0, alpha=2 slope ~5.98 (paper Ch12 U3-a).
       GCL: f = 1, expect ||df/dx||_inf < 7.5e-14 (machine zero).
   (b) FCCD face value/grad on alpha=2 grid, N in {16, 32, 64, 128}.
       Expected slope >= 5.5.
@@ -78,12 +78,14 @@ N_FOR_C = 128
 def _make_clustered_grid(
     N: int, alpha: float, backend, x_int: float = 0.5
 ) -> tuple:
-    """Build a 2D Grid clustered around an interface at x = x_int (and
-    y = x_int) using the paper's eq:grid_delta Gaussian density.
+    """Build a 2D Grid clustered around the diagonal interface
+    x + y = 2 * x_int (= 1 for x_int=0.5) using the paper's
+    eq:grid_delta Gaussian density.
 
     For alpha=1.0 returns a uniform grid; for alpha>1 the grid clusters
-    around the interface with bounded Jacobian (paper §6 stretching).
-    The CCD is built and bound to refined O(h^6) metrics on return.
+    around the diagonal level set phi = (X - x_int) + (Y - x_int) with
+    bounded Jacobian (paper §6 stretching, §12.U3). The CCD is built and
+    bound to refined O(h^6) metrics on return.
     """
     cfg = SimulationConfig(grid=GridConfig(
         ndim=2, N=(N, N), L=(1.0, 1.0), alpha_grid=alpha,
@@ -99,9 +101,11 @@ def _make_clustered_grid(
         x = np.asarray(grid.coords[0])
         y = np.asarray(grid.coords[1])
         X, Y = np.meshgrid(x, y, indexing="ij")
-        # ψ = H_eps(φ) with φ = x - x_int (planar interface). Use both axes
-        # so the y-axis also clusters at y=x_int.
-        phi = (X - x_int) + (Y - x_int)  # diagonal interface clusters both axes
+        # ψ = H_eps(φ) with φ = (x - x_int) + (y - x_int). The φ=0 locus is
+        # the diagonal line x + y = 2 * x_int (= 1 for x_int=0.5), so both
+        # axes cluster simultaneously around this 45° interface — matching
+        # paper §12.U3 "対角界面 x+y=1" setup.
+        phi = (X - x_int) + (Y - x_int)
         psi = heaviside(np, phi, eps)
         grid.update_from_levelset(psi, eps, ccd=ccd)
     return grid, ccd
@@ -297,7 +301,7 @@ def make_figures(results: dict) -> None:
 
 def print_summary(results: dict) -> None:
     print("U3-a CCD on interface-clustered grid (Chapter 12 U3: alpha=1 slope ~6, "
-          "alpha=2 slope 5.2-5.8):")
+          "alpha=2 slope ~5.98):")
     for alpha in ALPHAS_AB:
         rows = results["U3a"][f"alpha{alpha:g}"]
         print(f"  alpha={alpha:g}  d1 slope = {_slope_summary(rows, 'Linf_d1')};  "

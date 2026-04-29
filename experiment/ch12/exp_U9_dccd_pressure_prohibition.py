@@ -182,9 +182,13 @@ def print_summary(results: dict) -> None:
         rows_e = [r for r in rows_all if r["eps_d"] == eps_d]
         print(f"U9 ‖∇²p−∇²p̃‖∞ slope (ε_d={eps_d}):",
               _slope_summary(rows_e, "Linf_diff"))
-    print("U9 ε_d=0.25 reference values:")
-    for r in [rr for rr in rows_all if rr["eps_d"] == 0.25]:
-        print(f"  N={r['N']:>3}  Linf_diff = {r['Linf_diff']:.4e}")
+    print("U9 per-N ratio R = Linf_diff / Linf_unfiltered (the headline diagnostic):")
+    for N in GRID_SIZES:
+        row_unf = next(r for r in rows_all if r["N"] == N and r["eps_d"] == 0.25)
+        for eps_d in EPS_D_LIST:
+            row = next(r for r in rows_all if r["N"] == N and r["eps_d"] == eps_d)
+            ratio = row["Linf_diff"] / row_unf["Linf_unfiltered"]
+            print(f"  N={N:>3}  ε_d={eps_d:>5}  R = {ratio:.3e}")
 
 
 def main() -> None:

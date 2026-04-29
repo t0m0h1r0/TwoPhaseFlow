@@ -17,7 +17,16 @@ if TYPE_CHECKING:
 
 
 class DissipativeCCDAdvection(ILevelSetAdvection):
-    """Advects ψ using Dissipative CCD + TVD-RK3."""
+    """Advects ψ using Dissipative CCD + TVD-RK3.
+
+    Scope: this class implements DCCD strictly for level-set / volume-fraction
+    advection (transport of an advected scalar). The DCCD 3-point filter must
+    NOT be applied to the pressure field (∇p): see Chapter 12 U9 negation test
+    (`paper/sections/12u9_dccd_pressure_prohibition.tex`). PPE / momentum
+    corrector paths use plain CCD; this is enforced by call-site separation
+    (only this class invokes ``_dccd_filter_stencil`` in the production
+    pipeline).
+    """
 
     scheme_names = ("dissipative_ccd",)
     _scheme_aliases = {"dccd": "dissipative_ccd"}

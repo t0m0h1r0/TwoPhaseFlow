@@ -162,17 +162,21 @@ def _argmin_c_per_N(sub_b: dict) -> dict[int, float]:
 
 def print_summary(results: dict) -> None:
     rows_a = results["U5a"]["moments"]
-    # Paper claims < 1e-13 (machine precision); codebase logistic delta hits
-    # ~1e-11 floor at N >= 128 (round-off accumulation in summation).
-    print("U5-a 0th moment errors (Chapter 12 U5: < 1e-13; logistic floor ~1e-11):")
+    # Logistic delta hits ~1.6e-11 floor at N >= 128 (round-off in
+    # summation).  We assert tighter than 5e-11 to actually exercise the
+    # floor; the paper's "<1e-13" claim was a machine-epsilon hand-wave —
+    # see footnote ★ in tab:U5_moments and the corrected summary row.
+    FLOOR_OK = 5e-11
+    print(f"U5-a 0th moment errors (logistic round-off floor ~1.6e-11; "
+          f"OK threshold {FLOOR_OK:.0e}):")
     for r in rows_a:
-        flag = "OK" if r["err_norm"] < 1e-10 else "WARN"
+        flag = "OK" if r["err_norm"] < FLOOR_OK else "WARN"
         print(f"  N={r['N']:>4}  |int(delta)-1|={r['err_norm']:.2e}  [{flag}]")
 
-    print("U5-a 1st moment errors (Chapter 12 U5: O(h^2); logistic delta gives "
-          "super-spectral decay until floor):")
+    print(f"U5-a 1st moment errors (super-spectral until floor; "
+          f"OK threshold {FLOOR_OK:.0e}):")
     for r in rows_a:
-        flag = "OK" if r["err_moment"] < 1e-10 else "WARN"
+        flag = "OK" if r["err_moment"] < FLOOR_OK else "WARN"
         print(f"  N={r['N']:>4}  |int(x*delta)-x_int|={r['err_moment']:.2e}  [{flag}]")
     print(f"U5-a 1st moment slope (informational): "
           f"{_slope_summary(rows_a, 'err_moment')}")

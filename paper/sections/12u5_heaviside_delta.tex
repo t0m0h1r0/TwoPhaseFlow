@@ -58,13 +58,18 @@ $1.83\times 10^{-14}$（最良）．本実験での推奨は $c \in [1.5, 2]$．
 \toprule
 $N$ & $c=0.5$ & $c=1.0$ & $c=1.5$ & $c=2.0$ \\
 \midrule
-$32$   & $2.04\times 10^{-3}$ & $8.02\times 10^{-8}$ & $3.28\times 10^{-5}$ & $5.17\times 10^{-4}$ \\
+$32$   & $2.04\times 10^{-3}$ & $\mathbf{8.02\times 10^{-8}}\,^\ddagger$ & $3.28\times 10^{-5}$ & $5.17\times 10^{-4}$ \\
 $64$   & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}$ & $7.48\times 10^{-10}$ & $1.73\times 10^{-7}$ \\
 $128$  & $2.04\times 10^{-3}\,^\dagger$ & $2.11\times 10^{-7}\,^\dagger$ & $1.64\times 10^{-11}$ & $\mathbf{1.83\times 10^{-14}}$ \\
 \bottomrule
 \end{tabular}
 \\[2pt]
-{\footnotesize $^\dagger$ stall（$\eps$ サポート不足；$h$ を細かくしても改善せず）．}
+{\footnotesize $^\dagger$ stall（$\eps$ サポート不足；$h$ を細かくしても改善せず）．
+$^\ddagger$ $N\!=\!32$ では非単調最小（$c\!=\!1$ で $\Ord{10^{-8}}$ → $c\!=\!1.5,\,2$ で
+$\Ord{10^{-5}},\,\Ord{10^{-4}}$ と悪化）．これは粗格子では $\eps\!=\!c h$ のサポートが
+2--4 セルにまたがるとき，logistic kernel と等間隔台形則の Richardson 残差が
+セル境界位相に強く依存するためで，$c\!=\!1$ では数値積分点が kernel 重心に偶然整列する．
+$N \ge 64$ では位相依存が消え c に対し単調，かつ $h\!\to\!0$ で $c \in [1.5, 2]$ が最適となる．}
 \end{table}
 
 \begin{figure}[!ht]
