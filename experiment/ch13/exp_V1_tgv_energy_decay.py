@@ -58,6 +58,11 @@ TIME_N = 64
 SPATIAL_DT = 1.0e-3
 TIME_DT_TARGETS = (4.0e-3, 2.0e-3, 1.0e-3)
 
+# Snapshot run uses a much longer horizon so viscous decay (exp(-2 nu t))
+# is visually meaningful: at t=50 with NU=0.01 the amplitude is ~0.37.
+SNAPSHOT_T_FINAL = 50.0
+SNAPSHOT_DT = 1.0e-2
+
 
 def _setup(N: int, backend: Backend):
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(L, L)))
@@ -179,12 +184,13 @@ def run_V1_snapshots() -> dict:
 
     Used for the 1×3 vorticity snapshot figure (V1_tgv_vorticity.pdf).
     Independent of `_run` to avoid contaminating the convergence sweeps.
+    Uses a long horizon (SNAPSHOT_T_FINAL) so viscous decay is visible.
     """
     backend = Backend(use_gpu=False)
     N = TIME_N
     _, ccd, ppe, h, X, Y = _setup(N, backend)
-    n_steps = max(1, int(np.ceil(T_FINAL / SPATIAL_DT)))
-    dt = T_FINAL / n_steps
+    n_steps = max(1, int(np.ceil(SNAPSHOT_T_FINAL / SNAPSHOT_DT)))
+    dt = SNAPSHOT_T_FINAL / n_steps
     half_step = n_steps // 2
 
     u, v = _exact_velocity(0.0, X, Y)
@@ -219,8 +225,8 @@ def run_V1_snapshots() -> dict:
         "omega_t0": omega_t0,
         "omega_thalf": omega_thalf,
         "omega_tfinal": omega_tfinal,
-        "t_half": T_FINAL * (half_step / n_steps),
-        "t_final": T_FINAL,
+        "t_half": SNAPSHOT_T_FINAL * (half_step / n_steps),
+        "t_final": SNAPSHOT_T_FINAL,
     }
 
 
@@ -278,10 +284,12 @@ def make_vorticity_figure(results: dict) -> None:
         np.asarray(snap["omega_thalf"]),
         np.asarray(snap["omega_tfinal"]),
     ]
+    t_half = float(snap.get("t_half", SNAPSHOT_T_FINAL / 2))
+    t_final = float(snap.get("t_final", SNAPSHOT_T_FINAL))
     titles = [
         r"$t = 0$",
-        rf"$t = {float(snap.get('t_half', T_FINAL / 2)):.3f}$",
-        rf"$t = {float(snap.get('t_final', T_FINAL)):.3f}$",
+        rf"$t = {t_half:.1f}$ ($e^{{-2\nu t}} = {np.exp(-2.0 * NU * t_half):.2f}$)",
+        rf"$t = {t_final:.1f}$ ($e^{{-2\nu t}} = {np.exp(-2.0 * NU * t_final):.2f}$)",
     ]
     vmax = symmetric_range(omegas, percentile=99)
 
