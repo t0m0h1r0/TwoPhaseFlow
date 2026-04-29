@@ -491,7 +491,7 @@ def print_summary(results: dict) -> None:
     print(f"  N-sweep  ρ={int(RHO_CONV)}  {cells}")
     n_slope = _slope_of(b["n_sweep"], "err_inf")
     flag = "[OK]" if n_slope < 1.0 else "[note]"
-    print(f"  N-sweep slope (Chapter 12 U6 table: degraded positive slope ≈0.78): "
+    print(f"  N-sweep slope (Chapter 12 U6 table: degraded positive slope ≈0.79): "
           f"{n_slope:.2f}  {flag}")
 
     rows_1d = results["U6c"]["hfe_1d"]
