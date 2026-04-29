@@ -277,7 +277,7 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
   \item[V9（local-$\varepsilon$ §\ref{sec:local_eps_validation}; §14 stack 条件付）：]
         $C/A = 0.11$ @ $N=32$．空間可変 $\varepsilon(\bx)$ の §\ref{sec:validation} 適用条件を確定．
   \item[V10-a/b（Zalesak / 単一渦反転）：]
-        Zalesak は $\alpha=1$ の一様格子で体積ドリフト $1.535\%$ @ $N=128$，
+        Zalesak は $\alpha=1$ の一様格子で mass drift $1.535\%$ @ $N=128$，
         単一渦反転は $L_1 = 2.690\times 10^{-2}$ / mass drift $0.0936\%$．
         CLS 移流の条件付きベースラインを与える．
 \end{description}
@@ -285,7 +285,7 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 条件付き $\triangle$ の 5 件（V1-b 時間 slope 1.00 fractional-step 律速，
 V2-a Kovasznay CCD 3.95 pressure BC 律速，V4 Galilean 残差 0.21
 固定壁 + 固定 gauge 律速，V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
-V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
+V10-a Zalesak $\alpha=1$ mass drift 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
 いずれも \textbf{制約条件下では設計通り}という解釈で記録され，
 今後の高次拡張への定量的ベースラインを与えている．
 
