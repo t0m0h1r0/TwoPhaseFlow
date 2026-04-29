@@ -52,8 +52,10 @@ $256$ & $0.0039$  & $0.0059$  & $1.64\times 10^{-11}\,^\star$ & $8.19\times 10^{
 \begin{table}[!ht]
 \caption{U5-b: スケール係数 $c = \eps / h$ の 0 次モーメント誤差比較．
 $c < 1$ は $\eps$ がサポート不足（誤差が $h \to 0$ で stall）．
-$c \ge 1$ は $h$ 細分化で機械精度に到達．$c = 2$ は $N=128$ で
-$1.83\times 10^{-14}$（最良）．本実験での推奨は $c \in [1.5, 2]$．}
+$c = 1$ は $N=128$ で $2.11\!\times\!10^{-7}$ に stall（$\eps$ サポート境界）．
+$c \in [1.5, 2]$ で $h$ 細分化により Richardson 残差 saturation に到達し，
+$c = 2$ は $N=128$ で $1.83\times 10^{-14}$（double-precision floor 近傍；本実験の最良）．
+本実験での推奨は $c \in [1.5, 2]$．}
 \label{tab:U5_eps_h_rule}
 \centering\small
 \begin{tabular}{r c c c c}
