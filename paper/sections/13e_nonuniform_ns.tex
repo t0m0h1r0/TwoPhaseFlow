@@ -4,7 +4,7 @@
 % V9 : 局所 epsilon 比較 (§14 stack nominal vs local)
 % V10: Zalesak / CLS 移流 (uniform)
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{非一様格子 NS と CLS 移流}
+\subsection{非一様格子 NS（V8/V9）と一様格子 CLS 移流（V10）}
 \label{sec:nonuniform_grid_ns}
 
 \subsubsection{V8：非一様 NS 静止液滴}
@@ -221,8 +221,7 @@ $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{合格判定の基準（多軸再定義）}：script
-        (\texttt{exp\_V10\_cls\_advection\_nonuniform.py}) の plot 合格参照ライン
+  \item \textbf{合格判定の基準（多軸再定義）}：script の plot 合格参照ライン
         (mass drift $< 0.5\%$, Centroid order $\ge 1.5$；診断プロット上の guideline
         であり docstring 由来の正式 criterion ではない；plot コードでは
         \texttt{Volume drift} ラベルが用いられるが，incompressible CLS では
