@@ -56,7 +56,7 @@ U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{11.35}
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
 \midrule
-U8-a & TVD-RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.00}}$ & \checkmark \\
+U8-a & TVD-RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.01}}$ & \checkmark \\
 U8-b & AB2 ODE                 & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.0}}$  & \checkmark \\
 U8-c & CN 拡散 MMS\textsuperscript{$\flat$}    & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.0}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
 U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t^{1.0}}$ & $\triangle$ \textsuperscript{†} \\
@@ -106,7 +106,7 @@ $\times$（不合格）は本章では該当なし．主要結果：
         分相 PPE への切替動機を与える．HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
         2D band は完全テンソル混合微分により低次化が消え max $\Ord{h^{11.35}}$ / med $\Ord{h^{8.72}}$
         （§\ref{sec:hfe} の $\Ord{h^6}$ 設計と整合）．
-  \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.0}}$，AB2 $\Ord{\Delta t^{2.0}}$，
+  \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2 $\Ord{\Delta t^{2.04}}$，
         CN $\Ord{\Delta t^{2.0}}$ 無条件安定．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
   \item \textbf{coupling：}BF 整合 Laplace 圧は $N=128$ で $0.61\%$，
