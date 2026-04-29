@@ -1,4 +1,4 @@
-\subsection{毛管波制約の導出：分散関係から CFL 条件へ}
+\subsubsection{毛管波制約の導出：分散関係から CFL 条件へ}
 \label{app:capillary_cfl}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -49,7 +49,7 @@ $\sqrt{1000} \approx 32$ 倍大きな $\Delta t_\sigma$ が許される（制約
 %% 旧 appendix_numerics_schemes_s4.tex（ALE 効果）を統合
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\subsection{時間変化格子と ALE 効果（本稿では未実装）}
+\subsubsection{時間変化格子と ALE 効果（本稿では未実装）}
 \label{app:grid_ale}
 
 本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
@@ -67,7 +67,7 @@ ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量
 
 \textbf{近似が有効な条件：}
 \begin{center}
-\renewcommand{\arraystretch}{1.3}
+\PaperTableSetup
 \begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
 \hline
 条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\

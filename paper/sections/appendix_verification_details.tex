@@ -1,8 +1,8 @@
 % paper/sections/appendix_verification_details.tex
 %
-% 付録 E: 検証の補足解析
-%   E.1 PPE 離散化の選択（§12.5 から移動）
-%   E.2 HFE の smoothed Heaviside 圧力場への適合性（§12.4 から移動）
+% 付録 G: 検証の補足解析
+%   G.1 PPE 離散化の選択（§12.5 から移動）
+%   G.2 HFE の smoothed Heaviside 圧力場への適合性（§12.4 から移動）
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{検証の補足解析}
 \label{sec:appendix_verification}
@@ -49,7 +49,6 @@ DC の収束を回復する 7 つの方法を検証した：
 \centering
 \caption{CCD PPE 反復ソルバの代替法と結果}
 \label{tab:dc_alternatives}
-\renewcommand{\arraystretch}{1.3}
 \begin{tabular}{>{\raggedright\arraybackslash}p{40mm}cl}
 \toprule
 方法 & 残差到達値 & 判定 \\
@@ -83,9 +82,9 @@ Balanced-Force 条件は完全に維持される．
 
 \begin{table}[htbp]
 \centering
-\caption{PPE 離散化方式の比較（静止液滴，$N = 64$，200 ステップ）}
+\caption{PPE 離散化方式の比較}
 \label{tab:ppe_method_comparison}
-\renewcommand{\arraystretch}{1.3}
+\PaperCaptionNote{静止液滴，$N = 64$，200 ステップで比較する．}
 \begin{tabular}{lccl}
 \toprule
 方式 & $\|\bm{u}\|_\infty$ & $\Delta p$ 誤差 & 備考 \\

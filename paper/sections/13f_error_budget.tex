@@ -19,13 +19,11 @@
 \paragraph{Master accuracy summary．}
 
 \begin{table}[!ht]
-\caption{V1--V10 master accuracy summary．
-slope は log-log fitting (3 点以上)；単一値はその設定での代表値．
-括弧内は主な誤差源．}
+\caption{V1--V10：統合精度まとめ}
 \label{tab:v_accuracy_summary}
+\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．}
 \centering
-\setlength{\tabcolsep}{3pt}
-\scriptsize
+\PaperTableDenseSetup
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
 \toprule
 ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
@@ -93,9 +91,8 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
   \item 二相 NS：分相 PPE + DC + HFE 構成が密度比 $\le 833$ でロバスト（V6）．
         ただし時間方向の実効次数は界面処理に律速されるため，
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
-  \item 非一様格子：$\alpha > 1$ の NS 計算（V8）は静止液滴の物理整合性を保つが，
-        本論文での CLS transport 検証は $\alpha=1$ の一様格子に限定され（V10），
-        Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
+  \item 非一様格子：$\alpha>1$ の NS 静止問題と local $\varepsilon$ は V8/V9 で検証し，
+        Zalesak slot と単一渦 reversal は $\alpha=1$ の一様格子 CLS 移流診断に固定する．
         local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
   \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
         代表的には $\rho_r=1,N=32$ で FD の $1/5.85$，

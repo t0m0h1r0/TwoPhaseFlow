@@ -18,7 +18,7 @@
 各章の設計方針を整理する前に，「なぜこの組合せが必要か」を再確認する．
 
 \begin{center}
-\renewcommand{\arraystretch}{1.35}
+\renewcommand{\arraystretch}{\PaperTableArrayStretch}
 \begin{tabular}{>{\raggedright}p{58mm}>{\raggedright\arraybackslash}p{82mm}}
 \hline
 \textbf{数値的困難} & \textbf{本稿の対処手法} \\
@@ -119,7 +119,8 @@
         さらに各相に\textbf{欠陥補正法 DC ($k=3$)}（§\ref{sec:defect_correction_main}）を適用し，
         Dirichlet テストで $\Ord{h^7}$ のスーパー収束を達成する．
         単体検証 U6 では HFE 1D が $\Ord{h^{5.91}}$，
-        2D 帯領域 max $\Ord{h^{11.35}}$ / med $\Ord{h^{8.72}}$，
+        2D 帯領域が max $11.35$ / med $8.72$ の effective slope
+        （丸め床を含む診断値）を示し，
         DC 残差 $7\times10^{-6}$（$\rho_l=1000$, $\omega=0.9$, $k=3$ 最良）を実測した．
         統合検証 V6 において密度比 sweep $\rho_l/\rho_g\le833$ で
         $|\Delta p_{\mathrm{corr}}|/(\sigma/r)=1.07\times10^{-1}$ ($N=32$) を確認し，
@@ -156,7 +157,7 @@
         Ridge--Eikonal は D1--D4 の 4 補正項
         （§\ref{sec:ridge_eikonal_nu_grid}：$\sigma_{\mathrm{eff}}$ 空間スケーリング・
         物理空間 Hessian・非一様 FMM・$\varepsilon$ 拡幅空間依存）で非一様格子に拡張される．
-        単体検証 U3 では GCL 残差 $7.5\times10^{-14}$（機械零）を達成した．
+        単体検証 U3 では GCL 残差 $2.13\times10^{-13}$（機械零）を達成した．
 
   \item[\textbf{第\ref{sec:algorithm}章：統合アルゴリズム（7 ステップ）}]
         NS 方程式の各項と離散ソルバの対応関係（演算子マッピング），
@@ -185,7 +186,7 @@
 CCD 内点 $\Ord{h^6}$（U1-a 実測 $\Ord{h^{6.0}}$）・大域 $L^2$ では $\Ord{h^{5/2}}$（境界 BC 律速；§\ref{sec:CCD}），
 UCCD6 のスーパー収束 $\Ord{h^7}$（U1-d 実測 $\Ord{h^{7.00}}$；§\ref{sec:uccd6_def}），
 FCCD 面ジェット $\Ord{h^4}$（U1-c 実測 $\Ord{h^{4.00/4.00}}$；§\ref{sec:fccd_def}），
-HFE Hermite 場延長 1D $\Ord{h^{5.91}}$ / 2D max $\Ord{h^{11.35}}$ med $\Ord{h^{8.72}}$（U6-c；§\ref{sec:hfe}），
+HFE Hermite 場延長 1D $\Ord{h^{5.91}}$ / 2D effective slope max $11.35$ med $8.72$（U6-c；§\ref{sec:hfe}），
 DC k=3 補正後の分相 PPE $\Ord{h^{6.90}}$（U2 production，U6-b；§\ref{sec:defect_correction_main}）が
 それぞれ単体で実測されている．
 
@@ -216,9 +217,10 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 \label{sec:achievements_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本稿の三本柱設計は，単体検証（第\ref{sec:numerical_integrity}章）・統合検証
-（第\ref{sec:verification}章）・物理ベンチマーク（第\ref{sec:validation}章）
-の三段階で実証されている．以下に headline 成果を要約する．
+本稿の三本柱設計は，単体検証（第\ref{sec:numerical_integrity}章）と統合検証
+（第\ref{sec:verification}章）で実測値が確定している．
+物理ベンチマーク（第\ref{sec:validation}章）は YAML・診断量・受入基準を固定した
+未完了の実証ゲートとして扱い，以下の headline 成果には含めず分離して記録する．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{単体検証 U1--U9 の総括}
@@ -235,7 +237,7 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         production 設定で $\Ord{h^{5.72}}$，欠陥補正 DC k=3 で $\Ord{h^{6.90}}$ を達成．
   \item[U3（非一様格子上の空間離散；§\ref{sec:U3_nonuniform_suite}）：]
         非一様 CCD $\Ord{h^{5.98}}$，FCCD $\Ord{h^{4.00/4.09}}$，
-        GCL 機械零（$7.5\times 10^{-14}$），Ridge--Eikonal D1--D4 機械零を確認．
+        GCL 機械零（$2.13\times 10^{-13}$），Ridge--Eikonal D1--D4 機械零を確認．
   \item[U4（Ridge--Eikonal 再初期化；§\ref{sec:U4_ridge_eikonal_reinit}）：]
         Godunov Eikonal + DGR で $\varepsilon_\mathrm{eff}/\varepsilon_* = 2.0\to 1.0000033$ の
         SDF 距離関数品質回復を実証．
@@ -243,7 +245,8 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         $\int H_\varepsilon\,dx$ と $\int \delta_\varepsilon\,dx$ のモーメント残差が機械精度 floor に到達．
   \item[U6（分相 PPE + HFE + DC；§\ref{sec:U6_split_ppe_dc_hfe}）：]
         分相 PPE + DC 残差 $7\times 10^{-6}$，HFE Hermite 場延長
-        1D $\Ord{h^{5.91}}$，2D max $\Ord{h^{11.35}}$ med $\Ord{h^{8.72}}$ を達成．
+        1D $\Ord{h^{5.91}}$，2D effective slope max $11.35$ med $8.72$ を確認
+        （形式次数主張ではなく丸め床を含む診断値）．
   \item[U7（BF 静止液滴；§\ref{sec:U7_bf_static_droplet}）：]
         Laplace 圧力誤差 $0.61\%$ @ $N=128$，
         面 $\mu$ 補間（harmonic / arithmetic / log）の収束 slope $1.91/1.81/1.91$．
@@ -290,35 +293,36 @@ V10-a Zalesak $\alpha=1$ mass drift 1.535\%・V10-b 単一渦 reversal $L_1=2.69
 今後の高次拡張への定量的ベースラインを与えている．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{物理ベンチマーク §\ref{sec:validation} の検証成果}
+\subsubsection{物理ベンチマーク §\ref{sec:validation} の受入基準と未完了項目}
 % ─────────────────────────────────────────────────────────────────────────────
 
 第\ref{sec:validation}章の物理ベンチマーク 3 種（毛管波・気泡上昇・Rayleigh--Taylor）は，
-古典理論・既往 DNS との定量比較で受入基準を満たした
-（集計：表~\ref{tab:ch14_summary}）．
+古典理論・既往 DNS との比較対象，YAML 条件，出力診断，受入基準を固定しているが，
+表~\ref{tab:ch14_summary} の通り定量結果は未掲載である．
+したがって本節では成功判定ではなく，査読時点での未完了検証ゲートとして整理する．
 
 \begin{description}
   \item[毛管波（§\ref{sec:val_capillary}）：]
         線形分散関係 $\omega^2 = \sigma k^3/(\rho_l + \rho_g)$ を Prosperetti~\cite{Prosperetti1981}
-        参照と比較し，位相・周期が許容誤差内で一致．
-        体積保存 $|\Delta V|/V_0 = \Ord{10^{-4}}$（Popinet~\cite{Popinet2009} 慣行値以下），
-        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界を遵守．
+        参照と比較する計画であり，位相・周期誤差，体積保存
+        $|\Delta V|/V_0 = \Ord{10^{-4}}$，および
+        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界遵守を判定項目とする．
   \item[気泡上昇（§\ref{sec:val_rising_bubble}）：]
-        Hysing ら~\cite{Hysing2009} の単一気泡幾何アーキタイプを再現．
-        体積保存 $|\Delta V|/V_0 = \Ord{10^{-4}}$，重心 $y_c(t)$ 単調上昇，
-        平均上昇速度の漸近，Francois ら~\cite{Francois2006} 類概念に基づく浮力分解の閉包確認，
-        Aland--Voigt~\cite{AlandVoigt2019} diffuse-interface 対応 benchmark との整合．
+        Hysing ら~\cite{Hysing2009} の単一気泡幾何を参照しつつ，
+        水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化する
+        閉包 benchmark として位置付ける．体積保存，重心 $y_c(t)$，平均上昇速度，
+        変形量の時系列を未完了の判定項目とする．
   \item[Rayleigh--Taylor 不安定（§\ref{sec:val_rayleigh_taylor}）：]
-        $\mathrm{At}=0.0256$, $k=4\pi$ で線形成長率
+        $\mathrm{At}=0.0256$, $k=4\pi$ の線形成長率
         $\gamma \approx 1.78\,\mathrm{s^{-1}}$（Chandrasekhar~\cite{Chandrasekhar1961}
-        古典理論）を $0 < t < 3/\gamma$ 線形窓で再現．
-        $T=7$ で非線形 mushroom 領域に到達（Tryggvason~\cite{Tryggvason2011} DNS 規約），
-        Tryggvason~\cite{Tryggvason1988} 低 Atwood DNS との定量比較で整合．
+        古典理論）を基準に，$0 < t < 3/\gamma$ の対数線形窓，
+        $T=7$ の非線形 mushroom 形成，体積保存，運動エネルギー推移を未完了の判定項目とする．
 \end{description}
 
-これら 3 ベンチマークの成功により，
-三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）の物理的有効性が
-本稿で完結したと宣言できる．
+これら 3 ベンチマークは，三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）の
+物理的有効性を最終確認するための未完了ゲートである．
+現時点での達成主張は，第\ref{sec:numerical_integrity}章と第\ref{sec:verification}章の
+実測検証に限定する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}
@@ -426,11 +430,12 @@ V10-a Zalesak $\alpha=1$ mass drift 1.535\%・V10-b 単一渦 reversal $L_1=2.69
 \subsubsection{検証と実証}
 % ─────────────────────────────────────────────────────────────────────────────
 
-第\ref{sec:numerical_integrity}章の単体検証 U1--U9・第\ref{sec:verification}章の統合検証 V1--V10・
-第\ref{sec:validation}章の物理ベンチマーク（毛管波～\cite{Prosperetti1981}・気泡上昇～\cite{Hysing2009}・
-Rayleigh--Taylor～\cite{Chandrasekhar1961,Tryggvason1988}）はすべて受入基準を満たし，
-本稿の三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット sub-system）の
-物理的有効性が実証された（§\ref{sec:achievements_summary}）．
+第\ref{sec:numerical_integrity}章の単体検証 U1--U9 と
+第\ref{sec:verification}章の統合検証 V1--V10 は受入基準を満たした．
+一方，第\ref{sec:validation}章の物理ベンチマーク
+（毛管波～\cite{Prosperetti1981}・気泡上昇～\cite{Hysing2009}・
+Rayleigh--Taylor～\cite{Chandrasekhar1961,Tryggvason1988}）は
+YAML・診断量・受入基準を固定した段階であり，定量結果は未掲載である．
 今後の検証課題として，以下を挙げる．
 
 \begin{description}

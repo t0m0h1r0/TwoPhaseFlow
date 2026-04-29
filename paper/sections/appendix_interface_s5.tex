@@ -1,11 +1,11 @@
-\section{CLS 再初期化方程式の設計動機と不動点証明}
+\subsection{CLS 再初期化方程式の設計動機と不動点証明}
 \label{app:cls_fixed_point}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本付録は，再初期化方程式 \eqref{eq:cls_reinit_iso} がなぜこの形を持つのか（設計原理）と，
 $\psi = H_\varepsilon(\phi)$ が厳密な不動点である代数的証明を1次元で与える．
 
-\subsection*{設計原理（逆算による導出）}
+\subsubsection*{設計原理（逆算による導出）}
 
 \textbf{目標：} 定常解 $\psi = H_\varepsilon(\phi)$，すなわち $\psi' = \frac{1}{\varepsilon}\psi(1-\psi)$ を持つ方程式を作る．
 
@@ -21,7 +21,7 @@ $\frac{d}{ds}[\psi(1-\psi)] = (1-2\psi)\psi' = \frac{1}{\varepsilon}(1-2\psi)\ps
 すなわち方程式 $\partial_\tau\psi + \bnabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \bnabla\cdot(\varepsilon\bnabla\psi)$
 の定常解が $H_\varepsilon(\phi)$ であることが自然に導かれる．
 
-\subsection*{不動点の解析的証明}
+\subsubsection*{不動点の解析的証明}
 
 1次元の定常条件 $\frac{d}{ds}[\psi(1-\psi)] = \varepsilon\,\frac{d^2\psi}{ds^2}$ において，
 $\psi = H_\varepsilon(s) = \frac{1}{1+e^{-s/\varepsilon}}$ がこれを満たすことを示す．
@@ -57,7 +57,7 @@ $\psi = H_\varepsilon(s) = \frac{1}{1+e^{-s/\varepsilon}}$ がこれを満たす
 
 \textbf{すなわち $\psi = H_\varepsilon(\phi)$ は式 \eqref{eq:cls_reinit_iso} の厳密な不動点である．}\qed
 
-\subsection*{多次元への拡張}
+\subsubsection*{多次元への拡張}
 
 上記の証明は1次元（法線方向座標 $s$）で与えたが，多次元の再初期化方程式
 $\partial_\tau\psi + \bnabla\cdot(\psi(1-\psi)\hat{\bm{n}}) = \bnabla\cdot(\varepsilon\bnabla\psi)$
