@@ -49,7 +49,7 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\eps/h$ 最適性）& $c \in [1.
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
-U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.2\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
+U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.19\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
 U6-b & lumped--PPE $\rho$-ratio 1:1--1:1000 & 高密度比限界の診断 & $\rho_l\le10$: $\Ord{h^2}$, $\rho_l=1000$: $p\approx0.79$ & $\triangle$ \textsuperscript{(c)} \\
 U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
 U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{11.35}}$ / med $\Ord{h^{8.72}}$ & \checkmark \\
@@ -57,8 +57,8 @@ U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{11.35}
 \multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
 \midrule
 U8-a & TVD-RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.01}}$ & \checkmark \\
-U8-b & AB2 ODE                 & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.0}}$  & \checkmark \\
-U8-c & CN 拡散 MMS\textsuperscript{$\flat$}    & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.0}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
+U8-b & AB2 ODE                 & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.04}}$  & \checkmark \\
+U8-c & CN 拡散 MMS\textsuperscript{$\flat$}    & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.00}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
 U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t^{1.0}}$ & $\triangle$ \textsuperscript{†} \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
@@ -107,7 +107,7 @@ $\times$（不合格）は本章では該当なし．主要結果：
         2D band は完全テンソル混合微分により低次化が消え max $\Ord{h^{11.35}}$ / med $\Ord{h^{8.72}}$
         （§\ref{sec:hfe} の $\Ord{h^6}$ 設計と整合）．
   \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2 $\Ord{\Delta t^{2.04}}$，
-        CN $\Ord{\Delta t^{2.0}}$ 無条件安定．
+        CN $\Ord{\Delta t^{2.00}}$ 無条件安定．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
   \item \textbf{coupling：}BF 整合 Laplace 圧は $N=128$ で $0.61\%$，
         face $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．

@@ -116,9 +116,9 @@ U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & $D_4 \le 4.5\!\times\!10^{-11}$ & \checkmark \\
 U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & $9.16\!\times\!10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正         & $|r{-}1| < 0.05$ & $3.3\!\times\!10^{-6}$ & \checkmark \\
-U5-a & $\delta_\eps$ モーメント & Richardson 残差床 & $1.6\!\times\!10^{-11}$（$\eps=1.5h$） & \checkmark \\
-U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
-U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & \shortstack[l]{$\rho_l\!=\!1$: $5.2\!\times\!10^{-5}$\\$\rho_l\!=\!1000$ best: $7.0\!\times\!10^{-6}$} & \checkmark \\
+U5-a & $\delta_\eps$ モーメント & Richardson 残差床 & $1.64\!\times\!10^{-11}$（$\eps=1.5h$） & \checkmark \\
+U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & $c{=}2,\,N{=}128$: $1.83\!\times\!10^{-14}$ & \checkmark \\
+U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & \shortstack[l]{$\rho_l\!=\!1$: $5.19\!\times\!10^{-5}$\\$\rho_l\!=\!1000$ best: $7.0\!\times\!10^{-6}$} & \checkmark \\
 U6-b & 一括 PPE 高密度比限界      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
 U6-c & HFE 1D step extension      & $6$ & $5.91$ & \checkmark \\
 U6-c & HFE 2D band 診断           & 幾何込み条件付き & max $11.35$ / med $8.72$ & \checkmark \\
