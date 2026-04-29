@@ -4,7 +4,7 @@ Date: 2026-04-29
 Worktree: `.claude/worktrees/ra-paper-strict-review-20260429`
 Branch: `ra-paper-strict-review-20260429`
 Source commit: `3bf49cf` (`paper: unify table and caption typography`)
-Main merge: not performed for this CHK; continue in the retained worktree.
+Main merge: performed by no-ff merge commit `ec31570`; continue in the retained worktree.
 
 ## Trigger
 
