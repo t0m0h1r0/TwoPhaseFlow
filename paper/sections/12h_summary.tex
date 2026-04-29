@@ -25,7 +25,7 @@ ID & テスト & 期待精度 & 実測精度 & 判定 \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
-U1-a & CCD 2D tensor-product MMS（周期, $x$ 軸評価）  & $\Ord{h^6}$  & $\Ord{h^{6.0}}$ & \checkmark \\
+U1-a & CCD 2D tensor-product MMS（周期, $x$ 軸評価）  & $\Ord{h^6}$  & $\Ord{h^{6.00}}$/$\Ord{h^{5.97}}$（d1/d2） & \checkmark \\
 U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
 U1-c & FCCD face value/grad   & $\Ord{h^4}$（面演算子設計次数；§\ref{sec:fccd_derivation}） & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & \checkmark \\
 U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
@@ -77,7 +77,7 @@ $\triangle$ の類型——
 表題が指す「spectral」は試験用の空間スペクトル離散（pseudo-spectral）であり，
 CN の時間 2 次精度評価は空間スペクトル誤差床より十分小さい刻み幅 $\Delta t$ で測定される．
 \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
-本表は §\ref{sec:numerical_integrity} 表~\ref{tab:U_summary} と同一の行構成（25 サブテスト；U6-c は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）で対応する．
+本表は Tier 順で配置し（25 サブテスト；U6-c は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割），表~\ref{tab:U_summary}（§\ref{sec:numerical_integrity}；U 番号順配置）と同一サブテスト集合に 1:1 対応する．
 }
 \end{tabular}
 \end{table}
