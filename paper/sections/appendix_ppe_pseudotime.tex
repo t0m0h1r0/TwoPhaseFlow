@@ -1,13 +1,13 @@
 % paper/sections/appendix_ppe_pseudotime.tex
-% 付録 D.2：CCD 陰解法と仮想時間ステップ反復（PPE ソルバの実装詳細）
-% ※ 旧: §8.4（本文）→ 付録 D.2 に移動（Modification IV: ソルバーアルゴリズムを付録へ）
+% 付録 E.2：CCD 陰解法と仮想時間ステップ反復（PPE ソルバの実装詳細）
+% ※ 旧: §8.4（本文）→ 付録 E.2 に移動（Modification IV: ソルバーアルゴリズムを付録へ）
 %
 \subsection{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}
 
 \subsubsection{\texorpdfstring{初期圧力場 $p^0$ の設定}{初期圧力場 p0 の設定}}
 \label{sec:ppe_p0_init}
-%% 旧所在: §8.1（08_pressure.tex）→ 付録 D.2 へ移動
+%% 旧所在: §8.1（08_pressure.tex）→ 付録 E.2 へ移動
 
 IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
 問題に応じて以下から選択する：
@@ -89,9 +89,10 @@ $\varepsilon_\text{tol}$ はこのフロアより大きく設定すること；
   \label{eq:pseudo_linear}
 \end{equation}
 
-\textbf{安定性の利点：}式~\eqref{eq:pseudo_implicit_raw} の陰的離散化は，仮想時間刻み $\Delta\tau$ の大きさに関係なく\textbf{無条件安定}である．
-これにより $\Delta\tau$ を任意に大きく設定でき，収束を加速することが可能である
-（CFL 制約による $\Delta\tau$ の上限が存在しない）．
+\textbf{安定性の利点：}式~\eqref{eq:pseudo_implicit_raw} の陰的離散化は，線形・正定値モデルに対して
+CFL 型の上限制約を課さない（A 安定）．
+これは $\Delta\tau$ を無制限に大きくしてよいという意味ではなく，スウィープ分割誤差，
+条件数，残差フロアを併せて評価しながら式~\eqref{eq:dtau_opt} 近傍を探索する，という実装指針である．
 
 \subsubsection{反復中の物理変数の凍結}
 \label{sec:pseudo_variable_freeze}
@@ -291,10 +292,10 @@ PPE の収束誤差は速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\bnabla(\
 $\Delta t \sim 10^{-2}$ では $\varepsilon_\mathrm{tol} \leq 10^{-6}$，
 $\Delta t \sim 10^{-3}$ では $\varepsilon_\mathrm{tol} \leq 10^{-8}$ が目安となる．
 \textbf{推奨：} $\varepsilon_\mathrm{tol} = \Delta t^2 \times 10^{-2}$（$\Delta t$ 依存の適応設定）
-または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合に十分）．
+または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合の出発点）．
 なお，CCD の $\Ord{h^6}$ 空間精度を線形代数レベルで発現させるには $\varepsilon_\mathrm{tol} \ll h^6$ が
 理論上の必要条件だが，NS シミュレーションでは時間精度 $\Ord{\Delta t^2}$ が支配的であり
-いずれの設定も十分である（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
+最終的な設定は外側残差と物理量収束で確認する（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[resultbox, title={最適仮想時間刻み $\Delta\tau$ の理論（詳細：付録 §\ref{sec:dtau_derive}）}]
@@ -313,7 +314,9 @@ CCD Laplacian の最大固有値 $\lambda_{\max} = 9.6\,a_{\max}/h^2$（§~\ref{
   a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
   \label{eq:dtau_opt}
 \end{equation}
-スウィープ型は任意の $\Delta\tau > 0$ で\textbf{無条件安定}；$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも $\gamma \to 1$（収束が遅い）．
+スウィープ型の理想化モデルでは任意の $\Delta\tau > 0$ で誤差を増幅しない一方，
+$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも
+$\gamma \to 1$ となり収束は遅くなる．
 \end{tcolorbox}
 
 \label{box:dtau_impl}
@@ -351,9 +354,9 @@ $C_\tau = 1 \sim 5$ は全領域一様のグローバル係数であり，
   = \frac{C_\tau\,\rho_{i,j}\,h^2}{2} \cdot \frac{1}{\rho_{i,j}}
   = \frac{C_\tau\,h^2}{2} \quad (\text{全セルで一定})
 \end{equation*}
-となり，密度依存性が完全に打ち消される．
-この均等化により，気体相・液体相を問わず各セルが同一の「規格化仮想時間刻み」で更新され，
-全領域の残差がほぼ均等なペースで減衰する．
+となり，理想化した局所線形モデルでは密度依存性が打ち消される．
+この均等化により，気体相・液体相を問わず各セルを同一の「規格化仮想時間刻み」で更新することを狙う．
+実際の減衰速度は係数勾配，境界条件，分割誤差にも依存する．
 
 \textbf{グローバル公式との整合性：}
 一様密度（$\rho_{i,j} = \rho_l$）では式~\eqref{eq:dtau_lts} は
@@ -363,9 +366,10 @@ $C_\tau \approx 0.416$ に相当する範囲で両式は整合する（\ref{box:
 
 \textbf{$C_\tau$ の動的増大：}
 反復初期は $C_\tau$ を小さめ（$C_\tau = \mathcal{O}(1)$）に設定して安定性を確保し，
-残差が十分に減少した後に段階的に増大させると定常解への到達を劇的に早める．
+残差が十分に減少した後に段階的に増大させると定常解への到達を早める場合がある．
 $\Delta\tau_{i,j}$ が陰的 Euler（式~\eqref{eq:pseudo_implicit_raw}）に基づく限り，
-$C_\tau$ を大きくしても発散しない（無条件安定性；\ref{warn:ppe_splitting} 参照）．
+線形モデル上の安定性は保たれやすいが，$C_\tau$ を大きくすると分割誤差フロアや
+係数非一様性による停滞が生じ得る（\ref{warn:ppe_splitting} 参照）．
 
 \subsubsection{全周 Neumann 境界の可解性条件とゲージ固定点の対称性}
 \label{sec:ppe_gauge_neumann}

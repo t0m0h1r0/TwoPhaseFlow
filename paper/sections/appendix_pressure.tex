@@ -1,28 +1,28 @@
 % paper/sections/appendix_pressure.tex
 %
-% 付録: 圧力ソルバーと連成解析（§7-9 対応）
+% 付録: 圧力ソルバーと連成解析（§8-9 対応）
 %   HFE 格子収束検証は本文 U6-c（§12.4）に集約済み。
 
 \section{圧力ソルバーと連成解析}
 \label{app:pressure_coupling}
 
-%% D.1 欠陥補正法の理論と係数導出
+%% E.1 欠陥補正法の理論と係数導出
 \subsection{欠陥補正法の理論と係数導出}
 \label{app:dc_theory}
-\input{sections/appendix_numerics_solver_s2}   %% D.1.1 Thomas 三重対角係数
-\input{sections/appendix_numerics_solver_s3}   %% D.1.2 収束率解析と最適 Δτ
-\input{sections/appendix_numerics_solver_s5}   %% D.1.3 収束理論（スペクトル解析）
+\input{sections/appendix_numerics_solver_s2}   %% E.1.1 Thomas 三重対角係数
+\input{sections/appendix_numerics_solver_s3}   %% E.1.2 収束率解析と最適 Δτ
+\input{sections/appendix_numerics_solver_s5}   %% E.1.3 収束理論（スペクトル解析）
 
-%% D.2 CCD 陰解法と仮想時間反復（アルゴリズム＋精度検証）
-\input{sections/appendix_ppe_pseudotime}       %% D.2 本体（仮想時間ステップ反復）
+%% E.2 CCD 陰解法と仮想時間反復（アルゴリズム＋精度検証）
+\input{sections/appendix_ppe_pseudotime}       %% E.2 本体（仮想時間ステップ反復）
 
-%% D.2 末尾 (archived): CCD仮想時間精度検証 → _archived/appD8_ccd_pseudotime_verification.tex
+%% E.2 末尾 (archived): CCD仮想時間精度検証 → _archived/appD8_ccd_pseudotime_verification.tex
 %%   理由: 本文から参照ゼロ (app:ccd_pseudotime, app:ccd_case1/2/3 すべて未参照)
 
-%% D.3 FVM 基準手法の定式化と精度解析（面係数・CSF・RC + 旧D.1 RC/BF精度解析を統合）
+%% E.3 FVM 基準手法の定式化と精度解析（面係数・CSF・RC + 旧 RC/BF 精度解析を統合）
 \input{sections/appendix_numerics_solver_s4}   %% FVM + CSF + RC + BF精度解析
 
-%% D.x C/RC 補正のテイラー展開証明（§7.4b から移動）
+%% E.4 C/RC 補正のテイラー展開証明（§7.4b から移動）
 \subsection{C/RC 補正のテイラー展開証明}
 \label{app:crc_taylor}
 
@@ -94,7 +94,7 @@ $p'''$ 係数が $1/24$ に揃い，検出項は：
 \end{equation}
 となる．RC 補正量が $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される証明である．
 
-%% 圧力ステップの実装補足
+%% E.5 圧力ステップの実装補足
 \subsection{圧力ステップの実装補足}
 \label{app:pressure_step_details}
 

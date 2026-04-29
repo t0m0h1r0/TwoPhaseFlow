@@ -266,7 +266,7 @@ $\ge 32$ & $1$ & $\approx 10^{4}$ & 理論通り（$O(h^4)$ 昇格後は全 $N$ 
 
 \subsubsection{Neumann 境界条件の CCD-Poisson への組み込み}
 \label{sec:ccd_neumann_bc}
-%% 旧所在: §8.2.2（08c_ccd_poisson.tex）→ 付録 B.3.2 へ移動
+%% 旧所在: §8.2.2（08c_ccd_poisson.tex）→ 付録 C.3.2 へ移動
 
 PPE の壁面境界では $\partial p/\partial n = 0$（Neumann 条件）が課される．
 
@@ -309,7 +309,7 @@ Dirichlet（$p=p_{\mathrm{BC}}$） & $p'_0 = $ 解析値 & $p''_0 = $ 解析値 
 
 \subsubsection{2 次元 CCD-Poisson 演算子の Matrix-Free 評価手順}
 \label{sec:ccd_matrix_free_eval}
-%% 旧所在: §8.2.3 algbox（08c_ccd_poisson.tex）→ 付録 B.3.2 へ移動
+%% 旧所在: §8.2.3 algbox（08c_ccd_poisson.tex）→ 付録 C.3.2 へ移動
 
 \begin{tcolorbox}[algbox, title={2次元 CCD-Poisson 演算子の Matrix-Free 評価手順}]
 \textbf{Step 1 ($x$ スウィープ)：} 各行 $j$ にブロック Thomas 法を適用し，$(D_x^{(1)}p)_{i,j}$，$(D_x^{(2)}p)_{i,j}$ を一括計算．密度勾配 $(D_x^{(1)}\rho)_{i,j}$ は反復ループ開始前に1回計算して固定する．
@@ -328,7 +328,7 @@ $\bigl(\mathcal{L}^{\rho}\bm{p}\bigr)_{i,j} \mathrel{+}= (D_y^{(2)}p)_{i,j}/\rho
 
 \subsubsection{Neumann 境界条件の実装検証セット}
 \label{sec:ccd_neumann_unit_test}
-%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 B.3.2 へ移動
+%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 C.3.2 へ移動
 
 CCD の Neumann BC 実装確認のための最小検証セット：
 \begin{enumerate}
