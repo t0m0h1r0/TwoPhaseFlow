@@ -60,6 +60,8 @@ V10-c& 単一渦 reversal ($\alpha=2, N=96, T=8$) & $L^1$ reversal / mass drift 
   \item \textbf{CLS 形状追跡誤差}．FCCD/TVD--RK3 では非一様格子 $\alpha=2$ の Zalesak volume drift は
         $0.030\%$ まで収まる一方，centroid order は $0.34$ に留まる．
         $\alpha=1$ では同一 $N=128$ で volume drift $1.535\%$ で，slot 解像度に律速される（V10）．
+        単一渦では Ridge--Eikonal なしの質量補正のみで mass drift は $0.01431\%$ まで回復するが，
+        $L^1$ reversal error は $5.150\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
 \end{enumerate}
 
 \paragraph{合格判定要約．}
