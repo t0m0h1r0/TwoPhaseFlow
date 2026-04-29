@@ -26,7 +26,7 @@ $N \in \{16,32,64,128,256\}$，$h = 1/N$．
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption{U5-a: $H_\eps$ / $\delta_\eps$ モーメント誤差（$\eps = 1.5 h$）．
+\caption{U5-a：$H_\eps$ / $\delta_\eps$ モーメント誤差（$\eps = 1.5 h$）．
 $N \ge 64$ で 0 次モーメント誤差が機械精度床（$\sim 10^{-11}$）に到達．
 slope $N\!=\!16\!\to\!64$ は $\approx 11$（解析的には超収束 / round-off floor 影響大）．}
 \label{tab:U5_moments}
@@ -48,7 +48,7 @@ $N \le 64$ までの $\sim 11$ で確認済み．}
 \end{table}
 
 \begin{table}[!ht]
-\caption{U5-b: スケール係数 $c = \eps / h$ の 0 次モーメント誤差比較．
+\caption{U5-b：スケール係数 $c = \eps / h$ の 0 次モーメント誤差比較．
 $c < 1$ は $\eps$ がサポート不足（誤差が $h \to 0$ で stall）．
 $c \ge 1$ は $h$ 細分化で機械精度に到達．$c = 2$ は $N=128$ で
 $1.83\times 10^{-14}$（最良）．本実験での推奨は $c \in [1.5, 2]$．}

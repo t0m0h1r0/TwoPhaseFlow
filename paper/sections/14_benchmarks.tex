@@ -62,7 +62,7 @@ Corrector は同じ $A_fG_f$ で速度を補正し，
 速度場・圧力場・界面場を同時に読む必要があるためである．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{毛細管波の振動減衰}
+\subsection{毛管波の振動減衰}
 \label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════
 
@@ -220,7 +220,7 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 すなわち YAML スキーマ上は \texttt{physics.phases.liquid} スロットに
 下層シリコーン油，\texttt{physics.phases.gas} スロットに
 上層水を割り当てる．
-擾乱形状は毛細管波と同型であるため
+擾乱形状は毛管波と同型であるため
 \texttt{initial\_condition.type=capillary\_wave} ハンドラを流用するが，
 重力下で重相が上にある不安定な層化のため，
 本ケースの物理は RT である（毛管波ではない）．
@@ -282,7 +282,7 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 \toprule
 ベンチマーク & 格子・条件 & 主要指標 & 判定 \\
 \midrule
-毛細管波 &
+毛管波 &
   $N=128^2$，$\alpha=2$，$T=35$，水--空気，pressure-jump &
   \textit{（実験結果は計算完了次第掲載）} &
   \textit{（計算完了次第掲載）} \\
