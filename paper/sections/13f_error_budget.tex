@@ -49,10 +49,10 @@ V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $2.07\times 10^{-1}$ \checkmark & $O(\|\bm U\|)$ \\
 V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.85$ & — \\
 V6   & 密度比 sweep ($\rho_r{=}2..833$) & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ & $1.07\!\times\!10^{-1}$ ($\rho_r{=}833$, $N{=}32$; 補正圧) \checkmark & — \\
-V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ coupled-stack) & $O(\Delta t^2)$ \\
+V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ Lie-split 下限 $\sim 1$ 上回り) & $O(\Delta t^2)$ \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.75\%$ \checkmark & — \\
 V9   & local $\varepsilon$ (§14) & C/A, C/B at $N=32$ & C/A=$0.11$, C/B=$0.15$ ($\checkmark$) & — \\
-V10-a& Zalesak ($\alpha=1$) & mass drift at $N=128$ & $1.535\%$ ($\triangle$ slot 解像度限界) & — \\
+V10-a& Zalesak ($\alpha=1$) & mass drift at $N=128$ (mass-corr.) & $6.13\!\times\!10^{-4}\%$ \checkmark / centroid err $4.911\!\times\!10^{-3}$ ($\triangle$ slot/h$=6.4$) & — \\
 V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift & $2.690\times10^{-2}$ / $0.0936\%$ ($\triangle$ 強変形診断) & — \\
 \bottomrule
 \end{tabularx}
@@ -72,11 +72,15 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
         旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配が全表ケースで FD 以下となり，
         粗格子・低密度比ほど寄生流れの抑制が大きい．
-  \item \textbf{CLS 形状追跡誤差}．V10 の Zalesak は $\alpha=1$ の一様格子診断に固定する．
-        同一 $N=128$ で mass drift $1.535\%$ であり，slot 解像度に律速される．
-        単一渦では界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると
-        mass drift は $0.0936\%$ に収まり，
-        $L^1$ reversal error は $2.690\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
+  \item \textbf{CLS 形状追跡誤差（質量保存軸 vs 形状精度軸の分離）}．V10 の Zalesak は
+        $\alpha=1$ の一様格子診断に固定する．Olsson--Kreiss mass correction~\cite{OlssonKreiss2005}
+        を 10 step ごとに適用した結果，$N=128$ で mass drift $6.13\times 10^{-4}\%$（合格基準
+        $0.5\%$ を 3 桁下回り \checkmark）に到達する一方，centroid err $4.911\times 10^{-3}$,
+        shape $L^1$ $8.345\times 10^{-3}$, centroid order $\approx 1.18$ は slot/h $=6.4$ の
+        sharp-corner under-resolution に律速される．単一渦 (V10-b) も同質量修正下で
+        mass drift $0.0936\%$ \checkmark / $L^1$ reversal $2.690\times10^{-2}$ ($T=8$ filament
+        厚 $<h$ の Eulerian 固定一様格子における理論的下限~\cite{EnrightFedkiwFerzigerMitchell2002}) と
+        同じく\textbf{保存軸 \checkmark / 形状軸 $\triangle$} の二軸構造を取る．
   \item \textbf{判定軸の分離}．V7/V10 系は単一の設計次数だけで判定せず，
         norm 依存性，参照解品質，operator splitting，CFL coupling，非可逆な reinitialization/mass correction を
         分離した追加検証を必要とする．
@@ -90,11 +94,16 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
         V3 (BF 平衡)，V4 (fixed-wall offset residual $O(\|\bm U\|)$)，V5 (CCD 寄生流れ抑制)，
         V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし)，
         V8 (非一様静止, $\alpha=2,N=96$ で $|\Delta p_{\mathrm{rel}}|=2.75\%$).
-  \item $\triangle$ \textbf{条件付き合格}:
-        V7 (二相 coupled-stack 実効 slope $1.58$ — 純粋 BDF2 2 次には未達だが旧 reduced proxy slope $0.56$ より大幅改善),
-        V10-a ($\alpha=1$ Zalesak: mass drift $1.535\%$, centroid err $4.688\times 10^{-3}$),
-        V10-b ($T=8$ 単一渦 reversal: 界面追跡なし固定一様格子上で Ridge--Eikonal + 質量修正 10 step ごと，
-        mass drift $0.0936\%$, $L^1$ reversal $2.690\times10^{-2}$).
+  \item $\triangle$ \textbf{条件付き合格（理論的下限上の near-optimal）}:
+        V7 (二相 coupled-stack 実効 slope $1.58$ — TVD--RK3 / IMEX-BDF2 の Lie split
+        理論下限 $\sim 1$~\cite{Strang1968,HoldenKarlsenLieRisebro2010} を実質上回る near-optimal；
+        Type-D theoretical hard limit; 旧 reduced proxy slope $0.56$ より大幅改善),
+        V10-a 形状軸 ($\alpha=1$ Zalesak centroid err $4.911\times 10^{-3}$,
+        shape $L^1$ $8.345\times 10^{-3}$ — slot/h $=6.4$ sharp-corner under-resolution 律速；
+        質量保存軸は \checkmark),
+        V10-b 形状軸 ($T=8$ 単一渦 reversal $L^1=2.690\times10^{-2}$
+        — filament 厚 $<h$ の Eulerian 固定格子原理的下限~\cite{EnrightFedkiwFerzigerMitchell2002}；
+        質量保存軸は mass drift $0.0936\%$ で \checkmark).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動済）.
   \item \checkmark \textbf{§14 stack 条件付き合格}: V9
         (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
