@@ -1,13 +1,13 @@
 % paper/sections/appendix_ppe_pseudotime.tex
-% 付録 D.2：CCD 陰解法と仮想時間ステップ反復（PPE ソルバの実装詳細）
-% ※ 旧: §8.4（本文）→ 付録 D.2 に移動（Modification IV: ソルバーアルゴリズムを付録へ）
+% 付録 E.2：CCD 陰解法と仮想時間ステップ反復（PPE ソルバの実装詳細）
+% ※ 旧: §8.4（本文）→ 付録 E.2 に移動（Modification IV: ソルバーアルゴリズムを付録へ）
 %
 \subsection{CCD 陰解法と仮想時間ステップ反復}
 \label{sec:ppe_pseudotime}
 
 \subsubsection{\texorpdfstring{初期圧力場 $p^0$ の設定}{初期圧力場 p0 の設定}}
 \label{sec:ppe_p0_init}
-%% 旧所在: §8.1（08_pressure.tex）→ 付録 D.2 へ移動
+%% 旧所在: §8.1（08_pressure.tex）→ 付録 E.2 へ移動
 
 IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
 問題に応じて以下から選択する：
@@ -89,9 +89,10 @@ $\varepsilon_\text{tol}$ はこのフロアより大きく設定すること；
   \label{eq:pseudo_linear}
 \end{equation}
 
-\textbf{安定性の利点：}式~\eqref{eq:pseudo_implicit_raw} の陰的離散化は，仮想時間刻み $\Delta\tau$ の大きさに関係なく\textbf{無条件安定}である．
-これにより $\Delta\tau$ を任意に大きく設定でき，収束を加速することが可能である
-（CFL 制約による $\Delta\tau$ の上限が存在しない）．
+\textbf{安定性の利点：}式~\eqref{eq:pseudo_implicit_raw} の陰的離散化は，線形・正定値モデルに対して
+CFL 型の上限制約を課さない（A 安定）．
+これは $\Delta\tau$ を無制限に大きくしてよいという意味ではなく，スウィープ分割誤差，
+条件数，残差フロアを併せて評価しながら式~\eqref{eq:dtau_opt} 近傍を探索する，という実装指針である．
 
 \subsubsection{反復中の物理変数の凍結}
 \label{sec:pseudo_variable_freeze}
@@ -313,7 +314,9 @@ CCD Laplacian の最大固有値 $\lambda_{\max} = 9.6\,a_{\max}/h^2$（§~\ref{
   a_{\max} \equiv \max_{i,j} \frac{1}{\rho_{i,j}}
   \label{eq:dtau_opt}
 \end{equation}
-スウィープ型は任意の $\Delta\tau > 0$ で\textbf{無条件安定}；$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも $\gamma \to 1$（収束が遅い）．
+スウィープ型の理想化モデルでは任意の $\Delta\tau > 0$ で誤差を増幅しない一方，
+$\Delta\tau \gg \Delta\tau_{\mathrm{opt}}$ でも $\Delta\tau \ll \Delta\tau_{\mathrm{opt}}$ でも
+$\gamma \to 1$ となり収束は遅くなる．
 \end{tcolorbox}
 
 \label{box:dtau_impl}
@@ -365,7 +368,8 @@ $C_\tau \approx 0.416$ に相当する範囲で両式は整合する（\ref{box:
 反復初期は $C_\tau$ を小さめ（$C_\tau = \mathcal{O}(1)$）に設定して安定性を確保し，
 残差が十分に減少した後に段階的に増大させると定常解への到達を劇的に早める．
 $\Delta\tau_{i,j}$ が陰的 Euler（式~\eqref{eq:pseudo_implicit_raw}）に基づく限り，
-$C_\tau$ を大きくしても発散しない（無条件安定性；\ref{warn:ppe_splitting} 参照）．
+線形モデル上の安定性は保たれやすいが，$C_\tau$ を大きくすると分割誤差フロアや
+係数非一様性による停滞が生じ得る（\ref{warn:ppe_splitting} 参照）．
 
 \subsubsection{全周 Neumann 境界の可解性条件とゲージ固定点の対称性}
 \label{sec:ppe_gauge_neumann}
