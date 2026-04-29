@@ -13,6 +13,7 @@ to O(h^6) accuracy, matching CCD differentiation order.
 2D extension uses tensor-product sequential interpolation:
   - x-direction Hermite interpolation at each row
   - y-direction Hermite interpolation of the intermediate results
+  - full mixed-derivative data for q_y and q_yy in the x-interpolation
 
 Symbol mapping (paper → code):
     q               → field_data
@@ -116,10 +117,11 @@ class HermiteFieldExtension(IFieldExtension):
         nx = dphi_dx / grad_mag
         ny = dphi_dy / grad_mag
 
-        # CCD Hermite data (f, f', f'') for the field
+        # CCD Hermite data for the full tensor-product extension.
         df_dx, d2f_dx2 = self.ccd.differentiate(field_data, axis=0)
         df_dy, d2f_dy2 = self.ccd.differentiate(field_data, axis=1)
-        df_xy, d2f_xy2 = self.ccd.differentiate(df_dx, axis=1)
+        df_xy, d2f_xyy = self.ccd.differentiate(df_dx, axis=1)
+        df_xxy, d2f_xxyy = self.ccd.differentiate(d2f_dx2, axis=1)
 
         # Grid info (uniform grids only — HFE library constraint)
         x_coords = xp.asarray(grid.coords[0])
@@ -161,8 +163,8 @@ class HermiteFieldExtension(IFieldExtension):
         xi_x = (x_gamma_full - x_coords[ix_a]) / hx
         xi_y = (y_gamma_full - y_coords[jy_a]) / hy
 
-        # Gather 2×2 stencil for every Hermite primitive (field, df_dx,
-        # d2f_dx2, df_dy, df_xy, d2f_xy2, d2f_dy2) at (ix_a|ix_b, jy_a|jy_b).
+        # Gather 2×2 stencil for every Hermite primitive at
+        # (ix_a|ix_b, jy_a|jy_b).
         def _g(arr):
             return (
                 arr[ix_a, jy_a], arr[ix_b, jy_a],
@@ -173,7 +175,9 @@ class HermiteFieldExtension(IFieldExtension):
         fxx_aa, fxx_ba, fxx_ab, fxx_bb = _g(d2f_dx2)
         fy_aa, fy_ba, fy_ab, fy_bb = _g(df_dy)
         fxy_aa, fxy_ba, fxy_ab, fxy_bb = _g(df_xy)
-        fxyy_aa, fxyy_ba, fxyy_ab, fxyy_bb = _g(d2f_xy2)
+        fxyy_aa, fxyy_ba, fxyy_ab, fxyy_bb = _g(d2f_xyy)
+        fxxy_aa, fxxy_ba, fxxy_ab, fxxy_bb = _g(df_xxy)
+        fxxyy_aa, fxxyy_ba, fxxyy_ab, fxxyy_bb = _g(d2f_xxyy)
         fyy_aa, fyy_ba, fyy_ab, fyy_bb = _g(d2f_dy2)
 
         # Row j_a: x-interpolation of (val, ∂y, ∂yy)
@@ -181,18 +185,22 @@ class HermiteFieldExtension(IFieldExtension):
             xp, f_aa, fx_aa, fxx_aa, f_ba, fx_ba, fxx_ba, hx, xi_x
         )
         ddy_ja = _hermite5_xp(
-            xp, fy_aa, fxy_aa, fxyy_aa, fy_ba, fxy_ba, fxyy_ba, hx, xi_x
+            xp, fy_aa, fxy_aa, fxxy_aa, fy_ba, fxy_ba, fxxy_ba, hx, xi_x
         )
-        d2dy2_ja = fyy_aa * (1.0 - xi_x) + fyy_ba * xi_x  # linear fallback
+        d2dy2_ja = _hermite5_xp(
+            xp, fyy_aa, fxyy_aa, fxxyy_aa, fyy_ba, fxyy_ba, fxxyy_ba, hx, xi_x
+        )
 
         # Row j_b: x-interpolation
         val_jb = _hermite5_xp(
             xp, f_ab, fx_ab, fxx_ab, f_bb, fx_bb, fxx_bb, hx, xi_x
         )
         ddy_jb = _hermite5_xp(
-            xp, fy_ab, fxy_ab, fxyy_ab, fy_bb, fxy_bb, fxyy_bb, hx, xi_x
+            xp, fy_ab, fxy_ab, fxxy_ab, fy_bb, fxy_bb, fxxy_bb, hx, xi_x
         )
-        d2dy2_jb = fyy_ab * (1.0 - xi_x) + fyy_bb * xi_x
+        d2dy2_jb = _hermite5_xp(
+            xp, fyy_ab, fxyy_ab, fxxyy_ab, fyy_bb, fxyy_bb, fxxyy_bb, hx, xi_x
+        )
 
         # y-direction Hermite interpolation of the intermediate rows
         val_full = _hermite5_xp(
