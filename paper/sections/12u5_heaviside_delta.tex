@@ -90,9 +90,10 @@ $c<1$ ではサポート不足で stall，$c \in [1.5, 2.0]$ が実用最適．}
   \item U5-a：0 次モーメント誤差は $N \le 64$ 域で $h^{11}$ 相当の超収束．
         $N \ge 128$ は Richardson 残差 saturation（U5-b の $c=2$ で $1.83\times 10^{-14}$）．§\ref{sec:eps_spatial_variable} の
         $C^\infty$ logistic 連続化の高次効果を確認．\checkmark
-  \item U5-b：$c < 1$ では $\eps$ がカーネル幅未満となり stall．
-        $c \in [1.5, 2.0]$ が実用最適．§\ref{sec:eps_spatial_variable} の
-        スケール選択基準と整合．\checkmark
+  \item U5-b：$c \le 1$ では $\eps$ サポート不足で stall（$c=0.5$ は $h\!\to\!0$ で stall，
+        $c=1$ も $N=128$ で $2.11\!\times\!10^{-7}$ に stall）．
+        $c \in [1.5, 2.0]$ で $h$ 細分化により Richardson 残差 saturation に到達し，
+        実用最適域となる．§\ref{sec:eps_spatial_variable} のスケール選択基準と整合．\checkmark
 \end{itemize}
 検証対応：
 平滑化 Heaviside / $\delta_\eps$ 定義と §\ref{sec:eps_spatial_variable} に対し，

@@ -30,7 +30,7 @@ $\omega$--収束領域，および Hermite Field Extension
 \begin{table}[!ht]
 \caption{U6-a: DC $\omega$--収束図（$N=64$, 円界面 $R=0.25$）．
 $\rho_l = 1$ は $\omega$ 全域 / $k\in\{2,3\}$ で base GMRES 解で 1 補正
-（$k$ 内ループ break, residual $\!\approx\!5.2\!\times\!10^{-5}$ で機械精度床近傍）．
+（$k$ 内ループ break, residual $\!\approx\!5.2\!\times\!10^{-5}$ は DC break tolerance 域；機械精度床ではない）．
 $\rho_l \ge 100$ では DC が stall するが，$\omega$ 増大で残差が改善し，
 $\rho_l = 1000$, $\omega = 0.9$, $k=3$ で例外的に許容床に到達して \emph{break}（converge）．
 括弧内は \emph{converged} を示す．}
@@ -103,7 +103,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u6_split_ppe_dc_hfe}
 \caption{U6：一括 PPE の限界 + DC/HFE 単体挙動．
-DC $\omega$ 収束は $\rho_l = 1$ で base GMRES clean（$5.2\!\times\!10^{-5}$ 機械床近傍）；
+DC $\omega$ 収束は $\rho_l = 1$ で base GMRES clean（$5.2\!\times\!10^{-5}$ DC break tolerance 域）；
 $\rho_l \ge 100$ は全 $\omega$ で stall（例外: $\rho_l = 1000$, $\omega = 0.9$, $k_{\mathrm{DC}} = 3$ で converge $7.0\!\times\!10^{-6}$）；
 高密度比 $\rho_l = 1000$ で N--sweep slope $\approx 0.79$（一括 PPE 構造的制約）；
 HFE 1D 設計 6 次近傍（slope $5.91$），2D full-tensor band 診断は
@@ -145,6 +145,6 @@ $\log_{10}|q_{\mathrm{ext}}-q(\bm{x}_\Gamma)|$．
         $\Ord{h^6}$ 設計と一致する．\checkmark
 \end{itemize}
 検証対応：
-変密度一括 PPE の限界 (§\ref{sec:varrho_ppe_limitation}) に対し，
+変密度一括 PPE の限界に対し，
 密度比 sweep と DC 反復収束を測定する．
 式~\eqref{eq:hfe_upwind_minus}（HFE 拡張公式）については，1D/2D の外挿誤差を測定する．
