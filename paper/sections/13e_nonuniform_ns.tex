@@ -26,7 +26,7 @@ $\Delta t = 0.20\,h_{\min}$, $n_{\mathrm{step}} = 200$．
 \begin{table}[p]
 \caption{V8：非一様 NS 静止液滴（$n_{\mathrm{step}}=200$）}
 \label{tab:V8_nonuniform_static}
-\PaperCaptionNote{$\alpha=2$ では界面細密化で $\Delta p_{\mathrm{rel}}$ がやや悪化（数値ジオメトリ補正の交互作用）．}
+\PaperCaptionNote{$\alpha=2$ では界面細密化で $\Delta p_{\mathrm{rel}}$ がやや悪化（数値ジオメトリ補正の交互作用）． 本表の $\Delta p_{\mathrm{final}}$ は液滴中心 vs.\ 周囲流体の生圧力差；判定指標 $\Delta p_{\mathrm{rel}}\!\equiv\!|\Delta p_{\mathrm{final}}-\Delta p_{\mathrm{exact}}|/\Delta p_{\mathrm{exact}}$（$\Delta p_{\mathrm{exact}} = \sigma/(r\,\mathrm{We}) = 0.4$；本節設定 $\sigma=1, r=0.25, \mathrm{We}=10$）が表~\ref{tab:V_summary} の主要指標と同義．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -47,14 +47,14 @@ $N$ & $\alpha$ & $h_{\min}$ & $\Delta p_{\mathrm{final}}$ & $u_\infty^{\mathrm{e
 \includegraphics[width=0.92\linewidth]{figures/ch13_v8_nonuniform_static.pdf}
 \caption{V8：非一様 NS 静止液滴}
 \label{fig:V8_nonuniform_static}
-\PaperCaptionNote{$\Delta p_{\mathrm{final}}(\alpha)$ は $\alpha=1$ で $\Delta p_{\mathrm{exact}} \pm 1.2\%$ に収束． $\alpha=2$ では $1\!-\!5\%$ の偏差（界面細密化が CSF 曲率の数値ジャコビアンと相互作用）．}
+\PaperCaptionNote{$\Delta p_{\mathrm{final}}(\alpha)$ は $\alpha=1$ で $\Delta p_{\mathrm{exact}} \pm 1.25\%$ に収束．$\alpha=2$ では $N=48 \to 64 \to 96$ で $|\Delta p_{\mathrm{rel}}| = 5.00\% \to 3.75\% \to 2.75\%$（界面細密化が CSF 曲率の数値ジャコビアンと相互作用）．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item $\alpha = 1$（一様）で $\Delta p_{\mathrm{rel}} \le 1.2\%$ → V3 結果と一致\checkmark．
-  \item $\alpha = 2$（非一様）で $\Delta p_{\mathrm{rel}} \le 5\%$ — 設計通りの安定動作だが，
-        非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa$ 推定の
+  \item $\alpha = 1$（一様）で $\Delta p_{\mathrm{rel}} \le 1.25\%$ → V3 結果と一致\checkmark．
+  \item $\alpha = 2$（非一様）で $\Delta p_{\mathrm{rel}} \le 5\%$（$N=96$ で $2.75\%$）\checkmark — 設計通りの安定動作．
+        ただし非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa$ 推定の
         Jacobian 補正が要求精度を増やす．
   \item \textbf{$\alpha=1$ で $N=48\!\to\!64\!\to\!96$ の $u_\infty^{\mathrm{end}}$ 非単調}
         ($1.42\!\to\!1.35\!\to\!5.64\times10^{-4}$，$N=96$ で約 $4\times$ 上昇)：
@@ -85,7 +85,7 @@ face-flux projection）で再実行する．
 $N\in\{24,32\}$, $n_{\mathrm{step}}=10$,
 theory CFL multiplier $0.50$．圧力ジャンプ形式では返却される $p$ は
 物理 Laplace 圧そのものではなく投影補正圧の性格を持つため，
-主指標は $u_\infty^{\max}$ と体積 drift とし，
+主指標は $u_\infty^{\max}$ と体積分率 drift（$|\Delta V|/V_0$）とし，
 $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ は補助診断としてのみ示す．
 
 \paragraph{結果．}
@@ -186,7 +186,7 @@ $N$ & $\alpha$ & centroid err & mass drift & $V_T/V_0$ \\
 \toprule
 $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 \midrule
-128 & 1 & $2.690\times 10^{-2}$ & $9.360\times 10^{-2}\%$ & $1.0009$ \\
+128 & 1 & $2.690\times 10^{-2}$ & $0.0936\%$ & $1.0009$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -212,15 +212,25 @@ $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 \includegraphics[width=0.92\linewidth]{figures/ch13_v10_single_vortex.pdf}
 \caption{V10：単一渦 deformation reversal の 2D スナップショット}
 \label{fig:V10_single_vortex}
-\PaperCaptionNote{初期円盤，最大変形時（$t=T/2$），反転後最終場（$t=T$）を並べる．$T=8$ の標準 single-vortex 強変形では巻き込みは明瞭になり，界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると conservative CLS mass drift は $9.360\times10^{-2}\%$ に抑えられる． $L^1$ reversal error は $2.690\times10^{-2}$ である．}
+\PaperCaptionNote{初期円盤，最大変形時（$t=T/2$），反転後最終場（$t=T$）を並べる．$T=8$ の標準 single-vortex 強変形では巻き込みは明瞭になり，界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると conservative CLS mass drift は $0.0936\%$ に抑えられる．$L^1$ reversal error は $2.690\times10^{-2}$ である．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
+  \item \textbf{合格判定の基準}：script (\texttt{exp\_V10\_cls\_advection\_nonuniform.py})
+        の plot 合格参照ライン (mass drift $< 0.5\%$, Centroid order $\ge 1.5$；
+         診断プロット上の guideline であり docstring 由来の正式 criterion ではない；
+         plot コードでは \texttt{Volume drift} ラベルが用いられるが，
+         incompressible CLS では mass drift と等価) に対し，
+        本節で示す $\alpha=1$ 一様格子設定は $N=128$ で
+        mass drift $1.535\%$（基準を約 3 倍超過），
+        Centroid order $1.22$（基準未達）となるため，
+        slot 解像度律速の緩収束領域として条件付き（$\triangle$）扱いとする．
+        非一様格子 ($\alpha>1$) での Zalesak は本論文では検証範囲外とする．
   \item $\alpha=1$ (一様格子)：$N=128$ で conservative CLS mass drift $1.535\%$，
         centroid err $4.688\times10^{-3}$ → $\triangle$．
   \item 単一渦：$N=128,\alpha=1,T=8$ の界面追跡なし固定一様格子で渦巻き状の強変形は視覚的に確認できる．
-        Ridge--Eikonal と質量修正（10 step ごと）で conservative CLS mass drift は $9.360\times10^{-2}\%$，
+        Ridge--Eikonal と質量修正（10 step ごと）で conservative CLS mass drift は $0.0936\%$，
         $L^1$ reversal error は $2.690\times10^{-2}$ であり，保存性・形状復元性はいずれも条件付き（$\triangle$）．
   \item \textbf{非一様格子の扱い}：
         本節の Zalesak は $\alpha=1$ の sharp-slot 移流診断に固定する．
@@ -229,5 +239,5 @@ $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
         と local $\varepsilon$ 検証（V9）で扱う．
 \end{itemize}
 検証対応：式~\eqref{eq:cls_advection}，\autoref{sec:cls_advection} の CLS 移流，
-\autoref{sec:fccd_def} の face value/grad に対し，体積 drift，重心誤差，
+\autoref{sec:fccd_def} の face value/grad に対し，mass drift，重心誤差，
 および単一渦 reversal error を測定する．

@@ -99,8 +99,8 @@
         CLS と移流に TVD-RK3，NS には AB2+IPC 投影による
         \textbf{全体時間精度 $\Ord{\Delta t^2}$} を採用し，
         粘性 ADI Crank--Nicolson と毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を導出した．
-        単体検証 U8 で TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2 $\Ord{\Delta t^{2.04}}$，
-        CN $\Ord{\Delta t^{2.0}}$ を実測した．
+        単体検証 U8 で TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2 $\Ord{\Delta t^{2.04}}$，
+        CN $\Ord{\Delta t^{2.00}}$ を実測した．
 \end{description}
 
 \paragraph{第二の柱：分相 PPE + HFE + 欠陥補正による変密度 PPE 収束性の回復}\hfill\null
@@ -201,7 +201,7 @@ CSF $\Ord{\varepsilon^2}$ 残存モデル誤差は pressure-jump 型 FCCD-PPE
 完全 GFM 整合（Kang ら~\cite{Kang2000} の Ghost Fluid Method）は今後の課題である．
 
 \paragraph{時間精度（U8, V7 で実測）}
-TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.0}}$
+TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.00}}$
 （U8-a, U8-b；§\ref{sec:time_int}）の単体精度を達成している．
 二相 V7（§\ref{sec:imex_bdf2_twophase_time}）の effective $\Ord{\Delta t^{1.58}}$ は coupled-stack
 （CLS 移流・PPE・運動量更新の非線形連結）律速であり，条件付き $\triangle$ として記録した．
@@ -209,8 +209,8 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 
 これらの特性は意図的な設計選択であり，
 三本柱（CCD 高次群／分相 PPE+DC+CCD 勾配／BF+FCCD 面ジェット sub-system）の整合により，
-寄生流れの抑制（V5 で CCD/FD 比 $1/5.9$ @ $\rho_r=1$, $N=32$；§\ref{sec:spurious_multistep}）と
-高密度比下の圧力ジャンプ整合性（V8 静止液滴 $|\Delta p_\mathrm{rel}|=2.6\%$ @ $N=96$）を同時に達成している．
+寄生流れの抑制（V5 で CCD/FD 比 $1/5.85$ @ $\rho_r=1$, $N=32$；§\ref{sec:spurious_multistep}）と
+高密度比下の圧力ジャンプ整合性（V8 静止液滴 $|\Delta p_\mathrm{rel}|=2.75\%$ @ $N=96$）を同時に達成している．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{達成成果のサマリ}
@@ -251,8 +251,8 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         Laplace 圧力誤差 $0.61\%$ @ $N=128$，
         面 $\mu$ 補間（harmonic / arithmetic / log）の収束 slope $1.91/1.81/1.91$．
   \item[U8（時間積分；§\ref{sec:U8_time_integration}）：]
-        TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，
-        CN ADI $\Ord{\Delta t^{2.0}}$．3 層粘性 split は条件付き $\triangle$．
+        TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，
+        CN ADI $\Ord{\Delta t^{2.00}}$．3 層粘性 split は条件付き $\triangle$．
   \item[U9（DCCD-on-pressure 禁止の反証；§\ref{sec:U9_dccd_pressure_prohibition}）：]
         圧力に対する DCCD 適用は固有モード比 $10^{5}$--$3\times 10^{8}$ で
         圧力場を破壊するため禁止が成立（$\bullet$，研究上の反例として記録）．
@@ -271,24 +271,24 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
   \item[V3（静止液滴 long-term）：]
         $|\Delta p_\mathrm{rel}| = 0.97\%$ @ $N=128$．Laplace 圧力跳びの長期維持を確認．
   \item[V5（寄生流れ multistep；§\ref{sec:spurious_multistep}）：]
-        CCD/FD 比 $1/5.9$ @ $\rho_r=1$, $N=32$．CCD は寄生流れ抑制に有効．
+        CCD/FD 比 $1/5.85$ @ $\rho_r=1$, $N=32$．CCD は寄生流れ抑制に有効．
   \item[V6（密度比 sweep；§\ref{sec:density_ratio_sweep}）：]
         $|\Delta p_\mathrm{corr}|/(\sigma/r) = 1.07\times 10^{-1}$ @ $\rho_r=833$, $N=32$．
         分相 PPE + DC + HFE が高密度比でも機能することを実証．
-  \item[V8（非一様格子 NS 静止液滴；§\ref{sec:nonuniform_grid_ns} 関連）：]
-        $|\Delta p_\mathrm{rel}| = 2.6\%$ @ $N=96$．非一様 D1--D4 と FCCD の整合を確認．
-  \item[V9（local-$\varepsilon$ §\ref{sec:validation} stack 条件付）：]
+  \item[V8（非一様格子 NS 静止液滴；§\ref{sec:nonuniform_ns_static}）：]
+        $|\Delta p_\mathrm{rel}| = 2.75\%$ @ $N=96$．非一様 D1--D4 と FCCD の整合を確認．
+  \item[V9（local-$\varepsilon$ §\ref{sec:local_eps_validation}; §14 stack 条件付）：]
         $C/A = 0.11$ @ $N=32$．空間可変 $\varepsilon(\bx)$ の §\ref{sec:validation} 適用条件を確定．
   \item[V10-a/b（Zalesak / 単一渦反転）：]
-        Zalesak は $\alpha=1$ の一様格子で体積ドリフト $1.535\%$ @ $N=128$，
-        単一渦反転は $L_1 = 2.690\times 10^{-2}$ / mass drift $9.360\times10^{-2}\%$．
+        Zalesak は $\alpha=1$ の一様格子で mass drift $1.535\%$ @ $N=128$，
+        単一渦反転は $L_1 = 2.690\times 10^{-2}$ / mass drift $0.0936\%$．
         CLS 移流の条件付きベースラインを与える．
 \end{description}
 
 条件付き $\triangle$ の 5 件（V1-b 時間 slope 1.00 fractional-step 律速，
 V2-a Kovasznay CCD 3.95 pressure BC 律速，V4 Galilean 残差 0.21
 固定壁 + 固定 gauge 律速，V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
-V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
+V10-a Zalesak $\alpha=1$ mass drift 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
 いずれも \textbf{制約条件下では設計通り}という解釈で記録され，
 今後の高次拡張への定量的ベースラインを与えている．
 

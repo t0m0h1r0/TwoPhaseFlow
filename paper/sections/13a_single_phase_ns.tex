@@ -11,7 +11,7 @@
 
 \paragraph{検証対象．}
 密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦~\cite{Brachet1983}; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
-を CCD 空間離散 (\autoref{sec:CCD}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
+を CCD 空間離散 (\autoref{sec:ccd_def}) + AB2 predictor (\autoref{ch:time_integration}) +
 PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
 に対する誤差と非圧縮拘束を確認する．
 旧実装は FFT spectral projection であり CCD/PPE の検証ではなかったため，
@@ -42,7 +42,7 @@ $N$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & $\|\nabla\!\cdot 
 \begin{table}[!ht]
 \caption{V1-b：CCD/PPE TGV の時間収束}
 \label{tab:V1_temporal}
-\PaperCaptionNote{$N=64$ 固定．AB2 predictor に対し，PPE 射影結合込みの速度誤差は実効 $O(\Delta t)$．}
+\PaperCaptionNote{$N=64$ 固定．AB2 predictor に対し，PPE 射影結合込みの速度誤差は実効 $O(\Delta t)$．連続比は速度誤差 $\|u - u_{\mathrm{exact}}\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，本表の $\Delta t$ 比（$\Delta t^{(i-1)} / \Delta t^{(i)}$）は $1.923 \to 2.000$ の二段（連続比列の数値とは独立）；$\Delta t$ 比 $= 2$ のとき slope $= \log_2(\text{連続比})$．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule

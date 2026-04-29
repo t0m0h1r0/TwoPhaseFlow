@@ -57,6 +57,7 @@ from twophase.tools.experiment.gpu import sparse_solve_2d
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 R = 0.25
 CENTER = (0.5, 0.5)
@@ -202,7 +203,8 @@ def make_figures(results: dict) -> None:
     ax_d.set_ylabel("Δp_final"); ax_d.set_title("V8: Laplace Δp")
     ax_d.legend()
 
-    save_figure(fig, OUT / "V8_nonuniform_ns_static")
+    save_figure(fig, OUT / "V8_nonuniform_ns_static",
+                also_to=PAPER_FIGURES / "ch13_v8_nonuniform_static")
 
 
 def print_summary(results: dict) -> None:

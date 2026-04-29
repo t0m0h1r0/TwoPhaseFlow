@@ -50,6 +50,7 @@ from twophase.tools.experiment.gpu import sparse_solve_2d
 apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+PAPER_FIGURES = pathlib.Path(__file__).resolve().parents[2] / "paper" / "figures"
 
 
 def _solve_ppe(rhs, rho, ppe_builder, backend):
@@ -146,7 +147,8 @@ def make_figures(results: dict) -> None:
     ax.set_xlabel("step"); ax.set_ylabel("Galilean residual")
     ax.set_title("V4: Galilean offset residual (fixed wall, pinned PPE)")
     ax.legend()
-    save_figure(fig, OUT / "V4_galilean_offset")
+    save_figure(fig, OUT / "V4_galilean_offset",
+                also_to=PAPER_FIGURES / "ch13_v4_galilean_offset")
 
 
 def print_summary(results: dict) -> None:

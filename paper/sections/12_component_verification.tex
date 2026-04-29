@@ -11,7 +11,6 @@
 % ------------------------------------------------------------------------------
 % backward-compat labels (Phase 1 stubs) — Phase 3 で 12u*.tex に再配置
 \label{sec:split_ppe_recovery}%
-\label{sec:varrho_ppe_limitation}%
 \label{sec:verify_ccd_convergence}%
 \label{sec:verify_ccd_spectral_radius}%
 \label{sec:verify_cls_advection}%
@@ -66,7 +65,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U5 = 平滑化 $H_\eps$ / $\delta_\eps$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
   \item[Tier IV（圧力結合系）]
         U6 = 一括 PPE の限界 + DC/HFE 単体挙動
-        （§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
+        （§\ref{sec:hfe}）．
   \item[Tier V（時間積分）]
         U8 = TVD--RK3 / AB2 / CN spectral 3 種積分子（§\ref{sec:time_int}）．
   \item[Tier VI（否定検証）]
@@ -104,32 +103,38 @@ U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
 U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
 U1-c & FCCD face value/grad（周期評価）& $4$ & $4.00 / 4.00$ & \checkmark \\
 U1-d & UCCD6 d1                & $6$ & $7.00$（super） & \checkmark \\
-U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
+U2-a & Poisson MMS（DC $k=1,2,3$） & $2/4/7$ & $2.00 / 4.18 / 6.90$ & \checkmark \\
 U2-b & Production CCD-PPE + Dirichlet パッチ & $6$ & $5.72$ & \checkmark \\
 U3-a & CCD 非一様 d1 + GCL    & $6$ & $5.98$，GCL $2.13\!\times\!10^{-13}$ & \checkmark \\
 U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
-U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & $D_4 \le 4.5\!\times\!10^{-11}$ & \checkmark \\
-U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & $9.16\!\times\!10^{-3}$ & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & \shortstack[l]{$D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（丸め床）\\$D_4 \le 4.5\!\times\!10^{-11}$ at $\alpha\!=\!1.5$} & \checkmark \\
+U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & \shortstack[l]{$n_\tau\!=\!20$: $2.19\!\times\!10^{-2}$\\$n_\tau\!=\!100$: $9.16\!\times\!10^{-3}$} & \checkmark \\
 U4-b & DGR バンド厚補正         & $|r{-}1| < 0.05$ & $3.3\!\times\!10^{-6}$ & \checkmark \\
-U5-a & $\delta_\eps$ モーメント & 機械精度床 & $1.6\!\times\!10^{-11}$ 床 & \checkmark \\
-U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
-U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!=\!1000$ best $7.0\!\times\!10^{-6}$ & \checkmark \\
-U6-b & 一括 PPE 高密度比限界      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
-U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.91 / 11.35 / 8.72$ & \checkmark \\
+U5-a & $\delta_\eps$ モーメント & Richardson 残差床 & $1.64\!\times\!10^{-11}$（$\eps=1.5h$） & \checkmark \\
+U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & $c{=}2,\,N{=}128$: $1.83\!\times\!10^{-14}$ & \checkmark \\
+U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & \shortstack[l]{$\rho_l\!=\!1$: $5.19\!\times\!10^{-5}$\\$\rho_l\!=\!1000$ best: $7.0\!\times\!10^{-6}$} & \checkmark \\
+U6-b & 一括 PPE 高密度比限界      & \shortstack[l]{$\rho_l\!\le\!10$: $\Ord{h^2}$ 期待\\高密度比 既知劣化} & slope $\sim 0.79$ & $\triangle$ \\
+U6-c & HFE 1D step extension      & $6$ & $5.91$ & \checkmark \\
+U6-c & HFE 2D band 診断           & 幾何込み条件付き & max $11.35$ / med $8.72$ & \checkmark \\
 U7-a & BF 静止液滴 1-step（match）& $\Delta p \to \sigma/R$ & $0.61\%\,@N\!=\!128$ & \checkmark \\
 U7-a & BF mismatch one-step 指標 & match と同精度域 & $0.646\%\,@N\!=\!128$ & \checkmark \\
 U7-b & face $\mu$ 補間           & $2$ & $1.91 / 1.81 / 1.91$ & \checkmark \\
-U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
+U8-a & TVD--RK3                & $3$ & $3.01$ & \checkmark \\
 U8-b & AB2                      & $2$ & $2.04$ & \checkmark \\
-U8-c & CN spectral             & $2$ + 無条件安定 & $2.00$ & \checkmark \\
+U8-c & CN spectral\textsuperscript{$\flat$} & $2$ + 無条件安定 & $2.00$ & \checkmark \\
 U8-d & 3 層 CN+EE-cross（B/C 層）& EE-cross 律速 & $1.00$ & $\triangle$ \\
 U9   & DCCD on pressure 禁止     & 違反量発散 & ratio $10^5 \to 3\!\times\!10^8$ & $\bullet$ \\
 \bottomrule
+\multicolumn{5}{p{0.95\linewidth}}{\footnotesize
+\textsuperscript{$\flat$}U8-c の \emph{CN} は時間離散化スキーム（Crank--Nicolson）；
+表題が指す「spectral」は試験用の空間スペクトル離散（pseudo-spectral）であり，
+CN の時間 2 次精度評価は空間スペクトル誤差床より十分小さい刻み幅 $\Delta t$ で測定される．
+}
 \end{tabular}
 \end{table}
 
-合格 21 件 ($\checkmark$) + 条件付き合格 2 件 ($\triangle$) +
-negation 成立 1 件 ($\bullet$) ／ 計 24 サブテスト（9 unit / 7 tier）．
+合格 22 件 ($\checkmark$) + 条件付き合格 2 件 ($\triangle$) +
+negation 成立 1 件 ($\bullet$) ／ 計 25 サブテスト（9 unit / 7 tier；U6-c は 1D / 2D 別行；U7-a も match / mismatch 別行）．
 $\bullet$（U9）は表~\ref{tab:verification_summary} の \checkmark と同等の合格判定で，
 ``否定''（規則違反量が予測通り発散）の達成を区別表記したもの．
 個別の数値結果と評価は以下の Tier 節に分けて記述する．

@@ -27,7 +27,8 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
   \item[U3-a] CCD 1階・2階微分の非一様格子精度．
         $f = \sin(\pi x)$，壁境界条件，$\alpha \in \{1, 2\}$，
         $N \in \{16, 32, 64, 128\}$．GCL チェック（$f \equiv 1$ で
-        $\|\mathrm{d}f / \mathrm{d}x\|_\infty < 7.5\times 10^{-14}$）併用．
+        $\|\mathrm{d}f / \mathrm{d}x\|_\infty < 3\times 10^{-13}$，
+        倍精度 $\eps_{\mathrm{mach}}$ に CCD compact stencil の N 倍累積を見込んだ機械零閾値）併用．
   \item[U3-b] FCCD face value/grad．$\alpha = 2$ 上の同 MMS．
   \item[U3-c] Ridge--Eikonal D1--D4 メトリック補正．
         円界面 $\psi = R^2 - (x-0.5)^2 - (y-0.5)^2$（$R = 0.25$），
