@@ -35,7 +35,7 @@ V1-b & 単相 TGV 時間 (AB2 predictor) & slope($E_{\mathrm{rel}}, \Delta t$) &
 V2-a & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{3.95}$ ($\triangle$ 圧力境界・界面外周低次寄与) & $O(h^6)$ 設計 \\
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $2.07\times 10^{-1}$ (壁境界・参照点ゲージ支配) $\triangle$ & — \\
-V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.9$ & — \\
+V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.85$ & — \\
 V6   & 密度比 sweep ($\rho_r{=}2..833$) & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ & $1.07\!\times\!10^{-1}$ ($\rho_r{=}833$, $N{=}32$; 補正圧) \checkmark & — \\
 V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ coupled-stack) & $O(\Delta t^2)$ \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.75\%$ \checkmark & — \\
@@ -98,7 +98,7 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
         Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
         local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
   \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
-        代表的には $\rho_r=1,N=32$ で FD の $1/5.9$，
+        代表的には $\rho_r=1,N=32$ で FD の $1/5.85$，
         $\rho_r=100,N=64$ で $1/2.5$．高解像度・高密度比では差が縮小する．
 \end{itemize}
 \paragraph{検証対応の統合．}
