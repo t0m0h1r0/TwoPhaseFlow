@@ -18,7 +18,8 @@ Setup
     v(x,y) =  (2*pi/T_rev) * (x - 0.5).
   T_rev = 1.0 (one full revolution).
   Zalesak: N in {64, 128}, alpha_grid in {1.0, 2.0}.
-  Single vortex: N = 96, alpha_grid = 2.0, T = 8.0.
+  Single vortex: N = 96, alpha_grid = 2.0, T = 8.0, with dynamic
+  interface-fitted grid rebuild and Ridge-Eikonal reinitialization.
   CFL = 0.25 (limited by max |u|).
   Spatial transport: FCCD flux form (same production family as ch14).
 
@@ -51,10 +52,12 @@ import matplotlib.pyplot as plt
 from twophase.backend import Backend
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
+from twophase.core.grid_remap import build_grid_remapper
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.levelset.heaviside import apply_mass_correction
+from twophase.levelset.reinitialize import Reinitializer
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -74,8 +77,9 @@ SINGLE_VORTEX_N = 96
 SINGLE_VORTEX_ALPHA = 2.0
 SINGLE_VORTEX_T = 8.0
 SINGLE_VORTEX_PHASE_DIVISIONS = 32
-SINGLE_VORTEX_MASS_REINIT_EVERY = 10
-SINGLE_VORTEX_REINIT_METHOD = "mass_correction"
+SINGLE_VORTEX_REINIT_EVERY = 10
+SINGLE_VORTEX_GRID_REBUILD_EVERY = 10
+SINGLE_VORTEX_REINIT_METHOD = "ridge_eikonal"
 
 
 def _slotted_disk_phi(X, Y) -> np.ndarray:
@@ -123,6 +127,49 @@ def _mass_reinitialize(psi_h, backend, dV, mass_target: float):
     return np.asarray(backend.to_host(out))
 
 
+def _grid_h_min(grid) -> float:
+    """Return the minimum nodal spacing over all tensor-product axes."""
+    return float(min(np.min(np.asarray(grid.h[axis_index])) for axis_index in range(grid.ndim)))
+
+
+def _host_mesh(backend, grid) -> tuple[np.ndarray, np.ndarray]:
+    """Materialize the active grid mesh on host memory."""
+    mesh_x, mesh_y = grid.meshgrid()
+    return np.asarray(backend.to_host(mesh_x)), np.asarray(backend.to_host(mesh_y))
+
+
+def _make_single_vortex_operators(backend, grid, eps: float):
+    """Build advection and Ridge-Eikonal operators for the active grid."""
+    ccd_solver = CCDSolver(grid, backend, bc_type="wall")
+    fccd_solver = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd_solver)
+    levelset_advection = FCCDLevelSetAdvection(
+        backend, grid, fccd_solver, mode="flux"
+    )
+    reinitializer = Reinitializer(
+        backend, grid, ccd_solver, eps,
+        n_steps=4,
+        method=SINGLE_VORTEX_REINIT_METHOD,
+        mass_correction=True,
+    )
+    return ccd_solver, levelset_advection, reinitializer
+
+
+def _rebuild_single_vortex_grid(psi_h, backend, grid, ccd, eps: float, mass_target: float):
+    """Rebuild the interface-fitted grid and remap ψ onto the new coordinates."""
+    old_coords = [coords.copy() for coords in grid.coords]
+    psi_dev = backend.to_device(psi_h)
+    grid.update_from_levelset(psi_dev, eps, ccd=ccd)
+    remapper = build_grid_remapper(backend, old_coords, grid.coords)
+    psi_remapped = backend.xp.clip(remapper.remap(psi_dev), 0.0, 1.0)
+    psi_remapped = apply_mass_correction(
+        backend.xp,
+        psi_remapped,
+        grid.cell_volumes(),
+        mass_target,
+    )
+    return np.asarray(backend.to_host(psi_remapped))
+
+
 def _measure_centroid_area(psi_h, X_h, Y_h, dV_h):
     """Compute thresholded area and centroid of {psi > 0.5}."""
     chi = (psi_h > 0.5).astype(float)
@@ -154,7 +201,7 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     ccd = CCDSolver(grid, backend, bc_type="periodic")
     fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
 
-    h_min = float(min(np.min(np.asarray(grid.h[ax])) for ax in range(2)))
+    h_min = _grid_h_min(grid)
     eps = 1.5 * h_min
     omega = 2.0 * np.pi / T_REV
     u_max = omega * 0.5 * np.sqrt(2.0)  # max |u| at corners
@@ -211,17 +258,15 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     psi_seed = 1.0 / (1.0 + np.exp(-_circle_phi(X0_h, Y0_h) / eps_init))
     if alpha > 1.0:
         grid.update_from_levelset(backend.to_device(psi_seed), eps_init, ccd=ccd)
-    ccd = CCDSolver(grid, backend, bc_type="wall")
-    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
 
-    h_min = float(min(np.min(np.asarray(grid.h[ax])) for ax in range(2)))
+    h_min = _grid_h_min(grid)
     eps = 1.5 * h_min
-    X, Y = grid.meshgrid()
-    X_h = np.asarray(backend.to_host(X))
-    Y_h = np.asarray(backend.to_host(Y))
+    X_h, Y_h = _host_mesh(backend, grid)
     dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
     psi0_h = 1.0 / (1.0 + np.exp(-_circle_phi(X_h, Y_h) / eps))
     psi_h = psi0_h.copy()
+    initial_coords = [coords.copy() for coords in grid.coords]
+    initial_dV_h = dV_h.copy()
     V0 = float(np.sum(psi0_h * dV_h))
     area0 = float(np.sum((psi0_h > 0.5) * dV_h))
 
@@ -237,40 +282,81 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     phase_fractions = np.linspace(0.0, 1.0, SINGLE_VORTEX_PHASE_DIVISIONS + 1)
     phase_times = SINGLE_VORTEX_T * phase_fractions
     phase_psi = [psi_h.copy()]
+    phase_X = [X_h.copy()]
+    phase_Y = [Y_h.copy()]
 
-    ls_adv = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
-    dV = grid.cell_volumes()
+    ccd, ls_adv, reinit = _make_single_vortex_operators(backend, grid, eps)
     t = 0.0
     reinit_count = 0
+    grid_rebuild_count = 0
+    grid_rebuild_steps = []
+    h_min_history = [h_min]
     for step in range(n_steps):
         t_mid = t + 0.5 * dt
         u, v = _single_vortex_velocity(X_h, Y_h, t_mid, SINGLE_VORTEX_T)
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
-        if (step + 1) % SINGLE_VORTEX_MASS_REINIT_EVERY == 0:
-            psi_h = _mass_reinitialize(psi_h, backend, dV, V0)
+        if (step + 1) % SINGLE_VORTEX_REINIT_EVERY == 0:
+            psi_h = np.asarray(
+                backend.to_host(reinit.reinitialize(backend.to_device(psi_h)))
+            )
             reinit_count += 1
+        if (
+            alpha > 1.0
+            and SINGLE_VORTEX_GRID_REBUILD_EVERY > 0
+            and (step + 1) % SINGLE_VORTEX_GRID_REBUILD_EVERY == 0
+        ):
+            psi_h = _rebuild_single_vortex_grid(psi_h, backend, grid, ccd, eps, V0)
+            ccd, ls_adv, reinit = _make_single_vortex_operators(backend, grid, eps)
+            X_h, Y_h = _host_mesh(backend, grid)
+            dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
+            grid_rebuild_count += 1
+            grid_rebuild_steps.append(step + 1)
+            h_min_history.append(_grid_h_min(grid))
         t += dt
         if (step + 1) % steps_per_snapshot == 0:
             phase_psi.append(psi_h.copy())
+            phase_X.append(X_h.copy())
+            phase_Y.append(Y_h.copy())
     phase_psi_h = np.stack(phase_psi, axis=0)
+    phase_X_h = np.stack(phase_X, axis=0)
+    phase_Y_h = np.stack(phase_Y, axis=0)
     psi_half = phase_psi_h[SINGLE_VORTEX_PHASE_DIVISIONS // 2]
+
+    to_initial = build_grid_remapper(
+        backend,
+        [coords.copy() for coords in grid.coords],
+        initial_coords,
+    )
+    psi_T_on_initial = np.asarray(
+        backend.to_host(
+            backend.xp.clip(to_initial.remap(backend.to_device(psi_h)), 0.0, 1.0)
+        )
+    )
 
     V_T = float(np.sum(psi_h * dV_h))
     area_T = float(np.sum((psi_h > 0.5) * dV_h))
     volume_drift = float(abs(V_T - V0) / max(V0, 1e-12))
     area_drift = float(abs(area_T - area0) / max(area0, 1e-12))
-    reversal_l1 = float(np.sum(np.abs(psi_h - psi0_h) * dV_h) / max(np.sum(dV_h), 1e-12))
+    reversal_l1 = float(
+        np.sum(np.abs(psi_T_on_initial - psi0_h) * initial_dV_h)
+        / max(np.sum(initial_dV_h), 1e-12)
+    )
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "reinit_every": SINGLE_VORTEX_MASS_REINIT_EVERY,
+        "reinit_every": SINGLE_VORTEX_REINIT_EVERY,
         "reinit_count": reinit_count,
         "reinit_method": SINGLE_VORTEX_REINIT_METHOD,
+        "grid_rebuild_every": SINGLE_VORTEX_GRID_REBUILD_EVERY,
+        "grid_rebuild_count": grid_rebuild_count,
+        "grid_rebuild_steps": np.asarray(grid_rebuild_steps, dtype=int),
+        "grid_h_min_history": np.asarray(h_min_history, dtype=float),
         "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
         "volume_drift": volume_drift, "area_drift": area_drift, "reversal_l1": reversal_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_half": psi_half, "psi_T": psi_h,
         "phase_divisions": SINGLE_VORTEX_PHASE_DIVISIONS,
-        "phase_fractions": phase_fractions, "phase_times": phase_times, "phase_psi": phase_psi_h,
+        "phase_fractions": phase_fractions, "phase_times": phase_times,
+        "phase_psi": phase_psi_h, "phase_X": phase_X_h, "phase_Y": phase_Y_h,
     }
 
 
@@ -336,15 +422,23 @@ def make_figures(results: dict) -> None:
                 also_to=PAPER_FIGURES / "ch13_v10_zalesak_snapshot")
 
     sv = results["single_vortex"]
+    phase_divisions = int(sv.get("phase_divisions", SINGLE_VORTEX_PHASE_DIVISIONS))
+    phase_X = np.asarray(sv.get("phase_X", []))
+    phase_Y = np.asarray(sv.get("phase_Y", []))
     fig_sv, axes_sv = plt.subplots(1, 3, figsize=(12, 4))
-    for ax, psi, title in zip(
+    snapshot_indices = (0, phase_divisions // 2, phase_divisions)
+    for ax, psi, title, snap_idx in zip(
         axes_sv,
         (sv["psi0"], sv["psi_half"], sv["psi_T"]),
         ("initial", "max deformation", "reversed final"),
+        snapshot_indices,
     ):
-        im = ax.pcolormesh(sv["X"], sv["Y"], psi, cmap="magma",
+        mesh_x, mesh_y = sv["X"], sv["Y"]
+        if phase_X.ndim == 3 and phase_Y.ndim == 3:
+            mesh_x, mesh_y = phase_X[snap_idx], phase_Y[snap_idx]
+        im = ax.pcolormesh(mesh_x, mesh_y, psi, cmap="magma",
                            vmin=0.0, vmax=1.0, shading="auto")
-        ax.contour(sv["X"], sv["Y"], psi, levels=[0.5], colors="white", linewidths=1.0)
+        ax.contour(mesh_x, mesh_y, psi, levels=[0.5], colors="white", linewidths=1.0)
         ax.set_aspect("equal"); ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_title(title)
     fig_sv.colorbar(im, ax=axes_sv.ravel().tolist(), shrink=0.82, label="$\\psi$")
     fig_sv.suptitle(
@@ -357,7 +451,6 @@ def make_figures(results: dict) -> None:
     if "phase_psi" in sv:
         phase_psi = np.asarray(sv["phase_psi"])
         phase_fractions = np.asarray(sv["phase_fractions"])
-        phase_divisions = int(sv.get("phase_divisions", SINGLE_VORTEX_PHASE_DIVISIONS))
         ncols = 9
         nrows = int(np.ceil(len(phase_fractions) / ncols))
         fig_phase, axes_phase = plt.subplots(nrows, ncols, figsize=(2.0 * ncols, 1.85 * nrows),
@@ -367,9 +460,12 @@ def make_figures(results: dict) -> None:
             if idx >= len(phase_fractions):
                 ax.axis("off")
                 continue
-            im = ax.pcolormesh(sv["X"], sv["Y"], phase_psi[idx], cmap="magma",
+            mesh_x, mesh_y = sv["X"], sv["Y"]
+            if phase_X.ndim == 3 and phase_Y.ndim == 3:
+                mesh_x, mesh_y = phase_X[idx], phase_Y[idx]
+            im = ax.pcolormesh(mesh_x, mesh_y, phase_psi[idx], cmap="magma",
                                vmin=0.0, vmax=1.0, shading="auto")
-            ax.contour(sv["X"], sv["Y"], phase_psi[idx], levels=[0.5],
+            ax.contour(mesh_x, mesh_y, phase_psi[idx], levels=[0.5],
                        colors="white", linewidths=0.7)
             numerator = int(round(float(phase_fractions[idx]) * phase_divisions))
             ax.set_title(f"t/T={numerator}/{phase_divisions}", fontsize=8)
@@ -406,6 +502,8 @@ def print_summary(results: dict) -> None:
           f"vol_drift={sv['volume_drift']:.3e}  V_T/V0={sv['V_T']/max(sv['V0'],1e-12):.4f}")
     print(f"  reinit={sv.get('reinit_method', 'none')} every {int(sv.get('reinit_every', 0))} "
           f"steps ({int(sv.get('reinit_count', 0))} calls)")
+    print(f"  grid_rebuild every {int(sv.get('grid_rebuild_every', 0))} "
+          f"steps ({int(sv.get('grid_rebuild_count', 0))} calls)")
 
 
 def main() -> None:
