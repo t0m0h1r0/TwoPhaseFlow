@@ -23,8 +23,10 @@
 slope は log-log fitting (3 点以上)；単一値はその設定での代表値．
 括弧内は主な誤差源．}
 \label{tab:v_accuracy_summary}
-\centering\scriptsize
-\begin{tabular}{l l l l l}
+\centering
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
 \toprule
 ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
 \midrule
@@ -42,7 +44,7 @@ V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $1.535\%$ ($\triangle$ s
 V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $0.030\%$ / $0.34$ ($\triangle$ centroid 弱収束) & — \\
 V10-c& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift & $2.690\times10^{-2}$ / $9.360\times10^{-2}\%$ ($\triangle$ 強変形診断) & — \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \paragraph{誤差源スタック．}

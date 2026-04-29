@@ -82,7 +82,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
 これは \textbf{CPU bit-exact verification}（PR-5）を優先する設計上の選択であり，
 収束次数や round-off 床といった単体精度指標が
 ハードウェア依存のドリフトを受けないことを保証するためである．
-GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:results}章の
+GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:benchmarks}章の
 統合検証で運用評価する．本章で確認する numerical primitive は
 \texttt{backend.xp} 経由で書かれており CPU/GPU 切り替え可能だが，
 精度判定は CPU 値を canonical reference として記録する．
