@@ -160,9 +160,8 @@ FCCD flux-form + TVD--RK3 の CLS 移流として解き，
 $N \in \{64, 128\}$, $\alpha \in \{1, 2\}$．
 $\Delta t_{\mathrm{est}} = 0.25\,h_{\min}/\max|\bm u|$ からステップ数を決め，
 最終時刻が 1 周期に一致するよう $\Delta t$ を調整して積分する．
-単一渦は同じ FCCD/TVD--RK3 輸送に Ridge--Eikonal 再初期化（10 step ごと）と
-界面追従の interface-fitted grid 再構築（10 step ごと）を組み合わせ，
-$N=96$, $\alpha=2$, $T=8$ の LeVeque 型可逆 deformation cycle として実行する．図示は従来通り，
+単一渦は同じ FCCD/TVD--RK3 輸送に Ridge--Eikonal 再初期化（10 step ごと）を組み合わせ，
+$N=96$, $\alpha=1$, $T=8$ の固定一様格子 LeVeque 型可逆 deformation cycle として実行する．図示は従来通り，
 初期円盤・最大変形・反転後最終場の 3 点スナップショットに限定する．
 
 \paragraph{結果．}
@@ -185,8 +184,8 @@ $N$ & $\alpha$ & centroid err & mass drift & $V_T/V_0$ \\
 \end{table}
 
 \begin{table}[!ht]
-\caption{V10: 単一渦 deformation reversal（$N=96$, $\alpha=2$）．
-$T=8$ の強変形で速度場を反転させ，Ridge--Eikonal と界面追従 grid 再構築を 10 step ごとに適用して
+\caption{V10: 単一渦 deformation reversal（$N=96$, $\alpha=1$）．
+$T=8$ の強変形で速度場を反転させ，固定一様格子上で Ridge--Eikonal を 10 step ごとに適用して
 $t=T$ で初期円盤へ戻るかを測る．}
 \label{tab:V10_single_vortex}
 \centering\small
@@ -194,7 +193,7 @@ $t=T$ で初期円盤へ戻るかを測る．}
 \toprule
 $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 \midrule
-96 & 2 & $3.322\times 10^{-2}$ & $6.486\times 10^{-7}\%$ & $0.99999999$ \\
+96 & 1 & $4.426\times 10^{-2}$ & $2.494\times 10^{-1}\%$ & $1.0025$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -224,9 +223,9 @@ $\alpha=2$ は $N=128$ で mass drift $0.030\%$ まで保つ一方，centroid er
 \includegraphics[width=0.92\linewidth]{figures/ch13_v10_single_vortex.pdf}
 \caption{V10：単一渦 deformation reversal の 2D スナップショット．
 初期円盤，最大変形時（$t=T/2$），反転後最終場（$t=T$）を並べる．$T=8$ の標準 single-vortex
-強変形では巻き込みは明瞭になり，Ridge--Eikonal と界面追従 grid 再構築を 10 step ごとに適用すると
-conservative CLS mass drift は $6.486\times10^{-7}\%$ に抑えられる．
-$L^1$ reversal error は $3.322\times10^{-2}$ である．}
+強変形では巻き込みは明瞭になり，固定一様格子上で Ridge--Eikonal を 10 step ごとに適用すると
+conservative CLS mass drift は $2.494\times10^{-1}\%$ に抑えられる．
+$L^1$ reversal error は $4.426\times10^{-2}$ である．}
 \label{fig:V10_single_vortex}
 \end{figure}
 
@@ -237,9 +236,9 @@ $L^1$ reversal error は $3.322\times10^{-2}$ である．}
   \item $\alpha=2$ (非一様格子)：§14 と同じ FCCD/TVD--RK3 条件では
         $N=128$ の mass drift は $0.030\%$ である．一方，centroid order は $0.34$ に留まり，
         slot 部の幾何追跡は条件付き（$\triangle$）．
-  \item 単一渦：$N=96,\alpha=2,T=8$ で渦巻き状の強変形は視覚的に確認できる．
-        Ridge--Eikonal と界面追従 grid 再構築（10 step ごと）で conservative CLS mass drift は $6.486\times10^{-7}\%$，
-        $L^1$ reversal error は $3.322\times10^{-2}$ であり，保存性はほぼ機械精度まで改善，形状復元性は条件付き（$\triangle$）．
+  \item 単一渦：$N=96,\alpha=1,T=8$ の固定一様格子で渦巻き状の強変形は視覚的に確認できる．
+        Ridge--Eikonal（10 step ごと）で conservative CLS mass drift は $2.494\times10^{-1}\%$，
+        $L^1$ reversal error は $4.426\times10^{-2}$ であり，保存性・形状復元性はいずれも条件付き（$\triangle$）．
   \item \textbf{本論文の制約条件として明示}：
         本ソルバの非一様格子サポート ($\alpha > 1$) は
         \textbf{NS 静止問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で $\Delta p$ 誤差 $\le 5\%$)
