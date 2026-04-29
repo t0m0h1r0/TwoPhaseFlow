@@ -1,8 +1,7 @@
 % paper/sections/appendix_pressure.tex
 %
-% 付録D: 圧力ソルバーと連成解析（§7-8 対応）
-%   旧 D.1（RC/BF精度解析）→ D.3 に統合
-%   D.4 Hermite 場延長法（HFE）→ 08d_gfm.tex として main.tex から \input（2026-04-05）
+% 付録: 圧力ソルバーと連成解析（§7-9 対応）
+%   HFE 格子収束検証は本文 U6-c（§12.4）に集約済み。
 
 %% D.1 欠陥補正法の理論と係数導出
 \section{欠陥補正法の理論と係数導出}
@@ -92,11 +91,18 @@ $p'''$ 係数が $1/24$ に揃い，検出項は：
 \end{equation}
 となる．RC 補正量が $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される証明である．
 
-%% D.5 HFE 場延長の格子収束検証（§11.2 から移動）
-\input{sections/appendix_hfe_verify}
+%% 圧力ステップの実装補足
+\section{圧力ステップの実装補足}
+\label{app:pressure_step_details}
 
-%% D.x+1 Predictor ADI 分裂の実装詳細（§10 から移動）
+本節では，本文の 7-step フローで過度に詳細となる
+Predictor ADI 分裂と DC-PPE 反復アルゴリズムのみを補足する．
+HFE 場延長の格子収束検証は，本文 U6-c
+（§~\ref{sec:U6_split_ppe_dc_hfe}，表~\ref{tab:U6_hfe}，図~\ref{fig:ch12_u6_hfe_field}）
+に集約し，本付録では重複掲載しない．
+
+%% Predictor ADI 分裂の実装詳細（§10 から移動）
 \input{sections/appD_predictor_adi}
 
-%% D.x+2 DC-PPE ソルバーの反復アルゴリズム（§10 から移動）
+%% DC-PPE ソルバーの反復アルゴリズム（§10 から移動）
 \input{sections/appD_dc_ppe_iteration}
