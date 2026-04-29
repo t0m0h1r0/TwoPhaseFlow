@@ -17,8 +17,9 @@ Sub-tests
       so it aligns with the centre-pin gauge); circle interface R=0.25
       centre (0.5, 0.5); ε = 1.5h; ρ from smoothed Heaviside.
       Analytic RHS = ∇·((1/ρ)∇p*) = -2π² p*/ρ + ∇(1/ρ)·∇p*. L_inf error
-      measured inside the liquid bulk (φ > 3h). Chapter 12 U6: 一括 DC
-      degrades from 6.6e-12 (ρ=1) to 2.7e-5 (ρ=1000) at N=64.
+      measured inside the liquid bulk (φ > 3h). Chapter 12 U6 (table
+      tab:U6_n_rho_sweep, ρ-sweep at N=64): 一括 DC degrades from
+      1.84e-5 (ρ=1) to 2.20e-3 (ρ=1000); structural lumped-PPE limit.
 
   (c) HFE 1-D + 2-D extension. 1-D: _hermite5_xp polynomial extrapolated one
       cell beyond the source window for f(x)=cos(π x)+0.3 sin(2π x) (no
@@ -480,8 +481,8 @@ def print_summary(results: dict) -> None:
                   f"n_corrs={n_corrs}  {tag}")
 
     b = results["U6b"]
-    print(f"U6-b Lumped + DC k=3 MMS (Chapter 12 U6 一括 DC: "
-          "6.6e-12 → 2.7e-5 across ρ=1→1000):")
+    print(f"U6-b Lumped + DC k=3 MMS (Chapter 12 U6 一括 DC at N={N_GRID}: "
+          "1.84e-5 → 2.20e-3 across ρ=1→1000):")
     cells = "  ".join(f"ρ={int(r['rho_l']):>4}: {r['err_inf']:.2e}"
                       for r in b["rho_sweep"])
     print(f"  ρ-sweep  N={N_GRID}  {cells}")

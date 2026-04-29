@@ -223,7 +223,7 @@ def make_figures(results: dict) -> None:
 
 def print_summary(results: dict) -> None:
     runs = results["runs"]
-    print("V3 (static droplet 200-step, rho_l/rho_g=10, We=10):")
+    print(f"V3 (static droplet 200-step, rho_l/rho_g={int(RHO_L/RHO_G)}, We={WE:.0f}):")
     for key in sorted(runs):
         r = runs[key]
         print(f"  N={r['N']:>3}  |u|_inf_final={r['u_inf_final']:.3e}"

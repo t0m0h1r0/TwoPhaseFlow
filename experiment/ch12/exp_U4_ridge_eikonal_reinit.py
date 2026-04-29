@@ -9,7 +9,9 @@ Sub-tests
       circle R=0.25 center (0.5, 0.5), N=128,
       n_tau in {1, 5, 10, 20, 50, 100}, dtau=0.3*h_min.
       Measures || |grad φ| - 1 ||_inf inside |phi_sdf| < 3 h_min band.
-      Paper: n_tau=5 → 1% of initial; n_tau=50 → band err < 1e-2.
+      Paper: n_tau=1 is the HJ-transient overshoot peak (≈0.603 vs init
+      0.500); n_tau=5 is the post-overshoot decay (≈0.484, 97% of init);
+      n_tau=20 → 2.2e-2; n_tau=50 → 1.3e-2 (~h); n_tau=100 → 9.2e-3.
   (b) DGR thickness correction. Start with biased ψ (ε_eff_init ≈ 2 ε).
       Compare ε_eff (band-median per reinit_dgr.py:55) before and after
       DGR.reinitialize. Paper: ratio ≈ 1.03 (within [1.0, 1.1]).
