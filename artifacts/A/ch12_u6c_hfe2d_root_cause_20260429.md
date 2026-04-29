@@ -24,13 +24,13 @@ used a linear fallback for `q_yy`. That is the simplified tensor variant which
 
 | ID | Hypothesis | Evidence | Result |
 |---|---|---|---|
-| H1 | Missing full tensor mixed derivatives lower the 2D order | Replacing the simplified row data with `(q_xxy, q_xxyy)` restores U6-c 2D med from 3.21 effective slope to 8.73 effective diagnostic slope; analytic-CP variant gives pairwise O(h^6) rates. | Adopted |
+| H1 | Missing full tensor mixed derivatives lower the 2D order | Replacing the simplified row data with `(q_xxy, q_xxyy)` restores U6-c 2D med from 3.21 effective slope to 8.72 effective diagnostic slope; analytic-CP variant gives pairwise O(h^6) rates. | Adopted |
 | H2 | Closest-point normal error is the main cause | CCD closest-point coordinate error is large only at N=32 max, then drops at rates 12.04, 14.94, 7.71. It explains the coarse max outlier, not the persistent median O(h^3) trend. | Secondary |
 | H3 | 6-cell band is too wide | Varying band_cells = 1,2,3,4,6 keeps median pairwise rates around 2.5-3.7 in the simplified implementation. | Rejected |
 | H4 | Source/target sign convention is flipped | U6 uses `phi=R-r`, so HFE's `source_sign=-1` correctly extends outside source (`phi<0`) into inside target (`phi>=0`). | Rejected |
 | H5 | Wall boundary CCD pollution dominates | Circle band is away from the wall; full tensor with the same CCD/wall setup removes the low-order behavior. | Rejected |
 | H6 | Test field lacks mixed structure | The field is separable but genuinely 2D, so mixed derivatives are nonzero and exercise the tensor product. | Rejected |
-| H7 | Plot/table postprocessing causes a false slope | Direct function-level U6-c recomputation reproduces the old 5.10/3.21 and the fixed 11.35/8.73 before plotting. | Rejected |
+| H7 | Plot/table postprocessing causes a false slope | Direct function-level U6-c recomputation reproduces the old 5.10/3.21 and the fixed 11.35/8.72 before plotting. | Rejected |
 | H8 | CPU/GPU backend discrepancy | U6-c uses CPU. The fix uses `backend.xp` only and vectorised parity tests pass against a scalar full-tensor reference. | Rejected |
 | H9 | Hermite-5 1D primitive is wrong | U6-c 1D remains 5.91 and unit tests already cover 1D high-order behavior. | Rejected |
 
@@ -53,6 +53,6 @@ to tune the band, the figure, or the slope calculation.
 
 ## Validation
 
-- `run_U6c()` after fix: 1D slope 5.91, 2D max effective slope 11.35, 2D median effective slope 8.73.
+- `run_U6c()` after fix: 1D slope 5.91, 2D max effective slope 11.35, 2D median effective slope 8.72.
 - `pytest src/twophase/tests/test_hfe.py src/twophase/tests/test_hfe_vectorised.py`: 12 passed.
 - [SOLID-X] No new class responsibility split needed. The fix stays inside the existing HFE numerical kernel and its tests.
