@@ -72,6 +72,7 @@ SLOT_LENGTH = 0.25
 SINGLE_VORTEX_N = 96
 SINGLE_VORTEX_ALPHA = 2.0
 SINGLE_VORTEX_T = 1.0
+SINGLE_VORTEX_PHASE_DIVISIONS = 32
 
 
 def _slotted_disk_phi(X, Y) -> np.ndarray:
@@ -218,20 +219,26 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     max_speed = float(np.max(np.sqrt(u0 * u0 + v0 * v0)))
     dt_est = 0.25 * h_min / max(max_speed, 1e-3)
     n_steps = int(np.ceil(SINGLE_VORTEX_T / dt_est))
+    n_steps = int(
+        np.ceil(n_steps / SINGLE_VORTEX_PHASE_DIVISIONS) * SINGLE_VORTEX_PHASE_DIVISIONS
+    )
     dt = SINGLE_VORTEX_T / n_steps
+    steps_per_snapshot = n_steps // SINGLE_VORTEX_PHASE_DIVISIONS
+    phase_fractions = np.linspace(0.0, 1.0, SINGLE_VORTEX_PHASE_DIVISIONS + 1)
+    phase_times = SINGLE_VORTEX_T * phase_fractions
+    phase_psi = [psi_h.copy()]
 
     ls_adv = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
-    psi_half = None
     t = 0.0
     for step in range(n_steps):
         t_mid = t + 0.5 * dt
         u, v = _single_vortex_velocity(X_h, Y_h, t_mid, SINGLE_VORTEX_T)
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
         t += dt
-        if psi_half is None and t >= 0.5 * SINGLE_VORTEX_T:
-            psi_half = psi_h.copy()
-    if psi_half is None:
-        psi_half = psi_h.copy()
+        if (step + 1) % steps_per_snapshot == 0:
+            phase_psi.append(psi_h.copy())
+    phase_psi_h = np.stack(phase_psi, axis=0)
+    psi_half = phase_psi_h[SINGLE_VORTEX_PHASE_DIVISIONS // 2]
 
     V_T = float(np.sum(psi_h * dV_h))
     area_T = float(np.sum((psi_h > 0.5) * dV_h))
@@ -244,6 +251,8 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
         "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
         "volume_drift": volume_drift, "area_drift": area_drift, "reversal_l1": reversal_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_half": psi_half, "psi_T": psi_h,
+        "phase_divisions": SINGLE_VORTEX_PHASE_DIVISIONS,
+        "phase_fractions": phase_fractions, "phase_times": phase_times, "phase_psi": phase_psi_h,
     }
 
 
@@ -326,6 +335,36 @@ def make_figures(results: dict) -> None:
     )
     save_figure(fig_sv, OUT / "V10_single_vortex_snapshots",
                 also_to=PAPER_FIGURES / "ch13_v10_single_vortex")
+
+    if "phase_psi" in sv:
+        phase_psi = np.asarray(sv["phase_psi"])
+        phase_fractions = np.asarray(sv["phase_fractions"])
+        phase_divisions = int(sv.get("phase_divisions", SINGLE_VORTEX_PHASE_DIVISIONS))
+        ncols = 9
+        nrows = int(np.ceil(len(phase_fractions) / ncols))
+        fig_phase, axes_phase = plt.subplots(nrows, ncols, figsize=(2.0 * ncols, 1.85 * nrows),
+                                             sharex=True, sharey=True)
+        axes_flat = np.asarray(axes_phase).ravel()
+        for idx, ax in enumerate(axes_flat):
+            if idx >= len(phase_fractions):
+                ax.axis("off")
+                continue
+            im = ax.pcolormesh(sv["X"], sv["Y"], phase_psi[idx], cmap="magma",
+                               vmin=0.0, vmax=1.0, shading="auto")
+            ax.contour(sv["X"], sv["Y"], phase_psi[idx], levels=[0.5],
+                       colors="white", linewidths=0.7)
+            numerator = int(round(float(phase_fractions[idx]) * phase_divisions))
+            ax.set_title(f"t/T={numerator}/{phase_divisions}", fontsize=8)
+            ax.set_aspect("equal")
+            ax.set_xticks([])
+            ax.set_yticks([])
+        fig_phase.colorbar(im, ax=axes_flat.tolist(), shrink=0.82, label="$\\psi$")
+        fig_phase.suptitle(
+            f"V10: single-vortex deformation over one cycle "
+            f"(N={sv['N']}, alpha={sv['alpha']:.0f})"
+        )
+        save_figure(fig_phase, OUT / "V10_single_vortex_phase32",
+                    also_to=PAPER_FIGURES / "ch13_v10_single_vortex_phase32")
 
 
 def print_summary(results: dict) -> None:
