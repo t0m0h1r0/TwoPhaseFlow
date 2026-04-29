@@ -161,7 +161,7 @@ $N \in \{64, 128\}$, $\alpha \in \{1, 2\}$．
 $\Delta t_{\mathrm{est}} = 0.25\,h_{\min}/\max|\bm u|$ からステップ数を決め，
 最終時刻が 1 周期に一致するよう $\Delta t$ を調整して積分する．
 単一渦は同じ FCCD/TVD--RK3 輸送を用い，$N=96$, $\alpha=2$,
-$T=1$ の可逆 deformation cycle として実行する．
+$T=8$ の LeVeque 型可逆 deformation cycle として実行する．
 
 \paragraph{結果．}
 \begin{table}[!ht]

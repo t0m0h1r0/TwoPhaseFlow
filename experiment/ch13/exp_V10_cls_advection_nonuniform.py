@@ -18,7 +18,7 @@ Setup
     v(x,y) =  (2*pi/T_rev) * (x - 0.5).
   T_rev = 1.0 (one full revolution).
   Zalesak: N in {64, 128}, alpha_grid in {1.0, 2.0}.
-  Single vortex: N = 96, alpha_grid = 2.0.
+  Single vortex: N = 96, alpha_grid = 2.0, T = 8.0.
   CFL = 0.25 (limited by max |u|).
   Spatial transport: FCCD flux form (same production family as ch14).
 
@@ -71,7 +71,7 @@ SLOT_WIDTH = 0.05
 SLOT_LENGTH = 0.25
 SINGLE_VORTEX_N = 96
 SINGLE_VORTEX_ALPHA = 2.0
-SINGLE_VORTEX_T = 1.0
+SINGLE_VORTEX_T = 8.0
 SINGLE_VORTEX_PHASE_DIVISIONS = 32
 
 
