@@ -32,7 +32,7 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V6：§14 stack による密度比 sweep．全 8 ケースでブローアップなし．
+\caption{V6：§14 ベンチマーク設定による密度比掃引．全 8 ケースでブローアップなし．
 $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで $O(10^{-10})$--$O(10^{-11})$，
 $u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する．
 $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり，
@@ -61,7 +61,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
-\caption{V6：密度比収束 sweep．
+\caption{V6：密度比収束掃引．
 $u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し，
 $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり，
 全ケース $O(10^{-10})$--$O(10^{-11})$ に留まる．}
@@ -115,7 +115,7 @@ ridge-eikonal reinitialization は全 step で有効化する．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V7：§14 stack の二相時間精度診断．参照は $n_{\mathrm{ref}}=64$．
+\caption{V7：§14 ベンチマーク設定の二相時間精度診断．参照は $n_{\mathrm{ref}}=64$．
 粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し，
 最終 halving で観測 slope $\mathbf{1.58}$ まで回復するが，純粋な 2 次には未達．}
 \label{tab:V7_imex_bdf2_time}
