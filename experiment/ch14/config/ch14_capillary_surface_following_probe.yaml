@@ -1,0 +1,163 @@
+# Short probe: water-air capillary wave with dynamic interface-fitted
+# sea-surface-following grid and Ridge-Eikonal reinitialization.
+# Production numerical stack: FCCD PPE + HFE + UCCD6.
+# - FCCD: conservative interface transport and pressure gradient use the `fccd`
+#   scheme; flux-locus form is the default option for these terms.
+# - Surface tension: `pressure_jump` is represented in the PPE, not as CSF σκ∇ψ.
+# - HFE: interface curvature uses `psi_direct_hfe`.
+# - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
+
+grid:
+  cells: [64, 64]
+  domain:
+    size: [1.0, 1.0]
+    boundary: wall
+  distribution:
+    type: interface_fitted
+    method: gaussian_levelset
+    alpha: 2.0
+    schedule: every_10
+
+interface:
+  thickness:
+    mode: local
+    base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_hfe
+      cap: 5.0
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 20
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
+
+physics:
+  phases:
+    liquid:
+      rho: 1000.0
+      mu: 1.0e-3
+    gas:
+      rho: 1.2
+      mu: 1.8e-5
+  surface_tension: 0.072
+  gravity: 0.0
+
+run:
+  time:
+    final: 0.05
+    # Multiplier on theory CFL constants; 1.0 uses the theory budget.
+    cfl: 1.0
+    print_every: 20
+  debug:
+    step_diagnostics: true
+
+numerics:
+  time:
+    algorithm: fractional_step
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+  momentum:
+    predictor:
+      assembly: balanced_buoyancy
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: imex_bdf2
+      pressure:
+        gradient: fccd
+      viscosity:
+        spatial: ccd
+        time_integrator: implicit_bdf2
+      surface_tension:
+        formulation: pressure_jump
+  projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: jump_decomposition
+      solver:
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 1.0
+        base_solver:
+          kind: iterative
+          method: gmres
+          tolerance: 1.0e-6
+          max_iterations: 500
+          restart: 80
+          preconditioner: jacobi
+
+output:
+  dir: results/ch14_capillary_surface_following_probe
+  save_npz: true
+  snapshots:
+    interval: 0.01
+  figures:
+    - type: time_series
+      title: "Water-air capillary wave: interface amplitude"
+      x: times
+      y: [interface_amplitude]
+      labels: ["A(t)"]
+      xlabel: "$t$"
+      ylabel: "$A(t)$"
+      file: interface_amplitude.pdf
+
+    - type: time_series
+      title: "Water-air capillary flow: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: time_series
+      title: "Water-air capillary flow: kinetic energy"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
+
+initial_condition:
+  type: capillary_wave
+  axis: y
+  mean: 0.5
+  amplitude: 0.01
+  mode: 2
+  length: 1.0
+  phase: 0.0
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition:
+  type: wall
