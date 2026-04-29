@@ -68,14 +68,14 @@ Step 5 完了後：対流項 $\mathcal{C}^n_{i,j}$（$x$ 成分：$u^n D_x^{(1)}
 速度場 $\bu^n$ は上書きして次の Corrector で $\bu^{n+1}$ に進める．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{HFE（圧力場延長）——将来拡張}
+\subsubsection{HFE（圧力場延長）——分相 PPE 経路}
 \label{app:hfe_predictor}
 
-\noindent\textbf{現行の CSF + smoothed Heaviside 一括解法ではこのステップは省略する．}
+\noindent\textbf{CSF + smoothed Heaviside 一括解法ではこのステップは省略する．}
 圧力場 $p$ が $\varepsilon$-regularized で既に滑らかなため，
 HFE は不要であり，むしろ有害である（§~\ref{sec:ppe_discretization_choice}）．
 
-将来の分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）では，
+分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）では，
 圧力場が Young--Laplace ジャンプ $[p]_\Gamma = \sigma\kappa$ を陽に持つため，
 PPE 求解前に $p^n$ を HFE で界面越しに延長する：
 \[

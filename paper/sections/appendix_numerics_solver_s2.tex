@@ -5,7 +5,8 @@
 本付録は §\ref{sec:defect_correction} で定義した欠陥補正法（式~\eqref{eq:defect_correction_linear}）において，
 左辺の有限差分演算子 $[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD}]$ を
 1方向 Thomas 法で求解するための三重対角係数を導出する．
-(\texttt{PPESolverSweep}，\texttt{ppe\_solver\_type="sweep"} の実装に対応．)
+スウィープ型前処理を採用する場合の係数表であり，現行標準の
+\texttt{PPESolverDefectCorrection} では base solver の選択に応じて参照する．
 
 \subsubsection*{変密度 FD 演算子の離散化}
 
