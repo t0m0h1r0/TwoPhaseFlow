@@ -65,7 +65,7 @@ $\Ord{h^{0.5\text{--}1.0}}$ で律速（一括 PPE の構造的限界；
 \toprule
 \multicolumn{4}{c}{$N$ sweep ($\rho_l = 1000$)} & \phantom{aa} & \multicolumn{3}{c}{$\rho$ sweep ($N=64$)} \\
 \cmidrule(lr){1-4}\cmidrule(lr){6-8}
-$N$ & $h$ & $\|e\|_\infty$ & ratio $\frac{e_N}{e_{2N}}$ & & $\rho_l$ & $h$ & $\|e\|_\infty$ \\
+$N$ & $h$ & $\|e\|_\infty$ & ratio $\frac{e_{N/2}}{e_N}$ & & $\rho_l$ & $h$ & $\|e\|_\infty$ \\
 \midrule
 $32$  & $0.0313$ & $4.75\times 10^{-3}$ & $-$    & & $1$    & $0.0156$ & $1.84\times 10^{-5}$ \\
 $64$  & $0.0156$ & $2.20\times 10^{-3}$ & $2.16$ & & $10$   & $0.0156$ & $4.14\times 10^{-4}$ \\
@@ -81,7 +81,8 @@ $128$ & $0.0078$ & $1.59\times 10^{-3}$ & $1.39$ & & $100$  & $0.0156$ & $1.27\t
 \textbf{2D} band は完全テンソル修正後に低次化が消え，
 $N=64$ 以降で $10^{-7}$ から丸め床近傍まで急減する．
 slope 行は $N=32$ の closest-point 前漸近と細格子側の丸め床を含む
-effective slope であり，形式次数は $\Ord{h^6}$ と読む．}
+\textbf{2 点 endpoint slope}（$N\!=\!32 \to 256$ 端点；多点 log--log fit ではない）
+であり，形式次数は $\Ord{h^6}$ と読む．}
 \label{tab:U6_hfe}
 \centering\small
 \begin{tabular}{r r r r r}

@@ -11,7 +11,7 @@
 
 \paragraph{検証対象．}
 密度比 $1$ の Navier--Stokes 解 (Taylor--Green 渦~\cite{Brachet1983}; \autoref{sec:numerical_integrity} 式~\eqref{eq:CCD_I})
-を CCD 空間離散 (\autoref{sec:CCD}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
+を CCD 空間離散 (\autoref{sec:ccd_def}) + AB2 / IMEX-BDF2 時間離散 (\autoref{ch:time_integration}) +
 PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
 に対する誤差と非圧縮拘束を確認する．
 旧実装は FFT spectral projection であり CCD/PPE の検証ではなかったため，
