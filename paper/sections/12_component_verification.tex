@@ -11,7 +11,6 @@
 % ------------------------------------------------------------------------------
 % backward-compat labels (Phase 1 stubs) — Phase 3 で 12u*.tex に再配置
 \label{sec:split_ppe_recovery}%
-\label{sec:varrho_ppe_limitation}%
 \label{sec:verify_ccd_convergence}%
 \label{sec:verify_ccd_spectral_radius}%
 \label{sec:verify_cls_advection}%
@@ -128,10 +127,15 @@ U7-a & BF mismatch one-step 指標 & match と同精度域 & $0.646\%\,@N\!=\!12
 U7-b & face $\mu$ 補間           & $2$ & $1.91 / 1.81 / 1.91$ & \checkmark \\
 U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
 U8-b & AB2                      & $2$ & $2.04$ & \checkmark \\
-U8-c & CN spectral             & $2$ + 無条件安定 & $2.00$ & \checkmark \\
+U8-c & CN spectral\textsuperscript{$\flat$} & $2$ + 無条件安定 & $2.00$ & \checkmark \\
 U8-d & 3 層 CN+EE-cross（B/C 層）& EE-cross 律速 & $1.00$ & $\triangle$ \\
 U9   & DCCD on pressure 禁止     & 違反量発散 & ratio $10^5 \to 3\!\times\!10^8$ & $\bullet$ \\
 \bottomrule
+\multicolumn{5}{p{0.95\linewidth}}{\footnotesize
+\textsuperscript{$\flat$}U8-c の \emph{CN} は時間離散化スキーム（Crank--Nicolson）；
+表題が指す「spectral」は試験用の空間スペクトル離散（pseudo-spectral）であり，
+CN の時間 2 次精度評価は空間スペクトル誤差床より十分小さい刻み幅 $\Delta t$ で測定される．
+}
 \end{tabular}
 \end{table}
 
