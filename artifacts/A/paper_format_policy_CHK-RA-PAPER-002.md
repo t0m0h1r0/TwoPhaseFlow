@@ -19,17 +19,18 @@ This policy applies to the main paper chapters `paper/sections/01*.tex` through 
 
 3. **Figure and table captions**
    - Captions start with the experiment/result ID when one exists, followed by full-width `：` (for example `U1-c：...`, `V10：...`).
-   - Captions are centered globally and use compact caption line spacing. Local left/ragged caption setup is not used in chapter files.
+   - Captions are centered globally and use compact caption line spacing. Local left/ragged caption setup is not used in chapter or appendix files.
    - Captions are self-contained: they identify the object, the metric or condition, and any interpretation needed to read the figure/table without searching nearby prose.
    - Placeholder status must be explicit. A table awaiting data is titled as acceptance criteria/status, not as completed results.
    - Multi-panel captions state the panel mapping or tested contrast before the interpretation sentence.
    - English shorthand is kept only for established technical terms. Reviewer-facing convenience words such as `trend`, `sweep`, `snapshot`, and `master summary` are written in Japanese unless the English term itself is the object of comparison.
 
 4. **Table typography**
-   - Table typography is controlled by named macros in `paper/preamble.tex`, not by ad hoc numeric `\arraystretch` / `\tabcolsep` values in chapter files.
+   - Table typography is controlled by named macros in `paper/preamble.tex`, not by ad hoc numeric `\arraystretch` / `\tabcolsep` values in chapter or appendix files.
    - Default tables use `\PaperTableSetup`: `\small`, `\tabcolsep=4pt`, `\arraystretch=1.12`.
    - Dense summary tables use `\PaperTableDenseSetup`: `\footnotesize`, `\tabcolsep=3pt`, `\arraystretch=1.02`.
    - Exceptionally long one-page summary tables may use `\PaperTableExtraDenseSetup`; the exception must be named explicitly rather than hidden as raw `\scriptsize`.
+   - Appendix inline technical tables use `\PaperTableSetup` unless a named dense preset is needed for width.
 
 5. **Float placement and graphics**
    - Chapter figures and plots are PDF assets. Bitmap/vector image suffixes such as `.png`, `.jpg`, `.jpeg`, and `.svg` are not used from chapter `\includegraphics` commands.
@@ -51,6 +52,7 @@ Run from the worktree root.
 
 ```bash
 files=$(find paper/sections -maxdepth 1 -type f \( -name '01*.tex' -o -name '02*.tex' -o -name '03*.tex' -o -name '04*.tex' -o -name '05*.tex' -o -name '06*.tex' -o -name '07*.tex' -o -name '08*.tex' -o -name '09*.tex' -o -name '10*.tex' -o -name '11*.tex' -o -name '12*.tex' -o -name '13*.tex' -o -name '14*.tex' -o -name '15*.tex' \) | sort)
+appendix_files=$(rg --files paper/sections | rg '/(appendix|appD)' | sort)
 rg -n '\\(sub)?paragraph\{[^}]*\.' $files
 rg -n '\\caption(\[[^]]*\])?\{[UV][0-9][^}]*:' $files
 rg -n '\\caption\[[^]]*:' $files
@@ -59,6 +61,9 @@ rg -n '\\(section|subsection|subsubsection|paragraph|subparagraph)\*?\{[^}]*([�
 rg -n '\\caption(\[[^]]*\])?\{[^}]*\b(stack|long-term|trend|sweep|snapshot|streamplot|master|multistep)\b' $files
 rg -n '\\renewcommand\{\\arraystretch\}\{[0-9]|\\setlength\{\\tabcolsep\}\{[0-9]' $files
 rg -n 'justification=RaggedRight|singlelinecheck=false' paper/preamble.tex $files
+rg -n '\\renewcommand\{\\arraystretch\}\{[0-9]|\\setlength\{\\tabcolsep\}\{[0-9]' $appendix_files
+rg -n 'justification=RaggedRight|singlelinecheck=false|\\caption\{.*( vs |\\textit\{vs\.)' paper/preamble.tex $appendix_files
+rg -n '(^\\(section|subsection|subsubsection|paragraph)|\\caption\{).*([0-9０-９]+(次元|次|段階|つ|倍|方向)|[A-Z][0-9]-|[0-9]D)' $appendix_files
 rg -n '\\includegraphics[^\n]*\{[^}]*\.(png|jpg|jpeg|svg)\}' $files
 rg -n -F -e '毛細管波' -e '毛管波' paper/sections/01b_classification_roadmap.tex paper/sections/14_benchmarks.tex paper/sections/15_conclusion.tex
 rg -n -F -e '計算完了次第掲載' -e '受入基準を満た' -e '実証された' paper/sections/14_benchmarks.tex paper/sections/15_conclusion.tex paper/sections/01b_classification_roadmap.tex
