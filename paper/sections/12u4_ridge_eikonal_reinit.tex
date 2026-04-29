@@ -39,16 +39,9 @@ artefact で，検証対象は上記 2 primitive である．
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption[U4-a：Godunov Eikonal band gradient error]{%
-U4-a：Godunov Eikonal 再初期化のバンド内 $|\nabla\phi|-1$ 誤差
-（$N=128$, $h_{\min} = 7.81\times 10^{-3}$, $\mathrm{d}\tau = 0.3 h_{\min}$）．
-$n_\tau = 0$ の初期残差 $0.5$ は biased SDF $\phi_0 = \phi_{\mathrm{sdf}}/2$ に起因する設計値．
-$n_\tau = 1$ で $0.603$ へ一時的に増加するのは
-$\mathrm{sgn}(\phi_0)$ と $\phi_0$ の符号一致面での Hamilton--Jacobi 流の transient（$\partial_\tau \phi$ が
-$|\nabla\phi|<1$ 領域で正値を取り、最初の sweep で gradient overshoot を起こす設計上の挙動），
-その後 $n_\tau \ge 5$ で単調減衰し $n_\tau = 100$ で
-$9.16\times 10^{-3}$（$1.17h < 1.5h$）に到達．設計通りの $\eps$--Eikonal 流．}
+\caption[U4-a：Godunov Eikonal band gradient error]{U4-a：Godunov Eikonal バンド勾配誤差}
 \label{tab:U4_reinit}
+\PaperCaptionNote{条件は $N=128$, $h_{\min} = 7.81\times 10^{-3}$, $\mathrm{d}\tau = 0.3 h_{\min}$．$n_\tau = 0$ の初期残差 $0.5$ は biased SDF $\phi_0 = \phi_{\mathrm{sdf}}/2$ に起因する設計値．$n_\tau = 1$ で $0.603$ へ一時的に増加するのは $\mathrm{sgn}(\phi_0)$ と $\phi_0$ の符号一致面での Hamilton--Jacobi 流の transient（$\partial_\tau \phi$ が $|\nabla\phi|<1$ 領域で正値を取り、最初の sweep で gradient overshoot を起こす設計上の挙動），その後 $n_\tau \ge 5$ で単調減衰し $n_\tau = 100$ で $9.16\times 10^{-3}$（$1.17h < 1.5h$）に到達．設計通りの $\eps$--Eikonal 流．}
 \centering\small
 \begin{tabular}{r r r}
 \toprule
@@ -66,15 +59,9 @@ $100$  & $0.234$    & $9.16\times 10^{-3}$ \\
 \end{table}
 
 \begin{table}[!ht]
-\caption{U4-b：DGR バンド厚補正．
-初期 $\eps_{\eff}^{\mathrm{init}} = 2 \eps^{\star}$（ratio $= 2.0$）から
-DGR を 1 回適用するだけで $\eps^{\star}$ に機械精度で揃う．
-合格判定は経験的緩条件
-$|\mathrm{ratio} - 1| < 0.05$（biased $\psi$ の漸近 1 次理論限界
-$|2\eps/\eps^\star - 1| \cdot \Ord{h}$ から導出した
-$\Ord{10^{-2}}$ 程度の余裕付き許容範囲）．実測 $|3.3 \times 10^{-6}|$ は
-これよりさらに 4 桁内側に入る．}
+\caption{U4-b：DGR バンド厚補正}
 \label{tab:U4_dgr}
+\PaperCaptionNote{初期 $\eps_{\eff}^{\mathrm{init}} = 2 \eps^{\star}$（ratio $= 2.0$）から DGR を 1 回適用するだけで $\eps^{\star}$ に機械精度で揃う． 合格判定は経験的緩条件 $|\mathrm{ratio} - 1| < 0.05$（biased $\psi$ の漸近 1 次理論限界 $|2\eps/\eps^\star - 1| \cdot \Ord{h}$ から導出した $\Ord{10^{-2}}$ 程度の余裕付き許容範囲）．実測 $|3.3 \times 10^{-6}|$ は これよりさらに 4 桁内側に入る．}
 \centering\small
 \begin{tabular}{l r r r}
 \toprule
@@ -90,29 +77,17 @@ target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u4_ridge_eikonal_reinit}
-\caption{U4：Godunov Eikonal 再初期化 + DGR バンド厚補正．
-band 内 $\||\nabla\psi|-1\|_\infty$ は $n_\tau=20$ で $2.2\times 10^{-2}$, $n_\tau=100$ で $9\times 10^{-3}$ に漸近；
-DGR 1 ステップで $\eps_{\eff} / \eps^\star = 2.0 \to 1.0000033$ と機械精度で補正．
-}
+\caption{U4：Godunov Eikonal 再初期化 + DGR バンド厚補正}
 \label{fig:ch12_u4}
+\PaperCaptionNote{band 内 $\||\nabla\psi|-1\|_\infty$ は $n_\tau=20$ で $2.2\times 10^{-2}$, $n_\tau=100$ で $9\times 10^{-3}$ に漸近； DGR 1 ステップで $\eps_{\eff} / \eps^\star = 2.0 \to 1.0000033$ と機械精度で補正．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch12_u4_ridge_eikonal_field.pdf}
-\caption{U4：Godunov Eikonal 反復中の $||\nabla\phi|-1|$ 場の進化（$N=128$，共有カラースケール）．
-左から $n_\tau = 0$（biased 初期 $\phi_0 = \phi_{\mathrm{sdf}}/2$；
-band err $\sim 0.50$，全域で $0.5$ 一定）→ $n_\tau = 5$
-（HJ transient で gradient overshoot；band err $\sim 0.48$）
-→ $n_\tau = 50$（band err $\sim 0.013$，すなわち $\sim h$）．
-白円は真の $\phi=0$ 等値線（半径 $R = 0.25$）．
-$n_\tau$ 増加に伴い界面近傍の violation が
-\textbf{帯状から円周近傍の白円直近に局在}し，さらに $n_\tau = 50$ では
-ほぼ消失する様子が直接観察できる．これは表~\ref{tab:U4_reinit} の
-$L_\infty$ 履歴の \textbf{空間的内訳}を与え，再初期化が
-band 全域ではなく\textbf{interface ridge から外向きに収束}する Hamilton--Jacobi
-flow の本質を可視化する．}
+\caption{U4：Godunov Eikonal 勾配誤差場の進化}
 \label{fig:ch12_u4_field}
+\PaperCaptionNote{$N=128$，共有カラースケール．左から $n_\tau = 0$（biased 初期 $\phi_0 = \phi_{\mathrm{sdf}}/2$； band err $\sim 0.50$，全域で $0.5$ 一定）→ $n_\tau = 5$（HJ transient で gradient overshoot；band err $\sim 0.48$）→ $n_\tau = 50$（band err $\sim 0.013$，すなわち $\sim h$）．白円は真の $\phi=0$ 等値線（半径 $R = 0.25$）．$n_\tau$ 増加に伴い界面近傍の violation が\textbf{帯状から円周近傍の白円直近に局在}し，さらに $n_\tau = 50$ ではほぼ消失する様子が直接観察できる．これは表~\ref{tab:U4_reinit} の $L_\infty$ 履歴の\textbf{空間的内訳}を与え，再初期化が band 全域ではなく\textbf{interface ridge から外向きに収束}する Hamilton--Jacobi flow の本質を可視化する．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}

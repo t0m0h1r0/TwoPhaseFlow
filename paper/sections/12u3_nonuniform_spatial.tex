@@ -57,12 +57,9 @@ production 経路では生成過程の各場が
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption{U3-a：CCD 1 階微分 $\|e\|_\infty$ on $\alpha\in\{1, 2\}$ 非一様格子．
-GCL: $f=1$ で $\|\mathrm{d}f/\mathrm{d}x\|_\infty = 2.13\times 10^{-13}$（機械零）．
-$\alpha=2$ の集中効果は $\sin(\pi x)$ MMS では境界に質量が無いため
-$\alpha=1$ と同精度（差 $< 10^{-13}$）；密度関数が周辺グリッドの
-$h_{\min}$ を保ったまま対角線上に集中するため．}
+\caption{U3-a：CCD 1 階微分 $\|e\|_\infty$ on $\alpha\in\{1, 2\}$ 非一様格子}
 \label{tab:U3_ccd_nonuniform}
+\PaperCaptionNote{GCL: $f=1$ で $\|\mathrm{d}f/\mathrm{d}x\|_\infty = 2.13\times 10^{-13}$（機械零）． $\alpha=2$ の集中効果は $\sin(\pi x)$ MMS では境界に質量が無いため $\alpha=1$ と同精度（差 $< 10^{-13}$）；密度関数が周辺グリッドの $h_{\min}$ を保ったまま対角線上に集中するため．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -79,10 +76,9 @@ $N$ & $h_{\min}$ & $\|e_{d_1}\|_\infty$ ($\alpha=1$) & ($\alpha=2$) \\
 \end{table}
 
 \begin{table}[!ht]
-\caption{U3-b：FCCD face value/grad on $\alpha=2$ 非一様格子．
-均一格子 U1-c と同様に 4 次律速を示す．非一様格子上でも
-FCCD face evaluation の基本次数が維持されることを確認する．}
+\caption{U3-b：FCCD face value/grad on $\alpha=2$ 非一様格子}
 \label{tab:U3_fccd_nonuniform}
+\PaperCaptionNote{均一格子 U1-c と同様に 4 次律速を示す．非一様格子上でも FCCD face evaluation の基本次数が維持されることを確認する．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -99,13 +95,9 @@ $N$ & $h_{\min}$ & $\|e_{fv}\|_\infty$ & $\|e_{fg}\|_\infty$ \\
 \end{table}
 
 \begin{table}[!ht]
-\caption{U3-c：Ridge--Eikonal D1--D4 メトリック補正
-（$N=128$，円界面 $R=0.25$）．$\alpha=1$ の一様格子で $D_k$ 全零；
-$\alpha=1.5,\,2.0$ で $D_4$ のみが $O(10^{-11})$ で活性化
-（D1--D3 は $\sigma_{\eff} / \eps_{\mathrm{local}} / h$ の振幅幅に対する
-量で機械零域）．本実験では $f = \psi$ が滑らかなため D1--D3 は
-発火せず，D4（連鎖律補正）が単独で機能していることを示す．}
+\caption{U3-c：Ridge--Eikonal D1--D4 メトリック補正}
 \label{tab:U3_ridge_metrics}
+\PaperCaptionNote{$N=128$，円界面 $R=0.25$．$\alpha=1$ の一様格子で $D_k$ 全零；$\alpha=1.5,\,2.0$ で $D_4$ のみが $O(10^{-11})$ で活性化（D1--D3 は $\sigma_{\eff} / \eps_{\mathrm{local}} / h$ の振幅幅に対する量で機械零域）．本実験では $f = \psi$ が滑らかなため D1--D3 は発火せず，D4（連鎖律補正）が単独で機能していることを示す．}
 \centering\small
 \begin{tabular}{r c c c c}
 \toprule
@@ -128,11 +120,9 @@ $D_4$ は両 $\alpha$ で $O(10^{-11})$ と一桁上に位置し，連鎖律 $\m
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u3_nonuniform_spatial_suite}
-\caption{U3：非一様格子 空間離散精度．
-$\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD face value/grad slope $4.00 / 4.09$；
-Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．
-}
+\caption{U3：非一様格子 空間離散精度}
 \label{fig:ch12_u3}
+\PaperCaptionNote{$\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD face value/grad slope $4.00 / 4.09$； Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}

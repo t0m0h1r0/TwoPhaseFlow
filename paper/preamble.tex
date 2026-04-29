@@ -94,6 +94,9 @@
   \renewcommand{\arraystretch}{0.92}%
 }
 \AtBeginEnvironment{table}{\centering\PaperTableSetup}
+\newcommand{\PaperCaptionNote}[1]{%
+  \caption*{\footnotesize\RaggedRight #1}%
+}
 
 % -- Page layout --
 \geometry{reset, a4paper, top=25mm, bottom=28mm, left=26mm, right=26mm, headheight=16pt, footskip=20pt}

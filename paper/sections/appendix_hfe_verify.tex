@@ -26,8 +26,9 @@ $\phi = x - 0.5$（界面 $x = 0.5$），
 
 \begin{table}[htbp]
 \centering
-\caption{1 次元場延長の格子収束（$L^\infty$ 誤差）：風上差分と Hermite}
+\caption{1 次元場延長の格子収束}
 \label{tab:field_extension_convergence}
+\PaperCaptionNote{$L^\infty$ 誤差で風上差分と Hermite を比較する．}
 \begin{tabular}{rrrcrrc}
 \toprule
  & \multicolumn{2}{c}{風上差分（Aslam 2004）} & & \multicolumn{2}{c}{最近接点 Hermite} & \\
@@ -66,8 +67,9 @@ $\phi = \sqrt{(x - 0.5)^2 + (y - 0.5)^2} - 0.25$
 
 \begin{table}[htbp]
 \centering
-\caption{2 次元 HFE の格子収束（$L^\infty$ 誤差，円形界面 $R = 0.25$）}
+\caption{2 次元 HFE の格子収束}
 \label{tab:hfe_2d_convergence}
+\PaperCaptionNote{$L^\infty$ 誤差，円形界面 $R = 0.25$．}
 \begin{tabular}{rrrr}
 \toprule
 $N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
@@ -83,11 +85,9 @@ $N$ & $h$ & $L^\infty$ 誤差 & 次数 \\
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\linewidth]{figures/hfe_convergence}
-\caption{HFE 場延長の格子収束．
-(a) 1 次元テスト：Hermite は $N=32$--$128$ で $\Ord{h^7}$ の収束を示す．
-(b) 2 次元テスト：テンソル積逐次補間は $N\le128$ で高次収束し，
-$N=256$ では丸め・補間誤差床の影響を受ける．}
+\caption{HFE 場延長の格子収束}
 \label{fig:hfe_convergence}
+\PaperCaptionNote{(a) 1 次元テスト：Hermite は $N=32$--$128$ で $\Ord{h^7}$ の収束を示す． (b) 2 次元テスト：テンソル積逐次補間は $N\le128$ で高次収束し， $N=256$ では丸め・補間誤差床の影響を受ける．}
 \end{figure}
 
 表~\ref{tab:hfe_2d_convergence} および図~\ref{fig:hfe_convergence}(b) に示すように，

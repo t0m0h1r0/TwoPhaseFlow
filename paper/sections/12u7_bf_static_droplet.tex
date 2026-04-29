@@ -43,14 +43,9 @@ $\mu$ を含む全 face 量を統一的に扱うため，
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption{U7-a：BF 静止液滴 1 ステップ圧力跳び再現．
-$N=32$ では under--resolved（$\Delta p$ 相対誤差 93\%）；
-$N \ge 64$ で 2\% 以下，$N=128$ で 0.6\% に到達．
-parasitic velocity $\|u\|_\infty$ は $N=64$ で $7.6\times 10^{-5}$，
-$N=128$ で $3.0\times 10^{-5}$．
-N=32 → 64 は under-resolved $\to$ resolved 遷移で見かけ上 $\Ord{h^{4.5}}$，
-N=64 → 128 で漸近的に $\Ord{h^{1.4}}$（緩収束；CSF curvature の評価誤差律速）．}
+\caption{U7-a：BF 静止液滴 1 ステップ圧力跳び再現}
 \label{tab:U7_bf}
+\PaperCaptionNote{$N=32$ では under--resolved（$\Delta p$ 相対誤差 93\%）； $N \ge 64$ で 2\% 以下，$N=128$ で 0.6\% に到達． parasitic velocity $\|u\|_\infty$ は $N=64$ で $7.6\times 10^{-5}$， $N=128$ で $3.0\times 10^{-5}$． N=32 → 64 は under-resolved $\to$ resolved 遷移で見かけ上 $\Ord{h^{4.5}}$， N=64 → 128 で漸近的に $\Ord{h^{1.4}}$（緩収束；CSF curvature の評価誤差律速）．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -74,11 +69,9 @@ $N=64\!\to\!128$ slope $1.34 \approx \Ord{h^{1.4}}$：CSF curvature 評価誤差
 \end{table}
 
 \begin{table}[!ht]
-\caption{U7-b：face $\mu$ 補間 $L_\infty$ 誤差（$\mu_l/\mu_g = 100$,
-界面非整合グリッド）．算術平均と VoF 重み付けは同等 ($\Ord{h^2}$)．
-調和平均は係数のみ大きいが収束次数は同じ ($\Ord{h^2}$)．
-3 種ともジャンプ条件下で安定．}
+\caption{U7-b：face $\mu$ 補間誤差}
 \label{tab:U7_face_mu}
+\PaperCaptionNote{$\mu_l/\mu_g = 100$，界面非整合グリッドで $L_\infty$ 誤差を測る．算術平均と VoF 重み付けは同等 ($\Ord{h^2}$)．調和平均は係数のみ大きいが収束次数は同じ ($\Ord{h^2}$)．3 種ともジャンプ条件下で安定．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -98,22 +91,17 @@ $512$ & $0.0020$    & $0.457$ & $1.18$   & $0.457$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u7_bf_static_droplet}
-\caption{U7：BF 静止液滴 1 ステップ + face $\mu$ 補間．
-$N=128$ で BF 結合の Young--Laplace 跳び $\Delta p = \sigma/R$ 再現誤差 $0.6\%$；
-face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h^2}$，slope $\approx 1.9$．}
+\caption{U7：BF 静止液滴 1 ステップ + face $\mu$ 補間}
 \label{fig:ch12_u7}
+\PaperCaptionNote{$N=128$ で BF 結合の Young--Laplace 跳び $\Delta p = \sigma/R$ 再現誤差 $0.6\%$； face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h^2}$，slope $\approx 1.9$．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch12_u7_parasitic_vortex.pdf}
-\caption{U7：1 NS ステップ後の寄生流れ場（流線図，$N=128$）．
-左：Match (CCD 圧力 + CCD $\nabla\psi$，$\|u\|_\infty \approx 3.0\times 10^{-5}$)，
-右：Mismatch (CCD 圧力 + FD2 $\nabla\psi$，$\|u\|_\infty \approx 3.2\times 10^{-5}$)．
-赤円は界面 $\psi = 0.5$．BF 結合は両配置とも 4 回対称の寄生渦輪を
-$\Ord{10^{-5}}$ 程度に抑え，1-step 指標では match/mismatch の判別力が低いという
-本節の主張を視覚的に補強する．}
+\caption{U7：寄生流れ場}
 \label{fig:ch12_u7_parasitic}
+\PaperCaptionNote{1 NS ステップ後，流線図，$N=128$．左：Match (CCD 圧力 + CCD $\nabla\psi$，$\|u\|_\infty \approx 3.0\times 10^{-5}$)，右：Mismatch (CCD 圧力 + FD2 $\nabla\psi$，$\|u\|_\infty \approx 3.2\times 10^{-5}$)．赤円は界面 $\psi = 0.5$．BF 結合は両配置とも 4 回対称の寄生渦輪を $\Ord{10^{-5}}$ 程度に抑え，1-step 指標では match/mismatch の判別力が低いという本節の主張を視覚的に補強する．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}
