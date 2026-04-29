@@ -405,14 +405,14 @@ def make_figures(results: dict) -> None:
 
     cats = []; vals = []; bar_colors = []
     for r in rows_a1:
-        cats.append(f"α1\nN{r['N']}")
+        cats.append(f"N={r['N']}")
         vals.append(r["volume_drift"])
         bar_colors.append("C0")
     ax_v.bar(cats, vals, color=bar_colors)
-    ax_v.set_ylabel("|ΔV|/V0")
+    ax_v.set_ylabel("mass drift  |ΔV|/V0")
     ax_v.set_yscale("log"); ax_v.axhline(5e-3, color="k", linestyle="--", alpha=0.6,
-                                          label="pass: 5e-3")
-    ax_v.set_title("V10: volume drift after 1 rev"); ax_v.legend(fontsize=8)
+                                          label="pass: 0.5% mass drift")
+    ax_v.set_title("V10-a: mass drift (Olsson--Kreiss corr.)"); ax_v.legend(fontsize=8)
 
     save_figure(fig, OUT / "V10_zalesak_uniform",
                 also_to=PAPER_FIGURES / "ch13_v10_zalesak")
