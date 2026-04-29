@@ -1,0 +1,12 @@
+{
+  "branch": "worktree-ra-researcharchitect-retry-20260429",
+  "branch_slug": "worktree-ra-researcharchitect-retry-20260429",
+  "session_id": "2DA9B6DD-0E82-436E-9436-849343E08615",
+  "worktree_path": ".claude/worktrees/ra-researcharchitect-retry-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-RESEA",
+  "acquired_at": "2026-04-29T08:25:03Z",
+  "expires_at": "2026-04-30T08:25:03Z",
+  "meta_version": "7.1.0",
+  "scope": "ResearchArchitect retry: PaperCompiler clean LaTeX build with zero errors and warnings"
+}
