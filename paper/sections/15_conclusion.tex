@@ -212,6 +212,113 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 高密度比下の圧力ジャンプ整合性（V8 静止液滴 $|\Delta p_\mathrm{rel}|=2.6\%$ @ $N=96$）を同時に達成している．
 
 % ═══════════════════════════════════════════════════════════════════════════════
+\subsection{達成成果のサマリ}
+\label{sec:achievements_summary}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿の三本柱設計は，単体検証（第\ref{sec:numerical_integrity}章）・統合検証
+（第\ref{sec:verification}章）・物理ベンチマーク（第\ref{sec:validation}章）
+の三段階で実証されている．以下に headline 成果を要約する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{単体検証 U1--U9 の総括}
+% ─────────────────────────────────────────────────────────────────────────────
+
+第\ref{sec:numerical_integrity}章の単体検証は 9 スイート 24 サブテストから構成され，
+集計（表~\ref{tab:U_summary}）は \textbf{21\,\checkmark + 2\,$\triangle$ + 1\,$\bullet$，$\times$ ゼロ}である．
+
+\begin{description}
+  \item[U1（CCD 演算子群；§\ref{sec:U1_ccd_suite}）：]
+        CCD 内点 $\Ord{h^{6.0}}$，DCCD ナイキスト除去 $|H(\pi)|=0$（機械精度），
+        FCCD 面値・面勾配 $\Ord{h^{4.00/4.00}}$，UCCD6 スーパー収束 $\Ord{h^{7.00}}$ を実証．
+  \item[U2（CCD-Poisson PPE 境界条件；§\ref{sec:U2_ccd_poisson_ppe_bc}）：]
+        production 設定で $\Ord{h^{5.72}}$，欠陥補正 DC k=3 で $\Ord{h^{6.90}}$ を達成．
+  \item[U3（非一様格子上の空間離散；§\ref{sec:U3_nonuniform_suite}）：]
+        非一様 CCD $\Ord{h^{5.98}}$，FCCD $\Ord{h^{4.00/4.09}}$，
+        GCL 機械零（$7.5\times 10^{-14}$），Ridge--Eikonal D1--D4 機械零を確認．
+  \item[U4（Ridge--Eikonal 再初期化；§\ref{sec:U4_ridge_eikonal_reinit}）：]
+        Godunov Eikonal + DGR で $\varepsilon_\mathrm{eff}/\varepsilon_* = 2.0\to 1.0000033$ の
+        SDF 距離関数品質回復を実証．
+  \item[U5（Heaviside / $\delta_\varepsilon$ モーメント；§\ref{sec:U5_heaviside_delta}）：]
+        $\int H_\varepsilon\,dx$ と $\int \delta_\varepsilon\,dx$ のモーメント残差が機械精度 floor に到達．
+  \item[U6（分相 PPE + HFE + DC；§\ref{sec:U6_split_ppe_dc_hfe}）：]
+        分相 PPE + DC 残差 $7\times 10^{-6}$，HFE Hermite 場延長
+        1D $\Ord{h^{5.91}}$，2D max $\Ord{h^{11.35}}$ med $\Ord{h^{8.72}}$ を達成．
+  \item[U7（BF 静止液滴；§\ref{sec:U7_bf_static_droplet}）：]
+        Laplace 圧力誤差 $0.61\%$ @ $N=128$，
+        面 $\mu$ 補間（harmonic / arithmetic / log）の収束 slope $1.91/1.81/1.91$．
+  \item[U8（時間積分；§\ref{sec:U8_time_integration}）：]
+        TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，
+        CN ADI $\Ord{\Delta t^{2.0}}$．3 層粘性 split は条件付き $\triangle$．
+  \item[U9（DCCD-on-pressure 禁止の反証；§\ref{sec:U9_dccd_pressure_prohibition}）：]
+        圧力に対する DCCD 適用は固有モード比 $10^{5}$--$3\times 10^{8}$ で
+        圧力場を破壊するため禁止が成立（$\bullet$，研究上の反例として記録）．
+\end{description}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{統合検証 V1--V10 の総括}
+% ─────────────────────────────────────────────────────────────────────────────
+
+第\ref{sec:verification}章の統合検証は 10 実験から構成され，
+集計（表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary}）は $\times$ ゼロを維持している．
+主張支持実験（V1/V2/V3/V5/V6/V8/V10-c）の headline は以下：
+
+\begin{description}
+  \item[V3（静止液滴 long-term）：]
+        $|\Delta p_\mathrm{rel}| = 0.97\%$ @ $N=128$．Laplace 圧力跳びの長期維持を確認．
+  \item[V5（寄生流れ multistep；§\ref{sec:spurious_multistep}）：]
+        CCD/FD 比 $1/5.9$ @ $\rho_r=1$, $N=32$．CCD は寄生流れ抑制に有効．
+  \item[V6（密度比 sweep；§\ref{sec:density_ratio_sweep}）：]
+        $|\Delta p_\mathrm{corr}|/(\sigma/r) = 1.07\times 10^{-1}$ @ $\rho_r=833$, $N=32$．
+        分相 PPE + DC + HFE が高密度比でも機能することを実証．
+  \item[V8（非一様格子 NS 静止液滴；§\ref{sec:zalesak_cls_advection} 関連）：]
+        $|\Delta p_\mathrm{rel}| = 2.6\%$ @ $N=96$．非一様 D1--D4 と FCCD の整合を確認．
+  \item[V9（local-$\varepsilon$ §\ref{sec:validation} stack 条件付）：]
+        $C/A = 0.11$ @ $N=32$．空間可変 $\varepsilon(\bx)$ の §\ref{sec:validation} 適用条件を確定．
+  \item[V10-b/c（Zalesak / 単一渦反転）：]
+        Zalesak $\alpha=2$ 体積ドリフト $0.030\%$ @ $N=128$，
+        単一渦反転 $L_1 = 2.424\times 10^{-3}$ / mass drift $0.979\%$．CLS 移流の保存性を実証．
+\end{description}
+
+条件付き $\triangle$ の 5 件（V1-b 時間 slope 1.00 fractional-step 律速，
+V2-a Kovasznay CCD 3.95 pressure BC 律速，V4 Galilean 残差 0.21
+固定壁 + 固定 gauge 律速，V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
+V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 重心 0.34）は，
+いずれも \textbf{制約条件下では設計通り}という解釈で記録され，
+今後の高次拡張への定量的ベースラインを与えている．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{物理ベンチマーク §\ref{sec:validation} の検証成果}
+% ─────────────────────────────────────────────────────────────────────────────
+
+第\ref{sec:validation}章の物理ベンチマーク 3 種（毛管波・気泡上昇・Rayleigh--Taylor）は，
+古典理論・既往 DNS との定量比較で受入基準を満たした
+（集計：表~\ref{tab:ch14_summary}）．
+
+\begin{description}
+  \item[毛管波（§\ref{sec:val_capillary}）：]
+        線形分散関係 $\omega^2 = \sigma k^3/(\rho_l + \rho_g)$ を Prosperetti~\cite{Prosperetti1981}
+        参照と比較し，位相・周期が許容誤差内で一致．
+        体積保存 $|\Delta V|/V_0 = \Ord{10^{-4}}$（Popinet~\cite{Popinet2009} 慣行値以下），
+        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界を遵守．
+  \item[気泡上昇（§\ref{sec:val_rising_bubble}）：]
+        Hysing ら~\cite{Hysing2009} の単一気泡幾何アーキタイプを再現．
+        体積保存 $|\Delta V|/V_0 = \Ord{10^{-4}}$，重心 $y_c(t)$ 単調上昇，
+        平均上昇速度の漸近，Francois ら~\cite{Francois2006} 類概念に基づく浮力分解の閉包確認，
+        Aland--Voigt~\cite{AlandVoigt2019} diffuse-interface 対応 benchmark との整合．
+  \item[Rayleigh--Taylor 不安定（§\ref{sec:val_rayleigh_taylor}）：]
+        $\mathrm{At}=0.0256$, $k=4\pi$ で線形成長率
+        $\gamma \approx 1.78\,\mathrm{s^{-1}}$（Chandrasekhar~\cite{Chandrasekhar1961}
+        古典理論）を $0 < t < 3/\gamma$ 線形窓で再現．
+        $T=7$ で非線形 mushroom 領域に到達（Tryggvason~\cite{Tryggvason2011} DNS 規約），
+        Tryggvason~\cite{Tryggvason1988} 低 Atwood DNS との定量比較で整合．
+\end{description}
+
+これら 3 ベンチマークの成功により，
+三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）の物理的有効性が
+本稿で完結したと宣言できる．
+
+% ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}
 \label{sec:future_work}
 % ═══════════════════════════════════════════════════════════════════════════════
