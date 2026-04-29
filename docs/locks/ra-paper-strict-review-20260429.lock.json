@@ -1,0 +1,12 @@
+{
+  "branch": "ra-paper-strict-review-20260429",
+  "branch_slug": "ra-paper-strict-review-20260429",
+  "session_id": "0D3240C7-81DE-48BC-A943-7A52744008AE",
+  "worktree_path": ".claude/worktrees/ra-paper-strict-review-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-PAPER",
+  "acquired_at": "2026-04-29T10:15:26Z",
+  "expires_at": "2026-04-30T10:15:26Z",
+  "meta_version": "7.1.0",
+  "scope": "whole-paper strict reviewer audit focused on figures, captions, prose, headings, and formatting consistency"
+}
