@@ -292,10 +292,10 @@ PPE の収束誤差は速度補正 $\bu^{n+1} = \bu^* - (\Delta t/\rho)\bnabla(\
 $\Delta t \sim 10^{-2}$ では $\varepsilon_\mathrm{tol} \leq 10^{-6}$，
 $\Delta t \sim 10^{-3}$ では $\varepsilon_\mathrm{tol} \leq 10^{-8}$ が目安となる．
 \textbf{推奨：} $\varepsilon_\mathrm{tol} = \Delta t^2 \times 10^{-2}$（$\Delta t$ 依存の適応設定）
-または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合に十分）．
+または固定値 $\varepsilon_\mathrm{tol} = 10^{-8}$（$\Delta t \sim 10^{-3}$ 以上の場合の出発点）．
 なお，CCD の $\Ord{h^6}$ 空間精度を線形代数レベルで発現させるには $\varepsilon_\mathrm{tol} \ll h^6$ が
 理論上の必要条件だが，NS シミュレーションでは時間精度 $\Ord{\Delta t^2}$ が支配的であり
-いずれの設定も十分である（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
+最終的な設定は外側残差と物理量収束で確認する（表~\ref{tab:ppe_methods} 脚注 $\dagger$ 参照）．
 \end{tcolorbox}
 
 \begin{tcolorbox}[resultbox, title={最適仮想時間刻み $\Delta\tau$ の理論（詳細：付録 §\ref{sec:dtau_derive}）}]
@@ -354,9 +354,9 @@ $C_\tau = 1 \sim 5$ は全領域一様のグローバル係数であり，
   = \frac{C_\tau\,\rho_{i,j}\,h^2}{2} \cdot \frac{1}{\rho_{i,j}}
   = \frac{C_\tau\,h^2}{2} \quad (\text{全セルで一定})
 \end{equation*}
-となり，密度依存性が完全に打ち消される．
-この均等化により，気体相・液体相を問わず各セルが同一の「規格化仮想時間刻み」で更新され，
-全領域の残差がほぼ均等なペースで減衰する．
+となり，理想化した局所線形モデルでは密度依存性が打ち消される．
+この均等化により，気体相・液体相を問わず各セルを同一の「規格化仮想時間刻み」で更新することを狙う．
+実際の減衰速度は係数勾配，境界条件，分割誤差にも依存する．
 
 \textbf{グローバル公式との整合性：}
 一様密度（$\rho_{i,j} = \rho_l$）では式~\eqref{eq:dtau_lts} は
@@ -366,7 +366,7 @@ $C_\tau \approx 0.416$ に相当する範囲で両式は整合する（\ref{box:
 
 \textbf{$C_\tau$ の動的増大：}
 反復初期は $C_\tau$ を小さめ（$C_\tau = \mathcal{O}(1)$）に設定して安定性を確保し，
-残差が十分に減少した後に段階的に増大させると定常解への到達を劇的に早める．
+残差が十分に減少した後に段階的に増大させると定常解への到達を早める場合がある．
 $\Delta\tau_{i,j}$ が陰的 Euler（式~\eqref{eq:pseudo_implicit_raw}）に基づく限り，
 線形モデル上の安定性は保たれやすいが，$C_\tau$ を大きくすると分割誤差フロアや
 係数非一様性による停滞が生じ得る（\ref{warn:ppe_splitting} 参照）．
