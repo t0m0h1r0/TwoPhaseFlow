@@ -54,7 +54,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
-from twophase.levelset.reinitialize import Reinitializer
+from twophase.levelset.heaviside import apply_mass_correction
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -74,8 +74,8 @@ SINGLE_VORTEX_N = 96
 SINGLE_VORTEX_ALPHA = 2.0
 SINGLE_VORTEX_T = 8.0
 SINGLE_VORTEX_PHASE_DIVISIONS = 32
-SINGLE_VORTEX_REINIT_EVERY = 10
-SINGLE_VORTEX_REINIT_METHOD = "ridge_eikonal"
+SINGLE_VORTEX_MASS_REINIT_EVERY = 10
+SINGLE_VORTEX_REINIT_METHOD = "mass_correction"
 
 
 def _slotted_disk_phi(X, Y) -> np.ndarray:
@@ -113,6 +113,13 @@ def _fccd_advect(psi_h, u, v, ls_adv, backend, dt):
     u_dev = backend.to_device(u)
     v_dev = backend.to_device(v)
     out = ls_adv.advance(psi_dev, [u_dev, v_dev], dt, clip_bounds=(1e-12, 1.0 - 1e-12))
+    return np.asarray(backend.to_host(out))
+
+
+def _mass_reinitialize(psi_h, backend, dV, mass_target: float):
+    """Apply CLS mass correction only, without geometric reinitialization."""
+    psi_dev = backend.to_device(psi_h)
+    out = apply_mass_correction(backend.xp, psi_dev, dV, mass_target)
     return np.asarray(backend.to_host(out))
 
 
@@ -232,20 +239,15 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     phase_psi = [psi_h.copy()]
 
     ls_adv = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
-    reinit = Reinitializer(
-        backend, grid, ccd, eps,
-        n_steps=4,
-        method=SINGLE_VORTEX_REINIT_METHOD,
-        mass_correction=True,
-    )
+    dV = grid.cell_volumes()
     t = 0.0
     reinit_count = 0
     for step in range(n_steps):
         t_mid = t + 0.5 * dt
         u, v = _single_vortex_velocity(X_h, Y_h, t_mid, SINGLE_VORTEX_T)
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
-        if (step + 1) % SINGLE_VORTEX_REINIT_EVERY == 0:
-            psi_h = np.asarray(backend.to_host(reinit.reinitialize(backend.to_device(psi_h))))
+        if (step + 1) % SINGLE_VORTEX_MASS_REINIT_EVERY == 0:
+            psi_h = _mass_reinitialize(psi_h, backend, dV, V0)
             reinit_count += 1
         t += dt
         if (step + 1) % steps_per_snapshot == 0:
@@ -261,7 +263,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "reinit_every": SINGLE_VORTEX_REINIT_EVERY,
+        "reinit_every": SINGLE_VORTEX_MASS_REINIT_EVERY,
         "reinit_count": reinit_count,
         "reinit_method": SINGLE_VORTEX_REINIT_METHOD,
         "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
