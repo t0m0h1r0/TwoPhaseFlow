@@ -19,24 +19,35 @@ V1--V10 で評価する
 前章の U 系列（単体 component verification）とは実験目的と判定基準を分ける．
 
 \paragraph{判定の読み方．}
-本章では，\checkmark を「設計通りに確認できた結果」，
-$\triangle$ を「物理的説明はつくが検証目的に対して条件付きの結果」，
+本章では，\checkmark を「設計通り（あるいは文献根拠で再定義した revised criterion）に対して合格した結果」，
+$\triangle$ を「物理的・文献的説明はつくが検証目的に対して条件付きの結果」，
 $\times$ を「本稿の保証範囲外または設計未達」とする．
-V1-b/V2/V4 は §\ref{sec:error_budget} で判定基準を見直し，
-それぞれ standard PPE $O(\Delta t)$，Kovasznay wall residual $O(h^4)$，
-fixed-wall offset residual $O(\|\bm U\|)$ に対する合格へ再分類した．
+V1-b/V2/V4 は §\ref{sec:error_budget} で当初の理想化基準
+（AB2 単体 2 次，CCD 内点 6 次，厳密 Galilean ゼロ残差）から，
+\textbf{各実装縮約実験の identity に対する文献根拠付き revised criterion} に判定基準を見直し，
+それぞれ \emph{standard projection の $O(\Delta t)$ 律速}~\cite{Chorin1968,BrownCortezMinion2001,Guermond2006},
+\emph{wall one-sided CCD 境界閉包による global compact pollution の $O(h^4)$
+基準}~\cite{Lele1992,VisbalGaitonde2002},
+\emph{固定 Eulerian + no-slip 壁での原理的 $O(\|\bm U\|)$
+bound}~\cite{LeVeque1996,DoneaHuerta2003} に対する合格へ再分類した．
+これは「合格基準を恣意的に緩めた」結果ではなく，
+連続方程式レベルの設計次数と実装縮約実験の identity との差を
+文献根拠で分離した結果である．
 V1-a / V1-b / V2 / V3 / V4 / V5 / V6 / V8 は主張を支持する結果である．
-V7（二相 IMEX-BDF2 coupled-stack slope $1.58$ — §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動），
-V10-a（$\alpha=1$ Zalesak），
-V10-b（$T=8$ 単一渦 reversal）は条件付き結果である．
+V7（二相 IMEX-BDF2 coupled-stack slope $1.58$ — §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動；
+TVD--RK3 (3 次) と IMEX-BDF2 (2 次) の Lie 演算子分離は 1 次 splitting 誤差を生む~\cite{Strang1968,HoldenKarlsenLieRisebro2010}
+ため，coupled-stack 実効 slope の理論的下限は $1$ 程度であり，
+観測値 $1.58$ はこの下限を実質上回る），
+V10-a（$\alpha=1$ Zalesak — slot 解像度律速の sharp-corner CLS 移流~\cite{Zalesak1979,OlssonKreiss2005};
+Type-B 修正（\S\ref{sec:zalesak_cls_advection} 内 mass correction 採用）後の再評価値で判定する），
+V10-b（$T=8$ 単一渦 reversal — Rider--Kothe 1998 標準
+$T=2$~\cite{LeVeque1996,RiderKothe1998} より重い stress-test 領域での
+形状復元診断；filament 厚 $< h$ に到達する sub-grid 構造は固定一様格子では
+原理的に追跡不能~\cite{EnrightFedkiwFerzigerMitchell2002}）は条件付き結果である．
 V9（局所 $\varepsilon$）は §14 stack と同時に使う条件付き採用結果として扱う．
 残る $\triangle$ は，格子不足だけでなく operator splitting，norm 選択，
 参照解品質，reinitialization cadence，非可逆な形状復元を含む多軸仮説として扱い，
-追加検証なしに合格化しない．
-V10-a は一様格子上でも slot 解像度に律速されるため，
-薄い幾何特徴に対する条件付き結果として扱う．
-V10-b は界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を用い，mass drift を $0.0936\%$ に抑えるが，
-強変形後の形状復元誤差がなお残るため条件付き結果として扱う．
+本稿では理論的下限を超えた合格化を試みない．
 本章ではこれらを隠さず，アルゴリズムの適用範囲を定めるための検証結果として扱う．
 
 \paragraph{V1--V10 の設計指針．}
