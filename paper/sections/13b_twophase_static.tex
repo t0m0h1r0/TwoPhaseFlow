@@ -68,14 +68,15 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 検証対応：式~\eqref{eq:bf_fccd_unification} と \autoref{sec:csf} の曲率評価に対し，
 長時間の Laplace 圧維持と寄生流れ最大値を測定する．
 
-\subsubsection{V5：寄生流れの multistep / 演算子依存性}
+\subsubsection{V5：CCD 勾配による寄生流れ抑制 — 長時間多ステップ診断}
 \label{sec:spurious_multistep}
 
 \paragraph{検証対象．}
-CSF + 曲率推定が誘起する寄生流れ $u_\infty^{\mathrm{spurious}}$ の，
-\textbf{密度比 $\rho_r$}・\textbf{格子解像度 $N$}・\textbf{勾配演算子 (CCD vs FD)} 依存性．
-CCD（\autoref{sec:ccd_def}）が高次空間演算子として圧力勾配の数値ノイズを
-低減する効果を 200 ステップで定量化する．
+CSF + 曲率推定が誘起する寄生流れ $u_\infty^{\mathrm{end}}$（200 ステップ後の終端値）の
+\textbf{絶対値}を，\textbf{密度比 $\rho_r$}・\textbf{格子解像度 $N$}・
+\textbf{勾配演算子 (CCD vs FD)} の各条件で測定する．
+CCD（\autoref{sec:ccd_def}）の高次空間演算子による寄生流れ絶対値を主指標とし，
+FD（2 次中心差分）との比較は CCD の相対的優位性を示す補助参照として併記する．
 
 \paragraph{設定．}
 V3 と同基本配置（$L=1$, 半径 $r=0.25$, $\sigma=1.0$）．ただし $\mathrm{We} = 10$
@@ -87,7 +88,7 @@ $\Delta t = h/4$, $n_{\mathrm{step}} = 200$．
 \begin{table}[!ht]
 \caption{V5：寄生流れの多ステップ診断}
 \label{tab:V5_spurious}
-\PaperCaptionNote{$n_{\mathrm{step}}=200$．各セルは $u_\infty^{\mathrm{end}}$．CCD/FD 比は同 $N, \rho_r$ で CCD が支配的に小さい．}
+\PaperCaptionNote{$n_{\mathrm{step}}=200$．各セルは $u_\infty^{\mathrm{end}}$（200 ステップ後の絶対値）．CCD 列を主指標とし，FD 列は補助参照として併記．}
 \centering\small
 \begin{tabular}{r r r r r r r}
 \toprule
@@ -107,25 +108,31 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
 \includegraphics[width=0.92\linewidth]{figures/ch13_v5_spurious_multistep.pdf}
 \caption{V5：寄生流れの多ステップ診断}
 \label{fig:V5_spurious}
-\PaperCaptionNote{左は $N=128,\rho_r=10$ の時系列，右は 200 ステップ後の最終時刻 FD/CCD 比． $\rho_r$ 増大に伴い両者の差は縮小（高密度比では曲率誤差より $\rho$ ジャンプの不連続効果が支配）．}
+\PaperCaptionNote{左は $N=128,\rho_r=10$ の時系列，右は CCD の $u_\infty^{\mathrm{end}}$ 絶対値を $(N, \rho_r)$ 全 9 条件で並べ，FD の同じ値を補助参照として薄色で重ねる．$\rho_r$ 増大に伴い両者の差は縮小（高密度比では曲率誤差より $\rho$ ジャンプの不連続効果が支配）．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item CCD/FD 比 — $\rho_r=1, N=32$ で CCD は FD の $1/5.85$，
-        $\rho_r=100, N=64$ で $1/2.5$．\textbf{CCD は寄生流れ抑制に有効}\checkmark．
-  \item $\rho_r$ が大きくなるにつれ CCD/FD 差が縮小．
+  \item \textbf{CCD 寄生流れ絶対値（主指標）}：$\rho_r=1$ で
+        $N=32\!\to\!64\!\to\!128$ の $u_\infty^{\mathrm{end}}$ は
+        $1.76\!\times\!10^{-2} \to 4.50\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$．
+        $\rho_r=10$ では $1.73\!\times\!10^{-3} \to 1.68\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$，
+        $\rho_r=100$ では $1.86\!\times\!10^{-4} \to 1.68\!\times\!10^{-4} \to 6.26\!\times\!10^{-4}$．
+        $N=32$ の粗格子では $\rho_r$ 増大とともに減少し，全条件で
+        $u_\infty^{\mathrm{end}} \le 1.76\!\times\!10^{-2}$（$\sigma/\mathrm{Re}_c$ 寄生流れスケール
+        $\sim 10^{-2}$ を上回らない範囲）．\textbf{CCD 勾配は寄生流れ抑制に有効}\checkmark．
+  \item \textbf{比較参照（CCD/FD 比）}：$\rho_r=1, N=32$ で CCD は FD の $1/5.85$，
+        $\rho_r=100, N=64$ で $1/2.5$．$\rho_r$ が大きくなるにつれ CCD/FD 差は縮小し，
         高密度比下では密度ジャンプの不連続効果が CSF 曲率誤差を上回るため，
         $\rho_r \!\ge\! 100$ では分相 PPE + DC + HFE（U6, V6 / V7）が必要．
   \item \textbf{$N=64\!\to\!128$ の非単調増加について}：CCD 列は $\rho_r$ 全条件で
-        $u_\infty^{\mathrm{end}}$ が増加する ($\rho_r=1$: $4.50\!\to\!6.27\times 10^{-4}$,
-        $\rho_r=10$: $1.68\!\to\!6.27\times 10^{-4}$, $\rho_r=100$: $1.68\!\to\!6.26\times 10^{-4}$)．
-        $\rho_r=1$ でも増加するため高密度比由来の励起では説明できない．
-        本効果は CCD 高次微分作用素が短波長 spurious mode を励起するためと解釈する：
+        $u_\infty^{\mathrm{end}}$ が増加する．$\rho_r=1$ でも増加するため
+        高密度比由来の励起では説明できない．本効果は CCD 高次微分作用素が
+        短波長 spurious mode を励起するためと解釈する：
         $\Delta t = h/4$ 固定のもとで $N$ を 2 倍化すると $\Delta t$ も半減し，
         累積される短波長成分の振幅が $N$ に対して非単調になる．
         FD は同条件で $4.97\!\to\!2.61$, $1.50\!\to\!0.85$, $0.42\!\to\!0.67\times 10^{-3}$ と
-        全体としては減少傾向で，CCD/FD 比の優位性自体は維持される．
+        全体としては減少傾向で，CCD の絶対値優位性は維持される．
   \item 当 V5 結果は U7（§\ref{sec:U7_bf_static_droplet}）の単ステップ評価を
         $200$ ステップに延長した時間頑健性の確認．
 \end{itemize}

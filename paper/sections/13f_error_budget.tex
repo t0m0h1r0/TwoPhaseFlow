@@ -47,7 +47,7 @@ V1-b & 単相 TGV 時間 (standard PPE) & slope($E_{\mathrm{rel}}, \Delta t$) & 
 V2 & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{3.95}$ \checkmark & wall residual $O(h^4)$ \\
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$ & $0.97\%$ & — \\
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\mathrm{end}}$ & $2.07\times 10^{-1}$ \checkmark & $O(\|\bm U\|)$ \\
-V5   & 寄生流れ multistep (CCD/FD) & CCD/FD 比 at $\rho_r=1, N=32$ & $1/5.85$ & — \\
+V5   & 寄生流れ multistep (CCD/FD) & CCD $u_\infty^{\mathrm{end}}$ at $\rho_r=1, N=32$ & $1.76\!\times\!10^{-2}$ \checkmark（FD 比 $1/5.85$ 補助） & — \\
 V6   & 密度比 sweep ($\rho_r{=}2..833$) & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ & $1.07\!\times\!10^{-1}$ ($\rho_r{=}833$, $N{=}32$; 補正圧) \checkmark & — \\
 V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ Lie-split 下限 $\sim 1$ 上回り) & $O(\Delta t^2)$ \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.75\%$ \checkmark & — \\
@@ -70,8 +70,10 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
   \item \textbf{界面表現誤差}．Heaviside--$\delta$ の local $\varepsilon$ は
         FCCD/HFE/pressure-jump PPE と同時に使う条件で有効（V9）；
         旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
-  \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配が全表ケースで FD 以下となり，
-        粗格子・低密度比ほど寄生流れの抑制が大きい．
+  \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配の
+        $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $\sigma/\mathrm{Re}_c$ 寄生流れスケール
+        $\sim 10^{-2}$ を上回らず，参照として FD 値を全条件で下回る．
+        粗格子・低密度比ほど CCD/FD の差は大きい．
   \item \textbf{CLS 形状追跡誤差（質量保存軸 vs 形状精度軸の分離）}．V10 の Zalesak は
         $\alpha=1$ の一様格子診断に固定する．Olsson--Kreiss mass correction~\cite{OlssonKreiss2005}
         を 10 step ごとに適用した結果，$N=128$ で mass drift $6.13\times 10^{-4}\%$（合格基準
@@ -121,9 +123,11 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
   \item 非一様格子：$\alpha>1$ の NS 静止問題と local $\varepsilon$ は V8/V9 で検証し，
         Zalesak slot と単一渦 reversal は $\alpha=1$ の一様格子 CLS 移流診断に固定する．
         local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
-  \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
-        代表的には $\rho_r=1,N=32$ で FD の $1/5.85$，
-        $\rho_r=100,N=64$ で $1/2.5$．高解像度・高密度比では差が縮小する．
+  \item 寄生流れ抑制：CCD の $u_\infty^{\mathrm{end}}$ 絶対値は V5 全表ケースで
+        $\sigma/\mathrm{Re}_c$ 寄生流れスケール $\sim 10^{-2}$ を超えず，代表的には
+        $\rho_r=1,N=32$ で $1.76\!\times\!10^{-2}$，$\rho_r=1,N=128$ で $6.27\!\times\!10^{-4}$．
+        参照として FD 値を全条件で下回り（$\rho_r=1,N=32$ で $1/5.85$，
+        $\rho_r=100,N=64$ で $1/2.5$），高解像度・高密度比では CCD/FD 差が縮小する．
 \end{itemize}
 \paragraph{検証対応の統合．}
 本節は V1--V10 全結果の横断統合点である．各実験が測定した式・離散化・物理指標の対応を

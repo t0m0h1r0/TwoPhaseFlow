@@ -180,20 +180,28 @@ def make_figures(results: dict) -> None:
     ax_t.set_title("Spurious current trajectory (N=128, ρ=10)")
     ax_t.legend()
 
-    # FD/CCD final-time ratio bars across (N, ρ), matching the paper table.
+    # CCD u_inf^end absolute (primary) with FD as a lighter side-reference.
     cats = []
-    ratios = []
+    ccd_vals = []
+    fd_vals = []
     for N in (32, 64, 128):
         for r in (1, 10, 100):
             ccd = runs.get(f"N{N}_r{r}_ccd")
             fd = runs.get(f"N{N}_r{r}_fd")
-            if ccd and fd and ccd["u_inf_final"] > 0:
+            if ccd and fd:
                 cats.append(f"N{N}\nρ={r}")
-                ratios.append(fd["u_inf_final"] / ccd["u_inf_final"])
-    ax_b.bar(cats, ratios, color="C2")
-    ax_b.set_ylabel("final FD / final CCD")
-    ax_b.set_title("FD/CCD final-time ratio")
+                ccd_vals.append(ccd["u_inf_final"])
+                fd_vals.append(fd["u_inf_final"])
+    x = np.arange(len(cats))
+    width = 0.4
+    ax_b.bar(x - width / 2, ccd_vals, width, color="C0", label="CCD (primary)")
+    ax_b.bar(x + width / 2, fd_vals, width, color="C3", alpha=0.35,
+             label="FD (side ref.)")
+    ax_b.set_xticks(x); ax_b.set_xticklabels(cats)
+    ax_b.set_ylabel(r"$\|u\|_\infty^{\mathrm{end}}$")
+    ax_b.set_title("CCD spurious-current absolute (FD side reference)")
     ax_b.set_yscale("log")
+    ax_b.legend(fontsize=8)
 
     save_figure(fig, OUT / "V5_spurious_multistep_ccd_vs_fd",
                 also_to=PAPER_FIGURES / "ch13_v5_spurious_multistep")
