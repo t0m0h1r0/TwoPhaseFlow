@@ -21,7 +21,7 @@
 \begin{table}[!ht]
 \caption{V1--V10：統合精度まとめ}
 \label{tab:v_accuracy_summary}
-\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．}
+\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．\textbf{主要指標欄は判定キー指標 1 種のみを集約}（複数主指標を持つ V3/V8/V9 等は本表で代表値を 1 種，表~\ref{tab:V_summary} で全観測指標を参照）．}
 \centering
 \PaperTableDenseSetup
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
@@ -114,8 +114,12 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
   \item V6, V7 (\autoref{sec:density_ratio_sweep},
         \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
         DC + HFE に対する密度比安定性と二相時間精度．
-  \item V8, V9, V10 (\autoref{sec:nonuniform_grid_ns}) — 非一様 NS + local
-        $\varepsilon$ + CLS 移流に対する静止液滴，局所 $\varepsilon$ 比較，体積保存性．
+  \item V8 (\autoref{sec:nonuniform_ns_static}) — 非一様 NS に対する静止液滴
+        $\Delta p_{\mathrm{rel}}$ 維持．
+  \item V9 (\autoref{sec:local_eps_validation}) — local $\varepsilon$ に対する
+        寄生流れ抑制と体積分率 drift．
+  \item V10 (\autoref{sec:zalesak_cls_advection}) — CLS 移流に対する mass drift と
+        反転誤差．
 \end{itemize}
 本節 \autoref{tab:v_accuracy_summary} はこの全対応の精度結果を一表に集約する
 唯一の総合表であり，他章 (\autoref{sec:conclusion}) からの参照は

@@ -103,12 +103,12 @@ U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
 U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
 U1-c & FCCD face value/grad（周期評価）& $4$ & $4.00 / 4.00$ & \checkmark \\
 U1-d & UCCD6 d1                & $6$ & $7.00$（super） & \checkmark \\
-U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
+U2-a & Poisson MMS（DC $k=1,2,3$） & $2/4/7$ & $2.00 / 4.18 / 6.90$ & \checkmark \\
 U2-b & Production CCD-PPE + Dirichlet パッチ & $6$ & $5.72$ & \checkmark \\
 U3-a & CCD 非一様 d1 + GCL    & $6$ & $5.98$，GCL $2.13\!\times\!10^{-13}$ & \checkmark \\
 U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
-U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & $D_4 \le 4.5\!\times\!10^{-11}$ & \checkmark \\
-U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & $9.16\!\times\!10^{-3}$ & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & \shortstack[l]{$D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（丸め床）\\$D_4 \le 4.5\!\times\!10^{-11}$ at $\alpha\!=\!1.5$} & \checkmark \\
+U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & \shortstack[l]{$n_\tau\!=\!20$: $2.19\!\times\!10^{-2}$\\$n_\tau\!=\!100$: $9.16\!\times\!10^{-3}$} & \checkmark \\
 U4-b & DGR バンド厚補正         & $|r{-}1| < 0.05$ & $3.3\!\times\!10^{-6}$ & \checkmark \\
 U5-a & $\delta_\eps$ モーメント & Richardson 残差床 & $1.64\!\times\!10^{-11}$（$\eps=1.5h$） & \checkmark \\
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & $c{=}2,\,N{=}128$: $1.83\!\times\!10^{-14}$ & \checkmark \\

@@ -92,14 +92,15 @@ $\times$（不合格）は本章では該当なし．主要結果：
   \item \textbf{空間（非一様）：}CCD $\Ord{h^{5.98}}$，
         FCCD face value/grad $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
         GCL は $2.13 \times 10^{-13}$ 機械精度（閾値 $3\!\times\!10^{-13}$ 内），
-        Ridge--Eikonal $D_1$--$D_3$ は機械零，連鎖律補正 $D_4$ のみ
+        Ridge--Eikonal $D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（最大 $D_1\!=\!4.3\!\times\!10^{-14}$ at $\alpha\!=\!1.5$；倍精度丸め床），連鎖律補正 $D_4$ のみ
         $\alpha\!=\!1.5$ で $4.5\!\times\!10^{-11}$（最大），$\alpha\!=\!2$ で $2.9\!\times\!10^{-11}$．
   \item \textbf{界面：}Godunov Eikonal reinit は band 残差を
         $n_\tau=20$ で $2.19\times10^{-2}$，$n_\tau=100$ で $9.16\times10^{-3}$ へ減衰し，
         DGR は $\eps_{\eff}/\eps^\star = 2.0 \to 1.0000033$ を達成．
-        $\delta_\varepsilon$ は 0 次モーメント saturation $\Ord{10^{-11}}$
-        （$\eps=1.5h$ 配置の Richardson 残差床；U5-b の $c=2$ では $1.83\!\times\!10^{-14}$ に到達）；
-        1 次モーメントは $\varepsilon=1.5h$ 配置で $h^{11}$ 相当の超収束（$N=128$ で saturation）．
+        $\delta_\varepsilon$ は 0 次・1 次モーメントとも $\eps=1.5h$ 配置で
+        $N\!\le\!64$ 域で $h^{11}$ 相当の超収束を示し，$N\!\ge\!128$ で
+        Richardson 残差床 $\Ord{10^{-11}}$ へ saturation
+        （$M_1 = M_0/2$ の比例関係；U5-b の $c=2$ では $1.83\!\times\!10^{-14}$ に到達）．
   \item \textbf{圧力ソルバ：}lumped--PPE は高密度比 $\rho_l=1000$ で $p\approx0.79$ に律速し，
         分相 PPE への切替動機を与える．HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
         2D band は完全テンソル混合微分により低次化が消え，max $11.35$ / med $8.72$ の
