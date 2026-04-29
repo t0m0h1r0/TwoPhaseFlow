@@ -40,7 +40,7 @@ V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ 
 V9   & local $\varepsilon$ (§14) & C/A at $N=32$ & $0.11\times$ ($\checkmark$) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $1.535\%$ ($\triangle$ slot 解像度限界) & — \\
 V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $0.030\%$ / $0.34$ ($\triangle$ centroid 弱収束) & — \\
-V10-c& 単一渦 reversal ($\alpha=2, N=96, T=8$) & $L^1$ reversal / mass drift & $5.168\times10^{-2}$ / $34.68\%$ ($\triangle$ 強変形診断) & — \\
+V10-c& 単一渦 reversal ($\alpha=2, N=96, T=8$) & $L^1$ reversal / mass drift & $5.856\times10^{-2}$ / $0.4268\%$ ($\triangle$ 強変形診断) & — \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -73,7 +73,8 @@ V10-c& 単一渦 reversal ($\alpha=2, N=96, T=8$) & $L^1$ reversal / mass drift 
         V4 (固定 Eulerian + 参照点固定 PPE で $O(\|\bm U\|)$ 残差),
         V7 (二相 coupled-stack 実効 slope $1.58$ — 純粋 BDF2 2 次には未達だが旧 reduced proxy slope $0.56$ より大幅改善),
         V10-a ($\alpha=1$ Zalesak: volume drift $1.535\%$, centroid err $4.69\times 10^{-3}$),
-        V10-c ($T=8$ 単一渦 reversal: 巻き込みは成立するが mass drift $34.68\%$).
+        V10-c ($T=8$ 単一渦 reversal: Ridge--Eikonal により mass drift $0.4268\%$,
+        $L^1$ reversal $5.856\times10^{-2}$).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動済）.
   \item \checkmark \textbf{§14 stack 条件付き合格}: V9
         (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
