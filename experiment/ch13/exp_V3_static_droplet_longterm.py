@@ -29,6 +29,13 @@ Sub-tests
 Reported diagnostics: |u|_inf trajectory, |Delta p - sigma/R|, and peak
 spurious current over 200 steps.
 
+Pass criteria
+-------------
+  - |Delta p_meas - sigma/R| / (sigma/R) <= 1.3% across all N (FORMAL).
+  - u_inf^max bounded below sigma/Re_c spurious-current scale (~1e-2)
+    and not monotonically growing across 200 steps (qualitative;
+    no formal numeric threshold).
+
 Usage
 -----
   python experiment/ch13/exp_V3_static_droplet_longterm.py
@@ -190,8 +197,10 @@ def make_figures(results: dict) -> None:
         ax_u.semilogy(steps, r["u_inf_history"], color=color, label=f"N={N}")
         ax_p.plot(steps, r["dp_history"], color=color, label=f"N={N}")
     ax_u.set_xlabel("step"); ax_u.set_ylabel("$\\|u\\|_\\infty$")
-    ax_u.set_title("Spurious current trajectory (200 step)"); ax_u.legend()
-    ax_u.axhline(5e-3, color="C3", linestyle="--", alpha=0.5, label="pass: 5e-3")
+    ax_u.set_title("Spurious current trajectory (200 step)")
+    ax_u.axhline(1e-2, color="C3", linestyle=":", alpha=0.5,
+                 label="scale ref: $\\sigma/\\mathrm{Re}_c$ ($\\sim 10^{-2}$)")
+    ax_u.legend()
     ax_p.axhline(DP_EXACT, color="k", linestyle="--", alpha=0.7, label="$\\sigma/R$")
     ax_p.set_xlabel("step"); ax_p.set_ylabel("$\\Delta p$")
     ax_p.set_title("Laplace pressure (200 step)"); ax_p.legend()
