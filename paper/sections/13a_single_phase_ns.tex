@@ -67,6 +67,17 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \label{fig:V1_tgv}
 \end{figure}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/ch13_v1_tgv_vorticity.pdf}
+\caption{V1：TGV 渦度場 $\omega = \partial_x v - \partial_y u$ のスナップショット
+（$N=64$，周期境界，CCD 微分）．
+左から $t=0$，$t=T/2$，$t=T$．Taylor--Green の 4 渦対 checkerboard 構造が
+粘性減衰により振幅を失っていく様子を直接可視化する．
+共有カラースケールは 99 パーセンタイルから対称取得．}
+\label{fig:V1_tgv_vorticity}
+\end{figure}
+
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 現 V1 は FFT spectral projection ではなく，CCD 微分 + PPEBuilder 射影を用いるため，
