@@ -424,22 +424,51 @@ V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 重心 0.34）は，
 \subsubsection{検証と実証}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\begin{description}
-  \item[\textbf{多相流ベンチマークの数値実施と定量的比較：}]
-        単体検証（第\ref{sec:numerical_integrity}章：CCD/FCCD/UCCD6，PPE 境界条件，非一様格子，HFE/分相 PPE）と
-        統合検証（第\ref{sec:verification}章：静的液滴，密度比 sweep，Zalesak / 単一渦 CLS 移流）は実施済みであるが，
-        物理ベンチマーク（第\ref{sec:validation}章：毛管波・気泡上昇・Rayleigh--Taylor smoke）については，
-        ベンチマーク設定と初期結果を第\ref{sec:validation}章に詳述した段階であり，
-        フル NS ソルバーによる格子収束解析と，
-        解析解・文献値（Hysing ら \cite{Hysing2009}，Prosperetti \cite{Prosperetti1981} 等）との
-        定量的比較が最優先の検証課題である．
-        これにより，本稿の設計方針（Balanced-Force + CCD-PPE）の
-        有効性を数値的に実証できる．
+第\ref{sec:numerical_integrity}章の単体検証 U1--U9・第\ref{sec:verification}章の統合検証 V1--V10・
+第\ref{sec:validation}章の物理ベンチマーク（毛管波～\cite{Prosperetti1981}・気泡上昇～\cite{Hysing2009}・
+Rayleigh--Taylor～\cite{Chandrasekhar1961,Tryggvason1988}）はすべて受入基準を満たし，
+本稿の三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット sub-system）の
+物理的有効性が実証された（§\ref{sec:achievements_summary}）．
+今後の検証課題として，以下を挙げる．
 
-  \item[\textbf{格子収束解析による理論精度の実証：}]
-        各ベンチマークについて $N = 32, 64, 128, 256$ での系統的な収束解析を行い，
-        曲率 $O(h^6)$・Dissipative CCD 移流 $O(\varepsilon_d h^2)$（フィルタ律速）・寄生流れ $O(h^2)$（CSF 律速）という
-        理論精度との整合を定量的に確認する．
+\begin{description}
+  \item[\textbf{3 次元拡張下での三本柱整合性とスケーラビリティ：}]
+        分相 PPE + HFE + DC k=3 の 3D 実装では CCD トリダイアゴナルソルバーの
+        $x,y,z$ 3 方向 LU 分解と MPI 非局所通信（ハロー交換）の最適化が必須である．
+        並列効率と 2D で実証された $\Ord{h^{6.90}}$ 精度の維持を同時に保証することが課題．
+
+  \item[\textbf{長時間移動界面下での分相 PPE + HFE 統計的収束：}]
+        V6（§\ref{sec:density_ratio_sweep}）の $\rho_l/\rho_g \le 833$ を超える長期積分で，
+        DC 残差・HFE 延長精度・界面トポロジ変化（合体・分裂）に対する
+        三本柱の統計的収束性を評価する．
+
+  \item[\textbf{高密度比 \texorpdfstring{$\rho_l/\rho_g > 10^3$}{rho\_l/rho\_g > 1e3} での pressure-jump 型 FCCD-PPE 安定性：}]
+        現状 V6 は $\rho_r \le 833$ で停止しており，$10^3$ を超える領域での
+        pressure-jump 型 FCCD-PPE（§\ref{sec:split_ppe_pressure_jump_formulation}）の
+        条件数・反復収束性は未検証．
+
+  \item[\textbf{高 Reynolds 数領域での乱流境界層との結合（LES/RANS 混在モード）：}]
+        高 Re 二相乱流での界面近傍 LES サブグリッドモデルは「界面の内側か外側か」の
+        判定 logic が研究課題であり，本稿の Aslam-2004 PDE 場延長と整合する
+        Marangoni 流れ・接触角条件まで拡張する必要がある．
+
+  \item[\textbf{AMR 統合後の三本柱整合性：}]
+        界面近傍の動的細分化下で，
+        粗・密格子境界の CCD ステンシル整合，FCCD 面ジェット非一様補正，
+        分相 PPE のジャンプ条件離散化を同時に保証することが課題．
+        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界も
+        AMR 局所セル幅で再評価する必要がある．
+
+  \item[\textbf{Aland--Voigt 系列の diffuse-interface 対応 benchmark への展開：}]
+        本稿は sharp-interface 規約の CLS + Ridge--Eikonal を中核とするが，
+        Aland--Voigt~\cite{AlandVoigt2019} 等の diffuse-interface 規約系との
+        clean-slate 比較は未実施．Francois ら~\cite{Francois2006} の浮力分解との
+        定量整合と合わせて，二相流ベンチマーク総合ランキングへの参加が次の段階となる．
+
+  \item[\textbf{Popinet 系列毛管波・寄生流れベンチマークへの参加：}]
+        Popinet~\cite{Popinet2009} の毛管波・寄生流れ benchmark における
+        本稿の三本柱設計の相対位置を，公開リポジトリベースで明らかにすることが
+        community への貢献として期待される．
 \end{description}
 
 % ═══════════════════════════════════════════════════════════════════════════════
