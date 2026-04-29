@@ -17,13 +17,13 @@ Hamilton--Jacobi PDE $\partial_\tau \phi + \mathrm{sgn}(\phi)(|\nabla\phi|-1) = 
 single-shot FMM 型の距離再構成とは区別する．
 
 \paragraph{実装対応（script $\leftrightarrow$ production primitive）．}
-本 U4 の実体は \texttt{twophase.levelset.\allowbreak reinit\_eikonal\_godunov.\allowbreak godunov\_sweep}
-（Hamilton--Jacobi 擬似時間 sweep）と
-\texttt{twophase.levelset.\allowbreak reinit\_dgr.\allowbreak DGRReinitializer}（DGR 1 段補正）
-であり，名称が類似する \texttt{RidgeEikonalReinitializer}（single-shot FMM 型；
+本 U4 の実体は level-set 再初期化 primitive の
+\texttt{godunov\_sweep}（Hamilton--Jacobi 擬似時間 sweep）と
+\texttt{DGRReinitializer}（DGR 1 段補正）である．
+名称が類似する Ridge--Eikonal reinitializer（single-shot FMM 型；
 $n_\tau$ 反復ではなく ridge--extraction の \texttt{eps\_scale} で band 床に達する）
-は本 U4 の対象ではない．label \texttt{sec:U4\_ridge\_eikonal\_reinit} は章ファイル
-命名の歴史的経緯による artefact で，検証対象は上記 2 primitive である．
+は本 U4 の対象ではない．旧 U4 label と章ファイル名は歴史的経緯による
+artefact で，検証対象は上記 2 primitive である．
 
 \paragraph{設定．}
 2D 単一円界面 $\phi_0 = R^2 - (x-0.5)^2 - (y-0.5)^2$，$R = 0.25$，$N = 128$．

@@ -23,8 +23,10 @@
 slope は log-log fitting (3 点以上)；単一値はその設定での代表値．
 括弧内は主な誤差源．}
 \label{tab:v_accuracy_summary}
-\centering\scriptsize
-\begin{tabular}{l l l l l}
+\centering
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
 \toprule
 ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
 \midrule
@@ -39,10 +41,9 @@ V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathb
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.6\%$ \checkmark & — \\
 V9   & local $\varepsilon$ (§14) & C/A at $N=32$ & $0.11\times$ ($\checkmark$) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $1.535\%$ ($\triangle$ slot 解像度限界) & — \\
-V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $0.030\%$ / $0.34$ ($\triangle$ centroid 弱収束) & — \\
-V10-c& 単一渦 reversal ($\alpha=2, N=96$) & $L^1$ / mass drift & $3.32\!\times\!10^{-2}$ / $6.5\!\times\!10^{-9}$ ($\triangle$) & — \\
+V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift & $2.690\times10^{-2}$ / $9.360\times10^{-2}\%$ ($\triangle$ 強変形診断) & — \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \paragraph{誤差源スタック．}
@@ -57,27 +58,26 @@ V10-c& 単一渦 reversal ($\alpha=2, N=96$) & $L^1$ / mass drift & $3.32\!\time
         旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配が全表ケースで FD 以下となり，
         粗格子・低密度比ほど寄生流れの抑制が大きい．
-  \item \textbf{CLS 形状追跡誤差}．FCCD/TVD--RK3 では非一様格子 $\alpha=2$ の Zalesak volume drift は
-        $0.030\%$ まで収まる一方，centroid order は $0.34$ に留まる．
-        $\alpha=1$ では同一 $N=128$ で volume drift $1.535\%$ で，slot 解像度に律速される（V10）．
-        単一渦では Ridge--Eikonal と界面追従 grid 再構築を 10 step ごとに適用すると
-        mass drift は $6.486\times10^{-7}\%$ まで回復するが，
-        $L^1$ reversal error は $3.322\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
+  \item \textbf{CLS 形状追跡誤差}．V10 の Zalesak は $\alpha=1$ の一様格子診断に固定する．
+        同一 $N=128$ で volume drift $1.535\%$ であり，slot 解像度に律速される．
+        単一渦では界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると
+        mass drift は $9.360\times10^{-2}\%$ に収まり，
+        $L^1$ reversal error は $2.690\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
 \end{enumerate}
 
 \paragraph{合格判定要約．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \checkmark \textbf{合格}: V3 (BF 平衡)，V5 (CCD 寄生流れ抑制)，
         V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし)，
-        V8 (非一様静止), V10-b ($\alpha=2$ Zalesak: volume drift $0.030\%$).
+        V8 (非一様静止).
   \item $\triangle$ \textbf{条件付き合格}:
         V1-b (単相時間 slope $1.00$ — fractional-step 結合の設計制約; AB2/IMEX-BDF2 単体は 2 次設計),
         V2-a (Kovasznay 空間 slope $3.95$ — 設計 6 次に対し実効 4 次),
         V4 (固定 Eulerian + 参照点固定 PPE で $O(\|\bm U\|)$ 残差),
         V7 (二相 coupled-stack 実効 slope $1.58$ — 純粋 BDF2 2 次には未達だが旧 reduced proxy slope $0.56$ より大幅改善),
         V10-a ($\alpha=1$ Zalesak: volume drift $1.535\%$, centroid err $4.69\times 10^{-3}$),
-        V10-c ($T=8$ 単一渦 reversal: Ridge--Eikonal と界面追従 grid 再構築 10 step ごとで
-        mass drift $6.486\times10^{-7}\%$, $L^1$ reversal $3.322\times10^{-2}$).
+        V10-b ($T=8$ 単一渦 reversal: 界面追跡なし固定一様格子上で Ridge--Eikonal + 質量修正 10 step ごと，
+        mass drift $9.360\times10^{-2}\%$, $L^1$ reversal $2.690\times10^{-2}$).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動済）.
   \item \checkmark \textbf{§14 stack 条件付き合格}: V9
         (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；

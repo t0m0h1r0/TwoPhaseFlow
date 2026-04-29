@@ -261,7 +261,8 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 
 第\ref{sec:verification}章の統合検証は 10 実験から構成され，
 集計（表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary}）は $\times$ ゼロを維持している．
-主張支持実験（V1/V2/V3/V5/V6/V8/V10-c）の headline は以下：
+主張支持・条件付き採用実験（V1/V2/V3/V5/V6/V8/V9）の headline と，
+条件付き CLS 移流ベースライン（V10-a/b）は以下：
 
 \begin{description}
   \item[V3（静止液滴 long-term）：]
@@ -275,15 +276,16 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         $|\Delta p_\mathrm{rel}| = 2.6\%$ @ $N=96$．非一様 D1--D4 と FCCD の整合を確認．
   \item[V9（local-$\varepsilon$ §\ref{sec:local_eps_validation}; §14 stack 条件付）：]
         $C/A = 0.11$ @ $N=32$．空間可変 $\varepsilon(\bx)$ の §\ref{sec:validation} 適用条件を確定．
-  \item[V10-b/c（Zalesak / 単一渦反転）：]
-        Zalesak $\alpha=2$ 体積ドリフト $0.030\%$ @ $N=128$，
-        単一渦反転 $L_1 = 3.322\times 10^{-2}$ / mass drift $6.486\times 10^{-7}\%$．CLS 移流の保存性を実証．
+  \item[V10-a/b（Zalesak / 単一渦反転）：]
+        Zalesak は $\alpha=1$ の一様格子で体積ドリフト $1.535\%$ @ $N=128$，
+        単一渦反転は $L_1 = 2.690\times 10^{-2}$ / mass drift $9.360\times10^{-2}\%$．
+        CLS 移流の条件付きベースラインを与える．
 \end{description}
 
 条件付き $\triangle$ の 5 件（V1-b 時間 slope 1.00 fractional-step 律速，
 V2-a Kovasznay CCD 3.95 pressure BC 律速，V4 Galilean 残差 0.21
 固定壁 + 固定 gauge 律速，V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
-V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 重心 0.34）は，
+V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
 いずれも \textbf{制約条件下では設計通り}という解釈で記録され，
 今後の高次拡張への定量的ベースラインを与えている．
 
