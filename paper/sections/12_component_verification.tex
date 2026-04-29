@@ -68,7 +68,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U6 = 一括 PPE の限界 + DC/HFE 単体挙動
         （§\ref{sec:varrho_ppe_limitation}，§\ref{sec:hfe}）．
   \item[Tier V（時間積分）]
-        U8 = TVD--RK3 / AB2 / CN--ADI 3 種積分子（§\ref{sec:time_int}）．
+        U8 = TVD--RK3 / AB2 / CN spectral 3 種積分子（§\ref{sec:time_int}）．
   \item[Tier VI（否定検証）]
         U9 = DCCD on pressure 禁止規則の根拠（§\ref{sec:bf_p2_adjoint}）．
   \item[Tier VII（界面--圧力結合の単発実験）]
@@ -108,7 +108,7 @@ U & 名称 & $p_{\mathrm{design}}$ & 実測 & 判定 \\
 \midrule
 U1-a & CCD 周期 d1/d2          & $6$ & $6.00 / 5.97$ & \checkmark \\
 U1-b & DCCD Nyquist 値          & exact & match & \checkmark \\
-U1-c & FCCD face value/grad（周期評価）& $6$（評価配置上 $4$） & $4.00 / 4.00$ & $\triangle$ \\
+U1-c & FCCD face value/grad（周期評価）& $4$ & $4.00 / 4.00$ & \checkmark \\
 U1-d & UCCD6 d1                & $6$ & $7.00$（super） & \checkmark \\
 U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
 U2-b & Production CCD-PPE + Dirichlet パッチ & $6$ & $5.72$ & \checkmark \\
@@ -124,7 +124,7 @@ U6-b & 一括 PPE 高密度比限界      & 既知劣化 & slope $\sim 0.79$ & $
 U6-c (1D) & HFE 1D step extension & $6$ & $5.91$ & \checkmark \\
 U6-c (2D) & HFE 2D band 診断    & 幾何込み条件付き & max $5.10$ \checkmark / med $3.21$ $\times$ & 部分合格 \\
 U7-a & BF 静止液滴 1-step（match）& $\Delta p \to \sigma/R$ & $0.61\%\,@N\!=\!128$ & \checkmark \\
-U7-a & BF mismatch one-step 指標 & match と同精度域 & $0.65\%\,@N\!=\!128$ & \checkmark \\
+U7-a & BF mismatch one-step 指標 & match と同精度域 & $0.646\%\,@N\!=\!128$ & \checkmark \\
 U7-b & face $\mu$ 補間           & $2$ & $1.91 / 1.81 / 1.91$ & \checkmark \\
 U8-a & TVD--RK3                & $3$ & $3.00$ & \checkmark \\
 U8-b & AB2                      & $2$ & $2.04$ & \checkmark \\
@@ -135,7 +135,7 @@ U9   & DCCD on pressure 禁止     & 違反量発散 & ratio $10^5 \to 3\!\times
 \end{tabular}
 \end{table}
 
-合格 20 件 ($\checkmark$) + 部分合格 1 件 + 条件付き合格 3 件 ($\triangle$) +
+合格 21 件 ($\checkmark$) + 部分合格 1 件 + 条件付き合格 2 件 ($\triangle$) +
 negation 成立 1 件 ($\bullet$) ／ 計 25 サブテスト（9 unit / 7 tier）．
 $\bullet$（U9）は表~\ref{tab:verification_summary} の \checkmark と同等の合格判定で，
 ``否定''（規則違反量が予測通り発散）の達成を区別表記したもの．
