@@ -22,12 +22,13 @@ V1--V10 で評価する
 本章では，\checkmark を「設計通りに確認できた結果」，
 $\triangle$ を「物理的説明はつくが検証目的に対して条件付きの結果」，
 $\times$ を「本稿の保証範囲外または設計未達」とする．
-V1/V2/V3/V5/V6/V8 は主張を支持する結果である一方，
-V4（固定壁・参照点ゲージ下の Galilean offset 残差），V10-a（$\alpha=1$ Zalesak），
-V10-b（$T=8$ 単一渦 reversal）は
-条件付き結果である．
-V7（二相時間次数）は
-設計未達または推奨外の結果として扱う．
+V1-a / V3 / V5 / V6 / V8 は主張を支持する結果である．
+V1-b（単相時間 fractional-step slope $1.00$），
+V2-a（Kovasznay 空間 slope $3.95$ — 設計 6 次に対し実効 4 次），
+V4（固定壁・参照点ゲージ下の Galilean offset 残差），
+V7（二相 IMEX-BDF2 coupled-stack slope $1.58$ — §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動），
+V10-a（$\alpha=1$ Zalesak），
+V10-b（$T=8$ 単一渦 reversal）は条件付き結果である．
 V9（局所 $\varepsilon$）は §14 stack と同時に使う条件付き採用結果として扱う．
 V10-a は一様格子上でも slot 解像度に律速されるため，
 薄い幾何特徴に対する条件付き結果として扱う．
