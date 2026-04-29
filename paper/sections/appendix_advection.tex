@@ -2,6 +2,9 @@
 %
 % 付録C: 移流スキームと安定性制約（§5-6 対応）
 
+\section{移流スキームと安定性制約}
+\label{app:advection_stability}
+
 %% C.1 (archived): WENO5 参照スキーム → _archived/
 %%   appendix_numerics_schemes_s2.tex (-127 LOC; 主実装は DCCD で WENO5 は参照のみ)
 
@@ -9,6 +12,6 @@
 \input{sections/appendix_stability_analysis}   %% フォン・ノイマン解析による CFL 上界導出
 
 %% C.3 安定性制約（毛管波 CFL + ALE 効果を統合）
-\section{安定性制約}
+\subsection{安定性制約}
 \label{app:stability_constraints}
 \input{sections/appendix_numerics_solver_s1}   %% C.3.1 毛管波 CFL + C.3.2 ALE 効果（統合）

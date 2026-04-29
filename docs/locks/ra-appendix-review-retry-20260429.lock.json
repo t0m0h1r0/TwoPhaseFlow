@@ -1,0 +1,12 @@
+{
+  "branch": "ra-appendix-review-retry-20260429",
+  "branch_slug": "ra-appendix-review-retry-20260429",
+  "session_id": "ACF87C91-90C4-49D3-BAA2-B5B0618C2FF2",
+  "worktree_path": ".claude/worktrees/ra-appendix-review-retry-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-APPEND",
+  "acquired_at": "2026-04-29T12:11:25Z",
+  "expires_at": "2026-04-30T12:11:25Z",
+  "meta_version": "7.1.0",
+  "scope": "strict reviewer audit of paper appendices, appendix cross-references, and reproducibility support"
+}

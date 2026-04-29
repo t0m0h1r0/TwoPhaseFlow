@@ -1,11 +1,12 @@
-\subsection{Thomas 三重対角係数の導出}
+\subsubsection{Thomas 三重対角係数の導出}
 \label{app:sweep_thomas_coeff}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本付録は §\ref{sec:defect_correction} で定義した欠陥補正法（式~\eqref{eq:defect_correction_linear}）において，
 左辺の有限差分演算子 $[\frac{1}{\Delta\tau}\mathbf{I} - \mathcal{L}_{FD}]$ を
 1方向 Thomas 法で求解するための三重対角係数を導出する．
-(\texttt{PPESolverSweep}，\texttt{ppe\_solver\_type="sweep"} の実装に対応．)
+スウィープ型前処理を採用する場合の係数表であり，現行標準の
+\texttt{PPESolverDefectCorrection} では base solver の選択に応じて参照する．
 
 \subsubsection*{変密度 FD 演算子の離散化}
 
@@ -113,7 +114,7 @@ PPE は Neumann BC のみでは定数不定（零空間）であるため，
   \item CCD 残差評価：$x$・$y$ 各方向 CCD 計算 — $\mathcal{O}(N_x N_y)$
 \end{itemize}
 1反復あたりの総計算量は $\mathcal{O}(N^2)$（$N = N_x = N_y$）であり，
-Krylov 法（GMRES 等，前処理なし）の1ステップと同オーダーだが，
+一般的な matrix-free 反復法の1ステップと同オーダーだが，
 Thomas 法の定数係数が小さく実測上の反復コストが低い．
 
 % ═══════════════════════════════════════════════════════════════════════════════

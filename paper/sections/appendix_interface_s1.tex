@@ -1,4 +1,4 @@
-\section{\texorpdfstring{$\psi \to \phi$}{ψ→φ} 逆変換におけるニュートン法の局所二次収束}
+\subsection{\texorpdfstring{$\psi \to \phi$}{ψ→φ} 逆変換におけるニュートン法の局所二次収束}
 \label{app:newton_quad_conv}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -19,12 +19,12 @@ $H_\varepsilon'(\phi)$ が小さすぎない局所区間内で反復が進む場
 
 以下では，上記の局所区間においてニュートン法が二次収束することを示す．
 
-\subsection*{前提}
+\subsubsection*{前提}
 
 $F(\phi) \equiv H_\varepsilon(\phi) - \psi_i = 0$ を根とする問題を考える．
 $\phi^*$ を真の解（$F(\phi^*)=0$），$e_k = \phi^{(k)} - \phi^*$ を第 $k$ 反復での誤差とする．
 
-\subsection*{二次収束の証明}
+\subsubsection*{二次収束の証明}
 
 テイラー展開より：
 \[
@@ -66,7 +66,7 @@ $\Ord{e_k^2}$ の寄与を吸収した主要項として）：
 \]
 が成立する．これはニュートン法の\textbf{二次収束}を示す．\qed
 
-\subsection*{実装上の含意}
+\subsubsection*{実装上の含意}
 
 飽和領域（$\psi \to 0,1$）では $H_\varepsilon'$ が小さくなり，
 Newton 更新は丸め誤差に敏感になる．
