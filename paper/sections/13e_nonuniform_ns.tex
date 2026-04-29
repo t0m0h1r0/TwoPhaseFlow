@@ -184,14 +184,14 @@ $N$ & $\alpha$ & centroid err & mass drift & $V_T/V_0$ \\
 
 \begin{table}[!ht]
 \caption{V10: 単一渦 deformation reversal（$N=96$, $\alpha=2$）．
-最大変形後に速度場を反転させ，$t=T$ で初期円盤へ戻るかを測る．}
+$T=8$ の強変形で速度場を反転させ，$t=T$ で初期円盤へ戻るかを測る．}
 \label{tab:V10_single_vortex}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
 $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 \midrule
-96 & 2 & $2.424\times 10^{-3}$ & $0.979\%$ & $0.9902$ \\
+96 & 2 & $5.168\times 10^{-2}$ & $34.68\%$ & $1.3468$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -220,9 +220,9 @@ $\alpha=2$ は $N=128$ で mass drift $0.030\%$ まで保つ一方，centroid er
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v10_single_vortex.pdf}
 \caption{V10：単一渦 deformation reversal の 2D スナップショット．
-初期円盤，最大変形時，反転後最終場を並べる．FCCD/TVD--RK3 は
-$L^1$ reversal error $2.424\times10^{-3}$ で初期形状を復元し，
-conservative CLS mass drift は $0.979\%$．}
+初期円盤，最大変形時，反転後最終場を並べる．$T=8$ の標準 single-vortex
+強変形では巻き込みは明瞭になる一方，$L^1$ reversal error は
+$5.168\times10^{-2}$，conservative CLS mass drift は $34.68\%$ に増大する．}
 \label{fig:V10_single_vortex}
 \end{figure}
 
@@ -231,7 +231,7 @@ conservative CLS mass drift は $0.979\%$．}
 \includegraphics[width=0.98\linewidth]{figures/ch13_v10_single_vortex_phase32.pdf}
 \caption{V10：単一渦 deformation reversal の 1 周期 32 分割可視化．
 $t/T=k/32$（$k=0,\ldots,32$）の節点を並べ，
-巻き込みから最大変形，巻き戻し，最終復元までの形状変化を連続的に確認する．}
+巻き込みから最大変形，巻き戻し，最終場までの形状変化を連続的に確認する．}
 \label{fig:V10_single_vortex_phase32}
 \end{figure}
 
@@ -242,8 +242,9 @@ $t/T=k/32$（$k=0,\ldots,32$）の節点を並べ，
   \item $\alpha=2$ (非一様格子)：§14 と同じ FCCD/TVD--RK3 条件では
         $N=128$ の mass drift は $0.030\%$ である．一方，centroid order は $0.34$ に留まり，
         slot 部の幾何追跡は条件付き（$\triangle$）．
-  \item 単一渦：$N=96,\alpha=2$ で conservative CLS mass drift は $0.979\%$，
-        $L^1$ reversal error $2.424\times10^{-3}$ → 可逆 deformation の視覚・定量検証に合格．
+  \item 単一渦：$N=96,\alpha=2,T=8$ で渦巻き状の強変形は視覚的に確認できる．
+        一方で conservative CLS mass drift は $34.68\%$，
+        $L^1$ reversal error は $5.168\times10^{-2}$ であり，復元・保存性は条件付き（$\triangle$）．
   \item \textbf{本論文の制約条件として明示}：
         本ソルバの非一様格子サポート ($\alpha > 1$) は
         \textbf{NS 静止問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で $\Delta p$ 誤差 $\le 5\%$)
