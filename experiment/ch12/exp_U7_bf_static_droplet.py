@@ -36,6 +36,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.curvature import CurvatureCalculator
 from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.simulation.visualization.plot_fields import streamlines_colored
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -150,22 +151,40 @@ def _u7a_run(N: int, mode: str, backend) -> dict:
         dp_meas = float("nan")
     dp_rel_err = abs(dp_meas - DP_EXACT) / DP_EXACT
     u_max = float(np.max(np.sqrt(u_new ** 2 + v_new ** 2)))
-    return {
+    out = {
         "N": N, "h": h, "mode": mode,
         "dp_meas": dp_meas,
         "dp_exact": DP_EXACT,
         "dp_rel_err": dp_rel_err,
         "u_max": u_max,
     }
+    if N == 128:
+        out["_u_field"] = u_new
+        out["_v_field"] = v_new
+        out["_psi_field"] = psi_h
+        out["_x1d"] = np.asarray(backend.to_host(grid.coords[0]))
+        out["_y1d"] = np.asarray(backend.to_host(grid.coords[1]))
+    return out
 
 
 def run_U7a():
+    """Run U7-a sub-test. Returns scalar rows AND a top-level field dict."""
     backend = Backend(use_gpu=False)
     rows = []
+    field_data: dict = {}
     for N in GRID_SIZES_A:
         for mode in ("match", "mismatch"):
-            rows.append(_u7a_run(N, mode, backend))
-    return {"oneshot": rows}
+            row = _u7a_run(N, mode, backend)
+            if N == 128:
+                # Extract 2D arrays for the parasitic-vortex figure (M2).
+                field_data.setdefault("x1d", row.pop("_x1d"))
+                field_data.setdefault("y1d", row.pop("_y1d"))
+                field_data.setdefault("psi", row.pop("_psi_field"))
+                field_data[f"u_{mode}"] = row.pop("_u_field")
+                field_data[f"v_{mode}"] = row.pop("_v_field")
+                field_data[f"u_max_{mode}"] = float(row["u_max"])
+            rows.append(row)
+    return {"oneshot": rows}, field_data
 
 
 # ── U7-b: ρ/μ face interpolation (1D plane interface) ───────────────────────
@@ -218,8 +237,10 @@ def run_U7b():
 # ── Aggregator + plotting ────────────────────────────────────────────────────
 
 def run_all() -> dict:
+    u7a, u7a_field = run_U7a()
     return {
-        "U7a": run_U7a(),
+        "U7a": u7a,
+        "U7a_field": u7a_field,
         "U7b": run_U7b(),
     }
 
@@ -257,6 +278,46 @@ def make_figures(results: dict) -> None:
     save_figure(fig, OUT / "U7_bf_static_droplet", also_to=PAPER_FIG)
 
 
+def make_parasitic_vortex_figure(results: dict) -> None:
+    """1×2 streamplot of parasitic current at N=128 (Match vs Mismatch).
+
+    Match (CCD/CCD) shows BF-consistent suppression; Mismatch (CCD/FD2) shows
+    the textbook parasitic vortex ring around the static droplet.
+    """
+    field = results.get("U7a_field")
+    if not field or "u_match" not in field:
+        return
+
+    x1d = np.asarray(field["x1d"])
+    y1d = np.asarray(field["y1d"])
+    psi = np.asarray(field["psi"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
+    for ax, mode, label in (
+        (axes[0], "match", "Match (CCD/CCD)"),
+        (axes[1], "mismatch", "Mismatch (CCD/FD2)"),
+    ):
+        u = np.asarray(field[f"u_{mode}"])
+        v = np.asarray(field[f"v_{mode}"])
+        u_max = float(field.get(f"u_max_{mode}", np.max(np.sqrt(u ** 2 + v ** 2))))
+        streamlines_colored(
+            ax, x1d, y1d, u, v,
+            cmap="viridis", density=1.6, linewidth=1.0,
+            contour_field=psi, contour_level=0.5,
+            contour_color="r", contour_lw=1.5,
+            min_speed=1e-14,
+        )
+        ax.set_title(rf"{label} — $\|u\|_\infty = {u_max:.2e}$", fontsize=11)
+        ax.set_xlabel("$x$"); ax.set_ylabel("$y$")
+    fig.suptitle("U7-a: parasitic current around static droplet (N=128, ρ_l/ρ_g=1000)", fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1.0, 0.95))
+    save_figure(
+        fig,
+        OUT / "U7_parasitic_vortex",
+        also_to=PAPER_FIG.parent / "ch12_u7_parasitic_vortex",
+    )
+
+
 def print_summary(results: dict) -> None:
     print("U7-a (BF Laplace pressure, 1-step):")
     for r in results["U7a"]["oneshot"]:
@@ -276,6 +337,7 @@ def main() -> None:
         results = run_all()
         save_results(NPZ, results)
     make_figures(results)
+    make_parasitic_vortex_figure(results)
     print_summary(results)
     print(f"==> U7 outputs in {OUT}")
 

@@ -29,6 +29,11 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ppe.ppe_builder import PPEBuilder
+from twophase.simulation.visualization.plot_fields import (
+    field_with_contour,
+    symmetric_range,
+)
+from twophase.simulation.visualization.plot_vector import compute_vorticity_2d
 from twophase.tools.experiment import (
     apply_style,
     compute_convergence_rates,
@@ -169,12 +174,64 @@ def _run(N: int, dt_target: float) -> dict:
     }
 
 
+def run_V1_snapshots() -> dict:
+    """Capture (u, v) and vorticity ω at t=0, T/2, T_final on N=TIME_N grid.
+
+    Used for the 1×3 vorticity snapshot figure (V1_tgv_vorticity.pdf).
+    Independent of `_run` to avoid contaminating the convergence sweeps.
+    """
+    backend = Backend(use_gpu=False)
+    N = TIME_N
+    _, ccd, ppe, h, X, Y = _setup(N, backend)
+    n_steps = max(1, int(np.ceil(T_FINAL / SPATIAL_DT)))
+    dt = T_FINAL / n_steps
+    half_step = n_steps // 2
+
+    u, v = _exact_velocity(0.0, X, Y)
+    u = _sync_periodic(u.copy())
+    v = _sync_periodic(v.copy())
+
+    omega_t0 = np.asarray(compute_vorticity_2d(u, v, ccd))
+    omega_thalf = None
+    rhs_prev = None
+    for k in range(n_steps):
+        rhs_u, rhs_v = _rhs(u, v, ccd, backend)
+        if rhs_prev is None:
+            u_star = u + dt * rhs_u
+            v_star = v + dt * rhs_v
+        else:
+            rhs_u_prev, rhs_v_prev = rhs_prev
+            u_star = u + dt * (1.5 * rhs_u - 0.5 * rhs_u_prev)
+            v_star = v + dt * (1.5 * rhs_v - 0.5 * rhs_v_prev)
+        u_star = _sync_periodic(u_star)
+        v_star = _sync_periodic(v_star)
+        u, v = _project(u_star, v_star, dt, ccd, ppe, backend)
+        rhs_prev = (rhs_u, rhs_v)
+        if k + 1 == half_step:
+            omega_thalf = np.asarray(compute_vorticity_2d(u, v, ccd))
+    omega_tfinal = np.asarray(compute_vorticity_2d(u, v, ccd))
+    if omega_thalf is None:
+        omega_thalf = omega_tfinal
+
+    return {
+        "x1d": X[:, 0],
+        "y1d": Y[0, :],
+        "omega_t0": omega_t0,
+        "omega_thalf": omega_thalf,
+        "omega_tfinal": omega_tfinal,
+        "t_half": T_FINAL * (half_step / n_steps),
+        "t_final": T_FINAL,
+    }
+
+
 def run_all() -> dict:
     spatial = [_run(N, SPATIAL_DT) for N in SPATIAL_N]
     temporal = [_run(TIME_N, dt) for dt in TIME_DT_TARGETS]
+    snapshots = run_V1_snapshots()
     return {
         "spatial": spatial,
         "temporal": temporal,
+        "snapshots": snapshots,
         "meta": {"T_final": T_FINAL, "nu": NU, "L": L},
     }
 
@@ -209,6 +266,44 @@ def make_figures(results: dict) -> None:
     )
 
 
+def make_vorticity_figure(results: dict) -> None:
+    """1×3 渦度スナップショット (t=0 / T/2 / T_final) — TGV 4 渦対の粘性減衰。"""
+    snap = results.get("snapshots")
+    if snap is None:
+        return
+    x1d = np.asarray(snap["x1d"])
+    y1d = np.asarray(snap["y1d"])
+    omegas = [
+        np.asarray(snap["omega_t0"]),
+        np.asarray(snap["omega_thalf"]),
+        np.asarray(snap["omega_tfinal"]),
+    ]
+    titles = [
+        r"$t = 0$",
+        rf"$t = {float(snap.get('t_half', T_FINAL / 2)):.3f}$",
+        rf"$t = {float(snap.get('t_final', T_FINAL)):.3f}$",
+    ]
+    vmax = symmetric_range(omegas, percentile=99)
+
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4))
+    im = None
+    for ax, omega, title in zip(axes, omegas, titles):
+        im = field_with_contour(
+            ax, x1d, y1d, omega,
+            cmap="seismic", vmin=-vmax, vmax=vmax,
+            title=title, xlabel="$x$", ylabel="$y$",
+        )
+    fig.suptitle(r"V1: Taylor--Green vortex — vorticity $\omega = \partial_x v - \partial_y u$", fontsize=12)
+    fig.tight_layout(rect=(0, 0, 0.92, 0.95))
+    cbar_ax = fig.add_axes([0.93, 0.18, 0.015, 0.66])
+    fig.colorbar(im, cax=cbar_ax, label=r"$\omega$")
+    save_figure(
+        fig,
+        OUT / "V1_tgv_vorticity",
+        also_to=PAPER_FIGURES / "ch13_v1_tgv_vorticity",
+    )
+
+
 def print_summary(results: dict) -> None:
     print("V1 (TGV with CCD spatial operators + PPE projection):")
     print("  spatial:")
@@ -238,6 +333,7 @@ def main() -> None:
         results = run_all()
         save_results(NPZ, results)
     make_figures(results)
+    make_vorticity_figure(results)
     print_summary(results)
     print(f"==> V1 outputs in {OUT}")
 
