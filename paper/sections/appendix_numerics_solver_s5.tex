@@ -10,7 +10,9 @@
 \label{app:dc_convergence_theory}
 
 本付録は §\ref{sec:defect_correction_main} で定義した欠陥補正法（式~\eqref{eq:dc_three_step}）の
-収束性を反復行列のスペクトル解析に基づいて理論的に保証する．
+収束性を反復行列のスペクトル解析に基づいて評価する．
+ここでの解析は $L_L$ と $L_H$ の固有ベクトル共有などの理想化仮定に基づくため，
+実装全域の収束保証ではなく，実験結果を解釈するための判定基準として用いる．
 
 \subsubsection*{反復行列のスペクトル半径}
 
@@ -113,8 +115,10 @@ $0.30$ & $0.28$ & $0.70$ & 合格（安全側） \\
 exp10\_18（§\ref{sec:verify_dc_spectral}）では $\omega \in \{0.3, 0.5, 0.7\}$ すべてで
 等密度（$\rho=1$）条件での収束を実験的に確認した（22--72 反復，tol=$10^{-8}$）．
 $\omega = 0.83$ は Nyquist 減衰率 $0.992 \approx 1$ となり停滞する．
-なお，$k = 3$ 反復で $\Ord{h^6}$ 精度に到達する（§\ref{sec:dc_iteration_accuracy}）理由は，
-直接 LU（\texttt{spsolve}）による Step~2 の厳密求解により1反復あたりの有効減衰が大きいためである．
+なお，等密度・smooth RHS の検証（§\ref{sec:dc_iteration_accuracy}）では，
+$k = 3$ 反復で $\Ord{h^6}$ 相当の収束が確認されている．
+これは直接 LU（\texttt{spsolve}）による Step~2 の厳密求解により
+1反復あたりの有効減衰が大きいためであり，変密度・界面問題へ無条件に外挿しない．
 
 \subsubsection*{緩和係数 $\omega$ の役割}
 
