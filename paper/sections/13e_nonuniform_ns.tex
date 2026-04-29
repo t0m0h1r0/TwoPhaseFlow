@@ -26,7 +26,7 @@ $\Delta t = 0.20\,h_{\min}$, $n_{\mathrm{step}} = 200$．
 \begin{table}[p]
 \caption{V8：非一様 NS 静止液滴（$n_{\mathrm{step}}=200$）}
 \label{tab:V8_nonuniform_static}
-\PaperCaptionNote{$\alpha=2$ では界面細密化で $\Delta p_{\mathrm{rel}}$ がやや悪化（数値ジオメトリ補正の交互作用）．}
+\PaperCaptionNote{$\alpha=2$ では界面細密化で $\Delta p_{\mathrm{rel}}$ がやや悪化（数値ジオメトリ補正の交互作用）． 本表の $\Delta p_{\mathrm{final}}$ は液滴中心 vs.\ 周囲流体の生圧力差（$\sigma/r=0.4$ が Young--Laplace 解析値）；判定指標 $\Delta p_{\mathrm{rel}}\!\equiv\!|\Delta p_{\mathrm{final}}-\sigma/r|/(\sigma/r)$ が表~\ref{tab:V_summary} の主要指標と同義．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -217,11 +217,13 @@ $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{合格判定の基準}：script の plot 合格参照ライン
-        (Volume drift；本論文の mass drift と同義；$< 5\!\times\!10^{-3}$, Centroid order $\ge 1.5$；
-         診断プロット上の guideline であり docstring 由来の正式 criterion ではない) に対し，
+  \item \textbf{合格判定の基準}：script (\texttt{exp\_V10\_cls\_advection\_nonuniform.py})
+        の plot 合格参照ライン (mass drift $< 5\!\times\!10^{-3}$, Centroid order $\ge 1.5$；
+         診断プロット上の guideline であり docstring 由来の正式 criterion ではない；
+         plot コードでは \texttt{Volume drift} ラベルが用いられるが，
+         incompressible CLS では mass drift と等価) に対し，
         本節で示す $\alpha=1$ 一様格子設定は $N=128$ で
-        mass drift $1.535\!\times\!10^{-2}$（基準を約 3 倍超過），
+        mass drift $1.535\%$（基準を約 3 倍超過），
         Centroid order $1.22$（基準未達）となるため，
         slot 解像度律速の緩収束領域として条件付き（$\triangle$）扱いとする．
         非一様格子 ($\alpha>1$) での Zalesak は本論文では検証範囲外とする．
