@@ -121,7 +121,8 @@ U5-a & $\delta_\eps$ モーメント & 機械精度床 & $1.6\!\times\!10^{-11}$
 U5-b & $\eps = c h$ 最適性        & $c \in [1.5,2]$ & 確認 & \checkmark \\
 U6-a & 一括 PPE DC $\omega$--収束 & 安定域有 & $\rho_l\!=\!1000$ best $7.0\!\times\!10^{-6}$ & \checkmark \\
 U6-b & 一括 PPE 高密度比限界      & 既知劣化 & slope $\sim 0.79$ & $\triangle$ \\
-U6-c & HFE 1D / 2D band          & $6$ / 幾何帯診断 & $5.91 / 11.35 / 8.72$ & \checkmark \\
+U6-c & HFE 1D step extension      & $6$ & $5.91$ & \checkmark \\
+U6-c & HFE 2D band 診断           & 幾何込み条件付き & max $11.35$ / med $8.72$ & \checkmark \\
 U7-a & BF 静止液滴 1-step（match）& $\Delta p \to \sigma/R$ & $0.61\%\,@N\!=\!128$ & \checkmark \\
 U7-a & BF mismatch one-step 指標 & match と同精度域 & $0.646\%\,@N\!=\!128$ & \checkmark \\
 U7-b & face $\mu$ 補間           & $2$ & $1.91 / 1.81 / 1.91$ & \checkmark \\
@@ -134,8 +135,8 @@ U9   & DCCD on pressure 禁止     & 違反量発散 & ratio $10^5 \to 3\!\times
 \end{tabular}
 \end{table}
 
-合格 21 件 ($\checkmark$) + 条件付き合格 2 件 ($\triangle$) +
-negation 成立 1 件 ($\bullet$) ／ 計 24 サブテスト（9 unit / 7 tier）．
+合格 22 件 ($\checkmark$) + 条件付き合格 2 件 ($\triangle$) +
+negation 成立 1 件 ($\bullet$) ／ 計 25 サブテスト（9 unit / 7 tier；U6-c は 1D / 2D 別行）．
 $\bullet$（U9）は表~\ref{tab:verification_summary} の \checkmark と同等の合格判定で，
 ``否定''（規則違反量が予測通り発散）の達成を区別表記したもの．
 個別の数値結果と評価は以下の Tier 節に分けて記述する．
