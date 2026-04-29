@@ -40,7 +40,7 @@ V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ 
 V9   & local $\varepsilon$ (§14) & C/A at $N=32$ & $0.11\times$ ($\checkmark$) & — \\
 V10-a& Zalesak ($\alpha=1$) & volume drift at $N=128$ & $1.535\%$ ($\triangle$ slot 解像度限界) & — \\
 V10-b& Zalesak ($\alpha=2$) & volume drift / centroid order & $0.030\%$ / $0.34$ ($\triangle$ centroid 弱収束) & — \\
-V10-c& 単一渦 reversal ($\alpha=1, N=96, T=8$) & $L^1$ reversal / mass drift & $4.426\times10^{-2}$ / $2.494\times10^{-1}\%$ ($\triangle$ 強変形診断) & — \\
+V10-c& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift & $2.690\times10^{-2}$ / $9.360\times10^{-2}\%$ ($\triangle$ 強変形診断) & — \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -60,9 +60,9 @@ V10-c& 単一渦 reversal ($\alpha=1, N=96, T=8$) & $L^1$ reversal / mass drift 
   \item \textbf{CLS 形状追跡誤差}．FCCD/TVD--RK3 では非一様格子 $\alpha=2$ の Zalesak volume drift は
         $0.030\%$ まで収まる一方，centroid order は $0.34$ に留まる．
         $\alpha=1$ では同一 $N=128$ で volume drift $1.535\%$ で，slot 解像度に律速される（V10）．
-        単一渦では固定一様格子上で Ridge--Eikonal を 10 step ごとに適用すると
-        mass drift は $2.494\times10^{-1}\%$ に収まり，
-        $L^1$ reversal error は $4.426\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
+        単一渦では界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると
+        mass drift は $9.360\times10^{-2}\%$ に収まり，
+        $L^1$ reversal error は $2.690\times10^{-2}$ であり，形状復元誤差は質量保存とは別に残る．
 \end{enumerate}
 
 \paragraph{合格判定要約．}
@@ -76,8 +76,8 @@ V10-c& 単一渦 reversal ($\alpha=1, N=96, T=8$) & $L^1$ reversal / mass drift 
         V4 (固定 Eulerian + 参照点固定 PPE で $O(\|\bm U\|)$ 残差),
         V7 (二相 coupled-stack 実効 slope $1.58$ — 純粋 BDF2 2 次には未達だが旧 reduced proxy slope $0.56$ より大幅改善),
         V10-a ($\alpha=1$ Zalesak: volume drift $1.535\%$, centroid err $4.69\times 10^{-3}$),
-        V10-c ($T=8$ 単一渦 reversal: 固定一様格子上で Ridge--Eikonal 10 step ごと，
-        mass drift $2.494\times10^{-1}\%$, $L^1$ reversal $4.426\times10^{-2}$).
+        V10-c ($T=8$ 単一渦 reversal: 界面追跡なし固定一様格子上で Ridge--Eikonal + 質量修正 10 step ごと，
+        mass drift $9.360\times10^{-2}\%$, $L^1$ reversal $2.690\times10^{-2}$).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動済）.
   \item \checkmark \textbf{§14 stack 条件付き合格}: V9
         (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
