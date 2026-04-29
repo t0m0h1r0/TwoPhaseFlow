@@ -192,7 +192,7 @@ $t=T$ で初期円盤へ戻るかを測る．}
 \toprule
 $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 \midrule
-128 & 1 & $2.690\times 10^{-2}$ & $9.360\times 10^{-2}\%$ & $1.0009$ \\
+128 & 1 & $2.690\times 10^{-2}$ & $0.0936\%$ & $1.0009$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -221,7 +221,7 @@ Zalesak の薄い slot は一様格子でも解像度律速であり，非一様
 \caption{V10：単一渦 deformation reversal の 2D スナップショット．
 初期円盤，最大変形時（$t=T/2$），反転後最終場（$t=T$）を並べる．$T=8$ の標準 single-vortex
 強変形では巻き込みは明瞭になり，界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると
-conservative CLS mass drift は $9.360\times10^{-2}\%$ に抑えられる．
+conservative CLS mass drift は $0.0936\%$ に抑えられる．
 $L^1$ reversal error は $2.690\times10^{-2}$ である．}
 \label{fig:V10_single_vortex}
 \end{figure}
@@ -238,7 +238,7 @@ $L^1$ reversal error は $2.690\times10^{-2}$ である．}
   \item $\alpha=1$ (一様格子)：$N=128$ で conservative CLS mass drift $1.535\%$，
         centroid err $4.688\times10^{-3}$ → $\triangle$．
   \item 単一渦：$N=128,\alpha=1,T=8$ の界面追跡なし固定一様格子で渦巻き状の強変形は視覚的に確認できる．
-        Ridge--Eikonal と質量修正（10 step ごと）で conservative CLS mass drift は $9.360\times10^{-2}\%$，
+        Ridge--Eikonal と質量修正（10 step ごと）で conservative CLS mass drift は $0.0936\%$，
         $L^1$ reversal error は $2.690\times10^{-2}$ であり，保存性・形状復元性はいずれも条件付き（$\triangle$）．
   \item \textbf{非一様格子の扱い}：
         本節の Zalesak は $\alpha=1$ の sharp-slot 移流診断に固定する．
