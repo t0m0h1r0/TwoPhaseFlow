@@ -177,18 +177,39 @@
 % ─────────────────────────────────────────────────────────────────────────────
 
 本稿の数値手法における各コンポーネントの精度は，
-第\ref{sec:pressure}章の表\ref{tab:accuracy_summary}に整理した通りである．
-ここでは，その設計上のトレードオフを技術的貢献の観点から振り返る．
-主要な精度設計上のトレードオフとして，
-（1）空間精度は CCD $\Ord{h^6}$・Dissipative CCD $O(\varepsilon_d h^2)$（フィルタ律速）と高次で統一され，
-PPE は FD 直接法 $\Ord{h^2}$ + CCD 勾配 $\Ord{h^6}$ の併用で
-Balanced-Force 条件を $\Ord{h^6}$ 精度で維持するが，
-CSF $O(\varepsilon^2)$ モデル誤差の根本的除去には分相 PPE + HFE（§\ref{sec:split_ppe_recovery} で実証）が必要である（付録~\ref{app:csf_full}）；
-（2）時間精度は AB2+IPC スキームにより $O(\Delta t^2)$ を達成しており，
-さらなる高次化には $O(\Delta t^3)$ 以上の高次 Projection 法（例：Guermond--Shen 2006）への移行が必要である，
-の2点が挙げられる（詳細は§\ref{sec:pressure_accuracy_summary}参照）．
+単体検証 §\ref{sec:numerical_integrity}（表~\ref{tab:U_summary}）と
+統合検証 §\ref{sec:verification}（表~\ref{tab:v_accuracy_summary}）で実測値が確定している．
+ここでは，三本柱設計が達成した精度バランスを技術的貢献の観点から振り返る．
+
+\paragraph{空間精度（U1, U2, U3, U6 で実測）}
+CCD 内点 $\Ord{h^6}$（U1-a 実測 $\Ord{h^{6.0}}$）・大域 $L^2$ では $\Ord{h^{5/2}}$（境界 BC 律速；§\ref{sec:CCD}），
+UCCD6 のスーパー収束 $\Ord{h^7}$（U1-d 実測 $\Ord{h^{7.00}}$；§\ref{sec:uccd6_def}），
+FCCD 面ジェット $\Ord{h^4}$（U1-c 実測 $\Ord{h^{4.00/4.00}}$；§\ref{sec:fccd_def}），
+HFE Hermite 場延長 1D $\Ord{h^{5.91}}$ / 2D max $\Ord{h^{11.35}}$ med $\Ord{h^{8.72}}$（U6-c；§\ref{sec:hfe}），
+DC k=3 補正後の分相 PPE $\Ord{h^{6.90}}$（U2 production，U6-b；§\ref{sec:defect_correction_main}）が
+それぞれ単体で実測されている．
+
+\paragraph{PPE 設計（本稿の標準 headline 設計）}
+本稿の PPE 標準設計は \textbf{分相 PPE + pressure-jump 型 FCCD-PPE + DC k=3} であり，
+§\ref{sec:algorithm} の統合アルゴリズム 7 ステップに完全に組み込まれている．
+旧来の「FD 直接法 PPE $\Ord{h^2}$ + CCD 勾配 $\Ord{h^6}$」併用は本稿の標準ではない．
+密度比 sweep V6（§\ref{sec:density_ratio_sweep}）で
+$|\Delta p_\mathrm{corr}|/(\sigma/r) = 1.07\times 10^{-1}$ @ $\rho_l/\rho_g = 833$, $N=32$ を実証済みである．
+CSF $\Ord{\varepsilon^2}$ 残存モデル誤差は pressure-jump 型 FCCD-PPE
+（§\ref{sec:split_ppe_pressure_jump_formulation}）により部分的に解消され，
+完全 GFM 整合（Kang ら~\cite{Kang2000} の Ghost Fluid Method）は今後の課題である．
+
+\paragraph{時間精度（U8, V7 で実測）}
+TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.0}}$
+（U8-a, U8-b；§\ref{sec:time_int}）の単体精度を達成している．
+二相 V7（§\ref{sec:imex_bdf2_twophase_time}）の effective $\Ord{\Delta t^{1.58}}$ は coupled-stack
+（CLS 移流・PPE・運動量更新の非線形連結）律速であり，条件付き △ として記録した．
+さらなる高次化（Guermond--Shen 2006 等の高次 Projection）は今後の課題である．
+
 これらの特性は意図的な設計選択であり，
-空間全コンポーネントの高次精度統一と曲率計算の高精度化が寄生流れを直接抑制するという工学的意義に基づく．
+三本柱（CCD 高次群／分相 PPE+DC+CCD 勾配／BF+FCCD 面ジェット sub-system）の整合により，
+寄生流れの抑制（V5 で CCD/FD 比 $1/5.9$ @ $\rho_r=1$, $N=32$；§\ref{sec:spurious_multistep}）と
+高密度比下の圧力ジャンプ整合性（V8 静止液滴 $|\Delta p_\mathrm{rel}|=2.6\%$ @ $N=96$）を同時に達成している．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}
