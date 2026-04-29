@@ -104,6 +104,18 @@ face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h
 \label{fig:ch12_u7}
 \end{figure}
 
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth]{figures/ch12_u7_parasitic_vortex.pdf}
+\caption{U7：1 NS step 後の寄生流れ場（streamplot, $N=128$）．
+左：Match (CCD 圧力 + CCD $\nabla\psi$，$\|u\|_\infty \approx 3.0\times 10^{-5}$)，
+右：Mismatch (CCD 圧力 + FD2 $\nabla\psi$，$\|u\|_\infty \approx 3.2\times 10^{-5}$)．
+赤円は界面 $\psi = 0.5$．BF 結合は両配置とも 4 回対称の寄生渦輪を
+$\Ord{10^{-5}}$ 程度に抑え，1-step 指標では match/mismatch の判別力が低いという
+本節の主張を視覚的に補強する．}
+\label{fig:ch12_u7_parasitic}
+\end{figure}
+
 \paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U7-a：$N \ge 64$ で BF 結合が Young--Laplace 跳び $\Delta p = \sigma/R$ を

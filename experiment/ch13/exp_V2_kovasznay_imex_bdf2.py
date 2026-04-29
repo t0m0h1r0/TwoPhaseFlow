@@ -31,6 +31,10 @@ from twophase.backend import Backend
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
+from twophase.simulation.visualization.plot_fields import (
+    field_with_contour,
+    streamlines_colored,
+)
 from twophase.tools.experiment import (
     apply_style,
     compute_convergence_rates,
@@ -106,7 +110,7 @@ def _residual(N: int, backend: Backend) -> dict:
     res_full = np.sqrt(res_u * res_u + res_v * res_v)
     res_core = res_full[core]
     div_core = div[core]
-    return {
+    row = {
         "N": N,
         "h": h,
         "Linf_res": float(np.max(np.abs(res_core))),
@@ -114,12 +118,31 @@ def _residual(N: int, backend: Backend) -> dict:
         "Linf_div": float(np.max(np.abs(div_core))),
         "Linf_div_full": float(np.max(np.abs(div))),
     }
+    if N == N_LIST[-1]:
+        row["_X"] = X
+        row["_Y"] = Y
+        row["_u"] = u
+        row["_v"] = v
+        row["_res_full"] = res_full
+        row["_div"] = div
+    return row
 
 
 def run_all() -> dict:
     backend = Backend(use_gpu=False)
     rows = [_residual(N, backend) for N in N_LIST]
-    return {"spatial": rows, "meta": {"Re": RE, "nu": NU, "domain": [X0, X0 + LX, 0.0, LY]}}
+    field_kovasznay: dict = {}
+    finest = rows[-1]
+    for k in ("_X", "_Y", "_u", "_v", "_res_full", "_div"):
+        if k in finest:
+            field_kovasznay[k.lstrip("_")] = finest.pop(k)
+    out = {
+        "spatial": rows,
+        "meta": {"Re": RE, "nu": NU, "domain": [X0, X0 + LX, 0.0, LY]},
+    }
+    if field_kovasznay:
+        out["field_kovasznay"] = field_kovasznay
+    return out
 
 
 def make_figures(results: dict) -> None:
@@ -146,6 +169,74 @@ def make_figures(results: dict) -> None:
         fig,
         OUT / "V2_kovasznay_orders",
         also_to=PAPER_FIGURES / "ch13_v2_kovasznay_orders",
+    )
+    make_kovasznay_field_figure(results)
+
+
+def make_kovasznay_field_figure(results: dict) -> None:
+    """1×3 panel at N=256: streamlines + log10|R| + log10|∇·u|.
+
+    Skip silently if `field_kovasznay` is missing (e.g. legacy npz cache).
+    """
+    panel = results.get("field_kovasznay")
+    if not panel or "u" not in panel:
+        return
+    X = np.asarray(panel["X"])
+    Y = np.asarray(panel["Y"])
+    x1d = X[:, 0]
+    y1d = Y[0, :]
+    u = np.asarray(panel["u"])
+    v = np.asarray(panel["v"])
+    res_full = np.asarray(panel["res_full"])
+    div = np.asarray(panel["div"])
+    speed = np.sqrt(u * u + v * v)
+    log_res = np.log10(np.maximum(res_full, 1e-16))
+    log_div = np.log10(np.maximum(np.abs(div), 1e-16))
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
+    ax_s, ax_r, ax_d = axes
+
+    streamlines_colored(
+        ax_s, x1d, y1d, u, v,
+        cmap="viridis", density=1.6, linewidth=0.9, arrowsize=0.9,
+    )
+    sm = plt.cm.ScalarMappable(
+        cmap="viridis",
+        norm=plt.Normalize(vmin=float(speed.min()), vmax=float(speed.max())),
+    )
+    sm.set_array([])
+    fig.colorbar(sm, ax=ax_s, fraction=0.046, pad=0.04, label=r"$|u|$")
+    ax_s.set_title(r"(a) Kovasznay velocity (Re=40)" + "\n" + rf"$|u|\in[{speed.min():.2f},\,{speed.max():.2f}]$", fontsize=11)
+    ax_s.set_xlabel("$x$")
+    ax_s.set_ylabel("$y$")
+    ax_s.set_xlim(x1d.min(), x1d.max())
+    ax_s.set_ylim(y1d.min(), y1d.max())
+
+    im_r = field_with_contour(
+        ax_r, x1d, y1d, log_res,
+        cmap="magma",
+        title=rf"(b) $\log_{{10}}\|R\|$  (max $={np.max(res_full):.1e}$)",
+        xlabel="$x$", ylabel="",
+    )
+    fig.colorbar(im_r, ax=ax_r, fraction=0.046, pad=0.04, label=r"$\log_{10}\|R\|$")
+
+    im_d = field_with_contour(
+        ax_d, x1d, y1d, log_div,
+        cmap="cividis",
+        title=rf"(c) $\log_{{10}}|\nabla\!\cdot u|$  (max $={np.max(np.abs(div)):.1e}$)",
+        xlabel="$x$", ylabel="",
+    )
+    fig.colorbar(im_d, ax=ax_d, fraction=0.046, pad=0.04, label=r"$\log_{10}|\nabla\!\cdot u|$")
+
+    fig.suptitle(
+        "V2 Kovasznay (N=256): velocity streamlines + CCD residual + divergence",
+        fontsize=12,
+    )
+    fig.tight_layout(rect=(0, 0, 1.0, 0.93))
+    save_figure(
+        fig,
+        OUT / "V2_kovasznay_field",
+        also_to=PAPER_FIGURES / "ch13_v2_kovasznay_field",
     )
 
 

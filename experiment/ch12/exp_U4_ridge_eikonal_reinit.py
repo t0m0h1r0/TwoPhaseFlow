@@ -43,6 +43,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside, invert_heaviside
 from twophase.levelset.reinit_eikonal_godunov import godunov_sweep
 from twophase.levelset.reinit_dgr import DGRReinitializer
+from twophase.simulation.visualization.plot_fields import field_with_contour
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -110,6 +111,8 @@ def run_U4a() -> dict:
         "n_tau": 0, "dtau": dtau,
         "grad_err_inf": full0, "grad_err_band_inf": band0,
     }]
+    gerr_tau0 = grad0 - 1.0
+    gerr_snapshots: dict[int, np.ndarray] = {}
     for n_tau in N_TAU_VALUES:
         phi_iter = godunov_sweep(
             np, phi0.copy(), sgn0,
@@ -118,12 +121,22 @@ def run_U4a() -> dict:
             zsp=False, h_min=h_min,
         )
         grad = _grad_inf(ccd, phi_iter)
+        if n_tau in (5, 50):
+            gerr_snapshots[n_tau] = grad - 1.0
         rows.append({
             "n_tau": n_tau, "dtau": dtau,
             "grad_err_inf": float(np.max(np.abs(grad - 1.0))),
             "grad_err_band_inf": float(np.max(np.abs(grad[band_mask] - 1.0))),
         })
-    return {"rows": rows, "h_min": h_min, "init_band_err": band0}
+    field = {
+        "x1d": np.asarray(grid.coords[0]),
+        "y1d": np.asarray(grid.coords[1]),
+        "phi_sdf": phi_sdf,
+        "gerr_tau0": gerr_tau0,
+        "gerr_tau5": gerr_snapshots.get(5),
+        "gerr_tau50": gerr_snapshots.get(50),
+    }
+    return {"rows": rows, "h_min": h_min, "init_band_err": band0, "_field": field}
 
 
 # ── U4-b: DGR thickness correction ─────────────────────────────────────────
@@ -169,10 +182,12 @@ def run_U4b() -> dict:
 # ── Aggregator + plotting ───────────────────────────────────────────────────
 
 def run_all() -> dict:
-    return {
-        "U4a": run_U4a(),
-        "U4b": run_U4b(),
-    }
+    u4a = run_U4a()
+    field = u4a.pop("_field", None)
+    out = {"U4a": u4a, "U4b": run_U4b()}
+    if field is not None and field.get("gerr_tau5") is not None and field.get("gerr_tau50") is not None:
+        out["U4_field"] = field
+    return out
 
 
 def make_figures(results: dict) -> None:
@@ -207,6 +222,56 @@ def make_figures(results: dict) -> None:
     ax_b.grid(True, axis="y", alpha=0.3)
 
     save_figure(fig, OUT / "U4_ridge_eikonal_reinit", also_to=PAPER_FIG)
+    make_u4_field_figure(results)
+
+
+def make_u4_field_figure(results: dict) -> None:
+    """1×3 panel of ||∇φ| − 1| at n_tau ∈ {0, 5, 50} with the φ=0 contour overlay.
+
+    Shared vmax across panels so the rapid drop at n_tau=5 and the
+    near-band-clean state at n_tau=50 are directly comparable.
+    """
+    panel = results.get("U4_field")
+    if not panel or panel.get("gerr_tau5") is None:
+        return
+    x1d = np.asarray(panel["x1d"])
+    y1d = np.asarray(panel["y1d"])
+    phi_sdf = np.asarray(panel["phi_sdf"])
+    fields = [
+        ("$n_\\tau = 0$  (biased $\\phi_0 = \\phi_{\\mathrm{sdf}}/2$)",
+         np.asarray(panel["gerr_tau0"])),
+        ("$n_\\tau = 5$",  np.asarray(panel["gerr_tau5"])),
+        ("$n_\\tau = 50$", np.asarray(panel["gerr_tau50"])),
+    ]
+    rows = results["U4a"]["rows"]
+    band_err = {r["n_tau"]: r["grad_err_band_inf"] for r in rows}
+
+    abs_fields = [np.abs(f) for _, f in fields]
+    vmax = float(max(a.max() for a in abs_fields))
+
+    fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.6))
+    im = None
+    for ax, (title, _), absf, ntau in zip(axes, fields, abs_fields, (0, 5, 50)):
+        be = band_err.get(ntau, float("nan"))
+        im = field_with_contour(
+            ax, x1d, y1d, absf,
+            cmap="viridis", vmin=0.0, vmax=vmax,
+            contour_field=phi_sdf, contour_level=0.0,
+            contour_color="white", contour_lw=1.4,
+            title=title + "\n" + rf"band err $={be:.2e}$",
+            xlabel="$x$", ylabel="$y$" if ntau == 0 else "",
+        )
+    fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.046, pad=0.04,
+                 label=r"$||\nabla\phi|-1|$")
+    fig.suptitle(
+        rf"U4 Ridge--Eikonal: $||\nabla\phi|-1|$ along the Godunov sweep (N={N_GRID})",
+        fontsize=12,
+    )
+    save_figure(
+        fig,
+        OUT / "U4_ridge_eikonal_field",
+        also_to=PAPER_FIG.parent / "ch12_u4_ridge_eikonal_field",
+    )
 
 
 def print_summary(results: dict) -> None:
