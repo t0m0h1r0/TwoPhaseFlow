@@ -32,6 +32,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ch14_stack_common import ch14_circle_config, run_ch14_case
+from twophase.simulation.visualization.plot_fields import field_with_contour
 from twophase.tools.experiment import (
     apply_style,
     experiment_argparser,
@@ -100,15 +101,38 @@ def _run_one(N: int, ratio: float) -> dict:
     return out
 
 
+FIELD_RATIOS = (2.0, 100.0, 833.0)
+FIELD_N = N_LIST[-1]  # use the largest N for the field figure
+
+
+def _extract_field(rows: list[dict]) -> dict:
+    """Pick the FIELD_N row and pull X/Y/psi/speed for the field figure."""
+    for row in rows:
+        if int(row["N"]) == FIELD_N and not row.get("blew_up"):
+            X = np.asarray(row["X"]); Y = np.asarray(row["Y"])
+            return {
+                "x1d": X[:, 0],
+                "y1d": Y[0, :],
+                "psi": np.asarray(row["psi"]),
+                "speed": np.asarray(row["speed"]),
+                "ratio": float(row["ratio"]),
+                "u_inf_final": float(row["u_inf_final"]),
+            }
+    return {}
+
+
 def run_all() -> dict:
     sweeps = {}
+    field_panels: dict = {}
     for ratio in RATIOS:
         rows = []
         for N in N_LIST:
             print(f"[V6] N={N}, rho_l/rho_g={ratio:g}")
             rows.append(_run_one(N, ratio))
         sweeps[f"r{int(ratio)}"] = rows
-    return {
+        if ratio in FIELD_RATIOS:
+            field_panels[f"field_r{int(ratio)}"] = _extract_field(rows)
+    out = {
         "sweeps": sweeps,
         "meta": {
             "N_list": N_LIST,
@@ -120,6 +144,8 @@ def run_all() -> dict:
             "dp_exact": DP_EXACT,
         },
     }
+    out.update(field_panels)
+    return out
 
 
 def make_figures(results: dict) -> None:
@@ -162,6 +188,49 @@ def make_figures(results: dict) -> None:
     )
 
 
+def make_density_ratio_field_figure(results: dict) -> None:
+    """1×3 speed-field panel at ρ_l/ρ_g ∈ {2, 100, 833} (water-air).
+
+    Each panel uses an individual vmax (speeds vary by orders of magnitude
+    across density ratios; shared scale would erase low-ratio detail).
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
+    panels_drawn = 0
+    for ax, ratio in zip(axes, FIELD_RATIOS):
+        panel = results.get(f"field_r{int(ratio)}")
+        if not panel or "speed" not in panel:
+            ax.set_visible(False)
+            continue
+        x1d = np.asarray(panel["x1d"])
+        y1d = np.asarray(panel["y1d"])
+        speed = np.asarray(panel["speed"])
+        psi = np.asarray(panel["psi"])
+        u_inf = float(panel.get("u_inf_final", np.max(speed)))
+        suffix = " (water-air)" if int(ratio) == 833 else ""
+        field_with_contour(
+            ax, x1d, y1d, speed,
+            cmap="magma", vmin=0.0,
+            contour_field=psi, contour_level=0.5,
+            contour_color="white", contour_lw=1.4,
+            title=rf"$\rho_l/\rho_g = {int(ratio)}${suffix}" + "\n" + rf"$\|u\|_\infty = {u_inf:.2e}$",
+            xlabel="$x$", ylabel="$y$",
+        )
+        panels_drawn += 1
+    if panels_drawn == 0:
+        plt.close(fig)
+        return
+    fig.suptitle(
+        f"V6 §14 stack: speed magnitude after {N_STEPS} steps (N={FIELD_N})",
+        fontsize=12,
+    )
+    fig.tight_layout(rect=(0, 0, 1.0, 0.94))
+    save_figure(
+        fig,
+        OUT / "V6_density_ratio_fields",
+        also_to=PAPER_FIGURES / "ch13_v6_density_ratio_fields",
+    )
+
+
 def print_summary(results: dict) -> None:
     print("V6 (§14 stack density-ratio robustness):")
     for key in ("r2", "r10", "r100", "r833"):
@@ -188,6 +257,7 @@ def main() -> None:
         results = run_all()
         save_results(NPZ, results)
     make_figures(results)
+    make_density_ratio_field_figure(results)
     print_summary(results)
     print(f"==> V6 outputs in {OUT}")
 
