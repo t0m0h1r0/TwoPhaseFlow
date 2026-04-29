@@ -40,6 +40,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.simulation.visualization.plot_fields import field_with_contour
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -116,11 +117,17 @@ def _u9_one(N: int, eps_d: float, backend) -> dict:
     diff = lap_unfilt - lap_filt
     err_diff = float(np.max(np.abs(diff)))
 
-    return {
+    row = {
         "N": N, "h": 1.0 / N, "eps_d": eps_d,
         "Linf_unfiltered": err_unfilt,
         "Linf_diff": err_diff,
     }
+    if N == max(GRID_SIZES):
+        row["_diff"] = diff
+        row["_lap_exact"] = lap_exact
+        row["_X"] = X
+        row["_Y"] = Y
+    return row
 
 
 def run_U9() -> dict:
@@ -132,8 +139,34 @@ def run_U9() -> dict:
     return {"diff": rows}
 
 
+def _extract_u9_field(rows: list[dict]) -> dict:
+    """Pull the finest-N diff fields for ε_d ∈ {0.05, 0.25} into a flat dict."""
+    out: dict = {}
+    seen_geom = False
+    for r in rows:
+        if r["N"] != max(GRID_SIZES) or "_diff" not in r:
+            continue
+        tag = "eps0p05" if abs(r["eps_d"] - 0.05) < 1e-12 else "eps0p25"
+        out[f"{tag}_diff"] = r.pop("_diff")
+        if not seen_geom:
+            out["lap_exact"] = r.pop("_lap_exact")
+            out["X"] = r.pop("_X")
+            out["Y"] = r.pop("_Y")
+            seen_geom = True
+        else:
+            r.pop("_lap_exact", None)
+            r.pop("_X", None)
+            r.pop("_Y", None)
+    return out
+
+
 def run_all() -> dict:
-    return {"U9": run_U9()}
+    u9 = run_U9()
+    field = _extract_u9_field(u9["diff"])
+    out = {"U9": u9}
+    if field:
+        out["U9_field"] = field
+    return out
 
 
 # ── Plotting + summary ──────────────────────────────────────────────────────
@@ -172,6 +205,54 @@ def make_figures(results: dict) -> None:
         title="(diff) DCCD-on-pressure error blow-up")
 
     save_figure(fig, OUT / "U9_dccd_pressure_prohibition", also_to=PAPER_FIG)
+    make_u9_field_figure(results)
+
+
+def make_u9_field_figure(results: dict) -> None:
+    """1×2 panel of ‖∇²p − ∇²p̃‖ at ε_d ∈ {0.05, 0.25} for the finest grid.
+
+    Shared vmax so the eps_d=0.25 case can be visually compared to the
+    eps_d=0.05 case on the same color scale (the ε_d=0.25 errors are
+    ~25× larger; the comparison is the headline).
+    """
+    panel = results.get("U9_field")
+    if not panel or "eps0p05_diff" not in panel or "eps0p25_diff" not in panel:
+        return
+    X = np.asarray(panel["X"])
+    Y = np.asarray(panel["Y"])
+    x1d = X[:, 0]
+    y1d = Y[0, :]
+    diff_05 = np.asarray(panel["eps0p05_diff"])
+    diff_25 = np.asarray(panel["eps0p25_diff"])
+    a05 = np.abs(diff_05)
+    a25 = np.abs(diff_25)
+    vmax = float(max(a05.max(), a25.max()))
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
+    ax_a, ax_b = axes
+    im_a = field_with_contour(
+        ax_a, x1d, y1d, a05,
+        cmap="inferno", vmin=0.0, vmax=vmax,
+        title=rf"(a) $\varepsilon_d = 0.05$  (max $={a05.max():.2e}$)",
+        xlabel="$x$", ylabel="$y$",
+    )
+    im_b = field_with_contour(
+        ax_b, x1d, y1d, a25,
+        cmap="inferno", vmin=0.0, vmax=vmax,
+        title=rf"(b) $\varepsilon_d = 0.25$  (max $={a25.max():.2e}$)",
+        xlabel="$x$", ylabel="",
+    )
+    fig.colorbar(im_b, ax=axes.ravel().tolist(), fraction=0.046, pad=0.04,
+                 label=r"$|\nabla^2 p - \nabla^2 \tilde p|$")
+    fig.suptitle(
+        rf"U9 prohibition map (N={max(GRID_SIZES)}): DCCD on $p$ corrupts $\nabla^2 p$",
+        fontsize=12,
+    )
+    save_figure(
+        fig,
+        OUT / "U9_dccd_prohibition_field",
+        also_to=PAPER_FIG.parent / "ch12_u9_dccd_prohibition_field",
+    )
 
 
 def print_summary(results: dict) -> None:
