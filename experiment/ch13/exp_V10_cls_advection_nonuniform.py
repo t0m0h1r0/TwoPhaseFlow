@@ -54,6 +54,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
+from twophase.levelset.reinitialize import Reinitializer
 from twophase.tools.experiment import (
     apply_style, experiment_dir, experiment_argparser,
     save_results, load_results, save_figure,
@@ -73,6 +74,8 @@ SINGLE_VORTEX_N = 96
 SINGLE_VORTEX_ALPHA = 2.0
 SINGLE_VORTEX_T = 8.0
 SINGLE_VORTEX_PHASE_DIVISIONS = 32
+SINGLE_VORTEX_REINIT_EVERY = 10
+SINGLE_VORTEX_REINIT_METHOD = "ridge_eikonal"
 
 
 def _slotted_disk_phi(X, Y) -> np.ndarray:
@@ -229,11 +232,21 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     phase_psi = [psi_h.copy()]
 
     ls_adv = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
+    reinit = Reinitializer(
+        backend, grid, ccd, eps,
+        n_steps=4,
+        method=SINGLE_VORTEX_REINIT_METHOD,
+        mass_correction=True,
+    )
     t = 0.0
+    reinit_count = 0
     for step in range(n_steps):
         t_mid = t + 0.5 * dt
         u, v = _single_vortex_velocity(X_h, Y_h, t_mid, SINGLE_VORTEX_T)
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
+        if (step + 1) % SINGLE_VORTEX_REINIT_EVERY == 0:
+            psi_h = np.asarray(backend.to_host(reinit.reinitialize(backend.to_device(psi_h))))
+            reinit_count += 1
         t += dt
         if (step + 1) % steps_per_snapshot == 0:
             phase_psi.append(psi_h.copy())
@@ -248,6 +261,9 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
+        "reinit_every": SINGLE_VORTEX_REINIT_EVERY,
+        "reinit_count": reinit_count,
+        "reinit_method": SINGLE_VORTEX_REINIT_METHOD,
         "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
         "volume_drift": volume_drift, "area_drift": area_drift, "reversal_l1": reversal_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_half": psi_half, "psi_T": psi_h,
@@ -331,7 +347,7 @@ def make_figures(results: dict) -> None:
     fig_sv.colorbar(im, ax=axes_sv.ravel().tolist(), shrink=0.82, label="$\\psi$")
     fig_sv.suptitle(
         f"V10: single-vortex deformation (N={sv['N']}, α={sv['alpha']:.0f}, "
-        f"L1={sv['reversal_l1']:.2e})"
+        f"{sv.get('reinit_method', 'no-reinit')}, L1={sv['reversal_l1']:.2e})"
     )
     save_figure(fig_sv, OUT / "V10_single_vortex_snapshots",
                 also_to=PAPER_FIGURES / "ch13_v10_single_vortex")
@@ -361,7 +377,8 @@ def make_figures(results: dict) -> None:
         fig_phase.colorbar(im, ax=axes_flat.tolist(), shrink=0.82, label="$\\psi$")
         fig_phase.suptitle(
             f"V10: single-vortex deformation over one cycle "
-            f"(N={sv['N']}, alpha={sv['alpha']:.0f})"
+            f"(N={sv['N']}, alpha={sv['alpha']:.0f}, "
+            f"{sv.get('reinit_method', 'no-reinit')} every {int(sv.get('reinit_every', 0))})"
         )
         save_figure(fig_phase, OUT / "V10_single_vortex_phase32",
                     also_to=PAPER_FIGURES / "ch13_v10_single_vortex_phase32")
@@ -385,6 +402,8 @@ def print_summary(results: dict) -> None:
     print("V10 (single-vortex deformation reversal, FCCD/TVD-RK3):")
     print(f"  N={sv['N']:>3}  α={sv['alpha']:.0f}  L1_reverse={sv['reversal_l1']:.3e}  "
           f"vol_drift={sv['volume_drift']:.3e}  V_T/V0={sv['V_T']/max(sv['V0'],1e-12):.4f}")
+    print(f"  reinit={sv.get('reinit_method', 'none')} every {int(sv.get('reinit_every', 0))} "
+          f"steps ({int(sv.get('reinit_count', 0))} calls)")
 
 
 def main() -> None:
