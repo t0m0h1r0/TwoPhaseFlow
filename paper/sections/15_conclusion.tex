@@ -203,7 +203,7 @@ CSF $\Ord{\varepsilon^2}$ 残存モデル誤差は pressure-jump 型 FCCD-PPE
 TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.0}}$
 （U8-a, U8-b；§\ref{sec:time_int}）の単体精度を達成している．
 二相 V7（§\ref{sec:imex_bdf2_twophase_time}）の effective $\Ord{\Delta t^{1.58}}$ は coupled-stack
-（CLS 移流・PPE・運動量更新の非線形連結）律速であり，条件付き △ として記録した．
+（CLS 移流・PPE・運動量更新の非線形連結）律速であり，条件付き $\triangle$ として記録した．
 さらなる高次化（Guermond--Shen 2006 等の高次 Projection）は今後の課題である．
 
 これらの特性は意図的な設計選択であり，
@@ -349,29 +349,15 @@ V10-a Zalesak $\alpha=1$ ドリフト 1.535\%・V10-b 重心 0.34）は，
         表面張力項を陰的に扱うことで，時間刻み制約を対流 CFL 条件のみとしながら
         安定計算が可能となり，高解像度計算での計算コストを大幅に削減できる．
 
-  \item[\textbf{分相 PPE + HFE による変密度 PPE の収束性回復：}]
-        分相 PPE + HFE の NS パイプラインへの統合実装は，精度向上と変密度 PPE 収束性の双方の観点から\textbf{最優先課題}である．
-        §~\ref{sec:split_ppe_recovery} において，分相 PPE が全密度比（$\rho_l/\rho_g = 1$--$1000$）で
-        密度比非依存な $\Ord{h^2}$ 収束を達成することを製造解テストで実証済みであり，
-        残る課題は IPC 増分形式との結合および移動界面を含む時間発展への組み込みである．
-
-        \textbf{精度面：}
-        §\ref{sec:pressure_accuracy_summary} で整理した通り，
-        CSF モデルの近似誤差 $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ が
-        全空間コンポーネント（CCD-PPE $\Ord{h^6}$，CCD 移流 $\Ord{h^6}$）の律速段階である．
-        Kang ら~\cite{Kang2000} の Ghost Fluid Method に倣い，
-        圧力ジャンプ条件 $[p] = \sigma\kappa$ を PPE 離散化式にゴースト値として直接組み込むことで，
-        CSF の界面厚み $\varepsilon$ に起因する $\Ord{\Delta x^2}$ モデル誤差を原理的に排除できる．
-
-        \textbf{収束性：}
-        §\ref{sec:varrho_ppe_limitation} で示した通り，
-        界面型密度場（smoothed Heaviside）では
-        変密度 PPE の高次格子収束が高解像度側で失われる．
-        根本原因は $1/\rho$ の界面ジャンプを横切る FD/CCD ステンシルの $\Ord{1}$ 離散化誤差である．
-        各相で定数密度 PPE（$\rho_k^{-1}\nabla^2 p = q$）を解き，
-        界面のジャンプ条件を HFE（§\ref{sec:field_extension}）で課すことで，
-        不連続係数を横切るステンシルが排除され，
-        各相の CCD 離散化が $\Ord{h^6}$ の設計精度を回復する．
+  \item[\textbf{長時間移動界面下での分相 PPE + HFE 結合の統計解析と高密度比拡張：}]
+        分相 PPE + HFE + DC k=3 は §\ref{sec:algorithm} の統合アルゴリズムに完全に組み込まれ，
+        V6（§\ref{sec:density_ratio_sweep}）で密度比 $\rho_l/\rho_g \le 833$ までの正常動作を実証済みである．
+        残る課題は，
+        (i) V6 を超える長時間移動界面下での DC 残差・HFE 延長精度の統計的収束性評価，
+        (ii) 高密度比 $\rho_l/\rho_g > 10^3$ 領域での pressure-jump 型 FCCD-PPE
+        （§\ref{sec:split_ppe_pressure_jump_formulation}）の安定性確認，
+        (iii) Kang ら~\cite{Kang2000} の Ghost Fluid Method との完全整合
+        （CSF $\Ord{\varepsilon^2}$ モデル誤差の原理的除去）への発展，である．
 
   \item[\textbf{GFM 表面張力と空間可変 \texorpdfstring{$\varepsilon(\bx)$}{eps(x)} の結合：}]
         §~\ref{sec:local_eps_validation} で確認した通り，
