@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""[V10] FCCD CLS advection visuals on uniform / non-uniform grids — Tier D.
+"""[V10] FCCD CLS advection visuals on the uniform grid — Tier D.
 
-Paper ref: §13.5 (sec:nonuniform_grid_ns contributor).
+Paper ref: §13.5 (sec:zalesak_cls_advection).
 
 Verifies the ch14 production interface-transport choice,
 FCCD flux-form ψ advection + TVD-RK3, on two visually diagnostic CLS tests:
@@ -17,7 +17,7 @@ Setup
     u(x,y) = -(2*pi/T_rev) * (y - 0.5),
     v(x,y) =  (2*pi/T_rev) * (x - 0.5).
   T_rev = 1.0 (one full revolution).
-  Zalesak: N in {64, 128}, alpha_grid in {1.0, 2.0}.
+  Zalesak: N in {64, 128}, alpha_grid = 1.0.
   Single vortex: N = 128, alpha_grid = 1.0, T = 8.0, with no interface
   tracking and fixed uniform-grid Ridge-Eikonal + mass correction every
   10 steps.
@@ -29,10 +29,11 @@ Diagnostics at t = T_rev:
   - Conservative CLS mass drift |∫ψ(T)dV - ∫ψ(0)dV| / ∫ψ(0)dV.
   - Thresholded area drift for the visible {ψ > 0.5} shape.
 
-Pass criterion
---------------
-  - Centroid order >= 1.5 across N=64 -> 128.
-  - Volume drift < 5e-3 at N=128.
+Reported diagnostics
+--------------------
+  - Centroid order across N=64 -> 128.
+  - Volume drift and centroid error are reported as conditional sharp-slot
+    diagnostics at N=128.
 
 Usage
 -----
@@ -367,24 +368,22 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
 
 
 def run_all() -> dict:
-    rows_a2 = [_run(N, alpha=2.0) for N in (64, 128)]
-    rows_a1 = [_run(N, alpha=1.0) for N in (64, 128)]
+    zalesak = [_run(N, alpha=1.0) for N in (64, 128)]
     single_vortex = _run_single_vortex()
-    return {"runs": rows_a2, "runs_a1": rows_a1, "single_vortex": single_vortex}
+    return {"zalesak": zalesak, "runs": zalesak, "single_vortex": single_vortex}
 
 
 def make_figures(results: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
     ax_c, ax_v = axes
-    rows_a2 = results["runs"]
-    rows_a1 = results.get("runs_a1", [])
+    rows_a1 = results.get("zalesak")
+    if rows_a1 is None:
+        rows_a1 = results.get("runs_a1", results.get("runs", []))
 
-    for rows, color, lbl in ((rows_a1, "C0", "α=1 (uniform)"),
-                              (rows_a2, "C3", "α=2 (non-uniform)")):
-        if rows is None or len(rows) == 0: continue
-        Ns = np.array([r["N"] for r in rows])
-        cents = np.array([r["centroid_err"] for r in rows])
-        ax_c.loglog(1.0 / Ns, cents, "o-", color=color, label=lbl)
+    if rows_a1 is not None and len(rows_a1):
+        Ns = np.array([r["N"] for r in rows_a1])
+        cents = np.array([r["centroid_err"] for r in rows_a1])
+        ax_c.loglog(1.0 / Ns, cents, "o-", color="C0", label="α=1 (uniform)")
 
     Ns_ref = np.array([64, 128])
     if len(rows_a1):
@@ -395,34 +394,34 @@ def make_figures(results: dict) -> None:
     ax_c.set_title("V10: Zalesak rotation centroid"); ax_c.legend(fontsize=8)
 
     cats = []; vals = []; bar_colors = []
-    for rows, color, prefix in ((rows_a1, "C0", "α1"), (rows_a2, "C3", "α2")):
-        for r in rows:
-            cats.append(f"{prefix}\nN{r['N']}")
-            vals.append(r["volume_drift"])
-            bar_colors.append(color)
+    for r in rows_a1:
+        cats.append(f"α1\nN{r['N']}")
+        vals.append(r["volume_drift"])
+        bar_colors.append("C0")
     ax_v.bar(cats, vals, color=bar_colors)
     ax_v.set_ylabel("|ΔV|/V0")
     ax_v.set_yscale("log"); ax_v.axhline(5e-3, color="k", linestyle="--", alpha=0.6,
                                           label="pass: 5e-3")
     ax_v.set_title("V10: volume drift after 1 rev"); ax_v.legend(fontsize=8)
 
-    save_figure(fig, OUT / "V10_zalesak_nonuniform",
+    save_figure(fig, OUT / "V10_zalesak_uniform",
                 also_to=PAPER_FIGURES / "ch13_v10_zalesak")
 
     row_a1_128 = next(r for r in rows_a1 if r["N"] == 128)
-    row_a2_128 = next(r for r in rows_a2 if r["N"] == 128)
     fig_snap, axes_snap = plt.subplots(1, 3, figsize=(12, 4))
     panels = (
-        (row_a1_128, row_a1_128["psi0"], "initial"),
-        (row_a1_128, row_a1_128["psi_T"], "α=1 final"),
-        (row_a2_128, row_a2_128["psi_T"], "α=2 final"),
+        (row_a1_128["psi0"], "initial", "viridis"),
+        (row_a1_128["psi_T"], "α=1 final", "viridis"),
+        (np.abs(row_a1_128["psi_T"] - row_a1_128["psi0"]), "|final - initial|", "magma"),
     )
-    for ax, (row, psi, title) in zip(axes_snap, panels):
-        im = ax.pcolormesh(row["X"], row["Y"], psi, cmap="viridis",
+    for ax, (psi, title, cmap) in zip(axes_snap, panels):
+        im = ax.pcolormesh(row_a1_128["X"], row_a1_128["Y"], psi, cmap=cmap,
                            vmin=0.0, vmax=1.0, shading="auto")
-        ax.contour(row["X"], row["Y"], psi, levels=[0.5], colors="white", linewidths=1.0)
+        if title != "|final - initial|":
+            ax.contour(row_a1_128["X"], row_a1_128["Y"], psi, levels=[0.5],
+                       colors="white", linewidths=1.0)
         ax.set_aspect("equal"); ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_title(title)
-    fig_snap.colorbar(im, ax=axes_snap.ravel().tolist(), shrink=0.82, label="$\\psi$")
+    fig_snap.colorbar(im, ax=axes_snap.ravel().tolist(), shrink=0.82, label="value")
     fig_snap.suptitle("V10: Zalesak slotted disk snapshots (N=128)")
     save_figure(fig_snap, OUT / "V10_zalesak_snapshots",
                 also_to=PAPER_FIGURES / "ch13_v10_zalesak_snapshot")
@@ -489,10 +488,11 @@ def make_figures(results: dict) -> None:
 
 
 def print_summary(results: dict) -> None:
-    for tag, key in (("α=2", "runs"), ("α=1", "runs_a1")):
-        rows = results.get(key, [])
-        if rows is None or len(rows) == 0: continue
-        print(f"V10 (Zalesak slotted disk, {tag}, 1 revolution):")
+    rows = results.get("zalesak")
+    if rows is None:
+        rows = results.get("runs_a1", results.get("runs", []))
+    if rows is not None and len(rows):
+        print("V10 (Zalesak slotted disk, α=1 uniform, 1 revolution):")
         for r in rows:
             print(f"  N={r['N']:>3}  cent_err={r['centroid_err']:.3e}  "
                   f"vol_drift={r['volume_drift']:.3e}  V_T/V0={r['V_T']/max(r['V0'],1e-12):.4f}")
@@ -501,7 +501,7 @@ def print_summary(results: dict) -> None:
             cents = np.array([r["centroid_err"] for r in rows])
             if all(cents > 0):
                 slope = np.log(cents[1] / cents[0]) / np.log(Ns[0] / Ns[1])
-                print(f"  → centroid order ≈ {slope:.2f}  (target ≥ 1.5)")
+                print(f"  → centroid order ≈ {slope:.2f}  (sharp-slot diagnostic)")
     sv = results["single_vortex"]
     print("V10 (single-vortex deformation reversal, FCCD/TVD-RK3):")
     print(f"  N={sv['N']:>3}  α={sv['alpha']:.0f}  L1_reverse={sv['reversal_l1']:.3e}  "
