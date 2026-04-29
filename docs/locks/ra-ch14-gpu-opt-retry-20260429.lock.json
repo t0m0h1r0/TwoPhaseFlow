@@ -1,0 +1,12 @@
+{
+  "branch": "ra-ch14-gpu-opt-retry-20260429",
+  "branch_slug": "ra-ch14-gpu-opt-retry-20260429",
+  "session_id": "8A5FBCEF-B7D5-40EE-80EB-E92BE7D9469A",
+  "worktree_path": ".claude/worktrees/ra-ch14-gpu-opt-retry-20260429",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH14",
+  "acquired_at": "2026-04-29T13:55:39Z",
+  "expires_at": "2026-04-30T13:55:39Z",
+  "meta_version": "7.1.0",
+  "scope": "ch14 YAML main-route GPU optimization and measurement"
+}

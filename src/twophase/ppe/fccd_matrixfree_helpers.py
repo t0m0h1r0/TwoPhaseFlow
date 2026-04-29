@@ -250,8 +250,8 @@ def build_fccd_interface_jump_context(*, xp, backend, psi, kappa, sigma: float) 
     return {
         "psi": xp.asarray(psi),
         "kappa": xp.asarray(kappa),
-        "psi_host": np.asarray(backend.to_host(psi)),
-        "kappa_host": np.asarray(backend.to_host(kappa)),
+        "psi_host": None,
+        "kappa_host": None,
         "sigma": float(sigma),
     }
 
@@ -296,8 +296,14 @@ def apply_fccd_interface_jump(
         kappa = interface_jump_context["kappa"]
         return pressure_arr + sigma * kappa * (1.0 - psi)
     pressure_arr = np.asarray(pressure)
-    psi = interface_jump_context["psi_host"]
-    kappa = interface_jump_context["kappa_host"]
+    psi = interface_jump_context.get("psi_host")
+    kappa = interface_jump_context.get("kappa_host")
+    if psi is None:
+        psi = np.asarray(backend.to_host(interface_jump_context["psi"]))
+        interface_jump_context["psi_host"] = psi
+    if kappa is None:
+        kappa = np.asarray(backend.to_host(interface_jump_context["kappa"]))
+        interface_jump_context["kappa_host"] = kappa
     return pressure_arr + sigma * kappa * (1.0 - psi)
 
 
