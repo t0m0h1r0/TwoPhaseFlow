@@ -18,8 +18,9 @@ Setup
     v(x,y) =  (2*pi/T_rev) * (x - 0.5).
   T_rev = 1.0 (one full revolution).
   Zalesak: N in {64, 128}, alpha_grid in {1.0, 2.0}.
-  Single vortex: N = 96, alpha_grid = 2.0, T = 8.0, with dynamic
-  interface-fitted grid rebuild and Ridge-Eikonal reinitialization.
+  Single vortex: N = 128, alpha_grid = 1.0, T = 8.0, with no interface
+  tracking and fixed uniform-grid Ridge-Eikonal + mass correction every
+  10 steps.
   CFL = 0.25 (limited by max |u|).
   Spatial transport: FCCD flux form (same production family as ch14).
 
@@ -73,13 +74,14 @@ DISK_R = 0.15
 DISK_CENTER = (0.5, 0.75)
 SLOT_WIDTH = 0.05
 SLOT_LENGTH = 0.25
-SINGLE_VORTEX_N = 96
-SINGLE_VORTEX_ALPHA = 2.0
+SINGLE_VORTEX_N = 128
+SINGLE_VORTEX_ALPHA = 1.0
 SINGLE_VORTEX_T = 8.0
 SINGLE_VORTEX_PHASE_DIVISIONS = 32
 SINGLE_VORTEX_REINIT_EVERY = 10
-SINGLE_VORTEX_GRID_REBUILD_EVERY = 10
+SINGLE_VORTEX_GRID_REBUILD_EVERY = 0
 SINGLE_VORTEX_REINIT_METHOD = "ridge_eikonal"
+SINGLE_VORTEX_MASS_CORRECTION = True
 
 
 def _slotted_disk_phi(X, Y) -> np.ndarray:
@@ -149,7 +151,7 @@ def _make_single_vortex_operators(backend, grid, eps: float):
         backend, grid, ccd_solver, eps,
         n_steps=4,
         method=SINGLE_VORTEX_REINIT_METHOD,
-        mass_correction=True,
+        mass_correction=SINGLE_VORTEX_MASS_CORRECTION,
     )
     return ccd_solver, levelset_advection, reinitializer
 
@@ -289,6 +291,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     t = 0.0
     reinit_count = 0
     grid_rebuild_count = 0
+    grid_rebuild_every = SINGLE_VORTEX_GRID_REBUILD_EVERY if alpha > 1.0 else 0
     grid_rebuild_steps = []
     h_min_history = [h_min]
     for step in range(n_steps):
@@ -301,9 +304,8 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
             )
             reinit_count += 1
         if (
-            alpha > 1.0
-            and SINGLE_VORTEX_GRID_REBUILD_EVERY > 0
-            and (step + 1) % SINGLE_VORTEX_GRID_REBUILD_EVERY == 0
+            grid_rebuild_every > 0
+            and (step + 1) % grid_rebuild_every == 0
         ):
             psi_h = _rebuild_single_vortex_grid(psi_h, backend, grid, ccd, eps, V0)
             ccd, ls_adv, reinit = _make_single_vortex_operators(backend, grid, eps)
@@ -322,16 +324,19 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     phase_Y_h = np.stack(phase_Y, axis=0)
     psi_half = phase_psi_h[SINGLE_VORTEX_PHASE_DIVISIONS // 2]
 
-    to_initial = build_grid_remapper(
-        backend,
-        [coords.copy() for coords in grid.coords],
-        initial_coords,
-    )
-    psi_T_on_initial = np.asarray(
-        backend.to_host(
-            backend.xp.clip(to_initial.remap(backend.to_device(psi_h)), 0.0, 1.0)
+    if grid_rebuild_count > 0:
+        to_initial = build_grid_remapper(
+            backend,
+            [coords.copy() for coords in grid.coords],
+            initial_coords,
         )
-    )
+        psi_T_on_initial = np.asarray(
+            backend.to_host(
+                backend.xp.clip(to_initial.remap(backend.to_device(psi_h)), 0.0, 1.0)
+            )
+        )
+    else:
+        psi_T_on_initial = psi_h.copy()
 
     V_T = float(np.sum(psi_h * dV_h))
     area_T = float(np.sum((psi_h > 0.5) * dV_h))
@@ -347,7 +352,8 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
         "reinit_every": SINGLE_VORTEX_REINIT_EVERY,
         "reinit_count": reinit_count,
         "reinit_method": SINGLE_VORTEX_REINIT_METHOD,
-        "grid_rebuild_every": SINGLE_VORTEX_GRID_REBUILD_EVERY,
+        "mass_correction": SINGLE_VORTEX_MASS_CORRECTION,
+        "grid_rebuild_every": grid_rebuild_every,
         "grid_rebuild_count": grid_rebuild_count,
         "grid_rebuild_steps": np.asarray(grid_rebuild_steps, dtype=int),
         "grid_h_min_history": np.asarray(h_min_history, dtype=float),
@@ -502,6 +508,8 @@ def print_summary(results: dict) -> None:
           f"vol_drift={sv['volume_drift']:.3e}  V_T/V0={sv['V_T']/max(sv['V0'],1e-12):.4f}")
     print(f"  reinit={sv.get('reinit_method', 'none')} every {int(sv.get('reinit_every', 0))} "
           f"steps ({int(sv.get('reinit_count', 0))} calls)")
+    print(f"  mass_correction={bool(sv.get('mass_correction', False))} every "
+          f"{int(sv.get('reinit_every', 0))} steps")
     print(f"  grid_rebuild every {int(sv.get('grid_rebuild_every', 0))} "
           f"steps ({int(sv.get('grid_rebuild_count', 0))} calls)")
 
