@@ -82,7 +82,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
 これは \textbf{CPU bit-exact verification}（PR-5）を優先する設計上の選択であり，
 収束次数や round-off 床といった単体精度指標が
 ハードウェア依存のドリフトを受けないことを保証するためである．
-GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:results}章の
+GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:benchmarks}章の
 統合検証で運用評価する．本章で確認する numerical primitive は
 \texttt{backend.xp} 経由で書かれており CPU/GPU 切り替え可能だが，
 精度判定は CPU 値を canonical reference として記録する．
@@ -112,7 +112,7 @@ U1-c & FCCD face value/grad（周期評価）& $4$ & $4.00 / 4.00$ & \checkmark 
 U1-d & UCCD6 d1                & $6$ & $7.00$（super） & \checkmark \\
 U2-a & CCD--Poisson Dirichlet ($k=3$) & $7$ & $6.90$ & \checkmark \\
 U2-b & Production CCD-PPE + Dirichlet パッチ & $6$ & $5.72$ & \checkmark \\
-U3-a & CCD 非一様 d1 + GCL    & $6$ & $5.98$，GCL $7.5\!\times\!10^{-14}$ & \checkmark \\
+U3-a & CCD 非一様 d1 + GCL    & $6$ & $5.98$，GCL $2.13\!\times\!10^{-13}$ & \checkmark \\
 U3-b & FCCD 非一様 face value/grad & $4$ & $4.00 / 4.09$ & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4     & $D_4$ のみ active & $D_4 \le 4.5\!\times\!10^{-11}$ & \checkmark \\
 U4-a & Godunov Eikonal 再初期化 & $\le 1.5h$ & $9.16\!\times\!10^{-3}$ & \checkmark \\
