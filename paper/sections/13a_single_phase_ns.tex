@@ -24,9 +24,9 @@ $L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 0.05$, 周期境界．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V1-a：CCD/PPE TGV の空間収束傾向（$\Delta t=10^{-3}$ 固定）．
-FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ に近い．}
+\caption{V1-a：CCD/PPE TGV の空間収束}
 \label{tab:V1_spatial}
+\PaperCaptionNote{$\Delta t=10^{-3}$ 固定．FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ に近い．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -40,9 +40,9 @@ $N$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & $\|\nabla\!\cdot 
 \end{table}
 
 \begin{table}[!ht]
-\caption{V1-b：CCD/PPE TGV の時間収束傾向（$N=64$ 固定）．
-AB2 predictor に対し，PPE 射影結合込みの速度誤差は実効 $O(\Delta t)$．}
+\caption{V1-b：CCD/PPE TGV の時間収束}
 \label{tab:V1_temporal}
+\PaperCaptionNote{$N=64$ 固定．AB2 predictor に対し，PPE 射影結合込みの速度誤差は実効 $O(\Delta t)$．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -60,25 +60,17 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v1_tgv_energy.pdf}
-\caption{V1：TGV エネルギー減衰の収束．
-左：CCD/PPE 経路での空間 trend．右：AB2 predictor + PPE projection の時間 trend．
-旧 FFT spectral proxy ではなく，実装上の CCD/PPE 結合を直接測るため，観測次数は
-空間 $O(h^2)$，時間 $O(\Delta t)$ に留まる．}
+\caption{V1：TGV エネルギー減衰の収束}
 \label{fig:V1_tgv}
+\PaperCaptionNote{左：CCD/PPE 経路での空間 trend．右：AB2 predictor + PPE projection の時間 trend． 旧 FFT spectral proxy ではなく，実装上の CCD/PPE 結合を直接測るため，観測次数は 空間 $O(h^2)$，時間 $O(\Delta t)$ に留まる．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch13_v1_tgv_vorticity.pdf}
-\caption{V1：TGV 渦度場 $\omega = \partial_x v - \partial_y u$ のスナップショット
-（$N=64$，$\nu=0.01$，周期境界，CCD 微分，AB2 + PPE 射影）．
-左から $t=0,\,25,\,50$．粘性減衰係数 $e^{-2\nu t}$ は
-$1.0 \to 0.61 \to 0.37$ と推移し，
-Taylor--Green の 4 渦対 checkerboard 構造が振幅を失っていく様子を
-直接可視化する．数値解と理論減衰係数の一致は $\Ord{10^{-3}}$ 以内
-（測定値 $0.6068 / 0.3681$ vs.\ 理論 $0.6065 / 0.3679$）．
-共有カラースケールは 99 パーセンタイルから対称取得．}
+\caption{V1：TGV 渦度場スナップショット}
 \label{fig:V1_tgv_vorticity}
+\PaperCaptionNote{$\omega = \partial_x v - \partial_y u$，$N=64$，$\nu=0.01$，周期境界，CCD 微分，AB2 + PPE 射影．左から $t=0,\,25,\,50$．粘性減衰係数 $e^{-2\nu t}$ は $1.0 \to 0.61 \to 0.37$ と推移し，Taylor--Green の 4 渦対 checkerboard 構造が振幅を失っていく様子を直接可視化する．数値解と理論減衰係数の一致は $\Ord{10^{-3}}$ 以内（測定値 $0.6068 / 0.3681$ vs.\ 理論 $0.6065 / 0.3679$）．共有カラースケールは 99 パーセンタイルから対称取得．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
@@ -113,11 +105,9 @@ $N \in \{32,64,128,256\}$, wall one-sided CCD boundary．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V2-a：Kovasznay CCD 空間残差 $\|R\|_\infty$．
-slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$．
-真の Kovasznay NS 残差では boundary/global compact coupling と非線形項により
-実効 4 次に留まるが，旧 manufactured periodic proxy ではなく実問題 identity と一致する．}
+\caption{V2-a：Kovasznay CCD 空間残差 $\|R\|_\infty$}
 \label{tab:V2_spatial}
+\PaperCaptionNote{slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$． 真の Kovasznay NS 残差では boundary/global compact coupling と非線形項により 実効 4 次に留まるが，旧 manufactured periodic proxy ではなく実問題 identity と一致する．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -136,27 +126,17 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v2_kovasznay_orders.pdf}
-\caption{V2：Kovasznay CCD 空間残差の格子収束．
-左は定常 NS 残差，右は非圧縮残差．真の Kovasznay 解に対し residual は
-漸近 slope $3.95$，divergence は $10^{-12}$ 台まで低下する．}
+\caption{V2：Kovasznay CCD 空間残差の格子収束}
 \label{fig:V2_kovasznay}
+\PaperCaptionNote{左は定常 NS 残差，右は非圧縮残差．真の Kovasznay 解に対し residual は 漸近 slope $3.95$，divergence は $10^{-12}$ 台まで低下する．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch13_v2_kovasznay_field.pdf}
-\caption{V2：Kovasznay 流（$\Re=40$，$N=256$）の 2D 場．
-(a) 解析速度 $u(x,y)$ の streamlines を $|u| = \sqrt{u^2 + v^2}$ で着色
-（$|u|\in[0.1,\,1.6]$）．流入側左端の境界層から outflow に向かう特徴的な
-1 周期 cosine perturbation が直接観察できる．
-(b) $\log_{10}\|R\|$．$R = u\!\cdot\!\nabla u + \nabla p - \nu\Delta u$ の
-CCD 演算子による評価値．左側 wall 近傍で one-sided CCD の境界 stencil 寄与で
-やや大きく，bulk では $10^{-9}$--$10^{-10}$ 台まで sink する．
-(c) $\log_{10}|\nabla\!\cdot u|$．wall 4 点を含めた full divergence で
-$10^{-11}$--$10^{-13}$ 台まで低下し，CCD 微分が真の解析非圧縮性を
-高精度に保つことを示す．いずれの panel も interior は機械精度に近づく
-ため log スケールで表示している．}
+\caption{V2：Kovasznay 流の 2D 場}
 \label{fig:V2_kovasznay_field}
+\PaperCaptionNote{$\Re=40$，$N=256$．(a) 解析速度 $u(x,y)$ の streamlines を $|u| = \sqrt{u^2 + v^2}$ で着色（$|u|\in[0.1,\,1.6]$）．流入側左端の境界層から outflow に向かう特徴的な 1 周期 cosine perturbation が直接観察できる．(b) $\log_{10}\|R\|$．$R = u\!\cdot\!\nabla u + \nabla p - \nu\Delta u$ の CCD 演算子による評価値．左側 wall 近傍で one-sided CCD の境界 stencil 寄与でやや大きく，bulk では $10^{-9}$--$10^{-10}$ 台まで sink する．(c) $\log_{10}|\nabla\!\cdot u|$．wall 4 点を含めた full divergence で $10^{-11}$--$10^{-13}$ 台まで低下し，CCD 微分が真の解析非圧縮性を高精度に保つことを示す．いずれの panel も interior は機械精度に近づくため log スケールで表示している．}
 \end{figure}
 
 \paragraph{判定と制約条件．}

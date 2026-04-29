@@ -32,12 +32,9 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V6：§14 ベンチマーク設定による密度比掃引．全 8 ケースでブローアップなし．
-$|\Delta V_\psi|/V_{\psi,0}$ は全ケースで $O(10^{-10})$--$O(10^{-11})$，
-$u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する．
-$|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり，
-Laplace 絶対圧誤差ではない．}
+\caption{V6：§14 ベンチマーク設定による密度比掃引}
 \label{tab:V6_density_ratio}
+\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで $O(10^{-10})$--$O(10^{-11})$， $u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -61,24 +58,17 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
-\caption{V6：密度比収束掃引．
-$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し，
-$\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり，
-全ケース $O(10^{-10})$--$O(10^{-11})$ に留まる．}
+\caption{V6：密度比収束掃引}
 \label{fig:V6_density_ratio}
+\PaperCaptionNote{$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し， $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり， 全ケース $O(10^{-10})$--$O(10^{-11})$ に留まる．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch13_v6_density_ratio_fields.pdf}
-\caption{V6：密度比 $\rho_l/\rho_g \in \{2, 100, 833\}$ における
-速度大きさ $|u|$ の終端場（$N=32$，§14 stack，FCCD/UCCD6/HFE/pressure-jump/分相 PPE/DC）．
-白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，
-$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で
-$\sim 1.8\times 10^{-4} \to \sim 1.5\times 10^{-5}$ と
-1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，
-本 stack が密度比に対して頑健であることを示す．}
+\caption{V6：密度比掃引の終端速度場}
 \label{fig:V6_density_ratio_fields}
+\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，§14 stack（FCCD/UCCD6/HFE/pressure-jump/分相 PPE/DC）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $\sim 1.8\times 10^{-4} \to \sim 1.5\times 10^{-5}$ と 1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
@@ -115,10 +105,9 @@ ridge-eikonal reinitialization は全 step で有効化する．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V7：§14 ベンチマーク設定の二相時間精度診断．参照は $n_{\mathrm{ref}}=64$．
-粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し，
-最終 halving で観測 slope $\mathbf{1.58}$ まで回復するが，純粋な 2 次には未達．}
+\caption{V7：§14 ベンチマーク設定の二相時間精度診断}
 \label{tab:V7_imex_bdf2_time}
+\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$． 粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し， 最終 halving で観測 slope $\mathbf{1.58}$ まで回復するが，純粋な 2 次には未達．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -136,10 +125,9 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
-\caption{V7：IMEX-BDF2 二相時間精度．
-§14 stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.58$ まで回復するが，
-粗い時間刻みでは界面輸送・再初期化・pressure-jump PPE の非線形結合誤差が支配する．}
+\caption{V7：IMEX-BDF2 二相時間精度}
 \label{fig:V7_imex_bdf2_time}
+\PaperCaptionNote{§14 stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.58$ まで回復するが， 粗い時間刻みでは界面輸送・再初期化・pressure-jump PPE の非線形結合誤差が支配する．}
 \end{figure}
 
 \paragraph{判定と制約条件．}

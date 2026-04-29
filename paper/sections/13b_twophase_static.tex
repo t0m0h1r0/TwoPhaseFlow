@@ -25,11 +25,9 @@ $N \in \{64, 96, 128\}$, $\Delta t = h/4$, $n_{\mathrm{step}} = 200$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V3：静止液滴の長時間診断（$n_{\mathrm{step}}=200$）．
-$\Delta p_{\mathrm{rel}} = (\Delta p_{\mathrm{meas}} - \Delta p_{\mathrm{exact}})/\Delta p_{\mathrm{exact}}$．
-$u_\infty^{\max}$ は寄生流れ（spurious current; \autoref{sec:spurious_multistep}）の
-$t \in [0, t_{\mathrm{end}}]$ 履歴における最大値．}
+\caption{V3：静止液滴の長時間診断（$n_{\mathrm{step}}=200$）}
 \label{tab:V3_droplet}
+\PaperCaptionNote{$\Delta p_{\mathrm{rel}} = (\Delta p_{\mathrm{meas}} - \Delta p_{\mathrm{exact}})/\Delta p_{\mathrm{exact}}$． $u_\infty^{\max}$ は寄生流れ（spurious current; \autoref{sec:spurious_multistep}）の $t \in [0, t_{\mathrm{end}}]$ 履歴における最大値．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -45,23 +43,17 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v3_static_droplet.pdf}
-\caption{V3：静止液滴の長時間診断．
-$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で
-$1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）．
-$u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減．
-これは CSF $\kappa$ 推定が解像度向上に伴って高周波モードを励起するため，
-履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で
-multistep + CCD/FD の寄与を切り分ける）．}
+\caption{V3：静止液滴の長時間診断}
 \label{fig:V3_droplet}
+\PaperCaptionNote{$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で $1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）． $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減． これは CSF $\kappa$ 推定が解像度向上に伴って高周波モードを励起するため， 履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で multistep + CCD/FD の寄与を切り分ける）．}
 \end{figure}
 
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v3_static_droplet_snapshot.pdf}
-\caption{V3：静止液滴の 2D 場（$N=128$，200 ステップ後）．
-左は圧力場と $\psi=0.5$ 界面，右は速度絶対値 $|\bm u|$ と界面を重ねたもの．
-Laplace 圧力跳びが円形界面に沿って維持され，寄生流れは界面近傍の薄い帯に局在する．}
+\caption{V3：静止液滴の 2D 場}
 \label{fig:V3_droplet_snapshot}
+\PaperCaptionNote{$N=128$，200 ステップ後．左は圧力場と $\psi=0.5$ 界面，右は速度絶対値 $|\bm u|$ と界面を重ねたもの．Laplace 圧力跳びが円形界面に沿って維持され，寄生流れは界面近傍の薄い帯に局在する．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
@@ -92,9 +84,9 @@ $\Delta t = h/4$, $n_{\mathrm{step}} = 200$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V5：寄生流れの多ステップ診断（$n_{\mathrm{step}}=200$）．
-各セルは $u_\infty^{\mathrm{end}}$．CCD/FD 比は同 $N, \rho_r$ で CCD が支配的に小さい．}
+\caption{V5：寄生流れの多ステップ診断}
 \label{tab:V5_spurious}
+\PaperCaptionNote{$n_{\mathrm{step}}=200$．各セルは $u_\infty^{\mathrm{end}}$．CCD/FD 比は同 $N, \rho_r$ で CCD が支配的に小さい．}
 \centering\small
 \begin{tabular}{r r r r r r r}
 \toprule
@@ -112,10 +104,9 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v5_spurious_multistep.pdf}
-\caption{V5：寄生流れの多ステップ診断．
-左は $N=128,\rho_r=10$ の時系列，右は 200 ステップ後の最終時刻 FD/CCD 比．
-$\rho_r$ 増大に伴い両者の差は縮小（高密度比では曲率誤差より $\rho$ ジャンプの不連続効果が支配）．}
+\caption{V5：寄生流れの多ステップ診断}
 \label{fig:V5_spurious}
+\PaperCaptionNote{左は $N=128,\rho_r=10$ の時系列，右は 200 ステップ後の最終時刻 FD/CCD 比． $\rho_r$ 増大に伴い両者の差は縮小（高密度比では曲率誤差より $\rho$ ジャンプの不連続効果が支配）．}
 \end{figure}
 
 \paragraph{判定と制約条件．}

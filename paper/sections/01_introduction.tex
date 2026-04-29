@@ -118,16 +118,9 @@ Navier--Stokes 方程式を扱うのが一般的である．
     \node[font=\scriptsize, orange2] at (1.0, -0.5) {$\psi\approx 1$（気相）};
   \end{scope}
 \end{tikzpicture}
-\caption{気液界面における密度・粘性のジャンプ（左：物理的不連続，右：CLS 遷移層による数値表現）．
-CLS 変数 $\psi \in [0,1]$ は界面を滑らかな遷移層として表現する．
-本稿では $\varepsilon$ を界面幅パラメータと呼び，中心遷移幅は $\approx 2\varepsilon$，
-95\% 遷移帯はおよそ $|\phi|\le 3\varepsilon$（幅 $\approx 6\varepsilon$）である．
-\textbf{符号規約：}液相で $\psi \approx 0$，気相で $\psi \approx 1$（本稿全章共通）．
-これは物性補間式 $\rho(\psi) = \rho_l + (\rho_g - \rho_l)\psi$ と整合する：
-$\psi=0$ のとき $\rho = \rho_l$（液相密度），$\psi=1$ のとき $\rho = \rho_g$（気相密度）．
-変数 $\phi$（符号付き距離関数）と $\psi$（保存形 Level Set 変数）の正式な定義は
-第~\ref{sec:governing}章（§~\ref{sec:notation}）で述べる．}
+\caption{気液界面における密度・粘性のジャンプ}
 \label{fig:density_jump}
+\PaperCaptionNote{左は物理的不連続，右は CLS 遷移層による数値表現．CLS 変数 $\psi \in [0,1]$ は界面を滑らかな遷移層として表現する．本稿では $\varepsilon$ を界面幅パラメータと呼び，中心遷移幅は $\approx 2\varepsilon$，95\% 遷移帯はおよそ $|\phi|\le 3\varepsilon$（幅 $\approx 6\varepsilon$）である．\textbf{符号規約：}液相で $\psi \approx 0$，気相で $\psi \approx 1$（本稿全章共通）．これは物性補間式 $\rho(\psi) = \rho_l + (\rho_g - \rho_l)\psi$ と整合する：$\psi=0$ のとき $\rho = \rho_l$（液相密度），$\psi=1$ のとき $\rho = \rho_g$（気相密度）．変数 $\phi$（符号付き距離関数）と $\psi$（保存形 Level Set 変数）の正式な定義は第~\ref{sec:governing}章（§~\ref{sec:notation}）で述べる．}
 \end{figure}
 
 % ─────────────────────────────────────────────────────────────────────────────
