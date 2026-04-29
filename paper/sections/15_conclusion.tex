@@ -1,4 +1,4 @@
-% paper/sections/13_conclusion.tex
+% paper/sections/15_conclusion.tex
 \section{まとめと今後の課題}
 \label{sec:conclusion}
 
@@ -10,23 +10,28 @@
 本稿では，気液二相流の高精度数値シミュレーションに必要な数学的・数値的基盤を，
 学部生・大学院生を主な読者として体系的に解説した．
 本稿の技術的中核は\textbf{寄生流れの根本的抑制}にあり，
-CCD $O(h^6)$ による高精度曲率計算，
-FD 直接法 PPE + CCD 勾配による Balanced-Force 条件の $O(h^6)$ 維持，
-および DCCD 散逸機構がその主要手段である（§\ref{sec:intro}）．
-各章の設計方針を整理する前に，「なぜこの組み合わせが必要か」を再確認する．
+（i）CCD $\Ord{h^6}$ を起点とする高精度微分演算子群（CCD・DCCD・UCCD6・FCCD・面ジェット）による曲率と勾配の同時高精度化，
+（ii）\textbf{分相 PPE}＋HFE による界面延長＋欠陥補正（DC $k=3$）の組合せによる変密度 PPE 収束性の回復，
+（iii）Balanced-Force 七原則と FCCD 面ジェット sub-system による
+コロケート格子のチェッカーボード抑制，
+の \textbf{三本柱}でこれを実現する（§\ref{sec:intro}，§\ref{sec:roadmap}，§\ref{sec:strategy}）．
+各章の設計方針を整理する前に，「なぜこの組合せが必要か」を再確認する．
 
 \begin{center}
-\renewcommand{\arraystretch}{1.4}
-\begin{tabular}{>{\raggedright}p{60mm}>{\raggedright\arraybackslash}p{70mm}}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{>{\raggedright}p{58mm}>{\raggedright\arraybackslash}p{82mm}}
 \hline
 \textbf{数値的困難} & \textbf{本稿の対処手法} \\
 \hline
-界面の質量損失       & CLS 法（第\ref{sec:levelset}章）\\
-低次移流による界面にじみ & Dissipative CCD + TVD-RK3（第\ref{sec:advection}章）\\
-曲率計算誤差 $\to$ 寄生流れ & CCD 法 $O(h^6)$（第\ref{sec:CCD}章）\\
-チェッカーボード圧力振動 & Balanced-Force + FCCD 面ジェット sub-system（§\ref{sec:checkerboard_solution}，第\ref{sec:collocate}章）\\
-変密度 PPE の収束悪化 & 分相 PPE 解法（§\ref{sec:field_extension}，§\ref{sec:varrho_ppe_limitation}）\\
-格子粗さによる界面解像不足 & Level Set 連動非一様格子（第\ref{sec:grid}章）\\
+界面の質量損失       & CLS 法 + 6 段階再初期化（第\ref{sec:levelset}章，§\ref{sec:reinit}，§\ref{sec:cls_stages}）\\
+低次移流による界面にじみ & DCCD + UCCD6 + TVD-RK3（§\ref{sec:dccd_role}，§\ref{sec:uccd6_def}，§\ref{sec:time_int}）\\
+曲率計算誤差 $\to$ 寄生流れ & CCD $\Ord{h^6}$ + HFE Hermite 場延長（第\ref{sec:CCD}章，§\ref{sec:hfe}）\\
+チェッカーボード圧力振動 & Balanced-Force 七原則 + FCCD 面ジェット sub-system（§\ref{sec:balanced_force}，§\ref{sec:fccd_bf_sub_system}）\\
+変密度 PPE の収束悪化 & 分相 PPE + HFE + 欠陥補正 ($k=3$)（§\ref{sec:split_ppe_recovery}，§\ref{sec:hfe}，§\ref{sec:defect_correction_main}）\\
+距離関数品質の劣化と位相変化 & Ridge--Eikonal 補助場再初期化（§\ref{sec:ridge_eikonal}，§\ref{sec:ridge_aux_field}）\\
+格子粗さによる界面解像不足 & 界面適合非一様格子 + Ridge--Eikonal 非一様補正 D1--D4（第\ref{sec:grid}章，§\ref{sec:ridge_eikonal_nu_grid}）\\
+高密度比下の圧力ジャンプ整合 & pressure-jump 型 FCCD-PPE（§\ref{sec:split_ppe_pressure_jump_formulation}）\\
+起動時の格子↔界面循環依存 & DCCD ブートストラップ 6 段階（§\ref{sec:bootstrap}）\\
 \hline
 \end{tabular}
 \end{center}
