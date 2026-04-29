@@ -3,8 +3,11 @@
 % 付録: 圧力ソルバーと連成解析（§7-9 対応）
 %   HFE 格子収束検証は本文 U6-c（§12.4）に集約済み。
 
+\section{圧力ソルバーと連成解析}
+\label{app:pressure_coupling}
+
 %% D.1 欠陥補正法の理論と係数導出
-\section{欠陥補正法の理論と係数導出}
+\subsection{欠陥補正法の理論と係数導出}
 \label{app:dc_theory}
 \input{sections/appendix_numerics_solver_s2}   %% D.1.1 Thomas 三重対角係数
 \input{sections/appendix_numerics_solver_s3}   %% D.1.2 収束率解析と最適 Δτ
@@ -92,7 +95,7 @@ $p'''$ 係数が $1/24$ に揃い，検出項は：
 となる．RC 補正量が $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される証明である．
 
 %% 圧力ステップの実装補足
-\section{圧力ステップの実装補足}
+\subsection{圧力ステップの実装補足}
 \label{app:pressure_step_details}
 
 本節では，本文の 7-step フローで過度に詳細となる
