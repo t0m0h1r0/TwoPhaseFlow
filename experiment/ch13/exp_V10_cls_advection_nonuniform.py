@@ -75,6 +75,7 @@ DISK_R = 0.15
 DISK_CENTER = (0.5, 0.75)
 SLOT_WIDTH = 0.05
 SLOT_LENGTH = 0.25
+ZALESAK_MASS_CORRECTION_EVERY = 10
 SINGLE_VORTEX_N = 128
 SINGLE_VORTEX_ALPHA = 1.0
 SINGLE_VORTEX_T = 8.0
@@ -228,20 +229,29 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
 
     ls_adv = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
 
+    mass_correction_count = 0
     for step in range(n_steps):
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
+        if (step + 1) % ZALESAK_MASS_CORRECTION_EVERY == 0:
+            psi_h = _mass_reinitialize(psi_h, backend, dV_h, mass0)
+            mass_correction_count += 1
 
     mass_T = float(np.sum(psi_h * dV_h))
     area_T, cx_T, cy_T = _measure_centroid_area(psi_h, X_h, Y_h, dV_h)
     cent_err = float(np.sqrt((cx_T - cx0) ** 2 + (cy_T - cy0) ** 2))
     vol_drift = float(abs(mass_T - mass0) / max(mass0, 1e-12))
     area_drift = float(abs(area_T - area0) / max(area0, 1e-12))
+    shape_l1 = float(np.sum(np.abs(psi_h - psi0_active) * dV_h)
+                     / max(np.sum(dV_h), 1e-12))
 
     return {
         "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
+        "mass_correction_every": ZALESAK_MASS_CORRECTION_EVERY,
+        "mass_correction_count": mass_correction_count,
         "V0": mass0, "V_T": mass_T, "area0": area0, "area_T": area_T,
         "cx0": cx0, "cy0": cy0, "cx_T": cx_T, "cy_T": cy_T,
         "centroid_err": cent_err, "volume_drift": vol_drift, "area_drift": area_drift,
+        "shape_l1": shape_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_active, "psi_T": psi_h,
     }
 
