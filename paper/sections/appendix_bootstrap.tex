@@ -33,15 +33,16 @@
         \textbf{1 サイクル}実行し
         $\phi^{(0)}\to\phi^{(0)}_\text{sdf}$ に高精度化する．
         \textbf{精度根拠}：広帯域 $\sigma_0 = 3 h_{\min}$ の 1 サイクルで
-        $\bigl||\nabla\phi^{(0)}_\text{sdf}|-1\bigr|\le \Ord{h^4}$ が達成される
-        （CLS 再初期化の局所線形化解析；定式化は §~\ref{sec:reinit}，
-        定量的根拠は §~\ref{sec:verify_time} の 1D/2D テスト結果に従う）．
+        $|\nabla\phi|$ の初期不整合を低減する．
+        ただし，この 1 サイクル補正だけで
+        $\bigl||\nabla\phi^{(0)}_\text{sdf}|-1\bigr|=\Ord{h^4}$ を自動的に与えるものではなく，
+        実験では §~\ref{sec:verify_field_extension} の HFE 診断と同じ格子系列で
+        初期 SDF 誤差を確認する必要がある．
         HFE 誤差伝播 $\varepsilon_\text{HFE} \lesssim \varepsilon_\text{sdf}\cdot|\nabla^k p|$
         ($k\le 6$) より局所 $\Ord{h^4}$ 誤差が界面曲率精度を律速するが，
-        Step 4 Young--Laplace は時刻 0 の初期化のみであり，
-        以後の時刻発展で誤差は減衰，
-        \textbf{HFE $\Ord{h^6}$ 全体精度}は時間平均的に達成される
-        （\S\ref{sec:verify_time} で数値検証）．
+        Step 4 Young--Laplace は時刻 0 の初期化のみである．
+        したがって本ステップは HFE 本体の $\Ord{h^6}$ 設計精度を主張する根拠ではなく，
+        初期圧力に低次 SDF 誤差を持ち込まないための事前整合化として扱う．
         以後の Step 4 では $\phi^{(0)}_\text{sdf}$ を用いる．
   \item \textbf{Step 4（Young--Laplace 初期圧力）：} 高精度化された
         $\phi^{(0)}_\text{sdf}$ から計算される初期曲率 $\kappa^0$ を用いて
