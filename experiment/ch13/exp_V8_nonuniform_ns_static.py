@@ -199,7 +199,7 @@ def make_figures(results: dict) -> None:
             cats.append(f"N{N}\nα={a:.0f}")
             dps.append(r["dp_final"] if r and not r["blew_up"] else 0.0)
     ax_d.bar(cats, dps, color="C2")
-    ax_d.axhline(DP_EXACT, color="k", linestyle="--", alpha=0.7, label="σ/R")
+    ax_d.axhline(DP_EXACT, color="k", linestyle="--", alpha=0.7, label="Δp_exact = σ/(r·We)")
     ax_d.set_ylabel("Δp_final"); ax_d.set_title("V8: Laplace Δp")
     ax_d.legend()
 
