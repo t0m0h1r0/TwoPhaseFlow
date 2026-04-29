@@ -9,7 +9,16 @@
   },
   "permissions": {
     "allow": [
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(/Users/tomohiro/Downloads/TwoPhaseFlow/.venv/bin/python3 -c ' *)",
+      "Bash(touch sections/13f_error_budget.tex)",
+      "Bash(rm -f main.aux main.log main.xdv)",
+      "Bash(rm -f main.aux main.log main.xdv main.pdf)",
+      "Bash(rm -f main.aux main.log main.xdv main.fls main.fdb_latexmk main.toc main.lof main.lot main.out main.synctex.gz main.bbl main.blg)",
+      "Bash(latexmk -gg -xelatex -interaction=nonstopmode -halt-on-error main.tex)"
+    ],
+    "additionalDirectories": [
+      "/Users/tomohiro/Downloads/TwoPhaseFlow/.claude/worktrees/ra-ch12ch13-2dviz-rerun-20260429/paper"
     ]
   }
 }

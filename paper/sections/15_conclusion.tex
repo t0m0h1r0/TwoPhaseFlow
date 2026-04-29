@@ -99,8 +99,8 @@
         CLS と移流に TVD-RK3，NS には AB2+IPC 投影による
         \textbf{全体時間精度 $\Ord{\Delta t^2}$} を採用し，
         粘性 ADI Crank--Nicolson と毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を導出した．
-        単体検証 U8 で TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2 $\Ord{\Delta t^{2.04}}$，
-        CN $\Ord{\Delta t^{2.0}}$ を実測した．
+        単体検証 U8 で TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2 $\Ord{\Delta t^{2.04}}$，
+        CN $\Ord{\Delta t^{2.00}}$ を実測した．
 \end{description}
 
 \paragraph{第二の柱：分相 PPE + HFE + 欠陥補正による変密度 PPE 収束性の回復}\hfill\null
@@ -200,7 +200,7 @@ CSF $\Ord{\varepsilon^2}$ 残存モデル誤差は pressure-jump 型 FCCD-PPE
 完全 GFM 整合（Kang ら~\cite{Kang2000} の Ghost Fluid Method）は今後の課題である．
 
 \paragraph{時間精度（U8, V7 で実測）}
-TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.0}}$
+TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord{\Delta t^{2.00}}$
 （U8-a, U8-b；§\ref{sec:time_int}）の単体精度を達成している．
 二相 V7（§\ref{sec:imex_bdf2_twophase_time}）の effective $\Ord{\Delta t^{1.58}}$ は coupled-stack
 （CLS 移流・PPE・運動量更新の非線形連結）律速であり，条件付き $\triangle$ として記録した．
@@ -248,8 +248,8 @@ TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         Laplace 圧力誤差 $0.61\%$ @ $N=128$，
         面 $\mu$ 補間（harmonic / arithmetic / log）の収束 slope $1.91/1.81/1.91$．
   \item[U8（時間積分；§\ref{sec:U8_time_integration}）：]
-        TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，
-        CN ADI $\Ord{\Delta t^{2.0}}$．3 層粘性 split は条件付き $\triangle$．
+        TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，
+        CN ADI $\Ord{\Delta t^{2.00}}$．3 層粘性 split は条件付き $\triangle$．
   \item[U9（DCCD-on-pressure 禁止の反証；§\ref{sec:U9_dccd_pressure_prohibition}）：]
         圧力に対する DCCD 適用は固有モード比 $10^{5}$--$3\times 10^{8}$ で
         圧力場を破壊するため禁止が成立（$\bullet$，研究上の反例として記録）．
