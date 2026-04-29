@@ -228,8 +228,9 @@ $L^1$ reversal error は $2.690\times10^{-2}$ である．}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{合格判定の基準}：script docstring の strict criterion
-        (Volume drift；本論文の mass drift と同義；$< 5\!\times\!10^{-3}$, Centroid order $\ge 1.5$) に対し，
+  \item \textbf{合格判定の基準}：script の plot 合格参照ライン
+        (Volume drift；本論文の mass drift と同義；$< 5\!\times\!10^{-3}$, Centroid order $\ge 1.5$；
+         診断プロット上の guideline であり docstring 由来の正式 criterion ではない) に対し，
         本節で示す $\alpha=1$ 一様格子設定は $N=128$ で
         mass drift $1.535\!\times\!10^{-2}$（基準を約 3 倍超過），
         Centroid order $1.22$（基準未達）となるため，
@@ -247,5 +248,5 @@ $L^1$ reversal error は $2.690\times10^{-2}$ である．}
         と local $\varepsilon$ 検証（V9）で扱う．
 \end{itemize}
 検証対応：式~\eqref{eq:cls_advection}，\autoref{sec:cls_advection} の CLS 移流，
-\autoref{sec:fccd_def} の face value/grad に対し，体積 drift，重心誤差，
+\autoref{sec:fccd_def} の face value/grad に対し，mass drift，重心誤差，
 および単一渦 reversal error を測定する．
