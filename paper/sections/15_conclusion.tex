@@ -37,8 +37,13 @@
 \end{center}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{各章の技術的貢献}
+\subsubsection{三本柱の設計方針と各章の技術的貢献}
 % ─────────────────────────────────────────────────────────────────────────────
+
+以下，三本柱に沿って Part I（定式化）・Part II（数値）の各章の技術的貢献を整理する．
+末尾に三本柱を結ぶ\textbf{統合層}（非一様格子拡張・統合アルゴリズム・ブートストラップ・Pure-FCCD DNS）をまとめる．
+
+\paragraph{第一の柱：CCD $\Ord{h^6}$ を起点とする高精度微分演算子群と界面追跡}\hfill\null
 
 \begin{description}
   \item[\textbf{第\ref{sec:governing}章：支配方程式系と One-Fluid 定式化・表面張力モデル}]
@@ -46,75 +51,125 @@
         ヘヴィサイド関数 $\psi$ を用いた一体化方程式に変換する
         One-Fluid 定式化を導出した（§\ref{sec:onefluid}）．
         界面ジャンプ条件 $[p]_\Gamma=\kappa/We$（Young--Laplace 則）の離散的取り扱いを
-        CSF 体積力形式（付録~\ref{app:csf_full}）とHFE（§\ref{sec:field_extension}）の
+        CSF 体積力形式（付録~\ref{app:csf_full}）と HFE（§\ref{sec:hfe}）の
         両面から整理した．
         無次元化（Re，Fr，We の定義）と曲率公式の幾何学的導出（§\ref{sec:curvature}）により，
         後の章の数値実装の数学的基礎を確立した．
 
-  \item[\textbf{第\ref{sec:levelset}章：Conservative Level Set 法}]
+  \item[\textbf{第\ref{sec:levelset}章：Conservative Level Set 法と Ridge--Eikonal 再初期化}]
         標準 Level Set 法の質量損失問題を克服するため，
-        $\psi = H_\varepsilon(\phi) \in [0,1]$ を移流変数とする
-        \textbf{保存形}の界面追跡法（CLS 法）を定式化した．
-        再初期化方程式（圧縮--拡散 PDE）により，
-        移流で崩れた界面プロファイルを $H_\varepsilon(\phi)$ の形に回復する理論を示した．
-        $\psi \to \phi$ の解析的逆変換（§\ref{sec:newton_inversion}）により，
-        幾何計算に必要な距離関数 $\phi$（$|\nabla\phi|=1$）の高精度復元手順を明示した．
+        $\psi = H_\varepsilon(\phi) \in [0,1]$ を移流変数とする保存形の
+        界面追跡法（CLS 法）を定式化した．
+        $\psi \to \phi$ の解析的逆変換（§\ref{sec:newton_inversion}）と
+        Ridge--Eikonal ハイブリッド再初期化（§\ref{sec:ridge_eikonal}，§\ref{sec:ridge_aux_field}）
+        により，飽和帯と位相変化の両者で連続な距離関数復元を可能にした．
+        単体検証 U4 では DGR の有効幅比が
+        $\varepsilon_{\mathrm{eff}}/\varepsilon_*=2.0\to1.0000033$ に収束し，
+        設計どおりの帯幅補正が実証された．
 
-  \item[\textbf{第\ref{sec:advection}章：CLS 移流の離散化（Dissipative CCD スキーム・時間積分・安定性制約）}]
-        純粋な CCD 中心差分移流のフォン・ノイマン不安定性（$|g(\xi)|^2 > 1$）を証明し，
-        スペクトルフィルタ $H(\xi;\varepsilon_d) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ による
-        振幅抑制機構を定式化した（§\ref{sec:advection_motivation}）．
-        CLS 移流には一様 $\varepsilon_d^{\text{adv}} = 0.05$ を採用し，
-        界面での Gibbs 振動を効果的に抑制する設計根拠を示した．
-        CLS 移流・再初期化には TVD-RK3（Shu--Osher 1988）を適用した．
-        AB2 対流外挿と IPC スプリッティングの組み合わせにより
-        \textbf{全体時間精度 $O(\Delta t^2)$} を達成したことを明示した（§\ref{sec:time_int}）．
-        毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を分散関係から導出した（§\ref{sec:stability}）．
-
-  \item[\textbf{第\ref{sec:CCD}章：結合コンパクト差分法（CCD 法）}]
+  \item[\textbf{第\ref{sec:CCD}章：CCD 法ファミリと面ジェット sub-system}]
         3点ステンシルで1階・2階微分を同時求解する CCD 法（Chu \& Fan 1998）を定式化し，
-        係数（$\alpha_1 = 7/16$，$a_1 = 15/16$，$b_1 = 1/16$ 等）の導出根拠を示した
-        （詳細な Taylor 展開証明は付録~\ref{app:ccd_coef_derivation}）．
-        CCD 法を楕円型境界値問題のソルバーとして用いる
-        \textbf{仮想時間陰解法}（§\ref{sec:ccd_elliptic}）を定式化し，
-        変密度 PPE への応用（§\ref{sec:ccd_poisson_matrix}）を示した．
+        係数導出根拠（付録~\ref{app:ccd_coef_derivation}）と
+        楕円型境界値問題への仮想時間陰解法応用（§\ref{sec:ccd_elliptic}）を整理した．
+        本稿はこれを基幹に\textbf{4 種の派生演算子}を導入する：
+        散逸 CCD（DCCD; §\ref{sec:dccd_role}，スペクトルフィルタ
+        $H(\xi)=1-4\varepsilon_d\sin^2(\xi/2)$ による $2\Delta x$ モード抑制），
+        6次風上 CCD（UCCD6; §\ref{sec:uccd6_def}, §\ref{sec:uccd6_hyperviscosity}，
+        運動量対流の節点中心ハイパー粘性），
+        面中心 CCD（FCCD; §\ref{sec:fccd_def}，$\Ord{h^4}$ 設計），
+        面ジェット API（§\ref{sec:face_jet_def}, §\ref{sec:face_jet_roles}，
+        $J_f(u)=(u_f,u'_f,u''_f)$ を 4 経路（圧力勾配・表面張力・HFE 上流点・GFM ジャンプ）で共有）．
+        単体検証 U1 で CCD $\Ord{h^{6.0}}$，DCCD $H(\pi)=0$，FCCD $\Ord{h^{4.00}/h^{4.00}}$，
+        UCCD6 $\Ord{h^{7.00}}$ のスーパー収束を確認した．
 
-  \item[\textbf{第\ref{sec:grid}章：界面適合非一様格子と CCD/FCCD 非一様拡張}]
-        Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により，
-        界面近傍のみを自動的に高解像度化する非一様テンソル積格子を定式化した（§\ref{sec:grid_gen}）．
-        座標変換メトリック係数の CCD 法による $O(h^6)$ 精度評価と
-        ALE 効果の簡略化条件を明示した（§\ref{sec:grid_ale}）．
-        格子密度幅 $\varepsilon_g$ を計算空間 $\xi$ のセル数で定義する方式
-        （$\varepsilon_g = N_{g,\text{cells}} \cdot L/N$，式~\eqref{eq:eps_g_xi}）を導入し，
-        $\xi$ 空間でのメトリクス解像度を $N$・$\alpha$ によらず保証した
-        （§\ref{sec:cls_on_nonuniform} で移流精度が一様格子と同等まで回復することを確認）．
+  \item[\textbf{第\ref{sec:reinit}章：CLS 再初期化パイプラインと 6 段階手順}]
+        Ridge--Eikonal を Stage D に組み込んだ
+        CLS の 6 段階離散サイクル（A: FCCD 移流，B: $\psi$ クランプ，
+        C: ロジット逆変換，D: Godunov Eikonal 再初期化，
+        E: DGR 帯幅補正，F: 曲率更新）を §\ref{sec:cls_stages} で展開し，
+        質量保存・幾何精度・質量補正の責務分離を実現した．
 
-  \item[\textbf{第\ref{sec:collocate}章：圧力--速度連成と Balanced-Force/FCCD}]
-        コロケート格子でのチェッカーボード不安定のメカニズム（$2\Delta x$ モード解析）を示し，
-        Balanced-Force 演算子整合と FCCD 面ジェット sub-system による
-        チェッカーボード抑制の設計原理を示した（§\ref{sec:checkerboard_solution}，§\ref{sec:balanced_force}，
-        §\ref{sec:fccd_bf_sub_system}）．
+  \item[\textbf{第\ref{sec:scheme_per_variable}章：変数別スキームと 3 層粘性離散化}]
+        CLS $\psi$ には FCCD 保存型 flux 発散（DCCD $\varepsilon_d=0.05$ 併用），
+        運動量 $(u,v)$ には UCCD6，
+        粘性項には 3 層 CCD（Layer A/B/C）＋ Crank--Nicolson 半陰解法を割り当て，
+        $\rho/\mu$ の補間規則（$\psi$ 線形）を明文化した（§\ref{sec:scheme_per_variable}）．
 
-  \item[\textbf{第\ref{sec:ppe_solve}章：圧力 Poisson 方程式の解法と分相 PPE・HFE・欠陥補正法}]
+  \item[\textbf{第\ref{sec:time_int}章：時間積分（TVD-RK3 / AB2+IPC / CN ADI）}]
+        CLS と移流に TVD-RK3，NS には AB2+IPC 投影による
+        \textbf{全体時間精度 $\Ord{\Delta t^2}$} を採用し，
+        粘性 ADI Crank--Nicolson と毛管波制約 $\Delta t_\sigma \propto \Delta x^{3/2}$ を導出した．
+        単体検証 U8 で TVD-RK3 $\Ord{\Delta t^{3.00}}$，AB2 $\Ord{\Delta t^{2.04}}$，
+        CN $\Ord{\Delta t^{2.0}}$ を実測した．
+\end{description}
+
+\paragraph{第二の柱：分相 PPE + HFE + 欠陥補正による変密度 PPE 収束性の回復}\hfill\null
+
+\begin{description}
+  \item[\textbf{第\ref{sec:ppe_solve}章：CCD-Poisson と 分相 PPE / HFE / 欠陥補正}]
         変密度 IPC Projection 法から
-        変係数 PPE $\nabla\cdot(1/\rho\,\nabla p) = (1/\Delta t)\nabla\cdot\bu^*$ を導出し，
-        FD 直接法による PPE 求解と CCD 勾配の併用
-        （§\ref{sec:ppe_discretization_choice}）を本稿の標準求解手法として採用した：
-        PPE を 2 次精度 FD で厳密に解き（残差ゼロ），
-        速度補正の勾配に CCD $\Ord{h^6}$ を適用することで
-        Balanced-Force 条件を $\Ord{h^6}$ 精度で維持する．
-        CCD PPE の欠陥補正法（§\ref{sec:defect_correction_main}）も定式化したが，
-        $L_L^{-1} L_H$ の不定性により定常反復法では収束不能であり
-        （§\ref{sec:ppe_discretization_choice}），
-        将来の Krylov 法前処理との組み合わせに向けた基盤技術として位置づける．
-        HFE（§\ref{sec:field_extension}）は分相 PPE 解法の基盤技術として定式化・検証した．
+        変係数 PPE $\nabla\cdot(\rho^{-1}\nabla p)=(1/\Delta t)\nabla\cdot\bu^*$ を導出した．
+        本稿の主たる設計戦略は\textbf{分相 PPE}（§\ref{sec:split_ppe_recovery},
+        §\ref{sec:varrho_ppe_limitation}）であり，
+        各相内で定数密度 Poisson を独立に解き，
+        界面ジャンプ条件 $[p]=\sigma\kappa$ を
+        \textbf{Hermite 場延長 HFE}（§\ref{sec:hfe}）が
+        Aslam Extension PDE の定常解として
+        Hermite 三つ組 $(f,f',f'')$ から仮想時間反復なしに直接構成する．
+        さらに各相に\textbf{欠陥補正法 DC ($k=3$)}（§\ref{sec:defect_correction_main}）を適用し，
+        Dirichlet テストで $\Ord{h^7}$ のスーパー収束を達成する．
+        単体検証 U6 では HFE 1D が $\Ord{h^{5.91}}$，
+        2D 帯領域 max $\Ord{h^{11.35}}$ / med $\Ord{h^{8.72}}$，
+        DC 残差 $7\times10^{-6}$（$\rho_l=1000$, $\omega=0.9$, $k=3$ 最良）を実測した．
+        統合検証 V6 において密度比 sweep $\rho_l/\rho_g\le833$ で
+        $|\Delta p_{\mathrm{corr}}|/(\sigma/r)=1.07\times10^{-1}$ ($N=32$) を確認し，
+        変密度 PPE 収束の密度比非依存性を実証した．
+        高密度比下の整合は pressure-jump 型 FCCD-PPE
+        （§\ref{sec:split_ppe_pressure_jump_formulation}）で完結する．
+\end{description}
 
-  \item[\textbf{第\ref{sec:algorithm}章：Navier--Stokes ソルバの統合アルゴリズム}]
-        NS 方程式の各項と離散ソルバーの対応関係（演算子マッピング），
-        7 ステップの全体フロー，
-        および CFL・毛管波制約を統合したタイムステップ制御を本稿全体で整理した．
-        AB2 + IPC による対流項処理・Crank--Nicolson 粘性項の ADI 求解・
-        IPC 増分圧力 Poisson 求解の完全な離散形式は，本稿 Part II の各章で個別に提示している．
+\paragraph{第三の柱：Balanced-Force 七原則と FCCD 面ジェット sub-system}\hfill\null
+
+\begin{description}
+  \item[\textbf{第\ref{sec:collocate}章：コロケート格子・圧力--速度連成・BF 設計}]
+        コロケート格子でのチェッカーボード不安定のメカニズム（$2\Delta x$ モード解析）を示し，
+        変密度 IPC Projection の Helmholtz 分解導出（§\ref{sec:pressure}）と
+        BF 失敗モード F-1..F-5 の分類を整理した．
+        \textbf{Balanced-Force 七原則 P-1..P-7}（§\ref{sec:balanced_force}）として，
+        位置共起・系統勾配共有・幾何経路統合・$\beta_f$ 統合・曲率非 CCD 則・
+        ジャンプ補正・BF sub-system 分離 を体系化し，
+        \textbf{FCCD-BF sub-system}（§\ref{sec:fccd_bf_sub_system}）が
+        圧力勾配・表面張力・HFE 上流点・GFM ジャンプの 4 経路で
+        単一の面足跡を共有することで原則群を実装する．
+        単体検証 U7 で BF 静止液滴 Laplace 圧誤差 $0.61\%$ ($N=128$)，
+        面 $\mu$ 補間 slopes 1.91/1.81/1.91 を確認した．
+\end{description}
+
+\paragraph{統合層：三本柱を結ぶ非一様格子・統合アルゴリズム・ブートストラップ}\hfill\null
+
+\begin{description}
+  \item[\textbf{第\ref{sec:grid}章：界面適合非一様格子と CCD/FCCD/Ridge--Eikonal 非一様拡張}]
+        Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ により
+        界面近傍を自動的に高解像度化する非一様テンソル積格子を定式化し（§\ref{sec:grid_gen}），
+        座標変換メトリック係数の CCD 評価と ALE 効果の簡略化条件を整理した．
+        FCCD は非一様格子上で $\Ord{H^4}$ 設計を保ち（実測 $\Ord{h^{4.00/4.09}}$），
+        Ridge--Eikonal は D1--D4 の 4 補正項
+        （§\ref{sec:ridge_eikonal_nu_grid}：$\sigma_{\mathrm{eff}}$ 空間スケーリング・
+        物理空間 Hessian・非一様 FMM・$\varepsilon$ 拡幅空間依存）で非一様格子に拡張される．
+        単体検証 U3 では GCL 残差 $7.5\times10^{-14}$（機械零）を達成した．
+
+  \item[\textbf{第\ref{sec:algorithm}章：統合アルゴリズム（7 ステップ）}]
+        NS 方程式の各項と離散ソルバの対応関係（演算子マッピング），
+        \textbf{7 ステップ時間ループ}（CLS 移流→再初期化→物性更新→曲率→
+        運動量予測子→PPE→IPC 補正子）を本稿全体で整理した．
+        分相 PPE + HFE + DC 経路はこのループに完全に統合済みである．
+
+  \item[\textbf{第\ref{sec:bootstrap}章：DCCD ブートストラップと Pure-FCCD DNS}]
+        起動時の格子↔界面循環依存を解決する
+        \textbf{6 段階ブートストラップ}（仮一様 SDF →非一様格子→ CLS 初期化→
+        CCD 演算子→非一様 SDF 再初期化→ Young--Laplace 初期圧力）を定式化し，
+        さらに研究級鋭利界面極限の構成として
+        \textbf{Pure-FCCD DNS 4 段階アーキテクチャ}（§\ref{sec:pure_fccd_dns}）を提示した．
 \end{description}
 
 % ─────────────────────────────────────────────────────────────────────────────
