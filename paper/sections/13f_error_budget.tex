@@ -92,8 +92,8 @@ V10-b& 単一渦 reversal ($\alpha=1, N=128, T=8$) & $L^1$ reversal / mass drift
   \item 二相 NS：分相 PPE + DC + HFE 構成が密度比 $\le 833$ でロバスト（V6）．
         ただし時間方向の実効次数は界面処理に律速されるため，
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
-  \item 非一様格子：$\alpha > 1$ でも FCCD/TVD--RK3 の体積保存は成立するが，
-        Zalesak slot のような薄い幾何特徴では重心追跡が低次化する．
+  \item 非一様格子：$\alpha>1$ の NS 静止問題と local $\varepsilon$ は V8/V9 で検証し，
+        Zalesak slot と単一渦 reversal は $\alpha=1$ の一様格子 CLS 移流診断に固定する．
         local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
   \item 寄生流れ抑制：CCD は V5 の全表ケースで FD 以下であり，
         代表的には $\rho_r=1,N=32$ で FD の $1/5.9$，
