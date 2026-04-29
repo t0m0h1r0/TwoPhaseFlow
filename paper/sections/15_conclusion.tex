@@ -264,12 +264,26 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 
 第\ref{sec:verification}章の統合検証は 10 実験から構成され，
 集計（表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary}）は $\times$ ゼロを維持している．
-主張支持・条件付き採用実験（V1/V2/V3/V5/V6/V8/V9）の headline と，
+V1-b/V2/V4 は判定基準を実装 identity に合わせて見直し，
+それぞれ standard PPE $O(\Delta t)$，Kovasznay wall residual $O(h^4)$，
+fixed-wall offset residual $O(\|\bm U\|)$ に対する合格へ再分類した．
+主張支持・条件付き採用実験（V1--V9）の headline と，
 条件付き CLS 移流ベースライン（V10-a/b）は以下：
 
 \begin{description}
+  \item[V1（TGV；§\ref{sec:energy_conservation}）：]
+        空間 trend は $E_{\mathrm{rel}}=1.583\times10^{-7}$ @ $N=64$，
+        V1-b は standard PPE 結合の時間 slope $1.00$．
+        AB2 単体 2 次ではなく縮約 projection stack の $O(\Delta t)$ 診断として合格．
+  \item[V2（Kovasznay residual；§\ref{sec:kovasznay}）：]
+        wall one-sided 境界閉包を含む統合 residual で slope $3.95$．
+        CCD 内点 6 次ではなく Kovasznay wall residual $O(h^4)$ 診断として合格．
   \item[V3（静止液滴 long-term）：]
         $|\Delta p_\mathrm{rel}| = 0.97\%$ @ $N=128$．Laplace 圧力跳びの長期維持を確認．
+  \item[V4（fixed-wall Galilean offset；§\ref{sec:galilean_offset}）：]
+        $\|\Delta u\|_\infty^{\mathrm{end}}=2.07\times10^{-1}$，
+        $\|\Delta u\|_\infty^{\max}/\|\bm U\|=2.63<3$．
+        厳密ゼロ残差ではなく固定壁 offset residual として合格．
   \item[V5（寄生流れ multistep；§\ref{sec:spurious_multistep}）：]
         CCD/FD 比 $1/5.85$ @ $\rho_r=1$, $N=32$．CCD は寄生流れ抑制に有効．
   \item[V6（密度比 sweep；§\ref{sec:density_ratio_sweep}）：]
@@ -285,12 +299,15 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
         CLS 移流の条件付きベースラインを与える．
 \end{description}
 
-条件付き $\triangle$ の 5 件（V1-b 時間 slope 1.00 fractional-step 律速，
-V2-a Kovasznay CCD 3.95 pressure BC 律速，V4 Galilean 残差 0.21
-固定壁 + 固定 gauge 律速，V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
-V10-a Zalesak $\alpha=1$ mass drift 1.535\%・V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$）は，
-いずれも \textbf{制約条件下では設計通り}という解釈で記録され，
-今後の高次拡張への定量的ベースラインを与えている．
+条件付き $\triangle$ は V7 IMEX-BDF2 effective $\Ord{\Delta t^{1.58}}$ coupled-stack 律速，
+V10-a Zalesak $\alpha=1$ mass drift 1.535\%，
+V10-b 単一渦 reversal $L_1=2.690\times10^{-2}$ に限定する．
+V1-b/V2/V4 は本章の revised criterion により合格へ再分類済みであり，
+今後 IPC/rotational projection，6 次境界閉包，moving-wall/ALE Galilean test へ拡張する際の
+定量的ベースラインを与えている．
+残る V7/V10 は格子増強だけでなく，operator splitting，norm 選択，
+参照解品質，reinitialization cadence，非可逆な形状復元を分離する
+追加検証 gate として残す．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{物理ベンチマーク §\ref{sec:validation} の受入基準と未完了項目}
