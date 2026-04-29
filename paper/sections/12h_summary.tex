@@ -26,7 +26,7 @@ ID & テスト & 期待精度 & 実測精度 & 判定 \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
-U1-a & CCD 1D MMS（周期）  & $\Ord{h^6}$  & $\Ord{h^{6.0}}$ & \checkmark \\
+U1-a & CCD 2D tensor-product MMS（周期, $x$ 軸評価）  & $\Ord{h^6}$  & $\Ord{h^{6.0}}$ & \checkmark \\
 U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
 U1-c & FCCD face value/grad   & $\Ord{h^4}$（面演算子設計次数；§\ref{sec:fccd_derivation}） & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & \checkmark \\
 U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
@@ -57,7 +57,7 @@ U6-c & HFE 2D band 診断       & 幾何込み条件付き & max $\Ord{h^{11.35}
 \midrule
 U8-a & TVD-RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.00}}$ & \checkmark \\
 U8-b & AB2 ODE                 & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.0}}$  & \checkmark \\
-U8-c & CN spectral 拡散 MMS    & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.0}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
+U8-c & CN 拡散 MMS\textsuperscript{$\flat$}    & $\Ord{\Delta t^2}$ + 無条件安定 & $\Ord{\Delta t^{2.0}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
 U8-d & 粘性 3-layer（$\mu_l/\mu_g=100$） & $\Ord{\Delta t}$ & $\Ord{\Delta t^{1.0}}$ & $\triangle$ \textsuperscript{†} \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
@@ -74,6 +74,9 @@ U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       
 $\triangle$ の類型——
 \textbf{(c) 一括 PPE 限界}：高密度比では分相 PPE への切替動機となる既知劣化．
 \textsuperscript{†}理論予測（§~\ref{sec:time_int}）と一致；実用上 $\mu_l/\mu_g \lesssim 5$ で支配的でない．
+\textsuperscript{$\flat$}U8-c の \emph{CN} は時間離散化スキーム（Crank--Nicolson）；
+表題が指す「spectral」は試験用の空間スペクトル離散（pseudo-spectral）であり，
+CN の時間 2 次精度評価は空間スペクトル誤差床より十分小さい刻み幅 $\Delta t$ で測定される．
 \checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
 本表は §\ref{sec:numerical_integrity} 表~\ref{tab:U_summary} と同一の行構成（25 サブテスト；U6-c は 1D / 2D で 2 行に分割）で対応する．
 }
