@@ -119,6 +119,10 @@ $\theta = 1/2$ で厳密に $0$ となるので，
 または解析積分で構築する場合に限る．台形則で構築すると
 $J_x$ 自体が $\Ord{\Delta\xi^2}$ に縛られ，
 全体精度は $\Ord{H^2}$ に縮退する；§\ref{sec:grid_metric_caveat} 参照）．
+壁面近傍，ghost face，HFE 最近接点，GFM 交差点，affine jump 面で
+$|\theta_i-1/2|>\theta_{\mathrm{tol}}$ となる場合は，
+その面を $\Ord{H^3}$（または境界閉包に応じて $\Ord{H^2}$）の特殊面としてログに記録し，
+$\Ord{H^4}$ の検証集合から分離する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{プレ計算と実装コスト}
@@ -148,7 +152,10 @@ $J_x$ 自体が $\Ord{\Delta\xi^2}$ に縛られ，
 界面近傍のみ $\theta=1/2$ を保証する「局所中央化」を
 \S\ref{sec:grid_density} のグリッド密度関数で課すことにより，
 BF 原理（\S\ref{sec:bf_operator_mismatch}）の要求する
-$p$ 勾配と CSF の演算子整合が自動的に成立する．
+$p$ 勾配と CSF の同一 face-locus は保たれる．
+pressure-jump/HFE 経路では，これに加えて
+$B_f^{\mathrm{nu}}=s_fj_f/H_f$ と同じ face cache を PPE と corrector が共有する必要があり，
+座標変換メトリクスだけでは affine jump 面項は自動的に整合しない．
 
 \noindent 詳細な実装注記・PCR/Thomas 法の非一様バージョン・
 境界行の wall BC 拡張は付録~\ref{app:ccd_boundary_alt} 参照．

@@ -450,8 +450,12 @@ p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
         $\mathcal{D}_{\text{FVM},x}\, u^{n+1} + \mathcal{D}_{\text{FVM},y}\, v^{n+1} \approx 0$．
         CCD 勾配（$J_n \neq J_f$）を使うと毎ステップ残差発散が蓄積し
         $\alpha=1.5$ で約50ステップ後にブローアップが生じる．
-        \texttt{affine\_jump} では
-        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-B^\text{adj}$ を使い，
-        PPE RHS に入れた $D^{\mathrm{nu}}(\alpha_fB_f)$ と同じ face cache を補正側でも参照する．
+	        \texttt{affine\_jump} では
+	        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-B^\text{adj}$ を使い，
+	        PPE RHS に入れた $D^{\mathrm{nu}}(\alpha_fB_f)$ と同じ face cache を補正側でも参照する．
 \end{itemize}
+非一様格子 + 壁面 BC では，PPE 側の発散，corrector 側の勾配，
+affine jump 面項，HFE 延長点，浮力・表面張力の面評価を
+同じ face geometry cache 上で定義することを operator contract とする．
+このうち一つだけを CCD node metric に戻す混在は Balanced--Force の面釣合いを破る．
 \end{tcolorbox}

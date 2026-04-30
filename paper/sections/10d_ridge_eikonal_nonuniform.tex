@@ -272,6 +272,9 @@ signed-distance metric を定義する離散化契約である．
 式~\eqref{eq:eps_local} の再構成幅
 $\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_\xi\cdot h(\bm{x})$ を
 D1 と同様に 2 次元配列としてキャッシュする．
+ここでの $\varepsilon_\text{local}$ は Ridge--Eikonal 再構成幅であり，
+CSF 表面張力の $\delta_\varepsilon(\phi)$ に空間可変幅を使う許可ではない
+（§~\ref{box:eps_xi_csf_warning}）．
 $\xiridge$ から $\phi$ への再構成式
 \begin{equation*}
   \phi(\bm{x}) = \operatorname{sgn}(\xiridge - \xi_\text{th})\cdot d_\mathcal{R}(\bm{x}),
@@ -311,8 +314,10 @@ D1--D4 の効果が次のように簡素化される：
         $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
 \end{itemize}
 つまり界面適合格子では Ridge--Eikonal の非一様補正は
-「界面帯での一様近似 + 密度勾配帯での正則化」として作用し，
-一様格子実装の体積保存・曲率精度がほぼそのまま移植される．
+「界面帯での一様近似 + 密度勾配帯での正則化」として作用する．
+ただし，これは D1--D4 の数式上の接続であり，
+移動界面，分裂合体，分相 PPE，HFE，pressure-jump，壁面 BC を同時に含む
+長時間 NS 計算での production 実証は別ゲートとして残る．
 
 % -------------------------------------------------------------------------------
 \subsubsection{計算コスト・プレ計算・FCCD との接続}

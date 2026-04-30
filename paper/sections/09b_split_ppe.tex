@@ -596,3 +596,8 @@ raw な $\sigma\kappa$ は保存しない．この契約は毛管波専用では
 不連続合成圧力が再投影内部で微分され，人工運動エネルギーを生む．
 したがって再投影 PPE には界面ジャンプコンテキスト（$\psi,\kappa_{lg},\sigma,j_{gl}$）を渡さず，
 メインステップ PPE のみが $[p]_\Gamma$ を保持する分離設計を採る．
+格子再生成後は jump face cache（crossing，$s_f$，$H_f$，$\alpha_f$，$j_f$）と
+HFE 延長文脈を補間せず，現在の $\phi,\psi$ と grid geometry cache から再構築する．
+これは $\psi$ の直接線形補間とは別の契約であり，
+$u,v,p,\delta p,\rho,\mu,\kappa_{lg},\hat{\bm n}_{lg}$ の全変数リマップが未完成の Mode 2 では
+production 合格を主張しない．
