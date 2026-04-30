@@ -1,5 +1,6 @@
 import importlib
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import numpy as np
@@ -76,6 +77,41 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
     assert snaps[1]["u"].shape == (2, 2)
     assert np.all(snaps[0]["p"] == 3.0)
     assert len(snaps[0]["grid_coords"]) == 2
+
+
+def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
+    runner = _load_ch13_runner()
+    calls = {"save_results": 0, "generate_figures": 0}
+
+    def fake_run_simulation(cfg):
+        return {"times": np.array([0.0]), "kinetic_energy": np.array([0.0])}
+
+    def fake_save_results(path, flat):
+        calls["save_results"] += 1
+
+    def fake_generate_figures(cfg, results, outdir):
+        calls["generate_figures"] += 1
+
+    monkeypatch.setattr(
+        "twophase.simulation.ns_pipeline.run_simulation",
+        fake_run_simulation,
+    )
+    monkeypatch.setattr("twophase.tools.experiment.save_results", fake_save_results)
+    monkeypatch.setattr(
+        "twophase.tools.plot_factory.generate_figures",
+        fake_generate_figures,
+    )
+
+    cfg = SimpleNamespace(
+        physics=SimpleNamespace(sigma=0.072, mu_l=1.0e-3, mu_g=1.8e-5, rho_l=1000.0, rho_g=1.2),
+        output=SimpleNamespace(save_npz=False),
+    )
+
+    results = runner._run_single(cfg, "nosave", tmp_path)
+
+    assert results["times"].tolist() == [0.0]
+    assert calls == {"save_results": 0, "generate_figures": 1}
+    assert not (tmp_path / "data.npz").exists()
 
 
 def test_ch13_config_set_is_two_production_files():
