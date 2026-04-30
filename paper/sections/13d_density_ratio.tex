@@ -145,8 +145,8 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
             \texttt{reinit\_every=1} (step 単位) のため，
             \textbf{総再初期化回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍} 異なる．
             参照解差には BDF2 truncation だけでなく reinitialization cadence 差
-            が混入する（実測コード上 \texttt{ch14\_stack\_common.py:67} で
-            \texttt{every\_steps} = step-cadence integer）．
+            が混入する（実測コード上 \texttt{ch14\_stack\_common.py} の reinit schedule
+            が \texttt{every\_steps} = step-cadence integer として定義されているため）．
             これは Richardson 解析の前提条件
             \emph{単一誤差源と漸近 regime}~\cite{Roy2003}\ に違反する．
       \item \textbf{interface (TVD--RK3 3 次) と momentum (IMEX-BDF2 2 次) の Lie splitting
