@@ -29,11 +29,28 @@ Diagnostics at t = T_rev:
   - Conservative CLS mass drift |∫ψ(T)dV - ∫ψ(0)dV| / ∫ψ(0)dV.
   - Thresholded area drift for the visible {ψ > 0.5} shape.
 
-Reported diagnostics
---------------------
-  - Centroid order across N=64 -> 128.
-  - Volume drift and centroid error are reported as conditional sharp-slot
-    diagnostics at N=128.
+Pass criteria (FORMAL)
+----------------------
+  V10-a (Zalesak rotation, alpha=1, N in {64, 128}):
+    - mass drift (post Olsson--Kreiss correction) < 0.5%.
+      Both N=64 and N=128 satisfy with > 3 orders of margin.
+  V10-b (single-vortex reversal, alpha=1, N=128, T=8):
+    - mass drift < 0.5% (post Ridge--Eikonal + mass correction).
+
+Reported diagnostics (NO formal threshold; Type-D theoretical limits)
+---------------------------------------------------------------------
+  V10-a:
+    - centroid L2 displacement; centroid order across N=64 -> 128.
+      O(h^1.5) reference line is a diagnostic plot guideline ONLY.
+      slot/h = 6.4 sharp-corner under-resolution prevents asymptotic
+      convergence; classified Type-D hard limit
+      (Zalesak 1979; Olsson--Kreiss 2005).
+    - shape L1 area drift.
+  V10-b:
+    - L1 reversal error. T=8 filament-thickness < h sub-grid structure
+      cannot be tracked on a fixed Eulerian grid
+      (Enright et al. 2002); classified Type-D hard limit.
+      Informational only.
 
 Usage
 -----
@@ -405,14 +422,14 @@ def make_figures(results: dict) -> None:
 
     cats = []; vals = []; bar_colors = []
     for r in rows_a1:
-        cats.append(f"α1\nN{r['N']}")
+        cats.append(f"N={r['N']}")
         vals.append(r["volume_drift"])
         bar_colors.append("C0")
     ax_v.bar(cats, vals, color=bar_colors)
-    ax_v.set_ylabel("|ΔV|/V0")
+    ax_v.set_ylabel("mass drift  |ΔV|/V0")
     ax_v.set_yscale("log"); ax_v.axhline(5e-3, color="k", linestyle="--", alpha=0.6,
-                                          label="pass: 5e-3")
-    ax_v.set_title("V10: volume drift after 1 rev"); ax_v.legend(fontsize=8)
+                                          label="pass: 0.5% mass drift")
+    ax_v.set_title("V10-a: mass drift (Olsson--Kreiss corr.)"); ax_v.legend(fontsize=8)
 
     save_figure(fig, OUT / "V10_zalesak_uniform",
                 also_to=PAPER_FIGURES / "ch13_v10_zalesak")
