@@ -268,7 +268,7 @@ def test_fccd_ppe_discretization_maps_to_fccd_solver():
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
 
 
-def test_phase_separated_coefficient_maps_to_gfm_projection():
+def test_phase_separated_coefficient_defaults_to_affine_jump():
     raw = _minimal({
         "numerics": {
             "projection": {
@@ -276,16 +276,6 @@ def test_phase_separated_coefficient_maps_to_gfm_projection():
                     "operator": {
                         "discretization": "fccd",
                         "coefficient": "phase_separated",
-                    },
-                    "solver": {"kind": "iterative", "preconditioner": "none"},
-                },
-            },
-            "projection": {
-                "poisson": {
-                    "operator": {
-                        "discretization": "fccd",
-                        "coefficient": "phase_separated",
-                        "interface_coupling": "jump_decomposition",
                     },
                     "solver": {"kind": "iterative", "preconditioner": "none"},
                 },
@@ -298,8 +288,30 @@ def test_phase_separated_coefficient_maps_to_gfm_projection():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
-    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
+    assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.reproject_mode == "gfm"
+
+
+def test_phase_separated_accepts_explicit_legacy_jump_decomposition():
+    raw = _minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "legacy_jump_decomposition",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+    del raw["numerics"]["projection"]["mode"]
+    cfg = ExperimentConfig.from_dict(raw)
+
+    assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
 
 
 def test_phase_density_rejects_jump_decomposition_coupling():
@@ -350,6 +362,36 @@ def test_pressure_jump_accepts_affine_jump_coupling():
 
     assert cfg.run.surface_tension_scheme == "pressure_jump"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
+
+
+def test_pressure_jump_alias_selects_affine_jump_coupling():
+    raw = _minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "gradient": "none",
+                        "formulation": "pressure_jump",
+                    },
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "pressure_jump",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+
+    cfg = ExperimentConfig.from_dict(raw)
+
+    assert cfg.run.surface_tension_scheme == "pressure_jump"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
 
 

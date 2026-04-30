@@ -39,10 +39,12 @@ _POISSON_COEFFICIENT_ALIASES = {
 }
 _POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition", "affine_jump")
 _POISSON_INTERFACE_COUPLING_ALIASES = {
-    "pressure_jump": "jump_decomposition",
-    "jump": "jump_decomposition",
+    "pressure_jump": "affine_jump",
+    "jump": "affine_jump",
     "interface_stress": "affine_jump",
     "jump_aware": "affine_jump",
+    "legacy_jump": "jump_decomposition",
+    "legacy_jump_decomposition": "jump_decomposition",
 }
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {

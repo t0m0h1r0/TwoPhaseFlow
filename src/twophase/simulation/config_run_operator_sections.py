@@ -135,7 +135,7 @@ def parse_run_operator_settings(
             interface_error=(
                 f"{layout['paths']['surface_tension_model']}='pressure_jump' "
                 "requires poisson.operator.interface_coupling="
-                "'jump_decomposition' or 'affine_jump'."
+                "'affine_jump' (or explicit legacy 'jump_decomposition')."
             ),
         )
         explicit_st_grad = any(

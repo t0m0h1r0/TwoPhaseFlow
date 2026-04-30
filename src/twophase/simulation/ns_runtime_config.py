@@ -163,7 +163,8 @@ def normalise_ns_ppe_runtime(
         ),
         interface_error=(
             "surface_tension_scheme='pressure_jump' requires "
-            "ppe_interface_coupling_scheme='jump_decomposition' or 'affine_jump'"
+            "ppe_interface_coupling_scheme='affine_jump' "
+            "(or explicit legacy 'jump_decomposition')"
         ),
     )
 
