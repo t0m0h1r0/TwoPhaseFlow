@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # DO NOT DELETE — C2 legacy reference retained 2026-04-28.
-# Superseded by: experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
+# Superseded by: experiment/ch13/exp_V2_kovasznay_residual.py
 # Reason kept: manufactured periodic NS residual cross-check.
 """[V2] CCD spatial residual on periodic single-phase NS — Tier A.
 
@@ -27,8 +27,8 @@ Sub-test
 
 Usage
 -----
-  python experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
-  python experiment/ch13/exp_V2_kovasznay_imex_bdf2.py --plot-only
+  python experiment/ch13/exp_V2_kovasznay_residual.py
+  python experiment/ch13/exp_V2_kovasznay_residual.py --plot-only
 """
 
 from __future__ import annotations

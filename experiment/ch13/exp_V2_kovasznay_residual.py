@@ -13,8 +13,8 @@ under ``experiment/ch13/legacy/``.
 
 Usage
 -----
-  make run EXP=experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
-  make plot EXP=experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
+  make run EXP=experiment/ch13/exp_V2_kovasznay_residual.py
+  make plot EXP=experiment/ch13/exp_V2_kovasznay_residual.py
 """
 
 from __future__ import annotations
