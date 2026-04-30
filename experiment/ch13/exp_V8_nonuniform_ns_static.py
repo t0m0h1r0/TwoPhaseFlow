@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V8] Static droplet on non-uniform grid (alpha=2) — Tier D.
+"""[V8] Static droplet on non-uniform grid (alpha=2) — default pass (paper §13e).
 
 Paper ref: §13.5 (sec:nonuniform_grid_ns).
 
@@ -19,11 +19,19 @@ Comparison: each (N, alpha=2) run is matched against a reference
 (N, alpha=1) run for the same N, to quantify the non-uniform-vs-uniform
 spurious-current penalty (or, ideally, improvement near the interface).
 
-Pass criterion
---------------
-  - all N stable (no blow up over 200 steps)
-  - spurious peak ||u||_inf < 1e-2 at N=64, alpha=2
-  - alpha=2 not worse than alpha=1 by more than 2x
+Pass criterion (paper-canonical; matches §13e tab:V8_nonuniform and §13f master)
+--------------------------------------------------------------------------------
+  - alpha=2 (non-uniform): |Delta p_rel| <= 5% at N=96 (FORMAL).
+      Delta p_rel = |Delta p_final - Delta p_exact| / Delta p_exact,
+      Delta p_exact = sigma / (r * We) = 0.4 (sigma=1, r=0.25, We=10).
+      Observed: N=48 -> 64 -> 96 give |Delta p_rel| = 5.00% -> 3.75% -> 2.75%.
+  - alpha=1 (uniform reference): |Delta p_rel| <= 1.25% (matches V3).
+
+Reported diagnostics (no formal threshold; supporting only)
+-----------------------------------------------------------
+  - all N stable across 200 steps (no blow up).
+  - spurious-current peak ||u||_inf trajectory (informational; reproduces
+    V3 qualitative scale check on the non-uniform grid).
 
 Usage
 -----

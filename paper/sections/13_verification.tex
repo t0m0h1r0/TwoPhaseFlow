@@ -102,14 +102,14 @@ $\sigma$/$\mathrm{We}$ は適用外．
 \begin{table}[!ht]
 \caption{V1--V10 の物理設定パラメータ}
 \label{tab:V_settings}
-\PaperCaptionNote{本表は各 V test の \textbf{設定}（本文の \texttt{paragraph} ブロック）で繰り返し参照される基準値を集約する．異なる Reynolds 数 / 密度比 sweep / Weber 数 sweep を含む test については代表値または範囲を示し，個別値は本文を参照．V1/V2 は単相 NS のため $\sigma$, $\mathrm{We}$ は適用外であり，参考に粘性条件（V1: $\nu=0.01$，V2: $\Re=40$）を 補足列に記す．V10 は CLS passive scalar 移流のため $\sigma$/$\mathrm{We}$/$\rho$ は適用外．}
+\PaperCaptionNote{本表は各 V test の \textbf{設定}（本文の \texttt{paragraph} ブロック）で繰り返し参照される基準値を集約する．異なる Reynolds 数 / 密度比 sweep / Weber 数 sweep を含む test については代表値または範囲を示し，個別値は本文を参照．V1/V2 は単相 NS のため $\sigma$, $\mathrm{We}$ は適用外であり，参考に粘性条件（V1: $\nu=0.01$，V2: $\Re=40$）を 補足列に記す．V10 は CLS passive scalar 移流のため $\sigma$/$\mathrm{We}$/$\rho$ は適用外．\textsuperscript{$\dagger$}V2 のみ正方領域ではなくドメイン bound $[-0.5,1]\!\times\![0,1]$ の長辺$\times$短辺を示す．}
 \centering\small
 \begin{tabular}{l l l l l l l}
 \toprule
 ID & $L$ & $\sigma$ & $\rho_l/\rho_g$ & $\mathrm{We}$ & BC & 補足 \\
 \midrule
 V1  & $2\pi$ & ---   & $1$              & ---           & periodic       & $\nu=0.01$（単相） \\
-V2  & $[-0.5,1]\!\times\![0,1]$ & --- & $1$ & ---       & wall           & $\Re=40$（単相）  \\
+V2  & $1.5\!\times\!1$\textsuperscript{$\dagger$} & --- & $1$ & --- & wall & $\Re=40$（単相）  \\
 V3  & $1$ & $1.0$ & $10$              & $1$           & wall           & --- \\
 V4  & $1$ & $1$   & $10$              & $10$          & wall           & --- \\
 V5  & $1$ & $1.0$ & $\{1,10,100\}$    & $10$          & wall           & --- \\
@@ -183,7 +183,7 @@ V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $
 V4 & fixed-wall Galilean offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bm U\|$ \\
 V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD 主，FD 参照) \\
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$, $u_\infty^{\mathrm{end}}$ \\
-V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
+V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) \\
 V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
 V9 & 局所 $\varepsilon$ 比較 (§14 stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ \\
 V10-a & Zalesak CLS 移流 ($\alpha=1$)  & \autoref{fig:V10_zalesak}, \autoref{fig:V10_zalesak_snapshot} & mass drift, centroid err \\
