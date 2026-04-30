@@ -18,6 +18,7 @@ class NSGeometryRuntimeState:
     LY: float
     bc_type: str
     alpha_grid: float
+    fitting_axes: tuple[bool, bool]
     eps_factor: float
     eps_xi_cells: float | None
     use_local_eps: bool
@@ -30,6 +31,7 @@ class NSGeometryRuntimeState:
 
 def build_ns_geometry_runtime(options) -> NSGeometryRuntimeState:
     alpha_grid = float(options.alpha_grid)
+    fitting_axes = tuple(bool(enabled) for enabled in options.fitting_axes)
     eps_factor = float(options.eps_factor)
     eps_xi_cells = options.eps_xi_cells
     use_local_eps = bool(options.use_local_eps) or (options.eps_xi_cells is not None)
@@ -43,6 +45,7 @@ def build_ns_geometry_runtime(options) -> NSGeometryRuntimeState:
             N=(options.NX, options.NY),
             L=(options.LX, options.LY),
             alpha_grid=options.alpha_grid,
+            fitting_axes=fitting_axes,
             eps_g_factor=options.eps_g_factor,
             eps_g_cells=options.eps_g_cells,
             dx_min_floor=options.dx_min_floor,
@@ -57,6 +60,7 @@ def build_ns_geometry_runtime(options) -> NSGeometryRuntimeState:
         LY=options.LY,
         bc_type=options.bc_type,
         alpha_grid=alpha_grid,
+        fitting_axes=fitting_axes,
         eps_factor=eps_factor,
         eps_xi_cells=eps_xi_cells,
         use_local_eps=use_local_eps,

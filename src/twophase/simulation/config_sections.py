@@ -29,6 +29,11 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
     if fitting_method == "none":
         fitting_enabled = False
     alpha_grid = float(distribution.get("alpha", 1.0))
+    fitting_axes = parse_grid_fitting_axes(
+        distribution.get("axes"),
+        fitting_enabled=fitting_enabled,
+        ndim=2,
+    )
     if not fitting_enabled:
         alpha_grid = 1.0
     eps_factor = float(width.get("base_factor", 1.5))
@@ -43,6 +48,7 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         LY=LY,
         bc_type=str(domain["boundary"]),
         alpha_grid=alpha_grid,
+        fitting_axes=fitting_axes,
         eps_factor=eps_factor,
         eps_g_factor=eps_g_factor,
         eps_g_cells=eps_g_cells,
@@ -202,6 +208,52 @@ def parse_grid_rebuild(raw: Any) -> int:
     if freq < 0:
         raise ValueError(f"grid.distribution.schedule must be >= 0, got {freq}")
     return freq
+
+
+def parse_grid_fitting_axes(
+    raw: Any,
+    *,
+    fitting_enabled: bool,
+    ndim: int,
+) -> tuple[bool, ...]:
+    """Parse ``grid.distribution.axes`` into an active-axis mask."""
+    if not fitting_enabled:
+        return tuple(False for _axis in range(ndim))
+    if raw is None:
+        return tuple(True for _axis in range(ndim))
+    if isinstance(raw, bool):
+        raise ValueError("grid.distribution.axes must be an axis name/list, not bool")
+    raw_items = [raw] if isinstance(raw, (str, int)) else list(raw)
+    aliases = {
+        "x": 0,
+        "xi": 0,
+        "0": 0,
+        0: 0,
+        "y": 1,
+        "eta": 1,
+        "1": 1,
+        1: 1,
+        "z": 2,
+        "zeta": 2,
+        "2": 2,
+        2: 2,
+    }
+    if any(str(item).strip().lower() == "all" for item in raw_items):
+        return tuple(True for _axis in range(ndim))
+    active = [False] * ndim
+    for item in raw_items:
+        if isinstance(item, bool):
+            raise ValueError("grid.distribution.axes must not contain bool entries")
+        key = item if isinstance(item, int) else str(item).strip().lower()
+        if key not in aliases or aliases[key] >= ndim:
+            raise ValueError(
+                "grid.distribution.axes entries must be drawn from x|y|z|0|1|2|all, "
+                f"got {item!r}"
+            )
+        active[aliases[key]] = True
+    if not any(active):
+        raise ValueError("grid.distribution.axes must enable at least one axis")
+    return tuple(active)
 
 
 def normalize_interface_fitting_method(raw: Any) -> str:

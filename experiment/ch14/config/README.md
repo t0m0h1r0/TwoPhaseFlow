@@ -107,7 +107,13 @@ time axes and should not be placed as sibling `run` knobs or mixed in one
 - `method: gaussian_levelset`: Gaussian density derived from the level-set field.
 - `alpha`: grid concentration strength; `alpha: 2.0` is the standard ch14
   non-uniform setup.
+- `axes`: optional active-axis list (`[x]`, `[y]`, or `[x, y]`). Omit it for
+  legacy all-axis fitting. The capillary-wave YAML uses `[y]` because
+  `y = η(x)` primarily needs resolution across the vertical CLS transition and
+  should not introduce unnecessary tangential `x` metrics.
 - `schedule`: grid rebuild schedule (`static`, `every_step`, or `every_N`).
+  Static fitting uses the initial tracked interface field; dynamic schedules
+  rebuild the active-axis monitor from the current tracked interface field.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

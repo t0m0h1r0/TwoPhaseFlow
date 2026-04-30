@@ -16,6 +16,7 @@ class SolverGridOptions:
     bc_type: str = "wall"
     use_gpu: bool | None = None
     alpha_grid: float = 1.0
+    fitting_axes: tuple[bool, bool] = (True, True)
     eps_factor: float = 1.5
     eps_g_factor: float = 2.0
     eps_g_cells: float | None = None

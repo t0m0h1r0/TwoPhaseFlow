@@ -31,6 +31,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             LY=g.LY,
             bc_type=g.bc_type,
             alpha_grid=getattr(g, "alpha_grid", 1.0),
+            fitting_axes=getattr(g, "fitting_axes", (True, True)),
             eps_factor=getattr(g, "eps_factor", 1.5),
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
             eps_g_cells=getattr(g, "eps_g_cells", None),

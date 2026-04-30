@@ -40,6 +40,8 @@ class GridConfig:
     L: Tuple[float, ...] = (1.0, 1.0)
     # 界面適合グリッドの伸縮係数（§6）; 1.0 = 一様格子
     alpha_grid: float = 1.0
+    # 界面適合を適用する軸マスク (x, y[, z]); False の軸は一様格子を保持
+    fitting_axes: Optional[Tuple[bool, ...]] = None
     # セル幅の下限（CCD条件数を防ぐためのフロア値）
     dx_min_floor: float = 1e-6
     # ガウス型グリッド密度関数の幅: ε_g = eps_g_factor × ε（§6 eq:grid_delta）; 推奨 2–4
@@ -56,6 +58,16 @@ class GridConfig:
         assert len(self.L) == self.ndim, (
             f"len(L)={len(self.L)} は ndim={self.ndim} と一致しなければならない"
         )
+        if self.fitting_axes is None:
+            self.fitting_axes = tuple(True for _axis in range(self.ndim))
+        assert len(self.fitting_axes) == self.ndim, (
+            f"len(fitting_axes)={len(self.fitting_axes)} は ndim={self.ndim} と一致しなければならない"
+        )
+        self.fitting_axes = tuple(bool(enabled) for enabled in self.fitting_axes)
+        if self.alpha_grid > 1.0:
+            assert any(self.fitting_axes), (
+                "alpha_grid > 1.0 では少なくとも 1 軸の fitting_axes が必要"
+            )
         if self.eps_g_cells is not None:
             assert self.eps_g_cells >= 4.0, (
                 f"eps_g_cells={self.eps_g_cells} は CCD 解像に 4 以上が必要"

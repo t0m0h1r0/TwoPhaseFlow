@@ -243,3 +243,82 @@ def test_update_from_levelset():
     assert grid.J[1].shape == (n + 1,)
     assert not np.any(np.isnan(grid.J[1])), "J[1] に NaN が含まれる"
     assert not np.any(np.isnan(grid.dJ_dxi[1])), "dJ_dxi[1] に NaN が含まれる"
+
+
+def test_update_from_levelset_respects_fitting_axes():
+    """y-only fitting concentrates y nodes while keeping x exactly uniform."""
+    node_count = 64
+    length = 1.0
+    alpha = 3.0
+
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=alpha,
+            fitting_axes=(False, True),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+
+    coords = np.linspace(0, length, node_count + 1)
+    _, Y = np.meshgrid(coords, coords, indexing="ij")
+    phi0 = Y - 0.5
+    eps = 1.5 * (length / node_count)
+    psi0 = 1.0 / (1.0 + np.exp(-phi0 / eps))
+
+    grid.update_from_levelset(psi0, eps=eps, ccd=ccd)
+
+    uniform_width = length / node_count
+    y_coords = grid.coords[1]
+    y_interface = np.argmin(np.abs(y_coords - 0.5))
+    h_y_near = np.min(np.diff(y_coords[max(0, y_interface - 2):y_interface + 3]))
+
+    assert h_y_near < uniform_width
+    np.testing.assert_allclose(grid.coords[0], coords)
+    np.testing.assert_allclose(grid.h[0], np.full(node_count + 1, uniform_width))
+
+
+def test_update_from_levelset_tracks_current_interface_on_active_axis():
+    """y-only fitting follows the current physical interface used for fitting."""
+    node_count = 64
+    length = 1.0
+    alpha = 3.0
+
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=alpha,
+            fitting_axes=(False, True),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    eps = 1.5 * (length / node_count)
+
+    def psi_on_current_grid(y_interface):
+        _, Y = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+        phi0 = Y - y_interface
+        return 1.0 / (1.0 + np.exp(-phi0 / eps))
+
+    def y_cluster_center():
+        y_coords = grid.coords[1]
+        min_cell = int(np.argmin(np.diff(y_coords)))
+        return 0.5 * (y_coords[min_cell] + y_coords[min_cell + 1])
+
+    grid.update_from_levelset(psi_on_current_grid(0.50), eps=eps, ccd=ccd)
+    first_center = y_cluster_center()
+    grid.update_from_levelset(psi_on_current_grid(0.62), eps=eps, ccd=ccd)
+    second_center = y_cluster_center()
+
+    uniform_width = length / node_count
+    np.testing.assert_allclose(grid.coords[0], np.linspace(0.0, length, node_count + 1))
+    assert abs(first_center - 0.50) < 2.0 * uniform_width
+    assert abs(second_center - 0.62) < 2.0 * uniform_width
+    assert second_center > first_center + 0.08

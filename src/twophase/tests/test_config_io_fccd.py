@@ -556,6 +556,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.grid.NX == 16
     assert cfg.grid.NY == 12
     assert cfg.grid.alpha_grid == 2.0
+    assert cfg.grid.fitting_axes == (True, True)
     assert cfg.grid.grid_rebuild_freq == 3
     assert cfg.grid.use_local_eps is True
     assert cfg.physics.rho_l == 2.0
@@ -761,12 +762,34 @@ def test_disabled_interface_fitting_forces_uniform_grid():
     assert cfg.grid.interface_fitting_enabled is False
     assert cfg.grid.interface_fitting_method == "none"
     assert cfg.grid.alpha_grid == 1.0
+    assert cfg.grid.fitting_axes == (False, False)
+
+
+def test_interface_fitting_axes_parse():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {"distribution": {"type": "interface_fitted", "alpha": 2.0, "axes": ["y"]}},
+    }))
+    assert cfg.grid.fitting_axes == (False, True)
 
 
 def test_invalid_interface_fitting_method_rejected():
     with pytest.raises(ValueError, match="grid.distribution.method"):
         ExperimentConfig.from_dict(_minimal({
             "grid": {"distribution": {"method": "spline_fit"}},
+        }))
+
+
+def test_invalid_interface_fitting_axis_rejected():
+    with pytest.raises(ValueError, match="grid.distribution.axes"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {"distribution": {"axes": ["normal"]}},
+        }))
+
+
+def test_bool_interface_fitting_axis_rejected():
+    with pytest.raises(ValueError, match="grid.distribution.axes"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {"distribution": {"axes": True}},
         }))
 
 
