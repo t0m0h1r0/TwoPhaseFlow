@@ -104,6 +104,9 @@ $\mathcal{G}^\text{adj}$ に切り替え，PPE の離散拡散項も
 同じ随伴ペア $D_h^\text{bf}=-(\mathcal{G}^\text{adj})^\ast$ から組み立てる．
 これにより PPE と補正が同じ面フラックス空間を共有し，
 非一様格子での FVM--CCD メトリック不整合を避ける．
+pressure-jump 型の \texttt{affine\_jump} を併用する場合も同じ面フラックス空間で
+$G_{\Gamma}^{\mathrm{adj}}=G^{\mathrm{adj}}-B^{\mathrm{adj}}$ とし，
+$B^{\mathrm{adj}}$ を face-average 勾配と同じ局所物理距離 $H_f$ で定義する．
 数値的な切り分けと安定化効果は §~\ref{sec:fvm_ccd_corrector} で整理する．
 
 \phantomsection

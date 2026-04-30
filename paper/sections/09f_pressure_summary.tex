@@ -71,6 +71,10 @@ CCD-LU は smooth manufactured/component reference に限定 \\
 液滴，気泡，毛管波，平坦 Rayleigh--Taylor 界面のいずれでも，
 同じ $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ と
 同じ $G_\Gamma(p;j)$ を使うことが採用条件である．
+非一様格子ではこの契約を
+$G_{\Gamma,f}^{\mathrm{nu}}=G_f^{\mathrm{nu}}-B_f^{\mathrm{nu}}$，
+$B_f^{\mathrm{nu}}=s_fj_f/H_f$ と読み替え，
+PPE RHS と corrector が同じ $H_f$・同じ face 係数・同じ非一様発散を共有する．
 
 この閉包が保証するのは，PPE と corrector が同じ面 flux 契約を共有し，
 圧力ジャンプが regular 圧力自由度として消えないことである．
