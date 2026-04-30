@@ -1,115 +1,100 @@
 % paper/sections/09f_pressure_summary.tex
 %
-% §9 章末まとめ：精度閉包と適用範囲
-%   理由：HFE（§9.4）・BC（§9.6）を全て読んだ後に精度全体像を示す構成
-%% ═══════════════════════════════════════════════════════════════════════════════
-\subsection{PPE 解法の精度整理：分相 PPE・HFE・欠陥補正法の組み合わせ設計}
+% §9 章末まとめ：pressure-jump 型 FCCD-PPE の選別結果
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{PPE 解法の精度整理：本質問題と採用スタック}
 \label{sec:pressure_accuracy_summary}
-%% ═══════════════════════════════════════════════════════════════════════════════
+% ═══════════════════════════════════════════════════════════════════════════════
 
-変密度 PPE の導出（§~\ref{sec:projection_derivation}）は第~\ref{sec:collocate}章で行った．
-本章では，CCD による $\Ord{h^6}$ 離散化（§~\ref{sec:ccd_poisson_matrix}），
-分相 PPE 解法（§~\ref{sec:split_ppe_framework}），
-HFE による界面越し場延長（§~\ref{sec:field_extension}），
-各相内の欠陥補正法による求解（§~\ref{sec:defect_correction_main}），
-境界条件と数値安定性（§~\ref{sec:ppe_bc_stability}）を論じた．
-以下に，各コンポーネントの精度を整理する．
+本章の結論は，複数の圧力解法を状況に応じて同列に併用することではない．
+二相 pressure step の本質問題を
+\[
+  \text{密度ジャンプ}
+  \;+\;
+  \text{圧力ジャンプ}
+  \;+\;
+  \text{面演算子整合}
+  \;+\;
+  \text{高次片側データ}
+  \;+\;
+  \text{相別ゲージ}
+\]
+に分解し，各問題に必要な手段だけを残すことである．
 
 \begin{table}[htbp]
 \centering
-\caption{数値手法コンポーネント別の精度まとめ}
+\caption{§9 で扱った問題と採用・非採用の整理}
 \label{tab:accuracy_summary}
 \PaperTableDenseSetup
-\begin{tabular}{p{0.20\linewidth}p{0.28\linewidth}p{0.30\linewidth}p{0.10\linewidth}}
+\begin{tabularx}{\linewidth}{@{}p{0.18\linewidth}X X p{0.18\linewidth}@{}}
 \toprule
-コンポーネント & 手法 & 空間精度 & 時間精度 \\
+問題 & 本質的な失敗 & 採用する解決方法 & 退ける／限定する経路 \\
 \midrule
-CLS 移流 & TVD-RK3 & CCD $\Ord{h^6}$ & $\Ord{\Delta t^3}$ \\
-幾何量計算（曲率等） & CCD 法 & $\Ord{h^6}$ & — \\
-PPE (等密度周期基準) & 一括 PPE + DC + CCD（等密度） & $\Ord{h^6}$‡ & — \\
-PPE (変密度一括 smoothed-Heaviside) & 一括 PPE + GFM 補正 + DC & 理論保証外（界面律速；改善は検証依存）‡‡ & — \\
-PPE (分相 PPE) & 分相 PPE + DC $k{=}3$ + CCD 勾配 & $\Ord{h^7}$Dir/$\Ord{h^5}$Neu‡‡‡ & — \\
-NS 粘性項 & CCD + CN（交差項陽的）${}^{\P}$ & $\Ord{h^2}$/$\Ord{h^6}$${}^{\P}$ & $\Ord{\Delta t^2}$ \\
-NS 対流項（Predictor） & CCD（1次微分）+ AB2 外挿 & $\Ord{h^6}$ & $\Ord{\Delta t^2}$ \\
-Projection スプリッティング & IPC 法（van Kan 1986） & — & $\Ord{\Delta t^2}$ \\
-HFE（分相 PPE 基盤，§~\ref{sec:field_extension}） & 最近接点 Hermite 補間 & 1D / axis-aligned：$\Ord{h^6}$；2D 一般：完全テンソル版に限り $\Ord{h^6}$$\star$ & — \\
-\midrule
-\textbf{全体（空間律速：CSF モデル誤差）} & & $\boldsymbol{\Ord{h^2}}$† & — \\
-\textbf{全体（時間律速：均質流域）} & & — & $\boldsymbol{\Ord{\Delta t^2}}$ \\
+密度ジャンプ & 一括 PPE が $\rho^{-1}$ の不連続を微分し，条件数と界面誤差が増幅する &
+\texttt{phase\_separated} による相内定数密度 Poisson &
+smoothed-Heaviside 一括 PPE は比較・低密度比確認に限定 \\
+圧力ジャンプ & Young--Laplace 圧力差を連続圧力として扱うと界面応力が曖昧になる &
+$j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を明示する oriented contract &
+raw な $\sigma\kappa$ field を pressure jump API として保存しない \\
+面演算子整合 & CSF 体積力と圧力勾配が別の離散位置・別の演算子に乗る &
+$G_\Gamma(p;j)=G(p)-B(j)$ の affine face-gradient &
+CSF は動機付け・比較経路；production closure ではない \\
+regular jump 相殺 & $p_\mathrm{legacy}=\tilde p+J$ では楕円 solve が $J$ を吸収できる &
+\texttt{affine\_jump} を production 既定にする &
+\texttt{jump\_decomposition} は明示 legacy のみ \\
+高次片側データ & CCD/FCCD ステンシルが不連続圧力を跨ぐと設計次数が崩れる &
+HFE によるジャンプ補正済み Hermite 延長 &
+界面を跨いだ通常 CCD 強行は不可 \\
+求解コスト & 高次 target operator を直接解くと重く，低次 solve だけでは精度が足りない &
+DC $k=3$: 高次評価 $L_H$ + base solve $L_L$ &
+CCD-LU は smooth manufactured/component reference に限定 \\
+零モード・再投影 & 相別 Neumann null と再メッシュ PPE への jump 持ち込みが人工エネルギーを生む &
+相別平均ゲージと reproject PPE の jump-context 防護 &
+前ステップ $j_{gl}$ の再投影継承は禁止 \\
 \bottomrule
-\end{tabular}
-
-\smallskip
-\noindent†\ CSF 正則化 $\delta_\varepsilon$（$\varepsilon = \Ord{h}$）によるモデル誤差 $\Ord{\varepsilon^2} = \Ord{h^2}$ が
-全体の空間精度を律速する．\\
-\noindent‡\ 等密度均一格子・周期 BC の理想化では $\Ord{h^6}$（§\ref{sec:dc_accuracy}）．\\
-\noindent‡‡\ 変密度一括 smoothed Heaviside PPE + GFM 補正；界面 $\Ord{h^2}$ が律速し，DC による改善は §~\ref{sec:verify_split_ppe_dc} の検証対象である．変密度一括 PPE は §\ref{sec:dc_accuracy} の理想化条件（等密度・均一格子・周期 BC）外なので，本章では理論保証外の検証依存項目として扱う．\\
-\noindent‡‡‡\ 分相 PPE + DC $k{\geq}3$ では各相内 $\Ord{h^7}$（Dirichlet 超収束）/ $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成（§~\ref{sec:verify_split_ppe_dc}）；速度補正の勾配は CCD $\Ord{h^6}$．記載値は $k=3$ 漸近値；$k>3$ では界面ジャンプ条件が全体精度を支配し，CCD 切断誤差はすでに飽和するため精度はほぼ変化しない．\\
-\noindent¶\ ADI 陰的スウィープの対角係数には2次 FD（$\Ord{h^2}$）を使用；交差微分項は CCD $\Ord{h^6}$ で陽的に評価（本稿 7-step フローの粘性項処理）．
-$Re \gg 1$ では粘性項の寄与 $\sim \Ord{h^2/Re}$ が CSF モデル誤差 $\Ord{h^2}$ と同次以下に収まるため実効精度への影響は小さい．\\
-\noindent$\star$\ 混合微分 $q_{xy},q_{xxy},q_{xyy},q_{xxyy}$ を必要とする完全テンソル版のみ
-2D 斜め界面で $\Ord{h^6}$ 保証；混合微分を省略した簡略版は $\Ord{h^4}$ 以下に律速される
-（§\ref{sec:extension_pde_disc}）．
+\end{tabularx}
 \end{table}
 
-\begin{tcolorbox}[warnbox, title={精度閉包上の制約}]
-\begin{enumerate}
-  \item \textbf{空間精度：}
-        圧力・幾何量・移流に関わる主な高次コンポーネントは
-        $\Ord{h^5}$--$\Ord{h^6}$ に揃っている（平滑領域）．
-        粘性 ADI の対角部など低次成分は表中の脚注条件で扱い，
-        界面近傍の全体精度は CSF 正則化 $\delta_\varepsilon$ による $\Ord{h^2}$ モデル誤差に律速される．
-        分相 PPE + DC $k{=}3$ は各相内 $\Ord{h^5}$（Neumann BC 律速）を密度比に直接依存しない形で達成し，
-        HFE（§~\ref{sec:field_extension}）はジャンプ補正済み片側データを延長し，
-        CCD ステンシルが不連続値を跨がないようにする．
-
-  \item \textbf{時間精度：}
-        均質流域では AB2 + IPC により全体 $\Ord{\Delta t^2}$（§~\ref{sec:ipc_derivation}）．
-        変粘性界面で交差粘性項を陽的に扱う場合は $\Ord{\Delta t}$ 成分が残る．
-\end{enumerate}
-\end{tcolorbox}
-
-\begin{tcolorbox}[mybox, title={閉包条件：分相 PPE + DC + CCD 勾配の統合}]
+\begin{tcolorbox}[mybox, title={閉包条件：§9 が production と呼ぶ pressure stack}]
 \label{box:ppe_design_rationale}
-本稿の PPE 求解戦略には密度比に応じた\textbf{2 つの適用領域}がある：
-中程度の密度比では変密度一括 smoothed-Heaviside PPE（本稿 7-step フローの Step 6），
-高密度比 + 高粘性比 + 低 We 同時成立時は分相 PPE 解法（§~\ref{sec:split_ppe_framework}）．
-以下の3つの原則は両経路に共通する設計指針であり，特に分相 PPE では効果が顕著である．
+§9 の production pressure stack は次の同時成立を要求する：
+\[
+  \boxed{
+  \texttt{phase\_separated}
+  +\texttt{affine\_jump}
+  +\mathrm{HFE}
+  +\mathrm{DC}\ k=3
+  +\text{phase-mean gauge}
+  }.
+\]
+ここで \texttt{affine\_jump} は毛管波専用の修正ではない．
+液滴，気泡，毛管波，平坦 Rayleigh--Taylor 界面のいずれでも，
+同じ $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ と
+同じ $G_\Gamma(p;j)$ を使うことが採用条件である．
 
-\begin{enumerate}
-  \item \textbf{分相 PPE による密度比非依存化}．
-        各相で定数密度の PPE を解き，界面では圧力ジャンプと法線フラックス条件を課す
-        （§~\ref{sec:split_ppe_framework}）．
-        HFE（§~\ref{sec:field_extension}）は，そのジャンプ補正済み片側データを界面越しに延長する．
-        界面を横切るステンシルが排除されるため，
-        DC $k{=}3$ は各相内で $\Ord{h^7}$（Dirichlet）/ $\Ord{h^5}$（Neumann BC 律速）を
-        密度比に直接依存しない形で達成する
-        （§~\ref{sec:verify_split_ppe_dc}）．
-
-  \item \textbf{Balanced--Force 整合性：同一演算子の強制}．
-        Balanced--Force 条件は，圧力勾配 $\bnabla p^{n+1}$ と表面張力 $\sigma\kappa\bnabla\psi$ に
-        \textbf{同一の離散微分演算子}を使用することで，演算子不一致に由来する寄生流れ成分を抑える
-        （§~\ref{sec:balanced_force}）．
-        速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配に
-        CCD $\Ord{h^6}$（均一格子）または
-        face-average 勾配 $\mathcal{G}^\text{adj}$（非一様格子 + 壁面 BC；
-        §~\ref{sec:fvm_ccd_corrector}）を使い，
-        表面張力項 $\kappa\bnabla\psi$ にも同一の CCD 演算子を適用することで，
-        この整合性を高次に維持する．
-
-  \item \textbf{疎行列直接法による Step~2 解法誤差の抑制}．
-        DC 法の補正方程式 $L_L$（§~\ref{sec:dc_sweep}）を
-        ゲージ拘束後の 2D 疎行列 LU などで解くことで，
-        Step~2 の線形解法残差は機械精度近くまで下げられる．
-        方向分離スウィープを用いる場合は近似前処理として扱い，
-        直接法ケースとは残差保証を分ける（§~\ref{sec:defect_correction_main}参照）．
-\end{enumerate}
-
-\noindent\textbf{全体精度の律速：}
-CSF 正則化 $\delta_\varepsilon$（$\varepsilon=\Ord{h}$）によるモデル誤差
-$\Ord{\varepsilon^2}=\Ord{h^2}$ が全体の空間精度を律速する（表~\ref{tab:accuracy_summary}†）．
-分相 PPE + DC $k{=}3$ の $\Ord{h^5}$ は CSF 誤差を十分に上回り，
-PPE ソルバが精度ボトルネックとならないことを保証する．
+この閉包が保証するのは，PPE と corrector が同じ面 flux 契約を共有し，
+圧力ジャンプが regular 圧力自由度として消えないことである．
+一方で，曲率 cap，HFE の実効精度，毛管 CFL，壁面影響，長時間の幾何エネルギー安定性は
+§~\ref{sec:val_capillary} 以降の物理 benchmark に残る．
 \end{tcolorbox}
 
-本章は PPE の\textbf{数学的定式化と精度}を扱う．
+\begin{tcolorbox}[warnbox, title={§9 で legacy として残すもの}]
+\begin{itemize}[noitemsep]
+  \item \textbf{smoothed-Heaviside 一括 PPE}：
+        低・中密度比の比較経路として残すが，高密度比 pressure-jump production の解決策とはしない．
+  \item \textbf{CSF body force}：
+        Balanced--Force 原理を説明する基準経路として残すが，最終的な毛管閉包とはしない．
+  \item \textbf{\texttt{jump\_decomposition}}：
+        既存比較と退行検出のため残すが，新規 pressure-jump 設定の既定にはしない．
+  \item \textbf{FVM/FD base solve}：
+        DC の base operator や比較基準として使うが，CCD/FCCD 研究閉包の代替主張にはしない．
+\end{itemize}
+\end{tcolorbox}
+
+したがって，9 章を読んだ後に残る物語は単純である：
+圧力ステップの本質は「高次 Poisson solve」ではなく，
+不連続な界面応力を同じ面演算子上で保存したまま投影することである．
+そのために，分相化で密度ジャンプを外し，
+向き付き affine jump で圧力ジャンプを PPE に入れ，
+HFE で高次ステンシルの滑らかさを守り，
+DC とゲージで実用的に解く．

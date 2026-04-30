@@ -16,6 +16,25 @@
 界面を横切るステンシルが $\Ord{1}$ の打ち切り誤差を生じる．
 本節では，この本質的制約を回避する\textbf{分相 PPE 解法}を本稿の主要 PPE 戦略として定式化する．
 
+\noindent\textbf{本節で選ぶもの：}
+分相 PPE は単独の名前ではなく，次の 5 つを同時に満たす pressure stack を指す．
+\[
+  \text{相内定数密度 Poisson}
+  \;+\;
+  j_{gl}=p_g-p_l=-\sigma\kappa_{lg}
+  \;+\;
+  G_\Gamma(p;j)=G(p)-B(j)
+  \;+\;
+  \mathrm{HFE}
+  \;+\;
+  \text{相別ゲージ}
+\]
+したがって，本節で退ける対象は
+「一括 smoothed-Heaviside PPE を高密度比 production とみなすこと」，
+「CSF 体積力を最終的な表面張力閉包とみなすこと」，
+「regular pressure field $J$ を後で足す \texttt{jump\_decomposition} を
+affine jump と同等視すること」である．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{変密度一括解法の本質的制約}
 \label{sec:monolithic_ppe_limitation}
