@@ -98,6 +98,14 @@ class PPESolverDefectCorrection(IPPESolver):
         jump_pressure = operator.apply_interface_jump(self.xp.zeros_like(rhs_dev))
         return rhs_dev - self._apply_physical_operator(jump_pressure)
 
+    def _add_affine_interface_jump_rhs(self, rhs_dev):
+        """Apply affine jump contribution once for the wrapped operator solve."""
+        operator = self.operator
+        affine_rhs = getattr(operator, "_add_affine_interface_jump_rhs", None)
+        if not callable(affine_rhs):
+            return rhs_dev
+        return affine_rhs(rhs_dev, force=True)
+
     def _apply_physical_operator(self, pressure):
         """Apply the physical PPE operator without gauge augmentation when exposed."""
         if hasattr(self.operator, "_apply_operator_core"):
@@ -135,6 +143,7 @@ class PPESolverDefectCorrection(IPPESolver):
         rhs_dev = xp.asarray(rhs)
         self.operator.prepare_operator(rho)
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
+        rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._enforce_rhs_compatibility(rhs_dev)
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)

@@ -212,6 +212,7 @@ def build_fccd_face_inverse_density(
     grid,
     coefficient_scheme: str,
     phase_threshold: float | None,
+    interface_coupling_scheme: str = "none",
 ):
     rho_arr = xp.asarray(rho)
     n_axis = grid.N[axis]
@@ -224,7 +225,11 @@ def build_fccd_face_inverse_density(
     rho_lo = rho_arr[sl(0, n_axis)]
     rho_hi = rho_arr[sl(1, n_axis + 1)]
     coeff = 2.0 / (rho_lo + rho_hi)
-    if coefficient_scheme != "phase_separated" or phase_threshold is None:
+    if (
+        coefficient_scheme != "phase_separated"
+        or phase_threshold is None
+        or interface_coupling_scheme == "affine_jump"
+    ):
         return coeff
     same_phase = (rho_lo >= phase_threshold) == (rho_hi >= phase_threshold)
     return xp.where(same_phase, coeff, 0.0)
@@ -338,6 +343,9 @@ def project_fccd_rhs_compatibility(
         "ppe_rhs_phase_mean_after_max": 0.0,
         "ppe_interface_coupling_jump": float(
             interface_coupling_scheme == "jump_decomposition"
+        ),
+        "ppe_interface_coupling_affine_jump": float(
+            interface_coupling_scheme == "affine_jump"
         ),
     }
     if (

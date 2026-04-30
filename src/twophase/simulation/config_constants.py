@@ -37,10 +37,12 @@ _POISSON_COEFFICIENT_ALIASES = {
     "phase_separated_density": "phase_separated",
     "split_phase": "phase_separated",
 }
-_POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition")
+_POISSON_INTERFACE_COUPLINGS = ("none", "jump_decomposition", "affine_jump")
 _POISSON_INTERFACE_COUPLING_ALIASES = {
     "pressure_jump": "jump_decomposition",
     "jump": "jump_decomposition",
+    "interface_stress": "affine_jump",
+    "jump_aware": "affine_jump",
 }
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {

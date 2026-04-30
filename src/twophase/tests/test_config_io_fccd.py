@@ -322,6 +322,37 @@ def test_phase_density_rejects_jump_decomposition_coupling():
         ExperimentConfig.from_dict(raw)
 
 
+def test_pressure_jump_accepts_affine_jump_coupling():
+    raw = _minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "gradient": "none",
+                        "formulation": "pressure_jump",
+                    },
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "affine_jump",
+                    },
+                    "solver": {"kind": "iterative", "preconditioner": "none"},
+                },
+            },
+        },
+    })
+
+    cfg = ExperimentConfig.from_dict(raw)
+
+    assert cfg.run.surface_tension_scheme == "pressure_jump"
+    assert cfg.run.ppe_coefficient_scheme == "phase_separated"
+    assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
+
+
 def test_pressure_jump_rejects_body_force_gradient():
     raw = _minimal({
         "numerics": {

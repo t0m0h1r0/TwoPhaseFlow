@@ -626,7 +626,7 @@ def test_pressure_jump_constructor_rejects_force_gradient():
         )
 
 
-def test_pressure_jump_constructor_requires_jump_decomposition():
+def test_pressure_jump_constructor_requires_jump_coupling():
     with pytest.raises(ValueError, match="ppe_interface_coupling_scheme"):
         TwoPhaseNSSolver(
             N, N, L, L,
@@ -635,6 +635,98 @@ def test_pressure_jump_constructor_requires_jump_decomposition():
             ppe_interface_coupling_scheme="none",
             surface_tension_scheme="pressure_jump",
         )
+
+
+def test_pressure_jump_constructor_accepts_affine_jump():
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_preconditioner="none",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        surface_tension_scheme="pressure_jump",
+        debug_diagnostics=True,
+    )
+
+    assert solver._ppe_interface_coupling_scheme == "affine_jump"
+    assert solver._ppe_solver.interface_coupling_scheme == "affine_jump"
+
+
+def test_affine_jump_corrector_forwards_interface_context():
+    """Velocity correction must use the same affine jump context as the PPE."""
+    from twophase.simulation.ns_step_services import correct_ns_velocity_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    class GradientStub:
+        def gradient(self, pressure, axis):
+            return np.zeros_like(pressure)
+
+    class ProjectionRecorder:
+        def __init__(self):
+            self.kwargs = None
+
+        def project_faces(self, components, p, rho, dt, force_components=None, **kwargs):
+            self.kwargs = kwargs
+            return [np.array(component, copy=True) for component in components]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    arr = np.zeros((3, 3))
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones_like(arr),
+        kappa=np.full_like(arr, 3.0),
+        f_x=np.zeros_like(arr),
+        f_y=np.zeros_like(arr),
+        u_star=np.zeros_like(arr),
+        v_star=np.zeros_like(arr),
+        p_corrector=np.zeros_like(arr),
+    )
+    backend = type("BackendStub", (), {"xp": np})()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+        },
+    )()
+    projection = ProjectionRecorder()
+
+    correct_ns_velocity_stage(
+        state,
+        backend=backend,
+        pressure_grad_op=GradientStub(),
+        face_flux_projection=True,
+        preserve_projected_faces=True,
+        fccd_div_op=projection,
+        div_op=projection,
+        ppe_runtime=ppe_runtime,
+        bc_type="wall",
+        apply_velocity_bc=lambda *_args: None,
+    )
+
+    assert projection.kwargs["pressure_gradient"] == "fccd"
+    assert projection.kwargs["coefficient_scheme"] == "phase_separated"
+    assert projection.kwargs["interface_coupling_scheme"] == "affine_jump"
+    assert projection.kwargs["interface_stress_context"].sigma == pytest.approx(2.0)
 
 
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
