@@ -58,7 +58,7 @@
 
   \item[\textbf{第\ref{sec:levelset}章：Conservative Level Set 法と Ridge--Eikonal 再初期化}]
         標準 Level Set 法の質量損失問題を克服するため，
-        $\psi = H_\varepsilon(\phi) \in [0,1]$ を移流変数とする保存形の
+        $\psi = H_\varepsilon(-\phi) \in [0,1]$ を移流変数とする保存形の
         界面追跡法（CLS 法）を定式化した．
         $\psi \to \phi$ の解析的逆変換（§\ref{sec:newton_inversion}）と
         Ridge--Eikonal ハイブリッド再初期化（§\ref{sec:ridge_eikonal}，§\ref{sec:ridge_aux_field}）
@@ -112,7 +112,7 @@
         本稿の主たる設計戦略は\textbf{分相 PPE}（§\ref{sec:split_ppe_recovery},
         §\ref{sec:varrho_ppe_limitation}）であり，
         各相内で定数密度 Poisson を独立に解き，
-        界面ジャンプ条件 $[p]=\sigma\kappa$ を
+        界面ジャンプ条件 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を
         \textbf{Hermite 場延長 HFE}（§\ref{sec:hfe}）が
         Aslam Extension PDE の定常解として
         Hermite 三つ組 $(f,f',f'')$ から仮想時間反復なしに直接構成する．
@@ -330,16 +330,22 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
 % ─────────────────────────────────────────────────────────────────────────────
 
 第\ref{sec:validation}章の物理ベンチマーク 3 種（毛管波・気泡上昇・Rayleigh--Taylor）は，
-古典理論・既往 DNS との比較対象，YAML 条件，出力診断，受入基準を固定しているが，
-表~\ref{tab:ch14_summary} の通り定量結果は未掲載である．
-したがって本節では成功判定ではなく，査読時点での未完了検証ゲートとして整理する．
+古典理論・既往 DNS との比較対象，YAML 条件，出力診断，受入基準を固定している．
+表~\ref{tab:ch14_summary} の通り，毛管波については
+向き付き affine jump の符号検証まで完了し，気泡上昇・Rayleigh--Taylor は
+査読時点で未完了検証ゲートとして残る．
 
 \begin{description}
   \item[毛管波（§\ref{sec:val_capillary}）：]
-        線形分散関係 $\omega^2 = \sigma k^3/(\rho_l + \rho_g)$ を Prosperetti~\cite{Prosperetti1981}
-        参照と比較する計画であり，位相・周期誤差，体積保存
-        $|\Delta V|/V_0 = \Ord{10^{-4}}$，および
-        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界遵守を判定項目とする．
+        旧 \texttt{jump\_decomposition} では regular 圧力場が鋭いジャンプを吸収し，
+        旧 \texttt{affine\_jump} では $p_g-p_l$ の符号が逆で anti-restoring となった．
+        現行の向き付き contract
+        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ は $N=32,T=10$ run を完走させ，
+        初期加速度 $A''$ の符号と大きさを
+        Prosperetti~\cite{Prosperetti1981} の線形分散関係に対して確認した．
+        ただし振幅成長と曲率 cap 到達が残るため，位相・周期誤差の合格判定は
+        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界を含む
+        sweep 後に限定する．
   \item[気泡上昇（§\ref{sec:val_rising_bubble}）：]
         Hysing ら~\cite{Hysing2009} の単一気泡幾何を参照しつつ，
         水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化する
@@ -353,9 +359,9 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
 \end{description}
 
 これら 3 ベンチマークは，三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）の
-物理的有効性を最終確認するための未完了ゲートである．
+物理的有効性を最終確認するためのゲートである．
 現時点での達成主張は，第\ref{sec:numerical_integrity}章と第\ref{sec:verification}章の
-実測検証に限定する．
+実測検証，および毛管波における向き付き affine jump の短時間符号検証に限定する．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}

@@ -7,12 +7,16 @@ stack. Three production YAML files are checked in:
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
-A fourth checked-in YAML is a bounded GPU-utilization probe:
+Additional checked-in YAMLs cover bounded probes and regressions:
 
 - `ch14_capillary_gpu90_affine.yaml` — capillary-wave `affine_jump` route at
   `512×512`, `max_steps: 12`, `save_npz: false`; used to verify that the
   production stack can keep the GPU saturated without making the full
   `T=35` capillary benchmark prohibitively long.
+- `ch14_capillary_n32_t10_oriented_affine.yaml` — capillary-wave
+  `affine_jump` route at `32×32`, `T=10`; used to verify that the oriented
+  Young--Laplace jump reaches the requested time without the previous
+  wrong-sign blow-up.
 
 Longer diagnostic probes live under `config/probes/` so `--all` does not pick
 them up accidentally:
@@ -25,6 +29,7 @@ Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
 - `python experiment/run.py --config ch14_capillary_gpu90_affine`
+- `python experiment/run.py --config ch14_capillary_n32_t10_oriented_affine`
 - `python experiment/run.py --config probes/ch14_capillary_n32_t10_affine_gpu`
 - `python experiment/run.py --config ch14_rising_bubble`
 - `python experiment/run.py --config ch14_rayleigh_taylor`

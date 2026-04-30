@@ -12,7 +12,7 @@
 IPC 法の Predictor は前時刻圧力 $p^n$ を用いるため，$n=0$ における $p^0$ が必要となる．
 問題に応じて以下から選択する：
 \begin{itemize}
-  \item \textbf{静止液滴（検証問題）：} Young--Laplace 解 $p^0 = -\sigma\kappa_0 = \sigma/R$（液相内），$p^0 = 0$（気相）を解析的に与える（$\kappa_0 = -1/R < 0$）．
+  \item \textbf{静止液滴（検証問題）：} Young--Laplace 解 $p^0 = \sigma\kappa_{lg,0} = \sigma/R$（液相内），$p^0 = 0$（気相）を解析的に与える（$\kappa_{lg,0} = 1/R > 0$）．
   \item \textbf{一般問題（高密度比を含む）：} $n=0$ でのみ PPE（式~\eqref{eq:PPE_varrho}）を $p^0 = 0$ 初期値で解き，得られた圧力場を $p^0$ として設定する（1回追加求解のコスト）．
   \item \textbf{簡易設定：} $p^0 = 0$ のまま発進する．$\Ord{\Delta t^2}$ 精度は定常後に達成され，初期数ステップでは $\Ord{\Delta t}$ 過渡誤差が生じうるが，多くの実用問題では無視できる．
 \end{itemize}

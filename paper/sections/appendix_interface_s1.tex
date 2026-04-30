@@ -3,7 +3,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 本稿の §\ref{sec:newton_inversion} で述べたように，
-$\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
+$\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln((1-\psi)/\psi)$ により
 ほとんどの格子点で解析的に求まる（残差ゼロ，ニュートン法不要）．
 ニュートン法（式~\eqref{eq:newton_inversion}）は実装の主経路ではなく，
 ロジット逆変換の診断・補助としてのみ用いる．
@@ -21,7 +21,7 @@ $H_\varepsilon'(\phi)$ が小さすぎない局所区間内で反復が進む場
 
 \subsubsection*{前提}
 
-$F(\phi) \equiv H_\varepsilon(\phi) - \psi_i = 0$ を根とする問題を考える．
+$F(\phi) \equiv H_\varepsilon(-\phi) - \psi_i = 0$ を根とする問題を考える．
 $\phi^*$ を真の解（$F(\phi^*)=0$），$e_k = \phi^{(k)} - \phi^*$ を第 $k$ 反復での誤差とする．
 
 \subsubsection*{二次収束の証明}
@@ -40,16 +40,18 @@ $\Ord{e_k^2}$ の寄与を吸収した主要項として）：
 
 各因子を評価する．
 \begin{itemize}
-  \item $F'(\phi) = H_\varepsilon'(\phi) = \dfrac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr) > 0$
-        （$H_\varepsilon \in (0,1)$ であるから常に正）．
+  \item $F'(\phi) = -H_\varepsilon'(-\phi) =
+        -\dfrac{1}{\varepsilon}H_\varepsilon(-\phi)\bigl(1-H_\varepsilon(-\phi)\bigr) < 0$
+        （$H_\varepsilon \in (0,1)$ であるから常に負）．
 
-  \item 局所区間 $I$ 上で $H_\varepsilon'(\phi)$ が小さすぎないとき，
-        $F'$ は有限の正の下界 $F'_{\min} > 0$ を持つ：
+  \item 局所区間 $I$ 上で $|H_\varepsilon'(-\phi)|$ が小さすぎないとき，
+        $|F'|$ は有限の正の下界 $F'_{\min} > 0$ を持つ：
         \[
-          F'_{\min} = \inf_{\phi\in I} \frac{1}{\varepsilon}H_\varepsilon(\phi)\bigl(1-H_\varepsilon(\phi)\bigr) > 0
+          F'_{\min} = \inf_{\phi\in I}
+          \frac{1}{\varepsilon}H_\varepsilon(-\phi)\bigl(1-H_\varepsilon(-\phi)\bigr) > 0
         \]
 
-  \item $F''(\phi) = \dfrac{1}{\varepsilon^2}H_\varepsilon(1-H_\varepsilon)(1-2H_\varepsilon)$ は
+  \item $F''(\phi) = \dfrac{1}{\varepsilon^2}H_\varepsilon(-\phi)(1-H_\varepsilon(-\phi))(1-2H_\varepsilon(-\phi))$ は
         局所区間 $I$ 上で有界である（$H_\varepsilon \in [0,1]$ の連続関数）．
         $H_\varepsilon(1-H_\varepsilon) \le 1/4$ かつ $|1-2H_\varepsilon| \le 1$ であるから，
         $\|F''\|_\infty \le 1/(4\varepsilon^2)$ が成立する．

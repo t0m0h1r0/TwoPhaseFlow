@@ -74,7 +74,8 @@ Predictor 速度由来の発散ソース；本稿 7-step フローの Step 6 と
 \begin{align}
   [p]_\Gamma
     &= J_p
-     = \sigma\kappa
+     = j_{gl}
+     = -\sigma\kappa_{lg}
      \quad \text{（圧力形式）},
      \label{eq:split_ppe_pressure_jump} \\
   \left[\frac{1}{\rho}\pd{p}{n}\right]_\Gamma
@@ -259,7 +260,8 @@ Corrector や浮力残差で混合密度係数を使うと，
 % ─────────────────────────────────────────────────────────────────────────────
 
 界面 $\Gamma$ を跨ぐコンパクトステンシルを\textbf{単相化}するため，
-ジャンプ条件 $[p]_\Gamma=\sigma\kappa$，$[\rho^{-1}\partial_n p]_\Gamma=0$
+ジャンプ条件 $[p]_\Gamma=J_p$，$J_p\equiv j_{gl}=-\sigma\kappa_{lg}$，
+$[\rho^{-1}\partial_n p]_\Gamma=0$
 から\textbf{ゴースト面ジェット}
 \begin{equation}
   \bigl(p_q^\ast,\,p_q'^\ast,\,p_q''^\ast\bigr)
@@ -282,18 +284,18 @@ Corrector や浮力残差で混合密度係数を使うと，
 $\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
 \begin{align}
   p_q^\ast(x_f)
-    &= p_{\bar q}(x_f) - \sigma\kappa\,\mathrm{sign}(\phi_f),
+    &= p_{\bar q}(x_f) - J_p\,\mathrm{sign}(\phi_f),
       \label{eq:gfm_value_jump}\\
   p_q'^\ast(x_f)
     &= \frac{\rho_q}{\rho_{\bar q}}\,p'_{\bar q}(x_f),
       \label{eq:gfm_gradient_jump}\\
   p_q''^\ast(x_f)
     &= p''_{\bar q}(x_f)
-       - \bnabla_f\!\cdot(\sigma\kappa\,\mathbf{n})\,\mathrm{sign}(\phi_f).
+       - \bnabla_f\!\cdot(J_p\,\hat{\bm n}_{lg})\,\mathrm{sign}(\phi_f).
       \label{eq:gfm_curvature_jump}
 \end{align}
 2 次値ジャンプは Laplace--Beltrami 分解
-$\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
+$J_s = \partial_s J_p$ に縮退する．
 
 \noindent\textbf{$\kappa_s$ の導出（界面座標 1 段階展開）：}
 \textbf{前提仮定}（明示化）：
@@ -305,10 +307,10 @@ $\kappa_s = \partial_s(\sigma\kappa)/\sigma$ に縮退する．
 界面 $\Gamma$ 上で局所直交座標 $(s,n)$ を取る（$s$：接線弧長，
 $n$：法線距離 $\phi$ と整合）．
 中間補題：(H2) と運動量方程式表面張力ゼロ（\S\ref{sec:split_ppe_pressure_jump_formulation}）から
-界面圧力ジャンプ $[p]_\Gamma=\sigma\kappa|\bnabla\psi|$ を Heaviside 越しに
+界面圧力ジャンプ $[p]_\Gamma=J_p$ を Heaviside 越しに
 \textbf{1 階}展開した結果が式~\eqref{eq:gfm_curvature_jump} 第 1 式の
-$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$%
-\footnote{前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ は flux jump の連続性（GFM 求解条件），$[p_n]_\Gamma=\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ は表面張力下の curvature 駆動圧力ジャンプ（界面ソース項）であり，両者は独立に扱う；詳細は \S\ref{sec:split_ppe_pressure_jump_formulation}．}．
+$[p_n]_\Gamma=\bnabla_f\!\cdot(J_p\hat{\bm n}_{lg})$%
+\footnote{前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ は flux jump の連続性（GFM 求解条件），$[p_n]_\Gamma=\bnabla_f\!\cdot(J_p\hat{\bm n}_{lg})$ は表面張力下の curvature 駆動圧力ジャンプ（界面ソース項）であり，両者は独立に扱う；詳細は \S\ref{sec:split_ppe_pressure_jump_formulation}．}．
 さらに $n$ 方向の Laplacian を分解すると：
 \begin{equation}
   \nabla^2 p = \partial_n^2 p + \kappa\,\partial_n p + \nabla_s^2 p,
@@ -320,22 +322,22 @@ $[\nabla^2 p]_\Gamma = [\partial_n^2 p]_\Gamma + \kappa\,[\partial_n p]_\Gamma +
 仮定 (H1) より両相 PDE $\nabla^2 p = \rho q$（$q\equiv\bnabla\!\cdot\bu^*/\Delta t$ の各相延長）
 が界面まで滑らかに到達し，
 $[\nabla^2 p]_\Gamma = [\rho q]_\Gamma$ は与えられた量．
-$[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2(\sigma\kappa|\bnabla\psi|)$
+$[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2 J_p$
 から接線 2 階差分を取り，
-1 階差分 $\kappa[\partial_n p]_\Gamma=\kappa\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})$ を
+1 階差分 $\kappa_{lg}[\partial_n p]_\Gamma=\kappa_{lg}\bnabla_f\!\cdot(J_p\hat{\bm n}_{lg})$ を
 代入して整理すると，
 \begin{equation}
   [\partial_n^2 p]_\Gamma
   = [\rho q]_\Gamma
-    - \kappa\,\bnabla_f\!\cdot(\sigma\kappa\mathbf{n})
-    - \partial_s^2(\sigma\kappa|\bnabla\psi|).
+    - \kappa_{lg}\,\bnabla_f\!\cdot(J_p\hat{\bm n}_{lg})
+    - \partial_s^2 J_p.
   \label{eq:kappa_s_derivation}
 \end{equation}
 分相 PPE の片側で $[\rho q]_\Gamma$ を吸収する RHS 整合化と
 仮定 (H3) $|\bnabla\psi|=1$ を用いれば，
 2 階ジャンプ成分の主要項は接線 2 階微分
 \begin{equation}
-  \kappa_s \equiv \partial_s(\sigma\kappa)/\sigma
+  J_s \equiv \partial_s J_p
   \label{eq:kappa_s_def}
 \end{equation}
 に縮退する（高次項 $\Ord{(h\kappa)^2}$ を含む詳細は
@@ -381,38 +383,65 @@ Krylov/CG apply を $P L_q P + (I-P)$ と拡張すれば，
 圧力ジャンプ形式（\S\ref{sec:split_ppe_pressure_jump_formulation}）
 で未知量が $\tilde p$（滑らか部分）となる場合，
 反復解法のウォームスタートには$\tilde p$のみを渡す．
-\textbf{合成圧力 $p = \tilde p + \sigma\kappa(1-\psi)$}
-をウォームスタートに用いると不連続成分が次段 PPE に漏れて
-人工運動エネルギーを生む．
+\textbf{regular 場として合成したジャンプ圧力}
+をウォームスタートに用いると，不連続成分が次段 PPE に吸収され，
+物理的な界面駆動が消える．第~\ref{sec:val_capillary}節の
+root-cause 診断では，旧 \texttt{jump\_decomposition} 経路が
+$p_\mathrm{base}\simeq -J$，$p_\mathrm{total}\simeq 0$ を作り，
+$\operatorname{ptp}(p_\mathrm{total})/\operatorname{ptp}(J)=9.02\times10^{-4}$
+までジャンプを代数的に相殺した．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{圧力ジャンプ形式：CSF 体積力を回避するクリーン分離}
 \label{sec:split_ppe_pressure_jump_formulation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-本形式では CSF 体積力を使用せず，
-$[p]_\Gamma=\sigma\kappa$ を PPE の直接境界条件として課す．
+本形式では CSF 体積力を使用せず，向き付き Young--Laplace
+ジャンプ
+\begin{equation}
+  j_{gl} \equiv p_g-p_l = -\sigma\kappa_{lg}
+  \label{eq:split_ppe_oriented_jump}
+\end{equation}
+を PPE と corrector が共有する face-gradient 契約として課す．
 運動量方程式の表面張力項は\textbf{ゼロ}：
 \begin{equation}
   \rho\frac{D\mathbf{u}}{Dt}
     = -\bnabla p + \bnabla\cdot(2\mu\mathbf{D}) + \rho\mathbf{g},
-  \qquad [p]_\Gamma = \sigma\kappa.
+  \qquad p_g-p_l = j_{gl}.
   \label{eq:split_ppe_momentum_no_csf}
 \end{equation}
-PPE には $(\psi,\kappa,\sigma)$ をコンテキストとして渡し，
-合成圧力は
-\begin{equation}
-  p = \tilde p + \sigma\kappa\,(1-\psi),
-  \label{eq:split_ppe_pressure_composition}
-\end{equation}
-$\tilde p$ が滑らか部分（PPE 未知量），
-$\sigma\kappa(1-\psi)$ が界面厚 $\varepsilon$ 内で
-$[\,\cdot\,]_\Gamma=\sigma\kappa$ を表現する鋭いジャンプ項．
+ここで $\psi=1$ が液相，$\psi=0$ が気相であり，
+$\kappa_{lg}=\nabla_\Gamma\!\cdot\hat{\bm n}_{lg}$ は液相から気相へ向く曲率である．
+液滴では $\kappa_{lg}>0$ なので $j_{gl}<0$（液相圧が高い）となり，
+気泡では $\kappa_{lg}<0$ なので $j_{gl}>0$（気相圧が高い）となる．
 
-分相 PPE は CSF 体積力ではなく圧力ジャンプ $[p]_\Gamma=\sigma\kappa$ を
-界面条件として直接課すため，混合密度モデルや GFM ジャンプ縫合を欠いた状態で
-分相モードを起動すると合成圧力が両相に整合しない；
-本稿では分相モード起動時に圧力ジャンプ縫合と CSF 不在を整合性条件として要請する．
+実装上の未知量は regular 圧力 $\tilde p$ だけではなく，
+面勾配演算子そのものを affine 化する：
+\begin{align}
+  s_f &= I_g(\mathrm{high})-I_g(\mathrm{low}),\qquad
+        I_g=\mathbf{1}_{\psi<1/2}, \\
+  B_f(j_{gl}) &= \frac{s_f\,j_{gl,f}}{d_f}, \\
+  G_{\Gamma,f}(p;j_{gl}) &= G_f(p)-B_f(j_{gl}).
+  \label{eq:split_ppe_pressure_composition}
+\end{align}
+したがって PPE の界面項は
+\begin{equation}
+  D_f\alpha_fG_{\Gamma,f}(p;j_{gl})
+  =D_f\alpha_fG_f(p)-D_f\alpha_fB_f(j_{gl})
+  \label{eq:split_ppe_affine_rhs}
+\end{equation}
+として RHS にだけ既知量を注入する．
+この affine jump 形式は，通常の regular 圧力場
+\begin{equation}
+  p_\mathrm{legacy}=\tilde p + j_{gl}(1-\psi)
+  \label{eq:split_ppe_legacy_pressure_composition}
+\end{equation}
+でジャンプを表す旧分解とは異なり，楕円 solve が $J$ を
+自由圧力として吸収できない．PPE には
+\texttt{InterfaceStressContext} として
+\texttt{pressure\_jump\_gas\_minus\_liquid}$=j_{gl}$ を渡し，
+raw な $\sigma\kappa$ は保存しない．この契約は毛管波専用ではなく，
+静止液滴・上昇気泡・平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{再メッシュ再投影と PPE コンテキスト防護}
@@ -421,7 +450,7 @@ $[\,\cdot\,]_\Gamma=\sigma\kappa$ を表現する鋭いジャンプ項．
 
 界面適合格子の動的再構築（\S\ref{sec:grid_ale}）では
 速度再投影 PPE がメインステップ PPE の\textbf{前段}で走る．
-前ステップの圧力ジャンプ $[p]_\Gamma=\sigma\kappa$ を継承すると
+前ステップの圧力ジャンプ $J_p=j_{gl}$ を継承すると
 不連続合成圧力が再投影内部で微分され，人工運動エネルギーを生む．
-したがって再投影 PPE には界面ジャンプコンテキスト（$\psi,\kappa,\sigma$）を渡さず，
+したがって再投影 PPE には界面ジャンプコンテキスト（$\psi,\kappa_{lg},\sigma,j_{gl}$）を渡さず，
 メインステップ PPE のみが $[p]_\Gamma$ を保持する分離設計を採る．

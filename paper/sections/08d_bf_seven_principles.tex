@@ -146,7 +146,7 @@ BF 残差への影響は 2 次効果に留まる．
 \label{sec:bf_p6_jump}
 % -------------------------------------------------------------------------------
 
-CCD は滑らかな場を仮定する．静止液滴で $\Delta p = \sigma\kappa$ が
+CCD は滑らかな場を仮定する．静止液滴で $j_{gl}=-\sigma\kappa_{lg}$ が
 正しく設定されているのに寄生流れが出る場合，
 ほぼ常に\textbf{界面越えステンシルが圧力ジャンプを平滑化}している．
 必要な補正：
@@ -154,7 +154,7 @@ CCD は滑らかな場を仮定する．静止液滴で $\Delta p = \sigma\kappa
   \item \textbf{GFM 面フラックス補正}（Phase 1 実用）：
   \begin{equation}
     (G_h^\text{bf} p)_f^\text{corrected}
-      = (G_h^\text{bf} p)_f - \frac{\sigma\kappa}{H_f},
+      = (G_h^\text{bf} p)_f - \frac{j_{gl}}{H_f},
     \label{eq:bf_p6_gfm}
   \end{equation}
   bulk ステンシルは変更せず，ジャンプだけを面フラックスに注入．

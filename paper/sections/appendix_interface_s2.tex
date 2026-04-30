@@ -61,11 +61,11 @@ One-Fluid 方程式に右辺のデルタ関数項を加えることで，
 \subsubsection*{CLS 拡散界面における粘性補間の近似導出}
 \label{app:mu_interp_derivation}
 
-CLS 法では $\mu(\psi) = \mu_l + (\mu_g - \mu_l)\psi$ が $\psi$ の線形関数である．
+CLS 法では $\mu(\psi) = \mu_g + (\mu_l - \mu_g)\psi$ が $\psi$ の線形関数である．
 フェイス $f$（位置 $x_f$）を挟むセル $L$（中心 $x_L$）と $R$（中心 $x_R$）の間で，
 粘性フラックス係数の FVM 体積平均を評価する．
 
-CLS の平衡プロファイル $\psi_{\mathrm{eq}}(\phi) = H_\varepsilon(\phi)$ は
+CLS の平衡プロファイル $\psi_{\mathrm{eq}}(\phi) = H_\varepsilon(-\phi)$ は
 界面近傍で滑らかに変化するが，$H_\varepsilon$ 自体は一般には非線形である．
 したがって Eikonal 条件 $|\bnabla\phi|=1$ は $\phi$ の距離性を与えるだけで，
 $\psi$ のセル内線形性を保証しない．
@@ -74,8 +74,8 @@ FVM 低次モデルとして算術平均を導く：
 \[
   \bar{\mu}_f
   \equiv \frac{1}{\Delta x}\int_{x_L}^{x_R} \mu(\psi(x))\,dx
-  = \mu_l + (\mu_g-\mu_l)\,\frac{1}{\Delta x}\int_{x_L}^{x_R}\psi(x)\,dx
-  = \mu_l + (\mu_g-\mu_l)\,\frac{\psi_L+\psi_R}{2}
+  = \mu_g + (\mu_l-\mu_g)\,\frac{1}{\Delta x}\int_{x_L}^{x_R}\psi(x)\,dx
+  = \mu_g + (\mu_l-\mu_g)\,\frac{\psi_L+\psi_R}{2}
   = \frac{\mu_L+\mu_R}{2}
 \]
 ここで最後の等号は $\mu_k = \mu(\psi_k)$ を用いた（$k=L,R$）．
