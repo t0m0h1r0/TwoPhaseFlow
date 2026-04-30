@@ -67,14 +67,14 @@ $\bu^{n+1}$ に非圧縮条件 $\bnabla\cdot\bu^{n+1}=0$ を課す．
 $\bnabla^2(\delta p) = \rho\,\bnabla\cdot\bu^*/\Delta t_{\mathrm{proj}}$ に帰着する．
 
 \noindent\textbf{補足：}
-外力 $\bm{F}_\text{ext}^{n+1}$ は重力項と CSF 体積力 $(\kappa^{n+1}\bnabla\psi^{n+1})/We$ の両方を含み，
+外力 $\bm{F}_\text{ext}^{n+1}$ は重力項と CSF 体積力 $(\kappa_{lg}^{n+1}\bnabla\psi^{n+1})/We$ の両方を含み，
 CSF は Predictor に保持される（式~\eqref{eq:NS_dimless_cls}）．
 密度 $\rho^{n+1}$ は CLS 移流（本稿 7-step フローの Step 1）で事前に更新済みである．
 本節の導出は Backward Euler 形式で統一したが，
 対流項は IMEX-BDF2（式~\eqref{eq:predictor_imex_bdf2}），
 粘性項は implicit-BDF2（$\Ord{\Delta t^2}$，§~\ref{sec:time_viscous}）を用いる．
 高密度比の分相 PPE 解法における圧力勾配の評価には
-HFE による場延長を要する（付録~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
+HFE による場延長を要する（§~\ref{sec:field_extension}，§~\ref{sec:split_ppe_recovery}）．
 
 \noindent\textbf{PPE の離散化と求解方針：}
 以下の演算子形式は圧力増分 $\delta p$ および圧力 $p$ のいずれにも適用可能であるため，
@@ -107,7 +107,8 @@ $\mathcal{G}^\text{adj}$ に切り替え，PPE の離散拡散項も
 pressure-jump 型の \texttt{affine\_jump} を併用する場合も同じ面フラックス空間で
 $G_{\Gamma}^{\mathrm{adj}}=G^{\mathrm{adj}}-B^{\mathrm{adj}}$ とし，
 $B^{\mathrm{adj}}$ を face-average 勾配と同じ局所物理距離 $H_f$ で定義する．
-数値的な切り分けと安定化効果は §~\ref{sec:fvm_ccd_corrector} で整理する．
+この face-average 契約は本節で定義し，静止液滴での安定化効果は
+§~\ref{sec:bf_static_droplet} で検証する．
 
 \phantomsection
 \label{sec:dccd_pressure_nofilt}% backward-compat: 外部参照保持

@@ -1,0 +1,12 @@
+{
+  "branch": "ra-ch8-11-review-20260430-retry",
+  "branch_slug": "ra-ch8-11-review-20260430-retry",
+  "session_id": "3E6B708F-23CE-47DA-9364-EF547F2EAD11",
+  "worktree_path": ".claude/worktrees/ra-ch8-11-review-20260430-retry",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH8-11",
+  "acquired_at": "2026-04-30T12:57:48Z",
+  "expires_at": "2026-05-01T12:57:48Z",
+  "meta_version": "7.1.0",
+  "scope": "strict reviewer audit and root-cause fixes for paper chapters 8-11, emphasizing narrative coherence and notation consistency"
+}
