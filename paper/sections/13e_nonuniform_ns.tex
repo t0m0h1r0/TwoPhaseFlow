@@ -203,7 +203,8 @@ $N$ & $\alpha$ & centroid err & centroid order & mass drift & $V_T/V_0$ & shape 
 \end{figure}
 
 \paragraph{判定と制約条件（V10-a 二軸構造）．}
-script の plot 合格参照ライン (mass drift $< 0.5\%$, Centroid order $\ge 1.5$；
+script の plot 合格参照ライン (mass drift $< 0.5\%$ axhline, および centroid 誤差パネルの
+$O(h^{1.5})$ 参照\emph{傾き}線；後者は収束 order の閾値ではなく log--log slope の比較線；
 診断プロット上の guideline であり docstring 由来の正式 criterion ではない；
 plot コードでは \texttt{Volume drift} ラベルが用いられるが，incompressible CLS では
 mass drift と等価) は二つの \emph{独立} な観測軸を混在させている：
