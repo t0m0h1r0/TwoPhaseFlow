@@ -62,7 +62,7 @@ Corrector は同じ $A_fG_f$ で速度を補正し，
 速度場・圧力場・界面場を同時に読む必要があるためである．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{毛管波の振動減衰}
+\subsection{毛管波：保存性は成立，周期応答は未閉包}
 \label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════
 
@@ -87,9 +87,9 @@ YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
 \end{equation}
 が成り立つ~\cite{Prosperetti1981}．
 本設定では重力を切るため，観測すべき復元力は pressure-jump と曲率だけから来る．
-したがってこのケースは，浮力ではなく
+したがってこのケースは「毛管波を正しく振動させられるか」を見るだけでなく，
 \textbf{Ridge--Eikonal による距離関数品質，HFE 曲率，pressure-jump 分相 PPE，
-IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
+IMEX--BDF2 投影}の動的閉包が同時に働くかを切り出す実験である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,1]^2$，$64^2$，interface-fitted $\alpha=2$，壁面境界
@@ -106,56 +106,82 @@ IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
         さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{実行結果と判定}
+\subsubsection{実行結果：保存性と物理応答を分けて判定する}
 
 $64^2$ 格子（当初 $128^2$ 設定から各辺を半分にした実行）で
-$T=35$ まで完走した．式~\eqref{eq:flat_capillary_dispersion} から
+$T=35$ まで完走した．記録点は $19525$ step，時間刻みは全区間で
+$\Delta t=1.792640597\times10^{-3}$ であり，律速は常に毛管 CFL であった．
+式~\eqref{eq:flat_capillary_dispersion} から
 $\omega=0.377764$，周期 $2\pi/\omega=16.633$ が得られるため，
-本計算時間は約 $2.10$ 周期に相当する．しかし snapshot から
-$\eta(x,t)=y_\Gamma(x,t)-0.5$ の $m=2$ signed Fourier 係数を抽出すると，
-$a_2(0)=1.0003\times10^{-2}$，$a_2(35)=1.0466\times10^{-2}$ で，
-$T=35$ 内にゼロ交差は現れなかった．したがって本単点実行は
-Prosperetti 型の周期照合には未達であり，HFE 曲率・pressure-jump 分相 PPE・
-界面移流の動的結合を次の resolution/CFL sweep で再検証する必要がある．
+本計算時間は約 $2.10$ 非粘性周期に相当する．
 
-一方，保存性は良好である．体積保存診断は最終値
-$|\Delta V|/V_0=1.09\times10^{-5}$，最大値 $1.22\times10^{-5}$ に留まり，
-長時間受入基準 $O(10^{-4})$ の内側で完走した．運動エネルギー最大値は
-$8.06\times10^{-9}$，最大発散診断は $1.60\times10^{-5}$ であり，
-この run では有界性は保たれている．
+結論は二つに分かれる．第一に，保存性と有界性は通っている．
+体積保存診断は最終値 $|\Delta V|/V_0=1.09\times10^{-5}$，
+最大値 $1.22\times10^{-5}$ に留まり，長時間受入基準
+$O(10^{-4})$ の内側で完走した．運動エネルギー最大値は
+$8.06\times10^{-9}$，snapshot 上の $\|u\|_\infty$ 最大値は
+$1.06\times10^{-4}$，最大発散診断は $1.60\times10^{-5}$ である．
+すなわち，pressure-jump 分相 PPE と face-flux projection は，
+この設定では発散せず体積を保つ．
+
+第二に，Prosperetti 型の周期応答は再現していない．
+snapshot から $\eta(x,t)=y_\Gamma(x,t)-0.5$ の signed $m=2$
+Fourier 係数を台形積分で抽出すると，
+$a_2(0)=1.0003\times10^{-2}$，$a_2(35)=1.0465\times10^{-2}$ で，
+$T=35$ 内にゼロ交差は現れない．
+非粘性基準では $t\simeq4.16$ で最初のゼロ交差，
+$t\simeq8.32$ で符号反転が期待されるため，
+この差は単なる位相誤差ではなく，毛管復元運動そのものが本解像度・本閉包では
+表れていないことを意味する．同時に，符号なし界面振幅
+\texttt{interface\_amplitude} は
+$1.0510\times10^{-2}$ から $2.3152\times10^{-2}$ へ増加し，
+最大 $2.3504\times10^{-2}$ に達した．
+さらに \texttt{kappa\_max} は $19525$ step 中 $17575$ step
+（約 $90.0\%$）で HFE 曲率キャップ $5.0$ に到達しており，
+少なくともこの単点 run を毛管波分散関係の検証成功として引用することはできない．
 
 \begin{figure}[tbp]
 \centering
-\begin{subfigure}[t]{0.32\linewidth}
-\includegraphics[width=\linewidth]{figures/ch14_capillary_interface_amplitude.pdf}
-\caption{界面振幅診断}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.32\linewidth}
-\includegraphics[width=\linewidth]{figures/ch14_capillary_volume_drift.pdf}
-\caption{体積保存}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.32\linewidth}
-\includegraphics[width=\linewidth]{figures/ch14_capillary_kinetic_energy.pdf}
-\caption{運動エネルギー}
-\end{subfigure}
-\caption{毛管波 $64^2$ 完走 run の時系列診断．界面振幅は
-\texttt{interface\_amplitude}（各列の $\psi=0.5$ crossing の最大偏差）であり，
-周期判定には本文の signed $m=2$ 係数を別途用いた．}
-\label{fig:ch14_capillary_n64}
+\includegraphics[width=0.96\linewidth]{figures/ch14_capillary_result_dashboard.pdf}
+\caption{毛管波 $64^2$ 完走 run の判定 dashboard．左上は snapshot から抽出した
+signed $m=2$ Fourier 係数と，式~\eqref{eq:flat_capillary_dispersion}
+による非粘性基準 $A_0\cos(\omega t)$ の比較である．
+保存性は $10^{-4}$ 基準の内側に留まる一方，signed mode は
+ゼロ交差せず，周期応答は再現されていない．}
+\label{fig:ch14_capillary_dashboard}
 \end{figure}
 
-受入基準は次の三つである：
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.96\linewidth]{figures/ch14_capillary_velocity_snapshots.pdf}
+\caption{速度場 snapshot 列．時刻は $0$，$0.5T_\omega$，$1T_\omega$，
+$1.5T_\omega$，$2T_\omega$ 近傍および最終時刻 $T=35$ を示す．
+白線は $\psi=0.5$，黒線は抽出した界面位置である．
+速度場は有界だが，界面は非粘性基準のように反転せず同符号のまま残る．}
+\label{fig:ch14_capillary_velocity_snapshots}
+\end{figure}
+
+\subsubsection{判定と次の切り分け}
+
+本 run の受入基準と判定は次の通りである：
 \begin{enumerate}[noitemsep,leftmargin=2em]
-  \item \textbf{界面振幅} $A(t)$ が式~\eqref{eq:flat_capillary_dispersion} の周期スケールから
-        大きく外れず，位相誤差を resolution/CFL sweep で評価できること
-        （本 $64^2$ 単点 run は未達）．
+  \item \textbf{長時間安定性} 毛管 CFL 律速のまま $T=35$ まで完走すること
+        （達成）．
   \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=35$ で $O(10^{-4})$ 以下に留まること
         （本 run は達成；CSF/分相 PPE 系の体積保存判定基準は~\cite{Popinet2009} の慣行に従う）．
+  \item \textbf{周期応答} signed $m=2$ mode が
+        式~\eqref{eq:flat_capillary_dispersion} の周期スケールでゼロ交差・符号反転すること
+        （未達）．
   \item \textbf{場出力} \texttt{psi}，速度，圧力の snapshot が同じ時刻列で保存され，
         pressure-jump の不整合を事後診断できること（本 run は達成）．
 \end{enumerate}
+
+したがって，本節の結論は「毛管波 benchmark 成功」ではなく，
+\textbf{$64^2$・壁面・曲率キャップ $5.0$・CFL 乗数 $1.0$ では，
+保存性は成立するが Prosperetti 周期応答は成立しない}である．
+次の検証は，この failure case を固定したうえで
+解像度（$128^2$ 以上），毛管 CFL 乗数，曲率キャップ，
+および壁面境界の影響を分離する sweep として設計すべきである．
 
 % ═══════════════════════════════════════════════════════════════════
 \subsection{単一気泡上昇}
@@ -318,10 +344,11 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 ベンチマーク & 格子・条件 & 主要指標・記入状況 & 判定 \\
 \midrule
 毛管波 &
-  $N=64^2$，$\alpha=2$，$T=35$，水--空気，pressure-jump &
+  $N=64^2$，$\alpha=2$，$T=35$（約 $2.10T_\omega$），水--空気，pressure-jump &
   $|\Delta V|/V_0^{\max}=1.22\times10^{-5}$，
-  signed $m=2$ 係数は $T=35$ 内でゼロ交差なし &
-  保存性 \checkmark，周期照合 $\times$ \\
+  $a_2:1.000\times10^{-2}\to1.047\times10^{-2}$，
+  ゼロ交差なし，$A_{\max}=2.35\times10^{-2}$ &
+  保存性・有界性 \checkmark，周期照合 $\times$ \\
 単一気泡上昇 &
   $N=128\times256$，$\alpha=2$，$T=70$，水--空気，balanced buoyancy &
   \textit{（実験結果は計算完了次第掲載）} &
@@ -338,27 +365,32 @@ Rayleigh--Taylor &
 §~\ref{sec:error_budget} で特定した残存限界との対応：
 \begin{itemize}[noitemsep]
   \item \textbf{$\sigma > 0$ 移動界面結合}——各 YAML は pressure-jump 分相 PPE を用い，
-        CSF 体積力ではなく圧力ジャンプとして表面張力を扱う（\textbf{補完}）．
+        CSF 体積力ではなく圧力ジャンプとして表面張力を扱う．
+        毛管波 run では安定性と体積保存は確認できたが，
+        復元振動は未達である（\textbf{部分補完}）．
   \item \textbf{再初期化--移流蓄積}——Ridge--Eikonal + local thickness により，
-        非一様 $\alpha=2$ でも長時間 smoke を維持する想定
-        （定量目標は §\ref{sec:val_capillary}・§\ref{sec:val_rising_bubble}・§\ref{sec:val_rayleigh_taylor}
-        の各受入基準で $|\Delta V|/V_0 < O(10^{-4})$；\textbf{補完}）．
+        毛管波では非一様 $\alpha=2$ のまま $T=35$ 長時間 run と
+        $|\Delta V|/V_0^{\max}=1.22\times10^{-5}$ を確認した．
+        気泡上昇・RT については各受入基準で同じ
+        $|\Delta V|/V_0 < O(10^{-4})$ を確認する（\textbf{補完}）．
   \item \textbf{毛管波 CFL 安定境界}——YAML \texttt{run.time.cfl} は理論 CFL 定数への
         乗数であり，本章 3 本の乗数 $1.0$ は移流 $0.10$／毛管 $0.05$／粘性 $1.0$ に
         解決される（実装は
         \texttt{src/twophase/simulation/}\allowbreak\texttt{config\_run\_builder\_sections.py:43}）．
         今回の $64^2$ run はこの CFL で安定完走したが，
-        式~\eqref{eq:flat_capillary_dispersion} の周期応答は再現していないため，
-        毛管 CFL 制約の最近の体系的議論~\cite{DennerVanWachem2022} と合わせて
-        resolution/CFL sweep で切り分ける（\textbf{継続}）．
+        式~\eqref{eq:flat_capillary_dispersion} の周期応答は再現せず，
+        曲率キャップ $5.0$ も約 $90.0\%$ の step で有効化していた．
+        毛管 CFL 制約の最近の体系的議論~\cite{DennerVanWachem2022} と合わせて，
+        解像度・CFL 乗数・曲率キャップを分離した sweep で切り分ける（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
         face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
   \item \textbf{RT 不安定 閉包}——低 Atwood（$\mathrm{At}\approx 0.026$）かつ
         強重力 $g=9.81$ 下で，浮力残差分解と pressure-jump 閉包が
         式~\eqref{eq:rt_linear_growth} の線形指数領域から非線形 mushroom
         領域までの長時間発展を支える想定である（\textbf{継続}）．
-  \item \textbf{物理 benchmark の未完了点}——毛管波の周期応答未達，気泡の終端速度，
-        および RT の線形成長率検証は，本章 YAML の閉包確認とは別に，
-        無次元数と出力診断を固定した想定 resolution/CFL sweep 別 YAML
-        で確定する（\textbf{継続}）．
+  \item \textbf{物理 benchmark の未完了点}——毛管波は「保存性 pass／周期応答 fail」
+        として記録し，気泡の終端速度および RT の線形成長率検証は
+        実行完了後に同じ形式で判定する．毛管波については，
+        本 failure case を基準にした resolution/CFL/curvature-cap sweep で
+        物理応答の閉包を確定する（\textbf{継続}）．
 \end{itemize}
