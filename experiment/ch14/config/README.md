@@ -173,7 +173,10 @@ All three ch14 YAMLs share the production stack:
   `coefficient: phase_separated`,
   `interface_coupling: affine_jump` — the FCCD pressure operator
   with a jump-aware affine face gradient, avoiding regular-pressure
-  decomposition of `j_gl(1-ψ)`.
+  decomposition of `j_gl(1-ψ)`. On nonuniform grids this same key means the
+  face jump is built from the local physical face distance `H_f` and shared by
+  the PPE RHS and face-flux corrector; no separate nonuniform PPE solver key is
+  required.
 - `projection.poisson.solver.kind: defect_correction` (jacobi-preconditioned
   GMRES base solver) — keeps the residual-correction shell visible.
 

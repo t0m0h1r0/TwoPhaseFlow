@@ -11,7 +11,7 @@ from .ns_predictor_assembly import (
     select_gravity_aligned_axis,
     select_transverse_axis,
 )
-from .interface_stress_closure import build_young_laplace_interface_stress_context
+from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0

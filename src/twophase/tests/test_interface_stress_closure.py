@@ -18,7 +18,7 @@ from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
-from twophase.simulation.interface_stress_closure import (
+from twophase.coupling.interface_stress_closure import (
     build_interface_stress_context,
     build_young_laplace_interface_stress_context,
     signed_pressure_jump_gradient,
@@ -73,6 +73,60 @@ def test_signed_pressure_jump_gradient_orientation():
     )
     np.testing.assert_allclose(reversed_jump_x[0, :], 6.0)
     np.testing.assert_allclose(reversed_jump_x[1, :], 0.0)
+
+
+def test_signed_pressure_jump_gradient_uses_nonuniform_physical_face_distance():
+    """Nonuniform affine jumps use local ``H_f``, not a global ``h``."""
+    grid, _ = _make_two_cell_operator()
+    grid.coords[0] = np.asarray([0.0, 0.25, 2.0])
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    kappa = np.full(grid.shape, 2.0)
+    context = build_interface_stress_context(
+        xp=np,
+        psi=psi,
+        kappa=kappa,
+        sigma=3.0,
+    )
+
+    jump_x = signed_pressure_jump_gradient(
+        xp=np,
+        grid=grid,
+        context=context,
+        axis=0,
+    )
+
+    np.testing.assert_allclose(jump_x[0, :], -24.0)
+    np.testing.assert_allclose(jump_x[1, :], 0.0)
+
+
+def test_affine_jump_fvm_corrector_uses_same_nonuniform_jump_distance():
+    """Face-flux corrector subtracts the same nonuniform ``B_f`` as the PPE."""
+    grid, div_op = _make_two_cell_operator()
+    grid.coords[0] = np.asarray([0.0, 0.25, 2.0])
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    kappa = np.full(grid.shape, 2.0)
+    pressure = np.zeros(grid.shape)
+    pressure[psi >= 0.5] = 6.0
+    rho = np.ones(grid.shape)
+    context = build_interface_stress_context(
+        xp=np,
+        psi=psi,
+        kappa=kappa,
+        sigma=3.0,
+    )
+
+    affine_faces = div_op.pressure_fluxes(
+        pressure,
+        rho,
+        pressure_gradient="fvm",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+        interface_stress_context=context,
+    )
+
+    np.testing.assert_allclose(affine_faces[0][0, :], 0.0, atol=1.0e-14)
 
 
 def test_young_laplace_builder_stores_gas_minus_liquid_jump():
