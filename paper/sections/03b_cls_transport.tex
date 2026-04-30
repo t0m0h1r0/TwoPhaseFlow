@@ -19,10 +19,11 @@ Gauss の発散定理を $\bnabla\cdot(\psi\bu)$ に直接適用すると：
 \[
   \frac{d}{dt}\int_\Omega\psi\,dV
   = -\int_\Omega\bnabla\cdot(\psi\bu)\,dV
-  = -\oint_{\partial\Omega}\psi\bu\cdot\hat{\bm{n}}\,dS
+  = -\oint_{\partial\Omega}\psi\bu\cdot\hat{\bm{n}}_{\partial\Omega}\,dS
 \]
+ここで $\hat{\bm{n}}_{\partial\Omega}$ は計算領域境界 $\partial\Omega$ の外向き法線（§~\ref{sec:notation} で定義した界面法線 $\hat{\bm{n}}_{lg}$ とは別の幾何対象）である．
 これは連続レベルでは $\bnabla\cdot\bu$ の値に無関係に成立する．
-連続レベルでは，壁面境界（$\bu\cdot\hat{\bm{n}}=0$）または周期境界では右辺がゼロとなり，
+連続レベルでは，壁面境界（$\bu\cdot\hat{\bm{n}}_{\partial\Omega}=0$）または周期境界では右辺がゼロとなり，
 $\int\psi\,dV = \text{const}$ が速度場の発散条件に依存せず保証される．
 離散計算では，この性質を保つ精度はフラックス差分，境界処理，値域制限，再初期化補正に依存する．
 
