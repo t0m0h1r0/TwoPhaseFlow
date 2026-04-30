@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V2] Kovasznay-flow CCD spatial residual — Tier A.
+"""[V2] Kovasznay-flow CCD spatial residual — Type-A (revised criterion).
 
 Paper ref: §13.1 (sec:kovasznay).
 
