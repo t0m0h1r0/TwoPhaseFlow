@@ -46,6 +46,7 @@
 | **SP-Y** | [SP-Y_cfl_time_integration_policy.md](SP-Y_cfl_time_integration_policy.md) | **CFL and time-integration policy for capillary/two-phase NS runs** | 2026-04-25 | ACTIVE |
 | **SP-Z** | [SP-Z_rising_bubble_buoyancy_fmm_closure.md](SP-Z_rising_bubble_buoyancy_fmm_closure.md) | **Rising-bubble buoyancy/FMM closure validated by ch13 t=0.5 run** | 2026-04-25 | ACTIVE |
 | **SP-AA** | [SP-AA_capillary_energy_variational_geometry.md](SP-AA_capillary_energy_variational_geometry.md) | **Capillary energy stability, variational geometry, and projection-native surface tension** | 2026-04-26 | ACTIVE |
+| **SP-AB** | [SP-AB_affine_jump_oriented_interface_stress.md](SP-AB_affine_jump_oriented_interface_stress.md) | **Affine jump and oriented Young--Laplace interface-stress closure** | 2026-04-30 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).

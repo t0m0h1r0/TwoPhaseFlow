@@ -16,7 +16,8 @@ A3 chain:
       -> zero cross-phase FCCD face coupling + one pressure gauge per phase
       -> per-phase RHS compatibility projection
       -> legacy pressure-jump decomposition p = p_tilde + σκ(1-ψ)
-      -> affine jump closure G_Γ(p;j)=G(p)-B_Γj
+      -> affine jump closure G_Γ(p;j_gl)=G(p)-B_Γj_gl,
+         j_gl=p_gas-p_liquid=-σκ_lg
       -> PPESolverFCCDMatrixFree._face_inverse_density
 """
 
@@ -29,7 +30,7 @@ import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
 from ..simulation.interface_stress_closure import (
-    build_interface_stress_context,
+    build_young_laplace_interface_stress_context,
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,
 )
@@ -182,7 +183,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         invalidate_fccd_matrixfree_cache(self)
 
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
-        """Store SP-M pressure-jump data for ``p = p_tilde + σκ(1-ψ)``."""
+        """Store legacy and affine pressure-jump data.
+
+        Legacy ``jump_decomposition`` keeps its tested decomposition context.
+        The affine path consumes the oriented Young--Laplace jump
+        ``j_gl=p_gas-p_liquid=-σ κ_lg``.
+        """
         self._interface_jump_context = build_fccd_interface_jump_context(
             xp=self.xp,
             backend=self.backend,
@@ -190,10 +196,10 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             kappa=kappa,
             sigma=sigma,
         )
-        self._interface_stress_context = build_interface_stress_context(
+        self._interface_stress_context = build_young_laplace_interface_stress_context(
             xp=self.xp,
             psi=psi,
-            kappa=kappa,
+            kappa_lg=kappa,
             sigma=sigma,
         )
 

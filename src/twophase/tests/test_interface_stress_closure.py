@@ -20,6 +20,7 @@ from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.interface_stress_closure import (
     build_interface_stress_context,
+    build_young_laplace_interface_stress_context,
     signed_pressure_jump_gradient,
 )
 
@@ -55,7 +56,7 @@ def test_signed_pressure_jump_gradient_orientation():
         axis=0,
     )
 
-    np.testing.assert_allclose(jump_x[0, :], 6.0)
+    np.testing.assert_allclose(jump_x[0, :], -6.0)
     np.testing.assert_allclose(jump_x[1, :], 0.0)
 
     reversed_context = build_interface_stress_context(
@@ -70,8 +71,38 @@ def test_signed_pressure_jump_gradient_orientation():
         context=reversed_context,
         axis=0,
     )
-    np.testing.assert_allclose(reversed_jump_x[0, :], -6.0)
+    np.testing.assert_allclose(reversed_jump_x[0, :], 6.0)
     np.testing.assert_allclose(reversed_jump_x[1, :], 0.0)
+
+
+def test_young_laplace_builder_stores_gas_minus_liquid_jump():
+    """For ``κ_lg>0``, Young--Laplace gives ``p_g-p_l=-σκ_lg``."""
+    psi = np.ones((2, 2))
+    kappa_lg = np.full_like(psi, 2.0)
+
+    context = build_young_laplace_interface_stress_context(
+        xp=np,
+        psi=psi,
+        kappa_lg=kappa_lg,
+        sigma=3.0,
+    )
+
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
+    np.testing.assert_allclose(context.kappa_lg, 2.0)
+
+
+def test_explicit_pressure_jump_context_is_not_recomputed_from_curvature():
+    """The affine operator consumes explicit ``p_g-p_l`` data, not raw ``σκ``."""
+    psi = np.ones((2, 2))
+    context = build_interface_stress_context(
+        xp=np,
+        psi=psi,
+        pressure_jump_gas_minus_liquid=np.full_like(psi, 4.0),
+        kappa_lg=np.full_like(psi, 99.0),
+        sigma=3.0,
+    )
+
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, 4.0)
 
 
 def test_affine_jump_pressure_flux_preserves_cut_face_jump():
@@ -107,7 +138,7 @@ def test_affine_jump_pressure_flux_preserves_cut_face_jump():
 
 
 def test_affine_jump_flux_vanishes_when_pressure_satisfies_jump():
-    """If ``p_gas-p_liquid=σκ``, then ``G_Γ`` is zero on the cut face."""
+    """If ``p_gas-p_liquid=-σκ_lg``, then ``G_Γ`` is zero on the cut face."""
     grid, div_op = _make_two_cell_operator()
     psi = np.ones(grid.shape)
     psi[1:, :] = 0.0
@@ -115,7 +146,7 @@ def test_affine_jump_flux_vanishes_when_pressure_satisfies_jump():
     rho = np.ones(grid.shape)
     rho[psi >= 0.5] = 1000.0
     pressure = np.zeros(grid.shape)
-    pressure[psi < 0.5] = 6.0
+    pressure[psi >= 0.5] = 6.0
     context = build_interface_stress_context(
         xp=np,
         psi=psi,
@@ -131,6 +162,35 @@ def test_affine_jump_flux_vanishes_when_pressure_satisfies_jump():
         interface_stress_context=context,
     )
 
+    np.testing.assert_allclose(affine_faces[0][0, :], 0.0, atol=1.0e-14)
+
+
+def test_affine_jump_flux_vanishes_for_static_gas_bubble_sign():
+    """For ``κ_lg<0``, the same law makes gas pressure higher."""
+    grid, div_op = _make_two_cell_operator()
+    psi = np.zeros(grid.shape)
+    psi[1:, :] = 1.0
+    kappa_lg = np.full(grid.shape, -2.0)
+    rho = np.ones(grid.shape)
+    rho[psi >= 0.5] = 1000.0
+    pressure = np.zeros(grid.shape)
+    pressure[psi < 0.5] = 6.0
+    context = build_interface_stress_context(
+        xp=np,
+        psi=psi,
+        kappa_lg=kappa_lg,
+        sigma=3.0,
+    )
+
+    affine_faces = div_op.pressure_fluxes(
+        pressure,
+        rho,
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+        interface_stress_context=context,
+    )
+
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, 6.0)
     np.testing.assert_allclose(affine_faces[0][0, :], 0.0, atol=1.0e-14)
 
 
