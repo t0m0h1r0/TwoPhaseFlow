@@ -18,7 +18,7 @@ from .face_projection import (
     zero_face_components,
 )
 from .gradient_operator import IDivergenceOperator
-from .interface_stress_closure import signed_pressure_jump_gradient
+from ..coupling.interface_stress_closure import signed_pressure_jump_gradient
 
 if TYPE_CHECKING:
     from ..backend import Backend

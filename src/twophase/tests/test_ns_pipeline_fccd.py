@@ -637,6 +637,17 @@ def test_pressure_jump_constructor_requires_jump_coupling():
         )
 
 
+def test_affine_jump_constructor_requires_face_flux_projection_path():
+    with pytest.raises(ValueError, match="face-flux projection"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            ppe_coefficient_scheme="phase_separated",
+            ppe_interface_coupling_scheme="affine_jump",
+            surface_tension_scheme="pressure_jump",
+        )
+
+
 def test_pressure_jump_constructor_accepts_affine_jump():
     solver = TwoPhaseNSSolver(
         N, N, L, L,

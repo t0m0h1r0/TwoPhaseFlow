@@ -73,6 +73,15 @@ def build_ns_operator_stack(
     )
 
     face_flux_projection = options.face_flux_projection or bool(fccd_div_op is not None)
+    if (
+        ppe_options.interface_coupling_scheme == "affine_jump"
+        and not face_flux_projection
+    ):
+        raise ValueError(
+            "ppe_interface_coupling_scheme='affine_jump' requires a "
+            "face-flux projection path so the corrector can subtract the "
+            "same interface jump used by the PPE"
+        )
     ppe_solver = build_ns_ppe_solver(
         backend=backend,
         grid=grid,

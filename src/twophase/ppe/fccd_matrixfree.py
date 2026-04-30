@@ -29,7 +29,7 @@ import warnings
 import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
-from ..simulation.interface_stress_closure import (
+from ..coupling.interface_stress_closure import (
     build_young_laplace_interface_stress_context,
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,

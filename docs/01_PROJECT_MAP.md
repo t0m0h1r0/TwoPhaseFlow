@@ -267,6 +267,7 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 | `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
 | `PPESolverDCOmega` | `pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
 | `CurvatureCalculator` | `levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
+| `simulation.interface_stress_closure` imports | `simulation/interface_stress_closure.py` | `coupling/interface_stress_closure.py` | Compatibility path after affine face-jump helpers moved to neutral coupling layer |
 | `exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/legacy/exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/exp_V6_density_ratio_convergence.py` | Reduced smoothed-density CSF/PPE density sweep reference |
 | `exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/legacy/exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/exp_V7_imex_bdf2_twophase_time.py` | Reduced hand-rolled BDF2/PPE time-order proxy |
 | `exp_V2_manufactured_periodic_residual_legacy.py` | `experiment/ch13/legacy/exp_V2_manufactured_periodic_residual_legacy.py` | `experiment/ch13/exp_V2_kovasznay_residual.py` | Manufactured periodic NS residual cross-check |
