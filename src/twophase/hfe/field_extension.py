@@ -72,6 +72,11 @@ class HermiteFieldExtension(IFieldExtension):
         backend: "Backend",
         band_cells: int = _DEFAULT_BAND_CELLS,
     ):
+        if not grid.uniform:
+            raise NotImplementedError(
+                "HermiteFieldExtension currently supports uniform grids only; "
+                "non-uniform grids require a metric-aware HFE implementation."
+            )
         self.grid = grid
         self.ccd = ccd
         self.backend = backend

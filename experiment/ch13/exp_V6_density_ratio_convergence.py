@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V6] Density-ratio robustness with the §14 FCCD/UCCD6/HFE stack.
+"""[V6] Density-ratio robustness with the §14 FCCD/UCCD6/filtered-curvature stack.
 
 Paper ref: §13.4 (sec:varrho_dc_convergence, sec:interface_crossing).
 
@@ -8,7 +8,7 @@ used in §14 and V9:
 
   - FCCD interface transport and pressure gradient,
   - UCCD6 momentum convection,
-  - HFE curvature (psi_direct_hfe),
+  - direct-ψ curvature with interface-limited filtering (psi_direct_filtered),
   - pressure-jump surface tension embedded in phase-separated FCCD PPE,
   - defect-correction PPE and face-flux projection.
 

@@ -8,7 +8,7 @@ operators as §14:
 
   - FCCD interface transport + TVD-RK3,
   - UCCD6 momentum convection + IMEX-BDF2,
-  - HFE curvature and ridge-eikonal reinitialization,
+  - direct-ψ filtered curvature and ridge-eikonal reinitialization,
   - pressure-jump phase-separated FCCD PPE with defect correction.
 
 The finest step count is used as the Richardson reference.  This is a

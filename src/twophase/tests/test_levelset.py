@@ -506,11 +506,11 @@ def test_curvature_calculator_with_normal_filter(backend):
     )
 
 
-# ── Test 9: InterfaceLimitedFilter (HFE) ─────────────────────────────────
+# ── Test 9: InterfaceLimitedFilter ───────────────────────────────────────
 
 
-def test_hfe_filter_circle_curvature_preserved(backend):
-    """HFE filter does not significantly distort κ for a clean circle."""
+def test_interface_limited_filter_circle_curvature_preserved(backend):
+    """Interface-limited filter does not significantly distort κ for a clean circle."""
     N = 64
     R = 0.25
     _, _, phi, eps = _circle_setup(N, R)
@@ -523,8 +523,8 @@ def test_hfe_filter_circle_curvature_preserved(backend):
     psi = heaviside(xp, phi, eps)
     kappa_ref = curv.compute(psi)
 
-    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
-    kappa_filt = hfe.apply(kappa_ref, psi)
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = curvature_filter.apply(kappa_ref, psi)
 
     near_iface = np.abs(phi) < 2 * eps
     assert np.sum(near_iface) > 0
@@ -532,13 +532,13 @@ def test_hfe_filter_circle_curvature_preserved(backend):
     kappa_theory = -1.0 / R
     rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
     assert rel_err < 0.08, (
-        f"HFE-filtered curvature: got {kappa_mean:.4f}, "
+        f"Interface-limited filtered curvature: got {kappa_mean:.4f}, "
         f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
     )
 
 
-def test_hfe_filter_reduces_noise_on_kappa(backend):
-    """HFE filter damps high-frequency noise added directly to κ.
+def test_interface_limited_filter_reduces_noise_on_kappa(backend):
+    """Interface-limited filter damps high-frequency noise added directly to κ.
 
     Noise is modulated by 4ψ(1-ψ) (smooth, matches filter weight) to
     avoid sharp-mask artifacts that would create spurious large Laplacians.
@@ -562,19 +562,19 @@ def test_hfe_filter_reduces_noise_on_kappa(backend):
     noise_amp = 0.5 * float(np.max(np.abs(kappa_clean)))
     kappa_noisy = kappa_clean + noise_amp * rng.standard_normal(kappa_clean.shape) * w_inject
 
-    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
-    kappa_filt = np.array(hfe.apply(xp.asarray(kappa_noisy), psi))
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = np.array(curvature_filter.apply(xp.asarray(kappa_noisy), psi))
 
     near_iface = w_inject > 0.1
     err_before = float(np.std((kappa_noisy - kappa_clean)[near_iface]))
     err_after = float(np.std((kappa_filt - kappa_clean)[near_iface]))
     assert err_after < err_before, (
-        f"HFE filter did not reduce κ noise: before={err_before:.4e}, after={err_after:.4e}"
+        f"Interface-limited filter did not reduce κ noise: before={err_before:.4e}, after={err_after:.4e}"
     )
 
 
-def test_hfe_filter_zero_far_from_interface(backend):
-    """HFE filter leaves κ unchanged far from interface (w≈0 away from ψ=0.5)."""
+def test_interface_limited_filter_zero_far_from_interface(backend):
+    """Interface-limited filter leaves κ unchanged far from interface."""
     N = 64
     _, _, phi, eps = _circle_setup(N)
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
@@ -585,14 +585,14 @@ def test_hfe_filter_zero_far_from_interface(backend):
     psi = heaviside(xp, phi, eps)
     kappa = xp.ones_like(psi)  # dummy field — any constant works
 
-    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
-    kappa_filt = hfe.apply(kappa, psi)
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    kappa_filt = curvature_filter.apply(kappa, psi)
 
     # Far from interface: ψ ≈ 0 or 1, so w = 4ψ(1-ψ) ≈ 0
     far_mask = (np.array(psi) < 0.01) | (np.array(psi) > 0.99)
     if np.sum(far_mask) > 0:
         delta_far = float(np.max(np.abs(np.array(kappa_filt)[far_mask] - 1.0)))
-        assert delta_far < 1e-10, f"HFE filter modified κ far from interface: Δ={delta_far:.2e}"
+        assert delta_far < 1e-10, f"Interface-limited filter modified κ far from interface: Δ={delta_far:.2e}"
 
 
 def test_curvature_calculator_with_kappa_filter(backend):
@@ -605,8 +605,8 @@ def test_curvature_calculator_with_kappa_filter(backend):
     ccd = CCDSolver(grid, backend)
     xp = backend.xp
 
-    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
-    curv = CurvatureCalculator(backend, ccd, eps, kappa_filter=hfe)
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    curv = CurvatureCalculator(backend, ccd, eps, kappa_filter=curvature_filter)
     psi = heaviside(xp, phi, eps)
 
     kappa = curv.compute(psi)
@@ -617,12 +617,12 @@ def test_curvature_calculator_with_kappa_filter(backend):
     kappa_theory = -1.0 / R
     rel_err = abs(kappa_mean - kappa_theory) / abs(kappa_theory)
     assert rel_err < 0.08, (
-        f"CurvatureCalculator+HFEFilter: got {kappa_mean:.4f}, "
+        f"CurvatureCalculator+InterfaceLimitedFilter: got {kappa_mean:.4f}, "
         f"expected {kappa_theory:.4f}, rel_err={rel_err:.3f}"
     )
 
 
-def test_hfe_filter_d2_precomputed_matches_ccd(backend):
+def test_interface_limited_filter_d2_precomputed_matches_ccd(backend):
     """d2_list pre-computed path gives identical result to CCD-computed path."""
     N = 64
     _, _, phi, eps = _circle_setup(N)
@@ -635,14 +635,14 @@ def test_hfe_filter_d2_precomputed_matches_ccd(backend):
     psi = heaviside(xp, phi, eps)
     kappa = curv.compute(psi)
 
-    hfe = InterfaceLimitedFilter(backend, ccd, C=0.05)
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=0.05)
 
     # Path 1: CCD computed internally
-    kappa_a = hfe.apply(kappa, psi)
+    kappa_a = curvature_filter.apply(kappa, psi)
 
     # Path 2: pre-computed d2 passed in
     d2_list = [ccd.differentiate(kappa, ax)[1] for ax in range(ccd.ndim)]
-    kappa_b = hfe.apply(kappa, psi, d2_list=d2_list)
+    kappa_b = curvature_filter.apply(kappa, psi, d2_list=d2_list)
 
     diff = float(xp.max(xp.abs(xp.asarray(kappa_a) - xp.asarray(kappa_b))))
     assert diff < 1e-12, f"d2_list path differs from CCD path: max diff = {diff:.2e}"

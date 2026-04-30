@@ -35,7 +35,7 @@ def _minimal(patch: dict | None = None) -> dict:
         },
         "interface": {
             "thickness": {"mode": "nominal", "base_factor": 1.5},
-            "geometry": {"curvature": {"method": "psi_direct_hfe"}},
+            "geometry": {"curvature": {"method": "psi_direct_filtered"}},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},

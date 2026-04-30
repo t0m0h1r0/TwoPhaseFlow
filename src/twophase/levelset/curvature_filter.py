@@ -3,7 +3,7 @@ Interface-limited curvature filters.
 
 Provides two complementary filters:
 
-1. InterfaceLimitedFilter  (Laplacian / HFE):
+1. InterfaceLimitedFilter  (interface-limited Laplacian smoothing):
        q* = q + C h² w(ψ) ∇²q          (+ = diffusion, C < 0.125 in 2D)
 
 2. CurvatureBiharmonicFilter  (κ direct / biharmonic):
@@ -56,7 +56,7 @@ def _interface_weight(xp, psi):
 
 
 class InterfaceLimitedFilter:
-    """High-frequency extraction filter restricted to the interface band.
+    """Interface-limited Laplacian curvature smoother.
 
     Equation:
 
@@ -73,6 +73,11 @@ class InterfaceLimitedFilter:
     backend : Backend
     ccd     : CCDSolver
     C       : float — filter strength (default 0.05; stable for C < 0.125 in 2D)
+
+    Notes
+    -----
+    This is not Hermite field extension.  It smooths an already-computed
+    curvature field with CCD second derivatives and an interface-band weight.
     """
 
     def __init__(
@@ -98,7 +103,7 @@ class InterfaceLimitedFilter:
     # ── Public API ────────────────────────────────────────────────────────
 
     def apply(self, q, psi, d2_list: Optional[List] = None):
-        """Apply HFE filter to scalar field q.
+        """Apply interface-limited Laplacian smoothing to scalar field q.
 
         Parameters
         ----------

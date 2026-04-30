@@ -700,7 +700,7 @@ class TwoPhaseNSSolver:
             state,
             backend=self._backend,
             curv=self._curv,
-            hfe=self._hfe,
+            curvature_filter=self._curvature_filter,
             interface_runtime=self._interface_runtime,
             step_diag=self._step_diag,
             st_force=self._st_force,

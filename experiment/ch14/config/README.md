@@ -81,8 +81,8 @@ fluid (mercury); the `capillary_wave` handler key dispatches identically.
 
 - `thickness`: how the CLS thickness is measured (`nominal`, `local`, `xi_cells`).
 - `geometry.curvature`: interface-geometry reconstruction used to obtain κ.
-  `psi_direct_hfe` lives here because HFE is a steep-interface geometry
-  treatment, not a momentum-force switch.
+  `psi_direct_filtered` is the direct-ψ curvature route with an
+  interface-limited smoothing filter; it is not Hermite field extension.
 - `reinitialization`: geometry restoration algorithm in pseudo-time; this is not
   physical time integration.
 
@@ -190,7 +190,7 @@ All three ch14 YAMLs share the production stack:
   `coefficient: phase_separated`,
   `interface_coupling: affine_jump` — the FCCD pressure operator
   with a jump-aware affine face gradient, avoiding regular-pressure
-  decomposition of `J=σκ(1-ψ)`.
+  decomposition of `j_gl(1-ψ)`.
 - `projection.poisson.solver.kind: defect_correction` (jacobi-preconditioned
   GMRES base solver) — keeps the residual-correction shell visible.
 

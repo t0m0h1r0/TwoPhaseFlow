@@ -25,11 +25,11 @@ from ..hfe.field_extension import HermiteFieldExtension
 
 class _GridConfig:
     """Minimal stub matching Grid.__init__ expectations."""
-    def __init__(self, N, L):
+    def __init__(self, N, L, alpha_grid=1.0):
         self.ndim = len(N)
         self.N = list(N)
         self.L = list(L)
-        self.alpha_grid = 1.0
+        self.alpha_grid = alpha_grid
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -136,6 +136,16 @@ class TestHFE2D:
         grid = Grid(gc, backend)
         ccd = CCDSolver(grid, backend, bc_type="wall")
         return grid, ccd, backend
+
+    def test_rejects_nonuniform_grid(self):
+        """Current HFE uses uniform bracketing and must reject non-uniform grids."""
+        backend = Backend(use_gpu=False)
+        gc = _GridConfig(N=[16, 16], L=[1.0, 1.0], alpha_grid=2.0)
+        grid = Grid(gc, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+
+        with pytest.raises(NotImplementedError, match="uniform grids only"):
+            HermiteFieldExtension(grid, ccd, backend)
 
     def test_extension_smooth_field(self):
         """HFE extends a smooth field across a circular interface.

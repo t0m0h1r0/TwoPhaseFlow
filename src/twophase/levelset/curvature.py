@@ -165,7 +165,7 @@ class CurvatureCalculator(ICurvatureCalculator):
             kappa = self._kappa_3d(xp, d1, d2, ccd, phi, grad_sq, grad_cube)
 
         if self.kappa_filter is not None:
-            # HFE filter: κ* = κ − C h² 4ψ(1−ψ) ∇²κ
+            # Interface-limited filter: κ* = κ − C h² 4ψ(1−ψ) ∇²κ
             from .curvature_filter import InterfaceLimitedFilter
             kappa = self.kappa_filter.apply(kappa, psi)
 

@@ -33,7 +33,7 @@ def ch14_circle_config(
     curvature_cap: float = 5.0,
     initial_velocity: dict | None = None,
 ) -> ExperimentConfig:
-    """Build a circle-droplet config using the §14 FCCD/UCCD6/HFE/PPE stack."""
+    """Build a circle-droplet config using the §14 FCCD/UCCD6/filtered-curvature/PPE stack."""
     if (cfl is None) == (dt is None):
         raise ValueError("exactly one of cfl or dt must be provided")
     distribution_type = "uniform" if alpha <= 1.0 else "interface_fitted"
@@ -60,7 +60,7 @@ def ch14_circle_config(
         "interface": {
             "thickness": {"mode": eps_mode, "base_factor": 1.5},
             "geometry": {
-                "curvature": {"method": "psi_direct_hfe", "cap": curvature_cap}
+                "curvature": {"method": "psi_direct_filtered", "cap": curvature_cap}
             },
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
@@ -109,7 +109,7 @@ def ch14_circle_config(
                     "operator": {
                         "discretization": "fccd",
                         "coefficient": "phase_separated",
-                        "interface_coupling": "jump_decomposition",
+                        "interface_coupling": "affine_jump",
                     },
                     "solver": {
                         "kind": "defect_correction",
@@ -145,7 +145,7 @@ def ch14_circle_config(
 
 
 def assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver, label: str) -> dict:
-    """Fail fast unless the solver is using the §14 FCCD/UCCD6/HFE/PPE stack."""
+    """Fail fast unless the solver is using the §14 FCCD/UCCD6/filtered-curvature/PPE stack."""
     expected = {
         "interface transport": (cfg.run.advection_scheme, "fccd_flux"),
         "momentum convection": (cfg.run.convection_scheme, "uccd6"),
@@ -153,7 +153,7 @@ def assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver, label: st
         "surface tension": (cfg.run.surface_tension_scheme, "pressure_jump"),
         "PPE": (cfg.run.ppe_solver, "fccd_iterative"),
         "PPE coefficient": (cfg.run.ppe_coefficient_scheme, "phase_separated"),
-        "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "jump_decomposition"),
+        "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "affine_jump"),
         "reinitialization": (cfg.run.reinit_method, "ridge_eikonal"),
     }
     mismatches = [

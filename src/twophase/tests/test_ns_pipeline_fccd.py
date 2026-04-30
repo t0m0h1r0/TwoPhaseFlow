@@ -586,7 +586,7 @@ def test_phase_separated_defect_correction_preserves_mirror_symmetry():
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
-    """SP-M Phase 2: pressure_jump adds [p]=σκ on the gas side."""
+    """SP-M Phase 2: pressure_jump adds j_gl=-σκ on the gas side."""
     solver = TwoPhaseNSSolver(
         N, N, L, L,
         bc_type="wall",
@@ -608,7 +608,7 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     jumped = np.asarray(ppe.apply_interface_jump(pressure))
 
     assert np.allclose(jumped[: N // 2 + 1, :], 0.0)
-    assert np.allclose(jumped[N // 2 + 1 :, :], 6.0)
+    assert np.allclose(jumped[N // 2 + 1 :, :], -6.0)
     assert np.allclose(pressure, 0.0)
     ppe.invalidate_cache()
     assert np.allclose(np.asarray(ppe.apply_interface_jump(pressure)), pressure)
@@ -1007,7 +1007,7 @@ def test_from_config_threads_fccd_keys():
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",
-                        "curvature": "psi_direct_hfe",
+                        "curvature": "psi_direct_filtered",
                         "force_gradient": "projection_consistent",
                     },
                 },
@@ -1079,7 +1079,7 @@ def test_from_config_can_disable_interface_tracking():
                     "capillary_force": {
                         "formulation": "csf",
                         "time": "explicit",
-                        "curvature": "psi_direct_hfe",
+                        "curvature": "psi_direct_filtered",
                         "force_gradient": "projection_consistent",
                     },
                 },
