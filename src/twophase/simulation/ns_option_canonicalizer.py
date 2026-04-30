@@ -34,7 +34,7 @@ VISCOUS_TIME_SCHEME_ALIASES = {
     "imex-bdf2": "implicit_bdf2",
 }
 PRESSURE_JUMP_PPE_COEFFICIENT = "phase_separated"
-PRESSURE_JUMP_INTERFACE_COUPLING = "jump_decomposition"
+PRESSURE_JUMP_INTERFACE_COUPLINGS = {"jump_decomposition", "affine_jump"}
 
 
 def canonicalize_convection_time_scheme(raw) -> str:
@@ -105,7 +105,7 @@ def validate_pressure_jump_ppe_compatibility(
         return
     if ppe_coefficient_scheme != PRESSURE_JUMP_PPE_COEFFICIENT:
         raise ValueError(coefficient_error)
-    if ppe_interface_coupling_scheme != PRESSURE_JUMP_INTERFACE_COUPLING:
+    if ppe_interface_coupling_scheme not in PRESSURE_JUMP_INTERFACE_COUPLINGS:
         raise ValueError(interface_error)
 
 

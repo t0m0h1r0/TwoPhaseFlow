@@ -23,6 +23,7 @@ def invalidate_fccd_matrixfree_cache(solver) -> None:
     solver._phase_mean_gauge_cache_host = None
     solver._phase_threshold = None
     solver._interface_jump_context = None
+    solver._interface_stress_context = None
 
 
 def refresh_fccd_matrixfree_grid(solver, grid=None) -> None:
@@ -55,6 +56,7 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
             grid=solver.grid,
             coefficient_scheme=solver.coefficient_scheme,
             phase_threshold=solver._phase_threshold,
+            interface_coupling_scheme=solver.interface_coupling_scheme,
         )
         for axis in range(solver.ndim)
     ]
@@ -73,6 +75,10 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
 
 def refresh_fccd_phase_gauges(solver) -> None:
     """Refresh phase-separated gauge pins from the cached host density."""
+    if getattr(solver, "interface_coupling_scheme", "none") == "affine_jump":
+        solver._pin_dofs = (solver._pin_dof,)
+        solver._phase_threshold = None
+        return
     state = compute_fccd_phase_gauges(
         rho_host=solver._rho,
         coefficient_scheme=solver.coefficient_scheme,

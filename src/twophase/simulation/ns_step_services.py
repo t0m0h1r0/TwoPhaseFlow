@@ -11,6 +11,7 @@ from .ns_predictor_assembly import (
     select_gravity_aligned_axis,
     select_transverse_axis,
 )
+from .interface_stress_closure import build_interface_stress_context
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -599,6 +600,19 @@ def correct_ns_velocity_stage(
             )
             if ppe_runtime.ppe_coefficient_scheme == "phase_separated":
                 project_kwargs["coefficient_scheme"] = "phase_separated"
+            if (
+                getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
+                == "affine_jump"
+            ):
+                project_kwargs["interface_coupling_scheme"] = "affine_jump"
+                project_kwargs["interface_stress_context"] = (
+                    build_interface_stress_context(
+                        xp=xp,
+                        psi=state.psi,
+                        kappa=state.kappa,
+                        sigma=state.sigma,
+                    )
+                )
     if correction_is_zero and (
         not face_flux_projection
         or getattr(proj_op, "supports_zero_projection_shortcut", False)

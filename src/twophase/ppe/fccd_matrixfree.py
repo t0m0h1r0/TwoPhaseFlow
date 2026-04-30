@@ -15,7 +15,8 @@ A3 chain:
       div((1/rho_q) grad p_q) = rhs_q, q∈{L,G}
       -> zero cross-phase FCCD face coupling + one pressure gauge per phase
       -> per-phase RHS compatibility projection
-      -> pressure-jump decomposition p = p_tilde + σκ(1-ψ)
+      -> legacy pressure-jump decomposition p = p_tilde + σκ(1-ψ)
+      -> affine jump closure G_Γ(p;j)=G(p)-B_Γj
       -> PPESolverFCCDMatrixFree._face_inverse_density
 """
 
@@ -27,6 +28,11 @@ import warnings
 import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
+from ..simulation.interface_stress_closure import (
+    build_interface_stress_context,
+    interface_stress_context_is_active,
+    signed_pressure_jump_gradient,
+)
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
     apply_fccd_interface_jump,
@@ -126,10 +132,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 "FCCD PPE supports ppe_coefficient_scheme="
                 "'phase_density'|'phase_separated'"
             )
-        if self.interface_coupling_scheme not in {"none", "jump_decomposition"}:
+        if self.interface_coupling_scheme not in {
+            "none",
+            "jump_decomposition",
+            "affine_jump",
+        }:
             raise ValueError(
                 "FCCD PPE supports ppe_interface_coupling_scheme="
-                "'none'|'jump_decomposition'"
+                "'none'|'jump_decomposition'|'affine_jump'"
             )
         if (
             self.coefficient_scheme == "phase_density"
@@ -157,6 +167,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._cell_volume_host = None
         self._phase_threshold = None
         self._interface_jump_context = None
+        self._interface_stress_context = None
         self._defer_interface_jump = False
         self.last_base_pressure = None
         self.last_diagnostics = {}
@@ -175,6 +186,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._interface_jump_context = build_fccd_interface_jump_context(
             xp=self.xp,
             backend=self.backend,
+            psi=psi,
+            kappa=kappa,
+            sigma=sigma,
+        )
+        self._interface_stress_context = build_interface_stress_context(
+            xp=self.xp,
             psi=psi,
             kappa=kappa,
             sigma=sigma,
@@ -229,6 +246,29 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         jump_pressure = self.apply_interface_jump(self.xp.zeros_like(rhs_dev))
         return rhs_dev - self._apply_operator_core(jump_pressure)
 
+    def _add_affine_interface_jump_rhs(self, rhs_dev, *, force: bool = False):
+        """Apply affine jump closure: solve ``L(p)=rhs+D_f α_f B_Γ(j)``."""
+        if (self._defer_interface_jump and not force) or not (
+            self.interface_coupling_scheme == "affine_jump"
+            and interface_stress_context_is_active(self._interface_stress_context)
+        ):
+            return rhs_dev
+        affine_rhs = self.xp.zeros_like(rhs_dev)
+        for axis in range(self.ndim):
+            jump_gradient = signed_pressure_jump_gradient(
+                xp=self.xp,
+                grid=self.grid,
+                context=self._interface_stress_context,
+                axis=axis,
+            )
+            self._accumulate_weighted_face_gradient_divergence(
+                affine_rhs,
+                jump_gradient,
+                self._coeff_face[axis],
+                axis,
+            )
+        return rhs_dev + affine_rhs
+
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FCCD PPE with backend GMRES."""
         la = self.backend.sparse_linalg
@@ -240,6 +280,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         rhs_dev = xp.asarray(rhs)
         self.prepare_operator(rho)
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
+        rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
         rhs_flat = rhs_dev.ravel()
         if (
@@ -375,6 +416,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             grid=self.grid,
             coefficient_scheme=self.coefficient_scheme,
             phase_threshold=self._phase_threshold,
+            interface_coupling_scheme=self.interface_coupling_scheme,
         )
 
     def _refresh_phase_gauges(self) -> None:

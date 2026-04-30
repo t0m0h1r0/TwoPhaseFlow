@@ -18,6 +18,7 @@ from .face_projection import (
     zero_face_components,
 )
 from .gradient_operator import IDivergenceOperator
+from .interface_stress_closure import signed_pressure_jump_gradient
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -226,6 +227,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         pressure_gradient: str = "fvm",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
+        interface_coupling_scheme: str = "none",
+        interface_stress_context=None,
     ) -> list["array"]:
         """Compute PPE-consistent face pressure fluxes."""
         import numpy as _np
@@ -250,16 +253,29 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             rho_lo = rho[sl(0, n_cells)]
             rho_hi = rho[sl(1, n_cells + 1)]
             coeff = 2.0 / (rho_lo + rho_hi)
-            if coefficient_scheme == "phase_separated":
+            if (
+                coefficient_scheme == "phase_separated"
+                and interface_coupling_scheme != "affine_jump"
+            ):
                 threshold = phase_threshold
                 if threshold is None:
                     threshold = 0.5 * (xp.min(rho) + xp.max(rho))
                 same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
                 coeff = xp.where(same_phase, coeff, 0.0)
             if pressure_gradient == "fccd":
-                face = coeff * self._fccd.face_gradient(p, axis)
+                pressure_face_gradient = self._fccd.face_gradient(p, axis)
             else:
-                face = coeff * (p[sl(1, n_cells + 1)] - p[sl(0, n_cells)]) / d_face_arr
+                pressure_face_gradient = (
+                    p[sl(1, n_cells + 1)] - p[sl(0, n_cells)]
+                ) / d_face_arr
+            if interface_coupling_scheme == "affine_jump":
+                pressure_face_gradient = pressure_face_gradient - signed_pressure_jump_gradient(
+                    xp=xp,
+                    grid=grid,
+                    context=interface_stress_context,
+                    axis=axis,
+                )
+            face = coeff * pressure_face_gradient
             faces.append(face)
         return faces
 
@@ -273,6 +289,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         pressure_gradient: str = "fvm",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
+        interface_coupling_scheme: str = "none",
+        interface_stress_context=None,
     ) -> list["array"]:
         """FCCD face-flux projection (WIKI-T-068 §5)."""
         return self.reconstruct_nodes(
@@ -285,6 +303,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 pressure_gradient=pressure_gradient,
                 coefficient_scheme=coefficient_scheme,
                 phase_threshold=phase_threshold,
+                interface_coupling_scheme=interface_coupling_scheme,
+                interface_stress_context=interface_stress_context,
             )
         )
 
@@ -298,6 +318,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         pressure_gradient: str = "fvm",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
+        interface_coupling_scheme: str = "none",
+        interface_stress_context=None,
     ) -> list["array"]:
         """Apply FCCD face-flux projection and keep corrected faces."""
         xp = self._fccd.xp
@@ -313,6 +335,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             pressure_gradient=pressure_gradient,
             coefficient_scheme=coefficient_scheme,
             phase_threshold=phase_threshold,
+            interface_coupling_scheme=interface_coupling_scheme,
+            interface_stress_context=interface_stress_context,
         )
         return apply_pressure_projection(u_faces, p_faces, f_faces, dt)
 

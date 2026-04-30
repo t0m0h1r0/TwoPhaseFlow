@@ -162,13 +162,14 @@ All three ch14 YAMLs share the production stack:
   transport/Gibbs control.
 - `momentum.terms.pressure.gradient: fccd` and
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
-  enters the PPE as a pressure jump rather than as a CSF body force.
+  enters the PPE as an interface stress condition rather than as a CSF body force.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
   CN-family path for stiffness-relevant viscous terms (WIKI-X-026 / WIKI-X-030).
 - `projection.poisson.operator.discretization: fccd`,
   `coefficient: phase_separated`,
-  `interface_coupling: jump_decomposition` — the FCCD pressure operator
-  with phase-separated coefficient and explicit jump decomposition at the interface.
+  `interface_coupling: affine_jump` — the FCCD pressure operator
+  with a jump-aware affine face gradient, avoiding regular-pressure
+  decomposition of `J=σκ(1-ψ)`.
 - `projection.poisson.solver.kind: defect_correction` (jacobi-preconditioned
   GMRES base solver) — keeps the residual-correction shell visible.
 

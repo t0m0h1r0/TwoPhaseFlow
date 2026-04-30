@@ -2,7 +2,8 @@
 # Production numerical stack: FCCD PPE + HFE + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
-# - Surface tension: `pressure_jump` is represented in the PPE, not as CSF σκ∇ψ.
+# - Surface tension: `pressure_jump` enters as an affine interface-stress
+#   closure, not as CSF σκ∇ψ or a regular pressure field.
 # - HFE: interface curvature uses `psi_direct_hfe`.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 
@@ -82,7 +83,7 @@ numerics:
       operator:
         discretization: fccd
         coefficient: phase_separated
-        interface_coupling: jump_decomposition
+        interface_coupling: affine_jump
       solver:
         kind: defect_correction
         corrections:
