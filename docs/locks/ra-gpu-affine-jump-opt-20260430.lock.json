@@ -1,0 +1,12 @@
+{
+  "branch": "ra-gpu-affine-jump-opt-20260430",
+  "branch_slug": "ra-gpu-affine-jump-opt-20260430",
+  "session_id": "9CBB1B5B-4B28-4856-9CA3-C21A87DCA7B2",
+  "worktree_path": ".claude/worktrees/ra-gpu-affine-jump-opt-20260430",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-GPU",
+  "acquired_at": "2026-04-30T03:11:09Z",
+  "expires_at": "2026-05-01T03:11:09Z",
+  "meta_version": "7.1.0",
+  "scope": "ch14 capillary affine_jump GPU utilization optimization and measurement"
+}
