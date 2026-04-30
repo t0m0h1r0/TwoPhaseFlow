@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V10] FCCD CLS advection visuals on the uniform grid — Tier D.
+"""[V10] FCCD CLS advection visuals on the uniform grid — Type-B (mass) / Type-D (shape).
 
 Paper ref: §13.5 (sec:zalesak_cls_advection).
 
