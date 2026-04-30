@@ -16,7 +16,7 @@ from .ns_runtime_config import NSSchemeRuntimeState, normalise_ns_scheme_runtime
 @dataclass(frozen=True)
 class NSSchemeRuntimeArtifacts:
     curv: object
-    hfe: object
+    curvature_filter: object
     state: NSSchemeRuntimeState
 
 
@@ -33,11 +33,11 @@ def build_ns_scheme_runtime_artifacts(
     """Build normalized scheme runtime state and curvature helpers."""
     eps_curv = make_eps_field() if use_local_eps and alpha_grid > 1.0 else eps
     curv = CurvatureCalculator(backend, ccd, eps_curv)
-    hfe = InterfaceLimitedFilter(backend, ccd, C=options.hfe_C)
+    curvature_filter = InterfaceLimitedFilter(backend, ccd, C=options.hfe_C)
     state = normalise_ns_scheme_runtime(options)
     return NSSchemeRuntimeArtifacts(
         curv=curv,
-        hfe=hfe,
+        curvature_filter=curvature_filter,
         state=state,
     )
 
@@ -45,7 +45,8 @@ def build_ns_scheme_runtime_artifacts(
 def bind_ns_scheme_runtime_artifacts(solver, artifacts: NSSchemeRuntimeArtifacts) -> None:
     """Bind normalized scheme runtime artifacts onto the solver."""
     solver._curv = artifacts.curv
-    solver._hfe = artifacts.hfe
+    solver._curvature_filter = artifacts.curvature_filter
+    solver._hfe = artifacts.curvature_filter  # Backward-compatible alias.
     bind_ns_scheme_runtime(solver, artifacts.state)
     solver._conv_prev = None
     solver._conv_ab2_ready = False

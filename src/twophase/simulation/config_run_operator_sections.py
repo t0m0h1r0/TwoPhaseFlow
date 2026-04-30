@@ -8,6 +8,7 @@ from .config_constants import (
     _CONVECTION_SCHEME_ALIASES,
     _CONVECTION_SCHEMES,
     _CONVECTION_TIME_SCHEMES,
+    _CURVATURE_SCHEME_ALIASES,
     _CURVATURE_SCHEMES,
     _INTERFACE_TIME_SCHEMES,
     _MOMENTUM_FORMS,
@@ -163,8 +164,14 @@ def parse_run_operator_settings(
         momentum_gradient_scheme=momentum_gradient_scheme,
         path=layout["paths"]["surface_tension_spatial"],
     )
+    raw_curvature_method = str(
+        interface_curvature.get(
+            "method",
+            surface_tension.get("curvature", "psi_direct_filtered"),
+        )
+    ).strip().lower()
     validate_choice(
-        interface_curvature.get("method", surface_tension.get("curvature", "psi_direct_hfe")),
+        _CURVATURE_SCHEME_ALIASES.get(raw_curvature_method, raw_curvature_method),
         _CURVATURE_SCHEMES,
         layout["paths"]["surface_tension_curvature"],
     )

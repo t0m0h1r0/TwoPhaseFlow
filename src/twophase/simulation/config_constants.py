@@ -63,7 +63,11 @@ _VISCOUS_SPATIAL_ALIASES = {
     "ccd": "ccd_bulk",
     "ccd_legacy": "ccd_stress_legacy",
 }
-_CURVATURE_SCHEMES = ("psi_direct_hfe",)
+_CURVATURE_SCHEMES = ("psi_direct_filtered",)
+_CURVATURE_SCHEME_ALIASES = {
+    "psi_direct": "psi_direct_filtered",
+    "psi_direct_hfe": "psi_direct_filtered",
+}
 _MOMENTUM_PREDICTOR_ALIASES = {
     "fractional_step": "projection_predictor_corrector",
     "pressure_correction": "projection_predictor_corrector",

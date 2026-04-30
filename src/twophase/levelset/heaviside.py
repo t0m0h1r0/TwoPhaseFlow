@@ -3,12 +3,14 @@ Regularised Heaviside, delta function, and material-property update.
 
 Implements Section 3 (§3.2–§3.3) of the paper.
 
-The Conservative Level Set variable ψ is defined as:
+This module provides the increasing logistic helper:
 
-    ψ = H_ε(φ) = 1 / (1 + exp(−φ/ε))                  (§3.2 Eq.33)
+    H_ε(s) = 1 / (1 + exp(−s/ε))
 
-where φ is the signed-distance function and ε ≈ 1.5 Δx_min controls
-the interface thickness.
+The paper/runtime CLS convention for a liquid-inside signed distance
+``φ_lg`` is ``ψ = H_ε(-φ_lg)``.  Therefore callers that hold the paper
+signed distance must pass ``-φ_lg`` to :func:`heaviside`, or use the
+initial-condition builder which applies that sign convention directly.
 
 The regularised delta function (interface indicator) is:
 
@@ -19,9 +21,11 @@ Material properties are linearly interpolated across the interface:
     ρ̃(ψ) = ρ_g + (ρ_l − ρ_g) · ψ                       (§2.4 Eq.6)
     μ̃(ψ) = μ_g + (μ_l − μ_g) · ψ                       (§2.4 Eq.7)
 
-The Newton-inversion of H_ε (needed for curvature computation) is:
+The inverse of this increasing helper is:
 
-    φ = H_ε^{-1}(ψ) = ε · ln(ψ / (1 − ψ))              (§3.6 exact inverse)
+    s = H_ε^{-1}(ψ) = ε · ln(ψ / (1 − ψ))
+
+For the paper signed distance, ``φ_lg = -s``.
 
 with a clipping step to keep ψ ∈ (δ, 1−δ) before inversion.
 """
@@ -41,7 +45,9 @@ _PSI_CLIP = 1e-10
 
 
 def heaviside(xp, phi, eps: float):
-    """Regularised Heaviside H_ε(φ).
+    """Increasing regularised Heaviside helper ``H_ε(phi)``.
+
+    For the paper CLS convention ``ψ=H_ε(-φ_lg)``, pass ``-φ_lg``.
 
     Parameters
     ----------
@@ -74,12 +80,12 @@ def delta(xp, phi, eps: float):
 
 
 def invert_heaviside(xp, psi, eps: float):
-    """Exact inverse of H_ε with saturation handling (section 3b algbox).
+    """Exact inverse of the increasing ``H_ε`` helper with saturation handling.
 
     Algorithm (section 3b):
       1. Saturation test: psi < delta_clamp or psi > 1 - delta_clamp
       2. Saturated points: phi = +/- phi_max
-      3. Standard region: phi = eps * ln(psi / (1 - psi))
+      3. Standard region: s = eps * ln(psi / (1 - psi))
 
     Newton fallback (eq. newton_inversion) is applied to saturated points
     that fall within (delta_clamp, _PSI_CLIP) or (1-_PSI_CLIP, 1-delta_clamp),
@@ -93,7 +99,7 @@ def invert_heaviside(xp, psi, eps: float):
 
     Returns
     -------
-    phi : signed-distance estimate
+    phi : increasing-helper coordinate ``s``; paper ``φ_lg`` is ``-s``
     """
     import math
 

@@ -159,7 +159,7 @@ def compute_ns_surface_tension_stage(
     *,
     backend,
     curv,
-    hfe,
+    curvature_filter,
     interface_runtime,
     step_diag,
     st_force,
@@ -170,7 +170,7 @@ def compute_ns_surface_tension_stage(
     """Compute curvature and balanced-force surface tension terms."""
     xp = backend.xp
     kappa_raw = curv.compute(state.psi)
-    state.kappa = hfe.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
+    state.kappa = curvature_filter.apply(xp.asarray(kappa_raw), xp.asarray(state.psi))
     state.kappa = _interface_supported_curvature(
         state.kappa,
         state.psi,

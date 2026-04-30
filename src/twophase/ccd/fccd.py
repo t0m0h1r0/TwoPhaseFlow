@@ -266,7 +266,7 @@ class FCCDSolver:
     def face_value(self, u, axis: int, q=None):
         """4th-order compact face-value interpolation (SP-D §5).
 
-        u_f = (u_lo + u_hi)/2 - (H²/32)(q_lo + q_hi) + O(H⁴)
+        u_f = (u_lo + u_hi)/2 - (H²/16)(q_lo + q_hi) + O(H⁴)
 
         Parameters mirror ``face_gradient``.
         """

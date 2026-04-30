@@ -1,6 +1,6 @@
 # Rayleigh-Taylor instability: silicone oil (light, BELOW) / water (heavy, ABOVE).
 # Atwood number A = (rho_w - rho_oil) / (rho_w + rho_oil) ≈ 0.0256 — low-Atwood regime.
-# Production numerical stack: FCCD PPE + HFE + UCCD6 + Ridge-Eikonal + IMEX-BDF2.
+# Production numerical stack: FCCD PPE + direct-ψ filtered curvature + UCCD6 + Ridge-Eikonal + IMEX-BDF2.
 #
 # Schema convention:
 #   physics.phases.liquid = silicone oil (lower phase; interior_phase: liquid in initial_condition)
@@ -30,7 +30,7 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      method: psi_direct_hfe
+      method: psi_direct_filtered
       cap: 5.0
   reinitialization:
     algorithm: ridge_eikonal

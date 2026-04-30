@@ -10,7 +10,7 @@ production stack:
 
   - FCCD interface transport and pressure gradient,
   - UCCD6 momentum convection,
-  - HFE curvature (``psi_direct_hfe``),
+  - direct-ψ curvature with interface-limited filtering (``psi_direct_filtered``),
   - pressure-jump surface tension embedded in phase-separated FCCD PPE,
   - face-flux projection.
 
@@ -90,7 +90,7 @@ def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
         },
         "interface": {
             "thickness": {"mode": eps_mode, "base_factor": 1.5},
-            "geometry": {"curvature": {"method": "psi_direct_hfe", "cap": 5.0}},
+            "geometry": {"curvature": {"method": "psi_direct_filtered", "cap": 5.0}},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 20},
@@ -146,7 +146,7 @@ def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
                     "operator": {
                         "discretization": "fccd",
                         "coefficient": "phase_separated",
-                        "interface_coupling": "jump_decomposition",
+                        "interface_coupling": "affine_jump",
                     },
                     "solver": {
                         "kind": "defect_correction",
@@ -187,7 +187,7 @@ def _assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver) -> dict:
         "surface tension": (cfg.run.surface_tension_scheme, "pressure_jump"),
         "PPE": (cfg.run.ppe_solver, "fccd_iterative"),
         "PPE coefficient": (cfg.run.ppe_coefficient_scheme, "phase_separated"),
-        "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "jump_decomposition"),
+        "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "affine_jump"),
         "reinitialization": (cfg.run.reinit_method, "ridge_eikonal"),
     }
     mismatches = [

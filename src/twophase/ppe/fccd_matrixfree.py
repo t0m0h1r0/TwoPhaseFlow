@@ -185,9 +185,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Store legacy and affine pressure-jump data.
 
-        Legacy ``jump_decomposition`` keeps its tested decomposition context.
-        The affine path consumes the oriented Young--Laplace jump
-        ``j_gl=p_gas-p_liquid=-σ κ_lg``.
+        Both legacy ``jump_decomposition`` and affine paths consume the
+        oriented Young--Laplace jump ``j_gl=p_gas-p_liquid=-σ κ_lg``.
         """
         self._interface_jump_context = build_fccd_interface_jump_context(
             xp=self.xp,

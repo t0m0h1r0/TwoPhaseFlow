@@ -117,6 +117,22 @@ def test_lele_compact_filter_gpu_matches_cpu(tiny_grid_factory, cpu_backend, gpu
     )
 
 
+def test_initial_condition_builder_gpu_matches_cpu(tiny_grid_factory, cpu_backend, gpu_backend):
+    """Initial SDF primitives must stay backend-native on CuPy meshgrids."""
+    from twophase.simulation.initial_conditions import InitialConditionBuilder, Circle
+
+    grid_cpu = tiny_grid_factory(cpu_backend)
+    grid_gpu = tiny_grid_factory(gpu_backend)
+    builder = InitialConditionBuilder(background_phase="gas").add(
+        Circle(center=(0.5, 0.5), radius=0.25, interior_phase="liquid")
+    )
+
+    psi_cpu = builder.build(grid_cpu, eps=0.02)
+    psi_gpu = builder.build(grid_gpu, eps=0.02)
+
+    np.testing.assert_allclose(psi_gpu, psi_cpu, rtol=1e-12, atol=1e-13)
+
+
 def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
     """Direct PPE solve on a 24x24 static droplet RHS."""
     from twophase.ppe.ccd_lu import PPESolverCCDLU
