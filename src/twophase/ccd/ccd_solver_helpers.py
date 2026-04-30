@@ -196,11 +196,14 @@ def build_ccd_axis_solver(solver, n_pts: int, h: float, boundary_coeffs_left, bo
     xp = solver.xp
     if solver.backend.device == "gpu":
         A_inv_dev = solver.backend.linalg.lu_solve((lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype))
+        A_inv_dev_T = xp.ascontiguousarray(A_inv_dev.T)
     else:
         A_inv_dev = None
+        A_inv_dev_T = None
 
     info_dev = {
         'A_inv_dev': A_inv_dev,
+        'A_inv_dev_T': A_inv_dev_T,
         'L0_dev': xp.asarray(L0),
         'UN_dev': xp.asarray(UN),
         'M_left_dev': xp.asarray(bc_left['M']),
