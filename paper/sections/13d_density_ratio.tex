@@ -73,10 +73,14 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 全 $8$ ケースで\textbf{ブローアップなし}（水--空気相当を含む）\checkmark．
-  \item $|\Delta V_\psi|/V_{\psi,0} \le 2.4\times10^{-10}$ で CLS 体積は実質保存．
-  \item $u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制される．
+  \item \textbf{主指標（合格条件）}：(a) 全 $8$ ケースで\textbf{ブローアップなし}
+        （水--空気相当 $\rho_r=833$ を含む）\checkmark，
+        (b) $|\Delta V_\psi|/V_{\psi,0} \le 2.4\times10^{-10}$ で CLS 体積は実質保存\checkmark．
+  \item \textbf{補助指標（scale 確認）}：$u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制され，
         高密度比下では速度応答スケールが $\sigma/(\rho_l+\rho_g)$ に従い低下する．
+        $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.10$--$0.14$ は
+        pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
+        Laplace 絶対圧誤差ではない）であり，合格基準には含めない．
   \item 本 V6 は stack assertion により通常 CCD/FVM-PPE ではなく
         FCCD/UCCD6/HFE/pressure-jump/phase-separated PPE/DC 経路を直接検証する．
 \end{itemize}
@@ -163,14 +167,15 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
             startup 比率 $1/8 = 12.5\%$ で trajectory 全体を $O(\Delta t)$ に
             pollute する余地がある（cf. V1-b H3）．
     \end{enumerate}
-  \item \textbf{revised criterion 合格 ($\triangle \to$ 理論的下限 $\sim 1$ 上回りで条件付き合格)} —
+  \item \textbf{Type-D 合格 ($\triangle$, near-optimal)} —
         本稿では V7 を「BDF2 単体の純粋次数」ではなく「Lie split 下の coupled-stack
         実効次数」として測定する diagnostic と再定義する．
-        Lie 分割理論下限 $\sim 1$ を実質上回る $1.58$ は，cadence pollution と
+        Lie 1 次分割漸近 slope $\sim 1$ を実質上回る $1.58$ は，cadence pollution と
         TVD--RK3/BDF2 mismatch を含む実装縮約下では \emph{near-optimal} であり，
         Strang 化や cadence-time scaling などの構造改良なしには $2.0$ への合格化は
-        理論上望めない．これは Type-D（理論的 hard limit, §13 introduction の判定方針）
-        として記録する．BDF2 単体の設計次数 $2$ は U8（§12）で既に独立検証済み．
+        理論上望めない．これは Type-D（理論的 hard limit; §\ref{sec:verification} の
+        Type 分類および表~\ref{tab:V_verdict_types} 参照）として記録する．
+        BDF2 単体の設計次数 $2$ は U8（§12）で既に独立検証済み．
 \end{itemize}
 検証対応：\autoref{ch:time_integration} の IMEX-BDF2 と
 \autoref{sec:eikonal_reinit} の再初期化，\autoref{sec:split_ppe_motivation} の
