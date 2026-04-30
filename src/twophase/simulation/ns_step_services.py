@@ -11,7 +11,7 @@ from .ns_predictor_assembly import (
     select_gravity_aligned_axis,
     select_transverse_axis,
 )
-from .interface_stress_closure import build_interface_stress_context
+from .interface_stress_closure import build_young_laplace_interface_stress_context
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -606,10 +606,10 @@ def correct_ns_velocity_stage(
             ):
                 project_kwargs["interface_coupling_scheme"] = "affine_jump"
                 project_kwargs["interface_stress_context"] = (
-                    build_interface_stress_context(
+                    build_young_laplace_interface_stress_context(
                         xp=xp,
                         psi=state.psi,
-                        kappa=state.kappa,
+                        kappa_lg=state.kappa,
                         sigma=state.sigma,
                     )
                 )

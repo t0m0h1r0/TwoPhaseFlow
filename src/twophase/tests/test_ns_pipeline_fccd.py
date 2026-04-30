@@ -726,7 +726,9 @@ def test_affine_jump_corrector_forwards_interface_context():
     assert projection.kwargs["pressure_gradient"] == "fccd"
     assert projection.kwargs["coefficient_scheme"] == "phase_separated"
     assert projection.kwargs["interface_coupling_scheme"] == "affine_jump"
-    assert projection.kwargs["interface_stress_context"].sigma == pytest.approx(2.0)
+    context = projection.kwargs["interface_stress_context"]
+    assert context.sigma == pytest.approx(2.0)
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
 
 
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
