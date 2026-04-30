@@ -61,6 +61,10 @@ class PPESolverDefectCorrection(IPPESolver):
             self.base_solver._defer_interface_jump = True
         if hasattr(self.operator, "_defer_interface_jump"):
             self.operator._defer_interface_jump = True
+        self._collapse_same_operator = _can_collapse_same_operator(
+            base_solver,
+            operator,
+        )
         self.last_base_pressure = None
         self.last_diagnostics = {}
         self.last_residual_history: list[float] = []
@@ -74,6 +78,10 @@ class PPESolverDefectCorrection(IPPESolver):
         self.operator.update_grid(self.grid)
         self._pin_dof = self.operator._pin_dof
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
+        self._collapse_same_operator = _can_collapse_same_operator(
+            self.base_solver,
+            self.operator,
+        )
 
     def invalidate_cache(self) -> None:
         """Invalidate backend caches owned by the inner solver/operator."""
@@ -145,6 +153,8 @@ class PPESolverDefectCorrection(IPPESolver):
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._enforce_rhs_compatibility(rhs_dev)
+        if self._collapse_same_operator:
+            return self._solve_same_operator(rhs_dev, rho, dt=dt, p_init=p_init)
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
@@ -192,6 +202,40 @@ class PPESolverDefectCorrection(IPPESolver):
             pressure = self.operator.apply_interface_jump(pressure)
         return pressure
 
+    def _solve_same_operator(self, rhs_dev, rho, *, dt: float, p_init=None):
+        """Collapse redundant DC when base and target are the same operator."""
+        original_tol = getattr(self.base_solver, "tol", None)
+        if original_tol is not None:
+            self.base_solver.tol = min(float(original_tol), self.tolerance)
+        try:
+            pressure = self.xp.asarray(
+                self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
+            )
+        finally:
+            if original_tol is not None:
+                self.base_solver.tol = original_tol
+        pressure = self._enforce_pressure_gauge(pressure)
+        self.last_residual_history = []
+        self.last_stalled = False
+        self.last_base_pressure = self.xp.copy(pressure)
+        self.last_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
+        if hasattr(self.operator, "apply_interface_jump"):
+            pressure = self.operator.apply_interface_jump(pressure)
+        return pressure
+
     def _pin_flat(self, flat, value) -> None:
         for dof in self._pin_dofs:
             flat[dof] = value
+
+
+def _can_collapse_same_operator(base_solver: IPPESolver, operator: IPPESolver) -> bool:
+    """Return whether DC wraps the same linear operator as its base solve."""
+    if getattr(operator, "interface_coupling_scheme", "none") != "affine_jump":
+        return False
+    if type(base_solver) is not type(operator):
+        return False
+    for name in ("grid", "coefficient_scheme", "interface_coupling_scheme", "bc_type"):
+        if getattr(base_solver, name, None) is not getattr(operator, name, None):
+            if getattr(base_solver, name, None) != getattr(operator, name, None):
+                return False
+    return hasattr(base_solver, "solve") and hasattr(operator, "apply")
