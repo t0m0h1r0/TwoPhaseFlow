@@ -7,6 +7,9 @@ from typing import Callable
 
 from ..levelset.curvature import CurvatureCalculator
 from ..levelset.curvature_filter import InterfaceLimitedFilter
+from .ns_option_canonicalizer import (
+    validate_local_epsilon_surface_tension_compatibility,
+)
 from .ns_operator_stack import NSOperatorStack, NSOperatorStackOptions, build_ns_operator_stack
 from .ns_ppe_runtime import make_ns_ppe_factory_options
 from .ns_runtime_binding import bind_ns_scheme_runtime
@@ -31,6 +34,11 @@ def build_ns_scheme_runtime_artifacts(
     options,
 ) -> NSSchemeRuntimeArtifacts:
     """Build normalized scheme runtime state and curvature helpers."""
+    validate_local_epsilon_surface_tension_compatibility(
+        use_local_eps=use_local_eps,
+        alpha_grid=alpha_grid,
+        surface_tension_scheme=getattr(options, "surface_tension_scheme", "csf"),
+    )
     eps_curv = make_eps_field() if use_local_eps and alpha_grid > 1.0 else eps
     curv = CurvatureCalculator(backend, ccd, eps_curv)
     curvature_filter = InterfaceLimitedFilter(backend, ccd, C=options.hfe_C)

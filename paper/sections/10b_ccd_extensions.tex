@@ -17,6 +17,13 @@ CCD の $\Ord{h^6}$ 精度が $\Ord{h}$–$\Ord{h^2}$ に劣化する．
 （詳細・精度制限は §~\ref{sec:grid_gen} の \ref{box:grid_jx_accuracy} 参照）．
 \end{tcolorbox}
 
+\noindent\textbf{grid geometry cache．}
+非一様格子では $J_x,J_y,\partial_\xi J_x,\partial_\eta J_y,H_x,H_y$ を
+格子生成時の単一 cache として保持し，CCD/FCCD，HFE，Ridge--Eikonal，
+PPE，corrector，曲率，CFL 評価が同じ値を参照する．
+圧力 PPE だけが高次メトリクスを使い，曲率や粘性項が古い 2 次メトリクスを使う混在は，
+表面張力・圧力・粘性の面釣合いを別々に崩すため禁止する．
+
 \subsubsection{計算空間 $\xi$ 上でのフィルタ適用順序（DCCD/UCCD 共通）}
 \phantomsection\label{sec:cls_on_nonuniform}% backward-compat: 旧 §6.1 ラベル．他章の参照保護．
 

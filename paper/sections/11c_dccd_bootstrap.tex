@@ -57,6 +57,24 @@ CCD 演算子構築 $\to$ 非一様格子上 SDF 再初期化 $\to$ Young--Lapla
 $\Delta t = \min(\Delta t_\text{adv}, \Delta t_\text{visc}, \Delta t_\sigma)$ の 3 項 $\min$ となる．
 物理波速度 $\Delta t_\text{wave}$ は非圧縮解法のため両式とも除外される．
 
+\noindent\textbf{非一様格子での局所版．}
+非一様格子では $h_{\min}$ による式~\eqref{eq:dt_full_algo} は安全側の縮約である．
+local $\varepsilon(\bx)$，高粘性比，格子再生成を併用する場合は，
+\[
+  \Delta t =
+  \min\!\left(
+    \Delta t_{\mathrm{adv,local}},
+    \Delta t_{\sigma,\min},
+    \Delta t_{\nu,\mathrm{interface}},
+    \Delta t_{\mathrm{ALE/remap}}
+  \right)
+\]
+を別診断として出力する．
+$\Delta t_{\sigma,\min}$ は界面帯の最小セル幅で評価し，
+$\Delta t_{\nu,\mathrm{interface}}$ は $\mu(\bx),\rho(\bx)$ の界面近傍最大比を用いる．
+Mode 2 ではさらに格子移動量が §~\ref{sec:grid_ale} の $0.5h$ gate を越えないことを
+$\Delta t_{\mathrm{ALE/remap}}$ で確認する．
+
 \bigskip
 以上の統合アルゴリズムの各構成要素が設計通りの精度を達成するか，
 次章で系統的にコンポーネント単位の数学的検証を行う．

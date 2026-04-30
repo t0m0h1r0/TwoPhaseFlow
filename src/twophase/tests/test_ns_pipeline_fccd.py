@@ -637,6 +637,17 @@ def test_pressure_jump_constructor_requires_jump_coupling():
         )
 
 
+def test_local_epsilon_constructor_rejects_nonuniform_csf_surface_tension():
+    with pytest.raises(ValueError, match="local interface width"):
+        TwoPhaseNSSolver(
+            N, N, L, L,
+            bc_type="wall",
+            alpha_grid=2.0,
+            use_local_eps=True,
+            surface_tension_scheme="csf",
+        )
+
+
 def test_affine_jump_constructor_requires_face_flux_projection_path():
     with pytest.raises(ValueError, match="face-flux projection"):
         TwoPhaseNSSolver(

@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from .config_output_sections import parse_output
+from .ns_option_canonicalizer import (
+    validate_local_epsilon_surface_tension_compatibility,
+)
 
 
 def require_pyyaml() -> Any:
@@ -39,6 +42,11 @@ def parse_raw(raw: dict):
     physics = parse_physics(raw["physics"])
     output = parse_output(raw.get("output", {}))
     run = parse_run(raw["run"], interface, numerics, raw.get("output", {}))
+    validate_local_epsilon_surface_tension_compatibility(
+        use_local_eps=grid.use_local_eps,
+        alpha_grid=grid.alpha_grid,
+        surface_tension_scheme=run.surface_tension_scheme,
+    )
     return ExperimentConfig(
         grid=grid,
         physics=physics,

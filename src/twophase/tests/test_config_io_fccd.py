@@ -121,6 +121,46 @@ def test_readable_defaults_round_trip():
     assert cfg.run.cfl_viscous == pytest.approx(1.0)
 
 
+def test_local_epsilon_rejects_nonuniform_csf_surface_tension():
+    raw = _minimal({
+        "grid": {"distribution": {"alpha": 2.0}},
+        "interface": {"thickness": {"mode": "local"}},
+        "physics": {"surface_tension": 0.1},
+    })
+
+    with pytest.raises(ValueError, match="local interface width"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_local_epsilon_allows_pressure_jump_surface_tension():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {"distribution": {"alpha": 2.0}},
+        "interface": {"thickness": {"mode": "local"}},
+        "physics": {"surface_tension": 0.1},
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "gradient": "none",
+                        "formulation": "pressure_jump",
+                    },
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "affine_jump",
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.grid.use_local_eps is True
+    assert cfg.run.surface_tension_scheme == "pressure_jump"
+
+
 def test_unit_cfl_multiplier_expands_to_theory_constants():
     cfg = ExperimentConfig.from_dict(_minimal({
         "run": {"time": {"final": 0.1, "cfl": 1.0}},

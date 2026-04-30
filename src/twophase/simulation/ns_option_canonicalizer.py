@@ -109,6 +109,26 @@ def validate_pressure_jump_ppe_compatibility(
         raise ValueError(interface_error)
 
 
+def validate_local_epsilon_surface_tension_compatibility(
+    *,
+    use_local_eps: bool,
+    alpha_grid: float,
+    surface_tension_scheme: str,
+) -> None:
+    """Reject nonuniform local-epsilon CSF surface-tension coupling."""
+    if not bool(use_local_eps):
+        return
+    if float(alpha_grid) <= 1.0:
+        return
+    if str(surface_tension_scheme).strip().lower() != "csf":
+        return
+    raise ValueError(
+        "local interface width on nonuniform grids is incompatible with "
+        "surface_tension_scheme='csf'; use interface.thickness.mode='nominal' "
+        "or select surface_tension.formulation='pressure_jump'/'none'."
+    )
+
+
 def canonicalize_surface_tension_gradient_scheme(
     *,
     surface_tension_scheme: str,

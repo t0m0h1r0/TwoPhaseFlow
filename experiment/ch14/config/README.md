@@ -63,6 +63,8 @@ fluid (mercury); the `capillary_wave` handler key dispatches identically.
 `interface` groups settings that must be reasoned about together:
 
 - `thickness`: how the CLS thickness is measured (`nominal`, `local`, `xi_cells`).
+  On nonuniform grids, `local`/`xi_cells` is allowed only with
+  `surface_tension.formulation: pressure_jump` or `none`; CSF uses `nominal`.
 - `geometry.curvature`: interface-geometry reconstruction used to obtain κ.
   `psi_direct_filtered` is the direct-ψ curvature route with an
   interface-limited smoothing filter; it is not Hermite field extension.
@@ -176,7 +178,8 @@ All three ch14 YAMLs share the production stack:
   decomposition of `j_gl(1-ψ)`. On nonuniform grids this same key means the
   face jump is built from the local physical face distance `H_f` and shared by
   the PPE RHS and face-flux corrector; no separate nonuniform PPE solver key is
-  required.
+  required. Regridded Mode 2 runs must rebuild this face cache from the current
+  grid instead of interpolating it from the previous step.
 - `projection.poisson.solver.kind: defect_correction` (jacobi-preconditioned
   GMRES base solver) — keeps the residual-correction shell visible.
 
