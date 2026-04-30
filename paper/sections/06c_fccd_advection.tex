@@ -230,10 +230,12 @@ FCCD Option B で閉じた運動量更新：
 \begin{equation}
   \frac{u^{n+1}_j - u^n_j}{\Delta t}
   = -\sum_k\frac{(u_k u_j)^{*}_{f_{i+1/2}} - (u_k u_j)^{*}_{f_{i-1/2}}}{H_i}
-  + \bigl[\nu \text{Lap} - \bnabla p + \sigma\kappa_{lg}\bnabla\psi + g\bigr]_i,
+  + \bigl[\mathcal{V}(\bm{u}) - \bnabla p + \sigma\kappa_{lg}\bnabla\psi + \rho\bm{g}\bigr]_i,
   \label{eq:fccd_adv_closure}
 \end{equation}
-右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
+ここで $\mathcal{V}(\bm{u})=\bnabla\cdot[\mu(\bnabla\bm{u}+\bnabla\bm{u}^T)]$ は
+§\ref{sec:onefluid}（§2 NS 既定形）と §\ref{sec:viscous_3layer}（§6.3 3 層粘性）
+で定義された粘性演算子．右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
 node\_divergence で節点に戻す．
 PPE RHS は自然に $\bnabla_h\cdot\bm{u}^*$ が FCCD 面ダイバージェンスで
 表現され，ループが閉じる．
