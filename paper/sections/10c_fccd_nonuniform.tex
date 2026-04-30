@@ -143,12 +143,17 @@ $J_x$ 自体が $\Ord{\Delta\xi^2}$ に縛られ，
 \label{sec:fccd_nu_bf_impact}
 % -------------------------------------------------------------------------------
 
-\S\ref{sec:fccd_h01_remedy} で示した BF 残差 $|\BF_\text{res}| = \Ord{\Delta x^4}$ の性質は，
+\S\ref{sec:h01_diagnosis_fccd_remedy} で示した BF 残差 $|\BF_\text{res}| = \Ord{\Delta x^4}$ の性質は，
 非一様格子でも界面適合（$\theta=1/2$）を維持する限り保たれる．
 界面近傍のみ $\theta=1/2$ を保証する「局所中央化」を
 \S\ref{sec:grid_density} のグリッド密度関数で課すことにより，
 BF 原理（\S\ref{sec:bf_operator_mismatch}）の要求する
-$p$ 勾配と CSF の演算子整合が自動的に成立する．
+$p$ 勾配と CSF の演算子整合が成立する．
+ただしこれは滑らかな場を同じ FCCD face operator に載せる場合の主張であり，
+pressure-jump 型 affine 閉包では，§~\ref{sec:split_ppe_pressure_jump_formulation} の
+$B_f^{\mathrm{nu}}=s_fj_f/H_f$ と同一 face cache を PPE RHS と corrector で共有して初めて
+BF 条件が閉じる．非一様メトリクス $G_f^{\mathrm{nu}}$ だけでは，
+既知ジャンプ $B_f^{\mathrm{nu}}$ は自動的には生成されない．
 
 \noindent 詳細な実装注記・PCR/Thomas 法の非一様バージョン・
 境界行の wall BC 拡張は付録~\ref{app:ccd_boundary_alt} 参照．
