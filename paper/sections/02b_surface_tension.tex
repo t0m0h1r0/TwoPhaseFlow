@@ -47,6 +47,11 @@ Balanced--Force 条件（§~\ref{sec:balanced_force}）における
 連続論では $-\bnabla p_h + \bm{f}_{\sigma,h} \equiv 0$ が静的平衡で成立するが，
 素朴な離散化では以下の 5 モードによって残差が混入し，
 \textbf{寄生流れ}（spurious currents）を引き起こす．
+\textbf{これは §~\ref{sec:failure_modes} の失敗例 1（寄生流れ）の離散化機構レベルでの分解であり，
+§~\ref{sec:challenges} の困難 4（離散圧力--表面張力整合）が
+界面評価で具体的にどの 5 通りに崩れるかを与える}
+（困難 2 由来の曲率精度低下は CCD $\Ord{h^6}$（§~\ref{sec:CCD}）が補完し，
+本 BF 整合と組み合わせて寄生流れを抑制する；§~\ref{sec:density_ratio_sweep}〔V6〕参照）．
 各モードは高次化では解決せず，演算子幾何の整合性確保を要する（詳細 §~\ref{sec:balanced_force}）．
 以下で PPE は Pressure Poisson Equation（圧力 Poisson 方程式）を指す．
 
