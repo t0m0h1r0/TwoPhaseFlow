@@ -64,7 +64,10 @@ $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
         非一様格子では $B_f(j)$ を局所物理面距離 $H_f$ で構成し，
         PPE RHS の $D^{\mathrm{nu}}(\alpha_fB_f)$ と corrector の
         $G_f^{\mathrm{nu}}-B_f^{\mathrm{nu}}$ で同一面データを共有する．
-        Balanced--Force 条件は圧力勾配と表面張力勾配に同じ CCD 演算子を使う範囲で維持される．
+        CSF 比較経路では圧力勾配と表面張力勾配に同じ CCD/face 演算子を使うことで
+        Balanced--Force 条件を維持する．
+        \texttt{affine\_jump} 経路では CSF 勾配ではなく，
+        PPE と corrector が同じ $G_\Gamma(p;j)$ を共有することが BF 条件である．
   \item \textbf{ゲージ拘束の一貫性（§~\ref{sec:pinpoint}）：}
         \texttt{affine\_jump} では cut-face 接続型の face law
         $G_\Gamma(p;j)$ を用いるため，零モードは全体定数 1 個である．
