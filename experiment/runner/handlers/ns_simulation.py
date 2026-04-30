@@ -100,20 +100,21 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
 
     results = run_simulation(cfg)
 
-    flat: dict = {}
-    for k, v in results.items():
-        if isinstance(v, np.ndarray):
-            flat[k] = v
-        elif isinstance(v, dict):
-            for kk, vv in v.items():
-                flat[f"{k}/{kk}"] = np.asarray(vv)
-    _add_snapshot_series(flat, results.get("snapshots"))
-    save_results(npz_path, flat)
+    if cfg.output.save_npz:
+        flat: dict = {}
+        for k, v in results.items():
+            if isinstance(v, np.ndarray):
+                flat[k] = v
+            elif isinstance(v, dict):
+                for kk, vv in v.items():
+                    flat[f"{k}/{kk}"] = np.asarray(vv)
+        _add_snapshot_series(flat, results.get("snapshots"))
+        save_results(npz_path, flat)
 
-    snaps = results.get("snapshots")
-    if snaps:
-        with open(outdir / "snapshots.pkl", "wb") as fh:
-            pickle.dump(snaps, fh)
+        snaps = results.get("snapshots")
+        if snaps:
+            with open(outdir / "snapshots.pkl", "wb") as fh:
+                pickle.dump(snaps, fh)
 
     generate_figures(cfg, results, outdir)
     print(f"[{label}] saved → {outdir}")
@@ -149,7 +150,8 @@ def _run_sweep(cfg, label: str, outdir: pathlib.Path) -> dict:
         generate_figures(cfg_case, results, case_dir)
 
     flat["_case_labels"] = np.array(case_labels, dtype=object)
-    save_results(npz_path, flat)
+    if cfg.output.save_npz:
+        save_results(npz_path, flat)
     _plot_sweep_summary(cfg, cases, flat, label, outdir)
 
     print(f"\n[{label}] sweep complete → {outdir}")

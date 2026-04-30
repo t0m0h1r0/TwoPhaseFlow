@@ -1,21 +1,29 @@
 # ch14 Benchmark YAML Design
 
 The §14 benchmark set is the canonical surface for the two-phase NS production
-stack. Three YAML files are checked in:
+stack. Three production YAML files are checked in:
 
 - `ch14_capillary.yaml` — capillary-wave benchmark.
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
+A fourth checked-in YAML is a bounded GPU-utilization probe:
+
+- `ch14_capillary_gpu90_affine.yaml` — capillary-wave `affine_jump` route at
+  `512×512`, `max_steps: 12`, `save_npz: false`; used to verify that the
+  production stack can keep the GPU saturated without making the full
+  `T=35` capillary benchmark prohibitively long.
+
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
+- `python experiment/run.py --config ch14_capillary_gpu90_affine`
 - `python experiment/run.py --config ch14_rising_bubble`
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
 
-All configs emit periodic snapshots with `psi`, `velocity`, and `pressure`
-fields. The runner stores these in `data.npz` under `fields/psi`,
+The three production configs emit periodic snapshots with `psi`, `velocity`,
+and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields
 `fields/u`, `fields/v`, and `fields/p`).
 

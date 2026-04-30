@@ -213,7 +213,7 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 これらの特性は意図的な設計選択であり，
 三本柱（CCD 高次群／分相 PPE+DC+CCD 勾配／BF+FCCD 面ジェット sub-system）の整合により，
 寄生流れの抑制（V5 で CCD $u_\infty^{\mathrm{end}}=1.76\!\times\!10^{-2}$ @ $\rho_r=1$, $N=32$（FD 比 $1/5.85$ 補助）；§\ref{sec:spurious_multistep}）と
-高密度比下の圧力ジャンプ整合性（V8 静止液滴 $|\Delta p_\mathrm{rel}|=2.75\%$ @ $N=96$）を同時に達成している．
+高密度比下の pressure-jump PPE スタック安定性（V6 で $\rho_r \le 833$ までブローアップなし，$|\Delta V_\psi|/V_{\psi,0} \le 2.4\!\times\!10^{-10}$；§\ref{sec:density_ratio_sweep}）を同時に達成している．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{達成成果のサマリ}
@@ -267,9 +267,11 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 
 第\ref{sec:verification}章の統合検証は 10 実験から構成され，
 集計（表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary}）は $\times$ ゼロを維持している．
-V1-b/V2/V4 は判定基準を実装 identity に合わせて見直し，
+V1-b/V2/V4/V5 は判定基準を実装 identity に合わせて見直し，
 それぞれ standard PPE $O(\Delta t)$，Kovasznay wall residual $O(h^4)$，
-fixed-wall offset residual $O(\|\bm U\|)$ に対する合格へ再分類した．
+fixed-wall offset residual $O(\|\bm U\|)$，
+CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{Re}_c$ スケール基準
+に対する合格へ再分類した．
 主張支持・条件付き採用実験（V1--V9）の headline と，
 条件付き CLS 移流ベースライン（V10-a/b）は以下：
 

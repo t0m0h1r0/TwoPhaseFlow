@@ -30,7 +30,7 @@ $L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 0.05$, 周期境界．
 \begin{table}[!ht]
 \caption{V1-a：CCD/PPE TGV の空間収束}
 \label{tab:V1_spatial}
-\PaperCaptionNote{$\Delta t=10^{-3}$ 固定．FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ に近い．}
+\PaperCaptionNote{$\Delta t=10^{-3}$ 固定．観測 slope $\mathbf{2.00}$（$N=48\!\to\!64$ finest local；asymptotic $1.997$ on $N=32\!\to\!64$）— FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ trend に整合．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -39,6 +39,8 @@ $N$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & $\|\nabla\!\cdot 
 32 & $6.320\times 10^{-7}$ & $9.032\times 10^{-6}$ & $2.590\times 10^{-5}$ \\
 48 & $2.814\times 10^{-7}$ & $4.026\times 10^{-6}$ & $1.146\times 10^{-5}$ \\
 64 & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $6.438\times 10^{-6}$ \\
+\midrule
+finest local slope & $\mathbf{2.00}$ & --- & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -81,12 +83,19 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 現 V1 は FFT spectral projection ではなく，CCD 微分 + PPEBuilder 射影を用いるため，
         紙面主張と実装 identity は一致した．
+  \item 観測空間 slope は $\mathbf{2.00}$（$N=48\!\to\!64$ finest local；asymptotic
+        $1.997$ on $N=32\!\to\!64$）．FVM PPE 射影が支配する結合 stack に対する
+        revised criterion $O(h^2)$ trend に対して合格
+        （V1-a：Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
   \item 観測時間 slope は $\mathbf{1.00}$．本 script は old pressure を predictor に入れない
         standard projection であり，AB2+IPC 単体検証ではない．
         したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格
         （Type-A revised criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
         FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
+  \item TGV 渦度場 snapshot（\autoref{fig:V1_tgv_vorticity}）は，
+        $t=0,25,50$ で 4 渦対 checkerboard 構造が粘性減衰係数 $e^{-2\nu t}$ に沿って
+        振幅を失う様子を可視化し，理論減衰係数との一致 $\Ord{10^{-3}}$ を裏付ける．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I}，\autoref{ch:time_integration} の時間離散，
 \autoref{sec:ppe_solve} の PPE 射影に対し，TGV のエネルギー減衰と非圧縮残差を測定する．
@@ -157,5 +166,9 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
         Kovasznay 統合 residual の observed order である．
   \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，
         Kovasznay 解の非圧縮性は CCD 演算子上でも十分保たれる．
+  \item Kovasznay 2D 場（\autoref{fig:V2_kovasznay_field}）の log-scale residual / divergence
+        パネルは，wall 近傍 one-sided CCD stencil による境界層と bulk における
+        $10^{-9}$--$10^{-13}$ までの sink 構造を直接示しており，
+        wall 境界閉包・圧力・非線形項を含む統合 residual の収束性を裏付ける．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I} に対し，Kovasznay 解の 2D 空間残差を測定する．
