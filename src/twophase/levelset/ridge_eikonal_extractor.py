@@ -111,24 +111,20 @@ class RidgeExtractor:
 
         p, p1 = phi[:-1, :], phi[1:, :]
         mask = (p * p1) < 0.0
-        if bool(xp.any(mask)):
-            ii, jj = xp.where(mask)
-            denom = xp.abs(p[ii, jj]) + xp.abs(p1[ii, jj])
-            frac = xp.abs(p[ii, jj]) / xp.where(denom > 0.0, denom, 1.0)
-            xk = cx[ii] + frac * (cx[ii + 1] - cx[ii])
-            yk = cy[jj]
-            parts.append(xp.stack([xk, yk], axis=1))
+        ii, jj = xp.where(mask)
+        denom = xp.abs(p[ii, jj]) + xp.abs(p1[ii, jj])
+        frac = xp.abs(p[ii, jj]) / xp.where(denom > 0.0, denom, 1.0)
+        xk = cx[ii] + frac * (cx[ii + 1] - cx[ii])
+        yk = cy[jj]
+        parts.append(xp.stack([xk, yk], axis=1))
 
         p, p1 = phi[:, :-1], phi[:, 1:]
         mask = (p * p1) < 0.0
-        if bool(xp.any(mask)):
-            ii, jj = xp.where(mask)
-            denom = xp.abs(p[ii, jj]) + xp.abs(p1[ii, jj])
-            frac = xp.abs(p[ii, jj]) / xp.where(denom > 0.0, denom, 1.0)
-            xk = cx[ii]
-            yk = cy[jj] + frac * (cy[jj + 1] - cy[jj])
-            parts.append(xp.stack([xk, yk], axis=1))
+        ii, jj = xp.where(mask)
+        denom = xp.abs(p[ii, jj]) + xp.abs(p1[ii, jj])
+        frac = xp.abs(p[ii, jj]) / xp.where(denom > 0.0, denom, 1.0)
+        xk = cx[ii]
+        yk = cy[jj] + frac * (cy[jj + 1] - cy[jj])
+        parts.append(xp.stack([xk, yk], axis=1))
 
-        if not parts:
-            return None
         return xp.concatenate(parts, axis=0)
