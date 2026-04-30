@@ -22,19 +22,32 @@ $N = 64$, $n_{\mathrm{step}} = 50$, $\Delta t = 3.125\times 10^{-3}$．
 同一の静止液滴 forcing に対して速度 offset のみを加える．
 
 \paragraph{結果．}
-全 $50$ ステップ間の最大差 $\|\Delta u\|_\infty^{\max} = 2.63\times 10^{-1}$,
-最終時刻差 $\|\Delta u\|_\infty^{\mathrm{end}} = 2.07\times 10^{-1}$．
+表~\ref{tab:V4_galilean} に各指標を示す（$\|\bm U\| = 0.1$）．
+
+\begin{table}[!ht]
+\caption{V4：固定壁系 Galilean offset 残差}
+\label{tab:V4_galilean}
+\PaperCaptionNote{$\|\bm U\|$ で正規化した残差は $O(1)$ scale に収まる．本縮約テストでは厳密ゼロ残差は script 構造上達成不能（後段「誤差源の分解」参照）．}
+\centering\small
+\begin{tabular}{l r r}
+\toprule
+集計量 & 絶対値 & $\|\bm U\|$ 正規化 \\
+\midrule
+$\|\Delta u\|_\infty^{\max}$           & $2.63\times 10^{-1}$ & $2.63$ \\
+$\|\Delta u\|_\infty^{\mathrm{end}}$   & $2.07\times 10^{-1}$ & $2.07$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{誤差源の分解（量的）．}
 本実験は full-domain norm で評価するため，offset run の壁上では no-slip により
 $u=0$ が再課され，$\bm U$ を差し引いた摂動場に少なくとも $-\bm U$ が残る．
 従って厳密ゼロ残差は script 構造上達成不能であり，
-$\|\Delta u\|_\infty/\|\bm U\|$ が $O(1)$ に留まることを判定する．
-観測値は
-$\|\Delta u\|_\infty^{\max}/\|\bm U\| = 2.63$,
-$\|\Delta u\|_\infty^{\mathrm{end}}/\|\bm U\| = 2.07$ であり，
-本縮約テストの受入条件
-$\|\Delta u\|_\infty^{\max}/\|\bm U\| < 3$ を満たす．
+$\|\Delta u\|_\infty/\|\bm U\|$ が $O(1)$ scale に留まることを判定する．
+観測値はいずれも $\|\bm U\|$ 正規化値 $\le 2.63$（$O(1)$ scale）であり，
+本縮約テストの受入条件 $\|\Delta u\|_\infty^{\max}/\|\bm U\| = O(1)$
+（運用上 $< 3$ を上限値として設定; 本実験は固定 no-slip 壁の参照系不整合と
+PPE gauge 固定の合成効果に由来する $O(1)$ 残差を測る）を満たす．
 支配要因は以下である：
 \begin{enumerate}\setlength{\itemsep}{0pt}
   \item \textbf{固定壁の参照系不整合}：周期 BC または moving-wall BC なら Galilean
@@ -52,9 +65,10 @@ $\|\Delta u\|_\infty^{\max}/\|\bm U\| < 3$ を満たす．
   \item Galilean 不変性は連続方程式レベルでは厳密だが，
         固定 Eulerian 格子 + 固定 no-slip 壁 + 参照点ゲージ固定 PPE では
         $O(\|\bm U\|)$ 残差が原理的に避けられない．
-  \item \textbf{revised criterion 合格 (\checkmark)}：
+  \item \textbf{Type-A revised criterion 合格 (\checkmark)}：
         本 V4 は zero-residual invariance proof ではなく fixed-wall offset diagnostic であり，
-        $\|\Delta u\|_\infty^{\max}/\|\bm U\| < 3$ を満たすことを合格基準とする．
+        正規化残差 $\|\Delta u\|_\infty^{\max}/\|\bm U\| = O(1)$（運用上 $< 3$）を合格基準とする
+        （§\ref{sec:verification} Type 分類および表~\ref{tab:V_verdict_types} 参照）．
   \item 本検証は「固定 Eulerian 格子 + 参照点固定 PPE の制約下で
         Galilean offset 残差が設計通り $O(\|\bm U\|)$ に収まる」ことを示す；
         この $O(\|\bm U\|)$ 残差はソルバの不変性違反ではなく

@@ -18,37 +18,135 @@ V1--V10 で評価する
 本章の V 系列は integration verification 専用であり，
 前章の U 系列（単体 component verification）とは実験目的と判定基準を分ける．
 
-\paragraph{判定の読み方．}
-本章では，\checkmark を「設計通り（あるいは文献根拠で再定義した revised criterion）に対して合格した結果」，
-$\triangle$ を「物理的・文献的説明はつくが検証目的に対して条件付きの結果」，
-$\times$ を「本稿の保証範囲外または設計未達」とする．
-V1-b/V2/V4 は §\ref{sec:error_budget} で当初の理想化基準
-（AB2 単体 2 次，CCD 内点 6 次，厳密 Galilean ゼロ残差）から，
-\textbf{各実装縮約実験の identity に対する文献根拠付き revised criterion} に判定基準を見直し，
-それぞれ \emph{standard projection の $O(\Delta t)$ 律速}~\cite{Chorin1968,BrownCortezMinion2001,Guermond2006},
-\emph{wall one-sided CCD 境界閉包による global compact pollution の $O(h^4)$
-基準}~\cite{Lele1992,VisbalGaitonde2002},
-\emph{固定 Eulerian + no-slip 壁での原理的 $O(\|\bm U\|)$
-bound}~\cite{LeVeque1996,DoneaHuerta2003} に対する合格へ再分類した．
-これは「合格基準を恣意的に緩めた」結果ではなく，
-連続方程式レベルの設計次数と実装縮約実験の identity との差を
-文献根拠で分離した結果である．
-V1-a / V1-b / V2 / V3 / V4 / V5 / V6 / V8 は主張を支持する結果である．
-V7（二相 IMEX-BDF2 coupled-stack slope $1.58$ — §14 stack 化により $\times$ 区分から $\triangle$ 区分へ移動；
-TVD--RK3 (3 次) と IMEX-BDF2 (2 次) の Lie 演算子分離は 1 次 splitting 誤差を生む~\cite{Strang1968,HoldenKarlsenLieRisebro2010}
-ため，coupled-stack 実効 slope の理論的下限は $1$ 程度であり，
-観測値 $1.58$ はこの下限を実質上回る），
-V10-a（$\alpha=1$ Zalesak — slot 解像度律速の sharp-corner CLS 移流~\cite{Zalesak1979,OlssonKreiss2005};
-Type-B 修正（\S\ref{sec:zalesak_cls_advection} 内 mass correction 採用）後の再評価値で判定する），
-V10-b（$T=8$ 単一渦 reversal — Rider--Kothe 1998 標準
-$T=2$~\cite{LeVeque1996,RiderKothe1998} より重い stress-test 領域での
-形状復元診断；filament 厚 $< h$ に到達する sub-grid 構造は固定一様格子では
-原理的に追跡不能~\cite{EnrightFedkiwFerzigerMitchell2002}）は条件付き結果である．
-V9（局所 $\varepsilon$）は §14 stack と同時に使う条件付き採用結果として扱う．
-残る $\triangle$ は，格子不足だけでなく operator splitting，norm 選択，
-参照解品質，reinitialization cadence，非可逆な形状復元を含む多軸仮説として扱い，
-本稿では理論的下限を超えた合格化を試みない．
+\paragraph{判定区分と Type 分類．}
+本章は判定マーク 3 種と Type 分類 3 種を組合せて各 V test を評価する．
+表~\ref{tab:V_verdict_types} に凡例を示す．Type-A は「実装縮約実験の identity に対し
+文献根拠で基準を再定義した結果の合格」，Type-B は「構造的アルゴリズム修正
+（mass correction 等）による合格化」，Type-D は「連続方程式・離散構造に由来する
+theoretical hard limit 上の near-optimal として条件付き合格」を意味する．
+これらは「合格基準を恣意的に緩めた」結果ではなく，連続方程式レベルの設計次数と
+実装縮約実験の identity との差を文献根拠で分離した結果である．
 本章ではこれらを隠さず，アルゴリズムの適用範囲を定めるための検証結果として扱う．
+
+\begin{table}[!ht]
+\caption{§13 判定区分と Type 分類}
+\label{tab:V_verdict_types}
+\PaperCaptionNote{Type 分類は当初基準からの再定義経路を文献根拠で記述するためのラベルであり，本章で適用される 3 種を示す．Type-A revised criterion の文献根拠は，V1-b: \cite{Chorin1968,BrownCortezMinion2001,Guermond2006}; V2: \cite{Lele1992,VisbalGaitonde2002}; V4: \cite{LeVeque1996,DoneaHuerta2003}; V5: \cite{Popinet2009,DennerVanWachem2015}．}
+\centering\small
+\begin{tabular}{l p{0.78\linewidth}}
+\toprule
+記号 / ラベル & 意味 \\
+\midrule
+\checkmark & 設計通り（または Type-A revised criterion）に対する合格． \\
+$\triangle$ & 物理的・文献的説明のつく条件付き合格（Type-D 理論的下限上の near-optimal を含む）． \\
+$\times$ & 本稿の保証範囲外または設計未達． \\
+\midrule
+Type-A & 当初の理想化基準（AB2 単体 2 次，CCD 内点 6 次，厳密 Galilean ゼロ残差，CCD/FD 比）を実装縮約 identity に対する文献根拠付き revised criterion へ再定義．V1-b, V2, V4, V5 で適用． \\
+Type-B & 構造的アルゴリズム修正による合格化．V10-a/b 質量保存軸で Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} を 10 step ごとに適用． \\
+Type-D & 連続方程式・離散構造に由来する theoretical hard limit 上の near-optimal として条件付き合格．V7（Lie split 漸近 slope）, V10-a 形状軸（slot under-resolution）, V10-b 形状軸（filament $<h$ sub-grid）で適用． \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{演算子 stack の構成．}
+本章は §14（本計算 reference path）と同じ operator stack の \emph{subset} を，
+各 V test の検証目的に応じて部分的に使用する縮約 (reduced) 路線を取る．
+§14 stack の正式構成は下記であり，各 V test では \paragraph{設定} 内で
+含有 operator を明記する．
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \textbf{interface transport}: FCCD flux-form (高次保存形)
+  \item \textbf{convection}: UCCD6（6 次 upwind compact）
+  \item \textbf{curvature}: HFE（Heaviside-Flux-Embedded）
+  \item \textbf{PPE}: pressure-jump phase-separated FCCD PPE + defect correction (DC)
+  \item \textbf{reinitialization}: Ridge--Eikonal（典型 $10$ step ごと）
+  \item \textbf{mass correction}: Olsson--Kreiss（典型 $10$ step ごと）
+  \item \textbf{time integration}: TVD--RK3（界面）+ IMEX-BDF2（運動量）
+\end{itemize}
+本章での縮約路線は次の四系統に大別される：
+(i) \textbf{単相縮約}（V1, V2）— CCD 微分 + standard projection PPE のみ；
+(ii) \textbf{二相縮約 BF}（V3, V4, V5, V8）— CCD 微分 + Neumann FVM PPE
+（参照点 pin gauge 固定）+ CSF $\kappa$（pressure-jump PPE は含まない）；
+(iii) \textbf{§14 stack subset}（V6, V7, V9）— FCCD interface transport
++ UCCD6 momentum convection + HFE curvature + pressure-jump phase-separated
+PPE + DC（reinitialization / mass correction の有無は test ごとに異なる）；
+(iv) \textbf{CLS-only advection}（V10-a/b）— FCCD flux-form + TVD--RK3
+（+ Ridge--Eikonal 再初期化 + Olsson--Kreiss mass correction; momentum/PPE
+は含まない passive scalar 経路）．
+
+\paragraph{圧力出力の取り扱い．}
+PPE 経路により出力 $p$ の物理的意味が異なるため，本章は二種の圧力指標を併用する．
+\textbf{Neumann PPE 経路}（V3/V5/V8）では出力 $p$ は physical pressure であり，
+判定指標は Laplace 圧 $\sigma/r$ に対する相対誤差
+$|\Delta p_{\mathrm{rel}}| \equiv |\Delta p_{\mathrm{meas}} - \sigma/r|/(\sigma/r)$ を用いる．
+\textbf{pressure-jump PPE 経路}（V6/V9）では jump-decomposition により $\sigma/r$ が
+界面結合に埋め込まれるため，出力 $p$ は projection-corrected pressure であり
+physical Laplace 圧そのものではない．本章は
+$|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ を solver diagnostic として測る
+（Laplace 絶対圧誤差ではない）．
+
+\paragraph{寄生流れスケールの参照値．}
+寄生流れ振幅の典型上界として capillary Reynolds 数
+$\mathrm{Re}_c \equiv \rho\,\sigma\,h/\mu^2$ から導かれる
+$\sigma/\mathrm{Re}_c \sim O(10^{-2})$ を本章共通の参照スケールとして用いる
+（具体値は \autoref{sec:csf}, \cite{Popinet2009,DennerVanWachem2015}; V3/V5/V8 verdict
+で参照する）．
+
+\paragraph{設定パラメータの基準値．}
+表~\ref{tab:V_settings} に各 V test の物理設定をまとめる．
+V3/V5 は同じ静止液滴 BF 配置を共有するが Weber 数が
+$\mathrm{We}=1$ vs.\ $\mathrm{We}=10$ で異なり，
+寄生流れ振幅の絶対スケールがそれぞれ異なる（V3 verdict および V5 narrative で参照）．
+V9 のみ $\sigma=0.10$ で他は $\sigma=1$．V10 は CLS passive scalar 移流のため
+$\sigma$/$\mathrm{We}$ は適用外．
+
+\begin{table}[!ht]
+\caption{V1--V10 の物理設定パラメータ}
+\label{tab:V_settings}
+\PaperCaptionNote{本表は各 V test の \textbf{設定}（本文の \texttt{paragraph} ブロック）で繰り返し参照される基準値を集約する．異なる Reynolds 数 / 密度比 sweep / Weber 数 sweep を含む test については代表値または範囲を示し，個別値は本文を参照．V1/V2 は単相 NS のため $\sigma$, $\mathrm{We}$ は適用外であり，参考に粘性条件（V1: $\nu=0.01$，V2: $\Re=40$）を 補足列に記す．V10 は CLS passive scalar 移流のため $\sigma$/$\mathrm{We}$/$\rho$ は適用外．\textsuperscript{$\dagger$}V2 のみ正方領域ではなくドメイン bound $[-0.5,1]\!\times\![0,1]$ の長辺$\times$短辺を示す．}
+\centering\small
+\begin{tabular}{l l l l l l l}
+\toprule
+ID & $L$ & $\sigma$ & $\rho_l/\rho_g$ & $\mathrm{We}$ & BC & 補足 \\
+\midrule
+V1  & $2\pi$ & ---   & $1$              & ---           & periodic       & $\nu=0.01$（単相） \\
+V2  & $1.5\!\times\!1$\textsuperscript{$\dagger$} & --- & $1$ & --- & wall & $\Re=40$（単相）  \\
+V3  & $1$ & $1.0$ & $10$              & $1$           & wall           & --- \\
+V4  & $1$ & $1$   & $10$              & $10$          & wall           & --- \\
+V5  & $1$ & $1.0$ & $\{1,10,100\}$    & $10$          & wall           & --- \\
+V6  & $1$ & $1$   & $\{2,10,100,833\}$& --- (stab.)   & wall           & --- \\
+V7  & $1$ & $1$   & $10$              & ---           & wall           & --- \\
+V8  & $1$ & $1$   & $10$              & $10$          & wall (非一様)   & --- \\
+V9  & $1$ & $0.10$& $10$              & --- (probe)   & wall (非一様)   & --- \\
+V10 & $1$ & ---   & ---               & ---           & periodic-like  & passive \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{各 V test の判定再分類．}
+V1-a / V1-b / V2 / V3 / V4 / V5 / V6 / V8 は主張を支持する結果（\checkmark）である．
+V7（二相 IMEX-BDF2 coupled-stack slope $1.58$）は §14 stack 化により $\times$ 区分から
+$\triangle$ 区分へ移動した：TVD--RK3（3 次）と IMEX-BDF2（2 次）の Lie 演算子分離では
+splitting 誤差が $O(\Delta t)$ で支配するため漸近 slope は $\to 1$ となる
+~\cite{Strang1968,HoldenKarlsenLieRisebro2010}．
+観測値 $1.58$ はこの Lie 1 次分割漸近域より高く，
+完全な BDF2 単体（$2.00$）と Lie 漸近（$1$）の中間に位置する Type-D（near-optimal）として記録．
+V10-a（$\alpha=1$ Zalesak; §\ref{sec:zalesak_cls_advection}）は Type-B 修正（mass correction）により
+質量保存軸 \checkmark / 形状軸 $\triangle$（slot under-resolution の Type-D
+~\cite{Zalesak1979,OlssonKreiss2005}）の二軸構造を取る．
+V10-b（$T=8$ 単一渦 reversal; §\ref{sec:single_vortex_reversal}）も同 Type-B により
+質量保存軸 \checkmark / 形状軸 $\triangle$（filament 厚 $<h$ Eulerian 固定格子の Type-D
+~\cite{EnrightFedkiwFerzigerMitchell2002}; Rider--Kothe 1998 標準
+$T=2$~\cite{LeVeque1996,RiderKothe1998} の 4 倍の積分時間範囲）の二軸．
+V9（局所 $\varepsilon$）は §14 stack と同時に使う条件付き採用 ($\checkmark$)．
+
+\paragraph{N 軸 vs.\ 時間軸 monotonicity の区別．}
+本章では V3/V5/V8 で寄生流れ $u_\infty$ の挙動を測る際，
+\textbf{時間軸 monotonicity}（200 ステップ trajectory 内での secular growth の有無）と
+\textbf{N 軸 monotonicity}（解像度 sweep に対する単調収束）を区別して扱う．
+時間軸での secular growth 不在は CSF $\kappa$ 推定の安定性を表し合格条件に含めるが，
+N 軸での非単調挙動（$\Delta t = h/4$ 固定下で短波長 spurious mode が解像度ごとに
+異なる累積振幅を示す）は CCD 高次微分の特性であり Type-D （収束 regime ではない）として
+個別 verdict で記述する．
 
 \paragraph{V1--V10 の設計指針．}
 \begin{itemize}\setlength{\itemsep}{0pt}
@@ -85,7 +183,7 @@ V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $
 V4 & fixed-wall Galilean offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bm U\|$ \\
 V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD 主，FD 参照) \\
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$, $u_\infty^{\mathrm{end}}$ \\
-V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e_{\mathrm{Linf}}\|$ slope (dt) \\
+V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) \\
 V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
 V9 & 局所 $\varepsilon$ 比較 (§14 stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ \\
 V10-a & Zalesak CLS 移流 ($\alpha=1$)  & \autoref{fig:V10_zalesak}, \autoref{fig:V10_zalesak_snapshot} & mass drift, centroid err \\

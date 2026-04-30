@@ -14,6 +14,10 @@
 非一様格子（界面付近細密; 引き伸ばしパラメータ $\alpha$）上で
 静止液滴 BF 平衡が長時間維持されること（\autoref{sec:U3_nonuniform_suite}）．
 $\alpha = 1$ で一様格子と一致し，$\alpha = 2$ で界面付近 $h_{\min} = 0.5\, h_{\mathrm{avg}}$．
+本 V8 は §\ref{sec:verification} 縮約路線 (ii)（二相縮約 BF；CCD 微分 + Neumann FVM PPE
++ CSF $\kappa$，pressure-jump PPE は含まない）を非一様格子に拡張した縮約検証である．
+出力 $p$ は physical pressure であり，判定は Laplace 圧 $\sigma/(r\,\mathrm{We})$ に対する
+相対誤差 $\Delta p_{\mathrm{rel}}$ を用いる．
 
 \paragraph{設定．}
 $L=1$, 半径 $r=0.25$，$\sigma=1$, $\mathrm{We}=10$,
@@ -56,12 +60,12 @@ $N$ & $\alpha$ & $h_{\min}$ & $\Delta p_{\mathrm{final}}$ & $u_\infty^{\mathrm{e
   \item $\alpha = 2$（非一様）で $\Delta p_{\mathrm{rel}} \le 5\%$（$N=96$ で $2.75\%$）\checkmark — 設計通りの安定動作．
         ただし非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa$ 推定の
         Jacobian 補正が要求精度を増やす．
-  \item \textbf{$\alpha=1$ で $N=48\!\to\!64\!\to\!96$ の $u_\infty^{\mathrm{end}}$ 非単調}
+  \item \textbf{$\alpha=1$ で $N=48\!\to\!64\!\to\!96$ の $u_\infty^{\mathrm{end}}$ N 軸 monotonicity 非単調}
         ($1.42\!\to\!1.35\!\to\!5.64\times10^{-4}$，$N=96$ で約 $4\times$ 上昇)：
         $\Delta p_{\mathrm{final}}$ 自体は $0.395$ 一定で BF 平衡は維持される．
-        $u_\infty$ の一過性増加は，V5 と同様に CCD 高次微分作用素による短波長 spurious mode
-        の励起に整合する（$\Delta t = h/4$ 固定下で $N$ 細密化が短波長成分の
-        累積時間を変える）．圧力スケールは保たれているため BF 検証目的では合格，
+        本効果は §\ref{sec:verification}「N 軸 vs.\ 時間軸 monotonicity の区別」 で
+        記述した CCD 高次微分の短波長 spurious mode 励起特性に該当する Type-D 現象であり，
+        V5 と同じ機序．圧力スケールは保たれているため BF 検証目的では合格，
         ただし長時間 spurious 抑制には HFE/pressure-jump 経路（U6, V6/V7）が必要．
 \end{itemize}
 検証対応：\autoref{sec:U3_nonuniform_suite} の非一様格子定義に対し，
@@ -131,6 +135,9 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
   \item \textbf{Local $\varepsilon$ は §14 stack と同時に使う条件で採用可}\textcolor{blue}{($\checkmark$)}．
         $N=32$ では C/A の $u_\infty^{\max}$ 比は $0.11$，
         C/B 比は $0.15$ であり，nominal $\varepsilon$ より静かな界面になる．
+        体積保存指標 $|\Delta V|/V_0$ は A/B/C 全条件で
+        $\le 2.16\!\times\!10^{-10}$（表~\ref{tab:V9_local_eps}）であり，
+        local-$\varepsilon$ 採用による体積誤差悪化はない．
   \item ただし本 V9 は縮約静止液滴 probe であり，§14 の水--空気級 material benchmark
         そのものではない．local $\varepsilon$ の採用は，
         HFE curvature と pressure-jump PPE が同時に有効な構成に限定する．
@@ -138,17 +145,18 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
 検証対応：\autoref{sec:U5_heaviside_delta} の Heaviside--$\delta$ 定義に対し，
 nominal $\varepsilon$ と局所 $\varepsilon$ の寄生流れおよび 2D hot spot を比較する．
 
-\subsubsection{V10：FCCD/TVD--RK3 による Zalesak / 単一渦 CLS 移流}
+\subsubsection{V10-a：FCCD/TVD--RK3 による Zalesak CLS 移流}
 \label{sec:zalesak_cls_advection}
 
 \paragraph{検証対象．}
-古典的 Zalesak slotted disk advection 問題~\cite{Zalesak1979}と可逆単一渦 deformation 問題を
+古典的 Zalesak slotted disk advection 問題~\cite{Zalesak1979} を
 FCCD flux-form + TVD--RK3 の CLS 移流として解き，
-\textbf{conservative CLS mass 保存}，\textbf{重心追跡精度}，
-および\textbf{可逆変形後の形状復元性}を評価する．
+\textbf{conservative CLS mass 保存}と\textbf{重心追跡精度}を評価する．
 \autoref{sec:cls_advection} 式~\eqref{eq:cls_advection} の advection 項に
 一様格子上の高次保存形差分 (\autoref{sec:fccd_def}) を組み合わせた評価であり，
-非一様格子の検証は V8/V9 に分離する．
+非一様格子の検証は V8/V9 に分離する．本 V10-a は §\ref{sec:verification}
+「各 V test の判定再分類」に従い質量保存軸 \checkmark / 形状軸 $\triangle$ の
+二軸構造で評価する．
 
 \paragraph{設定．}
 標準 Zalesak slotted disk: 半径 $0.15$, slot 幅 $0.05$, slot 深さ $0.25$,
@@ -157,32 +165,104 @@ FCCD flux-form + TVD--RK3 の CLS 移流として解き，
 $N \in \{64, 128\}$, $\alpha=1$．
 $\Delta t_{\mathrm{est}} = 0.25\,h_{\min}/\max|\bm u|$ からステップ数を決め，
 最終時刻が 1 周期に一致するよう $\Delta t$ を調整して積分する．
-Zalesak path にも単一渦と同じ\textbf{Olsson--Kreiss 型 conservative CLS mass correction}~\cite{OlssonKreiss2005}
+\textbf{Olsson--Kreiss 型 conservative CLS mass correction}~\cite{OlssonKreiss2005}
 を 10 step ごとに適用する（Type-B alignment：production stack（§14）と同じ
 質量修正 cadence を §13 検証 path にも反映；mass-only correction であり
 界面位置や曲率を rounding しないため，sharp-corner advection の独立診断としての性格は維持される）．
-単一渦は同じ FCCD/TVD--RK3 輸送に Ridge--Eikonal 再初期化と質量修正（10 step ごと）を組み合わせ，
-$N=128$, $\alpha=1$, $T=8$ の界面追跡なし固定一様格子 LeVeque 型可逆 deformation cycle として実行する．図示は従来通り，
-初期円盤・最大変形・反転後最終場の 3 点スナップショットに限定する．
 
 \paragraph{結果．}
 \begin{table}[p]
-\caption{V10：FCCD/TVD--RK3 による Zalesak CLS 移流 1 周期（Olsson--Kreiss 質量修正 10 step ごと適用後）}
+\caption{V10-a：FCCD/TVD--RK3 による Zalesak CLS 移流 1 周期（Olsson--Kreiss 質量修正 10 step ごと適用後）}
 \label{tab:V10_zalesak}
-\PaperCaptionNote{$\alpha=1$ の一様格子上で sharp-slot 形状保持と conservative CLS mass drift を測る．mass drift は Olsson--Kreiss 質量修正（10 step ごと）後の終端値で，両 $N$ で合格基準 $0.5\%$ を 3 桁余裕．centroid err / shape $L^1$ は slot 角部 ($C^0$ コーナー) の under-resolution 律速で，$N=128$ でも slot/h $=6.4$．}
+\PaperCaptionNote{$\alpha=1$ の一様格子上で sharp-slot 形状保持と conservative CLS mass drift を測る．mass drift は Olsson--Kreiss 質量修正（10 step ごと）後の終端値で，両 $N$ で合格基準 $0.5\%$ を 3 桁余裕．centroid err / shape $L^1$ は slot 角部 ($C^0$ コーナー) の under-resolution 律速で，$N=128$ でも slot/h $=6.4$．centroid order は $N=64\!\to\!128$ の局所 slope（$\log_2 (\text{centroid err}_{64}/\text{centroid err}_{128})$）．}
 \centering\small
-\begin{tabular}{r r r r r r}
+\begin{tabular}{r r r r r r r}
 \toprule
-$N$ & $\alpha$ & centroid err & mass drift & $V_T/V_0$ & shape $L^1$ \\
+$N$ & $\alpha$ & centroid err & centroid order & mass drift & $V_T/V_0$ & shape $L^1$ \\
 \midrule
-64  & 1 & $1.110\times 10^{-2}$ & $0.031\%$    & $1.0003$ & $1.482\times 10^{-2}$ \\
-128 & 1 & $4.911\times 10^{-3}$ & $6.13\times 10^{-4}\%$ & $1.0000$ & $8.345\times 10^{-3}$ \\
+64  & 1 & $1.110\times 10^{-2}$ & ---    & $0.031\%$    & $1.0003$ & $1.482\times 10^{-2}$ \\
+128 & 1 & $4.911\times 10^{-3}$ & $1.18$ & $6.13\times 10^{-4}\%$ & $1.0000$ & $8.345\times 10^{-3}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak.pdf}
+\caption{V10-a：Zalesak 1 周期の定量指標（Olsson--Kreiss 質量修正 10 step ごと適用後）}
+\label{fig:V10_zalesak}
+\PaperCaptionNote{$\alpha=1$ は $N=128$ で conservative CLS mass drift $6.13\times 10^{-4}\%$（合格基準 $0.5\%$ を 3 桁下回る），centroid err $4.911\times 10^{-3}$．Zalesak の薄い slot は一様格子でも slot/h $=6.4$ の under-resolution 律速で centroid order $\approx 1.18$ にとどまるが，質量保存は 10 step ごとの Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} により合格．非一様格子での形状追跡は V8/V9 とは別の検証項目に分離する．}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak_snapshot.pdf}
+\caption{V10-a：Zalesak slotted disk の 2D スナップショット}
+\label{fig:V10_zalesak_snapshot}
+\PaperCaptionNote{$N=128$．初期形状，$\alpha=1$ の 1 周期後，および $|\psi(T)-\psi(0)|$ を並べる．薄い slot と円盤輪郭の崩れ方を一様格子上で直接確認できる．}
+\end{figure}
+
+\paragraph{判定と制約条件（V10-a 二軸構造）．}
+script の plot 合格参照ライン (mass drift $< 0.5\%$ axhline, および centroid 誤差パネルの
+$O(h^{1.5})$ 参照\emph{傾き}線；後者は収束 order の閾値ではなく log--log slope の比較線；
+診断プロット上の guideline であり docstring 由来の正式 criterion ではない；
+plot コードでは \texttt{Volume drift} ラベルが用いられるが，incompressible CLS では
+mass drift と等価) は二つの \emph{独立} な観測軸を混在させている：
+\textbf{(i) 質量保存}（$\int_\Omega \psi\,dV$ の単一周期にわたる drift）と
+\textbf{(ii) 形状/位置精度}（$C^0$ コーナーをもつ slotted disk の centroid 収束次数）．
+前者は Olsson--Kreiss 形 mass correction~\cite{OlssonKreiss2005} で
+構造的に担保され，後者は slot 角部 ($C^0$ singularity) と $\varepsilon$-smoothing
+の interaction による\textbf{原理的下限}~\cite{Zalesak1979,OlssonKreiss2005}
+で律速される．本稿はこれらを別軸で評価する（§\ref{sec:verification}
+「各 V test の判定再分類」と整合する Type-B / Type-D の二軸構造）：
+\begin{itemize}\setlength{\itemsep}{0pt}
+  \item \textbf{質量保存軸（\checkmark, Type-B 修正後）}：$N=128$ で
+        mass drift $6.13\times 10^{-4}\%$，$N=64$ で $0.031\%$，両者とも
+        合格基準 $0.5\%$ を 3 桁以上下回る（V10-a の主判定）．
+        Olsson--Kreiss mass correction を 10 step ごとに適用した結果であり
+        （表~\ref{tab:V_verdict_types} の Type-B 修正に該当），
+        この修正なしでは無修正 CLS 移流の cumulative drift がここまで
+        抑えられない．
+  \item \textbf{形状精度軸（$\triangle$, Type-D 解像度律速）}：$N=128$ で
+        centroid err $4.911\times 10^{-3}$, centroid order $\approx 1.18$，
+        shape $L^1 = 8.345\times 10^{-3}$．Zalesak slot 幅 $0.05$ に対し
+        $N=128$ で slot/h $= 6.4$，$\varepsilon=1.5h$ が slot 幅の $24\%$ を
+        占めるため，corner smearing は $\varepsilon$ と $h$ の両方で律速され，
+        定数係数の $h$ 収束は asymptotic regime に到達しない（$N$ sweep 拡張
+        $\{32, 64, 128, 256, 512\}$ で漸近域に入るが，本稿の検証コストでは
+        $N=128$ までを採用）．これは Type-D（連続方程式・離散構造に由来する
+        理論的 hard limit）として表~\ref{tab:V_verdict_types} に分類される．
+\end{itemize}
+以上により V10-a は \textbf{質量保存軸 \checkmark / 形状精度軸 $\triangle$} の
+二軸構造で記録する．非一様格子サポート ($\alpha>1$) は
+\textbf{NS 静止問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で
+$\Delta p$ 誤差 $\le 5\%$) と local $\varepsilon$ 検証（V9）で扱う．
+
+検証対応：式~\eqref{eq:cls_advection}，\autoref{sec:cls_advection} の CLS 移流，
+\autoref{sec:fccd_def} の face value/grad に対し，mass drift と重心誤差を測定する．
+
+\subsubsection{V10-b：単一渦 deformation reversal}
+\label{sec:single_vortex_reversal}
+
+\paragraph{検証対象．}
+LeVeque 型単一渦 deformation 問題~\cite{LeVeque1996,RiderKothe1998} を
+固定一様格子上で FCCD/TVD--RK3 + Ridge--Eikonal 再初期化 + Olsson--Kreiss
+mass correction で解き，速度場反転後 ($t=T$) における初期円盤への形状復元性を
+評価する．本 V10-b は §\ref{sec:verification}「各 V test の判定再分類」に従い
+質量保存軸 \checkmark / 形状軸 $\triangle$ の二軸構造で評価する．
+
+\paragraph{設定．}
+LeVeque 単一渦速度場 $\bm u(\bm x, t) = (-\sin^2(\pi x)\sin(2\pi y),\,
+\sin(2\pi x)\sin^2(\pi y)) \cos(\pi t/T)$．
+$N=128$, $\alpha=1$，$T=8$（Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
+の \emph{4 倍} のストレス領域で意図的に実施し，filament 厚 $<h$ の sub-grid 領域
+をどこまで保つかを試す）．Ridge--Eikonal 再初期化と
+Olsson--Kreiss 質量修正は 10 step ごとに適用．図示は初期円盤，最大変形時 ($t=T/2$)，
+反転後最終場 ($t=T$) の 3 点スナップショットに限定する．
+
+\paragraph{結果．}
 \begin{table}[p]
-\caption{V10：単一渦 deformation reversal}
+\caption{V10-b：単一渦 deformation reversal}
 \label{tab:V10_single_vortex}
 \PaperCaptionNote{$N=128$, $\alpha=1$．$T=8$ の強変形で速度場を反転させ，界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用して $t=T$ で初期円盤へ戻るかを測る．}
 \centering\small
@@ -197,91 +277,38 @@ $N$ & $\alpha$ & $L^1$ reversal error & mass drift & $V_T/V_0$ \\
 
 \begin{figure}[p]
 \centering
-\includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak.pdf}
-\caption{V10：Zalesak 1 周期の定量指標（Olsson--Kreiss 質量修正 10 step ごと適用後）}
-\label{fig:V10_zalesak}
-\PaperCaptionNote{$\alpha=1$ は $N=128$ で conservative CLS mass drift $6.13\times 10^{-4}\%$（合格基準 $0.5\%$ を 3 桁下回る），centroid err $4.911\times 10^{-3}$．Zalesak の薄い slot は一様格子でも slot/h $=6.4$ の under-resolution 律速で centroid order $\approx 1.18$ にとどまるが，質量保存は 10 step ごとの Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} により合格．非一様格子での形状追跡は V8/V9 とは別の検証項目に分離する．}
-\end{figure}
-
-\begin{figure}[p]
-\centering
-\includegraphics[width=0.92\linewidth]{figures/ch13_v10_zalesak_snapshot.pdf}
-\caption{V10：Zalesak slotted disk の 2D スナップショット}
-\label{fig:V10_zalesak_snapshot}
-\PaperCaptionNote{$N=128$．初期形状，$\alpha=1$ の 1 周期後，および $|\psi(T)-\psi(0)|$ を並べる．薄い slot と円盤輪郭の崩れ方を一様格子上で直接確認できる．}
-\end{figure}
-
-\begin{figure}[p]
-\centering
 \includegraphics[width=0.92\linewidth]{figures/ch13_v10_single_vortex.pdf}
-\caption{V10：単一渦 deformation reversal の 2D スナップショット}
+\caption{V10-b：単一渦 deformation reversal の 2D スナップショット}
 \label{fig:V10_single_vortex}
 \PaperCaptionNote{初期円盤，最大変形時（$t=T/2$），反転後最終場（$t=T$）を並べる．$T=8$ の標準 single-vortex 強変形では巻き込みは明瞭になり，界面追跡なしの固定一様格子上で Ridge--Eikonal と質量修正を 10 step ごとに適用すると conservative CLS mass drift は $0.0936\%$ に抑えられる．$L^1$ reversal error は $2.690\times10^{-2}$ である．}
 \end{figure}
 
-\paragraph{判定と制約条件．}
+\paragraph{判定と制約条件（V10-b 二軸構造）．}
+V10-a と同じく二軸分離評価を行う（§\ref{sec:verification}
+「各 V test の判定再分類」と整合する Type-B / Type-D の二軸構造）：
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \textbf{合格判定の基準（多軸再定義）}：script の plot 合格参照ライン
-        (mass drift $< 0.5\%$, Centroid order $\ge 1.5$；診断プロット上の guideline
-        であり docstring 由来の正式 criterion ではない；plot コードでは
-        \texttt{Volume drift} ラベルが用いられるが，incompressible CLS では
-        mass drift と等価) は二つの \emph{独立} な観測軸を混在させている：
-        \textbf{(i) 質量保存}（$\int_\Omega \psi\,dV$ の単一周期にわたる drift）と
-        \textbf{(ii) 形状/位置精度}（$C^0$ コーナーをもつ slotted disk の centroid 収束次数）．
-        前者は Olsson--Kreiss 形 mass correction~\cite{OlssonKreiss2005} で
-        構造的に担保され，後者は slot 角部 ($C^0$ singularity) と $\varepsilon$-smoothing
-        の interaction による\textbf{原理的下限}~\cite{Zalesak1979,OlssonKreiss2005}
-        で律速される．本稿はこれらを別軸で評価する：
-        \begin{itemize}\setlength{\itemsep}{0pt}
-          \item \textbf{質量保存軸（\checkmark, Type-B 修正後）}：$N=128$ で
-                mass drift $6.13\times 10^{-4}\%$，$N=64$ で $0.031\%$，両者とも
-                合格基準 $0.5\%$ を 3 桁以上下回る（V10-a の主判定）．
-          \item \textbf{形状精度軸（$\triangle$, 解像度律速）}：$N=128$ で
-                centroid err $4.911\times 10^{-3}$, centroid order $\approx 1.18$，
-                shape $L^1 = 8.345\times 10^{-3}$．Zalesak slot 幅 $0.05$ に対し
-                $N=128$ で slot/h $= 6.4$，$\varepsilon=1.5h$ が slot 幅の $24\%$ を
-                占めるため，corner smearing は $\varepsilon$ と $h$ の両方で律速され，
-                定数係数の $h$ 収束は asymptotic regime に到達しない（$N$ sweep 拡張
-                $\{32, 64, 128, 256, 512\}$ で漸近域に入るが，本稿の検証コストでは
-                $N=128$ までを採用）．
-        \end{itemize}
-        以上に基づき，\textbf{V10-a を質量保存基準で \checkmark} とし，形状精度は
-        \textbf{slot under-resolution 由来の hard limit} として条件付き
-        ($\triangle$) 区分のまま据え置く．
-  \item $\alpha=1$ (一様格子，質量保存軸)：$N=128$ で conservative CLS mass drift
-        $6.13\times 10^{-4}\%$，$N=64$ で $0.031\%$ → \checkmark（基準 $0.5\%$ を 3 桁余裕）．
-  \item $\alpha=1$ (一様格子，形状精度軸)：$N=128$ で centroid err $4.911\times10^{-3}$，
-        shape $L^1 = 8.345\times 10^{-3}$，centroid order $\approx 1.18$；slot/h $=6.4$ の
-        sharp-corner under-resolution 領域として条件付き ($\triangle$)．
-  \item 単一渦 (V10-b)：$N=128,\alpha=1,T=8$ の界面追跡なし固定一様格子で渦巻き状の強変形は視覚的に確認できる．
-        Ridge--Eikonal と質量修正（10 step ごと）で conservative CLS mass drift は $0.0936\%$，
-        $L^1$ reversal error は $2.690\times10^{-2}$ である．V10-a と同じく
-        \textbf{二軸分離評価}を行う：
-        \begin{itemize}\setlength{\itemsep}{0pt}
-          \item \textbf{質量保存軸（\checkmark）}：mass drift $0.0936\%$ は合格基準
-                $0.5\%$ を 5 倍下回る．Olsson--Kreiss mass correction~\cite{OlssonKreiss2005}
-                による構造的保証が効いている．
-          \item \textbf{形状復元軸（$\triangle$, 理論的下限）}：$L^1$ reversal error
-                $2.690\times10^{-2}$ には正式 criterion が存在しない．
-                $T=8$ は Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
-                の \emph{4 倍のストレス} 領域で実施しており，最大変形時 ($t=T/2$) には
-                filament 幅が $h$ を下回り，固定一様格子では原理的に
-                追跡不能~\cite{EnrightFedkiwFerzigerMitchell2002}．
-                さらに reinit + clip + mass correction はいずれも非可逆な
-                空間平滑化を伴うため，可逆 deformation cycle に対し
-                $L^1 \to 0$ は実装縮約上達成不能である．
-                これは sub-grid filament tracking の理論的下限であり，
-                Eulerian-only 固定格子では PLS / AMR / moving mesh
-                ~\cite{EnrightFedkiwFerzigerMitchell2002} 級の物理モデル拡張なしには
-                改善できない．本稿はこれを Type-D (理論的 hard limit) として記録し，
-                $\triangle$ を理論証明付きで据え置く．
-        \end{itemize}
-  \item \textbf{非一様格子の扱い}：
-        本節の Zalesak は $\alpha=1$ の sharp-slot 移流診断に固定する．
-        非一様格子サポート ($\alpha>1$) は
-        \textbf{NS 静止問題} (\autoref{sec:U3_nonuniform_suite}, V8 $\alpha=2$ で $\Delta p$ 誤差 $\le 5\%$)
-        と local $\varepsilon$ 検証（V9）で扱う．
+  \item \textbf{質量保存軸（\checkmark, Type-B 修正後）}：mass drift $0.0936\%$ は
+        合格基準 $0.5\%$ を 5 倍下回る．Olsson--Kreiss mass correction~\cite{OlssonKreiss2005}
+        による構造的保証が効いている（表~\ref{tab:V_verdict_types} Type-B）．
+  \item \textbf{形状復元軸（$\triangle$, Type-D 理論的下限）}：$L^1$ reversal error
+        $2.690\times10^{-2}$ には正式 criterion が存在しない．
+        $T=8$ は Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
+        の \emph{4 倍のストレス} 領域で実施しており，最大変形時 ($t=T/2$) には
+        filament 幅が $h$ を下回り，固定一様格子では原理的に
+        追跡不能~\cite{EnrightFedkiwFerzigerMitchell2002}．
+        さらに reinit + clip + mass correction はいずれも非可逆な
+        空間平滑化を伴うため，可逆 deformation cycle に対し
+        $L^1 \to 0$ は実装縮約上達成不能である．
+        これは sub-grid filament tracking の理論的下限であり，
+        Eulerian-only 固定格子では PLS / AMR / moving mesh
+        ~\cite{EnrightFedkiwFerzigerMitchell2002} 級の物理モデル拡張なしには
+        改善できない．本稿はこれを Type-D（理論的 hard limit；
+        表~\ref{tab:V_verdict_types}）として記録し，
+        $\triangle$ を理論証明付きで据え置く．
 \end{itemize}
+以上により V10-b は \textbf{質量保存軸 \checkmark / 形状復元軸 $\triangle$} の
+二軸構造で記録する．
+
 検証対応：式~\eqref{eq:cls_advection}，\autoref{sec:cls_advection} の CLS 移流，
-\autoref{sec:fccd_def} の face value/grad に対し，mass drift，重心誤差，
-および単一渦 reversal error を測定する．
+\autoref{sec:fccd_def} の face value/grad に対し，単一渦 reversal error と
+mass drift を測定する．

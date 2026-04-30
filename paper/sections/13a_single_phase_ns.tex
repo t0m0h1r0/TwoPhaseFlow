@@ -83,7 +83,8 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
         紙面主張と実装 identity は一致した．
   \item 観測時間 slope は $\mathbf{1.00}$．本 script は old pressure を predictor に入れない
         standard projection であり，AB2+IPC 単体検証ではない．
-        したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格とする．
+        したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格
+        （Type-A revised criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
         FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
 \end{itemize}
@@ -150,7 +151,8 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 旧実装は manufactured periodic NS であり Kovasznay ではなかったが，
         現 V2 は解析 Kovasznay 解そのものを用いる．
-  \item residual slope $\mathbf{3.95}$ → revised criterion $O(h^4)$ に対して合格．
+  \item residual slope $\mathbf{3.95}$ → revised criterion $O(h^4)$ に対して合格
+        （Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
         これは CCD 単体の 6 次検証 (U1) ではなく，wall 境界閉包・圧力・非線形項を含む
         Kovasznay 統合 residual の observed order である．
   \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，

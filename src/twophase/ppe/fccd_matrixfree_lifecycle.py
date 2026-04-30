@@ -43,7 +43,13 @@ def refresh_fccd_matrixfree_grid(solver, grid=None) -> None:
 def prepare_fccd_matrixfree_operator(solver, rho) -> None:
     """Cache density and optional diagonal preconditioner."""
     solver._rho_dev = solver.xp.asarray(rho)
-    solver._rho = np.asarray(solver.backend.to_host(solver._rho_dev))
+    if (
+        solver.backend.is_gpu()
+        and getattr(solver, "interface_coupling_scheme", "none") == "affine_jump"
+    ):
+        solver._rho = None
+    else:
+        solver._rho = np.asarray(solver.backend.to_host(solver._rho_dev))
     solver._diag_inv = None
     refresh_fccd_phase_gauges(solver)
     refresh_fccd_phase_mean_gauge_cache(solver)
@@ -90,6 +96,10 @@ def refresh_fccd_phase_gauges(solver) -> None:
 
 def refresh_fccd_phase_mean_gauge_cache(solver) -> None:
     """Cache phase masks and control-volume weights for mean-gauge projections."""
+    if solver._phase_threshold is None:
+        solver._phase_mean_gauge_cache = None
+        solver._phase_mean_gauge_cache_host = None
+        return
     solver._phase_mean_gauge_cache = build_fccd_phase_mean_gauge_cache(
         xp=solver.xp,
         rho=solver._rho_dev,

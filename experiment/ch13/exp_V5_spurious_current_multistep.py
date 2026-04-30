@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V5] Spurious-current multi-step CCD vs FD — Tier B.
+"""[V5] Spurious-current multi-step CCD vs FD — Type-A (revised criterion).
 
 Paper ref: §13.3 (sec:bf_static_droplet companion / sec:error_budget contributor).
 

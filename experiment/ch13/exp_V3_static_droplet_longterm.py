@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V3] Static droplet 200-step coupling — Tier B.
+"""[V3] Static droplet 200-step coupling — default pass (paper §13b).
 
 Paper ref: §13.2 (sec:twophase_static_longterm; extension of §12 U7).
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""[V2] Kovasznay-flow CCD spatial residual — Tier A.
+"""[V2] Kovasznay-flow CCD spatial residual — Type-A (revised criterion).
 
 Paper ref: §13.1 (sec:kovasznay).
 
@@ -13,8 +13,8 @@ under ``experiment/ch13/legacy/``.
 
 Usage
 -----
-  make run EXP=experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
-  make plot EXP=experiment/ch13/exp_V2_kovasznay_imex_bdf2.py
+  make run EXP=experiment/ch13/exp_V2_kovasznay_residual.py
+  make plot EXP=experiment/ch13/exp_V2_kovasznay_residual.py
 """
 
 from __future__ import annotations
