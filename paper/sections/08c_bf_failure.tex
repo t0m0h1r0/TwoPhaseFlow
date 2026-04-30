@@ -12,7 +12,7 @@
 連続問題での静止液滴平衡
 \begin{equation}
   -\bnabla p + \mathbf{f}_\sigma = \mathbf{0}
-  \quad\text{（Young--Laplace: }[p]_\Gamma=\sigma\kappa\text{）}
+  \quad\text{（Young--Laplace: }j_{gl}=p_g-p_l=-\sigma\kappa_{lg}\text{）}
   \label{eq:bf_continuous_balance}
 \end{equation}
 を\textbf{離散的に}保持するには
@@ -40,7 +40,7 @@
     （算術 vs 調和）が異なる．高密度比 $\rho_l/\rho_g\gg 1$ で
     補正残差が界面上で $\Ord{1}$ となる．
   \item[\textbf{F-5} 界面ジャンプ無補正の CCD ステンシル]
-    $[p]_\Gamma=\sigma\kappa$ を跨ぐ CCD ステンシルが
+    $j_{gl}=-\sigma\kappa_{lg}$ を跨ぐ CCD ステンシルが
     滑らかな場として扱われ，ジャンプが数値的に平滑化される．
     GFM/IIM による面フラックス補正が必要．
 \end{description}

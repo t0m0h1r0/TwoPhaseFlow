@@ -14,7 +14,7 @@
 \begin{tcolorbox}[mybox, width=0.88\textwidth]
 \small\centering
 \begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.68\linewidth}@{}}
-界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(\phi)$）\\
+界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(-\phi)$，液相 $1$／気相 $0$）\\
 空間離散： & CCD（内点 $\Ord{h^6}$；微分），Dissipative CCD（移流・速度/圧力），非一様格子\\
 格子構造： & コロケート格子 + DCCD 散逸（$\varepsilon_d=1/4$；チェッカーボード除去）\\
 時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\

@@ -16,16 +16,16 @@
 
   \item[\textbf{標準 Level Set（LS）法}~\cite{OsherSethian1988}]
         界面からの符号付き距離関数 $\phi$（$|\bnabla\phi|=1$）を輸送変数とする．
-        $\hat{\bm n} = \bnabla\phi$，$\kappa = -\bnabla\cdot\hat{\bm n}$ と簡潔に書けるため
+        $\hat{\bm n}_{lg} = \bnabla\phi$，$\kappa_{lg} = \bnabla\cdot\hat{\bm n}_{lg}$ と簡潔に書けるため
         幾何計算精度が高い．しかし移流方程式が非保存形のため，
         数値積分誤差が質量損失として蓄積するという根本的問題がある．
 
   \item[\textbf{Conservative Level Set（CLS）法}~\cite{OlssonKreiss2005}（\textbf{本稿採用}）]
-        $\phi$ を滑らかなヘヴィサイド関数 $\psi = H_\varepsilon(\phi) \in [0,1]$ に変換し，
+        $\phi$ を滑らかなヘヴィサイド関数 $\psi = H_\varepsilon(-\phi) \in [0,1]$ に変換し，
         保存形の移流方程式を解く．
         VOF の質量保存性と標準 LS の幾何計算精度を両立する．
         ただし，幾何量（法線・曲率）の計算に $\phi$ を要するため，
-        $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln(\psi/(1-\psi))$ により
+        $\psi \to \phi$ の逆変換はロジット関数 $\phi = \varepsilon\ln((1-\psi)/\psi)$ により
         解析的に求まる（第~\ref{sec:levelset}章参照）．
 \end{description}
 
