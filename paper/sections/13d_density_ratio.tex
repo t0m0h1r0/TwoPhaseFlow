@@ -139,14 +139,18 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
   \item 観測された最終局所 slope は $\mathbf{1.58}$．BDF2 単体の $2.00$ には届かないが，
         旧 reduced proxy の slope $0.56$ より §14 stack では改善する．
   \item \textbf{劣化要因の理論分解（Lie splitting 下限と cadence pollution の合算）}：
+    観測 slope $1.58$ への寄与は，主因（dominant）が (2) Lie splitting 理論的下限
+    （asymptotic floor $\sim 1$）と (1) CLS 再初期化 cadence pollution（参照解と粗解で
+    総再初期化回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍異なる），副因（subdominant）が
+    (3) pressure-jump PPE の非線形結合と (4) BDF1 startup 起動誤差である．
     \begin{enumerate}\setlength{\itemsep}{0pt}
       \item \textbf{CLS 再初期化 cadence pollution（Ax2: operator splitting 誤差）}：
             参照解 ($n_{\mathrm{ref}}=64$) と粗解 ($n_{\mathrm{step}}\in\{8,16,32\}$) は
             \texttt{reinit\_every=1} (step 単位) のため，
             \textbf{総再初期化回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍} 異なる．
             参照解差には BDF2 truncation だけでなく reinitialization cadence 差
-            が混入する（実測コード上 \texttt{ch14\_stack\_common.py:67} で
-            \texttt{every\_steps} = step-cadence integer）．
+            が混入する（実測コード上 \texttt{ch14\_stack\_common.py} の reinit schedule
+            が \texttt{every\_steps} = step-cadence integer として定義されているため）．
             これは Richardson 解析の前提条件
             \emph{単一誤差源と漸近 regime}~\cite{Roy2003}\ に違反する．
       \item \textbf{interface (TVD--RK3 3 次) と momentum (IMEX-BDF2 2 次) の Lie splitting
