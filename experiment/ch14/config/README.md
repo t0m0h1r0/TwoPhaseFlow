@@ -14,10 +14,18 @@ A fourth checked-in YAML is a bounded GPU-utilization probe:
   production stack can keep the GPU saturated without making the full
   `T=35` capillary benchmark prohibitively long.
 
+A fifth checked-in YAML is the post-sign-fix N=32 regression probe:
+
+- `ch14_capillary_n32_t10_oriented_affine.yaml` — capillary-wave
+  `affine_jump` route at `32×32`, `T=10`; used to verify that the oriented
+  Young--Laplace jump reaches the requested time without the previous
+  wrong-sign blow-up.
+
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
 - `python experiment/run.py --config ch14_capillary_gpu90_affine`
+- `python experiment/run.py --config ch14_capillary_n32_t10_oriented_affine`
 - `python experiment/run.py --config ch14_rising_bubble`
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
