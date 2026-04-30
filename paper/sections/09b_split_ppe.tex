@@ -405,7 +405,7 @@ $[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2 J_p^\chi$
   J_{ss} \equiv \partial_s^2 J_p^\chi
   \label{eq:kappa_s_def}
 \end{equation}
-に縮退する（高次項 $\Ord{(h\kappa)^2}$ を含む詳細は
+に縮退する（高次項 $\Ord{(h\kappa_{lg})^2}$ を含む詳細は
 Liu--Fedkiw--Kang~\cite{Fedkiw1999} Appendix A の Laplace--Beltrami 分解と整合）．
 本稿はこの $J_{ss}$ を分相 PPE の界面 BC 補正項として用いる．
 
@@ -582,7 +582,7 @@ CSF 体積力の評価位置ずれだけではなく，鋭い Young--Laplace
 別検証ゲートに残る．PPE には
 \texttt{InterfaceStressContext} として
 \texttt{pressure\_jump\_gas\_minus\_liquid}$=j_{gl}$ を渡し，
-raw な $\sigma\kappa$ は保存しない．この契約は毛管波専用ではなく，
+raw な $\sigma\kappa_{lg}$ は保存しない．この契約は毛管波専用ではなく，
 静止液滴・上昇気泡・平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
