@@ -87,6 +87,9 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
         （Type-A revised criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
         FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
+  \item TGV 渦度場 snapshot（\autoref{fig:V1_tgv_vorticity}）は，
+        $t=0,25,50$ で 4 渦対 checkerboard 構造が粘性減衰係数 $e^{-2\nu t}$ に沿って
+        振幅を失う様子を可視化し，理論減衰係数との一致 $\Ord{10^{-3}}$ を裏付ける．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I}，\autoref{ch:time_integration} の時間離散，
 \autoref{sec:ppe_solve} の PPE 射影に対し，TGV のエネルギー減衰と非圧縮残差を測定する．
@@ -157,5 +160,9 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
         Kovasznay 統合 residual の observed order である．
   \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，
         Kovasznay 解の非圧縮性は CCD 演算子上でも十分保たれる．
+  \item Kovasznay 2D 場（\autoref{fig:V2_kovasznay_field}）の log-scale residual / divergence
+        パネルは，wall 近傍 one-sided CCD stencil による境界層と bulk における
+        $10^{-9}$--$10^{-13}$ までの sink 構造を直接示しており，
+        wall 境界閉包・圧力・非線形項を含む統合 residual の収束性を裏付ける．
 \end{itemize}
 検証対応：式~\eqref{eq:CCD_I} に対し，Kovasznay 解の 2D 空間残差を測定する．
