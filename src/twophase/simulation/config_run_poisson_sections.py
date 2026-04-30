@@ -42,9 +42,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         _POISSON_COEFFICIENTS,
         layout["paths"]["poisson_coefficient"],
     )
-    coupling_default = (
-        "jump_decomposition" if poisson_coefficient == "phase_separated" else "none"
-    )
+    coupling_default = "affine_jump" if poisson_coefficient == "phase_separated" else "none"
     poisson_interface_coupling = validate_choice(
         _POISSON_INTERFACE_COUPLING_ALIASES.get(
             str(poisson_operator.get("interface_coupling", coupling_default)).strip().lower(),
