@@ -1,0 +1,12 @@
+{
+  "branch": "ra-src-refactor-gpu-opt-20260501",
+  "branch_slug": "ra-src-refactor-gpu-opt-20260501",
+  "session_id": "2EAA049B-97A3-4117-8A21-178DF032D06C",
+  "worktree_path": ".claude/worktrees/ra-src-refactor-gpu-opt-20260501",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-SRC",
+  "acquired_at": "2026-04-30T23:41:03Z",
+  "expires_at": "2026-05-01T23:41:03Z",
+  "meta_version": "7.1.0",
+  "scope": "src/twophase refactoring and GPU optimization"
+}
