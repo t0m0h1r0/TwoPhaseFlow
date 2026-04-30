@@ -16,7 +16,7 @@
 本節は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
 粘性項 $\bnabla\cdot(2\mu\bm{D})$ を，変粘性二相流の Layer A/B/C 構造として
 離散化する設計を示す．界面の応力ジャンプ条件（式~\eqref{eq:jump_stress}：
-$[(-p\mathbf{I}+\bm\tau)\hat{\bm n}_{lg}]_\Gamma = \sigma\kappa_{lg}\hat{\bm n}_{lg}$；接線成分は $[\tau_{xy}]_\Gamma=0$）が
+$[-p\mathbf{I}+\mu_k(\bnabla\bm{u}+\bnabla\bm{u}^T)]_\Gamma\!\cdot\hat{\bm n}_{lg} = \sigma\kappa_{lg}\hat{\bm n}_{lg}$；接線成分は $[\tau_{xy}]_\Gamma=0$）が
 3 層分解の設計根拠であり，$\mu\nabla^2\bm{u}$ 直接離散が禁じられる物理的理由となる
 （変粘性ジャンプの GFM/IIM 系の取り扱いは~\cite{Kang2000,Sussman2000} を参照）．
 
