@@ -1,0 +1,12 @@
+{
+  "branch": "ra-src-paper-audit-20260430",
+  "branch_slug": "ra-src-paper-audit-20260430",
+  "session_id": "13B98212-4F17-4604-894F-0A01E85A4CEB",
+  "worktree_path": ".claude/worktrees/ra-src-paper-audit-20260430",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-SRC",
+  "acquired_at": "2026-04-30T09:23:54Z",
+  "expires_at": "2026-05-01T09:23:54Z",
+  "meta_version": "7.1.0",
+  "scope": "src-to-paper numerical fidelity and nonuniform-grid combination audit"
+}
