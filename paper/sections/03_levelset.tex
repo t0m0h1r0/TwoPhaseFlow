@@ -17,7 +17,7 @@
         界面幅パラメータ $\varepsilon$ の設定指針を述べる．
   \item \textbf{§~\ref{sec:levelset_mapping}（$\psi$--$\phi$ 対応）：}
         ロジット解析逆変換（$\psi \to \phi$）の実装と，
-        Extension PDE で必要な法線計算 $\hat{\bm{n}} = \bnabla\phi/|\bnabla\phi|$ への応用を示す．
+        Extension PDE で必要な法線計算 $\hat{\bm{n}}_{lg} = \bnabla\phi/|\bnabla\phi|$ への応用を示す．
   \item \textbf{§~\ref{sec:curvature_direct_psi_cls}（曲率の直接計算）：}
         ロジット逆変換を省略して $\psi$ 微分から曲率を直接求める高効率手法と
         その数値安定性を述べる．
@@ -97,7 +97,7 @@ CLS 法がどのようにそれを解決するかを段階的に示す．
 Eikonal 条件の崩れ $|\bnabla\phi|\neq 1$ は，幾何量の精度に直結する：
 \begin{enumerate}
   \item \textbf{法線ベクトルの精度低下：}
-        $\hat{\bm n} = \bnabla\phi/|\bnabla\phi|$ の計算で，
+        $\hat{\bm n}_{lg} = \bnabla\phi/|\bnabla\phi|$ の計算で，
         $|\bnabla\phi|$ が 1 から大きく外れると，
         法線方向が不正確になる．
   \item \textbf{曲率の誤計算（致命的）：}

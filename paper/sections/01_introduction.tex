@@ -11,7 +11,7 @@
 それらのうち最も根本的かつ克服が難しいのが
 \textbf{寄生流れ（spurious currents）}——静止すべき液滴界面に現れる人工的な渦流れ——である~\cite{Popinet2009, Francois2006}．
 従来の CSF（連続表面力）モデル~\cite{Brackbill1992} では，表面張力を体積力として近似するため
-界面幅パラメータ $\varepsilon$（CLS 推奨スケーリング $\varepsilon = \varepsilon_\xi\, h_{\min}$，$\varepsilon_\xi=O(1)$；§~\ref{sec:reinit} で具体化）に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り，
+界面幅パラメータ $\varepsilon$（CLS 推奨スケーリング $\varepsilon = C_\varepsilon\,\Delta x_{\min}$，$C_\varepsilon \approx 1.0$~$2.0$；§~\ref{sec:reinit} で具体化）に起因する $\Ord{\varepsilon^2} \approx \Ord{h^2}$ のモデル誤差が残り，
 格子を細分化しても寄生流れの下限が消えない~\cite{Popinet2009}
 （§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
@@ -162,7 +162,7 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(-\
         曲率計算精度が低下する．
 
   \item \textbf{表面張力の正確な評価}：
-        表面張力 $\sigma\kappa\hat{\bm n}$ は本来「界面上の面力（2次元面力）」であり，
+        表面張力 $\sigma\kappa_{lg}\hat{\bm n}_{lg}$ は本来「界面上の面力（2次元面力）」であり，
         体積方程式（Navier--Stokes）に直接組み込めない．
         曲率 $\kappa$ の計算には二階偏微分が必要となり，数値誤差が増幅されやすい．
         デルタ関数的な集中力をどう離散化するかが精度を決定する．
