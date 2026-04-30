@@ -129,8 +129,16 @@ def test_initial_condition_builder_gpu_matches_cpu(tiny_grid_factory, cpu_backen
 
     psi_cpu = builder.build(grid_cpu, eps=0.02)
     psi_gpu = builder.build(grid_gpu, eps=0.02)
+    psi_gpu_dev = builder.build(grid_gpu, eps=0.02, return_host=False)
 
     np.testing.assert_allclose(psi_gpu, psi_cpu, rtol=1e-12, atol=1e-13)
+    assert type(psi_gpu_dev).__module__.split(".", 1)[0] == "cupy"
+    np.testing.assert_allclose(
+        gpu_backend.to_host(psi_gpu_dev),
+        psi_cpu,
+        rtol=1e-12,
+        atol=1e-13,
+    )
 
 
 def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
@@ -205,3 +213,30 @@ def test_ppe_fvm_builder_gpu_matches_cpu(cpu_backend, gpu_backend):
     A_gpu = sp.csr_matrix((data_h, (rows_h, cols_h)), shape=(n, n)).toarray()
 
     np.testing.assert_allclose(A_gpu, A_cpu, rtol=1e-10, atol=1e-15)
+
+
+def test_fccd_matrixfree_phase_density_keeps_gpu_density_device(
+    tiny_grid_factory,
+    gpu_backend,
+):
+    """phase_density FCCD PPE must not materialize full rho/dV host caches."""
+    from types import SimpleNamespace
+
+    from twophase.ccd.fccd import FCCDSolver
+    from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+
+    grid = tiny_grid_factory(gpu_backend, N=16)
+    ccd = CCDSolver(grid, gpu_backend, bc_type="wall")
+    fccd = FCCDSolver(grid, gpu_backend, bc_type="wall", ccd_solver=ccd)
+    cfg = SimpleNamespace(
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        ppe_preconditioner="none",
+    )
+    ppe = PPESolverFCCDMatrixFree(gpu_backend, cfg, grid, fccd)
+    rho = gpu_backend.xp.ones(grid.shape, dtype=gpu_backend.xp.float64)
+
+    ppe.prepare_operator(rho)
+
+    assert ppe._rho is None
+    assert ppe._cell_volume_host is None

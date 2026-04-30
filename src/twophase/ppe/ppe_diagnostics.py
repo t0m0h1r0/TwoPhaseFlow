@@ -6,7 +6,6 @@ of the solve pipeline. They are expensive (recompute full CCD operator).
 """
 
 from __future__ import annotations
-import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -42,21 +41,21 @@ def ccd_ppe_residual(
     residual : float — L2 norm of the residual
     """
     xp = backend.xp
-    rho_dev = xp.asarray(backend.to_host(rho))
+    rho_dev = xp.asarray(rho)
     drho = []
     for ax in range(ndim):
         drho_ax, _ = ccd.differentiate(rho_dev, ax)
         drho.append(drho_ax)
 
-    p_dev = xp.asarray(backend.to_host(p))
+    p_dev = xp.asarray(p)
     Lp = xp.zeros(grid_shape, dtype=p_dev.dtype)
     for ax in range(ndim):
         dp_ax, d2p_ax = ccd.differentiate(p_dev, ax)
         Lp += d2p_ax / rho_dev - (drho[ax] / rho_dev ** 2) * dp_ax
 
-    rhs_dev = xp.asarray(backend.to_host(rhs))
+    rhs_dev = xp.asarray(rhs)
     residual = Lp - rhs_dev
     pin_dof = bc_spec.pin_dof
-    residual_arr = np.asarray(backend.to_host(residual))
-    residual_arr.ravel()[pin_dof] = 0.0
-    return float(np.sqrt(np.sum(residual_arr ** 2)))
+    residual_flat = residual.ravel()
+    residual_flat[pin_dof] = 0.0
+    return float(backend.asnumpy(xp.sqrt(xp.sum(residual_flat ** 2))))

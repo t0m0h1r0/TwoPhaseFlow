@@ -43,10 +43,11 @@ def refresh_fccd_matrixfree_grid(solver, grid=None) -> None:
 def prepare_fccd_matrixfree_operator(solver, rho) -> None:
     """Cache density and optional diagonal preconditioner."""
     solver._rho_dev = solver.xp.asarray(rho)
-    if (
-        solver.backend.is_gpu()
-        and getattr(solver, "interface_coupling_scheme", "none") == "affine_jump"
-    ):
+    needs_host_density = (
+        solver.coefficient_scheme == "phase_separated"
+        and getattr(solver, "interface_coupling_scheme", "none") != "affine_jump"
+    )
+    if solver.backend.is_gpu() and not needs_host_density:
         solver._rho = None
     else:
         solver._rho = np.asarray(solver.backend.to_host(solver._rho_dev))
@@ -106,6 +107,10 @@ def refresh_fccd_phase_mean_gauge_cache(solver) -> None:
         cell_volume=solver._cell_volume,
         phase_threshold=solver._phase_threshold,
     )
+    if solver._cell_volume_host is None:
+        solver._cell_volume_host = np.asarray(
+            solver.backend.to_host(solver._cell_volume)
+        )
     solver._phase_mean_gauge_cache_host = build_fccd_phase_mean_gauge_cache(
         xp=np,
         rho=solver._rho,
@@ -121,4 +126,4 @@ def refresh_fccd_geometry_cache(solver) -> None:
     solver._node_width = cache.node_width
     solver._node_width_inv = [1.0 / width for width in cache.node_width]
     solver._cell_volume = cache.cell_volume
-    solver._cell_volume_host = np.asarray(solver.backend.to_host(cache.cell_volume))
+    solver._cell_volume_host = None if solver.backend.is_gpu() else cache.cell_volume
