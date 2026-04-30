@@ -1,4 +1,4 @@
-# Wiki Index — 224 entries
+# Wiki Index — 225 entries
 
 ## Theory (77)
 
@@ -82,7 +82,7 @@
 | [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
 | [WIKI-T-077](theory/WIKI-T-077.md) | Capillary Energy Stability: Variational Geometry and Projection-Native Surface Tension |
 
-## Cross-Domain (38)
+## Cross-Domain (39)
 
 | REF-ID | Title |
 |--------|-------|
@@ -124,6 +124,7 @@
 | [WIKI-X-036](cross-domain/WIKI-X-036.md) | Stage-Split Buoyancy Predictor Redesign: Vertical Assembly Repair and V(u_pred)-Stage Horizontal Coupling |
 | [WIKI-X-037](cross-domain/WIKI-X-037.md) | ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
+| [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 
 ## Experiment (32)
 
