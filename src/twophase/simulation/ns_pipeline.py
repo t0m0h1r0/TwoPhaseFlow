@@ -113,9 +113,13 @@ class TwoPhaseNSSolver:
         use_gpu: bool | None = None,
         alpha_grid: float = 1.0,
         fitting_axes: tuple[bool, bool] = (True, True),
+        fitting_alpha_grid: tuple[float, float] | None = None,
         eps_g_factor: float = 2.0,
+        fitting_eps_g_factor: tuple[float, float] | None = None,
         eps_g_cells: float | None = None,
+        fitting_eps_g_cells: tuple[float | None, float | None] | None = None,
         dx_min_floor: float = 1e-6,
+        fitting_dx_min_floor: tuple[float, float] | None = None,
         use_local_eps: bool = False,
         eps_xi_cells: float | None = None,
         grid_rebuild_freq: int = 1,
@@ -180,10 +184,30 @@ class TwoPhaseNSSolver:
                 use_gpu=use_gpu,
                 alpha_grid=alpha_grid,
                 fitting_axes=fitting_axes,
+                fitting_alpha_grid=(
+                    fitting_alpha_grid
+                    if fitting_alpha_grid is not None
+                    else tuple(alpha_grid if axis else 1.0 for axis in fitting_axes)
+                ),
                 eps_factor=eps_factor,
                 eps_g_factor=eps_g_factor,
+                fitting_eps_g_factor=(
+                    fitting_eps_g_factor
+                    if fitting_eps_g_factor is not None
+                    else (eps_g_factor, eps_g_factor)
+                ),
                 eps_g_cells=eps_g_cells,
+                fitting_eps_g_cells=(
+                    fitting_eps_g_cells
+                    if fitting_eps_g_cells is not None
+                    else (eps_g_cells, eps_g_cells)
+                ),
                 dx_min_floor=dx_min_floor,
+                fitting_dx_min_floor=(
+                    fitting_dx_min_floor
+                    if fitting_dx_min_floor is not None
+                    else (dx_min_floor, dx_min_floor)
+                ),
                 use_local_eps=use_local_eps,
                 eps_xi_cells=eps_xi_cells,
             ),

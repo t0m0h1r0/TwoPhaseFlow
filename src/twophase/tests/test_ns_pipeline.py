@@ -482,12 +482,16 @@ def test_gridcfg_parse_alpha_grid():
         "cells": [64, 64],
         "domain": {"size": [1.0, 1.0], "boundary": "wall"},
         "distribution": {
-            "type": "interface_fitted",
-            "method": "gaussian_levelset",
-            "alpha": 3.0,
-            "axes": ["y"],
-            "eps_g_factor": 4.0,
             "schedule": "static",
+            "axes": {
+                "x": {"type": "uniform"},
+                "y": {
+                    "type": "interface_fitted",
+                    "method": "gaussian_levelset",
+                    "alpha": 3.0,
+                    "eps_g_factor": 4.0,
+                },
+            },
         },
     }
     interface = {
@@ -496,7 +500,9 @@ def test_gridcfg_parse_alpha_grid():
     g = _parse_grid(grid, interface)
     assert g.alpha_grid == 3.0
     assert g.fitting_axes == (False, True)
-    assert g.eps_g_factor == 4.0
+    assert g.fitting_alpha_grid == (1.0, 3.0)
+    assert g.eps_g_factor == 2.0
+    assert g.fitting_eps_g_factor == (2.0, 4.0)
     assert g.dx_min_floor == 1e-6  # default
 
 

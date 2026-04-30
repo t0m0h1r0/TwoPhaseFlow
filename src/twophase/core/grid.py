@@ -101,7 +101,7 @@ class Grid:
         Internally converts ψ → φ via logit inversion, then applies the
         paper's Gaussian grid density (§6 eq:grid_delta):
             δ*(φ) = exp(−φ²/ε_g²) / (ε_g√π),  ε_g = eps_g_factor × ε
-            ω = 1 + (α−1) · δ*(φ̄)
+            ω_a = 1 + (α_a−1) · δ*(φ̄_a)
         on axes enabled by ``grid_config.fitting_axes``. Disabled axes are kept
         exactly uniform, giving a separable map
         ``x_a = X_a(ξ_a)`` for active axes and ``x_a = L_a ξ_a`` otherwise.
@@ -126,25 +126,27 @@ class Grid:
 
         xp = self.backend.xp
 
-        dx_floor = self._gc.dx_min_floor
-        # eps_g: ξ空間セル数指定時は軸ごとに L[ax]/N[ax] ベース (WIKI-T-039 fix)
-        eps_g_cells = self._gc.eps_g_cells
-        eps_g_default = self._gc.eps_g_factor * eps if eps_g_cells is None else None
+        fitting_alpha = tuple(float(value) for value in self._gc.fitting_alpha_grid)
+        fitting_eps_factor = tuple(float(value) for value in self._gc.fitting_eps_g_factor)
+        fitting_eps_cells = tuple(self._gc.fitting_eps_g_cells)
+        fitting_dx_floor = tuple(float(value) for value in self._gc.fitting_dx_min_floor)
 
         # ψ → φ (logit inversion) on the active backend. We only materialise
         # the final 1-D per-axis coordinates on host for metric construction.
         phi = invert_heaviside(xp, xp.asarray(psi_data), eps)
 
         for ax in range(self.ndim):
-            if not fitting_axes[ax]:
+            alpha_axis = fitting_alpha[ax]
+            if not fitting_axes[ax] or alpha_axis <= 1.0:
                 self._reset_axis_to_uniform(ax)
                 continue
 
+            eps_g_cells = fitting_eps_cells[ax]
             if eps_g_cells is not None:
                 h_uniform = self._gc.L[ax] / self._gc.N[ax]
                 eps_g = eps_g_cells * h_uniform
             else:
-                eps_g = eps_g_default
+                eps_g = fitting_eps_factor[ax] * eps
 
             # 1-D marginal: min |φ| over other axes (§6 φ̄^x_i = min_j |φ_{i,j}|)
             axes_other = tuple(a for a in range(self.ndim) if a != ax)
@@ -157,7 +159,7 @@ class Grid:
             # NOTE: ディラックデルタ正規化因子 1/(ε_g√π) は除去する.
             # 正規化すると ピーク = 1/(ε_g√π) >> 1 となり ω >> α になる (unbounded bug).
             indicator_1d = np.exp(-(phi_1d_h ** 2) / (eps_g ** 2))
-            omega = 1.0 + (alpha - 1.0) * indicator_1d      # ω ∈ [1, α]
+            omega = 1.0 + (alpha_axis - 1.0) * indicator_1d  # ω ∈ [1, α_a]
 
             # Equidistribution on the physical old coordinate:
             #     ∫_0^{x_i} ω_a(s) ds = i/N_a ∫_0^L ω_a(s) ds.
@@ -172,7 +174,11 @@ class Grid:
             coords_ax_h[-1] = self._gc.L[ax]
 
             cell_dx = np.diff(coords_ax_h)
-            cell_dx = self._apply_cell_width_floor(cell_dx, dx_floor, self._gc.L[ax])
+            cell_dx = self._apply_cell_width_floor(
+                cell_dx,
+                fitting_dx_floor[ax],
+                self._gc.L[ax],
+            )
             coords_ax_h = np.zeros(self._gc.N[ax] + 1, dtype=float)
             coords_ax_h[1:] = np.cumsum(cell_dx)
             coords_ax_h[-1] = self._gc.L[ax]

@@ -42,13 +42,21 @@ class GridConfig:
     alpha_grid: float = 1.0
     # 界面適合を適用する軸マスク (x, y[, z]); False の軸は一様格子を保持
     fitting_axes: Optional[Tuple[bool, ...]] = None
+    # 軸ごとの界面適合強度 α_a; None なら alpha_grid を active 軸へ適用
+    fitting_alpha_grid: Optional[Tuple[float, ...]] = None
     # セル幅の下限（CCD条件数を防ぐためのフロア値）
     dx_min_floor: float = 1e-6
+    # 軸ごとのセル幅下限; None なら dx_min_floor を全軸へ適用
+    fitting_dx_min_floor: Optional[Tuple[float, ...]] = None
     # ガウス型グリッド密度関数の幅: ε_g = eps_g_factor × ε（§6 eq:grid_delta）; 推奨 2–4
     eps_g_factor: float = 2.0
+    # 軸ごとの ε_g factor; None なら eps_g_factor を全軸へ適用
+    fitting_eps_g_factor: Optional[Tuple[float, ...]] = None
     # ξ空間セル数で格子密度幅を指定: ε_g = eps_g_cells × (L/N).
     # 設定時は eps_g_factor を上書き. CCD解像に ≥ 4 が必要 (WIKI-T-039).
     eps_g_cells: Optional[float] = None
+    # 軸ごとの eps_g_cells; None 要素は fitting_eps_g_factor 経路を使う
+    fitting_eps_g_cells: Optional[Tuple[Optional[float], ...]] = None
 
     def __post_init__(self) -> None:
         assert self.ndim in (2, 3), f"ndim は 2 か 3 でなければならない: {self.ndim}"
@@ -64,14 +72,58 @@ class GridConfig:
             f"len(fitting_axes)={len(self.fitting_axes)} は ndim={self.ndim} と一致しなければならない"
         )
         self.fitting_axes = tuple(bool(enabled) for enabled in self.fitting_axes)
+        if self.fitting_alpha_grid is None:
+            self.fitting_alpha_grid = tuple(
+                float(self.alpha_grid) if enabled else 1.0
+                for enabled in self.fitting_axes
+            )
+        self.fitting_alpha_grid = self._float_tuple(
+            self.fitting_alpha_grid,
+            "fitting_alpha_grid",
+        )
+        self.alpha_grid = max(self.fitting_alpha_grid)
+        if self.fitting_dx_min_floor is None:
+            self.fitting_dx_min_floor = tuple(
+                float(self.dx_min_floor) for _axis in range(self.ndim)
+            )
+        self.fitting_dx_min_floor = self._float_tuple(
+            self.fitting_dx_min_floor,
+            "fitting_dx_min_floor",
+        )
+        if self.fitting_eps_g_factor is None:
+            self.fitting_eps_g_factor = tuple(
+                float(self.eps_g_factor) for _axis in range(self.ndim)
+            )
+        self.fitting_eps_g_factor = self._float_tuple(
+            self.fitting_eps_g_factor,
+            "fitting_eps_g_factor",
+        )
+        if self.fitting_eps_g_cells is None:
+            self.fitting_eps_g_cells = tuple(
+                self.eps_g_cells for _axis in range(self.ndim)
+            )
+        assert len(self.fitting_eps_g_cells) == self.ndim, (
+            f"len(fitting_eps_g_cells)={len(self.fitting_eps_g_cells)} は "
+            f"ndim={self.ndim} と一致しなければならない"
+        )
+        self.fitting_eps_g_cells = tuple(
+            None if cells is None else float(cells)
+            for cells in self.fitting_eps_g_cells
+        )
         if self.alpha_grid > 1.0:
             assert any(self.fitting_axes), (
                 "alpha_grid > 1.0 では少なくとも 1 軸の fitting_axes が必要"
             )
-        if self.eps_g_cells is not None:
-            assert self.eps_g_cells >= 4.0, (
-                f"eps_g_cells={self.eps_g_cells} は CCD 解像に 4 以上が必要"
+        for eps_g_cells in self.fitting_eps_g_cells:
+            assert eps_g_cells is None or eps_g_cells >= 4.0, (
+                f"eps_g_cells={eps_g_cells} は CCD 解像に 4 以上が必要"
             )
+
+    def _float_tuple(self, values: Tuple[float, ...], name: str) -> Tuple[float, ...]:
+        assert len(values) == self.ndim, (
+            f"len({name})={len(values)} は ndim={self.ndim} と一致しなければならない"
+        )
+        return tuple(float(value) for value in values)
 
 
 @dataclass

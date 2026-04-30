@@ -770,6 +770,32 @@ def test_interface_fitting_axes_parse():
         "grid": {"distribution": {"type": "interface_fitted", "alpha": 2.0, "axes": ["y"]}},
     }))
     assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
+
+
+def test_axis_local_interface_fitting_parse():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "distribution": {
+                "schedule": "static",
+                "axes": {
+                    "x": {"type": "uniform"},
+                    "y": {
+                        "type": "interface_fitted",
+                        "method": "gaussian_levelset",
+                        "alpha": 2.5,
+                        "eps_g_factor": 3.0,
+                        "dx_min_floor": 2.0e-6,
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.grid.alpha_grid == 2.5
+    assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.fitting_alpha_grid == (1.0, 2.5)
+    assert cfg.grid.fitting_eps_g_factor == (2.0, 3.0)
+    assert cfg.grid.fitting_dx_min_floor == (1.0e-6, 2.0e-6)
 
 
 def test_invalid_interface_fitting_method_rejected():
