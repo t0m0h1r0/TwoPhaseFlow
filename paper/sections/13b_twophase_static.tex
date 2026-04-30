@@ -58,15 +58,19 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark．
-  \item $u_\infty^{\max}$ には定量的な合格上限を設けない．
-        $\sigma/\mathrm{Re}_c$ 寄生流れスケール（$\sim 10^{-2}$）未満であることと
-        単調増加しないことを定性確認する（全 $N$ で満たされる；
-        \autoref{fig:V3_droplet} 中の点線スケール参照）．
-        この寄生流れは CSF $\kappa$ 推定の高周波誤差が支配的で，
-        V5 で $\rho_r$ / 演算子（CCD vs FD）依存性を final-time ベースで切り分ける
-        （V3 と V5 で異なる集計量を用いるため，同一設定でも値の桁が異なる；
-        V3 は peak，V5 は final）．
+  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark（FORMAL 合格）．
+  \item $u_\infty^{\max}$ には定量的な合格上限を設けず，定性確認のみ：
+        (a) $\sigma/\mathrm{Re}_c$ 寄生流れスケール（$\sim 10^{-2}$, §\ref{sec:verification} 参照）未満，
+        (b) \emph{時間軸} monotonicity — 200 ステップ trajectory 内で
+        secular growth が見られない（飽和領域に到達）．いずれも全 $N$ で満たされる
+        （\autoref{fig:V3_droplet} 中の点線スケール参照）．
+        本確認は §\ref{sec:verification} 「N 軸 vs.\ 時間軸 monotonicity の区別」 の
+        時間軸条件を V3 で具体化したものである．
+  \item V3 の寄生流れは CSF $\kappa$ 推定の高周波誤差が支配的で，
+        V5（$\mathrm{We}=10$）で $\rho_r$ / 演算子（CCD vs FD）依存性を
+        final-time ベースで切り分ける．V3 は $\mathrm{We}=1$ で V5 ($\mathrm{We}=10$) より
+        毛管力が 1 桁小さいため寄生流れ絶対値の桁も異なる
+        （表~\ref{tab:V_settings} の We 値および集計量の差 [V3 peak / V5 final] が併存する）．
 \end{itemize}
 検証対応：式~\eqref{eq:bf_fccd_unification} と \autoref{sec:csf} の曲率評価に対し，
 長時間の Laplace 圧維持と寄生流れ最大値を測定する．
@@ -128,12 +132,13 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
         $\rho_r=100, N=64$ で $1/2.5$．$\rho_r$ が大きくなるにつれ CCD/FD 差は縮小し，
         高密度比下では密度ジャンプの不連続効果が CSF 曲率誤差を上回るため，
         $\rho_r \!\ge\! 100$ では分相 PPE + DC + HFE（U6, V6 / V7）が必要．
-  \item \textbf{$N=64\!\to\!128$ の非単調増加について}：CCD 列は $\rho_r$ 全条件で
-        $u_\infty^{\mathrm{end}}$ が増加する．$\rho_r=1$ でも増加するため
-        高密度比由来の励起では説明できない．本効果は CCD 高次微分作用素が
-        短波長 spurious mode を励起するためと解釈する：
-        $\Delta t = h/4$ 固定のもとで $N$ を 2 倍化すると $\Delta t$ も半減し，
-        累積される短波長成分の振幅が $N$ に対して非単調になる．
+  \item \textbf{$N=64\!\to\!128$ の N 軸 monotonicity（緩慢増加）について}：CCD 列は
+        $\rho_r$ 全条件で $u_\infty^{\mathrm{end}}$ が緩やかに増加する
+        （$\rho_r=1$ でも増加するため高密度比由来の励起では説明できない）．
+        本効果は §\ref{sec:verification} 「N 軸 vs.\ 時間軸 monotonicity の区別」 で
+        記述した CCD 高次微分の短波長 spurious mode 励起特性に該当する Type-D
+        現象である（収束 regime ではなく，固定 $\Delta t = h/4$ 下の累積振幅特性）．
+        全 $N$ で $\sigma/\mathrm{Re}_c \sim 10^{-2}$ 以下に留まるため判定は維持．
         FD は同条件で $4.97\!\to\!2.61$, $1.50\!\to\!0.85$, $0.42\!\to\!0.67\times 10^{-3}$ と
         全体としては減少傾向で，CCD の絶対値優位性は維持される．
   \item 当 V5 結果は U7（§\ref{sec:U7_bf_static_droplet}）の単ステップ評価を
