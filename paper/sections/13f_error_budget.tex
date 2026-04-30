@@ -54,7 +54,7 @@ V2 & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{3.95}$ \ch
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$; $u_\infty^{\max}$ 定性スケール確認 & $0.97\%$ \checkmark & — \\
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\max}/\|\bm U\|$ & $2.63$ \checkmark (Type-A; 運用上限 $<3$) & $O(1)$ 正規化残差 \\
 V5   & 寄生流れ 200 step (CCD 主) & CCD $u_\infty^{\mathrm{end}}$ at $\rho_r=1, N=32$ & $1.76\!\times\!10^{-2}$ \checkmark (Type-A; FD 比 $1/5.85$ 補助) & — \\
-V6   & 密度比 sweep ($\rho_r{=}2..833$) & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ & $1.07\!\times\!10^{-1}$ ($\rho_r{=}833$, $N{=}32$; 補正圧) \checkmark & — \\
+V6   & 密度比 sweep ($\rho_r{=}2..833$) & ブローアップなし; $|\Delta V_\psi|/V_{\psi,0}$ & 全 8 ケース安定; $\le 2.4\!\times\!10^{-10}$ \checkmark（補助: $|\Delta p_{\mathrm{corr}}|/(\sigma/r){=}1.07\!\times\!10^{-1}$） & — \\
 V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ Type-D; Lie 1 次分割漸近 slope $\sim 1$ 実質上回り) & $O(\Delta t^2)$ \\
 V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.75\%$ \checkmark & — \\
 V9   & local $\varepsilon$ (§14) & C/A, C/B at $N=32$ & C/A=$0.11$, C/B=$0.15$ ($\checkmark$) & — \\
