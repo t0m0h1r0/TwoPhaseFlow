@@ -48,8 +48,8 @@ HFE によるジャンプ補正済み Hermite 延長 &
 求解コスト & 高次 target operator を直接解くと重く，低次 solve だけでは精度が足りない &
 DC $k=3$: 高次評価 $L_H$ + base solve $L_L$ &
 CCD-LU は smooth manufactured/component reference に限定 \\
-零モード・再投影 & 相別 Neumann null と再メッシュ PPE への jump 持ち込みが人工エネルギーを生む &
-相別平均ゲージと reproject PPE の jump-context 防護 &
+零モード・再投影 & affine 接続演算子の global null と再メッシュ PPE への jump 持ち込みが人工エネルギーを生む &
+大域ゲージと reproject PPE の jump-context 防護 &
 前ステップ $j_{gl}$ の再投影継承は禁止 \\
 \bottomrule
 \end{tabularx}
@@ -64,7 +64,7 @@ CCD-LU は smooth manufactured/component reference に限定 \\
   +\texttt{affine\_jump}
   +\mathrm{HFE}
   +\mathrm{DC}\ k=3
-  +\text{phase-mean gauge}
+  +\text{global gauge}
   }.
 \]
 ここで \texttt{affine\_jump} は毛管波専用の修正ではない．
