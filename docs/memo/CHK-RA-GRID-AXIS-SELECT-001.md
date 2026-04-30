@@ -73,9 +73,8 @@ interface field used by `grid.update_from_levelset`.
 Schedules then have the following meaning:
 
 ```text
-static:     build once from the initial tracked ψ,
-every_step: rebuild from the current tracked ψ after each physical step,
-every_N:    rebuild from the current tracked ψ on scheduled steps.
+0:     build once from the initial tracked ψ,
+N > 0: rebuild from the current tracked ψ every N physical steps.
 ```
 
 Because `M_a` is formed over `x_a`, dynamic rebuilds follow the physical
@@ -113,18 +112,20 @@ The new schema is:
 ```yaml
 grid:
   distribution:
-    schedule: static
+    method: gaussian_levelset
+    schedule: 0
     axes:
       x:
         type: uniform
       y:
         type: interface_fitted
-        method: gaussian_levelset
         alpha: 2.0
 ```
 
-Axis keys accept `x`, `y`, `z`, `0`, `1`, and `2`. Each fitted axis may override
-`alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`. The old compact
+Axis keys accept `x`, `y`, `z`, `0`, `1`, and `2`. `method` is global because
+it selects the monitor family; fitted axes may override only axis-local
+parameters such as `alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`.
+The old compact
 form remains accepted:
 
 ```yaml
@@ -137,8 +138,9 @@ grid:
 ```
 
 The `schedule` key is global because a grid rebuild is a mesh-wide remap event:
-`static` builds once from the initial tracked interface, `every_step` rebuilds
-after each step, and `every_N` rebuilds every N steps.
+`0` builds once from the initial tracked interface, and positive integer `N`
+rebuilds every N physical steps. Legacy aliases (`static`, `every_step`,
+`every_N`) remain accepted only as compatibility syntax.
 
 ## 7. Acceptance gates
 
@@ -175,6 +177,7 @@ make test PYTEST_ARGS="-k gridcfg_parse_alpha_grid"             PASS
 make test PYTEST_ARGS="-k readable_structured_sections_round_trip" PASS
 make test PYTEST_ARGS="-k interface_fitting_axis"               PASS
 make test PYTEST_ARGS="-k axis_local_interface_fitting_parse"   PASS
+make test PYTEST_ARGS="-k axis_local_interface_fitting"         PASS
 ```
 
 Remote capillary smoke:
@@ -191,7 +194,16 @@ After switching the canonical YAML to the axis-local map:
 
 ```text
 make cycle EXP=experiment/run.py ARGS="--config _tmp_ch14_capillary_axis_map_n32_t0p2"
-N=32, T=0.2, axes.y.alpha=2.0, schedule=static
+N=32, T=0.2, axes.y.alpha=2.0, schedule=0
+x: min Δx = max Δx = 0.0312500000
+y: min Δy = 0.0187673935, max Δy = 0.0370648490
+```
+
+After making `method` global and `schedule: 0` canonical:
+
+```text
+make cycle EXP=experiment/run.py ARGS="--config _tmp_ch14_capillary_schedule0_n32_t0p2"
+N=32, T=0.2, method=gaussian_levelset, schedule=0
 x: min Δx = max Δx = 0.0312500000
 y: min Δy = 0.0187673935, max Δy = 0.0370648490
 ```

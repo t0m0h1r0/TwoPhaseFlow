@@ -18,13 +18,13 @@ grid:
     size: [1.0, 1.0]
     boundary: wall
   distribution:
-    schedule: static
+    method: gaussian_levelset
+    schedule: 0
     axes:
       x:
         type: uniform
       y:
         type: interface_fitted
-        method: gaussian_levelset
         alpha: 2.0
 
 interface:

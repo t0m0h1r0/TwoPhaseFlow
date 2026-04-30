@@ -777,12 +777,12 @@ def test_axis_local_interface_fitting_parse():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {
             "distribution": {
-                "schedule": "static",
+                "method": "gaussian_levelset",
+                "schedule": 0,
                 "axes": {
                     "x": {"type": "uniform"},
                     "y": {
                         "type": "interface_fitted",
-                        "method": "gaussian_levelset",
                         "alpha": 2.5,
                         "eps_g_factor": 3.0,
                         "dx_min_floor": 2.0e-6,
@@ -796,6 +796,23 @@ def test_axis_local_interface_fitting_parse():
     assert cfg.grid.fitting_alpha_grid == (1.0, 2.5)
     assert cfg.grid.fitting_eps_g_factor == (2.0, 3.0)
     assert cfg.grid.fitting_dx_min_floor == (1.0e-6, 2.0e-6)
+    assert cfg.grid.grid_rebuild_freq == 0
+
+
+def test_axis_local_interface_fitting_method_rejected():
+    with pytest.raises(ValueError, match="method is global"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "distribution": {
+                    "axes": {
+                        "y": {
+                            "type": "interface_fitted",
+                            "method": "gaussian_levelset",
+                        },
+                    },
+                },
+            },
+        }))
 
 
 def test_invalid_interface_fitting_method_rejected():

@@ -61,7 +61,7 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         fitting_dx_min_floor=axis_distribution.fitting_dx_min_floor,
         use_local_eps=use_local_eps,
         eps_xi_cells=eps_xi_cells,
-        grid_rebuild_freq=parse_grid_rebuild(distribution.get("schedule", "static")),
+        grid_rebuild_freq=parse_grid_rebuild(distribution.get("schedule", 0)),
         interface_fitting_enabled=axis_distribution.enabled,
         interface_fitting_method=axis_distribution.method,
     )
@@ -201,7 +201,11 @@ def parse_interface_width_mode(
 
 
 def parse_grid_rebuild(raw: Any) -> int:
-    """Resolve interface-fitting rebuild schedule to the internal frequency."""
+    """Resolve grid rebuild schedule to an interval.
+
+    ``0`` means initial construction only; positive integers mean rebuild every
+    N physical steps. Legacy string aliases are retained for old YAMLs.
+    """
     if isinstance(raw, str):
         value = raw.strip().lower()
         if value in {"static", "initial", "initial_only", "never", "off"}:
@@ -349,12 +353,12 @@ def parse_axis_map_distribution(
             ("uniform", "interface_fitted"),
             f"grid.distribution.axes.{raw_axis}.type",
         )
-        method = normalize_interface_fitting_method(
-            spec.get(
-                "method",
-                default_method if axis_type == "interface_fitted" else "none",
+        if "method" in spec:
+            raise ValueError(
+                "grid.distribution.method is global; axis-local method is not supported "
+                f"(got grid.distribution.axes.{raw_axis}.method)"
             )
-        )
+        method = default_method if axis_type == "interface_fitted" else "none"
         if axis_type == "interface_fitted" and method != "none":
             fitting_axes[axis] = True
             methods[axis] = method

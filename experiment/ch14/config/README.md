@@ -103,25 +103,28 @@ time axes and should not be placed as sibling `run` knobs or mixed in one
 `grid.distribution` owns mesh non-uniformity:
 
 - `axes`: preferred axis-local map. Each axis declares `type` and, when fitted,
-  its own `method`, `alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`.
+  its own `alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`.
+- `method`: global fitting-monitor construction method. It is not axis-local;
+  all fitted axes share the same interface monitor family.
 - Legacy form remains accepted: top-level `type/method/alpha` plus
   `axes: [x]`, `[y]`, `[x, y]`, or omitted for all-axis fitting.
-- `schedule`: grid rebuild schedule (`static`, `every_step`, or `every_N`).
-  Static fitting uses the initial tracked interface field; dynamic schedules
-  rebuild the active-axis monitor from the current tracked interface field.
+- `schedule`: non-negative grid rebuild interval. `0` means initial tracked
+  interface only; `N > 0` rebuilds every N physical steps from the current
+  tracked interface. Legacy aliases `static`, `every_step`, and `every_N` are
+  still accepted.
 
 Canonical capillary-wave form:
 
 ```yaml
 grid:
   distribution:
-    schedule: static
+    method: gaussian_levelset
+    schedule: 0
     axes:
       x:
         type: uniform
       y:
         type: interface_fitted
-        method: gaussian_levelset
         alpha: 2.0
 ```
 
