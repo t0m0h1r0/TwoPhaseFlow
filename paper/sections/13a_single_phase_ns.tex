@@ -30,7 +30,7 @@ $L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 0.05$, 周期境界．
 \begin{table}[!ht]
 \caption{V1-a：CCD/PPE TGV の空間収束}
 \label{tab:V1_spatial}
-\PaperCaptionNote{$\Delta t=10^{-3}$ 固定．FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ に近い．}
+\PaperCaptionNote{$\Delta t=10^{-3}$ 固定．観測 slope $\mathbf{2.00}$（$N=48\!\to\!64$ finest local；asymptotic $1.997$ on $N=32\!\to\!64$）— FVM PPE 射影が支配し，速度誤差は実効 $O(h^2)$ trend に整合．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -39,6 +39,8 @@ $N$ & $E_{\mathrm{rel}}$ & $\|u-u_{\mathrm{exact}}\|_\infty$ & $\|\nabla\!\cdot 
 32 & $6.320\times 10^{-7}$ & $9.032\times 10^{-6}$ & $2.590\times 10^{-5}$ \\
 48 & $2.814\times 10^{-7}$ & $4.026\times 10^{-6}$ & $1.146\times 10^{-5}$ \\
 64 & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $6.438\times 10^{-6}$ \\
+\midrule
+finest local slope & $\mathbf{2.00}$ & --- & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -81,6 +83,10 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 現 V1 は FFT spectral projection ではなく，CCD 微分 + PPEBuilder 射影を用いるため，
         紙面主張と実装 identity は一致した．
+  \item 観測空間 slope は $\mathbf{2.00}$（$N=48\!\to\!64$ finest local；asymptotic
+        $1.997$ on $N=32\!\to\!64$）．FVM PPE 射影が支配する結合 stack に対する
+        revised criterion $O(h^2)$ trend に対して合格
+        （V1-a：Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
   \item 観測時間 slope は $\mathbf{1.00}$．本 script は old pressure を predictor に入れない
         standard projection であり，AB2+IPC 単体検証ではない．
         したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格

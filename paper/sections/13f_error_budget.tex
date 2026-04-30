@@ -41,14 +41,14 @@ future verification gate として扱う．
 \begin{table}[!ht]
 \caption{V1--V10：統合精度まとめ}
 \label{tab:v_accuracy_summary}
-\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．\textbf{主要指標欄の集約方針}：単軸サブテスト（V1-a/V1-b/V2/V4/V5/V6/V7/V8）は判定キー指標 1 種を集約；複数指標を併記する V3 は default 合格 (paper §13b) のため本表で代表 1 種＋補助メモ；多軸サブテスト V9 は §14 stack の C/A・C/B を併記，V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離した独立行とする（計 14 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．\textbf{Type ラベル不在行}（V1-a, V3, V6, V8, V9）は当初の設計基準（design criterion）をそのまま満たした合格であり，表~\ref{tab:V_verdict_types} の Type-A/B/D 再分類経路を経ない default 合格を示す．}
+\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．\textbf{主要指標欄の集約方針}：単軸サブテスト（V1-a/V1-b/V2/V4/V5/V6/V7/V8）は判定キー指標 1 種を集約；複数指標を併記する V3 は default 合格 (paper §13b) のため本表で代表 1 種＋補助メモ；多軸サブテスト V9 は §14 stack の C/A・C/B を併記，V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離した独立行とする（計 14 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．\textbf{Type ラベル不在行}（V3, V6, V8）は当初の設計基準（design criterion）をそのまま満たした合格であり，表~\ref{tab:V_verdict_types} の Type-A/B/D 再分類経路を経ない default 合格を示す． V9 は §14 stack（FCCD/HFE/pressure-jump PPE）との同時採用を条件とする conditional \checkmark であり，design criterion default 合格・Type-A/B/D 再分類のいずれとも独立した第四カテゴリ（§14 stack 条件付き合格）に属する（本節の判定論理は§\ref{sec:error_budget} 末尾「§14 stack 条件付き合格」項目を参照）．}
 \centering
 \PaperTableDenseSetup
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
 \toprule
 ID & 検証対象 & 主要指標 & 観測値 & 設計次数 \\
 \midrule
-V1-a & 単相 TGV 空間 & $E_{\mathrm{rel}}$, $N=64$ & $1.583\times 10^{-7}$ (表~\ref{tab:V1_spatial}) & $O(h^2)$ \\
+V1-a & 単相 TGV 空間 & slope($E_{\mathrm{rel}}, h$) & $\mathbf{2.00}$ \checkmark (Type-A; finest local $48\!\to\!64$；補助: $E_{\mathrm{rel}}=1.583\times 10^{-7}$ at $N=64$) & FVM PPE $O(h^2)$ \\
 V1-b & 単相 TGV 時間 (standard PPE) & slope($E_{\mathrm{rel}}, \Delta t$) & $\mathbf{1.00}$ \checkmark (Type-A) & std. PPE $O(\Delta t)$ \\
 V2 & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{3.95}$ \checkmark (Type-A) & wall residual $O(h^4)$ \\
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$; $u_\infty^{\max}$ 定性スケール確認 & $0.97\%$ \checkmark & — \\

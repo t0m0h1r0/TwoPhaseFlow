@@ -267,9 +267,11 @@ TVD-RK3 $\Ord{\Delta t^{3.01}}$，AB2+IPC $\Ord{\Delta t^{2.04}}$，CN ADI $\Ord
 
 第\ref{sec:verification}章の統合検証は 10 実験から構成され，
 集計（表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary}）は $\times$ ゼロを維持している．
-V1-b/V2/V4 は判定基準を実装 identity に合わせて見直し，
+V1-b/V2/V4/V5 は判定基準を実装 identity に合わせて見直し，
 それぞれ standard PPE $O(\Delta t)$，Kovasznay wall residual $O(h^4)$，
-fixed-wall offset residual $O(\|\bm U\|)$ に対する合格へ再分類した．
+fixed-wall offset residual $O(\|\bm U\|)$，
+CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{Re}_c$ スケール基準
+に対する合格へ再分類した．
 主張支持・条件付き採用実験（V1--V9）の headline と，
 条件付き CLS 移流ベースライン（V10-a/b）は以下：
 
