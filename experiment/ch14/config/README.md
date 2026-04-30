@@ -14,10 +14,18 @@ A fourth checked-in YAML is a bounded GPU-utilization probe:
   production stack can keep the GPU saturated without making the full
   `T=35` capillary benchmark prohibitively long.
 
+Longer diagnostic probes live under `config/probes/` so `--all` does not pick
+them up accidentally:
+
+- `probes/ch14_capillary_n32_t10_affine_gpu.yaml` — capillary-wave
+  `affine_jump` route at `32×32`, `T=10`, `save_npz: false`; used for
+  small-grid GPU-utilization tracking after oriented affine-jump updates.
+
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
 - `python experiment/run.py --config ch14_capillary_gpu90_affine`
+- `python experiment/run.py --config probes/ch14_capillary_n32_t10_affine_gpu`
 - `python experiment/run.py --config ch14_rising_bubble`
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
