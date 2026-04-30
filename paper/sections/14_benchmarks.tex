@@ -92,7 +92,7 @@ YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
 IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]^2$，$128^2$，interface-fitted $\alpha=2$，壁面境界
+  \item グリッド：$[0,1]^2$，$64^2$，interface-fitted $\alpha=2$，壁面境界
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
         $\sigma=0.072$，$g=0$
   \item 時間：$T=35.0$，CFL 乗数 $1.0$
@@ -106,19 +106,55 @@ IMEX--BDF2 投影}の閉包を切り出して調べる実験である．
         さらに \texttt{psi}・速度・圧力 snapshot を $0.05$ 間隔で保存
 \end{itemize}
 
-\subsubsection{受入基準と想定診断}
+\subsubsection{実行結果と判定}
 
-\textit{（実験結果は計算完了次第掲載）}
+$64^2$ 格子（当初 $128^2$ 設定から各辺を半分にした実行）で
+$T=35$ まで完走した．式~\eqref{eq:flat_capillary_dispersion} から
+$\omega=0.377764$，周期 $2\pi/\omega=16.633$ が得られるため，
+本計算時間は約 $2.10$ 周期に相当する．しかし snapshot から
+$\eta(x,t)=y_\Gamma(x,t)-0.5$ の $m=2$ signed Fourier 係数を抽出すると，
+$a_2(0)=1.0003\times10^{-2}$，$a_2(35)=1.0466\times10^{-2}$ で，
+$T=35$ 内にゼロ交差は現れなかった．したがって本単点実行は
+Prosperetti 型の周期照合には未達であり，HFE 曲率・pressure-jump 分相 PPE・
+界面移流の動的結合を次の resolution/CFL sweep で再検証する必要がある．
+
+一方，保存性は良好である．体積保存診断は最終値
+$|\Delta V|/V_0=1.09\times10^{-5}$，最大値 $1.22\times10^{-5}$ に留まり，
+長時間受入基準 $O(10^{-4})$ の内側で完走した．運動エネルギー最大値は
+$8.06\times10^{-9}$，最大発散診断は $1.60\times10^{-5}$ であり，
+この run では有界性は保たれている．
+
+\begin{figure}[tbp]
+\centering
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{figures/ch14_capillary_interface_amplitude.pdf}
+\caption{界面振幅診断}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{figures/ch14_capillary_volume_drift.pdf}
+\caption{体積保存}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.32\linewidth}
+\includegraphics[width=\linewidth]{figures/ch14_capillary_kinetic_energy.pdf}
+\caption{運動エネルギー}
+\end{subfigure}
+\caption{毛管波 $64^2$ 完走 run の時系列診断．界面振幅は
+\texttt{interface\_amplitude}（各列の $\psi=0.5$ crossing の最大偏差）であり，
+周期判定には本文の signed $m=2$ 係数を別途用いた．}
+\label{fig:ch14_capillary_n64}
+\end{figure}
 
 受入基準は次の三つである：
 \begin{enumerate}[noitemsep,leftmargin=2em]
   \item \textbf{界面振幅} $A(t)$ が式~\eqref{eq:flat_capillary_dispersion} の周期スケールから
-        大きく外れず，位相誤差を想定 resolution/CFL sweep で評価できること
-        （本 YAML は単一点；解像度／CFL 走査は別 YAML で取得する）．
+        大きく外れず，位相誤差を resolution/CFL sweep で評価できること
+        （本 $64^2$ 単点 run は未達）．
   \item \textbf{保存性} $|\Delta V|/V_0$ が長時間 $T=35$ で $O(10^{-4})$ 以下に留まること
-        （CSF/分相 PPE 系の体積保存判定基準は~\cite{Popinet2009} の慣行に従う）．
+        （本 run は達成；CSF/分相 PPE 系の体積保存判定基準は~\cite{Popinet2009} の慣行に従う）．
   \item \textbf{場出力} \texttt{psi}，速度，圧力の snapshot が同じ時刻列で保存され，
-        pressure-jump の不整合を事後診断できること．
+        pressure-jump の不整合を事後診断できること（本 run は達成）．
 \end{enumerate}
 
 % ═══════════════════════════════════════════════════════════════════
@@ -282,9 +318,10 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 ベンチマーク & 格子・条件 & 主要指標・記入状況 & 判定 \\
 \midrule
 毛管波 &
-  $N=128^2$，$\alpha=2$，$T=35$，水--空気，pressure-jump &
-  \textit{（実験結果は計算完了次第掲載）} &
-  \textit{（計算完了次第掲載）} \\
+  $N=64^2$，$\alpha=2$，$T=35$，水--空気，pressure-jump &
+  $|\Delta V|/V_0^{\max}=1.22\times10^{-5}$，
+  signed $m=2$ 係数は $T=35$ 内でゼロ交差なし &
+  保存性 \checkmark，周期照合 $\times$ \\
 単一気泡上昇 &
   $N=128\times256$，$\alpha=2$，$T=70$，水--空気，balanced buoyancy &
   \textit{（実験結果は計算完了次第掲載）} &
@@ -310,16 +347,17 @@ Rayleigh--Taylor &
         乗数であり，本章 3 本の乗数 $1.0$ は移流 $0.10$／毛管 $0.05$／粘性 $1.0$ に
         解決される（実装は
         \texttt{src/twophase/simulation/}\allowbreak\texttt{config\_run\_builder\_sections.py:43}）．
-        理論上は式~\eqref{eq:flat_capillary_dispersion} と
-        §~\ref{sec:time_capillary} の毛管波時間尺度を満たす必要があり，
-        毛管 CFL 制約の最近の体系的議論は~\cite{DennerVanWachem2022}（\textbf{継続}）．
+        今回の $64^2$ run はこの CFL で安定完走したが，
+        式~\eqref{eq:flat_capillary_dispersion} の周期応答は再現していないため，
+        毛管 CFL 制約の最近の体系的議論~\cite{DennerVanWachem2022} と合わせて
+        resolution/CFL sweep で切り分ける（\textbf{継続}）．
   \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
         face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
   \item \textbf{RT 不安定 閉包}——低 Atwood（$\mathrm{At}\approx 0.026$）かつ
         強重力 $g=9.81$ 下で，浮力残差分解と pressure-jump 閉包が
         式~\eqref{eq:rt_linear_growth} の線形指数領域から非線形 mushroom
         領域までの長時間発展を支える想定である（\textbf{継続}）．
-  \item \textbf{物理 benchmark の未完了点}——毛管波の周期誤差，気泡の終端速度，
+  \item \textbf{物理 benchmark の未完了点}——毛管波の周期応答未達，気泡の終端速度，
         および RT の線形成長率検証は，本章 YAML の閉包確認とは別に，
         無次元数と出力診断を固定した想定 resolution/CFL sweep 別 YAML
         で確定する（\textbf{継続}）．
