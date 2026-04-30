@@ -305,7 +305,9 @@ $\mathcal{L}(\psi)=-\bnabla\cdot(\psi\bu)$
 運動量移流 $(u,v)$ の既定空間スキームは UCCD6（§~\ref{sec:uccd6_def}）である．
 
 \noindent\textbf{CLS 専用 $\psi^{n+1}$ 更新：}
-$q \leftarrow \psi$ かつ $\bm{u}=\bm{u}^n$（または速度の予測値）として
+$q \leftarrow \psi$ かつ $\bm{u}=\bm{u}^n$（直前ステップの \textbf{PPE 投影済み}速度；
+未投影予測値 $\bm{u}^*$ を採ると後述の §\ref{sec:cls_velocity_consistency} で示すように
+PPE RHS 不整合と $\psi$ 質量変化を生む）として
 \eqref{eq:tvd_rk3} を CLS に適用すると，本稿の界面位置更新は
 \begin{align}
   \psi^{(1)} &= \psi^n - \Delta t\,\bnabla\cdot(\psi^n \bm{u}^n) \notag\\
