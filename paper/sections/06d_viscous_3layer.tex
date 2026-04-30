@@ -16,7 +16,7 @@
 本節は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
 粘性項 $\bnabla\cdot(2\mu\bm{D})$ を，変粘性二相流の Layer A/B/C 構造として
 離散化する設計を示す．界面の応力ジャンプ条件（式~\eqref{eq:jump_stress}：
-$[\sigma\bm{n}]_\Gamma = -\sigma_s\kappa\bm{n}$；接線成分は $[\tau_{xy}]_\Gamma=0$）が
+$[-p\mathbf{I}+\mu_k(\bnabla\bm{u}+\bnabla\bm{u}^T)]_\Gamma\!\cdot\hat{\bm n}_{lg} = \sigma\kappa_{lg}\hat{\bm n}_{lg}$；接線成分は $[\tau_{xy}]_\Gamma=0$）が
 3 層分解の設計根拠であり，$\mu\nabla^2\bm{u}$ 直接離散が禁じられる物理的理由となる
 （変粘性ジャンプの GFM/IIM 系の取り扱いは~\cite{Kang2000,Sussman2000} を参照）．
 
@@ -34,25 +34,25 @@ A3 規律である．
 \label{sec:viscous_mu_lap_forbidden}
 % -------------------------------------------------------------------------------
 
-非圧縮条件 $\bnabla\cdot\mathbf{u}=0$ 下で：
+非圧縮条件 $\bnabla\cdot\bm{u}=0$ 下で：
 \begin{equation}
   \bnabla\cdot(2\mu\mathbf{D})
-  = \mu\nabla^2\mathbf{u} + 2\mathbf{D}\cdot\bnabla\mu,
+  = \mu\nabla^2\bm{u} + 2\mathbf{D}\cdot\bnabla\mu,
   \label{eq:viscous_exact_decomposition}
 \end{equation}
-ここで $\mathbf{D} = \tfrac{1}{2}(\bnabla\mathbf{u} + \bnabla\mathbf{u}^\top)$
+ここで $\mathbf{D} = \tfrac{1}{2}(\bnabla\bm{u} + \bnabla\bm{u}^\top)$
 は歪速度テンソル．
 第 2 項 $2\mathbf{D}\cdot\bnabla\mu$ は\textbf{交差微分寄与}で，
 $\bnabla\mu\neq 0$ のとき常に非零．
 二相流では $\mu$ が界面で跳躍（水-空気で $\mu_l/\mu_g\approx 55$）するため
 $\bnabla\mu$ は $\delta$ 関数を含み，交差微分寄与は\textbf{特異で無視不可}．
 
-\noindent\textbf{$\mu\nabla^2\mathbf{u}$ を使うと}：
+\noindent\textbf{$\mu\nabla^2\bm{u}$ を使うと}：
 \begin{itemize}
   \item $\mu$ の空間変動から生じる接線力を欠落
   \item せん断応力連続 $[\tau_{xy}]_\Gamma = 0$ を満たさない
   \item 界面に沿ったスプリアス接線速度を生成
-  \item 高粘性比流でエネルギー散逸が崩壊（$\mathbf{u}\cdot\mathbf{F}_\mu$ が
+  \item 高粘性比流でエネルギー散逸が崩壊（$\bm{u}\cdot\mathbf{F}_\mu$ が
         正の値を取りうる）
 \end{itemize}
 
@@ -135,7 +135,7 @@ cell-center $\mu_{i,j}$ で構成した共有 $\tau_{xy,i,j}$ を用いる．
 周期境界または境界寄与が消える一様格子で，Layer C の差分が
 Layer A の勾配の負随伴として働く場合，応力発散形と共有 $\tau_{xy}$ により
 \begin{equation}
-  \langle\mathbf{u},\mathbf{F}_\mu\rangle_h
+  \langle\bm{u},\mathbf{F}_\mu\rangle_h
   = -2\sum_{i,j}\mu_{i,j}\bigl[(\partial_x u)^2+(\partial_y v)^2\bigr]
   - \sum_{i,j}\mu_{i,j}\bigl[(\partial_y u) + (\partial_x v)\bigr]^2_{i,j}
   \le 0.
@@ -144,7 +144,7 @@ Layer A の勾配の負随伴として働く場合，応力発散形と共有 $\
 対角成分の係数 $-2$ は $\tau_{xx}=2\mu\partial_x u$ の因子 $2$ から，
 非対角成分の係数 $-1$ は $\tau_{xy}\cdot(\partial_y u + \partial_x v)
 = \mu(\partial_y u + \partial_x v)^2$ から導かれる．
-等号は $\mathbf{D}(\mathbf{u})\equiv 0$（歪速度テンソル恒等零；
+等号は $\mathbf{D}(\bm{u})\equiv 0$（歪速度テンソル恒等零；
 剛体並進・剛体回転で成立する）でのみ成立．
 非一様格子，one-sided 境界，および界面帯の normal/tangent fallback では
 \eqref{eq:viscous_energy_identity} を厳密恒等式とは主張せず，
@@ -179,11 +179,11 @@ bulk（界面から遠い）& CCD & 応力発散形 \\
 
 \noindent\textbf{Phi/Psi-gated bulk Laplacian ショートカット}：
 bulk では $\bnabla\mu=0$ のため \eqref{eq:viscous_exact_decomposition} は
-$\mu\nabla^2\mathbf{u}$ に簡約する．
+$\mu\nabla^2\bm{u}$ に簡約する．
 $\psi$ による領域分割で
 \begin{equation*}
-  L_\mu\mathbf{u}
-  = \mathbb{1}_{\Omega_\text{bulk}}\cdot\mu\Delta_h^{\CCD}\mathbf{u}
+  L_\mu\bm{u}
+  = \mathbb{1}_{\Omega_\text{bulk}}\cdot\mu\Delta_h^{\CCD}\bm{u}
   + \mathbb{1}_{\Omega_\Gamma}\cdot\bnabla\cdot(2\mu\mathbf{D}_h)
 \end{equation*}
 で bulk パスを軽量化できる．
@@ -205,7 +205,7 @@ $\Omega_\Gamma = \{\psi\in(\varepsilon_\psi, 1-\varepsilon_\psi)\}$
 本節で確立した空間 Layer A/B/C と共有 $\tau_{xy}$ 評価は時間積分のいずれの形式
 （陽的 / IMEX / CN 半陰的）にも入力される．
 特に CN（Crank--Nicolson）半陰的処理を採用する場合の Helmholtz 系
-$\bigl(I - \tfrac{\Delta t}{2\rho}L_H\bigr)\mathbf{u}^* = \text{RHS}$ と
+$\bigl(I - \tfrac{\Delta t}{2\rho}L_H\bigr)\bm{u}^* = \text{RHS}$ と
 デフェクト補正解法（FGMRES + PCG/AMG/ADI/LU）の詳細は
 \S~\ref{sec:viscous_cn_defect_v7}（§7.4）に集約する．
 

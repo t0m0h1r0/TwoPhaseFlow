@@ -20,7 +20,7 @@
 $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 速度移流項へ拡張し（保存型射影法での速度移流の標準解説は~\cite{BellColella1989}），
 Balanced--Force 原理（\S\ref{sec:balanced_force}）が要求する
-「$\nabla p,\,\sigma\kappa\nabla\psi,\,\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$
+「$\bnabla p,\,\sigma\kappa_{lg}\bnabla\psi,\,\bnabla\cdot(\bm{u}\otimes\bm{u})$
 \textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
 現行実装の節点版 CCD 移流は pressure/CSF を面中心 FCCD に置換しても
 \textbf{移流だけが節点中心に残る}ため BF 残差が $\mathcal{O}(h^2)$ に
@@ -30,7 +30,7 @@ Balanced--Force 原理（\S\ref{sec:balanced_force}）が要求する
   \item \textbf{Option C（節点出力）}：面中心 FCCD 勾配を R$_4$
         Hermite 再構成で節点に戻し，従来の AB2 履歴バッファ互換．
   \item \textbf{Option B（面フラックス）}：保存形
-        $\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$ を FCCD 面値 $\mathbf{P}_f$ で
+        $\bnabla\cdot(\bm{u}\otimes\bm{u})$ を FCCD 面値 $\mathbf{P}_f$ で
         組み立て，面ダイバージェンスで節点に戻す．BF 整合性が最強．
 \end{itemize}
 
@@ -101,7 +101,7 @@ $\mathcal{O}(H^2)$ 誤差を $\mathbf{q}$ で相殺する：
 
 \noindent\textbf{Option C の利点}：
 出力が節点値なので既存の AB2 履歴バッファ / PPE RHS /
-CSF $\sigma\kappa\nabla\psi$ / Rhie--Chow がすべて無変更．
+CSF $\sigma\kappa_{lg}\bnabla\psi$ / Rhie--Chow がすべて無変更．
 既存の節点 CCD 1 次微分作用素を FCCD 節点勾配作用素
 （面値再構成 + 面 $\to$ 節点投影 R$_4$）に置換するだけで実装完了．
 
@@ -117,8 +117,8 @@ $\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
 \label{sec:fccd_adv_option_b}
 % -------------------------------------------------------------------------------
 
-運動量の自然形は $\nabla\cdot(\mathbf{u}\otimes\mathbf{u})$（保存形）である．
-非保存形 $(\mathbf{u}\cdot\nabla)\mathbf{u}$ は $\nabla\cdot\mathbf{u}\neq 0$
+運動量の自然形は $\bnabla\cdot(\bm{u}\otimes\bm{u})$（保存形）である．
+非保存形 $(\bm{u}\cdot\bnabla)\bm{u}$ は $\bnabla\cdot\bm{u}\neq 0$
 の離散的残差によりスプリアス運動量源を生む．
 FCCD 面フラックスで保存形を評価する：
 \begin{equation}
@@ -132,7 +132,7 @@ FCCD 面フラックスで保存形を評価する：
 非線形積の補間誤差が $\Ord{H^2}$ フロアに落ちるため採用しない．
 節点ダイバージェンスで運動量更新を閉じる：
 \begin{equation}
-  [\nabla\cdot F^{(j)}]_i
+  [\bnabla\cdot F^{(j)}]_i
   = \sum_k\frac{F^{(k,j)}_{f_{i+1/2}} - F^{(k,j)}_{f_{i-1/2}}}{H_i}.
   \label{eq:fccd_adv_divergence}
 \end{equation}
@@ -169,10 +169,10 @@ $\langle\mathbf{P}_f\mathbf{u},\mathbf{M}^{\FCCD}\mathbf{v}\rangle_f
 % -------------------------------------------------------------------------------
 
 \begin{theorem}[FCCD pressure/CSF の静的 BF 整合性]\label{thm:fccd_adv_bf}
-$\nabla p$（FCCD）と $\sigma\kappa\nabla\psi$（FCCD 面形）を
+$\bnabla p$（FCCD）と $\sigma\kappa_{lg}\bnabla\psi$（FCCD 面形）を
 \textbf{共通の面中心演算子}
 $\mathbf{M}^{\FCCD}$（\S\ref{sec:fccd_def} 式~\eqref{eq:fccd_composite_matrix}）で
-離散化すれば，静止状態 $\mathbf{u}\equiv 0$ での離散運動量バランスの
+離散化すれば，静止状態 $\bm{u}\equiv 0$ での離散運動量バランスの
 BF 残差は
 \begin{equation*}
   \|\mathbf{R}_\text{BF}\|_\infty = \mathcal{O}(H^4)\text{（一様）},
@@ -191,9 +191,9 @@ Neumann BC 下の compatibility）が満たされる．
 CSF；§\ref{sec:projection_derivation}）の設定．分相 PPE / GFM ジャンプ条件版
 （§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
 Corollary~\ref{cor:fccd_split_ppe_bf}．\\
-\textbf{論証}：$\mathbf{u}\equiv 0$ では対流項は恒等的に零であるため，
+\textbf{論証}：$\bm{u}\equiv 0$ では対流項は恒等的に零であるため，
 静的 BF 残差は圧力勾配と CSF の演算子一致だけで決まる．
-残る $\nabla p$ と CSF は (A1) より同一の
+残る $\bnabla p$ と CSF は (A1) より同一の
 $\mathbf{M}^{\FCCD}$ で評価され，両項の切断誤差は同一表現
 $\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合い
 （同一演算子・同一格子点・同一切断），$\|\mathbf{R}_\text{BF}\|_\infty$ は
@@ -217,7 +217,7 @@ well-defined であることから $G_h p$ の評価が有効．$\square$
 運動量 RHS 全体が同一の面中心空間で閉じる．
 Option C（R$_4$ 経由の節点中心）は節点--面--節点の往復を残すため，
 静的 BF 定理の直接の仮定ではないが，動的計算ではロカス不一致の残差源になり得る．
-Option B は $\nabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
+Option B は $\bnabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
 pressure/CSF/convective flux の 3 項を同一の face-to-node divergence で戻す
 動的整合化のための設計である．
 
@@ -230,12 +230,14 @@ FCCD Option B で閉じた運動量更新：
 \begin{equation}
   \frac{u^{n+1}_j - u^n_j}{\Delta t}
   = -\sum_k\frac{(u_k u_j)^{*}_{f_{i+1/2}} - (u_k u_j)^{*}_{f_{i-1/2}}}{H_i}
-  + \bigl[\nu \text{Lap} - \nabla p + \sigma\kappa\nabla\psi + g\bigr]_i,
+  + \bigl[\mathcal{V}(\bm{u}) - \bnabla p + \sigma\kappa_{lg}\bnabla\psi + \rho\bm{g}\bigr]_i,
   \label{eq:fccd_adv_closure}
 \end{equation}
-右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
+ここで $\mathcal{V}(\bm{u})=\bnabla\cdot[\mu(\bnabla\bm{u}+\bnabla\bm{u}^T)]$ は
+§\ref{sec:onefluid}（§2 NS 既定形）と §\ref{sec:viscous_3layer}（§6.3 3 層粘性）
+で定義された粘性演算子．右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
 node\_divergence で節点に戻す．
-PPE RHS は自然に $\nabla_h\cdot\mathbf{u}^*$ が FCCD 面ダイバージェンスで
+PPE RHS は自然に $\bnabla_h\cdot\bm{u}^*$ が FCCD 面ダイバージェンスで
 表現され，ループが閉じる．
 
 % -------------------------------------------------------------------------------
