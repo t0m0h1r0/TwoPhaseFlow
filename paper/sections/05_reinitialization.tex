@@ -261,6 +261,12 @@ Eikonal 方程式 \cite{Sussman1994}
         $\psi(i,j) = H_{\varepsilon(i,j)}(-\phi)$，
         $\varepsilon(i,j) = \varepsilon_\xi\max(h_x(i),\,h_y(j))$
 
+        ここで $\varepsilon_\xi$ は §\ref{sec:cls_advection}
+        の界面幅係数 $C_\varepsilon$ と同一のスカラー定数
+        （$\varepsilon = C_\varepsilon\Delta x_{\min}$ より $\varepsilon_\xi = C_\varepsilon \approx 1.0\sim 2.0$）；
+        本節 alg は ξ計算座標で $\varepsilon_\xi$ 表記を採用し，
+        §\ref{sec:cls_advection}/§\ref{sec:intro} と表記体系のみ異なる
+        同一物理量を表す．
         一様格子では $\varepsilon(i,j) = \varepsilon$（スカラーに帰着）；
         非一様格子では各セルの物理格子幅に比例した界面幅を実現する．
   \item \textbf{$\phi$ 空間質量補正：}
@@ -335,7 +341,7 @@ Ridge--Eikonal（次項 ξ 空間符号距離関数法）の動機である．
           \label{eq:xi_sdf}
         \end{equation}
   \item \textbf{$\psi$ 再構成：}定数 $\varepsilon_\xi = \varepsilon/h_{\min}$
-        （インターフェース幅を格子幅比で表したスカラー定数）を用いて
+        （= $C_\varepsilon$，§\ref{sec:cls_advection} 参照）を用いて
         \begin{equation}
           \psi_{\mathrm{new}}(i,j) = H_{\varepsilon_\xi}\!\bigl(-\phi_\xi(i,j)\bigr)
           = \frac{1}{1+\exp\!\bigl(\phi_\xi(i,j)/\varepsilon_\xi\bigr)}
