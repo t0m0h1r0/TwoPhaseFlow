@@ -44,8 +44,12 @@ class Circle(ShapePrimitive):
                 f"Circle.sdf: expected {len(self.center)} coordinate arrays, "
                 f"got {len(coords)}"
             )
-        r2 = sum((c - cx) ** 2 for c, cx in zip(coords, self.center))
-        return np.sqrt(r2) - self.radius
+        xp = _xp_like(coords[0])
+        r2 = sum(
+            (coord - center_coord) ** 2
+            for coord, center_coord in zip(coords, self.center)
+        )
+        return xp.sqrt(r2) - self.radius
 
 
 @dataclass
@@ -72,13 +76,14 @@ class Rectangle(ShapePrimitive):
                 f"Rectangle.sdf: expected {len(self.bounds)} coordinate arrays, "
                 f"got {len(coords)}"
             )
+        xp = _xp_like(coords[0])
         per_axis = [
-            np.maximum(lo - c, c - hi)
-            for c, (lo, hi) in zip(coords, self.bounds)
+            xp.maximum(lo - coord, coord - hi)
+            for coord, (lo, hi) in zip(coords, self.bounds)
         ]
         phi = per_axis[0]
         for axis_phi in per_axis[1:]:
-            phi = np.maximum(phi, axis_phi)
+            phi = xp.maximum(phi, axis_phi)
         return phi
 
 
@@ -160,8 +165,15 @@ class HalfSpace(ShapePrimitive):
                 f"HalfSpace.sdf: expected {len(self.normal)} coordinate arrays, "
                 f"got {len(coords)}"
             )
-        phi = sum(n * c for n, c in zip(self.normal, coords)) - self.offset
-        return np.asarray(phi)
+        xp = _xp_like(coords[0])
+        phi = (
+            sum(
+                normal_comp * coord
+                for normal_comp, coord in zip(self.normal, coords)
+            )
+            - self.offset
+        )
+        return xp.asarray(phi)
 
 
 @dataclass
@@ -198,9 +210,10 @@ class PerturbedCircle(ShapePrimitive):
         cx, cy = self.center
         dx = X - cx
         dy = Y - cy
-        r = np.sqrt(dx ** 2 + dy ** 2)
-        theta = np.arctan2(dy, dx)
-        r_boundary = self.radius * (1.0 + self.epsilon * np.cos(self.mode * theta))
+        xp = _xp_like(X)
+        r = xp.sqrt(dx ** 2 + dy ** 2)
+        theta = xp.arctan2(dy, dx)
+        r_boundary = self.radius * (1.0 + self.epsilon * xp.cos(self.mode * theta))
         return r - r_boundary
 
 
@@ -237,13 +250,14 @@ class ZalesakDisk(ShapePrimitive):
         if len(coords) != 2:
             raise ValueError("ZalesakDisk.sdf: only 2-D grids are supported.")
         X, Y = coords
+        xp = _xp_like(X)
         cx, cy = self.center
         R, w, d = self.radius, self.slot_width, self.slot_depth
-        phi_circle = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - R
+        phi_circle = xp.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - R
         slot_x_min = cx - w / 2.0
         slot_x_max = cx + w / 2.0
         slot_y_max = cy - R + d
-        dx = np.maximum(slot_x_min - X, X - slot_x_max)
-        dy = np.maximum(-1e10 - Y, Y - slot_y_max)
-        phi_slot = np.maximum(dx, dy)
-        return np.maximum(phi_circle, -phi_slot)
+        dx = xp.maximum(slot_x_min - X, X - slot_x_max)
+        dy = xp.maximum(-1e10 - Y, Y - slot_y_max)
+        phi_slot = xp.maximum(dx, dy)
+        return xp.maximum(phi_circle, -phi_slot)
