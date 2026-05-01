@@ -1,4 +1,4 @@
-# N=64 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
+# N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
 # Production numerical stack: FCCD PPE + direct-ψ filtered curvature + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
@@ -13,13 +13,13 @@
 #   rebuild the y-monitor from the current tracked interface field.
 
 grid:
-  cells: [64, 64]
+  cells: [128, 128]
   domain:
     size: [1.0, 1.0]
     boundary: wall
   distribution:
     method: gaussian_levelset
-    schedule: 0
+    schedule: 1
     axes:
       x:
         type: uniform
@@ -56,10 +56,10 @@ physics:
 
 run:
   time:
-    final: 35.0
+    final: 25.0
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
-    print_every: 20
+    print_every: 200
   debug:
     step_diagnostics: true
 
@@ -112,7 +112,7 @@ output:
   dir: results/ch14_capillary
   save_npz: true
   snapshots:
-    interval: 0.05
+    interval: 0.5
   figures:
     - type: time_series
       title: "Water-air capillary wave: interface amplitude"
