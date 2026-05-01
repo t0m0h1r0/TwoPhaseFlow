@@ -39,6 +39,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         eps_scale: float = 1.4,
         mass_correction: bool = True,
         h_ref: float | None = None,
+        ridge_zero_seeds: bool = False,
     ):
         self._xp = backend.xp
         self._backend = backend
@@ -46,6 +47,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
+        self._ridge_zero_seeds = bool(ridge_zero_seeds)
         self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
         self._wall_axes = tuple(axis == "wall" for axis in self._bc_axes)
         self._wall_closure = any(self._wall_axes)
@@ -91,6 +93,9 @@ class RidgeEikonalReinitializer(IReinitializer):
         """Attach no-slip wall-contact constraints in physical coordinates."""
         self._wall_contacts = wall_contacts or WallContactSet.empty()
 
+    def _axis_wall(self, axis: int) -> bool:
+        return axis < len(self._wall_axes) and self._wall_axes[axis]
+
     def reinitialize(self, psi):
         xp = self._xp
         psi = xp.asarray(psi)
@@ -101,8 +106,10 @@ class RidgeEikonalReinitializer(IReinitializer):
         phi = invert_heaviside(xp, psi, self._eps_local)
         sync_periodic_image_nodes(phi, self._bc_axes)
         pinned_points = self._wall_contacts.physical_points(self._grid)
-        xi_ridge = self._extractor.compute_xi_ridge(phi, extra_points=pinned_points)
-        ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
+        ridge_mask = None
+        if self._ridge_zero_seeds:
+            xi_ridge = self._extractor.compute_xi_ridge(phi, extra_points=pinned_points)
+            ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
         contact_seeds = self._wall_contacts.nearest_node_seeds(self._grid)
 
         if self._backend.is_gpu():
@@ -115,16 +122,17 @@ class RidgeEikonalReinitializer(IReinitializer):
         else:
             extra_seeds = list(contact_seeds)
             phi_np = np.asarray(phi)
-            mask_np = np.asarray(ridge_mask)
-            if np.any(mask_np):
-                ii, jj = np.where(mask_np)
-                on_interface = np.abs(phi_np[ii, jj]) < 0.5 * self._h_min
-                if np.any(on_interface):
-                    iis = ii[on_interface]
-                    jjs = jj[on_interface]
-                    extra_seeds.extend(
-                        (int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))
-                    )
+            if ridge_mask is not None:
+                mask_np = np.asarray(ridge_mask)
+                if np.any(mask_np):
+                    ii, jj = np.where(mask_np)
+                    on_interface = np.abs(phi_np[ii, jj]) < 0.5 * self._h_min
+                    if np.any(on_interface):
+                        iis = ii[on_interface]
+                        jjs = jj[on_interface]
+                        extra_seeds.extend(
+                            (int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))
+                        )
 
             phi_sdf_np = self._fmm.solve(phi_np, extra_seeds=extra_seeds)
             phi_sdf = xp.asarray(phi_sdf_np)
@@ -171,14 +179,18 @@ class RidgeEikonalReinitializer(IReinitializer):
         band_width = 2.0 * self._h_min
         near_interface = xp.abs(phi_sdf) <= band_width
 
-        left_trace = phi_raw[0, :]
-        right_trace = phi_raw[-1, :]
-        bottom_trace = phi_raw[:, 0]
-        top_trace = phi_raw[:, -1]
-        left_contact = xp.any(left_trace[:-1] * left_trace[1:] <= 0.0) | xp.any(xp.abs(left_trace) <= tol)
-        right_contact = xp.any(right_trace[:-1] * right_trace[1:] <= 0.0) | xp.any(xp.abs(right_trace) <= tol)
-        bottom_contact = xp.any(bottom_trace[:-1] * bottom_trace[1:] <= 0.0) | xp.any(xp.abs(bottom_trace) <= tol)
-        top_contact = xp.any(top_trace[:-1] * top_trace[1:] <= 0.0) | xp.any(xp.abs(top_trace) <= tol)
+        left_contact = right_contact = False
+        bottom_contact = top_contact = False
+        if self._axis_wall(0):
+            left_trace = phi_raw[0, :]
+            right_trace = phi_raw[-1, :]
+            left_contact = xp.any(left_trace[:-1] * left_trace[1:] <= 0.0) | xp.any(xp.abs(left_trace) <= tol)
+            right_contact = xp.any(right_trace[:-1] * right_trace[1:] <= 0.0) | xp.any(xp.abs(right_trace) <= tol)
+        if self._axis_wall(1):
+            bottom_trace = phi_raw[:, 0]
+            top_trace = phi_raw[:, -1]
+            bottom_contact = xp.any(bottom_trace[:-1] * bottom_trace[1:] <= 0.0) | xp.any(xp.abs(bottom_trace) <= tol)
+            top_contact = xp.any(top_trace[:-1] * top_trace[1:] <= 0.0) | xp.any(xp.abs(top_trace) <= tol)
 
         left_flag = xp.asarray(left_contact, dtype=phi_sdf.dtype)
         right_flag = xp.asarray(right_contact, dtype=phi_sdf.dtype)
@@ -186,9 +198,11 @@ class RidgeEikonalReinitializer(IReinitializer):
         top_flag = xp.asarray(top_contact, dtype=phi_sdf.dtype)
 
         contact_weight = xp.zeros_like(phi_sdf)
-        contact_weight[0:2, :] = xp.maximum(contact_weight[0:2, :], left_flag)
-        contact_weight[-2:, :] = xp.maximum(contact_weight[-2:, :], right_flag)
-        contact_weight[:, 0:2] = xp.maximum(contact_weight[:, 0:2], bottom_flag)
-        contact_weight[:, -2:] = xp.maximum(contact_weight[:, -2:], top_flag)
+        if self._axis_wall(0):
+            contact_weight[0:2, :] = xp.maximum(contact_weight[0:2, :], left_flag)
+            contact_weight[-2:, :] = xp.maximum(contact_weight[-2:, :], right_flag)
+        if self._axis_wall(1):
+            contact_weight[:, 0:2] = xp.maximum(contact_weight[:, 0:2], bottom_flag)
+            contact_weight[:, -2:] = xp.maximum(contact_weight[:, -2:], top_flag)
         contact_band = (contact_weight > 0.0) & near_interface
         return contact_band
