@@ -69,7 +69,7 @@ def rebuild_ns_grid(
     dV_new = grid.cell_volumes()
     if wall_contacts:
         psi_remapped = wall_contacts.impose_on_wall_trace(xp, grid, psi_remapped)
-        pinned = wall_contacts.contact_mask(xp, grid, tuple(psi_remapped.shape))
+        pinned = wall_contacts.constraint_mask(xp, grid, tuple(psi_remapped.shape))
         free_mask = xp.logical_not(pinned)
         psi_remapped = apply_masked_mass_correction(
             xp,

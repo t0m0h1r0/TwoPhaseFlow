@@ -128,7 +128,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / self._eps_local
             contact_band = self._wall_contact_band(phi, phi_sdf)
-            pinned_band = self._wall_contacts.contact_mask(
+            pinned_band = self._wall_contacts.constraint_mask(
                 xp,
                 self._grid,
                 tuple(psi_new.shape),

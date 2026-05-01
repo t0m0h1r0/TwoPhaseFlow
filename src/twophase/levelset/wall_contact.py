@@ -4,6 +4,8 @@ Symbol mapping
 --------------
 ``C`` / ``C(t)``:
     ``WallContactSet`` — contact-line points on a stationary solid wall.
+``psi_w``:
+    ``WallTrace`` — material phase trace restricted to a stationary wall.
 ``s``:
     ``coordinate`` — physical tangent coordinate along a wall.
 ``X_w(s)``:
@@ -52,17 +54,54 @@ class WallContact:
 
 
 @dataclass(frozen=True)
+class WallTrace:
+    """Initial no-slip wall trace stored in physical tangent coordinates.
+
+    A3 chain:
+        Equation: ``D psi / Dt = 0`` with ``u|wall = 0``.
+        Boundary result: ``partial_t psi_w = 0``.
+        Discretization: store ``psi_w(s, 0)`` and interpolate it onto the
+        current physical wall coordinates after auxiliary geometry operations.
+    """
+
+    wall_axis: int
+    wall_side: WallSide
+    tangent_axis: int
+    tangent_coordinates: tuple[float, ...]
+    values: tuple[float, ...]
+
+    def wall_index(self) -> int:
+        """Return the boundary index associated with this wall side."""
+        return 0 if self.wall_side == "lo" else -1
+
+    def sample(self, tangent_coordinates: np.ndarray) -> np.ndarray:
+        """Interpolate the initial trace onto current wall coordinates."""
+        source_coordinates = np.asarray(self.tangent_coordinates, dtype=float)
+        source_values = np.asarray(self.values, dtype=float)
+        current_coordinates = np.asarray(tangent_coordinates, dtype=float)
+        sampled = np.interp(
+            current_coordinates,
+            source_coordinates,
+            source_values,
+            left=source_values[0],
+            right=source_values[-1],
+        )
+        return np.clip(sampled, 0.0, 1.0)
+
+
+@dataclass(frozen=True)
 class WallContactSet:
-    """Collection of wall contacts for stationary no-slip walls."""
+    """Wall geometry constraints for stationary no-slip boundaries."""
 
     contacts: tuple[WallContact, ...] = ()
+    traces: tuple[WallTrace, ...] = ()
 
     def __bool__(self) -> bool:
-        return bool(self.contacts)
+        return bool(self.contacts or self.traces)
 
     @classmethod
     def empty(cls) -> "WallContactSet":
-        return cls(())
+        return cls((), ())
 
     @classmethod
     def detect_from_psi(
@@ -85,6 +124,7 @@ class WallContactSet:
         psi_h = np.asarray(psi, dtype=float)
         coords = [np.asarray(c, dtype=float) for c in grid.coords]
         contacts: list[WallContact] = []
+        traces: list[WallTrace] = []
 
         for wall_axis in range(2):
             tangent_axis = 1 - wall_axis
@@ -94,6 +134,15 @@ class WallContactSet:
                     psi_h[wall_index, :]
                     if wall_axis == 0
                     else psi_h[:, wall_index]
+                )
+                traces.append(
+                    WallTrace(
+                        wall_axis=wall_axis,
+                        wall_side=wall_side,
+                        tangent_axis=tangent_axis,
+                        tangent_coordinates=tuple(float(v) for v in tangent_coords),
+                        values=tuple(float(v) for v in trace),
+                    )
                 )
                 contacts.extend(
                     _contacts_on_trace(
@@ -106,7 +155,7 @@ class WallContactSet:
                     )
                 )
 
-        return cls(tuple(contacts))
+        return cls(tuple(contacts), tuple(traces))
 
     def physical_points(self, grid) -> tuple[tuple[float, float], ...]:
         """Return pinned contacts as ``(x, y)`` physical points."""
@@ -165,13 +214,69 @@ class WallContactSet:
                 mask[:, normal_slice] = mask[:, normal_slice] | tangent_mask.reshape(-1, 1)
         return mask
 
+    def wall_trace_mask(
+        self,
+        xp,
+        shape: tuple[int, int],
+        *,
+        normal_layers: int = 1,
+    ):
+        """Return mask of full wall-trace nodes constrained by no-slip."""
+        mask = xp.zeros(shape, dtype=bool)
+        if not self.traces:
+            return mask
+        layers = max(1, int(normal_layers))
+        for trace in self.traces:
+            if trace.wall_axis == 0:
+                normal_slice = slice(0, layers) if trace.wall_side == "lo" else slice(-layers, None)
+                mask[normal_slice, :] = True
+            else:
+                normal_slice = slice(0, layers) if trace.wall_side == "lo" else slice(-layers, None)
+                mask[:, normal_slice] = True
+        return mask
+
+    def constraint_mask(
+        self,
+        xp,
+        grid,
+        shape: tuple[int, int],
+        *,
+        band_width: float | None = None,
+        contact_layers: int = 2,
+        wall_layers: int = 1,
+    ):
+        """Return all nodes excluded by wall-contact/trace invariants."""
+        contact_nodes = self.contact_mask(
+            xp,
+            grid,
+            shape,
+            band_width=band_width,
+            normal_layers=contact_layers,
+        )
+        trace_nodes = self.wall_trace_mask(
+            xp,
+            shape,
+            normal_layers=wall_layers,
+        )
+        return contact_nodes | trace_nodes
+
     def impose_on_wall_trace(self, xp, grid, psi, *, delta: float = 0.25):
-        """Impose exact linear half-level crossings at pinned contacts."""
-        if not self.contacts:
+        """Project boundary trace and exact half-contours onto no-slip data."""
+        if not self:
             return psi
         out = xp.array(psi, copy=True)
         coords = [np.asarray(c, dtype=float) for c in grid.coords]
         delta = float(delta)
+
+        for trace in self.traces:
+            tangent = coords[trace.tangent_axis]
+            sampled = trace.sample(tangent)
+            wall_index = trace.wall_index()
+            sampled_dev = xp.asarray(sampled, dtype=out.dtype)
+            if trace.wall_axis == 0:
+                out[wall_index, :] = sampled_dev
+            else:
+                out[:, wall_index] = sampled_dev
 
         for contact in self.contacts:
             tangent = coords[contact.tangent_axis]

@@ -72,6 +72,25 @@ def _wall_crossing(coord, values, level=0.5):
     return float(coord[k] + (level - a) * (coord[k + 1] - coord[k]) / (b - a))
 
 
+def _wall_crossings(coord, values, level=0.5):
+    shifted = np.asarray(values) - level
+    crossings = []
+    for index in np.where(shifted[:-1] * shifted[1:] <= 0.0)[0]:
+        left_index = int(index)
+        left_value = values[left_index]
+        right_value = values[left_index + 1]
+        if right_value == left_value:
+            crossings.append(float(coord[left_index]))
+        else:
+            crossings.append(float(
+                coord[left_index]
+                + (level - left_value)
+                * (coord[left_index + 1] - coord[left_index])
+                / (right_value - left_value)
+            ))
+    return crossings
+
+
 # ── V1 — ridge topology (two disks vs merged) ──────────────────────────
 
 def test_ridge_topology_two_disks(backend):
@@ -248,6 +267,7 @@ def test_wall_contact_detection_records_side_wall_coordinates(backend):
     assert len(contacts.contacts) == 2
     coords = sorted(contact.coordinate for contact in contacts.contacts)
     np.testing.assert_allclose(coords, [y_contact, y_contact], atol=1e-4)
+    assert len(contacts.traces) == 4
 
 
 def test_wall_contact_impose_pins_half_contour(backend):
@@ -275,6 +295,33 @@ def test_wall_contact_impose_pins_half_contour(backend):
         y_pinned,
         atol=1e-14,
     )
+
+
+def test_wall_trace_projection_removes_extra_wall_crossings(backend):
+    """No-slip wall trace projection prevents birth of new wall contacts."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x_coords = np.asarray(grid.coords[0])
+    y_coords = np.asarray(grid.coords[1])
+    _, y_mesh = np.meshgrid(x_coords, y_coords, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(y_mesh - y_contact) / eps))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    y_pinned = contacts.contacts[0].coordinate
+
+    distorted = psi.copy()
+    distorted[0, :] = 0.5 + 0.35 * np.sin(6.0 * np.pi * y_coords)
+    distorted[-1, :] = distorted[0, :]
+    assert len(_wall_crossings(y_coords, distorted[0, :])) > 1
+
+    projected = contacts.impose_on_wall_trace(np, grid, distorted)
+
+    left_crossings = _wall_crossings(y_coords, projected[0, :])
+    right_crossings = _wall_crossings(y_coords, projected[-1, :])
+    assert len(left_crossings) == 1
+    assert len(right_crossings) == 1
+    np.testing.assert_allclose(left_crossings[0], y_pinned, atol=1e-14)
+    np.testing.assert_allclose(right_crossings[0], y_pinned, atol=1e-14)
 
 
 def test_masked_mass_correction_preserves_pinned_contact(backend):
@@ -311,6 +358,33 @@ def test_masked_mass_correction_preserves_pinned_contact(backend):
         y_pinned,
         atol=1e-14,
     )
+
+
+def test_constraint_mask_excludes_full_wall_trace_from_mass_correction(backend):
+    """Conservation repair cannot modify no-slip wall trace DOFs."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x_coords = np.asarray(grid.coords[0])
+    y_coords = np.asarray(grid.coords[1])
+    _, y_mesh = np.meshgrid(x_coords, y_coords, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(y_mesh - y_contact) / eps))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    projected = contacts.impose_on_wall_trace(np, grid, psi)
+    free_mask = np.logical_not(contacts.constraint_mask(np, grid, projected.shape))
+
+    corrected = apply_masked_mass_correction(
+        np,
+        projected,
+        grid.cell_volumes(),
+        np.sum(projected * grid.cell_volumes()) + 1.0e-3,
+        free_mask,
+    )
+
+    np.testing.assert_allclose(corrected[0, :], projected[0, :], atol=0.0)
+    np.testing.assert_allclose(corrected[-1, :], projected[-1, :], atol=0.0)
+    np.testing.assert_allclose(corrected[:, 0], projected[:, 0], atol=0.0)
+    np.testing.assert_allclose(corrected[:, -1], projected[:, -1], atol=0.0)
 
 
 def test_ridge_eikonal_reinit_preserves_pinned_contact_coordinate(backend):
