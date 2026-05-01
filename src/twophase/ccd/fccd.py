@@ -512,6 +512,8 @@ class FCCDSolver:
         velocity_components: List,
         scalar=None,
         mode: str = "flux",
+        *,
+        skip_zero_check: bool = False,
     ) -> List:
         """Composed (u·∇)u RHS for momentum, or -u·∇ψ for scalar.
 
@@ -533,12 +535,16 @@ class FCCDSolver:
             'flux' → Option B: skew-symmetric face flux form.
                      F_f = 0.5 [u_f^(k)·(∂u)_f + (u^(k)·u)_f]
                      then nodal face divergence. O(H⁴) uniform.
+        skip_zero_check : bool
+            True when the caller already established that the velocity field is
+            not identically zero over this RHS evaluation sequence.
         """
         return compute_fccd_advection_rhs(
             self,
             velocity_components,
             scalar=scalar,
             mode=mode,
+            skip_zero_check=skip_zero_check,
         )
 
     def _flux_contribution(self, u_k, phi, axis: int):

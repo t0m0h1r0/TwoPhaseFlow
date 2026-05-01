@@ -72,6 +72,7 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
     ) -> None:
         if mode not in ("node", "flux"):
             raise ValueError(f"mode must be 'node' or 'flux', got {mode!r}")
+        self._backend = backend
         self.xp = backend.xp
         self._grid = grid
         self._fccd = fccd
@@ -94,13 +95,11 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
 
-        if all_arrays_exact_zero(xp, velocity_components):
+        if not self._backend.is_gpu() and all_arrays_exact_zero(xp, velocity_components):
             q_new = psi
             if clip_bounds is not None:
                 lo, hi = clip_bounds
-                needs_clip = xp.stack([xp.min(psi) < lo, xp.max(psi) > hi])
-                if bool(xp.any(needs_clip)):
-                    q_new = xp.clip(psi, lo, hi)
+                q_new = xp.clip(psi, lo, hi)
             if self._mass_correction:
                 q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
             return q_new
@@ -113,7 +112,7 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
         q_new = tvd_rk3(
             xp, psi, dt,
-            lambda q: self._rhs(q, velocity_components),
+            lambda q: self._rhs(q, velocity_components, skip_zero_check=True),
             post_stage=post_stage,
         )
 
@@ -124,8 +123,11 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
     # ── RHS: −u·∇ψ via FCCD ─────────────────────────────────────────────
 
-    def _rhs(self, psi, vel):
+    def _rhs(self, psi, vel, *, skip_zero_check: bool = False):
         """−u·∇ψ using FCCDSolver (Option C or B per ``self._mode``)."""
         return self._fccd.advection_rhs(
-            vel, scalar=psi, mode=self._mode,
+            vel,
+            scalar=psi,
+            mode=self._mode,
+            skip_zero_check=skip_zero_check,
         )[0]

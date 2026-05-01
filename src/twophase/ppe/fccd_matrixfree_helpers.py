@@ -385,8 +385,8 @@ def project_fccd_rhs_compatibility(
         phase_weight_stack = xp.stack(phase_weights)
     if phase_weight_sum_stack is None:
         phase_weight_sum_stack = xp.stack(phase_weight_sums)
-    means_before = []
-    means_after = []
+    means_before_max = 0.0
+    means_after_max = 0.0
     phase_cache = FCCDPhaseMeanGaugeCache(
         masks=phase_masks,
         weights=phase_weights,
@@ -400,7 +400,7 @@ def project_fccd_rhs_compatibility(
         cache=phase_cache,
     )
     if record_stats:
-        means_before = [abs(to_scalar(mean)) for mean in phase_means]
+        means_before_max = abs(to_scalar(xp.max(xp.abs(xp.stack(phase_means)))))
     rhs_projected = subtract_fccd_phase_means(
         xp=xp,
         arr=rhs_view,
@@ -408,14 +408,21 @@ def project_fccd_rhs_compatibility(
         means=phase_means,
     )
     if record_stats:
-        means_after = [
-            abs(to_scalar(mean))
-            for mean in compute_fccd_phase_weighted_means(
-                xp=xp,
-                arr=rhs_projected,
-                cache=phase_cache,
+        means_after_max = abs(
+            to_scalar(
+                xp.max(
+                    xp.abs(
+                        xp.stack(
+                            compute_fccd_phase_weighted_means(
+                                xp=xp,
+                                arr=rhs_projected,
+                                cache=phase_cache,
+                            )
+                        )
+                    )
+                )
             )
-        ]
+        )
 
     if pin_rhs:
         _pin_zero(rhs_projected.ravel(), pin_dofs)
@@ -424,8 +431,8 @@ def project_fccd_rhs_compatibility(
             "ppe_phase_count": float(len(phase_means)),
             "ppe_pin_count": float(len(pin_dofs) if pin_rhs else 0),
             "ppe_mean_gauge": float(not pin_rhs),
-            "ppe_rhs_phase_mean_before_max": max(means_before, default=0.0),
-            "ppe_rhs_phase_mean_after_max": max(means_after, default=0.0),
+            "ppe_rhs_phase_mean_before_max": means_before_max,
+            "ppe_rhs_phase_mean_after_max": means_after_max,
         }
     )
     return rhs_projected, stats
