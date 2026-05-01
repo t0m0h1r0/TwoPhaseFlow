@@ -10,6 +10,7 @@ Verified properties:
 
 import numpy as np
 import pytest
+from types import SimpleNamespace
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -19,7 +20,7 @@ from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside, delta, invert_heaviside, update_properties
-from twophase.levelset.curvature import CurvatureCalculator
+from twophase.levelset.curvature import CurvatureCalculator, _dccd_filter_nd
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi, _gaussian_3x3
 from twophase.levelset.normal_filter import NormalVectorFilter, kappa_from_normals
 from twophase.levelset.curvature_filter import InterfaceLimitedFilter
@@ -191,6 +192,24 @@ def test_cls_advection_volume_conservation(backend):
 
 
 # ── Test 5: CurvatureCalculatorPsi (G-4) ────────────────────────────────
+
+def test_dccd_filter_preserves_periodic_image(backend):
+    """DCCD curvature filter preserves node N = node 0 on periodic axes."""
+    xp = backend.xp
+    N = 32
+    x = np.linspace(0.0, 1.0, N + 1)
+    field = np.sin(2.0 * np.pi * x)[:, None] * np.ones((1, N + 1))
+
+    filtered = _dccd_filter_nd(
+        xp,
+        xp.asarray(field),
+        SimpleNamespace(ndim=2, N=(N, N)),
+        0.05,
+        bc_type="periodic_wall",
+    )
+
+    assert np.max(np.abs(filtered[N, :] - filtered[0, :])) < 1.0e-14
+
 
 def test_curvature_psi_circle(backend):
     """CurvatureCalculatorPsi: κ ≈ −1/R for a circle (section 3b eq. curvature_psi_2d)."""

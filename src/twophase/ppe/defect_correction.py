@@ -123,9 +123,26 @@ class PPESolverDefectCorrection(IPPESolver):
 
     def _apply_physical_operator(self, pressure):
         """Apply the physical PPE operator without gauge augmentation when exposed."""
+        sync_periodic = getattr(self.operator, "_sync_periodic_images", None)
+        if callable(sync_periodic):
+            pressure = sync_periodic(pressure)
         if hasattr(self.operator, "_apply_operator_core"):
             return self.operator._apply_operator_core(pressure)
         return self.operator.apply(pressure)
+
+    def _enforce_periodic_pressure(self, pressure):
+        """Project pressure onto the operator's periodic image subspace."""
+        sync_periodic = getattr(self.operator, "_sync_periodic_images", None)
+        if callable(sync_periodic):
+            return sync_periodic(pressure)
+        return pressure
+
+    def _enforce_periodic_rhs(self, rhs):
+        """Zero RHS rows used as periodic image constraints."""
+        zero_periodic = getattr(self.operator, "_zero_periodic_image_rows", None)
+        if callable(zero_periodic):
+            return zero_periodic(rhs)
+        return rhs
 
     def _uses_phase_mean_gauge(self) -> bool:
         checker = getattr(self.operator, "_uses_phase_mean_gauge", None)
@@ -133,10 +150,11 @@ class PPESolverDefectCorrection(IPPESolver):
 
     def _enforce_pressure_gauge(self, pressure):
         """Apply the configured pressure nullspace gauge."""
+        pressure = self._enforce_periodic_pressure(pressure)
         if self._uses_phase_mean_gauge() and hasattr(self.operator, "_project_phase_means"):
-            return self.operator._project_phase_means(pressure)
+            return self._enforce_periodic_pressure(self.operator._project_phase_means(pressure))
         self._pin_flat(pressure.ravel(), 0.0)
-        return pressure
+        return self._enforce_periodic_pressure(pressure)
 
     def _enforce_rhs_compatibility(self, rhs, *, record_stats: bool = True):
         """Apply the matching Neumann compatibility constraint to a RHS."""
@@ -144,13 +162,15 @@ class PPESolverDefectCorrection(IPPESolver):
             self.operator,
             "_project_rhs_compatibility",
         ):
-            return self.operator._project_rhs_compatibility(
-                rhs,
-                record_stats=record_stats,
+            return self._enforce_periodic_rhs(
+                self.operator._project_rhs_compatibility(
+                    rhs,
+                    record_stats=record_stats,
+                )
             )
         rhs_projected = rhs.copy()
         self._pin_flat(rhs_projected.ravel(), 0.0)
-        return rhs_projected
+        return self._enforce_periodic_rhs(rhs_projected)
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve by base solve plus residual defect corrections."""
@@ -181,7 +201,7 @@ class PPESolverDefectCorrection(IPPESolver):
             self.last_diagnostics = initial_diagnostics
             if hasattr(self.operator, "apply_interface_jump"):
                 pressure = self.operator.apply_interface_jump(pressure)
-            return pressure
+            return self._enforce_periodic_pressure(pressure)
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
@@ -209,7 +229,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.last_diagnostics = initial_diagnostics
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
-        return pressure
+        return self._enforce_periodic_pressure(pressure)
 
     def _solve_same_operator(self, rhs_dev, rho, *, dt: float, p_init=None):
         """Collapse redundant DC when base and target are the same operator."""
@@ -230,7 +250,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.last_diagnostics = dict(getattr(self.base_solver, "last_diagnostics", {}))
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
-        return pressure
+        return self._enforce_periodic_pressure(pressure)
 
     def _pin_flat(self, flat, value) -> None:
         for dof in self._pin_dofs:

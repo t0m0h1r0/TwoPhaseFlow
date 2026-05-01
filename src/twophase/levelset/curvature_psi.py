@@ -90,8 +90,12 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         for ax in range(ndim):
             g1, g2 = ccd.differentiate(psi, ax)
             if self.dccd_eps > 0:
-                g1 = _dccd_filter_nd(xp, g1, ccd.grid, self.dccd_eps)
-                g2 = _dccd_filter_nd(xp, g2, ccd.grid, self.dccd_eps)
+                g1 = _dccd_filter_nd(
+                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                )
+                g2 = _dccd_filter_nd(
+                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                )
             d1.append(g1)
             d2.append(g2)
 
@@ -126,7 +130,9 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         # Mixed derivative psi_xy via sequential CCD
         psi_xy, _ = ccd.differentiate(d1[0], 1)
         if self.dccd_eps > 0:
-            psi_xy = _dccd_filter_nd(self.xp, psi_xy, ccd.grid, self.dccd_eps)
+            psi_xy = _dccd_filter_nd(
+                self.xp, psi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+            )
 
         numerator = (psi_y**2 * psi_xx
                      - 2.0 * psi_x * psi_y * psi_xy

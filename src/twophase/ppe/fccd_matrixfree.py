@@ -171,6 +171,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._interface_jump_context = None
         self._interface_stress_context = None
         self._defer_interface_jump = False
+        self._periodic_image_dofs = None
+        self._periodic_image_sources = None
+        self._refresh_periodic_image_constraints()
         self.last_base_pressure = None
         self.last_diagnostics = {}
         self._refresh_grid_geometry_cache()
@@ -178,6 +181,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def update_grid(self, grid: "Grid | None" = None) -> None:
         """Refresh grid-dependent FCCD weights after mesh rebuild."""
         refresh_fccd_matrixfree_grid(self, grid=grid)
+        self._refresh_periodic_image_constraints()
 
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
@@ -212,6 +216,74 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         """Cache density and optional diagonal preconditioner."""
         prepare_fccd_matrixfree_operator(self, rho)
 
+    def _refresh_periodic_image_constraints(self) -> None:
+        """Cache duplicate periodic image nodes for matrix-free constraint rows.
+
+        A3 chain: periodic nodal topology ``p_N = p_0`` → sparse PPE image-row
+        constraint → matrix-free operator rows ``p_img - p_src = 0``.
+        """
+        image_to_source: dict[int, int] = {}
+        shape = tuple(self.grid.shape)
+        for axis in range(self.ndim):
+            if not is_periodic_axis(self.fccd.bc_type, axis, self.grid.ndim):
+                continue
+            ranges = [np.arange(size) for size in shape]
+            image_ranges = [values.copy() for values in ranges]
+            source_ranges = [values.copy() for values in ranges]
+            image_ranges[axis] = np.array([self.grid.N[axis]])
+            source_ranges[axis] = np.array([0])
+            image_mesh = np.meshgrid(*image_ranges, indexing="ij")
+            source_mesh = np.meshgrid(*source_ranges, indexing="ij")
+            image_indices = np.ravel_multi_index(
+                [mesh.ravel() for mesh in image_mesh], shape
+            )
+            source_indices = np.ravel_multi_index(
+                [mesh.ravel() for mesh in source_mesh], shape
+            )
+            for image, source in zip(image_indices.tolist(), source_indices.tolist()):
+                image_to_source.setdefault(image, source)
+
+        if not image_to_source:
+            self._periodic_image_dofs = None
+            self._periodic_image_sources = None
+            return
+
+        sorted_images = np.array(sorted(image_to_source), dtype=np.intp)
+        sorted_sources = np.array(
+            [image_to_source[int(image)] for image in sorted_images],
+            dtype=np.intp,
+        )
+        self._periodic_image_dofs = self.xp.asarray(sorted_images)
+        self._periodic_image_sources = self.xp.asarray(sorted_sources)
+
+    def _sync_periodic_images(self, arr):
+        """Return ``arr`` with periodic image nodes copied from source nodes."""
+        if self._periodic_image_dofs is None:
+            return arr
+        synced = self.xp.array(arr, copy=True)
+        flat = synced.ravel()
+        flat[self._periodic_image_dofs] = flat[self._periodic_image_sources]
+        return synced
+
+    def _apply_periodic_image_rows(self, out, original) -> None:
+        """Replace image rows by the constraint ``p_img - p_src = 0``."""
+        if self._periodic_image_dofs is None:
+            return
+        out_flat = out.ravel()
+        original_flat = self.xp.asarray(original).ravel()
+        out_flat[self._periodic_image_dofs] = (
+            original_flat[self._periodic_image_dofs]
+            - original_flat[self._periodic_image_sources]
+        )
+
+    def _zero_periodic_image_rows(self, arr):
+        """Set RHS entries corresponding to periodic image constraints to zero."""
+        if self._periodic_image_dofs is None:
+            return arr
+        arr_flat = arr.ravel()
+        arr_flat[self._periodic_image_dofs] = 0.0
+        return arr
+
     def apply(self, p):
         """Apply the FCCD PPE operator with its configured gauge constraint."""
         xp = self.xp
@@ -219,15 +291,17 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             raise RuntimeError("prepare_operator(rho) must be called before apply(p)")
         return_host = self.backend.is_gpu() and not self._is_device_array(p)
         p_dev = xp.asarray(p)
+        p_periodic = self._sync_periodic_images(p_dev)
         if self._uses_phase_mean_gauge():
-            p_mean_free = self._project_phase_means(p_dev)
+            p_mean_free = self._project_phase_means(p_periodic)
             out = self._apply_operator_core(p_mean_free)
             out = self._project_phase_means(out)
-            out += p_dev
+            out += p_periodic
             out -= p_mean_free
         else:
-            out = self._apply_operator_core(p_dev)
+            out = self._apply_operator_core(p_periodic)
             self._pin_flat(out.ravel(), p_dev.ravel())
+        self._apply_periodic_image_rows(out, p_dev)
         if return_host:
             return np.asarray(self.backend.to_host(out))
         return out
@@ -293,6 +367,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._project_rhs_compatibility(rhs_dev)
+        rhs_dev = self._zero_periodic_image_rows(rhs_dev)
         rhs_flat = rhs_dev.ravel()
         if (
             not self.backend.is_gpu()
@@ -304,6 +379,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             self.last_base_pressure = xp.copy(sol)
             if not self._defer_interface_jump:
                 sol = self.apply_interface_jump(sol)
+                sol = self._sync_periodic_images(sol)
             if return_host:
                 return np.asarray(self.backend.to_host(sol))
             return sol
@@ -312,6 +388,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             x0 = xp.zeros_like(rhs_flat)
         else:
             x0 = xp.asarray(p_init).ravel().copy()
+            x0 = self._sync_periodic_images(x0.reshape(self.grid.shape)).ravel()
             if self._uses_phase_mean_gauge():
                 x0 = self._project_phase_means(x0.reshape(self.grid.shape)).ravel()
             else:
@@ -360,9 +437,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             sol = self._project_phase_means(sol)
         else:
             self._pin_flat(sol.ravel(), 0.0)
+        sol = self._sync_periodic_images(sol)
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
+            sol = self._sync_periodic_images(sol)
         if return_host:
             return np.asarray(self.backend.to_host(sol))
         return sol
