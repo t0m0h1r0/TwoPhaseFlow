@@ -80,6 +80,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
         ),
         ppe=SolverPPEOptions(
             ppe_solver=str(getattr(run, "ppe_solver", "fvm_iterative")),
+            ppe_dc_base_solver=getattr(run, "ppe_dc_base_solver", None),
             pressure_scheme=str(getattr(run, "pressure_scheme", "fvm_matrixfree")),
             ppe_coefficient_scheme=str(
                 getattr(run, "ppe_coefficient_scheme", "phase_density")

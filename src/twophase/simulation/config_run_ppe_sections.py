@@ -19,7 +19,7 @@ def parse_ppe_solver_config(
     path: str,
     discretization: str = "fvm",
     discretization_path: str = "projection.poisson.operator.discretization",
-) -> tuple[str, str, float, int, int | None, str, int | None, float, bool, int, float, float]:
+) -> tuple[str, str | None, str, float, int, int | None, str, int | None, float, bool, int, float, float]:
     kind = validate_choice(solver_cfg["kind"], _PPE_SOLVER_KINDS, f"{path}.kind")
     if kind != "defect_correction" and "base_solver" in solver_cfg:
         raise ValueError(
@@ -32,6 +32,7 @@ def parse_ppe_solver_config(
     effective_solver_cfg = solver_cfg
     effective_kind = kind
     effective_path = path
+    base_discretization = discretization
     if dc_enabled:
         allowed_dc_keys = {"kind", "corrections", "base_solver"}
         extra_keys = sorted(set(solver_cfg) - allowed_dc_keys)
@@ -51,6 +52,20 @@ def parse_ppe_solver_config(
         if "base_solver" in effective_solver_cfg:
             raise ValueError(f"{path}.base_solver.base_solver is not allowed")
         effective_path = f"{path}.base_solver"
+        base_discretization = validate_choice(
+            effective_solver_cfg.get(
+                "discretization",
+                "fvm" if discretization == "fccd" else discretization,
+            ),
+            _PPE_DISCRETIZATION_SOLVERS_BY_KIND,
+            f"{effective_path}.discretization",
+        )
+        if base_discretization == discretization and effective_kind == "iterative":
+            raise ValueError(
+                f"{effective_path}.discretization must select a lower-order L_L "
+                "operator for defect_correction; using the same operator would "
+                "bypass the paper's L_H residual / L_L correction contract."
+            )
         corrections = solver_cfg.get("corrections", {}) or {}
         dc_max_iterations = int(corrections.get("max_iterations", 3))
         dc_tolerance = float(corrections.get("tolerance", 1.0e-8))
@@ -61,14 +76,24 @@ def parse_ppe_solver_config(
             raise ValueError(f"{path}.corrections.tolerance must be > 0")
         if dc_relaxation <= 0.0:
             raise ValueError(f"{path}.corrections.relaxation must be > 0")
-    solver_key = (discretization, effective_kind)
+    target_kind = "iterative" if dc_enabled else effective_kind
+    solver_key = (discretization, target_kind)
     if solver_key not in _PPE_DISCRETIZATION_SOLVERS:
         raise ValueError(
             f"{discretization_path}={discretization!r} does not support "
-            f"{effective_path}.kind={effective_kind!r}"
+            f"{effective_path}.kind={target_kind!r}"
         )
     ppe_solver = _PPE_DISCRETIZATION_SOLVERS[solver_key]
-    if discretization == "fccd" and effective_kind == "iterative":
+    base_solver = None
+    if dc_enabled:
+        base_solver_key = (base_discretization, effective_kind)
+        if base_solver_key not in _PPE_DISCRETIZATION_SOLVERS:
+            raise ValueError(
+                f"{effective_path}.discretization={base_discretization!r} does not support "
+                f"{effective_path}.kind={effective_kind!r}"
+            )
+        base_solver = _PPE_DISCRETIZATION_SOLVERS[base_solver_key]
+    if base_discretization == "fccd" and effective_kind == "iterative":
         effective_solver_cfg = dict(effective_solver_cfg)
         effective_solver_cfg.setdefault("preconditioner", "none")
     (
@@ -80,13 +105,14 @@ def parse_ppe_solver_config(
         ppe_pcr_stages,
         ppe_c_tau,
     ) = parse_ppe_solver_options(effective_kind, effective_solver_cfg, effective_path)
-    if discretization == "fccd" and ppe_preconditioner not in {"jacobi", "none"}:
+    if base_discretization == "fccd" and ppe_preconditioner not in {"jacobi", "none"}:
         raise ValueError(
             f"{effective_path}.preconditioner for FCCD PPE must be 'jacobi' or 'none', "
             f"got {ppe_preconditioner!r}"
         )
     return (
         ppe_solver,
+        base_solver,
         ppe_iteration_method,
         ppe_tolerance,
         ppe_max_iterations,
@@ -99,6 +125,11 @@ def parse_ppe_solver_config(
         dc_tolerance,
         dc_relaxation,
     )
+
+
+_PPE_DISCRETIZATION_SOLVERS_BY_KIND = tuple(
+    sorted({key[0] for key in _PPE_DISCRETIZATION_SOLVERS})
+)
 
 
 def parse_ppe_solver_options(

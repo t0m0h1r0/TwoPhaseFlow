@@ -232,6 +232,7 @@ def parse_run_operator_settings(
         "convection_scheme": convection_scheme,
         "convection_time_scheme": convection_time_scheme,
         "ppe_solver": poisson_settings["ppe_solver"],
+        "ppe_dc_base_solver": poisson_settings["ppe_dc_base_solver"],
         "pressure_scheme": poisson_settings["pressure_scheme"],
         "ppe_iteration_method": poisson_settings["ppe_iteration_method"],
         "ppe_tolerance": poisson_settings["ppe_tolerance"],

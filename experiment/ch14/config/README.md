@@ -203,8 +203,10 @@ All three ch14 YAMLs share the production stack:
   the PPE RHS and face-flux corrector; no separate nonuniform PPE solver key is
   required. Regridded Mode 2 runs must rebuild this face cache from the current
   grid instead of interpolating it from the previous step.
-- `projection.poisson.solver.kind: defect_correction` (jacobi-preconditioned
-  GMRES base solver) — keeps the residual-correction shell visible.
+- `projection.poisson.solver.kind: defect_correction` with
+  `base_solver.discretization: fvm` / `base_solver.kind: direct` — evaluates
+  the residual with the FCCD high-order operator and solves each correction
+  with the low-order FVM/FD operator, matching the paper's grid-defect method.
 
 Cadence differences across YAMLs:
 - Capillary-wave: `reinitialization.every_steps: 20` (slow dynamics).
@@ -221,7 +223,11 @@ Cadence differences across YAMLs:
   used on GPU runs.
 - `direct`: sparse FVM direct solve; intentionally rejects all iterative options.
 - `defect_correction`: outer residual correction. Requires `corrections` and
-  `base_solver`. `base_solver` keys are rejected for non-DC solvers.
+  `base_solver`. `base_solver` keys are rejected for non-DC solvers. For FCCD
+  production runs, `base_solver.discretization` must select a lower-order
+  operator such as `fvm`; using the same FCCD operator as the base solver is
+  rejected because it bypasses the paper's `L_H` residual / `L_L` correction
+  contract.
 
 Defect-correction example:
 
@@ -233,14 +239,10 @@ projection:
       corrections:          # outer DC loop
         max_iterations: 3
         tolerance: 1.0e-8
-        relaxation: 1.0     # ω in p_new = p_old + ω·δp
+        relaxation: 0.7     # ω < 0.833 for FCCD/FD DC stability margin
       base_solver:          # inner approximate solve
-        kind: iterative
-        method: gmres
-        tolerance: 1.0e-8
-        max_iterations: 500
-        restart: 80
-        preconditioner: jacobi
+        discretization: fvm
+        kind: direct
 ```
 
 `projection.poisson.operator.coefficient: phase_separated` is the two-phase

@@ -82,6 +82,7 @@ class RunCfg:
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"
     ppe_solver: str = "fvm_iterative"
+    ppe_dc_base_solver: str | None = None
     pressure_scheme: str = "fvm_matrixfree"
     ppe_coefficient_scheme: str = "phase_density"
     ppe_interface_coupling_scheme: str = "none"

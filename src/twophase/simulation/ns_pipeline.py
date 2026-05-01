@@ -142,6 +142,7 @@ class TwoPhaseNSSolver:
         advection_scheme: str = "dissipative_ccd",
         convection_scheme: str = "ccd",
         ppe_solver: str = "fvm_iterative",
+        ppe_dc_base_solver: str | None = None,
         pressure_scheme: str | None = None,
         ppe_coefficient_scheme: str = "phase_density",
         ppe_interface_coupling_scheme: str = "none",
@@ -230,6 +231,7 @@ class TwoPhaseNSSolver:
             ),
             ppe=SolverPPEOptions(
                 ppe_solver=ppe_solver,
+                ppe_dc_base_solver=ppe_dc_base_solver,
                 pressure_scheme=pressure_scheme,
                 ppe_coefficient_scheme=ppe_coefficient_scheme,
                 ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,

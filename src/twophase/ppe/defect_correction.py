@@ -61,10 +61,13 @@ class PPESolverDefectCorrection(IPPESolver):
             self.base_solver._defer_interface_jump = True
         if hasattr(self.operator, "_defer_interface_jump"):
             self.operator._defer_interface_jump = True
-        self._collapse_same_operator = _can_collapse_same_operator(
-            base_solver,
-            operator,
-        )
+        if _can_collapse_same_operator(base_solver, operator):
+            raise ValueError(
+                "PPESolverDefectCorrection requires a distinct low-order base "
+                "solver L_L; wrapping the same high-order operator would bypass "
+                "the paper's defect-correction contract."
+            )
+        self._collapse_same_operator = False
         self.last_base_pressure = None
         self.last_diagnostics = {}
         self.last_residual_history: list[float] = []
@@ -78,10 +81,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.operator.update_grid(self.grid)
         self._pin_dof = self.operator._pin_dof
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
-        self._collapse_same_operator = _can_collapse_same_operator(
-            self.base_solver,
-            self.operator,
-        )
+        self._collapse_same_operator = False
 
     def invalidate_cache(self) -> None:
         """Invalidate backend caches owned by the inner solver/operator."""

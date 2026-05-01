@@ -59,6 +59,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
 
     (
         ppe_solver,
+        ppe_dc_base_solver,
         ppe_iteration_method,
         ppe_tolerance,
         ppe_max_iterations,
@@ -81,6 +82,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         "poisson_coefficient": poisson_coefficient,
         "poisson_interface_coupling": poisson_interface_coupling,
         "ppe_solver": ppe_solver,
+        "ppe_dc_base_solver": ppe_dc_base_solver,
         "pressure_scheme": _PPE_TO_PRESSURE_SCHEME[ppe_solver],
         "ppe_iteration_method": ppe_iteration_method,
         "ppe_tolerance": ppe_tolerance,
