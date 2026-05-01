@@ -72,6 +72,31 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 \end{equation}
 コーナー節点は最初の軸の拘束のみを採用する（重複適用を避けるため）．
 
+この同一性拘束は PPE だけの実装都合ではなく，
+周期領域を離散商空間として扱う幾何条件である．
+任意の節点場 $q_h$（圧力，速度，$\psi$，曲率補助場）は
+式~\eqref{eq:periodic_quotient_space} の $\mathcal{Q}_P$ 上で評価し，
+各演算子適用後に周期像面を source 面へ同期する．
+とくに面中心 flux から節点速度へ戻す場合，周期軸 $a$ では
+壁境界用の片側 endpoint 復元ではなく
+\begin{equation}
+  u_{i}^{(a)}
+  =
+  \frac{1}{2}
+  \left(
+    u_{f,i}^{(a)}
+    +
+    u_{f,i-1\ \mathrm{mod}\ N_a}^{(a)}
+  \right),
+  \qquad
+  u_{N_a}^{(a)}=u_{0}^{(a)}
+  \label{eq:periodic_face_to_node_reconstruction}
+\end{equation}
+を用いる．
+混合境界（例：$S^1\times[0,L_y]$）では，周期軸には
+式~\eqref{eq:periodic_face_to_node_reconstruction} を適用し，
+wall 軸にのみ片側壁閉包と no-slip/no-penetration 条件を適用する．
+
 \begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
   式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
   ILU(0)（\texttt{fill\_factor=1}）を前処理に使用すると BiCGSTAB~\cite{VanderVorst1992} の収束が著しく遅延する．

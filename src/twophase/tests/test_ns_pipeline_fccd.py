@@ -27,7 +27,9 @@ from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_services import _interface_supported_curvature
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
+from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
+from twophase.simulation.face_projection import reconstruct_nodes_from_faces
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
     ConsistentIIMReprojector,
@@ -667,7 +669,7 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
-def test_mixed_periodic_wall_velocity_hook_only_zeroes_wall_axis():
+def test_mixed_periodic_wall_velocity_hook_zeroes_wall_and_syncs_periodic_axis():
     from twophase.simulation.runtime_setup import wall_bc_hook
 
     u = np.ones((4, 5))
@@ -677,12 +679,50 @@ def test_mixed_periodic_wall_velocity_hook_only_zeroes_wall_axis():
 
     wall_bc_hook(u, v, bc_type="periodic_wall")
 
-    assert u[0, 2] == pytest.approx(7.0)
-    assert v[-1, 2] == pytest.approx(9.0)
+    assert u[-1, 2] == pytest.approx(u[0, 2])
+    assert v[-1, 2] == pytest.approx(v[0, 2])
     np.testing.assert_allclose(u[:, 0], 0.0)
     np.testing.assert_allclose(u[:, -1], 0.0)
     np.testing.assert_allclose(v[:, 0], 0.0)
     np.testing.assert_allclose(v[:, -1], 0.0)
+
+
+def test_mixed_periodic_wall_face_reconstruction_uses_cyclic_axis():
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(4, 3), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    fx = np.arange(16.0).reshape(4, 4)
+    fy = np.arange(15.0).reshape(5, 3)
+    fy[-1, :] += 100.0
+
+    u, v = reconstruct_nodes_from_faces(
+        np,
+        grid,
+        [fx, fy],
+        bc_type="periodic_wall",
+    )
+
+    np.testing.assert_allclose(u[0, :], 0.5 * (fx[0, :] + fx[-1, :]))
+    np.testing.assert_allclose(u[-1, :], u[0, :])
+    np.testing.assert_allclose(v[-1, :], v[0, :])
+
+
+def test_fccd_advection_syncs_mixed_periodic_scalar_image():
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
+    fccd = FCCDSolver(grid, backend, bc_type="periodic_wall", ccd_solver=ccd)
+    advection = FCCDLevelSetAdvection(backend, grid, fccd, mode="flux")
+    psi = np.zeros(grid.shape)
+    psi[0, 2] = 0.25
+    psi[-1, 2] = 0.75
+    velocity = [np.zeros(grid.shape), np.zeros(grid.shape)]
+
+    psi_new = advection.advance(psi, velocity, dt=1.0e-3)
+
+    np.testing.assert_allclose(psi_new[-1, :], psi_new[0, :])
+    assert psi_new[-1, 2] == pytest.approx(0.25)
 
 
 def test_defect_correction_can_build_fd_iterative_cg_base_solver():

@@ -12,6 +12,7 @@ from .heaviside import apply_mass_correction
 from .reinit_ops import (
     compute_dtau, dccd_compression_div, cn_diffusion_axis, build_cn_factors,
 )
+from ..core.boundary import sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -73,6 +74,7 @@ class SplitReinitializer(IReinitializer):
         xp = self.xp
         # Ensure psi is on the correct device (no-op on CPU).
         q = xp.asarray(psi).copy()
+        sync_periodic_image_nodes(q, self._bc)
         dV = self._dV
         M_old = xp.sum(q * dV)
 
@@ -81,6 +83,7 @@ class SplitReinitializer(IReinitializer):
                 xp, q, self.ccd, self.grid, self._bc, self._eps_d_comp,
             )
             q_star = xp.clip(q - self.dtau * div_comp, 0.0, 1.0)
+            sync_periodic_image_nodes(q_star, self._bc)
 
             q_new = q_star
             for ax in range(self.grid.ndim):
@@ -88,9 +91,12 @@ class SplitReinitializer(IReinitializer):
                     xp, q_new, ax, self.eps, self.dtau,
                     self._h[ax], self._cn_factors[ax],
                 )
+                sync_periodic_image_nodes(q_new, self._bc)
             q = xp.clip(q_new, 0.0, 1.0)
+            sync_periodic_image_nodes(q, self._bc)
 
         if self._mass_correction:
             q = apply_mass_correction(xp, q, dV, M_old)
+            sync_periodic_image_nodes(q, self._bc)
 
         return q

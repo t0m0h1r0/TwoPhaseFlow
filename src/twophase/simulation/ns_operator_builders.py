@@ -44,7 +44,7 @@ def build_ns_divergence_operators(
             raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
         div_op = fccd_div_op
     elif not grid.uniform and not is_all_periodic(bc_type, grid.ndim):
-        div_op = FVMDivergenceOperator(backend, grid)
+        div_op = FVMDivergenceOperator(backend, grid, bc_type=bc_type)
     else:
         div_op = CCDDivergenceOperator(ccd)
     return fccd_div_op, div_op

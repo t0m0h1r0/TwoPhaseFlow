@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .interfaces import IReinitializer
 from .heaviside import heaviside, invert_heaviside
+from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -34,10 +35,12 @@ class DGRReinitializer(IReinitializer):
         self.ccd = ccd
         self.eps = eps
         self.phi_smooth_C = float(phi_smooth_C)
+        self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
 
     def reinitialize(self, psi):
         xp = self.xp
         psi = xp.asarray(psi)  # Ensure device-native (no-op on CPU).
+        sync_periodic_image_nodes(psi, self._bc_axes)
         dV = self.grid.cell_volumes()
         M_old = xp.sum(psi * dV)
 
@@ -60,6 +63,7 @@ class DGRReinitializer(IReinitializer):
             eps_eff = self.eps
 
         phi_raw = invert_heaviside(xp, psi, self.eps)
+        sync_periodic_image_nodes(phi_raw, self._bc_axes)
         scale = eps_eff / self.eps if eps_eff > 1e-14 else 1.0
         phi_sdf = phi_raw * scale
 
@@ -71,8 +75,10 @@ class DGRReinitializer(IReinitializer):
             h_min = min(float(xp.min(xp.asarray(self.grid.h[ax])))
                         for ax in range(self.grid.ndim))
             phi_sdf = phi_sdf + self.phi_smooth_C * h_min**2 * _ccd_laplacian(xp, self.ccd, phi_sdf)
+            sync_periodic_image_nodes(phi_sdf, self._bc_axes)
 
         psi_new = heaviside(xp, phi_sdf, self.eps)
+        sync_periodic_image_nodes(psi_new, self._bc_axes)
         # φ-space mass correction: uniform interface shift, no shape distortion.
         # ψ-space correction (λ·4q(1-q)) shifts interface by δx ∝ 1/|∇ψ| which is
         # curvature-dependent → systematic mode elongation on oscillating droplets.
@@ -85,7 +91,9 @@ class DGRReinitializer(IReinitializer):
         W_safe = xp.where(active, W, 1.0)
         delta_phi = xp.where(active, (M_old - M_new) / W_safe, 0.0)
         phi_sdf = phi_sdf + delta_phi
+        sync_periodic_image_nodes(phi_sdf, self._bc_axes)
         psi_new = heaviside(xp, phi_sdf, self.eps)
+        sync_periodic_image_nodes(psi_new, self._bc_axes)
         return psi_new
 
 

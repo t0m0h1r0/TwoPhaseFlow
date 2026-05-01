@@ -247,6 +247,20 @@ Eikonal 方程式 \cite{Sussman1994}
 \begin{tcolorbox}[algbox, title={Eikonal 再初期化アルゴリズム}]
 \begin{enumerate}
   \item \textbf{ロジット反転：}$\phi = \varepsilon\ln((1-\psi)/\psi)$（飽和クランプ付き）
+  \item \textbf{周期商空間への射影：}周期軸集合を $P$ とすると，
+        離散スカラーは
+        \begin{equation}
+          \mathcal{Q}_P
+          =
+          \{q_h\mid
+          q_{i_1,\ldots,N_a,\ldots,i_d}
+          =
+          q_{i_1,\ldots,0,\ldots,i_d}\quad (a\in P)\}
+          \label{eq:periodic_quotient_space}
+        \end{equation}
+        に属する．Eikonal/FMM 入力の $\phi$ と再構成後の $\psi$ は
+        各呼び出しで $\Pi_P q_h\in\mathcal{Q}_P$ へ射影し，
+        周期像ノードを独立自由度として扱わない．
   \item \textbf{Eikonal PDE 反復（仮想時間反復；反復回数は
         §~\ref{sec:U4_ridge_eikonal_reinit} の単体検証を参照）：}
         Godunov 一次風上差分~\cite{RouyTourin1992}で式~\eqref{eq:eikonal_pde} を仮想時間積分
@@ -296,6 +310,25 @@ Eikonal 方程式 \cite{Sussman1994}
         $\phi$ 空間補正を反復する．壁面接触界面では補正重みを
         contact-line band で零にし，質量補正が接触 seed を移動しない
         制約付き線形化として用いる．
+  \item \textbf{周期商空間閉性と対称性：}
+        $\Omega=S^1\times[0,L_y]$ のような混合境界では，
+        周期軸上の端点 $i=N_x$ は $i=0$ の像であり，
+        離散再初期化作用素 $\mathcal{R}_h$ は
+        \begin{equation}
+          \mathcal{R}_h(\mathcal{Q}_P)\subset\mathcal{Q}_P,
+          \qquad
+          \mathcal{R}_h\Pi_P=\Pi_P\mathcal{R}_h
+          \label{eq:reinit_periodic_quotient_closure}
+        \end{equation}
+        を満たさなければならない．さらに初期条件・格子・壁条件が
+        半周期並進 $T_{N_x/2}$ または反射 $R_x$ に不変なら，
+        $\mathcal{R}_h T_{N_x/2}=T_{N_x/2}\mathcal{R}_h$，
+        $\mathcal{R}_h R_x=R_x\mathcal{R}_h$ が必要である．
+        したがって FMM の Dirichlet seed は実際の零交差集合
+        $S_h(\phi_0)$ と物理壁接触拘束に限られ，補助 ridge の局所極大を
+        ``近いから'' という理由で $\phi=0$ seed に昇格してはならない．
+        これは Eikonal の零点集合保存性と周期商空間の同値関係を同時に保つための
+        離散幾何条件である．
 \end{enumerate}
 
 \paragraph*{Eikonal 単独運用の限界：Godunov 由来の零セットドリフト}

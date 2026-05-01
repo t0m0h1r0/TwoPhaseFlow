@@ -161,14 +161,28 @@ Ridge 補助場は
 これにより壁面で切断された半 Gaussian による ridge の内側バイアスを除く．
 
 FMM の Dirichlet seed 集合も内部交差だけでは不十分である．
+ただし seed は Eikonal 問題の境界条件そのものなので，
+\textbf{実際の零集合または物理的に指定された接触線に限る}．
 壁 trace 上の符号変化・厳密零点を含めて
 \begin{equation}
-  S_h = S_{\mathrm{interior}}\cup S_{\mathrm{wall}},
+  S_h
+  =
+  \mathcal{Z}_h(\phi_0;\Omega^\circ)
+  \cup
+  \mathcal{Z}_h(\phi_0;\partial\Omega_W)
+  \cup
+  S_{\mathrm{contact}}^{\mathrm{prescribed}},
   \qquad
   |\bnabla_x\phi|=1,\quad \phi|_{S_h}=0
   \label{eq:wall_seed_set}
 \end{equation}
 を解く．
+ここで $\partial\Omega_W$ は wall 軸の物理境界であり，
+周期軸の像平面は $\partial\Omega_W$ に含めない．
+Gaussian ridge mask は幾何候補の検出・壁鏡像補正には使えるが，
+$S_h$ に人工的な零 seed を追加する根拠にはならない．
+人工 seed は Eikonal の境界集合を変更し，
+固定トポロジー再初期化で保存すべき零点集合を動かすためである．
 さらに質量補正は接触線 seed を動かしてはならないため，
 \begin{equation}
   \phi \leftarrow \phi + \lambda\,\chi_{\mathrm{free}}(\bm{x}),
@@ -292,14 +306,17 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
         粘性一意性は物理空間 Eikonal \eqref{eq:fmm_nonuniform} の
         弱解性質により保たれる．
   \item \textbf{サブセルシード}：
-        Ridge 集合 $\mathcal{R}$ は一般にノード上に載らないため，
-        最寄り 4 ノードへ物理空間距離でシード値を分配する．
+        実際の零集合 $S_h$ は一般にノード上に載らないため，
+        符号反転セルの線形補間位置から最寄りノードへ
+        物理空間距離でシード値を分配する．
         非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
         単位セル仮定では最大 $\alpha$ 倍の誤差を生む
         （$\alpha$ は格子密度比）．
         壁面接触界面では式~\eqref{eq:wall_seed_set} の
-        $S_{\mathrm{wall}}$ も同じ Dirichlet seed として扱い，
+        $\mathcal{Z}_h(\phi_0;\partial\Omega_W)$ も同じ Dirichlet seed として扱い，
         exact-zero 壁ノードも seed に含める．
+        一方，周期軸の端点は商空間同一性 $q_N=q_0$ で閉じる像であり，
+        壁 seed や contact-line pinning の対象ではない．
 \end{itemize}
 
 \noindent この結線により FMM のワンパス計算量は

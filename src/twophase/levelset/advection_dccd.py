@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 from .interfaces import ILevelSetAdvection
-from ..core.boundary import boundary_axes
+from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
 from .advection_kernels import _EPS_D_ADV, _dccd_filter_stencil, _pad_bc
@@ -79,15 +79,17 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         xp = self.xp
         psi = xp.asarray(psi)
         velocity_components = [xp.asarray(vc) for vc in velocity_components]
+        sync_periodic_image_nodes(psi, self._bc)
 
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
 
-        if clip_bounds is None:
-            post_stage = None
-        else:
-            lo, hi = clip_bounds
-            post_stage = lambda q: xp.clip(q, lo, hi)
+        def post_stage(q):
+            if clip_bounds is not None:
+                lo, hi = clip_bounds
+                q = xp.clip(q, lo, hi)
+            return sync_periodic_image_nodes(q, self._bc)
+
         q_new = tvd_rk3(
             xp, psi, dt,
             lambda q: self._rhs(q, velocity_components),
@@ -96,6 +98,7 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
         if self._mass_correction:
             q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+            sync_periodic_image_nodes(q_new, self._bc)
 
         return q_new
 

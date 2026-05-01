@@ -28,6 +28,7 @@ from .reinit_eikonal_distance import (
     xi_sdf_phi_cpu_legacy,
 )
 from .reinit_eikonal_godunov import godunov_sweep as compute_reinit_godunov_sweep
+from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -76,6 +77,7 @@ class EikonalReinitializer(IReinitializer):
         self._zsp = zsp
         self._xi_sdf = xi_sdf
         self._fmm = fmm
+        self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
 
         # Minimum grid spacing (NumPy, host-side — grid.h is always CPU)
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
@@ -112,12 +114,14 @@ class EikonalReinitializer(IReinitializer):
     def reinitialize(self, psi):
         xp = self._xp
         psi = xp.asarray(psi)
+        sync_periodic_image_nodes(psi, self._bc_axes)
         dV = self._grid.cell_volumes()
         # Device scalar — no GPU sync forced here.
         M_old = xp.sum(psi * dV)
 
         # Step 1: ψ → φ via logit inversion (clamped)
         phi = invert_heaviside(xp, psi, self._eps)
+        sync_periodic_image_nodes(phi, self._bc_axes)
         sgn0 = xp.sign(phi)
         # Cells exactly on zero-set: treat as inside (positive)
         sgn0 = xp.where(xp.abs(phi) < 1e-10, 1.0, sgn0)
@@ -126,19 +130,23 @@ class EikonalReinitializer(IReinitializer):
         if self._fmm:
             # Fast Marching Method: C¹ SDF, no Voronoi kinks (CHK-138)
             phi = self._fmm_phi(phi)
+            sync_periodic_image_nodes(phi, self._bc_axes)
             eps_arr = self._eps_xi
         elif self._xi_sdf:
             # Non-iterative ξ-space SDF: exact zero-set preservation, no drift
             phi = sgn0 * xp.minimum(xp.abs(phi), 2.0 * self._eps)
             phi = self._xi_sdf_phi(phi)
+            sync_periodic_image_nodes(phi, self._bc_axes)
             eps_arr = self._eps_xi   # constant in ξ-space (scalar)
         else:
             # Iterative Godunov sweep with ZSP
             phi = self._godunov_sweep(phi, sgn0)
+            sync_periodic_image_nodes(phi, self._bc_axes)
             eps_arr = self._eps_arr
 
         # Step 3: ψ = H_{ε}(φ)
         psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
+        sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         # Step 4: φ-space mass correction — uniform interface shift
         # δφ = ΔM / ∫H'_ε dV;  H'_ε(φ) = ψ(1-ψ)/ε(i,j)
@@ -152,13 +160,16 @@ class EikonalReinitializer(IReinitializer):
             M_new = xp.sum(psi_new * dV)
             delta_phi = gate * (M_old - M_new) / W_safe
             phi = phi + delta_phi
+            sync_periodic_image_nodes(phi, self._bc_axes)
             if self._xi_sdf:
                 # CHK-140: large delta_phi (from eps_xi mismatch at first reinit)
                 # can push interface-adjacent liquid cells across zero, creating
                 # false interior zero-crossings on the next reinit call.
                 # Clamp: preserve cell phase relative to sgn0.
                 phi = xp.where(sgn0 * phi < 0, sgn0 * 1e-14, phi)
+                sync_periodic_image_nodes(phi, self._bc_axes)
             psi_new = 1.0 / (1.0 + xp.exp(-phi / eps_arr))
+            sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         return psi_new
 

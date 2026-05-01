@@ -91,6 +91,19 @@ def _wall_crossings(coord, values, level=0.5):
     return crossings
 
 
+def _half_period_error(field):
+    values = np.asarray(field)
+    n_unique = values.shape[0] - 1
+    return float(
+        np.max(
+            np.abs(
+                values[: n_unique // 2, :]
+                - values[n_unique // 2 : n_unique, :]
+            )
+        )
+    )
+
+
 # ── V1 — ridge topology (two disks vs merged) ──────────────────────────
 
 def test_ridge_topology_two_disks(backend):
@@ -250,6 +263,30 @@ def test_reinit_mass_correction_pins_wall_contact(backend):
     psi_out = np.asarray(reinit.reinitialize(psi))
 
     np.testing.assert_allclose(psi_out[0, :], 0.5, atol=2e-12)
+
+
+def test_ridge_eikonal_preserves_mixed_periodic_half_period_symmetry(backend):
+    """Zero-set FMM seeding must preserve the periodic quotient symmetry."""
+    n = 32
+    grid = Grid(GridConfig(ndim=2, N=(n, n), L=(1.0, 1.0), alpha_grid=1.0), backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
+    eps = 1.5 / n
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    phi = Y - (0.5 + 0.04 * np.cos(4.0 * np.pi * X))
+    psi = heaviside(np, phi, eps)
+    psi[-1, :] = psi[0, :]
+    reinit = RidgeEikonalReinitializer(
+        backend, grid, ccd, eps=eps, sigma_0=3.0,
+        eps_scale=1.4, mass_correction=True,
+    )
+
+    psi_out = np.asarray(reinit.reinitialize(psi))
+
+    assert _half_period_error(psi) < 1.0e-14
+    assert _half_period_error(psi_out) < 1.0e-12
+    np.testing.assert_allclose(psi_out[-1, :], psi_out[0, :], atol=1e-14)
 
 
 def test_wall_contact_detection_records_side_wall_coordinates(backend):
