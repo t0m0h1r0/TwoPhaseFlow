@@ -52,8 +52,8 @@ class DiagnosticRetainedGeometry:
     shape: tuple[int, ...]
     X: object
     Y: object
-    rows: object
-    cols: object
+    rows: object | None
+    cols: object | None
     y_mid: object
 
 
@@ -65,7 +65,7 @@ class DiagnosticCollector:
     metrics : list of str
         Metric names to collect (from YAML ``diagnostics:`` list).
         ``kinetic_energy`` is always added automatically.
-    X, Y : ndarray  grid coordinate arrays
+    X, Y : ndarray  grid coordinate arrays on the active backend
     h : float       grid spacing
     rho_l, rho_g : float  densities (used for KE and phase masks)
     sigma : float   surface tension (for ``laplace_pressure``; optional)
@@ -139,7 +139,10 @@ class DiagnosticCollector:
 
     def retain_device_geometry(self, xp, X, Y, shape) -> None:
         """Retain geometry produced by grid construction/rebuild for diagnostics."""
-        rows, cols = _deformation_axes(xp, tuple(shape))
+        if "deformation" in self.metrics:
+            rows, cols = _deformation_axes(xp, tuple(shape))
+        else:
+            rows = cols = None
         X_dev = xp.asarray(X)
         Y_dev = xp.asarray(Y)
         self._retained_geometry = DiagnosticRetainedGeometry(
@@ -150,6 +153,13 @@ class DiagnosticCollector:
             rows=rows,
             cols=cols,
             y_mid=xp.mean(Y_dev),
+        )
+
+    def needs_retained_geometry(self) -> bool:
+        """Return whether any requested metric uses grid geometry fields."""
+        return any(
+            metric in self.metrics
+            for metric in ("bubble_centroid", "deformation", "interface_amplitude")
         )
 
     def collect(
@@ -167,59 +177,78 @@ class DiagnosticCollector:
         ----------
         dV : ndarray or None
             Per-node control volumes.  When ``None``, falls back to
-            ``h**2`` (uniform grid).
+            scalar ``h**2`` (uniform grid).
         """
         xp = _xp_of(psi)
         if dV is None:
-            dV = xp.full(psi.shape, self.h ** 2)
+            dV = self.h ** 2
         elif _xp_of(dV) is not xp:
             dV = xp.asarray(dV)
         geometry = self._retained_geometry
-        if geometry is None or geometry.xp is not xp or geometry.shape != tuple(psi.shape):
+        needs_geometry = self.needs_retained_geometry()
+        if needs_geometry and (
+            geometry is None
+            or geometry.xp is not xp
+            or geometry.shape != tuple(psi.shape)
+        ):
             self.retain_device_geometry(xp, self.X, self.Y, psi.shape)
             geometry = self._retained_geometry
-        X = geometry.X
-        Y = geometry.Y
-        rho = self.rho_g + (self.rho_l - self.rho_g) * psi
+        X = geometry.X if geometry is not None else None
+        Y = geometry.Y if geometry is not None else None
+        need_volume = "volume_conservation" in self.metrics
+        need_ke = "kinetic_energy" in self.metrics
+        need_gas_mean = "mean_rise_velocity" in self.metrics
+        need_gas_centroid = "bubble_centroid" in self.metrics
 
-        V_dev = xp.sum(psi * dV)
-        ke_dev = 0.5 * xp.sum(rho * (u ** 2 + v ** 2) * dV)
-        V, ke = [float(x) for x in np.asarray(_to_host(xp.stack([V_dev, ke_dev])))]
+        scalar_names: list[str] = []
+        scalar_values = []
+        if need_volume:
+            scalar_names.append("V")
+            scalar_values.append(xp.sum(psi * dV))
+        if need_ke:
+            rho = self.rho_g + (self.rho_l - self.rho_g) * psi
+            scalar_names.append("ke")
+            scalar_values.append(0.5 * xp.sum(rho * (u ** 2 + v ** 2) * dV))
+        if need_gas_mean or need_gas_centroid:
+            gas = psi < 0.5
+            scalar_names.extend(["gas_volume", "gas_x_sum", "gas_y_sum", "gas_v_sum"])
+            scalar_values.extend([
+                xp.sum(xp.where(gas, dV, 0.0)),
+                xp.sum(xp.where(gas, X * dV, 0.0)),
+                xp.sum(xp.where(gas, Y * dV, 0.0)),
+                xp.sum(xp.where(gas, v * dV, 0.0)),
+            ])
+        scalars = {
+            name: float(value)
+            for name, value in zip(
+                scalar_names,
+                np.asarray(_to_host(xp.stack(scalar_values))) if scalar_values else [],
+            )
+        }
 
-        # Initialise reference volume on first call
-        if self._V0 is None:
-            self._V0 = max(V, 1e-30)
+        if need_volume and self._V0 is None:
+            self._V0 = max(scalars["V"], 1e-30)
 
         self.times.append(t)
 
         for m in self.metrics:
             if m == "volume_conservation":
-                self._data[m].append(abs(V - self._V0) / self._V0)
+                self._data[m].append(abs(scalars["V"] - self._V0) / self._V0)
 
             elif m == "kinetic_energy":
-                self._data[m].append(ke)
+                self._data[m].append(scalars["ke"])
 
             elif m == "mean_rise_velocity":
-                gas = psi < 0.5
-                gas_raw = xp.stack([
-                    xp.sum(xp.where(gas, dV, 0.0)),
-                    xp.sum(xp.where(gas, v * dV, 0.0)),
-                ])
-                vol_gas, v_sum = [float(x) for x in np.asarray(_to_host(gas_raw))]
+                vol_gas = scalars["gas_volume"]
+                v_sum = scalars["gas_v_sum"]
                 vm = v_sum / vol_gas if vol_gas > 1e-12 else 0.0
                 self._data[m].append(vm)
 
             elif m == "bubble_centroid":
-                gas = psi < 0.5
-                gas_raw = xp.stack([
-                    xp.sum(xp.where(gas, dV, 0.0)),
-                    xp.sum(xp.where(gas, X * dV, 0.0)),
-                    xp.sum(xp.where(gas, Y * dV, 0.0)),
-                    xp.sum(xp.where(gas, v * dV, 0.0)),
-                ])
-                vol_gas, x_sum, y_sum, v_sum = [
-                    float(x) for x in np.asarray(_to_host(gas_raw))
-                ]
+                vol_gas = scalars["gas_volume"]
+                x_sum = scalars["gas_x_sum"]
+                y_sum = scalars["gas_y_sum"]
+                v_sum = scalars["gas_v_sum"]
                 if vol_gas > 1e-12:
                     xc = x_sum / vol_gas
                     yc = y_sum / vol_gas
@@ -242,12 +271,8 @@ class DiagnosticCollector:
                 # CHK-161 parity-aware: each sub-key is 0 for 4-fold symmetric flow.
                 # psi is scalar (even under both flips); u,v are vector components
                 # with axis-specific parity (u odd under x-flip, v odd under y-flip).
-                self._data["sym_psi_y"].append(_symmetry_error(psi, axis=1, parity=+1))
-                self._data["sym_psi_x"].append(_symmetry_error(psi, axis=0, parity=+1))
-                self._data["sym_u_y"].append(_symmetry_error(u, axis=1, parity=+1))
-                self._data["sym_u_x"].append(_symmetry_error(u, axis=0, parity=-1))
-                self._data["sym_v_y"].append(_symmetry_error(v, axis=1, parity=-1))
-                self._data["sym_v_x"].append(_symmetry_error(v, axis=0, parity=+1))
+                for key, value in zip(self._SYM_SUBKEYS, _symmetry_errors(psi, u, v)):
+                    self._data[key].append(value)
 
             elif m == "laplace_pressure":
                 if self.sigma > 0.0 and self.R > 0.0:
@@ -318,7 +343,13 @@ def _deformation(psi, geometry: DiagnosticRetainedGeometry | None = None) -> flo
     xp = _xp_of(psi)
     mask = psi > 0.5
     n_pts_dev = xp.sum(mask)
-    if geometry is not None and geometry.xp is xp and geometry.shape == tuple(psi.shape):
+    if (
+        geometry is not None
+        and geometry.xp is xp
+        and geometry.shape == tuple(psi.shape)
+        and geometry.rows is not None
+        and geometry.cols is not None
+    ):
         rows = geometry.rows
         cols = geometry.cols
     else:
@@ -360,6 +391,29 @@ def _symmetry_error(field, axis: int, parity: int = +1) -> float:
     diff = float(xp.max(xp.abs(field - parity * flipped)))
     scale = float(xp.max(xp.abs(field))) + 1e-30
     return diff / scale
+
+
+def _symmetry_errors(psi, u, v) -> tuple[float, float, float, float, float, float]:
+    """Return all parity-aware reflection errors with one scalar transfer."""
+    xp = _xp_of(psi)
+    terms = (
+        (psi, 1, +1),
+        (psi, 0, +1),
+        (u, 1, +1),
+        (u, 0, -1),
+        (v, 1, -1),
+        (v, 0, +1),
+    )
+    raw = []
+    for field, axis, parity in terms:
+        flipped = xp.flip(field, axis=axis)
+        raw.append(xp.max(xp.abs(field - parity * flipped)))
+        raw.append(xp.max(xp.abs(field)))
+    stats = np.asarray(_to_host(xp.stack(raw)))
+    return tuple(
+        float(stats[2 * i]) / (float(stats[2 * i + 1]) + 1e-30)
+        for i in range(len(terms))
+    )
 
 
 def _interface_amplitude(psi, Y, y_mid) -> float:
