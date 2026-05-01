@@ -709,6 +709,60 @@ def test_defect_correction_ppe_parses_base_solver():
     assert cfg.run.ppe_dc_relaxation == 0.8
 
 
+def test_defect_correction_ppe_parses_fd_iterative_cg_base_solver():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "projection": {
+                "poisson": {
+                    "operator": {"discretization": "fccd", "coefficient": "phase_density"},
+                    "solver": {
+                        "kind": "defect_correction",
+                        "base_solver": {
+                            "discretization": "fd",
+                            "kind": "iterative",
+                            "method": "cg",
+                            "tolerance": 1.0e-6,
+                            "max_iterations": 40,
+                        },
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.run.ppe_defect_correction is True
+    assert cfg.run.ppe_solver == "fccd_iterative"
+    assert cfg.run.ppe_dc_base_solver == "fd_iterative"
+    assert cfg.run.ppe_iteration_method == "cg"
+    assert cfg.run.ppe_preconditioner == "jacobi"
+    assert cfg.run.ppe_tolerance == 1.0e-6
+    assert cfg.run.ppe_max_iterations == 40
+
+
+def test_defect_correction_ppe_rejects_cg_line_pcr_base_solver():
+    with pytest.raises(ValueError, match="line_pcr.*method='cg'"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_density",
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "base_solver": {
+                                "discretization": "fd",
+                                "kind": "iterative",
+                                "method": "cg",
+                                "preconditioner": "line_pcr",
+                            },
+                        },
+                    },
+                },
+            },
+        }))
+
+
 def test_fccd_defect_correction_rejects_fvm_direct_base_solver():
     with pytest.raises(ValueError, match="fvm.*direct"):
         ExperimentConfig.from_dict(_minimal({

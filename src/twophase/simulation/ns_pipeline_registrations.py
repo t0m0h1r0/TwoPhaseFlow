@@ -10,6 +10,7 @@ from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
 from ..ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+from ..ppe.fd_matrixfree import PPESolverFDMatrixFree
 from ..ppe.fvm_matrixfree import PPESolverFVMMatrixFree
 from ..ppe.fvm_spsolve import PPESolverFVMSpsolve
 from .gradient_operator import (
@@ -45,6 +46,7 @@ __all__ = [
     "FCCDConvectionTerm",
     "UCCD6ConvectionTerm",
     "PPESolverFCCDMatrixFree",
+    "PPESolverFDMatrixFree",
     "PPESolverFVMMatrixFree",
     "PPESolverFVMSpsolve",
     "CCDGradientOperator",

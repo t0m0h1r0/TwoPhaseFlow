@@ -256,7 +256,7 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # Solver type: "fd_direct" / "fvm_iterative" (default) / "fvm_direct" / "iim" / "iterative";
+    # Solver type: "fd_direct" / "fd_iterative" / "fvm_iterative" (default) / "fvm_direct" / "iim" / "iterative";
     # "ccd_lu" is restricted to explicit component/reference use.
     ppe_solver_type: str = "fvm_iterative"
     allow_kronecker_lu: bool = False
@@ -276,12 +276,14 @@ class SolverConfig:
     def __post_init__(self) -> None:
         _aliases = {
             "fd": "fd_direct",
+            "fd_matrixfree": "fd_iterative",
+            "fd_cg": "fd_iterative",
             "fvm_matrixfree": "fvm_iterative",
             "fvm_spsolve": "fvm_direct",
         }
         self.ppe_solver_type = _aliases.get(self.ppe_solver_type, self.ppe_solver_type)
         _valid_types = (
-            "fd_direct", "fvm_iterative", "fvm_direct",
+            "fd_direct", "fd_iterative", "fvm_iterative", "fvm_direct",
             "iim", "iterative", "ccd_lu",
         )
         assert self.ppe_solver_type in _valid_types, (

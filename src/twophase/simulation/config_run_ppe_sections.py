@@ -6,12 +6,13 @@ from .config_sections import validate_choice
 
 _PPE_DISCRETIZATION_SOLVERS = {
     ("fd", "direct"): "fd_direct",
+    ("fd", "iterative"): "fd_iterative",
     ("fvm", "iterative"): "fvm_iterative",
     ("fvm", "direct"): "fvm_direct",
     ("fccd", "iterative"): "fccd_iterative",
 }
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
-_PPE_ITERATION_METHODS = ("gmres",)
+_PPE_ITERATION_METHODS = ("gmres", "cg")
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
 
 
@@ -160,11 +161,17 @@ def parse_ppe_solver_options(
         _PPE_ITERATION_METHODS,
         f"{path}.method",
     )
+    default_preconditioner = "jacobi" if ppe_iteration_method == "cg" else "line_pcr"
     ppe_preconditioner = validate_choice(
-        solver_cfg.get("preconditioner", "line_pcr"),
+        solver_cfg.get("preconditioner", default_preconditioner),
         _PPE_PRECONDITIONERS,
         f"{path}.preconditioner",
     )
+    if ppe_iteration_method == "cg" and ppe_preconditioner == "line_pcr":
+        raise ValueError(
+            f"{path}.preconditioner='line_pcr' is not valid with method='cg'; "
+            "use 'jacobi' or 'none'."
+        )
     ppe_tolerance = float(solver_cfg.get("tolerance", 1.0e-8))
     if ppe_tolerance <= 0.0:
         raise ValueError(f"{path}.tolerance must be > 0")

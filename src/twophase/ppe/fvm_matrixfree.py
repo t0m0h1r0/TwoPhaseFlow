@@ -5,7 +5,8 @@ but evaluates the operator matrix-free:
 
     L_FVM(rho) p = Σ_a D_a ( A_a(rho) G_a p )
 
-The linear solve is performed by GMRES on a backend-native ``LinearOperator``.
+The linear solve is performed by GMRES or CG on a backend-native
+``LinearOperator``.
 For wall BC the preconditioner can apply either cheap diagonal Jacobi scaling
 or shifted line solves along each axis using the variable-batched tridiagonal
 helper added in CHK-162.
@@ -28,7 +29,12 @@ from .fvm_matrixfree_helpers import (
     build_fvm_line_coeffs,
     build_fvm_preconditioner_state,
 )
-from .gmres_helpers import backend_supports_gmres, solve_gmres
+from .gmres_helpers import (
+    backend_supports_cg,
+    backend_supports_gmres,
+    solve_cg,
+    solve_gmres,
+)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -45,9 +51,10 @@ class PPESolverFVMMatrixFree(IPPESolver):
 
         ∇·[(1/ρ) ∇p] = rhs
 
-    but the operator is applied matrix-free and solved by GMRES with a shifted
-    line preconditioner.  The preconditioner is used only to accelerate the
-    iteration; the fixed point is still the full FVM operator.
+    but the operator is applied matrix-free and solved by a backend Krylov
+    method.  GMRES may use a shifted line preconditioner; CG solves the
+    control-volume-weighted SPD sign-flipped system ``-W L p = -W rhs`` with
+    Jacobi or no preconditioner.
     """
 
     scheme_names     = ("fvm_iterative",)
@@ -83,20 +90,27 @@ class PPESolverFVMMatrixFree(IPPESolver):
         ).strip().lower()
         if self.iteration_method in {"explicit", "gauss_seidel", "adi"}:
             self.iteration_method = "gmres"
-        if self.iteration_method != "gmres":
+        if self.iteration_method not in {"gmres", "cg"}:
             raise ValueError(
                 "PPESolverFVMMatrixFree supports ppe_iteration_method='gmres' "
+                "or 'cg' "
                 f"today, got {self.iteration_method!r}"
             )
         restart = getattr(solver_cfg, "ppe_restart", None)
         self.restart = int(restart) if restart is not None else min(80, max(20, self.maxiter))
+        default_preconditioner = "jacobi" if self.iteration_method == "cg" else "line_pcr"
         self.preconditioner = str(
-            getattr(solver_cfg, "ppe_preconditioner", "line_pcr")
+            getattr(solver_cfg, "ppe_preconditioner", default_preconditioner)
         ).strip().lower()
         if self.preconditioner not in {"jacobi", "line_pcr", "none"}:
             raise ValueError(
                 "ppe_preconditioner must be 'jacobi', 'line_pcr', or 'none', "
                 f"got {self.preconditioner!r}"
+            )
+        if self.iteration_method == "cg" and self.preconditioner == "line_pcr":
+            raise ValueError(
+                "ppe_iteration_method='cg' supports preconditioner='jacobi' "
+                "or 'none'; line_pcr is a nonsymmetric GMRES preconditioner."
             )
         pcr_stages = getattr(solver_cfg, "ppe_pcr_stages", 4)
         if pcr_stages is None:
@@ -139,14 +153,17 @@ class PPESolverFVMMatrixFree(IPPESolver):
             )
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
-        """Solve the FVM PPE with matrix-free GMRES."""
+        """Solve the FVM PPE with a matrix-free Krylov method."""
         if self._fallback is not None:
             return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         la = self.backend.sparse_linalg
-        if not backend_supports_gmres(la):
+        if (
+            (self.iteration_method == "gmres" and not backend_supports_gmres(la))
+            or (self.iteration_method == "cg" and not backend_supports_cg(la))
+        ):
             warnings.warn(
-                "Matrix-free FVM solver unavailable on this backend; falling back "
+                "Matrix-free Krylov PPE solver unavailable on this backend; falling back "
                 "to PPESolverFVMSpsolve.",
                 RuntimeWarning,
                 stacklevel=2,
@@ -157,6 +174,17 @@ class PPESolverFVMMatrixFree(IPPESolver):
         rhs_dev = self.xp.asarray(rhs)
         rhs_flat = rhs_dev.ravel().copy()
         rhs_flat[self._pin_dof] = 0.0
+        cg_weight = (
+            self._control_volume_weight(rhs_dev)
+            if self.iteration_method == "cg"
+            else None
+        )
+        solve_rhs = (
+            -(rhs_dev * cg_weight).ravel().copy()
+            if self.iteration_method == "cg"
+            else rhs_flat
+        )
+        solve_rhs[self._pin_dof] = 0.0
 
         self.prepare_operator(rho_dev)
         self._prepare_preconditioner_state(rho_dev)
@@ -170,14 +198,28 @@ class PPESolverFVMMatrixFree(IPPESolver):
         n_dof = int(np.prod(self.grid.shape))
 
         def _matvec(p_flat):
-            p_field = self.xp.asarray(p_flat).reshape(self.grid.shape)
+            p_vec = self.xp.asarray(p_flat)
+            if self.iteration_method == "cg":
+                p_vec = p_vec.copy()
+                pinned_value = p_vec[self._pin_dof]
+                p_vec[self._pin_dof] = 0.0
+            p_field = p_vec.reshape(self.grid.shape)
             out = self.apply(p_field)
-            return out.ravel()
+            out_flat = out.ravel()
+            if self.iteration_method == "cg":
+                out_flat = -(out * cg_weight).ravel()
+                out_flat[self._pin_dof] = pinned_value
+            return out_flat
 
         def _precond(r_flat):
             r_field = self.xp.asarray(r_flat).reshape(self.grid.shape)
             if self.preconditioner == "jacobi":
+                if self.iteration_method == "cg":
+                    r_field = r_field / cg_weight
                 z = self.apply_jacobi_preconditioner(r_field)
+                if self.iteration_method == "cg":
+                    z = -z
+                    z.ravel()[self._pin_dof] = self.xp.asarray(r_flat)[self._pin_dof]
             else:
                 z = self.apply_line_preconditioner(r_field)
             return z.ravel()
@@ -187,20 +229,32 @@ class PPESolverFVMMatrixFree(IPPESolver):
         if self.preconditioner in {"jacobi", "line_pcr"}:
             M = la.LinearOperator((n_dof, n_dof), matvec=_precond, dtype=rhs_flat.dtype)
 
-        sol_flat, info = solve_gmres(
-            la,
-            A,
-            rhs_flat,
-            x0=x0,
-            preconditioner=M,
-            restart=self.restart,
-            maxiter=self.maxiter,
-            tolerance=self.tol,
-        )
+        if self.iteration_method == "cg":
+            sol_flat, info = solve_cg(
+                la,
+                A,
+                solve_rhs,
+                x0=x0,
+                preconditioner=M,
+                maxiter=self.maxiter,
+                tolerance=self.tol,
+            )
+        else:
+            sol_flat, info = solve_gmres(
+                la,
+                A,
+                solve_rhs,
+                x0=x0,
+                preconditioner=M,
+                restart=self.restart,
+                maxiter=self.maxiter,
+                tolerance=self.tol,
+            )
+        diagnostic_key = f"ppe_low_order_{self.iteration_method}"
         self.last_diagnostics = {
-            "ppe_low_order_gmres_info": int(info),
-            "ppe_low_order_gmres_tol": float(self.tol),
-            "ppe_low_order_gmres_maxiter": int(self.maxiter),
+            f"{diagnostic_key}_info": int(info),
+            f"{diagnostic_key}_tol": float(self.tol),
+            f"{diagnostic_key}_maxiter": int(self.maxiter),
         }
 
         if info != 0:
@@ -316,6 +370,13 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self._h_min = metrics.h_min
         self._d_face = metrics.d_face
         self._dv_node = metrics.dv_node
+
+    def _control_volume_weight(self, template):
+        """Return tensor-product node control-volume weights."""
+        weight = self.xp.ones_like(template)
+        for dv_axis in self._dv_node:
+            weight = weight * dv_axis
+        return weight
 
     def _prepare_preconditioner_state(self, rho) -> None:
         state = build_fvm_preconditioner_state(
