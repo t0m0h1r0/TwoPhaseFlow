@@ -93,6 +93,7 @@ class Grid:
         psi_data: np.ndarray,
         eps: float,
         ccd=None,
+        wall_contacts=None,
     ) -> None:
         """Rebuild interface-fitted grid given the Heaviside field ψ.
 
@@ -163,6 +164,10 @@ class Grid:
             indicator_1d = np.maximum(
                 indicator_1d,
                 self._closure_seed_indicator_1d(phi_h, ax, eps_g),
+            )
+            indicator_1d = np.maximum(
+                indicator_1d,
+                self._wall_contact_indicator_1d(wall_contacts, ax, eps_g),
             )
             omega = 1.0 + (alpha_axis - 1.0) * indicator_1d  # ω ∈ [1, α_a]
 
@@ -274,6 +279,23 @@ class Grid:
         if not projections:
             return indicator
         projected = np.concatenate(projections)
+        if projected.size == 0:
+            return indicator
+        distance = coords_axis.reshape(-1, 1) - projected.reshape(1, -1)
+        return np.max(np.exp(-(distance * distance) / (eps_g * eps_g)), axis=1)
+
+    def _wall_contact_indicator_1d(
+        self,
+        wall_contacts,
+        axis: int,
+        eps_g: float,
+    ) -> np.ndarray:
+        """Build monitor contribution from pinned no-slip contacts."""
+        coords_axis = np.asarray(self.coords[axis], dtype=float)
+        indicator = np.zeros_like(coords_axis)
+        if not wall_contacts:
+            return indicator
+        projected = wall_contacts.projected_coordinates(axis, self)
         if projected.size == 0:
             return indicator
         distance = coords_axis.reshape(-1, 1) - projected.reshape(1, -1)

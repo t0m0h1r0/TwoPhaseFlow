@@ -11,6 +11,7 @@ from .interfaces import IReinitializer
 from .ridge_eikonal_extractor import RidgeExtractor
 from .ridge_eikonal_fmm import NonUniformFMM
 from .ridge_eikonal_kernels import _eps_local_kernel, _sigmoid_xp
+from .wall_contact import WallContactSet
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -45,6 +46,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
         self._wall_closure = getattr(ccd, "bc_type", "wall") == "wall"
+        self._wall_contacts = WallContactSet.empty()
 
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
         self._h_min = h_min
@@ -81,6 +83,10 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._extractor.update_grid(grid)
         self._fmm.update_grid(grid)
 
+    def set_wall_contacts(self, wall_contacts) -> None:
+        """Attach no-slip wall-contact constraints in physical coordinates."""
+        self._wall_contacts = wall_contacts or WallContactSet.empty()
+
     def reinitialize(self, psi):
         xp = self._xp
         psi = xp.asarray(psi)
@@ -88,13 +94,20 @@ class RidgeEikonalReinitializer(IReinitializer):
         M_old = xp.sum(psi * dV)
 
         phi = invert_heaviside(xp, psi, self._eps_local)
-        xi_ridge = self._extractor.compute_xi_ridge(phi)
+        pinned_points = self._wall_contacts.physical_points(self._grid)
+        xi_ridge = self._extractor.compute_xi_ridge(phi, extra_points=pinned_points)
         ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
+        contact_seeds = self._wall_contacts.nearest_node_seeds(self._grid)
 
         if self._backend.is_gpu():
-            phi_sdf = self._fmm.solve(phi, ridge_mask=ridge_mask, h_min=self._h_min)
+            phi_sdf = self._fmm.solve(
+                phi,
+                ridge_mask=ridge_mask,
+                h_min=self._h_min,
+                extra_seeds=contact_seeds,
+            )
         else:
-            extra_seeds = None
+            extra_seeds = list(contact_seeds)
             phi_np = np.asarray(phi)
             mask_np = np.asarray(ridge_mask)
             if np.any(mask_np):
@@ -103,16 +116,27 @@ class RidgeEikonalReinitializer(IReinitializer):
                 if np.any(on_interface):
                     iis = ii[on_interface]
                     jjs = jj[on_interface]
-                    extra_seeds = [(int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))]
+                    extra_seeds.extend(
+                        (int(iis[k]), int(jjs[k]), 0.0) for k in range(len(iis))
+                    )
 
             phi_sdf_np = self._fmm.solve(phi_np, extra_seeds=extra_seeds)
             phi_sdf = xp.asarray(phi_sdf_np)
         psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
+        psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
 
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / self._eps_local
-            contact_band = self._wall_contact_band(phi, phi_sdf)
-            free_mask = xp.where(contact_band, 0.0, 1.0)
+            if self._wall_contacts:
+                constrained_band = self._wall_contacts.constraint_mask(
+                    xp,
+                    self._grid,
+                    tuple(psi_new.shape),
+                    band_width=2.0 * self._h_min,
+                )
+            else:
+                constrained_band = self._wall_contact_band(phi, phi_sdf)
+            free_mask = xp.where(constrained_band, 0.0, 1.0)
             w = w * free_mask
             W = xp.sum(w * dV)
             W_safe = xp.where(W > 1e-14, W, 1.0)
@@ -121,6 +145,7 @@ class RidgeEikonalReinitializer(IReinitializer):
             delta_phi = gate * (M_old - M_new) / W_safe
             phi_sdf = phi_sdf + delta_phi * free_mask
             psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
+            psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
 
         return psi_new
 
