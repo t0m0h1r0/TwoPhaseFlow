@@ -27,7 +27,10 @@ from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_services import _interface_supported_curvature
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.levelset.transport_strategy import PsiDirectTransport
-from twophase.simulation.velocity_reprojector import ConsistentIIMReprojector
+from twophase.simulation.velocity_reprojector import (
+    ConsistentIIMReprojector,
+    VariableDensityReprojector,
+)
 from twophase.ppe.interfaces import IPPESolver
 
 
@@ -1174,3 +1177,41 @@ def test_consistent_iim_reprojector_uses_ppe_matrix_contract():
     assert delegate.calls == 1
     assert np.all(u_out == 1.0)
     assert np.all(v_out == 1.0)
+
+
+class _ContextRecordingPPESolver(IPPESolver):
+    def __init__(self):
+        self.events = []
+
+    def clear_interface_jump_context(self) -> None:
+        self.events.append("clear")
+
+    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
+        self.events.append("solve")
+        return np.zeros_like(rhs)
+
+
+class _DerivativeOnlyCCD:
+    def first_derivative(self, field, axis):
+        return np.zeros_like(field)
+
+
+def test_reprojector_clears_interface_jump_context_before_ppe_solve():
+    reprojector = VariableDensityReprojector()
+    ppe = _ContextRecordingPPESolver()
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    reprojector.reproject(
+        psi,
+        u,
+        v,
+        ppe,
+        ccd=_DerivativeOnlyCCD(),
+        backend=_ArrayBackend(),
+        rho_l=2.0,
+        rho_g=1.0,
+    )
+
+    assert ppe.events == ["clear", "solve"]

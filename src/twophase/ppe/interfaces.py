@@ -82,3 +82,7 @@ class IPPESolver(SchemeRegistryMixin, ABC):
     def invalidate_cache(self) -> None:
         """Invalidate backend-specific cached matrix data if any."""
         return None
+
+    def clear_interface_jump_context(self) -> None:
+        """Clear optional sharp-interface forcing data before neutral solves."""
+        return None

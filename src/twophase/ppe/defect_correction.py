@@ -94,6 +94,13 @@ class PPESolverDefectCorrection(IPPESolver):
             if hasattr(solver, "set_interface_jump_context"):
                 solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
 
+    def clear_interface_jump_context(self) -> None:
+        """Forward neutral-solve context clearing to wrapped PPE components."""
+        for solver in (self.base_solver, self.operator):
+            clearer = getattr(solver, "clear_interface_jump_context", None)
+            if callable(clearer):
+                clearer()
+
     def _subtract_interface_jump_operator(self, rhs_dev):
         """Apply jump decomposition for the wrapped operator residual solve."""
         operator = self.operator

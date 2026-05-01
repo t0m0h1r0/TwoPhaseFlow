@@ -202,6 +202,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             sigma=sigma,
         )
 
+    def clear_interface_jump_context(self) -> None:
+        """Clear pressure-jump data for PPE solves without interface forcing."""
+        self._interface_jump_context = None
+        self._interface_stress_context = None
+
     def prepare_operator(self, rho) -> None:
         """Cache density and optional diagonal preconditioner."""
         prepare_fccd_matrixfree_operator(self, rho)
