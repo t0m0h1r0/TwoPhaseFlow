@@ -75,20 +75,26 @@ def build_runtime_initial_condition(
     context: NSRuntimeSetupContext,
     initial_condition: dict,
 ) -> np.ndarray:
-    """Build the initial conservative level-set field on the host."""
-    return build_initial_condition(context.grid, context.eps, initial_condition)
+    """Build the initial conservative level-set field."""
+    return build_initial_condition(
+        context.grid,
+        context.eps,
+        initial_condition,
+        return_host=not context.backend.is_gpu(),
+    )
 
 
 def build_runtime_initial_velocity(
     context: NSRuntimeSetupContext,
     initial_velocity: dict | None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Build the initial velocity field on the host."""
+    """Build the initial velocity field."""
     return build_initial_velocity(
         context.X,
         context.Y,
         initial_velocity,
         context.backend.to_host,
+        return_host=not context.backend.is_gpu(),
     )
 
 

@@ -104,12 +104,35 @@ time axes and should not be placed as sibling `run` knobs or mixed in one
 
 `grid.distribution` owns mesh non-uniformity:
 
-- `type: uniform`: no interface-fitted concentration, `alpha` is ignored.
-- `type: interface_fitted`: concentrate cells around the interface.
-- `method: gaussian_levelset`: Gaussian density derived from the level-set field.
-- `alpha`: grid concentration strength; `alpha: 2.0` is the standard ch14
-  non-uniform setup.
-- `schedule`: grid rebuild schedule (`static`, `every_step`, or `every_N`).
+- `axes`: preferred axis-local map. Each axis declares `type` and, when fitted,
+  its own `alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`.
+- `method`: global fitting-monitor construction method. It is not axis-local;
+  all fitted axes share the same interface monitor family.
+- Legacy form remains accepted: top-level `type/method/alpha` plus
+  `axes: [x]`, `[y]`, `[x, y]`, or omitted for all-axis fitting.
+- `schedule`: non-negative grid rebuild interval. `0` means initial tracked
+  interface only; `N > 0` rebuilds every N physical steps from the current
+  tracked interface. Legacy aliases `static`, `every_step`, and `every_N` are
+  still accepted.
+
+Canonical capillary-wave form:
+
+```yaml
+grid:
+  distribution:
+    method: gaussian_levelset
+    schedule: 0
+    axes:
+      x:
+        type: uniform
+      y:
+        type: interface_fitted
+        alpha: 2.0
+```
+
+The capillary-wave YAML fits only `y` because `y = η(x)` primarily needs
+resolution across the vertical CLS transition and should not introduce
+unnecessary tangential `x` metrics.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

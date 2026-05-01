@@ -23,6 +23,8 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
     g = cfg.grid
     run = getattr(cfg, "run", g)
     physics = getattr(cfg, "physics", g)
+    fitting_axes = getattr(g, "fitting_axes", (True, True))
+    alpha_grid = getattr(g, "alpha_grid", 1.0)
     return NSSolverInitOptions(
         grid=SolverGridOptions(
             NX=g.NX,
@@ -30,11 +32,28 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             LX=g.LX,
             LY=g.LY,
             bc_type=g.bc_type,
-            alpha_grid=getattr(g, "alpha_grid", 1.0),
+            alpha_grid=alpha_grid,
+            fitting_axes=fitting_axes,
+            fitting_alpha_grid=(
+                getattr(g, "fitting_alpha_grid", None)
+                or tuple(alpha_grid if axis else 1.0 for axis in fitting_axes)
+            ),
             eps_factor=getattr(g, "eps_factor", 1.5),
             eps_g_factor=getattr(g, "eps_g_factor", 2.0),
+            fitting_eps_g_factor=(
+                getattr(g, "fitting_eps_g_factor", None)
+                or (getattr(g, "eps_g_factor", 2.0),) * 2
+            ),
             eps_g_cells=getattr(g, "eps_g_cells", None),
+            fitting_eps_g_cells=(
+                getattr(g, "fitting_eps_g_cells", None)
+                or (getattr(g, "eps_g_cells", None),) * 2
+            ),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
+            fitting_dx_min_floor=(
+                getattr(g, "fitting_dx_min_floor", None)
+                or (getattr(g, "dx_min_floor", 1e-6),) * 2
+            ),
             use_local_eps=getattr(g, "use_local_eps", False),
             eps_xi_cells=getattr(g, "eps_xi_cells", None),
         ),

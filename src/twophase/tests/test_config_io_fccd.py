@@ -596,6 +596,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.grid.NX == 16
     assert cfg.grid.NY == 12
     assert cfg.grid.alpha_grid == 2.0
+    assert cfg.grid.fitting_axes == (True, True)
     assert cfg.grid.grid_rebuild_freq == 3
     assert cfg.grid.use_local_eps is True
     assert cfg.physics.rho_l == 2.0
@@ -801,12 +802,77 @@ def test_disabled_interface_fitting_forces_uniform_grid():
     assert cfg.grid.interface_fitting_enabled is False
     assert cfg.grid.interface_fitting_method == "none"
     assert cfg.grid.alpha_grid == 1.0
+    assert cfg.grid.fitting_axes == (False, False)
+
+
+def test_interface_fitting_axes_parse():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {"distribution": {"type": "interface_fitted", "alpha": 2.0, "axes": ["y"]}},
+    }))
+    assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
+
+
+def test_axis_local_interface_fitting_parse():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "distribution": {
+                "method": "gaussian_levelset",
+                "schedule": 0,
+                "axes": {
+                    "x": {"type": "uniform"},
+                    "y": {
+                        "type": "interface_fitted",
+                        "alpha": 2.5,
+                        "eps_g_factor": 3.0,
+                        "dx_min_floor": 2.0e-6,
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.grid.alpha_grid == 2.5
+    assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.fitting_alpha_grid == (1.0, 2.5)
+    assert cfg.grid.fitting_eps_g_factor == (2.0, 3.0)
+    assert cfg.grid.fitting_dx_min_floor == (1.0e-6, 2.0e-6)
+    assert cfg.grid.grid_rebuild_freq == 0
+
+
+def test_axis_local_interface_fitting_method_rejected():
+    with pytest.raises(ValueError, match="method is global"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "distribution": {
+                    "axes": {
+                        "y": {
+                            "type": "interface_fitted",
+                            "method": "gaussian_levelset",
+                        },
+                    },
+                },
+            },
+        }))
 
 
 def test_invalid_interface_fitting_method_rejected():
     with pytest.raises(ValueError, match="grid.distribution.method"):
         ExperimentConfig.from_dict(_minimal({
             "grid": {"distribution": {"method": "spline_fit"}},
+        }))
+
+
+def test_invalid_interface_fitting_axis_rejected():
+    with pytest.raises(ValueError, match="grid.distribution.axes"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {"distribution": {"axes": ["normal"]}},
+        }))
+
+
+def test_bool_interface_fitting_axis_rejected():
+    with pytest.raises(ValueError, match="grid.distribution.axes"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {"distribution": {"axes": True}},
         }))
 
 

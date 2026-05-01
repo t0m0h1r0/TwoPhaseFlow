@@ -39,7 +39,7 @@ class DGRReinitializer(IReinitializer):
         xp = self.xp
         psi = xp.asarray(psi)  # Ensure device-native (no-op on CPU).
         dV = self.grid.cell_volumes()
-        M_old = float(xp.sum(psi * dV))
+        M_old = xp.sum(psi * dV)
 
         # Compute |∇ψ| via CCD
         grad_sq = xp.zeros_like(psi)
@@ -79,12 +79,13 @@ class DGRReinitializer(IReinitializer):
         # φ-space: δφ = ΔM / ∫H'_ε dV; interface shifts uniformly δx = δφ/|∇φ|≈δφ
         # (since DGR produces |∇φ_sdf|≈1 post-scale). No shape change for curved interfaces.
         w_phi = psi_new * (1.0 - psi_new) / self.eps  # H'_eps(phi_sdf) = dψ/dφ
-        W = float(xp.sum(w_phi * dV))
-        if W > 1e-14:
-            M_new = float(xp.sum(psi_new * dV))
-            delta_phi = (M_old - M_new) / W
-            phi_sdf = phi_sdf + delta_phi
-            psi_new = heaviside(xp, phi_sdf, self.eps)
+        W = xp.sum(w_phi * dV)
+        M_new = xp.sum(psi_new * dV)
+        active = W > 1e-14
+        W_safe = xp.where(active, W, 1.0)
+        delta_phi = xp.where(active, (M_old - M_new) / W_safe, 0.0)
+        phi_sdf = phi_sdf + delta_phi
+        psi_new = heaviside(xp, phi_sdf, self.eps)
         return psi_new
 
 

@@ -15,6 +15,13 @@ from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
 
 
+def _xp_of(array):
+    if type(array).__module__.split(".", 1)[0] == "cupy":
+        import cupy
+        return cupy
+    return np
+
+
 def normalise_ic_dict(ic: dict) -> dict:
     """Convert shorthand IC dicts to ``InitialConditionBuilder`` format."""
     if "shapes" in ic and "type" not in ic:
@@ -43,11 +50,18 @@ def infer_background(shapes: list[dict]) -> str:
     return "gas"
 
 
-def build_initial_condition(grid, eps: float, initial_condition: dict) -> np.ndarray:
-    """Build the initial conservative level-set field on the host."""
+def build_initial_condition(
+    grid,
+    eps: float,
+    initial_condition: dict,
+    *,
+    return_host: bool = True,
+):
+    """Build the initial conservative level-set field."""
     ic_norm = normalise_ic_dict(dict(initial_condition))
     builder = InitialConditionBuilder.from_dict(ic_norm)
-    return np.asarray(builder.build(grid, eps))
+    psi = builder.build(grid, eps, return_host=return_host)
+    return np.asarray(psi) if return_host else psi
 
 
 def build_initial_velocity(
@@ -55,15 +69,20 @@ def build_initial_velocity(
     Y,
     initial_velocity: dict | None,
     to_host: Callable[[object], object],
+    *,
+    return_host: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Build the initial velocity field on the host."""
+    """Build the initial velocity field."""
     if initial_velocity is None:
-        return np.zeros(X.shape), np.zeros(Y.shape)
+        xp = np if return_host else _xp_of(X)
+        return xp.zeros(X.shape), xp.zeros(Y.shape)
 
     spec = dict(initial_velocity)
     velocity_field = velocity_field_from_dict(spec)
     u, v = velocity_field.compute(X, Y)
-    return np.asarray(to_host(u)), np.asarray(to_host(v))
+    if return_host:
+        return np.asarray(to_host(u)), np.asarray(to_host(v))
+    return u, v
 
 
 def wall_bc_hook(u: np.ndarray, v: np.ndarray) -> None:

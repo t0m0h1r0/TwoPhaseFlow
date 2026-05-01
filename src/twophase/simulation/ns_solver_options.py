@@ -16,10 +16,15 @@ class SolverGridOptions:
     bc_type: str = "wall"
     use_gpu: bool | None = None
     alpha_grid: float = 1.0
+    fitting_axes: tuple[bool, bool] = (True, True)
+    fitting_alpha_grid: tuple[float, float] = (1.0, 1.0)
     eps_factor: float = 1.5
     eps_g_factor: float = 2.0
+    fitting_eps_g_factor: tuple[float, float] = (2.0, 2.0)
     eps_g_cells: float | None = None
+    fitting_eps_g_cells: tuple[float | None, float | None] = (None, None)
     dx_min_floor: float = 1e-6
+    fitting_dx_min_floor: tuple[float, float] = (1e-6, 1e-6)
     use_local_eps: bool = False
     eps_xi_cells: float | None = None
 

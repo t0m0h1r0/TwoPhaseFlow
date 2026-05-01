@@ -97,7 +97,7 @@ class InitialConditionBuilder:
 
     # ── ビルド ────────────────────────────────────────────────────────────────
 
-    def build(self, grid: "Grid", eps: float) -> np.ndarray:
+    def build(self, grid: "Grid", eps: float, *, return_host: bool = True):
         """Compute the initial CLS ψ field on the given grid.
 
         Parameters
@@ -107,10 +107,13 @@ class InitialConditionBuilder:
         eps  : float
             Interface half-width ε (same units as grid coordinates).
             Typically ``epsilon_factor × dx_min``.
+        return_host : bool
+            When True, return a NumPy array for backward compatibility.  When
+            False, keep the field on ``grid.xp``.
 
         Returns
         -------
-        psi : np.ndarray
+        psi : ndarray
             CLS field ψ ∈ [0, 1], shape ``grid.shape``.
             ψ ≈ 1 in liquid, ψ ≈ 0 in gas.
         """
@@ -148,7 +151,7 @@ class InitialConditionBuilder:
         # ψ → 1 inside (φ < 0), ψ → 0 outside (φ > 0)
         psi = 1.0 / (1.0 + xp.exp(xp.clip(phi_final / eps, -500.0, 500.0)))
         result = psi.astype(np.float64)
-        return result.get() if xp is not np else result
+        return result.get() if return_host and xp is not np else result
 
     # ── YAML / dict からの構築 ─────────────────────────────────────────────────
 
