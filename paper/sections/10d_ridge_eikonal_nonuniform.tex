@@ -14,9 +14,12 @@
 (i) Gaussian 半幅 $\sigma$ の物理セル分解能が不均一化，
 (ii) $\xiidx$ 空間で Hessian を評価すると実用的困難性に抵触，
 (iii) FMM~\cite{Sethian1996} の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る，
-の 3 か所で一様格子不変量が破れる．これらを 4 補正
+(iv) 壁面接触界面では Gaussian support と FMM seed 集合が
+閉領域 $\overline{\Omega}$ 上で閉じていない，
+の 4 か所で一様格子不変量が破れる．これらを 4 補正
 D1（$\sigma_\text{eff}$ 空間スケーリング）・D2（物理空間 Hessian）・
-D3（非一様 FMM）・D4（$\varepsilon$-widening の空間依存化）で解消し，
+D3（非一様 FMM）・D4（$\varepsilon$-widening の空間依存化）と
+壁閉包補正 W で解消し，
 \S\ref{sec:grid_density}（グリッド密度関数）・
 \S\ref{sec:grid_coord}（メトリクス係数）・
 \S\ref{sec:ccd_metric}（非一様 CCD）のインフラに載せて
@@ -43,12 +46,14 @@ $J_x$ 記号は登場しない．主本文の $J_x$ への
 
 格子密度因子 $\alpha>1$ の界面適合格子
 （§~\ref{sec:grid_density}）では，§~\ref{sec:ridge_aux_field}--§~\ref{sec:ridge_fmm_reconstruction}
-の導出で暗黙に仮定された一様格子不変量が 3 か所で破れる：
+の導出で暗黙に仮定された一様格子不変量が 4 か所で破れる：
 (i) Gaussian 半幅 $\sigma$ の物理セル分解能が不均一化，
 (ii) $\xiidx$ 空間で Hessian を評価すると
 後述の実用的困難性（注記~\ref{rem:xi_hessian_forbidden}）に抵触，
-(iii) FMM の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る．
-以下 4 つの補正 D1--D4 でこれらを解消する．
+(iii) FMM の二次式更新が単位ステップを仮定して $|\bnabla_x\phi|=1$ を破る，
+(iv) 壁面接触界面では自由空間 Gaussian と内部点専用 seed が
+閉包上の零集合を保存しない．
+以下 4 つの補正 D1--D4 と壁閉包 W でこれらを解消する．
 
 \paragraph{D1 — $\sigma_\text{eff}(\bm{x})$ の空間スケーリング}
 基準格子幅を格子点数 $N_a$ に対して
@@ -133,6 +138,50 @@ $\varepsilon_\text{scale}$ は「再構成された SDF 幅を
 本稿では以降，代表値として $\varepsilon_\text{scale}=1.4$ を用いるが，
 感度評価と実装詳細は本節以降で扱う．
 
+\paragraph{W — 壁閉包補正（wall-closure）}
+壁面に接する界面は領域内部の多様体ではなく，閉領域上の
+\begin{equation}
+  \overline{\Gamma}(t)=\Gamma(t)\cup C(t),\qquad
+  C(t)=\overline{\Gamma}(t)\cap\partial\Omega
+  \label{eq:wall_closed_interface}
+\end{equation}
+として扱う．
+中立濡れ・Neumann 型 CLS 壁条件では，壁法線方向の幾何拡張は偶関数鏡像であり，
+Ridge 補助場は
+\begin{equation}
+  \xiridge^{W}(\bm{x})
+  =
+  \sum_{\bm{c}_k\in S_\Gamma}
+  \sum_{R\in\mathcal{R}_W}
+  \exp\!\left(-\frac{|\bm{x}-R\bm{c}_k|^2}{\sigma_\text{eff}(\bm{x})^2}\right)
+  \label{eq:ridge_wall_mirror}
+\end{equation}
+で評価する．
+ここで $\mathcal{R}_W$ は恒等写像と，Gaussian support band 内で関与する
+壁鏡像（角では合成鏡像も含む）である．
+これにより壁面で切断された半 Gaussian による ridge の内側バイアスを除く．
+
+FMM の Dirichlet seed 集合も内部交差だけでは不十分である．
+壁 trace 上の符号変化・厳密零点を含めて
+\begin{equation}
+  S_h = S_{\mathrm{interior}}\cup S_{\mathrm{wall}},
+  \qquad
+  |\bnabla_x\phi|=1,\quad \phi|_{S_h}=0
+  \label{eq:wall_seed_set}
+\end{equation}
+を解く．
+さらに質量補正は接触線 seed を動かしてはならないため，
+\begin{equation}
+  \phi \leftarrow \phi + \lambda\,\chi_{\mathrm{free}}(\bm{x}),
+  \qquad
+  \chi_{\mathrm{free}}=0\ \text{on a contact-line band}
+  \label{eq:contact_pinned_mass_correction}
+\end{equation}
+とし，$\lambda$ は通常の体積制約から決める．
+この補正は Navier--Stokes の壁面速度・圧力条件を変更するものではなく，
+Ridge--Eikonal と格子 monitor が $\overline{\Omega}$ 上の界面閉包を
+保存するための幾何契約である．
+
 % -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{D1 実装：$\sigma_\text{eff}(\bm{x})$ のキャッシュ}{D1 実装：σ\_eff(x) のキャッシュ}}
 \label{sec:ridge_nu_sigma_impl}
@@ -155,6 +204,8 @@ $\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
         スカラ定数として格子生成時に決定．
   \item ALE（\S\ref{sec:grid_ale}）時間変化格子では
         $\sigma_\text{eff}$ を格子更新ごとに再計算する．
+        壁面接触界面では式~\eqref{eq:ridge_wall_mirror} の
+        鏡像 crossing も格子更新後に再生成する．
 \end{itemize}
 
 一様極限（$h(\bm{x}) \equiv h_\text{ref}$）で
@@ -248,6 +299,9 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
         非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
         単位セル仮定の素朴実装では最大 $\alpha$ 倍の誤差を生む
         （$\alpha$ は格子密度比）．
+        壁面接触界面では式~\eqref{eq:wall_seed_set} の
+        $S_{\mathrm{wall}}$ も同じ Dirichlet seed として扱い，
+        exact-zero 壁ノードも seed に含める．
 \end{itemize}
 
 \noindent この結線により FMM のワンパス計算量は
@@ -316,8 +370,10 @@ D1--D4 の効果が次のように簡素化される：
 つまり界面適合格子では Ridge--Eikonal の非一様補正は
 「界面帯での一様近似 + 密度勾配帯での正則化」として作用する．
 ただし，これは D1--D4 の数式上の接続であり，
-移動界面，分裂合体，分相 PPE，HFE，pressure-jump，壁面 BC を同時に含む
+移動界面，分裂合体，分相 PPE，HFE，pressure-jump を同時に含む
 長時間 NS 計算での production 実証は別ゲートとして残る．
+一方，壁面接触については式~\eqref{eq:wall_closed_interface}--\eqref{eq:contact_pinned_mass_correction}
+により，幾何再構成が有限 gap を作らないことを離散契約として要求する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{計算コスト・プレ計算・FCCD との接続}

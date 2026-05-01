@@ -16,10 +16,11 @@ class RidgeExtractor:
     """Gaussian-xi ridge extraction on non-uniform grids."""
 
     def __init__(self, backend: "Backend", grid, sigma_0: float = 3.0,
-                 h_ref: float | None = None):
+                 h_ref: float | None = None, wall_closure: bool = True):
         self._xp = backend.xp
         self._grid = grid
         self._sigma_0 = float(sigma_0)
+        self._wall_closure = bool(wall_closure)
         if h_ref is None:
             h_ref = float(np.prod([L / N for L, N in zip(grid.L, grid.N)]) ** (1.0 / grid.ndim))
         self._h_ref = h_ref
@@ -52,6 +53,8 @@ class RidgeExtractor:
         crossings = self._find_crossings(phi)
         if crossings is None or crossings.shape[0] == 0:
             return xp.zeros_like(phi)
+        if self._wall_closure:
+            crossings = self._with_wall_reflections(crossings)
 
         cx = crossings[:, 0].reshape(-1, 1, 1)
         cy = crossings[:, 1].reshape(-1, 1, 1)
@@ -87,6 +90,32 @@ class RidgeExtractor:
         hess_neg = (hxx < 0.0) | (hyy < 0.0) | ((hxx + hyy) < 0.0)
         det_h = hxx * hyy - hxy * hxy
         ridge_mask = local_max & hess_neg & (det_h > 0.0)
+        boundary_ridge = xp.zeros_like(xi, dtype=bool)
+        if self._wall_closure:
+            boundary_ridge[0, 1:-1] = (
+                (xi[0, 1:-1] > xi[0, :-2])
+                & (xi[0, 1:-1] > xi[0, 2:])
+                & (xi[0, 1:-1] >= xi[1, 1:-1])
+                & (hyy[0, 1:-1] < 0.0)
+            )
+            boundary_ridge[-1, 1:-1] = (
+                (xi[-1, 1:-1] > xi[-1, :-2])
+                & (xi[-1, 1:-1] > xi[-1, 2:])
+                & (xi[-1, 1:-1] >= xi[-2, 1:-1])
+                & (hyy[-1, 1:-1] < 0.0)
+            )
+            boundary_ridge[1:-1, 0] = (
+                (xi[1:-1, 0] > xi[:-2, 0])
+                & (xi[1:-1, 0] > xi[2:, 0])
+                & (xi[1:-1, 0] >= xi[1:-1, 1])
+                & (hxx[1:-1, 0] < 0.0)
+            )
+            boundary_ridge[1:-1, -1] = (
+                (xi[1:-1, -1] > xi[:-2, -1])
+                & (xi[1:-1, -1] > xi[2:, -1])
+                & (xi[1:-1, -1] >= xi[1:-1, -2])
+                & (hxx[1:-1, -1] < 0.0)
+            )
 
         hx_bwd = xp.roll(hx_dev, 1, axis=0)
         hx_fwd = xp.roll(hx_dev, -1, axis=0)
@@ -100,14 +129,44 @@ class RidgeExtractor:
         gy[:, 1:-1] = (xi[:, 2:] - xi[:, :-2]) / dy2
         grad_mag = xp.sqrt(gx * gx + gy * gy)
         tol = 0.5 * xp.max(grad_mag)
-        ridge_mask = ridge_mask & (grad_mag < tol + 1e-30)
+        ridge_mask = (ridge_mask & (grad_mag < tol + 1e-30)) | boundary_ridge
         return ridge_mask
+
+    def _with_wall_reflections(self, crossings):
+        """Mirror crossing points across solid walls for closed-domain ridges."""
+        xp = self._xp
+        length_x = float(self._grid.L[0])
+        length_y = float(self._grid.L[1])
+        point_x = crossings[:, 0]
+        point_y = crossings[:, 1]
+        images = []
+        for reflect_x in ("none", "low", "high"):
+            if reflect_x == "none":
+                image_x = point_x
+            elif reflect_x == "low":
+                image_x = -point_x
+            else:
+                image_x = 2.0 * length_x - point_x
+            for reflect_y in ("none", "low", "high"):
+                if reflect_x == "none" and reflect_y == "none":
+                    continue
+                if reflect_y == "none":
+                    image_y = point_y
+                elif reflect_y == "low":
+                    image_y = -point_y
+                else:
+                    image_y = 2.0 * length_y - point_y
+                images.append(xp.stack([image_x, image_y], axis=1))
+        if not images:
+            return crossings
+        return xp.concatenate([crossings, *images], axis=0)
 
     def _find_crossings(self, phi):
         xp = self._xp
         cx = xp.asarray(self._grid.coords[0])
         cy = xp.asarray(self._grid.coords[1])
         parts = []
+        tol = 1e-12
 
         p, p1 = phi[:-1, :], phi[1:, :]
         mask = (p * p1) < 0.0
@@ -126,5 +185,11 @@ class RidgeExtractor:
         xk = cx[ii]
         yk = cy[jj] + frac * (cy[jj + 1] - cy[jj])
         parts.append(xp.stack([xk, yk], axis=1))
+
+        zero_i, zero_j = xp.where(xp.abs(phi) <= tol)
+        if zero_i.shape[0] > 0:
+            xk = cx[zero_i]
+            yk = cy[zero_j]
+            parts.append(xp.stack([xk, yk], axis=1))
 
         return xp.concatenate(parts, axis=0)

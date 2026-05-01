@@ -1,7 +1,7 @@
 # CHK-RA-WALL-RIDGE-001 — Wall-Closure Ridge–Eikonal Theory
 
 Date: 2026-05-01
-Status: theory/design memo
+Status: theory/design memo; implemented by CHK-RA-WALL-RIDGE-002
 Scope: Ridge–Eikonal reinitialization, Gaussian grid fitting, wall-contact interfaces
 
 ## 1. Conclusion
@@ -223,15 +223,15 @@ Gaussian processing.
 
 Required production changes should be staged in this order:
 
-1. Add a wall-contact extractor from current `\phi`/`\psi` traces.
-2. Feed `S_wall` as explicit FMM seeds on CPU and GPU.
+1. Add a wall-contact extractor from current `\phi`/`\psi` traces. [implemented]
+2. Feed `S_wall` as explicit FMM seeds on CPU and GPU. [implemented]
 3. Mirror interface crossing points in `RidgeExtractor.compute_xi_ridge` within
    a finite Gaussian support band.
-4. Add boundary ridge admissibility for one-sided wall maxima.
+4. Add boundary ridge admissibility for one-sided wall maxima. [implemented]
 5. Replace scalar mass correction by contact-pinned mass correction when
-   wall-contact seeds exist.
+   wall-contact seeds exist. [implemented]
 6. Build Gaussian grid-fitting monitors from the tracked closure seed set for
-   active axes.
+   active axes. [implemented]
 
 Validation should include:
 

@@ -183,6 +183,39 @@ def test_fmm_physical_coord_seeding(backend):
     assert err < 1e-10, f"1D physical-seed reconstruction err={err:.3e}"
 
 
+def test_fmm_exact_zero_wall_seed_is_dirichlet(backend):
+    """A zero set on the wall is FMM Dirichlet data, not a missing crossing."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, _ = np.meshgrid(x, y, indexing="ij")
+    phi_in = X.copy()
+
+    fmm = NonUniformFMM(grid)
+    phi_out = fmm.solve(phi_in)
+
+    np.testing.assert_allclose(phi_out[0, :], 0.0, atol=1e-14)
+    np.testing.assert_allclose(phi_out[:, 16], x, atol=1e-12)
+
+
+def test_reinit_mass_correction_pins_wall_contact(backend):
+    """Mass correction must not detach an interface pinned to a wall."""
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, _ = np.meshgrid(x, y, indexing="ij")
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-X / eps))
+    reinit = RidgeEikonalReinitializer(
+        backend, grid, ccd, eps=eps, sigma_0=3.0,
+        eps_scale=1.4, mass_correction=True,
+    )
+
+    psi_out = np.asarray(reinit.reinitialize(psi))
+
+    np.testing.assert_allclose(psi_out[0, :], 0.5, atol=2e-12)
+
+
 # ── V5 — CPU/GPU parity (CPU-only under this test; GPU gated elsewhere) ─
 
 def test_sigma_eff_cpu_fuse_identity(backend):
@@ -378,6 +411,9 @@ def test_ridge_eikonal_no_ke_blowup(backend):
         reinit_every=2,
         reinit_eps_scale=1.4,
         ridge_sigma_0=3.0,
+        surface_tension_scheme="pressure_jump",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
         reproject_mode="consistent_gfm",
         phi_primary_transport=True,
         advection_scheme="fccd_flux",

@@ -153,12 +153,17 @@ class Grid:
             phi_1d = xp.min(xp.abs(phi), axis=axes_other)
 
             phi_1d_h = np.asarray(self.backend.to_host(phi_1d))
+            phi_h = np.asarray(self.backend.to_host(phi))
             coords_old = np.asarray(self.coords[ax], dtype=float)
 
             # §6 eq:grid_delta: bounded Gaussian indicator ∈ [0, 1]
             # NOTE: ディラックデルタ正規化因子 1/(ε_g√π) は除去する.
             # 正規化すると ピーク = 1/(ε_g√π) >> 1 となり ω >> α になる (unbounded bug).
             indicator_1d = np.exp(-(phi_1d_h ** 2) / (eps_g ** 2))
+            indicator_1d = np.maximum(
+                indicator_1d,
+                self._closure_seed_indicator_1d(phi_h, ax, eps_g),
+            )
             omega = 1.0 + (alpha_axis - 1.0) * indicator_1d  # ω ∈ [1, α_a]
 
             # Equidistribution on the physical old coordinate:
@@ -222,6 +227,57 @@ class Grid:
             return np.full(n_cells, length / n_cells)
         scale = (length - floor * n_cells) / total_surplus
         return floor + surplus * scale
+
+    def _closure_seed_indicator_1d(
+        self,
+        phi: np.ndarray,
+        axis: int,
+        eps_g: float,
+    ) -> np.ndarray:
+        """Build a Gaussian monitor from closed-domain interface crossings."""
+        coords_axis = np.asarray(self.coords[axis], dtype=float)
+        indicator = np.zeros_like(coords_axis)
+        if self.ndim != 2:
+            return indicator
+
+        coords_x = np.asarray(self.coords[0], dtype=float)
+        coords_y = np.asarray(self.coords[1], dtype=float)
+        projections = []
+        tol = max(1.0e-12, 1.0e-10 * eps_g)
+
+        phi_left = phi[:-1, :]
+        phi_right = phi[1:, :]
+        crossing_mask = (phi_left * phi_right) < 0.0
+        if np.any(crossing_mask):
+            crossing_i, crossing_j = np.where(crossing_mask)
+            denom = np.abs(phi_left[crossing_i, crossing_j]) + np.abs(phi_right[crossing_i, crossing_j])
+            frac = np.abs(phi_left[crossing_i, crossing_j]) / np.where(denom > 0.0, denom, 1.0)
+            crossing_x = coords_x[crossing_i] + frac * (coords_x[crossing_i + 1] - coords_x[crossing_i])
+            crossing_y = coords_y[crossing_j]
+            projections.append(crossing_x if axis == 0 else crossing_y)
+
+        phi_down = phi[:, :-1]
+        phi_up = phi[:, 1:]
+        crossing_mask = (phi_down * phi_up) < 0.0
+        if np.any(crossing_mask):
+            crossing_i, crossing_j = np.where(crossing_mask)
+            denom = np.abs(phi_down[crossing_i, crossing_j]) + np.abs(phi_up[crossing_i, crossing_j])
+            frac = np.abs(phi_down[crossing_i, crossing_j]) / np.where(denom > 0.0, denom, 1.0)
+            crossing_x = coords_x[crossing_i]
+            crossing_y = coords_y[crossing_j] + frac * (coords_y[crossing_j + 1] - coords_y[crossing_j])
+            projections.append(crossing_x if axis == 0 else crossing_y)
+
+        zero_i, zero_j = np.where(np.abs(phi) <= tol)
+        if len(zero_i) > 0:
+            projections.append(coords_x[zero_i] if axis == 0 else coords_y[zero_j])
+
+        if not projections:
+            return indicator
+        projected = np.concatenate(projections)
+        if projected.size == 0:
+            return indicator
+        distance = coords_axis.reshape(-1, 1) - projected.reshape(1, -1)
+        return np.max(np.exp(-(distance * distance) / (eps_g * eps_g)), axis=1)
 
     def _build_metrics(self, ccd=None) -> None:
         """Compute CCD metrics J = dxi/dx and dJ/dxi for each axis.
