@@ -901,6 +901,55 @@ def test_disabled_interface_fitting_forces_uniform_grid():
     assert cfg.grid.interface_fitting_method == "none"
     assert cfg.grid.alpha_grid == 1.0
     assert cfg.grid.fitting_axes == (False, False)
+    assert cfg.grid.wall_refinement_axes == (False, False)
+
+
+def test_wall_refinement_requires_nonuniform_grid_selection():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "distribution": {
+                "type": "uniform",
+                "method": "none",
+                "wall": {"enabled": True, "alpha": 2.0, "eps_g_cells": 4},
+            },
+        },
+    }))
+    assert cfg.grid.alpha_grid == 1.0
+    assert cfg.grid.fitting_axes == (False, False)
+    assert cfg.grid.wall_refinement_axes == (False, False)
+
+
+def test_wall_refinement_periodic_auto_excluded():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "domain": {"size": [1.0, 1.0], "boundary": "periodic"},
+            "distribution": {
+                "type": "interface_fitted",
+                "alpha": 2.0,
+                "wall": {"enabled": "auto", "alpha": 2.0, "eps_g_cells": 4},
+            },
+        },
+    }))
+    assert cfg.grid.fitting_axes == (True, True)
+    assert cfg.grid.wall_refinement_axes == (False, False)
+
+
+def test_wall_refinement_axis_uniform_excluded():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "distribution": {
+                "type": "interface_fitted",
+                "alpha": 2.0,
+                "wall": {"enabled": True, "alpha": 1.5, "eps_g_cells": 4},
+                "axes": {
+                    "x": {"type": "uniform"},
+                    "y": {"type": "interface_fitted"},
+                },
+            },
+        },
+    }))
+    assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.wall_refinement_axes == (False, True)
 
 
 def test_interface_fitting_axes_parse():

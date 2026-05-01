@@ -22,6 +22,13 @@ class GridAxisDistribution:
     fitting_eps_g_factor: tuple[float, ...]
     eps_g_cells: float | None
     fitting_eps_g_cells: tuple[float | None, ...]
+    wall_refinement_enabled: bool
+    wall_refinement_axes: tuple[bool, ...]
+    wall_alpha_grid: tuple[float, ...]
+    wall_eps_g_factor: float
+    wall_eps_g_factor_axes: tuple[float, ...]
+    wall_eps_g_cells: tuple[float | None, ...]
+    wall_sides: tuple[tuple[str, ...], ...]
     dx_min_floor: float
     fitting_dx_min_floor: tuple[float, ...]
 
@@ -39,6 +46,7 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         distribution,
         ndim=2,
         grid_dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
+        bc_type=str(domain["boundary"]),
     )
     eps_factor = float(width.get("base_factor", 1.5))
     eps_xi_cells = opt_float(width.get("xi_cells"))
@@ -57,6 +65,12 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         fitting_eps_g_factor=axis_distribution.fitting_eps_g_factor,
         eps_g_cells=axis_distribution.eps_g_cells,
         fitting_eps_g_cells=axis_distribution.fitting_eps_g_cells,
+        wall_refinement_axes=axis_distribution.wall_refinement_axes,
+        wall_alpha_grid=axis_distribution.wall_alpha_grid,
+        wall_eps_g_factor=axis_distribution.wall_eps_g_factor,
+        wall_eps_g_factor_axes=axis_distribution.wall_eps_g_factor_axes,
+        wall_eps_g_cells=axis_distribution.wall_eps_g_cells,
+        wall_sides=axis_distribution.wall_sides,
         dx_min_floor=axis_distribution.dx_min_floor,
         fitting_dx_min_floor=axis_distribution.fitting_dx_min_floor,
         use_local_eps=use_local_eps,
@@ -241,6 +255,7 @@ def parse_grid_axis_distribution(
     *,
     ndim: int,
     grid_dx_min_floor: float,
+    bc_type: str,
 ) -> GridAxisDistribution:
     """Parse global or axis-local interface-fitted grid settings."""
     axes_raw = distribution.get("axes")
@@ -263,6 +278,13 @@ def parse_grid_axis_distribution(
     default_eps_factor = float(distribution.get("eps_g_factor", 2.0))
     default_eps_cells = opt_float(distribution.get("eps_g_cells"))
     default_dx_floor = float(distribution.get("dx_min_floor", grid_dx_min_floor))
+    wall_defaults = parse_wall_refinement_defaults(
+        distribution.get("wall"),
+        ndim=ndim,
+        bc_type=bc_type,
+        default_eps_factor=default_eps_factor,
+        nonuniform_enabled=default_enabled,
+    )
 
     if has_axis_map:
         parsed = parse_axis_map_distribution(
@@ -274,6 +296,8 @@ def parse_grid_axis_distribution(
             default_eps_factor=default_eps_factor,
             default_eps_cells=default_eps_cells,
             default_dx_floor=default_dx_floor,
+            wall_defaults=wall_defaults,
+            bc_type=bc_type,
         )
     else:
         fitting_axes = parse_grid_fitting_axes(
@@ -294,6 +318,13 @@ def parse_grid_axis_distribution(
             ),
             "fitting_eps_g_cells": tuple(default_eps_cells for _axis in range(ndim)),
             "fitting_dx_min_floor": tuple(default_dx_floor for _axis in range(ndim)),
+            "wall_refinement_axes": tuple(wall_defaults["enabled"] for _axis in range(ndim)),
+            "wall_alpha_grid": tuple(wall_defaults["alpha"] for _axis in range(ndim)),
+            "wall_eps_g_factor_axes": tuple(
+                wall_defaults["eps_g_factor"] for _axis in range(ndim)
+            ),
+            "wall_eps_g_cells": tuple(wall_defaults["eps_g_cells"] for _axis in range(ndim)),
+            "wall_sides": tuple(wall_defaults["sides"] for _axis in range(ndim)),
         }
 
     active_methods = {
@@ -306,6 +337,20 @@ def parse_grid_axis_distribution(
         next(iter(active_methods)) if len(active_methods) == 1 else "axis_mixed"
     )
     alpha_grid = max(parsed["fitting_alpha_grid"]) if enabled else 1.0
+    wall_enabled = any(parsed["wall_refinement_axes"])
+    alpha_grid = max(
+        alpha_grid,
+        max(
+            (
+                alpha if wall_axis else 1.0
+                for wall_axis, alpha in zip(
+                    parsed["wall_refinement_axes"],
+                    parsed["wall_alpha_grid"],
+                )
+            ),
+            default=1.0,
+        ),
+    )
     eps_g_cells_values = {
         value for value in parsed["fitting_eps_g_cells"] if value is not None
     }
@@ -322,9 +367,105 @@ def parse_grid_axis_distribution(
         fitting_eps_g_factor=parsed["fitting_eps_g_factor"],
         eps_g_cells=eps_g_cells,
         fitting_eps_g_cells=parsed["fitting_eps_g_cells"],
+        wall_refinement_enabled=wall_enabled,
+        wall_refinement_axes=parsed["wall_refinement_axes"],
+        wall_alpha_grid=parsed["wall_alpha_grid"],
+        wall_eps_g_factor=wall_defaults["eps_g_factor"],
+        wall_eps_g_factor_axes=parsed["wall_eps_g_factor_axes"],
+        wall_eps_g_cells=parsed["wall_eps_g_cells"],
+        wall_sides=parsed["wall_sides"],
         dx_min_floor=default_dx_floor,
         fitting_dx_min_floor=parsed["fitting_dx_min_floor"],
     )
+
+
+def parse_wall_refinement_defaults(
+    raw: Any,
+    *,
+    ndim: int,
+    bc_type: str,
+    default_eps_factor: float,
+    nonuniform_enabled: bool,
+    context: str = "grid.distribution.wall",
+) -> dict:
+    """Parse a wall-refinement block into axis-default values."""
+    if raw is None:
+        return {
+            "enabled": False,
+            "alpha": 1.0,
+            "eps_g_factor": default_eps_factor,
+            "eps_g_cells": None,
+            "sides": ("lower", "upper"),
+        }
+    if isinstance(raw, bool):
+        spec = {"enabled": raw}
+    elif isinstance(raw, str):
+        spec = {"enabled": raw}
+    elif isinstance(raw, dict):
+        spec = raw
+    else:
+        raise ValueError(f"{context} must be a mapping, bool, or auto/enabled string")
+
+    enabled = parse_wall_refinement_enabled(
+        spec.get("enabled", "auto"),
+        bc_type=bc_type,
+        nonuniform_enabled=nonuniform_enabled,
+        context=f"{context}.enabled",
+    )
+    combine = str(spec.get("combine", "additive")).strip().lower()
+    if combine != "additive":
+        raise ValueError(f"{context}.combine must be 'additive', got {combine!r}")
+    sides = parse_wall_sides(spec.get("sides", ("lower", "upper")), context=context)
+    if not sides:
+        enabled = False
+    return {
+        "enabled": enabled,
+        "alpha": float(spec.get("alpha", 1.0)) if enabled else 1.0,
+        "eps_g_factor": float(spec.get("eps_g_factor", default_eps_factor)),
+        "eps_g_cells": opt_float(spec.get("eps_g_cells")),
+        "sides": sides,
+    }
+
+
+def parse_wall_refinement_enabled(
+    raw: Any,
+    *,
+    bc_type: str,
+    nonuniform_enabled: bool,
+    context: str,
+) -> bool:
+    """Resolve wall-refinement enabled/auto with mandatory periodic exclusion."""
+    if isinstance(raw, bool):
+        requested = raw
+    else:
+        value = str(raw).strip().lower()
+        if value == "auto":
+            requested = True
+        elif value in {"true", "yes", "on", "enabled"}:
+            requested = True
+        elif value in {"false", "no", "off", "disabled", "none"}:
+            requested = False
+        else:
+            raise ValueError(f"{context} must be auto|true|false, got {raw!r}")
+    return (
+        requested
+        and nonuniform_enabled
+        and str(bc_type).strip().lower() == "wall"
+    )
+
+
+def parse_wall_sides(raw: Any, *, context: str) -> tuple[str, ...]:
+    """Parse wall sides as a subset of lower/upper."""
+    if raw is None:
+        return ("lower", "upper")
+    raw_items = [raw] if isinstance(raw, str) else list(raw)
+    if any(str(item).strip().lower() == "all" for item in raw_items):
+        return ("lower", "upper")
+    sides = tuple(str(item).strip().lower() for item in raw_items)
+    invalid = [side for side in sides if side not in {"lower", "upper"}]
+    if invalid:
+        raise ValueError(f"{context}.sides must contain lower|upper|all, got {invalid!r}")
+    return sides
 
 
 def parse_axis_map_distribution(
@@ -337,6 +478,8 @@ def parse_axis_map_distribution(
     default_eps_factor: float,
     default_eps_cells: float | None,
     default_dx_floor: float,
+    wall_defaults: dict,
+    bc_type: str,
 ) -> dict:
     """Parse ``grid.distribution.axes`` when it is an axis-name mapping."""
     fitting_axes = [False] * ndim
@@ -345,6 +488,11 @@ def parse_axis_map_distribution(
     fitting_eps_factor = [default_eps_factor] * ndim
     fitting_eps_cells = [default_eps_cells] * ndim
     fitting_dx_floor = [default_dx_floor] * ndim
+    wall_axes = [False] * ndim
+    wall_alpha = [wall_defaults["alpha"]] * ndim
+    wall_eps_factor = [wall_defaults["eps_g_factor"]] * ndim
+    wall_eps_cells = [wall_defaults["eps_g_cells"]] * ndim
+    wall_sides = [wall_defaults["sides"]] * ndim
     for raw_axis, raw_spec in axes_raw.items():
         axis = parse_grid_axis_key(raw_axis, ndim, "grid.distribution.axes")
         spec = normalize_axis_distribution_spec(raw_spec)
@@ -372,6 +520,24 @@ def parse_axis_map_distribution(
             fitting_dx_floor[axis] = float(
                 spec.get("dx_min_floor", default_dx_floor)
             )
+            wall_axes[axis] = wall_defaults["enabled"]
+        else:
+            wall_axes[axis] = False
+            wall_alpha[axis] = 1.0
+        if "wall" in spec:
+            wall_spec = parse_wall_refinement_defaults(
+                spec.get("wall"),
+                ndim=ndim,
+                bc_type=bc_type,
+                default_eps_factor=wall_defaults["eps_g_factor"],
+                nonuniform_enabled=axis_type == "interface_fitted",
+                context=f"grid.distribution.axes.{raw_axis}.wall",
+            )
+            wall_axes[axis] = wall_spec["enabled"]
+            wall_alpha[axis] = wall_spec["alpha"]
+            wall_eps_factor[axis] = wall_spec["eps_g_factor"]
+            wall_eps_cells[axis] = wall_spec["eps_g_cells"]
+            wall_sides[axis] = wall_spec["sides"]
     return {
         "fitting_axes": tuple(fitting_axes),
         "methods": tuple(methods),
@@ -379,6 +545,11 @@ def parse_axis_map_distribution(
         "fitting_eps_g_factor": tuple(fitting_eps_factor),
         "fitting_eps_g_cells": tuple(fitting_eps_cells),
         "fitting_dx_min_floor": tuple(fitting_dx_floor),
+        "wall_refinement_axes": tuple(wall_axes),
+        "wall_alpha_grid": tuple(wall_alpha),
+        "wall_eps_g_factor_axes": tuple(wall_eps_factor),
+        "wall_eps_g_cells": tuple(wall_eps_cells),
+        "wall_sides": tuple(wall_sides),
     }
 
 

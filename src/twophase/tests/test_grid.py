@@ -322,3 +322,137 @@ def test_update_from_levelset_tracks_current_interface_on_active_axis():
     assert abs(first_center - 0.50) < 2.0 * uniform_width
     assert abs(second_center - 0.62) < 2.0 * uniform_width
     assert second_center > first_center + 0.08
+
+
+def test_wall_refinement_wall_only_symmetric():
+    """Wall-only monitor refines both non-periodic wall layers symmetrically."""
+    node_count = 64
+    length = 1.0
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=2.0,
+            fitting_axes=(False, False),
+            wall_refinement_axes=(False, True),
+            wall_alpha_grid=(1.0, 2.0),
+            wall_eps_g_cells=(None, 4.0),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    psi = np.full(grid.shape, 0.25)
+
+    grid.update_from_levelset(psi, eps=1.5 * length / node_count, ccd=ccd)
+
+    dy = np.diff(grid.coords[1])
+    assert dy[0] < length / node_count
+    assert dy[-1] < length / node_count
+    assert dy[node_count // 2] > dy[0]
+    np.testing.assert_allclose(dy, dy[::-1], rtol=1.0e-12, atol=1.0e-12)
+    np.testing.assert_allclose(grid.coords[0], np.linspace(0.0, length, node_count + 1))
+
+
+def test_wall_refinement_alpha_one_regresses_to_interface_only():
+    """`alpha_W=1` is an exact legacy reduction."""
+    node_count = 64
+    length = 1.0
+    eps = 1.5 * length / node_count
+    coords = np.linspace(0.0, length, node_count + 1)
+    _, Y = np.meshgrid(coords, coords, indexing="ij")
+    psi = 1.0 / (1.0 + np.exp(-(Y - 0.5) / eps))
+
+    def build_grid(with_wall):
+        backend = _make_backend()
+        cfg = SimulationConfig(
+            grid=GridConfig(
+                ndim=2,
+                N=(node_count, node_count),
+                L=(length, length),
+                alpha_grid=3.0,
+                fitting_axes=(False, True),
+                fitting_alpha_grid=(1.0, 3.0),
+                wall_refinement_axes=(False, with_wall),
+                wall_alpha_grid=(1.0, 1.0),
+            )
+        )
+        grid = Grid(cfg.grid, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        grid.update_from_levelset(psi, eps=eps, ccd=ccd)
+        return grid
+
+    legacy = build_grid(False)
+    wall_alpha_one = build_grid(True)
+    np.testing.assert_allclose(wall_alpha_one.coords[1], legacy.coords[1])
+    np.testing.assert_allclose(wall_alpha_one.h[1], legacy.h[1])
+
+
+def test_wall_interface_overlap_keeps_positive_monotone_cells():
+    """Overlapping wall and interface monitors must remain an admissible map."""
+    node_count = 64
+    length = 1.0
+    eps = 1.5 * length / node_count
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=3.0,
+            fitting_axes=(False, True),
+            fitting_alpha_grid=(1.0, 3.0),
+            wall_refinement_axes=(False, True),
+            wall_alpha_grid=(1.0, 2.0),
+            wall_eps_g_cells=(None, 4.0),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    x = np.linspace(0.0, length, node_count + 1)
+    _, Y = np.meshgrid(x, x, indexing="ij")
+    psi = 1.0 / (1.0 + np.exp(-(Y - 0.08) / eps))
+
+    grid.update_from_levelset(psi, eps=eps, ccd=ccd)
+
+    dy = np.diff(grid.coords[1])
+    ratio = np.maximum(dy[1:] / dy[:-1], dy[:-1] / dy[1:])
+    assert np.all(dy > 0.0)
+    assert np.all(np.diff(grid.coords[1]) > 0.0)
+    assert float(np.max(ratio)) < 1.35
+
+
+def test_wall_refined_grid_wall_shear_derivative_converges():
+    """A manufactured wall shear profile converges on the wall-refined metric."""
+    length = 1.0
+    errors = []
+    hs = []
+    for node_count in (32, 64, 128):
+        backend = _make_backend()
+        cfg = SimulationConfig(
+            grid=GridConfig(
+                ndim=2,
+                N=(node_count, node_count),
+                L=(length, length),
+                alpha_grid=2.0,
+                fitting_axes=(False, False),
+                wall_refinement_axes=(False, True),
+                wall_alpha_grid=(1.0, 2.0),
+                wall_eps_g_cells=(None, 4.0),
+            )
+        )
+        grid = Grid(cfg.grid, backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+        psi = np.full(grid.shape, 0.25)
+        grid.update_from_levelset(psi, eps=1.5 * length / node_count, ccd=ccd)
+
+        y = grid.coords[1]
+        field = np.sin(np.pi * y)[None, :] * np.ones((node_count + 1, 1))
+        derivative, _ = ccd.differentiate(field, 1)
+        exact_wall_shear = np.pi
+        errors.append(float(abs(derivative[0, 0] - exact_wall_shear)))
+        hs.append(length / node_count)
+
+    order = np.polyfit(np.log(hs), np.log(errors), 1)[0]
+    assert order >= 2.5
