@@ -19,6 +19,7 @@ from .interfaces import IReinitializer
 from .advection import _weno5_pos, _weno5_neg, _pad_bc
 from .heaviside import apply_mass_correction
 from .reinit_ops import volume_monitor as _volume_monitor
+from ..core.boundary import sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -197,15 +198,19 @@ class ReinitializerWENO5(IReinitializer):
     def reinitialize(self, psi) -> "array":
         xp = self.xp
         q = xp.copy(psi)
+        sync_periodic_image_nodes(q, self._bc)
         dtau = self.dtau
         ccd = self.ccd
         for _ in range(self.n_steps):
             r0 = self._rhs(q, ccd)
             q1 = xp.clip(q + dtau * r0, 0.0, 1.0)
+            sync_periodic_image_nodes(q1, self._bc)
             r1 = self._rhs(q1, ccd)
             q2 = xp.clip(0.75 * q + 0.25 * (q1 + dtau * r1), 0.0, 1.0)
+            sync_periodic_image_nodes(q2, self._bc)
             r2 = self._rhs(q2, ccd)
             q = xp.clip((1.0 / 3.0) * q + (2.0 / 3.0) * (q2 + dtau * r2), 0.0, 1.0)
+            sync_periodic_image_nodes(q, self._bc)
         return q
 
     def _rhs(self, psi, ccd: "CCDSolver"):

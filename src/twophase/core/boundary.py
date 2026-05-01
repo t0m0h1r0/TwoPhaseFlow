@@ -91,6 +91,55 @@ def is_all_wall(bc_type, ndim: int) -> bool:
     return all(axis == "wall" for axis in boundary_axes(bc_type, ndim))
 
 
+def periodic_axis_flags(bc_type, ndim: int) -> tuple[bool, ...]:
+    """Return periodic-axis flags for compact or axis-local BC names.
+
+    Scalar transport uses ``periodic``/``neumann`` axis labels while pressure
+    and velocity use compact ``wall``/``periodic`` names.  This helper extracts
+    only the quotient-space topology: axes labelled ``periodic`` identify the
+    last nodal image with the first nodal source; all other labels are treated
+    as physical/non-periodic closures by the caller.
+    """
+    if isinstance(bc_type, (tuple, list)):
+        axes = tuple(str(value).strip().lower() for value in bc_type)
+        if len(axes) != ndim:
+            raise ValueError(f"len(boundary axes)={len(axes)} != ndim={ndim}")
+        return tuple(axis == "periodic" for axis in axes)
+    value = str(
+        bc_type.value if isinstance(bc_type, BCType) else bc_type
+    ).strip().lower()
+    if value in {"zero", "neumann", "outflow"}:
+        return tuple(False for _axis in range(ndim))
+    return tuple(axis == "periodic" for axis in boundary_axes(bc_type, ndim))
+
+
+def sync_periodic_image_nodes(arr, bc_type):
+    """Enforce nodal periodic quotient constraints in-place.
+
+    For a periodic axis, the terminal nodal plane is the image of the initial
+    plane, not an independent DOF.  The operation implements
+    ``q[..., N_axis, ...] = q[..., 0, ...]`` for every periodic axis and leaves
+    wall/Neumann axes untouched.
+    """
+    flags = periodic_axis_flags(bc_type, arr.ndim)
+    for axis, is_periodic in enumerate(flags):
+        if not is_periodic:
+            continue
+        source = [slice(None)] * arr.ndim
+        image = [slice(None)] * arr.ndim
+        source[axis] = 0
+        image[axis] = -1
+        arr[tuple(image)] = arr[tuple(source)]
+    return arr
+
+
+def sync_periodic_image_nodes_many(arrays, bc_type):
+    """Apply ``sync_periodic_image_nodes`` to each array in ``arrays``."""
+    for arr in arrays:
+        sync_periodic_image_nodes(arr, bc_type)
+    return arrays
+
+
 @dataclass(frozen=True)
 class BoundarySpec:
     """境界条件の物理仕様。

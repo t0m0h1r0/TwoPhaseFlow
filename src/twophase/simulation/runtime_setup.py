@@ -11,7 +11,11 @@ from typing import Callable
 
 import numpy as np
 
-from ..core.boundary import boundary_axes, is_all_periodic
+from ..core.boundary import (
+    boundary_axes,
+    is_all_periodic,
+    sync_periodic_image_nodes_many,
+)
 
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
@@ -88,7 +92,7 @@ def build_initial_velocity(
 
 
 def wall_bc_hook(u: np.ndarray, v: np.ndarray, bc_type: str = "wall") -> None:
-    """Apply no-slip / no-penetration walls on all boundaries."""
+    """Apply wall closures and periodic nodal image constraints."""
     axes = boundary_axes(bc_type, u.ndim)
     for arr in (u, v):
         if axes[0] == "wall":
@@ -97,13 +101,15 @@ def wall_bc_hook(u: np.ndarray, v: np.ndarray, bc_type: str = "wall") -> None:
         if axes[1] == "wall":
             arr[:, 0] = 0.0
             arr[:, -1] = 0.0
+    sync_periodic_image_nodes_many((u, v), axes)
 
 
 def apply_velocity_bc(u, v, bc_hook, bc_type: str) -> None:
     """Apply the configured velocity boundary condition in-place."""
     if bc_hook is not None:
         bc_hook(u, v)
-    elif not is_all_periodic(bc_type, u.ndim):
+        sync_periodic_image_nodes_many((u, v), bc_type)
+    else:
         wall_bc_hook(u, v, bc_type=bc_type)
 
 

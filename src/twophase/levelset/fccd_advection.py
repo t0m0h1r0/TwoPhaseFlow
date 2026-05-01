@@ -25,6 +25,7 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 from ..core.array_checks import all_arrays_exact_zero
+from ..core.boundary import sync_periodic_image_nodes
 from .interfaces import ILevelSetAdvection
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
@@ -91,6 +92,7 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
         xp = self.xp
         psi = xp.asarray(psi)
         velocity_components = [xp.asarray(vc) for vc in velocity_components]
+        sync_periodic_image_nodes(psi, self._fccd.bc_type)
 
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
@@ -100,15 +102,17 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
             if clip_bounds is not None:
                 lo, hi = clip_bounds
                 q_new = xp.clip(psi, lo, hi)
+                sync_periodic_image_nodes(q_new, self._fccd.bc_type)
             if self._mass_correction:
                 q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+                sync_periodic_image_nodes(q_new, self._fccd.bc_type)
             return q_new
 
-        if clip_bounds is None:
-            post_stage = None
-        else:
-            lo, hi = clip_bounds
-            post_stage = lambda q: xp.clip(q, lo, hi)
+        def post_stage(q):
+            if clip_bounds is not None:
+                lo, hi = clip_bounds
+                q = xp.clip(q, lo, hi)
+            return sync_periodic_image_nodes(q, self._fccd.bc_type)
 
         q_new = tvd_rk3(
             xp, psi, dt,
@@ -118,6 +122,7 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
         if self._mass_correction:
             q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+            sync_periodic_image_nodes(q_new, self._fccd.bc_type)
 
         return q_new
 

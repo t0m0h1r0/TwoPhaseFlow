@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from .interfaces import IReinitializer
 from .heaviside import apply_mass_correction
 from .reinit_ops import compute_dtau, compute_gradient_normal, filtered_divergence
+from ..core.boundary import sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -43,6 +44,7 @@ class UnifiedDCCDReinitializer(IReinitializer):
         xp = self.xp
         # Ensure psi is on the correct device (no-op on CPU).
         q = xp.asarray(psi).copy()
+        sync_periodic_image_nodes(q, self._bc)
         dV = self._dV
         M_old = xp.sum(q * dV)
 
@@ -101,9 +103,11 @@ class UnifiedDCCDReinitializer(IReinitializer):
             )
             q_clipped = q_clipped + (gate_clip * repair_ratio) * w_clip
             q = xp.clip(q_clipped, 0.0, 1.0)
+            sync_periodic_image_nodes(q, self._bc)
 
         if self._mass_correction:
             q = apply_mass_correction(xp, q, dV, M_old)
+            sync_periodic_image_nodes(q, self._bc)
 
         return q
 

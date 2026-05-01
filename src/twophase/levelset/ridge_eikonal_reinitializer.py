@@ -12,7 +12,7 @@ from .ridge_eikonal_extractor import RidgeExtractor
 from .ridge_eikonal_fmm import NonUniformFMM
 from .ridge_eikonal_kernels import _eps_local_kernel, _sigmoid_xp
 from .wall_contact import WallContactSet
-from ..core.boundary import boundary_axes
+from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -46,10 +46,8 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
-        self._wall_axes = tuple(
-            axis == "wall"
-            for axis in boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
-        )
+        self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
+        self._wall_axes = tuple(axis == "wall" for axis in self._bc_axes)
         self._wall_closure = any(self._wall_axes)
         self._wall_contacts = WallContactSet.empty()
 
@@ -96,10 +94,12 @@ class RidgeEikonalReinitializer(IReinitializer):
     def reinitialize(self, psi):
         xp = self._xp
         psi = xp.asarray(psi)
+        sync_periodic_image_nodes(psi, self._bc_axes)
         dV = self._dV
         M_old = xp.sum(psi * dV)
 
         phi = invert_heaviside(xp, psi, self._eps_local)
+        sync_periodic_image_nodes(phi, self._bc_axes)
         pinned_points = self._wall_contacts.physical_points(self._grid)
         xi_ridge = self._extractor.compute_xi_ridge(phi, extra_points=pinned_points)
         ridge_mask = self._extractor.extract_ridge_mask(xi_ridge)
@@ -128,8 +128,10 @@ class RidgeEikonalReinitializer(IReinitializer):
 
             phi_sdf_np = self._fmm.solve(phi_np, extra_seeds=extra_seeds)
             phi_sdf = xp.asarray(phi_sdf_np)
+        sync_periodic_image_nodes(phi_sdf, self._bc_axes)
         psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
         psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
+        sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / self._eps_local
@@ -150,8 +152,10 @@ class RidgeEikonalReinitializer(IReinitializer):
             M_new = xp.sum(psi_new * dV)
             delta_phi = gate * (M_old - M_new) / W_safe
             phi_sdf = phi_sdf + delta_phi * free_mask
+            sync_periodic_image_nodes(phi_sdf, self._bc_axes)
             psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
             psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
+            sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         return psi_new
 

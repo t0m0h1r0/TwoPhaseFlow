@@ -46,9 +46,10 @@ class CCDDivergenceOperator(IDivergenceOperator):
 class FVMDivergenceOperator(IDivergenceOperator):
     """Finite-volume divergence on the node-centred non-uniform grid."""
 
-    def __init__(self, backend: "Backend", grid: "Grid") -> None:
+    def __init__(self, backend: "Backend", grid: "Grid", bc_type: str = "wall") -> None:
         self.xp = backend.xp
         self._grid = grid
+        self._bc_type = bc_type
         self._dv = None
         self._d_face = None
         self.supports_zero_projection_shortcut = True
@@ -122,7 +123,12 @@ class FVMDivergenceOperator(IDivergenceOperator):
 
     def reconstruct_nodes(self, face_components: list["array"]) -> list["array"]:
         """Reconstruct nodal components from corrected normal face fluxes."""
-        return reconstruct_nodes_from_faces(self.xp, self._grid, face_components)
+        return reconstruct_nodes_from_faces(
+            self.xp,
+            self._grid,
+            face_components,
+            bc_type=self._bc_type,
+        )
 
     def project(
         self,
@@ -218,6 +224,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             self._fccd.xp,
             self._fccd.grid,
             face_components,
+            bc_type=self._fccd.bc_type,
         )
 
     def pressure_fluxes(
