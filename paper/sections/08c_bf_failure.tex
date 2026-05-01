@@ -22,7 +22,7 @@
 \end{equation}
 が要請される．微分階数ではなく\textbf{離散演算子の整合性}が
 寄生流れ（spurious currents）を支配する~\cite{Popinet2009,Renardy2002,DennerVanWachem2015}．
-実装で頻出する 5 つの破綻モードを以下に列挙する：
+離散化で現れる 5 つの破綻モードを以下に列挙する：
 
 \begin{tcolorbox}[warnbox,title={F-1..F-5：Balanced--Force 失敗モード}]
 \begin{description}[leftmargin=2em,style=nextline]
@@ -48,7 +48,7 @@
 
 \noindent\textbf{重要な事実}：
 F-1..F-5 は\textbf{すべて微分階数と独立}である．
-「高次 CCD を全量に適用」した素朴実装は F-1..F-5 のどれか（多くの場合複数）を
+「高次 CCD を全量に適用」した素朴離散化は F-1..F-5 のどれか（多くの場合複数）を
 必ず踏む．本稿の rising bubble PoC では F-2 と F-4 が同時発生し，
 PPE RHS の発散だけを修正しても補正側が別 $G_h$ を参照する限り
 BF 残差は減らない（P-2 参照，\S\ref{sec:bf_seven_principles}）．
