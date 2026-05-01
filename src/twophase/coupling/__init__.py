@@ -1,4 +1,5 @@
 # §8: Pressure-velocity coupling — GFM, PPE RHS, velocity correction
+from .capillary_geometry import apply_wall_compatible_curvature
 from .gfm import GFMCorrector
 from .interface_stress_closure import (
     InterfaceStressContext,
@@ -15,6 +16,7 @@ __all__ = [
     "InterfaceStressContext",
     "VelocityCorrector",
     "PPERHSBuilderGFM",
+    "apply_wall_compatible_curvature",
     "build_interface_stress_context",
     "build_young_laplace_interface_stress_context",
     "interface_stress_context_is_active",

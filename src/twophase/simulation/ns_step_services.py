@@ -12,6 +12,7 @@ from .ns_predictor_assembly import (
     select_transverse_axis,
 )
 from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
+from ..coupling.capillary_geometry import apply_wall_compatible_curvature
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -164,6 +165,8 @@ def compute_ns_surface_tension_stage(
     step_diag,
     st_force,
     ccd,
+    grid,
+    bc_type: str,
     surface_tension_grad_op,
     projection_consistent_buoyancy: bool,
 ) -> NSStepState:
@@ -175,6 +178,14 @@ def compute_ns_surface_tension_stage(
         state.kappa,
         state.psi,
         xp=xp,
+        psi_min=getattr(curv, "psi_min", 0.01),
+    )
+    state.kappa = apply_wall_compatible_curvature(
+        xp=xp,
+        grid=grid,
+        psi=state.psi,
+        kappa_lg=state.kappa,
+        bc_type=bc_type,
         psi_min=getattr(curv, "psi_min", 0.01),
     )
     if interface_runtime.kappa_max is not None:

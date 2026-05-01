@@ -27,6 +27,25 @@ Gauss の発散定理を $\bnabla\cdot(\psi\bu)$ に直接適用すると：
 $\int\psi\,dV = \text{const}$ が速度場の発散条件に依存せず保証される．
 離散計算では，この性質を保つ精度はフラックス差分，境界処理，値域制限，再初期化補正に依存する．
 
+さらに，静止 no-slip 壁に接する界面では，体積保存だけでなく壁面上の相トポロジも制約される．
+壁面を接線座標 $s$ で表し $\psi_w(s,t)=\psi(\bm{x}_{\partial\Omega}(s),t)$ とおくと，
+壁面上では $\bu=0$ であるため，明示的な slip/contact-line/contact-angle モデルを導入しない限り，
+\begin{equation}
+  \operatorname{sign}\!\left(\psi_w(s,t)-\frac12\right)
+  =
+  \operatorname{sign}\!\left(\psi_w(s,0)-\frac12\right),
+  \qquad
+  C(t)=C(0),\quad
+  C(t)=\{s:\psi_w(s,t)=1/2\}
+  \label{eq:wall_phase_topology_invariant}
+\end{equation}
+である．
+これは平滑化された $\psi_w$ の数値を全時刻で固定する条件ではない：
+界面が壁に触れない範囲で壁近傍へ近づけば，同じ相側に留まる $\psi_w$ の値は変化しうる．
+固定されるのは壁面上の相区間と既存接触根であり，再初期化・格子再構成・質量補正などの補助操作は
+新しい壁面接触点を生成してはならない．
+周期境界には物理的な壁面接触集合 $C(t)$ が存在しないため，この制約は適用しない．
+
 これが非保存形（式~\eqref{eq:ls_noncons}）との本質的な差異である：
 非保存形では $\bu\cdot\bnabla\phi \equiv \bnabla\cdot(\phi\bu) - \phi\bnabla\cdot\bu$
 の等価性に $\bnabla\cdot\bu=0$ が必要であり，

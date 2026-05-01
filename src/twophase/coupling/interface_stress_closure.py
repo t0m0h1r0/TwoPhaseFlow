@@ -42,6 +42,7 @@ class InterfaceStressContext:
     phase_threshold: float = 0.5
     kappa_lg: Any | None = None
     sigma: float = 0.0
+    cut_face_quadrature: bool = False
 
     def is_active(self) -> bool:
         """Return whether a non-zero pressure jump should be applied."""
@@ -85,6 +86,7 @@ def build_interface_stress_context(
         kappa_lg=None if curvature is None else xp.asarray(curvature),
         sigma=float(sigma),
         phase_threshold=float(phase_threshold),
+        cut_face_quadrature=False,
     )
 
 
@@ -97,13 +99,21 @@ def build_young_laplace_interface_stress_context(
     phase_threshold: float = 0.5,
 ) -> InterfaceStressContext:
     """Build ``j_gl = p_gas - p_liquid = -σ κ_lg`` for capillarity."""
-    return build_interface_stress_context(
+    context = build_interface_stress_context(
         xp=xp,
         psi=psi,
         pressure_jump_gas_minus_liquid=-float(sigma) * xp.asarray(kappa_lg),
         kappa_lg=kappa_lg,
         sigma=sigma,
         phase_threshold=phase_threshold,
+    )
+    return InterfaceStressContext(
+        psi=context.psi,
+        pressure_jump_gas_minus_liquid=context.pressure_jump_gas_minus_liquid,
+        phase_threshold=context.phase_threshold,
+        kappa_lg=context.kappa_lg,
+        sigma=context.sigma,
+        cut_face_quadrature=True,
     )
 
 
@@ -140,16 +150,28 @@ def signed_pressure_jump_gradient(
         return xp.zeros(tuple(face_shape), dtype=reference.dtype)
 
     psi = xp.asarray(context.psi)
-    pressure_jump_gas_minus_liquid = xp.asarray(
-        context.pressure_jump_gas_minus_liquid
-    )
-    gas_lo = psi[sl(0, n_cells)] < context.phase_threshold
-    gas_hi = psi[sl(1, n_cells + 1)] < context.phase_threshold
+    psi_lo = psi[sl(0, n_cells)]
+    psi_hi = psi[sl(1, n_cells + 1)]
+    gas_lo = psi_lo < context.phase_threshold
+    gas_hi = psi_hi < context.phase_threshold
     cut_face = gas_lo != gas_hi
-    pressure_jump = 0.5 * (
-        pressure_jump_gas_minus_liquid[sl(0, n_cells)]
-        + pressure_jump_gas_minus_liquid[sl(1, n_cells + 1)]
-    )
+    if context.cut_face_quadrature and context.kappa_lg is not None:
+        kappa_lg = xp.asarray(context.kappa_lg)
+        kappa_lo = kappa_lg[sl(0, n_cells)]
+        kappa_hi = kappa_lg[sl(1, n_cells + 1)]
+        dpsi = psi_hi - psi_lo
+        safe_dpsi = xp.where(xp.abs(dpsi) > 1.0e-30, dpsi, 1.0)
+        theta = xp.clip((context.phase_threshold - psi_lo) / safe_dpsi, 0.0, 1.0)
+        kappa_face = (1.0 - theta) * kappa_lo + theta * kappa_hi
+        pressure_jump = -float(context.sigma) * kappa_face
+    else:
+        pressure_jump_gas_minus_liquid = xp.asarray(
+            context.pressure_jump_gas_minus_liquid
+        )
+        pressure_jump = 0.5 * (
+            pressure_jump_gas_minus_liquid[sl(0, n_cells)]
+            + pressure_jump_gas_minus_liquid[sl(1, n_cells + 1)]
+        )
     orientation = gas_hi.astype(pressure_jump.dtype) - gas_lo.astype(
         pressure_jump.dtype
     )

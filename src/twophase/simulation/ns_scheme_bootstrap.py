@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ..levelset.curvature import CurvatureCalculator
+from ..levelset.curvature_psi import CurvatureCalculatorPsi
 from ..levelset.curvature_filter import InterfaceLimitedFilter
 from .ns_option_canonicalizer import (
     validate_local_epsilon_surface_tension_compatibility,
@@ -39,8 +39,7 @@ def build_ns_scheme_runtime_artifacts(
         alpha_grid=alpha_grid,
         surface_tension_scheme=getattr(options, "surface_tension_scheme", "csf"),
     )
-    eps_curv = make_eps_field() if use_local_eps and alpha_grid > 1.0 else eps
-    curv = CurvatureCalculator(backend, ccd, eps_curv)
+    curv = CurvatureCalculatorPsi(backend, ccd)
     curvature_filter = InterfaceLimitedFilter(backend, ccd, C=options.hfe_C)
     state = normalise_ns_scheme_runtime(options)
     return NSSchemeRuntimeArtifacts(
