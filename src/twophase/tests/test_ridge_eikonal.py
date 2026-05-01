@@ -270,6 +270,20 @@ def test_wall_contact_detection_records_side_wall_coordinates(backend):
     assert len(contacts.traces) == 4
 
 
+def test_wall_trace_constraint_disabled_for_periodic_bc(backend):
+    """Periodic boundaries do not receive no-slip wall trace constraints."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    y_coords = np.asarray(grid.coords[1])
+    _, y_mesh = np.meshgrid(np.asarray(grid.coords[0]), y_coords, indexing="ij")
+    psi = 1.0 / (1.0 + np.exp(-(y_mesh - 0.47) / 0.04))
+
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="periodic")
+
+    assert not contacts
+    assert len(contacts.contacts) == 0
+    assert len(contacts.traces) == 0
+
+
 def test_wall_contact_impose_pins_half_contour(backend):
     """Pinned contacts impose the exact wall half-contour after distortion."""
     grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
@@ -324,6 +338,61 @@ def test_wall_trace_projection_removes_extra_wall_crossings(backend):
     np.testing.assert_allclose(right_crossings[0], y_pinned, atol=1e-14)
 
 
+def test_wall_trace_projection_leaves_interior_free(backend):
+    """Wall trace projection is a boundary-only operation."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x_coords = np.asarray(grid.coords[0])
+    y_coords = np.asarray(grid.coords[1])
+    _, y_mesh = np.meshgrid(x_coords, y_coords, indexing="ij")
+    psi = 1.0 / (1.0 + np.exp(-(y_mesh - 0.47) / 0.04))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    projected = contacts.impose_on_wall_trace(np, grid, psi)
+    interior_distorted = projected.copy()
+    interior_distorted[1:-1, 1:-1] = np.clip(
+        interior_distorted[1:-1, 1:-1] + 0.123,
+        0.0,
+        1.0,
+    )
+
+    after_projection = contacts.impose_on_wall_trace(np, grid, interior_distorted)
+
+    np.testing.assert_allclose(
+        after_projection[1:-1, 1:-1],
+        interior_distorted[1:-1, 1:-1],
+        atol=0.0,
+    )
+
+
+def test_wall_phase_projection_allows_near_wall_approach(backend):
+    """Wall values may approach the interface without creating contact."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x_coords = np.asarray(grid.coords[0])
+    y_coords = np.asarray(grid.coords[1])
+    _, y_mesh = np.meshgrid(x_coords, y_coords, indexing="ij")
+    psi = 1.0 / (1.0 + np.exp(-(y_mesh - 0.47) / 0.04))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    approached = contacts.impose_on_wall_trace(np, grid, psi)
+    reference_side = np.sign(psi[0, :] - 0.5)
+    contact_band = np.abs(y_coords - contacts.contacts[0].coordinate) < 2.0 * np.min(grid.h[1])
+    free_wall = reference_side != 0.0
+    free_wall = free_wall & np.logical_not(contact_band)
+    approached[0, free_wall & (reference_side < 0.0)] = 0.499
+    approached[0, free_wall & (reference_side > 0.0)] = 0.501
+
+    projected = contacts.impose_on_wall_trace(np, grid, approached)
+
+    np.testing.assert_allclose(
+        projected[0, free_wall & (reference_side < 0.0)],
+        0.499,
+        atol=0.0,
+    )
+    np.testing.assert_allclose(
+        projected[0, free_wall & (reference_side > 0.0)],
+        0.501,
+        atol=0.0,
+    )
+
+
 def test_masked_mass_correction_preserves_pinned_contact(backend):
     """Mass correction excludes pinned contact DOFs."""
     grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
@@ -360,8 +429,8 @@ def test_masked_mass_correction_preserves_pinned_contact(backend):
     )
 
 
-def test_constraint_mask_excludes_full_wall_trace_from_mass_correction(backend):
-    """Conservation repair cannot modify no-slip wall trace DOFs."""
+def test_constraint_mask_preserves_contact_but_not_full_wall_trace(backend):
+    """Conservation repair is not forbidden from moving same-phase wall values."""
     grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
     x_coords = np.asarray(grid.coords[0])
     y_coords = np.asarray(grid.coords[1])
@@ -371,7 +440,11 @@ def test_constraint_mask_excludes_full_wall_trace_from_mass_correction(backend):
     psi = 1.0 / (1.0 + np.exp(-(y_mesh - y_contact) / eps))
     contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
     projected = contacts.impose_on_wall_trace(np, grid, psi)
-    free_mask = np.logical_not(contacts.constraint_mask(np, grid, projected.shape))
+    constrained = contacts.constraint_mask(np, grid, projected.shape)
+    free_mask = np.logical_not(constrained)
+
+    assert not np.any(constrained[1:-1, 1:-1])
+    assert not np.all(constrained[0, :])
 
     corrected = apply_masked_mass_correction(
         np,
@@ -380,11 +453,13 @@ def test_constraint_mask_excludes_full_wall_trace_from_mass_correction(backend):
         np.sum(projected * grid.cell_volumes()) + 1.0e-3,
         free_mask,
     )
+    corrected = contacts.impose_on_wall_trace(np, grid, corrected)
 
-    np.testing.assert_allclose(corrected[0, :], projected[0, :], atol=0.0)
-    np.testing.assert_allclose(corrected[-1, :], projected[-1, :], atol=0.0)
-    np.testing.assert_allclose(corrected[:, 0], projected[:, 0], atol=0.0)
-    np.testing.assert_allclose(corrected[:, -1], projected[:, -1], atol=0.0)
+    np.testing.assert_allclose(
+        _wall_crossing(y_coords, corrected[0, :]),
+        contacts.contacts[0].coordinate,
+        atol=1e-14,
+    )
 
 
 def test_ridge_eikonal_reinit_preserves_pinned_contact_coordinate(backend):

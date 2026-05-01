@@ -4,8 +4,8 @@ Symbol mapping
 --------------
 ``C`` / ``C(t)``:
     ``WallContactSet`` — contact-line points on a stationary solid wall.
-``psi_w``:
-    ``WallTrace`` — material phase trace restricted to a stationary wall.
+``sign(psi_w - 1/2)``:
+    ``WallTrace`` — material phase side restricted to a stationary wall.
 ``s``:
     ``coordinate`` — physical tangent coordinate along a wall.
 ``X_w(s)``:
@@ -55,13 +55,14 @@ class WallContact:
 
 @dataclass(frozen=True)
 class WallTrace:
-    """Initial no-slip wall trace stored in physical tangent coordinates.
+    """Initial no-slip wall phase side stored in physical coordinates.
 
     A3 chain:
         Equation: ``D psi / Dt = 0`` with ``u|wall = 0``.
-        Boundary result: ``partial_t psi_w = 0``.
-        Discretization: store ``psi_w(s, 0)`` and interpolate it onto the
-        current physical wall coordinates after auxiliary geometry operations.
+        Sharp-interface result: wall phase intervals and contact roots are
+        invariant unless a slip/contact-line law is introduced.
+        Discretization: store the initial sign of ``psi_w - 1/2`` and project
+        only boundary nodes that would create new wall contacts.
     """
 
     wall_axis: int
@@ -69,6 +70,7 @@ class WallTrace:
     tangent_axis: int
     tangent_coordinates: tuple[float, ...]
     values: tuple[float, ...]
+    level: float = 0.5
 
     def wall_index(self) -> int:
         """Return the boundary index associated with this wall side."""
@@ -87,6 +89,10 @@ class WallTrace:
             right=source_values[-1],
         )
         return np.clip(sampled, 0.0, 1.0)
+
+    def phase_side(self, tangent_coordinates: np.ndarray) -> np.ndarray:
+        """Return the initial wall phase side at current coordinates."""
+        return np.sign(self.sample(tangent_coordinates) - self.level)
 
 
 @dataclass(frozen=True)
@@ -142,6 +148,7 @@ class WallContactSet:
                         tangent_axis=tangent_axis,
                         tangent_coordinates=tuple(float(v) for v in tangent_coords),
                         values=tuple(float(v) for v in trace),
+                        level=float(level),
                     )
                 )
                 contacts.extend(
@@ -242,10 +249,10 @@ class WallContactSet:
         shape: tuple[int, int],
         *,
         band_width: float | None = None,
-        contact_layers: int = 2,
+        contact_layers: int = 1,
         wall_layers: int = 1,
     ):
-        """Return all nodes excluded by wall-contact/trace invariants."""
+        """Return contact-root nodes excluded from mass correction."""
         contact_nodes = self.contact_mask(
             xp,
             grid,
@@ -253,15 +260,10 @@ class WallContactSet:
             band_width=band_width,
             normal_layers=contact_layers,
         )
-        trace_nodes = self.wall_trace_mask(
-            xp,
-            shape,
-            normal_layers=wall_layers,
-        )
-        return contact_nodes | trace_nodes
+        return contact_nodes
 
     def impose_on_wall_trace(self, xp, grid, psi, *, delta: float = 0.25):
-        """Project boundary trace and exact half-contours onto no-slip data."""
+        """Project wall phase topology and exact contacts onto no-slip data."""
         if not self:
             return psi
         out = xp.array(psi, copy=True)
@@ -270,13 +272,29 @@ class WallContactSet:
 
         for trace in self.traces:
             tangent = coords[trace.tangent_axis]
-            sampled = trace.sample(tangent)
+            phase_side = trace.phase_side(tangent)
             wall_index = trace.wall_index()
-            sampled_dev = xp.asarray(sampled, dtype=out.dtype)
+            level = float(trace.level)
+            low_value = np.nextafter(level, 0.0)
+            high_value = np.nextafter(level, 1.0)
             if trace.wall_axis == 0:
-                out[wall_index, :] = sampled_dev
+                wall_values = out[wall_index, :]
+                high_mask = xp.asarray(phase_side > 0.0)
+                low_mask = xp.asarray(phase_side < 0.0)
+                out[wall_index, :] = xp.where(
+                    high_mask & (wall_values <= level),
+                    high_value,
+                    xp.where(low_mask & (wall_values >= level), low_value, wall_values),
+                )
             else:
-                out[:, wall_index] = sampled_dev
+                wall_values = out[:, wall_index]
+                high_mask = xp.asarray(phase_side > 0.0)
+                low_mask = xp.asarray(phase_side < 0.0)
+                out[:, wall_index] = xp.where(
+                    high_mask & (wall_values <= level),
+                    high_value,
+                    xp.where(low_mask & (wall_values >= level), low_value, wall_values),
+                )
 
         for contact in self.contacts:
             tangent = coords[contact.tangent_axis]
