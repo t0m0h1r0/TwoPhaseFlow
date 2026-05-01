@@ -250,7 +250,6 @@ class WallContactSet:
         *,
         band_width: float | None = None,
         contact_layers: int = 1,
-        wall_layers: int = 1,
     ):
         """Return contact-root nodes excluded from mass correction."""
         contact_nodes = self.contact_mask(
