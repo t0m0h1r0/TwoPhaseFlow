@@ -6,9 +6,9 @@
 #   closure, not as CSF σκ∇ψ or a regular pressure field.
 # - Curvature: interface geometry uses `psi_direct_filtered`.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
-# - Grid fitting: capillary wave is a graph y=η(x), so interface-fitted
-#   stretching is restricted to y, the dominant normal/CLS-transition axis;
-#   x remains uniform to avoid needless tangential metric forcing.
+# - Grid fitting: capillary wave is a graph y=η(x) on a periodic x domain,
+#   so x is a uniform periodic axis; y carries the interface/wall nonuniform
+#   monitor because the upper/lower boundaries are physical walls.
 #   Static fitting is built from the initial tracked ψ; dynamic schedules
 #   rebuild the y-monitor from the current tracked interface field.
 
@@ -16,22 +16,25 @@ grid:
   cells: [128, 128]
   domain:
     size: [1.0, 1.0]
-    boundary: wall
+    boundary:
+      x: periodic
+      y:
+        lower: wall
+        upper: wall
   distribution:
-    method: gaussian_levelset
     schedule: 1
     axes:
       x:
-        type: interface_fitted
-        alpha: 1.0
-        wall:
-          enabled: true
-          alpha: 1.3
-          eps_g_cells: 4
-          sides: [lower, upper]
+        type: uniform
       y:
-        type: interface_fitted
-        alpha: 2.0
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+          wall:
+            alpha: 1.3
+            eps_g_cells: 4
+            apply_to: [lower, upper]
 
 interface:
   thickness:

@@ -36,6 +36,7 @@ from typing import Optional, TYPE_CHECKING
 
 from .ccd_solver import CCDSolver
 from ..backend import fuse as _fuse
+from ..core.boundary import boundary_axes, canonical_bc_type
 from ..time_integration.tvd_rk3 import tvd_rk3
 
 if TYPE_CHECKING:
@@ -97,8 +98,7 @@ class UCCD6Operator:
     ) -> None:
         if sigma <= 0.0:
             raise ValueError(f"sigma must be > 0, got {sigma}")
-        if bc_type not in ("periodic", "wall"):
-            raise ValueError(f"bc_type must be 'periodic' or 'wall', got {bc_type!r}")
+        canonical_bc_type(boundary_axes(bc_type, grid.ndim))
         self.grid = grid
         self.backend = backend
         self.xp = backend.xp
@@ -165,8 +165,12 @@ class UCCD6Operator:
         h_vol = 1.0
         for ax in range(self.grid.ndim):
             h_vol *= self._h[ax]
-        if self.bc_type == "periodic":
-            slices = tuple(slice(None, -1) for _ in range(self.grid.ndim))
+        axes = boundary_axes(self.bc_type, self.grid.ndim)
+        if any(axis == "periodic" for axis in axes):
+            slices = tuple(
+                slice(None, -1) if axis == "periodic" else slice(None)
+                for axis in axes
+            )
             u_core = u[slices]
         else:
             u_core = u

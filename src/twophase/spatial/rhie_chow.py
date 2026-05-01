@@ -28,6 +28,8 @@ repulsion.  Only the Rhie-Chow face-velocity divergence is correct.
 from __future__ import annotations
 from typing import List, Tuple, TYPE_CHECKING, Any
 
+from ..core.boundary import is_periodic_axis, is_wall_axis
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
@@ -144,7 +146,7 @@ class RhieChowInterpolator:
         # O(1) spurious RC correction (dp_face - dp_bar ≠ 0 for any non-trivial p).
         # Fix: replace boundary-node dp_cell with one-sided differences so that
         # dp_face - dp_bar = O(h) for smooth p — consistent with interior faces O(h²).
-        if self.bc_type == 'wall':
+        if is_wall_axis(self.bc_type, axis, self.ndim):
             dp_cell = xp.copy(dp_cell)
             # Left wall: node 0 → forward one-sided  (p[1]−p[0])/h
             dp_cell[sl(0)] = (p[sl(1)] - p[sl(0)]) / h
@@ -159,7 +161,7 @@ class RhieChowInterpolator:
             dpsi_cell, _ = ccd.differentiate(psi, axis)
             f_sigma_cell = kappa * dpsi_cell / we   # (κ/We) D^(1)_CCD ψ
 
-            if self.bc_type == 'wall':
+            if is_wall_axis(self.bc_type, axis, self.ndim):
                 # Apply same boundary fix as dp_cell: replace CCD boundary values
                 # with one-sided differences so the bracket correction is O(h).
                 f_sigma_cell = xp.copy(f_sigma_cell)
@@ -206,7 +208,7 @@ class RhieChowInterpolator:
         flux[sl(slice(1, N_ax + 1))] = u_bar - dt * inv_rho_harm * rc_bracket
 
         # face 0: left boundary
-        if self.bc_type == 'periodic':
+        if is_periodic_axis(self.bc_type, axis, self.ndim):
             # Periodic wrap: left node = N_ax (last node), right node = 0
             u_L0 = u_star[sl(N_ax)]
             u_R0 = u_star[sl(0)]
@@ -260,7 +262,7 @@ class RhieChowInterpolator:
         # Divergence at nodes 0 … N_ax-1
         div_nodes = (flux_faces[tuple(sl_hi)] - flux_faces[tuple(sl_lo)]) / h
 
-        if bc_type == 'periodic':
+        if is_periodic_axis(bc_type, axis, self.ndim):
             # Node N_ax: right face = face 0 (periodic wrap), left face = face N_ax
             sl_f0 = [slice(None)] * len(flux_faces.shape)
             sl_fN = [slice(None)] * len(flux_faces.shape)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
+from ..core.boundary import boundary_axes, is_all_periodic
 from ..ns_terms.context import NSComputeContext
 from .ns_predictor_assembly import (
     select_buoyancy_predictor_state_assembly,
@@ -105,12 +106,16 @@ def build_pressure_robust_buoyancy_residual_accel_faces(
     ]
 
 
-def _zero_wall_normal_face_components(face_components: list, *, xp) -> list:
+def _zero_wall_normal_face_components(face_components: list, *, xp, bc_type: str = "wall") -> list:
     """Zero wall-normal face fluxes at domain boundaries."""
     bounded = []
     ndim = face_components[0].ndim
+    axes = boundary_axes(bc_type, ndim)
     for axis, face in enumerate(face_components):
         bounded_face = xp.array(face, copy=True)
+        if axes[axis] != "wall":
+            bounded.append(bounded_face)
+            continue
         lower = [slice(None)] * ndim
         upper = [slice(None)] * ndim
         lower[axis] = 0
@@ -121,12 +126,15 @@ def _zero_wall_normal_face_components(face_components: list, *, xp) -> list:
     return bounded
 
 
-def _zero_wall_velocity_face_components(face_components: list, *, xp) -> list:
+def _zero_wall_velocity_face_components(face_components: list, *, xp, bc_type: str = "wall") -> list:
     """Apply no-slip wall boundaries to carried face-velocity state."""
     bounded = []
+    axes = boundary_axes(bc_type, face_components[0].ndim)
     for face in face_components:
         bounded_face = xp.array(face, copy=True)
         for axis in range(bounded_face.ndim):
+            if axes[axis] != "wall":
+                continue
             lower = [slice(None)] * bounded_face.ndim
             upper = [slice(None)] * bounded_face.ndim
             lower[axis] = 0
@@ -307,16 +315,18 @@ def compute_ns_predictor_stage(
                     delta_faces,
                 )
             ]
-            if bc_type == "wall" and state.bc_hook is None:
+            if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
                 if face_no_slip_boundary_state:
                     predictor_faces = _zero_wall_velocity_face_components(
                         predictor_faces,
                         xp=xp,
+                        bc_type=bc_type,
                     )
                 else:
                     predictor_faces = _zero_wall_normal_face_components(
                         predictor_faces,
                         xp=xp,
+                        bc_type=bc_type,
                     )
             mapped_components = div_op.reconstruct_nodes(predictor_faces)
             velocity_components[0][...] = mapped_components[0]
@@ -496,16 +506,18 @@ def compute_ns_predictor_stage(
             state.predictor_face_components = div_op.face_fluxes(
                 [state.u_star, state.v_star]
             )
-        if bc_type == "wall" and state.bc_hook is None:
+        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
                 state.predictor_face_components = _zero_wall_velocity_face_components(
                     state.predictor_face_components,
                     xp=xp,
+                    bc_type=bc_type,
                 )
             else:
                 state.predictor_face_components = _zero_wall_normal_face_components(
                     state.predictor_face_components,
                     xp=xp,
+                    bc_type=bc_type,
                 )
     if scheme_runtime.convection_time_scheme == "imex_bdf2":
         next_velocity_prev = (xp.copy(state.u), xp.copy(state.v))
@@ -537,11 +549,19 @@ def solve_ns_pressure_stage(
     if face_native_predictor_state and state.predictor_face_components is not None:
         predictor_faces = state.predictor_face_components
     if predictor_faces is not None and hasattr(div_op, "divergence_from_faces"):
-        if bc_type == "wall" and state.bc_hook is None:
+        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
-                predictor_faces = _zero_wall_velocity_face_components(predictor_faces, xp=xp)
+                predictor_faces = _zero_wall_velocity_face_components(
+                    predictor_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
             else:
-                predictor_faces = _zero_wall_normal_face_components(predictor_faces, xp=xp)
+                predictor_faces = _zero_wall_normal_face_components(
+                    predictor_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
         predictor_rhs = div_op.divergence_from_faces(predictor_faces) / projection_dt
     else:
         predictor_rhs = div_op.divergence([state.u_star, state.v_star]) / projection_dt
@@ -668,10 +688,15 @@ def correct_ns_velocity_stage(
                     force_faces,
                 )
             ]
-            if bc_type == "wall" and state.bc_hook is None and face_no_slip_boundary_state:
+            if (
+                not is_all_periodic(bc_type, 2)
+                and state.bc_hook is None
+                and face_no_slip_boundary_state
+            ):
                 state.projected_face_components = _zero_wall_velocity_face_components(
                     state.projected_face_components,
                     xp=xp,
+                    bc_type=bc_type,
                 )
             state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
         elif keep_face_state and hasattr(proj_op, "project_faces"):
@@ -701,7 +726,7 @@ def correct_ns_velocity_stage(
     preserve_face_state = (
         keep_face_state
         and state.projected_face_components is not None
-        and bc_type == "wall"
+        and not is_all_periodic(bc_type, 2)
         and state.bc_hook is None
     )
     if not preserve_face_state:

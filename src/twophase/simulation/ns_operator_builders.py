@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..ccd.fccd import FCCDSolver
+from ..core.boundary import is_all_periodic
 from ..levelset.interfaces import ILevelSetAdvection
 from ..ns_terms.interfaces import IConvectionTerm
 from .gradient_operator import (
@@ -42,7 +43,7 @@ def build_ns_divergence_operators(
         if fccd_div_op is None:
             raise RuntimeError("FCCD PPE requires FCCDDivergenceOperator")
         div_op = fccd_div_op
-    elif not grid.uniform and bc_type == "wall":
+    elif not grid.uniform and not is_all_periodic(bc_type, grid.ndim):
         div_op = FVMDivergenceOperator(backend, grid)
     else:
         div_op = CCDDivergenceOperator(ccd)

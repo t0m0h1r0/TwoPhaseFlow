@@ -12,7 +12,7 @@ TwoPhaseSimulation から分離した独立モジュール。
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from ..core.boundary import BCType
+from ..core.boundary import BCType, boundary_axes
 
 if TYPE_CHECKING:
     from ..config import SimulationConfig
@@ -39,10 +39,12 @@ class BoundaryConditionHandler:
         ----------
         velocity : VectorField — in-place で修正される
         """
-        if self.bc_type is BCType.WALL:
-            self._apply_wall(velocity)
-        elif self.bc_type is BCType.PERIODIC:
-            self._apply_periodic(velocity)
+        axes = boundary_axes(self.bc_type, self.ndim)
+        for ax, axis_type in enumerate(axes):
+            if axis_type == "wall":
+                self._apply_wall_axis(velocity, ax)
+            elif axis_type == "periodic":
+                self._apply_periodic_axis(velocity, ax)
 
     def _boundary_slices(self, ax: int):
         """Return (sl_lo, sl_hi) index tuples selecting the two boundary planes along *ax*."""
@@ -64,16 +66,22 @@ class BoundaryConditionHandler:
         壁面付近で速度が増大するバグがあった（Bug #wall-tangential）．
         """
         for wall_ax in range(self.ndim):        # 壁面の法線方向
-            sl_lo, sl_hi = self._boundary_slices(wall_ax)
-            for comp in range(self.ndim):       # 速度成分（法線・接線すべて）
-                u = velocity[comp]
-                u[sl_lo] = 0.0
-                u[sl_hi] = 0.0
+            self._apply_wall_axis(velocity, wall_ax)
+
+    def _apply_wall_axis(self, velocity: "VectorField", wall_ax: int) -> None:
+        sl_lo, sl_hi = self._boundary_slices(wall_ax)
+        for comp in range(self.ndim):
+            u = velocity[comp]
+            u[sl_lo] = 0.0
+            u[sl_hi] = 0.0
 
     def _apply_periodic(self, velocity: "VectorField") -> None:
         """周期境界条件: node 0 と node N を一致させる（node N ← node 0）。"""
         for ax in range(self.ndim):
-            sl_first, sl_last = self._boundary_slices(ax)
-            for c in range(self.ndim):
-                u = velocity[c]
-                u[sl_last] = u[sl_first]
+            self._apply_periodic_axis(velocity, ax)
+
+    def _apply_periodic_axis(self, velocity: "VectorField", ax: int) -> None:
+        sl_first, sl_last = self._boundary_slices(ax)
+        for comp in range(self.ndim):
+            u = velocity[comp]
+            u[sl_last] = u[sl_first]

@@ -4,7 +4,7 @@
 BCType enum と BoundarySpec dataclass を提供する。
 各ソルバーの数値実装 (how) には介入しない。
 
-  - BCType: 'wall' / 'periodic' を型安全に扱う enum
+  - BCType: global / 2-D axis-local wall-periodic BC を型安全に扱う enum
   - BoundarySpec: BC種別 + grid shape から pin DOF 等を導出する frozen dataclass
   - pad_ghost_cells: ゴーストセル充填の公開ユーティリティ
 """
@@ -22,6 +22,73 @@ class BCType(str, Enum):
 
     WALL = "wall"
     PERIODIC = "periodic"
+    PERIODIC_WALL = "periodic_wall"
+    WALL_PERIODIC = "wall_periodic"
+
+
+def canonical_bc_type(axes: tuple[str, ...]) -> str:
+    """Return the compact runtime name for axis-local boundary types."""
+    normalized = tuple(str(axis).strip().lower() for axis in axes)
+    if not normalized:
+        raise ValueError("at least one boundary axis is required")
+    if any(axis not in {"wall", "periodic"} for axis in normalized):
+        raise ValueError(f"boundary axes must be wall|periodic, got {normalized!r}")
+    if all(axis == "wall" for axis in normalized):
+        return "wall"
+    if all(axis == "periodic" for axis in normalized):
+        return "periodic"
+    if normalized == ("periodic", "wall"):
+        return "periodic_wall"
+    if normalized == ("wall", "periodic"):
+        return "wall_periodic"
+    raise ValueError("mixed boundary support requires 2-D wall|periodic axes")
+
+
+def boundary_axes(bc_type, ndim: int) -> tuple[str, ...]:
+    """Expand a compact boundary name into one type per coordinate axis."""
+    if isinstance(bc_type, (tuple, list)):
+        axes = tuple(str(value).strip().lower() for value in bc_type)
+        if len(axes) != ndim:
+            raise ValueError(f"len(boundary axes)={len(axes)} != ndim={ndim}")
+        canonical_bc_type(axes)
+        return axes
+    value = str(
+        bc_type.value if isinstance(bc_type, BCType) else bc_type
+    ).strip().lower()
+    if value == "wall":
+        return tuple("wall" for _axis in range(ndim))
+    if value == "periodic":
+        return tuple("periodic" for _axis in range(ndim))
+    if value in {"periodic_wall", "x_periodic_y_wall"} and ndim == 2:
+        return ("periodic", "wall")
+    if value in {"wall_periodic", "x_wall_y_periodic"} and ndim == 2:
+        return ("wall", "periodic")
+    raise ValueError(f"unsupported boundary type {bc_type!r} for ndim={ndim}")
+
+
+def boundary_axis_type(bc_type, axis: int, ndim: int) -> str:
+    """Return ``wall`` or ``periodic`` for one coordinate axis."""
+    return boundary_axes(bc_type, ndim)[axis]
+
+
+def is_periodic_axis(bc_type, axis: int, ndim: int) -> bool:
+    """Whether the selected coordinate axis is periodic."""
+    return boundary_axis_type(bc_type, axis, ndim) == "periodic"
+
+
+def is_wall_axis(bc_type, axis: int, ndim: int) -> bool:
+    """Whether the selected coordinate axis is bounded by physical walls."""
+    return boundary_axis_type(bc_type, axis, ndim) == "wall"
+
+
+def is_all_periodic(bc_type, ndim: int) -> bool:
+    """Whether all coordinate axes are periodic."""
+    return all(axis == "periodic" for axis in boundary_axes(bc_type, ndim))
+
+
+def is_all_wall(bc_type, ndim: int) -> bool:
+    """Whether all coordinate axes are wall-bounded."""
+    return all(axis == "wall" for axis in boundary_axes(bc_type, ndim))
 
 
 @dataclass(frozen=True)
@@ -41,17 +108,26 @@ class BoundarySpec:
         grid.N — 各軸のセル数 (Nx, Ny[, Nz])。
     """
 
-    bc_type: BCType
+    bc_type: BCType | str | tuple[str, ...]
     shape: tuple[int, ...]
     N: tuple[int, ...]
 
     @property
+    def axes(self) -> tuple[str, ...]:
+        """Boundary type per coordinate axis."""
+        return boundary_axes(self.bc_type, len(self.N))
+
+    @property
     def is_periodic(self) -> bool:
-        return self.bc_type is BCType.PERIODIC
+        return is_all_periodic(self.bc_type, len(self.N))
 
     @property
     def is_wall(self) -> bool:
-        return self.bc_type is BCType.WALL
+        return is_all_wall(self.bc_type, len(self.N))
+
+    def axis_type(self, axis: int) -> str:
+        """Boundary type for a coordinate axis."""
+        return boundary_axis_type(self.bc_type, axis, len(self.N))
 
     @property
     def pin_dof(self) -> int:

@@ -58,6 +58,7 @@ from .ccd_solver_helpers import (
     differentiate_ccd_wall_raw,
     differentiate_ccd_wall_second_only,
 )
+from ..core.boundary import is_periodic_axis
 
 if TYPE_CHECKING:
     from ..core.grid import Grid
@@ -110,11 +111,16 @@ class CCDSolver:
 
         # Build periodic solvers if needed (block-circulant, dense LU)
         self._periodic_solvers: dict = {}
-        if bc_type == "periodic":
-            for ax in range(self.ndim):
-                n_pts = grid.N[ax] + 1
-                h = float(grid.L[ax] / grid.N[ax])
-                self._periodic_solvers[ax] = self._build_axis_solver_periodic(n_pts, h)
+        for ax in range(self.ndim):
+            if not self._axis_periodic(ax):
+                continue
+            n_pts = grid.N[ax] + 1
+            h = float(grid.L[ax] / grid.N[ax])
+            self._periodic_solvers[ax] = self._build_axis_solver_periodic(n_pts, h)
+
+    def _axis_periodic(self, axis: int) -> bool:
+        """Return whether one coordinate axis uses periodic topology."""
+        return is_periodic_axis(self.bc_type, axis, self.ndim)
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -146,7 +152,7 @@ class CCDSolver:
         d1 : array, same shape as ``data`` — ∂data/∂x_axis (or ∂data/∂ξ)
         d2 : array, same shape as ``data`` — ∂²data/∂x_axis² (or ∂²data/∂ξ²)
         """
-        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+        if self._axis_periodic(axis) and bc_left is None and bc_right is None:
             return self._differentiate_periodic(data, axis,
                                                 apply_metric=apply_metric)
 
@@ -198,7 +204,7 @@ class CCDSolver:
         apply_metric: bool = True,
     ):
         """Compute only the first derivative along ``axis``."""
-        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+        if self._axis_periodic(axis) and bc_left is None and bc_right is None:
             return self._differentiate_periodic(
                 data, axis, apply_metric=apply_metric
             )[0]
@@ -215,7 +221,7 @@ class CCDSolver:
         apply_metric: bool = True,
     ):
         """Compute only the second derivative along ``axis``."""
-        if self.bc_type == "periodic" and bc_left is None and bc_right is None:
+        if self._axis_periodic(axis) and bc_left is None and bc_right is None:
             return self._differentiate_periodic_second_only(
                 data, axis, apply_metric=apply_metric
             )

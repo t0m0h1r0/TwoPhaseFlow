@@ -102,37 +102,58 @@ time axes and should not be placed as sibling `run` knobs or mixed in one
 
 ## Grid Distribution
 
-`grid.distribution` owns mesh non-uniformity:
+`grid.distribution` owns mesh non-uniformity, while `grid.domain.boundary`
+is the only place that declares whether each axis has physical walls or is
+periodic.  The canonical form is axis-local and monitor-based:
 
-- `axes`: preferred axis-local map. Each axis declares `type` and, when fitted,
-  its own `alpha`, `eps_g_factor`, `eps_g_cells`, and `dx_min_floor`.
-- `method`: global fitting-monitor construction method. It is not axis-local;
-  all fitted axes share the same interface monitor family.
-- Legacy form remains accepted: top-level `type/method/alpha` plus
-  `axes: [x]`, `[y]`, `[x, y]`, or omitted for all-axis fitting.
+- `axes.<axis>.type`: `uniform` or `nonuniform`.
+- `axes.<axis>.monitors.interface`: interface-centred grid density.
+- `axes.<axis>.monitors.wall`: wall-centred grid density, valid only on axes
+  declared as wall-bounded in `grid.domain.boundary`.
+- `axes.<axis>.dx_min_floor`: optional cell-width floor for that nonuniform
+  axis.
+- Legacy compact form remains accepted for interface-only grids:
+  top-level `type/method/alpha` plus `axes: [x]`, `[y]`, `[x, y]`, or omitted.
+  It cannot express wall refinement.
 - `schedule`: non-negative grid rebuild interval. `0` means initial tracked
   interface only; `N > 0` rebuilds every N physical steps from the current
   tracked interface. Legacy aliases `static`, `every_step`, and `every_N` are
   still accepted.
 
+Uniform axes may not declare monitors. Nonuniform axes must declare at least
+one monitor. Periodic axes may use interface monitors but cannot use wall
+monitors because no physical wall exists in that direction.
+
 Canonical capillary-wave form:
 
 ```yaml
 grid:
+  domain:
+    boundary:
+      x: periodic
+      y:
+        lower: wall
+        upper: wall
   distribution:
-    method: gaussian_levelset
-    schedule: 0
+    schedule: 1
     axes:
       x:
         type: uniform
       y:
-        type: interface_fitted
-        alpha: 2.0
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+          wall:
+            alpha: 1.3
+            eps_g_cells: 4
+            apply_to: [lower, upper]
 ```
 
-The capillary-wave YAML fits only `y` because `y = η(x)` primarily needs
-resolution across the vertical CLS transition and should not introduce
-unnecessary tangential `x` metrics.
+The capillary-wave YAML keeps `x` uniform and periodic, while `y` is
+nonuniform because it contains both the interface-normal resolution and the
+upper/lower wall resolution. It does not use a fake interface-fitting axis with
+`alpha: 1.0`.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

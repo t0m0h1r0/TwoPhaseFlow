@@ -18,6 +18,8 @@ paper/sections/03b_cls_transport.tex: wall phase-topology invariant
 
 from __future__ import annotations
 
+from ..core.boundary import is_wall_axis
+
 
 def apply_wall_compatible_curvature(
     *,
@@ -42,15 +44,19 @@ def apply_wall_compatible_curvature(
     small loop over coordinate axes is performed; each assignment is a device
     slice operation for CuPy backends.
     """
-    if bc_type != "wall" or wall_normal_layers <= 0:
+    if wall_normal_layers <= 0:
         return kappa_lg
     if getattr(grid, "ndim", 0) < 1:
+        return kappa_lg
+    if not any(is_wall_axis(bc_type, axis, grid.ndim) for axis in range(grid.ndim)):
         return kappa_lg
 
     psi_arr = xp.asarray(psi)
     kappa = xp.copy(xp.asarray(kappa_lg))
     layers = int(wall_normal_layers)
     for axis in range(grid.ndim):
+        if not is_wall_axis(bc_type, axis, grid.ndim):
+            continue
         n_cells = int(grid.N[axis])
         if n_cells < 2 * layers:
             continue

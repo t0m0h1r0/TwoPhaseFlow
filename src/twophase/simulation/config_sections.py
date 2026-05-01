@@ -6,6 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from ..core.boundary import canonical_bc_type
 from .config_models import GridCfg, PhysicsCfg
 
 
@@ -41,12 +42,14 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
     size = domain["size"]
     LX, LY = float(size[0]), float(size[1])
     distribution = d["distribution"]
+    bc_type, boundary_sides = parse_grid_boundary(domain["boundary"], ndim=2)
     width = interface["thickness"]
     axis_distribution = parse_grid_axis_distribution(
         distribution,
         ndim=2,
         grid_dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
-        bc_type=str(domain["boundary"]),
+        bc_type=bc_type,
+        boundary_sides=boundary_sides,
     )
     eps_factor = float(width.get("base_factor", 1.5))
     eps_xi_cells = opt_float(width.get("xi_cells"))
@@ -56,7 +59,7 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         NY=NY,
         LX=LX,
         LY=LY,
-        bc_type=str(domain["boundary"]),
+        bc_type=bc_type,
         alpha_grid=axis_distribution.alpha_grid,
         fitting_axes=axis_distribution.fitting_axes,
         fitting_alpha_grid=axis_distribution.fitting_alpha_grid,
@@ -250,56 +253,136 @@ _AXIS_ALIASES = {
 }
 
 
+def parse_grid_boundary(raw: Any, *, ndim: int) -> tuple[str, tuple[tuple[str, ...], ...]]:
+    """Parse global or axis-local domain boundary declarations."""
+    if isinstance(raw, str):
+        value = validate_choice(
+            raw,
+            ("wall", "periodic"),
+            "grid.domain.boundary",
+        )
+        axes = tuple(value for _axis in range(ndim))
+        sides = tuple(
+            ("lower", "upper") if value == "wall" else ()
+            for _axis in range(ndim)
+        )
+        return canonical_bc_type(axes), sides
+    if not isinstance(raw, dict):
+        raise ValueError("grid.domain.boundary must be wall|periodic or an axis map")
+
+    axis_values: list[str | None] = [None] * ndim
+    side_values: list[tuple[str, ...] | None] = [None] * ndim
+    for raw_axis, raw_spec in raw.items():
+        axis = parse_grid_axis_key(raw_axis, ndim, "grid.domain.boundary")
+        if axis_values[axis] is not None:
+            raise ValueError(
+                f"grid.domain.boundary has duplicate declarations for axis {raw_axis!r}"
+            )
+        axis_type, sides = parse_grid_axis_boundary_spec(
+            raw_spec,
+            context=f"grid.domain.boundary.{raw_axis}",
+        )
+        axis_values[axis] = axis_type
+        side_values[axis] = sides
+    missing = [
+        axis_name
+        for axis_name, value in zip(("x", "y", "z"), axis_values)
+        if value is None
+    ]
+    if missing:
+        raise ValueError(f"grid.domain.boundary axis map must define {missing!r}")
+    axes = tuple(str(value) for value in axis_values)
+    return canonical_bc_type(axes), tuple(tuple(sides or ()) for sides in side_values)
+
+
+def parse_grid_axis_boundary_spec(raw: Any, *, context: str) -> tuple[str, tuple[str, ...]]:
+    """Parse one axis boundary declaration."""
+    if isinstance(raw, str):
+        value = validate_choice(raw, ("wall", "periodic"), context)
+        return value, ("lower", "upper") if value == "wall" else ()
+    if not isinstance(raw, dict):
+        raise ValueError(f"{context} must be wall|periodic or lower/upper map")
+    unexpected = sorted(set(raw) - {"lower", "upper"})
+    if unexpected:
+        raise ValueError(f"{context} supports only lower and upper, got {unexpected!r}")
+    if set(raw) != {"lower", "upper"}:
+        raise ValueError(f"{context} must define both lower and upper")
+    lower = validate_choice(raw["lower"], ("wall", "periodic"), f"{context}.lower")
+    upper = validate_choice(raw["upper"], ("wall", "periodic"), f"{context}.upper")
+    if lower != upper:
+        raise ValueError(
+            f"{context} lower/upper mixed boundary is not supported; got {lower}/{upper}"
+        )
+    return lower, ("lower", "upper") if lower == "wall" else ()
+
+
 def parse_grid_axis_distribution(
     distribution: dict,
     *,
     ndim: int,
     grid_dx_min_floor: float,
     bc_type: str,
+    boundary_sides: tuple[tuple[str, ...], ...] | None = None,
 ) -> GridAxisDistribution:
     """Parse global or axis-local interface-fitted grid settings."""
     axes_raw = distribution.get("axes")
     has_axis_map = isinstance(axes_raw, dict)
-    distribution_type = validate_choice(
-        distribution.get("type", "axis_mixed" if has_axis_map else "uniform"),
-        ("uniform", "interface_fitted", "axis_mixed"),
-        "grid.distribution.type",
-    )
-    default_enabled = distribution_type in {"interface_fitted", "axis_mixed"}
-    default_method = normalize_interface_fitting_method(
-        distribution.get(
-            "method",
-            "gaussian_levelset" if default_enabled else "none",
-        )
-    )
-    if default_method == "none":
-        default_enabled = False
-    default_alpha = float(distribution.get("alpha", 1.0))
-    default_eps_factor = float(distribution.get("eps_g_factor", 2.0))
-    default_eps_cells = opt_float(distribution.get("eps_g_cells"))
-    default_dx_floor = float(distribution.get("dx_min_floor", grid_dx_min_floor))
-    wall_defaults = parse_wall_refinement_defaults(
-        distribution.get("wall"),
-        ndim=ndim,
-        bc_type=bc_type,
-        default_eps_factor=default_eps_factor,
-        nonuniform_enabled=default_enabled,
-    )
-
     if has_axis_map:
-        parsed = parse_axis_map_distribution(
+        unexpected = sorted(set(distribution) - {"axes", "schedule"})
+        if unexpected:
+            raise ValueError(
+                "grid.distribution with axis maps accepts only axes and schedule; "
+                f"move {unexpected!r} under grid.distribution.axes.<axis>.monitors"
+            )
+        parsed = parse_axis_monitor_distribution(
             axes_raw,
             ndim=ndim,
-            default_enabled=default_enabled,
-            default_method=default_method,
-            default_alpha=default_alpha,
-            default_eps_factor=default_eps_factor,
-            default_eps_cells=default_eps_cells,
-            default_dx_floor=default_dx_floor,
-            wall_defaults=wall_defaults,
+            default_eps_factor=2.0,
+            default_dx_floor=grid_dx_min_floor,
             bc_type=bc_type,
+            boundary_sides=boundary_sides,
         )
+        default_eps_factor = 2.0
+        default_dx_floor = grid_dx_min_floor
+        wall_defaults = {"eps_g_factor": 2.0}
     else:
+        if "monitors" in distribution:
+            raise ValueError(
+                "grid.distribution.monitors is axis-local; use "
+                "grid.distribution.axes.<axis>.monitors"
+            )
+        if "wall" in distribution:
+            raise ValueError(
+                "grid.distribution.wall is not supported; wall refinement belongs "
+                "to grid.distribution.axes.<axis>.monitors.wall and is validated "
+                "against grid.domain.boundary"
+            )
+        distribution_type = validate_choice(
+            distribution.get("type", "uniform"),
+            ("uniform", "interface_fitted"),
+            "grid.distribution.type",
+        )
+        default_enabled = distribution_type == "interface_fitted"
+        default_method = normalize_interface_fitting_method(
+            distribution.get(
+                "method",
+                "gaussian_levelset" if default_enabled else "none",
+            ),
+            path="grid.distribution.method",
+        )
+        if default_method == "none":
+            default_enabled = False
+        default_alpha = float(distribution.get("alpha", 1.0))
+        default_eps_factor = float(distribution.get("eps_g_factor", 2.0))
+        default_eps_cells = opt_float(distribution.get("eps_g_cells"))
+        default_dx_floor = float(distribution.get("dx_min_floor", grid_dx_min_floor))
+        wall_defaults = parse_wall_refinement_defaults(
+            None,
+            ndim=ndim,
+            bc_type=bc_type,
+            default_eps_factor=default_eps_factor,
+            nonuniform_enabled=default_enabled,
+        )
         fitting_axes = parse_grid_fitting_axes(
             axes_raw,
             fitting_enabled=default_enabled,
@@ -318,13 +401,11 @@ def parse_grid_axis_distribution(
             ),
             "fitting_eps_g_cells": tuple(default_eps_cells for _axis in range(ndim)),
             "fitting_dx_min_floor": tuple(default_dx_floor for _axis in range(ndim)),
-            "wall_refinement_axes": tuple(wall_defaults["enabled"] for _axis in range(ndim)),
-            "wall_alpha_grid": tuple(wall_defaults["alpha"] for _axis in range(ndim)),
-            "wall_eps_g_factor_axes": tuple(
-                wall_defaults["eps_g_factor"] for _axis in range(ndim)
-            ),
-            "wall_eps_g_cells": tuple(wall_defaults["eps_g_cells"] for _axis in range(ndim)),
-            "wall_sides": tuple(wall_defaults["sides"] for _axis in range(ndim)),
+            "wall_refinement_axes": tuple(False for _axis in range(ndim)),
+            "wall_alpha_grid": tuple(1.0 for _axis in range(ndim)),
+            "wall_eps_g_factor_axes": tuple(default_eps_factor for _axis in range(ndim)),
+            "wall_eps_g_cells": tuple(None for _axis in range(ndim)),
+            "wall_sides": tuple(("lower", "upper") for _axis in range(ndim)),
         }
 
     active_methods = {
@@ -377,6 +458,202 @@ def parse_grid_axis_distribution(
         dx_min_floor=default_dx_floor,
         fitting_dx_min_floor=parsed["fitting_dx_min_floor"],
     )
+
+
+def parse_axis_monitor_distribution(
+    axes_raw: dict,
+    *,
+    ndim: int,
+    default_eps_factor: float,
+    default_dx_floor: float,
+    bc_type: str,
+    boundary_sides: tuple[tuple[str, ...], ...] | None = None,
+) -> dict:
+    """Parse the canonical monitor-based ``grid.distribution.axes`` schema."""
+    fitting_axes = [False] * ndim
+    methods = ["none"] * ndim
+    fitting_alpha = [1.0] * ndim
+    fitting_eps_factor = [default_eps_factor] * ndim
+    fitting_eps_cells = [None] * ndim
+    fitting_dx_floor = [default_dx_floor] * ndim
+    wall_axes = [False] * ndim
+    wall_alpha = [1.0] * ndim
+    wall_eps_factor = [default_eps_factor] * ndim
+    wall_eps_cells = [None] * ndim
+    wall_sides = [("lower", "upper")] * ndim
+    wall_sides_by_axis = (
+        boundary_sides
+        if boundary_sides is not None
+        else tuple(
+            ("lower", "upper")
+            if str(bc_type).strip().lower() == "wall"
+            else ()
+            for _axis in range(ndim)
+        )
+    )
+
+    for raw_axis, raw_spec in axes_raw.items():
+        axis = parse_grid_axis_key(raw_axis, ndim, "grid.distribution.axes")
+        context = f"grid.distribution.axes.{raw_axis}"
+        spec = normalize_axis_monitor_distribution_spec(raw_spec, context=context)
+        unexpected = sorted(set(spec) - {"type", "monitors", "dx_min_floor"})
+        if unexpected:
+            raise ValueError(
+                f"{context} accepts only type, monitors, and dx_min_floor; "
+                f"got {unexpected!r}"
+            )
+        axis_type = validate_choice(
+            spec.get("type", "nonuniform" if "monitors" in spec else "uniform"),
+            ("uniform", "nonuniform"),
+            f"{context}.type",
+        )
+        if axis_type == "uniform":
+            if "monitors" in spec:
+                raise ValueError(f"{context}.monitors is invalid for type=uniform")
+            if "dx_min_floor" in spec:
+                raise ValueError(f"{context}.dx_min_floor is invalid for type=uniform")
+            continue
+
+        monitors = spec.get("monitors")
+        if not isinstance(monitors, dict) or not monitors:
+            raise ValueError(
+                f"{context}.monitors must declare interface and/or wall for type=nonuniform"
+            )
+        unexpected_monitors = sorted(set(monitors) - {"interface", "wall"})
+        if unexpected_monitors:
+            raise ValueError(
+                f"{context}.monitors supports only interface and wall; "
+                f"got {unexpected_monitors!r}"
+            )
+        fitting_dx_floor[axis] = float(spec.get("dx_min_floor", default_dx_floor))
+
+        if "interface" in monitors:
+            interface_spec = normalize_monitor_spec(
+                monitors["interface"],
+                context=f"{context}.monitors.interface",
+            )
+            unexpected_interface = sorted(
+                set(interface_spec) - {"alpha", "method", "eps_g_factor", "eps_g_cells"}
+            )
+            if unexpected_interface:
+                raise ValueError(
+                    f"{context}.monitors.interface accepts only alpha, method, "
+                    f"eps_g_factor, and eps_g_cells; got {unexpected_interface!r}"
+                )
+            method = normalize_interface_fitting_method(
+                interface_spec.get("method", "gaussian_levelset"),
+                path=f"{context}.monitors.interface.method",
+            )
+            if method == "none":
+                raise ValueError(f"{context}.monitors.interface.method must not be none")
+            fitting_axes[axis] = True
+            methods[axis] = method
+            fitting_alpha[axis] = parse_monitor_alpha(
+                interface_spec,
+                context=f"{context}.monitors.interface",
+            )
+            fitting_eps_factor[axis] = float(
+                interface_spec.get("eps_g_factor", default_eps_factor)
+            )
+            fitting_eps_cells[axis] = opt_float(interface_spec.get("eps_g_cells"))
+
+        if "wall" in monitors:
+            wall_spec = normalize_monitor_spec(
+                monitors["wall"],
+                context=f"{context}.monitors.wall",
+            )
+            unexpected_wall = sorted(
+                set(wall_spec) - {"alpha", "eps_g_factor", "eps_g_cells", "apply_to"}
+            )
+            if unexpected_wall:
+                raise ValueError(
+                    f"{context}.monitors.wall accepts only alpha, eps_g_factor, "
+                    f"eps_g_cells, and apply_to; got {unexpected_wall!r}"
+                )
+            if not wall_sides_by_axis[axis]:
+                raise ValueError(
+                    f"{context}.monitors.wall requires wall boundary on axis {raw_axis}"
+                )
+            wall_axes[axis] = True
+            wall_alpha[axis] = parse_monitor_alpha(
+                wall_spec,
+                context=f"{context}.monitors.wall",
+            )
+            wall_eps_factor[axis] = float(
+                wall_spec.get("eps_g_factor", default_eps_factor)
+            )
+            wall_eps_cells[axis] = opt_float(wall_spec.get("eps_g_cells"))
+            wall_sides[axis] = parse_wall_monitor_apply_to(
+                wall_spec.get("apply_to"),
+                allowed=wall_sides_by_axis[axis],
+                context=f"{context}.monitors.wall",
+            )
+
+        if not fitting_axes[axis] and not wall_axes[axis]:
+            raise ValueError(
+                f"{context} type=nonuniform must activate at least one monitor"
+            )
+
+    return {
+        "fitting_axes": tuple(fitting_axes),
+        "methods": tuple(methods),
+        "fitting_alpha_grid": tuple(fitting_alpha),
+        "fitting_eps_g_factor": tuple(fitting_eps_factor),
+        "fitting_eps_g_cells": tuple(fitting_eps_cells),
+        "fitting_dx_min_floor": tuple(fitting_dx_floor),
+        "wall_refinement_axes": tuple(wall_axes),
+        "wall_alpha_grid": tuple(wall_alpha),
+        "wall_eps_g_factor_axes": tuple(wall_eps_factor),
+        "wall_eps_g_cells": tuple(wall_eps_cells),
+        "wall_sides": tuple(wall_sides),
+    }
+
+
+def normalize_axis_monitor_distribution_spec(raw: Any, *, context: str) -> dict:
+    """Normalize one canonical axis-distribution entry."""
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        return {"type": raw}
+    if not isinstance(raw, dict):
+        raise ValueError(f"{context} must be a mapping or uniform/nonuniform")
+    return raw
+
+
+def normalize_monitor_spec(raw: Any, *, context: str) -> dict:
+    """Normalize one active monitor spec."""
+    if not isinstance(raw, dict):
+        raise ValueError(f"{context} must be a mapping with alpha")
+    return raw
+
+
+def parse_monitor_alpha(spec: dict, *, context: str) -> float:
+    """Parse the density multiplier for one active monitor."""
+    if "alpha" not in spec:
+        raise ValueError(f"{context}.alpha is required")
+    alpha = float(spec["alpha"])
+    if alpha <= 1.0:
+        raise ValueError(f"{context}.alpha must be > 1.0, got {alpha}")
+    return alpha
+
+
+def parse_wall_monitor_apply_to(
+    raw: Any,
+    *,
+    allowed: tuple[str, ...],
+    context: str,
+) -> tuple[str, ...]:
+    """Parse an optional wall-monitor side filter against physical wall sides."""
+    selected = allowed if raw is None else parse_wall_sides(raw, context=context)
+    if not selected:
+        raise ValueError(f"{context}.apply_to must select at least one wall side")
+    invalid = [side for side in selected if side not in allowed]
+    if invalid:
+        raise ValueError(
+            f"{context}.apply_to must select existing wall sides {allowed!r}, "
+            f"got {invalid!r}"
+        )
+    return selected
 
 
 def parse_wall_refinement_defaults(
@@ -602,12 +879,15 @@ def parse_grid_fitting_axes(
     return tuple(active)
 
 
-def normalize_interface_fitting_method(raw: Any) -> str:
+def normalize_interface_fitting_method(
+    raw: Any,
+    *,
+    path: str = "grid.distribution.method",
+) -> str:
     """Validate the canonical interface-fitting method name."""
     method = str(raw).strip().lower()
     if method not in {"gaussian_levelset", "none"}:
         raise ValueError(
-            "grid.distribution.method must be gaussian_levelset|none, "
-            f"got {method!r}"
+            f"{path} must be gaussian_levelset|none, got {method!r}"
         )
     return method

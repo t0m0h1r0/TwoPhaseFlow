@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ..backend import Backend
 from ..ccd.ccd_solver import CCDSolver
 from ..config import SimulationConfig
-from ..core.boundary import BoundarySpec
+from ..core.boundary import BoundarySpec, boundary_axes
 from ..core.components import SimulationComponents
 from ..core.grid import Grid
 from ..coupling.gfm import GFMCorrector
@@ -54,7 +54,10 @@ def build_legacy_simulation_components(
     eps = config.numerics.epsilon_factor * dx_min
     ccd = CCDSolver(grid, backend, bc_type=config.numerics.bc_type)
 
-    ls_bc = "periodic" if config.numerics.bc_type == "periodic" else "neumann"
+    ls_bc = tuple(
+        "periodic" if axis == "periodic" else "neumann"
+        for axis in boundary_axes(config.numerics.bc_type, config.grid.ndim)
+    )
 
     fccd = None
     if (
