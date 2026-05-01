@@ -1,11 +1,11 @@
 % paper/sections/10d_ridge_eikonal_nonuniform.tex
 %
-% §10.5  Ridge–Eikonal の非一様格子実装
+% §10.5  Ridge–Eikonal の非一様格子定式化
 %        §3.4 で導入した一様格子上の Ridge–Eikonal 再初期化を
 %        非一様格子へ拡張する 4 補正 D1–D4 を本節で定式化する．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Ridge--Eikonal の非一様格子実装：D1--D4 補正}
+\subsection{Ridge--Eikonal の非一様格子定式化：D1--D4 補正}
 \label{sec:ridge_eikonal_nu_grid}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -22,9 +22,8 @@ D3（非一様 FMM）・D4（$\varepsilon$-widening の空間依存化）と
 壁閉包補正 W で解消し，
 \S\ref{sec:grid_density}（グリッド密度関数）・
 \S\ref{sec:grid_coord}（メトリクス係数）・
-\S\ref{sec:ccd_metric}（非一様 CCD）のインフラに載せて
-実装レベルで結線する．
-本節は「各補正がどの格子構築段階でキャッシュされ，
+\S\ref{sec:ccd_metric}（非一様 CCD）の幾何量へ数学的に接続する．
+本節は「各補正がどの格子量に依存し，
 どの離散演算子と整合するか」を明示することを目的とする．
 
 \begin{remark}[本節の記号規約]
@@ -72,7 +71,7 @@ $h_\text{ref}=(\prod_{a} L_a/(N_a-1))^{1/d}$，
 $\xiidx$ 空間で Hessian を組み立て
 chain rule $\bnabla_x^2 = J^{\!\top}\bnabla_\xi^2 J
 + (\bnabla_\xi J^{\!\top})\bnabla_\xi$
-で物理空間に変換する素朴な実装は禁じられる．
+で物理空間に変換する素朴な手順は禁じられる．
 
 \begin{remark}[$\xi$ 空間 Hessian の実用的困難性]\label{rem:xi_hessian_forbidden}
 界面遷移幅が $\le 4$ セルのとき，
@@ -83,11 +82,11 @@ $\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
 この条件は一般に違反される．
 \end{remark}
 
-許容される実装：
+許容される評価経路：
 \begin{enumerate}
-  \item\textbf{Approach A（論文整合）}——物理空間 Direct 非一様 CCD
-        で Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2\xiridge$ を直接評価（本稿の推奨実装）．
-  \item\textbf{Approach B（実用 fallback）}——
+  \item\textbf{Approach A（主経路）}——物理空間 Direct 非一様 CCD
+        で Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2\xiridge$ を直接評価する．
+  \item\textbf{Approach B（確認用 fallback）}——
         物理空間二階 FD で $H_{xx},H_{xy},H_{yy}$ を近似し，
         符号判定 $\lambda_{\min}(H)<0$ または
         $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}<0$ を
@@ -136,7 +135,7 @@ $\varepsilon_\text{scale}$ は「再構成された SDF 幅を
 一様格子の既定値を非一様格子へ移植する際にも
 式~\eqref{eq:eps_local} の空間因子により自然に吸収される．
 本稿では以降，代表値として $\varepsilon_\text{scale}=1.4$ を用いるが，
-感度評価と実装詳細は本節以降で扱う．
+感度評価と補正条件は本節以降で扱う．
 
 \paragraph{W — 壁閉包補正（wall-closure）}
 壁面に接する界面は領域内部の多様体ではなく，閉領域上の
@@ -183,18 +182,18 @@ Ridge--Eikonal と格子 monitor が $\overline{\Omega}$ 上の界面閉包を
 保存するための幾何契約である．
 
 % -------------------------------------------------------------------------------
-\subsubsection{\texorpdfstring{D1 実装：$\sigma_\text{eff}(\bm{x})$ のキャッシュ}{D1 実装：σ\_eff(x) のキャッシュ}}
-\label{sec:ridge_nu_sigma_impl}
+\subsubsection{\texorpdfstring{D1 補正：$\sigma_\text{eff}(\bm{x})$ の空間場}{D1 補正：σ\_eff(x) の空間場}}
+\label{sec:ridge_nu_sigma_field}
 % -------------------------------------------------------------------------------
 
 式~\eqref{eq:sigma_eff} の Gaussian 半幅
 $\sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot h(\bm{x})/h_\text{ref}$ は
 格子幾何のみに依存するため，
-\S\ref{sec:grid_gen} の格子点座標生成直後に 2 次元配列
-$\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
-時間発展ループ内では読み出しのみで，計算コストは $\mathcal{O}(0)$ 追加．
+\S\ref{sec:grid_gen} の格子点座標生成直後に
+$\{\sigma_\text{eff}(\bm{x}_{i,j})\}_{i,j}$ として一度だけ定義する．
+時間固定格子ではこの空間場は不変であり，追加の漸近計算量を生じない．
 
-\noindent\textbf{実装細目}：
+\noindent\textbf{幾何定義}：
 \begin{itemize}
   \item 局所幾何平均 $h(\bm{x}) = \sqrt{h_x(i)\,h_y(j)}$ は
         本節ローカルな逆数メトリクス
@@ -212,8 +211,8 @@ $\{\sigma_\text{eff}[i,j]\}_{i,j}$ として一度だけ計算・保存する．
 $\sigma_\text{eff} \to \sigma_0$ となり一様格子版の既定と一致する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{D2 実装：物理空間 Hessian は非一様 CCD で直接評価}
-\label{sec:ridge_nu_hessian_impl}
+\subsubsection{D2 補正：物理空間 Hessian は非一様 CCD で直接評価}
+\label{sec:ridge_nu_hessian_field}
 % -------------------------------------------------------------------------------
 
 注記~\ref{rem:xi_hessian_forbidden}（$\xi$ 空間 Hessian の実用的困難性）により，
@@ -223,7 +222,7 @@ Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2 \xiridge$ は
 \S\ref{sec:ccd_metric} の非一様 CCD（座標変換法）は
 ノード値から直接物理空間の第一・第二導関数を返す演算子
 $\mathbf{D}_1^\text{CCD,nu}, \mathbf{D}_2^\text{CCD,nu}$ を提供するため，
-Approach A（本命実装）は以下のフル Hessian 行列で実装する：
+Approach A（主経路）は以下のフル Hessian 行列で定義する：
 \begin{equation}
   \mathbf{H}_{\xiridge,i,j}^{\text{nu}}
   =
@@ -267,12 +266,11 @@ $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}
 $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため Approach A を推奨）．
 混合成分 $H_{xy}$ は §~\ref{sec:ccd_mixed} と同じ 2 段適用で評価し，
 対角成分だけに落とさない．
-GPU 実装で非一様 CCD ソルバが未整備のデバッグビルドでは
-この fallback を一時許容する．
+したがって二階 FD 経路は確認計算に限る．
 
 % -------------------------------------------------------------------------------
-\subsubsection{D3 実装：非一様 FMM の格子データ結線}
-\label{sec:ridge_nu_fmm_impl}
+\subsubsection{D3 補正：非一様 FMM の格子幅条件}
+\label{sec:ridge_nu_fmm_geometry}
 % -------------------------------------------------------------------------------
 
 式~\eqref{eq:fmm_closed_form} の閉形式解
@@ -280,11 +278,11 @@ $d = (a_x/h_x^2 + a_y/h_y^2 + \sqrt{D})/(1/h_x^2 + 1/h_y^2)$ を
 格子層で組み立てるには，
 各ノード $(i,j)$ に対する隣接セル幅 $(h_x(i), h_y(j))$ を
 FMM ヒープの priority 計算時に即座に参照する必要がある．
-実装は以下：
+必要条件は以下：
 \begin{itemize}
   \item \textbf{セル幅配列}：
         \S\ref{sec:grid_gen} の $\{x_i\}_i, \{y_j\}_j$ から
-        $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を precompute
+        $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を定義
         （\S\ref{sec:fccd_nu_geometry} の $H_i$ と同義；本節の $h_x[i] = H_i$ として参照）．
         FMM 内の各 tentative 更新は $O(1)$ テーブル参照のみ．
   \item \textbf{判別式負時の fallback}：
@@ -297,7 +295,7 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
         Ridge 集合 $\mathcal{R}$ は一般にノード上に載らないため，
         最寄り 4 ノードへ物理空間距離でシード値を分配する．
         非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
-        単位セル仮定の素朴実装では最大 $\alpha$ 倍の誤差を生む
+        単位セル仮定では最大 $\alpha$ 倍の誤差を生む
         （$\alpha$ は格子密度比）．
         壁面接触界面では式~\eqref{eq:wall_seed_set} の
         $S_{\mathrm{wall}}$ も同じ Dirichlet seed として扱い，
@@ -308,24 +306,24 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 一様版と同じ $\mathcal{O}(N \log N)$ を維持し，
 一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分）．
 
-\noindent\textbf{GPU 実装の等価性要件．}
+\noindent\textbf{並列化時の等価性要件．}
 非一様 FMM は Accepted 集合から最小 tentative 値を順に確定する
 因果的 Eikonal 解法であり~\cite{Sethian1996}，固定回数の sweeping や Jacobi 型緩和に置き換えると
 式~\eqref{eq:fmm_nonuniform} の粘性解を同じ順序で近似したことにならない．
-したがって GPU 実装でも，device 上に距離場，Accepted/freezing flag，
-trial queue を保持し，CPU 版と同じ非一様 upwind 二次更新
+したがって並列化しても，距離場，Accepted/freezing 集合，
+trial queue に相当する因果順序を保ち，同じ非一様 upwind 二次更新
 \eqref{eq:fmm_closed_form} によって隣接点を緩和する必要がある．
-これは高速化の実装詳細ではなく，曲率・pressure-jump・BF 投影が共有する
+これは高速化の細目ではなく，曲率・pressure-jump・BF 投影が共有する
 signed-distance metric を定義する離散化契約である．
 
 % -------------------------------------------------------------------------------
-\subsubsection{\texorpdfstring{D4 実装：$\varepsilon_\text{local}(\bm{x})$ の空間場}{D4 実装：ε\_local(x) の空間場}}
-\label{sec:ridge_nu_eps_impl}
+\subsubsection{\texorpdfstring{D4 補正：$\varepsilon_\text{local}(\bm{x})$ の空間場}{D4 補正：ε\_local(x) の空間場}}
+\label{sec:ridge_nu_eps_field}
 % -------------------------------------------------------------------------------
 
 式~\eqref{eq:eps_local} の再構成幅
 $\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_\xi\cdot h(\bm{x})$ を
-D1 と同様に 2 次元配列としてキャッシュする．
+D1 と同様に格子点上の空間場として定義する．
 ここでの $\varepsilon_\text{local}$ は Ridge--Eikonal 再構成幅であり，
 CSF 表面張力の $\delta_\varepsilon(\phi)$ に空間可変幅を使う許可ではない
 （§~\ref{box:eps_xi_csf_warning}）．
@@ -335,7 +333,7 @@ $\xiridge$ から $\phi$ への再構成式
   \qquad \xi_\text{th} = \xi_\text{ridge,min} - \varepsilon_\text{local}(\bm{x})
 \end{equation*}
 では閾値 $\xi_\text{th}$ がノードごとに変わるため，
-ノードループ内で $\varepsilon_\text{local}[i,j]$ を参照する実装となる．
+ノードごとに $\varepsilon_\text{local}(\bm{x}_{i,j})$ を用いる．
 
 \noindent\textbf{体積保存の監視}：
 一様較正 $\varepsilon_\text{scale}=1.4$ を初期値として採用し，
@@ -359,7 +357,7 @@ D1--D4 の効果が次のように簡素化される：
         Ridge 検出は等価密度帯内で実行されるため実効 $\sigma_\text{eff}$ は一様．
   \item \textbf{D2 Hessian}：界面法線 $\hat{\bm{n}}$ は密度勾配方向と
         ほぼ平行になる単純帯では対角寄与が支配的になりやすいが，
-        実装上は $H_{xy}$ も保持して
+        離散化では $H_{xy}$ も保持して
         斜め界面・曲率帯での符号反転を避ける．
   \item \textbf{D3 FMM}：界面から距離 $\mathcal{O}(\varepsilon_\text{local})$ の
         narrow band のみで実行．$D<0$ fallback の発動率は 1\% 未満
@@ -371,7 +369,7 @@ D1--D4 の効果が次のように簡素化される：
 「界面帯での一様近似 + 密度勾配帯での正則化」として作用する．
 ただし，これは D1--D4 の数式上の接続であり，
 移動界面，分裂合体，分相 PPE，HFE，pressure-jump を同時に含む
-長時間 NS 計算での production 実証は別ゲートとして残る．
+長時間 NS 計算での標準閉包としての実証は別ゲートとして残る．
 一方，壁面接触については式~\eqref{eq:wall_closed_interface}--\eqref{eq:contact_pinned_mass_correction}
 により，幾何再構成が有限 gap を作らないことを離散契約として要求する．
 

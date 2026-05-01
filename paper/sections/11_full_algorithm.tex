@@ -239,7 +239,7 @@ $\psi^{n+1}$ に基づき距離関数と物性値を再計算する
 
 % ── Step 4 ──────────────────────────────────────────────────────────────
 \paragraph{Step 4：曲率計算}
-production 経路では $\psi^{n+1}$ の CCD 微分から
+標準経路では $\psi^{n+1}$ の CCD 微分から
 液相$\to$気相向き曲率 $\kappa_{lg}^{n+1}$ を直接求める
 （式~\eqref{eq:curvature_psi_2d}）：
 \begin{align*}
@@ -449,15 +449,15 @@ v^{n+1}_{i,j} = v^*_{i,j}
 p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
 \end{align*}
 ここで $\mathcal{G}_\Gamma$ は非ジャンプ経路では通常の勾配 $\mathcal{G}$，
-\texttt{affine\_jump} 経路では
+ジャンプ補正付き面勾配の経路では
 $\mathcal{G}_\Gamma\delta p=\mathcal{G}\delta p_{\mathrm{ext}}-B(J_p^\chi)$
 を表す．PPE RHS に入れた既知ジャンプ面データと corrector で差し引く
-$B(J_p^\chi)$ は同一 face cache から読む．
+$B(J_p^\chi)$ は同一の界面面データから定める．
 勾配演算子は格子・境界条件により選択する：
 \begin{itemize}[noitemsep]
   \item \textbf{均一格子，または周期 BC：}
         非ジャンプ経路では $\mathcal{G}_{\Gamma,x}=D_x^{(1)}$（CCD $\Ord{h^6}$）．
-        \texttt{affine\_jump} 経路では同じ面ジャンプ $B(J_p^\chi)$ を差し引く
+        ジャンプ補正付き面勾配の経路では同じ面ジャンプ $B(J_p^\chi)$ を差し引く
         FCCD/CCD face-gradient を用いる．
         CCD 発散の意味で非圧縮条件を満たす：
         $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1} \approx 0$
@@ -469,12 +469,12 @@ $B(J_p^\chi)$ は同一 face cache から読む．
         $\mathcal{D}_{\text{FVM},x}\, u^{n+1} + \mathcal{D}_{\text{FVM},y}\, v^{n+1} \approx 0$．
         CCD 勾配（$J_n \neq J_f$）を使うと毎ステップ残差発散が蓄積し
         $\alpha=1.5$ で約50ステップ後にブローアップが生じる．
-	        \texttt{affine\_jump} では
+	        ジャンプ補正付き面勾配では
 	        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-B^\text{adj}$ を使い，
-	        PPE RHS に入れた $D^{\mathrm{nu}}(\alpha_fB_f)$ と同じ face cache を補正側でも参照する．
+	        PPE RHS に入れた $D^{\mathrm{nu}}(\alpha_fB_f)$ と同じ界面面データを補正側でも参照する．
 \end{itemize}
 非一様格子 + 壁面 BC では，PPE 側の発散，corrector 側の勾配，
-affine jump 面項，HFE 延長点，浮力・表面張力の面評価を
-同じ face geometry cache 上で定義することを operator contract とする．
+ジャンプ補正面項，HFE 延長点，浮力・表面張力の面評価を
+同じ界面面幾何データ上で定義することを演算子整合条件とする．
 このうち一つだけを CCD node metric に戻す混在は Balanced--Force の面釣合いを破る．
 \end{tcolorbox}
