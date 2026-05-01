@@ -742,6 +742,8 @@ class TwoPhaseNSSolver:
             step_diag=self._step_diag,
             st_force=self._st_force,
             ccd=self._ccd,
+            grid=self._grid,
+            bc_type=self.bc_type,
             surface_tension_grad_op=self._surface_tension_grad_op,
             projection_consistent_buoyancy=self._projection_consistent_buoyancy,
         )

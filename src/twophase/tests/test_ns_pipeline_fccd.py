@@ -25,6 +25,7 @@ from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_services import _interface_supported_curvature
+from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
@@ -912,6 +913,12 @@ def test_pipeline_uses_matrixfree_fvm_ppe():
 
     solver = TwoPhaseNSSolver(N, N, L, L, bc_type="wall")
     assert isinstance(solver._ppe_solver, PPESolverFVMMatrixFree)
+
+
+def test_pipeline_uses_psi_direct_curvature_runtime():
+    """Runtime curvature must match the production ``psi_direct_filtered`` path."""
+    solver = TwoPhaseNSSolver(N, N, L, L, bc_type="wall")
+    assert isinstance(solver._curv, CurvatureCalculatorPsi)
 
 
 def test_pipeline_can_select_direct_fvm_ppe():

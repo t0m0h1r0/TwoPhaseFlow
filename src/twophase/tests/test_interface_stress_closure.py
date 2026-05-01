@@ -18,6 +18,7 @@ from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
+from twophase.coupling.capillary_geometry import apply_wall_compatible_curvature
 from twophase.coupling.interface_stress_closure import (
     build_interface_stress_context,
     build_young_laplace_interface_stress_context,
@@ -98,6 +99,62 @@ def test_signed_pressure_jump_gradient_uses_nonuniform_physical_face_distance():
 
     np.testing.assert_allclose(jump_x[0, :], -24.0)
     np.testing.assert_allclose(jump_x[1, :], 0.0)
+
+
+def test_young_laplace_jump_uses_cut_face_curvature_quadrature():
+    """Young--Laplace jumps sample ``κ_Γ`` at the ψ=1/2 cut face."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(1, 1), L=(1.0, 1.0)),
+    )
+    grid = Grid(cfg.grid, backend)
+    psi = np.asarray([[0.9, 0.9], [0.4, 0.4]])
+    kappa_lg = np.asarray([[0.0, 0.0], [10.0, 10.0]])
+    context = build_young_laplace_interface_stress_context(
+        xp=np,
+        psi=psi,
+        kappa_lg=kappa_lg,
+        sigma=1.0,
+    )
+
+    jump_x = signed_pressure_jump_gradient(
+        xp=np,
+        grid=grid,
+        context=context,
+        axis=0,
+    )
+
+    np.testing.assert_allclose(jump_x[0, :], -8.0)
+
+
+def test_wall_compatible_curvature_uses_interior_limit():
+    """No-slip wall contact curvature uses the one-sided interior limit."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)),
+    )
+    grid = Grid(cfg.grid, backend)
+    psi = np.full(grid.shape, 0.5)
+    kappa = np.zeros(grid.shape)
+    kappa[0, :] = 300.0
+    kappa[1, :] = 40.0
+    kappa[2, :] = 1.5
+    kappa[3, :] = -40.0
+    kappa[4, :] = -300.0
+
+    closed = apply_wall_compatible_curvature(
+        xp=np,
+        grid=grid,
+        psi=psi,
+        kappa_lg=kappa,
+        bc_type="wall",
+        psi_min=0.01,
+    )
+
+    np.testing.assert_allclose(closed[0, 2], 1.5)
+    np.testing.assert_allclose(closed[1, 2], 1.5)
+    np.testing.assert_allclose(closed[3, 2], 1.5)
+    np.testing.assert_allclose(closed[4, 2], 1.5)
 
 
 def test_affine_jump_fvm_corrector_uses_same_nonuniform_jump_distance():

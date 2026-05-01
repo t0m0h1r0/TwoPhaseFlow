@@ -88,6 +88,30 @@ $p_l^*-p_g^*=\sigma\kappa_{lg}^*$，すなわち
 $j_{gl}^*=-\sigma\kappa_{lg}^*$ を
 参照圧力 $\rho_l U^2$ で除し，$We = \rho_l U^2 L/\sigma$ と $\kappa_{lg} = L\kappa_{lg}^*$ を
 代入して得られる（*-付き変数は有次元，*-無しは無次元；§~\ref{sec:nondim}）．
+離散 affine jump では，このジャンプを節点平均ではなく界面が通過する
+face cut $f\cap\Gamma_h$ で評価する．
+face の両端値を $\psi^-,\psi^+$，$\kappa^-_{lg},\kappa^+_{lg}$ とすると
+\begin{equation}
+  \theta_f =
+  \frac{1/2-\psi^-}{\psi^+-\psi^-},\qquad
+  \kappa_{lg,f}=(1-\theta_f)\kappa^-_{lg}+\theta_f\kappa^+_{lg},
+  \qquad
+  B_{\Gamma,f}=\frac{j_{gl,f}}{H_f}
+  =-\frac{\kappa_{lg,f}}{We\,H_f},
+  \label{eq:cut_face_young_laplace_jump}
+\end{equation}
+である（$\theta_f$ は $[0,1]$ に制限し，$H_f$ は物理 face 距離）．
+静止 no-slip 壁に界面端点が接する場合，端点の表面張力は壁反力で釣り合う制約力であり，
+明示的な wetting/contact-angle 法則を導入しない限り bulk 節点曲率を壁へ外挿してはならない．
+したがって壁法線方向の閉包層では
+\begin{equation}
+  \partial_{\bm n_{\partial\Omega}}\kappa_{lg}=0
+  \quad\text{on the wall-normal capillary closure layer}
+  \label{eq:wall_capillary_curvature_closure}
+\end{equation}
+を用い，$\kappa_{lg,f}$ は領域内部側極限の interface/cut-face 幾何量として評価する．
+これは曲率 cap や平滑化による安定化ではなく，no-slip 壁面トポロジ制約
+式~\eqref{eq:wall_phase_topology_invariant} と同じ幾何制約から来る Young--Laplace 閉包である．
 
 \noindent\textbf{毛管波時間スケール $\tau_\sigma$．}
 表面張力が駆動する最短毛管波（波長 $\sim L$）の周期は，
