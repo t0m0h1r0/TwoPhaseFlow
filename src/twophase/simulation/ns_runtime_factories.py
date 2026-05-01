@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
 from ..levelset.reinitialize import Reinitializer
@@ -14,6 +14,7 @@ from .scheme_build_ctx import PPEBuildCtx
 @dataclass(frozen=True)
 class NSPPEFactoryOptions:
     solver_name: str
+    dc_base_solver_name: str | None
     tolerance: float
     max_iterations: int
     restart: int | None
@@ -125,12 +126,17 @@ def build_ns_ppe_solver(
     if options.defect_correction:
         from ..core.boundary import BoundarySpec
 
+        base_options = replace(
+            options,
+            solver_name=options.dc_base_solver_name or options.solver_name,
+            defect_correction=False,
+        )
         base_solver = build_ns_plain_ppe_solver(
             backend=backend,
             grid=grid,
             bc_type=bc_type,
             fccd=fccd,
-            options=options,
+            options=base_options,
         )
         operator_ctx = PPEBuildCtx(
             backend=backend,

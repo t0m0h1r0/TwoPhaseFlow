@@ -134,6 +134,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         advection_scheme=options.operator_settings["advection_scheme"],
         convection_scheme=options.operator_settings["convection_scheme"],
         ppe_solver=options.operator_settings["ppe_solver"],
+        ppe_dc_base_solver=options.operator_settings["ppe_dc_base_solver"],
         pressure_scheme=options.operator_settings["pressure_scheme"],
         ppe_coefficient_scheme=options.operator_settings["poisson_coefficient"],
         ppe_interface_coupling_scheme=options.operator_settings["poisson_interface_coupling"],

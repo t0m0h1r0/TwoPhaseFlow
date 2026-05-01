@@ -18,6 +18,7 @@ def make_ns_ppe_factory_options(
 ) -> NSPPEFactoryOptions:
     return NSPPEFactoryOptions(
         solver_name=solver_name or state.ppe_solver_name,
+        dc_base_solver_name=state.ppe_dc_base_solver_name,
         tolerance=state.ppe_tolerance,
         max_iterations=state.ppe_max_iterations,
         restart=state.ppe_restart,

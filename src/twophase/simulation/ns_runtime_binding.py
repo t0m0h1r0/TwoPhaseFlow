@@ -23,6 +23,7 @@ def bind_ns_interface_runtime(solver, state) -> None:
 def bind_ns_ppe_runtime(solver, state) -> None:
     solver._ppe_runtime = state
     solver._ppe_solver_name = state.ppe_solver_name
+    solver._ppe_dc_base_solver_name = state.ppe_dc_base_solver_name
     solver._ppe_iteration_method = state.ppe_iteration_method
     solver._ppe_coefficient_scheme = state.ppe_coefficient_scheme
     solver._ppe_interface_coupling_scheme = state.ppe_interface_coupling_scheme

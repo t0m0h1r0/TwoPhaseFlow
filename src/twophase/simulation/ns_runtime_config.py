@@ -35,6 +35,7 @@ class NSInterfaceRuntimeState:
 @dataclass(frozen=True)
 class NSPPERuntimeState:
     ppe_solver_name: str
+    ppe_dc_base_solver_name: str | None
     ppe_iteration_method: str
     ppe_coefficient_scheme: str
     ppe_interface_coupling_scheme: str
@@ -147,6 +148,22 @@ def normalise_ns_ppe_runtime(
         ppe_aliases=ppe_aliases,
         ppe_registry=ppe_registry,
     )
+    ppe_defect_correction = bool(options.ppe_defect_correction)
+    raw_base_solver = getattr(options, "ppe_dc_base_solver", None)
+    if ppe_defect_correction:
+        if raw_base_solver is None:
+            raw_base_solver = (
+                "fvm_direct"
+                if ppe_solver_name in {"fccd_iterative", "fvm_iterative"}
+                else ppe_solver_name
+            )
+        ppe_dc_base_solver_name = canonicalize_ppe_solver_name(
+            raw_base_solver,
+            ppe_aliases=ppe_aliases,
+            ppe_registry=ppe_registry,
+        )
+    else:
+        ppe_dc_base_solver_name = None
 
     ppe_iteration_method = str(options.ppe_iteration_method).strip().lower()
     ppe_coefficient_scheme = str(options.ppe_coefficient_scheme).strip().lower()
@@ -170,6 +187,7 @@ def normalise_ns_ppe_runtime(
 
     return NSPPERuntimeState(
         ppe_solver_name=ppe_solver_name,
+        ppe_dc_base_solver_name=ppe_dc_base_solver_name,
         ppe_iteration_method=ppe_iteration_method,
         ppe_coefficient_scheme=ppe_coefficient_scheme,
         ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
@@ -179,7 +197,7 @@ def normalise_ns_ppe_runtime(
         ppe_preconditioner=str(options.ppe_preconditioner).strip().lower(),
         ppe_pcr_stages=options.ppe_pcr_stages,
         ppe_c_tau=float(options.ppe_c_tau),
-        ppe_defect_correction=bool(options.ppe_defect_correction),
+        ppe_defect_correction=ppe_defect_correction,
         ppe_dc_max_iterations=int(options.ppe_dc_max_iterations),
         ppe_dc_tolerance=float(options.ppe_dc_tolerance),
         ppe_dc_relaxation=float(options.ppe_dc_relaxation),

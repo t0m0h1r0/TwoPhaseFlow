@@ -99,14 +99,10 @@ numerics:
         corrections:
           max_iterations: 3
           tolerance: 1.0e-8
-          relaxation: 1.0
+          relaxation: 0.7
         base_solver:
-          kind: iterative
-          method: gmres
-          tolerance: 1.0e-6
-          max_iterations: 500
-          restart: 80
-          preconditioner: jacobi
+          discretization: fvm
+          kind: direct
 
 output:
   dir: results/ch14_capillary
