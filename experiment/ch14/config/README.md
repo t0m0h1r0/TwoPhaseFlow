@@ -204,9 +204,11 @@ All three ch14 YAMLs share the production stack:
   required. Regridded Mode 2 runs must rebuild this face cache from the current
   grid instead of interpolating it from the previous step.
 - `projection.poisson.solver.kind: defect_correction` with
-  `base_solver.discretization: fvm` / `base_solver.kind: direct` — evaluates
+  `base_solver.discretization: fd` / `base_solver.kind: direct` — evaluates
   the residual with the FCCD high-order operator and solves each correction
-  with the low-order FVM/FD operator, matching the paper's grid-defect method.
+  with the low-order FD `L_L` operator. The FD matrix factor is reused within
+  one outer DC solve, matching the paper's grid-defect method without
+  re-entering the legacy FVM direct sparse solve for every correction RHS.
 
 Cadence differences across YAMLs:
 - Capillary-wave: `reinitialization.every_steps: 20` (slow dynamics).
@@ -218,16 +220,15 @@ Cadence differences across YAMLs:
 
 - `iterative`: requires `method` (currently `gmres`), `tolerance`,
   `max_iterations`, `restart`, and `preconditioner`.
-  `preconditioner: jacobi` is the ch14 production default (GPU-compatible).
-  `preconditioner: line_pcr` requires CPU-side batched PCR and must not be
-  used on GPU runs.
+  `preconditioner: line_pcr` is the ch14 low-order FD correction default;
+  `jacobi` is available only as a cheaper, slower fallback preconditioner.
 - `direct`: sparse FVM direct solve; intentionally rejects all iterative options.
 - `defect_correction`: outer residual correction. Requires `corrections` and
   `base_solver`. `base_solver` keys are rejected for non-DC solvers. For FCCD
   production runs, `base_solver.discretization` must select a lower-order
-  operator such as `fvm`; using the same FCCD operator as the base solver is
-  rejected because it bypasses the paper's `L_H` residual / `L_L` correction
-  contract.
+  operator (`fd`); using the same FCCD operator or the legacy `fvm_direct`
+  sparse solve as the base solver is rejected because it bypasses the intended
+  paper contract or reintroduces the slow FVM Step 2 path.
 
 Defect-correction example:
 
@@ -241,7 +242,7 @@ projection:
         tolerance: 1.0e-8
         relaxation: 0.7     # ω < 0.833 for FCCD/FD DC stability margin
       base_solver:          # inner approximate solve
-        discretization: fvm
+        discretization: fd
         kind: direct
 ```
 

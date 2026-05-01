@@ -70,7 +70,11 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.grid = grid
         self.ndim = grid.ndim
         self.bc_type = bc_type
+        self.bc_spec = bc_spec
         solver_cfg = getattr(config, "solver", config)
+        self.allow_direct_fallback = bool(
+            getattr(solver_cfg, "ppe_allow_direct_fallback", True)
+        )
         self.tol = getattr(solver_cfg, "pseudo_tol", 1e-8)
         self.maxiter = getattr(solver_cfg, "pseudo_maxiter", 500)
         self.c_tau = getattr(solver_cfg, "pseudo_c_tau", 2.0)
@@ -131,13 +135,13 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self._refresh_grid_metrics()
         if self._fallback is not None:
             self._fallback = PPESolverFVMSpsolve(
-                self.backend, self.grid, bc_type=self.bc_type
+                self.backend, self.grid, bc_type=self.bc_type, bc_spec=self.bc_spec
             )
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FVM PPE with matrix-free GMRES."""
         if self._fallback is not None:
-            return self._fallback.solve(rhs, rho, dt, p_init=p_init)
+            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         la = self.backend.sparse_linalg
         if not backend_supports_gmres(la):
@@ -147,9 +151,7 @@ class PPESolverFVMMatrixFree(IPPESolver):
                 RuntimeWarning,
                 stacklevel=2,
             )
-            return PPESolverFVMSpsolve(
-                self.backend, self.grid, bc_type=self.bc_type
-            ).solve(rhs, rho, dt, p_init=p_init)
+            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         rho_dev = self.xp.asarray(rho)
         rhs_dev = self.xp.asarray(rhs)
@@ -195,21 +197,42 @@ class PPESolverFVMMatrixFree(IPPESolver):
             maxiter=self.maxiter,
             tolerance=self.tol,
         )
+        self.last_diagnostics = {
+            "ppe_low_order_gmres_info": int(info),
+            "ppe_low_order_gmres_tol": float(self.tol),
+            "ppe_low_order_gmres_maxiter": int(self.maxiter),
+        }
 
         if info != 0:
+            if not self.allow_direct_fallback:
+                raise RuntimeError(
+                    f"{type(self).__name__} did not converge cleanly "
+                    f"(info={info}) and direct fallback is disabled."
+                )
             warnings.warn(
-                f"PPESolverFVMMatrixFree did not converge cleanly (info={info}); "
+                f"{type(self).__name__} did not converge cleanly (info={info}); "
                 "falling back to PPESolverFVMSpsolve.",
                 RuntimeWarning,
                 stacklevel=2,
             )
-            return PPESolverFVMSpsolve(
-                self.backend, self.grid, bc_type=self.bc_type
-            ).solve(rhs, rho, dt, p_init=p_init)
+            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         sol = self.xp.asarray(sol_flat).reshape(self.grid.shape)
         sol.ravel()[self._pin_dof] = 0.0
         return sol
+
+    def _solve_direct_fallback(self, rhs, rho, *, dt: float, p_init=None):
+        """Run the legacy direct fallback when this solver is allowed to."""
+        if not self.allow_direct_fallback:
+            raise RuntimeError(
+                f"{type(self).__name__} direct fallback is disabled; "
+                "the configured L_L correction must remain matrix-free."
+            )
+        if self._fallback is not None:
+            return self._fallback.solve(rhs, rho, dt, p_init=p_init)
+        return PPESolverFVMSpsolve(
+            self.backend, self.grid, bc_type=self.bc_type, bc_spec=self.bc_spec
+        ).solve(rhs, rho, dt, p_init=p_init)
 
     def prepare_operator(self, rho) -> None:
         """Build matrix-free FVM operator coefficients for the current density."""

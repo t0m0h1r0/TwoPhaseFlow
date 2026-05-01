@@ -82,7 +82,7 @@ def canonicalize_ppe_solver_name(raw_ppe, *, ppe_aliases: dict, ppe_registry: di
     if ppe_solver_name not in ppe_registry:
         raise ValueError(
             f"Unsupported ppe_solver={value!r}. "
-            "Use fvm_iterative|fvm_direct|fccd_iterative."
+            "Use fd_direct|fvm_iterative|fvm_direct|fccd_iterative."
         )
     return ppe_solver_name
 

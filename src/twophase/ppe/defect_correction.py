@@ -157,6 +157,8 @@ class PPESolverDefectCorrection(IPPESolver):
         xp = self.xp
         rhs_dev = xp.asarray(rhs)
         self.operator.prepare_operator(rho)
+        if hasattr(self.base_solver, "prepare_operator"):
+            self.base_solver.prepare_operator(rho)
         rhs_dev = self._subtract_interface_jump_operator(rhs_dev)
         rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._enforce_rhs_compatibility(rhs_dev)

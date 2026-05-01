@@ -693,7 +693,7 @@ def test_defect_correction_ppe_parses_base_solver():
                             "relaxation": 0.8,
                         },
                         "base_solver": {
-                            "discretization": "fvm",
+                            "discretization": "fd",
                             "kind": "direct",
                         },
                     },
@@ -703,10 +703,33 @@ def test_defect_correction_ppe_parses_base_solver():
     }))
     assert cfg.run.ppe_defect_correction is True
     assert cfg.run.ppe_solver == "fccd_iterative"
-    assert cfg.run.ppe_dc_base_solver == "fvm_direct"
+    assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert cfg.run.ppe_dc_max_iterations == 3
     assert cfg.run.ppe_dc_tolerance == 1.0e-7
     assert cfg.run.ppe_dc_relaxation == 0.8
+
+
+def test_fccd_defect_correction_rejects_fvm_direct_base_solver():
+    with pytest.raises(ValueError, match="fvm.*direct"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_density",
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "base_solver": {
+                                "discretization": "fvm",
+                                "kind": "direct",
+                            },
+                        },
+                    },
+                },
+            },
+        }))
 
 
 def test_fccd_defect_correction_rejects_same_operator_base_solver():
