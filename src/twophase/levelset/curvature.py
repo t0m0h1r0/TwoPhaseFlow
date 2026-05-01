@@ -30,6 +30,7 @@ from typing import Optional, TYPE_CHECKING
 from .heaviside import invert_heaviside
 from .interfaces import ICurvatureCalculator
 from ..backend import fuse as _fuse
+from ..core.boundary import is_periodic_axis
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -52,9 +53,37 @@ def _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube):
     return -num / grad_cube
 
 
-def _dccd_filter_1d(xp, f, ax: int, ndim: int, N_ax: int, eps_d: float):
-    """Apply 3-point DCCD dissipative filter along axis ``ax``."""
+def _dccd_filter_1d(
+    xp,
+    f,
+    ax: int,
+    ndim: int,
+    N_ax: int,
+    eps_d: float,
+    *,
+    periodic: bool = False,
+):
+    """Apply the 3-point DCCD dissipative filter along axis ``ax``.
+
+    A3 chain: DCCD transfer function (§10.1.3) → boundary topology closure
+    → periodic axes must satisfy ``f[N] = f[0]`` after filtering.
+    """
     result = xp.copy(f)
+    if periodic:
+        unique_sl = [slice(None)] * ndim
+        unique_sl[ax] = slice(0, N_ax)
+        unique = f[tuple(unique_sl)]
+        filtered = unique + eps_d * (
+            xp.roll(unique, -1, axis=ax) - 2.0 * unique + xp.roll(unique, 1, axis=ax)
+        )
+        result[tuple(unique_sl)] = filtered
+        image_sl = [slice(None)] * ndim
+        source_sl = [slice(None)] * ndim
+        image_sl[ax] = N_ax
+        source_sl[ax] = 0
+        result[tuple(image_sl)] = result[tuple(source_sl)]
+        return result
+
     sl_c = [slice(None)] * ndim
     sl_m = [slice(None)] * ndim
     sl_p = [slice(None)] * ndim
@@ -74,11 +103,19 @@ def _dccd_filter_1d(xp, f, ax: int, ndim: int, N_ax: int, eps_d: float):
     return result
 
 
-def _dccd_filter_nd(xp, f, grid, eps_d: float):
-    """Apply DCCD filter along all spatial axes."""
+def _dccd_filter_nd(xp, f, grid, eps_d: float, *, bc_type: str = "wall"):
+    """Apply DCCD filter along all spatial axes with boundary topology."""
     result = f
     for ax in range(grid.ndim):
-        result = _dccd_filter_1d(xp, result, ax, grid.ndim, grid.N[ax], eps_d)
+        result = _dccd_filter_1d(
+            xp,
+            result,
+            ax,
+            grid.ndim,
+            grid.N[ax],
+            eps_d,
+            periodic=is_periodic_axis(bc_type, ax, grid.ndim),
+        )
     return result
 
 
@@ -143,8 +180,12 @@ class CurvatureCalculator(ICurvatureCalculator):
         for ax in range(ndim):
             g1, g2 = ccd.differentiate(phi, ax)
             if self.dccd_eps > 0:
-                g1 = _dccd_filter_nd(xp, g1, ccd.grid, self.dccd_eps)
-                g2 = _dccd_filter_nd(xp, g2, ccd.grid, self.dccd_eps)
+                g1 = _dccd_filter_nd(
+                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                )
+                g2 = _dccd_filter_nd(
+                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                )
             d1.append(g1)
             d2.append(g2)
 
@@ -182,7 +223,9 @@ class CurvatureCalculator(ICurvatureCalculator):
         # Mixed derivative φ_xy via sequential CCD: differentiate d1[0] along y
         phi_xy, _ = ccd.differentiate(d1[0], 1)
         if self.dccd_eps > 0:
-            phi_xy = _dccd_filter_nd(self.xp, phi_xy, ccd.grid, self.dccd_eps)
+            phi_xy = _dccd_filter_nd(
+                self.xp, phi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+            )
 
         return _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube)
 

@@ -21,6 +21,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
+from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
@@ -88,6 +89,48 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
         rtol=1.0e-12,
         atol=1.0e-12,
     )
+
+
+def test_fccd_matrixfree_enforces_mixed_periodic_image_rows():
+    """Mixed periodic-wall PPE must constrain duplicate pressure image nodes."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(8, 8), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
+    fccd = FCCDSolver(grid, backend, bc_type="periodic_wall", ccd_solver=ccd)
+    ppe = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
+    rho = np.ones(grid.shape)
+    pressure = np.zeros(grid.shape)
+    pressure[-1, :] = np.linspace(1.0, 2.0, grid.shape[1])
+
+    ppe.prepare_operator(rho)
+    applied = np.asarray(ppe.apply(pressure))
+    np.testing.assert_allclose(applied[-1, :], pressure[-1, :] - pressure[0, :])
+
+    rhs = np.zeros(grid.shape)
+    rhs[-1, :] = 1.0
+    solved = np.asarray(ppe.solve(rhs, rho))
+    np.testing.assert_allclose(solved[-1, :], solved[0, :], atol=1.0e-14)
+
+
+def test_defect_correction_preserves_mixed_periodic_pressure_space():
+    """DC wrapper must not reintroduce duplicate periodic image DOFs."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(8, 8), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
+    fccd = FCCDSolver(grid, backend, bc_type="periodic_wall", ccd_solver=ccd)
+    operator = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
+    dc = PPESolverDefectCorrection(backend, grid, operator, operator)
+
+    pressure = np.zeros(grid.shape)
+    pressure[-1, :] = np.linspace(1.0, 2.0, grid.shape[1])
+    pressure_synced = np.asarray(dc._enforce_pressure_gauge(pressure))
+    np.testing.assert_allclose(pressure_synced[-1, :], pressure_synced[0, :])
+
+    rhs = np.ones(grid.shape)
+    rhs_projected = np.asarray(dc._enforce_rhs_compatibility(rhs))
+    np.testing.assert_allclose(rhs_projected[-1, :], 0.0)
 
 
 def test_phase_separated_fccd_projection_matches_ppe_operator_nonuniform_wall():
