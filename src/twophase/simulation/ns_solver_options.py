@@ -23,6 +23,15 @@ class SolverGridOptions:
     fitting_eps_g_factor: tuple[float, float] = (2.0, 2.0)
     eps_g_cells: float | None = None
     fitting_eps_g_cells: tuple[float | None, float | None] = (None, None)
+    wall_refinement_axes: tuple[bool, bool] = (False, False)
+    wall_alpha_grid: tuple[float, float] = (1.0, 1.0)
+    wall_eps_g_factor: float = 2.0
+    wall_eps_g_factor_axes: tuple[float, float] = (2.0, 2.0)
+    wall_eps_g_cells: tuple[float | None, float | None] = (None, None)
+    wall_sides: tuple[tuple[str, ...], tuple[str, ...]] = (
+        ("lower", "upper"),
+        ("lower", "upper"),
+    )
     dx_min_floor: float = 1e-6
     fitting_dx_min_floor: tuple[float, float] = (1e-6, 1e-6)
     use_local_eps: bool = False

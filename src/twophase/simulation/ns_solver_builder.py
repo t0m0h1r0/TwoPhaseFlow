@@ -49,6 +49,19 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
                 getattr(g, "fitting_eps_g_cells", None)
                 or (getattr(g, "eps_g_cells", None),) * 2
             ),
+            wall_refinement_axes=getattr(g, "wall_refinement_axes", (False, False)),
+            wall_alpha_grid=getattr(g, "wall_alpha_grid", (1.0, 1.0)),
+            wall_eps_g_factor=getattr(g, "wall_eps_g_factor", 2.0),
+            wall_eps_g_factor_axes=(
+                getattr(g, "wall_eps_g_factor_axes", None)
+                or (getattr(g, "wall_eps_g_factor", 2.0),) * 2
+            ),
+            wall_eps_g_cells=getattr(g, "wall_eps_g_cells", (None, None)),
+            wall_sides=getattr(
+                g,
+                "wall_sides",
+                (("lower", "upper"), ("lower", "upper")),
+            ),
             dx_min_floor=getattr(g, "dx_min_floor", 1e-6),
             fitting_dx_min_floor=(
                 getattr(g, "fitting_dx_min_floor", None)

@@ -33,11 +33,59 @@ CCD の非一様格子拡張（座標変換法と混合偏微分）は §~\ref{s
 \label{sec:grid_density}
 
 界面近傍の解像度を上げるため，Level Set 値に連動したグリッド密度関数 $\omega(\phi)$ を導入する．
+これは界面のみを細分化する基本形であり，
 \begin{equation}
   \omega(\phi) = 1 + (\alpha - 1)\,\varepsilon_g\,\delta_\varepsilon^*(\phi)
 \end{equation}
 $\alpha > 1$ は界面近傍の格子密度倍率，$\delta_\varepsilon^*(\phi)$ は界面近傍に集中した正規化スムーズデルタ関数である．
 $\delta_\varepsilon^*$ は $[\text{長さ}]^{-1}$ の次元を持つため，$\varepsilon_g\,\delta_\varepsilon^*$ により無次元化している．
+
+壁面を持つ非一様格子では，界面の曲率・物性ジャンプ層とは独立に，
+非すべり壁のせん断層，接触線閉包，および投影法の半コントロールボリューム行が
+壁法線方向の短い長さスケールを作る．したがって格子密度は界面項だけでなく，
+非周期壁だけに作用する壁項を含む合成 monitor として定義する：
+\begin{align}
+  M_a(s) &= 1 + A_{\Gamma,a} I_{\Gamma,a}(s) + A_{W,a} I_{W,a}(s),
+  \label{eq:grid_composite_monitor} \\
+  \int_0^{x_{a,i}} M_a(s)\,\mathrm{d}s
+  &= \frac{i}{N_a}\int_0^{L_a} M_a(s)\,\mathrm{d}s .
+  \label{eq:grid_composite_equidistribution}
+\end{align}
+ここで $a$ は座標方向，$A_{\Gamma,a}=\alpha_{\Gamma,a}-1$，
+$A_{W,a}=\alpha_{W,a}-1$ である．界面指示関数と壁指示関数は
+\begin{align}
+  I_{\Gamma,a}(s)
+    &= \exp\!\left[-\frac{\bar{\phi}_a(s)^2}{\varepsilon_{\Gamma,a}^2}\right],
+  &
+  \bar{\phi}_a(s)
+    &= \min_{x_b,\ b\ne a}|\phi(x)|,
+  \\
+  I_{W,a}(s)
+    &= \max_{b\in W_a}\exp\!\left[-\frac{d_b(s)^2}{\varepsilon_{W,a,b}^2}\right],
+  &
+  d_{\mathrm{lower}}(s)&=s,\quad
+  d_{\mathrm{upper}}(s)=L_a-s .
+\end{align}
+$W_a$ は方向 $a$ に垂直な物理壁の集合であり，周期境界では空集合とする．
+周期境界は物理壁ではなく同一視境界なので，一方側だけに壁層を入れると
+並進対称性を破る．したがって壁項は非一様格子を明示的に選択した壁境界の場合にだけ有効であり，
+一様格子または周期境界では $A_{W,a}=0$ の legacy reduction に厳密に戻る．
+
+壁幅 $\varepsilon_{W,a}$ は安定化用の任意パラメータではなく，
+物理壁層または明示的な数値解像度契約で決める：
+\begin{equation}
+  \varepsilon_{W,a}
+  =
+  \max\!\left(
+    N_{W,\mathrm{cells}}h_{a,\mathrm{ref}},
+    C_\nu\delta_W,
+    C_{\mathrm{contact}}\varepsilon_{\Gamma,a}
+  \right).
+  \label{eq:grid_wall_width_policy}
+\end{equation}
+ここで $\delta_W$ は Stokes 層や境界層解析から得られる壁長さである．
+それが与えられない場合は $N_{W,\mathrm{cells}}\ge4$ を
+CCD metric が解像すべき最小幅として明示する．
 
 \paragraph{グリッド密度デルタ関数 \texorpdfstring{$\delta_\varepsilon^*(\phi)$}{delta*eps(phi)} の定義}
 
@@ -263,15 +311,17 @@ step 5 の CCD 評価が適切に機能していることを確認できる．
 \paragraph{テンソル積格子の生成手順}
 
 2次元テンソル積格子は，$x$ 方向と $y$ 方向の1次元格子（§~\ref{sec:grid_gen}）を独立に生成し，
-その直積として構成する．各方向の密度関数は：
+その直積として構成する．各方向の密度関数は，非周期壁の寄与を含めて：
 \begin{align*}
-  \omega^x_i &= 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^x_i), &
+  \omega^x_i &= 1 + A_{\Gamma,x} I_{\Gamma,x}(x_i) + A_{W,x}I_{W,x}(x_i), &
   \bar{\phi}^x_i &= \min_j |\phi^{(0)}_{i,j}| \\
-  \omega^y_j &= 1 + (\alpha-1)\,\varepsilon_g\,\delta_\varepsilon^*(\bar{\phi}^y_j), &
+  \omega^y_j &= 1 + A_{\Gamma,y} I_{\Gamma,y}(y_j) + A_{W,y}I_{W,y}(y_j), &
   \bar{\phi}^y_j &= \min_i |\phi^{(0)}_{i,j}|
 \end{align*}
 で与えられ，§~\ref{sec:grid_gen} のステップ2--5で物理座標 $\{x_i\}$, $\{y_j\}$ と
 メトリクス係数 $\{J_x|_i\}$, $\{J_y|_j\}$ を得る．
+周期方向または一様格子として指定された方向では $A_{W,a}=0$ とし，
+既存の界面適合格子または一様格子へ厳密に縮退する．
 
 格子生成には初期 Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価自体に格子が必要であるという
 循環参照が存在する．この解消を含む完全な初期化シーケンス（ブートストラップ処理）は

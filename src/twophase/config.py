@@ -57,6 +57,18 @@ class GridConfig:
     eps_g_cells: Optional[float] = None
     # 軸ごとの eps_g_cells; None 要素は fitting_eps_g_factor 経路を使う
     fitting_eps_g_cells: Optional[Tuple[Optional[float], ...]] = None
+    # 非周期物理壁近傍の独立 monitor を適用する軸マスク
+    wall_refinement_axes: Optional[Tuple[bool, ...]] = None
+    # 軸ごとの壁 monitor 密度倍率 α_W,a; 1.0 = legacy/no wall term
+    wall_alpha_grid: Optional[Tuple[float, ...]] = None
+    # 壁 monitor 幅: ε_W = wall_eps_g_factor × ε
+    wall_eps_g_factor: float = 2.0
+    # 軸ごとの壁 monitor 幅 factor
+    wall_eps_g_factor_axes: Optional[Tuple[float, ...]] = None
+    # 壁 monitor 幅: ε_W = wall_eps_g_cells × (L/N)
+    wall_eps_g_cells: Optional[Tuple[Optional[float], ...]] = None
+    # 軸ごとの対象壁面; 各要素は ("lower",), ("upper",), ("lower","upper") など
+    wall_sides: Optional[Tuple[Tuple[str, ...], ...]] = None
 
     def __post_init__(self) -> None:
         assert self.ndim in (2, 3), f"ndim は 2 か 3 でなければならない: {self.ndim}"
@@ -81,7 +93,6 @@ class GridConfig:
             self.fitting_alpha_grid,
             "fitting_alpha_grid",
         )
-        self.alpha_grid = max(self.fitting_alpha_grid)
         if self.fitting_dx_min_floor is None:
             self.fitting_dx_min_floor = tuple(
                 float(self.dx_min_floor) for _axis in range(self.ndim)
@@ -110,13 +121,68 @@ class GridConfig:
             None if cells is None else float(cells)
             for cells in self.fitting_eps_g_cells
         )
+        if self.wall_refinement_axes is None:
+            self.wall_refinement_axes = tuple(False for _axis in range(self.ndim))
+        assert len(self.wall_refinement_axes) == self.ndim, (
+            f"len(wall_refinement_axes)={len(self.wall_refinement_axes)} は "
+            f"ndim={self.ndim} と一致しなければならない"
+        )
+        self.wall_refinement_axes = tuple(bool(enabled) for enabled in self.wall_refinement_axes)
+        if self.wall_alpha_grid is None:
+            self.wall_alpha_grid = tuple(
+                1.0 for _axis in range(self.ndim)
+            )
+        self.wall_alpha_grid = self._float_tuple(
+            self.wall_alpha_grid,
+            "wall_alpha_grid",
+        )
+        if self.wall_eps_g_factor_axes is None:
+            self.wall_eps_g_factor_axes = tuple(
+                float(self.wall_eps_g_factor) for _axis in range(self.ndim)
+            )
+        self.wall_eps_g_factor_axes = self._float_tuple(
+            self.wall_eps_g_factor_axes,
+            "wall_eps_g_factor_axes",
+        )
+        if self.wall_eps_g_cells is None:
+            self.wall_eps_g_cells = tuple(None for _axis in range(self.ndim))
+        assert len(self.wall_eps_g_cells) == self.ndim, (
+            f"len(wall_eps_g_cells)={len(self.wall_eps_g_cells)} は "
+            f"ndim={self.ndim} と一致しなければならない"
+        )
+        self.wall_eps_g_cells = tuple(
+            None if cells is None else float(cells)
+            for cells in self.wall_eps_g_cells
+        )
+        if self.wall_sides is None:
+            self.wall_sides = tuple(("lower", "upper") for _axis in range(self.ndim))
+        assert len(self.wall_sides) == self.ndim, (
+            f"len(wall_sides)={len(self.wall_sides)} は ndim={self.ndim} と一致しなければならない"
+        )
+        self.wall_sides = tuple(
+            tuple(str(side).strip().lower() for side in sides)
+            for sides in self.wall_sides
+        )
+        self.alpha_grid = max((*self.fitting_alpha_grid, *(
+            alpha if enabled else 1.0
+            for enabled, alpha in zip(self.wall_refinement_axes, self.wall_alpha_grid)
+        )))
         if self.alpha_grid > 1.0:
-            assert any(self.fitting_axes), (
-                "alpha_grid > 1.0 では少なくとも 1 軸の fitting_axes が必要"
+            assert any(self.fitting_axes) or any(self.wall_refinement_axes), (
+                "alpha_grid > 1.0 では少なくとも 1 軸の fitting_axes または "
+                "wall_refinement_axes が必要"
             )
         for eps_g_cells in self.fitting_eps_g_cells:
             assert eps_g_cells is None or eps_g_cells >= 4.0, (
                 f"eps_g_cells={eps_g_cells} は CCD 解像に 4 以上が必要"
+            )
+        for eps_g_cells in self.wall_eps_g_cells:
+            assert eps_g_cells is None or eps_g_cells >= 4.0, (
+                f"wall_eps_g_cells={eps_g_cells} は CCD 解像に 4 以上が必要"
+            )
+        for sides in self.wall_sides:
+            assert all(side in {"lower", "upper"} for side in sides), (
+                f"wall_sides={sides} は lower/upper のみ指定可能"
             )
 
     def _float_tuple(self, values: Tuple[float, ...], name: str) -> Tuple[float, ...]:
