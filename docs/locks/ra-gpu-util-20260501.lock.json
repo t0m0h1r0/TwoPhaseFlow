@@ -1,0 +1,12 @@
+{
+  "branch": "ra-gpu-util-20260501",
+  "branch_slug": "ra-gpu-util-20260501",
+  "session_id": "66823264-ABC5-4E90-A54E-5D0B99D15D8A",
+  "worktree_path": ".claude/worktrees/ra-gpu-util-20260501",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-GPU-UTIL",
+  "acquired_at": "2026-05-01T02:15:29Z",
+  "expires_at": "2026-05-02T02:15:29Z",
+  "meta_version": "7.1.0",
+  "scope": "Existing ch14_capillary.yaml GPU utilization bottleneck analysis, paper-fidelity design, implementation, and verification"
+}

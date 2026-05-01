@@ -17,6 +17,24 @@ def _solve_dense_inverse_or_lu(solver, info, rhs_flat):
     return solver.backend.linalg.lu_solve((info['lu'], info['piv']), rhs_flat)
 
 
+def _apply_gpu_wall_operator_matrix(solver, info, data, axis: int, *, need_d1: bool, need_d2: bool):
+    xp = solver.xp
+    data = xp.asarray(data)
+    f = xp.moveaxis(data, axis, 0)
+    orig_shape = f.shape
+    n_pts = f.shape[0]
+    batch_size = math.prod(orig_shape[1:]) if len(orig_shape) > 1 else 1
+    f = f.reshape(n_pts, batch_size)
+
+    d1_flat = None
+    d2_flat = None
+    if need_d1:
+        d1_flat = (f.T @ info["D1_dev_T"]).T
+    if need_d2:
+        d2_flat = (f.T @ info["D2_dev_T"]).T
+    return orig_shape, d1_flat, d2_flat
+
+
 def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
     xp = solver.xp
     info = solver._solvers[axis]
@@ -62,6 +80,21 @@ def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
 def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right, apply_metric: bool = True):
     xp = solver.xp
     info = solver._solvers[axis]
+    if (
+        solver.backend.device == "gpu"
+        and bc_left is None
+        and bc_right is None
+        and info.get("D1_dev_T") is not None
+    ):
+        orig_shape, d1_flat, _ = _apply_gpu_wall_operator_matrix(
+            solver, info, data, axis, need_d1=True, need_d2=False
+        )
+        d1_axis0 = d1_flat.reshape(orig_shape)
+        if not solver.grid.uniform and apply_metric:
+            shape = [-1] + [1] * (len(orig_shape) - 1)
+            d1_axis0 = xp.asarray(solver.grid.J[axis]).reshape(shape) * d1_axis0
+        return xp.moveaxis(d1_axis0, 0, axis)
+
     h = info['h']
     N = info['N']
     n_int = info['n_int']
@@ -110,6 +143,25 @@ def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right
 def differentiate_ccd_wall_second_only(solver, data, axis: int, bc_left, bc_right, apply_metric: bool = True):
     xp = solver.xp
     info = solver._solvers[axis]
+    if (
+        solver.backend.device == "gpu"
+        and bc_left is None
+        and bc_right is None
+        and info.get("D2_dev_T") is not None
+    ):
+        need_d1 = (not solver.grid.uniform and apply_metric)
+        orig_shape, d1_flat, d2_flat = _apply_gpu_wall_operator_matrix(
+            solver, info, data, axis, need_d1=need_d1, need_d2=True
+        )
+        d2_axis0 = d2_flat.reshape(orig_shape)
+        if need_d1:
+            d1_axis0 = d1_flat.reshape(orig_shape)
+            shape = [-1] + [1] * (len(orig_shape) - 1)
+            J = xp.asarray(solver.grid.J[axis]).reshape(shape)
+            dJ = xp.asarray(solver.grid.dJ_dxi[axis]).reshape(shape)
+            d2_axis0 = J * J * d2_axis0 + J * dJ * d1_axis0
+        return xp.moveaxis(d2_axis0, 0, axis)
+
     h = info['h']
     N = info['N']
     n_int = info['n_int']
@@ -190,6 +242,20 @@ def build_ccd_axis_solver(solver, n_pts: int, h: float, boundary_coeffs_left, bo
         if i <= n_int - 2:
             A_host[2*i:2*i+2, 2*(i+1):2*(i+1)+2] = upper[i]
 
+    D1_host, D2_host = _build_wall_derivative_operator_matrices(
+        A_host=A_host,
+        L0=L0,
+        UN=UN,
+        M_left=bc_left["M"],
+        M_right=bc_right["M"],
+        c_I_left=bc_left["c_I"],
+        c_II_left=bc_left["c_II"],
+        c_I_right=bc_right["c_I"],
+        c_II_right=bc_right["c_II"],
+        n_pts=n_pts,
+        h=h,
+    )
+
     A_dev = solver.xp.asarray(A_host)
     lu, piv = solver.backend.linalg.lu_factor(A_dev)
 
@@ -197,13 +263,19 @@ def build_ccd_axis_solver(solver, n_pts: int, h: float, boundary_coeffs_left, bo
     if solver.backend.device == "gpu":
         A_inv_dev = solver.backend.linalg.lu_solve((lu, piv), xp.eye(2 * n_int, dtype=A_dev.dtype))
         A_inv_dev_T = xp.ascontiguousarray(A_inv_dev.T)
+        D1_dev_T = xp.ascontiguousarray(xp.asarray(D1_host.T))
+        D2_dev_T = xp.ascontiguousarray(xp.asarray(D2_host.T))
     else:
         A_inv_dev = None
         A_inv_dev_T = None
+        D1_dev_T = None
+        D2_dev_T = None
 
     info_dev = {
         'A_inv_dev': A_inv_dev,
         'A_inv_dev_T': A_inv_dev_T,
+        'D1_dev_T': D1_dev_T,
+        'D2_dev_T': D2_dev_T,
         'L0_dev': xp.asarray(L0),
         'UN_dev': xp.asarray(UN),
         'M_left_dev': xp.asarray(bc_left['M']),
@@ -230,6 +302,60 @@ def build_ccd_axis_solver(solver, n_pts: int, h: float, boundary_coeffs_left, bo
         'bc_right': bc_right,
         **info_dev,
     }
+
+
+def _build_wall_derivative_operator_matrices(
+    *,
+    A_host,
+    L0,
+    UN,
+    M_left,
+    M_right,
+    c_I_left,
+    c_II_left,
+    c_I_right,
+    c_II_right,
+    n_pts: int,
+    h: float,
+):
+    N = n_pts - 1
+    n_int = N - 1
+    rhs_op = np.zeros((2 * n_int, n_pts), dtype=float)
+    for interior in range(n_int):
+        node = interior + 1
+        rhs_op[2 * interior, node - 1] -= _A1 / h
+        rhs_op[2 * interior, node + 1] += _A1 / h
+        rhs_op[2 * interior + 1, node - 1] += _A2 / (h * h)
+        rhs_op[2 * interior + 1, node] -= 2.0 * _A2 / (h * h)
+        rhs_op[2 * interior + 1, node + 1] += _A2 / (h * h)
+
+    bc_lo_op = np.zeros((2, n_pts), dtype=float)
+    bc_lo_op[0, :len(c_I_left)] = c_I_left
+    bc_lo_op[1, :len(c_II_left)] = c_II_left
+    rhs_op[:2, :] -= L0 @ bc_lo_op
+
+    bc_hi_op = np.zeros((2, n_pts), dtype=float)
+    for offset, coeff in enumerate(c_I_right):
+        bc_hi_op[0, N - offset] = coeff
+    for offset, coeff in enumerate(c_II_right):
+        bc_hi_op[1, N - offset] = coeff
+    rhs_op[-2:, :] -= UN @ bc_hi_op
+
+    sol_op = np.linalg.solve(A_host, rhs_op)
+    D1 = np.zeros((n_pts, n_pts), dtype=float)
+    D2 = np.zeros((n_pts, n_pts), dtype=float)
+    for interior in range(n_int):
+        node = interior + 1
+        D1[node, :] = sol_op[2 * interior, :]
+        D2[node, :] = sol_op[2 * interior + 1, :]
+
+    left_pair_op = M_left @ sol_op[:2, :] + bc_lo_op
+    right_pair_op = M_right @ sol_op[-2:, :] + bc_hi_op
+    D1[0, :] = left_pair_op[0]
+    D2[0, :] = left_pair_op[1]
+    D1[N, :] = right_pair_op[0]
+    D2[N, :] = right_pair_op[1]
+    return D1, D2
 
 
 def build_ccd_axis_solver_legacy(solver, n_pts: int, h: float, boundary_coeffs_left, boundary_coeffs_right) -> dict:

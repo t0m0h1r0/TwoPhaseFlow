@@ -23,6 +23,12 @@ if TYPE_CHECKING:
     from .scheme_build_ctx import ReprojectorBuildCtx
 
 
+def _clear_interface_for_reprojection(ppe_solver: "IPPESolver") -> None:
+    clearer = getattr(ppe_solver, "clear_interface_jump_context", None)
+    if callable(clearer):
+        clearer()
+
+
 class LegacyReprojector(IVelocityReprojector):
     """Uniform-grid baseline reprojector (constant ρ = 1)."""
 
@@ -58,6 +64,7 @@ class LegacyReprojector(IVelocityReprojector):
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         rho = xp.ones_like(psi_d)
+        _clear_interface_for_reprojection(ppe_solver)
         phi = ppe_solver.solve(div, rho)
 
         dp_dx = ccd.first_derivative(phi, 0)
@@ -110,6 +117,7 @@ class VariableDensityReprojector(IVelocityReprojector):
         dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
+        _clear_interface_for_reprojection(ppe_solver)
         phi = ppe_solver.solve(div, rho)
 
         rho_inv = 1.0 / xp.where(xp.abs(rho) > 1e-30, rho, 1.0)
