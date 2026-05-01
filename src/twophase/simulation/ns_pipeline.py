@@ -16,6 +16,7 @@ import numpy as np
 
 from ..ccd.fccd import FCCDSolver
 from ..levelset.reinitialize import Reinitializer
+from ..levelset.wall_contact import WallContactSet
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
 from .ns_step_services import (
     compute_ns_predictor_stage,
@@ -304,6 +305,7 @@ class TwoPhaseNSSolver:
         self._backend = state.backend
         self._grid = state.grid
         self._ccd = state.ccd
+        self._wall_contacts = WallContactSet.empty()
         reset_ns_runtime_contexts(self)
 
     def _initialise_interface_runtime(self, options: SolverInterfaceOptions) -> None:
@@ -509,6 +511,7 @@ class TwoPhaseNSSolver:
             ppe_solver=self._ppe_solver,
             fccd_div_op=self._fccd_div_op,
             reprojector=self._reprojector,
+            wall_contacts=self._wall_contacts,
         )
         self.X, self.Y = result.X, result.Y
         self._p_prev = None
@@ -525,6 +528,12 @@ class TwoPhaseNSSolver:
     def psi_from_phi(self, phi: np.ndarray) -> np.ndarray:
         """Smooth Heaviside ψ = H_ε(φ)."""
         return runtime_psi_from_phi(self._runtime_setup_context(), phi)
+
+    def set_wall_contacts(self, wall_contacts) -> None:
+        """Attach no-slip wall-contact constraints to geometry services."""
+        self._wall_contacts = wall_contacts or WallContactSet.empty()
+        if hasattr(self._reinit, "set_wall_contacts"):
+            self._reinit.set_wall_contacts(self._wall_contacts)
 
     def build_ic(self, cfg: "ExperimentConfig") -> np.ndarray:
         """Build initial ψ field from config ``initial_condition`` section.

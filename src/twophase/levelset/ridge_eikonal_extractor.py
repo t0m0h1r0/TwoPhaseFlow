@@ -47,10 +47,13 @@ class RidgeExtractor:
     def sigma_eff(self):
         return self._sigma_eff
 
-    def compute_xi_ridge(self, phi) -> "array":
+    def compute_xi_ridge(self, phi, extra_points=None) -> "array":
         xp = self._xp
         phi = xp.asarray(phi)
         crossings = self._find_crossings(phi)
+        if extra_points:
+            points = xp.asarray(extra_points, dtype=phi.dtype)
+            crossings = points if crossings is None or crossings.shape[0] == 0 else xp.concatenate([crossings, points], axis=0)
         if crossings is None or crossings.shape[0] == 0:
             return xp.zeros_like(phi)
         if self._wall_closure:

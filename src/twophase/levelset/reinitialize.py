@@ -149,6 +149,11 @@ class Reinitializer(IReinitializer):
         """Propagate grid update to strategy (CHK-159/160)."""
         self._strategy.update_grid(grid)
 
+    def set_wall_contacts(self, wall_contacts) -> None:
+        """Propagate optional no-slip contact constraints to strategies."""
+        if hasattr(self._strategy, "set_wall_contacts"):
+            self._strategy.set_wall_contacts(wall_contacts)
+
 
 # ── Legacy WENO5 implementation (retained for comparison / validation) ────────
 #

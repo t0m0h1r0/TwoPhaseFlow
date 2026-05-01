@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from ..core.grid_remap import build_grid_remapper
 from ..levelset.heaviside import apply_mass_correction
+from ..levelset.wall_contact import apply_masked_mass_correction
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ def rebuild_ns_grid(
     ppe_solver,
     fccd_div_op,
     reprojector,
+    wall_contacts=None,
 ) -> NSGridRebuildResult:
     if alpha_grid <= 1.0:
         X, Y = grid.meshgrid()
@@ -57,7 +59,7 @@ def rebuild_ns_grid(
     psi_dev = xp.asarray(psi)
     mass_before = xp.sum(psi_dev * dV_old)
 
-    grid.update_from_levelset(psi, eps, ccd=ccd)
+    grid.update_from_levelset(psi, eps, ccd=ccd, wall_contacts=wall_contacts)
 
     remapper = build_grid_remapper(backend, old_coords, grid.coords)
     psi_remapped = xp.clip(xp.asarray(remapper.remap(psi)), 0.0, 1.0)
@@ -65,7 +67,20 @@ def rebuild_ns_grid(
     v_remapped = xp.asarray(remapper.remap(v))
 
     dV_new = grid.cell_volumes()
-    psi_remapped = apply_mass_correction(xp, psi_remapped, dV_new, mass_before)
+    if wall_contacts:
+        psi_remapped = wall_contacts.impose_on_wall_trace(xp, grid, psi_remapped)
+        pinned = wall_contacts.contact_mask(xp, grid, tuple(psi_remapped.shape))
+        free_mask = xp.logical_not(pinned)
+        psi_remapped = apply_masked_mass_correction(
+            xp,
+            psi_remapped,
+            dV_new,
+            mass_before,
+            free_mask,
+        )
+        psi_remapped = wall_contacts.impose_on_wall_trace(xp, grid, psi_remapped)
+    else:
+        psi_remapped = apply_mass_correction(xp, psi_remapped, dV_new, mass_before)
     X, Y = grid.meshgrid()
 
     if use_local_eps:

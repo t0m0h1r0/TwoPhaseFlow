@@ -18,10 +18,18 @@ def run_simulation(cfg: "ExperimentConfig") -> dict:
     """Run a complete simulation from an :class:`ExperimentConfig`."""
     from .ns_pipeline import TwoPhaseNSSolver
     from .ns_step_state import NSStepRequest
+    from ..levelset.wall_contact import WallContactSet
     from ..tools.diagnostics import DiagnosticCollector
 
     solver = TwoPhaseNSSolver.from_config(cfg)
     psi = solver.build_ic(cfg)
+    psi_initial_host = np.asarray(solver._backend.to_host(psi))
+    wall_contacts = WallContactSet.detect_from_psi(
+        psi_initial_host,
+        solver._grid,
+        bc_type=solver.bc_type,
+    )
+    solver.set_wall_contacts(wall_contacts)
     u, v = solver.build_velocity(cfg, psi)
     bc_hook = solver.make_bc_hook(cfg)
     ph = cfg.physics

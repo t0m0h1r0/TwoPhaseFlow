@@ -18,6 +18,10 @@ from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.heaviside import heaviside
+from twophase.levelset.wall_contact import (
+    WallContactSet,
+    apply_masked_mass_correction,
+)
 from twophase.levelset.ridge_eikonal import (
     NonUniformFMM,
     RidgeExtractor,
@@ -53,6 +57,19 @@ def _phi_circle(grid, cx, cy, R):
     y = np.asarray(grid.coords[1])
     X, Y = np.meshgrid(x, y, indexing="ij")
     return np.sqrt((X - cx) ** 2 + (Y - cy) ** 2) - R
+
+
+def _wall_crossing(coord, values, level=0.5):
+    shifted = np.asarray(values) - level
+    idx = np.where(shifted[:-1] * shifted[1:] <= 0.0)[0]
+    if idx.size == 0:
+        return np.nan
+    k = int(idx[0])
+    a = values[k]
+    b = values[k + 1]
+    if b == a:
+        return float(coord[k])
+    return float(coord[k] + (level - a) * (coord[k + 1] - coord[k]) / (b - a))
 
 
 # ── V1 — ridge topology (two disks vs merged) ──────────────────────────
@@ -214,6 +231,117 @@ def test_reinit_mass_correction_pins_wall_contact(backend):
     psi_out = np.asarray(reinit.reinitialize(psi))
 
     np.testing.assert_allclose(psi_out[0, :], 0.5, atol=2e-12)
+
+
+def test_wall_contact_detection_records_side_wall_coordinates(backend):
+    """No-slip contact constraints are detected in physical wall coordinates."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    _, Y = np.meshgrid(x, y, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(Y - y_contact) / eps))
+
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+
+    assert len(contacts.contacts) == 2
+    coords = sorted(contact.coordinate for contact in contacts.contacts)
+    np.testing.assert_allclose(coords, [y_contact, y_contact], atol=1e-4)
+
+
+def test_wall_contact_impose_pins_half_contour(backend):
+    """Pinned contacts impose the exact wall half-contour after distortion."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    _, Y = np.meshgrid(x, y, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(Y - y_contact) / eps))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    y_pinned = contacts.contacts[0].coordinate
+    psi[:, :] = 0.2
+
+    psi_pinned = contacts.impose_on_wall_trace(np, grid, psi)
+
+    np.testing.assert_allclose(
+        _wall_crossing(y, psi_pinned[0, :]),
+        y_pinned,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        _wall_crossing(y, psi_pinned[-1, :]),
+        y_pinned,
+        atol=1e-14,
+    )
+
+
+def test_masked_mass_correction_preserves_pinned_contact(backend):
+    """Mass correction excludes pinned contact DOFs."""
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    _, Y = np.meshgrid(x, y, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(Y - y_contact) / eps))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    y_pinned = contacts.contacts[0].coordinate
+    psi = contacts.impose_on_wall_trace(np, grid, psi)
+    dV = grid.cell_volumes()
+    free_mask = np.logical_not(contacts.contact_mask(np, grid, psi.shape))
+
+    corrected = apply_masked_mass_correction(
+        np,
+        psi,
+        dV,
+        np.sum(psi * dV) + 1.0e-3,
+        free_mask,
+    )
+    corrected = contacts.impose_on_wall_trace(np, grid, corrected)
+
+    np.testing.assert_allclose(
+        _wall_crossing(y, corrected[0, :]),
+        y_pinned,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        _wall_crossing(y, corrected[-1, :]),
+        y_pinned,
+        atol=1e-14,
+    )
+
+
+def test_ridge_eikonal_reinit_preserves_pinned_contact_coordinate(backend):
+    """Ridge-eikonal reinit keeps no-slip contact coordinates fixed."""
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    _, Y = np.meshgrid(x, y, indexing="ij")
+    y_contact = 0.47
+    eps = 0.04
+    psi = 1.0 / (1.0 + np.exp(-(Y - y_contact) / eps))
+    contacts = WallContactSet.detect_from_psi(psi, grid, bc_type="wall")
+    y_pinned = contacts.contacts[0].coordinate
+    reinit = RidgeEikonalReinitializer(
+        backend, grid, ccd, eps=eps, sigma_0=3.0,
+        eps_scale=1.4, mass_correction=True,
+    )
+    reinit.set_wall_contacts(contacts)
+
+    psi_out = np.asarray(reinit.reinitialize(psi))
+
+    np.testing.assert_allclose(
+        _wall_crossing(y, psi_out[0, :]),
+        y_pinned,
+        atol=1e-14,
+    )
+    np.testing.assert_allclose(
+        _wall_crossing(y, psi_out[-1, :]),
+        y_pinned,
+        atol=1e-14,
+    )
 
 
 # ── V5 — CPU/GPU parity (CPU-only under this test; GPU gated elsewhere) ─
