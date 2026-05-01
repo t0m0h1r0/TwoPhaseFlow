@@ -19,13 +19,15 @@ _PROJECTION_TO_REPROJECT_MODE = {
     "iim": "iim",
     "gfm": "gfm",
 }
-_PPE_SCHEMES = ("fvm_iterative", "fvm_direct", "fccd_iterative")
+_PPE_SCHEMES = ("fd_direct", "fvm_iterative", "fvm_direct", "fccd_iterative")
 _PPE_DISCRETIZATION_SOLVERS = {
+    ("fd", "direct"): "fd_direct",
     ("fvm", "iterative"): "fvm_iterative",
     ("fvm", "direct"): "fvm_direct",
     ("fccd", "iterative"): "fccd_iterative",
 }
 _PPE_TO_PRESSURE_SCHEME = {
+    "fd_direct": "fd_direct",
     "fvm_iterative": "fvm_matrixfree",
     "fvm_direct": "fvm_spsolve",
     "fccd_iterative": "fccd_matrixfree",

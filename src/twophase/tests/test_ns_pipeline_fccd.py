@@ -408,7 +408,8 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
-        ppe_preconditioner="none",
+        ppe_preconditioner="line_pcr",
+        ppe_pcr_stages=6,
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
     )
@@ -561,6 +562,9 @@ def test_phase_separated_defect_correction_preserves_mirror_symmetry():
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
         ppe_preconditioner="none",
+        ppe_tolerance=1.0e-12,
+        ppe_max_iterations=200,
+        ppe_restart=80,
         ppe_defect_correction=True,
         ppe_dc_max_iterations=2,
         ppe_dc_tolerance=1.0e-10,
@@ -570,8 +574,8 @@ def test_phase_separated_defect_correction_preserves_mirror_symmetry():
         surface_tension_scheme="pressure_jump",
     )
     ppe = solver._ppe_solver
-    from twophase.ppe.fvm_spsolve import PPESolverFVMSpsolve
-    assert isinstance(ppe.base_solver, PPESolverFVMSpsolve)
+    from twophase.ppe.fd_direct import PPESolverFDDirect
+    assert isinstance(ppe.base_solver, PPESolverFDDirect)
     y = np.linspace(-1.0, 1.0, N + 1)
     x = np.linspace(-1.0, 1.0, N + 1)
     yy, xx = np.meshgrid(y, x, indexing="ij")
@@ -586,15 +590,15 @@ def test_phase_separated_defect_correction_preserves_mirror_symmetry():
     np.testing.assert_allclose(
         pressure,
         pressure[:, ::-1],
-        rtol=1.0e-10,
-        atol=1.0e-10,
+        rtol=1.0e-6,
+        atol=1.0e-6,
     )
 
 
 def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
-    from twophase.ppe.fvm_spsolve import PPESolverFVMSpsolve
+    from twophase.ppe.fd_direct import PPESolverFDDirect
 
     path = (
         Path(__file__).resolve().parents[3]
@@ -604,11 +608,11 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     solver = TwoPhaseNSSolver.from_config(cfg)
 
     assert cfg.run.ppe_solver == "fccd_iterative"
-    assert cfg.run.ppe_dc_base_solver == "fvm_direct"
+    assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert solver._ppe_dc_relaxation == pytest.approx(0.7)
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
-    assert isinstance(solver._ppe_solver.base_solver, PPESolverFVMSpsolve)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():

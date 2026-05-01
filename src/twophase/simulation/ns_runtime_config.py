@@ -153,7 +153,7 @@ def normalise_ns_ppe_runtime(
     if ppe_defect_correction:
         if raw_base_solver is None:
             raw_base_solver = (
-                "fvm_direct"
+                "fd_direct"
                 if ppe_solver_name in {"fccd_iterative", "fvm_iterative"}
                 else ppe_solver_name
             )

@@ -102,7 +102,10 @@ def build_ns_plain_ppe_solver(
             preconditioner=options.preconditioner,
             pcr_stages=options.pcr_stages,
         )
-        if options.solver_name in {"fvm_iterative", "fccd_iterative"} else None
+        if options.solver_name in {
+            "fvm_iterative", "fvm_matrixfree",
+            "fccd_iterative", "fccd_matrixfree",
+        } else None
     )
     ppe_ctx = PPEBuildCtx(
         backend=backend,

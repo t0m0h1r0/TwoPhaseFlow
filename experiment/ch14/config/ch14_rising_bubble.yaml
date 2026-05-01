@@ -91,7 +91,7 @@ numerics:
           tolerance: 1.0e-8
           relaxation: 0.7
         base_solver:
-          discretization: fvm
+          discretization: fd
           kind: direct
 
 output:

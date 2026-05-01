@@ -5,6 +5,7 @@ from __future__ import annotations
 from .config_sections import validate_choice
 
 _PPE_DISCRETIZATION_SOLVERS = {
+    ("fd", "direct"): "fd_direct",
     ("fvm", "iterative"): "fvm_iterative",
     ("fvm", "direct"): "fvm_direct",
     ("fccd", "iterative"): "fccd_iterative",
@@ -55,11 +56,17 @@ def parse_ppe_solver_config(
         base_discretization = validate_choice(
             effective_solver_cfg.get(
                 "discretization",
-                "fvm" if discretization == "fccd" else discretization,
+                "fd" if discretization == "fccd" else discretization,
             ),
             _PPE_DISCRETIZATION_SOLVERS_BY_KIND,
             f"{effective_path}.discretization",
         )
+        if base_discretization == "fvm" and effective_kind == "direct":
+            raise ValueError(
+                f"{effective_path}.discretization='fvm' with kind='direct' is "
+                "not a valid L_L correction solver for defect_correction; use "
+                "discretization='fd'."
+            )
         if base_discretization == discretization and effective_kind == "iterative":
             raise ValueError(
                 f"{effective_path}.discretization must select a lower-order L_L "
