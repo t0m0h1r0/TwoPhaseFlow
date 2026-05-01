@@ -246,6 +246,21 @@ projection:
         kind: direct
 ```
 
+For research sweeps, the same low-order ``L_L`` slot can be made iterative
+without changing the high-order FCCD residual operator:
+
+```yaml
+      base_solver:
+        discretization: fd
+        kind: iterative
+        method: cg
+        preconditioner: jacobi
+```
+
+CG solves the control-volume-weighted SPD form ``-W L_L p = -W rhs`` and does
+not silently fall back to direct solves.  The production ch14 YAMLs keep
+`fd/direct` because factor reuse is the current measured fast path.
+
 `projection.poisson.operator.coefficient: phase_separated` is the two-phase
 declaration for the PPE: rho is assembled from `physics.phases` and psi.
 

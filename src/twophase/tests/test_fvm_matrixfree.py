@@ -9,6 +9,8 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig, SolverConfig
 from twophase.core.grid import Grid
 from twophase.ppe.factory import create_ppe_solver
+from twophase.ppe.fd_direct import PPESolverFDDirect
+from twophase.ppe.fd_matrixfree import PPESolverFDMatrixFree
 from twophase.ppe.fvm_defect_correction import PPESolverFVMDefectCorrection
 from twophase.ppe.fvm_matrixfree import PPESolverFVMMatrixFree
 from twophase.ppe.fvm_spsolve import PPESolverFVMSpsolve
@@ -112,6 +114,28 @@ def test_fvm_matrixfree_jacobi_preconditioner_matches_direct_fvm():
     p_ref = np.asarray(solver_ref.solve(rhs, rho, dt=1e-3))
 
     np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
+
+
+def test_fd_matrixfree_cg_matches_fd_direct():
+    backend = Backend(use_gpu=False)
+    cfg = _make_cfg(8)
+    cfg.solver.ppe_solver_type = "fd_iterative"
+    cfg.solver.ppe_iteration_method = "cg"
+    cfg.solver.ppe_preconditioner = "jacobi"
+    grid = Grid(cfg.grid, backend)
+
+    solver_cg = PPESolverFDMatrixFree(backend, cfg, grid, bc_type="wall")
+    solver_ref = PPESolverFDDirect(backend, grid, bc_type="wall")
+
+    rng = np.random.default_rng(987)
+    rho = 1.0 + rng.uniform(0.0, 1.0, grid.shape)
+    rhs = rng.standard_normal(grid.shape)
+
+    p_cg = np.asarray(solver_cg.solve(rhs, rho, dt=1e-3))
+    p_ref = np.asarray(solver_ref.solve(rhs, rho, dt=1e-3))
+
+    assert solver_cg.allow_direct_fallback is False
+    np.testing.assert_allclose(p_cg, p_ref, rtol=1e-8, atol=1e-9)
 
 
 def test_factory_creates_fvm_iterative_solver():

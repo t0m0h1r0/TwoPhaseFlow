@@ -103,6 +103,7 @@ def build_ns_plain_ppe_solver(
             pcr_stages=options.pcr_stages,
         )
         if options.solver_name in {
+            "fd_iterative", "fd_matrixfree",
             "fvm_iterative", "fvm_matrixfree",
             "fccd_iterative", "fccd_matrixfree",
         } else None

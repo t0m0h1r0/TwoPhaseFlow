@@ -615,6 +615,32 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
+def test_defect_correction_can_build_fd_iterative_cg_base_solver():
+    from twophase.ppe.defect_correction import PPESolverDefectCorrection
+    from twophase.ppe.fd_matrixfree import PPESolverFDMatrixFree
+
+    solver = TwoPhaseNSSolver(
+        N, N, L, L,
+        bc_type="wall",
+        ppe_solver="fccd_iterative",
+        pressure_scheme="fccd_iterative",
+        ppe_defect_correction=True,
+        ppe_dc_base_solver="fd_iterative",
+        ppe_dc_max_iterations=2,
+        ppe_dc_tolerance=1.0e-8,
+        ppe_iteration_method="cg",
+        ppe_preconditioner="jacobi",
+        ppe_tolerance=1.0e-6,
+        ppe_max_iterations=40,
+    )
+
+    assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFDMatrixFree)
+    assert solver._ppe_solver.base_solver.iteration_method == "cg"
+    assert solver._ppe_solver.base_solver.preconditioner == "jacobi"
+    assert solver._ppe_solver.base_solver.allow_direct_fallback is False
+
+
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
     """SP-M Phase 2: pressure_jump adds j_gl=-σκ on the gas side."""
     solver = TwoPhaseNSSolver(

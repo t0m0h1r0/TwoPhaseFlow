@@ -19,15 +19,19 @@ _PROJECTION_TO_REPROJECT_MODE = {
     "iim": "iim",
     "gfm": "gfm",
 }
-_PPE_SCHEMES = ("fd_direct", "fvm_iterative", "fvm_direct", "fccd_iterative")
+_PPE_SCHEMES = (
+    "fd_direct", "fd_iterative", "fvm_iterative", "fvm_direct", "fccd_iterative",
+)
 _PPE_DISCRETIZATION_SOLVERS = {
     ("fd", "direct"): "fd_direct",
+    ("fd", "iterative"): "fd_iterative",
     ("fvm", "iterative"): "fvm_iterative",
     ("fvm", "direct"): "fvm_direct",
     ("fccd", "iterative"): "fccd_iterative",
 }
 _PPE_TO_PRESSURE_SCHEME = {
     "fd_direct": "fd_direct",
+    "fd_iterative": "fd_matrixfree",
     "fvm_iterative": "fvm_matrixfree",
     "fvm_direct": "fvm_spsolve",
     "fccd_iterative": "fccd_matrixfree",
@@ -80,5 +84,5 @@ _MOMENTUM_GRADIENT_ALIASES = {
     "fccd": "fccd_flux",
 }
 _PPE_SOLVER_KINDS = ("iterative", "direct", "defect_correction")
-_PPE_ITERATION_METHODS = ("gmres",)
+_PPE_ITERATION_METHODS = ("gmres", "cg")
 _PPE_PRECONDITIONERS = ("jacobi", "line_pcr", "none")
