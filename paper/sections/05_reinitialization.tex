@@ -272,7 +272,11 @@ Eikonal 方程式 \cite{Sussman1994}
   \item \textbf{$\phi$ 空間質量補正：}
         $\delta\phi = -\Delta M / \int H'_{\varepsilon(\bm{x})}\,dV$，
         $\phi \leftarrow \phi + \delta\phi$，
-        $\psi \leftarrow H_{\varepsilon(\bm{x})}(-\phi)$
+        $\psi \leftarrow H_{\varepsilon(\bm{x})}(-\phi)$．
+        ただし壁面接触 seed が存在する場合は
+        $\phi \leftarrow \phi+\delta\phi\,\chi_{\mathrm{free}}$ とし，
+        contact-line band では $\chi_{\mathrm{free}}=0$ として零集合を固定する
+        （§~\ref{sec:ridge_eikonal_nu_grid} の壁閉包補正 W）．
 \end{enumerate}
 \end{tcolorbox}
 
@@ -289,7 +293,9 @@ Eikonal 方程式 \cite{Sussman1994}
         Newton 型線形化補正である．したがって小さい残差では
         $\sum\psi_{\mathrm{corr}}\approx\sum\psi_{\mathrm{old}}$ となるが，
         厳密閉鎖を要求する場合は残差を監視し，必要に応じて同じ
-        $\phi$ 空間補正を反復する．
+        $\phi$ 空間補正を反復する．壁面接触界面では補正重みを
+        contact-line band で零にし，質量補正が接触 seed を移動しない
+        制約付き線形化として用いる．
 \end{enumerate}
 
 \paragraph*{Eikonal 単独運用の限界：Godunov 由来の零セットドリフト}

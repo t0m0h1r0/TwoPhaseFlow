@@ -29,7 +29,7 @@
 チェッカーボード圧力振動 & Balanced-Force 七原則 + FCCD 面ジェット sub-system（§\ref{sec:balanced_force}，§\ref{sec:fccd_bf_sub_system}）\\
 変密度 PPE の収束悪化 & 分相 PPE + HFE + 欠陥補正 ($k=3$)（§\ref{sec:split_ppe_recovery}，§\ref{sec:hfe}，§\ref{sec:defect_correction_main}）\\
 距離関数品質の劣化と位相変化 & Ridge--Eikonal 補助場再初期化（§\ref{sec:ridge_eikonal}，§\ref{sec:ridge_aux_field}）\\
-格子粗さによる界面解像不足 & 界面適合非一様格子 + Ridge--Eikonal 非一様補正 D1--D4（第\ref{sec:grid}章，§\ref{sec:ridge_eikonal_nu_grid}）\\
+格子粗さ・壁接触による界面解像不足 & 界面適合非一様格子 + Ridge--Eikonal 非一様補正 D1--D4 + 壁閉包 W（第\ref{sec:grid}章，§\ref{sec:ridge_eikonal_nu_grid}）\\
 高密度比下の圧力ジャンプ整合 & pressure-jump 型 FCCD-PPE（§\ref{sec:split_ppe_pressure_jump_formulation}）\\
 起動時の格子↔界面循環依存 & DCCD ブートストラップ 6 段階（§\ref{sec:bootstrap}）\\
 \hline
@@ -160,9 +160,10 @@
         座標変換メトリック係数の CCD 評価と ALE 効果の簡略化条件を整理した．
         固定非一様格子では，セル中心面（$\theta=1/2$）と高次メトリクス構築を満たす範囲で
         FCCD は $\Ord{H^4}$ 設計を保ち（実測 $\Ord{h^{4.00/4.09}}$），
-        Ridge--Eikonal は D1--D4 の 4 補正項
+        Ridge--Eikonal は D1--D4 の 4 補正項と壁閉包 W
         （§\ref{sec:ridge_eikonal_nu_grid}：$\sigma_{\mathrm{eff}}$ 空間スケーリング・
-        物理空間 Hessian・非一様 FMM・$\varepsilon$ 拡幅空間依存）で非一様格子に拡張される．
+        物理空間 Hessian・非一様 FMM・$\varepsilon$ 拡幅空間依存・contact-line seed/pinning）
+        で非一様格子と壁面接触界面に拡張される．
         単体検証 U3 では GCL 残差 $2.13\times10^{-13}$（機械零）を達成した．
 
   \item[\textbf{第\ref{sec:algorithm}章：統合アルゴリズム（7 ステップ）}]

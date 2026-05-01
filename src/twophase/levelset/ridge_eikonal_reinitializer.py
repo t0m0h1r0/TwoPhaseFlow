@@ -44,6 +44,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
+        self._wall_closure = getattr(ccd, "bc_type", "wall") == "wall"
 
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
         self._h_min = h_min
@@ -60,7 +61,10 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
         self._dV = grid.cell_volumes()
 
-        self._extractor = RidgeExtractor(backend, grid, sigma_0=sigma_0, h_ref=self._h_ref)
+        self._extractor = RidgeExtractor(
+            backend, grid, sigma_0=sigma_0, h_ref=self._h_ref,
+            wall_closure=self._wall_closure,
+        )
         self._fmm = NonUniformFMM(grid, backend=backend)
 
     def update_grid(self, grid) -> None:
@@ -107,12 +111,49 @@ class RidgeEikonalReinitializer(IReinitializer):
 
         if self._mass_correction:
             w = psi_new * (1.0 - psi_new) / self._eps_local
+            contact_band = self._wall_contact_band(phi, phi_sdf)
+            free_mask = xp.where(contact_band, 0.0, 1.0)
+            w = w * free_mask
             W = xp.sum(w * dV)
             W_safe = xp.where(W > 1e-14, W, 1.0)
             gate = xp.where(W > 1e-14, 1.0, 0.0)
             M_new = xp.sum(psi_new * dV)
             delta_phi = gate * (M_old - M_new) / W_safe
-            phi_sdf = phi_sdf + delta_phi
+            phi_sdf = phi_sdf + delta_phi * free_mask
             psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
 
         return psi_new
+
+    def _wall_contact_band(self, phi_raw, phi_sdf):
+        """Return a mask that pins wall-contact seeds during mass correction."""
+        xp = self._xp
+        if not self._wall_closure:
+            return xp.zeros_like(phi_sdf, dtype=bool)
+        phi_raw = xp.asarray(phi_raw)
+        phi_sdf = xp.asarray(phi_sdf)
+        contact_band = xp.zeros_like(phi_sdf, dtype=bool)
+        tol = max(1.0e-12, 1.0e-10 * self._h_min)
+        band_width = 2.0 * self._h_min
+        near_interface = xp.abs(phi_sdf) <= band_width
+
+        left_trace = phi_raw[0, :]
+        right_trace = phi_raw[-1, :]
+        bottom_trace = phi_raw[:, 0]
+        top_trace = phi_raw[:, -1]
+        left_contact = xp.any(left_trace[:-1] * left_trace[1:] <= 0.0) | xp.any(xp.abs(left_trace) <= tol)
+        right_contact = xp.any(right_trace[:-1] * right_trace[1:] <= 0.0) | xp.any(xp.abs(right_trace) <= tol)
+        bottom_contact = xp.any(bottom_trace[:-1] * bottom_trace[1:] <= 0.0) | xp.any(xp.abs(bottom_trace) <= tol)
+        top_contact = xp.any(top_trace[:-1] * top_trace[1:] <= 0.0) | xp.any(xp.abs(top_trace) <= tol)
+
+        left_flag = xp.asarray(left_contact, dtype=phi_sdf.dtype)
+        right_flag = xp.asarray(right_contact, dtype=phi_sdf.dtype)
+        bottom_flag = xp.asarray(bottom_contact, dtype=phi_sdf.dtype)
+        top_flag = xp.asarray(top_contact, dtype=phi_sdf.dtype)
+
+        contact_weight = xp.zeros_like(phi_sdf)
+        contact_weight[0:2, :] = xp.maximum(contact_weight[0:2, :], left_flag)
+        contact_weight[-2:, :] = xp.maximum(contact_weight[-2:, :], right_flag)
+        contact_weight[:, 0:2] = xp.maximum(contact_weight[:, 0:2], bottom_flag)
+        contact_weight[:, -2:] = xp.maximum(contact_weight[:, -2:], top_flag)
+        contact_band = (contact_weight > 0.0) & near_interface
+        return contact_band

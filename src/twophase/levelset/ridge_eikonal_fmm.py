@@ -258,6 +258,28 @@ __global__ void nonuniform_fmm_exact_kernel(
         }
     }
 
+    const double zero_tol = fmax(1.0e-12, 1.0e-10 * h_min);
+    for (int i = 0; i < nx; ++i) {
+        for (int j = 0; j < ny; ++j) {
+            const int idx = i * ny + j;
+            if (fabs(phi[idx]) <= zero_tol) {
+                fmm_push_if_better(
+                    idx,
+                    0.0,
+                    dist,
+                    frozen,
+                    heap_d,
+                    heap_idx,
+                    heap_order,
+                    &heap_size,
+                    heap_cap,
+                    &push_order,
+                    status
+                );
+            }
+        }
+    }
+
     if (use_ridge_mask) {
         for (int idx = 0; idx < n_total; ++idx) {
             if (ridge_mask[idx] && fabs(phi[idx]) < 0.5 * h_min) {
@@ -481,6 +503,13 @@ class NonUniformFMM:
 
         hx_fwd = self._hx_fwd
         hy_fwd = self._hy_fwd
+        if h_min is None:
+            h_min = float(min(np.min(hx_fwd), np.min(hy_fwd)))
+        zero_tol = max(1.0e-12, 1.0e-10 * float(h_min))
+        zero_ii, zero_jj = np.where(np.abs(phi_np) <= zero_tol)
+        for seed_idx in range(len(zero_ii)):
+            _push(int(zero_ii[seed_idx]), int(zero_jj[seed_idx]), 0.0)
+
         p, p1 = phi_np[:-1, :], phi_np[1:, :]
         mask = (p * p1) < 0.0
         if mask.any():
