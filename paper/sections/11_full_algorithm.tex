@@ -396,9 +396,7 @@ CCD 発散から構成される．
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item Step 6.0：初期化 $\delta p^{(0)} = 0$．
   \item Step 6.1：$k=1,2,3$ で欠陥 $d^{(k)} = \text{RHS} - L_H\,\delta p^{(k-1)}$ を CCD で評価．
-  \item Step 6.2：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を低次 FD 補正解器で解く．
-        基準経路は因子再利用付き疎 LU，研究用代替としては重み付き CG
-        $-W L_L\eta^{(k)}=-W d^{(k)}$ を残差制御付きで用いる（§~\ref{sec:dc_sweep}）．
+  \item Step 6.2：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を因子再利用付き疎 LU で解く（§~\ref{sec:dc_sweep}）．
   \item Step 6.3：緩和更新 $\delta p^{(k)} = \delta p^{(k-1)} + \omega\,\eta^{(k)}$（$\omega \in \{0.3,0.5,0.7\}$）．
   \item Step 6.4：収束判定 $\|d^{(k)}\|_\infty < \varepsilon_\mathrm{tol}$（既定 $10^{-10}$）．
   \item Step 6.5：最終値 $\delta p \leftarrow \delta p^{(3)}$．
@@ -409,7 +407,7 @@ CCD 発散から構成される．
 \renewcommand{\arraystretch}{\PaperTableArrayStretch}
 \begin{tabular}{@{}lll@{}}
 \hline
-経路 & $L_H$（高次：欠陥評価） & $L_L$（低次：補正解；疎 LU / 重み付き CG） \\
+経路 & $L_H$（高次：欠陥評価） & $L_L$（低次：補正解；疎 LU） \\
 \hline
 一括 PPE & 一括 PPE 演算子 & 5 点 Laplacian \\
  & 式~\eqref{eq:PPE_CCD_fullalgo} & $\Delta_h$（変密度 product-rule 2 次） \\
