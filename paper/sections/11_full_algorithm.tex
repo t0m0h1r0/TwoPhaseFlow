@@ -259,6 +259,13 @@ $\psi^{n+1}$ に基づき距離関数と物性値を再計算する
 遠方では $\kappa_{lg}=0$ とする（§~\ref{sec:curvature_direct_psi_cls}）．
 必要に応じて界面帯制限フィルタと曲率 cap を適用し，
 raw な $\phi$ 曲率式~\eqref{eq:curvature_2d} は診断・比較経路に留める．
+ただし，壁面に接する界面端点では式~\eqref{eq:wall_phase_topology_invariant} の
+壁面相トポロジ制約と同じ幾何閉包を用いなければならない．
+bulk の曲率式を no-slip 壁の接触点へそのまま外挿すると，
+壁反力・接触角・接触根固定条件を含まない Young--Laplace 源を作るため，
+非一様格子では capillary energy の離散勾配として解釈できない．
+したがって壁接触点近傍の曲率は，bulk 界面帯曲率とは別に，
+壁面トポロジと整合した interface/cut-face 幾何量として扱う必要がある．
 
 % ── Step 5 ──────────────────────────────────────────────────────────────
 \paragraph{Step 5：運動量予測（Predictor，PPE 経路別）}
