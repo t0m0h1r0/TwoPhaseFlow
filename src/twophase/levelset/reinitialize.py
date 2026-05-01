@@ -171,13 +171,17 @@ class ReinitializerWENO5(IReinitializer):
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float, n_steps: int = 4, bc: str = 'zero'):
+                 eps: float, n_steps: int = 4, bc: str | tuple[str, ...] = 'zero'):
         self.xp = backend.xp
         self.grid = grid
         self.ccd = ccd
         self.eps = eps
         self.n_steps = n_steps
-        self._bc = bc
+        self._bc = (
+            tuple(str(value).strip().lower() for value in bc)
+            if isinstance(bc, (tuple, list))
+            else str(bc).strip().lower()
+        )
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
 
         _TVD_RK3_SAFETY = 0.5  # §7.9 stability warnbox 由来 (TVD-RK3 σ_max≈0.91 の安全側設定)
@@ -186,6 +190,9 @@ class ReinitializerWENO5(IReinitializer):
         dtau_para = _TVD_RK3_SAFETY * dx_min**2 / (2.0 * ndim * eps)
         dtau_hyp  = 0.5 * dx_min
         self.dtau = min(dtau_para, dtau_hyp)
+
+    def _axis_bc(self, axis: int) -> str:
+        return self._bc[axis] if isinstance(self._bc, tuple) else self._bc
 
     def reinitialize(self, psi) -> "array":
         xp = self.xp
@@ -231,8 +238,9 @@ class ReinitializerWENO5(IReinitializer):
     def _weno5_compression_div(self, psi, F, alpha: float, axis: int):
         xp = self.xp
         n = psi.shape[axis]
-        psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
-        F_p   = _pad_bc(xp, F,   axis, 3, self._bc)
+        axis_bc = self._axis_bc(axis)
+        psi_p = _pad_bc(xp, psi, axis, 3, axis_bc)
+        F_p   = _pad_bc(xp, F,   axis, 3, axis_bc)
 
         def sl(start, stop):
             s = [slice(None)] * psi.ndim
@@ -263,6 +271,13 @@ class ReinitializerWENO5(IReinitializer):
         sl_hi = [slice(None)] * psi.ndim; sl_hi[axis] = slice(1, None)
         sl_lo = [slice(None)] * psi.ndim; sl_lo[axis] = slice(0, -1)
         div_interior = (flux_face[tuple(sl_hi)] - flux_face[tuple(sl_lo)]) / h
+        if axis_bc == "periodic":
+            sl_f0 = [slice(None)] * psi.ndim
+            sl_fN = [slice(None)] * psi.ndim
+            sl_f0[axis] = slice(0, 1)
+            sl_fN[axis] = slice(-1, None)
+            div_wrap = (flux_face[tuple(sl_f0)] - flux_face[tuple(sl_fN)]) / h
+            return xp.concatenate([div_wrap, div_interior, div_wrap], axis=axis)
         shape_pad = list(psi.shape); shape_pad[axis] = 1
         pad = xp.zeros(shape_pad)
         return xp.concatenate([pad, div_interior, pad], axis=axis)

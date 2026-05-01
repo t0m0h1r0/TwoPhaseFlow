@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..core.boundary import is_wall_axis
 from .gradient_operator import IGradientOperator
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ class CCDGradientOperator(IGradientOperator):
     ) -> "array":
         """Compute ∂p/∂x_axis via CCD with wall Neumann BC if needed."""
         dp_daxis = self._ccd.first_derivative(p, axis)
-        if self.bc_type == "wall":
+        if is_wall_axis(self.bc_type, axis, self._ccd.ndim):
             self._ccd.enforce_wall_neumann(dp_daxis, axis)
         return dp_daxis
 

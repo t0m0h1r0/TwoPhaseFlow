@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..core.array_checks import all_arrays_exact_zero
+from ..core.boundary import is_periodic_axis
 from .face_projection import (
     apply_pressure_projection,
     reconstruct_nodes_from_faces,
@@ -350,7 +351,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
 
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence paired with the FCCD PPE wall-control-volume rows."""
-        if self._fccd.bc_type == "periodic":
+        if is_periodic_axis(self._fccd.bc_type, axis, self._fccd.grid.ndim):
             return self._fccd.face_divergence(face_flux, axis)
         if self._node_width is None:
             self._init_node_width()

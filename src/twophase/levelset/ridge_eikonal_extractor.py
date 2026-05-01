@@ -15,12 +15,22 @@ if TYPE_CHECKING:
 class RidgeExtractor:
     """Gaussian-xi ridge extraction on non-uniform grids."""
 
-    def __init__(self, backend: "Backend", grid, sigma_0: float = 3.0,
-                 h_ref: float | None = None, wall_closure: bool = True):
+    def __init__(
+        self,
+        backend: "Backend",
+        grid,
+        sigma_0: float = 3.0,
+        h_ref: float | None = None,
+        wall_closure: bool = True,
+        wall_axes: tuple[bool, ...] | None = None,
+    ):
         self._xp = backend.xp
         self._grid = grid
         self._sigma_0 = float(sigma_0)
-        self._wall_closure = bool(wall_closure)
+        if wall_axes is None:
+            wall_axes = tuple(bool(wall_closure) for _axis in range(grid.ndim))
+        self._wall_axes = tuple(bool(value) for value in wall_axes)
+        self._wall_closure = any(self._wall_axes)
         if h_ref is None:
             h_ref = float(np.prod([L / N for L, N in zip(grid.L, grid.N)]) ** (1.0 / grid.ndim))
         self._h_ref = h_ref
@@ -94,7 +104,7 @@ class RidgeExtractor:
         det_h = hxx * hyy - hxy * hxy
         ridge_mask = local_max & hess_neg & (det_h > 0.0)
         boundary_ridge = xp.zeros_like(xi, dtype=bool)
-        if self._wall_closure:
+        if self._axis_wall(0):
             boundary_ridge[0, 1:-1] = (
                 (xi[0, 1:-1] > xi[0, :-2])
                 & (xi[0, 1:-1] > xi[0, 2:])
@@ -107,6 +117,7 @@ class RidgeExtractor:
                 & (xi[-1, 1:-1] >= xi[-2, 1:-1])
                 & (hyy[-1, 1:-1] < 0.0)
             )
+        if self._axis_wall(1):
             boundary_ridge[1:-1, 0] = (
                 (xi[1:-1, 0] > xi[:-2, 0])
                 & (xi[1:-1, 0] > xi[2:, 0])
@@ -135,6 +146,9 @@ class RidgeExtractor:
         ridge_mask = (ridge_mask & (grad_mag < tol + 1e-30)) | boundary_ridge
         return ridge_mask
 
+    def _axis_wall(self, axis: int) -> bool:
+        return axis < len(self._wall_axes) and self._wall_axes[axis]
+
     def _with_wall_reflections(self, crossings):
         """Mirror crossing points across solid walls for closed-domain ridges."""
         xp = self._xp
@@ -143,14 +157,16 @@ class RidgeExtractor:
         point_x = crossings[:, 0]
         point_y = crossings[:, 1]
         images = []
-        for reflect_x in ("none", "low", "high"):
+        x_options = ("none", "low", "high") if self._axis_wall(0) else ("none",)
+        y_options = ("none", "low", "high") if self._axis_wall(1) else ("none",)
+        for reflect_x in x_options:
             if reflect_x == "none":
                 image_x = point_x
             elif reflect_x == "low":
                 image_x = -point_x
             else:
                 image_x = 2.0 * length_x - point_x
-            for reflect_y in ("none", "low", "high"):
+            for reflect_y in y_options:
                 if reflect_x == "none" and reflect_y == "none":
                     continue
                 if reflect_y == "none":

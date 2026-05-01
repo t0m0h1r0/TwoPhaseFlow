@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..backend import fuse as _fuse
+from ..core.boundary import is_wall_axis
 
 
 @_fuse
@@ -50,7 +51,7 @@ def _gpu_boundary_linear_comb(coeffs, values, n_terms: int):
 
 def enforce_ccd_wall_neumann(solver, grad, ax: int) -> None:
     """Zero CCD gradient at wall boundaries for Neumann conditions."""
-    if solver.bc_type != "wall":
+    if not is_wall_axis(solver.bc_type, ax, solver.ndim):
         return
     sl_lo = [slice(None)] * grad.ndim
     sl_hi = [slice(None)] * grad.ndim

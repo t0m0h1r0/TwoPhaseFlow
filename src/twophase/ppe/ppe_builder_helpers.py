@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..core.boundary import is_periodic_axis
+
 
 def build_ppe_matrix_triplets(builder, rho) -> tuple:
     """Build the sparse PPE matrix COO triplets for the given density field."""
@@ -51,7 +53,7 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
         row_list.extend([idx_L_xp, idx_R_xp, idx_L_xp, idx_R_xp])
         col_list.extend([idx_R_xp, idx_L_xp, idx_L_xp, idx_R_xp])
 
-        if builder.bc_type == 'periodic':
+        if is_periodic_axis(builder.bc_type, ax, builder.ndim):
             idx_wL, idx_wR = builder._wrap_face_indices[ax]
             h = float(builder.grid.L[ax] / N_ax)
             h2 = h * h
@@ -76,7 +78,7 @@ def prepare_ppe_rhs_vector(builder, rhs_field):
     """Prepare the flat RHS vector for the PPE solve."""
     rhs_vec = np.asarray(builder.backend.to_host(rhs_field)).ravel().copy()
     rhs_vec[builder._pin_dof] = 0.0
-    if builder.bc_type == 'periodic' and builder._periodic_image_dofs is not None:
+    if builder._periodic_image_dofs is not None:
         rhs_vec[builder._periodic_image_dofs] = 0.0
     return rhs_vec
 
@@ -92,7 +94,7 @@ def build_ppe_index_arrays(builder) -> None:
         ranges = [np_host.arange(s) for s in shape]
         N_ax = builder.N[ax]
 
-        if builder.bc_type == 'periodic':
+        if is_periodic_axis(builder.bc_type, ax, builder.ndim):
             ranges_L = [r.copy() for r in ranges]
             ranges_R = [r.copy() for r in ranges]
             ranges_L[ax] = np_host.arange(0, N_ax - 1)
@@ -109,7 +111,7 @@ def build_ppe_index_arrays(builder) -> None:
         idx_R = np_host.ravel_multi_index([g.ravel() for g in grid_R], shape)
         builder._face_indices[ax] = (idx_L, idx_R)
 
-    if builder.bc_type != 'periodic':
+    if not any(is_periodic_axis(builder.bc_type, ax, builder.ndim) for ax in range(builder.ndim)):
         builder._wrap_face_indices = {}
         builder._periodic_image_dofs = None
         builder._periodic_image_sources = None
@@ -119,6 +121,8 @@ def build_ppe_index_arrays(builder) -> None:
     image_to_source: dict[int, int] = {}
 
     for ax in range(builder.ndim):
+        if not is_periodic_axis(builder.bc_type, ax, builder.ndim):
+            continue
         N_ax = builder.N[ax]
         ranges = [np_host.arange(s) for s in shape]
 
@@ -183,7 +187,7 @@ def _build_uniform_face_coefficients(builder, *, ax: int, face_coeff, strides: l
     h2 = h * h
     coeff = face_coeff / h2
 
-    if builder.bc_type == 'periodic':
+    if is_periodic_axis(builder.bc_type, ax, builder.ndim):
         return coeff, coeff
 
     cache_key = ('bc_mask', ax)
@@ -201,7 +205,7 @@ def _build_uniform_face_coefficients(builder, *, ax: int, face_coeff, strides: l
 
 
 def _apply_periodic_row_constraints(builder, data, rows, cols):
-    if builder.bc_type != 'periodic':
+    if builder._periodic_image_dofs is None:
         return data, rows, cols
     xp = builder.xp
     img_dofs = builder._periodic_image_dofs

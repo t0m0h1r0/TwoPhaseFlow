@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 from .interfaces import ILevelSetAdvection
+from ..core.boundary import boundary_axes
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
 from .advection_kernels import _EPS_D_ADV, _dccd_filter_stencil, _pad_bc
@@ -33,14 +34,18 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
     @classmethod
     def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "DissipativeCCDAdvection":
-        return cls(ctx.backend, ctx.grid, ctx.ccd)
+        ls_bc = tuple(
+            "periodic" if axis == "periodic" else "neumann"
+            for axis in boundary_axes(ctx.ccd.bc_type, ctx.grid.ndim)
+        )
+        return cls(ctx.backend, ctx.grid, ctx.ccd, bc=ls_bc)
 
     def __init__(
         self,
         backend: "Backend",
         grid: "Grid",
         ccd: "CCDSolver",
-        bc: str = 'periodic',
+        bc: str | tuple[str, ...] = 'periodic',
         eps_d: float = _EPS_D_ADV,
         mass_correction: bool = False,
     ):
@@ -49,7 +54,11 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
         self._grid = grid
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
         self._ccd = ccd
-        self._bc = bc
+        self._bc = (
+            tuple(str(value).strip().lower() for value in bc)
+            if isinstance(bc, (tuple, list))
+            else str(bc).strip().lower()
+        )
         self._eps_d = float(eps_d)
         self._mass_correction = mass_correction
 
@@ -62,6 +71,9 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
                 self._J_reshaped.append(xp.asarray(grid.J[ax]).reshape(shape))
         else:
             self._J_reshaped = None
+
+    def _axis_bc(self, axis: int) -> str:
+        return self._bc[axis] if isinstance(self._bc, tuple) else self._bc
 
     def advance(self, psi, velocity_components: List, dt: float, clip_bounds=(0.0, 1.0)):
         xp = self.xp
@@ -103,14 +115,14 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
             if self._grid.uniform:
                 fp, _ = self._ccd.differentiate(f, axis=ax)
-                fp_pad = _pad_bc(xp, fp, ax, 1, self._bc)
+                fp_pad = _pad_bc(xp, fp, ax, 1, self._axis_bc(ax))
                 fp_p1 = fp_pad[_sl(2, n + 2)]
                 fp_m1 = fp_pad[_sl(0, n)]
                 F_tilde = _dccd_filter_stencil(fp, fp_p1, fp_m1, self._eps_d)
             else:
                 fp_xi, _ = self._ccd.differentiate(f, axis=ax, apply_metric=False)
                 fp_x = self._J_reshaped[ax] * fp_xi
-                fp_x_pad = _pad_bc(xp, fp_x, ax, 1, self._bc)
+                fp_x_pad = _pad_bc(xp, fp_x, ax, 1, self._axis_bc(ax))
                 fp_x_p1 = fp_x_pad[_sl(2, n + 2)]
                 fp_x_m1 = fp_x_pad[_sl(0, n)]
                 F_tilde = _dccd_filter_stencil(fp_x, fp_x_p1, fp_x_m1, self._eps_d)

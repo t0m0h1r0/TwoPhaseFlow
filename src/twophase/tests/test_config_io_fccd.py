@@ -935,7 +935,7 @@ def test_distribution_wall_block_rejected():
 
 
 def test_wall_monitor_requires_wall_boundary():
-    with pytest.raises(ValueError, match="requires grid.domain.boundary=wall"):
+    with pytest.raises(ValueError, match="requires wall boundary on axis x"):
         ExperimentConfig.from_dict(_minimal({
             "grid": {
                 "domain": {"size": [1.0, 1.0], "boundary": "periodic"},
@@ -950,6 +950,86 @@ def test_wall_monitor_requires_wall_boundary():
                 },
             },
         }))
+
+
+def test_axis_local_boundary_allows_y_wall_monitor_only():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "domain": {
+                "size": [1.0, 1.0],
+                "boundary": {
+                    "x": "periodic",
+                    "y": {"lower": "wall", "upper": "wall"},
+                },
+            },
+            "distribution": {
+                "schedule": "static",
+                "axes": {
+                    "x": {"type": "uniform"},
+                    "y": {
+                        "type": "nonuniform",
+                        "monitors": {
+                            "interface": {"alpha": 2.0},
+                            "wall": {
+                                "alpha": 1.3,
+                                "eps_g_cells": 4,
+                                "apply_to": ["lower", "upper"],
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.grid.bc_type == "periodic_wall"
+    assert cfg.grid.fitting_axes == (False, True)
+    assert cfg.grid.wall_refinement_axes == (False, True)
+    assert cfg.grid.wall_alpha_grid == (1.0, 1.3)
+
+
+def test_axis_local_boundary_rejects_wall_monitor_on_periodic_axis():
+    with pytest.raises(ValueError, match="requires wall boundary on axis x"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "domain": {
+                    "size": [1.0, 1.0],
+                    "boundary": {"x": "periodic", "y": "wall"},
+                },
+                "distribution": {
+                    "schedule": "static",
+                    "axes": {
+                        "x": {
+                            "type": "nonuniform",
+                            "monitors": {"wall": {"alpha": 2.0}},
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_axis_local_boundary_rejects_duplicate_axis_alias():
+    with pytest.raises(ValueError, match="duplicate declarations"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "domain": {
+                    "size": [1.0, 1.0],
+                    "boundary": {"x": "periodic", 0: "periodic", "y": "wall"},
+                },
+            },
+        }))
+
+
+def test_axis_local_boundary_supports_y_periodic_name():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "grid": {
+            "domain": {
+                "size": [1.0, 1.0],
+                "boundary": {"x": "wall", "y": "periodic"},
+            },
+        },
+    }))
+    assert cfg.grid.bc_type == "wall_periodic"
 
 
 def test_periodic_boundary_allows_interface_monitor():

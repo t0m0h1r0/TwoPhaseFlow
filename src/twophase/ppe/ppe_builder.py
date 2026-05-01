@@ -30,6 +30,8 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 
+from ..core.boundary import is_all_periodic
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
@@ -83,7 +85,7 @@ class PPEBuilder:
         # Pressure gauge pin DOF (via BoundarySpec).
         if bc_spec is not None:
             self._pin_dof = bc_spec.pin_dof
-        elif bc_type == 'wall':
+        elif not is_all_periodic(bc_type, self.ndim):
             centre_idx = tuple(n // 2 for n in self.N)
             self._pin_dof = int(np.ravel_multi_index(centre_idx, self.shape_field))
         else:

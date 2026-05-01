@@ -11,6 +11,8 @@ from typing import Callable
 
 import numpy as np
 
+from ..core.boundary import boundary_axes, is_all_periodic
+
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
 
@@ -85,21 +87,24 @@ def build_initial_velocity(
     return u, v
 
 
-def wall_bc_hook(u: np.ndarray, v: np.ndarray) -> None:
+def wall_bc_hook(u: np.ndarray, v: np.ndarray, bc_type: str = "wall") -> None:
     """Apply no-slip / no-penetration walls on all boundaries."""
+    axes = boundary_axes(bc_type, u.ndim)
     for arr in (u, v):
-        arr[0, :] = 0.0
-        arr[-1, :] = 0.0
-        arr[:, 0] = 0.0
-        arr[:, -1] = 0.0
+        if axes[0] == "wall":
+            arr[0, :] = 0.0
+            arr[-1, :] = 0.0
+        if axes[1] == "wall":
+            arr[:, 0] = 0.0
+            arr[:, -1] = 0.0
 
 
 def apply_velocity_bc(u, v, bc_hook, bc_type: str) -> None:
     """Apply the configured velocity boundary condition in-place."""
     if bc_hook is not None:
         bc_hook(u, v)
-    elif bc_type == "wall":
-        wall_bc_hook(u, v)
+    elif not is_all_periodic(bc_type, u.ndim):
+        wall_bc_hook(u, v, bc_type=bc_type)
 
 
 def make_boundary_condition_hook(
@@ -109,9 +114,9 @@ def make_boundary_condition_hook(
 ):
     """Return a ``bc_hook(u, v)`` callable from config-like input."""
     if boundary_condition is None:
-        if bc_type == "periodic":
+        if is_all_periodic(bc_type, 2):
             return None
-        return wall_bc_hook
+        return lambda u, v: wall_bc_hook(u, v, bc_type=bc_type)
 
     hook_type = boundary_condition.get("type", "wall")
     if hook_type == "couette":
@@ -128,4 +133,4 @@ def make_boundary_condition_hook(
 
         return _couette
 
-    return wall_bc_hook
+    return lambda u, v: wall_bc_hook(u, v, bc_type=bc_type)

@@ -103,13 +103,13 @@ time axes and should not be placed as sibling `run` knobs or mixed in one
 ## Grid Distribution
 
 `grid.distribution` owns mesh non-uniformity, while `grid.domain.boundary`
-is the only place that declares whether the domain has physical walls or is
+is the only place that declares whether each axis has physical walls or is
 periodic.  The canonical form is axis-local and monitor-based:
 
 - `axes.<axis>.type`: `uniform` or `nonuniform`.
 - `axes.<axis>.monitors.interface`: interface-centred grid density.
-- `axes.<axis>.monitors.wall`: wall-centred grid density, valid only when
-  `grid.domain.boundary: wall`.
+- `axes.<axis>.monitors.wall`: wall-centred grid density, valid only on axes
+  declared as wall-bounded in `grid.domain.boundary`.
 - `axes.<axis>.dx_min_floor`: optional cell-width floor for that nonuniform
   axis.
 - Legacy compact form remains accepted for interface-only grids:
@@ -121,33 +121,39 @@ periodic.  The canonical form is axis-local and monitor-based:
   still accepted.
 
 Uniform axes may not declare monitors. Nonuniform axes must declare at least
-one monitor. Periodic domains may use interface monitors but cannot use wall
-monitors because no physical wall exists in the topology.
+one monitor. Periodic axes may use interface monitors but cannot use wall
+monitors because no physical wall exists in that direction.
 
 Canonical capillary-wave form:
 
 ```yaml
 grid:
+  domain:
+    boundary:
+      x: periodic
+      y:
+        lower: wall
+        upper: wall
   distribution:
     schedule: 1
     axes:
       x:
-        type: nonuniform
-        monitors:
-          wall:
-            alpha: 1.3
-            eps_g_cells: 4
-            apply_to: [lower, upper]
+        type: uniform
       y:
         type: nonuniform
         monitors:
           interface:
             alpha: 2.0
+          wall:
+            alpha: 1.3
+            eps_g_cells: 4
+            apply_to: [lower, upper]
 ```
 
-The capillary-wave YAML refines `x` only by the wall monitor and refines `y`
-only by the interface monitor. It does not use a fake interface-fitting axis
-with `alpha: 1.0`.
+The capillary-wave YAML keeps `x` uniform and periodic, while `y` is
+nonuniform because it contains both the interface-normal resolution and the
+upper/lower wall resolution. It does not use a fake interface-fitting axis with
+`alpha: 1.0`.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

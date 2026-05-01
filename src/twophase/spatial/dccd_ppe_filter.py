@@ -36,6 +36,8 @@ Symbol mapping (paper -> Python):
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ..core.boundary import is_periodic_axis
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
@@ -133,7 +135,7 @@ class DCCDPPEFilter:
         w_n = EPS_D               # neighbour weight = 0.25
         result[sl_c] = w_c * u[sl_c] + w_n * (u[sl_m] + u[sl_p])
 
-        if self.bc_type == "periodic":
+        if is_periodic_axis(self.bc_type, ax, self.ndim):
             # Periodic wrap: first node uses last interior, last uses first
             sl_first = [slice(None)] * self.ndim
             sl_last = [slice(None)] * self.ndim
@@ -223,7 +225,7 @@ class DCCDPPEFilter:
                     s[_ax] = idx
                     return tuple(s)
 
-                if self.bc_type == 'periodic':
+                if is_periodic_axis(self.bc_type, ax, self.ndim):
                     # Central FD with periodic wrap
                     d2_ip1 = xp.roll(d2_np, -1, axis=ax)
                     d2_im1 = xp.roll(d2_np,  1, axis=ax)

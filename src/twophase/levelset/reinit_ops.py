@@ -26,6 +26,12 @@ def _sl(ndim: int, axis: int, start, stop) -> tuple:
     return tuple(s)
 
 
+def _axis_bc(bc, axis: int) -> str:
+    if isinstance(bc, (tuple, list)):
+        return str(bc[axis]).strip().lower()
+    return str(bc).strip().lower()
+
+
 def compute_dtau(grid, eps) -> float:
     """Pseudo-time step (eq:dtau_reinit_def).
 
@@ -80,13 +86,13 @@ def filtered_divergence(xp, flux, ax, eps_d, ccd, grid, bc):
 
     if grid.uniform:
         g_prime, _ = ccd.differentiate(flux, ax)
-        g_pad = _pad_bc(xp, g_prime, ax, 1, bc)
+        g_pad = _pad_bc(xp, g_prime, ax, 1, _axis_bc(bc, ax))
         return (g_pad[sl_c]
                 + eps_d * (g_pad[sl_p1] - 2.0 * g_pad[sl_c]
                            + g_pad[sl_m1]))
     else:
         g_xi, _ = ccd.differentiate(flux, ax, apply_metric=False)
-        g_xi_pad = _pad_bc(xp, g_xi, ax, 1, bc)
+        g_xi_pad = _pad_bc(xp, g_xi, ax, 1, _axis_bc(bc, ax))
         F_xi = (g_xi_pad[sl_c]
                 + eps_d * (g_xi_pad[sl_p1] - 2.0 * g_xi_pad[sl_c]
                            + g_xi_pad[sl_m1]))

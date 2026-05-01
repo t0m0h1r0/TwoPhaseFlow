@@ -29,6 +29,7 @@ import warnings
 import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
+from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
     build_young_laplace_interface_stress_context,
     interface_stress_context_is_active,
@@ -471,7 +472,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence with wall Neumann rows retained for the PPE operator."""
         xp = self.xp
-        if self.fccd.bc_type == "periodic":
+        if is_periodic_axis(self.fccd.bc_type, axis, self.grid.ndim):
             return self.fccd.face_divergence(face_flux, axis)
 
         flux = xp.moveaxis(xp.asarray(face_flux), axis, 0)
@@ -487,7 +488,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def _accumulate_face_flux_divergence(self, out, face_flux, axis: int) -> None:
         """Accumulate ``D_f[(1/rho)_f G_f p]`` without a full-size copy."""
         xp = self.xp
-        if self.fccd.bc_type == "periodic":
+        if is_periodic_axis(self.fccd.bc_type, axis, self.grid.ndim):
             out += self.fccd.face_divergence(face_flux, axis)
             return
         if self._node_width is None:
@@ -509,7 +510,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     ) -> None:
         """Fuse ``(1/rho)_f`` multiplication with FCCD flux divergence."""
         xp = self.xp
-        if self.fccd.bc_type == "periodic":
+        if is_periodic_axis(self.fccd.bc_type, axis, self.grid.ndim):
             self._accumulate_face_flux_divergence(out, coeff_face * grad_face, axis)
             return
         if self._node_width_inv is None:

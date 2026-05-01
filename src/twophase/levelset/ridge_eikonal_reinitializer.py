@@ -12,6 +12,7 @@ from .ridge_eikonal_extractor import RidgeExtractor
 from .ridge_eikonal_fmm import NonUniformFMM
 from .ridge_eikonal_kernels import _eps_local_kernel, _sigmoid_xp
 from .wall_contact import WallContactSet
+from ..core.boundary import boundary_axes
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -45,7 +46,11 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
-        self._wall_closure = getattr(ccd, "bc_type", "wall") == "wall"
+        self._wall_axes = tuple(
+            axis == "wall"
+            for axis in boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
+        )
+        self._wall_closure = any(self._wall_axes)
         self._wall_contacts = WallContactSet.empty()
 
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
@@ -66,6 +71,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._extractor = RidgeExtractor(
             backend, grid, sigma_0=sigma_0, h_ref=self._h_ref,
             wall_closure=self._wall_closure,
+            wall_axes=self._wall_axes,
         )
         self._fmm = NonUniformFMM(grid, backend=backend)
 

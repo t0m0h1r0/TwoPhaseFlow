@@ -22,6 +22,8 @@ from typing import Iterable, Literal
 
 import numpy as np
 
+from ..core.boundary import boundary_axes
+
 
 WallSide = Literal["lo", "hi"]
 ContactMode = Literal["pinned_no_slip"]
@@ -124,7 +126,10 @@ class WallContactSet:
         wall boundaries.  Periodic or non-wall configurations intentionally
         return an empty set.
         """
-        if bc_type != "wall" or grid.ndim != 2:
+        if grid.ndim != 2:
+            return cls.empty()
+        axes = boundary_axes(bc_type, grid.ndim)
+        if "wall" not in axes:
             return cls.empty()
 
         psi_h = np.asarray(psi, dtype=float)
@@ -133,6 +138,8 @@ class WallContactSet:
         traces: list[WallTrace] = []
 
         for wall_axis in range(2):
+            if axes[wall_axis] != "wall":
+                continue
             tangent_axis = 1 - wall_axis
             tangent_coords = coords[tangent_axis]
             for wall_side, wall_index in (("lo", 0), ("hi", -1)):

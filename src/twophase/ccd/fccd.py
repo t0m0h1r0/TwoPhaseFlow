@@ -54,6 +54,7 @@ from .fccd_advection_helpers import (
     compute_fccd_flux_contribution,
 )
 from .ccd_solver import CCDSolver
+from ..core.boundary import is_periodic_axis
 from .fccd_helpers import (
     build_axis_weights,
     build_node_H_over_16,
@@ -179,6 +180,10 @@ class FCCDSolver:
 
         self._weights = [self._precompute_weights(ax) for ax in range(self.ndim)]
 
+    def _axis_periodic(self, axis: int) -> bool:
+        """Return whether one coordinate axis uses periodic topology."""
+        return is_periodic_axis(self.bc_type, axis, self.ndim)
+
     # ── Pre-computation ──────────────────────────────────────────────────
 
     def _precompute_weights(self, ax: int) -> dict:
@@ -209,7 +214,7 @@ class FCCDSolver:
         xp = self.xp
         u = xp.asarray(u)
         u = xp.moveaxis(u, axis, 0)   # (N+1, *rest)
-        if self.bc_type == "periodic":
+        if self._axis_periodic(axis):
             N = self.grid.N[axis]
             u_unique = u[:N]
             u_lo = u_unique
@@ -402,7 +407,7 @@ class FCCDSolver:
 
         N = self.grid.N[axis]
 
-        if self.bc_type == "periodic":
+        if self._axis_periodic(axis):
             # Periodic: output has shape (N+1, *rest) with out[N] = out[0].
             # Convention: d_face[j] = f_{j+1/2}, so at node i we need
             #   d_{f_{i-1/2}} = d_face[i-1]  (→ roll(d_face, +1))
@@ -474,7 +479,7 @@ class FCCDSolver:
         N = self.grid.N[axis]
         w = self._weights[axis]
 
-        if self.bc_type == "periodic":
+        if self._axis_periodic(axis):
             # div[i] = (F[i] - F[i-1]) / H_i, with i=0..N-1 cyclic; repeat at N.
             F_m1 = xp.roll(F, 1, axis=0)
             if w["uniform"]:

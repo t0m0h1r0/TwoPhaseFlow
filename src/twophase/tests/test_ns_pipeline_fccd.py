@@ -610,16 +610,36 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
 
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.ppe_dc_base_solver == "fd_direct"
+    assert cfg.grid.bc_type == "periodic_wall"
     assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.grid.fitting_axes == (False, True)
     assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
-    assert cfg.grid.wall_refinement_axes == (True, False)
-    assert cfg.grid.wall_alpha_grid == (1.3, 1.0)
-    assert cfg.grid.wall_eps_g_cells == (4.0, None)
+    assert cfg.grid.wall_refinement_axes == (False, True)
+    assert cfg.grid.wall_alpha_grid == (1.0, 1.3)
+    assert cfg.grid.wall_eps_g_cells == (None, 4.0)
+    assert solver.bc_type == "periodic_wall"
     assert solver._ppe_dc_relaxation == pytest.approx(0.7)
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+
+
+def test_mixed_periodic_wall_velocity_hook_only_zeroes_wall_axis():
+    from twophase.simulation.runtime_setup import wall_bc_hook
+
+    u = np.ones((4, 5))
+    v = np.ones((4, 5))
+    u[0, 2] = 7.0
+    v[-1, 2] = 9.0
+
+    wall_bc_hook(u, v, bc_type="periodic_wall")
+
+    assert u[0, 2] == pytest.approx(7.0)
+    assert v[-1, 2] == pytest.approx(9.0)
+    np.testing.assert_allclose(u[:, 0], 0.0)
+    np.testing.assert_allclose(u[:, -1], 0.0)
+    np.testing.assert_allclose(v[:, 0], 0.0)
+    np.testing.assert_allclose(v[:, -1], 0.0)
 
 
 def test_defect_correction_can_build_fd_iterative_cg_base_solver():

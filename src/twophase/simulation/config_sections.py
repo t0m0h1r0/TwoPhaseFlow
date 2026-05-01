@@ -6,6 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from ..core.boundary import canonical_bc_type
 from .config_models import GridCfg, PhysicsCfg
 
 
@@ -41,12 +42,14 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
     size = domain["size"]
     LX, LY = float(size[0]), float(size[1])
     distribution = d["distribution"]
+    bc_type, boundary_sides = parse_grid_boundary(domain["boundary"], ndim=2)
     width = interface["thickness"]
     axis_distribution = parse_grid_axis_distribution(
         distribution,
         ndim=2,
         grid_dx_min_floor=float(d.get("dx_min_floor", 1e-6)),
-        bc_type=str(domain["boundary"]),
+        bc_type=bc_type,
+        boundary_sides=boundary_sides,
     )
     eps_factor = float(width.get("base_factor", 1.5))
     eps_xi_cells = opt_float(width.get("xi_cells"))
@@ -56,7 +59,7 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         NY=NY,
         LX=LX,
         LY=LY,
-        bc_type=str(domain["boundary"]),
+        bc_type=bc_type,
         alpha_grid=axis_distribution.alpha_grid,
         fitting_axes=axis_distribution.fitting_axes,
         fitting_alpha_grid=axis_distribution.fitting_alpha_grid,
@@ -250,12 +253,76 @@ _AXIS_ALIASES = {
 }
 
 
+def parse_grid_boundary(raw: Any, *, ndim: int) -> tuple[str, tuple[tuple[str, ...], ...]]:
+    """Parse global or axis-local domain boundary declarations."""
+    if isinstance(raw, str):
+        value = validate_choice(
+            raw,
+            ("wall", "periodic"),
+            "grid.domain.boundary",
+        )
+        axes = tuple(value for _axis in range(ndim))
+        sides = tuple(
+            ("lower", "upper") if value == "wall" else ()
+            for _axis in range(ndim)
+        )
+        return canonical_bc_type(axes), sides
+    if not isinstance(raw, dict):
+        raise ValueError("grid.domain.boundary must be wall|periodic or an axis map")
+
+    axis_values: list[str | None] = [None] * ndim
+    side_values: list[tuple[str, ...] | None] = [None] * ndim
+    for raw_axis, raw_spec in raw.items():
+        axis = parse_grid_axis_key(raw_axis, ndim, "grid.domain.boundary")
+        if axis_values[axis] is not None:
+            raise ValueError(
+                f"grid.domain.boundary has duplicate declarations for axis {raw_axis!r}"
+            )
+        axis_type, sides = parse_grid_axis_boundary_spec(
+            raw_spec,
+            context=f"grid.domain.boundary.{raw_axis}",
+        )
+        axis_values[axis] = axis_type
+        side_values[axis] = sides
+    missing = [
+        axis_name
+        for axis_name, value in zip(("x", "y", "z"), axis_values)
+        if value is None
+    ]
+    if missing:
+        raise ValueError(f"grid.domain.boundary axis map must define {missing!r}")
+    axes = tuple(str(value) for value in axis_values)
+    return canonical_bc_type(axes), tuple(tuple(sides or ()) for sides in side_values)
+
+
+def parse_grid_axis_boundary_spec(raw: Any, *, context: str) -> tuple[str, tuple[str, ...]]:
+    """Parse one axis boundary declaration."""
+    if isinstance(raw, str):
+        value = validate_choice(raw, ("wall", "periodic"), context)
+        return value, ("lower", "upper") if value == "wall" else ()
+    if not isinstance(raw, dict):
+        raise ValueError(f"{context} must be wall|periodic or lower/upper map")
+    unexpected = sorted(set(raw) - {"lower", "upper"})
+    if unexpected:
+        raise ValueError(f"{context} supports only lower and upper, got {unexpected!r}")
+    if set(raw) != {"lower", "upper"}:
+        raise ValueError(f"{context} must define both lower and upper")
+    lower = validate_choice(raw["lower"], ("wall", "periodic"), f"{context}.lower")
+    upper = validate_choice(raw["upper"], ("wall", "periodic"), f"{context}.upper")
+    if lower != upper:
+        raise ValueError(
+            f"{context} lower/upper mixed boundary is not supported; got {lower}/{upper}"
+        )
+    return lower, ("lower", "upper") if lower == "wall" else ()
+
+
 def parse_grid_axis_distribution(
     distribution: dict,
     *,
     ndim: int,
     grid_dx_min_floor: float,
     bc_type: str,
+    boundary_sides: tuple[tuple[str, ...], ...] | None = None,
 ) -> GridAxisDistribution:
     """Parse global or axis-local interface-fitted grid settings."""
     axes_raw = distribution.get("axes")
@@ -273,6 +340,7 @@ def parse_grid_axis_distribution(
             default_eps_factor=2.0,
             default_dx_floor=grid_dx_min_floor,
             bc_type=bc_type,
+            boundary_sides=boundary_sides,
         )
         default_eps_factor = 2.0
         default_dx_floor = grid_dx_min_floor
@@ -399,6 +467,7 @@ def parse_axis_monitor_distribution(
     default_eps_factor: float,
     default_dx_floor: float,
     bc_type: str,
+    boundary_sides: tuple[tuple[str, ...], ...] | None = None,
 ) -> dict:
     """Parse the canonical monitor-based ``grid.distribution.axes`` schema."""
     fitting_axes = [False] * ndim
@@ -412,11 +481,15 @@ def parse_axis_monitor_distribution(
     wall_eps_factor = [default_eps_factor] * ndim
     wall_eps_cells = [None] * ndim
     wall_sides = [("lower", "upper")] * ndim
-    boundary_sides = tuple(
-        ("lower", "upper")
-        if str(bc_type).strip().lower() == "wall"
-        else ()
-        for _axis in range(ndim)
+    wall_sides_by_axis = (
+        boundary_sides
+        if boundary_sides is not None
+        else tuple(
+            ("lower", "upper")
+            if str(bc_type).strip().lower() == "wall"
+            else ()
+            for _axis in range(ndim)
+        )
     )
 
     for raw_axis, raw_spec in axes_raw.items():
@@ -497,9 +570,9 @@ def parse_axis_monitor_distribution(
                     f"{context}.monitors.wall accepts only alpha, eps_g_factor, "
                     f"eps_g_cells, and apply_to; got {unexpected_wall!r}"
                 )
-            if not boundary_sides[axis]:
+            if not wall_sides_by_axis[axis]:
                 raise ValueError(
-                    f"{context}.monitors.wall requires grid.domain.boundary=wall"
+                    f"{context}.monitors.wall requires wall boundary on axis {raw_axis}"
                 )
             wall_axes[axis] = True
             wall_alpha[axis] = parse_monitor_alpha(
@@ -512,7 +585,7 @@ def parse_axis_monitor_distribution(
             wall_eps_cells[axis] = opt_float(wall_spec.get("eps_g_cells"))
             wall_sides[axis] = parse_wall_monitor_apply_to(
                 wall_spec.get("apply_to"),
-                allowed=boundary_sides[axis],
+                allowed=wall_sides_by_axis[axis],
                 context=f"{context}.monitors.wall",
             )
 

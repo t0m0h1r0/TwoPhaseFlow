@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
 from .interfaces import ILevelSetAdvection
+from ..core.boundary import boundary_axes
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .advection_kernels import _pad_bc, _weno5_neg, _weno5_pos
 
@@ -22,13 +23,23 @@ class LevelSetAdvection(ILevelSetAdvection):
 
     @classmethod
     def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "LevelSetAdvection":
-        ls_bc = "periodic" if ctx.bc_type == "periodic" else "neumann"
+        ls_bc = tuple(
+            "periodic" if axis == "periodic" else "neumann"
+            for axis in boundary_axes(ctx.bc_type, ctx.grid.ndim)
+        )
         return cls(ctx.backend, ctx.grid, bc=ls_bc)
 
-    def __init__(self, backend: "Backend", grid: "Grid", bc: str = 'zero'):
+    def __init__(self, backend: "Backend", grid: "Grid", bc: str | tuple[str, ...] = 'zero'):
         self.xp = backend.xp
         self._h = [float(grid.L[ax] / grid.N[ax]) for ax in range(grid.ndim)]
-        self._bc = bc
+        self._bc = (
+            tuple(str(value).strip().lower() for value in bc)
+            if isinstance(bc, (tuple, list))
+            else str(bc).strip().lower()
+        )
+
+    def _axis_bc(self, axis: int) -> str:
+        return self._bc[axis] if isinstance(self._bc, tuple) else self._bc
 
     def advance(self, psi, velocity_components: List, dt: float, clip_bounds=(0.0, 1.0)):
         xp = self.xp
@@ -59,8 +70,9 @@ class LevelSetAdvection(ILevelSetAdvection):
         xp = self.xp
         n = psi.shape[axis]
         F = u * psi
-        psi_p = _pad_bc(xp, psi, axis, 3, self._bc)
-        F_p = _pad_bc(xp, F, axis, 3, self._bc)
+        axis_bc = self._axis_bc(axis)
+        psi_p = _pad_bc(xp, psi, axis, 3, axis_bc)
+        F_p = _pad_bc(xp, F, axis, 3, axis_bc)
 
         def sl_ax(start, stop):
             s = [slice(None)] * psi.ndim
@@ -114,7 +126,7 @@ class LevelSetAdvection(ILevelSetAdvection):
         sl_lo[axis] = slice(0, -1)
         div_interior = (flux_face[tuple(sl_hi)] - flux_face[tuple(sl_lo)]) / h
 
-        if self._bc == 'periodic':
+        if axis_bc == 'periodic':
             sl_f0 = [slice(None)] * psi.ndim
             sl_fN = [slice(None)] * psi.ndim
             sl_f0[axis] = slice(0, 1)
