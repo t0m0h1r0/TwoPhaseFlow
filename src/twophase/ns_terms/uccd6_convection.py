@@ -69,6 +69,7 @@ class UCCD6ConvectionTerm(IConvectionTerm):
     ) -> None:
         if sigma <= 0.0:
             raise ValueError(f"sigma must be > 0, got {sigma}")
+        self._backend = backend
         self.xp = backend.xp
         self._ccd = ccd
         self._grid = grid
@@ -101,7 +102,7 @@ class UCCD6ConvectionTerm(IConvectionTerm):
 
         xp = self.xp
         ndim = len(velocity_components)
-        if all_arrays_exact_zero(xp, velocity_components):
+        if not self._backend.is_gpu() and all_arrays_exact_zero(xp, velocity_components):
             return [xp.zeros_like(component) for component in velocity_components]
         ccd_op = self._ccd
         result = []

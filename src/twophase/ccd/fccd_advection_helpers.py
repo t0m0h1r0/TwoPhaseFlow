@@ -13,14 +13,25 @@ def compute_fccd_flux_contribution(solver, u_k, phi, axis: int):
     return -solver.face_divergence(F_cons, axis)
 
 
-def compute_fccd_advection_rhs(solver, velocity_components, scalar=None, mode: str = "flux"):
+def compute_fccd_advection_rhs(
+    solver,
+    velocity_components,
+    scalar=None,
+    mode: str = "flux",
+    *,
+    skip_zero_check: bool = False,
+):
     """Compose FCCD nodal or flux-form advection RHS."""
     if mode not in ("node", "flux"):
         raise ValueError(f"mode must be 'node' or 'flux', got {mode!r}")
 
     xp = solver.xp
     ndim = len(velocity_components)
-    if all_arrays_exact_zero(xp, velocity_components):
+    if (
+        not skip_zero_check
+        and not solver.backend.is_gpu()
+        and all_arrays_exact_zero(xp, velocity_components)
+    ):
         if scalar is None:
             return [xp.zeros_like(component) for component in velocity_components]
         return [xp.zeros_like(scalar)]
