@@ -36,7 +36,27 @@ def ch14_circle_config(
     """Build a circle-droplet config using the §14 FCCD/UCCD6/filtered-curvature/PPE stack."""
     if (cfl is None) == (dt is None):
         raise ValueError("exactly one of cfl or dt must be provided")
-    distribution_type = "uniform" if alpha <= 1.0 else "interface_fitted"
+    if alpha <= 1.0:
+        distribution = {
+            "type": "uniform",
+            "method": "none",
+            "alpha": 1.0,
+            "schedule": "static",
+        }
+    else:
+        distribution = {
+            "schedule": "static",
+            "axes": {
+                "x": {
+                    "type": "nonuniform",
+                    "monitors": {"interface": {"alpha": alpha}},
+                },
+                "y": {
+                    "type": "nonuniform",
+                    "monitors": {"interface": {"alpha": alpha}},
+                },
+            },
+        }
     time_cfg = {
         "final": final_time,
         "max_steps": max_steps,
@@ -50,12 +70,7 @@ def ch14_circle_config(
         "grid": {
             "cells": [N, N],
             "domain": {"size": [1.0, 1.0], "boundary": "wall"},
-            "distribution": {
-                "type": distribution_type,
-                "method": "gaussian_levelset",
-                "alpha": alpha,
-                "schedule": "static",
-            },
+            "distribution": distribution,
         },
         "interface": {
             "thickness": {"mode": eps_mode, "base_factor": 1.5},

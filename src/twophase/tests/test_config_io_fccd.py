@@ -27,9 +27,6 @@ def _minimal(patch: dict | None = None) -> dict:
             "cells": [8, 8],
             "domain": {"size": [1.0, 1.0], "boundary": "wall"},
             "distribution": {
-                "type": "interface_fitted",
-                "method": "gaussian_levelset",
-                "alpha": 1.0,
                 "schedule": "static",
             },
         },
@@ -123,7 +120,16 @@ def test_readable_defaults_round_trip():
 
 def test_local_epsilon_rejects_nonuniform_csf_surface_tension():
     raw = _minimal({
-        "grid": {"distribution": {"alpha": 2.0}},
+        "grid": {
+            "distribution": {
+                "axes": {
+                    "x": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                },
+            },
+        },
         "interface": {"thickness": {"mode": "local"}},
         "physics": {"surface_tension": 0.1},
     })
@@ -531,7 +537,19 @@ def test_readable_structured_sections_round_trip():
         "grid": {
             "cells": [16, 12],
             "domain": {"size": [2.0, 1.0], "boundary": "periodic"},
-            "distribution": {"alpha": 2.0, "schedule": "every_3"},
+            "distribution": {
+                "schedule": "every_3",
+                "axes": {
+                    "x": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                    "y": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                },
+            },
         },
         "interface": {
             "thickness": {"mode": "local", "base_factor": 1.7},
@@ -904,57 +922,109 @@ def test_disabled_interface_fitting_forces_uniform_grid():
     assert cfg.grid.wall_refinement_axes == (False, False)
 
 
-def test_wall_refinement_requires_nonuniform_grid_selection():
-    cfg = ExperimentConfig.from_dict(_minimal({
-        "grid": {
-            "distribution": {
-                "type": "uniform",
-                "method": "none",
-                "wall": {"enabled": True, "alpha": 2.0, "eps_g_cells": 4},
+def test_distribution_wall_block_rejected():
+    with pytest.raises(ValueError, match="grid.distribution.wall"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "distribution": {
+                    "type": "uniform",
+                    "wall": {"enabled": True, "alpha": 2.0, "eps_g_cells": 4},
+                },
             },
-        },
-    }))
-    assert cfg.grid.alpha_grid == 1.0
-    assert cfg.grid.fitting_axes == (False, False)
-    assert cfg.grid.wall_refinement_axes == (False, False)
+        }))
 
 
-def test_wall_refinement_periodic_auto_excluded():
+def test_wall_monitor_requires_wall_boundary():
+    with pytest.raises(ValueError, match="requires grid.domain.boundary=wall"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "domain": {"size": [1.0, 1.0], "boundary": "periodic"},
+                "distribution": {
+                    "schedule": "static",
+                    "axes": {
+                        "x": {
+                            "type": "nonuniform",
+                            "monitors": {"wall": {"alpha": 2.0, "eps_g_cells": 4}},
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_periodic_boundary_allows_interface_monitor():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {
             "domain": {"size": [1.0, 1.0], "boundary": "periodic"},
             "distribution": {
-                "type": "interface_fitted",
-                "alpha": 2.0,
-                "wall": {"enabled": "auto", "alpha": 2.0, "eps_g_cells": 4},
+                "schedule": "static",
+                "axes": {
+                    "x": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                },
             },
         },
     }))
-    assert cfg.grid.fitting_axes == (True, True)
+    assert cfg.grid.bc_type == "periodic"
+    assert cfg.grid.fitting_axes == (True, False)
     assert cfg.grid.wall_refinement_axes == (False, False)
 
 
-def test_wall_refinement_axis_uniform_excluded():
+def test_uniform_axis_rejects_monitors():
+    with pytest.raises(ValueError, match="monitors is invalid for type=uniform"):
+        ExperimentConfig.from_dict(_minimal({
+            "grid": {
+                "distribution": {
+                    "schedule": "static",
+                    "axes": {
+                        "x": {
+                            "type": "uniform",
+                            "monitors": {"wall": {"alpha": 1.5, "eps_g_cells": 4}},
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_monitor_schema_wall_and_interface_parse():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {
             "distribution": {
-                "type": "interface_fitted",
-                "alpha": 2.0,
-                "wall": {"enabled": True, "alpha": 1.5, "eps_g_cells": 4},
+                "schedule": "static",
                 "axes": {
-                    "x": {"type": "uniform"},
-                    "y": {"type": "interface_fitted"},
+                    "x": {
+                        "type": "nonuniform",
+                        "monitors": {"wall": {"alpha": 1.5, "eps_g_cells": 4}},
+                    },
+                    "y": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
                 },
             },
         },
     }))
     assert cfg.grid.fitting_axes == (False, True)
-    assert cfg.grid.wall_refinement_axes == (False, True)
+    assert cfg.grid.wall_refinement_axes == (True, False)
+    assert cfg.grid.wall_sides == (("lower", "upper"), ("lower", "upper"))
 
 
 def test_interface_fitting_axes_parse():
     cfg = ExperimentConfig.from_dict(_minimal({
-        "grid": {"distribution": {"type": "interface_fitted", "alpha": 2.0, "axes": ["y"]}},
+        "grid": {
+            "distribution": {
+                "schedule": "static",
+                "axes": {
+                    "y": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                },
+            },
+        },
     }))
     assert cfg.grid.fitting_axes == (False, True)
     assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
@@ -964,15 +1034,19 @@ def test_axis_local_interface_fitting_parse():
     cfg = ExperimentConfig.from_dict(_minimal({
         "grid": {
             "distribution": {
-                "method": "gaussian_levelset",
                 "schedule": 0,
                 "axes": {
                     "x": {"type": "uniform"},
                     "y": {
-                        "type": "interface_fitted",
-                        "alpha": 2.5,
-                        "eps_g_factor": 3.0,
+                        "type": "nonuniform",
                         "dx_min_floor": 2.0e-6,
+                        "monitors": {
+                            "interface": {
+                                "method": "gaussian_levelset",
+                                "alpha": 2.5,
+                                "eps_g_factor": 3.0,
+                            },
+                        },
                     },
                 },
             },
@@ -987,14 +1061,15 @@ def test_axis_local_interface_fitting_parse():
 
 
 def test_axis_local_interface_fitting_method_rejected():
-    with pytest.raises(ValueError, match="method is global"):
+    with pytest.raises(ValueError, match="accepts only type, monitors"):
         ExperimentConfig.from_dict(_minimal({
             "grid": {
                 "distribution": {
                     "axes": {
                         "y": {
-                            "type": "interface_fitted",
+                            "type": "nonuniform",
                             "method": "gaussian_levelset",
+                            "monitors": {"interface": {"alpha": 2.0}},
                         },
                     },
                 },
@@ -1003,23 +1078,34 @@ def test_axis_local_interface_fitting_method_rejected():
 
 
 def test_invalid_interface_fitting_method_rejected():
-    with pytest.raises(ValueError, match="grid.distribution.method"):
+    with pytest.raises(ValueError, match="monitors.interface.method"):
         ExperimentConfig.from_dict(_minimal({
-            "grid": {"distribution": {"method": "spline_fit"}},
+            "grid": {
+                "distribution": {
+                    "axes": {
+                        "y": {
+                            "type": "nonuniform",
+                            "monitors": {
+                                "interface": {"method": "spline_fit", "alpha": 2.0},
+                            },
+                        },
+                    },
+                },
+            },
         }))
 
 
 def test_invalid_interface_fitting_axis_rejected():
     with pytest.raises(ValueError, match="grid.distribution.axes"):
         ExperimentConfig.from_dict(_minimal({
-            "grid": {"distribution": {"axes": ["normal"]}},
+            "grid": {"distribution": {"type": "interface_fitted", "axes": ["normal"]}},
         }))
 
 
 def test_bool_interface_fitting_axis_rejected():
     with pytest.raises(ValueError, match="grid.distribution.axes"):
         ExperimentConfig.from_dict(_minimal({
-            "grid": {"distribution": {"axes": True}},
+            "grid": {"distribution": {"type": "interface_fitted", "axes": True}},
         }))
 
 

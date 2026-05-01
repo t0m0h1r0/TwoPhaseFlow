@@ -19,10 +19,18 @@ grid:
     size: [0.5, 2.0]
     boundary: wall
   distribution:
-    type: interface_fitted
-    method: gaussian_levelset
-    alpha: 2.0
     schedule: static
+    axes:
+      x:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+      y:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
 
 interface:
   thickness:

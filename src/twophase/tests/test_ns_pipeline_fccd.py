@@ -611,7 +611,7 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.grid.fitting_axes == (True, True)
+    assert cfg.grid.fitting_axes == (False, True)
     assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
     assert cfg.grid.wall_refinement_axes == (True, False)
     assert cfg.grid.wall_alpha_grid == (1.3, 1.0)
@@ -1060,14 +1060,21 @@ def test_from_config_threads_fccd_keys():
             "cells": [N, N],
             "domain": {"size": [L, L], "boundary": "wall"},
             "distribution": {
-                "type": "interface_fitted",
-                "method": "gaussian_levelset",
-                "alpha": 2.0,
                 "schedule": "static",
+                "axes": {
+                    "x": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                    "y": {
+                        "type": "nonuniform",
+                        "monitors": {"interface": {"alpha": 2.0}},
+                    },
+                },
             },
         },
         "interface": {
-            "thickness": {"mode": "local", "base_factor": 1.5},
+            "thickness": {"mode": "nominal", "base_factor": 1.5},
             "reinitialization": {
                 "algorithm": "ridge_eikonal",
                 "schedule": {"every_steps": 2},

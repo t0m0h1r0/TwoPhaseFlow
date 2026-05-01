@@ -76,17 +76,32 @@ DP_EXACT = SIGMA / R
 
 
 def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
-    distribution_type = "uniform" if alpha <= 1.0 else "interface_fitted"
+    if alpha <= 1.0:
+        distribution = {
+            "type": "uniform",
+            "method": "none",
+            "alpha": 1.0,
+            "schedule": "static",
+        }
+    else:
+        distribution = {
+            "schedule": "static",
+            "axes": {
+                "x": {
+                    "type": "nonuniform",
+                    "monitors": {"interface": {"alpha": alpha}},
+                },
+                "y": {
+                    "type": "nonuniform",
+                    "monitors": {"interface": {"alpha": alpha}},
+                },
+            },
+        }
     raw = {
         "grid": {
             "cells": [N, N],
             "domain": {"size": [1.0, 1.0], "boundary": "wall"},
-            "distribution": {
-                "type": distribution_type,
-                "method": "gaussian_levelset",
-                "alpha": alpha,
-                "schedule": "static",
-            },
+            "distribution": distribution,
         },
         "interface": {
             "thickness": {"mode": eps_mode, "base_factor": 1.5},

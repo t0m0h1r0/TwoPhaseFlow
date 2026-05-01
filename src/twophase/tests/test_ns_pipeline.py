@@ -482,14 +482,17 @@ def test_gridcfg_parse_alpha_grid():
         "cells": [64, 64],
         "domain": {"size": [1.0, 1.0], "boundary": "wall"},
         "distribution": {
-            "method": "gaussian_levelset",
             "schedule": 0,
             "axes": {
                 "x": {"type": "uniform"},
                 "y": {
-                    "type": "interface_fitted",
-                    "alpha": 3.0,
-                    "eps_g_factor": 4.0,
+                    "type": "nonuniform",
+                    "monitors": {
+                        "interface": {
+                            "alpha": 3.0,
+                            "eps_g_factor": 4.0,
+                        },
+                    },
                 },
             },
         },
