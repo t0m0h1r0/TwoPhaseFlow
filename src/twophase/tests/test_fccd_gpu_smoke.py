@@ -1,4 +1,4 @@
-"""FCCD GPU/CPU parity smoke tests — CHK-158 V7.
+"""CCD/FCCD GPU/CPU parity smoke tests — CHK-158 V7.
 
 Skipped unless pytest is invoked with ``--gpu`` on a CuPy/CUDA host.
 Verifies FCCDSolver primitives produce bit-close results on GPU vs NumPy
@@ -13,6 +13,7 @@ import pytest
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
+from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 
 
@@ -41,6 +42,29 @@ def _assert_parity(gpu_val, cpu_val, gpu_backend, rtol=1e-12, atol=1e-13):
         gpu_backend.to_host(gpu_val), np.asarray(cpu_val),
         rtol=rtol, atol=atol,
     )
+
+
+def test_ccd_periodic_differentiation_gpu_matches_cpu(
+    tiny_grid_factory, cpu_backend, gpu_backend,
+):
+    g_cpu = tiny_grid_factory(cpu_backend)
+    g_gpu = tiny_grid_factory(gpu_backend)
+    ccd_cpu = CCDSolver(g_cpu, cpu_backend, bc_type="periodic")
+    ccd_gpu = CCDSolver(g_gpu, gpu_backend, bc_type="periodic")
+
+    x = np.linspace(0.0, 1.0, g_cpu.shape[0])
+    y = np.linspace(0.0, 1.0, g_cpu.shape[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    field_cpu = np.sin(2.0 * np.pi * X) * np.cos(2.0 * np.pi * Y)
+    field_gpu = gpu_backend.xp.asarray(field_cpu)
+
+    d1_cpu, d2_cpu = ccd_cpu.differentiate(field_cpu, axis=0)
+    d1_gpu, d2_gpu = ccd_gpu.differentiate(field_gpu, axis=0)
+
+    assert hasattr(d1_gpu, "__cuda_array_interface__")
+    assert hasattr(d2_gpu, "__cuda_array_interface__")
+    _assert_parity(d1_gpu, d1_cpu, gpu_backend)
+    _assert_parity(d2_gpu, d2_cpu, gpu_backend, atol=1e-12)
 
 
 def test_fccd_face_gradient_gpu_matches_cpu(
