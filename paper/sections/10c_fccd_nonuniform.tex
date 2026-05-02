@@ -19,7 +19,7 @@ $\mathbf{M}^{\FCCD} = \mathbf{D}_1 - \mathbf{D}_2\mathbf{S}_{\CCD}$ を
 \label{sec:fccd_nu_geometry}
 % -------------------------------------------------------------------------------
 
-\S\ref{sec:grid_density} のグリッド密度関数が定めた格子において，
+\S\ref{sec:grid_density} の格子密度関数が定めた格子において，
 節点を $x_0 < x_1 < \cdots < x_N$ とし，
 内部面を $f_{i-1/2}$（$i=1,\ldots,N$）と記す．
 局所幾何量を：
@@ -114,12 +114,11 @@ $\theta = 1/2$ で厳密に $0$ となるので，
 セル中心格子では $\Ord{H^4}$ が維持される．
 本稿の二相流標準構成では面位置を常に中心（$\theta = 1/2$）にとる
 \textbf{界面適合格子族}（\S\ref{sec:grid_density}）を採用するため，
-実効精度は $\Ord{H^4}$ のままである
-（ただし，物理座標 $x$ への変換に用いる Jacobian $J_x$ を Simpson 則
-または解析積分で構築する場合に限る．台形則で構築すると
-$J_x$ 自体が $\Ord{\Delta\xi^2}$ に縛られ，
-全体精度は $\Ord{H^2}$ に縮退する；§\ref{sec:grid_metric_caveat} 参照）．
-壁面近傍，ghost face，HFE 最近接点，GFM 交差点，ジャンプ補正面で
+面演算子としての局所次数は $\Ord{H^4}$ である．
+ただし物理座標 $x$ への写像を台形則で構成する場合，
+合成された物理空間微分の全体次数は座標生成誤差に律速される
+（§\ref{sec:grid_metric_order_note} 参照）．
+壁面近傍，境界補助面，HFE 最近接点，GFM 交差点，ジャンプ補正面で
 $|\theta_i-1/2|>\theta_{\mathrm{tol}}$ となる場合は，
 その面を $\Ord{H^3}$（または境界閉包に応じて $\Ord{H^2}$）の特殊面として扱い，
 $\Ord{H^4}$ の検証集合から分離する．
@@ -149,17 +148,17 @@ $\Ord{H^4}$ の検証集合から分離する．
 \S\ref{sec:fccd_face_residual_order} で示した BF 残差 $|\BF_\text{res}| = \Ord{\Delta x^4}$ の性質は，
 非一様格子でも界面適合（$\theta=1/2$）を維持する限り保たれる．
 界面近傍のみ $\theta=1/2$ を保証する「局所中央化」を
-\S\ref{sec:grid_density} のグリッド密度関数で課すことにより，
+\S\ref{sec:grid_density} の格子密度関数で課すことにより，
 BF 原理（\S\ref{sec:bf_operator_mismatch}）の要求する
-$p$ 勾配と CSF の同一 face-locus は保たれる．
-ただしこれは滑らかな場を同じ FCCD face operator に載せる場合の主張であり，
-pressure-jump/HFE 型のジャンプ補正閉包では，§~\ref{sec:split_ppe_pressure_jump_formulation} の
-$B_f^{\mathrm{nu}}=s_fj_f/H_f$ と同一界面面データを PPE RHS と corrector で共有して初めて
+$p$ 勾配と CSF の同一面位置は保たれる．
+ただしこれは滑らかな場を同じ FCCD 面演算子に載せる場合の主張であり，
+圧力ジャンプ/HFE 型のジャンプ補正閉包では，§~\ref{sec:split_ppe_pressure_jump_formulation} の
+$B_f^{\mathrm{nu}}=s_fj_f/H_f$ と同一界面面データを PPE 右辺と速度補正で共有して初めて
 BF 条件が閉じる．
 非一様メトリクス $G_f^{\mathrm{nu}}$ だけでは，
 既知ジャンプ $B_f^{\mathrm{nu}}$ は自動的には生成されない．
 
-\noindent 詳細な離散化補足・PCR/Thomas 法の非一様バージョン・
-境界行の wall BC 拡張は付録~\ref{app:ccd_boundary_alt} 参照．
+\noindent 詳細な離散化補足・PCR/Thomas 法の非一様形・
+境界行の壁面境界条件拡張は付録~\ref{app:ccd_boundary_alt} 参照．
 
 % ═══════════════════════════════════════════════════════════════════════════════
