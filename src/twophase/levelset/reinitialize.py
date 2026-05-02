@@ -47,15 +47,15 @@ class Reinitializer(IReinitializer):
     ``split`` (default)  single ULP  4-iter composition: ~700×/iter Lyapunov (ASM-122-A)
     ``unified``          single ULP  Same DCCD chain as split; same Lyapunov caveat
     ``dgr``              likely ULP  No backward-parabolic term; σ>0 fold caveat (CHK-133)
-    ``hybrid``           contractive DGR projection erases per-call perturbations
+    ``hybrid``           explicit legacy/comparison path; not for σ>0 fold cases
     ``eikonal``          likely ULP  Godunov-upwind, no compression term
     ``ridge_eikonal``    ULP         CHK-167; recommended for y-flip-critical long-time runs
     ===================  ==========  =================================================
 
     For simulations where long-time y-flip symmetry must be preserved
     (e.g. capillary-wave benchmarks), prefer ``method='ridge_eikonal'``.
-    Note that ridge_eikonal's FMM is CPU-serial; on GPU-primary runs
-    ``split`` is faster but does not guarantee y-flip symmetry after the
+    Note that ridge_eikonal's FMM keeps CPU and GPU accepted-set paths;
+    ``split`` can be faster but does not guarantee y-flip symmetry after the
     first reinit composition.
     """
 
@@ -65,7 +65,7 @@ class Reinitializer(IReinitializer):
                  mass_correction: bool = True,
                  eps_d_comp: float = _EPS_D_COMP,
                  method: str = 'split',
-                 phi_smooth_C: float = 1e-4,
+                 phi_smooth_C: float = 0.0,
                  eps_scale: float = 1.0,
                  sigma_0: float = 3.0):
         self.xp = backend.xp
@@ -132,7 +132,7 @@ class Reinitializer(IReinitializer):
             self._strategy = RidgeEikonalReinitializer(
                 backend=backend, grid=grid, ccd=ccd, eps=eps,
                 sigma_0=sigma_0,
-                eps_scale=max(eps_scale, 1.4),
+                eps_scale=eps_scale,
                 mass_correction=mass_correction,
             )
         else:

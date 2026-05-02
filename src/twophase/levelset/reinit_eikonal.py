@@ -49,9 +49,15 @@ class EikonalReinitializer(IReinitializer):
     - Cell-local ε naturally handles non-uniform grids
     - Fold cells (|∇φ|→0) are corrected by the Eikonal PDE directly
     - ZSP: zero-set protection freezes cells near φ=0 → no discrete drift (CHK-137)
-    - FMM: Fast Marching Method — C¹ SDF, no Voronoi kinks (CHK-138)
+    - FMM: uniform-grid Fast Marching helper — C¹ SDF, no Voronoi kinks (CHK-138)
 
     See WIKI-T-042 for proofs and benchmarks.
+
+    The ``xi_sdf`` and ``fmm`` helpers are the Chapter 5 uniform-grid basis.
+    On non-uniform grids, use ``RidgeEikonalReinitializer`` so the D3 physical
+    FMM and D4 local-ε field from Chapter 10 are applied.  ``fmm`` is also
+    rejected on GPU here because its legacy helper materialises the solve on
+    the host; the GPU-resident FMM path lives in ``RidgeEikonalReinitializer``.
     """
 
     def __init__(
@@ -70,6 +76,7 @@ class EikonalReinitializer(IReinitializer):
         eps_scale: float = 1.0,
     ):
         self._xp = backend.xp
+        self._backend = backend
         self._grid = grid
         self._eps = float(eps)
         self._n_iter = n_iter
@@ -78,6 +85,17 @@ class EikonalReinitializer(IReinitializer):
         self._xi_sdf = xi_sdf
         self._fmm = fmm
         self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
+        if (xi_sdf or fmm) and not getattr(grid, "uniform", True):
+            raise ValueError(
+                "eikonal_xi/eikonal_fmm are Chapter 5 uniform-grid basis "
+                "paths; use method='ridge_eikonal' for non-uniform grids "
+                "so D3 physical FMM and D4 local epsilon are enforced."
+            )
+        if fmm and backend.is_gpu():
+            raise ValueError(
+                "eikonal_fmm uses a legacy CPU FMM helper and is not a "
+                "GPU-resident path; use method='ridge_eikonal' on GPU."
+            )
 
         # Minimum grid spacing (NumPy, host-side — grid.h is always CPU)
         h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
@@ -216,7 +234,7 @@ class EikonalReinitializer(IReinitializer):
         return xi_sdf_phi_cpu_legacy(self._xp, phi_dev)
 
     def _fmm_phi(self, phi_dev):
-        """Fast Marching Method (Sethian 1996): single-pass Eikonal solver.
+        """Uniform-grid CPU Fast Marching Method (Sethian 1996).
 
         Avoids Voronoi gradient kinks of ξ-SDF by propagating via the Godunov
         quadratic update, producing a C¹-smooth signed distance field (CHK-138).
@@ -226,6 +244,7 @@ class EikonalReinitializer(IReinitializer):
           2. Dijkstra-like propagation: process cells in ascending distance order
           3. Update neighbours using frozen accepted values + quadratic stencil
 
-        Works on CPU (NumPy). GPU inputs are converted host-side.
+        Works on CPU (NumPy).  The constructor rejects GPU use so this helper
+        is never an implicit device-to-host reroute.
         """
         return compute_reinit_fmm_phi(self._xp, phi_dev)

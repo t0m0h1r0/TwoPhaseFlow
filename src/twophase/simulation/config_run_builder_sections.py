@@ -129,7 +129,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             options.interface_curvature.get("cap", options.surface_tension.get("curvature_cap"))
         ),
         reinit_method=options.reinit_method,
-        dgr_phi_smooth_C=float(options.reinit_profile.get("dgr_phi_smooth_C", 1e-4)),
+        dgr_phi_smooth_C=float(options.reinit_profile.get("dgr_phi_smooth_C", 0.0)),
         ridge_sigma_0=options.ridge_sigma_0,
         advection_scheme=options.operator_settings["advection_scheme"],
         convection_scheme=options.operator_settings["convection_scheme"],

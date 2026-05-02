@@ -609,9 +609,35 @@ def test_builder_registers_ridge_eikonal(backend):
     eps = 1.5 * (1.0 / 32)
     r = Reinitializer(
         backend, grid, ccd, eps, n_steps=4, bc="neumann",
-        method="ridge_eikonal", sigma_0=3.0,
+        method="ridge_eikonal", sigma_0=3.0, eps_scale=1.0,
     )
     assert isinstance(r._strategy, RidgeEikonalReinitializer)
+    assert r._strategy._eps_scale == pytest.approx(1.0)
+    np.testing.assert_allclose(np.asarray(r._strategy._eps_local), eps, atol=1e-15)
+
+
+def test_dgr_default_is_paper_exact_no_smoothing(backend):
+    """DGR default must not add the optional non-paper φ Laplacian smoothing."""
+    from twophase.levelset.reinit_dgr import DGRReinitializer
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=1.0, backend=backend)
+    eps = 1.5 * (1.0 / 32)
+
+    reinit = DGRReinitializer(backend, grid, ccd, eps=eps)
+
+    assert reinit.phi_smooth_C == pytest.approx(0.0)
+
+
+def test_uniform_basis_eikonal_paths_reject_nonuniform_grid(backend):
+    """ξ-SDF/eikonal_fmm are uniform-grid bases; non-uniform uses ridge_eikonal."""
+    from twophase.levelset.reinit_eikonal import EikonalReinitializer
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=2.0, backend=backend)
+    assert not grid.uniform
+    eps = 1.5 * float(np.min(grid.h[0]))
+
+    with pytest.raises(ValueError, match="uniform-grid basis"):
+        EikonalReinitializer(backend, grid, ccd, eps=eps, xi_sdf=True)
+    with pytest.raises(ValueError, match="uniform-grid basis"):
+        EikonalReinitializer(backend, grid, ccd, eps=eps, fmm=True)
 
 
 @pytest.mark.gpu
