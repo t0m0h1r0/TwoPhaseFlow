@@ -64,6 +64,12 @@ _VISCOUS_SOLVER_ALIASES = {
     "viscous_dc": "defect_correction",
     "defect-correction": "defect_correction",
 }
+_VISCOUS_DC_LOW_OPERATORS = ("component", "scalar")
+_VISCOUS_DC_LOW_OPERATOR_ALIASES = {
+    "componentwise": "component",
+    "tensor": "component",
+    "isotropic": "scalar",
+}
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler", "imex_bdf2")

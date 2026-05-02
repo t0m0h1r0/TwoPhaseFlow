@@ -155,6 +155,7 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
             solver=ctx.solver,
             dc_corrections=ctx.dc_max_iterations,
             dc_relaxation=ctx.dc_relaxation,
+            dc_low_operator=ctx.dc_low_operator,
         )
 
     def __init__(
@@ -168,6 +169,7 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         solver: str = "defect_correction",
         dc_corrections: int = 3,
         dc_relaxation: float = 0.8,
+        dc_low_operator: str = "component",
     ) -> None:
         self.backend = backend
         self.xp = backend.xp
@@ -178,6 +180,7 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         self.solver = str(solver).strip().lower()
         self.dc_corrections = int(dc_corrections)
         self.dc_relaxation = float(dc_relaxation)
+        self.dc_low_operator = str(dc_low_operator).strip().lower()
         self.last_diagnostics: dict[str, float] = {}
         self.last_residual_history: list[float] = []
         if self.solver not in {"defect_correction", "dc", "gmres"}:
@@ -281,6 +284,7 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
                 tolerance=self.tolerance,
                 max_corrections=self.dc_corrections,
                 relaxation=self.dc_relaxation,
+                low_operator=self.dc_low_operator,
             )
             solution = dc_solver.solve(
                 base_velocity=base_velocity,

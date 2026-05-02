@@ -918,6 +918,32 @@ def test_implicit_bdf2_viscosity_solver_selects_gmres():
     assert cfg.run.viscous_solver_restart == 21
 
 
+def test_implicit_bdf2_viscosity_dc_selects_scalar_low_operator():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "convection": {"time_integrator": "imex_bdf2"},
+                    "viscosity": {
+                        "time_integrator": "implicit_bdf2",
+                        "solver": {
+                            "kind": "defect_correction",
+                            "corrections": {
+                                "max_iterations": 3,
+                                "relaxation": 0.8,
+                                "low_operator": "scalar",
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.viscous_solver == "defect_correction"
+    assert cfg.run.viscous_dc_low_operator == "scalar"
+
+
 def test_invalid_interface_tracking_primary_rejected():
     with pytest.raises(ValueError, match="interface.tracking.primary"):
         ExperimentConfig.from_dict(_minimal({

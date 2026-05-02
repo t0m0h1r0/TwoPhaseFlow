@@ -50,6 +50,7 @@ class NSRuntimeComponentOptions:
     viscous_solver_restart: int
     viscous_dc_max_iterations: int
     viscous_dc_relaxation: float
+    viscous_dc_low_operator: str
     cn_mode: str
     surface_tension_scheme: str
 
@@ -125,6 +126,7 @@ def build_ns_runtime_components(
         viscous_solver_restart=options.viscous_solver_restart,
         viscous_dc_max_iterations=options.viscous_dc_max_iterations,
         viscous_dc_relaxation=options.viscous_dc_relaxation,
+        viscous_dc_low_operator=options.viscous_dc_low_operator,
     )
     st_force = build_ns_surface_tension_force(
         backend=backend,

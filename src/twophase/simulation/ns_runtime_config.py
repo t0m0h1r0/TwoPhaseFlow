@@ -62,6 +62,7 @@ class NSSchemeRuntimeState:
     viscous_solver_restart: int
     viscous_dc_max_iterations: int
     viscous_dc_relaxation: float
+    viscous_dc_low_operator: str
     momentum_gradient_scheme: str
     pressure_gradient_scheme: str
     surface_tension_gradient_scheme: str
@@ -252,6 +253,7 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         viscous_solver_restart=int(getattr(options, "viscous_solver_restart", 40)),
         viscous_dc_max_iterations=int(getattr(options, "viscous_dc_max_iterations", 3)),
         viscous_dc_relaxation=float(getattr(options, "viscous_dc_relaxation", 0.8)),
+        viscous_dc_low_operator=str(getattr(options, "viscous_dc_low_operator", "component")),
         momentum_gradient_scheme=momentum_gradient_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,

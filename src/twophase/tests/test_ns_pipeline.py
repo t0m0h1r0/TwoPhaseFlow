@@ -523,6 +523,62 @@ def test_implicit_bdf2_viscous_dc_reduces_high_residual():
     assert history[-1] < 0.05 * history[0]
 
 
+def test_implicit_bdf2_viscous_dc_scalar_low_reduces_high_residual():
+    """Scalar low Helmholtz remains a valid DC contraction operator."""
+    from twophase.ns_terms.viscous import ViscousTerm
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_predictors import ImplicitBDF2ViscousPredictor
+
+    solver_runtime = TwoPhaseNSSolver(
+        8,
+        8,
+        1.0,
+        1.0,
+        use_gpu=False,
+        convection_time_scheme="imex_bdf2",
+        viscous_time_scheme="implicit_bdf2",
+    )
+    X, Y = solver_runtime.X, solver_runtime.Y
+    u = np.sin(np.pi * X) * np.sin(np.pi * Y)
+    v = 0.2 * np.cos(np.pi * X) * np.sin(np.pi * Y)
+    zeros = np.zeros_like(u)
+    mu = 0.02 + 0.01 * (X + Y)
+    rho = 1.0 + 0.2 * np.sin(np.pi * X) ** 2
+    viscous = ViscousTerm(
+        solver_runtime._backend,
+        Re=1.0,
+        cn_viscous=True,
+        spatial_scheme="ccd_bulk",
+    )
+    predictor = ImplicitBDF2ViscousPredictor(
+        solver_runtime._backend,
+        viscous,
+        tolerance=1.0e-10,
+        dc_corrections=4,
+        dc_relaxation=0.8,
+        dc_low_operator="scalar",
+    )
+
+    predictor.predict_bdf2(
+        u,
+        v,
+        u,
+        v,
+        zeros,
+        zeros,
+        mu,
+        rho,
+        0.01,
+        solver_runtime._ccd,
+    )
+
+    history = predictor.last_residual_history
+    assert predictor.last_diagnostics["viscous_dc_low_operator_scalar"] == pytest.approx(1.0)
+    assert len(history) == 4
+    assert all(after < before for before, after in zip(history, history[1:]))
+    assert history[-1] < 0.25 * history[0]
+
+
 def test_pressure_projection_uses_projection_dt():
     """PPE RHS and fallback corrector must share γΔt, not the raw Δt."""
     from twophase.backend import Backend

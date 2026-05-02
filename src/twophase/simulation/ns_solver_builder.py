@@ -124,6 +124,19 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "ab2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
             viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "forward_euler")),
+            viscous_solver=str(getattr(run, "viscous_solver", "defect_correction")),
+            viscous_solver_tolerance=float(
+                getattr(run, "viscous_solver_tolerance", 1.0e-8)
+            ),
+            viscous_solver_max_iterations=int(
+                getattr(run, "viscous_solver_max_iterations", 80)
+            ),
+            viscous_solver_restart=int(getattr(run, "viscous_solver_restart", 40)),
+            viscous_dc_max_iterations=int(getattr(run, "viscous_dc_max_iterations", 3)),
+            viscous_dc_relaxation=float(getattr(run, "viscous_dc_relaxation", 0.8)),
+            viscous_dc_low_operator=str(
+                getattr(run, "viscous_dc_low_operator", "component")
+            ),
             cn_mode=str(getattr(run, "cn_mode", "picard")),
             cn_buoyancy_predictor_assembly_mode=str(
                 getattr(run, "cn_buoyancy_predictor_assembly_mode", "none")

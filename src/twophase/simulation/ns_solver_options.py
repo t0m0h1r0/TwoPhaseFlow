@@ -104,6 +104,7 @@ class SolverSchemeOptions:
     viscous_solver_restart: int = 40
     viscous_dc_max_iterations: int = 3
     viscous_dc_relaxation: float = 0.8
+    viscous_dc_low_operator: str = "component"
     cn_mode: str = "picard"
     cn_buoyancy_predictor_assembly_mode: str = "none"
     uccd6_sigma: float = 1.0e-3

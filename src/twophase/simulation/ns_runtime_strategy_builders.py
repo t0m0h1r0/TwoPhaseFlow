@@ -37,6 +37,7 @@ def build_ns_viscous_predictor(
     viscous_solver_restart: int = 40,
     viscous_dc_max_iterations: int = 3,
     viscous_dc_relaxation: float = 0.8,
+    viscous_dc_low_operator: str = "component",
 ):
     from .ns_option_canonicalizer import canonicalize_viscous_time_scheme
     from ..ns_terms.viscous import ViscousTerm
@@ -67,6 +68,7 @@ def build_ns_viscous_predictor(
             solver_restart=viscous_solver_restart,
             dc_max_iterations=viscous_dc_max_iterations,
             dc_relaxation=viscous_dc_relaxation,
+            dc_low_operator=viscous_dc_low_operator,
         ),
     )
 

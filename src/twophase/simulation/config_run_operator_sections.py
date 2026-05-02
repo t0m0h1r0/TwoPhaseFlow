@@ -14,6 +14,8 @@ from .config_constants import (
     _MOMENTUM_FORMS,
     _SURFACE_TENSION_ALIASES as _SURFACE_TENSION_ALIASES_BASE,
     _SURFACE_TENSION_SCHEMES,
+    _VISCOUS_DC_LOW_OPERATOR_ALIASES,
+    _VISCOUS_DC_LOW_OPERATORS,
     _VISCOUS_SPATIAL_ALIASES as _VISCOUS_SPATIAL_ALIASES_BASE,
     _VISCOUS_SPATIAL_SCHEMES,
     _VISCOUS_SOLVER_ALIASES,
@@ -225,6 +227,20 @@ def parse_run_operator_settings(
     viscous_solver_restart = int(viscous_solver_cfg.get("restart", 40))
     viscous_dc_max_iterations = int(viscous_dc_cfg.get("max_iterations", 3))
     viscous_dc_relaxation = float(viscous_dc_cfg.get("relaxation", 0.8))
+    raw_viscous_dc_low_operator = str(
+        viscous_dc_cfg.get(
+            "low_operator",
+            viscous_solver_cfg.get("low_operator", "component"),
+        )
+    ).strip().lower()
+    viscous_dc_low_operator = validate_choice(
+        _VISCOUS_DC_LOW_OPERATOR_ALIASES.get(
+            raw_viscous_dc_low_operator,
+            raw_viscous_dc_low_operator,
+        ),
+        _VISCOUS_DC_LOW_OPERATORS,
+        f"{layout['paths']['viscosity_time']}.solver.corrections.low_operator",
+    )
     if viscous_solver_tolerance <= 0.0:
         raise ValueError(
             f"{layout['paths']['viscosity_time']}.solver.tolerance must be > 0"
@@ -303,6 +319,7 @@ def parse_run_operator_settings(
         "viscous_solver_restart": viscous_solver_restart,
         "viscous_dc_max_iterations": viscous_dc_max_iterations,
         "viscous_dc_relaxation": viscous_dc_relaxation,
+        "viscous_dc_low_operator": viscous_dc_low_operator,
         "cn_mode": cn_mode,
         "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
     }

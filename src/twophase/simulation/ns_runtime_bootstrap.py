@@ -87,6 +87,9 @@ def build_ns_runtime_bootstrap(
             viscous_dc_relaxation=float(
                 getattr(scheme_options, "viscous_dc_relaxation", 0.8)
             ),
+            viscous_dc_low_operator=str(
+                getattr(scheme_options, "viscous_dc_low_operator", "component")
+            ),
             cn_mode=cn_mode,
             surface_tension_scheme=surface_tension_scheme,
         ),

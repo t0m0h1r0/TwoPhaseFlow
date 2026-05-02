@@ -233,6 +233,7 @@ viscosity:
     corrections:
       max_iterations: 3
       relaxation: 0.8
+      low_operator: component  # or scalar; scalar uses c=(d+1)/d isotropic low solve
 ```
 - `projection.poisson.operator.discretization: fccd`,
   `coefficient: phase_separated`,

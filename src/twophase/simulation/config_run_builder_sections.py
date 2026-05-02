@@ -150,6 +150,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         viscous_solver_restart=options.operator_settings["viscous_solver_restart"],
         viscous_dc_max_iterations=options.operator_settings["viscous_dc_max_iterations"],
         viscous_dc_relaxation=options.operator_settings["viscous_dc_relaxation"],
+        viscous_dc_low_operator=options.operator_settings["viscous_dc_low_operator"],
         cn_mode=options.operator_settings["cn_mode"],
         cn_buoyancy_predictor_assembly_mode=options.operator_settings[
             "cn_buoyancy_predictor_assembly_mode"

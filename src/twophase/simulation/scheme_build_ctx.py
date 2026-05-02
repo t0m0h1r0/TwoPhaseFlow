@@ -69,6 +69,7 @@ class ViscousBuildCtx:
     solver_restart: int = 40
     dc_max_iterations: int = 3
     dc_relaxation: float = 0.8
+    dc_low_operator: str = "component"
 
 
 @dataclass
