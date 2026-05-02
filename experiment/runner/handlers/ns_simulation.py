@@ -1,4 +1,4 @@
-"""ch14 NS-simulation handlers — capillary wave and rising bubble.
+"""ch14 NS-simulation handlers — capillary wave and circle-interface cases.
 
 These handlers consume the ``ExperimentConfig`` schema (top-level
 ``grid``/``physics``/``run``/``output``/``initial_condition``...) loaded
@@ -255,4 +255,4 @@ class CapillaryWaveHandler(_NSSimulationHandler):
 
 @register_handler("circle")
 class RisingBubbleHandler(_NSSimulationHandler):
-    """Two-phase rising bubble (Hysing benchmark family)."""
+    """Two-phase circle-interface benchmarks: rising bubble and static droplet."""

@@ -1,9 +1,10 @@
 # ch14 Benchmark YAML Design
 
 The §14 benchmark set is the canonical surface for the two-phase NS production
-stack. Three production YAML files are checked in:
+stack. Four production YAML files are checked in:
 
 - `ch14_capillary.yaml` — capillary-wave benchmark.
+- `ch14_static_droplet_periodic.yaml` — periodic static-droplet benchmark.
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
@@ -14,6 +15,7 @@ overrides, not checked in as additional capillary YAMLs.
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
+- `python experiment/run.py --config ch14_static_droplet_periodic`
 - `python experiment/run.py --config ch14_rising_bubble`
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
