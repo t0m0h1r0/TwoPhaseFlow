@@ -42,7 +42,7 @@ class SolverGridOptions:
 class SolverInterfaceOptions:
     """Interface-transport and remap settings."""
 
-    grid_rebuild_freq: int = 1
+    grid_rebuild_freq: int = 0
     reinit_every: int = 2
     reinit_method: str = "ridge_eikonal"
     reproject_variable_density: bool = False

@@ -143,6 +143,28 @@ def test_ridge_topology_single_merged_disk(backend):
     )
 
 
+def test_nonuniform_ridge_extraction_requires_ccd(backend):
+    grid, _ = _mk_grid(n=32, L=1.0, alpha=2.0, backend=backend)
+    phi = _phi_circle(grid, 0.5, 0.5, 0.25)
+    ext = RidgeExtractor(backend, grid, sigma_0=3.0)
+    xi = ext.compute_xi_ridge(phi)
+
+    with pytest.raises(ValueError, match="requires CCDSolver"):
+        ext.extract_ridge_mask(xi)
+
+
+def test_nonuniform_ridge_extraction_uses_ccd(backend):
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=2.0, backend=backend)
+    phi = _phi_circle(grid, 0.5, 0.5, 0.25)
+    ext = RidgeExtractor(backend, grid, sigma_0=3.0, ccd=ccd)
+    xi = ext.compute_xi_ridge(phi)
+
+    mask = np.asarray(ext.extract_ridge_mask(xi))
+
+    assert mask.shape == phi.shape
+    assert mask.any(), "non-uniform CCD Hessian path should produce ridge seeds"
+
+
 # ── V2 — sigma_eff spatial scaling under alpha=2 stretching ────────────
 
 def test_sigma_eff_convergence_alpha2(backend):
@@ -656,6 +678,24 @@ def test_gpu_parity_ridge_kernels():
     s_gpu = ext_gpu.sigma_eff
     s_gpu = s_gpu.get() if hasattr(s_gpu, "get") else np.asarray(s_gpu)
     np.testing.assert_allclose(s_cpu, s_gpu, rtol=1e-12, atol=1e-14)
+
+
+@pytest.mark.gpu
+def test_gpu_nonuniform_ridge_extraction_stays_on_device():
+    """D2 Hessian path must use GPU CCD arrays, not a host fallback."""
+    try:
+        gpu = Backend(use_gpu=True)
+    except Exception as e:
+        pytest.skip(f"GPU backend unavailable: {e}")
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=2.0, backend=gpu)
+    phi = _phi_circle(grid, 0.5, 0.5, 0.25)
+    ext = RidgeExtractor(gpu, grid, sigma_0=3.0, ccd=ccd)
+
+    xi = ext.compute_xi_ridge(gpu.xp.asarray(phi))
+    mask = ext.extract_ridge_mask(xi)
+
+    assert hasattr(mask, "get"), "GPU ridge extraction must return a device array"
+    assert bool(mask.any().item())
 
 
 @pytest.mark.gpu

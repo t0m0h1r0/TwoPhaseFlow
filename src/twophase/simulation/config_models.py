@@ -35,7 +35,7 @@ class GridCfg:
     fitting_dx_min_floor: tuple[float, float] = (1e-6, 1e-6)
     use_local_eps: bool = False
     eps_xi_cells: float | None = None
-    grid_rebuild_freq: int = 1
+    grid_rebuild_freq: int = 0
     interface_fitting_enabled: bool = True
     interface_fitting_method: str = "gaussian_levelset"
 

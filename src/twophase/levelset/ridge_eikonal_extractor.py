@@ -10,6 +10,7 @@ from .ridge_eikonal_kernels import _sigma_eff_kernel
 
 if TYPE_CHECKING:
     from ..backend import Backend
+    from ..ccd.ccd_solver import CCDSolver
 
 
 class RidgeExtractor:
@@ -23,9 +24,11 @@ class RidgeExtractor:
         h_ref: float | None = None,
         wall_closure: bool = True,
         wall_axes: tuple[bool, ...] | None = None,
+        ccd: "CCDSolver | None" = None,
     ):
         self._xp = backend.xp
         self._grid = grid
+        self._ccd = ccd
         self._sigma_0 = float(sigma_0)
         if wall_axes is None:
             wall_axes = tuple(bool(wall_closure) for _axis in range(grid.ndim))
@@ -86,19 +89,39 @@ class RidgeExtractor:
         loc_y[:, 1:-1] = (xi[:, 1:-1] > xi[:, :-2]) & (xi[:, 1:-1] > xi[:, 2:])
         local_max = loc_x | loc_y
 
-        hx = self._grid.h[0]
-        hy = self._grid.h[1]
-        hx_dev = xp.asarray(hx).reshape(-1, 1)
-        hy_dev = xp.asarray(hy).reshape(1, -1)
+        if self._ccd is not None:
+            gx, hxx = self._ccd.differentiate(xi, 0)
+            gy, hyy = self._ccd.differentiate(xi, 1)
+            hxy = self._ccd.first_derivative(gx, 1)
+        else:
+            if not self._grid.uniform:
+                raise ValueError(
+                    "non-uniform ridge extraction requires CCDSolver; "
+                    "low-order Hessian fallback is not permitted"
+                )
+            hx = self._grid.h[0]
+            hy = self._grid.h[1]
+            hx_dev = xp.asarray(hx).reshape(-1, 1)
+            hy_dev = xp.asarray(hy).reshape(1, -1)
 
-        hxx = xp.zeros_like(xi)
-        hyy = xp.zeros_like(xi)
-        hxy = xp.zeros_like(xi)
-        hxx[1:-1, :] = (xi[2:, :] - 2.0 * xi[1:-1, :] + xi[:-2, :]) / (hx_dev[1:-1] * hx_dev[1:-1])
-        hyy[:, 1:-1] = (xi[:, 2:] - 2.0 * xi[:, 1:-1] + xi[:, :-2]) / (hy_dev[:, 1:-1] * hy_dev[:, 1:-1])
-        hxy[1:-1, 1:-1] = (xi[2:, 2:] - xi[2:, :-2] - xi[:-2, 2:] + xi[:-2, :-2]) / (
-            4.0 * hx_dev[1:-1] * hy_dev[:, 1:-1]
-        )
+            hxx = xp.zeros_like(xi)
+            hyy = xp.zeros_like(xi)
+            hxy = xp.zeros_like(xi)
+            hxx[1:-1, :] = (xi[2:, :] - 2.0 * xi[1:-1, :] + xi[:-2, :]) / (hx_dev[1:-1] * hx_dev[1:-1])
+            hyy[:, 1:-1] = (xi[:, 2:] - 2.0 * xi[:, 1:-1] + xi[:, :-2]) / (hy_dev[:, 1:-1] * hy_dev[:, 1:-1])
+            hxy[1:-1, 1:-1] = (xi[2:, 2:] - xi[2:, :-2] - xi[:-2, 2:] + xi[:-2, :-2]) / (
+                4.0 * hx_dev[1:-1] * hy_dev[:, 1:-1]
+            )
+            hx_bwd = xp.roll(hx_dev, 1, axis=0)
+            hx_fwd = xp.roll(hx_dev, -1, axis=0)
+            hy_bwd = xp.roll(hy_dev, 1, axis=1)
+            hy_fwd = xp.roll(hy_dev, -1, axis=1)
+            dx2 = hx_dev[1:-1] + 0.5 * (hx_bwd[1:-1] + hx_fwd[1:-1])
+            dy2 = hy_dev[:, 1:-1] + 0.5 * (hy_bwd[:, 1:-1] + hy_fwd[:, 1:-1])
+            gx = xp.zeros_like(xi)
+            gy = xp.zeros_like(xi)
+            gx[1:-1, :] = (xi[2:, :] - xi[:-2, :]) / dx2
+            gy[:, 1:-1] = (xi[:, 2:] - xi[:, :-2]) / dy2
 
         hess_neg = (hxx < 0.0) | (hyy < 0.0) | ((hxx + hyy) < 0.0)
         det_h = hxx * hyy - hxy * hxy
@@ -131,16 +154,6 @@ class RidgeExtractor:
                 & (hxx[1:-1, -1] < 0.0)
             )
 
-        hx_bwd = xp.roll(hx_dev, 1, axis=0)
-        hx_fwd = xp.roll(hx_dev, -1, axis=0)
-        hy_bwd = xp.roll(hy_dev, 1, axis=1)
-        hy_fwd = xp.roll(hy_dev, -1, axis=1)
-        dx2 = hx_dev[1:-1] + 0.5 * (hx_bwd[1:-1] + hx_fwd[1:-1])
-        dy2 = hy_dev[:, 1:-1] + 0.5 * (hy_bwd[:, 1:-1] + hy_fwd[:, 1:-1])
-        gx = xp.zeros_like(xi)
-        gy = xp.zeros_like(xi)
-        gx[1:-1, :] = (xi[2:, :] - xi[:-2, :]) / dx2
-        gy[:, 1:-1] = (xi[:, 2:] - xi[:, :-2]) / dy2
         grad_mag = xp.sqrt(gx * gx + gy * gy)
         tol = 0.5 * xp.max(grad_mag)
         ridge_mask = (ridge_mask & (grad_mag < tol + 1e-30)) | boundary_ridge
