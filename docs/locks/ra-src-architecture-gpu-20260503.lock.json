@@ -1,0 +1,9 @@
+{
+  "id": "CHK-RA-SRC-005",
+  "branch": "ra-src-architecture-gpu-20260503",
+  "worktree": ".claude/worktrees/ra-src-architecture-gpu-20260503",
+  "scope": "src unified architecture refactor and GPU optimization",
+  "session_id": "B394696F-3271-4CE1-BFFE-7A90CF43B494",
+  "id_prefix": "RA-SRC",
+  "created_at": "2026-05-03T02:19:52+09:00"
+}
