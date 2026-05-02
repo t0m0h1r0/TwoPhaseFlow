@@ -1,0 +1,164 @@
+# Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
+# ch14_static_droplet.yaml. The circular initial interface is replaced by
+# r(theta)=R(1+epsilon cos(2 theta)); velocity and gravity remain zero.
+
+grid:
+  cells: [64, 64]
+  domain:
+    size: [1.0, 1.0]
+    boundary: periodic
+  distribution:
+    schedule: 1
+    axes:
+      x:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+      y:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+
+interface:
+  thickness:
+    mode: local
+    base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_filtered
+      cap: 8.0
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 20
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
+
+physics:
+  phases:
+    liquid:
+      rho: 1.0
+      mu: 0.0
+    gas:
+      rho: 1.0e-3
+      mu: 0.0
+  surface_tension: 1.0
+  gravity: 0.0
+
+run:
+  time:
+    final: 0.7
+    # Below the N=64 explicit capillary step for rho_m=(rho_l+rho_g)/2.
+    dt: 0.0008
+    print_every: 100
+  debug:
+    step_diagnostics: false
+
+numerics:
+  time:
+    algorithm: fractional_step
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+  momentum:
+    predictor:
+      assembly: balanced_buoyancy
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: ab2
+      pressure:
+        gradient: fccd
+      viscosity:
+        spatial: ccd
+        time_integrator: forward_euler
+      surface_tension:
+        formulation: pressure_jump
+  projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: affine_jump
+      solver:
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 0.7
+        base_solver:
+          discretization: fd
+          kind: direct
+
+output:
+  dir: results/ch14_oscillating_droplet
+  save_npz: true
+  snapshots:
+    interval: 0.1
+  figures:
+    - type: time_series
+      title: "Rayleigh-Lamb n=2 droplet: signed deformation"
+      x: times
+      y: [signed_deformation]
+      labels: ["simulation"]
+      xlabel: "$t$"
+      ylabel: "$D_s(t)$"
+      analytical:
+        formula: prosperetti
+        omega0: 19.585130
+        beta: 0.0
+        D0: 0.05
+      file: signed_deformation.pdf
+
+    - type: time_series
+      title: "Rayleigh-Lamb n=2 droplet: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: time_series
+      title: "Rayleigh-Lamb n=2 droplet: kinetic energy"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
+
+initial_condition:
+  type: perturbed_circle
+  center: [0.5, 0.5]
+  radius: 0.25
+  epsilon: 0.05
+  mode: 2
+  interior_phase: liquid
+
+initial_velocity: null
+boundary_condition: null
