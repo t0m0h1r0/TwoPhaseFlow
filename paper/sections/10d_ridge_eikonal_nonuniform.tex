@@ -84,14 +84,14 @@ $\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
 
 許容される評価経路：
 \begin{enumerate}
-  \item\textbf{Approach A（主経路）}——物理空間 Direct 非一様 CCD
+  \item\textbf{評価式 A（採用する高次評価）}——物理空間の非一様 CCD
         で Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2\xiridge$ を直接評価する．
-  \item\textbf{Approach B（確認用 fallback）}——
+  \item\textbf{評価式 B（低次の確認評価）}——
         物理空間二階 FD で $H_{xx},H_{xy},H_{yy}$ を近似し，
         符号判定 $\lambda_{\min}(H)<0$ または
         $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}<0$ を
-        $H^{\text{FD}}$ で行う．これは 2 次精度のデバッグ経路に限り，
-        Morse 非退化点でも固有値の符号余裕が小さい場合は Approach A を用いる．
+        $H^{\text{FD}}$ で行う．これは 2 次精度の確認評価に限り，
+        Morse 非退化点でも固有値の符号余裕が小さい場合は評価式 A を用いる．
 \end{enumerate}
 
 \paragraph{D3 — 非一様 FMM}
@@ -192,7 +192,7 @@ $S_h$ に人工的な零 seed を追加する根拠にはならない．
 \end{equation}
 とし，$\lambda$ は通常の体積制約から決める．
 この補正は Navier--Stokes の壁面速度・圧力条件を変更するものではなく，
-Ridge--Eikonal と格子 monitor が $\overline{\Omega}$ 上の界面閉包を
+Ridge--Eikonal と格子モニタが $\overline{\Omega}$ 上の界面閉包を
 保存するための幾何契約である．
 
 % -------------------------------------------------------------------------------
@@ -236,7 +236,7 @@ Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2 \xiridge$ は
 \S\ref{sec:ccd_metric} の非一様 CCD（座標変換法）は
 ノード値から直接物理空間の第一・第二導関数を返す演算子
 $\mathbf{D}_1^\text{CCD,nu}, \mathbf{D}_2^\text{CCD,nu}$ を提供するため，
-Approach A（主経路）は以下のフル Hessian 行列で定義する：
+評価式 A は以下のフル Hessian 行列で定義する：
 \begin{equation}
   \mathbf{H}_{\xiridge,i,j}^{\text{nu}}
   =
@@ -267,7 +267,7 @@ $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}
 = n_x^2H_{xx}+2n_xn_yH_{xy}+n_y^2H_{yy}$ として
 混合項を保持する．
 
-\noindent\textbf{Approach B（fallback）}：
+\noindent\textbf{評価式 B（低次確認評価）}：
 物理空間二階 FD
 \[
   [\partial_x^2\xiridge]_{i,j}
@@ -277,7 +277,7 @@ $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}
 \]
 は 2 次精度に留まるが，Morse 非退化リッジ\textbf{かつ曲率半径 $R \gg h_\text{min}$}では
 符号判定に影響しない（小曲率半径の薄いリッジでは $\Ord{h^2}$ 誤差が
-$\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため Approach A を推奨）．
+$\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため評価式 A を採用する）．
 混合成分 $H_{xy}$ は §~\ref{sec:ccd_mixed} と同じ 2 段適用で評価し，
 対角成分だけに落とさない．
 したがって二階 FD 経路は確認計算に限る．
@@ -291,15 +291,14 @@ $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため Approa
 $d = (a_x/h_x^2 + a_y/h_y^2 + \sqrt{D})/(1/h_x^2 + 1/h_y^2)$ を
 格子層で組み立てるには，
 各ノード $(i,j)$ に対する隣接セル幅 $(h_x(i), h_y(j))$ を
-FMM ヒープの priority 計算時に即座に参照する必要がある．
+FMM の確定順序を定める各更新で参照する必要がある．
 必要条件は以下：
 \begin{itemize}
   \item \textbf{セル幅配列}：
         \S\ref{sec:grid_gen} の $\{x_i\}_i, \{y_j\}_j$ から
         $h_x[i] := x_i - x_{i-1}$，$h_y[j] := y_j - y_{j-1}$ を定義
         （\S\ref{sec:fccd_nu_geometry} の $H_i$ と同義；本節の $h_x[i] = H_i$ として参照）．
-        FMM 内の各 tentative 更新は $O(1)$ テーブル参照のみ．
-  \item \textbf{判別式負時の fallback}：
+  \item \textbf{判別式負時の一次元単調更新}：
         $D<0$ のとき一次元単調更新
         $d = \min(a_x + h_x(i),\,a_y + h_y(j))$．
         コーナー近傍や急な密度勾配帯で発生し，
@@ -320,11 +319,10 @@ FMM ヒープの priority 計算時に即座に参照する必要がある．
 \end{itemize}
 
 \noindent この結線により FMM のワンパス計算量は
-一様版と同じ $\mathcal{O}(N \log N)$ を維持し，
-一軸あたり 1.0--1.2$\times$（$h_x[i]$ 参照の分）．
+一様版と同じ $\mathcal{O}(N \log N)$ に留まる．
 
 \noindent\textbf{並列化時の等価性要件．}
-非一様 FMM は Accepted 集合から最小 tentative 値を順に確定する
+非一様 FMM は Accepted 集合から最小の未確定候補値を順に確定する
 因果的 Eikonal 解法であり~\cite{Sethian1996}，固定回数の sweeping や Jacobi 型緩和に置き換えると
 式~\eqref{eq:fmm_nonuniform} の粘性解を同じ順序で近似したことにならない．
 したがって並列化しても，距離場，Accepted/freezing 集合，
@@ -377,8 +375,8 @@ D1--D4 の効果が次のように簡素化される：
         離散化では $H_{xy}$ も保持して
         斜め界面・曲率帯での符号反転を避ける．
   \item \textbf{D3 FMM}：界面から距離 $\mathcal{O}(\varepsilon_\text{local})$ の
-        narrow band のみで実行．$D<0$ fallback の発動率は 1\% 未満
-        （本稿の実測値）．
+        narrow band のみで実行．$D<0$ の一次元単調更新は
+        密度勾配帯が急すぎないことを確認する診断量となる．
   \item \textbf{D4 $\varepsilon_\text{local}$}：界面帯で一様値
         $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
 \end{itemize}
@@ -386,28 +384,27 @@ D1--D4 の効果が次のように簡素化される：
 「界面帯での一様近似 + 密度勾配帯での正則化」として作用する．
 ただし，これは D1--D4 の数式上の接続であり，
 移動界面，分裂合体，分相 PPE，HFE，pressure-jump を同時に含む
-長時間 NS 計算での標準閉包としての実証は別ゲートとして残る．
+長時間 NS 計算での標準閉包としての実証は別の検証課題として残る．
 一方，壁面接触については式~\eqref{eq:wall_closed_interface}--\eqref{eq:contact_pinned_mass_correction}
 により，幾何再構成が有限 gap を作らないことを離散契約として要求する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{計算コスト・プレ計算・FCCD との接続}
+\subsubsection{幾何量・演算量・FCCD との接続}
 \label{sec:ridge_nu_cost}
 % -------------------------------------------------------------------------------
 
-\noindent\textbf{プレ計算（1 回のみ）}：
+\noindent\textbf{固定格子で定まる幾何量}：
 $\sigma_\text{eff}[i,j]$，$h_x[i]$，$h_y[j]$，$\varepsilon_\text{local}[i,j]$ の
-4 配列を格子構築時にキャッシュ（$\mathcal{O}(N_x N_y)$ メモリ）．
-ALE モードでは格子更新ごとに再計算．
+4 つは格子構築時に定まる空間場である（$\mathcal{O}(N_x N_y)$ メモリ）．
+追従格子を採用する場合は格子更新ごとに再定義する．
 
-\noindent\textbf{ランタイムコスト}（再初期化 1 回）：
+\noindent\textbf{演算量}（再初期化 1 回）：
 \begin{itemize}
   \item D2 非一様 CCD Hessian: $\mathcal{O}(N_x N_y)$（\S\ref{sec:ccd_metric}）
   \item D3 非一様 FMM: $\mathcal{O}(N_x N_y \log(N_x N_y))$
   \item D4 $\varepsilon_\text{local}$ テーブル参照: $\mathcal{O}(N_x N_y)$
 \end{itemize}
 合計は一様版と同じ漸近オーダー．
-一軸あたり実行時間は一様版の 1.1--1.3$\times$．
 
 \noindent\textbf{FCCD との接続}：
 \S\ref{sec:ridge_fccd_handoff} で示した通り，
@@ -417,7 +414,7 @@ Ridge--Eikonal で再構成された $\phi$ は
 非一様 FCCD の係数 $(\mu_i, \lambda_i)$ と
 本節の $\sigma_\text{eff}, \varepsilon_\text{local}$ は
 \textbf{同じ格子幾何テーブル} $(h_x, h_y, \mathsf{X}_\xi, \mathsf{Y}_\eta)$ から派生するため，
-格子層のプレ計算を一度行えば両アルゴリズムが同じキャッシュを共有できる
+両者は同じ離散幾何に基づいて定義される
 （主本文 $J_x^{\mathrm{main}}, J_y^{\mathrm{main}}$ は逆数 $1/\mathsf{X}_\xi, 1/\mathsf{Y}_\eta$ で得る）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
