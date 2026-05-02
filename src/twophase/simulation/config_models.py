@@ -88,8 +88,8 @@ class RunCfg:
     reinit_method: str | None = None
     dgr_phi_smooth_C: float = 0.0
     ridge_sigma_0: float = 3.0
-    advection_scheme: str = "dissipative_ccd"
-    convection_scheme: str = "ccd"
+    advection_scheme: str = "fccd_flux"
+    convection_scheme: str = "uccd6"
     ppe_solver: str = "fvm_iterative"
     ppe_dc_base_solver: str | None = None
     pressure_scheme: str = "fvm_matrixfree"

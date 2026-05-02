@@ -161,7 +161,7 @@ class ViscousSpatialEvaluator:
             lap += ccd.second_derivative(component, axis)
         return mu * lap
 
-    def _axis_derivative_with_normal_fallback(
+    def _axis_derivative_with_interface_switch(
         self,
         data,
         axis: int,
@@ -208,14 +208,14 @@ class ViscousSpatialEvaluator:
     ):
         total = self.xp.zeros_like(vel[alpha])
         for beta in range(len(vel)):
-            du_a_dbeta = self._axis_derivative_with_normal_fallback(
+            du_a_dbeta = self._axis_derivative_with_interface_switch(
                 vel[alpha], beta, ccd, normal_axis_masks
             )
-            du_b_dalpha = self._axis_derivative_with_normal_fallback(
+            du_b_dalpha = self._axis_derivative_with_interface_switch(
                 vel[beta], alpha, ccd, normal_axis_masks
             )
             stress = mu * (du_a_dbeta + du_b_dalpha)
-            total += self._axis_derivative_with_normal_fallback(
+            total += self._axis_derivative_with_interface_switch(
                 stress, beta, ccd, normal_axis_masks
             )
         return total

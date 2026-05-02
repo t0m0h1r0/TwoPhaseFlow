@@ -55,7 +55,23 @@ def compute_metrics(
             J_ax = 1.0 / d1_raw
             dJ_ax = -d2_raw / (d1_raw ** 2)
         else:
-            # O(h^2) central-difference fallback
+            coords_ax_host = np.asarray(coords[ax], dtype=float)
+            cell_widths = np.diff(coords_ax_host)
+            coords_are_uniform = (
+                cell_widths.size == 0
+                or np.allclose(
+                    cell_widths,
+                    cell_widths[0],
+                    rtol=1.0e-12,
+                    atol=1.0e-14,
+                )
+            )
+            if not uniform and not coords_are_uniform:
+                raise ValueError(
+                    "non-uniform grid metrics require a CCDSolver; "
+                    "low-order metric substitution is not permitted"
+                )
+            # Exact uniform-coordinate metric path used before CCD exists.
             dxi = 1.0 / N[ax]
             h_ax = xp.asarray(h[ax])
             J_ax = dxi / h_ax

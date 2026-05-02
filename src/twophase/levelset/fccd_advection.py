@@ -1,5 +1,5 @@
 """
-FCCD level-set advection: ∂_t ψ + u·∇ψ = 0 via FCCDSolver primitives.
+FCCD level-set advection: ∂_t ψ + ∇·(ψu) = 0 via FCCDSolver primitives.
 
 Mirror of :class:`DissipativeCCDAdvection` with the inner operator replaced
 by FCCD's face-centered scheme. Two modes (SP-D §10):
@@ -9,8 +9,8 @@ by FCCD's face-centered scheme. Two modes (SP-D §10):
         by u^(k) and sum. Drop-in shape-compatible with DissipativeCCDAdvection.
 
     mode='flux'  (Option B)
-        Conservative skew-symmetric face flux divergence; discretely
-        volume-preserving for uniform grids with periodic BC.
+        Conservative single-face-value flux divergence; clamp-stage mass
+        error is closed by the ψ-space transport mass correction.
 
 TVD-RK3 time integration; optional per-stage clamp to keep ψ ∈ [0, 1].
 The spectral filter ε_d (DissipativeCCDAdvection default 0.05) is kept as
@@ -18,7 +18,8 @@ an optional post-stage smoother for stability with under-resolved
 interfaces (SP-D §10); disable when FCCD's natural 4th-order dissipation
 is sufficient.
 
-GPU/CPU unified via ``backend.xp``. Mass-correction hook inherited.
+GPU/CPU unified via ``backend.xp``. Mass-correction hook is retained for
+standalone ψ advection; solver transport applies the Ch6 ψ-space correction.
 """
 
 from __future__ import annotations
@@ -126,10 +127,10 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
         return q_new
 
-    # ── RHS: −u·∇ψ via FCCD ─────────────────────────────────────────────
+    # ── RHS: −∇·(ψu) via FCCD ───────────────────────────────────────────
 
     def _rhs(self, psi, vel, *, skip_zero_check: bool = False):
-        """−u·∇ψ using FCCDSolver (Option C or B per ``self._mode``)."""
+        """−∇·(ψu) in flux mode, or −u·∇ψ in nodal mode."""
         return self._fccd.advection_rhs(
             vel,
             scalar=psi,

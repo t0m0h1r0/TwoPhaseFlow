@@ -91,8 +91,8 @@ class SolverSchemeOptions:
     Re: float = 1.0
     surface_tension_scheme: str = "csf"
     convection_time_scheme: str = "ab2"
-    advection_scheme: str = "dissipative_ccd"
-    convection_scheme: str = "ccd"
+    advection_scheme: str = "fccd_flux"
+    convection_scheme: str = "uccd6"
     pressure_gradient_scheme: str | None = None
     surface_tension_gradient_scheme: str | None = None
     momentum_gradient_scheme: str = "projection_consistent"

@@ -103,6 +103,8 @@ def build_ns_runtime_components(
             adv,
             reinit,
             reinit_every=options.reinit_every,
+            grid=grid,
+            mass_correction=True,
         )
 
     step_diag = build_ns_step_diagnostics(
