@@ -29,11 +29,11 @@ interface:
   geometry:
     curvature:
       method: psi_direct_filtered
-      cap: 8.0
+      cap: 100.0
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 0
+      every_steps: 20
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0

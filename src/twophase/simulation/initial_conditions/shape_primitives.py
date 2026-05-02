@@ -253,8 +253,17 @@ class Ellipse(ShapePrimitive):
         xp = _xp_like(X)
         cx, cy = self.center
         a, b = self.semi_axes
-        q = xp.sqrt(((X - cx) / a) ** 2 + ((Y - cy) / b) ** 2)
-        return min(a, b) * (q - 1.0)
+        dx = X - cx
+        dy = Y - cy
+        q = xp.sqrt((dx / a) ** 2 + (dy / b) ** 2)
+        q_safe = xp.maximum(q, 1.0e-14)
+        grad_q = xp.sqrt(
+            (dx / (a * a * q_safe)) ** 2
+            + (dy / (b * b * q_safe)) ** 2
+        )
+        grad_safe = xp.maximum(grad_q, 1.0e-14)
+        scale = xp.where(grad_q > 1.0e-14, 1.0 / grad_safe, min(a, b))
+        return (q - 1.0) * scale
 
 
 @dataclass
