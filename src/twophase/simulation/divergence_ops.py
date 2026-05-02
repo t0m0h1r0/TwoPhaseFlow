@@ -195,6 +195,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
     def __init__(self, fccd: "FCCDSolver") -> None:
         self._fccd = fccd
         self._node_width = None
+        self._face_spacing = None
         self.supports_zero_projection_shortcut = True
 
     def divergence(self, components: list["array"]) -> "array":
@@ -239,8 +240,6 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         interface_stress_context=None,
     ) -> list["array"]:
         """Compute PPE-consistent face pressure fluxes."""
-        import numpy as _np
-
         xp = self._fccd.xp
         grid = self._fccd.grid
         ndim = grid.ndim
@@ -252,11 +251,6 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 s = [slice(None)] * ndim
                 s[ax] = slice(start, stop)
                 return tuple(s)
-
-            d_face = _np.asarray(grid.coords[axis][1:] - grid.coords[axis][:-1])
-            shape = [1] * ndim
-            shape[axis] = -1
-            d_face_arr = xp.asarray(d_face.reshape(shape))
 
             rho_lo = rho[sl(0, n_cells)]
             rho_hi = rho[sl(1, n_cells + 1)]
@@ -273,9 +267,11 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             if pressure_gradient == "fccd":
                 pressure_face_gradient = self._fccd.face_gradient(p, axis)
             else:
+                if self._face_spacing is None:
+                    self._init_face_spacing()
                 pressure_face_gradient = (
                     p[sl(1, n_cells + 1)] - p[sl(0, n_cells)]
-                ) / d_face_arr
+                ) / self._face_spacing[axis]
             if interface_coupling_scheme == "affine_jump":
                 pressure_face_gradient = pressure_face_gradient - signed_pressure_jump_gradient(
                     xp=xp,
@@ -355,6 +351,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             for axis in range(self._fccd.ndim)
         ]
         self._node_width = None
+        self._face_spacing = None
 
     def _face_flux_divergence(self, face_flux, axis: int):
         """Divergence paired with the FCCD PPE wall-control-volume rows."""
@@ -387,6 +384,19 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             width[-1] = 0.5 * d_face[-1]
             width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
             self._node_width.append(self._fccd.xp.asarray(width))
+
+    def _init_face_spacing(self) -> None:
+        """Cache broadcastable face spacing arrays for FVM pressure gradients."""
+        import numpy as _np
+
+        self._face_spacing = []
+        ndim = self._fccd.grid.ndim
+        for axis in range(ndim):
+            coords = _np.asarray(self._fccd.grid.coords[axis], dtype=_np.float64)
+            spacing = coords[1:] - coords[:-1]
+            shape = [1] * ndim
+            shape[axis] = -1
+            self._face_spacing.append(self._fccd.xp.asarray(spacing.reshape(shape)))
 
     def _broadcast_axis0(self, values, ndim: int):
         shape = [1] * ndim
