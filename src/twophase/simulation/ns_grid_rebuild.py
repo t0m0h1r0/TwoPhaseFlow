@@ -41,9 +41,11 @@ def rebuild_ns_grid(
 ) -> NSGridRebuildResult:
     """Fit the grid to the supplied interface and remap primary fields.
 
-    The standard solver path uses this for initial fitted-grid construction.
-    Scheduled dynamic rebuilds are rejected by runtime configuration until the
-    ALE/GCL/conservative-remap closure is implemented.
+    The standard non-uniform solver path uses this both for initial fitted-grid
+    construction and scheduled interface-following rebuilds. The split rebuild
+    step remaps ``psi`` conservatively by volume correction, remaps velocity,
+    updates geometry-bound operators, invalidates pressure caches, and
+    reprojects velocity on the rebuilt grid.
     """
     if alpha_grid <= 1.0:
         X, Y = grid.meshgrid()

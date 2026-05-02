@@ -78,7 +78,9 @@ def parse_grid(d: dict, interface: dict) -> GridCfg:
         fitting_dx_min_floor=axis_distribution.fitting_dx_min_floor,
         use_local_eps=use_local_eps,
         eps_xi_cells=eps_xi_cells,
-        grid_rebuild_freq=parse_grid_rebuild(distribution.get("schedule", 0)),
+        grid_rebuild_freq=parse_grid_rebuild(
+            distribution.get("schedule", 1 if axis_distribution.enabled else 0)
+        ),
         interface_fitting_enabled=axis_distribution.enabled,
         interface_fitting_method=axis_distribution.method,
     )
@@ -221,7 +223,8 @@ def parse_grid_rebuild(raw: Any) -> int:
     """Resolve grid rebuild schedule to an interval.
 
     ``0`` means initial construction only; positive integers mean rebuild every
-    N physical steps. Legacy string aliases are retained for old YAMLs.
+    N physical steps. Interface-fitted grids default to ``1`` at the caller.
+    Legacy string aliases are retained for old YAMLs.
     """
     if isinstance(raw, str):
         value = raw.strip().lower()

@@ -42,7 +42,7 @@ class SolverGridOptions:
 class SolverInterfaceOptions:
     """Interface-transport and remap settings."""
 
-    grid_rebuild_freq: int = 0
+    grid_rebuild_freq: int = 1
     reinit_every: int = 0
     reinit_trigger_mode: str = "adaptive"
     reinit_threshold: float = 1.10

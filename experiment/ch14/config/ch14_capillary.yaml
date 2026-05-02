@@ -9,8 +9,8 @@
 # - Grid fitting: capillary wave is a graph y=η(x) on a periodic x domain,
 #   so x is a uniform periodic axis; y carries the interface/wall nonuniform
 #   monitor because the upper/lower boundaries are physical walls.
-#   The standard route builds the fitted grid once from the initial tracked ψ.
-#   Dynamic schedules require the ALE/GCL/conservative-remap closure.
+#   The standard route rebuilds the fitted grid every step from the current
+#   tracked ψ so the grid follows the interface.
 
 grid:
   cells: [128, 128]
@@ -22,7 +22,7 @@ grid:
         lower: wall
         upper: wall
   distribution:
-    schedule: static
+    schedule: 1
     axes:
       x:
         type: uniform

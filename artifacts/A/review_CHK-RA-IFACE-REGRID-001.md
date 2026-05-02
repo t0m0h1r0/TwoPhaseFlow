@@ -2,7 +2,7 @@
 
 Date: 2026-05-03
 Branch: `ra-interface-reconstruction-theory-20260503`
-Verdict: PASS AFTER PAPER AND CODE GATE
+Verdict: SUPERSEDED BY CHK-RA-IFACE-REGRID-002
 
 ## Scope
 
@@ -14,26 +14,26 @@ Verdict: PASS AFTER PAPER AND CODE GATE
 
 - The current paper correctly warned that Mode 2 moving-grid rebuilds require ALE and all-field remapping, but it did not yet state the closed mathematical contract.
 - A paper-standard moving fitted grid must satisfy four coupled gates: discrete geometric conservation law, ALE conservative update or equivalent conservative remap, consistent reset/reconstruction of all history quantities, and current-grid reconstruction of jump/HFE face data.
-- The library has an initial fitted-grid construction helper and an experimental remap/reprojection helper, but it does not implement the full ALE/GCL/conservative-remap closure. Therefore scheduled dynamic rebuilds must fail closed in the standard solver path.
+- Superseded correction: this review incorrectly treated missing monolithic ALE as a reason to reject scheduled dynamic rebuilds. CHK-RA-IFACE-REGRID-002 restores every-step interface-following rebuild as the standard split remap/reprojection path.
 
 ## Changes
 
 - Added equations for mesh velocity, discrete GCL, ALE conservative update, and current-grid interface face geometry reconstruction.
 - Updated pressure-jump and timestep sections so grid rebuild completeness depends on those equations, not on `psi` remapping alone.
-- Changed ch14 standard YAMLs to `schedule: static`; positive grid schedules now raise at solver runtime.
+- Superseded by CHK-RA-IFACE-REGRID-002: ch14 standard YAMLs use `schedule: 1`, and positive schedules are allowed.
 - Kept the tested `_rebuild_grid` helper for initial fitted-grid construction and direct diagnostics; no tested implementation was deleted.
 
 ## A3 Traceability
 
 - Equation: `eq:mesh_velocity_regrid`, `eq:ale_grid_gcl`, `eq:ale_conservative_update`, `eq:regrid_face_geometry`.
 - Discretization: moving tensor-product grid must preserve cell volumes by GCL and update conserved variables with relative face velocity `u - v_mesh`.
-- Code: `normalise_ns_interface_runtime` rejects `grid_rebuild_freq > 0`; `rebuild_ns_grid` is documented as initial/static helper until the closure exists.
-- Tests/configs: `test_dynamic_grid_rebuild_schedule_fails_closed`, ch14 canonical YAMLs, and `test_ch14_capillary_yaml_uses_true_low_order_defect_base`.
+- Code after correction: `normalise_ns_interface_runtime` allows positive `grid_rebuild_freq`; `rebuild_ns_grid` is the split rebuild/remap/reprojection helper.
+- Tests/configs after correction: `test_dynamic_grid_rebuild_schedule_is_default_for_fitted_solver`, ch14 canonical YAMLs, and `test_ch14_capillary_yaml_uses_true_low_order_defect_base`.
 
 ## Validation
 
 - `git diff --check` PASS.
-- Remote targeted pytest PASS: `dynamic_grid_rebuild_schedule_fails_closed`.
+- Superseded validation item: fail-closed regression was removed in CHK-RA-IFACE-REGRID-002.
 - Remote targeted pytest PASS: `ch14_capillary_yaml_uses_true_low_order_defect_base`.
 - Touched-section KL-12 scan PASS with literal `$` search.
 - `latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex` PASS, producing `paper/main.pdf` with 242 pages.
