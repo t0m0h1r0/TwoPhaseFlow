@@ -172,7 +172,7 @@ class CompositeVelocityField(VelocityField):
         """Return the component-wise sum of all configured fields."""
         if not coords:
             raise ValueError("CompositeVelocityField.compute: coords must be non-empty.")
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         total_components = [xp.zeros_like(coord) for coord in coords]
         for field in self.fields:
             field_components = field.compute(*coords, t=t)
@@ -225,7 +225,7 @@ class SinusoidalPerturbation(VelocityField):
             raise ValueError(
                 "SinusoidalPerturbation.compute: wave axis is outside grid ndim."
             )
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         argument = 2.0 * xp.pi * coords[self.axis] / self.wavelength + self.phase
         if self.profile == "sin":
             perturbation = self.amplitude * xp.sin(argument)
