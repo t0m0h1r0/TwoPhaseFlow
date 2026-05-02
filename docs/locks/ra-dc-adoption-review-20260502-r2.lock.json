@@ -1,0 +1,11 @@
+{
+  "branch": "ra-dc-adoption-review-20260502-r2",
+  "branch_slug": "ra-dc-adoption-review-20260502-r2",
+  "id_prefix": "RA-DC-ADOPT",
+  "session_id": "F4A63962-6A17-4FF9-8F21-19EA1C4190A0",
+  "worktree_path": ".claude/worktrees/ra-dc-adoption-review-20260502-r2",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-02T10:59:59Z",
+  "expires_at": "2026-05-03T10:59:59Z",
+  "meta_version": "5.1.0"
+}
