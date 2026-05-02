@@ -32,7 +32,7 @@ class NSTimestepEstimateContext:
     h_min: float
     alpha_grid: float
     cn_viscous: bool
-    viscous_time_scheme: str = "forward_euler"
+    viscous_time_scheme: str = "implicit_bdf2"
     h_axes: tuple[float, ...] | None = None
 
 

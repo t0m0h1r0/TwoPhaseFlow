@@ -73,7 +73,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
         interface=SolverInterfaceOptions(
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
             reinit_every=getattr(run, "reinit_every", 2),
-            reinit_method=(getattr(run, "reinit_method", None) or "eikonal_xi"),
+            reinit_method=(getattr(run, "reinit_method", None) or "ridge_eikonal"),
             reproject_variable_density=getattr(run, "reproject_variable_density", False),
             reproject_mode=getattr(run, "reproject_mode", "legacy"),
             phi_primary_transport=bool(getattr(run, "phi_primary_transport", True)),
@@ -92,20 +92,20 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ridge_sigma_0=float(getattr(run, "ridge_sigma_0", 3.0)),
         ),
         ppe=SolverPPEOptions(
-            ppe_solver=str(getattr(run, "ppe_solver", "fvm_iterative")),
+            ppe_solver=str(getattr(run, "ppe_solver", "fccd_iterative")),
             ppe_dc_base_solver=getattr(run, "ppe_dc_base_solver", None),
-            pressure_scheme=str(getattr(run, "pressure_scheme", "fvm_matrixfree")),
+            pressure_scheme=str(getattr(run, "pressure_scheme", "fccd_matrixfree")),
             ppe_coefficient_scheme=str(
-                getattr(run, "ppe_coefficient_scheme", "phase_density")
+                getattr(run, "ppe_coefficient_scheme", "phase_separated")
             ),
             ppe_interface_coupling_scheme=str(
-                getattr(run, "ppe_interface_coupling_scheme", "none")
+                getattr(run, "ppe_interface_coupling_scheme", "affine_jump")
             ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),
             ppe_max_iterations=int(getattr(run, "ppe_max_iterations", 500)),
             ppe_restart=getattr(run, "ppe_restart", 80),
-            ppe_preconditioner=str(getattr(run, "ppe_preconditioner", "line_pcr")),
+            ppe_preconditioner=str(getattr(run, "ppe_preconditioner", "none")),
             ppe_pcr_stages=getattr(run, "ppe_pcr_stages", 4),
             ppe_c_tau=float(getattr(run, "ppe_c_tau", 2.0)),
             ppe_defect_correction=bool(getattr(run, "ppe_defect_correction", False)),
@@ -120,10 +120,10 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             hfe_C=0.05,
             advection_scheme=str(getattr(run, "advection_scheme", "fccd_flux")),
             convection_scheme=str(getattr(run, "convection_scheme", "uccd6")),
-            surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "csf")),
-            convection_time_scheme=str(getattr(run, "convection_time_scheme", "ab2")),
+            surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "pressure_jump")),
+            convection_time_scheme=str(getattr(run, "convection_time_scheme", "imex_bdf2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
-            viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "forward_euler")),
+            viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "implicit_bdf2")),
             viscous_solver=str(getattr(run, "viscous_solver", "defect_correction")),
             viscous_solver_tolerance=float(
                 getattr(run, "viscous_solver_tolerance", 1.0e-8)
@@ -142,13 +142,13 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
                 getattr(run, "cn_buoyancy_predictor_assembly_mode", "none")
             ),
             pressure_gradient_scheme=str(
-                getattr(run, "pressure_gradient_scheme", "projection_consistent")
+                getattr(run, "pressure_gradient_scheme", "fccd_flux")
             ),
             surface_tension_gradient_scheme=str(
-                getattr(run, "surface_tension_gradient_scheme")
+                getattr(run, "surface_tension_gradient_scheme", "none")
             ),
             momentum_gradient_scheme=str(
-                getattr(run, "momentum_gradient_scheme", "projection_consistent")
+                getattr(run, "momentum_gradient_scheme", "fccd_flux")
             ),
             uccd6_sigma=float(getattr(run, "uccd6_sigma", 1.0e-3)),
             face_flux_projection=bool(getattr(run, "face_flux_projection", False)),

@@ -137,7 +137,8 @@ def canonicalize_surface_tension_gradient_scheme(
     path: str | None = None,
 ) -> str:
     """Return the canonical capillary-force gradient scheme."""
-    if str(surface_tension_scheme).strip().lower() == "pressure_jump":
+    surface_scheme = str(surface_tension_scheme).strip().lower()
+    if surface_scheme == "pressure_jump":
         if surface_tension_gradient_scheme not in {None, "none"}:
             if path is None:
                 raise ValueError(
@@ -149,6 +150,8 @@ def canonicalize_surface_tension_gradient_scheme(
                 "when surface_tension.formulation='pressure_jump'; "
                 "the jump is applied in the PPE, not as σκ∇ψ."
             )
+        return "none"
+    if surface_scheme == "none" and surface_tension_gradient_scheme in {None, "none"}:
         return "none"
 
     raw_scheme = (

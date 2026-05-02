@@ -44,7 +44,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
         viscosity = terms.get("viscosity", operators.get("viscosity"))
         surface_tension = terms.get("surface_tension", operators.get("surface_tension"))
         if surface_tension is None:
-            surface_tension = {"model": "csf"}
+            surface_tension = {"model": "pressure_jump"}
         pressure_term = terms.get("pressure", {})
         if not pressure_term and "gradient" in operators:
             pressure_term = {

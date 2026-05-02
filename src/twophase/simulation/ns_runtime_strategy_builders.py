@@ -45,7 +45,7 @@ def build_ns_viscous_predictor(
 
     selected_scheme = canonicalize_viscous_time_scheme(
         viscous_time_scheme
-        or ("crank_nicolson" if cn_viscous else "forward_euler")
+        or ("crank_nicolson" if cn_viscous else "implicit_bdf2")
     )
     viscous_term = ViscousTerm(
         backend,

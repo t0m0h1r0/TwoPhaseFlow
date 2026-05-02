@@ -37,7 +37,7 @@ def build_ns_scheme_runtime_artifacts(
     validate_local_epsilon_surface_tension_compatibility(
         use_local_eps=use_local_eps,
         alpha_grid=alpha_grid,
-        surface_tension_scheme=getattr(options, "surface_tension_scheme", "csf"),
+        surface_tension_scheme=getattr(options, "surface_tension_scheme", "pressure_jump"),
     )
     curv = CurvatureCalculatorPsi(backend, ccd)
     curvature_filter = InterfaceLimitedFilter(backend, ccd, C=options.hfe_C)
