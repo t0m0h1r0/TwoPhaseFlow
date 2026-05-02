@@ -98,6 +98,13 @@ class SolverSchemeOptions:
     momentum_gradient_scheme: str = "projection_consistent"
     viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "forward_euler"
+    viscous_solver: str = "defect_correction"
+    viscous_solver_tolerance: float = 1.0e-8
+    viscous_solver_max_iterations: int = 80
+    viscous_solver_restart: int = 40
+    viscous_dc_max_iterations: int = 3
+    viscous_dc_relaxation: float = 0.8
+    viscous_dc_low_operator: str = "component"
     cn_mode: str = "picard"
     cn_buoyancy_predictor_assembly_mode: str = "none"
     uccd6_sigma: float = 1.0e-3

@@ -14,6 +14,7 @@ from typing import Callable, TYPE_CHECKING
 from ..core.array_checks import all_arrays_exact_zero
 from ..ppe.gmres_helpers import backend_supports_gmres, solve_gmres
 from .viscous_predictor import IViscousPredictor
+from .viscous_helmholtz_dc import ViscousHelmholtzDCSolver
 
 IMPLICIT_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
 
@@ -134,7 +135,7 @@ class CNViscousPredictor(IViscousPredictor):
 
 
 class ImplicitBDF2ViscousPredictor(IViscousPredictor):
-    """Matrix-free implicit viscous solve for BDF2 projection steps."""
+    """Implicit viscous solve for BDF2 projection steps."""
 
     scheme_names = ("implicit_bdf2",)
     _scheme_aliases = {
@@ -145,7 +146,17 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
 
     @classmethod
     def _build(cls, name: str, ctx: "ViscousBuildCtx") -> "ImplicitBDF2ViscousPredictor":
-        return cls(ctx.backend, ctx.viscous_term)
+        return cls(
+            ctx.backend,
+            ctx.viscous_term,
+            tolerance=ctx.solver_tolerance,
+            max_iterations=ctx.solver_max_iterations,
+            restart=ctx.solver_restart,
+            solver=ctx.solver,
+            dc_corrections=ctx.dc_max_iterations,
+            dc_relaxation=ctx.dc_relaxation,
+            dc_low_operator=ctx.dc_low_operator,
+        )
 
     def __init__(
         self,
@@ -155,6 +166,10 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         tolerance: float = 1.0e-8,
         max_iterations: int = 80,
         restart: int = 40,
+        solver: str = "defect_correction",
+        dc_corrections: int = 3,
+        dc_relaxation: float = 0.8,
+        dc_low_operator: str = "component",
     ) -> None:
         self.backend = backend
         self.xp = backend.xp
@@ -162,6 +177,14 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         self.tolerance = tolerance
         self.max_iterations = max_iterations
         self.restart = restart
+        self.solver = str(solver).strip().lower()
+        self.dc_corrections = int(dc_corrections)
+        self.dc_relaxation = float(dc_relaxation)
+        self.dc_low_operator = str(dc_low_operator).strip().lower()
+        self.last_diagnostics: dict[str, float] = {}
+        self.last_residual_history: list[float] = []
+        if self.solver not in {"defect_correction", "dc", "gmres"}:
+            raise ValueError("implicit BDF2 viscous solver must be defect_correction|gmres")
 
     def predict(
         self,
@@ -210,7 +233,8 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         """Solve u* - (2/3)dt V(u*) = 4/3 uⁿ - 1/3 uⁿ⁻¹ + (2/3)dt E.
 
         Implements §7.3 eq:predictor_imex_bdf2 (BDF2 coefficients 4/3, -1/3, 2/3)
-        and §7.4 eq:helmholtz_implicit_bdf2 (Helmholtz form, dt_effective = 2/3·dt).
+        and §7.4 eq:helmholtz_implicit_bdf2 / eq:viscous_bdf2_dc
+        (Helmholtz form, dt_effective = 2/3·dt).
         """
         base_velocity = [
             (4.0 / 3.0) * u - (1.0 / 3.0) * u_prev,
@@ -245,6 +269,60 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         ccd: "CCDSolver",
         psi=None,
     ) -> tuple["array", "array"]:
+        xp = self.xp
+        if (
+            not self.backend.is_gpu()
+            and all_arrays_exact_zero(xp, (*base_velocity, *explicit_acceleration))
+        ):
+            return xp.zeros_like(base_velocity[0]), xp.zeros_like(base_velocity[1])
+        if self.solver in {"defect_correction", "dc"}:
+            if ccd is None:
+                raise RuntimeError("Implicit BDF2 viscous DC requires a CCDSolver.")
+            dc_solver = ViscousHelmholtzDCSolver(
+                self.backend,
+                self._viscous,
+                tolerance=self.tolerance,
+                max_corrections=self.dc_corrections,
+                relaxation=self.dc_relaxation,
+                low_operator=self.dc_low_operator,
+            )
+            solution = dc_solver.solve(
+                base_velocity=base_velocity,
+                explicit_acceleration=explicit_acceleration,
+                mu=mu,
+                rho=rho,
+                dt_effective=dt_effective,
+                ccd=ccd,
+                psi=psi,
+            )
+            self.last_diagnostics = dict(dc_solver.last_diagnostics)
+            self.last_residual_history = list(dc_solver.last_residual_history)
+            return solution[0], solution[1]
+
+        return self._solve_gmres(
+            base_velocity=base_velocity,
+            initial_guess=initial_guess,
+            explicit_acceleration=explicit_acceleration,
+            mu=mu,
+            rho=rho,
+            dt_effective=dt_effective,
+            ccd=ccd,
+            psi=psi,
+        )
+
+    def _solve_gmres(
+        self,
+        *,
+        base_velocity: list,
+        initial_guess: list,
+        explicit_acceleration: list,
+        mu,
+        rho,
+        dt_effective: float,
+        ccd: "CCDSolver",
+        psi=None,
+    ) -> tuple["array", "array"]:
+        """Matrix-free GMRES path selected explicitly through configuration."""
         linear_algebra = self.backend.sparse_linalg
         if not backend_supports_gmres(linear_algebra):
             raise RuntimeError("Implicit BDF2 viscosity requires backend-native GMRES.")
@@ -255,11 +333,6 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
         mu_device = xp.asarray(mu)
         rho_device = xp.asarray(rho)
         psi_device = xp.asarray(psi) if psi is not None else None
-        if (
-            not self.backend.is_gpu()
-            and all_arrays_exact_zero(xp, (*base_velocity, *explicit_acceleration))
-        ):
-            return xp.zeros_like(base_velocity[0]), xp.zeros_like(base_velocity[1])
         rhs_components = [
             xp.asarray(base_velocity[component])
             + dt_effective * xp.asarray(explicit_acceleration[component])
@@ -310,6 +383,11 @@ class ImplicitBDF2ViscousPredictor(IViscousPredictor):
             raise RuntimeError(
                 f"Implicit BDF2 viscous GMRES did not converge (info={info})."
             )
+        self.last_diagnostics = {
+            "viscous_gmres": 1.0,
+            "viscous_gmres_info": float(info),
+        }
+        self.last_residual_history = []
         solution = split_components(solution_flat)
         return solution[0], solution[1]
 

@@ -44,6 +44,13 @@ def bind_ns_scheme_runtime(solver, state) -> None:
     solver._scheme_runtime = state
     solver._convection_time_scheme = state.convection_time_scheme
     solver._viscous_time_scheme = state.viscous_time_scheme
+    solver._viscous_solver = state.viscous_solver
+    solver._viscous_solver_tolerance = state.viscous_solver_tolerance
+    solver._viscous_solver_max_iterations = state.viscous_solver_max_iterations
+    solver._viscous_solver_restart = state.viscous_solver_restart
+    solver._viscous_dc_max_iterations = state.viscous_dc_max_iterations
+    solver._viscous_dc_relaxation = state.viscous_dc_relaxation
+    solver._viscous_dc_low_operator = state.viscous_dc_low_operator
     solver._momentum_gradient_scheme = state.momentum_gradient_scheme
     solver._pressure_gradient_scheme = state.pressure_gradient_scheme
     solver._surface_tension_gradient_scheme = state.surface_tension_gradient_scheme

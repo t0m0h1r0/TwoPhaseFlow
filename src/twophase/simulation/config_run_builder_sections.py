@@ -142,6 +142,15 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         convection_time_scheme=options.operator_settings["convection_time_scheme"],
         viscous_spatial_scheme=options.operator_settings["viscous_spatial_scheme"],
         viscous_time_scheme=options.operator_settings["viscous_time_scheme"],
+        viscous_solver=options.operator_settings["viscous_solver"],
+        viscous_solver_tolerance=options.operator_settings["viscous_solver_tolerance"],
+        viscous_solver_max_iterations=options.operator_settings[
+            "viscous_solver_max_iterations"
+        ],
+        viscous_solver_restart=options.operator_settings["viscous_solver_restart"],
+        viscous_dc_max_iterations=options.operator_settings["viscous_dc_max_iterations"],
+        viscous_dc_relaxation=options.operator_settings["viscous_dc_relaxation"],
+        viscous_dc_low_operator=options.operator_settings["viscous_dc_low_operator"],
         cn_mode=options.operator_settings["cn_mode"],
         cn_buoyancy_predictor_assembly_mode=options.operator_settings[
             "cn_buoyancy_predictor_assembly_mode"
