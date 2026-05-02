@@ -12,12 +12,12 @@
 \S\ref{sec:ridge_eikonal} で構築した一様格子上の Ridge--Eikonal 再初期化を
 界面適合非一様格子（密度因子 $\alpha>1$）へ拡張すると，
 (i) ガウス型半幅 $\sigma$ の物理セル分解能が不均一化，
-(ii) $\xiidx$ 空間で Hessian を評価すると実用的困難性に抵触，
+(ii) $\xiidx$ 空間でヘッセ行列を評価すると狭帯域で連鎖律誤差が支配的になり，
 (iii) FMM~\cite{Sethian1996} の二次式更新が単位格子幅を仮定して $|\bnabla_x\phi|=1$ を破る，
 (iv) 壁面接触界面ではガウス型支持帯と FMM 種点集合が
 閉領域 $\overline{\Omega}$ 上で閉じていない，
 の 4 か所で一様格子不変量が破れる．これらを 4 補正
-D1（$\sigma_\text{eff}$ の空間倍率）・D2（物理空間 Hessian）・
+D1（$\sigma_\text{eff}$ の空間倍率）・D2（物理空間ヘッセ行列）・
 D3（非一様 FMM）・D4（再構成幅 $\varepsilon$ の空間依存化）と
 壁閉包補正 W で解消し，
 \S\ref{sec:grid_density}（格子密度関数）・
@@ -43,16 +43,8 @@ $J_x$ 記号は登場しない．主本文の $J_x$ への
 \label{sec:ridge_nu_d1d4_math}
 % -------------------------------------------------------------------------------
 
-格子密度因子 $\alpha>1$ の界面適合格子
-（§~\ref{sec:grid_density}）では，§~\ref{sec:ridge_aux_field}--§~\ref{sec:ridge_fmm_reconstruction}
-の導出で暗黙に仮定された一様格子不変量が 4 か所で破れる：
-(i) ガウス型半幅 $\sigma$ の物理セル分解能が不均一化，
-(ii) $\xiidx$ 空間で Hessian を評価すると
-後述の実用的困難性（注記~\ref{rem:xi_hessian_forbidden}）に抵触，
-(iii) FMM の二次式更新が単位格子幅を仮定して $|\bnabla_x\phi|=1$ を破る，
-(iv) 壁面接触界面では自由空間ガウス型関数と内部点専用種点が
-閉包上の零集合を保存しない．
-以下 4 つの補正 D1--D4 と壁閉包 W でこれらを解消する．
+上で列挙した一様格子不変量の破れを，
+以下の D1--D4 と壁閉包 W で，依存する格子量ごとに定義する．
 
 \paragraph{D1 — $\sigma_\text{eff}(\bm{x})$ の空間倍率}
 基準格子幅を格子点数 $N_a$ に対して
@@ -67,16 +59,16 @@ $h_\text{ref}=(\prod_{a} L_a/(N_a-1))^{1/d}$，
 物理セル単位では $\sigma_\text{eff}(\bm{x})/h(\bm{x}) = \sigma_0/h_\text{ref}$ が定数となり
 一様格子での基準値をそのまま $\sigma_0$ に引き継げる．
 
-\paragraph{D2 — 物理空間 Hessian（$\xi$ 空間 Hessian を避ける理由）}
-$\xiidx$ 空間で Hessian を組み立て
+\paragraph{D2 — 物理空間ヘッセ行列（$\xi$ 空間ヘッセ行列を避ける理由）}
+$\xiidx$ 空間でヘッセ行列を組み立て
 連鎖律 $\bnabla_x^2 = J^{\!\top}\bnabla_\xi^2 J
 + (\bnabla_\xi J^{\!\top})\bnabla_\xi$
-で物理空間に変換する手順は採用しない．
+で物理空間に変換する経路は採用しない．
 
-\begin{remark}[$\xi$ 空間 Hessian の実用的困難性]\label{rem:xi_hessian_forbidden}
+\begin{remark}[$\xi$ 空間ヘッセ行列の数値的不整合]\label{rem:xi_hessian_forbidden}
 界面遷移幅が $\le 4$ セルのとき，
-$\xi$ 空間 Hessian を経由する任意の計算は $\mathcal{O}(10^{-1})$ の
-フロア誤差を持つ（実験的根拠は §~\ref{sec:xi_sdf_reinit}）．
+$\xi$ 空間ヘッセ行列を経由する評価は $\mathcal{O}(10^{-1})$ の
+下限誤差を持つ（根拠は §~\ref{sec:xi_sdf_reinit}）．
 リッジ定義 \eqref{eq:ridge_set_def} は
 $\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
 この条件は一般に違反される．
@@ -85,7 +77,7 @@ $\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
 許容される評価経路：
 \begin{enumerate}
   \item\textbf{評価式 A（採用する高次評価）}——物理空間の非一様 CCD
-        で Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2\xiridge$ を直接評価する．
+        でヘッセ行列 $\mathbf{H}_{\xiridge}=\bnabla_x^2\xiridge$ を直接評価する．
   \item\textbf{評価式 B（低次の確認評価）}——
 物理空間二階差分で $H_{xx},H_{xy},H_{yy}$ を近似し，
         符号判定 $\lambda_{\min}(H)<0$ または
@@ -205,7 +197,7 @@ $\sigma_\text{eff}(\bm{x}) = \sigma_0 \cdot h(\bm{x})/h_\text{ref}$ は
 格子幾何のみに依存するため，
 \S\ref{sec:grid_gen} の格子点座標生成直後に
 $\{\sigma_\text{eff}(\bm{x}_{i,j})\}_{i,j}$ として一度だけ定義する．
-時間固定格子ではこの空間場は不変であり，追加の漸近計算量を生じない．
+時間固定格子ではこの空間場は不変であり，時間発展中に再定義しない．
 
 \noindent\textbf{幾何定義}：
 \begin{itemize}
@@ -225,18 +217,18 @@ $\{\sigma_\text{eff}(\bm{x}_{i,j})\}_{i,j}$ として一度だけ定義する．
 $\sigma_\text{eff} \to \sigma_0$ となり一様格子版の既定と一致する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{D2 補正：物理空間 Hessian は非一様 CCD で直接評価}
+\subsubsection{D2 補正：物理空間ヘッセ行列は非一様 CCD で直接評価}
 \label{sec:ridge_nu_hessian_field}
 % -------------------------------------------------------------------------------
 
-注記~\ref{rem:xi_hessian_forbidden}（$\xi$ 空間 Hessian の実用的困難性）により，
+注記~\ref{rem:xi_hessian_forbidden}（$\xi$ 空間ヘッセ行列の数値的不整合）により，
 リッジ検出 \eqref{eq:ridge_set_def} で必要な
-Hessian $\mathbf{H}_{\xiridge}=\bnabla_x^2 \xiridge$ は
+ヘッセ行列 $\mathbf{H}_{\xiridge}=\bnabla_x^2 \xiridge$ は
 物理空間で直接評価しなければならない．
 \S\ref{sec:ccd_metric} の非一様 CCD（座標変換法）は
 ノード値から直接物理空間の第一・第二導関数を返す演算子
 $\mathbf{D}_1^\text{CCD,nu}, \mathbf{D}_2^\text{CCD,nu}$ を提供するため，
-評価式 A は以下のフル Hessian 行列で定義する：
+評価式 A は以下の完全なヘッセ行列で定義する：
 \begin{equation}
   \mathbf{H}_{\xiridge,i,j}^{\text{nu}}
   =
@@ -304,10 +296,10 @@ FMM の確定順序を定める各更新で参照する必要がある．
         コーナー近傍や急な密度勾配帯で発生し，
         粘性一意性は物理空間 Eikonal \eqref{eq:fmm_nonuniform} の
         弱解性質により保たれる．
-  \item \textbf{サブセルシード}：
+  \item \textbf{サブセル種点}：
         実際の零集合 $S_h$ は一般にノード上に載らないため，
         符号反転セルの線形補間位置から最寄りノードへ
-        物理空間距離でシード値を分配する．
+        物理空間距離で種点値を分配する．
         非一様格子では $(h_x(i),h_y(j))$ で正しく重み付ける必要があり，
         単位セル仮定では最大 $\alpha$ 倍の誤差を生む
         （$\alpha$ は格子密度比）．
@@ -318,17 +310,17 @@ FMM の確定順序を定める各更新で参照する必要がある．
         壁種点や接触線固定の対象ではない．
 \end{itemize}
 
-\noindent この結線により FMM のワンパス計算量は
-一様版と同じ $\mathcal{O}(N \log N)$ に留まる．
+\noindent この結線により，一様版と非一様版は同じ Eikonal 境界値問題の
+物理空間離散化として比較できる．
 
-\noindent\textbf{並列化時の等価性要件．}
+\noindent\textbf{離散解の等価性要件．}
 非一様 FMM は候補集合から最小の未確定値を順に確定する
-因果的 Eikonal 解法であり~\cite{Sethian1996}，固定回数の sweeping や Jacobi 型緩和に置き換えると
-式~\eqref{eq:fmm_nonuniform} の粘性解を同じ順序で近似したことにならない．
-したがって並列化しても，距離場，確定・凍結集合，
+因果的 Eikonal 離散化であり~\cite{Sethian1996}，固定回数の掃引緩和や Jacobi 型緩和に置き換えると
+式~\eqref{eq:fmm_nonuniform} の粘性解を同じ離散問題として近似したことにならない．
+したがって同じ非一様 FMM と呼ぶには，距離場，確定・凍結集合，
 候補列に相当する因果順序を保ち，同じ非一様風上二次更新
 \eqref{eq:fmm_closed_form} によって隣接点を緩和する必要がある．
-これは高速化の細目ではなく，曲率・圧力ジャンプ・BF 投影が共有する
+これは便宜的な置換可能性ではなく，曲率・圧力ジャンプ・BF 投影が共有する
 符号付き距離幾何を定義する離散化契約である．
 
 % -------------------------------------------------------------------------------
@@ -352,8 +344,8 @@ $\xiridge$ から $\phi$ への再構成式
 
 \noindent\textbf{体積保存の監視}：
 一様較正 $\varepsilon_\text{scale}=1.4$ を初期値として採用し，
-$|\Delta V/V|>5\%$ を検知した時点で適応スケーリング
-$\varepsilon_\text{scale}(\bm{x})=1.4\cdot h_\text{ref}/h_\text{min}$ に切替える
+$|\Delta V/V|>5\%$ が生じる場合には，適応スケーリング
+$\varepsilon_\text{scale}(\bm{x})=1.4\cdot h_\text{ref}/h_\text{min}$ を別較正として評価する
 （閾値は \S\ref{sec:xi_sdf_reinit} の較正に基づく）．
 界面適合格子族（\S\ref{sec:grid_density}）では
 $h(\bm{x}) \approx h_\text{ref}$ が界面近傍で成立するため，
@@ -369,13 +361,13 @@ $\omega_\text{grid}(\xi)$ を界面近傍で集中化すると，
 D1--D4 の効果が次のように簡素化される：
 \begin{itemize}
   \item \textbf{D1 $\sigma_\text{eff}$}：界面帯では $h(\bm{x}) \approx h_\text{min}$ 一定．
-        リッジ検出は等価密度帯内で実行されるため実効 $\sigma_\text{eff}$ は一様．
-  \item \textbf{D2 Hessian}：界面法線 $\hat{\bm{n}}$ は密度勾配方向と
+        リッジ検出は等価密度帯内で評価されるため実効 $\sigma_\text{eff}$ は一様．
+  \item \textbf{D2 ヘッセ行列}：界面法線 $\hat{\bm{n}}$ は密度勾配方向と
         ほぼ平行になる単純帯では対角寄与が支配的になりやすいが，
         離散化では $H_{xy}$ も保持して
         斜め界面・曲率帯での符号反転を避ける．
   \item \textbf{D3 FMM}：界面から距離 $\mathcal{O}(\varepsilon_\text{local})$ の
-        狭帯域のみで実行．$D<0$ の一次元単調更新は
+        狭帯域のみで定義する．$D<0$ の一次元単調更新は
         密度勾配帯が急すぎないことを確認する診断量となる．
   \item \textbf{D4 $\varepsilon_\text{local}$}：界面帯で一様値
         $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
@@ -389,22 +381,20 @@ D1--D4 の効果が次のように簡素化される：
 により，幾何再構成が有限 gap を作らないことを離散契約として要求する．
 
 % -------------------------------------------------------------------------------
-\subsubsection{幾何量・演算量・FCCD との接続}
+\subsubsection{幾何量と FCCD との接続}
 \label{sec:ridge_nu_cost}
 % -------------------------------------------------------------------------------
 
 \noindent\textbf{固定格子で定まる幾何量}：
 $\sigma_\text{eff}[i,j]$，$h_x[i]$，$h_y[j]$，$\varepsilon_\text{local}[i,j]$ の
-4 つは格子構築時に定まる空間場である（$\mathcal{O}(N_x N_y)$ メモリ）．
+4 つは格子構築時に定まる空間場である．
 追従格子を採用する場合は格子更新ごとに再定義する．
 
-\noindent\textbf{演算量}（再初期化 1 回）：
-\begin{itemize}
-  \item D2 非一様 CCD Hessian: $\mathcal{O}(N_x N_y)$（\S\ref{sec:ccd_metric}）
-  \item D3 非一様 FMM: $\mathcal{O}(N_x N_y \log(N_x N_y))$
-  \item D4 $\varepsilon_\text{local}$ テーブル参照: $\mathcal{O}(N_x N_y)$
-\end{itemize}
-合計は一様版と同じ漸近オーダー．
+\noindent\textbf{同じ格子幾何から定まる演算子}：
+D2 の非一様 CCD ヘッセ行列，D3 の非一様 Eikonal 更新，D4 の再構成幅は，
+いずれも同じ $(h_x,h_y,\mathsf{X}_\xi,\mathsf{Y}_\eta)$ を参照する．
+したがって再初期化後の符号付き距離場と FCCD 面幾何は，別々の格子尺度ではなく
+同一の離散幾何から定義される．
 
 \noindent\textbf{FCCD との接続}：
 \S\ref{sec:ridge_fccd_handoff} で示した通り，
@@ -413,7 +403,7 @@ Ridge--Eikonal で再構成された $\phi$ は
 そのまま引き継がれる．
 非一様 FCCD の係数 $(\mu_i, \lambda_i)$ と
 本節の $\sigma_\text{eff}, \varepsilon_\text{local}$ は
-\textbf{同じ格子幾何テーブル} $(h_x, h_y, \mathsf{X}_\xi, \mathsf{Y}_\eta)$ から派生するため，
+\textbf{同じ格子幾何量} $(h_x, h_y, \mathsf{X}_\xi, \mathsf{Y}_\eta)$ から派生するため，
 両者は同じ離散幾何に基づいて定義される
 （主本文 $J_x^{\mathrm{main}}, J_y^{\mathrm{main}}$ は逆数 $1/\mathsf{X}_\xi, 1/\mathsf{Y}_\eta$ で得る）．
 
