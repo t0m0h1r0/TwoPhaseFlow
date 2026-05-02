@@ -1,24 +1,26 @@
 % paper/sections/08_2_fccd_bf.tex
 %
-% §7.4  FCCD 面ジェットによる BF sub-system 統合
-%       （H-01 歴史的診断は付録 §B.4）
+% §8.5  FCCD 面ジェットによる BF 部分系統合
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{FCCD 面ジェットによる BF sub-system 構成}
+\subsection{FCCD 面ジェットによる BF 部分系構成}
 \label{sec:fccd_bf_sub_system}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 節 \ref{sec:fccd_def} で導出した FCCD 面ジェット
-$\FaceJet{u}=(u_f,u'_f,u''_f)$ は，BF sub-system の
-P-1..P-4 を\textbf{同時に}満たす最小単位であり，
-4 役割 (R1)-(R4) の (R3) 分相 PPE 楕円演算子への適用例として位置付けられる．
+$\FaceJet{u}=(u_f,u'_f,u''_f)$ は，BF 部分系の
+P-1..P-4 を\textbf{同時に}満たす面表現である．
+圧力勾配，速度補正，界面力，界面ジャンプ補正を同じ面フットプリントへ写すことで，
+連続平衡
+$-\bnabla p+\mathbf{f}_\sigma=\mathbf{0}$
+を離散空間でも同じ面釣合として扱える．
 
 % -------------------------------------------------------------------------------
 \phantomsection
-\label{sec:h01_diagnosis_fccd_remedy}% 外部参照保持：10_5/08c/10_3
+\label{sec:fccd_face_residual_order}
 
 本稿の構成では {\FCCD} 面ジェット $\FaceJet{u}=(u_f,u'_f,u''_f)$ が
-圧力勾配・界面力・HFE 上流点・GFM ジャンプ条件の 4 経路で共有される（(R1)-(R4)）．
+圧力勾配・界面力・界面外挿・圧力ジャンプ条件の 4 経路で共有される（(R1)-(R4)）．
 これにより面フットプリントは 4 経路で一致し，
 \begin{equation}
   \mathcal{G}p := D^\FCCD p,
@@ -30,7 +32,7 @@ P-1..P-4 を\textbf{同時に}満たす最小単位であり，
   \label{eq:bf_fccd_unification}
 \end{equation}
 となる．すなわち FCCD 面ジェット自体のフットプリント不一致は
-$\Ord{\Delta x^4}$ まで下がるが，GFM/CSF 実用閉包では
+$\Ord{\Delta x^4}$ まで下がるが，標準 pressure-jump/CSF 閉包では
 界面ジャンプ処理と有限幅 CSF モデルが $\Ord{\Delta x^2}$ で律速する．
 
 % -------------------------------------------------------------------------------
@@ -39,7 +41,7 @@ $\Ord{\Delta x^4}$ まで下がるが，GFM/CSF 実用閉包では
 % -------------------------------------------------------------------------------
 
 面ジェット $\FaceJet{p}=(p_f,p'_f,p''_f)$ は
-P-1..P-4 を単一オブジェクトで具現する．
+P-1..P-4 を同一の面表現で具現する．
 変密度 PPE の\textbf{面フラックス}は
 \begin{equation}
   F^p_f := \betaf\,\FaceJet{p}_1 = \betaf\,p'_f,
@@ -63,7 +65,7 @@ PPE は FVM セル積分で
 \textbf{同じ $p'_f$} が PPE 組立と補正で共有されるため P-2 が構造的に成立．
 
 % -------------------------------------------------------------------------------
-\subsubsection{界面ジャンプ GFM 補正（実用閉包）}
+\subsubsection{界面ジャンプ GFM 補正（標準 pressure-jump 閉包）}
 \label{sec:fccd_bf_gfm_integration}
 % -------------------------------------------------------------------------------
 
@@ -77,11 +79,11 @@ PPE は FVM セル積分で
     = p_f + \frac{j_{gl}}{2}\,\mathrm{sign}(\phi_f).
   \label{eq:fccd_bf_gfm_face}
 \end{equation}
-bulk ステンシルは不変；ジャンプベクトル $c_\Gamma$ は
-$\kappa_{lg}$ 更新時のみ再計算．
-GFM 実用閉包の BF 精度は 2 次で，H-01 診断と標準 pressure-jump 閉包の面整合条件に十分．
+相内の滑らかな離散化は保ち，ジャンプ項だけを面フラックスへ加える．
+GFM による標準 pressure-jump 閉包の BF 精度は 2 次であり，
+面整合条件を満たす基準構成として用いる．
 
-\noindent\textbf{IIM 行補正（研究閉包）}：
+\noindent\textbf{IIM 行補正（高次 pressure-jump 閉包）}：
 FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 コンパクト構造を維持したまま $\Ord{h^3}$--$\Ord{h^4}$ まで昇格．
 
@@ -90,7 +92,7 @@ FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 \label{sec:fccd_bf_hydrostatic}
 % -------------------------------------------------------------------------------
 
-\noindent\textbf{テスト}：重力 $\mathbf{g}=-g\hat{\mathbf{z}}$ 下の静止 2 層流体．
+\noindent\textbf{検証問題}：重力 $\mathbf{g}=-g\hat{\mathbf{z}}$ 下の静止 2 層流体．
 解析解は $p_\text{stat}(z) = -\rho(\phi(z))\,g\,z$，$\bm{u}=\bm{0}$．
 
 \noindent\textbf{BF 残差測定}：
@@ -116,26 +118,27 @@ balanced-buoyancy 分解と同じ考え方）．
 \begin{center}
 \begin{tabular}{@{}lll@{}}
 \hline
-演算子 & 非一様格子 $\rho_l/\rho_g=830$ & 収束率 \\
+構成 & 非一様格子 $\rho_l/\rho_g=830$ & 収束率 \\
 \hline
-旧設計（節点 CCD + 事後面平均）& $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
-FCCD + GFM（実用閉包）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^2}$$^{\ddagger}$ \\
-FCCD + IIM（研究閉包目標）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\Delta x^4}$ \\
+非整合な節点勾配 + 事後面平均 & $\varepsilon_\text{BF}\sim 10^{-3}$ & $\Ord{\Delta x^2}$ \\
+FCCD + GFM（標準 pressure-jump 閉包）& $\varepsilon_\text{BF}\sim 10^{-6}$ & $\Ord{\Delta x^2}$$^{\ddagger}$ \\
+FCCD + IIM（高次 pressure-jump 閉包）& $\varepsilon_\text{BF}\sim 10^{-10}$ & $\Ord{\Delta x^4}$ \\
 \hline
 \end{tabular}
 \end{center}
 \noindent$^{\ddagger}$ GFM の 2 次律速により収束率は
 FCCD 面ジェット自体の $\Ord{H^4}$ 整合性（\S\ref{sec:fccd_def}，
 \S\ref{sec:face_jet_def}）には届かない．絶対誤差 $10^{-6}$ は一様格子 FCCD $\Ord{H^4}$
-係数の小さいことから得られる実測予測値であり，漸近オーダーは GFM 依存で
+係数の小さい構成で得られる代表値であり，漸近オーダーは GFM 依存で
 $\Ord{\Delta x^2}$．IIM 行補正で初めて $\Ord{\Delta x^4}$ に昇格する．
 
-\noindent\textbf{重力 BF テスト}として明示：本表は重力平衡での BF 残差を測定する
+\noindent\textbf{重力 BF 検証}：
+本表は重力平衡での BF 残差を測定する
 （CSF BF の静止液滴テスト \S\ref{sec:bf_static_droplet} とは独立；
 CSF 側は $f_\sigma$ と $G_h p_\sigma$ の相殺が主論点）．
-予測値の検証設計は §\ref{sec:verify_split_ppe_dc} と §\ref{sec:bf_static_droplet} に分離する．
+予測値の検証は §\ref{sec:verify_split_ppe_dc} と §\ref{sec:bf_static_droplet} に分離する．
 
-詳細検証は \S\ref{sec:verify_split_ppe_dc}（コンポーネント検証）．
+詳細検証は \S\ref{sec:verify_split_ppe_dc}（要素検証）．
 
 % -------------------------------------------------------------------------------
 \subsubsection{設計戦略 A/B/C の比較}
@@ -149,30 +152,29 @@ CSF 側は $f_\sigma$ と $G_h p_\sigma$ の相殺が主論点）．
 \hline
 \textbf{A：全面演算子} &
 $G_h^\text{bf},D_h^\text{bf}$ を FCCD または低次面フラックスで構築．
-BF sub-system を完全分離．
-& 本稿推奨（変密度・相別 pressure-jump 閉包）．
+BF 部分系を完全分離．
+& 変密度・相別 pressure-jump 閉包の標準構成．
 \\
 \textbf{B：節点 CCD + BF 層} &
 bulk は節点 CCD．PPE + 補正 + $f_\sigma$ にのみ $G_h^\text{bf}$ を追加．
-低侵襲．
-& 節点 CCD 離散化を保つ比較設計．
+節点 bulk 演算子と BF 面演算子を役割分担する．
+& bulk 高次精度を保つ比較構成．
 \\
 \textbf{C：毛管ジャンプ PPE} &
-CSF 体積力を使わず，$j_{gl}=-\sigma\kappa_{lg}$ を PPE に IIM/affine 埋込み．
+CSF 体積力を使わず，$j_{gl}=-\sigma\kappa_{lg}$ を PPE にジャンプ条件として埋め込む．
 静止平衡は構造的厳密．
-& 研究由来の圧力ジャンプ閉包．本稿の標準閉包では
+& 高次 pressure-jump 閉包．本稿の標準構成では
 ジャンプ補正付き勾配，HFE，大域ゲージを組み合わせて限定採用．
 \\
 \hline
 \end{tabular}
 \end{center}
 
-\noindent\textbf{本稿の位置}：
-等密度SSPRK3 検証 = 戦略 B（節点 CCD + GFM）；
-変密度一括 PPE は比較経路に退ける；
-標準 pressure-jump 閉包 = 戦略 C のジャンプ補正付き勾配を
-戦略 A/B の面演算子整合で支える構成；
-純 FCCD DNS = 戦略 C を全演算子へ広げた研究用高次極限
+\noindent\textbf{本稿の標準構成}：
+bulk の高次 CCD 系演算子で移流・拡散精度を確保しつつ，
+PPE，速度補正，界面力，圧力ジャンプ補正は同じ BF 面演算子へ集約する．
+標準 pressure-jump 閉包では GFM 型の面補正を用い，
+純 FCCD DNS はこの面整合を全演算子へ広げた高次極限として位置付ける
 （\S\ref{sec:pure_fccd_dns}）．
 
 % -------------------------------------------------------------------------------
