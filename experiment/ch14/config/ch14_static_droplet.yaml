@@ -13,7 +13,7 @@ grid:
     size: [1.0, 1.0]
     boundary: periodic
   distribution:
-    schedule: static
+    schedule: 1
     axes:
       x:
         type: nonuniform
