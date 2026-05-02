@@ -54,6 +54,8 @@ def test_construction_uniform():
     assert s._pressure_gradient_scheme == "fccd_flux"
     assert s._surface_tension_gradient_scheme == "none"
     assert s._cn_viscous is True
+    assert s._reinit_trigger_mode == "adaptive"
+    assert s._reinit_threshold == pytest.approx(1.10)
 
 
 def test_construction_nonuniform():

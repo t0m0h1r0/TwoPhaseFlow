@@ -76,7 +76,9 @@ class RunCfg:
     print_every: int = 100
     dt_fixed: float | None = None
     cn_viscous: bool = False
-    reinit_every: int = 2
+    reinit_every: int = 0
+    reinit_trigger_mode: str = "adaptive"
+    reinit_threshold: float = 1.10
     reproject_mode: str = "legacy"
     phi_primary_transport: bool = False
     interface_tracking_enabled: bool = True

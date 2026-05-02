@@ -72,7 +72,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
         ),
         interface=SolverInterfaceOptions(
             grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 0),
-            reinit_every=getattr(run, "reinit_every", 2),
+            reinit_every=getattr(run, "reinit_every", 0),
+            reinit_trigger_mode=getattr(run, "reinit_trigger_mode", "adaptive"),
+            reinit_threshold=getattr(run, "reinit_threshold", 1.10),
             reinit_method=(getattr(run, "reinit_method", None) or "ridge_eikonal"),
             reproject_variable_density=getattr(run, "reproject_variable_density", False),
             reproject_mode=getattr(run, "reproject_mode", "legacy"),

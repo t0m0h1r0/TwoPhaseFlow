@@ -19,6 +19,8 @@ from .ns_option_canonicalizer import (
 class NSInterfaceRuntimeState:
     rebuild_freq: int
     reinit_every: int
+    reinit_trigger_mode: str
+    reinit_threshold: float
     reproject_variable_density: bool
     face_flux_projection: bool
     reinit_eps_scale: float
@@ -73,6 +75,15 @@ class NSSchemeRuntimeState:
 def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     rebuild_freq = max(0, int(options.grid_rebuild_freq))
     reinit_every = int(options.reinit_every)
+    reinit_trigger_mode = str(getattr(options, "reinit_trigger_mode", "adaptive")).strip().lower()
+    if reinit_trigger_mode not in {"adaptive", "fixed"}:
+        raise ValueError(
+            "Unsupported reinit_trigger_mode="
+            f"'{getattr(options, 'reinit_trigger_mode', None)}'. Use adaptive|fixed."
+        )
+    reinit_threshold = float(getattr(options, "reinit_threshold", 1.10))
+    if reinit_threshold <= 1.0:
+        raise ValueError("reinit_threshold must be > 1.0")
     reproject_variable_density = bool(options.reproject_variable_density)
     face_flux_projection = False
     reinit_eps_scale = float(options.reinit_eps_scale)
@@ -126,6 +137,8 @@ def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     return NSInterfaceRuntimeState(
         rebuild_freq=rebuild_freq,
         reinit_every=reinit_every,
+        reinit_trigger_mode=reinit_trigger_mode,
+        reinit_threshold=reinit_threshold,
         reproject_variable_density=reproject_variable_density,
         face_flux_projection=face_flux_projection,
         reinit_eps_scale=reinit_eps_scale,

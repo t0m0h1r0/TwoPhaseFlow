@@ -65,6 +65,8 @@ def build_ns_runtime_bootstrap(
             phi_primary_transport=interface_runtime.phi_primary_transport,
             phi_primary_redist_every=interface_runtime.phi_primary_redist_every,
             reinit_every=interface_runtime.reinit_every,
+            reinit_trigger_mode=interface_runtime.reinit_trigger_mode,
+            reinit_threshold=interface_runtime.reinit_threshold,
             debug_diagnostics=scheme_options.debug_diagnostics,
             reproject_mode=interface_runtime.reproject_mode,
             cn_viscous=cn_viscous,

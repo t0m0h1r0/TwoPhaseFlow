@@ -171,6 +171,8 @@ class PsiDirectTransport(ILevelSetTransport):
         reinit_every: int = 2,
         grid=None,
         mass_correction: bool = False,
+        reinit_trigger_mode: str = "fixed",
+        reinit_threshold: float = 1.10,
     ):
         """
         Parameters
@@ -188,9 +190,40 @@ class PsiDirectTransport(ILevelSetTransport):
         self.reinit_every = int(reinit_every)
         self.grid = grid
         self.mass_correction = bool(mass_correction)
+        self.reinit_trigger_mode = str(reinit_trigger_mode).strip().lower()
+        if self.reinit_trigger_mode not in {"fixed", "adaptive"}:
+            raise ValueError(
+                "reinit_trigger_mode must be 'adaptive' or 'fixed', "
+                f"got {reinit_trigger_mode!r}"
+            )
+        self.reinit_threshold = float(reinit_threshold)
+        if self.reinit_threshold <= 1.0:
+            raise ValueError("reinit_threshold must be > 1.0")
+        self._reinit_reference_monitor: float | None = None
         if self.mass_correction and grid is None:
             raise ValueError("PsiDirectTransport mass correction requires grid")
         self._dV = grid.cell_volumes() if self.mass_correction else None
+
+    def _volume_monitor(self, psi) -> float:
+        monitor = getattr(self.reinitializer, "volume_monitor", None)
+        if callable(monitor):
+            return float(monitor(psi))
+        if self.grid is None:
+            raise ValueError("adaptive reinitialization requires grid or volume_monitor()")
+        xp = self.xp
+        dV = self._dV if self._dV is not None else self.grid.cell_volumes()
+        value = xp.sum(xp.asarray(psi) * (1.0 - xp.asarray(psi)) * dV)
+        return float(np.asarray(self.backend.to_host(value)).item())
+
+    def _should_reinitialize(self, psi, step_index: int) -> bool:
+        if self.reinit_trigger_mode == "adaptive":
+            monitor = self._volume_monitor(psi)
+            if self._reinit_reference_monitor is None:
+                self._reinit_reference_monitor = max(monitor, 1.0e-30)
+                return False
+            ratio = monitor / max(self._reinit_reference_monitor, 1.0e-30)
+            return ratio > self.reinit_threshold
+        return self.reinit_every > 0 and step_index > 0 and step_index % self.reinit_every == 0
 
     def advance(
         self,
@@ -207,9 +240,10 @@ class PsiDirectTransport(ILevelSetTransport):
         # Advect ψ directly
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
 
-        # Reinitialize on cadence
-        if self.reinit_every > 0 and step_index > 0 and step_index % self.reinit_every == 0:
+        if self._should_reinitialize(psi, step_index):
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
+            if self.reinit_trigger_mode == "adaptive":
+                self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
         if self.mass_correction:
             psi = apply_mass_correction(xp, psi, self._dV, M_pre)

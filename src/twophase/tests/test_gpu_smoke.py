@@ -317,3 +317,55 @@ def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_back
 
     assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
     assert float(gpu_backend.to_host(xp.abs(mass_after - mass_before))) < 1.0e-12
+
+
+def test_psi_direct_adaptive_reinit_keeps_gpu_device(gpu_backend):
+    """Ch11 adaptive M/M_ref reinit trigger preserves CuPy residency."""
+    from twophase.levelset.transport_strategy import PsiDirectTransport
+
+    class SequenceAdvection:
+        def __init__(self, xp):
+            self._fields = [
+                xp.asarray([[0.5, 0.0], [0.0, 0.0]]),
+                xp.asarray([[0.5, 0.5], [0.0, 0.0]]),
+            ]
+            self._index = 0
+
+        def advance(self, psi, velocity, dt):
+            field = self._fields[self._index]
+            self._index += 1
+            return field
+
+    class CountingReinitializer:
+        def __init__(self, backend):
+            self.backend = backend
+            self.xp = backend.xp
+            self.calls = 0
+
+        def volume_monitor(self, psi):
+            xp = self.xp
+            value = xp.sum(psi * (1.0 - psi))
+            return float(self.backend.to_host(value))
+
+        def reinitialize(self, psi):
+            self.calls += 1
+            return self.xp.asarray([[0.5, 0.0], [0.0, 0.0]])
+
+    xp = gpu_backend.xp
+    reinitializer = CountingReinitializer(gpu_backend)
+    transport = PsiDirectTransport(
+        gpu_backend,
+        SequenceAdvection(xp),
+        reinitializer,
+        reinit_every=0,
+        reinit_trigger_mode="adaptive",
+        reinit_threshold=1.10,
+    )
+    psi = xp.zeros((2, 2))
+    velocity = [xp.zeros_like(psi), xp.zeros_like(psi)]
+
+    transport.advance(psi, velocity, 0.1, step_index=0)
+    psi_new = transport.advance(psi, velocity, 0.1, step_index=1)
+
+    assert reinitializer.calls == 1
+    assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
