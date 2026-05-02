@@ -4,7 +4,7 @@ The §14 benchmark set is the canonical surface for the two-phase NS production
 stack. Four production YAML files are checked in:
 
 - `ch14_capillary.yaml` — capillary-wave benchmark.
-- `ch14_static_droplet_periodic.yaml` — periodic static-droplet benchmark.
+- `ch14_static_droplet_periodic.yaml` — periodic static-droplet GPU benchmark.
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
@@ -20,7 +20,7 @@ Run them through the unified runner (`experiment/run.py`):
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
 
-The three production configs emit periodic snapshots with `psi`, `velocity`,
+The four production configs emit periodic snapshots with `psi`, `velocity`,
 and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields
 `fields/u`, `fields/v`, and `fields/p`).
@@ -200,7 +200,7 @@ must be independently visible.
 
 ## ch14 Production Numerical Stack
 
-All three ch14 YAMLs share the production stack:
+The dynamic ch14 YAMLs share the production stack:
 
 - `interface.transport.spatial: fccd` — FCCD is the conservative interface
   transport operator (WIKI-T-065 / WIKI-X-031: ψ is the conservative transported
@@ -235,6 +235,10 @@ All three ch14 YAMLs share the production stack:
 
 Cadence differences across YAMLs:
 - Capillary-wave: `reinitialization.every_steps: 20` (slow dynamics).
+- Static droplet: `tracking.enabled: false`, `convection.time_integrator: ab2`,
+  and `viscosity.time_integrator: forward_euler`; this frozen-interface
+  reference route avoids BDF2/PPE coefficient rebuilds while preserving the
+  pressure-jump projection stack.
 - Rising-bubble & RT: `every_steps: 4` (faster geometry change).
 
 ## PPE Solver Semantics

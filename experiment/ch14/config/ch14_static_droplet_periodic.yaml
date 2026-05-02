@@ -1,4 +1,4 @@
-# N=32 water-air static-droplet probe on a fully periodic, initially fitted grid.
+# N=128 water-air static-droplet GPU route on a fully periodic, initially fitted grid.
 # This reuses the ch14 production stack while replacing the capillary-wave graph
 # interface by a centred circular liquid droplet.
 # - Boundary topology: x and y are both periodic; no wall monitor or wall
@@ -8,7 +8,7 @@
 #   interface instead of rebuilding/remapping every physical step.
 
 grid:
-  cells: [32, 32]
+  cells: [128, 128]
   domain:
     size: [1.0, 1.0]
     boundary: periodic
@@ -55,10 +55,10 @@ physics:
 
 run:
   time:
-    final: 1.0
-    # Fixed at the capillary-limit step for this static fitted N=32 route.
+    final: 0.2
+    # Fixed at the capillary-limit step for this static fitted N=128 route.
     # Avoids per-step GPU synchronization from CFL speed reductions.
-    dt: 0.00988
+    dt: 0.001235
     print_every: 20
   debug:
     step_diagnostics: false
@@ -71,18 +71,20 @@ numerics:
       variable: psi
       spatial: fccd
       time_integrator: tvd_rk3
+    tracking:
+      enabled: false
   momentum:
     predictor:
       assembly: balanced_buoyancy
     terms:
       convection:
         spatial: uccd6
-        time_integrator: imex_bdf2
+        time_integrator: ab2
       pressure:
         gradient: fccd
       viscosity:
         spatial: ccd
-        time_integrator: implicit_bdf2
+        time_integrator: forward_euler
       surface_tension:
         formulation: pressure_jump
   projection:

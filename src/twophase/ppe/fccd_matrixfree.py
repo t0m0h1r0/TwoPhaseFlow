@@ -158,6 +158,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self._pin_dofs = (self._pin_dof,)
         self._rho = None
         self._rho_dev = None
+        self._reuse_static_operator = False
+        self._prepared_rho_token = None
         self._diag_inv = None
         self._coeff_face = None
         self._phase_mean_gauge_cache = None
@@ -186,6 +188,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
     def invalidate_cache(self) -> None:
         """Drop density-dependent cached preconditioner state."""
         invalidate_fccd_matrixfree_cache(self)
+
+    def set_static_operator_cache(self, enabled: bool) -> None:
+        self._reuse_static_operator = bool(enabled)
+        if not enabled:
+            self._prepared_rho_token = None
 
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Store legacy and affine pressure-jump data.
