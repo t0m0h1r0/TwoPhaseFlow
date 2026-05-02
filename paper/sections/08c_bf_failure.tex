@@ -32,8 +32,8 @@
     PPE 内部で用いる $G_h$ と，$\bm{u}^* \to \bm{u}^{n+1}$ 補正で用いる $G_h$ が異なる．
     ある方程式を解き，別の方程式で補正していることになる．
   \item[\textbf{F-3} $D_h$ と $G_h$ が離散共役でない]
-    $D_h \neq -G_h^\ast$．PPE 演算子が SPD でなくなり，
-    離散エネルギー恒等式を崩し，CG が適用できない．
+    $D_h \neq -G_h^\ast$．PPE 演算子の対称正定値性と
+    離散エネルギー恒等式が同時に崩れる．
   \item[\textbf{F-4} $\betaf=(1/\rho)_f$ の経路不一致]
     PPE / 速度補正 / 界面張力の 3 経路で $\betaf$ の平均化
     （算術 vs 調和）が異なる．高密度比 $\rho_l/\rho_g\gg 1$ で
@@ -55,7 +55,7 @@ F-2 は残り，BF 残差は小さくならない（P-2 参照，\S\ref{sec:bf_s
 \noindent\textbf{方針}：
 §\ref{sec:bf_seven_principles} で 7 つの設計原則 P-1..P-7 を定式化し，
 §\ref{sec:fccd_bf_sub_system} で FCCD 面フラックス部分系による
-面フットプリント不一致の $\Ord{H^4}$ 抑制と，
-pressure-jump/CSF 律速を含む実効 BF 残差の $\Ord{H^2}$ 評価を分離して示す．
+面フットプリント不一致の $\Ord{\Delta x^4}$ 抑制と，
+pressure-jump/CSF 律速を含む実効 BF 残差の $\Ord{\Delta x^2}$ 評価を分離して示す．
 
 % ═══════════════════════════════════════════════════════════════════════════════
