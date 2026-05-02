@@ -4,6 +4,10 @@ Date: 2026-05-02
 Branch: `ra-viscous-dc-20260502`  
 Scope: implicit-BDF2 viscous defect-correction low-order Helmholtz cost.
 
+Validation note: CHK-RA-VISCOUS-DC-003 refines the provisional H4 verdict below.
+Raw host-device RHS transfer is not dominant at N=128; the confirmed host-side
+bottleneck is Python/NumPy sparse assembly of the structured stencil.
+
 ## Observation
 
 The N=128, T=1, alpha=4 fully-periodic static-droplet validation completed on
