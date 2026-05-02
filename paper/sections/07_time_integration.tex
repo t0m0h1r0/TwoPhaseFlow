@@ -44,6 +44,14 @@ NS 対流 & IMEX-BDF2（EXT2 外挿） & §\ref{sec:time_level1} \\
 \end{tabular}
 \end{tcolorbox}
 
+表は\textbf{物理項ごとの時間処理}を分類したものであり，
+1 ステップ内の因果順序そのものではない．実際の順序は前段で述べた通り
+CLS 保存形更新 $\to$ NS 予測子 $\to$ IPC PPE 投影である．
+一方，以下の説明順では，表面張力を圧力ジャンプとして PPE に内蔵する構造を先に示し，
+それを受けて IPC PPE 投影を定義した後，浮力の静水圧成分が
+同じ PPE 側へ吸収されることを説明する．
+このため，章内の説明順は「因果順序」ではなく「閉包依存関係」を反映している．
+
 \noindent\textbf{時間積分の 3 形式：}
 本章で扱う時間積分は，未知ベクトル $u^{n+1}$ の取り扱いにより
 \textbf{陽解法（explicit）}・\textbf{陰解法（implicit）}・
@@ -368,10 +376,12 @@ NS 対流は次小節の IMEX-BDF2（EXT2 外挿）で扱う．
 \phantomsection\label{sec:cls_velocity_consistency}
 % -------------------------------------------------------------------------------
 
-CLS 保存形更新（\S\ref{sec:cls_stages}）と運動量移流
-（\S\ref{sec:fccd_advection}）の双方が用いる
-$\bm{u}$ は\textbf{直前の PPE 投影済み} $\bm{u}^n$ である．
-未投影 $\bm{u}^*$（運動量予測子出力）を使うと：
+CLS 保存形更新（\S\ref{sec:cls_stages}）が用いる速度は
+\textbf{直前の PPE 投影済み} $\bm{u}^n$ である．
+一方，運動量移流（\S\ref{sec:fccd_advection}）の EXT2 外挿は
+PPE 投影済みの履歴 $\{\bm{u}^n,\bm{u}^{n-1}\}$ から構成し，
+未投影 $\bm{u}^*$（運動量予測子出力）は移流速度として用いない．
+未投影 $\bm{u}^*$ を使うと：
 \begin{itemize}
   \item 移流で $\bm{u}^*$ の離散発散残差が $\psi$ 質量変化を生む
   \item CLS 移流と運動量予測子で速度場が異なり，
@@ -379,7 +389,8 @@ $\bm{u}$ は\textbf{直前の PPE 投影済み} $\bm{u}^n$ である．
 \end{itemize}
 本稿が採用する時間ステップ順序：
 \begin{equation*}
-  \text{PPE}_n\to\bm{u}^n\to\text{CLS 更新}\,\&\,\text{運動量予測子}
+  (\text{PPE}_{n-1},\text{PPE}_{n})\to\{\bm{u}^{n-1},\bm{u}^{n}\}
+  \to\text{CLS 更新}\,\&\,\text{運動量予測子}
   \to\bm{u}^*_{n+1}\to\text{PPE}_{n+1}\to\bm{u}^{n+1}.
 \end{equation*}
 これは時間積分順序の根幹であり，\S\ref{sec:cls_stages} の CLS 保存形更新と
