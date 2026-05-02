@@ -55,7 +55,7 @@ physics:
 
 run:
   time:
-    final: 0.2
+    final: 1.0
     # Fixed at the capillary-limit step for this static fitted N=128 route.
     # Avoids per-step GPU synchronization from CFL speed reductions.
     dt: 0.001235
