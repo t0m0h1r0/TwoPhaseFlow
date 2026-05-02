@@ -82,8 +82,8 @@ mathematics, but it should not be adopted as a blanket solver replacement.
 ## Consequences
 
 - No production code change is made in this review.
-- No paper rewrite is required: Chapters 7, 9, and 11 already encode the main
-  adopted distinctions.
+- Paper text was later clarified in Chapters 7, 9, and 11 to make the existing
+  adopted distinctions harder to overread as fixed-count DC guarantees.
 - The supplied memo should be treated as a policy reinforcement:
   high residuals must remain visible, fixed-count DC must not be overclaimed,
   and one-field PPE stagnation should trigger path selection toward the

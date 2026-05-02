@@ -420,15 +420,17 @@ $p^n_{\mathrm{ext}} = \text{HFE}(p^n,\psi^n,\kappa_{lg}^{n})$．
 CCD 発散から構成される．以下，この右辺ベクトルを $b_p$ と書く．
 境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
 
-\noindent\textbf{DC $k{=}3$ 反復概要（第6.0--6.5小段；構造は両経路共通，
+\noindent\textbf{DC $k\leq3$ 残差監視反復概要（第6.0--6.5小段；構造は両経路共通，
 オペレータ $L_H/L_L$ の中身が PPE 経路別に置換される）：}
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item 第6.0小段：初期化 $\delta p^{(0)} = 0$．
   \item 第6.1小段：$k=1,2,3$ で欠陥 $d^{(k)} = b_p - L_H\,\delta p^{(k-1)}$ を CCD で評価．
   \item 第6.2小段：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を低次補正問題として解く（§~\ref{sec:dc_sweep}）．
   \item 第6.3小段：緩和更新 $\delta p^{(k)} = \delta p^{(k-1)} + \omega\,\eta^{(k)}$（$\omega \in \{0.3,0.5,0.7\}$）．
-  \item 第6.4小段：収束判定 $\|d^{(k)}\|_\infty < \varepsilon_\mathrm{tol}$（許容値 $10^{-10}$）．
-  \item 第6.5小段：最終値 $\delta p \leftarrow \delta p^{(3)}$．
+  \item 第6.4小段：収束判定 $\|d^{(k)}\|_\infty < \varepsilon_\mathrm{tol}$（許容値 $10^{-10}$）．満たした時点で受理する．
+  \item 第6.5小段：最終値 $\delta p \leftarrow \delta p^{(k_\mathrm{acc})}$．ここで
+        $k_\mathrm{acc}$ は受理された最後の反復であり，$k=3$ 到達時にも
+        $L_H$ 残差が下がらない一括 PPE は経路選択上の診断対象とする．
 \end{enumerate}
 
 \noindent\textbf{PPE 経路別の $L_H, L_L$ 定義：}
