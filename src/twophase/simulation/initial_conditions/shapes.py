@@ -4,6 +4,7 @@ from .shape_base import ShapePrimitive, validate_shape_phase as _validate_phase
 from .shape_factory import shape_from_dict
 from .shape_primitives import (
     Circle,
+    Ellipse,
     HalfSpace,
     PerturbedCircle,
     Rectangle,
@@ -14,6 +15,7 @@ from .shape_primitives import (
 __all__ = [
     "ShapePrimitive",
     "Circle",
+    "Ellipse",
     "Rectangle",
     "SinusoidalInterface",
     "HalfSpace",

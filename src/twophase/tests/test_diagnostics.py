@@ -152,6 +152,25 @@ def test_deformation_ellipse():
     assert D > 0.1, f"Ellipse deformation should be > 0.1, got {D}"
 
 
+def test_signed_deformation_tracks_axis_orientation():
+    """Signed deformation is positive for x-long and negative for y-long drops."""
+    X, Y = _make_grid()
+    u = v = p = np.zeros_like(X)
+
+    dist_x = np.sqrt(((X - 0.5) / 0.3) ** 2 + ((Y - 0.5) / 0.15) ** 2)
+    psi_x = np.where(dist_x < 1.0, 1.0, 0.0)
+    diag_x = DiagnosticCollector(["signed_deformation"], X, Y, H)
+    diag_x.collect(0.0, psi_x, u, v, p)
+
+    dist_y = np.sqrt(((X - 0.5) / 0.15) ** 2 + ((Y - 0.5) / 0.3) ** 2)
+    psi_y = np.where(dist_y < 1.0, 1.0, 0.0)
+    diag_y = DiagnosticCollector(["signed_deformation"], X, Y, H)
+    diag_y.collect(0.0, psi_y, u, v, p)
+
+    assert diag_x.last("signed_deformation") > 0.1
+    assert diag_y.last("signed_deformation") < -0.1
+
+
 # ── Test 4: interface amplitude ──────────────────────────────────────────────
 
 def test_interface_amplitude_flat():

@@ -7,6 +7,7 @@ from typing import Callable
 from .shape_base import ShapePrimitive
 from .shape_primitives import (
     Circle,
+    Ellipse,
     HalfSpace,
     PerturbedCircle,
     Rectangle,
@@ -90,6 +91,14 @@ def _build_perturbed_circle(data: dict, phase: str) -> ShapePrimitive:
     )
 
 
+def _build_ellipse(data: dict, phase: str) -> ShapePrimitive:
+    return Ellipse(
+        center=data["center"],
+        semi_axes=data["semi_axes"],
+        interior_phase=phase,
+    )
+
+
 def _build_zalesak_disk(data: dict, phase: str) -> ShapePrimitive:
     return ZalesakDisk(
         center=data["center"],
@@ -107,6 +116,7 @@ _SHAPE_BUILDERS: dict[str, Callable[[dict, str], ShapePrimitive]] = {
     "sinusoidal_interface": _build_sinusoidal_interface,
     "capillary_wave": _build_sinusoidal_interface,
     "perturbed_circle": _build_perturbed_circle,
+    "ellipse": _build_ellipse,
     "zalesak_disk": _build_zalesak_disk,
 }
 
