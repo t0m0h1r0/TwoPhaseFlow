@@ -8,6 +8,7 @@ Verified properties:
   V4  node_gradient (R_4)  : O(H^4) node gradient via Hermite reconstruction.
   V5  wall Option III      : face_divergence zero at boundary nodes.
   V6  wall Option IV       : face_value = 0 at first face when Dirichlet u_wall=0.
+  V7  periodic nonuniform  : face_divergence uses nodal control-volume width.
 """
 
 import numpy as np
@@ -289,6 +290,29 @@ def test_wall_option_iii_boundary_zero(backend):
     # Option III convention: boundary nodes of face_divergence are zero.
     assert np.allclose(div[0, :], 0.0), "Left boundary divergence must be 0"
     assert np.allclose(div[-1, :], 0.0), "Right boundary divergence must be 0"
+
+
+def test_periodic_nonuniform_face_divergence_uses_control_volume_width(backend):
+    """Periodic nonuniform divergence divides by nodal control-volume width."""
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(3, 4), L=(1.0, 1.0), alpha_grid=2.0)
+    )
+    grid = Grid(cfg.grid, backend)
+    grid.coords[0] = np.asarray([0.0, 0.2, 0.7, 1.0])
+    fccd = FCCDSolver(grid, backend, bc_type="periodic")
+
+    flux_axis = np.asarray([10.0, 13.0, 4.0])
+    face_flux = np.broadcast_to(flux_axis[:, None], (3, 5)).copy()
+    div = np.asarray(fccd.face_divergence(face_flux, axis=0))
+
+    widths = np.asarray([0.25, 0.35, 0.4])
+    expected_axis = np.asarray([
+        (flux_axis[0] - flux_axis[2]) / widths[0],
+        (flux_axis[1] - flux_axis[0]) / widths[1],
+        (flux_axis[2] - flux_axis[1]) / widths[2],
+        (flux_axis[0] - flux_axis[2]) / widths[0],
+    ])
+    np.testing.assert_allclose(div, np.broadcast_to(expected_axis[:, None], div.shape))
 
 
 # ── V6: Wall Option IV (Dirichlet u no-slip) ─────────────────────────────

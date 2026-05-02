@@ -55,6 +55,35 @@ def test_fvm_matrixfree_apply_matches_builder():
     np.testing.assert_allclose(out_mf, out_ref, rtol=1e-12, atol=1e-12)
 
 
+def test_ppe_builder_periodic_nonuniform_wrap_uses_control_volume_width():
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(3, 2), L=(1.0, 1.0), alpha_grid=2.0)
+    )
+    grid = Grid(cfg.grid, backend)
+    grid.coords[0] = np.asarray([0.0, 0.2, 0.7, 1.0])
+    builder = PPEBuilder(backend, grid, bc_type="periodic_wall")
+
+    rho = np.ones(grid.shape)
+    p_axis = np.asarray([1.0, 2.0, 4.0, 1.0])
+    pressure = np.broadcast_to(p_axis[:, None], grid.shape).copy()
+    (data, rows, cols), shape = builder.build(rho)
+    applied = (sp.csr_matrix((data, (rows, cols)), shape=shape) @ pressure.ravel())
+    applied = applied.reshape(grid.shape)
+
+    h_face = np.diff(grid.coords[0])
+    width = np.asarray([0.5 * (h_face[-1] + h_face[0]), 0.35, 0.4])
+    expected = np.asarray([
+        (p_axis[1] - p_axis[0]) / h_face[0] / width[0]
+        + (p_axis[2] - p_axis[0]) / h_face[-1] / width[0],
+        (p_axis[2] - p_axis[1]) / h_face[1] / width[1]
+        + (p_axis[0] - p_axis[1]) / h_face[0] / width[1],
+        (p_axis[0] - p_axis[2]) / h_face[-1] / width[2]
+        + (p_axis[1] - p_axis[2]) / h_face[1] / width[2],
+    ])
+    np.testing.assert_allclose(applied[:3, 0], expected)
+
+
 def test_fvm_matrixfree_solve_matches_direct_fvm():
     backend = Backend(use_gpu=False)
     cfg = _make_cfg(8)

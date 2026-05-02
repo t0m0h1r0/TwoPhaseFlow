@@ -55,14 +55,19 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
 
         if is_periodic_axis(builder.bc_type, ax, builder.ndim):
             idx_wL, idx_wR = builder._wrap_face_indices[ax]
-            h = float(builder.grid.L[ax] / N_ax)
-            h2 = h * h
             rho_wL = rho_flat[xp.asarray(idx_wL)]
             rho_wR = rho_flat[xp.asarray(idx_wR)]
-            coeff_w = 2.0 / (rho_wL + rho_wR) / h2
+            a_w = 2.0 / (rho_wL + rho_wR)
+            if not builder.grid.uniform:
+                d_wrap, dv_wL, dv_wR = _get_nonuniform_wrap_cache(builder, ax=ax)
+                coeff_wL = a_w / d_wrap / dv_wL
+                coeff_wR = a_w / d_wrap / dv_wR
+            else:
+                h = float(builder.grid.L[ax] / N_ax)
+                coeff_wL = coeff_wR = a_w / (h * h)
             idx_wL_xp = xp.asarray(idx_wL)
             idx_wR_xp = xp.asarray(idx_wR)
-            data_list.extend([coeff_w, coeff_w, -coeff_w, -coeff_w])
+            data_list.extend([coeff_wL, coeff_wR, -coeff_wL, -coeff_wR])
             row_list.extend([idx_wL_xp, idx_wR_xp, idx_wL_xp, idx_wR_xp])
             col_list.extend([idx_wR_xp, idx_wL_xp, idx_wL_xp, idx_wR_xp])
 
@@ -165,8 +170,12 @@ def _get_nonuniform_face_cache(builder, *, ax: int, strides: list[int]):
         coords = np.asarray(builder.grid.coords[ax])
         d_face = coords[1:] - coords[:-1]
         dv = np.empty(len(coords))
-        dv[0] = (coords[1] - coords[0]) / 2.0
-        dv[-1] = (coords[-1] - coords[-2]) / 2.0
+        if is_periodic_axis(builder.bc_type, ax, builder.ndim):
+            dv[0] = 0.5 * (d_face[-1] + d_face[0])
+            dv[-1] = dv[0]
+        else:
+            dv[0] = d_face[0] / 2.0
+            dv[-1] = d_face[-1] / 2.0
         dv[1:-1] = (coords[2:] - coords[:-2]) / 2.0
         idx_L_h, idx_R_h = builder._face_indices[ax]
         stride = strides[ax]
@@ -176,6 +185,23 @@ def _get_nonuniform_face_cache(builder, *, ax: int, strides: list[int]):
             xp.asarray(d_face[ax_idx_L]),
             xp.asarray(dv[ax_idx_L]),
             xp.asarray(dv[ax_idx_R]),
+        )
+    return builder._gpu_coeff_cache[cache_key]
+
+
+def _get_nonuniform_wrap_cache(builder, *, ax: int):
+    xp = builder.xp
+    cache_key = ('nonunif_wrap', ax)
+    if cache_key not in builder._gpu_coeff_cache:
+        coords = np.asarray(builder.grid.coords[ax])
+        d_face = coords[1:] - coords[:-1]
+        d_wrap = d_face[-1]
+        dv_left = 0.5 * (d_face[-2] + d_face[-1]) if len(d_face) > 1 else d_face[-1]
+        dv_right = 0.5 * (d_face[-1] + d_face[0])
+        builder._gpu_coeff_cache[cache_key] = (
+            xp.asarray(d_wrap),
+            xp.asarray(dv_left),
+            xp.asarray(dv_right),
         )
     return builder._gpu_coeff_cache[cache_key]
 
