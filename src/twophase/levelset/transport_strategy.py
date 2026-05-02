@@ -2,7 +2,7 @@
 
 Encapsulates two distinct paths:
 1. PhiPrimaryTransport — logit-space advection (φ) + mass correction
-2. PsiDirectTransport — direct ψ advection + optional reinit
+2. PsiDirectTransport — direct ψ advection + mass correction + optional reinit
 
 Both implement ILevelSetTransport.advance(psi, velocity, dt, step_index) -> psi
 """
@@ -155,11 +155,12 @@ class PhiPrimaryTransport(ILevelSetTransport):
 
 
 class PsiDirectTransport(ILevelSetTransport):
-    """Direct ψ advection: advect Heaviside directly + optional reinit.
+    """Direct ψ advection: advect Heaviside directly + mass correction + optional reinit.
 
     Flow:
     1. Advect ψ directly (no logit transform)
     2. Optionally reinitialize on a fixed cadence
+    3. Apply interface-weighted mass correction in ψ-space
     """
 
     def __init__(
@@ -168,6 +169,8 @@ class PsiDirectTransport(ILevelSetTransport):
         advection: "ILevelSetAdvection",
         reinitializer: "IReinitializer",
         reinit_every: int = 2,
+        grid=None,
+        mass_correction: bool = False,
     ):
         """
         Parameters
@@ -183,6 +186,11 @@ class PsiDirectTransport(ILevelSetTransport):
         self.advection = advection
         self.reinitializer = reinitializer
         self.reinit_every = int(reinit_every)
+        self.grid = grid
+        self.mass_correction = bool(mass_correction)
+        if self.mass_correction and grid is None:
+            raise ValueError("PsiDirectTransport mass correction requires grid")
+        self._dV = grid.cell_volumes() if self.mass_correction else None
 
     def advance(
         self,
@@ -193,6 +201,8 @@ class PsiDirectTransport(ILevelSetTransport):
     ) -> np.ndarray:
         """Direct ψ advection with optional reinit."""
         xp = self.xp
+        if self.mass_correction:
+            M_pre = xp.sum(xp.asarray(psi) * self._dV)
 
         # Advect ψ directly
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
@@ -200,5 +210,8 @@ class PsiDirectTransport(ILevelSetTransport):
         # Reinitialize on cadence
         if self.reinit_every > 0 and step_index > 0 and step_index % self.reinit_every == 0:
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
+
+        if self.mass_correction:
+            psi = apply_mass_correction(xp, psi, self._dV, M_pre)
 
         return psi

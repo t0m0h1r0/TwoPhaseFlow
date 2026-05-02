@@ -238,14 +238,14 @@ class NumericsConfig:
     # 境界条件の種類: BCType.WALL または BCType.PERIODIC
     bc_type: BCType = BCType.WALL
     # CLS 移流スキーム:
-    #   'dissipative_ccd' (デフォルト, §5) | 'weno5' | 'fccd'
+    #   'fccd_flux' (デフォルト, §6) | 'dissipative_ccd' | 'weno5' | 'fccd'
     # FCCD は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
-    advection_scheme: str = "dissipative_ccd"
-    # 運動量対流スキーム: 'ccd' (デフォルト) | 'fccd' | 'uccd6'
+    advection_scheme: str = "fccd_flux"
+    # 運動量対流スキーム: 'uccd6' (デフォルト, §6) | 'ccd' | 'fccd'
     # FCCD 変種は face-centered compact (SP-D §6/§7); UCCD6 は 6 次 upwind CCD +
     # 選択的超粘性 (WIKI-T-062, WIKI-X-023). いずれも ConvectionTerm と完全互換
     # の AB2 バッファ形状を保つ.
-    convection_scheme: str = "ccd"
+    convection_scheme: str = "uccd6"
     # UCCD6 超粘性係数 σ (convection_scheme='uccd6' 時のみ). TVD-RK3 安定条件
     # σ ≲ √3 h / (8500 max|u|). 典型値 1e-3 (CFL ~0.1, N=128).
     uccd6_sigma: float = 1.0e-3

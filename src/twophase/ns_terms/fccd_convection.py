@@ -12,11 +12,12 @@ spatial accuracy. Two discretisation modes are offered:
         identical to ConvectionTerm.
 
     mode='flux'  (Option B of SP-D §7)
-        Conservative / skew-symmetric face flux divergence:
-        F_f = 1/2[u^(k)_f · (∂_k u^(j))_f + (u^(k)·u^(j))_f]
+        Conservative single-face-value flux divergence:
+        F_f = P_f(u^(k)·u^(j))
         (−(u·∇)u)_j = −Σ_k [F_{f_{i+1/2}} − F_{f_{i-1/2}}]/H_i
-        Discretely momentum-conserving; aliasing-suppressed. Required for
-        the Option-B BF-preservation theorem when paired with face ∇p and CSF.
+        Discretely momentum-conserving. This class implements the conservative
+        Option-B path; the paper's skew-symmetric variant is not silently
+        substituted.
 
 Shares the FCCDSolver's pre-factored CCD block LU — no extra block solves.
 CPU/GPU code path is unified via ``backend.xp``; q-sharing between components

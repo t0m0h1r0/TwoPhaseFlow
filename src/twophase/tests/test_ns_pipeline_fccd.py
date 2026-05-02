@@ -281,6 +281,37 @@ def test_psi_direct_transport_reinitializes_after_initial_step_only():
     assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
 
 
+def test_psi_direct_transport_applies_ch6_mass_correction():
+    class LossyAdvection:
+        def advance(self, psi, velocity, dt):
+            return 0.9 * psi
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    X, Y = grid.meshgrid()
+    psi = 0.5 + 0.1 * np.sin(2.0 * np.pi * X) * np.sin(2.0 * np.pi * Y)
+    velocity = [np.zeros_like(psi), np.zeros_like(psi)]
+    transport = PsiDirectTransport(
+        backend,
+        LossyAdvection(),
+        IdentityReinitializer(),
+        reinit_every=0,
+        grid=grid,
+        mass_correction=True,
+    )
+
+    mass_before = np.sum(psi * grid.cell_volumes())
+    psi_new = transport.advance(psi, velocity, 0.1, step_index=1)
+    mass_after = np.sum(psi_new * grid.cell_volumes())
+
+    assert mass_after == pytest.approx(mass_before, rel=1.0e-12, abs=1.0e-12)
+
+
 @pytest.mark.parametrize(
     "advection_scheme,convection_scheme",
     [("fccd_flux", "fccd_flux"), ("fccd_nodal", "fccd_nodal")],

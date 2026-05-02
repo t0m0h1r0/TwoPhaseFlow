@@ -240,3 +240,37 @@ def test_fccd_matrixfree_phase_density_keeps_gpu_density_device(
 
     assert ppe._rho is None
     assert ppe._cell_volume_host is None
+
+
+def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_backend):
+    """Ch6 ψ-space mass correction remains on CuPy arrays."""
+    from twophase.levelset.transport_strategy import PsiDirectTransport
+
+    class LossyAdvection:
+        def advance(self, psi, velocity, dt):
+            return 0.9 * psi
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    grid = tiny_grid_factory(gpu_backend, N=8)
+    xp = gpu_backend.xp
+    X, Y = grid.meshgrid()
+    psi = 0.5 + 0.1 * xp.sin(2.0 * xp.pi * X) * xp.sin(2.0 * xp.pi * Y)
+    velocity = [xp.zeros_like(psi), xp.zeros_like(psi)]
+    transport = PsiDirectTransport(
+        gpu_backend,
+        LossyAdvection(),
+        IdentityReinitializer(),
+        reinit_every=0,
+        grid=grid,
+        mass_correction=True,
+    )
+    mass_before = xp.sum(psi * grid.cell_volumes())
+
+    psi_new = transport.advance(psi, velocity, 0.1, step_index=1)
+    mass_after = xp.sum(psi_new * grid.cell_volumes())
+
+    assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
+    assert float(gpu_backend.to_host(xp.abs(mass_after - mass_before))) < 1.0e-12

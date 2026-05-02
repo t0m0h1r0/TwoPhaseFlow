@@ -22,6 +22,12 @@ from twophase.config import NumericsConfig, SimulationConfig, GridConfig, Solver
 
 # ── Test 1: advection_scheme field validation ─────────────────────────────
 
+def test_numerics_defaults_follow_chapter6_scheme_assignment():
+    cfg = NumericsConfig()
+    assert cfg.advection_scheme == "fccd_flux"
+    assert cfg.convection_scheme == "uccd6"
+
+
 def test_advection_scheme_valid_dissipative_ccd():
     cfg = NumericsConfig(advection_scheme="dissipative_ccd")
     assert cfg.advection_scheme == "dissipative_ccd"

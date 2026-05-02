@@ -153,11 +153,10 @@ class ViscousTerm(INSTerm):
         ``cn_advance/`` subpackage for available strategies and
         ``docs/memo/extended_cn_impl_design.md`` for rationale.
 
-        When ``self.cn_viscous`` is False this method falls back to a plain
-        forward-Euler step — preserved for API completeness though the
-        production caller in ``ns_terms/predictor.py`` guards the CN branch
-        on ``config.numerics.cn_viscous`` and so never triggers the fallback
-        via this entrypoint.
+        When ``self.cn_viscous`` is False this method executes the explicit
+        forward-Euler branch preserved for API completeness. The production
+        caller in ``ns_terms/predictor.py`` guards the CN branch on
+        ``config.numerics.cn_viscous`` and does not route here for CN work.
         """
         if not self.cn_viscous:
             # Dead fast-path: explicit Euler using V(u^n). Bit-exact with

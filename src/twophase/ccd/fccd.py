@@ -30,8 +30,7 @@ The H/16 correction cancels the (H²/8)·u''' leading term of the plain average.
 
 Conservative face-flux advection (SP-D §7, Option B):
 
-    F^{(k)}_{f_{i-1/2}} = u^{(k)}_{f} · (∂_{x_k} u^{(j)})_{f}   (non-conservative)
-    F^{(k)cons}_{f_{i-1/2}} = u^{(k)}_{f} · u^{(j)}_{f}        (conservative)
+    F^{(k)cons}_{f_{i-1/2}} = P_f(u^{(k)}u^{(j)})              (conservative)
     [∇ · F^{(j)}]_i = Σ_k (F^{(k)}_{f_{i+1/2}} - F^{(k)}_{f_{i-1/2}}) / H_i
 
 Wall BC:
@@ -537,9 +536,9 @@ class FCCDSolver:
         mode : 'node' | 'flux'
             'node' → Option C: R_4 Hermite reconstructor on (∂_xk u)
                      and multiply at node by u^(k).  O(H⁴) where R_4 applies.
-            'flux' → Option B: skew-symmetric face flux form.
-                     F_f = 0.5 [u_f^(k)·(∂u)_f + (u^(k)·u)_f]
-                     then nodal face divergence. O(H⁴) uniform.
+            'flux' → Option B: conservative single-face-value flux
+                     P_f(u^(k)u) followed by nodal face divergence.
+                     O(H⁴) uniform.
         skip_zero_check : bool
             True when the caller already established that the velocity field is
             not identically zero over this RHS evaluation sequence.

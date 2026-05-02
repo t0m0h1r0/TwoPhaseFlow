@@ -154,6 +154,25 @@ def test_metric_ccd_convergence(axis):
     )
 
 
+def test_nonuniform_metric_requires_ccd_solver():
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0), alpha_grid=2.0)
+    )
+    grid = Grid(cfg.grid, backend)
+    coords = np.asarray([0.0, 0.1, 0.4, 0.7, 1.0])
+    grid.coords[0] = coords
+    cell_dx = np.diff(coords)
+    node_dx = np.empty(5)
+    node_dx[0] = cell_dx[0]
+    node_dx[-1] = cell_dx[-1]
+    node_dx[1:-1] = 0.5 * (cell_dx[:-1] + cell_dx[1:])
+    grid.h[0] = node_dx
+
+    with pytest.raises(ValueError, match="non-uniform grid metrics require a CCDSolver"):
+        grid._build_metrics()
+
+
 # ── Test 3: dJ/dξ の MMS 収束 ────────────────────────────────────────────────
 
 @pytest.mark.parametrize("axis", [0, 1])
