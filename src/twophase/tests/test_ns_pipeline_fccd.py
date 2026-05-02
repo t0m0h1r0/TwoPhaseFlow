@@ -934,6 +934,8 @@ def test_affine_jump_constructor_requires_face_flux_projection_path():
         TwoPhaseNSSolver(
             N, N, L, L,
             bc_type="wall",
+            advection_scheme="weno5",
+            convection_scheme="ccd",
             ppe_solver="fvm_iterative",
             ppe_coefficient_scheme="phase_separated",
             ppe_interface_coupling_scheme="affine_jump",

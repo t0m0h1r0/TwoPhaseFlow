@@ -234,8 +234,10 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     )
     cfg = ExperimentConfig.from_yaml(path)
 
-    assert cfg.initial_condition["type"] == "capillary_wave"
-    assert cfg.initial_condition["mode"] == 2
+    objects = cfg.initial_condition["objects"]
+    assert len(objects) == 1
+    assert objects[0]["type"] == "capillary_wave"
+    assert objects[0]["mode"] == 2
     assert "interface_amplitude" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
     assert cfg.run.advection_scheme == "fccd_flux"
