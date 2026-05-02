@@ -1,0 +1,17 @@
+{
+  "lock_id": "A7E14DBF-18DF-49A3-941C-2B92A1473918",
+  "owner": "Codex",
+  "task": "RA Chapter 9 implementation fidelity audit",
+  "branch": "ra-ch9-implementation-audit-20260502",
+  "created_utc": "2026-05-02T13:38:00Z",
+  "status": "active",
+  "scope": [
+    "paper/sections/09_ccd_poisson.tex",
+    "paper/sections/09b_split_ppe.tex",
+    "paper/sections/09c_hfe.tex",
+    "paper/sections/09d_defect_correction.tex",
+    "paper/sections/09e_ppe_bc.tex",
+    "paper/sections/09f_pressure_summary.tex",
+    "src/twophase"
+  ]
+}
