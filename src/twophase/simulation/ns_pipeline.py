@@ -559,13 +559,19 @@ class TwoPhaseNSSolver:
 
         Accepts three YAML formats:
 
-        1. **Builder format** (explicit)::
+        1. **Builder format** (explicit primitives)::
 
                initial_condition:
                  background_phase: liquid
                  shapes: [{type: circle, ...}]
 
-        2. **Single-shape shorthand**::
+        2. **Object format** (experiment-facing)::
+
+               initial_condition:
+                 background_phase: liquid
+                 objects: [{type: bubble, center: [0.5, 0.5], radius: 0.25}]
+
+        3. **Single-shape shorthand**::
 
                initial_condition:
                  type: circle
@@ -573,7 +579,7 @@ class TwoPhaseNSSolver:
                  radius: 0.25
                  interior_phase: gas
 
-        3. **Union shorthand** (multiple shapes, same background)::
+        4. **Union shorthand** (multiple shapes, same background)::
 
                initial_condition:
                  type: union
@@ -589,7 +595,8 @@ class TwoPhaseNSSolver:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Build initial (u, v) from config ``initial_velocity`` section.
 
-        If ``initial_velocity`` is absent, returns zero fields.
+        If ``initial_velocity`` is absent, returns zero fields.  The section may
+        name one velocity primitive or a ``base`` plus ``perturbations`` list.
         """
         return build_runtime_initial_velocity(
             self._runtime_setup_context(),
