@@ -8,7 +8,7 @@
 \paragraph{検証対象．}
 第~\ref{sec:ppe_solve}章 で導入した CCD--Poisson 楕円型ソルバ
 （§\ref{sec:ccd_elliptic}），defect--correction 反復
-（§\ref{sec:defect_correction_main}：$k$ 回反復で精度を段階的に押し上げる），
+（§\ref{sec:defect_correction_ppe}：$k$ 回反復で精度を段階的に押し上げる），
 PPE Neumann 境界条件 + 1 点ゲージ固定（§\ref{sec:ppe_solve} 末尾）の
 \textbf{単体精度}を確認する．
 本実験のうち U2-b は production の \texttt{PPESolverCCDLU}
@@ -96,7 +96,7 @@ $N$ & $h$ & $\|e\|_\infty$ \\
         ($N\!=\!8\!\to\!128$) の典型的な $\pm 0.1$ 雑音帯内で設計 7 次に整合；
         $N\!=\!128$ で $k\!\ge\!3$ は $\Ord{10^{-12}}$ の機械精度床に達し，
         slope は床支配で頭打ちになる．$k=5,10$ は $k=3$ と同精度
-        （DC が $k=3$ 時点で既に飽和；§\ref{sec:dc_accuracy} の段階理論と整合）．\checkmark
+        （DC が $k=3$ 時点で既に飽和；§\ref{sec:ppe_dc_accuracy} の段階理論と整合）．\checkmark
   \item U2-b production CCD 作用素 + Dirichlet パッチ：slope $5.72$（連続 slope $5.17\!\to\!5.98$）．
         細格子で内部 6 次に漸近し，粗格子は境界 5 次の偏倚を残す典型挙動．
         \checkmark（production CCD-PPE 作用素ファクトリ \texttt{\_build\_sparse\_operator}

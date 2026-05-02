@@ -55,8 +55,8 @@
 \input{sections/06d_viscous_3layer}   %% §6.3 粘性 3 層 (Layer A/B/C) + §6.4 ρ/μ 補間規則
 \clearpage
 
-%% §7: 時間積分 — TVD-RK3 / IMEX-BDF2 / CN defect-correction
-\input{sections/07_time_integration}  %% §7（時間積分：TVD-RK3 / IMEX-BDF2 / CN defect-correction / velocity-PPE ordering / pseudo-time CFL）
+%% §7: 時間積分 — TVD-RK3 / IMEX-BDF2 / common DC / viscous Helmholtz DC
+\input{sections/07_time_integration}  %% §7（時間積分：TVD-RK3 / IMEX-BDF2 / DC共通原理 / 粘性Helmholtz DC / velocity-PPE ordering / pseudo-time CFL）
 \clearpage
 
 %% §8: 圧力・速度連成：Balanced-Force CCD 理論
@@ -71,7 +71,7 @@
 \input{sections/09_ccd_poisson}        %% §9.1–§9.2（sectionヘッダーを内包）
 \input{sections/09b_split_ppe}         %% §9.3 分相PPE解法
 \input{sections/09c_hfe}               %% §9.4 Hermite 場延長法（HFE）
-\input{sections/09d_defect_correction} %% §9.5 欠陥補正法
+\input{sections/09d_defect_correction} %% §9.5 欠陥補正法のPPE適用
 \input{sections/09e_ppe_bc}            %% §9.6 境界条件と Option III/IV
 \input{sections/09f_pressure_summary}  %% §9 のまとめ（GPU-native FVM 詳細は付録 E へ移動）
 \clearpage

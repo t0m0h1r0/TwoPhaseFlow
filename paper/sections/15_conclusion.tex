@@ -27,7 +27,7 @@
 低次移流による界面にじみ & DCCD + UCCD6 + TVD-RK3（§\ref{sec:dccd_role}，§\ref{sec:uccd6_def}，§\ref{sec:time_int}）\\
 曲率計算誤差 $\to$ 寄生流れ & CCD $\Ord{h^6}$ + HFE Hermite 場延長（第\ref{sec:CCD}章，§\ref{sec:hfe}）\\
 チェッカーボード圧力振動 & Balanced-Force 七原則 + FCCD 面ジェット sub-system（§\ref{sec:balanced_force}，§\ref{sec:fccd_bf_sub_system}）\\
-変密度 PPE の収束悪化 & 分相 PPE + HFE + 欠陥補正 ($k=3$)（§\ref{sec:split_ppe_recovery}，§\ref{sec:hfe}，§\ref{sec:defect_correction_main}）\\
+変密度 PPE の収束悪化 & 分相 PPE + HFE + 欠陥補正 ($k=3$)（§\ref{sec:split_ppe_recovery}，§\ref{sec:hfe}，§\ref{sec:defect_correction_ppe}）\\
 距離関数品質の劣化と位相変化 & Ridge--Eikonal 補助場再初期化（§\ref{sec:ridge_eikonal}，§\ref{sec:ridge_aux_field}）\\
 格子粗さ・壁接触による界面解像不足 & 界面適合非一様格子 + Ridge--Eikonal 非一様補正 D1--D4 + 壁閉包 W（第\ref{sec:grid}章，§\ref{sec:ridge_eikonal_nu_grid}）\\
 高密度比下の圧力ジャンプ整合 & pressure-jump 型 FCCD-PPE（§\ref{sec:split_ppe_pressure_jump_formulation}）\\
@@ -116,7 +116,7 @@
         \textbf{Hermite 場延長 HFE}（§\ref{sec:hfe}）が
         Aslam Extension PDE の定常解として
         Hermite 三つ組 $(f,f',f'')$ から仮想時間反復なしに直接構成する．
-        さらに各相に\textbf{欠陥補正法 DC ($k=3$)}（§\ref{sec:defect_correction_main}）を適用し，
+        さらに各相に\textbf{欠陥補正法 DC ($k=3$)}（§\ref{sec:defect_correction_ppe}）を適用し，
         Dirichlet テストで $\Ord{h^7}$ のスーパー収束を達成する．
         単体検証 U6 では HFE 1D が $\Ord{h^{5.91}}$，
         2D 帯領域が max $11.35$ / med $8.72$ の effective slope
@@ -195,7 +195,7 @@ CCD 内点 $\Ord{h^6}$（U1-a 実測 $\Ord{h^{6.0}}$）・大域 $L^2$ では $\
 UCCD6 のスーパー収束 $\Ord{h^7}$（U1-d 実測 $\Ord{h^{7.00}}$；§\ref{sec:uccd6_def}），
 FCCD 面ジェット $\Ord{h^4}$（U1-c 実測 $\Ord{h^{4.00/4.00}}$；§\ref{sec:fccd_def}），
 HFE Hermite 場延長 1D $\Ord{h^{5.91}}$ / 2D effective slope max $11.35$ med $8.72$（U6-c；§\ref{sec:hfe}），
-DC k=3 補正後の分相 PPE $\Ord{h^{6.90}}$（U2 production，U6-b；§\ref{sec:defect_correction_main}）が
+DC k=3 補正後の分相 PPE $\Ord{h^{6.90}}$（U2 production，U6-b；§\ref{sec:defect_correction_ppe}）が
 それぞれ単体で実測されている．
 
 \paragraph{PPE 設計（本稿の標準 headline 設計）}
