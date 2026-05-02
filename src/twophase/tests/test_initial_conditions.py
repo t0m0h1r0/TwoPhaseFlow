@@ -13,6 +13,8 @@ Coverage
 8. background_phase='liquid' with gas circle carved out.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -36,6 +38,7 @@ from ..simulation.runtime_setup import normalise_ic_dict
 from ..core.grid import Grid
 from ..config import GridConfig
 from ..backend import Backend
+from ..simulation.config_models import ExperimentConfig
 
 
 # ── テスト用グリッド ───────────────────────────────────────────────────────────
@@ -419,6 +422,21 @@ def test_normalise_ic_dict_infers_liquid_background_for_objects_bubbles():
 def test_builder_from_dict_rejects_mixed_shape_keys():
     with pytest.raises(ValueError, match="either 'shapes' or 'objects'"):
         InitialConditionBuilder.from_dict({"shapes": [], "objects": []})
+
+
+def test_ch14_yaml_initial_conditions_use_object_specs():
+    root = Path(__file__).resolve().parents[3]
+    paths = sorted((root / "experiment/ch14/config").glob("*.yaml"))
+
+    assert len(paths) == 6
+    for path in paths:
+        cfg = ExperimentConfig.from_yaml(path)
+        assert "objects" in cfg.initial_condition, path.name
+        assert "type" not in cfg.initial_condition, path.name
+        builder = InitialConditionBuilder.from_dict(
+            normalise_ic_dict(dict(cfg.initial_condition))
+        )
+        assert builder.shapes, path.name
 
 
 # ── 8. background_phase='liquid' + 気体円 ─────────────────────────────────────

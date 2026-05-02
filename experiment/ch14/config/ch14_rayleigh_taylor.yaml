@@ -9,9 +9,12 @@
 # The header documents the relabeling so the YAML stays self-describing.
 #
 # Handler dispatch:
-#   initial_condition.type: capillary_wave  → CapillaryWaveHandler
+#   experiment.type: capillary_wave  → CapillaryWaveHandler
 #   The shape is identical to the capillary-wave benchmark; what makes this RT
 #   instead of capillary is gravity > 0 with the heavy phase above the interface.
+
+experiment:
+  type: capillary_wave
 
 grid:
   cells: [128, 512]
@@ -165,14 +168,16 @@ output:
 diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
 
 initial_condition:
-  type: capillary_wave     # CapillaryWaveHandler dispatch; semantically RT
-  axis: y                  # interface is a function of x: y = mean + amplitude*cos(2π*mode*x/length + phase)
-  mean: 1.0                # interface at mid-domain (domain y ∈ [0, 2.0])
-  amplitude: 0.01          # 1% of half-domain — small linear perturbation
-  mode: 1                  # single wavelength fits the domain width (length: 0.5)
-  length: 0.5              # = domain x-extent
-  phase: 0.0
-  interior_phase: liquid   # silicone oil below interface (φ = sdf < 0 region)
+  background_phase: gas
+  objects:
+    - type: capillary_wave  # semantically RT; gravity makes the heavy upper phase unstable
+      axis: y               # interface is y = mean + amplitude*cos(2π*mode*x/length + phase)
+      mean: 1.0             # interface at mid-domain (domain y ∈ [0, 2.0])
+      amplitude: 0.01       # 1% of half-domain — small linear perturbation
+      mode: 1               # single wavelength fits the domain width (length: 0.5)
+      length: 0.5           # = domain x-extent
+      phase: 0.0
+      interior_phase: liquid  # silicone oil below interface (φ = sdf < 0 region)
 
 initial_velocity: null     # start at rest
 boundary_condition:

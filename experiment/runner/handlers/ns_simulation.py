@@ -5,8 +5,9 @@ These handlers consume the ``ExperimentConfig`` schema (top-level
 via ``twophase.simulation.config_io.load_experiment_config`` and drive
 ``twophase.simulation.ns_pipeline.run_simulation``.
 
-Dispatch (registered handler keys mirror ``initial_condition.type``
-values found in ch14 YAMLs):
+Dispatch (registered handler keys mirror ``experiment.type`` values found in
+ch14 YAMLs; legacy ``initial_condition.type`` configs remain accepted by the
+runner):
 
   capillary_wave  → CapillaryWaveHandler
   circle          → CircleInterfaceHandler

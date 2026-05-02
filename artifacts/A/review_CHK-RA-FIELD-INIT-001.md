@@ -27,6 +27,7 @@ Verdict: PASS AFTER EXTENSION AND GENERALIZATION
 - Added `Layer` / `slab` as a finite-thickness axis-aligned layer primitive with `bounds`, `lower/upper`, `min/max`, or `center/thickness` input forms.
 - Added `CompositeVelocityField` and `SinusoidalPerturbation`, with YAML factory support for `composite`, `superposition`, `sinusoidal`, and `sinusoidal_perturbation`.
 - Documented object collections and velocity perturbation examples in the ch14 config README.
+- Migrated all checked-in `experiment/ch14/config/*.yaml` files to separate runner dispatch metadata (`experiment.type`) from initial field geometry (`initial_condition.objects`).
 
 ## Validation
 
@@ -34,7 +35,9 @@ Verdict: PASS AFTER EXTENSION AND GENERALIZATION
 - Remote targeted pytest PASS: `twophase/tests/test_initial_conditions.py -k 'bubble or objects or mixed_shape_keys'` (`5 passed`).
 - Remote targeted pytest PASS: `twophase/tests/test_initial_conditions.py -k 'sinusoidal_perturbation or composite_velocity'` (`3 passed`).
 - Remote targeted pytest PASS: `twophase/tests/test_initial_conditions.py -k 'layer or generic_objects'` (`3 passed`).
-- Remote full initial-condition pytest PASS: `twophase/tests/test_initial_conditions.py` (`44 passed`).
+- Remote targeted pytest PASS: `twophase/tests/test_initial_conditions.py -k 'ch14_yaml_initial_conditions or generic_objects or layer'` (`4 passed`).
+- Remote handler-key smoke PASS: all six `experiment/ch14/config/*.yaml` files dispatch through `experiment.type` to `capillary_wave`, `circle`, `ellipse`, or `perturbed_circle` as intended.
+- Remote full initial-condition pytest PASS: `twophase/tests/test_initial_conditions.py` (`45 passed`).
 - Note: `make test PYTEST_ARGS="-k bubble"` also selected existing ch13 rising-bubble YAML tests and failed on missing `experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml`; this is unrelated to the new IC/velocity paths. A second `make test` attempt exposed the known quoting limitation for space-containing `-k` expressions, so direct remote pytest was used for the acceptance signal.
 
 ## SOLID-X

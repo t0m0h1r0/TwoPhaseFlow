@@ -31,41 +31,48 @@ Python implementation stores it.
 ## Top-Level Sections
 
 - `grid`: computational mesh size, physical domain, boundary type, and mesh distribution.
+- `experiment`: runner metadata such as handler type.
 - `interface`: the full lifecycle of the phase interface.
 - `physics`: material properties and physical constants.
 - `run`: wall-clock experiment controls such as final time and diagnostics.
 - `numerics`: time integrators, equation terms, projection semantics, and linear solvers.
 - `output`: result directory, snapshots, and figure recipes.
 
-## Capillary-Wave Initial Field
+## Handler Metadata and Initial Field
 
-The capillary-wave experiment is configured through `initial_condition` only;
-do not add wrapper scripts for new wave inputs. Use the `capillary_wave` shape
-alias:
+Checked-in ch14 YAMLs separate experiment dispatch from field geometry:
+`experiment.type` selects the runner handler, while `initial_condition.objects`
+describes the conservative level-set field.  Do not add wrapper scripts for new
+wave inputs.  Use the `capillary_wave` shape alias inside `objects`:
 
 ```yaml
-initial_condition:
+experiment:
   type: capillary_wave
-  axis: y
-  mean: 0.5
-  amplitude: 0.05
-  mode: 2
-  length: 1.0
-  phase: 0.0
-  interior_phase: liquid
+
+initial_condition:
+  background_phase: gas
+  objects:
+    - type: capillary_wave
+      axis: y
+      mean: 0.5
+      amplitude: 0.05
+      mode: 2
+      length: 1.0
+      phase: 0.0
+      interior_phase: liquid
 ```
 
 This represents `y = mean + amplitude*cos(2π*mode*x/length + phase)`.
 The Rayleigh–Taylor YAML uses the same shape alias with `interior_phase: liquid`
 (lower phase = liquid) and a `physics.phases.gas` slot relabeled as the heavy
-fluid (mercury); the `capillary_wave` handler key dispatches identically.
+fluid (mercury); `experiment.type: capillary_wave` dispatches identically.
 
 ## Object Collections and Velocity Perturbations
 
 Use `initial_condition.objects` for experiment-facing object placement.  The
 older `shapes` key remains accepted for low-level primitives, but checked-in
-benchmark YAMLs should prefer the domain wording when multiple physical objects
-are being placed:
+benchmark YAMLs should prefer the domain wording for both single and multiple
+field regions:
 
 ```yaml
 initial_condition:

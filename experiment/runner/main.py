@@ -69,8 +69,8 @@ def _outdir(config_path: pathlib.Path) -> pathlib.Path:
 def _peek_handler_key(config_path: pathlib.Path) -> str:
     """Read just enough of the YAML to choose a handler.
 
-    ch14 schema → ``initial_condition.type`` (e.g. ``capillary_wave``, ``circle``)
-    Legacy schema with ``experiment.type`` is also peeked for forward compat.
+    ch14 schema → ``experiment.type`` (e.g. ``capillary_wave``, ``circle``).
+    Legacy configs with ``initial_condition.type`` are also accepted.
     """
     try:
         import yaml
