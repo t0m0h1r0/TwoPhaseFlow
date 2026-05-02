@@ -1,0 +1,11 @@
+{
+  "branch": "ra-dc-implementation-audit-20260502",
+  "branch_slug": "ra-dc-implementation-audit-20260502",
+  "id_prefix": "RA-DC-IMPL",
+  "session_id": "37A06446-2344-4574-B3B6-45EBDB30360A",
+  "worktree_path": ".claude/worktrees/ra-dc-implementation-audit-20260502",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-02T11:31:03Z",
+  "expires_at": "2026-05-03T11:31:03Z",
+  "meta_version": "5.1.0"
+}
