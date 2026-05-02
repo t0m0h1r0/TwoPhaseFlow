@@ -10,12 +10,12 @@
 TVD--RK3~\cite{ShuOsher1988,JiangShu1996}（§\ref{sec:time_int}：3 次 SSP），
 AB2（§\ref{sec:time_int}：2 次 multistep），
 そして粘性項 Crank--Nicolson の \emph{周期 BC 用} 単体ベンチマークとして
-\textbf{FFT 対角化スペクトル CN}~\cite{PeacemanRachford1955}（§\ref{sec:viscous_cn_defect}）．
+\textbf{FFT 対角化スペクトル CN}~\cite{PeacemanRachford1955}．
 本ベンチマークは固有値ベースの amplification factor
 $F(K^2) = (1 - \tfrac{1}{2}\nu \mathrm{d}t K^2)/(1 + \tfrac{1}{2}\nu \mathrm{d}t K^2)$ を
 直接適用するため ADI 分割誤差を含まず，CN の理論次数 $O(\mathrm{d}t^2)$ と
-A--安定性をクリーンに測る．本論文の Peaceman--Rachford ADI 形は
-§\ref{sec:viscous_cn_defect} で論じる variable-coefficient 拡張のため将来章で別途扱う．
+A--安定性をクリーンに測る．第~\ref{sec:time_int}章で採用する粘性時間発展は
+implicit-BDF2 + DC であり，CN spectral は拡散安定性を測る補助基準である．
 A/B/C 3 層粘性切替（§\ref{sec:viscous_3layer}：均一 / 中濃度差 / 強濃度差）も併せて検証する．
 
 \paragraph{設定．}
@@ -76,7 +76,7 @@ slope & $\mathbf{3.01}$ & slope & $\mathbf{2.04}$ & slope & $\mathbf{2.00}$ \\
 \begin{table}[!ht]
 \caption{U8-c：CN spectral と FE の安定性比較}
 \label{tab:U8_stability}
-\PaperCaptionNote{前進 Euler (FE)，$\nu=0.01$, $T=0.5$．CN は CFL$_\nu = 10$ でも growth $\sim 0.64$ 安定；FE は CFL$_\nu = 0.5$ で $1.73\times 10^{21}$ に爆発．§\ref{sec:viscous_cn_defect} 末尾の A--安定性議論と整合．}
+\PaperCaptionNote{前進 Euler (FE)，$\nu=0.01$, $T=0.5$．CN は CFL$_\nu = 10$ でも growth $\sim 0.64$ 安定；FE は CFL$_\nu = 0.5$ で $1.73\times 10^{21}$ に爆発．§\ref{sec:time_operator_stiffness} の A--stable 分類と整合．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -135,7 +135,7 @@ $\eta_{\mathrm{cross}} L_{\mathrm{cross}}$ の LTE $\Ord{\mathrm{d}t}$ が支配
         $|p_{\mathrm{measured}} - p_{\mathrm{design}}| \le 0.5$ の十分内側．
   \item U8-c CN spectral：slope $2.00$，FE 比 安定性 $\approx 21$ 桁優位
         ($\log_{10}(1.73\!\times\!10^{21}/0.6408) \approx 21.4$；CFL$_\nu=0.5$ にて)．
-        §\ref{sec:viscous_cn_defect} の A--安定設計と整合．\checkmark
+        §\ref{sec:time_operator_stiffness} の A--stable 分類と整合．\checkmark
   \item U8-d Layer A/B/C：A 層は完全 implicit CN ($L_{\mathrm{cross}}\!=\!0$) で完全 2 次．
         B/C 層は EE--explicit cross 項
         ($\eta_{\mathrm{cross}}\!=\!10^{-3}$) の LTE $\Ord{\mathrm{d}t}$ で実効 1 次に劣化．
@@ -145,5 +145,4 @@ $\eta_{\mathrm{cross}} L_{\mathrm{cross}}$ の LTE $\Ord{\mathrm{d}t}$ が支配
 \end{itemize}
 検証対応：
 式~\eqref{eq:tvd_rk3}（SSP 形），AB2 multistep 公式，
-式~\eqref{eq:viscous_cn_helmholtz}（CN spectral 行列形）に対し，
-ODE/MMS 収束と粘性安定性を測定する．
+CN spectral amplification factor に対し，ODE/MMS 収束と粘性安定性を測定する．
