@@ -3,19 +3,18 @@
 
 検証項目:
   1. PPE 行列: 内部行の行和 ≈ 0（一貫性; FVM PPEBuilder）
-  2. PPE 求解: 残差 < tol（CCD LGMRES）
-  3. 発散ゼロ投影: ‖∇·u‖_∞ < 1e-4（CCD PPE + CCD 速度補正後）
-  4. PPESolverPseudoTime（CCD Kronecker + LGMRES）: 一様密度での収束
-  5. PPESolverPseudoTime（CCD Kronecker + LGMRES）: 変密度ケースでの収束
-  6. PPESolverPseudoTime（CCD Kronecker + LGMRES）: IPC 増分法（p_init=None）
-  7. Rhie-Chow: コロケートグリッドの発散補正
+  2. CCD-LU PPE: 滑らかな RHS の残差（component/reference use）
+  3. CCD 微分: 解析的 solenoidal 速度場の発散が小さいこと
+  4. Rhie-Chow: コロケートグリッドの発散補正
+  5. CCD-Poisson MMS: 一様密度での格子収束
+  6. CCD-Poisson MMS: 滑らかな変密度での格子収束
 
 変更履歴:
-  2026-04-01: FVM ソルバー (BiCGSTAB, LU) を廃止し全テストを CCD ベースに統一。
-              デフォルトソルバー → "pseudotime" (CCD + LGMRES)。
+  2026-05-03: 古い反復ソルバー前提の説明を削除。
+              CCD-LU coverage is component/reference only; production PPE
+              policy remains PR-2/PR-6.
 """
 
-import warnings
 import numpy as np
 import pytest
 
@@ -29,7 +28,6 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ppe.ppe_builder import PPEBuilder
 from twophase.ppe.ccd_lu import PPESolverCCDLU
 from twophase.spatial.rhie_chow import RhieChowInterpolator
-from twophase.coupling.velocity_corrector import VelocityCorrector
 
 
 @pytest.fixture
@@ -42,7 +40,6 @@ def make_setup(N=16, backend=None):
         backend = Backend(use_gpu=False)
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-        solver=SolverConfig(pseudo_tol=1e-10, pseudo_maxiter=500),
     )
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
@@ -72,7 +69,7 @@ def test_ppe_matrix_interior_row_sum(backend):
     )
 
 
-# ── Test 2: PPE 求解残差（CCD LGMRES） ──────────────────────────────────
+# ── Test 2: PPE 求解残差（CCD-LU component/reference） ─────────────────
 
 def test_ppe_solve_residual(backend):
     """CCD 直接 LU の残差が小さいこと（等密度、滑らかな RHS）。
@@ -112,13 +109,12 @@ def test_ppe_solve_residual(backend):
     assert rel_res < 5e-3, f"CCD PPE 相対残差 {rel_res:.3e} > 5e-3"
 
 
-# ── Test 3: CCD PPE + velocity corrector — 非発散速度場保存 ──────────────
+# ── Test 3: CCD 微分 — 解析的非発散速度場 ─────────────────────────────
 
-def test_divergence_free_projection(backend):
-    """CCD PPE + CCD corrector が非発散速度場を保存すること。
+def test_ccd_divergence_of_solenoidal_field_is_small(backend):
+    """CCD 微分が解析的 solenoidal 速度場の発散を小さく保つこと。
 
-    解析的に div(u*)≈0 の速度場を入力した場合、PPE RHS が ~0 となり
-    圧力補正も ~0 → 速度場がほぼ不変であることを検証。
+    解析的に div(u*)=0 の速度場を入力し、CCD 離散化誤差だけが残ることを検証。
     """
     N = 32
     cfg = SimulationConfig(
@@ -127,16 +123,11 @@ def test_divergence_free_projection(backend):
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend)
 
-    corrector = VelocityCorrector(backend, grid, ccd)
-
     # 解析的に発散ゼロの速度場
     X, Y = np.meshgrid(np.linspace(0, 1, N+1), np.linspace(0, 1, N+1),
                        indexing='ij')
     u_star = np.sin(np.pi * X) * np.cos(np.pi * Y)
     v_star = -np.cos(np.pi * X) * np.sin(np.pi * Y)
-
-    rho = np.ones(grid.shape)
-    dt = 0.01
 
     # CCD で ∇·u* を計算 — 解析的に 0 なので CCD 離散化誤差のみ残る
     du_dx, _ = ccd.differentiate(u_star, 0)
@@ -150,7 +141,7 @@ def test_divergence_free_projection(backend):
     )
 
 
-# ── Test 5: Rhie-Chow 発散補正 ────────────────────────────────────────────
+# ── Test 4: Rhie-Chow 発散補正 ────────────────────────────────────────────
 
 def test_rhie_chow_divergence(backend):
     """チェッカーボード圧力場で Rhie-Chow 発散がセル中心発散と異なること。"""
@@ -203,7 +194,7 @@ def test_ccd_ppe_convergence_order(backend):
     Kronecker sparse matrix (PPESolverCCDLU._build_sparse_operator).
     This bypasses the solve() interface (which uses Neumann+pin) because
     the solver's single-pin gauge is insufficient to fix the ~12-dimensional
-    null space of the 2D CCD Kronecker Laplacian (see note in Test 4).
+    null space of the 2D CCD Kronecker Laplacian.
     Applying Dirichlet BC on all boundary rows makes the system full-rank.
 
     Expected convergence slope >= 4.5 (paper claims O(h^6) in interior;
@@ -224,9 +215,6 @@ def test_ccd_ppe_convergence_order(backend):
         cfg = SimulationConfig(
             grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
             solver=SolverConfig(
-                pseudo_tol=1e-12,
-                pseudo_maxiter=5000,
-                pseudo_c_tau=2.0,
                 ppe_solver_type="ccd_lu",
                 allow_kronecker_lu=True,
             ),
@@ -336,9 +324,6 @@ def test_ccd_ppe_variable_density_convergence_order(backend):
         cfg = SimulationConfig(
             grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
             solver=SolverConfig(
-                pseudo_tol=1e-12,
-                pseudo_maxiter=5000,
-                pseudo_c_tau=2.0,
                 ppe_solver_type="ccd_lu",
                 allow_kronecker_lu=True,
             ),
@@ -414,9 +399,3 @@ def test_ccd_ppe_variable_density_convergence_order(backend):
     assert errors[-1] < 1e-6, (
         f"N=64 での変密度 CCD-Poisson L-inf 誤差が過大: {errors[-1]:.3e} >= 1e-6"
     )
-
-
-# Test C-3 (PPESolverSweep MMS convergence) REMOVED 2026-04-09:
-# ADI double-sweep is O(h⁴)/iter, impractical at N>=32 (project_ccd_ppe_solver_analysis).
-# PPESolverSweep retained as legacy (C2) but convergence test was never passing.
-# Production PPE uses PPESolverCCDLU (Kronecker LU direct solve, PR-6).
