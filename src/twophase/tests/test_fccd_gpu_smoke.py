@@ -77,6 +77,28 @@ def test_fccd_face_value_gpu_matches_cpu(
         _assert_parity(u_gpu, u_cpu, gpu_backend)
 
 
+def test_fccd_pressure_flux_public_scheme_stays_on_gpu(
+    tiny_grid_factory, gpu_backend,
+):
+    from twophase.simulation.divergence_ops import FCCDDivergenceOperator
+
+    grid = tiny_grid_factory(gpu_backend)
+    fccd = FCCDSolver(grid, gpu_backend)
+    div_op = FCCDDivergenceOperator(fccd)
+    pressure = _sample(gpu_backend.xp, grid.shape)
+    rho = gpu_backend.xp.ones(grid.shape, dtype=pressure.dtype)
+
+    fluxes = div_op.pressure_fluxes(
+        pressure,
+        rho,
+        pressure_gradient="fccd_flux",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+    )
+
+    assert all(hasattr(flux, "__cuda_array_interface__") for flux in fluxes)
+
+
 def test_fccd_node_gradient_gpu_matches_cpu(
     tiny_grid_factory, cpu_backend, gpu_backend,
 ):

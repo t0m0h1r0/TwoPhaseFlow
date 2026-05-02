@@ -28,6 +28,37 @@ if TYPE_CHECKING:
     from ..core.grid import Grid
 
 
+_FVM_FACE_GRADIENT_SCHEMES = frozenset({"fvm"})
+_FCCD_FACE_GRADIENT_SCHEMES = frozenset({"fccd", "fccd_flux", "fccd_nodal"})
+_FCCD_COEFFICIENT_SCHEMES = frozenset({"phase_density", "phase_separated"})
+_FCCD_INTERFACE_COUPLINGS = frozenset({
+    "none",
+    "jump_decomposition",
+    "affine_jump",
+})
+
+
+def _canonical_face_gradient_scheme(raw: str, *, owner: str) -> str:
+    value = str(raw).strip().lower()
+    if value in _FCCD_FACE_GRADIENT_SCHEMES:
+        return "fccd"
+    if value in _FVM_FACE_GRADIENT_SCHEMES:
+        return "fvm"
+    raise ValueError(
+        f"{owner} unsupported pressure_gradient={value!r}; "
+        "use fccd_flux|fccd_nodal|fccd|fvm."
+    )
+
+
+def _validate_fvm_face_gradient_scheme(raw: str) -> None:
+    value = str(raw).strip().lower()
+    if value not in _FVM_FACE_GRADIENT_SCHEMES:
+        raise ValueError(
+            "FVMDivergenceOperator supports only pressure_gradient='fvm'; "
+            f"got {value!r}."
+        )
+
+
 class CCDDivergenceOperator(IDivergenceOperator):
     """CCD divergence matching the legacy uniform-grid path."""
 
@@ -161,6 +192,7 @@ class FVMDivergenceOperator(IDivergenceOperator):
         pressure_gradient: str = "fvm",
     ) -> list["array"]:
         """Apply PPE-consistent projection and return corrected face fluxes."""
+        _validate_fvm_face_gradient_scheme(pressure_gradient)
         faces = self.face_fluxes(components)
         p_faces = self.pressure_fluxes(p, rho)
         if force_components is None:
@@ -243,6 +275,25 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         xp = self._fccd.xp
         grid = self._fccd.grid
         ndim = grid.ndim
+        gradient_scheme = _canonical_face_gradient_scheme(
+            pressure_gradient,
+            owner=type(self).__name__,
+        )
+        coefficient_scheme = str(coefficient_scheme).strip().lower()
+        interface_coupling_scheme = str(interface_coupling_scheme).strip().lower()
+        if coefficient_scheme not in _FCCD_COEFFICIENT_SCHEMES:
+            raise ValueError(
+                "FCCDDivergenceOperator unsupported coefficient_scheme="
+                f"{coefficient_scheme!r}; use phase_density|phase_separated."
+            )
+        if interface_coupling_scheme not in _FCCD_INTERFACE_COUPLINGS:
+            raise ValueError(
+                "FCCDDivergenceOperator unsupported interface_coupling_scheme="
+                f"{interface_coupling_scheme!r}; "
+                "use none|jump_decomposition|affine_jump."
+            )
+        if coefficient_scheme == "phase_density" and interface_coupling_scheme != "none":
+            raise ValueError("phase_density projection requires interface_coupling='none'")
         faces = []
         for axis in range(ndim):
             n_cells = grid.N[axis]
@@ -264,7 +315,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                     threshold = 0.5 * (xp.min(rho) + xp.max(rho))
                 same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
                 coeff = xp.where(same_phase, coeff, 0.0)
-            if pressure_gradient == "fccd":
+            if gradient_scheme == "fccd":
                 pressure_face_gradient = self._fccd.face_gradient(p, axis)
             else:
                 if self._face_spacing is None:
