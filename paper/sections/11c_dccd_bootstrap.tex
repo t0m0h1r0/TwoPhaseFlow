@@ -79,6 +79,10 @@ $\Delta t_{\sigma,\min}$ は界面帯の最小セル幅で評価し，
 $\Delta t_{\nu,\mathrm{interface}}$ は $\mu(\bx),\rho(\bx)$ の界面近傍最大比を用いる．
 再生成モードではさらに格子移動量が §~\ref{sec:grid_ale} の $0.5h$ 条件を越えないことを
 $\Delta t_{\mathrm{ALE/remap}}$ で確認する．
+ただしこの制約は，式~\eqref{eq:ale_grid_gcl} の離散幾何保存則，
+式~\eqref{eq:ale_conservative_update} の保存更新，および
+式~\eqref{eq:regrid_face_geometry} の界面面データ再構築が同時に成立する場合にのみ有効である．
+これらが揃わない追従格子は本節の 1 タイムステップ標準経路へ含めない．
 
 \bigskip
 以上で標準経路の 1 タイムステップ更新は，
