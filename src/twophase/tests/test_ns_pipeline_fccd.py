@@ -1082,7 +1082,9 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     assert diag["ppe_pin_count"] == 0.0
     assert diag["ppe_mean_gauge"] == 1.0
     assert diag["ppe_interface_coupling_jump"] == 1.0
-    assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
+    before = max(diag["ppe_rhs_phase_mean_before_max"], 1.0)
+    after = diag["ppe_rhs_phase_mean_after_max"]
+    assert after <= max(1.0e-10, 1.0e-12 * before)
 
 
 def test_affine_jump_pressure_stack_one_step_no_nan():

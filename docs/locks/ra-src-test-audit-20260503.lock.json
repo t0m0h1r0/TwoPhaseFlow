@@ -1,0 +1,9 @@
+{
+  "id": "CHK-RA-SRC-TEST-001",
+  "branch": "ra-src-test-audit-20260503",
+  "worktree": ".claude/worktrees/ra-src-test-audit-20260503",
+  "scope": "src test failure audit and retention decision",
+  "session_id": "95FE4E19-CB38-4F04-A854-A829788B9812",
+  "id_prefix": "RA-SRC-TEST",
+  "created_at": "2026-05-03T03:13:50+09:00"
+}
