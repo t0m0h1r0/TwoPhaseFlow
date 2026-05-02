@@ -36,11 +36,13 @@ def build_axis_weights(grid, xp, ax: int) -> dict:
 
     H = xp.asarray(H_host)
     H_node_host = 0.5 * (H_host[:-1] + H_host[1:]) if len(H_host) > 1 else H_host
+    H_periodic_node_host = 0.5 * (H_host + np.roll(H_host, 1))
     return {
         "uniform": False,
         "H": H,
         "inv_H": 1.0 / H,
         "inv_H_node": xp.asarray(1.0 / H_node_host),
+        "inv_H_periodic_node": xp.asarray(1.0 / H_periodic_node_host),
         "H_half": 0.5 * H,
         "H_over_24": H / 24.0,
         "H_sq_over_16": H * H / 16.0,

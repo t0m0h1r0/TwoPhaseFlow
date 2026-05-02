@@ -480,13 +480,13 @@ class FCCDSolver:
         w = self._weights[axis]
 
         if self._axis_periodic(axis):
-            # div[i] = (F[i] - F[i-1]) / H_i, with i=0..N-1 cyclic; repeat at N.
+            # div[i] = (F[i] - F[i-1]) / ΔV_i, with i=0..N-1 cyclic; repeat at N.
             F_m1 = xp.roll(F, 1, axis=0)
             if w["uniform"]:
                 div_unique = (F - F_m1) * w["inv_H"]
             else:
-                inv_H = self._broadcast_axis0(w["inv_H"], F.ndim)
-                div_unique = (F - F_m1) * inv_H
+                inv_width = self._broadcast_axis0(w["inv_H_periodic_node"], F.ndim)
+                div_unique = (F - F_m1) * inv_width
             out_shape = (N + 1,) + F.shape[1:]
             out = xp.empty(out_shape, dtype=div_unique.dtype)
             out[:N] = div_unique
