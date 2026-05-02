@@ -218,6 +218,46 @@ class PerturbedCircle(ShapePrimitive):
 
 
 @dataclass
+class Ellipse(ShapePrimitive):
+    center: Tuple[float, float]
+    semi_axes: Tuple[float, float]
+    _interior_phase: str = field(default="liquid", repr=False)
+
+    def __init__(
+        self,
+        center: Sequence[float],
+        semi_axes: Sequence[float],
+        interior_phase: str = "liquid",
+    ) -> None:
+        if len(center) != 2:
+            raise ValueError("Ellipse: center must be 2-D.")
+        if len(semi_axes) != 2:
+            raise ValueError("Ellipse: semi_axes must be [a, b].")
+        a = float(semi_axes[0])
+        b = float(semi_axes[1])
+        if a <= 0.0 or b <= 0.0:
+            raise ValueError("Ellipse: semi_axes must be positive.")
+        self.center = (float(center[0]), float(center[1]))
+        self.semi_axes = (a, b)
+        self._interior_phase = interior_phase
+        validate_shape_phase(interior_phase)
+
+    @property
+    def interior_phase(self) -> str:
+        return self._interior_phase
+
+    def sdf(self, *coords: np.ndarray) -> np.ndarray:
+        if len(coords) != 2:
+            raise ValueError("Ellipse.sdf: only 2-D grids are supported.")
+        X, Y = coords
+        xp = _xp_like(X)
+        cx, cy = self.center
+        a, b = self.semi_axes
+        q = xp.sqrt(((X - cx) / a) ** 2 + ((Y - cy) / b) ** 2)
+        return min(a, b) * (q - 1.0)
+
+
+@dataclass
 class ZalesakDisk(ShapePrimitive):
     center: Tuple[float, float]
     radius: float

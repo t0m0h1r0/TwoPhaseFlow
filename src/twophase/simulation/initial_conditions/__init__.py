@@ -11,6 +11,9 @@ InitialConditionBuilder
 Circle
     Circular (2-D) or spherical (3-D) region.
 
+Ellipse
+    Elliptical 2-D region for Rayleigh-Lamb droplet oscillation probes.
+
 Rectangle
     Axis-aligned box region.
 
@@ -59,6 +62,7 @@ Usage
 
 from .shapes import (
     Circle,
+    Ellipse,
     HalfSpace,
     PerturbedCircle,
     Rectangle,
@@ -73,6 +77,7 @@ __all__ = [
     # shape primitives
     "InitialConditionBuilder",
     "Circle",
+    "Ellipse",
     "Rectangle",
     "HalfSpace",
     "SinusoidalInterface",

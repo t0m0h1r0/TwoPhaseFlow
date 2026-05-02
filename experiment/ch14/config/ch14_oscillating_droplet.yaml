@@ -1,6 +1,7 @@
 # Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
 # ch14_static_droplet.yaml. The circular initial interface is replaced by
-# r(theta)=R(1+epsilon cos(2 theta)); velocity and gravity remain zero.
+# a true ellipse with semi-axes a=0.03, b=0.02. With water-air density and
+# sigma=0.072, the area-equivalent radius sqrt(ab)=0.02449 gives T≈1.16.
 
 grid:
   cells: [128, 128]
@@ -14,12 +15,12 @@ grid:
         type: nonuniform
         monitors:
           interface:
-            alpha: 2.0
+            alpha: 4.0
       y:
         type: nonuniform
         monitors:
           interface:
-            alpha: 2.0
+            alpha: 4.0
 
 interface:
   thickness:
@@ -119,9 +120,9 @@ output:
       ylabel: "$D_s(t)$"
       analytical:
         formula: prosperetti
-        omega0: 0.166177
+        omega0: 5.418362
         beta: 0.0
-        D0: 0.02
+        D0: 0.20
       file: signed_deformation.pdf
 
     - type: time_series
@@ -159,11 +160,9 @@ output:
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
 
 initial_condition:
-  type: perturbed_circle
+  type: ellipse
   center: [0.5, 0.5]
-  radius: 0.25
-  epsilon: 0.02
-  mode: 2
+  semi_axes: [0.03, 0.02]
   interior_phase: liquid
 
 initial_velocity: null
