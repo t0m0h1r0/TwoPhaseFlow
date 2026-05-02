@@ -3,6 +3,9 @@
 # a true ellipse with semi-axes a=0.055, b=0.045. With water-air density and
 # sigma=0.811133, the area-equivalent radius sqrt(ab)=0.04975 gives T≈1.0.
 
+experiment:
+  type: ellipse
+
 grid:
   cells: [128, 128]
   domain:
@@ -161,10 +164,12 @@ output:
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
 
 initial_condition:
-  type: ellipse
-  center: [0.5, 0.5]
-  semi_axes: [0.055, 0.045]
-  interior_phase: liquid
+  background_phase: gas
+  objects:
+    - type: ellipse
+      center: [0.5, 0.5]
+      semi_axes: [0.055, 0.045]
+      interior_phase: liquid
 
 initial_velocity: null
 boundary_condition: null

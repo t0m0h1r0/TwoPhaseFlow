@@ -19,20 +19,25 @@ from ..core.boundary import (
 )
 
 from .initial_conditions.builder import InitialConditionBuilder
+from .initial_conditions.shape_factory import default_shape_phase
 from .initial_conditions.velocity_fields import velocity_field_from_dict
+
+
+_COLLECTION_IC_TYPES = {"union", "objects", "scene"}
 
 
 def normalise_ic_dict(ic: dict) -> dict:
     """Convert shorthand IC dicts to ``InitialConditionBuilder`` format."""
-    if "shapes" in ic and "type" not in ic:
+    if ("shapes" in ic or "objects" in ic) and "type" not in ic:
         return ic
 
     ic_type = ic.get("type", "")
 
-    if ic_type == "union":
-        shapes = ic.get("shapes", [])
+    if ic_type in _COLLECTION_IC_TYPES:
+        shape_key = "objects" if "objects" in ic else "shapes"
+        shapes = ic.get(shape_key, [])
         background_phase = ic.get("background_phase") or infer_background(shapes)
-        return {"background_phase": background_phase, "shapes": shapes}
+        return {"background_phase": background_phase, shape_key: shapes}
 
     if ic_type:
         shape_dict = {k: v for k, v in ic.items() if k not in {"background_phase"}}
@@ -45,7 +50,9 @@ def normalise_ic_dict(ic: dict) -> dict:
 def infer_background(shapes: list[dict]) -> str:
     """Infer the complement phase used outside the configured shapes."""
     for shape in shapes:
-        if shape.get("interior_phase", "liquid") == "gas":
+        shape_type = shape.get("type")
+        phase = shape.get("interior_phase", default_shape_phase(shape_type))
+        if phase == "gas":
             return "liquid"
     return "gas"
 

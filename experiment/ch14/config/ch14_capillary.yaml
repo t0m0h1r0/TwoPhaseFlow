@@ -12,6 +12,9 @@
 #   Static fitting is built from the initial tracked ψ; dynamic schedules
 #   rebuild the y-monitor from the current tracked interface field.
 
+experiment:
+  type: capillary_wave
+
 grid:
   cells: [128, 128]
   domain:
@@ -169,14 +172,16 @@ output:
 diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
 
 initial_condition:
-  type: capillary_wave
-  axis: y
-  mean: 0.5
-  amplitude: 0.01
-  mode: 2
-  length: 1.0
-  phase: 0.0
-  interior_phase: liquid
+  background_phase: gas
+  objects:
+    - type: capillary_wave
+      axis: y
+      mean: 0.5
+      amplitude: 0.01
+      mode: 2
+      length: 1.0
+      phase: 0.0
+      interior_phase: liquid
 
 initial_velocity: null
 boundary_condition:

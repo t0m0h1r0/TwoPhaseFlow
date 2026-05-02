@@ -17,6 +17,9 @@ Ellipse
 Rectangle
     Axis-aligned box region.
 
+Layer
+    Axis-aligned finite layer spanning the remaining coordinates.
+
 HalfSpace
     Half-space region defined by a hyperplane.
 
@@ -37,6 +40,12 @@ RigidRotation
 
 UniformFlow
     Spatially uniform constant velocity.
+
+CompositeVelocityField
+    Superposition of base and perturbation velocity fields.
+
+SinusoidalPerturbation
+    Single-component sinusoidal initial velocity perturbation.
 
 velocity_field_from_dict
     Deserialise a velocity field from a plain dict (YAML fragment).
@@ -64,6 +73,7 @@ from .shapes import (
     Circle,
     Ellipse,
     HalfSpace,
+    Layer,
     PerturbedCircle,
     Rectangle,
     SinusoidalInterface,
@@ -71,7 +81,14 @@ from .shapes import (
     shape_from_dict,
 )
 from .builder import InitialConditionBuilder
-from .velocity_fields import VelocityField, RigidRotation, UniformFlow, velocity_field_from_dict
+from .velocity_fields import (
+    CompositeVelocityField,
+    RigidRotation,
+    SinusoidalPerturbation,
+    UniformFlow,
+    VelocityField,
+    velocity_field_from_dict,
+)
 
 __all__ = [
     # shape primitives
@@ -79,6 +96,7 @@ __all__ = [
     "Circle",
     "Ellipse",
     "Rectangle",
+    "Layer",
     "HalfSpace",
     "SinusoidalInterface",
     "PerturbedCircle",
@@ -88,5 +106,7 @@ __all__ = [
     "VelocityField",
     "RigidRotation",
     "UniformFlow",
+    "CompositeVelocityField",
+    "SinusoidalPerturbation",
     "velocity_field_from_dict",
 ]

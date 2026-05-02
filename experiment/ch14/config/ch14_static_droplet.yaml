@@ -7,6 +7,9 @@
 #   equilibrium route builds the fitted grid once from the initial tracked
 #   interface instead of rebuilding/remapping every physical step.
 
+experiment:
+  type: circle
+
 grid:
   cells: [128, 128]
   domain:
@@ -156,10 +159,12 @@ output:
 diagnostics: [volume_conservation, kinetic_energy, deformation]
 
 initial_condition:
-  type: circle
-  center: [0.5, 0.5]
-  radius: 0.25
-  interior_phase: liquid
+  background_phase: gas
+  objects:
+    - type: circle
+      center: [0.5, 0.5]
+      radius: 0.25
+      interior_phase: liquid
 
 initial_velocity: null
 boundary_condition: null

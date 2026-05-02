@@ -13,6 +13,8 @@ Coverage
 8. background_phase='liquid' with gas circle carved out.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -22,16 +24,21 @@ from ..simulation.initial_conditions import (
     Ellipse,
     Rectangle,
     HalfSpace,
+    Layer,
     SinusoidalInterface,
     shape_from_dict,
     VelocityField,
+    CompositeVelocityField,
     RigidRotation,
+    SinusoidalPerturbation,
     UniformFlow,
     velocity_field_from_dict,
 )
+from ..simulation.runtime_setup import normalise_ic_dict
 from ..core.grid import Grid
 from ..config import GridConfig
 from ..backend import Backend
+from ..simulation.config_models import ExperimentConfig
 
 
 # ── テスト用グリッド ───────────────────────────────────────────────────────────
@@ -192,6 +199,13 @@ def test_shape_from_dict_circle(grid_2d):
     assert s_dict.interior_phase == "liquid"
 
 
+def test_shape_from_dict_bubble_defaults_to_gas():
+    s = shape_from_dict({"type": "bubble", "center": [0.5, 0.5], "radius": 0.2})
+
+    assert isinstance(s, Circle)
+    assert s.interior_phase == "gas"
+
+
 def test_shape_from_dict_rectangle_bounds(grid_2d):
     grid = grid_2d
     eps = _eps(grid)
@@ -216,6 +230,42 @@ def test_shape_from_dict_rectangle_flat_keys(grid_2d):
     assert isinstance(s, Rectangle)
     assert s.bounds[0] == (0.1, 0.9)
     assert s.bounds[1] == (0.2, 0.8)
+
+
+def test_shape_from_dict_layer_bounds(grid_2d):
+    s = shape_from_dict({
+        "type": "layer",
+        "axis": "y",
+        "bounds": [0.25, 0.75],
+        "interior_phase": "liquid",
+    })
+
+    assert isinstance(s, Layer)
+    assert s.axis == 1
+    assert s.lower == pytest.approx(0.25)
+    assert s.upper == pytest.approx(0.75)
+
+    X, Y = grid_2d.meshgrid()
+    phi = s.sdf(X, Y)
+    idx_inside_x = np.argmin(np.abs(grid_2d.coords[0] - 0.5))
+    idx_inside_y = np.argmin(np.abs(grid_2d.coords[1] - 0.5))
+    idx_outside_y = np.argmin(np.abs(grid_2d.coords[1] - 0.9))
+    assert phi[idx_inside_x, idx_inside_y] < 0.0
+    assert phi[idx_inside_x, idx_outside_y] > 0.0
+
+
+def test_shape_from_dict_layer_center_thickness():
+    s = shape_from_dict({
+        "type": "slab",
+        "axis": 0,
+        "center": 0.5,
+        "thickness": 0.2,
+    })
+
+    assert isinstance(s, Layer)
+    assert s.axis == 0
+    assert s.lower == pytest.approx(0.4)
+    assert s.upper == pytest.approx(0.6)
 
 
 def test_shape_from_dict_half_space(grid_2d):
@@ -310,6 +360,83 @@ def test_builder_from_dict_multiple_shapes(grid_2d):
     assert psi[ix_mid, iy_mid] > 0.99, (
         f"Between bubbles ψ = {psi[ix_mid, iy_mid]:.6f}, expected > 0.99"
     )
+
+
+def test_builder_from_dict_generic_objects_circle_ellipse_layer(grid_2d):
+    """YAML-style objects can mix generic shape primitives."""
+    grid = grid_2d
+    eps = _eps(grid)
+
+    d = {
+        "background_phase": "gas",
+        "objects": [
+            {"type": "circle", "center": [0.25, 0.25], "radius": 0.08},
+            {"type": "ellipse", "center": [0.75, 0.25], "semi_axes": [0.10, 0.06]},
+            {"type": "layer", "axis": "y", "bounds": [0.60, 0.72]},
+        ],
+    }
+    psi = InitialConditionBuilder.from_dict(d).build(grid, eps)
+
+    for point in ((0.25, 0.25), (0.75, 0.25), (0.50, 0.66)):
+        idx_x = np.argmin(np.abs(grid.coords[0] - point[0]))
+        idx_y = np.argmin(np.abs(grid.coords[1] - point[1]))
+        assert psi[idx_x, idx_y] > 0.90
+
+    idx_out_x = np.argmin(np.abs(grid.coords[0] - 0.5))
+    idx_out_y = np.argmin(np.abs(grid.coords[1] - 0.9))
+    assert psi[idx_out_x, idx_out_y] < 0.05
+
+
+def test_builder_from_dict_multiple_objects_with_bubble_alias(grid_2d):
+    """Bubble is only a convenience alias for gas circles."""
+    grid = grid_2d
+    eps = _eps(grid)
+
+    d = {
+        "background_phase": "liquid",
+        "objects": [
+            {"type": "bubble", "center": [0.25, 0.5], "radius": 0.08},
+            {"type": "bubble", "center": [0.75, 0.5], "radius": 0.08},
+        ],
+    }
+    psi = InitialConditionBuilder.from_dict(d).build(grid, eps)
+
+    for center_x in (0.25, 0.75):
+        idx_x = np.argmin(np.abs(grid.coords[0] - center_x))
+        idx_y = np.argmin(np.abs(grid.coords[1] - 0.5))
+        assert psi[idx_x, idx_y] < 0.05
+
+
+def test_normalise_ic_dict_infers_liquid_background_for_objects_bubbles():
+    normalised = normalise_ic_dict({
+        "type": "objects",
+        "objects": [
+            {"type": "bubble", "center": [0.5, 0.5], "radius": 0.2},
+        ],
+    })
+
+    assert normalised["background_phase"] == "liquid"
+    assert "objects" in normalised
+
+
+def test_builder_from_dict_rejects_mixed_shape_keys():
+    with pytest.raises(ValueError, match="either 'shapes' or 'objects'"):
+        InitialConditionBuilder.from_dict({"shapes": [], "objects": []})
+
+
+def test_ch14_yaml_initial_conditions_use_object_specs():
+    root = Path(__file__).resolve().parents[3]
+    paths = sorted((root / "experiment/ch14/config").glob("*.yaml"))
+
+    assert len(paths) == 6
+    for path in paths:
+        cfg = ExperimentConfig.from_yaml(path)
+        assert "objects" in cfg.initial_condition, path.name
+        assert "type" not in cfg.initial_condition, path.name
+        builder = InitialConditionBuilder.from_dict(
+            normalise_ic_dict(dict(cfg.initial_condition))
+        )
+        assert builder.shapes, path.name
 
 
 # ── 8. background_phase='liquid' + 気体円 ─────────────────────────────────────
@@ -564,6 +691,63 @@ def test_uniform_flow_from_dict():
     vf = velocity_field_from_dict(d)
     assert isinstance(vf, UniformFlow)
     assert vf.velocity == (2.0, -1.0)
+
+
+def test_sinusoidal_perturbation_vertical_component(grid_2d):
+    grid = grid_2d
+    X, Y = grid.meshgrid()
+    vf = velocity_field_from_dict({
+        "type": "sinusoidal_perturbation",
+        "component": "y",
+        "axis": "x",
+        "amplitude": 0.1,
+        "mode": 1,
+        "length": 1.0,
+        "profile": "cos",
+    })
+
+    u, v = vf.compute(X, Y)
+
+    assert isinstance(vf, SinusoidalPerturbation)
+    np.testing.assert_allclose(u, 0.0, atol=1e-12)
+    np.testing.assert_allclose(v, 0.1 * np.cos(2.0 * np.pi * X), atol=1e-12)
+
+
+def test_composite_velocity_from_base_and_perturbations(grid_2d):
+    grid = grid_2d
+    X, Y = grid.meshgrid()
+    vf = velocity_field_from_dict({
+        "base": {"type": "uniform", "velocity": [1.0, -0.2]},
+        "perturbations": [
+            {
+                "type": "sinusoidal_perturbation",
+                "component": "y",
+                "axis": "x",
+                "amplitude": 0.05,
+                "mode": 2,
+                "length": 1.0,
+            },
+        ],
+    })
+
+    u, v = vf.compute(X, Y)
+
+    assert isinstance(vf, CompositeVelocityField)
+    np.testing.assert_allclose(u, 1.0, atol=1e-12)
+    np.testing.assert_allclose(
+        v,
+        -0.2 + 0.05 * np.sin(4.0 * np.pi * X),
+        atol=1e-12,
+    )
+
+
+def test_composite_velocity_rejects_duplicate_child_keys():
+    with pytest.raises(ValueError, match="either 'fields' or 'components'"):
+        velocity_field_from_dict({
+            "type": "composite",
+            "fields": [],
+            "components": [],
+        })
 
 
 def test_velocity_field_from_dict_unknown_type():

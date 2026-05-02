@@ -7,6 +7,9 @@
 # - Curvature: interface geometry uses `psi_direct_filtered`.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 
+experiment:
+  type: circle
+
 grid:
   cells: [128, 256]
   domain:
@@ -166,10 +169,12 @@ output:
 diagnostics: [volume_conservation, bubble_centroid, mean_rise_velocity, deformation]
 
 initial_condition:
-  type: circle
-  center: [0.5, 0.5]
-  radius: 0.25
-  interior_phase: gas
+  background_phase: liquid
+  objects:
+    - type: circle
+      center: [0.5, 0.5]
+      radius: 0.25
+      interior_phase: gas
 
 initial_velocity: null
 boundary_condition:
