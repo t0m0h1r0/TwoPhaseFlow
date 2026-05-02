@@ -12,6 +12,10 @@ from twophase.backend import (
     is_device_array,
     scalar_value,
 )
+from twophase.config import GridConfig
+from twophase.core.grid import Grid
+from twophase.simulation.ns_predictor_assembly import select_gravity_aligned_axis
+from twophase.time_integration.cfl import CFLCalculator
 from twophase.tools.diagnostics.collector import DiagnosticCollector
 from twophase.tools.diagnostics.field_diagnostics import kinetic_energy
 from twophase.tools.diagnostics.interface_diagnostics import (
@@ -32,6 +36,23 @@ def test_backend_boundary_helpers_cpu():
     assert scalar_value(np.asarray(2.5)) == pytest.approx(2.5)
 
 
+def test_cfl_scalar_boundary_cpu():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)), backend)
+    calculator = CFLCalculator(
+        backend,
+        grid,
+        cfl_number=0.4,
+        cn_viscous=False,
+    )
+    u = np.ones(grid.shape) * 2.0
+    v = np.ones(grid.shape) * 3.0
+    mu = np.ones(grid.shape) * 0.5
+    rho = np.ones(grid.shape) * 2.0
+
+    assert calculator.compute([u, v], mu, rho) == pytest.approx(0.02)
+
+
 @pytest.mark.gpu
 def test_backend_boundary_helpers_gpu(gpu_backend):
     xp = gpu_backend.xp
@@ -41,6 +62,25 @@ def test_backend_boundary_helpers_gpu(gpu_backend):
     assert is_device_array(values)
     np.testing.assert_allclose(host_array(values), np.asarray([1.0, 2.0, 3.0]))
     assert gpu_backend.to_scalar(xp.sum(values)) == pytest.approx(6.0)
+
+
+@pytest.mark.gpu
+def test_cfl_and_axis_scalar_boundaries_gpu(gpu_backend):
+    xp = gpu_backend.xp
+    grid = Grid(GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)), gpu_backend)
+    calculator = CFLCalculator(
+        gpu_backend,
+        grid,
+        cfl_number=0.4,
+        cn_viscous=False,
+    )
+    u = xp.ones(grid.shape) * 2.0
+    v = xp.ones(grid.shape) * 3.0
+    mu = xp.ones(grid.shape) * 0.5
+    rho = xp.ones(grid.shape) * 2.0
+
+    assert calculator.compute([u, v], mu, rho) == pytest.approx(0.02)
+    assert select_gravity_aligned_axis([u, v], xp) == 1
 
 
 @pytest.mark.gpu
