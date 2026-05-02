@@ -227,10 +227,10 @@ def test_structured_cfl_policy_allows_term_multipliers():
     assert cfg.run.cfl_viscous == pytest.approx(0.8)
 
 
-def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
+def test_ch14_capillary_yaml_loads_execution_stack():
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+        / "experiment/ch14/config/ch14_capillary.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
 
@@ -261,9 +261,9 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
-    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
+    assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.ppe_defect_correction is True
-    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.run.reinit_every == 20
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
@@ -273,15 +273,15 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
 def test_ch14_static_droplet_yaml_uses_gpu_static_route():
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_static_droplet_periodic.yaml"
+        / "experiment/ch14/config/ch14_static_droplet.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
 
     assert cfg.grid.NX == 128
     assert cfg.grid.NY == 128
     assert cfg.grid.bc_type == "periodic"
-    assert cfg.grid.grid_rebuild_freq == 0
-    assert cfg.run.T_final == pytest.approx(0.2)
+    assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.run.T_final == pytest.approx(1.0)
     assert cfg.run.dt_fixed == pytest.approx(0.001235)
     assert cfg.run.interface_tracking_enabled is False
     assert cfg.run.interface_tracking_method == "none"
@@ -290,10 +290,10 @@ def test_ch14_static_droplet_yaml_uses_gpu_static_route():
     assert cfg.run.ppe_defect_correction is True
 
 
-def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
+def test_ch14_rising_bubble_yaml_loads_execution_stack():
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+        / "experiment/ch14/config/ch14_rising_bubble.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
 
@@ -301,7 +301,7 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.grid.NY == 256
     assert cfg.grid.LX == 1.0
     assert cfg.grid.LY == 2.0
-    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.physics.g_acc == pytest.approx(0.001)
     assert cfg.run.reinit_every == 4
     assert cfg.run.reinit_trigger_mode == "fixed"
@@ -317,6 +317,7 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
+    assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
 
 
 def test_legacy_buoyancy_predictor_assembly_alias_maps_to_balanced_name():
