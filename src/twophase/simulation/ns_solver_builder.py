@@ -71,7 +71,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             eps_xi_cells=getattr(g, "eps_xi_cells", None),
         ),
         interface=SolverInterfaceOptions(
-            grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 1),
+            grid_rebuild_freq=getattr(g, "grid_rebuild_freq", 0),
             reinit_every=getattr(run, "reinit_every", 2),
             reinit_method=(getattr(run, "reinit_method", None) or "ridge_eikonal"),
             reproject_variable_density=getattr(run, "reproject_variable_density", False),

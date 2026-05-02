@@ -44,6 +44,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._xp = backend.xp
         self._backend = backend
         self._grid = grid
+        self._ccd = ccd
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
@@ -72,6 +73,7 @@ class RidgeEikonalReinitializer(IReinitializer):
             backend, grid, sigma_0=sigma_0, h_ref=self._h_ref,
             wall_closure=self._wall_closure,
             wall_axes=self._wall_axes,
+            ccd=ccd,
         )
         self._fmm = NonUniformFMM(grid, backend=backend)
 

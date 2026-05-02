@@ -59,6 +59,7 @@ def test_construction_uniform():
 def test_construction_nonuniform():
     s = _make_solver(alpha_grid=2.0)
     assert s._alpha_grid == 2.0
+    assert s._rebuild_freq == 0
     # Before any rebuild, grid is still uniform
     assert s.h_min == pytest.approx(LX / N)
 

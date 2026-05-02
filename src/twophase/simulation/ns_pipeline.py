@@ -123,7 +123,7 @@ class TwoPhaseNSSolver:
         fitting_dx_min_floor: tuple[float, float] | None = None,
         use_local_eps: bool = False,
         eps_xi_cells: float | None = None,
-        grid_rebuild_freq: int = 1,
+        grid_rebuild_freq: int = 0,
         reinit_every: int = 2,
         reinit_method: str = "ridge_eikonal",
         cn_viscous: bool = False,
